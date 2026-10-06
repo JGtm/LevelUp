@@ -446,30 +446,39 @@ faux, règle 17). Juge de paix web : `node tools/knip-ratchet.mjs` à 0 / 0 / 0.
 
 ### S1 — Go : factorisations préalables, sans changement de comportement · moyen
 
-- [ ] S1.1 `service/solo_emprise_block.go` (NEUF) : `soloEmpriseQuery{Page, Player, PlayerXUID,
+- [x] S1.1 `service/solo_emprise_block.go` (NEUF) : `soloEmpriseQuery{Page, Player, PlayerXUID,
   RepoRoot, TitleSlug, Locale, Current []squademprise.Match, Lectures *squadagg.LecturesUsage,
   UsageRepo, EmpriseRepo, VehicleRepo, WithMaps bool}` et `buildSoloEmpriseBlock` = corps actuel de
   `attachEmprise` (`timeseries_service_emprise.go:69-95`) ; `attachEmprise` garde sa garde
   (l. 65-67), sa section de durée et sa signature, et appelle le helper (`WithMaps: true`). Tests
   `timeseries_service_emprise_test.go` verts SANS modification ; mutation : `WithMaps` ignoré →
   rouge (`TestTimeseries…` grille), journal `emprise` sans attribut `page` → aucune assertion (noter).
-- [ ] S1.2 `service/solo_lives_block.go` (NEUF) : `viesQuery{Page, Player, PlayerXUID, Repo, Radar,
+- [x] S1.2 `service/solo_lives_block.go` (NEUF) : `viesQuery{Page, Player, PlayerXUID, Repo, Radar,
   MatchIDs}` et `lireViesPresOuSeul` = corps de `attachLives` (`timeseries_service_lives.go:47-75`),
   journaux `vies_*` + `page` ; `attachLives` l'appelle. Tests `timeseries_service_lives_test.go` verts
   sans modification ; mutation : portée résolue sans `PorteesDuRadarParMatch` → rouge.
-- [ ] S1.3 `service/squadagg/weapon_tools.go` (NEUF) : `WeaponToolInputs` (champs exportés de
+- [x] S1.3 `service/squadagg/weapon_tools.go` (NEUF) : `WeaponToolInputs` (champs exportés de
   `squadToolInputs`, `teammates_squad_weapon_tools.go:41-52`), `BuildWeaponTools`, `PlayersAboveSheet`
   et les aides privées (l. 54-231, 274-288) déplacés ; `teammates` appelle
   `squadagg.BuildWeaponTools` / `squadagg.PlayersAboveSheet` ; tests purs du builder déplacés dans
   `squadagg/weapon_tools_test.go` (les cas de `teammates_squad_weapon_tools_test.go` qui exercent la
   section et les lectures restent côté `teammates`). Mutation : « Non attribué » non trié en dernier →
   rouge.
-- [ ] S1.4 `analysis/home_canonical_recent.go:240` : `buildScoreLabelCanonical` exporté
+- [x] S1.4 `analysis/home_canonical_recent.go:240` : `buildScoreLabelCanonical` exporté
   (`ScoreLabelCanonical`), appelant de l'accueil migré (l. 91) ; tests de l'accueil verts sans
   modification.
 - Gate : gate Go (sans contrat : aucun type public de contrat ne change) ; preuves : `Grep
   "buildSquadWeaponTools|squadToolInputs" apps/go-api/internal` → 0 ; `Grep "LoadLivesNearTeammate\("
   apps/go-api/internal --glob !*_test.go` → `solo_lives_block.go` + repo + port seulement.
+
+Journal S1 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `262e36b2e`) — refactorisations sans changement de comportement :
+- **S1.1** `service/solo_emprise_block.go` : `soloEmpriseQuery` + `buildSoloEmpriseBlock` (corps de l'ancien `attachEmprise` : trois lectures `squadagg.EmpriseLecteur`, joueur seul, `WithoutTimeScale`, `Build`, `BuildEquipment`, `BuildMaps` sous `WithMaps`) ; `attachEmprise` garde sa garde, sa section de durée `emprise` et sa signature, et l'appelle (`Page: "timeseries"`, `WithMaps: true`). `timeseries_service_emprise_test.go` vert SANS modification.
+- **S1.2** `service/solo_lives_block.go` : `viesQuery` + `lireViesPresOuSeul` (corps de l'ancien `attachLives`, section `lives` après la garde du repo comme avant) ; journaux renommés `vies_*` avec l'attribut `page` (aucun test ne les assertait) ; `attachLives` réduit à sa garde et à l'appel. `timeseries_service_lives_test.go` vert SANS modification.
+- **S1.3** `service/squadagg/weapon_tools.go` : `WeaponToolInputs` (champs exportés), `BuildWeaponTools`, `PlayersAboveSheet` et leurs aides privées, déplacés tels quels de `teammates` ; `teammates_squad_weapon_tools.go` (331 → 102 L) garde ses lectures et appelle le builder. Tests purs déplacés dans `squadagg/weapon_tools_test.go` (sept cas, renommés `TestBuildWeaponTools_*` ; seuls les appels et les noms de champs changent ; l'aide `wantKills` y compte deux joueurs au lieu de trois — le troisième valait 0 dans ces cas, assertion identique) ; le témoin de bout en bout `TestSquadWeaponTools_Soiree2209` reste côté `teammates`, inchangé.
+- **S1.4** `analysis.ScoreLabelCanonical` (ex-`buildScoreLabelCanonical`, commentaire de contrat réécrit), appelant de l'accueil et tests renommés (`TestScoreLabelCanonical_*`), assertions inchangées.
+- **Mutations** (script `mut_s1.ps1` du scratchpad, restauration garantie puis vérifiée par grep) : grille par carte jamais calculée → ROUGE (`TestAttachEmprise_FenetreUnJoueurCartesEtEquipement`) ; lectures partagées non transmises → ROUGE (`TestAttachMigratedSections_UneLectureDuResumeDUsage`) ; portée du radar non résolue → ROUGE (`TestAttachLives_LectureBorneeEtPorteeCourante`) ; « Non attribué » non trié en dernier → ROUGE (`TestBuildWeaponTools_ReliquatEnDernier`) ; manches ignorées → ROUGE (`TestScoreLabelCanonical_VarianteADecideeEnManches`).
+- **Gate** (CGO, une commande `go` à la fois, avant-plan) : `go build ./...` 0 ; `gofmt -l internal` muet ; `go vet` de `service`, `squadagg`, `teammates`, `analysis` 0 ; `go test -count=1` des paquets touchés + `archlint` : 5 ok ; module en lots couvrant tout `go list ./...` : cmd + analysis + api + archlint + domain + port 66 ok, contracttest + domain + port 7 ok, games 39 ok, platform + service 28 ok, sync + persist + migration 13 ok, reste de internal + pkg + scripts + tests 48 ok (57 paquets dont sans test) — 0 FAIL ; `make go-api-lint` (cache isolé) 0 issues ; `openapi-gen -check` à jour (aucun type de contrat touché). Preuves : `buildSquadWeaponTools|squadToolInputs|playersAboveSheet` → 0 ; `LoadLivesNearTeammate(` hors tests → `solo_lives_block.go`, repo DuckDB, port.
+- Seuils : fichiers neufs ≤ 240 L ; plus longue fonction neuve `buildSoloEmpriseBlock` ~30 L, un paramètre de requête ; fichiers touchés en baisse (`timeseries_service_emprise.go` 126 → 105, `timeseries_service_lives.go` 77 → 42, `teammates_squad_weapon_tools.go` 331 → 102).
 
 ### S2 — Go : les blocs neufs de la page Sessions (contrat additif) · lourd
 

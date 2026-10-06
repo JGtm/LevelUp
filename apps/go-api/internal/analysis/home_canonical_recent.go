@@ -88,7 +88,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 		}
 
 		// Score label : reconstruit depuis Summary.Teams — points ou MANCHES.
-		scoreLabel := buildScoreLabelCanonical(r, opts.RoundsDecide)
+		scoreLabel := ScoreLabelCanonical(r, opts.RoundsDecide)
 		scoreStr := "-"
 		if scoreLabel != nil {
 			scoreStr = *scoreLabel
@@ -235,9 +235,11 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 	return items
 }
 
-// buildScoreLabelCanonical : reconstruit le score "X-Y" depuis Summary.Teams
-// + Self.TeamID (équivalent canonical de buildHomeScoreLabel).
-func buildScoreLabelCanonical(r canonical.PlayerMatchRow, roundsDecide map[string]bool) *string {
+// ScoreLabelCanonical : reconstruit le score "X - Y" d'une ligne canonique depuis Summary.Teams
+// + Self.TeamID, par la source unique TeamScoreLabel (manches quand la variante est déclarée dans
+// `roundsDecide`). nil sans les deux camps ou sans score lisible. Lu par l'accueil et la page
+// Sessions.
+func ScoreLabelCanonical(r canonical.PlayerMatchRow, roundsDecide map[string]bool) *string {
 	var t0, t1 *canonical.TeamSnapshot
 	for i := range r.Summary.Teams {
 		switch r.Summary.Teams[i].TeamID {
