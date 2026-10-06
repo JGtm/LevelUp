@@ -11050,6 +11050,9 @@ components:
         col:
           format: int64
           type: integer
+        frags:
+          format: int64
+          type: integer
         lig:
           format: int64
           type: integer
@@ -11060,6 +11063,9 @@ components:
           format: int64
           type: integer
         matchs_victoire:
+          format: int64
+          type: integer
+        morts:
           format: int64
           type: integer
         valeur:
@@ -29266,6 +29272,8 @@ components:
         matchs_non_ouvrables:
           format: int64
           type: integer
+        zone:
+          $ref: '#/components/schemas/TacticalZoneNom'
       required:
         - contributions
         - matchs_non_ouvrables
@@ -29273,7 +29281,17 @@ components:
     TacticalContribution:
       additionalProperties: false
       properties:
+        arme_label:
+          type: string
+        arme_label_en:
+          type: string
+        autre_gamertag:
+          type: string
+        categorie_source:
+          type: string
         clock:
+          type: string
+        face:
           type: string
         instant_ms:
           format: int64
@@ -29283,7 +29301,17 @@ components:
         match_started_at:
           format: date-time
           type: string
+        mode_label:
+          type: string
+        placement:
+          $ref: '#/components/schemas/TacticalPlacement'
+        replay_available:
+          type: boolean
         resultat:
+          type: string
+        score_kind:
+          type: string
+        score_label:
           type: string
         xuid:
           type: string
@@ -29293,6 +29321,7 @@ components:
         - clock
         - xuid
         - match_started_at
+        - replay_available
       type: object
     TacticalCoordination:
       additionalProperties: false
@@ -29435,6 +29464,17 @@ components:
         - cartes
         - plancher_matchs
       type: object
+    TacticalPlacement:
+      additionalProperties: false
+      properties:
+        distance_m:
+          format: double
+          type: number
+        seul:
+          type: boolean
+      required:
+        - seul
+      type: object
     TacticalRaster:
       additionalProperties: false
       properties:
@@ -29502,6 +29542,13 @@ components:
           type: string
         qui:
           type: string
+        rayons_radar_m:
+          items:
+            format: double
+            type: number
+          type:
+            - array
+            - "null"
       required:
         - map_id
         - question
@@ -29544,6 +29591,17 @@ components:
         spawn:
           description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
           type: string
+      type: object
+    TacticalZoneNom:
+      additionalProperties: false
+      properties:
+        nom_en:
+          type: string
+        nom_fr:
+          type: string
+      required:
+        - nom_fr
+        - nom_en
       type: object
     TeamCoverage:
       additionalProperties: false

@@ -42,7 +42,8 @@ var (
 //
 // Le meme match peut apparaitre dans plusieurs rasters (deux vues partielles d'un match,
 // par exemple ses morts et ses kills) : ses passages s'additionnent, et il ne compte qu'UNE
-// FOIS dans les matchs distincts d'une cellule comme dans le denominateur par match.
+// FOIS dans les matchs distincts d'une cellule comme dans le denominateur par match. Les
+// comptes par face d'un raster de solde (solde.go) s'additionnent aussi.
 //
 // TOUS LES RASTERS PARTAGENT LE MEME UNIVERS, sinon ErrUniversIncompatible : deux vues d'un
 // meme filtre ont, par construction, le meme ensemble de matchs retenus. Sommer deux univers
@@ -77,6 +78,7 @@ func Somme(rasters ...*Raster) (*Raster, error) {
 			}
 		}
 		out.ignores += r.ignores
+		sommerFaces(out, r)
 	}
 	return out, nil
 }

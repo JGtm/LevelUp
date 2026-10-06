@@ -5537,6 +5537,8 @@ export interface components {
             /** Format: int64 */
             col: number;
             /** Format: int64 */
+            frags?: number;
+            /** Format: int64 */
             lig: number;
             /** Format: int64 */
             matchs: number;
@@ -5544,6 +5546,8 @@ export interface components {
             matchs_defaite: number;
             /** Format: int64 */
             matchs_victoire: number;
+            /** Format: int64 */
+            morts?: number;
             /** Format: double */
             valeur: number;
         };
@@ -13163,15 +13167,26 @@ export interface components {
             contributions: components["schemas"]["TacticalContribution"][] | null;
             /** Format: int64 */
             matchs_non_ouvrables: number;
+            zone?: components["schemas"]["TacticalZoneNom"];
         };
         TacticalContribution: {
+            arme_label?: string;
+            arme_label_en?: string;
+            autre_gamertag?: string;
+            categorie_source?: string;
             clock: string;
+            face?: string;
             /** Format: int64 */
             instant_ms: number;
             match_id: string;
             /** Format: date-time */
             match_started_at: string;
+            mode_label?: string;
+            placement?: components["schemas"]["TacticalPlacement"];
+            replay_available: boolean;
             resultat?: string;
+            score_kind?: string;
+            score_label?: string;
             xuid: string;
         };
         TacticalCoordination: {
@@ -13227,6 +13242,11 @@ export interface components {
             /** Format: int64 */
             plancher_matchs: number;
         };
+        TacticalPlacement: {
+            /** Format: double */
+            distance_m?: number;
+            seul: boolean;
+        };
         TacticalRaster: {
             bornes: components["schemas"]["BornesMonde"];
             cellules: components["schemas"]["CelluleTactique"][] | null;
@@ -13262,6 +13282,7 @@ export interface components {
             points_ignores: number;
             question: string;
             qui: string;
+            rayons_radar_m?: number[] | null;
         };
         TacticalRasterBody: {
             /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
@@ -13274,6 +13295,10 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
+        };
+        TacticalZoneNom: {
+            nom_en: string;
+            nom_fr: string;
         };
         TeamCoverage: {
             /** Format: int64 */

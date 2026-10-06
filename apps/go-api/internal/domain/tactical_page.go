@@ -188,6 +188,11 @@ type TacticalRaster struct {
 	// amputee ressemblerait a une lecture complete.
 	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
 
+	// RayonsRadarM : les portees de radar DISTINCTES des matchs de la lecture « isole »
+	// (regulation.toml [radar_range_m]), triees croissant — jamais une moyenne, qui ne serait la
+	// regle d'aucun match. Vide sur les autres lectures.
+	RayonsRadarM []float64 `json:"rayons_radar_m,omitempty"`
+
 	// MortsEquipeATerre : les morts ECARTEES de la lecture « isole » parce qu'AUCUN
 	// coequipier n'etait en mesure d'accompagner (tous morts, partis, ou aucun).
 	//

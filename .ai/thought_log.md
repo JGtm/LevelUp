@@ -115910,3 +115910,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés (vérifiés sur pièces)** : l'ordre du brief (suppressions Go avant le web) ferait rougir `tsc` — le web lit `echange`, `coordination`, `isolement` (`TacticalAnalysisView.tsx:255-263, 382-429`) — d'où L9 après le web ; le port de callouts ne rend que nom + point de référence, polygones et tranches sont jetés par `zonesNommees` ; `KPIStrip` n'a pas d'autre lecteur que l'onglet ; `heatPaint` est aussi lu par « Occupation du terrain » de la Vue match ; la comparaison de portée existe déjà en deux copies (`aPortee`, `celluleIsole`), le badge serait la troisième ; Ascension a six onglets (Tendances) ; l'Explorateur filtre par libellé de carte FR, pas par `map_id` ; la règle (b) de la maquette (la plus fréquente, sans marge) diffère de celle du brief, le nom du témoin Bazaar sera fixé au lot. Relecture `plan-review` : quatre défauts de la première version corrigés (ordre, troisième copie, `KPIStrip`, port de callouts).
 
 **Conclusion / prochaine étape** : arrêt en fin de phase 1 ; décisions D1-D28 à confirmer par le superviseur, puis phase 2 sous `plan-execution` sur « go », un lot à la fois avec compte rendu et attente du « continue ».
+
+## [2026-10-06] Tactique v2, lot L1 : briques pures et contrat additif — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L1 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : la comparaison « à portée du radar » devient `coordination.APortee` (source unique, garde-rail `archlint/no_local_portee_comparison_test.go`, la copie de `celluleIsole` migrée) ; la lecture « solde » vit dans `analysis/tactical/solde.go` (union des faces pour le plancher, (frags − morts) / N, faces sommées par `Somme`) ; la règle du nom de zone est pure (`zones.go`, `geometrie.go` : forme pair-impair, marge de tranche 0,25 m, 2 m strict, z inconnu sans nom quand plusieurs formes s'empilent) ; le placement d'une mort s'apparie à ± 1 500 ms (`placement.go`) ; le contrat gagne les champs additifs du détail de zone.
+
+**Résultats observés** : chaque test vu rouge avant le code, 15 mutations toutes rouges ; Go 349 paquets (un seul échec, un test de durée de `sync/skill` hors périmètre sous charge d'une autre session, vert rejoué seul), lint 0 issue, contrat +58 / +25 lignes sans retrait, garde de surface intacte.
+
+**Conclusion / prochaine étape** : L1 clos ; L2 (lectures enrichies, contextes de mort, zones polygonales, lecture « solde » servie) après le « continue » du superviseur.

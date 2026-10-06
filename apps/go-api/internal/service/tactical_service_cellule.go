@@ -37,6 +37,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -183,9 +184,10 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 // celluleIsole sert « ou je meurs isole ». MEME REGLE QUE coordination.Isolement
 // (rasterIsole, tactical_service_isolement.go) : une mort est isolee quand personne ne
 // pouvait accompagner OU quand personne accompagnant n'etait a portee du rayon radar du
-// match. Reecrite ici (et non appelee via coordination.Isolement) parce que ce paquet-la
-// ne rend que X/Y/MatchID (domain.MortAExaminer) — il n'a pas besoin du xuid ni de
-// l'instant, quand ce detail de cellule a besoin des deux pour construire un lien de rejeu.
+// match. Le PARCOURS est reecrit ici (et non appele via coordination.Isolement) parce que ce
+// paquet-la ne rend que X/Y/MatchID (domain.MortAExaminer) — il n'a pas besoin du xuid ni de
+// l'instant, quand ce detail de cellule a besoin des deux pour construire un lien de rejeu. La
+// COMPARAISON a portee, elle, est `coordination.APortee`, la meme que l'isolement.
 func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalCelluleRequest,
 	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
 	if !positionsDeKillLisibles(s.caps) {
@@ -222,7 +224,7 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 			// placement (meme exclusion que coordination.Isolement).
 			continue
 		}
-		accompagnee := m.PlusProcheM != nil && *m.PlusProcheM <= rayon
+		accompagnee := coordination.APortee(m.PlusProcheM, rayon)
 		if accompagnee {
 			continue
 		}

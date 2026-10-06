@@ -58,11 +58,22 @@ type PointSpawn struct {
 }
 
 // ZoneNommee est un callout : un nom de lieu (dans les deux langues) et son point de
-// reference, en metres monde.
+// reference, en metres monde. Les grappes de spawn ne lisent que le point.
+//
+// La FORME au sol et la TRANCHE de hauteur servent au nom en jeu d'une cellule (zones.go) :
+// contour principal, parties detachees et trous (regle pair-impair, la forme que le rendu
+// dessine), en metres monde ; une zone sans contour ni partie ne nomme aucune cellule.
+// VolumeIndex est l'indice de la zone dans son catalogue (departage final, determinisme).
 type ZoneNommee struct {
 	NomFR string
 	NomEN string
 	X, Y  float64
+
+	Polygone    [][2]float64
+	Parties     [][][2]float64
+	Trous       [][][2]float64
+	ZBas, ZHaut float64
+	VolumeIndex int
 }
 
 // GrappeSpawn est un amas de reapparitions : la ou le jeu fait naitre les joueurs.

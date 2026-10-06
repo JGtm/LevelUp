@@ -504,7 +504,7 @@ Périmètre : `analysis/coordination/{vies_pres_ou_seul.go, isolation.go}`, une 
 zones.go, geometrie.go, placement.go, merge.go, spawn.go}` (+ tests), `domain/{tactical.go,
 tactical_cellule.go, tactical_page.go, tactical_raster.go, tactical_zone.go}`, contrat.
 
-- [ ] L1.1 `coordination.APortee(d *float64, rayon float64) bool` (export de `aPortee`,
+- [x] L1.1 `coordination.APortee(d *float64, rayon float64) bool` (export de `aPortee`,
   `vies_pres_ou_seul.go:141-145`) ; appelants `isolation.go:72-74`, `vies_pres_ou_seul.go:83` ;
   `celluleIsole` (`tactical_service_cellule.go:225`) l'appelle. Garde-rail
   `archlint/no_local_portee_comparison_test.go` : empreinte « distance déréférencée comparée par
@@ -513,32 +513,83 @@ tactical_cellule.go, tactical_page.go, tactical_raster.go, tactical_zone.go}`, c
   l'empreinte reconnaît l'ancienne copie de `celluleIsole` (littéral) et ignore l'appel au helper ;
   mutation : réintroduire la comparaison inline dans `tactical_service_cellule.go` → rouge.
   `TestAucunTauxNu` vert (retour `bool`, liste blanche).
-- [ ] L1.2 `analysis/tactical/solde.go` (D2) ; `domain.CelluleTactique.Frags`, `.Morts`. Tests
+- [x] L1.2 `analysis/tactical/solde.go` (D2) ; `domain.CelluleTactique.Frags`, `.Morts`. Tests
   ROUGES d'abord (`solde_test.go`) : plancher sur l'union (deux matchs de frags + un match de morts =
   3 matchs → cellule lue ; deux matchs → retirée), match muet compté au dénominateur, valeur
   (f − d) / N, signe, comptes par face, `Somme` de deux rasters de solde. Mutations : plancher par
   face au lieu de l'union, dénominateur = matchs de la cellule, `Somme` qui perd les faces → rouges.
-- [ ] L1.3 `analysis/tactical/zones.go` + `geometrie.go` (D3) ; jumeau `tactical.ZoneNommee` étendu.
+- [x] L1.3 `analysis/tactical/zones.go` + `geometrie.go` (D3) ; jumeau `tactical.ZoneNommee` étendu.
   Tests ROUGES d'abord (`zones_test.go`, géométrie synthétique) : (a) un candidat, marge 0,25
   (z = z_haut + 0,24 compatible, + 0,26 non), (b) majorité puis plus étroite, (b) sans majorité,
   égalité par `VolumeIndex`, (c) tranche compatible d'abord puis toutes, distance au bord 1,99 m
   retenue / 2,00 m non, polygone contenant à distance 0 au second passage, (d) sans nom, z inconnu
   (un / zéro / plusieurs polygones), trou exclu, partie incluse. Mutations : marge 0, `<=` 2 m,
   majorité « ≥ moitié », plus large au lieu de plus étroite, trous ignorés → rouges.
-- [ ] L1.4 `analysis/tactical/placement.go` (D7) : `ContexteLePlusProche(contextes, victime, t)`
+- [x] L1.4 `analysis/tactical/placement.go` (D7) : `ContexteLePlusProche(contextes, victime, t)`
   (± `TolerancePlacementMs` = 1 500, bornes comprises, le plus proche, même victime) et
   `PlacementDeLaMort(ctx, rayon, aUnRayon) *domain.TacticalPlacement`. Tests ROUGES d'abord : borne
   1 500 / 1 501, autre victime ignorée, deux candidats, nil sans contexte, « seul » sans distance,
   d = portée → près, d > portée → seul, portée inconnue + distance → nil. Mutations : tolérance
   stricte, `<` au lieu de `APortee` → rouges.
-- [ ] L1.5 Contrat additif (§3.1) : `TacticalQuestionSolde`, `TacticalContribution` enrichie,
+- [x] L1.5 Contrat additif (§3.1) : `TacticalQuestionSolde`, `TacticalContribution` enrichie,
   `TacticalPlacement`, `TacticalZoneNom`, `TacticalCelluleReponse.Zone`,
   `TacticalRaster.RayonsRadarM`, `ZoneNommee` étendue, `ContexteDeMort`, champs de
   `TacticalKillPosition` / `MortContexte` ; commentaires de contrat au présent (règle 17).
-- [ ] L1.6 Contrat régénéré (openapi + `generated.ts`), diff additif ; garde
+- [x] L1.6 Contrat régénéré (openapi + `generated.ts`), diff additif ; garde
   `contract-surface.guard.test.ts` verte sans régénérer le snapshot.
 - Gate : gate Go + contrat ; `TestTacticalEtCoordinationSontPurs`, `TestAucunTauxNu`,
   `TestNoLocalRadarRangeLookup` rejoués nommément ; `npx vitest run src/lib/api` vert.
+
+Journal L1 (2026-10-06, exécuteur, `feat/tactique-v2`) — TDD : chaque test vu rouge avant le code :
+- **L1.1** `coordination.APortee` exportée (`vies_pres_ou_seul.go`, doc au présent, garde-rail nommé) ;
+  `isolation.go` et `celluleIsole` (`tactical_service_cellule.go`, commentaire corrigé : le PARCOURS
+  y est réécrit, la COMPARAISON est le helper) l'appellent. Garde-rail
+  `archlint/no_local_portee_comparison_test.go` (deux empreintes : distance déréférencée comparée par
+  `<=` à une portée, `PlusProcheM != nil &&`) écrit d'abord et vu ROUGE sur la copie de `celluleIsole`
+  (deux violations), auto-test (trois copies reconnues, quatre faux positifs écartés : `himap`,
+  `replayverite`, appel du helper) vert d'emblée.
+- **L1.2** `analysis/tactical/solde.go` : `RasteriseSolde` (union des faces dans `cellules`, comptes par
+  face dans le champ `faces` du `Raster`), `CellulesSolde`, `sommerFaces` appelé par `Somme` ;
+  `domain.CelluleTactique.Frags` / `.Morts`. `solde_test.go` (5 tests) vu rouge (symboles absents).
+- **L1.3** `analysis/tactical/zones.go` (`NommerZone`, `MargeTrancheZM`, `RayonZoneM`, règles
+  `polygone` / `empilee` / `proche`, z inconnu) + `geometrie.go` (forme pair-impair, distance au
+  bord) ; jumeau `tactical.ZoneNommee` étendu (`Polygone`, `Parties`, `Trous`, `ZBas`, `ZHaut`,
+  `VolumeIndex`). `zones_test.go` (9 tests) vu rouge ; cas « exactement la moitié n'est pas la
+  majorité » ajouté pour que la mutation `>=` rougisse.
+- **L1.4** `analysis/tactical/placement.go` : `TolerancePlacementMs` = 1 500, `ContexteLePlusProche`
+  (même match, même victime, le plus proche, à égalité le plus ancien), `PlacementDeLaMort` (par
+  `coordination.APortee`). `placement_test.go` (3 tests) vu rouge.
+- **L1.5** Contrat additif : `TacticalQuestionSolde` ; `TacticalContribution` (`Face`,
+  `AutreGamertag`, `ArmeLabel` / `ArmeLabelEN`, `CategorieSource`, `Placement`, `ModeLabel`,
+  `ScoreLabel` / `ScoreKind`, `ReplayAvailable`) + constantes `TacticalFace*` ;
+  `TacticalCelluleReponse.Zone` ; `TacticalRaster.RayonsRadarM` ; `domain.ZoneNommee` étendue ;
+  `domain/tactical_zone.go` (NEUF : `TacticalZoneNom`, `TacticalPlacement`, `ContexteDeMort`) ;
+  `TacticalKillPosition` (`KillerZ`, `VictimZ`, gamertags, `SourceTag`, `SourceCategory`) et
+  `MortContexte` (`Z`, `KillerGamertag`, `SourceTag`, `SourceCategory`).
+- **L1.6** Contrat : `openapi.yaml` +58 / −0, `generated.ts` +25 / −0 (premier `npm ci` du
+  worktree fait ici : `generate-types` en dépend) ; `check-generated-types-fresh` OK ;
+  `vitest src/lib/api` 5 fichiers / 36 tests verts, snapshot de surface intact.
+- **Mutations** (script `mutation.ps1` du scratchpad, restauration vérifiée par empreinte SHA-256,
+  toutes ROUGES) : plancher par face au lieu de l'union ; dénominateur = matchs de la cellule ;
+  `Somme` qui perd les faces ; comparaison inline réintroduite dans `celluleIsole` (garde-rail) ;
+  borne stricte dans `APortee` (rougit l'isolement ET les vies) ; marge de tranche 0 ; rayon de 2 m
+  inclusif ; majorité « ≥ moitié » ; plus large au lieu de plus étroite ; trous ignorés ; nom posé
+  sur des zones empilées sans z ; second passage seul en (c) (tranches compatibles ignorées) ;
+  tolérance de placement stricte ; borne de portée stricte au badge ; badge sans portée connue.
+- **Gate** : `go build ./...` 0 ; `go vet` des cinq paquets touchés 0 ; `gofmt -l internal cmd`
+  muet ; `go test -count=1 ./...` (349 paquets : 195 ok, 153 sans test, 1 FAIL) — le seul échec,
+  `TestLUSRV2Shadow_RafalesBornees_300Candidats` (`internal/sync/skill`, test de durée de rafale :
+  2,018 s pour un plafond de 2 s), est hors périmètre et la machine portait les `go test` d'une autre
+  session ; rejoué seul : ok ; `golangci-lint run --new-from-merge-base=origin/main`
+  (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour ; garde-rails
+  rejoués nommément en `-v` : `TestNoLocalPorteeComparison` (+ auto-test),
+  `TestNoLocalRadarRangeLookup` (+ auto-test), `TestTacticalEtCoordinationSontPurs`,
+  `TestAucunTauxNu` PASS. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`,
+  `persist`, `migration` modifié).
+- Seuils : `domain/tactical.go` 468 → 492 L (sous 500 ; L9 en retirera) ; fichiers neufs ≤ 185 L ;
+  plus longue fonction neuve `NommerZone` (~30 L) ; aucun paramètre au-delà de 4.
+- Écarts : le lint a été lancé d'emblée avec le cache isolé (règles et commande de `make go-api-lint`
+  inchangées) ; les types neufs de L1.5 utilisés par L1.4 ont été posés avec L1.4.
 
 ### L2 — Go : lectures enrichies, contextes de mort, zones polygonales, lecture « solde » · lourd
 
@@ -825,6 +876,9 @@ L2.3.
   laissées (D27).
 - (phase 1) `celluleIsole` recopiait la comparaison de portée (deuxième copie, `tactical_service_cellule.go:225`) :
   traitée en L1.1 parce que le badge en ferait la troisième.
+- (L1) `TestLUSRV2Shadow_RafalesBornees_300Candidats` (`internal/sync/skill`) mesure une durée
+  murale (rafale < 2 s) : rouge à 2,018 s dans la suite complète pendant que d'autres sessions
+  faisaient tourner leurs `go test`, vert rejoué seul. Test sensible à la charge ; non traité.
 - (phase 1) Le catalogue de callouts couvre AUSSI des cartes Forge (`maps_by_id`, 2 536 zones selon
   `callouts_catalog.go`) : « carte sans catalogue » = carte absente du catalogue, pas « carte Forge ».
 

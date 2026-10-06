@@ -80,7 +80,7 @@ func rangerVie(out *domain.TimeseriesLivesNearTeammate, aUnRayon bool, rayon flo
 		out.ExcludedNoRadar++
 	case mort == nil || mort.PlusProcheM == nil:
 		out.ExcludedUnlocated++
-	case aPortee(mort.PlusProcheM, rayon):
+	case APortee(mort.PlusProcheM, rayon):
 		out.Near.Lives++
 		out.Near.Kills += kills
 	default:
@@ -138,8 +138,10 @@ func mortsParMatch(morts []domain.MortSituee) map[string][]domain.MortSituee {
 	return out
 }
 
-// aPortee : une distance mesurée, à la portée ou en deçà (borne incluse). Une distance absente
-// n'est jamais à portée.
-func aPortee(d *float64, rayon float64) bool {
+// APortee : une distance mesurée, à la portée ou en deçà (borne INCLUSIVE : se voir juste à la limite,
+// c'est se voir). Une distance absente n'est jamais à portée. SOURCE UNIQUE de la comparaison :
+// isolement, vies près d'un coéquipier, détail et badge d'une zone tactique la lisent (garde-rail
+// archlint/no_local_portee_comparison_test.go).
+func APortee(d *float64, rayon float64) bool {
 	return d != nil && *d <= rayon
 }
