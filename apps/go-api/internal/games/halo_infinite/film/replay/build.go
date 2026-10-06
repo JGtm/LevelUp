@@ -168,7 +168,8 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 }
 
 // passerLaPorte ecarte les positions que le film ne peut pas avoir ecrites — anterieures a la
-// creation de leur corps, ou hors de l emprise jouee (cf. positions_porte.go).
+// creation de leur corps, posterieures au depart prouve de l occupant de ce corps quand aucune ne le
+// precede (R-B3, positions_porte_depart.go), ou hors de l emprise jouee (cf. positions_porte.go).
 //
 // APRES `ouvrir`, AVANT toute passe qui lit les positions : l origine et `frameCount` restent lus
 // sur tous les paquets de position (aucun calque ne se decale), et le registre d identite, les

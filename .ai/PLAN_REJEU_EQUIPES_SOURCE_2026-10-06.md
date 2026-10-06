@@ -487,7 +487,23 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       `sync/killcollector` (verts), `archlint` (vert), `go vet` avec et sans `research`, golangci-lint
       (paquets touchés, depuis `b5c9489ef`) : 0 constat ; vitest du rejeu (fixtures au schéma 81) : 245
       fichiers, 3 591 tests verts.
-- [ ] D.7d Relecture adversariale au premier plan, push, CI au premier plan, CR.
+- [x] D.7d Relecture adversariale au premier plan (un relecteur frais, contrat écrit, lecture seule,
+      chemin absolu du worktree) : 0 P0, 0 P1, 16 conditions vérifiées qui tiennent (tri des positions,
+      attribution au corps, bornes des fenêtres, conversions, alignement roster / occupants pendant la
+      pose, compteurs après l'écart, passes postérieures sur le roster filtré, champs non servis
+      invisibles à la forme, vies nommées jamais renommées, gardes du cas b, admission d'un bot à entité
+      exclue, D6 limité aux équipes lues et pleines, journal, seuils, montée de schéma, doutes d'absence
+      persistés). 7 P2, traités dans le lot : (1) garde de la fenêtre de R-B3 tenue par
+      R-B3-SANS-ENTITE ; (2) journal et expvar de R-B3 tenus par l'assemblage (R-B3-JOURNAL) ; (3) les
+      deux passes de `build_pistes.go` tenues de bout en bout (`roster_places_assemblage_test.go`,
+      AS-DECLARATION, AS-SANS-PLACE) ; (4) couverture de la vie au cas b tenue (R-CREATION-DEBORDE) ;
+      (5) gardes secondaires tenues (entité instable dans la porte et chez l'humain, film non balayé et
+      bot sans déclaration à l'admission) ; (6) R-HUMAIN réécrit sur la règle qu'il tient (humain sans
+      entité à lui, test renommé `TestDeclarationSeTaitQuandLHumainDeLIndexNAAucuneEntite`, absent de la
+      baseline) ; (7) doctrine de `sieges.go` (le bot sans vie ni place) et commentaire de `passerLaPorte`
+      (R-B3) mis à jour. Dix mutations rejouées sur ces chemins, toutes rouges (deux reprises sous une
+      forme qui compile). Pas de ronde 2 (aucun P0 ni P1).
+- [ ] D.7e Push, CI au premier plan, CR.
 
 ## Découvertes (notées, non traitées)
 

@@ -8,7 +8,9 @@ package replay
 //	               sur la place du partant ;
 //	A-SANS-PISTE   aucune piste ne porte son nom : il reste dehors ;
 //	A-SIMULTANE    sa declaration touche la fenetre large de l'entite de l'humain : il reste dehors ;
-//	A-ENTITE       le bot a une entite : cette lecture-ci ne decide pas (la lecture par entites le fait).
+//	A-ENTITE       le bot a une entite : cette lecture-ci ne decide pas (la lecture par entites le fait) ;
+//	A-NON-BALAYE   film sans balayage des entites : il reste dehors ;
+//	A-SANS-DECLARATION un bot sans declaration datee reste dehors.
 
 import (
 	"testing"
@@ -71,5 +73,25 @@ func TestBotAvecEntiteNEntrePasParSaDeclaration(t *testing.T) { // A-ENTITE
 	roster, _ := rosterDesOccupants(idx, nil, bots, scan, teamPublication{})
 	if _, admis := admettreLesBotsNommesParDeclaration(roster, bots, scan, teamPublication{}, tracks); admis != 0 {
 		t.Fatalf("admis %d : un bot qui a une entite se lit par ses entites, pas par cette lecture", admis)
+	}
+}
+
+// A-NON-BALAYE (garde) : film sans balayage des entites : rien ne prouve que le bot et l'humain ne sont
+// jamais simultanes, il reste dehors.
+func TestBotNEntrePasParSaDeclarationSansBalayage(t *testing.T) {
+	roster, bots, scan, tracks := bfScrubDeTest()
+	scan.Scanned = false
+	if _, admis := admettreLesBotsNommesParDeclaration(roster, bots, scan, teamPublication{}, tracks); admis != 0 {
+		t.Fatalf("admis %d : sans balayage des entites, aucune absence n'est prouvee", admis)
+	}
+}
+
+// A-SANS-DECLARATION (garde) : un bot sans declaration datee n'a aucune presence a confronter : il
+// reste dehors.
+func TestBotSansDeclarationDateeNEntrePasParSaDeclaration(t *testing.T) {
+	roster, bots, scan, tracks := bfScrubDeTest()
+	bots[0].Declarations = nil
+	if _, admis := admettreLesBotsNommesParDeclaration(roster, bots, scan, teamPublication{}, tracks); admis != 0 {
+		t.Fatalf("admis %d : sans declaration datee, rien ne dit quand le bot etait la", admis)
 	}
 }

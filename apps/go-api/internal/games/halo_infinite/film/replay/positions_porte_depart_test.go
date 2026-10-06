@@ -11,10 +11,18 @@ package replay
 //	R-B3-NON-BALAYE  film sans balayage des entites : la regle se tait ;
 //	R-B3-CORPS-SUIVANT  le slot porte un corps suivant, d'un occupant present : seul le premier corps
 //	                 est ecarte ;
+//	R-B3-SANS-ENTITE aucune entite ne vit a la creation du corps : la regle se tait ;
+//	R-B3-INSTABLE    l entite qui vit a la creation est instable : la regle se tait ;
+//	R-B3-JOURNAL     ce qui est ecarte se dit en AVERTISSEMENT et au compteur expvar ;
 //	R-B3-ASSEMBLAGE  par `BuildFromPositions` : aucune piste publiee pour le corps ecarte.
 
 import (
+	"bytes"
 	"context"
+	"expvar"
+	"log/slog"
+	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -138,4 +146,74 @@ func TestPorteDepartParLAssemblage(t *testing.T) {
 	if trs := porteTraces(doc, 900); len(trs) != 1 {
 		t.Errorf("pistes du slot 900 = %d, attendu 1 : la regle ne touche que le corps du partant", len(trs))
 	}
+}
+
+// R-B3-SANS-ENTITE (garde de la fenetre) : le corps 550 est cree a 50 s, apres le depart prouve de
+// l'occupant d'index 2 (40 s), par un occupant qu'aucune entite ne montre (un bot entre deux
+// images-cles) : aucune entite ne vit a sa creation, la regle se tait — elle ne prete pas au corps le
+// depart de l'occupant precedent de l'index.
+func TestPorteDepartSeTaitPourLeCorpsDUnOccupantSansEntite(t *testing.T) {
+	var cov couverturePorte
+	in := porteDepartPositions(550, 51_000, 4)
+	out := ecarterApresLeDepart(in, []grammar.BipedCreation{porteDepartCreation(550, 50_000, 1, 2)},
+		porteDepartScan(), &cov)
+	if len(out) != len(in) || cov.CorpsApresDepart != 0 {
+		t.Fatalf("retenues %d sur %d : aucune entite ne vit a la creation du corps, rien ne s'ecarte",
+			len(out), len(in))
+	}
+}
+
+// R-B3-INSTABLE (garde) : l'entite qui vit a la creation est instable (index ou designateur change) :
+// elle n'elit aucun occupant, la regle se tait.
+func TestPorteDepartSeTaitSurUneEntiteInstable(t *testing.T) {
+	scan := porteDepartScan()
+	scan.Entities[0].Unstable = true
+	var cov couverturePorte
+	in := porteDepartPositions(548, 60_000, 4)
+	out := ecarterApresLeDepart(in, []grammar.BipedCreation{porteDepartCreation(548, 15_000, 1, 2)}, scan, &cov)
+	if len(out) != len(in) || cov.CorpsApresDepart != 0 {
+		t.Fatalf("retenues %d sur %d : une entite instable ne prouve aucun depart", len(out), len(in))
+	}
+}
+
+// R-B3-JOURNAL : ce que la regle ecarte se dit, par l assemblage, en AVERTISSEMENT et au compteur
+// expvar — la couverture servie ne le porte pas, c est sa seule trace.
+func TestPorteDepartSeDitAuJournalEtAuCompteur(t *testing.T) {
+	avant := compteurExpvar(t, metriqueViesApresDepart)
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+	in := append(porteFoule(300, 0), porteDepartPositions(548, 60_000, 4)...)
+	opt := Options{FrameIntervalMS: 100, PlayerEntities: porteDepartScan(),
+		BipedCreations: []grammar.BipedCreation{porteDepartCreation(548, 15_000, 1, 2)}}
+	BuildFromPositions(context.Background(), "m", "halo_infinite", in, nil, opt)
+	avertie := false
+	for _, ligne := range strings.Split(buf.String(), "\n") {
+		avertie = avertie || (strings.Contains(ligne, `"level":"WARN"`) && strings.Contains(ligne, "depart prouve"))
+	}
+	if !avertie {
+		t.Errorf("journal %q : attendu un AVERTISSEMENT du corps ecarte", buf.String())
+	}
+	if apres := compteurExpvar(t, metriqueViesApresDepart); apres != avant+1 {
+		t.Errorf("compteur %s : %d -> %d, attendu +1 (un corps)", metriqueViesApresDepart, avant, apres)
+	}
+}
+
+// compteurExpvar lit un compteur de la carte expvar « levelup » (0 s'il n'existe pas encore).
+func compteurExpvar(t *testing.T, nom string) int64 {
+	t.Helper()
+	m, ok := expvar.Get("levelup").(*expvar.Map)
+	if !ok || m == nil {
+		t.Fatal("carte expvar « levelup » absente")
+	}
+	v := m.Get(nom)
+	if v == nil {
+		return 0
+	}
+	n, err := strconv.ParseInt(v.String(), 10, 64)
+	if err != nil {
+		t.Fatalf("compteur %s illisible (%q) : %v", nom, v.String(), err)
+	}
+	return n
 }

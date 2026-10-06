@@ -1,12 +1,13 @@
 package replay
 
-// identity_registry_declarations_test.go — LE CORPS D'UN INDEX QUE PLUSIEURS BOTS SE RELAIENT,
-// NOMME PAR LES DECLARATIONS BOT_METADATA QUAND L'ENTITE SE TAIT.
+// identity_registry_declarations_test.go — LE CORPS D UN INDEX QUE PLUSIEURS OCCUPANTS SE RELAIENT,
+// NOMME PAR LES DECLARATIONS BOT_METADATA QUAND L ENTITE SE TAIT.
 //
 //	R-DECLARATION   gabarit de `c7f94693` (index 8, trois bots, aucun humain) : le bot dont toute
 //	                la presence tombe entre deux images-cles n'a pas d'entite ; la declaration qui
 //	                couvre la creation de son corps et sa vie le nomme ;
-//	R-HUMAIN        un humain de la table tient l'index : la lecture se tait ;
+//	R-HUMAIN        un humain de la table tient l index sans aucune entite a lui : son absence n est
+//	                pas prouvee, la lecture se tait ;
 //	R-DEBORDE       la vie deborde la declaration : la lecture se tait ;
 //	R-DEUX-BOTS     deux bots distincts couvrent la creation et la vie : la lecture se tait ;
 //	R-DEUX-A-LA-CREATION  deux bots declares a la creation, un seul couvre la vie : elle se tait ;
@@ -17,6 +18,9 @@ package replay
 //	R-HUMAIN-ABSENT gabarit de `bf2a9f05` : l humain de l index n y est pas (ses entites le prouvent) :
 //	                la declaration nomme le corps ;
 //	R-HUMAIN-PRESENT la fenetre large d une entite de l humain touche la vie : elle se tait ;
+//	R-CREATION-DEBORDE garde : la declaration nee apres la creation s acheve avant la fin de la vie :
+//	                elle se tait ;
+//	R-HUMAIN-INSTABLE garde : l entite de l humain est instable : elle se tait ;
 //	R-UNE-DECLARATION  aucune declaration du bot ne couvre a la fois creation et vie : elle se tait ;
 //	R-UN-SEUL-BOT   un index d'un seul bot n'entre pas dans la lecture ;
 //	R-BORNES        une declaration est [debut, fin), `fin == 0` court jusqu'au bout ;
@@ -83,13 +87,13 @@ func TestCorpsSansEntiteNommeParLaDeclarationQuiCouvreSaVie(t *testing.T) {
 	}
 }
 
-func TestDeclarationSeTaitSurUnIndexTenuParUnHumain(t *testing.T) {
+func TestDeclarationSeTaitQuandLHumainDeLIndexNAAucuneEntite(t *testing.T) {
 	in := entreeDonos(54_088_267)
 	in.PlayerIndices.ByXUID[222] = 8
 	reg := BuildIdentityRegistry(context.Background(), in)
 	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
-		t.Fatalf("corps 532 : bid %q, par declaration %d — un humain tient l'index, la declaration se tait",
-			got, reg.creation.ParDeclaration)
+		t.Fatalf("corps 532 : bid %q, par declaration %d — l humain de l index n a aucune entite a lui : "+
+			"son absence n est pas prouvee, la declaration se tait", got, reg.creation.ParDeclaration)
 	}
 }
 
@@ -292,6 +296,31 @@ func TestDeclarationSeTaitQuandLHumainDeLIndexPeutEtreLa(t *testing.T) {
 	reg := BuildIdentityRegistry(context.Background(), in)
 	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
 		t.Fatalf("corps 532 : bid %q, par declaration %d — la fenetre de l'humain touche la vie",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-CREATION-DEBORDE (garde) : la declaration de Donos nait apres la creation mais s'acheve avant la fin
+// de la vie (53 s pour une vie jusqu'a 54,09 s) : la vie n'est pas prouvee etre la sienne. La lecture
+// se tait.
+func TestDeclarationNeeApresLaCreationSeTaitQuandLaVieLaDeborde(t *testing.T) {
+	in := entreeDonos(54_088_267)
+	in.Bots[0].Declarations = [][2]uint64{{50_600_000, 53_000_000}}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — la vie deborde la seule declaration qui la croise",
+			got, reg.creation.ParDeclaration)
+	}
+}
+
+// R-HUMAIN-INSTABLE (garde) : l'entite de l'humain de l'index est instable : son absence ne se prouve
+// pas par elle. La lecture se tait.
+func TestDeclarationSeTaitQuandLEntiteDeLHumainEstInstable(t *testing.T) {
+	in := entreeDonosHumain(10, 15)
+	in.Entities.Entities[len(in.Entities.Entities)-1].Unstable = true
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[532]; got != "" || reg.creation.ParDeclaration != 0 {
+		t.Fatalf("corps 532 : bid %q, par declaration %d — une entite instable ne prouve pas l'absence",
 			got, reg.creation.ParDeclaration)
 	}
 }

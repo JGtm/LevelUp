@@ -44,9 +44,12 @@ package replay
 //	                   (`repli_place_ouverte_sous_la_capacite_estimee`) : la capacite est ESTIMEE,
 //	                   la taille d'equipe du mode n'est pas lue dans le film (cf. sieges_places.go) ;
 //	AUCUNE `index`     rien de ce qui precede (equipe inconnue, ou equipe pleine dont aucune place
-//	                   n'est libre pendant sa presence — deux lectures qui se contredisent) : le
-//	                   siege reste l'index, COMPTE (`sansPlace`) — c'est le seul chemin par lequel une
-//	                   equipe depasserait ses places, et `depassements` le mesure.
+//	                   n est libre pendant sa presence — deux lectures qui se contredisent) : le
+//	                   siege reste l index, COMPTE (`sansPlace`) — c est le seul chemin par lequel une
+//	                   equipe depasserait ses places, et `depassements` le mesure. SAUF un bot d equipe
+//	                   lue SANS AUCUNE VIE dont l equipe est pleine : il sort du roster publie, compte au
+//	                   journal et a l expvar (sieges_bots_sans_place.go) ; un bot qui a une vie reste
+//	                   `index`, en ERREUR.
 //
 // # LA PRESENCE SE BORNE AU SUCCESSEUR
 //
