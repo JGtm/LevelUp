@@ -871,8 +871,12 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       mouvement (découverte 22) ; (d) V-3 sur `51ebbc0f` : l'équipement retiré par le jeu en fin de
       manche, lu comme dépensé (découverte 24). Admis par l'utilisateur le 2026-10-06 (§2).
       Reste : reprise de `feat/v75` après la vue A V2 et V3 de la campagne (rang de `grammar.Rev` à
-      reprendre : la campagne prend `.4`), gate et passe d'équivalence rejoués sur cette base,
-      `KILLSOURCE_FIXTURES`, CI, `make gate-push`, accord de fusion.
+      reprendre : la campagne prend `.4`) ; le canal des états de mouvement ne compte plus un paquet
+      à début lu dans la vue A (`DebutParVueA`) comme localisé ni comme ouvert par un NEW de tête
+      (constat P1 de la relecture de V2 et V3, `movement_states.go`, fichier de ce plan, correction
+      convenue avec la campagne : décompte seul, format des faits inchangé, test) ; gate et passe
+      d'équivalence rejoués sur cette base, `KILLSOURCE_FIXTURES`, CI, `make gate-push`, accord de
+      fusion.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
@@ -908,7 +912,9 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
 
 ### Lot 3.2 — Mesure (taille S)
 - [ ] 3.2.1 Durées par étape, pic mémoire, nombre de parcours du film ; rapport publié, comparé à la
-      mesure M.1.
+      mesure M.1. Y compris la lecture des porteurs au sync des matchs à bombe
+      (`replay.PortagesAuSync`) : depuis 2.7.b, ses changements d'arme tenue marchent les trames du
+      film au lieu du seul ancrage.
 
 ## 4. Contrat d'exécution
 
@@ -1169,6 +1175,13 @@ plan y sont reprises comme items (3.1.2).
    l'avait perdue pour les records de la marche (décision 8). Un record de trame non prouvée peut
    être lu au-delà d'une largeur fausse : génération 0 sur un slot vivant en 1, masque à trente
    composants.
+26. *(relecture de la vue A V2 et V3 de la campagne, 2026-10-06, constat P2)* **Un essai de début de
+   liste peut armer le diagnostic de la liaison par anticipation.** `lectureDEssai` restaure la
+   table d'entités (`World.Snapshot`/`Restore` : `slots` seulement) ; un DELTA lu pendant l'essai sur
+   un slot non lié qu'une image-clé ultérieure déclare laisse `anticipationDite` vrai, et le
+   diagnostic « repli actif » part avec le slot d'un essai jeté, que le compte de la liaison (sur
+   l'observation neuve de l'essai) ne voit pas. Préexistant par `debutParFermetureRangee` ; la vue A
+   V2 l'étend à chaque paquet d'un film préfixe. Signalé à la campagne.
 
 ## 7. Journal
 
