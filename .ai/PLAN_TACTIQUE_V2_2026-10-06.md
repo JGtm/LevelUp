@@ -1034,18 +1034,59 @@ Journal L6 (2026-10-06, exécuteur, `feat/tactique-v2`) :
 
 ### L7 — Web : sémantique et chaînes · moyen
 
-- [ ] L7.1 V5 et V9 sur toutes les chaînes survivantes de `tactical.toml` : libellés et unités des
+- [x] L7.1 V5 et V9 sur toutes les chaînes survivantes de `tactical.toml` : libellés et unités des
   lectures, « Joueurs », « Lecture », « Réapparition » / « Toutes », états vides (D24), bandeau
   d'état (« en attente de traitement », « sans film »), échecs sans conseil, « Coéquipier
   introuvable » sans impératif, plus de « La question », « Clique une zone chaude du plan »,
   « ▼ moins c'est mieux », « échantillon faible », « cuisson », « Spawn de départ », « Cellule
   sélectionnée », « Voir dans le rejeu ».
-- [ ] L7.2 Purge §4.D (clés et accesseurs sans lecteur, preuve par grep de chacun) ; manifeste
+- [x] L7.2 Purge §4.D (clés et accesseurs sans lecteur, preuve par grep de chacun) ; manifeste
   régénéré ; garde anti-anglicismes verte.
-- [ ] L7.3 Test `tacticalStrings.test.ts` (NEUF) : titres et mots de la maquette FR copiés (S2-S11),
+- [x] L7.3 Test `tacticalStrings.test.ts` (NEUF) : titres et mots de la maquette FR copiés (S2-S11),
   libellés et unités V5 FR et EN, balayage de toutes les chaînes FR sans impératif listé ci-dessus ni
   anglicisme. Mutation : réintroduire « Spawn de départ » → rouge.
 - Gate : gate web.
+
+Journal L7 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L7.1** `tactical.toml` reconstruit par sections (colonne, barre L2 inchangée, lectures et unités,
+  bandeau et pilules, états sur le fond, zone, mini-tuile). Lectures V5 : « Morts », « Frags »,
+  « Solde frags − morts », « Victoires − défaites », « Temps de présence », « Trajets après
+  réapparition », « Morts seul » (EN « Deaths », « Kills », « Kills − deaths », « Wins − losses »,
+  « Time on map », « Routes after respawn », « Deaths alone ») ; unité « morts seul par match ».
+  États vides en titre seul (D24, « Aucun match sur cette carte dans le filtre ») ; échec de la
+  lecture en titre seul, sans conseil ; colonne vide en titre seul ; bandeau d'état « en attente de
+  traitement » / « sans film » ; « Coéquipier introuvable » suivi d'un constat (« Introuvable parmi
+  les coéquipiers connus : … »). `sourceForQuestion` → `lectureDeRejeu` (booléen), `planEmptyText`
+  → `titreDuPlanVide` (titre seul). Trois commentaires devenus faux corrigés dans
+  `tacticalView.logic.ts` (« cellule sélectionnée », « source par question », bandeaux).
+- **L7.2** Clés `cell.*` encore lues par la carte de zone REMPLACÉES : `zone.contributions_loading`
+  (« Chargement des matchs de la zone… ») et `zone.not_openable` (« … du filtre non ouvrables »).
+  Renommées : `coordination.radius_value` / `radius_join` → `plan.radius_*` (relues par l'ⓘ),
+  `toolbar.who_*` → `plan.who_*`. 62 clés retirées (dont toutes les familles `kpi.*`, `screen.*`,
+  `coordination.*`, `cell.*`, `toolbar.*`, `plan.scale_*`, `plan.footer_*`, `plan.source_*`) et 62
+  accesseurs. Preuves `git grep -F --untracked` sur `apps tools scripts config` : 67 clés
+  (retirées + sources renommées) → 0 chacune ; 8 préfixes de familles → 0 ; accesseurs `\b<nom>\b`
+  dans `apps/web/src` → 0, sauf 4 homonymes hors de l'onglet (`coordinationTitle` de
+  `squadRiposteStrings`, `emptyDescription`, `intro`, `lowSample`), à 0 dans les 23 fichiers qui
+  lisent le texte tactique. Inventaire inverse : 96 clés, chacune lue ; 9 sous-clés sans lecteur
+  littéral, lues dynamiquement (`t.units[question]`, `t.tileCategories[categorie]`). Manifeste
+  régénéré (96 clés, 3 567 au total) ; garde anti-anglicismes verte.
+- **L7.3** `tacticalStrings.test.ts` (143 L, 26 tests) : mots de la maquette (colonne, pilules,
+  états, bandeau, zone, mini-tuile), lectures et unités V5 FR, libellés EN, balayage des chaînes FR
+  du manifeste (texte VISIBLE : noms d'arguments ICU retirés, branches plurielles gardées) contre 15
+  formules retirées ou impératives et 5 anglicismes. Mutations ROUGES, restauration vérifiée :
+  « Spawn de départ » sur `plan.pill_respawn` (3 échecs) ; « maps » dans une branche plurielle non
+  assertée ; « Choisis » dans un état vide non asserté.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 183 tests verts ; manifestes reconstruits identiques ;
+  knip 0 / 0 / 0 (exports vérifiés à la main : `lectureDeRejeu`, `titreDuPlanVide` lus en
+  production ; `sourceForQuestion`, `planEmptyText` à 0) ; couleurs 0 ; champs 0 ; imports croisés
+  7 ≤ 7 ; `lefthook run pre-push` vert.
+- Seuils : `tactical.toml` 740 → 397 L (sous 500) ; `TacticalPlanCard.tsx` 491 L ; autres ≤ 396 L ;
+  `TacticalFond.mesure.test.ts` 755 L inchangé (dette antérieure, instrument de L8.2).
+- Écarts : les deux sélecteurs de `TacticalFond.mesure.test.ts` (`t.questionLabel` →
+  `t.pillReading`, `t.spawnLabel` → `t.pillRespawn`) adaptés dès L7, faute de quoi `tsc` échouait
+  sur les accesseurs retirés (anticipation partielle de L8.2, le reste de L8.2 inchangé).
 
 ### L8 — Web : suppressions résiduelles et preuves · rapide
 

@@ -97,7 +97,7 @@ function ListeDuRejeu({
   playerSlug: string
   detail: DetailDeZone
 }) {
-  if (detail.isPending) return <p className="text-xs text-muted-foreground">{t.cellContributionsLoading}</p>
+  if (detail.isPending) return <p className="text-xs text-muted-foreground">{t.zoneContributionsLoading}</p>
   const contributions = detail.data?.contributions ?? []
   const nonOuvrables = detail.data?.matchs_non_ouvrables ?? 0
   return (
@@ -119,7 +119,7 @@ function ListeDuRejeu({
       )}
       {nonOuvrables > 0 && (
         <p className="flex-none text-[11px] text-muted-foreground" data-testid="tactical-zone-not-openable">
-          {t.cellFooterNotOpenable(nonOuvrables)}
+          {t.zoneNotOpenable(nonOuvrables)}
         </p>
       )}
     </>

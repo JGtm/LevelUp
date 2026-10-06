@@ -115970,3 +115970,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : tests logiques et composants vus rouges avant le code ; tests de sélection prouvés rouges contre HEAD (6 échecs) ; 9 mutations rouges ; gate web vert (852 fichiers / 9 160 tests, `tsc` 0, lint 0 erreur, ratchets et pre-push verts) ; §4.C → 0 hors un commentaire du lot voisin Vue match (§8).
 
 **Conclusion / prochaine étape** : L6 clos ; L7 (sémantique et chaînes) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L7 : sémantique et chaînes — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L7 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : `tactical.toml` ne garde que les chaînes lues par le cockpit, toutes au vocabulaire V5 / V9 : sept lectures nommées par ce qu'elles mesurent (« Morts », « Frags », « Solde frags − morts », « Victoires − défaites », « Temps de présence », « Trajets après réapparition », « Morts seul ») en FR et EN, états vides et échecs en titre seul sans conseil, bandeau d'état « en attente de traitement » / « sans film », constat au lieu d'impératif pour le coéquipier introuvable. Les deux clés `cell.*` encore lues par la carte de zone sont remplacées par `zone.*`, les clés relues sous un autre nom renommées (`plan.radius_*`, `plan.who_*`), 62 clés et 62 accesseurs retirés avec preuve grep de chacun. `sourceForQuestion` devient `lectureDeRejeu`, `planEmptyText` devient `titreDuPlanVide`. Un test neuf balaie toutes les chaînes FR du manifeste (texte visible) contre les formules retirées, les impératifs et les anglicismes.
+
+**Résultats observés** : `tactical.toml` 740 → 397 lignes, 96 clés ; 67 clés et 8 préfixes à 0 dans le code, accesseurs à 0 hors 4 homonymes d'autres onglets ; 3 mutations rouges (« Spawn de départ », « maps » dans une branche plurielle, « Choisis ») ; gate web vert (853 fichiers / 9 183 tests, `tsc` 0, lint 0 erreur, manifestes identiques, ratchets et pre-push verts).
+
+**Conclusion / prochaine étape** : L7 clos ; L8 (suppressions résiduelles et preuves) après le « continue » du superviseur.

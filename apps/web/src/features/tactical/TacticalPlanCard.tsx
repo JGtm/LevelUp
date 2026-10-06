@@ -14,7 +14,7 @@
  *                    jour… » (décision Q26) ;
  *   - `echec`      : le message (panne de la lecture ou de son périmètre, composition impossible),
  *                    le fond reste ;
- *   - `hors_filtre`: « Aucun match sur cette carte dans ce filtre », sans lecture ;
+ *   - `hors_filtre`: « Aucun match sur cette carte dans le filtre », sans lecture ;
  *   - `sans_carte` : rien (la colonne des cartes dit pourquoi) ;
  *   - `pret`       : le calque, ou l'état vide du plan (un titre seul).
  *
@@ -55,7 +55,7 @@ import {
   celluleDuClic,
   grilleDuPlan,
   planEmptyReason,
-  planEmptyText,
+  titreDuPlanVide,
   rectSelection,
   repereDuPlan,
   statusMessages,
@@ -158,7 +158,7 @@ export function TacticalPlanCard({
             <EtiquetteDeZone selected={selected} repere={repere} texte={etiquette} estompe={estompe} />
           )}
           <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
-            {lue && raisonVide ? planEmptyText(t, raisonVide, lue.matchs_retenus, lue.pas_m).title : null}
+            {lue && raisonVide ? titreDuPlanVide(t, raisonVide) : null}
           </AvisSurLeFond>
           <IndicateurDeLecture t={t} etat={etat} />
         </TacticalPlanFond>
@@ -350,7 +350,9 @@ function AvisSurLeFond({
             className="bg-card"
           />
         ) : (
-          <EmptyStateNotice title={t.analysisErrorTitle} description={t.analysisErrorDescription} className="bg-card" />
+          <p className="rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-sm text-muted-foreground">
+            {t.analysisErrorTitle}
+          </p>
         )}
       </div>
     )

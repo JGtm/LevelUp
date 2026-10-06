@@ -14,9 +14,9 @@ import { LEGENDE_MARGE_PX, PLAN_BOITE_HAUTEUR_MAX_PX, type CarteEffective } from
 import type { TacticalText } from './i18n'
 import type { TacticalEtatLecture } from './tacticalLecture.logic'
 import {
+  lectureDeRejeu,
   libelleRayons,
   planLegend,
-  sourceForQuestion,
   TACTICAL_CELL_FLOOR,
   type TacticalQuestion,
 } from './tacticalView.logic'
@@ -40,7 +40,7 @@ export function infoDuPlan(
   lecture: TacticalRaster,
   peintes: number,
 ): string {
-  const source = sourceForQuestion(t, question) === t.sourceReplay ? t.planInfoSourceReplay : t.planInfoSourceJournal
+  const source = lectureDeRejeu(question) ? t.planInfoSourceReplay : t.planInfoSourceJournal
   const parts = [t.planInfo(lecture.matchs_retenus, lecture.matchs_filtres, source, lecture.pas_m, TACTICAL_CELL_FLOOR)]
   if (question === 'gagne') {
     parts.push(t.planInfoGagne(lecture.matchs_victoire, lecture.matchs_defaite, TACTICAL_CELL_FLOOR))

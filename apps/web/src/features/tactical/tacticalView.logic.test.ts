@@ -8,12 +8,12 @@ import {
   celluleDuClic,
   grilleDuPlan,
   planEmptyReason,
-  planEmptyText,
+  titreDuPlanVide,
   planLegend,
   rectSelection,
   repereAspect,
   repereDuPlan,
-  sourceForQuestion,
+  lectureDeRejeu,
   statusMessages,
   unitForQuestion,
   vueContain,
@@ -33,7 +33,7 @@ describe('unitForQuestion — une unité distincte par question', () => {
     ['gagne', 'engagements par match'],
     ['temps', 'secondes par match'],
     ['routes', 'passages par match'],
-    ['isole', 'morts isolées par match'],
+    ['isole', 'morts seul par match'],
   ] as const)('%s -> %s', (question, unite) => {
     expect(unitForQuestion(tFr, question)).toBe(unite)
   })
@@ -41,17 +41,14 @@ describe('unitForQuestion — une unité distincte par question', () => {
 
 // ─── Source de la mesure ───────────────────────────────────────────────────────
 
-describe('sourceForQuestion — artefact de rejeu vs journal des morts', () => {
-  it('« temps » et « routes » exigent l’artefact de rejeu', () => {
-    expect(sourceForQuestion(tFr, 'temps')).toBe(tFr.sourceReplay)
-    expect(sourceForQuestion(tFr, 'routes')).toBe(tFr.sourceReplay)
+describe('lectureDeRejeu — artefact de rejeu vs journal des morts', () => {
+  it('« temps » et « routes » se lisent sur les artefacts de rejeu', () => {
+    expect(lectureDeRejeu('temps')).toBe(true)
+    expect(lectureDeRejeu('routes')).toBe(true)
   })
 
-  it('les autres questions lisent le journal des morts', () => {
-    expect(sourceForQuestion(tFr, 'morts')).toBe(tFr.sourceJournal)
-    expect(sourceForQuestion(tFr, 'kills')).toBe(tFr.sourceJournal)
-    expect(sourceForQuestion(tFr, 'gagne')).toBe(tFr.sourceJournal)
-    expect(sourceForQuestion(tFr, 'isole')).toBe(tFr.sourceJournal)
+  it('les autres lectures, sur le journal des morts', () => {
+    for (const q of ['morts', 'kills', 'solde', 'gagne', 'isole'] as const) expect(lectureDeRejeu(q)).toBe(false)
   })
 })
 
@@ -105,35 +102,12 @@ describe('planEmptyReason — trois causes de plan vide, trois messages', () => 
   })
 })
 
-describe('planEmptyText — le titre et la description de chaque cause', () => {
-  it('reprend le message existant pour « aucune mesure »', () => {
-    expect(planEmptyText(tFr, 'aucune-mesure', 0, 0.5)).toEqual({
-      title: tFr.planEmptyTitle,
-      description: tFr.planEmptyDescription,
-    })
-  })
-
-  it('la densité insuffisante cite les matchs mesurés, le plancher et le pas essayé', () => {
-    const densite = planEmptyText(tFr, 'densite', 38, 2)
-    expect(densite.title).toBe(tFr.planEmptyDensityTitle)
-    expect(densite.description).toContain('38 matchs mesurés')
-    expect(densite.description).toContain('3 matchs distincts')
-    expect(densite.description).toContain('2 m')
-    // Ce que la page ne doit PLUS dire quand les matchs sont là.
-    expect(densite.title).not.toBe(tFr.planEmptyTitle)
-  })
-
-  it('la densité insuffisante existe aussi en anglais', () => {
-    const densite = planEmptyText(tEn, 'densite', 38, 2)
-    expect(densite.title).toBe(tEn.planEmptyDensityTitle)
-    expect(densite.description).toContain('38 measured matches')
-  })
-
-  it('un périmètre vide garde son propre message', () => {
-    expect(planEmptyText(tFr, 'aucun-match', 0, 0.5)).toEqual({
-      title: tFr.planEmptyNoMatchTitle,
-      description: tFr.planEmptyNoMatchDescription,
-    })
+describe('titreDuPlanVide — un titre par cause, aucun conseil', () => {
+  it('chaque cause dit la sienne', () => {
+    expect(titreDuPlanVide(tFr, 'aucun-match')).toBe('Aucun match sur cette carte dans le filtre')
+    expect(titreDuPlanVide(tFr, 'aucune-mesure')).toBe('Pas assez de matchs mesurés sur cette carte')
+    expect(titreDuPlanVide(tFr, 'densite')).toBe('Densité insuffisante pour dessiner un plan')
+    expect(titreDuPlanVide(tEn, 'densite')).toBe(tEn.planEmptyDensityTitle)
   })
 })
 

@@ -33,7 +33,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -210,9 +209,9 @@ function etatDeLaColonne(
   if (!p.cartesConnues) return <p className="p-3 text-sm text-muted-foreground">{t.loading}</p>
   if (p.cartes.length === 0) {
     return (
-      <div className="p-3">
-        <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
-      </div>
+      <p className="p-3 text-sm font-medium text-muted-foreground" data-testid="tactical-maps-vide">
+        {t.emptyTitle}
+      </p>
     )
   }
   return undefined

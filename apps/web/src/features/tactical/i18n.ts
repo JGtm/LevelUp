@@ -14,25 +14,18 @@ export function getTacticalText(locale: Locale) {
   const m = (key: TacticalManifestKey, values?: Record<string, unknown>) =>
     formatMessage(tacticalManifest, key, locale, values)
   return {
+    // ── Colonne « Cartes jouées » ───────────────────────────────────────────
     mapsTitle: m('tactical.maps.title'),
-    mapsLabel: m('tactical.maps.label'),
     loading: m('tactical.maps.loading'),
     error: m('tactical.maps.error'),
     emptyTitle: m('tactical.maps.empty_title'),
-    emptyDescription: m('tactical.maps.empty_description'),
     recordLabel: (wins: number, losses: number, n: number) =>
       m('tactical.maps.record_label', { wins, losses, n }),
     select: (map: string) => m('tactical.maps.select', { map }),
     selected: m('tactical.maps.selected'),
-    floorReason: (n: number, floor: number) => m('tactical.maps.floor_reason', { n, floor }),
-    // Phrase d'introduction de la grille (maquette 034b1915) : cartes, matchs et
-    // plancher en UNE phrase — elle a remplacé la paire couverture + note de plancher.
-    intro: (maps: number, matches: number, floor: number) =>
-      m('tactical.maps.intro', { maps, matches, floor }),
-    // Résumé d'une vignette sur une seule ligne : « N matchs · V V / D D ».
+    // Résumé d'une vignette sur une seule ligne : « 54 · 30 V / 24 D ».
     tileSummary: (n: number, wins: number, losses: number) =>
       m('tactical.maps.tile_summary', { n, wins, losses }),
-    // Colonne « Cartes jouées » de l'écran unique : recherche, liste vide, repli du plancher.
     mapsSearchPlaceholder: m('tactical.maps.search_placeholder'),
     mapsSearchLabel: m('tactical.maps.search_label'),
     mapsNoMatch: m('tactical.maps.no_match'),
@@ -40,10 +33,6 @@ export function getTacticalText(locale: Locale) {
     floorFold: (n: number) => m('tactical.maps.floor_fold', { n }),
     floorFoldFiltered: (shown: number, n: number) => m('tactical.maps.floor_fold_filtered', { shown, n }),
     floorCount: (n: number, floor: number) => m('tactical.maps.floor_count', { n, floor }),
-    // Bascule d'écran (grille / analyse).
-    screenLabel: m('tactical.screen.label'),
-    screenGrid: m('tactical.screen.grid'),
-    screenMap: m('tactical.screen.map'),
 
     // ── Barre de filtres L2 ─────────────────────────────────────────────────
     filterLabels: {
@@ -69,7 +58,7 @@ export function getTacticalText(locale: Locale) {
     unknownTeammateDescription: (names: string) =>
       m('tactical.filter.unknown_teammate_description', { names }),
 
-    // ── Lectures du plan, dans l'ordre de la pilule « Lecture » ─────────────────────
+    // ── Lectures du plan, dans l'ordre de la pilule « Lecture » ─────────────
     // Les grandeurs de base (morts, frags, leur solde), puis les lectures signées et dérivées
     // (victoires − défaites), puis celles des artefacts de rejeu (temps, trajets), et la lecture
     // de placement (morts seul).
@@ -82,29 +71,18 @@ export function getTacticalText(locale: Locale) {
       { id: 'routes' as const, label: m('tactical.analysis.questions.routes') as string },
       { id: 'isole' as const, label: m('tactical.analysis.questions.isole') as string },
     ],
-    kpiMatchsRetained: m('tactical.kpi.matches_retained'),
-    kpiCoverage: m('tactical.kpi.coverage'),
-    kpiRiposte: m('tactical.kpi.riposte'),
-    kpiIsolation: m('tactical.kpi.isolation'),
-    kpiSecondary: (brut: number, n: number) => m('tactical.kpi.secondary', { brut, n }),
-    // Réserve d'échantillon des tuiles KPI « Échange » / « Isolement » : même clé
-    // et même forme (accolée au secondaire) que `SquadEchangeKpi` pour la même
-    // mesure — le drapeau `echantillon_faible` interdit de comparer, il ne cache
-    // pas la valeur.
-    lowSample: m('tactical.kpi.low_sample'),
-    // Note de couverture de la tuile « Morts en isolement » : `matchs_sans_rayon`
-    // est déjà publié par le contrat (aucun calcul côté web).
-    kpiNoRadiusNote: (n: number) => m('tactical.kpi.no_radius_note', { n }),
-    // Sous-titres des quatre tuiles (maquette 034b1915).
-    kpiMatchsRetainedSecondary: (n: number) => m('tactical.kpi.matches_retained_secondary', { n }),
-    kpiCoverageReplay: m('tactical.kpi.coverage_replay'),
-    kpiCoverageShared: m('tactical.kpi.coverage_shared'),
-    kpiRiposteWindow: (secondes: number) => m('tactical.kpi.riposte_window', { secondes }),
-    kpiIsolationRadius: (rayon: string) => m('tactical.kpi.isolation_radius', { rayon }),
-    kpiLowerIsBetter: m('tactical.kpi.lower_is_better'),
-    planTitle: m('tactical.plan.title'),
-    // Aide ⓘ du titre de la carte du plan (dénominateurs, source, pas, plancher) et ses ajouts
-    // par lecture.
+    // Unité de la légende et de la zone, une par lecture.
+    units: {
+      morts: m('tactical.unit.morts') as string,
+      kills: m('tactical.unit.kills') as string,
+      solde: m('tactical.unit.solde') as string,
+      gagne: m('tactical.unit.gagne') as string,
+      temps: m('tactical.unit.temps') as string,
+      routes: m('tactical.unit.routes') as string,
+      isole: m('tactical.unit.isole') as string,
+    },
+
+    // ── Carte du plan : aide ⓘ du titre et réglages en pilules ──────────────
     planInfo: (retenus: number, filtres: number, source: string, pas: number, plancher: number) =>
       m('tactical.plan.info', { retenus, filtres, source, pas, plancher }),
     planInfoSourceJournal: m('tactical.plan.info_source_journal'),
@@ -114,13 +92,33 @@ export function getTacticalText(locale: Locale) {
     planInfoNoRange: (n: number) => m('tactical.plan.info_no_range', { n }),
     planInfoTeamDown: (n: number) => m('tactical.plan.info_team_down', { n }),
     planInfoOffFrame: (hors: number, total: number) => m('tactical.plan.info_off_frame', { hors, total }),
-    // Les trois réglages en pilules du bandeau.
+    // La valeur arrive DÉJÀ FORMATÉE (au plus au dixième) : l'arrondi est une règle de présentation
+    // du dépôt, pas une règle de message.
+    radiusValue: (rayon: string) => m('tactical.plan.radius_value', { rayon }),
+    radiusJoin: m('tactical.plan.radius_join') as string,
     pillReading: m('tactical.plan.pill_reading'),
     pillPlayers: m('tactical.plan.pill_players'),
+    whoMe: m('tactical.plan.who_me'),
+    whoSquad: m('tactical.plan.who_squad'),
+    whoOpponents: m('tactical.plan.who_opponents'),
+    planSquadDisabled: m('tactical.plan.squad_disabled'),
     pillRespawn: m('tactical.plan.pill_respawn'),
     pillRespawnAll: m('tactical.plan.pill_respawn_all'),
-    planSquadDisabled: m('tactical.plan.squad_disabled'),
-    // ── Zone sélectionnée et mini-tuile « Rejeu » ─────────────────────────────
+
+    // ── Carte du plan : états posés sur le fond, légende, bandeau d'état ────
+    // Les trois états vides ne disent PAS la même chose : périmètre vide, aucune mesure, ou
+    // mesures trop dispersées (cf. `planEmptyReason`). Un titre seul, aucun conseil.
+    planEmptyNoMatchTitle: m('tactical.plan.empty_no_match_title'),
+    planEmptyTitle: m('tactical.plan.empty_title'),
+    planEmptyDensityTitle: m('tactical.plan.empty_density_title'),
+    analysisErrorTitle: m('tactical.analysis.error_title'),
+    // Relecture : l'ancien calque reste affiché, estompé, sous cette mention (Q26).
+    analysisUpdating: m('tactical.analysis.updating'),
+    planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
+    statusPending: (n: number) => m('tactical.status.pending', { n }),
+    statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
+
+    // ── Zone sélectionnée ───────────────────────────────────────────────────
     zoneTitle: m('tactical.zone.title'),
     zoneNone: m('tactical.zone.none'),
     zoneUnnamed: m('tactical.zone.unnamed'),
@@ -129,13 +127,18 @@ export function getTacticalText(locale: Locale) {
     zoneWinsLosses: (v: number, d: number) => m('tactical.zone.wins_losses', { v, d }),
     zoneKillsDeaths: (f: number, morts: number) => m('tactical.zone.kills_deaths', { f, m: morts }),
     zoneReplayHeading: m('tactical.zone.replay_heading'),
+    zoneContributionsLoading: m('tactical.zone.contributions_loading'),
     zoneContributionsEmpty: m('tactical.zone.contributions_empty'),
+    zoneNotOpenable: (n: number) => m('tactical.zone.not_openable', { n }),
+
+    // ── Mini-tuile « Rejeu » ────────────────────────────────────────────────
     tileKilledBy: (gt: string) => m('tactical.tile.killed_by', { gt }),
     tileKilled: (gt: string) => m('tactical.tile.killed', { gt }),
     tileDeath: m('tactical.tile.death'),
     tileFrag: m('tactical.tile.frag'),
     tileEntry: m('tactical.tile.entry'),
     tileRespawn: m('tactical.tile.respawn'),
+    // Les catégories de source de dégât traduites ; les autres ne s'écrivent pas.
     tileCategories: {
       Headshot: m('tactical.tile.cat_headshot') as string,
       AttachedDamage: m('tactical.tile.cat_attached') as string,
@@ -146,93 +149,6 @@ export function getTacticalText(locale: Locale) {
     tileAloneAt: (d: string) => m('tactical.tile.alone_at', { d }),
     tileNearAt: (d: string) => m('tactical.tile.near_at', { d }),
     tileOpenReplay: (instant: string) => m('tactical.tile.open_replay', { instant }),
-    planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
-    planScaleQuantile: m('tactical.plan.scale_quantile'),
-    planScaleDivergent: (plancher: number) => m('tactical.plan.scale_divergent', { plancher }),
-    planFooterRetained: (retenus: number, filtres: number, source: string) =>
-      m('tactical.plan.footer_retained', { retenus, filtres, source }),
-    footerFloor: (n: number) => m('tactical.plan.footer_floor', { n }),
-    sourceReplay: m('tactical.plan.source_replay'),
-    sourceJournal: m('tactical.plan.source_journal'),
-    // Pas de la grille : PUBLIÉ par le serveur (`pas_m`), affiché tel quel — un plan à
-    // 2 m est plus grossier qu'un plan à 0,5 m, et cela doit se lire au pied de la carte.
-    footerGrid: (pas: number) => m('tactical.plan.footer_grid', { pas }),
-    footerOffFrame: (hors: number, total: number) =>
-      m('tactical.plan.footer_off_frame', { hors, total }),
-    // Les trois états vides du plan. Ils ne disent PAS la même chose : périmètre vide,
-    // aucune mesure, ou mesures trop dispersées (cf. `planEmptyReason`).
-    planEmptyNoMatchTitle: m('tactical.plan.empty_no_match_title'),
-    planEmptyNoMatchDescription: m('tactical.plan.empty_no_match_description'),
-    planEmptyTitle: m('tactical.plan.empty_title'),
-    planEmptyDescription: m('tactical.plan.empty_description'),
-    planEmptyDensityTitle: m('tactical.plan.empty_density_title'),
-    planEmptyDensityDescription: (matchs: number, plancher: number, pas: number) =>
-      m('tactical.plan.empty_density_description', { matchs, plancher, pas }),
-    statusPending: (n: number) => m('tactical.status.pending', { n }),
-    statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
-    cellTitle: m('tactical.cell.title'),
-    cellPlaceholder: m('tactical.cell.placeholder'),
-    cellPlaceholderDescription: m('tactical.cell.placeholder_description'),
-    cellMatches: (n: number) => m('tactical.cell.matches', { n }),
-    // Contributions et lien vers le rejeu (lot M1, Tactique S.1).
-    cellContributionsTitle: m('tactical.cell.contributions_title'),
-    cellContributionsLoading: m('tactical.cell.contributions_loading'),
-    cellContributionsEmpty: m('tactical.cell.contributions_empty'),
-    cellContributionLabel: (date: string, instant: string) =>
-      m('tactical.cell.contribution_label', { date, instant }),
-    cellFooterNotOpenable: (n: number) => m('tactical.cell.footer_not_openable', { n }),
-    cellContributionOpen: (instant: string) => m('tactical.cell.contribution_open', { instant }),
-    // « Mes routes de spawn » : la lecture n'a pas de cellule à détailler.
-    cellPlaceholderRoutes: m('tactical.cell.placeholder_routes'),
-    cellPlaceholderRoutesDescription: m('tactical.cell.placeholder_routes_description'),
-
-    // ── Titre de la vue, barre d'outils ──────────────────────────────────────
-    analysisPageTitle: (map: string, question: string) =>
-      m('tactical.analysis.page_title', { map, question }),
-    analysisErrorTitle: m('tactical.analysis.error_title'),
-    analysisErrorDescription: m('tactical.analysis.error_description'),
-    // Relecture : l'ancien calque reste affiché, estompé, sous cette mention (Q26).
-    analysisUpdating: m('tactical.analysis.updating'),
-    questionLabel: m('tactical.toolbar.question_label'),
-    whoLabel: m('tactical.toolbar.who_label'),
-    whoMe: m('tactical.toolbar.who_me'),
-    whoSquad: m('tactical.toolbar.who_squad'),
-    whoOpponents: m('tactical.toolbar.who_opponents'),
-    spawnLabel: m('tactical.toolbar.spawn_label'),
-    spawnAll: m('tactical.toolbar.spawn_all'),
-
-    // ── Section « Coordination d'équipe » ────────────────────────────────────
-    coordinationTitle: m('tactical.coordination.title'),
-    coordinationMedian: m('tactical.coordination.median'),
-    coordinationChartTitle: m('tactical.coordination.chart_title'),
-    coordinationChartY: m('tactical.coordination.chart_y'),
-    coordinationBucket: (min: number, max: number) =>
-      m('tactical.coordination.bucket', { min, max }),
-    coordinationBucketLast: (min: number) => m('tactical.coordination.bucket_last', { min }),
-    coordinationThresholdLabel: m('tactical.coordination.threshold_label'),
-    coordinationNoteRules: (secondes: number, rayon: string) =>
-      m('tactical.coordination.note_rules', { secondes, rayon }),
-    coordinationNoteCoverage: (retenus: number, filtres: number) =>
-      m('tactical.coordination.note_coverage', { retenus, filtres }),
-    coordinationNoDistance: (n: number) => m('tactical.coordination.no_distance', { n }),
-    coordinationEmpty: m('tactical.coordination.empty'),
-    coordinationEmptyDescription: m('tactical.coordination.empty_description'),
-    // La valeur arrive DEJA FORMATEE (`formatNumber`, lib/formatters) : l'arrondi est une
-    // regle de presentation du depot, pas une regle de message — « 9,905 m » etait le
-    // symptome d'un nombre passe brut a ICU.
-    radiusValue: (rayon: string) => m('tactical.coordination.radius_value', { rayon }),
-    radiusJoin: m('tactical.coordination.radius_join') as string,
-
-    // ── Unité de la légende, une par question ────────────────────────────────
-    units: {
-      morts: m('tactical.unit.morts') as string,
-      kills: m('tactical.unit.kills') as string,
-      solde: m('tactical.unit.solde') as string,
-      gagne: m('tactical.unit.gagne') as string,
-      temps: m('tactical.unit.temps') as string,
-      routes: m('tactical.unit.routes') as string,
-      isole: m('tactical.unit.isole') as string,
-    },
   }
 }
 

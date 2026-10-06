@@ -206,7 +206,7 @@ describe('TacticalPage — l’écran unique', () => {
     searchCourant = { carte: 'aquarius' }
     renderWithProviders(<TacticalPage />)
     const horsFiltre = await screen.findByTestId('tactical-carte-hors-filtre')
-    expect(horsFiltre).toHaveTextContent('Aucun match sur cette carte dans ce filtre')
+    expect(horsFiltre).toHaveTextContent('Aucun match sur cette carte dans le filtre')
     expect(screen.getByRole('region', { name: 'Aquarius' })).toBeInTheDocument()
     expect(lecturesRaster()).toEqual([])
     // Aucune vignette n'est présentée comme active : la carte affichée n'est pas dans la liste.

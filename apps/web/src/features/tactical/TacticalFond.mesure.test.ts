@@ -350,7 +350,7 @@ interface Instant {
 function instant(ref: HTMLImageElement | null, carte: { id: string; nom: string }): Instant {
   const img = imgDuPlan()
   const titre = texte('tactical-analysis-title')
-  const select = screen.queryByRole('combobox', { name: t.questionLabel }) as HTMLSelectElement | null
+  const select = screen.queryByRole('combobox', { name: t.pillReading }) as HTMLSelectElement | null
   return {
     imgPresent: img !== null,
     imgMemeNoeud: ref !== null && img === ref && ref.isConnected,
@@ -533,9 +533,9 @@ async function scenarioAnalyse(
     }
 
     const select = (label: string) => screen.getByRole('combobox', { name: label }) as HTMLSelectElement
-    await jouer('question', () => fireEvent.change(select(t.questionLabel), { target: { value: 'kills' } }), [estRaster])
+    await jouer('question', () => fireEvent.change(select(t.pillReading), { target: { value: 'kills' } }), [estRaster])
     await jouer('qui', () => fireEvent.click(screen.getByRole('button', { name: t.whoOpponents })), [estRaster])
-    await jouer('spawn', () => fireEvent.change(select(t.spawnLabel), { target: { value: 'g1' } }), [estRaster])
+    await jouer('spawn', () => fireEvent.change(select(t.pillRespawn), { target: { value: 'g1' } }), [estRaster])
     await jouer(
       'filtre-periode',
       () => {
@@ -545,8 +545,8 @@ async function scenarioAnalyse(
       [estPerimetre, estRaster],
     )
     // Échec d'une relecture, puis retour : l'écran ne doit pas rester figé.
-    await jouer('echec-relecture', () => fireEvent.change(select(t.questionLabel), { target: { value: 'temps' } }), [estRaster], estRaster)
-    await jouer('reprise-apres-echec', () => fireEvent.change(select(t.questionLabel), { target: { value: 'routes' } }), [estRaster])
+    await jouer('echec-relecture', () => fireEvent.change(select(t.pillReading), { target: { value: 'temps' } }), [estRaster], estRaster)
+    await jouer('reprise-apres-echec', () => fireEvent.change(select(t.pillReading), { target: { value: 'routes' } }), [estRaster])
     // Changement de joueur, même carte.
     await jouer(
       'joueur',

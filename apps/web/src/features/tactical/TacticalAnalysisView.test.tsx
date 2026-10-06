@@ -186,7 +186,7 @@ describe('TacticalAnalysisView — la carte du plan, toujours rendue', () => {
     expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
   })
 
-  it('CARTE HORS DU FILTRE : « Aucun match sur cette carte dans ce filtre », sans lecture', () => {
+  it('CARTE HORS DU FILTRE : « Aucun match sur cette carte dans le filtre », sans lecture', () => {
     mockRaster({})
     renderVue({ carte: { mapId: 'aquarius', origine: 'hors_filtre' }, mapName: 'Aquarius' })
     expect(within(cadre()).getByTestId('tactical-carte-hors-filtre')).toHaveTextContent(t.planEmptyNoMatchTitle)

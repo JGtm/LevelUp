@@ -1,6 +1,6 @@
 /**
  * tacticalView.logic — la logique PURE de la vue d'analyse tactique (Phase 5, items
- * 5.2-5.6). Rien ne dépend de React ni du DOM : messages de statut, unité et source par question,
+ * 5.2-5.6). Rien ne dépend de React ni du DOM : messages de statut, unité et nature de chaque lecture,
  * états vides du plan, projection du raster serveur en grille de peinture (`heatPaint`)
  * et position (col, row) d'un clic sur le canvas. Les composants ne font que rendre ce
  * que ces fonctions décident (règle du dépôt : pas de logique métier dans un composant).
@@ -31,18 +31,18 @@ export const TACTICAL_CELL_FLOOR = 3
  *  des morts — même liste que la doc du contrat (`TacticalRasterBody.question`). */
 const QUESTIONS_ARTEFACT_REJEU: ReadonlySet<TacticalQuestion> = new Set(['temps', 'routes'])
 
-/** unitForQuestion — l'unité affichée en légende du plan et sur la cellule sélectionnée. */
+/** unitForQuestion — l'unité affichée en légende du plan et sur la zone sélectionnée. */
 export function unitForQuestion(t: TacticalText, question: TacticalQuestion): string {
   return t.units[question]
 }
 
-/** sourceForQuestion — la provenance de la mesure, affichée au pied du plan. */
-export function sourceForQuestion(t: TacticalText, question: TacticalQuestion): string {
-  return QUESTIONS_ARTEFACT_REJEU.has(question) ? t.sourceReplay : t.sourceJournal
+/** lectureDeRejeu — la lecture se fait sur les artefacts de rejeu (pistes du film), pas sur le journal des morts. */
+export function lectureDeRejeu(question: TacticalQuestion): boolean {
+  return QUESTIONS_ARTEFACT_REJEU.has(question)
 }
 
 /**
- * statusMessages — les bandeaux « en attente » / « non disponible » au-dessus du plan.
+ * statusMessages — les mentions « en attente de traitement » / « sans film » du bandeau d'état.
  * LES DEUX PEUVENT COEXISTER (des matchs en cours de cuisson ET d'autres jamais
  * cuisables) : ce ne sont pas des échecs de la lecture, ce sont des dénominateurs qui
  * varient. Aucun message quand les deux compteurs sont à zéro.
@@ -97,26 +97,18 @@ export function planEmptyReason(
   return 'densite'
 }
 
-/** planEmptyText — le titre et la description à afficher pour une cause donnée. */
-export function planEmptyText(
-  t: TacticalText,
-  raison: TacticalPlanEmptyReason,
-  matchsRetenus: number,
-  pasM: number,
-): { title: string; description: string } {
+/**
+ * titreDuPlanVide — le titre posé sur le fond pour une cause de plan vide : un titre seul, aucun
+ * conseil (les nombres qui l'expliquent sont dans l'aide ⓘ du titre).
+ */
+export function titreDuPlanVide(t: TacticalText, raison: TacticalPlanEmptyReason): string {
   switch (raison) {
     case 'aucun-match':
-      return { title: t.planEmptyNoMatchTitle, description: t.planEmptyNoMatchDescription }
+      return t.planEmptyNoMatchTitle
     case 'aucune-mesure':
-      return { title: t.planEmptyTitle, description: t.planEmptyDescription }
+      return t.planEmptyTitle
     default:
-      return {
-        title: t.planEmptyDensityTitle,
-        // LE PAS CITÉ EST CELUI QUE LA LECTURE A RETENU : quand aucune densité ne suffit,
-        // c'est le plus grossier essayé, et le dire évite qu'on croie le plan calculé
-        // à 0,5 m.
-        description: t.planEmptyDensityDescription(matchsRetenus, TACTICAL_CELL_FLOOR, pasM),
-      }
+      return t.planEmptyDensityTitle
   }
 }
 
