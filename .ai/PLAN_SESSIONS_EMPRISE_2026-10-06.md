@@ -27,9 +27,11 @@
 > rebasé sur `262e36b2e` (tête finale de `feat/ts-usages-emprise`, L6 `651bbe972`, L7 `bbe42dbc8`,
 > L8 `262e36b2e`) le 2026-10-06, sans conflit ; GO phase 2, lot par lot, compte rendu et
 > « continue » du superviseur à chaque clôture.** S6 est fondu dans S5 (§4.F rejoué sur la nouvelle
-> base). Un second rebase peut suivre la revue adverse du lot TS : sur demande du superviseur
-> seulement.
-> Branche : `feat/sessions-emprise`, créée sur `cd3145ec2`, rebasée sur `262e36b2e` ; worktree
+> base). Second rebase, demandé par le superviseur après S2, sur `554457c31` (L9 `545f765e8` + L9.2
+> `554457c31`, corrections de revue du lot TS) : un conflit, `timeseries_service_lives.go` (corps
+> déplacé par S1.2, ligne de journal ajoutée par L9) — version déplacée gardée, champ
+> `ecartees_journal_non_publiable` reporté dans `solo_lives_block.go` ; généré régénéré sans écart.
+> Branche : `feat/sessions-emprise`, créée sur `cd3145ec2`, rebasée sur `554457c31` ; worktree
 > `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -568,6 +570,13 @@ centralisations ; chaque export neuf a un lecteur dans le lot (knip 0 / 0 / 0) ;
 de l'Escouade et des Séries temporelles sont rejoués nommément SANS modification
 (`SquadEmprisePage.test.tsx`, `SquadContributionsPage.test.tsx`, `SquadObjectiveSection.test.tsx`,
 `SquadFragSection.test.tsx`, `TimeseriesPage.sections.test.tsx`, `TimeseriesPage.usages.test.tsx`).
+BASE DEPUIS LE SECOND REBASE (`554457c31`) : `compact` s'ajoute aux versions L9 / L9.2 de
+`EquipmentOutcomesCard.tsx` (repli au pixel aligné sur son segment, `partSegments`,
+`repliOffsetPct`), `LivesNearTeammateCard.tsx` (repli au pixel, 3e cause d'exclusion
+`excluded_unpublishable` dans l'ⓘ) et `empriseCharts.ts` (rayon réduit des points sur l'axe période
+seul) ; leurs tests L9 restent verts sans modification. KNIP EST AVEUGLE SUR CE POSTE (découverte du
+lot TS) : la preuve « chaque export neuf a un lecteur » se fait par grep, le ratchet local ne fait
+pas foi (le step CI, oui).
 
 - [ ] S3.1 D17 : `empriseObjectName` dans `emprise.logic.ts` ; `useEmpriseModels.ts:29-36` et
   `useUsagesModels.ts:29-36` migrés ; garde-rail `squad/emprise/emprise.objectName.guard.test.ts`
@@ -717,7 +726,8 @@ Le web ne lit plus `usage`, `compare_usage` ni la riposte depuis S4. Depuis le r
   44 (riposte « on the Sessions »), 54 (Sessions en quatre sections) — corrigées, entrée ajoutée) ;
   `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` (bloc 7.5 : EN l. 32, 39, 58) ; lignes
   re-vérifiées au moment d'écrire, FR aux lignes homologues ; aucune phrase propre aux Séries
-  temporelles touchée (L8.1 du plan TS).
+  temporelles touchée (L8.1 du plan TS). Plus une ligne CHANGELOG FR / EN « Halo 5 : Appui reçu
+  disponible sur Sessions » (décision du superviseur après S2, §8).
 - [ ] S7.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4, lecteurs de Sessions (l. 293-296)
   et tableau l. 482.
 - [ ] S7.3 ADR 0036 : vérifier qu'aucun invariant n'est touché (lectures bornées existantes, une
@@ -791,8 +801,9 @@ modèles neufs ont leur lecteur dans le lot.
   `config/titles/halo_5/mappings/capabilities.toml:48`, pas de `film.usage_summary`). Depuis S2 (D9 :
   joueur posé par `WithSessionEmprise`, inconditionnel), Halo 5 reçoit sa coordination sur Sessions,
   sans parité — comme les Séries temporelles, dont le joueur vient de `WithHighlightEventsRepo`. D9
-  écrivait « comme aujourd'hui » : c'était inexact. Décision attendue (garder l'alignement sur les
-  Séries temporelles, ou rendre au joueur de la coordination la porte du résumé d'usage).
+  écrivait « comme aujourd'hui » : c'était inexact. DÉCIDÉ par le superviseur (2026-10-06, option
+  a) : comportement gardé — la carte dépend du journal des morts, l'ancienne porte était un accident
+  de câblage ; ligne de changelog FR / EN en S7.1.
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 
