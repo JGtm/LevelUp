@@ -115305,3 +115305,13 @@ adversariale en fin d'étape, sur le diff cumulé.
 **Résultats observés** : 15 mutations, toutes rouges (dont semi-jointure et filtre sur une autre relation de la jointure pour la lecture bornée) ; tests de l'Isolement intacts. Gate Go complet vert, intégration DuckDB 4 ok en 288 s, lint 0 issue, contrat additif (+42 / +19), garde de surface intacte.
 
 **Conclusion / prochaine étape** : L3 clos ; compte rendu au superviseur, L4 sur « continue ».
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L4 : briques de l'Emprise paramétrables
+
+**Statut** : Complété (lot L4 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : refactorisations web seulement, l'Escouade identique à l'écran. Les modèles du fil et de la grille prennent un index des matchs (`empriseMatchIndex(history)`) au lieu de l'historique de l'Escouade ; le graphe du fil gagne un axe `period` (date du premier match de chaque mois, légende de couverture, pas d'encoche, points réduits au-delà de 120 matchs) ; la table de la grille sort dans `ResourceGridTable` à colonnes génériques, `ResourceMatchGridCard` ne garde que la légende, le cadre et les en-têtes de match.
+
+**Résultats observés** : vitest complet 8 856 verts ; tsc, lint, knip 0/0/0, couleurs, imports croisés 7 ≤ 7, lefthook pre-push 9/9 (avec gcc et make au PATH). Huit mutations rouges ; celle de l'en-tête d'infobulle était verte avant le test neuf de la table (trou préexistant, fermé). Les trois tests de page de l'Escouade nommés par le superviseur rejoués sans modification.
+
+**Conclusion / prochaine étape** : L4 clos ; L5 (onglet reconstruit et suppressions web) après le « continue » du superviseur.

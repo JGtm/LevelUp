@@ -81,6 +81,41 @@ export function pickupRadius(pickups: number): number {
   return 1.8 + Math.sqrt(Math.max(0, pickups)) * 1.1
 }
 
+/** Au-delà de ce nombre de matchs, des points plus petits (maquette des Séries temporelles). */
+const MANY_MATCHES = 120
+
+/** Rayon d'un point quand le graphe porte beaucoup de matchs : 0,8 + 0,45 × √n. */
+function smallPickupRadius(pickups: number): number {
+  return 0.8 + Math.sqrt(Math.max(0, pickups)) * 0.45
+}
+
+/**
+ * L'axe du graphe : un match par colonne avec son heure et sa carte (`match`, une soirée de
+ * l'Escouade), ou une PÉRIODE (`period`, la fenêtre des Séries temporelles) — la date du premier
+ * match de chaque mois sous l'axe, la légende de couverture sous la bande, pas d'encoche de
+ * dominance (plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, D12).
+ */
+export type FilAxe =
+  | { kind: 'match' }
+  | { kind: 'period'; dateOf: (iso: string) => string; caption: string }
+
+/** Le mois d'un match (heure locale), clé des étiquettes du mode période ; vide sans date. */
+function monthKey(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${d.getMonth()}`
+}
+
+/** Les étiquettes du mode période : la date du premier match de chaque mois, vide ailleurs. */
+function periodLabels(matches: ResourceFilMatch[], dateOf: (iso: string) => string): string[] {
+  let previous = ''
+  return matches.map((m) => {
+    const key = monthKey(m.startTime)
+    if (key === '' || key === previous) return ''
+    previous = key
+    return dateOf(m.startTime)
+  })
+}
+
 /** Une infobulle multiligne, échappée, la première ligne en gras (maquette). */
 function tipHtml(text: string): string {
   const [head, ...rest] = text.split('\n')
@@ -93,6 +128,7 @@ const matchName = (m: ResourceFilMatch, t: EmpriseFilText) => [t.timeOf(m.startT
 function resourceSeries(matches: ResourceFilMatch[], resource: string, first: boolean, c: EmpriseFilColors, t: EmpriseFilText): unknown[] {
   const color = c.resource(resource)
   const label = t.resourceLabel(resource)
+  const radius = matches.length > MANY_MATCHES ? smallPickupRadius : pickupRadius
   const cum = matches.map((m) => (m.points[resource] ? m.points[resource]!.cumulative * 100 : null))
   const data = withEndPoint(cum, c.theme.card, {
     color,
@@ -112,7 +148,7 @@ function resourceSeries(matches: ResourceFilMatch[], resource: string, first: bo
       if (!p) return null
       return {
         value: [i, p.share * 100],
-        symbolSize: 2 * pickupRadius(p.us + p.them),
+        symbolSize: 2 * radius(p.us + p.them),
         tip: t.pointTip({
           match: matchName(m, t),
           outcome: t.outcomeOf(m),
@@ -132,7 +168,7 @@ function resourceSeries(matches: ResourceFilMatch[], resource: string, first: bo
 }
 
 /** La bande de résultats sous l'axe : une case par match, l'encoche du drapeau de dominance. */
-function bandSeries(matches: ResourceFilMatch[], c: EmpriseFilColors, t: EmpriseFilText) {
+function bandSeries(matches: ResourceFilMatch[], c: EmpriseFilColors, t: EmpriseFilText, notch: boolean) {
   return {
     type: 'custom' as const,
     xAxisIndex: 1,
@@ -150,7 +186,7 @@ function bandSeries(matches: ResourceFilMatch[], c: EmpriseFilColors, t: Emprise
       const children: unknown[] = [
         { type: 'rect', shape: { x: cx - w / 2, y: cy - BAND_H / 2, width: w, height: BAND_H, r: 2 }, style: { fill } },
       ]
-      if (m.dominance) {
+      if (notch && m.dominance) {
         children.push({
           type: 'rect',
           shape: { x: cx - NOTCH_W / 2, y: cy - NOTCH_H / 2, width: NOTCH_W, height: NOTCH_H, r: 1 },
@@ -162,14 +198,24 @@ function bandSeries(matches: ResourceFilMatch[], c: EmpriseFilColors, t: Emprise
   }
 }
 
-export function buildResourceFilOption(fil: ResourceFil, c: EmpriseFilColors, t: EmpriseFilText): EChartsCoreOption {
+export function buildResourceFilOption(
+  fil: ResourceFil,
+  c: EmpriseFilColors,
+  t: EmpriseFilText,
+  axe: FilAxe = { kind: 'match' },
+): EChartsCoreOption {
   const tc = c.theme
   const { matches } = fil
   const categories = matches.map((m) => m.matchId)
   const series = [
     ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, ri === 0, c, t)),
-    bandSeries(matches, c, t),
+    bandSeries(matches, c, t, axe.kind === 'match'),
   ]
+  const months = axe.kind === 'period' ? periodLabels(matches, axe.dateOf) : []
+  const label =
+    axe.kind === 'period'
+      ? (_v: string, i: number) => (months[i] ? `{d|${months[i]}}` : '')
+      : (_v: string, i: number) => `{t|${t.timeOf(matches[i]?.startTime ?? '')}}\n{m|${shortMap(matches[i]?.map ?? '')}}`
   return {
     backgroundColor: CHART_BG,
     animation: false,
@@ -193,11 +239,11 @@ export function buildResourceFilOption(fil: ResourceFil, c: EmpriseFilColors, t:
           interval: 0,
           margin: 4,
           lineHeight: 13,
-          formatter: (_v: string, i: number) =>
-            `{t|${t.timeOf(matches[i]?.startTime ?? '')}}\n{m|${shortMap(matches[i]?.map ?? '')}}`,
+          formatter: label,
           rich: {
             t: { color: tc.axisLabel, fontSize: 10.5 },
             m: { color: tc.text, fontSize: 10.5 },
+            d: { color: tc.axisLabel, fontSize: 10.5 },
           },
         },
       },
@@ -208,6 +254,9 @@ export function buildResourceFilOption(fil: ResourceFil, c: EmpriseFilColors, t:
     // La légende est rendue HORS canvas (pied de carte, S2).
     legend: { show: false },
     aria: { enabled: true },
+    ...(axe.kind === 'period'
+      ? { graphic: [{ type: 'text', right: GRID_RIGHT, bottom: 0, style: { text: axe.caption, fill: tc.axisLabel, fontSize: 10.5 } }] }
+      : {}),
   }
 }
 

@@ -514,15 +514,15 @@ Journal L3 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — TDD strict (te
 
 ### L4 — Web : briques de l'Emprise paramétrables (Escouade inchangée) · moyen
 
-- [ ] L4.1 `squad/emprise/emprise.logic.ts:89-104,149,359` : `buildResourceFil` et `buildMatchGrid`
+- [x] L4.1 `squad/emprise/emprise.logic.ts:89-104,149,359` : `buildResourceFil` et `buildMatchGrid`
   prennent un index `Map<string, EmpriseMatchInfo>` ; `empriseMatchIndexFromHistory(history)` pour
   l'Escouade ; appelants (`useEmpriseModels.ts:40,42`, `empriseContent.ts:69`) migrés ;
   `emprise.logic.test.ts` vert inchangé (mêmes valeurs).
-- [ ] L4.2 `empriseCharts.ts` : mode d'axe `period` de `buildResourceFilOption` (D12) ;
+- [x] L4.2 `empriseCharts.ts` : mode d'axe `period` de `buildResourceFilOption` (D12) ;
   `ResourceFilCard` reçoit `axis` (défaut `match`) ; tests `empriseCharts.test.ts` : labels de mois,
   légende « n matchs, dont m filmés », pas d'encoche, rayons réduits au-delà de 120 matchs ;
   mutation : étiquette sur chaque match → rouge.
-- [ ] L4.3 Extraire de `ResourceMatchGridCard.tsx:62-390` la table (`SectionRows`, `GridLine`,
+- [x] L4.3 Extraire de `ResourceMatchGridCard.tsx:62-390` la table (`SectionRows`, `GridLine`,
   `Cell`, `cellTip`, `ResourceDot`, `SummaryLabel`) dans `squad/emprise/ResourceGridTable.tsx`,
   colonnes génériques `{ key, head: ReactNode, tipHead: string }` ; `ResourceMatchGridCard` garde
   `MatchHead` ; `SquadEmprisePage.test.tsx` vert inchangé.
@@ -531,6 +531,13 @@ Journal L3 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — TDD strict (te
 - Gate : gate web (aucun Go) ; `SquadEmprisePage.test.tsx`, `SquadContributionsPage.test.tsx`,
   `SquadObjectiveSection.test.tsx` rejoués nommément.
 
+Journal L4 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — refactorisations seulement, l'Escouade inchangée à l'écran :
+- **L4.1** `emprise.logic.ts` : `EmpriseMatchIndex` (`ReadonlyMap<string, EmpriseMatchInfo>`) et `empriseMatchIndex(history)` remplacent l'index privé `historyIndex` ; `buildResourceFil(block, index)` et `buildMatchGrid(block, index)`. Appelants migrés : `useEmpriseModels.ts` (index mémoïsé une fois pour le fil et la grille), `empriseContent.ts` (index vide, comme avant). Écart de nom au plan : `empriseMatchIndex` et non `empriseMatchIndexFromHistory` (le paramètre dit déjà la source). Tests : seuls les sites d'appel changent (`empriseMatchIndex(HISTORY_2209)` au lieu de `HISTORY_2209`) dans `emprise.logic.test.ts`, `vehicles.logic.test.ts`, `empriseCharts.test.ts` ; AUCUNE assertion touchée.
+- **L4.2** `empriseCharts.ts` : `FilAxe` (`match` | `period` avec `dateOf` et `caption`) ; `buildResourceFilOption(fil, c, t, axe = match)` ; en mode période : la date du premier match de chaque mois sous l'axe (étiquette riche `d`), la légende de couverture en `graphic` à droite sous la bande, pas d'encoche de dominance (`bandSeries(…, notch)`), points réduits au-delà de 120 matchs (`smallPickupRadius`, 0,8 + 0,45 × √prises, maquette v4). `ResourceFilCard` reçoit `axe` (écart de nom au plan : `axe` et non `axis`, vocabulaire du fichier), défaut `match` ; la pastille d'encoche de sa légende n'apparaît qu'en mode match. Tests écrits d'abord (4 rouges sur 5, le cinquième — le mode match reste le défaut — vert par construction). Le mode période n'a, dans ce lot, que les tests pour lecteur : son appelant de production naît en L5 (L5.2, carte 2b de §3) ; `FilAxe` est importé par `ResourceFilCard`, knip 0 / 0 / 0.
+- **L4.3** `ResourceGridTable.tsx` (neuf, 284 L) : la table (`SectionRows`, `GridLine`, `Cell`, `cellTip`, `ResourceDot`, `SummaryLabel`, état des râteliers repliés, `data-testid="emprise-grid-table"`), colonnes génériques `GridColumn { key, head, tipHead }` ; `ResourceMatchGridCard.tsx` (391 → 134 L) garde la légende, le cadre `emprise-grid`, `MatchHead`, construit les colonnes (en-tête d'infobulle = `t.grid.matchHead(…)`) et « qui chez nous ». La mutation « en-tête d'infobulle de la colonne 0 partout » restait VERTE sur toute la suite de l'Escouade (trou préexistant : aucune infobulle de case testée) : `ResourceGridTable.test.tsx` (neuf, 3 tests) le ferme.
+- **Mutations** : étiquette de mois sur chaque match → ROUGE ; encoche en mode période → ROUGE ; petits points ignorés → ROUGE ; légende de couverture vidée → ROUGE ; index de l'historique ignoré dans `useEmpriseModels` → ROUGE (`SquadEmprisePage.test.tsx`, 2 tests) ; en-tête de colonne non rendu → ROUGE (idem) ; en-tête d'infobulle de la colonne 0 partout → VERTE avant le test neuf, ROUGE après ; « qui chez nous » retiré de l'infobulle → ROUGE.
+- **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 (14 s) ; `npm run lint` 0 erreur (26 avertissements préexistants, `npx eslint src/features/squad/emprise` muet) ; `npx vitest run --pool=forks` complet : 833 fichiers verts / 5 ignorés, 8 856 tests verts / 23 ignorés (131 s) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 ; `node tools/lint-no-hardcoded-colors.mjs` 0 violation ; `node tools/lint-cross-feature-imports.mjs` 7 ≤ 7 ; `SquadEmprisePage.test.tsx`, `SquadContributionsPage.test.tsx`, `objectif/SquadObjectiveSection.test.tsx` rejoués nommément : 3 fichiers / 46 tests verts, fichiers non modifiés (`git diff` vide) ; `npx lefthook run pre-push` : 9 / 9 verts (71 s) — voir §8 pour le premier passage.
+- Fichiers > 400 L touchés : `emprise.logic.ts` 391 → 402, `empriseCharts.ts` 366 → 415 (sous 500).
 ### L5 — Web : l'onglet Usages reconstruit · lourd
 
 Périmètre : `features/timeseries/TimeseriesPage.usages.tsx`, `features/timeseries/usages/*` (NEUF),
@@ -689,6 +696,7 @@ suppressions web sont dans L5 (L5.11-L5.15) ; L6 ne garde que le Go.
 - (phase 1) `match_life_placement` et `match_vehicle_takes` vides dans la copie de base du
   2026-10-05 18 h 26 alors que le journal note leur rattrapage (complément 2 du journal) : cause non
   instruite.
-</content>
-</invoke>
 - (L2) Les Séries temporelles lisent les participants de la fenêtre deux fois : `lireEquipesDuScope` (`timeseries_service_sections.go`, section `participants`) et `squadagg.LireUsage` (résumé d'usage partagé depuis L2). Les deux portent sur la même fenêtre ; les fusionner toucherait la courbe d'équipe et la coordination (hors périmètre).
+- (L4) Aucune infobulle de case de la grille « Contrôle des ressources » n'était testée côté Escouade (mutation de l'en-tête d'infobulle verte sur toute la suite) ; fermé dans le lot par `ResourceGridTable.test.tsx`, puisque la table extraite change la provenance de cet en-tête.
+- (L4) `npx lefthook run pre-push` lancé depuis PowerShell sans `C:\msys64\ucrt64\bin` ni `make` au PATH : `go-vet-cgo` et `shared-social-gate` échouent pour l'environnement (gcc introuvable par le vet CGO, `make: not found` — le script du gate ne teste que gcc). Avec `C:\msys64\ucrt64\bin` et `C:\Program Files (x86)\GnuWin32\bin` au PATH : 9 / 9 verts. Non traité (hors périmètre).
+- (L4) Le plan portait deux lignes parasites (`</content>`, `</invoke>`) avant la découverte L2, laissées par une écriture antérieure de l'exécuteur ; retirées.

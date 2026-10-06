@@ -66,7 +66,7 @@ export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): 
   const s = empriseSections({
     controlRows: buildControlRows(block),
     sheets: buildPickupSheets(block, (o) => o.key),
-    grid: buildMatchGrid(block, []),
+    grid: buildMatchGrid(block, new Map()),
     production: buildProductionRows(block),
     yieldRows: buildYieldRows(block),
     habit: buildHabitView(block),
