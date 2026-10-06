@@ -770,6 +770,51 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       par la fin de la vue A.
 - [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
+      *Mesure du 2026-10-06* (instrument `grammar/ri27b_canaux_marche_research_test.go`, les 20
+      films du corpus d'équivalence, contexte de la cuisson : génération stricte, carte, découpage
+      MPP résolu ; références re-figées sur `feat/v75` `fed1efed2`, `0e0143148`). Pour les neuf
+      lecteurs ancrés, record par record (paquet, slot) et crochet par crochet, ce que l'ancrage lit
+      contre ce que la marche des trames lit (ses records relus à l'étendue de leur trace, sous son
+      cadre) :
+      - quand les deux lisent le même record, la valeur est la même : 7 divergences sur 4,6 millions
+        de positions communes, aucune sur les onze crochets ;
+      - records bipèdes delta : ancrage 5 436 632, marche 5 088 890 (et 101 148 de plus par la
+        récupération des listes non localisées du canal des morts), communs 4 615 828 ;
+      - l'ancrage seul (820 804 records) ne porte presque jamais un slot que la marche a lu dans le
+        même paquet (50) : ce sont d'autres records. Dans les trames fermées, 35 678, tous dans
+        l'étendue que la marche a lue sauf 68 : de fausses ancres, la fermeture prouve la liste.
+        Ailleurs : listes non localisées 313 606 (la récupération en relit 162 770 avec la marche,
+        85 276 communs) ; trames refusées 376 550, dont 269 899 au-delà du dernier record de la
+        marche ; queues opaques 17 458 ;
+      - la marche seule (574 210 records) : dans les trames fermées 258 629 (records sans i0, que
+        l'ancrage ne trouve pas), dans les trames refusées 270 813 ;
+      - par crochet, la marche seule lit plus que l'ancrage l'arme portée (7 665 contre 1 855), les
+        cartouches, les charges, l'équipement, les grenades et le rang ; moins le camouflage (49 301
+        contre 53 538), les deux capacités, les munitions (74 658 contre 92 706) et les positions
+        (4 619 747 contre 5 436 632, 85 %). L'écart est dans les listes non localisées et au-delà de
+        la fin de la marche des trames refusées ;
+      - fidélité : quand la trame part de sa tête, les crochets que la marche publie elle-même sont
+        ceux de ses records ; quand le localisateur a cherché le début de la liste, ses essais en
+        publient 5 à 40 fois plus (découverte 19).
+      *Décisions d'exécution du 2026-10-06* :
+      1. Les huit lecteurs à crochets (charges, impulsions, rangs, camouflage, grappin, arme portée,
+         deltas d'inventaire, équipement) deviennent des canaux de la marche des trames. L'ancrage
+         passe derrière elle (option A de l'utilisateur ; la part « avec 2.7.b » de 2.7.d) : il ne
+         lit plus que les records dont la marche n'a lu aucun record du même slot dans le paquet,
+         dans une trame qu'elle n'a pas fermée ; ses lectures se comptent au registre des replis,
+         ordre « après la lecture ». Par lecteur, la couverture devient : communs, plus la marche
+         seule, plus l'ancrage récupéré — au moins celle d'aujourd'hui, moins les fausses ancres des
+         trames fermées.
+      2. Les positions restent à l'ancrage dans ce lot : la marche seule en lit 85 %, elle
+         n'accumule pas les positions (découverte 21) et leur lecteur a sa propre grammaire d'i0.
+         Elles passent derrière la grammaire avec 2.7.d.
+      3. Les essais de la marche ne publient plus aucun crochet de canal : la porte unique des états
+         de mouvement couvre tous les crochets que les canaux de la marche posent, garde-rail
+         compris. Préalable des canaux (découverte 19).
+      4. Les lectures des records NEW bipèdes ne sont pas prises (découverte 20) : les lecteurs
+         gardent leur sens, des deltas.
+      5. Les lectures des deux sources se rangent dans l'ordre du flux (paquet, puis bit du record)
+         avant le traitement de chaque lecteur, inchangé : la source change, pas la logique.
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
@@ -1024,6 +1069,22 @@ plan y sont reprises comme items (3.1.2).
    branche fusionnée identique à `feat/v75` seule. Signalé à la campagne, qui a régénéré les
    goldens (`65c99b669`, même famille que sa découverte D23). Un banc qui ne tourne qu'en local
    peut rougir sans que personne le voie : à rejouer à chaque fusion qui touche le décodeur.
+19. *(lot 2.7.b, mesure du 2026-10-06)* **Les essais du localisateur de liste publient les crochets
+   de composant.** La porte unique des essais ne couvre que les états de mouvement : quand le
+   localisateur cherche le début d'une liste, ses lectures d'essai déposent, sur les 20 films,
+   243 949 appels d'arme portée pour 16 032 lectures retenues, 258 086 de munitions pour 61 998 —
+   tous les crochets des huit lecteurs ancrés, 5 à 40 fois les lectures retenues. Dans les trames
+   parties de leur tête, les crochets de la marche sont exactement ceux de ses records, sauf 135
+   appels de capacité non prédite (à rapporter à la réparation d'un composant non porté). Sans
+   incidence aujourd'hui (aucun de ces crochets n'est posé sur la marche) ; préalable de 2.7.b.
+20. *(lot 2.7.b, même mesure)* **Les records NEW bipèdes portent les composants des lecteurs
+   ancrés** : 9 447 lectures d'arme portée, 4 413 de cartouches, 4 398 de munitions, 2 345 de
+   grenades sur les 20 films. L'ancrage ne les voit jamais. Matière possible des dotations de
+   naissance ; hors de ce plan.
+21. *(lot 2.7.b, même mesure)* **La marche n'accumule pas les positions** : l'accumulateur de la
+   capture de position (`captureDePosition.accum`) n'a pas d'écrivain de production, le décodeur
+   de positions accumule de son côté. Une position lue par la marche n'est qu'un delta quantifié
+   tant que la marche ne tient pas un monde de positions.
 
 ## 7. Journal
 
@@ -1350,3 +1411,12 @@ plan y sont reprises comme items (3.1.2).
   GitHub, sans échec réel), gitleaks et pré-contrôle de déploiement verts, `make gate-push` vert
   (suite rejouée : la première avait été faussée par la mise en veille du poste). Campagne prévenue
   avant et après ; elle rebase LR sur cette tête. Suite du plan : 2.7.b.
+- 2026-10-06 : FUSION DE `feat/v75` (`fed1efed2` : LR de la campagne, page Tendances) dans la
+  branche (`db44b91e5`), puis passe de référence v75w3 : `replay-equiv -update` sur les 20 films,
+  tous décodés depuis le film, et killsource json sur les 19 témoins. Références d'équivalence
+  re-figées (`0e0143148`) : elles dataient du 2026-10-04 et prennent 2.7.a, 2.7.a0, la vue A V1 et
+  LR. killsource identique à la passe d'avant LR, sauf la ligne de diagnostic de calibration
+  (7 témoins sur 19). Faits de la passe mis de côté (`film_facts_v75w3`). Mesure de 2.7.b sur les
+  20 films en trois exécutions (la dernière avec la récupération des listes, la répartition de
+  l'ancrage seul et la fidélité selon le localisateur) : décisions d'exécution 1 à 5, découvertes
+  19 à 21. Campagne prévenue avant et après la passe et la mesure.
