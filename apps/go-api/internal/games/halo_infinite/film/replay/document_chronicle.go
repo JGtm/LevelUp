@@ -2832,3 +2832,33 @@ package replay
 //	                valeur : les faits persistes sont identiques a l octet.
 //
 //	LE PARC         un artefact 78 dont les faits sont sur disque : verdict `republier`.
+
+// v80 (2026-10-06, rejeu « toute entree du roster a l equipe que le film ecrit ») : L EQUIPE D UN
+// BOT QU AUCUNE ENTITE NE PORTE SE LIT DANS SA DECLARATION BOT_METADATA, ET LE BOUCHE-TROU PREND LA
+// PLACE DU PARTANT.
+//
+//	`roster[].team` un bot declare entre deux images-cles porteuses (aucune entite `ti=9` lue) prend
+//	`tracks[].team` l equipe que son entree BOT_METADATA ecrit (`killsource/botmeta_equipe.go`) ; la
+//	               table par index ne la remplace plus (elle pretait celle d un autre occupant de
+//	               l index : `c7f94693`, vie de `343 Donos` publiee 0, equipe 1). Ses vies la suivent.
+//	`roster[].seat` le bot prend la place du partant par le chainage d equipe ; un relais a la frame
+//	`roster[].     (bot declare a la frame ou finit la derniere vie du partant) n est plus un
+//	presence`      chevauchement ; l humain lu pendant la declaration du bot, sans vie avant son
+//	               retrait, lui succede : sa presence commence au lendemain du retrait. Sur les 19
+//	               temoins du lot (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.5) :
+//	               `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `depassements` 229 -> 60 ; les trois
+//	               restes ne viennent pas de l equipe (une vie nommee apres l absence prouvee de son
+//	               entite, un bot non epingle hors du roster, un depart apres la derniere image-cle).
+//	forme          AUCUN CHAMP NEUF : la forme du document ne change pas, son CONTENU change.
+//	journal        une entree presente sans equipe en ERREUR ; un bot dont l entite contredit la
+//	               declaration en ERREUR et au compteur `rejeu_bots_equipe_contre_declaration` (l entite
+//	               est publiee) ; une entree sans place ou une equipe au-dela de sa capacite en
+//	               avertissement ; les equipes lues par declaration et les successions en info.
+//
+//	CE QUI MONTE    `SchemaVersion` 79 -> 80, et `SchemaDesFaits` 4 -> 5 (la section 5 des faits
+//	AVEC ELLE       porte l equipe de chaque bot). `source`, `profile`, `grammar`, `killsource`,
+//	                `objectives`, `killcollector.IsolationDecoderRev` et `PlacementRev` gardent leur
+//	                valeur : aucune ligne de kill ne change.
+//
+//	LE PARC         un artefact 79 : ses faits sont au schema des faits 4, perimes — verdict
+//	                `redecoder` (la re-extraction des faits precede la republication).

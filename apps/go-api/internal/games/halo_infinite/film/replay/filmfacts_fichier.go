@@ -167,7 +167,13 @@ const VersionCodecFaits = 2
 // `MovementStateStats` que le blob ne portait pas, dont les deux publies du saut) SOUS LA MEME
 // MONTEE DU CODEC 2, toujours non publiee. Un fichier ecrit par un binaire de la branche avant
 // J11.0 porte le blob v27 : il est refuse a la magie du blob, et redecode.
-const SchemaDesFaits = 4
+// SCHEMA 5 (2026-10-06, lot « Rejeu : toute entree du roster a l equipe que le film ecrit ») : la
+// section 5 porte L EQUIPE DE CHAQUE BOT lue dans BOT_METADATA (`BotEntry.Team`) et le bilan de sa
+// lecture (`Roster.BotEquipes`) ; la liaison des occupants en fait l equipe des bots qu aucune
+// entite `ti=9` ne porte. `killsource.Rev` ne monte pas (aucune ligne de kill ne change, cf. sa
+// chronique) : c est ce numero qui refuse, SUR L EN-TETE, un fichier d avant — sans lui, des faits
+// « frais » sans equipe de bot se rejoueraient, et le correctif n atteindrait aucun artefact.
+const SchemaDesFaits = 5
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

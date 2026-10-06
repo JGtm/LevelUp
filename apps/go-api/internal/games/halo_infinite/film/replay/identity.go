@@ -245,6 +245,13 @@ type BotIdentity struct {
 	// la surface `replay.X` citée hors de `film/` est un ratchet daté
 	// (`archlint/film_facade_surface_test.go`) qu'un type de transport n'a pas à faire monter.
 	Declarations [][2]uint64
+	// Team est l'équipe que l'entrée BOT_METADATA du bot ÉCRIT (`killsource/botmeta_equipe.go`,
+	// lot « toute entrée du roster a l'équipe que le film écrit », 2026-10-06) : le désignateur du
+	// jeu, -1 pour « aucune », 0..8 sinon. NIL quand le décodage ne l'a pas lue — paquet qui ne
+	// ferme pas, deux paquets en désaccord, faits antérieurs : l'absence n'est pas « aucune
+	// équipe ». Elle donne son équipe à l'entrée d'un bot qu'aucune entité `ti=9` ne porte
+	// (occupants.go).
+	Team *int
 }
 
 // Bid rend l'identifiant stable du bot dans la forme de la base, `bid(N.0)`. Chaîne vide quand

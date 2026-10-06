@@ -115,14 +115,7 @@ func presenceDe(e RosterEntry, occ occupantDuRoster, in entreesDesOccupants) ([]
 			ents = append(ents, iv)
 		}
 	}
-	var decls []intervalleDePresence
-	if e.Bot {
-		for _, d := range declarationsDe(e, in.bots) {
-			if iv, ok := presenceDeLaDeclaration(d, in.horloge); ok {
-				decls = append(decls, iv)
-			}
-		}
-	}
+	decls := presencesDeclarees(e, in)
 	switch {
 	case len(decls) > 0:
 		// LE RETRAIT DU BOT EST EXACT : les entites ne font qu'avancer son arrivee, jamais
@@ -135,6 +128,21 @@ func presenceDe(e RosterEntry, occ occupantDuRoster, in entreesDesOccupants) ([]
 	default:
 		return enveloppeDesVies(occ.vies), false
 	}
+}
+
+// presencesDeclarees rend les presences EXACTES que les declarations BOT_METADATA d'un bot donnent
+// sur la grille du document ; vide pour un humain, ou pour un bot sans declaration datee.
+func presencesDeclarees(e RosterEntry, in entreesDesOccupants) []intervalleDePresence {
+	if !e.Bot {
+		return nil
+	}
+	var out []intervalleDePresence
+	for _, d := range declarationsDe(e, in.bots) {
+		if iv, ok := presenceDeLaDeclaration(d, in.horloge); ok {
+			out = append(out, iv)
+		}
+	}
+	return out
 }
 
 // jusquALImageCleSuivante est le REPLI PAR ENTREE d'un film balaye (cf. l'en-tete de occupants.go,

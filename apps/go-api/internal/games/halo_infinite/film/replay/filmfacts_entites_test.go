@@ -83,3 +83,34 @@ func TestFaitsTransportentLesDeclarationsDesBots(t *testing.T) {
 		t.Fatalf("bots relus %+v : attendu %+v et 2 paquets incomplets", relu.Kills, bots)
 	}
 }
+
+// TestFaitsTransportentLEquipeDesBots : la section 5 porte aussi L EQUIPE que BOT_METADATA ecrit
+// pour chaque bot (`BotEntry.Team`, schema des faits 5) et le bilan de sa lecture
+// (`Roster.BotEquipes`) : une equipe lue (0, et -1 « aucune ») et une equipe absente (nil) se
+// relisent a l'identique. Sans elle, un rejeu depuis les faits rendrait sans equipe le bot qu'aucune
+// entite `ti=9` ne porte.
+func TestFaitsTransportentLEquipeDesBots(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	zero, aucune := 0, -1
+	bots := []killsource.BotEntry{
+		{Slot: 8, BotID: 44, Name: "343 Sandwolf", Team: &zero},
+		{Slot: 9, BotID: 3, Name: "343 Libre", Team: &aucune},
+		{Slot: 10, BotID: 6, Name: "343 Muet"},
+	}
+	bilan := killsource.EquipesDesBots{Lues: 2, Illisibles: 1, PaquetsNonFermes: 3}
+	f := &FilmFactsFile{Facts: FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
+		EmpreinteDeCle: EmpreinteDeCle(entry),
+		Kills:          &killsource.Result{Roster: killsource.Roster{Bots: bots, BotEquipes: bilan}}}
+	blob, err := EncodeFilmFactsFile(f)
+	if err != nil {
+		t.Fatalf("encodage : %v", err)
+	}
+	relu, err := DecodeFilmFactsFile(blob, entry)
+	if err != nil {
+		t.Fatalf("relecture : %v", err)
+	}
+	if relu.Kills == nil || !reflect.DeepEqual(relu.Kills.Roster.Bots, bots) || relu.Kills.Roster.BotEquipes != bilan {
+		t.Fatalf("bots relus %+v, bilan %+v : attendu %+v et %+v", relu.Kills.Roster.Bots,
+			relu.Kills.Roster.BotEquipes, bots, bilan)
+	}
+}

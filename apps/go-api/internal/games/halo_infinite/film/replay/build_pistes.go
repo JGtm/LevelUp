@@ -112,6 +112,7 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// drapeau ; sans entite lue, elle vaut celle de l'index et rien ne change.
 	occ := lierLesOccupants(a.doc.Roster, a.doc.Tracks, entreesDesOccupants{
 		scan: a.opt.PlayerEntities, bots: a.opt.Bots, horloge: a.horloge(), parIndex: a.opt.PlayerTeams})
+	journaliserLesEquipesDeclarees(a.ctx, a.matchID, occ)
 	a.equipes.poserEquipesParEntree(a.doc.Roster, occ)
 	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
 	// LA PLACE APRES LE ROSTER ET APRES LES TRACES, parce qu'elle a besoin des deux : l'index lu,
@@ -134,6 +135,7 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 		table: a.opt.FilmTable, fire: tirsDesPlaces, tireurs: tireurs, horloge: a.horloge()})
 	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
 	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
+	journaliserLesPlaces(a.ctx, a.matchID, a.siegeCov)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.ctx, a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.ctx, a.matchID)

@@ -18,12 +18,13 @@ Une entrée du roster a TOUJOURS une équipe ; aucune section « sans équipe »
 de match. L'équipe se lit dans le film (ADR 0034 D-9, D-10 ; la grammaire prime). Résidu impossible =
 compteur + `slog.ErrorContext`, jamais un affichage « inconnu ».
 
-## État : CHECKPOINT (i) atteint à l'étape G2 — retour au superviseur avant toute implémentation
+## État : CHECKPOINT (i) levé par le superviseur — G3 implémenté, G5 préparé (aucune republication)
 
-L'équipe des bots sans entité est ÉCRITE dans BOT_METADATA (G2.c), à un champ que le lecteur actuel
-(`film/internal/facts/killsource/botmeta.go`) ne lit pas. La lire exige un champ neuf de BOT_METADATA,
-donc de toucher `film/internal/facts` (montée de `killsource.Rev`, faits du parc à ré-extraire) : c'est
-la condition (i) du brief. Rien n'est implémenté.
+Le champ d'équipe de BOT_METADATA est établi chez l'écrivain (Ghidra, F.2) et lu dans
+`film/internal/facts/killsource` (G3.0) ; la publication du rejeu en fait l'équipe des bots qu'aucune
+entité ne porte, et la pose des places assoit le bouche-trou sur la place du partant (G3.1, G3.2).
+`killsource.Rev` ne monte pas (aucune ligne de kill ne change) ; `SchemaDesFaits` 4 -> 5 et
+`SchemaVersion` 79 -> 80 : les faits et les artefacts du parc sont à ré-extraire (G5, sur go).
 
 ## Étapes
 
@@ -108,12 +109,98 @@ encadrent la déclaration.
 - [x] G2.d Verdict : la source existe dans le film (BOT_METADATA) et se lit dans la couche des faits, pas
       dans `film/replay` -> CHECKPOINT (i). Retour au superviseur.
 
-### G3 — Implémentation dans `film/replay` (si G2 le permet)
+### Levée du CHECKPOINT (i) par le superviseur (2026-10-06)
 
-- [!] G3.1 à G3.6 : non commencés. Bloqués par le CHECKPOINT (i) : la source se lit dans
-      `film/internal/facts/killsource` (champ neuf de BOT_METADATA, montée de `killsource.Rev`, faits du
-      parc à ré-extraire, croise la session RI et la campagne de grammaire). Décision au superviseur et à
-      l'utilisateur.
+Décision : lire le champ à la source, grammaire d'abord, aucune déduction par les places ; pas de
+republication. Ordre imposé : fusion de `feat/v75`, Ghidra (lecture seule), champ dans killsource,
+G3, mesure de la durée de ré-extraction sur UN film.
+
+- [x] F.1 Fusion de `origin/feat/v75` (`f8a14b3b9`, lot LR de la campagne et lot web des équipes) :
+      `e0cd93662`, automatique, sans conflit.
+- [x] F.2 Ghidra (HTTP 127.0.0.1:8089, `HaloInfinite.exe`, lecture seule, analyse au repos) :
+      - ÉCRIVAIN du paquet : `FUN_14299bda0` pose le type `0xc` et la taille `(bits + 7) / 8` ; il
+        écrit `W(32)` le nombre d'entrées (pas de 0x1440 octets), puis par bot trois `W(32)` (index
+        absolu du bot, slot, identifiant `bid`) et le corps par `FUN_1407edea8(entree + 0x10)` — le
+        corps commun aux fiches de joueur (table de `chunk_00`, paquet de type 8 ; note 5.17).
+      - LECTEUR miroir : `FUN_1429875e4` (branche `0xc` du répartiteur `FUN_1428e22c0`), corps par
+        `FUN_1407eeba4` ; le premier mot est l'`absoluteBotIndex` (assertion de `FUN_142c26748`).
+      - CORPS, après le nom (`<= 16 x R(16)`, arrêt après l'unité nulle) : `R(0x80)`, `R(32)`
+        `desired-representation`, `R(64)`, six champs courts (10, 14, 6, 8, 7, 1), le bloc de
+        personnalisation (`R(0x39e0)` sur cet exécutable, `profile.PersonnalisationOctets(build)`),
+        puis `R(0x160)` : 44 octets bruts en `enregistrement + 0x1400`.
+      - `FUN_1424d512c` recopie ces 44 octets en `configuration + 0xCC0` (structure de 0xCF0 octets) ;
+        `FUN_140a20620` initialise `+0xCE4`, `+0xCE5`, `+0xCE6` à `0xFF` (-1, aucun) et `+0xCE8` à -1.
+      - `+0xCE5` (octet 0x25 du bloc) EST L'ÉQUIPE : `FUN_140ad37f8` -> `FUN_140ad389c` la pose sur le
+        joueur (`joueur + 0x285`, masquée par `XOR 0x9E`) ; un changement notifie le moteur (méthode
+        `+0xD0`, `FUN_140adedd8`, qui en fait un masque `1 << équipe`) et la télémétrie
+        (`FUN_14113dc2c`) ; `FUN_142b70528` compare `+0x285` entre joueurs (coéquipiers).
+      - `+0xCE6` (octet 0x26), le jumeau : -1 par défaut, lu seulement par les charges d'événement
+        `FUN_1430e17bc` / `FUN_1430e1de0` (avec `+0xCE0`, `+0xCE5`, `+0xCE8`) ; `+0xCE4` est tiré au
+        hasard (0..7) à la création du bot (`FUN_142c2e510`), ce qui explique l'octet variable mesuré.
+      - POSITION : 270 + perso + 296 bits après l'unité nulle du nom ; sur HI_1_12_0 et HI_1_13_0
+        (perso 14 816 bits) : bit 15 382, largeur 8, signé. Le flux étant décalé de 6 bits, l'octet
+        0x783 vaut `(équipe & 0x3F) << 2 | jumeau >> 6` : 0x00 / 0x04 pour 0 / 1, 0x784 de même pour le
+        jumeau, et 0x785 = `(+0xCE7 & 0x3F) << 2` = 0x04 sur les 77 bots. La mesure (champs de 8 bits
+        aux bits 15 382 et 15 390, 56/56) est exactement cette grammaire : AUCUNE contradiction.
+
+### G3 — Implémentation
+
+- [x] G3.0 Champ dans `facts/killsource` (`botmeta_equipe.go`, nouveau ; `botmeta.go`, `roster.go`,
+      `decode.go`, `diagnostics.go`) : le paquet de type 12 se lit EN ENTIER par la grammaire de
+      l'écrivain (`FUN_14299bda0`, corps `FUN_1407edea8`), perso par build
+      (`profile.PersonnalisationOctets`) ; une équipe n'est retenue que d'un paquet dont la marche
+      FERME (reste < 8 bits) et d'une entrée au même slot, `bid` et nom que le lecteur historique.
+      `BotEntry.Team` (`*int`, nil = non lue), bilan `Roster.BotEquipes` (lues, illisibles,
+      contradictoires, hors grammaire, entrées hors balayage, jumeaux discordants, hors domaine,
+      paquets non fermés, perso inconnue) ; diagnostics `killsource.equipes_de_bots` (ERREUR : bot
+      sans équipe) et `killsource.entrees_de_bots` (AVERTISSEMENT). Aucun repli au registre.
+      Parc (instrument `botmeta_equipe_research_test.go`, 48 films, 1 683 paquets) : 79 bots du
+      lecteur historique, 78 équipes lues, oracle par entité 56/56 (55 HI_1_13_0 + 1 HI_1_12_0),
+      0 paquet non fermé, 0 jumeau discordant, 0 hors domaine, 1 « hors grammaire » (`8076f97f`,
+      `43 KaleDucky` slot 0 `bid` 0 : fragment de la copie petit-boutiste du nom que le balayage
+      historique lit, cf. D9). `killsource.Rev` NE MONTE PAS (aucune ligne de kill ne change :
+      goldens des 4 films de référence et de la mini-bobine, seules la ligne des bots et la ligne du
+      bilan changent, cumul inchangé ; 19 témoins : clés `kills`/`killRefs` des artefacts
+      identiques) — précédent du lot M2.1 ; complément du 2026-10-06 dans `rev_chronique.go`
+      (rang `killsource-2026-09-18` archivé pour tenir les 500 lignes), golden d'empreinte
+      régénéré à révision constante. C'est `replay.SchemaDesFaits` (4 -> 5) qui périme les faits.
+      Projection `replayidentity.BotIdentities` -> `replay.BotIdentity.Team`.
+- [x] G3.1 Équipe d'une entrée (`occupants.go`, `equipeDe`) : entités `ti=9` à l'unanimité, sinon
+      `BotIdentity.Team`, sinon (humain, ou film non balayé) la table de contrôle ; un bot d'un film
+      balayé sans entité ni déclaration lue reste sans équipe (plus d'emprunt à l'index). Contradiction
+      entité / déclaration : l'entité est publiée, ERREUR + compteur expvar
+      `rejeu_bots_equipe_contre_declaration` (0 sur les 19 témoins) ; entrée présente sans équipe :
+      ERREUR (`journaliserLesPlaces`). D1 corrigé : la vie [947..981] de `343 Donos` passe de 0 à 1.
+- [x] G3.2 Places (`sieges_places.go`) : relais à la frame admis quand un des deux est un bot daté
+      par BOT_METADATA (D5 corrigé : `572e236b`, Bachici sur la place 7) ; l'humain ARRIVÉ pendant la
+      déclaration du bot, sans vie avant son retrait, lui succède — place du bot en priorité du
+      chaînage, présence ouverte au lendemain du retrait (D4 corrigé : `43e96765`, place 0 =
+      LeodaganQC -> PardonMy -> Cmillward21 dès 1345, 0 dépassement). D2, D3, D6 : consignés
+      (ne découlent pas de l'équipe, cf. G3.5). D7, D8 : consignés.
+- [x] G3.3 `SchemaVersion` 79 -> 80 (contenu, AUCUN champ neuf : les trois compteurs envisagés en
+      couverture auraient changé le contrat servi, donc `generated.ts` du web — retirés, journal et
+      expvar à la place) ; chronique v80 ; `structure_test.go` ; plafonds `film_file_size_test.go`
+      (+30, +4) ; empreinte de forme (schéma seul) ; 8 goldens d'assemblage (ligne de schéma
+      seule) ; fixtures Go du web régénérées (`replay_schema_80_*`, contenu identique hors version).
+- [x] G3.4 Tests : killsource (10 unitaires sur paquets fabriqués par la grammaire de l'écrivain,
+      goldens réels), `replayidentity` (projection), `replay` (5 tests d'équipe déclarée, 5 tests de
+      successions, transport de l'équipe par les faits), suites complètes de `games/halo_infinite/...`,
+      `replaybuild`, `service/replayview`, `sync/killcollector`, `archlint` : vertes ; `go vet` avec
+      et sans `research` ; golangci-lint (paquets touchés, depuis `e0cd93662`) : 0 constat.
+- [x] G3.5 Compteurs sur les 19 témoins, en processus (racine de scratch, copie de la base) :
+      | | sansEquipe | sansPlace | placesEnTrop | depassements |
+      |---|---|---|---|---|
+      | AVANT (`e0cd93662`) | 18 | 21 | 3 | 229 |
+      | APRÈS | 0 | 3 | 3 | 60 |
+      Restes, un par film, aucun ne vient de l'équipe : `859da825` (SplinterCell958 sans place,
+      1 place en trop, 4 dépassements : D2), `bf2a9f05` (AllGodsLove, 1, 16 : D3), `d1dfbc02`
+      (`343 Ham Sammich`, équipe 0 lue, aucune place libre, 1, 40 : D6). Témoin clé `43716616` :
+      place 5 = Slowpoke6743 (0-247) -> `343 Sandwolf` (248-281, `apparie`) -> KernelPanic10
+      (318-) ; plus de place 8. Équipes de vies changées sur les 19 témoins : 4 vies de bots
+      seulement (Forge Lord -1 -> 0, Donos 0 -> 1, Ritzy -1 -> 1 deux fois). Chaînes de place des
+      18 bots conformes au tableau G1, sauf `4f77afc1` Darkstar (place 1 au lieu de 2 : la place 1
+      paraît libre faute de liaison de ses entités d'équipe 1, D8).
+- [ ] G3.6 `adversarial-review`, `delivery-checklist`, commits, push, CI verte.
 
 ### G4 — Mesure de l'hypothèse « bouche-trou » (lecture seule)
 
@@ -163,8 +250,9 @@ l'image-clé près, 20 s).
 
 ### G5 — Republication (préparée, NON exécutée sans go explicite)
 
-- [!] G5.1 : dépend de la décision. Si le champ est lu par killsource, ce n'est plus une republication
-      depuis les faits mais une ré-extraction (faits périmés par la révision de killsource).
+- [ ] G5.1 Durée de ré-extraction mesurée sur UN film en processus (rien dans `data/`), extrapolée au
+      parc local (126 films) ; commande exacte et vérification (`coverage.seats` des 19 témoins).
+      Pas de republication (accord de l'utilisateur, calée avec la campagne).
 
 ### Clôture
 
@@ -203,6 +291,13 @@ l'image-clé près, 20 s).
   d'équipe 0 de Truly Elusive (slot 6600, dès 10144), seul occupant que la table de `chunk_00` nomme à
   ce siège. L'artefact assoit sur la place 1 les bots The Thumb et Razzle (équipe 0, `apparie`) et la
   montre vide de 934 à 10144, pendant que le film y lit un occupant d'équipe 1.
+- D9 (`8076f97f`, HI_1_12_0) : le lecteur historique de BOT_METADATA (`scanBotEntries`) lit un bot
+  FANTÔME `43 KaleDucky` slot 0 `bid` 0 — un fragment de la copie petit-boutiste du nom (bloc de
+  44 octets) qu'il lit à un octet près quand l'octet qui la précède n'est pas nul ; ses offsets
+  négatifs tombent dans le bloc de personnalisation (zéros). Il n'est pas épinglé (l'index 0 est un
+  humain) et `replayidentity` l'écarte ; ses 4 paquets se comptent « incomplets » (2 entrées pour
+  `nbBots = 1`). La marche de l'écrivain ne le lit pas : il se compte « hors grammaire » (G3.0).
+  Correctif hors lot (le lecteur historique épingle le roster du kill-feed).
 - Revue adversariale (ronde 1, relecteur frais) : 0 P0 ; 1 P1 (G2.a généralisé au-delà des 2 films
   mesurés : corrigé en restreignant l'affirmation) ; 5 P2 d'imprécision (formulation de G1.2 et durée
   maximale, place 1 de `4f77afc1`, décompte des films et build HI_1_12_0 à N = 1, équipe de Ham Sammich

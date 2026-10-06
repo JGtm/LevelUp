@@ -1377,8 +1377,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 79 (2026-10-05, rejeu « cercle de retour du drapeau ») : la base et le camp de chaque
 	//   drapeau se lisent dans le film quand le catalogue se tait ; quatre compteurs `omitempty`
 	//   dans `coverage.flagCarries`. Un v78 se lit « a republier ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 79 {
-		t.Fatalf("SchemaVersion = %d, attendu 79 : incrémenter exige une raison écrite ci-dessus "+
+	// - 80 (2026-10-06, rejeu « toute entree du roster a l equipe que le film ecrit ») : l equipe d un
+	//   bot sans entite se lit dans sa declaration BOT_METADATA, le bouche-trou prend la place du
+	//   partant et l humain qui arrive lui succede ; aucun champ neuf. Un v79 se lit « a redecoder »
+	//   (faits au schema 5). Detail : `document_chronicle.go`.
+	if SchemaVersion != 80 {
+		t.Fatalf("SchemaVersion = %d, attendu 80 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
