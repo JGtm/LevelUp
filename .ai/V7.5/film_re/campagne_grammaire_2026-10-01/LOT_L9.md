@@ -1,6 +1,6 @@
 # Lot L9 — marche d'image-clé de toutes les générations (2026-10-03)
 
-> Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.2 « L9 ». Worktree `LevelUp-wt-cg-l9`,
+> Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.2 « L9 ». Worktree `LevelUp-wt-cg-l9`,
 > branche `feat/cg-l9`, base `af6e93e23` (L0 fusionné). Films lus en place (lecture seule) depuis
 > `data/cache/film_chunks` du checkout principal ; 20 films du corpus (19 témoins de
 > `config/replay_corpus.toml` + `1c4c63c2`). Ghidra en lecture seule (HTTP 127.0.0.1:8089,

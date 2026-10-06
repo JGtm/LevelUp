@@ -1,6 +1,6 @@
 # T6 — Véhicules `ti=40` : composants non portés et porte `+0x818` (2026-10-01)
 
-> Campagne grammaire, phase 1, étape 2, piste T6. Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`.
+> Campagne grammaire, phase 1, étape 2, piste T6. Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`.
 > Source : `HaloInfinite.exe` dans Ghidra, serveur HTTP `127.0.0.1:8089`, LECTURE SEULE (aucun
 > `rename_*`, `set_*`, `create_*`...). Image base `0x140000000`. Le seul code non défini en fonction
 > dans Ghidra (`0x14116d3cc`) a été lu en octets bruts (`read_memory`) puis désassemblé hors Ghidra

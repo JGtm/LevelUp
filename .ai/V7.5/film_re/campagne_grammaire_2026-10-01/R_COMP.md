@@ -1,6 +1,6 @@
 # R_COMP — chantier « comp » de la campagne de grammaire : R-L3, R-HOM, R-P3 (2026-10-02)
 
-> Recherches préalables du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1 / §6.2 (R-L3, R-HOM,
+> Recherches préalables du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1 / §6.2 (R-L3, R-HOM,
 > R-P3). Worktree temporaire `LevelUp-wt-cg-comp`, HEAD détachée sur `fe18bf67c`. Aucun fichier
 > suivi modifié, aucune base DuckDB, aucune cuisson, aucun commit. Films en lecture seule (19
 > témoins de `config/replay_corpus.toml` + `1c4c63c2` ; `81c02726` pour le seul relevé de

@@ -115977,3 +115977,22 @@ fausse alarme du seuil de 3 m. Mutations 4 / 4 ROUGES ; vet, archlint, G-film, g
 
 **Conclusion / prochaine étape** : admission du rc=1 (V-6 instruit, découverte D-VAV3-6 sur le seuil)
 et relecture par levelup-57 des fichiers de la RI touchés ; poussée et CI à décider par le pilote.
+
+## [2026-10-06] Campagne de grammaire : V2 et V3 de la vue A fusionnées, parc recuit, campagne close — Complété
+
+**Statut** : Complété (plan déplacé sous `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, §7).
+
+**Décision technique principale** : V2 et V3 de la vue A entrent dans `feat/v75` (`2707fdb31`, avance
+rapide, CI verte, relecture de levelup-57 sans P0) ; la campagne est close sur décision de
+l'utilisateur (« Clore, mesure d'abord ») ; la reprise après la queue opaque d'une trame partie de E est
+refusée (« Non, grammaire d'abord » : convention non lue dans le jeu).
+
+**Résultats observés** : recuisson du parc avec le binaire de `2707fdb31` : 126 rejeux construits et
+redécodés, 0 erreur, 0 mort mémoire, pic 1,35 Gio, 32 min 34 s, aucune vie anonyme, aucune famille
+d'avertissement neuve. Liste RI des 2 449 paquets `DebutParFermeture` : 829 / 2 358 mesurés ont un
+début LU (824 fermés). Huit lecteurs de la RI : +806 / −51 records, dont environ 15 réellement perdus.
+Worktrees des lots (12) retirés, jonctions supprimées d'abord, sans `--force`.
+
+**Conclusion / prochaine étape** : pistes au registre des reports (composants où la marche depuis E
+bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (rang .5, P1 de
+`movement_states.go`, lot lint).

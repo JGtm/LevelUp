@@ -1,7 +1,7 @@
 # R_NAIS — chantier « nais » : R-L1 (a), (b), (d) et R-P6 (2026-10-02)
 
 > Campagne de recherche sur la grammaire du jeu, phase 2, recherches préalables au lot L1
-> (`.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1 tableau « Recherches préalables », §6.2 « R-L1 »,
+> (`.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1 tableau « Recherches préalables », §6.2 « R-L1 »,
 > ligne R-P6). Worktree temporaire `LevelUp-wt-cg-nais`, HEAD détachée sur `fe18bf67c`. Rien n'est
 > commité. Aucun fichier suivi n'est modifié : seuls des fichiers NEUFS (préfixe `r_nais`), six sondes
 > `*_research_test.go` sous `//go:build research`, cette note, des TSV et des décompilations Ghidra.

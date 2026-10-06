@@ -1,6 +1,6 @@
 # T8 — Bourrage au-delà du tampon : ce que fait le jeu (2026-10-01)
 
-> Piste T8 de la campagne de grammaire, phase 1 (`.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, étape 2).
+> Piste T8 de la campagne de grammaire, phase 1 (`.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, étape 2).
 > Ghidra en LECTURE SEULE sur `HaloInfinite.exe` (image base `0x140000000`, serveur HTTP
 > `127.0.0.1:8089` : `decompile_function`, `disassemble_function`, `get_xrefs_to`,
 > `search_strings`, `search_instructions`). Code lu à la tête du worktree

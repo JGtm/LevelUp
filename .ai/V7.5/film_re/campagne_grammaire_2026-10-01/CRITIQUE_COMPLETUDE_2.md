@@ -156,7 +156,7 @@ Par ailleurs, la phrase « les deux dernières colonnes sont égales build par b
 Fichiers relus, sous `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/` :
 - `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/CRITIQUE_COMPLETUDE_1.md`
 - `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`
-- `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§2, §4, §5, §6)
+- `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§2, §4, §5, §6)
 - `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_CIBLEES.md`
 - `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_1.md`
 - `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_2.md`

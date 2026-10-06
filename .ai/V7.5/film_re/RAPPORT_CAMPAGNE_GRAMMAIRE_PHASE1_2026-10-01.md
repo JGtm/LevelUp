@@ -1,6 +1,6 @@
 # Rapport — Campagne de recherche sur la grammaire du jeu, phase 1 (2026-10-01, révisé le 2026-10-02)
 
-> Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (étape 5). Worktree
+> Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (étape 5). Worktree
 > `LevelUp-wt-campagne-grammaire`, branche `feat/campagne-grammaire`, base `feat/v75` = `69564ef7d`.
 > **Rien n'est commité.** Aucune sortie de production n'a changé : `grammar.Rev` est inchangé
 > (`grammar-2026-09-27.3`, empreinte régénérée à révision constante), aucun film cuit, aucune base
@@ -391,7 +391,7 @@ bis 1 donne la valeur.
 
 ## 6. Suite
 
-Plan de la phase 2 : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6. Il contient les lots
+Plan de la phase 2 : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6. Il contient les lots
 reclassés, les recherches préalables, les gates complétés, l'inventaire des recoupements avec J12 et
 les décisions demandées (§6.3).
 

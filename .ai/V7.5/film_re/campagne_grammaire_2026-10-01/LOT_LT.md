@@ -1,6 +1,6 @@
 # Lot LT — règle de tête de liste : jamais une tête NEW dont le masque contredit l'écrivain (2026-10-04)
 
-> Lot de marche NEUF de la vague 2 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§5,
+> Lot de marche NEUF de la vague 2 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§5,
 > « Découvertes de la vague 1 », règle de tête de liste ; D-L8-1, D-L8-8, D-L3a-1, D-L2-5, D-L2-12),
 > GO de la vague 2 de l'utilisateur du 2026-10-04, sous le contrat `plan-execution`, dans le cadre du
 > critère FERME du 2026-10-02 : **corrections générales lues dans le jeu, aucun réglage par film, par
