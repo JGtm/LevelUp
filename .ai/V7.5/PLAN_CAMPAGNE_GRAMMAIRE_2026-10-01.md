@@ -3053,7 +3053,8 @@ journal : mêmes familles qu'à la recuisson précédente (`objectives.deroulage
 
 ### 7.4 Pistes restantes (au registre)
 
-1. Composants où la marche depuis E bute (pertes E de V2, `LOT_VA_V2.md` §5.1) : `ti=43 i19` (139),
+1. Composants où la marche depuis E bute (pertes E de V2, `LOT_VA_V2.md` §5.1 ; handoff
+   `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md`) : `ti=43 i19` (139),
    `ti=12 i16` (61), `ti=45 i0` (19), `ti=10 i2` (19), `ti=12 i18` (7), `ti=43 i21` (6), et les arrêts
    en vue C (56) et par rejet (37).
 2. Lots non engagés du §6.1 : L1a, L6a, L6b, L3b, L4b, LK, L10 ; LM mis de côté (largeur mesurée, non
