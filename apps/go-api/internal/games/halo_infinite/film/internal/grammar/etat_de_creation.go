@@ -10,11 +10,16 @@ package grammar
 //	                l archetype (`CALL [RAX+0x60]` @1408f1c0f, cinquieme argument 1) ;
 //	                `TEST AL,AL ; JZ 0x1408f210e` @1408f1c12 : sur un echec, il ne lit NI
 //	                `vtable+0x88`, NI la boucle de composants (`FUN_14076cb60`), et ne cree pas
-//	                l entite (`FUN_1408f2150`). Le corps du record n est pas lu.
+//	                l entite (`FUN_1408f2150`). Le corps du record n est pas lu. Il rend alors 0
+//	                comme un succes (`MOV EAX,ESI` @1408f1f78 ; ESI est nul a l appel de
+//	                `vtable+0x60`, `TEST ESI,ESI ; JNZ` @1408f1bf0) et son appelant poursuit
+//	                (`FUN_1406cbaa0`, `iVar13 == 0`) : le jeu relirait la suite desalignee.
 //	FUN_14080cfe8   le bloc `object-multiplayer-properties` ([consumeMultiplayerPropertiesBlock]).
 //	                Le compte R(3) : `CMP ECX,0x4 ; JA 0x14080d319` @14080d238, ou
 //	                `XOR SIL,SIL` pose l echec ; le lecteur lit quand meme la suite
 //	                (`FUN_14080d4d0`, la queue G3), puis `TEST SIL,SIL ; JZ` @14080d327 rend 0.
+//	                La liste du bloc a quatre places : ses entrees s ecrivent de `param_1+0xd` a
+//	                `param_1+0x15` par pas de 2, et `FUN_14080d4d0` ecrit a `param_1+0x15`.
 //
 // Les lecteurs d etat qui lisent ce bloc, et ce qu ils font de son echec :
 //
@@ -33,10 +38,11 @@ package grammar
 // ses feuilles, puis `if (*(lecteur+0x18)*8 < *(lecteur+0x2c) || cVar1 == 0) -> 0`. Le port y
 // applique la regle par [consumeDefaultStateTI36], qu il appelle pour `FUN_1407f2224`.
 //
-// D ou la regle, LUE DANS LE JEU et non mesuree : un record NEW dont le bloc MPP annonce un compte
-// superieur a quatre (sous la reserve de `ti=41`) n est pas lisible par le jeu — son corps ne
-// serait pas lu et l entite ne serait pas creee. Le film est le flux que le jeu relit : une lecture
-// qui y trouve un tel record ne lit pas un record ecrit la. [TraverseEntity] arrete donc le record
+// LU DANS LE JEU, et non mesure : un record NEW dont le bloc MPP annonce un compte superieur a
+// quatre (sous la reserve de `ti=41`) n est pas lisible par le jeu — son corps ne serait pas lu et
+// l entite ne serait pas creee. DEDUIT, car le jeu ne signale pas cet echec : le film est le flux
+// que le jeu relit, une lecture qui y trouve un tel record ne lit donc pas un record ecrit la ; le
+// verdict d illisibilite est cette deduction. [TraverseEntity] arrete donc le record
 // a la fin de son etat ([EntityTrace.EtatIllisible]), et le juge de l ecrivain la contredit
 // ([InvariantEtatDeCreationIllisible]).
 

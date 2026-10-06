@@ -13,11 +13,10 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lectur
 //	                                   lecture est [lecture.LiaisonAucune] ;
 //	un record DEL ne DELIE pas         ([World.Unbind]).
 //
-// Un faux NEW lie a cet endroit ecrasait l archetype d un slot pour tout le reste du chunk, et un
-// faux DEL retirait une entite vivante : les paquets suivants, eux lisibles, en perdaient leurs
-// records. Le refus d un NEW qui contredit une entite vivante reste compte comme avant
-// ([Observation.NeufsContreUnVivant]) : [corpsDeRecordNeuf] juge la contradiction AVANT la marche
-// non prouvee.
+// Un NEW non prouve lie ecraserait l archetype d un slot pour la suite du chunk ; un DEL non prouve
+// retirerait une entite vivante. Le refus d un NEW qui contredit une entite vivante est compte au
+// second rang aussi ([Observation.NeufsContreUnVivant]) : [corpsDeRecordNeuf] juge la contradiction
+// AVANT la marche non prouvee.
 //
 // CETTE MARCHE MODIFIE ENCORE LE MONDE PAR UN CHEMIN : la liaison par anticipation. Un en-tete
 // DELTA d un slot non lie y passe par [rejetDeVue], qui lie le slot ([World.LierParRepliDAnticipation],

@@ -95,8 +95,10 @@ const objectArchetypeCount = 50
 
 // TraverseEntity decodes one new-entity record header (R6 typeIndex + default-state
 // + R1 gate + presence mask) and walks the archetype's present components via
-// consumeByName. It stops at the first un-ported present component (DesyncAt). The
-// held-weapon variant is captured when a weapon-state-type-info slot is reached.
+// consumeByName. It stops at the first un-ported present component (DesyncAt). It
+// also stops at the end of the creation state when the game's state reader fails
+// ([EntityTrace.EtatIllisible], DesyncAt 0, neither gate nor mask read; see
+// etat_de_creation.go). The held-weapon variant is captured when a weapon-state-type-info slot is reached.
 //
 // For the biped archetype (typeIndex==35) the leading part of the default-state is
 // deserialised bit-exact via consumeBipedDefaultState (FUN_140F44C38) + the

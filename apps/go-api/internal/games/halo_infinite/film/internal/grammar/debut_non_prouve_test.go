@@ -86,8 +86,8 @@ func TestLAnnonceNeVautQuePourLaMarcheQuiSuit(t *testing.T) {
 }
 
 // TestLAnnonceDesigneUnBitDuPayload : une annonce posee sur le MEME payload a un autre bit que le
-// debut de la marche ne la designe pas (c est le cas de D-LR-3 : un debut que la marche ne prend
-// pas tel quel) ; la marche lie et delie comme son temoin. MUTATION : ignorer le bit dans
+// debut de la marche ne la designe pas (un debut que la marche ne prend pas tel quel) ; la marche
+// lie et delie comme son temoin. MUTATION : ignorer le bit dans
 // [World.prendreDebutNonProuve], ROUGE.
 func TestLAnnonceDesigneUnBitDuPayload(t *testing.T) {
 	pay := listeNonProuvee()

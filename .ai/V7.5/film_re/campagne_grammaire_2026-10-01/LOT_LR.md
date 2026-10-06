@@ -28,7 +28,7 @@
 | Gates de code (gofmt, vet, vet research, archlint, golangci, G-film) | [x] | tous verts (§8) ; reprise : §12.5 ; G-film après régénération des goldens et fixtures à révision constante (hors `grammar`) |
 | killsource 19 témoins | [x] | identique à l'octet hors du diagnostic `calibration` (7 films) (à la base `87cdfa761` comme à la reprise, §12.5) : D23, révision constante |
 | replay-equiv, replay-corpus-gate | [x] joués | reprise (§12.5) : gate de corpus rc 1 = `P-1` en `MANQUE` sur les 12 films en baisse ; à la base `87cdfa761` : replay-equiv : `objectives` identique sur 20 films ; gate de corpus rc 1 = `P-1` en `MANQUE` sur 13 témoins, la baisse du gate 2 (§8) |
-| **Verdict (reprise du 2026-10-06, §12 ; second contrôle, §12.9)** | **RETENU sous D2, proposé au pilote** | à la base `87cdfa761` : non retenu (sections 3 à 9) ; sur `8dfadd07e` sous le découpage déclaré : gate 2 sans baisse hors fermetures factices instruites ; commit sur `feat/cg3-lr`, non poussé |
+| **Verdict (reprise du 2026-10-06, §12 ; second contrôle, §12.9 ; revue, §12.10)** | **RETENU sous D2, proposé au pilote** | à la base `87cdfa761` : non retenu (sections 3 à 9) ; sur `8dfadd07e` sous le découpage déclaré : gate 2 sans baisse hors fermetures factices instruites ; commit sur `feat/cg3-lr`, non poussé |
 
 ## 1. Ce qui est lu dans le jeu
 
@@ -547,7 +547,8 @@ du gate de corpus (`R-1`) donne les mêmes valeurs sur ses 19 témoins, à une u
 - **D-LR-6** reste vrai : `replay-equiv` et le gate de corpus cuisent les films du corpus (recette de
   la campagne) ; aucune cuisson du parc.
 - D-LR-3 (annonce non consommée si le second rang tombe sur l'amorce et que la vue A n'est pas vide)
-  reste non observé ; le cas « même payload, autre bit » est désormais testé (correction 4).
+  reste non observé ; le cas « même payload, autre bit » est désormais testé (correction 4,
+  `TestLAnnonceDesigneUnBitDuPayload`, dont le commentaire ne cite plus l'écart depuis §12.10).
 
 ### 12.8 Verdict de la reprise
 
@@ -556,6 +557,16 @@ déclaré **+1 311 sains, +42 607 utiles sains** ; les 12 films en baisse ne per
 factices retirées (famille A, instruites paquet par paquet) ; 8 pertes non factices (famille C), toutes
 sur des films en hausse. Proposé au pilote : **RETENU sous D2**, rc 1 du gate de corpus instruit au même
 titre. Commit sur `feat/cg3-lr`, non poussé.
+
+**Décomposition LR.1 / LR.2 (mesurée par la revue, §12.10, à la connaissance du pilote)** : LR.1 seul,
+la seule partie LUE DANS LE JEU, ne fait que retirer des fermetures factices (famille A, D2) et est en
+perte nette sur les trois films rejoués, sans aucun gain : `e5adf7b2` -3 sains / -50 utiles,
+`c75f33b8` -5 / -24, `4f77afc1` -16 / -92. Les gains viennent de LR.2, une règle de PRUDENCE du
+décodeur (une lecture non prouvée ne modifie pas le monde), non une lecture du jeu : sur `4f77afc1`,
+LR complet donne +501 / +15 470 et 518 gagnés, contre 0 gagné pour LR.1 seul. LR.2 seul n'a pas été
+mesuré : « les +1 311 viennent de LR.2 » est une attribution par différence sur trois films (estimé
+pour les dix-sept autres). LR.2 a l'accord du pilote du 2026-10-05 ; au regard du critère
+« corrections générales lues dans le jeu », le pilote décide en connaissance de cause.
 
 ### 12.9 Corrections du second contrôle (2026-10-06)
 
@@ -582,3 +593,22 @@ tombent sur des films 8/3 `presume_par_mesure` (`e5adf7b2`, `11de8353`, `60ae07c
 leur verdict d'illisibilité repose sur ce découpage présumé, celui de 2.7.a0, désigné officiel par le
 pilote. Dette notée par le contrôle, hors LR : la branche `p == false` de `consume1408eff64` n'est plus
 atteinte qu'en test (déjà vrai à la base).
+
+### 12.10 Corrections de la revue (2026-10-06)
+
+La revue (tête `94892fe8e`, pièces `scratchpad/cg3-lr2-revue/`) a relevé quatre constats mineurs,
+vérifiés sur pièces un par un ; tous vrais. Seuls des commentaires et ce compte rendu changent : aucune
+sortie de production ne bouge, la révision reste `grammar-2026-10-06.3` (empreinte insensible aux
+commentaires : `TestGrammarRevSuitLaGrammaire` vert).
+
+| # | Constat | Vérification | Action |
+|---|---|---|---|
+| R1 | Les gains du lot viennent de LR.2 (prudence du décodeur), LR.1 seul (lu dans le jeu) est en perte : la proposition ne le disait pas | MESURÉ, reproduit : `rv.awk` sur `carte_base` contre `carte_lr1seul` (tête privée de `w.marquerDebutNonProuve`, `-mpp-declare`) : `e5adf7b2` -3 / -50, `c75f33b8` -5 / -24, `4f77afc1` -16 / -92, 0 gagné ; contre `carte_tete` : `4f77afc1` +501 / +15 470, 518 gagnés (les deux autres identiques à LR.1 seul) | [x] ligne de décomposition au §12.8 ; LR.2 seul non mesuré, attribution par différence écrite comme telle |
+| R2 | `etat_de_creation.go` présentait le verdict d'illisibilité comme lu dans le jeu ; le jeu ne signale pas l'échec | LU DANS LE JEU (`gh/` de la revue) : `FUN_1408f1aa4` rend `MOV EAX,ESI` @1408f1f78 avant son unique `RET` @1408f1f9e ; ESI est nul à l'appel de `vtable+0x60` (`TEST ESI,ESI ; JNZ 0x1408f210e` @1408f1bf0) ; le bloc d'échec 1408f210e rejoint 1408f1f6b puis ce `MOV` (chemin `R12 == 0` ; l'autre, `JMP 0x142278371`, rendu `unaff_RSI` selon la revue, non relu ici) ; `FUN_1406cbaa0` : `if ((iVar13 == 0) && ...)` poursuit ; `FUN_14080cfe8` : entrées de `param_1+0xd` à `param_1+0x15` par pas de 2 sous `uVar7 < 5`, `FUN_14080d4d0(param_1 + 0x15, ...)` | [x] bloc de tête : retour 0 comme un succès et poursuite de l'appelant ; quatre places de la liste ; « LU DANS LE JEU » séparé de « DÉDUIT » |
+| R3 | Contrat de `TraverseEntity` muet sur l'arrêt après un état illisible | lu : doc `traverse.go` inchangée par le lot, arrêt `if br.etatIllisible` après la lecture de l'état | [x] une phrase au contrat (`EtatIllisible`, `DesyncAt` 0, ni porte ni masque) |
+| R4 | Histoire dans du code neuf (règle 17) : imparfait dans `debut_non_prouve.go`, « D-LR-3 » dans un commentaire de test | lu : `debut_non_prouve.go` (« écrasait », « en perdaient », « comme avant ») ; `debut_non_prouve_test.go` (« c'est le cas de D-LR-3 ») | [x] contrat au présent (un NEW non prouvé lié écraserait l'archétype d'un slot pour la suite du chunk ; un DEL non prouvé retirerait une entité vivante) ; renvoi de D-LR-3 au §12.7. `rev_chronique.go`, qui cite `LOT_LR.md`, est la chronique : l'histoire y est à sa place |
+
+Gates rejoués (GOCACHE `go-build-cg3-lr`) : `gofmt -l` sur `grammar/` vide ; `go vet` avec et sans
+`-tags=research` rc 0 ; `go test -count=1` de `grammar/` rc 0 ; `golangci-lint run
+./internal/games/halo_infinite/film/internal/grammar/...` `0 issues.`. Carte, G-film, killsource et
+gate de corpus non rejoués : commentaires seuls, sortie de production identique par construction.

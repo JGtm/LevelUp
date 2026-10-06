@@ -115615,3 +115615,24 @@ golangci-lint `grammar/...` 0 issue. Révision inchangée (`grammar-2026-10-06.3
 **Conclusion / prochaine étape** : LR proposé au pilote, RETENU sous D2 (`LOT_LR.md` §12.9, avec la
 réserve 8/3 du contrôle). À la fusion avec `origin/feat/v75` (`1518e6f10`), seul `.ai/thought_log.md`
 est un conflit probable.
+
+## [2026-10-06] Campagne de grammaire — lot LR : corrections de la revue (R1 à R4)
+
+**Statut** : Complété (commit sur `feat/cg3-lr`, non poussé).
+
+**Décision technique principale** : quatre constats mineurs vérifiés sur pièces, tous vrais ;
+commentaires et compte rendu seulement. R1 : décomposition LR.1 / LR.2 au §12.8 de `LOT_LR.md`
+(LR.1 seul, lu dans le jeu, en perte sur les trois films rejoués ; les gains viennent de LR.2, règle de
+prudence du décodeur ; LR.2 seul non mesuré). R2 : `etat_de_creation.go` dit que `FUN_1408f1aa4` rend 0
+comme un succès et que l'appelant poursuit, sépare le lu du déduit, et note les quatre places de la
+liste MPP. R3 : contrat de `TraverseEntity` complété (arrêt sur `EtatIllisible`). R4 : contrat de
+`debut_non_prouve.go` au présent ; D-LR-3 renvoyé au compte rendu.
+
+**Résultats observés** : R1 reproduit par `rv.awk` (`e5adf7b2` -3 / -50, `c75f33b8` -5 / -24,
+`4f77afc1` -16 / -92, 0 gagné, contre +501 / +15 470 pour LR complet sur `4f77afc1`). R2 relu dans le
+désassemblage (1408f1bf0, 1408f1f78, 1408f1f9e, 1408f210e) et les décompilations de `FUN_1406cbaa0`
+et `FUN_14080cfe8`. Gates : gofmt vide, vet (avec et sans `research`) rc 0, `go test` de `grammar/`
+rc 0, golangci-lint `grammar/...` 0 issue ; révision inchangée (`grammar-2026-10-06.3`).
+
+**Conclusion / prochaine étape** : LR proposé au pilote (`LOT_LR.md` §12.8 et §12.10), qui tranche
+sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
