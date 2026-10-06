@@ -329,3 +329,28 @@ package grammar
 // (`-mpp-declare`) : carte v2 397 824 -> 399 135 paquets sains (+1 311) ; les 12 films en baisse
 // ne perdent que des listes ouvertes sur un NEW que le jeu ne lit pas. Le rang `.6` du 2026-10-03,
 // que portait la tete du lot avant sa reprise, n a jamais ete fusionne.
+//
+// ENTREE `grammar-2026-10-06.4` (2026-10-06, lot 2.7.b de la representation intermediaire,
+// `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES HUIT LECTEURS DE COMPOSANTS
+// BIPEDES LISENT LA MARCHE DES TRAMES, L ANCRAGE PASSE DERRIERE ELLE.
+//
+// Ce qui change, contre `grammar-2026-10-06.3` :
+//   - [canalDesLecturesBipedes] recueille, pendant la marche des trames, les publications des onze
+//     crochets des huit lecteurs (charges, impulsions, rangs, camouflage, grappin, arme portee,
+//     deltas d inventaire, equipement), datees de la position du lecteur de la marche, et les
+//     attribue au composant du record bipede delta qui les porte ; les lecteurs les rejouent
+//     ([lecturesBipedes]) au lieu de marcher les records ancres ;
+//   - l ancrage d en-tete bipede ne rend plus que les records d un slot que la marche n a pas lu
+//     dans le paquet, hors de ce que la fermeture de la trame prouve (repli
+//     `repli_ancrage_bipede_apres_la_marche`) ;
+//   - un corps mort n agit plus (le record du dead-state et ceux du meme corps jusqu au NEW) ; une
+//     emission d arme portee qui repete la famille precedente de l emplacement, ou annonce un
+//     emplacement vide sans occupant connu, est `Restated` ; la garde des generations vivantes
+//     datees vaut pour les records de la marche ;
+//   - la porte des essais eteint les douze crochets de canal ([Observation.neutraliserLesCrochetsDeCanal]).
+//
+// Preuve : gate de corpus contre `fed1efed2` (19 temoins) : aucun oracle ne bouge ; les lectures
+// montent partout, aucune n est perdue contre la base hors des lachers d une arme inconnue ; un
+// portage de bombe se ferme a l armement (`c75f33b8`), d ou la montee de
+// `killcollector.PlacementRev`. `replay.SchemaVersion` reste 79 : la publication depuis les faits ne
+// change pas, les faits si. Le rang : le premier libre apres `.3` (lot LR de la campagne).

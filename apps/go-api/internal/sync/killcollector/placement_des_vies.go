@@ -64,14 +64,13 @@ const (
 // exige une passe a CETTE revision pour tout match qui a des vies ; le backlog automatique du
 // post-sync ne la lit pas (decision V12 : un deploiement ne relance aucun redecodage de lui-meme).
 //
-// ELLE MONTE QUAND LES PORTAGES LUS CHANGENT, et non seulement la mesure : `carrier_ms` vient du
-// calque du drapeau (`replay.buildFlagCarries`). A cette revision, les socles du calque se lisent
-// aussi dans le film (`replay/flag_film_bases.go`) : une carte hors catalogue a deux drapeaux
-// d'equipe au lieu d'un drapeau d'equipe -1, les socles du catalogue que le film n'apparie pas
-// (socles surnumeraires, socle central d'une autre variante) sortent du calque, un socle sans
-// camp prend celui du film ou devient le socle neutre — les portages, donc les durees portees,
-// en dependent.
-const PlacementRev = "placement-2026-10-05-v1"
+// ELLE MONTE QUAND LES PORTAGES LUS CHANGENT, et non seulement la mesure : `carrier_ms` vient des
+// calques de porteur (drapeau, crane, couronne, bombe) que [replay.PortagesAuSync] relit. Les socles
+// du drapeau se lisent aussi dans le film (`replay/flag_film_bases.go`) ; le portage de la bombe
+// suit les changements d'arme tenue, que la grammaire lit sur la marche des trames, l'ancrage
+// derriere elle (grammar `grammar-2026-10-06.4`) — les portages, donc les durees portees, en
+// dependent.
+const PlacementRev = "placement-2026-10-06-v1"
 
 // PorteeDuRadar rend la portee du radar d'une variante (`game_variant_name` tel que la base le
 // porte), en metres. `connue` faux = variante absente de la table : la ligne s'ecrit sans portee
