@@ -116257,3 +116257,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés (vérifiés sur pièces)** : `SquadPlayers` trie et tronque (impossible pour onze fiches dans l'ordre du tableau des scores), d'où une liste passée toute faite ; le bilan `resources` de l'Emprise ne porte pas les râteliers (D et E lisent les objets du match) ; les fiches sont un modèle web, pas un champ du bloc ; aucune donnée publiée pour les prises non classées ; Q20 garde des lecteurs après la Riposte ; `FragWeaponBreakdown` reste lu par la Synthèse et les Séries temporelles ; sur le BTB témoin le journal n'est pas publiable, les frags sous effet et par vie y sont donc dits « non mesurés ». Relecture plan-review : quatre défauts corrigés (prises non classées, lecture des vies par joueur contraire à I4, fiches sans râteliers, briques sans lecteur avant M3).
 
 **Conclusion / prochaine étape** : arrêt en fin de phase 1 ; décisions D1-D22 et questions Q1-Q3 à trancher par le superviseur, puis phase 2 sur « rebase sur <sha> » et « go ».
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M0 : rebase et relecture des dépendances — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : rebase de la branche sur la tête de `feat/v75` (`2668848b1`, lots Séries temporelles et Sessions intégrés), signal du superviseur ; symboles attendus du lot Sessions relus, forme identique (le nom des objets vit dans `objectName.ts`). Amendements consignés au plan (§1.4) : la règle « vies d'un match au journal non publiable écartées et comptées » existe déjà côté lecture et calcul, la carte des vies la suit (pas de champ ni de texte « frags non mesurés ») ; règles de texte du 2026-10-06 (titres courts déclinés, aucun mot de personne, « équipe » jamais « camp ») ; dette « Mes matchs » de la Vue match et extension de la garde des textes à la feature.
+
+**Résultats observés** : rebase sans conflit ; `go build ./...` vert (second passage en `-p 2`, le premier a manqué de mémoire système) ; `npm ci` ; `tsc -b --force` 0.
+
+**Conclusion / prochaine étape** : M0 clos ; M1 (lectures Go) dans la foulée, sous le « go » du superviseur.

@@ -23,9 +23,10 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D22 fermes, réponses §9)**. Phase 2 suspendue jusqu'au message
-> « rebase sur <sha> » (tête finale de `feat/sessions-emprise`, elle-même rebasée sur la tête finale
-> de `feat/ts-usages-emprise` après L8), puis « go ».
+> Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D22 fermes, réponses §9)** ;
+> **phase 2 en cours** depuis le 2026-10-07 (signal du superviseur : rebase sur la tête de `feat/v75`
+> `2668848b1`, qui porte les lots Séries temporelles et Sessions, puis « go » M0-M5 ; push à la fin,
+> CI ; ni merge ni autre rebase). Amendements de M0 : §1.4.
 > Branche : `feat/matchview-emprise`, créée sur `651bbe972` (tête L6 de `feat/ts-usages-emprise`),
 > worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-matchview`.
 
@@ -247,7 +248,45 @@ jamais un zéro inventé) ; (3) tous les gates des lots verts, dernière exécut
 | `buildSoloEmpriseBlock(ctx, soloEmpriseQuery) *domain.SoloEmpriseBlock` | `service/solo_emprise_block.go` (S1.1) | M1.5 (champ `Players`), M2.3 |
 | `lireViesPresOuSeul(ctx, viesQuery)` | `service/solo_lives_block.go` (S1.2) | M1.4 (généralisé), M2.4 |
 | `squadagg.BuildWeaponTools(WeaponToolInputs) *domain.SquadWeaponTools`, `squadagg.PlayersAboveSheet` | `service/squadagg/weapon_tools.go` (S1.3) | M2.5 |
-| `empriseObjectName(o, usageText, unknownVehicle)` | `squad/emprise/emprise.logic.ts` (S3.1) | M3 (noms d'objets de D et E) |
+| `empriseObjectName(o, usageText, unknownVehicle)` | `squad/emprise/objectName.ts` (S3.1 ; relu en M0 : fichier propre, pas `emprise.logic.ts`) | M3 (noms d'objets de D et E) |
+
+Relu en M0 (base `2668848b1`) : les quatre symboles existent avec la forme attendue —
+`soloEmpriseQuery{Page, Player, PlayerXUID, RepoRoot, TitleSlug, Locale, Current, Lectures,
+UsageRepo, EmpriseRepo, VehicleRepo, WithMaps}` (`service/solo_emprise_block.go:21-41`) ;
+`viesQuery{Page, Player, PlayerXUID, Repo, Radar, MatchIDs}` et `lireViesPresOuSeul`
+(`service/solo_lives_block.go:26-69`) ; `squadagg.WeaponToolInputs{Rows, Categories, PlayersOrdered,
+GtByXUID, Sheet, HasMechanics}`, `BuildWeaponTools`, `PlayersAboveSheet`
+(`service/squadagg/weapon_tools.go:34-45,80,228`).
+
+### 1.4 Amendements de M0 (2026-10-07, sur pièces et sur consigne du superviseur)
+
+- **A1 (D7, D14) — Journal non publiable : la règle existe déjà pour les vies.** Depuis les correctifs
+  du lot TS, `SoloLivesRepo` nomme les matchs au journal non publiable (`qSoloJournalNonPubliable`,
+  `solo_lives_repo.go:61-67,123-138`) et `coordination.ViesPresOuSeul` ÉCARTE leurs vies et les COMPTE
+  (`ExcludedUnpublishable`, `vies_pres_ou_seul.go:64-67`). La carte I suit cette règle : pas de champ
+  `FragsMeasured`, pas de texte « frags non mesurés » ; un joueur dont toutes les vies sont écartées
+  n'a pas de barre, la carte se retire quand aucun joueur n'a de vie rangée, et l'ⓘ compte les trois
+  causes (texte de « Isolement », `usagesCardsText.ts:129-135`). D7 reste pour G et H seulement
+  (`publishable_deaths` de Q21d) ; la lecture multi-joueurs (D8) garde la lecture du journal, commune à
+  tous les joueurs.
+- **A2 (D17) — Règles de texte du 2026-10-06 (validées par l'utilisateur, consigne du superviseur du
+  2026-10-07).** Titres = noms de domaine courts, déclinés par un complément factuel, jamais de verbe
+  ni de phrase ; AUCUN mot de personne (ma, mes, mon, moi, notre, nous, ta, tes, ton, me, je, « chez
+  nous ») ; le joueur = son gamertag ; groupes « Équipe », « Adversaire », « Reste de l'équipe » ;
+  « équipe », jamais « camp ». Aides ⓘ : une ou deux phrases, mesure et périmètre. Même carte qu'une
+  page sœur = même titre, même aide (portée « le match »). Titres retenus : A « Répartition des frags »,
+  B « Outils de destruction », C « Distance par arme », D « Contrôle des ressources, par match »,
+  E « Prises par joueur » (sens : qui a pris quoi dans l'équipe), F « Usage d'équipements, par
+  joueur », G « Frags par ressource », H « Rendement par ressource », I « Isolement, par joueur ».
+  Les textes de la maquette ne se portent plus mot pour mot : D17 et M3.3 suivent ces règles.
+- **A3 — Dette « Mes matchs ».** `MatchViewPage.tsx:146,177` écrit « Mes matchs » / « My matches » en
+  dur → « Matchs » / « Matches » (M3.13). La garde `timeseries/usages/textesSansPersonne.test.ts` est
+  ÉTENDUE à `features/match-view/` (une seule garde, pas de copie) : textes `MATCH_VIEW_TEXT`,
+  `MATCH_EMPRISE_TEXT` et littéraux de phrase des sources de la feature ; vue rouge avant, verte après
+  (M3.13).
+- **A4 — Bloc `combat_tab` et coordination.** La riposte du bloc `coordination` est sortie avec
+  Sessions D10 ; les types `MatchRiposte*` de la Vue match sont désormais `domain/coordination_block.go:161-211`
+  (en-tête l. 10). §4.F suit ces numéros.
 
 ## 2. Spécification de rendu (non négociable)
 
@@ -325,10 +364,9 @@ type MatchEmpriseBlock struct {
     SquadEmpriseBlock                       // Matches a un seul élément
     KillJournalPublishable bool `json:"kill_journal_publishable"` // D7
 }
-// MatchLivesNearTeammate — « Vies : près d'un coéquipier ou seul », par joueur de mon camp (D8).
+// MatchLivesNearTeammate — « Isolement », par joueur de l'équipe (D8 ; journal non publiable : A1).
 type MatchLivesNearTeammate struct {
-    FragsMeasured bool               `json:"frags_measured"` // D7
-    Players       []MatchLivesPlayer `json:"players"`        // ordre de D3
+    Players []MatchLivesPlayer `json:"players"` // ordre de D3
 }
 type MatchLivesPlayer struct {
     XUID string `json:"xuid"`
@@ -462,15 +500,31 @@ commentaires historiques (corrigés s'ils deviennent faux, règle 17). Juge de p
 
 ### M0 — Préalable : rebase et relecture des dépendances · rapide (aucun code)
 
-- [ ] M0.1 Sur « rebase sur <sha> » : `git -C <worktree> rebase <sha>` ; conflits attendus seulement
+- [x] M0.1 Sur « rebase sur <sha> » : `git -C <worktree> rebase <sha>` ; conflits attendus seulement
   sur `.ai/thought_log.md` (ajouts en fin, les deux gardés) ; aucun fichier de code ne diverge (la
   branche ne porte que ce plan, la maquette, les mesures et le journal).
-- [ ] M0.2 Relire sur pièces chaque symbole de la table §1.3 (fichier, signature) ; mettre la table et
+- [x] M0.2 Relire sur pièces chaque symbole de la table §1.3 (fichier, signature) ; mettre la table et
   les items M1-M3 à jour si un NOM a changé ; arrêt et compte rendu si une FORME diffère (D1).
-- [ ] M0.3 Rejouer les lignes citées par M1-M2 (le code a bougé avec L7, L8, S1-S7) et corriger les
+- [x] M0.3 Rejouer les lignes citées par M1-M2 (le code a bougé avec L7, L8, S1-S7) et corriger les
   numéros dans ce plan ; rejouer les preuves §4 (relevé de départ, consigné au journal).
 - Gate : aucun code ; `git -C <worktree> log --oneline -5` et `git status --short` propres ; le plan
   mis à jour commité (`docs(matchview): plan relu sur la base <sha>`).
+
+Journal M0 (2026-10-07, exécuteur) :
+- **M0.1** Rebase sur `2668848b1` (tête de `feat/v75`, signal du superviseur, au lieu de la tête de
+  `feat/sessions-emprise` : elle la contient) sans conflit, y compris sur le journal. `go build ./...`
+  vert (au second passage avec `-p 2` : le premier a échoué sur « fichier de pagination insuffisant »,
+  mémoire de la machine, pas le code) ; `npm ci` (508 paquets, node_modules réel) ; `npx tsc -b --force` 0.
+- **M0.2** Symboles relus : §1.3 (forme identique ; `empriseObjectName` vit dans `objectName.ts`).
+- **M0.3** Écarts sur pièces consignés en §1.4 (A1 : règle des vies au journal non publiable déjà en
+  place ; A4 : numéros des types `MatchRiposte*`). Les autres lignes citées par M1-M2 sont relues à
+  l'ouverture de chaque item (règle 4 du contrat) : les fichiers Go de la Vue match n'ont pas bougé
+  depuis la base du plan hormis `registry_pages.go` (12 lignes, factory Sessions) et
+  `coordination_block.go` (riposte de la coordination retirée par Sessions). Côté web, le lot du rejeu a
+  modifié `MatchEquipmentUsageSection.tsx`, `MatchPadControlSection.tsx`, les modèles d'équipement et de
+  socles et `match-view/{teamColor, teamSeriesColor, xuidMeta, _momentum, MatchScoreCurveChart,
+  MatchScoreEventsChart}` (allégeance lue dans le film) : §4 est rejoué en M3.9 sur ces versions.
+- Consignes du superviseur intégrées : A2 (règles de texte), A3 (dette « Mes matchs » et garde étendue).
 
 ### M1 — Go : lectures et calculs (aucun contrat neuf) · moyen
 
@@ -539,10 +593,10 @@ match_view_tools.go (NEUFS), match_view_service.go, match_view_data_loaders.go}`
   sur `MeasuredDeaths` → rouge.
 - [ ] M2.4 D8, D22 : `attachMatchLives` — repo nil → Debug « capability absente », bloc absent ; une
   lecture `lireViesDuCamp` pour les joueurs de D3 ; bloc absent si aucun joueur n'a de vie lue ;
-  `FragsMeasured` = D7 ; section `match_lives`. Tests : ordre des joueurs = D3, bilan par joueur
+  section `match_lives` (A1 : pas de `FragsMeasured`). Tests : ordre des joueurs = D3, bilan par joueur
   (témoin m2209 à la main, portée 18 m : JGtm 11 / 2 vies, 8 / 0 frags), échec de lecture → bloc
-  absent + ErrorContext, journal non publiable → `FragsMeasured` faux. Mutations : ordre du repo au lieu
-  de D3 → rouge ; `FragsMeasured` toujours vrai → rouge.
+  absent + ErrorContext, journal non publiable → vies écartées et comptées pour chaque joueur.
+  Mutations : ordre du repo au lieu de D3 → rouge ; un joueur sans vie lue retiré de la liste → rouge.
 - [ ] M2.5 D9 : `matchWeaponTools(ctx, d, scoreboardRow)` → `squadagg.BuildWeaponTools` ; trace
   `PlayersAboveSheet` (Debug, patron `teammates_squad_weapon_tools.go:323-329`). Tests ROUGES d'abord
   (`match_view_tools_test.go`) : témoin m2209 (MESURES §3 B : MK50 Sidekick 7, Mêlée 2, Grenade frag 1,
@@ -617,6 +671,10 @@ nommément SANS modification (`SquadEmprisePage.test.tsx`, `SquadContributionsPa
 - [ ] M3.11 Paire `match-view=>timeseries` (D14) dans `ALLOWED_CROSS_IMPORTS` avec son commentaire ;
   ratchets : knip 0 / 0 / 0, imports croisés ≤ 7, aucune dérogation morte ; si un plafond baisse,
   l'abaisser.
+- [ ] M3.13 A3 : la garde `textesSansPersonne.test.ts` étendue à `features/match-view/` (textes et
+  littéraux de phrase des sources), vue ROUGE sur « Mes matchs » / « My matches », puis
+  `MatchViewPage.tsx:146,177` → « Matchs » / « Matches » (test `MatchViewPage.test.tsx:103-109` suit) ;
+  verte.
 - [ ] M3.12 Tests de page : `MatchViewTabs.test.tsx` et `MatchViewTabPlayers.test.tsx` adaptés
   (ordre des cartes A-J, intertitres, retrait par carte, sans film, Halo 5 — seule la barre épaisse
   des armes spéciales de G si la feuille la porte —, anglais, état vide de l'onglet) ; test de page
