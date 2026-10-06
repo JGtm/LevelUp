@@ -115501,6 +115501,26 @@ fusion de 2.7.a et 2.7.a0. Découverte 17 (exemption de lint par chemin) à port
 
 **Conclusion / prochaine étape** : étape V2 (E décide du début de la vue B : toujours pour les films ÉGALE, paquet par paquet et prouvé pour les films PRÉFIXE), sous le gate 2. Restent à arbitrer par le pilote : D-VAV1-5 (rangs de révision partagés avec la RI 2.7.a) et la phrase de doctrine de `SchemaDesFaits` (§7).
 
+## [2026-10-05] Campagne de grammaire — lot VA, étape V2 : la fin de la vue A fixe le début de la vue B, puis corrections du contrôle — Complété (commits locaux sur `feat/cg3-vue-a`, non poussés ; rc 1 du gate de corpus soumis au pilote)
+
+**Statut** : Complété. Étape statuée **[x] retenue** (`LOT_VA_V2.md` §0), sous la réserve du rc 1 du gate de corpus (3 `FAUX` de V-3, `[FILET]`, instruits ; aucun `MANQUE`). Le contrôle indépendant de `8354c0d43` a demandé quatre corrections ; les quatre sont fondées sur pièces et appliquées (§14).
+
+**Décision technique principale** : la fin E de la vue A lue jusqu'à son terminateur est le début de la vue B (lu : `FUN_142f2c3b0`, `FUN_142987460`), aux trois sites (cuisson, marche des morts d'objet, `killsource`) : film ÉGALE toujours, film PRÉFIXE seulement si la marche depuis E ferme sans règle de l'écrivain contredite, vue A lue en partie jamais (décisions de l'utilisateur du 2026-10-04). Correction 2 : la loi du bit nul appliquée aux candidats NEW de tête par la première version est **retirée** (hors plan, D-VA-6, non couverte par une décision ; seule cause des 3 films en baisse et des 3 `MANQUE`) ; elle est déclarée au §11 pour une décision datée de l'utilisateur. Correction 3 : test du juge PRÉFIXE (`TestUnFilmAncienNePrendPasUneFinDeVueAFermeeAuBitSeulement`, mutation m14 ROUGE). Correction 4 : garde « au moins un genre » retirée de `debutParLaVueA`, raison écrite. `grammar-2026-10-06.3`.
+
+**Résultats observés** : carte v2 contre `87cdfa761`, 20 films : 313 542 → 355 198 sains (+41 656), utiles sains +550 416, identique à l'octet à la décomposition « fin de la vue A seule » ; 354 pertes, toutes de classe E, instruites ; aucun film en baisse, aucune exception D2. `killsource json` : aucune mort, valeur ni voie ne change (`killsource.Rev` constant). Correction 1 : l'étape `vehicles` publiée des films ÉGALE à véhicules (`4f77afc1`, `bfecd02b`, absents du corpus de `replay-equiv`) perd 5 lectures d'occupation sur `4f77afc1` (aucune mort), instruites comme pertes de classe E (la marche depuis E s'arrête sur `ti=0 i0 game-engine-team-mapping-component` ou contredit S). Les nombres de la sonde du contrôle (22 morts retirées) viennent d'un contexte sans le profil calibré par `killsource` que la cuisson pose ; reconstruit, ce contexte rend exactement l'étape publiée. Gates de code verts, 13 / 13 mutations ROUGES.
+
+**Conclusion / prochaine étape** : `origin/feat/v75`, avancé à `28c542b33` pendant l'étape, est fusionné (`59d450150`) et les gates sont rejoués contre cette nouvelle base : même verdict (carte et killsource identiques à l'octet, `replay-equiv` mêmes étapes, gate de corpus rc 1 sans `MANQUE`, mutations ROUGES ; `LOT_VA_V2.md` §7.1). Seconde avance de `feat/v75` (`65c99b669`) fusionnée (`30d94a60b`) ; gates rejoués le 2026-10-06 contre cette base (`LOT_VA_V2.md` §7.2) : carte v2, `killsource` et étapes `replay-equiv` de la tête identiques à l'octet, mêmes étapes divergentes contre la base, gate de corpus rc 1 au même tableau (0 `MANQUE`, 3 `FAUX` de V-3), 13 / 13 mutations ROUGES, gates de code verts ; les quatre corrections du contrôle vérifiées présentes à la tête. Puis `origin/feat/v75` a avancé à `8dfadd07e` (lot 2.7.a de la RI : canal des morts, `object_deaths_march.go` supprimé) : fusion d'essai à 19 conflits abandonnée, blocage soumis au pilote (`LOT_VA_V2.md` §7.3 ; ordre convenu V1, 2.7.a, LR, V2). Reste : cette fusion et la remesure, admission du rc 1 par le pilote, revue adversariale de fin de lot, soumission des fichiers de la RI à levelup-57. La loi du bit nul des candidats attend une décision de l'utilisateur.
+
+## [2026-10-06] Campagne de grammaire — lot VA, étape V3 : la variante de partie du film décide les genres 85 et 116, puis corrections du contrôle — Complété (commits locaux sur `feat/cg3-vue-a`, non poussés ; rc 1 du gate de corpus soumis au pilote)
+
+**Statut** : Complété. 116 `[x]` porté ; 85 `[!]` sur tous les films dont la vue A se lit (`LOT_VA_V3.md` §0, §1.4). Le contrôle indépendant de `a91476e3b` a demandé trois corrections ; les trois sont fondées sur pièces et appliquées (§14), la quatrième rubrique relève du pilote.
+
+**Décision technique principale** : `a91476e3b` lit le corps de `chunk_00` jusqu'à la table des joueurs par son lecteur du jeu (`FUN_1407ee138`, deux messages Bond CompactBinary v2) ; la variante de partie rend `m_gameEngineType`, `killcamEnabled` et `playOfTheGameEnabled` (`PlaybackSettings`). 116 `teleport_effects` porté : la branche de `FUN_140c5f938` suit le type de moteur du film (`DAT_145121140` = 1 si et seulement si `m_gameEngineType` = 1, lu). 85 `PlayerKilledEvent` : la règle de l'écrivain est portée (partie fixe seule quand les drapeaux du film rendent la garde fausse) mais elle reste `[!]` sur le cache : `playOfTheGameEnabled` vaut vrai, la queue dépend alors du réglage d'exécution `play_of_the_game_enabled`, absent du film, qui ne se devine pas. `grammar-2026-10-06.4`, `profile-2026-10-07` ; `killsource.Rev` et `objectives` constants. Corrections du contrôle : les formes Bond des écrivains (id 0xE0 sur deux octets, fin de structure de base, entier variable de cinq octets au plus) sont gardées, car le jeu les écrit, et désormais écrites par les vecteurs ; la portée de la lecture du schéma Bond (HI_1_13_0 seulement, appliqué aux builds antérieurs, cohérence mesurée et non lue) est écrite au §1.3.
+
+**Résultats observés** : marche du corps fermée sur la table des joueurs sur 1 656 / 1 657 films du cache, `m_gameEngineType` = 2 partout. Vues A lues jusqu'au terminateur : +141 (sonde, carte posée). Carte v2 identique à l'octet (aucun film en baisse, gate 2 tenu sans exception), `killsource json` identique, `repli_localisation_largeur_libre` 21 → 14 sur `d9781168`. Gate de corpus rc=1 par deux lignes `[FILET]` de `d9781168`, instruites (reclassement de paquets non localisés, P-1 +34). Contrôle : chiffres rejoués identiques, neuf fonctions relues dans Ghidra conformes. Corrections : code de production inchangé ; gofmt, vet (avec et sans research), paquet `grammar`, archlint, golangci-lint 0 issue ; mutations 14 / 14 ROUGES (m12 à m14, VERTES au contrôle, désormais ROUGES).
+
+**Conclusion / prochaine étape** : au pilote — admission du rc=1 du gate de corpus (deux lignes `[FILET]` de `d9781168`), revue adversariale de fin d'étape prévue au plan pour V3, et écart E-1 (`origin/feat/v75` = `1518e6f10` porte 2.7.a, non fusionné). Le 85 ne se décidera que par une lecture du réglage d'exécution (D-VAV3-4).
+
 ## [2026-10-05] Campagne de grammaire — lot VA, étape V1 : corrections de la relecture RI — Complété (commit local sur `feat/campagne-grammaire`, non poussé)
 
 **Statut** : Complété. Les deux relecteurs de la session levelup-57 ont relu `3bacfadeb` : trois constats, puis sept (a à g). Chacun a été vérifié sur pièces, aucun n'est infondé (`LOT_VA_V1.md` §12).
@@ -115796,6 +115816,29 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : films avec bots (48) : 44 intervalles demandés, 4 entièrement couverts, 39 en partie (32 compatibles avec une place jamais vide), 1 non couvert (143 f). Films sans bot (78) : 6 intervalles, aucun couvert. Troisième contrôle du champ (octet 0x783) : 76 bots, 0 désaccord avec l'équipe de la place. « Pas encore apparu » : humains arrivés en cours de match, 51 sur 53 sans corps au début de leur présence (médiane 276 f, max 1 951 f) ; humains présents à la frame 0, 461 sur 1 072 (médiane 37 f) ; bots arrivés en cours de match, 34 sur 77 en retard (médiane 82 f) et 25 sans aucun corps.
 
 **Conclusion / prochaine étape** : l'hypothèse de l'utilisateur tient dans les matchs qui ont des bots ; les matchs sans bot ne comblent pas leurs places. En attente de la décision sur le champ (CHECKPOINT i) avant G3.
+## [2026-10-06] Campagne de grammaire — lot VA : fusion de feat/v75 (fed1efed2) et corrections de la revue
+
+**Statut** : Complété (décisions soumises au pilote et à l'utilisateur)
+
+**Décision technique principale** : fusion de `origin/feat/v75` (2.7.a de la RI : canal des morts ; lot
+LR) dans `feat/cg3-vue-a`, puis traitement des quatorze constats de la revue, tous vérifiés fondés sur
+pièces. Le canal des morts reçoit les records de la cuisson, partis de E quand la vue A décide (test
+porté, mutation MG rouge) ; seule la marche de killsource appelle `DebutDeLaVueB` (test sous la carte du
+match, X1 rouge ; second retour gardé, X5 rouge). Le lecteur Bond de la variante ne rend plus une valeur
+par défaut comme lue. Une région jouée que le catalogue ne lit pas dans le tag (Live Fire) ne rend plus
+aucun index lisible. Révisions réunies : `grammar-2026-10-06.4`, `profile-2026-10-06.3`. ADR 0037 IR-6
+réécrit.
+
+**Résultats observés** : carte v2 contre `fed1efed2` 399 135 → 452 779 sains, aucun film en baisse ;
+killsource identique sur 20 films sauf un compteur non persisté ; objectives identique ; morts et
+occupation des véhicules changées sur 6 films par l'effet explicite de V2 (97 lectures sur des trames
+parties de E, 184 sur des trames de même début dont le monde a changé en amont) ; repli à largeur libre
+en baisse sur les 15 films publiés ; gate de corpus rc=1 avec un `FAUX` V-6 (`084a804d`, non tranché) ;
+variante identique sur les 1 657 films du parc déjà lus.
+
+**Conclusion / prochaine étape** : décisions demandées (LOT_VA_V3 §15.6) — garde de majeure 0x29 des
+films HI_1_12_0 (utilisateur), D23 de killsource, `SchemaDesFaits`, marquage des genres présumés des
+films PRÉFIXE, admission du gate de corpus (pilote).
 ## [2026-10-06] Rejeu : aucune section sans équipe (lot WEB, branche `feat/rejeu-equipes-web`)
 
 **Statut** : Complété (plan `.ai/PLAN_REJEU_EQUIPES_WEB_2026-10-06.md` clos, exécuté sous `plan-execution` pour le superviseur levelup-dc ; branche poussée, NON fusionnée — la fusion dans `feat/v75` revient à l'utilisateur ; lot Go parallèle `feat/rejeu-equipes-source` pour la source).
@@ -115815,3 +115858,142 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : parc (48 films, 1 683 paquets) : 78 équipes lues, oracle 56/56, 0 paquet non fermé, 1 bot fantôme du lecteur historique (`8076f97f`, D9). 19 témoins, en processus : `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `placesEnTrop` 3 -> 3, `depassements` 229 -> 60 ; restes D2 (`859da825`), D3 (`bf2a9f05`), D6 (`d1dfbc02`), étrangers à l'équipe ; témoin `43716616` : place 5 = Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, plus de place 8 ; D1, D4, D5 corrigés. Kill-feed identique (goldens réels, artefacts des 19 témoins). Revue adversariale : relecteur A (lecture) 0 P0 / 0 P1 / 4 P2 corrigés ; relecteur B (places) 0 P0 / 0 P1 / 6 P2 traités (deux défauts réels de la succession corrigés, un comportement de la lecture `tirs` gardé et écrit, texte du verdict du parc corrigé, tests ajoutés) ; onze mutations rejouées, toutes rouges ; pas de ronde 2 (aucun P0/P1). Découverte D10 : le récapitulatif de `backfill-replay` comptera « republiés » des films qui redécodent.
 
 **Conclusion / prochaine étape** : fusion dans `feat/v75` par le superviseur ; puis, sur go de l'utilisateur, ré-extraction du parc local (G5.2 : `backfill-replay --only-existing`, passes aval, vérification des 19 témoins) avec la durée réelle relevée ; la session RI (lot 2.7.c) reprendra la lecture BOT_METADATA quand `killsource` deviendra un canal de la marche unique.
+## [2026-10-05] Sessions, Séries temporelles, Vue match : relevé des rendus v1 des statistiques du film et proposition d'alignement sur l'Escouade (Emprise) — En cours (étude, aucun code, rien commité)
+
+**Demande** : les graphes de l'Escouade (onglet Emprise, lots L0-L7 et V1-V5) sont tenus pour bons ; les mêmes statistiques existent en première version sur Sessions, Séries temporelles et la Vue match, chacune avec sa variante. Proposer le retravail, page par page.
+
+**Décision technique principale** : relevé exhaustif sur pièces par trois agents Opus en lecture seule (fichier:ligne, source de données, dénominateurs, textes). Constat commun : les trois pages portent la doctrine du contrat `SessionUsageBlock` (`domain/session_usage.go`, handoff S2 du 2026-09-04) — tout en parts normalisées, parité 100/n, deux dénominateurs (équipe / lobby) par grandeur, hachure du lobby, bandes de régularité, « habituel » en infobulle — c'est exactement ce que l'Escouade a abandonné (comptes camp contre camp dans les segments, `team-ally`/`team-enemy`, fiches alignées, grille match par match, production / rendement, placement des vies, soirée après soirée). Le calcul pur `analysis/squademprise.Build` prend une liste de joueurs et de matchs : il sert une session solo (joueurs = le joueur) sans nouvelle mesure. Correction au souvenir de l'utilisateur : la « coordination » n'est pas retirée partout — Escouade › Synergies garde sa section Coordination (Appui, Morts ripostées, Temps de riposte, frise, Rôles de portée / hauteur) ; ce qui a été retiré est le nuage « Frags non ripostés » et les jauges « morts à portée / riposte en 5 s » (remplacées par le placement des vies).
+
+**Résultats observés** : Sessions = 13 cartes (Riposte, Appui reçu, Portée, 2 frags, 8 usages dont deux « Régularité match par match » et un intertitre « Prises nettes de drapeau » rendu sans contenu, `SessionUsageSection.tsx:197-210`) ; Séries temporelles › Usages = 17 cartes + 4 tuiles (portée 3 + équipement 5 + formes retenues 9) plus Riposte / Appui reçu sur Progression, périmètre forcé aux matchs sans ami (`TimeseriesPage.tsx:86-95`) ; Vue match = 10 cartes du film, dont « Part de chaque équipe » déjà en piste camp contre camp à comptes (D20 du 2026-09-21), « Contrôle des armes spéciales » en empilé ECharts par joueur à opacité par rang, « Riposte » en comptes. Doublons relevés dans les trois rapports (même part sous plusieurs dénominateurs, titres identiques, infobulles recopiées).
+
+**Conclusion / prochaine étape** : proposition remise à l'utilisateur (Sessions 13 -> 9 ; Séries temporelles 17 -> 8, formes retenues retirées ; Vue match : trois cartes remplacées, Riposte retirée) ; au « ok » page par page, maquette à chiffres réels puis plan sous `plan-execution`.
+
+**Complément (2026-10-05, retours utilisateur)** : (1) « soirée après soirée » rejeté pour les Séries temporelles — la page est le miroir solo de l'Escouade sur le périmètre filtré (période ou sessions, `match_context` solo), lue match par match ; l'onglet Usages doit être l'Emprise appliquée aux matchs solo du périmètre (9 cartes, grille par CARTE jouée plutôt que par match, pas d'habitude). (2) Décision utilisateur : sur Escouade › Synergies, retirer « Rôles de hauteur », « Riposte », « Temps de riposte », « Morts ripostées » (confusion du chantier Emprise vies) ; « Appui » et « Rôles de portée » restent — lot à part, non lancé. Conséquence sur les pages solo : riposte retirée partout, appui gardé. (3) Travail page par page, Séries temporelles d'abord : maquette avant / après à interrupteur, chiffres réels (JGtm solo, 1er juillet → 5 octobre : 90 matchs, 19 filmés, 0 placement de vies sur le solo), confiée à un agent Opus sur une COPIE de `shared_matches_v2.duckdb` dans le scratchpad (serveur local en marche, bases tenues), brief `BRIEF_MAQUETTE_TIMESERIES_USAGES.md` (scratchpad).
+
+**Complément 2 (2026-10-05, maquette publiée)** : https://claude.ai/artifact/BR8veZfoaQrbhqNKuU8Uk2 , copies `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` et `MESURES_TIMESERIES_USAGES_2026-10-05.md` (non commitées). Deux interrupteurs : Avant / Après, et périmètre « Illustration : tous mes matchs depuis le 1er juillet » (189 matchs, 83 filmés) / « Solo réel ». Constats de mesure : (1) le solo de JGtm depuis le 1er juillet = 90 matchs de Super Fiesta Assassin, sans socle, sans bonus au sol, sans objectif — l'onglet y est presque vide quelle que soit la forme, d'où le périmètre d'illustration ; (2) `match_life_placement` et `match_vehicle_takes` ont 0 ligne dans la copie de la base locale du 05/10 18 h 26, alors que le journal note leur rattrapage local les 30/09 et 01/10 — cause non instruite (base en écriture par une autre session), rien touché ; (3) l'avant affiche deux comptes différents des mêmes prises de socle (141 par le résumé d'usage, 116 + 6 non classées par la table des niveaux) ; (4) grappin et propulseur n'ont ni prise ni usage publiés dans le bilan d'issues, seulement des lâchers. Chiffres recoupés par le superviseur : armes spéciales 229 contre 231, râteliers 350 contre 507. Prochaine étape : verdict utilisateur carte par carte sur la maquette.
+
+**Complément 3 (2026-10-05, retours utilisateur sur la maquette, v3 publiée à la même adresse)** : tout l'après est VALIDÉ sauf deux cartes. (1) « Placement et rendement de chaque vie » : une variante plus simple est demandée pour le solo (coéquipiers inconnus, jamais les mêmes). Proposée : UNE carte « Mes vies : près d'un coéquipier ou seul », barre épaisse = part de mes vies selon la distance au coéquipier le plus proche À L'INSTANT DE LA MORT (moins d'une portée de radar / au-delà), barre fine = part de mes frags pendant ces vies, frags par vie au bout ; elle remplace le nuage et « Part des vies par placement ». Source : `match_death_context_latest` (147 140 morts, 1 520 matchs, déjà écrite au sync) jointe à `match_lives_latest` et `match_kill_events_latest` — aucun rattrapage, contrairement à `match_life_placement`. Mesuré (seuil 18 m, vies de JGtm terminées par une mort depuis le 1er juillet) : solo 721 vies près / 152 seul, 0,8 contre 1,1 frag par vie ; tous matchs 1 558 / 301, 0,8 contre 0,9. En attente de validation. (2) « Ma part à l'objectif » : validée, avec la seule fiche du joueur actif (la fiche « Reste de mon camp » sort ; la barre devient sa part du total de son camp).
+
+## [2026-10-05] Séries temporelles › Usages → Emprise du périmètre solo — PHASE 1 (plan) — En cours (plan écrit et relu, commit local, aucun code)
+
+**Décision technique principale** : plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md` (worktree `LevelUp-wt-ts-usages`, branche `feat/ts-usages-emprise`), 8 lots : L1 portée du radar par match centralisée (3e copie, règle 6) et lectures de l'Emprise sorties de `TeammatesService` vers `squadagg` ; L2 bloc `emprise` solo (`SoloEmpriseBlock` embarquant `SquadEmpriseBlock`, + grille par carte `BuildMaps` et carte Équipement `BuildEquipment` en Go) ; L3 « Mes vies : près d'un coéquipier ou seul » (pur `coordination`, repo borné ADR 0036 I2 sur trois vues `_latest`) ; L4 briques de l'Emprise paramétrables (Escouade inchangée) ; L5 onglet reconstruit + suppressions web ; L6 suppressions Go (`equipment_usage`, nuage d'élévation) ; L7 contrat `formes_retenues` réduit à l'objectif ; L8 clôture docs.
+
+**Résultats observés (vérifiés sur pièces)** : la paire `timeseries=>squad` est déjà autorisée (`tools/lint-cross-feature-imports.mjs:157`), le plafond 7 n'est pas en jeu — le brief supposait l'inverse ; `equipment_usage` n'a plus qu'un producteur (Séries temporelles) et un lecteur web (l'onglet) ; le nuage d'élévation n'a pas d'autre lecteur (la Vue match a `MatchElevationBlock`) ; les 9 cartes formes sont les derniers lecteurs des champs non-objectif de `formes_retenues` ; `match_lives.end_ms` n'est pas l'instant de la mort au journal (fin de réplication), d'où la fenêtre `[début, début suivant)` du décodeur pour rattacher mort et frags ; `MortsAvecContexte` non réutilisable (exige la position, charge par carte) ; l'emblème n'est pas dans la réponse des Séries temporelles (chargeur de l'Escouade réutilisé, D14). Relecture plan-review : un défaut corrigé (exports sans lecteur en L4 et fichiers morts entre L5 et L6 auraient fait rougir knip).
+
+**Conclusion / prochaine étape** : arrêt en fin de phase 1 ; décisions D1-D15 à confirmer par le superviseur, puis phase 2 sous `plan-execution` sur « go ».
+## [2026-10-06] Séries temporelles › Usages, lot L1 : portée du radar par match et lectures de l'Emprise partagées — Complété (commit local sur `feat/ts-usages-emprise`)
+
+**Décision technique principale** : GO du superviseur (D1-D15 fermes, L7 maintenu). `mappings.PorteesDuRadarParMatch` remplace les deux boucles par match (Tactique, placement de l'Emprise) avant qu'une troisième n'arrive avec les Séries temporelles ; garde-rail `no_local_radar_range_lookup_test.go` étendu (empreinte 3 : appel de `PorteeDuRadar` hors du helper, allowlist `killcollector/capture.go`). Lectures feuille / film / véhicules de l'Emprise sorties de `TeammatesService` vers `squadagg.EmpriseLecteur` (journaux `emprise_*` + attribut `page`). Retouches du plan demandées : v4 de la maquette, renvoi L5.0a, décisions marquées fermes.
+
+**Résultats observés** : comportement de l'Escouade inchangé (suite teammates verte sans changement d'assertion hors noms d'événements véhicules) ; trou de test découvert et comblé dans le périmètre du lot (l'habitude de la lecture du film n'était testée nulle part : mutation verte avant, rouge après). Gate : build, vet, `go test -count=1` du module en six lots (195 paquets ok, 0 FAIL), `make go-api-lint` 0 issue, contrat à jour.
+
+**Conclusion / prochaine étape** : L1 clos ; compte rendu au superviseur, L2 sur « continue ».
+## [2026-10-06] Séries temporelles › Usages, lot L2 : le bloc Emprise du périmètre solo — Complété (commit local sur `feat/ts-usages-emprise`)
+
+**Décision technique principale** : `TimeseriesPageResponse.emprise` = `SoloEmpriseBlock` (l'Emprise de l'Escouade embarquée, calculée par `squademprise` sur les matchs solo avec le seul joueur consulté, sans habitude) + grille par carte (`BuildMaps`, 12 cartes + « Autres cartes ») + carte Équipement (`BuildEquipment`, moi / reste de mon camp sur les matchs filmés à camp connu ; grappin et propulseur « non mesurés » via deux constantes de `domain/equipmentusage` relues par le décodeur). Emblème du joueur par le chargeur de l'Escouade. Les trois lectures du résumé d'usage sont désormais faites une fois pour le bloc d'usage, les formes et l'Emprise. Câblage neuf dans `registry_pages_timeseries.go` pour ne pas agrandir `registry_pages.go` (déjà au-delà de 500 lignes).
+
+**Résultats observés** : contrat purement additif (openapi +179, generated.ts +67, 0 retrait), garde `contract-surface` verte sans régénération ; test de câblage prouvé par trois mutations (feuille sous condition, résumé d'usage hors porte, câblage des Usages sous condition). 13 mutations au total, toutes rouges. Gate Go complet vert (build, vet, tests du module en lots, lint 0 issue, contrat à jour) ; premier passage web : `npm ci`, types régénérés, `tsc -b --force` 0. Écart de méthode : rouge obtenu contre un bouchon pour trois fonctions écrites avant leurs tests.
+
+**Conclusion / prochaine étape** : L2 clos ; compte rendu au superviseur, L3 sur « continue ».
+## [2026-10-06] Séries temporelles › Usages, lot L3 : « Mes vies : près d'un coéquipier ou seul » — Complété (commit local sur `feat/ts-usages-emprise`)
+
+**Décision technique principale** : calcul pur `coordination.ViesPresOuSeul` (vie close par une mort, fenêtre [début, début suivant) du décodeur, mort au contexte dans la fenêtre, portée du radar inclusive par la comparaison commune avec l'Isolement, écartées comptées par cause) ; lecture `SoloLivesRepo` bornée sur le `match_id` de chacune des trois vues `_latest` (ADR 0036 I2) ; service `attachLives` ; câblage sous `film.kill_positions`. TDD strict : chaque test vu rouge avant son code. Deux écarts imposés par des garde-rails existants, traités sans les affaiblir : types d'entrée dans `domain` et retour en liste blanche datée (`TestAucunTauxNu`), exclusion de la Campagne posée par le résolveur existant sur la requête des frags (`TestCampaignExclusionGuard`).
+
+**Résultats observés** : 15 mutations, toutes rouges (dont semi-jointure et filtre sur une autre relation de la jointure pour la lecture bornée) ; tests de l'Isolement intacts. Gate Go complet vert, intégration DuckDB 4 ok en 288 s, lint 0 issue, contrat additif (+42 / +19), garde de surface intacte.
+
+**Conclusion / prochaine étape** : L3 clos ; compte rendu au superviseur, L4 sur « continue ».
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L4 : briques de l'Emprise paramétrables
+
+**Statut** : Complété (lot L4 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : refactorisations web seulement, l'Escouade identique à l'écran. Les modèles du fil et de la grille prennent un index des matchs (`empriseMatchIndex(history)`) au lieu de l'historique de l'Escouade ; le graphe du fil gagne un axe `period` (date du premier match de chaque mois, légende de couverture, pas d'encoche, points réduits au-delà de 120 matchs) ; la table de la grille sort dans `ResourceGridTable` à colonnes génériques, `ResourceMatchGridCard` ne garde que la légende, le cadre et les en-têtes de match.
+
+**Résultats observés** : vitest complet 8 856 verts ; tsc, lint, knip 0/0/0, couleurs, imports croisés 7 ≤ 7, lefthook pre-push 9/9 (avec gcc et make au PATH). Huit mutations rouges ; celle de l'en-tête d'infobulle était verte avant le test neuf de la table (trou préexistant, fermé). Les trois tests de page de l'Escouade nommés par le superviseur rejoués sans modification.
+
+**Conclusion / prochaine étape** : L4 clos ; L5 (onglet reconstruit et suppressions web) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L5 : l'onglet reconstruit, suppressions web
+
+**Statut** : Complété (lot L5 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : l'onglet monte les cartes de l'Emprise et de l'Objectif de l'Escouade avec des textes solo surchargés (« Mon camp ») et quatre cartes propres (grille par carte, Mes prises, Mes vies, Équipement) plus la fiche « Ma part à l'objectif » ; la grille par carte réutilise la grille de l'Emprise en lisant chaque colonne du Go comme un match (aucune copie des règles de case) ; un seul prédicat `usagesSections` décide des blocs et de l'état vide. Suppressions web du plan (§4.A-D, G) : 39 fichiers, clés de traduction et commentaires devenus faux, exports redevenus privés.
+
+**Résultats observés** : vitest complet 8 857 verts ; tsc, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, lefthook 9/9 (le premier passage a rougi sur les noms de cartes de la fixture, renommés). Toutes les mutations rouges au final ; une seule était verte (câblage de l'axe période, carte graphe doublée dans le test de page) avant l'ajout d'un test de câblage dédié. Découvertes : dépendance de type sous-listée en §4.A (traitée), jeton `team-rest` absent (encre de l'Escouade), ⓘ Équipement à quatre phrases (maquette).
+
+**Conclusion / prochaine étape** : L5 clos ; L6 (suppressions Go `equipment_usage` et élévation, contrat) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L6 : suppressions Go et contrat
+
+**Statut** : Complété (lot L6 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : la chaîne `equipment_usage` (domaine, agrégat de période, assemblage, résolveur d'amis des Séries temporelles) et la chaîne du nuage d'élévation sortent du code et du contrat ; le résumé d'usage ne garde que ses trois lectures partagées (`squadagg.LireUsage`) et s'injecte par `WithUsageSummary(repo, repoRoot)`.
+
+**Résultats observés** : 348 paquets Go verts, lint 0, contrat −262 / −117 lignes, exactement 9 schémas disparus (garde de surface, snapshot régénéré par la procédure), web vert (8 857 tests, knip 0/0/0), lefthook 9/9 au premier passage. Aucun lecteur côté Sessions rencontré.
+
+**Conclusion / prochaine étape** : L6 clos ; L7 (contrat `formes_retenues` réduit à l'objectif) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L7 : contrat `formes_retenues` réduit à l'objectif
+
+**Statut** : Complété (lot L7 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`)
+
+**Décision technique principale** : le bloc `formes_retenues` ne publie plus que ce que lisent les cartes d'objectif (disponibilité, comptes, joueur, escouade, matchs à objectif avec identité, camp et feuille) ; la lecture des socles au grain match, le lobby, les armes et leurs types sortent du domaine, de l'agrégat, du port, du repo DuckDB et du contrat. Un test golden de l'objectif publié, figé AVANT la coupe, prouve que l'objectif est identique octet pour octet.
+
+**Résultats observés** : golden vert sans régénération après la coupe, trois mutations rouges ; Go 348 paquets verts, intégration DuckDB 4 ok, lint 0 ; contrat −114 / −51 lignes, exactement 3 schémas disparus ; web 8 857 tests verts, knip 0/0/0, lefthook 9/9. Aucun lecteur côté Sessions.
+
+**Conclusion / prochaine étape** : L7 clos ; L8 (clôture : docs, référence équipement, statuts) après le « continue » du superviseur.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L8 : clôture du chantier
+
+**Statut** : Complété (lot L8 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`) ; L8.5 (revue adversariale du diff cumulé) en `[!]`, demandée au superviseur qui la lance.
+
+**Décision technique principale** : les documents ne changent que là où ce chantier les contredit. `CHANGELOG` et `RELEASE_NOTES` EN + FR (bloc 7.5) : l'onglet Usages devient l'Emprise des matchs solo du périmètre, le « servi ou gâché » de période ne vit plus que sur Sessions (plus la carte Équipement de l'onglet), `formes_retenues` n'est plus que la feuille d'objectif, une entrée « Changed » liste l'élagage (12 schémas retirés, objectif identique sous un test golden). La référence des canaux d'équipement décrit la carte Équipement de l'Emprise solo et déclare `equipment_usage` supprimé. ADR 0036 vérifiée, non modifiée.
+
+**Résultats observés** : gate rejoué après les docs, tout vert au premier passage : Go 348 paquets (cinq lots, 0 FAIL), build, vet, gofmt, golangci-lint 0 issues, `openapi-gen -check` à jour ; web : tsc 0, ESLint 0 erreur, vitest 831 fichiers / 8 857 tests, types générés sans diff, lefthook pre-push 9/9. Plan : aucune case vide (L8.5 `[!]` justifié) ; §8 relue, aucune découverte nouvelle.
+
+**Conclusion / prochaine étape** : chantier exécuté (L1-L8). Reste la revue adversariale du diff `65c99b669..HEAD`, que lance le superviseur (lots à risque : L2 agrégats, L3 lecture bornée, L7 contrat), puis la fusion vers `feat/v75` sur son accord.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L9 : corrections de la revue adversariale, ronde 1
+
+**Statut** : Complété (lot L9 du plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, branche `feat/ts-usages-emprise`) ; ronde 2 de relecture à venir, sur les seules corrections.
+
+**Décision technique principale** : R1 — les vies d'un match dont la dernière passe du journal des morts n'est pas publiable ne se rangent plus « près / seul » avec zéro frag : elles sont écartées et comptées dans une troisième cause `excluded_unpublishable` (contrat, aide ⓘ), lue par une cinquième requête bornée du repo ; priorité sur les autres causes, même règle que la lecture Tactique et le placement des vies. R2 — rayon réduit des points sur l'axe période seul (Escouade inchangée). R3 / R4 — replis de la règle S2 : seules les valeurs qui ne tiennent pas montent au-dessus de leur barre. R5 — exports morts de `squad/formes/format.ts` supprimés. R6 — `emprise(locale)` découpée sans changer une chaîne. R7 — surcharge morte des intertitres et deux commentaires périmés corrigés.
+
+**Résultats observés** : chaque règle a son test vu rouge avant la correction et sa mutation rouge (11 mutations) ; R6 prouvé par instantané identique. Gate : Go 348 paquets, intégration DuckDB 4 ok, golangci-lint 0, contrat à jour (+1 champ) ; web tsc 0, ESLint 0 erreur, vitest 8 865 tests, couleurs / imports croisés / contrat / champs propres. Découverte : knip est aveugle sur ce poste (rien signalé, même un fichier orphelin posé exprès) — le ratchet local 0/0/0 ne mesure rien ; consigné en §8, non traité.
+
+**Conclusion / prochaine étape** : L9 clos ; ronde 2 de relecture par le superviseur sur le commit de L9, puis fusion vers `feat/v75` sur son accord.
+
+## [2026-10-06] Séries temporelles › Usages = l'Emprise solo — L9.2 : retouche finale de la ronde 2
+
+**Statut** : Complété (plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, L9.2 ; branche `feat/ts-usages-emprise`, poussée pour la CI).
+
+**Décision technique principale** : ronde 2 de relecture sur L9 : zéro P0 / P1, deux P2 mécaniques. R9 — la ligne de repli de la carte Équipement s'aligne sur le début du segment du premier compte replié (`repliOffsetPct`, patron de la Répartition des frags) au lieu de trois emplacements fixes ; les segments viennent d'une seule fonction (`partSegments`) lue par la barre et par le repli. R10 — `formatUsageDecimal` privée à `usageFormat.ts` (plus aucun lecteur extérieur depuis R5) ; la phrase du journal L9 qui disait le contraire est corrigée.
+
+**Résultats observés** : test R9 vu rouge (`me = [40, 1, 2]` : repli sans décalage au lieu de 93 %), mutation « repli à 50 % » rouge ; tsc 0, ESLint 0 erreur, vitest 8 866 tests verts, couleurs 0, imports croisés 7 ≤ 7, lefthook pre-push vert.
+
+**Conclusion / prochaine étape** : lot clos côté exécuteur ; suivi de la CI et fusion vers `feat/v75` par le superviseur.
+## [2026-10-06] Campagne de grammaire — lot VA : décisions du pilote (majeure 0x29, SchemaDesFaits), V-6 instruit
+
+**Statut** : Complété (commit local sur `feat/cg3-vue-a`, non poussé ; LOT_VA_V3 §15.6 et §16)
+
+**Décision technique principale** : `feat/v75` fusionné à `b033d30f0` (sans conflit) puis cinq décisions
+du pilote appliquées. (1) La classe ÉGALE exige, outre la table native, la version majeure 0x29 que le
+jeu joue (`FUN_1428e219c` : `*film == 0x29`) ; un film de table égale sous une autre majeure (HI_1_12_0)
+suit la règle PRÉFIXE (`classeSousLaMajeure`, seul site : `tableDesGenresDuFilm`), la majeure lue par
+le profil existant (aucune source de `profile` ne change). (2) D23 : `killsource.Rev` constant, « mesuré
+sur 20 films, estimé sur le parc », complément réécrit. (3) `SchemaDesFaits` 4 → 5 (section 2 : V1 et
+V3), graines de fuzz régénérées. (4) `lecture.VueA.PremierPresume` : rang du premier genre au-delà du
+107 sur un film PRÉFIXE (deux fichiers de la RI touchés, taille de `VueA` inchangée). (5) Le `FAUX` V-6
+de `084a804d` instruit sans rien corriger.
+
+**Résultats observés** : carte v2 contre `b033d30f0` 399 135 → 452 139 sains (+53 004), utiles
++880 701, aucun film en baisse (`bcb6d393` +599 au lieu de +1 239 sous ÉGALE, 0 perdu) ; killsource
+19 / 20 identiques à l'octet, `c75f33b8` un compteur non persisté ; `TestGoldenFilms` régénéré
+(compteurs de diagnostic seuls, non rejoué depuis V2) ; gate de corpus rc=1, 18 / 19 ok, même `FAUX`
+V-6. V-6 : les deux lectures sont vraies — le slot 571 pilote la Banshee 913 depuis son point
+d'apparition (2,48 m, aéronef immobile puis en vol 25 s ; la base le faisait voler sans pilote), puis
+la ré-aborde (siège 2, 32 images comme l'abordage du 570) ; 5,50 m à 11,2 m/s au premier échantillon :
+fausse alarme du seuil de 3 m. Mutations 4 / 4 ROUGES ; vet, archlint, G-film, golangci-lint verts.
+
+**Conclusion / prochaine étape** : admission du rc=1 (V-6 instruit, découverte D-VAV3-6 sur le seuil)
+et relecture par levelup-57 des fichiers de la RI touchés ; poussée et CI à décider par le pilote.

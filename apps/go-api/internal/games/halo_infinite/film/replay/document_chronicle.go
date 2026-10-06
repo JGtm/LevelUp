@@ -2855,13 +2855,16 @@ package replay
 //	               est publiee) ; une entree sans place ou une equipe au-dela de sa capacite en
 //	               avertissement ; les equipes lues par declaration et les successions en info.
 //
-//	CE QUI MONTE    `SchemaVersion` 79 -> 80, et `SchemaDesFaits` 4 -> 5 (la section 5 des faits
-//	AVEC ELLE       porte l equipe de chaque bot). `source`, `profile`, `grammar`, `killsource`,
-//	                `objectives`, `killcollector.IsolationDecoderRev` et `PlacementRev` gardent leur
-//	                valeur : aucune ligne de kill ne change.
+//	CE QUI MONTE    `SchemaVersion` 79 -> 80, et `SchemaDesFaits` 5 -> 6 (la section 5 des faits
+//	AVEC ELLE       porte l equipe de chaque bot ; le 5 est celui de la vue A). `source`,
+//	                `profile`, `grammar`, `killsource`, `objectives`,
+//	                `killcollector.IsolationDecoderRev` et `PlacementRev` gardent leur valeur :
+//	                aucune ligne de kill ne change.
 //
-//	LE PARC         un artefact 79 se lit « decodage intact » (aucune revision de couche ne monte)
-//	                et « schema perime » : verdict `republier`. Mais ses faits sont au schema des
-//	                faits 4, refuses sur leur en-tete : la cuisson REDECODE le film et ecrit des
-//	                faits au schema 5. Le recapitulatif de `backfill-replay` le range parmi les
-//	                « republies » alors qu il redecode : sa duree est celle d un decodage.
+//	LE PARC         un artefact 79 cuit sous les revisions de couche courantes se lit « decodage
+//	                intact » (ce lot n en monte aucune) et « schema perime » : verdict `republier`.
+//	                Mais ses faits sont au schema des faits 5 au plus, refuses sur leur en-tete : la
+//	                cuisson REDECODE le film et ecrit des faits au schema 6. Le recapitulatif de
+//	                `backfill-replay` le range parmi les « republies » alors qu il redecode : sa duree
+//	                est celle d un decodage. Un artefact cuit sous d autres revisions se lit
+//	                `redecoder` d emblee.

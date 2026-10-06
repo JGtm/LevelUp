@@ -256,7 +256,7 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	if err = ctx.Err(); err != nil {
 		return err
 	}
-	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views, c.calib.Profil)
+	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views, &c.calib)
 	c.scanCands = scanFilm(c.film, c.roster.nPlay)
 	if err = ctx.Err(); err != nil {
 		return err

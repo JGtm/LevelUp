@@ -77,6 +77,7 @@ func tableDesSitesDePosition() []siteDePosition {
 		// Vue A (lots LN et VA) : les charges de message, `vtable + 0x68` de leur descripteur.
 		{"chargeDetonation", "", "lireE494Sur", 0xf, 1, "projectile_detonate : FUN_1408096f8, CALL 140809783 (MOV R9D,0xf 140809775), sous FUN_14076f91c"},
 		{"chargeImpact", "", "lireE494Sur", 0xc, 1, "projectile_impact_effect : FUN_1410f03b4, CALL 1410f045b (MOV R9D,0xc 1410f044d), sous FUN_14076f91c"},
+		{"chargeEffetsDeTeleportation", "", "lireE494Sur", n10, 2, "teleport_effects : FUN_142ef93e0, CALLs 142ef944a et 142ef945d (thunk FUN_1424e0e38, LEA R8D,[R9+0x10])"},
 		{"lireValeurDePropriete", "", "lireE494", n10, 1, "etiquette 7 du sac : FUN_14080eff0 -> FUN_140f04f18, CALL 140f04f3d (MOV R9D,0x10 140f04f32), sous FUN_14076f91c"},
 		{"lireQueueDuTir", "", "lireE494", n10, 1, "action_weapon_fire : FUN_14080c1f8, CALL 14080cb06 (LEA R8D,[R9+0x10] 14080cb02)"},
 		{"chargeEffetDIA", "", "lireE494", n10, 1, "networked_ai_effect : FUN_142ef15e0 CALL 142ef1726 ; FUN_142eefa5c CALLs 142eefad2, 142eefaef, 142eefb0c (LEA R8D,[R9+0x10])"},

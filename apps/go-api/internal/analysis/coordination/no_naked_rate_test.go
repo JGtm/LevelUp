@@ -79,14 +79,22 @@ var (
 	//     la meme ligne, et nil quand ce denominateur est vide. Un lecteur ne peut donc pas
 	//     lire une part sans voir sur quoi elle porte, ce qui est exactement ce que
 	//     `Couverture` garantit au niveau du scope.
+	// `domain.TimeseriesLivesNearTeammate` AJOUTE LE 2026-10-06 (plan
+	// PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, lot L3, carte « Mes vies : pres d'un coequipier
+	// ou seul » des Series temporelles). JUSTIFICATION : `ViesPresOuSeul` le rend pour publier
+	// des COMPTES — vies et frags de chaque cote, vies ecartees par cause, matchs lus et matchs
+	// sans portee. AUCUN QUOTIENT n'y figure : que des entiers, et la part affichee se calcule a
+	// l'ecran sur ces comptes, numerateur et denominateur visibles sur la meme barre. Le second
+	// retour de la fonction est un `int` (frags ecartes), deja autorise.
 	typesQualifiesAutorises = map[string]bool{
-		"domain.CoordinationBlock":  true,
-		"domain.CoordinationEntree": true,
-		"domain.Couverture":         true,
-		"domain.BilanEchanges":      true,
-		"domain.MortSuivie":         true,
-		"domain.BilanIsolement":     true,
-		"domain.TaCoordDistances":   true,
+		"domain.TimeseriesLivesNearTeammate": true,
+		"domain.CoordinationBlock":           true,
+		"domain.CoordinationEntree":          true,
+		"domain.Couverture":                  true,
+		"domain.BilanEchanges":               true,
+		"domain.MortSuivie":                  true,
+		"domain.BilanIsolement":              true,
+		"domain.TaCoordDistances":            true,
 	}
 )
 

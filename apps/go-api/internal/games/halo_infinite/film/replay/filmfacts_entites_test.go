@@ -85,7 +85,7 @@ func TestFaitsTransportentLesDeclarationsDesBots(t *testing.T) {
 }
 
 // TestFaitsTransportentLEquipeDesBots : la section 5 porte aussi L EQUIPE que BOT_METADATA ecrit
-// pour chaque bot (`BotEntry.Team`, schema des faits 5) et le bilan de sa lecture
+// pour chaque bot (`BotEntry.Team`, schema des faits 6) et le bilan de sa lecture
 // (`Roster.BotEquipes`) : une equipe lue (0, et -1 « aucune ») et une equipe absente (nil) se
 // relisent a l'identique. Sans elle, un rejeu depuis les faits rendrait sans equipe le bot qu'aucune
 // entite `ti=9` ne porte.

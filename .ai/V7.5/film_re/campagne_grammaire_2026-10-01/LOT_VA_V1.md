@@ -300,6 +300,8 @@ et copie du parc au scratchpad (`scratchpad/cg3-V1/`).
   Ce qui reste un écart : la phrase de doctrine n'est pas tenue à la lettre. La corriger, ou monter le
   schéma à la fusion de la campagne, est une décision du pilote. Elle n'est pas prise ici (règle 5 du
   plan : pas de correction hors périmètre).
+  **Revue du lot (2026-10-06)** : l'étape V3 a répété l'écart (`FilmIdentity.Variante`) ; la décision est
+  demandée une fois pour les deux étapes (LOT_VA_V3 §15.6).
 - Régénérés par les commandes du dépôt : `grammar_rev.golden`, `profile_rev.golden`,
   `killsource_rev.golden`, `objectives_rev.golden`, `types/testdata/shapes.golden` (ligne des
   révisions seule), fixtures web `replay_schema_78_*` et `manifest.json` (chaînes de révision seules).

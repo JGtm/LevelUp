@@ -34,8 +34,10 @@ package grammar
 // `FUN_14080a9d4`), qui suit la vue A message par message depuis chaque evenement de mort candidat
 // jusqu au terminateur ou a une longueur bornee — sa lecture pour son canal, pas celle-ci. La marche des trames joue [lireLaVueA] une fois par trame,
 // en rangeant la tete ([rangerLaTete]), et passe ce qu elle a lu a la marche par rangs
-// ([lireTrameParRangs]) ; les autres marches (essais de localisation, cartes) l appellent depuis la
-// tete du paquet. Elle LIT LA TETE A L IDENTIQUE dans tous les cas — la continuation, puis le genre
+// ([lireTrameParRangs]) ; les autres marches par rangs (essais de localisation, cartes) l appellent
+// depuis la tete du paquet ; les deux marches qui lisent les morts sans ranger de structure la
+// lisent par [DebutDeLaVueB]. Quand elle atteint le terminateur, sa fin decide du debut de la vue B
+// selon la classe du film ([debutParLaVueA], `localisateur.go`). Elle LIT LA TETE A L IDENTIQUE dans tous les cas — la continuation, puis le genre
 // du premier message — et ne lit la suite que si le film la rend lisible ; elle ne devine rien : un
 // message qu elle ne sait pas lire arrete la lecture, apres son genre.
 //
@@ -70,6 +72,9 @@ type FluxVueA struct {
 	// vue B chez l ecrivain. Vue arretee : le bit qui suit le genre du message qui l a arretee, ou
 	// la position ou le payload s est epuise.
 	Fin int
+	// PremierPresume : le rang, dans Genres, du premier genre dont la numerotation est presumee
+	// ([premierGenrePresume]) ; len(Genres) quand aucun ne l est.
+	PremierPresume int
 }
 
 // finDeTete rend le bit qui suit la tete : la continuation et, quand elle annonce un message, son
@@ -113,6 +118,7 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 		}
 	}
 	out.Fin = br.BitPos()
+	out.PremierPresume = premierGenrePresume(g.classe, out.Genres)
 	return out
 }
 

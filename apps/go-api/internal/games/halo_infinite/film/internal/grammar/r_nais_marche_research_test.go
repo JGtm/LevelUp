@@ -45,7 +45,7 @@ func rnMarcher(f *cmFilm, v cmVariante, e cmEcouteur, avant rnAvant) (FrameClosu
 			e.debutDeChunk(c, data, pks, monde)
 		}
 		poser([2]int{c, -1})
-		var tete func([]byte, *World, FrameConfig) (int, bool)
+		tete := debutDeLaListeSous(f.fc.grammaireDeLaVueA()) // la cuisson : la fin de la vue A, puis le localisateur
 		if v.tete != nil {
 			tete = v.tete(c)
 		}

@@ -7,7 +7,7 @@
 //	lecture   UNE, bornée par les matchs du périmètre ET les xuids de la composition
 //	          (port.SquadLifePlacementRepository, ADR 0036), sous sa propre section de durée ;
 //	portée    la portée COURANTE de la variante de chaque match, résolue par
-//	          mappings.PorteeDuRadar (source unique, la même que l'écriture au sync) ;
+//	          mappings.PorteesDuRadarParMatch (source unique, la même que l'écriture au sync) ;
 //	calcul    pur ; les vies à portée périmée sont écartées par le calcul et journalisées ici.
 //
 // Capability `film.kill_positions` absente (le lecteur n'est pas câblé, ou la table manque) :
@@ -70,7 +70,7 @@ func (s *TeammatesService) attacherPlacement(
 			"player", s.gamertag, "matchs", len(ids), "err", err)
 		return
 	}
-	rayon, sansRayon := rayonParMatchDuScope(read.Variants, s.radarRange)
+	rayon, sansRayon := mappings.PorteesDuRadarParMatch(s.radarRange, read.Variants)
 	placement, bilan := squademprise.Placement(squademprise.PlacementInput{
 		Players: bloc.Players, Scope: ids, Read: read, CurrentRadar: rayon,
 	})
@@ -112,25 +112,4 @@ func xuidsDesFiches(players []domain.SessionUsageSquadPlayer) []string {
 		}
 	}
 	return out
-}
-
-// rayonParMatchDuScope résout la portée COURANTE du radar de chaque match, par sa variante —
-// même univers que `TacticalService.rayonsParMatch` (service Tactique), la source
-// (`s.radarRange`) vivant sur un service différent, avec sa propre injection (WithRadarRange).
-// La résolution d'une variante est `mappings.PorteeDuRadar`, la seule du dépôt (plan Emprise
-// vies, lot V2b). Un match dont la variante n'a pas de portée SORT de l'univers de la lecture et
-// se compte (correction G2, doctrine reprise telle quelle). Lecteur : le placement des vies
-// depuis le lot V3 (il servait le nuage « Frags non ripostés », retiré par la décision V7).
-func rayonParMatchDuScope(variantes map[string]string, radar map[string]int) (map[string]float64, int) {
-	out := make(map[string]float64, len(variantes))
-	sans := 0
-	for matchID, variante := range variantes {
-		metres, ok := mappings.PorteeDuRadar(radar, variante)
-		if !ok {
-			sans++
-			continue
-		}
-		out[matchID] = metres
-	}
-	return out, sans
 }

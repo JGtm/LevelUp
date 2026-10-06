@@ -159,19 +159,6 @@ func TestGetPage_Placement_PorteePerimeeJournalisee(t *testing.T) {
 	}
 }
 
-// rayonParMatchDuScope : la résolution par la source unique ; une variante sans portée sort de
-// l'univers et se compte ; sans table, aucun match n'a de portée.
-func TestRayonParMatchDuScope(t *testing.T) {
-	variantes := map[string]string{"m1": "Slayer:Arena", "m2": " BTB:Slayer\t", "m3": "Inconnue"}
-	rayon, sans := rayonParMatchDuScope(variantes, map[string]int{"Slayer:Arena": 18, "BTB:Slayer": 24})
-	if len(rayon) != 2 || rayon["m1"] != 18 || rayon["m2"] != 24 || sans != 1 {
-		t.Errorf("rayons = %v, sans = %d ; attendu m1 18, m2 24, 1 sans portée", rayon, sans)
-	}
-	if rayon, sans := rayonParMatchDuScope(variantes, nil); len(rayon) != 0 || sans != 3 {
-		t.Errorf("sans table : %v / %d, attendu aucun rayon et 3 sans portée", rayon, sans)
-	}
-}
-
 // Sans bloc Emprise (aucun film, aucun périmètre) : rien à attacher, aucune lecture du placement.
 func TestAttacherPlacement_SansBlocEmprise_NeLitRien(t *testing.T) {
 	repo := &fakePlacement{}

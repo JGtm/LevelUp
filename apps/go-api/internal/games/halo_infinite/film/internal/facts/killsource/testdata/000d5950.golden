@@ -59,7 +59,7 @@ morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
 96 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 91 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
-3423 / 3508 paquet(s) a evenements localise(s)
+3508 / 3508 paquet(s) a evenements localise(s)
 calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=23 [score 192, mediane 95] desaccords=1 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 908, mediane 908]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
