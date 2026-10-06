@@ -339,7 +339,7 @@ export function msToFrames(ms: number, doc: ReplayDocumentReady): number {
 }
 
 /**
- * L'instant demandé par un lien tactique (`?t=&clock=`, cf. `TacticalCellCard`) — la clé
+ * L'instant demandé par un lien tactique (`?t=&clock=`, cf. `MatchReplayLink`) — la clé
  * dit sur QUELLE HORLOGE `t` est exprimé, même vocabulaire que `TacticalContribution.clock`
  * côté Go (`domain/tactical_cellule.go`) : `"film"` (déjà l'axe que ce module consomme) ou
  * `"match"` (l'horloge du match, décalée de `deathOffsetMs` par rapport au film).

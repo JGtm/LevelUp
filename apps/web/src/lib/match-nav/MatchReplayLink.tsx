@@ -13,9 +13,9 @@
  *      route répond 404 sans lui — c'est le sens du champ servi par l'API, résolu en un
  *      seul listing de dossier par requête (jamais un accès disque par ligne).
  *
- * La porte 1 est ici parce que ce composant est LE point unique de l'icône (Explorer,
- * Synergies escouade, carte de match) : les tableaux masquent EN PLUS leur colonne, pour
- * ne pas laisser un en-tête sans contenu possible.
+ * La porte 1 est ici parce que ce composant est LE point unique de l'icône (Explorer, Synergies
+ * escouade, carte de match, tuile « Rejeu » de l'onglet Tactique) : les tableaux masquent EN PLUS
+ * leur colonne, pour ne pas laisser un en-tête sans contenu possible.
  *
  * Variante « bouton » de la page match : features/match-view/MatchHeader.replayLink.tsx
  * (même route, présentation différente : bouton avec libellé, pas une cellule).
@@ -34,8 +34,10 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
  *   - `icon`   : cellule de tableau, boîte de 20x16 px sans cadre (Explorer, Synergies).
  *   - `button` : bouton cadré de 28 px, pour une tuile de match où l'icône nue passait
  *                inaperçue (retour utilisateur 2026-09-09).
+ *   - `large`  : bouton cadré de 36 px, icône de 20 px — la tuile « Rejeu » de la zone choisie
+ *                (onglet Tactique), même forme que le bouton de rejeu de la page match.
  */
-type ReplayLinkVariant = 'icon' | 'button'
+type ReplayLinkVariant = 'icon' | 'button' | 'large'
 
 /** Enveloppe du lien et taille de l'icône, par présentation. */
 const VARIANT_CLASS: Record<ReplayLinkVariant, { link: string; img: string }> = {
@@ -46,6 +48,10 @@ const VARIANT_CLASS: Record<ReplayLinkVariant, { link: string; img: string }> = 
   button: {
     link: 'group inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
     img: 'h-3.5 w-[18px] shrink-0 object-contain opacity-80 group-hover:opacity-100 transition-opacity',
+  },
+  large: {
+    link: 'group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-transparent transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    img: 'h-5 w-auto shrink-0 object-contain',
   },
 }
 
@@ -58,6 +64,14 @@ interface MatchReplayLinkProps {
   label: string
   /** Présentation (défaut `icon` : la cellule de tableau, cas d'origine). */
   variant?: ReplayLinkVariant
+  /**
+   * L'instant où ouvrir le rejeu et son horloge (`?t=<ms>&clock=match|film`) : la route du rejeu le
+   * convertit une fois le document chargé. Absent : le rejeu s'ouvre au début. `t` est une CHAÎNE
+   * dans le schéma de la route, pas un nombre : `FullSearchSchema` fusionne tous les schémas de
+   * recherche du dépôt, et un champ numérique y casserait des lecteurs qui supposent chaque valeur
+   * déjà une chaîne (`new URLSearchParams(location.search)`).
+   */
+  search?: { t: string; clock: 'match' | 'film' }
 }
 
 export function MatchReplayLink({
@@ -66,6 +80,7 @@ export function MatchReplayLink({
   playerSlug,
   label,
   variant = 'icon',
+  search,
 }: MatchReplayLinkProps) {
   const titleSlug = useTitleSlug()
   const titreARejeu = useCapability('replay')
@@ -77,6 +92,7 @@ export function MatchReplayLink({
     <Link
       to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay"
       params={{ titleSlug, playerSlug, matchId }}
+      {...(search ? { search } : {})}
       onClick={(e) => e.stopPropagation()}
       aria-label={label}
       title={label}

@@ -145,15 +145,6 @@ export function planLegend(
 }
 
 /**
- * QUESTIONS SANS CELLULE. « Mes routes de spawn » empile des trajets : il n'y a pas de
- * grandeur par cellule à détailler, donc pas de match à ouvrir depuis le plan. La carte
- * « Cellule sélectionnée » le DIT, au lieu d'inviter à un clic qui ne rendrait rien.
- */
-export function questionSansCellule(question: TacticalQuestion): boolean {
-  return question === 'routes'
-}
-
-/**
  * PLAN_ASPECT_DEFAUT — le rapport largeur/hauteur du cadre du plan quand ni le fond ni les
  * bornes ne disent rien d'exploitable : 16/9, celui des vignettes de carte (`TacticalMapTile`,
  * `aspect-video`), qui affichent LE MÊME fond. Un plan vide a donc exactement la taille
@@ -173,8 +164,8 @@ export function trouveCellule(
 // TACTICAL_REPLAY_FRAME_INTERVAL_MS / instantToFrame ont vécu ici (lot M1, « voir dans le
 // rejeu ») : une conversion instant -> frame MÉCANIQUE, sans correction du décalage
 // d'horloge match/film pour quatre questions sur six. Retirées le 2026-09-08 (lot M1b,
-// décision utilisateur ferme « corriger le décalage ») — mortes : `TacticalCellCard` ne
-// pré-calcule plus de frame, il construit `?t=&clock=` et laisse la ROUTE du rejeu
+// décision utilisateur ferme « corriger le décalage ») — mortes : le lien de rejeu ne
+// pré-calcule aucune frame, il porte `?t=&clock=` et laisse la ROUTE du rejeu
 // convertir une fois le document (et son calage) chargé
 // (`lib/replay/replayLogic.resolveTacticalReplayInstant` + `msToFrames`).
 

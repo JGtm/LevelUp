@@ -16,7 +16,8 @@
  * dépend de l'état du plan (`etatDuPlan`) — premier chargement, relecture estompée sous « Mise à
  * jour… », échec (lecture, périmètre ou composition impossible), carte hors du filtre.
  *
- * Le détail d'une zone (`useTacticalCellule`) ne part QUE quand une cellule est sélectionnée.
+ * LA ZONE LA PLUS CHAUDE EST PRÉSÉLECTIONNÉE (`useZone`) tant que l'utilisateur n'a rien choisi ; son
+ * détail (`useTacticalCellule`) part quand la lecture est prête, et nomme la zone sur le plan.
  */
 import { useMemo, useState } from 'react'
 
@@ -27,10 +28,11 @@ import { carteLue, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import { etatDuPlan } from './plan.logic'
 import { useTacticalCellule, useTacticalRaster } from './queries'
-import { TacticalCellCard } from './TacticalCellCard'
+import { TacticalZoneCard } from './TacticalZoneCard'
 import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
+import { titreDeZone, zoneLaPlusChaude } from './zone.logic'
 
 export interface TacticalAnalysisViewProps {
   playerSlug: string
@@ -82,17 +84,15 @@ export function TacticalAnalysisView({
     enEchec: perimetreEnEchec || coequipiersInconnus !== null,
   })
   const etatPlan = etatDuPlan(carte.origine, etat)
-  const [selected, setSelected] = useZoneChoisie(`${carte.mapId}:${question}:${qui}:${spawn}`)
-
-  const { celluleSelectionnee, cellule } = useDetailCellule({
+  const lectureAffichee = etatPlan === 'pret' || etatPlan === 'relecture' ? lecture : undefined
+  const zone = useZone({
     playerSlug,
     mapId: carte.mapId,
-    selected,
-    lecture,
+    cle: `${carte.mapId}:${question}:${qui}:${spawn}`,
+    lecture: lectureAffichee,
     pret: etatPlan === 'pret',
     params,
   })
-  const lectureAffichee = etatPlan === 'pret' || etatPlan === 'relecture' ? lecture : undefined
 
   return (
     <div
@@ -110,25 +110,25 @@ export function TacticalAnalysisView({
         lecture={lecture}
         etat={etatPlan}
         inconnus={coequipiersInconnus}
+        etiquette={zone.cellule && zone.detail.data ? titreDeZone(t, locale, true, zone.detail.data) : null}
         reglages={{ ...reglages, grappes: lectureAffichee?.grappes ?? [] }}
-        selected={selected}
-        onCellSelect={(col, row) => setSelected({ col, row })}
+        selected={zone.selected}
+        onCellSelect={zone.choisir}
       />
-      {lectureAffichee && (
-        // TRANSITOIRE : la carte de la zone choisie (lot L6 du plan Tactique v2 la remplace).
-        <div className={classeRelecture(etatPlan === 'relecture')}>
-          <TacticalCellCard
-            t={t}
-            locale={locale}
-            playerSlug={playerSlug}
-            question={questionLue}
-            cellule={celluleSelectionnee}
-            contributions={cellule.data?.contributions ?? null}
-            contributionsLoading={cellule.isPending && selected !== null}
-            matchsNonOuvrables={cellule.data?.matchs_non_ouvrables ?? 0}
-          />
-        </div>
-      )}
+      {/* LA COLONNE PREND LA HAUTEUR DE LA CARTE DU PLAN (trois colonnes) : `contain: size` l'empêche
+          de peser sur la rangée, l'étirement lui donne la hauteur du plan, et sa liste défile. */}
+      <div className={`min-h-0 lg:self-stretch lg:[contain:size] ${classeRelecture(etatPlan === 'relecture')}`}>
+        <TacticalZoneCard
+          t={t}
+          locale={locale}
+          playerSlug={playerSlug}
+          question={questionLue}
+          signee={lectureAffichee?.echelle.symetrique ?? false}
+          pasM={lectureAffichee?.pas_m ?? 0}
+          cellule={zone.cellule}
+          detail={zone.detail}
+        />
+      </div>
     </div>
   )
 }
@@ -199,33 +199,44 @@ function useLecturePlan(
 }
 
 /**
- * useDetailCellule — la cellule choisie et son DÉTAIL : MÊME périmètre + lecture + joueurs +
- * réapparition que le raster, plus l'adresse cliquée. `selected` à `null` → la requête n'est pas
- * lancée. Elle attend aussi la fin d'une relecture (`pret`) : le `pas_m` d'une réponse PRÉCÉDENTE
- * n'adresse pas forcément la même cellule dans la nouvelle.
+ * useZone — la zone affichée par la colonne de droite et son DÉTAIL.
+ *
+ * LA ZONE LA PLUS CHAUDE EST PRÉSÉLECTIONNÉE (D10) tant que l'utilisateur n'a rien choisi ; son choix
+ * est remis à zéro quand la lecture change de forme (`cle` : carte, lecture, joueurs, réapparition).
+ * Le détail (`useTacticalCellule`) porte le MÊME périmètre que le raster, plus l'adresse ; il attend
+ * la fin d'une relecture (`pret`) : le `pas_m` d'une réponse PRÉCÉDENTE n'adresse pas forcément la
+ * même cellule dans la nouvelle.
  */
-function useDetailCellule({
+function useZone({
   playerSlug,
   mapId,
-  selected,
+  cle,
   lecture,
   pret,
   params,
 }: {
   playerSlug: string
   mapId: string
-  selected: { col: number; row: number } | null
+  cle: string
+  /** La lecture AFFICHÉE (courante ou en relecture), `undefined` sinon. */
   lecture: TacticalRaster | undefined
   pret: boolean
   params: ParamsLecture
 }) {
-  const celluleSelectionnee =
-    selected && lecture ? trouveCellule(lecture.cellules ?? [], selected.col, selected.row) : null
-  const cellule = useTacticalCellule(
+  const [choix, setChoix] = useZoneChoisie(cle)
+  const chaude = lecture ? zoneLaPlusChaude(lecture.cellules ?? [], lecture.echelle.symetrique) : null
+  const selected = choix ?? (chaude ? { col: chaude.col, row: chaude.lig } : null)
+  const cellule = selected && lecture ? trouveCellule(lecture.cellules ?? [], selected.col, selected.row) : null
+  const requete = useTacticalCellule(
     playerSlug,
     mapId,
     selected && lecture && pret ? { col: selected.col, lig: selected.row, pas_m: lecture.pas_m } : null,
     params,
   )
-  return { celluleSelectionnee, cellule }
+  return {
+    selected,
+    choisir: (col: number, row: number) => setChoix({ col, row }),
+    cellule,
+    detail: { data: requete.data, isPending: requete.isPending && selected !== null },
+  }
 }

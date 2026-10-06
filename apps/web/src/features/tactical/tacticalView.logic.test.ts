@@ -10,7 +10,6 @@ import {
   planEmptyReason,
   planEmptyText,
   planLegend,
-  questionSansCellule,
   rectSelection,
   repereAspect,
   repereDuPlan,
@@ -23,7 +22,6 @@ import {
 
 const tFr = getTacticalText('fr')
 const tEn = getTacticalText('en')
-
 
 // ─── Unité par question ────────────────────────────────────────────────────────
 
@@ -166,17 +164,6 @@ describe('planLegend — les deux bornes de la rampe et le mode de rampe', () =>
     })
   })
 })
-
-describe('questionSansCellule — « Mes routes de spawn » n’a pas de cellule', () => {
-  it('vrai pour les routes, faux pour les cinq autres lectures', () => {
-    expect(questionSansCellule('routes')).toBe(true)
-    for (const q of ['morts', 'kills', 'gagne', 'temps', 'isole'] as const) {
-      expect(questionSansCellule(q)).toBe(false)
-    }
-  })
-})
-
-
 
 // ─── LA PROJECTION DU PLAN (correctif du 2026-09-13) ──────────────────────────
 //

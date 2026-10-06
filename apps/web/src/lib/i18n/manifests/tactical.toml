@@ -641,3 +641,100 @@ en = "All"
 [tactical.plan.squad_disabled]
 fr = "Aucune composition choisie dans la barre"
 en = "No squad chosen in the filter bar"
+
+# ── Zone sélectionnée et mini-tuile « Rejeu » (plan Tactique v2, L6) ──────────
+[tactical.zone.title]
+fr = "Zone sélectionnée"
+en = "Selected zone"
+
+[tactical.zone.none]
+fr = "Aucune zone sélectionnée"
+en = "No zone selected"
+
+[tactical.zone.unnamed]
+fr = "Zone sans nom"
+en = "Unnamed zone"
+
+# Les coordonnées monde de la zone, nombres déjà formatés.
+[tactical.zone.coords]
+fr = "x {x0}…{x1} m · y {y0}…{y1} m"
+en = "x {x0}…{x1} m · y {y0}…{y1} m"
+
+[tactical.zone.matches]
+fr = "{n, plural, one {# match distinct} other {# matchs distincts}}"
+en = "{n, plural, one {# distinct match} other {# distinct matches}}"
+
+[tactical.zone.wins_losses]
+fr = "{v, plural, one {# victoire} other {# victoires}}, {d, plural, one {# défaite} other {# défaites}}"
+en = "{v, plural, one {# win} other {# wins}}, {d, plural, one {# loss} other {# losses}}"
+
+[tactical.zone.kills_deaths]
+fr = "{f, plural, one {# frag} other {# frags}}, {m, plural, one {# mort} other {# morts}}"
+en = "{f, plural, one {# kill} other {# kills}}, {m, plural, one {# death} other {# deaths}}"
+
+[tactical.zone.replay_heading]
+fr = "Rejeu"
+en = "Replay"
+
+[tactical.zone.contributions_empty]
+fr = "Aucun match ouvrable dans cette zone"
+en = "No match to open in this zone"
+
+# Le fait d'une tuile, par face de l'événement.
+[tactical.tile.killed_by]
+fr = "Tué par {gt}"
+en = "Killed by {gt}"
+
+[tactical.tile.killed]
+fr = "A tué {gt}"
+en = "Killed {gt}"
+
+[tactical.tile.death]
+fr = "Mort"
+en = "Death"
+
+[tactical.tile.frag]
+fr = "Frag"
+en = "Kill"
+
+[tactical.tile.entry]
+fr = "Entrée dans la zone"
+en = "Entered the zone"
+
+[tactical.tile.respawn]
+fr = "Réapparition"
+en = "Respawn"
+
+# Les catégories de source de dégât traduites (les autres ne s'écrivent pas).
+[tactical.tile.cat_headshot]
+fr = "tir à la tête"
+en = "headshot"
+
+[tactical.tile.cat_attached]
+fr = "dégât collé"
+en = "stuck damage"
+
+[tactical.tile.cat_silent_melee]
+fr = "assassinat"
+en = "assassination"
+
+[tactical.tile.cat_chained]
+fr = "projectile en chaîne"
+en = "chained projectile"
+
+# Le placement d'une mort : seul, sans coéquipier visible ; seul ou près, à la distance.
+[tactical.tile.alone]
+fr = "seul"
+en = "alone"
+
+[tactical.tile.alone_at]
+fr = "seul · {d} m"
+en = "alone · {d} m"
+
+[tactical.tile.near_at]
+fr = "près · {d} m"
+en = "near · {d} m"
+
+[tactical.tile.open_replay]
+fr = "Ouvrir le rejeu à {instant}"
+en = "Open the replay at {instant}"

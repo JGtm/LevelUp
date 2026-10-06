@@ -217,41 +217,31 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
 
   // Revue L2-R5 (a) : pendant une relecture, la réponse affichée est la PRÉCÉDENTE ; son
   // `pas_m` n'adresse pas forcément la même cellule dans la nouvelle. Le détail attend.
-  it('détail de cellule : aucun /cellule pendant une relecture de filtre, reparti ensuite', async () => {
-    // jsdom ne mesure rien : sans taille de canevas, le clic ne désigne aucune cellule.
-    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
-    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
-    const contexte = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+  it('détail de la zone : aucun /cellule pendant une relecture de filtre, reparti ensuite', async () => {
     const detail = () =>
       post.mock.calls.filter(([path]) => (path as string).endsWith('/tactical/streets/cellule'))
-    try {
-      const autre = differe<TacticalRaster>()
-      const vue = monter(['m1', 'm2'])
-      await screen.findByTestId('tactical-plan-canvas')
-      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 30, clientY: 20 })
-      await waitFor(() => expect(detail()).toHaveLength(1))
+    const autre = differe<TacticalRaster>()
+    const vue = monter(['m1', 'm2'])
+    await screen.findByTestId('tactical-plan-canvas')
+    // La zone la plus chaude est présélectionnée : son détail part dès que la lecture est prête.
+    await waitFor(() => expect(detail()).toHaveLength(1))
 
-      repondre = (corps) =>
-        corps.match_ids.length === 1 ? autre.promesse : Promise.resolve(raster('morts', 5))
-      vue.rerender(null)
-      vue.rerender(['m1'])
-      await waitFor(() =>
-        expect(post).toHaveBeenCalledWith(
-          '/players/JGtm/tactical/streets/raster',
-          expect.objectContaining({ match_ids: ['m1'] }),
-        ),
-      )
-      expect(screen.getByTestId('tactical-analysis-updating')).toBeInTheDocument()
-      expect(detail()).toHaveLength(1)
+    repondre = (corps) =>
+      corps.match_ids.length === 1 ? autre.promesse : Promise.resolve(raster('morts', 5))
+    vue.rerender(null)
+    vue.rerender(['m1'])
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        '/players/JGtm/tactical/streets/raster',
+        expect.objectContaining({ match_ids: ['m1'] }),
+      ),
+    )
+    expect(screen.getByTestId('tactical-analysis-updating')).toBeInTheDocument()
+    expect(detail()).toHaveLength(1)
 
-      autre.liberer(raster('morts', 9))
-      await waitFor(() => expect(detail()).toHaveLength(2))
-      expect(detail()[1][1]).toEqual(expect.objectContaining({ match_ids: ['m1'] }))
-    } finally {
-      largeur.mockRestore()
-      hauteur.mockRestore()
-      contexte.mockRestore()
-    }
+    autre.liberer(raster('morts', 9))
+    await waitFor(() => expect(detail()).toHaveLength(2))
+    expect(detail()[1][1]).toEqual(expect.objectContaining({ match_ids: ['m1'] }))
   })
 
   it('PREMIER CHARGEMENT : le fond est posé, l’indicateur PAR-DESSUS, puis le calque sur le même fond', async () => {

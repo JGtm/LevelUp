@@ -48,6 +48,7 @@ import { RAMPE_HAUTEUR_PX } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import { infoDuPlan, legendeDuPlan, MARGE_LEGENDE, rampeVerticale, type EtatDuPlan, type BornesDeLegende } from './plan.logic'
 import { useTacticalMapBackgroundFrame } from './queries'
+import { positionEtiquette } from './zone.logic'
 import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { TacticalPlanFond } from './TacticalPlanFond'
 import {
@@ -92,6 +93,8 @@ export interface TacticalPlanCardProps {
   etat: EtatDuPlan
   /** En échec : les coéquipiers introuvables (composition impossible), `null` pour une panne. */
   inconnus: string[] | null
+  /** Le nom de la zone choisie, posé à côté de sa cellule sur le plan ; `null` tant qu'il n'est pas connu. */
+  etiquette: string | null
   reglages: ReglagesDuPlan
   /** La cellule choisie, encadrée sur le plan — `null` tant que rien n'est cliqué. */
   selected: { col: number; row: number } | null
@@ -108,6 +111,7 @@ export function TacticalPlanCard({
   lecture,
   etat,
   inconnus,
+  etiquette,
   reglages,
   selected,
   onCellSelect,
@@ -149,6 +153,9 @@ export function TacticalPlanCard({
               onCellSelect={onCellSelect}
               estompe={estompe}
             />
+          )}
+          {lue && repere && selected && etiquette && (
+            <EtiquetteDeZone selected={selected} repere={repere} texte={etiquette} estompe={estompe} />
           )}
           <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
             {lue && raisonVide ? planEmptyText(t, raisonVide, lue.matchs_retenus, lue.pas_m).title : null}
@@ -454,4 +461,29 @@ function IndicateurDeLecture({ t, etat }: { t: TacticalText; etat: EtatDuPlan })
     )
   }
   return null
+}
+
+/** EtiquetteDeZone — le nom de la zone choisie, posé à côté de sa cellule, du côté où il tient. */
+function EtiquetteDeZone({
+  selected,
+  repere,
+  texte,
+  estompe,
+}: {
+  selected: { col: number; row: number }
+  repere: RepereTactique
+  texte: string
+  estompe: string
+}) {
+  const position = positionEtiquette(selected, repere)
+  if (!position) return null
+  return (
+    <span
+      className={`pointer-events-none absolute z-[2] whitespace-nowrap rounded border border-border bg-card px-[5px] py-px text-[11px] leading-[14px] text-foreground${estompe}`}
+      style={position}
+      data-testid="tactical-zone-label"
+    >
+      {texte}
+    </span>
+  )
 }

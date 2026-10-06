@@ -115960,3 +115960,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : tests logiques vus rouges avant le code ; tests de vue prouvés rouges contre HEAD (35 échecs) ; 10 mutations rouges ; gate web vert (851 fichiers / 9 133 tests, `tsc` 0, lint 0 erreur, noyau de peinture rejoué nommément, ratchets et pre-push verts) ; §4.B → 0 hors lecteurs conservés et instrument de L8.2.
 
 **Conclusion / prochaine étape** : L5 clos ; L6 (la zone sélectionnée) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L6 : la zone sélectionnée — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L6 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : la colonne de droite devient « Zone sélectionnée » — nom en jeu de la zone (ou « Zone sans nom »), coordonnées, valeur signée sur une lecture signée, sous-ligne par lecture, puis les mini-tuiles « Rejeu » (bande d'issue, deux lignes aux formats de l'app, arme seule tronquée, badge de placement tronqué au mètre et jamais sur un frag, date au fuseau du joueur, texte complet en infobulle, bouton de rejeu de 36 px seulement si l'artefact existe et que le titre sert le rejeu) ; la zone la plus chaude est présélectionnée et le choix se remet à zéro au changement de carte, lecture, joueurs ou réapparition ; la colonne prend la hauteur du plan, sa liste défile ; le nom de zone se pose sur le plan à côté de sa cellule. `MatchReplayLink` gagne la variante 36 px et l'instant (`?t=&clock=`). `TacticalCellCard` et `questionSansCellule` retirés.
+
+**Résultats observés** : tests logiques et composants vus rouges avant le code ; tests de sélection prouvés rouges contre HEAD (6 échecs) ; 9 mutations rouges ; gate web vert (852 fichiers / 9 160 tests, `tsc` 0, lint 0 erreur, ratchets et pre-push verts) ; §4.C → 0 hors un commentaire du lot voisin Vue match (§8).
+
+**Conclusion / prochaine étape** : L6 clos ; L7 (sémantique et chaînes) après le « continue » du superviseur.

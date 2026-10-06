@@ -16,7 +16,7 @@
  * `if (!ctx) return`, ces tests ne vérifient que le rendu React autour.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 import type { TacticalRaster } from '@/lib/api/types'
@@ -37,9 +37,18 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
 })
 
 const useTacticalRaster = vi.fn()
+// Le détail de la zone choisie : par défaut, aucune réponse encore.
+const useTacticalCellule = vi.fn<(...args: unknown[]) => { data?: unknown; isPending: boolean }>(() => ({
+  data: undefined,
+  isPending: true,
+}))
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>()
-  return { ...actual, useTacticalRaster: (...args: unknown[]) => useTacticalRaster(...args) }
+  return {
+    ...actual,
+    useTacticalRaster: (...args: unknown[]) => useTacticalRaster(...args),
+    useTacticalCellule: (...args: unknown[]) => useTacticalCellule(...args),
+  }
 })
 
 const t = getTacticalText('fr')
@@ -114,6 +123,9 @@ const cadre = () => screen.getByTestId('tactical-plan-frame')
 
 afterEach(() => {
   vi.clearAllMocks()
+  // Une valeur de retour posée par un test ne doit pas passer au suivant.
+  useTacticalCellule.mockReset()
+  useTacticalCellule.mockImplementation(() => ({ data: undefined, isPending: true }))
 })
 
 describe('TacticalAnalysisView — la carte du plan, toujours rendue', () => {
@@ -133,12 +145,12 @@ describe('TacticalAnalysisView — la carte du plan, toujours rendue', () => {
     expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
   })
 
-  it('EN ÉCHEC avec une réponse gardée : ni calque, ni légende chiffrée, ni carte de la zone', () => {
+  it('EN ÉCHEC avec une réponse gardée : ni calque, ni légende chiffrée, aucune zone choisie', () => {
     mockRaster({ isError: true, data: RASTER_NOMINAL })
     renderVue()
     expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
     expect(screen.queryByRole('img', { name: /Échelle de la lecture/ })).toBeNull()
-    expect(screen.queryByText(t.cellTitle)).toBeNull()
+    expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
   })
 
   it('PÉRIMÈTRE EN ÉCHEC : le message sur le fond, jamais « Mise à jour… »', () => {
@@ -293,5 +305,62 @@ describe('TacticalAnalysisView — la rampe verticale, une unité par lecture', 
     expect(legende).toHaveTextContent(t.units[question])
     const rampe = within(legende).getByRole('img', { name: /Échelle de la lecture/ })
     expect(rampe).toHaveAttribute('data-mode', signee ? 'divergent' : 'intensity')
+  })
+})
+
+describe('TacticalAnalysisView — la zone choisie', () => {
+  /** L'adresse demandée au détail de la zone au dernier rendu. */
+  const derniereZone = () => {
+    const appels = useTacticalCellule.mock.calls
+    return appels[appels.length - 1]?.[2] as { col: number; lig: number; pas_m: number } | null
+  }
+
+  it('la zone la plus chaude est présélectionnée, son détail demandé', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue()
+    expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+    expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
+  })
+
+  it('le clic sur le plan choisit une autre zone ; changer de lecture revient à la plus chaude', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    try {
+      renderVue()
+      // (25 ; 35) px sur un plan de 100 x 50 m : x = 25 m, y = 50 − 35 = 15 m → cellule (2, 1).
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 25, clientY: 35 })
+      expect(derniereZone()).toEqual({ col: 2, lig: 1, pas_m: 10 })
+      fireEvent.change(screen.getByRole('combobox', { name: t.pillReading }), { target: { value: 'kills' } })
+      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+    }
+  })
+
+  it('le nom de la zone se pose sur le plan, à côté de sa cellule', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({
+      data: { contributions: [], matchs_non_ouvrables: 0, zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
+      isPending: false,
+    })
+    renderVue()
+    expect(within(cadre()).getByTestId('tactical-zone-label')).toHaveTextContent('Nid blindé')
+    expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent('Nid blindé')
+  })
+
+  it('aucune zone ne la nomme : « Zone sans nom » sur le plan', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({ data: { contributions: [], matchs_non_ouvrables: 0 }, isPending: false })
+    renderVue()
+    expect(within(cadre()).getByTestId('tactical-zone-label')).toHaveTextContent(t.zoneUnnamed)
+  })
+
+  it('une lecture sans cellule : « Aucune zone sélectionnée »', () => {
+    mockRaster({ data: RASTER_VIDE })
+    renderVue()
+    expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-zone-label')).toBeNull()
   })
 })

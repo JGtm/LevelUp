@@ -963,23 +963,74 @@ Périmètre : `lib/match-nav/MatchReplayLink.tsx` (+ test), `features/tactical/{
 TacticalPlanCard.tsx, TacticalCellCard.tsx (supprimé), tacticalView.logic.ts, i18n.ts}` (+ tests),
 manifeste.
 
-- [ ] L6.1 `zone.logic.ts` : `zoneLaPlusChaude` (D10), coordonnées (S10), valeur signée, sous-ligne
+- [x] L6.1 `zone.logic.ts` : `zoneLaPlusChaude` (D10), coordonnées (S10), valeur signée, sous-ligne
   par lecture, modèle de tuile (fait par face, arme ou catégorie traduite ou rien, badge « seul »,
   « seul · N m », « près · N m », « < 1 », date au fuseau, texte complet), position de l'étiquette
   du plan. Tests ROUGES d'abord ; mutations : |valeur| ignorée, badge arrondi au lieu de tronqué,
   badge sur un frag, fuseau ignoré.
-- [ ] L6.2 `MatchReplayLink` : prop `search` et variante `large` (D8) ; tests d'abord (lien avec
+- [x] L6.2 `MatchReplayLink` : prop `search` et variante `large` (D8) ; tests d'abord (lien avec
   `?t=&clock=`, rien sans `available`, rien sans capability) ; tests de l'Explorateur, de l'Escouade
   et de `match-card` rejoués nommément.
-- [ ] L6.3 `TacticalRejeuTile.tsx` + `TacticalZoneCard.tsx` (S10, S11, S15) ; sélection par défaut
+- [x] L6.3 `TacticalRejeuTile.tsx` + `TacticalZoneCard.tsx` (S10, S11, S15) ; sélection par défaut
   dans `TacticalAnalysisView` ; étiquette du nom de zone sur le plan (S8) ; colonne à la hauteur de
   la carte du plan, liste à défilement interne.
-- [ ] L6.4 Suppressions §4.C ; §4.C rejoué → 0.
-- [ ] L6.5 Tests : carte de zone (sans sélection, sélection d'office, clic, lecture signée, `solde`,
+- [x] L6.4 Suppressions §4.C ; §4.C rejoué → 0.
+- [x] L6.5 Tests : carte de zone (sans sélection, sélection d'office, clic, lecture signée, `solde`,
   lecture d'artefact, zone sans nom), tuile (deux lignes, ellipse sur l'arme seule, bouton absent sans
   artefact, ordre du plus récent au plus ancien), étiquette du plan.
-- [ ] L6.6 Chaînes neuves de la zone (FR + EN) ; manifeste régénéré.
+- [x] L6.6 Chaînes neuves de la zone (FR + EN) ; manifeste régénéré.
 - Gate : gate web.
+
+Journal L6 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L6.1** `zone.logic.ts` (203 L) : `zoneLaPlusChaude` (|valeur| sur une lecture signée, puis le plus
+  de matchs distincts), `coordonneesDeZone` (« x −14…−12 m · y 4…6 m », signe moins
+  typographique), `valeurAffichee` (« + » / « − » sur une lecture signée), `sousLigneDeZone`
+  (victoires et défaites pour « gagne », frags et morts pour « solde »), `modeleDeTuile` (fait par
+  face, arme dans la langue de la page puis catégorie traduite puis rien, badge TRONQUÉ au mètre et
+  « < 1 », jamais sur un frag, date · heure au fuseau du joueur, texte complet, lien à
+  `?t=&clock=`), `positionEtiquette` (par `rectSelection` à largeur 1 : à droite de la cellule dans la
+  partie gauche du plan, à gauche au-delà), `titreDeZone`. 16 tests vus rouges (module absent).
+- **L6.2** `MatchReplayLink` : variante `large` (36 px, icône de 20 px, forme de
+  `MatchHeader.replayLink.tsx`) et prop `search` (`t` chaîne, `clock`) ; l'explication « `t` est une
+  chaîne » relogée dans sa doc (elle vivait dans `TacticalCellCard`). Trois tests (lien avec
+  `?t=&clock=`, rien sans artefact, rien sans capability) ; le premier vu rouge, les deux portes
+  l'étaient déjà par construction. Le double de `Link` du test sait désormais porter `search`.
+  Rejoués nommément : `match-card`, `ExplorerMatchesTable`, `SquadSynergyHistoryTable`,
+  `lib/match-nav` (9 fichiers, 135 tests verts).
+- **L6.3** `TacticalRejeuTile.tsx` (76 L : bande d'issue `outcome-*`, deux lignes, arme seule en
+  `truncate`, badge à droite, `title` = texte complet, `MatchReplayLink` `large` à l'instant) et
+  `TacticalZoneCard.tsx` (127 L : titre = nom en jeu ou « Zone sans nom », « Zone sélectionnée » sans
+  sélection ou pendant la lecture du détail, coordonnées, valeur et unité, sous-ligne, « Rejeu »,
+  liste à défilement interne, pied d'ownership). `TacticalAnalysisView` : `useZone` (zone la plus
+  chaude présélectionnée tant que rien n'est cliqué, choix remis à zéro au changement de carte,
+  lecture, joueurs ou réapparition, détail à la lecture prête) ; colonne à la hauteur de la carte du
+  plan (`lg:self-stretch lg:[contain:size]`) ; étiquette du nom de zone sur le plan
+  (`EtiquetteDeZone`, `TacticalPlanCard`).
+- **L6.4** `TacticalCellCard.tsx` + test supprimés ; `questionSansCellule` (+ test) retiré de
+  `tacticalView.logic.ts` (413 → 404 L). Renvois « cf. `TacticalCellCard` » réorientés vers
+  `MatchReplayLink` : `lib/replay/replayLogic.ts:342`, `routes/…/replay.tsx:20`,
+  `features/synthesis/WeaponRecordsRuler.tsx:106`, `tacticalView.logic.ts` (commentaire). §4.C
+  rejoué : 0, hors `features/match-view/MatchElevationSection.tsx:144` (lot voisin, non touché, §8).
+- **L6.5** `TacticalZoneCard.test.tsx` (14 tests : carte de zone et tuile) vu rouge (module absent) ;
+  `TacticalAnalysisView.test.tsx` : détail de zone doublé, cinq tests de sélection (présélection,
+  clic puis remise à zéro au changement de lecture, étiquette nommée, « Zone sans nom », lecture sans
+  cellule) écrits après le code, rouge prouvé contre HEAD (6 échecs sur 32) ; `.fond.test.tsx` : le
+  premier détail part de la présélection, plus d'un clic.
+- **L6.6** 23 clés neuves FR + EN (`zone.*`, `tile.*`) ; manifeste régénéré (156 clés).
+- **Mutations** (toutes ROUGES, restauration vérifiée) : |valeur| ignorée ; badge arrondi ; badge sur
+  un frag ; fuseau ignoré ; instant non porté par le lien ; pas de présélection ; pas de remise à
+  zéro ; pas d'étiquette sur le plan ; bouton de rejeu sans artefact.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements, aucun sur un
+  fichier du lot ; une erreur de mon test, paramètre inutilisé, corrigée) ; `vitest run --pool=forks`
+  852 fichiers / 9 160 tests verts ; manifestes reconstruits identiques ; knip 0 / 0 / 0 (exports
+  vérifiés à la main : trois types sans importeur rendus locaux) ; couleurs 0 ; champs 0 ; imports
+  croisés 7 ≤ 7 ; `lefthook run pre-push` vert.
+- Seuils : `tactical.toml` 740 L (manifeste, purge en L7) ; `TacticalPlanCard.tsx` 489 L ; autres
+  ≤ 404 L ; fonctions ≤ 78 L.
+- Écarts : L6.2 exécuté avant L6.1 ; renvois de commentaires corrigés dans `replayLogic.ts`, la route
+  du rejeu et `WeaponRecordsRuler.tsx` (hors périmètre, devenus faux par la suppression) ; les clés
+  `cell.contributions_loading` et `cell.footer_not_openable` restent lues par la carte de zone (leur
+  sort est celui de L7).
 
 ### L7 — Web : sémantique et chaînes · moyen
 
@@ -1114,6 +1165,9 @@ L2.3.
 - (L2) `service/teammates/teammates_squad_echange_test.go` (587 → 592 L) : 5 lignes de double du port ajoutées
   à un fichier déjà au-delà de 500 L ; ACCEPTÉ par le superviseur le 2026-10-06 (dette gelée, aucun
   découpage dans ce lot).
+- (L6) `features/match-view/MatchElevationSection.tsx:144` renvoie encore à `TacticalCellCard` (supprimé en L6)
+  pour l'explication « `t` est une chaîne », désormais dans la doc de `MatchReplayLink` (prop
+  `search`). Fichier du lot voisin `feat/matchview-emprise`, non touché ; non traité.
 - (L3) Deux copies de la lecture « mon camp / l'autre » sur `Summary.Teams` + `Self.TeamID` d'une ligne
   canonique : `analysis.buildScoreLabelCanonical` (`home_canonical_recent.go`, libellé seul) et
   `service.scoreDuMatch` (`tactical_service_cellule_enrichir.go`, libellé et nature). Une troisième
