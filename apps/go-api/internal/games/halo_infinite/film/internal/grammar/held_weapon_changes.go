@@ -183,15 +183,23 @@ func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange, gen uint32) (rep
 }
 
 // qualifyHeldWeaponChange qualifie un changement. Une émission qui SUIT une autre sur le même
-// emplacement se lit contre elle. La PREMIÈRE émission d'un emplacement se juge contre le spawn :
+// emplacement se lit contre elle ; quand elle en répète la famille, c'est une RÉ-ANNONCE. La
+// PREMIÈRE émission d'un emplacement se juge contre le spawn :
 //
 //   - DOTATION DE NAISSANCE connue pour cet emplacement (lot M3.2) : la même famille est une
 //     ré-annonce ; sinon le changement part de l'arme de naissance, qui devient `Previous` — une
 //     prise sur emplacement vide, un échange, ou un lâcher qui NOMME l'arme lâchée ;
 //   - sinon, un ENSEMBLE de familles (relevé d'image-clé passé) : une famille déjà portée n'est
-//     qu'une ré-annonce, une famille absente est une acquisition.
+//     qu'une ré-annonce, une famille absente est une acquisition ;
+//   - un emplacement annoncé VIDE dont l'occupant n'est pas connu (ni dotation qui le situe, ni
+//     émission antérieure de la vie) est une RÉ-ANNONCE, pas un lâcher : rien ne dit qu'une arme
+//     l'occupait. La marche des trames, qui lit aussi les records sans position, en rend à chaque
+//     mise en place des joueurs (l'emplacement 2 de chacun, avant ses premières positions).
 func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st SpawnState, ok bool) {
 	switch {
+	case hadPrevious && ch.Family == ch.Previous:
+		ch.Kind = types.HeldWeaponRestated // la meme famille, re-annoncee : rien ne change
+		return
 	case hadPrevious && ch.Family == noVariant:
 		ch.Kind = types.HeldWeaponDropped
 		return
@@ -217,7 +225,7 @@ func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st Sp
 	}
 	switch {
 	case ch.Family == noVariant:
-		ch.Kind = types.HeldWeaponDropped
+		ch.Kind = types.HeldWeaponRestated
 	case ok && st.Families[ch.Family]:
 		ch.Kind = types.HeldWeaponRestated
 	default:

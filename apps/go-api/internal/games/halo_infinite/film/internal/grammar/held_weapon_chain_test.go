@@ -76,3 +76,40 @@ func TestLaChaineDesEmissionsSeCoupeAChaqueVie(t *testing.T) {
 		t.Fatalf("suite de la vie 2 : %s depuis %08x, attendu swapped depuis b", suite.Kind, suite.Previous)
 	}
 }
+
+// TestUneAnnonceNEstPasUnChangement : un emplacement annoncé vide dont l'occupant n'est pas connu,
+// et une émission qui répète la famille précédente de la vie, sont des RÉ-ANNONCES — le document
+// ne les publie pas. Un lâcher se lit seulement quand l'occupant est connu.
+func TestUneAnnonceNEstPasUnChangement(t *testing.T) {
+	sansDotation := func(uint32, uint64) (SpawnState, bool) {
+		return SpawnState{Families: map[uint32]bool{0xA: true}, DebutDeVie: 100}, true
+	}
+	chaine := newHeldWeaponChain(sansDotation)
+	vide := types.HeldWeaponChange{TimestampUS: 200, Slot: 9, SlotIndex: 45, Emplacement: 2, Family: noVariant,
+		Previous: noVariant}
+	chaine.qualifier(&vide, 1)
+	if vide.Kind != types.HeldWeaponRestated {
+		t.Fatalf("emplacement annonce vide sans occupant connu : %s, attendu une re-annonce", vide.Kind)
+	}
+	encoreVide := types.HeldWeaponChange{TimestampUS: 300, Slot: 9, SlotIndex: 45, Emplacement: 2,
+		Family: noVariant, Previous: noVariant}
+	if repete := chaine.qualifier(&encoreVide, 1); !repete || encoreVide.Kind != types.HeldWeaponRestated {
+		t.Fatalf("re-annonce du vide : %s (repetition %v), attendu une re-annonce comptee", encoreVide.Kind, repete)
+	}
+	prise := types.HeldWeaponChange{TimestampUS: 400, Slot: 9, SlotIndex: 45, Emplacement: 2, Family: 0xC,
+		Previous: noVariant}
+	chaine.qualifier(&prise, 1)
+	if prise.Kind != types.HeldWeaponTaken {
+		t.Fatalf("prise sur l emplacement vide : %s", prise.Kind)
+	}
+	memeArme := types.HeldWeaponChange{TimestampUS: 500, Slot: 9, SlotIndex: 45, Emplacement: 2, Family: 0xC,
+		Previous: noVariant}
+	if chaine.qualifier(&memeArme, 1); memeArme.Kind != types.HeldWeaponRestated {
+		t.Fatalf("la meme arme re-annoncee : %s, attendu une re-annonce", memeArme.Kind)
+	}
+	lacher := types.HeldWeaponChange{TimestampUS: 600, Slot: 9, SlotIndex: 45, Emplacement: 2, Family: noVariant,
+		Previous: noVariant}
+	if chaine.qualifier(&lacher, 1); lacher.Kind != types.HeldWeaponDropped || lacher.Previous != 0xC {
+		t.Fatalf("lacher de l arme connue : %s depuis %08x, attendu un lacher nomme", lacher.Kind, lacher.Previous)
+	}
+}

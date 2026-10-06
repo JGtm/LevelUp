@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // traceur rend une observation dont les onze crochets des lecteurs bipedes ecrivent chaque appel,
@@ -139,6 +140,16 @@ func TestLAncrageNePasseQueDerriereLaMarcheSurLaMiniBobine(t *testing.T) {
 		tr := canal.trames[k.paquet]
 		if tr.fermee || slices.Contains(tr.slots, r.Slot) {
 			t.Fatalf("record recupere %+v dans une trame fermee ou d un slot que la marche a lu", k)
+		}
+	}
+	// Un corps mort n agit plus : aucun record d une vie a l instant de son dead-state ou apres.
+	if lu.corpsMorts == 0 {
+		t.Fatal("la bobine porte des morts : des records de corps morts doivent avoir ete ecartes")
+	}
+	for i := range lu.records {
+		r := &lu.records[i]
+		if mort, connue := canal.mortA[types.LifeKey{Slot: r.Slot, Gen: r.Gen}]; connue && r.Packet.TimestampUS >= mort {
+			t.Fatalf("record du slot %d a %d, apres le dead-state de sa vie (%d)", r.Slot, r.Packet.TimestampUS, mort)
 		}
 	}
 	comparerLesSources(t, fc, parLaMarche)

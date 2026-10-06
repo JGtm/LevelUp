@@ -25,6 +25,14 @@ package grammar
 // est marque recupere ([recordBipedeLu.Recupere]) et compte au rapport des replis du contexte
 // (`repli_ancrage_bipede_apres_la_marche`, ordre « apres la lecture »).
 //
+// # UN CORPS MORT N AGIT PLUS
+//
+// Le record qui porte le dead-state d un corps, et ceux du meme corps qui le suivent jusqu au record
+// NEW qui recree sa generation, ne vont a aucun lecteur, de l une ou l autre source : ils decrivent
+// le cadavre (emplacements d arme vides, equipement retire), pas un geste du joueur. Les armes qu il
+// laisse tomber sont les objets du monde de `groundWeapons`. Ces records se comptent
+// ([lecturesBipedes.corpsMorts]).
+//
 // # CE QU UN LECTEUR EN FAIT
 //
 // Il rejoue les publications d un record sur ses propres crochets, composant par composant
@@ -120,8 +128,8 @@ type lecturesBipedes struct {
 	records []recordBipedeLu
 	// examines : records bipedes delta lus, meme ceux qui n annoncent rien des huit lecteurs ;
 	// recuperes : ceux que l ancrage a rendus ; horsRecord : publications de la marche qu aucun
-	// record retenu ne porte.
-	examines, recuperes, horsRecord int
+	// record retenu ne porte ; corpsMorts : records d un corps mort, ecartes.
+	examines, recuperes, horsRecord, corpsMorts int
 }
 
 // lecturesBipedes rend les lectures bipedes du film, faites une fois par contexte : par la

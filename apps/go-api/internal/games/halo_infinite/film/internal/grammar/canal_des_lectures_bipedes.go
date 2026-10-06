@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // capteurDeLectures recoit les publications des onze crochets des lecteurs bipedes et les garde,
@@ -146,11 +147,14 @@ type canalDesLecturesBipedes struct {
 	utiles uint64
 	lu     lecturesBipedes
 	trames map[paquetDuFlux]trameDuCanal
+	// mortA : l instant du dead-state de chaque vie que la marche a lu, jusqu au record NEW qui la
+	// recree (generation reutilisee).
+	mortA map[types.LifeKey]uint64
 }
 
 // nouveauCanalDesLecturesBipedes prepare le canal des lectures bipedes du film `fc`.
 func nouveauCanalDesLecturesBipedes(fc *FilmContext) *canalDesLecturesBipedes {
-	c := &canalDesLecturesBipedes{fc: fc, trames: map[paquetDuFlux]trameDuCanal{}}
+	c := &canalDesLecturesBipedes{fc: fc, trames: map[paquetDuFlux]trameDuCanal{}, mortA: map[types.LifeKey]uint64{}}
 	if arch, err := fc.bipedArchetype(); err == nil {
 		c.utiles = composantsDesLecteursBipedes(arch)
 	}
@@ -198,12 +202,27 @@ func (c *canalDesLecturesBipedes) Trame(p *lecture.Paquet) {
 	for i := range recs {
 		r := &recs[i]
 		t.slots = append(t.slots, r.Slot)
-		if r.TypeIndex != BipedTypeIndex || r.Type != recDelta {
+		if r.TypeIndex != BipedTypeIndex {
+			continue
+		}
+		vie := types.LifeKey{Slot: r.Slot, Gen: r.ID >> 30}
+		if r.Type == recNew {
+			delete(c.mortA, vie)
+			continue
+		}
+		if r.Type != recDelta {
 			continue
 		}
 		c.lu.examines++
 		rb := recordDeLaMarche(p, r)
 		k = attribuerLesAppels(&rb, r, appels, k, &c.lu.horsRecord)
+		if _, deja := c.mortA[vie]; !deja && r.Trace.Dead != nil {
+			c.mortA[vie] = p.TS
+		}
+		if _, mort := c.mortA[vie]; mort {
+			c.lu.corpsMorts++
+			continue
+		}
 		if rb.masque&c.utiles != 0 {
 			c.lu.records = append(c.lu.records, rb)
 		}
@@ -284,6 +303,10 @@ func (c *canalDesLecturesBipedes) recuperer() []recordBipedeLu {
 	var out []recordBipedeLu
 	c.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
 		if t, vu := c.trames[paquetDuFlux{r.Chunk, r.Packet.Index}]; !rendParLAncrage(t, vu, r.Slot) {
+			return
+		}
+		if mort, connue := c.mortA[r.Vie()]; connue && r.Packet.TimestampUS >= mort {
+			c.lu.corpsMorts++
 			return
 		}
 		c.lu.examines++
