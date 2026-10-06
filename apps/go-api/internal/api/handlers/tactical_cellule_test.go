@@ -8,6 +8,7 @@ package handlers_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -93,3 +94,33 @@ func TestTacticalHandler_CelluleCapabilityNotSupported503(t *testing.T) {
 // La validation stricte du map_id (MapIDValide) est testee de facon exhaustive dans
 // tactical_mapid_test.go (TestTacticalMapID_CelluleRefuseLesChemins), sur la meme table
 // de formes hostiles que le raster et le fond de carte.
+
+// TestTacticalHandler_CelluleMiniTuile : les champs de la mini-tuile « Rejeu » et le nom de la zone
+// traversent le contrat en snake_case.
+func TestTacticalHandler_CelluleMiniTuile(t *testing.T) {
+	distance := 12.5
+	svc := &fakeTacticalSvc{cellule: domain.TacticalCelluleReponse{
+		Contributions: []domain.TacticalContribution{{
+			MatchID: "m1", InstantMs: 4200, XUID: "2533274000000001", Clock: domain.TacticalClockMatch,
+			Face: domain.TacticalFaceMort, AutreGamertag: "Rival", ArmeLabel: "Fusil de combat", ArmeLabelEN: "BR75",
+			Placement: &domain.TacticalPlacement{Seul: true, DistanceM: &distance},
+			ModeLabel: "Assassin", ScoreLabel: "50 - 42", ScoreKind: "points", ReplayAvailable: true,
+		}},
+		Zone: &domain.TacticalZoneNom{NomFR: "Nid blindé", NomEN: "Armored Nest"},
+	}}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/cellule", `{"match_ids":["m1"],"cellule":{"col":4,"lig":6}}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	for _, cle := range []string{
+		`"face":"mort"`, `"autre_gamertag":"Rival"`, `"arme_label":"Fusil de combat"`, `"arme_label_en":"BR75"`,
+		`"mode_label":"Assassin"`, `"score_label":"50 - 42"`, `"score_kind":"points"`,
+		`"placement":{"seul":true,"distance_m":12.5}`, `"replay_available":true`,
+		`"zone":{"nom_fr":"Nid blindé","nom_en":"Armored Nest"}`,
+	} {
+		if !strings.Contains(w.Body.String(), cle) {
+			t.Errorf("clef %s absente du JSON servi : %s", cle, w.Body.String())
+		}
+	}
+}

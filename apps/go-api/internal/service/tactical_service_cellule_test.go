@@ -174,6 +174,9 @@ func TestCellule_Isole(t *testing.T) {
 	if got.Contributions[0].Clock != domain.TacticalClockMatch {
 		t.Errorf("clock = %q, want %q (« isole » est sur l'horloge du match)", got.Contributions[0].Clock, domain.TacticalClockMatch)
 	}
+	if got.Contributions[0].Face != domain.TacticalFaceMort {
+		t.Errorf("face = %q, want %q (« isole » : une mort)", got.Contributions[0].Face, domain.TacticalFaceMort)
+	}
 }
 
 // mortContexteAvecInstant : meme fixture que `mortContexte` (tactical_service_isolement_test.go),
@@ -220,6 +223,9 @@ func TestCellule_Temps(t *testing.T) {
 	if got.Contributions[0].Clock != domain.TacticalClockFilm {
 		t.Errorf("clock = %q, want %q (« temps » est deja sur l'horloge du film)", got.Contributions[0].Clock, domain.TacticalClockFilm)
 	}
+	if got.Contributions[0].Face != domain.TacticalFaceEntree {
+		t.Errorf("face = %q, want %q (« temps » : une entrée dans la zone)", got.Contributions[0].Face, domain.TacticalFaceEntree)
+	}
 }
 
 // TestCellule_Routes : une route qui TRAVERSE la cellule demandee contribue avec son
@@ -255,6 +261,9 @@ func TestCellule_Routes(t *testing.T) {
 	}
 	if got.Contributions[0].Clock != domain.TacticalClockFilm {
 		t.Errorf("clock = %q, want %q (« routes » est deja sur l'horloge du film)", got.Contributions[0].Clock, domain.TacticalClockFilm)
+	}
+	if got.Contributions[0].Face != domain.TacticalFaceReapparition {
+		t.Errorf("face = %q, want %q (« routes » : une réapparition)", got.Contributions[0].Face, domain.TacticalFaceReapparition)
 	}
 }
 

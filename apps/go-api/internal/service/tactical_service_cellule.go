@@ -62,17 +62,17 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	req.Scope = scope
 
 	var (
-		contributions []domain.TacticalContribution
-		resultats     map[string]string
-		err           error
+		lues    []contributionLue
+		univers domain.TacticalUnivers
+		err     error
 	)
 	switch {
 	case lectureDArtefact(req.Question):
-		contributions, resultats, err = s.celluleArtefact(ctx, req, scope)
+		lues, univers, err = s.celluleArtefact(ctx, req, scope)
 	case req.Question == domain.TacticalQuestionIsole:
-		contributions, resultats, err = s.celluleIsole(ctx, req, scope)
+		lues, univers, err = s.celluleIsole(ctx, req, scope)
 	default:
-		contributions, resultats, err = s.celluleDeKills(ctx, req, scope)
+		lues, univers, err = s.celluleDeKills(ctx, req, scope)
 	}
 	if err != nil {
 		return out, err
@@ -85,39 +85,57 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 		return out, err
 	}
 	out.MatchsNonOuvrables = matchsNonOuvrables(scope.MatchIDs, ouvrables)
-
-	// LE FILTRE D'OUVRABILITE EST LE GARDE-FOU CANONIQUE, PAS DE LA DECORATION : les trois
-	// sources ci-dessus sont scopees par construction (mp.xuid = s.xuid), mais une
-	// contribution dont le match n'apparaitrait PAS dans `ouvrables` — perimetre incomplet,
-	// bug d'un futur appelant — est REFUSEE ici plutot que triee a une date zero qui la
-	// glisserait n'importe ou dans la liste.
-	filtrees := make([]domain.TacticalContribution, 0, len(contributions))
-	for _, c := range contributions {
-		debut, ok := ouvrables[c.MatchID]
-		if !ok {
-			s.logger.WarnContext(ctx, "tactique: contribution d'un match non ouvrable ecartee",
-				"player", s.xuid, "map_id", req.MapID, "match_id", c.MatchID)
-			continue
-		}
-		c.MatchStartedAt = debut
-		// L'ISSUE VIENT DE L'UNIVERS DE LA LECTURE, jamais d'une seconde requete : c'est
-		// le meme `TacticalMatch` qui a decide que le match entrait dans la mesure.
-		c.Resultat = resultats[c.MatchID]
-		filtrees = append(filtrees, c)
-	}
-	sort.SliceStable(filtrees, func(i, j int) bool {
-		if !filtrees[i].MatchStartedAt.Equal(filtrees[j].MatchStartedAt) {
-			return filtrees[i].MatchStartedAt.After(filtrees[j].MatchStartedAt)
-		}
-		return filtrees[i].InstantMs < filtrees[j].InstantMs
-	})
-	out.Contributions = filtrees
+	retenues := s.garderLesOuvrables(ctx, req.MapID, lues, ouvrables, resultatsDeLUnivers(univers))
+	out.Zone = s.nommerLaCellule(ctx, req, retenues)
+	out.Contributions = s.enrichir(ctx, req, univers, retenues)
 
 	s.logger.InfoContext(ctx, "tactique: detail de cellule",
 		"player", s.xuid, "map_id", req.MapID, "question", req.Question, "qui", req.Qui,
 		"col", req.Col, "lig", req.Lig, "contributions", len(out.Contributions),
 		"matchs_non_ouvrables", out.MatchsNonOuvrables)
 	return out, nil
+}
+
+// contributionLue est une contribution telle que sa source la lit, avec ce que l'enrichissement et
+// le nom de zone en utilisent sans le publier : la hauteur de l'événement (face mort : la victime ;
+// face frag : le tueur ; nil = non mesurée ou lecture d'artefact) et sa source de dégât brute.
+type contributionLue struct {
+	domain.TacticalContribution
+	z         *float64
+	sourceTag *uint32
+	categorie string
+}
+
+// garderLesOuvrables ne garde que les contributions des matchs ouvrables, datées et munies de leur
+// issue, triées par date de match décroissante puis instant croissant.
+//
+// LE FILTRE D'OUVRABILITE EST LE GARDE-FOU CANONIQUE, PAS DE LA DECORATION : les trois sources
+// sont scopees par construction (mp.xuid = s.xuid), mais une contribution dont le match
+// n'apparaitrait PAS dans `ouvrables` — perimetre incomplet, bug d'un futur appelant — est
+// REFUSEE ici plutot que triee a une date zero qui la glisserait n'importe ou dans la liste.
+// L'ISSUE VIENT DE L'UNIVERS DE LA LECTURE, jamais d'une seconde requete : c'est le meme
+// `TacticalMatch` qui a decide que le match entrait dans la mesure.
+func (s *TacticalService) garderLesOuvrables(ctx context.Context, mapID string, lues []contributionLue,
+	ouvrables map[string]time.Time, resultats map[string]string) []contributionLue {
+	retenues := make([]contributionLue, 0, len(lues))
+	for _, c := range lues {
+		debut, ok := ouvrables[c.MatchID]
+		if !ok {
+			s.logger.WarnContext(ctx, "tactique: contribution d'un match non ouvrable ecartee",
+				"player", s.xuid, "map_id", mapID, "match_id", c.MatchID)
+			continue
+		}
+		c.MatchStartedAt = debut
+		c.Resultat = resultats[c.MatchID]
+		retenues = append(retenues, c)
+	}
+	sort.SliceStable(retenues, func(i, j int) bool {
+		if !retenues[i].MatchStartedAt.Equal(retenues[j].MatchStartedAt) {
+			return retenues[i].MatchStartedAt.After(retenues[j].MatchStartedAt)
+		}
+		return retenues[i].InstantMs < retenues[j].InstantMs
+	})
+	return retenues
 }
 
 // matchsNonOuvrables compte les match_id DISTINCTS de `matchIDs` absents de `ouvrables`.
@@ -140,45 +158,50 @@ func matchsNonOuvrables(matchIDs []string, ouvrables map[string]time.Time) int {
 // ou je meurs, ou je tue, ou je gagne. Meme source que rasterDeKills, projetee sur UNE
 // cellule au lieu d'etre sommee sur toute la grille.
 func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
+	scope domain.TacticalScope) ([]contributionLue, domain.TacticalUnivers, error) {
 	if !positionsDeKillLisibles(s.caps) {
 		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
-		return nil, nil, games.ErrCapabilityNotSupported
+		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
 	lecture, err := s.repo.KillPositions(ctx, requeteDuScope(s.xuid, req.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture des positions en echec (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question, "err", err)
-		return nil, nil, err
+		return nil, domain.TacticalUnivers{}, err
 	}
 	if len(lecture.Univers.Matchs) == 0 {
-		return nil, nil, domain.ErrTacticalCarteInconnue
+		return nil, domain.TacticalUnivers{}, domain.ErrTacticalCarteInconnue
 	}
 	dans := cible(lecture.Univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
 	prendVictime, prendTueur := facesDeLaQuestion(req.Question)
 	grille := grilleDemandee(req.PasM)
 
-	out := make([]domain.TacticalContribution, 0, 4)
+	out := make([]contributionLue, 0, 4)
 	for _, p := range lecture.Points {
-		if prendVictime && dans(p.MatchID, p.VictimXUID) {
-			if celluleCorrespond(grille, p.VictimX, p.VictimY, req.Col, req.Lig) {
-				out = append(out, domain.TacticalContribution{
-					MatchID: p.MatchID, InstantMs: p.TimeMs, XUID: p.VictimXUID,
-					Clock: domain.TacticalClockMatch,
-				})
-			}
+		if prendVictime && dans(p.MatchID, p.VictimXUID) &&
+			celluleCorrespond(grille, p.VictimX, p.VictimY, req.Col, req.Lig) {
+			out = append(out, faceDeKill(p, p.VictimXUID, domain.TacticalFaceMort, p.KillerGamertag, p.VictimZ))
 		}
-		if prendTueur && dans(p.MatchID, p.KillerXUID) {
-			if celluleCorrespond(grille, p.KillerX, p.KillerY, req.Col, req.Lig) {
-				out = append(out, domain.TacticalContribution{
-					MatchID: p.MatchID, InstantMs: p.TimeMs, XUID: p.KillerXUID,
-					Clock: domain.TacticalClockMatch,
-				})
-			}
+		if prendTueur && dans(p.MatchID, p.KillerXUID) &&
+			celluleCorrespond(grille, p.KillerX, p.KillerY, req.Col, req.Lig) {
+			out = append(out, faceDeKill(p, p.KillerXUID, domain.TacticalFaceFrag, p.VictimGamertag, p.KillerZ))
 		}
 	}
-	return out, resultatsDeLUnivers(lecture.Univers), nil
+	return out, lecture.Univers, nil
+}
+
+// faceDeKill rend une face d'un engagement : la mort de la victime (l'autre joueur est le tueur,
+// la hauteur celle de la victime) ou le frag du tueur (l'autre est la victime, la hauteur celle du
+// tueur). La source de dégât est celle de l'engagement, la même pour les deux faces.
+func faceDeKill(p domain.TacticalKillPosition, joueur, face, autre string, z *float64) contributionLue {
+	return contributionLue{
+		TacticalContribution: domain.TacticalContribution{
+			MatchID: p.MatchID, InstantMs: p.TimeMs, XUID: joueur, Clock: domain.TacticalClockMatch,
+			Face: face, AutreGamertag: autre,
+		},
+		z: z, sourceTag: p.SourceTag, categorie: p.SourceCategory,
+	}
 }
 
 // celluleIsole sert « ou je meurs isole ». MEME REGLE QUE coordination.Isolement
@@ -189,26 +212,26 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 // l'instant, quand ce detail de cellule a besoin des deux pour construire un lien de rejeu. La
 // COMPARAISON a portee, elle, est `coordination.APortee`, la meme que l'isolement.
 func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
+	scope domain.TacticalScope) ([]contributionLue, domain.TacticalUnivers, error) {
 	if !positionsDeKillLisibles(s.caps) {
 		s.logger.WarnContext(ctx, "tactique: aucune position de kill lisible pour ce titre (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID)
-		return nil, nil, games.ErrCapabilityNotSupported
+		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
 	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, req.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: lecture d'isolement en echec (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "err", err)
-		return nil, nil, err
+		return nil, domain.TacticalUnivers{}, err
 	}
 	if len(lecture.Univers.Matchs) == 0 {
-		return nil, nil, domain.ErrTacticalCarteInconnue
+		return nil, domain.TacticalUnivers{}, domain.ErrTacticalCarteInconnue
 	}
 	rayons, _ := s.rayonsParMatch(lecture.Univers.Matchs)
 	dans := cible(lecture.Univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
 	grille := grilleDemandee(req.PasM)
 
-	out := make([]domain.TacticalContribution, 0, 2)
+	out := make([]contributionLue, 0, 2)
 	for _, m := range lecture.Morts {
 		if !dans(m.MatchID, m.VictimXUID) {
 			continue
@@ -231,12 +254,15 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 		if !celluleCorrespond(grille, m.X, m.Y, req.Col, req.Lig) {
 			continue
 		}
-		out = append(out, domain.TacticalContribution{
-			MatchID: m.MatchID, InstantMs: m.TimeMs, XUID: m.VictimXUID,
-			Clock: domain.TacticalClockMatch,
+		out = append(out, contributionLue{
+			TacticalContribution: domain.TacticalContribution{
+				MatchID: m.MatchID, InstantMs: m.TimeMs, XUID: m.VictimXUID,
+				Clock: domain.TacticalClockMatch, Face: domain.TacticalFaceMort, AutreGamertag: m.KillerGamertag,
+			},
+			z: m.Z, sourceTag: m.SourceTag, categorie: m.SourceCategory,
 		})
 	}
-	return out, resultatsDeLUnivers(lecture.Univers), nil
+	return out, lecture.Univers, nil
 }
 
 // celluleArtefact sert « ou je passe mon temps » et « par ou je sors du spawn », sur les
@@ -253,29 +279,29 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 // champ TOUJOURS present au schema 6 (ecrit a la cuisson) : aucun cas de « temps sans
 // instant » n'a ete rencontre sur le corpus courant (verdict consigne au journal du lot).
 func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.TacticalCelluleRequest,
-	scope domain.TacticalScope) ([]domain.TacticalContribution, map[string]string, error) {
+	scope domain.TacticalScope) ([]contributionLue, domain.TacticalUnivers, error) {
 	if !s.caps.Has(games.CapFilmReplayArtifact) {
 		s.logger.WarnContext(ctx, "tactique: lecture d'artefact indisponible (detail de cellule)",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
-		return nil, nil, games.ErrCapabilityNotSupported
+		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
 	if s.rasters == nil {
 		s.logger.ErrorContext(ctx, "tactique: detail de cellule d'artefact demande sans lecteur de sidecars cable",
 			"player", s.xuid, "map_id", req.MapID, "question", req.Question)
-		return nil, nil, games.ErrCapabilityNotSupported
+		return nil, domain.TacticalUnivers{}, games.ErrCapabilityNotSupported
 	}
 	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(req.MapID, scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers du detail de cellule en echec",
 			"player", s.xuid, "map_id", req.MapID, "err", err)
-		return nil, nil, err
+		return nil, domain.TacticalUnivers{}, err
 	}
 	if len(univers.Matchs) == 0 {
-		return nil, nil, domain.ErrTacticalCarteInconnue
+		return nil, domain.TacticalUnivers{}, domain.ErrTacticalCarteInconnue
 	}
 	dans := cible(univers.Equipes, req.Qui, s.xuid, scope.Coequipiers)
 
-	out := make([]domain.TacticalContribution, 0, 2)
+	out := make([]contributionLue, 0, 2)
 	for _, m := range univers.Matchs {
 		sc, err := s.rasters.Charger(ctx, m.MatchID)
 		if err != nil {
@@ -288,7 +314,7 @@ func (s *TacticalService) celluleArtefact(ctx context.Context, req domain.Tactic
 		}
 		out = append(out, contributionsDuSidecar(sc, m.MatchID, req.Question, celluleVisee(req), dans)...)
 	}
-	return out, resultatsDeLUnivers(univers), nil
+	return out, univers, nil
 }
 
 // resultatsDeLUnivers projette l'issue de chaque match de l'univers sous sa forme
@@ -342,8 +368,8 @@ func celluleVisee(req domain.TacticalCelluleRequest) func(col, lig int) bool {
 
 // contributionsDuSidecar rend les contributions d'UN sidecar pour UNE cellule.
 func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question string,
-	visee func(col, lig int) bool, dans predicatQui) []domain.TacticalContribution {
-	out := make([]domain.TacticalContribution, 0, 2)
+	visee func(col, lig int) bool, dans predicatQui) []contributionLue {
+	out := make([]contributionLue, 0, 2)
 	for _, j := range sc.Joueurs {
 		if !dans(matchID, j.XUID) {
 			continue
@@ -354,28 +380,29 @@ func contributionsDuSidecar(sc *domain.TacticalRasterSidecar, matchID, question 
 				if !routeTraverseCellule(route, visee) {
 					continue
 				}
-				out = append(out, domain.TacticalContribution{
-					MatchID:   matchID,
-					InstantMs: int64(route.DebutFrame) * int64(sc.FrameIntervalMs),
-					XUID:      j.XUID,
-					Clock:     domain.TacticalClockFilm,
-				})
+				out = append(out, faceDArtefact(matchID, j.XUID, domain.TacticalFaceReapparition,
+					int64(route.DebutFrame)*int64(sc.FrameIntervalMs)))
 			}
 		default: // domain.TacticalQuestionTemps
 			for _, e := range j.PremieresEntrees {
 				if !visee(e.Col, e.Lig) {
 					continue
 				}
-				out = append(out, domain.TacticalContribution{
-					MatchID:   matchID,
-					InstantMs: int64(e.Frame) * int64(sc.FrameIntervalMs),
-					XUID:      j.XUID,
-					Clock:     domain.TacticalClockFilm,
-				})
+				out = append(out, faceDArtefact(matchID, j.XUID, domain.TacticalFaceEntree,
+					int64(e.Frame)*int64(sc.FrameIntervalMs)))
 			}
 		}
 	}
 	return out
+}
+
+// faceDArtefact rend une contribution d'une lecture d'artefact, sur l'horloge du film : une entrée
+// dans la zone (temps) ou une réapparition dont la route la traverse (routes). Ni autre joueur, ni
+// source de dégât, ni hauteur : les sidecars n'en portent pas.
+func faceDArtefact(matchID, xuid, face string, instantMs int64) contributionLue {
+	return contributionLue{TacticalContribution: domain.TacticalContribution{
+		MatchID: matchID, InstantMs: instantMs, XUID: xuid, Clock: domain.TacticalClockFilm, Face: face,
+	}}
 }
 
 // routeTraverseCellule dit si une route de spawn passe par la cellule visee.

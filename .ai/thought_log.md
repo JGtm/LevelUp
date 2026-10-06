@@ -115930,3 +115930,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : tests vus rouges avant le code (sauf trois verts d'emblée, consignés au journal du plan) ; 8 mutations toutes rouges ; témoins de zone : Illusion « Nid blindé » inchangé, Bazaar « Pont du marché ouest » par la règle (b), aucun nom changé par les parties ou les trous ; Go 349 paquets en six lots, 0 échec ; intégration `platform/duckdb` (`-p 1`) verte ; garde-rails nommés PASS ; lint 0 issue ; contrat : deux descriptions seulement.
 
 **Conclusion / prochaine étape** : L2 clos ; L3 (détail de zone enrichi et câblage) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L3 : le détail de zone enrichi et son câblage — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L3 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : chaque contribution du détail d'une zone dit sa face et l'autre joueur, et porte en interne la hauteur et la source de l'événement ; la zone se nomme au centre de la cellule avec ces hauteurs (règle V6) ; l'enrichissement (`tactical_service_cellule_enrichir.go`) lit UNE fois par requête chacune de ses quatre sources — canonique (mode, score mon camp d'abord, manches), noms d'armes (catégorie à défaut), contextes de mort bornés (badge de placement des seules morts), présence du rejeu — sous sa section de durée, chacune best-effort et journalisée ; les dépendances arrivent par cinq `With*` portés par une ligne du service ; la fabrique `Tactical` quitte `registry_pages.go` (619 → 579 L) pour `registry_pages_tactical.go`, sous garde-rail de câblage.
+
+**Résultats observés** : tests vus rouges avant le code (sauf le test handler et « Zone sans nom », verts d'emblée) ; 7 mutations rouges ; Go 349 paquets en six lots, 1 échec hors périmètre (test de durée `sync/skill` sous charge d'une autre session, vert rejoué seul) ; garde-rails nommés PASS ; lint 0 issue ; contrat inchangé. Décisions du superviseur consignées : stub de `teammates_squad_echange_test.go` accepté (§8), « Pont du marché ouest » écart assumé à la maquette (journal L2).
+
+**Conclusion / prochaine étape** : L3 clos ; L4 (web : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées ») après le « continue » du superviseur.

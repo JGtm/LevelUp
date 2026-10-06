@@ -76,6 +76,7 @@ type TacticalService struct {
 	// connaitre la fenetre ne doit pas faire dire « jamais cuit » a un match cuisable.
 	retentionMois func() int
 	logger        *slog.Logger
+	detail        sourcesDuDetail // les sources du détail d'une zone (tactical_service_cellule_enrichir.go)
 }
 
 // NewTacticalService construit le service.

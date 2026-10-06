@@ -678,6 +678,9 @@ Journal L2 (2026-10-06, exécuteur, `feat/tactique-v2`) — tests `:memory:` seu
 - Écarts : `teammates_squad_echange_test.go` et `tactical_service_lectures.go` (`zonesPures`) hors de
   la liste du périmètre, touchés par nécessité (double du port ; même projection que `zonesNommees`) ;
   `tactical_service_isolement.go` touché pour L2.5 (au périmètre).
+- Écart assumé à la maquette (décision du superviseur, 2026-10-06) : le nom retenu pour le témoin
+  Bazaar (−7, −1) est « Pont du marché ouest » (règle (b) du brief), et non « Grande cour ouest » de la
+  maquette (autre règle).
 
 ### L3 — Go : le détail de zone enrichi et son câblage · lourd
 
@@ -686,28 +689,28 @@ tactical_service_cablage.go, tactical_service.go}` (+ tests, `tactical_mock_test
 `api/wire/{registry_pages.go, registry_pages_tactical.go (NEUF), registry_pages_tactical_wiring_test.go
 (NEUF)}`, `api/handlers/tactical_cellule_test.go`, contrat.
 
-- [ ] L3.1 Les trois sources du détail posent `Face`, `AutreGamertag`, la source brute (tag,
+- [x] L3.1 Les trois sources du détail posent `Face`, `AutreGamertag`, la source brute (tag,
   catégorie) et le z interne de chaque contribution (`celluleDeKills`, `celluleIsole`,
   `contributionsDuSidecar`) ; `temps` → `entree`, `routes` → `reapparition` (D12).
-- [ ] L3.2 Nom de zone (V6, D3) : `s.zonesDeLaCarte` + centre de la cellule au pas demandé + z des
+- [x] L3.2 Nom de zone (V6, D3) : `s.zonesDeLaCarte` + centre de la cellule au pas demandé + z des
   événements de la cellule → `tactical.NommerZone` → `out.Zone` ; règle retenue au journal (Debug).
-- [ ] L3.3 `tactical_service_cellule_enrichir.go` (D5, D6, D7, D8) : une lecture canonique par
+- [x] L3.3 `tactical_service_cellule_enrichir.go` (D5, D6, D7, D8) : une lecture canonique par
   requête (`LoadPlayerMatches`, filtre `MapIDs`), un `ResolveWeaponLabels` pour toutes les clés, un
   `ContextesDeMort` borné aux matchs des contributions, un `AvailableSet` ; mode (langue de la
   requête, `ctxkeys.Locale`), score (mon camp d'abord, camp lu sur `Self.TeamID`), arme /
   catégorie, placement (faces `mort`), `ReplayAvailable` ; sections de durée
   `tactical_cellule_canonique`, `tactical_cellule_armes`, `tactical_cellule_contextes`,
   `tactical_cellule_rejeu` (ADR 0036 I6) ; dégradations D15.
-- [ ] L3.4 Injecteurs `With*` (D15) et champs du service ; `tactical_service.go` ne grossit pas (les
+- [x] L3.4 Injecteurs `With*` (D15) et champs du service ; `tactical_service.go` ne grossit pas (les
   champs neufs vivent dans une struct déclarée dans `tactical_service_cellule_enrichir.go` et
   embarquée par une ligne).
-- [ ] L3.5 Câblage : fabrique `Tactical` déplacée dans `api/wire/registry_pages_tactical.go`
+- [x] L3.5 Câblage : fabrique `Tactical` déplacée dans `api/wire/registry_pages_tactical.go`
   (taille de `registry_pages.go` avant / après au journal), injecteurs inconditionnels sauf ce que
   les capabilities gouvernent déjà (classificateur nil sur Halo 5) ; garde-rail de câblage
   `registry_pages_tactical_wiring_test.go` (patron `registry_pages_timeseries_wiring_test.go`,
   `appelsDansFactory`) : chaque `With*` présent, inconditionnel. Mutation : un `With*` retiré →
   rouge.
-- [ ] L3.6 Tests service écrits d'abord (`tactical_service_cellule_enrichir_test.go`) : chaque champ ;
+- [x] L3.6 Tests service écrits d'abord (`tactical_service_cellule_enrichir_test.go`) : chaque champ ;
   score en manches sur une variante `rounds_decide` ; mon camp d'abord en camp 1 ; arme par la clé,
   catégorie à défaut, rien à défaut ; badge (seul sans distance, près, seul à distance, aucun sur un
   frag) ; `replay_available` vrai / faux ; « Zone sans nom » ; chaque source absente
@@ -715,10 +718,68 @@ tactical_service_cablage.go, tactical_service.go}` (+ tests, `tactical_mock_test
   compteurs : une lecture par source et par requête ; Halo 5 (sans classificateur ni catalogue) ;
   ownership inchangé (`matchs_non_ouvrables`). Mutations : camp inversé, lecture canonique par
   contribution, badge sur un frag, `replay_available` toujours vrai → rouges.
-- [ ] L3.7 Test handler du détail : clés snake_case servies (`face`, `mode_label`, `score_label`,
+- [x] L3.7 Test handler du détail : clés snake_case servies (`face`, `mode_label`, `score_label`,
   `placement`, `replay_available`, `zone`) ; contrat régénéré (additif).
 - Gate : gate Go + contrat ; `TestNoNewSlugComparison`, `TestAucunTypeAnalysisEnCorpsHuma`
   rejoués nommément.
+
+Journal L3 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L3.1** Les trois sources rendent des `contributionLue` (la contribution publiée, plus la hauteur
+  de l'événement et la source de dégât brute, non publiées) et l'univers de leur lecture : kills /
+  gagne / solde → `faceDeKill` (mort : autre = tueur, z = victime ; frag : autre = victime, z =
+  tueur) ; isole → face `mort`, autre = tueur ; temps → `entree`, routes → `reapparition`
+  (`faceDArtefact`, sans z ni source). Le filtre d'ouvrabilité et le tri sortent de `Cellule` dans
+  `garderLesOuvrables` (comportement inchangé). Tests : `tactical_service_cellule_faces_test.go`
+  (faces et autre joueur) et trois assertions `Face` ajoutées aux tests isole / temps / routes, vus
+  rouges.
+- **L3.2** `nommerLaCellule` : centre de la cellule au pas demandé (`Grille.Centre`), hauteurs des
+  contributions retenues, `tactical.NommerZone` sur `zonesPures(s.zonesDeLaCarte(...))` ; règle et
+  distance au journal (Debug). Tests : la même cellule se nomme « Étage » pour une mort (z de la
+  victime) et « Rez » pour un frag (z du tueur), vu rouge ; « Zone sans nom » → `zone` absente.
+- **L3.3** `tactical_service_cellule_enrichir.go` (297 L) : `enrichir` ne lit rien sans contribution ;
+  sinon `poserModeEtScore` (une `LoadPlayerMatches` filtrée sur la carte, `Validate` appelé ; mode
+  par `labelPourLocale` et `ctxkeys.Locale` ; score par `scoreDuMatch` : mon camp d'abord sur
+  `Self.TeamID`, `analysis.ReadTeamScore` + `FormatTeamScoreLabel`, table `rounds_decide`),
+  `poserArmes` (classificateur par contribution, UN `ResolveWeaponLabels` pour les clés distinctes ;
+  arme FR / EN, sinon catégorie brute ; sans classificateur rien), `poserPlacements` (UN
+  `ContextesDeMort` borné aux matchs des morts retenues, `ContexteLePlusProche` +
+  `PlacementDeLaMort`, portée par `rayonsParMatch` ; faces `mort` seulement), `poserRejeu` (UN
+  `AvailableSet`). Sections `tactical_cellule_canonique`, `tactical_cellule_armes`,
+  `tactical_cellule_contextes`, `tactical_cellule_rejeu`, feuilles (aucune des lectures n'en déclare).
+  Dégradations : source nil ou `ErrCapabilityNotSupported` → DEBUG « tactique: detail de zone, source
+  <nom> absente » ; autre erreur → WARN « … en echec » ; champ absent, liste servie.
+- **L3.4** `sourcesDuDetail` (déclarée dans le fichier d'enrichissement) portée par UNE ligne de
+  `TacticalService` (`detail sourcesDuDetail`) ; `tactical_service.go` 468 → 469 L (cette ligne) ;
+  `WithPlayerMatches`, `WithRoundsDecide`, `WithKillSourceClassifier`, `WithWeaponLabels`,
+  `WithReplay` dans `tactical_service_cablage.go`.
+- **L3.5** Fabrique `Tactical` déplacée telle quelle dans `api/wire/registry_pages_tactical.go` (61 L) ;
+  `registry_pages.go` 619 → 579 L. Cinq injecteurs ajoutés, tous inconditionnels (classificateur nil
+  sur un titre sans `film.kill_source`, décidé par `killSourceClassifierFor`). Garde-rail
+  `registry_pages_tactical_wiring_test.go` (neuf `With*`, argument exact, aucune porte ; factory
+  absente de `registry_pages.go`) vu rouge avant le déplacement.
+- **L3.6** `tactical_service_cellule_enrichir_test.go` (6 tests, 9 sous-cas de sources) vu rouge
+  (compilation) avant le code : chaque champ sur quatre contributions (points et manches, camp 1
+  d'abord, arme / catégorie / rien, quatre badges dont aucun sur un frag, rejeu vrai / faux), mode en
+  anglais, une lecture par source, ownership (contextes lus pour m1 seul), titre sans classificateur
+  ni catalogue, chaque source absente ou en échec (champ absent, liste servie, ligne de journal au bon
+  niveau).
+- **L3.7** `TestTacticalHandler_CelluleMiniTuile` : dix clés snake_case servies (dont `zone`) ; vert
+  d'emblée (les champs datent de L1.5). Contrat régénéré : aucun écart (`openapi-gen -check` à jour,
+  `generated.ts` inchangé).
+- **Mutations** (toutes ROUGES, restauration vérifiée) : hauteur du tueur pour une mort ; autre joueur
+  d'une mort = la victime ; camp inversé ; lecture canonique par contribution ; badge sur un frag ;
+  `replay_available` toujours vrai (première écriture invalide — compilation cassée —, refaite pour
+  compiler, rouge) ; `WithReplay` retiré du câblage.
+- **Gate** (avant-plan) : `go build ./...` 0 ; `go vet` service / wire / handlers 0 ; `gofmt -l internal
+  cmd` muet ; paquets touchés verts ; module en six lots couvrant les 349 paquets (195 ok, 153 sans
+  test, 1 FAIL : `TestLUSRV2Shadow_RafalesBornees_300Candidats`, le test de durée de §8, pendant
+  qu'un `api.test` et des `go` d'une autre session tournaient ; rejoué seul puis paquet seul : verts) ;
+  `go test ./internal/archlint/...` ok ; `TestNoNewSlugComparison`, `TestAucunTypeAnalysisEnCorpsHuma`
+  PASS en `-v` ; `golangci-lint` (cache isolé) 0 issues ; contrat à jour.
+- Seuils : `registry_pages.go` 579 L (au-delà de 500, en baisse de 40) ; autres fichiers touchés
+  ≤ 469 L ; fonctions neuves ≤ 35 L ; `garderLesOuvrables` 5 paramètres (au seuil).
+- Écarts : aucun au périmètre ; `tactical_service_cellule_faces_test.go` (tests de L3.1 / L3.2) est
+  un fichier de test neuf non nommé par le plan.
 
 ### L4 — Web : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées » · moyen
 
@@ -930,6 +991,15 @@ L2.3.
 - (L2) `golangci-lint` avertit « unknown linters in //nolint directives » : des directives `//nolint` mal
   formées (texte libre lu comme noms de linters, ex. `match_view_builders_team.go:48`
   `//nolint:PLR0913 — clé canonique…`) ; pré-existant, hors périmètre ; non traité.
+- (L2) `service/teammates/teammates_squad_echange_test.go` (587 → 592 L) : 5 lignes de double du port ajoutées
+  à un fichier déjà au-delà de 500 L ; ACCEPTÉ par le superviseur le 2026-10-06 (dette gelée, aucun
+  découpage dans ce lot).
+- (L3) Deux copies de la lecture « mon camp / l'autre » sur `Summary.Teams` + `Self.TeamID` d'une ligne
+  canonique : `analysis.buildScoreLabelCanonical` (`home_canonical_recent.go`, libellé seul) et
+  `service.scoreDuMatch` (`tactical_service_cellule_enrichir.go`, libellé et nature). Une troisième
+  imposera le helper exporté et son garde-rail (CLAUDE.md n° 6) ; non traité.
+- (L3) `TestLUSRV2Shadow_RafalesBornees_300Candidats` a de nouveau rougi dans la suite complète (38,9 s,
+  un `api.test` d'une autre session actif), vert rejoué seul : même constat qu'en L1.
 - (phase 1) Le catalogue de callouts couvre AUSSI des cartes Forge (`maps_by_id`, 2 536 zones selon
   `callouts_catalog.go`) : « carte sans catalogue » = carte absente du catalogue, pas « carte Forge ».
 
