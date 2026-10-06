@@ -23,7 +23,12 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **PHASE 1 — écrit et relu, en attente du « go » du superviseur** (questions §9).
+> Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D18 fermes, réponses §9)** ;
+> phase 2 suspendue jusqu'au message « rebase sur <sha> » (tête finale de `feat/ts-usages-emprise`
+> après L8). Au rebase : conflits attendus seulement sur `openapi.yaml`, `generated.ts`,
+> `contract-surface.snapshot.json` et la fin de `thought_log.md` — régénération et ré-ajout, jamais
+> une résolution à la main du généré ; puis S6 fondu dans S5 (mise à jour du plan, preuves §4.F
+> rejouées sur la nouvelle base).
 > Branche : `feat/sessions-emprise`, créée sur `cd3145ec2` (tête L5 de `feat/ts-usages-emprise`),
 > worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
 
@@ -69,7 +74,7 @@ chaque preuve grep à 0 ; (6) docs du lot clôture à jour.
 - **V5** Ordre et contenu : §3 (cartes A-L, groupes « Match par match » puis « Frags et usages »).
 - **V6** « Mon camp », jamais « Notre camp » ; « de la soirée » pour le périmètre d'une session.
 
-### 1.2 Tranchées par le planificateur — à confirmer par le superviseur (questions §9)
+### 1.2 Tranchées par le planificateur — FERMES (plan accepté par le superviseur le 2026-10-06 : D1-D18 confirmées ; Q1 oui — fichiers de L1-L5 du §5.1 modifiables, ajouts `compact` à défaut `false`, corps de `attachEmprise` / `attachLives` remplacés par un appel à signature inchangée, `empriseObjectName` centralisé, Escouade et Séries temporelles identiques à l'écran et tests de page rejoués sans modification ; Q2 option (a) — phase 2 après la clôture de L8, rebase de `feat/sessions-emprise` sur la tête finale de `feat/ts-usages-emprise` donnée par le superviseur, S6 fondu dans S5 à ce moment-là ; Q3 « Précision par arme » gardée pour Halo 5, D14)
 
 - **D1 — Réutiliser les briques des lots L1-L5, en les étendant d'une prop `compact`.** La règle
   « ne recopie rien : importe » et l'exigence d'une variante compacte de CHAQUE carte (V2) imposent
@@ -740,7 +745,11 @@ modèles neufs ont leur lecteur dans le lot.
 - (phase 1) `SessionDetailPage.tsx` (551 L) et `session_page_service.go` (894 L) sont au-delà du seuil
   de taille ; le lot les fait baisser sans viser le seuil.
 
-## 9. Questions au superviseur (bloquantes pour la phase 2)
+## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
+
+Réponses : Q1 OUI (périmètre §5.1, ajouts rétro-compatibles, pages Escouade et Séries temporelles
+identiques, tests de page rejoués sans modification) ; Q2 option (a) ; Q3 garder (D14). Questions
+d'origine :
 
 - **Q1** D1 / D4 / D5 / D17 modifient des fichiers livrés par L1-L5 du lot TS (liste §5.1, aucun
   dans le périmètre de L6-L8). Accord ? Sans accord : D4 / D5 deviennent des secondes copies
