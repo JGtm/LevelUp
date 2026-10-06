@@ -25,6 +25,11 @@ mesure par une hypothèse écrite.
   par deux lignes `[FILET]` de `d9781168` instruites (§5) — **admission à décider par le pilote**.
 - `origin/feat/v75` a avancé (`1518e6f10`) mais porte toujours `8dfadd07e` (lot 2.7.a de la RI) :
   **non fusionné** (§9, écart E-1).
+- **Corrections du contrôle indépendant (2026-10-06, §14)** : trois retenues sur pièces, aucune rejetée.
+  Entrée de `.ai/thought_log.md` ajoutée ; trois formes Bond des écrivains (en-tête à id sur deux octets,
+  fin de structure de base, borne de cinq octets de l'entier variable) désormais écrites par les
+  vecteurs (mutations m12 à m14 ROUGES) ; portée de la lecture du schéma Bond écrite (§1.3). Code de
+  production inchangé.
 
 ## 1. Ce qui est lu dans le jeu
 
@@ -97,6 +102,13 @@ lisible ; sa variante se lit) ; chaque longueur Bond tombe sur son octet de fin.
 | HI_1_9_0 | 3 | 2 | faux | vrai |
 | HI_1_8_0 | 13 | 2 | faux | vrai 6, faux 7 |
 | HI_1_5_1, HI_1_4_1 | 2 | 2 | faux | faux |
+
+**Portée de la lecture (correction 3 du contrôle).** Le schéma Bond de ce chemin (variante.0 .0 pour
+`m_gameEngineType`, variante.1.0.5 pour `PlaybackSettings`, ses champs .0 et .2) est **lu** dans
+l'exécutable HI_1_13_0 seulement. Il est appliqué aux films des builds antérieurs, dont les films
+PRÉFIXE HI_1_9_0 à HI_1_12_0, où la lecture du 116 dépend de `m_gameEngineType`. Sur ces builds, sa
+cohérence est **mesurée** (marche fermée sur la table des joueurs pour 1 656 films sur 1 657, valeurs
+du tableau ci-dessus), **non lue** dans leurs exécutables.
 
 ### 1.4 85 : instruction du `[!]`
 
@@ -363,7 +375,9 @@ en place. Pièces `scratchpad/cg3-V3/g1/`.
 
 ## 10. Mutations (`-overlay`, suite entière du paquet `grammar` ; ROUGE attendu)
 
-`scratchpad/cg3-V3/mutations.sh`, `mutations.txt` : **11 / 11 ROUGES**.
+`scratchpad/cg3-V3/mutations.sh`, `mutations.txt` : **11 / 11 ROUGES** ; après les corrections du
+contrôle (§14), `scratchpad/cg3-V3-corr/mut_rejeu.sh`, `mutations_rejeu.txt` : **14 / 14 ROUGES** (les
+onze, rejouées sur le test corrigé, mêmes tests rouges, et m12 à m14).
 
 | Mutation | Tests rouges |
 |---|---|
@@ -378,6 +392,9 @@ en place. Pièces `scratchpad/cg3-V3/g1/`.
 | m09 116 : branche du moteur 1 lue comme l'autre | `TestLesEffetsDeTeleportationSuiventLeMoteurDuFilm` |
 | m10 116 : positions au niveau 0xf | `TestLesEffetsDeTeleportation…` |
 | m11 variante absente du film lue | `TestLeJoueurTue…` |
+| m12 id d'en-tête 0xE0 lu poids fort d'abord (m6 du contrôle) | `TestLeCorpsSeLit…` |
+| m13 fin de structure de base retirée du cas accepté (m7 du contrôle) | `TestLeCorpsSeLit…` |
+| m14 entier variable lu sur dix octets (m8 du contrôle) | `TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu` |
 
 ## 11. Écarts
 
@@ -420,3 +437,35 @@ en place. Pièces `scratchpad/cg3-V3/g1/`.
 `corpus_gate.json`), `gate2.tsv`, `sonde_base/`, `sonde_tete/`, `sonde_tete_sans_carte/`,
 `sonde_changes.tsv`, `etapes_base/`, `etapes_tete/`, `g1/` (gates 1), `mut/`, `mutations.txt`,
 `src_base/` (`git archive 8c83e2d3a`).
+
+## 14. Corrections du contrôle indépendant (2026-10-06)
+
+Contrôle de `a91476e3b` (pièces `scratchpad/cg3-V3-ctl/`) : fond vérifié, une règle du dépôt non tenue et
+trois mutations de la lecture Bond restées VERTES. Pièces de la correction : `scratchpad/cg3-V3-corr/`.
+
+| # | Constat | Verdict sur pièces | Action |
+|---|---|---|---|
+| 1 | Aucune entrée de `.ai/thought_log.md` dans `a91476e3b` | Fondé : `git show --stat a91476e3b` ne liste pas le journal, alors que les commits de V1 et V2 en portent une | Entrée « lot VA, étape V3 » ajoutée après celle de V2 |
+| 2 | m6, m7, m8 VERTES : `FUN_140ac75e8` (forme 0xE0) et `FUN_1411b3740` (fin de base, octet 1) jamais écrits par un vecteur ; borne de cinq octets de l'entier variable non tenue par un test | Fondé. Les branches ne sont pas retirées : ce sont des formes que les écrivains du jeu produisent (`FUN_140ac75e8` : `type \| 0xE0` puis l'id sur deux octets, poids faible d'abord, pour un id ≥ 0x100 ; `FUN_140ac755c` n'écrit pas de longueur pour une base, `FUN_1411b3740` écrit 1 à sa fin ; `FUN_140ac7668` écrit un `uint` de 32 bits, donc cinq octets au plus). Les retirer ferait mal lire une structure que le jeu écrit : ce n'est pas du code mort | `bondDeLaVariante` écrit, dans `PlaybackSettings`, une base vide (`finDeBase`) et un booléen d'id 0x200 ; vecteur « longueur de la variante sur six octets » (`entierDeTeteSurSixOctets`). m12–m14 (m6–m8 du contrôle) ROUGES (§10) |
+| 3 | Schéma Bond lu dans HI_1_13_0 seulement, appliqué aux builds antérieurs | Fondé | Phrase « Portée de la lecture » au §1.3 |
+| 4 | Décisions du pilote : rc=1 du gate de corpus, revue adversariale, écart E-1 | Hors périmètre de l'exécutant | Aucune action ; restent au §0, §5, §11 |
+
+Choix des vecteurs : l'id 0x200 s'écrit `0xE2 0x00 0x02` ; lu poids fort d'abord, il vaut 2, l'id de
+`playOfTheGameEnabled`, et pose le drapeau sur les vecteurs où il est faux. La base vide précède
+`killcamEnabled` et `playOfTheGameEnabled` : refusée, la marche saute à la fin de la structure sans les
+lire. L'entier de six octets garde sa valeur : lu sur dix, la marche irait jusqu'à la table des joueurs.
+
+Gates rejoués (le code de production ne change pas : seuls `film_variante_de_partie_test.go` et les
+documents changent ; carte v2, `killsource`, `replay-equiv` et gate de corpus ne sont donc pas
+rejoués, leurs entrées étant identiques à `a91476e3b`) :
+
+1. `gofmt -l ./internal/ ./cmd/` : vide.
+2. `go vet ./internal/games/halo_infinite/film/...` : rc=0 ; sous `-tags=research` : rc=0.
+3. `go test ./internal/games/halo_infinite/film/internal/grammar/ -count=1` : `ok … 108.727s`.
+4. `go test ./internal/archlint/ -count=1` : `ok … 59.195s`.
+5. `golangci-lint run ./internal/games/halo_infinite/film/internal/grammar/...` (toutes les issues) :
+   `0 issues.` ; `--new-from-rev=a91476e3b ./...` : `0 issues.`
+6. Mutations : 14 / 14 ROUGES (§10).
+
+`git fetch` du 2026-10-06 : `origin/feat/v75` = `1518e6f10`, inchangé depuis V3 ; non fusionné (E-1,
+décision du pilote).

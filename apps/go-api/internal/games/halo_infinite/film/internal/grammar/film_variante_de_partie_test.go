@@ -52,6 +52,11 @@ func (b *bondEcrit) champStructure(id int, champs func(*bondEcrit)) {
 	b.structure(champs)
 }
 
+// finDeBase ecrit la fin d une structure de base (`FUN_1411b3740`, drapeau de base pose : l octet 1).
+// Une structure de base n a pas de longueur (`FUN_140ac755c` ne l ecrit que hors base) : ses champs
+// precedent cet octet dans la structure qui en derive.
+func (b *bondEcrit) finDeBase() { *b = append(*b, 1) }
+
 func (b *bondEcrit) booleen(id int, v bool) {
 	b.enTete(id, 2)
 	if v {
@@ -102,6 +107,7 @@ func bondDeLaVariante(v varianteEcrite) bondEcrit {
 						g.champStructure(id, func(x *bondEcrit) { x.entier32(0, int32(id)) }) //nolint:gosec // id < 5
 					}
 					g.champStructure(5, func(p *bondEcrit) {
+						p.finDeBase() // une base vide : la fin de base precede les champs
 						if v.killcam {
 							p.booleen(0, true)
 						}
@@ -110,6 +116,7 @@ func bondDeLaVariante(v varianteEcrite) bondEcrit {
 							p.booleen(2, true)
 						}
 						p.booleen(3, true)
+						p.booleen(0x200, true) // en-tete 0xE0 : l id 0x200 sur deux octets, poids faible d abord
 					})
 					g.champStructure(15, nil) // en-tete a id echappe
 				})
@@ -192,8 +199,10 @@ func bondDeTeteDeTest() bondEcrit {
 
 // TestLeCorpsSeLitJusquALaTableDesJoueurs : la marche du corps s arrete au premier bit de la table des
 // joueurs et rend ce que la variante declare ; un champ optionnel absent vaut son defaut ; une variante
-// absente du film n est pas lue. MUTATIONS — killcamEnabled pris au champ 1, playOfTheGameEnabled au
-// champ 3, le drapeau inverse, la longueur d une structure ignoree : ROUGE.
+// absente du film n est pas lue ; une fin de structure de base et un en-tete a id sur deux octets (forme
+// 0xE0) se lisent. MUTATIONS — killcamEnabled pris au champ 1, playOfTheGameEnabled au champ 3, le
+// drapeau inverse, la longueur d une structure ignoree, la fin de base refusee, l id 0xE0 lu poids fort
+// d abord : ROUGE.
 func TestLeCorpsSeLitJusquALaTableDesJoueurs(t *testing.T) {
 	for _, c := range []struct {
 		nom    string
@@ -222,7 +231,8 @@ func TestLeCorpsSeLitJusquALaTableDesJoueurs(t *testing.T) {
 }
 
 // TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu : une longueur de structure qui ne tombe pas sur son
-// octet de fin, une chaine sans octet nul, un corps coupe — rien n est rendu.
+// octet de fin, un entier variable plus long que ce que l ecrivain forme, une chaine sans octet nul, un
+// corps coupe — rien n est rendu. MUTATION — entier variable lu sur dix octets : ROUGE.
 func TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu(t *testing.T) {
 	for _, c := range []struct {
 		nom    string
@@ -231,6 +241,8 @@ func TestUnCorpsQueLaGrammaireNeLitPasNEstPasLu(t *testing.T) {
 	}{
 		{"longueur de la variante + 1", corpsEcrit{variante: &varianteEcrite{moteur: 2},
 			casser: func(b bondEcrit) bondEcrit { b[0]++; return append(b, 0) }}, 0},
+		{"longueur de la variante sur six octets", corpsEcrit{variante: &varianteEcrite{moteur: 2},
+			casser: entierDeTeteSurSixOctets}, 0},
 		{"chaine de 0x80 octets sans nul", corpsEcrit{chaine: make([]byte, 0x80)}, 0},
 		{"corps coupe avant la table", corpsEcrit{variante: &varianteEcrite{moteur: 2}}, 64},
 	} {
@@ -273,4 +285,25 @@ func TestLaVarianteDesBobines(t *testing.T) {
 				id.Variante, fin, attendu, rep.FirstRecordBit)
 		}
 	}
+}
+
+// entierDeTeteSurSixOctets reecrit l entier variable de tete de b (la longueur de la structure) sur
+// six octets, de meme valeur : une forme que `FUN_140ac7668` n ecrit pas, son entier etant un `uint`
+// de 32 bits (cinq octets au plus).
+func entierDeTeteSurSixOctets(b bondEcrit) bondEcrit {
+	var n uint64
+	k := 0
+	for ; b[k]&0x80 != 0; k++ {
+		n |= uint64(b[k]&0x7F) << (7 * k)
+	}
+	n |= uint64(b[k]) << (7 * k)
+	r := bondEcrit{}
+	for i := range 6 {
+		o := byte(n>>(7*i)) & 0x7F
+		if i < 5 {
+			o |= 0x80
+		}
+		r = append(r, o)
+	}
+	return append(r, b[k+1:]...)
 }
