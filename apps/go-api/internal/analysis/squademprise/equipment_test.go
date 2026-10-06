@@ -90,6 +90,45 @@ func TestBuildEquipment_FamillesEtOrdre(t *testing.T) {
 	}
 }
 
+// Le LOBBY : tous les joueurs des matchs mesurés — mon camp, l'adversaire et les joueurs sans camp
+// connu. Une famille tenue par le seul adversaire (lanceur de traque, par E1) ou par un joueur sans
+// camp (X) est dans le lobby, à zéro pour moi et le reste de mon camp ; une famille que personne
+// n'a tenue (champ de réparation) a un lobby à zéro. Les matchs non mesurés (« ffa ») n'y comptent
+// pas, comme pour moi.
+func TestBuildEquipment_Lobby(t *testing.T) {
+	in := entreeEquipement()
+	in.Film.Players = append(in.Film.Players,
+		sessionusage.PlayerRow{MatchID: "m1", XUID: "E1", SpentByFamily: map[string]int{"threat_seeker": 3},
+			DroppedByFamily: map[string]int{"threat_seeker": 2, "thruster": 5}},
+		sessionusage.PlayerRow{MatchID: "m1", XUID: "X", KeptByFamily: map[string]int{"shroud_screen": 1},
+			DroppedByFamily: map[string]int{"grapple": 7}},
+		sessionusage.PlayerRow{MatchID: "ffa", XUID: "E9", SpentByFamily: map[string]int{"repair_field": 50}},
+	)
+	e := BuildEquipment(in)
+	mur := familleDe(e, "wall")
+	if mur.Lobby == nil || *mur.Lobby != (domain.EmpriseEquipmentOutcomes{Taken: 23, Used: 52 + 146 + 500, Kept: 7, Dropped: 32 + 151}) {
+		t.Errorf("lobby du mur = %+v, attendu moi + reste du camp + adversaire (23 pris, 698 · 7 · 183)", mur.Lobby)
+	}
+	traque := familleDe(e, "threat_seeker")
+	if traque.Lobby == nil || *traque.Lobby != (domain.EmpriseEquipmentOutcomes{Used: 3, Dropped: 2}) ||
+		*traque.Me != (domain.EmpriseEquipmentOutcomes{}) || *traque.Rest != (domain.EmpriseEquipmentOutcomes{}) {
+		t.Errorf("lanceur de traque = moi %+v, reste %+v, lobby %+v ; attendu lobby 3 · 0 · 2 (l'adversaire seul), moi et reste à zéro",
+			traque.Me, traque.Rest, traque.Lobby)
+	}
+	if ecran := familleDe(e, "shroud_screen"); ecran.Lobby == nil || ecran.Lobby.Kept != 1 || *ecran.Rest != (domain.EmpriseEquipmentOutcomes{}) {
+		t.Errorf("écran occultant = reste %+v, lobby %+v ; attendu le gardé du joueur sans camp dans le lobby seul", ecran.Rest, ecran.Lobby)
+	}
+	if champ := familleDe(e, "repair_field"); champ.Lobby == nil || *champ.Lobby != (domain.EmpriseEquipmentOutcomes{}) {
+		t.Errorf("champ de réparation = lobby %+v, attendu zéro (personne ne l'a tenu sur un match mesuré)", champ.Lobby)
+	}
+	if g := familleDe(e, "grapple"); g.DroppedLobby != 84+40+7 || g.DroppedMe != 84 {
+		t.Errorf("grappin = %d lâchés au lobby, %d par moi ; attendu 131 (moi, reste du camp, joueur sans camp) et 84", g.DroppedLobby, g.DroppedMe)
+	}
+	if p := familleDe(e, "thruster"); p.DroppedLobby != 65+5 {
+		t.Errorf("propulseur = %d lâchés au lobby, attendu 70 (moi et l'adversaire)", p.DroppedLobby)
+	}
+}
+
 func TestBuildEquipment_SansFilm(t *testing.T) {
 	in := entreeEquipement()
 	in.Film = nil

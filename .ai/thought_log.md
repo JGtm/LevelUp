@@ -115900,3 +115900,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : test R9 vu rouge (`me = [40, 1, 2]` : repli sans décalage au lieu de 93 %), mutation « repli à 50 % » rouge ; tsc 0, ESLint 0 erreur, vitest 8 866 tests verts, couleurs 0, imports croisés 7 ≤ 7, lefthook pre-push vert.
 
 **Conclusion / prochaine étape** : lot clos côté exécuteur ; suivi de la CI et fusion vers `feat/v75` par le superviseur.
+
+## [2026-10-06] Séries temporelles › Usages : carte Équipement limitée aux familles tenues dans le lobby
+
+**Statut** : Complété (lot correctif après le gate visuel de l'utilisateur sur `feat/v75` = `b033d30f0` ; branche `feat/ts-usages-fix-equipement`).
+
+**Décision technique principale** : la carte « Équipement pris, et ce que j'en ai fait » listait des familles que personne n'avait tenues : le web filtrait tout-ou-rien (une famille non vide faisait passer toutes les lignes) et le Go ne cumulait que mon camp. Go : `squademprise.BuildEquipment` cumule aussi le LOBBY entier des matchs mesurés (adversaire et joueurs sans camp connu compris) et publie par famille `lobby` (mesurées : pris, servi, gardé, lâché) et `dropped_lobby` (non mesurées) — contrat additif, `omitempty` ; moi et le reste de mon camp inchangés. Web : `buildEquipmentRows` ne garde que les familles tenues dans le lobby (mesurée : servi + gardé + lâché > 0 ; non mesurée : lâchers > 0) ; aucune ligne, la carte se retire ; l'aide ⓘ le dit (FR, EN).
+
+**Résultats observés** : tests vus rouges d'abord (Go : lobby absent ; web : famille à zéro partout listée, non mesurée sans lâcher du lobby listée, phrase de l'aide absente) ; 7 mutations rouges (lobby limité à mon camp, lâchers du lobby non comptés, adversaire versé au reste du camp ; filtre sur mon camp, aucun filtre, non mesurées sur mes lâchers, phrase retirée). Gate : build, vet, gofmt, tests des paquets touchés et appelants (17 ok), golangci-lint 0, contrat régénéré (+5 / +3 lignes) et à jour ; tsc 0, ESLint 0 erreur, vitest timeseries + lib/api 240 verts, couleurs 0, imports croisés 7 ≤ 7.
+
+**Conclusion / prochaine étape** : branche poussée ; suivi CI et fusion par le superviseur. Le même composant servira la page Sessions (lot séparé).

@@ -155,7 +155,8 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
       'Pour chaque famille, ce que sont devenus mes objets : servis (posé pour le mur, charge consommée pour les ' +
       'autres), gardés sans servir, lâchés. Les comptes portent sur tout l’équipement tenu, celui de réapparition ' +
       'compris ; le sous-libellé dit combien en ont été pris sur la carte. La barre fine donne les mêmes trois ' +
-      'parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage.',
+      'parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage. ' +
+      'Seules les familles tenues par au moins un joueur du lobby sont listées.',
     used: 'Servi',
     kept: 'Gardé sans servir',
     dropped: 'Lâché',
@@ -235,7 +236,8 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
       'For each family, what became of my items: used (placed for the wall, charge spent for the others), kept ' +
       'without use, dropped. The counts cover all equipment held, spawn equipment included; the sub-label says ' +
       'how many were picked up on the map. The thin bar gives the same three shares for the rest of my side. ' +
-      'The repulsor has no row: no channel measures its use.',
+      'The repulsor has no row: no channel measures its use. Only families held by at least one player in ' +
+      'the lobby are listed.',
     used: 'Used',
     kept: 'Kept without use',
     dropped: 'Dropped',

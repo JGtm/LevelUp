@@ -101,8 +101,9 @@ describe('textes FR = maquette v4', () => {
   it('Équipement', () => {
     expect(U.cards.equipment.title).toBe('Équipement pris, et ce que j’en ai fait')
     expect(U.cards.equipment.info).toBe(
-      'Pour chaque famille, ce que sont devenus mes objets : servis (posé pour le mur, charge consommée pour les autres), gardés sans servir, lâchés. Les comptes portent sur tout l’équipement tenu, celui de réapparition compris ; le sous-libellé dit combien en ont été pris sur la carte. La barre fine donne les mêmes trois parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage.',
+      'Pour chaque famille, ce que sont devenus mes objets : servis (posé pour le mur, charge consommée pour les autres), gardés sans servir, lâchés. Les comptes portent sur tout l’équipement tenu, celui de réapparition compris ; le sous-libellé dit combien en ont été pris sur la carte. La barre fine donne les mêmes trois parts pour le reste de mon camp. Le répulseur n’a pas de ligne : aucun canal ne mesure son usage. Seules les familles tenues par au moins un joueur du lobby sont listées.',
     )
+    expect(USAGES_TEXT.en.cards.equipment.info).toMatch(/Only families held by at least one player in the lobby are listed\.$/)
     expect([U.cards.equipment.used, U.cards.equipment.kept, U.cards.equipment.dropped, U.cards.equipment.thinLegend]).toEqual([
       'Servi',
       'Gardé sans servir',

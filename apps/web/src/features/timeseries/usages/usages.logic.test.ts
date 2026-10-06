@@ -131,13 +131,35 @@ describe('buildEquipmentRows — Équipement pris, et ce que j’en ai fait', ()
     expect(rows[4]).toEqual({ family: 'thruster', measured: false, droppedMe: 65 })
   })
 
-  it('sans film : aucune ligne ; rien de tenu : aucune ligne', () => {
+  it('une famille que personne n’a tenue dans le lobby est retirée, même quand d’autres ont des comptes', () => {
+    expect(rows.map((r) => r.family)).not.toContain('repair_field')
+  })
+
+  it('une famille tenue par le seul adversaire est gardée, mes comptes et ceux de mon camp à zéro', () => {
+    expect(rows.find((r) => r.family === 'shroud_screen')).toEqual({ family: 'shroud_screen', measured: true, me: [0, 0, 0], rest: [0, 0, 0], takenMe: 0 })
+  })
+
+  it('non mesurées : gardées sur les lâchers du lobby, même sans lâcher de ma part ; retirées sans aucun', () => {
+    const b = soloEmprise()
+    const eq = b.equipment!
+    eq.families = (eq.families ?? []).map((f) =>
+      f.family === 'grapple' ? { ...f, dropped_me: 0 } : f.family === 'thruster' ? { ...f, dropped_me: 0, dropped_lobby: 0 } : f,
+    )
+    const fams = buildEquipmentRows(b).map((r) => r.family)
+    expect(fams).toContain('grapple')
+    expect(fams).not.toContain('thruster')
+  })
+
+  it('sans film : aucune ligne ; rien de tenu dans le lobby : aucune ligne', () => {
     expect(buildEquipmentRows(soloEmpriseSansFilm())).toEqual([])
     const vide = soloEmprise()
     vide.equipment = {
       matches_measured: 1,
       families: [
-        { family: 'wall', measured: true, me: { taken: 0, used: 0, kept: 0, dropped: 0 }, rest: { taken: 0, used: 0, kept: 0, dropped: 0 } },
+        {
+          family: 'wall', measured: true, me: { taken: 0, used: 0, kept: 0, dropped: 0 }, rest: { taken: 0, used: 0, kept: 0, dropped: 0 },
+          lobby: { taken: 0, used: 0, kept: 0, dropped: 0 },
+        },
         { family: 'grapple', measured: false, dropped_me: 0 },
       ],
     }

@@ -12796,11 +12796,16 @@ components:
     EmpriseEquipmentFamily:
       additionalProperties: false
       properties:
+        dropped_lobby:
+          format: int64
+          type: integer
         dropped_me:
           format: int64
           type: integer
         family:
           type: string
+        lobby:
+          $ref: '#/components/schemas/EmpriseEquipmentOutcomes'
         me:
           $ref: '#/components/schemas/EmpriseEquipmentOutcomes'
         measured:
