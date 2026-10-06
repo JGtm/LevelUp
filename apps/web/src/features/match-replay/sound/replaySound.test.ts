@@ -43,7 +43,6 @@ function kill(over: Partial<ReplayKill> = {}): ReplayKill {
     medals: [],
     tMs: 2_000,
     xuid: 'K',
-    ally: true,
     teamID: 0,
     weaponKey: 'hinf_br75',
     weaponLabel: 'BR75',
@@ -56,7 +55,6 @@ function kill(over: Partial<ReplayKill> = {}): ReplayKill {
     assistDamagePct: null,
     victimXuid: 'V',
     victimGamertag: 'Victime',
-    victimTeamID: 1,
     ...over,
   }
 }

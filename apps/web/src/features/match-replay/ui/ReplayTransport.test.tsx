@@ -16,6 +16,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import { ReplayTransport } from './ReplayTransport'
 import type { ReplayTimeline } from '../hooks/useReplayTimeline'
 import type { ReplaySound } from '../sound/useReplaySound'
@@ -54,7 +56,7 @@ function makeTimeline(over: Partial<ReplayTimeline> = {}): ReplayTimeline {
     teammates: [],
     shades: [],
     absence: [],
-    identity: new Map(),
+    allegiance: NO_ALLEGIANCE,
     onSeekFrame: vi.fn(),
     viewpoint: null,
     viewpointGroups: [],

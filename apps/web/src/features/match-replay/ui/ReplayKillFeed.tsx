@@ -8,9 +8,9 @@
  *    pas sa position de lecture (règle du POC).
  *  - CHAQUE LIGNE : l'HORODATAGE EN TÊTE, dans une gouttière fixe (option 2a du handoff
  *    2026-08-27 — l'horloge alignée en colonne se balaie d'un regard, en fin de ligne
- *    elle flottait au gré des longueurs) ; puis TUEUR (couleur de son équipe) — ICÔNE de
- *    l'arme, TEINTE de la couleur d'équipe du tueur (masque + currentColor, la technique
- *    de `WeaponIcon`) — VICTIME (couleur de SON équipe) ; puis les MÉDAILLES du kill
+ *    elle flottait au gré des longueurs) ; puis TUEUR (encre de son camp) — ICÔNE de
+ *    l'arme, TEINTE de l'encre du tueur (masque + currentColor, la technique de
+ *    `WeaponIcon`) — VICTIME (encre de SON camp) ; puis les MÉDAILLES du kill
  *    (image + libellé et description en infobulle), puis l'ASSISTANCE quand elle est
  *    nommée.
  *  - MÉDAILLE SEULE : une médaille sans kill du même acteur à ±500 ms fait sa propre
@@ -23,9 +23,15 @@
  *    d'une autre mort.
  *
  * CE QU'IL RÉUTILISE : `collectKillEvents`/`collectMedalEvents` (lecture des highlight
- * events), `teamColorResolver` (cascade de couleur d'identité du scoreboard),
- * `WeaponIcon` (masque teint par CSS). L'alignement des deux horloges est traité dans
- * `killFeedLogic.ts`, avec sa mesure.
+ * events), `teamTokenCssVar` (encre d'allégeance en DOM : `team-ally` / `team-enemy`, neutre
+ * quand elle est inconnue), `WeaponIcon` (masque teint par CSS). L'alignement des deux horloges
+ * est traité dans `killFeedLogic.ts`, avec sa mesure.
+ *
+ * L'ENCRE DE CAMP D'UN NOM EST L'ALLÉGEANCE DU FILM (2026-10-06) : `FilmAllegiance.ofXuid`
+ * (l'équipe du film de l'acteur comparée à celle du joueur regardé). Les acteurs du fil portent
+ * les xuid de la BASE ; un bot s'y relie par sa ligne de feuille (`bid(N.0)`), comme dans
+ * `buildPlayers`. Un acteur dont le film tait l'équipe — ou absent du film — prend l'encre
+ * neutre : plus de repli deviné (« la victime est de l'autre camp que le tueur »).
  *
  * LE FIL ALIGNÉ LUI EST DONNÉ, IL NE L'ASSEMBLE PLUS (planche 2a, 2026-08-28) : `buildFeedEntries`
  * est appelé UNE fois par la page, et sa sortie sert ici ET aux pistes de la frise. Ce n'est pas
@@ -64,11 +70,10 @@
 import { useEffect, useMemo, useRef } from 'react'
 
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
-import { teamColorResolver, type TeamColorResolver } from '@/features/match-view/teamColor'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { parseTeamSideID } from '@/lib/halo/teamNames'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { displayPlayerName, normalizeGamertagKey } from '@/lib/players/displayName'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -153,35 +158,31 @@ interface Props {
   nowMs: number
   playWindow: ReplayWindowBounds | null
   scoreboard: MatchScoreboardRow[] | null | undefined
-  xuidMeta: XuidMeta
+  /** Les NOMS de la feuille, par xuid de base — jamais l'allégeance, qui vient du film. */
+  xuidMeta: GamertagIndex
+  /** L'allégeance lue dans le film, vue du joueur regardé (`model.allegiance`) : l'encre des noms. */
+  allegiance: FilmAllegiance
   locale: ReplayLocale
   /**
    * Marques d'identité par xuid (« moi », « ami ») — la même grammaire que les fiches et la
    * carte. Absentes = aucun glyphe, jamais une marque devinée.
    */
   marks?: ReadonlyMap<string, PlayerMarkKind>
-  /**
-   * Résolveur de couleur d'équipe. Par défaut celui du scoreboard (cascade d'identité :
-   * couleur backend, puis couleur officielle du jeu) — la Match View ne change pas. La page
-   * de rejeu, elle, passe le résolveur des tokens d'accessibilité (D1) pour que le fil, les
-   * fiches et les points parlent d'une seule voix.
-   */
-  colorOf?: TeamColorResolver
 }
 
+/** Les noms de la feuille par xuid (`XuidMeta` s'y conforme) : ce que le fil en lit, et rien d'autre. */
+type GamertagIndex = ReadonlyMap<string, { gamertag: string }>
+
+/** L'encre de camp d'un nom du fil, désigné par son xuid : son allégeance du film, en tokens. */
+type InkOf = (xuid: string) => string
+
 export function ReplayKillFeed({
-  entries, nowMs, playWindow, scoreboard, xuidMeta, locale, marks, colorOf,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks,
 }: Props) {
   const t = REPLAY_TEXT[locale]
-  const fallbackColorOf = useMemo(() => teamColorResolver(scoreboard), [scoreboard])
-  const colorOfTeam = colorOf ?? fallbackColorOf
-  // team_id par xuid, pour colorer le défunt d'une mort neutre — la piste ne porte pas
-  // l'équipe de la base, le scoreboard si.
-  const teamIDByXuid = useMemo(() => {
-    const m = new Map<string, number | null>()
-    for (const r of scoreboard ?? []) m.set(r.xuid, parseTeamSideID(r.team_side))
-    return m
-  }, [scoreboard])
+  // UNE SEULE RÈGLE POUR LES QUATRE FORMES DE LIGNE : l'allégeance du film, `team-ally` /
+  // `team-enemy`, l'encre neutre quand elle est inconnue (`teamTokenCssVar(null)`).
+  const inkOf = useMemo<InkOf>(() => (xuid) => teamTokenCssVar(allegiance.ofXuid(xuid)), [allegiance])
   // L'ASSISTANT N'A PAS DE XUID dans l'événement du film : il n'est nommé que par son
   // gamertag (cf. `KillEvent`). Pour qu'il porte la MÊME marque que les autres, les marques
   // sont réindexées par gamertag normalisé — via le scoreboard, la seule table qui porte les
@@ -232,9 +233,8 @@ export function ReplayKillFeed({
           <FeedLine
             key={entry.key}
             entry={{ ...entry, replayMs: displayClockMs(entry.replayMs, playWindow) }}
-            colorOf={colorOfTeam}
+            inkOf={inkOf}
             xuidMeta={xuidMeta}
-            teamIDByXuid={teamIDByXuid}
             marks={marks ?? NO_MARKS}
             marksByGamertag={marksByGamertag}
             locale={locale}
@@ -253,11 +253,6 @@ export function ReplayKillFeed({
  */
 function deathKindLabel(kind: string, t: (typeof REPLAY_TEXT)['fr']): string {
   return kind === 'environment' || kind === 'suicide' ? t.killFeedDeathKind[kind] : ''
-}
-
-/** allyOf : le camp d'un joueur, lu du scoreboard indexé ; repli fourni par l'appelant. */
-function allyOf(xuidMeta: XuidMeta, xuid: string, fallback: boolean): boolean {
-  return xuidMeta.get(xuid)?.ally ?? fallback
 }
 
 /**
@@ -288,30 +283,28 @@ export function FeedClock({ ms }: { ms: number }) {
  */
 function FeedLine({
   entry,
-  colorOf,
+  inkOf,
   xuidMeta,
-  teamIDByXuid,
   marks,
   marksByGamertag,
   locale,
 }: {
   entry: ReplayFeedEntry
-  colorOf: TeamColorResolver
-  xuidMeta: XuidMeta
-  teamIDByXuid: ReadonlyMap<string, number | null>
+  inkOf: InkOf
+  xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
   if (entry.presence) {
-    // ENTRÉE/SORTIE DE PARTIE (presenceFeed.ts) : même résolution d'encre que les autres
-    // formes de ligne — l'équipe du scoreboard quand elle est jointe, le repli sinon.
+    // ENTRÉE/SORTIE DE PARTIE (presenceFeed.ts) : même encre que les autres formes de ligne —
+    // l'allégeance du film de l'arrivant ou du partant.
     const p = entry.presence
     return (
       <ReplayPresenceLine
         presence={p}
         replayMs={entry.replayMs}
-        color={colorOf(teamIDByXuid.get(p.xuid) ?? null, allyOf(xuidMeta, p.xuid, false))}
+        color={inkOf(p.xuid)}
         mark={marks.get(p.xuid)}
         locale={locale}
       />
@@ -322,9 +315,8 @@ function FeedLine({
       <DeathLine
         death={entry.death}
         replayMs={entry.replayMs}
-        colorOf={colorOf}
+        inkOf={inkOf}
         xuidMeta={xuidMeta}
-        teamIDByXuid={teamIDByXuid}
         marks={marks}
         locale={locale}
       />
@@ -335,7 +327,7 @@ function FeedLine({
     // MÉDAILLE SEULE : le décoré et son badge — pas de croix, pas d'arme.
     const m = entry.medal
     if (!m) return null
-    const color = colorOf(m.teamID, allyOf(xuidMeta, m.xuid, true))
+    const color = inkOf(m.xuid)
     return (
       <li className={FEED_ROW}>
         <FeedClock ms={entry.replayMs} />
@@ -349,7 +341,7 @@ function FeedLine({
     <KillLine
       kill={k}
       replayMs={entry.replayMs}
-      colorOf={colorOf}
+      inkOf={inkOf}
       xuidMeta={xuidMeta}
       marks={marks}
       marksByGamertag={marksByGamertag}
@@ -376,22 +368,20 @@ function FeedLine({
 function DeathLine({
   death,
   replayMs,
-  colorOf,
+  inkOf,
   xuidMeta,
-  teamIDByXuid,
   marks,
   locale,
 }: {
   death: ReplayDeath
   replayMs: number
-  colorOf: TeamColorResolver
-  xuidMeta: XuidMeta
-  teamIDByXuid: ReadonlyMap<string, number | null>
+  inkOf: InkOf
+  xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
-  const color = colorOf(teamIDByXuid.get(death.xuid) ?? null, allyOf(xuidMeta, death.xuid, true))
+  const color = inkOf(death.xuid)
   const kindLabel = deathKindLabel(death.kind, t)
   return (
     <li
@@ -431,11 +421,11 @@ function DeathLine({
   )
 }
 
-/** KillLine — une mort : tueur (sa couleur), arme, victime (SA couleur), médailles, assistance. */
+/** KillLine — une mort : tueur (son encre), arme, victime (SON encre), médailles, assistance. */
 function KillLine({
   kill: k,
   replayMs,
-  colorOf,
+  inkOf,
   xuidMeta,
   marks,
   marksByGamertag,
@@ -443,15 +433,15 @@ function KillLine({
 }: {
   kill: ReplayKill
   replayMs: number
-  colorOf: TeamColorResolver
-  xuidMeta: XuidMeta
+  inkOf: InkOf
+  xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
   const assisted = k.assistState === 'named'
-  const killerColor = colorOf(k.teamID, k.ally)
+  const killerColor = inkOf(k.xuid)
   const lineHint =
     k.assistState === 'none'
       ? k.killerDamagePct != null
@@ -498,7 +488,7 @@ function KillLine({
       {k.victimGamertag && (
         <>
           <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
-            color={colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally))} />
+            color={inkOf(k.victimXuid)} />
         </>
       )}
       {/* LES MÉDAILLES DANS LA RANGÉE, plus en dessous : `shrink-0` parce qu'un badge rogné

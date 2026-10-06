@@ -13,6 +13,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
+
 import {
   END_FFA_WIN_VOICE_STEMS,
   END_MUSIC_STEMS,
@@ -22,15 +25,24 @@ import {
   endMatchSounds,
 } from './endMatchSound'
 
-/** Une ligne de scoreboard réduite à ce que la lecture regarde (patron victoryLogic.test). */
-function row(side: string | null, isMe = false) {
-  return { team_side: side, is_me: isMe }
+/**
+ * Les équipes du FILM, par joueur (patron victoryLogic.test) : la lecture de fin ne regarde que
+ * les camps et l'équipe du joueur de la page (`moi`). `reference` est celle que l'allégeance
+ * porte (le point de vue de la page Rejeu) : la fin sonore ne doit pas la lire.
+ */
+function film(equipes: Array<[string, number | undefined]>, reference: string | null = null) {
+  return buildFilmAllegiance(equipes.map(([xuid, team]) => ({ xuid, team, lives: [] }) as ReplayPlayer), reference)
 }
 
-/** Deux camps, le joueur de la page dans `t0` — le cas de référence de l'écran de fin. */
-const DEUX_CAMPS = [row('t0', true), row('t0'), row('t1'), row('t1')]
-/** Un FFA : personne n'a de camp transmis. */
-const FFA = [row(null, true), row(null), row(null)]
+/** Deux camps, le joueur de la page (`moi`) au camp 0 — le cas de référence de l'écran de fin. */
+const DEUX_CAMPS = film([['moi', 0], ['pote', 0], ['eux-1', 1], ['eux-2', 1]])
+/** Un FFA : le film ne donne aucune équipe (`-1`). */
+const FFA = film([['moi', -1], ['a', -1], ['b', -1]])
+/** La feuille : c'est sa ligne `is_me` (`moi`), pas sa première ligne, qui désigne la page. */
+const FEUILLE = [
+  { xuid: 'eux-1', is_me: false },
+  { xuid: 'moi', is_me: true },
+]
 
 /** Le tirage figé sur la PREMIÈRE prise. */
 const premiere = () => 0
@@ -124,24 +136,51 @@ describe('endMatchSounds — le FFA n’a pas d’écran, mais il a une voix', (
 
 describe('endMatchSoundSpec — la même lecture que l’écran de fin', () => {
   it('deux camps : l’issue du joueur de la page, sans drapeau FFA', () => {
-    expect(endMatchSoundSpec(DEUX_CAMPS, 3, 'fr')).toEqual({
+    expect(endMatchSoundSpec(DEUX_CAMPS, FEUILLE, 3, 'fr')).toEqual({
       outcome: 'loss',
       ffa: false,
       locale: 'fr',
     })
   })
 
+  it('la PAGE est la ligne `is_me` de la feuille — ni sa première ligne, ni la référence de l’allégeance', () => {
+    // Le film situe `eux-1` (première ligne de la feuille, et point de vue que l'allégeance porte)
+    // mais tait l'équipe de la page (`moi`). Lue pour la page, la fin n'a pas de camp à habiller :
+    // seule la victoire sonne, en « Vainqueur » (`ffa`), et la défaite se tait. Lue pour `eux-1`,
+    // elle aurait deux camps et dirait « Victoire » ou « Défaite ».
+    const pageMuette = film([['moi', undefined], ['pote', 0], ['eux-1', 1], ['eux-2', 1]], 'eux-1')
+    expect(endMatchSoundSpec(pageMuette, FEUILLE, 2, 'fr')).toEqual({
+      outcome: 'win',
+      ffa: true,
+      locale: 'fr',
+    })
+    expect(endMatchSoundSpec(pageMuette, FEUILLE, 3, 'fr')).toBeNull()
+  })
+
+  it('SANS SUJET : regardée depuis un adversaire, la fin annonce toujours l’issue de la page', () => {
+    // La page (`moi`, camp 0) a gagné ; `eux-1` (camp 1) est la première ligne de la feuille et
+    // le point de vue que l'allégeance porte. Passer l'un ou l'autre en SUJET de la lecture
+    // retournerait l'issue en « Défaite » : l'harmonisation avec l'écran de fin, qui suit le
+    // point de vue, que la décision 3 interdit.
+    const vuDeLAdversaire = film([['moi', 0], ['pote', 0], ['eux-1', 1], ['eux-2', 1]], 'eux-1')
+    expect(endMatchSoundSpec(vuDeLAdversaire, FEUILLE, 2, 'fr')).toEqual({
+      outcome: 'win',
+      ffa: false,
+      locale: 'fr',
+    })
+  })
+
   it('égalité à deux camps : elle sonne, contrairement à l’égalité sans camps', () => {
-    expect(endMatchSoundSpec(DEUX_CAMPS, 1, 'en')).toEqual({
+    expect(endMatchSoundSpec(DEUX_CAMPS, FEUILLE, 1, 'en')).toEqual({
       outcome: 'tie',
       ffa: false,
       locale: 'en',
     })
-    expect(endMatchSoundSpec(FFA, 1, 'en')).toBeNull()
+    expect(endMatchSoundSpec(FFA, FEUILLE, 1, 'en')).toBeNull()
   })
 
   it('FFA gagné : le drapeau passe à true, et c’est lui qui choisit « Vainqueur »', () => {
-    const spec = endMatchSoundSpec(FFA, 2, 'fr')
+    const spec = endMatchSoundSpec(FFA, FEUILLE, 2, 'fr')
     expect(spec).toEqual({ outcome: 'win', ffa: true, locale: 'fr' })
     expect(endMatchSounds(spec!.outcome, spec!.ffa, spec!.locale, premiere)[0]).toBe(
       'end_winner_voice_fr_01',
@@ -149,19 +188,19 @@ describe('endMatchSoundSpec — la même lecture que l’écran de fin', () => {
   })
 
   it('FFA perdu : rien à annoncer', () => {
-    expect(endMatchSoundSpec(FFA, 3, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(FFA, FEUILLE, 3, 'fr')).toBeNull()
   })
 
   it('abandon (code 4), code absent, en-tête pas encore chargé : rien', () => {
-    expect(endMatchSoundSpec(DEUX_CAMPS, 4, 'fr')).toBeNull()
-    expect(endMatchSoundSpec(DEUX_CAMPS, undefined, 'fr')).toBeNull()
-    expect(endMatchSoundSpec([], undefined, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(DEUX_CAMPS, FEUILLE, 4, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(DEUX_CAMPS, FEUILLE, undefined, 'fr')).toBeNull()
+    expect(endMatchSoundSpec(film([]), [], undefined, 'fr')).toBeNull()
   })
 
-  it('scoreboard sans ligne « moi » : la victoire reste annonçable, sans équipe nommée', () => {
+  it('joueur de la page que le film ne situe pas : la victoire reste annonçable, sans équipe nommée', () => {
     // `readVictory` refuse (elle ne saurait pas quel camp habille l'écran) ; la VOIX, elle,
     // ne nomme personne — « Vainqueur » dit vrai sans rien supposer.
-    expect(endMatchSoundSpec([row('t0'), row('t1')], 2, 'fr')).toEqual({
+    expect(endMatchSoundSpec(film([['a', 0], ['b', 1]]), FEUILLE, 2, 'fr')).toEqual({
       outcome: 'win',
       ffa: true,
       locale: 'fr',

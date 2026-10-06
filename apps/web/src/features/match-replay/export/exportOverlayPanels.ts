@@ -26,8 +26,9 @@
  * tombe au même instant que la fin du match : afficher « Manche 3 terminée » par-dessus le
  * verdict final ferait passer la conclusion du match pour une transition.
  */
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { campLabel } from '@/lib/replay/replayCamps'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
@@ -84,8 +85,10 @@ export interface ExportOutcome {
 /** Tout ce dont la construction d'un panneau a besoin, résolu une fois par export. */
 export interface OverlayPanelDeps {
   doc: ReplayDocumentReady & ReplayScoreDocument
+  /** La feuille : elle NOMME le camp du panneau et désigne le joueur de la page. */
   scoreboard: readonly MatchScoreboardRow[]
-  xuidMeta?: XuidMeta
+  /** L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : camps et score. */
+  allegiance: FilmAllegiance
   playWindow: ReplayWindowBounds | null
   outcome: ExportOutcome | null
   /**
@@ -132,11 +135,11 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
   const timeline = scoreTimelineOf(deps.doc)
   const transitions = roundTransitions(timeline)
   const breakFrames = Math.max(1, Math.round(msToFrames(ROUND_BREAK_WINDOW_MS, deps.doc)))
-  const victory = readVictory(deps.scoreboard, deps.outcome?.code, deps.viewpoint)
+  const victory = readVictory(deps.allegiance, deps.outcome?.code, meXUIDOf(deps.scoreboard), deps.viewpoint)
   // LE SCORE SE LIT À LA BORNE DE FIN, pas à l'image courante (décision D-B4 du DOM) : la
   // lecture peut être allée au-delà, et le panneau n'a plus rien à dire après la fin.
   const finalScore = deps.playWindow
-    ? readScoreBanner(timeline, deps.scoreboard, deps.xuidMeta, deps.playWindow.endFrame)
+    ? readScoreBanner(timeline, deps.allegiance, deps.playWindow.endFrame)
     : null
   const neutral = neutralStatusStyle(deps.ink)
 

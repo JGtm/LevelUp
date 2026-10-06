@@ -189,8 +189,8 @@ describe('buildUsageGrid — la grille par joueur', () => {
 })
 
 describe('buildUsageFamilyBars — la part de chaque équipe (5.A, 2026-09-21)', () => {
-  const barres = (allySide: string | null = 't0') =>
-    buildUsageFamilyBars({ teams: TEAMS, groups: GROUPS, allySide, ...VISUAL })
+  const barres = (allyTeam: number | null = 0) =>
+    buildUsageFamilyBars({ teams: TEAMS, groups: GROUPS, allyTeam, ...VISUAL })
   /** La clé d'une ligne = celle de la colonne de la grille : groupe puis colonne. */
   const cle = (group: string, column: string) => `${group}.${column}`
   const ligne = (group: string, column: string) =>
@@ -222,8 +222,8 @@ describe('buildUsageFamilyBars — la part de chaque équipe (5.A, 2026-09-21)',
   })
 
   it('ouvre chaque barre par MON camp, quel que soit l’ordre du film', () => {
-    expect(barres('t1').rows[0].segments.map((s) => s.team)).toEqual([1, 0])
-    expect(barres('t1').legend.map((l) => l.team)).toEqual([1, 0])
+    expect(barres(1).rows[0].segments.map((s) => s.team)).toEqual([1, 0])
+    expect(barres(1).legend.map((l) => l.team)).toEqual([1, 0])
     // Sans camp connu, l'ordre du film reste — aucune des deux encres n'est « la mienne ».
     expect(barres(null).rows[0].segments.map((s) => s.team)).toEqual([0, 1])
   })
@@ -239,7 +239,7 @@ describe('buildUsageFamilyBars — la part de chaque équipe (5.A, 2026-09-21)',
     const vide = buildUsageFamilyBars({
       teams: TEAMS.map((team) => ({ ...team, total: tally() })),
       groups: GROUPS,
-      allySide: 't0',
+      allyTeam: 0,
       ...VISUAL,
     })
     expect(vide.rows).toEqual([])

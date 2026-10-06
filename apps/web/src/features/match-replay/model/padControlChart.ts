@@ -34,7 +34,7 @@ import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 
 /**
  * Un joueur dans la barre : son identité, son camp DU FILM (`team`, et le côté de feuille `side`
- * qui ne fait que l'encrer), ses prises, son encre et sa part.
+ * qui ne fait que le nommer), ses prises, son encre et sa part.
  */
 export interface PadBarSegment extends ReplayCamp {
   xuid: string

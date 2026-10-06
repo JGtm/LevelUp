@@ -92,6 +92,7 @@
 import { useState, type ChangeEvent, type RefObject } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { CURSOR_RATIO_VAR } from '../hooks/useReplayPlayback'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -135,8 +136,8 @@ interface ReplayTimelineTracksProps {
   shades: readonly PresenceShade[]
   /** Les paliers d'effectif manquant de la piste Coéquipiers. */
   absence: readonly AbsenceStep[]
-  /** Camp de chaque xuid, relatif au point de vue : il teinte les portes, jamais l'ombre. */
-  identity: ReadonlyMap<string, { ally: boolean }>
+  /** L'allégeance du film, vue du point de vue : elle teinte les portes, jamais l'ombre. */
+  allegiance: Pick<FilmAllegiance, 'ofXuid'>
   /** Poser le curseur à une image (clic sur une porte). Ne met pas en pause — décision 1. */
   onSeekFrame: (frame: number) => void
   /** Le point de vue courant : la valeur affichée par le menu de la première rangée. */
@@ -178,7 +179,7 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, teammates, shades, absence, identity, onSeekFrame,
+  own, teammates, shades, absence, allegiance, onSeekFrame,
   viewpoint, viewpointGroups, onSelectViewpoint,
   dominance, score, allyOf, labelOf, media, showMediaTrack,
   tracksExpanded, onToggleTracks,
@@ -219,7 +220,7 @@ export function ReplayTimelineTracks({
           <ReplayMarkTrack marks={own} height="h-[24px]" tall>
             <ReplayPresenceShade
               shades={shades}
-              identity={identity}
+              allegiance={allegiance}
               onSeekFrame={onSeekFrame}
               locale={locale}
             />

@@ -1,15 +1,14 @@
 /**
- * EquipmentOutcomesCard — « Équipement pris, et ce que j'en ai fait » (Séries temporelles › Usages,
- * bloc « Équipement » ; maquette v4, `renderEquip`, décision D4 du plan).
+ * EquipmentOutcomesCard — « Équipement : servi, gardé, lâché » (Séries temporelles › Usages, bloc
+ * « Équipement » ; maquette v4, `renderEquip`, décision D4 du plan).
  *
  * Une ligne par famille, dans l'ordre publié par le Go (non mesurées encadrant les mesurées). Famille
- * mesurée : mes objets servis / gardés sans servir / lâchés (`divergent-pos` / `divergent-neutral` /
- * `divergent-neg`), comptes dans les segments quand ils y tiennent (mesure au pixel), sur une ligne
- * de repli au-dessus sinon — seuls ceux qui ne tiennent pas, alignés sur le début du premier de
- * leurs segments (S2) ;
- * sous-libellé « n objets, dont m pris sur la carte » ; dessous, la barre fine du reste de mon camp
- * et sa ligne de parts. Famille non mesurée (grappin, propulseur) : « Non mesuré » et le compte de
- * mes lâchers. Axe 0-100 % sous les lignes.
+ * mesurée : les objets du joueur servis / gardés sans servir / lâchés (`divergent-pos` /
+ * `divergent-neutral` / `divergent-neg`), comptes dans les segments quand ils y tiennent (mesure au
+ * pixel), sur une ligne de repli au-dessus sinon — seuls ceux qui ne tiennent pas, alignés sur le
+ * début du premier de leurs segments (S2) ; sous-libellé « n objets, dont m pris sur la carte » ;
+ * dessous, la barre fine du reste du camp et sa ligne de parts. Famille non mesurée (grappin,
+ * propulseur) : « Non mesuré » et le compte des lâchers du joueur. Axe 0-100 % sous les lignes.
  */
 import { useMemo, useRef } from 'react'
 
@@ -40,10 +39,12 @@ const PART_TOKENS: Record<Part, SemanticToken> = {
 interface Props {
   rows: EquipmentRow[]
   familyLabel: (family: string) => string
+  /** Le gamertag du joueur de la page. */
+  player: string
   ut: UsagesCardsText
 }
 
-export function EquipmentOutcomesCard({ rows, familyLabel, ut }: Props) {
+export function EquipmentOutcomesCard({ rows, familyLabel, player, ut }: Props) {
   const e = ut.equipment
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, rows)
@@ -65,7 +66,7 @@ export function EquipmentOutcomesCard({ rows, familyLabel, ut }: Props) {
     <ObjectifFrame title={e.title} info={e.info} legend={legend} testId="usages-equipment">
       <div ref={ref} className="flex flex-col gap-3">
         {rows.map((r) => (
-          <EquipmentLine key={r.family} row={r} label={familyLabel(r.family)} hidden={hidden} ut={ut} />
+          <EquipmentLine key={r.family} row={r} label={familyLabel(r.family)} hidden={hidden} player={player} ut={ut} />
         ))}
         <TrackAxis columns={COLUMNS} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? ut.pctIntFmt(100) : String(v) }))} />
       </div>
@@ -73,7 +74,19 @@ export function EquipmentOutcomesCard({ rows, familyLabel, ut }: Props) {
   )
 }
 
-function EquipmentLine({ row, label, hidden, ut }: { row: EquipmentRow; label: string; hidden: ReadonlySet<string>; ut: UsagesCardsText }) {
+function EquipmentLine({
+  row,
+  label,
+  hidden,
+  player,
+  ut,
+}: {
+  row: EquipmentRow
+  label: string
+  hidden: ReadonlySet<string>
+  player: string
+  ut: UsagesCardsText
+}) {
   const e = ut.equipment
   const id = row.family
   const meId = `usages-equip-me-${id}`
@@ -95,9 +108,9 @@ function EquipmentLine({ row, label, hidden, ut }: { row: EquipmentRow; label: s
         <div className="flex min-w-0 flex-col gap-1">
           {meTotal > 0 && <RepliLine id={meId} family={id} parts={row.me} hidden={hidden} />}
           {meTotal > 0 ? (
-            <ThreeTrack id={meId} parts={row.me} who={`${e.me} · ${label}`} hidden={hidden} ut={ut} />
+            <ThreeTrack id={meId} parts={row.me} who={`${player} · ${label}`} hidden={hidden} ut={ut} />
           ) : (
-            <Tooltip content={e.zeroTip(label)} className="w-full">
+            <Tooltip content={e.zeroTip(player, label)} className="w-full">
               <div className="h-[22px] w-full rounded-[3px] bg-muted" />
             </Tooltip>
           )}

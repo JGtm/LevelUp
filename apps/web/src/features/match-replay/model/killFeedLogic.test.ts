@@ -44,7 +44,6 @@ function kill(tMs: number, xuid = 'x1', victimXuid = ''): KillEvent {
     assistDamagePct: null,
     victimXuid,
     victimGamertag: '',
-    victimTeamID: null,
   }
 }
 
@@ -53,7 +52,6 @@ function medal(tMs: number, xuid = 'x1', name = 'No Scope'): MedalEvent {
     tMs,
     xuid,
     gamertag: 'GT',
-    teamID: 0,
     name,
     label: 'Sans lunette',
     description: 'Desc',
@@ -290,7 +288,6 @@ describe('collectMedalEvents', () => {
       tMs: 1_000,
       xuid: 'x1',
       gamertag: 'JGtm',
-      teamID: 1,
       name: 'No Scope',
       label: 'Sans lunette',
       imageUrl: '/static/medals/1.png',

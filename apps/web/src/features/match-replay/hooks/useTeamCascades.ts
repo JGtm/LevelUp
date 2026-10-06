@@ -17,26 +17,26 @@
  * consommateur restant. Le nom suit la fonction : ce hook ne sait plus rien des meneurs, il
  * sait nommer et colorer une équipe.
  *
- * Les cascades employées sont celles du dépôt, sans troisième copie : `allyOfTeamId` pour le
- * camp (grammaire de xuidMeta) et `campLabel` pour le nom (celle des colonnes de fiches, du
- * menu de point de vue et du scoreboard, au plancher « Équipe N » — jamais « sans équipe »).
+ * Les lectures employées sont celles du dépôt, sans troisième copie : l'allégeance du FILM pour le
+ * camp (`FilmAllegiance.ofTeam`, la même que les pions et les colonnes) et `campLabel` pour le
+ * nom (celle des colonnes de fiches, du menu de point de vue et du scoreboard, au plancher
+ * « Équipe N » — jamais « sans équipe »).
  */
 import { useCallback, useMemo } from 'react'
 
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
-import { campLabel } from '@/lib/replay/replayCamps'
-import { allyOfTeamId } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+import { campLabel } from '@/lib/replay/replayCamps'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /**
  * Ce que la piste DOMINANCE reçoit sur les équipes : de quel côté est un camp, et son nom.
- * Le camp y est l'identifiant `N` d'un côté de feuille `t{N}` (le tueur d'une ligne du fil, une
- * série du calque de score) ; la feuille le nomme.
+ * Le camp y est un désignateur d'équipe du film (le camp d'un tueur du fil, une série du calque
+ * de score) ; la feuille le nomme.
  */
 export interface ReplayTeamCascades {
-  /** Camp du meneur, du point de vue du joueur de la page (`null` = inconnu). */
+  /** Camp du meneur, vu du joueur regardé (`null` = allégeance inconnue). */
   allyOf: (teamId: number) => boolean | null
   /** Libellé de l'équipe qui passe devant, tel que la colonne l'écrit. */
   labelOf: (teamId: number) => string
@@ -44,15 +44,12 @@ export interface ReplayTeamCascades {
 
 export function useTeamCascades(
   scoreboard: MatchScoreboardRow[] | undefined,
-  xuidMeta: XuidMeta | undefined,
+  allegiance: FilmAllegiance,
   locale: ReplayLocale,
 ): ReplayTeamCascades {
   const t = REPLAY_TEXT[locale]
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
-  const allyOf = useCallback(
-    (teamId: number) => allyOfTeamId(board, xuidMeta, teamId),
-    [board, xuidMeta],
-  )
+  const allyOf = allegiance.ofTeam
   const labelOf = useCallback(
     (teamId: number) => campLabel({ team: teamId, side: `t${teamId}` }, board, t),
     [board, t],

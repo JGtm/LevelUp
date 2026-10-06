@@ -16,7 +16,8 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { MatchScoreboardRow } from '@/lib/api/types'
+import { buildFilmAllegiance, NO_ALLEGIANCE, type FilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import type { ObjectiveElementReady } from './objectivesLayer'
 import { testReplayDoc } from '../test/testDoc'
@@ -44,8 +45,14 @@ const docWith = (catalog: number | undefined) =>
   } as never)
 const DOC = docWith(2)
 
-/** Le tableau de bord réduit à ce que le hook lit : la ligne « moi » et son `team_side`. */
-const TABLEAU = [{ is_me: true, team_side: 't1' }] as unknown as MatchScoreboardRow[]
+/** L'allégeance du film vue du joueur regardé, `moi`, que le film range au camp 1. */
+const ALLEGEANCE = buildFilmAllegiance(
+  [
+    { xuid: 'moi', team: 1, lives: [] },
+    { xuid: 'eux', team: 0, lives: [] },
+  ] as ReplayPlayer[],
+  'moi',
+)
 
 const ENCRE = (isAlly: boolean) => (isAlly ? '#allie' : '#adverse')
 
@@ -53,7 +60,7 @@ describe('useZoneStates', () => {
   it('rend la MÊME référence quand rien ne change — un survol ne doit pas recuire le tracé', () => {
     const { result, rerender } = renderHook(
       (p: { objectifs: ObjectiveElementReady[] }) =>
-        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC, null),
+        useZoneStates(p.objectifs, ALLEGEANCE, ENCRE, '#neutre', DOC),
       { initialProps: { objectifs: OBJECTIFS } },
     )
     const premier = result.current
@@ -69,7 +76,7 @@ describe('useZoneStates', () => {
   it('rend une NOUVELLE référence quand les objectifs servis changent', () => {
     const { result, rerender } = renderHook(
       (p: { objectifs: ObjectiveElementReady[] }) =>
-        useZoneStates(p.objectifs, TABLEAU, ENCRE, '#neutre', DOC, null),
+        useZoneStates(p.objectifs, ALLEGEANCE, ENCRE, '#neutre', DOC),
       { initialProps: { objectifs: OBJECTIFS } },
     )
     const premier = result.current
@@ -79,19 +86,19 @@ describe('useZoneStates', () => {
   })
 
   it("ne garde que les zones, dans l'ordre servi — c'est ce que `zoneRef` indexe", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', DOC))
     expect(result.current.zoneElements.map((e) => e.x)).toEqual([-20, 20])
     expect(result.current.joinable).toBe(true)
   })
 
-  it("sans ligne « moi », aucun camp n'est allié : les encres du propriétaire et du capteur restent inconnues", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, null, ENCRE, '#neutre', DOC, null))
+  it("joueur regardé sans équipe du film : aucun camp n'est allié, les encres du propriétaire et du capteur restent inconnues", () => {
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, NO_ALLEGIANCE, ENCRE, '#neutre', DOC))
     expect(result.current.style.colorOfOwner(1)).toBeNull()
     expect(result.current.style.colorOfCapturer(1)).toBeNull()
   })
 
-  it("avec la ligne « moi », le camp du tableau de bord est l'allié", () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
+  it("le camp du FILM du joueur regardé est l'allié", () => {
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', DOC))
     expect(result.current.style.colorOfOwner(1)).toBe('#allie')
     expect(result.current.style.colorOfOwner(0)).toBe('#adverse')
   })
@@ -103,8 +110,8 @@ describe('useZoneStates', () => {
    * le point : la couleur ne dépend plus de qui tient la base.
    */
   it('le camp QUI POUSSE la jauge est peint à SA couleur, pas à celle de son adversaire', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
-    // Le camp 1 est l'allié (ligne « moi ») : c'est lui qui pousse -> encre ALLIÉE.
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', DOC))
+    // Le camp 1 est l'allié (celui du joueur regardé) : c'est lui qui pousse -> encre ALLIÉE.
     expect(result.current.style.colorOfCapturer(1)).toBe('#allie')
     expect(result.current.style.colorOfCapturer(0)).toBe('#adverse')
     // ...et elle coïncide avec celle du propriétaire, par construction.
@@ -112,10 +119,10 @@ describe('useZoneStates', () => {
   })
 
   it('la tenue de la jauge en direct est UNE seconde, en frames de ce document', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', DOC, null))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', DOC))
     expect(result.current.gaugeHoldFrames).toBe(10)
     const lent = renderHook(() =>
-      useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', testReplayDoc({ frameIntervalMs: 250 }), null),
+      useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', testReplayDoc({ frameIntervalMs: 250 })),
     )
     expect(lent.result.current.gaugeHoldFrames).toBe(4)
   })
@@ -124,12 +131,12 @@ describe('useZoneStates', () => {
   // catalogue de formes, ou un rôle de plus dans la table du titre). `zoneRef` ne désigne plus
   // la même zone : le calque vivant ne peint RIEN.
   it('catalogue de l\'artefact différent de la liste servie : la jointure est refusée', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(3), null))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', docWith(3)))
     expect(result.current.joinable).toBe(false)
   })
 
   it('couverture absente : « pas vérifiable » se traite comme « pas joignable »', () => {
-    const { result } = renderHook(() => useZoneStates(OBJECTIFS, TABLEAU, ENCRE, '#neutre', docWith(undefined), null))
+    const { result } = renderHook(() => useZoneStates(OBJECTIFS, ALLEGEANCE, ENCRE, '#neutre', docWith(undefined)))
     expect(result.current.joinable).toBe(false)
   })
 })
@@ -156,28 +163,28 @@ describe('zoneCatalogMatches', () => {
  * objectifs parlaient donc seuls une autre langue que le reste de la page.
  */
 describe('useZoneStates — colorOfTeam suit la palette de l’utilisateur (A12)', () => {
-  const rendre = (tableau: MatchScoreboardRow[] | null) =>
-    renderHook(() => useZoneStates(OBJECTIFS, tableau, ENCRE, '#neutre', DOC, null)).result
+  const rendre = (allegeance: FilmAllegiance) =>
+    renderHook(() => useZoneStates(OBJECTIFS, allegeance, ENCRE, '#neutre', DOC)).result
 
   it('le camp du joueur prend l’encre ALLIÉE réglée, jamais une couleur du jeu', () => {
-    const { current } = rendre(TABLEAU)
-    // `t1` est la ligne « moi » : le camp 1 est donc allié, le camp 0 adverse.
+    const { current } = rendre(ALLEGEANCE)
+    // Le joueur regardé est au camp 1 du film : le camp 1 est donc allié, le camp 0 adverse.
     expect(current.colorOfTeam(1)).toBe('#allie')
     expect(current.colorOfTeam(0)).toBe('#adverse')
   })
 
   it('AUCUNE couleur officielle du jeu ne sort de ce résolveur', () => {
-    const { current } = rendre(TABLEAU)
+    const { current } = rendre(ALLEGEANCE)
     const sorties = [0, 1, 2, 3, 7].map((t) => current.colorOfTeam(t))
     for (const s of sorties) expect(['#allie', '#adverse', '#neutre']).toContain(s)
   })
 
-  it('sans ligne « moi », aucun camp n’est situable : encre NEUTRE, jamais une couleur devinée', () => {
-    expect(rendre(null).current.colorOfTeam(0)).toBe('#neutre')
-    expect(rendre([] as unknown as MatchScoreboardRow[]).current.colorOfTeam(1)).toBe('#neutre')
+  it('joueur regardé que le film ne situe pas : aucun camp n’est situable, encre NEUTRE, jamais devinée', () => {
+    expect(rendre(NO_ALLEGIANCE).current.colorOfTeam(0)).toBe('#neutre')
+    expect(rendre(NO_ALLEGIANCE).current.colorOfTeam(1)).toBe('#neutre')
   })
 
   it('l’index neutre (-1) reste neutre, comme avant', () => {
-    expect(rendre(TABLEAU).current.colorOfTeam(-1)).toBe('#neutre')
+    expect(rendre(ALLEGEANCE).current.colorOfTeam(-1)).toBe('#neutre')
   })
 })

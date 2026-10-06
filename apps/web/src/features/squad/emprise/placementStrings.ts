@@ -1,8 +1,8 @@
 /**
- * placementStrings.ts — les textes du bloc « Groupés ou isolés » de l'onglet Emprise (lot V4 du
+ * placementStrings.ts — les textes du bloc « Isolement » de l'onglet Emprise (lot V4 du
  * plan PLAN_EMPRISE_VIES_2026-09-28, spécification §2 : « Placement et rendement de chaque vie »
  * et « Part des vies par placement »). Fichier à part : `empriseStrings.ts` frôle le seuil de
- * taille. Aides ⓘ : trois phrases au plus. Parité FR / EN garantie par le typage
+ * taille. Aides ⓘ : deux phrases au plus, ce qui est mesuré et sur quel périmètre, sans personne. Parité FR / EN garantie par le typage
  * `Record<Locale, …>`. Les nombres arrivent déjà formatés (séparateur de la langue).
  */
 import type { SquadEmprisePlacementQuadrant } from '@/lib/api/types'
@@ -50,14 +50,12 @@ export interface PlacementText {
 }
 
 const FR: PlacementText = {
-  section: 'Groupés ou isolés',
+  section: 'Isolement',
   life: {
     title: 'Placement et rendement de chaque vie',
     info: (measured, total, noRange) =>
-      'Une vie va d’une apparition à la mort ; son abscisse est la médiane, sur la vie, de la distance au ' +
-      'coéquipier vivant le plus proche, en portées de radar du match. Les instants où le joueur porte ' +
-      'l’objectif, où son équipe est à terre, ou où lui ou un coéquipier vivant n’est pas situé (en véhicule ' +
-      'ou position non lue) sont écartés de la mesure. ' +
+      'Abscisse : médiane, sur la vie (de l’apparition à la mort), de la distance au coéquipier vivant le plus ' +
+      'proche, en portées de radar du match, hors port d’objectif, équipe à terre et positions non situées. ' +
       `${measured} ${measured > 1 ? 'vies mesurées' : 'vie mesurée'} sur ${total} ; matchs sans portée de radar connue : ${noRange}.`,
     xAxis: 'distance médiane au coéquipier le plus proche pendant la vie, en portées de radar',
     yAxis: 'frags dans la vie',
@@ -80,8 +78,7 @@ const FR: PlacementText = {
     info: (isolatedFrom, isolatedFromN, productiveFrom) =>
       'Part des vies mesurées de chaque joueur dans les quatre quarts du nuage ci-dessus. ' +
       `Isolé : distance médiane d’au moins ${isolatedFrom} ${isolatedFromN >= 2 ? 'portées' : 'portée'} de radar ; ` +
-      `rentable : au moins ${productiveFrom} ${productiveFrom > 1 ? 'frags' : 'frag'} dans la vie. ` +
-      'Les quarts ne se classent pas du bon au mauvais.',
+      `rentable : au moins ${productiveFrom} ${productiveFrom > 1 ? 'frags' : 'frag'} dans la vie.`,
     names: {
       in_range_productive: 'à portée et rentable',
       isolated_productive: 'isolé et rentable',
@@ -95,14 +92,12 @@ const FR: PlacementText = {
 }
 
 const EN: PlacementText = {
-  section: 'Grouped or isolated',
+  section: 'Isolation',
   life: {
     title: 'Placement and yield of each life',
     info: (measured, total, noRange) =>
-      'A life runs from a spawn to the death; its horizontal position is the median, over the life, of the ' +
-      'distance to the nearest living teammate, in radar ranges of the match. Moments when the player carries ' +
-      'the objective, when the team is down, or when the player or a living teammate cannot be located (in a ' +
-      'vehicle or position not read) are left out of the measure. ' +
+      'Horizontal position: median, over the life (spawn to death), of the distance to the nearest living ' +
+      'teammate, in radar ranges of the match, excluding objective carrying, team down and unlocated positions. ' +
       `${measured} ${measured > 1 ? 'lives' : 'life'} measured out of ${total}; matches without a known radar range: ${noRange}.`,
     xAxis: 'median distance to the nearest teammate during the life, in radar ranges',
     yAxis: 'kills in the life',
@@ -125,8 +120,7 @@ const EN: PlacementText = {
     info: (isolatedFrom, isolatedFromN, productiveFrom) =>
       'Share of each player’s measured lives in the four quadrants of the scatter above. ' +
       `Isolated: median distance of at least ${isolatedFrom} radar ${isolatedFromN > 1 ? 'ranges' : 'range'}; ` +
-      `productive: at least ${productiveFrom} ${productiveFrom > 1 ? 'kills' : 'kill'} in the life. ` +
-      'The quadrants are not ranked from good to bad.',
+      `productive: at least ${productiveFrom} ${productiveFrom > 1 ? 'kills' : 'kill'} in the life.`,
     names: {
       in_range_productive: 'in range and productive',
       isolated_productive: 'isolated and productive',

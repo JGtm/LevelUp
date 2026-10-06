@@ -35,14 +35,12 @@ import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { formatClock } from '../../../lib/replay/replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { readHillHold, type HillHoldDocument } from '../model/hillHoldLogic'
-import { readScoreBanner, type ScoreBannerSide } from '../model/scoreBannerLogic'
+import { readScoreBanner, type ScoreBannerFilm, type ScoreBannerSide } from '../model/scoreBannerLogic'
 import { roundsTally, type RoundDot } from '../model/roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
@@ -54,8 +52,11 @@ interface Props {
    * tiquerait jusqu'à 50 s trop tôt, et un score faux se lit comme un score juste.
    */
   doc: ReplayScoreDocument & HillHoldDocument
-  scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>>
-  xuidMeta?: XuidMeta
+  /**
+   * L'allégeance lue dans le film, vue du joueur regardé (`model.allegiance`) : les deux camps du
+   * bandeau et lequel est à gauche.
+   */
+  allegiance: ScoreBannerFilm
   /** Image de lecture courante — le score est lu À CE frame, pas à la fin du match. */
   frame: number
   /** Position de lecture en millisecondes sur l'axe BRUT du film, calculée par la page. */
@@ -70,8 +71,7 @@ interface Props {
 
 export function ReplayScoreBanner({
   doc,
-  scoreboard,
-  xuidMeta,
+  allegiance,
   frame,
   nowMs,
   playWindow,
@@ -79,8 +79,8 @@ export function ReplayScoreBanner({
 }: Props) {
   const t = REPLAY_TEXT[locale]
   const reading = useMemo(
-    () => readScoreBanner(scoreTimelineOf(doc), scoreboard, xuidMeta, frame),
-    [doc, scoreboard, xuidMeta, frame],
+    () => readScoreBanner(scoreTimelineOf(doc), allegiance, frame),
+    [doc, allegiance, frame],
   )
   const tally = useMemo(() => roundsTally(reading?.dots ?? []), [reading])
   // LA GARDE DE LA COLLINE, sous les barres. Elle se lit APRÈS les camps, parce qu'elle a besoin

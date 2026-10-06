@@ -32,6 +32,8 @@ import { createRef } from 'react'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import { ReplayTimelineTracks } from '../ui/ReplayTimelineTracks'
 import type { TrackMark } from '../model/replayTimelineTracksLogic'
 
@@ -81,7 +83,7 @@ export function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTrack
       teammates={[]}
       shades={[]}
       absence={[]}
-      identity={new Map()}
+      allegiance={NO_ALLEGIANCE}
       onSeekFrame={onSeekFrame}
       viewpoint="me-1"
       viewpointGroups={GROUPES}

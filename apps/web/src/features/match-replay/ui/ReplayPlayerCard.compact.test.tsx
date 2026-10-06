@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest'
 import { render, within } from '@testing-library/react'
 
 import type { ReplayDocument, ReplayInventory } from '@/lib/api/types'
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 import { ReplayTeams } from './ReplayTeams'
 import { fichierNomme, lire } from '../test/featureFiles'
@@ -198,7 +199,7 @@ function tableauBTB(parCamp: 12 | 7) {
 function renderBTB(parCamp: 12 | 7, locale: 'fr' | 'en' = 'fr') {
   const doc = documentBTB(parCamp)
   const vue = render(
-    <ReplayTeams doc={doc} scoreboard={tableauBTB(parCamp)} frame={FRAME} locale={locale} header={EN_TETE_BTB} />,
+    <ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={tableauBTB(parCamp)} frame={FRAME} locale={locale} header={EN_TETE_BTB} />,
   )
   return { vue, doc }
 }
@@ -320,7 +321,7 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
       tracks: [vie(512, 'Alpha', [{ t: 0, x: 0, y: 0 }])],
     })
     const nue = render(
-      <ReplayTeams doc={sansVitalite} scoreboard={[scoreboardRow('Alpha', 'Alpha', 't0')]} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
+      <ReplayTeams allegiance={NO_ALLEGIANCE} doc={sansVitalite} scoreboard={[scoreboardRow('Alpha', 'Alpha', 't0')]} frame={FRAME} locale="fr" header={EN_TETE_BTB} />,
     )
     expect(nue.queryByLabelText('Bouclier')).toBeNull()
     expect(nue.queryByLabelText('Santé')).toBeNull()

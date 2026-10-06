@@ -226,11 +226,11 @@ export function capturingTeamAt(
 
 /** Style du calque VIVANT : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
 export interface ZoneStateStyle {
-  /** Encre d'un camp ; `null` = camp inconnu (aucune ligne « moi ») — le liseré reste neutre. */
+  /** Encre d'un camp ; `null` = camp inconnu (le film ne situe pas le joueur regardé) — le liseré reste neutre. */
   colorOfOwner: (team: number) => string | null
   /**
    * Encre du camp QUI POUSSE LA JAUGE, par son identifiant d'équipe. `null` = camp inconnu
-   * (aucune ligne « moi ») — l'arc reste neutre.
+   * (le film ne situe pas le joueur regardé) — l'arc reste neutre.
    *
    * CE N'EST PLUS UNE DÉDUCTION DEPUIS LE SCHÉMA 64 (2026-09-20), ET C'EST TOUT LE CHANGEMENT.
    * Le rendu déduisait le capteur du propriétaire courant — « le camp d'en face » —, ce qui ne

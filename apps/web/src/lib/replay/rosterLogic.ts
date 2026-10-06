@@ -3,11 +3,11 @@
  *
  * DEUX SOURCES, DEUX RÔLES, ET UNE SEULE CLÉ. Le film porte ce qui se passe — positions,
  * vies, morts, armes, bouclier, et l'ÉQUIPE de chaque joueur (`roster[].team`, la seule
- * source d'appartenance de la page, cf. `ReplayPlayer.team`) — et l'identifie par XUID. La
- * base porte qui sont les gens : gamertag, côté de feuille (qui NOMME un camp et donne l'encre
- * allié / adverse), K/D/A du match. Aucune des deux ne sait faire le travail de l'autre, et
- * l'artefact de rejeu n'essaie pas : il publie le xuid, qui est la seule clé sur laquelle une
- * jointure ne suppose rien.
+ * source d'appartenance ET d'allégeance de la page, cf. `ReplayPlayer.team` et
+ * `filmAllegiance.ts`) — et l'identifie par XUID. La base porte qui sont les gens : gamertag,
+ * côté de feuille (qui NOMME un camp), K/D/A du match. Aucune des deux ne sait faire le travail
+ * de l'autre, et l'artefact de rejeu n'essaie pas : il publie le xuid, qui est la seule clé sur
+ * laquelle une jointure ne suppose rien.
  *
  * POURQUOI PAS UN INDEX. Ce chantier a déjà publié un « index de joueur » comme une découverte
  * avant de constater que c'était son propre tri alphabétique. Un index est un ORDRE ; le xuid
@@ -49,8 +49,9 @@ export interface ReplayPlayer {
    * L'ÉQUIPE DU JOUEUR : le désignateur que le FILM écrit pour son entrée de roster
    * (`roster[].team`, schéma 57 ; `-1` = « aucune équipe » d'un mode sans camps, une lecture).
    * C'est la SEULE source d'appartenance de la page Rejeu (ADR 0034 D-9) — tous ses camps en
-   * sortent (`replayCamps.ts`). Absente = le film la tait, ou le joueur n'a pas d'entrée : il
-   * n'entre dans aucun camp, et la feuille de match ne la remplace pas.
+   * sortent (`replayCamps.ts`), et toute son encre allié / adverse (`filmAllegiance.ts`). Absente
+   * = le film la tait, ou le joueur n'a pas d'entrée : il n'entre dans aucun camp, n'a pas
+   * d'encre de camp, et la feuille de match ne la remplace pas.
    */
   team?: number
   /** Toutes les vies de ce joueur, dans l'ordre du temps. */
@@ -293,17 +294,19 @@ export function buildSlotOwnership(players: readonly ReplayPlayer[]): SlotOwners
  * seul joueur pour tout le match quand un slot est réattribué entre manches. La couleur est
  * désormais résolue À L'IMAGE, via le propriétaire de la vie qui occupe alors le slot.
  *
- * `colorOf` rend la couleur d'un camp (l'appelant résout les tokens), `isAlly` dit le camp d'un
- * xuid (côté du joueur de la page), `neutral` sert quand on ne sait rien de l'identité. `null`
- * = aucun propriétaire à cette image (slot libre, ou vie anonyme) : le calque ne dessine rien.
+ * `colorOf` rend la couleur d'un camp (l'appelant résout les tokens), `allyOf` dit l'allégeance
+ * d'un JOUEUR vue de la référence (`FilmAllegiance.ofPlayer` : l'équipe du FILM, jamais la
+ * feuille), `neutral` sert quand elle est inconnue (`null` : le film tait l'équipe du joueur, ou
+ * celle de la référence). `null` en sortie = aucun propriétaire à cette image (slot libre, ou vie
+ * anonyme) : le calque ne dessine rien.
  */
 export function colorResolver(
   ownership: SlotOwnership,
   colorOf: (ally: boolean) => string,
-  isAlly: (xuid: string) => boolean,
+  allyOf: (player: ReplayPlayer) => boolean | null,
   neutral: string,
 ): (slot: number, frame: number) => string | null {
-  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrame(slot, frame), colorOf, isAlly, neutral)
+  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrame(slot, frame), colorOf, allyOf, neutral)
 }
 
 /**
@@ -316,40 +319,45 @@ export function colorResolver(
 export function colorResolverOrLast(
   ownership: SlotOwnership,
   colorOf: (ally: boolean) => string,
-  isAlly: (xuid: string) => boolean,
+  allyOf: (player: ReplayPlayer) => boolean | null,
   neutral: string,
 ): (slot: number, frame: number) => string | null {
-  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrameOrLast(slot, frame), colorOf, isAlly, neutral)
+  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrameOrLast(slot, frame), colorOf, allyOf, neutral)
 }
 
-/** teamColorOfOwner — la couleur d'équipe d'un propriétaire (neutre pour une entrée sans xuid, null s'il n'y en a pas). */
+/** teamColorOfOwner — la couleur d'équipe d'un propriétaire (neutre sans allégeance, null s'il n'y en a pas). */
 function teamColorOfOwner(
   p: ReplayPlayer | null,
   colorOf: (ally: boolean) => string,
-  isAlly: (xuid: string) => boolean,
+  allyOf: (player: ReplayPlayer) => boolean | null,
   neutral: string,
 ): string | null {
   if (!p) return null
-  return p.xuid ? colorOf(isAlly(p.xuid)) : neutral
+  const ally = allyOf(p)
+  return ally === null ? neutral : colorOf(ally)
 }
 
 /**
- * sideResolver — LE CAMP D'UNE VIE À UNE IMAGE, celui de son propriétaire à cette image, lu
- * sur la FEUILLE (`team_side`). Il sert l'OPPOSITION du capteur de menaces, pas les camps de la
- * page : ceux-là viennent du film (`groupByTeam`, `replayCamps.ts`).
+ * campResolver — LE CAMP D'UNE VIE À UNE IMAGE, celui de son propriétaire à cette image : son
+ * équipe du FILM (`ReplayPlayer.team`). Il sert l'OPPOSITION entre deux vies (capteur de menaces,
+ * zones d'une fiche, poses), pas l'encre : celle-là est relative à la référence
+ * (`filmAllegiance.ts`).
  *
- * PAS LE DRAPEAU « allié », qui est relatif au joueur de la page et range tous les autres dans
- * un seul camp — faux dès qu'il y a plus de deux équipes (mêlée générale, BTB à quatre camps).
- * Ce que le capteur de menaces doit savoir, c'est si DEUX vies s'opposent ; `team_side` le dit.
+ * PAS LE DRAPEAU « allié », qui est relatif au joueur regardé et range tous les autres dans un
+ * seul camp — faux dès qu'il y a plus de deux équipes (BTB à quatre camps). Ce que le capteur
+ * doit savoir, c'est si DEUX vies s'opposent ; leurs désignateurs le disent.
  *
- * Sans propriétaire à cette image (slot libre) ou sans ligne de scoreboard, une vie n'a PAS de
- * camp (null) : ni alliée ni ennemie de personne, et rien ne l'affirmera à sa place. Chaîne
- * vide = absence (le DTO l'écrit pour un camp non résolu).
+ * Sans propriétaire à cette image (slot libre), ou quand le film tait son équipe ou n'en donne
+ * aucune (`-1`, mode sans camps), une vie n'a PAS de camp (null) : ni alliée ni ennemie de
+ * personne, et la feuille ne l'affirmera pas à sa place.
  */
-export function sideResolver(
+export function campResolver(
   ownership: SlotOwnership,
-): (slot: number, frame: number) => string | null {
-  return (slot, frame) => ownership.ownerAtFrame(slot, frame)?.board?.team_side || null
+): (slot: number, frame: number) => number | null {
+  return (slot, frame) => {
+    const team = ownership.ownerAtFrame(slot, frame)?.team
+    return team !== undefined && team >= 0 ? team : null
+  }
 }
 
 /**
@@ -417,17 +425,17 @@ export function nameByXuidResolver(
  * tient cette promesse ; le pont par slot reste le REPLI, comme pour le nom.
  *
  * XUID INCONNU DU ROSTER -> `null` : aucun joueur du match ne le porte, on ne lui invente pas
- * d'équipe. Xuid connu SANS ligne de scoreboard -> encre neutre (même règle que le pont par
- * slot : le joueur existe, son camp est inconnu).
+ * d'équipe. Xuid connu dont l'allégeance est inconnue (le film tait son équipe, ou celle de la
+ * référence) -> encre neutre (même règle que le pont par slot : le joueur existe, son camp non).
  */
 export function colorByXuidResolver(
   players: readonly ReplayPlayer[],
   colorOf: (ally: boolean) => string,
-  isAlly: (xuid: string) => boolean,
+  allyOf: (player: ReplayPlayer) => boolean | null,
   neutral: string,
 ): (xuid: string) => string | null {
   const byXuid = new Map(players.map((p) => [p.xuid, p]))
-  return (xuid) => teamColorOfOwner(byXuid.get(xuid) ?? null, colorOf, isAlly, neutral)
+  return (xuid) => teamColorOfOwner(byXuid.get(xuid) ?? null, colorOf, allyOf, neutral)
 }
 
 /**

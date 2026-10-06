@@ -19,9 +19,10 @@
  * # LA FEUILLE NE FAIT QUE NOMMER
  *
  * Le côté de feuille (`team_side`, `t{N}`) que portent les membres d'un camp lui donne son NOM
- * (`campLabel` : Eagle, Cobra, ou le `team_name` d'un titre qui le publie) et l'encre allié /
- * adverse des tables ; il ne décide JAMAIS de l'appartenance. Ce module est le seul du rejeu à
- * le lire pour un camp — garde-rail `replayCamps.guard.test.ts`.
+ * (`campLabel` : Eagle, Cobra, ou le `team_name` d'un titre qui le publie), et rien d'autre : il
+ * ne décide ni de l'appartenance, ni de l'encre allié / adverse, qui vient elle aussi du film
+ * (`filmAllegiance.ts`, 2026-10-06). Ce module est le seul du rejeu à le lire — garde-rail
+ * `replayCamps.guard.test.ts`.
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveKnownTeamLabel, type TeamNamingText } from '@/lib/halo/teamLabel'
@@ -32,8 +33,8 @@ export interface ReplayCamp {
   team: number
   /**
    * Le côté de feuille (`t{N}`) de ses membres qui ont une ligne — celui de la majorité d'entre
-   * eux (`campSideOf`). Il nomme le camp et porte l'encre allié / adverse ; `null` quand aucun
-   * membre n'a de ligne. Il ne décide jamais qui est dans le camp.
+   * eux (`campSideOf`). Il NOMME le camp, rien d'autre ; `null` quand aucun membre n'a de
+   * ligne. Il ne décide ni qui est dans le camp, ni de son encre (`filmAllegiance.ts`).
    */
   side: string | null
 }

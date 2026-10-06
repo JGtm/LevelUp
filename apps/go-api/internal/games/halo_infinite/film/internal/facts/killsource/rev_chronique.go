@@ -11,49 +11,6 @@ package killsource
 
 // # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
 //
-// ENTREE `killsource-2026-09-20` (2026-09-20, lot 5.2b.1) : LE ROSTER DU DECODEUR VOIT LES
-// REMPLACANTS, ET UN PARTICIPANT NON COMPTE N ETEINT PLUS LE MATCH.
-//
-// DEUX SOURCES POUR CETTE MONTEE, et elles vont dans le meme sens.
-//
-//	`facts/killsource/` CHANGE      une TROISIEME lecture d identite entre dans le roster
-//	                                (`index_motif.go`) : les cinq bits qui precedent le motif du
-//	                                xuid dans les chunks de replication, c est-a-dire ce que le
-//	                                rejeu publie sous le nom `PlayerIndexTable`, par le MEME
-//	                                resolveur (`weaponv3.ResolveXuidToPI`). Elle voit les joueurs
-//	                                qui REMPLACENT un partant en cours de match, que la table de
-//	                                `chunk_00` — ecrite a l ouverture du film — ignore.
-//	`grammar.Rev` MONTE             `grammar-2026-09-20`, et cette couche hache sa valeur.
-//
-// CE QUE LA MESURE DIT, SUR `b1ad85eb` (Domicile, HI_1_13_0, 2026-09-20) : la table de
-// `chunk_00` nomme HUIT sieges (0..7), BOT_METADATA tient le 8, et le kill-feed nomme un
-// NEUVIEME humain — `Claudors` — que rien ne pouvait placer. Le motif du xuid le lit a l indice
-// 10, UNANIME sur 22 chunks de replication sur 27, et il CONFIRME les huit sieges de la table
-// (`MotifAgree = 8`, zero contradiction). Les huit dead-states hors roster disparaissent, la
-// publication ligne par ligne s ouvre, 77 lignes sortent dont 63 a source NOMMEE.
-//
-// LA TABLE DE `chunk_00` GARDE LA MAIN quand les deux lectures se contredisent : elle est la
-// plus eprouvee (314 accords sur 322 sieges, 30 films). Une contradiction se COMPTE
-// (`FilmTablePinning.MotifContradict`), elle ne deplace rien — meme doctrine que le controle par
-// les votes du kill-feed (D14 b).
-//
-// TROISIEME CHANGEMENT DE SORTIE, MESURE AU MEME ENDROIT : plusieurs bots declares sur un MEME
-// slot ajoutaient chacun un nom au roster pour un seul indice, et les perdants restaient des
-// NOMS LIBRES — de la matiere a inference. Deux noms de bot fantomes suffisaient a rendre
-// `FilmTablePinning.AffectationUnique` faux des qu un indice se liberait, donc a refermer la
-// publication que l epinglage du remplacant venait d ouvrir. Le vainqueur du slot ne change pas
-// (le dernier declare) ; la succession REMPLACE le nom en place et se compte
-// (`Roster.BotsSuccedes`).
-//
-// BACKLOG KILLSOURCE SUR SIGNAL UTILISATEUR (D6), JAMAIS AUTOMATIQUE : chaque ligne de
-// `match_kill_events` porte cette revision dans `decoder_rev`, `conditionBacklog`
-// (`sync/killcollector/postsync.go`) rend candidate toute ligne qui en porte une anterieure, et
-// le redecodage du parc reste un geste de PRODUCTION pris par le pilote. CELUI-CI EST UN
-// BACKLOG DE CORRECTION, pas de datation : les matchs a remplacement changent de verdict de
-// publication.
-//
-// `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document.
-
 // ENTREE `killsource-2026-09-21` (2026-09-21, lot 5.3.3-a) : LA REVISION MONTE MECANIQUEMENT
 // DERRIERE LA GRAMMAIRE — `i60` EST DECLARE COMPLET QUAND LA CARTE EST LA.
 //
@@ -490,3 +447,18 @@ package killsource
 // revision reste et aucun backlog n est ouvert : c est la decision D23 du pilote du 2026-10-06, prise
 // en connaissance de ce risque. Golden regenere a revision constante. Mesures :
 // `campagne_grammaire_2026-10-01/LOT_VA_V2.md`, `LOT_VA_V3.md` (§15, §16).
+//
+// COMPLEMENT DU 2026-10-06 (lot « Rejeu : toute entree du roster a l equipe que le film ecrit »,
+// `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, REVISION CONSTANTE) : `botmeta_equipe.go` lit
+// l EQUIPE de chaque bot dans son entree BOT_METADATA (octet `+ 0xCE5` du bloc de 44 octets, par la
+// grammaire de l ecrivain `FUN_14299bda0`) et la publie en `BotEntry.Team`, avec son bilan
+// (`Roster.BotEquipes`) et deux diagnostics (`killsource.equipes_de_bots`, en erreur pour un bot
+// sans equipe ; `killsource.entrees_de_bots`). L AGREGAT QUI EPINGLE LE ROSTER DU KILL-FEED EST LE
+// MEME A L OCTET (memes bots, meme ordre, meme `NBots`) et aucune ligne de kill ne lit l equipe :
+// sur les quatre films de reference et la mini-bobine, seules changent la ligne des bots
+// (`343 Aloysius` et `343 PardonMy` : equipe 1) et la ligne neuve du bilan ; le cumul ne bouge pas.
+// Aucune ligne de `match_kill_events` ne change : la revision reste et AUCUN BACKLOG n est ouvert,
+// le meme choix qu au lot M2.1 (`BotEntry.Declarations`, suite du rang `killsource-2026-09-22.2`).
+// Les faits portent l equipe en section 5 : c est `replay.SchemaDesFaits` qui monte (5 -> 6, apres
+// la vue A), et la re-extraction des faits est un geste de `backfill-replay`. Golden regenere a
+// revision constante.

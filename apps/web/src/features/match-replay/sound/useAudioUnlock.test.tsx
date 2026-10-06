@@ -17,12 +17,14 @@ import { act, fireEvent, renderHook } from '@testing-library/react'
 vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import type { ReplayKill } from '../model/killFeedLogic'
 import { type FakeContext, flushAudio, installFakeAudio } from '../test/fakeAudio'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplaySound, type ReplaySoundContext } from './useReplaySound'
 
-const NO_CONTEXT: ReplaySoundContext = { scoreboard: undefined, endMatch: null, locale: undefined, viewpoint: null }
+const NO_CONTEXT: ReplaySoundContext = { allegiance: NO_ALLEGIANCE, endMatch: null, locale: undefined }
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>
@@ -44,11 +46,11 @@ afterEach(() => {
 function kill(): ReplayKill {
   return {
     replayMs: 2_000, medals: [],
-    tMs: 2_000, xuid: 'K', ally: true, teamID: 0,
+    tMs: 2_000, xuid: 'K', teamID: 0,
     weaponKey: 'hinf_br75', weaponLabel: 'BR75', weaponImageUrl: '', weaponTinted: false,
     assistState: '', assistGamertag: '', assistTeamID: null,
     killerDamagePct: null, assistDamagePct: null,
-    victimXuid: 'V', victimGamertag: 'Victime', victimTeamID: 1,
+    victimXuid: 'V', victimGamertag: 'Victime',
   }
 }
 

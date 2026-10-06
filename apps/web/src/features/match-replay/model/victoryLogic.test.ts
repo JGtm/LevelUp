@@ -6,28 +6,41 @@
  * couvertes ici : confondre « mon équipe » et « l'équipe qui gagne » sur une défaite (elles
  * diffèrent, et c'est le cœur de l'amendement du 2026-08-26), inverser le camp adverse, et
  * afficher l'écran là où il n'a pas de sens (FFA, trois camps, abandon).
+ *
+ * LES CAMPS, L'ÉQUIPE DU JOUEUR DE LA PAGE ET CELLE DU SUJET VIENNENT DU FILM (2026-10-06) :
+ * chaque joueur porte l'équipe que le roster lui écrit, et sa ligne de feuille ne fait que
+ * NOMMER son camp (`teamSide`). Les cas les construisent ainsi (`film`).
  */
 import { describe, expect, it } from 'vitest'
 
-import { finalScoreFromHeader, readVictory } from './victoryLogic'
-// AJOUT DU 2026-09-07 (revue F2) — IMPORT SÉPARÉ, À DESSEIN. La caractérisation L2a de ce
-// fichier n'accepte que des lignes AJOUTÉES (gate du plan : le diff n'a aucune ligne `-`).
-// Compléter l'import du dessus l'aurait MODIFIÉ. Aucune règle du dépôt n'interdit deux imports
-// du même module (pas de `import/no-duplicates` dans `eslint.config.js`) ; les deux lignes se
-// fondront en une le jour où la caractérisation cessera d'être gelée.
-import { victoryIsFlipped } from './victoryLogic'
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
-/** Une ligne de scoreboard réduite à ce que la lecture regarde. */
-function row(side: string | null, isMe = false) {
-  return { team_side: side, is_me: isMe }
+import { finalScoreFromHeader, readVictory, victoryIsFlipped } from './victoryLogic'
+
+/** Un joueur du film : sa clé, l'équipe que le film lui écrit, et le côté de sa ligne de feuille. */
+type Joueur = [xuid: string, team: number | undefined, side: string | null]
+
+/** Les joueurs du film, joints à leur ligne de feuille (qui ne fait que nommer le camp). */
+function film(joueurs: Joueur[]) {
+  const players = joueurs.map(
+    ([xuid, team, side]) => ({ xuid, team, lives: [], board: { xuid, team_side: side } }) as unknown as ReplayPlayer,
+  )
+  // La référence de l'allégeance n'est pas lue par la fin de match : page et sujet sont passés.
+  return buildFilmAllegiance(players, null)
 }
 
-/** Le cas de référence : deux camps, le joueur de la page dans `t0`. */
-const DEUX_CAMPS = [row('t0', true), row('t0'), row('t1'), row('t1')]
+/** Le cas de référence : deux camps, le joueur de la page (`moi`) au camp 0. */
+const DEUX_CAMPS = film([
+  ['moi', 0, 't0'],
+  ['pote', 0, 't0'],
+  ['eux-1', 1, 't1'],
+  ['eux-2', 1, 't1'],
+])
 
 describe('readVictory — l’issue vient du code d’en-tête, pas du score', () => {
   it('victoire (code 2) : mon équipe habille l’écran, et c’est elle qui gagne', () => {
-    expect(readVictory(DEUX_CAMPS, 2)).toEqual({
+    expect(readVictory(DEUX_CAMPS, 2, 'moi')).toEqual({
       outcome: 'win',
       mine: { teamID: 0, teamSide: 't0', ally: true },
       winner: { teamID: 0, teamSide: 't0', ally: true },
@@ -35,68 +48,91 @@ describe('readVictory — l’issue vient du code d’en-tête, pas du score', (
   })
 
   it('défaite (code 3) : mon équipe habille TOUJOURS l’écran, le vainqueur est l’AUTRE', () => {
-    expect(readVictory(DEUX_CAMPS, 3)).toEqual({
+    expect(readVictory(DEUX_CAMPS, 3, 'moi')).toEqual({
       outcome: 'loss',
       mine: { teamID: 0, teamSide: 't0', ally: true },
       winner: { teamID: 1, teamSide: 't1', ally: false },
     })
   })
 
-  it('le camp adverse est nommé par son team_side réel, pas par « l’autre numéro »', () => {
-    // Camps t2 et t5 : un calcul par complément (1 − index) sur les IDENTIFIANTS donnerait
+  it('le camp adverse est nommé par SON camp réel, pas par « l’autre numéro »', () => {
+    // Camps 2 et 5 : un calcul par complément (1 − index) sur les IDENTIFIANTS donnerait
     // n'importe quoi. La lecture indexe les CAMPS, pas les numéros d'équipe.
-    const exotique = [row('t5', true), row('t2')]
-    expect(readVictory(exotique, 3)).toEqual({
+    const exotique = film([
+      ['moi', 5, 't5'],
+      ['eux', 2, 't2'],
+    ])
+    expect(readVictory(exotique, 3, 'moi')).toEqual({
       outcome: 'loss',
       mine: { teamID: 5, teamSide: 't5', ally: true },
       winner: { teamID: 2, teamSide: 't2', ally: false },
     })
   })
 
+  it('un camp que la feuille ne nomme pas garde son numéro : `teamSide` nul, jamais inventé', () => {
+    const muette = film([
+      ['moi', 0, 't0'],
+      ['bot:Ritzy', 1, null],
+    ])
+    expect(readVictory(muette, 3, 'moi')?.winner).toEqual({ teamID: 1, teamSide: null, ally: false })
+  })
+
   it('égalité (code 1) : aucune équipe rendue — la neutralité est dans la donnée', () => {
-    expect(readVictory(DEUX_CAMPS, 1)).toEqual({ outcome: 'tie', mine: null, winner: null })
+    expect(readVictory(DEUX_CAMPS, 1, 'moi')).toEqual({ outcome: 'tie', mine: null, winner: null })
   })
 })
 
 describe('readVictory — les situations où aucun écran ne doit s’afficher', () => {
-  it('FFA (aucun camp transmis) : null', () => {
-    expect(readVictory([row(null, true), row(null), row(null)], 2)).toBeNull()
+  it('FFA (le film ne donne aucune équipe, `-1`) : null', () => {
+    const ffa = film([
+      ['moi', -1, null],
+      ['a', -1, null],
+      ['b', -1, null],
+    ])
+    expect(readVictory(ffa, 2, 'moi')).toBeNull()
+    // L'égalité en FFA aussi : le panneau annonce la fin d'un duel de camps.
+    expect(readVictory(ffa, 1, 'moi')).toBeNull()
   })
 
   it('trois camps : null — un écran à deux camps ne peut pas dire un match à trois', () => {
-    const troisCamps = [row('t0', true), row('t1'), row('t2')]
-    expect(readVictory(troisCamps, 2)).toBeNull()
+    const troisCamps = film([
+      ['moi', 0, 't0'],
+      ['eux', 1, 't1'],
+      ['autres', 2, 't2'],
+    ])
+    expect(readVictory(troisCamps, 2, 'moi')).toBeNull()
   })
 
-  it('un seul camp identifié : null', () => {
-    expect(readVictory([row('t0', true), row('t0')], 2)).toBeNull()
+  it('un seul camp : null', () => {
+    expect(readVictory(film([['moi', 0, 't0'], ['pote', 0, 't0']]), 2, 'moi')).toBeNull()
   })
 
   it('code d’issue absent : null (rien à annoncer, on n’invente pas de résultat)', () => {
-    expect(readVictory(DEUX_CAMPS, undefined)).toBeNull()
-    expect(readVictory(DEUX_CAMPS, null)).toBeNull()
+    expect(readVictory(DEUX_CAMPS, undefined, 'moi')).toBeNull()
+    expect(readVictory(DEUX_CAMPS, null, 'moi')).toBeNull()
   })
 
   it('abandon (code 4) : null — un match quitté ne se conclut pas', () => {
-    expect(readVictory(DEUX_CAMPS, 4)).toBeNull()
+    expect(readVictory(DEUX_CAMPS, 4, 'moi')).toBeNull()
   })
 
   it('code hors contrat (0, 99) : null', () => {
-    expect(readVictory(DEUX_CAMPS, 0)).toBeNull()
-    expect(readVictory(DEUX_CAMPS, 99)).toBeNull()
+    expect(readVictory(DEUX_CAMPS, 0, 'moi')).toBeNull()
+    expect(readVictory(DEUX_CAMPS, 99, 'moi')).toBeNull()
   })
 
-  it('scoreboard sans ligne `is_me` : null — le pont vers mon camp manque', () => {
-    expect(readVictory([row('t0'), row('t1')], 2)).toBeNull()
+  it('joueur de la page inconnu (nul, ou absent du film) : null — le pont vers mon camp manque', () => {
+    expect(readVictory(DEUX_CAMPS, 2, null)).toBeNull()
+    expect(readVictory(DEUX_CAMPS, 2, 'hors-film')).toBeNull()
   })
 
-  it('ligne `is_me` sans camp transmis : null', () => {
-    const sansCamp = [row(null, true), row('t0'), row('t1')]
-    expect(readVictory(sansCamp, 2)).toBeNull()
-  })
-
-  it('égalité en FFA : null aussi — le panneau annonce la fin d’un duel de camps', () => {
-    expect(readVictory([row(null, true), row(null)], 1)).toBeNull()
+  it('joueur de la page dont le film TAIT l’équipe : null — sa ligne de feuille ne la remplace pas', () => {
+    const muet = film([
+      ['moi', undefined, 't0'],
+      ['pote', 0, 't0'],
+      ['eux', 1, 't1'],
+    ])
+    expect(readVictory(muet, 2, 'moi')).toBeNull()
   })
 })
 
@@ -135,35 +171,32 @@ describe('finalScoreFromHeader', () => {
 })
 
 /**
- * AJOUT DU 2026-09-06 (lot L2b) — le SUJET : par les yeux de qui cette fin se lit.
- *
- * Ajouts seulement : les cas ci-dessus fixent le comportement à deux arguments, qui est celui
- * de la fin de partie SONORE (décision 3 — elle reste ancrée sur le joueur de la page).
+ * Le SUJET : par les yeux de qui cette fin se lit (2026-09-06, lot L2b).
  *
  * CE QUE CES CAS PROTÈGENT : `outcome_code` est le verdict DU JOUEUR DE LA PAGE, et il n'en
  * existe pas d'autre. Lu depuis un adversaire sans permutation, l'écran annoncerait « Victoire »
  * aux couleurs du camp qui a PERDU — un écran faux, en plein cadre, et parfaitement silencieux.
  */
-describe('readVictory — vu par les yeux d’un point de vue (3e argument)', () => {
-  /** Le même lobby que `DEUX_CAMPS`, mais nommé : le sujet se cherche par xuid. */
-  const NOMME = [
-    { xuid: 'me-1', team_side: 't0', is_me: true },
-    { xuid: 'ally-2', team_side: 't0', is_me: false },
-    { xuid: 'foe-1', team_side: 't1', is_me: false },
-    { xuid: 'nomad-9', team_side: null, is_me: false },
-  ]
+describe('readVictory — vu par les yeux d’un point de vue (sujet)', () => {
+  /** Le même lobby, nommé ; `nomad-9` est un joueur dont le film tait l'équipe. */
+  const NOMME = film([
+    ['me-1', 0, 't0'],
+    ['ally-2', 0, 't0'],
+    ['foe-1', 1, 't1'],
+    ['nomad-9', undefined, null],
+  ])
 
   it('sujet = le joueur de la page : rigoureusement la lecture d’origine', () => {
-    expect(readVictory(NOMME, 2, 'me-1')).toEqual(readVictory(NOMME, 2))
-    expect(readVictory(NOMME, 3, 'me-1')).toEqual(readVictory(NOMME, 3))
+    expect(readVictory(NOMME, 2, 'me-1', 'me-1')).toEqual(readVictory(NOMME, 2, 'me-1'))
+    expect(readVictory(NOMME, 3, 'me-1', 'me-1')).toEqual(readVictory(NOMME, 3, 'me-1'))
   })
 
   it('sujet = un coéquipier : identique aussi — même camp, même verdict', () => {
-    expect(readVictory(NOMME, 3, 'ally-2')).toEqual(readVictory(NOMME, 3))
+    expect(readVictory(NOMME, 3, 'me-1', 'ally-2')).toEqual(readVictory(NOMME, 3, 'me-1'))
   })
 
   it('sujet ADVERSE sur une victoire du joueur de la page : chez lui, c’est une DÉFAITE', () => {
-    expect(readVictory(NOMME, 2, 'foe-1')).toEqual({
+    expect(readVictory(NOMME, 2, 'me-1', 'foe-1')).toEqual({
       outcome: 'loss',
       mine: { teamID: 1, teamSide: 't1', ally: true },
       winner: { teamID: 0, teamSide: 't0', ally: false },
@@ -171,7 +204,7 @@ describe('readVictory — vu par les yeux d’un point de vue (3e argument)', ()
   })
 
   it('sujet ADVERSE sur une défaite du joueur de la page : c’est une VICTOIRE', () => {
-    expect(readVictory(NOMME, 3, 'foe-1')).toEqual({
+    expect(readVictory(NOMME, 3, 'me-1', 'foe-1')).toEqual({
       outcome: 'win',
       mine: { teamID: 1, teamSide: 't1', ally: true },
       winner: { teamID: 1, teamSide: 't1', ally: true },
@@ -179,61 +212,62 @@ describe('readVictory — vu par les yeux d’un point de vue (3e argument)', ()
   })
 
   it('égalité : elle l’est pour tout le monde, rien à permuter', () => {
-    expect(readVictory(NOMME, 1, 'foe-1')).toEqual({ outcome: 'tie', mine: null, winner: null })
+    expect(readVictory(NOMME, 1, 'me-1', 'foe-1')).toEqual({ outcome: 'tie', mine: null, winner: null })
   })
 
-  it('sujet sans camp transmis : null — aucun écran plutôt qu’un écran faux', () => {
-    expect(readVictory(NOMME, 2, 'nomad-9')).toBeNull()
-  })
-
-  it('sujet absent du tableau de score : null', () => {
-    expect(readVictory(NOMME, 2, 'xuid-jamais-vu')).toBeNull()
+  it('sujet dont le film tait l’équipe, ou absent du film : null — aucun écran plutôt qu’un écran faux', () => {
+    expect(readVictory(NOMME, 2, 'me-1', 'nomad-9')).toBeNull()
+    expect(readVictory(NOMME, 2, 'me-1', 'xuid-jamais-vu')).toBeNull()
   })
 
   it('sujet à null : le comportement d’origine, le joueur de la page', () => {
-    expect(readVictory(NOMME, 2, null)).toEqual(readVictory(NOMME, 2))
+    expect(readVictory(NOMME, 2, 'me-1', null)).toEqual(readVictory(NOMME, 2, 'me-1'))
   })
 
-  it('sans ligne « moi », un sujet situable ne suffit pas : le pont d’issue manque', () => {
-    // `outcome_code` n'est interprétable que RELATIVEMENT au joueur de la page. Sans sa ligne,
+  it('joueur de la page inconnu : un sujet situable ne suffit pas, le pont d’issue manque', () => {
+    // `outcome_code` n'est interprétable que RELATIVEMENT au joueur de la page. Sans son camp,
     // on ne sait pas de quel camp part la permutation — donc pas d'écran, sujet ou pas.
-    const sansMoi = NOMME.map((r) => ({ ...r, is_me: false }))
-    expect(readVictory(sansMoi, 2, 'foe-1')).toBeNull()
+    expect(readVictory(NOMME, 2, null, 'foe-1')).toBeNull()
+  })
+
+  it('LE FILM DÉCIDE, PAS LA FEUILLE : un sujet que la feuille range du côté de la page reste du camp du film', () => {
+    const contradiction = film([
+      ['me-1', 0, 't0'],
+      ['foe-1', 1, 't0'], // la feuille le dit du côté t0 ; le film l'écrit au camp 1
+      ['autre', 1, 't1'],
+    ])
+    expect(readVictory(contradiction, 2, 'me-1', 'foe-1')?.outcome).toBe('loss')
   })
 })
 
 /**
- * AJOUT DU 2026-09-07 (lot L3) — LE SCORE FINAL VU DEPUIS L'AUTRE CAMP.
+ * LE SCORE FINAL VU DEPUIS L'AUTRE CAMP (2026-09-07, lot L3).
  *
- * Ajouts seulement : les cas à un argument ci-dessus fixent le comportement d'origine, celui de
- * toute surface qui ne connaît pas de point de vue.
- *
- * CE QU'ILS PROTÈGENT. `score_mine` / `score_theirs` sont ancrés sur le JOUEUR DE LA PAGE, comme
- * `outcome_code` — l'API ne publie pas le score vu d'un adversaire. Or l'écran de fin donne à
- * cette lecture la PRIORITÉ sur celle du calque du film, qui, elle, suit le point de vue : vu
- * depuis un adversaire, l'écran annonçait donc l'issue permutée et le score dans l'ordre du
- * joueur de la page — « Défaite, 3 - 1 ». Le défaut est arrivé avec L2b et ne se voyait qu'à la
- * fin de la lecture, après avoir changé de joueur.
+ * `score_mine` / `score_theirs` sont ancrés sur le JOUEUR DE LA PAGE, comme `outcome_code` —
+ * l'API ne publie pas le score vu d'un adversaire. Or l'écran de fin donne à cette lecture la
+ * PRIORITÉ sur celle du calque du film, qui, elle, suit le point de vue : vu depuis un
+ * adversaire, l'écran annonçait donc l'issue permutée et le score dans l'ordre du joueur de la
+ * page — « Défaite, 3 - 1 ».
  */
 describe('finalScoreFromHeader — vu par les yeux d’un point de vue (sujet)', () => {
-  const NOMME = [
-    { xuid: 'me-1', team_side: 't0', is_me: true },
-    { xuid: 'ally-2', team_side: 't0', is_me: false },
-    { xuid: 'foe-1', team_side: 't1', is_me: false },
-    { xuid: 'nomad-9', team_side: null, is_me: false },
-  ]
+  const NOMME = film([
+    ['me-1', 0, 't0'],
+    ['ally-2', 0, 't0'],
+    ['foe-1', 1, 't1'],
+    ['nomad-9', undefined, null],
+  ])
   const HEADER = { score_kind: 'rounds', score_mine: 3, score_theirs: 1 }
 
   it('sujet = le joueur de la page : rigoureusement l’ordre d’origine', () => {
-    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1')).toEqual({ ally: 3, enemy: 1 })
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1', 'me-1')).toEqual({ ally: 3, enemy: 1 })
   })
 
   it('sujet = un coéquipier : identique aussi — même camp, même ordre', () => {
-    expect(finalScoreFromHeader(HEADER, NOMME, 'ally-2')).toEqual({ ally: 3, enemy: 1 })
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1', 'ally-2')).toEqual({ ally: 3, enemy: 1 })
   })
 
   it('SUJET DE L’AUTRE CAMP : le score est PERMUTÉ, comme l’issue', () => {
-    expect(finalScoreFromHeader(HEADER, NOMME, 'foe-1')).toEqual({ ally: 1, enemy: 3 })
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1', 'foe-1')).toEqual({ ally: 1, enemy: 3 })
   })
 
   /**
@@ -242,81 +276,79 @@ describe('finalScoreFromHeader — vu par les yeux d’un point de vue (sujet)',
    * ne peut atteindre l'écran par là : les deux surfaces qui l'affichent ne se rendent qu'avec
    * une lecture de `readVictory`, qui rend `null` dans exactement ces cas-là.
    */
-  it('sujet sans camp transmis, ou absent du tableau : l’ordre du joueur de la page', () => {
-    expect(finalScoreFromHeader(HEADER, NOMME, 'nomad-9')).toEqual({ ally: 3, enemy: 1 })
-    expect(finalScoreFromHeader(HEADER, NOMME, 'xuid-jamais-vu')).toEqual({ ally: 3, enemy: 1 })
+  it('sujet dont le film tait l’équipe, ou absent du film : l’ordre du joueur de la page', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1', 'nomad-9')).toEqual({ ally: 3, enemy: 1 })
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1', 'xuid-jamais-vu')).toEqual({ ally: 3, enemy: 1 })
   })
 
-  it('sans ligne « moi », rien à permuter : l’ordre publié par l’API', () => {
-    const sansMoi = NOMME.map((r) => ({ ...r, is_me: false }))
-    expect(finalScoreFromHeader(HEADER, sansMoi, 'foe-1')).toEqual({ ally: 3, enemy: 1 })
+  it('joueur de la page inconnu, rien à permuter : l’ordre publié par l’API', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, null, 'foe-1')).toEqual({ ally: 3, enemy: 1 })
   })
 
   it('un match qui n’oppose pas exactement deux camps ne se permute pas non plus', () => {
-    const troisCamps = [...NOMME, { xuid: 'third-1', team_side: 't2', is_me: false }]
-    expect(finalScoreFromHeader(HEADER, troisCamps, 'foe-1')).toEqual({ ally: 3, enemy: 1 })
+    const troisCamps = film([
+      ['me-1', 0, 't0'],
+      ['foe-1', 1, 't1'],
+      ['third-1', 2, 't2'],
+    ])
+    expect(finalScoreFromHeader(HEADER, troisCamps, 'me-1', 'foe-1')).toEqual({ ally: 3, enemy: 1 })
   })
 
-  it('sujet à null, ou tableau absent : le comportement à un argument, à la ligne près', () => {
-    expect(finalScoreFromHeader(HEADER, NOMME, null)).toEqual(finalScoreFromHeader(HEADER))
-    expect(finalScoreFromHeader(HEADER, undefined, 'foe-1')).toEqual(finalScoreFromHeader(HEADER))
+  it('sujet à null, ou film absent : le comportement à un argument, à la ligne près', () => {
+    expect(finalScoreFromHeader(HEADER, NOMME, 'me-1', null)).toEqual(finalScoreFromHeader(HEADER))
+    expect(finalScoreFromHeader(HEADER, undefined, 'me-1', 'foe-1')).toEqual(finalScoreFromHeader(HEADER))
   })
 
   it('les nombres manquants restent null, sujet ou pas', () => {
-    expect(finalScoreFromHeader({ score_kind: 'rounds' }, NOMME, 'foe-1')).toBeNull()
+    expect(finalScoreFromHeader({ score_kind: 'rounds' }, NOMME, 'me-1', 'foe-1')).toBeNull()
   })
 })
 
 /**
- * AJOUT DU 2026-09-07 — `victoryIsFlipped`, LE PRÉDICAT DU SCORE SERVI PAR L'EN-TÊTE.
+ * `victoryIsFlipped`, LE PRÉDICAT DU SCORE SERVI PAR L'EN-TÊTE (2026-09-07).
  *
  * Il ne dit pas l'issue, il dit si la lecture a été RETOURNÉE. `finalScoreFromHeader` s'en sert
- * pour échanger les deux nombres de l'en-tête, qui valent pour le joueur de la page : sans lui,
- * un match gagné regardé depuis un adversaire affichait le score à l'endroit sous un camp
- * inversé. (Le MOT du verdict s'en est passé depuis : les deux surfaces le prennent dans
- * `outcomes.toml` sur l'issue LUE, donc déjà permutée — il n'y a plus de branche à ouvrir.)
- *
- * Ces cas n'en touchent aucun autre : la fonction n'existait pas.
+ * pour échanger les deux nombres de l'en-tête, qui valent pour le joueur de la page.
  */
 describe('victoryIsFlipped — le sujet est-il du camp opposé au joueur de la page ?', () => {
-  const NOMME = [
-    { xuid: 'me-1', team_side: 't0', is_me: true },
-    { xuid: 'ally-2', team_side: 't0', is_me: false },
-    { xuid: 'foe-1', team_side: 't1', is_me: false },
-    { xuid: 'nomad-9', team_side: null, is_me: false },
-  ]
+  const NOMME = film([
+    ['me-1', 0, 't0'],
+    ['ally-2', 0, 't0'],
+    ['foe-1', 1, 't1'],
+    ['nomad-9', undefined, null],
+  ])
 
   it('sujet de l’autre camp : vrai', () => {
-    expect(victoryIsFlipped(NOMME, 'foe-1')).toBe(true)
+    expect(victoryIsFlipped(NOMME, 'me-1', 'foe-1')).toBe(true)
   })
 
   it('sujet = le joueur de la page, ou un coéquipier : faux', () => {
-    expect(victoryIsFlipped(NOMME, 'me-1')).toBe(false)
-    expect(victoryIsFlipped(NOMME, 'ally-2')).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'me-1', 'me-1')).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'me-1', 'ally-2')).toBe(false)
   })
 
   it('sans sujet : faux — c’est le régime d’origine, celui du joueur de la page', () => {
-    expect(victoryIsFlipped(NOMME, null)).toBe(false)
-    expect(victoryIsFlipped(NOMME)).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'me-1', null)).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'me-1')).toBe(false)
   })
 
   it('sujet non situable : faux — rien à permuter, donc rien de permuté', () => {
-    expect(victoryIsFlipped(NOMME, 'nomad-9')).toBe(false)
-    expect(victoryIsFlipped(NOMME, 'xuid-jamais-vu')).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'me-1', 'nomad-9')).toBe(false)
+    expect(victoryIsFlipped(NOMME, 'me-1', 'xuid-jamais-vu')).toBe(false)
   })
 
-  it('sans ligne « moi », ou hors d’un match à deux camps : faux', () => {
-    expect(victoryIsFlipped(NOMME.map((r) => ({ ...r, is_me: false })), 'foe-1')).toBe(false)
-    expect(victoryIsFlipped([...NOMME, { xuid: 't3', team_side: 't2', is_me: false }], 'foe-1')).toBe(false)
-    expect(victoryIsFlipped([], 'foe-1')).toBe(false)
+  it('joueur de la page inconnu, ou hors d’un match à deux camps : faux', () => {
+    expect(victoryIsFlipped(NOMME, null, 'foe-1')).toBe(false)
+    expect(victoryIsFlipped(film([['me-1', 0, 't0'], ['foe-1', 1, 't1'], ['t3', 2, 't2']]), 'me-1', 'foe-1')).toBe(false)
+    expect(victoryIsFlipped(film([]), 'me-1', 'foe-1')).toBe(false)
   })
 
   it('IL EST LE MÊME PRÉDICAT QUE LA PERMUTATION DU SCORE, et c’est ce qui les tient ensemble', () => {
     const header = { score_mine: 3, score_theirs: 1 }
     for (const sujet of ['me-1', 'ally-2', 'foe-1', 'nomad-9', 'xuid-jamais-vu', null]) {
-      const permute = victoryIsFlipped(NOMME, sujet)
+      const permute = victoryIsFlipped(NOMME, 'me-1', sujet)
       const attendu = permute ? { ally: 1, enemy: 3 } : { ally: 3, enemy: 1 }
-      expect(finalScoreFromHeader(header, NOMME, sujet)).toEqual(attendu)
+      expect(finalScoreFromHeader(header, NOMME, 'me-1', sujet)).toEqual(attendu)
     }
   })
 })

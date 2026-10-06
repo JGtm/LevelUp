@@ -4,11 +4,11 @@
  * `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html`, vue « Après »).
  *
  * L'onglet monte les cartes de l'Emprise et de l'Objectif de l'Escouade : leurs textes sont ceux de
- * l'Escouade SURCHARGÉS pour une page solo (`EMPRISE_TEXT_SOLO`, `OBJECTIF_TEXT_SOLO`) — « Mon camp »,
- * jamais « Notre camp » (V6), « matchs du périmètre » au lieu de « la soirée ». Les cartes propres à
- * l'onglet (grille par carte, Mes prises, Mes vies, Équipement, Ma part) et les intertitres de
- * l'onglet (seule source : `USAGES_TEXT[locale].sections`) prennent `USAGES_TEXT`.
- * Titres, aides ⓘ et légendes FR : ceux de la maquette, mot pour mot. Parité FR / EN par le typage
+ * l'Escouade SURCHARGÉS pour une page solo (`EMPRISE_TEXT_SOLO`, `OBJECTIF_TEXT_SOLO`) — « matchs du
+ * périmètre » au lieu de « la soirée », colonnes par carte. Les cartes propres à l'onglet et les
+ * intertitres (seule source : `USAGES_TEXT[locale].sections`) prennent `USAGES_TEXT`.
+ * Titres factuels et concis, aucune personne (le joueur : son gamertag ; « Équipe », « Adversaire »,
+ * « Reste de l’équipe ») — garde : `textesSansPersonne.test.ts`. Parité FR / EN par le typage
  * `Record<Locale, …>`.
  */
 import { EMPRISE_TEXT, type EmpriseText } from '@/features/squad/emprise/empriseStrings'
@@ -20,7 +20,7 @@ import { USAGES_CARDS_TEXT_EN, USAGES_CARDS_TEXT_FR, type UsagesCardsText } from
 
 export type { UsagesCardsText }
 
-/** Les intertitres de l'onglet, dans l'ordre de la page (« Portée des engagements » est porté par sa section). */
+/** Les intertitres de l'onglet, dans l'ordre de la page (« Portée » est porté par sa section). */
 export interface UsagesSectionsText {
   bilan: string
   carte: string
@@ -29,7 +29,7 @@ export interface UsagesSectionsText {
   lives: string
   objectif: string
   equipment: string
-  /** « 12 matchs filmés sur 40 · frags de la feuille de match sur les 40 », à côté de « Bilan du périmètre ». */
+  /** « 12 matchs filmés sur 40 · frags de la feuille de match sur les 40 », à côté de « Ressources ». */
   bilanCoverage: (filmed: number, total: number) => string
 }
 
@@ -41,66 +41,47 @@ export interface UsagesText {
 
 const sur = (n: number, one: string, many: string) => (n > 1 ? many : one)
 
-/** Une décimale, séparateur de la langue (« 3,0 », « 3.0 »). */
-const dec1 = (v: number, tag: string) => v.toLocaleString(tag, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-
-/** Les textes de l'Emprise de l'Escouade, surchargés pour la page solo (FR). */
+/** Les textes de l'Emprise de l'Escouade, surchargés pour la page solo (FR) : le périmètre, les cartes. */
 function empriseFr(base: EmpriseText): EmpriseText {
   return {
     ...base,
-    ourSide: 'Mon camp',
     control: {
       ...base.control,
       info:
-        'La part de chaque ressource prise par mon camp face à l’adversaire, sur les matchs du périmètre. ' +
-        'Les nombres sont des comptes ; le trait orange marque 50 %, autant que l’adversaire. Les bonus ' +
-        'sans ramasseur connu ne comptent dans aucun camp.',
-      ariaLabel: 'La part de mon camp des prises de chaque ressource, face à l’adversaire',
+        'Prises de chaque ressource par l’équipe et par l’adversaire, en comptes, sur les matchs filmés du ' +
+        'périmètre ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
     },
     fil: {
       ...base.fil,
-      title: 'Contrôle des ressources au fil des matchs',
       info:
-        'Ma part des prises de chaque ressource, cumulée depuis le premier match du périmètre. Les petits ' +
-        'points sont la part de chaque match, leur taille son volume. Un match sans la ressource, ou sans ' +
-        'film, laisse la courbe filer jusqu’au suivant.',
-      pointTip: (v) =>
-        `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource} : ${v.us} pour mon camp, ${v.them} pour l’adversaire (${v.pct})\n` +
-        `Cumul : ${v.cumUs} sur ${v.cumTotal} (${v.cumPct})`,
+        'Part de l’équipe dans les prises de chaque ressource, cumulée match après match sur le périmètre. Points : ' +
+        'part de chaque match, taille selon le volume ; un match sans la ressource ou sans film n’a pas de point.',
       endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nCumul du périmètre : ${cumUs} sur ${cumTotal} (${pct})`,
     },
     production: {
       ...base.production,
       info:
-        'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a permis ' +
-        '(temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un véhicule), toutes deux sur ' +
-        'les matchs où ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de ' +
-        'celle de la fine, on a moins produit qu’on n’a eu. Les frags de toute la période se lisent carte par carte.',
-      ariaLabel: 'La part de mon camp des frags obtenus avec chaque ressource, et de ce qui les a permis',
+        'Barre épaisse : part de l’équipe dans les frags obtenus avec chaque ressource ; barre fine : part de ' +
+        'l’équipe dans l’exposition (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un ' +
+        'véhicule). Périmètre : les matchs où l’exposition est mesurée.',
     },
     yield: {
       ...base.yield,
       info:
-        'Combien mon camp produit de plus ou de moins que l’adversaire pour la même exposition : par minute ' +
-        'd’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro veut dire autant ' +
-        'que lui. Les deux rendements bruts sont écrits de l’autre côté du zéro.',
-      ariaLabel: 'Le rendement de mon camp face à celui de l’adversaire, par ressource',
-      tip: (resource, sub, us, them, gap) =>
-        `${resource} · ${sub}\nMon camp ${dec1(us, 'fr-FR')}, adversaire ${dec1(them, 'fr-FR')} : ${gap}`,
+        'Écart relatif entre les frags de l’équipe et ceux de l’adversaire pour la même exposition : par minute ' +
+        'd’effet d’un bonus, par prise d’arme spéciale, par minute à bord d’un véhicule. Zéro : autant ; ' +
+        'rendements bruts de l’autre côté du zéro.',
     },
     grid: {
       ...base.grid,
-      title: 'Contrôle des ressources, carte par carte',
+      title: 'Contrôle des ressources, par carte',
       info:
-        'Une colonne par carte jouée, la plus jouée à gauche, avec son nombre de matchs et ses résultats. La ' +
-        'couleur dit si mon camp a pris plus ou moins que l’adversaire, et sature à trente points d’écart. Le ' +
-        'survol d’une case détaille qui l’a prise chez moi.',
+        'Une colonne par carte jouée, la plus jouée à gauche, avec ses matchs et ses résultats ; couleur : ' +
+        'écart entre les prises de l’équipe et celles de l’adversaire, saturée à trente points.',
       noTeamTip:
-        'Mon camp est inconnu sur ces matchs (chacun pour soi, ou camp absent de la feuille de match) : rien ' +
-        'ne se partage entre les deux camps.',
+        'Équipe inconnue sur ces matchs (chacun pour soi, ou équipe absente de la feuille de match) : rien ne se ' +
+        'partage entre les deux équipes.',
       untieredTip: 'Niveaux de socle non mesurés sur ces matchs : armes spéciales et armes de râtelier ne se séparent pas.',
-      cellTip: (name, us, them, pct) => `${name} : ${us} pour mon camp, ${them} pour l’adversaire (${pct})`,
-      whoFmt: (list) => `Chez moi : ${list}`,
     },
     vehicles: { ...base.vehicles, unmeasuredTip: 'Véhicules non mesurés : l’occupation n’a pas été lue.' },
   }
@@ -110,59 +91,43 @@ function empriseFr(base: EmpriseText): EmpriseText {
 function empriseEn(base: EmpriseText): EmpriseText {
   return {
     ...base,
-    ourSide: 'My side',
     control: {
       ...base.control,
       info:
-        'The share of each resource my side picked up against the opponent, over the matches in scope. The ' +
-        'numbers are counts; the orange line marks 50%, as much as the opponent. Power-ups with no known ' +
-        'picker count for neither side.',
-      ariaLabel: 'My side’s share of each resource’s pickups, against the opponent',
+        'Pickups of each resource by the team and by the opponent, in counts, over the filmed matches in ' +
+        'scope; orange line: 50%. Power-ups with no known picker count for neither team.',
     },
     fil: {
       ...base.fil,
-      title: 'Resource control over the matches',
       info:
-        'My share of each resource’s pickups, cumulated from the first match in scope. The small dots are ' +
-        'each match’s share, their size its volume. A match without the resource, or without a film, lets ' +
-        'the line run on to the next one.',
-      pointTip: (v) =>
-        `${v.match}${v.outcome ? ` (${v.outcome})` : ''}\n${v.resource}: ${v.us} for my side, ${v.them} for the opponent (${v.pct})\n` +
-        `Cumulated: ${v.cumUs} of ${v.cumTotal} (${v.cumPct})`,
+        'The team’s share of each resource’s pickups, cumulated match after match over the scope. Dots: each ' +
+        'match’s share, sized by volume; a match without the resource or without a film has no dot.',
       endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nScope total: ${cumUs} of ${cumTotal} (${pct})`,
     },
     production: {
       ...base.production,
       info:
-        'The thick bar splits the kills the resource brought, the thin bar what made them possible (effect ' +
-        'time for a power-up, pickups for a power weapon, time aboard a vehicle), both over the matches where ' +
-        'the latter is measured. If the thick bar’s split sits left of the thin one’s, we produced less than ' +
-        'we had. Kills over the whole period read map by map.',
-      ariaLabel: 'My side’s share of the kills made with each resource, and of what made them possible',
+        'Thick bar: the team’s share of the kills made with each resource; thin bar: the team’s share of the ' +
+        'exposure (effect time for a power-up, pickups for a power weapon, time aboard a vehicle). Scope: the ' +
+        'matches where the exposure is measured.',
     },
     yield: {
       ...base.yield,
       info:
-        'How much more or less my side produces than the opponent for the same exposure: per minute of ' +
-        'power-up effect, per power weapon pickup, per minute aboard a vehicle. Zero means as much as them. ' +
-        'Both raw rates are written on the other side of zero.',
-      ariaLabel: 'My side’s efficiency against the opponent’s, per resource',
-      tip: (resource, sub, us, them, gap) =>
-        `${resource} · ${sub}\nMy side ${dec1(us, 'en-GB')}, opponent ${dec1(them, 'en-GB')}: ${gap}`,
+        'Relative gap between the team’s kills and the opponent’s for the same exposure: per minute of ' +
+        'power-up effect, per power weapon pickup, per minute aboard a vehicle. Zero: even; raw rates on the ' +
+        'other side of zero.',
     },
     grid: {
       ...base.grid,
-      title: 'Resource control, map by map',
+      title: 'Resource control, by map',
       info:
-        'One column per map played, the most played on the left, with its number of matches and its results. ' +
-        'The colour says whether my side picked up more or less than the opponent, and saturates at a ' +
-        'thirty-point gap. Hover a cell to see who took it on my side.',
+        'One column per map played, the most played on the left, with its matches and results; colour: gap ' +
+        'between the team’s pickups and the opponent’s, saturated at thirty points.',
       noTeamTip:
-        'My side is unknown in these matches (free-for-all, or side missing from the match sheet): nothing ' +
-        'splits between the two sides.',
+        'Team unknown in these matches (free-for-all, or team missing from the match sheet): nothing splits ' +
+        'between the two teams.',
       untieredTip: 'Pad levels not measured for these matches: power weapons and rack weapons can’t be told apart.',
-      cellTip: (name, us, them, pct) => `${name}: ${us} for my side, ${them} for the opponent (${pct})`,
-      whoFmt: (list) => `On my side: ${list}`,
     },
     vehicles: { ...base.vehicles, unmeasuredTip: 'Vehicles not measured: occupancy was not read.' },
   }
@@ -173,39 +138,15 @@ function emprise(locale: Locale): EmpriseText {
   return locale === 'fr' ? empriseFr(base) : empriseEn(base)
 }
 
-function objectif(locale: Locale): ObjectifText {
-  const base = OBJECTIF_TEXT[locale]
-  if (locale === 'fr') {
-    return {
-      ...base,
-      ourSide: 'Mon camp',
-      balance: {
-        ...base.balance,
-        info:
-          'Pour chaque action de l’objectif, ce que mon camp a fait face à l’adversaire, famille par famille. ' +
-          'Le trait orange marque 50 % : autant que l’adversaire.',
-      },
-    }
-  }
-  return {
-    ...base,
-    ourSide: 'My side',
-    balance: {
-      ...base.balance,
-      info:
-        'For each objective action, what my side did against the opponent, family by family. The orange ' +
-        'line marks 50%: as much as the opponent.',
-    },
-  }
-}
-
 const FR: UsagesText = {
   sections: {
-    bilan: 'Bilan du périmètre',
-    carte: 'Carte par carte',
-    mine: 'Mes prises',
-    prendre: 'Prendre, et s’en servir',
-    lives: 'Près d’un coéquipier ou seul',
+    bilan: 'Ressources',
+    carte: 'Par carte',
+    mine: 'Prises',
+    // Pas « Rendement » seul : c'est le libellé du champ `offensive_conversion` (fields.toml), une
+    // autre grandeur — lint-no-hardcoded-fields.
+    prendre: 'Rendement des ressources',
+    lives: 'Isolement',
     objectif: 'Objectif',
     equipment: 'Équipement',
     bilanCoverage: (filmed, total) =>
@@ -213,27 +154,26 @@ const FR: UsagesText = {
   },
   cards: USAGES_CARDS_TEXT_FR,
   sheet: {
-    title: 'Ma part à l’objectif',
+    title: 'Part du joueur à l’objectif',
     info:
-      'La fiche du joueur affiché : ce qu’il a fait à l’objectif, action par action. La barre est sa part du ' +
-      'total de son camp ; un zéro reste affiché, atténué. Le rôle dominant est celui où il pèse le plus dans ' +
-      'son camp.',
+      'Actions de l’objectif du joueur, rôle par rôle ; barre : part du total de l’équipe, un zéro reste affiché, ' +
+      'atténué. Rôle dominant : celui où la part du joueur dans l’équipe est la plus forte.',
     dominantRole: OBJECTIF_TEXT.fr.sheets.dominantRole,
     roles: OBJECTIF_TEXT.fr.roles,
     pctFmt: (v) => OBJECTIF_TEXT.fr.pctFmt(v, 1),
     durationFmt: OBJECTIF_TEXT.fr.durationFmt,
     lineTip: (player, family, column, value, camp, pct) =>
-      `${player} · ${family}\n${column} : ${value} des ${camp} de mon camp${pct ? ` (${pct})` : ''}`,
+      `${player} · ${family}\n${column} : ${value} des ${camp} de l’équipe${pct ? ` (${pct})` : ''}`,
   },
 }
 
 const EN: UsagesText = {
   sections: {
-    bilan: 'Scope summary',
-    carte: 'Map by map',
-    mine: 'My pickups',
-    prendre: 'Taking, and using',
-    lives: 'Near a teammate or alone',
+    bilan: 'Resources',
+    carte: 'By map',
+    mine: 'Pickups',
+    prendre: 'Resource efficiency',
+    lives: 'Isolation',
     objectif: 'Objective',
     equipment: 'Equipment',
     bilanCoverage: (filmed, total) =>
@@ -241,20 +181,20 @@ const EN: UsagesText = {
   },
   cards: USAGES_CARDS_TEXT_EN,
   sheet: {
-    title: 'My share of the objective',
+    title: 'Player’s share of the objective',
     info:
-      'The sheet of the player shown: what they did on the objective, action by action. The bar is their share ' +
-      'of their side’s total; a zero stays, dimmed. The dominant role is the one where they weigh most in ' +
-      'their side.',
+      'The player’s objective actions, role by role; bar: share of the team’s total, a zero stays, dimmed. ' +
+      'Dominant role: the one where the player’s share of the team is highest.',
     dominantRole: OBJECTIF_TEXT.en.sheets.dominantRole,
     roles: OBJECTIF_TEXT.en.roles,
     pctFmt: (v) => OBJECTIF_TEXT.en.pctFmt(v, 1),
     durationFmt: OBJECTIF_TEXT.en.durationFmt,
     lineTip: (player, family, column, value, camp, pct) =>
-      `${player} · ${family}\n${column}: ${value} of my side’s ${camp}${pct ? ` (${pct})` : ''}`,
+      `${player} · ${family}\n${column}: ${value} of the team’s ${camp}${pct ? ` (${pct})` : ''}`,
   },
 }
 
 export const EMPRISE_TEXT_SOLO: Record<Locale, EmpriseText> = { fr: emprise('fr'), en: emprise('en') }
-export const OBJECTIF_TEXT_SOLO: Record<Locale, ObjectifText> = { fr: objectif('fr'), en: objectif('en') }
+/** L'Objectif solo lit les textes de l'Escouade tels quels (« Rapport de force », « Équipe »). */
+export const OBJECTIF_TEXT_SOLO: Record<Locale, ObjectifText> = OBJECTIF_TEXT
 export const USAGES_TEXT: Record<Locale, UsagesText> = { fr: FR, en: EN }

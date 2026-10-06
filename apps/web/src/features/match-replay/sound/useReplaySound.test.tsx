@@ -14,6 +14,8 @@ import { act, renderHook } from '@testing-library/react'
 vi.mock('@/features/settings/queries', () => ({ useSettings: () => ({ data: undefined }) }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import type { ReplayKill } from '../model/killFeedLogic'
 
 import type { EndMatchSoundSpec } from './endMatchSound'
@@ -23,10 +25,9 @@ import { type FakeContext, flushAudio, installFakeAudio, okAudioResponse } from 
 import { testReplayDoc } from '../test/testDoc'
 import { SOUND_VOLUME_DEFAULT, useReplaySound, type ReplaySoundContext } from './useReplaySound'
 
-/** Contexte par défaut des tests de ce fichier : pas de scoreboard, pas de fin de partie, pas
- *  de locale, ligne « moi » — seul `endMatch` varie d'un test à l'autre (`{ ...NO_CONTEXT,
- *  endMatch }`). */
-const NO_CONTEXT: ReplaySoundContext = { scoreboard: undefined, endMatch: null, locale: undefined, viewpoint: null }
+/** Contexte par défaut des tests de ce fichier : aucune allégeance, pas de fin de partie, pas de
+ *  locale — seul `endMatch` varie d'un test à l'autre (`{ ...NO_CONTEXT, endMatch }`). */
+const NO_CONTEXT: ReplaySoundContext = { allegiance: NO_ALLEGIANCE, endMatch: null, locale: undefined }
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>
@@ -46,11 +47,11 @@ afterEach(() => {
 function kill(over: Partial<ReplayKill> = {}): ReplayKill {
   return {
     replayMs: 2_000, medals: [],
-    tMs: 2_000, xuid: 'K', ally: true, teamID: 0,
+    tMs: 2_000, xuid: 'K', teamID: 0,
     weaponKey: 'hinf_br75', weaponLabel: 'BR75', weaponImageUrl: '', weaponTinted: false,
     assistState: '', assistGamertag: '', assistTeamID: null,
     killerDamagePct: null, assistDamagePct: null,
-    victimXuid: 'V', victimGamertag: 'Victime', victimTeamID: 1,
+    victimXuid: 'V', victimGamertag: 'Victime',
     ...over,
   }
 }

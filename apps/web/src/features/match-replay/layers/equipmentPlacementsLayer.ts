@@ -274,11 +274,11 @@ export interface PlacementScene {
   /** Toutes les vies du film ; le balayage de révélation filtre lui-même sur leur fenêtre. */
   lives: readonly ReplayTrackReady[]
   /**
-   * Camp de la vie qui occupe un slot À UNE IMAGE (`team_side`) ; null = camp inconnu, donc
+   * Camp de la vie qui occupe un slot À UNE IMAGE (son équipe du FILM) ; null = camp inconnu, donc
    * jamais révélé ni révélateur. La frame lève l'ambiguïté d'un slot réattribué entre manches
    * (poseur lu à sa pose, cible au ping — cf. threatSensor).
    */
-  sideOfSlot: (slot: number, frame: number) => string | null
+  campOfSlot: (slot: number, frame: number) => number | null
   /**
    * LE TRANSLOCATEUR : où est la faille à cette image, et les va-et-vient qui l'y ont mise
    * (cf. `RiftScene`). Une lecture de document, calculée UNE FOIS par l'appelant — la faille

@@ -230,7 +230,8 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 			"film", c.name, "lectures", motif.lectures, "epingles", len(motif.nomParIndex),
 			"desaccords", motif.desaccords, "absents", motif.absents, "tueurs_ecartes", motif.tueursEcartes)
 	}
-	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table, motif)
+	// LES BOTS ET LEUR EQUIPE, LUE DANS LEUR ENTREE BOT_METADATA au build que la table a lu.
+	c.roster = buildRoster(c.feed, c.botsDuFilm(table.Build), c.opts.Bots, table, motif)
 	if n := len(c.roster.unpinned); n > 0 {
 		// FK-1 (lot J7.2) : une perte PUBLIEE (`Coverage.BotsNonEpingles`) et DITE, jamais muette.
 		c.signaler(DiagBotsNonEpingles, constat.NiveauWarn, "killsource: bot(s) NON EPINGLE(S) — leur slot tombe sur un siege que "+

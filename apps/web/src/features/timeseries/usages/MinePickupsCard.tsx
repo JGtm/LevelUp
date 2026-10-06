@@ -1,13 +1,13 @@
 /**
- * MinePickupsCard — « Mes prises dans mon camp » (Séries temporelles › Usages, bloc « Mes prises » ;
- * maquette v4, `renderMine`).
+ * MinePickupsCard — « Part du joueur dans les prises du camp » (Séries temporelles › Usages, bloc
+ * « Prises » ; maquette v4, `renderMine`).
  *
- * Par ressource (pastille de sa couleur devant son nom), les objets pris par mon camp, triés par
- * volume de mon camp. Une barre par objet, à l'échelle de l'objet le plus pris ; dedans, ma part
- * (`squad-player-1`) puis celle du reste de mon camp, leurs comptes dans les segments quand ils
- * tiennent (mesure au pixel), « moi n · camp m » au bout dans tous les cas. Les armes de râtelier
- * sont repliées derrière leur intertitre. Dessous, « Bonus perdus » des deux camps en pastilles
- * d'équipe. Une répartition, pas un classement : aucune couleur de valeur.
+ * Par ressource (pastille de sa couleur devant son nom), les objets pris par le camp, triés par
+ * volume du camp. Une barre par objet, à l'échelle de l'objet le plus pris ; dedans, la part du
+ * joueur (`squad-player-1`, nommé par son gamertag) puis celle du reste du camp, leurs comptes dans
+ * les segments quand ils tiennent (mesure au pixel), « JGtm n · camp m » au bout dans tous les cas.
+ * Les armes de râtelier sont repliées derrière leur intertitre. Dessous, « Bonus perdus » des deux
+ * camps en pastilles d'équipe. Aucune couleur de valeur.
  */
 import { Fragment, useMemo, useRef, useState } from 'react'
 
@@ -32,11 +32,13 @@ const MIN_TRACK_PCT = 2
 interface Props {
   mine: MinePickups
   itemName: (o: SquadEmpriseObject) => string
+  /** Le gamertag du joueur de la page. */
+  player: string
   t: EmpriseText
   ut: UsagesCardsText
 }
 
-export function MinePickupsCard({ mine, itemName, t, ut }: Props) {
+export function MinePickupsCard({ mine, itemName, player, t, ut }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [racksOpen, setRacksOpen] = useState(false)
   const hidden = useSegmentLabelFit(ref, [mine, racksOpen])
@@ -45,12 +47,12 @@ export function MinePickupsCard({ mine, itemName, t, ut }: Props) {
       <ObjectifLegend
         ariaLabel={ut.mine.title}
         items={[
-          { kind: 'square', label: ut.mine.me, color: ME_INK },
+          { kind: 'square', label: player, color: ME_INK },
           { kind: 'square', label: ut.mine.rest, color: TEAM_REST_INK },
         ]}
       />
     ),
-    [ut],
+    [ut, player],
   )
   return (
     <ObjectifFrame title={ut.mine.title} info={ut.mine.info} legend={legend} testId="usages-mine">
@@ -59,7 +61,7 @@ export function MinePickupsCard({ mine, itemName, t, ut }: Props) {
           <Fragment key={g.resource}>
             <GroupHead group={g} label={t.resources[g.resource]?.label ?? g.resource} open={racksOpen} onToggle={() => setRacksOpen((o) => !o)} ut={ut} />
             {(!g.folded || racksOpen) &&
-              g.rows.map((r) => <MineLine key={r.object.key} row={r} name={itemName(r.object)} max={mine.max} hidden={hidden} ut={ut} />)}
+              g.rows.map((r) => <MineLine key={r.object.key} row={r} name={itemName(r.object)} max={mine.max} hidden={hidden} player={player} ut={ut} />)}
           </Fragment>
         ))}
       </div>
@@ -100,7 +102,21 @@ function GroupHead({ group, label, open, onToggle, ut }: { group: MineGroup; lab
   )
 }
 
-function MineLine({ row, name, max, hidden, ut }: { row: MineRow; name: string; max: number; hidden: ReadonlySet<string>; ut: UsagesCardsText }) {
+function MineLine({
+  row,
+  name,
+  max,
+  hidden,
+  player,
+  ut,
+}: {
+  row: MineRow
+  name: string
+  max: number
+  hidden: ReadonlySet<string>
+  player: string
+  ut: UsagesCardsText
+}) {
   const key = row.object.key
   const mePct = (row.me / row.camp) * 100
   return (
@@ -115,7 +131,7 @@ function MineLine({ row, name, max, hidden, ut }: { row: MineRow; name: string; 
           data-testid={`usages-mine-track-${key}`}
         >
           {row.me > 0 && (
-            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={row.rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(name, row.me, row.camp)} value={row.me} light />
+            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={row.rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, name, row.me, row.camp)} value={row.me} light />
           )}
           {row.rest > 0 && (
             <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(name, row.rest, row.camp)} value={row.rest} />
@@ -123,7 +139,7 @@ function MineLine({ row, name, max, hidden, ut }: { row: MineRow; name: string; 
         </div>
       </div>
       <div className="whitespace-nowrap text-[11.5px] tabular-nums text-muted-foreground" data-testid={`usages-mine-value-${key}`}>
-        {ut.mine.meWord} <b className="font-semibold text-foreground">{row.me}</b> · {ut.mine.campWord} <b className="font-semibold text-foreground">{row.camp}</b>
+        {player} <b className="font-semibold text-foreground">{row.me}</b> · {ut.mine.campWord} <b className="font-semibold text-foreground">{row.camp}</b>
       </div>
     </div>
   )

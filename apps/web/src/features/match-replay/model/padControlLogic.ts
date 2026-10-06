@@ -58,7 +58,8 @@ export interface PadControlTally {
 
 /**
  * La ligne d'un joueur : son identité, ses prises, et son CAMP DU FILM (`team`, plus le côté de
- * feuille `side` qui ne fait que le nommer et l'encrer — cf. `replayCamps.ts`).
+ * feuille `side` qui ne fait que le nommer — cf. `replayCamps.ts` ; l'encre allié / adverse est
+ * l'allégeance du film, `filmAllegiance.ts`).
  */
 export interface PadControlRow extends PadControlTally, ReplayCamp {
   xuid: string
@@ -163,7 +164,7 @@ function addPick(tally: PadControlTally, weapon: string): void {
  * buildPadControl — l'agrégation complète, en une passe sur `padPickups`.
  *
  * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les camps restent ceux
- * du film, seuls leurs noms et leur encre attendent la feuille. Aucun camp n'est deviné.
+ * du film, seuls leurs noms attendent la feuille. Aucun camp n'est deviné.
  */
 export function buildPadControl(
   doc: ReplayDocumentReady,

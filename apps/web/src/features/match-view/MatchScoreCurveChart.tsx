@@ -42,14 +42,14 @@ import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 import { matchClock } from '@/lib/replay/matchClock'
-import { allyOfTeamId, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
+import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { buildScoreCurve, formatClock, teamIdsOf, type ScoreCurve, type ScoreCurveSeries } from './_scoreCurve'
 import type { MatchViewText } from './i18n'
 import { SCORE_TIMELINE_HIDDEN } from './scoreTimelineKind'
 import { teamSeriesColor } from './teamSeriesColor'
-import { resolveXuidMeta } from './xuidMeta'
+import { allyOfTeamId, resolveXuidMeta } from './xuidMeta'
 
 interface Props {
   playerSlug: string

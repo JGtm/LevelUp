@@ -1823,9 +1823,9 @@ export interface MatchHighlightEvent {
   weapon_id: number | null
   /**
    * Équipe de l'acteur (le TUEUR sur un event `kill`), résolue côté backend depuis le
-   * scoreboard. Absent si l'acteur n'y figure pas. Sert à colorer le nom et l'icône avec
-   * la couleur d'IDENTITÉ de l'équipe (Eagle bleu / Cobra rouge), la même que l'en-tête
-   * du scoreboard — pas un allié/ennemi binaire.
+   * scoreboard. Absent si l'acteur n'y figure pas. Le rejeu s'en sert pour attribuer un frag
+   * à un camp (piste Dominance, `KillEvent.teamID`) ; elle ne colore rien — l'encre du fil
+   * vient de l'équipe du film.
    */
   actor_team_id?: number | null
   /**
@@ -2035,8 +2035,9 @@ export interface MatchScoreboardRow {
    *  (Halo Infinite) → le front retombe sur resolveTeamName (Eagle/Cobra). */
   team_name?: string | null
   /** Couleur d'identité d'équipe (#RRGGBB) fournie par le backend (Halo 5 : depuis
-   *  team_colors). Absente pour Halo Infinite → le front retombe sur la map
-   *  TEAM_COLORS_HALO_INFINITE (par team_id), puis sur le token ally/enemy. */
+   *  team_colors), absente pour Halo Infinite. Le front ne la lit pas : la couleur d'un
+   *  camp est son jeton d'allégeance (`team-ally` / `team-enemy`), réglable en
+   *  accessibilité. */
   team_color?: string | null
   is_me: boolean
   /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */

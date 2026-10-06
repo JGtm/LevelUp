@@ -12,14 +12,14 @@
  * vue match. Ce que le bandeau, et lui seul, doit trancher : QUELS SONT LES DEUX CAMPS, LEQUEL
  * EST À GAUCHE, QUELLE MANCHE EST EN COURS, et JUSQU'OÙ VA LA BARRE.
  *
- * LES CAMPS SE LISENT AU SCOREBOARD, PAS DANS LE CALQUE DE SCORE — et c'est le piège que ce
+ * LES CAMPS SE LISENT AU ROSTER DU FILM, PAS DANS LE CALQUE DE SCORE — et c'est le piège que ce
  * module doit éviter. Une équipe qui n'a jamais marqué n'émet AUCUNE série : le témoin CTF
  * `530820e5` (3-0) ne publie qu'un seul camp sur les deux. Compter les camps dans
  * `timeline.teams` ferait donc disparaître le bandeau du match où l'écart est le plus net.
- * Les camps viennent de `team_side` de la feuille — l'allégeance allié / adverse du bandeau,
- * comme `xuidMeta` ; les colonnes de fiches, elles, se rangent par le désignateur du FILM
- * (`replayCamps.ts`, décision du 2026-10-06) —, et le score de chacun de `teamScoreAtFrame`,
- * qui rend 0 pour un camp sans série — la vérité du film, pas une lacune.
+ * Les camps sont les désignateurs que le film écrit à son roster (`FilmAllegiance.camps`, les
+ * mêmes que les colonnes de fiches — décision du 2026-10-06 : l'équipe est celle du film), et le
+ * score de chacun vient de `teamScoreAtFrame`, qui rend 0 pour un camp sans série — la vérité du
+ * film, pas une lacune.
  *
  * MAIS UN FILM QUI NE PUBLIE AUCUNE SÉRIE NE DIT PAS « 0 — 0 » : il ne dit rien. Sans le
  * moindre camp dans le calque (artefact antérieur au schéma 12, mode sans compteur, horloge
@@ -38,19 +38,13 @@
  * bandeau ne se rend pas : une barre absente ne ment pas, une barre qui désigne le mauvais
  * camp si.
  *
- * « ALLIÉ » EST UNE NOTION RELATIVE, ET SON ABSENCE EST DISQUALIFIANTE ICI. Le film numérote
- * ses équipes ; « allié » veut dire « du côté du joueur dont on regarde la page », ce que
- * seul le scoreboard sait dire (`allyOfTeamId`). Tant que ce pont n'est pas fait — vue match
- * pas encore chargée, aucun joueur reconnu — le bandeau n'a NI côté NI couleur : il ne se
- * rend pas. C'est la doctrine des deux autres panneaux (« un groupe sans camp connu
- * n'emprunte aucune des deux couleurs ») poussée à sa conséquence pour une surface dont le
- * camp EST toute la structure.
- *
- * AVEC DEUX CAMPS, UN SEUL SUFFIT À NOMMER L'AUTRE. `allyOfTeamId` rend `null` pour un camp
- * dont aucun joueur n'est reconnu. Quand l'AUTRE, lui, est identifié, on ne perd pas le
- * bandeau pour autant : entre exactement deux camps, « ce n'est pas le camp allié » vaut
- * « c'est le camp adverse ». Seules restent écartées les lectures réellement ambiguës — les
- * deux camps alliés, les deux adverses, ou aucun des deux résolu.
+ * « ALLIÉ » EST UNE NOTION RELATIVE, ET SON ABSENCE EST DISQUALIFIANTE ICI. « Allié » veut dire
+ * « du camp du FILM du joueur regardé » (`FilmAllegiance.ofTeam`, la même allégeance que les
+ * pions et les colonnes). Quand elle n'est pas connue — joueur regardé absent du film, ou dont
+ * le film tait l'équipe — le bandeau n'a NI côté NI couleur : il ne se rend pas. C'est la
+ * doctrine des deux autres panneaux (« un camp sans allégeance connue n'emprunte aucune des
+ * deux couleurs ») poussée à sa conséquence pour une surface dont le camp EST toute la
+ * structure.
  *
  * LE DÉNOMINATEUR EST LE PLAFOND DE LA MANCHE, PAS LA CIBLE DU MATCH (demande utilisateur du
  * 2026-08-24 : « pleine quand le match est fini parce que le score de la victoire est atteint,
@@ -74,15 +68,13 @@
  *
  * Module PUR : ni React, ni DOM, ni couleur.
  */
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import {
-  allyOfTeamId,
-  teamIdOfSide,
   teamRoundScoreAtFrame,
   teamScoreAtFrame,
   teamSeriesFor,
   type ReplayScoreTimelineReady,
 } from '@/lib/replay/scoreTimeline'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { currentRoundAtFrame, roundDots, type CurrentRound, type RoundDot } from './roundsLogic'
 
@@ -125,11 +117,8 @@ export interface ScoreBannerReading {
   dots: RoundDot[]
 }
 
-/** Les lignes de scoreboard dont ce module a besoin : le camp et l'identité, rien d'autre. */
-type ScoreboardRows = ReadonlyArray<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>>
-
-/** De quel côté est chaque joueur (`XuidMeta` s'y conforme sans que ce module le nomme). */
-type AllyIndex = ReadonlyMap<string, { ally: boolean }>
+/** Ce que le bandeau lit de l'allégeance du film : les camps du match, et le côté de chacun. */
+export type ScoreBannerFilm = Pick<FilmAllegiance, 'camps' | 'ofTeam'>
 
 /**
  * readScoreBanner rend la lecture du bandeau, ou `null` quand il ne doit pas se rendre :
@@ -144,15 +133,14 @@ type AllyIndex = ReadonlyMap<string, { ally: boolean }>
  */
 export function readScoreBanner(
   timeline: ReplayScoreTimelineReady | undefined,
-  scoreboard: ScoreboardRows,
-  allies: AllyIndex | undefined,
+  film: ScoreBannerFilm,
   frame: number,
 ): ScoreBannerReading | null {
   if (!timeline || timeline.teams.length === 0) return null
   if (timeline.teams.some((t) => t.teamId == null)) return null
-  const camps = identifiedCamps(scoreboard)
+  const camps = film.camps.map((camp) => camp.team)
   if (camps.length !== 2) return null
-  const allyIdx = allySideIndex(scoreboard, allies, camps)
+  const allyIdx = allySideIndex(film, camps)
   if (allyIdx === null) return null
   const allyId = camps[allyIdx]
   const enemyId = camps[1 - allyIdx]
@@ -173,22 +161,6 @@ export function readScoreBanner(
     round: roundOf(cur),
     dots: roundDots(timeline, allyId, enemyId, frame),
   }
-}
-
-/**
- * identifiedCamps rend les camps du match, par identifiant d'équipe du film, dans un ordre
- * déterministe (croissant — l'ordre à l'écran vient du côté allié, pas de celui-ci).
- *
- * Une ligne sans camp transmis n'en fabrique pas un : elle est simplement ignorée, comme le
- * groupe `side: null` des fiches. Un joueur non situé ne change pas le nombre de camps.
- */
-function identifiedCamps(scoreboard: ScoreboardRows): number[] {
-  const ids = new Set<number>()
-  for (const row of scoreboard) {
-    const id = teamIdOfSide(row.team_side)
-    if (id != null) ids.add(id)
-  }
-  return [...ids].sort((a, b) => a - b)
 }
 
 /**
@@ -253,24 +225,12 @@ function roundTargetOf(timeline: ReplayScoreTimelineReady): number {
 }
 
 /**
- * allySideIndex dit LEQUEL des deux camps est celui du joueur de la page (0 ou 1), ou `null`
- * quand la question n'a pas de réponse sûre.
- *
- * Un seul camp résolu suffit puisqu'ils sont exactement deux (cf. en-tête). Sont écartées les
- * seules lectures contradictoires ou muettes — deux camps du même côté (le scoreboard se
- * contredirait), ou aucun des deux reconnu.
+ * allySideIndex dit LEQUEL des deux camps est celui du joueur regardé (0 ou 1), ou `null` quand
+ * le film ne le dit pas : joueur regardé absent du film, sans équipe, ou d'aucun des deux camps.
  */
-function allySideIndex(
-  scoreboard: ScoreboardRows,
-  allies: AllyIndex | undefined,
-  camps: readonly number[],
-): 0 | 1 | null {
-  const first = allyOfTeamId(scoreboard, allies, camps[0])
-  const second = allyOfTeamId(scoreboard, allies, camps[1])
-  if (first === true && second !== true) return 0
-  if (second === true && first !== true) return 1
-  if (first === false && second !== false) return 1
-  if (second === false && first !== false) return 0
+function allySideIndex(film: ScoreBannerFilm, camps: readonly number[]): 0 | 1 | null {
+  if (film.ofTeam(camps[0]) === true) return 0
+  if (film.ofTeam(camps[1]) === true) return 1
   return null
 }
 

@@ -142,8 +142,8 @@ describe('les options injectées — graphe de portée', () => {
   it('l’infobulle nomme le bon côté : 281 frags, 402 morts', async () => {
     const { range } = await mountAndCapture()
     const html = range.option.tooltip.formatter({ dataIndex: 1 })
-    expect(html).toContain('Mes frags — 281')
-    expect(html).toContain('Mes morts — 402')
+    expect(html).toContain('Frags du joueur — 281')
+    expect(html).toContain('Morts du joueur — 402')
   })
 
   it('la hauteur du graphe suit le nombre de lignes (48 + 34 × n)', async () => {

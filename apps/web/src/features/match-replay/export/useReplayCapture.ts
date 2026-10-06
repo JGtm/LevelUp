@@ -50,8 +50,9 @@ import { readVictory } from '../model/victoryLogic'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import type { ReplayLocale } from '../i18n/i18n'
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import { meXUIDOf } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 export interface ReplayCaptureOptions {
@@ -78,7 +79,11 @@ export interface ReplayCaptureOptions {
   redraw?: () => void
   playWindow?: ReplayWindowBounds | null
   scoreboard?: readonly MatchScoreboardRow[]
-  xuidMeta?: XuidMeta
+  /**
+   * L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : l'écran de fin du
+   * clip. REQUISE, comme le point de vue qu'elle porte.
+   */
+  allegiance: FilmAllegiance
   /**
    * Le verdict du match : son CODE (`header.outcome_code`) et, sur un mode a manches, le score
    * final servi par l'API. Le MOT, lui, se resout ici meme depuis les mappings du titre
@@ -317,7 +322,7 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
     doc: doc as ReplayDocumentReady & ReplayScoreDocument,
     playWindow: o.playWindow ?? null,
     scoreboard: o.scoreboard ?? [],
-    xuidMeta: o.xuidMeta,
+    allegiance: o.allegiance,
     outcome,
     viewpoint: o.viewpoint,
     titleSlug: doc.titleSlug ?? '',
@@ -352,8 +357,8 @@ function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
 function useViewedOutcome(o: ReplayCaptureOptions): ExportOutcome | null {
   const scoreboard = o.scoreboard ?? EMPTY_BOARD
   const reading = useMemo(
-    () => readVictory(scoreboard, o.outcome?.code, o.viewpoint),
-    [scoreboard, o.outcome?.code, o.viewpoint],
+    () => readVictory(o.allegiance, o.outcome?.code, meXUIDOf(scoreboard), o.viewpoint),
+    [o.allegiance, scoreboard, o.outcome?.code, o.viewpoint],
   )
   const viewedLabel = useOutcomeMapping(reading?.outcome ?? '')?.label ?? null
   return useMemo(
