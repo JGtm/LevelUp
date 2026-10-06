@@ -161,8 +161,9 @@ func consumeBipedDefaultState(br *Lecteur) {
 	// call as FUN_14080cfe8(param_3) (DST only), but the asm at FUN_140F44C38 @140f44d0e
 	// is `MOV RDX, RDI ; MOV RCX, RBP ; CALL 0x14080cfe8` -> RDX = param_2 = the
 	// BITREADER (RDI). So this block DOES consume the bitstream. Omitting it was the
-	// root cause of the 348-bit residue (see consumeMultiplayerPropertiesBlock).
-	consumeMultiplayerPropertiesBlock(br)
+	// root cause of the 348-bit residue (see consumeMultiplayerPropertiesBlock). Son echec fait
+	// echouer l etat (`FUN_140f44c38` rend 0 si `cVar1 == 0`).
+	lireLeBlocMPPDeLEtat(br)
 
 	// gC6 = R(1); if bit==1 -> R(6) (inlined). Polarity: body runs on cVar2 != 0.
 	if br.ReadBit() { // gC6 = FUN_1406cf008
@@ -324,7 +325,8 @@ func consumeBipedDefaultStateMediaFrame(br *Lecteur) {
 //	FUN_14080d524      R(1) gate ; if bit==1 -> R(13)  (0xd)
 //	R(2)               inline -> DST+0x8
 //	R(5)               inline -> DST+0x1a
-//	R(3) count         inline ; if count<=4: count x ( R(5) + FUN_14080d69c[R(1)+opt R(32)] )
+//	R(3) count         inline ; if count<=4: count x ( R(5) + FUN_14080d69c[R(1)+opt R(32)] ) ;
+//	                    sinon le lecteur ECHOUE ([mppCompteMax]) et lit la suite quand meme
 //	FUN_14080d4d0      R(1) gate ; if bit==1 -> gate0R(5)+gate1R(8)+R(8)+R(8)
 //	R(1) gate G3       FUN_1406cf008 (DST+0x1c) ; if bit==1 ->
 //	                    R(32)(FUN_14080dec4) + FUN_14080d69c[R(1)+opt R(32)] + R(14)(FUN_1406d84b4)
@@ -335,7 +337,12 @@ func consumeBipedDefaultStateMediaFrame(br *Lecteur) {
 // les largeurs touchant stream+0x2c sont fermées (cf. bloc-preuve subFnWidths). Le
 // FUN_140cc5128 per-axis position block du chemin i0 movement (hors de ce bloc) garde sa
 // dépendance runtime (DAT_1445cc9e0 axis widths) non sourçable statiquement.
-func consumeMultiplayerPropertiesBlock(br *Lecteur) {
+//
+// Le booleen rendu est le verdict du compte ([mppCompteMax]) : faux, `FUN_14080cfe8` rend 0. Ses
+// deux autres conditions d echec ne se jugent pas ici : la lecture au-dela du tampon
+// (`*(lecteur+0x18)*8 < *(lecteur+0x2c)`) et le predicat `FUN_1404785a0` sur une valeur que
+// `FUN_14080d61c` cherche dans les donnees du jeu, absentes du film.
+func consumeMultiplayerPropertiesBlock(br *Lecteur) bool {
 	br.obs.publishMPP(MPPWord9, br.ReadBits(uint(br.mppWidths().Lead)), true) // FUN_141fd72c0 R(9)
 	br.obs.publishMPP(MPPWord32, br.ReadBits(32), true)                       // FUN_14080d6f0 R(32)
 	if !br.ReadBit() {
@@ -350,7 +357,8 @@ func consumeMultiplayerPropertiesBlock(br *Lecteur) {
 	br.ReadBits(2)                          // inline R(2)
 	br.ReadBits(uint(br.mppWidths().Index)) // inline R(5) -> DST+0x1a
 	count := uint32(br.ReadBits(3))
-	if count <= 4 {
+	lisible := count <= mppCompteMax
+	if lisible {
 		for range count {
 			br.ReadBits(5)   // inline R(5)
 			consumeOpt32(br) // FUN_14080d69c
@@ -369,6 +377,7 @@ func consumeMultiplayerPropertiesBlock(br *Lecteur) {
 	} else {
 		br.obs.publishMPP(MPPTailName, 0, false)
 	}
+	return lisible
 }
 
 // MPPField désigne l'un des champs du bloc `object-multiplayer-properties` (FUN_14080cfe8)
