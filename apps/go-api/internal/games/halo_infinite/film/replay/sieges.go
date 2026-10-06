@@ -29,7 +29,8 @@ package replay
 //	LECTURE `tirs`     l'index de tireur d'un tir est la PLACE, et le remplacant en herite (rapport,
 //	                   3 remplacements sur 3 ; sonde P4 : les 84 tirs de la place 5 tombent tous dans
 //	                   les vies de Claudors, index 10) : un arrivant dont les tirs non couverts
-//	                   designent A L'UNANIMITE une place, libre pendant sa presence, la lit ;
+//	                   designent A L'UNANIMITE une place, libre pendant sa presence, la lit — un
+//	                   bot date auquel il succede ne la tient pas (Q23, cf. plus bas) ;
 //	REPLI `apparie`    CHAINAGE PAR EQUIPE, a presences disjointes : la place du bot auquel
 //	                   l'arrivant succede, puis la place de son equipe liberee le plus tot, puis
 //	                   une place de son equipe sans occupant anterieur, puis une place de la table

@@ -12,7 +12,8 @@ package replay
 //	E-MUET        un bot d'un film balaye que ni ses entites ni sa declaration ne nomment reste sans
 //	              equipe : aucun emprunt a l'index ;
 //	E-HUMAIN      un humain sans entite garde la table de controle (rien ne change pour lui) ;
-//	E-NONBALAYE   sans balayage des entites, la declaration passe encore devant l'index.
+//	E-NONBALAYE   sans balayage des entites, la declaration passe encore devant l'index ;
+//	E-DOUBLE      deux declarations du meme bot en desaccord ne donnent aucune equipe.
 
 import (
 	"testing"
@@ -102,5 +103,19 @@ func TestSansBalayageLaDeclarationPasseDevantLIndex(t *testing.T) { // E-NONBALA
 	occ = lierLesOccupants([]RosterEntry{muet}, nil, in)
 	if eq := occ.parEntree[0].equipe; eq == nil || *eq != 0 {
 		t.Fatalf("equipe %v : sans balayage ni declaration, l'index comme avant (0)", deref(eq))
+	}
+}
+
+// TestDeuxDeclarationsEnDesaccordNeDonnentRien (E-DOUBLE) : deux identites de meme nom et de meme
+// index qui disent deux equipes ne donnent aucune equipe a l'entree — rien ne s'arbitre en silence.
+func TestDeuxDeclarationsEnDesaccordNeDonnentRien(t *testing.T) {
+	scan := scanDeTest([]int{10, 50, 90}, grammar.PlayerEntity{Slot: 3, Index: 2, Team: 0, LastKF: 2, Seen: 3})
+	bot, idZero := botDeclare("343 Sandwolf [bot]", 20, 40, equipePtr(0))
+	_, idUn := botDeclare("343 Sandwolf [bot]", 60, 70, equipePtr(1))
+	in := entreesDeTest(scan)
+	in.bots = []BotIdentity{idZero, idUn}
+	occ := lierLesOccupants([]RosterEntry{bot}, nil, in)
+	if eq := occ.parEntree[0].equipe; eq != nil {
+		t.Fatalf("equipe %d : deux declarations en desaccord ne donnent aucune equipe", *eq)
 	}
 }

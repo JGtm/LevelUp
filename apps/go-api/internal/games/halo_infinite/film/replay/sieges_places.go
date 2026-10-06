@@ -194,17 +194,19 @@ func (pp *poseDesPlaces) relaisALaFrame(i int, iv intervalleDePresence, j int, a
 
 // succedeAuBot dit que l'entree `h` est l'HUMAIN qui remplace le bot `b` sur sa place (Q23 : un
 // humain qui arrive remplace le bot) : ARRIVE — lu par son entite, a l'image-cle pres — APRES le
-// debut de la declaration du bot et avant son retrait EXACT, sans aucune vie avant ce retrait (`43e96765` :
-// Cmillward21 lu a l'image-cle de la frame 1145, `343 PardonMy` declare jusqu'a la frame 1344,
-// premier corps de Cmillward21 a la frame 1367). Le jeu tient les deux pendant que l'humain se
-// charge ; la place est au bot jusqu'a son retrait.
+// debut de la declaration du bot et avant son retrait EXACT, sans aucune vie avant ce retrait, et
+// ENCORE LA apres lui (`43e96765` : Cmillward21 lu a l'image-cle de la frame 1145, `343 PardonMy`
+// declare jusqu'a la frame 1344, premier corps de Cmillward21 a la frame 1367). Le jeu tient les
+// deux pendant que l'humain se charge ; la place est au bot jusqu'a son retrait. Un humain dont la
+// presence certaine s'acheve avant ce retrait, ou avec lui, ne le remplace pas : il ne tiendrait la
+// place a aucune frame.
 func (pp *poseDesPlaces) succedeAuBot(b int, ivb intervalleDePresence, h int, ivh intervalleDePresence) bool {
 	if !pp.roster[b].Bot || !pp.occ.parEntree[b].declaree || pp.roster[h].Bot {
 		return false
 	}
 	// STRICTEMENT apres le debut du bot : un occupant deja la quand le bot arrive (au coup d'envoi,
 	// avant sa premiere vie) ne le remplace pas, il le cotoie.
-	if ivh.de <= ivb.de || ivh.de > ivb.a {
+	if ivh.de <= ivb.de || ivh.de > ivb.a || ivh.a <= ivb.a {
 		return false
 	}
 	for _, v := range pp.occ.parEntree[h].vies {
@@ -360,21 +362,18 @@ func (pp *poseDesPlaces) placesDeLEquipe(t int) int {
 
 // bornerAuSuccesseur borne l'AFFICHAGE de chaque occupant a la veille de l'arrivee du suivant
 // sur la meme place, et compte les presences certaines qui se recouvrent. L'humain qui succede a un
-// bot ([poseDesPlaces.succedeAuBot]) commence au lendemain de son retrait exact, et se compte a part
-// (journalise par [poserLesSieges]) ; un relais a la frame ([poseDesPlaces.relaisALaFrame]) borne
-// le partant sans etre un chevauchement.
+// bot ([poseDesPlaces.succedeAuBot]) commence au lendemain de son retrait exact — pose AVANT le tri
+// ([poseDesPlaces.ouvrirApresLeBot]), et compte a part (journalise par [poserLesSieges]) ; un relais
+// a la frame ([poseDesPlaces.relaisALaFrame]) borne le partant sans etre un chevauchement.
 func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements, successions int) {
 	for _, idx := range pp.ordre {
 		occ := pp.places[idx].occupations
+		successions += pp.ouvrirApresLeBot(occ)
 		slices.SortStableFunc(occ, func(a, b occupation) int {
 			return cmp.Compare(pp.intervalle(a).de, pp.intervalle(b).de)
 		})
 		for k := 0; k+1 < len(occ); k++ {
 			cur, suiv := pp.intervalle(occ[k]), pp.intervalle(occ[k+1])
-			if pp.succedeAuBot(occ[k].entree, *cur, occ[k+1].entree, *suiv) {
-				suiv.de = cur.a + 1
-				successions++
-			}
 			if cur.a >= suiv.de {
 				if !pp.relaisALaFrame(occ[k].entree, *cur, occ[k+1].entree, *suiv) {
 					chevauchements++
@@ -388,6 +387,26 @@ func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements, successio
 		}
 	}
 	return bornes, chevauchements, successions
+}
+
+// ouvrirApresLeBot ouvre la presence de chaque humain qui succede a un bot d'une place au lendemain
+// du retrait du bot — du DERNIER, s'il en remplace plusieurs —, et rend le nombre d'humains ainsi
+// ouverts. Les debuts se calculent TOUS sur les presences d'avant, puis se posent : le tri qui suit
+// voit chaque humain a sa place, apres le bot qu'il remplace. La presence certaine de l'humain ne se
+// vide jamais (il est encore la apres le retrait, cf. [poseDesPlaces.succedeAuBot]).
+func (pp *poseDesPlaces) ouvrirApresLeBot(occ []occupation) int {
+	debuts := map[int]int{} // rang de l'occupation de l'humain -> son nouveau debut
+	for j, h := range occ {
+		for _, b := range occ {
+			if bot := pp.intervalle(b); pp.succedeAuBot(b.entree, *bot, h.entree, *pp.intervalle(h)) {
+				debuts[j] = max(debuts[j], bot.a+1)
+			}
+		}
+	}
+	for j, de := range debuts {
+		pp.intervalle(occ[j]).de = de
+	}
+	return len(debuts)
 }
 
 // retirerLesAffichagesVides retire les intervalles que la borne au successeur a VIDES (affichage

@@ -200,8 +200,14 @@ G3, mesure de la durée de ré-extraction sur UN film.
       seulement (Forge Lord -1 -> 0, Donos 0 -> 1, Ritzy -1 -> 1 deux fois). Chaînes de place des
       18 bots conformes au tableau G1, sauf `4f77afc1` Darkstar (place 1 au lieu de 2 : la place 1
       paraît libre faute de liaison de ses entités d'équipe 1, D8).
-- [ ] G3.6 `adversarial-review`, `delivery-checklist`, commits, push, CI verte.
-      - Commit `d7e329695` (G3.0 à G3.5).
+- [x] G3.6 `adversarial-review`, `delivery-checklist`, commits, push, CI verte.
+      - Commits `d7e329695` (G3.0 à G3.5), `16e992c63` (ronde 1, relecteur A), puis celui des
+        corrections du relecteur B ; push et CI suivis au premier plan (`gh run watch`), cf. le CR.
+      - `delivery-checklist` : paquets touchés et voisins (30 paquets, `games/halo_infinite/...`,
+        `replaybuild`, `service/replayview`, `sync/killcollector`), `archlint`, golangci-lint (0
+        constat depuis `e0cd93662`), `go vet` avec et sans `research` ; aucun `persist`, `sync` ni
+        `migration` touché (pas de passe `integration`) ; la suite complète `go test ./...` est
+        celle de la CI.
       - Ronde 1, relecteur A (lecture BOT_METADATA, `killsource` et projection) : 0 P0, 0 P1,
         16 conditions vérifiées qui tiennent (ordre des bits, largeurs champ à champ, bit 15 382,
         fermeture, appariement slot + `bid` + nom, nil jamais 0, transport, `SchemaDesFaits` 5) ;
@@ -212,8 +218,28 @@ G3, mesure de la durée de ré-extraction sur UN film.
         borné ; (4) un paquet non fermé se dit en AVERTISSEMENT même quand chaque bot tient son
         équipe d'un autre paquet. En-tête : 78 bots lus (79 du lecteur historique). Les quatre
         mutations du relecteur rougissent (la borne basse : à la compilation puis au test).
-      - Relecteur B (places et rejeu, `film/replay`) : interrompu par la limite de session avant son
-        rapport ; relancé au premier plan.
+      - Relecteur B (places et rejeu, `film/replay`) : interrompu une première fois par la limite de
+        session, relancé au premier plan. 0 P0, 0 P1, 17 conditions vérifiées qui tiennent ; 6 P2,
+        traités dans le lot :
+        (1) deux humains « successeurs » d'un même bot pouvaient s'asseoir sur sa place et laisser le
+        second en recouvrement avec le bot ; (2) un humain parti avant le retrait du bot passait pour
+        son successeur, assis `apparie` sur une présence ensuite vidée — corrigés ensemble : le
+        successeur doit être ENCORE LÀ après le retrait (`succedeAuBot`), et l'ouverture de sa
+        présence se pose AVANT le tri, pour tous les successeurs d'une place (`ouvrirApresLeBot`) ;
+        (3) l'affectation de `declaree` n'était tenue par aucun test : test de bout en bout par la
+        liaison (S-LIAISON) ; (4) la chronique v80 et `structure_test.go` annonçaient le verdict
+        `redecoder` : le digest rend `republier` (aucune révision de couche ne monte) et ce sont les
+        faits au schéma 4, refusés sur leur en-tête, qui font redécoder — texte corrigé, cf. D10 ;
+        (5) la lecture `tirs` admet désormais la place d'un bot daté à l'humain qui lui succède :
+        comportement GARDÉ (Q23), écrit dans `sieges.go` et testé (S-TIRS) ; (6) mutations non
+        tenues : tests S-PRIORITE, S-RELAIS-DATE, S-COTOIE-DEBUT, S-PARTI-AVANT, E-DOUBLE. Sept
+        mutations rejouées (priorité retirée, `a < t`, clause de début, désaccord de déclarations,
+        `declaree` jamais posée, condition « encore là », ouverture retirée) : toutes rougissent.
+      - [!] Ronde 2 non jouée : aucun P0 ni P1 en ronde 1 (le skill n'arme la ronde 2 que pour relire
+        des corrections de P0/P1) ; les corrections sont tenues par les mutations ci-dessus.
+      - Vérification finale en processus (binaire du lot, faits des 19 témoins au schéma 5) :
+        compteurs inchangés (0 / 3 / 3 / 60), roster, places, équipes, vies et kills identiques à
+        la passe précédente hors les trois compteurs retirés de la couverture.
 
 ### G4 — Mesure de l'hypothèse « bouche-trou » (lecture seule)
 
@@ -263,9 +289,29 @@ l'image-clé près, 20 s).
 
 ### G5 — Republication (préparée, NON exécutée sans go explicite)
 
-- [ ] G5.1 Durée de ré-extraction mesurée sur UN film en processus (rien dans `data/`), extrapolée au
-      parc local (126 films) ; commande exacte et vérification (`coverage.seats` des 19 témoins).
-      Pas de republication (accord de l'utilisateur, calée avec la campagne).
+- [!] G5.1 Mesure de la durée sur UN film : ABANDONNÉE sur instruction du superviseur (l'utilisateur veut
+      être consulté après la fusion et connaître la durée RÉELLE à la fin). Repère, non une mesure de
+      la passe : les 19 témoins décodés en entier, en processus, à `d7e329695` : 296 s pour 530 Mo de
+      chunks (6,1 s à 72,0 s par film ; pic mémoire 0,99 Gio sur `4f77afc1`) ; le parc local compte
+      126 films, 3 236 Mo, 3 704 chunks.
+- [x] G5.2 Séquence de ré-extraction du parc local, à jouer APRÈS la fusion dans `feat/v75`, serveur
+      ARRÊTÉ, depuis `apps/go-api` du worktree principal :
+      1. `go run ./cmd/levelup backfill-replay --only-existing --dry-run` (le plan, rien n'est écrit) ;
+      2. `go run ./cmd/levelup backfill-replay --only-existing` : un processus enfant par film, en
+         série, verrou solo (`filmproc.AcquireSolo`) ; les faits au schéma des faits 4 sont refusés
+         sur leur en-tête, chaque film se REDÉCODE (le récapitulatif peut le compter « republié »,
+         D10) ; écrit `data/cache/replays/halo_infinite/<id>.json` (schéma 80) et
+         `data/cache/film_facts/halo_infinite/<id>.filmfacts.bin` (schéma des faits 5) ;
+      3. passes aval qui relisent les artefacts (ordre de `docs/COMMANDS.md`, base partagée en
+         écriture) : `backfill-usage-summary`, `backfill-pad-tiers --force`,
+         `backfill-vehicle-takes --force`, puis `tactical-rasters --backfill` (fichiers annexes,
+         aucune base) ; pas de `backfill-killsource` (aucune ligne de kill ne change,
+         `killsource.Rev` constante) ;
+      4. vérification : `coverage.seats` des 19 témoins (script `verifier_temoins.sh` du
+         scratchpad, en lecture) — attendu schéma 80, `sansEquipe` 0 partout, `sansPlace` 3,
+         `placesEnTrop` 3, `depassements` 60 (restes `859da825`, `bf2a9f05`, `d1dfbc02`), place 5 de
+         `43716616` = Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, aucune place 8. AVANT (publié,
+         schéma 78) : 18 / 21 / 3 / 229.
 
 ### Clôture
 
@@ -311,6 +357,12 @@ l'image-clé près, 20 s).
   humain) et `replayidentity` l'écarte ; ses 4 paquets se comptent « incomplets » (2 entrées pour
   `nbBots = 1`). La marche de l'écrivain ne le lit pas : il se compte « hors grammaire » (G3.0).
   Correctif hors lot (le lecteur historique épingle le roster du kill-feed).
+- D10 : après la montée au schéma 80, un artefact 79 dont les faits sont sur disque se lit « décodage
+  intact » (aucune révision de couche ne monte : `SchemaDesFaits` n'est pas une famille de `layers`,
+  `replaybuild/artifact_digest.go`) ; le verdict est `republier`, mais ses faits au schéma 4 sont
+  refusés sur leur en-tête et la cuisson redécode. Le récapitulatif de `backfill-replay` range donc ces
+  films parmi les « republiés » alors que chacun redécode : la durée d'une telle passe est celle d'un
+  décodage. Non traité (le comportement est juste, seul le compte trompe).
 - Revue adversariale (ronde 1, relecteur frais) : 0 P0 ; 1 P1 (G2.a généralisé au-delà des 2 films
   mesurés : corrigé en restreignant l'affirmation) ; 5 P2 d'imprécision (formulation de G1.2 et durée
   maximale, place 1 de `4f77afc1`, décompte des films et build HI_1_12_0 à N = 1, équipe de Ham Sammich

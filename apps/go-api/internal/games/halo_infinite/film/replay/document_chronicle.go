@@ -2860,5 +2860,8 @@ package replay
 //	                `objectives`, `killcollector.IsolationDecoderRev` et `PlacementRev` gardent leur
 //	                valeur : aucune ligne de kill ne change.
 //
-//	LE PARC         un artefact 79 : ses faits sont au schema des faits 4, perimes — verdict
-//	                `redecoder` (la re-extraction des faits precede la republication).
+//	LE PARC         un artefact 79 se lit « decodage intact » (aucune revision de couche ne monte)
+//	                et « schema perime » : verdict `republier`. Mais ses faits sont au schema des
+//	                faits 4, refuses sur leur en-tete : la cuisson REDECODE le film et ecrit des
+//	                faits au schema 5. Le recapitulatif de `backfill-replay` le range parmi les
+//	                « republies » alors qu il redecode : sa duree est celle d un decodage.
