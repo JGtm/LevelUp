@@ -341,7 +341,7 @@ var (
 
 // verifierUneEntree : les contrôles d'une seule entrée. Extraite pour tenir la limite de
 // 80 lignes par fonction.
-func verifierUneEntree(r Repli, vus map[Nom]bool) []string {
+func verifierUneEntree(r Repli, vus map[Nom]bool) []string { //nolint:gocyclo // un test par règle structurelle d'une entrée (nom, champs, date, condition, ordre, sites, comptage, outil hors production), à plat et sans état partagé : la complexité compte les règles du registre, pas des chemins
 	var pbs []string
 	add := func(f string, a ...any) { pbs = append(pbs, fmt.Sprintf("%s : %s", r.Nom, fmt.Sprintf(f, a...))) }
 	if vus[r.Nom] {

@@ -387,21 +387,7 @@ func equipmentOwner(
 			aim[s.Slot] = s
 		}
 	}
-	// LE PLUS PROCHE, ET À ÉGALITÉ LE PLUS PETIT SLOT (correction du 2026-09-02, item 0.4bis
-	// étendu de PLAN_CUISSON_PERF). `best` est une MAP : sans le second critère, deux bipèdes à
-	// la MÊME distance de la pose — des coordonnées quantifiées, donc des égalités exactes, et un
-	// film BTB à 26 joueurs en réveille — laissaient l'ordre d'itération, tiré au sort à chaque
-	// exécution, nommer le poseur publié. Le départage vient du slot, une donnée de l'élément.
-	var near grammar.BipedPosition
-	for _, s := range best {
-		d := equipDist(p, s)
-		if d > equipOwnerMaxDist {
-			continue
-		}
-		if nd := equipDist(p, near); !ok || d < nd || (d == nd && s.Slot < near.Slot) {
-			near, ok = s, true
-		}
-	}
+	near, ok := poseurLePlusProche(p, best)
 	if !ok {
 		return 0, nil, false
 	}
@@ -413,6 +399,27 @@ func equipmentOwner(
 		}
 	}
 	return near.Slot, heading, true
+}
+
+// poseurLePlusProche élit, parmi les échantillons retenus pour chaque slot (`best`), le bipède le
+// plus proche de la pose, à moins d'equipOwnerMaxDist mètres ; faux : aucun n'est dans la portée.
+//
+// LE PLUS PROCHE, ET À ÉGALITÉ LE PLUS PETIT SLOT (correction du 2026-09-02, item 0.4bis
+// étendu de PLAN_CUISSON_PERF). `best` est une MAP : sans le second critère, deux bipèdes à
+// la MÊME distance de la pose — des coordonnées quantifiées, donc des égalités exactes, et un
+// film BTB à 26 joueurs en réveille — laissaient l'ordre d'itération, tiré au sort à chaque
+// exécution, nommer le poseur publié. Le départage vient du slot, une donnée de l'élément.
+func poseurLePlusProche(p types.EquipmentPlacement, best map[uint32]grammar.BipedPosition) (near grammar.BipedPosition, ok bool) {
+	for _, s := range best {
+		d := equipDist(p, s)
+		if d > equipOwnerMaxDist {
+			continue
+		}
+		if nd := equipDist(p, near); !ok || d < nd || (d == nd && s.Slot < near.Slot) {
+			near, ok = s, true
+		}
+	}
+	return near, ok
 }
 
 // equipCloser dit si a est plus proche de `at` en TEMPS que b.

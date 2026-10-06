@@ -225,7 +225,7 @@ func (j *jugeEcrivain) jugerLaVueB(recs []FrameRecord) bool {
 }
 
 // jugerLaVueC juge le flux de la vue C.
-func (j *jugeEcrivain) jugerLaVueC(c FluxVueC) {
+func (j *jugeEcrivain) jugerLaVueC(c FluxVueC) { //nolint:gocyclo // un test par invariant d ecriture de la vue C (kind de controle, nombre d entrees, index croissants, champ d en-tete absent, code analogique interdit), chacun conjoint a l arret du juge : la complexite compte les invariants
 	for _, k := range c.Kinds {
 		if k != kindVueCControle && !j.noter(InvariantVueCKind) {
 			return
