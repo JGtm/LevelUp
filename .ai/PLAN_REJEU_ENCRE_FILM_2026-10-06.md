@@ -156,7 +156,7 @@ l'ÉVÉNEMENT du joueur regardé, pas une allégeance) ; les cinq graphes de la 
   PASSÉ le 2026-10-06 : `tsc -b` 0 erreur ; vitest des quatre dossiers 295 fichiers / 4 075
   tests verts (les cas du régime à trois arguments sont retirés avec lui) ; eslint `src` 0
   erreur. ALLOWLIST : une seule entrée, le helper de libellé (`replayCamps.ts`, 2 lectures qui
-  NOMMENT) — les neuf entrées d'encre / d'allégeance sont sorties, chacune à zéro lecture. Règle
+  NOMMENT) — les huit entrées d'encre / d'allégeance (neuf avec le helper) sont sorties, chacune à zéro lecture. Règle
   (c) neuve : aucune allégeance lue dans une table d'identité (`….get(xuid)?.ally`) ni par
   `allyOfTeamId` sur le périmètre du rejeu et sa route, avec contre-épreuves (formes prises / non
   prises). Mutations : une lecture de `team_side` ajoutée à `MatchPadControlSection` et un

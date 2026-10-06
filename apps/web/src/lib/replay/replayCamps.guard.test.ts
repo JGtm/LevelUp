@@ -42,7 +42,7 @@ const HELPER = '/src/lib/replay/replayCamps.ts'
 /**
  * (a) L'ALLOWLIST — les lectures de `team_side` qui ne font que NOMMER un camp. Depuis que
  * l'encre et l'allégeance viennent du film (2026-10-06, `filmAllegiance.ts`), il n'en reste
- * qu'une famille : le helper de libellé lui-même. Les neuf entrées de l'encre (tables de l'onglet
+ * qu'une famille : le helper de libellé lui-même. Les huit entrées de l'encre (tables de l'onglet
  * Arsenal, objectifs, bandeau, écran de fin, fil, opposition du capteur, calque de score) en sont
  * sorties une à une, le compte à zéro. Ajouter une ligne ici demande une raison écrite et datée,
  * et une lecture qui NOMME : ni un regroupement, ni une encre n'y ont leur place.
