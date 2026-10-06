@@ -1340,3 +1340,9 @@ plan y sont reprises comme items (3.1.2).
   Banc killsource sur films réels : rouge sur `feat/v75` avant la fusion (découverte 18), vert après
   la régénération de la campagne. 2.7.a CLOS. Reste avant la fusion dans `feat/v75` : CI de la
   branche, `make gate-push`, accord de l'utilisateur.
+- 2026-10-06 : FUSION DE 2.7.a ET 2.7.a0 DANS `feat/v75` = `8dfadd07e` (avance rapide depuis
+  `65c99b669`, accord de l'utilisateur du 2026-10-05 « fusionne au vert ») : CI au niveau job verte
+  sur `8dfadd07e` après relance (la première exécution avait été annulée par un arrêt du runner
+  GitHub, sans échec réel), gitleaks et pré-contrôle de déploiement verts, `make gate-push` vert
+  (suite rejouée : la première avait été faussée par la mise en veille du poste). Campagne prévenue
+  avant et après ; elle rebase LR sur cette tête. Suite du plan : 2.7.b.

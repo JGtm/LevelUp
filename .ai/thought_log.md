@@ -115556,3 +115556,15 @@ V1), régénéré par la campagne, vert sur la branche.
 
 **Conclusion / prochaine étape** : CI, `make gate-push`, puis accord de fusion demandé à
 l'utilisateur ; ensuite LR de la campagne, puis 2.7.b.
+
+## [2026-10-06] Représentation intermédiaire du film, étape 2 — 2.7.a et 2.7.a0 fusionnés dans feat/v75 — Complété
+
+**Statut** : Complété — `feat/v75` = `8dfadd07e`.
+
+**Décision technique principale** : avance rapide de `feat/v75` vers `feat/ri-etape2`, sans toucher
+au checkout principal (travail d'une autre session en cours).
+
+**Résultats observés** : CI verte au niveau job après relance (arrêt du runner GitHub la veille),
+`make gate-push` vert (19 084 tests, aucun échec) après une suite faussée par la mise en veille.
+
+**Conclusion / prochaine étape** : la campagne rebase LR sur cette tête ; ce plan reprend à 2.7.b.
