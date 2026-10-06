@@ -19,6 +19,7 @@ import { displayPlayerName, stripBotSuffix } from '@/lib/players/displayName'
 
 import { refineAbilityReading, refineWeaponsReading } from './changeRefine'
 import type { PlayerMarkKind } from './playerMarks'
+import { groupByCamp, type ReplayCamp } from './replayCamps'
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
@@ -42,6 +43,14 @@ export interface ReplayPlayer {
   board?: MatchScoreboardRow
   /** Gamertag écrit par le FILM. Sert quand la base n'a rien à dire sur ce joueur. */
   filmName?: string
+  /**
+   * L'ÉQUIPE DU JOUEUR : le désignateur que le FILM écrit pour son entrée de roster
+   * (`roster[].team`, schéma 57 ; `-1` = « aucune équipe » d'un mode sans camps, une lecture).
+   * C'est la SEULE source d'appartenance de la page Rejeu (ADR 0034 D-9) — tous ses camps en
+   * sortent (`replayCamps.ts`). Absente = le film la tait, ou le joueur n'a pas d'entrée : il
+   * n'entre dans aucun camp, et la feuille de match ne la remplace pas.
+   */
+  team?: number
   /** Toutes les vies de ce joueur, dans l'ordre du temps. */
   lives: ReplayTrackReady[]
 }
@@ -62,7 +71,8 @@ export function botKey(name: string): string {
  * dérivation (règle des ≤ 2 copies, CLAUDE.md n°6). `seatLogic.filmIndexByIdentity` portait une
  * 3e copie inline (correcte, mais non centralisée) : migrée le 2026-09-10 (lot hygiène 5.3,
  * `.ai/REGISTRE_REPORTS.md`) — garde-rail grep :
- * `apps/web/src/lib/replay/rosterEntryKey_no_new_copies.guard.test.ts`.
+ * `apps/web/src/lib/replay/rosterEntryKey_no_new_copies.guard.test.ts`. `buildPlayers` la
+ * consomme aussi : c'est par elle que l'équipe d'une entrée rejoint son joueur.
  */
 export function rosterEntryKey(entry: Pick<ReplayRosterEntry, 'xuid' | 'bot' | 'name'>): string {
   return entry.xuid || (entry.bot && entry.name ? botKey(entry.name) : '')
@@ -81,11 +91,10 @@ export function playerName(player: ReplayPlayer): string | null {
 }
 
 /**
- * ReplayTeamGroup — un camp. `side` reprend le libellé de la base (`team_side`) : le film ne
- * porte aucune notion d'équipe, on n'en invente donc pas la dénomination.
+ * ReplayTeamGroup — un camp DU FILM et ses joueurs (`replayCamps.ts` : le désignateur décide,
+ * le côté de feuille de ses membres ne fait que le nommer).
  */
-export interface ReplayTeamGroup {
-  side: string | null
+export interface ReplayTeamGroup extends ReplayCamp {
   players: ReplayPlayer[]
 }
 
@@ -113,13 +122,17 @@ export function buildPlayers(
   // d'apparition des traces. Jamais l'ordre d'itération d'une Map remplie au hasard.
   // UN BOT N'A PAS DE XUID (schéma 36) : son identité de table est `bot:<nom>` — deux bots
   // homonymes fusionneraient, et c'est assumé : le film ne donne rien de plus discriminant.
+  // L'ÉQUIPE EST POSÉE ICI ET NULLE PART AILLEURS (cf. `ReplayPlayer.team`) : le désignateur de
+  // l'entrée, jointe par la même clé que partout (`rosterEntryKey`). Un joueur que seules ses
+  // vies nomment n'a pas d'entrée, donc pas d'équipe.
   for (const entry of doc.roster ?? []) {
-    const key = entry.xuid || (entry.bot && entry.name ? botKey(entry.name) : '')
+    const key = rosterEntryKey(entry)
     if (!key) continue
     byXUID.set(key, {
       xuid: key,
       bot: entry.bot || undefined,
       filmName: entry.name,
+      team: entry.team ?? undefined,
       lives: [],
     })
   }
@@ -149,24 +162,19 @@ export function buildPlayers(
 }
 
 /**
- * groupByTeam range les joueurs par camp, dans un ordre stable.
+ * groupByTeam range les joueurs par camp DU FILM (`ReplayPlayer.team`), camps dans l'ordre des
+ * désignateurs, joueurs dans l'ordre du roster.
  *
- * UN JOUEUR SANS LIGNE DE SCOREBOARD N'A PAS D'ÉQUIPE et se retrouve dans un groupe à part
- * (`side: null`). Le placer arbitrairement dans un camp fabriquerait une appartenance.
+ * UN JOUEUR DONT LE FILM TAIT L'ÉQUIPE N'ENTRE DANS AUCUN CAMP — il n'y a pas de groupe « à
+ * part » : c'est un défaut de source (cf. `replayCamps.ts`). Un joueur SANS LIGNE de feuille,
+ * lui, est dans le camp que le film lui donne ; la feuille ne fait que nommer ce camp.
  */
-export function groupByTeam(players: ReplayPlayer[]): ReplayTeamGroup[] {
-  const groups = new Map<string, ReplayTeamGroup>()
-  for (const p of players) {
-    const side = p.board?.team_side ?? null
-    const key = side ?? ''
-    let g = groups.get(key)
-    if (!g) {
-      g = { side, players: [] }
-      groups.set(key, g)
-    }
-    g.players.push(p)
-  }
-  return [...groups.values()].sort((a, b) => (a.side ?? '￿').localeCompare(b.side ?? '￿'))
+export function groupByTeam(players: readonly ReplayPlayer[]): ReplayTeamGroup[] {
+  return groupByCamp(players, (p) => p.team, (p) => [p.board]).map(({ team, side, members }) => ({
+    team,
+    side,
+    players: members,
+  }))
 }
 
 /**
@@ -323,8 +331,9 @@ function teamColorOfOwner(
 }
 
 /**
- * sideResolver — LE CAMP D'UNE VIE À UNE IMAGE, celui de son propriétaire à cette image
- * (`team_side`, comme `groupByTeam`).
+ * sideResolver — LE CAMP D'UNE VIE À UNE IMAGE, celui de son propriétaire à cette image, lu
+ * sur la FEUILLE (`team_side`). Il sert l'OPPOSITION du capteur de menaces, pas les camps de la
+ * page : ceux-là viennent du film (`groupByTeam`, `replayCamps.ts`).
  *
  * PAS LE DRAPEAU « allié », qui est relatif au joueur de la page et range tous les autres dans
  * un seul camp — faux dès qu'il y a plus de deux équipes (mêlée générale, BTB à quatre camps).
