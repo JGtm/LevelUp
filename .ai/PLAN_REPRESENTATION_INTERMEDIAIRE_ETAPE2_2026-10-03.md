@@ -1552,3 +1552,10 @@ plan y sont reprises comme items (3.1.2).
   Population des huit lecteurs avec et sans V2 (+806 / −51), chiffres versés au handoff de la
   campagne ; gate de corpus contre `2707fdb31` : familles admises, à l'identique. Lot lint : fusion de
   `feat/v75` dans sa branche (`9321554d6`), CI et `make gate-push` en cours avant son avance rapide.
+- 2026-10-06 (soir) : FUSION DU LOT LINT DU DÉCODEUR DANS `feat/v75` = `9321554d6` (avance rapide depuis
+  `2707fdb31`, accord de l'utilisateur du même jour « Oui, fusionne au vert », découverte 17) : fusion
+  de `feat/v75` dans sa branche sans conflit hors du journal, `golangci-lint` sans remarque, CI verte
+  au niveau job, `make gate-push` vert hors de deux dépassements dus à la charge (`platform/duckdb`
+  au plafond de 300 s, test de rapport de coût de `killcollector`), verts rejoués seuls. Campagne et
+  levelup-dc prévenus avant et après. Ordre convenu ensuite : clôture de la campagne (doc), lot
+  « équipes source » de levelup-dc (SchemaDesFaits 6), puis 2.7.b.
