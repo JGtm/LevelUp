@@ -1,7 +1,7 @@
 # T2 — Le décalage de masque (`i - decales`) : constat NÉGATIF, établi des deux côtés (2026-10-01)
 
 > Campagne grammaire, phase 1, étape 2, piste T2. Plan :
-> `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`. Code lu à la tête du worktree
+> `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`. Code lu à la tête du worktree
 > `feat/campagne-grammaire` (`69564ef7d`). Jeu lu dans Ghidra (`HaloInfinite.exe`, base
 > `0x140000000`), en LECTURE SEULE (décompilation, désassemblage, xrefs, `read_memory`).
 > Aucune commande `go` lancée, aucune base ouverte, aucun film lu.

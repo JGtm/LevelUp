@@ -1,6 +1,6 @@
 # Lot L4a — véhicules `ti=40` en delta : seize composants, porte posée par la loi de l'écrivain (2026-10-03)
 
-> Lot L4a du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L4, partie delta seulement ;
+> Lot L4a du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L4, partie delta seulement ;
 > l'image-clé L4b, LK et LM sont hors périmètre), sous le contrat `plan-execution`, dans le cadre de
 > la décision du 2026-10-02 : **corrections d'abord, uniquement générales, lues dans le jeu**.
 >

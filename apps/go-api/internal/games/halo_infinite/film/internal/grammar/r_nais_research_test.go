@@ -3,7 +3,7 @@
 package grammar
 
 // r_nais_research_test.go — CHANTIER « NAIS » DE LA CAMPAGNE DE GRAMMAIRE (2026-10-02) : LE PILOTE.
-// R-L1 (a), (b), (d) et R-P6 du plan (`.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1, §6.2). Un
+// R-L1 (a), (b), (d) et R-P6 du plan (`.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1, §6.2). Un
 // instrument de recherche : aucun fichier de production n est touche, aucune sortie ne change.
 //
 // Par film (un a la fois, sentinelle `filmproc` 4 Gio) :

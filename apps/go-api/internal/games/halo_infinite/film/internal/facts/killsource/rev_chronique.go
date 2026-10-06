@@ -386,7 +386,7 @@ package killsource
 // resultat observe change (`Stats.Replis` perd deux champs nuls).
 //
 // COMPLEMENT DU 2026-10-03 (vague 1 de la campagne de grammaire : lots L8, L3a, L4a et corrections
-// de la revue de la vague, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, REVISION CONSTANTE) : la
+// de la revue de la vague, `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, REVISION CONSTANTE) : la
 // VALEUR de `grammar.Rev` monte jusqu a `grammar-2026-10-03.2`, donc l empreinte ; aucune source de
 // la couche ne change. Sortie `cmd/killsource json` sur les 19 temoins de
 // `config/replay_corpus.toml`, binaire de `67c379fc1` contre binaire de la vague : AUCUNE mort,

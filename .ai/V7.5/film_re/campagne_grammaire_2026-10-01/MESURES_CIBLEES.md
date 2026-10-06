@@ -1,6 +1,6 @@
 # Mesures ciblées — campagne de grammaire, étape 4 (2026-10-01)
 
-> Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, étape 4 (item 4.1). Worktree
+> Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, étape 4 (item 4.1). Worktree
 > `LevelUp-wt-campagne-grammaire`, branche `feat/campagne-grammaire`, base `feat/v75` = `69564ef7d`,
 > rien de commité. Entrées : carte v2 (`CARTE_FERMETURE_V2_2026-10-01.md`, TSV
 > `carte_fermeture_v2_2026-10-01/`) et les constats retenus/contestés de l'étape 3 (T1 à T8).

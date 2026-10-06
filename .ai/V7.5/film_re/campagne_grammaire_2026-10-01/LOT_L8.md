@@ -1,6 +1,6 @@
 # Lot L8 — `ti=3 low-frequency` porté, `high-frequency` routé par la table de l'archétype (2026-10-02)
 
-> Lot L8 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L8, gate §6.0 points 1, 2, 3, 6 et
+> Lot L8 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L8, gate §6.0 points 1, 2, 3, 6 et
 > 7), sous le contrat `plan-execution`, dans le cadre de la décision du 2026-10-02 au soir :
 > **corrections d'abord, uniquement générales, lues dans le jeu**. Chaque lecteur cite la fonction du
 > jeu qui le fonde (Ghidra, `HaloInfinite.exe`, lecture seule, HTTP direct 127.0.0.1:8089).

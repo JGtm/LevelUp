@@ -1,6 +1,6 @@
 # Lot LU — un seul localisateur de la boucle de records, zéro différence (2026-10-04)
 
-> Lot LU du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 LU, premier lot de la vague 2,
+> Lot LU du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 LU, premier lot de la vague 2,
 > GO de l'utilisateur du 2026-10-04), sous le contrat `plan-execution`, dans le cadre de la décision
 > du 2026-10-02 : **corrections d'abord, uniquement générales, lues dans le jeu**.
 >

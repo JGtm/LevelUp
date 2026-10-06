@@ -1,6 +1,6 @@
 # T1 — Naissances non lues (campagne grammaire, phase 1, 2026-10-01)
 
-> Piste T1 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (étape 2). Lecture seule : Ghidra
+> Piste T1 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (étape 2). Lecture seule : Ghidra
 > (`HaloInfinite.exe`, serveur HTTP 127.0.0.1:8089, uniquement `decompile_function`,
 > `disassemble_function`, `get_xrefs_to`, `read_memory`, `search_strings`, `search_instructions`),
 > code Go à la tête du worktree `feat/campagne-grammaire` (base `69564ef7d`). Aucune commande `go`,

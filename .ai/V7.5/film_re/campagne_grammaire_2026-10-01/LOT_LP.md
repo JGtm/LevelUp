@@ -1,6 +1,6 @@
 # Lot LP — image-clé jugée par le bloc de type 1 (2026-10-04)
 
-> Plan : `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1 / §6.2 « LP », reprise de la variante V3e
+> Plan : `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` §6.1 / §6.2 « LP », reprise de la variante V3e
 > de L9 (`LOT_L9.md` §4-§8, D-L9-3). Vague 2, GO de l'utilisateur du 2026-10-04. Worktree
 > `LevelUp-wt-cg2-lp`, branche `feat/cg2-lp`, base `2393d7db7` (vague 1 fusionnée, `grammar-2026-10-03.2`,
 > `killsource-2026-09-27`). Films lus en place (lecture seule) depuis `data/cache/film_chunks` du
