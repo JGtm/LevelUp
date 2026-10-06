@@ -266,8 +266,10 @@ Chocoboflor 4 ; AUCUNE référence sans équipe du film.
   `*.mesure` / `*.perf`, hors lot), eslint 0 erreur (26 avertissements préexistants), lint
   couleurs et champs propres, knip-ratchet 0 / 0 / 0, crochets pre-push verts. Push
   `5c931a66b..42d0eac7d` : CI `37516295615` verte (tous les jobs ; E2E Playwright sauté hors PR
-  vers `main`), gitleaks `37516294750` et Deploy Pre-Check `37516294572` verts. Pas de fusion
-  dans `feat/v75` (le superviseur s'en charge).
+  vers `main`), gitleaks `37516294750` et Deploy Pre-Check `37516294572` verts. Dernier commit de
+  code `b1b379300` (compte des entrées sorties de l'allowlist : huit, pas neuf ; commentaire
+  seulement) : CI `37522110852` verte, gitleaks et Deploy Pre-Check verts. Pas de fusion dans
+  `feat/v75` (le superviseur s'en charge).
 - [x] E6.7.5 Entrée `.ai/thought_log.md`.
 
 ## Journal
