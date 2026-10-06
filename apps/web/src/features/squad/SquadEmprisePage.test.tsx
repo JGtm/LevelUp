@@ -1,7 +1,7 @@
 /**
  * SquadEmprisePage.test.tsx — l'onglet « Emprise » (lot L5 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), sur la soirée témoin du 22/09 (chiffres de la
- * maquette de l'onglet) : blocs et ordre du débrief, puis chaque carte — « Prises par camp »
+ * maquette de l'onglet) : blocs et ordre du débrief, puis chaque carte — « Contrôle des ressources »
  * (compte · part dans chaque segment, repli S3, trait 50 %), « … cumul par match » (graphe tracé,
  * légende), « Prises par joueur » (fiches, bonus perdus en couleurs d'équipe, pastilles pleines et
  * vides), « … par match » (résultat, dominance, sans film, râteliers repliés). États vides hérités
@@ -115,7 +115,7 @@ describe('SquadEmprisePage — structure', () => {
 
   it('titres factuels (S1)', () => {
     mount()
-    for (const title of ['Prises par camp', 'Prises par camp, cumul par match', 'Prises par camp, par match']) {
+    for (const title of ['Contrôle des ressources', 'Contrôle des ressources, cumul par match', 'Contrôle des ressources, par match']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
     expect(screen.getAllByText('Prises par joueur').length).toBeGreaterThan(0)
@@ -157,10 +157,10 @@ describe('Contrôle des ressources', () => {
     expect(repli.textContent).toContain('8 · 40 %')
   })
 
-  it('légende en pied de carte : camp, adversaire, « 50 % : autant que l’adversaire »', () => {
+  it('légende en pied de carte : équipe, adversaire, « 50 % : autant que l’adversaire »', () => {
     mount()
     const legend = within(screen.getByTestId('emprise-control')).getByTestId('objectif-legend')
-    expect(legend.textContent).toContain('Camp')
+    expect(legend.textContent).toContain('Équipe')
     expect(legend.textContent).toContain('Adversaire')
     expect(legend.textContent).toContain('50 % : autant que l’adversaire')
     expect(legend.textContent).not.toContain('parité')
@@ -181,16 +181,16 @@ describe('Contrôle des ressources au fil de la session', () => {
 })
 
 describe('Répartition des prises dans l’escouade', () => {
-  it('bonus perdus : 2 sur 12 (17 %) et 2 sur 8 (25 %), pastilles d’équipe au lieu de « camp » / « adversaire » écrits', () => {
+  it('bonus perdus : 2 sur 12 (17 %) et 2 sur 8 (25 %), pastilles d’équipe au lieu de « équipe » / « adversaire » écrits', () => {
     mount()
     expect(text('emprise-losses')).toContain('Bonus perdus')
     expect(text('emprise-losses-us')).toBe('2 sur 12 (17 %)')
     expect(text('emprise-losses-them')).toBe('2 sur 8 (25 %)')
     expect(text('emprise-losses')).not.toMatch(/nous|eux/)
-    expect(within(screen.getByTestId('emprise-losses-us')).getByRole('img', { name: 'Camp' })).toBeInTheDocument()
+    expect(within(screen.getByTestId('emprise-losses-us')).getByRole('img', { name: 'Équipe' })).toBeInTheDocument()
   })
 
-  it('fiches JGtm, Chocoboflor, Madina97294 puis le reste du camp ; JGtm : 3 bonus · 9 armes spéciales', () => {
+  it('fiches JGtm, Chocoboflor, Madina97294 puis le reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
     mount()
     for (const id of [XUID.jgtm, XUID.choco, XUID.madina, 'rest']) {
       expect(screen.getByTestId(`emprise-sheet-${id}`)).toBeInTheDocument()
@@ -202,7 +202,7 @@ describe('Répartition des prises dans l’escouade', () => {
     expect(jgtm.textContent).toContain('Ressource dominante')
     expect(jgtm.textContent).toContain('Armes spéciales')
     expect(screen.getByTestId(`emprise-sheet-${XUID.madina}`).textContent).toContain('Bonus')
-    expect(screen.getByTestId('emprise-sheet-rest').textContent).toContain('Reste du camp')
+    expect(screen.getByTestId('emprise-sheet-rest').textContent).toContain('Reste de l’équipe')
   })
 
   it('une pastille par prise, pastille vide = bonus perdu ; un zéro reste une ligne atténuée', () => {
@@ -252,7 +252,7 @@ describe('Contrôle des ressources, match par match', () => {
     expect(within(table).getByText('frags obtenus avec')).toBeInTheDocument()
   })
 
-  it('constat R2 (revue L6.1) : un match filmé au camp inconnu dit « camp inconnu », pas « — »', () => {
+  it('constat R2 (revue L6.1) : un match filmé à équipe inconnue dit « équipe inconnue », pas « — »', () => {
     const block: SquadEmpriseBlock = {
       ...EMPRISE_2209,
       matches: EMPRISE_2209.matches!.map((m) => (m.match_id === 'm2' ? { ...m, team_known: false } : m)),
@@ -262,7 +262,7 @@ describe('Contrôle des ressources, match par match', () => {
     const cells = table.querySelectorAll('[data-cell="noteam"]')
     // Synthèse bonus, deux objets bonus, synthèse des armes spéciales et ses armes (râteliers repliés).
     expect(cells.length).toBeGreaterThanOrEqual(3)
-    expect(cells[0].textContent).toBe('camp inconnu')
+    expect(cells[0].textContent).toBe('équipe inconnue')
     expect(within(table).queryByText('4–0')).toBeNull()
   })
 
@@ -291,7 +291,7 @@ describe('SquadEmprisePage — anglais (S12)', () => {
   it('titres et libellés en anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount()
-    for (const title of ['Pickups by side', 'Pickups by side, cumulated by match', 'Pickups by side, by match']) {
+    for (const title of ['Resource control', 'Resource control, cumulative by match', 'Resource control, by match']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
     expect(screen.getAllByText('Pickups by player').length).toBeGreaterThan(0)
@@ -333,7 +333,7 @@ describe('Rendement des ressources', () => {
     // Une barre fine sous chaque barre épaisse (rôle img, nom = la ligne d'exposition).
     expect(within(bonus).getByRole('img', { name: /temps d’effet : 2 min 39/ })).toBeInTheDocument()
     const legend = within(card).getByTestId('objectif-legend')
-    for (const label of ['Camp', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet, prises ou temps à bord']) {
+    for (const label of ['Équipe', 'Adversaire', '50 % : autant que l’adversaire', 'Barre fine : temps d’effet, prises ou temps à bord']) {
       expect(legend.textContent).toContain(label)
     }
   })
@@ -352,13 +352,13 @@ describe('Rendement des ressources', () => {
     const bar = screen.getByTestId('emprise-yield-bar-powerup').closest('[style*="left"]') as HTMLElement
     expect(bar.style.left).toBe('50%')
     const legend = within(card).getByTestId('objectif-legend')
-    expect(legend.textContent).toContain('Camp plus productif')
+    expect(legend.textContent).toContain('Équipe plus productive')
     expect(legend.textContent).toContain('Moins')
   })
 })
 
 describe('Soirées précédentes', () => {
-  it('dernier bloc ; « Prises par camp, par soirée » en demi-largeur à gauche, rien à sa droite', () => {
+  it('dernier bloc ; « Contrôle des ressources, par soirée » en demi-largeur à gauche, rien à sa droite', () => {
     mount()
     const prendre = screen.getByTestId('emprise-section-prendre')
     const habitude = screen.getByTestId('emprise-section-habitude')
@@ -374,7 +374,7 @@ describe('Soirées précédentes', () => {
   it('sans soirée précédente : la carte le dit, avec les parts de ce soir', () => {
     mount({ pageData: page({ ...EMPRISE_2209, habit: { ...EMPRISE_2209.habit!, previous: [] } }) })
     expect(text('emprise-habit-note')).toBe(
-      'Aucune soirée précédente comparable. Ce soir, part du camp dans les prises : bonus 60 %, armes spéciales 44 %.',
+      'Aucune soirée précédente comparable. Ce soir, part de l’équipe dans les prises : bonus 60 %, armes spéciales 44 %.',
     )
   })
 
@@ -436,7 +436,7 @@ describe('Prendre et habitude — anglais (S12)', () => {
   it('titres et valeurs en anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount()
-    for (const title of ['Kills by resource', 'Efficiency by resource', 'Pickups by side, by session']) {
+    for (const title of ['Kills by resource', 'Efficiency by resource', 'Resource control, by session']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
     expect(text('emprise-yield-raw-powerup')).toBe('3.0 vs 2.7')

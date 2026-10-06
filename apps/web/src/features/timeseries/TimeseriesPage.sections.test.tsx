@@ -172,7 +172,7 @@ describe('Onglet Usages — l’Emprise du périmètre solo', () => {
     for (const id of ['emprise-control', 'usages-map-grid', 'usages-mine', 'emprise-production', 'emprise-yield', 'usages-lives', 'objective-balance', 'objective-solo-sheet', 'usages-equipment']) {
       expect(screen.getByTestId(id)).toBeInTheDocument()
     }
-    expect(screen.getByText('Prises par camp, cumul par match')).toBeInTheDocument()
+    expect(screen.getByText('Contrôle des ressources, cumul par match')).toBeInTheDocument()
   })
 
   it('un bloc sans donnée se retire, intertitre compris', () => {
@@ -207,8 +207,9 @@ describe('Onglet Usages — l’Emprise du périmètre solo', () => {
     for (const t of ['By map', 'Pickups', 'Resource efficiency', 'Isolation', 'Objective', 'Equipment']) {
       expect(titres).toContain(t)
     }
-    expect(screen.getByText('Lives within range of a teammate, isolated lives')).toBeInTheDocument()
-    expect(screen.getByText('Pickups by side, by map')).toBeInTheDocument()
+    // « Isolation » : l'intertitre ET le titre de sa carte (voulu, comme sur les autres pages).
+    expect(screen.getAllByText('Isolation')).toHaveLength(2)
+    expect(screen.getByText('Resource control, by map')).toBeInTheDocument()
   })
 })
 

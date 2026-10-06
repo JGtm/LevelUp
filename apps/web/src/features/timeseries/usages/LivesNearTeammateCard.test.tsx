@@ -44,7 +44,7 @@ const width = (id: string) => parseFloat((screen.getByTestId(id) as HTMLElement)
 describe('LivesNearTeammateCard', () => {
   it('titre, ligne au gamertag du joueur et nombre de vies', () => {
     renderCard()
-    expect(screen.getByText('Vies à portée d’un coéquipier, vies isolées')).toBeTruthy()
+    expect(screen.getByText('Isolement')).toBeTruthy()
     expect(screen.getByText('JGtm')).toBeTruthy()
     expect(screen.getByTestId('usages-lives-sub').textContent).toBe(`${n(1859)} vies terminées par une mort`)
   })

@@ -4,7 +4,7 @@
  * taille. Il fournit l'entrée `resources.vehicle`, l'exposition `aboard_ms` et les mots propres à
  * la ressource (famille inconnue, case « non mesuré », note de couverture du rendement). Parité
  * FR / EN garantie par le typage `Record<Locale, …>`. Vocabulaire : une « prise » de véhicule est
- * un véhicule qui passe à un camp (D2) ; le temps « à bord » est la somme des occupations (D4).
+ * un véhicule qui passe à une équipe (D2) ; le temps « à bord » est la somme des occupations (D4).
  */
 import type { Locale } from '@/lib/i18n/locale'
 
@@ -42,7 +42,7 @@ export function buildVehicleText(duration: (ms: number) => string): Record<Local
       unknown: 'Véhicule inconnu',
       unmeasuredCell: 'non mesuré',
       unmeasuredTip:
-        'Véhicules non mesurés sur ce match : l’occupation n’a pas été lue (film décodé avant ce relevé, ou camp inconnu).',
+        'Véhicules non mesurés sur ce match : l’occupation n’a pas été lue (film décodé avant ce relevé, ou équipe inconnue).',
       pairedNote: (paired, total, pct) =>
         `Véhicules : le rendement ne compte que les ${paired} frags sur ${total} (${pct}) tombés pendant un ` +
         'passage daté de leur tueur ; les autres sont dans la barre de la carte voisine.',
@@ -63,7 +63,7 @@ export function buildVehicleText(duration: (ms: number) => string): Record<Local
       unknown: 'Unknown vehicle',
       unmeasuredCell: 'not measured',
       unmeasuredTip:
-        'Vehicles not measured for this match: occupancy was not read (film decoded before this reading, or side unknown).',
+        'Vehicles not measured for this match: occupancy was not read (film decoded before this reading, or team unknown).',
       pairedNote: (paired, total, pct) =>
         `Vehicles: the rate only counts the ${paired} of ${total} kills (${pct}) made during a dated ` +
         'ride of their killer; the others are in the neighbouring card’s bar.',

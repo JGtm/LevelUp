@@ -115920,3 +115920,13 @@ sur LR.2 au regard du critère « corrections générales lues dans le jeu ».
 **Résultats observés** : garde vue rouge sur les textes d'origine (11 groupes sur 13), verte ensuite ; mutations rouges (« mes frags » dans `timeseries.toml`, « Notre camp » dans l'Emprise, « Our » dans les véhicules, « Mes frags » dans `synthesis.weapon_range`), faux positif « mesurés, nombre » vert. Tests de page et de cartes mis à jour sur les nouveaux titres ; la page Escouade change de titres sans changer de forme. Gate web : tsc 0, ESLint 0 erreur, vitest complet 851 fichiers / 9 125 tests verts (puis timeseries + squad 1 028 après l'écart « Rendement des ressources »), couleurs 0, imports croisés 7 ≤ 7, champs en dur 0, manifestes régénérés.
 
 **Conclusion / prochaine étape** : branche poussée ; gate visuel de l'utilisateur sur les nouveaux titres (liste avant → après dans le compte rendu), décision sur « Rendement des ressources ».
+
+## [2026-10-06] Usages et Emprise : termes retenus par l'utilisateur, « équipe »
+
+**Statut** : Complété (retour de l'utilisateur sur 5e35f0ba5 ; branche `feat/ts-usages-fix-equipement`, commit à part).
+
+**Décision technique principale** : l'utilisateur valide le lot sémantique sauf six points, appliqués en FR et EN sur les Séries temporelles et l'Escouade › Emprise (chaînes partagées). « Contrôle des ressources » revient et se décline (« …, cumul par match », « …, par carte », « …, par match », « …, par soirée ») ; « Contribution aux prises » ; « Rapport de force » (chaîne de base de l'Objectif, donc aussi l'Escouade › Contributions ; la surcharge solo disparaît, `OBJECTIF_TEXT_SOLO` lit `OBJECTIF_TEXT`) ; « Usage d'équipements » ; « Isolement » comme titre de carte (même mot que l'intertitre, voulu) ; « camp » devient « équipe » partout (« Équipe », « Reste de l'équipe », « Part de l'équipe », « Équipe plus productive », « équipe inconnue », appuis de l'équipe ; EN « Team », « Rest of the team », « Team share »). « Équipe » / « Team » ne sont pas des libellés de champ : `lint-no-hardcoded-fields` passe, pas besoin de « Équipe du joueur ». « Rendement des ressources » reste (écart signalé au lot précédent, non remis en cause).
+
+**Résultats observés** : 104 substitutions exactes dans les textes et `timeseries.toml`, 53 dans les tests de page et de cartes ; garde `textesSansPersonne` verte. Gate web : tsc 0 (forcé), ESLint 0 erreur, vitest complet 851 fichiers / 9 125 tests verts, couleurs 0, imports croisés 7 ≤ 7, champs en dur 0, manifestes régénérés.
+
+**Conclusion / prochaine étape** : branche poussée ; suivi CI et fusion par le superviseur.

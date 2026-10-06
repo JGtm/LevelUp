@@ -1,7 +1,7 @@
 /**
  * EquipmentOutcomesCard.test.tsx — « Équipement pris, et ce que j'en ai fait » : une ligne par famille
  * dans l'ordre du Go ; mesurées : servi / gardé / lâché pour moi (comptes dans les segments), barre
- * fine et ligne de parts pour le reste du camp ; non mesurées : « Non mesuré » et les lâchers du joueur.
+ * fine et ligne de parts pour le reste de l’équipe ; non mesurées : « Non mesuré » et les lâchers du joueur.
  */
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -81,10 +81,10 @@ describe('EquipmentOutcomesCard', () => {
     expect(screen.queryAllByTestId(/^usages-equip-repli-/)).toEqual([])
   })
 
-  it('reste du camp : barre fine et ligne de parts', () => {
+  it('reste de l’équipe : barre fine et ligne de parts', () => {
     renderCard()
     expect(width('usages-equip-rest-wall-used')).toBeCloseTo((146 / 304) * 100)
-    expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste du camp : 146 servis · 7 gardés · 151 lâchés48 % servis')
+    expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste de l’équipe : 146 servis · 7 gardés · 151 lâchés48 % servis')
   })
 
   it('non mesurées : le libellé, les lâchers du joueur, « Non mesuré »', () => {
@@ -98,11 +98,11 @@ describe('EquipmentOutcomesCard', () => {
     renderCard()
     expect(screen.getByTestId('usages-equip-sub-shroud_screen').textContent).toBe('0 objet')
     expect(screen.queryByTestId('usages-equip-me-shroud_screen-used')).toBeNull()
-    expect(screen.getByTestId('usages-equip-restline-shroud_screen').textContent).toBe('reste du camp : 0 objet')
+    expect(screen.getByTestId('usages-equip-restline-shroud_screen').textContent).toBe('reste de l’équipe : 0 objet')
   })
 
   it('légende', () => {
     renderCard()
-    for (const l of ['Servi', 'Gardé sans servir', 'Lâché', 'Barre fine : reste du camp']) expect(screen.getByText(l)).toBeTruthy()
+    for (const l of ['Servi', 'Gardé sans servir', 'Lâché', 'Barre fine : reste de l’équipe']) expect(screen.getByText(l)).toBeTruthy()
   })
 })

@@ -729,16 +729,16 @@ fr = "Appui reçu"
 en = "Support received"
 
 [timeseries.progression.coord_appui_tooltip]
-fr = "Écart de chaque soirée à son repère : « frags appuyés » (frags du joueur ayant reçu une assistance, sur ses frags) face à l'habituel du joueur, « part des appuis du camp » (assistances reçues par le joueur, sur toutes celles du camp) face à la part équitable 1/n."
-en = "Each session's gap to its reference: \"assisted kills\" (the player's kills that received an assist, over the player's kills) against the player's usual, \"share of the side's assists\" (assists received by the player, over all of the side's) against the 1/n fair share."
+fr = "Écart de chaque soirée à son repère : « frags appuyés » (frags du joueur ayant reçu une assistance, sur ses frags) face à l'habituel du joueur, « part des appuis de l'équipe » (assistances reçues par le joueur, sur toutes celles de l'équipe) face à la part équitable 1/n."
+en = "Each session's gap to its reference: \"assisted kills\" (the player's kills that received an assist, over the player's kills) against the player's usual, \"share of the team's assists\" (assists received by the player, over all of the team's) against the 1/n fair share."
 
 [timeseries.progression.coord_prepared]
 fr = "Frags appuyés"
 en = "Assisted kills"
 
 [timeseries.progression.coord_my_share]
-fr = "Part des appuis du camp"
-en = "Share of the side's assists"
+fr = "Part des appuis de l'équipe"
+en = "Share of the team's assists"
 
 [timeseries.progression.coord_usual]
 fr = "habituel {rate}"
@@ -753,8 +753,8 @@ fr = "frags du joueur : {n}"
 en = "player kills: {n}"
 
 [timeseries.progression.coord_vol_team_assists]
-fr = "appuis du camp : {n}"
-en = "side assists: {n}"
+fr = "appuis de l'équipe : {n}"
+en = "team assists: {n}"
 
 [timeseries.progression.coord_coverage]
 fr = "{measured} matchs mesurés sur {total}"

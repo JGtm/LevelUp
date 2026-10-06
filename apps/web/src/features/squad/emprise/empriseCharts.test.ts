@@ -96,7 +96,7 @@ describe('buildResourceFilOption — 22/09', () => {
     expect(first.value).toEqual([0, (5 / 7) * 100])
     expect(first.symbolSize).toBeCloseTo(2 * pickupRadius(7))
     expect(pickupRadius(16)).toBeCloseTo(1.8 + 4 * 1.1)
-    expect(first.tip).toContain('Bonus : camp 5, adversaire 2 (71,4 %)')
+    expect(first.tip).toContain('Bonus : équipe 5, adversaire 2 (71,4 %)')
     expect(dots[0].data[4]).toBeNull()
   })
 

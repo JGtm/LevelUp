@@ -5,13 +5,13 @@
  * Mêmes matchs que le reste de la page (fenêtre filtrée, contexte solo), dans l'ordre d'un débrief :
  *
  *   1. « Portée » (la section porte son titre) puis « Rôles de portée » ;
- *   2. « Ressources » : « Prises par camp » | « Prises par camp, cumul par match » ;
- *   3. « Par carte » : « Prises par camp, par carte » ;
- *   4. « Prises » : « Part du joueur dans les prises du camp » ;
+ *   2. « Ressources » : « Contrôle des ressources » | « Contrôle des ressources, cumul par match » ;
+ *   3. « Par carte » : « Contrôle des ressources, par carte » ;
+ *   4. « Prises » : « Contribution aux prises » ;
  *   5. « Rendement des ressources » : « Frags par ressource » | « Rendement par ressource » ;
- *   6. « Isolement » : « Vies à portée d'un coéquipier, vies isolées » ;
- *   7. « Objectif » : « Objectif par camp » puis « Part du joueur à l'objectif » ;
- *   8. « Équipement » : « Équipement : servi, gardé, lâché ».
+ *   6. « Isolement » : « Isolement » ;
+ *   7. « Objectif » : « Rapport de force » puis « Part du joueur à l'objectif » ;
+ *   8. « Équipement » : « Usage d'équipements ».
  *
  * AUCUNE REQUÊTE NEUVE : tout arrive avec la réponse de page. Les cartes sont celles de l'Escouade
  * (textes du périmètre solo) et quatre cartes propres à l'onglet ; le joueur y est désigné par son

@@ -1,9 +1,8 @@
 /**
  * usagesCardsText.ts — les textes des cartes PROPRES à l'onglet « Usages » des Séries temporelles :
- * en-têtes de la grille par carte, « Part du joueur dans les prises du camp », « Vies à portée d'un
- * coéquipier, vies isolées », « Équipement : servi, gardé, lâché ». Textes factuels, sans personne :
- * le joueur est désigné par son gamertag (argument `player`), le camp par « Camp », le reste par
- * « Reste du camp » (garde : `textesSansPersonne.test.ts`). Parité FR / EN par le typage.
+ * en-têtes de la grille par carte, « Contribution aux prises », « Isolement », « Usage
+ * d'équipements ». Textes factuels, sans personne : le joueur est désigné par son gamertag
+ * (argument `player`), l'équipe par « Équipe », le reste par « Reste de l'équipe » (garde : `textesSansPersonne.test.ts`). Parité FR / EN par le typage.
  * Fichier à part de `usagesText.ts` (surcharges des textes de l'Escouade) pour rester sous le seuil.
  */
 
@@ -45,7 +44,7 @@ export interface UsagesCardsText {
     rest: string
     /** « Armes de râtelier (4, repliées) ». */
     foldedFmt: (n: number) => string
-    /** Le mot du camp dans « JGtm 3 · camp 7 » au bout de chaque barre (le joueur : son gamertag). */
+    /** Le mot de l’équipe dans « JGtm 3 · équipe 7 » au bout de chaque barre (le joueur : son gamertag). */
     campWord: string
     meTip: (player: string, name: string, me: number, camp: number) => string
     restTip: (name: string, rest: number, camp: number) => string
@@ -113,20 +112,20 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
   },
   playerFallback: 'Joueur',
   mine: {
-    title: 'Part du joueur dans les prises du camp',
+    title: 'Contribution aux prises',
     info:
-      'Objets pris par le camp sur les matchs filmés du périmètre : part du joueur et du reste du camp, en ' +
+      'Objets pris par l’équipe sur les matchs filmés du périmètre : part du joueur et du reste de l’équipe, en ' +
       'comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
-    rest: 'Reste du camp',
+    rest: 'Reste de l’équipe',
     foldedFmt: (n) => `(${n}, repliées)`,
-    campWord: 'camp',
-    meTip: (player, name, me, camp) => `${player} · ${name}\n${me} des ${camp} prises du camp`,
-    restTip: (name, rest, camp) => `Reste du camp · ${name}\n${rest} des ${camp} prises du camp`,
+    campWord: 'équipe',
+    meTip: (player, name, me, camp) => `${player} · ${name}\n${me} des ${camp} prises de l’équipe`,
+    restTip: (name, rest, camp) => `Reste de l’équipe · ${name}\n${rest} des ${camp} prises de l’équipe`,
     lossesTitle: 'Bonus perdus',
     lossesFmt: (lost, taken) => `${lost} sur ${taken}`,
   },
   lives: {
-    title: 'Vies à portée d’un coéquipier, vies isolées',
+    title: 'Isolement',
     info: (unlocated, noRadar, unpublishable) =>
       'Vies terminées par une mort, rangées selon la distance au coéquipier le plus proche à l’instant de la ' +
       'mort (à portée de radar ou au-delà) ; barre fine : frags obtenus pendant ces vies. ' +
@@ -144,16 +143,16 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     perLifeFmt: frDec1,
   },
   equipment: {
-    title: 'Équipement : servi, gardé, lâché',
+    title: 'Usage d’équipements',
     info:
       'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge ' +
-      'consommée), gardé sans servir, lâché ; barre fine : reste du camp. Seules les familles tenues dans le ' +
+      'consommée), gardé sans servir, lâché ; barre fine : reste de l’équipe. Seules les familles tenues dans le ' +
       'lobby sont listées ; le répulseur, sans mesure d’usage, n’a pas de ligne.',
     used: 'Servi',
     kept: 'Gardé sans servir',
     dropped: 'Lâché',
-    thinLegend: 'Barre fine : reste du camp',
-    rest: 'Reste du camp',
+    thinLegend: 'Barre fine : reste de l’équipe',
+    rest: 'Reste de l’équipe',
     unmeasuredNames: { grapple: 'Grappin', thruster: 'Propulseur' },
     sub: (objects, taken) => (objects > 0 ? `${objects} ${plural(objects, 'objet', 'objets')}, dont ${taken} pris sur la carte` : '0 objet'),
     droppedSub: (n) => `${n} ${plural(n, 'lâché', 'lâchés')}`,
@@ -161,9 +160,9 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     zeroTip: (player, family) => `${family} : 0 objet pour ${player}`,
     segTip: (who, n, part, total, pct) => `${who}\n${n} ${PART_FR[part][n > 1 ? 1 : 0]} sur ${total} (${pct})`,
     restLine: (used, kept, dropped) =>
-      `reste du camp : ${used} ${PART_FR.used[used > 1 ? 1 : 0]} · ${kept} ${PART_FR.kept[kept > 1 ? 1 : 0]} · ${dropped} ${PART_FR.dropped[dropped > 1 ? 1 : 0]}`,
+      `reste de l’équipe : ${used} ${PART_FR.used[used > 1 ? 1 : 0]} · ${kept} ${PART_FR.kept[kept > 1 ? 1 : 0]} · ${dropped} ${PART_FR.dropped[dropped > 1 ? 1 : 0]}`,
     restUsedShare: (pct) => `${pct} servis`,
-    restNone: 'reste du camp : 0 objet',
+    restNone: 'reste de l’équipe : 0 objet',
   },
 }
 
@@ -187,20 +186,20 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
   },
   playerFallback: 'Player',
   mine: {
-    title: 'Player’s share of the side’s pickups',
+    title: 'Pickup contribution',
     info:
-      'Items the side picked up over the filmed matches in scope: the player’s share and the rest of the ' +
-      'side’s, in counts, by decreasing volume. Lost power-ups: held without being activated, or dropped.',
-    rest: 'Rest of the side',
+      'Items the team picked up over the filmed matches in scope: the player’s share and the rest of the ' +
+      'team’s, in counts, by decreasing volume. Lost power-ups: held without being activated, or dropped.',
+    rest: 'Rest of the team',
     foldedFmt: (n) => `(${n}, folded)`,
-    campWord: 'side',
-    meTip: (player, name, me, camp) => `${player} · ${name}\n${me} of the side’s ${camp} pickups`,
-    restTip: (name, rest, camp) => `Rest of the side · ${name}\n${rest} of the side’s ${camp} pickups`,
+    campWord: 'team',
+    meTip: (player, name, me, camp) => `${player} · ${name}\n${me} of the team’s ${camp} pickups`,
+    restTip: (name, rest, camp) => `Rest of the team · ${name}\n${rest} of the team’s ${camp} pickups`,
     lossesTitle: 'Lost power-ups',
     lossesFmt: (lost, taken) => `${lost} of ${taken}`,
   },
   lives: {
-    title: 'Lives within range of a teammate, isolated lives',
+    title: 'Isolation',
     info: (unlocated, noRadar, unpublishable) =>
       'Lives ended by a death, sorted by the distance to the nearest teammate at the moment of death (within ' +
       'radar range or beyond); thin bar: kills made during those lives. ' +
@@ -218,24 +217,24 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     perLifeFmt: enDec1,
   },
   equipment: {
-    title: 'Equipment: used, kept, dropped',
+    title: 'Equipment use',
     info:
       'Equipment held by the player (spawn equipment included), by family: used (wall placed, charge spent), ' +
-      'kept without use, dropped; thin bar: rest of the side. Only families held in the lobby are listed; ' +
+      'kept without use, dropped; thin bar: rest of the team. Only families held in the lobby are listed; ' +
       'the repulsor, with no usage measure, has no row.',
     used: 'Used',
     kept: 'Kept without use',
     dropped: 'Dropped',
-    thinLegend: 'Thin bar: rest of the side',
-    rest: 'Rest of the side',
+    thinLegend: 'Thin bar: rest of the team',
+    rest: 'Rest of the team',
     unmeasuredNames: { grapple: 'Grappleshot', thruster: 'Thruster' },
     sub: (objects, taken) => (objects > 0 ? `${objects} ${plural(objects, 'item', 'items')}, ${taken} picked up on the map` : '0 items'),
     droppedSub: (n) => `${n} dropped`,
     unmeasured: 'Not measured: neither pickup nor use published for this family',
     zeroTip: (player, family) => `${family}: 0 items for ${player}`,
     segTip: (who, n, part, total, pct) => `${who}\n${n} ${PART_EN[part][0]} of ${total} (${pct})`,
-    restLine: (used, kept, dropped) => `rest of the side: ${used} used · ${kept} kept · ${dropped} dropped`,
+    restLine: (used, kept, dropped) => `rest of the team: ${used} used · ${kept} kept · ${dropped} dropped`,
     restUsedShare: (pct) => `${pct} used`,
-    restNone: 'rest of the side: 0 items',
+    restNone: 'rest of the team: 0 items',
   },
 }

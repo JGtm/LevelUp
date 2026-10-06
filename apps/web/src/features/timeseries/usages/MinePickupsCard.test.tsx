@@ -1,6 +1,6 @@
 /**
- * MinePickupsCard.test.tsx — « Part du joueur dans les prises du camp » : groupes par ressource, objets triés par
- * volume du camp, segments joueur / reste avec leurs comptes, « JGtm n · camp m » au bout, barre à
+ * MinePickupsCard.test.tsx — « Contribution aux prises » : groupes par ressource, objets triés par
+ * volume de l’équipe, segments joueur / reste avec leurs comptes, « JGtm n · équipe m » au bout, barre à
  * l'échelle du plus gros objet, râteliers repliés, bonus perdus des deux camps.
  */
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -20,17 +20,17 @@ function renderCard() {
 const width = (id: string) => parseFloat((screen.getByTestId(id) as HTMLElement).style.width)
 
 describe('MinePickupsCard', () => {
-  it('titre et légende : le joueur par son gamertag, le reste du camp', () => {
+  it('titre et légende : le joueur par son gamertag, le reste de l’équipe', () => {
     renderCard()
-    expect(screen.getByText('Part du joueur dans les prises du camp')).toBeTruthy()
+    expect(screen.getByText('Contribution aux prises')).toBeTruthy()
     expect(screen.getAllByText('JGtm').length).toBeGreaterThan(0)
-    expect(screen.getByText('Reste du camp')).toBeTruthy()
+    expect(screen.getByText('Reste de l’équipe')).toBeTruthy()
   })
 
-  it('une ligne par objet pris par le camp, « JGtm n · camp m » au bout', () => {
+  it('une ligne par objet pris par l’équipe, « JGtm n · équipe m » au bout', () => {
     renderCard()
-    expect(screen.getByTestId('usages-mine-value-spnkr').textContent).toBe('JGtm 30 · camp 129')
-    expect(screen.getByTestId('usages-mine-value-sniper').textContent).toBe('JGtm 0 · camp 100')
+    expect(screen.getByTestId('usages-mine-value-spnkr').textContent).toBe('JGtm 30 · équipe 129')
+    expect(screen.getByTestId('usages-mine-value-sniper').textContent).toBe('JGtm 0 · équipe 100')
   })
 
   it('barre à l’échelle du plus gros objet ; segments moi / reste dans la barre', () => {

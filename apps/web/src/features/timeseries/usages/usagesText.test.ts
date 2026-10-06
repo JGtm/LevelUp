@@ -36,18 +36,18 @@ describe('textes FR', () => {
 
   it('titres des cartes', () => {
     expect([E.control.title, E.fil.title, E.grid.title, U.cards.mine.title, E.production.title, E.yield.title]).toEqual([
-      'Prises par camp',
-      'Prises par camp, cumul par match',
-      'Prises par camp, par carte',
-      'Part du joueur dans les prises du camp',
+      'Contrôle des ressources',
+      'Contrôle des ressources, cumul par match',
+      'Contrôle des ressources, par carte',
+      'Contribution aux prises',
       'Frags par ressource',
       'Rendement par ressource',
     ])
     expect([U.cards.lives.title, O.balance.title, U.sheet.title, U.cards.equipment.title]).toEqual([
-      'Vies à portée d’un coéquipier, vies isolées',
-      'Objectif par camp',
+      'Isolement',
+      'Rapport de force',
       'Part du joueur à l’objectif',
-      'Équipement : servi, gardé, lâché',
+      'Usage d’équipements',
     ])
   })
 
@@ -59,15 +59,15 @@ describe('textes FR', () => {
     expect(U.cards.mine.info).not.toMatch(/classement/)
   })
 
-  it('infobulles et légendes : camp, adversaire, reste du camp', () => {
+  it('infobulles et légendes : équipe, adversaire, reste de l’équipe', () => {
     expect(E.fil.pointTip({ match: 'M', outcome: null, resource: 'Bonus', us: 3, them: 2, pct: '60 %', cumUs: 3, cumTotal: 5, cumPct: '60 %' })).toBe(
-      'M\nBonus : camp 3, adversaire 2 (60 %)\nCumul : 3 sur 5 (60 %)',
+      'M\nBonus : équipe 3, adversaire 2 (60 %)\nCumul : 3 sur 5 (60 %)',
     )
-    expect(E.yield.tip('Bonus', 'frags par minute d’effet', 3, 2.7, '+11 %')).toBe('Bonus · frags par minute d’effet\nCamp 3,0, adversaire 2,7 : +11 %')
-    expect(E.grid.cellTip('Camouflage', 4, 1, '80 %')).toBe('Camouflage : camp 4, adversaire 1 (80 %)')
-    expect(U.cards.mine.meTip('JGtm', 'Camouflage', 3, 7)).toBe('JGtm · Camouflage\n3 des 7 prises du camp')
-    expect(U.cards.mine.rest).toBe('Reste du camp')
-    expect(U.sheet.lineTip('JGtm', 'Drapeau', 'Captures', '2', '5', '40 %')).toBe('JGtm · Drapeau\nCaptures : 2 des 5 du camp (40 %)')
+    expect(E.yield.tip('Bonus', 'frags par minute d’effet', 3, 2.7, '+11 %')).toBe('Bonus · frags par minute d’effet\nÉquipe 3,0, adversaire 2,7 : +11 %')
+    expect(E.grid.cellTip('Camouflage', 4, 1, '80 %')).toBe('Camouflage : équipe 4, adversaire 1 (80 %)')
+    expect(U.cards.mine.meTip('JGtm', 'Camouflage', 3, 7)).toBe('JGtm · Camouflage\n3 des 7 prises de l’équipe')
+    expect(U.cards.mine.rest).toBe('Reste de l’équipe')
+    expect(U.sheet.lineTip('JGtm', 'Drapeau', 'Captures', '2', '5', '40 %')).toBe('JGtm · Drapeau\nCaptures : 2 des 5 de l’équipe (40 %)')
   })
 
   it('carte par carte', () => {
@@ -97,10 +97,10 @@ describe('textes FR', () => {
       'Servi',
       'Gardé sans servir',
       'Lâché',
-      'Barre fine : reste du camp',
+      'Barre fine : reste de l’équipe',
     ])
     expect(U.cards.equipment.unmeasured).toBe('Non mesuré : ni prise ni usage publiés pour cette famille')
-    expect(U.cards.equipment.restLine(146, 7, 151)).toBe('reste du camp : 146 servis · 7 gardés · 151 lâchés')
+    expect(U.cards.equipment.restLine(146, 7, 151)).toBe('reste de l’équipe : 146 servis · 7 gardés · 151 lâchés')
     expect(U.cards.equipment.zeroTip('JGtm', 'Mur')).toBe('Mur : 0 objet pour JGtm')
   })
 })
@@ -116,15 +116,15 @@ describe('textes EN', () => {
       'Isolation',
     ])
     expect([EMPRISE_TEXT_SOLO.en.control.title, EMPRISE_TEXT_SOLO.en.grid.title, EN.cards.mine.title, EN.cards.equipment.title]).toEqual([
-      'Pickups by side',
-      'Pickups by side, by map',
-      'Player’s share of the side’s pickups',
-      'Equipment: used, kept, dropped',
+      'Resource control',
+      'Resource control, by map',
+      'Pickup contribution',
+      'Equipment use',
     ])
   })
 
   it('libellés de camp', () => {
-    expect([E.ourSide, O.ourSide]).toEqual(['Camp', 'Camp'])
-    expect([EMPRISE_TEXT_SOLO.en.ourSide, OBJECTIF_TEXT_SOLO.en.ourSide]).toEqual(['Side', 'Side'])
+    expect([E.ourSide, O.ourSide]).toEqual(['Équipe', 'Équipe'])
+    expect([EMPRISE_TEXT_SOLO.en.ourSide, OBJECTIF_TEXT_SOLO.en.ourSide]).toEqual(['Team', 'Team'])
   })
 })

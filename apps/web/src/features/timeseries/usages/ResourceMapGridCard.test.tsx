@@ -1,7 +1,7 @@
 /**
- * ResourceMapGridCard.test.tsx — « Prises par camp, par carte » : une colonne par carte
+ * ResourceMapGridCard.test.tsx — « Contrôle des ressources, par carte » : une colonne par carte
  * (nom, matchs, bilan V / D / A), la colonne « Autres cartes » et son nombre de cartes, les cases de
- * la table de l'Emprise et l'infobulle « Camp : … » ouverte par l'en-tête de la carte.
+ * la table de l'Emprise et l'infobulle « Équipe : … » ouverte par l'en-tête de la carte.
  */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -28,7 +28,7 @@ const text = (id: string) => screen.getByTestId(id).textContent ?? ''
 describe('ResourceMapGridCard', () => {
   it('titre', () => {
     renderCard()
-    expect(screen.getByText('Prises par camp, par carte')).toBeTruthy()
+    expect(screen.getByText('Contrôle des ressources, par carte')).toBeTruthy()
   })
 
   it('en-têtes : nom, matchs, V / D ; « A » seulement quand il y a d’autres issues', () => {
@@ -50,13 +50,13 @@ describe('ResourceMapGridCard', () => {
     expect(cells).toContain('untiered')
   })
 
-  it('infobulle : l’en-tête de la carte, puis « Camp : … »', () => {
+  it('infobulle : l’en-tête de la carte, puis « Équipe : … »', () => {
     renderCard()
     const camo = Array.from(screen.getByTestId('emprise-grid-table').querySelectorAll('[data-cell="value"]'))[2]
     fireEvent.mouseEnter(camo.parentElement!)
     const tip = screen.getByRole('tooltip').textContent ?? ''
     expect(tip).toContain('Carte Alpha (2 matchs, 2 filmés)')
-    // Le joueur d'abord, puis le reste du camp (maquette), quel que soit le volume.
-    expect(tip).toContain('Camp : JGtm 15, reste du camp 35')
+    // Le joueur d'abord, puis le reste de l’équipe (maquette), quel que soit le volume.
+    expect(tip).toContain('Équipe : JGtm 15, reste de l’équipe 35')
   })
 })
