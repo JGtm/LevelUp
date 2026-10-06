@@ -1,6 +1,6 @@
 # Lot L2 — les composants `device-*` de `ti=43` lus dans le jeu, et sa réparation (2026-10-02)
 
-> Lot L2 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L2, §6.3 D19), sous le contrat
+> Lot L2 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (§6.2 L2, §6.3 D19), sous le contrat
 > `plan-execution`, dans le cadre de la décision du 2026-10-02 au soir : **corrections d'abord,
 > uniquement générales, lues dans le jeu** (aucun réglage par film, par carte ni par version).
 >

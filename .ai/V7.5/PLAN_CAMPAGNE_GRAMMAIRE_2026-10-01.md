@@ -1,5 +1,9 @@
 # PLAN — Campagne de recherche sur la grammaire du jeu, phase 1 (2026-10-01)
 
+> **Statut : CAMPAGNE CLOSE le 2026-10-06** (utilisateur, question en langage clair : « Clore, mesure
+> d'abord » ; « Non, grammaire d'abord » pour la reprise en queue). Bilan et pistes restantes : §7 ;
+> pistes au registre `.ai/REGISTRE_REPORTS.md`. Ce plan vit désormais sous `.ai/V7.5/`.
+>
 > **Statut : PHASE 1 CLOSE le 2026-10-02 (tous les items statués) ; PHASE 2 EN ATTENTE des décisions
 > du §6.3 et d'un GO daté par lot ; rien ne se fusionne avant J12.** Phase 1 lancée le 2026-10-01
 > sur décision de l'utilisateur du même jour
@@ -234,6 +238,18 @@ production modifiée (aucun fichier lu par une cuisson changé hors `frame_closu
   accordee par le pilote le 2026-10-05, non lue dans le jeu.
 - **2026-10-06 (utilisateur, question en langage clair) : « Oui, integre »** — LR entre dans `feat/v75` a la CI verte ;
   une seule recuisson apres l etape V2 de la vue A.
+
+- **2026-10-06 (utilisateur, question en langage clair) : « Oui, intègre et recuis »** — V2 et V3 de la
+  vue A entrent dans `feat/v75` à la CI verte (fait : `2707fdb31`, avance rapide, après relecture de
+  levelup-57 sans P0), puis le parc est recuit (fait : 126 rejeux, §7).
+- **2026-10-06 (utilisateur, question en langage clair) : « Clore, mesure d'abord »** — la campagne est
+  close ; les pistes restantes vont au registre, la suite se décide sur la mesure des lectures perdues
+  de levelup-57 (reçue le même soir, §7).
+- **2026-10-06 (utilisateur, question en langage clair) : « Non, grammaire d'abord »** — pas de reprise
+  après la queue opaque d'une trame partie de E (prochaine signature du slot 123 après le point
+  d'arrêt) : c'est une convention, non lue dans le jeu. La cure est la grammaire des composants où la
+  marche depuis E bute ; la question ne revient que si une mesure montre de vraies pertes de tirs ou
+  d'états.
 
 ## 4. Journal
 
@@ -2995,3 +3011,54 @@ et LM placé 3e malgré son gain (critique R point 4)* :
 | point E23 | R-L1 (b) généralisé | D-113 ; mesure préalable des sous-groupes avant L0.6 (§6.0) | traité (mesure à lancer) |
 | point E24 | Python sans décision | D-102 vérifié ; D21 | traité ; à trancher (D21) |
 | point E25 | Ligne vide manquante dans le journal | l'entrée de la campagne en cause porte sa ligne vide dans `df228c24c` (vérifié) ; trois entrées du 2026-10-02 venues de `feat/v75` (autres sessions) restent collées, non touchées (règle 5) | traité pour la campagne |
+
+## 7. Clôture (2026-10-06)
+
+Close sur décision de l'utilisateur du 2026-10-06 (§3). Tous les lots engagés sont statués ; les lots
+non engagés et les découvertes ouvertes passent au registre des reports, chacun avec sa condition de
+reprise.
+
+### 7.1 Ce qui est entré dans `feat/v75`
+
+| Lot | Fusion | Effet mesuré (paquets sains, carte v2, 20 films) |
+|---|---|---|
+| L0 — définition de la fermeture (invariants de l'écrivain) | seul, sans recuisson (décision du 2026-10-02) | juge de tous les gates, aucun gain propre |
+| Vague 1 — L8, L3a, L4a | `2393d7db7` | +37 168 ; 4 témoins recuits puis parc |
+| Vague 2 — LU, LT | `87cdfa761` | rc 1 du gate de corpus instruit et admis ; parc recuit |
+| LR — état de création illisible (MPP ≥ 5), début non prouvé | `fed1efed2` | +1 311 (sous MPP déclaré) |
+| Vue A V1, puis V2 et V3 — fin de la vue A lue (E), classes ÉGALE / PRÉFIXE, variante de partie | V1 avec l'étape 2 de la RI ; V2 + V3 `2707fdb31` | +53 004 contre `b033d30f0` (399 135 → 452 139), aucun film en baisse, killsource identique sur 19 témoins |
+
+Non retenus (rapports `LOT_*.md`) : L2, L9, LS, LP, LN. Rejeté par la mesure : L7. Sortis : L1b (devenu
+la vue A), L1c, L5.
+
+### 7.2 Recuisson finale du parc (binaire de `2707fdb31`)
+
+`backfill-replay --only-existing` : 126 rejeux construits, tous redécodés (faits au schéma 5), 0 erreur
+de décodage, 0 mort mémoire, pic 1,35 Gio, 32 min 34 s ; aucune vie anonyme. Avertissements du
+journal : mêmes familles qu'à la recuisson précédente (`objectives.deroulage_rejete`,
+`bornes_appliquees`, `serie_non_chronologique`, `grammar.grenade_couverture`,
+`grammar.anticipation_active`, `killsource.bots_non_epingles`), aucune famille neuve.
+
+### 7.3 Mesures de clôture
+
+- Liste des 2 449 paquets `DebutParFermeture` de la RI (2.7.b), rejouée sur la carte de `2707fdb31` :
+  2 358 mesurés (91 sur 7 films hors carte) ; 829 ont désormais un début LU (824 fermés, 5 ne ferment
+  plus sur `d9781168`, comptés dans les pertes E de V2) ; 1 529 restent localisés (1 377 sur
+  `1c4c63c2`, film ancien HI_1_10_0).
+- Lectures des huit lecteurs de la RI (levelup-57, 20 films, avec et sans V2/V3) : +806 records, −51.
+  Pertes : 32 annonces d'emplacement vide (`i45`, Restated) dans trois paquets de mise en place ;
+  quelques ancres démenties par une trame désormais fermée depuis E (correct) ; environ 15 records
+  isolés réellement perdus dans des paquets que la marche depuis E ne mène pas au bout. D'où la
+  décision « grammaire d'abord » (§3).
+
+### 7.4 Pistes restantes (au registre)
+
+1. Composants où la marche depuis E bute (pertes E de V2, `LOT_VA_V2.md` §5.1 ; handoff
+   `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md`) : `ti=43 i19` (139),
+   `ti=12 i16` (61), `ti=45 i0` (19), `ti=10 i2` (19), `ti=12 i18` (7), `ti=43 i21` (6), et les arrêts
+   en vue C (56) et par rejet (37).
+2. Lots non engagés du §6.1 : L1a, L6a, L6b, L3b, L4b, LK, L10 ; LM mis de côté (largeur mesurée, non
+   lue).
+3. Découvertes ouvertes : D-VAV1-6 (copie triple de `FUN_1407f15a4`, exemption datée) ; D-VAV2-7 ;
+   D-VAV3-6 (seuil de 3 m du banc de vérité) ; tir de l'ancien format (3 bits, format 24) non lu ;
+   dépendance du genre 85 à un réglage d'exécution ; refus de E non nommé sur les films PRÉFIXE.

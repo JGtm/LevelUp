@@ -5,7 +5,7 @@ Je n'ai rien modifié et je n'ai lancé aucune commande `go`. Les recomptages on
 Le worktree n'est pas dans l'état décrit par la mission. Sa HEAD n'est pas détachée sur `fe18bf67c` : il est sur la branche `feat/campagne-grammaire` @ `da7c2c764` (post-J12). Il contient 180 fichiers non suivis (176 intégrés et 4 `overlay_campagne.json`), et le plan, le rapport et `thought_log.md` sont modifiés sans être commités.
 
 Chemins abrégés :
-- PLAN = `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`
+- PLAN = `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-campagne-grammaire/.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`
 - RAPPORT = `.../.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md`
 - `CG/` = `.../.ai/V7.5/film_re/campagne_grammaire_2026-10-01/`
 

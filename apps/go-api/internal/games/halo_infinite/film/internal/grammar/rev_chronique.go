@@ -46,7 +46,7 @@ package grammar
 // VIVANTE, a partir du `grammar-2026-10-02`.
 
 // ENTREE `grammar-2026-10-02` (2026-10-02, lot L0 de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FERMETURE D UN PAQUET SUIT LES REGLES DE
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FERMETURE D UN PAQUET SUIT LES REGLES DE
 // L ECRIVAIN (decision D2).
 //
 // Un paquet delta est FERME quand sa vue C se lit jusqu a son terminateur avec un reste de 0 a 7
@@ -80,7 +80,7 @@ package grammar
 // etapes sur 61 divergent sur les 20 films, les 56 autres sont identiques a l octet.
 //
 // ENTREE `grammar-2026-10-02.2` (2026-10-02, lot L8 de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `ti=3 low-frequency` EST PORTE, ET `high-frequency`
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `ti=3 low-frequency` EST PORTE, ET `high-frequency`
 // SE LIT PAR LA TABLE DE L ARCHETYPE.
 //
 // `low-frequency` (`ti=3 i0`) se lit par FUN_142ed4aec (table 0x143d07b40, ecrivain FUN_142eda938) :
@@ -96,7 +96,7 @@ package grammar
 // plus loin (carte de fermeture et mesures : `campagne_grammaire_2026-10-01/LOT_L8.md`).
 //
 // ENTREE `grammar-2026-10-02.3` (2026-10-02, lot L3a de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU.
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU.
 //
 // Six composants des archetypes du moteur (`ti=0`, `ti=1`, `ti=2`, index `i11` a `i17`) passent de
 // « non porte » (arret du record) a porte, chacun sur son lecteur et son ecrivain relus dans
@@ -113,7 +113,7 @@ package grammar
 // instruites : `campagne_grammaire_2026-10-01/LOT_L3a.md`.
 //
 // ENTREE `grammar-2026-10-03` (2026-10-03, lot L4a de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a
 // i47) SE LISENT DANS LES RECORDS A MASQUE, ET LA PORTE `+0x818` EST UNE LOI DU MASQUE.
 //
 // Ce qui change : `composants_vehicule_ti40.go`, dernier maillon de la chaine de dispatch, lit
@@ -142,7 +142,7 @@ package grammar
 // `replay.SchemaVersion` ne monte pas, la revision des calques le signale.
 //
 // ENTREE `grammar-2026-10-03.2` (2026-10-03, integration de la vague 1 de la campagne de grammaire
-// et corrections de sa revue adverse, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `low-frequency`
+// et corrections de sa revue adverse, `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `low-frequency`
 // N EST PAS PORTE DANS UN ETAT COMPLET D IMAGE-CLE, ET LA TETE PORTE UNE VALEUR A ELLE.
 //
 // La boucle d etat complet du jeu (`FUN_142e2c690`) pose la portee `DAT_144e61ea0` sur toute la
@@ -164,7 +164,7 @@ package grammar
 // recopiee, cf. sa chronique) ; `replay.SchemaVersion` reste 77.
 //
 // ENTREE `grammar-2026-10-03.3` (2026-10-04, lot LS de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA SIGNATURE DU LOCALISATEUR SE LIT SUR TOUT OBJET DE
 // L ARCHETYPE `high-frequency`, PAS SUR LE SEUL SLOT 123.
 //
 // Ce qui change (`localisateur.go`) : dans un paquet a evenements dont le slot 123 ne porte aucune
@@ -186,7 +186,7 @@ package grammar
 // campagne.
 //
 // ENTREE `grammar-2026-10-03.4` (2026-10-04, lot LT de la campagne de grammaire,
-// `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA PREUVE PAR CHAINE REFUSE UN RECORD DONT LE
 // MASQUE CONTREDIT L ECRIVAIN.
 //
 // Ce qui change (`debut_de_liste.go`, [pasDEssai]) : la chaine de tete d une liste d evenements
@@ -204,7 +204,7 @@ package grammar
 // chaine de tete).
 //
 // ENTREE `grammar-2026-10-03.5` (2026-10-04, vague 2 de la campagne de grammaire apres sa revue
-// adverse, `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LU ET LT SUR `feat/v75`, LS RETIRE ; LA
+// adverse, `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LU ET LT SUR `feat/v75`, LS RETIRE ; LA
 // CHAINE DE TETE SUIT L ORDRE DE LA VUE B ; LA LARGEUR DE LA SIGNATURE SE DERIVE DU CADRE.
 //
 // Ce qui change, contre `grammar-2026-10-03.2` tel que `feat/v75` le porte (`6fa631df0`) :

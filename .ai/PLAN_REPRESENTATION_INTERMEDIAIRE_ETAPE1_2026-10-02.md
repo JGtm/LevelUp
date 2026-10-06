@@ -67,7 +67,7 @@ tests de la spec (T1 fermeture, T3 provenance, T5 robustesse, T6 déterminisme).
   -update` sur le corpus) et rejoue sa preuve « zéro différence » contre elles.
 
 ### 1.3 Coordination avec la campagne de grammaire (session parallèle)
-La campagne (`feat/campagne-grammaire`, plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, sur le PC
+La campagne (`feat/campagne-grammaire`, plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, sur le PC
 de la session « campagne de grammaire ») change des sorties du décodeur par lots. Propriété des
 fichiers pendant cette étape :
 

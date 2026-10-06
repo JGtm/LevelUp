@@ -20,7 +20,7 @@
 >   récupération), §3.7 (ratchets), §3.8 (migration, fichiers et risques par lot) ;
 > - `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md` — §6 (découvertes) et §7 (journal :
 >   pièges d'exploitation) ;
-> - `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` — §3 (décisions), §6.1 et §6.2 (lots des vagues 1 et
+> - `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` — §3 (décisions), §6.1 et §6.2 (lots des vagues 1 et
 >   2), pour la coordination du §1.3 ;
 > - `CLAUDE.md` (règles, dont la règle 17 sur les commentaires).
 >

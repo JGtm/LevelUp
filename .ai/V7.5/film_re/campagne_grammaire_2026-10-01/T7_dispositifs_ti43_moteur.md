@@ -1,6 +1,6 @@
 # T7 — Dispositifs `ti=43` et moteur `ti=2` (campagne grammaire, phase 1, 2026-10-01)
 
-> Piste T7 du plan `.ai/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (etape 2). Sans production :
+> Piste T7 du plan `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md` (etape 2). Sans production :
 > aucune commande `go`, aucun film decode, aucune base ouverte, rien d'ecrit hors de ce fichier.
 > Sources : `HaloInfinite.exe` dans Ghidra, LECTURE SEULE (HTTP `127.0.0.1:8089` :
 > `decompile_function`, `disassemble_function`, `read_memory`, `search_strings`, `get_xrefs_to`) ;
