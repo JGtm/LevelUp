@@ -3,8 +3,8 @@
 // les pose sur la session affichée et, tiroir ouvert, sur la session comparée.
 //
 // UNE LECTURE DU RÉSUMÉ D'USAGE PAR SESSION (ADR 0036 I4) : films, joueurs et participants sont lus
-// une fois par scope et partagés par le bloc d'usage, l'Emprise, l'objectif et l'effectif de camp
-// de la coordination.
+// une fois par scope et partagés par l'Emprise, l'objectif et l'effectif de camp de la
+// coordination.
 package service
 
 import (
@@ -17,7 +17,6 @@ import (
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
-	"levelup/go-api/internal/service/teammates"
 )
 
 // pageSessions — l'attribut `page` des journaux des blocs partagés (Emprise solo, vies).
@@ -30,11 +29,9 @@ type sessionBlocksDeps struct {
 	// (WithSessionEmprise, câblage inconditionnel).
 	sessionXUID string
 	// sessionUsageRepo : le résumé d'usage (vues _latest), câblé sous film.usage_summary ; nil =
-	// titre sans résumé. usageXUID / usageFriends / repoRoot : le bloc d'usage historique de la page
-	// (session_page_usage.go) ; repoRoot sert aussi au catalogue d'armes de l'Emprise.
+	// titre sans résumé. repoRoot : les catalogues du titre (noms d'armes et de véhicules de
+	// l'Emprise) ; vide = les objets gardent leur clé.
 	sessionUsageRepo port.SessionUsageRepository
-	usageXUID        string
-	usageFriends     teammates.FriendGamertagsResolver
 	repoRoot         string
 	// empriseRepo : la feuille de match (frags aux armes spéciales), tous titres.
 	empriseRepo port.SquadEmpriseRepository
@@ -50,6 +47,15 @@ type sessionBlocksDeps struct {
 	formesObjectives port.SquadFormesObjectiveRepository
 	// roundsDecide : game_variant_name -> le résultat se lit en manches (ADR 0032).
 	roundsDecide map[string]bool
+}
+
+// WithSessionUsageSummary injecte le résumé d'usage et la racine des catalogues du titre. Câblé sous
+// film.usage_summary (jamais slug==) ; nil = titre sans résumé : l'Emprise ne garde que la feuille
+// de match, l'objectif et l'effectif de camp de la coordination se retirent.
+func (s *SessionPageService) WithSessionUsageSummary(repo port.SessionUsageRepository, repoRoot string) *SessionPageService {
+	s.sessionUsageRepo = repo
+	s.repoRoot = repoRoot
+	return s
 }
 
 // WithSessionEmprise injecte la feuille de match et le joueur de la page. Câblage inconditionnel :
@@ -112,7 +118,6 @@ func (s *SessionPageService) attachSessionBlocks(
 	if len(sc.CompareMatches) > 0 {
 		lus.compare = s.lireUsageDeSession(ctx, sc.CompareMatches)
 	}
-	s.attachSessionUsage(ctx, resp, sc, lus)
 	s.attachSessionCoordination(ctx, resp, sc, s.effectifsDeCamp(lus.courant), s.effectifsDeCamp(lus.compare))
 	s.attachSessionEmprise(ctx, resp, sc, canon, lus)
 	s.attachSessionLives(ctx, resp, sc)

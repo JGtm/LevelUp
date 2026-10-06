@@ -63,7 +63,9 @@ func TestTimeseriesPage_ParticipantsLusUneFoisPourLesDeuxConsommateurs(t *testin
 			fragDeTest("m1", "P", 1000), fragDeTest("m1", "A", 2000), fragDeTest("m2", "E1", 3000),
 		}}, "P").
 		WithSquadFormes(formes, nil).
-		WithTimeseriesCoordination(&tacticalRepoParScope{}, &appuisRepoStub{},
+		WithTimeseriesCoordination(&tacticalRepoParScope{}, &appuisRepoStub{rows: []domain.CoordinationAppuiRow{
+			{MatchID: "m1", AssistXUID: "A", KillerXUID: "P", Nombre: 1},
+		}},
 			games.CapabilityMap{games.CapFilmKillSource: games.CapSupported})
 
 	ctx, chrono := timing.WithTimings(context.Background())
@@ -86,7 +88,7 @@ func TestTimeseriesPage_ParticipantsLusUneFoisPourLesDeuxConsommateurs(t *testin
 	if len(resp.IntensityRowsTeam) == 0 {
 		t.Error("courbe d'équipe absente : la lecture partagée n'a pas nourri le profil d'intensité")
 	}
-	if resp.Coordination == nil || resp.Coordination.Riposte.ParityPct == nil {
+	if resp.Coordination == nil || resp.Coordination.Appui.ParityPct == nil {
 		t.Errorf("coordination = %+v : la parité devait venir des effectifs de la lecture partagée", resp.Coordination)
 	}
 }

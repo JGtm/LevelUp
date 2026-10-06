@@ -73,10 +73,14 @@ func TestSessionPage_SourcesSousLeurPorte(t *testing.T) {
 	}
 }
 
-// Le résumé d'usage reste sous la seule porte film.usage_summary.
+// Le résumé d'usage reste sous la seule porte film.usage_summary, posé par le câblage des blocs ; la
+// factory ne câble plus le bloc d'usage retiré (plan, S5).
 func TestSessionPage_LeResumeDUsageResteSousFilmUsageSummary(t *testing.T) {
-	appels := appelsDansSessionPage(t, "WithSessionUsage")
+	appels := appelsDansBlocsSessions(t, "WithSessionUsageSummary")
 	if len(appels) != 1 || len(appels[0].portes) != 1 || !strings.Contains(appels[0].portes[0], "games.CapFilmUsageSummary") {
-		t.Errorf("WithSessionUsage = %+v : attendu un appel sous la seule porte games.CapFilmUsageSummary", appels)
+		t.Fatalf("WithSessionUsageSummary = %+v : attendu un appel sous la seule porte games.CapFilmUsageSummary", appels)
+	}
+	if got := strings.Join(appels[0].args, ", "); got != "duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot" {
+		t.Errorf("WithSessionUsageSummary(%s) : attendu le résumé d'usage et la racine du dépôt", got)
 	}
 }

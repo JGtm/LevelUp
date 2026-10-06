@@ -9,7 +9,7 @@ import (
 
 // SessionUsageRepository charge, sur un scope fermé de matchs (la session
 // affichée), les lignes du résumé d'usage S1 et l'appartenance de camp — les
-// entrées de sessionusage.ComputeUsage (bloc « usages » de la page Sessions).
+// lignes que lisent l'Emprise et les formes retenues (Escouade, Séries temporelles, Sessions).
 //
 // LECTURE PAR LES VUES `_latest` UNIQUEMENT (ADR 0026) : une lecture des tables
 // brutes servirait les lignes d'une passe précédente. L'absence d'une ligne film

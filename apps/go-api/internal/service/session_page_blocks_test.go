@@ -26,7 +26,7 @@ func serviceDeBlocs(usage *mockSessionUsageRepo) *SessionPageService {
 		WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
 		WithSessionEmprise(feuilleDeTest(), "P")
 	if usage != nil {
-		svc = svc.WithSessionUsage(usage, "P", nil, "")
+		svc = svc.WithSessionUsageSummary(usage, "")
 	}
 	return svc
 }
@@ -53,16 +53,16 @@ func TestAttachSessionBlocks_UneLectureDuResumeDUsageParSession(t *testing.T) {
 		svc := NewSessionPageService(nil).
 			WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
 			WithSessionEmprise(feuilleDeTest(), "P").
-			WithSessionUsage(usage, "P", nil, "")
+			WithSessionUsageSummary(usage, "")
 		sc, canon := sessionsDeTest(cas.compare)
 		var resp domain.SessionPageResponse
 		svc.attachSessionBlocks(context.Background(), &resp, sc, canon)
 		if usage.films != cas.want {
 			t.Errorf("comparaison %v : %d lecture(s) des films, attendu %d (une par session)", cas.compare, usage.films, cas.want)
 		}
-		if resp.Usage == nil || resp.Emprise == nil || resp.FormesRetenues == nil {
-			t.Errorf("comparaison %v : usage %v, emprise %v, formes %v — la lecture partagée doit les nourrir tous",
-				cas.compare, resp.Usage != nil, resp.Emprise != nil, resp.FormesRetenues != nil)
+		if resp.Emprise == nil || resp.FormesRetenues == nil {
+			t.Errorf("comparaison %v : emprise %v, formes %v — la lecture partagée doit les nourrir tous",
+				cas.compare, resp.Emprise != nil, resp.FormesRetenues != nil)
 		}
 	}
 }
@@ -165,7 +165,7 @@ func TestAttachSessionBlocks_EmpriseDegradations(t *testing.T) {
 	} {
 		var resp domain.SessionPageResponse
 		NewSessionPageService(nil).WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
-			WithSessionEmprise(feuilleFixe{err: cas.err}, "P").WithSessionUsage(usageTestRepoMock(), "P", nil, "").
+			WithSessionEmprise(feuilleFixe{err: cas.err}, "P").WithSessionUsageSummary(usageTestRepoMock(), "").
 			attachSessionBlocks(context.Background(), &resp, sc, canon)
 		if resp.Emprise == nil || resp.Emprise.SheetUnavailable != cas.want {
 			t.Errorf("feuille %v : emprise = %+v, attendu %q", cas.err, resp.Emprise, cas.want)

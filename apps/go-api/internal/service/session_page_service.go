@@ -296,8 +296,8 @@ func (s *SessionPageService) GetPage(
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
-	// Blocs « usages » et « Coordination » — session courante ET session comparée (D8),
-	// best-effort, cf. session_page_usage.go et session_page_coordination.go.
+	// Blocs du film et « Coordination » — session courante ET session comparée (D8),
+	// best-effort, cf. session_page_blocks.go et session_page_coordination.go.
 	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc les
 	// deux colonnes du drawer parlent bien des mêmes matchs. `filtered` est la PÉRIODE DE
 	// RÉFÉRENCE du repère d'habituel (celle du filtre de la page, toutes sessions).

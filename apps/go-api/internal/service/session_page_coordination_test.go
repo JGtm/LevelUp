@@ -71,7 +71,7 @@ func restreindreLectureDeTest(src domain.TacticalKillEvents, ids []string) domai
 
 func serviceDeCoordination(tactical port.TacticalRepository) *SessionPageService {
 	return NewSessionPageService(nil).
-		WithSessionUsage(usageTestRepoMock(), "P", nil, "").
+		WithSessionUsageSummary(usageTestRepoMock(), "").
 		WithSessionEmprise(nil, "P"). // D9 : le joueur de la coordination
 		WithSessionCoordination(tactical, &appuisRepoStub{rows: []domain.CoordinationAppuiRow{
 			{MatchID: "m1", AssistXUID: "A", KillerXUID: "P", Nombre: 1},
@@ -105,9 +105,12 @@ func TestAttachSessionCoordination_MiroirServiQuandLaComparaisonEstDemandee(t *t
 		t.Errorf("compare matches_total = %d, attendu 1 : le miroir porte les matchs de la session comparée",
 			resp.CompareCoordination.MatchesTotal)
 	}
-	// La session comparée (m2) est celle où JE meurs et où un coéquipier riposte.
-	if got := resp.CompareCoordination.Riposte.JeSuisCouvert; got.N != 1 || got.Brut != 1 {
-		t.Errorf("compare je suis couvert = %d/%d, attendu 1/1", got.Brut, got.N)
+	// Chaque colonne compte SES appuis : m1 porte mes deux frags mesurés, m2 aucun.
+	if got := resp.Coordination.Appui.OnMePrepare; got.N != 2 || got.Brut != 1 {
+		t.Errorf("on me prépare = %d/%d, attendu 1/2", got.Brut, got.N)
+	}
+	if got := resp.CompareCoordination.Appui.OnMePrepare; got.N != 0 {
+		t.Errorf("compare on me prépare = %d/%d, attendu aucun frag mesuré (m2 n'a pas d'appui)", got.Brut, got.N)
 	}
 }
 
@@ -137,10 +140,6 @@ func TestAttachSessionCoordination_HabituelDeLaPeriodeDeReference(t *testing.T) 
 	if resp.Coordination == nil {
 		t.Fatal("coordination = nil")
 	}
-	// Sur la référence (m1 + m2) je meurs une fois, et cette mort est ripostée : 100 %.
-	if got := resp.Coordination.Riposte.HabituelPct; got == nil || *got != 100 {
-		t.Errorf("riposte.habituel_pct = %v, attendu 100", got)
-	}
 	// Sur la référence, un de mes deux frags mesurés m'a été préparé : 50 %.
 	if got := resp.Coordination.Appui.HabituelPct; got == nil || *got != 50 {
 		t.Errorf("appui.habituel_pct = %v, attendu 50", got)
@@ -159,9 +158,9 @@ func TestAttachSessionCoordination_PasDHabituelQuandLaReferenceEstTautologique(t
 	if resp.Coordination == nil {
 		t.Fatal("coordination = nil")
 	}
-	if resp.Coordination.Riposte.HabituelPct != nil || resp.Coordination.Appui.HabituelPct != nil {
-		t.Errorf("habituel = %v / %v, attendu absent : la référence se réduit au scope mesuré",
-			resp.Coordination.Riposte.HabituelPct, resp.Coordination.Appui.HabituelPct)
+	if resp.Coordination.Appui.HabituelPct != nil {
+		t.Errorf("habituel = %v, attendu absent : la référence se réduit au scope mesuré",
+			*resp.Coordination.Appui.HabituelPct)
 	}
 	if len(tactical.appels) != 1 {
 		t.Errorf("%d lectures du journal des morts, attendu 1 : une référence tautologique ne se lit pas",
@@ -169,17 +168,12 @@ func TestAttachSessionCoordination_PasDHabituelQuandLaReferenceEstTautologique(t
 	}
 }
 
-// lectureAvecReference — lectureDeTest plus m3, un match de la période de référence hors
-// des deux sessions : E1 me tue à 1 s, et personne ne le venge dans la fenêtre (je le tue
-// moi-même à 8 s).
+// lectureAvecReference — lectureDeTest plus m3, un match MESURÉ de la période de référence hors
+// des deux sessions.
 func lectureAvecReference() domain.TacticalKillEvents {
 	l := lectureDeTest()
 	l.Univers.Matchs = append(l.Univers.Matchs, domain.TacticalMatch{MatchID: "m3", Mesure: true})
 	l.Univers.Equipes["m3"] = map[string]int{"P": 0, "A": 0, "E1": 1}
-	l.Events = append(l.Events,
-		domain.KillEvent{MatchID: "m3", KillerXUID: "E1", VictimXUID: "P", TimeMs: 1000},
-		domain.KillEvent{MatchID: "m3", KillerXUID: "P", VictimXUID: "E1", TimeMs: 8000},
-	)
 	return l
 }
 
@@ -195,7 +189,7 @@ func appuisAvecReference() []domain.CoordinationAppuiRow {
 
 func serviceAvecReference(tactical *tacticalRepoParScope, appuis *appuisRepoStub) *SessionPageService {
 	return NewSessionPageService(nil).
-		WithSessionUsage(usageTestRepoMock(), "P", nil, "").
+		WithSessionUsageSummary(usageTestRepoMock(), "").
 		WithSessionEmprise(nil, "P"). // D9 : le joueur de la coordination
 		WithSessionCoordination(tactical, appuis, games.CapabilityMap{games.CapFilmKillSource: games.CapSupported})
 }
@@ -226,7 +220,7 @@ func TestAttachSessionCoordination_UneLectureParMatch(t *testing.T) {
 	if got := fmt.Sprint(appuis.appels); got != want {
 		t.Errorf("lectures des appuis = %s, attendu %s : chaque match lu une fois", got, want)
 	}
-	if resp.Coordination == nil || resp.Coordination.Riposte.HabituelPct == nil {
+	if resp.Coordination == nil || resp.Coordination.Appui.HabituelPct == nil {
 		t.Fatalf("coordination = %+v : la référence (non tautologique) devait poser un habituel", resp.Coordination)
 	}
 }
@@ -255,7 +249,6 @@ func TestAttachSessionCoordination_PariteAvecLesLecturesSeparees(t *testing.T) {
 	wantCompare := unScope([]string{"m2"}, compareTeamSize)
 	ref := unScope([]string{"m1", "m2", "m3"}, nil)
 	for _, bloc := range []*domain.CoordinationBlock{wantCourant, wantCompare} {
-		bloc.Riposte.HabituelPct = tauxOuRien(ref.Riposte.JeSuisCouvert)
 		bloc.Appui.HabituelPct = tauxOuRien(ref.Appui.OnMePrepare)
 	}
 
@@ -265,11 +258,8 @@ func TestAttachSessionCoordination_PariteAvecLesLecturesSeparees(t *testing.T) {
 	if !reflect.DeepEqual(resp.CompareCoordination, wantCompare) {
 		t.Errorf("session comparée :\n got %+v\nwant %+v", resp.CompareCoordination, wantCompare)
 	}
-	// Garde-fou de l'oracle lui-même : sur la référence, une de mes deux morts est vengée
-	// (50 %), un de mes trois frags mesurés m'a été préparé.
-	if got := resp.Coordination.Riposte.HabituelPct; got == nil || *got != 50 {
-		t.Errorf("riposte.habituel_pct = %v, attendu 50", got)
-	}
+	// Garde-fou de l'oracle lui-même : sur la référence, un de mes trois frags mesurés m'a été
+	// préparé.
 	if got := resp.CompareCoordination.Appui.HabituelPct; got == nil || *got < 33.3 || *got > 33.4 {
 		t.Errorf("appui.habituel_pct = %v, attendu 33,3", got)
 	}

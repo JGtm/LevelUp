@@ -729,12 +729,12 @@ Journal S4 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `f0a6c1b3c`) —
 Le web ne lit plus `usage`, `compare_usage` ni la riposte depuis S4. Depuis le rebase sur
 `262e36b2e`, §4.F (anciens orphelins d'intersection) est dans ce lot.
 
-- [ ] S5.1 Rejouer les preuves §4.D, §4.E et §4.F (producteurs et lecteurs Go et web).
-- [ ] S5.2 §4.E : chaîne Go du bloc d'usage de Sessions (fichiers, champs, `WithSessionUsage`,
+- [x] S5.1 Rejouer les preuves §4.D, §4.E et §4.F (producteurs et lecteurs Go et web).
+- [x] S5.2 §4.E : chaîne Go du bloc d'usage de Sessions (fichiers, champs, `WithSessionUsage`,
   résolveur d'amis, câblage `registry_pages.go:343-345` remplacé par le résumé d'usage seul dans
   `cablerBlocsSessions`), `objectives.go`, `ComputeFlagGrabsNet`, `ResolveTrackedSquad`,
   `objective_role_rows_repo.go`, types de domaine de §4.E ; tests supprimés avec leur code.
-- [ ] S5.3 §4.F : `ComputeUsage` et le reste de `usage.go` hors types de lecture, `usage_families.go`,
+- [x] S5.3 §4.F : `ComputeUsage` et le reste de `usage.go` hors types de lecture, `usage_families.go`,
   `newMatchPoint`, `computeOutcomes` / `attachOutcomes` / `subjectBilanFamilies`, `ComputePadTiers` /
   `PadTiersInput`, `squadagg/pad_tier_labels.go`, types de `domain/session_usage.go` listés ; tests
   suivent (`usage_test.go`, cas `ComputeUsage` et `TestBilan_MetricKeysSurLeSeulSujet` de
@@ -743,13 +743,25 @@ Le web ne lit plus `usage`, `compare_usage` ni la riposte depuis S4. Depuis le r
   [~] supprimé en S4.14 (mort dès S4), et ce que knip désigne alors, alias de
   `lib/api/types.ts:2299-2312` (plus aucun lecteur web de `SessionUsageOutcomes` /
   `SessionUsageMetric` / `SessionUsageMatchPoint` depuis S4.14).
-- [ ] S5.4 §4.D / D10 : riposte et `FenetreMs` du contrat et du calcul ; `bloc_test.go` et les tests
+- [x] S5.4 §4.D / D10 : riposte et `FenetreMs` du contrat et du calcul ; `bloc_test.go` et les tests
   du service adaptés (Appui identique avant / après : test de non-régression écrit AVANT la coupe sur
   la fixture existante) ; fixtures de `TimeseriesCoordinationSection.test.tsx` et de Sessions suivent.
-- [ ] S5.5 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
+- [x] S5.5 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
   listées.
 - Gate : gate Go + `-tags=integration -p 1 ./internal/platform/duckdb/...` + contrat + gate web ;
   preuves §4.A-F rejouées → 0.
+
+Journal S5 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `548a0b30d` ; session coupée une fois par la limite de quota, reprise sur l'état réel de l'arbre) — suppressions Go, riposte retirée du contrat :
+- **S5.4, test d'abord** : `analysis/coordination/bloc_appui_golden_test.go` (NEUF) fige octet pour octet le versant appui du bloc (couverture, deux couvertures, parité pondérée, versant appui de chaque case) sur trois scénarios ; golden `testdata/bloc_appui.golden.json` PRODUIT par le bloc d'avant la coupe (aucun fichier de coordination encore modifié), puis rejoué VERT sur l'ancien code (`bloc.go`, `bloc_appui.go`, `domain/coordination_block.go` reconstitués par `git show 548a0b30d:…`, restaurés ensuite) ET sur le nouveau : l'appui est identique avant / après.
+- **S5.1** Preuves rejouées avant chaque suppression : §4.D (lecteurs Go de la riposte : `analysis/coordination/bloc*.go`, `service/coordination_block.go`, `service/session_page_coordination.go` ; `squad_echange`, `MatchRiposteBlock`, `Echanges`, `FenetreEchangeMs`, `Ripostes` lus ailleurs et GARDÉS), §4.E (`WithSessionUsage`, objectifs, prises nettes, escouade suivie : lecteurs = fichiers supprimés + commentaires), §4.F (lecteurs qualifiés `sessionusage.*` hors paquet : `squademprise` — `PlayerOutcomeCounts`, `OutcomeCounts`, `PowerupFamilies`, `PowerupEffect`, `PadTierRow`, `BuildTeamContext`, `TeamContext` —, `squadformes` / `squadagg` — `MatchInput`, `BuildMatchInputs`, `ResolveScopeFriends` — et le repo ; tous gardés).
+- **S5.2** supprimés : `service/session_page_usage{,_labels}.go` (+ tests), `session_page_flag_grabs_net_test.go`, `pad_tiers_wiring_test.go`, `analysis/sessionusage/objectives.go` (+ test), `platform/duckdb/objective_role_rows_repo.go` (+ test), `ComputeFlagGrabsNet` / `FlagGrabsNetInput` (+ test ; `FlagGrabsNetRow` garde), `ResolveTrackedSquad` (+ cas de test), champs `Usage` / `CompareUsage`, `usageXUID` / `usageFriends`. `WithSessionUsage` remplacé par `WithSessionUsageSummary(repo, repoRoot)`, câblé sous `film.usage_summary` dans `cablerBlocsSessions` (garde-rail de câblage réécrit sur ce nom) ; `registry_pages.go` 619 → 615 L. Helpers de test partagés déplacés dans `service/session_usage_mock_test.go`.
+- **S5.3** `usage.go` réduit aux lignes et à `BuildMatchInputs` (`MatchInput` sans durée ni compteurs de grain match ; `FilmRow.PadUnnamed` sans lecteur : retiré, et sa colonne du `SELECT` du repo) ; supprimés `usage_families.go`, `newMatchPoint`, `computeOutcomes` / `attachOutcomes` / `subjectBilanFamilies`, `ComputePadTiers` / `PadTiersInput`, `squadagg/pad_tier_labels.go`, tests `usage_test.go`, `usage_outcomes_test.go` (tous ses cas passaient par `ComputeUsage`), `pad_tiers_test.go` ; golden et garde de la bascule « utilisé » inchangés et verts ; `team_context_test.go` (NEUF) reprend la couverture directe de `BuildTeamContext` / `BuildMatchInputs` que portaient les tests supprimés. `domain/session_usage.go` réduit aux raisons machine, à `SessionUsageSquadPlayer` et aux constantes de niveau ; `PadTierOrder` sans lecteur : supprimé avec `pad_tiers_vocabulary_test.go` et `pad_tiers_web_parity_test.go` (ce dernier lisait `usagePadTiersModel.ts`, supprimé en S4 — S4 l'avait rendu ROUGE, §8). Test d'intégration `session_usage_aggregate_integration_test.go` réécrit sur ce qui reste (persister réel, vue `_latest`, assemblage).
+- **S5.4** `CoordinationRiposte`, `Riposte` du bloc et des soirées, `FenetreMs` du bloc, champs riposte des cases, `compterRipostes`, `agregerRiposte`, `medianeMs`, champs riposte de `cumulMatch`, habituel de « je suis couvert » ; `CoordinationEntree.Kills` n'avait plus de lecteur dans le bloc : retiré (et son remplissage par le service) — le golden d'appui, privé de ses événements, reste identique. Tests adaptés : `bloc_test.go` (appui seul ; parité mixte pondérée par les appuis), `coordination_block_test.go`, `session_page_coordination_test.go`, `timeseries_service_equipes_test.go` ; web : fixtures de `TimeseriesCoordinationSection.test.tsx` réécrites sur `appui.on_me_prepare`, commentaire de `timeseriesCoordination.logic.ts`.
+- **S5.5** Contrat : `openapi.yaml` −554 / +0, `generated.ts` −264 / +0 ; `openapi-gen -check` à jour ; `check-generated-types-fresh` OK ; snapshot `contract-surface` régénéré par la procédure (`UPDATE_CONTRACT_SURFACE=1`), 15 schémas disparus : `CoordinationRiposte`, `SessionFlagGrabsNetBlock`, `SessionObjectiveFamilyBlock`, `SessionObjectiveRoleMetric`, `SessionObjectivesBlock`, `SessionUsageBlock`, `SessionUsageMatchPoint`, `SessionUsageMetric`, `SessionUsageOutcomes`, `SessionUsagePadFamily`, `SessionUsagePadTier`, `SessionUsagePadTierWeapon`, `SessionUsagePadTiersBlock`, `SessionUsagePowerup`, `SessionUsageSquadShare` ; alias morts de `lib/api/types.ts` retirés (dont `SessionUsageSquadPlayer`, sans lecteur web).
+- Commentaires devenus faux corrigés (règle 17) : `squademprise/{input.go, build_test.go}`, `domain/equipmentusage/families.go`, `duckdb/squad_formes_repo.go`, `port/{match_range.go, session_usage.go}`, `service/{session_page_range.go, session_page_service.go, coordination_block.go}`. Laissés : récits datés (`migration/steps_shared_flag_grabs_net.go`, correctif C1 de `usage_outcomes.go`) et `squadagg/squad_formes.go:13` (fichier interdit par §5.1, §8).
+- **Mutations** (script `mut_s5.ps1`, restauration vérifiée) : 5, toutes ROUGES — appui reçu compté hors camp et parité non pondérée (golden), résumé d'usage câblé hors de sa porte (garde-rail de câblage), partant compté dans l'effectif (team_context), habituel non posé (coordination de Sessions).
+- **Gate** : `go build ./...` 0 ; `gofmt -l` muet ; `go vet ./internal/...` 0 ; `go test -count=1` du module en lots couvrant les 348 paquets de `go list ./...` (cœur 67 ok / 157 s, games 39 ok, platform + service 28 ok / 267 s, sync + persist + migration + hors internal 16 ok, reste 45 ok) — 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (436 s) ; `make go-api-lint` 0 issue (le balayage `unused` des paquets touchés ne relève que des aides de test PRÉ-EXISTANTES hors périmètre, §8) ; web : purge `.tmp`, `tsc -b --force` 0, lint 0 erreur (26 avertissements), vitest complet 840 fichiers / 8 871 tests verts, knip 0 / 0 / 0 (aveugle), couleurs 0, imports croisés 7 ≤ 7, `lefthook run pre-push` sortie 0. Baseline de présence : aucun test supprimé ou renommé n'y figure (relevé par différence des noms).
+- Seuils : `session_page_service.go` 886 (inchangé), `registry_pages.go` 615 ; aucun fichier créé ou modifié au-delà de 500 L ; diff du lot 58 fichiers, +274 / −6 087.
 
 ### S6 — fondu dans S5
 
@@ -862,6 +874,18 @@ modèles neufs ont leur lecteur dans le lot.
 - (S4) `lint-no-hardcoded-fields` balaie les fixtures (hors `squad/emprise/emprise.fixtures.ts`,
   allowlisté) : les noms de cartes du relevé solo ont été anonymisés dans `sessionEmprise.fixtures.ts`
   plutôt que d'allonger l'allowlist.
+- (S5) S4 avait rendu ROUGE un test Go : `domain/pad_tiers_web_parity_test.go` lisait
+  `_shared/usage/usagePadTiersModel.ts`, supprimé en S4 (le gate de S4 est web seul). Corrigé en S5 :
+  le test et `PadTierOrder`, sans lecteur après la coupe, sont supprimés. Leçon : une suppression
+  web se double d'un grep des tests Go qui lisent `apps/web/src`.
+- (S5) `service/squadagg/squad_formes.go:13` cite encore `service/session_page_usage_labels.go`
+  (supprimé) comme précédent d'arbitrage : fichier interdit par §5.1, commentaire non corrigé.
+- (S5) Aides de test sans lecteur, PRÉ-EXISTANTES et hors périmètre, relevées par `unused` :
+  `mockSessionCompareSessionsRepo` / `mockSessionCompareStatsRepo` (`service/sessions_service_test.go`),
+  `float64Ptr` (`service/teammates/testhelpers_test.go`). Non traitées.
+- (S5) Incident d'exécution : une commande de collage de journal s'est terminée par un `python -`
+  tapé par erreur (interdit) ; aucun code Python n'a été exécuté (le processus attendait l'entrée
+  standard), il a été arrêté par `TaskStop`. Aucun effet sur l'arbre (vérifié par `git status`).
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 

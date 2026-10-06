@@ -3,7 +3,7 @@ package wire
 // registry_pages_sessions.go — LE CABLAGE DES BLOCS DU FILM DE LA PAGE SESSIONS (Emprise du joueur,
 // vies, feuille d'objectif, emblème, score des lignes ; plan `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`,
 // lot S2.9), appelé par la factory `SessionPage` (registry_pages.go, qui dépasse déjà le seuil de
-// taille du dépôt). Le résumé d'usage reste câblé par la factory sous film.usage_summary.
+// taille du dépôt), résumé d'usage compris (film.usage_summary).
 
 import (
 	"levelup/go-api/internal/games"
@@ -24,6 +24,11 @@ func (r *ServiceRegistry) cablerBlocsSessions(svc *service.SessionPageService, p
 		// Score des lignes de match : manches pour les variantes déclarées (ADR 0032).
 		WithRoundsDecide(r.roundsDecideFor(pdb))
 	caps := r.capabilitiesForPDB(pdb)
+	// Résumé d'usage (Emprise, objectif, effectif de camp de la coordination) et catalogues du
+	// titre : film.usage_summary.
+	if caps.Has(games.CapFilmUsageSummary) {
+		svc = svc.WithSessionUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
+	}
 	// Les vies du joueur : MÊME porte que les vies au sync, film.kill_positions.
 	if caps.Has(games.CapFilmKillPositions) {
 		svc = svc.WithSessionLives(duckdb.NewSoloLivesRepo(pdb))

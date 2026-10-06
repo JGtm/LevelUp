@@ -48,7 +48,7 @@ func objectiveColumnSelect() []string {
 // les deux camps (aucun filtre xuid : les parts de camp se calculent en aval).
 //
 // Best-effort : une erreur de requête (vue absente sur une base non migrée)
-// dégrade en nil + warn, comme LoadObjectiveRoleRows. Le bloc perd alors ses
+// dégrade en nil + warn. Le bloc perd alors ses
 // cartes d'objectif, jamais la page entière.
 func (r *ObjectiveStatsRepo) LoadObjectiveColumnRows(
 	ctx context.Context, matchIDs []string,
