@@ -248,10 +248,11 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
 
   /** Le roster joint : deux camps, plus un joueur que le tableau de score ne connaît pas. */
   const PLAYERS = [
-    { xuid: 'moi', filmName: 'Moi', lives: [], board: { xuid: 'moi', team_side: 't0' } },
-    { xuid: 'pote', filmName: 'Pote', lives: [], board: { xuid: 'pote', team_side: 't0' } },
-    { xuid: 'eux', filmName: 'Eux', lives: [], board: { xuid: 'eux', team_side: 't1' } },
-    { xuid: 'bot:Oscar', filmName: 'Oscar [bot]', bot: true, lives: [] },
+    { xuid: 'moi', filmName: 'Moi', team: 0, lives: [], board: { xuid: 'moi', team_side: 't0' } },
+    { xuid: 'pote', filmName: 'Pote', team: 0, lives: [], board: { xuid: 'pote', team_side: 't0' } },
+    { xuid: 'eux', filmName: 'Eux', team: 1, lives: [], board: { xuid: 'eux', team_side: 't1' } },
+    // Un bot que la feuille ignore : le film le range au camp 1.
+    { xuid: 'bot:Oscar', filmName: 'Oscar [bot]', bot: true, team: 1, lives: [] },
   ] as unknown as ReplayPlayer[]
 
   /** L'identité RELATIVE au point de vue, telle que le modèle la rend (`resolveXuidMeta`). */
@@ -320,13 +321,15 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
     expect(result.current.absence).toEqual([])
   })
 
-  it('(iii) le menu porte les libellés i18n attendus, groupe « Sans équipe » compris', () => {
+  it('(iii) le menu porte les CAMPS DU FILM, nommés comme les colonnes de fiches — jamais « sans équipe »', () => {
     const groupes = monter('moi', []).result.current.viewpointGroups
-    expect(groupes.map((g) => g.label)).toEqual(['Équipe 0', 'Équipe 1', 'Sans équipe'])
+    expect(groupes.map((g) => g.label)).toEqual(['Équipe Eagle', 'Équipe Cobra'])
     expect(groupes[0].options.map((o) => o.label)).toEqual(['Moi', 'Pote'])
-    // Un joueur sans ligne de tableau de score est listé mais INERTE (décision 7 bis du plan),
-    // et son infobulle donne la raison — jamais une option qui fait semblant.
-    const orphelin = groupes[2].options[0]
+    // Un joueur sans ligne de tableau de score est listé, dans le camp que le film lui donne,
+    // mais INERTE (décision 7 bis du plan), et son infobulle donne la raison — jamais une option
+    // qui fait semblant.
+    expect(groupes[1].options.map((o) => o.label)).toEqual(['Eux', 'Oscar'])
+    const orphelin = groupes[1].options[1]
     expect(orphelin).toMatchObject({
       label: 'Oscar',
       disabled: true,

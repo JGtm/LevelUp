@@ -293,20 +293,24 @@ func (sc *movementStateScanner) Brancher(obs *Observation, m *MarcheDistribuee) 
 	}
 }
 
-// Trame compte UNE trame delta de la marche, dans la structure. Les paquets a liste d evenements
-// PLEINE sont localises par la marche ([localiserLaListe]) ; ceux qu elle ne localise pas sont
-// comptes et sautes, parce que sauter la liste bit-exactement demanderait la grammaire de charge de
-// chaque type d evenement.
+// Trame compte UNE trame delta de la marche, dans la structure. Le debut de la liste d un paquet a
+// liste d evenements PLEINE est lu a la fin de sa vue A quand elle en decide, sinon localise par la
+// marche ([localiserLaListe]) ; les paquets qu elle ne localise pas sont comptes et sautes, parce
+// que sauter la liste bit-exactement demanderait la grammaire de charge de chaque type d evenement.
 func (sc *movementStateScanner) Trame(p *lecture.Paquet) {
 	if p.Debut != lecture.DebutEnTete {
 		sc.st.EventPackets++
-		if p.Debut == lecture.DebutNonLocalise {
+		switch p.Debut {
+		case lecture.DebutNonLocalise:
 			sc.st.EventPacketsUnlocated++
 			return
-		}
-		sc.st.EventPacketsLocated++
-		if p.Debut != lecture.DebutParSignature {
-			sc.st.EventPacketsNewRecordStart++
+		case lecture.DebutParVueA:
+			// Un debut LU (la fin de la vue A) : ni localise, ni ouvert par un NEW de tete.
+		default:
+			sc.st.EventPacketsLocated++
+			if p.Debut != lecture.DebutParSignature {
+				sc.st.EventPacketsNewRecordStart++
+			}
 		}
 	}
 	sc.st.Packets++

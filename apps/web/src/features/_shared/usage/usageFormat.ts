@@ -15,8 +15,8 @@
  */
 import type { Locale } from '@/lib/i18n/locale'
 
-/** Nombre à `digits` décimales, virgule en FR — jamais de séparateur de milliers. */
-export function formatUsageDecimal(v: number, locale: Locale, digits = 1): string {
+/** Nombre à `digits` décimales, virgule en FR — jamais de séparateur de milliers (privée au fichier). */
+function formatUsageDecimal(v: number, locale: Locale, digits = 1): string {
   const s = v.toFixed(digits)
   return locale === 'fr' ? s.replace('.', ',') : s
 }

@@ -14,13 +14,31 @@
  *	jamais plus de fiches que de places : une place rend UN occupant, ou vide ;
  *	le témoin au gabarit de `b1ad85eb` : 4 places contre 4, les bons noms aux trois instants ;
  *	un document qui ne publie AUCUNE présence (artefact antérieur) retombe sur l'enveloppe des
- *	vies, le dernier occupant de chaque place la tenant jusqu'à la fin (repli daté).
+ *	vies, le dernier occupant de chaque place la tenant jusqu'à la fin (repli daté) ;
+ *	L'ÉQUIPE EST CELLE DU FILM (décision du 2026-10-06) : une entrée dont le film tait l'équipe
+ *	ne tient AUCUNE place, et la feuille ne la range nulle part — le témoin `43716616`.
  */
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
-import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt, type ReplaySeat } from './seatLogic'
+import { rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import {
+  buildSeats as buildSeatsBrut,
+  groupSeatsByTeam,
+  seatOccupantAt,
+  seatTileAt,
+  type ReplaySeat,
+} from './seatLogic'
+
+/**
+ * buildSeats, avec l'équipe des joueurs de test posée COMME `buildPlayers` la pose : le
+ * désignateur de leur entrée de roster, et rien d'autre. Les joueurs d'ici sont fabriqués à la
+ * main (vies et lignes de feuille choisies) ; c'est le roster du document qui reste la vérité.
+ */
+function buildSeats(joueurs: ReplayPlayer[], d: ReplayDocumentReady): ReplaySeat[] {
+  const equipes = new Map(d.roster.map((e) => [rosterEntryKey(e), e.team ?? undefined]))
+  return buildSeatsBrut(joueurs.map((p) => ({ ...p, team: equipes.get(p.xuid) })), d)
+}
 
 /** La dernière image des documents de ces tests. */
 const FIN = 999
@@ -118,9 +136,9 @@ describe('buildSeats — la place vient du document', () => {
     expect(seats[0].occupants[0].player.xuid).toBe('P')
   })
 
-  it('le camp vient du FILM quand le document le porte, la feuille reste le repli', () => {
-    // `Z` n'a AUCUNE ligne de feuille — le remplaçant « sans équipe » du constat utilisateur —
-    // mais le film lui donne le camp 1 : il rejoint la colonne du camp 1.
+  it('le camp vient du FILM : un joueur sans ligne de feuille rejoint la colonne de son camp', () => {
+    // `Z` n'a AUCUNE ligne de feuille — le remplaçant du constat utilisateur — mais le film lui
+    // donne le camp 1 : il rejoint la colonne du camp 1. La feuille ne fait que la NOMMER.
     const seats = buildSeats(
       [joueur('P', 't0', [vie(0, FIN)]), joueur('Z', null, [vie(0, FIN)])],
       doc([
@@ -128,19 +146,18 @@ describe('buildSeats — la place vient du document', () => {
         { xuid: 'Z', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1, presence: [pr(0, FIN)] },
       ]),
     )
-    expect(new Set(seats.map((s) => s.teamKey))).toEqual(new Set(['f1']))
+    expect(seats.map((s) => s.team)).toEqual([1, 1])
     const groupes = groupSeatsByTeam(seats)
-    expect(groupes).toHaveLength(1)
-    expect(groupes[0].side).toBe('t0') // le libellé affiché reste celui de la feuille
-    expect(groupes[0].seats).toHaveLength(2)
+    expect(groupes.map((g) => [g.team, g.side, g.seats.length])).toEqual([[1, 't0', 2]])
   })
 
   /**
-   * LE GARDE-RAIL, et il est indépendant du témoin : quel que soit le mélange de sources, deux
-   * groupes ne peuvent pas porter le MÊME libellé (constat utilisateur du 2026-09-19 sur
-   * `b1ad85eb` : « trois équipes, dont deux Cobra »).
+   * LE GARDE-RAIL DU 2026-10-06 (« une section sans équipe n'existe pas ») : une entrée dont le
+   * film TAIT l'équipe ne tient aucune place — même quand la feuille la range, même présente —,
+   * et n'ouvre aucun groupe. Jamais deux groupes sous le même libellé non plus (constat du
+   * 2026-09-19 sur `b1ad85eb` : « trois équipes, dont deux Cobra »).
    */
-  it('garde-rail : jamais deux groupes sous le même libellé', () => {
+  it('une entrée SANS ÉQUIPE DU FILM n’a aucune place, et n’ouvre aucun groupe — la feuille ne la range pas', () => {
     const seats = buildSeats(
       [
         joueur('A', 't0', [vie(0, FIN)]),
@@ -149,59 +166,114 @@ describe('buildSeats — la place vient du document', () => {
         joueur('SansFilm1', 't1', [vie(0, FIN)]),
       ],
       doc([
-        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 },
-        { xuid: 'B', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1 },
-        { xuid: 'SansFilm0', filmIndex: 2, seat: 2, seatSource: 'lu' },
-        { xuid: 'SansFilm1', filmIndex: 3, seat: 3, seatSource: 'lu' },
+        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] },
+        { xuid: 'B', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1, presence: [pr(0, FIN)] },
+        { xuid: 'SansFilm0', filmIndex: 2, seat: 2, seatSource: 'lu', presence: [pr(0, FIN)] },
+        { xuid: 'SansFilm1', filmIndex: 3, seat: 3, seatSource: 'index', presence: [pr(0, FIN)] },
       ]),
     )
-    const libelles = groupSeatsByTeam(seats).map((g) => g.side)
-    expect(new Set(libelles).size).toBe(libelles.length)
-    expect(libelles.sort()).toEqual(['t0', 't1'])
+    expect(seats.map((s) => s.key)).toEqual(['siege:0:0', 'siege:1:1'])
+    const groupes = groupSeatsByTeam(seats)
+    expect(groupes.map((g) => [g.team, g.side])).toEqual([
+      [0, 't0'],
+      [1, 't1'],
+    ])
   })
 
   /**
-   * LA TRADUCTION NE SUPPOSE AUCUNE CONVENTION : elle est MESURÉE sur les places que les deux
-   * sources nomment. Ici la feuille dit `t0` là où le film dit 1 — l'inverse de l'ordre naïf —
-   * et la place muette doit suivre la MESURE, pas l'ordre.
+   * LE TÉMOIN `859da825` : « 343 Forge Lord » (bot, index 8, SANS équipe) tient l'index 8, puis
+   * SplinterCell958 (humain, index 9, `seatSource: index`, équipe 0) joue jusqu'à la fin. Seule
+   * l'ABSENCE D'ÉQUIPE retire une tuile : la provenance `index` (aucune place lue) n'en retire
+   * aucune — masquer SplinterCell958 effacerait un joueur qui joue sur la carte.
    */
-  it('la traduction suit la mesure, pas l’ordre des camps', () => {
-    const seats = buildSeats(
-      [joueur('A', 't0', [vie(0, FIN)]), joueur('Muet', 't0', [vie(0, FIN)])],
-      doc([
-        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 1 },
-        { xuid: 'Muet', filmIndex: 1, seat: 1, seatSource: 'lu' },
-      ]),
-    )
-    expect(new Set(seats.map((s) => s.teamKey))).toEqual(new Set(['f1']))
-  })
-
-  it('côté contradictoire : la traduction se retire, le repli de feuille reprend', () => {
+  it('une entrée `seatSource: index` AVEC équipe garde sa place ; seule l’absence d’équipe retire une tuile', () => {
     const seats = buildSeats(
       [
-        joueur('A', 't0', [vie(0, FIN)]),
-        joueur('B', 't0', [vie(0, FIN)]),
-        joueur('Muet', 't0', [vie(0, FIN)]),
+        joueur('Titulaire', 't0', [vie(0, FIN)]),
+        joueur('bot:343 Forge Lord [bot]', 't0', [vie(500, 560)]),
+        joueur('SplinterCell958', 't0', [vie(610, FIN)]),
       ],
       doc([
-        { xuid: 'A', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0 },
-        { xuid: 'B', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1 },
-        { xuid: 'Muet', filmIndex: 2, seat: 2, seatSource: 'lu' },
+        { xuid: 'Titulaire', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] },
+        { xuid: '', bot: true, name: '343 Forge Lord [bot]', filmIndex: 8, seat: 8, seatSource: 'index', presence: [pr(500, 600)] },
+        { xuid: 'SplinterCell958', filmIndex: 9, seat: 9, seatSource: 'index', team: 0, presence: [pr(601, FIN)] },
       ]),
     )
-    expect(seats.find((s) => s.seat === 2)!.teamKey).toBe('s:t0')
+    expect(seats.map((s) => s.key)).toEqual(['siege:0:0', 'siege:0:9'])
+    const place9 = seats.find((s) => s.seat === 9)!
+    expect(montre(place9, 700)).toBe('SplinterCell958:present')
+    expect(montre(place9, 605)).toBe('SplinterCell958:pasEncoreApparu')
   })
 
-  it('sans camp du film, le regroupement retombe sur la feuille de match', () => {
+  it('sans aucun camp du film, AUCUNE place : la feuille de match ne regroupe plus', () => {
     const seats = buildSeats(
       [joueur('P', 't0', [vie(0, FIN)]), joueur('Q', 't1', [vie(0, FIN)])],
       doc([
-        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu' },
-        { xuid: 'Q', filmIndex: 1, seat: 1, seatSource: 'lu' },
+        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', presence: [pr(0, FIN)] },
+        { xuid: 'Q', filmIndex: 1, seat: 1, seatSource: 'lu', presence: [pr(0, FIN)] },
       ]),
     )
-    expect(seats.map((s) => s.teamKey)).toEqual(['s:t0', 's:t1'])
-    expect(groupSeatsByTeam(seats)).toHaveLength(2)
+    expect(seats).toEqual([])
+    expect(groupSeatsByTeam(seats)).toEqual([])
+  })
+
+  it('une place appartient à UNE équipe : deux équipes ne partagent jamais une tuile', () => {
+    // Le même numéro de place porté par deux équipes (source incohérente) : deux places, chacune
+    // dans la colonne de son camp — jamais un occupant affiché dans le camp d'un autre.
+    const seats = buildSeats(
+      [joueur('E', 't0', [vie(0, 400)]), joueur('C', 't1', [vie(500, FIN)])],
+      doc([
+        { xuid: 'E', filmIndex: 4, seat: 4, seatSource: 'lu', team: 0, presence: [pr(0, 400)] },
+        { xuid: 'C', filmIndex: 9, seat: 4, seatSource: 'apparie', team: 1, presence: [pr(500, FIN)] },
+      ]),
+    )
+    expect(groupSeatsByTeam(seats).map((g) => [g.team, g.seats.map((s) => s.occupants[0].player.xuid)])).toEqual([
+      [0, ['E']],
+      [1, ['C']],
+    ])
+  })
+})
+
+/**
+ * LE TÉMOIN `43716616` (4v4, mesure du superviseur du 2026-10-06) : Slowpoke6743 (équipe 0,
+ * place 5) part — certain jusqu'à 118, peut-être là jusqu'à 317 ; « 343 Sandwolf [bot] » est
+ * déclaré de 248 à 281 SANS équipe (index 8, `seatSource: index`) ; KernelPanic10 (équipe 0)
+ * arrive à 318 et prend la place 5. Tant que la source ne donne pas d'équipe au bot, il ne rend
+ * RIEN — ni tuile, ni troisième colonne — et la place 5 reste celle d'Eagle.
+ */
+describe('témoin 43716616 : le bot bouche-trou sans équipe ne rend rien', () => {
+  const fin = 2999
+  const seats = buildSeats(
+    [
+      joueur('Slowpoke6743', 't0', [vie(0, 118)]),
+      joueur('bot:343 Sandwolf [bot]', null, []),
+      joueur('KernelPanic10', 't0', [vie(330, fin)]),
+      joueur('Titulaire', 't1', [vie(0, fin)]),
+    ],
+    doc(
+      [
+        { xuid: 'Slowpoke6743', filmIndex: 5, seat: 5, seatSource: 'lu', team: 0, presence: [pr(0, 118, 317)] },
+        { xuid: '', bot: true, name: '343 Sandwolf [bot]', filmIndex: 8, seat: 8, seatSource: 'index', presence: [pr(248, 281)] },
+        { xuid: 'KernelPanic10', filmIndex: 9, seat: 5, seatSource: 'tirs', team: 0, presence: [pr(318, fin)] },
+        { xuid: 'Titulaire', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1, presence: [pr(0, fin)] },
+      ],
+      fin + 1,
+    ),
+  )
+
+  it('deux colonnes, jamais une troisième ; aucune place 8', () => {
+    const groupes = groupSeatsByTeam(seats)
+    expect(groupes.map((g) => g.team)).toEqual([0, 1])
+    expect(seats.some((s) => s.seat === 8)).toBe(false)
+    expect(seats.flatMap((s) => s.occupants.map((o) => o.player.xuid))).not.toContain('bot:343 Sandwolf [bot]')
+  })
+
+  it('la place 5 chaîne Slowpoke6743 puis KernelPanic10 ; pendant la déclaration du bot, elle reste à Slowpoke (jusqu’à `toMax`)', () => {
+    const place5 = seats.find((s) => s.seat === 5)!
+    expect(place5.occupants.map((o) => o.player.xuid)).toEqual(['Slowpoke6743', 'KernelPanic10'])
+    expect(montre(place5, 260)).toBe('Slowpoke6743:present')
+    expect(montre(place5, 318)).toBe('KernelPanic10:pasEncoreApparu')
+    expect(montre(place5, 330)).toBe('KernelPanic10:present')
   })
 })
 
@@ -374,14 +446,14 @@ describe('seatTileAt — ce qu’une place ne rend pas (revue M2, 2026-09-24)', 
       [joueur('P', 't0', [vie(0, FIN)]), joueur('bot:Robot', null, [vie(300, 400)])],
       doc([{ xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] }]),
     )
-    expect(seats.map((s) => s.key)).toEqual(['siege:0'])
+    expect(seats.map((s) => s.key)).toEqual(['siege:0:0'])
     expect(groupSeatsByTeam(seats)).toHaveLength(1)
   })
 
-  it('un film sans identification (aucun roster) garde sa voie nominale : une place par joueur', () => {
-    const seats = buildSeats([joueur('X', 't0', [vie(100, 200)])], doc([]))
-    expect(seats.map((s) => s.key)).toEqual(['joueur:X'])
-    expect(seatTileAt(seats[0], FIN)?.player?.xuid).toBe('X') // le dernier tient jusqu'à la fin
+  it('un film sans identification (aucun roster) n’écrit aucune équipe : aucune place', () => {
+    // La feuille le nomme et le range, le film ne dit rien : le joueur n'a pas d'équipe du film,
+    // donc pas de place (décision du 2026-10-06) — la colonne affiche son constat vide.
+    expect(buildSeats([joueur('X', 't0', [vie(100, 200)])], doc([]))).toEqual([])
   })
 
   it('M2-R7 : document sans présence — aucune tuile avant le premier occupant, la place vide ensuite', () => {

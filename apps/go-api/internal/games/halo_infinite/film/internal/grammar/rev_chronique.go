@@ -40,8 +40,7 @@ package grammar
 // rangs `.39` a `.42`, verses dans cette meme seconde archive qui avait la place), puis le
 // 2026-09-22 (lot 5.20.1, une CINQUIEME archive), puis le 2026-09-24 (lot M4b, une SIXIEME), puis
 // le 2026-10-03 (integration de la vague 1 de la campagne de grammaire, une SEPTIEME), puis le
-// 2026-10-06 (lot 2.7.b de la representation intermediaire, rangs `grammar-2026-09-27` a `.3`
-// verses dans la septieme, qui avait la place).
+// 2026-10-06 (lot VA de la campagne, rangs `grammar-2026-09-27` a `.3` verses dans la septieme).
 // C est le
 // geste ordinaire que l en-tete des archives annonce, pas un incident. Ce qui suit est la suite
 // VIVANTE, a partir du `grammar-2026-10-02`.
@@ -330,11 +329,51 @@ package grammar
 // ne perdent que des listes ouvertes sur un NEW que le jeu ne lit pas. Le rang `.6` du 2026-10-03,
 // que portait la tete du lot avant sa reprise, n a jamais ete fusionne.
 //
-// ENTREE `grammar-2026-10-06.4` (2026-10-06, lot 2.7.b de la representation intermediaire,
+// ENTREE `grammar-2026-10-06.4` (2026-10-06, lot VA de la campagne de grammaire, etapes V2 et V3,
+// fusion de `feat/v75` a `fed1efed2` puis `b033d30f0`, corrections de la revue et decisions du
+// pilote du 2026-10-06) : LA FIN DE LA VUE A FIXE LE DEBUT DE LA VUE B ; LA VARIANTE DE PARTIE DU
+// FILM DECIDE LES GENRES 85 ET 116.
+//
+// Le lot portait, sur sa branche seule, trois rangs jamais fusionnes (`.2` et `.3` de l etape V2, `.4`
+// de l etape V3) ; `.2` et `.3` etaient deja pris par `feat/v75` avec d autres empreintes. Ils sont
+// reunis ici en un seul rang, le premier libre apres ceux de `feat/v75`.
+//
+// Ce qui change, contre `grammar-2026-10-06.3` :
+//   - la fin E de la vue A lue jusqu a son terminateur est le debut de la vue B ([debutParLaVueA],
+//     [lecture.DebutParVueA]) : `FUN_142f2c3b0` ecrit vue A, un bit 0, vue B, bout a bout, et
+//     `FUN_142987460` commence la vue B au bit qui suit ; decisions de l utilisateur du 2026-10-04 :
+//     film a table des genres EGALE a celle du jeu, E toujours, sans reprise a la signature quand la
+//     marche depuis E bute ; film a table PREFIXE, E seulement si la marche depuis E ferme le paquet
+//     sans regle de l ecrivain contredite ; vue A lue en partie : jamais. La table EGALE ne vaut que
+//     sous la version majeure que le jeu joue (`FUN_1428e219c` : `*film == 0x29`) : un film de table
+//     egale sous une autre majeure (HI_1_12_0, 0x28) suit la regle PREFIXE ([classeSousLaMajeure],
+//     decision du pilote du 2026-10-06) ;
+//   - la suite des genres rangee dit ou sa numerotation devient presumee
+//     (`lecture.VueA.PremierPresume`, [premierGenrePresume]) ; aucun bit lu ne change ;
+//   - la regle sert la cuisson ([debutDeLaVueBDeCuisson]), dont le canal des morts recoit les
+//     records, et la marche de `killsource` ([DebutDeLaVueB], [VueADuFilmSousCarte]) ; le canal des
+//     morts ne localise lui-meme ([debutRecupere]) que la liste que la cuisson n a pas localisee ;
+//   - le localisateur exige que sa position suive un bit nul, le terminateur de la vue A
+//     ([precedeDuTerminateur], seule implantation du test) ; les candidats NEW de tete n y sont pas
+//     soumis ;
+//   - le corps de `chunk_00` est lu jusqu a la table des joueurs (`FUN_1407ee138`, ses deux messages
+//     Bond CompactBinary v2), et sa variante de partie rend m_gameEngineType, killcamEnabled et
+//     playOfTheGameEnabled ([profile.VarianteDePartie], `film_variante_de_partie.go`) ; un champ du
+//     chemin d un autre type que celui lu, ou un champ que la lecture ne sait pas enjamber devant
+//     un champ attendu, arrete la lecture (rien n est lu) ;
+//   - teleport_effects (116, `FUN_142ef93e0`) se lit quand le type de moteur du film n est pas 1 ;
+//   - PlayerKilledEvent (85, `FUN_14104bd08`) se lit, partie fixe seule, quand les drapeaux du film
+//     rendent fausse la garde de sa queue quels que soient les reglages d execution qu il ne porte pas.
+//
+// MESURES : `campagne_grammaire_2026-10-01/LOT_VA_V2.md` (etape V2, contre `87cdfa761`),
+// `LOT_VA_V3.md` (etape V3, contre `8c83e2d3a` ; §15 : fusion et corrections de la revue, contre
+// `fed1efed2` ; §16 : decisions du pilote, contre `b033d30f0`).
+//
+// ENTREE `grammar-2026-10-06.5` (2026-10-06, lot 2.7.b de la representation intermediaire,
 // `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES HUIT LECTEURS DE COMPOSANTS
 // BIPEDES LISENT LA MARCHE DES TRAMES, L ANCRAGE PASSE DERRIERE ELLE.
 //
-// Ce qui change, contre `grammar-2026-10-06.3` :
+// Ce qui change, contre `grammar-2026-10-06.4` :
 //   - [canalDesLecturesBipedes] recueille, pendant la marche des trames, les publications des onze
 //     crochets des huit lecteurs (charges, impulsions, rangs, camouflage, grappin, arme portee,
 //     deltas d inventaire, equipement), datees de la position du lecteur de la marche, et les
@@ -342,15 +381,18 @@ package grammar
 //     ([lecturesBipedes]) au lieu de marcher les records ancres ;
 //   - l ancrage d en-tete bipede ne rend plus que les records d un slot que la marche n a pas lu
 //     dans le paquet, hors de ce que la fermeture de la trame prouve (repli
-//     `repli_ancrage_bipede_apres_la_marche`) ;
+//     `repli_ancrage_bipede_apres_la_marche`) : un debut de vue B LU (tete, fin de la vue A) prouve
+//     tout le paquet, un debut LOCALISE seulement la liste lue depuis lui ;
 //   - un corps mort n agit plus (le record du dead-state et ceux du meme corps jusqu au NEW) ; une
 //     emission d arme portee qui repete la famille precedente de l emplacement, ou annonce un
 //     emplacement vide sans occupant connu, est `Restated` ; la garde des generations vivantes
 //     datees vaut pour les records de la marche ;
-//   - la porte des essais eteint les douze crochets de canal ([Observation.neutraliserLesCrochetsDeCanal]).
+//   - la porte des essais eteint les douze crochets de canal ([Observation.neutraliserLesCrochetsDeCanal]) ;
+//   - le canal des etats de mouvement ne compte plus un paquet a debut lu dans la vue A comme
+//     localise ni comme ouvert par un NEW de tete.
 //
-// Preuve : gate de corpus contre `fed1efed2` (19 temoins) : aucun oracle ne bouge ; les lectures
-// montent partout, aucune n est perdue contre la base hors des lachers d une arme inconnue ; un
-// portage de bombe se ferme a l armement (`c75f33b8`), d ou la montee de
-// `killcollector.PlacementRev`. `replay.SchemaVersion` reste 79 : la publication depuis les faits ne
-// change pas, les faits si. Le rang : le premier libre apres `.3` (lot LR de la campagne).
+// Preuve : gate de corpus (19 temoins) : aucun oracle ne bouge ; les lectures montent partout,
+// aucune n est perdue contre la base hors des lachers d une arme inconnue ; un portage de bombe se
+// ferme a l armement (`c75f33b8`), d ou la montee de `killcollector.PlacementRev`.
+// `replay.SchemaVersion` reste 79 : la publication depuis les faits ne change pas, les faits si.
+// Le rang : `.4` est pris par la vue A V2 et V3 de la campagne, fusionnee avant ce lot.

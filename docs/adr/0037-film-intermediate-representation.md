@@ -159,7 +159,8 @@ head, as before. It stops after the genre of any message it cannot read (payload
 refused, beyond the film's genre count) and guesses nothing. The head is read identically in every
 case, so the head readers and the routing to list location see the same values. The walk reads view A once per frame while ranging the head, and
 hands it to the rank walk; the rank walk crosses an empty view A only. The end of a fully read view
-A (the bit after its terminator) is ranged with the view; it decides no location at this step.
+A (the bit after its terminator) is ranged with the view; since step V2 it is the start of view B
+when the film's class allows it (IR-6).
 
 ### IR-4 — Three states per component, three closure states per packet, never conflated (correction C3)
 
@@ -213,6 +214,32 @@ anticipation (`repli_liaison_par_anticipation`) and keyframe anchor election
 start of its view B was found (read from the packet head, or located), a binding says where it came
 from, a keyframe record says whether its anchor was chained or elected — and its behaviour does not
 change. Without the mark, a closure measured on the structure would mix grammar and recovery.
+
+Since the grammar campaign's lot VA (step V2, 2026-10-05), the start of view B is first a READ, not
+a location. The writer (`FUN_142f2c3b0`) writes view A, one zero bit, then view B, end to end, and
+the reader (`FUN_142987460`) starts view B on the bit after the view A terminator without searching.
+When the single reading of view A reaches its terminator, that bit is the start of view B, marked
+`DebutParVueA` on the packet; the closure detail counts it as a read list (`ListeLue`), never as a
+located one, and it is not a recovery. Which films take it is decided by two tables read, the film's
+message-genre versions and the executable's (user decisions of 2026-10-04): an equal table always,
+even where the slot-123 signature would find another position and even where the walk from that
+bit then stops on a component the decoder does not carry (resuming at the signature would be a
+convention); a strict-prefix table (an older writer) only when the walk from that bit closes the
+packet with no writer rule contradicted. A view A read only in part (unported or refused message,
+configuration bit at zero, unreadable table) is never used: the packet takes the recovery mechanisms
+above, unchanged. The object-death channel receives the cook's records, which start at the end of
+view A when it decides; it asks the locator (`grammar/localisateur.go`, order of the sites that read
+deaths) only for the lists that the cook did not locate, whose view A therefore did not decide. Only
+the `killsource` walk, which ranges no structure, reads view A itself and takes the same rule through
+`DebutDeLaVueB`, under the film's own view-A grammar and the match map. An equal table counts only
+under the major version the executable plays: `FUN_1428e219c` reads a film only when its major
+version is 0x29, so a film with an equal table under another major (HI_1_12_0, 0x28) follows the
+strict-prefix rule (pilot decision of 2026-10-06). For strict-prefix films the numbering of the genres beyond
+107, the last genre whose native version differs from 1, is presumed rather than read; the view A
+range records where that presumption starts (`lecture.VueA.PremierPresume`). The writer puts
+a zero bit (the view A terminator) before the first record of view B and nowhere else; the locator
+requires it at every position it tries, but the leading NEW-record recovery does not apply it to
+its head candidates: that rule is not decided, and the recovery keeps its candidates unchanged.
 
 Since step 2 (lot 2.4), the anchored biped recovery runs once per film. The positions and the eight
 channel scans that anchor biped records in delta frames used the same parameters (the context's

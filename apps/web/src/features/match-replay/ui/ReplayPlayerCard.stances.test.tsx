@@ -25,7 +25,7 @@ const GENRES = ['crouch', 'slide', 'clamber', 'jumpDerived', 'sprint'] as const
 
 function documentAvecEtats() {
   return testReplayDoc({
-    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha' }],
+    roster: [{ xuid: 'A', filmIndex: 0, name: 'Alpha', team: 0 }],
     tracks: [{ slot: 512, team: -1, xuid: 'A', startFrame: 0, endFrame: 100, points: [{ t: 0, x: 0, y: 0 }] }],
     stances: GENRES.map((kind) => ({ kind, slot: 512, t0: 0, t1: 100 })),
   })

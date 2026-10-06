@@ -18,15 +18,13 @@
  * pas, et posait son trait de parité au mauvais endroit dès que les deux divergeaient — ce
  * qu'elles font par construction.
  *
- * MÊME FORME QUE LES DEUX AUTRES RANGÉES : `buildCountsGrid` fait les barres, l'axe et les
- * textes. Rien de neuf à l'écran — une rangée de plus, dans le vocabulaire existant.
+ * MÊME FORME QUE LES AUTRES RANGÉES DE LA PAGE SESSIONS : `buildGaugeRow` fait les trois jauges.
  *
  * Pur : aucun React, aucune couleur, aucune langue — les libellés arrivent par `UsageText`.
  */
 import type { SessionUsagePadTiersBlock } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import type { UsageCountsRowInput } from './usageCountsModel'
 import { buildGaugeRow, type UsageGaugeRowModel } from './usageGaugeModel'
 import type { UsageText } from './usageI18n'
 
@@ -34,8 +32,7 @@ import type { UsageText } from './usageI18n'
  * L'ORDRE DE LECTURE DES NIVEAUX, écrit — LE PLUS LOURD EN TÊTE (D2, 2026-09-21).
  *
  * Il n'est PAS trié par volume, et c'est délibéré : un classement dont l'ordre change d'une
- * session à l'autre ne se compare pas d'un écran au suivant. C'est aussi pourquoi l'appelant
- * passe `sort: false` à `buildCountsGrid`. Il ne suit plus `domain.PadTierOrder` côté Go :
+ * session à l'autre ne se compare pas d'un écran au suivant. Il ne suit plus `domain.PadTierOrder` côté Go :
  * celui-ci est l'ordre du CONTRAT, celui-ci est l'ordre de LECTURE — la puissance d'abord,
  * la base en dernier (et repliée : `USAGE_PAD_TIER_COLLAPSED`).
  *
@@ -85,30 +82,6 @@ export function padTierLines(block: SessionUsagePadTiersBlock | null | undefined
     if (ligne != null) out.push(ligne)
   }
   return out
-}
-
-/**
- * buildPadTierRows — une ligne par niveau SERVI, dans l'ordre écrit.
- *
- * Un niveau que le bloc ne publie pas n'a pas de ligne : une ligne à zéro dirait « aucune
- * prise à ce niveau » là où la vérité est « ce niveau n'existe pas sur ce scope » (un mode à
- * départs aléatoires n'a pas d'arme de base, une carte hors référence n'a ni terrain ni
- * puissance).
- *
- * LE DÉTAIL PAR ARME PART AU SURVOL, pas dans le libellé : trois à huit armes par niveau
- * rendraient la ligne illisible, et les masquer entièrement ferait perdre la seule information
- * qui dit CE QU'ON a contrôlé.
- */
-export function buildPadTierRows(
-  block: SessionUsagePadTiersBlock | null | undefined,
-  t: UsageText,
-): UsageCountsRowInput[] {
-  return padTierLines(block).map((ligne) => ({
-    key: ligne.tier,
-    label: padTierLabel(ligne.tier, t),
-    taken: ligne.player_total,
-    hint: hintDesArmes(ligne, t),
-  }))
 }
 
 /** Le détail par arme d'un niveau, déjà composé : « Armes de puissance — S7 Sniper 4, SPNKr 2 ». */
@@ -169,24 +142,6 @@ export function padTierUnclassifiedCount(
 }
 
 /**
- * padTiersCoverage — LA COUVERTURE DU BLOC, et c'est LA SIENNE.
- *
- * La carte affichait celle du RÉSUMÉ D'USAGE (`usage.matches_measured`), qui porte sur un autre
- * périmètre : une passe distincte, sur d'autres matchs. Les deux divergent par construction, et
- * la carte annonçait alors une couverture qu'elle n'avait pas (revue du 2026-09-14).
- *
- * Rend `null` quand le bloc ne connaît pas son propre dénominateur : mieux vaut ne rien écrire
- * que citer celui du voisin.
- */
-export function padTiersCoverage(
-  block: SessionUsagePadTiersBlock | null | undefined,
-  t: UsageText,
-): string | null {
-  if (block == null || block.matches_total <= 0) return null
-  return t.measuredFooterFmt(block.matches_measured, block.matches_total)
-}
-
-/**
  * Ce dont les lignes de jauge ont besoin EN PLUS du bloc : la langue, et rien d'autre.
  *
  * LES PARITÉS NE SONT PLUS PASSÉES PAR L'APPELANT (revue du 2026-09-14) : c'étaient celles du
@@ -201,9 +156,8 @@ export interface PadTierGaugeOptions {
 /**
  * buildPadTierGaugeRows — les MÊMES lignes, dans la forme « trois jauges » de la page Sessions.
  *
- * DEUX FORMES, UN SEUL ORDRE ET UN SEUL DÉTAIL : cette fonction et `buildPadTierRows`
- * partagent `padTierLines` et `hintDesArmes`. Deux pages qui rangeraient les niveaux dans
- * deux ordres, ou qui nommeraient les armes de deux façons, se liraient comme deux mesures.
+ * UN SEUL ORDRE ET UN SEUL DÉTAIL : `padTierLines` (l'ordre écrit) et `hintDesArmes` (les armes
+ * au survol), partagés avec le prédicat de visibilité de la page.
  */
 export function buildPadTierGaugeRows(
   block: SessionUsagePadTiersBlock | null | undefined,

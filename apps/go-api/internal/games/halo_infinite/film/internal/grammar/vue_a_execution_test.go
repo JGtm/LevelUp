@@ -205,10 +205,19 @@ func TestLeLancerLitSaChargeSelonK(t *testing.T) {
 	}
 }
 
-// carteDeTest est une entree de catalogue dont la region jouee est la 1, sur deux bits d index.
+// carteDeTest est une entree de catalogue a quatre regions (deux bits d index) dont la region jouee
+// est la 0, celle que le catalogue lit dans le tag de niveau ([tablesDeLaRegionJouee]).
 func carteDeTest() profile.MapQuantEntry {
 	return profile.MapQuantEntry{Min: [3]float32{-100, -50, -10}, Max: [3]float32{100, 50, 10},
-		AxisWidths: [3]uint{14, 13, 11}, Region: 1, RegionIndexBits: 2}
+		AxisWidths: [3]uint{14, 13, 11}, RegionIndexBits: 2}
+}
+
+// carteARegionDeclaree est [carteDeTest] dont la region jouee, la 1, est declaree par le constructeur
+// du catalogue (tranchee par mesure, comme Live Fire), pas lue dans le tag.
+func carteARegionDeclaree() profile.MapQuantEntry {
+	e := carteDeTest()
+	e.Region = 1
+	return e
 }
 
 // ecrirePositionDeNiveau ecrit une position de `FUN_14076e524` : la porte (1 : table DEFAUT), sinon
@@ -229,9 +238,10 @@ func (w *bitWriter) ecrirePositionDeNiveau(porte bool, index uint64, larg [3]uin
 // (genre 6, niveau 0xc) lisent leur position par `FUN_14076e524` : porte posee, la table DEFAUT du
 // build ; index de la region jouee, la loi `FUN_140be9b88` sur les bornes de l entree de catalogue du
 // profil, telles que la grammaire du film les derive ([grammaireDeLaVueASousFilm]) ; un autre index,
-// ou un film lu sans carte, arrete la lecture — rien n est devine. MUTATIONS — niveaux 0xf / 0xc lus
-// a 0x10 ; un index d une autre region lu ; les tables de la region jouee videes a la derivation :
-// ROUGE.
+// un film lu sans carte, ou une region jouee que le catalogue n a pas lue dans le tag de niveau
+// (declaree, tranchee par mesure), arrete la lecture — rien n est devine. MUTATIONS — niveaux 0xf /
+// 0xc lus a 0x10 ; un index d une autre region lu ; les tables de la region jouee videes a la
+// derivation ; l index d une region declaree lu : ROUGE.
 func TestLesPositionsAIndexSeLisentSurLaRegionJouee(t *testing.T) {
 	e := carteDeTest()
 	bornes := [3][2]float32{{-100, 100}, {-50, 50}, {-10, 10}}
@@ -258,11 +268,15 @@ func TestLesPositionsAIndexSeLisentSurLaRegionJouee(t *testing.T) {
 	} {
 		jouee := grammaireDeLaVueASousFilm(profilDIdentite(profile.FilmIdentity{}, &e)).positions
 		sansCarte := grammaireDeLaVueASousFilm(profilDIdentite(profile.FilmIdentity{}, nil)).positions
+		d := carteARegionDeclaree()
+		declaree := grammaireDeLaVueASousFilm(profilDIdentite(profile.FilmIdentity{}, &d)).positions
 		for _, c := range []cas{
 			{"porte posee", true, 0, jouee, true},
-			{"index de la region jouee", false, 1, jouee, true},
+			{"index de la region jouee", false, 0, jouee, true},
 			{"index d une autre region", false, 2, jouee, false},
-			{"film lu sans carte", false, 1, sansCarte, false},
+			{"film lu sans carte", false, 0, sansCarte, false},
+			{"porte posee, region declaree", true, 0, declaree, true},
+			{"index de la region declaree", false, 1, declaree, false},
 		} {
 			larg := profile.LargeursAxeParDefautDuBuild(genre.niveau)
 			if !c.porte {

@@ -6,8 +6,9 @@ package grammar
 // # C EST LA MARCHE DE PRODUCTION, PAS UN SECOND MARCHEUR
 //
 // Le pilotage qui suit — la table anticipee posee une fois, puis chunk par chunk la liaison des
-// images-cles au monde ([lierLesImagesClesDuChunk]), puis paquet par paquet la localisation des
-// listes d evenements ([localiserLaListe]) et la marche par rangs ([lireTrameParRangs]) — est celui
+// images-cles au monde ([lierLesImagesClesDuChunk]), puis paquet par paquet le debut de la vue B des
+// listes d evenements (la fin de la vue A lue quand elle decide, sinon [localiserLaListe] :
+// [debutDeLaVueBDeCuisson]) et la marche par rangs ([lireTrameParRangs]) — est celui
 // des canaux du distributeur ([Distribuer] : les etats de mouvement et le tir continu de
 // [ScanMarcheDesTrames]) et de la carte de fermeture ([FrameClosure], [FrameClosureDetaillee]) : ils
 // le CONSOMMENT, aucun ne le recopie. Garde-rail :
@@ -151,8 +152,9 @@ func (m *marcheurDesTrames) parcourir(rendre func(*trameLue) bool) {
 
 // marcherLePaquet marche UNE trame delta et la range dans l arene. Sa vue A est lue et rangee
 // d abord, une fois ([rangerLaTete]), puis passee a la marche par rangs ; les paquets dont la tete
-// annonce une liste d evenements partent du debut que [localiserLaListe] leur trouve, et une liste
-// non localisee n est pas lue. La fin de la vue A lue n en decide pas (lot VA, etape V1).
+// annonce une liste d evenements partent de la fin de leur vue A quand elle decide
+// ([debutParLaVueA], [lecture.DebutParVueA] : une lecture), sinon du debut que [localiserLaListe]
+// leur trouve ; une liste non localisee n est pas lue.
 func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	t, p := &m.trame, &m.paquet
 	pay := pk.Payload(data)
@@ -161,9 +163,10 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 	t.debut, p.Debut = movementStateSkipLeadBits, lecture.DebutEnTete
 	t.parRangs = m.cfg.Profil.Grammaire.ClassesDeVue
 	t.lecture = lectureDeTrame{debutVueB: -1, finVueB: -1}
-	vueA := rangerLaTete(p, m.cfg.Profil, m.fc.grammaireDeLaVueA())
+	g := m.fc.grammaireDeLaVueA()
+	vueA := rangerLaTete(p, m.cfg.Profil, g)
 	if listeAnnoncee(&p.VueA) { // la continuation annonce une liste d evenements
-		t.debut, p.Debut = localiserLaListe(pay, m.monde, m.cfg)
+		t.debut, p.Debut = debutDeLaVueBDeCuisson(pay, &vueA, g.classe, m.monde, m.cfg)
 		if t.debut < 0 {
 			rangerUneListeNonLocalisee(p)
 			return
@@ -194,4 +197,16 @@ func (l *LiaisonDUnChunk) ajouter(o LiaisonDUnChunk) {
 	l.Datums += o.Datums
 	l.Ambigus += o.Ambigus
 	l.Oubliees += o.Oubliees
+}
+
+// debutDeLaVueBDeCuisson rend le debut de la vue B d un paquet a evenements de la cuisson, dont la
+// vue A `a` est deja lue et rangee ([rangerLaTete]), et COMMENT il a ete trouve : la fin de la vue A
+// quand elle decide ([debutParLaVueA], [lecture.DebutParVueA]), sinon [localiserLaListe].
+func debutDeLaVueBDeCuisson(pay []byte, a *FluxVueA, classe classeDeLaVueA, w *World, cfg FrameConfig) (
+	int, lecture.DebutDeVueB,
+) {
+	if e := debutParLaVueA(pay, a, classe, w, cfg); e >= 0 {
+		return e, lecture.DebutParVueA
+	}
+	return localiserLaListe(pay, w, cfg)
 }

@@ -11,11 +11,11 @@ package killsource
 // T4 du scan cache — un catalogue perime — et l ablation d un tag reel le mesure : une
 // architecture scan-d abord perd 224 lignes sur 20 essais, l hybride en perd 20. Facteur 11.2.
 //
-// LE LOCALISATEUR. Dans un paquet A EVENTS la boucle de records ne commence pas au bit 2 : son
-// debut est celui du localisateur unique de `grammar` ([grammar.LocaliserBoucleDeRecords], ordre
-// [grammar.SignaturePuisLargeurLibre] : signature stricte du slot 123 a la generation du monde,
-// sinon repli a largeur libre), le meme que celui de la marche des morts d objet. Le paquet qu il
-// ne localise pas se saute.
+// LE DEBUT DE LA VUE B. Dans un paquet A EVENTS la boucle de records ne commence pas au bit 2 : son
+// debut est la fin de la vue A quand la lecture de la vue A en decide, sinon celui du localisateur
+// unique de `grammar` ([grammar.DebutDeLaVueB], ordre [grammar.SignaturePuisLargeurLibre] :
+// signature stricte du slot 123 a la generation du monde, sinon repli a largeur libre), le meme
+// que celui de la marche des morts d objet. Le paquet qu il ne localise pas se saute.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -65,13 +65,14 @@ func walkFrom(pl []byte, w *grammar.World, cfg grammar.FrameConfig,
 
 // runWalk : la passe de marche complete sur tous les paquets type-0, dans l ordre du temps.
 //
-// `mv` est le PROFIL DE MOUVEMENT que la calibration a retenu (lot 2.2.a). Il arrive en
-// PARAMETRE depuis le 2.2.a : avant, la marche reconstruisait un cadre par defaut et heritait
-// des largeurs calibrees par effet de bord des variables de paquet de `grammar`.
-func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeBalayage) *walkResult {
+// `cal` porte le PROFIL DE MOUVEMENT que la calibration a retenu (lot 2.2.a), et la grammaire de
+// la vue A du film (lot VA). Le profil arrive en PARAMETRE depuis le 2.2.a : avant, la marche
+// reconstruisait un cadre par defaut et heritait des largeurs calibrees par effet de bord des
+// variables de paquet de `grammar`.
+func runWalk(f *film, tl *timeline, r *roster, views int, cal *calibration) *walkResult {
 	tl.rewind()
 	cfg := grammar.DefaultFrameConfig()
-	cfg.Profil = prof
+	cfg.Profil = cal.Profil
 	res := &walkResult{}
 	res.bipLo, res.bipHi = tl.bipedRange()
 	for i := range f.t0 {
@@ -80,7 +81,7 @@ func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeB
 		start := 2
 		if hasEvents(p) {
 			res.withEv++
-			s, aLargeurLibre := grammar.LocaliserBoucleDeRecords(p.payload, w, cfg, grammar.SignaturePuisLargeurLibre)
+			s, aLargeurLibre := grammar.DebutDeLaVueB(p.payload, w, cfg, cal.VueA)
 			if s < 0 {
 				continue
 			}

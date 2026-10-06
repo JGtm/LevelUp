@@ -28,9 +28,9 @@ func rangerUn(w *World, pay []byte) *lecture.Paquet {
 	return p
 }
 
-// rangerUnAvec marche un payload depuis la tete comme [marcheurDesTrames.marcherLePaquet] : la vue A
-// lue et rangee d abord, sous la grammaire `g` que le film declare ([rangerLaTete]), puis passee a la
-// marche par rangs.
+// rangerUnAvec marche un payload depuis la tete comme [marcheurDesTrames.marcherLePaquet] marche un
+// paquet sans liste : la vue A lue et rangee d abord, sous la grammaire `g` que le film declare
+// ([rangerLaTete]), puis passee a la marche par rangs partie de la tete.
 func rangerUnAvec(w *World, pay []byte, g grammaireDeLaVueA) *lecture.Paquet {
 	cfg := cadreDeCarte()
 	p := &lecture.Paquet{Payload: pay, Debut: lecture.DebutEnTete}
@@ -152,9 +152,9 @@ func TestLaMarcheRangeLaQueueDUnComposantNonPorte(t *testing.T) {
 // LE GENRE 5 EST PORTE DEPUIS LE LOT VA (`projectile_detonate`, `FUN_1408096f8`, position de niveau
 // 0xf) : sous un film dont la table des genres est la table native, la vue A se lit jusqu a son
 // terminateur et se range terminee, avec son etendue entiere ; sous un film sans table, elle
-// s arrete apres son genre. Dans les deux cas la marche s arrete au meme bit : la vue B d un paquet a
-// evenements part d un debut localise ([marcheurDesTrames.marcherLePaquet]), et la fin de la vue A
-// n en decide pas a l etape V1 du lot.
+// s arrete apres son genre. Dans les deux cas la marche PARTIE DE LA TETE s arrete au meme bit : la
+// vue B d un paquet a evenements part du debut que [debutDeLaVueBDeCuisson] lui donne — la fin de la
+// vue A lue pour le film recent ([lecture.DebutParVueA]), un debut localise sinon.
 func TestLaMarcheDepuisLaTeteNeTraversePasUneVueANonVide(t *testing.T) {
 	var bw bitWriter
 	bw.bit(1)     // le bit de configuration

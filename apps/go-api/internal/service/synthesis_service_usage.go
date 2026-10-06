@@ -2,10 +2,7 @@ package service
 
 // synthesis_service_usage.go — LES BLOCS ANNEXES DE LA SYNTHÈSE chargés par un
 // repo OPTIONNEL, gaté par capability et best-effort : les KPI d'objectifs.
-//
-// Le bloc « servi ou gâché » de l'équipement a quitté la Synthèse le 2026-09-13 pour
-// l'onglet Progression des Séries temporelles (cf. timeseries_service_sections.go) : même
-// producteur (squadagg.BuildEquipmentUsageBlock), même scope, une seule page l'affiche.
+
 //
 // Fichier thématique au sens de l'en-tête de synthesis_service.go : ce dernier
 // tient le seuil des 500 lignes du dépôt, les responsabilités qui s'y ajoutent

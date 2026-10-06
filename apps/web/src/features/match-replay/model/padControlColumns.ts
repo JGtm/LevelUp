@@ -28,6 +28,7 @@ import type { CategoryGroup } from '@/components/charts/barStackedGroups'
 import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 
 import type { PadBarRow } from './padControlChart'
+import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 
 /** Un groupe de colonnes en entrée : son titre (déjà localisé, vide = anonyme) et ses lignes. */
 export interface PadColumnGroupInput {
@@ -35,12 +36,14 @@ export interface PadColumnGroupInput {
   rows: readonly PadBarRow[]
 }
 
-/** Un joueur du graphe : sa sous-clé empilée, et de quoi l'encrer côté appelant. */
-export interface PadColumnPlayer {
+/**
+ * Un joueur du graphe : sa sous-clé empilée, son camp du film (dont le côté de feuille donne
+ * l'encre allié / adverse), et de quoi l'encrer côté appelant.
+ */
+export interface PadColumnPlayer extends ReplayCamp {
   /** Sous-clé de la pile — le nom d'affichage, désambiguïsé si deux joueurs le partagent. */
   key: string
   xuid: string
-  side: string | null
   /** Part de l'encre du camp (100 = l'encre pure), telle que `padControlChart` l'a calculée. */
   tint: number
   /** L'encre DOM déjà prête (`color-mix`) — pour la légende, jamais pour le canvas. */
@@ -112,6 +115,7 @@ export function buildPadColumns(input: PadColumnsInput): PadColumnsModel {
           joueurs.set(clef, {
             key: clef,
             xuid: seg.xuid,
+            team: seg.team,
             side: seg.side,
             tint: seg.tint,
             cssColor: seg.color,

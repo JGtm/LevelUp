@@ -47,10 +47,12 @@ func TestFrameClosureDetailleeRendLaCarteDeFrameClosure(t *testing.T) {
 				bo.nom, got, want)
 		}
 		recouperLeDetail(t, bo.nom, got, details)
-		loc, nonLoc := listesDeLaBobine(details)
-		t.Logf("%s : %d liste(s) d evenements localisee(s), %d non localisee(s)", bo.nom, loc, nonLoc)
-		if want.Paquets > 0 && (loc == 0 || nonLoc == 0) {
-			t.Errorf("%s : %d liste(s) localisee(s), %d non localisee(s) : les deux branches du pilotage doivent etre exercees", bo.nom, loc, nonLoc)
+		loc, nonLoc, lues := listesDeLaBobine(details)
+		t.Logf("%s : %d liste(s) d evenements localisee(s), %d non localisee(s), %d lue(s) jusqu a la fin de "+
+			"la vue A", bo.nom, loc, nonLoc, lues)
+		if want.Paquets > 0 && (loc == 0 || nonLoc == 0 || lues == 0) {
+			t.Errorf("%s : %d liste(s) localisee(s), %d non localisee(s), %d lue(s) : les trois branches du pilotage "+
+				"doivent etre exercees", bo.nom, loc, nonLoc, lues)
 		}
 		if want.Paquets > 0 {
 			mesurees++
@@ -193,15 +195,18 @@ func TestFrameClosureDetaillee_ModeBorne(t *testing.T) {
 	}
 }
 
-// listesDeLaBobine compte les paquets a liste d evenements localisee et non localisee d un detail.
-func listesDeLaBobine(details []PaquetDeCarte) (localisees, nonLocalisees int) {
+// listesDeLaBobine compte les paquets a liste d evenements localisee, non localisee et lue jusqu a la
+// fin de la vue A ([lecture.DebutParVueA]) d un detail.
+func listesDeLaBobine(details []PaquetDeCarte) (localisees, nonLocalisees, lues int) {
 	for _, d := range details {
 		switch {
 		case d.ListeLocalisee:
 			localisees++
 		case d.ListeNonLocalisee:
 			nonLocalisees++
+		case d.ListeLue:
+			lues++
 		}
 	}
-	return localisees, nonLocalisees
+	return localisees, nonLocalisees, lues
 }

@@ -11,15 +11,18 @@
  * CE QU'IL CORRIGE (demande utilisateur du 2026-08-16 : « chaque équipe devra retrouver son
  * nom (Équipe Cobra / Équipe Eagle sur le scoreboard, sans réinventer la roue ») : la colonne
  * affichait `t0` / `t1` bruts, c'est-à-dire l'identifiant de transport du backend. Le libellé
- * vient de `resolveTeamLabel` — LA cascade du dépôt, celle du scoreboard et des objectifs.
+ * lui arrive tout fait : c'est le nom du CAMP DU FILM (`campLabel`, `lib/replay/replayCamps.ts`),
+ * la cascade du scoreboard sur la feuille de ses occupants, « Équipe N » de son désignateur quand
+ * la feuille se tait — jamais « sans équipe » : une colonne est toujours un camp du film.
  *
  * LA COULEUR EST CELLE DES DEUX AUTRES PANNEAUX (décision D1 amendée) : `team-ally` /
  * `team-enemy`, les tokens que les réglages d'accessibilité peuvent surcharger. Un point bleu
  * sur la carte et un titre rouge pour la même équipe seraient une page cassée.
  *
- * UN GROUPE SANS CAMP CONNU N'EMPRUNTE AUCUNE DES DEUX COULEURS : liseré `border`, fond à
- * l'encre du thème, texte `muted-foreground`. Le camp est une information, pas un défaut
- * d'affichage à combler.
+ * UN CAMP DONT L'ENCRE N'EST PAS CONNUE N'EMPRUNTE AUCUNE DES DEUX COULEURS : liseré `border`,
+ * fond à l'encre du thème, texte `muted-foreground` — quand aucun de ses occupants n'a de côté
+ * de feuille, ou qu'aucun n'est reconnu au scoreboard. L'allégeance est une information, pas un
+ * défaut d'affichage à combler.
  *
  * LE TITRE NE PORTE PLUS AUCUN NOMBRE (demande utilisateur du 2026-08-24 : « pas besoin de
  * mettre le score et le deuxième chiffre à côté du nom de l'équipe ») : le score vivant, la
@@ -28,16 +31,13 @@
  */
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
-import { resolveTeamLabel } from '@/lib/halo/teamLabel'
-import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
-import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 
 /**
  * allyOfGroup dit de quel côté est un groupe : `true` allié, `false` adverse, `null` quand
- * on ne sait pas — camp non transmis, ou aucun joueur du groupe reconnu au scoreboard.
+ * on ne sait pas — camp sans côté de feuille, ou aucun joueur du groupe reconnu au scoreboard.
  * « Allié » veut dire « du côté du joueur dont on regarde la page » (cf. xuidMeta.ts).
  */
 function allyOfGroup(
@@ -52,19 +52,16 @@ function allyOfGroup(
 }
 
 interface Props {
-  /** Les joueurs de CE groupe : leurs lignes de scoreboard portent le libellé du backend. */
+  /** Le nom du camp, déjà résolu par la colonne (`campLabel`). */
+  label: string
+  /** Les joueurs qui tiennent une place de CE camp à l'image lue : ils disent son allégeance. */
   players: readonly ReplayPlayer[]
+  /** Le côté de feuille du camp (`ReplayCamp.side`) — l'encre seulement, jamais l'appartenance. */
   side: string | null
   xuidMeta?: XuidMeta
-  locale: ReplayLocale
 }
 
-export function ReplayTeamHeader({ players, side, xuidMeta, locale }: Props) {
-  const t = REPLAY_TEXT[locale]
-  const rows = players
-    .map((p) => p.board)
-    .filter((r): r is MatchScoreboardRow => r !== undefined)
-  const label = resolveTeamLabel(rows, side, t)
+export function ReplayTeamHeader({ label, players, side, xuidMeta }: Props) {
   const ally = allyOfGroup(players, side, xuidMeta)
   const accent = ally === null ? null : tokenCssVar(ally ? 'team-ally' : 'team-enemy')
   return (

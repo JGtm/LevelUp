@@ -192,7 +192,7 @@ func decrireRecords(vus []deltaBipedRecord) string {
 //
 // LES HUIT LECTEURS LISENT UNE SEULE POPULATION depuis le lot 2.7.b de la representation
 // intermediaire ([lecturesBipedes]) : les records bipedes delta que la marche des trames a lus, plus
-// ceux que l ancrage a rendus derriere elle — 28 460 sur cette bobine. Un compte qui differe d un
+// ceux que l ancrage a rendus derriere elle — 29 511 sur cette bobine. Un compte qui differe d un
 // lecteur a l autre veut dire qu un lecteur ne lit plus cette population.
 //
 // CE TEMOIN N'EST PAS L'ORACLE DE L'AVANCE, ET LA MESURE LE DIT. La mutation `p = i0 + i0Bits` ->
@@ -209,14 +209,14 @@ func decrireRecords(vus []deltaBipedRecord) string {
 // bande de slots elargie, une porte deplacee — tout ce qui change la population ancree.
 var comptesDeRecordsMiniBobine = map[string]int{
 	"marcheurDeltaBipede": 28005,
-	"abilityCharges":      28460,
-	"abilityImpulses":     28460,
-	"abilityRanks":        28460,
-	"camoStates":          28460,
-	"equipmentChanges":    28460,
-	"grappleReads":        28460,
-	"heldWeaponChanges":   28460,
-	"inventoryDeltas":     28460,
+	"abilityCharges":      29511,
+	"abilityImpulses":     29511,
+	"abilityRanks":        29511,
+	"camoStates":          29511,
+	"equipmentChanges":    29511,
+	"grappleReads":        29511,
+	"heldWeaponChanges":   29511,
+	"inventoryDeltas":     29511,
 }
 
 // TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine — sur des OCTETS REELS, le marcheur

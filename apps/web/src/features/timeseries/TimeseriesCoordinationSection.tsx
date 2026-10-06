@@ -1,34 +1,29 @@
 /**
- * TimeseriesCoordinationSection — « Riposte » et « Appui reçu » dans le temps, sur
- * l'onglet Progression des Séries temporelles (lot Q ; D22-3 et D22-6/7 du 2026-09-21).
+ * TimeseriesCoordinationSection — « Appui reçu » dans le temps, sur l'onglet Progression des
+ * Séries temporelles (lot Q ; D22-6/7 du 2026-09-21). La carte « Riposte » a quitté la page
+ * (décision V5 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05) ; « Appui reçu » reste seule,
+ * en demi-largeur, telle quelle (D11).
  *
- * UN SEUL GRAPHE PAR SUJET (amendement D22-3 à la maquette, qui en dessinait deux), et
- * depuis D23-3 (2026-09-22) EN ÉCART À SON REPÈRE : chaque grandeur est tracée comme sa
- * distance à sa propre référence — l'habituel de la période de référence (`habituel_pct`,
- * lot S) pour la première, la part équitable 1/n (`parity_pct`) pour la seconde.
- *
- * POURQUOI. En valeur, « je suis couvert » vit vers 48 % et « je riposte » vers 25 % :
- * deux bandes de bâtons qui ne se croisent jamais, sur un axe commun qui ne porte donc
- * rien, et une soirée qu'il faut juger en mesurant À L'ŒIL la distance de chaque bâton à
- * SON tireté. En écart, les deux grandeurs partagent enfin une unité — des points — les
- * deux tiretés se confondent dans UNE ligne zéro qui les nomme, et la soirée se lit par
- * la seule DIRECTION de ses bâtons. La valeur absolue ne quitte pas la carte : elle reste
- * dans les chiffres d'appel et dans l'infobulle, qui porte les deux lectures.
+ * EN ÉCART À SON REPÈRE (D23-3, 2026-09-22) : chaque grandeur est tracée comme sa distance à
+ * sa propre référence — l'habituel de la période de référence (`habituel_pct`) pour « on me
+ * prépare », la part équitable 1/n (`parity_pct`) pour « ma part des appuis ». Les deux
+ * grandeurs partagent une unité — des points —, les deux tiretés se confondent dans UNE ligne
+ * zéro qui les nomme, et la soirée se lit par la seule DIRECTION de ses bâtons. La valeur
+ * absolue reste dans les chiffres d'appel et dans l'infobulle.
  *
  * D22-VERBOSITÉ : aucune phrase de lecteur. Les chiffres d'appel restent (ils disent le
  * fait), l'explication tient dans l'infobulle ⓘ du titre, en trois phrases au plus.
  *
  * AUCUNE REQUÊTE NEUVE : le bloc Coordination arrive avec la réponse de page (lot N1).
- * Le grain est la SOIRÉE et non le match : le dénominateur de la première grandeur, ce
- * sont mes morts — 8 à 14 par match en arène, où une seule mort déplace le point de
- * dix points. La rangée est CONSERVÉE quand le bloc est indisponible (D8) : deux cartes
- * qui nomment leur absence, jamais une section qui disparaît sans rien dire.
+ * Le grain est la SOIRÉE et non le match : les dénominateurs, mes frags et les appuis du camp,
+ * sont trop peu nombreux par match pour un point lisible. La
+ * carte est CONSERVÉE quand le bloc est indisponible (D8) : elle nomme son absence, jamais une
+ * section qui disparaît sans rien dire.
  */
 import { useMemo, type ReactNode } from 'react'
 
 import { SessionBarsTrendChart } from '@/components/charts/SessionBarsTrendCard'
 import type { SessionBarsSeriesSpec } from '@/components/charts/sessionBarsTrendChart'
-import { seriesColor } from '@/components/charts/_utils'
 import { SectionCard } from '@/components/ui/section-card'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { titleWithInfo } from '@/components/ui/title-with-info'
@@ -39,7 +34,6 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import {
   coordinationDessinable,
-  delaiMedianS,
   habituelOuTaux,
   labelsDeSoirees,
   moyenneGlissante,
@@ -70,10 +64,7 @@ export function TimeseriesCoordinationSection({
     () => new Intl.NumberFormat(numLoc, { style: 'percent', maximumFractionDigits: 1 }),
     [numLoc],
   )
-  const secFmt = useMemo(
-    () => new Intl.NumberFormat(numLoc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-    [numLoc],
-  )
+
 
   // Titre sans bloc de coordination (capability absente, réponse ancienne) : rien n'est
   // rendu — une carte qui ne peut RIEN dire n'est pas une carte vide, elle n'existe pas.
@@ -87,17 +78,7 @@ export function TimeseriesCoordinationSection({
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <CarteRiposte
-        block={block}
-        labels={labels}
-        sessions={sessions}
-        dessinable={dessinable}
-        indisponible={indisponible}
-        couverture={couverture}
-        t={t}
-        pctFmt={pctFmt}
-        secFmt={secFmt}
-      />
+
       <CarteAppui
         block={block}
         labels={labels}
@@ -169,69 +150,6 @@ function labelZero(
   t: TimeseriesCoordinationText,
 ): string {
   return parite == null ? habituel : t.zeroLabel(habituel, parite)
-}
-
-/** « Riposte » : je suis couvert (mes morts ripostées) contre je riposte (part du camp). */
-function CarteRiposte({
-  block,
-  labels,
-  sessions,
-  dessinable,
-  indisponible,
-  couverture,
-  t,
-  pctFmt,
-  secFmt,
-}: CarteProps & { secFmt: Intl.NumberFormat }) {
-  const r = block.riposte
-  const couvert = serieDeSoirees(sessions, (p) => p.riposte.je_suis_couvert)
-  const mien = serieDeSoirees(sessions, (p) => p.riposte.je_riposte)
-  const parite = pariteOuRien(r.parity_pct)
-  const delai = delaiMedianS(r.delai_median_ms)
-
-  const habituel = habituelOuTaux(r.habituel_pct, r.je_suis_couvert)
-  const labelHabituel = t.usual(pctFmt.format(habituel / 100))
-  const labelParite = parite == null ? null : t.parity(pctFmt.format(parite / 100))
-  const specs: SessionBarsSeriesSpec[] = [
-    specEcart({ name: t.covered, color: seriesColor(0), serie: couvert }, habituel, labelHabituel, t),
-    specEcart({ name: t.iRiposte, color: seriesColor(1), serie: mien }, parite, labelParite, t),
-  ]
-
-  return (
-    <CarteDeCoordination
-      title={t.riposteTitle}
-      aide={
-        <TooltipParagraphs
-          items={[t.riposteTooltip(block.fenetre_ms / 1000), t.tooltipZero, t.tooltipTrend]}
-        />
-      }
-      appels={[
-        { label: t.covered, value: pctFmt.format(r.je_suis_couvert.taux) },
-        { label: t.iRiposte, value: pctFmt.format(r.je_riposte.taux) },
-        { label: t.delay, value: delai == null ? '—' : `${secFmt.format(delai)} s` },
-      ]}
-      indisponible={indisponible}
-      empty={t.empty}
-      couverture={couverture}
-      testId="timeseries-coord-riposte"
-    >
-      {dessinable && (
-        <SessionBarsTrendChart
-          labels={labels}
-          series={specs}
-          yAxisLabel={t.yAxisDelta}
-          baseline={{ label: labelZero(labelHabituel, labelParite, t), deltaUnit: t.points }}
-          hollowLegend={{ label: t.hollow, color: seriesColor(0) }}
-          tooltipLines={(i: number) => [
-            t.volMyDeaths(couvert.volumes[i] ?? 0),
-            t.volTeamDeaths(mien.volumes[i] ?? 0),
-          ]}
-          height={HAUTEUR}
-          emptyMessage={t.empty}
-        />
-      )}
-    </CarteDeCoordination>
-  )
 }
 
 /** « Appui reçu » : on me prépare (mes frags appuyés) contre ma part des appuis du camp. */

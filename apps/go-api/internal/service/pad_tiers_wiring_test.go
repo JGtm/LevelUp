@@ -10,8 +10,7 @@ package service
 // l'attrape pas : il appelle la fonction directement.
 //
 // Ces tests-ci passent par le SERVICE, avec un repo qui rend des lignes, et verifient que le
-// bloc arrive au contrat. Debrancher `attachPadTiers` (page Sessions) ou `attacherNiveauxDArmes`
-// (Escouade / Timeseries) les fait rougir.
+// bloc arrive au contrat. Debrancher `attachPadTiers` (page Sessions) les fait rougir.
 
 import (
 	"context"
@@ -118,16 +117,12 @@ func TestSessionPage_LectureEnEchecNeCassePasLaPage(t *testing.T) {
 	}
 }
 
-// TestNiveauxDArmes_LeCablageExisteDesDeuxCotes — le second cote (Escouade / Timeseries).
-//
-// Le bloc d'equipement est produit par `squadagg.BuildEquipmentUsageBlock`, un autre chemin que
-// la page Sessions. Il doit lire la MEME table par le MEME calcul.
-func TestNiveauxDArmes_LeCablageExisteDesDeuxCotes(t *testing.T) {
+// TestNiveauxDArmes_LeCablageExiste — la page Sessions, seul lecteur des niveaux d'armes, les lit
+// par le MEME calcul.
+func TestNiveauxDArmes_LeCablageExiste(t *testing.T) {
 	for _, cas := range []struct{ fichier, attendu string }{
 		{"session_page_usage.go", "s.attachPadTiers(ctx, &block, ids, tc)"},
 		{"session_page_usage.go", "s.sessionUsageRepo.LoadPadTiers(ctx, matchIDs)"},
-		{"squadagg/equipment_usage.go", "attacherNiveauxDArmes(ctx, &block, q, tc)"},
-		{"squadagg/equipment_usage.go", "q.Repo.LoadPadTiers(ctx, q.MatchIDs)"},
 	} {
 		src, err := lireSource(cas.fichier)
 		if err != nil {

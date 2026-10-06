@@ -1,17 +1,17 @@
 package grammar
 
-// rev_chronique_archive_7.go - LA CHRONIQUE DE [Rev], RANGS `grammar-2026-09-24` A
-// `grammar-2026-09-27.3`.
+// rev_chronique_archive_7.go - LA CHRONIQUE DE [Rev], RANGS `grammar-2026-09-24` A `grammar-2026-09-27.3`.
 //
 // # POURQUOI CETTE SEPTIEME ARCHIVE (2026-10-03, integration de la vague 1 de la campagne de grammaire)
 //
 // `rev_chronique.go` aurait passe 500 lignes avec l entree `grammar-2026-10-03` (lot L4a) et le
 // ratchet de taille (`archlint/film_file_size_test.go`) refuse de grandir. Le rang
-// `grammar-2026-09-24` est donc verse ici, mot pour mot. Le 2026-10-06 (lot 2.7.b de la
-// representation intermediaire), pour la meme raison, les rangs `grammar-2026-09-27` a `.3` l ont
-// suivi, mot pour mot, et la suite VIVANTE repart a `grammar-2026-10-02`. Geste ordinaire, annonce
-// par l en-tete des six archives precedentes. Cette archive est dans `fichiersDeChroniqueGrammar`
-// (`rev_test.go`), donc hors de l empreinte : y ecrire ne fait pas monter la couche.
+// `grammar-2026-09-24` est donc verse ici, mot pour mot, et la suite VIVANTE repart a
+// `grammar-2026-09-27`. Geste ordinaire, annonce par l en-tete des six archives precedentes. Cette
+// archive est dans `fichiersDeChroniqueGrammar` (`rev_test.go`), donc hors de l empreinte : y
+// ecrire ne fait pas monter la couche. Le 2026-10-06 (lot VA de la campagne, fusion de `feat/v75`),
+// les rangs `grammar-2026-09-27` a `.3` y ont ete verses a leur tour, mot pour mot, pour la meme
+// raison ; la suite VIVANTE repart a `grammar-2026-10-02`.
 
 // ENTREE `grammar-2026-09-24` (2026-09-24, integration de la vague D des retours du rejeu) : UNE
 // SEULE MONTEE POUR LES LOTS DE LA VAGUE, partis de `fe7079f41` et qui avaient chacun pose

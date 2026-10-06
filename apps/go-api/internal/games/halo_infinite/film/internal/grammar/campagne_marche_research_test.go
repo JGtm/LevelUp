@@ -102,7 +102,7 @@ func cmMarcher(f *cmFilm, v cmVariante, e cmEcouteur) (FrameClosureReport, *Obse
 			e.debutDeChunk(c, data, pks, monde)
 		}
 		poser([2]int{c, -1})
-		var tete func([]byte, *World, FrameConfig) (int, bool)
+		tete := debutDeLaListeSous(f.fc.grammaireDeLaVueA()) // la cuisson : la fin de la vue A, puis le localisateur
 		if v.tete != nil {
 			tete = v.tete(c)
 		}
@@ -137,11 +137,7 @@ func cmPaquetDe(md *marcheDetaillee, tete func([]byte, *World, FrameConfig) (int
 	debut := movementStateSkipLeadBits
 	if _, present := PacketHeadEventType(pay); present {
 		p.strict = marchLocateStrict(pay, w, md.cfg)
-		loc := debutDeLaListe
-		if tete != nil {
-			loc = tete
-		}
-		debut, _ = loc(pay, w, md.cfg)
+		debut, _ = tete(pay, w, md.cfg)
 		if debut < 0 {
 			md.listeNonLocalisee()
 			p.d.ListeNonLocalisee, p.d.Cause, p.debut = true, causeListeNonLocalisee, -1
