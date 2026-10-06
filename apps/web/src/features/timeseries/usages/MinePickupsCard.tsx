@@ -16,6 +16,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import type { SquadEmpriseObject } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 
+import { repliOffsetPct } from '@/features/squad/charts/squadFragBreakdownChart'
 import { TEAM_REST_INK, squadPlayerInk } from '@/features/squad/formes/colors'
 import type { EmpriseText } from '@/features/squad/emprise/empriseStrings'
 import { resourceInk } from '@/features/squad/emprise/resourceColors'
@@ -31,8 +32,9 @@ const MIN_TRACK_PCT = 2
 
 /**
  * Vue compacte du tiroir de comparaison de Sessions (maquette `renderMineCompact`) : une barre par
- * RESSOURCE, ma part et celle du reste de mon camp en pourcentage (comptes au survol), bonus perdus
- * en pourcentage ; `resourceSub` est le sous-libellé de chaque ressource.
+ * RESSOURCE, ma part et celle du reste de mon camp en pourcentage (comptes au survol), une part qui
+ * ne tient pas dans son segment sur la ligne de repli au-dessus, bonus perdus en pourcentage ;
+ * `resourceSub` est le sous-libellé de chaque ressource.
  */
 interface MineCompact {
   resourceSub: string
@@ -174,14 +176,62 @@ function MineResourceLine({ row, label, sub, hidden, player, ut }: { row: MineRe
         {label}
         <small className="block text-[11px] text-muted-foreground">{sub}</small>
       </div>
-      <div className="relative h-4 min-w-0 rounded-[3px] bg-muted">
-        {row.me > 0 && (
-          <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} light />
-        )}
-        {rest > 0 && (
-          <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(label, rest, row.camp)} value={restLabel} />
-        )}
+      <div className="min-w-0">
+        <ShareRepli
+          id={`usages-mine-repli-${key}`}
+          parts={[
+            { segId: `usages-mine-me-${key}`, n: row.me, leftPct: 0, widthPct: mePct, color: ME_INK, text: meLabel },
+            { segId: `usages-mine-rest-${key}`, n: rest, leftPct: mePct, widthPct: 100 - mePct, color: TEAM_REST_INK, text: restLabel },
+          ]}
+          hidden={hidden}
+        />
+        <div className="relative h-4 rounded-[3px] bg-muted">
+          {row.me > 0 && (
+            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} light />
+          )}
+          {rest > 0 && (
+            <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(label, rest, row.camp)} value={restLabel} />
+          )}
+        </div>
       </div>
+    </div>
+  )
+}
+
+/** Une part de la barre compacte : son segment, son compte, sa position, son encre, sa part écrite. */
+interface SharePart {
+  segId: string
+  n: number
+  leftPct: number
+  widthPct: number
+  color: string
+  text: string
+}
+
+/**
+ * La ligne de repli au-dessus de la barre compacte : les parts qui ne tiennent pas dans leur segment,
+ * alignées sur le début du premier d'entre eux (`repliOffsetPct`, patron de la Répartition des
+ * frags) ; absente quand tout tient. La vue compacte n'a pas de colonne de droite : sans elle, une
+ * part étroite ne serait lisible qu'au survol.
+ */
+function ShareRepli({ id, parts, hidden }: { id: string; parts: SharePart[]; hidden: ReadonlySet<string> }) {
+  const present = parts.filter((p) => p.n > 0)
+  const isHidden = (segId: string) => hidden.has(segId)
+  const offset = repliOffsetPct(
+    present.map((p) => ({ cls: p.segId, kills: p.n, leftPct: p.leftPct, widthPct: p.widthPct })),
+    isHidden,
+  )
+  if (offset == null) return null
+  return (
+    <div className="mb-0.5 flex gap-2 whitespace-nowrap text-xs tabular-nums text-muted-foreground" style={{ paddingLeft: `${offset}%` }} data-testid={id}>
+      {present
+        .filter((p) => isHidden(p.segId))
+        .map((p) => (
+          <span key={p.segId} className="inline-flex items-center">
+            <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: p.color }} aria-hidden />
+            <b className="font-bold text-foreground">{p.text}</b>
+          </span>
+        ))}
     </div>
   )
 }

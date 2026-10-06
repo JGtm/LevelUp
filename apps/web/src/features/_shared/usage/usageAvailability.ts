@@ -9,22 +9,19 @@
 import type { UsageText } from './usageI18n'
 
 /**
- * LES QUATRE CAUSES D'UN BLOC VIDE (D8) — elles ne se corrigent pas de la même façon, donc
+ * LES TROIS CAUSES D'UN BLOC VIDE (D8) — elles ne se corrigent pas de la même façon, donc
  * elles ne s'écrivent pas de la même façon :
  *
  *   - `no-film`       : des matchs, aucun film décodé (la mesure n'a pas eu lieu) ;
- *   - `no-pads`       : des films lus, mais le mode n'allume aucun socle (Super Fiesta) ;
  *   - `no-objectives` : des films lus, mais aucun mode à objectif dans la sélection ;
  *   - `load-failed`   : la lecture a échoué — transitoire, donc il faut le dire.
  */
-export type UsageEmptyReason = 'no-film' | 'no-pads' | 'no-objectives' | 'load-failed'
+export type UsageEmptyReason = 'no-film' | 'no-objectives' | 'load-failed'
 
 export function usageEmptyMessage(reason: UsageEmptyReason, t: UsageText): string {
   switch (reason) {
     case 'no-film':
       return t.emptyNoFilm
-    case 'no-pads':
-      return t.emptyNoPads
     case 'no-objectives':
       return t.emptyNoObjectives
     case 'load-failed':
@@ -35,14 +32,12 @@ export function usageEmptyMessage(reason: UsageEmptyReason, t: UsageText): strin
 /**
  * LE TITRE COURT de l'état vide (2026-09-22) — la première ligne de `EmptyStateNotice`,
  * l'état vide canonique de l'app. `usageEmptyMessage` en reste la seconde : une cause, un
- * titre ET une phrase, jamais un titre générique recollé devant quatre phrases distinctes.
+ * titre ET une phrase, jamais un titre générique recollé devant des phrases distinctes.
  */
 export function usageEmptyTitle(reason: UsageEmptyReason, t: UsageText): string {
   switch (reason) {
     case 'no-film':
       return t.emptyTitleNoFilm
-    case 'no-pads':
-      return t.emptyTitleNoPads
     case 'no-objectives':
       return t.emptyTitleNoObjectives
     case 'load-failed':

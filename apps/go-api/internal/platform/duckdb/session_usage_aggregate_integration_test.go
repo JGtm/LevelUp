@@ -169,9 +169,8 @@ func TestSessionUsageAggregate_DePersisterAuBloc(t *testing.T) {
 	if len(matchs) != 3 || !matchs[0].Measured || !matchs[1].Measured || matchs[2].Measured {
 		t.Fatalf("matchs = %+v, attendu m1 et m2 mesurés, m3 non", matchs)
 	}
-	if matchs[0].TeamSize != 2 || matchs[1].TeamSize != 3 || matchs[0].LobbySize != 4 || matchs[1].LobbySize != 5 {
-		t.Errorf("effectifs = (%d, %d) camp, (%d, %d) lobby ; attendu (2, 3) et (4, 5)",
-			matchs[0].TeamSize, matchs[1].TeamSize, matchs[0].LobbySize, matchs[1].LobbySize)
+	if tc.TeamSize["m1"] != 2 || tc.TeamSize["m2"] != 3 {
+		t.Errorf("effectifs de camp = (%d, %d) ; attendu (2, 3)", tc.TeamSize["m1"], tc.TeamSize["m2"])
 	}
 	prisesDuJoueur := 0
 	for _, m := range matchs {

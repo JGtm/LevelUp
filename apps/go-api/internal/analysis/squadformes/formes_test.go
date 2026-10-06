@@ -38,8 +38,8 @@ func fixture() Input {
 			{MatchID: "m2", StartTime: "2026-07-31T19:32:00Z", ModeLabel: "Assassin", MapLabel: "Curfew"},
 		},
 		Matches: []sessionusage.MatchInput{
-			{MatchID: "m1", Measured: false, PlayerTeam: team(0), TeamSize: 4, LobbySize: 8},
-			{MatchID: "m2", Measured: true, PlayerTeam: team(0), TeamSize: 4, LobbySize: 8,
+			{MatchID: "m1", Measured: false, PlayerTeam: team(0)},
+			{MatchID: "m2", Measured: true, PlayerTeam: team(0),
 				TeamOf: map[string]int{"moi": 0, "cop": 0, "adv": 1},
 				Players: []sessionusage.PlayerRow{
 					{MatchID: "m2", XUID: "moi", CamoEpisodes: 2, GrapplePulls: 1, PadPickups: 2,

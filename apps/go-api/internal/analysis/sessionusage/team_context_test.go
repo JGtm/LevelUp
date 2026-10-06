@@ -1,7 +1,7 @@
 package sessionusage
 
 // team_context_test.go — le contexte de camp d'un scope et l'assemblage des matchs : camp du
-// joueur, effectifs présents à la fin, FFA sans camp ni effectif de camp, match mesuré = ligne film,
+// joueur, effectif de son camp présent à la fin, FFA sans camp ni effectif de camp, match mesuré = ligne film,
 // ordre du scope gardé.
 
 import "testing"
@@ -24,16 +24,14 @@ func TestBuildTeamContext_CampEtEffectifsPresentsALaFin(t *testing.T) {
 	if team, ok := tc.PlayerTeam["m1"]; !ok || team != 0 {
 		t.Errorf("camp du joueur sur m1 = %d (%v), attendu 0", team, ok)
 	}
-	if tc.TeamSize["m1"] != 2 || tc.LobbySize["m1"] != 3 {
-		t.Errorf("effectifs m1 = camp %d, lobby %d ; attendu 2 et 3 (Q est parti avant la fin)",
-			tc.TeamSize["m1"], tc.LobbySize["m1"])
+	if tc.TeamSize["m1"] != 2 {
+		t.Errorf("effectif de camp m1 = %d ; attendu 2 (Q est parti avant la fin, E1 est adverse)", tc.TeamSize["m1"])
 	}
 	if tc.TeamOf["m1"]["Q"] != 0 || len(tc.TeamOf["m1"]) != 4 {
 		t.Errorf("camps de m1 = %v, attendu les quatre participants, présents ou non", tc.TeamOf["m1"])
 	}
-	if _, ok := tc.PlayerTeam["ffa"]; ok || tc.TeamSize["ffa"] != 0 || tc.LobbySize["ffa"] != 2 {
-		t.Errorf("FFA : camp %v, effectif de camp %d, lobby %d ; attendu aucun camp, 0, 2",
-			ok, tc.TeamSize["ffa"], tc.LobbySize["ffa"])
+	if _, ok := tc.PlayerTeam["ffa"]; ok || tc.TeamSize["ffa"] != 0 {
+		t.Errorf("FFA : camp %v, effectif de camp %d ; attendu aucun camp, 0", ok, tc.TeamSize["ffa"])
 	}
 }
 
@@ -51,7 +49,7 @@ func TestBuildMatchInputs_OrdreMesureEtContexte(t *testing.T) {
 	if got[0].PlayerTeam != nil || got[1].PlayerTeam == nil || *got[1].PlayerTeam != 0 {
 		t.Errorf("camps = %v / %v, attendu nil puis 0", got[0].PlayerTeam, got[1].PlayerTeam)
 	}
-	if len(got[1].Players) != 2 || got[1].TeamSize != 2 || got[1].LobbySize != 3 {
-		t.Errorf("m1 = %+v, attendu 2 lignes joueur, camp 2, lobby 3", got[1])
+	if len(got[1].Players) != 2 || len(got[1].TeamOf) != 4 || got[1].TeamOf["E1"] != 1 {
+		t.Errorf("m1 = %+v, attendu 2 lignes joueur et les camps du match", got[1])
 	}
 }

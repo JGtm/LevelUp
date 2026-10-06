@@ -34,7 +34,8 @@
 > Branche : `feat/sessions-emprise`, créée sur `cd3145ec2`, rebasée sur `554457c31` ; worktree
 > `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-sessions`.
 > **Clôture (2026-10-06) : S1 à S5 et S7 faits, S6 fondu dans S5 ; revue adversariale (S7.5)
-> demandée au superviseur ; intégration dans `feat/v75` sur son accord.**
+> faite par le superviseur, constats R1-R7 corrigés en S8 ; suite sur son signal : rebase sur
+> `feat/v75` et alignement sémantique des textes de Sessions (§8).**
 
 ## 0. Objectif, critère de succès, hors périmètre
 
@@ -762,7 +763,7 @@ Journal S5 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `548a0b30d` ; se
 - **S5.5** Contrat : `openapi.yaml` −554 / +0, `generated.ts` −264 / +0 ; `openapi-gen -check` à jour ; `check-generated-types-fresh` OK ; snapshot `contract-surface` régénéré par la procédure (`UPDATE_CONTRACT_SURFACE=1`), 15 schémas disparus : `CoordinationRiposte`, `SessionFlagGrabsNetBlock`, `SessionObjectiveFamilyBlock`, `SessionObjectiveRoleMetric`, `SessionObjectivesBlock`, `SessionUsageBlock`, `SessionUsageMatchPoint`, `SessionUsageMetric`, `SessionUsageOutcomes`, `SessionUsagePadFamily`, `SessionUsagePadTier`, `SessionUsagePadTierWeapon`, `SessionUsagePadTiersBlock`, `SessionUsagePowerup`, `SessionUsageSquadShare` ; alias morts de `lib/api/types.ts` retirés (dont `SessionUsageSquadPlayer`, sans lecteur web).
 - Commentaires devenus faux corrigés (règle 17) : `squademprise/{input.go, build_test.go}`, `domain/equipmentusage/families.go`, `duckdb/squad_formes_repo.go`, `port/{match_range.go, session_usage.go}`, `service/{session_page_range.go, session_page_service.go, coordination_block.go}`. Laissés : récits datés (`migration/steps_shared_flag_grabs_net.go`, correctif C1 de `usage_outcomes.go`) et `squadagg/squad_formes.go:13` (fichier interdit par §5.1, §8).
 - **Mutations** (script `mut_s5.ps1`, restauration vérifiée) : 5, toutes ROUGES — appui reçu compté hors camp et parité non pondérée (golden), résumé d'usage câblé hors de sa porte (garde-rail de câblage), partant compté dans l'effectif (team_context), habituel non posé (coordination de Sessions).
-- **Gate** : `go build ./...` 0 ; `gofmt -l` muet ; `go vet ./internal/...` 0 ; `go test -count=1` du module en lots couvrant les 348 paquets de `go list ./...` (cœur 67 ok / 157 s, games 39 ok, platform + service 28 ok / 267 s, sync + persist + migration + hors internal 16 ok, reste 45 ok) — 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (436 s) ; `make go-api-lint` 0 issue (le balayage `unused` des paquets touchés ne relève que des aides de test PRÉ-EXISTANTES hors périmètre, §8) ; web : purge `.tmp`, `tsc -b --force` 0, lint 0 erreur (26 avertissements), vitest complet 840 fichiers / 8 871 tests verts, knip 0 / 0 / 0 (aveugle), couleurs 0, imports croisés 7 ≤ 7, `lefthook run pre-push` sortie 0. Baseline de présence : aucun test supprimé ou renommé n'y figure (relevé par différence des noms).
+- **Gate** : `go build ./...` 0 ; `gofmt -l` muet ; `go vet ./internal/...` 0 ; `go test -count=1` du module en lots couvrant les 348 paquets de `go list ./...` (cœur 67 ok / 157 s, games 39 ok, platform + service 28 ok / 267 s, sync + persist + migration + hors internal 16 ok, reste 45 ok) — 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (436 s) ; `make go-api-lint` 0 issue (le balayage `unused` des paquets touchés ne relève que des aides de test PRÉ-EXISTANTES hors périmètre, §8) ; web : purge `.tmp`, `tsc -b --force` 0, lint 0 erreur (26 avertissements), vitest complet 840 fichiers / 8 871 tests verts, knip 0 / 0 / 0 (aveugle), couleurs 0, imports croisés 7 ≤ 7, `lefthook run pre-push` sortie 0. Baseline de présence : la vérification de S5 (différence des noms des tests SUPPRIMÉS par S5) a manqué les 8 tests RENOMMÉS par S1 (`TestBuildScoreLabelCanonical_*`), qui y figuraient — constat R1 de la revue, corrigé en S8.
 - Seuils : `session_page_service.go` 886 (inchangé), `registry_pages.go` 615 ; aucun fichier créé ou modifié au-delà de 500 L ; diff du lot 58 fichiers, +274 / −6 087.
 
 ### S6 — fondu dans S5
@@ -784,9 +785,10 @@ Journal S5 (2026-10-06, exécuteur, `feat/sessions-emprise` sur `548a0b30d` ; se
 - [x] S7.3 ADR 0036 : vérifier qu'aucun invariant n'est touché (lectures bornées existantes, une
   lecture du résumé d'usage par scope) ; aucune ADR neuve.
 - [x] S7.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
-- [~] S7.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
+- [x] S7.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
   sous-agent) — lots à risque : S2 (lectures partagées, recâblage de la coordination), S5 (contrat).
-  DEMANDÉE dans le compte rendu de clôture ; le superviseur la lance (consigne du 2026-10-06).
+  FAITE par le superviseur (2026-10-06, trois relecteurs à contexte frais, `554457c31..d05501cc7`) :
+  53 conditions tenues, constats R1-R7 corrigés en S8.
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
 
 Journal S7 (2026-10-06) :
@@ -825,6 +827,83 @@ Journal S7 (2026-10-06) :
   0 issue ; contrat : `openapi-gen -check` à jour, `check-generated-types-fresh` OK ; web : purge
   `.tmp`, `tsc -b --force` 0, lint 0 erreur (26 avertissements), vitest 840 fichiers / 8 871 tests
   verts, knip 0 / 0 / 0, couleurs 0, imports croisés 7 ≤ 7, `lefthook run pre-push` sortie 0.
+
+### S8 — Corrections de la revue adversariale · moyen
+
+Revue du diff `554457c31..d05501cc7` par trois relecteurs à contexte frais (superviseur,
+2026-10-06) : 53 conditions vérifiées tenues, constats R1-R7 tous retenus. TDD, une mutation par
+règle, gate complet Go + intégration DuckDB + contrat + web, un commit local
+`fix(sessions-emprise/S8): …`.
+
+- [x] R1 (P1, bloquant CI) Baseline de présence : S1 a renommé 8 tests
+  `TestBuildScoreLabelCanonical_*` en `TestScoreLabelCanonical_*` (`analysis/home_recent_helpers_test.go`)
+  sans retirer leurs paires de `.ai/baselines/tests_pre_migration.jsonl`. Retirer les 8 paires
+  (justification datée dans l'en-tête de `scripts/check_test_baseline.sh`, le commit et le journal),
+  corriger la phrase fausse du journal S5 ; diff complet baseline ↔ fonctions de test de HEAD.
+- [x] R2 (P2) `service/session_page_blocks.go:119` : le mock `mockSessionUsageRepo` ignore les
+  identifiants reçus. Le mock enregistre chaque lecture ; test rouge d'abord (tiroir ouvert : deux
+  lectures aux listes de matchs distinctes, Emprise comparée bâtie sur `CompareMatches`) ; mutation
+  `lus.compare = lus.courant` → rouge.
+- [x] R3 (P2, règle S2) `timeseries/usages/MinePickupsCard.tsx` (`MineResourceLine`, vue compacte) :
+  une part trop étroite est masquée sans repli. Repli au-dessus pour les seuls segments masqués,
+  aligné sur leur segment (`repliOffsetPct`), comme `EquipmentOutcomesCard` ; test rouge d'abord ;
+  mutation « repli jamais posé » → rouge.
+- [x] R4 (P2, règle 7) `_shared/usage/usageAvailability.ts` : cause `'no-pads'` sans appelant de
+  production ; variante, branches, clés FR / EN (`emptyNoPads`, `emptyTitleNoPads`) supprimées, test
+  adapté.
+- [x] R5 (P2, règle 7) `platform/duckdb/squad_formes_repo.go` + `analysis/sessionusage/flag_grabs_net.go` :
+  `flag_grabs_raw`, `openings` lus et rangés sans lecteur. Colonnes retirées du SELECT, champs
+  retirés, test `:memory:` adapté, `TestNoRawAppendOnlyReads` vert.
+- [x] R6 (P2, règle 7 + doc inversée) `sessionusage` : `MatchInput.TeamSize`, `LobbySize`,
+  `TeamContext.LobbySize`, `equipmentBilanFamilies` (et son commentaire) sans lecteur de production
+  (grep sur HEAD). Supprimés ; les tests qui ne faisaient vivre que ça suivent.
+- [x] R7 Commentaires périmés : `squadagg/squad_formes.go:13`, `migration/steps_shared_flag_grabs_net.go:44`,
+  `analysis/coordination/no_naked_rate_test.go` — réécrits au présent.
+- [x] Gate : Go complet + `-tags=integration -p 1 ./internal/platform/duckdb/...` + contrat (inchangé,
+  vérifié) + web complet ; diff baseline ↔ tests rejoué. `go build ./...` 0, `gofmt -l` muet,
+  `go vet ./internal/...` 0 ; 348 paquets en lots (195 ok, 153 sans test ; un échec isolé de
+  `mapcatalog`, paquet non touché, vert trois fois seul, §8) ; intégration DuckDB 4 ok (290 s) ;
+  `make go-api-lint` 0 issue ; contrat : `openapi-gen -check` à jour (784 115 octets, inchangé),
+  `check-generated-types-fresh` OK ; web : purge `.tmp`, `tsc -b --force` 0, lint 0 erreur (26
+  avertissements), vitest 840 fichiers / 8 874 tests verts, knip 0 / 0 / 0, couleurs 0, imports
+  croisés 7 ≤ 7, champs codés en dur 0, `lefthook run pre-push` sortie 0.
+
+Journal S8 (2026-10-06) :
+- **R1** Diff complet des paires (Package, Test) de la baseline contre les fonctions `Test*` de
+  l'arbre, à HEAD ET à la base `554457c31` : exactement 8 absences introduites par le lot, les 8
+  `TestBuildScoreLabelCanonical_*` (3 absences pré-existantes, identiques des deux côtés : un nom
+  accentué et deux `Fuzz*` hors du motif de recherche). Sous-tests de la baseline dont le parent vit
+  dans un fichier de test modifié ou supprimé par le lot : aucun introuvable. 64 lignes JSONL retirées
+  (8 paires, vérifié par différence avant / après), paragraphe daté dans l'en-tête de
+  `scripts/check_test_baseline.sh`. Preuve : contrôle de présence sur `internal/analysis` — ancienne
+  baseline 8 absents, nouvelle 0. Phrase fausse du journal S5 corrigée.
+- **R2** `mockSessionUsageRepo` rend désormais les seules lignes des matchs demandés et note les
+  identifiants de chaque lecture (`lectures`, par méthode). Test
+  `TestAttachSessionBlocks_LectureDuTiroirSurLesMatchsCompares` (lectures `[[m1 m2] [m3]]` sur les
+  trois tables, Emprise comparée mesurée sur m3). Mutations : `lus.compare = lus.courant` ROUGE (déjà
+  vue rouge par le test du nombre de lectures) ; tiroir lu sur `sc.Matches` ROUGE — et VERTE avec
+  l'ancien mock et les anciens tests (le trou décrit par la revue, démontré).
+- **R3** `MinePickupsCard` compacte : ligne de repli `ShareRepli` au-dessus de la barre, parts masquées
+  seules, alignée par `repliOffsetPct`. Trois tests (repli de la part du reste à 40 %, de ma part à 0,
+  rien quand tout tient) vus ROUGES avant le code ; mutation « repli jamais posé » ROUGE.
+- **R4** Cause `'no-pads'` retirée (type, deux branches, clés FR / EN), test réduit à trois causes ;
+  aucun appelant de production (le seul producteur, `SessionCoordinationSection.emptyReason`, rend
+  `no-objectives`, `no-film` ou `load-failed`). Garde : le `Record<UsageEmptyReason, …>` du test.
+- **R5** `LoadFlagGrabsNet` ne lit plus que `match_id, xuid, flag_grabs_net, juggle_window_ms` ;
+  `FlagGrabsNetRow` réduit à `MatchID, XUID, Net, WindowMS` ; tests `:memory:` et fixtures adaptés ;
+  `TestLoadFlagGrabsNet_*` et `TestNoRawAppendOnlyReads` verts.
+- **R6** `MatchInput.{TeamSize, LobbySize}`, `TeamContext.LobbySize`, `equipmentBilanFamilies` et son
+  commentaire supprimés (grep sur l'arbre : seul `squadformes` lit `MatchInput`, et seulement
+  `Measured`, `TeamOf`, `PlayerTeam`). Le golden des issues passe désormais par la production
+  (`equipmentusage.EquipmentOutcomeFamilies()` + `PlayerOutcomeCounts`) ; mutation du cumul
+  (`o.kept += other.dropped`) ROUGE — l'ancien golden, qui appelait `equipmentOutcomeOf` en direct,
+  ne la voyait pas.
+- **R7** `squadagg/squad_formes.go` (renvoi au fichier supprimé retiré), `migration/steps_shared_flag_grabs_net.go`
+  (le lecteur cité est `squadagg.joindrePrisesNettes`, fenêtre par match), `coordination/no_naked_rate_test.go`
+  (le bloc porte DEUX taux, `OnMePrepare` et `MaPartDesAppuis` ; plus de délai médian) : au présent.
+
+Suite, SUR SIGNAL du superviseur seulement : rebase sur la tête de `feat/v75` et alignement de
+`sessionEmpriseText.ts` + `session.toml` sur la sémantique validée des Séries temporelles (§8).
 
 ## 7. Reprise de session
 
@@ -933,9 +1012,24 @@ modèles neufs ont leur lecteur dans le lot.
   (`features/session-detail/sessionEmpriseText.ts`) s'alignent sur la même règle : aucun possessif ni
   pronom de personne (ma / mes / mon camp / moi / notre / nous / ta), joueur = gamertag, « Camp »,
   « Adversaire », « Reste du camp ». Non fait dans ce lot (consigne du superviseur, 2026-10-06).
+  PRÉCISÉ par le superviseur après la revue (2026-10-06) : l'alignement porte sur
+  `sessionEmpriseText.ts` ET `session.toml`, après rebase sur la tête de `feat/v75`, et SUR SIGNAL
+  seulement ; vocabulaire validé : « Contrôle des ressources » (et « , cumul par match », « , par
+  match »), « Contribution aux prises », « Rapport de force », « Usage d'équipements », « Isolement »,
+  « Frags par ressource », « Rendement par ressource », « Part du joueur à l'objectif », « Rendement
+  des ressources » (intertitre), « Ressources », « Prises », et « équipe » / « adversaire » / « reste
+  de l'équipe » partout — jamais « camp », jamais de personne.
 - (S7) Écart à l'invariant I6 de l'ADR 0036 sur les Séries temporelles : le chargement de l'emblème
   (`service/timeseries_service_emprise.go:83`, `LoadEmblemURLs`) ne déclare pas de section de durée
   (celui de Sessions, même patron, est corrigé dans ce lot). Fichier du lot TS : non traité.
+- (S8, LEÇON) Une vérification de baseline se fait par le DIFF COMPLET des paires (Package, Test)
+  contre les fonctions de test de l'arbre, pas par la liste des tests qu'on sait avoir supprimés :
+  celle de S5 a manqué les 8 renommages de S1 (constat R1).
+- (S8) `sessionusage.MatchInput.Players` n'a pas non plus de lecteur de production (`squadformes`, seul
+  lecteur de `MatchInput`, ne lit que `Measured`, `TeamOf`, `PlayerTeam`), et `BuildMatchInputs` reçoit
+  les lignes joueur pour lui seul. Hors de la liste R6 : non traité, signalé au superviseur.
+- (S8) `mapcatalog::TestAddOverlayEntryConcurrentNePerdPasDEntree` a échoué une fois sous la charge du
+  lot de tests (8 cartes au lieu de 9), vert trois fois seul ; paquet non touché par le lot. Non traité.
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 

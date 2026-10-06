@@ -71,10 +71,7 @@ type MatchInput struct {
 	// match sont hors calcul). TeamOf : xuid -> camp, pour classer chaque ligne.
 	PlayerTeam *int
 	TeamOf     map[string]int
-	// TeamSize / LobbySize : joueurs présents à la fin (bots inclus). 0 = inconnu.
-	TeamSize  int
-	LobbySize int
-	Players   []PlayerRow
+	Players    []PlayerRow
 }
 
 // BuildMatchInputs — un MatchInput par match du scope, DANS L'ORDRE DONNÉ, mesuré
@@ -91,12 +88,10 @@ func BuildMatchInputs(
 	for _, id := range matchIDs {
 		_, measured := films[id]
 		m := MatchInput{
-			MatchID:   id,
-			Measured:  measured,
-			TeamOf:    tc.TeamOf[id],
-			TeamSize:  tc.TeamSize[id],
-			LobbySize: tc.LobbySize[id],
-			Players:   playersByMatch[id],
+			MatchID:  id,
+			Measured: measured,
+			TeamOf:   tc.TeamOf[id],
+			Players:  playersByMatch[id],
 		}
 		if team, ok := tc.PlayerTeam[id]; ok {
 			t := team

@@ -40,9 +40,10 @@ package migration
 //	LA FENETRE AURAIT FUITE D'UNE PASSE A L'AUTRE. Une re-projection `--force` sous une
 //	  NOUVELLE fenetre qui ne retrouve plus un joueur (pont qui ne le nomme plus, decodeur
 //	  ameliore qui ecarte ses portages) laissait sa ligne de la passe PRECEDENTE dans la vue,
-//	  avec l'ANCIENNE fenetre. Le scope portait alors DEUX fenetres, et les lecteurs qui
-//	  exigent une fenetre unique (`sessionusage.ComputeFlagGrabsNet`) cessaient d'en annoncer
-//	  AUCUNE — un symptome a l'ecran, dont la cause etait invisible en base.
+//	  avec l'ANCIENNE fenetre. Un match portait alors DEUX fenetres, et celle que le lecteur
+//	  annonce par match (`squadagg.joindrePrisesNettes`, colonne `FlagJuggleWindowSeconds` de
+//	  la feuille d'objectif) dependait de l'ordre des lignes — un symptome a l'ecran, dont la
+//	  cause etait invisible en base.
 //	UN JOUEUR RETIRE NE SE RETRACTAIT PAS. Il restait servi a jamais, melange aux lignes de
 //	  la passe courante.
 //

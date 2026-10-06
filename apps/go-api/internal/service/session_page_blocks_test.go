@@ -68,6 +68,33 @@ func TestAttachSessionBlocks_UneLectureDuResumeDUsageParSession(t *testing.T) {
 	}
 }
 
+// Tiroir ouvert : la session comparée a SA lecture, sur SES matchs (`CompareMatches`), et son
+// Emprise est bâtie sur elle — jamais sur la lecture de la session affichée.
+func TestAttachSessionBlocks_LectureDuTiroirSurLesMatchsCompares(t *testing.T) {
+	usage := usageTestRepoMock()
+	usage.films["m3"] = sessionusage.FilmRow{MatchID: "m3", DurationMS: 600000}
+	usage.players = append(usage.players, sessionusage.PlayerRow{MatchID: "m3", XUID: "P", PadPickups: 1})
+	usage.participants = append(usage.participants,
+		sessionusage.ParticipantRow{MatchID: "m3", XUID: "P", Gamertag: "Papa", TeamID: teamp(0), PresentAtCompletion: true},
+		sessionusage.ParticipantRow{MatchID: "m3", XUID: "E1", Gamertag: "Echo", TeamID: teamp(1), PresentAtCompletion: true},
+	)
+	sc, canon := sessionsDeTest(true)
+	var resp domain.SessionPageResponse
+	serviceDeBlocs(usage).attachSessionBlocks(context.Background(), &resp, sc, canon)
+
+	for _, methode := range []string{"films", "players", "participants"} {
+		if got := fmt.Sprint(usage.lectures[methode]); got != "[[m1 m2] [m3]]" {
+			t.Errorf("lectures %s = %s, attendu [[m1 m2] [m3]] : une par session, sur ses matchs", methode, got)
+		}
+	}
+	if resp.CompareEmprise == nil || resp.CompareEmprise.MatchesMeasured != 1 {
+		t.Errorf("emprise comparée = %+v, attendu m3 mesuré (film et camp lus sur la session comparée)", resp.CompareEmprise)
+	}
+	if resp.Emprise == nil || resp.Emprise.MatchesMeasured != 1 {
+		t.Errorf("emprise affichée = %+v, attendu m1 seul mesuré", resp.Emprise)
+	}
+}
+
 // D9 — LA COORDINATION APRÈS LE RECÂBLAGE : même joueur, même effectif de camp, donc le MÊME
 // bloc que l'ancien chemin (effectifs du bloc d'usage). L'oracle est l'appel direct avec les
 // effectifs que l'ancien bloc d'usage calculait sur les mêmes participants.
@@ -245,7 +272,7 @@ func TestAttachSessionBlocks_ObjectifDeLaSession(t *testing.T) {
 			{MatchID: "m1", XUID: "P", Family: narrative.FamilyCTF, Values: map[string]float64{"flag_captures": 1}},
 			{MatchID: "m1", XUID: "A", Family: narrative.FamilyCTF, Values: map[string]float64{"flag_captures": 2}},
 		},
-		prises: []sessionusage.FlagGrabsNetRow{{MatchID: "m1", XUID: "P", Raw: 5, Net: 3, Openings: 9, WindowMS: 1500}},
+		prises: []sessionusage.FlagGrabsNetRow{{MatchID: "m1", XUID: "P", Net: 3, WindowMS: 1500}},
 	}
 	var resp domain.SessionPageResponse
 	serviceDeBlocs(usageTestRepoMock()).WithSessionObjectives(objectifs).

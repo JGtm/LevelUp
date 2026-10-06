@@ -6,14 +6,6 @@ package sessionusage
 
 import "levelup/go-api/internal/domain/equipmentusage"
 
-// equipmentBilanFamilies — les familles qui portent une ligne d'issue. SOURCE
-// UNIQUE : le périmètre du bilan (`equipmentusage.EquipmentOutcomeFamilies`), que ce
-// paquet et le résumé du décodeur lisent tous les deux, jamais une seconde liste
-// écrite ici. C'est elle qui garantit que le répulseur n'a
-// pas de ligne (décision P4 : son usage n'est mesuré par aucun canal, une ligne
-// dirait « 0 utilisation » là où la vérité est « non mesuré »).
-var equipmentBilanFamilies = equipmentusage.EquipmentOutcomeFamilies()
-
 // outcomeCounts — les trois issues d'une famille, plus les prises qui servent de
 // dénominateur d'honnêteté.
 type outcomeCounts struct{ used, kept, dropped, taken int }

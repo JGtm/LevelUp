@@ -17,14 +17,12 @@ export interface UsageText {
    */
   unavailableLoadFailed: string
   emptyNoFilm: string
-  emptyNoPads: string
   emptyNoObjectives: string
   /**
    * …et un TITRE COURT par cause (2026-09-22) : l'état vide canonique de l'app (`EmptyStateNotice`)
    * se lit sur deux lignes, un titre en gras puis sa description en gris.
    */
   emptyTitleNoFilm: string
-  emptyTitleNoPads: string
   emptyTitleNoObjectives: string
   emptyTitleLoadFailed: string
   /** LA LÉGENDE DE LA BANDE DE RÉGULARITÉ (2026-09-21) : les quatre encres, écrites UNE fois. */
@@ -49,10 +47,8 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
   fr: {
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
     emptyNoFilm: 'Aucun film décodé sur cette sélection.',
-    emptyNoPads: "Aucun socle d'arme dans les modes de cette sélection.",
     emptyNoObjectives: 'Aucun objectif dans les modes de cette sélection.',
     emptyTitleNoFilm: 'Aucune mesure',
-    emptyTitleNoPads: 'Aucune prise de socle',
     emptyTitleNoObjectives: "Aucune mesure d'objectif",
     emptyTitleLoadFailed: 'Lecture impossible',
     bandLegendAbove: 'Au-dessus de la parité',
@@ -72,10 +68,8 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
   en: {
     unavailableLoadFailed: 'Loading the usage summary failed.',
     emptyNoFilm: 'No decoded film in this selection.',
-    emptyNoPads: 'No weapon pad in the modes of this selection.',
     emptyNoObjectives: 'No objective in the modes of this selection.',
     emptyTitleNoFilm: 'Nothing measured',
-    emptyTitleNoPads: 'No pad pickup',
     emptyTitleNoObjectives: 'No objective measured',
     emptyTitleLoadFailed: 'Could not load',
     bandLegendAbove: 'Above parity',

@@ -48,7 +48,7 @@ import { bandCaption, buildAppuiBand, buildAppuiGaugeRows } from './coordination
 
 /**
  * La CAUSE d'une section vide, telle que `UsageEmptyNotice` la nomme. Le contrat rend une
- * `unavailable_reason` libre ; on la traduit dans les quatre causes connues plutôt que
+ * `unavailable_reason` libre ; on la traduit dans les causes connues plutôt que
  * d'écrire une chaîne serveur à l'écran (elle n'est ni localisée, ni destinée au lecteur).
  */
 function emptyReason(block: CoordinationBlock | null | undefined) {

@@ -5,7 +5,7 @@ package sessionusage
 // du handoff). Consommé par l'Emprise, les formes retenues et la coordination.
 
 // TeamContext — par match du scope : le camp du joueur suivi, le camp de chaque
-// participant, et les effectifs présents à la fin.
+// participant, et l'effectif de son camp présent à la fin.
 type TeamContext struct {
 	// PlayerTeam : matchID -> camp du joueur suivi. Clé ABSENTE = camp inconnu
 	// (FFA, participant manquant) : les parts d'équipe de ce match sont hors
@@ -15,10 +15,9 @@ type TeamContext struct {
 	// (présents ou non : l'attribution d'une ligne d'usage ne dépend pas de la
 	// présence à la fin).
 	TeamOf map[string]map[string]int
-	// TeamSize / LobbySize : participants PRÉSENTS à la fin (bots inclus).
-	// TeamSize n'est défini que si le camp du joueur est connu.
-	TeamSize  map[string]int
-	LobbySize map[string]int
+	// TeamSize : participants du camp du joueur PRÉSENTS à la fin (bots inclus) ;
+	// défini seulement si le camp du joueur est connu.
+	TeamSize map[string]int
 }
 
 // BuildTeamContext dérive le contexte de camp d'un scope de participants.
@@ -27,7 +26,6 @@ func BuildTeamContext(playerXUID string, participants []ParticipantRow) TeamCont
 		PlayerTeam: map[string]int{},
 		TeamOf:     map[string]map[string]int{},
 		TeamSize:   map[string]int{},
-		LobbySize:  map[string]int{},
 	}
 	for i := range participants {
 		p := &participants[i]
@@ -46,7 +44,6 @@ func BuildTeamContext(playerXUID string, participants []ParticipantRow) TeamCont
 		if !p.PresentAtCompletion {
 			continue
 		}
-		tc.LobbySize[p.MatchID]++
 		if team, ok := tc.PlayerTeam[p.MatchID]; ok && p.TeamID != nil && *p.TeamID == team {
 			tc.TeamSize[p.MatchID]++
 		}
