@@ -115996,3 +115996,33 @@ Worktrees des lots (12) retirés, jonctions supprimées d'abord, sans `--force`.
 **Conclusion / prochaine étape** : pistes au registre des reports (composants où la marche depuis E
 bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (rang .5, P1 de
 `movement_states.go`, lot lint).
+
+## [2026-10-06] Séries temporelles › Usages : carte Équipement limitée aux familles tenues dans le lobby
+
+**Statut** : Complété (lot correctif après le gate visuel de l'utilisateur sur `feat/v75` = `b033d30f0` ; branche `feat/ts-usages-fix-equipement`).
+
+**Décision technique principale** : la carte « Équipement pris, et ce que j'en ai fait » listait des familles que personne n'avait tenues : le web filtrait tout-ou-rien (une famille non vide faisait passer toutes les lignes) et le Go ne cumulait que mon camp. Go : `squademprise.BuildEquipment` cumule aussi le LOBBY entier des matchs mesurés (adversaire et joueurs sans camp connu compris) et publie par famille `lobby` (mesurées : pris, servi, gardé, lâché) et `dropped_lobby` (non mesurées) — contrat additif, `omitempty` ; moi et le reste de mon camp inchangés. Web : `buildEquipmentRows` ne garde que les familles tenues dans le lobby (mesurée : servi + gardé + lâché > 0 ; non mesurée : lâchers > 0) ; aucune ligne, la carte se retire ; l'aide ⓘ le dit (FR, EN).
+
+**Résultats observés** : tests vus rouges d'abord (Go : lobby absent ; web : famille à zéro partout listée, non mesurée sans lâcher du lobby listée, phrase de l'aide absente) ; 7 mutations rouges (lobby limité à mon camp, lâchers du lobby non comptés, adversaire versé au reste du camp ; filtre sur mon camp, aucun filtre, non mesurées sur mes lâchers, phrase retirée). Gate : build, vet, gofmt, tests des paquets touchés et appelants (17 ok), golangci-lint 0, contrat régénéré (+5 / +3 lignes) et à jour ; tsc 0, ESLint 0 erreur, vitest timeseries + lib/api 240 verts, couleurs 0, imports croisés 7 ≤ 7.
+
+**Conclusion / prochaine étape** : branche poussée ; suivi CI et fusion par le superviseur. Le même composant servira la page Sessions (lot séparé).
+
+## [2026-10-06] Usages et Emprise : titres et textes factuels, sans personne
+
+**Statut** : Complété (second retour du gate visuel de l'utilisateur ; branche `feat/ts-usages-fix-equipement`, commit à part du correctif Équipement).
+
+**Décision technique principale** : titres et intertitres concis orientés information tactique, aides ⓘ d'une ou deux phrases (ce qui est mesuré, sur quel périmètre, sans phrase de lecture), aucun possessif ni pronom de personne, FR et EN, sur les Séries temporelles (onglet Usages, carte « Appui reçu », section « Portée ») et l'Escouade › Emprise. Le joueur est désigné par son gamertag (`player`, premier joueur du bloc, transmis aux cartes Prises, Isolement et Équipement), le camp par « Camp », l'autre par « Adversaire », le reste par « Reste du camp ». Garde neuve `timeseries/usages/textesSansPersonne.test.ts` : toutes les chaînes des textes (fonctions appelées avec des échantillons) et les manifestes (`timeseries.toml` entier, `synthesis.weapon_range.*` lu par la section « Portée ») refusent `ma|mes|mon|moi|notre|nos|nous|ta|tes|ton|toi|tu|te|vous|votre|vos` et `my|our|we|us|me|your|you` en mot entier, liste blanche vide. Écart à la table : l'intertitre « Rendement » devient « Rendement des ressources » (« Resource efficiency ») — « Rendement » / « Efficiency » est le libellé du champ `offensive_conversion` (une autre grandeur, carte « Rendement » de l'Escouade et de la fiche du match), refusé par `lint-no-hardcoded-fields`.
+
+**Résultats observés** : garde vue rouge sur les textes d'origine (11 groupes sur 13), verte ensuite ; mutations rouges (« mes frags » dans `timeseries.toml`, « Notre camp » dans l'Emprise, « Our » dans les véhicules, « Mes frags » dans `synthesis.weapon_range`), faux positif « mesurés, nombre » vert. Tests de page et de cartes mis à jour sur les nouveaux titres ; la page Escouade change de titres sans changer de forme. Gate web : tsc 0, ESLint 0 erreur, vitest complet 851 fichiers / 9 125 tests verts (puis timeseries + squad 1 028 après l'écart « Rendement des ressources »), couleurs 0, imports croisés 7 ≤ 7, champs en dur 0, manifestes régénérés.
+
+**Conclusion / prochaine étape** : branche poussée ; gate visuel de l'utilisateur sur les nouveaux titres (liste avant → après dans le compte rendu), décision sur « Rendement des ressources ».
+
+## [2026-10-06] Usages et Emprise : termes retenus par l'utilisateur, « équipe »
+
+**Statut** : Complété (retour de l'utilisateur sur 5e35f0ba5 ; branche `feat/ts-usages-fix-equipement`, commit à part).
+
+**Décision technique principale** : l'utilisateur valide le lot sémantique sauf six points, appliqués en FR et EN sur les Séries temporelles et l'Escouade › Emprise (chaînes partagées). « Contrôle des ressources » revient et se décline (« …, cumul par match », « …, par carte », « …, par match », « …, par soirée ») ; « Contribution aux prises » ; « Rapport de force » (chaîne de base de l'Objectif, donc aussi l'Escouade › Contributions ; la surcharge solo disparaît, `OBJECTIF_TEXT_SOLO` lit `OBJECTIF_TEXT`) ; « Usage d'équipements » ; « Isolement » comme titre de carte (même mot que l'intertitre, voulu) ; « camp » devient « équipe » partout (« Équipe », « Reste de l'équipe », « Part de l'équipe », « Équipe plus productive », « équipe inconnue », appuis de l'équipe ; EN « Team », « Rest of the team », « Team share »). « Équipe » / « Team » ne sont pas des libellés de champ : `lint-no-hardcoded-fields` passe, pas besoin de « Équipe du joueur ». « Rendement des ressources » reste (écart signalé au lot précédent, non remis en cause).
+
+**Résultats observés** : 104 substitutions exactes dans les textes et `timeseries.toml`, 53 dans les tests de page et de cartes ; garde `textesSansPersonne` verte. Gate web : tsc 0 (forcé), ESLint 0 erreur, vitest complet 851 fichiers / 9 125 tests verts, couleurs 0, imports croisés 7 ≤ 7, champs en dur 0, manifestes régénérés.
+
+**Conclusion / prochaine étape** : branche poussée ; suivi CI et fusion par le superviseur.

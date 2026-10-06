@@ -1,5 +1,5 @@
 /**
- * WeaponRangeSection.test — la section « Portée des engagements ».
+ * WeaponRangeSection.test — la section « Portée ».
  *
  * Ce que ces tests verrouillent : les quatre tuiles AVEC leur dénominateur, les DEUX tuiles
  * d'entame qui n'apparaissent QUE si l'entame est mesurée (jamais un zéro — décision D5), la
@@ -111,18 +111,18 @@ describe('WeaponRangeSection — rendu nominal', () => {
 
   it('les quatre tuiles portent leur valeur ET leur dénominateur', () => {
     renderWithProviders(<WeaponRangeSection range={RANGE} />)
-    expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
+    expect(screen.getByText('Portée médiane des frags du joueur')).toBeInTheDocument()
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
-    expect(screen.getByText('Portée médiane de mes morts')).toBeInTheDocument()
+    expect(screen.getByText('Portée médiane des morts du joueur')).toBeInTheDocument()
     expect(textOf(/^1 087 morts mesurées sur 1 455$/).length).toBeGreaterThan(0)
     // LA VALEUR, PAS SEULEMENT SON LIBELLÉ : chaque tuile porte SA médiane. Sans ces deux
     // lignes, deux valeurs échangées (frags <-> morts) passeraient inaperçues.
-    expect(flatCardOf('Portée médiane de mes frags')).toContain('7,4 m')
-    expect(flatCardOf('Portée médiane de mes morts')).toContain('11,8 m')
+    expect(flatCardOf('Portée médiane des frags du joueur')).toContain('7,4 m')
+    expect(flatCardOf('Portée médiane des morts du joueur')).toContain('11,8 m')
     expect(screen.getByText("Distance d'entame médiane")).toBeInTheDocument()
     expect(textOf(/^1,5 s avant le frag · 618 frags mesurés$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Entame → frag')).toBeInTheDocument()
-    expect(textOf(/^Vous fermez la distance dans 61 % des frags$/).length).toBeGreaterThan(0)
+    expect(textOf(/^Distance réduite avant le frag dans 61 % des frags$/).length).toBeGreaterThan(0)
     // Distance signée : le signe DIT le sens (la distance se ferme), il n'est pas décoratif.
     expect(textOf(/^-1,7 m$/).length).toBeGreaterThan(0)
   })
@@ -132,10 +132,10 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // été retirées le 2026-09-09 : elles doublaient un ordre déjà lisible sur le graphe et
     // faisaient une ligne de légende deux fois plus longue que la légende.
     renderWithProviders(<WeaponRangeSection range={RANGE} />)
-    // `within` la légende : « Mes frags » nomme AUSSI un groupe de colonnes du tableau.
+    // `within` la légende : « Frags du joueur » nomme AUSSI un groupe de colonnes du tableau.
     const legend = screen.getByRole('list', { name: 'Légende' })
-    expect(within(legend).getByText('Mes frags')).toBeInTheDocument()
-    expect(within(legend).getByText('Mes morts')).toBeInTheDocument()
+    expect(within(legend).getByText('Frags du joueur')).toBeInTheDocument()
+    expect(within(legend).getByText('Morts du joueur')).toBeInTheDocument()
     expect(screen.queryByText(/bâton du haut/)).not.toBeInTheDocument()
     expect(screen.queryByText(/bâton du bas/)).not.toBeInTheDocument()
   })
@@ -161,8 +161,8 @@ describe('WeaponRangeSection — rendu nominal', () => {
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
     // Famille des stats de combat (2026-09-17) : les mêmes encres que partout dans l'app.
-    expect(swatch('Mes frags').style.backgroundColor).toBe(tokenCssVar('stat-kills'))
-    expect(swatch('Mes morts').style.backgroundColor).toBe(tokenCssVar('stat-deaths'))
+    expect(swatch('Frags du joueur').style.backgroundColor).toBe(tokenCssVar('stat-kills'))
+    expect(swatch('Morts du joueur').style.backgroundColor).toBe(tokenCssVar('stat-deaths'))
   })
 
   it('les deux tuiles de portée portent l’accent de leur côté', () => {
@@ -173,8 +173,8 @@ describe('WeaponRangeSection — rendu nominal', () => {
     const accentOf = (label: string) =>
       (screen.getByText(label).closest('div.rounded-lg')!.firstElementChild as HTMLElement).style
         .backgroundColor
-    expect(accentOf('Portée médiane de mes frags')).toBe(tokenCssVar('stat-kills'))
-    expect(accentOf('Portée médiane de mes morts')).toBe(tokenCssVar('stat-deaths'))
+    expect(accentOf('Portée médiane des frags du joueur')).toBe(tokenCssVar('stat-kills'))
+    expect(accentOf('Portée médiane des morts du joueur')).toBe(tokenCssVar('stat-deaths'))
   })
 
   it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {
@@ -183,7 +183,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
       screen.getByRole('table').querySelectorAll('thead tr:first-child th'),
     ).map((th) => flat(th.textContent))
     // La première cellule est le coin vide au-dessus de la colonne « Arme ».
-    expect(groups).toEqual(['', 'Mes frags', 'Mes morts'])
+    expect(groups).toEqual(['', 'Frags du joueur', 'Morts du joueur'])
   })
 
   it('ne publie plus ni la ligne « sous le seuil » ni la note de couverture', () => {
@@ -220,7 +220,7 @@ describe('WeaponRangeSection — dégradations', () => {
     expect(screen.getByText("Distance d'entame médiane")).toBeInTheDocument()
     expect(textOf(/^1,5 s avant le frag · 618 frags mesurés$/).length).toBeGreaterThan(0)
     expect(screen.queryByText('Entame → frag')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Vous fermez la distance/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Distance réduite avant le frag/)).not.toBeInTheDocument()
   })
 
   it('sans entame mesurée, les DEUX tuiles d’entame disparaissent (jamais un zéro)', () => {
@@ -228,7 +228,7 @@ describe('WeaponRangeSection — dégradations', () => {
     expect(screen.queryByText("Distance d'entame médiane")).not.toBeInTheDocument()
     expect(screen.queryByText('Entame → frag')).not.toBeInTheDocument()
     // Les deux tuiles de portée, elles, restent : la portée ne dépend pas de l'entame.
-    expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
+    expect(screen.getByText('Portée médiane des frags du joueur')).toBeInTheDocument()
   })
 
   it('un côté sans aucune mesure : sa tuile de portée DISPARAÎT, jamais « 0,0 m »', () => {
@@ -248,8 +248,8 @@ describe('WeaponRangeSection — dégradations', () => {
         }}
       />,
     )
-    expect(screen.queryByText('Portée médiane de mes frags')).not.toBeInTheDocument()
-    expect(screen.getByText('Portée médiane de mes morts')).toBeInTheDocument()
+    expect(screen.queryByText('Portée médiane des frags du joueur')).not.toBeInTheDocument()
+    expect(screen.getByText('Portée médiane des morts du joueur')).toBeInTheDocument()
     expect(flat(container.textContent)).not.toContain('0,0 m')
   })
 
@@ -266,8 +266,8 @@ describe('WeaponRangeSection — dégradations', () => {
         }}
       />,
     )
-    expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
-    expect(screen.queryByText('Portée médiane de mes morts')).not.toBeInTheDocument()
+    expect(screen.getByText('Portée médiane des frags du joueur')).toBeInTheDocument()
+    expect(screen.queryByText('Portée médiane des morts du joueur')).not.toBeInTheDocument()
   })
 
   it('entame qui ÉLOIGNE : le signe + est écrit, il n’est pas décoratif', () => {
@@ -305,7 +305,7 @@ describe('WeaponRangeSection — dégradations', () => {
       />,
     )
     // Les tuiles restent : les médianes globales ne dépendent pas du seuil de publication.
-    expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
+    expect(screen.getByText('Portée médiane des frags du joueur')).toBeInTheDocument()
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     // Aucun graphe, mais une phrase qui DIT pourquoi — jamais un canevas vide sans mot.
     expect(screen.queryAllByTestId('chart-card')).toHaveLength(0)
@@ -321,12 +321,12 @@ describe('WeaponRangeSection — dégradations', () => {
   it('en anglais, libellés et nombres suivent la locale', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<WeaponRangeSection range={RANGE} />)
-    expect(screen.getByText('Median range of my kills')).toBeInTheDocument()
+    expect(screen.getByText("Median range of the player's kills")).toBeInTheDocument()
     expect(textOf(/^1,214 measured kills out of 1,602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()
     // LES DISTANCES AUSSI suivent la locale : « 7.4 m » et non « 7,4 m ». Sans cette ligne,
     // un formateur figé sur fr-FR passerait le test anglais.
-    expect(flatCardOf('Median range of my kills')).toContain('7.4 m')
-    expect(flatCardOf('Median range of my deaths')).toContain('11.8 m')
+    expect(flatCardOf("Median range of the player's kills")).toContain('7.4 m')
+    expect(flatCardOf("Median range of the player's deaths")).toContain('11.8 m')
   })
 })

@@ -42,6 +42,9 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
     (xuid: string) => models.block?.players?.find((p) => p.xuid === xuid)?.gamertag ?? '',
     [models.block],
   )
+  // Le joueur de la page (premier de `players`), désigné par son gamertag dans les légendes et
+  // infobulles — jamais « moi ».
+  const player = models.block?.players?.[0]?.gamertag || ut.cards.playerFallback
   const equipmentLabel = useCallback(
     (family: string) => ut.cards.equipment.unmeasuredNames[family] ?? equipmentFamilyLabel(family, usageText),
     [ut, usageText],
@@ -66,6 +69,7 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
     show,
     objectName,
     playerName,
+    player,
     equipmentLabel,
     familyLabel,
     columns: FORMES_TEXT[locale].columns,

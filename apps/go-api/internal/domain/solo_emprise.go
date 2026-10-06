@@ -75,8 +75,13 @@ type EmpriseEquipmentFamily struct {
 	// Me / Rest : mes comptes et ceux du reste de mon camp (mesurées seulement).
 	Me   *EmpriseEquipmentOutcomes `json:"me,omitempty"`
 	Rest *EmpriseEquipmentOutcomes `json:"rest,omitempty"`
+	// Lobby : les comptes de TOUS les joueurs des matchs mesurés — mon camp, l'adversaire et les
+	// joueurs sans camp connu (mesurées seulement). Dit si la famille a été tenue par quelqu'un.
+	Lobby *EmpriseEquipmentOutcomes `json:"lobby,omitempty"`
 	// DroppedMe : mes lâchers (non mesurées seulement).
 	DroppedMe int `json:"dropped_me,omitempty"`
+	// DroppedLobby : les lâchers de tous les joueurs des matchs mesurés (non mesurées seulement).
+	DroppedLobby int `json:"dropped_lobby,omitempty"`
 }
 
 // EmpriseEquipmentOutcomes — pris sur la carte, servi (posé pour le mur, charge consommée pour les
