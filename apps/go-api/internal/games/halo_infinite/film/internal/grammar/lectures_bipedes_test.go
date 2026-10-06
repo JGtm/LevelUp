@@ -274,6 +274,7 @@ func TestCeQueLaFermetureProuve(t *testing.T) {
 		prouve  uint32
 	}{
 		{lecture.VerdictFerme, lecture.DebutEnTete, 0},
+		{lecture.VerdictFerme, lecture.DebutParVueA, 0},
 		{lecture.VerdictFerme, lecture.DebutParSignature, 250},
 		{lecture.VerdictFerme, lecture.DebutParChaine, 250},
 		{lecture.VerdictFerme, lecture.DebutParFermeture, 250},

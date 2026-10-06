@@ -205,3 +205,32 @@ func TestRI27bAncresSansLaMarche(t *testing.T) {
 		}
 	}
 }
+
+// TestRI27bPopulation ecrit, film par film, la population des huit lecteurs (RI27B_OUT, une ligne
+// par record : film, chunk, paquet, slot, recupere, verdict et debut de la trame, composants
+// annonces que les lecteurs lisent). Deux versions du code se comparent ligne a ligne.
+func TestRI27bPopulation(t *testing.T) {
+	films, racine, sortie := os.Getenv("RI27B_FILMS"), os.Getenv("RI27B_RACINE"), os.Getenv("RI27B_OUT")
+	if films == "" || racine == "" || sortie == "" {
+		t.Skip("instrument : RI27B_FILMS, RI27B_RACINE et RI27B_OUT requis")
+	}
+	f, err := os.OpenFile(sortie, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	for _, court := range strings.Split(films, ",") {
+		fc := ri27bContexte(t, filepath.Join(racine, court), ri27bCarte(t, court))
+		canal := nouveauCanalDesLecturesBipedes(fc)
+		v := &ri27bVerdicts{verdict: map[paquetDuFlux]lecture.Verdict{}, debut: map[paquetDuFlux]lecture.DebutDeVueB{}}
+		if err := Distribuer(fc, canal, v); err != nil {
+			t.Fatalf("%s : %v", court, err)
+		}
+		for i := range fc.recup.lectures.records {
+			r := &fc.recup.lectures.records[i]
+			k := paquetDuFlux{r.Chunk, r.Packet.Index}
+			fmt.Fprintf(f, "%s\t%d\t%d\t%d\t%v\t%d\t%d\t%x\n", court, r.Chunk, r.Packet.Index, r.Slot, r.Recupere,
+				v.verdict[k], v.debut[k], r.masque&canal.utiles)
+		}
+	}
+}

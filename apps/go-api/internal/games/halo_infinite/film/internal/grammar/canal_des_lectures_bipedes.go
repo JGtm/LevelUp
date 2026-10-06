@@ -130,9 +130,10 @@ func (c *capteurDeLectures) brancherLInventaire(obs *Observation) {
 // trameDuCanal est ce que le canal retient d une trame pour l ancrage qui passe derriere : d ou sa
 // fermeture prouve sa liste, et les slots des records que la marche y a lus.
 type trameDuCanal struct {
-	// prouveeDes est le premier bit que la fermeture de la trame prouve. Une trame fermee partie de
-	// la tete du paquet prouve tout le paquet (0) : la vue A lue jusqu a son terminateur precede la
-	// vue B. Une trame fermee dont le debut de vue B a ete LOCALISE ([debutLocalise]) ne prouve que
+	// prouveeDes est le premier bit que la fermeture de la trame prouve. Une trame fermee dont le
+	// debut de vue B a ete LU (la tete du paquet, ou la fin de sa vue A lue) prouve tout le paquet
+	// (0) : la vue A lue jusqu a son terminateur precede la vue B. Une trame fermee dont le debut de
+	// vue B a ete LOCALISE ([debutLocalise]) ne prouve que
 	// la liste lue depuis ce debut : ce qui le precede, la marche ne l a pas lu. Une trame qui n est
 	// pas fermee ne prouve rien ([rienDeProuve]).
 	prouveeDes uint32

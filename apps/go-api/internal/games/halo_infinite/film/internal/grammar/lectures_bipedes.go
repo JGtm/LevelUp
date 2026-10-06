@@ -21,8 +21,9 @@ package grammar
 //
 // L ANCRAGE, DERRIERE : il ne lit qu un record dont la marche n a lu aucun record du meme slot
 // dans le paquet, et seulement hors de ce que la fermeture de la trame prouve. Une trame fermee
-// partie de la tete du paquet prouve le paquet entier : un record ancre que la marche n y a pas lu
-// est une fausse ancre. Une trame fermee dont le debut de vue B a ete LOCALISE ne prouve que la
+// dont le debut de vue B a ete LU (tete du paquet, fin de la vue A lue) prouve le paquet entier :
+// un record ancre que la marche n y a pas lu est une fausse ancre. Une trame fermee dont le debut
+// de vue B a ete LOCALISE ne prouve que la
 // liste lue depuis ce debut : un record ancre qui le precede, la marche ne l a pas lu. Une trame
 // qui n est pas fermee ne prouve rien. Un record rendu par l ancrage est marque recupere
 // ([recordBipedeLu.Recupere]) et compte au rapport des replis du contexte

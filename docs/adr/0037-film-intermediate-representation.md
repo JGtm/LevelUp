@@ -284,8 +284,9 @@ walk's reader and, when the frame closes, gives it to the component of the retai
 record whose extent carries it; a publication that no retained record carries (the body of a NEW
 record that desynchronises, which the walk drops) goes to no record and is counted. The anchoring
 then returns only the records of a slot that the walk did not read in that packet, and only
-outside what the frame's closure proves. A closed frame whose walk started at the packet head
-proves the whole packet, so an anchored record the walk did not read there is a false anchor. A
+outside what the frame's closure proves. A closed frame whose start of view B was read (at the
+packet head, or at the end of a view A read to its terminator) proves the whole packet, so an
+anchored record the walk did not read there is a false anchor. A
 closed frame whose start of view B was located (by the slot-123 signature, by the chain of leading
 NEW records, or by the closure itself) proves only the list read from that start: the first
 candidate from which the walk closes the packet may sit in the middle of the list, and the records
