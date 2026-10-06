@@ -11317,6 +11317,7 @@ export interface components {
             /** Format: int64 */
             total_perfect_kills?: number;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
             /** Format: double */
             win_rate: number;
             /** Format: int64 */
@@ -11373,6 +11374,8 @@ export interface components {
             defensive_resistance?: number;
             /** Format: double */
             delta_mmr?: number;
+            /** Format: int64 */
+            dominance_flag?: number;
             dominant_category?: string;
             /** Format: int64 */
             duration_seconds?: number;
@@ -11416,6 +11419,7 @@ export interface components {
             /** Format: int64 */
             placement_total?: number;
             playlist_name: string;
+            score_label?: string;
             session_label?: string;
             /** Format: double */
             skill_rating_delta?: number;
@@ -11559,9 +11563,12 @@ export interface components {
         SessionPageResponse: {
             available_sessions: string[] | null;
             compare_coordination?: components["schemas"]["CoordinationBlock"];
+            compare_emprise?: components["schemas"]["SoloEmpriseBlock"];
             compare_enabled: boolean;
             compare_first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            compare_formes_retenues?: components["schemas"]["SquadFormesBlock"];
             compare_intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
+            compare_lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             compare_matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
             compare_range_profiles?: components["schemas"]["MatchRangeBlock"];
@@ -11569,10 +11576,14 @@ export interface components {
             compare_usage?: components["schemas"]["SessionUsageBlock"];
             coordination?: components["schemas"]["CoordinationBlock"];
             current_session: components["schemas"]["SessionCompareEntry"];
+            emprise?: components["schemas"]["SoloEmpriseBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            formes_retenues?: components["schemas"]["SquadFormesBlock"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
+            lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             next_session_label?: string;
+            player_emblem_url?: string;
             previous_session_label?: string;
             range_profiles?: components["schemas"]["MatchRangeBlock"];
             range_reference?: components["schemas"]["RangeReferenceBlock"];

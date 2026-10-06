@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/squadagg"
 	"levelup/go-api/internal/service/teammates"
 )
 
@@ -73,53 +74,42 @@ func (s *SessionPageService) WithSessionUsage(
 // `compareMatches` vide (drawer fermé) ⇒ CompareUsage reste nil, et rien ne se rend à
 // droite : l'absence dit tout, aucun drapeau n'est nécessaire.
 //
-// IL ATTACHE AUSSI LE BLOC « COORDINATION » (les deux sessions, lot S) — pas par commodité :
-// l'EFFECTIF DE CAMP par match (`TeamContext.TeamSize`) naît ici, et le bloc de coordination
-// en a besoin pour sa parité 1/n. Le recalculer ailleurs en aurait donné une seconde
-// définition (réserve R1) ; le faire voyager par la réponse en aurait fait un champ public
-// que rien ne lit.
+// `lus` : les lectures du résumé d'usage de chaque session, faites UNE fois par la
+// page et partagées avec les autres blocs (session_page_blocks.go, ADR 0036 I4).
 func (s *SessionPageService) attachSessionUsage(
-	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,
+	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope, lus lecturesDesSessions,
 ) {
-	var teamSize, compareTeamSize map[string]int
-	resp.Usage, teamSize = s.buildSessionUsage(ctx, sc.Matches, sc.MatchContext, sc.Locale)
+	resp.Usage = s.buildSessionUsage(ctx, sc.Matches, sc, lus.courant)
 	if len(sc.CompareMatches) > 0 {
-		resp.CompareUsage, compareTeamSize = s.buildSessionUsage(ctx, sc.CompareMatches, sc.MatchContext, sc.Locale)
+		resp.CompareUsage = s.buildSessionUsage(ctx, sc.CompareMatches, sc, lus.compare)
 	}
-	s.attachSessionCoordination(ctx, resp, sc, teamSize, compareTeamSize)
 }
 
-// buildSessionUsage calcule le bloc usage d'UNE session. Best-effort : une erreur de
-// lecture est loggée PUIS dégradée en Available=false (raison machine) — jamais d'échec
-// de la page. Session sans match ⇒ nil.
-// Il rend AUSSI l'effectif de mon camp par match (`TeamContext.TeamSize`), que le bloc de
-// coordination consomme pour sa parité 1/n — le recalculer là-bas en aurait donné une
-// seconde définition (réserve R1).
+// buildSessionUsage calcule le bloc usage d'UNE session depuis ses lectures partagées. Best-effort :
+// une erreur de lecture est loggée PUIS dégradée en Available=false (raison machine) — jamais
+// d'échec de la page. Session sans match ⇒ nil.
 func (s *SessionPageService) buildSessionUsage(
-	ctx context.Context, matches []legacymatch.StatsMatchRow, matchContext, locale string,
-) (*domain.SessionUsageBlock, map[string]int) {
+	ctx context.Context, matches []legacymatch.StatsMatchRow, sc sessionBlocksScope, lu *squadagg.LecturesUsage,
+) *domain.SessionUsageBlock {
 	defer timing.FromContext(ctx).Section("session_usage")()
 	if len(matches) == 0 {
-		return nil, nil
+		return nil
 	}
-	if s.sessionUsageRepo == nil || s.usageXUID == "" {
+	if s.sessionUsageRepo == nil || s.usageXUID == "" || lu == nil {
 		return &domain.SessionUsageBlock{
 			UnavailableReason: domain.SessionUsageUnsupported, MatchesTotal: len(matches),
-		}, nil
-	}
-	ids := matchIDsFromStatsRows(matches)
-	films, filmsErr := s.sessionUsageRepo.LoadUsageFilms(ctx, ids)
-	players, playersErr := s.sessionUsageRepo.LoadUsagePlayers(ctx, ids)
-	participants, partErr := s.sessionUsageRepo.LoadParticipants(ctx, ids)
-	for _, err := range []error{filmsErr, playersErr, partErr} {
-		if err != nil {
-			slog.ErrorContext(ctx, "session page: usage block load failed", "err", err,
-				"match_count", len(ids))
-			return &domain.SessionUsageBlock{
-				UnavailableReason: domain.SessionUsageLoadFailed, MatchesTotal: len(matches),
-			}, nil
 		}
 	}
+	ids := matchIDsFromStatsRows(matches)
+	if err := lu.Erreur(); err != nil {
+		slog.ErrorContext(ctx, "session page: usage block load failed", "err", err,
+			"match_count", len(ids))
+		return &domain.SessionUsageBlock{
+			UnavailableReason: domain.SessionUsageLoadFailed, MatchesTotal: len(matches),
+		}
+	}
+	films, players, participants := lu.Films, lu.Players, lu.Participants
+	matchContext, locale := sc.MatchContext, sc.Locale
 
 	tc := sessionusage.BuildTeamContext(s.usageXUID, participants)
 	in := buildSessionUsageInput(s.usageXUID, matches, films, players, tc)
@@ -142,7 +132,7 @@ func (s *SessionPageService) buildSessionUsage(
 	s.attachPadTiers(ctx, &block, ids, tc)
 	s.resolvePadFamilyLabels(ctx, &block, locale)
 	s.resolvePadTierWeaponLabels(ctx, &block, locale)
-	return &block, tc.TeamSize
+	return &block
 }
 
 // attachSessionObjectives renseigne le sous-bloc objectifs (lecture seule de

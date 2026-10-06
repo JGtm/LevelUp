@@ -61,9 +61,9 @@ func (s *SessionPageService) WithSessionCoordination(
 // attachSessionCoordination attache le bloc de la session affichée, celui de la session
 // comparée le cas échéant, puis pose le repère d'habituel sur les deux.
 //
-// LES EFFECTIFS DE CAMP viennent du bloc d'usage, qui vient de les calculer (réserve R1) :
-// bloc d'usage indisponible ⇒ table vide ⇒ le bloc de coordination n'a pas de parité, et
-// le dit. Il ne la réinvente jamais.
+// LES EFFECTIFS DE CAMP viennent de la lecture du résumé d'usage de chaque session, par la même
+// définition que les autres blocs (`effectifsDeCamp`, réserve R1) : lecture absente ou en échec ⇒
+// table vide ⇒ le bloc de coordination n'a pas de parité, et le dit. Il ne la réinvente jamais.
 //
 // UNE SEULE LECTURE DU JOURNAL POUR LES TROIS SCOPES (lot L5a du plan perf, 2026-09-23) :
 // la session affichée et la session comparée sont lues ENSEMBLE, puis découpées ; la
@@ -92,7 +92,7 @@ func (s *SessionPageService) lecteursDeCoordination() coordinationQuery {
 		Tactical:   s.coordTactical,
 		Appuis:     s.coordAppuis,
 		Caps:       s.coordCaps,
-		PlayerXUID: s.usageXUID,
+		PlayerXUID: s.sessionXUID,
 	}
 }
 

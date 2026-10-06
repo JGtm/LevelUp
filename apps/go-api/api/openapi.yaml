@@ -24723,6 +24723,8 @@ components:
           type:
             - array
             - "null"
+        weapon_tools:
+          $ref: '#/components/schemas/SquadWeaponTools'
         win_rate:
           format: double
           type: number
@@ -24869,6 +24871,9 @@ components:
         delta_mmr:
           format: double
           type: number
+        dominance_flag:
+          format: int64
+          type: integer
         dominant_category:
           type: string
         duration_seconds:
@@ -24936,6 +24941,8 @@ components:
           format: int64
           type: integer
         playlist_name:
+          type: string
+        score_label:
           type: string
         session_label:
           type: string
@@ -25292,6 +25299,8 @@ components:
             - "null"
         compare_coordination:
           $ref: '#/components/schemas/CoordinationBlock'
+        compare_emprise:
+          $ref: '#/components/schemas/SoloEmpriseBlock'
         compare_enabled:
           type: boolean
         compare_first_blood:
@@ -25300,12 +25309,16 @@ components:
           type:
             - array
             - "null"
+        compare_formes_retenues:
+          $ref: '#/components/schemas/SquadFormesBlock'
         compare_intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
           type:
             - array
             - "null"
+        compare_lives_near_teammate:
+          $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         compare_matches:
           items:
             $ref: '#/components/schemas/SessionDetailMatchRow'
@@ -25328,18 +25341,24 @@ components:
           $ref: '#/components/schemas/CoordinationBlock'
         current_session:
           $ref: '#/components/schemas/SessionCompareEntry'
+        emprise:
+          $ref: '#/components/schemas/SoloEmpriseBlock'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
           type:
             - array
             - "null"
+        formes_retenues:
+          $ref: '#/components/schemas/SquadFormesBlock'
         intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
           type:
             - array
             - "null"
+        lives_near_teammate:
+          $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         matches:
           items:
             $ref: '#/components/schemas/SessionDetailMatchRow'
@@ -25347,6 +25366,8 @@ components:
             - array
             - "null"
         next_session_label:
+          type: string
+        player_emblem_url:
           type: string
         previous_session_label:
           type: string

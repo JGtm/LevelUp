@@ -99,6 +99,11 @@ type SessionDetailMatchRow struct {
 	// estimateMatchCareerXP, capability analytics.career_xp_estimate). nil hors
 	// capability / match Firefight / personal_score absent (V72-13).
 	CareerXPEstimated *int `json:"career_xp_estimated,omitempty"`
+	// ScoreLabel : score d'équipe « X - Y » (manches pour une variante qui se décide en manches,
+	// ADR 0032 ; analysis.ScoreLabelCanonical). Vide sans score lisible.
+	ScoreLabel string `json:"score_label,omitempty"`
+	// DominanceFlag : enrichissement narratif du match (canonical.DominanceFlag) ; 0 = aucun.
+	DominanceFlag int `json:"dominance_flag,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.
@@ -178,4 +183,20 @@ type SessionPageResponse struct {
 	// et non un drapeau, qui dit au client de ne rien rendre à droite.
 	Coordination        *CoordinationBlock `json:"coordination,omitempty"`
 	CompareCoordination *CoordinationBlock `json:"compare_coordination,omitempty"`
+	// Emprise / CompareEmprise : l'Emprise du joueur de la page sur les matchs de la session
+	// affichée et de la session comparée (un seul joueur des fiches, sans habitude ni grille par
+	// carte : `maps` reste nul). Nil sans match ou sans joueur.
+	Emprise        *SoloEmpriseBlock `json:"emprise,omitempty"`
+	CompareEmprise *SoloEmpriseBlock `json:"compare_emprise,omitempty"`
+	// LivesNearTeammate / CompareLivesNearTeammate : « Mes vies : près d'un coéquipier ou seul » sur
+	// chaque session. Nil sans `film.kill_positions`, en échec de lecture ou sans vie lue.
+	LivesNearTeammate        *TimeseriesLivesNearTeammate `json:"lives_near_teammate,omitempty"`
+	CompareLivesNearTeammate *TimeseriesLivesNearTeammate `json:"compare_lives_near_teammate,omitempty"`
+	// FormesRetenues / CompareFormesRetenues : la feuille d'objectif de chaque session (le joueur
+	// seul en escouade, les deux camps). Nil sans match.
+	FormesRetenues        *SquadFormesBlock `json:"formes_retenues,omitempty"`
+	CompareFormesRetenues *SquadFormesBlock `json:"compare_formes_retenues,omitempty"`
+	// PlayerEmblemURL : l'emblème du joueur de la page (fiche « Ma part à l'objectif »). Vide =
+	// initiale côté web.
+	PlayerEmblemURL string `json:"player_emblem_url,omitempty"`
 }

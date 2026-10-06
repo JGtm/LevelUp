@@ -488,20 +488,20 @@ Périmètre : `service/session_page_{emprise,lives,objectif,tools,match_scores,b
 `session_page_frag_distribution.go`, `domain/session_page.go`, `domain/session_compare.go`,
 `api/wire/registry_pages_sessions.go` (NEUF) + factory `SessionPage`, contrat.
 
-- [ ] S2.1 `session_page_blocks.go` : `sessionBlocksDeps{xuid, usageRepo, usageFriends, repoRoot,
+- [x] S2.1 `session_page_blocks.go` : `sessionBlocksDeps{xuid, usageRepo, usageFriends, repoRoot,
   empriseRepo, vehicleRepo, emblemLoader, livesRepo, radarRange, formesObjectives, roundsDecide}`
   embarquée par UNE ligne dans `SessionPageService` à la place des champs `sessionUsageRepo`,
   `usageXUID`, `usageFriends`, `repoRoot` (`session_page_service.go:65-71,78-81` : taille du fichier
   en baisse) ; `With*` dans le même fichier : `WithSessionEmprise(repo, xuid)` (inconditionnel),
   `WithSessionVehicleUsage`, `WithSessionEmblemLoader`, `WithSessionLives`, `WithSessionRadarRange`,
   `WithSessionObjectives`, `WithRoundsDecide` ; `WithSessionUsage` garde sa signature jusqu'à S5.
-- [ ] S2.2 Lecture partagée D8 : `lireUsageDeSession(ctx, ids) *squadagg.LecturesUsage` (section
+- [x] S2.2 Lecture partagée D8 : `lireUsageDeSession(ctx, ids) *squadagg.LecturesUsage` (section
   `usage_summary`) ; `buildSessionUsage` (`session_page_usage.go:111-113`) consomme ces lectures au
   lieu de relire ; effectif de camp de la coordination depuis `BuildTeamContext` sur ces participants
   (D9) ; `lecteursDeCoordination` lit `s.blocks.xuid` (`session_page_coordination.go:95`). Test :
   une lecture du résumé d'usage par session pour usage + Emprise + formes + coordination (compteur de
   mock) ; mutation : seconde lecture → rouge.
-- [ ] S2.3 `session_page_emprise.go` : `attachSessionEmprise(ctx, resp, sc, lus)` — courant et
+- [x] S2.3 `session_page_emprise.go` : `attachSessionEmprise(ctx, resp, sc, lus)` — courant et
   comparé, `buildSoloEmpriseBlock` (S1.1, `WithMaps: false`, `Page: "sessions"`) sur
   `timeseriesEmpriseMatches(lignes canoniques de la session, locale)` ; section de durée `emprise`.
   Tests (mocks de port, `session_page_emprise_test.go`) écrits ROUGES d'abord : un seul joueur
@@ -511,30 +511,30 @@ Périmètre : `service/session_page_{emprise,lives,objectif,tools,match_scores,b
   seule) ; `ErrCapabilityNotSupported` de la feuille → `sheet_unsupported` ; lecture en échec →
   `*_load_failed`, jamais d'erreur de page ; session vide → nil. Mutations : coéquipiers sélectionnés,
   bloc comparé posé drawer fermé, Maps calculées → rouges.
-- [ ] S2.4 `session_page_lives.go` : `attachSessionLives` — courant et comparé par
+- [x] S2.4 `session_page_lives.go` : `attachSessionLives` — courant et comparé par
   `lireViesPresOuSeul` (S1.2, `Page: "sessions"`). Tests : bornage aux matchs de CHAQUE session et au
   xuid (mock enregistreur), capability absente → nil, échec → nil + ErrorContext. Mutation : lecture
   des matchs des deux sessions dans un seul appel → rouge.
-- [ ] S2.5 `session_page_objectif.go` : `attachSessionFormes` — courant et comparé,
+- [x] S2.5 `session_page_objectif.go` : `attachSessionFormes` — courant et comparé,
   `squadagg.BuildSquadFormesBlock` avec `Metas = timeseriesFormesMetas(lignes canoniques de la
   session, locale)`, `Lectures` = D8, `SelectedGamertags` vide (D7) ; `attachSessionEmblem` (même
   patron que `attachEmblem`, `timeseries_service_emprise.go:99-105`). Tests : objectif présent avec
   la colonne `flag_grabs_net` sous `take` (fixture), sans repo d'objectif → bloc sans objectif, Halo 5
   → bloc indisponible ; emblème absent → champ vide. Mutation : coéquipier passé en sélection → rouge.
-- [ ] S2.6 `session_page_tools.go` : `sessionWeaponTools(ctx, rows, counts, xuid, gamertag)` —
+- [x] S2.6 `session_page_tools.go` : `sessionWeaponTools(ctx, rows, counts, xuid, gamertag)` —
   `squadagg.BuildWeaponTools` (S1.3), catégories par assertion `port.KillSourceCategoryRepository`
   sur `s.weaponKillsRepo` (absente ou `ErrCapabilityNotSupported` → nil, Debug ; autre erreur → Warn),
   appelé par `attachSessionFragDistribution` (`session_page_frag_distribution.go:31-48`) qui renseigne
   `entry.WeaponTools` sur les deux entrées. Tests ROUGES d'abord : une ligne d'arme, mêlée de la
   feuille, objet explosif du film retiré de l'arme qu'il recouvre, reliquat « Non attribué » ; sans
   catégories → reliquat. Mutation : catégories ignorées → rouge.
-- [ ] S2.7 `session_page_match_scores.go` : `appliquerScoresEtDominance(rows, canonRows,
+- [x] S2.7 `session_page_match_scores.go` : `appliquerScoresEtDominance(rows, canonRows,
   roundsDecide)` (D15) sur `resp.Matches` et `resp.CompareMatches`, appelé par une ligne de `GetPage`.
   Tests : score en manches pour une variante déclarée, en points sinon, dominance recopiée, match
   sans canonique → champs vides. Mutation : `RoundsDecide` ignoré → rouge.
-- [ ] S2.8 `domain/session_page.go`, `domain/session_compare.go` : champs du §3 (commentaire de contrat
+- [x] S2.8 `domain/session_page.go`, `domain/session_compare.go` : champs du §3 (commentaire de contrat
   court, au présent).
-- [ ] S2.9 Câblage `api/wire/registry_pages_sessions.go` (NEUF) : `cablerBlocsSessions(svc, pdb)`
+- [x] S2.9 Câblage `api/wire/registry_pages_sessions.go` (NEUF) : `cablerBlocsSessions(svc, pdb)`
   appelé par UNE ligne de la factory `SessionPage` (`registry_pages.go:318-366`, taille non accrue) —
   `WithSessionEmprise(duckdb.NewSquadEmpriseRepo(pdb), pdb.XUID)` et l'emblème inconditionnels,
   `WithSessionRadarRange(r.radarRangeFor(pdb))`, `WithRoundsDecide(r.roundsDecideFor(pdb))`, vies sous
@@ -542,10 +542,24 @@ Périmètre : `service/session_page_{emprise,lives,objectif,tools,match_scores,b
   `CapMatchObjectiveStats` (même gate que `registry_pages.go:337-339`). Garde-rail
   `registry_pages_sessions_wiring_test.go` (NEUF, patron `registry_pages_timeseries_wiring_test.go`,
   lecteur `appelsDansFactory`) ; mutations : feuille sous condition, vies hors porte → rouges.
-- [ ] S2.10 Contrat régénéré, diff ADDITIF (0 retrait dans `openapi.yaml` et `generated.ts`) ;
+- [x] S2.10 Contrat régénéré, diff ADDITIF (0 retrait dans `openapi.yaml` et `generated.ts`) ;
   `contract-surface.guard.test.ts` vert sans régénérer le snapshot.
 - Gate : gate Go + contrat ; web : `npm ci`, `generate-types`, `tsc -b --force` 0, vitest
   `src/lib/api` vert.
+
+Journal S2 (2026-10-06, exécuteur, `feat/sessions-emprise`) — blocs neufs de Sessions, contrat additif. Tests écrits AVANT le code (rouge de compilation vu : symboles absents), puis code, puis mutations (dont un bouchon) :
+- **S2.1** `session_page_blocks.go` : `sessionBlocksDeps` embarqué par UNE ligne dans `SessionPageService` à la place de `sessionUsageRepo` / `usageXUID` / `usageFriends` / `repoRoot` (champs gardés DANS la struct sous leur nom, promus : le bloc d'usage historique, ses tests et la garde textuelle de `pad_tiers_wiring_test.go` lisent toujours `s.sessionUsageRepo`) + `sessionXUID`, `empriseRepo`, `vehicleRepo`, `emblemLoader`, `livesRepo`, `radarRange`, `formesObjectives`, `roundsDecide` ; `WithSessionEmprise(repo, xuid)`, `WithSessionVehicleUsage`, `WithSessionEmblemLoader`, `WithSessionLives`, `WithSessionRadarRange`, `WithSessionObjectives`, `WithRoundsDecide` ; `WithSessionUsage` inchangé. Constante `pageSessions` (goconst).
+- **S2.2** `attachSessionBlocks` remplace l'appel `attachSessionUsage` de `GetPage` (même ligne) : `lecturesDesSessions{courant, compare}` lues UNE fois par session (`lireUsageDeSession`, section `usage_summary`) et partagées par le bloc d'usage historique (`buildSessionUsage` ne relit plus), l'Emprise, l'objectif et `effectifsDeCamp` (D9 : `BuildTeamContext` sur les participants partagés, même définition que l'ancien bloc d'usage) ; `lecteursDeCoordination` lit `sessionXUID`. Les tests du bloc d'usage historique appellent désormais `attachSessionBlocks(…, nil)` (sites d'appel seuls, assertions inchangées) ; les deux doublures de coordination câblent `WithSessionEmprise(nil, "P")` (D9). Changement de comportement (conséquence de D9, signalé au superviseur, §8) : un titre qui nomme ses tueurs SANS résumé d'usage — Halo 5 — reçoit désormais sa coordination sur Sessions, sans parité (elle y était indisponible).
+- **S2.3 / S2.4** `session_page_emprise.go` (un seul fichier pour l'Emprise et les vies, au lieu de deux : 62 L) : `buildSoloEmpriseBlock` sans grille par carte, `Page: pageSessions`, sur `timeseriesEmpriseMatches(lignesCanoniquesDe(canon, session), locale)` ; `lireViesPresOuSeul` bornée aux matchs de CHAQUE session et au joueur.
+- **S2.5** `session_page_objectif.go` : `squadagg.BuildSquadFormesBlock` (requête réduite L7, `SelectedGamertags` vide), `timeseriesFormesMetas` des lignes canoniques de la session ; `attachSessionEmblem`.
+- **S2.6** `session_page_tools.go` : `sessionWeaponTools` (builder `squadagg.BuildWeaponTools`, un joueur, feuille = compteurs canoniques déjà agrégés, catégories par l'interface optionnelle `port.KillSourceCategoryRepository` du lecteur d'armes : absente / non supportée → Debug, échec → Warn) ; `sessionFragDistribution` rend aussi les outils, posés sur les deux entrées.
+- **S2.7** `session_page_match_scores.go` : `appliquerScoresEtDominance` (une ligne dans `GetPage`). Écart de source : la dominance est lue sur la ligne canonique (`Enrichment.DominanceFlag`), d'où `StatsMatchRow.DominanceFlag` est elle-même projetée — même valeur, une seule passe.
+- **S2.8** Champs de contrat : `SessionPageResponse.{Emprise, CompareEmprise, LivesNearTeammate, CompareLivesNearTeammate, FormesRetenues, CompareFormesRetenues, PlayerEmblemURL}`, `SessionCompareEntry.WeaponTools`, `SessionDetailMatchRow.{ScoreLabel, DominanceFlag}`.
+- **S2.9** `api/wire/registry_pages_sessions.go` : `cablerBlocsSessions` (feuille + joueur, emblème, portées du radar, manches inconditionnels ; vies sous `CapFilmKillPositions`, véhicules sous `CapFilmVehicleUsage`, objectifs sous `CapMatchObjectiveStats`) appelé par une ligne de `SessionPage` ; garde-rail `registry_pages_sessions_wiring_test.go` (5 tests, lecteur `appelsDansFactory`).
+- **S2.10** Contrat : `openapi.yaml` +21 / −0, `generated.ts` +11 / −0 ; `check-generated-types-fresh` OK ; `contract-surface.guard.test.ts` vert SANS régénération (snapshot non modifié).
+- **Mutations** (script `mut_s2.ps1`, restauration garantie puis vérifiée par grep ; 13, toutes ROUGES, rejouées après le regroupement des paramètres) : lecture partagée non transmise à l'Emprise (2 lectures au lieu d'1) ; effectif de camp perdu (Appui ≠ ancien chemin) ; joueur de la coordination tiré du bloc d'usage ; Emprise comparée calculée sur la session affichée ; grille par carte calculée ; bouchon « Emprise non posée » (trois tests rouges) ; vies des deux sessions en une lecture ; coéquipier sélectionné dans l'objectif ; catégories de source ignorées ; manches ignorées ; câblage des blocs sous condition ; feuille et joueur sous condition ; vies hors de leur porte.
+- **Gate** : `go build ./...` 0 ; `gofmt -l internal` muet ; `go vet` de `service`, `api/wire`, `domain`, `analysis` 0 ; `go test -count=1` du module en lots couvrant tout `go list ./...` (cmd + contracttest + analysis + api + domain + port + archlint 67 ok, games 39 ok, platform + service 28 ok, sync + persist + migration 13 ok, reste 48 ok) — 0 FAIL, puis `service` + `api/wire` + `archlint` rejoués après la correction du lint et le regroupement des paramètres ; `make go-api-lint` 0 issue (un `goconst` corrigé en cours de gate) ; `openapi-gen -check` à jour ; web : `npm ci` (node_modules réel, 508 paquets), `generate-types`, purge `node_modules\.tmp`, `npx tsc -b --force` 0, vitest `src/lib/api` 5 fichiers / 36 tests verts. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié).
+- Seuils : `session_page_service.go` 894 → 886, `registry_pages.go` 620 → 619 ; fichiers neufs ≤ 152 L ; fonctions ≤ 5 paramètres (`attachSessionEmprise` / `attachSessionFormes` ramenés de 6 à 5 par `lecturesDesSessions`) ; plus longue fonction neuve ~25 L.
 
 ### S3 — Web : briques étendues (compact), Escouade et Séries temporelles inchangées · lourd
 
@@ -769,6 +783,16 @@ modèles neufs ont leur lecteur dans le lot.
   l'objectif seul) : sort avec L7.
 - (phase 1) `SessionDetailPage.tsx` (551 L) et `session_page_service.go` (894 L) sont au-delà du seuil
   de taille ; le lot les fait baisser sans viser le seuil.
+- (S2) Les niveaux de socle (`LoadPadTiers`) sont lus deux fois par session tant que le bloc d'usage
+  historique vit (lui et la lecture du film de l'Emprise) ; la seconde lecture disparaît avec lui en S5.
+- (S2, SIGNALÉ AU SUPERVISEUR) Avant S2, la page Sessions d'un titre au journal des morts fiable mais
+  sans résumé d'usage recevait une coordination INDISPONIBLE (raison `no_measured_match` : son joueur
+  venait du câblage du résumé, absent). HALO 5 EST DANS CE CAS (`match.killfeed.per_kill` = supported,
+  `config/titles/halo_5/mappings/capabilities.toml:48`, pas de `film.usage_summary`). Depuis S2 (D9 :
+  joueur posé par `WithSessionEmprise`, inconditionnel), Halo 5 reçoit sa coordination sur Sessions,
+  sans parité — comme les Séries temporelles, dont le joueur vient de `WithHighlightEventsRepo`. D9
+  écrivait « comme aujourd'hui » : c'était inexact. Décision attendue (garder l'alignement sur les
+  Séries temporelles, ou rendre au joueur de la coordination la porte du résumé d'usage).
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 

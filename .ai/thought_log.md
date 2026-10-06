@@ -116045,3 +116045,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : tests des Séries temporelles et de l'Escouade verts sans modification d'assertion ; cinq mutations, toutes rouges ; module entier vert en lots, lint 0 issue, contrat inchangé.
 
 **Conclusion / prochaine étape** : S1 clos ; compte rendu au superviseur, S2 (blocs neufs de Sessions, contrat additif) sur « continue ».
+
+## [2026-10-06] Page Sessions aux formes de l'Emprise — S2 : blocs neufs de Sessions, contrat additif — Complété (commit local sur `feat/sessions-emprise`)
+
+**Décision technique principale** : `attachSessionBlocks` lit le résumé d'usage UNE fois par session et le partage entre le bloc d'usage historique (qui ne relit plus), l'Emprise du seul joueur de la page (`buildSoloEmpriseBlock`, sans grille par carte), la feuille d'objectif (`BuildSquadFormesBlock`, escouade réduite au joueur) et l'effectif de camp de la coordination ; la coordination prend son joueur de `WithSessionEmprise` (inconditionnel, D9) ; vies bornées par session ; « Outils de destruction » par le builder partagé sur un joueur ; score et dominance posés sur les lignes de match ; câblage dans `registry_pages_sessions.go`. Contrat strictement additif (openapi +21, generated.ts +11, snapshot de surface intact).
+
+**Résultats observés** : treize mutations, toutes rouges (lecture partagée, effectif de camp, joueur de la coordination, session comparée, grille, bouchon, vies, objectif, catégories, manches, trois de câblage) ; module entier vert en lots, lint 0 issue, `session_page_service.go` 894 → 886, `registry_pages.go` 620 → 619. Découverte signalée : Halo 5 (journal des morts fiable, sans résumé d'usage) reçoit désormais sa coordination sur Sessions, comme sur les Séries temporelles — D9 disait à tort « comme aujourd'hui ».
+
+**Conclusion / prochaine étape** : S2 clos ; décision du superviseur attendue sur Halo 5 (garder l'alignement ou rendre la porte du résumé au joueur de la coordination), puis S3 sur « continue ».

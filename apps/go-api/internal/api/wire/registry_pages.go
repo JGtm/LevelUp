@@ -337,9 +337,8 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
 	}
-	// Bloc « usages d'équipement, socles et objectifs » de la session (chantier
-	// session-usage S2) : gated par film.usage_summary (Infinite ; absente pour
-	// Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
+	svc = r.cablerBlocsSessions(svc, pdb) // blocs du film : registry_pages_sessions.go
+	// Résumé d'usage (bloc d'usage, Emprise, objectif) : gated par film.usage_summary. Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
 		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
 	}

@@ -41,7 +41,7 @@ func construireBlocUsage(t *testing.T, repo *mockSessionUsageRepo) *domain.Sessi
 	t.Helper()
 	svc := NewSessionPageService(nil).WithSessionUsage(repo, usageTestXUID, nil, "")
 	var resp domain.SessionPageResponse
-	svc.attachSessionUsage(context.Background(), &resp, sessionBlocksScope{Matches: usageTestMatches(), MatchContext: domain.MatchContextSolo, Locale: "fr"})
+	svc.attachSessionBlocks(context.Background(), &resp, sessionBlocksScope{Matches: usageTestMatches(), MatchContext: domain.MatchContextSolo, Locale: "fr"}, nil)
 	if resp.Usage == nil {
 		t.Fatal("bloc usage absent")
 	}
