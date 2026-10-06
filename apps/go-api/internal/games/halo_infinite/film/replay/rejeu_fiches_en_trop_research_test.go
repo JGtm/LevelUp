@@ -61,9 +61,10 @@ func rjeEntites(t *testing.T, r *rjeFilm, index []int) {
 			continue
 		}
 		apres, prouvee := r.scan.AbsenceProuveeApres(e)
-		t.Logf("  entite %d : slot %d index %d equipe %d KF %d..%d (frames %d..%d) vue %d instable %v absence apres %d/%v",
+		avant, prouveeAvant := r.scan.AbsenceProuveeAvant(e)
+		t.Logf("  entite %d : slot %d index %d equipe %d KF %d..%d (frames %d..%d) vue %d instable %v absence avant %d/%v apres %d/%v",
 			k, e.Slot, e.Index, e.Team, e.FirstKF, e.LastKF, r.rjeFrameKF(e.FirstKF), r.rjeFrameKF(e.LastKF), e.Seen,
-			e.Unstable, apres, prouvee)
+			e.Unstable, avant, prouveeAvant, apres, prouvee)
 	}
 }
 
