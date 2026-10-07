@@ -1,8 +1,10 @@
 /**
  * TimeseriesCoordinationSection — « Appui reçu » dans le temps, sur l'onglet Progression des
  * Séries temporelles (lot Q ; D22-6/7 du 2026-09-21). La carte « Riposte » a quitté la page
- * (décision V5 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05) ; « Appui reçu » reste seule,
- * en demi-largeur, telle quelle (D11).
+ * (décision V5 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05). Le composant rend la CARTE
+ * seule, sans grille : l'appelant la pose à droite de « Rendement & Résistance », sur la même
+ * rangée (retour utilisateur du 2026-10-07). Aucune mention de couverture en pied : la
+ * réserve de mesure tient dans l'infobulle et dans les bâtons creux.
  *
  * EN ÉCART À SON REPÈRE (D23-3, 2026-09-22) : chaque grandeur est tracée comme sa distance à
  * sa propre référence — l'habituel de la période de référence (`habituel_pct`) pour « on me
@@ -24,6 +26,7 @@ import { useMemo, type ReactNode } from 'react'
 
 import { SessionBarsTrendChart } from '@/components/charts/SessionBarsTrendCard'
 import type { SessionBarsSeriesSpec } from '@/components/charts/sessionBarsTrendChart'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { titleWithInfo } from '@/components/ui/title-with-info'
@@ -73,23 +76,18 @@ export function TimeseriesCoordinationSection({
   const dessinable = coordinationDessinable(block)
   const sessions = soireesDe(block)
   const labels = labelsDeSoirees(sessions)
-  const couverture = t.coverage(block.matches_measured, block.matches_total)
   const indisponible = block.available === false ? block.unavailable_reason || t.unavailable : null
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-      <CarteAppui
-        block={block}
-        labels={labels}
-        sessions={sessions}
-        dessinable={dessinable}
-        indisponible={indisponible}
-        couverture={couverture}
-        t={t}
-        pctFmt={pctFmt}
-      />
-    </div>
+    <CarteAppui
+      block={block}
+      labels={labels}
+      sessions={sessions}
+      dessinable={dessinable}
+      indisponible={indisponible}
+      t={t}
+      pctFmt={pctFmt}
+    />
   )
 }
 
@@ -99,7 +97,6 @@ interface CarteProps {
   sessions: ReturnType<typeof soireesDe>
   dessinable: boolean
   indisponible: string | null
-  couverture: string
   t: TimeseriesCoordinationText
   pctFmt: Intl.NumberFormat
 }
@@ -159,7 +156,6 @@ function CarteAppui({
   sessions,
   dessinable,
   indisponible,
-  couverture,
   t,
   pctFmt,
 }: CarteProps) {
@@ -197,8 +193,8 @@ function CarteAppui({
         { label: t.myShare, value: pctFmt.format(a.ma_part_des_appuis.taux) },
       ]}
       indisponible={indisponible}
+      emptyTitle={t.emptyTitle}
       empty={t.empty}
-      couverture={couverture}
       testId="timeseries-coord-appui"
     >
       {dessinable && (
@@ -231,20 +227,20 @@ interface CarteDeCoordinationProps {
   appels: AppelChiffre[]
   /** Raison d'indisponibilité servie par le serveur — l'état vide NOMMÉ de la carte. */
   indisponible: string | null
+  emptyTitle: string
   empty: string
-  couverture: string
   testId: string
   children: ReactNode
 }
 
-/** Le gabarit commun : chiffres d'appel, graphe, couverture en pied. */
+/** Le gabarit commun : chiffres d'appel puis graphe, centré dans la hauteur de la rangée. */
 function CarteDeCoordination({
   title,
   aide,
   appels,
   indisponible,
+  emptyTitle,
   empty,
-  couverture,
   testId,
   children,
 }: CarteDeCoordinationProps) {
@@ -253,15 +249,10 @@ function CarteDeCoordination({
       title={title}
       label={title}
       titleAdornment={titleWithInfo(aide)}
-      footer={
-        <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-          {couverture}
-        </p>
-      }
     >
-      <div className="space-y-2 px-3 py-2" data-testid={testId}>
+      <div className="flex flex-1 flex-col justify-center gap-2 px-3 py-2" data-testid={testId}>
         {indisponible ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{indisponible}</p>
+          <EmptyStateNotice title={emptyTitle} description={indisponible} />
         ) : (
           <>
             <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
@@ -276,9 +267,7 @@ function CarteDeCoordination({
                 </span>
               ))}
             </div>
-            {children || (
-              <p className="py-6 text-center text-sm text-muted-foreground">{empty}</p>
-            )}
+            {children || <EmptyStateNotice title={emptyTitle} description={empty} />}
           </>
         )}
       </div>

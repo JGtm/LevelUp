@@ -192,4 +192,13 @@ type TacticalRaster struct {
 	// que le plan dessine — contours sous la chaleur, noms au-dessus. Servies sous la porte des
 	// zones des grappes (`film.replay_artifact`) ; absentes sinon, ou hors catalogue.
 	Zones []replaydoc.CalloutZone `json:"zones,omitempty"`
+
+	// Voisines : les AUTRES lectures que la meme lecture de la base (ou des sidecars) sert sans
+	// rien relire — « morts », « frags », « solde » et « victoires − defaites » sortent toutes
+	// des positions de kill, « temps » et « trajets » des memes sidecars. Rasteriser trois
+	// grilles de plus ne coute que du calcul ; le web les garde en cache et change de lecture
+	// sans nouvelle requete. Meme carte, meme axe, meme perimetre ; elles ne portent ni zones
+	// (identiques, servies une fois ci-dessus) ni voisines. Vide pour « isole », qui a sa
+	// propre lecture.
+	Voisines []TacticalRaster `json:"voisines,omitempty"`
 }

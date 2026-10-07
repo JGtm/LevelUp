@@ -1,4 +1,4 @@
-# Manifest i18n de l'onglet TENDANCES (Ascension) - matrice, barre d'horizon, etats.
+# Manifest i18n de la page TENDANCES (section Solo) - matrice, barre d'horizon, etats.
 # Chaque cle DOIT porter fr ET en (controle par build_i18n_manifests.mjs).
 #
 # VOCABULAIRE FR ARRETE : « horizon », « periode d'avant », « matchs ». Jamais « trend »,

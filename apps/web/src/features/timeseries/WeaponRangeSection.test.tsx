@@ -1,9 +1,9 @@
 /**
  * WeaponRangeSection.test — la section « Portée ».
  *
- * Ce que ces tests verrouillent : les quatre tuiles AVEC leur dénominateur, les DEUX tuiles
+ * Ce que ces tests verrouillent : les quatre tuiles SANS dénominateur, les DEUX tuiles
  * d'entame qui n'apparaissent QUE si l'entame est mesurée (jamais un zéro — décision D5), la
- * carte « Portée par arme » seule en demi-largeur, sa légende (encres, position en pied), le tableau
+ * carte « Portée par arme » en demi-largeur avec sa voisine `aside`, sa légende (encres, position en pied), le tableau
  * dépliable (les deux côtés, le tiret du côté non mesuré), et le retrait complet de la
  * section quand rien n'est publiable.
  *
@@ -98,7 +98,17 @@ beforeEach(() => {
 
 describe('WeaponRangeSection — rendu nominal', () => {
   // « Hauteur d'engagement » a quitté la page (V5 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05) :
-  // « Portée par arme » reste SEULE, en demi-largeur dans sa grille à deux colonnes (D11).
+  // « Portée par arme » reste en demi-largeur dans sa grille à deux colonnes (D11) ; la seconde
+  // colonne reçoit la carte passée en `aside`.
+  it('pose la carte `aside` dans la même rangée que « Portée par arme »', () => {
+    renderWithProviders(
+      <WeaponRangeSection range={RANGE} aside={<section aria-label="Voisine">voisine</section>} />,
+    )
+    const card = screen.getByRole('region', { name: 'Portée par arme' })
+    const voisine = screen.getByRole('region', { name: 'Voisine' })
+    expect(voisine.parentElement).toBe(card.parentElement)
+  })
+
   it('affiche « Portée par arme » seule, en demi-largeur, avec son graphe', () => {
     renderWithProviders(<WeaponRangeSection range={RANGE} />)
     const card = screen.getByRole('region', { name: 'Portée par arme' })
@@ -109,18 +119,18 @@ describe('WeaponRangeSection — rendu nominal', () => {
     expect(card.closest('.lg\\:grid-cols-2')).not.toBeNull()
   })
 
-  it('les quatre tuiles portent leur valeur ET leur dénominateur', () => {
+  it('les quatre tuiles portent leur valeur, SANS dénominateur de couverture', () => {
     renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByText('Portée médiane des frags du joueur')).toBeInTheDocument()
-    expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Portée médiane des morts du joueur')).toBeInTheDocument()
-    expect(textOf(/^1 087 morts mesurées sur 1 455$/).length).toBeGreaterThan(0)
+    // Retour utilisateur du 2026-10-07 : ni « N frags mesurés sur M », ni « N morts mesurées
+    // sur M », ni « 1,5 s avant le frag · N frags mesurés ».
+    expect(screen.queryByText(/mesurés sur|mesurées sur|frags mesurés/)).not.toBeInTheDocument()
     // LA VALEUR, PAS SEULEMENT SON LIBELLÉ : chaque tuile porte SA médiane. Sans ces deux
     // lignes, deux valeurs échangées (frags <-> morts) passeraient inaperçues.
     expect(flatCardOf('Portée médiane des frags du joueur')).toContain('7,4 m')
     expect(flatCardOf('Portée médiane des morts du joueur')).toContain('11,8 m')
     expect(screen.getByText("Distance d'entame médiane")).toBeInTheDocument()
-    expect(textOf(/^1,5 s avant le frag · 618 frags mesurés$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Entame → frag')).toBeInTheDocument()
     expect(textOf(/^Distance réduite avant le frag dans 61 % des frags$/).length).toBeGreaterThan(0)
     // Distance signée : le signe DIT le sens (la distance se ferme), il n'est pas décoratif.
@@ -218,7 +228,6 @@ describe('WeaponRangeSection — dégradations', () => {
       />,
     )
     expect(screen.getByText("Distance d'entame médiane")).toBeInTheDocument()
-    expect(textOf(/^1,5 s avant le frag · 618 frags mesurés$/).length).toBeGreaterThan(0)
     expect(screen.queryByText('Entame → frag')).not.toBeInTheDocument()
     expect(screen.queryByText(/Distance réduite avant le frag/)).not.toBeInTheDocument()
   })
@@ -306,7 +315,6 @@ describe('WeaponRangeSection — dégradations', () => {
     )
     // Les tuiles restent : les médianes globales ne dépendent pas du seuil de publication.
     expect(screen.getByText('Portée médiane des frags du joueur')).toBeInTheDocument()
-    expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     // Aucun graphe, mais une phrase qui DIT pourquoi — jamais un canevas vide sans mot.
     expect(screen.queryAllByTestId('chart-card')).toHaveLength(0)
     // LA PORTÉE dit son seuil.
@@ -322,7 +330,6 @@ describe('WeaponRangeSection — dégradations', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<WeaponRangeSection range={RANGE} />)
     expect(screen.getByText("Median range of the player's kills")).toBeInTheDocument()
-    expect(textOf(/^1,214 measured kills out of 1,602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()
     // LES DISTANCES AUSSI suivent la locale : « 7.4 m » et non « 7,4 m ». Sans cette ligne,
     // un formateur figé sur fr-FR passerait le test anglais.

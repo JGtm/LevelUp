@@ -133,7 +133,6 @@ export function getTacticalText(locale: Locale) {
     zoneContributionsLoading: m('tactical.zone.contributions_loading'),
     zoneContributionsEmpty: m('tactical.zone.contributions_empty'),
     zoneError: m('tactical.zone.error'),
-    zoneNotOpenable: (n: number) => m('tactical.zone.not_openable', { n }),
 
     // ── Mini-tuile « Rejeu » ────────────────────────────────────────────────
     tileKilledBy: (gt: string) => m('tactical.tile.killed_by', { gt }),

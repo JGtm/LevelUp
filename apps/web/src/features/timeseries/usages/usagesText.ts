@@ -29,8 +29,6 @@ export interface UsagesSectionsText {
   lives: string
   objectif: string
   equipment: string
-  /** « 12 matchs filmés sur 40 · frags de la feuille de match sur les 40 », à côté de « Ressources ». */
-  bilanCoverage: (filmed: number, total: number) => string
 }
 
 export interface UsagesText {
@@ -38,8 +36,6 @@ export interface UsagesText {
   cards: UsagesCardsText
   sheet: SoloSheetText
 }
-
-const sur = (n: number, one: string, many: string) => (n > 1 ? many : one)
 
 /** Les textes de l'Emprise de l'Escouade, surchargés pour la page solo (FR) : le périmètre, les cartes. */
 function empriseFr(base: EmpriseText): EmpriseText {
@@ -149,8 +145,6 @@ const FR: UsagesText = {
     lives: 'Isolement',
     objectif: 'Objectif',
     equipment: 'Équipement',
-    bilanCoverage: (filmed, total) =>
-      `${filmed} ${sur(filmed, 'match filmé', 'matchs filmés')} sur ${total} · frags de la feuille de match sur les ${total}`,
   },
   cards: USAGES_CARDS_TEXT_FR,
   sheet: {
@@ -176,8 +170,6 @@ const EN: UsagesText = {
     lives: 'Isolation',
     objectif: 'Objective',
     equipment: 'Equipment',
-    bilanCoverage: (filmed, total) =>
-      `${filmed} ${sur(filmed, 'filmed match', 'filmed matches')} of ${total} · kills from the match sheet over all ${total}`,
   },
   cards: USAGES_CARDS_TEXT_EN,
   sheet: {

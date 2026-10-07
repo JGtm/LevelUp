@@ -1,8 +1,8 @@
 /**
  * SessionCoordinationSection — LA SECTION « Coordination » de la colonne de session
- * (lot O, D22-6) : la carte « Appui reçu », seule dans sa rangée — demi-largeur en pleine page,
- * pleine colonne en vue compacte. « Riposte » a quitté la page (plan
- * PLAN_SESSIONS_EMPRISE_2026-10-06, V3) ; « Mes vies : près d'un coéquipier ou seul » (carte I)
+ * (lot O, D22-6) : la carte « Appui reçu », seule dans sa rangée, sur TOUTE la largeur de la colonne,
+ * en pleine page comme en vue compacte (une demi-largeur laisse un vide à côté d'elle). « Riposte » a
+ * quitté la page (plan PLAN_SESSIONS_EMPRISE_2026-10-06, V3) ; « Mes vies : près d'un coéquipier ou seul » (carte I)
  * reprend la question de l'entraide.
  *
  * LA DONNÉE ARRIVE DANS LA RÉPONSE EXISTANTE (`SessionPageResponse.coordination`, lot N1) —
@@ -43,7 +43,6 @@ import type { CoordinationBlock } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { COORDINATION_TEXT, type CoordinationText } from './coordinationI18n'
-import { pairGridClass } from './_chartSections'
 import { bandCaption, buildAppuiBand, buildAppuiGaugeRows } from './coordinationModel'
 
 /**
@@ -119,7 +118,7 @@ export function SessionCoordinationSection({
 }: {
   /** Le bloc `coordination` de la réponse — absent (vieux serveur) : rien ne se rend. */
   coordination: CoordinationBlock | null | undefined
-  /** Colonne divisée : mêmes formes, plus serrées ; la carte prend toute la colonne. */
+  /** Colonne divisée : mêmes formes, plus serrées. */
   compact?: boolean
 }) {
   const locale = useAppShellStore((s) => s.locale)
@@ -134,8 +133,9 @@ export function SessionCoordinationSection({
 
   if (coordination == null) return null
 
-  // Seule dans sa rangée : demi-largeur en pleine page, toute la colonne en vue compacte.
-  const rowClass = pairGridClass(compact)
+  // Seule dans sa rangée, sur toute la largeur de la colonne ; `min-w-0` : la colonne de comparaison
+  // est une grille, et sans lui la carte refuserait de rétrécir sous sa largeur de contenu.
+  const rowClass = 'min-w-0'
 
   if (!coordination.available) {
     return (
@@ -145,13 +145,11 @@ export function SessionCoordinationSection({
     )
   }
 
-  const coverage = t.coverageMatchesFmt(coordination.matches_measured, coordination.matches_total)
-
   return (
     <div className={rowClass} data-session-coordination="">
       <CoordinationCard
         title={t.cardAppui}
-        info={usageCardTitle(t.infoAppui1, t.infoAppui2, t.infoAppui3, coverage)}
+        info={usageCardTitle(t.infoAppui1, t.infoAppui2, t.infoAppui3)}
         rows={appuiRows}
         columns={[
           { header: t.gaugePrepared },

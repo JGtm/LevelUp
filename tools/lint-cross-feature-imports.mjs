@@ -116,6 +116,14 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'match-view=>match-replay/hooks/useReplayDrag',
   'match-view=>match-replay/hooks/useReplayWheelZoom',
   'match-view=>match-replay/ui/ReplayZoomControl',
+  //  - les memes hooks et la meme commande pour le plan de l'onglet Tactique (2026-10-07,
+  //    ajustements UI) : le plan se zoome et se deplace exactement comme le rejeu 2D et
+  //    « Occupation du terrain ». Meme raison que ci-dessus : une troisieme copie du geste
+  //    est interdite, et les descendre dans `lib/` emmenerait le modele de scene du rejeu.
+  'tactical=>match-replay/hooks/useReplayZoom',
+  'tactical=>match-replay/hooks/useReplayDrag',
+  'tactical=>match-replay/hooks/useReplayWheelZoom',
+  'tactical=>match-replay/ui/ReplayZoomControl',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

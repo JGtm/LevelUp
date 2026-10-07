@@ -86,6 +86,10 @@ export function PisteCampsForm({ rows, pctFmt, axisMaxLabel, labelWidth = 118, p
 /**
  * TrackAxis — l'axe sous les pistes, dans la colonne des barres ; à 10 px des pistes (maquette :
  * écart du corps de carte, pas celui des pistes). `at` en pourcentage de la piste.
+ *
+ * Chaque étiquette est centrée sur sa graduation, SAUF celle du bout droit (`at` 100), calée à
+ * droite : centrée, sa moitié dépassait le bord de la piste, qui est aussi le bord intérieur de la
+ * carte (« 100 % » et « +50 % » mordaient sur le cadre).
  */
 export function TrackAxis({ columns, ticks }: { columns: string; ticks: { at: number; label: string }[] }) {
   return (
@@ -93,7 +97,11 @@ export function TrackAxis({ columns, ticks }: { columns: string; ticks: { at: nu
       <span />
       <div className="relative h-3.5 text-[10.5px] tabular-nums text-muted-foreground">
         {ticks.map((tick) => (
-          <span key={tick.at} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${tick.at}%` }}>
+          <span
+            key={tick.at}
+            className={`absolute whitespace-nowrap ${tick.at >= 100 ? '-translate-x-full' : '-translate-x-1/2'}`}
+            style={{ left: `${tick.at}%` }}
+          >
             {tick.label}
           </span>
         ))}

@@ -10,7 +10,7 @@
 import type { EchelleTactique, TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { LEGENDE_MARGE_PX, PLAN_BOITE_HAUTEUR_MAX_PX, type CarteEffective } from './cockpit.logic'
+import { LEGENDE_MARGE_PX, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import type { TacticalEtatLecture } from './tacticalLecture.logic'
 import {
@@ -18,6 +18,7 @@ import {
   libelleRayons,
   planLegend,
   TACTICAL_CELL_FLOOR,
+  type FenetreDuPlan,
   type TacticalQuestion,
 } from './tacticalView.logic'
 
@@ -91,11 +92,43 @@ export function rampeVerticale(ramp: readonly string[]): string {
 
 /**
  * boiteDuPlan — le cadre du fond : toute la largeur disponible (la marge de la légende déjà
- * retirée par son conteneur), au rapport du fond, sans dépasser `PLAN_BOITE_HAUTEUR_MAX_PX` de haut.
- * LE RAPPORT N'EST JAMAIS DÉFORMÉ : la borne de hauteur passe par une largeur maximale.
+ * retirée par son conteneur), au rapport du fond, sans dépasser `hauteurMax` de haut (l'espace que
+ * la fenêtre laisse au plan). LE RAPPORT N'EST JAMAIS DÉFORMÉ : la borne de hauteur passe par une
+ * largeur maximale.
  */
-export function boiteDuPlan(aspect: number): { aspectRatio: number; width: string; maxWidth: string } {
-  return { aspectRatio: aspect, width: '100%', maxWidth: `${aspect * PLAN_BOITE_HAUTEUR_MAX_PX}px` }
+export function boiteDuPlan(
+  aspect: number,
+  hauteurMax: number,
+): { aspectRatio: number; width: string; maxWidth: string } {
+  return { aspectRatio: aspect, width: '100%', maxWidth: `${Math.round(aspect * hauteurMax)}px` }
+}
+
+/** La place de l'image du fond dans le cadre, en pourcentages du cadre. */
+export interface CadrageDuFond {
+  left: string
+  top: string
+  width: string
+  height: string
+}
+
+/**
+ * cadrageDuFond — la place de l'image du fond dans le cadre, quand le plan est grossi : l'image
+ * couvre la SCÈNE (le calage du fond), le cadre montre la FENÊTRE ; l'image est donc agrandie du
+ * rapport scène / fenêtre et décalée du coin de la fenêtre, en pourcentages du cadre. À 1x : le
+ * cadre entier, exactement l'image d'avant le zoom. Le calque se projette sur la même fenêtre
+ * (`vueDuPlan`), les deux ne peuvent donc pas se désaligner.
+ */
+export function cadrageDuFond(scene: FenetreDuPlan, fenetre: FenetreDuPlan): CadrageDuFond {
+  const lf = fenetre.maxX - fenetre.minX
+  const hf = fenetre.maxY - fenetre.minY
+  if (!(lf > 0) || !(hf > 0)) return { left: '0%', top: '0%', width: '100%', height: '100%' }
+  const pct = (v: number) => `${Math.round(v * 10000) / 100}%`
+  return {
+    left: pct((scene.minX - fenetre.minX) / lf),
+    top: pct((fenetre.maxY - scene.maxY) / hf),
+    width: pct((scene.maxX - scene.minX) / lf),
+    height: pct((scene.maxY - scene.minY) / hf),
+  }
 }
 
 /** Ce qui se pose sur le fond : l'état de la lecture, ou ce que dit la carte affichée. */

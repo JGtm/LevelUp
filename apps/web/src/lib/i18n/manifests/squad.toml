@@ -689,14 +689,6 @@ en = "All-rounder"
 fr = "Tireur d'élite"
 en = "Sharpshooter"
 
-[squad.portee.legend_low_sample]
-fr = "moins de {floor, number} frags mesurés"
-en = "fewer than {floor, number} measured kills"
-
-[squad.portee.legend_trend]
-fr = "tendance ({n, number} matchs)"
-en = "trend ({n, number} matches)"
-
 [squad.portee.tooltip_median]
 fr = "médiane {m} m"
 en = "median {m} m"
@@ -708,10 +700,6 @@ en = "gap {delta} m"
 [squad.portee.tooltip_measured]
 fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
 en = "{n, plural, one {# measured kill} other {# measured kills}}"
-
-[squad.portee.coverage]
-fr = "{measured, number} frags mesurés sur {total, number}"
-en = "{measured, number} measured kills out of {total, number}"
 
 [squad.portee.empty_title]
 fr = "Aucune portée mesurée"

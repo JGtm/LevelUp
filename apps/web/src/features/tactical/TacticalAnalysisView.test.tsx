@@ -26,6 +26,10 @@ import type { CarteEffective } from './cockpit.logic'
 import { getTacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { PLAN_ASPECT_DEFAUT } from './tacticalView.logic'
+import { hauteurDisponible } from './useHauteurDuPlan'
+
+/** La hauteur que la fenêtre de test laisse au plan (jsdom : aucune mise en page, le cadre en haut). */
+const HAUTEUR = hauteurDisponible(window.innerHeight, 0)
 
 const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {
@@ -197,7 +201,7 @@ describe('TacticalAnalysisView — la carte du plan, toujours rendue', () => {
     mockRaster({})
     renderVue({ carte: { mapId: '', origine: 'attente' }, mapName: '' })
     expect(within(cadre()).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
-    expect(cadre().style.maxWidth).toBe(`${PLAN_ASPECT_DEFAUT * 800}px`)
+    expect(cadre().style.maxWidth).toBe(`${Math.round(PLAN_ASPECT_DEFAUT * HAUTEUR)}px`)
     expect(screen.queryByRole('region', { name: 'Ruelles' })).toBeNull()
   })
 
@@ -231,16 +235,16 @@ describe('TacticalAnalysisView — états vides en titre seul', () => {
 })
 
 describe('TacticalAnalysisView — le cadre du fond', () => {
-  it('au rapport des bornes, jamais plus de 800 px de haut', () => {
+  it('au rapport des bornes, jamais plus haut que ce que la fenêtre laisse', () => {
     mockRaster({ data: RASTER_VIDE })
     renderVue()
-    expect(cadre().style.maxWidth).toBe('1600px')
+    expect(cadre().style.maxWidth).toBe(`${2 * HAUTEUR}px`)
   })
 
   it('des bornes très allongées ne rendent pas un cadre démesuré', () => {
     mockRaster({ data: { ...RASTER_VIDE, bornes: { min_x: 0, max_x: 4, min_y: 0, max_y: 50, valide: true } } })
     renderVue()
-    expect(cadre().style.maxWidth).toBe(`${0.08 * 800}px`)
+    expect(cadre().style.maxWidth).toBe(`${Math.round(0.08 * HAUTEUR)}px`)
   })
 })
 

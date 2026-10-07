@@ -31,7 +31,7 @@ export function SquadWeaponKillsChart({ data, title, emptyMessage, legend, ...op
   const buildOption = useCallback(
     () => buildSquadWeaponKillsOption(data, opts),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, opts.colorByPlayer, opts.valueLabel, opts.valueText, opts.shareTotals, opts.minLabelShare],
+    [data, opts.colorByPlayer, opts.valueLabel, opts.valueText, opts.shareTotals, opts.minLabelShare, opts.soloByClass],
   )
   const n = data?.rows?.length ?? 0
   const height = Math.max(350, n * 38)

@@ -289,6 +289,36 @@ export function buildObjectiveSheets(block: SquadFormesBlock): ObjectiveSheets {
   return { owners, families, roleTotals, dominant }
 }
 
+/**
+ * hasSquadObjective — le périmètre a-t-il au moins un match à objectif ? Le seul prédicat des
+ * sections d'objectif de l'Emprise, et de la présence de l'onglet (`empriseTabHasContent`).
+ */
+export function hasSquadObjective(block: SquadFormesBlock | null | undefined): boolean {
+  return block != null && objectiveMatches(block).length > 0
+}
+
+/**
+ * squadSheetsOnly — les fiches des SEULS joueurs de l'escouade (Escouade › Emprise) : la fiche du
+ * reste du camp (joueurs inconnus) se retire. Le rôle dominant garde sa référence (la part du
+ * camp entier) ; l'échelle d'une ligne se recalcule sur les fiches restantes.
+ */
+export function squadSheetsOnly(sheets: ObjectiveSheets): ObjectiveSheets {
+  const keep = sheets.owners.map((o) => o.xuid != null)
+  const cut = <T>(xs: T[]) => xs.filter((_, i) => keep[i])
+  return {
+    owners: cut(sheets.owners),
+    families: sheets.families.map((f) => ({
+      family: f.family,
+      lines: f.lines.map((l) => {
+        const values = cut(l.values)
+        return { ...l, values, max: Math.max(0, ...values) }
+      }),
+    })),
+    roleTotals: cut(sheets.roleTotals),
+    dominant: cut(sheets.dominant),
+  }
+}
+
 /** Une action de la fiche solo : ma valeur, le total de mon camp, ma part (null : mon camp n'a rien fait). */
 export interface SoloSheetLine {
   key: string

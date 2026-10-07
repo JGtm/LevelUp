@@ -88,6 +88,8 @@ export interface BarStackedChartProps {
   height?: number
   /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
   frameless?: boolean
+  /** Propage a ChartCard : le graphe remplit la cellule que sa voisine etire (voir ChartCard.fluid). */
+  fluid?: boolean
   /** Vertical (default) ou horizontal (categories sur Y). */
   orientation?: 'vertical' | 'horizontal'
   /**
@@ -175,6 +177,7 @@ export function BarStackedChart({
   emptyMessage,
   height,
   frameless,
+  fluid,
   orientation = 'vertical',
   componentColors,
   componentOrder,
@@ -235,6 +238,7 @@ export function BarStackedChart({
       emptyMessage={emptyMessage}
       height={height}
       frameless={frameless}
+      fluid={fluid}
       buildOption={buildOption}
     />
   )

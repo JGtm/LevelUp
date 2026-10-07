@@ -28,6 +28,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/weapons"
 )
 
 // TestLoadWeaponRange_EntamesSansCoupFatalMesure_DeltaOmis — le sous-bloc `delta` est NIL
@@ -188,5 +190,53 @@ func TestWeaponRangeSideOf_MinEtMaxCoteMorts(t *testing.T) {
 	if math.Abs(w.Deaths.MinM-50) > epsRange || math.Abs(w.Deaths.MaxM-60) > epsRange {
 		t.Fatalf("morts : min/max = %v/%v m, attendu 50/60 m (côté frags : %v/%v)",
 			w.Deaths.MinM, w.Deaths.MaxM, w.Kills.MinM, w.Kills.MaxM)
+	}
+}
+
+// TestDropWeaponsWithoutRange_RetireLesLignesSansPorteeEtGardeLesMedianes — les lignes
+// d'arme sans portée (prédicat injecté) quittent les trois listes ; l'ordre des autres et les
+// médianes globales ne bougent pas.
+func TestDropWeaponsWithoutRange_RetireLesLignesSansPorteeEtGardeLesMedianes(t *testing.T) {
+	block := &domain.SynthesisWeaponRange{
+		Weapons: []domain.WeaponRangeRow{
+			{WeaponKey: "epee"}, {WeaponKey: "br"}, {WeaponKey: "decor"}, {WeaponKey: "sniper"},
+		},
+		BelowThresholdKills:  []domain.WeaponBelowThreshold{{WeaponKey: "epee"}, {WeaponKey: "hydra"}},
+		BelowThresholdDeaths: []domain.WeaponBelowThreshold{{WeaponKey: "decor"}},
+		MedianKillsM:         7.4,
+		MeasuredKills:        120,
+	}
+	sansPortee := map[string]bool{"epee": true, "decor": true}
+	dropWeaponsWithoutRange(block, func(k string) bool { return sansPortee[k] })
+
+	var cles []string
+	for _, w := range block.Weapons {
+		cles = append(cles, w.WeaponKey)
+	}
+	if len(cles) != 2 || cles[0] != "br" || cles[1] != "sniper" {
+		t.Fatalf("lignes gardées = %v, attendu [br sniper]", cles)
+	}
+	if len(block.BelowThresholdKills) != 1 || block.BelowThresholdKills[0].WeaponKey != "hydra" {
+		t.Errorf("sous le seuil (frags) = %+v, attendu [hydra]", block.BelowThresholdKills)
+	}
+	if block.BelowThresholdDeaths != nil {
+		t.Errorf("sous le seuil (morts) = %+v, attendu vide", block.BelowThresholdDeaths)
+	}
+	if block.MedianKillsM != 7.4 || block.MeasuredKills != 120 {
+		t.Errorf("médianes globales modifiées : %v m / %d", block.MedianKillsM, block.MeasuredKills)
+	}
+	dropWeaponsWithoutRange(nil, func(string) bool { return true }) // bloc absent : sans effet
+}
+
+// TestDropWeaponsWithoutRange_RegistreEcarteEpeeMarteauEtEnvironnement — câblage réel :
+// l'attribut du registre écarte l'épée, le marteau et l'environnement, garde le BR75.
+func TestDropWeaponsWithoutRange_RegistreEcarteEpeeMarteauEtEnvironnement(t *testing.T) {
+	block := &domain.SynthesisWeaponRange{Weapons: []domain.WeaponRangeRow{
+		{WeaponKey: "hinf_energy_sword"}, {WeaponKey: "hinf_br75"},
+		{WeaponKey: "hinf_gravity_hammer"}, {WeaponKey: "hinf_environment"},
+	}}
+	dropWeaponsWithoutRange(block, weapons.IsWithoutRange)
+	if len(block.Weapons) != 1 || block.Weapons[0].WeaponKey != "hinf_br75" {
+		t.Fatalf("lignes gardées = %+v, attendu [hinf_br75]", block.Weapons)
 	}
 }

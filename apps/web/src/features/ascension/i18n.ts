@@ -19,8 +19,6 @@ export interface AscensionText {
   tabRealisations: string
   /** Onglet « Tactique » (5e rang, 2026-09-06) — masqué pour un titre sans rejeu. */
   tabTactical: string
-  /** Onglet « Tendances » (6e rang, 2026-10-05) — toujours présent, la page dégrade selon les capacités. */
-  tabTrends: string
   tipsTickerAriaLabel: string
   profilLayerTitle: string
   profilLayerDescription: string
@@ -195,7 +193,6 @@ const FR: AscensionText = {
   tabCoaching: 'Entraînement',
   tabRealisations: 'Réalisations',
   tabTactical: 'Tactique',
-  tabTrends: 'Tendances',
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   profilLayerTitle: 'Profil de jeu',
   profilLayerDescription:
@@ -431,7 +428,6 @@ const EN: AscensionText = {
   tabCoaching: 'Training',
   tabRealisations: 'Achievements',
   tabTactical: 'Tactics',
-  tabTrends: 'Trends',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   profilLayerTitle: 'Play profile',
   profilLayerDescription:

@@ -12,24 +12,24 @@
  * Transposition de la maquette validée par l'utilisateur le 2026-09-06
  * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`) : quatre tuiles de tête, puis la carte
  * « Portée par arme » — deux bâtons p10→p90 par arme, frags au-dessus, morts en dessous. Elle reste
- * en DEMI-LARGEUR, seule dans sa grille à deux colonnes (maquette v4 des Usages, décision D11 du plan
- * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05 : « Hauteur d'engagement » a quitté la page).
+ * en DEMI-LARGEUR (maquette v4 des Usages, décision D11 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05),
+ * et partage sa rangée avec la carte passée en `aside` (« Rôles de portée »).
  *
  * CE COMPOSANT NE CALCULE RIEN. La projection et l'option ECharts vivent dans
  * `@/components/charts/weaponRangeChart` (partagé), les décisions dans `weaponRange_logic.ts` — purs,
  * testés hors rendu.
  *
- * LES DÉNOMINATEURS SONT AFFICHÉS PARTOUT, et c'est le point : la mesure est partielle par
- * construction (seuls les frags dont les DEUX positions sont décodées comptent). Chaque
- * tuile porte le sien, la carte porte sa note de couverture, et les armes écartées par le
- * seuil de publication sont NOMMÉES plutôt que tues.
+ * AUCUN DÉNOMINATEUR DANS LES TUILES (retour utilisateur du 2026-10-07) : « N frags mesurés sur
+ * M » et « 1,5 s avant le frag · N frags mesurés » sont retirés. L'effectif de chaque arme reste
+ * dans son infobulle et dans le tableau dépliable.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { SynthesisWeaponRange } from '@/lib/api/types'
@@ -97,10 +97,6 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
           label={t('synthesis.weapon_range.tile_median_kills')}
           value={f.distance(range.median_kills_m)}
           accent={KILLS_TOKEN}
-          sub={t('synthesis.weapon_range.tile_median_kills_sub', {
-            measured: range.measured_kills,
-            total: range.total_kills,
-          })}
         />
       )}
       {range.measured_deaths > 0 && (
@@ -108,10 +104,6 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
           label={t('synthesis.weapon_range.tile_median_deaths')}
           value={f.distance(range.median_deaths_m)}
           accent={DEATHS_TOKEN}
-          sub={t('synthesis.weapon_range.tile_median_deaths_sub', {
-            measured: range.measured_deaths,
-            total: range.total_deaths,
-          })}
         />
       )}
       {/* Les deux tuiles d'entame n'existent QUE si l'entame est mesurée : le bloc est nil
@@ -122,7 +114,6 @@ function RangeTiles({ range, t, f }: { range: SynthesisWeaponRange; t: Translate
           label={t('synthesis.weapon_range.tile_opening')}
           value={f.distance(opening.median_m)}
           accent={MEDIAN_TOKEN}
-          sub={t('synthesis.weapon_range.tile_opening_sub', { measured: opening.measured_kills })}
         />
       )}
       {/* La tuile « Entame → frag » suit `opening.delta`, PAS `opening` : une entame peut
@@ -166,10 +157,8 @@ function rangeLegendItems(t: Translate): ChartLegendItem[] {
 /**
  * RangeFooter — le tableau dépliable, et lui seul.
  *
- * La ligne « Sous le seuil de N mesures — … » et la note de couverture ont été retirées le
- * 2026-09-09 (demande utilisateur) : deux paragraphes de texte gris sous chaque carte, qui
- * répétaient une réserve déjà portée par les dénominateurs de chaque tuile (« 1 214 frags
- * mesurés sur 1 602 ») et par l'infobulle de chaque arme.
+ * Aucune note de couverture ni ligne « Sous le seuil de N mesures » (demandes utilisateur) :
+ * l'effectif de chaque arme vit dans son infobulle et dans ce tableau.
  */
 function RangeFooter({
   lines,
@@ -229,10 +218,11 @@ function useWeaponRangeOption(lines: WeaponRangeLine[], f: RangeFormats, t: Tran
 }
 
 /**
- * RangeChartBody — le graphe de portée, OU la phrase qui explique pourquoi il n'y en a pas.
+ * RangeChartBody — le graphe de portée, OU le bloc d'état vide (bordure tiretée) qui explique
+ * pourquoi il n'y en a pas.
  *
  * Le second cas est nominal (toutes les armes sous le seuil de publication) : la section garde
- * ses tuiles et ses armes nommées, et le corps DIT pourquoi il est vide. Un graphe sans barre
+ * ses tuiles, et le corps DIT pourquoi il est vide. Un graphe sans barre
  * ne se lit pas « rien à montrer », il se lit « bug ».
  */
 function RangeChartBody({
@@ -242,6 +232,7 @@ function RangeChartBody({
   height,
   legendItems,
   legendLabel,
+  emptyTitle,
   emptyMessage,
 }: {
   publiable: boolean
@@ -250,6 +241,8 @@ function RangeChartBody({
   height: number
   legendItems: ChartLegendItem[]
   legendLabel: string
+  /** Titre du bloc d'état vide (norme « bloc placeholder », bordure tiretée). */
+  emptyTitle: string
   /**
    * La phrase d'état vide DE CETTE CARTE — chaque carte a la sienne (finitions
    * 2026-09-13) : le dénivelé affichait la phrase de la portée (« les portées mesurées
@@ -258,14 +251,22 @@ function RangeChartBody({
   emptyMessage: string
 }) {
   if (!publiable) {
-    return <p className="px-3 pb-1 pt-2.5 text-xs text-muted-foreground">{emptyMessage}</p>
+    return (
+      <div className="flex flex-1 flex-col justify-center p-3">
+        <EmptyStateNotice title={emptyTitle} description={emptyMessage} />
+      </div>
+    )
   }
+  // `fluid` + `flex-1` : la carte s'étire à la hauteur de sa voisine de rangée (« Rôles de
+  // portée ») et le graphe la remplit — la légende reste posée au ras du bas du bloc.
   return (
     <ChartCard
       series={series}
       buildOption={buildOption}
       height={height}
       frameless
+      fluid
+      className="flex-1"
       legend={<ChartLegend items={legendItems} ariaLabel={legendLabel} />}
     />
   )
@@ -275,9 +276,14 @@ function RangeChartBody({
 
 export interface WeaponRangeSectionProps {
   range: SynthesisWeaponRange | null | undefined
+  /**
+   * La carte posée à DROITE de « Portée par arme », sur la même rangée (« Rôles de portée »
+   * sur l'onglet Usages). Absente = la carte de portée reste seule en demi-largeur.
+   */
+  aside?: ReactNode
 }
 
-export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
+export function WeaponRangeSection({ range, aside }: WeaponRangeSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = useCallback<Translate>(
     (key, vars) => formatMessage(synthesisManifest, key, locale, vars),
@@ -308,9 +314,10 @@ export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
 
       <RangeTiles range={range} t={t} f={f} />
 
-      {/* DEMI-LARGEUR, SEULE DANS SA GRILLE (D11) : les étiquettes d'armes restent sur l'axe
-          vertical et seul l'axe des mètres se resserre — le tableau dépliable garde la valeur
-          exacte. Pleine largeur sous `lg`. */}
+      {/* DEMI-LARGEUR (D11) : les étiquettes d'armes restent sur l'axe vertical et seul l'axe
+          des mètres se resserre — le tableau dépliable garde la valeur exacte. La seconde
+          colonne reçoit `aside` (« Rôles de portée »), à hauteur égale. Pleine largeur sous
+          `lg`. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard
           title={t('synthesis.weapon_range.card_title')}
@@ -325,11 +332,13 @@ export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
             height={height}
             legendItems={rangeLegendItems(t)}
             legendLabel={t('synthesis.weapon_range.legend_label')}
+            emptyTitle={t('synthesis.weapon_range.empty_below_threshold_title')}
             emptyMessage={t('synthesis.weapon_range.empty_below_threshold', {
               min: WEAPON_RANGE_MIN_MEASURED,
             })}
           />
         </SectionCard>
+        {aside}
       </div>
     </section>
   )

@@ -53,7 +53,7 @@ const CASES: Case[] = [
   { name: 'ascension/coaching', pathname: '/players/jgtm/ascension/coaching', expected: '/t/halo_infinite/players/jgtm/ascension/coaching' },
   { name: 'ascension/objectifs (route réelle)', pathname: '/players/jgtm/ascension/objectifs', expected: '/t/halo_infinite/players/jgtm/ascension/objectifs' },
   { name: 'ascension/realisations', pathname: '/players/jgtm/ascension/realisations', expected: '/t/halo_infinite/players/jgtm/ascension/realisations' },
-  { name: 'ascension/tendances', pathname: '/players/jgtm/ascension/tendances', expected: '/t/halo_infinite/players/jgtm/ascension/tendances' },
+  { name: 'stats/tendances', pathname: '/players/jgtm/stats/tendances', expected: '/t/halo_infinite/players/jgtm/stats/tendances' },
   { name: 'notifications', pathname: '/players/jgtm/notifications', expected: '/t/halo_infinite/players/jgtm/notifications' },
 
   // --- Joueur seul (pas de suffixe) → home --------------------------------

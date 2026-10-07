@@ -13,6 +13,7 @@ import {
   buildPickupSheets,
   buildResourceFil,
   empriseMatchIndex,
+  squadPickupSheets,
   type GridCell,
 } from './emprise.logic'
 import { EMPRISE_2209, HISTORY_2209, WEAPONS, XUID } from './emprise.fixtures'
@@ -90,6 +91,28 @@ describe('buildResourceFil — au fil de la session', () => {
     expect(f.matches[1].points).toEqual({ powerup: null, power_weapon: null })
     expect(f.matches[6].points.powerup).toMatchObject({ cumUs: 8, cumTotal: 16 })
     expect(f.matches[6].points.power_weapon).toMatchObject({ cumUs: 17, cumTotal: 44 })
+  })
+})
+
+describe('squadPickupSheets — les fiches de l’escouade seule (Escouade › Emprise)', () => {
+  const all = buildPickupSheets(EMPRISE_2209, nameOf)
+  const only = squadPickupSheets(all)
+
+  it('pas de fiche du reste du camp ; totaux, dominantes et pertes alignés sur les fiches restantes', () => {
+    expect(only.owners.map((o) => o.xuid)).toEqual([XUID.jgtm, XUID.choco, XUID.madina])
+    expect(only.sections[0].totals).toEqual([3, 3, 5])
+    expect(only.dominant).toEqual(['power_weapon', 'powerup', 'powerup'])
+    expect(only.losses).toEqual(all.losses)
+  })
+
+  it('un objet que seul le reste du camp a pris se retire ; le compte du camp reste celui de l’équipe', () => {
+    const restOnly = all.sections[1].lines.filter((l) => l.taken.slice(0, 3).every((n) => n === 0))
+    expect(restOnly.length).toBeGreaterThan(0)
+    const keys = only.sections[1].lines.map((l) => l.object.key)
+    for (const l of restOnly) expect(keys).not.toContain(l.object.key)
+    expect(only.sections[1].lines).toHaveLength(all.sections[1].lines.length - restOnly.length)
+    expect(only.sections[1].camp).toBe(23)
+    expect(only.sections[1].lines[0].taken).toEqual([5, 2, 0])
   })
 })
 

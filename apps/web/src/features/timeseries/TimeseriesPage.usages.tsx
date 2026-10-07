@@ -4,7 +4,7 @@
  *
  * Mêmes matchs que le reste de la page (fenêtre filtrée, contexte solo), dans l'ordre d'un débrief :
  *
- *   1. « Portée » (la section porte son titre) puis « Rôles de portée » ;
+ *   1. « Portée » (la section porte son titre) : « Portée par arme » | « Rôles de portée » ;
  *   2. « Ressources » : « Contrôle des ressources » | « Contrôle des ressources, cumul par match » ;
  *   3. « Par carte » : « Contrôle des ressources, par carte » ;
  *   4. « Prises » : « Contribution aux prises » ;
@@ -61,6 +61,8 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
   const ut = USAGES_TEXT[locale]
   const outcomes = useOutcomeLabels()
   const dominance = useMemo(() => dominanceLabels(locale), [locale])
+  // La carte se retire seule sans bloc de profils ; sans capability, elle n'existe pas.
+  const rangeRoles = hasWeaponRange ? <TimeseriesRangeRolesCard bloc={data.range_profiles} /> : null
 
   if (!Object.values(show).some(Boolean)) {
     return <EmptyStateNotice title={t('timeseries.usages.empty_title')} description={t('timeseries.usages.empty_description')} />
@@ -68,11 +70,15 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
 
   return (
     <div className="space-y-8" data-testid="timeseries-usages">
-      {show.range && <WeaponRangeSection range={data.weapon_range} />}
-      {/* Rôles de portée : la même famille de sujet, posée en écart au lobby (la carte se retire seule sans bloc). */}
-      {hasWeaponRange && <TimeseriesRangeRolesCard bloc={data.range_profiles} />}
+      {/* Rôles de portée : la même famille de sujet, posée en écart au lobby, À DROITE de
+          « Portée par arme » sur la même rangée. Sans bloc de portée par arme, elle reste seule. */}
+      {show.range ? (
+        <WeaponRangeSection range={data.weapon_range} aside={rangeRoles} />
+      ) : (
+        rangeRoles
+      )}
       {show.bilan && m.fil && (
-        <Block id="bilan" title={ut.sections.bilan} sub={ut.sections.bilanCoverage(m.coverage.filmed, m.coverage.total)}>
+        <Block id="bilan" title={ut.sections.bilan}>
           <div className="grid gap-4 lg:grid-cols-2">
             <ResourceControlCard rows={m.controlRows} t={et} />
             <ResourceFilCard fil={m.fil} dominanceLabels={dominance} outcomeLabels={outcomes} locale={locale} t={et} axe={u.filAxe} />
@@ -122,14 +128,11 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
   )
 }
 
-/** Un bloc de l'onglet : son intertitre (et sa couverture, à côté, en petit), puis ses cartes. */
-function Block({ id, title, sub, children }: { id: string; title: string; sub?: string; children: ReactNode }) {
+/** Un bloc de l'onglet : son intertitre, puis ses cartes. Aucune mention de couverture. */
+function Block({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section className="space-y-2" data-testid={`usages-section-${id}`}>
-      <SectionTitle>
-        {title}
-        {sub && <small className="ml-2 text-xs font-normal text-muted-foreground">{sub}</small>}
-      </SectionTitle>
+      <SectionTitle>{title}</SectionTitle>
       {children}
     </section>
   )

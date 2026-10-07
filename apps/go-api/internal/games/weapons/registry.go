@@ -522,7 +522,7 @@ var weaponRegistryWeapons = []weaponRow{
 	// vignette — l'atlas a bien `killfeed-52 Fall` et `killfeed-55 environment`, mais
 	// choisir l'une des deux pour les neuf tags mettrait une icône fausse sur la moitié
 	// des cas. Une icône absente est un repli, une icône fausse est un mensonge.
-	{"hinf_environment", titleHINF, "Environment", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "", ""},
+	{keyHinfEnvironment, titleHINF, "Environment", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "", ""},
 	// MAINS NUES (retours du rejeu, lot M6.3, 2026-09-24) : l objet que le jeu remet a chaque
 	// bipede au debut de chaque vie (`filmshell.UnarmedFamily`, `WeaponTags.unarmed` du Lua
 	// global). Classe et role `melee` : sans arme, le joueur n a que le corps a corps. Il n est

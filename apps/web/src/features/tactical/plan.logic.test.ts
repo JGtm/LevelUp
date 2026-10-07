@@ -7,7 +7,8 @@
  *     lecture ajoute (« victoires − défaites », « morts seul ») et les zones hors cadre ;
  *   - la rampe de légende est VERTICALE, construite depuis la rampe PEINTE, le bas de la rampe
  *     (valeur basse, ou négative) en bas ;
- *   - la boîte du plan garde le rapport du fond et ne dépasse pas 800 px de haut ;
+ *   - la boîte du plan garde le rapport du fond et ne dépasse pas la hauteur que la fenêtre lui laisse ;
+ *   - l'image du fond suit la fenêtre du zoom ;
  *   - l'échec prime sur tout ; une carte hors du filtre ou absente se dit, jamais une attente.
  */
 import { describe, expect, it } from 'vitest'
@@ -15,7 +16,7 @@ import { describe, expect, it } from 'vitest'
 import type { TacticalRaster } from '@/lib/api/types'
 
 import { getTacticalText } from './i18n'
-import { boiteDuPlan, etatDuPlan, infoDuPlan, legendeDuPlan, rampeVerticale } from './plan.logic'
+import { boiteDuPlan, cadrageDuFond, etatDuPlan, infoDuPlan, legendeDuPlan, rampeVerticale } from './plan.logic'
 
 const t = getTacticalText('fr')
 const tEn = getTacticalText('en')
@@ -120,9 +121,35 @@ describe('rampeVerticale — la rampe de légende, depuis la rampe peinte', () =
 })
 
 describe('boiteDuPlan — le cadre du fond', () => {
-  it('au rapport du fond, jamais plus de 800 px de haut', () => {
-    expect(boiteDuPlan(2)).toEqual({ aspectRatio: 2, width: '100%', maxWidth: '1600px' })
-    expect(boiteDuPlan(0.5)).toEqual({ aspectRatio: 0.5, width: '100%', maxWidth: '400px' })
+  it('au rapport du fond, jamais plus haut que la hauteur que la fenêtre lui laisse', () => {
+    expect(boiteDuPlan(2, 800)).toEqual({ aspectRatio: 2, width: '100%', maxWidth: '1600px' })
+    expect(boiteDuPlan(0.5, 560)).toEqual({ aspectRatio: 0.5, width: '100%', maxWidth: '280px' })
+  })
+})
+
+describe('cadrageDuFond — l’image du fond suit la fenêtre du zoom', () => {
+  const scene = { minX: 0, maxX: 100, minY: 0, maxY: 50 }
+
+  it('à 1x (fenêtre = scène) : le cadre entier', () => {
+    expect(cadrageDuFond(scene, scene)).toEqual({ left: '0%', top: '0%', width: '100%', height: '100%' })
+  })
+
+  it('à 2x sur le quart haut-droit : image doublée, décalée de la moitié vers la gauche, collée en haut', () => {
+    expect(cadrageDuFond(scene, { minX: 50, maxX: 100, minY: 25, maxY: 50 })).toEqual({
+      left: '-100%',
+      top: '0%',
+      width: '200%',
+      height: '200%',
+    })
+  })
+
+  it('à 2x sur le quart bas-gauche : décalée d’une hauteur de fenêtre vers le haut', () => {
+    expect(cadrageDuFond(scene, { minX: 0, maxX: 50, minY: 0, maxY: 25 })).toEqual({
+      left: '0%',
+      top: '-100%',
+      width: '200%',
+      height: '200%',
+    })
   })
 })
 
