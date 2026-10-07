@@ -118,3 +118,34 @@ func TestRegistryNamesPersister_RefusAvantEcriture(t *testing.T) {
 		t.Errorf("map_name = %q après refus, want NULL (aucune écriture)", got.carte.String)
 	}
 }
+
+// TestRegistryNamesPersister_VraiNomJamaisEcrase : chacune des quatre colonnes porte un vrai nom
+// (différent de son identifiant) — aucune écriture, quelle que soit la colonne visée, et aucun
+// genre n'est rendu écrit. Couvre la garde de CHAQUE statement, dont pair_name et
+// game_variant_name.
+func TestRegistryNamesPersister_VraiNomJamaisEcrase(t *testing.T) {
+	db := openRegistryNamesTestDB(t)
+	ctx := context.Background()
+	if _, err := db.Exec(`INSERT INTO match_registry
+		(match_id, playlist_id, playlist_name, map_id, map_name, pair_id, pair_name,
+		 game_variant_id, game_variant_name, mode_category)
+		VALUES ('m3', 'pl-3', 'Ranked Arena', 'map-3', 'Recharge', 'pair-3', 'Slayer on Recharge',
+		        'gv-3', 'Slayer', 'other')`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	p := NewRegistryNamesPersister(db)
+	for _, kind := range []string{RegistryNamePlaylist, RegistryNameMap, RegistryNamePair, RegistryNameGameVariant} {
+		ecrits, err := p.WriteMatchNames(ctx, "m3", []RegistryNameWrite{{Kind: kind, Name: "ECRASE"}})
+		if err != nil {
+			t.Fatalf("%s : WriteMatchNames: %v", kind, err)
+		}
+		if len(ecrits) != 0 {
+			t.Errorf("%s : genres écrits = %v, want aucun (vrai nom en place)", kind, ecrits)
+		}
+	}
+	got := lireNoms(t, db, "m3")
+	if got.playlist.String != "Ranked Arena" || got.carte.String != "Recharge" ||
+		got.paire.String != "Slayer on Recharge" || got.variante.String != "Slayer" {
+		t.Errorf("un vrai nom a été écrasé : %+v", got)
+	}
+}
