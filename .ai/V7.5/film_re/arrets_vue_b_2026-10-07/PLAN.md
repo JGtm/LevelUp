@@ -51,7 +51,7 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 | D9.7 | Recompte après sur les 19 témoins : 0 | [x] | 0 ; le reste du document identique hors révisions |
 | D9.8 | gofmt, vet, golangci-lint, tests des paquets, archlint | [x] | §7.6 |
 | D9.9 | `make gate-push` | [!] | EXIT 2, instruit sans correction (causes hors périmètre) : lint 0, web vert ; deux paquets non touchés coupés à 300 s puis `ok` seuls (313 s, 310 s) ; un test de durées instable sous charge (2 / 3) ; baseline complète (RAPPORT §7.7) |
-| D9.10 | push, CI | voir le message de clôture au pilote | le push suit ce commit |
+| D9.10 | push, CI | [x] | `20a52831c` poussé ; CI verte (run 37675971549), gitleaks et Deploy Pre-Check verts (RAPPORT §7.7) |
 
 ## Journal
 

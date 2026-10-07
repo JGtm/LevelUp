@@ -439,8 +439,12 @@ décompression et substitution). Dans les goldens d'assemblage, seule la ligne d
     3 et le 6 octobre (248 000 et 116 000 secondes de CPU cumulées), et Halo Infinite a démarré à
     21 h 11 ; le CPU moyen était à 66 % à 21 h 40 (découverte D11). Aucun de ces processus n'est
     de cette session : ni arrêtés, ni traités.
-- Push de `feat/grammaire-arrets-vue-b` et CI (gate d'autorité) : état donné dans le message de
-  clôture au pilote. Le push suit ce commit.
+- Push de `feat/grammaire-arrets-vue-b` (`12b8fb3df..20a52831c`) et CI, gate d'autorité :
+  **CI verte** sur `20a52831c` (run 37675971549, de 21 h 38 à 22 h 19) : build et tests Windows et
+  Ubuntu, couverture et baseline (`./...` complet, CGO), golangci-lint, course du film (`-race`),
+  contrat OpenAPI, frontend, lease ; E2E Playwright sauté (réservé aux PR vers `main`). Gitleaks et
+  Deploy Pre-Check verts. Ce paragraphe est le seul ajout du commit suivant (Markdown sous `.ai/`,
+  hors du déclencheur de la CI).
 
 ### 7.8 Découvertes (non traitées)
 
