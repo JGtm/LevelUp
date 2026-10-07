@@ -32,7 +32,7 @@ export function EmptyStateNotice({
   return (
     <div
       className={`rounded-xl border px-4 py-5 text-center ${
-        success ? '' : 'border-dashed border-border bg-muted/80'
+        success ? '' : 'border-dashed border-placeholder-border bg-muted/80'
       } ${className}`}
       style={success ? { borderColor: tokenCssVar('success') } : undefined}
     >

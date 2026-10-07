@@ -41,6 +41,10 @@
   --border: oklch(0.275 0 0);
   --input: oklch(0.325 0 0);
   --ring: oklch(0.556 0 0);
+  /* Bord tireté du bloc placeholder (EmptyStateNotice) : `--border` (0.275) disparaît sur le
+     fond muted du bloc ; 0.55 tient 3:1 face à --muted, --card et --background
+     (garde : components/ui/empty-state.contrast.test.ts). */
+  --placeholder-border: oklch(0.55 0 0);
 
   /* Charts — palette bleue */
   --chart-1: oklch(0.81 0.10 252);
@@ -111,6 +115,8 @@
   --border: oklch(0.9 0.01 255);
   --input: oklch(0.93 0.01 255);
   --ring: oklch(0.63 0.12 262);
+  /* Clair : le bord tireté du placeholder reste celui de --border. */
+  --placeholder-border: var(--border);
 
   --chart-1: oklch(0.69 0.14 252);
   --chart-2: oklch(0.58 0.18 260);
@@ -160,6 +166,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-placeholder-border: var(--placeholder-border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
