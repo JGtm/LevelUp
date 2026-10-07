@@ -240,31 +240,14 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 // `roundsDecide`). nil sans les deux camps ou sans score lisible. Lu par l'accueil et la page
 // Sessions.
 func ScoreLabelCanonical(r canonical.PlayerMatchRow, roundsDecide map[string]bool) *string {
-	var t0, t1 *canonical.TeamSnapshot
-	for i := range r.Summary.Teams {
-		switch r.Summary.Teams[i].TeamID {
-		case 0:
-			t0 = &r.Summary.Teams[i]
-		case 1:
-			t1 = &r.Summary.Teams[i]
-		}
-	}
-	if t0 == nil || t1 == nil {
+	entree, ok := EntreeDeScoreCanonique(r, roundsDecide)
+	if !ok {
 		return nil
-	}
-	mine, theirs := t0, t1
-	if r.Self.TeamID != nil && *r.Self.TeamID == 1 {
-		mine, theirs = t1, t0
 	}
 	// Délégation à la source unique (cf. team_score_display.go) : la MÊME règle que la vue
 	// match, l'historique et l'escouade — une tuile d'accueil et la page du match ne peuvent
 	// pas afficher deux nombres différents pour le même Oddball.
-	label := TeamScoreLabel(TeamScoreInput{
-		MyPoints: mine.Score, EnemyPoints: theirs.Score,
-		MyRoundsWon: mine.RoundsWon, EnemyRoundsWon: theirs.RoundsWon,
-		RoundsTotal:  r.Summary.RoundsTotal,
-		RoundsDecide: roundsDecide[strings.TrimSpace(variantNameOf(r))],
-	})
+	label := TeamScoreLabel(entree)
 	if label == "" {
 		return nil
 	}

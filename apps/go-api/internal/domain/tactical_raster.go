@@ -280,6 +280,11 @@ type ZoneNommee struct {
 	NomFR string
 	NomEN string
 	X, Y  float64
+	// Z : la hauteur du centre du volume ; Big : une GRANDE zone, qui pave la carte (les fines
+	// sont des étages imbriqués). Le plan les dessine comme le rejeu 2D (libellé sur la zone la
+	// plus haute, aplat des seules grandes).
+	Z   float64
+	Big bool
 
 	// Polygone, Parties, Trous : la forme au sol, en metres monde (contour principal, parties
 	// detachees, trous — regle pair-impair) ; ZBas / ZHaut : la tranche verticale habitee ;

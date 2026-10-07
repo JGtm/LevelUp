@@ -8,7 +8,7 @@
  */
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
-import type { CalloutZoneReady } from './calloutsLayer'
+import type { CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'

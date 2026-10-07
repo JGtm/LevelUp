@@ -28765,6 +28765,12 @@ components:
           type:
             - array
             - "null"
+        zones:
+          items:
+            $ref: '#/components/schemas/CalloutZone'
+          type:
+            - array
+            - "null"
       required:
         - map_id
         - question

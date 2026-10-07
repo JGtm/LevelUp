@@ -145,6 +145,12 @@
 # vérifié par différence avant/après ; diff complet baseline ↔ fonctions de test de l'arbre :
 # aucune autre absence introduite par le lot.
 #
+# RETRAIT DU 2026-10-07 (plan Tactique v2, lot L13, F1 : une seule résolution du libellé de carte) :
+# 1 test RETIRÉ de `internal/platform/duckdb` — TestFiltersRepo_GetAvailableMaps. La méthode
+# `FiltersRepo.GetAvailableMaps` n'avait aucun appelant de production (port, double et ce test
+# seulement) et portait une seconde résolution du libellé de carte ; elle est supprimée avec son
+# test. 5 lignes JSONL, exactement 1 paire (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
