@@ -20,23 +20,23 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 | C2 | `ti=12 i16 managed-navpoint-override-flags` | [x] | `05ab869d0` | `FUN_140ebf834` = `R(5)` ; carte v2 contre C1 : +110 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.2` |
 | C3 | `ti=45 i0 matchflow-sequence-data-component` | [x] | `0962d0970` | `FUN_14101cdd8` = `R(4)` + 4 x `R(32)` ; carte v2 contre C2 : +861 sains, 0 perdu, aucun film en baisse ; mini-bobine : +8 annonces (perte (a) du §2.2 regagnée) ; `grammar-2026-10-07.3` |
 | C4 | `ti=10 i2 managed-object-navpoint-component` (et `i3` a `i17`, même nom) | [x] | `e480f6dbb` | `FUN_14107cea4` = `R(32)` ; carte v2 contre C3 : +1 481 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.4` |
-| C5 | `ti=12 i18 managed-navpoint-position-offset` | [x] | (ce commit) | `FUN_140f04f68` = garde `FUN_14076f91c` + `FUN_14076e524` niveau 0x10 (`lireE494`) ; carte v2 contre C4 : +33 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.5` |
-| D  | point (d) du §2.2 (instruit si la lecture l'éclaire, pas un lot) | [ ] | | |
+| C5 | `ti=12 i18 managed-navpoint-position-offset` | [x] | `05b70670a` | `FUN_140f04f68` = garde `FUN_14076f91c` + `FUN_14076e524` niveau 0x10 (`lireE494`) ; carte v2 contre C4 : +33 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.5` |
+| D  | point (d) du §2.2 (instruit si la lecture l éclaire, pas un lot) | [~] | — | non éclairé : aucun des cinq paquets ne change entre base et tête (RAPPORT §3) |
 
 ## Gates du lot entier (§5)
 
 | # | Gate | Statut | Sortie |
 |---|---|---|---|
-| G1 | carte v2 base `879f31bbf` contre tête du lot, gate 2 | [ ] | |
-| G2 | gate 3 : `killsource json` sur les 19 témoins, base contre tête | [ ] | |
-| G3 | `TestGoldenFilms` | [ ] | |
-| G4 | gate de corpus (`replay-corpus-gate --reference=base`), chaque FAUX/PERTE instruit, 0 MANQUE | [ ] | |
-| G5 | gofmt, vet (+ `-tags=research`), archlint | [ ] | |
-| G6 | golangci-lint 0 issue (`--new-from-rev=879f31bbf`) | [ ] | |
-| G7 | mutations rouges sur chaque nouveau lecteur | [ ] | |
-| G8 | baseline des tests renommés/supprimés | [ ] | |
-| G9 | `make gate-push` (TMP court dédié) | [ ] | |
-| G10 | push + CI | [ ] | |
+| G1 | carte v2 base `879f31bbf` contre tête du lot, gate 2 | [x] | +22 282 sains, +216 058 utiles, 0 perdu, 0 film en baisse |
+| G2 | gate 3 : `killsource json` sur les 19 témoins, base contre tête | [x] | 17 identiques ; 3 ne diffèrent que par la ligne de diagnostic `calibration` (non persistée) ; `killsource.Rev` constante |
+| G3 | `TestGoldenFilms` | [x] | ok, 4 films |
+| G4 | gate de corpus (`replay-corpus-gate --reference=base`), chaque FAUX/PERTE instruit, 0 MANQUE | [x] | rc 1 ; banc 18 ok, 0 MANQUE, 1 FAUX instruit (RAPPORT §2.1) ; PERTE de filet instruites (§2.2) |
+| G5 | gofmt, vet (+ `-tags=research`), archlint | [x] | gofmt vide ; vet, research, integration rc 0 ; archlint ok |
+| G6 | golangci-lint 0 issue (`--new-from-rev=879f31bbf`) | [x] | 0 issues |
+| G7 | mutations rouges sur chaque nouveau lecteur | [x] | 28 / 28 rouges |
+| G8 | baseline des tests renommés/supprimés | [x] | aucun test retiré ni renommé |
+| G9 | `make gate-push` (TMP court dédié) | [x] | EXIT_GATEPUSH=0 (lint 0 issue, web vert, baseline 9 533 / 9 533 présents, 0 échec) |
+| G10 | push + CI | [~] | push après ce commit ; état CI dans le message de clôture au pilote |
 
 ## Journal
 
@@ -50,4 +50,4 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 
 ## Découvertes
 
-(aucune pour l'instant)
+Voir RAPPORT.md §4 (D1 à D8).
