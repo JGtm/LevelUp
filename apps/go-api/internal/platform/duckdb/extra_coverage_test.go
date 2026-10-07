@@ -4,7 +4,7 @@
 //
 // Couvre : CareerRepo.GetLUSRHistory, CitationsRepo.LoadMedalCitationMappings,
 // DB.SQLDb/Path, MatchViewRepo (medals/events/weapons/kv), PoolKey, CloseAll,
-// SquadRepo (LoadTeammateMatches, LoadImpactEvents, LoadSynthesisHeatmap, LoadSynthesisMatches).
+// SquadRepo (LoadTeammateMatches, LoadImpactEvents, LoadSynthesisMatches).
 package duckdb
 
 import (
@@ -245,22 +245,6 @@ func TestSquadRepo_LoadImpactEvents_WithMatchID(t *testing.T) {
 	}
 	if len(rows) != 0 {
 		t.Errorf("attendu 0 events, obtenu %d", len(rows))
-	}
-}
-
-// ---------------------------------------------------------------------------
-// SquadRepo — LoadSynthesisHeatmap (Q33)
-// ---------------------------------------------------------------------------
-
-func TestSquadRepo_LoadSynthesisHeatmap_WithData(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewSquadRepo(pdb)
-	rows, err := repo.LoadSynthesisHeatmap(context.Background(), pTestXUID)
-	if err != nil {
-		t.Fatalf("LoadSynthesisHeatmap: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Errorf("attendu 1, obtenu %d", len(rows))
 	}
 }
 

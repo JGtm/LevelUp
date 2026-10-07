@@ -20,18 +20,12 @@ var errSynthTest = errors.New("synthesis repo error")
 // --- mock SynthesisRepository ---
 
 type mockSynthesisRepo struct {
-	synthRows   []legacymatch.SynthesisMatchRow
-	synthErr    error
-	heatmapRows []domain.SynthesisHeatmapRow
-	heatmapErr  error
+	synthRows []legacymatch.SynthesisMatchRow
+	synthErr  error
 }
 
 func (m *mockSynthesisRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr
-}
-
-func (m *mockSynthesisRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
-	return m.heatmapRows, m.heatmapErr
 }
 
 func (m *mockSynthesisRepo) EnrichCanonicalAssetTranslations(_ context.Context, _ []canonical.PlayerMatchRow) error {
@@ -207,42 +201,6 @@ func TestBuildHighlightsPreview_LimitTopN(t *testing.T) {
 	}
 }
 
-// --- buildBreakdowns ---
-
-func TestBuildBreakdowns_Empty(t *testing.T) {
-	b := buildBreakdowns(nil)
-	if len(b.TopMaps) != 0 || len(b.TopModes) != 0 {
-		t.Error("empty heatmap should return empty breakdowns")
-	}
-}
-
-func TestBuildBreakdowns_Aggregates(t *testing.T) {
-	rows := []domain.SynthesisHeatmapRow{
-		{MapName: "Aquarius", ModeName: "Slayer", MatchCount: 5, Wins: 3},
-		{MapName: "Aquarius", ModeName: "Oddball", MatchCount: 2, Wins: 1},
-		{MapName: "Bazaar", ModeName: "Slayer", MatchCount: 3, Wins: 2},
-	}
-	b := buildBreakdowns(rows)
-
-	// Aquarius doit avoir 7 matchs (5+2)
-	var aquarius *domain.SynthesisMapEntry
-	for i := range b.TopMaps {
-		if b.TopMaps[i].MapName == "Aquarius" {
-			aquarius = &b.TopMaps[i]
-			break
-		}
-	}
-	if aquarius == nil {
-		t.Fatal("Aquarius not found in breakdowns")
-	}
-	if aquarius.MatchCount != 7 {
-		t.Errorf("Aquarius match count should be 7, got %d", aquarius.MatchCount)
-	}
-	if aquarius.Wins != 4 {
-		t.Errorf("Aquarius wins should be 4, got %d", aquarius.Wins)
-	}
-}
-
 // --- GetSynthesisPage ---
 
 func TestGetSynthesisPage_Success(t *testing.T) {
@@ -251,9 +209,6 @@ func TestGetSynthesisPage_Success(t *testing.T) {
 		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2, Kills: 10, Deaths: 3, KDA: &kda},
 			{MatchID: "m2", StartTime: time.Now().UTC().Add(-time.Hour), Outcome: 3, Kills: 4, Deaths: 8, KDA: &kda},
-		},
-		heatmapRows: []domain.SynthesisHeatmapRow{
-			{MapName: "Aquarius", ModeName: "Slayer", MatchCount: 2, Wins: 1},
 		},
 	}
 

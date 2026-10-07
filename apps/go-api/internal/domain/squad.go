@@ -148,14 +148,6 @@ type AllyParticipant struct {
 	Outcome  int
 }
 
-// SynthesisHeatmapRow est une ligne brute chargée depuis Q33 (heatmap map×mode).
-type SynthesisHeatmapRow struct {
-	MapName    string
-	ModeName   string
-	MatchCount int
-	Wins       int
-}
-
 // ---------------------------------------------------------------------------
 // Types de réponse — Escouade
 // ---------------------------------------------------------------------------
@@ -249,18 +241,6 @@ type SquadPageResponse struct {
 // ---------------------------------------------------------------------------
 // Types de réponse — Synthèse
 // ---------------------------------------------------------------------------
-
-// HeatmapCell est une cellule de la heatmap carte × mode de jeu.
-//
-// P7.1 (revue 2026-04-29) : champs renommés `RowKey/ColKey` (axes ECharts)
-// → `MapName/ModeName` (sémantique métier — la heatmap est toujours
-// map × mode pour la synthèse Squad).
-type HeatmapCell struct {
-	MapName  string  `json:"map_name"`
-	ModeName string  `json:"mode_name"`
-	Value    float64 `json:"value"`
-	Count    int     `json:"count"`
-}
 
 // TopWeekEntry est une semaine performante dans l'historique du joueur.
 // WeekStart est l'ISO date (YYYY-MM-DD) du lundi 00:00 UTC de la semaine,
