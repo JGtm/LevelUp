@@ -167,7 +167,6 @@ func TestTacticalHandler_RasterNominal(t *testing.T) {
 	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
 		MapID: "streets", Question: domain.TacticalQuestionKills, Qui: domain.TacticalQuiEscouade,
 		MatchsRetenus: 20, PasM: 0.5,
-		EvenementsJournal: 30, EvenementsLocalises: 24,
 		Cellules: []domain.CelluleTactique{{Col: 4, Lig: 4, Valeur: 0.5, Brut: 10, Matchs: 5}},
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
@@ -190,20 +189,12 @@ func TestTacticalHandler_RasterNominal(t *testing.T) {
 	if got.MatchsRetenus != 20 || len(got.Cellules) != 1 || got.PasM != 0.5 {
 		t.Errorf("payload inattendu: %+v", got)
 	}
-	// La couverture de localisation traverse le contrat : sans elle le pied de carte
-	// ne peut pas dire « 30 evenements, 24 localises ».
-	if got.EvenementsJournal != 30 || got.EvenementsLocalises != 24 {
-		t.Errorf("couverture = %d/%d, want 30/24", got.EvenementsJournal, got.EvenementsLocalises)
-	}
 	// Les tags JSON sont snake_case sur TOUT le contrat (R4) — un PascalCase isole
 	// se verrait ici.
-	for _, cle := range []string{`"matchs_retenus"`, `"evenements_journal"`, `"centre_x"`, `"n_cellules"`} {
+	for _, cle := range []string{`"matchs_retenus"`, `"points_ignores"`, `"centre_x"`, `"n_cellules"`} {
 		if !strings.Contains(w.Body.String(), cle) {
 			t.Errorf("clef %s absente du JSON servi : %s", cle, w.Body.String())
 		}
-	}
-	if got.Echange != nil {
-		t.Errorf("Echange absent doit etre OMIS du JSON, pas rendu a zero: %+v", got.Echange)
 	}
 }
 
@@ -376,6 +367,30 @@ func TestTacticalHandler_QuestionTemps(t *testing.T) {
 	if len(got.Cellules) != 1 || got.Cellules[0].Valeur != 1.5 || got.Cellules[0].Brut != 18 {
 		t.Fatalf("cellules = %+v : la valeur (secondes) et le brut (echantillons) doivent traverser ensemble",
 			got.Cellules)
+	}
+}
+
+// TestTacticalHandler_QuestionSolde : la lecture « solde » traverse le contrat avec les deux
+// faces de ses cellules (frags, morts), en snake_case.
+func TestTacticalHandler_QuestionSolde(t *testing.T) {
+	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
+		MapID: "streets", Question: domain.TacticalQuestionSolde, Qui: domain.TacticalQuiMoi,
+		MatchsFiltres: 5, MatchsRetenus: 5, PasM: 0.5,
+		Cellules: []domain.CelluleTactique{{Col: 4, Lig: 4, Valeur: 0.2, Brut: 1, Matchs: 3, Frags: 2, Morts: 1}},
+		Echelle:  domain.EchelleTactique{Symetrique: true, Borne: 0.2},
+	}}
+	r := newTacticalRouter(tacticalFactory(svc, nil))
+	w := appelPost(t, r, "/players/JGtm/tactical/streets/raster", `{"match_ids":["m1"],"question":"solde"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if svc.vuQuestion != domain.TacticalQuestionSolde {
+		t.Fatalf("question transmise = %q, attendu solde", svc.vuQuestion)
+	}
+	for _, cle := range []string{`"frags":2`, `"morts":1`} {
+		if !strings.Contains(w.Body.String(), cle) {
+			t.Errorf("clef %s absente du JSON servi : %s", cle, w.Body.String())
+		}
 	}
 }
 

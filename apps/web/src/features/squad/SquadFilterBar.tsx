@@ -46,7 +46,7 @@ export interface SquadFilterBarProps {
   setSelectedGts: (next: string[] | ((prev: string[]) => string[])) => void
   /** Coéquipiers fréquents proposés par la réponse teammates (`data.options`). */
   availableOptions: TeammateOption[]
-  /** Lignes des coéquipiers confirmés — sert aux presets « Mes escouades ». */
+  /** Lignes des coéquipiers confirmés — sert aux presets « Escouades enregistrées ». */
   selectedRows: TeammateRow[]
   /** XUID absolu du joueur courant (résolu depuis header.player_cards). */
   currentPlayerXuid: string
@@ -133,8 +133,8 @@ export function SquadFilterBar({
         {/* Joueur actif (pill de tête non-supprimable) + coéquipiers (multi-select
             compact inline, jusqu'à 3). La pill du joueur actif est rendue DANS le
             combobox (leadingPill) → même ligne flex que les pills coéquipiers, donc
-            alignement vertical garanti. Le popover intègre les presets « Mes
-            escouades » (charger/gérer une compo) et « Mes groupes ». */}
+            alignement vertical garanti. Le popover intègre les presets « Escouades
+            enregistrées » (charger/gérer une compo) et « Groupes ». */}
         <GamertagCombobox
           compact
           leadingPill={{ label: playerSlug, color: tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN) }}

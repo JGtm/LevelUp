@@ -114,7 +114,41 @@ type TacticalContribution struct {
 	// match seul (sans date) n'identifie rien pour l'utilisateur qui a plusieurs parties
 	// sur la meme carte le meme jour.
 	MatchStartedAt time.Time `json:"match_started_at"`
+
+	// ─── La mini-tuile « Rejeu » de la zone sélectionnée ───────────────────────────────
+	// Chaque champ ci-dessous est ABSENT quand sa source ne le connaît pas (titre sans la
+	// donnée, lecture en échec) : jamais un texte de repli.
+
+	// Face dit ce que la contribution est pour son joueur : TacticalFace*.
+	Face string `json:"face,omitempty"`
+	// AutreGamertag : l'autre joueur de l'événement — le tueur d'une mort, la victime d'un frag.
+	AutreGamertag string `json:"autre_gamertag,omitempty"`
+	// ArmeLabel / ArmeLabelEN : le nom de l'arme de l'événement dans les deux langues, par le
+	// registre d'armes du titre ; CategorieSource : la catégorie brute de la source de dégât du
+	// film, publiée quand l'arme n'est pas nommée (le web la traduit, ou ne l'écrit pas).
+	ArmeLabel       string `json:"arme_label,omitempty"`
+	ArmeLabelEN     string `json:"arme_label_en,omitempty"`
+	CategorieSource string `json:"categorie_source,omitempty"`
+	// Placement : seul ou près d'un coéquipier, pour une MORT seulement.
+	Placement *TacticalPlacement `json:"placement,omitempty"`
+	// ModeLabel : le mode du match, dans la langue de la requête (libellé de l'app).
+	ModeLabel string `json:"mode_label,omitempty"`
+	// ScoreLabel : « X - Y », le camp du joueur de la page d'abord (analysis.TeamScoreLabel) ;
+	// ScoreKind dit si ce sont des points ou des manches (analysis.ScoreKind*).
+	ScoreLabel string `json:"score_label,omitempty"`
+	ScoreKind  string `json:"score_kind,omitempty"`
+	// ReplayAvailable : l'artefact de rejeu 2D du match existe — le web ne pose le bouton de
+	// rejeu que là, jamais un lien vers une page vide.
+	ReplayAvailable bool `json:"replay_available"`
 }
+
+// Valeurs de TacticalContribution.Face.
+const (
+	TacticalFaceMort         = "mort"
+	TacticalFaceFrag         = "frag"
+	TacticalFaceEntree       = "entree"       // temps : première entrée dans la zone
+	TacticalFaceReapparition = "reapparition" // routes : la réapparition dont la route traverse la zone
+)
 
 // TacticalCelluleReponse est la reponse du detail d'une cellule.
 type TacticalCelluleReponse struct {
@@ -124,4 +158,7 @@ type TacticalCelluleReponse struct {
 	// MatchsNonOuvrables : les matchs du perimetre demande auxquels le joueur de la page
 	// n'a PAS participe (ADR 0029) — comptes, jamais listes. Cf. la doc d'en-tete.
 	MatchsNonOuvrables int `json:"matchs_non_ouvrables"`
+
+	// Zone : le nom en jeu de la zone de la cellule ; absent quand aucune zone ne la nomme.
+	Zone *TacticalZoneNom `json:"zone,omitempty"`
 }

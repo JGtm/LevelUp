@@ -116032,6 +116032,126 @@ E6.7 (livraison) — aucune fonction allongée au-delà de sa dette (`MatchEquip
 **Résultats observés** : test R9 vu rouge (`me = [40, 1, 2]` : repli sans décalage au lieu de 93 %), mutation « repli à 50 % » rouge ; tsc 0, ESLint 0 erreur, vitest 8 866 tests verts, couleurs 0, imports croisés 7 ≤ 7, lefthook pre-push vert.
 
 **Conclusion / prochaine étape** : lot clos côté exécuteur ; suivi de la CI et fusion vers `feat/v75` par le superviseur.
+
+## [2026-10-06] Tactique v2, vue cockpit — PHASE 1 (plan) — En cours (plan écrit et relu, commit local, aucun code)
+
+**Statut** : En cours (phase 1 close : plan, maquette et mesures commités sur `feat/tactique-v2`, worktree `LevelUp-wt-tactique` ; phase 2 sur « go » du superviseur).
+
+**Décision technique principale** : plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`, 11 lots : L1 briques pures et contrat additif (`coordination.APortee` exportée + garde-rail, lecture `solde` dans `analysis/tactical` sur la machinerie de `CellulesSignees`, règle de nom de zone pure avec géométrie, appariement du contexte de mort à ± 1,5 s) ; L2 lectures (z, gamertags et source de dégât dans les deux requêtes existantes, lecture bornée neuve `ContextesDeMort` ADR 0036 I2, polygones et tranches projetés par le magasin de callouts, témoins Illusion / Bazaar sur le catalogue réel, lecture `solde` servie) ; L3 détail de zone enrichi (mode et score par le canonique en cache, arme par le classificateur + le résolveur du registre, badge par la portée du match, `replay_available` par `AvailableSet`, nom de zone) et fabrique `Tactical` sortie de `registry_pages.go` ; L4-L8 web (largeur d'Ascension et colonne « Cartes jouées », carte du plan, zone et mini-tuiles avec `MatchReplayLink` étendu, chaînes, suppressions) ; L9 suppressions Go et contrat (échange, coordination, isolement du raster, compteurs du journal) ; L10 liens croisés ; L11 clôture.
+
+**Résultats observés (vérifiés sur pièces)** : l'ordre du brief (suppressions Go avant le web) ferait rougir `tsc` — le web lit `echange`, `coordination`, `isolement` (`TacticalAnalysisView.tsx:255-263, 382-429`) — d'où L9 après le web ; le port de callouts ne rend que nom + point de référence, polygones et tranches sont jetés par `zonesNommees` ; `KPIStrip` n'a pas d'autre lecteur que l'onglet ; `heatPaint` est aussi lu par « Occupation du terrain » de la Vue match ; la comparaison de portée existe déjà en deux copies (`aPortee`, `celluleIsole`), le badge serait la troisième ; Ascension a six onglets (Tendances) ; l'Explorateur filtre par libellé de carte FR, pas par `map_id` ; la règle (b) de la maquette (la plus fréquente, sans marge) diffère de celle du brief, le nom du témoin Bazaar sera fixé au lot. Relecture `plan-review` : quatre défauts de la première version corrigés (ordre, troisième copie, `KPIStrip`, port de callouts).
+
+**Conclusion / prochaine étape** : arrêt en fin de phase 1 ; décisions D1-D28 à confirmer par le superviseur, puis phase 2 sous `plan-execution` sur « go », un lot à la fois avec compte rendu et attente du « continue ».
+
+## [2026-10-06] Tactique v2, lot L1 : briques pures et contrat additif — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L1 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : la comparaison « à portée du radar » devient `coordination.APortee` (source unique, garde-rail `archlint/no_local_portee_comparison_test.go`, la copie de `celluleIsole` migrée) ; la lecture « solde » vit dans `analysis/tactical/solde.go` (union des faces pour le plancher, (frags − morts) / N, faces sommées par `Somme`) ; la règle du nom de zone est pure (`zones.go`, `geometrie.go` : forme pair-impair, marge de tranche 0,25 m, 2 m strict, z inconnu sans nom quand plusieurs formes s'empilent) ; le placement d'une mort s'apparie à ± 1 500 ms (`placement.go`) ; le contrat gagne les champs additifs du détail de zone.
+
+**Résultats observés** : chaque test vu rouge avant le code, 15 mutations toutes rouges ; Go 349 paquets (un seul échec, un test de durée de `sync/skill` hors périmètre sous charge d'une autre session, vert rejoué seul), lint 0 issue, contrat +58 / +25 lignes sans retrait, garde de surface intacte.
+
+**Conclusion / prochaine étape** : L1 clos ; L2 (lectures enrichies, contextes de mort, zones polygonales, lecture « solde » servie) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L2 : lectures enrichies, contextes de mort, zones polygonales, lecture « solde » — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L2 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : les lectures de positions et d'isolement rapportent la hauteur (NULL conservé en pointeur nil), les gamertags et la source du kill ; `ContextesDeMort` lit `match_death_context_latest` sous liste blanche liée en constantes (ADR 0036 I2, fenêtres bornées, liste I2 complétée) ; les zones du catalogue voyagent avec leur forme et leur tranche jusqu'à `NommerZone` ; la lecture « solde » est servie en gardant ses deux faces séparées (`rasteriserLaCible` → `RasteriseSolde`, échelle symétrique, dénominateur = matchs mesurés) ; « isole » publie ses portées de radar distinctes et triées.
+
+**Résultats observés** : tests vus rouges avant le code (sauf trois verts d'emblée, consignés au journal du plan) ; 8 mutations toutes rouges ; témoins de zone : Illusion « Nid blindé » inchangé, Bazaar « Pont du marché ouest » par la règle (b), aucun nom changé par les parties ou les trous ; Go 349 paquets en six lots, 0 échec ; intégration `platform/duckdb` (`-p 1`) verte ; garde-rails nommés PASS ; lint 0 issue ; contrat : deux descriptions seulement.
+
+**Conclusion / prochaine étape** : L2 clos ; L3 (détail de zone enrichi et câblage) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L3 : le détail de zone enrichi et son câblage — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L3 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : chaque contribution du détail d'une zone dit sa face et l'autre joueur, et porte en interne la hauteur et la source de l'événement ; la zone se nomme au centre de la cellule avec ces hauteurs (règle V6) ; l'enrichissement (`tactical_service_cellule_enrichir.go`) lit UNE fois par requête chacune de ses quatre sources — canonique (mode, score mon camp d'abord, manches), noms d'armes (catégorie à défaut), contextes de mort bornés (badge de placement des seules morts), présence du rejeu — sous sa section de durée, chacune best-effort et journalisée ; les dépendances arrivent par cinq `With*` portés par une ligne du service ; la fabrique `Tactical` quitte `registry_pages.go` (619 → 579 L) pour `registry_pages_tactical.go`, sous garde-rail de câblage.
+
+**Résultats observés** : tests vus rouges avant le code (sauf le test handler et « Zone sans nom », verts d'emblée) ; 7 mutations rouges ; Go 349 paquets en six lots, 1 échec hors périmètre (test de durée `sync/skill` sous charge d'une autre session, vert rejoué seul) ; garde-rails nommés PASS ; lint 0 issue ; contrat inchangé. Décisions du superviseur consignées : stub de `teammates_squad_echange_test.go` accepté (§8), « Pont du marché ouest » écart assumé à la maquette (journal L2).
+
+**Conclusion / prochaine étape** : L3 clos ; L4 (web : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées ») après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L4 : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées » — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L4 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : Ascension passe pleine largeur (`p-6`) ; l'onglet Tactique devient un écran unique — colonne « Cartes jouées » (recherche sans casse ni accents sur nom affiché et canonique, vignettes compactes 100 px des seules cartes ouvrables, repli des cartes sous le plancher) et, à côté, la lecture de la carte affichée, transitoirement la vue d'analyse existante ; la carte affichée suit D11 (`carteEffective` : URL ouvrable, sinon la plus jouée des ouvrables choisie d'office SANS réécrire l'URL ; carte d'URL hors filtre ou sous le plancher nommée, sans lecture) ; les états bloquants sont dits une fois, dans la colonne, sans lecture montée ; bascule, grille, pied et `couvertureGrille` retirés.
+
+**Résultats observés** : gate à blanc rouge sur `tsc` (fixture cassée par le contrat de L1, réparée) ; tests vus rouges avant le code, la page prouvée rouge après coup contre HEAD (9 échecs) ; 9 mutations rouges ; gate web vert (852 fichiers / 9 133 tests, `tsc` 0, lint 0 erreur, manifestes à jour, ratchets verts, pre-push vert) ; §4.A → 0.
+
+**Conclusion / prochaine étape** : L4 clos ; L5 (la carte du plan, avec le rappel D18 au compte rendu) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L5 : la carte du plan — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L5 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : la carte du plan est réécrite (bandeau nom + ⓘ + pilules « Lecture » / « Joueurs » / « Réapparition », bandeau d'état, fond + calque, rampe verticale de 220 px au bord droit, états vides en titre seul) et TOUJOURS montée dès qu'une carte est connue — correction du superviseur sur la règle transitoire de L4.4 : échec, périmètre en échec et composition impossible se disent sur le fond, qui reste ; la colonne ne dit que ses propres états. Lecture `solde` ajoutée au web ; opacités du noyau partagé 0,45 → 0,85 (D18 : vaut aussi pour « Occupation du terrain » de la Vue match et le rejeu 2D). H2, barre d'outils, KPI, carte Coordination, `KPIStrip` et le code mort associé retirés.
+
+**Résultats observés** : tests logiques vus rouges avant le code ; tests de vue prouvés rouges contre HEAD (35 échecs) ; 10 mutations rouges ; gate web vert (851 fichiers / 9 133 tests, `tsc` 0, lint 0 erreur, noyau de peinture rejoué nommément, ratchets et pre-push verts) ; §4.B → 0 hors lecteurs conservés et instrument de L8.2.
+
+**Conclusion / prochaine étape** : L5 clos ; L6 (la zone sélectionnée) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L6 : la zone sélectionnée — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L6 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : la colonne de droite devient « Zone sélectionnée » — nom en jeu de la zone (ou « Zone sans nom »), coordonnées, valeur signée sur une lecture signée, sous-ligne par lecture, puis les mini-tuiles « Rejeu » (bande d'issue, deux lignes aux formats de l'app, arme seule tronquée, badge de placement tronqué au mètre et jamais sur un frag, date au fuseau du joueur, texte complet en infobulle, bouton de rejeu de 36 px seulement si l'artefact existe et que le titre sert le rejeu) ; la zone la plus chaude est présélectionnée et le choix se remet à zéro au changement de carte, lecture, joueurs ou réapparition ; la colonne prend la hauteur du plan, sa liste défile ; le nom de zone se pose sur le plan à côté de sa cellule. `MatchReplayLink` gagne la variante 36 px et l'instant (`?t=&clock=`). `TacticalCellCard` et `questionSansCellule` retirés.
+
+**Résultats observés** : tests logiques et composants vus rouges avant le code ; tests de sélection prouvés rouges contre HEAD (6 échecs) ; 9 mutations rouges ; gate web vert (852 fichiers / 9 160 tests, `tsc` 0, lint 0 erreur, ratchets et pre-push verts) ; §4.C → 0 hors un commentaire du lot voisin Vue match (§8).
+
+**Conclusion / prochaine étape** : L6 clos ; L7 (sémantique et chaînes) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L7 : sémantique et chaînes — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L7 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : `tactical.toml` ne garde que les chaînes lues par le cockpit, toutes au vocabulaire V5 / V9 : sept lectures nommées par ce qu'elles mesurent (« Morts », « Frags », « Solde frags − morts », « Victoires − défaites », « Temps de présence », « Trajets après réapparition », « Morts seul ») en FR et EN, états vides et échecs en titre seul sans conseil, bandeau d'état « en attente de traitement » / « sans film », constat au lieu d'impératif pour le coéquipier introuvable. Les deux clés `cell.*` encore lues par la carte de zone sont remplacées par `zone.*`, les clés relues sous un autre nom renommées (`plan.radius_*`, `plan.who_*`), 62 clés et 62 accesseurs retirés avec preuve grep de chacun. `sourceForQuestion` devient `lectureDeRejeu`, `planEmptyText` devient `titreDuPlanVide`. Un test neuf balaie toutes les chaînes FR du manifeste (texte visible) contre les formules retirées, les impératifs et les anglicismes.
+
+**Résultats observés** : `tactical.toml` 740 → 397 lignes, 96 clés ; 67 clés et 8 préfixes à 0 dans le code, accesseurs à 0 hors 4 homonymes d'autres onglets ; 3 mutations rouges (« Spawn de départ », « maps » dans une branche plurielle, « Choisis ») ; gate web vert (853 fichiers / 9 183 tests, `tsc` 0, lint 0 erreur, manifestes identiques, ratchets et pre-push verts).
+
+**Conclusion / prochaine étape** : L7 clos ; L8 (suppressions résiduelles et preuves) après le « continue » du superviseur.
+
+## [2026-10-06] Tactique v2, lot L8 : suppressions résiduelles et preuves (web) — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L8 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : les preuves §4.A-D sont rejouées côté web et tombent à 0 hors des symboles que le plan garde (`libelleRayons` et ses deux aides, relus par l'ⓘ ; `HistogramChart`, `withLowSampleNote`, lus ailleurs). Les commentaires devenus faux sont corrigés, dont le renvoi `TacticalCellCard` de `MatchElevationSection.tsx` laissé en L6 (lot voisin, conflit trivial possible à la fusion, noté au §8). L'instrument `TacticalFond.mesure.test.ts` est adapté au cockpit sans être exécuté : titre sur `tactical-plan-title`, relevé KPI remplacé par « une réponse est affichée » (calque ou titre de plan vide), relevés du pied retirés, scénario de grille relu comme la colonne « Cartes jouées ».
+
+**Résultats observés** : témoins `tactical-analysis-title` / `kpi-strip` à 0 dans `apps/web` ; ratchets inchangés (knip 0, imports croisés 7 ≤ 7 sans dérogation de l'onglet, couleurs 0, champs 0), aucun plafond à abaisser ; gate web vert (853 fichiers / 9 183 tests, `tsc` 0, lint 0 erreur, pre-push vert).
+
+**Conclusion / prochaine étape** : L8 clos ; L9 (suppressions Go et contrat) enchaîné sur consigne du superviseur.
+
+## [2026-10-07] Tactique v2, lot L9 : suppressions Go et contrat — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L9 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`).
+
+**Décision technique principale** : le raster tactique ne sert plus ce que le cockpit n'affiche plus. Retirés : l'échange (`Echange`, `mesurerEchange`, la lecture du journal des morts à chaque raster et la couverture `evenements_journal` / `evenements_localises`), la section de coordination (`domain/tactical_coordination.go`, `coordination.Distances`, `construireCoordination`, `mesurerCoordination` et sa seconde lecture des morts), le taux `Isolement` du raster. « Isole » garde son bilan (cellules isolées, matchs sans rayon, morts équipe à terre). Les cas de test survivants sont déplacés avec leurs noms (`tactical_service_portes_test.go`), les tests d'isolement réécrits sur les cellules publiées, la liste blanche de `no_naked_rate_test.go` réduite d'un type ; un test neuf prouve qu'aucune lecture ne lit plus le journal. Contrat en baisse seulement (openapi −69, generated.ts −29), snapshot de surface régénéré par la procédure (disparitions : `TacticalBinDistance`, `TacticalCoordination`), alias web retirés.
+
+**Résultats observés** : 16 tests retirés, tous absents de la baseline ; preuves grep Go et web à 0 ; 4 mutations rouges ; gate Go vert (349 paquets en quatre lots, trois échecs d'environnement — mémoire épuisée, durée de rafale — verts rejoués seuls ; archlint, gardes nommées, golangci 0 issue), contrat à jour, gate web vert (853 fichiers / 9 183 tests, pre-push vert).
+
+**Conclusion / prochaine étape** : L8 et L9 clos ; compte rendu groupé au superviseur, puis L10 (liens croisés) après son « continue ».
+
+## [2026-10-07] Tactique v2, lot L10 : liens croisés — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L10 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`), L10.2 statué `[!]`.
+
+**Décision technique principale** : D17 posé — la Vue match ouvre la carte du match dans l'onglet Tactique depuis le bandeau d'« Occupation du terrain » (`?carte=` = `match_registry.map_id`, vérifié sur pièces : c'est la colonne de `header.map_id` et des cartes de l'onglet), en insertion minimale dans `MatchPositionsHeatmap.tsx` (lot voisin non fusionné), le lien dans un composant local qui lit la réponse de la page déjà en cache. D16 non posé : l'onglet et l'historique résolvent le libellé FR par deux chemins différents (repli registre contre repli traduction EN, rognage), et l'Explorateur filtre par libellé quand la vignette est un seul `map_id` (23 cartes sur plusieurs `map_id`) — un lien y mentirait sur le compte.
+
+**Résultats observés** : tests du lien vus rouges contre le composant de HEAD ; 2 mutations rouges ; gate web vert (853 fichiers / 9 185 tests au second passage complet, deux gardes de balayage étrangères au lot rouges au premier passage puis vertes seules et en complet).
+
+**Conclusion / prochaine étape** : L11 (clôture) enchaîné.
+
+## [2026-10-07] Tactique v2, lot L11 : clôture du plan — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété — plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md` exécuté de L1 à L11 ; L10.2 et L11.4 statués `[!]`.
+
+**Décision technique principale** : la documentation de la v7.5 décrit l'onglet tel qu'il sort — un écran en cockpit (cartes jouées, plan à sept lectures, zone sélectionnée nommée comme dans le jeu, mini-tuiles qui ouvrent le rejeu à l'instant, lien depuis l'« Occupation du terrain » de la Vue match) — dans le CHANGELOG, les notes de version et le README, en EN et en FR ; le CHANGELOG dit le retrait des quatre tuiles de KPI et de la carte de coordination avec leurs champs. ADR 0036 relue, rien à amender. La revue adversariale du diff cumulé (L2, L3, L9) reste à la charge du superviseur, qui fusionne ensuite dans `feat/v75`.
+
+**Résultats observés** : gates rejoués après les docs — Go 349 paquets, 196 ok, 0 échec, golangci 0 issue ; contrat à jour, garde de surface 7 / 7 ; web 853 fichiers / 9 185 tests verts, ratchets et pre-push verts. Aucune case vide dans le plan ; §8 complétée (L9, L10).
+
+**Conclusion / prochaine étape** : arrêt de l'exécuteur ; reprise uniquement sur les constats de revue du superviseur.
 ## [2026-10-06] Campagne de grammaire — lot VA : décisions du pilote (majeure 0x29, SchemaDesFaits), V-6 instruit
 
 **Statut** : Complété (commit local sur `feat/cg3-vue-a`, non poussé ; LOT_VA_V3 §15.6 et §16)
@@ -116318,9 +116438,48 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : lot prêt à intégrer dans `feat/v75` sur accord du superviseur.
 
+## [2026-10-07] Tactique v2 : fusion de `feat/v75` (2668848b1) dans `feat/tactique-v2` — Complété (commit de fusion local)
+
+**Statut** : Complété.
+
+**Décision technique principale** : fusion préparée par le superviseur (`git merge --no-ff --no-commit origin/feat/v75`, 575 fichiers : lots ts-usages-fix-equipement, maquettes Sessions / Vue match, sessions-emprise) ; seul conflit, `apps/web/src/lib/api/types.ts`, résolu par lui (alias tactiques retirés par L9 maintenus retirés, commentaire du bloc Coordination N1 de `feat/v75` gardé sans le renvoi à `TacticalCouverture`). Une correction d'intégration ajoutée au merge : `analysis/coordination/doc.go` — le bloc Coordination ne porte plus que l'appui reçu (riposte retirée par sessions-emprise), l'échange reste servi par l'Escouade et le bloc « Riposte » de la vue match. Aucun symbole partagé devenu orphelin par la combinaison des deux retraits (`games.JournalDesMortsFiable`, `coordination.Echanges` / `Mesurer` / `Ripostes`, `KillEvents` toujours lus).
+
+**Résultats observés** : `package-lock.json` inchangé (pas de `npm ci`) ; contrat régénéré identique à l'arbre fusionné (`openapi-gen` + `-check`, `generate-types`, fraîcheur OK), garde de surface 7 / 7 sans régénération ; Go : build 0 (un premier essai : édition de liens « memory exhausted », vert au second), gofmt muet, vet 0, 349 paquets en quatre lots — 196 ok, 153 sans test, 2 plantages au démarrage (`internal/api`, `internal/assets`, 0xc0000005) verts rejoués seuls —, `-tags=integration -p 1 ./internal/platform/duckdb/...` vert (le merge touche `platform/duckdb` et `migration`), gardes nommées PASS, golangci 0 issue ; web : tsc 0, lint 0 erreur, vitest 865 fichiers / 9 214 tests verts (dont `tacticalStrings`, garde anti-anglicismes, garde de surface, `MatchPositionsHeatmap`), manifestes identiques, ratchets et pre-push verts.
+
+**Conclusion / prochaine étape** : arrêt ; reprise sur les constats de revue du superviseur.
+
+## [2026-10-07] Tactique v2, lot L12 : corrections de la revue adversariale (ronde 1) — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L12 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`, treize items `[x]`).
+
+**Décision technique principale** : les douze constats triés par le superviseur, et eux seuls. Go : garde-rail de portée élargi à tout opérateur et à toute distance déréférencée, liée ou testée non nulle, seule la fonction `APortee` exclue (G1) ; nommage de zone sous `film.replay_artifact`, la porte exacte des grappes, avec DEBUG « source zone absente » sans elle (G2) ; section `tactical_cellule_zone` et catalogue de callouts décodé une fois par chemin et par processus, au lecteur partagé rejeu / onglet (G3) ; badge de placement d'« isole » tiré du contexte déjà lu, plus de seconde lecture (G4) ; classificateur absent journalisé (G5). Web : clic hors cellule servie ignoré (W1), échec du détail dit dans la carte de zone (W2), jamais un identifiant au titre — dernier nom connu, sinon « Carte hors du filtre » (W3). Tests de couverture T1 à T4.
+
+**Résultats observés** : chaque correction a son test, vu rouge avant le code (G2, G3b, G4, G5, W1, W2, W3) ou prouvé par mutation (G1, G3a, T1-T4) ; 20 mutations, toutes rouges, restauration vérifiée. Gate Go (349 paquets, 0 échec, golangci 0), contrat à jour, gate web (865 fichiers / 9 223 tests, pre-push vert).
+
+**Conclusion / prochaine étape** : arrêt ; reprise sur les constats de la revue suivante.
+
+## [2026-10-07] Tactique v2 : clôture de la revue adversariale — Complété (commit local puis push de `feat/tactique-v2`)
+
+**Statut** : Complété — plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md` clos (L1 à L12 ; seul L10.2 reste `[!]`, justifié).
+
+**Décision technique principale** : la revue adversariale est faite et L11.4 passe à `[x]` — ronde 1, trois relecteurs aveugles (R1 0 constat / 14 tenues, R2 5 / 17, R3 8 / 17), corrections en L12 ; ronde 2, un relecteur (1 P2 / 18 tenues). Le P2 est consigné au §8 sans correction (borne des deux rondes atteinte) : le garde-rail de portée ne reconnaît pas `seul := *m.PlusProcheM > regle.RayonM`, `if *d <= float64(rayon) {` ni `var d float64 = *m.PlusProcheM` puis `d >= rayon` ; aucune copie de ce genre dans le dépôt.
+
+**Résultats observés** : plan, §8 et journal à jour ; branche poussée pour la CI.
+
+**Conclusion / prochaine étape** : arrêt définitif de l'exécuteur ; fusion dans `feat/v75` par le superviseur.
 **Complément 5 (2026-10-07, intégration de RI 2.7.b avant la re-cuisson)** : fusion de `feat/v75` `4f112add5` (grammar .5, `PlacementRev` placement-2026-10-06-v1) : commit `3f92429b6`, conflits sur les fixtures du web seulement (régénérées au schéma 81, identiques aux fixtures 80 de 2.7.b hors version). Paquets touchés, archlint, golangci-lint (0) et vitest du rejeu verts. 19 témoins redécodés un par un en processus : schéma 81, 0 / 0 / 0 / 0, cas de la phase D inchangés. Recette de la re-cuisson unique consignée au plan (I.5) avec le rattrapage du placement des vies (`backfill-killsource`, sélection `matchsAJour`, sans `--force`).
 
 **Complément 6 (2026-10-07, re-cuisson unique exécutée par le superviseur)** : sur accord de l'utilisateur, après la fusion de RI 2.7.b et du lot (`feat/v75` = `efa0a7363`), binaire de cette tête, serveur arrêté. `backfill-replay --only-existing` : 126 / 126 redécodés en 17 min 33 s (schéma 81, pic 1,01 Gio, 0 erreur, 0 mort mémoire). Rattrapage du placement des vies (`backfill-killsource`, `PlacementRev` de RI) : 1 686 films en 1 h 18 min 38 s, 0 erreur, crédit 4 min 51 s. Passes aval (usage-summary, pad-tiers, vehicle-takes, tactical-rasters) : 21 s. Total 1 h 40 min 30 s. Les 126 artefacts sont à 0 sur `sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements` ; témoin `43716616` place 5 = Slowpoke6743 -> 343 Sandwolf -> KernelPanic10. Serveur et front relancés à 05:35. Découvertes D14 (sélection du `--dry-run` de killsource divergente : 105 annoncés, 6 pris), D15 (10 bots dont l'entité et la déclaration disent deux équipes), D16 (82 matchs « sans équipe » dans le chemin du placement des vies, artefacts complets) consignées au plan. Lot clos.
+
+## [2026-10-07] Rejeu — le journal des places ne concerne que le document publié (D16) — Complété (`feat/rejeu-journal-places`, NON fusionné ; CI verte)
+
+**Décision technique principale** : l'ERROR « entree(s) du roster presente(s) SANS EQUIPE lue » des 82 matchs de la re-cuisson venait du document interne que `replay.PortagesAuSync` assemble par `BuildFromPositions` pour relire les calques de porteur ; ce chemin ne lit les équipes du film (`grammar.ScanPlayerTeams`) que sous la garde du drapeau, donc hors CTF toute entrée présente compte dans `sansEquipe`, hormis un bot dont la déclaration BOT_METADATA porte l'équipe. Le document n'est jamais publié et le placement des vies range par camp depuis la base (`equipesNumeriques(ids.Equipes)`) : seul le journal était en trop. Correction : réglage NON EXPORTÉ `Options.documentInterne`, posé par `PortagesAuSync`, qui garde l'appel à `journaliserLesPlaces` dans `poserLesEquipesEtLeRoster` (le journal entier : ERROR « sans équipe », avertissement des places, compteur expvar et ERROR des bots sans place). Valeur zéro = toute cuisson publiée ; le compilateur interdit de le poser hors de `replay`. Écartés : lire les équipes du film sur ce chemin (lecture parmi les plus chères, payée sur CTF seulement, pour un roster que personne ne relit) ; déplacer l'appel dans `BuildFromFilm` et `BuildFromFacts` (deux sites). Aucune sortie publiée ne change : `SchemaVersion`, révisions de couche et `PlacementRev` inchangés.
+
+**Résultats observés** : `journal_des_places_test.go` — JP-INTERNE (`PortagesAuSync` sur un Oddball sans équipe : aucune ERROR « SANS EQUIPE », témoin non vide à 4 entrées sans équipe) ROUGE avant la correction, vert après ; JP-PUBLIE (`BuildFromFacts`, `Options{}` : ERROR émise, `coverage.seats.sansEquipe` = 4) vert avant et après. Mutations : garde retirée, réglage non posé (JP-INTERNE rouge), garde inversée, réglage posé dans `BuildFromFacts` (JP-PUBLIE rouge). Gate : `gofmt` muet, `go build ./...` et `go vet ./...` 0, `go test` de `film/replay/...` (32 s), `sync/killcollector/...` et `-tags=integration -p 1 ./internal/sync/killcollector/` ok, `archlint` ok, golangci-lint `--new-from-rev=7e9c72eaf` 0 issue. Découvertes au plan : DJ-a (le même document interne émet à chaque sync d'un mode à porteur des AVERTISSEMENTS propres à une publication : table du film non employée, origine non établie, équipes non lues, impulsions et charges non balayées) ; DJ-b (`backfill-killsource` n'assemble aucun document publié : l'ERROR de D15 vient elle aussi du document interne, sur des CTF).
+
+**Revue adversariale (ronde 1, un relecteur frais, premier plan, lecture seule, contrat écrit, lentilles L6 et L3)** : aucun constat recevable, 22 conditions vérifiées qui tiennent (réglage posé en un seul site, valeur zéro sur `BuildFromFilm` et `BuildFromFacts`, garde couvrant tout le journal, document, portages et bilan inchangés, témoins non vides, capture du journal fiable, seuils et commentaires conformes). Une nuance retenue et corrigée dans les textes du lot (plan, D16, cette entrée, en-tête du test) : hors CTF, un bot dont la déclaration BOT_METADATA porte l'équipe en reçoit une — « toute entrée sans équipe » ne vaut que pour les humains. Pas de ronde 2 (aucun P0 ni P1).
+
+**Conclusion / prochaine étape** : commits `6e5eb7689` et `3ea6a9d0a` poussés ; CI `37570421494` verte au premier plan (tous les jobs, E2E sauté hors PR vers `main`), `Deploy Pre-Check` et gitleaks verts. Plan clos. Prochaine étape, au superviseur : fusion dans `feat/v75` ; les découvertes DJ-a (avertissements de publication du même document interne) et DJ-b (journal de D15 émis par ce document) sont à arbitrer.
 ## [2026-10-06] Vue match aux formes de l'Emprise — PHASE 1 (plan) — En cours (plan écrit et relu, commit local sur `feat/matchview-emprise`, aucun code)
 
 **Décision technique principale** : plan `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md` (worktree `LevelUp-wt-matchview`), 6 lots : M0 rebase sur la tête finale de Sessions et relecture des symboles S1 attendus ; M1 Go lectures (mêlée exclue de la distance dans le lecteur, `publishable_deaths` ajouté à Q21d, lecture des vies pour tout le camp en une fois, assemblages solo de Sessions étendus d'une liste de joueurs et d'une lecture de camp) ; M2 Go blocs de la page (`emprise` du match composé de mon camp, `lives_near_teammate` par joueur, `combat_tab.weapon_tools` par `squadagg.BuildWeaponTools`, prises non classées au grain du match, câblage dans un fichier neuf, contrat additif) ; M3 web (cartes B, D, E, G, H, I, briques partagées étendues de props optionnelles, F réduite à la grille, suppressions web Riposte, Hauteur, Part de chaque équipe, Contrôle des armes spéciales) ; M4 suppressions Go et contrat ; M5 clôture.
@@ -116466,3 +116625,136 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : sous la règle décidée d'abord (rattrapage après un arrêt seulement), 433 kills réels perdus sur quatre films anciens et 200 morts publiées sans assistant ni parts de dégâts : la recherche ne suivait pas les terminateurs que la marche ne retient pas. Règle finale, 19 témoins : contenu des 2 747 morts publiées identique sauf deux qui gagnent un kill-event ; 56 morts passent du balayage à la marche, 20 l'inverse. 28 films, contexte de killsource : trames fermées 674 171 → 698 688, refusées 156 170 → 131 798, records lus +133 000. La vue A lit 3 047 messages de kill ; la recherche d'avant en trouvait 549 de bruit que plus rien ne rend, et 14 réels perdus là où une fin de vue A fausse est retenue. Régression localisée (découverte 34) : après un message de dégâts (genre 0), la fin de vue A est parfois fausse et retenue ; sur un film de référence, 22 trames à kill sur 83, 28 morts passent de la marche au balayage (publication identique). La queue du 85 essayée n'explique aucune de ces fins. Goldens de killsource et comptes d'assistance réécrits avec leur raison ; suite du film, archlint, vet (avec et sans `research`), lint : verts.
 
 **Conclusion / prochaine étape** : commit de 2.7.c4 et poussée pour la CI ; 2.7.c5 : fusion de `feat/v75` avec renumérotation des rangs pris entre-temps (grammaire après levelup-d0 et levelup-5c, `SchemaVersion` 85, `SchemaDesFaits` 10), ADR 0037 amendé, chronique de killsource à faire tourner (497 lignes), gate de l'item, CI, fusion sur accord. La lecture du genre 0 (découverte 34) relève de la grammaire de la vue A : à proposer comme lot à part.
+## [2026-10-07] Rejeu, Bases : le propriétaire de chaque zone se lit par le NOM de sa jauge — Complété (branche `feat/zones-proprietaire`)
+
+**Statut** : Complété. Recuisson du parc NON faite (geste du superviseur, sur accord de l'utilisateur).
+
+**Décision technique principale** : chaque propriété réseau `ti=13` porte un nom (`i0`, « propertyName », R(32)) que l'état complet de chaque image-clé écrit. Relevé sur les 11 films de Bases locaux (dont 7344d24f et 696a9d7c, build d'août) : les noms sont IDENTIQUES d'un film, d'une carte et d'un build à l'autre, et forment un bloc de cinq propriétés par zone (index, clé de nommage, propriétaire, pousseur, jauge) ; les KOTH portent le premier bloc seul. Les noms ne se résolvent pas en clair (sonde murmur3 sur les 510 scripts Lua `hsc*` du jeu installé : seules les VALEURS `round_result_reason_*` s'y retrouvent ; combinaisons par paires sans résultat). Règle : `grammar` pose le nom sur chaque lecture d'image-clé (`ManagedPropertyRead.Name/Named`, canal `i0` + `i1`) ; `replay/zone_states_owner_nom.go` désigne le propriétaire d'une zone par le nom de sa jauge appariée (vocabulaire de trois blocs jauge → propriétaire), sans vote ni seuil ; le vote devient le repli nommé et compté `repli_zone_proprietaire_par_vote` (nom hors vocabulaire) et le contrôle du nom (`coverage.zones.ownerNamed`, `ownerVoteDisagreed`, avertissement journalisé, le nom prime). Révisions : `grammar-2026-10-07` (`.7` réservé : la série passe au jour suivant pour ne pas laisser de trou), `SchemaDesFaits` 9 (8 réservé), `SchemaVersion` 84 (83 réservé) ; `killsource`/`objectives` à révision constante (goldens régénérés).
+
+**Résultats observés** : 114b0040 (Streets, 6 captures) — diagnostic : jauges des trois zones appariées, mais B (une capture à 691, une sécurisation à 888) et C (une capture à 629) n'avaient qu'une capture concordante, sous le seuil de deux ; le film dit B neutre puis camp 1 dès 691, C camp 1 au départ puis camp 0 dès 629 ; le score le confirme (le camp 1 marque de 701 à 771 avec A et B, le camp 0 de 862 à 912 avec A et C). Après : trois zones publiées, contrôle 5/5 (3/3 avant). `replay-corpus-gate --reference=parc` sur 9 Bases + 3 KOTH : 8 Bases où le vote élisait déjà les trois canaux → le nom désigne les mêmes, 24/24, `zoneStates` identiques, contrôle inchangé (28/28, 32/32, 43/43, 32/32, 25/25, 28/28, 30/30, 34/34) ; KOTH identiques ; aucun autre calque ne bouge (f75e7053 : écart `pickups` de la surcouche absente de la racine du gate, hors lot, déjà connu). `replay-equiv` sur les 20 films du corpus : seuls `zoneReads`/`zoneKeyReads`/`flagGauge` (forme de la lecture, comptes identiques) et `artifact` bougent ; références re-figées. Base `879f31bbf` rejouée sur 000d5950 : 64/64 identiques une fois les manifestes de film présents. Tests unitaires (nom sans capture concordante, désaccord nom/vote, bloc incomplet, noms ambigus, canal nommé non repris), témoin `ZONE_FILM` 114b0040 et non-régression 572e236b verts ; suite Go complète, vet, golangci-lint, tsc, vitest (match-replay, api) verts.
+
+**Conclusion / prochaine étape** : au superviseur — fusion, CI, recuisson (verdict `redecoder` sur tout le parc, la révision de grammaire étant commune). Découvertes hors périmètre : le POUSSEUR se lirait aussi par le nom (bloc), ce qui supprimerait la plupart des déclenchements de `repli_zone_camp_de_capture_deduit_de_l_issue` (2 nouveaux sur 114b0040, 7 sur e60aaf06) ; le propriétaire de colline KOTH (`zone_states_hill.go`, `designator + 1`) relève de la même règle de nom ; `zone_states_capturer.go` cite un commentaire « blocs de pas 5 » de `zone_states_owner.go` qui n'existe plus ; `replay-equiv` prend son verrou solo sous la racine du worktree, pas sous le verrou partagé du checkout principal.
+## [2026-10-07] Rejeu : trois derniers correctifs (bot à deux équipes, avertissements du document interne, `--dry-run`) — Complété (branche `feat/rejeu-journal-places`, poussée ; pas de fusion dans feat/v75)
+
+**Plan** : `.ai/PLAN_REJEU_DERNIERS_CORRECTIFS_2026-10-07.md`.
+
+**Décision technique principale** : (1) un bot dont l'entité ti=9 et la déclaration BOT_METADATA disent deux équipes prend l'équipe de la feuille de match (`ScoreboardTeams`, jointe par `bid(N.0)`, valeur comparée au désignateur sans traduction — convention du contrôle des équipes, 1 123 accords / 0 contradiction sur les 126 artefacts, 68 / 0 sur les bots) ; bot inconnu de la feuille : entité publiée, ERROR + compteur `rejeu_bots_equipe_sans_arbitre`. La feuille atteint aussi le document interne du sync (`EntreePorteursAuSync.Equipes`). (2) `niveauDePublication` : sur le document interne de `PortagesAuSync`, les six avertissements propres à une publication (et la contradiction base/film, l'origine contredite) descendent en Debug ; collecteur et cuisson gardent WARN. (3) `candidatsDeLaPasse` / `idsDeLaPasseEnLigne` : une seule sélection pour `--dry-run` et la passe, hors ligne et en ligne, garde-rail AST sur leurs lectures.
+
+**Résultats observés** : mesure en processus (cuisson par le binaire de la branche, faits d'une copie de la base) sur 4 des 10 matchs, 5 bots : entité 1, déclaration 0, base 1 — la base confirme l'entité, aucune équipe publiée ne change ; aucun des 10 n'a d'artefact au parc, aucune contradiction dans la re-cuisson des 126 : SchemaVersion et révisions inchangés. `--dry-run` : l'écart 105/10 venait des 95 matchs sans carte que le plan ne retirait pas ; les 4 non écrits sur 10 sont des verdicts du décodage. Tests ciblés + mutations rouges (13), suites `replay`, `killcollector`, `cmd/levelup`, `replaybuild` (integration, -p 1), archlint, golangci-lint 0. Revue adversariale : 0 P0/P1, 4 P2 sur les tests et la doc du lot, traités.
+
+**Conclusion / prochaine étape** : CI de la branche ; découvertes au plan (D1 : lecture de l'équipe BOT_METADATA suspecte sur `HI_1_12_0` — déclaration 0 sur les 5 bots contredits).
+**Complément (2026-10-07, FUSION)** : `feat/tactique-v2` refusionnée deux fois de plus (0641aceb6 : feat/v75 94ac8fd68 ; 879f31bbf : feat/v75 fb3a9cd21 — zones à l'état initial schéma 82, handoff Escouade), CI verte sur chaque sha (CI, Deploy Pre-Check, gitleaks, ADR 0021). Sur le « go » de l'utilisateur : `origin/feat/v75` avancée en avance rapide à **879f31bbf** (push depuis le worktree), checkout principal synchronisé (`git pull --ff-only`). Coordination inter-sessions : levelup-dc refusionne son correctif derrière ; levelup-f3 a corrigé son handoff (riposte déjà retirée de Tactique, `coordination.Echanges` à supprimer avec son dernier lecteur par le lot Escouade) ; levelup-d0 a recuit le parc au schéma 82 (126/126). Lot Tactique v2 : CLOS. Reste au user : gate visuel de l'onglet (Illusion, Bazaar, six onglets d'Ascension en pleine largeur) sur le serveur local rebâti.
+
+**Complément (2026-10-07, retours utilisateur après le gate visuel → lot L13, périmètre FERMÉ)** : décisions : (1) libellé FR de carte harmonisé entre Tactique, historique et Explorateur + lien vignette → Explorateur ; (2) les trois colonnes à la même hauteur (celle du plan) ; (3) garde-rail de portée : trois formes manquantes ; (4) cache de `map_quant_bounds.json` ; (5) registre des cartes : EXCLU (défaut de données du sync) ; (6) helpers « sans accents » (web, 4 copies) et « mon camp / l autre camp » (Go, 2 copies) + garde-rails ; (7) ZONES NOMMÉES DESSINÉES ET NOMMÉES sur le plan, comme le rejeu 2D (calque de callouts partagé dans `lib/replay/`, zones servies avec le raster). Plus aucune découverte à consigner. Exécuteur Opus (même agent), fusion de feat/v75 au départ, CI, puis avance de feat/v75 par le superviseur.
+
+## [2026-10-07] Rejeu CTF — « toujours pas de cercle de retour autour du drapeau au sol » : diagnostic sur pieces, sans correctif — Complété (analyse)
+
+**Statut** : Complété (diagnostic seul, aucun code modifié). L'utilisateur signale, pour la énième fois, l'absence du cercle de zone de retour autour d'un drapeau au sol hors de son socle.
+
+**Décision technique principale** : vérifier la chaîne entière sur les artefacts réels avant toute nouvelle « correction ». Résultat : les 17 artefacts de CTF du cache local sont au schéma 82, publient la règle de retour (rayon 1,3 / 30 s / 3,1 s), 16 sur 17 donnent deux drapeaux d'équipe (0 et 1), tous ont des intervalles `dropped` (de 9 à 89 par match). Côté web, `useReplayFlagCarries` construit les lâchers et `drawFlagReturnZones` peint disque + anneau + jauge sous le glyphe pour tout drapeau d'équipe ≥ 0 à l'état `dropped`. Rien dans la donnée ni dans le code local n'explique une absence.
+
+**Résultats observés — le fait qui explique « 20 corrections sans effet »** : la production (`lvelup.info/health`) tourne `v7.3.2`, `origin/main` date du 2026-09-05 et ne contient NI `flagReturnZone.ts`, NI `flagCarriesLayer.ts`, NI `flag_film_bases.go` (22 fichiers `match-replay/` seulement ; `feat/v75` a 4 995 commits d'avance). Toutes les corrections de la zone de retour (31/08, 08/09, 05/10) vivent dans `feat/v75`, jamais fusionnée dans `main`. Si l'utilisateur regarde la prod, il ne peut rien voir. Hypothèse secondaire si c'est en local : rayon à l'échelle réelle (1,3 unité) plancher 8 px sur les grandes cartes, sous un glyphe de 19 px.
+
+**Conclusion / prochaine étape** : remettre à l'utilisateur l'URL locale d'un match témoin (cde26226, lâcher du drapeau de l'équipe 1 entre les images 6059 et 6300, lien `?t=612000&clock=film`) et lui demander où il regarde (prod ou local). Pas de vérification navigateur par la session (règle : instance MCP isolée interdite sans autorisation). Aucun correctif tant que l'environnement regardé n'est pas connu.
+
+**Complément (2026-10-07, retour utilisateur : « en local, je crois le voir par moments, il clignote et s'efface, hyper bref, pas tout le temps » + « respecter sa taille in game »)** : mesure sur les 17 artefacts de CTF du cache (718 lâchers fusionnés) : 362 durent moins de 2 s (50 %), 104 de 2 à 5 s, 206 de 5 à 15 s, 46 plus de 15 s ; 571 (80 %) finissent par une REPRISE (`carried`), 145 par un retour (`home`). Le « clignotement » est donc la jonglerie : le drapeau touche le sol moins de 2 s, le cercle apparaît et disparaît avec lui, fidèle au jeu. Les lâchers longs (35 % au-delà de 5 s) doivent montrer un cercle stable : non vérifié à l'écran (navigateur interdit sans autorisation). Taille : le rayon 1,3 est dans l'unité des positions du film (unités moteur, que le dépôt appelle « mètres »), donc la proportion carte/cercle est celle du jeu SI l'anneau visible en jeu est bien `innerAreaMonitorRadius` ; le rayon extérieur (contestation) n'a jamais pu être lu (constante dédupliquée) — à trancher par l'utilisateur (largeur de l'anneau en jeu vs un Spartan). Plancher de 8 px seul écart connu (grandes cartes). Lien `?t=&clock=film` signalé « non pris en charge » : seul avis existant = clock `match` sans calage ; non reproduit. Prochaine étape : autorisation d'ouvrir UNE page navigateur (connexion par l'utilisateur) pour capturer un lâcher long, puis décider.
+
+**Complément (2026-10-07, capture navigateur autorisée par l'utilisateur)** : connexion Xbox locale en échec (SISU `complete` HTTP 400 deux fois, corps vide, `logs/auth.log`) ; mot de passe admin oublié → réinitialisé par `cmd/admin reset-password` (sauvegarde de `users.json` dans le scratchpad). Sous session admin par mot de passe, `/api/v1/settings` et `/api/v1/presence` répondent 401 `auth_required` alors que `/bootstrap` reconnaît l'utilisateur → la coquille web conclut « session expirée », recharge vers `/login`, qui renvoie à l'accueil : boucle, puis 429 du limiteur. Contourné pour la capture par un `initScript` qui stubbe ces deux routes. À consigner au registre des reports (deux défauts d'auth locale, hors périmètre du cercle). Lien tactique : `?t=612000` nu est effacé (le routeur lit la valeur en JSON → nombre → `z.string()` refuse → `catch` → paramètre perdu) ; `?t=%22612000%22` fonctionne, et les liens construits par l'app (`MatchReplayLink`) citent déjà la chaîne — seul un lien écrit à la main casse. **CERCLE VU À L'ÉCRAN** : match `cde26226` (Esprit critique, classée), image 6120 (10:12 film / 9:49 match), drapeau de l'équipe de JGtm au sol près d'Alpha : disque + anneau bleus centrés sur le pied du drapeau, rayon ≈ 24 px pour 1,3 unité (≈ 19 px/unité, aucun plancher), jauge en arc distinct à l'extérieur, un adversaire dans la zone. Capture `scratchpad/replay_3.png` + zoom `crop.png`. Conclusion : en local, au schéma 82, le rendu est présent et à l'échelle ; les artefacts de CTF classée n'ont ce cercle que depuis la recuisson de ce matin (schéma 79+, bases lues dans le film) — avant, un seul drapeau d'équipe -1, donc rien. Reste à faire juger la TAILLE par l'utilisateur (anneau du jeu = rayon intérieur 1,3 ?).
+
+## [2026-10-07] Rejeu CTF — la zone de retour ne se peignait que sur une image ENTIÈRE (invisible en lecture) — Complété (branche `fix/rejeu-zone-retour-image-fractionnaire`, à committer)
+
+**Statut** : Complété côté code, vérifié à l'écran ; commit en attente de l'accord utilisateur.
+
+**Constat utilisateur décisif** : sur la capture posée par un saut, le cercle est là ; une seconde de lecture plus tard, pause : il n'y est plus. « Il n'apparaît que pendant un tick. »
+
+**Cause, sur pièces** : la boucle de lecture avance l'image courante de `dt × fps` (`useReplayPlayback.ts`, `next = from + dtSec * fps`) — l'image n'est presque jamais entière en lecture ; seuls le curseur, le pas à pas et le lien tactique posent une image entière. `flagReturnAt` (`flagReturnZone.ts`) indexait les séries du lâcher (`Float32Array` position, jauge, occupants) par `frame - t0` SANS partie entière : index fractionnaire → `undefined` → NaN dans `ctx.arc` → aucun tracé. Le glyphe du drapeau, lui, se lit par comparaison d'intervalles et survit à l'image réelle. D'où un cercle visible uniquement à l'arrêt après un saut — exactement ce que l'utilisateur décrivait depuis des jours, et ce que toutes mes vérifications « à l'arrêt » (08/09, et ce matin) ne pouvaient pas voir. Seule occurrence du motif dans les calques (grep des index par image sur tableaux typés).
+
+**Correctif** : `const at = Math.floor(frame)` dans `flagReturnAt`, bornes et index sur `at` ; commentaire de contrat. Test ajouté (`flagReturnZone.test.ts`) : images 10,01 / 15,37 / 20,99 rendent le lâcher avec x, y, jauge finis ; 9,99 et 21,0 rendent vide.
+
+**Résultats observés** : vitest du fichier 17/17 vert ; dans la page locale (vite HMR), curseur à 6 100, lecture 1,7 s, pause → image fractionnaire → disque, anneau et jauge présents (capture `scratchpad/crop3.png`). Avant le correctif, même geste : rien (capture `crop2.png`, constat utilisateur).
+
+**Conclusion / prochaine étape** : commit sur la branche de fix après accord, push, CI, fusion dans `feat/v75`. Taille du cercle : à faire juger par l'utilisateur maintenant qu'il reste visible en lecture (rayon 1,3 unité film, échelle vraie). Découvertes non traitées (registre) : SISU `complete` 400 en local ; 401 `settings`/`presence` sous session admin par mot de passe → boucle de rechargement ; lien tactique numérique nu effacé par le routeur.
+
+**Complément (2026-10-07, retour utilisateur après le correctif : « le fantôme du drapeau sur le cercle clignote, il ne devrait pas »)** : décision utilisateur datée — le glyphe `dropped` ne clignote plus ; seuls `carried` et `carried_open` battent (règle du 2026-08-27 restreinte : au sol, la zone de retour porte le signal « sorti », un glyphe qui bat sur un cercle fixe se lit comme un défaut). `flagBlinkAlpha` : condition réduite aux deux états portés, en-tête et contrat mis à jour ; tests : `dropped` stable et plein ajouté, échantillons de bornes/période passés sur `carried`. Même branche `fix/rejeu-zone-retour-image-fractionnaire`, second commit.
+## [2026-10-07] Coquille : 401 sous session admin par mot de passe, et lien de rejeu `?t=` effacé — Complété (branche `fix/coquille-401-admin-lien-tactique`, deux commits, poussée ; aucune fusion)
+
+**Statut** : Complété côté code et tests ; revalidation à l'écran par l'utilisateur à faire.
+
+**Décision technique principale** :
+- **401 sous session par mot de passe (mode d'auth xbox)** : le login par mot de passe (`UserAuthHandler.handleLogin`, ouvert en mode xbox aux comptes ayant un mot de passe) pose `Username`/`Role` mais jamais `AuthReady`. Le prédicat partagé `sessionAuthenticated` (`internal/api/middleware/require_auth.go`) exigeait `AuthReady` hors du mode `password` : toutes les routes sous `RequireAuth` (`/settings`, `/presence`, `/admin/...`, `/healthz/home`) répondaient 401, alors que `/bootstrap` (`resolveUsername` = `sess.Username`) déclarait l'utilisateur connecté. Les routes joueur n'ont pas `RequireAuth` (seulement propriété + garde d'écriture), d'où leurs 200. Correctif : un `Username` en session suffit dans tous les modes ; `AuthReady` seul reste accepté hors mode `password`, comme avant. Le prédicat est partagé avec `RequireAuthForMutations`, qui bénéficie du même alignement.
+- **Coquille web** : non modifiée. La règle écrite de `routes/__root.tsx` traite un 401 `auth_required` comme une vraie expiration de session ; elle ne se trompait que parce que serveur et bootstrap divergeaient sur « connecté ».
+- **`?t=` du rejeu** : le routeur lit les valeurs de recherche en JSON, `?t=612000` arrivait en nombre, `z.string()` le refusait et `.catch` l'effaçait. `validateSearch` accepte désormais chaîne OU nombre et sort une chaîne (`z.union([z.string(), z.number()]).transform`) ; vérifié dans les types du routeur que `FullSearchSchema` fusionne les SORTIES (`ResolveValidatorOutput`) : `HelpPage`/`SettingsPage` gardent des chaînes (typecheck vert).
+
+**Résultats observés** :
+- `require_auth_xbox_test.go` : rouge avant le correctif (cas mot de passe : 401 au lieu de 200), vert après ; cas SSO, device-code, anonyme (401) et mode password + `AuthReady` seul (401) tenus.
+- `replay.search.test.tsx` (analyseur de recherche du routeur + `validateSearch` réel de la route) : rouge sur la route d'origine (1 échec / 3), vert après.
+- Gates : `go test ./internal/api/...` exit 0, `go vet ./internal/api/...` exit 0, `npm run typecheck` (cache purgé) exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements préexistants, aucun dans les fichiers touchés), `vitest run src/routes src/lib/match-nav` exit 0 (13 fichiers, 106 tests).
+
+**Découvertes hors périmètre (non traitées)** :
+- `internal/api/handlers/sync_handler.go` (~l. 444) répond 401 `auth_required` quand la session n'a pas de tokens Halo : sous session par mot de passe, un lancement de sync initiale par l'interface déclencherait le même rechargement plein de la coquille (code d'erreur à revoir : 403/409 plutôt que 401 `auth_required`).
+- La coquille web n'a aucun garde-fou d'une page à l'autre contre la boucle de rechargement (l'anti-rafale est une `ref`, remise à zéro par le rechargement lui-même) : toute future divergence entre `/bootstrap` et un 401 `auth_required` reproduira la boucle jusqu'au 429.
+
+**Conclusion / prochaine étape** : revalider à l'écran sous session admin par mot de passe (accueil, pages profondes, Paramètres, badge de présence, section Administration) et ouvrir un lien de rejeu écrit à la main (`?t=612000&clock=match`). Fusion dans feat/v75 : geste du superviseur.
+
+**Complément (2026-10-07, L13 clos)** : `10988004c` sur `feat/tactique-v2`, CI verte (Deploy Pre-Check relancé une fois, erreurs 500 de l'API GitHub) : F1 règle unique du libellé de carte (`platform/duckdb/map_labels.go`, garde-rail `map_label_single_resolution_test.go` avec 21 résolutions gelées et datées, `GetAvailableMaps` sans appelant retiré) + lien vignette → Explorateur `?maps=<libellé>` (L10.2 passe `[~]`) ; F2 trois colonnes à la hauteur du plan ; F3 garde-rail de portée complété (trois formes) ; F4 cache de `map_quant_bounds.json` ; F6 `lib/text/sansAccents.ts` (4 copies) + `analysis.CampsDuMatch` (2 copies) avec garde-rails ; F7 zones nommées servies avec le raster (`zones`, sous `film.replay_artifact`) et peintes sur le plan par le calque du rejeu déplacé dans `lib/replay/calloutsPaint.ts` (contours sous la chaleur, noms au-dessus, garde-rail « un seul peintre »). Registre des cartes exclu (données du sync). feat/v75 (292ef56a5, +11 commits rejeu / schéma 84) refusionnée dans la branche (`743a6e774`), CI en cours ; avance rapide de feat/v75 au vert.
+
+**Clôture (2026-10-07, fusion)** : « ok pour la fusion » de l'utilisateur. `fix/rejeu-zone-retour-image-fractionnaire` (d463b3a08 + e0da70dd7, CI verte) et `fix/coquille-401-admin-lien-tactique` (5aee6f882 + 217f2e631, agent Opus, CI verte) fusionnées dans `feat/v75` sur 292ef56a5 (schéma 84 de la session voisine) : 183cbe328, 516b48d63, puis 0fd544481 (registre des reports, quatre lignes). Poussé. Worktree de l'agent retiré (sans `--force`, aucune jonction). Coordination avec la session `levelup-d0` : serveur :8000 coupé par elle pour la recuisson du parc, redémarrage prévu sur ce HEAD. Gate visuel final de l'utilisateur sur le cercle en lecture : fait sur la branche avant fusion (« wow parfait »), taille jugée correcte.
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E1 : web Synergies — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E1 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la section de coordination de l'onglet Synergies devient « Appui et portée » (« Support and range »), deux rangées : « Appui », puis « Rôles de portée » seule ; titre et aide dans le jeu de l'Appui (`squad/i18n.ts`). Supprimés : les douze fichiers de la riposte (cartes, matrice, frise, logique, fixtures, libellés et leurs tests), la grandeur « hauteur » du nuage de portée (prop, type, branche, préfixe de libellés, option d'étiquette de bout), les blocs de manifeste `squad.riposte.*` (42 clés) et `squad.hauteur.*` (19 clés), les alias `SquadEchange*` et le champ `echange` du type de page. La riposte était aussi le dernier lecteur de quatre options de `HistogramChart` et de `DonutChart.arcLabelKind` : retirées avec leurs tests (D7 ; `yAxisLabel` et `formatBin`, API de base du catalogue des graphes, restent). La garde du vocabulaire de la coordination bannit désormais la notion retirée sous tous ses noms.
+
+**Résultats observés** : tsc purgé 0, ESLint 0 erreur (26 avertissements, la base), champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest des zones touchées 317 fichiers / 3 021 tests verts, knip 0 / 0 / 0.
+
+**Conclusion / prochaine étape** : E2 (Go et contrat : bloc `echange`, `coordination.Echanges` / `Ripostes`, dénivelé du profil de portée).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E2 : Go et contrat — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E2 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : le bloc `echange` de la page Escouade sort de bout en bout (type de domaine, producteur et ses tests, câblage du service et du registre, champ du contrat) ; avec lui partent `coordination.Echanges`, `coordination.Ripostes` et leurs types (`MortSuivie`, `PaireEchange`, `BilanEchanges`). `coordination.Mesurer` reste : l'appui et l'isolement le lisent. Le dénivelé du profil de portée (trois champs, son calcul) sort aussi ; `MeasuredKill.DeltaZ` reste, lu par la portée par arme. Découverte (plan §8.5, à trancher) : `TacticalKillEvents.Events` n'a plus de lecteur — le bloc de coordination de Sessions et des Séries temporelles ne lit que l'univers ; le recâblage sur `Univers` et le retrait de la requête des événements touchent une autre page et un garde-rail de l'ADR 0036, laissés à un lot dédié.
+
+**Résultats observés** : contrat −147 lignes (openapi) / −56 (types générés), cinq schémas `SquadEchange*` retirés du snapshot de surface ; 38 fonctions de test supprimées, aucune dans la baseline de présence. Build des paquets internes, vet, tests des paquets touchés (dont `service`, `api/...`, `archlint`), golangci-lint 0 issue, `openapi-check` à jour, tsc et vitest web verts.
+
+**Conclusion / prochaine étape** : E3 (garde des textes étendue au jeu de l'Escouade, vue rouge, puis reformulation FR / EN).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E3 : textes sans personne et garde étendue — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E3 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la garde `textesSansPersonne.test.ts` lit désormais le jeu entier de la page Escouade (`squad/i18n.ts`, libellés de focus et de portée) et le manifeste `squad.toml` en entier ; la liste FR refuse aussi « reviens » et « vérifie ». Reformulés, FR et EN : invite de sélection, aide de la composition stricte, ligne d'un match écarté (« dans l'équipe »), état vide, aide du score à manches (« l'équipe qui a perdu »), aides Rendement et Résistance (reprises de la Vue match : la mesure, sans phrase de lecture), titre « Statistiques de la session », trois messages vides de Sessions et un des Séries temporelles (« Vérifie… » devenu une parenthèse factuelle), message « Match pas encore synchronisé » de la Vue match.
+
+**Résultats observés** : garde ROUGE avant (9 tests sur 34, 34 entrées, 19 chaînes sources distinctes), VERTE après ; sept mutations rouges, faux positifs contrôlés. tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des zones touchées 3 858 tests verts.
+
+**Conclusion / prochaine étape** : E4 (CHANGELOG et notes de version, registre, statut du handoff, gate de clôture).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E4 : clôture — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E4 ; plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md` clos côté exécutant).
+
+**Décision technique principale** : documents alignés sur le code — CHANGELOG EN / FR (résumé de tête, « Coordination : l'Appui », « La portée face au lobby », entrée du lot, « Page Escouade ») et notes de version EN / FR (contenu seulement, le registre « tu » est gardé) ; registre des reports : les deux lignes du lot Vue match closes, trois découvertes reportées (événements du journal des morts sans lecteur, impératif « Choisis » hors liste, clés `squad.header.*` sans lecteur) ; handoff marqué exécuté.
+
+**Résultats observés** : suite Go `./internal/...` 173 paquets verts en trois lots, vet 0, `make go-api-lint` 0 issue, `openapi-check` à jour ; web tsc forcé 0, ESLint 0 erreur, champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest complet 9 096 tests verts, knip 0. Le script de baseline n'est pas lancé en local (il relance tout le module) ; la présence est prouvée par différence.
+
+**Conclusion / prochaine étape** : au superviseur — push de `feat/escouade-synergies-textes`, CI, revue adversariale, décision sur la découverte §8.5, fusion dans `feat/v75`.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E5 : constats de la revue adversariale (ronde 1) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E5 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : revue de la ronde 1 — 4 constats recevables, 4 corrigés, 1 consigné hors diff, 21 conditions tenues. C1 : en-têtes du sélecteur « Mes escouades » / « Mes groupes » devenus « Escouades enregistrées » / « Groupes » (EN « Saved squads » / « Groups »), garde des textes étendue au sélecteur et aux deux jeux des cartes d'objectif, inventaire des jeux de `features/squad/` au plan. C2 : options de graphes partagés dont la riposte était le dernier lecteur retirées (`frameless` du donut et de l'histogramme ; `dimmed`, `stack`, `volumeAxis` de la frise des soirées). C3 : garde du vocabulaire étendue à toutes les formes de « venger », à « échange(s) » et aux lignes anglaises du manifeste. C4 : commentaires Go réécrits au présent avec leurs lecteurs réels. Consigné (plan §8.8, registre) : la carte de la frise ne transmet ni `baseline` ni `hollowLegend`, préexistant.
+
+**Résultats observés** : mutations rouges sur chaque jeu ajouté et chaque nouveau motif, « MA5K Avenger » vert ; Go vet 0 et tests de `domain`, `games`, `service/teammates`, `analysis/coordination` ok ; web tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des dossiers touchés 3 381 tests verts, knip 0.
+
+**Conclusion / prochaine étape** : ronde 2 de revue au superviseur.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E6 : constats de la revue adversariale (ronde 2) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E6 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`) ; revue adversariale close sur deux rondes.
+
+**Décision technique principale** : ronde 2 — C1 à C3 validés, 24 conditions tenues, 2 constats P2 de commentaires corrigés, commentaires seulement : la documentation de `ListeBlancheMatchs` (`domain/tactical.go`) nomme les appelants réels, qui posent tous une liste ; l'en-tête et la requête du journal des morts (`platform/duckdb/tactical_repo.go`) ne présentent plus l'échange comme une lecture vivante ; `soireesDesRows` (`service/timeseries_service_sections.go`) ne cite plus la frise d'échange de l'Escouade. La lecture sans liste, qui n'a plus d'appelant de production, est écrite comme telle et ajoutée à la découverte §8.5 et au registre, sans suppression (hors lot).
+
+**Résultats observés** : `gofmt -l` muet, `go vet` 0 et tests de `internal/domain`, `internal/platform/duckdb` (sans tag integration) et `internal/service` ok, un paquet à la fois.
+
+**Conclusion / prochaine étape** : au superviseur — push, CI, fusion dans `feat/v75`.

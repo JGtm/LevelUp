@@ -101,12 +101,22 @@ export interface FlagReturnNow {
   occupants: number
 }
 
-/** flagReturnAt rend les lâchers ACTIFS à une image — leur position, leur jauge, leur monde. */
+/**
+ * flagReturnAt rend les lâchers ACTIFS à une image — leur position, leur jauge, leur monde.
+ *
+ * L'IMAGE EST UN RÉEL PENDANT LA LECTURE : la boucle avance de `dt × fps` (useReplayPlayback),
+ * seul un saut (curseur, pas à pas, lien) pose une image entière. Les séries d'un lâcher sont
+ * échantillonnées par image ENTIÈRE ; l'index se prend donc sur la partie entière. Sans ce
+ * plancher, un index fractionnaire lisait `undefined` dans les tableaux typés, le tracé
+ * recevait des NaN et la zone ne se peignait QUE sur une image posée par un saut — invisible
+ * en lecture (constat utilisateur du 2026-10-07 : « il n'y est plus une seconde après »).
+ */
 export function flagReturnAt(drops: readonly FlagReturnDrop[], frame: number): FlagReturnNow[] {
   const out: FlagReturnNow[] = []
+  const at = Math.floor(frame)
   for (const d of drops) {
-    if (frame < d.t0 || frame > d.t1) continue
-    const i = frame - d.t0
+    if (at < d.t0 || at > d.t1) continue
+    const i = at - d.t0
     out.push({
       team: d.team,
       x: d.x[i],

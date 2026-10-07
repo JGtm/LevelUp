@@ -112,3 +112,17 @@ describe('AscensionLayout — la rangée d’onglets', () => {
     expect(screen.getByText('Trends')).toBeInTheDocument()
   })
 })
+
+// LA LARGEUR (plan Tactique v2, L4.1) : les six onglets d'Ascension occupent toute la largeur de la
+// fenêtre, avec la marge de 24 px des pages pleine largeur — plus de conteneur centré borné à 6xl.
+describe('AscensionLayout — la largeur de la page', () => {
+  it('pleine largeur : ni conteneur centré ni borne 6xl, marge p-6', () => {
+    const { container } = renderWithProviders(<AscensionLayout />)
+    const main = container.querySelector('main')
+    expect(main).not.toBeNull()
+    const classes = (main?.className ?? '').split(/\s+/)
+    expect(classes).not.toContain('container')
+    expect(classes).not.toContain('max-w-6xl')
+    expect(classes).toContain('p-6')
+  })
+})

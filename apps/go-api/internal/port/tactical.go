@@ -94,15 +94,13 @@ type TacticalRepository interface {
 	// les scans de la même fenêtre.
 	KillPositions(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalPositions, error)
 
-	// KillEvents rend l'univers des matchs retenus ET le journal de leurs morts,
-	// sous la forme que analysis/coordination consomme (victime, tueur crédité,
-	// instant). Même portée que KillPositions : tous les joueurs.
+	// KillEvents rend l'univers des matchs retenus ET le journal de leurs morts
+	// (victime, tueur crédité, instant). Même portée que KillPositions : tous les
+	// joueurs. Le bloc de coordination des pages Sessions et Séries temporelles en lit
+	// l'univers.
 	//
-	// `filtre.MapID` est OPTIONNEL ici (vide = toutes les cartes) : la page
-	// Escouade mesure l'échange d'une COMPOSITION, qui n'a pas de carte, et
-	// resserre le périmètre sur ses matchs partagés côté service. Une seconde
-	// requête pour ce seul cas aurait donné deux définitions du journal des
-	// morts d'un joueur.
+	// `filtre.MapID` est OPTIONNEL ici (vide = toutes les cartes) : ces pages lisent
+	// une liste de matchs, pas une carte.
 	KillEvents(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalKillEvents, error)
 
 	// MortsAvecContexte rend l'univers ET les morts LOCALISEES de ses matchs, avec ce que le
@@ -127,6 +125,13 @@ type TacticalRepository interface {
 	// aussi bien plus etroite — une seule face (la victime, et c'est le joueur de la page),
 	// deux colonnes, le meme perimetre en liste blanche.
 	MortsParCarte(ctx context.Context, filtre domain.TacticalQuery) (map[string][]domain.PositionSample, error)
+
+	// ContextesDeMort rend le voisinage mesure au sync (`match_death_context_latest`) de TOUTES
+	// les morts des matchs de la liste blanche `filtre.Matchs` — obligatoire : une liste non posee
+	// est refusee, jamais lue sur l'historique entier ; vide = aucune ligne. Sert le placement
+	// d'une mort (seul / pres) au detail d'une zone ; l'appariement a une mort precise est fait
+	// par l'appelant.
+	ContextesDeMort(ctx context.Context, filtre domain.TacticalQuery) ([]domain.ContexteDeMort, error)
 
 	// MatchsOuvrables verifie, pour la liste de match_id donnee, lesquels `playerXUID` a
 	// REELLEMENT joues (ADR 0029, meme garde que Couche B / IsParticipant) et rend leur

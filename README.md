@@ -32,7 +32,7 @@ The biggest release so far. Halo Infinite records a film of every match; until n
 - **Rounds counted as rounds** — on modes decided by rounds the score shown is the rounds won and lost, because the API's point score can hand the advantage to the side that lost
 
 **Tactics tab**
-- **The maps you play**, their record, and an analysis view on the map plan: where you spend your time, where you die, where you kill, where you die isolated, where wins and losses part ways, and the routes you take
+- **One cockpit screen**: the maps you play with their record, the map plan with seven readings (where you die, where you kill, your kills − deaths balance, where wins and losses part ways, where you spend your time, your routes after respawning, where you die alone), and the zone you pick, named as in the game, with mini-tiles that open the replay at the exact second
 
 **Squad, sessions and match view**
 - **"The shapes you keep"** — six ways of reading a squad across nineteen cards, plus the equipment used / kept / wasted block on the Squad and the Sessions
@@ -111,7 +111,7 @@ Everything read from a film is Halo Infinite only — Halo 5 keeps its own pages
 - **Objectives** — create individual or squad challenges (collective or competitive) on any Halo metric with configurable windows, tiers (Normal / Heroic / Legendary / Mythic), and narrative arcs; earn Prestige Points (PP) on completion
 - **Coaching** — proposals built from your own measured patterns, not from a generic checklist
 - **Achievements** — milestone grid per title
-- **Tactics** — a grid of the maps you play with their record, and an analysis view on the map plan answering six questions: where you spend your time, where you die, where you kill, where you die isolated, where wins and losses part ways, and the routes you take. Four KPI tiles (matches retained, coverage, exchange, isolated deaths), a team coordination card whose radius is read per match from the variant reference, and a cell click that opens the replay at the exact instant
+- **Tactics** — one cockpit screen: the maps you play with their record, a search and a sample floor; the map plan answering seven readings (deaths, kills, kills − deaths, wins − losses, time on map, routes after respawn, deaths alone, the latter with a radius read per match from the variant reference), its settings in pills and a vertical scale; and the selected zone, named from the in-game callouts, whose mini-tiles (what happened, weapon, alone or near, result and score) open the replay at the exact instant. The match view's "Ground occupancy" opens the tab on the match's map
 
 ### Community
 - **Leaderboards** — the world ranking alongside the local one, with an honest empty state when a ranking could not be retrieved

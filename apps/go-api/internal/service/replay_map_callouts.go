@@ -29,6 +29,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
@@ -71,7 +72,7 @@ func (s *replayService) MapCallouts(ctx context.Context, matchID string) (*repla
 func zonesPourIdentites(ctx context.Context, repoRoot, titleSlug string,
 	keys port.MatchMapKeys) (*replay.MapCalloutsEntry, bool) {
 	res := title.NewPathResolver(repoRoot)
-	cat, err := replay.LoadMapCallouts(res.MapCalloutsPath(titleSlug))
+	cat, err := catalogueDeCallouts(res.MapCalloutsPath(titleSlug))
 	if err != nil {
 		// Le catalogue est VERSIONNÉ : son absence ou son illisibilité n'est pas le cas
 		// nominal d'une carte sans zones — on le dit, puis on dégrade.
@@ -91,6 +92,35 @@ func zonesPourIdentites(ctx context.Context, repoRoot, titleSlug string,
 		return nil, false
 	}
 	return &entry, true
+}
+
+// chargerCallouts lit et décode le catalogue d'un chemin ; variable de paquet pour que le test compte
+// les lectures du fichier.
+var chargerCallouts = replay.LoadMapCallouts
+
+// cataloguesDeCallouts : les catalogues décodés, par chemin, pour la vie du processus.
+var cataloguesDeCallouts = struct {
+	sync.Mutex
+	parChemin map[string]*replay.MapCalloutsCatalog
+}{parChemin: map[string]*replay.MapCalloutsCatalog{}}
+
+// catalogueDeCallouts rend le catalogue décodé d'un chemin, lu UNE fois par processus : le fichier est
+// versionné (plusieurs Mo de JSON) et ne change qu'au déploiement, donc au redémarrage. Le décoder à
+// chaque requête — chaque clic sur une zone de l'onglet Tactique, chaque ouverture d'un rejeu —
+// payait ce décodage à chaque fois. Un échec n'est pas gardé : la lecture suivante réessaie. Le
+// catalogue rendu est partagé et se lit sans être modifié.
+func catalogueDeCallouts(chemin string) (*replay.MapCalloutsCatalog, error) {
+	cataloguesDeCallouts.Lock()
+	defer cataloguesDeCallouts.Unlock()
+	if cat, ok := cataloguesDeCallouts.parChemin[chemin]; ok {
+		return cat, nil
+	}
+	cat, err := chargerCallouts(chemin)
+	if err != nil {
+		return nil, err
+	}
+	cataloguesDeCallouts.parChemin[chemin] = cat
+	return cat, nil
 }
 
 // calloutsParModule tente l'essai 1 : nom de carte -> module -> entrée du catalogue.

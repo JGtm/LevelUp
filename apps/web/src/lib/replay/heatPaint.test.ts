@@ -275,12 +275,12 @@ describe('heatRamp', () => {
   const alphasDe = (ramp: string[]) => ramp.map((c) => Number(/,([\d.]+)\)$/.exec(c)?.[1]))
   const rgbDe = (c: string) => /rgba\((\d+),(\d+),(\d+)/.exec(c)!.slice(1).map(Number)
 
-  it('rend une rampe de HEAT_RAMP_STEPS paliers, opacité croissante et bornée à 0,75', () => {
+  it('rend une rampe de HEAT_RAMP_STEPS paliers, opacité croissante et bornée à 0,85', () => {
     const ramp = heatRamp(['#1E3A5F', '#60A5FA'])
     expect(ramp).toHaveLength(HEAT_RAMP_STEPS)
     const alphas = alphasDe(ramp)
-    expect(alphas[0]).toBeCloseTo(0.12, 3)
-    expect(alphas[alphas.length - 1]).toBeCloseTo(0.75, 3)
+    expect(alphas[0]).toBeCloseTo(0.45, 3)
+    expect(alphas[alphas.length - 1]).toBeCloseTo(0.85, 3)
     for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThan(alphas[i - 1])
   })
 

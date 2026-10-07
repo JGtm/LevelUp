@@ -32,7 +32,7 @@ La plus grosse version à ce jour. Halo Infinite enregistre un film de chaque ma
 - **Les manches comptent comme des manches** — sur les modes à manches, le score affiché est le nombre de manches gagnées et perdues, parce que le score en points de l'API peut donner l'avantage au camp qui a perdu
 
 **Onglet Tactique**
-- **Les cartes que tu joues**, leur bilan, et une vue d'analyse sur le plan de la carte : où tu passes ton temps, où tu meurs, où tu tues, où tu meurs isolé, où les victoires et les défaites se séparent, et les routes que tu empruntes
+- **Un seul écran en cockpit** : les cartes que tu joues avec leur bilan, le plan de la carte et ses sept lectures (où tu meurs, où tu tues, ton solde frags − morts, où les victoires et les défaites se séparent, où tu passes ton temps, tes trajets après réapparition, où tu meurs seul), et la zone que tu choisis, nommée comme dans le jeu, avec des mini-tuiles qui ouvrent le rejeu à la seconde près
 
 **Escouade, sessions et fiche de match**
 - **« Les formes retenues »** — six lectures d'une escouade sur dix-neuf cartes, et le bloc équipement utilisé / gardé / gâché sur l'Escouade et les Sessions
@@ -111,7 +111,7 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 - **Objectifs** — créez des défis individuels ou d'escouade (collectifs ou compétitifs) sur n'importe quelle métrique Halo, avec des fenêtres configurables, des paliers (Normal / Heroic / Legendary / Mythic) et des arcs narratifs ; gagnez des Prestige Points (PP) à la complétion
 - **Entraînement** — des propositions construites sur vos propres motifs mesurés, pas sur une liste générique
 - **Réalisations** — la grille des jalons par titre
-- **Tactique** — une grille des cartes que vous jouez avec leur bilan, et une vue d'analyse sur le plan de la carte qui répond à six questions : où vous passez votre temps, où vous mourez, où vous tuez, où vous mourez isolé, où les victoires et les défaites se séparent, et les routes que vous empruntez. Quatre tuiles de KPI (matchs retenus, couverture, échange, morts en isolement), une carte de coordination d'équipe dont le rayon est lu par match dans le référentiel des variantes, et un clic de cellule qui ouvre le rejeu à l'instant exact
+- **Tactique** — un écran unique en cockpit : les cartes que vous jouez avec leur bilan, une recherche et un plancher d'échantillon ; le plan de la carte qui répond à sept lectures (morts, frags, solde frags − morts, victoires − défaites, temps de présence, trajets après réapparition, morts seul, cette dernière avec un rayon lu par match dans le référentiel des variantes), ses réglages en pilules et une échelle verticale ; et la zone sélectionnée, nommée d'après les appellations du jeu, dont les mini-tuiles (ce qui s'est passé, arme, seul ou près, résultat et score) ouvrent le rejeu à l'instant exact. L'« Occupation du terrain » de la fiche du match ouvre l'onglet sur la carte du match
 
 ### Communauté
 - **Classements** — le classement mondial à côté du classement local, avec un état vide honnête quand un classement n'a pas pu être récupéré

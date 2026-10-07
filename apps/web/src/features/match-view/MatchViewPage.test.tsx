@@ -93,7 +93,7 @@ describe('MatchViewPage — match_not_found (pas encore synchronisé)', () => {
 
     expect(screen.getByText('Match pas encore synchronisé')).toBeInTheDocument()
     expect(
-      screen.getByText(/n'est pas encore présent dans la base locale/),
+      screen.getByText(/n'est pas encore dans la base locale/),
     ).toBeInTheDocument()
     // Pas l'écran d'erreur générique (pageErrorTitle) ni le bouton Réessayer.
     expect(screen.queryByText('Match introuvable ou erreur de chargement.')).not.toBeInTheDocument()

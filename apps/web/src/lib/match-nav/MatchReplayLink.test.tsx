@@ -22,14 +22,16 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     children?: React.ReactNode
     to: string
     params?: Record<string, string>
+    search?: Record<string, string>
   } & React.AnchorHTMLAttributes<HTMLAnchorElement>
   return {
     ...actual,
-    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+    Link: ({ children, to, params, search, ...rest }: LinkStubProps) => {
       let href = to
       for (const [key, value] of Object.entries(params ?? {})) {
         href = href.replace(`$${key}`, value)
       }
+      if (search) href += `?${new URLSearchParams(search).toString()}`
       return (
         <a href={href} {...rest}>
           {children}
@@ -87,6 +89,43 @@ describe('MatchReplayLink — les deux portes, chacune pour elle-même', () => {
   it('titre AVEC `replay` mais ligne sans artefact : rien', () => {
     setTitleCaps(['replay'])
     rendre(false)
+    expect(screen.queryByRole('link', { name: LABEL })).not.toBeInTheDocument()
+  })
+})
+
+// La VARIANTE 36 px de la tuile « Rejeu » de l'onglet Tactique : le lien porte l'instant et son
+// horloge (`?t=&clock=`), et garde les DEUX portes.
+describe('MatchReplayLink — variante `large` avec instant', () => {
+  function rendreLarge(available: boolean) {
+    renderWithProviders(
+      <MatchReplayLink
+        available={available}
+        matchId="match-1"
+        playerSlug="me"
+        label={LABEL}
+        variant="large"
+        search={{ t: '4200', clock: 'match' }}
+      />,
+    )
+  }
+
+  it('le lien porte ?t=&clock= et la boîte de 36 px', () => {
+    setTitleCaps(['replay'])
+    rendreLarge(true)
+    const lien = screen.getByRole('link', { name: LABEL })
+    expect(lien.getAttribute('href')).toBe('/{-$lang}/t/titre_test/players/me/matches/match-1/replay?t=4200&clock=match')
+    expect(lien.className).toContain('h-9 w-9')
+  })
+
+  it('sans artefact : rien', () => {
+    setTitleCaps(['replay'])
+    rendreLarge(false)
+    expect(screen.queryByRole('link', { name: LABEL })).not.toBeInTheDocument()
+  })
+
+  it('titre sans `replay` : rien', () => {
+    setTitleCaps(['ranked'])
+    rendreLarge(true)
     expect(screen.queryByRole('link', { name: LABEL })).not.toBeInTheDocument()
   })
 })

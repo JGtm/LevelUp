@@ -74,11 +74,16 @@ func grappesDeLUnivers(sidecars map[string]*domain.TacticalRasterSidecar,
 	return out
 }
 
-// zonesPures projette les zones du port vers le type du paquet d'algo, qui reste pur.
+// zonesPures projette les zones du port vers le type du paquet d'algo, qui reste pur : nom et
+// point de référence (grappes de spawn), forme et tranche (nom en jeu d'une cellule).
 func zonesPures(zones []domain.ZoneNommee) []tactical.ZoneNommee {
 	out := make([]tactical.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
-		out = append(out, tactical.ZoneNommee{NomFR: z.NomFR, NomEN: z.NomEN, X: z.X, Y: z.Y})
+		out = append(out, tactical.ZoneNommee{
+			NomFR: z.NomFR, NomEN: z.NomEN, X: z.X, Y: z.Y,
+			Polygone: z.Polygone, Parties: z.Parties, Trous: z.Trous,
+			ZBas: z.ZBas, ZHaut: z.ZHaut, VolumeIndex: z.VolumeIndex,
+		})
 	}
 	return out
 }
@@ -111,9 +116,9 @@ func spawnsDeDepart(sidecars map[string]*domain.TacticalRasterSidecar,
 // l'univers ENTIER avec elle.
 //
 // ELLE EST APPELEE AVANT LE DISPATCH DE `Raster` (correction P1-1) : la restriction porte
-// sur la liste blanche, donc elle vaut pour les lectures SQL (morts / kills / gagne) et pour
-// le KPI d'echange autant que pour les lectures d'artefact. Appliquee dans la seule branche
-// des sidecars, elle rendait 200 sur l'univers ENTIER sous un libelle de grappe.
+// sur la liste blanche, donc elle vaut pour les lectures SQL (morts / kills / gagne / solde /
+// isole) autant que pour les lectures d'artefact. Appliquee dans la seule branche des
+// sidecars, elle rendait 200 sur l'univers ENTIER sous un libelle de grappe.
 //
 // LES GRAPPES RENDUES SONT CELLES DE L'UNIVERS NON RESTREINT : c'est la liste que la page
 // propose, et la reduire a la selection courante y enfermerait l'utilisateur.

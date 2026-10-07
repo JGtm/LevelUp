@@ -18,8 +18,8 @@
 // ─── LE MEME CADRAGE QUE LES AUTRES BLOCS DE LA PAGE ───────────────────────────────────
 //
 // `firstBloodScope` donne les matchs du perimetre filtre, les xuid du roster dans l'ordre
-// (le joueur principal en tete) et leurs gamertags — le MEME cadrage que l'echange, les
-// paires d'assistance (Q32d) et le premier frag. Une seconde definition du roster aurait
+// (le joueur principal en tete) et leurs gamertags — le MEME cadrage que les paires
+// d'assistance (Q32d) et le premier frag. Une seconde definition du roster aurait
 // donne deux listes de joueurs sur la meme page.
 package teammates
 

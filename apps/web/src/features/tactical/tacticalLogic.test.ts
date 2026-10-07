@@ -19,7 +19,6 @@ import type { TacticalMapCard } from '@/lib/api/types'
 
 import {
   barreResultats,
-  couvertureGrille,
   estOuvrable,
   nomCarte,
   trierCartes,
@@ -120,18 +119,6 @@ describe('barreResultats', () => {
     const parts = barreResultats(carte({ matchs: 10, victoires: -3, defaites: 4 }))
     expect(parts.victoires).toBe(0)
     expect(parts.defaites).toBeCloseTo(0.4)
-  })
-})
-
-describe('couvertureGrille', () => {
-  it('compte les cartes ET la somme de leurs matchs', () => {
-    expect(
-      couvertureGrille([carte({ matchs: 12 }), carte({ matchs: 3 }), carte({ matchs: 30 })]),
-    ).toEqual({ cartes: 3, matchs: 45 })
-  })
-
-  it('grille vide : deux zéros', () => {
-    expect(couvertureGrille([])).toEqual({ cartes: 0, matchs: 0 })
   })
 })
 

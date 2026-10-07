@@ -1,0 +1,1565 @@
+# Plan : Tactique v2, vue cockpit — 2026-10-06
+
+> Sources, à lire avant tout lot, qui FONT FOI pour le rendu :
+> - maquette validée par l'utilisateur le 2026-10-06, position « Après », largeur « pleine » :
+>   `.ai/V7.5/MAQUETTE_TACTIQUE_2026-10-06.html` (script lisible : bibliothèque `RL` l. 484-668 dont
+>   `zoneOf` l. 646-666 ; `planSvg` l. 765-792 ; `vLegend` / `rampCss` / `legendBounds` l. 794-812 ;
+>   `mapItem` l. 866-881 ; `planInfo` l. 882-890 ; `renderApres` l. 891-984 ; `zoneLabel` l. 992-997 ;
+>   `matchTile` l. 1001-1015 ; feuille de style de la vue cockpit l. 194-284, bascule à trois colonnes
+>   l. 222-228) ; les lignes « remplace : … », les encarts « Maquette. », la ligne « N autres cartes
+>   ouvrables non reproduites » et le pied « budget de hauteur » ne se portent pas ;
+> - relevés : `.ai/V7.5/MESURES_TACTIQUE_2026-10-06.md` (Q1-Q13, zones nommées, calculs, longueurs
+>   des mini-tuiles) ;
+> - `.ai/thought_log.md`, entrées Tactique de septembre (phases 4 à 8, lots M1 et M1b, lot 3.2 du
+>   pas adaptatif, retours rejeu L2 « le fond ne bouge plus ») ;
+> - plan modèle de la même famille : `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`.
+>
+> Contrat d'exécution : skill `plan-execution` (ordre strict, un lot à la fois, gate passé avant le
+> suivant, aucun item sans statut, zéro fix hors périmètre, découvertes consignées §8). Statuts :
+> `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
+> Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
+>
+> Statut du plan : **CLOS — lots L1 à L12 exécutés (2026-10-06 / 2026-10-07) sur `feat/tactique-v2`,
+> `feat/v75` fusionnée (`2668848b1`), revue adversariale faite en deux rondes (L11.4, L12) ; seul
+> L10.2 reste statué `[!]` (journal L10).** Fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
+> (créée sur `origin/feat/v75` = `b033d30f0`), worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`.
+
+## 0. Objectif, critère de succès, hors périmètre
+
+**Objectif.** L'onglet Tactique (5e onglet d'Ascension) devient UN écran à trois colonnes sous la
+barre de filtres inchangée : « Cartes jouées » à gauche, la carte du plan au centre (titre = nom de
+la carte, trois réglages en pilules, fond + calque, rampe verticale), « Zone sélectionnée » à
+droite (nom en jeu de la zone, valeur, mini-tuiles « Rejeu »). Une lecture neuve « Solde frags −
+morts » ; le nom de zone et les champs des mini-tuiles sont résolus côté Go. Tout ce qui perd son
+dernier lecteur est supprimé (règle n° 7) : riposte, coordination d'équipe, tuiles KPI, barre
+d'outils, bascule d'écran, H2, pied de carte, avec leurs chaînes Go, tests, chaînes UI et entrées
+openapi.
+
+**Critère de succès.** (1) Le rendu suit la maquette « Après », pleine largeur (S1-S16) ; (2) les
+sept lectures sont servies, `solde` comprise, chacune avec son unité ; (3) le nom de zone suit la
+règle V6 et tient les deux témoins (D3, D26) ; (4) les mini-tuiles portent les champs V7, le
+bouton de rejeu n'apparaît que si l'artefact existe ; (5) l'inventaire §4 est supprimé, chaque
+preuve grep à 0 ; (6) tous les gates des lots verts, dernière exécution dans la session ;
+(7) Halo 5 et toute capability absente dégradent proprement (jamais un 500, jamais une donnée
+inventée) ; (8) docs du lot de clôture à jour.
+
+**Hors périmètre** (consigné, non traité) :
+- Tout ce qui précède la rangée d'onglets d'Ascension (en-tête, sous-titre, bandeau de conseils,
+  onglets) et la barre de filtres (`TacticalFilterBar` sur `useLocalFilterBar`,
+  `features/_shared/useLocalFilterBar.tsx:174`) : inchangés. Les autres onglets d'Ascension
+  n'héritent que de la largeur (V2).
+- Page Escouade : `coordination.Echanges` / `Mesurer` / `Ripostes` et `TacticalRepository.KillEvents`
+  (lus par `service/teammates/teammates_squad_echange.go:133-411`) restent.
+- Pages Sessions et Séries temporelles (`CoordinationBlock`, `analysis/coordination/bloc.go`) : rien.
+- Rejeu 2D : son nommage de zone (centre 3D le plus proche) n'est PAS aligné ici (découverte §8).
+- Sidecars, cuisson, recuisson, backfill : rien.
+- Page Explorateur : un lien vers elle seulement (L10), aucun changement de sa page.
+
+## 1. Décisions
+
+### 1.1 Validées par l'utilisateur (2026-10-06, brief §2) — fermes
+
+- **V1** La page reste le 5e onglet d'Ascension ; tout ce qui précède les onglets ne change pas.
+- **V2** Le `<main>` d'Ascension passe à la largeur des autres pages (`p-6`, sans `container`
+  ni `max-w-6xl`) ; tous les onglets en héritent ; gate visuel = celui de l'utilisateur.
+- **V3** Barre de filtres inchangée.
+- **V4** Un seul écran, trois colonnes ; plus de bascule « Grille / Analyse », de H2, de barre
+  d'outils séparée, de bandeau de tuiles KPI, de carte « Coordination d'équipe ». Gauche
+  « Cartes jouées » (≈ 208 px, recherche sans accents, liste verticale à défilement interne de
+  hauteur FIXE, vignettes ≈ 100 px 16:9, triées par matchs décroissants, carte active surlignée,
+  repli « N cartes sous le plancher », la plus jouée choisie d'office sans `?carte=`). Centre :
+  titre = nom + ⓘ (dénominateurs, pas réel), pilules « Lecture », « Joueurs » (Escouade désactivé
+  sans composition), « Réapparition » ; fond + calque, boîte de 800 px de haut, rapport du fond
+  respecté, étiquette discrète du nom de zone, rampe verticale de 220 px au bord droit, bandeau
+  d'état des lectures d'artefact ; plus de pied. Droite « Zone sélectionnée » (≈ 360 px, hauteur de
+  la carte du plan). La page défile.
+- **V5** Lectures et libellés : `morts` « Morts », `kills` « Frags », `solde` « Solde frags −
+  morts » (NEUVE), `gagne` « Victoires − défaites », `temps` « Temps de présence », `routes`
+  « Trajets après réapparition », `isole` « Morts seul » ; EN « Deaths », « Kills », « Kills −
+  deaths », « Wins − losses », « Time on map », « Routes after respawn », « Deaths alone » ; unités
+  FR « morts par match », « frags par match », « frags − morts par match », « engagements par
+  match », « secondes par match », « passages par match », « morts seul par match ».
+- **V6** Nom en jeu de la zone résolu CÔTÉ GO (réponse de `/tactical/{map}/cellule`) via
+  `TacticalCalloutsStore.ZonesDeLaCarte` ; règle (a) polygone contenant le centre ET tranche
+  [z_bas − 0,25 ; z_haut + 0,25] contenant le z médian ; (b) à plusieurs, la tranche la plus
+  étroite qui contient la majorité des événements ; (c) sinon le polygone le plus proche à moins de
+  2 m (distance au bord), tranches compatibles d'abord ; (d) sinon pas de nom, « Zone sans nom ».
+- **V7** Mini-tuile d'une contribution (contrat `cellule` enrichi, additif) : bande d'issue
+  3 px, mode en libellé de l'app, score mon camp d'abord, issue en mot, date · heure au fuseau du
+  joueur ; instant, « Tué par … · arme » / « A tué … · arme », badge « seul · N m » / « près · N m »
+  (± 1,5 s, portée du radar du match, « seul » sans distance sans coéquipier visible, pas de badge
+  sur un frag) ; bouton de rejeu seulement si l'artefact existe, lien `?t=&clock=` ; tri du plus
+  récent au plus ancien ; ellipse sur l'arme seule, texte complet au survol.
+- **V8** `HEAT_ALPHA_MIN` 0,12 → 0,45, `HEAT_ALPHA_MAX` 0,75 → 0,85 (noyau partagé, voulu) ; la
+  rampe CSS de légende suit.
+- **V9** Sémantique factuelle et neutre (liste du brief §2.9) ; FR ET EN dans
+  `lib/i18n/manifests/tactical.toml` ; clés mortes purgées.
+- **V10** Retirés avec chaîne Go, tests, chaînes et openapi s'ils n'ont plus de lecteur : riposte
+  (`Echange`), « Coordination d'équipe » (bloc `Coordination`), tuiles KPI (`KPIStrip` ici,
+  `Isolement` du raster sans lecteur), `TacticalToolbar`, `TacticalScreenSwitch`, H2, `PiedDuPlan`,
+  `tactical.maps.intro`, pied de la grille. La portée du radar reste nécessaire (badge, lecture
+  `isole`) : relogée, pas recopiée.
+- **V11** Liens croisés au dernier lot (Vue match « Occupation du terrain » → tactique ; vignette →
+  Explorateur seulement si l'Explorateur sait filtrer par carte).
+- **V12** Découvertes de la maquette consignées §8, non traitées.
+
+### 1.2 Tranchées par le planificateur — à confirmer au « go »
+
+- **D1 — Ordre : Go additif (L1-L3), web (L4-L8), PUIS suppressions Go et contrat (L9), liens
+  (L10), clôture (L11).** *Contredit le brief §3* (« Go … → suppressions puis web ») : le web LIT
+  aujourd'hui `echange`, `coordination`, `isolement`, `matchs_sans_rayon`
+  (`TacticalAnalysisView.tsx:255-263, 382-429`, `TacticalCoordinationCard.tsx:38-51`) ; retirer ces
+  champs du contrat avant que le web cesse de les lire ferait rougir `tsc` au gate du lot Go
+  (`npm run generate-types` en fait partie). Même ordre que le plan modèle (L5 web puis L6 Go).
+- **D2 — Lecture `solde` dans `analysis/tactical`, même machinerie que `CellulesSignees`.**
+  `solde.go` (NEUF) : `RasteriseSolde(g, matchs, frags, morts []domain.PositionSample)` rend un
+  `*Raster` qui garde les passages par match de l'UNION des deux faces (le plancher en matchs
+  distincts, `PlancherMatchsParCellule`, porte sur l'union : maquette `raster` l. 547-550) et le
+  compte par face ; `(*Raster).CellulesSolde()` : `Valeur = (frags − morts) / N` (N = matchs
+  MESURÉS de l'univers, chaque face normalisée par le même N), `Brut = frags − morts`, `Matchs`,
+  `Frags`, `Morts` ; `Somme` propage les comptes par face. `domain.CelluleTactique` gagne `Frags`,
+  `Morts` (`omitempty`, lus par la sous-ligne de zone « N frags, M morts · K matchs distincts »,
+  maquette l. 966). Service : `validerLecture` (`tactical_service_perimetre.go:37-43`),
+  `facesDeLaQuestion` (deux faces, `tactical_service.go:314-334`), `cellulesLisibles` /
+  `rasteriser` (pas adaptatif sur les cellules lisibles de la lecture signée,
+  `tactical_service_grille.go:36-73`), `remplirRaster` (`EchelleSymetrique`, l. 97-112).
+- **D3 — Nom de zone : algorithme PUR `analysis/tactical/zones.go` (+ `geometrie.go`).** Forme d'une
+  zone = contour + parties, trous exclus, règle pair-impair (c'est la forme que le rendu dessine,
+  `games/halo_infinite/film/replay/callouts_catalog.go:143-152`). Constantes nommées
+  `MargeTrancheZM = 0.25`, `RayonZoneM = 2` (strict : « à moins de »). (b) « majorité » = plus de
+  la moitié des événements à z connu ; à défaut de majorité pour tous les candidats, celui qui en
+  contient le plus, puis la tranche la plus étroite ; toute égalité finale par `VolumeIndex`
+  (déterminisme). **z inconnu** (lectures d'artefact `temps` / `routes`, dont les sidecars ne
+  portent aucun z ; ou z tous NULL) : (a) sans test de tranche si UN SEUL polygone contient le
+  centre ; (c) sans test de tranche si aucun ne le contient ; plusieurs polygones empilés → pas de
+  nom (l'étage ne se devine pas). Le port n'est PAS remplacé : `domain.ZoneNommee`
+  (`domain/tactical_raster.go:276-283`) gagne `Polygone`, `Parties`, `Trous`, `ZBas`, `ZHaut`,
+  `VolumeIndex` (additif) et `zonesNommees` (`service/tactical_callouts.go:75-85`) les projette ;
+  le jumeau pur `tactical.ZoneNommee` (`analysis/tactical/spawn.go:62`) idem. Le centre est celui
+  de la cellule au pas demandé ((col + 0,5) × pas, (lig + 0,5) × pas).
+- **D4 — Les z des événements viennent des DEUX lectures existantes**, pas d'une troisième :
+  `QTacticalPositions` (`platform/duckdb/tactical_repo.go:204-223`) gagne `killer_z`, `victim_z`
+  (NULL conservé → `*float64`) ; `QTacticalIsolement` (`tactical_repo_isolement.go:59-80`) gagne
+  `victim_z`. Face mort = z de la victime, face frag = z du tueur (maquette `points` l. 516-528).
+  Mêmes lignes, mêmes fenêtres : coût marginal, une seule définition des positions.
+- **D5 — Mode, score, issue, date d'une contribution : le CANONIQUE déjà en cache.**
+  `port.PlayerMatchesRepository.LoadPlayerMatches(ctx, slug, gamertag, {MapIDs: [carte]})`
+  (`port/player_matches.go:109-127` ; cache invalidé au sync, ADR 0036 I3) — une lecture par
+  requête de détail. Mode = `labelPourLocale(Summary.PairMode, locale)`
+  (`service/timeseries_service_sections.go:296`, même paquet, aucune copie). Score =
+  `analysis.ReadTeamScore` + `FormatTeamScoreLabel` + `ScoreKind`, mon camp d'abord, table
+  `rounds_decide` injectée (patron `match_history_service_enrich.go:203-225`,
+  `teammates_service_assets.go:297-330`, ADR 0032) — format UNIQUE « X - Y »
+  (`analysis/team_score_display.go:140-152`), *écart assumé à la maquette « 3 – 1 »*. Issue =
+  `Resultat` canonique existant (`domain/tactical_cellule.go:193-202`), mot et jeton côté web
+  (`useOutcomeMapping`, `outcomeTokenFromCanonical`, patron actuel `TacticalCellCard.tsx:189-199`).
+  Date = `MatchStartedAt` existant, formatée au fuseau `useAppShellStore(s => s.userTimezone)`
+  (patron `components/ui/match-card.tsx:47-60`). Dépendances injectées par `With*` (D15).
+- **D6 — Arme = le registre de fragdist.** `source_tag` → `port.KillSourceClassifier`
+  (`port/kill_source.go:20-23`, déjà câblé par `r.killSourceClassifierFor(pdb)`) → `weapon_key` →
+  `port.WeaponLabelResolver.ResolveWeaponLabels` (`port/weapon_range.go:96-101`, FR + EN depuis
+  `weapon_name_labels` / `weapon_names.toml`, mise en œuvre `WeaponRangeRepo`), UN appel par requête
+  pour toutes les clés ; publié `arme_label` + `arme_label_en`. À défaut : `categorie_source` brute
+  (enum gelée du film) ; le web traduit les quatre catégories de la maquette (`Headshot` « tir à la
+  tête », `AttachedDamage` « dégât collé », `SilentMelee` « assassinat », `ChainedProjectile »
+  « projectile en chaîne ») et n'écrit rien pour les autres. Titre sans classificateur (Halo 5) :
+  ni arme ni catégorie.
+- **D7 — Badge de placement.** Nouvelle lecture BORNÉE `TacticalRepository.ContextesDeMort(ctx,
+  q)` sur `match_death_context_latest` des seuls matchs des contributions (liste liée en constante
+  sur `match_id`, ADR 0036 I2) ; appariement PUR au contexte le plus proche à ± 1 500 ms de
+  l'instant pour la même victime (`analysis/tactical/placement.go`, `TolerancePlacementMs`) ; seuil
+  = portée du match (`s.rayonsParMatch`, donc `mappings.PorteesDuRadarParMatch`) ; comparaison =
+  `coordination.APortee` exportée (borne INCLUSIVE, d = portée → « près » : règle de l'app,
+  `analysis/coordination/isolation.go:66-74` ; *la maquette disait « seul » à ≥ 18 m*). Aucun
+  coéquipier visible (`PlusProcheM` nil) → « seul » sans distance ; portée inconnue avec une
+  distance → pas de badge ; pas de badge sur un frag ni sur une entrée / une réapparition. Publié
+  `placement {seul, distance_m}` ; distance tronquée au mètre et « < 1 » côté web. La comparaison
+  existe déjà en deux copies (`aPortee`, `vies_pres_ou_seul.go:141-145` ; inline,
+  `tactical_service_cellule.go:225`) : le badge serait la troisième → helper exporté + garde-rail
+  (CLAUDE.md n° 6, L1.1).
+- **D8 — Rejeu.** `ReplayService.AvailableSet` UNE fois par requête (`port/services.go:176-182` :
+  forme imposée pour une liste ; même présence d'artefact que `IsAvailable`,
+  `service/replay_service.go:62-77`), publié `replay_available` par contribution. Bouton =
+  `lib/match-nav/MatchReplayLink.tsx` étendu (prop `search` portant `t` et `clock`, variante
+  `large` 36 px = forme de `features/match-view/MatchHeader.replayLink.tsx:37-46`) : une seule
+  copie du lien (CLAUDE.md n° 6), ses deux portes (capability `replay` + `available`) gardées ;
+  aucun import de `features/match-view` (lot voisin).
+- **D9 — Portée du radar relogée.** `TacticalRaster.RayonsRadarM` (`rayons_radar_m`, `omitempty`),
+  posé par `rasterIsole` avec `rayonsDistincts` (`tactical_service_isolement.go:191-203`, gardé) ;
+  le bloc `Coordination` part en L9. L'ⓘ de « Morts seul » cite la ou les portées, les matchs sans
+  portée (`matchs_sans_rayon`) et les morts écartées faute de coéquipier en mesure d'accompagner
+  (`morts_equipe_a_terre`, champ publié sans lecteur aujourd'hui : il en gagne un, c'est un
+  dénominateur de la lecture).
+- **D10 — Zone sélectionnée par défaut = la plus chaude** de la lecture affichée (|valeur| max, à
+  égalité le plus de matchs distincts : maquette `selectedCell` l. 751-755, `RL.hottest`
+  l. 559-566), tant que l'utilisateur n'a rien cliqué ; remise à zéro au changement de lecture, de
+  joueurs, de réapparition ou de carte (mécanisme existant, `TacticalAnalysisView.tsx:118-123`).
+  « Aucune zone sélectionnée » quand la lecture n'a aucune cellule.
+- **D11 — Carte par défaut.** `carteEffective(scope.carte, cartes)` (pur) : la carte de l'URL si
+  elle est ouvrable dans le filtre, sinon la plus jouée ouvrable ; l'URL n'est pas réécrite (pas
+  d'entrée d'historique fantôme). Carte de l'URL absente du filtre ou sous le plancher : le plan
+  affiche son nom et « Aucun match sur cette carte dans le filtre », sans requête de lecture.
+- **D12 — Lectures d'artefact dans la colonne de zone.** Même panneau pour toutes les lectures
+  (valeur, matchs distincts, mini-tuiles) ; fait d'une tuile `temps` « Entrée dans la zone »,
+  `routes` « Réapparition » (le serveur sert déjà ces contributions,
+  `tactical_service_cellule.go:340-377`) ; `questionSansCellule` (`tacticalView.logic.ts:164-166`)
+  et ses deux chaînes impératives disparaissent. Champ `face` du contrat : `mort` | `frag` |
+  `entree` | `reapparition`.
+- **D13 — Grille et hauteurs**, constantes nommées dans `features/tactical/cockpit.logic.ts` :
+  colonne des cartes 208 px de large et 551 px de haut (maquette l. 222-228), colonne de zone
+  360 px, boîte du plan 800 px de haut au plus, rampe 220 px, marge de légende 90 px ; trois
+  colonnes dès 1 400 px de large, en deçà les cartes en rangée défilante au-dessus (maquette
+  `.mlist` l. 203). `PLAN_HAUTEUR_MAX_PX` (720, `tacticalView.logic.ts:189`) est remplacé.
+- **D14 — Rampe de légende construite depuis la rampe PEINTE** (`heatRamp` / `heatRampDivergent`
+  déjà résolues dans `usePeinture`, échantillonnées en arrêts) : elle suit l'opacité V8 sans
+  seconde source ; verticale (`0deg`, borne basse en bas, positif en haut).
+- **D15 — Dépendances du détail injectées par `With*`** (`tactical_service_cablage.go`) :
+  `WithPlayerMatches(repo, slug, gamertag)`, `WithRoundsDecide`, `WithKillSourceClassifier`,
+  `WithWeaponLabels`, `WithReplay`. Chaque source est best-effort : nil ou
+  `ErrCapabilityNotSupported` → Debug, champ absent ; autre erreur → Warn / Error nominatif, champ
+  absent ; la liste des contributions est toujours servie. Une section de durée par source (ADR
+  0036 I6). La fabrique `Tactical` quitte `api/wire/registry_pages.go` (619 L, au-delà du seuil)
+  pour `api/wire/registry_pages_tactical.go` (NEUF).
+- **D16 — Lien vers l'Explorateur.** L'Explorateur filtre par LIBELLÉ de carte, FR d'abord
+  (`?maps=`, `explorerScope.ts:13,56,110` ; `filterByExplorerMapNames`,
+  `service/match_history_service_filters.go:197-210`), pas par `map_id`. Lien posé avec
+  `maps=<map_name_fr || map_name>` SI L10 établit sur pièces que la tactique
+  (`mapNameFRFromAssetTranslations`, `tactical_repo.go:155-163`) et l'historique résolvent le même
+  libellé FR ; sinon `[!]`, rien d'inventé. La vignette devient un groupe (bouton de sélection +
+  icône-lien), jamais un lien dans un bouton.
+- **D17 — Lien Vue match → Tactique** : `/ascension/tactique` avec `search={{ carte }}`, posé dans
+  le bandeau d'« Occupation du terrain » (`features/match-view/MatchPositionsHeatmap.tsx`), après
+  vérification que `MatchViewHeader.MapID` (`meta.MapAssetID`,
+  `match_view_builders_header.go:114-116`) est bien `match_registry.map_id`. Après fusion de
+  `feat/matchview-emprise` ; sinon insertion minimale dans ce seul fichier.
+- **D18 — Opacité** : les deux constantes (`lib/replay/heatPaint.ts:35-36`) et les deux assertions
+  (`heatPaint.test.ts:282-283`), rien d'autre. Elles changent aussi la carte de chaleur du rejeu 2D,
+  « Occupation du terrain » de la Vue match (`MatchPositionsHeatmap.tsx:49,134`) et les vignettes :
+  voulu (noyau partagé), dit au compte rendu.
+- **D19 — Grappes de réapparition** : comportement existant (servies par les lectures d'artefact et
+  par le filtre de grappe, `tactical_service_lectures.go:64-157`) ; la pilule « Réapparition » offre
+  « Toutes » puis les grappes nommées de la réponse affichée.
+- **D20 — Plus de pied de carte** ; les cellules hors du cadre du fond (aujourd'hui
+  `footer_off_frame`) passent dans l'ⓘ quand il y en a (« dit, jamais avalé »).
+- **D21 — `KPIStrip` supprimé** : son SEUL lecteur de production est
+  `TacticalAnalysisView.tsx:29` (grep §4.B) ; règle n° 7. *Le brief dit « KPIStrip sur cette
+  page ».* Les commentaires qui le citent (`components/ui/metric-trend.tsx:10,19`) sont corrigés.
+- **D22 — `EvenementsJournal` / `EvenementsLocalises` retirés avec l'échange** : leur seul
+  producteur est `lireLeJournal` (`tactical_service.go:248, 348-360`), qui ne lit le journal que
+  pour eux et pour l'échange ; zéro lecteur web (grep §4.E). `PointsIgnores` (sans lecteur web
+  non plus, mais produit par le rasterisage et journalisé) n'est pas touché (§8).
+- **D23 — Instant de la tuile = `formatClock`** (`lib/replay/replayLogic.ts:438`, « m:ss »,
+  l'horloge du rejeu qu'ouvre le bouton, déjà employée par la liste actuelle) — *la maquette écrit
+  « 05:07 »* ; aucun troisième format d'horloge.
+- **D24 — États vides : un titre, aucun conseil** (« Aucun match sur cette carte dans le filtre »,
+  « Pas assez de matchs mesurés sur cette carte », « Densité insuffisante pour dessiner un plan ») ;
+  les nombres qu'ils portaient sont dans l'ⓘ.
+- **D25 — Fichiers web** : `TacticalPage.tsx` recomposé ; NEUFS `TacticalMapsColumn.tsx`,
+  `TacticalZoneCard.tsx`, `TacticalRejeuTile.tsx`, `cockpit.logic.ts`, `plan.logic.ts`,
+  `zone.logic.ts` (+ tests) ; `TacticalPlanCard.tsx` réécrit ; `tacticalView.logic.ts` (476 L) ne
+  grossit pas.
+- **D26 — Témoins de zone sur le catalogue RÉEL** (patron
+  `games/halo_infinite/film/replay/callouts_catalog_test.go:108`) : Illusion (−13, 5), 11 morts à z
+  médian 2,90 m → « Nid blindé » par (c) à 0,81 m ; Bazaar (−7, −1), 9 morts à z médian 3,18 m →
+  trois polygones contiennent le centre, la règle (b) tranche : le nom rendu par la règle DU BRIEF
+  est fixé au lot et consigné au journal (*la maquette, règle différente — la plus fréquente par
+  événement, sans marge —, disait « Grande cour ouest »*). Les z des événements viennent des
+  données de la maquette (`VM.witness`), copiés dans le test avec leur provenance.
+- **D27 — Géométrie** : point dans polygone et distance au bord écrits UNE fois en production
+  (`analysis/tactical/geometrie.go`) ; les deux copies de test (`hinavmesh/oracle_ancres_test.go:198`,
+  `mapdecoupe/oracle_corpus_test.go:338`) sont des oracles indépendants, laissés tels quels.
+- **D28 — Attribution des commits** : ligne système de la session
+  (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, celle de l'historique) ; le brief en
+  citait une autre (signalé au compte rendu).
+
+## 2. Spécification de rendu (non négociable)
+
+La maquette fait foi, puis ce §2.
+
+- **S1** Barre de filtres, en-tête, conseils et onglets intacts ; sous la barre, la grille cockpit
+  (écart 12 px) ; la page défile.
+- **S2** « Cartes jouées » : titre, champ de recherche en tête (placeholder « Carte », nom
+  accessible « Rechercher une carte »), filtre au fil de la frappe, insensible à la casse et aux
+  accents, sur le nom affiché ET le nom canonique ; liste verticale à défilement interne dans une
+  colonne de hauteur fixe ; « Aucune carte ouvrable ne correspond » quand la recherche vide la liste.
+- **S3** Vignette : 100 px 16:9 (fond + mini-plan « Morts » existant), nom (ellipse), « 54 · 30 V /
+  24 D », barre fine victoires / défaites (`outcome-win` / `outcome-loss`) ; active = bordure 2 px
+  `primary`, `aria-pressed` ; nom accessible « Sélectionner <carte> ».
+- **S4** Repli `<details>` « N cartes sous le plancher » (avec recherche : « x sur N cartes sous le
+  plancher », ouvert si seules elles correspondent) ; lignes texte « nom · 7 sur 10 ».
+- **S5** Carte du plan : bandeau = titre (nom de la carte) + ⓘ, à droite trois réglages en pilules
+  (étiquette atténuée + valeur) : « Lecture » (liste, ordre V5), « Joueurs » (Moi / Escouade /
+  Adversaires, `aria-pressed`, Escouade désactivé avec infobulle sans composition), « Réapparition »
+  (« Toutes » + grappes).
+- **S6** ⓘ du plan : « {retenus} matchs mesurés sur {filtres} · {source} · grille {pas} m · 3 matchs
+  distincts par zone » ; `gagne` + « {v} victoires et {d} défaites mesurées, 3 matchs distincts de
+  chaque côté » ; `isole` + la règle « seul : aucun coéquipier visible, ou le plus proche au-delà de
+  {portée} (portée du radar) », les matchs sans portée et les morts écartées ; + les cellules hors
+  cadre s'il y en a (D20) ; source « journal des morts » ou « artefacts de rejeu ».
+- **S7** Bandeau d'état au-dessus du fond, lectures d'artefact seulement : « N matchs en attente de
+  traitement », « N matchs sans film » (`warning`).
+- **S8** Corps : fond + calque dans une boîte de 800 px de haut au plus, rapport du fond respecté,
+  centrée, marge droite réservée à la légende ; cadre de la cellule choisie ; étiquette du nom de
+  zone posée à côté de la cellule, du côté où elle tient (maquette `zoneLabel` l. 992-997),
+  « Zone sans nom » à défaut ; états vides (D24) et « Mise à jour… » posés SUR le fond (le fond ne
+  se démonte jamais, acquis du lot L2 des retours rejeu).
+- **S9** Rampe verticale au bord droit, 220 px, centrée verticalement, indépendante du fond :
+  borne haute + unité en haut, borne basse en bas ; divergente (positif en haut) pour `gagne` et
+  `solde`.
+- **S10** Zone sélectionnée : titre = nom en jeu (ellipse), coordonnées en mention atténuée
+  « x −14…−12 m · y 4…6 m » ; valeur en grand (signe « + » / « − » sur une lecture signée) +
+  unité ; sous-ligne « N matchs distincts » (`gagne` : « v victoires, d défaites · N matchs
+  distincts » ; `solde` : « f frags, m morts · N matchs distincts ») ; intertitre « Rejeu » ;
+  liste à défilement interne ; sans sélection : titre « Zone sélectionnée », une ligne « Aucune zone
+  sélectionnée ».
+- **S11** Mini-tuile (maquette l. 1001-1015 et CSS l. 265-282) : bande d'issue 3 px ; ligne 1 mode
+  (ellipse de secours), score, issue en mot (couleur d'issue), date · heure à droite ; ligne 2
+  pastille mono de l'instant, fait, arme (seule à se tronquer), badge à droite ; bouton de rejeu
+  36 px à droite, nom accessible « Ouvrir le rejeu à m:ss » ; infobulle = texte complet.
+- **S12** Couleurs : jetons seulement (`outcome-*`, `warning`, `primary`, rampes
+  `heatmapRampTokens`), aucune classe Tailwind de couleur ni hex (skill `color-tokens`).
+- **S13** FR + EN pour toute chaîne (manifeste `tactical.toml`), aucun anglicisme (garde
+  `lib/i18n/no-anglicisms.guard.test.ts`), aucun emoji, aucun impératif adressé au joueur.
+- **S14** Halo 5 / capability absente : l'onglet n'apparaît pas (`FeatureGate` / `RouteCapabilityGate`
+  `replay`, inchangés) ; sur Halo Infinite sans source de dégât, sans catalogue ou sans artefact,
+  les champs manquants sont absents, jamais remplacés par un texte de repli.
+- **S15** Lien de la tuile : `<Link>` du routeur (jamais `<a href>`), `?t=<instant_ms>&clock=<clock>`.
+- **S16** Accessibilité : rampe `role="img"` nommée « Échelle de la lecture, de {lo} à {hi} » ;
+  liste des cartes et liste « Rejeu » navigables au clavier ; focus visible.
+
+## 3. Cibles
+
+### 3.1 Contrat (Go, `internal/domain/`) — forme ; noms définitifs fixés au lot, tags snake_case
+
+```go
+const TacticalQuestionSolde = "solde"                      // tactical.go
+
+type CelluleTactique struct { /* existant */
+    Frags int `json:"frags,omitempty"` // solde seulement
+    Morts int `json:"morts,omitempty"`
+}
+type TacticalRaster struct { /* existant */
+    RayonsRadarM []float64 `json:"rayons_radar_m,omitempty"` // lecture isole (D9)
+    // L9 retire : Echange, Coordination, Isolement, EvenementsJournal, EvenementsLocalises
+}
+type TacticalContribution struct { /* existant : MatchID, InstantMs, Clock, XUID, Resultat, MatchStartedAt */
+    Face            string             `json:"face,omitempty"`            // mort|frag|entree|reapparition
+    AutreGamertag   string             `json:"autre_gamertag,omitempty"`  // tueur (mort) / victime (frag)
+    ArmeLabel       string             `json:"arme_label,omitempty"`
+    ArmeLabelEN     string             `json:"arme_label_en,omitempty"`
+    CategorieSource string             `json:"categorie_source,omitempty"`
+    Placement       *TacticalPlacement `json:"placement,omitempty"`       // mort seulement
+    ModeLabel       string             `json:"mode_label,omitempty"`      // langue de la requête
+    ScoreLabel      string             `json:"score_label,omitempty"`     // « X - Y », mon camp d'abord
+    ScoreKind       string             `json:"score_kind,omitempty"`      // points | rounds
+    ReplayAvailable bool               `json:"replay_available"`
+}
+type TacticalPlacement struct {
+    Seul      bool     `json:"seul"`
+    DistanceM *float64 `json:"distance_m,omitempty"` // nil = aucun coéquipier visible
+}
+type TacticalZoneNom struct{ NomFR, NomEN string }      // tactical_zone.go (NEUF)
+type TacticalCelluleReponse struct { /* existant */
+    Zone *TacticalZoneNom `json:"zone,omitempty"` // nil = zone sans nom
+}
+type ZoneNommee struct { /* existant : NomFR, NomEN, X, Y */
+    Polygone, Parties, Trous …; ZBas, ZHaut float64; VolumeIndex int // non sérialisés
+}
+type ContexteDeMort struct { MatchID, VictimXUID string; TimeMs int64; PlusProcheM *float64; Visibles, HorsDeVue int }
+// TacticalKillPosition : + KillerZ, VictimZ *float64, KillerGamertag, VictimGamertag, SourceTag *uint32, SourceCategory string
+// MortContexte         : + Z *float64, KillerGamertag, SourceTag *uint32, SourceCategory string
+```
+
+`domain/tactical.go` est à 468 L : les types neufs vont dans `domain/tactical_zone.go`.
+
+### 3.2 Composants web (ordre à l'écran)
+
+| Colonne | Bloc | Source (contrat) | Composant |
+|---|---|---|---|
+| — | barre de filtres | inchangée | `TacticalFilterBar` |
+| gauche | « Cartes jouées » | `tactical/maps` | `TacticalMapsColumn` + `TacticalMapTile` (compacte) |
+| centre | carte du plan | `tactical/{map}/raster` | `TacticalPlanCard` (réécrit) + `TacticalPlanFond` |
+| droite | « Zone sélectionnée » | `raster.cellules` + `tactical/{map}/cellule` | `TacticalZoneCard` + `TacticalRejeuTile` |
+
+Aucune route neuve ; aucune clé de requête neuve (`lib/query/keys.ts` non touché : les quatre
+lectures existantes suffisent) ; `?carte=` reste dans `tacticalScope.ts`.
+
+## 4. Inventaire des suppressions — preuves par grep (relevées le 2026-10-06, à REJOUER avant de supprimer)
+
+Chaque preuve se rejoue par `Grep` sur `apps/web/src` (hors `lib/api/generated.ts`) ou
+`apps/go-api`. Attendu APRÈS suppression : 0 occurrence hors fichiers supprimés et commentaires
+historiques au passé.
+
+- **A. Bascule et grille (web, L4).** `TacticalScreenSwitch` (`TacticalPage.tsx:145-151, 320-356`),
+  `ContenuGrille` et la carte « Cartes jouées » en grille (l. 186-308), pied `tactical-couverture`
+  (l. 200-209), `couvertureGrille` (`tacticalLogic.ts:78-86`, seul lecteur `TacticalPage.tsx:109`).
+- **B. Barre d'outils, H2, KPI, coordination, pied (web, L5).** `TacticalToolbar.tsx` (seul lecteur
+  `TacticalAnalysisView.tsx:42`) ; H2 et `pageTitle` (`TacticalAnalysisView.tsx:136-141`,
+  `tacticalView.logic.ts:35-38`) ; `buildKpiCards` (l. 350-431) ; `components/layout/KPIStrip.tsx`
+  + `KPIStrip.test.tsx` (seul lecteur `TacticalAnalysisView.tsx:29`) ; `TacticalCoordinationCard.tsx`
+  + `TacticalCoordinationCard.logic.test.ts` (seul lecteur `TacticalAnalysisView.tsx:39`) ;
+  `libelleRayons`, `DISTANCE_DECIMALES`, `formatDistanceM`, `positionCategorie`
+  (`tacticalView.logic.ts:214-271`) si plus aucun lecteur ; `ratioSafe` (l. 130-133) si plus lu ;
+  `PiedDuPlan`, `LegendeDuPlan` horizontale, `rampeCss` horizontale (`TacticalPlanCard.tsx:192-216,
+  352-403`) ; `PLAN_HAUTEUR_MAX_PX` (D13) ; `HistogramChart` et `withLowSampleNote` RESTENT (autres
+  lecteurs : `SquadRiposteCard.tsx`, `ChartsShowcasePage.tsx`, `coordinationModel.ts`).
+- **C. Carte « Cellule sélectionnée » (web, L6).** `TacticalCellCard.tsx` + `TacticalCellCard.test.tsx`
+  (seul lecteur `TacticalAnalysisView.tsx:38`), `questionSansCellule` (`tacticalView.logic.ts:164-166`).
+- **D. Chaînes (web, L7).** Clés de `tactical.toml` et accesseurs d'`i18n.ts` sans lecteur après
+  L4-L6, relevé par grep de chaque accesseur `t.<nom>` et de chaque clé : au minimum
+  `tactical.maps.intro`, `tactical.maps.label`, `tactical.screen.*`, `tactical.kpi.*`,
+  `tactical.coordination.*` (dont `radius_value` / `radius_join` si l'ⓘ ne les relit pas),
+  `tactical.plan.title`, `tactical.plan.scale_*`, `tactical.plan.footer_*`, `tactical.cell.*`
+  remplacées, `tactical.toolbar.question_label`, `tactical.analysis.page_title`,
+  `tactical.analysis.questions.*` (remplacées par les lectures V5) ; manifeste régénéré.
+- **E. Échange (Go, L9).** `TacticalRaster.Echange` (`domain/tactical_page.go:213-217`),
+  `mesurerEchange` (`tactical_service.go:380-410`), `lireLeJournal` / `compterJournal`
+  (l. 336-378) et leurs deux appels (`tactical_service.go:256`, `tactical_service_isolement.go:93`),
+  `EvenementsJournal` / `EvenementsLocalises` (`domain/tactical_page.go:130-145`,
+  `tactical_service.go:248, 264-266`) ; cas de test dans `tactical_service_echange_test.go`
+  (les cas sans échange — portes de capability, `MapsPlayed`, sans lecteur, l. 113-272 — sont
+  DÉPLACÉS tels quels, noms inchangés, vers `tactical_service_portes_test.go`),
+  `api/handlers/tactical_test.go:193-207`. `coordination.Echanges` / `Mesurer` RESTENT (Escouade,
+  Vue match `match_view_builders_riposte.go:66`).
+- **F. Coordination (Go, L9).** `domain/tactical_coordination.go` entier (`TacticalBinDistance`,
+  `TacticalCoordination`, `TacticalBornesDistanceM`, `TaCoordDistances`), `TacticalRaster.Coordination`
+  (`tactical_page.go:208-211`), `construireCoordination` et `mesurerCoordination`
+  (`tactical_service_isolement.go:169-188, 205-244`) et leurs appels (`tactical_service.go:179, 195`,
+  `tactical_service_isolement.go:68`), `analysis/coordination/distances.go` + `distances_test.go`
+  (seul lecteur de production `construireCoordination`), entrée `domain.TaCoordDistances` de la liste
+  blanche `analysis/coordination/no_naked_rate_test.go:58-63, 97` (une liste blanche qui BAISSE),
+  `service/tactical_service_coordination_test.go`. `coordination.FenetreEchangeMs` RESTE (Escouade,
+  Vue match, bloc de coordination).
+- **G. Isolement du raster (Go, L9).** `TacticalRaster.Isolement` (`tactical_page.go:199-206`) et ses
+  deux écritures (`tactical_service_isolement.go:76-77, 239-240`) ; le bilan de `coordination.Isolement`
+  reste calculé par `rasterIsole` (cellules isolées, `MatchsSansRayon`, `MortsEquipeATerre`).
+- **H. Contrat (L9).** Schémas `TacticalCoordination`, `TacticalBinDistance` ; champs `echange`,
+  `coordination`, `isolement`, `evenements_journal`, `evenements_localises` de `TacticalRaster` ;
+  alias web `TacticalCouverture`, `TacticalCoordination`, `TacticalBinDistance`
+  (`lib/api/types.ts:3417, 3430-3431`) ; snapshot `lib/api/contract-surface.snapshot.json`
+  régénéré par la procédure (`UPDATE_CONTRACT_SURFACE=1`), disparitions listées au journal.
+- **Baseline de tests** : avant toute suppression de test Go, `Grep` du nom dans
+  `.ai/baselines/tests_pre_migration.jsonl` (relevé de juin, antérieur à l'onglet : attendu 0).
+
+## 5. Organisation et gates communs
+
+- Exécuteur seul, dans le worktree, lots SÉQUENTIELS. Aucun sous-agent, aucun push, aucun merge,
+  aucun `git stash`, aucun `git add -A` (stager fichier par fichier), aucun `--no-verify`, aucun
+  Python, aucun navigateur, aucune base de `data/` ouverte (tests sur `:memory:` ou fixtures ; le
+  catalogue `data/titles/halo_infinite/reference/map_callouts.json`, fichier de référence versionné,
+  se lit en test comme le fait déjà `callouts_catalog_test.go`), aucun serveur arrêté ou relancé,
+  une commande `go` à la fois, aucune cuisson ni backfill.
+- Environnement Go, à chaque appel PowerShell :
+  `$env:Path = "C:\msys64\ucrt64\bin;$env:Path"; $env:CGO_ENABLED = "1"; $env:CC = "C:\msys64\ucrt64\bin\gcc.exe"`.
+  Web : `npm ci` dans `apps/web` du worktree (node_modules RÉEL) avant le premier gate web.
+- **Gate Go** (depuis `apps/go-api`) : `go build ./...` ; `go vet` des paquets touchés ;
+  `gofmt -l internal cmd` muet ; `go test -count=1` des paquets touchés puis du module en lots
+  couvrant tout `go list ./...` ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` dès
+  que `platform/duckdb` bouge (L2) ; `go test ./internal/archlint/...` ; `make go-api-lint` (Git
+  Bash ; en cas de verrou d'un autre worktree : `golangci-lint run --new-from-merge-base=origin/main`
+  avec `GOLANGCI_LINT_CACHE` isolé et `--allow-parallel-runners`, règles inchangées) ; contrat :
+  `go run ./cmd/openapi-gen`, `go run ./cmd/openapi-gen -check`, `npm run generate-types` (dans
+  `apps/web`), `node tools/check-generated-types-fresh.mjs` (racine). Codes de sortie vérifiés,
+  filtre d'échec ancré (`^--- FAIL:`).
+- **Gate web** (depuis `apps/web`, vitest hors sandbox) : purge `node_modules\.tmp` ;
+  `npx tsc -b --force` ; `npm run lint` (0 erreur) ; `npx vitest run --pool=forks` ;
+  `node scripts/build_i18n_manifests.mjs` puis `git diff --exit-code` sur `src/lib/i18n/generated/`
+  (manifeste à jour, parité FR / EN vérifiée par le build) ; depuis la racine :
+  `node tools/knip-ratchet.mjs` (0 / 0 / 0 — knip est aveugle sur ce poste, §8 du plan modèle : les
+  preuves grep §4 restent les juges), `node tools/lint-no-hardcoded-colors.mjs` (0),
+  `node tools/lint-no-hardcoded-fields.mjs` (0), `node tools/lint-cross-feature-imports.mjs`
+  (≤ 7, aucune dérogation morte), `npx lefthook run pre-push` (PATH avec `C:\msys64\ucrt64\bin` et
+  `C:\Program Files (x86)\GnuWin32\bin`). Les tests e2e Playwright (`e2e/visual/readme-shots`
+  ouvre `ascension/tactique`) ne tournent qu'en PR vers `main` : non lancés ici.
+- **Seuils** (CLAUDE.md n° 5) : fichier ≤ 500 L, fonction ≤ 80 L, ≤ 5 paramètres, complexité ≤ 12
+  pour tout fichier créé ou modifié ; mesure jointe au journal du lot. Attention :
+  `tactical_service.go` 465 L, `domain/tactical.go` 468 L, `tacticalView.logic.ts` 476 L,
+  `TacticalAnalysisView.tsx` 432 L, `api/wire/registry_pages.go` 619 L (ne pas l'agrandir : D15),
+  `lib/api/types.ts` (dette existante).
+- **TDD** : chaque règle neuve a son test ROUGE écrit et vu rouge AVANT le code ; puis vert ; puis au
+  moins UNE MUTATION par règle (modification volontaire qui doit faire rougir, annulée ensuite,
+  restauration vérifiée par `git diff`), consignée au journal du lot (« mutation : … → rouge »).
+- **Clôture de lot** = gate vert + items statués + section du lot mise à jour ici + entrée en FIN
+  de `.ai/thought_log.md` + commit local `feat(tactique-v2/<lot>): …` (fichiers stagés un par un,
+  message en français, ligne D28) + compte rendu au superviseur, puis attente du « continue ».
+- **Lots voisins** (ne pas toucher leurs fichiers ; dépendances) :
+  - `feat/matchview-emprise` (`features/match-view/`, `service/match_view*`) : L10 touche
+    `MatchPositionsHeatmap.tsx` (après sa fusion, sinon insertion minimale) ; L1 renomme
+    `aPortee` dans `analysis/coordination/vies_pres_ou_seul.go`, que son plan ne modifie pas (« aucun
+    type ni fonction neuve dans `coordination` ») mais appelle (`ViesPresOuSeul`) ; D18 change le
+    rendu de sa carte « Occupation du terrain », qu'il déclare inchangée.
+  - `feat/sessions-emprise` (`features/session-detail/`, `service/session_page*`, `domain/session_*`) :
+    aucun fichier commun ; `CoordinationBlock` et `coordination.Bloc` intacts.
+  - `feat/rejeu-equipes-web` (`features/match-replay/`, modèle web du rejeu) : seul
+    `lib/replay/heatPaint.ts` est commun — deux constantes et leur test, rien d'autre (D18).
+  - Docs communes à la clôture (`CHANGELOG`, `RELEASE_NOTES`, `.ai/thought_log.md`) : conflits
+    attendus à la fusion, résolus en gardant les deux côtés.
+
+## 6. Lots
+
+### L1 — Go : briques pures et contrat additif · moyen
+
+Périmètre : `analysis/coordination/{vies_pres_ou_seul.go, isolation.go}`, une ligne de
+`service/tactical_service_cellule.go`, `archlint/` (garde-rail neuf), `analysis/tactical/{solde.go,
+zones.go, geometrie.go, placement.go, merge.go, spawn.go}` (+ tests), `domain/{tactical.go,
+tactical_cellule.go, tactical_page.go, tactical_raster.go, tactical_zone.go}`, contrat.
+
+- [x] L1.1 `coordination.APortee(d *float64, rayon float64) bool` (export de `aPortee`,
+  `vies_pres_ou_seul.go:141-145`) ; appelants `isolation.go:72-74`, `vies_pres_ou_seul.go:83` ;
+  `celluleIsole` (`tactical_service_cellule.go:225`) l'appelle. Garde-rail
+  `archlint/no_local_portee_comparison_test.go` : empreinte « distance déréférencée comparée par
+  `<=` à un rayon / une portée » et « `PlusProcheM != nil &&` », refusée dans tout fichier de
+  production hors de `analysis/coordination/vies_pres_ou_seul.go` ; auto-test qui prouve que
+  l'empreinte reconnaît l'ancienne copie de `celluleIsole` (littéral) et ignore l'appel au helper ;
+  mutation : réintroduire la comparaison inline dans `tactical_service_cellule.go` → rouge.
+  `TestAucunTauxNu` vert (retour `bool`, liste blanche).
+- [x] L1.2 `analysis/tactical/solde.go` (D2) ; `domain.CelluleTactique.Frags`, `.Morts`. Tests
+  ROUGES d'abord (`solde_test.go`) : plancher sur l'union (deux matchs de frags + un match de morts =
+  3 matchs → cellule lue ; deux matchs → retirée), match muet compté au dénominateur, valeur
+  (f − d) / N, signe, comptes par face, `Somme` de deux rasters de solde. Mutations : plancher par
+  face au lieu de l'union, dénominateur = matchs de la cellule, `Somme` qui perd les faces → rouges.
+- [x] L1.3 `analysis/tactical/zones.go` + `geometrie.go` (D3) ; jumeau `tactical.ZoneNommee` étendu.
+  Tests ROUGES d'abord (`zones_test.go`, géométrie synthétique) : (a) un candidat, marge 0,25
+  (z = z_haut + 0,24 compatible, + 0,26 non), (b) majorité puis plus étroite, (b) sans majorité,
+  égalité par `VolumeIndex`, (c) tranche compatible d'abord puis toutes, distance au bord 1,99 m
+  retenue / 2,00 m non, polygone contenant à distance 0 au second passage, (d) sans nom, z inconnu
+  (un / zéro / plusieurs polygones), trou exclu, partie incluse. Mutations : marge 0, `<=` 2 m,
+  majorité « ≥ moitié », plus large au lieu de plus étroite, trous ignorés → rouges.
+- [x] L1.4 `analysis/tactical/placement.go` (D7) : `ContexteLePlusProche(contextes, victime, t)`
+  (± `TolerancePlacementMs` = 1 500, bornes comprises, le plus proche, même victime) et
+  `PlacementDeLaMort(ctx, rayon, aUnRayon) *domain.TacticalPlacement`. Tests ROUGES d'abord : borne
+  1 500 / 1 501, autre victime ignorée, deux candidats, nil sans contexte, « seul » sans distance,
+  d = portée → près, d > portée → seul, portée inconnue + distance → nil. Mutations : tolérance
+  stricte, `<` au lieu de `APortee` → rouges.
+- [x] L1.5 Contrat additif (§3.1) : `TacticalQuestionSolde`, `TacticalContribution` enrichie,
+  `TacticalPlacement`, `TacticalZoneNom`, `TacticalCelluleReponse.Zone`,
+  `TacticalRaster.RayonsRadarM`, `ZoneNommee` étendue, `ContexteDeMort`, champs de
+  `TacticalKillPosition` / `MortContexte` ; commentaires de contrat au présent (règle 17).
+- [x] L1.6 Contrat régénéré (openapi + `generated.ts`), diff additif ; garde
+  `contract-surface.guard.test.ts` verte sans régénérer le snapshot.
+- Gate : gate Go + contrat ; `TestTacticalEtCoordinationSontPurs`, `TestAucunTauxNu`,
+  `TestNoLocalRadarRangeLookup` rejoués nommément ; `npx vitest run src/lib/api` vert.
+
+Journal L1 (2026-10-06, exécuteur, `feat/tactique-v2`) — TDD : chaque test vu rouge avant le code :
+- **L1.1** `coordination.APortee` exportée (`vies_pres_ou_seul.go`, doc au présent, garde-rail nommé) ;
+  `isolation.go` et `celluleIsole` (`tactical_service_cellule.go`, commentaire corrigé : le PARCOURS
+  y est réécrit, la COMPARAISON est le helper) l'appellent. Garde-rail
+  `archlint/no_local_portee_comparison_test.go` (deux empreintes : distance déréférencée comparée par
+  `<=` à une portée, `PlusProcheM != nil &&`) écrit d'abord et vu ROUGE sur la copie de `celluleIsole`
+  (deux violations), auto-test (trois copies reconnues, quatre faux positifs écartés : `himap`,
+  `replayverite`, appel du helper) vert d'emblée.
+- **L1.2** `analysis/tactical/solde.go` : `RasteriseSolde` (union des faces dans `cellules`, comptes par
+  face dans le champ `faces` du `Raster`), `CellulesSolde`, `sommerFaces` appelé par `Somme` ;
+  `domain.CelluleTactique.Frags` / `.Morts`. `solde_test.go` (5 tests) vu rouge (symboles absents).
+- **L1.3** `analysis/tactical/zones.go` (`NommerZone`, `MargeTrancheZM`, `RayonZoneM`, règles
+  `polygone` / `empilee` / `proche`, z inconnu) + `geometrie.go` (forme pair-impair, distance au
+  bord) ; jumeau `tactical.ZoneNommee` étendu (`Polygone`, `Parties`, `Trous`, `ZBas`, `ZHaut`,
+  `VolumeIndex`). `zones_test.go` (9 tests) vu rouge ; cas « exactement la moitié n'est pas la
+  majorité » ajouté pour que la mutation `>=` rougisse.
+- **L1.4** `analysis/tactical/placement.go` : `TolerancePlacementMs` = 1 500, `ContexteLePlusProche`
+  (même match, même victime, le plus proche, à égalité le plus ancien), `PlacementDeLaMort` (par
+  `coordination.APortee`). `placement_test.go` (3 tests) vu rouge.
+- **L1.5** Contrat additif : `TacticalQuestionSolde` ; `TacticalContribution` (`Face`,
+  `AutreGamertag`, `ArmeLabel` / `ArmeLabelEN`, `CategorieSource`, `Placement`, `ModeLabel`,
+  `ScoreLabel` / `ScoreKind`, `ReplayAvailable`) + constantes `TacticalFace*` ;
+  `TacticalCelluleReponse.Zone` ; `TacticalRaster.RayonsRadarM` ; `domain.ZoneNommee` étendue ;
+  `domain/tactical_zone.go` (NEUF : `TacticalZoneNom`, `TacticalPlacement`, `ContexteDeMort`) ;
+  `TacticalKillPosition` (`KillerZ`, `VictimZ`, gamertags, `SourceTag`, `SourceCategory`) et
+  `MortContexte` (`Z`, `KillerGamertag`, `SourceTag`, `SourceCategory`).
+- **L1.6** Contrat : `openapi.yaml` +58 / −0, `generated.ts` +25 / −0 (premier `npm ci` du
+  worktree fait ici : `generate-types` en dépend) ; `check-generated-types-fresh` OK ;
+  `vitest src/lib/api` 5 fichiers / 36 tests verts, snapshot de surface intact.
+- **Mutations** (script `mutation.ps1` du scratchpad, restauration vérifiée par empreinte SHA-256,
+  toutes ROUGES) : plancher par face au lieu de l'union ; dénominateur = matchs de la cellule ;
+  `Somme` qui perd les faces ; comparaison inline réintroduite dans `celluleIsole` (garde-rail) ;
+  borne stricte dans `APortee` (rougit l'isolement ET les vies) ; marge de tranche 0 ; rayon de 2 m
+  inclusif ; majorité « ≥ moitié » ; plus large au lieu de plus étroite ; trous ignorés ; nom posé
+  sur des zones empilées sans z ; second passage seul en (c) (tranches compatibles ignorées) ;
+  tolérance de placement stricte ; borne de portée stricte au badge ; badge sans portée connue.
+- **Gate** : `go build ./...` 0 ; `go vet` des cinq paquets touchés 0 ; `gofmt -l internal cmd`
+  muet ; `go test -count=1 ./...` (349 paquets : 195 ok, 153 sans test, 1 FAIL) — le seul échec,
+  `TestLUSRV2Shadow_RafalesBornees_300Candidats` (`internal/sync/skill`, test de durée de rafale :
+  2,018 s pour un plafond de 2 s), est hors périmètre et la machine portait les `go test` d'une autre
+  session ; rejoué seul : ok ; `golangci-lint run --new-from-merge-base=origin/main`
+  (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour ; garde-rails
+  rejoués nommément en `-v` : `TestNoLocalPorteeComparison` (+ auto-test),
+  `TestNoLocalRadarRangeLookup` (+ auto-test), `TestTacticalEtCoordinationSontPurs`,
+  `TestAucunTauxNu` PASS. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`,
+  `persist`, `migration` modifié).
+- Seuils : `domain/tactical.go` 468 → 492 L (sous 500 ; L9 en retirera) ; fichiers neufs ≤ 185 L ;
+  plus longue fonction neuve `NommerZone` (~30 L) ; aucun paramètre au-delà de 4.
+- Écarts : le lint a été lancé d'emblée avec le cache isolé (règles et commande de `make go-api-lint`
+  inchangées) ; les types neufs de L1.5 utilisés par L1.4 ont été posés avec L1.4.
+
+### L2 — Go : lectures enrichies, contextes de mort, zones polygonales, lecture « solde » · lourd
+
+Périmètre : `platform/duckdb/{tactical_repo.go, tactical_repo_isolement.go,
+tactical_repo_contextes.go (NEUF)}` (+ tests), `port/tactical.go`, `service/{tactical_callouts.go,
+tactical_service.go, tactical_service_grille.go, tactical_service_perimetre.go,
+tactical_service_isolement.go}` (+ tests), `api/handlers/tactical.go` (docs), contrat,
+`docs/adr/0036-page-reads-are-scoped.md` (liste I2).
+
+- [x] L2.1 `QTacticalPositions` + scan (D4, D6 : `killer_z`, `victim_z`, `feed_killer_gamertag`,
+  `victim_gamertag`, `source_tag`, `source_category`) ; `QTacticalIsolement` + `scanMortContexte`
+  (`victim_z`, `feed_killer_gamertag`, `source_tag`, `source_category`). Tests `:memory:` écrits
+  d'abord (patron `tactical_repo_test.go`) : colonnes lues, z NULL conservé (pointeur nil, jamais 0),
+  tag / catégorie NULL → absents ; `TestTacticalRepo_PerimetreRestreint_FenetresBornees` vert sans
+  modification. Mutation : z NULL lu comme 0 → rouge.
+- [x] L2.2 `TacticalRepository.ContextesDeMort(ctx, q)` (`tactical_repo_contextes.go`, D7) : liste
+  blanche liée en constante sur le `match_id` de `match_death_context_latest`, aucune
+  sous-requête ; table absente → `games.ErrCapabilityNotSupported` (patron
+  `squad_life_placement_repo.go:73-78`) ; liste vide → aucune requête. Test `:memory:` écrit
+  d'abord : dernière passe entière par match, matchs demandés seulement, NULL conservés,
+  `exigerFenetresBornees` ; ADR 0036 : test ajouté à la liste I2 et au tableau ; double de test
+  du port étendu (`service/tactical_mock_test.go`). Mutation : liste liée par sous-requête → rouge.
+- [x] L2.3 `zonesNommees` projette contour, parties, trous, tranche, index de volume (D3) ;
+  `service/tactical_callouts_test.go` (NEUF ou étendu) : projection sur fixture, puis témoins D26 sur
+  le catalogue réel par `tactical.NommerZone` (Illusion → « Nid blindé », règle (c), 0,81 m ;
+  Bazaar → règle (b), trois polygones, nom consigné). Si un témoin change de nom à cause des
+  parties / trous : arrêt et compte rendu (la forme D3 se discute avant de forcer). Mutation :
+  projection sans le contour → rouge.
+- [x] L2.4 Lecture `solde` (D2) : `validerLecture`, `facesDeLaQuestion`, `cellulesLisibles`,
+  `rasteriser` / `rasteriserSurGrille`, `remplirRaster` ; doc des corps Huma (`handlers/tactical.go:115,
+  212` : « … | solde | … ») ; tests service (mocks de port) écrits d'abord : dispatch, deux faces,
+  échelle symétrique, plancher sur l'union, `MatchsRetenus` = mesurés, `Frags` / `Morts` des
+  cellules, `kills` / `gagne` inchangés ; test handler : `solde` accepté, question inconnue toujours
+  400. Mutations : une seule face, échelle non symétrique → rouges.
+- [x] L2.5 `rasterIsole` pose `RayonsRadarM` (D9) ; test : deux formats → deux portées triées,
+  aucune moyenne. Mutation : portées non dédupliquées → rouge.
+- [x] L2.6 Contrat régénéré (additif).
+- Gate : gate Go + `go test -tags=integration -p 1 ./internal/platform/duckdb/...` + contrat ;
+  `TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`, `TestCampaignExclusionGuard`
+  rejoués nommément.
+
+Journal L2 (2026-10-06, exécuteur, `feat/tactique-v2`) — tests `:memory:` seulement, aucune base de `data/` ouverte :
+- **L2.1** `QTacticalPositions` lit `killer_z`, `victim_z`, `feed_killer_gamertag`, `victim_gamertag`,
+  `source_tag`, `source_category` ; `QTacticalIsolement` / `scanMortContexte` lisent `victim_z`,
+  `feed_killer_gamertag`, `source_tag`, `source_category`. z NULL → pointeur nil par `nullFloatPtr`
+  (existant, réutilisé) ; tag NULL → nil par `tagOuNil` (neuf, `tactical_repo.go`).
+  `tactical_repo_zone_test.go` (2 tests) vu ROUGE avant le code ;
+  `TestTacticalRepo_PerimetreRestreint_FenetresBornees` vert sans modification.
+- **L2.2** `ContextesDeMort` (`tactical_repo_contextes.go`, 70 L) : liste blanche exigée (refus sinon),
+  liste vide → aucune requête, liée en constantes sur `match_death_context_latest.match_id`, table
+  absente → `ErrCapabilityNotSupported`. Tests `BorneEtNull` (fenêtres bornées), `ListeExigee`,
+  `TableAbsente` vus rouges (méthode absente) ; `DernierePasseEntiere` ajouté APRÈS le code à la
+  relecture de l'item (deux passes, morts différentes : seule la neuve sort), vert d'emblée, mutation
+  « table brute » ROUGE. ADR 0036 : test `BorneEtNull` dans la liste I2 et au tableau. Doubles du port
+  étendus : `service/tactical_mock_test.go` et `service/teammates/teammates_squad_echange_test.go`.
+- **L2.3** `zonesNommees` (et `zonesPures`) projettent contour, parties, trous, tranche, index de
+  volume. Témoins D26 sur le catalogue réel : Illusion → « Nid blindé » par (c) à 0,81 m (inchangé) ;
+  Bazaar → trois polygones contiennent le centre, règle (b), « Pont du marché ouest » / « West Market
+  Bridge » (la maquette disait « Grande cour ouest » sur une autre règle ; une sonde sans parties ni
+  trous rend les mêmes noms : AUCUN nom ne change à cause des parties / trous, pas d'arrêt).
+- **L2.4** `solde` servie : `validerLecture` l'accepte ; `rasteriserLaCible` (`tactical_service_grille.go`)
+  garde les deux faces séparées (`projeterFaces` → `RasteriseSolde`, pas choisi sur `CellulesSolde`) ;
+  `cellulesLisibles` et `remplirRaster` (échelle symétrique, aucun côté victoire / défaite) ;
+  `facesDeLaQuestion` rend déjà les deux faces par sa branche par défaut (contrat écrit au présent,
+  test `Solde_DeuxFacesAuJournal` vert d'emblée) ; `idsDeLUnivers` partagé. Docs Huma
+  (`handlers/tactical.go:115, 212`). `tactical_service_solde_test.go` (3 tests) vu rouge (« question
+  inconnue (solde) ») ; test handler `TestTacticalHandler_QuestionSolde` vert d'emblée (le handler
+  transmet, `frags` / `morts` posés en L1) ; `QuestionInconnue400` inchangé et vert.
+- **L2.5** `rasterIsole` pose `RayonsRadarM = rayonsDistincts(rayons)` ;
+  `TestIsole_RayonsRadarDistinctsEtTries` (deux Arène + un BTB → [18 24], vide hors « isole ») vu rouge.
+- **L2.6** Contrat : `openapi.yaml` 2 descriptions (« … | solde | … »), `generated.ts` idem ;
+  `-check` à jour, `check-generated-types-fresh` OK, `vitest src/lib/api` 5 fichiers / 36 tests verts.
+- **Mutations** (toutes ROUGES, restauration vérifiée par empreinte) : z NULL lu comme 0 (positions ;
+  isolement) ; liste liée par sous-requête ; table brute au lieu de `_latest` ; projection sans le
+  contour ; une seule face au solde ; échelle non symétrique au solde ; portées non dédupliquées.
+- **Gate** (avant-plan) : `go build ./...` 0 ; `go vet` des cinq paquets touchés 0 ; `gofmt -l internal
+  cmd` muet ; paquets touchés 0 ; module en six lots couvrant les 349 paquets de `go list ./...`
+  (196 ok, 153 sans test, 0 FAIL) ; `go test -count=1 -tags=integration -p 1
+  ./internal/platform/duckdb/...` 4 ok ; `go test ./internal/archlint/...` ok ; garde-rails nommés en
+  `-v` : `TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`, `TestCampaignExclusionGuard`
+  PASS ; `golangci-lint run --new-from-merge-base=origin/main` (cache isolé) 0 issues ; contrat ci-dessus.
+  Après l'ajout de `DernierePasseEntiere` : vet, tests et lint du paquet `platform/duckdb` rejoués, verts.
+- Seuils : `service/teammates/teammates_squad_echange_test.go` 587 → 592 L (déjà au-delà de 500 avant
+  le lot ; +5 = le double du port, imposé par l'extension de l'interface ; non découpé, hors
+  périmètre) ; autres fichiers touchés ≤ 498 L ; fonctions neuves ≤ 20 L ; ≤ 4 paramètres.
+- Écarts : `teammates_squad_echange_test.go` et `tactical_service_lectures.go` (`zonesPures`) hors de
+  la liste du périmètre, touchés par nécessité (double du port ; même projection que `zonesNommees`) ;
+  `tactical_service_isolement.go` touché pour L2.5 (au périmètre).
+- Écart assumé à la maquette (décision du superviseur, 2026-10-06) : le nom retenu pour le témoin
+  Bazaar (−7, −1) est « Pont du marché ouest » (règle (b) du brief), et non « Grande cour ouest » de la
+  maquette (autre règle).
+
+### L3 — Go : le détail de zone enrichi et son câblage · lourd
+
+Périmètre : `service/{tactical_service_cellule.go, tactical_service_cellule_enrichir.go (NEUF),
+tactical_service_cablage.go, tactical_service.go}` (+ tests, `tactical_mock_test.go`),
+`api/wire/{registry_pages.go, registry_pages_tactical.go (NEUF), registry_pages_tactical_wiring_test.go
+(NEUF)}`, `api/handlers/tactical_cellule_test.go`, contrat.
+
+- [x] L3.1 Les trois sources du détail posent `Face`, `AutreGamertag`, la source brute (tag,
+  catégorie) et le z interne de chaque contribution (`celluleDeKills`, `celluleIsole`,
+  `contributionsDuSidecar`) ; `temps` → `entree`, `routes` → `reapparition` (D12).
+- [x] L3.2 Nom de zone (V6, D3) : `s.zonesDeLaCarte` + centre de la cellule au pas demandé + z des
+  événements de la cellule → `tactical.NommerZone` → `out.Zone` ; règle retenue au journal (Debug).
+- [x] L3.3 `tactical_service_cellule_enrichir.go` (D5, D6, D7, D8) : une lecture canonique par
+  requête (`LoadPlayerMatches`, filtre `MapIDs`), un `ResolveWeaponLabels` pour toutes les clés, un
+  `ContextesDeMort` borné aux matchs des contributions, un `AvailableSet` ; mode (langue de la
+  requête, `ctxkeys.Locale`), score (mon camp d'abord, camp lu sur `Self.TeamID`), arme /
+  catégorie, placement (faces `mort`), `ReplayAvailable` ; sections de durée
+  `tactical_cellule_canonique`, `tactical_cellule_armes`, `tactical_cellule_contextes`,
+  `tactical_cellule_rejeu` (ADR 0036 I6) ; dégradations D15.
+- [x] L3.4 Injecteurs `With*` (D15) et champs du service ; `tactical_service.go` ne grossit pas (les
+  champs neufs vivent dans une struct déclarée dans `tactical_service_cellule_enrichir.go` et
+  embarquée par une ligne).
+- [x] L3.5 Câblage : fabrique `Tactical` déplacée dans `api/wire/registry_pages_tactical.go`
+  (taille de `registry_pages.go` avant / après au journal), injecteurs inconditionnels sauf ce que
+  les capabilities gouvernent déjà (classificateur nil sur Halo 5) ; garde-rail de câblage
+  `registry_pages_tactical_wiring_test.go` (patron `registry_pages_timeseries_wiring_test.go`,
+  `appelsDansFactory`) : chaque `With*` présent, inconditionnel. Mutation : un `With*` retiré →
+  rouge.
+- [x] L3.6 Tests service écrits d'abord (`tactical_service_cellule_enrichir_test.go`) : chaque champ ;
+  score en manches sur une variante `rounds_decide` ; mon camp d'abord en camp 1 ; arme par la clé,
+  catégorie à défaut, rien à défaut ; badge (seul sans distance, près, seul à distance, aucun sur un
+  frag) ; `replay_available` vrai / faux ; « Zone sans nom » ; chaque source absente
+  (`ErrCapabilityNotSupported`) ou en échec → champ absent, contributions servies, journal ;
+  compteurs : une lecture par source et par requête ; Halo 5 (sans classificateur ni catalogue) ;
+  ownership inchangé (`matchs_non_ouvrables`). Mutations : camp inversé, lecture canonique par
+  contribution, badge sur un frag, `replay_available` toujours vrai → rouges.
+- [x] L3.7 Test handler du détail : clés snake_case servies (`face`, `mode_label`, `score_label`,
+  `placement`, `replay_available`, `zone`) ; contrat régénéré (additif).
+- Gate : gate Go + contrat ; `TestNoNewSlugComparison`, `TestAucunTypeAnalysisEnCorpsHuma`
+  rejoués nommément.
+
+Journal L3 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L3.1** Les trois sources rendent des `contributionLue` (la contribution publiée, plus la hauteur
+  de l'événement et la source de dégât brute, non publiées) et l'univers de leur lecture : kills /
+  gagne / solde → `faceDeKill` (mort : autre = tueur, z = victime ; frag : autre = victime, z =
+  tueur) ; isole → face `mort`, autre = tueur ; temps → `entree`, routes → `reapparition`
+  (`faceDArtefact`, sans z ni source). Le filtre d'ouvrabilité et le tri sortent de `Cellule` dans
+  `garderLesOuvrables` (comportement inchangé). Tests : `tactical_service_cellule_faces_test.go`
+  (faces et autre joueur) et trois assertions `Face` ajoutées aux tests isole / temps / routes, vus
+  rouges.
+- **L3.2** `nommerLaCellule` : centre de la cellule au pas demandé (`Grille.Centre`), hauteurs des
+  contributions retenues, `tactical.NommerZone` sur `zonesPures(s.zonesDeLaCarte(...))` ; règle et
+  distance au journal (Debug). Tests : la même cellule se nomme « Étage » pour une mort (z de la
+  victime) et « Rez » pour un frag (z du tueur), vu rouge ; « Zone sans nom » → `zone` absente.
+- **L3.3** `tactical_service_cellule_enrichir.go` (297 L) : `enrichir` ne lit rien sans contribution ;
+  sinon `poserModeEtScore` (une `LoadPlayerMatches` filtrée sur la carte, `Validate` appelé ; mode
+  par `labelPourLocale` et `ctxkeys.Locale` ; score par `scoreDuMatch` : mon camp d'abord sur
+  `Self.TeamID`, `analysis.ReadTeamScore` + `FormatTeamScoreLabel`, table `rounds_decide`),
+  `poserArmes` (classificateur par contribution, UN `ResolveWeaponLabels` pour les clés distinctes ;
+  arme FR / EN, sinon catégorie brute ; sans classificateur rien), `poserPlacements` (UN
+  `ContextesDeMort` borné aux matchs des morts retenues, `ContexteLePlusProche` +
+  `PlacementDeLaMort`, portée par `rayonsParMatch` ; faces `mort` seulement), `poserRejeu` (UN
+  `AvailableSet`). Sections `tactical_cellule_canonique`, `tactical_cellule_armes`,
+  `tactical_cellule_contextes`, `tactical_cellule_rejeu`, feuilles (aucune des lectures n'en déclare).
+  Dégradations : source nil ou `ErrCapabilityNotSupported` → DEBUG « tactique: detail de zone, source
+  <nom> absente » ; autre erreur → WARN « … en echec » ; champ absent, liste servie.
+- **L3.4** `sourcesDuDetail` (déclarée dans le fichier d'enrichissement) portée par UNE ligne de
+  `TacticalService` (`detail sourcesDuDetail`) ; `tactical_service.go` 468 → 469 L (cette ligne) ;
+  `WithPlayerMatches`, `WithRoundsDecide`, `WithKillSourceClassifier`, `WithWeaponLabels`,
+  `WithReplay` dans `tactical_service_cablage.go`.
+- **L3.5** Fabrique `Tactical` déplacée telle quelle dans `api/wire/registry_pages_tactical.go` (61 L) ;
+  `registry_pages.go` 619 → 579 L. Cinq injecteurs ajoutés, tous inconditionnels (classificateur nil
+  sur un titre sans `film.kill_source`, décidé par `killSourceClassifierFor`). Garde-rail
+  `registry_pages_tactical_wiring_test.go` (neuf `With*`, argument exact, aucune porte ; factory
+  absente de `registry_pages.go`) vu rouge avant le déplacement.
+- **L3.6** `tactical_service_cellule_enrichir_test.go` (6 tests, 9 sous-cas de sources) vu rouge
+  (compilation) avant le code : chaque champ sur quatre contributions (points et manches, camp 1
+  d'abord, arme / catégorie / rien, quatre badges dont aucun sur un frag, rejeu vrai / faux), mode en
+  anglais, une lecture par source, ownership (contextes lus pour m1 seul), titre sans classificateur
+  ni catalogue, chaque source absente ou en échec (champ absent, liste servie, ligne de journal au bon
+  niveau).
+- **L3.7** `TestTacticalHandler_CelluleMiniTuile` : dix clés snake_case servies (dont `zone`) ; vert
+  d'emblée (les champs datent de L1.5). Contrat régénéré : aucun écart (`openapi-gen -check` à jour,
+  `generated.ts` inchangé).
+- **Mutations** (toutes ROUGES, restauration vérifiée) : hauteur du tueur pour une mort ; autre joueur
+  d'une mort = la victime ; camp inversé ; lecture canonique par contribution ; badge sur un frag ;
+  `replay_available` toujours vrai (première écriture invalide — compilation cassée —, refaite pour
+  compiler, rouge) ; `WithReplay` retiré du câblage.
+- **Gate** (avant-plan) : `go build ./...` 0 ; `go vet` service / wire / handlers 0 ; `gofmt -l internal
+  cmd` muet ; paquets touchés verts ; module en six lots couvrant les 349 paquets (195 ok, 153 sans
+  test, 1 FAIL : `TestLUSRV2Shadow_RafalesBornees_300Candidats`, le test de durée de §8, pendant
+  qu'un `api.test` et des `go` d'une autre session tournaient ; rejoué seul puis paquet seul : verts) ;
+  `go test ./internal/archlint/...` ok ; `TestNoNewSlugComparison`, `TestAucunTypeAnalysisEnCorpsHuma`
+  PASS en `-v` ; `golangci-lint` (cache isolé) 0 issues ; contrat à jour.
+- Seuils : `registry_pages.go` 579 L (au-delà de 500, en baisse de 40) ; autres fichiers touchés
+  ≤ 469 L ; fonctions neuves ≤ 35 L ; `garderLesOuvrables` 5 paramètres (au seuil).
+- Écarts : aucun au périmètre ; `tactical_service_cellule_faces_test.go` (tests de L3.1 / L3.2) est
+  un fichier de test neuf non nommé par le plan.
+
+### L4 — Web : largeur d'Ascension, cockpit à trois colonnes, « Cartes jouées » · moyen
+
+Périmètre : `features/ascension/AscensionLayout.tsx` (+ test), `features/tactical/{TacticalPage.tsx,
+TacticalMapsColumn.tsx (NEUF), TacticalMapTile.tsx, cockpit.logic.ts (NEUF), tacticalLogic.ts,
+i18n.ts}` (+ tests), `lib/i18n/manifests/tactical.toml` (+ généré).
+
+- [x] L4.0 `npm ci` (node_modules réel) ; premier gate web à blanc consigné (état de départ).
+- [x] L4.1 `AscensionLayout.tsx:78` : `<main className="space-y-6 p-6">` (V2) ; test d'abord
+  (`AscensionLayout.test.tsx` : ni `container` ni `max-w-6xl`, `p-6`) ; tests des autres onglets
+  rejoués nommément (`AscensionProfilTab`, `AscensionObjectivesTab`, `AscensionCoachingTab`,
+  `features/tendances/*`). *Six onglets en héritent (Tendances compris), pas cinq.*
+- [x] L4.2 `cockpit.logic.ts` : constantes D13, `carteEffective` (D11), `normaliserRecherche`
+  (minuscules, sans diacritiques), `filtrerCartes` (nom affiché + canonique), partition ouvrables /
+  sous plancher (verdict du serveur `sous_plancher`, jamais recalculé), libellés de repli. Tests
+  ROUGES d'abord ; mutations : accents gardés, carte sous plancher prise par défaut, URL ignorée.
+- [x] L4.3 `TacticalMapsColumn.tsx` + `TacticalMapTile` compacte (100 px, 16:9, ligne
+  « 54 · 30 V / 24 D », barre fine) : S2-S4 ; tests (recherche, active, repli, ouverture du repli
+  quand seules les cartes sous plancher correspondent, aucune carte ouvrable).
+- [x] L4.4 `TacticalPage.tsx` recomposé : grille cockpit (D13) ; colonne gauche ; le groupe centre +
+  droite monte, TRANSITOIREMENT, la `TacticalAnalysisView` existante (remplacée en L5 et L6) ;
+  bascule, grille et pied retirés (§4.A) ; états dans l'ordre existant (composition impossible,
+  échec, attente, vide) ; `TacticalPage.test.tsx` et `TacticalPage.relecture.test.tsx` adaptés
+  (sélection d'office, URL non réécrite, le fond et les vignettes restent montés en relecture).
+- [x] L4.5 Chaînes neuves de la colonne (FR + EN, mots de la maquette) ; manifeste régénéré.
+- [x] L4.6 §4.A rejoué → 0.
+- Gate : gate web.
+
+Journal L4 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L4.0** `npm ci` fait en L1.6. Gate web À BLANC : `tsc -b --force` ROUGE (1 erreur :
+  `TacticalCellCard.test.tsx:94`, fixture sans `replay_available`, champ obligatoire du contrat depuis
+  L1.5 — régression de L1, que son gate Go ne pouvait pas voir) ; réparée par une ligne
+  (`replay_available: false`), puis à blanc : `tsc` 0, lint 0 erreur / 26 avertissements, vitest
+  850 fichiers / 9 113 tests verts, manifestes OK (23, 3 582 clés), knip 0 / 0 / 0, couleurs 0, champs
+  0, imports croisés 7 ≤ 7, `lefthook run pre-push` vert.
+- **L4.1** `AscensionLayout.tsx:78` → `<main className="space-y-6 p-6">`. Test « pleine largeur » vu
+  rouge ; onglets voisins rejoués (`AscensionLayout`, `AscensionProfilTab`, `AscensionObjectivesTab`,
+  `AscensionCoachingTab`, `features/tendances/*` : 20 fichiers, 247 tests verts).
+- **L4.2** `cockpit.logic.ts` (143 L) : mesures D13 (locales, exposées en variables CSS
+  `VARIABLES_COCKPIT`, seule `VIGNETTE_LARGEUR_PX` exportée — aucune constante sans lecteur),
+  `carteEffective` (url / defaut / hors_filtre / aucune) et `carteLue`, `normaliserRecherche`,
+  `filtrerCartes` (nom affiché ET canonique), `colonneDesCartes` (partition sur le verdict
+  `sous_plancher`, repli ouvert quand seules des cartes sous le plancher correspondent, liste vide
+  « aucune correspondance » / « aucune ouvrable »). 14 tests vus rouges (module absent) ; deux données de
+  test corrigées (en anglais le nom affiché EST le canonique ; aucune ouvrable ne contenait « a »).
+- **L4.3** `TacticalMapsColumn.tsx` (152 L, `RepliSousPlancher` extrait) : recherche (placeholder
+  « Carte », nom « Rechercher une carte »), liste des ouvrables (rangée défilante, colonne de
+  551 px à défilement interne dès 1 400 px), repli `<details>` « N cartes sous le plancher » /
+  « x sur N … », lignes « nom » + « n sur plancher ». `TacticalMapTile` réécrite en vignette compacte
+  (100 px 16:9, « 24 · 14 V / 9 D », barre fine `outcome-win` / `outcome-loss`, bordure 2 px `primary`,
+  `aria-pressed`) ; son état « sous le plancher » (bouton désactivé) disparaît avec la grille ;
+  `MiniPlan` extrait. 7 tests vus rouges (module absent).
+- **L4.4** `TacticalPage.tsx` (288 L) recomposé : grille cockpit (`min-[1400px]:` deux pistes,
+  carte | groupe), colonne à gauche, `LectureDeLaCarte` (vue d'analyse TRANSITOIRE, `key` = carte ;
+  carte d'URL hors filtre ou sous le plancher : son nom et « Aucun match sur cette carte dans ce
+  filtre », sans requête ; aucune ouvrable : rien) ; `useScopeTactique` et `useCartesDuPerimetre`
+  extraits (fonction de page 74 L). Bascule, `ContenuGrille`, pied et `couvertureGrille` (+ ses tests)
+  retirés. Les états bloquants (composition impossible, échec, attente, aucune carte) sont dits UNE
+  fois, dans la colonne, sans lecture montée ; en relecture, colonne et lecture restent montées.
+  Tests adaptés : `TacticalPage.test.tsx` (sélection d'office sans réécriture d'URL, carte d'URL
+  lue / sous le plancher / hors filtre, plus de bascule ni de pied, repli), `TacticalPage.relecture.test.tsx`
+  (échec et coéquipier introuvable : message dans la colonne, aucune lecture montée ; changement de
+  joueur : attente dans la colonne ; Aquarius ouvrable ajouté au jeu pour le changement de carte ;
+  fond de Ruelles lu une fois). Rouge prouvé APRÈS coup : les tests adaptés contre les trois fichiers
+  de HEAD remis temporairement (empreintes vérifiées à la restauration) → 9 échecs / 34.
+- **L4.5** Sept clés neuves FR + EN (`search_placeholder`, `search_label`, `no_match`, `none_openable`,
+  `floor_fold`, `floor_fold_filtered`, `floor_count`) et `tile_summary` au format de S3, posées avec
+  L4.3 (ses tests les lisent) ; manifeste régénéré (118 clés).
+- **L4.6** §4.A rejoué : `TacticalScreenSwitch|ContenuGrille|tactical-couverture|couvertureGrille`
+  → 0 (deux assertions d'absence devenues vides remplacées par l'absence des TEXTES, encore au
+  manifeste jusqu'à L7).
+- **Mutations** (toutes ROUGES, restauration vérifiée par empreinte) : borne 6xl remise ; accents
+  gardés ; carte sous le plancher prise par défaut ; URL ignorée (logique) ; repli jamais ouvert ;
+  carte active jamais pressée ; URL ignorée (page) ; lecture montée malgré un état bloquant ; URL
+  réécrite par la sélection d'office.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements, aucun sur un
+  fichier du lot) ; `vitest run --pool=forks` 852 fichiers / 9 133 tests verts ; manifestes reconstruits
+  identiques (tactical seul changé) ; knip 0 / 0 / 0 (aveugle sur ce poste : exports jugés à la main) ;
+  couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lefthook run pre-push` vert (9 hooks).
+- Seuils : fichiers ≤ 418 L sauf `tactical.toml` 575 L (manifeste, 541 avant le lot, purgé en L7) ;
+  fonctions : `TacticalPage` 74, `TacticalMapsColumn` 66, `TacticalMapTile` 55, `LectureDeLaCarte` 49.
+- Écarts : `TacticalCellCard.test.tsx` touché (réparation de L1, hors périmètre de L4) ; L4.5 fait avec
+  L4.3 ; la page ne passe plus `perimetreEnEchec` ni `coequipiersInconnus` à `TacticalAnalysisView`
+  (lecture non montée dans ces états) — props transitoires, la vue part en L5 / L6 ; les états
+  bloquants vivent dans la colonne (le plan disait « états dans l'ordre existant » sans dire où).
+
+### L5 — Web : la carte du plan · lourd
+
+Périmètre : `lib/replay/heatPaint.ts` (+ test, deux constantes), `features/tactical/{TacticalPlanCard.tsx,
+TacticalPlanFond.tsx, TacticalAnalysisView.tsx, plan.logic.ts (NEUF), tacticalView.logic.ts,
+tacticalLecture.logic.ts, i18n.ts}` (+ tests), `components/layout/KPIStrip.tsx` (+ test, supprimés),
+`components/ui/metric-trend.tsx` (commentaires), manifeste.
+
+- [x] L5.1 V8 / D18 : constantes et assertions (`heatPaint.test.ts:282-283`) ; tests du noyau verts ;
+  mutation : ancienne valeur → rouge.
+- [x] L5.2 `plan.logic.ts` : texte de l'ⓘ par lecture (S6, D9, D20), bornes de légende (réutilise
+  `planLegend`), arrêts de la rampe depuis la rampe peinte (D14), dimensions de la boîte (D13), type
+  `TacticalQuestion` étendu à `solde` (+ `QUESTIONS` de `tacticalLecture.logic.ts:287-294`, unité).
+  Tests ROUGES d'abord ; mutations : ⓘ sans le pas, rampe horizontale, positif en bas.
+- [x] L5.3 `TacticalPlanCard.tsx` réécrit (S5-S9) : `titleWithInfo(ⓘ, { trailing: pilules })`
+  (`components/ui/title-with-info.tsx:32`), pilules « Lecture » / « Joueurs » / « Réapparition »
+  (état local comme aujourd'hui), bandeau d'état, corps fond + calque + cadre de la cellule, rampe
+  verticale, états vides en titre seul (D24) ; `TacticalPlanFond` à 800 px.
+- [x] L5.4 `TacticalAnalysisView.tsx` : plus de H2, de barre d'outils, de KPI ni de carte
+  Coordination ; la colonne de droite garde, TRANSITOIREMENT, `TacticalCellCard` (remplacée en L6).
+- [x] L5.5 Suppressions §4.B (fichiers, tests, exports), commentaires devenus faux corrigés
+  (`metric-trend.tsx:10,19`) ; §4.B rejoué → 0.
+- [x] L5.6 Tests : `TacticalAnalysisView.test.tsx` et `.fond.test.tsx` adaptés (le fond reste le même
+  `<img>` en relecture ; ⓘ ; pilules ; « Escouade » désactivé ; bandeau d'état ; états vides) ; un
+  test par lecture (unité, rampe divergente pour `gagne` / `solde`).
+- [x] L5.7 Chaînes neuves du plan (FR + EN) ; manifeste régénéré.
+- Gate : gate web ; `lib/replay/heatPaint.test.ts`, `features/match-view/MatchPositionsHeatmap*`
+  et `features/match-replay/**/useReplayHeatmap*` rejoués nommément.
+
+Journal L5 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **Correction du superviseur appliquée** (2026-10-06, après L4) : la règle de L4.4 « états
+  bloquants dits dans la colonne, lecture non montée » ne valait que pour la transition. Depuis L5,
+  la carte du plan est TOUJOURS montée dès qu'une carte est connue (`?carte=`, ou la plus jouée dès
+  que la liste répond ; avant, sans carte : cadre au rapport par défaut sous l'indicateur, titre
+  vide, aucun texte d'attente) ; échec de la lecture ou de son périmètre et composition impossible
+  → le message SUR le fond, qui reste ; relecture → calque estompé sous « Mise à jour… ». La
+  colonne ne dit que ses états (liste en échec, attente, aucune carte) et se tait quand le
+  périmètre ne peut pas s'appliquer. `carteEffective` gagne `attente` (liste pas encore servie) et
+  `null` = liste en échec (origine `aucune`, la carte de l'URL garde son fond). Tests de L4.4
+  réadaptés : messages attendus sur le plan, fond monté (même `<img>`).
+- **L5.1** `HEAT_ALPHA_MIN` 0,12 → 0,45, `HEAT_ALPHA_MAX` 0,75 → 0,85 (`heatPaint.ts`, commentaire au
+  présent) ; les deux assertions de `heatPaint.test.ts:282-283` vues rouges d'abord. D18 : noyau
+  partagé — `MatchPositionsHeatmap*` (Vue match, « Occupation du terrain ») et `useReplayHeatmap*`
+  (rejeu 2D) rejoués nommément, verts (avec `heatPaint.test.ts` : 3 fichiers, 45 tests).
+- **L5.2** `plan.logic.ts` (114 L) : `infoDuPlan` (S6, D9, D20), `legendeDuPlan` (sur `planLegend`,
+  borne haute séparée de l'unité), `rampeVerticale` (9 arrêts prélevés dans la rampe peinte,
+  `0deg`), `boiteDuPlan` (rapport du fond, `maxWidth` = rapport × 800), `etatDuPlan`.
+  `TacticalQuestion` += `solde` (+ `QUESTIONS`, unité, libellé, ordre V5 de la pilule). 14 tests vus
+  rouges (module absent).
+- **L5.3** `TacticalPlanCard.tsx` réécrit (457 L) : `titleWithInfo(ⓘ, { trailing: pilules })`,
+  pilules « Lecture » / « Joueurs » (« Escouade » désactivé avec infobulle) / « Réapparition »,
+  bandeau d'état (S7), fond + calque + cadre de cellule, messages posés sur le fond (échec,
+  composition impossible, hors filtre, états vides en titre seul), indicateur sans texte, rampe
+  verticale de 220 px au bord droit indépendante du fond (sans lecture : rampe atténuée, unité, « — »).
+  `TacticalPlanFond` sur `boiteDuPlan` (800 px), marge de légende de 90 px réservée.
+- **L5.4** `TacticalAnalysisView.tsx` (231 L, fonction de 80 L, `useReglages` et `useZoneChoisie`
+  extraits) : plus de H2, de barre d'outils, de KPI ni de carte Coordination ; carte du plan
+  toujours rendue ; `TacticalCellCard` à droite, transitoire. La lecture ne part que pour une carte
+  lue (`carteLue`). `TacticalPage` monte toujours la vue (`key` = carte).
+- **L5.5** Supprimés : `TacticalToolbar.tsx`, `TacticalCoordinationCard.tsx` (+ test logique),
+  `components/layout/KPIStrip.tsx` (+ test) ; dans `tacticalView.logic.ts` (476 → 413 L) :
+  `pageTitle`, `ratioSafe`, `positionCategorie`, `PLAN_HAUTEUR_MAX_PX` (+ tests) ; `formatDistanceM`
+  et `DISTANCE_DECIMALES` deviennent locaux (`libelleRayons` garde un lecteur : l'ⓘ de « morts
+  seul »). Commentaires devenus faux corrigés : `metric-trend.tsx` (l. 10, 19),
+  `metric-trend.guard.test.ts` (l. 10), `styles/globals.css` (l. 62). §4.B rejoué : 0 hors
+  `libelleRayons` / `formatDistanceM` / `DISTANCE_DECIMALES` (lecteur conservé, prévu par §4.B) ;
+  l'instrument `TacticalFond.mesure.test.ts` cite encore `kpi-strip` et `tactical-analysis-title`
+  (ignoré par défaut, adapté en L8.2).
+- **L5.6** `TacticalAnalysisView.test.tsx` réécrit (27 tests : états du plan sur le fond, carte hors
+  filtre sans lecture, sans carte, aucune ouvrable, états vides en titre seul, cadre, bandeau, ⓘ,
+  pilules, « Escouade », bandeau d'état, une unité par lecture, rampe divergente pour `gagne` /
+  `solde`) ; `.fond.test.tsx` adapté (calque à la place des KPI, pilule « Lecture ») ; tests de page
+  et de relecture réadaptés. Écrits après le code : rouge prouvé contre HEAD (vue, carte du plan,
+  fond, page, logique et fichiers supprimés remis temporairement, empreintes vérifiées) → 35 échecs
+  sur 61.
+- **L5.7** Quinze clés neuves FR + EN (`analysis.questions.solde`, `unit.solde`, `plan.info*`,
+  `plan.pill_*`, `plan.squad_disabled`) ; manifeste régénéré (133 clés).
+- **Mutations** (toutes ROUGES, restauration vérifiée) : ancienne opacité basse ; ancienne opacité
+  haute ; ⓘ sans le pas ; rampe horizontale ; positif en bas ; carte hors filtre lue ; échec jamais
+  posé sur le fond ; « Escouade » toujours actif ; relecture sans estompage ; composition impossible
+  non transmise au plan.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements, aucun sur un
+  fichier du lot) ; `vitest run --pool=forks` 851 fichiers / 9 133 tests verts ; noyau rejoué
+  nommément (45 tests) ; manifestes reconstruits identiques ; knip 0 / 0 / 0 (exports vérifiés à la
+  main) ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lefthook run pre-push` vert.
+- Seuils : `tactical.toml` 643 L (manifeste, purge en L7) ; autres ≤ 457 L ; fonctions ≤ 80 L.
+- Écarts : `styles/globals.css` et `metric-trend.guard.test.ts` hors de la liste du périmètre
+  (commentaires devenus faux) ; la correction du superviseur modifie `TacticalPage.tsx` et
+  `cockpit.logic.ts` (lot L4) dans ce lot ; `data-mode` posé sur la rampe pour éprouver la rampe
+  divergente.
+
+### L6 — Web : la zone sélectionnée · lourd
+
+Périmètre : `lib/match-nav/MatchReplayLink.tsx` (+ test), `features/tactical/{TacticalZoneCard.tsx
+(NEUF), TacticalRejeuTile.tsx (NEUF), zone.logic.ts (NEUF), TacticalAnalysisView.tsx,
+TacticalPlanCard.tsx, TacticalCellCard.tsx (supprimé), tacticalView.logic.ts, i18n.ts}` (+ tests),
+manifeste.
+
+- [x] L6.1 `zone.logic.ts` : `zoneLaPlusChaude` (D10), coordonnées (S10), valeur signée, sous-ligne
+  par lecture, modèle de tuile (fait par face, arme ou catégorie traduite ou rien, badge « seul »,
+  « seul · N m », « près · N m », « < 1 », date au fuseau, texte complet), position de l'étiquette
+  du plan. Tests ROUGES d'abord ; mutations : |valeur| ignorée, badge arrondi au lieu de tronqué,
+  badge sur un frag, fuseau ignoré.
+- [x] L6.2 `MatchReplayLink` : prop `search` et variante `large` (D8) ; tests d'abord (lien avec
+  `?t=&clock=`, rien sans `available`, rien sans capability) ; tests de l'Explorateur, de l'Escouade
+  et de `match-card` rejoués nommément.
+- [x] L6.3 `TacticalRejeuTile.tsx` + `TacticalZoneCard.tsx` (S10, S11, S15) ; sélection par défaut
+  dans `TacticalAnalysisView` ; étiquette du nom de zone sur le plan (S8) ; colonne à la hauteur de
+  la carte du plan, liste à défilement interne.
+- [x] L6.4 Suppressions §4.C ; §4.C rejoué → 0.
+- [x] L6.5 Tests : carte de zone (sans sélection, sélection d'office, clic, lecture signée, `solde`,
+  lecture d'artefact, zone sans nom), tuile (deux lignes, ellipse sur l'arme seule, bouton absent sans
+  artefact, ordre du plus récent au plus ancien), étiquette du plan.
+- [x] L6.6 Chaînes neuves de la zone (FR + EN) ; manifeste régénéré.
+- Gate : gate web.
+
+Journal L6 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L6.1** `zone.logic.ts` (203 L) : `zoneLaPlusChaude` (|valeur| sur une lecture signée, puis le plus
+  de matchs distincts), `coordonneesDeZone` (« x −14…−12 m · y 4…6 m », signe moins
+  typographique), `valeurAffichee` (« + » / « − » sur une lecture signée), `sousLigneDeZone`
+  (victoires et défaites pour « gagne », frags et morts pour « solde »), `modeleDeTuile` (fait par
+  face, arme dans la langue de la page puis catégorie traduite puis rien, badge TRONQUÉ au mètre et
+  « < 1 », jamais sur un frag, date · heure au fuseau du joueur, texte complet, lien à
+  `?t=&clock=`), `positionEtiquette` (par `rectSelection` à largeur 1 : à droite de la cellule dans la
+  partie gauche du plan, à gauche au-delà), `titreDeZone`. 16 tests vus rouges (module absent).
+- **L6.2** `MatchReplayLink` : variante `large` (36 px, icône de 20 px, forme de
+  `MatchHeader.replayLink.tsx`) et prop `search` (`t` chaîne, `clock`) ; l'explication « `t` est une
+  chaîne » relogée dans sa doc (elle vivait dans `TacticalCellCard`). Trois tests (lien avec
+  `?t=&clock=`, rien sans artefact, rien sans capability) ; le premier vu rouge, les deux portes
+  l'étaient déjà par construction. Le double de `Link` du test sait désormais porter `search`.
+  Rejoués nommément : `match-card`, `ExplorerMatchesTable`, `SquadSynergyHistoryTable`,
+  `lib/match-nav` (9 fichiers, 135 tests verts).
+- **L6.3** `TacticalRejeuTile.tsx` (76 L : bande d'issue `outcome-*`, deux lignes, arme seule en
+  `truncate`, badge à droite, `title` = texte complet, `MatchReplayLink` `large` à l'instant) et
+  `TacticalZoneCard.tsx` (127 L : titre = nom en jeu ou « Zone sans nom », « Zone sélectionnée » sans
+  sélection ou pendant la lecture du détail, coordonnées, valeur et unité, sous-ligne, « Rejeu »,
+  liste à défilement interne, pied d'ownership). `TacticalAnalysisView` : `useZone` (zone la plus
+  chaude présélectionnée tant que rien n'est cliqué, choix remis à zéro au changement de carte,
+  lecture, joueurs ou réapparition, détail à la lecture prête) ; colonne à la hauteur de la carte du
+  plan (`lg:self-stretch lg:[contain:size]`) ; étiquette du nom de zone sur le plan
+  (`EtiquetteDeZone`, `TacticalPlanCard`).
+- **L6.4** `TacticalCellCard.tsx` + test supprimés ; `questionSansCellule` (+ test) retiré de
+  `tacticalView.logic.ts` (413 → 404 L). Renvois « cf. `TacticalCellCard` » réorientés vers
+  `MatchReplayLink` : `lib/replay/replayLogic.ts:342`, `routes/…/replay.tsx:20`,
+  `features/synthesis/WeaponRecordsRuler.tsx:106`, `tacticalView.logic.ts` (commentaire). §4.C
+  rejoué : 0, hors `features/match-view/MatchElevationSection.tsx:144` (lot voisin, non touché, §8).
+- **L6.5** `TacticalZoneCard.test.tsx` (14 tests : carte de zone et tuile) vu rouge (module absent) ;
+  `TacticalAnalysisView.test.tsx` : détail de zone doublé, cinq tests de sélection (présélection,
+  clic puis remise à zéro au changement de lecture, étiquette nommée, « Zone sans nom », lecture sans
+  cellule) écrits après le code, rouge prouvé contre HEAD (6 échecs sur 32) ; `.fond.test.tsx` : le
+  premier détail part de la présélection, plus d'un clic.
+- **L6.6** 23 clés neuves FR + EN (`zone.*`, `tile.*`) ; manifeste régénéré (156 clés).
+- **Mutations** (toutes ROUGES, restauration vérifiée) : |valeur| ignorée ; badge arrondi ; badge sur
+  un frag ; fuseau ignoré ; instant non porté par le lien ; pas de présélection ; pas de remise à
+  zéro ; pas d'étiquette sur le plan ; bouton de rejeu sans artefact.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements, aucun sur un
+  fichier du lot ; une erreur de mon test, paramètre inutilisé, corrigée) ; `vitest run --pool=forks`
+  852 fichiers / 9 160 tests verts ; manifestes reconstruits identiques ; knip 0 / 0 / 0 (exports
+  vérifiés à la main : trois types sans importeur rendus locaux) ; couleurs 0 ; champs 0 ; imports
+  croisés 7 ≤ 7 ; `lefthook run pre-push` vert.
+- Seuils : `tactical.toml` 740 L (manifeste, purge en L7) ; `TacticalPlanCard.tsx` 489 L ; autres
+  ≤ 404 L ; fonctions ≤ 78 L.
+- Écarts : L6.2 exécuté avant L6.1 ; renvois de commentaires corrigés dans `replayLogic.ts`, la route
+  du rejeu et `WeaponRecordsRuler.tsx` (hors périmètre, devenus faux par la suppression) ; les clés
+  `cell.contributions_loading` et `cell.footer_not_openable` restent lues par la carte de zone (leur
+  sort est celui de L7).
+
+### L7 — Web : sémantique et chaînes · moyen
+
+- [x] L7.1 V5 et V9 sur toutes les chaînes survivantes de `tactical.toml` : libellés et unités des
+  lectures, « Joueurs », « Lecture », « Réapparition » / « Toutes », états vides (D24), bandeau
+  d'état (« en attente de traitement », « sans film »), échecs sans conseil, « Coéquipier
+  introuvable » sans impératif, plus de « La question », « Clique une zone chaude du plan »,
+  « ▼ moins c'est mieux », « échantillon faible », « cuisson », « Spawn de départ », « Cellule
+  sélectionnée », « Voir dans le rejeu ».
+- [x] L7.2 Purge §4.D (clés et accesseurs sans lecteur, preuve par grep de chacun) ; manifeste
+  régénéré ; garde anti-anglicismes verte.
+- [x] L7.3 Test `tacticalStrings.test.ts` (NEUF) : titres et mots de la maquette FR copiés (S2-S11),
+  libellés et unités V5 FR et EN, balayage de toutes les chaînes FR sans impératif listé ci-dessus ni
+  anglicisme. Mutation : réintroduire « Spawn de départ » → rouge.
+- Gate : gate web.
+
+Journal L7 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L7.1** `tactical.toml` reconstruit par sections (colonne, barre L2 inchangée, lectures et unités,
+  bandeau et pilules, états sur le fond, zone, mini-tuile). Lectures V5 : « Morts », « Frags »,
+  « Solde frags − morts », « Victoires − défaites », « Temps de présence », « Trajets après
+  réapparition », « Morts seul » (EN « Deaths », « Kills », « Kills − deaths », « Wins − losses »,
+  « Time on map », « Routes after respawn », « Deaths alone ») ; unité « morts seul par match ».
+  États vides en titre seul (D24, « Aucun match sur cette carte dans le filtre ») ; échec de la
+  lecture en titre seul, sans conseil ; colonne vide en titre seul ; bandeau d'état « en attente de
+  traitement » / « sans film » ; « Coéquipier introuvable » suivi d'un constat (« Introuvable parmi
+  les coéquipiers connus : … »). `sourceForQuestion` → `lectureDeRejeu` (booléen), `planEmptyText`
+  → `titreDuPlanVide` (titre seul). Trois commentaires devenus faux corrigés dans
+  `tacticalView.logic.ts` (« cellule sélectionnée », « source par question », bandeaux).
+- **L7.2** Clés `cell.*` encore lues par la carte de zone REMPLACÉES : `zone.contributions_loading`
+  (« Chargement des matchs de la zone… ») et `zone.not_openable` (« … du filtre non ouvrables »).
+  Renommées : `coordination.radius_value` / `radius_join` → `plan.radius_*` (relues par l'ⓘ),
+  `toolbar.who_*` → `plan.who_*`. 62 clés retirées (dont toutes les familles `kpi.*`, `screen.*`,
+  `coordination.*`, `cell.*`, `toolbar.*`, `plan.scale_*`, `plan.footer_*`, `plan.source_*`) et 62
+  accesseurs. Preuves `git grep -F --untracked` sur `apps tools scripts config` : 67 clés
+  (retirées + sources renommées) → 0 chacune ; 8 préfixes de familles → 0 ; accesseurs `\b<nom>\b`
+  dans `apps/web/src` → 0, sauf 4 homonymes hors de l'onglet (`coordinationTitle` de
+  `squadRiposteStrings`, `emptyDescription`, `intro`, `lowSample`), à 0 dans les 23 fichiers qui
+  lisent le texte tactique. Inventaire inverse : 96 clés, chacune lue ; 9 sous-clés sans lecteur
+  littéral, lues dynamiquement (`t.units[question]`, `t.tileCategories[categorie]`). Manifeste
+  régénéré (96 clés, 3 567 au total) ; garde anti-anglicismes verte.
+- **L7.3** `tacticalStrings.test.ts` (143 L, 26 tests) : mots de la maquette (colonne, pilules,
+  états, bandeau, zone, mini-tuile), lectures et unités V5 FR, libellés EN, balayage des chaînes FR
+  du manifeste (texte VISIBLE : noms d'arguments ICU retirés, branches plurielles gardées) contre 15
+  formules retirées ou impératives et 5 anglicismes. Mutations ROUGES, restauration vérifiée :
+  « Spawn de départ » sur `plan.pill_respawn` (3 échecs) ; « maps » dans une branche plurielle non
+  assertée ; « Choisis » dans un état vide non asserté.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 183 tests verts ; manifestes reconstruits identiques ;
+  knip 0 / 0 / 0 (exports vérifiés à la main : `lectureDeRejeu`, `titreDuPlanVide` lus en
+  production ; `sourceForQuestion`, `planEmptyText` à 0) ; couleurs 0 ; champs 0 ; imports croisés
+  7 ≤ 7 ; `lefthook run pre-push` vert.
+- Seuils : `tactical.toml` 740 → 397 L (sous 500) ; `TacticalPlanCard.tsx` 491 L ; autres ≤ 396 L ;
+  `TacticalFond.mesure.test.ts` 755 L inchangé (dette antérieure, instrument de L8.2).
+- Écarts : les deux sélecteurs de `TacticalFond.mesure.test.ts` (`t.questionLabel` →
+  `t.pillReading`, `t.spawnLabel` → `t.pillRespawn`) adaptés dès L7, faute de quoi `tsc` échouait
+  sur les accesseurs retirés (anticipation partielle de L8.2, le reste de L8.2 inchangé).
+
+### L8 — Web : suppressions résiduelles et preuves · rapide
+
+- [x] L8.1 Rejouer §4.A-D côté web → 0 (hors commentaires historiques) ; tout export, type, fichier
+  ou commentaire devenu faux, retiré ou corrigé.
+- [x] L8.2 `TacticalFond.mesure.test.ts` (instrument ignoré par défaut, porte `TACTIQUE_MESURE`) :
+  sélecteurs adaptés au cockpit, relevés KPI et pied retirés ; non exécuté (il lit des documents de
+  rejeu cuits).
+- [x] L8.3 Ratchets : knip, imports croisés (≤ 7, aucune dérogation morte), couleurs, champs en dur ;
+  si un plafond baisse, l'abaisser.
+- Gate : gate web.
+
+Journal L8 (2026-10-06, exécuteur, `feat/tactique-v2`) :
+- **L8.1** §4.A-D rejoués sur `apps/web/src` (hors `lib/api/generated.ts`) : `TacticalScreenSwitch`,
+  `ContenuGrille`, `tactical-couverture`, `couvertureGrille`, `TacticalToolbar`, `buildKpiCards`,
+  `KPIStrip`, `TacticalCoordinationCard`, `positionCategorie`, `ratioSafe`, `PiedDuPlan`,
+  `LegendeDuPlan`, `rampeCss`, `PLAN_HAUTEUR_MAX_PX`, `TacticalCellCard`, `questionSansCellule` et
+  les familles de clés de §4.D → 0. Restent, par décision du plan : `libelleRayons`,
+  `formatDistanceM`, `DISTANCE_DECIMALES` (relus par l'ⓘ du plan, `plan.logic.ts`),
+  `HistogramChart` et `withLowSampleNote` (autres lecteurs) ; `pageTitle` : 13 fichiers, tous hors
+  de l'onglet. Témoins `tactical-analysis-title` et `kpi-strip` → 0 dans `apps/web`. Commentaires
+  devenus faux corrigés : `MatchElevationSection.tsx:144` (« cf. TacticalCellCard » →
+  `MatchReplayLink`, le renvoi laissé en L6 au §8), `tacticalLecture.logic.ts` (ce qui s'estompe :
+  plus de KPI ni de cartes Cellule / Coordination), `queries.ts` (titre de la carte du plan),
+  `TacticalPage.test.tsx` (deux commentaires), `TacticalPage.relecture.test.tsx`.
+- **L8.2** `TacticalFond.mesure.test.ts` adapté sans être exécuté : titre lu sur
+  `tactical-plan-title`, relevé `kpi` remplacé par `reponse` (calque ou titre de plan vide affiché),
+  « prêt » = réponse affichée ou échec, relevés du pied retirés (`echelle`, `retenus`, `pas`,
+  `horsCadre`), invariants « aucune réponse d'un autre joueur / d'une autre carte pendant la
+  transition » et « la reprise après échec rend une réponse » réécrits sur `reponse` ; scénario de
+  l'ancienne grille relu comme la colonne « Cartes jouées » (mêmes témoins `tactical-map-*`,
+  `tactical-grille-updating`, `tactical-erreur`). 755 → 754 L (dérogation `max-lines` datée
+  inchangée). Il reste ignoré sans `TACTIQUE_MESURE` (5 fichiers ignorés dans la suite).
+- **L8.3** Ratchets : knip 0 / 0 / 0 (plafond 0), imports croisés 7 ≤ 7 (aucun des 7 ni aucune
+  dérogation de `ALLOWED_CROSS_IMPORTS` ne concerne l'onglet), couleurs 0, champs en dur 0 : aucun
+  plafond ne baisse, rien à abaisser.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 183 tests verts ; manifestes reconstruits identiques ;
+  ratchets verts ; `lefthook run pre-push` vert. Aucune mutation (aucun comportement neuf).
+- Écart : le renvoi de `MatchElevationSection.tsx` (lot voisin Vue match), laissé en L6, est corrigé
+  ici parce que L8.1 exige le rejeu de §4.C à 0 hors commentaires historiques.
+
+### L9 — Go : suppressions et contrat · moyen
+
+Le web ne lit plus `echange`, `coordination`, `isolement`, `evenements_*` depuis L5 (L9.1 le prouve).
+
+- [x] L9.1 Rejouer §4.E-H (producteurs et lecteurs Go, lecteurs web → 0) et la baseline de tests.
+- [x] L9.2 §4.E échange (déplacement des cas survivants, noms inchangés).
+- [x] L9.3 §4.F coordination (liste blanche `no_naked_rate_test.go` réduite).
+- [x] L9.4 §4.G `Isolement` du raster.
+- [x] L9.5 §4.H contrat : `openapi.yaml` et `generated.ts` en baisse seulement, snapshot régénéré
+  par la procédure (disparitions listées au journal), alias de `lib/api/types.ts` retirés ; garde
+  rejouée sans la variable.
+- Gate : gate Go + contrat + gate web ; preuves §4 rejouées → 0.
+
+Journal L9 (2026-10-07, exécuteur, `feat/tactique-v2`) :
+- **L9.1** Preuves rejouées avant retrait (producteurs Go : `mesurerEchange`, `compterJournal`,
+  `lireLeJournal` et ses TROIS appels — `tactical_service.go`, `tactical_service_isolement.go`,
+  `tactical_service_rasters.go`, le troisième absent du relevé du 2026-10-06 —, `EvenementsJournal` /
+  `EvenementsLocalises`, `construireCoordination`, `mesurerCoordination` et ses deux appels,
+  `coordination.Distances`, `TacticalRaster.Isolement` / `Coordination` / `Echange` ; lecteurs web :
+  aucun hors fixtures de test). Baseline `.ai/baselines/tests_pre_migration.jsonl` consultée pour
+  chacun des 16 tests retirés : 0 occurrence chacun, aucun autre renvoi dans le dépôt. Après
+  retrait, `git grep` sur `apps/go-api` et `apps/web/src` : 0 pour tous ces symboles, pour
+  `TacticalCoordination`, `TacticalBinDistance`, `TaCoordDistances`, `TacticalBornesDistanceM`,
+  `evenements_journal`, `evenements_localises`, `TacticalCouverture`, `distribution_distances`,
+  `fenetre_echange_secondes` (seul reste : `paquetsEvenementsLocalises`, clé de journal du
+  décodeur de film, sans rapport).
+- **L9.2** Échange : `TacticalRaster.Echange`, `mesurerEchange`, `lireLeJournal`, `compterJournal`,
+  `EvenementsJournal` / `EvenementsLocalises` retirés ; devenus morts par ce retrait et retirés
+  aussi : le relais `journalDesMortsFiable` (le prédicat partagé `games.JournalDesMortsFiable`
+  RESTE, lu par l'Escouade), `campDuMatch`, le compte rendu par `rasteriserLaCible`. Les cinq cas
+  survivants de `tactical_service_echange_test.go` (`AucunePositionLisible_Capability`,
+  `PositionsNatives_RasterServi`, `MapsPlayed_Plancher`, `MapsPlayed_PerimetreTransmis`,
+  `SansLecteur`) DÉPLACÉS tels quels, noms inchangés, vers `tactical_service_portes_test.go` ; le
+  fichier d'origine supprimé avec ses quatre cas d'échange. Retirés ailleurs :
+  `TacticalService_CouvertureDeLocalisation`, `TacticalService_Echange_PorteSurLeCampEntier`,
+  `Occupation_EchangeServiSousTemps`, `Isole_LaCouvertureNeCompteQueMesMorts` ; assertions de
+  couverture et d'échange ôtées de `PerimetreTransmis`, `FiltreSpawn_SappliqueAuxLecturesSQL`,
+  `Occupation_SommeEtDenominateur`, `Solde_DeuxFacesPlancherSurLUnion`, du test du handler
+  (`api/handlers/tactical_test.go`). Le double du port ne sert plus de journal : il COMPTE ses
+  lectures, et `TestTacticalService_Raster_SansJournalDesMorts` (neuf) prouve qu'aucune des cinq
+  lectures de base ne lit le journal. `coordination.Echanges` / `Mesurer` restent (Escouade, vue
+  match).
+- **L9.3** Coordination : `domain/tactical_coordination.go`, `analysis/coordination/distances.go` +
+  `distances_test.go`, `construireCoordination`, `mesurerCoordination` (et avec lui la seconde
+  lecture `MortsAvecContexte` de chaque raster ; `matchs_sans_rayon` et `morts_equipe_a_terre` ne
+  sont plus servis que par « isole », seule lecture dont l'ⓘ les lit), `tactical_service_coordination_test.go`
+  (quatre cas sur la section ; le cinquième, `Isole_RayonsRadarDistinctsEtTries`, déplacé avec ses
+  aides dans `tactical_service_isolement_test.go`). Liste blanche de `no_naked_rate_test.go` :
+  `domain.TaCoordDistances` retiré avec sa justification (8 → 7 types). `coordination.FenetreEchangeMs`
+  reste.
+- **L9.4** `TacticalRaster.Isolement` et ses deux écritures retirés ; `rasterIsole` garde le bilan
+  de `coordination.Isolement` (cellules isolées, `MatchsSansRayon`, `MortsEquipeATerre`). Les huit
+  tests d'isolement qui lisaient le taux publié sont réécrits sur ce que la lecture publie :
+  cellules (morts isolées en `Brut`, par match en `Valeur`, trois matchs par mort pour franchir le
+  plancher), `MatchsRetenus`, `MatchsFiltres`.
+- **L9.5** Contrat : `openapi.yaml` +0 / −69 (schémas `TacticalBinDistance`, `TacticalCoordination` ;
+  champs `coordination`, `echange`, `evenements_journal`, `evenements_localises`, `isolement` de
+  `TacticalRaster`), `generated.ts` +0 / −29 ; `openapi-gen -check` à jour ;
+  `check-generated-types-fresh` OK. Alias web `TacticalCouverture`, `TacticalCoordination`,
+  `TacticalBinDistance` retirés de `lib/api/types.ts` (et le renvoi à `TacticalCouverture` dans le
+  commentaire du bloc Coordination). Snapshot de surface régénéré par la procédure
+  (`UPDATE_CONTRACT_SURFACE=1`) — DISPARITIONS : schémas `TacticalBinDistance` et
+  `TacticalCoordination` (les champs ne font pas partie de la surface). La même régénération
+  enregistre des AJOUTS que le snapshot, tolérant aux ajouts, n'avait pas encore : `TacticalPlacement`,
+  `TacticalZoneNom` (L1), et la page Tendances de `feat/v75` (`/pages/trends`, `postTrendsPage`,
+  16 schémas `Trends*`). Garde rejouée sans la variable : 7 / 7. Fixtures web (`evenements_*`,
+  `isolement`, `echange` de l'instrument de mesure) retirées.
+- **Mutations** (toutes ROUGES, restauration vérifiée par empreinte) : lecture du journal remise
+  dans `rasterDeKills` ; variante ignorée (rayon unique) ; un match sans rayon dans l'univers de la
+  lecture ; équipes non jointes (toutes les morts gardées).
+- **Gate Go** : `go build ./...` 0 ; `go vet` des cinq paquets touchés 0 ; `gofmt -l internal cmd`
+  muet ; paquets touchés verts ; module en quatre lots couvrant les 349 paquets de `go list` : 193 ok,
+  153 sans test, 3 FAIL environnementaux (édition de liens de `sync/objective` « memory exhausted »,
+  « Out of Memory » DuckDB dans `platform/duckdb`, durée de rafale de `sync/skill` à 2,06 s pour 2 s,
+  déjà vue en L1) — rejoués seuls : ok tous trois ; `go test ./internal/archlint/...` ok ; gardes
+  nommées en `-v` : `TestAucunTauxNu`, `TestTacticalEtCoordinationSontPurs`,
+  `TestNoLocalPorteeComparison`, `TestNoLocalRadarRangeLookup` PASS ; `golangci-lint run
+  --new-from-merge-base=origin/main` (cache isolé, `--allow-parallel-runners`) 0 issues. `-tags=integration`
+  non requis (`platform/duckdb` non modifié).
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 183 tests verts ; manifestes identiques ; knip 0 / 0 / 0 ;
+  couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lint-contract-ratchet` propre ;
+  `lefthook run pre-push` vert.
+- Seuils : `tactical_service.go` 469 → 362 L, `tactical_service_isolement.go` 247 → 179,
+  `domain/tactical_page.go` 223 → 186, `tactical_service_test.go` 498 → 457,
+  `tactical_service_rasters_test.go` 481 → 419, `tactical_service_isolement_test.go` 246 → 289,
+  `tactical_service_portes_test.go` (neuf) 162 ; fonctions modifiées ≤ 65 L (`rasterIsole`) ;
+  `lib/api/types.ts` 3 480 → 3 471
+  (catalogue d'alias, au-delà du seuil avant ce lot).
+- Écarts : un troisième appel à `lireLeJournal` (lectures d'artefact) hors du relevé ; retraits
+  induits non listés au §4.E (`journalDesMortsFiable` local, `campDuMatch`, le compte de
+  `rasteriserLaCible`, les champs `ev` / `errEv` / `vuEv` du double) ; tests d'isolement réécrits
+  sur les cellules plutôt que retirés ; commentaires devenus faux corrigés
+  (`analysis/coordination/doc.go`, `api/wire/registry_pages_tactical.go`, `domain/tactical_page.go`,
+  en-tête de `tactical_service_perimetre_test.go`, doc de `positionsDe`).
+
+### L10 — Liens croisés · rapide
+
+- [x] L10.1 D17 : vérification sur pièces de `MatchViewHeader.MapID` ; état de `feat/matchview-emprise`
+  au moment du lot (fusionnée ou non, dit au journal) ; lien posé ; test (route, `search`, absent
+  sans `map_id`).
+- [!] L10.2 D16 : vérification sur pièces du libellé FR (tactique vs historique) ; lien posé depuis la
+  vignette et test, OU `[!]` avec la justification. → `[!]` : deux résolutions différentes du libellé
+  et filtre par libellé contre vignette par `map_id` (journal L10).
+- Gate : gate web (+ gate Go si un fichier Go change).
+
+Journal L10 (2026-10-07, exécuteur, `feat/tactique-v2`) :
+- **L10.1** D17. Vérifié sur pièces : `MatchViewHeader.MapID` = `*meta.MapAssetID`
+  (`match_view_builders_header.go:114-115`), scanné en 10e colonne de `Q13MatchMeta`, qui lit
+  `r.map_id` sur `match_registry r` (`queries_match.go:135, 154`) — la même colonne que les cartes de
+  l'onglet (`mr.map_id`, `tactical_repo.go:92`) ; servi au web en `header.map_id`.
+  `feat/matchview-emprise` NON fusionnée ni poussée au moment du lot (consigne du superviseur) :
+  insertion MINIMALE dans le seul `features/match-view/MatchPositionsHeatmap.tsx` — le lien
+  « Tactique » (« Ouvrir cette carte dans l’onglet Tactique », EN « Tactics » / « Open this map in the
+  Tactics tab ») dans le bandeau d'« Occupation du terrain », à côté des boutons de camp, vers
+  `/ascension/tactique` avec `search={{ carte }}`. Il vit dans un composant local du même fichier
+  (`LienTactique`) qui lit `header.map_id` par `useMatchView` (même clé de requête que la page,
+  donc le cache, aucune requête de plus) et ne rend rien sans carte. Tests dans
+  `MatchPositionsHeatmap.test.tsx` (doubles de `useMatchView` et de `Link`) : route, paramètres,
+  `search`, absence sans `map_id` ; le premier vu rouge contre le composant de HEAD.
+- **L10.2** `[!]` D16 non posé. Les deux libellés FR ne sortent pas de la même résolution :
+  l'onglet lit `asset_translations` en `fr-FR` puis `fr` seulement, sans rognage, et retombe sur
+  `match_registry.map_name` (`mapNameFRFromAssetTranslations`, `engagement_score_repo_queries.go:123-145`,
+  web `map_name_fr || map_name`) ; l'historique part de `COALESCE(r.map_name_fr, r.map_name)` puis,
+  si ce libellé est vide ou égal à l'EN, prend `ResolveAssetNamesBulk` en cascade
+  `fr-FR → fr → en-US → en → toute langue`, rogné (`match_history_fr_translations.go:110-121`,
+  `metadata_repo_assets.go:258-363`), et filtre sur `COALESCE(MapNameFR, MapName)`
+  (`match_history_service_filters.go:197-210`). Sans traduction FR, l'un donne le nom du registre,
+  l'autre la traduction EN de l'asset. Et la granularité diffère : l'Explorateur filtre par
+  LIBELLÉ, la vignette est UN `map_id`, alors que 23 cartes se répartissent sur plusieurs
+  `map_id` (§8, maquette) — même à libellé égal, l'Explorateur compterait les matchs d'autres
+  `map_id` que la vignette. Établir l'égalité carte par carte demanderait d'ouvrir les bases de
+  `data/` (exclu). Rien d'inventé.
+- **Mutations** (ROUGES, restauration vérifiée) : lien sans `search` ; lien posé sans carte connue.
+- **Gate web** : purge `.tmp` ; `tsc -b --force` 0 ; lint 0 erreur (26 avertissements de base) ;
+  `vitest run --pool=forks` 853 fichiers / 9 185 tests verts (un premier passage avait rougi deux
+  gardes de balayage de fichiers étrangers au lot, `lab-removal.guard` et
+  `useCopyToClipboard.guard` ; rejouées seules : vertes ; second passage complet : vert) ;
+  manifestes identiques ; knip 0 / 0 / 0 ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ;
+  `lefthook run pre-push` vert. Aucun fichier Go touché.
+- Seuils : `MatchPositionsHeatmap.tsx` 305 → 351 L ; sa fonction principale dépassait déjà le seuil
+  (183 L) : le lien sorti dans `LienTactique` la limite à + 10 L (193), là où l'insertion en ligne
+  l'aurait portée à 204.
+- Écart : le fichier de test du lot voisin (`MatchPositionsHeatmap.test.tsx`) est touché aussi —
+  sans doubles de `useMatchView` et de `Link`, ses tests existants ne montaient plus le composant.
+
+### L11 — Clôture · rapide
+
+- [x] L11.1 `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, entrée « Tactics tab »
+  l. 34 : quatre tuiles KPI et carte de coordination retirées, vue cockpit, lecture « Solde »,
+  noms de zone, mini-tuiles) ; `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` (« A Tactics
+  tab » / « Un onglet Tactique », l. 42-46, dont « La coordination d'équipe ») ; `README.md` + `docs/FR/README.md` (« Tactics » /
+  « Tactique », l. 34 et 114) ; lignes re-vérifiées au moment d'écrire.
+- [x] L11.2 ADR 0036 relue (test I2 de L2.2 présent dans la liste et le tableau) ; aucune autre ADR
+  concernée.
+- [x] L11.3 Statut de chaque item ; §8 relue ; entrée finale du journal.
+- [x] L11.4 Revue adversariale du diff cumulé (lots à risque : L2 lectures bornées, L3 enrichissement
+  et câblage, L9 contrat) : à demander au SUPERVISEUR (l'exécuteur n'a pas de sous-agent) ; `[!]`
+  tant qu'il ne l'a pas lancée. → `[x]` : revue adversariale faite : ronde 1 trois relecteurs (R1
+  0 constat / 14 tenues, R2 5 / 17, R3 8 / 17), L12, ronde 2 un relecteur (1 P2 consigné / 18 tenues).
+- Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
+
+Journal L11 (2026-10-07, exécuteur, `feat/tactique-v2`) :
+- **L11.1** Lignes re-vérifiées au moment d'écrire : `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md`
+  l. 34 (bloc `[7.5.0]`, entrée « Tactics tab » / « L'onglet Tactique ») ; `docs/RELEASE_NOTES.md` et
+  `docs/FR/RELEASE_NOTES.md` l. 42-46 (« A Tactics tab » / « Un onglet Tactique », dont « La
+  coordination d'équipe ») ; `README.md` et `docs/FR/README.md` l. 35 (bloc v7.5 : la puce est
+  l. 35 sous le titre l. 34) et l. 114. Ce que disent les six textes : un écran en cockpit (cartes
+  jouées, plan, zone sélectionnée), sept lectures dont « solde frags − morts » et « morts seul »,
+  noms de zone du jeu, zone la plus chaude présélectionnée, mini-tuiles qui ouvrent le rejeu à
+  l'instant, lien depuis l'« Occupation du terrain » de la Vue match ; le CHANGELOG dit le retrait
+  des quatre tuiles de KPI et de la carte de coordination avec leurs champs. Aucun autre guide
+  (`ARCHITECTURE_V6`, `FOUNDATIONS_GUIDE`, `COMMANDS`) ne décrit le contenu de l'onglet.
+- **L11.2** ADR 0036 relue : `TestTacticalRepo_ContextesDeMort_BorneEtNull` est dans la liste I2
+  (l. 164) et dans le tableau (l. 423) ; ses mentions de `KillEvents` sont des mesures datées et le
+  lecteur existe toujours (Escouade, bloc Coordination) — rien à amender. Aucune autre ADR ne nomme
+  la section de coordination, l'échange ou la couverture de l'onglet.
+- **L11.3** Tous les items statués (`[x]` sauf L10.2 et L11.4 `[!]`, justifiés) ; §8 relue,
+  complétée des découvertes de L9 et L10 ; entrées de journal de L1 à L11 présentes.
+- **L11.4** `[!]` : revue adversariale à la charge du superviseur.
+- **Gate Go** (après les docs) : `go build ./...` 0 ; `gofmt -l internal cmd` muet ; `go vet` des
+  paquets du lot 0 ; module en quatre lots couvrant les 349 paquets de `go list` : 196 ok, 153 sans
+  test, 0 échec ; `golangci-lint run --new-from-merge-base=origin/main` 0 issue. **Contrat** :
+  `openapi-gen -check` à jour, `generate-types` sans écart, `check-generated-types-fresh` OK,
+  garde de surface 7 / 7, `lint-contract-ratchet` propre. **Gate web** : `tsc -b --force` 0 ; lint
+  0 erreur (26 avertissements de base) ; `vitest run --pool=forks` 853 fichiers / 9 185 tests verts ;
+  manifestes identiques ; knip 0 / 0 / 0 ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ;
+  `lefthook run pre-push` vert.
+- Commits de la phase 2 : L1 `02322455e`, L2 `d88348c55`, L3 `5006b0a59`, L4 `5c5be71d1`, L5
+  `504d219e4`, L6 `5519f0125`, L7 `beb9c46e2`, L8 `a9fac9c9c`, L9 `629eb588c`, L10 `96eb9ef05`,
+  L11 (ce commit).
+
+### L12 — Corrections de la revue adversariale (ronde 1) · moyen
+
+Constats triés par le superviseur le 2026-10-07 (trois relecteurs aveugles ; lentille données : aucun
+constat). Zéro correction hors de cette liste.
+
+- [x] L12.G1 `archlint/no_local_portee_comparison_test.go` : l'empreinte reconnaît toute comparaison
+  (`<`, `<=`, `>`, `>=`) d'une distance déréférencée (ou testée `!= nil`) contre un rayon / une
+  portée ; seule la fonction `APortee` est exclue (plus le fichier `vies_pres_ou_seul.go`) ;
+  auto-test : `Seul: d >= rayon` et `!(d < rayon)` attrapés ; mutation rouge.
+- [x] L12.G2 Nommage de zone du détail (`tactical_service_cellule_enrichir.go`) sous la capability
+  titre de l'onglet, la porte exacte des grappes vérifiée sur pièces ; sans elle : aucun appel au
+  magasin, DEBUG « source zone absente » ; test Halo 5 : aucun appel, aucun WARN.
+- [x] L12.G3 (a) section de durée `tactical_cellule_zone` (ADR 0036 I6) ; (b) catalogue de callouts
+  décodé mis en cache par processus (clé = chemin) au niveau du lecteur ; test : deux appels = une
+  lecture du fichier.
+- [x] L12.G4 `isole` : badge de placement construit depuis le contexte déjà lu par `celluleIsole`,
+  sans `ContextesDeMort` ; test : 0 appel pour `isole`, 1 pour `morts`.
+- [x] L12.G5 Classificateur absent : DEBUG « source armes absente » ; cas `casDesSources`
+  « classificateur absent » avec vérification du journal.
+- [x] L12.W1 Un clic hors de toute cellule servie est IGNORÉ (sélection, cadre et requête
+  inchangés) ; test `RASTER_NOMINAL`, clic en (95, 5) ; mutation rouge.
+- [x] L12.W2 Échec de `/cellule` : état d'échec propre dans la carte de zone (« La zone n'a pas pu
+  être lue » FR + EN, sans conseil), nom et étiquette gardés ; test : POST rejeté → texte d'échec,
+  jamais `zoneContributionsEmpty` ; mutation rouge.
+- [x] L12.W3 Carte de l'URL hors du filtre : jamais un identifiant à l'écran — dernier nom connu de la
+  carte, sinon titre générique « Carte hors du filtre » FR + EN ; test qui figeait `'inconnue'`
+  corrigé ; mutation rouge.
+- [x] L12.T1 `zone.logic.test.ts` : égalité où la cellule au plus de matchs n'est pas la dernière
+  (mutation `>=` rouge) + égalité sur lecture signée.
+- [x] L12.T2 Tests de la vue : changer « Joueurs » et « Réapparition » remet la zone à zéro (mutation :
+  retirer `${qui}` / `${spawn}` de la clé → rouge).
+- [x] L12.T3 `TacticalPage.relecture.test.tsx` : même `<img>` du plan pendant une relecture SANS
+  `?carte=` (sélection d'office) ; mutation `if (p.cartesConnues && !p.enRelecture)` rouge.
+- [x] L12.T4 `zones_test.go` : règle (b) sans majorité avec comptes INÉGAUX (la plus peuplée gagne) ;
+  mutation `>` → `<` rouge.
+- [x] L12.S8 Consigné au §8, non traité : mise en page à 1 400 px, deux rangées, hauteur de la colonne
+  de zone sans test automatique → « non couvert, gate visuel utilisateur ».
+- Gate : gate Go complet + gate web complet + contrat.
+
+Journal L12 (2026-10-07, exécuteur, `feat/tactique-v2`, sur la fusion `f6af334ee`) :
+- **G1** `archlint/no_local_portee_comparison_test.go` : empreinte 1 élargie à `<`, `<=`, `>`, `>=`
+  dans les deux sens, sur une distance déréférencée, liée à une valeur déréférencée
+  (`d := *m.PlusProcheM`) ou testée `!= nil` dans le fichier ; seul le corps de `APortee` est retiré
+  du balayage (plus le fichier). Auto-test : `Seul: d >= rayon`, `!(d < portee)`, `*m.PlusProcheM >
+  rayon`, `rayonRadar < *mort.PlusProcheM`, `!(*d < rayon)` après `d != nil`, et une copie posée dans
+  le fichier du helper, tous attrapés ; sains : la boucle `d <= rayon` du navmesh, `v <= rayon`,
+  `d >= RayonZoneM` (distance calculée), `rayon <= 0`, le helper lui-même. Balayage du dépôt : 0.
+  Mutations ROUGES : opérateurs réduits à `<=` ; identifiants liés ignorés.
+- **G2** Porte vérifiée sur pièces : les zones des grappes ne sont lues que sous
+  `film.replay_artifact` (`tactical_service_rasters.go:94`, `tactical_service_lectures.go:131`) ; la
+  capability titre `replay` vit dans `TitleRegistry` (`domain/title/registry.go:150`), hors de la
+  CapabilityMap du service ; Halo Infinite déclare les deux, Halo 5 aucune. `nommerLaCellule` passe
+  sous `film.replay_artifact` : sans elle, aucun appel au magasin, DEBUG « source zone absente ».
+  `capsCompletes` (profil Halo Infinite des tests) porte désormais aussi l'artefact de rejeu.
+  Test `TestDetail_ZoneSansArtefactDeRejeu` (profil Halo 5 `match.events.spatial`) : 0 appel au
+  magasin, aucun WARN, la ligne DEBUG ; vu rouge avant le code. Mutation ROUGE : porte retirée.
+- **G3** (a) section `tactical_cellule_zone` autour du nommage ; test `TestCellule_ZoneSectionDeDuree`
+  (relevé de `timing.WithTimings`), mutation ROUGE : section retirée. (b) Pas de cache existant côté
+  rejeu : `catalogueDeCallouts` (`service/replay_map_callouts.go`) garde le catalogue décodé par
+  chemin pour la vie du processus (map protégée, un échec n'est pas gardé), lu par
+  `zonesPourIdentites`, donc par le rejeu ET l'onglet. Test `TestCatalogueDeCallouts_LuUneFoisParChemin`
+  : deux appels = une lecture, même catalogue ; un chemin absent relu à chaque fois. Vu rouge (symbole
+  absent) ; mutation ROUGE : catalogue non gardé.
+- **G4** `contributionLue.contexte` : `celluleIsole` y pose le contexte de chaque mort retenue ;
+  `poserPlacements` construit le badge depuis lui et ne lit `ContextesDeMort` que pour les morts qui
+  n'en portent pas (`lireLesContextes`, `matchsDesMorts(retenues, avecContexte)`). Test
+  `TestCellule_PlacementSansRelecture` : 0 lecture pour « isole » (badge « seul · 19 m »), 1 pour
+  « morts » ; vu rouge. Mutation ROUGE : contexte d'« isole » ignoré.
+- **G5** Classificateur absent : `sourceDegradee(armes)` au DEBUG ; cas `casDesSources`
+  « classificateur absent » (journal vérifié), vu rouge. Mutation ROUGE : branche muette.
+- **W1** `choixDuClic` (`zone.logic.ts`) : un clic hors de toute cellule servie ne retient rien ;
+  `useZone.choisir` l'applique. Test (95, 5) sur `RASTER_NOMINAL` : zone (5, 2) gardée, valeur
+  affichée, aucune adresse neuve ; vu rouge. Mutation ROUGE : toute adresse retenue.
+- **W2** `detail.isError` transmis ; la carte de zone dit « La zone n'a pas pu être lue » (EN « The
+  zone could not be read », clé `tactical.zone.error`), valeur et titre gardés. Tests : vue moquée
+  (`isError`) et vraie requête au `/cellule` rejeté (`.fond.test.tsx`) — le texte d'échec, jamais
+  `zoneContributionsEmpty` ; vus rouges. Mutation ROUGE : branche d'échec retirée (2 échecs).
+- **W3** `titreDeLaCarte` (`cockpit.logic.ts`) : la carte du filtre, sinon la dernière liste qui la
+  contenait (`useCartesConnues`, état dérivé pendant le rendu), sinon « Carte hors du filtre » (EN
+  « Map outside the filter », clé `tactical.plan.title_outside_filter`) pour une carte hors du filtre, et
+  rien tant que la liste n'a pas répondu — jamais l'identifiant. Le test qui figeait `'inconnue'` attend
+  le titre générique ; test neuf : carte sortie du filtre → « Ruelles » reste ; vus rouges. Mutations
+  ROUGES : identifiant au titre ; noms connus oubliés.
+- **T1** Égalité de valeur où la cellule au plus de matchs vient d'abord, égalité complète (la première
+  reste), égalité de valeur absolue signée dans les deux ordres. Mutations ROUGES : `s >= score` ;
+  `c.matchs >= meilleure.matchs`.
+- **T2** « Joueurs » (Adversaires) et « Réapparition » (grappe g1) remettent la zone à la plus chaude.
+  Mutations ROUGES : `${qui}` puis `${spawn}` retirés de la clé.
+- **T3** Relecture sans `?carte=` (sélection d'office) : même `<img>`, titre gardé. Mutation ROUGE :
+  `if (p.cartesConnues && !p.enRelecture)`.
+- **T4** Règle (b) sans majorité, comptes 3 et 2 sur 7 : la plus peuplée (plus large) l'emporte.
+  Mutation ROUGE : `>` → `<`.
+- **S8** Consigné au §8.
+- **Gate Go** : build 0 ; gofmt muet ; vet 0 ; 349 paquets en quatre lots : 196 ok, 153 sans test,
+  0 échec ; gardes nommées PASS ; golangci 0 issue. **Contrat** : `openapi-gen -check` à jour (aucun
+  type Go du contrat touché), fraîcheur OK. **Gate web** : tsc 0 ; lint 0 erreur (26 avertissements
+  de base) ; vitest 865 fichiers / 9 223 tests ; manifestes reconstruits (98 clés tactiques) puis
+  stables ; knip 0 / 0 / 0 (exports neufs `choixDuClic`, `titreDeLaCarte` lus en production) ;
+  couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lint-contract-ratchet` propre ; pre-push vert.
+- Seuils : fichiers ≤ 446 L ; fonctions modifiées ≤ 57 L (`celluleIsole`).
+
+## 7. Reprise de session
+
+Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières
+entrées de `.ai/thought_log.md` du worktree et `git -C <worktree> log --oneline -10`. Reprendre à la
+première case non statuée du lot courant. Les décisions du §1 sont fermes une fois le « go » donné.
+
+## 7 bis. Relecture plan-review (2026-10-06, phase 1)
+
+Grille `.claude/skills/plan-review/SKILL.md`, passée sur ce fichier :
+- §1 structure : objectif et critère (§0) ; lots ordonnés du pur (L1) aux lectures (L2), à
+  l'enrichissement (L3), au web, puis aux suppressions contractuelles (L9) ; effort par lot ;
+  branche nommée ; bloqueurs documentés (D1 ordre, témoin qui change en L2.3 = arrêt, L10.2
+  conditionnel, L11.4 dépendant du superviseur) — OK.
+- §2 couches Go : algos purs dans `analysis/tactical` et `analysis/coordination` (solde, zones,
+  géométrie, placement, `APortee`), types dans `domain/`, orchestration dans `service/`, SQL dans
+  `platform/duckdb` seulement (lecture neuve bornée), port étendu (`ContextesDeMort`), handler sans
+  logique (docs seulement) — OK.
+- §3 multi-titre : capabilities `film.kill_positions` / `match.events.spatial` (positions),
+  `film.replay_artifact` (artefacts), `replay` (onglet) ; classificateur et catalogue absents sur
+  Halo 5 = champs absents ; `ErrCapabilityNotSupported` testé (L2.2, L3.6) ; aucun `slug ==` ; aucun
+  champ de stats ni asset neuf ; aucun chemin hors `PathResolver` (catalogue par
+  `MapCalloutsPath`) — OK.
+- §4 adapters : mode, score et issue par le canonique (`PlayerMatchesRepository`), libellés d'arme
+  par le résolveur du registre (TOML) — pas de SQL de libellé dans le service — OK ; écart assumé :
+  lectures tactiques par repo de port, comme tout l'onglet.
+- §5 tests : purs (L1), `:memory:` avec fenêtres bornées (L2), mocks de port (L2.4, L3.6), câblage
+  (L3.5), handler (L2.4, L3.7), web logique + composants (L4-L7) ; une mutation par règle — OK.
+- §6 logs : sections de durée et `slog.*Context` à chaque dégradation (L3.3) — OK.
+- §7 front : aucune route ni clé de requête neuve ; FR + EN dans le manifeste ; issue par
+  `useOutcomeMapping` ; libellés de carte, de mode et d'arme venus du Go ; jetons seulement — OK.
+- §8 livraison : critère par lot (gate), journal par lot, dépendances externes nommées (lots
+  voisins, revue du superviseur) — OK.
+- §9 exécutabilité : périmètres fermés (listes, preuves grep), gates à commandes exactes, statuts et
+  « aucune case vide », ordre strict, Découvertes, reprise, renvoi au skill — OK.
+
+Défauts trouvés et CORRIGÉS à la relecture : (1) la première version retirait l'échange et la
+coordination du contrat avant le web (ordre du brief) — `tsc` aurait rougi au gate du lot Go : D1 ;
+(2) elle posait le badge par une comparaison neuve dans le service — troisième copie de la règle de
+portée : L1.1 ; (3) elle laissait `KPIStrip` « hors de cette page » alors qu'il n'a pas d'autre
+lecteur : D21 ; (4) elle supposait que le port de callouts portait déjà polygones et tranches : D3,
+L2.3.
+
+## 8. Découvertes (à consigner ici, pas à traiter)
+
+- (maquette) 3 matchs du 27/04/2026 sans nom de carte dans `match_registry` (MESURES Q2).
+- (maquette) 103 rangées pour 77 cartes : 23 cartes réparties sur plusieurs `map_id`, 20 rangées sans
+  nom (MESURES Q12) ; la grille groupe par (`map_id`, `map_name`) (`QTacticalMaps`,
+  `tactical_repo.go:91`) — même défaut dans la colonne « Cartes jouées ».
+- (maquette) `pair_name_fr` / `playlist_name_fr` vides en base, playlist « Quick Play » partout
+  (MESURES Q13).
+- (maquette) 17 morts par carte sans arme ni catégorie (Illusion et Bazaar, MESURES « Mini-tuiles »).
+- (maquette) Le rejeu 2D nomme les zones par centre 3D le plus proche (`calloutsLayer.zoneAt`), règle
+  différente de V6 (Bazaar (−7, −1) : « Porte ouest » à 2,36 m, MESURES « Zones nommées ») ; proposer
+  la règle V6 au rejeu.
+- (phase 1) `TacticalRaster.PointsIgnores` n'a aucun lecteur web (pré-existant) ; non retiré.
+- (phase 1) `TacticalFilterBar` n'est importé que par `TacticalPage` ; c'est `useLocalFilterBar` qui
+  est partagé avec Synthèse / Citations / Relations.
+- (phase 1) Deux implémentations de test « point dans polygone » (oracles `hinavmesh`, `mapdecoupe`) ;
+  laissées (D27).
+- (phase 1) `celluleIsole` recopiait la comparaison de portée (deuxième copie, `tactical_service_cellule.go:225`) :
+  traitée en L1.1 parce que le badge en ferait la troisième.
+- (L1) `TestLUSRV2Shadow_RafalesBornees_300Candidats` (`internal/sync/skill`) mesure une durée
+  murale (rafale < 2 s) : rouge à 2,018 s dans la suite complète pendant que d'autres sessions
+  faisaient tourner leurs `go test`, vert rejoué seul. Test sensible à la charge ; non traité.
+- (L2) `golangci-lint` avertit « unknown linters in //nolint directives » : des directives `//nolint` mal
+  formées (texte libre lu comme noms de linters, ex. `match_view_builders_team.go:48`
+  `//nolint:PLR0913 — clé canonique…`) ; pré-existant, hors périmètre ; non traité.
+- (L2) `service/teammates/teammates_squad_echange_test.go` (587 → 592 L) : 5 lignes de double du port ajoutées
+  à un fichier déjà au-delà de 500 L ; ACCEPTÉ par le superviseur le 2026-10-06 (dette gelée, aucun
+  découpage dans ce lot).
+- (L6) `features/match-view/MatchElevationSection.tsx:144` renvoie encore à `TacticalCellCard` (supprimé en L6)
+  pour l'explication « `t` est une chaîne », désormais dans la doc de `MatchReplayLink` (prop
+  `search`). Fichier du lot voisin `feat/matchview-emprise` ; CORRIGÉ en L8.1 (une ligne de commentaire, renvoi vers
+  `MatchReplayLink`) : conflit possible, trivial, à la fusion avec ce lot.
+- (L3) Deux copies de la lecture « mon camp / l'autre » sur `Summary.Teams` + `Self.TeamID` d'une ligne
+  canonique : `analysis.buildScoreLabelCanonical` (`home_canonical_recent.go`, libellé seul) et
+  `service.scoreDuMatch` (`tactical_service_cellule_enrichir.go`, libellé et nature). Une troisième
+  imposera le helper exporté et son garde-rail (CLAUDE.md n° 6) ; non traité.
+- (L3) `TestLUSRV2Shadow_RafalesBornees_300Candidats` a de nouveau rougi dans la suite complète (38,9 s,
+  un `api.test` d'une autre session actif), vert rejoué seul : même constat qu'en L1.
+- (L4) Normalisation « minuscules sans diacritiques » : `normaliserRecherche` (`features/tactical/cockpit.logic.ts`,
+  prévue par le plan) en fait la QUATRIÈME copie (`features/help/GlossaryTab.tsx` `slugify` et
+  `normalizeForSearch`, `lib/halo/teamNames.ts` `labelHasTeamWord`). CLAUDE.md n° 6 : helper
+  `lib/` + garde-rail à poser, migrations hors périmètre ; non traité.
+- (L4) Le gate de L1 (Go + `vitest src/lib/api`) ne lançait pas `tsc` : le champ obligatoire
+  `replay_available` a cassé le typage d'une fixture web (`TacticalCellCard.test.tsx`), découvert au
+  gate à blanc de L4 et réparé là. Un lot qui change le contrat devrait passer `tsc -b`.
+- (phase 1) Le catalogue de callouts couvre AUSSI des cartes Forge (`maps_by_id`, 2 536 zones selon
+  `callouts_catalog.go`) : « carte sans catalogue » = carte absente du catalogue, pas « carte Forge ».
+- (L9) Des commentaires Go parlent encore du « pied de carte » retiré en L5 (son contenu vit dans
+  l'aide ⓘ du plan) : `domain/tactical_page.go` (doc de `MatchsFiltres`, `MatchsVictoire`),
+  `service/tactical_service.go` (`rasterDeKills`), `tactical_service_test.go`,
+  `tactical_service_ventilation_test.go`. Rien de faux sur le calcul ; non réécrits (pas de
+  réécriture de masse) ; non traité.
+- (L9) La régénération du snapshot de surface par la procédure y inscrit aussi les ajouts de la page
+  Tendances (`feat/v75`, absents du snapshot de ce worktree) : si `feat/v75` a régénéré le sien
+  entre-temps, la fusion de `contract-surface.snapshot.json` peut entrer en conflit (trivial :
+  régénérer après fusion). Non traité.
+- (L10) Deux gardes de balayage de fichiers étrangères au lot (`features/admin/lab-removal.guard.test.ts`,
+  `lib/clipboard/useCopyToClipboard.guard.test.ts`) ont rougi dans un passage complet de vitest, vertes
+  seules et au passage complet suivant : sensibles à la charge ; non traité.
+- (L12, consigné par le superviseur) La mise en page à 1 400 px, la bascule en deux rangées et la
+  hauteur de la colonne de zone n'ont pas de test automatique : non couvert, gate visuel utilisateur.
+- (revue ronde 2, P2 consigné, borne des deux rondes atteinte) Le garde-rail
+  `archlint/no_local_portee_comparison_test.go` (l. 40 et 43) ne reconnaît pas trois formes :
+  `seul := *m.PlusProcheM > regle.RayonM` (portée lue sur un champ à droite),
+  `if *d <= float64(rayon) {`, et `var d float64 = *m.PlusProcheM` puis `d >= rayon` —
+  `\w*(?i:rayon|portee)` s'arrête sur `.` ou `(`, et `lieeADeref` retient `float64`. Aucune copie de
+  ce genre n'existe dans le dépôt ; non traité.
+- (L12) Le catalogue de bornes `map_quant_bounds.json` est encore décodé à chaque résolution de
+  callouts par module (`calloutsParModule`, `decfilm.LoadMapQuantCatalog`) : même motif que le
+  catalogue de callouts mis en cache par G3, hors de la liste de la revue ; non traité.
+- (L10) La fonction de `MatchPositionsHeatmap` (lot voisin) dépassait déjà 80 L (183) avant le lien
+  « Tactique » ; non découpée (consigne d'insertion minimale), le lien sorti dans un composant local
+  pour la limiter à 193 L ; non traité.
+
+## 9. Points où le code contredit le brief (phase 1)
+
+1. Ordre des lots (brief §3) : les suppressions Go ne peuvent précéder le web (D1).
+2. `AscensionLayout.tsx` : le `<main>` est l. 78 (brief : l. 75), et l'onglet a SIX onglets
+   (Tendances, 2026-10-05) — tous héritent de la largeur.
+3. `TacticalFilterBar` n'est pas partagé (§8) ; sans effet (barre inchangée).
+4. `TacticalCalloutsStore.ZonesDeLaCarte` ne rend que nom + point de référence : polygones et
+   tranches sont jetés par `zonesNommees` (`tactical_callouts.go:75-85`) ; extension additive (D3).
+5. Règle (b) : la maquette (`zoneOf` l. 646-666) choisit « la plus fréquente par événement, puis la
+   plus étroite », sans marge de 0,25 m ; le brief (TRANCHÉ) fait foi ; le nom du témoin Bazaar peut
+   différer de la maquette (D26).
+6. `KPIStrip` n'a pas d'autre lecteur que cette page : supprimé (D21).
+7. `heatPaint.ts` a un TROISIÈME consommateur : « Occupation du terrain » de la Vue match
+   (`MatchPositionsHeatmap.tsx:49,134`), que le lot `feat/matchview-emprise` déclare inchangée (D18).
+8. Badge : la maquette met « seul » à ≥ 18 m ; la règle de l'app est inclusive (d = portée → près)
+   (D7) ; l'ⓘ dit « au-delà de ».
+9. Score : format unique de l'app « X - Y » (`TeamScoreLabel`) au lieu de « 3 – 1 » (D5).
+10. Instant : `formatClock` « 5:07 » au lieu de « 05:07 » (D23).
+11. « Même IsAvailable que la Vue match » : pour une liste, le port impose `AvailableSet` (même
+    présence d'artefact) (D8).
+12. Libellé d'arme : la Vue match écrit, au kill feed, le nom PROPRE de `damagetag`
+    (`KillSourceIcon.Label`, non localisé) ; le registre de fragdist (`weapon_names.toml`, FR / EN)
+    est celui que le brief nomme et que les MESURES montrent (« Marteau antigravité ») (D6).
+13. « Cartes sans catalogue (Forge) » : le catalogue couvre des cartes Forge (§8).
+14. Attribution des commits : ligne système de la session (D28).

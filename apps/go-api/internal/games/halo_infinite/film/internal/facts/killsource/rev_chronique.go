@@ -449,49 +449,38 @@ package killsource
 // killsource n appellent ce balayage : sortie inchangee par construction. Golden regenere a revision
 // constante.
 //
-// COMPLEMENT DU 2026-10-07 (lot 2.7.c1 de la representation intermediaire, REVISION CONSTANTE) :
-// les lectures de killsource hors de sa marche descendent dans la grammaire, a l identique — la table
-// des joueurs (`grammar.ScanFilmPlayerTable`), le fil des kills (`grammar.FilDesKills`), le motif des
-// xuid (`grammar.LecturesDuMotifDesXUID`), BOT_METADATA (`grammar.PaquetsBotMetadata`) et le gabarit
-// du dead-state (`grammar.BalayerLesEtatsDeMort`). Sortie inchangee par construction ;
-// `KILLSOURCE_FIXTURES` identique sur les quatre films de reference. Golden regenere a revision
-// constante.
+// COMPLEMENT DU 2026-10-07 (branche `feat/zones-proprietaire`, REVISION CONSTANTE) : aucune source
+// de la couche ne change ; la VALEUR de `grammar.Rev` monte a `grammar-2026-10-07` (nom `i0` des
+// proprietes ti=13 lu aux images-cles par `grammar.ScanManagedProperties`), donc l empreinte. Ni la
+// marche ni la calibration de killsource n appellent ce balayage : sortie inchangee par
+// construction. Golden regenere a revision constante.
 //
-// ENTREE `killsource-2026-10-07` (2026-10-07, lot 2.7.c2 de la representation intermediaire) : LA
-// MARCHE DE KILLSOURCE EST CELLE DE LA GRAMMAIRE.
+// COMPLEMENT DU 2026-10-07 (lot 2.7.c1 de la representation intermediaire, REVISION CONSTANTE) :
+// les lectures de killsource hors de sa marche (table des joueurs, fil des kills, motif des xuid,
+// BOT_METADATA, gabarit du dead-state) descendent dans la grammaire a l identique ;
+// `KILLSOURCE_FIXTURES` identique sur les quatre films de reference.
+//
+// ENTREE `killsource-2026-10-07` (2026-10-07, lots 2.7.c2 a 2.7.c4 de la representation
+// intermediaire) : KILLSOURCE EST UN CANAL DE LA MARCHE DES TRAMES.
 //
 // Ce qui change, contre `killsource-2026-09-27` :
-//   - les dead-states viennent de la marche des trames du contexte du film
-//     ([grammar.LireLesMortsDeLaMarche]) : son monde (liaison des images-cles chunk par chunk, table
-//     anticipee, liaisons NEW portees), ses debuts de vue B, et les listes qu elle ne localise pas,
-//     recuperees par le canal des morts. La timeline (pre-chargement, balayage des ancres `ti=35`,
-//     fenetres de vie) est retiree ;
-//   - le filtre de la bande bipede (derivee des images-cles et du balayage des ancres, polluee de
-//     fausses ancres sur 9 des 23 films mesures) cede la place a l archetype que la marche lie au
-//     slot : le repli `repli_deadstate_hors_bande_bipede` est retire du registre ;
-//   - le critere de la calibration se compte sous le monde des preliminaires de la marche
-//     ([grammar.FilmContext.ScoresDeCalibration]) : les scores publies changent, la decision du mot
-//     de poignee reste l invariant (aveugle sur les 23 films, dans les deux mondes) ;
-//   - lot 2.7.c3 : le contexte de la marche prend le decoupage du bloc MPP que la grammaire resout
-//     pour le film (`grammar.FilmContext.ResolutionMPP`, lot 2.7.a0), comme la cuisson : 8/3 declare
-//     sur les formats anciens au lieu du 9/5 du profil, pour la marche ET pour les cadres de la
-//     calibration. Le profil calibre ne le porte pas ; la cuisson le pose elle-meme apres lui. Un
-//     decoupage non resolu se dit (`killsource.decoupage_mpp_non_resolu`, avertissement).
-// PREUVE (2026-10-07, contre `killsource-2026-09-27`) : sur les 19 temoins, le contenu des 2 747 morts
-// publiees est identique ; 411 changent de voie technique (`Read.Path` : 359 du balayage a la marche,
-// 52 de la marche au balayage), les verdicts de sante et la decision du mot de poignee ne bougent pas.
-// Sur les 20 films d equivalence, seules les etapes `killsource`, `killRefs` (decompte des voies) et
-// l artefact bougent, l artefact dans sa couverture seulement (decompte des voies, ligne du repli
-// retire, revision). Les lignes de `match_kill_events` deviennent candidates au redecodage : backlog
-// sur signal de l utilisateur (D6).
-//
-// COMPLEMENT DU MEME RANG, NON PUBLIE (2026-10-07, lot 2.7.c4) : LES KILL-EVENTS VIENNENT DE LA VUE
-// A. `grammar.Rev` passe a `grammar-2026-10-06.7` : la vue A lit le message de kill sans sa queue et
-// le range ; killsource prend ses kill-events dans la meme marche que ses morts
-// ([grammar.LireLaMarcheDeKillsource], `kill_event.go`), et sa recherche bit a bit (`eventchain.go`,
-// `eventbody.go`, la decision de `gate15`) descend dans la grammaire en rattrapage, borne aux trames
-// dont la lecture de la vue A n est pas etablie, avant la vue B (`repli_kill_rattrape_hors_vue_a`,
-// compte).
-// Killsource ne parcourt plus de paquet : l origine des instants est le plus petit horodatage des
-// paquets de replication, comme le premier de leur tri d avant (`chunks.go`). Le rang
-// `killsource-2026-10-07` n a jamais ete publie : il porte l etat final du lot 2.7.c.
+//   - les dead-states viennent de la marche des trames ([grammar.LireLaMarcheDeKillsource]) : son
+//     monde, ses debuts de vue B, et les listes qu elle ne localise pas, recuperees par le canal des
+//     morts. La timeline et le filtre de la bande bipede sont retires (l archetype que la marche lie
+//     au slot les remplace ; `repli_deadstate_hors_bande_bipede` sort du registre) ;
+//   - le critere de la calibration se compte sous le monde des preliminaires de la marche : les
+//     scores publies changent, la decision du mot de poignee reste l invariant ;
+//   - 2.7.c3 : le decoupage du bloc MPP est celui que la grammaire resout pour le film (8/3 sur les
+//     formats anciens), comme la cuisson ; un decoupage non resolu se dit
+//     (`killsource.decoupage_mpp_non_resolu`) ;
+//   - 2.7.c4 : les kill-events viennent de la vue A lue (le message de kill sans sa queue,
+//     `grammar.Rev` `grammar-2026-10-07.2`), et la recherche bit a bit descend dans la grammaire en
+//     rattrapage compte, borne aux trames dont la lecture de la vue A n est pas etablie, avant la vue
+//     B (`repli_kill_rattrape_hors_vue_a`). killsource ne lit plus aucun octet : l origine des
+//     instants est le plus petit horodatage des paquets de replication (`chunks.go`).
+// PREUVE (2026-10-07) : 2.7.c2-c3, contre `killsource-2026-09-27` : sur les 19 temoins, contenu des
+// 2 747 morts publiees identique, 411 changent de voie technique ; sur les 20 films d equivalence,
+// seules `killsource`, `killRefs` et la couverture de l artefact bougent. 2.7.c4, contre c2-c3 :
+// contenu identique sauf deux morts qui gagnent un kill-event ; 56 morts passent du balayage a la
+// marche, 20 l inverse. Les lignes de `match_kill_events` deviennent candidates au redecodage :
+// backlog sur signal de l utilisateur (D6).

@@ -2,7 +2,7 @@
 //
 // Orchestration (arch-rules) : combine UN port (port.TacticalRepository) et DEUX
 // algos purs (analysis/tactical pour le rasterisage, analysis/coordination pour
-// l'echange). Aucun SQL, aucune ouverture de base, aucun appel a un autre service.
+// l'isolement). Aucun SQL, aucune ouverture de base, aucun appel a un autre service.
 //
 // LE PERIMETRE ARRIVE RESOLU (phase 4 bis, 2026-09-06) : la page fait resoudre sa
 // selection — periode OU sessions epinglees, contexte solo/escouade, cascade — par le
@@ -22,19 +22,16 @@
 // que des matchs muets d'un cote (12 victoires dont 2 muettes : +0,10 lu au lieu
 // de 0,00).
 //
-// ─── DEUX PORTES DE CAPABILITY, DEUX EFFETS DIFFERENTS ─────────────────────────
+// ─── LA PORTE DES LECTURES DE BASE ─────────────────────────────────────────────
 //
 //	positions LISIBLES  ABSENTES -> ErrCapabilityNotSupported -> 503 propre. Sans
 //	                    positions il n'y a pas de lecture de placement du tout.
-//	journal FIABLE      ABSENT -> le KPI d'echange est SILENCIEUX (nil), la lecture
-//	                    de placement reste servie. Publier un zero se lirait comme
-//	                    une contre-performance ; ne rien publier dit ce qui est
-//	                    vrai : ce titre ne sait pas mesurer ca.
 //
-// Les deux se lisent sur la CapabilityMap de l'adapter du titre du joueur — jamais
-// une comparaison de slug (ratchet no_slug_comparison_test). Chacune accepte DEUX
-// PROVENANCES, et c'est le fond de la correction R1 (revue du 2026-09-06) :
-// cf. positionsDeKillLisibles et journalDesMortsFiable ci-dessous.
+// Elle se lit sur la CapabilityMap de l'adapter du titre du joueur — jamais une
+// comparaison de slug (ratchet no_slug_comparison_test). Elle accepte DEUX PROVENANCES,
+// et c'est le fond de la correction R1 (revue du 2026-09-06) : cf.
+// positionsDeKillLisibles ci-dessous. Les lectures d'artefact ont leur propre porte
+// (tactical_service_rasters.go).
 package service
 
 import (
@@ -43,7 +40,6 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -76,6 +72,7 @@ type TacticalService struct {
 	// connaitre la fenetre ne doit pas faire dire « jamais cuit » a un match cuisable.
 	retentionMois func() int
 	logger        *slog.Logger
+	detail        sourcesDuDetail // les sources du détail d'une zone (tactical_service_cellule_enrichir.go)
 }
 
 // NewTacticalService construit le service.
@@ -151,7 +148,7 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 	}
 	// LE FILTRE DE SPAWN S'APPLIQUE AVANT LE DISPATCH, ET C'EST TOUT L'OBJET DE P1-1 : il
 	// restreint la LISTE BLANCHE DE MATCHS, donc il vaut pour les lectures SQL
-	// (morts/kills/gagne) et pour le KPI d'echange autant que pour les lectures d'artefact.
+	// (morts/kills/gagne/solde/isole) autant que pour les lectures d'artefact.
 	// Applique dans la seule branche des sidecars, il rendait 200 sur l'univers ENTIER sous
 	// un libelle de grappe.
 	var dejaLus map[string]*domain.TacticalRasterSidecar
@@ -175,9 +172,6 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
 		err := s.rasterArtefact(ctx, &out, scope, dejaLus)
-		if err == nil {
-			s.mesurerCoordination(ctx, &out, scope)
-		}
 		return out, err
 	}
 	if question == domain.TacticalQuestionIsole {
@@ -191,14 +185,11 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		return out, err
 	}
 	err := s.rasterDeKills(ctx, &out, scope)
-	if err == nil {
-		s.mesurerCoordination(ctx, &out, scope)
-	}
 	return out, err
 }
 
-// rasterDeKills sert les trois lectures qui se lisent sur les POSITIONS MESUREES de
-// `kill_positions` : ou je meurs, ou je tue, ou je gagne.
+// rasterDeKills sert les quatre lectures qui se lisent sur les POSITIONS MESUREES de
+// `kill_positions` : ou je meurs, ou je tue, ou je gagne, le solde frags − morts.
 //
 // EXTRAITE DE `Raster` (constat C8 de la revue) : celle-ci depassait le seuil de 80 lignes
 // au sens de `funlen`, et le ratchet de la CI ne pouvait pas le voir — la position d'une
@@ -244,16 +235,14 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 	mesure := universMesure(lecture.Univers)
 	out.MatchsRetenus = len(mesure.Matchs)
 
-	points := projeter(lecture, question, cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
-	out.EvenementsLocalises = len(points)
-	lue, err := rasteriser(mesure, question, points)
+	lue, err := rasteriserLaCible(mesure, lecture, question,
+		cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
 		return fmt.Errorf("tactique: rasterisage: %w", err)
 	}
 	remplirRaster(out, lue.Raster, question)
-	s.lireLeJournal(ctx, out, scope)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
@@ -262,8 +251,6 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 		"coequipiers", len(scope.Coequipiers),
 		"pas_m", out.PasM, "densite_suffisante", lue.Suffisante, "pas_essayes", lue.Tentatives,
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
-		"evenements_journal", out.EvenementsJournal,
-		"evenements_localises", out.EvenementsLocalises,
 		"duration", time.Since(debut))
 	return nil
 }
@@ -308,108 +295,29 @@ func projeter(lecture domain.TacticalPositions, question string, cible predicatQ
 }
 
 // facesDeLaQuestion dit quelles FACES d'une mort la question regarde. Source unique
-// des deux lectures qui en dependent — le rasterisage (projeter) et le comptage de
-// couverture (compterJournal) — pour qu'un « ou je gagne » qui cesserait de compter
-// les morts ne puisse pas le faire d'un seul cote.
+// des deux lectures qui en dependent — le rasterisage (projeter) et le detail d'une
+// cellule (celluleDeKills) — pour qu'un « ou je gagne » qui cesserait de compter les
+// morts ne puisse pas le faire d'un seul cote.
 func facesDeLaQuestion(question string) (prendVictime, prendTueur bool) {
 	if lectureDArtefact(question) {
 		// L'OCCUPATION NE REGARDE AUCUNE FACE D'UNE MORT : elle se lit sur les pistes du
-		// film, pas sur le journal. Sa couverture est celle des SIDECARS — l'ecart entre
-		// `matchs_filtres` et `matchs_retenus` —, pas un compte d'evenements localises.
-		// Sans ce cas, la question serait tombee dans la branche par defaut et aurait
-		// compte les DEUX faces, comme « ou je gagne » : un denominateur de couverture
-		// qui ne decrit pas la mesure affichee.
+		// film, pas sur le journal. Sans ce cas, la question tomberait dans la branche par
+		// defaut et regarderait les DEUX faces, comme « ou je gagne ».
 		return false, false
 	}
 	if question == domain.TacticalQuestionIsole {
-		// « ISOLE » NE REGARDE QUE LA FACE VICTIME, comme « ou je meurs » : elle mesure la
-		// part de MES morts survenues sans coequipier a portee. Sans ce cas, elle serait
-		// tombee dans la branche par defaut et aurait compte les DEUX faces — un
-		// denominateur de couverture deux fois trop grand pour la mesure affichee, et le
-		// pied de carte aurait annonce « N morts, M localisees » sur un N qui compte aussi
-		// mes kills.
+		// « ISOLE » NE REGARDE QUE LA FACE VICTIME, comme « ou je meurs » : elle mesure MES
+		// morts survenues sans coequipier a portee. Sans ce cas, elle tomberait dans la
+		// branche par defaut et regarderait aussi mes kills.
 		return true, false
 	}
+	// « Ou je gagne » et le SOLDE regardent LES DEUX faces : le solde les rasterise
+	// separement (rasteriserLaCible), mais son detail de cellule compte les frags ET les
+	// morts de la cible.
 	return question != domain.TacticalQuestionKills, question != domain.TacticalQuestionMorts
 }
 
-// lireLeJournal fait UN SEUL passage sur le journal des morts, et en tire DEUX
-// choses de nature differente :
-//
-//  1. la COUVERTURE de la carte — combien d'evenements de la cible le journal
-//     compte, face aux positions effectivement localisees. Elle est servie quelle
-//     que soit la capability : c'est une propriete de la mesure, pas un KPI ;
-//  2. le KPI d'ECHANGE, lui, seulement si le journal est FIABLE ligne a ligne
-//     (journalDesMortsFiable). Sinon il reste nil — jamais un zero, qui se lirait
-//     comme une contre-performance.
-//
-// Un echec de lecture est journalise puis degrade : la lecture de placement, elle,
-// reste servie. Aucune erreur avalee.
-func (s *TacticalService) lireLeJournal(ctx context.Context, out *domain.TacticalRaster, scope domain.TacticalScope) {
-	lecture, err := s.repo.KillEvents(ctx, requeteDuScope(s.xuid, out.MapID, scope))
-	if err != nil {
-		s.logger.ErrorContext(ctx, "tactique: journal des morts en echec (couverture et echange non servis)",
-			"player", s.xuid, "map_id", out.MapID, "err", err)
-		return
-	}
-	out.EvenementsJournal = compterJournal(lecture, out.Question,
-		cible(lecture.Univers.Equipes, out.Qui, s.xuid, scope.Coequipiers))
-	if journalDesMortsFiable(s.caps) {
-		out.Echange = s.mesurerEchange(ctx, out.MapID, lecture)
-	}
-}
-
-// compterJournal compte les evenements de la cible dans le journal — le
-// DENOMINATEUR de la couverture. Memes faces que le rasterisage
-// (facesDeLaQuestion) : ce qui est compte ici est exactement ce qui aurait ete
-// peint si toutes les positions existaient.
-func compterJournal(lecture domain.TacticalKillEvents, question string, cible predicatQui) int {
-	prendVictime, prendTueur := facesDeLaQuestion(question)
-	n := 0
-	for _, e := range lecture.Events {
-		if prendVictime && cible(e.MatchID, e.VictimXUID) {
-			n++
-		}
-		if prendTueur && cible(e.MatchID, e.KillerXUID) {
-			n++
-		}
-	}
-	return n
-}
-
-// mesurerEchange rend le taux de morts vengees DE MON EQUIPE sur cette carte.
-func (s *TacticalService) mesurerEchange(ctx context.Context, carte string, lecture domain.TacticalKillEvents) *domain.Couverture {
-	bilan := coordination.Echanges(lecture.Events, lecture.Univers.Equipes)
-	monCamp := campDuMatch(lecture.Univers.Equipes, s.xuid)
-
-	vengeables, vengees := 0, 0
-	for _, m := range bilan.Morts {
-		// MON CAMP ENTIER — mes coequipiers DU MATCH et moi (decision utilisateur du
-		// 2026-09-06), et surtout PAS la composition choisie : le denominateur le moins
-		// biaise ne doit pas retrecir parce qu'on a nomme deux coequipiers dans la barre
-		// de filtres. `campDuMatch` m'exclut par construction, d'ou le test explicite.
-		if m.VictimeXUID != s.xuid && !monCamp(m.MatchID, m.VictimeXUID) {
-			continue
-		}
-		if !m.Vengeable {
-			continue
-		}
-		vengeables++
-		if m.Vengee {
-			vengees++
-		}
-	}
-	// Denominateur « par match » : les matchs MESURES, jamais tous les matchs du
-	// filtre (correction G2) — le numerateur ne peut venir que d'eux.
-	mesures := len(universMesure(lecture.Univers).Matchs)
-	c := coordination.Mesurer(vengees, vengeables, mesures)
-	s.logger.InfoContext(ctx, "tactique: echange sur cette carte",
-		"player", s.xuid, "map_id", carte, "matchs_retenus", mesures,
-		"morts_vengeables", c.N, "morts_vengees", c.Brut, "echantillon_faible", c.EchantillonFaible)
-	return &c
-}
-
-// ─── LES DEUX PORTES DE LECTURE ────────────────────────────────────────────────
+// ─── LA PORTE DES POSITIONS DE KILL ───────────────────────────────────────────
 
 // positionsDeKillLisibles dit si la table `kill_positions` de ce titre est LISIBLE,
 // quelle que soit la main qui l'a remplie (correction R1, revue du 2026-09-06).
@@ -435,17 +343,6 @@ func (s *TacticalService) mesurerEchange(ctx context.Context, carte string, lect
 // capabilities du lot C de l'audit, pas de ce lot.
 func positionsDeKillLisibles(caps games.CapabilityMap) bool {
 	return caps.Has(games.CapFilmKillPositions) || caps.Has(games.CapMatchEventsSpatial)
-}
-
-// journalDesMortsFiable est le predicat PARTAGE games.JournalDesMortsFiable.
-//
-// Il a quitte ce fichier le 2026-09-06 (phase 3 du plan tactique) : la page Escouade
-// applique EXACTEMENT la meme porte pour sa matrice d'echange et sa distribution de delais,
-// et une seconde copie ici aurait donne deux verdicts au premier titre ajoute. Le corps, ses
-// deux provenances et la raison du `supported` STRICT vivent desormais dans
-// internal/games/kill_journal_gate.go.
-func journalDesMortsFiable(caps games.CapabilityMap) bool {
-	return games.JournalDesMortsFiable(caps)
 }
 
 // lectureDArtefact dit si la question se lit sur les SIDECARS et non sur `kill_positions`.

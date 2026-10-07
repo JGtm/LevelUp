@@ -29,8 +29,8 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
 - **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
 - **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
-- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Lue sur l'Escouade, une seule règle, et l'appui compte les assistances entre coéquipiers, sur les Sessions et dans le temps sur les Séries temporelles
-- **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée et rôles de hauteur
+- **L'appui** — les assistances entre coéquipiers, sur l'Escouade, sur les Sessions et dans le temps sur les Séries temporelles
+- **La portée face à ton lobby** — ta portée de frag, lue face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée
 - **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
 - **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
 
@@ -40,10 +40,10 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les charges sont visibles** — un déployable montre ce qu'il lui reste avant la première utilisation
 
 **Un onglet Tactique**
-- **Les cartes que tu joues** — une vignette par carte, son bilan, et un plancher en dessous duquel une carte n'est pas montrée plutôt que montrée de travers
-- **Une vue d'analyse sur le plan de la carte** — où tu passes ton temps, où tu meurs, où tu tues, où tu meurs isolé, où les victoires et les défaites se séparent, et les routes que tu empruntes
-- **Une cellule ouvre le rejeu à l'instant exact** — un clic sur une case et tu tombes sur la seconde où ça s'est joué
-- **La coordination d'équipe** — l'écartement réel de ton escouade, lu par match dans le référentiel des variantes et non fixé à un seuil arbitraire
+- **Un seul écran** — les cartes que tu joues à gauche, le plan de la carte au centre, la zone que tu choisis à droite ; la carte que tu joues le plus s'ouvre d'elle-même
+- **Sept lectures sur le plan** — où tu meurs, où tu tues, ton solde frags − morts, où les victoires et les défaites se séparent, où tu passes ton temps, les trajets après ta réapparition, et où tu meurs seul
+- **Des zones avec leur nom du jeu** — la plus chaude est choisie pour toi, et ses mini-tuiles disent ce qui s'est passé, avec quelle arme, seul ou près d'un coéquipier, et comment le match a fini
+- **Droit au rejeu** — chaque mini-tuile ouvre le rejeu à la seconde près, et l'« Occupation du terrain » de la fiche du match ouvre l'onglet sur la carte de ce match
 
 **Escouade, sessions et progression**
 - **Les formes retenues** — les cartes d'objectif : le rapport de force par famille de mode, et la part de chaque joueur dans l'objectif de son camp

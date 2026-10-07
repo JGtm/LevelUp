@@ -75,7 +75,7 @@ export function AscensionLayout() {
   const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical && !isTrends
 
   return (
-    <main className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
+    <main className="space-y-6 p-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
         <p className="text-sm text-muted-foreground">{t.pageSubtitle}</p>

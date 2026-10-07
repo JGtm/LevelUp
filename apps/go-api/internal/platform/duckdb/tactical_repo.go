@@ -25,8 +25,8 @@
 //   - le raster range chaque point sur l'axe « moi / escouade / adversaires »
 //     d'apres l'identite de la victime ou du tueur — une identite permutee peint
 //     le point du mauvais cote ;
-//   - l'echange demande QUI a venge QUI — une identite permutee fabrique une
-//     vengeance qui n'a pas eu lieu.
+//   - le journal des morts (KillEvents) rend chaque mort avec sa victime et son tueur
+//     credite — une identite permutee attribue la mort au mauvais joueur.
 //
 // Une passe non publiable est donc ECARTEE ici, comme dans KillDistanceRepo, et
 // contrairement a KillSourceClassRepo (qui, lui, ne produit que des cumuls).
@@ -39,12 +39,12 @@
 // PERIMETRE (liste blanche de match_id, composition) vient de l'appelant et se pose
 // au meme endroit pour les trois lectures — cf. tactical_repo_univers.go.
 //
-// KillEvents, elle, accepte une carte VIDE depuis le 2026-09-06 (phase 3) : la
-// page Escouade lit le journal des morts d'une COMPOSITION, qui n'a pas de carte,
-// et le perimetre de matchs y est resserre en Go. Ecrire une seconde requete pour
-// ce seul predicat aurait donne deux definitions de « le journal des morts du
-// joueur » ; le SELECT est donc le meme, la carte devenant un parametre neutre
-// (`? = ” OR mr.map_id = ?`). La borne reste le joueur, jamais la table entiere.
+// KillEvents, elle, accepte une carte VIDE : son appelant de production, le bloc de
+// coordination des pages Sessions et Series temporelles (service/coordination_block.go),
+// lit une LISTE de matchs (`RestreindreAux`), qui n'a pas de carte. Le SELECT reste le
+// meme, la carte devenant un parametre neutre (`? = ” OR mr.map_id = ?`). La borne
+// reste le joueur, jamais la table entiere. Une lecture SANS liste (zero-value de
+// ListeBlancheMatchs) reste acceptee mais n'a pas d'appelant de production a ce jour.
 package duckdb
 
 import (
@@ -198,6 +198,10 @@ func (r *TacticalRepo) habillerNomsFR(ctx context.Context, rows []domain.Tactica
 // moment (`?frame=`). Il fait partie de la clef du GROUP BY, donc le projeter ne change ni
 // le nombre de lignes ni les gardes ci-dessus — seule une colonne de plus est lue.
 //
+// LES HAUTEURS, LES NOMS DU KILL-FEED ET LA SOURCE DE DEGAT voyagent aussi (detail d'une zone :
+// nom en jeu, mini-tuile) : memes lignes, memes gardes — le groupe n'a qu'une ligne (HAVING), donc
+// `min` rend la valeur. Une hauteur ou une source NULL reste NULL (jamais 0).
+//
 // %s = la table de positions, puis DEUX FOIS la liste des matchs de l'univers : une par vue.
 // La liste posee sur `kp` ne descend pas dans `e` a travers la jointure (lot L5a, mesure :
 // cf. listeDeLUnivers) — chaque vue `_latest` porte donc la sienne.
@@ -207,7 +211,12 @@ SELECT kp.match_id,
        COALESCE(min(e.victim_xuid), '') AS victim_xuid,
        min(kp.killer_x) AS killer_x, min(kp.killer_y) AS killer_y,
        min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y,
-       kp.time_ms AS time_ms
+       kp.time_ms AS time_ms,
+       min(kp.killer_z) AS killer_z, min(kp.victim_z) AS victim_z,
+       COALESCE(min(e.feed_killer_gamertag), '') AS killer_gamertag,
+       COALESCE(min(e.victim_gamertag), '')      AS victim_gamertag,
+       min(e.source_tag) AS source_tag,
+       COALESCE(min(e.source_category), '')      AS source_category
 FROM %s kp
 JOIN match_kill_events_latest e
     ON e.match_id = kp.match_id
@@ -260,21 +269,34 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 	}
 	err = scanRows(ctx, rows, "TacticalRepo.KillPositions", func(sc rowScanner) error {
 		var p domain.TacticalKillPosition
+		var kz, vz sql.NullFloat64
+		var tag sql.NullInt64
 		if err := sc.Scan(&p.MatchID, &p.KillerXUID, &p.VictimXUID,
-			&p.KillerX, &p.KillerY, &p.VictimX, &p.VictimY, &p.TimeMs); err != nil {
+			&p.KillerX, &p.KillerY, &p.VictimX, &p.VictimY, &p.TimeMs,
+			&kz, &vz, &p.KillerGamertag, &p.VictimGamertag, &tag, &p.SourceCategory); err != nil {
 			return err
 		}
+		p.KillerZ, p.VictimZ, p.SourceTag = nullFloatPtr(kz), nullFloatPtr(vz), tagOuNil(tag)
 		out.Points = append(out.Points, p)
 		return nil
 	})
 	return out, err
 }
 
+// tagOuNil : la source de degat (UINTEGER nullable), NULL servi nil.
+func tagOuNil(v sql.NullInt64) *uint32 {
+	if !v.Valid {
+		return nil
+	}
+	u := uint32(v.Int64)
+	return &u
+}
+
 // QTacticalEvents : le journal des morts des matchs de l'univers.
 //
-// Aucune jointure sur les positions : l'echange se mesure sur des INSTANTS et des
-// IDENTITES, pas sur des coordonnees — exiger une position mesuree ecarterait les
-// morts d'un match non decode et gonflerait le taux.
+// Aucune jointure sur les positions : le journal porte des INSTANTS et des IDENTITES,
+// pas des coordonnees — exiger une position mesuree ecarterait les morts d'un match non
+// decode.
 //
 // %s = la liste des matchs de l'univers (listeDeLUnivers) : une liste de constantes, que
 // DuckDB pousse sous la fenetre de la vue (0,74 s -> 0,05 s pour 6 matchs, mesure lot L5a).

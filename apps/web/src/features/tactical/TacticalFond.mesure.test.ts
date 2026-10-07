@@ -17,7 +17,7 @@
  *     l'indicateur de premier chargement REMPLACE-t-il le plan ? la vue dit-elle « Mise à
  *     jour… » ? le titre garde-t-il le NOM de la carte ? une donnée d'une autre carte ou d'un
  *     autre joueur est-elle affichée ?
- *   - APRÈS la réponse : le texte rendu (titre, KPI, légende, pied, cadre) — ce qui ne doit PAS
+ *   - APRÈS la réponse : le texte rendu (titre, légende, cadre) — ce qui ne doit PAS
  *     bouger entre la base et le lot.
  *
  * Le fichier ne recopie AUCUNE logique de l'onglet : il ne fait que monter la page et lire le DOM.
@@ -167,7 +167,7 @@ const AUTRE = 'JoueurB'
 /**
  * Le périmètre servi : 20 matchs sans borne pour A, 7 pour B ; avec une borne de début, un
  * compte qui dépend du MOIS de la borne (deux périodes différentes = deux listes différentes,
- * donc deux lectures de grille — jamais une réponse resservie par le cache).
+ * donc deux lectures de la liste des cartes — jamais une réponse resservie par le cache).
  */
 function perimetreServi(joueur: string, debut: string | null | undefined): string[] {
   const prefixe = joueur === JOUEUR ? 'a' : 'b'
@@ -278,13 +278,6 @@ function raster(carte: Carte | null, film: Film, corps: Record<string, unknown>)
   const valeurs = cellules.map((c) => Math.abs(c.valeur)).sort((a, b) => a - b)
   const quantile = (f: number) => valeurs[Math.min(valeurs.length - 1, Math.floor(f * valeurs.length))] ?? 0
   const retenus = n > 3 ? n - 1 : n
-  const couverture = (num: number) => ({
-    brut: num,
-    n: Math.max(1, cellules.length),
-    taux: num / Math.max(1, cellules.length),
-    par_match: num / Math.max(1, retenus),
-    echantillon_faible: retenus < 5,
-  })
   return {
     map_id: carte?.id ?? 'sans-fond',
     question,
@@ -297,14 +290,10 @@ function raster(carte: Carte | null, film: Film, corps: Record<string, unknown>)
       { id: 'g1', nom_fr: 'Ouest', nom_en: 'West', matchs: n, x: x0 + w / 4, y: yHaut - h / 2 },
       { id: 'g2', nom_fr: 'Est', nom_en: 'East', matchs: n, x: x0 + (3 * w) / 4, y: yHaut - h / 2 },
     ],
-    isolement: couverture(Math.floor(cellules.length / 3)),
-    echange: couverture(Math.floor(cellules.length / 4)),
     matchs_filtres: n,
     matchs_retenus: retenus,
     matchs_victoire: Math.floor(retenus / 2),
     matchs_defaite: retenus - Math.floor(retenus / 2),
-    evenements_journal: film.pts.length,
-    evenements_localises: film.pts.length,
     points_ignores: 0,
   }
 }
@@ -332,6 +321,10 @@ function imgDuPlan(): HTMLImageElement | null {
 function texte(id: string): string | null {
   return screen.queryByTestId(id)?.textContent ?? null
 }
+/** Une réponse de la lecture est affichée sur le plan : le calque, ou le titre d'un plan vide. */
+function reponseAffichee(): boolean {
+  return screen.queryByTestId('tactical-plan-canvas') !== null || screen.queryByTestId('tactical-plan-vide') !== null
+}
 
 interface Instant {
   imgPresent: boolean
@@ -339,7 +332,7 @@ interface Instant {
   imgCarte: string | null
   indicateurPremierChargement: boolean
   miseAJour: boolean
-  kpi: string | null
+  reponse: boolean
   erreur: boolean
   titre: string | null
   titreAvecNom: boolean
@@ -349,15 +342,15 @@ interface Instant {
 
 function instant(ref: HTMLImageElement | null, carte: { id: string; nom: string }): Instant {
   const img = imgDuPlan()
-  const titre = texte('tactical-analysis-title')
-  const select = screen.queryByRole('combobox', { name: t.questionLabel }) as HTMLSelectElement | null
+  const titre = texte('tactical-plan-title')
+  const select = screen.queryByRole('combobox', { name: t.pillReading }) as HTMLSelectElement | null
   return {
     imgPresent: img !== null,
     imgMemeNoeud: ref !== null && img === ref && ref.isConnected,
     imgCarte: img ? (img.getAttribute('src') ?? '').replace('blob:fond/', '') : null,
     indicateurPremierChargement: screen.queryByTestId('tactical-analysis-pending') !== null,
     miseAJour: screen.queryByTestId('tactical-analysis-updating') !== null,
-    kpi: texte('kpi-strip'),
+    reponse: reponseAffichee(),
     erreur: screen.queryByText(t.analysisErrorTitle) !== null,
     titre,
     titreAvecNom: titre !== null && titre.includes(carte.nom),
@@ -371,13 +364,8 @@ function instant(ref: HTMLImageElement | null, carte: { id: string; nom: string 
 function rendu(): Record<string, string | null> {
   const cadre = screen.queryByTestId('tactical-plan-frame') as HTMLElement | null
   return {
-    titre: texte('tactical-analysis-title'),
-    kpi: texte('kpi-strip'),
+    titre: texte('tactical-plan-title'),
     legende: texte('tactical-plan-legend'),
-    echelle: texte('tactical-plan-scale-note'),
-    retenus: texte('tactical-plan-retained'),
-    pas: texte('tactical-plan-grid-step'),
-    horsCadre: texte('tactical-plan-off-frame'),
     canvas: screen.queryByTestId('tactical-plan-canvas') ? 'oui' : null,
     cadre: cadre ? `${cadre.style.aspectRatio}|${cadre.style.maxWidth}` : null,
     img: imgDuPlan()?.getAttribute('src') ?? null,
@@ -390,7 +378,7 @@ async function stable(): Promise<void> {
     () => {
       expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
       expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
-      const pret = screen.queryByTestId('kpi-strip') !== null || screen.queryByText(t.analysisErrorTitle) !== null
+      const pret = reponseAffichee() || screen.queryByText(t.analysisErrorTitle) !== null
       expect(pret).toBe(true)
       expect(appels.every((a) => a.regle)).toBe(true)
     },
@@ -462,7 +450,7 @@ function reinitialiser(carte: string) {
   auto = true
 }
 
-/** L'écran d'analyse d'UNE carte (avec ou sans fond), rejoué sur toutes ses transitions. */
+/** La lecture d'UNE carte (avec ou sans fond), rejouée sur toutes ses transitions. */
 async function scenarioAnalyse(
   nom: string,
   cartes: Carte[],
@@ -475,7 +463,7 @@ async function scenarioAnalyse(
   let courante: { id: string; nom: string } = carte ?? { id, nom: `Carte ${film.id}` }
   let carteServie: Carte | null = carte
   fondDe = (m) => cartes.find((c) => c.id === m)?.fond ?? null
-  // La carte sans fond figé est dans la grille (elle a été jouée), sans calage ni image.
+  // La carte sans fond figé est dans la colonne (elle a été jouée), sans calage ni image.
   const sansFond: Carte[] = carte ? [] : [{ id, nom: `Carte ${film.id}`, fond: null as unknown as ReplayMapBackground }]
   repondre = repondeur(cartes, film, () => carteServie, sansFond)
   reinitialiser(id)
@@ -504,7 +492,7 @@ async function scenarioAnalyse(
       reglerTout(echec)
       await stable()
       // Une réponse servie sur une carte à fond : on attend aussi SON image (le blob est servi
-      // sans délai, mais son rendu peut suivre celui des KPI d'un tour).
+      // sans délai, mais son rendu peut suivre celui du calque d'un tour).
       if (fondDe(courante.id) && !screen.queryByText(t.analysisErrorTitle)) {
         await waitFor(() => expect(imgDuPlan()?.getAttribute('src')).toBe(`blob:fond/${courante.id}`), { timeout: 3000 })
       }
@@ -533,9 +521,9 @@ async function scenarioAnalyse(
     }
 
     const select = (label: string) => screen.getByRole('combobox', { name: label }) as HTMLSelectElement
-    await jouer('question', () => fireEvent.change(select(t.questionLabel), { target: { value: 'kills' } }), [estRaster])
+    await jouer('question', () => fireEvent.change(select(t.pillReading), { target: { value: 'kills' } }), [estRaster])
     await jouer('qui', () => fireEvent.click(screen.getByRole('button', { name: t.whoOpponents })), [estRaster])
-    await jouer('spawn', () => fireEvent.change(select(t.spawnLabel), { target: { value: 'g1' } }), [estRaster])
+    await jouer('spawn', () => fireEvent.change(select(t.pillRespawn), { target: { value: 'g1' } }), [estRaster])
     await jouer(
       'filtre-periode',
       () => {
@@ -545,8 +533,8 @@ async function scenarioAnalyse(
       [estPerimetre, estRaster],
     )
     // Échec d'une relecture, puis retour : l'écran ne doit pas rester figé.
-    await jouer('echec-relecture', () => fireEvent.change(select(t.questionLabel), { target: { value: 'temps' } }), [estRaster], estRaster)
-    await jouer('reprise-apres-echec', () => fireEvent.change(select(t.questionLabel), { target: { value: 'routes' } }), [estRaster])
+    await jouer('echec-relecture', () => fireEvent.change(select(t.pillReading), { target: { value: 'temps' } }), [estRaster], estRaster)
+    await jouer('reprise-apres-echec', () => fireEvent.change(select(t.pillReading), { target: { value: 'routes' } }), [estRaster])
     // Changement de joueur, même carte.
     await jouer(
       'joueur',
@@ -587,7 +575,7 @@ interface LigneGrille {
   exception?: string
 }
 
-/** L'écran grille : les vignettes de TOUT le catalogue, sur un filtre, un échec, un joueur. */
+/** La colonne « Cartes jouées » : les vignettes de TOUT le catalogue, sur un filtre, un échec, un joueur. */
 async function scenarioGrille(cartes: Carte[], film: Film): Promise<LigneGrille[]> {
   fondDe = (m) => cartes.find((c) => c.id === m)?.fond ?? null
   repondre = repondeur(cartes, film, () => null)
@@ -620,7 +608,7 @@ async function scenarioGrille(cartes: Carte[], film: Film): Promise<LigneGrille[
         reglerTout((a) => echec && estPerimetre(a))
         if (echec) await screen.findByTestId('tactical-erreur')
         else {
-          // La relecture est FINIE : la grille du nouveau périmètre a été demandée ET servie,
+          // La relecture est FINIE : la liste des cartes du nouveau périmètre a été demandée ET servie,
           // plus rien n'est « en chargement » ni « mise à jour ».
           await waitFor(
             () => {
@@ -734,7 +722,7 @@ describe.skipIf(!PORTE)('mesure — le fond du plan tactique ne se démonte plus
           expect(p.miseAJour, `${l.carte} ${l.transition}`).toBe(true)
           expect(p.titreSurIdentifiant, `${l.carte} ${l.transition}`).toBe(false)
         }
-        if (l.transition === 'joueur' || l.transition === 'carte') expect(p.kpi, `${l.carte} ${l.transition}`).toBeNull()
+        if (l.transition === 'joueur' || l.transition === 'carte') expect(p.reponse, `${l.carte} ${l.transition}`).toBe(false)
         if (l.transition === 'joueur' && avecFond) expect(p.imgMemeNoeud, `${l.carte} joueur`).toBe(true)
       }
       // (3) l'échec se dit, et ne fige pas : la transition suivante revient à une réponse.
@@ -745,7 +733,7 @@ describe.skipIf(!PORTE)('mesure — le fond du plan tactique ne se démonte plus
       }
       if (l.transition === 'reprise-apres-echec') {
         expect(l.apresInstant?.erreur, l.carte).toBe(false)
-        expect(l.apresInstant?.kpi, l.carte).not.toBeNull()
+        expect(l.apresInstant?.reponse, l.carte).toBe(true)
       }
       if (l.transition === 'carte') expect(l.apresInstant?.question, l.carte).toBe('morts')
       if (l.apres && !l.exception) expect(l.apresInstant?.titreSurIdentifiant, `${l.carte} ${l.transition}`).toBe(false)

@@ -5537,6 +5537,8 @@ export interface components {
             /** Format: int64 */
             col: number;
             /** Format: int64 */
+            frags?: number;
+            /** Format: int64 */
             lig: number;
             /** Format: int64 */
             matchs: number;
@@ -5544,6 +5546,8 @@ export interface components {
             matchs_defaite: number;
             /** Format: int64 */
             matchs_victoire: number;
+            /** Format: int64 */
+            morts?: number;
             /** Format: double */
             valeur: number;
         };
@@ -8912,10 +8916,6 @@ export interface components {
             profiles: components["schemas"]["MatchRangeProfile"][] | null;
         };
         MatchRangePlayer: {
-            /** Format: double */
-            elevation_lobby_delta_m?: number;
-            /** Format: double */
-            elevation_median_m?: number;
             gamertag?: string;
             /** Format: double */
             lobby_delta_m: number;
@@ -8926,8 +8926,6 @@ export interface components {
             xuid: string;
         };
         MatchRangeProfile: {
-            /** Format: double */
-            lobby_elevation_median_m?: number;
             /** Format: int64 */
             lobby_measured: number;
             /** Format: double */
@@ -11749,55 +11747,6 @@ export interface components {
             radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
-        SquadEchange: {
-            cellules: components["schemas"]["SquadEchangeCell"][] | null;
-            couverture: components["schemas"]["Couverture"];
-            /** Format: int64 */
-            delai_median_ms: number;
-            delais: components["schemas"]["SquadEchangeBucket"][] | null;
-            /** Format: int64 */
-            fenetre_ms: number;
-            habituel: components["schemas"]["Couverture"];
-            joueurs: components["schemas"]["SquadEchangeJoueur"][] | null;
-            /** Format: int64 */
-            matchs_habituel: number;
-            /** Format: int64 */
-            matchs_mesures: number;
-            /** Format: int64 */
-            matchs_total: number;
-            taux_par_session: components["schemas"]["SquadEchangeSessionPoint"][] | null;
-        };
-        SquadEchangeBucket: {
-            /** Format: int64 */
-            debut_ms: number;
-            /** Format: int64 */
-            fin_ms: number;
-            hors_fenetre: boolean;
-            /** Format: int64 */
-            nombre: number;
-            ouvert: boolean;
-        };
-        SquadEchangeCell: {
-            /** Format: int64 */
-            nombre: number;
-            /** Format: double */
-            par_match: number;
-            venge_gamertag: string;
-            venge_xuid: string;
-            vengeur_gamertag: string;
-            vengeur_xuid: string;
-        };
-        SquadEchangeJoueur: {
-            gamertag: string;
-            xuid: string;
-        };
-        SquadEchangeSessionPoint: {
-            couverture: components["schemas"]["Couverture"];
-            dans_le_filtre: boolean;
-            /** Format: int64 */
-            matchs_mesures: number;
-            session_label: string;
-        };
         SquadEmpriseBlock: {
             film_unavailable?: string;
             habit?: components["schemas"]["SquadEmpriseHabit"];
@@ -12844,14 +12793,6 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
-        TacticalBinDistance: {
-            /** Format: double */
-            max_m?: number;
-            /** Format: double */
-            min_m: number;
-            /** Format: int64 */
-            n: number;
-        };
         TacticalCelluleAdresse: {
             /**
              * Format: int64
@@ -12876,7 +12817,7 @@ export interface components {
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. */
+            /** @description Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. */
             qui?: string;
@@ -12887,30 +12828,27 @@ export interface components {
             contributions: components["schemas"]["TacticalContribution"][] | null;
             /** Format: int64 */
             matchs_non_ouvrables: number;
+            zone?: components["schemas"]["TacticalZoneNom"];
         };
         TacticalContribution: {
+            arme_label?: string;
+            arme_label_en?: string;
+            autre_gamertag?: string;
+            categorie_source?: string;
             clock: string;
+            face?: string;
             /** Format: int64 */
             instant_ms: number;
             match_id: string;
             /** Format: date-time */
             match_started_at: string;
+            mode_label?: string;
+            placement?: components["schemas"]["TacticalPlacement"];
+            replay_available: boolean;
             resultat?: string;
+            score_kind?: string;
+            score_label?: string;
             xuid: string;
-        };
-        TacticalCoordination: {
-            /** Format: double */
-            distance_mediane_m?: number;
-            distribution_distances: components["schemas"]["TacticalBinDistance"][] | null;
-            /** Format: int64 */
-            fenetre_echange_secondes: number;
-            /** Format: int64 */
-            matchs_mesures: number;
-            /** Format: int64 */
-            morts_sans_distance: number;
-            /** Format: int64 */
-            n_distances: number;
-            rayons_m: number[] | null;
         };
         TacticalGrappe: {
             id: string;
@@ -12951,18 +12889,16 @@ export interface components {
             /** Format: int64 */
             plancher_matchs: number;
         };
+        TacticalPlacement: {
+            /** Format: double */
+            distance_m?: number;
+            seul: boolean;
+        };
         TacticalRaster: {
             bornes: components["schemas"]["BornesMonde"];
             cellules: components["schemas"]["CelluleTactique"][] | null;
-            coordination?: components["schemas"]["TacticalCoordination"];
-            echange?: components["schemas"]["Couverture"];
             echelle: components["schemas"]["EchelleTactique"];
-            /** Format: int64 */
-            evenements_journal: number;
-            /** Format: int64 */
-            evenements_localises: number;
             grappes?: components["schemas"]["TacticalGrappe"][] | null;
-            isolement?: components["schemas"]["Couverture"];
             map_id: string;
             /** Format: int64 */
             matchs_defaite: number;
@@ -12986,18 +12922,23 @@ export interface components {
             points_ignores: number;
             question: string;
             qui: string;
+            rayons_radar_m?: number[] | null;
         };
         TacticalRasterBody: {
             /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
             coequipiers?: string[] | null;
             /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
             match_ids?: string[] | null;
-            /** @description Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
+            /** @description Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
             question?: string;
             /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
+        };
+        TacticalZoneNom: {
+            nom_en: string;
+            nom_fr: string;
         };
         TeamCoverage: {
             /** Format: int64 */
@@ -13091,7 +13032,6 @@ export interface components {
             assist_pairs?: components["schemas"]["SquadAssistPairs"];
             composition_sessions?: components["schemas"]["CompositionSessionEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
-            echange?: components["schemas"]["SquadEchange"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_classes?: {
@@ -14256,7 +14196,11 @@ export interface components {
             /** Format: int64 */
             ownerChecked: number;
             /** Format: int64 */
+            ownerNamed: number;
+            /** Format: int64 */
             ownerUnpaired: number;
+            /** Format: int64 */
+            ownerVoteDisagreed: number;
             /** Format: int64 */
             paired: number;
             roles?: string;

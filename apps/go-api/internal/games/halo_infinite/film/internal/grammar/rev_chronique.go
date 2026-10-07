@@ -417,8 +417,24 @@ package grammar
 // regenerees. Le rang : `.5` est pris par le lot 2.7.b de la representation intermediaire,
 // fusionne avant ce lot.
 //
-// COMPLEMENT DU 2026-10-07 (lots 2.7.c1 et 2.7.c2 de la representation intermediaire, REVISION
-// CONSTANTE) : la grammaire recoit les lectures de killsource — la table, le fil des kills, le motif
+// ENTREE `grammar-2026-10-07` (2026-10-07, branche `feat/zones-proprietaire`) : LE NOM DE CHAQUE
+// PROPRIETE RESEAU DE ti=13 SE LIT AUX IMAGES-CLES.
+//
+// Ce qui change, contre `grammar-2026-10-06.6` :
+//   - [canalDesProprietesGerees] interprete aussi `i0` (`managed-object-property-name-component`,
+//     identifiant de chaine R(32)) et pose ce nom sur chaque lecture d image-cle du record
+//     ([ManagedPropertyRead.Name], [ManagedPropertyRead.Named]) ;
+//   - les lectures delta (`Reads`), les valeurs des lectures d image-cle et tous les comptes ne
+//     changent pas.
+//
+// Le nom est l identite de la propriete : le rejeu rattache par lui le canal de propriete d une
+// zone a sa jauge, au lieu de l elire par un vote qu un match court ne peut pas passer
+// (`replay/zone_states_owner_nom.go`, `replay.SchemaVersion` 84). Le rang : `grammar-2026-10-06.7`
+// est reserve par un lot parallele non fusionne ; la serie passe au jour suivant pour ne pas
+// laisser de trou sur cette branche.
+//
+// LOTS 2.7.c1 ET 2.7.c2 DE LA REPRESENTATION INTERMEDIAIRE (2026-10-07, ecrits sur leur branche a
+// revision constante de `grammar-2026-10-06.6`, publies avec le rang suivant) : la grammaire recoit les lectures de killsource — la table, le fil des kills, le motif
 // des xuid, BOT_METADATA (le corps commun des fiches de joueur lit desormais l equipe et son jumeau
 // dans le bloc de 44 octets : meme nombre de bits consommes), le gabarit du dead-state, les morts de
 // la marche des trames avec leur position ([LireLesMortsDeLaMarche] : le canal des morts les garde
@@ -427,11 +443,11 @@ package grammar
 // retirees avec elle. Aucune lecture de la cuisson ne change : empreinte regeneree a revision
 // constante.
 //
-// ENTREE `grammar-2026-10-06.7` (2026-10-07, lot 2.7.c4 de la representation intermediaire) : LA VUE A
-// LIT LE MESSAGE DE KILL SANS SA QUEUE, ET LA RECHERCHE DES KILLS DE KILLSOURCE DESCEND ICI EN
+// ENTREE `grammar-2026-10-07.2` (2026-10-07, lot 2.7.c4 de la representation intermediaire) : LA
+// VUE A LIT LE MESSAGE DE KILL SANS SA QUEUE, ET LA RECHERCHE DES KILLS DE KILLSOURCE DESCEND ICI EN
 // RATTRAPAGE.
 //
-// Ce qui change, contre `grammar-2026-10-06.6` :
+// Ce qui change, contre `grammar-2026-10-07` :
 //   - [chargeJoueurTue] lit le genre 85, partie fixe seule, quelle que soit la variante de partie :
 //     la garde de la queue tient ses deux reglages d execution a leur defaut de l executable (faux),
 //     decision de l utilisateur du 2026-10-07 (`vue_a_charges_execution.go`). La vue A va donc
@@ -460,3 +476,6 @@ package grammar
 // les etapes de la marche (etats de mouvement, inventaire, tir continu, camouflage, morts de
 // vehicule) bougent avec la vue B des trames a kill ; la queue du 85, essayee sur les quatre films de
 // reference, ne rend la fin localisee dans aucune trame.
+// Le rang : ecrit `grammar-2026-10-06.7` sur sa branche, renumerote a la fusion de `feat/v75`
+// (`fad38a03c`) apres `grammar-2026-10-07` ; `replay.SchemaVersion` 85 et `SchemaDesFaits` 10 montent
+// avec lui (contenu cuit et section des kills des faits changes).

@@ -112,7 +112,7 @@ type tacticalMapsBody struct {
 type tacticalRasterBody struct {
 	MatchIDs    []string `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
 	Coequipiers []string `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
-	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions."`
+	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions."`
 	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
 	Spawn       string   `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction."`
 }
@@ -209,7 +209,7 @@ type tacticalCelluleAdresse struct {
 type tacticalCelluleBody struct {
 	MatchIDs    []string               `json:"match_ids,omitempty" doc:"Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match."`
 	Coequipiers []string               `json:"coequipiers,omitempty" doc:"XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade »."`
-	Question    string                 `json:"question,omitempty" doc:"Lecture : morts | kills | gagne | temps | routes | isole. Defaut : morts."`
+	Question    string                 `json:"question,omitempty" doc:"Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts."`
 	Qui         string                 `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi."`
 	Spawn       string                 `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part."`
 	Cellule     tacticalCelluleAdresse `json:"cellule" doc:"La cellule dont on demande le detail (col, lig)."`

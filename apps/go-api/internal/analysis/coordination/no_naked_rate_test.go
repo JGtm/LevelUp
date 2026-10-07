@@ -37,17 +37,9 @@ var (
 		"string": true,
 	}
 
-	// typesQualifiesAutorises : les types de resultat rendus AUJOURD'HUI par ce paquet,
-	// verifies sur pieces le 2026-09-06 — `Mesurer` rend domain.Couverture, `Echanges` rend
-	// domain.BilanEchanges. `domain.PaireEchange` n'y figure PAS : il voyage a l'interieur
-	// du bilan, aucune fonction exportee ne le rend directement.
+	// typesQualifiesAutorises : les types de resultat rendus par ce paquet. `Mesurer` rend
+	// domain.Couverture ; les autres sont justifies un par un ci-dessous.
 	//
-	// `domain.MortSuivie` AJOUTE LE 2026-09-06 (phase 3, histogramme du delai d'echange de
-	// la page Escouade). JUSTIFICATION : `Ripostes` le rend pour que l'appelant puisse
-	// BINNER des DELAIS (des millisecondes, ADR 0010 : pre-binning serveur). Le type ne
-	// porte AUCUN quotient — MatchID, deux xuids, un instant, trois booleens et un delai en
-	// int64 : il n'y a rien dedans qu'un lecteur puisse prendre pour un taux, et le seul
-	// taux de ce paquet reste celui de Mesurer.
 	// `domain.BilanIsolement` REMIS LE 2026-09-07 (lot 7C), apres avoir ete retire au lot
 	// 7.10 avec la premiere lecture d'isolement. JUSTIFICATION : `Isolement` le rend parce
 	// que la lecture a besoin de TROIS choses que le taux seul ne porte pas — les morts
@@ -55,13 +47,6 @@ var (
 	// d'accompagner, et les matchs dont la variante n'a pas de rayon mesure. Son unique taux
 	// est `Couverture`, du type canonique ; le reste sont des comptes entiers et des
 	// positions. Un lecteur ne peut prendre aucun de ses champs pour un quotient.
-	// `domain.TaCoordDistances` AJOUTE LE 2026-09-13 (lot F, section « Coordination
-	// d'equipe » de l'onglet Tactique, maquette 034b1915). JUSTIFICATION : `Distances` le
-	// rend pour que la lecture publie la FORME de la distance a l'equipier au moment des
-	// morts — une MEDIANE en metres, un histogramme de COMPTES (binning serveur, ADR 0010),
-	// le nombre de morts mesurees et le nombre de morts sans distance. AUCUN QUOTIENT n'y
-	// figure : que des metres et des entiers. Le seul taux de ce paquet reste celui de
-	// `Mesurer`, et le taux d'isolement continue de sortir sous `domain.BilanIsolement`.
 	// `domain.CoordinationBlock` ET `domain.CoordinationEntree` AJOUTES LE 2026-09-21 (lot
 	// N1, decisions D22 ; le bloc sert aujourd'hui la section « Appui » des pages Sessions et
 	// Series temporelles). JUSTIFICATION, type par type :
@@ -91,10 +76,7 @@ var (
 		"domain.CoordinationBlock":           true,
 		"domain.CoordinationEntree":          true,
 		"domain.Couverture":                  true,
-		"domain.BilanEchanges":               true,
-		"domain.MortSuivie":                  true,
 		"domain.BilanIsolement":              true,
-		"domain.TaCoordDistances":            true,
 	}
 )
 

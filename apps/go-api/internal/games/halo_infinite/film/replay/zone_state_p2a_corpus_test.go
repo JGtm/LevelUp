@@ -105,6 +105,21 @@ var p2aCorpus = map[string]p2aFilm{
 			{"2533274858283686", 9, 11, 3, 1},
 			{"2535469190789936", 5, 11, 6, 1},
 		}},
+	// Le Bastion COURT (Streets, ~2 min 45, 6 captures) : temoin du proprietaire designe par le
+	// NOM de la jauge (`zone_proprietaire_nom_temoin_test.go`) — deux zones n y ont qu une capture
+	// concordante. Releve du 2026-10-07 par `levelup replay-facts-export` (lecture seule de la base
+	// partagee).
+	"114b0040": {Mode: "Strongholds", ObjType: objectives.ObjectiveTypeZone,
+		Carte: "streets", MapID: "e23ea388-9bcb-4180-a0dc-fbe987751b9e", Players: []p2aPlayer{
+			{"2533274793458847", 2, 5, 3, 0},
+			{"2535418546676370", 3, 5, 1, 0},
+			{"2535444981707378", 2, 5, 2, 0},
+			{"2535473385102306", 1, 5, 2, 0},
+			{"2533274943861558", 4, 3, 2, 1},
+			{"2535429603063454", 7, 2, 2, 1},
+			{"2535460889489949", 4, 1, 2, 1},
+			{"2535472547643888", 5, 2, 1, 1},
+		}},
 	// Les KOTH : CB.2a.3. `0a247154` joue sur Solitude, ABSENTE du catalogue de formes — le
 	// negatif est ecrit plutot que contourne (et la phase 1 y avait deja mesure 0 rampe).
 	"01e1f945": {Mode: "KOTH", ObjType: "none",

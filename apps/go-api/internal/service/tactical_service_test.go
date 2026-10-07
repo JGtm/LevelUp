@@ -54,7 +54,7 @@ func tsDemande(repo *mockTacticalRepo, carte, question, qui string,
 func tsPerimetreDu(repo *mockTacticalRepo) []string {
 	vus := map[string]bool{}
 	out := []string{}
-	for _, u := range []domain.TacticalUnivers{repo.univ, repo.pos.Univers, repo.ev.Univers} {
+	for _, u := range []domain.TacticalUnivers{repo.univ, repo.pos.Univers} {
 		for _, m := range u.Matchs {
 			if vus[m.MatchID] {
 				continue
@@ -66,17 +66,17 @@ func tsPerimetreDu(repo *mockTacticalRepo) []string {
 	return out
 }
 
-// capsCompletes : profil Halo Infinite — positions capturees du film ET source du
-// degat fatal.
+// capsCompletes : profil Halo Infinite — positions capturees du film, source du degat fatal et
+// artefact de rejeu (porte du nommage des zones).
 func capsCompletes() games.CapabilityMap {
 	return games.CapabilityMap{
-		games.CapFilmKillPositions: games.CapSupported,
-		games.CapFilmKillSource:    games.CapSupported,
+		games.CapFilmKillPositions:  games.CapSupported,
+		games.CapFilmKillSource:     games.CapSupported,
+		games.CapFilmReplayArtifact: games.CapSupported,
 	}
 }
 
-// capsPositionsSeules : positions lisibles, journal des morts NON exploitable — le
-// KPI d'echange doit alors etre silencieux, pas nul.
+// capsPositionsSeules : positions lisibles, sans source du degat fatal.
 func capsPositionsSeules() games.CapabilityMap {
 	return games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported}
 }
@@ -368,46 +368,6 @@ func TestTacticalService_JoueurHorsComposition_AucunAxe(t *testing.T) {
 		if len(got.Cellules) != 0 {
 			t.Errorf("qui=%s : un joueur hors composition a ete range dans un axe : %+v", qui, got.Cellules)
 		}
-	}
-}
-
-// TestTacticalService_CouvertureDeLocalisation : le pied de carte doit pouvoir dire
-// « N morts, M localisees ». Corpus : trois morts au journal, deux seulement avec
-// une position mesuree.
-func TestTacticalService_CouvertureDeLocalisation(t *testing.T) {
-	repo := &mockTacticalRepo{}
-	repo.pos.Univers = domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
-	for _, id := range []string{"m1", "m2", "m3"} {
-		u := universUnMatch(id, domain.OutcomeWin)
-		repo.pos.Univers.Matchs = append(repo.pos.Univers.Matchs, u.Matchs...)
-		repo.pos.Univers.Equipes[id] = u.Equipes[id]
-		// Le journal porte MA mort dans les trois matchs...
-		repo.ev.Events = append(repo.ev.Events, domain.KillEvent{
-			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi, TimeMs: 1000,
-		})
-	}
-	repo.ev.Univers = repo.pos.Univers
-	// ... mais seuls deux d'entre eux ont une position mesuree.
-	for _, id := range []string{"m1", "m2"} {
-		repo.pos.Points = append(repo.pos.Points, domain.TacticalKillPosition{
-			MatchID: id, KillerXUID: tsAdv, VictimXUID: tsMoi,
-			KillerX: 1.0, KillerY: 1.0, VictimX: 9.0, VictimY: 9.0,
-		})
-	}
-	svc := NewTacticalService(repo, capsPositionsSeules(), tsMoi)
-
-	got, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, domain.TacticalQuestionMorts, domain.TacticalQuiMoi))
-	if err != nil {
-		t.Fatalf("Raster: %v", err)
-	}
-	if got.EvenementsJournal != 3 || got.EvenementsLocalises != 2 {
-		t.Errorf("couverture = %d journal / %d localises, want 3/2",
-			got.EvenementsJournal, got.EvenementsLocalises)
-	}
-	// La cellule reste SOUS le plancher de 3 matchs distincts : la carte est muette,
-	// et c'est justement pour cela que la couverture doit etre publiee.
-	if len(got.Cellules) != 0 {
-		t.Errorf("cellules = %+v, want 0 (deux matchs distincts, plancher a trois)", got.Cellules)
 	}
 }
 

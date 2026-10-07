@@ -62,7 +62,11 @@ SELECT e.match_id, min(e.victim_xuid) AS victim_xuid,
        min(c.nearest_teammate_m) AS nearest_teammate_m,
        min(c.teammates_visible) AS teammates_visible,
        min(c.teammates_out_of_sight) AS teammates_out_of_sight,
-       e.time_ms AS time_ms
+       e.time_ms AS time_ms,
+       min(p.victim_z) AS victim_z,
+       COALESCE(min(e.feed_killer_gamertag), '') AS killer_gamertag,
+       min(e.source_tag) AS source_tag,
+       COALESCE(min(e.source_category), '') AS source_category
 FROM match_kill_events_latest e
 JOIN match_death_context_latest c
   ON c.match_id = e.match_id AND c.victim_xuid = e.victim_xuid AND c.time_ms = e.time_ms
@@ -126,11 +130,14 @@ func (r *TacticalRepo) MortsAvecContexte(ctx context.Context, q domain.TacticalQ
 // mesure, c'est-a-dire l'exact inverse.
 func scanMortContexte(sc rowScanner) (domain.MortContexte, error) {
 	var m domain.MortContexte
-	var proche sql.NullFloat64
+	var proche, z sql.NullFloat64
+	var tag sql.NullInt64
 	if err := sc.Scan(&m.MatchID, &m.VictimXUID, &m.X, &m.Y,
-		&proche, &m.Visibles, &m.HorsDeVue, &m.TimeMs); err != nil {
+		&proche, &m.Visibles, &m.HorsDeVue, &m.TimeMs,
+		&z, &m.KillerGamertag, &tag, &m.SourceCategory); err != nil {
 		return m, err
 	}
+	m.Z, m.SourceTag = nullFloatPtr(z), tagOuNil(tag)
 	if proche.Valid {
 		v := proche.Float64
 		m.PlusProcheM = &v

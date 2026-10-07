@@ -1,15 +1,18 @@
 /**
- * textesSansPersonne.test.ts — GARDE : aucun possessif ni pronom de personne dans les textes des
- * Séries temporelles › Usages, de l'Escouade › Emprise, des cartes de la page Sessions et de la Vue
- * match (titres, intertitres, légendes, aides ⓘ, infobulles), en français comme en anglais. Pour la
- * Vue match, s'y ajoutent les littéraux de phrase de ses sources (`features/match-view/`). Le joueur
- * est désigné par son gamertag, les groupes par « Équipe », « Adversaire », « Reste de l'équipe » ;
- * « camp » n'est jamais écrit (le champ de données `camp` peut le rester).
+ * textesSansPersonne.test.ts — GARDE : aucun possessif, pronom de personne ni impératif de la 2e
+ * personne (« reviens », « vérifie ») dans les textes des Séries temporelles › Usages, de toute la
+ * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le sélecteur
+ * `squadPresets.i18n.ts`, les jeux des cartes d'objectif `formes/i18n.ts` et `formes/cardsI18n.ts`,
+ * le manifeste `squad.toml`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
+ * aides ⓘ, infobulles, messages), en français comme en anglais. Pour la Vue match, s'y ajoutent les
+ * littéraux de phrase de ses sources (`features/match-view/`). Le joueur est désigné par son
+ * gamertag, les groupes par « Équipe », « Adversaire », « Reste de l'équipe » ; « camp » n'est
+ * jamais écrit (le champ de données `camp` peut le rester).
  *
  * Toutes les chaînes des textes sont collectées, celles des fonctions comprises (appelées avec des
  * arguments d'échantillon : 0, 1, 2, un texte, une part d'équipement, un objet dont chaque champ
- * est un texte). Les manifestes sont lus ligne à ligne : `timeseries.toml`, `session.toml` et
- * `match_view.toml` en entier, et dans `synthesis.toml` le bloc `synthesis.weapon_range.*`, que lit
+ * est un texte). Les manifestes sont lus ligne à ligne : `timeseries.toml`, `session.toml`,
+ * `match_view.toml` et `squad.toml` en entier, et dans `synthesis.toml` le bloc `synthesis.weapon_range.*`, que lit
  * la section « Portée » de l'onglet Usages. Mot entier seulement (« mesuré », « nombre » passent) ;
  * liste blanche vide.
  */
@@ -25,16 +28,25 @@ import { COORDINATION_TEXT } from '@/features/session-detail/coordinationI18n'
 import { SESSION_CARD_TEXT } from '@/features/session-detail/sessionEmpriseText'
 import { EMPRISE_TEXT } from '@/features/squad/emprise/empriseStrings'
 import { PLACEMENT_TEXT } from '@/features/squad/emprise/placementStrings'
+import { FORMES_CARDS_TEXT } from '@/features/squad/formes/cardsI18n'
+import { FORMES_TEXT } from '@/features/squad/formes/i18n'
+import { EN_TEXT as SQUAD_EN, FR_TEXT as SQUAD_FR } from '@/features/squad/i18n'
 import { OBJECTIF_TEXT } from '@/features/squad/objectif/objectifStrings'
+import { getSquadFocusText } from '@/features/squad/squadFocusStrings'
+import { SQUAD_PRESETS_STRINGS } from '@/features/squad/squadPresets.i18n'
+import { getSquadRangeRolesText } from '@/features/squad/squadRangeRolesStrings'
 
 import { EMPRISE_TEXT_SOLO, OBJECTIF_TEXT_SOLO, USAGES_TEXT } from './usagesText'
 
 const NOT_LETTER_BEFORE = '(?<![\\p{L}\\p{N}])'
 const NOT_LETTER_AFTER = '(?![\\p{L}\\p{N}])'
 const BANNED: Record<'fr' | 'en', RegExp> = {
-  fr: new RegExp(`${NOT_LETTER_BEFORE}(ma|mes|mon|moi|me|je|j(?=['’])|m(?=['’])|t(?=['’])|notre|nos|nous|ta|tes|ton|toi|tu|te|vous|votre|vos|camp|camps)${NOT_LETTER_AFTER}`, 'iu'),
+  fr: new RegExp(`${NOT_LETTER_BEFORE}(ma|mes|mon|moi|me|je|j(?=['’])|m(?=['’])|t(?=['’])|notre|nos|nous|ta|tes|ton|toi|tu|te|vous|votre|vos|reviens|vérifie|camp|camps)${NOT_LETTER_AFTER}`, 'iu'),
   en: new RegExp(`${NOT_LETTER_BEFORE}(my|our|we|us|me|your|you)${NOT_LETTER_AFTER}`, 'iu'),
 }
+
+/** Un code de locale (`en-US`, champ `intlLocale` du jeu de l'Escouade) n'est pas un texte affiché. */
+const LOCALE_TAG = /^[a-z]{2,3}-[A-Z]{2}$/
 
 /** Lignes `fr = "…"` / `en = "…"` fautives d'un manifeste ; `section` : préfixe des clés vérifiées. */
 function offendingManifestLines(file: string, section: string): string[] {
@@ -97,7 +109,18 @@ const SESSION_TEXTS = Object.fromEntries(
 /** La carte « Usage d'équipements, par joueur » de la Vue match : la seule partie du dictionnaire du rejeu qu'elle lit. */
 const MATCH_EQUIPMENT_USAGE_TEXT = { fr: REPLAY_TEXT.fr.equipmentUsage, en: REPLAY_TEXT.en.equipmentUsage }
 
+/** Le jeu entier de la page Escouade, ses libellés de focus et ceux des « Rôles de portée ». */
+const SQUAD_TEXT = { fr: SQUAD_FR, en: SQUAD_EN }
+const SQUAD_FOCUS_TEXT = { fr: getSquadFocusText('fr'), en: getSquadFocusText('en') }
+const SQUAD_RANGE_ROLES_TEXT = { fr: getSquadRangeRolesText('fr'), en: getSquadRangeRolesText('en') }
+
 const TEXTS = {
+  SQUAD_TEXT,
+  SQUAD_FOCUS_TEXT,
+  SQUAD_RANGE_ROLES_TEXT,
+  SQUAD_PRESETS_STRINGS,
+  FORMES_TEXT,
+  FORMES_CARDS_TEXT,
   EMPRISE_TEXT,
   EMPRISE_TEXT_SOLO,
   PLACEMENT_TEXT,
@@ -118,7 +141,7 @@ describe('aucun possessif ni pronom de personne', () => {
         const strings: string[] = []
         collect((byLocale as Record<string, unknown>)[locale], strings)
         expect(strings.length).toBeGreaterThan(0)
-        expect(strings.filter((s) => BANNED[locale].test(s))).toEqual([])
+        expect(strings.filter((s) => !LOCALE_TAG.test(s) && BANNED[locale].test(s))).toEqual([])
       })
     }
   }
@@ -137,6 +160,10 @@ describe('aucun possessif ni pronom de personne', () => {
 
   it('manifeste match_view.toml (fr, en)', () => {
     expect(offendingManifestLines('match_view.toml', 'match_view.')).toEqual([])
+  })
+
+  it('manifeste squad.toml (fr, en), en entier', () => {
+    expect(offendingManifestLines('squad.toml', '')).toEqual([])
   })
 
   it('littéraux de phrase des sources de la Vue match (features/match-view, hors tests)', () => {

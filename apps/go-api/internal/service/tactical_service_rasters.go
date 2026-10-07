@@ -136,11 +136,6 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	if err := s.remplirLectureArtefact(ctx, out, univers, sidecars, scope, ignores); err != nil {
 		return err
 	}
-	// LE KPI D'ECHANGE EST CELUI DE LA CARTE, PAS CELUI DE LA QUESTION : il est servi sous
-	// toutes les lectures, avec le meme perimetre (mon camp entier). La couverture
-	// d'evenements, elle, rend 0 ici — ces lectures ne lisent aucun journal des morts, et
-	// `facesDeLaQuestion` le dit.
-	s.lireLeJournal(ctx, out, scope)
 	s.logger.InfoContext(ctx, "tactique: lecture d'artefact",
 		"player", s.xuid, "map_id", out.MapID, "question", out.Question, "qui", out.Qui,
 		"spawn", scope.Spawn, "grappes", len(out.Grappes),

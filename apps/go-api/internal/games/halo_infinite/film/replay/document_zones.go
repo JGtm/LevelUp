@@ -360,15 +360,23 @@ type ZonesCoverage struct {
 	OwnerChecked int `json:"ownerChecked"`
 	OwnerAgreed  int `json:"ownerAgreed"`
 	// OwnerUnpaired compte les zones dont la JAUGE est appariee mais dont AUCUN canal de
-	// propriete n'a ete elu — moins de deux captures concordantes, ou canal deja retenu par une
-	// zone au meilleur accord (cf. zoneOwnerMinAgreements et electZoneOwners). Elles ne sont
-	// PAS publiees : une zone dont on ne lit pas le proprietaire n'a pas d'etat a montrer, et
-	// lui en inventer un serait invisible et credible.
+	// propriete n'est rattache : le nom de la jauge n'est pas au vocabulaire des blocs de zone
+	// (cf. zone_states_owner_nom.go) ET le vote n'en elit aucun — moins de deux captures
+	// concordantes, ou canal deja retenu par une autre zone (cf. zoneOwnerMinAgreements et
+	// electZoneOwners). Elles ne sont PAS publiees : une zone dont on ne lit pas le
+	// proprietaire n'a pas d'etat a montrer, et lui en inventer un serait invisible et credible.
 	//
 	// SANS CE COMPTEUR, LE SILENCE SERAIT MUET : « cette carte ne declare pas cette zone » et
 	// « le canal de cette zone n'a pas passe le seuil » se liraient tous les deux comme une
 	// zone absente de `zoneStates`.
 	OwnerUnpaired int `json:"ownerUnpaired"`
+	// OwnerNamed compte les zones dont le canal de propriete est designe PAR LE NOM de la jauge
+	// (zone_states_owner_nom.go) ; les autres zones rattachees le sont par le vote, repli compte
+	// dans `coverage.fallbacks` (`repli_zone_proprietaire_par_vote`).
+	OwnerNamed int `json:"ownerNamed"`
+	// OwnerVoteDisagreed compte les zones nommees dont le vote elit un AUTRE canal. Le nom est
+	// retenu ; le vote est le controle du nom la ou il aboutit.
+	OwnerVoteDisagreed int `json:"ownerVoteDisagreed"`
 	// Spans est le nombre d'intervalles publies, toutes zones confondues.
 	Spans int `json:"spans"`
 	// HillPeriods est le nombre de periodes de COLLINE : publiees (methode par positions), ou

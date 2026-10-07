@@ -72,6 +72,9 @@ func (s *tacticalCalloutsStore) ZonesDeLaCarte(ctx context.Context, mapID string
 // manque (le lexique FR ne couvre pas encore tout le vocabulaire Forge). Une zone muette
 // des trois cotes est ECARTEE : elle ne peut nommer personne, et la garder ferait d'elle la
 // « plus proche » d'une grappe qu'elle laisserait sans nom.
+//
+// LA FORME ET LA TRANCHE VOYAGENT AUSSI (contour, parties, trous, z bas / z haut, index de
+// volume) : ce sont elles qui nomment une CELLULE du plan (analysis/tactical.NommerZone).
 func zonesNommees(zones []replay.CalloutZone) []domain.ZoneNommee {
 	out := make([]domain.ZoneNommee, 0, len(zones))
 	for _, z := range zones {
@@ -79,7 +82,11 @@ func zonesNommees(zones []replay.CalloutZone) []domain.ZoneNommee {
 		if fr == "" && en == "" {
 			continue
 		}
-		out = append(out, domain.ZoneNommee{NomFR: fr, NomEN: en, X: z.X, Y: z.Y})
+		out = append(out, domain.ZoneNommee{
+			NomFR: fr, NomEN: en, X: z.X, Y: z.Y,
+			Polygone: z.Polygon, Parties: z.Parts, Trous: z.Holes,
+			ZBas: z.ZBottom, ZHaut: z.ZTop, VolumeIndex: z.VolumeIndex,
+		})
 	}
 	return out
 }

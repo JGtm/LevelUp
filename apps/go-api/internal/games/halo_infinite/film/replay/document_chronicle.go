@@ -2927,3 +2927,66 @@ package replay
 //	                identiques. 3 etats d image-cle discordants sur 2 films, tous contre une
 //	                emission delta non chainee hors des camps. KOTH et CTF : document identique hors
 //	                revisions.
+
+// v84 (2026-10-07, proprietaire des zones par le nom) : LE CANAL DE PROPRIETE D UNE ZONE EST DESIGNE
+// PAR LE NOM DE SA JAUGE. Deux champs de couverture s ajoutent ; le contenu change.
+//
+//	`zoneStates[]`  chaque propriete reseau `ti=13` porte un nom (`i0`), lu aux images-cles et pose
+//	                sur leurs lectures (`grammar.ManagedPropertyRead.Name`). Les proprietes d une
+//	                zone forment un bloc dont les noms se repondent : le nom de la jauge appariee
+//	                designe celui du proprietaire (`zone_states_owner_nom.go`), sans vote, sans
+//	                seuil et sans capture concordante. Une zone prise une seule fois (match court)
+//	                est desormais publiee ; un nom hors vocabulaire retombe sur le vote, repli
+//	                `repli_zone_proprietaire_par_vote`.
+//	`coverage.zones ownerNamed` (zones designees par le nom) et `ownerVoteDisagreed` (zones nommees
+//	.ownerNamed`,   dont le vote elit un autre canal : le nom est retenu, la discordance se compte
+//	`.ownerVote     et se journalise).
+//	Disagreed`
+//	faits           `SchemaDesFaits` 7 -> 9 : chaque lecture de `ti=13` porte son nom.
+//
+//	CE QUI MONTE    `SchemaVersion` 82 -> 84 ; `grammar.Rev` `grammar-2026-10-06.6` ->
+//	AVEC ELLE       `grammar-2026-10-07`. `killsource.Rev` et `objectives.Rev` gardent leur valeur
+//	                (ni l une ni l autre n appelle le balayage de ti=13 : goldens regeneres a
+//	                revision constante). Le schema 83, `SchemaDesFaits` 8 et `grammar-2026-10-06.7`
+//	                sont reserves par un lot parallele non fusionne.
+//
+//	LE PARC         un artefact 82 porte `grammar-2026-10-06.6` sur ses calques de grammaire :
+//	                verdict `redecoder`, tout le parc. Seuls les Bastions dont une zone n avait pas
+//	                assez de captures concordantes voient leur calque de zones changer.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bastions locaux et 3 KOTH :
+//	                sur les 8 Bastions ou le vote elisait les trois canaux, le nom designe les
+//	                memes (24 zones sur 24, `ownerVoteDisagreed` 0, `zoneStates` identiques) ; sur
+//	                le Bastion court, les deux zones sans canal elu sont publiees, controle du
+//	                proprietaire 5/5. KOTH : calque identique. Aucun autre calque ne bouge.
+//
+// v85 (2026-10-07, representation intermediaire 2.7.c : killsource sur la marche des trames, kill-events
+// par la vue A) : LA VUE A SE LIT AU-DELA DES MESSAGES DE KILL, ET SA FIN FIXE LE DEBUT DE LA VUE B DES
+// TRAMES A KILL. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
+//
+//	calques de la   le message de kill (genre 85) se lit sans sa partie optionnelle, quelle que
+//	marche          soit la variante de partie : la vue A des trames a kill se lit jusqu a son
+//	                terminateur et sa fin fixe le debut de la vue B selon la classe du film. Les
+//	                etats de mouvement, l inventaire, le tir continu, le camouflage, les armes
+//	                tenues et les morts de vehicule lisent ces trames depuis ce debut.
+//	`killsource`,   kill-events tires de la vue A ; rattrapage bit a bit compte dans les trames
+//	`killRefs`      dont la lecture de la vue A n est pas etablie (`repli_kill_rattrape_hors_vue_a`) ;
+//	                voies des morts (marche, balayage) redistribuees, morts publiees identiques.
+//	`coverage`      comptes de replis (la chaine d evenements arretee chute d un ordre de
+//	                grandeur), trames fermees, revisions.
+//	faits           `SchemaDesFaits` 9 -> 10 : la section des kills change de contenu.
+//
+//	CE QUI MONTE    `SchemaVersion` 84 -> 85 ; `grammar.Rev` `grammar-2026-10-07` ->
+//	AVEC ELLE       `grammar-2026-10-07.2` ; `killsource.Rev` `killsource-2026-09-27` ->
+//	                `killsource-2026-10-07` (backlog killsource sur signal de l utilisateur, D6) ;
+//	                `objectives.Rev` constante. Le schema 83 et `SchemaDesFaits` 8, reserves a ce
+//	                lot, restent sans emploi.
+//
+//	LE PARC         un artefact 84 porte `grammar-2026-10-07` : verdict `redecoder`, tout le parc.
+//
+//	MESURE          `replay-equiv` sur les 20 films d equivalence, avant la fusion de `feat/v75`
+//	                (binaires de `e9a64d87b` contre ceux du lot) : les etapes de la marche bougent
+//	                sur 16 films, `killsource` et l artefact partout, `objectives` nulle part. Sur
+//	                28 films, trames delta fermees 674 171 -> 698 688 et refusees 156 170 ->
+//	                131 798 ; quelques trames a kill regressent quand la fin de la vue A, fausse
+//	                apres un message de degats, est retenue (decouverte 34 du plan de l etape 2).
