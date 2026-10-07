@@ -304,12 +304,6 @@ var exceptionsDExtraction = []exceptionDExtractionDatee{
 		raison: "outil de recherche (tag `research`) descendu sous `film/research` au lot J4.5 avec " +
 			"sa copie de lecteur (convention `source.BitsBourres`) ; son nom `bitsAt` n est pas " +
 			"dans la liste des noms, seule la forme l a trouve."},
-	{fichier: "internal/games/halo_infinite/film/internal/facts/killsource/botmeta.go",
-		fonction: "func byteAtBit", date: "2026-09-26", retrait: retraitParPortage,
-		raison: "octet a une position de bit quelconque, zero hors bornes, dans la couche des faits " +
-			"`killsource` ; `source.OctetAuBit` porte la meme lecture sous une autre convention de " +
-			"bord — le portage demande la preuve d equivalence de `killsource` (revision " +
-			"`killsource.Rev`), hors du perimetre de J4.6."},
 	{fichier: "cmd/diag_film/main.go",
 		fonction: "func countMarkerBits", date: "2026-09-26", retrait: retraitParPortage,
 		raison: "CLI de diagnostic : compte un marqueur par fenetre de 32 bits glissee bit a bit " +

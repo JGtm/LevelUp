@@ -66,33 +66,11 @@ func scanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTab
 	if len(roster) == 0 {
 		return out, 0, fmt.Errorf("roster vide : rien à résoudre")
 	}
-	nums := FilmChunkNumbers(film)
-	if len(nums) == 0 {
+	if len(FilmChunkNumbers(film)) == 0 {
 		return out, 0, ErrNoReadableFilmChunk
 	}
-	// Chunks de RÉPLICATION seulement : le 0 est le registre, le dernier porte les highlights.
-	// Les deux rendent une table nulle, et l'inclure écraserait la bonne.
-	seen := map[uint64]map[int]int{}
-	sautes := 0
-	for _, c := range nums[:len(nums)-1] {
-		raw, _, ok := FilmChunkAt(film, c)
-		if !ok {
-			sautes++
-			continue
-		}
-		got := weaponv3.ResolveXuidToPI(roster, raw)
-		if len(got) == 0 {
-			sautes++ // resolution vide : sautee comme un chunk illisible, et comptee avec lui
-			continue
-		}
-		out.Readings++
-		for x, pi := range got {
-			if seen[x] == nil {
-				seen[x] = map[int]int{}
-			}
-			seen[x][pi]++
-		}
-	}
+	seen, lectures, sautes := lecturesDuMotif(film, roster)
+	out.Readings = lectures
 	if out.Readings == 0 {
 		return out, sautes, fmt.Errorf("aucun chunk de réplication n'a livré d'index de joueur")
 	}
@@ -106,4 +84,44 @@ func scanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTab
 		}
 	}
 	return out, sautes, nil
+}
+
+// LecturesDuMotifDesXUID rend, pour chaque xuid de `xuids`, les index de joueur que le motif de son
+// xuid porte dans les chunks de replication du film — combien de chunks donnent chaque index —, et le
+// nombre de chunks qui en ont livre au moins un. C est la lecture de [ScanPlayerIndices], sans sa
+// regle de publication : `killsource` (`index_motif.go`) applique la sienne.
+func LecturesDuMotifDesXUID(film *source.Film, xuids []uint64) (map[uint64]map[int]int, int) {
+	vus, lectures, _ := lecturesDuMotif(film, xuids)
+	return vus, lectures
+}
+
+// lecturesDuMotif lit le motif des `xuids` dans les chunks de REPLICATION seulement : le 0 est le
+// registre, le dernier porte les temps forts — les deux rendent une table nulle, et les inclure
+// ecraserait la bonne. Rend aussi les chunks SAUTES : illisibles, ou dont la resolution est vide.
+func lecturesDuMotif(film *source.Film, xuids []uint64) (vus map[uint64]map[int]int, lectures, sautes int) {
+	vus = map[uint64]map[int]int{}
+	nums := FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return vus, 0, 0
+	}
+	for _, c := range nums[:len(nums)-1] {
+		raw, _, ok := FilmChunkAt(film, c)
+		if !ok {
+			sautes++
+			continue
+		}
+		got := weaponv3.ResolveXuidToPI(xuids, raw)
+		if len(got) == 0 {
+			sautes++ // resolution vide : sautee comme un chunk illisible, et comptee avec lui
+			continue
+		}
+		lectures++
+		for x, pi := range got {
+			if vus[x] == nil {
+				vus[x] = map[int]int{}
+			}
+			vus[x][pi]++
+		}
+	}
+	return vus, lectures, sautes
 }

@@ -45,38 +45,37 @@ package killsource
 // retombe alors sur l inference ENTIERE, comptee comme telle. Aucun ne panique, aucun ne rend une
 // table partielle en silence, aucun n est lu « au profil du build voisin » (D-4 d ADR 0034).
 //
-// # COPIE JUMELLE, ASSUMEE ET CONSIGNEE
+// # UNE SEULE LECTURE, CELLE DE LA GRAMMAIRE
 //
-// `film/replay/film_player_table.go` (lot 1.6.0) fait la meme traduction erreur -> cause nommee
-// pour l assembleur du rejeu. C est la DEUXIEME copie et la derniere tolerable (CLAUDE.md regle
-// 6) : une troisieme impose la centralisation chez `grammar`. Consigne en §4 du plan.
+// La table et la traduction erreur -> cause nommee vivent chez `grammar` ([grammar.ScanFilmPlayerTable]),
+// que la cuisson lit aussi : ce fichier n en garde que la forme que le decodeur emploie (lot 2.7.c1
+// de la representation intermediaire, qui a retire sa copie de la traduction).
 
 import (
-	"errors"
-
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// FilmTableRefusal nomme la cause pour laquelle la table du film n a PAS ete lue. Liste FERMEE :
-// un refus sans cause ne se corrige pas, il se contemple.
-type FilmTableRefusal string
+// FilmTableRefusal nomme la cause pour laquelle la table du film n a PAS ete lue : celle de la
+// grammaire, qui lit la table ([grammar.ScanFilmPlayerTable]). Liste FERMEE : un refus sans cause ne
+// se corrige pas, il se contemple.
+type FilmTableRefusal = grammar.FilmTableRefusal
 
+// Les causes de refus, celles de la grammaire.
 const (
 	// FilmTableRead : la table a ete lue. Valeur du cas nominal.
-	FilmTableRead FilmTableRefusal = ""
+	FilmTableRead = grammar.FilmTableRead
 	// FilmTableNoRegistry : le film ne porte pas son `chunk_00`.
-	FilmTableNoRegistry FilmTableRefusal = "sans_registre"
+	FilmTableNoRegistry = grammar.FilmTableNoRegistry
 	// FilmTableNoSection : le `chunk_00` ne porte aucune section d identification.
-	FilmTableNoSection FilmTableRefusal = "sans_section"
+	FilmTableNoSection = grammar.FilmTableNoSection
 	// FilmTableUnknownBuild : le build du film n est pas dans la table de profil. Le film est mis
 	// de cote, JAMAIS lu au profil du build le plus proche (D-4).
-	FilmTableUnknownBuild FilmTableRefusal = "build_inconnu"
+	FilmTableUnknownBuild = grammar.FilmTableUnknownBuild
 	// FilmTableTruncated : le `chunk_00` s arrete avant la fin de la section lue.
-	FilmTableTruncated FilmTableRefusal = "tronque"
+	FilmTableTruncated = grammar.FilmTableTruncated
 	// FilmTableNotFound : aucun depart ne ferme la table a 32 slots.
-	FilmTableNotFound FilmTableRefusal = "table_introuvable"
+	FilmTableNotFound = grammar.FilmTableNotFound
 )
 
 // FilmTable est ce que la table des joueurs du film donne au decodeur, et ce que sa lecture a
@@ -104,55 +103,31 @@ type FilmTable struct {
 // Lue dit si la table a ete lue et porte au moins un siege.
 func (t FilmTable) Lue() bool { return t.Refusal == FilmTableRead && len(t.Seats) > 0 }
 
-// readFilmTable lit la table des joueurs depuis le PREMIER chunk du film — le meme que
-// `newTimeline` lit comme registre ECS (cf. l en-tete de chunks.go sur « le chunk 0 est le
-// premier de la source »).
+// readFilmTable rend la table des joueurs que la grammaire lit dans le registre du film
+// ([grammar.ScanFilmPlayerTable] : la meme lecture que la cuisson, `chunk_00` par son numero).
 //
-// ELLE NE REND JAMAIS D ERREUR : chaque cause d echec est TYPEE chez `grammar` et traduite ici en
-// cause NOMMEE, portee par le resultat et journalisee par l appelant. Un refus se compte.
+// ELLE NE REND JAMAIS D ERREUR : chaque cause d echec est TYPEE et NOMMEE par la grammaire, portee
+// par le resultat et journalisee par l appelant. Un refus se compte.
 func readFilmTable(f *film) FilmTable {
-	if f == nil || f.src.NumChunks() == 0 || len(f.src.Chunk(0)) == 0 {
+	if f == nil {
 		return FilmTable{Refusal: FilmTableNoRegistry}
 	}
-	registre := f.src.Chunk(0)
-	ident, err := grammar.ReadFilmIdentity(registre)
-	if err != nil {
-		return FilmTable{Refusal: causeIdentite(err)}
+	// L erreur ne fait qu accompagner le refus : c est la cause nommee qui se publie et que
+	// l appelant journalise (`DiagTableNonLue`).
+	lue, _ := grammar.ScanFilmPlayerTable(f.src)
+	if lue.Refusal != FilmTableRead {
+		return FilmTable{Build: lue.Build, Refusal: lue.Refusal}
 	}
-	slots, rep, err := grammar.ReadPlayerTable(registre, ident)
-	if err != nil {
-		return FilmTable{Build: ident.Build, Refusal: causeTable(err)}
-	}
-	t := FilmTable{
-		Seats: make(map[int]string, len(slots)), Build: ident.Build,
-		Occupied: rep.Occupied, Vacant: rep.Vacant, InterleavedVacant: rep.InterleavedVacant,
-		slots: slots,
-	}
-	for _, s := range slots {
+	t := FilmTable{Build: lue.Build, Occupied: lue.Occupied, Vacant: lue.Vacant,
+		InterleavedVacant: lue.InterleavedVacant}
+	t.Seats = make(map[int]string, len(lue.Seats))
+	t.slots = make([]types.PlayerSlot, 0, len(lue.Seats))
+	for _, s := range lue.Seats {
+		t.slots = append(t.slots, types.PlayerSlot{FilmIndex: s.FilmIndex, XUID: s.XUID, Gamertag: s.Gamertag})
 		if s.Gamertag == "" {
 			continue // un siege sans nom n identifie personne : il ne peut rien epingler
 		}
 		t.Seats[s.FilmIndex] = s.Gamertag
 	}
 	return t
-}
-
-// causeIdentite traduit l erreur de [grammar.ReadFilmIdentity] en cause nommee.
-func causeIdentite(err error) FilmTableRefusal {
-	if errors.Is(err, grammar.ErrNoFilmIdentity) {
-		return FilmTableNoSection
-	}
-	return FilmTableTruncated
-}
-
-// causeTable traduit l erreur de [grammar.ReadPlayerTable] en cause nommee.
-func causeTable(err error) FilmTableRefusal {
-	switch {
-	case errors.Is(err, profile.ErrUnknownBuild):
-		return FilmTableUnknownBuild
-	case errors.Is(err, grammar.ErrPlayerTableNotFound):
-		return FilmTableNotFound
-	default:
-		return FilmTableTruncated
-	}
 }

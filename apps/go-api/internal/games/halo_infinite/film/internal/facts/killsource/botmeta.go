@@ -41,7 +41,8 @@ package killsource
 import (
 	"cmp"
 	"slices"
-	"unicode/utf16"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // bot : un bot declare par le film.
@@ -62,7 +63,7 @@ type bot struct {
 // qui le declare (inclus) au premier paquet COMPLET suivant qui ne le declare plus (exclu).
 type BotDeclaration struct {
 	// FromUS est l instant du premier paquet qui le declare — celui de l IMAGE-CLE de son chunk
-	// quand ce paquet appartient a l instantane de tete (cf. [paquetsBotMeta]).
+	// quand ce paquet appartient a l instantane de tete (cf. [grammar.PaquetsBotMetadata]).
 	FromUS uint64
 	// ToUS est l horodatage du premier paquet complet qui ne le declare plus. ZERO = il est
 	// encore declare au dernier paquet du film.
@@ -111,37 +112,30 @@ type botMeta struct {
 	Equipes EquipesDesBots
 }
 
-const (
-	botSlotBackBits = 0x74 * 8 // bits AVANT le debut du nom
-	botIDBackBits   = 0x70 * 8
-	botNameMin      = 4
-	botNameMax      = 48
-	botMaxSlot      = 64
-	botMaxID        = 4096
-)
+// botMaxSlot : le plus grand nombre de bots qu un paquet peut annoncer ; au-dela, le paquet est ecarte.
+const botMaxSlot = 64
 
-// loadBotMeta : agrege tous les paquets type 12 d un film deja decoupe.
+// loadBotMeta : agrege les paquets type 12 du film, tels que la grammaire les lit
+// ([grammar.PaquetsBotMetadata] : l instant de chacun, son `nbBots`, les entrees du balayage des noms).
 //
 // L AGREGAT EST INCHANGE (lot M2.1) : memes bots, meme ordre, meme `NBots` — c est lui qu epingle
 // le roster du kill-feed, et aucune ligne de kill ne doit bouger. Ce qui s ajoute est l INSTANT :
 // les paquets sont parcourus dans l ordre du film et chaque bot garde ses intervalles de
 // declaration (cf. l en-tete).
-func loadBotMeta(f *film) botMeta {
+func loadBotMeta(paquets []grammar.PaquetBotMetadata) botMeta {
 	m := botMeta{}
 	rang := map[[2]int]int{}       // (slot, bid) -> position dans m.Bots
 	ouverts := map[[2]int]uint64{} // declares au dernier paquet lu -> debut de leur declaration
-	for _, pi := range paquetsBotMeta(f) {
-		p := pi.p
+	for _, pi := range paquets {
 		m.NPkt++
-		n := int(uint32(p.payload[0])<<24 | uint32(p.payload[1])<<16 |
-			uint32(p.payload[2])<<8 | uint32(p.payload[3]))
+		n := pi.NBots
 		if n < 0 || n > botMaxSlot {
 			continue
 		}
 		if n > m.NBots {
 			m.NBots = n
 		}
-		entrees := scanBotEntries(p.payload)
+		entrees := botsBalayes(pi.Balayees)
 		declares := make(map[[2]int]bool, len(entrees))
 		for _, b := range entrees {
 			k := [2]int{b.Slot, b.BotID}
@@ -151,14 +145,14 @@ func loadBotMeta(f *film) botMeta {
 				m.Bots = append(m.Bots, b)
 			}
 			if _, ouvert := ouverts[k]; !ouvert {
-				ouverts[k] = pi.instant
+				ouverts[k] = pi.Instant
 			}
 		}
 		if len(entrees) != n {
 			m.Incomplets++ // un bot manque a la LECTURE n est pas un bot parti : rien ne se ferme
 			continue
 		}
-		fermerLesAbsents(&m, rang, ouverts, declares, pi.instant)
+		fermerLesAbsents(&m, rang, ouverts, declares, pi.Instant)
 	}
 	for _, k := range clesTriees(ouverts) {
 		i := rang[k]
@@ -166,51 +160,6 @@ func loadBotMeta(f *film) botMeta {
 	}
 	trierBotsParSlot(m.Bots)
 	return m
-}
-
-// paquetBotMeta : un paquet type 12 et l INSTANT qu il declare.
-type paquetBotMeta struct {
-	p *packet
-	// instant : l horodatage du paquet — ou celui de l IMAGE-CLE de son chunk quand le paquet
-	// appartient a l INSTANTANE DE TETE (cf. [paquetsBotMeta]).
-	instant uint64
-}
-
-// paquetsBotMeta rend les paquets type 12 LISIBLES (au moins le mot `nbBots`), dans l ORDRE DU
-// FILM — chunk par chunk, paquet par paquet, c est-a-dire l ordre des horodatages.
-//
-// L ORDRE N EST PAS RETRIE, ET C EST VOULU : c est celui dans lequel l agregat d avant decouvrait
-// ses bots, et deux bots d un meme slot gardent ainsi leur rang relatif — celui qui decide lequel
-// nomme l indice au kill-feed ([roster.pinBots]). Retrier ici pourrait deplacer une ligne de kill.
-//
-// L INSTANTANE DE TETE (mesure du 2026-09-23, `b1ad85eb`) : un chunk s ouvre par son image-cle
-// (paquet 1), puis quelques paquets d etat — dont le BOT_METADATA de tete (paquet 4) — AVANT sa
-// premiere trame de replication (type 0). Ce paquet de tete porte l etat des bots A L IMAGE-CLE ;
-// il est seulement ecrit apres elle (390 us plus tard sur le chunk 2 de `b1ad85eb`). Son instant
-// est donc celui de l image-cle : sans cela, un bot vu a UNE seule image-cle (`343 PardonMy`,
-// f813) se trouverait declare « apres » l unique instant ou son entite est lue.
-func paquetsBotMeta(f *film) []paquetBotMeta {
-	var out []paquetBotMeta
-	chunk, imageCle, enTete := -1, uint64(0), false
-	for i := range f.packets {
-		p := &f.packets[i]
-		if p.chunk != chunk {
-			chunk, imageCle, enTete = p.chunk, 0, true
-		}
-		switch {
-		case p.typ == packetTypeKeyframe && enTete && imageCle == 0:
-			imageCle = p.ts
-		case p.typ == packetType0:
-			enTete = false
-		case p.typ == packetTypeBotMeta && len(p.payload) >= 4:
-			instant := p.ts
-			if enTete && imageCle != 0 {
-				instant = imageCle
-			}
-			out = append(out, paquetBotMeta{p: p, instant: instant})
-		}
-	}
-	return out
 }
 
 // fermerLesAbsents ferme, a l instant d un paquet COMPLET, la declaration de chaque bot ouvert que
@@ -241,101 +190,12 @@ func clesTriees(m map[[2]int]uint64) [][2]int {
 	return out
 }
 
-// scanBotEntries : enumere les entrees d un payload type 12, SANS hypothese de stride. Un nom
-// est un run UTF-16BE d ASCII imprimable ferme par 0x0000 ; slot et botID se lisent aux deux
-// offsets negatifs constants. Le terminateur obligatoire elimine les sous-chaines.
-func scanBotEntries(pl []byte) []bot {
-	var out []bot
-	total := len(pl) * 8
-	for bit := 0; bit+16 <= total; bit++ {
-		name, next := readBotName(pl, bit)
-		if name == "" {
-			continue
-		}
-		s, okS := readU32BE(pl, bit-botSlotBackBits)
-		d, okD := readU32BE(pl, bit-botIDBackBits)
-		if okS && okD && s < botMaxSlot && d < botMaxID {
-			out = append(out, bot{Slot: int(s), BotID: int(d), Name: name, bitPos: bit})
-		}
-		bit = next
+// botsBalayes rend les entrees que le balayage des noms a trouvees dans un paquet, dans la forme du
+// decodeur ; la position du nom sert a ecarter la copie bit-decalee.
+func botsBalayes(entrees []grammar.EntreeDeBotBalayee) []bot {
+	out := make([]bot, 0, len(entrees))
+	for _, e := range entrees {
+		out = append(out, bot{Slot: e.Slot, BotID: e.BotID, Name: e.Nom, bitPos: e.Bit})
 	}
-	return firstCopyOnly(out)
-}
-
-// readBotName : le nom qui commence au bit `bit`, et la position du terminateur. Rend "" si ce
-// n est pas un nom (trop court, caractere non imprimable, terminateur absent).
-func readBotName(pl []byte, bit int) (string, int) {
-	name := make([]byte, 0, botNameMax)
-	p := bit
-	for len(name) < botNameMax {
-		c, ok := readU16BE(pl, p)
-		if !ok || c < 0x20 || c > 0x7e {
-			break
-		}
-		name = append(name, byte(c))
-		p += 16
-	}
-	if len(name) < botNameMin {
-		return "", p
-	}
-	if c, ok := readU16BE(pl, p); !ok || c != 0 {
-		return "", p
-	}
-	u := make([]uint16, len(name))
-	for i, c := range name {
-		u[i] = uint16(c)
-	}
-	return string(utf16.Decode(u)), p
-}
-
-// firstCopyOnly : le nom d un bot apparait DEUX FOIS par entree, la seconde copie etant
-// bit-decalee. Aux offsets negatifs de cette seconde copie, slot et botID se lisent en ZEROS —
-// d ou un faux `slot=0 bid(0.0)` qui volerait l indice 0 a un humain. On ne garde donc, PAR NOM,
-// que l occurrence de plus BASSE position : c est l entree primaire, celle dont les offsets ont
-// ete mesures.
-func firstCopyOnly(in []bot) []bot {
-	first := map[string]bot{}
-	for _, b := range in {
-		if e, ok := first[b.Name]; !ok || b.bitPos < e.bitPos {
-			first[b.Name] = b
-		}
-	}
-	out := make([]bot, 0, len(first))
-	for _, b := range first {
-		out = append(out, b)
-	}
-	// Tri total (J12.1, DT-9) : position de bit, puis nom (cle de la map `first`, unique) ; l entree
-	// vient d une map, ses ex aequo n avaient aucun ordre a preserver.
-	slices.SortFunc(out, func(a, b bot) int { return cmp.Or(cmp.Compare(a.bitPos, b.bitPos), cmp.Compare(a.Name, b.Name)) })
 	return out
-}
-
-// byteAtBit : un octet lu a une position de BIT quelconque.
-func byteAtBit(d []byte, bit int) byte {
-	if bit < 0 || bit+8 > len(d)*8 {
-		return 0
-	}
-	i, off := bit/8, uint(bit%8)
-	if off == 0 {
-		return d[i]
-	}
-	return d[i]<<off | d[i+1]>>(8-off)
-}
-
-func readU16BE(d []byte, bit int) (uint16, bool) {
-	if bit < 0 || bit+16 > len(d)*8 {
-		return 0, false
-	}
-	return uint16(byteAtBit(d, bit))<<8 | uint16(byteAtBit(d, bit+8)), true
-}
-
-func readU32BE(d []byte, bit int) (uint32, bool) {
-	if bit < 0 || bit+32 > len(d)*8 {
-		return 0, false
-	}
-	var v uint32
-	for i := range 4 {
-		v = v<<8 | uint32(byteAtBit(d, bit+i*8))
-	}
-	return v, true
 }

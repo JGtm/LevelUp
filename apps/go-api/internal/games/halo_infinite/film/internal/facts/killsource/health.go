@@ -135,32 +135,24 @@ type RelaxedProbe struct {
 func (c *decodeCtx) relaxedProbe(covered map[int]bool) RelaxedProbe {
 	var st RelaxedProbe
 	seen := map[uint32]bool{}
-	for i := range c.film.t0 {
-		p := &c.film.t0[i]
-		if !hasEvents(p) {
+	for _, cd := range c.film.candidatsDuBalayage(grammar.BalayerLesEtatsDeMort(c.film.src, c.roster.nPlay, nil, true)) {
+		st.Candidates++
+		if isCatalogued(cd.tag) {
 			continue
 		}
-		ms := c.film.ms(p)
-		for _, cd := range scanRelaxedPayload(p.payload, c.roster.nPlay) {
-			st.Candidates++
-			if isCatalogued(cd.tag) {
-				continue
-			}
-			st.OutOfCatalogue++
-			cd.chunk, cd.pidx, cd.ms = p.chunk, p.idx, ms
-			e, _ := c.matchExact(cd)
-			if e == nil {
-				continue
-			}
-			st.Paired++
-			if covered[e.timeMS] {
-				continue
-			}
-			st.Uncovered++
-			if !seen[cd.tag] {
-				seen[cd.tag] = true
-				st.Tags = append(st.Tags, cd.tag)
-			}
+		st.OutOfCatalogue++
+		e, _ := c.matchExact(cd)
+		if e == nil {
+			continue
+		}
+		st.Paired++
+		if covered[e.timeMS] {
+			continue
+		}
+		st.Uncovered++
+		if !seen[cd.tag] {
+			seen[cd.tag] = true
+			st.Tags = append(st.Tags, cd.tag)
 		}
 	}
 	slices.Sort(st.Tags)

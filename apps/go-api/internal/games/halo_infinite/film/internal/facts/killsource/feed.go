@@ -81,8 +81,9 @@ type killFeed struct {
 	nKills, nDeaths int
 }
 
-// loadKillFeed : localise le chunk HIGHLIGHT PAR SON CONTENU (celui qui produit le plus de
-// kills) et en tire les instants. Aucune borne de chunk : un BTB a son HIGHLIGHT en n62.
+// loadKillFeed : les instants du fil des kills que la grammaire lit ([grammar.FilDesKills] : le
+// chunk HIGHLIGHT reconnu PAR SON CONTENU, celui qui produit le plus de kills, sans borne de chunk —
+// un BTB a son HIGHLIGHT en n62).
 //
 // LA VERSION DU FILM EST LUE, PLUS DEVINEE (2026-09-12). Elle vient du PROFIL du film depuis le
 // lot 2.1.4 (`grammar.HighlightProfileOfFilm`, pose par `loadFilm` : meme lecture de l en-tete du
@@ -93,24 +94,8 @@ type killFeed struct {
 // (.ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Film sans registre : `f.versionLue` est faux,
 // `f.majorVersion` vaut 0 et le comportement historique tient — l appelant l a consigne.
 func loadKillFeed(f *film) (*killFeed, error) {
-	var best []highlightevent.HighlightEvent
-	bestN := 0
-	for ch := 0; ch < f.src.NumChunks(); ch++ {
-		evs, err := grammar.ParseHighlightEvents(f.src.Chunk(ch), f.majorVersion)
-		if err != nil {
-			continue // un chunk de replication n est pas un chunk HIGHLIGHT : ce n est pas une erreur
-		}
-		nk := 0
-		for _, e := range evs {
-			if e.EventType == highlightevent.EventTypeKill {
-				nk++
-			}
-		}
-		if nk > bestN {
-			bestN, best = nk, evs
-		}
-	}
-	if bestN == 0 {
+	best := grammar.FilDesKills(f.src, f.majorVersion)
+	if len(best) == 0 {
 		return nil, ErrNoKillFeed
 	}
 	kf := buildFeed(best)

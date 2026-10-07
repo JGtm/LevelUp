@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -55,13 +56,17 @@ func TestP4BotMetaHorodatage(t *testing.T) {
 		if len(p.payload) >= 4 {
 			nb = int(uint32(p.payload[0])<<24 | uint32(p.payload[1])<<16 | uint32(p.payload[2])<<8 | uint32(p.payload[3]))
 		}
-		var sb strings.Builder
-		for _, b := range scanBotEntries(p.payload) {
-			fmt.Fprintf(&sb, " {slot %d bid %d %q}", b.Slot, b.BotID, b.Name)
-		}
-		t.Logf("BOT_METADATA chunk %2d pk %3d ts %d f%5d | taille %d o | nbBots=%d |%s", p.chunk, p.idx, p.ts,
-			(int64(p.ts)-int64(origine))/100_000, len(p.payload), nb, sb.String())
+		t.Logf("BOT_METADATA chunk %2d pk %3d ts %d f%5d | taille %d o | nbBots=%d", p.chunk, p.idx, p.ts,
+			(int64(p.ts)-int64(origine))/100_000, len(p.payload), nb)
 	}
-	m := loadBotMeta(f)
+	paquets := grammar.PaquetsBotMetadata(f.src, 0, false)
+	for _, pq := range paquets {
+		var sb strings.Builder
+		for _, b := range pq.Balayees {
+			fmt.Fprintf(&sb, " {slot %d bid %d %q}", b.Slot, b.BotID, b.Nom)
+		}
+		t.Logf("BOT_METADATA instant %d nbBots=%d |%s", pq.Instant, pq.NBots, sb.String())
+	}
+	m := loadBotMeta(paquets)
 	t.Logf("BOT_METADATA : %d paquet(s) ; agregat loadBotMeta nbBots=%d bots=%+v", n, m.NBots, m.Bots)
 }

@@ -201,7 +201,7 @@ const (
 	NomBijectionHongroiseDuFeed Nom = "repli_bijection_hongroise_du_feed"
 	// NomCoupleRecolleSurLeVoisin : `killsource/feed_couples.go` (`CoupleStats.Recolles`).
 	NomCoupleRecolleSurLeVoisin Nom = "repli_couple_recolle_sur_le_voisin"
-	// NomChunkDuPiedParArgmax : `killsource/feed.go`.
+	// NomChunkDuPiedParArgmax : `grammar/fil_des_kills.go`, verse par `killsource`.
 	NomChunkDuPiedParArgmax Nom = "repli_chunk_du_pied_par_argmax"
 	// NomChaineEvenementCodeNonModelise : `killsource/eventbody.go`, `killsource/eventchain.go`.
 	NomChaineEvenementCodeNonModelise Nom = "repli_chaine_evenement_code_non_modelise"

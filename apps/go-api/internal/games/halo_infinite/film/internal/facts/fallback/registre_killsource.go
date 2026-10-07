@@ -166,8 +166,8 @@ var registreKillsource = []Repli{
 		Condition: CondNonResolu,
 		Ordre:     OrdreDevantLaLecture,
 		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "// `loadKillFeed` designe le pied par argmax a chaque decodage"}, siteDeVersement("NomChunkDuPiedParArgmax"), {
-			Fichier: pkgKillsource + "feed.go",
-			Ancre:   "if nk > bestN {",
+			Fichier: pkgFilmdec + "fil_des_kills.go",
+			Ancre:   "if n := compterLesKills(evs); n > plus {",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "le chunk du pied pris au type du manifeste ; a defaut, " + retraitRegle4,

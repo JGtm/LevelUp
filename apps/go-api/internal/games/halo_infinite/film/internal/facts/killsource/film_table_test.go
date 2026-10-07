@@ -202,7 +202,9 @@ func TestRefusDeTableNommeEtRepliComplet(t *testing.T) {
 		chunk0  []byte
 		attendu FilmTableRefusal
 	}{
-		{"tampon vide", nil, FilmTableNoRegistry},
+		// Un tampon vide est un registre TRONQUE pour la grammaire, qui lit la table depuis le lot
+		// 2.7.c1 (`grammar.TestScanFilmPlayerTableCausesNommees`) ; killsource le disait absent.
+		{"tampon vide", nil, FilmTableTruncated},
 		{"tampon d un octet", append([]byte(nil), sain[:1]...), FilmTableTruncated},
 		{"en-tete seul", append([]byte(nil), sain[:64]...), FilmTableTruncated},
 		{"registre ampute de moitie", append([]byte(nil), sain[:len(sain)/2]...), FilmTableNotFound},

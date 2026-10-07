@@ -146,6 +146,11 @@ fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
   la vue A de la campagne, au vert.
 - 2026-10-07 : « tu pourras fusionner si la CI est verte » — accord de fusion de 2.7.b dans
   `feat/v75`, sous condition d'une CI verte sur la tête fusionnée.
+- 2026-10-07, en réponse à la mesure de 2.7.c (décision 4 de 2.7.c0) : « Lire sans la partie
+  optionnelle (Recommandé) » — la vue A unique lit le message de kill (genre 85) sans sa queue ;
+  killsource y prend ses kill-events ; sa recherche bit à bit ne reste qu'en rattrapage, sur les
+  films dont la vue A ne se lit pas, comptée. Changement de grammaire, vérifié sur tout le corpus
+  avant fusion (item 2.7.c4).
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -1005,8 +1010,9 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
                monde des préliminaires ; aveugle partout, elle laisse l'invariant (aucune sortie ne
                change).
             3. Le contexte de killsource prend le découpage MPP déclaré, comme la cuisson.
-            4. Les kill-events : décision de l'utilisateur (lire le 85 sans queue dans la vue A,
-               ou garder la recherche de killsource comme rattrapage dans la grammaire) ; c4 attend.
+            4. Les kill-events : décision de l'utilisateur du 2026-10-07 (§2) — la vue A unique lit
+               le 85 sans queue, killsource y prend ses kill-events, sa recherche bit à bit ne
+               reste qu'en rattrapage compté là où la vue A ne se lit pas (item c4).
             5. Le contenu publié ne change pas sur les 23 films ; le changement de voie technique se
                déclare, avec la montée de `killsource.Rev` en c2.
       - [ ] 2.7.c1 *Lectures déplacées, sans différence* : `feed.go`, `film_table.go`,
@@ -1015,6 +1021,32 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             sonde relâchée descendent dans la grammaire ; killsource consomme leurs résultats.
             Gate : killsource identique à l'octet (json des 19 témoins, `KILLSOURCE_FIXTURES`),
             `replay-equiv` identique.
+            *Écrit le 2026-10-07* :
+            - la table des joueurs : killsource prend celle de la grammaire
+              (`grammar.ScanFilmPlayerTable`, la lecture de la cuisson) ; ses causes de refus
+              deviennent celles de la grammaire, et sa copie de la traduction erreur → cause est
+              retirée. Un tampon vide se lit « tronqué » (convention de la grammaire), plus « sans
+              registre » : cas synthétique seulement, test mis à jour ;
+            - le fil des kills : `grammar.FilDesKills` (même règle : le chunk qui porte le plus de
+              kills) ; l'ancre du repli `repli_chunk_du_pied_par_argmax` suit au registre ;
+            - le motif des xuid : `grammar.LecturesDuMotifDesXUID`, la boucle que
+              `grammar.ScanPlayerIndices` partage désormais (`lecturesDuMotif`) ;
+            - BOT_METADATA : `grammar.PaquetsBotMetadata` (`grammar/bot_metadata.go`) — l'instant
+              de chaque paquet, son nombre de bots, le balayage des noms, et la grammaire de
+              l'écrivain repliée sur le corps commun des fiches de joueur, dont la lecture du bloc
+              de 44 octets rend désormais l'équipe et son jumeau (`lireLeBloc44`) ; killsource n'en
+              garde que l'agrégat et le relevé des équipes ;
+            - le gabarit du dead-state et sa sonde relâchée : `grammar.BalayerLesEtatsDeMort`
+              (`grammar/etats_de_mort_balayes.go`), rangé par killsource dans l'ordre total de
+              `f.t0` ; l'exception d'extraction datée `byteAtBit` est retirée (portée sur
+              `source.OctetAuBit`, la même lecture).
+            Révisions constantes (`grammar-2026-10-06.5`, `killsource-2026-09-27`) : empreintes
+            recopiées, aucune sortie ne change par construction. `KILLSOURCE_FIXTURES` vert sur les
+            quatre films de référence ; suite du film verte (`G-film`). Il reste à killsource, pour
+            c2 à c4 : `chunks.go` (paquets et charge utile), `world.go`, `walk.go`, `calibrate.go`,
+            `eventchain.go` et `assist.go`. Preuve d'équivalence (`replay-equiv` et killsource
+            json) interrompue le 2026-10-07 à 11 h 10 pour laisser la machine à la recuisson du
+            parc de levelup-d0 ; elle se rejoue sur `feat/v75` fusionnée (`48fce6602`).
       - [ ] 2.7.c2 *La marche de killsource devient un canal de la marche des trames* : dead-states
             bipèdes avec leur trame et leur position, rendus par la grammaire ; timeline retirée ;
             calibration en préliminaire du contexte. Règles (filtre de bande ou d'archétype,
@@ -1023,9 +1055,13 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             découpage du film comme la cuisson, et l'en-tête de la marche ; ratchet de fermeture
             d'image-clé régénéré sous le découpage déclaré, baisses de `ti=42` justifiées record par
             record (preuve 2 de la campagne) ou instruites.
-      - [ ] 2.7.c4 *Kill-events par la vue A unique*, selon la mesure 5 : si la vue A unique lit les
-            genres 85 au moins aussi bien que la chaîne, killsource les lit dans la structure ;
-            sinon, décision de l'utilisateur.
+      - [ ] 2.7.c4 *Kill-events par la vue A unique* (décision de l'utilisateur du 2026-10-07) :
+            la lecture de la vue A lit le genre 85 sans queue — la garde de l'écrivain tient ses deux
+            réglages à leur défaut de l'exécutable, faux — et range ses messages de kill (position,
+            champs) dans la structure ; killsource les y prend. Sa recherche bit à bit descend dans
+            la grammaire comme rattrapage : seulement dans les trames dont la vue A ne se lit pas
+            jusqu'à son terminateur, et seulement au-delà du bit où la lecture s'est arrêtée ; elle
+            se compte au registre des replis (ordre « après la lecture »). `grammar.Rev` monte.
       - [ ] 2.7.c5 *Clôture* : exception du garde-rail retirée (périmée, donc rouge),
             `killsource.Rev` et `grammar.Rev`, ADR 0037 amendé, registre des replis
             (`repli_largeur_mot_de_poignee_inferee`, `repli_localisation_largeur_libre`,

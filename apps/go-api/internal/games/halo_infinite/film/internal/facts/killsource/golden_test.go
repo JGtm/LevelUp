@@ -49,6 +49,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -141,8 +142,8 @@ func controleNegatif(t *testing.T, src *source.Film, nPlay int) negControle {
 		}
 		n.paquets++
 		n.bits += len(p.payload) * 8
-		n.candidats += len(scanPayload(p.payload, nPlay))
 	}
+	n.candidats = len(grammar.BalayerLesEtatsDeMort(src, nPlay, isCatalogued, false))
 	return n
 }
 

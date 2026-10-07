@@ -17,17 +17,9 @@ package killsource
 //	T3  categorie = comp+0x0c, R(4)                      -> dans l enum (0..9)
 //	T4  TAG       = comp+0x00, R(1) gate a 1 puis R(32)  -> entree du groupe `jpt!`
 //
-// GRAMMAIRE BALAYEE (forme BIPED, typeIndex 0x23) :
-//
-//	p+0        R(1)  Mort            doit valoir 1
-//	p+1        R(1)  gate tag        doit valoir 1
-//	p+2..p+33  R(32) tag             doit etre dans `jpt!`
-//	p+34..p+41 R(8)
-//	p+42       R(1)  gate victime    doit valoir 0
-//	p+43..p+47 R(5)  victime         < nParticipants
-//	p+48       R(1)  gate tueur      doit valoir 0
-//	p+49..p+53 R(5)  tueur           < nParticipants
-//	p+54..p+57 R(4)  categorie       <= 9
+// LA LECTURE DU GABARIT VIT DANS LA GRAMMAIRE depuis le lot 2.7.c1 de la representation
+// intermediaire ([grammar.BalayerLesEtatsDeMort], `grammar/etats_de_mort_balayes.go`, qui en porte
+// la grammaire balayee) ; T4 lui est passe par [isCatalogued].
 //
 // LE SCAN N INVENTE PAS DE MORTS, ET C EST MESURE, PAS AFFIRME :
 //
@@ -40,10 +32,12 @@ package killsource
 // Sous 0x10000 le taux monte a 1.15 %, et TROIS tags REELS y vivent : on ne peut donc pas
 // exclure ce regime du scan, seulement refuser de melanger les deux dans une mesure.
 
-// deadStateBits : longueur du gabarit balaye, en bits.
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+import (
+	"cmp"
+	"slices"
 
-const deadStateBits = 58
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+)
 
 // candidate : un dead-state i11 accepte par les quatre tests. C est l unite commune aux DEUX
 // voies : la marche convertit ses records dans cette forme, position en bits comprise.
@@ -57,54 +51,6 @@ type candidate struct {
 	cat         int
 }
 
-// scanPayload : toutes les positions de bit d un paquet ou un dead-state i11 valide se decode.
-func scanPayload(pl []byte, nParticipants int) []candidate {
-	var out []candidate
-	nb := len(pl) * 8
-	for p := 0; p+deadStateBits <= nb; p++ {
-		if source.BitAt(pl, p) == 0 || source.BitAt(pl, p+1) == 0 { // Mort + gate du tag
-			continue
-		}
-		tag := uint32(source.BitsAt(pl, p+2, 32))
-		if !isCatalogued(tag) { // T4
-			continue
-		}
-		c, ok := readIndices(pl, p, nParticipants)
-		if !ok {
-			continue
-		}
-		c.tag = tag
-		out = append(out, c)
-	}
-	return out
-}
-
-// readIndices : la queue du gabarit (victime, tueur, categorie) et ses trois tests. Extraite
-// pour que le scan et la sonde a T4 relache partagent EXACTEMENT le meme code — une copie
-// divergerait en silence, et la sonde cesserait de mesurer ce qu elle croit mesurer.
-func readIndices(pl []byte, p, nParticipants int) (candidate, bool) {
-	q := p + 42
-	if source.BitAt(pl, q) != 0 { // gate victime
-		return candidate{}, false
-	}
-	vic := int(source.BitsAt(pl, q+1, 5))
-	if vic >= nParticipants { // T1
-		return candidate{}, false
-	}
-	if source.BitAt(pl, q+6) != 0 { // gate tueur
-		return candidate{}, false
-	}
-	kil := int(source.BitsAt(pl, q+7, 5))
-	if kil >= nParticipants { // T2
-		return candidate{}, false
-	}
-	cat := int(source.BitsAt(pl, q+12, 4))
-	if cat > 9 { // T3
-		return candidate{}, false
-	}
-	return candidate{bit: p, victim: vic, killer: kil, cat: cat}, true
-}
-
 // scanFilm : le scan de tous les paquets type-0 A EVENTS.
 //
 // POPULATION, ET C EST LA LECON DE METHODE LA PLUS CHERE DU CHANTIER : les morts sont 93/93
@@ -112,20 +58,22 @@ func readIndices(pl []byte, p, nParticipants int) (candidate, bool) {
 // une population qui ne contient PAS la cible. Avant d optimiser une metrique, prouver que la
 // cible est dans la population.
 func scanFilm(f *film, nParticipants int) []candidate {
-	var out []candidate
-	for i := range f.t0 {
-		p := &f.t0[i]
-		if !hasEvents(p) {
-			continue
-		}
-		cs := scanPayload(p.payload, nParticipants)
-		ms := f.ms(p)
-		for k := range cs {
-			cs[k].chunk, cs[k].pidx, cs[k].ms = p.chunk, p.idx, ms
-		}
-		out = append(out, cs...)
+	return dedup(f.candidatsDuBalayage(grammar.BalayerLesEtatsDeMort(f.src, nParticipants, isCatalogued, true)))
+}
+
+// candidatsDuBalayage convertit les positions du gabarit que la grammaire a lues en candidats, dans
+// L ORDRE TOTAL DU FILM — celui de `f.t0` ([trierPaquetsT0] : horodatage, chunk, rang), puis le bit.
+func (f *film) candidatsDuBalayage(es []grammar.EtatDeMortBalaye) []candidate {
+	slices.SortStableFunc(es, func(a, b grammar.EtatDeMortBalaye) int {
+		return cmp.Or(cmp.Compare(a.TS, b.TS), cmp.Compare(a.PositionDuChunk, b.PositionDuChunk),
+			cmp.Compare(a.Index, b.Index), cmp.Compare(a.Bit, b.Bit))
+	})
+	out := make([]candidate, 0, len(es))
+	for _, e := range es {
+		out = append(out, candidate{chunk: e.PositionDuChunk, pidx: e.Index, ms: int((e.TS - f.tsBase) / 1000),
+			bit: e.Bit, tag: e.Tag, victim: e.Victime, killer: e.Tueur, cat: e.Categorie})
 	}
-	return dedup(out)
+	return out
 }
 
 // dedup : un meme dead-state est repete dans les VUES de replication d un paquet. Deux
@@ -177,23 +125,3 @@ func multiplicity(cs []candidate) map[multKey]int {
 }
 
 func multOf(m map[multKey]int, c candidate) int { return m[multKey{c.bit, c.tag, c.victim}] }
-
-// scanRelaxedPayload : LE MEME GABARIT, AMPUTE DE SA SEULE PORTE FORTE (T4). Sert uniquement a
-// la metrique de sante : c est la seule facon de voir ce que la porte du catalogue CACHE.
-// Il partage [readIndices] avec le scan reel, donc il ne peut pas rendre MOINS de candidats.
-func scanRelaxedPayload(pl []byte, nParticipants int) []candidate {
-	var out []candidate
-	nb := len(pl) * 8
-	for p := 0; p+deadStateBits <= nb; p++ {
-		if source.BitAt(pl, p) == 0 || source.BitAt(pl, p+1) == 0 {
-			continue
-		}
-		c, ok := readIndices(pl, p, nParticipants)
-		if !ok {
-			continue
-		}
-		c.tag = uint32(source.BitsAt(pl, p+2, 32))
-		out = append(out, c)
-	}
-	return out
-}

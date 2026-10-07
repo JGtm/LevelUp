@@ -26,7 +26,7 @@ func trierKillEvents(recs []killEventRec) {
 }
 
 // trierBotsParSlot range les bots par slot, les bots d un MEME slot dans leur ORDRE DE DECOUVERTE
-// (lot J10.1, 2026-09-27, DT-9). C est cet ordre que [paquetsBotMeta] garantit et que
+// (lot J10.1, 2026-09-27, DT-9). C est cet ordre que [grammar.PaquetsBotMetadata] garantit et que
 // [roster.pinBots] lit pour decider lequel nomme l indice au kill-feed ; `m.Bots` est bati dans
 // l ordre de decouverte, et ce rang — la seule cle qui separe deux remplacants successifs d un
 // slot — est conserve par le tri STABLE. Sous `sort.Slice`, il ne l etait que sous treize bots.
