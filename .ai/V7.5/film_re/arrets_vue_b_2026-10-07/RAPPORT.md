@@ -192,6 +192,40 @@ donnée, qu'aucune des deux branches ne publie. Admission : geste du pilote.
   qui suivent (581 à 3617, 579 à 3645, 584 à 3648) deviennent « prise » au lieu d'« échange »
   (`dropped` + `taken` au lieu de `swapped`). Plus une prise / un lâcher neufs du slot 536 (1300,
   1501). Lecture plus complète, pas une perte.
+
+  **Instruction complémentaire (demande du pilote : sept slots qui lâchent le même objet).
+  Verdict : événement réel du jeu, lu à la bonne largeur ; le libellé « lâcher » est une
+  qualification de la publication.**
+  - Unité : `t` est un rang de frame de 100 ms (`frameIntervalMs = 100`) : `t = 3600` = 360,0 s
+    après l'origine du document.
+  - Ce que le jeu fait à ce moment : Assaut, une bombe (`Assault:One Bomb`, Curfew), en manches.
+    Le camp 1 marque la manche 1 à `t = 3489` (`scoreTimeline`) ; tous les corps de la manche
+    finissent à `t = 3566` ; les corps 579 à 585 (génération 1) ont leur premier point entre
+    3570 et 3601 : c'est la MISE EN PLACE DES JOUEURS de la manche suivante.
+  - Le paquet : chunk 21, paquet 816 (horodatage 10 131 559 824 µs), sonde en surcouche sur
+    `lecturesBipedes` (aucun code). Base, C1 et C2 : liste lue (fin de la vue A), arrêt sur
+    `ti=45 i0`, 0 record utile. À partir de C3 : terminateur atteint, **fermé au bit près, sain**,
+    aucune règle de l'écrivain contredite, 7 records utiles. **C'est C3 (`ti=45 i0`) qui l'ouvre** :
+    rendre à la tête l'ancien `components_moteur_de_partie.go` et retirer le lecteur `ti=45` fait
+    disparaître exactement ces sept lectures (et les huit du paquet 4:1088, la mise en place de la
+    première manche, avant l'origine du document, non publiées). Même forme que le paquet 2:712 de
+    `000d5950` (perte (a) du handoff).
+  - Ce que le film écrit : pour chacun des sept bipèdes, le composant `i45` (emplacement 2)
+    annonce un emplacement VIDE (famille `0xFFFFFFFF`, `Kind = restated` à la lecture).
+  - `00007ca9` : c'est l'objet « mains nues » (`filmshell.UnarmedFamily`, tag `weap`
+    `WeaponTags.unarmed`, lot M6.3), que le jeu remet à chaque bipède au début de chaque vie. Dans
+    l'artefact, il n'apparaît que comme `from` de `weaponChanges` (10 fois : ces 7 lâchers, et 3
+    échanges à `t` 803, 827, 838, à la mise en place de la manche précédente, présents en base
+    comme en tête). Il vient de la DOTATION DE NAISSANCE des corps (`loadouts`, `src: birth`,
+    `t = 3570`), où l'emplacement 2 tient les mains nues, écartées de l'affichage par la règle nommée.
+  - Le mécanisme : `qualifyHeldWeaponChange` (`grammar/held_weapon_changes.go`) juge la première
+    émission d'un emplacement contre la dotation de naissance quand elle le situe ; une annonce
+    « vide » contre une dotation « mains nues » devient un lâcher qui nomme les mains nues. En base,
+    l'annonce n'était pas lue : la prise suivante était qualifiée contre la même dotation et sortait
+    en « échange depuis mains nues » (581 à 3617, 579 à 3645, 584 à 3648). Aucune lecture n'est à
+    une mauvaise largeur ; la publication de « lâche les mains nues » à chaque mise en place est
+    un défaut de qualification, antérieur au lot (il produisait déjà les « échanges depuis mains
+    nues »), consigné en découverte D9.
 - **`11de8353` `vehicles.rides` (xuid `…0104` 266 -> 198 s)** : la tête lit, à `t = 1692`, le
   passage du slot 529 du siège 0 du véhicule 785 à la tourelle (slot 784, génération 1) ; le trajet
   de la BASE dans 784 venait du repli de proximité (`src: proximity`, 1661 -> 1729) et doublait le
@@ -234,6 +268,20 @@ au bit près) : la question y est celle de la marche qui lit le slot, pas d'un c
   `disassemble_bytes` est un POST qui écrirait dans le programme).
 - **D8** La carte v2 complète des 20 films prend environ 1 min 30 sur ce poste (le handoff estimait
   15 à 25 min) ; le gate de corpus environ 15 min, base cuite.
+
+- **D9** Publication des changements d'arme : à la mise en place d'une manche, l'annonce
+  « emplacement 2 vide » d'un corps neuf, qualifiée contre sa dotation de naissance « mains
+  nues », est publiée comme un lâcher des mains nues (`c75f33b8`, sept à `t = 3600`) ; quand
+  l'annonce n'est pas lue, la prise suivante sort en « échange depuis mains nues ». Règle de
+  qualification à revoir (`qualifyHeldWeaponChange`, règle des mains nues de `filmshell`), hors
+  périmètre. La mise en place de la manche précédente de ce film (`t` ≈ 753, corps 525 à 530)
+  n'est toujours pas lue.
+- **D10** Cache de faits du checkout principal : aucun fichier de `data/cache/film_facts` n'a été
+  écrit entre 15 h 15 et 17 h 40 (fenêtre où les binaires de cette branche ont tourné) ; les 126
+  faits portant `grammar-2026-10-07` (même chaîne que le rang C1 de ce lot) sont datés de 17 h 43
+  à 18 h 02, la recuisson de `feat/v75` par une autre session. Aucun outil de ce lot n'écrit dans
+  le checkout principal : cartes et sondes au scratchpad, `killsource json` en lecture, gate de
+  corpus sur une copie du parc.
 
 ## 5. Ce qui reste
 
