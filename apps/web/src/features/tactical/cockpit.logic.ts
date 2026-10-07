@@ -14,6 +14,7 @@ import type { CSSProperties } from 'react'
 
 import type { TacticalMapCard } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
+import { sansAccents } from '@/lib/text/sansAccents'
 
 import { estOuvrable, nomCarte, trierCartes } from './tacticalLogic'
 
@@ -101,11 +102,7 @@ export function carteLue(c: CarteEffective): boolean {
 
 /** normaliserRecherche — minuscules, sans diacritiques, sans blancs autour. */
 export function normaliserRecherche(texte: string): string {
-  return texte
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .trim()
+  return sansAccents(texte.toLowerCase()).trim()
 }
 
 /**
