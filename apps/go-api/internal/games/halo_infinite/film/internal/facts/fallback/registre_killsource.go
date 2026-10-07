@@ -193,7 +193,7 @@ var registreKillsource = []Repli{
 		Ordre: OrdreApresLecture,
 		Sites: []Site{{Fichier: pkgFilmdec + "kills_rattrapes.go", Ancre: "kills, arretees := killsAvecArrets(p.Payload, f, r.gate15)"},
 			{Fichier: pkgKillsource + "kill_event.go", Ancre: "rattrapes: l.Rattrapage.Kills"}, siteDeVersement("NomKillRattrapeHorsVueA")},
-		DatePose:        "2026-10-07",
+		DatePose:        date1007,
 		CibleRetrait:    "la lecture de la vue A etablie sur toutes les trames a evenements (la vue B commence a sa fin) : genres portes, table des genres des films anciens, terminateurs justes",
 		CritereRetrait:  "0 kill-event rattrape sur le corpus du gate de rejeu et sur le parc",
 		CompteurBranche: true,
