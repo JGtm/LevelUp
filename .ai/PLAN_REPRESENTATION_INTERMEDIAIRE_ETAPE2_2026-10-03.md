@@ -908,6 +908,128 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       `FUN_14076a1c4`, qui lit la vue A message par message depuis chaque kill-event candidat)
       devient une lecture de la vue A unique de la grammaire (lot « vue A » de la campagne,
       relecture du 2026-10-05).
+      *Relu sur pièces le 2026-10-07, à l'ouverture* (`feat/v75` `94ac8fd68` fusionné : `e470a2e3e`).
+      killsource lit le film lui-même en sept endroits :
+      - `world.go` : la timeline — le registre de `chunk_00`, les images-clés dans l'ordre du temps, le
+        pré-chargement de la première déclaration de chaque slot, le balayage des ancres `ti=35` que la
+        marche d'image-clé saute, les fenêtres de vie des slots bipèdes non déclarés ;
+      - `walk.go` : sa marche des records. Le monde est restauré après chaque paquet (aucune liaison
+        NEW portée), sur huit vues, sous `DefaultFrameConfig` (`IDLowBits` 13). Le début de la vue B
+        vient de `DebutDeLaVueB` : fin de la vue A, puis signature, puis largeur libre. Seuls les
+        records entièrement portés gardent leur dead-state, filtrés ensuite par crédibilité (bande
+        bipède dérivée des images-clés, indices dans le roster, catégorie dans l'énumération) ;
+      - `calibrate.go` : l'oracle de largeur d'axe et la décision de la largeur du mot de poignée
+        (400 paquets sans événement, sous la timeline ; « non discriminée » sur les 19 témoins) ;
+      - `eventchain.go` et `assist.go` : les kill-events (genre 85), cherchés à chaque bit et validés
+        par une chaîne de trois messages, et le choix de `gate15` ;
+      - `scan.go` et la sonde relâchée de `health.go` : le gabarit du dead-state cherché à chaque bit
+        des paquets à événements ;
+      - `feed.go` et `film_table.go` : les chunks HIGHLIGHT et `chunk_00`, par des fonctions de la
+        grammaire ;
+      - `botmeta.go` et `botmeta_equipe.go` : les paquets BOT_METADATA (seconde copie de la grammaire
+        de la fiche joueur, signalée par levelup-dc), par le champ interne `payload`, que le
+        garde-rail ne compte pas.
+      Le critère de retrait de l'exception du garde-rail de la couche des faits
+      (`archlint/film_faits_sans_octets_test.go` : « killsource devient un canal de la marche
+      unique ; la ligne devient périmée ») demande donc que TOUT ce que killsource lit descende dans
+      la grammaire. Le périmètre de 2.7.c est plus large que les trois éléments que l'item nomme
+      (marche, timeline, calibration) : signalé à l'utilisateur.
+      Lecture retenue de la décision du 2026-10-03 (« lot 2.7 (c) puis 3.1 ») : en 2.7.c, killsource
+      ouvre son propre contexte de film, posé comme celui de la cuisson, et lit par la marche unique
+      (changement de comportement, prouvé). En 3.1.1, la cuisson et killsource partagent un seul
+      contexte et une seule marche (sans différence).
+      Sous-items, dans l'ordre :
+      - [x] 2.7.c0 *Mesure*, avant tout code de production branché. Corpus : les 20 films du corpus
+            d'équivalence et les quatre films de référence de killsource (`KILLSOURCE_FIXTURES`).
+            Contexte : celui de la cuisson (profil calibré, génération stricte, carte, découpage MPP
+            résolu). Mesures :
+            1. *dead-states bipèdes* : la marche de killsource contre la récolte de la marche des
+               trames (canal des morts, listes non localisées récupérées comme le fait killsource),
+               record par record (paquet, slot). On compte les communs (valeurs égales ou non), les
+               propres à chaque côté par classe de trame (verdict, début de vue B), les crédibles des
+               deux côtés, et on compare la bande bipède au filtre par archétype ;
+            2. *effet sur le résultat* : le `Result` de killsource avec les candidats de la marche des
+               trames à la place des siens (lignes publiées gagnées et perdues, par temps de
+               l'hybride ; santé ; couverture) ;
+            3. *calibration* : la décision du mot de poignée et l'oracle d'axe, sous la timeline et
+               sous le monde des préliminaires de la marche (liaison des images-clés de chaque chunk) ;
+            4. *découpage MPP déclaré* : killsource sous `ResolutionMPP` contre `MPPParDefaut`, sur
+               les films anciens (dead-states, lignes publiées) ;
+            5. *kill-events* : la chaîne de killsource contre la vue A unique (`lireLaVueA`). On
+               compte les paquets dont la vue A est portée jusqu'à son terminateur, les genres 85
+               lus, ce que la variante de partie du film décide de leur queue
+               (`queueDuKillPossible`), et `gate15` contre la règle de la grammaire pour le genre 15.
+            Gate : chiffres au journal, puis décisions d'exécution écrites ici avant le code.
+            *Mesuré le 2026-10-07* (instruments `grammar/ri27c_killsource_research_test.go` et
+            `facts/killsource/ri27c_research_test.go` ; sorties `scratchpad/ri/ri27c`), 23 films :
+            1. *Dead-states* (records entièrement portés, décodage du format) : 3 030 communs à
+               valeur égale, 2 à valeur différente, 172 propres à killsource (77 dans des trames
+               que la marche lit, 72 dans des paquets sans événement, 20 récupérés, 3 non
+               localisés), 635 propres à la marche des trames (dont 166 sur le BTB `1c4c63c2`).
+               La bande de killsource (images-clés plus balayage des ancres `ti=35`) est polluée
+               sur 9 films (bornes 128, 256, 4352, 7808, 8064 : de fausses ancres) ; celle de la
+               phase des images-cles de la marche ne l'est sur aucun.
+            2. *Résultat* : 3 453 lignes publiées, 3 440 couvertes, à l'identique dans les quatre
+               variantes de la marche des trames (filtre de bande ou d'archétype, découpage du
+               format ou déclaré, queues rompues acceptées ou non). Seule la voie technique change
+               (`Read.Path`) : 272 lignes passent du balayage à la marche sous le filtre de bande,
+               273 sous le filtre d'archétype, 519 sous le découpage déclaré (lignes de la marche
+               2 506 → 2 937, du balayage 893 → 462).
+            3. *Calibration* : la décision du mot de poignée est aveugle sur les 23 films, sous la
+               timeline comme sous le monde des préliminaires (trois scores égaux) : l'invariant
+               partout. L'oracle d'axe est plat sur 19 films, en désaccord sur 2 (oracle seul).
+            4. *Découpage déclaré* : la marche et la calibration de killsource sous le découpage
+               déclaré rendent le même résultat que sous le format sur les 22 films qui en
+               déclarent un ; la marche des trames y lit plus (point 2).
+            5. *Kill-events* : killsource en lit 3 552. La vue A unique atteint 2 280 messages de
+               genre 85 et les refuse tous : la variante du film laisse la queue possible (19
+               films), ou la vue A ne se lit pas au-delà de sa tête (4 films anciens). Des 3 552,
+               2 163 sont le premier 85 que la vue A atteint, même bit, six champs égaux ; 1 280
+               sont au-delà de son arrêt (un 85 plus tôt dans le paquet : 964 ; vue A illisible :
+               316) ; 109 ailleurs. La vue A atteint 117 messages 85 que killsource n'a pas (sa
+               chaîne de trois messages les refuse). Lue SANS queue, la vue A va jusqu'à son
+               terminateur sur 2 267 des 2 280 paquets ; là où un localisateur indépendant
+               (signature, chaîne, fermeture) a trouvé le début de la vue B d'un paquet fermé
+               (1 529), la fin de la vue A tombe dessus au bit près 1 415 fois, avant lui 108 fois
+               (32 rejoints par une chaîne de records lisibles), au-delà 3 fois. Ghidra : les deux
+               réglages qui posent la queue (`kill_playback_enabled`, `play_of_the_game_enabled`,
+               `FUN_140373a60` et `FUN_140373b40`) s'enregistrent à faux par défaut
+               (`FUN_140ad2d08(…, 0)`), et le code ne fait que les lire.
+            *Décisions d'exécution du 2026-10-07* :
+            1. Les dead-states de killsource viennent de la marche des trames : la récolte du canal
+               des morts, avec la trame et la position, sous la règle de qualité de killsource
+               (records entièrement portés). Le filtre d'archétype (record lié comme bipède)
+               remplace la bande ; la timeline (pré-chargement, balayage des ancres, fenêtres de
+               vie) est retirée.
+            2. La calibration devient un préliminaire du contexte du film, même règle, sous le
+               monde des préliminaires ; aveugle partout, elle laisse l'invariant (aucune sortie ne
+               change).
+            3. Le contexte de killsource prend le découpage MPP déclaré, comme la cuisson.
+            4. Les kill-events : décision de l'utilisateur (lire le 85 sans queue dans la vue A,
+               ou garder la recherche de killsource comme rattrapage dans la grammaire) ; c4 attend.
+            5. Le contenu publié ne change pas sur les 23 films ; le changement de voie technique se
+               déclare, avec la montée de `killsource.Rev` en c2.
+      - [ ] 2.7.c1 *Lectures déplacées, sans différence* : `feed.go`, `film_table.go`,
+            BOT_METADATA (repliées sur le lecteur de la grammaire de la fiche joueur si
+            l'équivalence tient, sinon déplacées telles quelles), le gabarit du dead-state et sa
+            sonde relâchée descendent dans la grammaire ; killsource consomme leurs résultats.
+            Gate : killsource identique à l'octet (json des 19 témoins, `KILLSOURCE_FIXTURES`),
+            `replay-equiv` identique.
+      - [ ] 2.7.c2 *La marche de killsource devient un canal de la marche des trames* : dead-states
+            bipèdes avec leur trame et leur position, rendus par la grammaire ; timeline retirée ;
+            calibration en préliminaire du contexte. Règles (filtre de bande ou d'archétype,
+            qualité des records) fixées par les décisions de c0.
+      - [ ] 2.7.c3 *Découpage MPP déclaré et `IDLowBits`* : le contexte de killsource prend le
+            découpage du film comme la cuisson, et l'en-tête de la marche ; ratchet de fermeture
+            d'image-clé régénéré sous le découpage déclaré, baisses de `ti=42` justifiées record par
+            record (preuve 2 de la campagne) ou instruites.
+      - [ ] 2.7.c4 *Kill-events par la vue A unique*, selon la mesure 5 : si la vue A unique lit les
+            genres 85 au moins aussi bien que la chaîne, killsource les lit dans la structure ;
+            sinon, décision de l'utilisateur.
+      - [ ] 2.7.c5 *Clôture* : exception du garde-rail retirée (périmée, donc rouge),
+            `killsource.Rev` et `grammar.Rev`, ADR 0037 amendé, registre des replis
+            (`repli_largeur_mot_de_poignee_inferee`, `repli_localisation_largeur_libre`,
+            `repli_record_desynchronise_jete` : sites déplacés), doc de killsource. Gate de l'item.
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
@@ -1226,6 +1348,14 @@ plan y sont reprises comme items (3.1.2).
    levelup-dc (son journal) ; à reprendre avec 2.7.c, qui passe ce chemin sur la marche unique. Le
    même rattrapage laisse 105 matchs que le `--dry-run` sélectionne et que la passe réelle ne prend
    pas (sélection contre `killcollector.PlacementRev`), non instruit.
+30. *(mesure de 2.7.c, 2026-10-07)* **109 kill-events de killsource tombent dans la vue A lue, hors
+   du début d'un message.** La vue A unique est passée par leur bit sans y lire de genre 85 : un
+   faux positif du balayage bit à bit (la chaîne de trois messages tient par hasard) ou une vue A
+   mal lue avant eux. À instruire avec les kill-events (2.7.c4).
+31. *(même mesure)* **Deux règles trouvent le chunk des temps forts.** La cuisson le désigne par le
+   type du manifeste (repli : le dernier numéro, `repli_temps_forts_dernier_numero`), killsource
+   par son contenu (le chunk qui porte le plus de kills). 2.7.c1 déplace la règle de killsource
+   telle quelle ; les réunir changerait un comportement. Non traité.
 
 ## 7. Journal
 
@@ -1601,3 +1731,15 @@ plan y sont reprises comme items (3.1.2).
   découverte 28) ; `make gate-push` vert hors du dépassement de 300 s de `platform/duckdb`, vert
   rejoué seul (242 s). levelup-dc (phase D des équipes, schéma 81) fusionne derrière, puis lance la
   recuisson unique du parc avec le rattrapage du placement des vies. Suite du plan : 2.7.c.
+- 2026-10-07 : OUVERTURE DE 2.7.c (« ok oui fait l'étape suivante du plan stp »). Fusion de `feat/v75`
+  `94ac8fd68` (`e470a2e3e`). Relecture sur pièces : killsource lit le film en sept endroits, et le
+  critère de retrait de l'exception du garde-rail de la couche des faits demande qu'ils descendent
+  tous dans la grammaire ; sous-items c0 à c5 écrits. Mesure c0 sur 23 films (les 20 du corpus et
+  trois films de référence de killsource) : la marche des trames lit ce que la marche de killsource
+  lit (3 030 dead-states communs, contenu publié identique dans toutes les variantes, seule la voie
+  technique change) ; la calibration du mot de poignée est aveugle partout ; la vue A unique
+  s'arrête au premier kill de chaque paquet, faute de savoir si le 85 porte sa queue — lue sans
+  queue, sa fin tombe 1 415 fois sur 1 529 au bit près sur le début de vue B localisé
+  indépendamment, et l'exécutable enregistre les deux réglages de la queue à faux par défaut.
+  Décisions d'exécution 1 à 3 et 5 écrites ; la décision 4 (kill-events) est demandée à
+  l'utilisateur. Découvertes 30 et 31.
