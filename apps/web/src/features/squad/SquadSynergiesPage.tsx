@@ -1,11 +1,11 @@
 /**
  * SquadSynergiesPage — onglet Synergies de l'Escouade.
  *
- * UN SEUL AXE DE LECTURE (lot 3 « sections », 2026-09-22) : ce que la composition
- * PRODUIT ENSEMBLE — l'échange, le taux de victoire et les cartes face à l'historique,
- * la suite des résultats, l'historique, la heatmap des cartes, la frise des sessions.
- * Ce qu'elle UTILISE (frags et armes, équipement, formes retenues) a rejoint l'onglet
- * Usages ; l'impact des coéquipiers et les médailles ont rejoint Contributions.
+ * UN SEUL AXE DE LECTURE : ce que la composition PRODUIT ENSEMBLE — l'appui et la portée,
+ * le taux de victoire et les cartes face à l'historique, la suite des résultats,
+ * l'historique, la heatmap des cartes, la frise des sessions. Ce qu'elle UTILISE (frags et
+ * armes, équipement, formes retenues) se lit dans l'onglet Emprise ; l'impact des
+ * coéquipiers et les médailles dans Contributions.
  *
  * Distingue 2 états vides diagnosticables :
  *  - no_selection : aucun coéquipier confirmé.
@@ -31,8 +31,6 @@ import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAppuiCard } from './SquadAppuiCard'
-import { SquadRiposteCard } from './SquadRiposteCard'
-import { getSquadRiposteText } from './squadRiposteStrings'
 import { SquadRangeRolesCard } from './SquadRangeRolesCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 
@@ -41,7 +39,6 @@ export function SquadSynergiesPage() {
   const { data: mappings } = useFieldMappings()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  const tRiposte = getSquadRiposteText(locale)
   // Libellés des drapeaux de dominance (bande de résultats) — table canonique
   // partagée avec la colonne Dominance de l'Explorateur. Mémoïsé : la bande
   // recalcule son option ECharts quand cette référence change. Déclaré AVANT les
@@ -51,7 +48,7 @@ export function SquadSynergiesPage() {
   // Ordre / couleurs / libellés de résultat — MÉMOÏSÉS et déclarés AVANT les
   // retours anticipés (règle des hooks). Sans mémo, un simple rendu de la page
   // (changement de contexte, refetch qui rend la même donnée) fabriquait des
-  // props neuves pour SquadRiposteCard, SquadAppuiCard et
+  // props neuves pour SquadAppuiCard, SquadRangeRolesCard et
   // OutcomeSequenceTape : les `useMemo` de ces graphes se re-déclenchaient, la
   // ChartCard rebâtissait son option ECharts (dont les `formatter`, comparés par
   // référence par echarts-for-react) et l'animation d'entrée REJOUAIT sans
@@ -117,70 +114,35 @@ export function SquadSynergiesPage() {
   // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
   // qui laisserait croire à une escouade sans entraide.
   const assistPairs = pageData?.assist_pairs
-  // LA RIPOSTE (mort de notre camp dont le tueur tombe dans les 5 s) : comme assist_pairs, son absence est un
-  // ETAT (titre qui ne nomme pas le tueur de chaque mort, ou aucun match mesure) et
-  // non un zero. Les blocs ne sont alors pas montes du tout.
-  const echange = pageData?.echange
-  // Les profils de PORTÉE par match (lot N2) : même politique que les deux blocs
-  // ci-dessus — absent = aucun film décodé sur la sélection, jamais des zéros.
+  // Les profils de PORTÉE par match : même politique que le bloc ci-dessus — absent =
+  // aucun film décodé sur la sélection, jamais des zéros.
   const rangeProfiles = pageData?.range_profiles
 
   return (
     <div className="space-y-4">
-      {/* SECTION « COORDINATION » (D19, 2026-09-21 ; TROIS RANGÉES, 2026-09-22) — DEUX
-          NOTIONS, QUATRE CARTES. Elle en montait HUIT empilées, dont sept portaient la même
-          notion sous quatre noms différents (échange, vengeance, assistance croisée,
-          riposte). La riposte vit désormais dans une seule carte-récit, l'appui dans la
-          sienne. Le nuage « Frags non ripostés » l'a quittée le 2026-09-29 (plan Emprise
-          vies, décision V7) : le placement de chaque vie se lit dans l'onglet Emprise.
+      {/* SECTION « APPUI ET PORTÉE » — DEUX CARTES, DEUX RANGÉES :
+            1. « Appui » seul, dans la colonne de gauche de sa grille — les assistances que
+               les joueurs de l'escouade se donnent ;
+            2. « Rôles de portée » seule, dans la colonne de gauche de sa grille — la
+               distance à laquelle chaque joueur frague, rapportée au lobby.
 
-          L'ORDRE EST CELUI DES RANGÉES, pas celui d'une pile :
-            1. « Appui » seul, dans la colonne de gauche de sa grille — ce que l'escouade
-               se donne ;
-            2. la RIPOSTE, en TROIS BLOCS montés par `SquadRiposteCard` (un fragment, pas
-               une carte) : « Morts ripostées » et « Temps de riposte » côte à côte sur une
-               rangée, puis « Riposte » — frise et repli — pleine largeur sous elles ;
-            3. « Rôles de portée » et « Rôles de hauteur » côte à côte — même bloc de
-               données, même nuage, même grammaire (E1, D24 du 2026-09-22).
-
-          CHAQUE CARTE SE MONTE INDÉPENDAMMENT : la riposte vient du journal des morts,
-          l'appui du résumé du film, les rôles des films décodés. Un titre qui ne nomme pas
-          le tueur de chaque mort garde son appui — les lier aurait fait disparaître une
-          mesure qui existe. Une rangée dont une cellule manque reste une grille : la carte
-          présente prend sa colonne. */}
-      {(echange || assistPairs || rangeProfiles) && (
-        <section className="space-y-4" aria-label={tRiposte.coordinationTitle}>
+          CHAQUE CARTE SE MONTE INDÉPENDAMMENT : l'appui vient du résumé du film, les rôles des
+          films décodés. L'absence d'un bloc est un ÉTAT (rien de mesuré sur la sélection) :
+          sa rangée n'est pas montée, et sans aucun des deux la section ne l'est pas. */}
+      {(assistPairs || rangeProfiles) && (
+        <section className="space-y-4" aria-label={t.sections.appuiPortee}>
           <SectionTitle className="flex items-center gap-1.5">
-            {tRiposte.coordinationTitle}
-            <InfoTooltip
-              content={
-                <TooltipParagraphs
-                  items={[
-                    tRiposte.coordinationHelpRiposte((echange?.fenetre_ms ?? 5000) / 1000),
-                    tRiposte.coordinationHelpAppui,
-                  ]}
-                />
-              }
-            />
+            {t.sections.appuiPortee}
+            <InfoTooltip content={<TooltipParagraphs items={t.sections.appuiPorteeHelp} />} />
           </SectionTitle>
-          {/* RANGÉE 1 — « Appui » seul, la grille garde sa règle : la carte présente prend
-              sa colonne. */}
           {assistPairs && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <SquadAppuiCard block={assistPairs} roster={roster} />
             </div>
           )}
-          {/* RANGÉE 2 — la riposte : une rangée de deux blocs, puis la frise pleine largeur. */}
-          {echange && <SquadRiposteCard echange={echange} />}
-          {/* RANGÉE 3 — la PORTÉE et la HAUTEUR côte à côte : même bloc de données, même
-              nuage, même grammaire — qui tient la distance, qui tient la hauteur. Leur
-              absence est un ÉTAT (aucun film décodé sur la sélection) : la rangée n'est
-              alors pas montée. La hauteur, elle, rend son état vide nommé quand aucun match
-              de la sélection ne porte de dénivelé mesuré. */}
           {rangeProfiles && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />
-              <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} grandeur="hauteur" />
             </div>
           )}
         </section>

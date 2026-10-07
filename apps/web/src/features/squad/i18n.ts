@@ -32,6 +32,10 @@ export interface SquadText {
   sections: {
     historique: string
     fragsArmes: string
+    /** Titre de la section de Synergies qui coiffe « Appui » et « Rôles de portée ». */
+    appuiPortee: string
+    /** Aide (i) de cette section : une phrase par carte, la mesure et son périmètre. */
+    appuiPorteeHelp: string[]
   }
   selection: {
     placeholder: (count: number) => string
@@ -402,6 +406,11 @@ const FR_TEXT: SquadText = {
   sections: {
     historique: 'Historique',
     fragsArmes: 'Frags et armes',
+    appuiPortee: 'Appui et portée',
+    appuiPorteeHelp: [
+      "Appui : assistances entre joueurs de l'escouade, du larbin qui prépare le frag au patron qui l'encaisse, sur les matchs mesurés de la sélection.",
+      'Portée : écart de la distance médiane des frags de chaque joueur à celle du lobby, match par match, sur les films décodés.',
+    ],
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -758,6 +767,11 @@ const EN_TEXT: SquadText = {
   sections: {
     historique: 'History',
     fragsArmes: 'Kills and weapons',
+    appuiPortee: 'Support and range',
+    appuiPorteeHelp: [
+      'Support: assists between squad players, from the minion who sets up the kill to the boss who gets the credit, on the measured matches of the selection.',
+      "Range: gap between each player's median kill distance and the lobby's, match by match, on decoded films.",
+    ],
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,

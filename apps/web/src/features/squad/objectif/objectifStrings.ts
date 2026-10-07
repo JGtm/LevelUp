@@ -4,7 +4,7 @@
  * au plus) et libellés : ceux de la maquette C3EW (`.ai/V7.5/MAQUETTE_TRI_CARTES_DEPLACEES_
  * 2026-09-26.html`, section « Proposition (Contributions) : quatre cartes »).
  *
- * Fichier à part (précédent : squadRiposteStrings.ts) : `i18n.ts` de la feature dépasse déjà
+ * Fichier à part (précédent : squadFocusStrings.ts) : `i18n.ts` de la feature dépasse déjà
  * le seuil de taille. Parité FR / EN garantie par le typage `Record<Locale, …>`.
  */
 import type { Locale } from '@/lib/i18n/locale'

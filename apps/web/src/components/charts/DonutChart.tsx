@@ -24,10 +24,6 @@ import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesC
 export interface ChartPointDonut {
   name: string
   value: number
-  /** Texte déjà formaté (locale, séparateurs) du compte brut — utilisé UNIQUEMENT par
-   *  `arcLabelKind="value"` (P11, PLAN_EQUIPEMENT_GACHIS_2026-09-09). Absent : le
-   *  formatter retombe sur `value` tel quel. */
-  valueLabel?: string
 }
 
 export interface DonutChartProps {
@@ -60,19 +56,6 @@ export interface DonutChartProps {
   /** Libellé affiché au centre, sous la valeur (petit texte) — ex "Victoires". */
   centerLabel?: string
   /**
-   * Le texte porté par chaque arc (P11, PLAN_EQUIPEMENT_GACHIS_2026-09-09) :
-   * `'percent'` (défaut, comportement historique inchangé) écrit le nom et le %
-   * (`showPercent`) ; `'value'` écrit le nom et le COMPTE BRUT (`valueLabel` du point,
-   * sinon `value`) — pour un donut de PARTS EXCLUSIVES dont le centre porte déjà le
-   * volume total, où la légende ne doit plus dire qu'une couleur.
-   *
-   * IL VAUT AUSSI EN `compact` (2026-09-22) : `compact` dit OÙ l'étiquette se pose
-   * (dedans, sans connecteur), `arcLabelKind` dit CE QU'ELLE PORTE. Jusqu'ici le compact
-   * écrasait le second et rendait un `%` là où l'appelant demandait un compte — deux
-   * props qui se contredisaient en silence.
-   */
-  arcLabelKind?: 'percent' | 'value'
-  /**
    * Ni bordure ni fond : le donut est nu et c'est le conteneur parent (une SectionCard)
    * qui porte le chrome. Propagé tel quel à `ChartCard` (prop ajoutée le 2026-09-21) — un
    * donut monté DANS une SectionCard produisait un double cadre.
@@ -95,7 +78,6 @@ export function DonutChart({
   compact,
   centerValue,
   centerLabel,
-  arcLabelKind,
   frameless,
 }: DonutChartProps) {
   const buildOption = useCallback(
@@ -109,7 +91,6 @@ export function DonutChart({
         compact,
         centerValue,
         centerLabel,
-        arcLabelKind,
       }),
     [
       sliceColors,
@@ -120,7 +101,6 @@ export function DonutChart({
       compact,
       centerValue,
       centerLabel,
-      arcLabelKind,
     ],
   )
 
@@ -147,7 +127,6 @@ interface BuildOpts {
   compact?: boolean
   centerValue?: string
   centerLabel?: string
-  arcLabelKind?: 'percent' | 'value'
 }
 
 /**
@@ -167,7 +146,6 @@ export function buildDonutOption(
     compact = false,
     centerValue,
     centerLabel,
-    arcLabelKind = 'percent',
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -185,7 +163,6 @@ export function buildDonutOption(
     return {
       name: p.name,
       value: p.value,
-      valueLabel: p.valueLabel,
       itemStyle: { color },
     }
   })
@@ -253,34 +230,19 @@ export function buildDonutOption(
         avoidLabelOverlap: true,
         // Compact : % DANS le donut, pas d'étiquette externe ni de connecteur (sinon ils
         // débordent et se font clipper en colonne étroite). Sinon : étiquette externe.
-        // arcLabelKind='value' (P11) : le nom PUIS le compte brut sur l'arc — jamais un %,
-        // la légende ne dit plus que la couleur (`valueLabel` du point, sinon `value` nu).
         label: compact
           ? {
               show: true,
               position: 'inside',
               color: tc.text,
               fontSize: 11,
-              // `compact` dit OÙ, `arcLabelKind` dit QUOI : en mode `value` l'arc porte le
-              // compte brut même serré, car le centre y porte déjà le taux — répéter un %
-              // sur l'arc écrirait deux fois la même chose et jamais le volume.
-              formatter:
-                arcLabelKind === 'value'
-                  ? (params: { value: number; data?: { valueLabel?: string } }) =>
-                      `${params.data?.valueLabel ?? params.value}`
-                  : '{d}%',
+              formatter: '{d}%',
             }
           : {
-              show: showPercent || arcLabelKind === 'value',
+              show: showPercent,
               color: tc.text,
               fontSize: 11,
-              formatter:
-                arcLabelKind === 'value'
-                  ? (params: { name: string; value: number; data?: { valueLabel?: string } }) =>
-                      `${params.name}\n${params.data?.valueLabel ?? params.value}`
-                  : showPercent
-                    ? '{b}\n{d}%'
-                    : '{b}',
+              formatter: showPercent ? '{b}\n{d}%' : '{b}',
             },
         labelLine: compact ? { show: false } : { length: 8, length2: 6 },
         data,

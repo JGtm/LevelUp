@@ -1,11 +1,8 @@
 /**
  * sessionBarsTrendChart — LA frise « une soirée, un bâton », partagée.
  *
- * Hissée depuis `features/squad/charts/squadRiposteSessionsChart.ts` (lot J) le
- * 2026-09-22 : la page Séries temporelles demande la même frise sur deux sujets
- * (Riposte, Appui reçu) et la règle des deux copies interdit de la recopier. Le module
- * de l'Escouade n'est plus qu'un ADAPTATEUR — il traduit sa `FriseRiposte` en séries
- * génériques et n'écrit plus une seule clé d'option ECharts.
+ * Un appelant passe des séries génériques et n'écrit aucune clé d'option ECharts
+ * (garde-rail : `sessionBarsTrendChart.guard.test.ts`).
  *
  * GRAMMAIRE TENUE (celle de `squadSessionTimelineChart.ts`, désignée comme référence par
  * l'utilisateur) : bâtons à 18 px, courbe pleine 2 px NON lissée, légende nommant chaque

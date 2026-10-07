@@ -1,5 +1,5 @@
 /**
- * SquadAppuiCard — « Appui », la deuxième carte de la section Coordination.
+ * SquadAppuiCard — « Appui », la première carte de la section « Appui et portée » de Synergies.
  *
  * BARRES HORIZONTALES EMPILÉES, une par ASSISTANT — le LARBIN —, segments = les
  * BÉNÉFICIAIRES qu'il a servis — les PATRONS (vocabulaire de l'écran, décision utilisateur
@@ -20,10 +20,8 @@
  * se rend comme les autres de la page, et la phrase qui dit ce qu'on lit vit dans l'aide du
  * titre — plus de bandeau de couverture ni de description en texte gris.
  *
- * RENOMMÉE « APPUI » (D19, 2026-09-21) ET SEULE À GARDER LE MOT « ASSISTANCE ». Elle
- * s'intitulait « Assistances dans l'escouade » alors que DEUX autres cartes de la même
- * section s'intitulaient aussi « Assistances » en comptant, elles, des ripostes : le mot
- * désignait deux choses opposées à quelques centimètres. Sa forme, elle, ne bouge pas.
+ * TITRE « APPUI » : la notion se dit « appui » ; le mot « assistance » désigne la
+ * statistique du jeu qu'elle compte (garde-rail `vocabulaireCoordination.guard.test.ts`).
  *
  * PLUS DE PHRASE DE LECTEUR (D22-verbosité, LOI du 2026-09-21) : graphe et légende
  * seulement, l'explication tient dans l'infobulle (i) du titre.
@@ -119,11 +117,10 @@ export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
       titleAdornment={titleWithInfo(labels.description)}
       className="h-full"
     >
-      {/* GRAPHE CENTRÉ EN HAUTEUR DANS SON BLOC (2026-09-22) : la carte partage sa rangée
-          avec « Frags non ripostés », plus haute. La chaîne est celle du lot Explorer —
-          `h-full` sur la carte, corps `flex flex-1 flex-col justify-center` — et AUCUNE
-          hauteur minimale ajoutée : le graphe garde sa taille, c'est le vide qui se
-          répartit au-dessus et en dessous au lieu de tomber entièrement en bas. */}
+      {/* GRAPHE CENTRÉ EN HAUTEUR DANS SON BLOC : `h-full` sur la carte, corps
+          `flex flex-1 flex-col justify-center`, AUCUNE hauteur minimale — dans une rangée
+          plus haute que lui, le graphe garde sa taille et le vide se répartit au-dessus et
+          en dessous au lieu de tomber entièrement en bas. */}
       <div
         className="flex flex-1 flex-col justify-center px-3 py-2"
         data-testid="squad-appui"

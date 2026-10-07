@@ -4,8 +4,8 @@
  * PAS LE WRAPPER `<ScatterChart>` GÉNÉRIQUE, pour deux raisons soudées au contrat : il
  * n'expose qu'un `symbolSize` UNIFORME par série (ici la taille dit les frags mesurés, et
  * un point sous le plancher se dessine CREUX) et il ne porte ni `markArea` ni `markLine`
- * (les trois bandes de rôle et la ligne du lobby). Même pattern que
- * `SquadRiposteSessionsChart` : composer `<ChartCard>` avec un `buildOption` custom.
+ * (les trois bandes de rôle et la ligne du lobby). La carte compose donc `<ChartCard>` avec
+ * ce `buildOption`.
  *
  * L'axe X est CATÉGORIEL — un match par position, du plus ancien au plus récent — et ses
  * étiquettes « #N · carte » ont le gabarit des autres graphes par match de la page
@@ -85,17 +85,10 @@ export interface RangeRolesChartOpts {
   surbrillance?: { debut: number; fin: number; label: string; couleur: string }
   /** Masque la légende du graphe — à une seule série, son nom n'apprend rien. */
   masquerLegende?: boolean
-  /**
-   * Écrit le gamertag AU BOUT de sa courbe de tendance, en plus de la légende (E1 : à
-   * quatre joueurs et vingt matchs, faire l'aller-retour vers la légende coûte la lecture).
-   * Réserve la marge droite qui va avec. Défaut : non.
-   */
-  etiquetteBout?: boolean
 }
 
-/** Marge droite du `grid` : l'étiquette de bout de courbe a besoin de place. */
+/** Marge droite du `grid`. */
 const MARGE_DROITE = 16
-const MARGE_DROITE_ETIQUETTE = 64
 
 /** La donnée d'un point du nuage : sa position, et le point BRUT pour l'infobulle. */
 interface EchartPointDatum {
@@ -173,15 +166,10 @@ function zonesDeFond(
 }
 
 /** La série ligne d'un joueur : la moyenne glissante de ses points PLEINS. */
-function serieTendance(
-  serie: SeriePortee,
-  couleur: string,
-  nom: string,
-  etiquetteBout = false,
-): Record<string, unknown> {
+function serieTendance(serie: SeriePortee, couleur: string, nom: string): Record<string, unknown> {
   const moyennes = moyenneGlissante(serie.points)
   const data = serie.points.map((p, i) => [p.ordre, moyennes[i]])
-  const s: Record<string, unknown> = {
+  return {
     type: 'line',
     name: nom,
     data,
@@ -195,17 +183,6 @@ function serieTendance(
     itemStyle: { color: couleur },
     z: 2,
   }
-  if (etiquetteBout) {
-    s.endLabel = {
-      show: true,
-      formatter: nom,
-      color: couleur,
-      fontSize: 10,
-      fontWeight: 500,
-      distance: 6,
-    }
-  }
-  return s
 }
 
 /** L'infobulle d'un point : le joueur, le match, la médiane, l'écart, les frags mesurés. */
@@ -284,12 +261,7 @@ export function buildSquadRangeRolesOption(
   })
 
   const tendances = series.map((serie) =>
-    serieTendance(
-      serie,
-      opts.couleurs[serie.gamertag] ?? couleurDefaut,
-      serie.gamertag,
-      opts.etiquetteBout ?? false,
-    ),
+    serieTendance(serie, opts.couleurs[serie.gamertag] ?? couleurDefaut, serie.gamertag),
   )
 
   const sansLegende = opts.masquerLegende || opts.legende === false
@@ -307,12 +279,12 @@ export function buildSquadRangeRolesOption(
 
   return {
     backgroundColor: CHART_BG,
-    // Sans légende de séries (lots Z1 et W), le bas n'a plus à la loger ; l'étiquette de bout (Z2) réserve la droite.
+    // Sans légende de séries (lots Z1 et W), le bas n'a plus à la loger.
     grid: {
       top: 24,
       bottom: sansLegende ? 52 : 78,
       left: 56,
-      right: opts.etiquetteBout ? MARGE_DROITE_ETIQUETTE : MARGE_DROITE,
+      right: MARGE_DROITE,
     },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: formatTooltip(opts) },
     // Deux contrats cohabitent (Z1 : `legende: false` -> `{ show: false }` ; W : `masquerLegende` -> absente).

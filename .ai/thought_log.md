@@ -116586,3 +116586,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `replay-equiv` base 19ec2c8ba contre branche sur 7344d24f, 696a9d7c, 01e1f945, 64e8adfa : 62 étapes sur 64 identiques. Suite Go complète verte, golangci-lint 0, témoin 572e236b vert (A camp 1 et C camp 0 dès la frame 95), vitest rejeu 3502/3502.
 
 **Conclusion / prochaine étape** : CI de la branche, fusion par le superviseur, puis recuisson du parc (verdict `redecoder` partout).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E1 : web Synergies — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E1 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la section de coordination de l'onglet Synergies devient « Appui et portée » (« Support and range »), deux rangées : « Appui », puis « Rôles de portée » seule ; titre et aide dans le jeu de l'Appui (`squad/i18n.ts`). Supprimés : les douze fichiers de la riposte (cartes, matrice, frise, logique, fixtures, libellés et leurs tests), la grandeur « hauteur » du nuage de portée (prop, type, branche, préfixe de libellés, option d'étiquette de bout), les blocs de manifeste `squad.riposte.*` (42 clés) et `squad.hauteur.*` (19 clés), les alias `SquadEchange*` et le champ `echange` du type de page. La riposte était aussi le dernier lecteur de quatre options de `HistogramChart` et de `DonutChart.arcLabelKind` : retirées avec leurs tests (D7 ; `yAxisLabel` et `formatBin`, API de base du catalogue des graphes, restent). La garde du vocabulaire de la coordination bannit désormais la notion retirée sous tous ses noms.
+
+**Résultats observés** : tsc purgé 0, ESLint 0 erreur (26 avertissements, la base), champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest des zones touchées 317 fichiers / 3 021 tests verts, knip 0 / 0 / 0.
+
+**Conclusion / prochaine étape** : E2 (Go et contrat : bloc `echange`, `coordination.Echanges` / `Ripostes`, dénivelé du profil de portée).

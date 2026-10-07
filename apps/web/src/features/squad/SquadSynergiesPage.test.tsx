@@ -8,7 +8,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import * as squadContextModule from './SquadContext'
 import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadSynergiesPage } from './SquadSynergiesPage'
-import { echangeDe } from './squadRiposte.fixtures'
 
 const ROW = (gamertag: string): TeammateRow => ({
   gamertag,
@@ -138,10 +137,30 @@ describe('SquadSynergiesPage — ce qui a déménagé (lot 3)', () => {
   })
 })
 
-// Les deux titres de section de l'onglet (lot 3, fusionné avec la section « Coordination »
-// de la vague 3) : « Coordination » coiffe la riposte, l'appui et la portée ;
-// « Historique » la bande de résultats ET le tableau des matchs. Un titre coiffe au moins
-// deux blocs, jamais un bloc seul : sans aucun de ces blocs, pas de titre.
+/** Un bloc de portée minimal : un match, un joueur mesuré. */
+function pageWithRangeProfiles(): TeammatesPageResponse {
+  return {
+    ...pageWithAssistPairs(),
+    assist_pairs: undefined,
+    range_profiles: {
+      kills_measured: 12,
+      kills_total: 14,
+      profiles: [
+        {
+          match_id: 'm1',
+          played_at: '2026-09-10T20:00:00Z',
+          lobby_median_m: 20,
+          lobby_measured: 40,
+          players: [{ xuid: 'x1', gamertag: 'A', median_m: 22, lobby_delta_m: 2, measured: 12 }],
+        },
+      ],
+    },
+  } as TeammatesPageResponse
+}
+
+// Les deux titres de section de l'onglet : « Appui et portée » coiffe l'appui et la portée ;
+// « Historique » la bande de résultats ET le tableau des matchs. Sans aucun des deux blocs
+// de la première, pas de titre.
 describe('SquadSynergiesPage — titres de section', () => {
   it('« Historique » est toujours posé au-dessus de la bande et du tableau', () => {
     mockSquadContext({
@@ -152,23 +171,37 @@ describe('SquadSynergiesPage — titres de section', () => {
     expect(screen.getByText('Historique')).toBeInTheDocument()
   })
 
-  it('« L\'échange » se monte avec le bloc echange, et pas sans lui', () => {
+  it('« Appui et portée » absente sans appui ni portée', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.queryByText('Coordination')).toBeNull()
+    expect(screen.queryByText('Appui et portée')).toBeNull()
   })
 
-  it('« L\'échange » présent quand le bloc echange est mesuré', () => {
+  it('« Appui et portée » montée par l’appui seul', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
-      pageData: { ...pageWithAssistPairs(), echange: echangeDe() } as TeammatesPageResponse,
+      pageData: pageWithAssistPairs(),
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.getByText('Coordination')).toBeInTheDocument()
+    expect(screen.getByText('Appui et portée')).toBeInTheDocument()
+  })
+
+  it('« Appui et portée » montée par la portée seule, avec « Rôles de portée » seule dans sa grille', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: pageWithRangeProfiles(),
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.getByText('Appui et portée')).toBeInTheDocument()
+    const grille = screen.getByText('Rôles de portée').closest('.grid')
+    expect(grille, 'grille de la portée').not.toBeNull()
+    expect(grille?.children.length, 'cartes de la grille de portée').toBe(1)
+    expect(screen.queryByText('Rôles de hauteur')).toBeNull()
   })
 })
 
@@ -199,19 +232,19 @@ describe('SquadSynergiesPage — section Assistances', () => {
   })
 })
 
-// RANGÉE 1 = « Appui » SEUL (plan Emprise vies, décision V7, 2026-09-29) : le nuage « Frags non
-// ripostés » a quitté Synergies ; la grille garde sa règle, la carte présente prend sa colonne.
+// RANGÉE 1 = « Appui » SEUL : la grille garde sa règle, la carte présente prend sa colonne.
+// Aucune carte de riposte n'est montée.
 describe('SquadSynergiesPage — rangée « Appui »', () => {
-  it("l'appui est seul dans sa grille, et le nuage n'est plus monté", () => {
+  it("l'appui est seul dans sa grille, et aucune riposte n'est montée", () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
-      pageData: { ...pageWithAssistPairs(), echange: echangeDe() } as TeammatesPageResponse,
+      pageData: pageWithAssistPairs(),
     })
     renderWithProviders(<SquadSynergiesPage />)
     const grille = screen.getAllByText('Appui')[0].closest('.grid')
     expect(grille, 'grille de la rangée 1').not.toBeNull()
     expect(grille?.children.length, 'cartes de la rangée 1').toBe(1)
-    expect(screen.queryByText('Frags non ripostés')).toBeNull()
+    expect(screen.queryByText(/[Rr]iposte/)).toBeNull()
   })
 })

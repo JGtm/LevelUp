@@ -1,14 +1,13 @@
 /**
- * GARDE-RAIL — le vocabulaire de la Coordination (D19, 2026-09-21).
+ * GARDE-RAIL — le vocabulaire de la section « Appui et portée » de l'Escouade.
  *
- * La section disait la MÊME mesure sous quatre mots : « échange » (Go et carte par
- * session), « vengeance » (délai, matrice en infobulle, nuage), « riposte » (distribution)
- * et « assistance croisée » (deux titres). Le lecteur croyait lire quatre mesures et en
- * lisait une. L'utilisateur a tranché : « riposte » pour la mort vengée, « appui » pour
- * l'assistance entre coéquipiers.
+ * L'assistance entre coéquipiers se dit « appui ». La mort reprise par un coéquipier sur son
+ * tueur (« riposte », « vengeance », « échange ») n'est plus une notion de l'Escouade
+ * (décision de l'utilisateur du 2026-10-05) : aucune chaîne ne la nomme, sous aucun de ses
+ * noms.
  *
- * UNE FACTORISATION SANS GARDE-RAIL RE-DIVERGE (CLAUDE.md n°6) : ce test interdit le retour
- * des mots bannis dans les chaînes UI FR de `features/squad` et du manifest `squad.toml`.
+ * Ce test interdit les formules bannies dans les chaînes UI de `features/squad` et dans les
+ * chaînes FR du manifest `squad.toml`.
  *
  * CE QU'IL NE GARDE PAS, et c'est délibéré : la statistique de jeu « assistances » (assists
  * du KDA, médailles, compteurs). C'est le chiffre officiel du jeu, pas la notion — seules
@@ -22,11 +21,13 @@ import { describe, expect, it } from 'vitest'
 const RACINE_SQUAD = join(process.cwd(), 'src', 'features', 'squad')
 const MANIFEST = join(process.cwd(), 'src', 'lib', 'i18n', 'manifests', 'squad.toml')
 
-/** Les formules bannies — chacune désigne la NOTION, jamais la statistique du jeu. */
+/** Les formules bannies — chacune désigne une NOTION, jamais la statistique du jeu. */
+const NOTION_RETIREE = 'rien : notion retirée de l’Escouade'
 const BANNIS: { motif: RegExp; remplacement: string }[] = [
-  { motif: /vengeances?\b/i, remplacement: 'riposte' },
-  { motif: /\bvenger\b/i, remplacement: 'riposter' },
-  { motif: /taux d[’']échange/i, remplacement: 'taux de riposte' },
+  { motif: /ripost/i, remplacement: NOTION_RETIREE },
+  { motif: /vengeances?\b/i, remplacement: NOTION_RETIREE },
+  { motif: /\bvenger\b/i, remplacement: NOTION_RETIREE },
+  { motif: /taux d[’']échange/i, remplacement: NOTION_RETIREE },
   { motif: /assistances crois[ée]es/i, remplacement: 'appui' },
 ]
 
@@ -58,7 +59,7 @@ function lignesDeChaines(source: string): string[] {
     .filter((l) => /['"`]/.test(l))
 }
 
-describe('vocabulaire de la Coordination — « riposte » et « appui »', () => {
+describe('vocabulaire de la section « Appui et portée »', () => {
   const fichiers = sourcesSquad(RACINE_SQUAD)
 
   it('balaye une arborescence NON VIDE (sentinelle : un garde qui ne lit rien ne garde rien)', () => {

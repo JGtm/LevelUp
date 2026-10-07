@@ -1,9 +1,7 @@
 /**
  * SessionBarsTrendCard — le wrapper de la frise « une soirée, un bâton ».
  *
- * Hissé avec son module d'option (`sessionBarsTrendChart.ts`) le 2026-09-22 : l'Escouade
- * garde son propre wrapper (il traduit sa `FriseRiposte`), les Séries temporelles montent
- * celui-ci directement avec des séries déjà génériques. Le FICHIER porte « Card » parce
+ * Les Séries temporelles le montent avec des séries génériques. Le FICHIER porte « Card » parce
  * que Windows ne distingue pas `SessionBarsTrendChart.tsx` de son module d'option
  * `sessionBarsTrendChart.ts` — deux fichiers voisins ne peuvent pas différer par la casse. Le composant ne fait que brancher
  * l'option sur `ChartCard` — aucune règle de lecture ici.
