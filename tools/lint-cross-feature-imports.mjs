@@ -94,10 +94,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // fait, et les cinq imports de query ont disparu.
   //
   // CE QUI RESTE, ET POURQUOI, module par module :
-  //  - les deux SECTIONS de l'onglet Chronologie sont des vues du document de rejeu montees
-  //    par la Match View ; leur contenu (dictionnaire, calques, hook de socles) vit dans la
-  //    feature du rejeu — les descendre dans `lib/` y emmenerait un calque et l'i18n, c'est-a
-  //    -dire deplacerait la feature au lieu de partager de la logique ;
+  //  - la SECTION « Usage d'equipements, par joueur » est une vue du document de rejeu montee
+  //    par la Match View ; son contenu (dictionnaire, calques) vit dans la feature du rejeu — la
+  //    descendre dans `lib/` y emmenerait un calque et l'i18n, c'est-a-dire deplacerait la
+  //    feature au lieu de partager de la logique ;
   //  - `i18n/i18n` : la barre de faits marquants nomme les usages d'equipement avec le
   //    vocabulaire du rejeu (`REPLAY_TEXT[locale].equipmentUsage`) — un second dictionnaire
   //    donnerait deux libelles pour la meme chose ;
@@ -105,7 +105,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   //    familles dont l'usage forme un episode. Le module ne peut pas descendre dans `lib/`
   //    (il depend d'un calque), la constante ne peut pas se recopier (regle n° 6).
   'match-view=>match-replay/MatchEquipmentUsageSection',
-  'match-view=>match-replay/MatchPadControlSection',
   'match-view=>match-replay/i18n/i18n',
   'match-view=>match-replay/model/equipmentUsageLogic',
   //  - hooks de zoom / deplacement et leur controle (2026-09-21, ajustements pre-v7.5) :
@@ -117,11 +116,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'match-view=>match-replay/hooks/useReplayDrag',
   'match-view=>match-replay/hooks/useReplayWheelZoom',
   'match-view=>match-replay/ui/ReplayZoomControl',
-  //  - `model/padControlLogic` : depuis le 2026-09-22 (onglet « Armes et terrain »), la Match
-  //    View decide si la section « Equipement et terrain » a quelque chose a coiffer en relisant
-  //    `hasPadControl` / `buildPadControl` — le MEME predicat que la section elle-meme, sinon un
-  //    titre pourrait se poser au-dessus de rien (regle n° 6 : une condition, une ecriture).
-  'match-view=>match-replay/model/padControlLogic',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
@@ -227,6 +221,11 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // les recopier : même bloc `SoloEmpriseBlock`, deux pages — durable, analogue à session-detail=>squad
   // (plan PLAN_SESSIONS_EMPRISE_2026-10-06, D2).
   'session-detail=>timeseries',
+  // La Vue match montre « Isolement, par joueur » avec la LIGNE de la carte des Series temporelles
+  // (`usages/LivesNearTeammateRow`, son axe et sa legende), le meme modele (`usages.logic`) et les
+  // memes textes (`usagesText`, `usagesCardsText`) : une carte, trois pages — durable, analogue a
+  // session-detail=>timeseries.
+  'match-view=>timeseries',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).

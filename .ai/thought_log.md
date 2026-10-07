@@ -116312,3 +116312,82 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Complément 5 (2026-10-07, intégration de RI 2.7.b avant la re-cuisson)** : fusion de `feat/v75` `4f112add5` (grammar .5, `PlacementRev` placement-2026-10-06-v1) : commit `3f92429b6`, conflits sur les fixtures du web seulement (régénérées au schéma 81, identiques aux fixtures 80 de 2.7.b hors version). Paquets touchés, archlint, golangci-lint (0) et vitest du rejeu verts. 19 témoins redécodés un par un en processus : schéma 81, 0 / 0 / 0 / 0, cas de la phase D inchangés. Recette de la re-cuisson unique consignée au plan (I.5) avec le rattrapage du placement des vies (`backfill-killsource`, sélection `matchsAJour`, sans `--force`).
 
 **Complément 6 (2026-10-07, re-cuisson unique exécutée par le superviseur)** : sur accord de l'utilisateur, après la fusion de RI 2.7.b et du lot (`feat/v75` = `efa0a7363`), binaire de cette tête, serveur arrêté. `backfill-replay --only-existing` : 126 / 126 redécodés en 17 min 33 s (schéma 81, pic 1,01 Gio, 0 erreur, 0 mort mémoire). Rattrapage du placement des vies (`backfill-killsource`, `PlacementRev` de RI) : 1 686 films en 1 h 18 min 38 s, 0 erreur, crédit 4 min 51 s. Passes aval (usage-summary, pad-tiers, vehicle-takes, tactical-rasters) : 21 s. Total 1 h 40 min 30 s. Les 126 artefacts sont à 0 sur `sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements` ; témoin `43716616` place 5 = Slowpoke6743 -> 343 Sandwolf -> KernelPanic10. Serveur et front relancés à 05:35. Découvertes D14 (sélection du `--dry-run` de killsource divergente : 105 annoncés, 6 pris), D15 (10 bots dont l'entité et la déclaration disent deux équipes), D16 (82 matchs « sans équipe » dans le chemin du placement des vies, artefacts complets) consignées au plan. Lot clos.
+## [2026-10-06] Vue match aux formes de l'Emprise — PHASE 1 (plan) — En cours (plan écrit et relu, commit local sur `feat/matchview-emprise`, aucun code)
+
+**Décision technique principale** : plan `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md` (worktree `LevelUp-wt-matchview`), 6 lots : M0 rebase sur la tête finale de Sessions et relecture des symboles S1 attendus ; M1 Go lectures (mêlée exclue de la distance dans le lecteur, `publishable_deaths` ajouté à Q21d, lecture des vies pour tout le camp en une fois, assemblages solo de Sessions étendus d'une liste de joueurs et d'une lecture de camp) ; M2 Go blocs de la page (`emprise` du match composé de mon camp, `lives_near_teammate` par joueur, `combat_tab.weapon_tools` par `squadagg.BuildWeaponTools`, prises non classées au grain du match, câblage dans un fichier neuf, contrat additif) ; M3 web (cartes B, D, E, G, H, I, briques partagées étendues de props optionnelles, F réduite à la grille, suppressions web Riposte, Hauteur, Part de chaque équipe, Contrôle des armes spéciales) ; M4 suppressions Go et contrat ; M5 clôture.
+
+**Résultats observés (vérifiés sur pièces)** : `SquadPlayers` trie et tronque (impossible pour onze fiches dans l'ordre du tableau des scores), d'où une liste passée toute faite ; le bilan `resources` de l'Emprise ne porte pas les râteliers (D et E lisent les objets du match) ; les fiches sont un modèle web, pas un champ du bloc ; aucune donnée publiée pour les prises non classées ; Q20 garde des lecteurs après la Riposte ; `FragWeaponBreakdown` reste lu par la Synthèse et les Séries temporelles ; sur le BTB témoin le journal n'est pas publiable, les frags sous effet et par vie y sont donc dits « non mesurés ». Relecture plan-review : quatre défauts corrigés (prises non classées, lecture des vies par joueur contraire à I4, fiches sans râteliers, briques sans lecteur avant M3).
+
+**Conclusion / prochaine étape** : arrêt en fin de phase 1 ; décisions D1-D22 et questions Q1-Q3 à trancher par le superviseur, puis phase 2 sur « rebase sur <sha> » et « go ».
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M0 : rebase et relecture des dépendances — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : rebase de la branche sur la tête de `feat/v75` (`2668848b1`, lots Séries temporelles et Sessions intégrés), signal du superviseur ; symboles attendus du lot Sessions relus, forme identique (le nom des objets vit dans `objectName.ts`). Amendements consignés au plan (§1.4) : la règle « vies d'un match au journal non publiable écartées et comptées » existe déjà côté lecture et calcul, la carte des vies la suit (pas de champ ni de texte « frags non mesurés ») ; règles de texte du 2026-10-06 (titres courts déclinés, aucun mot de personne, « équipe » jamais « camp ») ; dette « Mes matchs » de la Vue match et extension de la garde des textes à la feature.
+
+**Résultats observés** : rebase sans conflit ; `go build ./...` vert (second passage en `-p 2`, le premier a manqué de mémoire système) ; `npm ci` ; `tsc -b --force` 0.
+
+**Conclusion / prochaine étape** : M0 clos ; M1 (lectures Go) dans la foulée, sous le « go » du superviseur.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M1 : lectures et calculs Go — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : la mêlée sort de « Distance par arme » dans le lecteur (classe `melee` du registre, l'épée lourde reste) ; Q21d compte les morts publiables (fait « journal des morts publiable » de la page) ; les vies de toute l'équipe se lisent en une fois (`LoadLivesNearTeammateForPlayers`, lecture d'un joueur ramenée à elle) et se rangent par joueur avec le calcul existant (`lireViesDuCamp`, aides partagées avec la lecture d'un joueur) ; l'assemblage de l'Emprise accepte une liste de joueurs fournie par la page.
+
+**Résultats observés** : huit mutations, toutes rouges ; tests existants des Séries temporelles, de Sessions et des lecteurs verts sans modification. Gate Go complet vert (six lots, un paquet non touché rejoué seul après un dépassement de budget sous charge), intégration DuckDB 4 ok, lint 0 issue ; ADR 0036 : nouveau garde-rail I2 cité.
+
+**Conclusion / prochaine étape** : M1 clos ; M2 (blocs de la Vue match, contrat additif).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M2 : blocs Go de la page, contrat additif — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : la réponse de la Vue match porte `emprise` (l'Emprise d'un match, fiches = les joueurs de l'équipe présents à la fin : le joueur de la page, les profils suivis, le reste dans l'ordre du tableau ; bots et partis comptés sans fiche), `lives_near_teammate` (« Isolement » de chacun, même ordre, une lecture) et `combat_tab.weapon_tools` (« Outils de destruction » par le builder partagé) ; chaque match de l'Emprise publie ses prises sur un emplacement non identifié. Câblage dans un fichier neuf, chaque source sous sa porte.
+
+**Résultats observés** : contrat additif (openapi +115, types +39, 0 retrait) ; onze mutations rouges ; un filtre redondant (mutation verte) retiré de la projection des armes ; gate Go complet vert (six lots), lint 0 issue.
+
+**Conclusion / prochaine étape** : M2 clos ; M3 (onglet web reconstruit, suppressions web, garde des textes étendue).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M3 : onglet web reconstruit, suppressions web, garde des textes étendue — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : l'onglet « Armes et terrain » se reconstruit sur les briques des pages sœurs : « Frags et armes » (anneau | outils de destruction, distance par arme), puis « Équipement et terrain » avec sa couverture (contrôle des ressources par match, prises par joueur sans fiche du reste, usage d'équipements par joueur, frags | rendement par ressource avec leurs raisons fermées, isolement par joueur, positions). Les briques gagnent des props optionnelles au défaut inchangé ; la ligne d'« Isolement » est extraite pour servir une ligne par joueur ; les libellés des outils ont une source unique (troisième copie évitée, garde-rail). Riposte, hauteur d'engagement, contrôle des armes spéciales et part de chaque équipe quittent le web. La garde des textes sans personne couvre désormais la Vue match (textes, manifeste, littéraux de phrase des sources).
+
+**Résultats observés** : garde vue rouge sur douze textes de la page (« Mes matchs », « Mon équipe », « T'a martyrisé », « camp », « vous ») puis verte après réécriture ; dix-sept mutations rouges ; suite web complète verte (862 fichiers), lint sans avertissement neuf, knip 0, imports croisés 7 ≤ 7, crochets de pré-envoi verts (le lint des libellés de champ a imposé une clé de dictionnaire pour « Matchs »). Découvertes notées au plan (§8) sans correction.
+
+**Conclusion / prochaine étape** : M3 clos ; M4 (retrait Go de la riposte et de la hauteur, contrat régénéré).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M4 : retrait Go de la riposte et de la hauteur, contrat — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : la chaîne Riposte de la Vue match (constructeur, types, champ) et la chaîne de la hauteur d'engagement (domaine, calcul, méthode du port, lecteur DuckDB, chargement, champ) sont supprimées avec leurs tests ; le contrat est régénéré, le snapshot de surface aussi par sa procédure, les alias web retirés.
+
+**Résultats observés** : contrat −138 lignes (openapi), −57 (types générés), cinq schémas disparus comme attendu ; le snapshot rattrape aussi les schémas Trends de la base. Gate Go complet vert (six lots, intégration DuckDB 4 ok, lint 0, garde-rails nommés), suite web verte, knip 0.
+
+**Conclusion / prochaine étape** : M4 clos ; M5 (docs, référence des canaux d'équipement, statuts, demande de revue au superviseur, push).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M5 : clôture — Complété (commit et push de `feat/matchview-emprise`)
+
+**Décision technique principale** : documentation alignée sur le code (CHANGELOG et notes de version EN et FR : entrée de la Vue match, phrases devenues fausses sur la riposte, la hauteur, le contrôle des socles et `weaponTier.ts` corrigées) ; référence des canaux d'équipement mise à jour (socles de la Vue match lus dans l'Emprise du match, `weaponTiers` sans lecteur web) ; statuts du plan tous posés ; revue adversariale du diff cumulé demandée au superviseur.
+
+**Résultats observés** : contrat à jour, types générés frais, crochets de pré-envoi verts ; aucun fichier de code modifié depuis le gate de M4 (suites Go et web vertes sur le même arbre).
+
+**Conclusion / prochaine étape** : plan exécuté M0-M5 ; push de la branche pour la CI ; en attente de la revue adversariale et de la décision de fusion du superviseur. Découvertes non traitées : §8 du plan.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M6 : constats de la revue adversariale (ronde 1) — Complété (commit et push sur `feat/matchview-emprise`)
+
+**Décision technique principale** : trois constats corrigés en une étape. Le champ `combat_tab.weapon_kills`, sans lecteur depuis M3, est retiré de bout en bout ; les colonnes de nom du lecteur des morts mesurées, sans lecteur depuis M4, aussi ; l'état du journal des morts de l'Emprise du match passe d'un booléen à trois valeurs (`publishable`, `not_publishable`, `unavailable`) pour qu'une lecture en échec ne s'affiche plus comme « journal non publiable » : la page écrit « Non mesuré : lecture indisponible ».
+
+**Résultats observés** : tests rouges avant code (Go et web), quatre mutations rouges ; gate ciblé vert sous la contrainte machine (vet et tests des paquets touchés, intégration ciblée, golangci des paquets, contrat, tsc, lint, vitest ciblé, knip).
+
+**Conclusion / prochaine étape** : push de la branche pour la CI ; ronde suivante de revue au superviseur.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M6.1 : état « lecture indisponible » jusqu'au lecteur réel — Complété (commit et push sur `feat/matchview-emprise`)
+
+**Décision technique principale** : le lecteur DuckDB de la portée des morts (Q21d) remonte ses échecs (lecteur partagé indisponible, requête en échec, délai, contexte annulé) au lieu de rendre une portée nulle sans erreur ; c'est ce qui permet à l'état `unavailable` du journal des morts d'exister en production, et à la page de dire « lecture indisponible » au lieu de « non publiable ».
+
+**Résultats observés** : test d'intégration du lecteur réel vu rouge (contexte annulé, base non migrée), vert après ; mutation rouge ; gate ciblé vert (vet, tests des paquets touchés, intégration ciblée, lint, contrat inchangé).
+
+**Conclusion / prochaine étape** : push pour la CI ; décision de fusion au superviseur.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — clôture documentaire — Complété (commit docs et push sur `feat/matchview-emprise`)
+
+**Décision technique principale** : plan déclaré clos (tête de code `7cc8d23e3`) ; revue adversariale statuée faite (deux rondes, constats clos en M6 `b9b81fc81` et M6.1 `7cc8d23e3`) ; trois découvertes reportées au registre des reports (paires tueur→victime sans filtre publiable, tutoiement de « Match pas encore synchronisé », textes de l'Escouade à la personne). La découverte « zéro frag silencieux des vies » n'est PAS reportée : relue sur pièces, elle était déjà réglée en amont (amendement A1 du M0) ; le §8 du plan la marque caduque.
+
+**Résultats observés** : documents seulement, aucun code touché.
+
+**Conclusion / prochaine étape** : lot terminé ; fusion dans `feat/v75` décidée par l'utilisateur.

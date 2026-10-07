@@ -169,6 +169,50 @@ func TestKillDistance_CleArsenalRemonte(t *testing.T) {
 	}
 }
 
+// Tags de la mêlée et de l'épée, propres à ce fichier : le double partagé ne les connaît pas.
+const (
+	kdTagUnarmed = uint32(0x0badc0e0)
+	kdTagSword   = uint32(0x0badc0e1)
+)
+
+// kdMeleeClassifier ajoute au double partagé la mêlée (`hinf_unarmed`, classe `melee` au registre
+// réel) et l'épée à énergie (`hinf_energy_sword`, classe `heavy`).
+type kdMeleeClassifier struct{ fakeKillSourceClassifier }
+
+func (c kdMeleeClassifier) KillSourceRegistryKey(tag uint32) (string, bool) {
+	switch tag {
+	case kdTagUnarmed:
+		return "hinf_unarmed", true
+	case kdTagSword:
+		return "hinf_energy_sword", true
+	}
+	return c.fakeKillSourceClassifier.KillSourceRegistryKey(tag)
+}
+
+// TestKillDistance_MeleeExclue : « Distance par arme » ne montre pas la mêlée — une clé de classe
+// `melee` au registre sort avant l'agrégation ; l'épée (classe `heavy`) et le fusil restent, leurs
+// comptes et distances intacts.
+func TestKillDistance_MeleeExclue(t *testing.T) {
+	pdb := newKillSourceTestPlayerDB(t)
+	insertKill(t, pdb, kscDecodeV1, true, kdXUIDA, kdTagUnarmed, 1000)
+	insertKillPos(t, pdb, kscMatchID, kdXUIDA, 1000, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+	insertKill(t, pdb, kscDecodeV1, true, kdXUIDA, kdTagSword, 2000)
+	insertKillPos(t, pdb, kscMatchID, kdXUIDA, 2000, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0)
+	insertKill(t, pdb, kscDecodeV1, true, kdXUIDA, kscTagRifle, 3000)
+	insertKillPos(t, pdb, kscMatchID, kdXUIDA, 3000, 0.0, 0.0, 0.0, 6.0, 0.0, 0.0)
+
+	p := findKDPlayer(loadKD(t, pdb, kdMeleeClassifier{}), kdXUIDA)
+	if w := findKDWeapon(p, "hinf_unarmed"); w != nil {
+		t.Errorf("mêlée publiée : %+v", w)
+	}
+	if w := findKDWeapon(p, "hinf_energy_sword"); w == nil || w.MeasuredKills != 1 || !almostEqual(w.AvgDistanceM, 2.0) {
+		t.Errorf("épée = %+v, want 1 frag à 2 m", w)
+	}
+	if w := findKDWeapon(p, "hinf_br75"); w == nil || w.MeasuredKills != 1 || !almostEqual(w.AvgDistanceM, 6.0) {
+		t.Errorf("fusil = %+v, want 1 frag à 6 m", w)
+	}
+}
+
 // TestKillDistance_SansPosition_Exclue : un kill_event sans AUCUNE ligne
 // kill_positions correspondante n'est jamais compté.
 func TestKillDistance_SansPosition_Exclue(t *testing.T) {

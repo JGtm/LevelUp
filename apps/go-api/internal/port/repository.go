@@ -263,8 +263,8 @@ type MatchViewRepository interface {
 	// GetMatchAssistPairs retourne les paires (assistant → tueur assisté) AGRÉGÉES sur le
 	// match (Q21d), et la PORTÉE de leur lecture. Sœur de Q21c mais d'une autre nature :
 	// un agrégat par match, sans clé temporelle — rien à recaler sur T0. La portée à zéro
-	// (aucune ligne de film) est un résultat, pas une erreur : même dégradation gracieuse
-	// que Q21b/Q21c.
+	// (aucune ligne de film) est un résultat, pas une erreur ; un ÉCHEC de lecture remonte en
+	// erreur, sans portée (la Vue match dit alors « lecture indisponible »).
 	GetMatchAssistPairs(ctx context.Context, matchID string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error)
 
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).

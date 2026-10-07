@@ -123,6 +123,20 @@ describe('killDistanceRows — les sections par arme', () => {
 })
 
 describe('buildKillDistanceOption — un seul graphe, sections par arme', () => {
+  it('les deux plumes du libellé (arme, joueur) portent la taille de l’axe, sans dépendre de l’héritage', () => {
+    const yAxis = (buildKillDistanceOption({
+      rows: killDistanceRows(PLAYERS, 'fr'),
+      tc: TC,
+      colorOf: () => '#111111',
+      avgColor: '#999999',
+      fmtDistance: (m) => `${m} m`,
+      labels: { kills: 'k', min: 'a', avg: 'b', max: 'c' },
+    }) as { yAxis: { axisLabel: { fontSize: number; rich: Record<string, { fontSize?: number }> } } }).yAxis
+    expect(yAxis.axisLabel.fontSize).toBeGreaterThan(0)
+    expect(yAxis.axisLabel.rich.arme.fontSize).toBe(yAxis.axisLabel.fontSize)
+    expect(yAxis.axisLabel.rich.joueur.fontSize).toBe(yAxis.axisLabel.fontSize)
+  })
+
   it("la première ligne du modèle est EN HAUT : l'axe Y inverse la liste", () => {
     expect(option().yAxis.data).toEqual([
       'UnGamertagVra…',

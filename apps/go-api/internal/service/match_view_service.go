@@ -197,6 +197,7 @@ type MatchViewService struct {
 	// WithSemantic. Nil → repli FR documenté (outcome_label.go), le comportement
 	// d'avant le 2026-09-07.
 	semantic games.TitleSemanticAdapter
+	emprise  matchViewEmpriseDeps // blocs de l'Emprise (match_view_emprise.go)
 }
 
 // NewMatchViewService crée un MatchViewService.

@@ -131,6 +131,16 @@ describe('buildPickupSheets — Répartition des prises dans l’escouade', () =
   it('bonus perdus : 2 sur 12 pour nous, 2 sur 8 pour eux', () => {
     expect(sheets.losses).toEqual({ us: { lost: 2, taken: 12 }, them: { lost: 2, taken: 8 } })
   })
+
+  it('`resources` (Vue match) : les sections dans cet ordre, râteliers compris', () => {
+    const rack = { resource: 'rack', key: 'vk78', label: 'VK78 Commando', taken: { us: 2, them: 0 }, squad: [{ xuid: XUID.jgtm, taken: 2 }] }
+    const block: SquadEmpriseBlock = { ...EMPRISE_2209, objects: [...(EMPRISE_2209.objects ?? []), rack] }
+    const s = buildPickupSheets(block, nameOf, ['rack', 'powerup'])
+    expect(s.sections.map((x) => x.resource)).toEqual(['rack', 'powerup'])
+    expect(s.sections[0].lines.find((l) => l.object.key === 'vk78')?.taken).toEqual([2, 0, 0, 0])
+    // Sans `resources`, le bilan de l'onglet : pas de râteliers.
+    expect(buildPickupSheets(block, nameOf).sections.map((x) => x.resource)).toEqual(['powerup', 'power_weapon'])
+  })
 })
 
 describe('buildMatchGrid — match par match', () => {

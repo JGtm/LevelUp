@@ -255,19 +255,19 @@ matchs à re-résumer.
 
 ## 4. Qui lit quoi aujourd'hui
 
-> **Mis à jour le 2026-10-06 (lot L8.2 de `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`) :**
+> **Mis à jour le 2026-10-07 (lot M5.2 de `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`) :** la Vue match lit les socles dans l'Emprise de son match (base), le contrôle des armes spéciales et `weaponTier.ts` sont supprimés. **Mise à jour du 2026-10-06 (lot L8.2 de `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`) :**
 > l'onglet « Usages » des Séries temporelles est devenu l'Emprise solo, le bloc
 > `equipment_usage` est supprimé (code et contrat). Mise à jour précédente : 2026-09-28 (lot L6.6
 > de `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md`). Chemins Go relatifs à
 > `apps/go-api/internal/`, chemins web à `apps/web/src/`.
 
-Deux sortes de lecteurs. Ceux du DOCUMENT DE REJEU (vue match, rejeu 2D) lisent le film et
-voient tout, sans recuisson. Ceux de la BASE (Sessions, Séries temporelles, Escouade) lisent
+Deux sortes de lecteurs. Ceux du DOCUMENT DE REJEU (usage d'équipements de la vue match, rejeu 2D) lisent le film et
+voient tout, sans recuisson. Ceux de la BASE (Sessions, Séries temporelles, Escouade, Emprise de la vue match) lisent
 le résumé persisté (§3) et les niveaux de socle (§7) : jamais mieux que la dernière passe.
 
 ### Lecteurs du document (grain match)
 
-- **Vue match, onglet Arsenal** : `features/match-view/MatchViewTabArsenal.tsx:181` monte
+- **Vue match, onglet « Armes et terrain »** : `features/match-view/MatchViewTabArsenal.tsx` monte
   `MatchEquipmentUsageSection` (`features/match-replay/`), qui lit le document par
   `useMatchReplay`. Le calcul vit dans `features/match-replay/model/equipmentUsageLogic.ts` :
   `grappleLines` (l. 335), `equipmentEpisodes` (l. 337), `equipmentPlacements` deployed ET
@@ -278,8 +278,10 @@ le résumé persisté (§3) et les niveaux de socle (§7) : jamais mieux que la 
   affichées passe par `familyHasAnyTrace` (`equipmentKeptLogic.ts:142`, appelée
   `equipmentUsageLogic.ts:434`) : une famille seulement CONSOMMÉE ouvre sa colonne
   (correction C2 du 2026-09-10).
-- **Socles de la vue match** : `MatchPadControlSection` (`MatchViewTabArsenal.tsx:188`) lit
-  `padPickups` (`model/padControlLogic.ts:184`).
+- **Socles de la vue match** : plus aucun lecteur du document (`MatchPadControlSection` et
+  `padControlLogic.ts` supprimés le 2026-10-07). Les prises par ressource et par objet, et celles sur un
+  emplacement non identifié, se lisent dans l'Emprise du match servie par le Go (`emprise`, lecteur de
+  la base ci-dessous) ; le bloc `weaponTiers` du document n'a plus de lecteur web.
 - **Rejeu 2D** : `equipmentChanges` y est lu par `model/abilityChargeLogic.ts:137`,
   `model/placementTeleport.ts:210`, `model/riftStations.ts:118` et
   `sound/equipmentChangeSound.ts:39` (tous sous `features/match-replay/`).
@@ -478,7 +480,7 @@ La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation
 > et fige la mesure du négatif.
 
 > **CE QUE L'ÉCRAN EN LIT.** Le caractère aléatoire est **servi** par le serveur — champ
-> `weaponTiers.randomStarts` du document de rejeu (vue match) ; le compteur d'agrégat
+> `weaponTiers.randomStarts` du document de rejeu (plus lu par le web depuis le 2026-10-07) ; le compteur d'agrégat
 > `pad_tiers.matches_random_starts` est parti avec le bloc d'usage de Sessions (2026-10-06). Le web n'en tient aucune liste : celle
 > qu'il a tenue une semaine avait déjà divergé.
 
@@ -491,4 +493,3 @@ La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation
 | Écriture INSERT-only | `internal/persist/pad_tiers_persister.go` (table `match_pad_pickups_by_tier`, vue `_latest`) |
 | Rattrapage du parc | `levelup backfill-pad-tiers` (serveur ARRÊTÉ) |
 | Ligne lue par l'Emprise | `internal/analysis/sessionusage/pad_tiers.go` (`PadTierRow`), `internal/analysis/squademprise/` |
-| Vue match (résolution à la requête) | `features/match-replay/model/weaponTier.ts` |
