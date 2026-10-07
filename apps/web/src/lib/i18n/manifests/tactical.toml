@@ -30,6 +30,10 @@ en = "{wins, plural, one {# win} other {# wins}} and {losses, plural, one {# los
 fr = "Sélectionner {map}"
 en = "Select {map}"
 
+[tactical.maps.explorer_link]
+fr = "Voir les matchs de cette carte dans l'Explorateur"
+en = "See this map's matches in the Explorer"
+
 [tactical.maps.selected]
 fr = "Carte sélectionnée"
 en = "Selected map"

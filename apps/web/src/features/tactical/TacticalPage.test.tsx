@@ -38,6 +38,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useNavigate: () => navigate,
     useParams: () => ({ playerSlug: 'JGtm', titleSlug: 'halo_infinite' }),
     useSearch: () => searchCourant,
+    Link: (await import('@/test/linkDouble')).LinkDouble,
   }
 })
 

@@ -12,8 +12,10 @@ package domain
 // TacticalMapCard est une carte de l'ecran d'entree : la ligne du lecteur, plus
 // le verdict de lisibilite.
 type TacticalMapCard struct {
-	MapID     string `json:"map_id"`
-	MapName   string `json:"map_name"`
+	MapID   string `json:"map_id"`
+	MapName string `json:"map_name"`
+	// MapNameFR : le LIBELLÉ CANONIQUE de la carte (platform/duckdb/map_labels.go), celui que
+	// l'Explorateur affiche et compare à `?maps=` — le lien d'une vignette vers l'Explorateur le porte.
 	MapNameFR string `json:"map_name_fr"`
 
 	Matchs    int `json:"matchs"`
