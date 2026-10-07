@@ -116297,3 +116297,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contrat −138 lignes (openapi), −57 (types générés), cinq schémas disparus comme attendu ; le snapshot rattrape aussi les schémas Trends de la base. Gate Go complet vert (six lots, intégration DuckDB 4 ok, lint 0, garde-rails nommés), suite web verte, knip 0.
 
 **Conclusion / prochaine étape** : M4 clos ; M5 (docs, référence des canaux d'équipement, statuts, demande de revue au superviseur, push).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M5 : clôture — Complété (commit et push de `feat/matchview-emprise`)
+
+**Décision technique principale** : documentation alignée sur le code (CHANGELOG et notes de version EN et FR : entrée de la Vue match, phrases devenues fausses sur la riposte, la hauteur, le contrôle des socles et `weaponTier.ts` corrigées) ; référence des canaux d'équipement mise à jour (socles de la Vue match lus dans l'Emprise du match, `weaponTiers` sans lecteur web) ; statuts du plan tous posés ; revue adversariale du diff cumulé demandée au superviseur.
+
+**Résultats observés** : contrat à jour, types générés frais, crochets de pré-envoi verts ; aucun fichier de code modifié depuis le gate de M4 (suites Go et web vertes sur le même arbre).
+
+**Conclusion / prochaine étape** : plan exécuté M0-M5 ; push de la branche pour la CI ; en attente de la revue adversariale et de la décision de fusion du superviseur. Découvertes non traitées : §8 du plan.

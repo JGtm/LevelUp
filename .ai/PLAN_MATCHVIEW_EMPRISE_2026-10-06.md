@@ -24,7 +24,7 @@
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
 > Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D22 fermes, réponses §9)** ;
-> **phase 2 en cours** depuis le 2026-10-07 (signal du superviseur : rebase sur la tête de `feat/v75`
+> **phase 2 exécutée** le 2026-10-07 (M0-M5 clos, revue adversariale demandée au superviseur) (signal du superviseur : rebase sur la tête de `feat/v75`
 > `2668848b1`, qui porte les lots Séries temporelles et Sessions, puis « go » M0-M5 ; push à la fin,
 > CI ; ni merge ni autre rebase). Amendements de M0 : §1.4.
 > Branche : `feat/matchview-emprise`, créée sur `651bbe972` (tête L6 de `feat/ts-usages-emprise`),
@@ -746,21 +746,28 @@ Journal M4 (2026-10-07, exécuteur) :
 
 ### M5 — Clôture · rapide
 
-- [ ] M5.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]` : phrases propres à la
+- [x] M5.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]` : phrases propres à la
   Vue match relevées EN l. 53 — onglet « Weapons and terrain » avec hauteur, contrôle des socles, part
   de chaque équipe — et les lignes riposte / hauteur l. 44-45 si elles citent la Vue match, corrigées ;
   entrée ajoutée) ; `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` (bloc 7.5 : EN l. 32, 33,
   69 ; FR l. 32, 70) ; lignes re-vérifiées au moment d'écrire (L8 et S7 les auront touchées), FR aux
   lignes homologues ; aucune phrase propre aux Séries temporelles ni à Sessions touchée.
-- [ ] M5.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (lecteurs de la Vue match
+- [x] M5.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (lecteurs de la Vue match
   l. 263-281 : socles par l'Emprise du match, `MatchPadControlSection` supprimé) et tableau l. 481
   (`weaponTier.ts` s'il est supprimé).
-- [ ] M5.3 ADR 0036 (fait en M1, vérifié ici) ; aucune ADR neuve.
-- [ ] M5.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
-- [ ] M5.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
+- [x] M5.3 ADR 0036 (fait en M1, vérifié ici) ; aucune ADR neuve.
+- [x] M5.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
+- [~] M5.5 (demandée au superviseur dans le compte rendu de clôture) Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
   sous-agent) — lots à risque : M1 (lecture bornée multi-joueurs, Q21d), M2 (agrégats, ordre D3),
   M4 (contrat).
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
+Journal M5 (2026-10-07, exécuteur) :
+- **M5.1** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`) : entrée « The match view reads the Map control of its match » / « La fiche du match lit l'Emprise de son match » ajoutée après celle de Sessions ; phrases devenues fausses corrigées (niveaux d'arme : `weaponTier.ts` web supprimé ; coordination : plus de riposte sur la fiche du match ; hauteur d'engagement : plus sur la fiche du match ; « Match view reorganised » sans hauteur, socles ni part de chaque équipe). `docs/RELEASE_NOTES.md` + FR (bloc 7.5) : riposte « lue sur l'Escouade », hauteur sans la fiche du match, rubrique « Fiche du match » récrite (distance par arme sans mêlée, onglet qui lit l'Emprise du match), lignes « contrôle des armes spéciales par niveau », « les tournants d'abord » (repli retiré le 2026-09-19) et « la riposte par joueur » retirées. Aucune phrase propre aux Séries temporelles ni à Sessions touchée.
+- **M5.2** `REFERENCE_CANAUX_EQUIPEMENT` : en-tête daté, lecteurs de la Vue match (onglet renommé, socles lus dans l'Emprise du match, `weaponTiers` sans lecteur web), ligne `weaponTier.ts` du tableau retirée.
+- **M5.3** ADR 0036 : `TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse` cité (liste I2 et tableau), vérifié ; aucune ADR neuve.
+- **M5.4** Statuts : M0-M5 statués, M5.5 `[~]` ; §8 relue (six découvertes de M3 ajoutées, aucune traitée).
+- **M5.5** Revue adversariale du diff cumulé (`833ec8e15..` tête) demandée au superviseur : lots à risque M1 (lecture bornée multi-joueurs, Q21d), M2 (agrégats, ordre des fiches), M4 (contrat).
+- **Gate** : aucun fichier de code n'a changé depuis le gate de M4 (documents seulement) ; rejoués après les docs : `openapi-gen -check` à jour, `check-generated-types-fresh` OK, `lefthook run pre-push` vert ; suites Go (six lots, intégration DuckDB) et web (862 fichiers) vertes sur l'arbre de code identique de M4.
 
 ## 7. Reprise de session
 

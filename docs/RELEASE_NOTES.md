@@ -29,8 +29,8 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Net flag grabs** — juggling folded into a 1.5-second window, so picking your own flag back up twice in a second counts once
 - **Assault** — bomb plants, defuses, carriers killed and the rest of the mode's statistics
 - **Rounds are counted as rounds** — on modes decided by rounds, the score shown is the number of rounds won and lost; the API's point score is kept alongside because on those modes it can hand the advantage to the side that lost
-- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? One rule everywhere — Squad and the match view — and support counts the assists between teammates, on the Sessions and over time on the Timeseries
-- **Range and height against your lobby** — your kill range and the height you fight from, read against the whole lobby of each match rather than against the playlist: range roles, height roles, and the engagement height of every kill on the match view
+- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? Read on the Squad, one rule, and support counts the assists between teammates, on the Sessions and over time on the Timeseries
+- **Range and height against your lobby** — your kill range and the height you fight from, read against the whole lobby of each match rather than against the playlist: range roles and height roles
 - **Distance records by weapon** — your longest measured kill with each weapon, on the Synthesis
 - **Starting weapons read right** — a weapon picked up in the first seconds of a life no longer counts as a starting weapon
 
@@ -65,10 +65,8 @@ The biggest release so far. Halo records a film of every match; until now the ap
 **Match view**
 - **One card template for the whole page** — the three tables that were hard to compare became charts
 - **Score over time, per mode** — a round-based mode no longer draws a points curve that contradicts its own result
-- **Distance per weapon**, frag distribution in two levels, and special weapon control broken down by weapon level
-- **Game changers first** — equipment and weapons that changed nothing fold away
-- **A "Weapons and terrain" tab** — kills and weapons, distance, engagement height, equipment usage, pad control and film positions in one place; special weapon control in columns per pad, each team's share as horizontal tracks, and a larger field occupation map you can zoom
-- **Payback per player**, one chart per side
+- **Distance per weapon** (melee left out) and frag distribution in two levels, next to the tools you killed with
+- **A "Weapons and terrain" tab that reads the Map control of the match** — what your team took and what the opponent took, item by item, who in your team took what, what those resources were worth in kills and against the opponent (and why a line is not measured when it is not), what each player did with the equipment, whether each teammate died near someone or alone, and a larger field occupation map you can zoom
 
 **Maps, medals and media**
 - **109 map backgrounds**, converted losslessly and served whatever the format, with Forge zones named 100 %
