@@ -318,6 +318,8 @@ export function resolveEmpriseFilColors(): EmpriseFilColors {
 export interface HabitChartColors {
   resource: (resource: string) => string
   parity: string
+  /** Le gris des soirées hors comparaison (encre atténuée du thème). */
+  muted: string
   theme: EChartsThemeColors
 }
 
@@ -333,6 +335,8 @@ export interface HabitChartText {
   eveningOf: (date: string) => string
   pointTip: (resource: string, evening: string, value: string, median: string | null) => string
   medianTip: (resource: string, value: string) => string
+  /** La raison d'une soirée hors comparaison, ses familles de mode jointes (« Bases, Drapeau »). */
+  notComparableTip: (families: string) => string
 }
 
 /** Géométrie de la maquette (`renderHabChart` : 520 × 220, marges 36 / 58, haut 12, pied 30). */
@@ -342,10 +346,11 @@ const HABIT_TOP = 12
 const HABIT_FOOT = 30
 
 /**
- * Une courbe par ressource : une soirée par point, médiane des précédentes en pointillé fin. Le
- * point grossi et la valeur au bout sont posés sur CE SOIR (la soirée affichée), jamais sur la
- * dernière soirée passée qui a une part : sans part ce soir, ni l'un ni l'autre (constat R4 de la
- * revue L6.1).
+ * Une courbe par ressource : une soirée COMPARABLE par point, médiane des précédentes en pointillé
+ * fin ; la courbe enjambe les soirées hors comparaison, posées à part en points gris (liseré de la
+ * ressource) dont l'infobulle dit la raison. Le point grossi et la valeur au bout sont posés sur
+ * CE SOIR (la soirée affichée), jamais sur la dernière soirée passée qui a une part : sans part ce
+ * soir, ni l'un ni l'autre (constat R4 de la revue L6.1).
  */
 function habitSeries(
   points: HabitPoint[],
@@ -358,21 +363,31 @@ function habitSeries(
   const color = c.resource(resource)
   const label = t.resourceLabel(resource)
   const med = median == null ? null : t.pctFmt(median)
+  const eveningName = (p: HabitPoint) =>
+    p.current ? t.tonight.charAt(0).toUpperCase() + t.tonight.slice(1) : t.eveningOf(t.dateOf(p.startTime))
   const data = points.map((p) => {
     const v = p.shares[resource]
-    if (v == null) return null
-    const evening = p.current ? t.tonight.charAt(0).toUpperCase() + t.tonight.slice(1) : t.eveningOf(t.dateOf(p.startTime))
+    if (v == null || !p.comparable) return null
     return {
       value: v,
       symbol: 'circle',
       symbolSize: 6,
       itemStyle: { color, borderColor: c.theme.card, borderWidth: 1 },
-      tip: t.pointTip(label, evening, t.pctFmt(v), med),
+      tip: t.pointTip(label, eveningName(p), t.pctFmt(v), med),
+    }
+  })
+  const apart = points.map((p) => {
+    const v = p.shares[resource]
+    if (v == null || p.comparable) return null
+    return {
+      value: v,
+      itemStyle: { color: c.muted, borderColor: color, borderWidth: 1.5 },
+      tip: `${t.pointTip(label, eveningName(p), t.pctFmt(v), null)}\n${t.notComparableTip(p.families.join(', '))}`,
     }
   })
   const tonight = points.findIndex((p) => p.current)
   const base = lineSeries(label, withEndPoint(data, c.theme.card, { at: tonight, size: 11 }), color, t.pctIntFmt)
-  return {
+  const line = {
     ...base,
     symbol: 'circle',
     // ECharts écrit la valeur au bout sur le dernier point NON nul : sans part ce soir, elle
@@ -389,14 +404,17 @@ function habitSeries(
       ],
     },
   }
+  if (apart.every((d) => d == null)) return [line]
+  return [line, { name: label, type: 'scatter' as const, data: apart, symbol: 'circle', symbolSize: 7, z: 4 }]
 }
 
 /**
  * buildHabitOption — « Contrôle des ressources, soirée après soirée » (maquette,
  * `renderHabChart('habPrises', …)`) : une courbe par ressource (couleurs `resource-*`), une
- * soirée par point, ce soir à droite dans une colonne grisée, la médiane des soirées précédentes
- * en pointillé fin de la couleur de chaque courbe (quand elle existe), le trait 50 %, la valeur
- * entière au bout ; sous l'axe, la date de chaque soirée, « ce soir » en gras.
+ * soirée par point (gris hors comparaison), ce soir à droite dans une colonne grisée, la médiane
+ * des soirées précédentes comparables en pointillé fin de la couleur de chaque courbe (quand elle
+ * existe), le trait 50 %, la valeur entière au bout ; sous l'axe, la date de chaque soirée, « ce
+ * soir » en gras.
  */
 export function buildHabitOption(
   resources: string[],
@@ -434,7 +452,7 @@ export function buildHabitOption(
     },
     yAxis: yAxisPct(t.pctIntFmt, tc),
     series: [
-      ...resources.map((r, i) => habitSeries(points, r, medians[r] ?? null, i === 0, c, t)),
+      ...resources.flatMap((r, i) => habitSeries(points, r, medians[r] ?? null, i === 0, c, t)),
       tonightColumn(points.length, tc.splitAreaB),
     ],
     legend: { show: false },
@@ -444,5 +462,6 @@ export function buildHabitOption(
 
 /** Les couleurs du graphe d'habitude, résolues au rendu (thème, palette). */
 export function resolveHabitColors(): HabitChartColors {
-  return { resource: resolveResourceColor, parity: resolveToken('warning'), theme: getEChartsThemeColors() }
+  const theme = getEChartsThemeColors()
+  return { resource: resolveResourceColor, parity: resolveToken('warning'), muted: theme.axisLabel, theme }
 }

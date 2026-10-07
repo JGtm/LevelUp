@@ -43,13 +43,13 @@ export function ResourceControlCard({ rows, t, compact = false }: { rows: Contro
         const n = r.us + r.them
         return {
           key: r.resource,
-          label: res.label,
+          label: res.pisteTitle,
           sublabel: res.pisteSub,
           dot: resourceInk(r.resource),
           us: r.us,
           them: r.them,
-          usTip: t.control.segmentTip(t.ourSide, res.label, res.pisteSub, r.us, n, t.pctFmt(r.share * 100)),
-          themTip: t.control.segmentTip(t.opponent, res.label, res.pisteSub, r.them, n, t.pctFmt(100 - r.share * 100)),
+          usTip: t.control.segmentTip(t.ourSide, res.pisteTitle, res.pisteSub, r.us, n, t.pctFmt(r.share * 100)),
+          themTip: t.control.segmentTip(t.opponent, res.pisteTitle, res.pisteSub, r.them, n, t.pctFmt(100 - r.share * 100)),
         }
       }),
     [rows, t],

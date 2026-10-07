@@ -11774,6 +11774,8 @@ export interface components {
             us: number;
         };
         SquadEmpriseEvening: {
+            comparable: boolean;
+            families: string[] | null;
             /** Format: int64 */
             match_count: number;
             /** Format: int64 */

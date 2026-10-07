@@ -10,9 +10,10 @@
  * seule — la grille match par match exige au moins une ligne lue au film (la seule ligne des
  * frags ne fait pas une grille). Aucun branchement sur le titre : tout se lit dans le bloc.
  */
-import type { SquadEmpriseBlock, SquadEmprisePlacement } from '@/lib/api/types'
+import type { SquadEmpriseBlock, SquadEmprisePlacement, SquadFormesBlock } from '@/lib/api/types'
 
-import { buildControlRows, buildMatchGrid, buildPickupSheets, type MatchGrid, type PickupSheets } from './emprise.logic'
+import { hasSquadObjective } from '../objectif/objectif.logic'
+import { buildControlRows, buildMatchGrid, buildPickupSheets, squadPickupSheets, type MatchGrid, type PickupSheets } from './emprise.logic'
 import { buildHabitView, type HabitView } from './habit.logic'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from './production.logic'
 
@@ -65,7 +66,7 @@ export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): 
   if (!block) return false
   const s = empriseSections({
     controlRows: buildControlRows(block),
-    sheets: buildPickupSheets(block, (o) => o.key),
+    sheets: squadPickupSheets(buildPickupSheets(block, (o) => o.key)),
     grid: buildMatchGrid(block, new Map()),
     production: buildProductionRows(block),
     yieldRows: buildYieldRows(block),
@@ -73,4 +74,15 @@ export function empriseHasContent(block: SquadEmpriseBlock | null | undefined): 
     placement: block.placement,
   })
   return Object.values(s).some(Boolean)
+}
+
+/**
+ * L'onglet Emprise de l'Escouade a-t-il quelque chose à montrer ? Les blocs du film, ou l'objectif
+ * (arrivé de Contributions, il se lit sur la feuille de match : présent aussi sans film).
+ */
+export function empriseTabHasContent(data: {
+  squad_emprise?: SquadEmpriseBlock | null
+  formes_retenues?: SquadFormesBlock | null
+}): boolean {
+  return empriseHasContent(data.squad_emprise) || hasSquadObjective(data.formes_retenues)
 }

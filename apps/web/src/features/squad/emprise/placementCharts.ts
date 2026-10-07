@@ -68,6 +68,15 @@ export const Y_MAX = 5.5
 export const KILLS_CAP = 5
 /** Décalage vertical maximal (± 0,25) qui décolle les points de même compte. */
 export const JITTER_MAX = 0.25
+/**
+ * Deux gros points de joueur se recouvrent sous 0,06 portée d'écart en X et une demi-frag en Y
+ * (diamètre de 18 à 38 px sur un tracé de ~1 200 × 330 px) : leurs médianes sont souvent égales à
+ * l'unité près (médiane de frags entière), le dernier tracé cachait les autres. Un tel groupe est
+ * écarté verticalement, pas de 0,55 frag, centré sur sa valeur ; l'infobulle garde les vraies.
+ */
+export const MEDIAN_OVERLAP_X = 0.06
+export const MEDIAN_OVERLAP_Y = 0.5
+export const MEDIAN_SPREAD = 0.55
 /** Une valeur s'écrit dans son segment à partir de 8 %. */
 export const SEGMENT_LABEL_MIN_PCT = 8
 
@@ -209,11 +218,49 @@ function lifeDatum(p: Player, l: SquadEmprisePlacementLife, o: PlacementChartOpt
   }
 }
 
+/** La position affichée du gros point d'un joueur (plafonnée comme les vies), avant écartement. */
+function medianSpot(p: Player): [number, number] | null {
+  if (p.median_radar_ratio == null || p.median_kills == null) return null
+  return [Math.min(p.median_radar_ratio, X_MAX), Math.min(p.median_kills, KILLS_CAP)]
+}
+
+/**
+ * medianOffsets — le décalage vertical d'affichage du gros point de chaque joueur (par xuid) : les
+ * gros points qui se recouvrent (`MEDIAN_OVERLAP_X` / `MEDIAN_OVERLAP_Y`, de proche en proche)
+ * forment un groupe, écarté de `MEDIAN_SPREAD` dans l'ordre des joueurs du bloc, centré sur sa
+ * valeur et gardé dans l'axe. Déterministe ; 0 pour un gros point seul.
+ */
+export function medianOffsets(players: readonly Player[]): Map<string, number> {
+  const spots = players.flatMap((p) => {
+    const s = medianSpot(p)
+    return s ? [{ xuid: p.xuid, x: s[0], y: s[1] }] : []
+  })
+  const near = (a: (typeof spots)[number], b: (typeof spots)[number]) =>
+    Math.abs(a.x - b.x) < MEDIAN_OVERLAP_X && Math.abs(a.y - b.y) < MEDIAN_OVERLAP_Y
+  const groups: (typeof spots)[] = []
+  for (const s of spots) {
+    const hits = groups.filter((g) => g.some((m) => near(m, s)))
+    const merged = [...hits.flat(), s]
+    for (const h of hits) groups.splice(groups.indexOf(h), 1)
+    groups.push(merged)
+  }
+  const out = new Map<string, number>()
+  const order = new Map(spots.map((s, i) => [s.xuid, i]))
+  for (const g of groups) {
+    g.sort((a, b) => (order.get(a.xuid) ?? 0) - (order.get(b.xuid) ?? 0))
+    const centre = g.reduce((acc, m) => acc + m.y, 0) / g.length
+    const half = ((g.length - 1) * MEDIAN_SPREAD) / 2
+    const lo = Math.min(Math.max(centre - half, Y_MIN + JITTER_MAX), Y_MAX - JITTER_MAX - 2 * half)
+    g.forEach((m, i) => out.set(m.xuid, g.length > 1 ? lo + i * MEDIAN_SPREAD - m.y : 0))
+  }
+  return out
+}
+
 /** Le gros point d'un joueur : médiane X × médiane des frags de ses vies mesurées. */
-function medianDatum(p: Player, ratio: number, kills: number, o: PlacementChartOpts): TipDatum {
+function medianDatum(p: Player, ratio: number, kills: number, offset: number, o: PlacementChartOpts): TipDatum {
   const { t, formats } = o
   return {
-    value: [Math.min(ratio, X_MAX), Math.min(kills, KILLS_CAP)],
+    value: [Math.min(ratio, X_MAX), Math.min(kills, KILLS_CAP) + offset],
     symbolSize: medianSymbolSize(p.lives_measured),
     tip: [
       `<b>${escapeHtml(p.gamertag)}</b> · ${t.life.medianHead(p.lives_measured)}`,
@@ -224,10 +271,11 @@ function medianDatum(p: Player, ratio: number, kills: number, o: PlacementChartO
 }
 
 /**
- * Les deux séries d'un joueur : le semis de ses vies, puis son gros point au-dessus (`z`). MÊME
- * NOM pour les deux : un clic sur la légende isole ou masque les deux ensemble.
+ * Les deux séries d'un joueur : le semis de ses vies, puis son gros point au-dessus (`z`), décalé
+ * de `offset` à l'affichage (`medianOffsets`). MÊME NOM pour les deux : un clic sur la légende
+ * isole ou masque les deux ensemble.
  */
-function playerSeries(p: Player, c: PlacementColors, o: PlacementChartOpts): unknown[] {
+function playerSeries(p: Player, offset: number, c: PlacementColors, o: PlacementChartOpts): unknown[] {
   const color = c.player(p.gamertag)
   const series: unknown[] = [
     {
@@ -242,7 +290,7 @@ function playerSeries(p: Player, c: PlacementColors, o: PlacementChartOpts): unk
       name: p.gamertag,
       type: 'scatter',
       z: 6,
-      data: [medianDatum(p, p.median_radar_ratio, p.median_kills, o)],
+      data: [medianDatum(p, p.median_radar_ratio, p.median_kills, offset, o)],
       itemStyle: { color, borderColor: c.theme.text, borderWidth: 2 },
     })
   }
@@ -332,6 +380,7 @@ export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColo
   const { t, formats } = o
   const tc = c.theme
   const axis = getAxisBase(tc)
+  const offsets = medianOffsets(players)
   return {
     backgroundColor: CHART_BG,
     animation: false,
@@ -367,7 +416,7 @@ export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColo
     },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: tipOf },
     series: [
-      ...players.flatMap((p) => playerSeries(p, c, o)),
+      ...players.flatMap((p) => playerSeries(p, offsets.get(p.xuid) ?? 0, c, o)),
       radarMarker(block.isolated_from_ratio, c, t),
       quadrantsMarker(block, c, t),
     ],

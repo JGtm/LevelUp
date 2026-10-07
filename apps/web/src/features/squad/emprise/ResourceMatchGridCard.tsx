@@ -4,7 +4,7 @@
  * l'onglet, `renderBand`).
  *
  * Colonnes = les matchs de la soirée : heure, carte, mode, pastille « Victoire 3–0 » (S9) et badge du
- * drapeau de dominance quand il existe. La table elle-même (lignes, cases, râteliers repliés,
+ * drapeau de dominance quand il existe et que l'appelant le demande (pas sur l'Escouade). La table elle-même (lignes, cases, râteliers repliés,
  * infobulles) est `ResourceGridTable`, partagée avec la grille par carte des Séries temporelles.
  */
 import { useMemo } from 'react'
@@ -37,7 +37,13 @@ interface Props {
   itemName: (row: GridRow) => string
   /** Le nom d'un joueur de l'escouade par xuid (vide = inconnu). */
   playerName: (xuid: string) => string
-  dominanceLabels: Record<DominanceValue, string>
+  /** Les libellés du drapeau de dominance ; absents : pas de badge de dominance sous les matchs. */
+  dominanceLabels?: Record<DominanceValue, string>
+  /**
+   * Infobulle « Équipe : … » des seuls joueurs nommés (Escouade) : les prises des joueurs inconnus
+   * n'y figurent pas. Faux : elles s'y lisent en « reste de l'équipe ».
+   */
+  namedOnly?: boolean
   outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
@@ -48,7 +54,17 @@ interface Props {
   compact?: boolean
 }
 
-export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLabels, outcomeLabels, locale, t, compact = false }: Props) {
+export function ResourceMatchGridCard({
+  grid,
+  itemName,
+  playerName,
+  dominanceLabels,
+  outcomeLabels,
+  locale,
+  t,
+  compact = false,
+  namedOnly = false,
+}: Props) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -79,7 +95,8 @@ export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLab
   }))
   const whoText = (who: GridWho[]) =>
     who
-      .map((w) => ({ name: w.xuid ? playerName(w.xuid) || t.grid.restLower : t.grid.restLower, n: w.taken }))
+      .map((w) => ({ name: (w.xuid && playerName(w.xuid)) || (namedOnly ? '' : t.grid.restLower), n: w.taken }))
+      .filter((w) => w.name !== '')
       .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
       .map((w) => `${w.name} ${w.n}`)
       .join(', ')
@@ -116,13 +133,13 @@ function MatchHead({
   t,
 }: {
   m: EmpriseMatchInfo
-  dominanceLabels: Record<DominanceValue, string>
+  dominanceLabels?: Record<DominanceValue, string>
   outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
 }) {
   const result = m.outcome ? `${outcomeLabels[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null
-  const dom = m.dominance ? dominanceLabels[m.dominance] : null
+  const dom = m.dominance && dominanceLabels ? dominanceLabels[m.dominance] : null
   const domInk = m.dominance ? tokenCssVar(DOMINANCE_COLOR_TOKENS[m.dominance]) : ''
   return (
     <div className="pb-[3px] text-center text-[11px] leading-tight text-muted-foreground" data-testid={`emprise-grid-head-${m.matchId}`}>

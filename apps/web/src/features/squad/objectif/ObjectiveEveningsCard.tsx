@@ -1,5 +1,5 @@
 /**
- * ObjectiveEveningsCard — « Rapport de force, soirée après soirée » (Escouade › Contributions,
+ * ObjectiveEveningsCard — « Rapport de force, soirée après soirée » (Escouade › Emprise,
  * section Objectif ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6 / D7,
  * maquette C3EW).
  *
@@ -7,9 +7,10 @@
  * composition d'au moins trois matchs à objectif (tous modes, drapeau neutre exclu — calcul Go),
  * puis ce soir à droite dans une colonne grisée ; la médiane des soirées précédentes en
  * pointillé fin de la couleur de chaque courbe ; le trait 50 % ; la valeur au bout ; sous chaque
- * soirée, la date, la barre victoires / défaites, « x sur y » et les modes. Une soirée sous trois
- * matchs à objectif n'a pas de point : la carte le dit (note de la maquette), sans graphe ; une
- * première soirée à objectif n'a pas d'historique : idem.
+ * soirée, la date, la barre victoires / défaites, « x sur y » et les modes (abréviations
+ * expliquées dans la légende). Une soirée sous trois matchs à objectif n'a pas de point : la carte
+ * le dit dans le bloc placeholder (`EmptyStateNotice` tiretée), sans graphe ; une première soirée à
+ * objectif n'a pas d'historique : idem.
  */
 import { useCallback, useMemo } from 'react'
 
@@ -23,8 +24,8 @@ import type { Locale } from '@/lib/i18n/locale'
 import { buildEveningsView, eveningDate, familyMix, type EveningPoint } from './objectif.logic'
 import { buildEveningsOption } from './eveningsChart'
 import { resolveObjectifColors } from './objectifCharts'
-import { ObjectifFrame, ObjectifLegend, ObjectifNote } from './ObjectifFrame'
-import type { ObjectifNote as NoteText, ObjectifText } from './objectifStrings'
+import { ObjectifFrame, ObjectifLegend, ObjectifPlaceholder, type ObjectifLegendItem } from './ObjectifFrame'
+import type { ObjectifNotice, ObjectifText } from './objectifStrings'
 
 /** Hauteur du graphe (maquette : 760 × 290). */
 const EVENINGS_HEIGHT = 290
@@ -41,6 +42,7 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
   const abbr = t.evenings.familyAbbr
   const mixOf = useCallback((p: EveningPoint) => familyMix(p.families, abbr), [abbr])
 
+  const points = view.kind === 'chart' ? view.points : null
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -52,13 +54,13 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
           { kind: 'parity', label: t.parity, color: tokenCssVar('warning') },
           { kind: 'median', label: t.evenings.median },
           { kind: 'pair', label: t.evenings.winsLosses, colors: [tokenCssVar('outcome-win'), tokenCssVar('outcome-loss')] },
+          ...abbreviationItems(points ?? [], abbr, familyLabel, t),
         ]}
       />
     ),
-    [t],
+    [t, points, abbr, familyLabel],
   )
 
-  const points = view.kind === 'chart' ? view.points : null
   const series = useMemo<ChartSeries<EveningPoint>[]>(
     () => (points ? [{ key: 'objective-evenings', datapoints: points }] : []),
     [points],
@@ -83,16 +85,15 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
   )
 
   if (view.kind === 'belowMinimum') {
-    return <EveningsNoteCard note={t.evenings.belowMinimum(view.matches, view.below, view.withObjective)} t={t} />
+    return <EveningsPlaceholderCard notice={t.evenings.belowMinimum(view.matches, view.below, view.withObjective)} t={t} />
   }
   if (view.kind === 'noHistory') {
     const c = view.current
     const pct = (v: number | null) => (v == null ? '—' : t.pctFmt(v))
-    const note = t.evenings.noHistory(pct(c.shares.take), pct(c.shares.defend), pct(c.shares.hold), c.wins, c.matches)
-    return <EveningsNoteCard note={note} t={t} />
+    const notice = t.evenings.noHistory(pct(c.shares.take), pct(c.shares.defend), pct(c.shares.hold), c.wins, c.matches)
+    return <EveningsPlaceholderCard notice={notice} t={t} />
   }
 
-  const abbrLegend = abbreviationKey(view.points, abbr, familyLabel, t)
   return (
     <div className="min-w-0" data-testid="objective-evenings">
       <ChartCard
@@ -107,35 +108,33 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
         renderer="svg"
         buildOption={buildOption}
         legend={legend}
-      >
-        <div className="px-3 pb-3">
-          <ObjectifNote note={t.evenings.history(view.points.length - 1, abbrLegend)} testId="objective-evenings-note" />
-        </div>
-      </ChartCard>
+      />
     </div>
   )
 }
 
-/** La carte sans graphe : la note dit pourquoi (soirée sous le minimum, pas d'historique). */
-function EveningsNoteCard({ note, t }: { note: NoteText; t: ObjectifText }) {
+/** La carte sans graphe : le bloc placeholder dit pourquoi (soirée sous le minimum, pas d'historique). */
+function EveningsPlaceholderCard({ notice, t }: { notice: ObjectifNotice; t: ObjectifText }) {
   return (
     <ObjectifFrame title={t.evenings.title} info={t.evenings.info} testId="objective-evenings">
-      <ObjectifNote note={note} testId="objective-evenings-note" />
+      <ObjectifPlaceholder notice={notice} testId="objective-evenings-note" />
     </ObjectifFrame>
   )
 }
 
-/** La clé des abréviations, dans l'ordre alphabétique des abréviations (maquette : « B : Bases, D : Drapeau »). */
-function abbreviationKey(
+/**
+ * La clé des abréviations de modes écrites sous chaque soirée, en entrées de légende, dans l'ordre
+ * alphabétique des abréviations (maquette : « B : Bases », « D : Drapeau »).
+ */
+function abbreviationItems(
   points: EveningPoint[],
   abbr: Record<string, string>,
   familyLabel: (family: string) => string,
   t: ObjectifText,
-): string {
+): ObjectifLegendItem[] {
   const families = [...new Set(points.flatMap((p) => p.families.map((f) => f.family)))]
   return families
     .map((f) => ({ a: abbr[f] ?? f, name: familyLabel(f) }))
     .sort((x, y) => x.a.localeCompare(y.a))
-    .map((x) => t.evenings.abbrItem(x.a, x.name))
-    .join(', ')
+    .map((x) => ({ kind: 'text' as const, label: t.evenings.abbrItem(x.a, x.name) }))
 }

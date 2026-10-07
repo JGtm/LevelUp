@@ -107,7 +107,10 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     afficher()
     const control = within(screen.getByTestId('match-emprise-control'))
     expect((control.getByTestId('piste-camps-row-powerup|overshield').firstElementChild as HTMLElement).dataset.indent).toBe('true')
-    expect(control.getByTestId('piste-camps-row-powerup').textContent).toContain('prises · 10 socles vidés')
+    const bonus = control.getByTestId('piste-camps-row-powerup').textContent
+    expect(bonus).toContain('Prises de bonus')
+    expect(bonus).toContain('10 socles vidés')
+    expect(bonus).not.toContain('prises ·')
   })
 
   it('24/07 : la ligne des prises non identifiées sous les pistes', () => {

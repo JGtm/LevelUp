@@ -86,29 +86,25 @@ export function ProductionCard({ rows, t, compact, pending, notes }: Props) {
 }
 
 function pisteOf(r: ProductionRow, t: EmpriseText, compact: ProductionCompact | undefined): PisteCampsRow {
-  const res = t.resources[r.resource]
-  const sub = res.productionSub
+  const title = t.resources[r.resource].productionTitle
   const n = r.kills.us + r.kills.them
   const share = (r.kills.us / n) * 100
   return {
     key: r.resource,
-    label: res.label,
-    sublabel: sub,
+    label: title,
     dot: resourceInk(r.resource),
     us: r.kills.us,
     them: r.kills.them,
-    usTip: t.production.segmentTip(t.ourSide, sub, r.kills.us, n, t.pctFmt(share)),
-    themTip: t.production.segmentTip(t.opponent, sub, r.kills.them, n, t.pctFmt(100 - share)),
+    usTip: t.production.segmentTip(t.ourSide, title, r.kills.us, n, t.pctFmt(share)),
+    themTip: t.production.segmentTip(t.opponent, title, r.kills.them, n, t.pctFmt(100 - share)),
     below: r.exposure ? <ExposureLines exposure={r.exposure} resource={r.resource} t={t} compact={compact} /> : undefined,
   }
 }
 
 function pendingOf(p: ProductionPending, t: EmpriseText, compact: ProductionCompact | undefined): PisteCampsRow {
-  const res = t.resources[p.resource]
   return {
     key: p.resource,
-    label: res.label,
-    sublabel: res.productionSub,
+    label: t.resources[p.resource].productionTitle,
     dot: resourceInk(p.resource),
     us: 0,
     them: 0,

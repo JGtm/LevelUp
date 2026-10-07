@@ -1,20 +1,23 @@
 /**
  * ObjectifFrame — le cadre commun des cartes d'objectif rendues en DOM (lot L3 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : même chrome que `ChartCard` (titre et aide ⓘ,
- * contenu centré verticalement, légende en pied de carte, centrée, sans filet de séparation —
- * spec S2 et norme UI des blocs graphiques), pour que les
- * cartes en DOM et les cartes ECharts de la section se lisent comme une seule famille.
+ * contenu centré verticalement, légende en pied de carte, centrée, DANS la carte et sans filet :
+ * une légende ne s'isole jamais), pour que les cartes en DOM et les cartes ECharts de la section
+ * se lisent comme une seule famille.
+ *
+ * `bare` : des fiches posées à même la section, comme les médailles de l'Escouade — ni cadre ni
+ * titre (titre et aide sont portés par l'intertitre de la section), légende centrée dessous.
  *
  * ObjectifLegend — la légende de la maquette C3EW : pastilles carrées, paire victoire /
  * défaite, trait 50 % en pointillé vertical, médiane en pointillé horizontal.
- * ObjectifNote — l'encadré en pointillé de la maquette (début en gras, suite en clair).
+ * ObjectifPlaceholder — le bloc qui remplace un graphe absent (`EmptyStateNotice` tiretée).
  */
 import type { ReactNode } from 'react'
 
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { tokenCssVar } from '@/lib/accessibility'
 
-import type { ObjectifNote as NoteText } from './objectifStrings'
+import type { ObjectifNotice as NoticeText } from './objectifStrings'
 
 export function ObjectifFrame({
   title,
@@ -22,13 +25,23 @@ export function ObjectifFrame({
   legend,
   children,
   testId,
+  bare = false,
 }: {
   title: string
   info: string
   legend?: ReactNode
   children: ReactNode
   testId?: string
+  bare?: boolean
 }) {
+  if (bare) {
+    return (
+      <div className="flex min-w-0 flex-col gap-3" data-testid={testId}>
+        {children}
+        {legend != null && <div data-testid="objectif-legend">{legend}</div>}
+      </div>
+    )
+  }
   return (
     <div className="flex h-full min-w-0 flex-col rounded-lg border border-border bg-card" data-testid={testId}>
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
@@ -41,7 +54,7 @@ export function ObjectifFrame({
         <div className="my-auto flex flex-col gap-3">{children}</div>
       </div>
       {legend != null && (
-        <div className="flex-none px-3 pb-2" data-testid="objectif-legend">
+        <div className="flex-none px-3 pb-3 pt-1" data-testid="objectif-legend">
           {legend}
         </div>
       )}
@@ -62,6 +75,8 @@ export type ObjectifLegendItem =
   | { kind: 'hatch'; label: string }
   // « Frags obtenus avec les ressources » : la barre fine (4 px de haut, maquette).
   | { kind: 'thin'; label: string; color: string }
+  // Une entrée sans marque : la clé d'une abréviation écrite sous le graphe (« B : Bases »).
+  | { kind: 'text'; label: string }
 
 export function ObjectifLegend({ items, ariaLabel }: { items: ObjectifLegendItem[]; ariaLabel: string }) {
   return (
@@ -81,6 +96,8 @@ export function ObjectifLegend({ items, ariaLabel }: { items: ObjectifLegendItem
 
 function LegendMark({ item }: { item: ObjectifLegendItem }) {
   switch (item.kind) {
+    case 'text':
+      return null
     case 'square':
       return <span className="inline-block h-[11px] w-[11px] rounded-[2px]" style={{ backgroundColor: item.color }} aria-hidden />
     case 'pair':
@@ -133,19 +150,11 @@ function LegendMark({ item }: { item: ObjectifLegendItem }) {
   }
 }
 
-/** L'encadré de note de la maquette (bordure pointillée `info`). */
-export function ObjectifNote({ note, testId }: { note: NoteText; testId?: string }) {
+/** Le bloc qui remplace un graphe absent : la norme « bloc placeholder » (`EmptyStateNotice` tiretée). */
+export function ObjectifPlaceholder({ notice, testId }: { notice: NoticeText; testId?: string }) {
   return (
-    <div
-      className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground"
-      style={{
-        borderColor: tokenCssVar('info'),
-        backgroundColor: `color-mix(in oklab, ${tokenCssVar('info')} 5%, transparent)`,
-      }}
-      data-testid={testId}
-    >
-      {note.lead && <span className="font-medium text-foreground">{note.lead}</span>}
-      {note.rest}
+    <div data-testid={testId}>
+      <EmptyStateNotice title={notice.title} description={notice.description} />
     </div>
   )
 }

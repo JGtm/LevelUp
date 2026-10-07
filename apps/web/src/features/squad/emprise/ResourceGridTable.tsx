@@ -119,7 +119,7 @@ function SectionRows({
       </button>
     </div>
   ) : (
-    <SummaryLabel resource={s.resource} label={res.label} sub={res.gridSub} />
+    <SummaryLabel resource={s.resource} label={res.gridTitle} />
   )
   return (
     <>
@@ -142,7 +142,7 @@ function SectionRows({
         })}
       {s.kills && (
         <GridLine
-          label={<SummaryLabel resource={s.resource} label={res.label} sub={t.grid.killsSub} />}
+          label={<SummaryLabel resource={s.resource} label={t.grid.killsName} />}
           row={s.kills}
           role="kills"
           name={t.grid.killsName}
@@ -197,14 +197,13 @@ function ResourceDot({ resource }: { resource: string }) {
   )
 }
 
-function SummaryLabel({ resource, label, sub }: { resource: string; label: string; sub: string }) {
+function SummaryLabel({ resource, label }: { resource: string; label: string }) {
   return (
     <div className="flex flex-col justify-center text-[12.5px] leading-tight">
       <span>
         <ResourceDot resource={resource} />
         {label}
       </span>
-      <small className="text-[11px] text-muted-foreground">{sub}</small>
     </div>
   )
 }
@@ -230,7 +229,8 @@ function cellTip(
       return `${head}\n${absent}`
     case 'value': {
       const lines = [head, t.grid.cellTip(name, cell.us, cell.them, t.pctFmt(cell.share * 100))]
-      if (cell.who.length > 0) lines.push(t.grid.whoFmt(whoText(cell.who)))
+      const who = cell.who.length > 0 ? whoText(cell.who) : ''
+      if (who) lines.push(t.grid.whoFmt(who))
       if (cell.padsEmptied) lines.push(t.grid.padsFmt(cell.padsEmptied, cell.us + cell.them))
       return lines.join('\n')
     }

@@ -103,10 +103,12 @@ describe('SquadRangeRolesCard', () => {
     expect(markLine.data[0].yAxis).toBe(0)
   })
 
-  it('écrit la couverture en UNE LIGNE de pied, et rien d’autre sous le graphe', () => {
+  it('rien sous le graphe : ni légende ajoutée (point creux, tendance), ni compte de frags mesurés', () => {
     renderWithProviders(<SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster} />)
-    expect(screen.getByTestId('squad-portee-couverture').textContent).toContain('412')
-    expect(screen.getByTestId('squad-portee-couverture').textContent).toContain('544')
+    expect(screen.queryByTestId('squad-portee-couverture')).toBeNull()
+    expect(screen.queryByTestId('squad-portee-legende')).toBeNull()
+    expect(screen.queryByText(/frags mesurés/)).toBeNull()
+    expect(screen.queryByText(/tendance \(/)).toBeNull()
   })
 
   it('la bande des rôles laisse les quatre premiers matchs SANS RÔLE', () => {

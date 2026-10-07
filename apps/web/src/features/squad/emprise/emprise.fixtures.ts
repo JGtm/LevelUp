@@ -267,6 +267,8 @@ function evening(label: string, start: string, bonus: [number, number], power: [
     start_time: start,
     match_count: 6,
     measured_matches: 6,
+    comparable: true,
+    families: ['Assassin', 'Drapeau'],
     shares: [share('powerup', bonus), share('power_weapon', power)],
   }
 }
