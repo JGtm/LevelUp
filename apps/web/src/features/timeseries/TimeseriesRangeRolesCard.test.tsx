@@ -4,8 +4,8 @@
  * Ce que ces tests cadenassent : un bloc absent ou sans profil rend un ÉTAT VIDE NOMMÉ (film
  * requis) et jamais un nuage à zéro point ; le nuage est SOLO (une seule série de points,
  * aucune légende de séries — il n'y a personne à nommer) ; l'axe X porte les étiquettes
- * « #N · carte » du plus ancien au plus récent ; un point sous le plancher se dessine creux ;
- * et la couverture est en pied, en une ligne.
+ * « #N · carte » du plus ancien au plus récent, sans titre d'axe ; un point sous le plancher se
+ * dessine creux ; et aucun dénominateur (« N frags mesurés sur M ») n'est écrit dans le bloc.
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -54,7 +54,7 @@ describe('TimeseriesRangeRolesCard', () => {
   it('rend un ÉTAT VIDE NOMMÉ quand le bloc est absent', () => {
     renderWithProviders(<TimeseriesRangeRolesCard bloc={undefined} />)
     expect(screen.getByText('Aucune portée mesurée')).toBeInTheDocument()
-    expect(screen.queryByTestId('timeseries-portee-couverture')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('timeseries-portee-legende')).not.toBeInTheDocument()
   })
 
   it('rend un ÉTAT VIDE NOMMÉ quand aucun profil n’est servi', () => {
@@ -80,7 +80,9 @@ describe('TimeseriesRangeRolesCard', () => {
       />,
     )
     const opt = await option()
-    expect((opt.xAxis as { data: string[] }).data).toEqual(['#1 · Live Fire', '#2 · Aquarius'])
+    const xAxis = opt.xAxis as { data: string[]; name: string }
+    expect(xAxis.data).toEqual(['#1 · Live Fire', '#2 · Aquarius'])
+    expect(xAxis.name).toBe('')
   })
 
   it('dessine CREUX un match sous le plancher de mesure', async () => {
@@ -96,10 +98,9 @@ describe('TimeseriesRangeRolesCard', () => {
     expect(nuage.data[1].itemStyle.color).not.toBe('transparent')
   })
 
-  it('porte la couverture en pied, en une ligne', () => {
+  it('n’écrit aucun dénominateur de couverture et centre sa légende', () => {
     renderWithProviders(<TimeseriesRangeRolesCard bloc={bloc([profil(1)])} />)
-    expect(screen.getByTestId('timeseries-portee-couverture')).toHaveTextContent(
-      /412\s*frags mesurés sur\s*544/,
-    )
+    expect(screen.queryByText(/mesurés sur/)).not.toBeInTheDocument()
+    expect(screen.getByTestId('timeseries-portee-legende')).toHaveClass('justify-center')
   })
 })

@@ -123,8 +123,9 @@ describe('ChartCard', () => {
     render(
       <ChartCard {...baseProps} legend={<div data-testid="legend-content">Légende</div>} />,
     )
-    // Footer dédié avec chrome (bordure + padding) appliqué par ChartCard.
+    // Pied dédié, padding appliqué par ChartCard, SANS filet de séparation (norme UI).
     expect(screen.getByTestId('chart-card-legend')).toBeTruthy()
+    expect(screen.getByTestId('chart-card-legend')).not.toHaveClass('border-t')
     expect(screen.getByTestId('legend-content').textContent).toBe('Légende')
   })
 

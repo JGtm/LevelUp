@@ -1,7 +1,8 @@
 /**
  * ObjectifFrame — le cadre commun des cartes d'objectif rendues en DOM (lot L3 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : même chrome que `ChartCard` (titre et aide ⓘ,
- * contenu centré verticalement, légende en pied de carte, centrée — spec S2), pour que les
+ * contenu centré verticalement, légende en pied de carte, centrée, sans filet de séparation —
+ * spec S2 et norme UI des blocs graphiques), pour que les
  * cartes en DOM et les cartes ECharts de la section se lisent comme une seule famille.
  *
  * ObjectifLegend — la légende de la maquette C3EW : pastilles carrées, paire victoire /
@@ -40,7 +41,7 @@ export function ObjectifFrame({
         <div className="my-auto flex flex-col gap-3">{children}</div>
       </div>
       {legend != null && (
-        <div className="flex-none border-t border-border px-3 py-2" data-testid="objectif-legend">
+        <div className="flex-none px-3 pb-2" data-testid="objectif-legend">
           {legend}
         </div>
       )}

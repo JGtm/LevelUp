@@ -237,34 +237,34 @@ export function TimeseriesProgressionTab({
         )}
       </div>
 
-      {/* Rendement & Résistance — pleine largeur. */}
-      <TimeseriesEfficiency
-        title={
-          <span className="flex items-center gap-1.5">
-            {t('timeseries.progression.efficiency_title')}
-            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
-          </span>
-        }
-        emptyMessage={emptyMsg}
-        rows={data.match_rows ?? []}
-        rendementLabel={t('timeseries.progression.rate_offensive')}
-        resistanceLabel={t('timeseries.progression.rate_defensive')}
-        refLabel={t('timeseries.progression.ref_one_life')}
-        perFragLabel={t('timeseries.progression.per_effective_frag')}
-        perDeathLabel={t('timeseries.progression.per_death')}
-      />
+      {/* Rendement & Résistance (gauche) | « Appui reçu » (droite), sur UNE rangée à
+          hauteur égale (retour utilisateur du 2026-10-07). « Appui reçu » : deux séries de
+          bâtons par soirée, aucune requête neuve — le bloc arrive avec cette réponse de page.
+          La carte se retire quand le titre ne sert pas de bloc de coordination (Rendement
+          reprend alors toute la rangée) ; elle est CONSERVÉE, vide et nommée, quand le bloc
+          est servi mais indisponible sur le périmètre (D8). */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+        <TimeseriesEfficiency
+          title={
+            <span className="flex items-center gap-1.5">
+              {t('timeseries.progression.efficiency_title')}
+              <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
+            </span>
+          }
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          rendementLabel={t('timeseries.progression.rate_offensive')}
+          resistanceLabel={t('timeseries.progression.rate_defensive')}
+          refLabel={t('timeseries.progression.ref_one_life')}
+          perFragLabel={t('timeseries.progression.per_effective_frag')}
+          perDeathLabel={t('timeseries.progression.per_death')}
+        />
+        <TimeseriesCoordinationSection block={data.coordination} locale={locale} />
+      </div>
 
       {/* « Balance des dégâts cumulée » N'EST PLUS SUR CET ONGLET (demande utilisateur du
           2026-09-22) : elle se monte désormais sur le Résumé, sous « Assistances »
           (cf. TimeseriesPage.summary.tsx). */}
-
-      {/* Coordination dans le temps — « Appui reçu » seule, en demi-largeur (lot Q,
-          D22-6/7 ; « Riposte » a quitté la page). Deux séries de bâtons par soirée sur le
-          même axe en %, un repère d'habituel par série. Aucune requête neuve — le bloc
-          arrive avec cette réponse de page. La carte se retire quand le titre ne sert pas de
-          bloc de coordination ; elle est CONSERVÉE, vide et nommée, quand le bloc est servi
-          mais indisponible sur le périmètre (D8). */}
-      <TimeseriesCoordinationSection block={data.coordination} locale={locale} />
 
       {/* Engagement. EngagementTimeseriesSection rend déjà sa propre ChartCard avec titre
           interne, donc pas de wrapper supplémentaire (sinon double titre). Gaté sur

@@ -146,9 +146,13 @@ describe('les options injectées — graphe de portée', () => {
     expect(html).toContain('Morts du joueur — 402')
   })
 
-  it('la hauteur du graphe suit le nombre de lignes (48 + 34 × n)', async () => {
+  it('la hauteur PLANCHER du graphe suit le nombre de lignes (48 + 34 × n)', async () => {
+    // Carte `fluid` : le canevas remplit la carte, étirée à la hauteur de sa voisine de
+    // rangée ; la hauteur par lignes devient le plancher du contenu (+ 24 px de padding).
     const { range } = await mountAndCapture()
-    expect(range.style.height).toBe(48 + WEAPON_RANGE_ROW_PX * 2)
+    expect(range.style.height).toBe('100%')
+    const contenu = screen.getByTestId('chart-card').children[0] as HTMLElement
+    expect(contenu.style.minHeight).toBe(`${48 + WEAPON_RANGE_ROW_PX * 2 + 24}px`)
   })
 
   it('la série passée à ChartCard n’est pas vide — sinon le graphe cède la place', async () => {
