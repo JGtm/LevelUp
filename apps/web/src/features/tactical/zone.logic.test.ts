@@ -16,6 +16,7 @@ import type { CelluleTactique, TacticalContribution } from '@/lib/api/types'
 
 import { getTacticalText } from './i18n'
 import {
+  choixDuClic,
   coordonneesDeZone,
   modeleDeTuile,
   positionEtiquette,
@@ -166,5 +167,50 @@ describe('positionEtiquette — le nom de zone à côté de la cellule', () => {
 
   it('hors du cadre : aucune étiquette', () => {
     expect(positionEtiquette({ col: 40, row: 1 }, repere)).toBeNull()
+  })
+
+  it('plan grossi 2x sur la moitié gauche : l’étiquette suit la fenêtre', () => {
+    const fenetre = { minX: 0, maxX: 50, minY: 12.5, maxY: 37.5 }
+    // Cellule (2, 1) : x 20..30, y 10..20 → centre (25, 15), à la moitié de la fenêtre en largeur.
+    expect(positionEtiquette({ col: 2, row: 1 }, repere, fenetre)).toEqual({
+      left: '60.00%',
+      top: '90.00%',
+      transform: 'translate(4px, -50%)',
+    })
+  })
+
+  it('cellule hors de la fenêtre visible : aucune étiquette', () => {
+    const fenetre = { minX: 0, maxX: 50, minY: 25, maxY: 50 }
+    expect(positionEtiquette({ col: 8, row: 1 }, repere, fenetre)).toBeNull()
+  })
+})
+
+describe('choixDuClic — le clic retient une cellule SERVIE', () => {
+  const servie = (col: number, lig: number): CelluleTactique => ({
+    col,
+    lig,
+    valeur: 1,
+    brut: 1,
+    matchs: 3,
+    matchs_victoire: 0,
+    matchs_defaite: 0,
+    centre_x: 0,
+    centre_y: 0,
+  })
+  const cellules = [servie(2, 3), servie(4, 3)]
+
+  it('dans une cellule servie : elle', () => {
+    expect(choixDuClic(cellules, { x: 5, y: 7 }, 2)).toEqual({ col: 2, row: 3 })
+  })
+
+  it('sur le débord de la chaleur, à moins d’un pas d’un centre servi : la cellule la plus proche', () => {
+    // (3,3) n'est pas servie : le clic va au centre servi le plus proche, (2,3) en (5,7) ou (4,3) en (9,7).
+    expect(choixDuClic(cellules, { x: 6.9, y: 7 }, 2)).toEqual({ col: 2, row: 3 })
+    expect(choixDuClic(cellules, { x: 7.1, y: 7 }, 2)).toEqual({ col: 4, row: 3 })
+  })
+
+  it('loin de toute cellule servie : rien', () => {
+    expect(choixDuClic(cellules, { x: 5, y: 12 }, 2)).toBeNull()
+    expect(choixDuClic(cellules, { x: 5, y: 7 }, 0)).toBeNull()
   })
 })

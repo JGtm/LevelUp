@@ -29,8 +29,8 @@
  * — la liste de `match_id` de A partait alors sur les lectures de B, et la réponse
  * s'affichait comme celle de B.
  */
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useRef } from 'react'
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import type {
@@ -257,39 +257,71 @@ export function useTacticalMapBackgroundFrame(playerSlug: string, mapId: string)
   return data?.calibration ? mapFrame(data.calibration) : null
 }
 
+/** Les paramètres d'une lecture du plan (le corps de `/tactical/{map}/raster`, périmètre non résolu = `null`). */
+export interface ParamsDuRaster {
+  match_ids: string[] | null
+  coequipiers?: string[]
+  question?: string
+  qui?: string
+  spawn?: string
+}
+
+/** Le corps posté : la liste blanche résolue (vide tant qu'elle ne l'est pas — la requête ne part pas). */
+function corpsDuRaster(params: ParamsDuRaster) {
+  return { ...params, match_ids: params.match_ids ?? [] }
+}
+
+/**
+ * lireLeRaster — la lecture d'une question ET LE RANGEMENT DE SES VOISINES dans le cache.
+ *
+ * Le serveur sert, avec la lecture demandée, les AUTRES lectures que la même lecture de la base
+ * produit (`TacticalRaster.voisines` : morts, frags, solde et victoires − défaites ensemble ; temps
+ * et trajets ensemble). Chacune est rangée sous la clé EXACTE que `useTacticalRaster` calculerait
+ * pour sa question (même corps, seule la question change), avec les zones de la carte, servies une
+ * fois : changer de lecture vers une voisine lit le cache, sans requête et sans « Mise à jour… ».
+ */
+async function lireLeRaster(
+  queryClient: QueryClient,
+  playerSlug: string,
+  titleSlug: string,
+  mapId: string,
+  corps: ReturnType<typeof corpsDuRaster>,
+): Promise<TacticalRaster> {
+  const reponse = await api.post<TacticalRaster>(
+    `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/raster`,
+    corps,
+  )
+  for (const voisine of reponse.voisines ?? []) {
+    queryClient.setQueryData<TacticalRaster>(
+      queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre({ ...corps, question: voisine.question })),
+      { ...voisine, zones: reponse.zones },
+    )
+  }
+  return reponse
+}
+
 /**
  * useTacticalRaster — la grille de placement pour UNE carte et une question.
  *
  * POST : les paramètres de la requête sont envoyés dans le corps (liste de match_id,
  * composition, question, qui, spawn). La clé de cache porte l'empreinte de tous les
- * paramètres — changer de question donne une nouvelle requête, jamais un cache croisé.
+ * paramètres — changer de question donne une autre clé, jamais un cache croisé ; mais la
+ * réponse range ses VOISINES sous leurs propres clés (`lireLeRaster`), si bien que la plupart
+ * des changements de question trouvent leur réponse déjà là.
  *
  * `matchIds` à `null` = le périmètre n'est pas encore résolu (même contrat que
  * `useTacticalMaps`) : la requête N'EST PAS lancée. Une liste VIDE une fois le périmètre
  * résolu est une réponse légitime (aucun match ne correspond) et part normalement.
  */
-export function useTacticalRaster(
-  playerSlug: string,
-  mapId: string,
-  params: {
-    match_ids: string[] | null
-    coequipiers?: string[]
-    question?: string
-    qui?: string
-    spawn?: string
-  },
-) {
+export function useTacticalRaster(playerSlug: string, mapId: string, params: ParamsDuRaster) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const corps = { ...params, match_ids: params.match_ids ?? [] }
+  const queryClient = useQueryClient()
+  const corps = corpsDuRaster(params)
   return useQuery({
     queryKey: queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps)),
-    queryFn: () =>
-      api.post<TacticalRaster>(
-        `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/raster`,
-        corps,
-      ),
+    queryFn: () => lireLeRaster(queryClient, playerSlug, titleSlug, mapId, corps),
     enabled: !!playerSlug && !!mapId && params.match_ids !== null,
-    staleTime: 2 * 60 * 1000,
+    staleTime: RASTER_FRAIS_MS,
     // La réponse précédente reste servie pendant la relecture (`isPlaceholderData`) : la
     // vue la montre ESTOMPÉE sous « Mise à jour… » (décision Q26 du 2026-09-23) et ne
     // démonte jamais le fond. Elle ne passe jamais d'une carte à l'autre (la vue est
@@ -297,6 +329,54 @@ export function useTacticalRaster(
     // carte), ni d'un joueur à l'autre.
     placeholderData: precedenteDuMemeJoueur(playerSlug, titleSlug, mapId),
   })
+}
+
+/** Durée pendant laquelle une lecture du plan (et ses voisines rangées) reste fraîche. */
+const RASTER_FRAIS_MS = 2 * 60 * 1000
+
+/**
+ * usePrechargementDesLectures — à l'INTENTION de changer de lecture (la pilule « Lecture » survolée
+ * ou prise au clavier), les lectures que le cache n'a pas encore, demandées UNE PAR UNE dans
+ * l'ordre de la liste : chaque réponse range ses voisines, si bien que la suivante est souvent
+ * déjà là et ne part pas. Pour le périmètre courant, cela fait au plus deux requêtes (temps et
+ * trajets ensemble, puis « morts seul »), et aucune pour qui ne touche pas à la pilule.
+ *
+ * Le préchargement ne s'affiche pas : il remplit le cache que `useTacticalRaster` lit. Un
+ * préchargement en cours n'est pas relancé ; un échec est journalisé et laissé à la lecture
+ * elle-même, qui le dira si l'utilisateur choisit cette question.
+ */
+export function usePrechargementDesLectures(
+  playerSlug: string,
+  mapId: string,
+  params: ParamsDuRaster,
+  questions: readonly string[],
+): () => void {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const queryClient = useQueryClient()
+  const enCours = useRef<string | null>(null)
+  return () => {
+    if (!playerSlug || !mapId || params.match_ids === null) return
+    const empreinte = hashFiltre({ ...corpsDuRaster(params), question: '' })
+    if (enCours.current === empreinte) return
+    enCours.current = empreinte
+    void (async () => {
+      for (const question of questions) {
+        const corps = corpsDuRaster({ ...params, question })
+        const queryKey = queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps))
+        if (queryClient.getQueryData(queryKey) !== undefined) continue
+        try {
+          await queryClient.fetchQuery({
+            queryKey,
+            queryFn: () => lireLeRaster(queryClient, playerSlug, titleSlug, mapId, corps),
+            staleTime: RASTER_FRAIS_MS,
+          })
+        } catch (err) {
+          console.error('[tactique] préchargement d’une lecture en échec', { question, err })
+        }
+      }
+      if (enCours.current === empreinte) enCours.current = null
+    })()
+  }
 }
 
 /**

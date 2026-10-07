@@ -238,14 +238,15 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 	mesure := universMesure(lecture.Univers)
 	out.MatchsRetenus = len(mesure.Matchs)
 
-	lue, err := rasteriserLaCible(mesure, lecture, question,
-		cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
+	dans := cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers)
+	lue, err := rasteriserLaCible(mesure, lecture, question, dans)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
 		return fmt.Errorf("tactique: rasterisage: %w", err)
 	}
 	remplirRaster(out, lue.Raster, question)
+	out.Voisines = s.voisinesDesPositions(ctx, out, mesure, lecture, dans)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
@@ -254,7 +255,7 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 		"coequipiers", len(scope.Coequipiers),
 		"pas_m", out.PasM, "densite_suffisante", lue.Suffisante, "pas_essayes", lue.Tentatives,
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
-		"duration", time.Since(debut))
+		"voisines", len(out.Voisines), "duration", time.Since(debut))
 	return nil
 }
 

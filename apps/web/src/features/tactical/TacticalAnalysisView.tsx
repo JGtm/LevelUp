@@ -27,7 +27,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { carteLue, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import { etatDuPlan } from './plan.logic'
-import { useTacticalCellule, useTacticalRaster } from './queries'
+import { usePrechargementDesLectures, useTacticalCellule, useTacticalRaster } from './queries'
 import { TacticalZoneCard } from './TacticalZoneCard'
 import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
@@ -85,6 +85,14 @@ export function TacticalAnalysisView({
   })
   const etatPlan = etatDuPlan(carte.origine, etat)
   const lectureAffichee = etatPlan === 'pret' || etatPlan === 'relecture' ? lecture : undefined
+  // L'INTENTION DE CHANGER DE LECTURE (pilule survolée ou prise au clavier) précharge les lectures
+  // que le cache n'a pas : choisir l'une d'elles ensuite est instantané.
+  const precharger = usePrechargementDesLectures(
+    playerSlug,
+    carte.mapId,
+    params,
+    t.analysisQuestions.map((q) => q.id),
+  )
   const zone = useZone({
     playerSlug,
     mapId: carte.mapId,
@@ -111,9 +119,13 @@ export function TacticalAnalysisView({
         etat={etatPlan}
         inconnus={coequipiersInconnus}
         etiquette={zone.cellule && zone.detail.data ? titreDeZone(t, locale, true, zone.detail.data) : null}
-        reglages={{ ...reglages, grappes: lectureAffichee?.grappes ?? [] }}
+        reglages={{
+          ...reglages,
+          onQuestionIntent: etatPlan === 'pret' ? precharger : undefined,
+          grappes: lectureAffichee?.grappes ?? [],
+        }}
         selected={zone.selected}
-        onCellSelect={zone.choisir}
+        onPointSelect={zone.choisir}
       />
       {/* LA COLONNE PREND LA HAUTEUR DE LA CARTE DU PLAN (trois colonnes) : `contain: size` l'empêche
           de peser sur la rangée, l'étirement lui donne la hauteur du plan, et sa liste défile. */}
@@ -235,9 +247,9 @@ function useZone({
   )
   return {
     selected,
-    // Un clic hors de toute cellule servie ne change rien (choixDuClic).
-    choisir: (col: number, row: number) => {
-      const choisi = lecture ? choixDuClic(lecture.cellules ?? [], col, row) : null
+    // Un clic loin de toute cellule servie ne change rien (choixDuClic).
+    choisir: (point: { x: number; y: number }) => {
+      const choisi = lecture ? choixDuClic(lecture.cellules ?? [], point, lecture.pas_m) : null
       if (choisi) setChoix(choisi)
     },
     cellule,

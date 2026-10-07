@@ -12925,6 +12925,7 @@ export interface components {
             question: string;
             qui: string;
             rayons_radar_m?: number[] | null;
+            voisines?: components["schemas"]["TacticalRaster"][] | null;
             zones?: components["schemas"]["CalloutZone"][] | null;
         };
         TacticalRasterBody: {
