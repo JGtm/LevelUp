@@ -1585,3 +1585,10 @@ plan y sont reprises comme items (3.1.2).
   pourras fusionner si la CI est verte »). Reste : CI verte sur la tête finale, `make gate-push`,
   avance rapide de `feat/v75`, signal à levelup-dc pour la recuisson unique du parc (avec le
   rattrapage du placement des vies : `killcollector.PlacementRev` monte). Suite du plan : 2.7.c.
+- 2026-10-07 (3 h) : FUSION DE 2.7.b DANS `feat/v75` = `4f112add5` (avance rapide depuis `2668848b1`,
+  lot Sessions intégré au passage sans conflit ni fichier du décodeur), accord de l'utilisateur
+  « tu pourras fusionner si la CI est verte » : CI verte au niveau job sur `4f112add5` (et sur
+  `9d37645b3` après relance du seul job de couverture, rougi par le test de chronométrage de la
+  découverte 28) ; `make gate-push` vert hors du dépassement de 300 s de `platform/duckdb`, vert
+  rejoué seul (242 s). levelup-dc (phase D des équipes, schéma 81) fusionne derrière, puis lance la
+  recuisson unique du parc avec le rattrapage du placement des vies. Suite du plan : 2.7.c.
