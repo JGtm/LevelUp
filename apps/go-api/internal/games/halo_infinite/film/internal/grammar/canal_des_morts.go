@@ -33,6 +33,10 @@ type canalDesMorts struct {
 	largeurLibre int
 	// cadrePose : [ObjectDeathStats.Config] a ete pris de la marche.
 	cadrePose bool
+	// mortsLues : les dead-states `Mort` des records recoltes, avec leur trame et leur position —
+	// gardes seulement quand `garder` (`killsource`, [LireLesMortsDeLaMarche]) ; nil sinon.
+	mortsLues []EtatDeMortLu
+	garder    bool
 }
 
 // nouveauCanalDesMorts prepare le canal des morts d un film de registre `reg`.
@@ -75,10 +79,12 @@ func (c *canalDesMorts) Trame(p *lecture.Paquet) {
 		c.st.EventPackets++
 	}
 	recs, lus := c.m.recordsDeLaTrame()
+	recuperee := false
 	if !lus && avecEvenements {
 		var libre bool
 		recs, lus, libre = c.m.recupererLaListe()
 		c.largeurLibre += unSi(libre)
+		recuperee = lus
 	}
 	if !lus {
 		return
@@ -88,6 +94,33 @@ func (c *canalDesMorts) Trame(p *lecture.Paquet) {
 	}
 	c.st.Packets++
 	c.h.harvest(recs, p.TS)
+	if c.garder {
+		c.garderLesMorts(p, recs, recuperee)
+	}
+}
+
+// garderLesMorts range les dead-states `Mort` des records `recs` de la trame `p`.
+func (c *canalDesMorts) garderLesMorts(p *lecture.Paquet, recs []FrameRecord, recuperee bool) {
+	pos := filmChunkPos(c.m.marche.fc.Film(), p.Chunk)
+	for i := range recs {
+		r := &recs[i]
+		if r.Trace.Dead == nil || !r.Trace.Dead.Mort {
+			continue
+		}
+		c.mortsLues = append(c.mortsLues, EtatDeMortLu{PositionDuChunk: pos, Index: p.Index, TS: p.TS, Slot: r.Slot,
+			Gen: r.ID >> 30, TypeIndex: r.TypeIndex, Bit: debutDuDeadState(r), Propre: r.DesyncAt == -1,
+			Recupere: recuperee, Dead: *r.Trace.Dead})
+	}
+}
+
+// debutDuDeadState rend le premier bit du dead-state du record dans sa trace, -1 s il n y figure pas.
+func debutDuDeadState(r *FrameRecord) int {
+	for _, cp := range r.Trace.Comps {
+		if cp.Name == deadStateComponentName {
+			return cp.StartBit
+		}
+	}
+	return -1
 }
 
 // Clore : rien — le canal se lit par [canalDesMorts.resultat].

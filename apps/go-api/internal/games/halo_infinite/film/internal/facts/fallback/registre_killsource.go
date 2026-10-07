@@ -13,33 +13,18 @@ var registreKillsource = []Repli{
 	{
 		Nom:       "repli_record_desynchronise_jete",
 		Fait:      "quels records d'un paquet entrent dans la marche des morts",
-		Mecanisme: "un record dont la marche s'est desynchronisee est jete, et la marche du paquet s'arrete la",
+		Mecanisme: "un dead-state de bipede dont le record a rompu dans la marche des trames, meme apres le dead-state, est jete",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "jetes++"}, {Fichier: pkgKillsource + "walk.go", Ancre: "res.desync += desync"}, siteDeVersement("NomRecordDesynchroniseJete"), {
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.desync++"}, siteDeVersement("NomRecordDesynchroniseJete"), {
 			Fichier: pkgKillsource + "walk.go",
-			Ancre:   "if r.DesyncAt != -1 {",
+			Ancre:   "if !m.Propre {",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "le registre ECS lu par build : une desynchronisation est une grammaire fausse, pas une donnee ; a defaut, " + retraitRegle4,
 		// PIÈGE CONNU (mémoire du chantier véhicules, 2026-09-05) : un filtre `DesyncAt == -1`
 		// JETAIT des morts de véhicule réellement lues.
 		CritereRetrait:  "0 record desynchronise sur les 8 builds une fois le registre ECS resolu par build",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_deadstate_hors_bande_bipede",
-		Fait:      "un dead-state lu est-il credible",
-		Mecanisme: "slot hors de la bande de slots bipede du film : le dead-state est rejete par un `continue` nu",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.horsBande++"}, siteDeVersement("NomDeadstateHorsBandeBipede"), {
-			Fichier: pkgKillsource + "walk.go",
-			Ancre:   "if d.slot < res.bipLo || d.slot > res.bipHi {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "la bande de slots bipede lue au profil du build ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "la bande vient du profil du build ; 0 rejet hors bande sur les 8 builds",
 		CompteurBranche: true,
 	},
 	{
@@ -78,7 +63,7 @@ var registreKillsource = []Repli{
 		Mecanisme: "seconde passe a LARGEUR LIBRE, essayee seulement apres l'echec de la signature",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.largeurLibre += unSi(aLargeurLibre)"}, {
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "largeurLibre: lus.LargeurLibre}"}, {
 			// Le repli lui-meme : le localisateur unique de `grammar`, appele par les deux sites
 			// qui lisent les morts (killsource ci-dessus ; le canal des morts de la marche des
 			// trames, sur les listes que la cuisson n a pas localisees, ci-dessous).

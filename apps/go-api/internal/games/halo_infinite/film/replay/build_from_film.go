@@ -175,8 +175,8 @@ func poserProfilPuisCarte(ctx context.Context, fc *grammar.FilmContext, matchID 
 // vehicules et poses.
 //
 // Rien de resolu : le contexte garde son decoupage, et les sites des socles et des poses gardent
-// leur repli calibre, compte. killsource ne passe pas par ici : son contexte garde le decoupage
-// par defaut jusqu a son alignement sur la cuisson.
+// leur repli calibre, compte. killsource pose la meme resolution sur son propre contexte
+// (`killsource.poserLeProfil`).
 func poserLeDecoupageMPPDuFilm(ctx context.Context, fc *grammar.FilmContext, matchID string) {
 	res := fc.ResolutionMPP()
 	if !res.Decide() {

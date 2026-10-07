@@ -52,10 +52,3 @@ func trierMortsDeLaMarche(deads []deadRecord) {
 		return cmp.Or(cmp.Compare(a.ms, b.ms), cmp.Compare(a.chunk, b.chunk), cmp.Compare(a.pidx, b.pidx))
 	})
 }
-
-// trierImagesCles range les images-cles par horodatage, les ex aequo dans l ORDRE DU FILM (lot J10.1,
-// 2026-09-27, DT-9) : [timeline.preload] retient la PREMIERE declaration de chaque slot, et deux
-// images-cles de meme horodatage n ont pas d autre cle unique que leur rang dans le film.
-func trierImagesCles(events []keyframeEvent) {
-	slices.SortStableFunc(events, func(a, b keyframeEvent) int { return cmp.Compare(a.ts, b.ts) })
-}

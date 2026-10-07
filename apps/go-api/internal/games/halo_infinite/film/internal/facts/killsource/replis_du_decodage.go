@@ -25,9 +25,6 @@ type ReplisDuDecodage struct {
 	// RecordsDesynchronises : `repli_record_desynchronise_jete` — dead-states Mort=1 d un record
 	// dont la marche a desynchronise, jetes (`walk.go`).
 	RecordsDesynchronises int
-	// HorsBandeBipede : `repli_deadstate_hors_bande_bipede` — dead-states dont le slot sort de la
-	// bande bipede (`walk.go`).
-	HorsBandeBipede int
 	// IndicesHorsRoster : `repli_deadstate_indice_hors_roster` — dead-states dont l indice de
 	// victime OU de tueur sort du roster (`walk.go`).
 	IndicesHorsRoster int
@@ -78,7 +75,6 @@ func unSi(decide bool) int {
 func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, sondeLancee bool) ReplisDuDecodage {
 	r := ReplisDuDecodage{
 		RecordsDesynchronises:          c.walkRes.desync,
-		HorsBandeBipede:                c.walkRes.horsBande,
 		IndicesHorsRoster:              c.walkRes.horsRoster,
 		CategoriesHorsEnum:             c.walkRes.horsEnum,
 		LocalisationsALargeurLibre:     c.walkRes.largeurLibre,

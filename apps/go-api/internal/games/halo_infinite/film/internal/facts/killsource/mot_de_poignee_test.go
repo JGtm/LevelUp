@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -167,20 +168,16 @@ func TestMotDePoigneeDeterministeSurFilm(t *testing.T) {
 	}
 }
 
-// calibrerUnFilm : une calibration complete, sur une timeline NEUVE (le balayage la consomme).
+// calibrerUnFilm : une calibration complete, sur un contexte NEUF.
 func calibrerUnFilm(t *testing.T, dir string, o Options) calibration {
 	t.Helper()
 	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chargement %s : %v", dir, err)
 	}
-	f, err := loadFilm(src)
+	cal, err := calibrate(grammar.NewFilmContextForMap(src, o.Carte, nil), o.Views, o.Carte)
 	if err != nil {
-		t.Fatalf("film %s : %v", dir, err)
+		t.Fatalf("calibration %s : %v", dir, err)
 	}
-	tl, err := newTimeline(f, nil)
-	if err != nil {
-		t.Fatalf("timeline %s : %v", dir, err)
-	}
-	return calibrate(f, tl, o.Views, o.Carte)
+	return cal
 }

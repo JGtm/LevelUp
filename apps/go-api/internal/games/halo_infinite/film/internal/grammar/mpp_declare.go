@@ -17,10 +17,9 @@ package grammar
 // d un payload l est deja ([FilmContext.MarcheDImageCle]), et une image-cle suffit.
 //
 // LA RESOLUTION NE PASSE PAS PAR L EN-TETE DE LA MARCHE ([FilmContext.EnTete]). La preuve des
-// ancres d image-cle lit l en-tete, et killsource marche les ancres sous elle : y poser la
-// declaration changerait la sortie de killsource, que ce decoupage ne concerne pas avant son
-// alignement sur la cuisson. La cuisson pose la resolution sur SON contexte
-// (`replay.poserLeDecoupageMPPDuFilm`).
+// ancres d image-cle lit l en-tete : y poser la declaration changerait ce que la preuve prouve, donc
+// les ancres de toutes les lectures du film. La cuisson et killsource posent la resolution sur LEUR
+// contexte, apres leur profil (`replay.poserLeDecoupageMPPDuFilm`, `killsource.poserLeProfil`).
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"

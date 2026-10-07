@@ -416,3 +416,13 @@ package grammar
 // n appellent pas ce balayage : leurs revisions restent constantes, leurs empreintes sont
 // regenerees. Le rang : `.5` est pris par le lot 2.7.b de la representation intermediaire,
 // fusionne avant ce lot.
+//
+// COMPLEMENT DU 2026-10-07 (lots 2.7.c1 et 2.7.c2 de la representation intermediaire, REVISION
+// CONSTANTE) : la grammaire recoit les lectures de killsource — la table, le fil des kills, le motif
+// des xuid, BOT_METADATA (le corps commun des fiches de joueur lit desormais l equipe et son jumeau
+// dans le bloc de 44 octets : meme nombre de bits consommes), le gabarit du dead-state, les morts de
+// la marche des trames avec leur position ([LireLesMortsDeLaMarche] : le canal des morts les garde
+// sur demande) et le critere de la calibration ([FilmContext.ScoresDeCalibration]) ; les entrees de
+// l ancienne marche de killsource (`DebutDeLaVueB`, `VueADuFilm`, `VueADuFilmSousCarte`) sont
+// retirees avec elle. Aucune lecture de la cuisson ne change : empreinte regeneree a revision
+// constante.

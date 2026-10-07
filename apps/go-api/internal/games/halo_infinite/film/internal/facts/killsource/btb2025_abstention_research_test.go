@@ -95,16 +95,12 @@ func diagnostiquerFilm(t *testing.T, dir, carte string) {
 		c.calib.String(), bijectionMargin(c.roster, c.feed.pairs, c.scanCands, c.bijScore), c.bijScore)
 
 	w := c.walkRes
-	t.Logf("MARCHE   paquets_a_events=%d localises=%d morts_brutes=%d credibles=%d plage_bipede=[%d,%d]",
-		w.withEv, w.located, len(w.deads), len(w.credible), w.bipLo, w.bipHi)
+	t.Logf("MARCHE   paquets_a_events=%d localises=%d morts_brutes=%d credibles=%d",
+		w.withEv, w.located, len(w.deads), len(w.credible))
 
-	var horsPlage, victHorsRoster, tueurHorsRoster, catHorsEnum int
+	var victHorsRoster, tueurHorsRoster, catHorsEnum int
 	histA := map[int]int{}
 	for _, d := range w.deads {
-		if d.slot < w.bipLo || d.slot > w.bipHi {
-			horsPlage++
-			continue
-		}
 		histA[int(d.dead.EnumA)]++
 		switch {
 		case d.dead.EnumA < 0 || int(d.dead.EnumA) >= c.roster.nPlay:
@@ -115,9 +111,9 @@ func diagnostiquerFilm(t *testing.T, dir, carte string) {
 			catHorsEnum++
 		}
 	}
-	t.Logf("REFUS    hors_plage_bipede=%d victime_hors_roster=%d tueur_hors_roster=%d categorie_hors_enum=%d",
-		horsPlage, victHorsRoster, tueurHorsRoster, catHorsEnum)
-	t.Logf("INDICES  victime (dans la plage bipede) : %s", histogramme(histA))
+	t.Logf("REFUS    victime_hors_roster=%d tueur_hors_roster=%d categorie_hors_enum=%d",
+		victHorsRoster, tueurHorsRoster, catHorsEnum)
+	t.Logf("INDICES  victime (bipedes) : %s", histogramme(histA))
 	t.Logf("SCAN     candidats=%d (porte T1/T2 : indice < nPlay=%d)", len(c.scanCands), c.roster.nPlay)
 }
 

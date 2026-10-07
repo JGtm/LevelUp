@@ -11,26 +11,6 @@ package killsource
 
 // # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
 //
-// ENTREE `killsource-2026-09-21` (2026-09-21, lot 5.3.3-a) : LA REVISION MONTE MECANIQUEMENT
-// DERRIERE LA GRAMMAIRE — `i60` EST DECLARE COMPLET QUAND LA CARTE EST LA.
-//
-// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21` :
-// `SimStateComplet` ne se pose plus a la main, il SUIT les largeurs d axe de la carte du match
-// (chronique de `grammar`, entree du meme jour). La traversee du bipede va donc plus loin sur
-// tout film dont la carte est cataloguee — 38 desynchronisations d `i60` en moins sur le seul
-// `bfecd02b`. Cette constante hache la VALEUR de la revision de grammaire : elle monte
-// mecaniquement, et les lignes de `match_kill_events` anterieures deviennent candidates au
-// backlog de redecodage (D6, SUR SIGNAL UTILISATEUR, jamais automatiquement).
-//
-// CE QUE CE BACKLOG RAPPORTERAIT, MESURE AVANT DE L OUVRIR : RIEN. A/B par `replay-build` sur
-// `000d5950` et `bcb6d393`, bascule levee puis abaissee, cache de faits vide a chaque passe :
-// artefact BIT A BIT IDENTIQUE. Le `replay-equiv` du meme film ne deplace que le digest de
-// l etape `killsource`, et ce digest porte la VALEUR du profil calibre — compte et octets du
-// kill-feed inchanges. Le pilote n a donc aucune raison de declencher ce backlog pour cette
-// revision-ci.
-//
-// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et aucun octet cuit ne change.
-
 // ENTREE `killsource-2026-09-21.2` (2026-09-21, lot 5.3.6) : LA REVISION MONTE DERRIERE UN
 // BALAYAGE NEUF DE LA COUCHE GRAMMAIRE.
 //
@@ -468,3 +448,39 @@ package killsource
 // de `grammar.ScanManagedProperties`, ti=13), donc l empreinte. Ni la marche ni la calibration de
 // killsource n appellent ce balayage : sortie inchangee par construction. Golden regenere a revision
 // constante.
+//
+// COMPLEMENT DU 2026-10-07 (lot 2.7.c1 de la representation intermediaire, REVISION CONSTANTE) :
+// les lectures de killsource hors de sa marche descendent dans la grammaire, a l identique — la table
+// des joueurs (`grammar.ScanFilmPlayerTable`), le fil des kills (`grammar.FilDesKills`), le motif des
+// xuid (`grammar.LecturesDuMotifDesXUID`), BOT_METADATA (`grammar.PaquetsBotMetadata`) et le gabarit
+// du dead-state (`grammar.BalayerLesEtatsDeMort`). Sortie inchangee par construction ;
+// `KILLSOURCE_FIXTURES` identique sur les quatre films de reference. Golden regenere a revision
+// constante.
+//
+// ENTREE `killsource-2026-10-07` (2026-10-07, lot 2.7.c2 de la representation intermediaire) : LA
+// MARCHE DE KILLSOURCE EST CELLE DE LA GRAMMAIRE.
+//
+// Ce qui change, contre `killsource-2026-09-27` :
+//   - les dead-states viennent de la marche des trames du contexte du film
+//     ([grammar.LireLesMortsDeLaMarche]) : son monde (liaison des images-cles chunk par chunk, table
+//     anticipee, liaisons NEW portees), ses debuts de vue B, et les listes qu elle ne localise pas,
+//     recuperees par le canal des morts. La timeline (pre-chargement, balayage des ancres `ti=35`,
+//     fenetres de vie) est retiree ;
+//   - le filtre de la bande bipede (derivee des images-cles et du balayage des ancres, polluee de
+//     fausses ancres sur 9 des 23 films mesures) cede la place a l archetype que la marche lie au
+//     slot : le repli `repli_deadstate_hors_bande_bipede` est retire du registre ;
+//   - le critere de la calibration se compte sous le monde des preliminaires de la marche
+//     ([grammar.FilmContext.ScoresDeCalibration]) : les scores publies changent, la decision du mot
+//     de poignee reste l invariant (aveugle sur les 23 films, dans les deux mondes) ;
+//   - lot 2.7.c3 : le contexte de la marche prend le decoupage du bloc MPP que la grammaire resout
+//     pour le film (`grammar.FilmContext.ResolutionMPP`, lot 2.7.a0), comme la cuisson : 8/3 declare
+//     sur les formats anciens au lieu du 9/5 du profil, pour la marche ET pour les cadres de la
+//     calibration. Le profil calibre ne le porte pas ; la cuisson le pose elle-meme apres lui. Un
+//     decoupage non resolu se dit (`killsource.decoupage_mpp_non_resolu`, avertissement).
+// PREUVE (2026-10-07, contre `killsource-2026-09-27`) : sur les 19 temoins, le contenu des 2 747 morts
+// publiees est identique ; 411 changent de voie technique (`Read.Path` : 359 du balayage a la marche,
+// 52 de la marche au balayage), les verdicts de sante et la decision du mot de poignee ne bougent pas.
+// Sur les 20 films d equivalence, seules les etapes `killsource`, `killRefs` (decompte des voies) et
+// l artefact bougent, l artefact dans sa couverture seulement (decompte des voies, ligne du repli
+// retire, revision). Les lignes de `match_kill_events` deviennent candidates au redecodage : backlog
+// sur signal de l utilisateur (D6).

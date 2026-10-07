@@ -85,8 +85,8 @@ func (c *decodeCtx) walkOutOfCatalogue() (int, []uint32) {
 	return n, tags
 }
 
-// outOfRoster : dead-states de la marche, dans la plage bipede, dont un indice DEPASSE le roster
-// retenu. C est le signal << il y a un participant que nous ne comptons pas >>.
+// outOfRoster : dead-states de bipede de la marche dont un indice DEPASSE le roster retenu. C est
+// le signal << il y a un participant que nous ne comptons pas >>.
 //
 // LE COMPTEUR A ETE DURCI PAR SA PROPRE MESURE. La premiere version comptait TOUT dead-state hors
 // roster : elle rendait 2 sur un film NOMINAL et declenchait une alerte fausse. Les deux lignes
@@ -97,9 +97,6 @@ func (c *decodeCtx) walkOutOfCatalogue() (int, []uint32) {
 func (c *decodeCtx) outOfRoster() int {
 	n := 0
 	for _, d := range c.walkRes.deads {
-		if d.slot < c.walkRes.bipLo || d.slot > c.walkRes.bipHi {
-			continue
-		}
 		if int(d.dead.EnumA) < c.roster.nPlay && int(d.dead.EnumB) < c.roster.nPlay {
 			continue
 		}

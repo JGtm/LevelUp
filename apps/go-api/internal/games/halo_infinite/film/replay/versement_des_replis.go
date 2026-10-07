@@ -110,7 +110,6 @@ var versementsDesReplis = []ligneDeVersement{
 	// `killsource` : ses statistiques (lot J8.7, sous-lot killsource). Une entree que le decodeur
 	// comptait DEJA sous un autre nom est lue a sa source d origine, sans recopie.
 	{fallback.NomRecordDesynchroniseJete, func(s sourcesDeReplis) int { return s.killsource.Replis.RecordsDesynchronises }},
-	{fallback.NomDeadstateHorsBandeBipede, func(s sourcesDeReplis) int { return s.killsource.Replis.HorsBandeBipede }},
 	{fallback.NomDeadstateIndiceHorsRoster, func(s sourcesDeReplis) int { return s.killsource.Replis.IndicesHorsRoster }},
 	{fallback.NomDeadstateCategorieHorsEnum, func(s sourcesDeReplis) int { return s.killsource.Replis.CategoriesHorsEnum }},
 	{fallback.NomLocalisationLargeurLibre, func(s sourcesDeReplis) int { return s.killsource.Replis.LocalisationsALargeurLibre }},

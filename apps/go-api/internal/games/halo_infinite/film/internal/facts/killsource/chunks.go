@@ -130,7 +130,10 @@ func packetsOf(src *source.Film) []packet {
 }
 
 // ms : instant d un paquet, en millisecondes depuis le premier paquet type-0 du film.
-func (f *film) ms(p *packet) int { return int((p.ts - f.tsBase) / 1000) }
+func (f *film) ms(p *packet) int { return f.msDe(p.ts) }
+
+// msDe : un horodatage du film, en millisecondes depuis le premier paquet type-0.
+func (f *film) msDe(ts uint64) int { return int((ts - f.tsBase) / 1000) }
 
 // hasEvents : le paquet porte-t-il une liste d evenements ? Le bit 1 du payload le dit.
 //

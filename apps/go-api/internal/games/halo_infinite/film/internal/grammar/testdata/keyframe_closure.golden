@@ -181,6 +181,25 @@
 #     complet du jeu (`FUN_142e2c690`) lit ce composant sous la portee `DAT_144e61ea0`, que la
 #     marche d image-cle ne pose pas ; il n y est donc pas porte (`components_frequences.go`).
 #     0 ligne `fermes` ne descend.
+#   2026-10-07 lot 2.7.c3 de la representation intermediaire : LE DECOUPAGE MPP QUE LE FILM DECLARE.
+#     Les bobines se mesurent sous le decoupage du bloc MPP que la cuisson et killsource posent
+#     (`ResolutionMPP`) : 8/3 declare sur a521164d, 60ae07c4, 11de8353, 111fa685 et e5adf7b2 ; 9/5
+#     relu sur bcb6d393 et fb1a1a72, qui ne bougent pas. NET : 7 lignes MONTENT (+135), 5
+#     DESCENDENT (-28), aucun total ne bouge, aucune ligne ne disparait.
+#       en hausse : 11de8353 ti=38 99 -> 175, ti=42 3 -> 5, ti=37 1 -> 2 ; 60ae07c4 ti=38 30 -> 60 ;
+#         111fa685 ti=38 72 -> 94, ti=37 1 -> 2 ; e5adf7b2 ti=38 49 -> 52
+#       en baisse : a521164d ti=42 24 -> 12, ti=38 122 -> 121 ; e5adf7b2 ti=42 13 -> 1, ti=37 1 -> 0 ;
+#         60ae07c4 ti=42 5 -> 3
+#     LES BAISSES, RECORD PAR RECORD (preuve 2 de la double preuve MPP de la campagne de grammaire,
+#     instrument `ri27c3_fermeture_mpp_research_test.go`, tag research) : 269 fermetures perdues et
+#     376 gagnees, les memes objets d une image-cle a l autre (49 et 44 slots). Sur CHACUNE, le mot
+#     de 32 bits du bloc MPP (le GlobalID du tag de l objet) lu sous 9/5 est INCONNU du catalogue des
+#     tags du jeu installe (260 414 tags), et lu sous 8/3 c est un tag du groupe que l archetype
+#     attend (weap pour ti=42, eqip pour 37, bloc ou scen pour 38). Une fermeture perdue tombait sur
+#     la frontiere APRES un bloc MPP mal lu : une coincidence. Sous 8/3, aucun de ces records n est
+#     arrete par un composant sans lecteur ; sa traversee finit avant ou apres la frontiere (un
+#     composant plus loin lit faux, non instruit). Sur les cinq bobines anciennes, sous 9/5, AUCUN
+#     record de ti=35 a 43 ne lit un tag du groupe attendu ; sous 8/3, 17 341 sur 17 379.
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	
@@ -204,10 +223,10 @@ a521164d	ti=29	11	11
 a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
 a521164d	ti=35	0	209	i60 simulation-state-component
 a521164d	ti=37	3	762	
-a521164d	ti=38	122	1303	
+a521164d	ti=38	121	1303	
 a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
 a521164d	ti=41	23	35	
-a521164d	ti=42	24	698	
+a521164d	ti=42	12	698	
 a521164d	ti=43	0	1559	i19 device-position-animation-name-component
 a521164d	ti=45	0	11	i0 matchflow-sequence-data-component
 a521164d	ti=47	249	262	
@@ -236,10 +255,10 @@ a521164d	ti=47	249	262
 60ae07c4	ti=34	0	30	i10 tacmap-mapdismissallock
 60ae07c4	ti=35	1	236	i60 simulation-state-component
 60ae07c4	ti=37	3	425	
-60ae07c4	ti=38	30	2099	
+60ae07c4	ti=38	60	2099	
 60ae07c4	ti=40	0	32	i30 vehicle-auto-turret-triggers-component
 60ae07c4	ti=41	0	19	
-60ae07c4	ti=42	5	253	
+60ae07c4	ti=42	3	253	
 60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
 60ae07c4	ti=45	0	30	i0 matchflow-sequence-data-component
 60ae07c4	ti=47	16	240	
@@ -267,11 +286,11 @@ a521164d	ti=47	249	262
 11de8353	ti=29	16	16	
 11de8353	ti=34	0	16	i10 tacmap-mapdismissallock
 11de8353	ti=35	1	255	i60 simulation-state-component
-11de8353	ti=37	1	514	
-11de8353	ti=38	99	2262	
+11de8353	ti=37	2	514	
+11de8353	ti=38	175	2262	
 11de8353	ti=40	0	220	i30 vehicle-auto-turret-triggers-component
 11de8353	ti=41	5	19	
-11de8353	ti=42	3	155	
+11de8353	ti=42	5	155	
 11de8353	ti=43	0	380	i19 device-position-animation-name-component
 11de8353	ti=45	0	16	i0 matchflow-sequence-data-component
 11de8353	ti=47	379	393	
@@ -297,8 +316,8 @@ a521164d	ti=47	249	262
 111fa685	ti=29	14	14	
 111fa685	ti=34	0	14	i10 tacmap-mapdismissallock
 111fa685	ti=35	1	214	i60 simulation-state-component
-111fa685	ti=37	1	569	
-111fa685	ti=38	72	1366	
+111fa685	ti=37	2	569	
+111fa685	ti=38	94	1366	
 111fa685	ti=40	0	58	i30 vehicle-auto-turret-triggers-component
 111fa685	ti=41	4	20	
 111fa685	ti=42	2	141	
@@ -328,11 +347,11 @@ e5adf7b2	ti=27	0	11	i0 supply-lines-item-unlocked-component
 e5adf7b2	ti=29	11	11	
 e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
 e5adf7b2	ti=35	0	237	i60 simulation-state-component
-e5adf7b2	ti=37	1	489	
-e5adf7b2	ti=38	49	1046	
+e5adf7b2	ti=37	0	489	
+e5adf7b2	ti=38	52	1046	
 e5adf7b2	ti=40	0	132	i30 vehicle-auto-turret-triggers-component
 e5adf7b2	ti=41	1	6	
-e5adf7b2	ti=42	13	187	
+e5adf7b2	ti=42	1	187	
 e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
 e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
 e5adf7b2	ti=47	246	261	

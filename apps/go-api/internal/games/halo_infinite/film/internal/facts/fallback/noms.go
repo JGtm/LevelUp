@@ -189,8 +189,6 @@ const (
 
 	// NomRecordDesynchroniseJete : `killsource/walk.go`.
 	NomRecordDesynchroniseJete Nom = "repli_record_desynchronise_jete"
-	// NomDeadstateHorsBandeBipede : `killsource/walk.go`.
-	NomDeadstateHorsBandeBipede Nom = "repli_deadstate_hors_bande_bipede"
 	// NomDeadstateIndiceHorsRoster : `killsource/walk.go`.
 	NomDeadstateIndiceHorsRoster Nom = "repli_deadstate_indice_hors_roster"
 	// NomDeadstateCategorieHorsEnum : `killsource/walk.go`.

@@ -10,8 +10,6 @@ import (
 	"math/rand"
 	"reflect"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -110,23 +108,6 @@ func TestTrierMortsDeLaMarche_ExAequoDansLOrdreDuFilm(t *testing.T) {
 	}
 	if want := attenduStable(cles); !reflect.DeepEqual(got, want) {
 		t.Fatalf("dead-states :\n got %v\nwant %v", got, want)
-	}
-}
-
-func TestTrierImagesCles_ExAequoDansLOrdreDuFilm(t *testing.T) {
-	cles := make([]int, nExAequo)
-	in := make([]keyframeEvent, nExAequo)
-	for i := range in {
-		cles[i] = i % 3
-		in[i] = keyframeEvent{ts: uint64(i % 3), recs: []grammar.KeyframeRec{{Slot: i}}}
-	}
-	trierImagesCles(in)
-	got := make([]int, len(in))
-	for i, e := range in {
-		got[i] = e.recs[0].Slot
-	}
-	if want := attenduStable(cles); !reflect.DeepEqual(got, want) {
-		t.Fatalf("images-cles :\n got %v\nwant %v", got, want)
 	}
 }
 

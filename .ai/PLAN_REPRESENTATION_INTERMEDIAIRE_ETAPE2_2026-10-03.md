@@ -1053,14 +1053,92 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             (`depuis_les_faits=false`), faits identiques à l'octet sur les 20 films, killsource json
             identique sur les 19 témoins ; `KILLSOURCE_FIXTURES` vert ; suite du film et garde-rails
             verts.
-      - [ ] 2.7.c2 *La marche de killsource devient un canal de la marche des trames* : dead-states
+      - [x] 2.7.c2 *La marche de killsource devient un canal de la marche des trames* : dead-states
             bipèdes avec leur trame et leur position, rendus par la grammaire ; timeline retirée ;
             calibration en préliminaire du contexte. Règles (filtre de bande ou d'archétype,
             qualité des records) fixées par les décisions de c0.
-      - [ ] 2.7.c3 *Découpage MPP déclaré et `IDLowBits`* : le contexte de killsource prend le
+            *Écrit le 2026-10-07* :
+            - les morts : `grammar.LireLesMortsDeLaMarche` (`grammar/morts_de_la_marche.go`)
+              distribue le seul canal des morts sur la marche des trames du contexte de killsource ;
+              sur demande, le canal garde chaque dead-state `Mort` avec sa trame (position du chunk,
+              rang, horodatage), le premier bit de son composant, la qualité du record (entièrement
+              porté ou non) et sa récupération. killsource (`walk.go`) garde les records propres
+              d'archétype bipède, puis son filtre de crédibilité (indices dans le roster, catégorie
+              dans l'énumération) ;
+            - la timeline (`world.go` : registre, pré-chargement, balayage des ancres `ti=35`,
+              fenêtres de vie) et la bande bipède disparaissent, avec le repli
+              `repli_deadstate_hors_bande_bipede` (registre, nom, versement, `ReplisDuDecodage`) et
+              la dernière exception de `archlint/no_recomputed_film_context_test.go` ;
+            - la calibration : `grammar.FilmContext.ScoresDeCalibration`
+              (`grammar/calibration_de_la_marche.go`) compte le critère de killsource sous le monde
+              des préliminaires de la marche (`parcourirLesPreliminaires`, `marche_trames.go` : table
+              anticipée puis liaison des images-clés de chaque chunk), le monde restauré après chaque
+              essai ; la décision reste à killsource (`calibrate.go`) ;
+            - les entrées de l'ancienne marche dans la grammaire (`DebutDeLaVueB`, `VueADuFilm`,
+              `VueADuFilmSousCarte`) et le champ `calibration.VueA` sont retirés ; leurs tests passent
+              sur la marche des trames (`debut_par_vue_a_test.go`, `vue_a_majeure_test.go`), le
+              garde-rail de la lecture unique de la vue A n'a plus que deux appelants permis ;
+            - les instruments de killsource bâtis sur l'ancienne marche sont retirés
+              (`world_precision_test.go`, `vehicules_v10_deadstate_test.go`,
+              `i0_poignee_score_research_test.go`, `ri27c_research_test.go`,
+              `ri27c_calibration_research_test.go`) ; tests neufs de la grammaire
+              (`morts_de_la_marche_test.go` : chaque mort se relit à sa position ; le critère de la
+              calibration, rejoué, rend les mêmes scores) ;
+            - `killsource.Rev` monte (`killsource-2026-10-07`, chronique ; le rang
+              `killsource-2026-09-21` passe à l'archive) ; `grammar.Rev` reste `.6` (empreinte
+              régénérée, complément de chronique) ; registre des reports : la partie killsource de la
+              bande bipède est close.
+      - [x] 2.7.c3 *Découpage MPP déclaré et `IDLowBits`* : le contexte de killsource prend le
             découpage du film comme la cuisson, et l'en-tête de la marche ; ratchet de fermeture
             d'image-clé régénéré sous le découpage déclaré, baisses de `ti=42` justifiées record par
             record (preuve 2 de la campagne) ou instruites.
+            *Écrit le 2026-10-07* :
+            - `killsource.poserLeProfil` (`decode.go`) pose, après le profil, le découpage que la
+              grammaire résout pour le film (`ResolutionMPP`), comme `replay.poserLeDecoupageMPPDuFilm` :
+              la marche ET les cadres de la calibration (`cadresDeCalibration`, sous le profil du
+              contexte) lisent 8/3 sur les formats anciens ; un découpage non résolu se dit
+              (`killsource.decoupage_mpp_non_resolu`, avertissement). Tests :
+              `facts/killsource/decoupage_mpp_test.go` (bobine `e5adf7b2` : 8/3 posé ; mutation rouge) ;
+            - l'en-tête de la marche : killsource le prend par la marche des trames (c2) ; les cadres
+              de la calibration lisent l'identifiant bas de l'en-tête (`ScoresDeCalibration`) et non
+              plus celui du cadre par défaut — même valeur (13, présumé), une seule provenance ;
+            - le ratchet de fermeture d'image-clé mesure les bobines sous le même découpage
+              (`bobines_memo_test.go`) : 7 lignes montent (+135), 5 descendent (−28), aucun total ne
+              bouge. Preuve 2, record par record (instrument
+              `grammar/ri27c3_fermeture_mpp_research_test.go`, catalogue des tags du jeu installé,
+              260 414 tags) : 269 fermetures perdues et 376 gagnées (49 et 44 slots) ; sur CHACUNE,
+              le mot de 32 bits du bloc MPP lu sous 9/5 est inconnu du catalogue, et lu sous 8/3 c'est
+              un tag du groupe que l'archétype attend (`weap` pour `ti=42`, `eqip` pour 37, `bloc` ou
+              `scen` pour 38). Sur les cinq bobines anciennes, aucun record de `ti=35` à 43 ne lit un
+              tag attendu sous 9/5, 17 341 sur 17 379 sous 8/3. Aucune baisse à instruire ; golden
+              régénéré avec son historique (découvertes 32 et 33) ;
+            - commentaires devenus faux corrigés (`grammar/mpp_declare.go`,
+              `replay/build_from_film.go`).
+            *c2 et c3 clos le 2026-10-07* (preuve commune ; passe c23, binaires de l'arbre de travail,
+            faits mis de côté, `depuis_les_faits=false`, contre la passe c1) :
+            - killsource json sur les 19 témoins : contenu des 2 747 morts publiées identique (tout
+              sauf la voie technique) ; couverture, publication et catalogue identiques ; 411 morts
+              changent de voie technique (359 du balayage à la marche, 52 de la marche au balayage :
+              marche 2 198 → 2 505, balayage 549 → 242) ; santé : verdicts inchangés, aucune alerte
+              ni dégradation neuve, part inexpliquée en baisse sur deux films (`111fa685` 15,9 →
+              12,4 %, `fb1a1a72` 7,9 → 7,3 %) ; calibration : la décision du mot de poignée reste
+              l'invariant partout, l'oracle d'axe (diagnostic) reste plat, sa seule contradiction
+              (`a521164d`) disparaît ;
+            - `replay-equiv` sur les 20 films : 61 ou 62 étapes sur 64 identiques ; ne bougent que
+              `killsource` (résultat, voies et calibration compris), `killRefs` sur 13 films (le
+              décompte des voies que le document porte) et l'artefact. L'artefact, cuit aux deux
+              codes et comparé par `replay-diff` sur `000d5950` et `64e8adfa`, ne bouge que dans sa
+              couverture (4 et 8 mesures sur 942 et 1 008) : décompte des voies, ligne du repli
+              retiré (et `repli_deadstate_indice_hors_roster` 1 → 2 sur `000d5950`), révision de
+              killsource. Faits : différents sur les 20 films (killsource y est persisté, révision
+              montée) ;
+            - `KILLSOURCE_FIXTURES` (quatre films de référence) : goldens régénérés, ne bougent que
+              des voies (`9b191a7f` 01:00 et `78919882` 09:18 passent du balayage à la marche, même
+              ligne publiée), les décomptes par voie, les paquets à événements localisés (5 025 →
+              5 027 et 5 713 → 5 714 : tous) et les scores de l'oracle d'axe ; la mini-bobine
+              (`000d5950`) ne bouge que par le score de la poignée (68 → 63, décision inchangée) ;
+            - suite du film, garde-rails, `go vet` (avec et sans `research`), `golangci-lint`
+              (0 problème) : voir le journal.
       - [ ] 2.7.c4 *Kill-events par la vue A unique* (décision de l'utilisateur du 2026-10-07) :
             la lecture de la vue A lit le genre 85 sans queue — la garde de l'écrivain tient ses deux
             réglages à leur défaut de l'exécutable, faux — et range ses messages de kill (position,
@@ -1398,6 +1476,18 @@ plan y sont reprises comme items (3.1.2).
    type du manifeste (repli : le dernier numéro, `repli_temps_forts_dernier_numero`), killsource
    par son contenu (le chunk qui porte le plus de kills). 2.7.c1 déplace la règle de killsource
    telle quelle ; les réunir changerait un comportement. Non traité.
+32. *(2.7.c3, 2026-10-07)* **La preuve des ancres d'image-clé juge encore les films anciens sous le
+   découpage MPP du format (9/5).** Depuis 2.7.c3, la cuisson, killsource et le ratchet de fermeture
+   lisent le corps des records sous le découpage déclaré (8/3) ; la preuve des ancres
+   (`PreuveDImageCle`, `keyframe_world_preuve.go`) lit l'en-tête de la marche, où la résolution
+   n'entre pas (`mpp_declare.go`). Sur ces films, un record d'objet n'y est donc prouvé qu'à
+   l'identité mal lue. Y poser la résolution changerait les ancres de toutes les lectures : à
+   mesurer avant d'être décidé. Non traité.
+33. *(même lot)* **269 records d'image-clé des cinq bobines anciennes ne ferment plus sous le
+   découpage déclaré**, sur 49 slots (`ti=38` surtout, `ti=42`, un `ti=37`). Aucun n'est arrêté par
+   un composant sans lecteur : la traversée finit avant ou après la frontière, un composant plus loin
+   lit faux. Leur fermeture sous 9/5 était une coïncidence (identité inconnue du catalogue, preuve 2) ;
+   le composant fautif n'est pas instruit.
 
 ## 7. Journal
 
@@ -1792,3 +1882,11 @@ plan y sont reprises comme items (3.1.2).
   re-fusionnée (`c11f30159`, conflits des empreintes de révision : `feat/v75` a raison, empreintes
   recopiées), puis passes c0 et c1 rejouées après la recuisson (11 h 33 – 11 h 54) : identiques à
   l'octet. c2 et c3 écrits dans l'arbre de travail pendant l'attente, non commités.
+- 2026-10-07 : 2.7.c2 ET 2.7.c3 CLOS (un commit). Les morts et la calibration de killsource passent
+  sur la marche des trames, sous le découpage MPP déclaré et l'identifiant bas de l'en-tête ; la
+  timeline, la bande bipède et son repli sont retirés, avec les entrées de l'ancienne marche dans la
+  grammaire. Ratchet de fermeture d'image-clé régénéré sous le découpage déclaré : chaque baisse
+  justifiée par la preuve 2 (instrument `ri27c3`). Preuve commune : contenu publié identique sur les
+  19 témoins, seules les voies techniques, la couverture de l'artefact et les diagnostics de
+  calibration bougent. Le commit de clôture de c1 (`5ee99df38`) emportait par erreur les suppressions
+  de fichiers de c2 ; refait sans elles avant tout push (`8aa5c597a`). Découvertes 32 et 33.

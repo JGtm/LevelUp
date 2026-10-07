@@ -255,19 +255,19 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 	}
 	tbl := readFilmTable(f)
 	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
-	tl, err := newTimeline(f, nil)
+	fc := grammar.NewFilmContextForMap(f.src, opts.Carte, nil)
+	cal, err := calibrate(fc, opts.Views, opts.Carte)
 	if err != nil {
-		t.Fatalf("timeline : %v", err)
+		t.Fatalf("calibration : %v", err)
 	}
-	tl.rewind()
-	cal := calibrate(f, tl, opts.Views, opts.Carte)
-	w := runWalk(f, tl, r, opts.Views, &cal)
+	fc.PoserProfilDeBalayage(cal.Profil)
+	w, err := marcherLesMorts(fc, f, r)
+	if err != nil {
+		t.Fatalf("marche : %v", err)
+	}
 	t.Logf("DEAD-STATES HORS ROSTER (carte %q, %s)", os.Getenv(ksRosterCarteEnv), cal.String())
 	par := map[[2]int]int{}
 	for _, d := range w.deads {
-		if d.slot < w.bipLo || d.slot > w.bipHi {
-			continue
-		}
 		if int(d.dead.EnumA) < r.nPlay && int(d.dead.EnumB) < r.nPlay {
 			continue
 		}

@@ -246,17 +246,9 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	c.killEvents = scanKillEvents(c.film)
 	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster)
 
-	tl, err := newTimeline(c.film, &c.diag)
-	if err != nil {
+	if err = c.marcher(ctx, src); err != nil {
 		return err
 	}
-	tl.rewind()
-	c.calib = calibrate(c.film, tl, c.opts.Views, c.opts.Carte)
-	c.avertirReplisDeCalibration()
-	if err = ctx.Err(); err != nil {
-		return err
-	}
-	c.walkRes = runWalk(c.film, tl, c.roster, c.opts.Views, &c.calib)
 	c.scanCands = scanFilm(c.film, c.roster.nPlay)
 	if err = ctx.Err(); err != nil {
 		return err
@@ -345,4 +337,47 @@ func coveredInstants(kills []Kill) map[int]bool {
 		m[k.TimeMS] = true
 	}
 	return m
+}
+
+// marcher : la calibration, puis la marche des morts, sur le contexte du film ouvert sous la carte du
+// match — la marche des trames de la grammaire, sous le profil calibre et le decoupage MPP que la
+// grammaire resout pour le film. Ce que le registre, la phase des images-cles et la marche
+// constatent tombe dans les diagnostics.
+func (c *decodeCtx) marcher(ctx context.Context, src *source.Film) error {
+	fc := grammar.NewFilmContextForMap(src, c.opts.Carte, nil)
+	reg, err := fc.Registry()
+	if err != nil {
+		return errRegistry(err)
+	}
+	if d, ok := grammar.DiagnosticRegistreInconnu(reg); ok {
+		c.diag.Signaler(d)
+	}
+	if c.calib, err = calibrate(fc, c.opts.Views, c.opts.Carte); err != nil {
+		return err
+	}
+	fc.Diagnostics().Verser(&c.diag)
+	c.avertirReplisDeCalibration()
+	if err = ctx.Err(); err != nil {
+		return err
+	}
+	c.signalerLeDecoupageMPP(poserLeProfil(fc, c.calib.Profil))
+	if c.walkRes, err = marcherLesMorts(fc, c.film, c.roster); err != nil {
+		return err
+	}
+	fc.Diagnostics().Verser(&c.diag)
+	return nil
+}
+
+// poserLeProfil pose le profil `p` sur le contexte de la marche, puis le decoupage du bloc MPP que la
+// grammaire resout pour le film ([grammar.FilmContext.ResolutionMPP] : celui de sa version de format,
+// ou celui qu il declare), comme la cuisson le pose apres son profil
+// (`replay.poserLeDecoupageMPPDuFilm`) ; elle rend la resolution. Rien de resolu : le contexte garde
+// le decoupage du profil. Le profil calibre ne porte pas ce decoupage : la cuisson le pose elle-meme.
+func poserLeProfil(fc *grammar.FilmContext, p grammar.ProfilDeBalayage) grammar.ResolutionMPP {
+	fc.PoserProfilDeBalayage(p)
+	res := fc.ResolutionMPP()
+	if res.Decide() {
+		fc.PoserMPP(res.Widths)
+	}
+	return res
 }

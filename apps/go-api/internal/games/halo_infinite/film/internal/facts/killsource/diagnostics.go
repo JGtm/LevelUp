@@ -1,6 +1,9 @@
 package killsource
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+)
 
 // diagnostics.go — CE QUE LE DECODAGE DU KILL-FEED CONSTATE, RENDU A L ORCHESTRATEUR (lot J12.3,
 // ADR 0034 D-4).
@@ -31,6 +34,9 @@ const (
 	// (jumeau discordant, equipe hors domaine) — meme quand chaque bot a son equipe par un autre
 	// paquet.
 	DiagEntreesDeBots constat.Code = "killsource.entrees_de_bots"
+	// DiagDecoupageMPPNonResolu : le decoupage du bloc MPP du film n est pas resolu (format inconnu,
+	// declaration absente ou discordante) ; la marche le lit sous le decoupage du profil.
+	DiagDecoupageMPPNonResolu constat.Code = "killsource.decoupage_mpp_non_resolu"
 )
 
 // signaler note un diagnostic du decodage.
@@ -55,4 +61,17 @@ func (c *decodeCtx) signalerLesEquipesDesBots(e EquipesDesBots, build string) {
 			"paquets_non_fermes", e.PaquetsNonFermes, "hors_balayage", e.EntreesHorsBalayage,
 			"jumeaux_discordants", e.JumeauxDiscordants, "hors_domaine", e.HorsDomaine)
 	}
+}
+
+// signalerLeDecoupageMPP dit, en AVERTISSEMENT, un film dont le decoupage du bloc MPP n est pas
+// resolu ([grammar.ResolutionMPP.Decide] faux) : la marche le lit sous le decoupage du profil, qui
+// n est celui d aucune declaration du film.
+func (c *decodeCtx) signalerLeDecoupageMPP(res grammar.ResolutionMPP) {
+	if res.Decide() {
+		return
+	}
+	c.signaler(DiagDecoupageMPPNonResolu, constat.NiveauWarn, "killsource: decoupage MPP du film non resolu "+
+		"— decoupage du profil garde", "film", c.name, "format", res.FormatVersion,
+		"format_inconnu", res.FormatInconnu, "records", res.Declaration.Records,
+		"discordants", res.Declaration.Discordants)
 }

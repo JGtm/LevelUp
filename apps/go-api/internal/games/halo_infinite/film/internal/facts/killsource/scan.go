@@ -70,7 +70,7 @@ func (f *film) candidatsDuBalayage(es []grammar.EtatDeMortBalaye) []candidate {
 	})
 	out := make([]candidate, 0, len(es))
 	for _, e := range es {
-		out = append(out, candidate{chunk: e.PositionDuChunk, pidx: e.Index, ms: int((e.TS - f.tsBase) / 1000),
+		out = append(out, candidate{chunk: e.PositionDuChunk, pidx: e.Index, ms: f.msDe(e.TS),
 			bit: e.Bit, tag: e.Tag, victim: e.Victime, killer: e.Tueur, cat: e.Categorie})
 	}
 	return out
