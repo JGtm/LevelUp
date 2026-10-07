@@ -2292,27 +2292,6 @@ export type SessionPageResponse = components['schemas']['SessionPageResponse']
 // `MatchRangeBlock` / `MatchRangeProfile` / `MatchRangePlayer` (lot N2) sont déjà alias plus
 // haut, posés par le lot R pour l'Escouade : la page Sessions les lit tels quels.
 
-// ─── Chantier session-usage (S3) : bloc « usages d'équipement, socles et objectifs » ──
-// Contrat Go : internal/domain/session_usage.go — TOUT axe est NORMALISÉ (parts %,
-// cadences /10 min) ; les totaux bruts ne sont que des dénominateurs d'honnêteté.
-// Un champ ABSENT (undefined) est « non mesuré », JAMAIS un zéro.
-
-export type SessionUsageBlock = components['schemas']['SessionUsageBlock']
-/** Les prises de socle rangées par NIVEAU d'arme (base / terrain / puissance / bonus / non
- *  classé). Publié par les deux blocs d'usage — page Sessions et bloc d'équipement. */
-export type SessionUsagePadTiersBlock = components['schemas']['SessionUsagePadTiersBlock']
-export type SessionUsageMetric = components['schemas']['SessionUsageMetric']
-export type SessionUsageOutcomes = components['schemas']['SessionUsageOutcomes']
-export type SessionUsageMatchPoint = components['schemas']['SessionUsageMatchPoint']
-export type SessionUsageSquadPlayer = components['schemas']['SessionUsageSquadPlayer']
-export type SessionUsageSquadShare = components['schemas']['SessionUsageSquadShare']
-export type SessionUsagePadFamily = components['schemas']['SessionUsagePadFamily']
-export type SessionUsagePowerup = components['schemas']['SessionUsagePowerup']
-export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlock']
-export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
-export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
-export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
-
 // ─── Bloc « formes retenues » : la matière des cartes d'objectif (Escouade › Contributions,
 // Séries temporelles › Usages). Contrat Go : internal/domain/squad_formes.go. Le bloc ne porte
 // AUCUN agrégat — les parts se calculent dans `features/squad/objectif/` et
@@ -3431,13 +3410,12 @@ export type TacticalContribution = components['schemas']['TacticalContribution']
 export type TacticalCoordination = components['schemas']['TacticalCoordination']
 export type TacticalBinDistance = components['schemas']['TacticalBinDistance']
 
-// Le bloc COORDINATION du lot N1 (riposte + appui reçu), servi tel quel par Sessions, la
-// match view et les Séries temporelles. Alias stricts du contrat généré : un renommage
+// Le bloc COORDINATION du lot N1 (appui reçu), servi tel quel par Sessions et
+// les Séries temporelles. Alias stricts du contrat généré : un renommage
 // côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution. `Couverture` porte
 // déjà l'alias `TacticalCouverture` plus haut — ce second nom est celui du bloc, et le
 // rapatrier ici évite de faire lire « tactique » à un appelant de Coordination.
 export type CoordinationBlock = components['schemas']['CoordinationBlock']
-export type CoordinationRiposte = components['schemas']['CoordinationRiposte']
 export type CoordinationAppui = components['schemas']['CoordinationAppui']
 export type CoordinationSessionPoint = components['schemas']['CoordinationSessionPoint']
 export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']

@@ -117,20 +117,13 @@ func TestBuildCoordinationBlock_MailleMatch(t *testing.T) {
 		t.Fatalf("%d cases et %d soirées, attendu 2 et 0 : la maille MATCH ne publie pas de soirées",
 			len(got.PerMatch), len(got.Sessions))
 	}
-	if got.Riposte.TeamDeaths != 2 || got.Riposte.TeamDeathsAvenged != 2 {
-		t.Errorf("morts de camp = %d/%d, attendu 2 ripostées sur 2",
-			got.Riposte.TeamDeathsAvenged, got.Riposte.TeamDeaths)
-	}
-	if got.Riposte.ParityPct == nil || *got.Riposte.ParityPct != 25 {
+	if got.Appui.ParityPct == nil || *got.Appui.ParityPct != 25 {
 		t.Errorf("parité = %v, attendu 25 — l'effectif vient de l'appelant (réserve R1)",
-			got.Riposte.ParityPct)
+			got.Appui.ParityPct)
 	}
 	if got.Appui.OnMePrepare.Brut != 1 || got.Appui.OnMePrepare.N != 2 {
 		t.Errorf("on me prépare = %d/%d, attendu 1/2",
 			got.Appui.OnMePrepare.Brut, got.Appui.OnMePrepare.N)
-	}
-	if got.FenetreMs != 5000 {
-		t.Errorf("fenêtre = %d ms, attendu 5000", got.FenetreMs)
 	}
 }
 
@@ -163,19 +156,18 @@ func TestBuildCoordinationBlock_MailleSoiree(t *testing.T) {
 	if got.Sessions[0].SessionLabel != "2026-09-20" {
 		t.Errorf("première soirée = %q, attendu l'ordre reçu", got.Sessions[0].SessionLabel)
 	}
-	// Soirée 1 : la mort de A, vengée par moi. Soirée 2 : ma mort, vengée par A.
-	if got.Sessions[0].Riposte.JeRiposte.Brut != 1 || got.Sessions[0].Riposte.JeSuisCouvert.N != 0 {
-		t.Errorf("soirée 1 = %+v, attendu ma riposte et aucune de mes morts",
-			got.Sessions[0].Riposte)
+	// Soirée 1 : mes deux frags mesurés, dont un préparé. Soirée 2 : aucun appui lu.
+	if a := got.Sessions[0].Appui.OnMePrepare; a.Brut != 1 || a.N != 2 {
+		t.Errorf("soirée 1 : on me prépare = %+v, attendu 1/2", a)
 	}
-	if got.Sessions[1].Riposte.JeSuisCouvert.Brut != 1 {
-		t.Errorf("soirée 2 : je suis couvert = %+v, attendu 1 mort vengée",
-			got.Sessions[1].Riposte.JeSuisCouvert)
+	if got.Sessions[1].Appui.OnMePrepare.N != 0 {
+		t.Errorf("soirée 2 : on me prépare = %+v, attendu aucun frag mesuré",
+			got.Sessions[1].Appui.OnMePrepare)
 	}
 }
 
 // TestBuildCoordinationBlock_CapabilityFermee — un titre qui ne nomme pas le tueur de
-// chaque mort n'a pas un taux de riposte nul : il n'en a pas.
+// chaque mort n'a pas un taux d'appui nul : il n'en a pas.
 func TestBuildCoordinationBlock_CapabilityFermee(t *testing.T) {
 	q := requeteDeTest()
 	q.Caps = games.CapabilityMap{}
@@ -194,7 +186,7 @@ func TestBuildCoordinationBlock_CapabilityFermee(t *testing.T) {
 }
 
 // TestBuildCoordinationBlock_AppuisEnEchec_DegradeUnSujet — dégrader UN sujet vaut mieux
-// que retirer le bloc entier : la riposte reste servie, l'appui a des dénominateurs vides
+// que retirer le bloc entier : la couverture reste servie, l'appui a des dénominateurs vides
 // et la couverture le dit.
 func TestBuildCoordinationBlock_AppuisEnEchec_DegradeUnSujet(t *testing.T) {
 	q := requeteDeTest()
@@ -202,8 +194,8 @@ func TestBuildCoordinationBlock_AppuisEnEchec_DegradeUnSujet(t *testing.T) {
 
 	got := buildCoordinationBlock(context.Background(), q)
 
-	if !got.Available || got.Riposte.TeamDeaths != 2 {
-		t.Fatalf("bloc = %+v, attendu la riposte servie", got)
+	if !got.Available || got.MatchesMeasured != 2 {
+		t.Fatalf("bloc = %+v, attendu servi sur ses 2 matchs mesurés", got)
 	}
 	if got.Appui.OnMePrepare.N != 0 || !got.Appui.OnMePrepare.EchantillonFaible {
 		t.Errorf("appui = %+v, attendu un dénominateur vide et l'échantillon faible posé",

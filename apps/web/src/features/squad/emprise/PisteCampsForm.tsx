@@ -54,18 +54,23 @@ export interface PisteCampsFormProps {
   axisMaxLabel: string
   /** Largeur de la colonne des noms (px) ; maquette : 118. */
   labelWidth?: number
+  /**
+   * Parts seules (vue compacte du tiroir de comparaison de Sessions) : chaque segment et le repli
+   * n'écrivent que la part ; le compte reste dans l'infobulle. Défaut : « compte · part ».
+   */
+  pctOnly?: boolean
 }
 
 const fitKey = (row: string, side: 'us' | 'them') => `${row}|${side}`
 
-export function PisteCampsForm({ rows, pctFmt, axisMaxLabel, labelWidth = 118 }: PisteCampsFormProps) {
+export function PisteCampsForm({ rows, pctFmt, axisMaxLabel, labelWidth = 118, pctOnly = false }: PisteCampsFormProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, rows)
   const columns = pisteColumns(labelWidth)
   return (
     <div ref={ref} className="flex flex-col gap-3.5">
       {rows.map((row) => (
-        <PisteRow key={row.key} row={row} columns={columns} hidden={hidden} pctFmt={pctFmt} />
+        <PisteRow key={row.key} row={row} columns={columns} hidden={hidden} pctFmt={pctFmt} pctOnly={pctOnly} />
       ))}
       <TrackAxis columns={columns} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? axisMaxLabel : String(v) }))} />
     </div>
@@ -96,11 +101,13 @@ function PisteRow({
   columns,
   hidden,
   pctFmt,
+  pctOnly,
 }: {
   row: PisteCampsRow
   columns: string
   hidden: ReadonlySet<string>
   pctFmt: (v: number) => string
+  pctOnly: boolean
 }) {
   const n = row.us + row.them
   const share = n > 0 ? (row.us / n) * 100 : 0
@@ -130,11 +137,17 @@ function PisteRow({
             className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground"
             data-testid={`piste-camps-repli-${row.key}`}
           >
-            <span>{usHidden && <RepliValue color={ALLY} count={row.us} pct={usPct} />}</span>
-            <span>{themHidden && <RepliValue color={ENEMY} count={row.them} pct={themPct} />}</span>
+            <span>{usHidden && <RepliValue color={ALLY} count={pctOnly ? null : row.us} pct={usPct} />}</span>
+            <span>{themHidden && <RepliValue color={ENEMY} count={pctOnly ? null : row.them} pct={themPct} />}</span>
           </div>
         )}
-        <CampTrack row={row} share={share} usPct={usPct} themPct={themPct} usHidden={usHidden} themHidden={themHidden} />
+        <CampTrack
+          row={row}
+          share={share}
+          labels={{ us: usPct, them: themPct, pctOnly }}
+          usHidden={usHidden}
+          themHidden={themHidden}
+        />
         {row.below}
       </div>
     </div>
@@ -145,18 +158,18 @@ function PisteRow({
 function CampTrack({
   row,
   share,
-  usPct,
-  themPct,
+  labels,
   usHidden,
   themHidden,
 }: {
   row: PisteCampsRow
   share: number
-  usPct: string
-  themPct: string
+  /** Les parts de chaque camp, et `pctOnly` : la part seule dans le segment (vue compacte). */
+  labels: { us: string; them: string; pctOnly: boolean }
   usHidden: boolean
   themHidden: boolean
 }) {
+  const { us: usPct, them: themPct, pctOnly } = labels
   return (
     <div className="relative h-[22px] rounded-[3px] bg-muted" role="img" aria-label={`${row.label} : ${row.us} · ${usPct} / ${themPct} · ${row.them}`}>
       {row.us > 0 && (
@@ -170,7 +183,13 @@ function CampTrack({
           align="start"
           tip={row.usTip}
         >
-          <b className="font-extrabold">{row.us}</b> · {usPct}
+          {pctOnly ? (
+            <b className="font-extrabold">{usPct}</b>
+          ) : (
+            <>
+              <b className="font-extrabold">{row.us}</b> · {usPct}
+            </>
+          )}
         </Segment>
       )}
       {row.them > 0 && (
@@ -187,7 +206,13 @@ function CampTrack({
           align="end"
           tip={row.themTip}
         >
-          {themPct} · <b className="font-extrabold">{row.them}</b>
+          {pctOnly ? (
+            <b className="font-extrabold">{themPct}</b>
+          ) : (
+            <>
+              {themPct} · <b className="font-extrabold">{row.them}</b>
+            </>
+          )}
         </Segment>
       )}
       <ParityMark />
@@ -261,12 +286,19 @@ function ThinSegment({
   )
 }
 
-function RepliValue({ color, count, pct }: { color: string; count: number; pct: string }) {
+/** La valeur repliée au-dessus de la barre ; `count` nul = la part seule (vue compacte). */
+function RepliValue({ color, count, pct }: { color: string; count: number | null; pct: string }) {
   return (
     <span className="inline-flex items-center">
       <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
-      <b className="text-[13px] font-bold text-foreground">{count}</b>
-      <span className="whitespace-pre">{` · ${pct}`}</span>
+      {count == null ? (
+        <b className="text-[13px] font-bold text-foreground">{pct}</b>
+      ) : (
+        <>
+          <b className="text-[13px] font-bold text-foreground">{count}</b>
+          <span className="whitespace-pre">{` · ${pct}`}</span>
+        </>
+      )}
     </span>
   )
 }

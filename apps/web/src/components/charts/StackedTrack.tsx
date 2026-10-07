@@ -17,8 +17,7 @@
  *
  * Rendu DOM/CSS, pas ECharts : le wrapper `BarStackedChart` ne porte ni étiquette DANS le
  * segment, ni trait de parité, ni épaisseur de barre imposée, et son rendu canvas
- * n'exposerait ni les comptes ni l'ordre aux tests. C'est le pattern déjà en service sur
- * `_shared/usage/UsageLobbyTrack` — le deuxième mécanisme de l'app, pas un troisième.
+ * n'exposerait ni les comptes ni l'ordre aux tests.
  */
 import { Tooltip } from '@/components/ui/tooltip'
 
@@ -67,7 +66,7 @@ export function StackedTrack({
       {segments.map((seg) => (
         // La largeur est portée par l'ITEM (calc en %), jamais par un flex-grow sur le
         // contenu d'un Tooltip : son ancre inline-flex se dimensionnerait au texte et non
-        // au compte (piège documenté sur UsageLobbyTrack).
+        // au compte.
         <div
           key={seg.key}
           className="mr-[2px] h-full last:mr-0"
@@ -75,7 +74,7 @@ export function StackedTrack({
         >
           <Tooltip content={seg.tooltip} className="h-full w-full">
             {/* `text-white` : une écriture posée SUR un aplat, question de contraste dans
-                le segment et non couleur sémantique (même usage que UsageLobbyTrack). */}
+                le segment et non couleur sémantique. */}
             <div
               className="flex h-full w-full cursor-help items-center justify-center overflow-hidden whitespace-nowrap px-1 text-2xs font-semibold text-white"
               style={{ backgroundColor: seg.color }}

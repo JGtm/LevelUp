@@ -1,6 +1,6 @@
 // Package analysis — home_recent_helpers_test.go : tests unitaires pour les
 // helpers nullable et de score label de la projection home (mmrDelta,
-// float64PtrVal, intPtrIfPos, mapImageURLFromRegistry, buildScoreLabelCanonical)
+// float64PtrVal, intPtrIfPos, mapImageURLFromRegistry, ScoreLabelCanonical)
 // — audit #4 round 2.
 package analysis
 
@@ -156,9 +156,9 @@ func TestMapImageURLFromRegistry_RealPath(t *testing.T) {
 	}
 }
 
-// ─── buildScoreLabelCanonical ─────────────────────────────────────────────
+// ─── ScoreLabelCanonical ─────────────────────────────────────────────
 
-func TestBuildScoreLabelCanonical_TeamZeroNotSwap(t *testing.T) {
+func TestScoreLabelCanonical_TeamZeroNotSwap(t *testing.T) {
 	t.Parallel()
 	team0 := 50
 	team1 := 30
@@ -172,13 +172,13 @@ func TestBuildScoreLabelCanonical_TeamZeroNotSwap(t *testing.T) {
 		},
 		Self: canonical.MatchParticipant{TeamID: &teamID},
 	}
-	got := buildScoreLabelCanonical(r, nil)
+	got := ScoreLabelCanonical(r, nil)
 	if got == nil || *got != "50 - 30" {
 		t.Errorf("score team0: got %v, want 50 - 30", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_TeamOneSwap(t *testing.T) {
+func TestScoreLabelCanonical_TeamOneSwap(t *testing.T) {
 	t.Parallel()
 	team0 := 50
 	team1 := 30
@@ -192,21 +192,21 @@ func TestBuildScoreLabelCanonical_TeamOneSwap(t *testing.T) {
 		},
 		Self: canonical.MatchParticipant{TeamID: &teamID},
 	}
-	got := buildScoreLabelCanonical(r, nil)
+	got := ScoreLabelCanonical(r, nil)
 	if got == nil || *got != "30 - 50" {
 		t.Errorf("score team1: got %v, want 30 - 50 (perspective swapped)", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_NoTeams(t *testing.T) {
+func TestScoreLabelCanonical_NoTeams(t *testing.T) {
 	t.Parallel()
 	r := canonical.PlayerMatchRow{}
-	if got := buildScoreLabelCanonical(r, nil); got != nil {
+	if got := ScoreLabelCanonical(r, nil); got != nil {
 		t.Errorf("no teams: got %v, want nil", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_OnlyOneTeam(t *testing.T) {
+func TestScoreLabelCanonical_OnlyOneTeam(t *testing.T) {
 	t.Parallel()
 	score := 50
 	r := canonical.PlayerMatchRow{
@@ -217,12 +217,12 @@ func TestBuildScoreLabelCanonical_OnlyOneTeam(t *testing.T) {
 		},
 	}
 	// found0 mais pas found1 → nil.
-	if got := buildScoreLabelCanonical(r, nil); got != nil {
+	if got := ScoreLabelCanonical(r, nil); got != nil {
 		t.Errorf("only team 0: got %v, want nil", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_NegativeScore(t *testing.T) {
+func TestScoreLabelCanonical_NegativeScore(t *testing.T) {
 	t.Parallel()
 	team0 := -1
 	team1 := 30
@@ -235,12 +235,12 @@ func TestBuildScoreLabelCanonical_NegativeScore(t *testing.T) {
 		},
 	}
 	// -1 → nil (score indisponible).
-	if got := buildScoreLabelCanonical(r, nil); got != nil {
+	if got := ScoreLabelCanonical(r, nil); got != nil {
 		t.Errorf("negative score: got %v, want nil", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_TeamIDNilDefaultsZero(t *testing.T) {
+func TestScoreLabelCanonical_TeamIDNilDefaultsZero(t *testing.T) {
 	t.Parallel()
 	// TeamID nil → considéré comme team 0 (pas de swap).
 	team0 := 50
@@ -253,13 +253,13 @@ func TestBuildScoreLabelCanonical_TeamIDNilDefaultsZero(t *testing.T) {
 			},
 		},
 	}
-	got := buildScoreLabelCanonical(r, nil)
+	got := ScoreLabelCanonical(r, nil)
 	if got == nil || *got != "50 - 30" {
 		t.Errorf("TeamID nil: got %v, want 50 - 30 (default team 0)", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_NilScore(t *testing.T) {
+func TestScoreLabelCanonical_NilScore(t *testing.T) {
 	t.Parallel()
 	// Une équipe avec Score=nil → skip → found incomplet → nil.
 	team1 := 30
@@ -271,12 +271,12 @@ func TestBuildScoreLabelCanonical_NilScore(t *testing.T) {
 			},
 		},
 	}
-	if got := buildScoreLabelCanonical(r, nil); got != nil {
+	if got := ScoreLabelCanonical(r, nil); got != nil {
 		t.Errorf("nil score: got %v, want nil", got)
 	}
 }
 
-func TestBuildScoreLabelCanonical_ZeroScores(t *testing.T) {
+func TestScoreLabelCanonical_ZeroScores(t *testing.T) {
 	t.Parallel()
 	// 0-0 reste valide.
 	z := 0
@@ -288,7 +288,7 @@ func TestBuildScoreLabelCanonical_ZeroScores(t *testing.T) {
 			},
 		},
 	}
-	got := buildScoreLabelCanonical(r, nil)
+	got := ScoreLabelCanonical(r, nil)
 	if got == nil || *got != "0 - 0" {
 		t.Errorf("0-0 should be valid: got %v", got)
 	}
@@ -297,7 +297,7 @@ func TestBuildScoreLabelCanonical_ZeroScores(t *testing.T) {
 // Les tuiles d'accueil doivent afficher le MÊME nombre que la vue match sur un Oddball :
 // témoin 293a763e, victoire 2 manches à 1 alors que les points disent 181-186. C'est
 // exactement l'incohérence signalée par l'utilisateur le 2026-08-29.
-func TestBuildScoreLabelCanonical_VarianteADecideeEnManches(t *testing.T) {
+func TestScoreLabelCanonical_VarianteADecideeEnManches(t *testing.T) {
 	t.Parallel()
 	p0, p1, r0, r1, total := 181, 186, 2, 1, 3
 	teamID := 0
@@ -312,7 +312,7 @@ func TestBuildScoreLabelCanonical_VarianteADecideeEnManches(t *testing.T) {
 		},
 		Self: canonical.MatchParticipant{TeamID: &teamID},
 	}
-	got := buildScoreLabelCanonical(row, map[string]bool{"Arena:Oddball": true})
+	got := ScoreLabelCanonical(row, map[string]bool{"Arena:Oddball": true})
 	if got == nil || *got != "2 - 1" {
 		t.Errorf("tuile accueil : got %v, want 2 - 1", got)
 	}
@@ -320,7 +320,7 @@ func TestBuildScoreLabelCanonical_VarianteADecideeEnManches(t *testing.T) {
 
 // Même match, variante NON déclarée : on garde les points. C'est la dégradation qui protège
 // le CTF d'arène (deux mi-temps, score = captures).
-func TestBuildScoreLabelCanonical_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
+func TestScoreLabelCanonical_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
 	t.Parallel()
 	p0, p1, r0, r1, total := 181, 186, 2, 1, 3
 	teamID := 0
@@ -335,7 +335,7 @@ func TestBuildScoreLabelCanonical_VarianteNonDeclareeGardeLesPoints(t *testing.T
 		},
 		Self: canonical.MatchParticipant{TeamID: &teamID},
 	}
-	got := buildScoreLabelCanonical(row, map[string]bool{"Arena:Oddball": true})
+	got := ScoreLabelCanonical(row, map[string]bool{"Arena:Oddball": true})
 	if got == nil || *got != "181 - 186" {
 		t.Errorf("variante non declaree : got %v, want 181 - 186", got)
 	}

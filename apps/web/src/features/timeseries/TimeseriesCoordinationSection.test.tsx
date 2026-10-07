@@ -34,19 +34,13 @@ function couverture(brut: number, n: number, faible = false): Couverture {
   return { brut, n, taux: n > 0 ? brut / n : 0, par_match: 0, echantillon_faible: faible }
 }
 
-function soiree(label: string, mesDeaths: number, faible = false): CoordinationSessionPoint {
+function soiree(label: string, mesFrags: number, faible = false): CoordinationSessionPoint {
   return {
     session_label: label,
     matches_measured: 3,
     matches_total: 3,
-    riposte: {
-      je_suis_couvert: couverture(Math.round(mesDeaths / 2), mesDeaths, faible),
-      je_riposte: couverture(8, 40),
-      team_deaths: 40,
-      team_deaths_avenged: 20,
-    },
     appui: {
-      on_me_prepare: couverture(5, 12),
+      on_me_prepare: couverture(Math.round(mesFrags / 2), mesFrags, faible),
       ma_part_des_appuis: couverture(6, 30),
     },
   }
@@ -55,17 +49,8 @@ function soiree(label: string, mesDeaths: number, faible = false): CoordinationS
 function bloc(over: Partial<CoordinationBlock> = {}): CoordinationBlock {
   return {
     available: true,
-    fenetre_ms: 5000,
     matches_measured: 24,
     matches_total: 30,
-    riposte: {
-      je_suis_couvert: couverture(54, 100),
-      je_riposte: couverture(29, 100),
-      team_deaths: 100,
-      team_deaths_avenged: 54,
-      delai_median_ms: 3200,
-      parity_pct: 25,
-    },
     appui: {
       on_me_prepare: couverture(41, 100),
       ma_part_des_appuis: couverture(27, 100),
@@ -78,14 +63,14 @@ function bloc(over: Partial<CoordinationBlock> = {}): CoordinationBlock {
 
 describe('timeseriesCoordination.logic', () => {
   it('projette une soirée en taux POURCENTS, son bâton creux et son dénominateur', () => {
-    const s = serieDeSoirees(bloc().sessions ?? [], (p) => p.riposte.je_suis_couvert)
+    const s = serieDeSoirees(bloc().sessions ?? [], (p) => p.appui.on_me_prepare)
     expect(s.valuesPct).toEqual([50, 50])
     expect(s.hollow).toEqual([false, true])
     expect(s.volumes).toEqual([10, 4])
   })
 
   it('n’invente AUCUN taux sur une soirée sans dénominateur', () => {
-    const s = serieDeSoirees([soiree('20/09/2025 20:00 (1)', 0)], (p) => p.riposte.je_suis_couvert)
+    const s = serieDeSoirees([soiree('20/09/2025 20:00 (1)', 0)], (p) => p.appui.on_me_prepare)
     expect(s.valuesPct).toEqual([null])
   })
 

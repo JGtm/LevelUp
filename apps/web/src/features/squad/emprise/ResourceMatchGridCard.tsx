@@ -41,9 +41,14 @@ interface Props {
   outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
+  /**
+   * Vue compacte du tiroir de comparaison de Sessions : en-tête réduit à l'heure, la carte et
+   * l'initiale du résultat (score et dominance dans l'infobulle), table compacte.
+   */
+  compact?: boolean
 }
 
-export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLabels, outcomeLabels, locale, t }: Props) {
+export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLabels, outcomeLabels, locale, t, compact = false }: Props) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -60,7 +65,11 @@ export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLab
   )
   const columns: GridColumn[] = grid.columns.map((m) => ({
     key: m.matchId,
-    head: <MatchHead m={m} dominanceLabels={dominanceLabels} outcomeLabels={outcomeLabels} locale={locale} t={t} />,
+    head: compact ? (
+      <CompactMatchHead m={m} outcomeLabels={outcomeLabels} locale={locale} />
+    ) : (
+      <MatchHead m={m} dominanceLabels={dominanceLabels} outcomeLabels={outcomeLabels} locale={locale} t={t} />
+    ),
     tipHead: t.grid.matchHead(
       formatMatchTime(m.startTime, locale),
       m.map,
@@ -76,8 +85,26 @@ export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLab
       .join(', ')
   return (
     <ObjectifFrame title={t.grid.title} info={t.grid.info} legend={legend} testId="emprise-grid">
-      <ResourceGridTable columns={columns} sections={grid.sections} itemName={itemName} whoText={whoText} t={t} />
+      <ResourceGridTable columns={columns} sections={grid.sections} itemName={itemName} whoText={whoText} t={t} compact={compact} />
     </ObjectifFrame>
+  )
+}
+
+/**
+ * L'en-tête compact d'un match : l'heure, la carte (tronquée), l'initiale du résultat dans sa couleur
+ * d'issue (l'initiale du libellé du titre : « V », « D » ; « W », « L » en anglais).
+ */
+function CompactMatchHead({ m, outcomeLabels, locale }: { m: EmpriseMatchInfo; outcomeLabels: Record<OutcomeValue, string>; locale: Locale }) {
+  return (
+    <div className="min-w-0 pb-[3px] text-center text-[10.5px] leading-tight text-muted-foreground" data-testid={`emprise-grid-head-${m.matchId}`}>
+      <b className="block font-medium text-foreground">{formatMatchTime(m.startTime, locale)}</b>
+      <span className="block truncate">{m.map}</span>
+      {m.outcome && (
+        <b className="block font-bold" style={{ color: tokenCssVar(OUTCOME_TOKENS[m.outcome]) }} data-testid={`emprise-grid-result-${m.matchId}`}>
+          {outcomeLabels[m.outcome].charAt(0).toLocaleUpperCase(locale)}
+        </b>
+      )}
+    </div>
   )
 }
 

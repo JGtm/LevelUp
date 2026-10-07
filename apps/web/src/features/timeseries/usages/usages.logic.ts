@@ -186,6 +186,22 @@ export function buildMinePickups(block: SoloEmpriseBlock, nameOf: (o: SquadEmpri
   return { groups, max, losses: sheets.losses }
 }
 
+/** Mes prises et celles de mon camp sur une ressource (vue compacte de « Mes prises »). */
+export interface MineResource {
+  resource: string
+  me: number
+  camp: number
+}
+
+/** mineByResource — par ressource, la somme de ses objets (moi, mon camp), dans l'ordre du bilan. */
+export function mineByResource(mine: MinePickups): MineResource[] {
+  return mine.groups.map((g) => ({
+    resource: g.resource,
+    me: g.rows.reduce((a, r) => a + r.me, 0),
+    camp: g.rows.reduce((a, r) => a + r.camp, 0),
+  }))
+}
+
 // ---------------------------------------------------------------------------
 // Équipement pris, et ce que j'en ai fait
 // ---------------------------------------------------------------------------

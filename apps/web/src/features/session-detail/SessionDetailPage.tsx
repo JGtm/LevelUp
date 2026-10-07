@@ -39,11 +39,8 @@ import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
-import { mergeSessionSectionKeys, sessionSectionKeys } from './_sections'
-import {
-  sessionFragCardHasContent,
-  sessionUsageShowsSomething,
-} from './sessionSectionVisibility'
+import { sessionRowKeys } from './_sections'
+import { sessionColumnBlocks } from './sessionEmprise.logic'
 import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
 
 export function SessionDetailPage() {
@@ -144,6 +141,9 @@ export function SessionDetailPage() {
       rangeDelta: rangeDeltaDomain(data.range_profiles, data.compare_range_profiles),
     }
   }, [enableCompare, data, hp])
+  // Les blocs de chaque colonne, stables tant que la réponse ne change pas (modèles mémoïsés des cartes).
+  const currentBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'current') : null), [data])
+  const compareBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'compare') : null), [data])
 
   // Bouton « Voir les synergies » (V72-09) — deep-link vers /squad scopé sur la
   // session, MÊME pattern que la card session escouade de l'accueil
@@ -242,7 +242,6 @@ export function SessionDetailPage() {
   // Le contrat OpenAPI déclare ces collections nullable (le Go peut renvoyer null) ;
   // on les normalise en tableaux pour les itérations et les passages aux sous-composants.
   const availableSessions = data.available_sessions ?? []
-  const sessionMatches = data.matches ?? []
   const selectedSessionLabel = sessionLabel || data.current_session?.session_label || ''
   const selectedCompareSessionLabel =
     compareSessionLabel || data.compare_session?.session_label || data.suggested_compare?.session_label || ''
@@ -258,22 +257,7 @@ export function SessionDetailPage() {
   // session »). Les colonnes sont alors des `grid-rows: subgrid` de la grille racine :
   // la i-eme section de gauche et celle de droite partagent LA MEME rangee, donc la
   // meme hauteur et la meme ligne de titre. Aucune mesure JS — la grille suffit.
-  const rowKeys = drawerOpen
-    ? mergeSessionSectionKeys(
-        sessionSectionKeys({
-          hasUsage: sessionUsageShowsSomething(data.usage),
-          hasFrags: sessionFragCardHasContent(data.current_session),
-          hasCoordination: data.coordination != null,
-          hasRange: data.range_profiles != null,
-        }),
-        sessionSectionKeys({
-          hasUsage: sessionUsageShowsSomething(data.compare_usage),
-          hasFrags: sessionFragCardHasContent(data.compare_session),
-          hasCoordination: data.compare_coordination != null,
-          hasRange: data.compare_range_profiles != null,
-        }),
-      )
-    : null
+  const rowKeys = drawerOpen ? sessionRowKeys(data) : null
   // 1 rangee d'en-tete L3 + 1 rangee par section : les deux colonnes s'y accrochent.
   const gridRowsStyle = rowKeys ? { gridTemplateRows: `repeat(${rowKeys.length + 1}, auto)` } : undefined
 
@@ -396,18 +380,13 @@ export function SessionDetailPage() {
                 composant en `compact` → "ce qui est sous le L3" est strictement identique
                 des deux côtés (seules les données diffèrent). */}
             <SessionColumnBody
-              entry={data.current_session}
-              matches={sessionMatches}
+              blocks={currentBlocks ?? sessionColumnBlocks(data, 'current')}
               playerSlug={playerSlug}
               compact={drawerOpen}
               rowKeys={rowKeys ?? undefined}
               scale={compareScale}
               intensityRows={data.intensity_rows ?? []}
               firstBlood={data.first_blood ?? []}
-              usage={data.usage}
-              coordination={data.coordination}
-              rangeProfiles={data.range_profiles}
-              rangeReference={data.range_reference}
             />
           </>
         ) : (
@@ -495,8 +474,7 @@ export function SessionDetailPage() {
                   spécifique au drawer (ni métriques A/B, ni dense, ni miroir). */}
               {data.compare_session ? (
                 <SessionColumnBody
-                  entry={data.compare_session}
-                  matches={data.compare_matches ?? []}
+                  blocks={compareBlocks ?? sessionColumnBlocks(data, 'compare')}
                   playerSlug={playerSlug}
                   compact
                   rowKeys={rowKeys ?? undefined}
@@ -504,10 +482,6 @@ export function SessionDetailPage() {
                   scale={compareScale}
                   intensityRows={data.compare_intensity_rows ?? []}
                   firstBlood={data.compare_first_blood ?? []}
-                  usage={data.compare_usage}
-                  coordination={data.compare_coordination}
-                  rangeProfiles={data.compare_range_profiles}
-                  rangeReference={data.range_reference}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">

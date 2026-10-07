@@ -18,6 +18,9 @@ import type { SquadWeaponToolLine, SquadWeaponTools } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import type { SquadBarRow, SquadBarRows } from './squadWeaponKillsChart'
 
+/** Nature du reliquat (contrat Go `domain.SquadToolKindUnattributed`). */
+const UNATTRIBUTED_KIND = 'unattributed'
+
 /** Libellés des natures sans nom de registre (i18n de l'appelant). */
 export interface SquadToolKindLabels {
   melee: string
@@ -48,10 +51,12 @@ export function toolLineLabel(line: SquadWeaponToolLine, locale: Locale, labels:
  */
 export function buildSquadToolRows(
   tools: SquadWeaponTools | null | undefined,
-  opts: { locale: Locale; labels: SquadToolKindLabels },
+  /** `top` (vue compacte de Sessions) : les `top` premiers outils du serveur, « Non attribué » exclu. */
+  opts: { locale: Locale; labels: SquadToolKindLabels; top?: number },
 ): SquadBarRows | null {
   const players = tools?.players ?? []
-  const lines = tools?.lines ?? []
+  const all = tools?.lines ?? []
+  const lines = opts.top == null ? all : all.filter((l) => l.kind !== UNATTRIBUTED_KIND).slice(0, opts.top)
   if (players.length === 0 || lines.length === 0) return null
   const rows: SquadBarRow[] = lines.map((l) => ({
     key: l.kind === 'weapon' ? `weapon:${l.weapon_key ?? l.label ?? ''}` : l.kind,

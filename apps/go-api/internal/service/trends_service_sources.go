@@ -30,6 +30,21 @@ const (
 	trendsBlockMedals     = "medals"
 )
 
+// objectiveRoleRowsLoader : la lecture des lignes (match, joueur, famille) projetées par rôle, les
+// deux camps. duckdb.ObjectiveStatsRepo l'implémente ; non câblée (titre sans
+// match.objective.stats), le bloc objectifs est absent.
+type objectiveRoleRowsLoader interface {
+	LoadObjectiveRoleRows(ctx context.Context, matchIDs []string) ([]sessionusage.ObjectiveRow, error)
+}
+
+// flagGrabsNetLoader : la lecture OPTIONNELLE des prises nettes de drapeau. Interface séparée de
+// la précédente : les deux grandeurs viennent de deux tables alimentées par deux producteurs (l'API
+// pour les rôles, le film pour les prises nettes), et un montage qui n'a que l'une doit pouvoir
+// servir l'autre sans l'implémenter.
+type flagGrabsNetLoader interface {
+	LoadFlagGrabsNet(ctx context.Context, matchIDs []string) ([]sessionusage.FlagGrabsNetRow, error)
+}
+
 // WithPlayerXUID fixe le xuid du joueur, clé de jonction des lectures d'objectif,
 // d'équipement et de médailles. Vide : ces blocs restent absents.
 func (s *TrendsService) WithPlayerXUID(xuid string) *TrendsService {

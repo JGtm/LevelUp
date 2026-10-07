@@ -18,7 +18,6 @@ import (
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/service/teammates"
 )
 
 // errCodeSessionNotFound est le code machine renvoyé quand une session
@@ -62,23 +61,15 @@ type SessionPageService struct {
 	// gated par la capability match.objective.stats (jamais slug==) ; nil → axe retiré.
 	objectiveIndex port.ObjectiveIndexRepository
 	objectiveXUID  string
-	// sessionUsageRepo / usageXUID / usageFriends (optionnels) : bloc « usages
-	// d'équipement, socles et objectifs » de la session (chantier session-usage
-	// S2). Câblé gated par la capability film.usage_summary (jamais slug==) ;
-	// nil → bloc Available=false avec raison machine. Cf. session_page_usage.go.
-	sessionUsageRepo port.SessionUsageRepository
-	usageXUID        string
-	usageFriends     teammates.FriendGamertagsResolver
+	// sessionBlocksDeps : les sources des blocs du film de la colonne (résumé d'usage, Emprise,
+	// vies, objectif, emblème, véhicules, scores) — session_page_blocks.go.
+	sessionBlocksDeps
 	// matchRangeRepo / matchRangeXUID (optionnels) : le bloc « portée des engagements »
 	// de la session (lot N2, D22-4). Le repo lit les frags mesurés de TOUT le lobby de
 	// chaque match — le référentiel sans lequel une médiane de portée n'est pas lisible.
 	// nil / xuid vide → bloc omis (dégradation gracieuse). Cf. session_page_range.go.
 	matchRangeRepo port.MatchRangeRepository
 	matchRangeXUID string
-	// repoRoot (optionnel) : racine du dépôt, pour charger le catalogue d'armes du
-	// TITRE et nommer les familles de socle du bloc usage (session_page_usage_labels.go).
-	// Vide → les familles gardent leur clé, ce qui est un rendu valide, pas une panne.
-	repoRoot string
 	// coordTactical / coordAppuis / coordCaps (optionnels) : bloc « Coordination »
 	// (riposte + appui recu) de la session, lot N1. Le journal des morts vient du MEME
 	// lecteur que l'onglet Tactique et la page Escouade ; les appuis de leur lecteur
@@ -299,13 +290,14 @@ func (s *SessionPageService) GetPage(
 	// tableaux (session + comparée), comme l'Explorer.
 	applyPlacementsToRows(resp.Matches, placements)
 	applyPlacementsToRows(resp.CompareMatches, placements)
+	appliquerScoresEtDominance(&resp, canonicalRows, s.roundsDecide) // session_page_match_scores.go
 
 	// Taille de lobby (joueurs présents à la fin, bots inclus) pour le breakdown
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
-	// Blocs « usages » et « Coordination » — session courante ET session comparée (D8),
-	// best-effort, cf. session_page_usage.go et session_page_coordination.go.
+	// Blocs du film et « Coordination » — session courante ET session comparée (D8),
+	// best-effort, cf. session_page_blocks.go et session_page_coordination.go.
 	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc les
 	// deux colonnes du drawer parlent bien des mêmes matchs. `filtered` est la PÉRIODE DE
 	// RÉFÉRENCE du repère d'habituel (celle du filtre de la page, toutes sessions).
@@ -313,7 +305,7 @@ func (s *SessionPageService) GetPage(
 		Matches: currentMatches, CompareMatches: compareMatchesForEvents,
 		ReferenceMatches: filtered, MatchContext: req.Filters.MatchContext, Locale: req.Locale,
 	}
-	s.attachSessionUsage(ctx, &resp, blocsScope)
+	s.attachSessionBlocks(ctx, &resp, blocsScope, canonicalRows)
 
 	// Blocs « portée des engagements » (D22-4) et « période de référence » (D23-4) : même
 	// périmètre de matchs que les deux blocs ci-dessus, et la MÊME période de référence,

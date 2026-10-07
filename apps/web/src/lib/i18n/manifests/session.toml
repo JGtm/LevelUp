@@ -165,6 +165,27 @@ en = "Match by match"
 fr = "Frags et usages"
 en = "Kills and usage"
 
+# Intertitres des sous-groupes de « Frags et usages » (maquette Sessions du 2026-10-06, vue « Après »).
+[session.detail.subsection_resources]
+fr = "Ressources"
+en = "Resources"
+
+[session.detail.subsection_prendre]
+fr = "Rendement des ressources"
+en = "Resource efficiency"
+
+[session.detail.subsection_lives]
+fr = "Isolement"
+en = "Isolation"
+
+[session.detail.subsection_objectif]
+fr = "Objectif"
+en = "Objective"
+
+[session.detail.subsection_equipment]
+fr = "Équipement"
+en = "Equipment"
+
 [session.detail.matches_card]
 fr = "Détail des matchs"
 en = "Match details"
@@ -997,8 +1018,8 @@ fr = "Accueil"
 en = "Home"
 
 [session.detail.action_matches]
-fr = "Mes matchs"
-en = "My matches"
+fr = "Matchs"
+en = "Matches"
 
 [session.detail.action_back]
 fr = "Précédent"

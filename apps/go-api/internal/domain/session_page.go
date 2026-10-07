@@ -99,6 +99,11 @@ type SessionDetailMatchRow struct {
 	// estimateMatchCareerXP, capability analytics.career_xp_estimate). nil hors
 	// capability / match Firefight / personal_score absent (V72-13).
 	CareerXPEstimated *int `json:"career_xp_estimated,omitempty"`
+	// ScoreLabel : score d'équipe « X - Y » (manches pour une variante qui se décide en manches,
+	// ADR 0032 ; analysis.ScoreLabelCanonical). Vide sans score lisible.
+	ScoreLabel string `json:"score_label,omitempty"`
+	// DominanceFlag : enrichissement narratif du match (canonical.DominanceFlag) ; 0 = aucun.
+	DominanceFlag int `json:"dominance_flag,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.
@@ -138,19 +143,10 @@ type SessionPageResponse struct {
 	// graphes — MIROIR du bloc Timeseries. Vide sans repo highlight events ni event.
 	FirstBlood        []FirstBloodPlayerSeries `json:"first_blood,omitempty"`
 	CompareFirstBlood []FirstBloodPlayerSeries `json:"compare_first_blood,omitempty"`
-	// Usage / CompareUsage : bloc « usages d'équipement, armes spéciales et
-	// objectifs », pour la session courante et pour la session comparée — MIROIR
-	// d'IntensityRows/CompareIntensityRows et de FirstBlood/CompareFirstBlood.
-	// Best-effort : nil si la session n'a aucun match ; Available=false avec raison
-	// machine si le titre ne déclare pas film.usage_summary ou si la lecture échoue
-	// (jamais un 500). CompareUsage reste nil hors comparaison : c'est cette
-	// absence, et non un drapeau, qui dit au client de ne rien rendre à droite.
-	Usage        *SessionUsageBlock `json:"usage,omitempty"`
-	CompareUsage *SessionUsageBlock `json:"compare_usage,omitempty"`
 	// RangeProfiles / CompareRangeProfiles : bloc « portée des engagements » (D22-4) —
 	// un profil par match de la session, portant la médiane de portée du joueur consulté
-	// et celle du LOBBY ENTIER du match, qui en est le référentiel. MIROIR d'Usage /
-	// CompareUsage : les deux colonnes du drawer parlent des mêmes matchs. Nil (jamais un
+	// et celle du LOBBY ENTIER du match, qui en est le référentiel. MIROIR d'IntensityRows /
+	// CompareIntensityRows : les deux colonnes du drawer parlent des mêmes matchs. Nil (jamais un
 	// bloc vide) quand le titre n'a pas de décodeur de film, quand la lecture échoue ou
 	// quand aucun match de la session ne porte de frag mesuré.
 	RangeProfiles        *MatchRangeBlock `json:"range_profiles,omitempty"`
@@ -161,21 +157,35 @@ type SessionPageResponse struct {
 	// et la médiane de la période. Un SEUL bloc pour les deux colonnes du drawer : la
 	// référence ne dépend pas de la session affichée, elle dépend du filtre.
 	RangeReference *RangeReferenceBlock `json:"range_reference,omitempty"`
-	// Coordination : le bloc « Riposte » et « Appui reçu » de la session (lot N1,
-	// décisions D22) — les morts de mon camp ripostées dans les 5 s, ma part des
-	// ripostes, mes frags préparés, ma part des appuis distribués dans mon camp, plus
-	// une case par match pour la bande de régularité.
+	// Coordination : le bloc « Appui reçu » de la session (lot N1, décisions D22) — mes frags
+	// préparés, ma part des appuis distribués dans mon camp, plus une case par match pour la
+	// bande de régularité.
 	//
-	// À CÔTÉ DU BLOC D'USAGE, ET SERVI PAR LE MÊME APPEL : c'est une section de plus de
-	// la colonne de session, pas un endpoint. Même contrat de dégradation que `Usage` :
-	// nil si la session n'a aucun match, Available=false avec raison machine si le titre
-	// ne nomme pas le tueur de chaque mort ou si la lecture échoue. MÊME producteur que
-	// le bloc de la page Séries temporelles (service/coordination_block.go).
+	// UNE SECTION DE PLUS DE LA COLONNE, SERVIE PAR LE MÊME APPEL (pas un endpoint) : nil si la
+	// session n'a aucun match, Available=false avec raison machine si le titre ne nomme pas le
+	// tueur de chaque mort ou si la lecture échoue. MÊME producteur que le bloc de la page Séries
+	// temporelles (service/coordination_block.go).
 	//
 	// CompareCoordination est le MÊME bloc pour la session COMPARÉE, produit par le même
-	// producteur sur les matchs de cette session — miroir exact d'Usage / CompareUsage et
-	// de RangeProfiles / CompareRangeProfiles. Nil hors comparaison : c'est cette absence,
-	// et non un drapeau, qui dit au client de ne rien rendre à droite.
+	// producteur sur les matchs de cette session — miroir de RangeProfiles / CompareRangeProfiles.
+	// Nil hors comparaison : c'est cette absence, et non un drapeau, qui dit au client de ne rien
+	// rendre à droite.
 	Coordination        *CoordinationBlock `json:"coordination,omitempty"`
 	CompareCoordination *CoordinationBlock `json:"compare_coordination,omitempty"`
+	// Emprise / CompareEmprise : l'Emprise du joueur de la page sur les matchs de la session
+	// affichée et de la session comparée (un seul joueur des fiches, sans habitude ni grille par
+	// carte : `maps` reste nul). Nil sans match ou sans joueur.
+	Emprise        *SoloEmpriseBlock `json:"emprise,omitempty"`
+	CompareEmprise *SoloEmpriseBlock `json:"compare_emprise,omitempty"`
+	// LivesNearTeammate / CompareLivesNearTeammate : « Mes vies : près d'un coéquipier ou seul » sur
+	// chaque session. Nil sans `film.kill_positions`, en échec de lecture ou sans vie lue.
+	LivesNearTeammate        *TimeseriesLivesNearTeammate `json:"lives_near_teammate,omitempty"`
+	CompareLivesNearTeammate *TimeseriesLivesNearTeammate `json:"compare_lives_near_teammate,omitempty"`
+	// FormesRetenues / CompareFormesRetenues : la feuille d'objectif de chaque session (le joueur
+	// seul en escouade, les deux camps). Nil sans match.
+	FormesRetenues        *SquadFormesBlock `json:"formes_retenues,omitempty"`
+	CompareFormesRetenues *SquadFormesBlock `json:"compare_formes_retenues,omitempty"`
+	// PlayerEmblemURL : l'emblème du joueur de la page (fiche « Ma part à l'objectif »). Vide =
+	// initiale côté web.
+	PlayerEmblemURL string `json:"player_emblem_url,omitempty"`
 }

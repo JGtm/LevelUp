@@ -3,10 +3,9 @@
 // `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2 ; type publié :
 // domain.SoloEmpriseBlock).
 //
-// Orchestration seule : les lectures sont celles de l'Escouade (`squadagg.EmpriseLecteur`), le
-// calcul est `analysis/squademprise` (Build, BuildMaps, BuildEquipment). Le périmètre est celui du
-// reste de la page (les matchs déjà filtrés) ; un seul joueur des fiches (le joueur consulté), pas
-// d'habitude (la page n'a pas de composition), pas de placement des vies.
+// Orchestration seule : l'assemblage est `buildSoloEmpriseBlock` (solo_emprise_block.go, partagé avec
+// la page Sessions), avec la grille par carte. Le périmètre est celui du reste de la page (les matchs
+// déjà filtrés).
 package service
 
 import (
@@ -66,33 +65,13 @@ func (s *TimeseriesService) attachEmprise(
 		return
 	}
 	defer timing.FromContext(ctx).Section("emprise")()
-	current := timeseriesEmpriseMatches(filteredCanon, locale)
-	ids := squadagg.EmpriseMatchIDs(current)
-	lecteur := squadagg.EmpriseLecteur{Page: "timeseries", Player: s.gamertag, RepoRoot: s.repoRoot, TitleSlug: s.titleSlug}
-	in := squademprise.Input{
-		PlayerXUID: s.playerXUID, Current: current,
-		Weapons: squadagg.WeaponCatalog(ctx, s.repoRoot, s.titleSlug, locale),
-	}
-	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, s.usages.empriseRepo, ids)
-	in.Film, in.FilmUnavailable = lecteur.Film(ctx, s.sessionUsageRepo, current, nil, lu)
-	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, s.usages.vehicleRepo, ids, s.playerXUID, locale)
-	in.Players = squadagg.SquadPlayers(s.playerXUID, s.gamertag, nil, nil)
-	if in.Film != nil {
-		in.Players = squadagg.SquadPlayers(s.playerXUID, s.gamertag, in.Film.Participants, nil)
-	}
-	if n := squademprise.WithoutTimeScale(&in); n > 0 {
-		// Même règle et même trace que Sessions et l'Escouade : exclus du rendement des bonus.
-		slog.WarnContext(ctx, "emprise_matchs_sans_echelle_de_temps_hors_rendement",
-			"page", "timeseries", "player", s.gamertag, "matchs_sans_echelle", n, "matchs", len(current))
-	}
-	block := &domain.SoloEmpriseBlock{
-		SquadEmpriseBlock: squademprise.Build(in), Maps: squademprise.BuildMaps(in), Equipment: squademprise.BuildEquipment(in),
-	}
-	slog.DebugContext(ctx, "emprise",
-		"page", "timeseries", "player", s.gamertag, "matchs", block.MatchesTotal, "mesures", block.MatchesMeasured,
-		"cartes", len(block.Maps), "film", block.FilmUnavailable, "feuille", block.SheetUnavailable,
-		"equipement", block.Equipment != nil)
-	resp.Emprise = block
+	resp.Emprise = buildSoloEmpriseBlock(ctx, soloEmpriseQuery{
+		Page: "timeseries", Player: s.gamertag, PlayerXUID: s.playerXUID,
+		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
+		Current: timeseriesEmpriseMatches(filteredCanon, locale), Lectures: lu,
+		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.usages.empriseRepo, VehicleRepo: s.usages.vehicleRepo,
+		WithMaps: true,
+	})
 }
 
 // attachEmblem pose l'emblème du joueur consulté (best-effort : rien sans chargeur ou sans emblème).
