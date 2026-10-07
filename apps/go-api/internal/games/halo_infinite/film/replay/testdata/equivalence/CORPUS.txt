@@ -22,6 +22,18 @@
 #
 #
 #
+# REFERENCES RE-FIGEES AUX ZONES A L ETAT INITIAL, SCHEMA 82, LE 2026-10-07 (branche
+# feat/zones-etat-initial, apres fusion de feat/v75 19ec2c8ba). DECLARE AVANT `-update` : une etape
+# NEUVE, `zoneKeyReads` (les lectures d image-cle de ti=13, comptees sous la garde des zones : 761
+# sur 7344d24f, 709 sur 696a9d7c, 509 sur 01e1f945, 0 ailleurs), et `artifact` sur les 20 films
+# (revision de grammaire `.6` et schema 82 ; contenu des zones sur les deux Bastions, +129 octets
+# chacun). Mesure prealable, binaire de 19ec2c8ba contre binaire de la branche, sur 7344d24f,
+# 696a9d7c, 01e1f945 et 64e8adfa : les 62 autres etapes IDENTIQUES A L OCTET. La base elle-meme ne
+# rendait plus que l etape `artifact` des references (schema 81, phase D) ; c est elle qui porte
+# `bcb6d393` 1 962 629 -> 1 962 148 octets, rejoue a la base a l identique. GIT apres `-update` :
+# 20 fichiers, 40 insertions, 20 suppressions, TOUTES sur `artifact` et `zoneKeyReads`. Aucun
+# `.facts.json` touche ; 20 cuissons `depuis_les_faits=false`.
+#
 # REFERENCES RE-FIGEES AU RETRAIT DES REPLIS NULS (DU-7), SCHEMA 76, LE 2026-10-02 (branche
 # feat/retrait-replis-nuls ; mesure du parc : .ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md).
 # CLASSIFICATION AVANT `-update`, sortie complete : 20 films, 20 ecarts, et sur les VINGT les trois

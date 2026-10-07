@@ -1385,8 +1385,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   de son corps n est plus publiee, le corps d un index humain se lit aux declarations de ses bots
 	//   quand l humain est absent, un bot sans vie ni place sort du roster publie ; aucun champ neuf.
 	//   Un v80 se republie depuis ses faits. Detail : `document_chronicle.go`.
-	if SchemaVersion != 81 {
-		t.Fatalf("SchemaVersion = %d, attendu 81 : incrémenter exige une raison écrite ci-dessus "+
+	// - 82 (2026-10-07, zones a l etat initial) : Aucun champ neuf ; le CONTENU change : une zone de
+	//   Bastion que la variante donne a un camp au coup d envoi est publiee tenue des la premiere
+	//   image-cle qui le dit, et non plus a sa premiere reprise. `grammar.Rev` monte avec elle : un
+	//   v81 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 82 {
+		t.Fatalf("SchemaVersion = %d, attendu 82 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

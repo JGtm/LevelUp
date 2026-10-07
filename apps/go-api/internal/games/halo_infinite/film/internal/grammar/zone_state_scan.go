@@ -10,6 +10,12 @@ package grammar
 // ancre les records delta de l'archetype, marche leur masque avec les desers DE PRODUCTION, et
 // rend les valeurs datees sur l'HORLOGE MOTEUR du film — la meme que les positions de bipede.
 //
+// DEUX VOIES, DEUX LISTES. Les trames delta n'emettent une propriete qu'a son CHANGEMENT : elles
+// rendent [ManagedPropertyScan.Reads]. L'etat d'une propriete AVANT son premier changement ne se
+// lit que dans les images-cles : [ManagedPropertyScan.KeyReads], par le canal de la phase des
+// images-cles (`zone_state_scan_images_cles.go`), records fermes seuls. Les deux listes ne se
+// melangent pas : un consommateur qui ne lit que les changements n'a rien a filtrer.
+//
 // # LA REGLE QUI GOUVERNE : LE DESERIALISEUR PUBLIE, JAMAIS UN SECOND LECTEUR
 //
 // Meme regle qu'`equipment_state.go`, et elle a une histoire ici. La phase 2a du lot C-bis a
@@ -51,7 +57,8 @@ import (
 // ManagedPropertyTypeIndex est l'index d'archetype des proprietes reseau d'objet gere.
 const ManagedPropertyTypeIndex = 13
 
-// ManagedPropertyRead est UNE valeur de propriete lue dans un paquet delta.
+// ManagedPropertyRead est UNE valeur de propriete lue dans un paquet delta, ou dans une image-cle
+// (la liste dit la voie : [ManagedPropertyScan.Reads] ou [ManagedPropertyScan.KeyReads]).
 type ManagedPropertyRead struct {
 	// Slot identifie l'objet gere qui porte la propriete. C'est la cle de regroupement : un
 	// slot = une propriete nommee (mesure de la phase 2a, coherence du tag par slot 99,9 %).
@@ -118,10 +125,23 @@ type ManagedPropertyScan struct {
 	// n'a pas d'objet gere a lire (CTF), la bande comblee tombait a 2,6 %, c'est-a-dire AU
 	// PLANCHER : ses 5 843 records chaines etaient tous explicables par le hasard.
 	Chained int
+
+	// KeyReads sont les valeurs SCALAIRES (`i1`) lues dans les IMAGES-CLES, records fermes seuls :
+	// l'etat de chaque propriete a l'instant de chaque image-cle, y compris celui qu'aucune trame
+	// delta n'emet parce qu'il ne change pas. Leur `Chained` est vrai (un record ferme finit sur
+	// l'ancre du suivant) ; leur `FilmIndex` vaut -1 (mode A).
+	KeyReads []ManagedPropertyRead
+	// KeyRecords compte les records ti=13 des images-cles dont la phase a parcouru l'etat complet ;
+	// ils se repartissent en KeyClosed (fermes, relus, lectures retenues — aucune pour un record
+	// dont l'etat complet n'ecrit aucun composant), KeyBroken (traversee
+	// arretee par un composant sans lecteur), KeyUnproven (traversee aboutie qui ne finit pas sur
+	// l'ancre suivante, ou dernier record du paquet) et KeyRefused (fermes, mais dont la relecture
+	// a l'etendue ne finit pas ou la marche l'a posee). Seuls les fermes laissent des lectures.
+	KeyRecords, KeyClosed, KeyBroken, KeyUnproven, KeyRefused int
 }
 
-// ScanFilmManagedProperties balaye les paquets delta du film de dir et rend les valeurs des
-// proprietes reseau de ti=13.
+// ScanFilmManagedProperties balaye les paquets delta et les images-cles du film de dir et rend
+// les valeurs des proprietes reseau de ti=13.
 //
 // LA BANDE D'ANCRAGE EST CELLE DES SLOTS OBSERVES, PAS LA BANDE COMBLEE (`observedSlotBand`,
 // mesure du 2026-09-01). Une propriete d'objet gere est portee par un objet du MODE — zone de
@@ -155,7 +175,8 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 	return ScanManagedProperties(contexteDeBobine(film))
 }
 
-// ScanManagedProperties décode les propriétés réseau ti=13 d'un film DEJA CHARGE.
+// ScanManagedProperties décode les propriétés réseau ti=13 d'un film DEJA CHARGE : les trames
+// delta par la bande observee, puis les images-cles par la phase des images-cles.
 func ScanManagedProperties(fc *FilmContext) (ManagedPropertyScan, error) {
 	sc := ManagedPropertyScan{}
 	nums := fc.ChunkNumbers()
@@ -186,6 +207,7 @@ func ScanManagedProperties(fc *FilmContext) (ManagedPropertyScan, error) {
 			w.scanPayload(pk.Payload(data), band, pk.TimestampUS, &sc)
 		}
 	}
+	scanKeyframeManagedProperties(fc, arch, &sc)
 	return sc, nil
 }
 

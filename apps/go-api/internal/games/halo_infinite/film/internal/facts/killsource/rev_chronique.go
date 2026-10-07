@@ -462,3 +462,9 @@ package killsource
 // Les faits portent l equipe en section 5 : c est `replay.SchemaDesFaits` qui monte (5 -> 6, apres
 // la vue A), et la re-extraction des faits est un geste de `backfill-replay`. Golden regenere a
 // revision constante.
+//
+// COMPLEMENT DU 2026-10-07 (branche `feat/zones-etat-initial`, REVISION CONSTANTE) : aucune source
+// de la couche ne change ; la VALEUR de `grammar.Rev` monte a `grammar-2026-10-06.6` (voie image-cle
+// de `grammar.ScanManagedProperties`, ti=13), donc l empreinte. Ni la marche ni la calibration de
+// killsource n appellent ce balayage : sortie inchangee par construction. Golden regenere a revision
+// constante.
