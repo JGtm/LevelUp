@@ -55,7 +55,6 @@ var allowedSharedWriteFiles = map[string]map[string]string{
 		"internal/sync/engagement.go":                   "UPDATE match_intensity (bitmask post-complétion, single-writer)",
 		"internal/sync/pve.go":                          "UPDATE pve bits (bitmask post-complétion, single-writer)",
 		"internal/sync/events_replay.go":                "outil replay (reset events_loaded) — recovery hors flux primaire",
-		"internal/sync/backfill_registry_names.go":      "backfill noms registry (UPDATE ciblé, basse fréquence)",
 	},
 	// match_participants / medals_earned : plus AUCUN writer direct dans sync/ —
 	// le trio legacy InsertParticipants/InsertMedals a été supprimé en V4b

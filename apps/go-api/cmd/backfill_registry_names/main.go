@@ -98,7 +98,7 @@ func main() {
 		return
 	}
 
-	stats, err := sync.BackfillRegistryNames(ctx, sharedDB, metaDB)
+	stats, err := sync.BackfillRegistryNames(ctx, sharedDB, metaDB, sync.RegistryNamesOptions{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "backfill: %v\n", err)
 		os.Exit(1)
