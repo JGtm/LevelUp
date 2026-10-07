@@ -116730,3 +116730,5 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `gofmt -l` muet, `go vet` 0 et tests de `internal/domain`, `internal/platform/duckdb` (sans tag integration) et `internal/service` ok, un paquet à la fois.
 
 **Conclusion / prochaine étape** : au superviseur — push, CI, fusion dans `feat/v75`.
+
+**Complément (2026-10-07, FUSION FINALE)** : feat/v75 avait avancé une 3e fois (fad38a03c, Escouade Synergies sans riposte) après le vert de `743a6e774` ; refusion `0a9a327d7` sans conflit, build / vet / tests des paquets partagés (coordination, tactical, service, duckdb, archlint, api) verts en local, gel de feat/v75 obtenu des trois autres sessions ; `origin/feat/v75` avancée en avance rapide à **0a9a327d7** sur le « go » de l'utilisateur (« tout le monde t'attend »), avec tous les jobs CI verts sauf « Go Coverage + Baseline » encore en cours au moment du push (deux entrées vertes sur les sha précédents ; surveillé). Lot Tactique v2 + L13 : CLOS. Checkout principal tenu par une autre session sur `fix/rejeu-zone-retour-image-fractionnaire` : non basculé par moi.
