@@ -85,7 +85,12 @@ Assault et VIP). Les 126 artefacts publiés sont à 0 entrée sans équipe.
       qui tiennent. Une nuance retenue, corrigée dans les textes du lot (J0.2, D16, thought_log, en-tête
       du test) : hors CTF, un bot dont la déclaration BOT_METADATA porte l'équipe en reçoit une, donc
       « toute entrée présente sans équipe » ne vaut que pour les humains. Pas de ronde 2 (aucun P0 ni P1).
-- [ ] J5.4 `delivery-checklist` ; commit(s) `fix(rejeu):` ; push ; CI suivie au premier plan, verte.
+- [x] J5.4 `delivery-checklist` parcourue ; commits `6e5eb7689` (correction, tests, plan, D16,
+      thought_log) et `3ea6a9d0a` (revue) ; `npm ci` dans `apps/web` du worktree, push
+      `git push -u origin feat/rejeu-journal-places` (crochets pre-push verts, 9 étapes) ; CI
+      `37570421494` suivie au premier plan (`gh run watch --exit-status`) : VERTE, tous les jobs (E2E
+      sauté hors PR vers `main`) ; `Deploy Pre-Check` `37570421506` et `Secrets (gitleaks)` `37570421493`
+      verts. Non fusionné dans `feat/v75` (geste du superviseur).
 
 ## Décisions
 
@@ -131,4 +136,6 @@ Assault et VIP). Les 126 artefacts publiés sont à 0 entrée sans équipe.
   vert) ; `go build ./...` et `go vet ./...` 0 en plus du gate (skill `delivery-checklist`). Découvertes
   DJ-a et DJ-b notées, non traitées. Commit `6e5eb7689`.
 - 2026-10-07 : revue adversariale ronde 1 sans constat recevable ; nuance « humains » reportée dans les
-  textes du lot.
+  textes du lot. Commit `3ea6a9d0a`.
+- 2026-10-07 : push, CI `37570421494` verte au premier plan, `Deploy Pre-Check` et gitleaks verts. Plan
+  clos : tous les items `[x]`, aucun `[~]` ni `[!]`. Découvertes DJ-a et DJ-b au superviseur.
