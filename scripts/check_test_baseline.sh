@@ -151,6 +151,21 @@
 # seulement) et portait une seconde résolution du libellé de carte ; elle est supprimée avec son
 # test. 5 lignes JSONL, exactement 1 paire (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-08 (règle unique des matchs connus de la sync, `internal/sync/knownset` :
+# connu seulement si présent au registre partagé pour le joueur ; base partagée illisible =
+# arrêt) : 10 tests retirés. `internal/sync` :: TestLoadKnownMatchIDs_{Deduplication,
+# EmptyTable, WithMatches, MissingTable, UnionWithSharedParticipants, NilSharedFallsBackToPlayer}
+# — la fonction `loadKnownMatchIDs` est supprimée (remplacée par `knownset.Load`), et ces tests
+# figeaient l'ancienne union enrichissements ∪ participants, enrichissement seul compris ;
+# remplacés par les tests de `internal/sync/knownset` et TestKnownSetV1_* (delta, full,
+# régime normal, arrêt). `internal/sync/v2` :: TestKnownLoaderV2_{PlayerSourceOnly,
+# PlayerAndSharedUnion, EmptyXUIDSkipsSharedSource, NilSharedDBSkipsSource2} — ils exigeaient
+# un ensemble sans base partagée ou sans xuid, désormais une erreur ; remplacés par
+# TestKnownLoaderV2_{ConnuSeulementSiAuRegistre, BasePartageeAbsenteEstFatale, XUIDVideEstFatal}.
+# 44 lignes JSONL, exactement 10 paires (Package, Test), vérifié par différence avant/après ;
+# diff complet baseline ↔ fonctions de test des paquets touchés : aucune autre absence
+# introduite par le lot.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

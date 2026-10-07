@@ -1,8 +1,8 @@
 // Package v2 — discovery.go : Phase 1 du pipeline V2 (ADR 0027).
 //
 // Phase 1 = découverte parallèle, read-only. Pour chaque joueur :
-//  1. LoadKnown : lecture des match_ids déjà ingérés (player_match_enrichment
-//     ∪ shared.match_participants WHERE xuid).
+//  1. LoadKnown : lecture des match_ids déjà connus (règle internal/sync/knownset :
+//     présents au registre partagé pour le joueur).
 //  2. ListUnknownMatches : pagination API jusqu'au 1er match connu (delta).
 //
 // Aucune écriture, aucun shared writer lease pris. Les N joueurs tournent
@@ -22,13 +22,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// KnownLoader retourne l'ensemble des match_ids déjà ingérés pour un
-// joueur. Union de player_match_enrichment + shared.match_participants
-// WHERE xuid=p.XUID. Read-only — pas de write lock requis. Peut être
-// appelé concurremment pour N joueurs.
+// KnownLoader retourne l'ensemble des match_ids déjà connus pour un
+// joueur (règle unique internal/sync/knownset, partagée avec le moteur V1).
+// Read-only — pas de write lock requis. Peut être appelé concurremment pour
+// N joueurs. Une erreur wrappant knownset.ErrSharedUnreadable arrête le cycle.
 //
-// L'implémentation V1-bridge (D6) wrappe la fonction loadKnownMatchIDs
-// de engine.go. Les tests utilisent un mock direct.
+// L'implémentation de production est NewKnownLoader (known_loader.go). Les
+// tests utilisent un mock direct.
 type KnownLoader interface {
 	LoadKnown(ctx context.Context, p PlayerProfile) (map[string]bool, error)
 }

@@ -51964,10 +51964,6 @@
 {"Time":"2026-06-26T23:52:37.3126483+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite","Output":"2026/06/26 23:52:37 INFO submitMatchAsBatch: match persisté gamertag=Player0 match_id=aabbccdd-0000-4000-8000-000000000099 participants=2 medals=4\n"}
 {"Time":"2026-06-26T23:52:37.3214829+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite","Output":"--- PASS: TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite (0.18s)\n"}
 {"Time":"2026-06-26T23:52:37.3214829+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite","Elapsed":0.18}
-{"Time":"2026-06-26T23:52:38.5329334+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_Deduplication"}
-{"Time":"2026-06-26T23:52:38.5329334+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_Deduplication","Output":"=== RUN   TestLoadKnownMatchIDs_Deduplication\n"}
-{"Time":"2026-06-26T23:52:38.6282953+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_Deduplication","Output":"--- PASS: TestLoadKnownMatchIDs_Deduplication (0.10s)\n"}
-{"Time":"2026-06-26T23:52:38.6282953+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_Deduplication","Elapsed":0.1}
 {"Time":"2026-06-26T23:52:39.3644208+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestRunDelta_EmptyHistory"}
 {"Time":"2026-06-26T23:52:39.3644208+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestRunDelta_EmptyHistory","Output":"=== RUN   TestRunDelta_EmptyHistory\n"}
 {"Time":"2026-06-26T23:52:39.4355455+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestRunDelta_EmptyHistory","Output":"--- PASS: TestRunDelta_EmptyHistory (0.07s)\n"}
@@ -52697,26 +52693,6 @@
 {"Time":"2026-06-26T23:53:00.6704347+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestReconcileInsertedAgainstRegistry_QueryError_KeepsMatches","Output":"=== RUN   TestReconcileInsertedAgainstRegistry_QueryError_KeepsMatches\n"}
 {"Time":"2026-06-26T23:53:00.6808339+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestReconcileInsertedAgainstRegistry_QueryError_KeepsMatches","Output":"--- PASS: TestReconcileInsertedAgainstRegistry_QueryError_KeepsMatches (0.01s)\n"}
 {"Time":"2026-06-26T23:53:00.6808339+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestReconcileInsertedAgainstRegistry_QueryError_KeepsMatches","Elapsed":0.01}
-{"Time":"2026-06-26T23:53:00.6808339+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_EmptyTable"}
-{"Time":"2026-06-26T23:53:00.6808339+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_EmptyTable","Output":"=== RUN   TestLoadKnownMatchIDs_EmptyTable\n"}
-{"Time":"2026-06-26T23:53:00.7720111+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_EmptyTable","Output":"--- PASS: TestLoadKnownMatchIDs_EmptyTable (0.09s)\n"}
-{"Time":"2026-06-26T23:53:00.7720111+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_EmptyTable","Elapsed":0.09}
-{"Time":"2026-06-26T23:53:00.7720111+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_WithMatches"}
-{"Time":"2026-06-26T23:53:00.7720111+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_WithMatches","Output":"=== RUN   TestLoadKnownMatchIDs_WithMatches\n"}
-{"Time":"2026-06-26T23:53:00.8574961+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_WithMatches","Output":"--- PASS: TestLoadKnownMatchIDs_WithMatches (0.09s)\n"}
-{"Time":"2026-06-26T23:53:00.8574961+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_WithMatches","Elapsed":0.09}
-{"Time":"2026-06-26T23:53:00.8574961+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_MissingTable"}
-{"Time":"2026-06-26T23:53:00.8574961+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_MissingTable","Output":"=== RUN   TestLoadKnownMatchIDs_MissingTable\n"}
-{"Time":"2026-06-26T23:53:00.8669552+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_MissingTable","Output":"--- PASS: TestLoadKnownMatchIDs_MissingTable (0.01s)\n"}
-{"Time":"2026-06-26T23:53:00.8669552+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_MissingTable","Elapsed":0.01}
-{"Time":"2026-06-26T23:53:00.8669552+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_UnionWithSharedParticipants"}
-{"Time":"2026-06-26T23:53:00.8669552+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_UnionWithSharedParticipants","Output":"=== RUN   TestLoadKnownMatchIDs_UnionWithSharedParticipants\n"}
-{"Time":"2026-06-26T23:53:00.9389853+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_UnionWithSharedParticipants","Output":"--- PASS: TestLoadKnownMatchIDs_UnionWithSharedParticipants (0.07s)\n"}
-{"Time":"2026-06-26T23:53:00.9389853+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_UnionWithSharedParticipants","Elapsed":0.07}
-{"Time":"2026-06-26T23:53:00.9389853+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer"}
-{"Time":"2026-06-26T23:53:00.9389853+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer","Output":"=== RUN   TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer\n"}
-{"Time":"2026-06-26T23:53:01.0064404+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer","Output":"--- PASS: TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer (0.07s)\n"}
-{"Time":"2026-06-26T23:53:01.0064404+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer","Elapsed":0.07}
 {"Time":"2026-06-26T23:53:01.0064404+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestNewSyncEngineForTitle_HaloParity"}
 {"Time":"2026-06-26T23:53:01.0064404+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestNewSyncEngineForTitle_HaloParity","Output":"=== RUN   TestNewSyncEngineForTitle_HaloParity\n"}
 {"Time":"2026-06-26T23:53:01.0064404+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestNewSyncEngineForTitle_HaloParity","Output":"--- PASS: TestNewSyncEngineForTitle_HaloParity (0.00s)\n"}
@@ -55336,26 +55312,6 @@
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestPlayerEnrichmentFetcherV2_NoOpReturnsEmptyData","Output":"=== RUN   TestPlayerEnrichmentFetcherV2_NoOpReturnsEmptyData\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestPlayerEnrichmentFetcherV2_NoOpReturnsEmptyData","Output":"--- PASS: TestPlayerEnrichmentFetcherV2_NoOpReturnsEmptyData (0.00s)\n"}
 {"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestPlayerEnrichmentFetcherV2_NoOpReturnsEmptyData","Elapsed":0}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerSourceOnly"}
-{"Time":"2026-06-26T23:54:01.2028678+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerSourceOnly","Output":"=== RUN   TestKnownLoaderV2_PlayerSourceOnly\n"}
-{"Time":"2026-06-26T23:54:01.3415886+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerSourceOnly","Output":"2026/06/26 23:54:01 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:54:01.3747542+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerSourceOnly","Output":"--- PASS: TestKnownLoaderV2_PlayerSourceOnly (0.17s)\n"}
-{"Time":"2026-06-26T23:54:01.3747542+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerSourceOnly","Elapsed":0.17}
-{"Time":"2026-06-26T23:54:01.3747542+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerAndSharedUnion"}
-{"Time":"2026-06-26T23:54:01.3747542+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerAndSharedUnion","Output":"=== RUN   TestKnownLoaderV2_PlayerAndSharedUnion\n"}
-{"Time":"2026-06-26T23:54:01.5093431+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerAndSharedUnion","Output":"2026/06/26 23:54:01 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:54:01.5516621+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerAndSharedUnion","Output":"--- PASS: TestKnownLoaderV2_PlayerAndSharedUnion (0.18s)\n"}
-{"Time":"2026-06-26T23:54:01.5516621+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_PlayerAndSharedUnion","Elapsed":0.18}
-{"Time":"2026-06-26T23:54:01.5516621+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_EmptyXUIDSkipsSharedSource"}
-{"Time":"2026-06-26T23:54:01.5516621+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_EmptyXUIDSkipsSharedSource","Output":"=== RUN   TestKnownLoaderV2_EmptyXUIDSkipsSharedSource\n"}
-{"Time":"2026-06-26T23:54:01.6278344+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_EmptyXUIDSkipsSharedSource","Output":"2026/06/26 23:54:01 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:54:01.6626171+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_EmptyXUIDSkipsSharedSource","Output":"--- PASS: TestKnownLoaderV2_EmptyXUIDSkipsSharedSource (0.11s)\n"}
-{"Time":"2026-06-26T23:54:01.6631361+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_EmptyXUIDSkipsSharedSource","Elapsed":0.11}
-{"Time":"2026-06-26T23:54:01.6631361+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_NilSharedDBSkipsSource2"}
-{"Time":"2026-06-26T23:54:01.6631361+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_NilSharedDBSkipsSource2","Output":"=== RUN   TestKnownLoaderV2_NilSharedDBSkipsSource2\n"}
-{"Time":"2026-06-26T23:54:01.7335896+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_NilSharedDBSkipsSource2","Output":"2026/06/26 23:54:01 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:54:01.7518977+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_NilSharedDBSkipsSource2","Output":"--- PASS: TestKnownLoaderV2_NilSharedDBSkipsSource2 (0.09s)\n"}
-{"Time":"2026-06-26T23:54:01.7518977+02:00","Action":"pass","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_NilSharedDBSkipsSource2","Elapsed":0.09}
 {"Time":"2026-06-26T23:54:01.7518977+02:00","Action":"run","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_OpenPlayerDBFailureIsFatal"}
 {"Time":"2026-06-26T23:54:01.7518977+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_OpenPlayerDBFailureIsFatal","Output":"=== RUN   TestKnownLoaderV2_OpenPlayerDBFailureIsFatal\n"}
 {"Time":"2026-06-26T23:54:01.7518977+02:00","Action":"output","Package":"levelup/go-api/internal/sync/v2","Test":"TestKnownLoaderV2_OpenPlayerDBFailureIsFatal","Output":"--- PASS: TestKnownLoaderV2_OpenPlayerDBFailureIsFatal (0.00s)\n"}
