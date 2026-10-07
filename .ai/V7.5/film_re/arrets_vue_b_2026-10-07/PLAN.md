@@ -38,6 +38,21 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 | G9 | `make gate-push` (TMP court dédié) | [x] | EXIT_GATEPUSH=0 (lint 0 issue, web vert, baseline 9 533 / 9 533 présents, 0 échec) |
 | G10 | push + CI | [~] | push après ce commit ; état CI dans le message de clôture au pilote |
 
+## Correctif D9 (GO de l'utilisateur du 2026-10-07)
+
+| # | Item | Statut | Sortie |
+|---|---|---|---|
+| D9.1 | Compter l'événement sur les documents réels (parc 126 + 19 témoins) avant tout code | [x] | parc schéma 86 : 14 dans 6 films ; témoins base `12b8fb3df` : 18 dans 5 (RAPPORT §7.2) |
+| D9.2 | Règle trouvée à la source, corrigée en un seul endroit, règle générale | [x] | `qualifierContre` / `armeEnMain` (RAPPORT §7.1) |
+| D9.3 | `grep` des autres consommateurs (facts, killsource, web) | [x] | aucun autre chemin ne fabrique le faux événement |
+| D9.4 | Test rouge avant / vert après ; mutation rouge | [x] | 2 tests ; mutations 5 / 5 rouges |
+| D9.5 | Révisions (rangs de travail) | [x] | `SchemaVersion` 83, `grammar.Rev` `.6` ; à renuméroter (RAPPORT §7.5) |
+| D9.6 | Gate de corpus, chaque FAUX / PERTE instruit, 0 MANQUE | [x] | banc 19 / 19 ok, 0 FAUX, 0 MANQUE ; 5 PERTE de filet instruites (§7.3) |
+| D9.7 | Recompte après sur les 19 témoins : 0 | [x] | 0 ; le reste du document identique hors révisions |
+| D9.8 | gofmt, vet, golangci-lint, tests des paquets, archlint | [x] | §7.6 |
+| D9.9 | `make gate-push` | [!] | EXIT 2, instruit sans correction (causes hors périmètre) : lint 0, web vert ; deux paquets non touchés coupés à 300 s puis `ok` seuls (313 s, 310 s) ; un test de durées instable sous charge (2 / 3) ; baseline complète (RAPPORT §7.7) |
+| D9.10 | push, CI | voir le message de clôture au pilote | le push suit ce commit |
+
 ## Journal
 
 - 2026-10-07 : plan écrit ; carte v2 de base (binaire de `879f31bbf`, ~2 min pour 20 films).

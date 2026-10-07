@@ -275,7 +275,7 @@ au bit près) : la question y est celle de la marche qui lit le slot, pas d'un c
   l'annonce n'est pas lue, la prise suivante sort en « échange depuis mains nues ». Règle de
   qualification à revoir (`qualifyHeldWeaponChange`, règle des mains nues de `filmshell`), hors
   périmètre. La mise en place de la manche précédente de ce film (`t` ≈ 753, corps 525 à 530)
-  n'est toujours pas lue.
+  n'est toujours pas lue. **Corrigé le 2026-10-07 sur GO de l'utilisateur : §7.**
 - **D10** Cache de faits du checkout principal : aucun fichier de `data/cache/film_facts` n'a été
   écrit entre 15 h 15 et 17 h 40 (fenêtre où les binaires de cette branche ont tourné) ; les 126
   faits portant `grammar-2026-10-07` (même chaîne que le rang C1 de ce lot) sont datés de 17 h 43
@@ -307,3 +307,147 @@ au bit près) : la question y est celle de la marche qui lit le slot, pas d'un c
 - `tsv/mutations.sh`, `tsv/mutations_final.txt`.
 - `tsv/killsource_diff.txt`, `tsv/gate_corpus_verdict.txt`, `tsv/gate_corpus.json`.
 - Sondes de surcouche (jamais dans le code) : `tsv/sonde_held_test.go.txt`, `tsv/sonde_roster_test.go.txt`.
+
+## 7. Correctif D9 — les mains nues valent « rien en main » (2026-10-07)
+
+> GO de l'utilisateur le 2026-10-07 : « "lâche ses mains nues" ne veut absolument rien dire ».
+> Exécuté sous `plan-execution` sur la même branche : un commit de plus (`bf0a6f856`).
+
+### 7.1 La règle, à la source
+
+- **Où naît le faux événement** : `qualifierContre`
+  (`apps/go-api/internal/games/halo_infinite/film/internal/grammar/held_weapon_changes.go`, l. 230).
+  C'est le seul point par lequel passent les deux chemins de qualification de
+  `qualifyHeldWeaponChange` : l'émission précédente de la même vie, ou la dotation de naissance qui
+  situe l'emplacement. La dotation de naissance porte l'objet « mains nues »
+  (`filmshell.UnarmedFamily`, `00007ca9`) à l'emplacement 2, et il y était jugé comme une arme. Une
+  annonce « emplacement vide » sortait donc en lâcher des mains nues, et une prise en échange depuis
+  les mains nues.
+- **Correctif, une règle générale** (aucun film, carte, mode ni version nommé) : `armeEnMain`
+  (l. 249) dit qu'une famille est une arme si elle n'est ni l'emplacement vide ni les mains nues.
+  Quand la référence vaut « rien en main » :
+  - une annonce vide est une ré-annonce, non publiée (l. 236) ;
+  - une arme est une **prise**, sans `from` ;
+  - une émission des mains nues après une arme est le **lâcher de cette arme**, emplacement publié
+    vide, jamais un échange vers les mains nues. Les commentaires de `filmshell/unarmed.go` et de la
+    publication, qui annonçaient un échange, sont corrigés ;
+  - seule la remise (mains nues sur un emplacement vide) garde sa nature de prise (l. 234) : la
+    publication l'écarte et la compte dans `unarmedGrants`, comme décidé le 2026-09-24.
+- **Autres chemins vérifiés par `grep`** (aucun ne fabrique le même faux événement) : les
+  ramassages natifs (`document_pickups.go`) et les dotations (`loadouts.go`,
+  `document_birth_loadouts.go`) écartent déjà les mains nues. `killsource` et `objectives` ne lisent
+  pas ce canal. Les autres lecteurs du canal (`bomb_carries.go`, armes au sol, `fire_bursts.go`,
+  `padtiers_prises.go`) consomment les natures déjà qualifiées. Le web (`changeRefine.ts`, sons,
+  calques) applique les événements du document et n'en fabrique aucun. Rien à signaler hors
+  périmètre.
+
+### 7.2 Comptes avant / après
+
+Outil : `tsv/compte_mains_nues.sh` (jq, lecture seule). Colonnes : lâcher des mains nues, échange
+depuis, échange vers, prise des mains nues, toute autre chaîne `00007ca9` du document.
+
+| Corpus | Lâcher | Échange depuis | Échange vers | Prise | Autre champ | Total |
+|---|---|---|---|---|---|---|
+| Parc du checkout principal, 126 artefacts, **schéma 86** (`feat/v75` `cdd642061`), compté à **19 h 52** | 1 (1 film) | 13 (6 films) | 0 | 0 | 0 | **14 dans 6 films** |
+| 19 témoins, base `12b8fb3df` (cuisson du gate) | 13 (4 témoins) | 5 (3 témoins) | 0 | 0 | 0 | **18 dans 5 témoins** |
+| 19 témoins, tête (cuisson du gate) | 0 | 0 | 0 | 0 | 0 | **0** |
+
+- Parc (`tsv/d9_parc_avant_schema86.tsv`) : `1f83b32b` 2 échanges, `51ebbc0f` 1, `7fce3219` 4,
+  `d9781168` 1 lâcher et 1 échange, `f3622d94` 1, `f9e99ca4` 4. Un premier compte au schéma 84,
+  avant la republication de `levelup-d0`, donnait les mêmes chiffres. Le parc n'a pas été recuit.
+- Témoins (`tsv/d9_temoins_base.tsv`, `tsv/d9_temoins_tete.tsv`) : les publiés passent de
+  378 / 497 / 1 225 (lâchers / échanges / prises) à 365 / 492 / 1 230, soit exactement −13 lâchers,
+  −5 échanges et +5 prises. Les remises écartées (`unarmedGrants`) restent à 6.
+- **Rien d'autre ne bouge.** Sur chacun des 19 témoins, les changements d'arme hors de ces
+  18 instants sont identiques. Le reste du document (hors `weaponChanges`, couverture et calques)
+  est identique. La couverture et les calques ne diffèrent que par les chaînes de révision.
+
+### 7.3 Gate de corpus
+
+Commande : `replay-corpus-gate --reference=base --base=12b8fb3df --keep-work`, sur une copie du parc
+(`C:/t/d9parc` : base partagée identique à l'octet, chunks et manifestes des 19 témoins). Tête
+`f0ddfd1bf` : même code que `bf0a6f856`, qui n'y ajoute que le plafond de l'archlint et la mesure
+dans la chronique (commit amendé avant tout push). Pièces : `tsv/d9_gate_corpus_verdict.txt`,
+`tsv/d9_gate_corpus.json`.
+
+- **rc = 1** (statut PERTE de filet sur 5 témoins). **Banc de vérité 19 / 19 « ok », 0 MANQUE,
+  0 FAUX.** Un gain : `50247b26` `V-3 action hors vie` 4 -> 3 (le lâcher des mains nues du slot 512
+  à `t = 447` était une action hors vie).
+- Chaque PERTE est instruite événement par événement ; elles portent toutes sur `weaponChanges` :
+
+| Témoin | Base `12b8fb3df` | Tête | Instruction |
+|---|---|---|---|
+| `c75f33b8` | 7 lâchers à `t = 3600` (slots 579 à 585) ; 3 échanges depuis les mains nues à 803, 827, 838 | les 7 lâchers ne sont plus publiés ; les 3 échanges sont des prises (même arme, même emplacement) | dropped 22 -> 15, swapped 14 -> 11, taken 37 -> 40. Les trois prises 581 à 3617, 579 à 3645 et 584 à 3648 restent des **prises**, comme en base, qui lisait déjà l'annonce vide. Contre `879f31bbf` (avant le lot) : swapped 17 -> 11 ; les six échanges depuis les mains nues sont tous devenus des prises |
+| `4f77afc1` | 3 lâchers à `t = 221` (slots 524, 534, 535) | non publiés | dropped 30 -> 27 |
+| `50247b26` | 2 lâchers à `t = 447` (slots 512, 513) | non publiés | dropped 26 -> 24 ; le gain V-3 ci-dessus |
+| `d9781168` | 1 lâcher à 4286 (slot 605), 1 échange à 4378 (slot 602) | lâcher non publié ; l'échange est une prise | dropped 11 -> 10, swapped 28 -> 27, taken 55 -> 56 |
+| `51ebbc0f` | 1 échange à 2100 (slot 555) | prise | swapped 12 -> 11, taken 44 -> 45 |
+| `396cfc92` (« ok ») | — | — | couverture seule : une émission antérieure à l'origine, non publiée dans les deux cas, passe de `beforeOrigin` à `restated` (2 -> 1, 7 -> 8) |
+
+### 7.4 Preuve unitaire et mutations
+
+- `TestLesMainsNuesValentRienEnMain` (naissance avec dotation mains nues, annonce vide, puis prise)
+  et `TestAucunChangementNePorteLesMainsNues` (six transitions), dans
+  `grammar/held_weapon_chain_test.go`. **Rouges sur le code de `12b8fb3df`** (« dropped depuis
+  00007ca9, attendu une re-annonce » ; « swapped 0000000c depuis 00007ca9, attendu taken »), verts
+  après.
+- Mutations (`tsv/mutations_d9.sh`, sur copie du fichier, restauré après chaque mutation) :
+  **5 / 5 ROUGES** (`tsv/mutations_d9.txt`).
+
+### 7.5 Rangs montés (rangs de TRAVAIL, à renuméroter à la fusion)
+
+| Révision | Ici | Pris ailleurs (relais du pilote, 20 h) | À la fusion |
+|---|---|---|---|
+| `replay.SchemaVersion` | 82 -> **83** | `feat/v75` : 86 (fusionné) ; levelup-57 : 87 | prendre le rang libre suivant (88 si levelup-57 fusionne avant) ; renommer les fixtures `replay_schema_<N>_*`, reprendre l'entrée de chronique, `structure_test.go` et les deux plafonds de `film_file_size_test.go` |
+| `grammar.Rev` | `grammar-2026-10-07.5` -> **`.6`** | `feat/v75` : `grammar-2026-10-07` ; levelup-57 : `.2` | renuméroter avec les cinq rangs du lot (§5) : six entrées de chronique à reprendre à la suite |
+| `killsource.Rev`, `objectives.Rev`, `source`, `profile`, `SchemaDesFaits` | constants (empreintes régénérées) | faits 10 (levelup-57) | régénérer les empreintes |
+
+`replay.SchemaVersion` monte, en plus de `grammar.Rev`, parce que le contenu publié change et que
+`backfill-replay` reprend par numéro de schéma (précédent : v78, « aucun champ neuf ; le CONTENU
+change »). Les 8 fixtures de contrat sont identiques hors chaînes de version (vérifié par
+décompression et substitution). Dans les goldens d'assemblage, seule la ligne de schéma change.
+
+### 7.6 Gates
+
+| Gate | Sortie |
+|---|---|
+| gofmt | vide |
+| vet, vet `-tags=research`, vet `-tags=integration` (film) | rc 0, rc 0, rc 0 |
+| golangci-lint `--new-from-rev=12b8fb3df` (film, filmshell) | `0 issues.` |
+| Tests `film/...`, `filmshell`, `replaybuild`, `killcollector`, `replayartifacts` (`-count=1`) | 23 paquets `ok`, rc 0 |
+| archlint | `ok` ; plafonds de `document_chronicle.go` 2929 -> 2960 et `structure_test.go` 1396 -> 1400 (exception écrite, dans le commit qui monte `SchemaVersion`) |
+| Baseline des tests | 2 tests ajoutés, aucun retiré ni renommé |
+| `make gate-push` | 7.7 |
+| Push et CI | 7.7 |
+
+### 7.7 `gate-push`, push, CI
+
+- `make gate-push` (TMP `C:/t/d9gp`, GOCACHE et cache golangci dédiés), sur `bf0a6f856`, de 20 h 34
+  à 21 h 11 : **EXIT_GATEPUSH=2**. golangci-lint `--new-from-merge-base=origin/main` : `0 issues.` ;
+  web typecheck vert ; web lint 0 erreur (26 avertissements préexistants). La baseline échoue sur
+  trois points, tous hors des paquets touchés, et tous instruits :
+  - `internal/platform/duckdb` et `internal/sync` sont coupés au plafond local de 300 s par paquet
+    (`-timeout=300s`) pendant que des tests passent : 1 001 tests verts au moment de la coupure,
+    aucun en échec. Rejoués seuls avec un plafond plus large : **`ok` en 313 s et 310 s**, 0 échec ;
+  - `internal/sync/killcollector::TestRosterDesFilms_AnnuaireContreJointure` (intégration) est un
+    rapport de durées (facteur attendu >= 10). Rejoué seul trois fois : 2 réussites, 1 échec
+    (145 ms contre 53 ms), donc instable sous charge. Le paquet n'est pas touché par ce correctif ;
+  - en fusionnant le JSONL du run avec celui des deux paquets rejoués
+    (`check_test_baseline.sh tests --from-jsonl`) : **tous les tests de la baseline sont présents**,
+    et seul le test de durées ci-dessus est en échec.
+  - La charge de la machine pendant le gate : un `sed` et un `awk` orphelins tournent depuis le
+    3 et le 6 octobre (248 000 et 116 000 secondes de CPU cumulées), et Halo Infinite a démarré à
+    21 h 11 ; le CPU moyen était à 66 % à 21 h 40 (découverte D11). Aucun de ces processus n'est
+    de cette session : ni arrêtés, ni traités.
+- Push de `feat/grammaire-arrets-vue-b` et CI (gate d'autorité) : état donné dans le message de
+  clôture au pilote. Le push suit ce commit.
+
+### 7.8 Découvertes (non traitées)
+
+- **D11** Deux processus orphelins (`sed` depuis le 2026-10-03, `awk` depuis le 2026-10-06) consomment
+  du CPU en continu sur le poste. `internal/platform/duckdb` et `internal/sync` dépassent alors le
+  plafond local de 300 s du gate-push, et `TestRosterDesFilms_AnnuaireContreJointure` devient instable.
+- **D12** Le libellé `hinf_unarmed` (« Mains nues », `weapon_names.toml`) n'a plus de chemin de
+  publication dans les changements d'arme. Il servait, selon la décision du 2026-09-24, à nommer
+  les mains nues si elles apparaissaient en cours de partie. Autres usages possibles (fil des
+  kills, armes de mêlée) non vérifiés : à instruire avant de le juger mort.
