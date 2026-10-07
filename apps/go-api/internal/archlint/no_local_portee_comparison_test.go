@@ -37,10 +37,13 @@ var (
 	// corpsAPortee : la fonction source unique, seule exclue du balayage.
 	corpsAPortee = regexp.MustCompile(`(?s)func APortee\([^)]*\)[^{]*\{.*?\n\}`)
 	// distanceAvantPortee : `<operande> <op> <portee>` ; distanceApresPortee : l'inverse.
-	distanceAvantPortee = regexp.MustCompile(`(\*?\s*[\w.]+)\s*(?:<=|>=|<|>)\s*\w*(?i:rayon|portee)\w*`)
-	distanceApresPortee = regexp.MustCompile(`\w*(?i:rayon|portee)\w*\s*(?:<=|>=|<|>)\s*(\*?\s*[\w.]+)`)
-	// lieeADeref : un identifiant lie a une valeur dereferencee (`d := *m.PlusProcheM`).
-	lieeADeref = regexp.MustCompile(`(\w+)\s*:?=\s*\*\s*[\w.]+`)
+	// La portee peut etre lue sur un champ (`regle.RayonM`) et passer par une conversion
+	// (`float64(rayon)`).
+	distanceAvantPortee = regexp.MustCompile(`(\*?\s*[\w.]+)\s*(?:<=|>=|<|>)\s*(?:\w+\()?[\w.]*(?i:rayon|portee)\w*`)
+	distanceApresPortee = regexp.MustCompile(`[\w.]*(?i:rayon|portee)\w*\)?\s*(?:<=|>=|<|>)\s*(\*?\s*[\w.]+)`)
+	// lieeADeref : un identifiant lie a une valeur dereferencee, avec ou sans son type
+	// (`d := *m.PlusProcheM`, `var d float64 = *m.PlusProcheM`).
+	lieeADeref = regexp.MustCompile(`(?:\bvar\s+)?(\w+)(?:\s+[\w.]+)?\s*:?=\s*\*\s*[\w.]+`)
 	// testeeNonNil : un identifiant teste `!= nil`.
 	testeeNonNil = regexp.MustCompile(`(\w+)\s*!=\s*nil`)
 	// presencePlusProche : empreinte 2.
@@ -106,6 +109,11 @@ func TestNoLocalPorteeComparison_ReconnaitLesCopies(t *testing.T) {
 		"\td := *mort.PlusProcheM\n\tpres := !(d < portee)",
 		// une distance testee non nulle puis comparee
 		"\tif d != nil {\n\t\tpres = !(*d < rayon)\n\t}",
+		// les trois formes de la revue, ronde 2 : portee lue sur un champ, portee convertie, distance
+		// declaree avec son type
+		"\tseul := *m.PlusProcheM > regle.RayonM",
+		"\tif *d <= float64(rayon) {",
+		"\tvar d float64 = *m.PlusProcheM\n\tif d >= rayon {",
 		// une copie posee dans le fichier du helper, hors de la fonction
 		"func APortee(d *float64, rayon float64) bool {\n\treturn d != nil && *d <= rayon\n}\n\nfunc seul(d *float64, rayon float64) bool {\n\treturn d == nil || *d > rayon\n}",
 	}

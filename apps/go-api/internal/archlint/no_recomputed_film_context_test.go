@@ -185,14 +185,10 @@ var paquetsSansAnalyseDeRegistre = []string{
 	"internal/api/wire",
 }
 
-// analysesDeRegistreAutorisees : L'ALLOWLIST FERMEE de la regle 2 (2026-09-03, lot 2). Chemins
-// relatifs a la racine du module, separateur `/`.
-var analysesDeRegistreAutorisees = map[string]string{
-	"internal/games/halo_infinite/film/internal/facts/killsource/world.go": "`World.Snapshot` analyse le " +
-		"registre du film pour son propre monde. HORS PERIMETRE SANS CONDITION (decision D14 de " +
-		"PLAN_CUISSON_PERF) : `killsource` n'est pas dans ce plan. Note §8 — c'est la DERNIERE " +
-		"analyse de registre de la chaine de cuisson qui ne passe pas par `FilmContext`.",
-}
+// analysesDeRegistreAutorisees : L ALLOWLIST FERMEE de la regle 2 (2026-09-03, lot 2). Chemins
+// relatifs a la racine du module, separateur `/`. VIDE : toute analyse de registre de la chaine de
+// cuisson, killsource compris, passe par `FilmContext`.
+var analysesDeRegistreAutorisees = map[string]string{}
 
 // TestRegistreAnalyseParLeContexteSeul — REGLE 2.
 func TestRegistreAnalyseParLeContexteSeul(t *testing.T) {

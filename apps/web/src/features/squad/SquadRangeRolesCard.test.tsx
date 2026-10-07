@@ -103,10 +103,12 @@ describe('SquadRangeRolesCard', () => {
     expect(markLine.data[0].yAxis).toBe(0)
   })
 
-  it('écrit la couverture en UNE LIGNE de pied, et rien d’autre sous le graphe', () => {
+  it('rien sous le graphe : ni légende ajoutée (point creux, tendance), ni compte de frags mesurés', () => {
     renderWithProviders(<SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster} />)
-    expect(screen.getByTestId('squad-portee-couverture').textContent).toContain('412')
-    expect(screen.getByTestId('squad-portee-couverture').textContent).toContain('544')
+    expect(screen.queryByTestId('squad-portee-couverture')).toBeNull()
+    expect(screen.queryByTestId('squad-portee-legende')).toBeNull()
+    expect(screen.queryByText(/frags mesurés/)).toBeNull()
+    expect(screen.queryByText(/tendance \(/)).toBeNull()
   })
 
   it('la bande des rôles laisse les quatre premiers matchs SANS RÔLE', () => {
@@ -138,97 +140,19 @@ describe('SquadRangeRolesCard', () => {
 })
 
 /**
- * La même carte en grandeur HAUTEUR (« Rôles de hauteur », E1 / D24 du 2026-09-22).
- *
- * Ce que ces tests cadenassent : c'est bien le dénivelé qui est projeté (pas la distance) ;
- * un bloc servi SANS dénivelé rend l'état vide nommé de la hauteur, jamais celui de la
- * portée ni un nuage à zéro point ; les bandes se nomment Contrebas / À niveau / Hauteurs ;
- * la ligne du lobby reste à zéro ; et chaque courbe de tendance porte le gamertag à son
- * bout (à quatre joueurs, la légende seule ne suffit plus).
+ * L'encre du nuage : points et courbes de tendance en encre pleine, sans étiquette au bout
+ * des courbes — la forme (point creux) dit l'échantillon faible, la légende dit le joueur.
  */
-describe('SquadRangeRolesCard — grandeur hauteur', () => {
-  function profilDz(i: number, dz: [number, number]): MatchRangeProfile {
-    const p = profil(i)
-    return {
-      ...p,
-      lobby_elevation_median_m: 0.2,
-      players: [
-        { ...p.players![0], elevation_median_m: dz[0] + 0.2, elevation_lobby_delta_m: dz[0] },
-        { ...p.players![1], elevation_median_m: dz[1] + 0.2, elevation_lobby_delta_m: dz[1] },
-      ],
-    }
-  }
-
-  it('rend l’ÉTAT VIDE NOMMÉ de la hauteur quand aucun dénivelé n’est servi', () => {
-    renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster} grandeur="hauteur" />,
-    )
-    expect(screen.getByText('Aucune hauteur mesurée')).toBeTruthy()
-    expect(screen.queryByText('Aucune portée mesurée')).toBeNull()
-  })
-
-  it('projette le DÉNIVELÉ en ordonnée, pas la distance', async () => {
-    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [2.4, -1.6]))
-    renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
-    )
-    const series = (await option()).series as Array<Record<string, unknown>>
-    const nuage = series.filter((s) => s.type === 'scatter')
-    const premier = (nuage[0].data as Array<{ value: [number, number] }>)[0]
-    expect(premier.value[1]).toBeCloseTo(2.4, 6)
-    const second = (nuage[1].data as Array<{ value: [number, number] }>)[0]
-    expect(second.value[1]).toBeCloseTo(-1.6, 6)
-  })
-
-  it('nomme les bandes Contrebas / À niveau / Hauteurs et garde le lobby à zéro', async () => {
-    const profils = [0, 1, 2, 3, 4].map((i) => profilDz(i, [i - 2, 2 - i]))
-    renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
-    )
-    const series = (await option()).series as Array<Record<string, unknown>>
-    const markArea = series[0].markArea as { data: Array<Array<{ name?: string }>> }
-    expect(markArea.data.map((b) => b[0].name)).toEqual(['Contrebas', 'À niveau', 'Hauteurs'])
-    const markLine = series[0].markLine as { data: Array<{ yAxis: number }> }
-    expect(markLine.data[0].yAxis).toBe(0)
-  })
-
-  it('écrit le gamertag AU BOUT de chaque courbe de tendance', async () => {
-    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [1, -1]))
-    renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
-    )
-    const series = (await option()).series as Array<Record<string, unknown>>
-    const lignes = series.filter((s) => s.type === 'line')
-    expect(lignes.map((s) => (s.endLabel as { formatter: string }).formatter)).toEqual([
-      'JGtm',
-      'Kaya',
-    ])
-  })
-
-  it('laisse la carte de PORTÉE intacte : ni étiquette de bout, ni point effacé', async () => {
-    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [1, -1]))
+describe('SquadRangeRolesCard — encre', () => {
+  it('points ET tendance en encre pleine, aucune étiquette de bout', async () => {
+    const profils = Array.from({ length: 5 }, (_, i) => profil(i))
     renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} />)
-    const series = (await option()).series as Array<Record<string, unknown>>
-    expect(series.filter((s) => s.type === 'line').every((s) => s.endLabel === undefined)).toBe(
-      true,
-    )
-    const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
-    expect(points[0].itemStyle.opacity).toBe(1)
-  })
-
-  // ENCRE PLEINE SUR LES DEUX GRANDEURS (2026-09-22, retour utilisateur « rendu terne ») : la
-  // hauteur délavait ses points (0,5) et sa tendance (0,7). Rien n'était codé par là — la
-  // forme (point creux) dit l'échantillon faible, l'étiquette de bout dit le joueur.
-  it('grandeur HAUTEUR : points ET tendance en encre pleine', async () => {
-    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [1, -1]))
-    renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
-    )
     const series = (await option()).series as Array<Record<string, unknown>>
     const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
     expect(points.every((p) => p.itemStyle.opacity === 1)).toBe(true)
     const lignes = series.filter((s) => s.type === 'line')
     expect(lignes.length).toBeGreaterThan(0)
+    expect(lignes.every((s) => s.endLabel === undefined)).toBe(true)
     expect(
       lignes.every((s) => (s.lineStyle as { opacity?: number } | undefined)?.opacity === 1),
     ).toBe(true)

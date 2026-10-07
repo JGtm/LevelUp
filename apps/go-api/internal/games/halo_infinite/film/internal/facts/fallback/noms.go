@@ -85,6 +85,14 @@ const (
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,
 	// `zoneRampCapturerDeduit`.
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"
+	// NomZoneProprietaireParVote : `replay/zone_states_owner_nom.go`, `zoneOwnerSlotsOf`.
+	NomZoneProprietaireParVote Nom = "repli_zone_proprietaire_par_vote"
+	// NomZonePousseurParElection : `replay/zone_states_capturer.go`, `tallyZoneCapturer`.
+	NomZonePousseurParElection Nom = "repli_zone_pousseur_par_election"
+	// NomCollineProprietaireVoisinDuDesignateur : `replay/zone_states_hill.go`, `hillOwnerSlotOf`.
+	NomCollineProprietaireVoisinDuDesignateur Nom = "repli_colline_proprietaire_voisin_du_designateur"
+	// NomCollineDesignateurParVoisinage : `replay/zone_states_hill.go`, `buildHillStates`.
+	NomCollineDesignateurParVoisinage Nom = "repli_colline_designateur_par_voisinage"
 	// NomPositionHorsEmpriseEcartee : `replay/positions_porte.go` (points de trace) et
 	// `replay/positions_porte_vehicules.go` (echantillons et naissances de vehicule).
 	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"
@@ -189,8 +197,6 @@ const (
 
 	// NomRecordDesynchroniseJete : `killsource/walk.go`.
 	NomRecordDesynchroniseJete Nom = "repli_record_desynchronise_jete"
-	// NomDeadstateHorsBandeBipede : `killsource/walk.go`.
-	NomDeadstateHorsBandeBipede Nom = "repli_deadstate_hors_bande_bipede"
 	// NomDeadstateIndiceHorsRoster : `killsource/walk.go`.
 	NomDeadstateIndiceHorsRoster Nom = "repli_deadstate_indice_hors_roster"
 	// NomDeadstateCategorieHorsEnum : `killsource/walk.go`.
@@ -201,10 +207,12 @@ const (
 	NomBijectionHongroiseDuFeed Nom = "repli_bijection_hongroise_du_feed"
 	// NomCoupleRecolleSurLeVoisin : `killsource/feed_couples.go` (`CoupleStats.Recolles`).
 	NomCoupleRecolleSurLeVoisin Nom = "repli_couple_recolle_sur_le_voisin"
-	// NomChunkDuPiedParArgmax : `killsource/feed.go`.
+	// NomChunkDuPiedParArgmax : `grammar/fil_des_kills.go`, verse par `killsource`.
 	NomChunkDuPiedParArgmax Nom = "repli_chunk_du_pied_par_argmax"
-	// NomChaineEvenementCodeNonModelise : `killsource/eventbody.go`, `killsource/eventchain.go`.
+	// NomChaineEvenementCodeNonModelise : `grammar/chaine_d_evenements*.go`, verse par `killsource`.
 	NomChaineEvenementCodeNonModelise Nom = "repli_chaine_evenement_code_non_modelise"
+	// NomKillRattrapeHorsVueA : `grammar/kills_rattrapes.go`, verse par `killsource`.
+	NomKillRattrapeHorsVueA Nom = "repli_kill_rattrape_hors_vue_a"
 	// NomTypeDeChunkPerduDuManifeste : `killsource/chunks.go`.
 	NomTypeDeChunkPerduDuManifeste Nom = "repli_type_de_chunk_perdu_du_manifeste"
 	// NomMortNonRevendiqueeLaPlusProche : `killsource/hybrid.go` (`ApparStats.NonRevendiqueeFenetre`).

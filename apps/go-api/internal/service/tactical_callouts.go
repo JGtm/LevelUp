@@ -83,7 +83,7 @@ func zonesNommees(zones []replay.CalloutZone) []domain.ZoneNommee {
 			continue
 		}
 		out = append(out, domain.ZoneNommee{
-			NomFR: fr, NomEN: en, X: z.X, Y: z.Y,
+			NomFR: fr, NomEN: en, X: z.X, Y: z.Y, Z: z.Z, Big: z.Big,
 			Polygone: z.Polygon, Parties: z.Parts, Trous: z.Holes,
 			ZBas: z.ZBottom, ZHaut: z.ZTop, VolumeIndex: z.VolumeIndex,
 		})

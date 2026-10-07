@@ -122,13 +122,13 @@ describe('buildResourceFilOption — 22/09', () => {
 /**
  * Mode « période » (Séries temporelles › Usages, plan PLAN_TIMESERIES_USAGES_EMPRISE, D12) : sur
  * des dizaines de matchs, pas d'heure ni de carte sous chaque match mais la date du PREMIER match
- * de chaque mois ; la légende « n matchs, dont m filmés » à droite sous la bande ; pas d'encoche de
+ * de chaque mois ; aucune mention de couverture (« n matchs, dont m filmés ») ; pas d'encoche de
  * dominance (la maquette n'en dessine pas) ; points plus petits au-delà de 120 matchs.
  */
 describe('buildResourceFilOption — mode période', () => {
   const dates = ['2026-07-03', '2026-07-11', '2026-07-28', '2026-08-27', '2026-09-22', '2026-09-22', '2026-09-23']
   const periode = { ...fil, matches: fil.matches.map((m, i) => ({ ...m, startTime: `${dates[i]}T12:00:00Z` })) }
-  const axe = { kind: 'period' as const, dateOf: (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`, caption: '7 matchs, dont 6 filmés' }
+  const axe = { kind: 'period' as const, dateOf: (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}` }
   const texte = {
     resourceLabel: (r: string) => T.resources[r].label,
     pctFmt: T.pctFmt,
@@ -149,8 +149,8 @@ describe('buildResourceFilOption — mode période', () => {
     expect([0, 1, 2, 3, 4, 5, 6].map((i) => f('', i))).toEqual(['{d|03/07}', '', '', '{d|27/08}', '{d|22/09}', '', ''])
   })
 
-  it('la légende de couverture à droite, sous la bande', () => {
-    expect(p.graphic?.map((g) => g.style.text)).toEqual(['7 matchs, dont 6 filmés'])
+  it('aucune mention de couverture sous la bande', () => {
+    expect(p.graphic).toBeUndefined()
   })
 
   it('pas d’encoche de dominance sur la bande de résultats', () => {
@@ -213,7 +213,7 @@ type HabitSeries = Omit<Series, 'markLine'> & { markLine?: { data: { yAxis: numb
 describe('buildHabitOption — soirée après soirée (22/09)', () => {
   const view = buildHabitView(EMPRISE_2209)
   if (view.kind !== 'chart') throw new Error(view.kind)
-  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', theme: COLORS.theme }, {
+  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', muted: 'muted', theme: COLORS.theme }, {
     resourceLabel: (r) => T.resources[r].label,
     pctFmt: T.pctFmt,
     pctIntFmt: T.pctIntFmt,
@@ -222,6 +222,7 @@ describe('buildHabitOption — soirée après soirée (22/09)', () => {
     eveningOf: T.habit.eveningOf,
     pointTip: T.habit.pointTip,
     medianTip: T.habit.medianTip,
+    notComparableTip: T.habit.notComparableTip,
   }) as { series: HabitSeries[]; xAxis: Axis }
   const hl = habit.series.filter((s) => s.type === 'line')
 
@@ -264,7 +265,7 @@ describe('buildHabitOption — ce soir sans part pour une ressource (constat R4 
   }
   const view = buildHabitView(block)
   if (view.kind !== 'chart') throw new Error(view.kind)
-  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', theme: COLORS.theme }, {
+  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', muted: 'muted', theme: COLORS.theme }, {
     resourceLabel: (r) => T.resources[r].label,
     pctFmt: T.pctFmt,
     pctIntFmt: T.pctIntFmt,
@@ -273,6 +274,7 @@ describe('buildHabitOption — ce soir sans part pour une ressource (constat R4 
     eveningOf: T.habit.eveningOf,
     pointTip: T.habit.pointTip,
     medianTip: T.habit.medianTip,
+    notComparableTip: T.habit.notComparableTip,
   }) as { series: (HabitSeries & { endLabel: { show: boolean } })[] }
   const [bonus, armes] = habit.series.filter((s) => s.type === 'line')
 
@@ -286,5 +288,33 @@ describe('buildHabitOption — ce soir sans part pour une ressource (constat R4 
   it('bonus : ce soir grossi et valeur au bout, comme d’habitude', () => {
     expect((bonus.data[5] as Item).symbolSize).toBe(11)
     expect(bonus.endLabel.show).toBe(true)
+  })
+})
+
+describe('buildHabitOption — une soirée d’autres modes que ce soir', () => {
+  const previous = HABIT_2209.previous!.map((e, i) => (i === 2 ? { ...e, comparable: false, families: ['Bases', 'Roi de la colline'] } : e))
+  const view = buildHabitView({ ...EMPRISE_2209, habit: { ...HABIT_2209, previous } })
+  if (view.kind !== 'chart') throw new Error(view.kind)
+  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', muted: 'muted', theme: COLORS.theme }, {
+    resourceLabel: (r) => T.resources[r].label,
+    pctFmt: T.pctFmt,
+    pctIntFmt: T.pctIntFmt,
+    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
+    tonight: T.habit.tonight,
+    eveningOf: T.habit.eveningOf,
+    pointTip: T.habit.pointTip,
+    medianTip: T.habit.medianTip,
+    notComparableTip: T.habit.notComparableTip,
+  }) as { series: HabitSeries[] }
+
+  it('la courbe l’enjambe ; un point gris liseré de la ressource, la raison au survol', () => {
+    const [bonusLine] = habit.series.filter((s) => s.type === 'line')
+    expect(bonusLine.data[2]).toBeNull()
+    const apart = habit.series.filter((s) => s.type === 'scatter')
+    expect(apart.map((s) => s.name)).toEqual(['Bonus', 'Armes spéciales'])
+    const point = apart[0].data[2] as Item & { itemStyle: { color: string; borderColor: string } }
+    expect(point.itemStyle).toMatchObject({ color: 'muted', borderColor: 'res-powerup' })
+    expect(point.tip).toBe('Bonus\nSoirée du 27/08 : 75 %\nAutres modes que ce soir (Bases, Roi de la colline) : hors médiane')
+    expect(apart[0].data.filter((d) => d != null)).toHaveLength(1)
   })
 })

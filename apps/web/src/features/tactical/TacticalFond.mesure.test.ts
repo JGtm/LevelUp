@@ -76,6 +76,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useNavigate: () => () => undefined,
     useParams: () => paramsCourants,
     useSearch: () => searchCourant,
+    Link: (await import('@/test/linkDouble')).LinkDouble,
   }
 })
 

@@ -22,7 +22,7 @@
  */
 import { useEffect, useRef, type RefObject } from 'react'
 
-import { drawCalloutsLayer, type CalloutZoneReady } from './calloutsLayer'
+import { drawCalloutsLayer, type CalloutZoneReady } from '../../../lib/replay/calloutsPaint'
 import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
@@ -127,7 +127,7 @@ export function useReplayStaticLayers({
       return
     }
     zonesRef.current = cookLayer(view, (ctx) =>
-      drawCalloutsLayer(ctx, [...zoneList], view, { bigColors, fineInk, locale }),
+      drawCalloutsLayer(ctx, zoneList, (p) => projectTo(view, p), { bigColors, fineInk, locale }),
     )
     redraw()
   }, [zoneList, bigColors, fineInk, locale, view, redraw, frozen])

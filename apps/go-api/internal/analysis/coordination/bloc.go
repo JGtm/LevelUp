@@ -6,8 +6,8 @@ package coordination
 // # UN MATCH NON MESURÉ NE FOURNIT NI NUMÉRATEUR NI DÉNOMINATEUR
 //
 // Le drapeau `Mesure` vient du lecteur (au moins une ligne publiable dans
-// `match_kill_events_latest`) — la MÊME définition que l'onglet Tactique et la page
-// Escouade. Compter ses matchs au dénominateur « par match » ferait varier la grandeur avec
+// `match_kill_events_latest`) — la MÊME définition que l'onglet Tactique. Compter ses
+// matchs au dénominateur « par match » ferait varier la grandeur avec
 // la COUVERTURE DE FILM au lieu du jeu (correction G2).
 
 import "levelup/go-api/internal/domain"

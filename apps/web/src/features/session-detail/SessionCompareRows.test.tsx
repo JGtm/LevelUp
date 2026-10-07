@@ -141,8 +141,8 @@ describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
     // Meme index = meme rangee de la grille : l'egalite des deux listes EST l'alignement.
     expect(left).toEqual(keys.slice(half))
     expect(new Set(left).size).toBe(left.length)
-    const kills = left.slice(left.indexOf('frag_bar'), left.indexOf('matches'))
-    expect(kills).toEqual(['frag_bar', 'tools', 'control', 'fil', 'grid', 'mine', 'production', 'yield', 'lives', 'objective_balance', 'objective_sheet'])
+    const kills = left.slice(left.indexOf('frag_donut'), left.indexOf('matches'))
+    expect(kills).toEqual(['frag_donut', 'tools', 'control', 'fil', 'grid', 'mine', 'production', 'yield', 'lives', 'objective_balance', 'objective_sheet'])
     expect(left).not.toContain('usage')
     expect(left).not.toContain('frags')
   })
@@ -155,7 +155,7 @@ describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
       expect(placeholder(right), `${key} a droite`).not.toBeNull()
     }
     // Les cartes que les deux sessions ont : aucun marqueur.
-    for (const key of ['frag_bar', 'tools', 'production', 'lives']) {
+    for (const key of ['frag_donut', 'tools', 'production', 'lives']) {
       for (const cell of cells(container, key)) expect(placeholder(cell), key).toBeNull()
     }
     expect(screen.getAllByText('Sans équivalent dans cette session').length).toBeGreaterThan(0)
@@ -163,7 +163,7 @@ describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
 
   it('les titres de groupe et de sous-groupe se posent dans la meme rangee des deux cotes', async () => {
     const { container } = await openedCompare()
-    const [gauche, droite] = cells(container, 'frag_bar')
+    const [gauche, droite] = cells(container, 'frag_donut')
     for (const cell of [gauche, droite]) expect(cell.querySelector('h3')?.textContent).toBe('Frags et usages')
     for (const [key, sub] of [['control', 'resources'], ['production', 'prendre'], ['lives', 'lives'], ['objective_balance', 'objectif']]) {
       const pair = cells(container, key)
@@ -175,11 +175,12 @@ describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
     expect(container.querySelector('[data-session-subgroup="resources"] small')).toBeNull()
   })
 
-  it('les cartes sont en vue compacte des DEUX cotes (A : total en sous-libellé)', async () => {
-    await openedCompare()
-    expect(screen.getByText('65 frags')).toBeInTheDocument()
-    expect(screen.getByText('72 frags')).toBeInTheDocument()
-    expect(screen.queryByTestId('frag-breakdown-total-JGtm')).not.toBeInTheDocument()
+  it('A : l’anneau des DEUX cotes, chacun avec SON total, sans gamertag', async () => {
+    const { container } = await openedCompare()
+    const [gauche, droite] = cells(container, 'frag_donut')
+    expect(gauche.querySelector('[data-testid="frag-sunburst"]')?.textContent).toContain('65')
+    expect(droite.querySelector('[data-testid="frag-sunburst"]')?.textContent).toContain('72')
+    for (const cell of [gauche, droite]) expect(cell.textContent).not.toContain('JGtm')
   })
 
   it('rend « Appui reçu » des DEUX cotes, chacune avec SES donnees, et plus de Riposte', async () => {

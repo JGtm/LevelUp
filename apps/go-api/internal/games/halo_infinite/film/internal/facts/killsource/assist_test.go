@@ -54,23 +54,32 @@ var assistAttendu = map[string]struct {
 }{
 	// LES DEUX FILMS SANS BOT SONT INCHANGES PAR RE_LOG 7ter.79, ET C EST LE PREMIER CONTROLE DU
 	// LOT : une population qui se serait remplie ici aurait ete un artefact de lecteur.
-	"000d5950": {killEvents: 100, attached: 93, named: 17, noAssist: 76, multi: 0, apiTotal: 17,
+	// 2.7.c4 (2026-10-07) : les kill-events viennent de la vue A lue, et la recherche bit a bit ne
+	// reste qu en rattrapage avant la vue B des trames dont la lecture n est pas etablie. Les
+	// candidats qu elle tirait du bruit des vues B et C ne sont plus rendus (100 -> 99, 106 -> 104) ;
+	// aucune attache ne bouge.
+	"000d5950": {killEvents: 99, attached: 93, named: 17, noAssist: 76, multi: 0, apiTotal: 17,
 		apiMultiset: []int{6, 3, 2, 2, 1, 1, 1, 1}},
-	"78919882": {killEvents: 106, attached: 99, named: 29, noAssist: 70, multi: 0, apiTotal: 29,
+	"78919882": {killEvents: 104, attached: 99, named: 29, noAssist: 70, multi: 0, apiTotal: 29,
 		apiMultiset: []int{7, 5, 4, 3, 3, 3, 2, 2}},
 	// fccc61cd : +1 attachee et +1 sans assistant avec 7ter.79 (la mort infligee par `bid(7.0)`
 	// n en nomme aucun) — `named` NE BOUGE PAS. L ecart a l API y reste de 2, il n avait aucune
 	// chance d etre comble par ce lot, et c est ce que la mesure dit.
 	// J7 (FK-6, 2026-09-27) : le doublon d enregistrement qui faisait le multi-attachement est retire
 	// (`assistScan.dedoublonner`) — 105 -> 104 kill-events, multi 1 -> 0 ; rien d autre ne bouge.
-	"fccc61cd": {killEvents: 104, attached: 95, named: 16, noAssist: 79, multi: 0, apiTotal: 18},
+	// 2.7.c4 (2026-10-07) : 104 -> 102 kill-events (bruit des vues B et C retire), et une mort de
+	// plus attachee a un kill-event que la vue A lit et que la chaine de la recherche d avant ne
+	// validait pas : 95 -> 96 attachees, 16 -> 17 nommees. L ecart a l API passe de 2 a 1.
+	"fccc61cd": {killEvents: 102, attached: 96, named: 17, noAssist: 79, multi: 0, apiTotal: 18},
 	// 9b191a7f porte la RESERVE ARITHMETIQUE consignee dans `assist.go`. RE_LOG 7ter.79 en
 	// recupere DEUX des trois manquantes : les kills du bot sont desormais publies, donc leurs
 	// assistants aussi (84 -> 87 attachees, 22 -> 24 nommees). Il en reste 6 a l API, et le
 	// plafond honnete est 24 + 3 (les trois morts DU bot, sans kill-event trouve) = 27 < 30.
 	// Son multiset n est donc toujours PAS declare : le figer reviendrait a figer l anomalie.
 	// J7 (FK-6) : doublon retire, 101 -> 100 kill-events, multi 1 -> 0.
-	"9b191a7f": {killEvents: 100, attached: 87, named: 24, noAssist: 63, multi: 0, apiTotal: 30},
+	// 2.7.c4 (2026-10-07) : 100 -> 93 kill-events (bruit des vues B et C retire) ; aucune attache
+	// ne bouge.
+	"9b191a7f": {killEvents: 93, attached: 87, named: 24, noAssist: 63, multi: 0, apiTotal: 30},
 }
 
 func fixturesRoot(t *testing.T) string {
@@ -436,5 +445,5 @@ func prepareForAssist(t *testing.T, root, id string) (*decodeCtx, *assistScan) {
 	if err := c.prepare(context.Background(), src); err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	return c, scanKillEvents(c.film)
+	return c, c.killEvents
 }

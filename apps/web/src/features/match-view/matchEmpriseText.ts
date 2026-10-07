@@ -19,7 +19,7 @@ import type { Locale } from '@/lib/i18n/locale'
 export interface MatchOwnText {
   /** Sous l'intertitre « Équipement et terrain » : « film décodé · 8 joueurs présents à la fin ». */
   coverage: (filmed: boolean, present: number) => string
-  /** Sous-libellé de la piste des bonus : « prises · 10 socles vidés ». */
+  /** Sous-libellé de la piste « Prises de bonus » : « 10 socles vidés ». */
   powerupSub: (emptied: number) => string
   /** Bouton des armes de râtelier : « Armes de râtelier (3, repliées) » / « (3) ». */
   racksFolded: (n: number) => string
@@ -112,7 +112,7 @@ const INFOS: Record<Locale, Infos> = {
 const OWN: Record<Locale, MatchOwnText> = {
   fr: {
     coverage: (filmed, present) => (filmed ? `film décodé · ${present} ${plural(present, 'joueur présent', 'joueurs présents')} à la fin` : 'sans film'),
-    powerupSub: (emptied) => `prises · ${emptied} ${plural(emptied, 'socle vidé', 'socles vidés')}`,
+    powerupSub: (emptied) => `${emptied} ${plural(emptied, 'socle vidé', 'socles vidés')}`,
     racksFolded: (n) => `(${n}, repliées)`,
     racksUnfolded: (n) => `(${n})`,
     unclassified: (n, team, opponent) =>
@@ -140,7 +140,7 @@ const OWN: Record<Locale, MatchOwnText> = {
   },
   en: {
     coverage: (filmed, present) => (filmed ? `film decoded · ${present} ${plural(present, 'player', 'players')} present at the end` : 'no film'),
-    powerupSub: (emptied) => `pickups · ${emptied} ${plural(emptied, 'pad emptied', 'pads emptied')}`,
+    powerupSub: (emptied) => `${emptied} ${plural(emptied, 'pad emptied', 'pads emptied')}`,
     racksFolded: (n) => `(${n}, folded)`,
     racksUnfolded: (n) => `(${n})`,
     unclassified: (n, team, opponent) =>

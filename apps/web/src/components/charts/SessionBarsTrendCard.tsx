@@ -1,15 +1,17 @@
 /**
  * SessionBarsTrendCard — le wrapper de la frise « une soirée, un bâton ».
  *
- * Hissé avec son module d'option (`sessionBarsTrendChart.ts`) le 2026-09-22 : l'Escouade
- * garde son propre wrapper (il traduit sa `FriseRiposte`), les Séries temporelles montent
- * celui-ci directement avec des séries déjà génériques. Le FICHIER porte « Card » parce
+ * Les Séries temporelles le montent avec des séries génériques. Le FICHIER porte « Card » parce
  * que Windows ne distingue pas `SessionBarsTrendChart.tsx` de son module d'option
  * `sessionBarsTrendChart.ts` — deux fichiers voisins ne peuvent pas différer par la casse. Le composant ne fait que brancher
  * l'option sur `ChartCard` — aucune règle de lecture ici.
  *
  * `frameless` par défaut : la frise vit DANS une carte de section, un second cadre ferait
  * un cadre dans un cadre.
+ *
+ * TOUTES les options de la frise sont transmises au module d'option, `baseline` (mode écart)
+ * et `hollowLegend` (témoin des soirées à échantillon faible) compris : une option reçue puis
+ * tue laisserait l'axe annoncer des écarts sous des bâtons tracés en valeur absolue.
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 
@@ -34,8 +36,9 @@ export function SessionBarsTrendChart({
   labels,
   series: specs,
   yAxisLabel,
-  volumeAxis,
   tooltipLines,
+  baseline,
+  hollowLegend,
 }: SessionBarsTrendChartProps) {
   // La série factice porte l'état « il y a quelque chose à peindre » : les données
   // vivent dans la closure de `buildOption`, comme dans `ChartFromOption`.
@@ -49,10 +52,11 @@ export function SessionBarsTrendChart({
         labels,
         series: specs,
         yAxisLabel,
-        ...(volumeAxis ? { volumeAxis } : {}),
         ...(tooltipLines ? { tooltipLines } : {}),
+        ...(baseline ? { baseline } : {}),
+        ...(hollowLegend ? { hollowLegend } : {}),
       }),
-    [labels, specs, yAxisLabel, volumeAxis, tooltipLines],
+    [labels, specs, yAxisLabel, tooltipLines, baseline, hollowLegend],
   )
   return (
     <ChartCard

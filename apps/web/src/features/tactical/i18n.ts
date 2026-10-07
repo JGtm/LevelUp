@@ -23,6 +23,7 @@ export function getTacticalText(locale: Locale) {
       m('tactical.maps.record_label', { wins, losses, n }),
     select: (map: string) => m('tactical.maps.select', { map }),
     selected: m('tactical.maps.selected'),
+    mapsExplorerLink: m('tactical.maps.explorer_link'),
     // Résumé d'une vignette sur une seule ligne : « 54 · 30 V / 24 D ».
     tileSummary: (n: number, wins: number, losses: number) =>
       m('tactical.maps.tile_summary', { n, wins, losses }),
@@ -132,7 +133,6 @@ export function getTacticalText(locale: Locale) {
     zoneContributionsLoading: m('tactical.zone.contributions_loading'),
     zoneContributionsEmpty: m('tactical.zone.contributions_empty'),
     zoneError: m('tactical.zone.error'),
-    zoneNotOpenable: (n: number) => m('tactical.zone.not_openable', { n }),
 
     // ── Mini-tuile « Rejeu » ────────────────────────────────────────────────
     tileKilledBy: (gt: string) => m('tactical.tile.killed_by', { gt }),

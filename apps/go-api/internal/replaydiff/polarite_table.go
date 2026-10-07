@@ -216,8 +216,8 @@ var tablePolarites = []blocPolarites{
 		Succes:  "decoded published",
 		Neutres: "beforeOrigin dropped restated swapped taken unarmedGrants"},
 	{Blocs: []string{"coverage.zones."},
-		Echecs:  "ambiguousZone noPosition ownerUnpaired unknownOwner unpaired",
-		Succes:  "attributed gaugePoints letters ownerAgreed paired spans",
+		Echecs:  "ambiguousZone capturerElectionDisagreed noPosition ownerUnpaired ownerVoteDisagreed unknownOwner unpaired",
+		Succes:  "attributed capturerNamed gaugePoints letters ownerAgreed ownerNamed paired spans",
 		Neutres: "captures catalog hillPeriods outside ownerChecked slots"},
 	{Blocs: []string{racineAssaut},
 		Echecs: "armingsAmbiguous armingsNoBridge armingsNoCarrier armingsNoClock periodsNoBridge " +

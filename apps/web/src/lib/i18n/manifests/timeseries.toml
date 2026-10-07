@@ -315,8 +315,8 @@ fr = "Séries temporelles indisponibles"
 en = "Timeseries unavailable"
 
 [timeseries.empty.page_description]
-fr = "Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
-en = "Backend returned no payload for this page. Check filters, local data or API request."
+fr = "Le serveur n'a renvoyé aucune donnée pour cette page (filtres, données locales ou requête API)."
+en = "The server returned no data for this page (filters, local data or API request)."
 
 [timeseries.errors.load_failed]
 fr = "Erreur lors du chargement des séries"
@@ -756,9 +756,9 @@ en = "player kills: {n}"
 fr = "appuis de l'équipe : {n}"
 en = "team assists: {n}"
 
-[timeseries.progression.coord_coverage]
-fr = "{measured} matchs mesurés sur {total}"
-en = "{measured} of {total} matches measured"
+[timeseries.progression.coord_empty_title]
+fr = "Aucun appui mesuré"
+en = "No support measured"
 
 [timeseries.progression.coord_empty]
 fr = "Aucune soirée mesurée sur ce périmètre."
@@ -818,10 +818,6 @@ en = "Range"
 fr = "Écart, par match, entre la distance médiane des frags du joueur et celle de tous les joueurs du lobby ; bandes : tiers de la fenêtre affichée. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance."
 en = "Per match, the gap between the player's median kill distance and that of every player in the lobby; bands: thirds of the displayed window. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend."
 
-[timeseries.portee.x_axis]
-fr = "Matchs, du plus ancien au plus récent"
-en = "Matches, oldest to most recent"
-
 [timeseries.portee.y_axis]
 fr = "Écart à la médiane du lobby"
 en = "Gap to the lobby median"
@@ -865,10 +861,6 @@ en = "gap {delta} m"
 [timeseries.portee.tooltip_measured]
 fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
 en = "{n, plural, one {# measured kill} other {# measured kills}}"
-
-[timeseries.portee.coverage]
-fr = "{measured, number} frags mesurés sur {total, number}"
-en = "{measured, number} measured kills out of {total, number}"
 
 [timeseries.portee.empty_title]
 fr = "Aucune portée mesurée"

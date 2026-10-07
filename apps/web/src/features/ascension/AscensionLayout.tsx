@@ -8,7 +8,6 @@
  *   /ascension/coaching      → tab "Entraînement"
  *   /ascension/realisations  → tab "Réalisations"
  *   /ascension/tactique      → tab "Tactique" (2026-09-06)
- *   /ascension/tendances     → tab "Tendances" (2026-10-05, sans porte de capacité propre)
  *
  * Le layout fournit le header (H1 + sous-titre), le bandeau TipsTicker
  * partagé, et la barre d'onglets. Le contenu de chaque tab est rendu
@@ -66,13 +65,11 @@ export function AscensionLayout() {
   const coachingRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' as const
   const realisationsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' as const
   const tacticalRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique' as const
-  const trendsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tendances' as const
   const isObjectives = !!matchRoute({ to: objectivesRoute })
   const isCoaching = !!matchRoute({ to: coachingRoute })
   const isRealisations = !!matchRoute({ to: realisationsRoute })
   const isTactical = !!matchRoute({ to: tacticalRoute })
-  const isTrends = !!matchRoute({ to: trendsRoute })
-  const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical && !isTrends
+  const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical
 
   return (
     <main className="space-y-6 p-6">
@@ -139,15 +136,6 @@ export function AscensionLayout() {
             {t.tabTactical}
           </Link>
         </FeatureGate>
-        <Link
-          to={trendsRoute}
-          params={{ titleSlug, playerSlug }}
-          role="tab"
-          aria-selected={isTrends}
-          className={tabClass(isTrends)}
-        >
-          {t.tabTrends}
-        </Link>
       </nav>
 
       <Outlet />

@@ -22,10 +22,10 @@ import (
 // est non nul — un champ ajoute au type que la composition oublierait reste a zero et rougit.
 func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 	c := &decodeCtx{
-		walkRes:    &walkResult{desync: 1, horsBande: 2, horsRoster: 3, horsEnum: 4, largeurLibre: 5},
+		walkRes:    &walkResult{desync: 1, horsRoster: 3, horsEnum: 4, largeurLibre: 5},
 		roster:     &roster{nomsInventes: 6},
 		feed:       &killFeed{},
-		killEvents: &assistScan{chainesArretees: 8},
+		killEvents: &assistScan{chainesArretees: 8, rattrapes: 9},
 		calib:      calibration{CarteLue: false, ControleDeCorruptionLu: false, PoigneeDecidee: true},
 	}
 	kills := []Kill{{Victim: "A", Feed: FeedTruth{Killer: "B"}}}
@@ -48,17 +48,16 @@ func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 // TestLeFiltreDeCredibiliteCompteSesRejets : chaque rejet du filtre de credibilite se compte sous
 // SA cause, et un dead-state credible n en compte aucun.
 func TestLeFiltreDeCredibiliteCompteSesRejets(t *testing.T) {
-	res := &walkResult{bipLo: 10, bipHi: 20, deads: []deadRecord{
+	res := &walkResult{deads: []deadRecord{
 		{slot: 15, dead: types.DeadState{EnumA: 0, EnumB: 1, Val0c: 2}},  // credible
-		{slot: 30, dead: types.DeadState{EnumA: 0, EnumB: 1}},            // hors bande
 		{slot: 15, dead: types.DeadState{EnumA: 9, EnumB: 1}},            // victime hors roster
 		{slot: 15, dead: types.DeadState{EnumA: 0, EnumB: -1}},           // tueur hors roster
 		{slot: 15, dead: types.DeadState{EnumA: 0, EnumB: 1, Val0c: 12}}, // categorie hors enumeration
 	}}
 	res.selectCredible(&roster{nPlay: 4})
-	if len(res.credible) != 1 || res.horsBande != 1 || res.horsRoster != 2 || res.horsEnum != 1 {
-		t.Fatalf("credibles %d, hors bande %d, hors roster %d, hors enumeration %d — attendu 1, 1, 2, 1",
-			len(res.credible), res.horsBande, res.horsRoster, res.horsEnum)
+	if len(res.credible) != 1 || res.horsRoster != 2 || res.horsEnum != 1 {
+		t.Fatalf("credibles %d, hors roster %d, hors enumeration %d — attendu 1, 2, 1",
+			len(res.credible), res.horsRoster, res.horsEnum)
 	}
 }
 

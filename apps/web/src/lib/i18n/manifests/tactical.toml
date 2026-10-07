@@ -30,6 +30,10 @@ en = "{wins, plural, one {# win} other {# wins}} and {losses, plural, one {# los
 fr = "Sélectionner {map}"
 en = "Select {map}"
 
+[tactical.maps.explorer_link]
+fr = "Voir les matchs de cette carte dans l'Explorateur"
+en = "See this map's matches in the Explorer"
+
 [tactical.maps.selected]
 fr = "Carte sélectionnée"
 en = "Selected map"
@@ -342,10 +346,6 @@ en = "No match to open in this zone"
 [tactical.zone.error]
 fr = "La zone n'a pas pu être lue"
 en = "The zone could not be read"
-
-[tactical.zone.not_openable]
-fr = "{n, plural, one {# match du filtre non ouvrable} other {# matchs du filtre non ouvrables}}"
-en = "{n, plural, one {# match of the filter cannot be opened} other {# matches of the filter cannot be opened}}"
 
 # ── Mini-tuile « Rejeu » : fait, catégorie de la source, placement, bouton ──────────────────────
 [tactical.tile.killed_by]

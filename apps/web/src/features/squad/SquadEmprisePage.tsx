@@ -8,7 +8,8 @@
  *
  *   1. « Bilan de la soirée » : « Contrôle des ressources » | « Contrôle des ressources au fil
  *      de la session », côte à côte, même hauteur (S2) ;
- *   2. « Rôles dans l'escouade » : « Répartition des prises dans l'escouade », pleine largeur ;
+ *   2. « Prises par joueur » : les fiches des joueurs de l'escouade, à même la section (comme les
+ *      médailles : titre et aide sur l'intertitre), pleine largeur ;
  *   3. « Carte par carte » : « Contrôle des ressources, match par match », pleine largeur ;
  *   4. « Prendre, et s'en servir » : « Frags obtenus avec les ressources » | « Rendement face à
  *      l'adversaire », côte à côte, même hauteur (la survivante prend la rangée) ;
@@ -17,7 +18,11 @@
  *      PLAN_EMPRISE_VIES_2026-09-28) ; absent sans vie mesurée (Halo 5, portée du radar inconnue) ;
  *   6. « Par rapport à d'habitude » : « Contrôle des ressources, soirée après soirée », dans la
  *      colonne de gauche comme dans la maquette (la carte d'isolement de droite est hors
- *      périmètre : rien n'est rendu à sa place).
+ *      périmètre : rien n'est rendu à sa place) ;
+ *   7. « Objectif » puis « Répartition de l'objectif dans l'escouade » (arrivés de Contributions le
+ *      2026-10-07, `SquadObjectiveSection`) : lus sur la feuille de match, présents aussi sans film.
+ *
+ * Aucune fiche ni ligne du reste du camp : les joueurs inconnus ne se lisent pas ici.
  *
  * Sans film (Halo 5, D10), seuls les frags aux armes spéciales restent (barre épaisse seule) ;
  * sans rien à montrer, la barre d'onglets masque l'onglet (même prédicat : `empriseContent.ts`).
@@ -33,6 +38,7 @@ import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { Locale } from '@/lib/i18n/locale'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -55,8 +61,9 @@ import { useEmpriseModels } from './emprise/useEmpriseModels'
 import { useOutcomeLabels } from './emprise/useOutcomeLabels'
 import type { VehicleCoverage } from './emprise/vehicles.logic'
 import { YieldCard } from './emprise/YieldCard'
-import { TEAM_REST_INK } from './formes/colors'
 import { getSquadText } from './i18n'
+import { hasSquadObjective } from './objectif/objectif.logic'
+import { SquadObjectiveSection } from './objectif/SquadObjectiveSection'
 import { useSquadContext } from './SquadContext'
 
 export function SquadEmprisePage() {
@@ -66,12 +73,10 @@ export function SquadEmprisePage() {
   const et = EMPRISE_TEXT[locale]
   const dominance = useMemo(() => dominanceLabels(locale), [locale])
   const outcomes = useOutcomeLabels()
-  const models = useEmpriseModels(
-    pageData,
-    pageData?.main_player ?? playerSlug,
-    et.sheets.rest,
-    locale,
-  )
+  const mainPlayer = pageData?.main_player ?? playerSlug
+  const models = useEmpriseModels(pageData, mainPlayer, locale)
+  const matchHistory = useMemo(() => pageData?.match_history ?? [], [pageData?.match_history])
+  const medalDigest = useMemo(() => pageData?.medal_digest ?? [], [pageData?.medal_digest])
   const { objectName, controlRows, fil, sheets, grid, production, yieldRows, vehicleCoverage, habit, placement, identities, playerName } = models
   const show = empriseSections(models)
 
@@ -85,7 +90,7 @@ export function SquadEmprisePage() {
     )
   }
 
-  if (!Object.values(show).some(Boolean)) {
+  if (!Object.values(show).some(Boolean) && !hasSquadObjective(pageData?.formes_retenues)) {
     return <EmptyCard title={t.empty.noDecodedFilmTitle} description={t.empty.noDecodedFilmDescription} />
   }
 
@@ -102,14 +107,11 @@ export function SquadEmprisePage() {
       )}
       {show.roles && sheets && (
         <section className="space-y-2" data-testid="emprise-section-roles">
-          <SectionTitle>{et.sections.roles}</SectionTitle>
-          <PickupSheetsCard
-            sheets={sheets}
-            identities={identities}
-            itemName={(line) => objectName(line.object)}
-            restColor={TEAM_REST_INK}
-            t={et}
-          />
+          <SectionTitle className="flex items-center gap-1.5">
+            {et.sections.roles}
+            <InfoTooltip content={et.sheets.info} />
+          </SectionTitle>
+          <PickupSheetsCard sheets={sheets} identities={identities} itemName={(line) => objectName(line.object)} bare t={et} />
         </section>
       )}
       {show.carte && grid && (
@@ -119,10 +121,10 @@ export function SquadEmprisePage() {
             grid={grid}
             itemName={(row) => (row.object ? objectName(row.object) : '')}
             playerName={playerName}
-            dominanceLabels={dominance}
             outcomeLabels={outcomes}
             locale={locale}
             t={et}
+            namedOnly
           />
         </section>
       )}
@@ -135,6 +137,14 @@ export function SquadEmprisePage() {
         placement={placement}
         locale={locale}
         et={et}
+      />
+      <SquadObjectiveSection
+        block={pageData?.formes_retenues}
+        matchHistory={matchHistory}
+        objectiveHistory={pageData?.squad_objective_history}
+        medalDigest={medalDigest}
+        mainPlayerLabel={mainPlayer}
+        locale={locale}
       />
     </div>
   )

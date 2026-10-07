@@ -17,6 +17,7 @@ interface Captured {
   valueLabel?: string
   shareTotals?: Record<string, number>
   minLabelShare?: number
+  soloByClass?: boolean
 }
 
 const captured: Captured[] = []
@@ -48,6 +49,10 @@ describe('SessionToolsCard', () => {
     expect(p.data?.rows).toHaveLength(8)
     expect(p.valueLabel).toBe('count')
     expect(p.shareTotals).toBeUndefined()
+  })
+
+  it('les deux vues : barres à la couleur de la classe, sans gamertag (un seul joueur sur la page)', () => {
+    for (const compact of [false, true]) expect(monter(compact).soloByClass).toBe(true)
   })
 
   it('vue compacte : les six premiers, sans « Non attribué », en part de mes 65 frags', () => {

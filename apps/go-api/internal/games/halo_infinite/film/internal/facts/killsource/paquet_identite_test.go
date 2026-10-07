@@ -109,8 +109,8 @@ func TestLIdentiteDePaquetVoyageAvecLeCouple(t *testing.T) {
 		xuidDe: map[string]uint64{"B": 77},
 		names:  []string{"A", "B"},
 	}
-	rec := killEventRec{ms: 3000, chunk: 4, pidx: 19, chain: minChain,
-		fields: killEventFields{killer: 1, victim: 2, assist: -1, end: 128}}
+	rec := killEventRec{ms: 3000, chunk: 4, pidx: 19,
+		fields: killEventFields{killer: 1, victim: 2, assist: -1}}
 	kf.resoudreCouples([]killEventRec{rec}, paquetRoster())
 
 	if len(kf.pairs) != 1 {

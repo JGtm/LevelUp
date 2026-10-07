@@ -78,7 +78,8 @@ type AssistStats struct {
 	// Mesure du lot : ZERO sur les 21 films entiers ; c est le compte qui permettra de le retirer
 	// d ici (D14 d).
 	ParLaFenetre int
-	// Gate15 : l etat runtime retenu pour ce film.
+	// Gate15 : l etat d execution que le rattrapage des kills a tranche pour ce film ; faux quand
+	// aucune trame ne l a demande.
 	Gate15 bool
 	// Doublons : kill-events RETIRES parce qu ils repetent, dans le meme paquet, un enregistrement
 	// deja lu a un bit anterieur ([assistScan.dedoublonner], lot J7.6, FK-6). Hors de `KillEvents`.

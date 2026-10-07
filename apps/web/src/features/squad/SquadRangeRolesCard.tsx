@@ -1,13 +1,6 @@
 /**
- * SquadRangeRolesCard — le nuage des RÔLES de la section Coordination : « Rôles de portée »
- * (D22-5 du 2026-09-21) et, avec `grandeur="hauteur"`, « Rôles de hauteur » (E1 / D24 du
- * 2026-09-22).
- *
- * UNE SEULE CARTE POUR LES DEUX GRANDEURS, pas une copie : la grammaire est la même à la
- * lettre — un point par (match, joueur), l'écart à la médiane du LOBBY du match en
- * ordonnée, trois bandes aux tiers de la période, une tendance glissante par joueur. Seuls
- * changent la grandeur lue sur le profil (`seriesPortee`) et le préfixe de libellés du
- * manifest. Deux lectures qui s'empilent au lieu de se concurrencer.
+ * SquadRangeRolesCard — « Rôles de portée », le nuage des rôles de la section « Appui et
+ * portée » de Synergies.
  *
  * QUI TIENT LA LIGNE DE FRONT, QUI JOUE LOIN, ET QUI A CHANGÉ. Un point par (match,
  * joueur) : en abscisse le match, du plus ancien au plus récent ; en ordonnée l'écart de sa
@@ -17,14 +10,12 @@
  * `FENETRE_ROLE` matchs) dit le rôle ; un point atypique se voit sans faire basculer
  * l'étiquette.
  *
- * ELLE SE PLACE DANS LA SECTION COORDINATION, EN DERNIER : les cartes de la section
- * répondent à la même question — comment l'escouade s'occupe de l'espace entre ses
- * joueurs. L'appui dit ce qu'elle se donne, la riposte dit qui vient, la portée dit à quelle
- * distance chacun se tient. Elle vient en dernier parce qu'elle est la seule à ne pas parler
- * de morts.
+ * ELLE SE PLACE À DROITE DE L'APPUI, MÊME HAUTEUR : l'appui dit ce que l'escouade se donne, la
+ * portée à quelle distance chacun se tient.
  *
- * D22-VERBOSITÉ (LOI) : graphe et légendes seulement. La lecture tient dans l'infobulle du
- * titre, en trois phrases ; sous le graphe, rien d'autre que la légende et la couverture.
+ * D22-VERBOSITÉ (LOI) : graphe et légende du graphe seulement. La lecture (point creux sous le
+ * plancher de frags mesurés, tendance glissante) tient dans l'infobulle du titre ; sous le graphe,
+ * ni légende ajoutée ni compte de frags mesurés.
  */
 import { useMemo } from 'react'
 
@@ -42,50 +33,27 @@ import { getSquadPlayerColors } from './colors'
 import { SquadRangeRolesTape } from './SquadRangeRolesTape'
 import {
   categoriesMatchs,
-  FENETRE_ROLE,
   ordonnerProfils,
   PLANCHER_MESURE,
   rolesFenetre,
   seriesPortee,
   seuilsRoles,
-  TAILLE_POINT_MIN,
-  type GrandeurProfil,
   type RoleDePortee,
 } from './squadRangeRoles.logic'
 import { getSquadRangeRolesText } from './squadRangeRolesStrings'
-
-// ENCRE PLEINE SUR LES DEUX GRANDEURS (2026-09-22, retour utilisateur « rendu terne ») : les
-// points de la grandeur hauteur portaient une opacité de 0,5 pour laisser les courbes de
-// tendance passer devant. Cette atténuation ne codait AUCUNE information — deux points de même
-// nature s'affichaient plus pâles ici que sur la carte voisine, à un mètre d'écart. La
-// lecture qu'elle cherchait à privilégier — la tendance — est tenue autrement : la courbe passe
-// elle aussi en encre pleine et porte le gamertag à son bout. Supprimée ici et dans l'option (la
-// prop `opacitePoints` n'avait pas d'autre appelant).
 
 export interface SquadRangeRolesCardProps {
   bloc: MatchRangeBlock
   /** Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. */
   roster: string[]
-  /**
-   * La grandeur portée en ordonnée. `portee` (défaut, lot R) : la distance des frags.
-   * `hauteur` (E1, D24 du 2026-09-22) : leur dénivelé signé. MÊME CARTE, MÊME NUAGE, MÊME
-   * BANDE — seuls la grandeur lue sur le profil et les libellés du manifest changent.
-   */
-  grandeur?: GrandeurProfil
 }
 
-export function SquadRangeRolesCard({
-  bloc,
-  roster,
-  grandeur = 'portee',
-}: SquadRangeRolesCardProps) {
+/** Préfixe des `data-testid` de la carte et de sa bande des rôles. */
+const TID = 'squad-portee'
+
+export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const t = getSquadRangeRolesText(locale, grandeur)
-  // Préfixe des `data-testid` : deux cartes cohabitent sur la page, leurs repères aussi.
-  const tid = `squad-${grandeur}`
-  // La lecture de E1 tient dans la tendance (4 joueurs x 20 matchs = 80 points) : chaque
-  // courbe porte son gamertag au bout. Les points, eux, restent en encre pleine (2026-09-22).
-  const hauteur = grandeur === 'hauteur'
+  const t = getSquadRangeRolesText(locale)
   const numLoc = intlLocale(locale)
 
   const numFmt = useMemo(
@@ -96,8 +64,8 @@ export function SquadRangeRolesCard({
   const profils = useMemo(() => ordonnerProfils(bloc.profiles ?? []), [bloc.profiles])
   const categories = useMemo(() => categoriesMatchs(profils), [profils])
   const series = useMemo(
-    () => seriesPortee(profils, roster, grandeur),
-    [profils, roster, grandeur],
+    () => seriesPortee(profils, roster),
+    [profils, roster],
   )
   const seuils = useMemo(() => seuilsRoles(series), [series])
   const roles = useMemo(() => {
@@ -117,8 +85,8 @@ export function SquadRangeRolesCard({
   const mesuresMax = mesures.length > 0 ? Math.max(...mesures) : 0
 
   const chartSeries = useMemo(
-    () => (series.length > 0 ? [{ key: tid, datapoints: series }] : []),
-    [series, tid],
+    () => (series.length > 0 ? [{ key: TID, datapoints: series }] : []),
+    [series],
   )
 
   const buildOption = useMemo(
@@ -139,9 +107,8 @@ export function SquadRangeRolesCard({
           tooltipMeasured: t.tooltipMeasured,
         },
         fmtM: (v: number) => numFmt.format(v),
-        etiquetteBout: hauteur,
       }),
-    [series, categories, seuils, couleurs, mesuresMin, mesuresMax, t, numFmt, hauteur],
+    [series, categories, seuils, couleurs, mesuresMin, mesuresMax, t, numFmt],
   )
 
   const vide = series.length === 0
@@ -151,39 +118,17 @@ export function SquadRangeRolesCard({
       title={t.cardTitle}
       label={t.sectionLabel}
       titleAdornment={titleWithInfo(<TooltipParagraphs items={[t.help(PLANCHER_MESURE)]} />)}
+      className="h-full"
     >
-      <div className="space-y-2 px-3 py-2" data-testid={`${tid}-roles`}>
+      <div className="flex flex-1 flex-col justify-center px-3 py-2" data-testid={`${TID}-roles`}>
         {vide ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
-          <>
-            <ChartCard series={chartSeries} buildOption={buildOption} height={380} frameless />
-            {/* Légende des deux encodages qu'ECharts ne sait pas nommer : le point creux et
-                la tendance. Les joueurs, eux, sont dans la légende du graphe. */}
-            <div
-              className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
-              data-testid={`${tid}-legende`}
-            >
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block rounded-full border border-dashed border-muted-foreground"
-                  style={{ width: TAILLE_POINT_MIN, height: TAILLE_POINT_MIN }}
-                />
-                {t.legendLowSample(PLANCHER_MESURE)}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-px w-5 bg-muted-foreground" />
-                {t.legendTrend(FENETRE_ROLE)}
-              </span>
-            </div>
-            <p className="text-2xs text-muted-foreground" data-testid={`${tid}-couverture`}>
-              {t.coverage(bloc.kills_measured, bloc.kills_total)}
-            </p>
-          </>
+          <ChartCard series={chartSeries} buildOption={buildOption} height={380} frameless />
         )}
       </div>
       {!vide && (
-        <details className="border-t border-border pb-2" data-testid={`${tid}-fold-bande`}>
+        <details className="border-t border-border pb-2" data-testid={`${TID}-fold-bande`}>
           <summary className="cursor-pointer px-3 py-1 text-xs text-muted-foreground">
             {t.foldTape}
           </summary>
@@ -193,7 +138,6 @@ export function SquadRangeRolesCard({
               roles={roles}
               categories={categories}
               t={t}
-              prefixeTest={tid}
             />
           </div>
         </details>

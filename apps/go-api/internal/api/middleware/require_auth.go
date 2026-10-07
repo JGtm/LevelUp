@@ -2,7 +2,8 @@
 //
 // RequireAuth vérifie que la session courante est authentifiée.
 // - auth_mode=none ou mode démo → no-op (pas de vérification)
-// - auth_mode=password → vérifie que sess.Username est défini
+// - auth_mode=password → vérifie que sess.Username est défini (login local)
+// - auth_mode=xbox → login local (sess.Username) OU auth Halo (sess.AuthReady)
 //
 // Retourne 401 avec le code "auth_required" si l'utilisateur n'est pas connecté.
 package middleware
@@ -54,14 +55,24 @@ func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Hand
 // Note : une session non-nil ne prouve RIEN. WithSession est monté à la racine
 // et CRÉE une session vide pour toute requête anonyme — tester `sess != nil`
 // laisserait donc passer un visiteur non connecté. C'est le username (mode
-// password) ou AuthReady (device-code) qui fait foi.
+// password, et login local en mode xbox) ou AuthReady (device-code) qui fait foi.
+//
+// Un Username en session prouve un login local réussi (POST /auth/login ou
+// /auth/register) ou un SSO Xbox lié à un compte : il suffit dans TOUS les modes.
+// En mode xbox, le login par mot de passe est ouvert aux comptes qui en ont défini
+// un (UserAuthHandler.handleLogin) et ne pose PAS AuthReady ; exiger AuthReady
+// refuserait ces sessions sur toutes les routes gardées alors que /bootstrap les
+// déclare connectées. AuthReady seul (auth Halo sans compte local) ne suffit
+// qu'en dehors du mode password, où le compte local est exigé.
 func sessionAuthenticated(sess *domain.SessionData, mode string) bool {
 	if sess == nil {
 		return false
 	}
+	if sess.Username != nil {
+		return true
+	}
 	if mode == "password" {
-		// L'auth Halo (AuthReady) est optionnelle — le login local suffit.
-		return sess.Username != nil
+		return false
 	}
 	return sess.AuthReady
 }

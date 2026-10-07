@@ -1389,12 +1389,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Bastion que la variante donne a un camp au coup d envoi est publiee tenue des la premiere
 	//   image-cle qui le dit, et non plus a sa premiere reprise. `grammar.Rev` monte avec elle : un
 	//   v81 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	// - 83 (2026-10-07, correctif D9 des changements d arme) : Aucun champ neuf ; le CONTENU change :
-	//   les mains nues valent « rien en main », aucun changement d arme publie ne les porte (ni
-	//   lacher, ni echange, ni prise). `grammar.Rev` monte avec elle : un v82 se lit « a
-	//   redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 83 {
-		t.Fatalf("SchemaVersion = %d, attendu 83 : incrémenter exige une raison écrite ci-dessus "+
+	// - 84 (2026-10-07, proprietaire des zones par le nom) : deux champs de couverture
+	//   (`coverage.zones.ownerNamed`, `ownerVoteDisagreed`) et le CONTENU : le canal de propriete
+	//   d une zone est designe par le nom de sa jauge, une zone prise une seule fois est publiee.
+	//   `grammar.Rev` monte avec elle. 83 est reserve par un lot parallele. Detail :
+	//   `document_chronicle.go`.
+	// - 86 (2026-10-07, pousseur et colline par le nom) : deux champs de couverture
+	//   (`coverage.zones.capturerNamed`, `capturerElectionDisagreed`) et le CONTENU : le pousseur d une
+	//   zone et le proprietaire d une colline designes par le nom. Publication seule (faits au schema
+	//   9). 85 est reserve par un lot parallele. Detail : `document_chronicle.go`.
+	// - 87 (2026-10-07, representation intermediaire 2.7.c) : Aucun champ neuf ; le CONTENU change :
+	//   la vue A se lit au-dela des messages de kill et sa fin fixe le debut de la vue B des trames a
+	//   kill (calques de la marche), les kill-events viennent de la vue A et la recherche bit a bit
+	//   n est plus qu un rattrapage compte. `grammar.Rev` et `killsource.Rev` montent avec elle : un
+	//   v86 se lit « a redecoder ». 83 et 85, reserves a ce lot, restent sans emploi. Detail :
+	//   `document_chronicle.go`.
+	// - 88 (2026-10-07, lot des arrets de la vue B) : Aucun champ neuf ; le CONTENU change : cinq
+	//   composants ou la vue B butait se lisent (calques de la marche), et les mains nues valent
+	//   « rien en main », aucun changement d arme publie ne les porte. `grammar.Rev` monte avec
+	//   elle : un v87 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 88 {
+		t.Fatalf("SchemaVersion = %d, attendu 88 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

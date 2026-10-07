@@ -156,14 +156,14 @@ var registreReplayObjectifs = []Repli{
 	{
 		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
 		Fait:      "quel CAMP pousse la jauge d'une zone, rampe par rampe",
-		Mecanisme: "aucun canal POUSSEUR n'a ete elu pour cette zone : le camp est DEDUIT de l'issue — le proprietaire juste apres le sommet d'une rampe ABOUTIE. Une rampe avortee reste alors sans camp",
+		Mecanisme: "le canal POUSSEUR retenu pour cette zone (nomme, ou elu faute de nom) ne dit pas le camp pendant la rampe, ou aucun n.est retenu : le camp est DEDUIT de l.issue — le proprietaire juste apres le sommet d.une rampe ABOUTIE. Une rampe avortee reste alors sans camp",
 		// NI `film_muet` NI `lecture_non_portee`, ET LE DIRE EST LE POINT. Le lot 5.6 a MESURE
 		// que le film porte ce fait (un second canal `ti=13 tag 4` par zone : 69 rampes
 		// abouties sur deux films, 69 accords, 0 desaccord) et que le decodeur le LIT deja.
-		// Ce qui manque quand ce repli se declenche, c'est l'ELECTION du canal — elle exige au
-		// moins deux rampes abouties concordantes, et une zone tres peu disputee n'en a pas
-		// assez. Le classer `film_muet` enverrait chercher la correction dans la grammaire,
-		// ou il n'y a rien a faire.
+		// Le canal se designe par le nom (zone_states_capturer.go, zoneCapturerOf) ; ce repli ne
+		// reste que pour un nom hors vocabulaire sans elu, ou un pousseur muet pendant la rampe.
+		// Le classer `film_muet` enverrait chercher la correction dans la grammaire, ou il n y a
+		// rien a faire.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
@@ -171,8 +171,79 @@ var registreReplayObjectifs = []Repli{
 			Ancre:   "fb.Declenche(fallback.NomZoneCampDeCaptureDeduitDeLIssue)",
 		}},
 		DatePose:        "2026-09-21",
-		CibleRetrait:    "un critere d'election qui n'exige pas deux rampes abouties — par exemple l'election du POUSSEUR une fois pour le film (les trois zones d'une carte partagent la meme structure de blocs) au lieu d'une election par zone",
+		CibleRetrait:    "le pousseur designe par le nom de la jauge (zone_states_capturer.go, zoneCapturerOf) ; ce qui reste vient d un pousseur muet pendant la rampe",
 		CritereRetrait:  "0 declenchement sur les films a zones du parc",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_zone_proprietaire_par_vote",
+		Fait: "quel canal `ti=13` porte le PROPRIETAIRE d'une zone dont la jauge est appariee",
+		Mecanisme: "le nom de la jauge n'est pas au vocabulaire des blocs de zone (ou le proprietaire " +
+			"nomme est absent du film) : le canal est ELU par l'accord avec le roster — au moins deux " +
+			"captures concordantes, un canal par zone",
+		// `non_resolu` ET NON `film_muet` : le film porte le nom de chaque propriete, c'est le
+		// VOCABULAIRE qui ne le connait pas (build ou mode dont les noms n'ont pas ete releves).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_owner.go",
+			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireParVote, prop.votees)",
+		}},
+		DatePose:        date1007,
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_zone_pousseur_par_election",
+		Fait: "quel canal `ti=13` porte le POUSSEUR d'une zone dont la jauge est appariee",
+		Mecanisme: "le nom de la jauge n'est pas au vocabulaire des blocs de zone (ou le pousseur nomme " +
+			"est absent du film) : le canal est ELU par le signal — sa valeur pendant chaque rampe " +
+			"aboutie vaut le proprietaire juste apres le sommet, au moins deux accords et aucun desaccord",
+		// `non_resolu` : le film porte le nom de chaque propriete, c'est le VOCABULAIRE qui ne le
+		// connait pas.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_capturer.go",
+			Ancre:   "fb.Declenche(fallback.NomZonePousseurParElection)",
+		}},
+		DatePose:        date1007,
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_colline_proprietaire_voisin_du_designateur",
+		Fait: "quel canal `ti=13` porte le PROPRIETAIRE de la colline en KOTH",
+		Mecanisme: "le nom du designateur n'est pas au vocabulaire des blocs de zone (ou le proprietaire " +
+			"nomme est absent du film) : le canal est le slot VOISIN du designateur (designateur + 1)",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill.go",
+			Ancre:   "fb.Declenche(fallback.NomCollineProprietaireVoisinDuDesignateur)",
+		}},
+		DatePose:        date1007,
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_colline_designateur_par_voisinage",
+		Fait: "quel slot `ti=13` DESIGNE la colline courante en KOTH, et quels slots datent le premier contact avec l'objet de mode",
+		Mecanisme: "aucun slot de tag 5 chaine ne porte un nom de cle du vocabulaire des blocs de zone : " +
+			"le designateur est le slot dont le VOISIN (+1) porte un proprietaire qui parle (au moins " +
+			"deux emissions), et le premier contact se date sur les slots +1 a +3",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill.go",
+			Ancre:   "c.fb.Declenche(fallback.NomCollineDesignateurParVoisinage)",
+		}},
+		DatePose:        date1007,
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
 		CompteurBranche: true,
 	},
 	{

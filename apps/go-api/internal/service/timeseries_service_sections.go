@@ -237,8 +237,8 @@ func (s *TimeseriesService) lireEquipesDuScope(ctx context.Context, matchIDs []s
 // premier match de chaque soirée.
 //
 // UN MATCH SANS SESSION N'ENTRE DANS AUCUNE SOIRÉE : la frise se lit par soirée, pas par
-// match isolé — la même règle que la frise d'échange de l'Escouade. Les libellés sont
-// rendus TRIÉS par l'instant du plus ancien match : l'ordre d'itération d'une map n'est
+// match isolé. Les libellés sont rendus TRIÉS par l'instant du plus ancien match :
+// l'ordre d'itération d'une map n'est
 // pas un ordre, et une frise temporelle dont les bâtons changent de place à chaque appel
 // ne se lit pas.
 func soireesDesRows(rows []canonical.PlayerMatchRow) []coordinationSoiree {

@@ -20,7 +20,7 @@ package killsource
 // feed porte au meme instant doit prendre LE SIEN — pas le premier venu.
 //
 // L ORDRE DES ENREGISTREMENTS EST LE MATERIAU DU TEST : celui qui ne correspond PAS vient en
-// premier (il est le plus ancien, comme `scanKillEvents` les rend). Un predicat qui ne regarde
+// premier (il est le plus ancien, comme `killEventsDeLaMarche` les rend). Un predicat qui ne regarde
 // que le tueur prend donc le MAUVAIS, et le kill orphelin voisin herite alors de la victime de
 // l autre mort — la fabrication meme que le lot 1.9.3 a supprimee.
 //

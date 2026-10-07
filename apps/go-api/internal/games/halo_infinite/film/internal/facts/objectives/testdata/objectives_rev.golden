@@ -36,4 +36,4 @@
 #               `MovementStateStats` (`VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`),
 #               que les objectifs ne lisent pas. La sortie des objectifs ne peut pas changer.
 objectives-2026-09-26	f6cb78cf7aa0e0a20fb5fbbd543449a404d786fd8c049f97c5d2faacbf97912e
-objectives-2026-09-27	427e69dc386b6eefe732ed56a962191980573d967d42f5a8000b3cf55b8876f6
+objectives-2026-09-27	c47a785e6e893c76474f1708bb5aa5e89971fa1bdaf57d170880052305493ab2

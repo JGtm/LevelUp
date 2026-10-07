@@ -274,6 +274,32 @@ export function buildPickupSheets(
   return { owners, sections, dominant, losses: bonusLosses(block) }
 }
 
+/**
+ * squadPickupSheets — les fiches des SEULS joueurs de l'escouade (Escouade › Emprise) : ni fiche
+ * du reste du camp (joueurs inconnus), ni objet que seul le reste du camp a pris ; une section
+ * sans objet se retire. « n des m prises de l'équipe » et la ressource dominante gardent le camp
+ * entier pour référence.
+ */
+export function squadPickupSheets(sheets: PickupSheets): PickupSheets {
+  const keep = sheets.owners.map((o) => o.xuid != null)
+  const cut = (xs: number[]) => xs.filter((_, i) => keep[i])
+  const sections = sheets.sections
+    .map((s) => ({
+      ...s,
+      totals: cut(s.totals),
+      lines: s.lines
+        .map((l) => ({ ...l, taken: cut(l.taken), kept: cut(l.kept), dropped: cut(l.dropped) }))
+        .filter((l) => l.taken.some((n) => n > 0)),
+    }))
+    .filter((s) => s.lines.length > 0)
+  return {
+    owners: sheets.owners.filter((_, i) => keep[i]),
+    sections,
+    dominant: sheets.dominant.filter((_, i) => keep[i]),
+    losses: sheets.losses,
+  }
+}
+
 /** La ressource où la fiche pèse le plus dans notre camp (part du camp), null sans prise. */
 function dominantResource(sections: PickupSection[], owner: number): string | null {
   let best: string | null = null

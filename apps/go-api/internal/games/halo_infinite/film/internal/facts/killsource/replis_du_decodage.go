@@ -25,9 +25,6 @@ type ReplisDuDecodage struct {
 	// RecordsDesynchronises : `repli_record_desynchronise_jete` — dead-states Mort=1 d un record
 	// dont la marche a desynchronise, jetes (`walk.go`).
 	RecordsDesynchronises int
-	// HorsBandeBipede : `repli_deadstate_hors_bande_bipede` — dead-states dont le slot sort de la
-	// bande bipede (`walk.go`).
-	HorsBandeBipede int
 	// IndicesHorsRoster : `repli_deadstate_indice_hors_roster` — dead-states dont l indice de
 	// victime OU de tueur sort du roster (`walk.go`).
 	IndicesHorsRoster int
@@ -44,9 +41,13 @@ type ReplisDuDecodage struct {
 	// nombre de kills, UNE fois par decodage (`feed.go`).
 	PiedParArgmax int
 	// ChainesArretees : `repli_chaine_evenement_code_non_modelise` — chaines d evenements ouvertes
-	// par un kill-event plausible, arretees sur un code non modelise ou un cfgIdx non resolu
-	// (`eventbody.go`, `eventchain.go`), gardees ou non.
+	// par un kill-event plausible du rattrapage, arretees sur un code non modelise ou un cfgIdx non
+	// resolu (`grammar/chaine_d_evenements*.go`), gardees ou non.
 	ChainesArretees int
+	// KillsRattrapes : `repli_kill_rattrape_hors_vue_a` — kill-events d une trame dont la lecture de la
+	// vue A n est pas etablie (la vue B ne commence pas a sa fin), retrouves par le rattrapage de la
+	// grammaire (`grammar/kills_rattrapes.go`).
+	KillsRattrapes int
 	// TypeDeChunkPerdu : `repli_type_de_chunk_perdu_du_manifeste` — la traduction du film jette le
 	// type du manifeste, UNE fois par decodage (`chunks.go`).
 	TypeDeChunkPerdu int
@@ -78,13 +79,13 @@ func unSi(decide bool) int {
 func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, sondeLancee bool) ReplisDuDecodage {
 	r := ReplisDuDecodage{
 		RecordsDesynchronises:          c.walkRes.desync,
-		HorsBandeBipede:                c.walkRes.horsBande,
 		IndicesHorsRoster:              c.walkRes.horsRoster,
 		CategoriesHorsEnum:             c.walkRes.horsEnum,
 		LocalisationsALargeurLibre:     c.walkRes.largeurLibre,
 		NomsInventes:                   c.roster.nomsInventes,
 		PiedParArgmax:                  1, // `loadKillFeed` designe le pied par argmax a chaque decodage
 		ChainesArretees:                c.killEvents.chainesArretees,
+		KillsRattrapes:                 c.killEvents.rattrapes,
 		TypeDeChunkPerdu:               1, // `loadFilm` jette le type du manifeste a chaque decodage
 		SondeNonLancee:                 unSi(!sondeLancee),
 		ControleDeCorruptionNonDeclare: unSi(!c.calib.ControleDeCorruptionLu),

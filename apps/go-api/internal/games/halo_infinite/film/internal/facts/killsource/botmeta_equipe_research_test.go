@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -119,11 +120,12 @@ func rjeLireLeFilm(t *testing.T, dir string, attendus []rjeOracle, b *rjeBilan) 
 		t.Fatalf("%s : %v", dir, err)
 	}
 	table := readFilmTable(f)
-	m := loadBotMeta(f)
 	perso, connue := profile.PersonnalisationOctets(table.Build)
-	poserLesEquipesDesBots(f, &m, perso, connue)
+	paquets := grammar.PaquetsBotMetadata(f.src, perso*8, connue)
+	m := loadBotMeta(paquets)
+	poserLesEquipesDesBots(paquets, &m, connue)
 	id := filepath.Base(dir)
-	b.paquets += len(paquetsBotMeta(f))
+	b.paquets += len(paquets)
 	b.illisibles += m.Equipes.Illisibles
 	b.contradictoires += m.Equipes.Contradictoires
 	b.jumeaux += m.Equipes.JumeauxDiscordants

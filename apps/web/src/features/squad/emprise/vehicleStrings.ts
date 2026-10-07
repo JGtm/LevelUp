@@ -30,12 +30,12 @@ export function buildVehicleText(duration: (ms: number) => string): Record<Local
     fr: {
       resource: {
         label: 'Véhicules',
-        pisteSub: 'prises',
-        gridSub: 'prises',
+        pisteTitle: 'Prises de véhicules',
+        gridTitle: 'Prises de véhicules',
         footer: 'véhicules',
         absent: 'Aucun véhicule pris.',
         itemAbsent: ' : aucune prise sur cette carte.',
-        productionSub: 'frags depuis un véhicule',
+        productionTitle: 'Frags depuis un véhicule',
         yieldSub: 'frags par minute à bord',
       },
       aboard: { name: 'temps à bord', fmt: duration },
@@ -51,12 +51,12 @@ export function buildVehicleText(duration: (ms: number) => string): Record<Local
     en: {
       resource: {
         label: 'Vehicles',
-        pisteSub: 'takes',
-        gridSub: 'takes',
+        pisteTitle: 'Vehicle takes',
+        gridTitle: 'Vehicle takes',
         footer: 'vehicles',
         absent: 'No vehicle taken.',
         itemAbsent: ': not taken on this map.',
-        productionSub: 'kills from a vehicle',
+        productionTitle: 'Kills from a vehicle',
         yieldSub: 'kills per minute aboard',
       },
       aboard: { name: 'time aboard', fmt: duration },

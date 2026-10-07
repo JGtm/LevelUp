@@ -33,6 +33,12 @@
  * jeton par jeton : 8 de chaque en 4v4, 12 en 6v6, aucun autre caractère du HTML. Le fond
  * du FDA (`--ac-success` / `--ac-destructive` à 22 %) n'est pas touché.
  *
+ * TROISIEME MISE A JOUR, 2026-10-07 (demande utilisateur : pas de bordure aux cases de
+ * grenades) : SEUL le liseré `box-shadow: 0 0 0 1px var(--ac-warning)` de la grenade équipée
+ * part, 5 occurrences en 4v4, 9 en 6v6 ; et la colonne des sièges gagne `overflow-x-hidden`
+ * (aucune barre de défilement horizontale), 2 occurrences dans chaque fixture ; aucun autre
+ * caractère du HTML.
+ *
  * LE GABARIT NORMAL VA JUSQU'À SIX SIÈGES PAR CAMP (la densité se lit sur la catégorie de
  * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges
  * (`__fixtures__/replayTeams.6v6.html`) a été prise à l'étape 2 du plan, AVANT le premier code

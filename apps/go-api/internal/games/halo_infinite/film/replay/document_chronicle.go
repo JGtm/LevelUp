@@ -2928,11 +2928,118 @@ package replay
 //	                emission delta non chainee hors des camps. KOTH et CTF : document identique hors
 //	                revisions.
 
-// v83 (2026-10-07, correctif D9 du lot des arrets de la vue B) : LES MAINS NUES VALENT « RIEN EN
-// MAIN » DANS LES CHANGEMENTS D ARME. La FORME du document ne change pas (aucun champ) ; son
-// CONTENU change. Rang de travail de la branche `feat/grammaire-arrets-vue-b`, a renumeroter a la
-// fusion.
+// v84 (2026-10-07, proprietaire des zones par le nom) : LE CANAL DE PROPRIETE D UNE ZONE EST DESIGNE
+// PAR LE NOM DE SA JAUGE. Deux champs de couverture s ajoutent ; le contenu change.
 //
+//	`zoneStates[]`  chaque propriete reseau `ti=13` porte un nom (`i0`), lu aux images-cles et pose
+//	                sur leurs lectures (`grammar.ManagedPropertyRead.Name`). Les proprietes d une
+//	                zone forment un bloc dont les noms se repondent : le nom de la jauge appariee
+//	                designe celui du proprietaire (`zone_states_owner_nom.go`), sans vote, sans
+//	                seuil et sans capture concordante. Une zone prise une seule fois (match court)
+//	                est desormais publiee ; un nom hors vocabulaire retombe sur le vote, repli
+//	                `repli_zone_proprietaire_par_vote`.
+//	`coverage.zones ownerNamed` (zones designees par le nom) et `ownerVoteDisagreed` (zones nommees
+//	.ownerNamed`,   dont le vote elit un autre canal : le nom est retenu, la discordance se compte
+//	`.ownerVote     et se journalise).
+//	Disagreed`
+//	faits           `SchemaDesFaits` 7 -> 9 : chaque lecture de `ti=13` porte son nom.
+//
+//	CE QUI MONTE    `SchemaVersion` 82 -> 84 ; `grammar.Rev` `grammar-2026-10-06.6` ->
+//	AVEC ELLE       `grammar-2026-10-07`. `killsource.Rev` et `objectives.Rev` gardent leur valeur
+//	                (ni l une ni l autre n appelle le balayage de ti=13 : goldens regeneres a
+//	                revision constante). Le schema 83, `SchemaDesFaits` 8 et `grammar-2026-10-06.7`
+//	                sont reserves par un lot parallele non fusionne.
+//
+//	LE PARC         un artefact 82 porte `grammar-2026-10-06.6` sur ses calques de grammaire :
+//	                verdict `redecoder`, tout le parc. Seuls les Bastions dont une zone n avait pas
+//	                assez de captures concordantes voient leur calque de zones changer.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bastions locaux et 3 KOTH :
+//	                sur les 8 Bastions ou le vote elisait les trois canaux, le nom designe les
+//	                memes (24 zones sur 24, `ownerVoteDisagreed` 0, `zoneStates` identiques) ; sur
+//	                le Bastion court, les deux zones sans canal elu sont publiees, controle du
+//	                proprietaire 5/5. KOTH : calque identique. Aucun autre calque ne bouge.
+
+// v86 (2026-10-07, pousseur et colline par le nom) : LE POUSSEUR D UNE ZONE ET LE PROPRIETAIRE D UNE
+// COLLINE SONT DESIGNES PAR LE NOM. Deux champs de couverture s ajoutent ; le contenu change.
+//
+//	`zoneStates[]   le canal POUSSEUR d une zone est celui du bloc de sa jauge, designe par le nom
+//	.gaugeRamps[]   (`zoneCapturerOf`) ; l election par le signal devient le repli
+//	.capturing      `repli_zone_pousseur_par_election` et le controle du nom. Un neutre emis a la
+//	Team`           frame du sommet d une rampe est la fin de la poussee, pas son camp
+//	                (`zoneValueDuringRamp`). Moins de rampes deduites de leur issue, des rampes
+//	                avortees qui recoivent le camp qui les poussait.
+//	colline         le proprietaire est celui du bloc dont le designateur est la cle, designe par
+//	                le nom (`hillOwnerSlotOf`) ; le slot voisin du designateur devient le repli
+//	                `repli_colline_proprietaire_voisin_du_designateur` et le controle du nom
+//	                (`ownerNamed`, `ownerVoteDisagreed` comptent aussi la colline).
+//	`coverage.zones `capturerNamed` (zones dont le pousseur est nomme) et
+//	.capturer...`   `capturerElectionDisagreed` (nommees, l election elisant un autre canal).
+//
+//	CE QUI MONTE    `SchemaVersion` 84 -> 86 (85 reserve par un lot parallele). AUCUNE revision de
+//	AVEC ELLE       decodage : les noms sont deja dans les faits (`SchemaDesFaits` 9) — publication
+//	                seule.
+//
+//	LE PARC         un artefact 84 se REPUBLIE depuis ses faits (verdict `republier`, aucun
+//	                decodage). Seuls changent les Bases dont une rampe etait deduite ou muette ;
+//	                les KOTH ne changent que de couverture.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bases et 8 KOTH locaux : le
+//	                pousseur est nomme sur les 27 zones, jamais contredit par l election la ou elle
+//	                aboutit (`capturerElectionDisagreed` 0) ; les deductions passent de 2 a 0 (114b0040,
+//	                5 rampes avortees recoivent leur camp) et de 7 a 0 (e60aaf06, 1 rampe), aucune
+//	                autre rampe ne bouge. Colline : nom = voisin sur les 8 KOTH, calque identique.
+//
+// v87 (2026-10-07, representation intermediaire 2.7.c : killsource sur la marche des trames, kill-events
+// par la vue A) : LA VUE A SE LIT AU-DELA DES MESSAGES DE KILL, ET SA FIN FIXE LE DEBUT DE LA VUE B DES
+// TRAMES A KILL. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
+//
+//	calques de la   le message de kill (genre 85) se lit sans sa partie optionnelle, quelle que
+//	marche          soit la variante de partie : la vue A des trames a kill se lit jusqu a son
+//	                terminateur et sa fin fixe le debut de la vue B selon la classe du film. Les
+//	                etats de mouvement, l inventaire, le tir continu, le camouflage, les armes
+//	                tenues et les morts de vehicule lisent ces trames depuis ce debut.
+//	`killsource`,   kill-events tires de la vue A ; rattrapage bit a bit compte dans les trames
+//	`killRefs`      dont la lecture de la vue A n est pas etablie (`repli_kill_rattrape_hors_vue_a`) ;
+//	                voies des morts (marche, balayage) redistribuees, morts publiees identiques.
+//	`coverage`      comptes de replis (la chaine d evenements arretee chute d un ordre de
+//	                grandeur), trames fermees, revisions.
+//	faits           `SchemaDesFaits` 9 -> 10 : la section des kills change de contenu.
+//
+//	CE QUI MONTE    `SchemaVersion` 86 -> 87 ; `grammar.Rev` `grammar-2026-10-07` ->
+//	AVEC ELLE       `grammar-2026-10-07.2` ; `killsource.Rev` `killsource-2026-09-27` ->
+//	                `killsource-2026-10-07` (backlog killsource sur signal de l utilisateur, D6) ;
+//	                `objectives.Rev` constante. Les schemas 83 et 85 et `SchemaDesFaits` 8, reserves a
+//	                ce lot, restent sans emploi : levelup-d0 a fusionne 84 puis 86 avant lui.
+//
+//	LE PARC         un artefact 86 porte `grammar-2026-10-07` : verdict `redecoder`, tout le parc.
+//
+//	MESURE          `replay-equiv` sur les 20 films d equivalence, avant la fusion de `feat/v75`
+//	                (binaires de `e9a64d87b` contre ceux du lot) : les etapes de la marche bougent
+//	                sur 16 films, `killsource` et l artefact partout, `objectives` nulle part. Sur
+//	                28 films, trames delta fermees 674 171 -> 698 688 et refusees 156 170 ->
+//	                131 798 ; quelques trames a kill regressent quand la fin de la vue A, fausse
+//	                apres un message de degats, est retenue (decouverte 34 du plan de l etape 2).
+//	                `replay-corpus-gate` contre `feat/v75` `fad38a03c` (19 temoins, banc de verite
+//	                compris) : 352 gains, 93 pertes, toutes declarees — voies des morts
+//	                redistribuees (marche et balayage, contenu publie identique), trous du tir continu
+//	                fragmentes (series en hausse, trous en baisse), postures aberrantes coupees
+//	                (`084a804d` : une escalade de 168 s), compteurs de la marche (impulsions, refus,
+//	                liaisons oubliees) ; deux trajets de vehicule raccourcis (`e5adf7b2` : 7 s avant
+//	                la mort de l occupant, 8 tirs de vehicule detaches, decouverte 34 suspecte ;
+//	                `4f77afc1` : 10 s, non instruit). Banc de verite : `repli_kill_rattrape_hors_vue_a`
+//	                nouveau (par decision) et `repli_deadstate_indice_hors_roster` sur trois films
+//	                (morts lues par la marche, d indice hors du roster, non publiees).
+//
+// v88 (2026-10-07, lot des arrets de la vue B : cinq composants et correctif D9) : LES MAINS NUES
+// VALENT « RIEN EN MAIN » DANS LES CHANGEMENTS D ARME, ET CINQ COMPOSANTS OU LA VUE B BUTAIT SE
+// LISENT. La FORME du document ne change pas (aucun champ) ; son CONTENU change. Ecrite v83 sur la
+// branche `feat/grammaire-arrets-vue-b` (base `879f31bbf`), renumerotee 88 a la fusion de
+// `feat/v75` (`312073cd3`).
+//
+//	calques de la   `ti=43` `i18` a `i40`, `ti=12` `i16` et `i18`, `ti=45` `i0`, `ti=10` `i2` a
+//	marche          `i17` se lisent par les lecteurs du jeu (`grammar` `.3` a `.7`) : des records
+//	                qui arretaient la vue B se lisent jusqu au bout, et les paquets avec eux.
 //	`weaponChanges` le jeu remet l objet « mains nues » (`filmshell.IsUnarmedFamily`) a chaque
 //	               naissance, et la dotation de naissance le porte a l emplacement 2. La
 //	               qualification (`grammar` `qualifierContre`) le jugeait comme une arme : l annonce
@@ -2944,12 +3051,13 @@ package replay
 //	               comptee (`coverage.weaponChanges.unarmedGrants`). Aucun changement publie ne porte
 //	               plus `00007ca9`, ni en `w` ni en `from`.
 //
-//	CE QUI MONTE    `SchemaVersion` 82 -> 83 ; `grammar.Rev` `grammar-2026-10-07.5` ->
-//	AVEC ELLE       `grammar-2026-10-07.6`. `killsource.Rev` et `objectives.Rev` gardent leur
-//	                valeur (ni l un ni l autre ne lit ce canal : goldens regeneres a revision
-//	                constante) ; `source`, `profile`, `SchemaDesFaits` ne bougent pas.
+//	CE QUI MONTE    `SchemaVersion` 87 -> 88 ; `grammar.Rev` `grammar-2026-10-07.2` ->
+//	AVEC ELLE       `grammar-2026-10-07.8` (`.3` a `.7` les cinq composants, `.8` les mains
+//	                nues). `killsource.Rev` et `objectives.Rev` gardent leur valeur (goldens
+//	                regeneres a revision constante) ; `source`, `profile`, `SchemaDesFaits` ne
+//	                bougent pas.
 //
-//	LE PARC         un artefact 82 porte `grammar-2026-10-07.5` : verdict `redecoder`.
+//	LE PARC         un artefact 87 porte `grammar-2026-10-07.2` : verdict `redecoder`.
 //
 //	MESURE          parc local de 126 artefacts (schema 86 de `feat/v75`) : 14 changements publies
 //	                portent les mains nues, dans 6 films (13 echanges depuis, 1 lacher). Gate de

@@ -360,15 +360,33 @@ type ZonesCoverage struct {
 	OwnerChecked int `json:"ownerChecked"`
 	OwnerAgreed  int `json:"ownerAgreed"`
 	// OwnerUnpaired compte les zones dont la JAUGE est appariee mais dont AUCUN canal de
-	// propriete n'a ete elu — moins de deux captures concordantes, ou canal deja retenu par une
-	// zone au meilleur accord (cf. zoneOwnerMinAgreements et electZoneOwners). Elles ne sont
-	// PAS publiees : une zone dont on ne lit pas le proprietaire n'a pas d'etat a montrer, et
-	// lui en inventer un serait invisible et credible.
+	// propriete n'est rattache : le nom de la jauge n'est pas au vocabulaire des blocs de zone
+	// (cf. zone_states_owner_nom.go) ET le vote n'en elit aucun — moins de deux captures
+	// concordantes, ou canal deja retenu par une autre zone (cf. zoneOwnerMinAgreements et
+	// electZoneOwners). Elles ne sont PAS publiees : une zone dont on ne lit pas le
+	// proprietaire n'a pas d'etat a montrer, et lui en inventer un serait invisible et credible.
 	//
 	// SANS CE COMPTEUR, LE SILENCE SERAIT MUET : « cette carte ne declare pas cette zone » et
 	// « le canal de cette zone n'a pas passe le seuil » se liraient tous les deux comme une
 	// zone absente de `zoneStates`.
 	OwnerUnpaired int `json:"ownerUnpaired"`
+	// OwnerNamed compte les zones dont le canal de propriete est designe PAR LE NOM : celui de la
+	// jauge, ou en colline celui du designateur (zone_states_owner_nom.go). Les autres zones
+	// rattachees le sont par la regle de repli — le vote, ou en colline le slot voisin du
+	// designateur —, comptee dans `coverage.fallbacks` (`repli_zone_proprietaire_par_vote`,
+	// `repli_colline_proprietaire_voisin_du_designateur`).
+	OwnerNamed int `json:"ownerNamed"`
+	// OwnerVoteDisagreed compte les zones nommees dont la regle de repli (le vote ; en colline, le
+	// voisin du designateur) designe un AUTRE canal. Le nom est retenu ; la regle de repli est le
+	// controle du nom la ou elle aboutit.
+	OwnerVoteDisagreed int `json:"ownerVoteDisagreed"`
+	// CapturerNamed compte les zones dont le canal POUSSEUR est designe par le nom de la jauge ;
+	// les autres le sont par l election par le signal, repli compte
+	// (`repli_zone_pousseur_par_election`). Zero en colline.
+	CapturerNamed int `json:"capturerNamed"`
+	// CapturerElectionDisagreed compte les zones dont le pousseur est nomme et dont l election
+	// elit un AUTRE canal. Le nom est retenu.
+	CapturerElectionDisagreed int `json:"capturerElectionDisagreed"`
 	// Spans est le nombre d'intervalles publies, toutes zones confondues.
 	Spans int `json:"spans"`
 	// HillPeriods est le nombre de periodes de COLLINE : publiees (methode par positions), ou

@@ -34,11 +34,11 @@ describe('SESSION_CARD_TEXT — pleine page', () => {
   it('A et B : titres de l’Escouade, aides propres à la page', () => {
     expect(fr.full.squad.performanceCharts.fragBreakdownTitle).toBe('Répartition des frags')
     expect(fr.full.squad.performanceCharts.fragBreakdownInfo).toBe(
-      'Frags du joueur sur la soirée, par classe d’arme ; dans chaque segment, son compte de frags, le total au bout de la barre.',
+      'Frags du joueur sur la soirée : anneau intérieur par classe d’arme, anneau extérieur par rôle ; total au centre, part de chaque classe en légende.',
     )
     expect(fr.full.squad.weaponKills.title).toBe('Outils de destruction')
     expect(fr.full.squad.weaponKills.info).toBe(
-      'Frags du joueur sur la soirée, arme par arme ; pastille : couleur de la classe de l’arme dans la Répartition des frags.',
+      'Frags du joueur sur la soirée, arme par arme ; couleur de la barre : classe de l’arme, celle de la Répartition des frags.',
     )
   })
 
@@ -80,20 +80,15 @@ describe('SESSION_CARD_TEXT — pleine page', () => {
     expect(fr.full.objectif).toBe(OBJECTIF_TEXT.fr)
     expect(fr.full.objectif.balance.title).toBe('Rapport de force')
   })
-
-  it('couverture de l’intertitre « Ressources »', () => {
-    expect(fr.full.coverage(6, 7)).toBe('6 matchs filmés sur 7 · frags de la feuille de match sur les 7')
-  })
 })
 
 describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {
   it('aides propres à la vue compacte : A, B, C, E, F, J, K, L', () => {
     const c = fr.compact
-    expect(c.squad.performanceCharts.fragBreakdownInfo).toBe(
-      'Frags du joueur sur la soirée, par classe d’arme ; dans chaque segment, sa part des frags, compte au survol.',
-    )
+    // A : le même anneau dans les deux vues, la même aide.
+    expect(c.squad.performanceCharts.fragBreakdownInfo).toBe(fr.full.squad.performanceCharts.fragBreakdownInfo)
     expect(c.squad.weaponKills.info).toBe(
-      'Les six armes les plus meurtrières du joueur sur la soirée, en part des frags du joueur ; pastille : couleur de la classe, compte au survol.',
+      'Les six armes les plus meurtrières du joueur sur la soirée, en part des frags du joueur ; couleur de la barre : classe de l’arme, compte au survol.',
     )
     expect(c.emprise.control.info).toBe(
       'Prises de chaque ressource par l’équipe et par l’adversaire, en parts (comptes au survol), sur les matchs filmés de la soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
@@ -133,8 +128,6 @@ describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {
 
   it('formateurs compacts : sous-libellés et lignes', () => {
     const k = SESSION_CARD_TEXT.fr.compactCards
-    expect(k.frag.totalSub(65)).toBe('65 frags')
-    expect(k.frag.pctFmt(33.8)).toBe('34 %')
     expect(k.production.exposureLine('temps d’effet', '58 %')).toBe('temps d’effet : 58 %')
     expect(k.mine.resourceSub).toBe('prises de l’équipe')
     expect(k.equipment.sub(84)).toBe('84 objets')

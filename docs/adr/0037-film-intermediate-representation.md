@@ -229,9 +229,9 @@ packet with no writer rule contradicted. A view A read only in part (unported or
 configuration bit at zero, unreadable table) is never used: the packet takes the recovery mechanisms
 above, unchanged. The object-death channel receives the cook's records, which start at the end of
 view A when it decides; it asks the locator (`grammar/localisateur.go`, order of the sites that read
-deaths) only for the lists that the cook did not locate, whose view A therefore did not decide. Only
-the `killsource` walk, which ranges no structure, reads view A itself and takes the same rule through
-`DebutDeLaVueB`, under the film's own view-A grammar and the match map. An equal table counts only
+deaths) only for the lists that the cook did not locate, whose view A therefore did not decide.
+Since lot 2.7.c, `killsource` reads no view A of its own: it takes its deaths and its kill messages
+from the same walk (below). An equal table counts only
 under the major version the executable plays: `FUN_1428e219c` reads a film only when its major
 version is 0x29, so a film with an equal table under another major (HI_1_12_0, 0x28) follows the
 strict-prefix rule (pilot decision of 2026-10-06). For strict-prefix films the numbering of the genres beyond
@@ -302,6 +302,25 @@ own i0 grammar. The measurement that decided it, per reader and per closure clas
 twenty-film corpus, is in the plan of step 2; where both sources read the same record, they
 publish the same values.
 
+Since lot 2.7.c, `killsource` is a channel of the frame walk (`grammar.LireLaMarcheDeKillsource`):
+its deaths are the death states of the records the walk reads, with their packet, component
+position and closure, and its kill events are the kill messages of view A. The kill message (genre
+85, `PlayerKilledEvent`) is read without its optional tail: the writer's guard holds two runtime
+settings that the film does not carry, and the reading keeps them at the executable's default,
+false (user decision of 2026-10-07; on the four killsource reference films, the tail read in
+explains none of the view A ends). View A ranges each kill message it reads
+(`lecture.VueA.Kills`). The bit-by-bit search that killsource ran over whole packets moved into the
+grammar as a recovery, named and counted (`repli_kill_rattrape_hors_vue_a`, ordered after the
+reading): it runs only on a frame whose view A reading is not established — view B does not start
+at its end, because the reading stopped or because the walk did not retain its terminator — and
+only between the first genre of view A and the start of view B (the end of the payload when the
+list is not located), never returning a message view A read (second user decision of 2026-10-07,
+after the verification: bounded to frames whose reading stopped, it lost 433 real kills on four
+films behind terminators that the walk did not retain). A view A end that is wrong but retained
+(an equal table trusts it) still decides: after a damage message (genre 0) the reading sometimes
+ends hundreds to thousands of bits early, the walk then refuses the packet, and that frame's
+deaths go to the scan; the misread message is not yet identified (plan of step 2, discovery 34).
+
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
 A value that the payload does not carry (`IDLowBits`, the MPP widths, the i0 layout, `gate15`, the
@@ -330,10 +349,10 @@ keyframe declares; a single discordant record means nothing is declared. The coo
 resolution on its context for every reading. The calibration on placements decides only for a film
 that declares nothing.
 
-The resolution stays out of the walk header: the keyframe anchor proof reads the header, and
-killsource walks anchors under that proof. Killsource keeps the default split until its alignment
-with the cook (step 2, item 2.7.c). So does the keyframe closure ratchet, which measures the
-versioned reels under the format's split; it moves to the declared split with killsource.
+The resolution stays out of the walk header: the keyframe anchor proof reads the header. Since
+lot 2.7.c, killsource sets the same resolution on its context as the cook, for its walk and for the
+frames of its calibration, and the keyframe closure ratchet measures the versioned reels under the
+declared split too.
 
 Two independent measures back the assumed split. Read against the tag catalogue of the installed
 game, the 32-bit word of the block names a tag of the group its archetype expects on nearly every
@@ -424,13 +443,15 @@ packets of a film; the facts read the structure. Two facts consumers walked pack
   not import `internal/grammar` — because test instruments of `internal/grammar` import
   `internal/facts/objectives` for their oracles, and an `objectives` that imported `grammar` would
   close an import cycle in their test binaries;
-- the killsource walk `internal/facts/killsource/walk.go` folds into the single walker at the end
-  of step 2, then disappears at step 3.
+- the killsource walk **folded into the single walker at step 2** (lot 2.7.c, IR-6): `killsource`
+  takes its deaths and kill messages from the frame walk, its other readings (player table, kill
+  feed, xuid motif, BOT_METADATA, death-state template) moved into the grammar unchanged, and its
+  bit-by-bit kill search is the grammar's counted recovery. It reads no byte any more.
 
 `internal/archlint/film_faits_sans_octets_test.go` holds the rule for the facts layer: a
 production file there names nothing of `source` but the loaded film's type, and neither reads a
-chunk, nor the packets of a chunk, nor a packet's payload. `killsource` is its one dated
-exception, retired with the step-2 lot that folds its walk.
+chunk, nor the packets of a chunk, nor a packet's payload. Its one dated exception, `killsource`,
+was retired with lot 2.7.c; the exception list stays empty, as a ratchet.
 
 ### D-6 — One revision per thing that can change. **Amended: the shape of the structure is the grammar's.**
 

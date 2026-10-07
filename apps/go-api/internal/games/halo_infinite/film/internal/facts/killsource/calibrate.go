@@ -27,18 +27,12 @@ package killsource
 // facteur >= 2 ; un profil plat signifie que le parametre reel n est pas dans l espace balaye,
 // et alors l oracle ne designe rien (champ `Flat`) — il ne contredit personne.
 //
-// LE MONDE DOIT ETRE CHRONOLOGIQUE PENDANT LE BALAYAGE, et c est un correctif paye cher : avancer
-// le monde a la FIN du film puis echantillonner des paquets du DEBUT est anodin a 8 joueurs, mais
-// en BTB les slots de biped sont RECYCLES AVEC UNE NOUVELLE GENERATION — 387 paquets sur 400
-// meurent alors au premier record, et la couverture tombe a 4.4 %. Avec le monde chronologique
-// elle remonte a 60.2 %, et le critere choisit la MEME calibration sur les quatre films de
-// reference : le correctif est SANS REGRESSION.
-//
-// TROISIEME PARAMETRE : `recordStateParam`, qui fait varier la largeur de trois composants et
-// n est pas dans le flux. Le critere ci-dessus en est TOTALEMENT AVEUGLE (score identique pour
-// toutes ses valeurs) parce qu une largeur fausse produit souvent un << faux-propre >> : le record
-// se referme, mais au mauvais bit. Il faut donc un critere qui punisse le DECALAGE et non la
-// desynchronisation — la CROISSANCE DES SLOTS. Ce choix pese ~8 morts.
+// LE MONDE EST CELUI DES PRELIMINAIRES DE LA MARCHE DES TRAMES, SOUS LE PROFIL DU CONTEXTE (son
+// decoupage MPP compris) : chunk par chunk, la table anticipee puis la liaison des images-cles du
+// chunk, chaque trame de l echantillon marchee sous le monde de son chunk
+// ([grammar.FilmContext.ScoresDeCalibration]). Il est chronologique, et c est un correctif paye
+// cher : un monde avance a la FIN du film pour des paquets du DEBUT tue 387 paquets sur 400 en BTB,
+// ou les slots de biped sont RECYCLES avec une nouvelle generation.
 
 import (
 	"cmp"
@@ -126,11 +120,6 @@ type calibration struct {
 	// Il est desormais RENDU, et passe explicitement par `FrameConfig.Profil` puis par
 	// [Result.ProfilCalibre].
 	Profil grammar.ProfilDeBalayage
-	// VueA est la grammaire de la vue A que le film declare, sous la carte du match
-	// ([grammar.VueADuFilmSousCarte]) : la marche ([runWalk]) part de la fin de la vue A quand elle
-	// decide ([grammar.DebutDeLaVueB], lot VA). Elle vient du film, pas de la calibration ; elle
-	// voyage ici parce que la marche recoit la calibration.
-	VueA grammar.VueADuFilm
 }
 
 func (c calibration) String() string {
@@ -167,27 +156,30 @@ const (
 	axisWMin, axisWMax   = uint(6), uint(26)
 	indexWMin, indexWMax = uint(1), uint(3)
 	calibSampleSize      = 400
-	flatRatio            = 2.0
+	// calibSampleOctets : la taille minimale d une trame de l echantillon, en octets.
+	calibSampleOctets = 400
+	flatRatio         = 2.0
 )
 
-// calibrate : pose le profil du film, MESURE l inference a cote, et calibre `recordStateParam`.
-// `tl` doit etre une timeline REMBOBINEE : le balayage la parcourt chronologiquement.
+// calibrate : pose le profil du film sur le contexte de la marche, MESURE l inference a cote, et
+// decide la largeur du mot de poignee. Le critere se compte sous le monde des preliminaires de la
+// marche des trames ([grammar.FilmContext.ScoresDeCalibration]).
 //
 // L INFERENCE DES LARGEURS NE DECIDE PLUS (lot 3.4.1-b, V17 M3-Q8 : « la valeur LUE prime sur
 // la valeur mesuree »). Le profil porte les largeurs de la table PAR INDEX de la carte et la
 // largeur d index de plage ; le balayage reste, il rend un VERDICT qu on confronte — c est le
 // seul oracle INTERNE AU FILM dont on dispose pour dire qu une entree de catalogue ment.
-func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) calibration {
+func calibrate(fc *grammar.FilmContext, views int, carte *profile.MapQuantEntry) (calibration, error) {
 	profil, carteLue := ProfilDeDepartPourCarte(carte)
-	// LE CONTROLE DE CORRUPTION PAR COMPOSANT VIENT DU FILM (lot 5.18.2), et ce paquet ne passe
-	// pas par un `grammar.FilmContext` : il part de l invariant et calibre. La MEME regle
-	// s applique donc ici, par la seule porte qui l exporte.
-	profil, corrLu := grammar.GrammaireSousFilm(profil, f.src)
+	// LE CONTROLE DE CORRUPTION PAR COMPOSANT VIENT DU FILM (lot 5.18.2) : le profil part de
+	// l invariant, et la MEME regle s applique ici, par la seule porte qui l exporte.
+	profil, corrLu := grammar.GrammaireSousFilm(profil, fc.Film())
 	abs := profil.LargeursObjetDuMonde()
 	res := calibration{Profil: profil, CarteLue: carteLue, ControleDeCorruptionLu: corrLu,
-		LueAxisW: abs.AxisW, LueIndexW: abs.IndexW, VueA: grammar.VueADuFilmSousCarte(f.src, carte)}
-	infererLargeurs(f, tl, views, &res)
-	return res
+		LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
+	poserLeProfil(fc, profil)
+	err := infererLargeurs(fc, views, &res)
+	return res, err
 }
 
 // infererLargeurs : DEUX MESURES SEPAREES, DEUX SORTS, ET UN SEUL BALAYAGE QUI DECIDE ENCORE.
@@ -213,14 +205,44 @@ func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) c
 //	          sous l UNIFORME            iw=1 226 · iw=2 226 · iw=3 230   4 records sur 226
 //	64e8adfa  au TRIPLET LU [15 15 15]   61 · 61 · 61                     EGALITE PARFAITE
 //
-// Le critere `countBipedRecords` est donc AVEUGLE a la largeur du mot de poignee sur ces films :
-// la valeur publiee roulait sur un ex aequo tranche par un tri instable. Elle ne roule plus.
-func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
-	sample := calibSample(f, calibSampleSize)
-	cfg := grammar.DefaultFrameConfig()
-	cfg.Profil = res.Profil
-	oracleLargeurAxe(sample, tl, cfg, views, res)
-	decideMotDePoignee(sample, tl, cfg, views, res)
+// Le critere est donc AVEUGLE a la largeur du mot de poignee sur ces films : la valeur publiee
+// roulait sur un ex aequo tranche par un tri instable. Elle ne roule plus.
+func infererLargeurs(fc *grammar.FilmContext, views int, res *calibration) error {
+	cadres := cadresDeCalibration(fc.ProfilDeBalayage())
+	scores, _, err := fc.ScoresDeCalibration(cadres,
+		grammar.EchantillonDeCalibration{Taille: calibSampleSize, OctetsMin: calibSampleOctets}, views)
+	if err != nil {
+		return err
+	}
+	nAxe := int(axisWMax - axisWMin + 1)
+	oracleLargeurAxe(scores[:nAxe], res)
+	decideMotDePoignee(scores[nAxe:], res)
+	return nil
+}
+
+// cadresDeCalibration rend les cadres que le critere score sous `profil` — le profil du contexte,
+// son decoupage MPP compris —, dans cet ordre : les 21 largeurs d axe UNIFORMES a mot de poignee
+// FIGE sur l invariant (l oracle), puis les trois largeurs du mot de poignee au TRIPLET LU de la
+// carte (la decision).
+func cadresDeCalibration(profil grammar.ProfilDeBalayage) []grammar.FrameConfig {
+	lues, invariant := profil.Mouvement.WorldObject, profil.Mouvement.Traversal
+	out := make([]grammar.FrameConfig, 0, axisWMax-axisWMin+1+indexWMax-indexWMin+1)
+	for aw := axisWMin; aw <= axisWMax; aw++ {
+		cfg := grammar.DefaultFrameConfig()
+		cfg.Profil = profil
+		cfg.Profil.Mouvement.WorldObject = lues
+		cfg.Profil.Mouvement.WorldObject.AxisW = [3]uint{aw, aw, aw}
+		cfg.Profil.Mouvement.Traversal = invariant
+		out = append(out, cfg)
+	}
+	for iw := indexWMin; iw <= indexWMax; iw++ {
+		cfg := grammar.DefaultFrameConfig()
+		cfg.Profil = profil
+		cfg.Profil.Mouvement.WorldObject = lues
+		cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: invariant.AxisW}
+		out = append(out, cfg)
+	}
+	return out
 }
 
 // oracleLargeurAxe : L ORACLE, ET IL N ECRIT RIEN AU PROFIL.
@@ -239,18 +261,14 @@ func infererLargeurs(f *film, tl *timeline, views int, res *calibration) {
 // le voisinage [min, max] du triplet ? ». Un oracle a 16 contre `[17 17 15]` ne contredit pas la
 // carte ; un oracle a 16 contre `[13 13 14]` — l invariant applique a une carte qui n est pas la
 // sienne — si. Limite ecrite au §4, D5 (3.4.1).
-func oracleLargeurAxe(sample []*packet, tl *timeline, cfg grammar.FrameConfig, views int, res *calibration) {
-	lues, invariant := cfg.Profil.Mouvement.WorldObject, cfg.Profil.Mouvement.Traversal
+func oracleLargeurAxe(scores []int, res *calibration) {
 	type cand struct {
 		aw    uint
 		score int
 	}
-	out := make([]cand, 0, axisWMax-axisWMin+1)
-	for aw := axisWMin; aw <= axisWMax; aw++ {
-		cfg.Profil.Mouvement.WorldObject = lues
-		cfg.Profil.Mouvement.WorldObject.AxisW = [3]uint{aw, aw, aw}
-		cfg.Profil.Mouvement.Traversal = invariant
-		out = append(out, cand{aw, countBipedRecords(sample, tl, cfg, views)})
+	out := make([]cand, 0, len(scores))
+	for k, s := range scores {
+		out = append(out, cand{axisWMin + uint(k), s}) //nolint:gosec // rang d un des 21 candidats
 	}
 	// TRI DETERMINISTE : score decroissant, PUIS largeur croissante. `sort.Slice` n est pas
 	// stable, et sur des ex aequo son `out[0]` est arbitraire — c est exactement le defaut que
@@ -271,18 +289,12 @@ func oracleLargeurAxe(sample []*packet, tl *timeline, cfg grammar.FrameConfig, v
 
 // decideMotDePoignee : LA SEULE VALEUR QUE CE BALAYAGE DECIDE ENCORE — quand il la voit.
 //
-// Il score les trois largeurs candidates AU TRIPLET LU de la carte, c est-a-dire dans le monde
-// que la production decode, et non sous un uniforme qu elle a cesse de lire. La valeur n est
+// `scores` sont ceux des trois largeurs candidates AU TRIPLET LU de la carte, c est-a-dire dans le
+// monde que la production decode, et non sous un uniforme qu elle a cesse de lire. La valeur n est
 // ecrite au profil que si elle est DISCRIMINEE ; sinon l invariant reste, sous le repli
 // `repli_largeur_mot_de_poignee_inferee` (registre, famille `killsource/calibration`).
-func decideMotDePoignee(sample []*packet, tl *timeline, cfg grammar.FrameConfig, views int, res *calibration) {
-	lues, invariant := cfg.Profil.Mouvement.WorldObject, cfg.Profil.Mouvement.Traversal
-	scores := make([]int, 0, indexWMax-indexWMin+1)
-	for iw := indexWMin; iw <= indexWMax; iw++ {
-		cfg.Profil.Mouvement.WorldObject = lues
-		cfg.Profil.Mouvement.Traversal = profile.PrecisionDescriptor{IndexW: iw, AxisW: invariant.AxisW}
-		scores = append(scores, countBipedRecords(sample, tl, cfg, views))
-	}
+func decideMotDePoignee(scores []int, res *calibration) {
+	invariant := res.Profil.Mouvement.Traversal
 	retenu, score, med, discriminee := motDePoigneeRetenu(scores, invariant.IndexW)
 	res.PoigneeIndexW, res.PoigneeScore, res.PoigneeMedian = retenu, score, med
 	res.PoigneeDiscriminee = discriminee
@@ -352,40 +364,6 @@ func maxLargeur(w [3]uint) uint {
 		}
 	}
 	return m
-}
-
-// calibSample : echantillon FIGE de paquets type-0 SANS event, de taille utile. Leur boucle de
-// records demarre au bit 2, connu : aucun localisateur n intervient dans le critere.
-func calibSample(f *film, n int) []*packet {
-	var sm []*packet
-	for i := range f.packets {
-		p := &f.packets[i]
-		if p.typ != packetType0 || hasEvents(p) || len(p.payload) < 400 {
-			continue
-		}
-		sm = append(sm, p)
-		if len(sm) >= n {
-			break
-		}
-	}
-	return sm
-}
-
-// countBipedRecords : le critere de calibration. Le monde est restaure apres chaque paquet : la
-// calibration ne doit RIEN laisser derriere elle.
-func countBipedRecords(sample []*packet, tl *timeline, cfg grammar.FrameConfig, views int) int {
-	n := 0
-	for _, p := range sample {
-		snap := tl.w.Snapshot()
-		recs := walkFrom(p.payload, tl.w, cfg, 2, views)
-		tl.w.Restore(snap)
-		for k := range recs {
-			if recs[k].DesyncAt == -1 && recs[k].TypeIndex == bipedArchetype {
-				n++
-			}
-		}
-	}
-	return n
 }
 
 // max1 : denominateur jamais nul.

@@ -164,27 +164,30 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// memes fichiers (revue P2).
 		dejaLus = per.Sidecars
 	}
-	if lectureDArtefact(question) {
+	var err error
+	switch {
+	case lectureDArtefact(question):
 		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.
 		// tactical_service_rasters.go) : elle ne lit pas `kill_positions` du tout, elle
 		// somme des sidecars tires des PISTES du film.
 		// L'ERREUR EST CAPTUREE AVANT LE RETOUR : `return out, f(&out)` laisserait
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
-		err := s.rasterArtefact(ctx, &out, scope, dejaLus)
-		return out, err
-	}
-	if question == domain.TacticalQuestionIsole {
+		err = s.rasterArtefact(ctx, &out, scope, dejaLus)
+	case question == domain.TacticalQuestionIsole:
 		// « ISOLE » LIT LA BASE COMME LES LECTURES DE PLACEMENT, mais sur DEUX tables de
 		// plus : le contexte de chaque mort, ecrit au sync, et les positions pour le lieu.
 		// Elle n'attend AUCUN artefact — la ventilation en attente / non cuisables ne la
 		// concerne donc pas.
 		// `rasterIsole` POSE LUI-MEME la section : elle sort de la lecture des morts qu'il
 		// fait deja, et la redemander serait une seconde requete pour la meme table.
-		err := s.rasterIsole(ctx, &out, scope)
-		return out, err
+		err = s.rasterIsole(ctx, &out, scope)
+	default:
+		err = s.rasterDeKills(ctx, &out, scope)
 	}
-	err := s.rasterDeKills(ctx, &out, scope)
+	if err == nil {
+		out.Zones = s.zonesDuPlan(ctx, carte)
+	}
 	return out, err
 }
 
@@ -235,14 +238,15 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 	mesure := universMesure(lecture.Univers)
 	out.MatchsRetenus = len(mesure.Matchs)
 
-	lue, err := rasteriserLaCible(mesure, lecture, question,
-		cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers))
+	dans := cible(lecture.Univers.Equipes, qui, s.xuid, scope.Coequipiers)
+	lue, err := rasteriserLaCible(mesure, lecture, question, dans)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: rasterisage en echec",
 			"player", s.xuid, "map_id", carte, "question", question, "err", err)
 		return fmt.Errorf("tactique: rasterisage: %w", err)
 	}
 	remplirRaster(out, lue.Raster, question)
+	out.Voisines = s.voisinesDesPositions(ctx, out, mesure, lecture, dans)
 
 	s.logger.InfoContext(ctx, "tactique: lecture de placement",
 		"player", s.xuid, "titleSlug", ctxkeys.TitleSlug(ctx), "map_id", carte,
@@ -251,7 +255,7 @@ func (s *TacticalService) rasterDeKills(ctx context.Context, out *domain.Tactica
 		"coequipiers", len(scope.Coequipiers),
 		"pas_m", out.PasM, "densite_suffisante", lue.Suffisante, "pas_essayes", lue.Tentatives,
 		"cellules", len(out.Cellules), "points_ignores", out.PointsIgnores,
-		"duration", time.Since(debut))
+		"voisines", len(out.Voisines), "duration", time.Since(debut))
 	return nil
 }
 

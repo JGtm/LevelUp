@@ -56,7 +56,7 @@ func TestZone56ElectionDeProduction(t *testing.T) {
 		ramps := findZoneRamps(sl, ser.gauge[sl])
 		for _, ownerSlot := range camps {
 			owner := ser.owner[ownerSlot]
-			capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+			capt := serieElue(ser, ramps, zoneCapturerCtx{
 				owner: owner, ownerSlot: ownerSlot, win: 20,
 			})
 			if len(capt) == 0 {

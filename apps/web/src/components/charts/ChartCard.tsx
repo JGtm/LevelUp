@@ -97,8 +97,8 @@ export interface ChartCardProps<T = unknown> {
   children?: ReactNode
   /**
    * Légende HTML rendue en PIED DE CARD systématique (hors canvas, `flex-none`,
-   * collée au bord bas via un séparateur discret). Le chrome du footer (bordure +
-   * padding) est appliqué ici : l'appelant ne passe que le contenu (typiquement un
+   * DANS la carte et SANS filet : une légende ne s'isole jamais du graphe). Le padding
+   * du pied est appliqué ici : l'appelant ne passe que le contenu (typiquement un
    * `<ChartLegend>`). Distinct de `children` (slot brut sans chrome). Les couleurs
    * doivent provenir des MÊMES résolutions de tokens que les séries.
    */
@@ -240,7 +240,7 @@ export function ChartCard<T = unknown>({
       {children}
       {legend != null && (
         <div
-          className="flex-none border-t border-border px-3 py-2"
+          className="flex-none px-3 pb-3 pt-1"
           data-testid="chart-card-legend"
         >
           {legend}

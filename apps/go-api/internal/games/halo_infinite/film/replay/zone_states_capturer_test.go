@@ -111,6 +111,15 @@ func TestLaDerniereValeurDeLaFenetreGagne(t *testing.T) {
 // L'ELECTION
 // ----------------------------------------------------------------------------------------------
 
+// serieElue rend la serie CHAINEE du canal que [electZoneCapturer] elit, nil sans elu.
+func serieElue(ser zoneSeries, ramps []zoneRamp, c zoneCapturerCtx) []zoneSample {
+	slot, ok := electZoneCapturer(ser, ramps, c)
+	if !ok {
+		return nil
+	}
+	return ser.ownerChained[slot]
+}
+
 // serieTemoin fabrique la serie zoneSeries minimale qu'une election lit.
 func serieTemoin(chained map[uint32][]zoneSample) zoneSeries {
 	return zoneSeries{gauge: map[uint32][]zoneSample{}, owner: map[uint32][]zoneSample{},
@@ -126,7 +135,7 @@ func TestElectionRetientLeCanalQuiExpliqueLesRampes(t *testing.T) {
 	bon := []zoneSample{{t: 105, v: 1}, {t: 305, v: 0}}
 	mauvais := []zoneSample{{t: 105, v: 0}, {t: 305, v: 1}}
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner, 6: bon, 8: mauvais})
-	capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{owner: owner, ownerSlot: 5, win: 20})
+	capt := serieElue(ser, ramps, zoneCapturerCtx{owner: owner, ownerSlot: 5, win: 20})
 	if len(capt) != len(bon) || capt[0].v != bon[0].v || capt[1].v != bon[1].v {
 		t.Fatalf("canal elu = %v, attendu %v : le critere est l'accord SANS desaccord", capt, bon)
 	}
@@ -141,7 +150,7 @@ func TestElectionRefuseUnSeulAccord(t *testing.T) {
 		5: owner,
 		6: {{t: 105, v: 1}},
 	})
-	if capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+	if capt := serieElue(ser, ramps, zoneCapturerCtx{
 		owner: owner, ownerSlot: 5, win: 20,
 	}); capt != nil {
 		t.Fatalf("canal elu sur UN seul accord : %v", capt)
@@ -158,7 +167,7 @@ func TestElectionRefuseUnCanalQuiSeContredit(t *testing.T) {
 	owner := []zoneSample{{t: 111, v: 1}, {t: 311, v: 0}, {t: 511, v: 1}}
 	tordu := []zoneSample{{t: 105, v: 1}, {t: 305, v: 0}, {t: 505, v: 0}} // le 3e se contredit
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner, 6: tordu})
-	if capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+	if capt := serieElue(ser, ramps, zoneCapturerCtx{
 		owner: owner, ownerSlot: 5, win: 20,
 	}); capt != nil {
 		t.Fatalf("canal elu malgre un desaccord : %v", capt)
@@ -174,7 +183,7 @@ func TestElectionEcarteLeProprietaireLuiMeme(t *testing.T) {
 	// il s'elirait lui-meme si la garde manquait.
 	owner := []zoneSample{{t: 105, v: 1}, {t: 111, v: 1}, {t: 305, v: 1}, {t: 311, v: 1}}
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner})
-	if capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+	if capt := serieElue(ser, ramps, zoneCapturerCtx{
 		owner: owner, ownerSlot: 5, win: 20,
 	}); capt != nil {
 		t.Fatalf("le canal de propriete s'est elu pousseur : %v", capt)
@@ -190,7 +199,7 @@ func TestElectionEcarteUnCanalQuiNEstPasUnCamp(t *testing.T) {
 	// Ce canal est en accord PARFAIT sur les deux rampes... et porte aussi un identifiant.
 	identifiant := []zoneSample{{t: 105, v: 1}, {t: 305, v: 1}, {t: 400, v: 540951580}}
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner, 6: identifiant})
-	if capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+	if capt := serieElue(ser, ramps, zoneCapturerCtx{
 		owner: owner, ownerSlot: 5, win: 20,
 	}); capt != nil {
 		t.Fatalf("canal elu malgre une valeur hors plage d'equipe : %v", capt)
@@ -208,7 +217,7 @@ func TestElectionNeLitQueLaSerieChainee(t *testing.T) {
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner})
 	// `bon` vit dans la serie COMPLETE mais pas dans la chainee : il ne doit pas etre elu.
 	ser.owner[6] = bon
-	if capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+	if capt := serieElue(ser, ramps, zoneCapturerCtx{
 		owner: owner, ownerSlot: 5, win: 20,
 	}); capt != nil {
 		t.Fatalf("canal elu depuis la serie NON chainee : %v", capt)
@@ -225,7 +234,7 @@ func TestElectionEstDeterministe(t *testing.T) {
 	b := []zoneSample{{t: 106, v: 1}, {t: 306, v: 0}}
 	ser := serieTemoin(map[uint32][]zoneSample{5: owner, 6: a, 9: b})
 	for i := range 8 {
-		capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{owner: owner, ownerSlot: 5, win: 20})
+		capt := serieElue(ser, ramps, zoneCapturerCtx{owner: owner, ownerSlot: 5, win: 20})
 		if len(capt) != 2 || capt[0].t != 105 {
 			t.Fatalf("passe %d : canal elu = %v, attendu celui du slot 6", i, capt)
 		}

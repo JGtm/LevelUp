@@ -40,9 +40,25 @@ func TestProprietesGereesImagesClesFermeesSeules(t *testing.T) {
 		t.Errorf("%d lectures pour %d records fermes : attendu entre 1 et une par record ferme",
 			len(sc.KeyReads), sc.KeyClosed)
 	}
+	// CHAQUE lecture porte le nom (`i0`) de son record, et un slot n en porte qu un : le nom est
+	// l identite de la propriete, il ne change pas d une image-cle a l autre.
+	noms := map[uint32]uint32{}
 	for _, r := range sc.KeyReads {
 		if r.Field != ManagedPropertyScalar || r.FilmIndex != -1 || !r.Chained {
 			t.Fatalf("lecture d image-cle %+v : attendu scalaire, FilmIndex -1, chainee", r)
+		}
+		if !r.Named {
+			t.Fatalf("lecture d image-cle %+v sans nom : l etat complet porte toujours `i0`", r)
+		}
+		if n, ok := noms[r.Slot]; ok && n != r.Name {
+			t.Fatalf("slot %d : deux noms (%d puis %d)", r.Slot, n, r.Name)
+		}
+		noms[r.Slot] = r.Name
+	}
+	// La voie delta ne recolte pas `i0` : aucune de ses lectures n est nommee.
+	for _, r := range sc.Reads {
+		if r.Named {
+			t.Fatalf("lecture delta %+v nommee : seule la voie image-cle recolte le nom", r)
 		}
 	}
 }

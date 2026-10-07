@@ -10,8 +10,6 @@ import (
 	"math/rand"
 	"reflect"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -81,21 +79,6 @@ func TestTrierBotsParSlot_ExAequoDansLOrdreDeDecouverte(t *testing.T) {
 	}
 }
 
-func TestTrierPaquetsT0_ExAequoDepartagesParChunkEtRang(t *testing.T) {
-	in := make([]packet, nExAequo)
-	for i := range in {
-		in[i] = packet{ts: uint64(i % 3), chunk: i % 2, idx: i}
-	}
-	rand.New(rand.NewSource(graineExAequo)).Shuffle(len(in), func(a, b int) { in[a], in[b] = in[b], in[a] })
-	trierPaquetsT0(in)
-	for i := 1; i < len(in); i++ {
-		a, b := in[i-1], in[i]
-		if !lexInf([]int{int(a.ts), a.chunk, a.idx}, []int{int(b.ts), b.chunk, b.idx}) {
-			t.Fatalf("rang %d : %+v puis %+v — ordre (instant, chunk, paquet) rompu", i, a, b)
-		}
-	}
-}
-
 func TestTrierMortsDeLaMarche_ExAequoDansLOrdreDuFilm(t *testing.T) {
 	cles := make([]int, nExAequo)
 	in := make([]deadRecord, nExAequo)
@@ -110,23 +93,6 @@ func TestTrierMortsDeLaMarche_ExAequoDansLOrdreDuFilm(t *testing.T) {
 	}
 	if want := attenduStable(cles); !reflect.DeepEqual(got, want) {
 		t.Fatalf("dead-states :\n got %v\nwant %v", got, want)
-	}
-}
-
-func TestTrierImagesCles_ExAequoDansLOrdreDuFilm(t *testing.T) {
-	cles := make([]int, nExAequo)
-	in := make([]keyframeEvent, nExAequo)
-	for i := range in {
-		cles[i] = i % 3
-		in[i] = keyframeEvent{ts: uint64(i % 3), recs: []grammar.KeyframeRec{{Slot: i}}}
-	}
-	trierImagesCles(in)
-	got := make([]int, len(in))
-	for i, e := range in {
-		got[i] = e.recs[0].Slot
-	}
-	if want := attenduStable(cles); !reflect.DeepEqual(got, want) {
-		t.Fatalf("images-cles :\n got %v\nwant %v", got, want)
 	}
 }
 

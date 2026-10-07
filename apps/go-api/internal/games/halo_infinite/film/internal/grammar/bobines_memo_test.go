@@ -71,7 +71,13 @@ func fermetureMemo(dir string) (map[uint32]KeyframeClosureStat, error) {
 		if err != nil {
 			return nil, fmt.Errorf("LoadDir %s : %w", dir, err)
 		}
-		s, err := KeyframeClosure(NewFilmContext(film))
+		// LE DECOUPAGE MPP QUE LA GRAMMAIRE RESOUT POUR LE FILM ([FilmContext.ResolutionMPP]) : celui
+		// que la cuisson et killsource posent, 8/3 declare sur les bobines anciennes.
+		fc := NewFilmContext(film)
+		if res := fc.ResolutionMPP(); res.Decide() {
+			fc.PoserMPP(res.Widths)
+		}
+		s, err := KeyframeClosure(fc)
 		if err != nil {
 			return nil, fmt.Errorf("KeyframeClosure %s : %w", dir, err)
 		}

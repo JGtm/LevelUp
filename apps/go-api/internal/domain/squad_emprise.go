@@ -86,8 +86,8 @@ type SquadEmpriseBlock struct {
 	Matches []SquadEmpriseMatch `json:"matches"`
 	// Production : frags obtenus avec chaque ressource, exposition et rendement, par camp.
 	Production []SquadEmpriseProduction `json:"production"`
-	// Habit : les soirées précédentes comparables (D5). Nil sans coéquipier sélectionné ou
-	// sans film.
+	// Habit : les soirées précédentes de la composition, comparables ou non (D5). Nil sans
+	// coéquipier sélectionné ou sans film.
 	Habit *SquadEmpriseHabit `json:"habit,omitempty"`
 	// Placement : « Groupés ou isolés », le placement et le rendement de chaque vie de la
 	// composition (squad_emprise_placement.go). Nil sans `film.kill_positions`, lecture en échec
@@ -232,12 +232,14 @@ type SquadEmpriseExposure struct {
 // SquadEmpriseHabit — « par rapport à d'habitude » (D5).
 type SquadEmpriseHabit struct {
 	// Families : les familles de mode jouées dans le périmètre (libellé de mode normalisé, le
-	// même que `match_history[].mode_ui`). Une soirée précédente n'est lue que sur celles-ci.
+	// même que `match_history[].mode_ui`). Une soirée précédente COMPARABLE n'est lue que sur
+	// celles-ci.
 	Families []string `json:"families"`
 	// Current : la soirée affichée (le périmètre).
 	Current SquadEmpriseEvening `json:"current"`
-	// Previous : jusqu'à SquadEmpriseHabitMaxPrevious soirées précédentes de la composition,
-	// de la plus ancienne à la plus récente, chacune avec au moins un match comparable filmé.
+	// Previous : jusqu'à SquadEmpriseHabitMaxPrevious soirées précédentes de la composition, de
+	// la plus ancienne à la plus récente, chacune avec au moins un match filmé ; comparables ou
+	// non (`Comparable`).
 	Previous []SquadEmpriseEvening `json:"previous"`
 }
 
@@ -252,8 +254,15 @@ type SquadEmpriseEvening struct {
 	// MatchCount : matchs de la soirée pour la composition, lus dans composition_sessions (ADR
 	// 0033). 0 = soirée sans entrée (périmètre à cheval sur plusieurs sessions).
 	MatchCount int `json:"match_count"`
-	// MeasuredMatches : matchs comparables (familles de ce soir) dont le film est résumé.
+	// MeasuredMatches : matchs lus pour la soirée dont le film est résumé.
 	MeasuredMatches int `json:"measured_matches"`
+	// Comparable : la soirée a au moins un match filmé d'une famille jouée ce soir, et ses parts
+	// se lisent sur ces seuls matchs. Faux : aucune famille de ce soir n'y est filmée, ses parts
+	// se lisent sur tous ses matchs filmés (le web l'affiche hors comparaison, hors médiane).
+	// Toujours vrai pour la soirée affichée.
+	Comparable bool `json:"comparable"`
+	// Families : les familles de mode des matchs de la soirée dont le film se lit, triées.
+	Families []string `json:"families"`
 	// Shares : notre part des prises, par ressource ; une ressource sans prise est absente.
 	Shares []SquadEmpriseShare `json:"shares"`
 }

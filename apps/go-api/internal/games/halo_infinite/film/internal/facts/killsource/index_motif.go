@@ -46,7 +46,6 @@ import (
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -76,31 +75,11 @@ type indexParMotif struct {
 func lireIndexParMotif(f *film, slots []types.PlayerSlot, kf *killFeed) indexParMotif {
 	out := indexParMotif{nomParIndex: map[int]string{}}
 	nomDuXUID, xuids := xuidsNommesParLeFilm(slots, kf)
-	if len(xuids) == 0 {
+	if len(xuids) == 0 || len(grammar.FilmChunkNumbers(f.src)) < 2 {
 		return out
 	}
-	nums := grammar.FilmChunkNumbers(f.src)
-	if len(nums) < 2 {
-		return out
-	}
-	vus := make(map[uint64]map[int]int, len(xuids))
-	for _, c := range nums[:len(nums)-1] {
-		raw, _, ok := grammar.FilmChunkAt(f.src, c)
-		if !ok {
-			continue
-		}
-		lus := weaponv3.ResolveXuidToPI(xuids, raw)
-		if len(lus) == 0 {
-			continue
-		}
-		out.lectures++
-		for x, pi := range lus {
-			if vus[x] == nil {
-				vus[x] = map[int]int{}
-			}
-			vus[x][pi]++
-		}
-	}
+	vus, lectures := grammar.LecturesDuMotifDesXUID(f.src, xuids)
+	out.lectures = lectures
 	out.retenirLesLectures(vus, xuids, nomDuXUID, tueursSansMort(slots, kf, nomDuXUID))
 	out.refuserSiElleSeContredit()
 	return out

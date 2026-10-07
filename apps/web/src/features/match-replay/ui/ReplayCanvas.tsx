@@ -27,7 +27,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
-import type { CalloutZoneReady } from '../layers/calloutsLayer'
+import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import type { PlaybackStore } from '../model/playbackStore'

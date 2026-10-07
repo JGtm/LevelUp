@@ -14,10 +14,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { TacticalMapCard } from '@/lib/api/types'
 
 import { getTacticalText } from './i18n'
 import { TacticalMapsColumn } from './TacticalMapsColumn'
+
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-router')>()),
+  Link: (await import('@/test/linkDouble')).LinkDouble,
+}))
 
 vi.mock('@/lib/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/client')>()
@@ -89,6 +95,23 @@ describe('TacticalMapsColumn', () => {
     const tuile = screen.getByRole('button', { name: 'Sélectionner Ruelles' })
     expect(within(tuile).getByText('24 · 14 V / 9 D')).toBeInTheDocument()
     expect(within(tuile).getByRole('img', { name: '14 victoires et 9 défaites sur 24 matchs' })).toBeInTheDocument()
+  })
+
+  it('chaque vignette a son lien vers l’Explorateur, filtré sur le libellé servi', () => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite' })
+    rendre()
+    const lien = screen.getByTestId('tactical-map-explorer-lock')
+    expect(lien).toHaveAttribute('aria-label', "Voir les matchs de cette carte dans l'Explorateur")
+    expect(lien).toHaveAttribute('href', '/t/halo_infinite/players/JGtm/explorer')
+    expect(JSON.parse(lien.getAttribute('data-search') ?? '{}')).toEqual({ maps: 'Écluse' })
+    // Un lien À CÔTÉ du bouton de sélection, jamais dedans.
+    expect(screen.getByTestId('tactical-map-lock').contains(lien)).toBe(false)
+  })
+
+  it('sans libellé FR servi, le lien porte le nom du registre', () => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite' })
+    rendre([carte('lock', 'Lock', '', 18, false)], 'lock')
+    expect(JSON.parse(screen.getByTestId('tactical-map-explorer-lock').getAttribute('data-search') ?? '{}')).toEqual({ maps: 'Lock' })
   })
 
   it('le clic sélectionne la carte', () => {

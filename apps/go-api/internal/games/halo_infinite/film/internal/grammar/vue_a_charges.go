@@ -63,7 +63,7 @@ func chargeDuGenre(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case 
 		return chargeRetourDeCarte
 	case 109:
 		return chargeCycleDeVieIA
-	case 85:
+	case GenreJoueurTue:
 		return chargeJoueurTue
 	case 116:
 		return chargeEffetsDeTeleportation
@@ -83,11 +83,11 @@ const degatsF58AvecOctet = 1
 // chargeDegatsApres porte `FUN_1407f15a4` (`damage_aftermath`).
 //
 // EXEMPTION A LA REGLE DES DEUX COPIES (CLAUDE.md n. 6), 2026-10-05 : c est la troisieme lecture de
-// production de `FUN_1407f15a4`, apres `killsource.evBody0` (`facts/killsource/eventbody.go`) et
+// production de `FUN_1407f15a4`, apres [evBody0] (`chaine_d_evenements_corps.go`, le rattrapage des kills) et
 // [lot1DecodeDamageAftermath] (`weapon_hits_decode.go`). Les trois ne sont pas centralisees ici :
 // [lot1DecodeDamageAftermath] lit la porte de `FUN_1407f2058` a polarite inversee (« si 1 : R(5) »,
-// D-LN-2 de `LOT_LN.md`), et les reunir changerait la sortie de `weapon_hits` et toucherait
-// `killsource`. Retrait : le lot dedie qui centralise `FUN_1407f15a4` et corrige D-LN-2.
+// D-LN-2 de `LOT_LN.md`), et les reunir changerait la sortie de `weapon_hits` et toucherait le
+// rattrapage des kills. Retrait : le lot dedie qui centralise `FUN_1407f15a4` et corrige D-LN-2.
 func chargeDegatsApres(br *Lecteur) bool {
 	consumeGateR(br, 32)      // FUN_14080d69c
 	consumeGate0R(br, 5)      // FUN_1407f2058

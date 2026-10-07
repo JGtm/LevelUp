@@ -7,6 +7,8 @@ import { getTacticalText } from './i18n'
 import {
   celluleDuClic,
   grilleDuPlan,
+  pointDuClic,
+  projectionDuPlan,
   planEmptyReason,
   titreDuPlanVide,
   planLegend,
@@ -249,6 +251,33 @@ describe('celluleDuClic — le clic rend l’adresse SERVEUR, et le cadre s’y 
     const r = repereDuPlan(FOND_ILLUSION, BORNES_MORTS, 2)!
     expect(rectSelection(null, r, 1000)).toBeNull()
     expect(rectSelection({ col: 900, row: 900 }, r, 1000)).toBeNull()
+  })
+})
+
+describe('la fenêtre du zoom — tout se projette sur la partie visible', () => {
+  const repere = { minX: 0, maxX: 100, minY: 0, maxY: 50, pasM: 10 }
+  const fenetre = { minX: 50, maxX: 100, minY: 0, maxY: 25 } // 2x, quart bas-droit
+
+  it('à 1x (fenêtre par défaut) : la projection d’avant le zoom', () => {
+    expect(vueDuPlan(repere, 1000)).toEqual({ topLeftWorld: { x: 0, y: 0 }, scale: 10 })
+    expect(projectionDuPlan(repere, 1000)!({ x: 50, y: 25 })).toEqual({ x: 500, y: 250 })
+  })
+
+  it('à 2x : échelle doublée, origine du calque décalée du coin de la fenêtre', () => {
+    expect(vueDuPlan(repere, 1000, fenetre)).toEqual({ topLeftWorld: { x: -1000, y: -500 }, scale: 20 })
+    expect(projectionDuPlan(repere, 1000, fenetre)!({ x: 75, y: 12.5 })).toEqual({ x: 500, y: 250 })
+  })
+
+  it('le clic, la sélection et la peinture restent sur la même case', () => {
+    const canvas = { width: 1000, height: 500 }
+    // Centre de la cellule serveur (7, 1) : (75, 15).
+    const x = (75 - 50) * 20
+    const y = (25 - 15) * 20
+    expect(pointDuClic(x, y, canvas, fenetre)).toEqual({ x: 75, y: 15 })
+    expect(celluleDuClic(x, y, canvas, repere, fenetre)).toEqual({ col: 7, row: 1 })
+    const rect = rectSelection({ col: 7, row: 1 }, repere, 1000, fenetre)!
+    expect(rect.x + rect.size / 2).toBeCloseTo(x, 6)
+    expect(rect.y + rect.size / 2).toBeCloseTo(y, 6)
   })
 })
 

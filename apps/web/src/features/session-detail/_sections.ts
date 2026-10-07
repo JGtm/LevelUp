@@ -66,7 +66,7 @@ export const SESSION_SECTION_ORDER: readonly SessionSectionKey[] = [
   'engagement',
   'damage',
   'career_xp',
-  'frag_bar',
+  'frag_donut',
   'tools',
   'weapon_accuracy',
   'control',
@@ -102,7 +102,7 @@ export const SESSION_GROUP_TITLE_KEY: Record<SessionSectionGroup, SessionManifes
 }
 
 const KILLS_USAGE_KEYS: readonly SessionCardKey[] = [
-  'frag_bar',
+  'frag_donut',
   'tools',
   'weapon_accuracy',
   'control',
@@ -166,7 +166,7 @@ const SESSION_SECTION_SUBGROUPS: Partial<Record<SessionSectionKey, SessionSubgro
 
 /** Les paires de la pleine page : deux cartes d'une meme paire, consecutives, partagent une rangee. */
 const SESSION_SECTION_PAIRS: Partial<Record<SessionSectionKey, string>> = {
-  frag_bar: 'frags',
+  frag_donut: 'frags',
   tools: 'frags',
   control: 'resources',
   fil: 'resources',

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar } from '@/lib/accessibility'
+import { sansAccents } from '@/lib/text/sansAccents'
 import { type GlossaryEntry, type GlossarySection, type HelpText } from './i18n'
 
 const SECTION_ID_PREFIX = 'glossary-section-'
@@ -20,16 +21,13 @@ function buildGlossaryEntryAnchor(term: string): string {
 }
 
 function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  return normalizeForSearch(value)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 }
 
 function normalizeForSearch(value: string): string {
-  return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return sansAccents(value.toLowerCase())
 }
 
 function entryMatchesQuery(entry: GlossaryEntry, normalizedQuery: string): boolean {
@@ -270,9 +268,7 @@ function buildNormalizedMap(text: string): { normalized: string; indices: number
   let normalized = ''
   const indices: number[] = []
   for (let i = 0; i < text.length; i++) {
-    const nfd = text[i].normalize('NFD').toLowerCase()
-    for (const nc of nfd) {
-      if (nc.charCodeAt(0) >= 0x0300 && nc.charCodeAt(0) <= 0x036f) continue
+    for (const nc of normalizeForSearch(text[i])) {
       normalized += nc
       indices.push(i)
     }

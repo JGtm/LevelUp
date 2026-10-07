@@ -12,8 +12,8 @@
 # ─── S2 : En-têtes ──────────────────────────────────────────────────────────
 
 [squad.header.solo_section_title]
-fr = "Mes stats sur cette session"
-en = "My session stats"
+fr = "Statistiques de la session"
+en = "Session stats"
 
 [squad.header.squad_section_title]
 fr = "Score d'équipe"
@@ -649,220 +649,7 @@ en = "Objective"
 fr = "Impact"
 en = "Impact"
 
-# ─── LA RIPOSTE (section « Coordination » de l'Escouade, D19 du 2026-09-21) ──
-#
-# Une RIPOSTE est une mort de notre camp dont le tueur est abattu par un coéquipier
-# dans les 5 s. Vocabulaire FR arrêté (D19) : « riposte », « riposter », « taux de
-# riposte ». Jamais « échange », jamais « vengeance », jamais « trade ». L'autre
-# notion de la section est l'APPUI (qui prépare les frags de qui) — et elle seule
-# garde le mot « assistance », parce qu'elle compte des assistances.
-
-[squad.riposte.coordination_title]
-fr = "Coordination"
-en = "Coordination"
-
-[squad.riposte.coordination_help_riposte]
-fr = "La riposte : quand un des nôtres tombe, son tueur est-il abattu par un coéquipier dans les {seconds, number} s qui suivent ?"
-en = "Riposte: when one of us falls, is their killer taken down by a teammate within the next {seconds, number} s?"
-
-[squad.riposte.coordination_help_appui]
-fr = "L'appui : qui prépare les frags de qui — une assistance n'a ni fenêtre de temps ni mort de notre camp, c'est une autre mesure."
-en = "Support: who sets up whose kills — an assist has neither a time window nor a death on our side; it is a different measure."
-
-[squad.riposte.title]
-fr = "Riposte"
-en = "Riposte"
-
-[squad.riposte.label]
-fr = "La riposte après une mort de notre camp"
-en = "Riposte after a death on our side"
-
-[squad.riposte.definition]
-fr = "Une riposte : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
-en = "A riposte: a teammate takes down your killer within {seconds, number} s of your death."
-
-[squad.riposte.help_usual]
-fr = "L'habituel est le même taux sur tout l'historique de la composition. Quand le filtre couvre déjà tout l'historique, l'écart vaut zéro par construction et n'est pas affiché."
-en = "Usual is the same rate over the composition's whole history. When the filter already covers the whole history, the deviation is zero by construction and is not displayed."
-
-[squad.riposte.low_sample]
-fr = "échantillon faible"
-en = "small sample"
-
-[squad.riposte.low_sample_hint]
-fr = "Moins de {floor, number} morts mesurées : la valeur existe, elle ne classe personne."
-en = "Fewer than {floor, number} measured deaths: the value exists, it ranks no one."
-
-[squad.riposte.badge_most_covered]
-fr = "Le plus couvert : {player}"
-en = "Most covered: {player}"
-
-[squad.riposte.badge_least_covered]
-fr = "Le moins couvert : {player}"
-en = "Least covered: {player}"
-
-[squad.riposte.no_pairs]
-fr = "Aucune riposte entre membres de l'escouade sur cette sélection."
-en = "No riposte between squad members in this selection."
-
-[squad.riposte.empty_title]
-fr = "Aucune riposte mesurée"
-en = "No riposte measured"
-
-[squad.riposte.matrix_tooltip]
-fr = "{auteur} a riposté pour {pour} {n, plural, one {# fois} other {# fois}} ({perMatch} par match)."
-en = "{auteur} riposted for {pour} {n, plural, one {# time} other {# times}} ({perMatch} per match)."
-
-# ─── La phrase de lecteur, TOUJOURS rendue ──────────────────────────────────
-#
-# Elle est faite de deux morceaux : le fait (toujours), puis l'écart à l'habituel —
-# qui SE TAIT quand le périmètre couvre tout l'historique (l'écart y est nul par
-# construction, et l'annoncer ferait croire à une mesure là où il n'y a qu'une
-# tautologie).
-
-
-
-
-
-# ─── Les deux BLOCS de tête : « Morts ripostées » et « Temps de riposte » ───
-#
-# Chacun est une SectionCard de plein droit depuis le 2026-09-22 : son titre est
-# TACTIQUE (ce que la mesure dit), et la MÉTHODE — dénominateur, fenêtre, barres hors
-# fenêtre — vit dans son infobulle (i). Un titre qui porte son dénominateur (« Sur
-# 511 morts des nôtres ») nomme l'échantillon, pas la mesure.
-
-[squad.riposte.donut_title]
-fr = "Morts ripostées"
-en = "Riposted deaths"
-
-[squad.riposte.donut_help]
-fr = "Sur {n, plural, one {# mort des nôtres} other {# morts des nôtres}}, la part ripostée dans les {seconds, number} s."
-en = "Out of {n, plural, one {# death on our side} other {# deaths on our side}}, the share riposted within {seconds, number} s."
-
-[squad.riposte.appel_unit]
-fr = "ripostées"
-en = "riposted"
-
-[squad.riposte.donut_unanswered]
-fr = "sans réponse"
-en = "unanswered"
-
-[squad.riposte.donut_alt]
-fr = "{rate} des {morts, number} morts des nôtres sont ripostées : {ripostes, number} ripostées, {sans, number} sans réponse."
-en = "{rate} of our {morts, number} deaths are riposted: {ripostes, number} riposted, {sans, number} unanswered."
-
-[squad.riposte.delai_title]
-fr = "Temps de riposte"
-en = "Riposte time"
-
-[squad.riposte.delai_median_mark]
-fr = "médiane {seconds} s"
-en = "median {seconds} s"
-
-# ─── La frise, soirée par soirée ────────────────────────────────────────────
-#
-# Grammaire reprise de « Performance d'escouade par session »
-# (`charts/squadSessionTimelineChart.ts`) : bâtons à 18 px, courbe pleine 2 px non
-# lissée, légende systématique, axes en 10 px gris. UN SEUL AXE Y : tout est en
-# points de pourcentage, deux axes seraient une faute de lecture. Le volume de
-# chaque soirée (morts mesurées) est un RANG D'ÉTIQUETTES sous l'axe, pas un second
-# graphe — c'est le dénominateur, il n'a pas d'échelle propre.
-#
-# LA FRISE N'A PLUS DE TITRE PROPRE (2026-09-22) : elle EST le bloc « Riposte », dont le
-# bandeau porte déjà ce nom. Elle couvre TOUTES les soirées de la composition, celles du
-# filtre courant en encre pleine et les autres atténuées.
-
-[squad.riposte.frise_above]
-fr = "soirée au-dessus de l'habituel"
-en = "evening above usual"
-
-[squad.riposte.frise_below]
-fr = "en dessous"
-en = "below"
-
-[squad.riposte.frise_trend]
-fr = "tendance sur {n, number} soirées"
-en = "trend over {n, number} evenings"
-
-[squad.riposte.frise_usual]
-fr = "habituel {rate}"
-en = "usual {rate}"
-
-[squad.riposte.frise_y_axis]
-fr = "Part des morts ripostées"
-en = "Share of riposted deaths"
-
-[squad.riposte.frise_volume]
-fr = "{n, plural, one {# mort mesurée} other {# morts mesurées}}"
-en = "{n, plural, one {# measured death} other {# measured deaths}}"
-
-[squad.riposte.frise_volume_axis]
-fr = "morts mesurées"
-en = "measured deaths"
-
-[squad.riposte.frise_empty]
-fr = "Aucune soirée mesurée sur cette sélection."
-en = "No measured evening in this selection."
-
-# ─── Le repli, fermé par défaut ─────────────────────────────────────────────
-
-[squad.riposte.fold_matrix]
-fr = "Qui riposte pour qui"
-en = "Who ripostes for whom"
-
-# ─── Le second graphe de tête : la distribution du délai ────────────────────
-
-[squad.riposte.delay_x_axis]
-fr = "Délai avant la riposte"
-en = "Delay before the riposte"
-
-[squad.riposte.delay_y_axis]
-fr = "Morts ripostées"
-en = "Riposted deaths"
-
-[squad.riposte.delay_bin]
-fr = "{start, number}-{end, number} s"
-en = "{start, number}-{end, number} s"
-
-[squad.riposte.delay_bin_open]
-fr = "au-delà de {start, number} s"
-en = "beyond {start, number} s"
-
-[squad.riposte.delay_out_of_window_suffix]
-fr = "hors fenêtre"
-en = "outside window"
-
-[squad.riposte.delay_window]
-fr = "Fenêtre de riposte : {seconds, number} s — les deux dernières barres sont hors fenêtre, montrées mais jamais comptées."
-en = "Riposte window: {seconds, number} s — the last two bars are outside the window, shown but never counted."
-
-[squad.riposte.delay_narrative_empty]
-fr = "Aucune riposte mesurée sur la sélection."
-en = "No riposte measured in this selection."
-
-[squad.riposte.delay_figure]
-fr = "Délai des {n, plural, one {# riposte survenue} other {# ripostes survenues}} — sur {morts, number} morts d'équipe"
-en = "Delay of the {n, plural, one {# riposte} other {# ripostes}} that happened — out of {morts, number} team deaths"
-
-[squad.riposte.delay_window_mark]
-fr = "fenêtre {seconds, number} s"
-en = "{seconds, number} s window"
-
-[squad.riposte.delay_foot]
-fr = "Au-delà de {seconds, number} s, la barre est montrée mais hachurée : ces ripostes ne comptent dans aucun taux. Montrer la fenêtre plutôt que la couper rend le seuil discutable."
-en = "Beyond {seconds, number} s the bar is shown but hatched: those ripostes count in no rate. Showing the window rather than cutting it makes the threshold arguable."
-
-# ─── Repli « Qui riposte pour qui » (matrice) ───────────────────────────────
-
-[squad.riposte.matrix_received]
-fr = "reçu {n, number}"
-en = "received {n, number}"
-
-[squad.riposte.matrix_help]
-fr = "Une case dit combien de fois le joueur de la LIGNE a riposté pour celui de la COLONNE. Une riposte : un coéquipier abat votre tueur dans les {seconds, number} s qui suivent votre mort."
-en = "A cell says how many times the ROW player riposted for the COLUMN player. A riposte: a teammate takes down your killer within {seconds, number} s of your death."
-
-# ─── La carte « Rôles de portée » (section Coordination, D22-5 du 2026-09-21) ─
+# ─── La carte « Rôles de portée » (section « Appui et portée » de Synergies) ──
 # La lecture tient dans l'infobulle du titre (D22-verbosité) : aucune phrase de
 # lecteur, aucun texte sous le graphe hors légende et couverture.
 
@@ -902,14 +689,6 @@ en = "All-rounder"
 fr = "Tireur d'élite"
 en = "Sharpshooter"
 
-[squad.portee.legend_low_sample]
-fr = "moins de {floor, number} frags mesurés"
-en = "fewer than {floor, number} measured kills"
-
-[squad.portee.legend_trend]
-fr = "tendance ({n, number} matchs)"
-en = "trend ({n, number} matches)"
-
 [squad.portee.tooltip_median]
 fr = "médiane {m} m"
 en = "median {m} m"
@@ -921,10 +700,6 @@ en = "gap {delta} m"
 [squad.portee.tooltip_measured]
 fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
 en = "{n, plural, one {# measured kill} other {# measured kills}}"
-
-[squad.portee.coverage]
-fr = "{measured, number} frags mesurés sur {total, number}"
-en = "{measured, number} measured kills out of {total, number}"
 
 [squad.portee.empty_title]
 fr = "Aucune portée mesurée"
@@ -939,86 +714,5 @@ fr = "Bande des rôles"
 en = "Role tape"
 
 [squad.portee.tape_no_role]
-fr = "pas encore de rôle"
-en = "no role yet"
-
-# ─── La carte « Rôles de hauteur » (section Coordination, D24 / E1 du 2026-09-22) ─
-# MÊME GRAMMAIRE que « Rôles de portée » — mêmes suffixes de clé, un préfixe par
-# grandeur (`squadRangeRolesStrings` construit la clé). Seuls les libellés des trois
-# bandes et les phrases qui nomment la grandeur changent.
-
-[squad.hauteur.card_title]
-fr = "Rôles de hauteur"
-en = "Elevation roles"
-
-[squad.hauteur.section_label]
-fr = "Hauteur des engagements"
-en = "Engagement elevation"
-
-[squad.hauteur.help]
-fr = "L'écart de hauteur est la hauteur d'engagement médiane des frags d'un joueur sur un match — la hauteur du tueur moins celle de sa victime — moins celle de tous les joueurs du lobby. Un écart positif veut dire qu'il fraguait en surplomb par rapport au reste du lobby, un écart négatif qu'il fraguait en contrebas. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance et sans rôle."
-en = "The elevation gap is a player's median kill elevation on a match — the killer's height minus the victim's — minus that of every player in the lobby. A positive gap means they were killing from above relative to the lobby, a negative gap from below. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend and without a role."
-
-[squad.hauteur.x_axis]
-fr = "Matchs, du plus ancien au plus récent"
-en = "Matches, oldest to most recent"
-
-[squad.hauteur.y_axis]
-fr = "Écart de hauteur à la médiane du lobby"
-en = "Elevation gap to the lobby median"
-
-[squad.hauteur.lobby_line]
-fr = "médiane du lobby"
-en = "lobby median"
-
-[squad.hauteur.band_front]
-fr = "Contrebas"
-en = "Low ground"
-
-[squad.hauteur.band_polyvalent]
-fr = "À niveau"
-en = "Level"
-
-[squad.hauteur.band_sniper]
-fr = "Hauteurs"
-en = "High ground"
-
-[squad.hauteur.legend_low_sample]
-fr = "moins de {floor, number} frags mesurés"
-en = "fewer than {floor, number} measured kills"
-
-[squad.hauteur.legend_trend]
-fr = "tendance ({n, number} matchs)"
-en = "trend ({n, number} matches)"
-
-[squad.hauteur.tooltip_median]
-fr = "hauteur médiane {m} m"
-en = "median elevation {m} m"
-
-[squad.hauteur.tooltip_delta]
-fr = "écart {delta} m"
-en = "gap {delta} m"
-
-[squad.hauteur.tooltip_measured]
-fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
-en = "{n, plural, one {# measured kill} other {# measured kills}}"
-
-[squad.hauteur.coverage]
-fr = "{measured, number} frags mesurés sur {total, number}"
-en = "{measured, number} measured kills out of {total, number}"
-
-[squad.hauteur.empty_title]
-fr = "Aucune hauteur mesurée"
-en = "No elevation measured"
-
-[squad.hauteur.empty_description]
-fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la hauteur ne se mesure pas."
-en = "No match in the selection has a decoded film: without kill positions, elevation cannot be measured."
-
-[squad.hauteur.fold_tape]
-fr = "Bande des rôles"
-en = "Role tape"
-
-[squad.hauteur.tape_no_role]
 fr = "pas encore de rôle"
 en = "no role yet"

@@ -13,7 +13,13 @@ import type { Locale } from '@/lib/i18n/locale'
 import { formatClock } from '@/lib/replay/replayLogic'
 
 import type { TacticalText } from './i18n'
-import { rectSelection, repereAspect, type RepereTactique, type TacticalQuestion } from './tacticalView.logic'
+import {
+  rectSelection,
+  repereAspect,
+  type FenetreDuPlan,
+  type RepereTactique,
+  type TacticalQuestion,
+} from './tacticalView.logic'
 
 /** Au-delà de ce point de la largeur, l'étiquette du nom de zone passe à GAUCHE de la cellule. */
 const ETIQUETTE_BASCULE = 0.55
@@ -38,15 +44,37 @@ export function zoneLaPlusChaude(cellules: readonly CelluleTactique[], signee: b
 }
 
 /**
- * choixDuClic — l'adresse que retient un clic sur le plan : celle d'une cellule SERVIE par la lecture,
- * sinon `null` (le clic est ignoré : la zone courante reste, aucun détail n'est demandé).
+ * Distance maximale, en pas de grille, entre un clic et le CENTRE d'une cellule servie pour que le
+ * clic la retienne : la chaleur lissée déborde de quelques dixièmes de pas autour de chaque cellule
+ * (`chaleurLissee.ts`), et un clic sur ce débord vise la cellule qui l'a peint.
+ */
+const CLIC_PORTEE_PAS = 1
+
+/**
+ * choixDuClic — l'adresse que retient un clic sur le plan (`point`, en mètres monde) : la cellule
+ * SERVIE qui le contient, sinon la cellule servie dont le centre est le plus proche à moins d'un
+ * pas ; `null` sinon (le clic est ignoré : la zone courante reste, aucun détail n'est demandé).
  */
 export function choixDuClic(
   cellules: readonly CelluleTactique[],
-  col: number,
-  row: number,
+  point: { x: number; y: number },
+  pasM: number,
 ): { col: number; row: number } | null {
-  return cellules.some((c) => c.col === col && c.lig === row) ? { col, row } : null
+  if (!(pasM > 0)) return null
+  const col = Math.floor(point.x / pasM)
+  const row = Math.floor(point.y / pasM)
+  if (cellules.some((c) => c.col === col && c.lig === row)) return { col, row }
+  let meilleure: { col: number; row: number } | null = null
+  let distance = CLIC_PORTEE_PAS * pasM
+  for (const c of cellules) {
+    if (Math.abs(c.col - col) > 1 || Math.abs(c.lig - row) > 1) continue
+    const d = Math.hypot((c.col + 0.5) * pasM - point.x, (c.lig + 0.5) * pasM - point.y)
+    if (d <= distance) {
+      distance = d
+      meilleure = { col: c.col, row: c.lig }
+    }
+  }
+  return meilleure
 }
 
 /** Un nombre au plus au dixième, signe moins typographique. */
@@ -175,18 +203,22 @@ export function modeleDeTuile(
 /**
  * positionEtiquette — où poser le nom de zone sur le plan, en fractions du cadre : à côté de la
  * cellule choisie, à droite tant qu'elle est dans la partie gauche du plan, à gauche au-delà ;
- * centrée verticalement sauf contre les bords. `null` quand la cellule tombe hors du cadre.
+ * centrée verticalement sauf contre les bords. `null` quand la cellule tombe hors du cadre, ou
+ * hors de la FENÊTRE visible quand le plan est grossi.
  */
 export function positionEtiquette(
   selected: { col: number; row: number },
   repere: RepereTactique,
+  fenetre: FenetreDuPlan = repere,
 ): { left: string; top: string; transform: string } | null {
   // Le cadre de la cellule pour un canvas de largeur 1 : ses coordonnées sont des fractions de la
   // largeur, et la hauteur du cadre vaut 1 / rapport.
-  const r = rectSelection(selected, repere, 1)
+  const r = rectSelection(selected, repere, 1, fenetre)
   if (!r) return null
-  const cy = (r.y + r.size / 2) * repereAspect(repere)
-  const droite = r.x + r.size / 2 < ETIQUETTE_BASCULE
+  const cx = r.x + r.size / 2
+  const cy = (r.y + r.size / 2) * repereAspect(fenetre)
+  if (cx < 0 || cx > 1 || cy < 0 || cy > 1) return null
+  const droite = cx < ETIQUETTE_BASCULE
   const left = droite ? r.x + r.size : r.x
   let ty = '-50%'
   if (cy < ETIQUETTE_BORD) ty = '0'

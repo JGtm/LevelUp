@@ -46,7 +46,8 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 			COALESCE(mp.personal_score, 0),
 			COALESCE(mp.kills, 0),
 			COALESCE(mp.assists, 0),
-			COALESCE(mr.map_name_fr, mr.map_name),
+			COALESCE(mr.map_name_fr, ''),
+			COALESCE(mr.map_name, ''),
 			mr.map_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
@@ -54,6 +55,7 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 	`
 	var mctx port.MatchEngagementContext
 	var mapID sql.NullString
+	var registreFR, registreEN string
 	err = sharedDB.QueryRowContext(ctx, q, matchID, xuid).Scan(
 		&mctx.MatchID,
 		&mctx.StartTimeMS,
@@ -64,7 +66,8 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		&mctx.PersonalScore,
 		&mctx.Kills,
 		&mctx.Assists,
-		&mctx.MapName,
+		&registreFR,
+		&registreEN,
 		&mapID,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -74,13 +77,13 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		return nil, fmt.Errorf("LoadMatchEngagementContext: %w", err)
 	}
 
-	// map_name_fr de match_registry est systematiquement NULL -> le COALESCE
-	// retombe sur l'EN. On resout le nom FR via metadata.asset_translations
-	// (meme source canonique que applyMapFRTranslations). Best-effort.
-	if mapID.Valid && mapID.String != "" {
-		if fr, ok := r.resolveMapNameFR(ctx, mapID.String); ok {
-			mctx.MapName = &fr
-		}
+	// LE LIBELLÉ CANONIQUE de la carte (libelleDeCarte, map_labels.go), le même que l'Explorateur.
+	var traduction string
+	if mapID.Valid && mapID.String != "" && r.pdb != nil {
+		traduction = traductionsDeCartes(ctx, r.pdb.Metadata, []string{mapID.String})[mapID.String]
+	}
+	if libelle := libelleDeCarte(registreFR, registreEN, traduction); libelle != "" {
+		mctx.MapName = &libelle
 	}
 
 	// Charger NTeam et NHumansLobby separement (bots = xuid LIKE 'bid(%').
@@ -97,51 +100,6 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 	mctx.IsTeamMode = mctx.NTeam > 1
 
 	return &mctx, nil
-}
-
-// resolveMapNameFR resout le nom FR d'une map depuis metadata.asset_translations
-// par asset_id (= map_id). match_registry.map_name_fr etant toujours NULL, c'est
-// la seule source FR fiable (cf. reference_asset_translations_fr + filters_repo
-// applyMapFRTranslations). Best-effort : ("", false) si Metadata absent, pas de
-// ligne FR ou erreur — l'appelant garde alors le nom EN.
-func (r *EngagementScoreRepo) resolveMapNameFR(ctx context.Context, mapID string) (string, bool) {
-	if r.pdb == nil {
-		return "", false
-	}
-	return mapNameFRFromAssetTranslations(ctx, r.pdb.Metadata, mapID)
-}
-
-// mapNameFRFromAssetTranslations est LE corps de la resolution ci-dessus, promu en
-// fonction de paquet le 2026-09-06 (correction R3) pour que le lecteur tactique
-// s'en serve au lieu d'en ecrire une TROISIEME copie — il y en avait deja deux dans
-// ce paquet (celle-ci et `FiltersRepo.applyMapFRTranslations`, qui resout par NOM
-// EN faute de map_id sous la main).
-//
-// Best-effort assume : une metadata absente, une carte sans traduction ou une
-// erreur de lecture rendent ("", false), et l'appelant garde le nom EN. Un nom de
-// carte manquant n'est pas une panne d'affichage.
-func mapNameFRFromAssetTranslations(ctx context.Context, meta *DB, mapID string) (string, bool) {
-	if meta == nil || mapID == "" {
-		return "", false
-	}
-	const q = `
-		SELECT name FROM asset_translations
-		WHERE asset_type = 'map' AND asset_id = ? AND lang IN ('fr-FR', 'fr')
-		ORDER BY CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END
-		LIMIT 1
-	`
-	rows, err := meta.QueryRecovered(ctx, q, mapID)
-	if err != nil {
-		return "", false
-	}
-	defer rows.Close()
-	if rows.Next() {
-		var name string
-		if rows.Scan(&name) == nil && name != "" {
-			return name, true
-		}
-	}
-	return "", false
 }
 
 // LoadEventsForMatch charge tous les events highlight_events d'un match.

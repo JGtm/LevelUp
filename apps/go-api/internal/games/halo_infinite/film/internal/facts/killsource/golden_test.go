@@ -49,6 +49,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -129,20 +130,15 @@ type negControle struct {
 
 func controleNegatif(t *testing.T, src *source.Film, nPlay int) negControle {
 	t.Helper()
-	f, err := loadFilm(src)
-	if err != nil {
-		t.Fatalf("controle negatif : %v", err)
-	}
 	var n negControle
-	for i := range f.t0 {
-		p := &f.t0[i]
-		if hasEvents(p) {
+	for _, p := range src.AllPackets() {
+		if p.Type != packetType0 || source.BitAt(p.Payload, 1) != 0 {
 			continue
 		}
 		n.paquets++
-		n.bits += len(p.payload) * 8
-		n.candidats += len(scanPayload(p.payload, nPlay))
+		n.bits += len(p.Payload) * 8
 	}
+	n.candidats = len(grammar.BalayerLesEtatsDeMort(src, nPlay, isCatalogued, false))
 	return n
 }
 

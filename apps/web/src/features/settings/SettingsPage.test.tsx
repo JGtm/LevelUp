@@ -5,8 +5,11 @@
  * le feedback éphémère et l'absence des boutons Annuler/Enregistrer.
  */
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
-import { renderWithProviders } from '@/test/render-utils'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient, renderWithProviders } from '@/test/render-utils'
+import { queryKeys } from '@/lib/query/keys'
+import type { SettingsResponse } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRouterState } from '@tanstack/react-router'
 import { SettingsPage } from './SettingsPage'
@@ -85,6 +88,27 @@ describe('SettingsPage', () => {
     renderWithProviders(<SettingsPage />)
     expect(screen.queryByText(/Lab interne/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Ouvrir le Lab/i })).not.toBeInTheDocument()
+  })
+
+  it('réglages DÉJÀ en cache au montage : les contrôles montrent la valeur enregistrée, pas le défaut', () => {
+    // La coquille lit les réglages avant que la page ne monte : la page part donc d'un
+    // cache rempli. Le défaut du délai de session est 120 ; la valeur enregistrée, 45.
+    vi.mocked(useRouterState).mockReturnValue({
+      location: { pathname: '/settings', search: '?tab=analyse' },
+    } as ReturnType<typeof useRouterState>)
+    const qc = createTestQueryClient()
+    qc.setQueryData(queryKeys.settings, {
+      lang: 'fr',
+      session_gap_minutes: 45,
+      coach_proactive_mode: false,
+    } as SettingsResponse)
+    render(
+      <QueryClientProvider client={qc}>
+        <SettingsPage />
+      </QueryClientProvider>,
+    )
+    expect(screen.getByDisplayValue('45')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('120')).not.toBeInTheDocument()
   })
 
   it("n'affiche pas les boutons Annuler / Enregistrer (auto-save)", async () => {

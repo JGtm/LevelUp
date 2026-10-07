@@ -49,12 +49,9 @@ package replay
 
 import (
 	"cmp"
-	"context"
-	"log/slog"
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/observability"
 )
 
 // intervalleDePresence est une presence en FRAMES, bornes incluses : `[de, a]` est certain,
@@ -93,6 +90,9 @@ type occupants struct {
 	// leur seule declaration BOT_METADATA, et celles dont l'entite contredit la declaration (cf.
 	// [occupants.equipeDe]).
 	equipesParDeclaration, equipesContreDeclaration int
+	// contradictions : le detail de chaque contradiction entite / declaration, et l'arbitrage de la
+	// base quand elle connait le bot (cf. [occupants.arbitrerParLaBase]). Le journal le lit.
+	contradictions []contradictionDEquipe
 	// trous : les trous d'entite (images-cles manquees entre la premiere et la derniere).
 	trous int
 	// imagesDouteuses / bornesDifferees : les images-cles porteuses ou l'absence d'au moins une entite
@@ -121,10 +121,14 @@ type entreesDesOccupants struct {
 	// parIndex : la table de CONTROLE `index -> designateur`. Elle ne sert qu'aux entrees qu'aucune
 	// entite ne porte, et seulement sur un index que toutes ses lectures accordent.
 	parIndex map[int]int
+	// base : la table `identifiant -> equipe` de la FEUILLE DE MATCH (`Options.ScoreboardTeams` :
+	// xuid d'un humain, `bid(N.0)` d'un bot). Elle n'arbitre que la contradiction d'un bot entre son
+	// entite et sa declaration (cf. [occupants.arbitrerParLaBase]). Nil : aucun arbitrage.
+	base map[string]int
 }
 
 // lierLesOccupants lie chaque entree du roster a ses entites, et en tire son equipe et sa
-// presence. PURE : ni octet de film, ni base.
+// presence. PURE : ni octet de film, ni base ouverte (la feuille de match arrive dans `in.base`).
 func lierLesOccupants(roster []RosterEntry, tracks []Track, in entreesDesOccupants) occupants {
 	out := occupants{parEntree: make([]occupantDuRoster, len(roster)), balaye: in.scan.Scanned,
 		horloge: in.horloge}
@@ -291,8 +295,9 @@ func humainsDeLIndex(roster []RosterEntry, idx int) int {
 //  3. sinon, pour un humain — ou sur un film dont les entites ne sont pas balayees —, la table de
 //     CONTROLE sur un index non divergent (la meme valeur que l'ancienne equipe par index).
 //
-// Une entite et une declaration qui se CONTREDISENT : l'entite est publiee et l'ecart se compte
-// ([occupants.equipesContreDeclaration], journalise), il ne s'arbitre pas en silence. Un bot d'un
+// Une entite et une declaration qui se CONTREDISENT : la FEUILLE DE MATCH tranche quand elle connait
+// le bot, l'entite est publiee sinon ; l'ecart se compte et se journalise dans les deux cas
+// ([occupants.arbitrerParLaBase]). Un bot d'un
 // film balaye que ni ses entites ni sa declaration ne nomment reste SANS equipe : la table par
 // index lui preterait celle d'un autre occupant de son index (`c7f94693`, `343 Donos`).
 func (o *occupants) equipeDe(e RosterEntry, i int, in entreesDesOccupants) *int {
@@ -303,7 +308,7 @@ func (o *occupants) equipeDe(e RosterEntry, i int, in entreesDesOccupants) *int 
 			return nil
 		}
 		if declaree != nil && *declaree != t {
-			o.equipesContreDeclaration++
+			return o.arbitrerParLaBase(e, t, *declaree, in.base)
 		}
 		return &t
 	}
@@ -368,24 +373,4 @@ func indexPorteParUneEntiteLiee(o *occupants, scan grammar.PlayerEntityScan, idx
 		}
 	}
 	return false
-}
-
-// metriqueEquipesContreDeclaration : le compteur expvar des bots dont l'entite `ti=9` et l'entree
-// BOT_METADATA disent deux equipes (cf. [occupants.equipeDe]).
-const metriqueEquipesContreDeclaration = "rejeu_bots_equipe_contre_declaration"
-
-// journaliserLesEquipesDeclarees dit d'ou viennent les equipes des bots que la liaison a posees :
-// combien de leur seule declaration BOT_METADATA (une lecture du film) ; et, en ERREUR et au
-// compteur, les bots dont l'entite contredit la declaration — l'entite est publiee, l'ecart ne
-// s'arbitre pas en silence.
-func journaliserLesEquipesDeclarees(ctx context.Context, matchID string, occ occupants) {
-	if occ.equipesParDeclaration > 0 {
-		slog.InfoContext(ctx, "rejeu : equipe de bot(s) lue dans leur declaration BOT_METADATA, faute d'entite ti=9",
-			"match_id", matchID, "bots", occ.equipesParDeclaration)
-	}
-	if occ.equipesContreDeclaration > 0 {
-		observability.AddInt(metriqueEquipesContreDeclaration, int64(occ.equipesContreDeclaration))
-		slog.ErrorContext(ctx, "rejeu : l'entite ti=9 d'un bot et son entree BOT_METADATA disent deux equipes — "+
-			"l'entite est publiee, l'ecart est compte", "match_id", matchID, "bots", occ.equipesContreDeclaration)
-	}
 }

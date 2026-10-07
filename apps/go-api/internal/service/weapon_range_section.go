@@ -1,8 +1,8 @@
 // Package service — weapon_range_section.go : LA SECTION « PORTÉE PAR ARME »
 // (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
 //
-// SECTION MIGRÉE LE 2026-09-13 : elle a quitté la Synthèse pour l'onglet Résumé des Séries
-// temporelles, sans changer de producteur. Le chargement vit dans une FONCTION LIBRE
+// SECTION MIGRÉE : elle a quitté la Synthèse pour les Séries temporelles (onglet Usages
+// aujourd'hui), sans changer de producteur. Le chargement vit dans une FONCTION LIBRE
 // (`buildWeaponRangeSection`) prenant son scope canonique en paramètre — un service qui
 // appellerait un autre service serait un couplage horizontal (skill arch-rules).
 //
@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/port"
 )
 
@@ -76,6 +77,9 @@ func buildWeaponRangeSection(ctx context.Context, q weaponRangeQuery) *domain.Sy
 	}
 
 	block := buildWeaponRangeBlock(kills, openings, scope)
+	// Le graphe par arme ne publie que des PORTÉES : armes de contact, chute et environnement
+	// sont écartées ici, d'après le registre (attribut « sans portée »), jamais par leur nom.
+	dropWeaponsWithoutRange(block, weapons.IsWithoutRange)
 	hydrateLabels(ctx, q, block)
 	slog.DebugContext(ctx, "portee par arme",
 		"title", q.TitleSlug, "gamertag", q.Gamertag,

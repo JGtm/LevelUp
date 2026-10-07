@@ -9,6 +9,7 @@ import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/ty
 
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
+import type { ProjectionMonde } from '@/lib/replay/calloutsPaint'
 import { buildTacticalGrid, type MapFrame, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
@@ -256,7 +257,7 @@ export function repereDuPlan(
 }
 
 /** Le rapport largeur/hauteur du repère — celui que prend le cadre de la carte. */
-export function repereAspect(repere: RepereTactique): number {
+export function repereAspect(repere: FenetreDuPlan): number {
   return (repere.maxX - repere.minX) / (repere.maxY - repere.minY)
 }
 
@@ -311,17 +312,70 @@ export function grilleDuPlan(
 }
 
 /**
+ * FenetreDuPlan — le rectangle MONDE VISIBLE dans le canvas du plan : le cadrage du zoom (mêmes
+ * paliers et même rebornage que le rejeu 2D, `visibleBounds`). Le repère entier à 1x : c'est la
+ * valeur par défaut de chaque projection ci-dessous, qui retrouve alors exactement le tracé d'avant
+ * le zoom. Les cellules restent ADRESSÉES dans le repère entier ; seule la projection change.
+ */
+export interface FenetreDuPlan {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+/**
  * vueDuPlan — la projection monde vers canvas d'un repère : ce que `drawTacticalHeatmap`
- * attend, une fois les cellules réindexées en 0-based (l'origine du calque est donc le coin
- * du canvas, et l'échelle celle du cadre).
+ * attend, une fois les cellules réindexées en 0-based sur le repère. L'échelle est celle de la
+ * FENÊTRE visible ; l'origine du calque est le coin du repère, décalé du cadrage.
  */
 export function vueDuPlan(
   repere: RepereTactique,
   canvasWidth: number,
+  fenetre: FenetreDuPlan = repere,
 ): { topLeftWorld: { x: number; y: number }; scale: number } | null {
-  const largeur = repere.maxX - repere.minX
+  const largeur = fenetre.maxX - fenetre.minX
   if (!(largeur > 0) || !(canvasWidth > 0)) return null
-  return { topLeftWorld: { x: 0, y: 0 }, scale: canvasWidth / largeur }
+  const scale = canvasWidth / largeur
+  return {
+    topLeftWorld: { x: (repere.minX - fenetre.minX) * scale, y: (fenetre.maxY - repere.maxY) * scale },
+    scale,
+  }
+}
+
+/**
+ * projectionDuPlan — la projection d'un point MONDE dans le canvas du plan, à la même échelle que
+ * la chaleur (`vueDuPlan`) : coin haut-gauche du canvas = (minX, maxY) de la fenêtre, Y inversé.
+ * C'est celle que reçoit le peintre des zones nommées (`lib/replay/calloutsPaint.ts`), pour que
+ * leurs contours tombent sur le fond et sous les cellules qu'elles bordent.
+ */
+export function projectionDuPlan(
+  repere: RepereTactique,
+  canvasWidth: number,
+  fenetre: FenetreDuPlan = repere,
+): ProjectionMonde | null {
+  const vue = vueDuPlan(repere, canvasWidth, fenetre)
+  if (!vue) return null
+  return (p) => ({ x: (p.x - fenetre.minX) * vue.scale, y: (fenetre.maxY - p.y) * vue.scale })
+}
+
+/**
+ * pointDuClic — le point MONDE sous un clic sur le canvas (la fenêtre visible, Y inversé), ou
+ * `null` si le clic tombe hors du canvas.
+ */
+export function pointDuClic(
+  clickX: number,
+  clickY: number,
+  canvas: { width: number; height: number },
+  fenetre: FenetreDuPlan,
+): { x: number; y: number } | null {
+  const { width, height } = canvas
+  if (!(width > 0) || !(height > 0)) return null
+  if (clickX < 0 || clickY < 0 || clickX > width || clickY > height) return null
+  return {
+    x: fenetre.minX + (clickX / width) * (fenetre.maxX - fenetre.minX),
+    y: fenetre.maxY - (clickY / height) * (fenetre.maxY - fenetre.minY),
+  }
 }
 
 /**
@@ -336,33 +390,32 @@ export function celluleDuClic(
   clickY: number,
   canvas: { width: number; height: number },
   repere: RepereTactique,
+  fenetre: FenetreDuPlan = repere,
 ): { col: number; row: number } | null {
-  const { width, height } = canvas
-  if (!(width > 0) || !(height > 0)) return null
-  if (clickX < 0 || clickY < 0 || clickX > width || clickY > height) return null
-  const worldX = repere.minX + (clickX / width) * (repere.maxX - repere.minX)
-  const worldY = repere.maxY - (clickY / height) * (repere.maxY - repere.minY)
-  return { col: Math.floor(worldX / repere.pasM), row: Math.floor(worldY / repere.pasM) }
+  const point = pointDuClic(clickX, clickY, canvas, fenetre)
+  if (!point) return null
+  return { col: Math.floor(point.x / repere.pasM), row: Math.floor(point.y / repere.pasM) }
 }
 
 /**
  * rectSelection — le cadre, en pixels canvas, de la cellule SERVEUR choisie. Même projection
- * que la peinture, donc le cadre se pose exactement sur la cellule peinte. `null` quand rien
- * n'est choisi ou que la cellule tombe hors du cadre du fond.
+ * que la peinture, donc le repère de sélection se pose exactement sur la zone peinte. `null`
+ * quand rien n'est choisi ou que la cellule tombe hors du cadre du fond.
  */
 export function rectSelection(
   selected: { col: number; row: number } | null,
   repere: RepereTactique,
   canvasWidth: number,
+  fenetre: FenetreDuPlan = repere,
 ): { x: number; y: number; size: number } | null {
   if (!selected) return null
-  const vue = vueDuPlan(repere, canvasWidth)
+  const vue = vueDuPlan(repere, canvasWidth, fenetre)
   if (!vue) return null
   const { nx, ny } = repereDimensions(repere)
   const adresse = adresseDansLeRepere(selected.col, selected.row, repere)
   if (adresse.col < 0 || adresse.col >= nx || adresse.row < 0 || adresse.row >= ny) return null
   const taille = repere.pasM * vue.scale
-  return { x: adresse.col * taille, y: adresse.row * taille, size: taille }
+  return { x: vue.topLeftWorld.x + adresse.col * taille, y: vue.topLeftWorld.y + adresse.row * taille, size: taille }
 }
 
 /**

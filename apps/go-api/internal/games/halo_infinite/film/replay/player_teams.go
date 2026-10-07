@@ -1,15 +1,17 @@
 package replay
 
-// player_teams.go — L'EQUIPE PUBLIEE VIENT DU FILM, ET DE LUI SEUL (lot 1.7.2).
+// player_teams.go — L'EQUIPE PUBLIEE VIENT DU FILM (lot 1.7.2).
 //
 // # LA REGLE, ET QUI L'A TRANCHEE
 //
 // Decision utilisateur du 2026-09-13 (V4 du PLAN_DECODEUR_FILM) : « si le decodeur est fiable,
 // pas besoin du repli ». L'equipe d'un joueur vient du DESIGNATEUR que le film ecrit
-// ([grammar.ScanPlayerTeams]) ; la base n'en pose AUCUNE. Elle entre ici comme CONTROLE, et
-// uniquement comme tel : `coverage.teams.{accord, contradiction, silence}` disent ce qu'elle
-// aurait dit, sans jamais le publier. Une contradiction ne se corrige pas en silence — le film
-// fait foi, l'ecart se compte, et le relecteur le lit.
+// ([grammar.ScanPlayerTeams]). La base entre ici comme CONTROLE : `coverage.teams.{accord,
+// contradiction, silence}` disent ce qu'elle aurait dit, sans le publier. Une contradiction ne se
+// corrige pas en silence — le film fait foi, l'ecart se compte, et le relecteur le lit. SEULE
+// EXCEPTION (decision utilisateur du 2026-10-07) : quand le film se contredit lui-meme sur un bot
+// (entite `ti=9` contre declaration BOT_METADATA), la feuille de match tranche
+// (occupants_equipe_arbitree.go).
 //
 // # CE QUE CELA REPARE, ET IL EST MESURE
 //
@@ -315,8 +317,9 @@ func (p teamPublication) tableDesEquipesPourLesDrapeaux() map[string]int {
 }
 
 // logTeamCoverage journalise ce que la lecture a couvert et ce que le controle en dit. Une
-// contradiction et un refus se DISENT, avant toute degradation (regle n° 3 du depot).
-func logTeamCoverage(ctx context.Context, matchID string, cov TeamCoverage) {
+// contradiction et un refus se DISENT, avant toute degradation (regle n° 3 du depot), au `niveau`
+// de [niveauDePublication] : ils disent un defaut des equipes du document PUBLIE.
+func logTeamCoverage(ctx context.Context, matchID string, cov TeamCoverage, niveau slog.Level) {
 	slog.InfoContext(ctx, "rejeu : equipes lues dans le film", "match_id", matchID, "lue", cov.Read,
 		"refus", cov.Refusal, "records", cov.Records, "rejetes", cov.Rejected,
 		"divergences", cov.Divergences, "film", cov.Film, "sansEquipe", cov.NoTeam,
@@ -329,12 +332,12 @@ func logTeamCoverage(ctx context.Context, matchID string, cov TeamCoverage) {
 			"occupant", "match_id", matchID, "vies", cov.TracksSlotAmbiguous)
 	}
 	if cov.Contradiction > 0 {
-		slog.WarnContext(ctx, "rejeu : la base CONTREDIT le film sur l'equipe de joueurs — le film fait foi, "+
+		slog.Log(ctx, niveau, "rejeu : la base CONTREDIT le film sur l'equipe de joueurs — le film fait foi, "+
 			"l'ecart est compte", "match_id", matchID, "contradictions", cov.Contradiction,
 			"accords", cov.Accord)
 	}
 	if !cov.Read {
-		slog.WarnContext(ctx, "rejeu : equipes NON LUES dans le film — aucune vie ne portera d'equipe",
+		slog.Log(ctx, niveau, "rejeu : equipes NON LUES dans le film — aucune vie ne portera d'equipe",
 			"match_id", matchID, "refus", cov.Refusal)
 	}
 }

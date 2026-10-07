@@ -21,12 +21,13 @@ import (
 // C'est ici que l'origine est retranchee (report `:123` du registre) : les evenements sont dates
 // depuis le PREMIER PAQUET DU FILM, la grille compte depuis le premier paquet de POSITION, et
 // l'ecart entre les deux zeros est exactement `originMs`. Quand l'origine n'est pas etablie, la
-// soustraction se fait avec zero et `coverage.originResolved` le DIT (cf. origin.go).
-func replayScoreClock(ctx context.Context, doc *ReplayDocument, intervalMS int, matchID string) scoreClock {
+// soustraction se fait avec zero et `coverage.originResolved` le DIT (cf. origin.go), au `niveau`
+// de [niveauDePublication].
+func replayScoreClock(ctx context.Context, doc *ReplayDocument, intervalMS int, matchID string, niveau slog.Level) scoreClock {
 	return scoreClock{
 		intervalMS: intervalMS,
 		frames:     doc.FrameCount,
-		originMS:   originMSOf(ctx, doc.OriginMs, matchID),
+		originMS:   originMSOf(ctx, doc.OriginMs, matchID, niveau),
 	}
 }
 

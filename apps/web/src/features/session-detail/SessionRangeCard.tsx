@@ -22,8 +22,9 @@
  * référence dépend du filtre, pas de la session) et chacune y surligne SA session — c'est
  * exactement la lecture demandée : deux soirées situées dans la même population.
  *
- * D22-VERBOSITÉ (LOI) : graphe, légende et couverture. La lecture tient dans l'infobulle
- * (i) du titre, trois phrases.
+ * D22-VERBOSITÉ (LOI) : graphe et légende, centrée en bas de la carte ; aucune mention de
+ * couverture (« n matchs mesurés sur N ») sous le graphe. La lecture tient dans l'infobulle (i) du
+ * titre, trois phrases.
  */
 import { useMemo } from 'react'
 
@@ -157,7 +158,7 @@ export function SessionRangeCard({
             {/* Les quatre encodages qu'ECharts ne nomme pas : les deux appartenances, la
                 tendance et le point creux. */}
             <div
-              className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
+              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-2xs text-muted-foreground"
               data-testid="session-portee-legende"
             >
               {nuage.periode && (
@@ -196,11 +197,6 @@ export function SessionRangeCard({
                 {t.rangeLowSample(PLANCHER_MESURE)}
               </span>
             </div>
-            <p className="text-2xs text-muted-foreground" data-testid="session-portee-couverture">
-              {nuage.periode && reference
-                ? t.coverageMatchesFmt(reference.matches_measured, reference.matches_total)
-                : t.rangeCoverageFmt(block.kills_measured, block.kills_total)}
-            </p>
           </>
         )}
       </div>

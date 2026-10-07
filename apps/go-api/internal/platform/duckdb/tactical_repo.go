@@ -25,8 +25,8 @@
 //   - le raster range chaque point sur l'axe « moi / escouade / adversaires »
 //     d'apres l'identite de la victime ou du tueur — une identite permutee peint
 //     le point du mauvais cote ;
-//   - l'echange demande QUI a venge QUI — une identite permutee fabrique une
-//     vengeance qui n'a pas eu lieu.
+//   - le journal des morts (KillEvents) rend chaque mort avec sa victime et son tueur
+//     credite — une identite permutee attribue la mort au mauvais joueur.
 //
 // Une passe non publiable est donc ECARTEE ici, comme dans KillDistanceRepo, et
 // contrairement a KillSourceClassRepo (qui, lui, ne produit que des cumuls).
@@ -39,12 +39,12 @@
 // PERIMETRE (liste blanche de match_id, composition) vient de l'appelant et se pose
 // au meme endroit pour les trois lectures — cf. tactical_repo_univers.go.
 //
-// KillEvents, elle, accepte une carte VIDE depuis le 2026-09-06 (phase 3) : la
-// page Escouade lit le journal des morts d'une COMPOSITION, qui n'a pas de carte,
-// et le perimetre de matchs y est resserre en Go. Ecrire une seconde requete pour
-// ce seul predicat aurait donne deux definitions de « le journal des morts du
-// joueur » ; le SELECT est donc le meme, la carte devenant un parametre neutre
-// (`? = ” OR mr.map_id = ?`). La borne reste le joueur, jamais la table entiere.
+// KillEvents, elle, accepte une carte VIDE : son appelant de production, le bloc de
+// coordination des pages Sessions et Series temporelles (service/coordination_block.go),
+// lit une LISTE de matchs (`RestreindreAux`), qui n'a pas de carte. Le SELECT reste le
+// meme, la carte devenant un parametre neutre (`? = ” OR mr.map_id = ?`). La borne
+// reste le joueur, jamais la table entiere. Une lecture SANS liste (zero-value de
+// ListeBlancheMatchs) reste acceptee mais n'a pas d'appelant de production a ce jour.
 package duckdb
 
 import (
@@ -91,6 +91,7 @@ func NewTacticalRepo(pdb *PlayerDB) *TacticalRepo {
 const QTacticalMaps = `
 SELECT mr.map_id,
        COALESCE(mr.map_name, '') AS map_name,
+       COALESCE(MAX(mr.map_name_fr), '') AS map_name_fr,
        COUNT(*)                          AS matchs,
        COUNT(*) FILTER (WHERE mp.outcome = ?) AS victoires,
        COUNT(*) FILTER (WHERE mp.outcome = ?) AS defaites
@@ -125,7 +126,7 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	out := make([]domain.TacticalMapRow, 0)
 	err = scanRows(ctx, rows, "TacticalRepo.MapsPlayed", func(sc rowScanner) error {
 		var row domain.TacticalMapRow
-		if err := sc.Scan(&row.MapID, &row.MapName,
+		if err := sc.Scan(&row.MapID, &row.MapName, &row.MapNameFR,
 			&row.Matchs, &row.Victoires, &row.Defaites); err != nil {
 			return err
 		}
@@ -135,31 +136,27 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	if err != nil {
 		return nil, err
 	}
-	r.habillerNomsFR(ctx, out)
+	r.poserLesLibelles(ctx, out)
 	return out, nil
 }
 
-// habillerNomsFR remplit MapNameFR depuis `metadata.asset_translations`.
-//
-// POURQUOI PAS `match_registry.map_name_fr` (correction R3, revue du 2026-09-06) :
-// cette colonne est SYSTEMATIQUEMENT NULLE — constat deja pose deux fois dans ce
-// paquet (`engagement_score_repo_queries.go`, `filters_repo_asset_names.go`). La
-// lire faisait sortir toutes les cartes avec un nom FR VIDE, et le test ne le
-// voyait pas parce que sa fixture semait une valeur qui n'existe pas en prod.
-//
-// UNE REQUETE PAR CARTE, et c'est assume : la boucle est bornee par le nombre de
-// cartes DISTINCTES jouees par un joueur (quelques dizaines), chaque lecture est un
-// point sur `(asset_id, asset_type)` indexe. Une variante par lot serait une
-// TROISIEME implementation de la meme resolution dans ce paquet — la centralisation
-// des deux copies existantes est notee au §7 du plan, hors perimetre de ce lot.
-func (r *TacticalRepo) habillerNomsFR(ctx context.Context, rows []domain.TacticalMapRow) {
-	if r.pdb == nil || r.pdb.Metadata == nil {
+// poserLesLibelles remplace le nom FR du registre de chaque carte par son LIBELLÉ CANONIQUE
+// (libelleDeCarte, map_labels.go), traductions lues en une requête : la vignette et le lien vers
+// l'Explorateur portent ainsi la chaîne exacte que l'Explorateur compare.
+func (r *TacticalRepo) poserLesLibelles(ctx context.Context, rows []domain.TacticalMapRow) {
+	if len(rows) == 0 {
 		return
 	}
+	ids := make([]string, len(rows))
 	for i := range rows {
-		if fr, ok := mapNameFRFromAssetTranslations(ctx, r.pdb.Metadata, rows[i].MapID); ok {
-			rows[i].MapNameFR = fr
-		}
+		ids[i] = rows[i].MapID
+	}
+	var traductions map[string]string
+	if r.pdb != nil {
+		traductions = traductionsDeCartes(ctx, r.pdb.Metadata, ids)
+	}
+	for i := range rows {
+		rows[i].MapNameFR = libelleDeCarte(rows[i].MapNameFR, rows[i].MapName, traductions[rows[i].MapID])
 	}
 }
 
@@ -294,9 +291,9 @@ func tagOuNil(v sql.NullInt64) *uint32 {
 
 // QTacticalEvents : le journal des morts des matchs de l'univers.
 //
-// Aucune jointure sur les positions : l'echange se mesure sur des INSTANTS et des
-// IDENTITES, pas sur des coordonnees — exiger une position mesuree ecarterait les
-// morts d'un match non decode et gonflerait le taux.
+// Aucune jointure sur les positions : le journal porte des INSTANTS et des IDENTITES,
+// pas des coordonnees — exiger une position mesuree ecarterait les morts d'un match non
+// decode.
 //
 // %s = la liste des matchs de l'univers (listeDeLUnivers) : une liste de constantes, que
 // DuckDB pousse sous la fenetre de la vue (0,74 s -> 0,05 s pour 6 matchs, mesure lot L5a).

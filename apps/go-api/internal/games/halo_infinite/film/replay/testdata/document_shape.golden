@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 83
-empreinte-stockee f18eb09d461a3f6b
-empreinte-servie f18eb09d461a3f6b
-empreinte-cuite af39c82c52c98a94
+schema 88
+empreinte-stockee bbc6aa1a4c3c96d1
+empreinte-servie bbc6aa1a4c3c96d1
+empreinte-cuite f6ca0b4e787882ec
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -1230,6 +1230,8 @@ ZoneState
 ZonesCoverage
   AmbiguousZone json:"ambiguousZone" int
   Attributed json:"attributed" int
+  CapturerElectionDisagreed json:"capturerElectionDisagreed" int
+  CapturerNamed json:"capturerNamed" int
   Captures json:"captures" int
   Catalog json:"catalog" int
   GaugePoints json:"gaugePoints" int
@@ -1240,7 +1242,9 @@ ZonesCoverage
   Outside json:"outside" int
   OwnerAgreed json:"ownerAgreed" int
   OwnerChecked json:"ownerChecked" int
+  OwnerNamed json:"ownerNamed" int
   OwnerUnpaired json:"ownerUnpaired" int
+  OwnerVoteDisagreed json:"ownerVoteDisagreed" int
   Paired json:"paired" int
   Roles json:"roles,omitempty" string
   Slots json:"slots" int

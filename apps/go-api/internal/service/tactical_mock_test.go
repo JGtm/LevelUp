@@ -42,6 +42,8 @@ type mockTacticalRepo struct {
 
 	// lecturesJournal compte les appels a KillEvents : le service tactique n'en fait aucun.
 	lecturesJournal int
+	// lecturesPositions compte les lectures des positions de kill (une par requete, ADR 0036 I4).
+	lecturesPositions int
 }
 
 // Univers : la lecture d'OCCUPATION (phase 6) n'a besoin que de l'univers — ses valeurs
@@ -66,6 +68,7 @@ func (m *mockTacticalRepo) MapsPlayed(_ context.Context, q domain.TacticalQuery)
 
 func (m *mockTacticalRepo) KillPositions(_ context.Context, q domain.TacticalQuery) (domain.TacticalPositions, error) {
 	m.vuPos = q
+	m.lecturesPositions++
 	if m.errPos != nil || !perimetreAFiltrer(q) {
 		return m.pos, m.errPos
 	}
