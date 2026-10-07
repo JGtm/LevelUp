@@ -250,7 +250,9 @@ export function buildSquadRangeRolesOption(
           formatter: opts.libelles.lobbyLine,
           color: tc.axisLabel,
           fontSize: 10,
-          position: 'insideStartTop',
+          // À DROITE (fin de ligne) : les libellés des bandes de rôle s'écrivent à gauche, et la
+          // médiane du lobby, posée à gauche aussi, chevauchait « Polyvalent ».
+          position: 'insideEndTop',
         },
         data: [{ yAxis: 0 }],
       }
@@ -297,7 +299,10 @@ export function buildSquadRangeRolesOption(
       nameLocation: 'middle',
       nameGap: 32,
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
-      axisLabel: { ...axis.axisLabel, fontSize: 9, interval: n > 12 ? Math.floor(n / 8) : 0 },
+      // `hideOverlap` : en colonne étroite (Sessions comparées), les étiquettes « #n · Carte » qui se
+      // chevaucheraient sont masquées par ECharts au lieu de s'écrire les unes sur les autres ;
+      // l'infobulle d'un point nomme toujours son match.
+      axisLabel: { ...axis.axisLabel, fontSize: 9, interval: n > 12 ? Math.floor(n / 8) : 0, hideOverlap: true },
     },
     yAxis: {
       ...axis,
