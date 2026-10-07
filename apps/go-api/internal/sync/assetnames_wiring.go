@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth/pool"
@@ -119,6 +120,13 @@ func ResolveUnresolvedAssetNames(ctx context.Context, p pool.Pool, metaDB, share
 	return resolveRefsWithPool(ctx, p, metaDB, titleSlug, "sweep", refs, assetSweepMaxAssets)
 }
 
+// newPoolAssetFetcher construit le fetcher authentifié d'un lease du pool (API d'assets, rate
+// limit halo.AssetNameResolveRateLimit). Variable de paquet : les tests des sites d'appel
+// (première écriture V1 et V2) lui substituent un fetcher factice, sans réseau.
+var newPoolAssetFetcher = func(tokens *domain.HaloTokens) assetnames.Fetcher {
+	return halo.NewAssetNameFetcher(halo.AssetNameResolveRateLimit, tokens)
+}
+
 // resolveRefsWithPool est l'UNIQUE point d'acquisition de token + résolution.
 // Acquiert un token du POOL unifié (PolicyAnyPublic, comme le watcher/drain),
 // construit le fetcher authentifié, résout, libère le lease. Gaté par le
@@ -146,8 +154,7 @@ func resolveRefsWithPool(
 		return res
 	}
 	defer lease.Release()
-	return resolveRefs(ctx, halo.NewAssetNameFetcher(halo.AssetNameResolveRateLimit, lease.Tokens),
-		metaDB, titleSlug, logCtx, refs, maxAssets)
+	return resolveRefs(ctx, newPoolAssetFetcher(lease.Tokens), metaDB, titleSlug, logCtx, refs, maxAssets)
 }
 
 // resolveRefs est le cœur TESTABLE de la résolution (fetcher injecté) :

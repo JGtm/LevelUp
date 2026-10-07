@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/auth/pool"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -201,5 +203,86 @@ func TestResolveRefs_PremiereEcriture_SansPlafond(t *testing.T) {
 	}
 	if n != 140 {
 		t.Fatalf("asset_translations = %d lignes, want 140 (70 cartes x 2 langues)", n)
+	}
+}
+
+// poolJetonFactice : un pool qui rend toujours un jeton (aucun réseau : le fetcher est factice).
+type poolJetonFactice struct{ pool.Pool }
+
+func (poolJetonFactice) Acquire(context.Context, pool.AcquirePolicy, string) (*pool.Lease, error) {
+	return &pool.Lease{Tokens: &domain.HaloTokens{SpartanToken: "t", ClearanceToken: "c"}, Release: func() {}}, nil
+}
+
+// cartesNeuvesAuDelaDuPlafond : plus d'assets neufs qu'aucun plafond n'en a jamais laissé passer
+// (l'ancien plafond de la première écriture était 64).
+const cartesNeuvesAuDelaDuPlafond = 70
+
+// fetcherDeCartesNeuves substitue au fetcher du pool un fetcher factice qui nomme chaque carte
+// neuve, et rend les identifiants.
+func fetcherDeCartesNeuves(t *testing.T) []string {
+	t.Helper()
+	t.Setenv("LEVELUP_SYNC_RESOLVE_ASSETS", "1")
+	f := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
+	ids := make([]string, cartesNeuvesAuDelaDuPlafond)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("map-neuve-%02d", i)
+		f.names[ids[i]+"|fr-FR"] = "Carte " + ids[i]
+		f.names[ids[i]+"|en-US"] = "Map " + ids[i]
+	}
+	prev := newPoolAssetFetcher
+	newPoolAssetFetcher = func(*domain.HaloTokens) assetnames.Fetcher { return f }
+	t.Cleanup(func() { newPoolAssetFetcher = prev })
+	return ids
+}
+
+func compterCartesTraduites(t *testing.T, meta *sql.DB) int {
+	t.Helper()
+	var n int
+	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id LIKE 'map-neuve-%'`).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	return n
+}
+
+// TestResolveCycleAssets_PremiereEcritureV1_SansPlafond : le site d'appel V1 (pré-pass d'un
+// cycle, resolveCycleAssets) résout TOUS les assets neufs du lot, au-delà de 64.
+func TestResolveCycleAssets_PremiereEcritureV1_SansPlafond(t *testing.T) {
+	ids := fetcherDeCartesNeuves(t)
+	meta := setupMetaWithTranslations(t)
+	e := &SyncEngine{assetPool: poolJetonFactice{}, metaDB: meta, titleSlug: "halo_infinite", gamertag: "T"}
+	fetched := make([]*fetchedMatch, len(ids))
+	for i, id := range ids {
+		fetched[i] = &fetchedMatch{MatchID: fmt.Sprintf("m-%02d", i), Registry: &MatchRegistryRow{
+			MapID: strPtrNonEmpty(id), MapName: strPtrNonEmpty(id), MapVersionID: strPtrNonEmpty("v1"),
+		}}
+	}
+
+	e.resolveCycleAssets(context.Background(), fetched)
+
+	if n := compterCartesTraduites(t, meta); n != 2*len(ids) {
+		t.Fatalf("asset_translations = %d lignes, want %d (%d cartes x 2 langues)", n, 2*len(ids), len(ids))
+	}
+}
+
+// TestResolveAssetsFromStats_PremiereEcritureV2_SansPlafond : le site d'appel V2
+// (ResolveAssetsFromStats, stats brutes du cycle) résout TOUS les assets neufs, au-delà de 64.
+func TestResolveAssetsFromStats_PremiereEcritureV2_SansPlafond(t *testing.T) {
+	ids := fetcherDeCartesNeuves(t)
+	meta := setupMetaWithTranslations(t)
+	statsList := make([]map[string]any, len(ids))
+	for i, id := range ids {
+		statsList[i] = map[string]any{
+			"MatchId": fmt.Sprintf("m-%02d", i),
+			"MatchInfo": map[string]any{
+				"StartTime":  "2026-10-01T20:00:00Z",
+				"MapVariant": map[string]any{"AssetId": id, "VersionId": "v1"},
+			},
+		}
+	}
+
+	ResolveAssetsFromStats(context.Background(), poolJetonFactice{}, meta, "halo_infinite", statsList)
+
+	if n := compterCartesTraduites(t, meta); n != 2*len(ids) {
+		t.Fatalf("asset_translations = %d lignes, want %d (%d cartes x 2 langues)", n, 2*len(ids), len(ids))
 	}
 }
