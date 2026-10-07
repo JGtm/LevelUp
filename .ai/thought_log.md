@@ -116586,3 +116586,23 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `replay-equiv` base 19ec2c8ba contre branche sur 7344d24f, 696a9d7c, 01e1f945, 64e8adfa : 62 étapes sur 64 identiques. Suite Go complète verte, golangci-lint 0, témoin 572e236b vert (A camp 1 et C camp 0 dès la frame 95), vitest rejeu 3502/3502.
 
 **Conclusion / prochaine étape** : CI de la branche, fusion par le superviseur, puis recuisson du parc (verdict `redecoder` partout).
+
+## [2026-10-07] Coquille : 401 sous session admin par mot de passe, et lien de rejeu `?t=` effacé — Complété (branche `fix/coquille-401-admin-lien-tactique`, deux commits, poussée ; aucune fusion)
+
+**Statut** : Complété côté code et tests ; revalidation à l'écran par l'utilisateur à faire.
+
+**Décision technique principale** :
+- **401 sous session par mot de passe (mode d'auth xbox)** : le login par mot de passe (`UserAuthHandler.handleLogin`, ouvert en mode xbox aux comptes ayant un mot de passe) pose `Username`/`Role` mais jamais `AuthReady`. Le prédicat partagé `sessionAuthenticated` (`internal/api/middleware/require_auth.go`) exigeait `AuthReady` hors du mode `password` : toutes les routes sous `RequireAuth` (`/settings`, `/presence`, `/admin/...`, `/healthz/home`) répondaient 401, alors que `/bootstrap` (`resolveUsername` = `sess.Username`) déclarait l'utilisateur connecté. Les routes joueur n'ont pas `RequireAuth` (seulement propriété + garde d'écriture), d'où leurs 200. Correctif : un `Username` en session suffit dans tous les modes ; `AuthReady` seul reste accepté hors mode `password`, comme avant. Le prédicat est partagé avec `RequireAuthForMutations`, qui bénéficie du même alignement.
+- **Coquille web** : non modifiée. La règle écrite de `routes/__root.tsx` traite un 401 `auth_required` comme une vraie expiration de session ; elle ne se trompait que parce que serveur et bootstrap divergeaient sur « connecté ».
+- **`?t=` du rejeu** : le routeur lit les valeurs de recherche en JSON, `?t=612000` arrivait en nombre, `z.string()` le refusait et `.catch` l'effaçait. `validateSearch` accepte désormais chaîne OU nombre et sort une chaîne (`z.union([z.string(), z.number()]).transform`) ; vérifié dans les types du routeur que `FullSearchSchema` fusionne les SORTIES (`ResolveValidatorOutput`) : `HelpPage`/`SettingsPage` gardent des chaînes (typecheck vert).
+
+**Résultats observés** :
+- `require_auth_xbox_test.go` : rouge avant le correctif (cas mot de passe : 401 au lieu de 200), vert après ; cas SSO, device-code, anonyme (401) et mode password + `AuthReady` seul (401) tenus.
+- `replay.search.test.tsx` (analyseur de recherche du routeur + `validateSearch` réel de la route) : rouge sur la route d'origine (1 échec / 3), vert après.
+- Gates : `go test ./internal/api/...` exit 0, `go vet ./internal/api/...` exit 0, `npm run typecheck` (cache purgé) exit 0, `npm run lint` exit 0 (0 erreur, 26 avertissements préexistants, aucun dans les fichiers touchés), `vitest run src/routes src/lib/match-nav` exit 0 (13 fichiers, 106 tests).
+
+**Découvertes hors périmètre (non traitées)** :
+- `internal/api/handlers/sync_handler.go` (~l. 444) répond 401 `auth_required` quand la session n'a pas de tokens Halo : sous session par mot de passe, un lancement de sync initiale par l'interface déclencherait le même rechargement plein de la coquille (code d'erreur à revoir : 403/409 plutôt que 401 `auth_required`).
+- La coquille web n'a aucun garde-fou d'une page à l'autre contre la boucle de rechargement (l'anti-rafale est une `ref`, remise à zéro par le rechargement lui-même) : toute future divergence entre `/bootstrap` et un 401 `auth_required` reproduira la boucle jusqu'au 429.
+
+**Conclusion / prochaine étape** : revalider à l'écran sous session admin par mot de passe (accueil, pages profondes, Paramètres, badge de présence, section Administration) et ouvrir un lien de rejeu écrit à la main (`?t=612000&clock=match`). Fusion dans feat/v75 : geste du superviseur.
