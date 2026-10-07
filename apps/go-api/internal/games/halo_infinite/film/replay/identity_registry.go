@@ -108,6 +108,11 @@ type IdentityInput struct {
 	// le seul repli que le registre execute (`repli_vie_coupee_au_trou_de_replication`, lot
 	// 1.9.13) ; sans ce compteur, son declenchement serait muet.
 	Fallbacks *fallback.Compteur
+	// documentInterne : le registre est celui d'un document interne (cf. Options.documentInterne) ;
+	// les avertissements qui disent un defaut du document PUBLIE y descendent en Debug
+	// ([niveauDePublication]). NON EXPORTE : seul l'assemblage le pose ; faux, sa valeur zero, est
+	// celui de tout autre registre (cuisson, collecteur).
+	documentInterne bool
 }
 
 // StatborgIdentityInput porte l'identite des slots d'entite statborg et les enregistrements qui
@@ -202,7 +207,7 @@ func BuildIdentityRegistry(ctx context.Context, in IdentityInput) IdentityRegist
 	// LA TABLE EFFECTIVE SE COMPOSE AVANT TOUT LE RESTE, et `in` la porte ensuite : sans cela,
 	// deux etapes du meme registre liraient deux tables differentes du meme film.
 	reg.filmTable = composerTableDIndex(in)
-	reg.filmTable.alarmerSurLaTableDuFilm(ctx, in.MatchID)
+	reg.filmTable.alarmerSurLaTableDuFilm(ctx, in.MatchID, niveauDePublication(in.documentInterne))
 	in.PlayerIndices = reg.filmTable.table
 	reg.own, reg.creation, reg.bridge = buildOwners(ctx, in)
 	reg.resolveByScoreboard(ctx, in)

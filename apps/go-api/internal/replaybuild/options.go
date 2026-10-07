@@ -23,10 +23,11 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 		MatchKills:      cat.matchKills,
 		RosterXUIDs:     rosterXUIDs(facts),
 		Participants:    participantsDuTableau(facts),
-		// LA FEUILLE DE MATCH N'EST QU'UN CONTROLE DES EQUIPES (lot 1.7, decision utilisateur
-		// V4) : l'equipe publiee vient du FILM. Cette table n'alimente que
-		// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle
-		// ne se corrige pas en silence.
+		// LA FEUILLE DE MATCH CONTROLE LES EQUIPES (lot 1.7, decision utilisateur V4) : l'equipe
+		// publiee vient du FILM, et cette table alimente `coverage.teams.{accord, contradiction,
+		// silence}` — une contradiction se compte, elle ne se corrige pas en silence. Elle ne pose
+		// qu'une equipe : celle d'un bot dont l'entite et la declaration BOT_METADATA se
+		// contredisent (`replay/occupants_equipe_arbitree.go`, decision utilisateur du 2026-10-07).
 		ScoreboardTeams: teamByXUID(facts),
 		Bots:            cat.bots,
 		Successions:     cat.successions,

@@ -13,13 +13,14 @@ import (
 // 2026-09-28 avec le code qu'ils testent : `film/replay/porteurs_drapeau_identite_test.go` (lot V1.4
 // du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
 
-// TestScoreboardTeamsEstUnControle — LA FEUILLE DE MATCH NE POSE PLUS D'EQUIPE (lot 1.7).
+// TestScoreboardTeamsEstUnControle — LA FEUILLE DE MATCH NE POSE PLUS L EQUIPE DU PORTEUR (lot 1.7).
 //
 // L'invariant « un portage n'est JAMAIS pose sur le drapeau de l'equipe de son porteur » tirait
 // son equipe de `FlagInput.TeamOf`, une table fournie par CE paquet depuis les lignes de match.
-// Depuis le lot 1.7 (decision utilisateur V4), l'equipe vient du FILM et cette table n'est plus
-// qu'un CONTROLE : elle alimente `coverage.teams.{accord, contradiction, silence}` par
-// `Options.ScoreboardTeams`, et rien d'autre. Ce test garde ce qu'elle doit contenir — une
+// Depuis le lot 1.7 (decision utilisateur V4), l equipe vient du FILM et cette table est
+// un CONTROLE : elle alimente `coverage.teams.{accord, contradiction, silence}` par
+// `Options.ScoreboardTeams`, et ne tranche que la contradiction d'un bot entre son entite et sa
+// declaration (`replay/occupants_equipe_arbitree.go`). Ce test garde ce qu'elle doit contenir — une
 // equipe INCONNUE (-1 en base) n'entre pas, sans quoi le controle compterait une contradiction
 // contre une absence.
 func TestScoreboardTeamsEstUnControle(t *testing.T) {

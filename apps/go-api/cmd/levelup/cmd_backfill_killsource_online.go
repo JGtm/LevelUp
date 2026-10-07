@@ -67,8 +67,25 @@ func passeDesFilmsEnLigne(
 	ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions, _ string,
 ) (*suiviDeLaPasse, error) {
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
-
-	candidats, err := matchsSansPasseDeFilm(ctx, db, selectionSansBorne(o))
+	caps, err := capabilitesDuTitre(cfg, o.titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	// LA CAPTURE DES POSITIONS, CABLEE ICI AUSSI (correction P0-1, 2026-09-07) : ce chemin la
+	// manquait, comme l etape post-sync. Un film telecharge en ligne n a aucune raison de
+	// produire moins que le meme film relu du cache. Elle porte la resolution de carte, donc la
+	// SELECTION : elle est cablee avant le plan.
+	// PORTE NIL : la passe en ligne reste EN SERIE (lot 5.24.2). Son cout n est pas le decodage
+	// mais le RESEAU, borne par `--rps` — paralleliser les decodages ne ferait qu attendre plus
+	// vite, et multiplierait les requetes Halo au-dela du debit qu on s est donne. Sans porte, le
+	// passe-plat rend exactement le comportement d avant le lot.
+	capture, fermerCapture := positionCaptureDeps(ctx, cfg, o.titleSlug, db, nil)
+	defer fermerCapture()
+	// UNE SEULE SELECTION POUR LE PLAN ET POUR LA PASSE (cf. cmd_backfill_killsource_carte.go) : les
+	// matchs sans carte sortent avant la borne et avant tout telechargement, `--dry-run` compris. La
+	// resolution de carte ne lit que la base : ce collecteur de selection n a pas de source de films.
+	selection := killcollector.NewKillSourceCollector(nil, nil, nil, caps, 0).AvecCapture(capture)
+	candidats, err := idsDeLaPasseEnLigne(ctx, db, o, selection)
 	if err != nil {
 		return nil, err
 	}
@@ -82,10 +99,6 @@ func passeDesFilmsEnLigne(
 		return nil, nil
 	}
 
-	caps, err := capabilitesDuTitre(cfg, o.titleSlug)
-	if err != nil {
-		return nil, err
-	}
 	// Les tokens sont resolus APRES le dry-run et APRES les capabilities : une passe qui
 	// n aurait rien a faire, ou un titre sans `film.kill_source`, ne doit pas exiger une
 	// authentification vivante pour dire qu elle n a rien a faire.
@@ -109,23 +122,10 @@ func passeDesFilmsEnLigne(
 		cacheRoot,
 	)
 
-	// LA CAPTURE DES POSITIONS, CABLEE ICI AUSSI (correction P0-1, 2026-09-07) : ce chemin la
-	// manquait, comme l etape post-sync. Un film telecharge en ligne n a aucune raison de
-	// produire moins que le meme film relu du cache.
-	// PORTE NIL : la passe en ligne reste EN SERIE (lot 5.24.2). Son cout n est pas le decodage
-	// mais le RESEAU, borne par `--rps` — paralleliser les decodages ne ferait qu attendre plus
-	// vite, et multiplierait les requetes Halo au-dela du debit qu on s est donne. Sans porte, le
-	// passe-plat rend exactement le comportement d avant le lot.
-	capture, fermerCapture := positionCaptureDeps(ctx, cfg, o.titleSlug, db, nil)
-	defer fermerCapture()
-
 	collecteur := killcollector.NewKillSourceCollector(
 		source, killcollector.NewSharedRoster(db), writerDeja(db), caps,
 		0, // limite par match : le defaut du collecteur (45 min)
 	).AvecCapture(capture)
-	// LES MATCHS SANS CARTE SORTENT AVANT LE TELECHARGEMENT ET AVANT LA BORNE (2026-09-27, cf.
-	// cmd_backfill_killsource_carte.go) : aucun aller-retour reseau pour un film non decodable.
-	candidats = idsAvecCarte(ctx, collecteur, candidats, o.limit)
 	debut := time.Now()
 	sum := collecteur.CollectMatches(ctx, candidats)
 	fmt.Printf("films (en ligne) : %d ecrits (%d morts), %d absents/expires, %d sans kill-feed, "+
