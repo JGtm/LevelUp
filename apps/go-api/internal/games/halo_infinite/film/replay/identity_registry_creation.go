@@ -54,9 +54,9 @@ package replay
 // le corps se lit a l'ENTITE `ti=9` de cet index qui vit a sa CREATION, et l'entite a son occupant
 // (cf. identity_registry_entites.go). C'est une lecture du film, comptee `ParEntite` : les neuf
 // corps de bots d'index 8 de `b1ad85eb` y passent de `index_hors_table` a `direct`. Quand l'entite
-// se tait sur un index que seuls des bots se relaient, le corps se lit aux declarations
-// BOT_METADATA : le seul bot declare a sa creation, quand une de ses declarations couvre aussi sa
-// vie (cf. identity_registry_declarations.go), compte `ParDeclaration`.
+// se tait, le corps se lit aux declarations BOT_METADATA des bots de son index, sous les conditions
+// de identity_registry_declarations.go (humain de l index absent, un seul bot designe), compte
+// `ParDeclaration`.
 
 import (
 	"cmp"
@@ -96,7 +96,7 @@ type creationReport struct {
 	// ParEntite : vies d'un index PARTAGE que l'entite `ti=9` vivante a la creation de leur corps
 	// a nommees (lot M2.3). SOUS-COMPTE de `Direct` + `Propagated`.
 	ParEntite int
-	// ParDeclaration : vies d'un index que plusieurs bots se relaient, que l'entite n'a pas nommees
+	// ParDeclaration : vies d un index que plusieurs occupants se relaient, que l entite n a pas nommees
 	// et que les declarations BOT_METADATA ont nommees (cf. identity_registry_declarations.go).
 	// SOUS-COMPTE de `Direct` + `Propagated`.
 	ParDeclaration int
@@ -160,7 +160,7 @@ func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
 	}
 	res := resolutionDIndex{versXUID: indexToXUIDOf(idx.ByXUID), versBot: indexDesBotsDeclares(bots),
 		parEntite:      lireEntitesDesIndexPartages(scan, bots, idx),
-		parDeclaration: lireBotsDesIndexPartages(bots, idx)}
+		parDeclaration: lireLesDeclarations(bots, idx, scan)}
 	for slot, vies := range indicesDeViesParSlot(lives) {
 		c, ok := corps[slot]
 		if !ok {
@@ -181,8 +181,9 @@ type resolutionDIndex struct {
 	versBot  map[int]bool
 	// parEntite : les index que plusieurs occupants se relaient, lus par entite (lot M2.3).
 	parEntite entitesDesIndexPartages
-	// parDeclaration : les index que seuls des bots se relaient, lus par leurs declarations.
-	parDeclaration botsDesIndexPartages
+	// parDeclaration : les index que plusieurs occupants se relaient, lus par les declarations de leurs bots
+	// (identity_registry_declarations.go).
+	parDeclaration lectureParDeclaration
 }
 
 // indicesDeViesParSlot groupe les INDICES des vies par slot, dans l'ordre chronologique.
@@ -246,8 +247,8 @@ func (r *creationReport) poser(lives []lifeSpan, i int, d dateDeCreation, t reso
 		return true
 	}
 	if bid, lu := t.parDeclaration.botDeclareSurLaVie(pi, d.tUS, lives[i]); lu {
-		// L'ENTITE SE TAIT, LES DECLARATIONS BOT_METADATA DESIGNENT UN SEUL BOT sur la creation du
-		// corps et toute sa vie : c'est le sien.
+		// L ENTITE SE TAIT, LES DECLARATIONS BOT_METADATA DESIGNENT UN SEUL BOT pour la creation du
+		// corps et toute sa vie, l humain de l index absent : c est le sien (identity_registry_declarations.go).
 		lives[i].bid = bid
 		r.ParDeclaration++
 		return true

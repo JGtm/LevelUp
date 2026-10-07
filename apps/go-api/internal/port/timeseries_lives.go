@@ -18,3 +18,11 @@ import (
 type SoloLivesRepository interface {
 	LoadLivesNearTeammate(ctx context.Context, matchIDs []string, xuid string) (domain.ViesLues, error)
 }
+
+// CampLivesRepository — la même lecture pour PLUSIEURS joueurs à la fois (Vue match : « Isolement »
+// de chaque joueur de l'équipe), en UNE lecture (ADR 0036 I4). Une entrée par joueur demandé, vide
+// s'il n'a aucune ligne ; le journal non publiable et les variantes, communs, sont sur chaque entrée.
+// Implémenté par la même internal/platform/duckdb.SoloLivesRepo, sous la même porte.
+type CampLivesRepository interface {
+	LoadLivesNearTeammateForPlayers(ctx context.Context, matchIDs, xuids []string) (map[string]domain.ViesLues, error)
+}

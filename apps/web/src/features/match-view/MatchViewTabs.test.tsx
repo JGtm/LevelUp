@@ -3,10 +3,10 @@
  *
  * Le troisième onglet a été ajouté le 2026-09-19 (plan
  * `.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`, lot 2) sous le nom « Contrôle » : il
- * prend à Chronologie les trois blocs qui disent QUI A TENU QUOI — bilan d'équipement,
- * contrôle des armes, occupation du terrain. Il s'appelle « Armes et terrain » (`arsenal`)
- * depuis le 2026-09-22 et a repris de Général la répartition des frags et la distance des
- * frags : un onglet, un axe de lecture.
+ * prend à Chronologie les blocs qui disent QUI A TENU QUOI. Il s'appelle « Armes et terrain »
+ * (`arsenal`) depuis le 2026-09-22 et a repris de Général la répartition des frags et la distance
+ * des frags ; depuis le 2026-10-07 il porte les cartes de l'Emprise du match (contrôle des
+ * ressources, prises par joueur, frags et rendement par ressource, isolement par joueur).
  *
  * Couvre : la rétro-compat des deep-links (`?tab=details` → Chronologie et
  * `?tab=control` → Armes et terrain, résolus au décodage par le schéma de recherche de la
@@ -35,7 +35,7 @@ const hoisted = vi.hoisted(() => {
   positionsCalls: [] as unknown[][],
   // Prédicats de rendu des blocs qui dépendent d'une capability ou de l'artefact de rejeu :
   // pilotés par test, puisque c'est EUX qui décident si un titre de section se pose.
-  blocks: { killDistance: true, equipment: true, pads: true },
+  blocks: { killDistance: true, equipment: true, emprise: true },
   /** Artefact de rejeu : truthy = « un film existe » (son contenu est sans objet ici). */
   replayDoc: {} as unknown,
   matchView: {
@@ -126,8 +126,8 @@ vi.mock('@/features/engagement/EngagementMatchSection', () => ({
   EngagementMatchSection: () => <div data-testid="engagement" />,
 }))
 
-// Feuilles mockées — onglet « Armes et terrain » : les deux blocs venus de Général le
-// 2026-09-22, puis les trois blocs déplacés depuis Chronologie le 2026-09-19.
+// Feuilles mockées — onglet « Armes et terrain » : frags et distance, puis l'Emprise du match, l'usage
+// d'équipements et les positions.
 // Chaque bloc expose SON prédicat de rendu : le parent le lit pour poser (ou non) son titre
 // de section. Les mocks conservent donc le prédicat — le VRAI quand il est pur
 // (`hasMatchFragData`, `hasPositions`), un pilotable sinon (capability, artefact de rejeu).
@@ -147,20 +147,28 @@ vi.mock('./blockPredicates', async (importOriginal) => ({
 vi.mock('@/features/match-replay/MatchEquipmentUsageSection', () => ({
   MatchEquipmentUsageSection: () => <div data-testid="equipment-usage" />,
 }))
-vi.mock('@/features/match-replay/MatchPadControlSection', () => ({
-  MatchPadControlSection: () => <div data-testid="pad-control" />,
+// Les cartes de l'Emprise : leur présence est pilotée (les modèles ont leurs propres tests).
+vi.mock('./useMatchEmprise', () => ({
+  useMatchEmprise: () => {
+    const on = hoisted.blocks.emprise
+    return {
+      present: { control: on, sheets: on, production: on, yield: on, lives: on },
+      coverage: on ? 'film décodé · 8 joueurs présents à la fin' : null,
+      control: on && <div data-testid="emprise-control" />,
+      sheets: on && <div data-testid="emprise-sheets" />,
+      production: on && <div data-testid="emprise-production" />,
+      yieldCard: on && <div data-testid="emprise-yield" />,
+      lives: on && <div data-testid="emprise-lives" />,
+    }
+  },
 }))
-// Les deux mesures de rejeu se rebâtissent chez le parent depuis l'artefact en cache : ici
+// La mesure de rejeu se rebâtit chez le parent depuis l'artefact en cache : ici
 // le document est un jeton de présence et les constructeurs rendent un objet opaque — seul
 // compte le prédicat mocké ci-dessus.
 vi.mock('@/lib/replay/queries', () => ({ useMatchReplay: () => ({ data: hoisted.replayDoc }) }))
 vi.mock('@/features/match-replay/model/equipmentUsageLogic', () => ({
   buildEquipmentUsage: () => ({}),
   hasEquipmentUsage: () => hoisted.blocks.equipment,
-}))
-vi.mock('@/features/match-replay/model/padControlLogic', () => ({
-  buildPadControl: () => ({}),
-  hasPadControl: () => hoisted.blocks.pads,
 }))
 
 // Feuilles mockées — onglet Joueurs.
@@ -184,12 +192,22 @@ const SECTION_REWARDS = 'Récompenses'
 const SECTION_MEDIA = 'Médias'
 const SECTION_KILLS_WEAPONS = 'Frags et armes'
 const SECTION_EQUIPMENT_TERRAIN = 'Équipement et terrain'
+/** Les blocs de « Équipement et terrain », dans l'ordre de l'écran (plan, §3 : D, E, F, G, H, I, J). */
+const TERRAIN_ORDER = [
+  'emprise-control',
+  'emprise-sheets',
+  'equipment-usage',
+  'emprise-production',
+  'emprise-yield',
+  'emprise-lives',
+  'positions-heatmap',
+]
 
 beforeEach(() => {
   hoisted.search = {}
   hoisted.objectiveEventsCalls = []
   hoisted.positionsCalls = []
-  hoisted.blocks = { killDistance: true, equipment: true, pads: true }
+  hoisted.blocks = { killDistance: true, equipment: true, emprise: true }
   hoisted.replayDoc = {}
   ;(hoisted.matchView.data as { combat_tab: Record<string, unknown> }).combat_tab = {
     frag_distribution: hoisted.fragDistribution,
@@ -302,8 +320,8 @@ describe('MatchViewPage — contenu par onglet', () => {
     for (const id of ['impact-badges', 'kd-cumul', 'score-curve', 'tug-of-war', 'cadence', 'engagement']) {
       expect(screen.getByTestId(id)).toBeInTheDocument()
     }
-    // Les trois blocs d'« Armes et terrain » ont quitté cet onglet le 2026-09-19.
-    for (const id of ['positions-heatmap', 'equipment-usage', 'pad-control']) {
+    // Les blocs d'« Armes et terrain » ne sont pas sur cet onglet.
+    for (const id of ['positions-heatmap', 'equipment-usage', 'emprise-control']) {
       expect(screen.queryByTestId(id)).not.toBeInTheDocument()
     }
     expect(screen.queryByTestId('summary-cards')).not.toBeInTheDocument()
@@ -316,7 +334,7 @@ describe('MatchViewPage — contenu par onglet', () => {
     hoisted.search = { tab: 'arsenal' }
     renderWithProviders(<MatchViewPage />)
 
-    for (const id of ['frag-card', 'kill-distance', 'equipment-usage', 'pad-control', 'positions-heatmap']) {
+    for (const id of ['frag-card', 'kill-distance', ...TERRAIN_ORDER]) {
       expect(screen.getByTestId(id)).toBeInTheDocument()
     }
     expect(screen.queryByText(SECTION_FLOW)).not.toBeInTheDocument()
@@ -333,7 +351,7 @@ describe('MatchViewPage — contenu par onglet', () => {
       expect(kills.contains(screen.getByTestId(id))).toBe(true)
     }
     const terrain = screen.getByText(SECTION_EQUIPMENT_TERRAIN).closest('section') as HTMLElement
-    for (const id of ['equipment-usage', 'pad-control', 'positions-heatmap']) {
+    for (const id of TERRAIN_ORDER) {
       expect(terrain.contains(screen.getByTestId(id))).toBe(true)
     }
     // Aucun titre de l'onglet Général n'a suivi les deux blocs déplacés.
@@ -346,7 +364,7 @@ describe('MatchViewPage — contenu par onglet', () => {
 describe('un titre de section ne se pose jamais au-dessus de rien', () => {
   it('Armes et terrain, titre sans positions de frag et match sans frag : état vide nommé', () => {
     hoisted.search = { tab: 'arsenal' }
-    hoisted.blocks = { killDistance: false, equipment: false, pads: false }
+    hoisted.blocks = { killDistance: false, equipment: false, emprise: false }
     hoisted.replayDoc = undefined
     ;(hoisted.matchView.data as { combat_tab: Record<string, unknown> }).combat_tab = {}
     renderWithProviders(<MatchViewPage />)
@@ -359,7 +377,7 @@ describe('un titre de section ne se pose jamais au-dessus de rien', () => {
 
   it('Armes et terrain, des frags mais aucun film : « Frags et armes » seul', () => {
     hoisted.search = { tab: 'arsenal' }
-    hoisted.blocks = { killDistance: false, equipment: false, pads: false }
+    hoisted.blocks = { killDistance: false, equipment: false, emprise: false }
     hoisted.replayDoc = undefined
     renderWithProviders(<MatchViewPage />)
 

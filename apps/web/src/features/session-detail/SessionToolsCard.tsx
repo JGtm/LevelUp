@@ -11,12 +11,10 @@
 import { useMemo } from 'react'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { buildSquadToolRows, type SquadToolKindLabels } from '@/features/squad/charts/squadFragTools'
+import { buildSquadToolRows, toolKindLabels } from '@/features/squad/charts/squadFragTools'
 import { getSquadPlayerColors } from '@/features/squad/colors'
 import { SquadWeaponKillsChart } from '@/features/squad/SquadWeaponKillsChart'
 import type { SquadWeaponTools } from '@/lib/api/types'
-import { formatMessage } from '@/lib/i18n/format'
-import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { SESSION_TOOLS_TOP } from './sessionEmprise.logic'
@@ -33,23 +31,12 @@ interface Props {
 
 export function SessionToolsCard({ tools, player, locale, texts, compact }: Props) {
   const t = texts.squad
-  // Les natures sans nom de registre sont nommées ici (le serveur n'écrit aucun libellé) — même
-  // patron que `SquadFragSection` : manifeste `frags` pour la mêlée, les mécaniques et le reliquat,
-  // textes de l'Escouade pour les deux catégories de source du film.
-  const rows = useMemo(() => {
-    const fragLabel = (k: string) => formatMessage(fragsManifest, k as never, locale)
-    const labels: SquadToolKindLabels = {
-      melee: fragLabel('frags.class.melee'),
-      grenade: fragLabel('frags.class.grenade'),
-      assassination: fragLabel('frags.role.assassination'),
-      ground_pound: fragLabel('frags.role.ground_pound'),
-      shoulder_bash: fragLabel('frags.role.shoulder_bash'),
-      explosive_object: t.weaponKills.explosiveObject,
-      environment: t.weaponKills.environment,
-      unattributed: fragLabel('frags.class.unattributed'),
-    }
-    return buildSquadToolRows(tools, { locale, labels, top: compact ? SESSION_TOOLS_TOP : undefined })
-  }, [tools, locale, compact, t.weaponKills.explosiveObject, t.weaponKills.environment])
+  // Les natures sans nom de registre : la source unique `toolKindLabels` (manifeste `frags`, textes
+  // de l'Escouade pour les deux catégories de source du film).
+  const rows = useMemo(
+    () => buildSquadToolRows(tools, { locale, labels: toolKindLabels(locale, t.weaponKills), top: compact ? SESSION_TOOLS_TOP : undefined }),
+    [tools, locale, compact, t.weaponKills],
+  )
   const colors = useMemo(() => getSquadPlayerColors(player, []), [player])
   const shareTotals = useMemo(() => {
     if (!compact) return undefined

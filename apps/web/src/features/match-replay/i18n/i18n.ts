@@ -372,60 +372,27 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: "Usages d'équipement",
-      viewByPlayer: 'Usages par joueur',
-      viewTeamShare: "Part de chaque équipe",
+      viewByPlayer: "Usage d'équipements, par joueur",
+      infoByPlayer:
+        "Objets pris par chaque joueur du match, une pile par issue : servi (activé pour un bonus, posé pour le mur, charge consommée pour le reste), gardé sans servir, lâché en mourant ; le grappin compte ses tractions. Chaque colonne a sa propre échelle, et le répulseur n'en a pas : aucun canal du film ne mesure son usage.",
+      legendUsed: 'Servi',
+      legendKept: 'Gardé sans servir',
+      legendDropped: 'Lâché',
+      legendGrapple: 'Tractions de grappin',
       gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
-      shareTipFmt: (team, family, count, total, percent) =>
-        `${team} — ${family} : ${count} sur ${total} (${percent} %)`,
       groupGrapple: 'Grappin',
-      groupGrappleHint:
-        "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
-      groupEquipment: 'Équipement',
-      groupEquipmentHint:
-        "Chaque objet ramassé finit d'une seule façon : utilisé, gardé sans l'utiliser, ou lâché en mourant. « Utilisé » veut dire ACTIVÉ pour le camouflage et le surbouclier, POSÉ pour le reste (mur, capteur, écran occultant, traqueur, champ de réparation, balise du translocateur). Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Le grappin, le propulseur et le répulseur agissent sur leur porteur et n'ont pas de colonne ici — le répulseur parce qu'aucun canal du film ne mesure son activation, jamais parce qu'il ne sert à rien.",
-      outcomeUsedFmt: (count) => `Utilisé : ${count}`,
-      outcomeKeptFmt: (count) => `Gardé sans l'utiliser : ${count}`,
-      outcomeDroppedFmt: (count) => `Lâché en mourant : ${count}`,
+      outcomeUsedFmt: (count) => `Servi : ${count}`,
+      outcomeKeptFmt: (count) => `Gardé sans servir : ${count}`,
+      outcomeDroppedFmt: (count) => `Lâché : ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
       coverageReserveFmt: (count) =>
-        `${count} usage${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} ${count > 1 ? 'restent' : 'reste'} hors des deux vues : le film n'en nomme ni l'auteur ni l'origine.`,
+        `${count} usage${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} ${count > 1 ? 'restent' : 'reste'} hors de la grille : le film n'en nomme ni l'auteur ni l'origine.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
       },
       killBadgeHint:
         "Le meilleur épisode du match pour cette famille. Même réserve que les états actifs : la source de l'épisode n'est pas distinguée (ramassage ou capacité déclenchée), ses bornes sont à la précision de la retransmission près, et le camo seul reste sous le seuil de mesure en lecture large.",
-    },
-    padControl: {
-      title: 'Contrôle des armes spéciales',
-      titleHint:
-        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le graphe.",
-      barTipFmt: (player, team, weapon, count) =>
-        `${player} (${team}) — ${weapon} : ${count} prise${count > 1 ? 's' : ''}`,
-      unnamedFmt: (count) => `+ ${count} sans nom`,
-      tierLabels: {
-        base: 'Armes de base',
-        ground: 'Armes de terrain',
-        power: 'Armes de puissance',
-        powerup: 'Socles de bonus',
-        unclassified: 'Emplacement non identifié',
-      },
-      tierSubtotalFmt: (count) => `${count} prise${count > 1 ? 's' : ''}`,
-      tierShortLabels: {
-        base: 'Base',
-        ground: 'Terrain',
-        power: 'Puissance',
-        powerup: 'Bonus',
-        unclassified: 'Non identifié',
-      },
-      chartEmpty: "Aucun socle d'arme de puissance ou de terrain n'a été pris dans ce match.",
-      baseToggleFmt: (count) => `Armes de base (${count})`,
-      unclassifiedHintFmt: (count) =>
-        `${count} prise${count > 1 ? 's' : ''} sur un emplacement non identifié.`,
-      randomStartsNote:
-        "Départs aléatoires : ce mode distribue les équipements de début de vie au hasard, il n'y a donc pas d'arme de base à distinguer.",
-      tiersUnmeasuredNote:
-        "Les emplacements de cette carte ne sont pas dans la référence : le niveau de chaque arme n'a pas pu être établi. Les prises restent comptées.",
     },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
@@ -821,60 +788,27 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: 'Equipment usage',
-      viewByPlayer: 'Usage by player',
-      viewTeamShare: "Each team's share",
+      viewByPlayer: 'Equipment use, by player',
+      infoByPlayer:
+        'Objects taken by each player of the match, one stack per outcome: used (activated for a power-up, placed for the drop wall, charge spent for the rest), kept without use, dropped on death; the grappleshot counts its pulls. Each column has its own scale, and the repulsor has none: no channel of the film measures its use.',
+      legendUsed: 'Used',
+      legendKept: 'Kept without use',
+      legendDropped: 'Dropped',
+      legendGrapple: 'Grapple pulls',
       gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
-      shareTipFmt: (team, family, count, total, percent) =>
-        `${team} — ${family}: ${count} of ${total} (${percent}%)`,
       groupGrapple: 'Grappleshot',
-      groupGrappleHint:
-        'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
-      groupEquipment: 'Equipment',
-      groupEquipmentHint:
-        "Every object picked up ends exactly one way: used, kept without using it, or dropped on death. \"Used\" means ACTIVATED for camo and overshield, PLACED for everything else (drop wall, sensor, shroud screen, seeker, repair field, translocator beacon). A deployed drop wall publishes two placements (the device and its panels) and counts as one. The grappleshot, thruster and repulsor act on their carrier and have no column here — the repulsor because no channel of the film measures its activation, never because it does nothing.",
       outcomeUsedFmt: (count) => `Used: ${count}`,
-      outcomeKeptFmt: (count) => `Kept without using it: ${count}`,
-      outcomeDroppedFmt: (count) => `Dropped on death: ${count}`,
+      outcomeKeptFmt: (count) => `Kept without use: ${count}`,
+      outcomeDroppedFmt: (count) => `Dropped: ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
       coverageReserveFmt: (count) =>
-        `${count} measured usage${count > 1 ? 's' : ''} ${count > 1 ? 'stay' : 'stays'} outside both views: the film names neither their author nor their origin.`,
+        `${count} measured usage${count > 1 ? 's' : ''} ${count > 1 ? 'stay' : 'stays'} outside the grid: the film names neither their author nor their origin.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,
       },
       killBadgeHint:
         "The best episode of the match for this family. Same reserve as active states: the episode's source is not told apart (picked up or triggered), its bounds are at broadcast precision, and camo alone stays under the measurement threshold in broad reading.",
-    },
-    padControl: {
-      title: 'Power weapon control',
-      titleHint:
-        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the chart.',
-      barTipFmt: (player, team, weapon, count) =>
-        `${player} (${team}) — ${weapon}: ${count} pickup${count > 1 ? 's' : ''}`,
-      unnamedFmt: (count) => `+ ${count} unnamed`,
-      tierLabels: {
-        base: 'Starting weapons',
-        ground: 'Map weapons',
-        power: 'Power weapons',
-        powerup: 'Power-up pads',
-        unclassified: 'Unidentified spot',
-      },
-      tierSubtotalFmt: (count) => `${count} pickup${count > 1 ? 's' : ''}`,
-      tierShortLabels: {
-        base: 'Base',
-        ground: 'Map',
-        power: 'Power',
-        powerup: 'Power-ups',
-        unclassified: 'Unidentified',
-      },
-      chartEmpty: 'No power or map weapon pad was taken in this match.',
-      baseToggleFmt: (count) => `Base weapons (${count})`,
-      unclassifiedHintFmt: (count) =>
-        `${count} pickup${count > 1 ? 's' : ''} from an unidentified spot.`,
-      randomStartsNote:
-        'Random starts: this mode hands out spawn loadouts at random, so there is no starting weapon to single out.',
-      tiersUnmeasuredNote:
-        'This map’s weapon spots are not in the reference: each weapon’s level could not be established. The pickups are still counted.',
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',

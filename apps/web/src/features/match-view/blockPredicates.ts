@@ -15,30 +15,11 @@
  *
  * CE MODULE NE CONNAÎT AUCUN RENDU : que des fonctions pures sur la donnée du contrat, plus
  * UN hook (la capability d'un titre se lit dans le cache de requêtes, pas dans une prop).
- * Les prédicats des deux cartes de rejeu vivent, eux, avec leurs mesures
- * (`match-replay/model/equipmentUsageLogic` et `…/padControlLogic`).
+ * Le prédicat de la carte de rejeu vit, lui, avec sa mesure (`match-replay/model/equipmentUsageLogic`) ;
+ * ceux des cartes de l'Emprise avec leurs modèles (`matchEmprise.logic.ts`).
  */
-import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdown'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
-import type {
-  FragDistribution,
-  MatchAssociatedMedia,
-  MatchPlayerPosition,
-  MatchWeaponKill,
-  SynthesisWeaponKillEntry,
-} from '@/lib/api/types'
-
-/**
- * Normalise la liste per-arme du viewer (MatchWeaponKill) vers la forme
- * `{label, kills, class}` attendue par le breakdown partagé.
- */
-export function normalizeFragWeapons(weapons?: MatchWeaponKill[]): SynthesisWeaponKillEntry[] {
-  return (weapons ?? []).map((w) => ({
-    label: w.weapon_label,
-    kills: w.kill_count,
-    class: w.class,
-  }))
-}
+import type { FragDistribution, MatchAssociatedMedia, MatchPlayerPosition, SquadWeaponTools } from '@/lib/api/types'
 
 /**
  * hasFragSunburst — miroir EXACT du prédicat de rendu de `FragSunburst` (total > 0 ET
@@ -49,28 +30,14 @@ export function hasFragSunburst(distribution?: FragDistribution | null): boolean
   return (distribution?.total_kills ?? 0) > 0 && (distribution?.classes?.length ?? 0) > 0
 }
 
-/**
- * Résolveurs d'identité : le COMPTE de lignes du breakdown ne dépend pas des libellés
- * (`buildFragDetailBreakdown` pousse une entrée par rôle/classe retenue, quel que soit son
- * nom). Compter sans manifeste i18n garde {@link hasMatchFragData} PUR — appelable par le
- * parent sans store ni locale.
- */
-const COUNT_ONLY_LABELS = {
-  roleLabel: (role: string) => role,
-  classLabel: (className: string) => className,
-  locale: 'fr' as const,
+/** hasWeaponTools — « Outils de destruction » a au moins une ligne (le graphe ne s'affiche pas vide). */
+export function hasWeaponTools(tools?: SquadWeaponTools | null): boolean {
+  return (tools?.players?.length ?? 0) > 0 && (tools?.lines?.length ?? 0) > 0
 }
 
-/** hasMatchFragData — le prédicat de rendu de `MatchFragCard` (sunburst OU détail par arme). */
-export function hasMatchFragData(
-  distribution?: FragDistribution | null,
-  weapons?: MatchWeaponKill[],
-): boolean {
-  if (hasFragSunburst(distribution)) return true
-  return (
-    buildFragDetailBreakdown(distribution, normalizeFragWeapons(weapons), COUNT_ONLY_LABELS)
-      .length > 0
-  )
+/** hasMatchFragData — le prédicat de rendu de `MatchFragCard` (anneau OU outils de destruction). */
+export function hasMatchFragData(distribution?: FragDistribution | null, tools?: SquadWeaponTools | null): boolean {
+  return hasFragSunburst(distribution) || hasWeaponTools(tools)
 }
 
 /**

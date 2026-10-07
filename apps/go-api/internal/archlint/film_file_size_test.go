@@ -239,7 +239,11 @@ var plafondsParFichier = map[string]int{
 	// du partant, la succession de l humain, la forme inchangee, `SchemaDesFaits` qui monte et les
 	// revisions qui ne montent pas, l effet au parc). Exception ecrite, dans le commit qui monte
 	// `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2870,
+	// SCHEMA 80 -> 81 (2026-10-07, rejeu « aucune fiche en trop »), +26 : l entree v81 (la vie apres le
+	// depart prouve, le corps lu aux declarations quand l humain de l index est absent, le bot sans vie
+	// ni place hors du roster, la forme inchangee, l effet au parc). Exception ecrite, dans le commit qui
+	// monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2896,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -333,7 +337,9 @@ var plafondsParFichier = map[string]int{
 	// justification de la montee (les bases du drapeau lues dans le film).
 	// SCHEMA 79 -> 80 (2026-10-06, rejeu « toute entree du roster a l equipe que le film ecrit ») :
 	// 1384 -> 1388, la justification de la montee (l equipe des bots lue dans BOT_METADATA).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1388,
+	// SCHEMA 80 -> 81 (2026-10-07, rejeu « aucune fiche en trop ») : 1388 -> 1392, la justification de
+	// la montee (une equipe a exactement ses places, aucun champ neuf).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1392,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

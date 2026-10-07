@@ -17670,8 +17670,6 @@ components:
           $ref: '#/components/schemas/MatchAssistPairs'
         cadence:
           $ref: '#/components/schemas/ChartSeriesChartPointStacked'
-        elevation:
-          $ref: '#/components/schemas/MatchElevationBlock'
         frag_distribution:
           $ref: '#/components/schemas/FragDistribution'
         highlight_events:
@@ -17716,83 +17714,85 @@ components:
           type:
             - array
             - "null"
-        riposte:
-          $ref: '#/components/schemas/MatchRiposteBlock'
         tug_of_war:
           items:
             $ref: '#/components/schemas/MatchTugOfWarBin'
           type:
             - array
             - "null"
-        weapon_kills:
-          items:
-            $ref: '#/components/schemas/MatchWeaponKill'
-          type:
-            - array
-            - "null"
+        weapon_tools:
+          $ref: '#/components/schemas/SquadWeaponTools'
       required:
-        - weapon_kills
         - highlight_events
         - tug_of_war
         - impact_badges
         - kd_timeline
         - nemesis_duels
       type: object
-    MatchElevationBlock:
+    MatchEmpriseBlock:
       additionalProperties: false
       properties:
-        kills:
+        film_unavailable:
+          type: string
+        habit:
+          $ref: '#/components/schemas/SquadEmpriseHabit'
+        kill_journal:
+          enum:
+            - publishable
+            - not_publishable
+            - unavailable
+          type: string
+        matches:
           items:
-            $ref: '#/components/schemas/MatchElevationKill'
+            $ref: '#/components/schemas/SquadEmpriseMatch'
           type:
             - array
             - "null"
-        lobby:
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        objects:
           items:
-            $ref: '#/components/schemas/MatchElevationKill'
+            $ref: '#/components/schemas/SquadEmpriseObject'
           type:
             - array
             - "null"
-        lobby_median_delta_z_m:
-          format: double
-          type: number
-        measured_kills:
-          format: int64
-          type: integer
-        total_kills:
-          format: int64
-          type: integer
+        placement:
+          $ref: '#/components/schemas/SquadEmprisePlacement'
+        players:
+          items:
+            $ref: '#/components/schemas/SessionUsageSquadPlayer'
+          type:
+            - array
+            - "null"
+        production:
+          items:
+            $ref: '#/components/schemas/SquadEmpriseProduction'
+          type:
+            - array
+            - "null"
+        resources:
+          items:
+            $ref: '#/components/schemas/SquadEmpriseResource'
+          type:
+            - array
+            - "null"
+        sheet_unavailable:
+          type: string
+        vehicles:
+          $ref: '#/components/schemas/SquadEmpriseVehicles'
       required:
-        - kills
-        - lobby_median_delta_z_m
-        - measured_kills
-        - total_kills
-      type: object
-    MatchElevationKill:
-      additionalProperties: false
-      properties:
-        delta_z_m:
-          format: double
-          type: number
-        distance_m:
-          format: double
-          type: number
-        opponent:
-          type: string
-        side:
-          type: string
-        time_ms:
-          format: int64
-          type: integer
-        weapon:
-          type: string
-        weapon_en:
-          type: string
-      required:
-        - distance_m
-        - delta_z_m
-        - time_ms
-        - side
+        - kill_journal
+        - matches_total
+        - matches_measured
+        - players
+        - resources
+        - objects
+        - matches
+        - production
       type: object
     MatchEncounterBadge:
       additionalProperties: false
@@ -18505,6 +18505,52 @@ components:
         - victim_gamertag
         - kill_count
       type: object
+    MatchLivesNearTeammate:
+      additionalProperties: false
+      properties:
+        players:
+          items:
+            $ref: '#/components/schemas/MatchLivesPlayer'
+          type:
+            - array
+            - "null"
+      required:
+        - players
+      type: object
+    MatchLivesPlayer:
+      additionalProperties: false
+      properties:
+        alone:
+          $ref: '#/components/schemas/LivesSideCount'
+        excluded_no_radar:
+          format: int64
+          type: integer
+        excluded_unlocated:
+          format: int64
+          type: integer
+        excluded_unpublishable:
+          format: int64
+          type: integer
+        matches_read:
+          format: int64
+          type: integer
+        matches_without_radar:
+          format: int64
+          type: integer
+        near:
+          $ref: '#/components/schemas/LivesSideCount'
+        xuid:
+          type: string
+      required:
+        - xuid
+        - near
+        - alone
+        - excluded_unlocated
+        - excluded_no_radar
+        - excluded_unpublishable
+        - matches_read
+        - matches_without_radar
+      type: object
     MatchMedal:
       additionalProperties: false
       properties:
@@ -18993,84 +19039,6 @@ components:
         - players
         - lobby_median_m
         - lobby_measured
-      type: object
-    MatchRiposteBlock:
-      additionalProperties: false
-      properties:
-        deaths:
-          items:
-            $ref: '#/components/schemas/MatchRiposteDeath'
-          type:
-            - array
-            - "null"
-        fenetre_ms:
-          format: int64
-          type: integer
-        measured_deaths:
-          format: int64
-          type: integer
-        players:
-          items:
-            $ref: '#/components/schemas/MatchRiposteePlayer'
-          type:
-            - array
-            - "null"
-      required:
-        - fenetre_ms
-        - measured_deaths
-        - deaths
-        - players
-      type: object
-    MatchRiposteDeath:
-      additionalProperties: false
-      properties:
-        avenged:
-          type: boolean
-        avenger_gamertag:
-          type: string
-        avenger_xuid:
-          type: string
-        delai_ms:
-          format: int64
-          type: integer
-        killer_xuid:
-          type: string
-        time_ms:
-          format: int64
-          type: integer
-        vengeable:
-          type: boolean
-        victim_gamertag:
-          type: string
-        victim_team_id:
-          format: int64
-          type: integer
-        victim_xuid:
-          type: string
-      required:
-        - time_ms
-        - avenged
-        - vengeable
-      type: object
-    MatchRiposteePlayer:
-      additionalProperties: false
-      properties:
-        deaths_avenged:
-          format: int64
-          type: integer
-        gamertag:
-          type: string
-        ripostes:
-          format: int64
-          type: integer
-        team_id:
-          format: int64
-          type: integer
-        xuid:
-          type: string
-      required:
-        - deaths_avenged
-        - ripostes
       type: object
     MatchRosterRow:
       additionalProperties: false
@@ -19785,10 +19753,14 @@ components:
           $ref: '#/components/schemas/MatchCitationsTab'
         combat_tab:
           $ref: '#/components/schemas/MatchCombatTab'
+        emprise:
+          $ref: '#/components/schemas/MatchEmpriseBlock'
         header:
           $ref: '#/components/schemas/MatchViewHeader'
         is_partial:
           type: boolean
+        lives_near_teammate:
+          $ref: '#/components/schemas/MatchLivesNearTeammate'
         media_tab:
           $ref: '#/components/schemas/MatchMediaTab'
         partial_reasons:
@@ -19818,24 +19790,6 @@ components:
         - team_tab
         - media_tab
         - citations_tab
-      type: object
-    MatchWeaponKill:
-      additionalProperties: false
-      properties:
-        class:
-          type: string
-        kill_count:
-          format: int64
-          type: integer
-        weapon_id:
-          format: int64
-          type: integer
-        weapon_label:
-          type: string
-      required:
-        - weapon_id
-        - weapon_label
-        - kill_count
       type: object
     MedalCategoryGroup:
       additionalProperties: false
@@ -26217,6 +26171,8 @@ components:
           type: boolean
         tiers:
           type: string
+        unclassified_pickups:
+          $ref: '#/components/schemas/SquadEmpriseCount'
         vehicles:
           type: string
         vehicles_reason:

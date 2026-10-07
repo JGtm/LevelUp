@@ -29,8 +29,9 @@ type MatchViewResponse struct {
 	// vide (scoreboard, events, player stats). Le front peut afficher un bandeau
 	// "Sync incomplet — certaines sections sont indisponibles" au lieu d'un
 	// crash full-page. Strict 404 reste pour les match_id totalement absents.
-	IsPartial      bool     `json:"is_partial,omitempty"`
-	PartialReasons []string `json:"partial_reasons,omitempty"`
+	IsPartial              bool     `json:"is_partial,omitempty"`
+	PartialReasons         []string `json:"partial_reasons,omitempty"`
+	MatchViewEmpriseFields          // emprise, lives_near_teammate (domain/match_emprise.go)
 }
 
 // MatchViewHeader : en-tête du match.
@@ -290,17 +291,6 @@ type MatchSummaryTab struct {
 // Onglet combat
 // ---------------------------------------------------------------------------
 
-// MatchWeaponKill : kills par arme.
-type MatchWeaponKill struct {
-	WeaponID    int64  `json:"weapon_id"`
-	WeaponLabel string `json:"weapon_label"`
-	KillCount   int    `json:"kill_count"`
-	// Class : axe manipulation de l'arme (shoulder/sidearm/heavy/…), résolu via le
-	// registre (BulkWeaponKillRaw). Vide si l'arme est absente du registre. Recolore
-	// le breakdown par arme par classe (FragWeaponBreakdown, sunburst v2).
-	Class string `json:"class,omitempty"`
-}
-
 // MatchHighlightEvent : événement filmé horodaté.
 //
 // ActorGamertag est le nom à afficher, posé côté repo par l'annuaire du match en portée base (lot A ;
@@ -465,7 +455,6 @@ type MatchKillerVictimPair struct {
 
 // MatchCombatTab : contenu de l'onglet Combat.
 type MatchCombatTab struct {
-	WeaponKills     []MatchWeaponKill      `json:"weapon_kills"`
 	HighlightEvents []MatchHighlightEvent  `json:"highlight_events"`
 	TugOfWar        []MatchTugOfWarBin     `json:"tug_of_war"`
 	ImpactBadges    []MatchImpactBadge     `json:"impact_badges"`
@@ -481,14 +470,6 @@ type MatchCombatTab struct {
 	// présent avec MeasuredDeaths à 0 est un état DIFFÉRENT (« non mesuré »), cf.
 	// domain.MatchAssistPairs.
 	AssistPairs *MatchAssistPairs `json:"assist_pairs,omitempty"`
-
-	// Riposte : « la mort de X a été vengée dans les 5 s, par Y » — par mort (victime,
-	// vengeur, délai, camp) et par joueur (ses morts vengées, les ripostes qu'il a
-	// portées). Des COMPTES, jamais un taux (D21 : un taux sur 11 morts est du bruit).
-	// NIL quand le match ne porte aucune ligne de journal des morts : sans ordre des
-	// morts il n'y a rien à dire, et l'UI ne rend rien. Même source déjà chargée que le
-	// chart antagoniste — aucune requête de plus.
-	Riposte *MatchRiposteBlock `json:"riposte,omitempty"`
 
 	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
 	// fondations narrative). 8 rôles narratifs typés via
@@ -508,6 +489,8 @@ type MatchCombatTab struct {
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
 	// .ai/archive/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+	// WeaponTools : « Outils de destruction » du joueur de la page (squadagg.BuildWeaponTools).
+	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 
 	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur
 	// §3bis DEC-8) — kills mesurés et distance tueur-victime moyenne par arme,
@@ -515,16 +498,9 @@ type MatchCombatTab struct {
 	// n'a de position mesurée (titre/serveur sans capture positions, backfill non
 	// joué, ou couverture du match sous le plancher mesuré 75,8 %) — dégradation
 	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
-	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
+	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur) ; mêlée exclue
+	// (classe `FragClassMelee` : une distance de corps à corps ne dit rien de la portée).
 	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
-
-	// Elevation : le DÉNIVELÉ des engagements du match, un point par frag et par mort du
-	// joueur consulté (lot Y, décision D24). MÊME source que KillDistanceByWeapon, lue au
-	// grain du frag au lieu d'être agrégée par (xuid, arme) : ici la clé est le CÔTÉ, pas
-	// l'arme — « où je frague, où je meurs ». NIL quand le match n'a aucune position
-	// mesurée : la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
-	// Détail de la grandeur et convention de signe : domain/match_elevation.go.
-	Elevation *MatchElevationBlock `json:"elevation,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

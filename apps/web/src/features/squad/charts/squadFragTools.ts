@@ -15,6 +15,8 @@
  *     libellé (ratchet `no_french_label_literal_test.go`).
  */
 import type { SquadWeaponToolLine, SquadWeaponTools } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { Locale } from '@/lib/i18n/locale'
 import type { SquadBarRow, SquadBarRows } from './squadWeaponKillsChart'
 
@@ -32,6 +34,25 @@ export interface SquadToolKindLabels {
   explosive_object: string
   environment: string
   unattributed: string
+}
+
+/**
+ * Les libellés des natures, une seule source pour l'Escouade, Sessions et la Vue match (garde-rail
+ * `squadFragTools.labels.guard.test.ts`) : le manifeste `frags` pour la mêlée, les grenades, les
+ * mécaniques et le reliquat ; les deux catégories de source du film viennent des textes de l'appelant.
+ */
+export function toolKindLabels(locale: Locale, source: { explosiveObject: string; environment: string }): SquadToolKindLabels {
+  const frag = (k: string) => formatMessage(fragsManifest, k as never, locale)
+  return {
+    melee: frag('frags.class.melee'),
+    grenade: frag('frags.class.grenade'),
+    assassination: frag('frags.role.assassination'),
+    ground_pound: frag('frags.role.ground_pound'),
+    shoulder_bash: frag('frags.role.shoulder_bash'),
+    explosive_object: source.explosiveObject,
+    environment: source.environment,
+    unattributed: frag('frags.class.unattributed'),
+  }
 }
 
 /** Nom affiché d'une ligne. Nature inconnue du web → sa clé brute (jamais une ligne vide). */

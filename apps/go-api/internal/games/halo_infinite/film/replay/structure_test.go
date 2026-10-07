@@ -1381,8 +1381,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   bot sans entite se lit dans sa declaration BOT_METADATA, le bouche-trou prend la place du
 	//   partant et l humain qui arrive lui succede ; aucun champ neuf. Un v79 se lit « a republier »,
 	//   et ses faits au schema des faits 5 au plus le font redecoder. Detail : `document_chronicle.go`.
-	if SchemaVersion != 80 {
-		t.Fatalf("SchemaVersion = %d, attendu 80 : incrémenter exige une raison écrite ci-dessus "+
+	// - 81 (2026-10-07, rejeu « aucune fiche en trop ») : une vie apres le depart prouve de l occupant
+	//   de son corps n est plus publiee, le corps d un index humain se lit aux declarations de ses bots
+	//   quand l humain est absent, un bot sans vie ni place sort du roster publie ; aucun champ neuf.
+	//   Un v80 se republie depuis ses faits. Detail : `document_chronicle.go`.
+	if SchemaVersion != 81 {
+		t.Fatalf("SchemaVersion = %d, attendu 81 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -108,10 +108,10 @@ describe('MatchTugOfWarChart — tooltips (W2)', () => {
     const bars = (opt.series ?? []).filter((s) => s.type === 'bar')
     expect(bars.length).toBe(2)
     const tip = bars[0].tooltip?.formatter?.({ seriesType: 'bar', dataIndex: 0 }) ?? ''
-    // combatMomentumDelta FR = 'Écart' ; bin 0 : delta +3 en faveur de « Mon équipe ».
+    // combatMomentumDelta FR = 'Écart' ; bin 0 : delta +3 en faveur de « Équipe ».
     expect(tip).toContain('Écart')
     expect(tip).toContain('+3')
-    expect(tip).toContain('Mon équipe')
+    expect(tip).toContain('Équipe')
     // Ce n'est PAS un tip per-kill.
     expect(tip).not.toContain('0:01')
   })

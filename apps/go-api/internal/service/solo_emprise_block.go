@@ -1,9 +1,10 @@
-// Package service — solo_emprise_block.go : L'EMPRISE D'UN SEUL JOUEUR sur une liste de matchs,
-// commune aux Séries temporelles (la fenêtre filtrée) et à la page Sessions (une session).
+// Package service — solo_emprise_block.go : L'EMPRISE sur une liste de matchs, commune aux Séries
+// temporelles (la fenêtre filtrée), à la page Sessions (une session) et à la Vue match (un match).
 //
 // Orchestration seule : les lectures sont celles de l'Escouade (`squadagg.EmpriseLecteur`), le calcul
-// est `analysis/squademprise` (Build, BuildMaps, BuildEquipment). Un seul joueur des fiches (le joueur
-// de la page), jamais de coéquipier sélectionné ; pas d'habitude ; pas de placement des vies. Chaque
+// est `analysis/squademprise` (Build, BuildMaps, BuildEquipment). Les fiches : le joueur de la page
+// seul, ou la liste fournie par la page (Vue match : les joueurs de l'équipe) ; pas d'habitude ; pas
+// de placement des vies. Chaque
 // source dégrade seule et le dit (journaux portant l'attribut `page`).
 package service
 
@@ -38,6 +39,9 @@ type soloEmpriseQuery struct {
 	VehicleRepo port.SquadVehicleRepository
 	// WithMaps : calcule la grille par carte (Séries temporelles seulement).
 	WithMaps bool
+	// Players : les joueurs des fiches, dans l'ordre de la page (Vue match : les joueurs de l'équipe).
+	// nil = le joueur de la page seul (Séries temporelles, Sessions).
+	Players []domain.SessionUsageSquadPlayer
 }
 
 // buildSoloEmpriseBlock rend le bloc des matchs `q.Current`. L'appelant garantit une liste non vide
@@ -52,9 +56,13 @@ func buildSoloEmpriseBlock(ctx context.Context, q soloEmpriseQuery) *domain.Solo
 	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, q.EmpriseRepo, ids)
 	in.Film, in.FilmUnavailable = lecteur.Film(ctx, q.UsageRepo, q.Current, nil, q.Lectures)
 	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, q.VehicleRepo, ids, q.PlayerXUID, q.Locale)
-	in.Players = squadagg.SquadPlayers(q.PlayerXUID, q.Player, nil, nil)
-	if in.Film != nil {
+	switch {
+	case q.Players != nil:
+		in.Players = q.Players
+	case in.Film != nil:
 		in.Players = squadagg.SquadPlayers(q.PlayerXUID, q.Player, in.Film.Participants, nil)
+	default:
+		in.Players = squadagg.SquadPlayers(q.PlayerXUID, q.Player, nil, nil)
 	}
 	if n := squademprise.WithoutTimeScale(&in); n > 0 {
 		// Même règle et même trace que l'Escouade : exclus du rendement des bonus, jamais en silence.

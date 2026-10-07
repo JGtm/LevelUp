@@ -21,7 +21,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { FragClassEntry, SquadWeaponAccuracy, SquadWeaponTools } from '@/lib/api/types'
-import { buildSquadToolRows, type SquadToolKindLabels } from './charts/squadFragTools'
+import { buildSquadToolRows, toolKindLabels } from './charts/squadFragTools'
 import { SquadFragBreakdownCard } from './SquadFragBreakdownCard'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadWeaponAccuracyBarsChart } from './SquadWeaponAccuracyBarsChart'
@@ -58,20 +58,10 @@ export function SquadFragSection({
   // « Outils de destruction » : les natures sans nom de registre sont nommées ici (le
   // serveur n'écrit aucun libellé) — manifeste `frags` pour la mêlée, les mécaniques et le
   // résidu, i18n Escouade pour les deux catégories de source du film.
-  const toolRows = useMemo(() => {
-    const role = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, locale)
-    const labels: SquadToolKindLabels = {
-      melee: classLabel('melee'),
-      grenade: classLabel('grenade'),
-      assassination: role('assassination'),
-      ground_pound: role('ground_pound'),
-      shoulder_bash: role('shoulder_bash'),
-      explosive_object: t.weaponKills.explosiveObject,
-      environment: t.weaponKills.environment,
-      unattributed: classLabel('unattributed'),
-    }
-    return buildSquadToolRows(weaponTools, { locale, labels })
-  }, [weaponTools, locale, classLabel, t.weaponKills.explosiveObject, t.weaponKills.environment])
+  const toolRows = useMemo(
+    () => buildSquadToolRows(weaponTools, { locale, labels: toolKindLabels(locale, t.weaponKills) }),
+    [weaponTools, locale, t.weaponKills],
+  )
 
   const playerLegend = useMemo(
     () => (toolRows?.players ?? []).map((p) => ({ key: p, label: p, color: playerColors[p] ?? '' })),

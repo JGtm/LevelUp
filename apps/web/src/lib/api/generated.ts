@@ -8402,7 +8402,6 @@ export interface components {
         MatchCombatTab: {
             assist_pairs?: components["schemas"]["MatchAssistPairs"];
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
-            elevation?: components["schemas"]["MatchElevationBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
@@ -8411,31 +8410,26 @@ export interface components {
             kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
-            riposte?: components["schemas"]["MatchRiposteBlock"];
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
-            weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
-        MatchElevationBlock: {
-            kills: components["schemas"]["MatchElevationKill"][] | null;
-            lobby?: components["schemas"]["MatchElevationKill"][] | null;
-            /** Format: double */
-            lobby_median_delta_z_m: number;
+        MatchEmpriseBlock: {
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            /** @enum {string} */
+            kill_journal: "publishable" | "not_publishable" | "unavailable";
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
             /** Format: int64 */
-            measured_kills: number;
+            matches_measured: number;
             /** Format: int64 */
-            total_kills: number;
-        };
-        MatchElevationKill: {
-            /** Format: double */
-            delta_z_m: number;
-            /** Format: double */
-            distance_m: number;
-            opponent?: string;
-            side: string;
-            /** Format: int64 */
-            time_ms: number;
-            weapon?: string;
-            weapon_en?: string;
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
         };
         MatchEncounterBadge: {
             color_token: string;
@@ -8729,6 +8723,24 @@ export interface components {
             victim_gamertag: string;
             victim_xuid: string;
         };
+        MatchLivesNearTeammate: {
+            players: components["schemas"]["MatchLivesPlayer"][] | null;
+        };
+        MatchLivesPlayer: {
+            alone: components["schemas"]["LivesSideCount"];
+            /** Format: int64 */
+            excluded_no_radar: number;
+            /** Format: int64 */
+            excluded_unlocated: number;
+            /** Format: int64 */
+            excluded_unpublishable: number;
+            /** Format: int64 */
+            matches_read: number;
+            /** Format: int64 */
+            matches_without_radar: number;
+            near: components["schemas"]["LivesSideCount"];
+            xuid: string;
+        };
         MatchMedal: {
             /** Format: int64 */
             count: number;
@@ -8925,39 +8937,6 @@ export interface components {
             /** Format: date-time */
             played_at: string;
             players: components["schemas"]["MatchRangePlayer"][] | null;
-        };
-        MatchRiposteBlock: {
-            deaths: components["schemas"]["MatchRiposteDeath"][] | null;
-            /** Format: int64 */
-            fenetre_ms: number;
-            /** Format: int64 */
-            measured_deaths: number;
-            players: components["schemas"]["MatchRiposteePlayer"][] | null;
-        };
-        MatchRiposteDeath: {
-            avenged: boolean;
-            avenger_gamertag?: string;
-            avenger_xuid?: string;
-            /** Format: int64 */
-            delai_ms?: number;
-            killer_xuid?: string;
-            /** Format: int64 */
-            time_ms: number;
-            vengeable: boolean;
-            victim_gamertag?: string;
-            /** Format: int64 */
-            victim_team_id?: number;
-            victim_xuid?: string;
-        };
-        MatchRiposteePlayer: {
-            /** Format: int64 */
-            deaths_avenged: number;
-            gamertag?: string;
-            /** Format: int64 */
-            ripostes: number;
-            /** Format: int64 */
-            team_id?: number;
-            xuid?: string;
         };
         MatchRosterRow: {
             /** Format: int64 */
@@ -9315,8 +9294,10 @@ export interface components {
         MatchViewResponse: {
             citations_tab: components["schemas"]["MatchCitationsTab"];
             combat_tab: components["schemas"]["MatchCombatTab"];
+            emprise?: components["schemas"]["MatchEmpriseBlock"];
             header: components["schemas"]["MatchViewHeader"];
             is_partial?: boolean;
+            lives_near_teammate?: components["schemas"]["MatchLivesNearTeammate"];
             media_tab: components["schemas"]["MatchMediaTab"];
             partial_reasons?: string[] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
@@ -9324,14 +9305,6 @@ export interface components {
             rank: components["schemas"]["MatchViewRank"];
             summary_tab: components["schemas"]["MatchSummaryTab"];
             team_tab: components["schemas"]["MatchTeamTab"];
-        };
-        MatchWeaponKill: {
-            class?: string;
-            /** Format: int64 */
-            kill_count: number;
-            /** Format: int64 */
-            weapon_id: number;
-            weapon_label: string;
         };
         MedalCategoryGroup: {
             category: string;
@@ -11878,6 +11851,7 @@ export interface components {
             resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
             team_known: boolean;
             tiers?: string;
+            unclassified_pickups?: components["schemas"]["SquadEmpriseCount"];
             vehicles?: string;
             vehicles_reason?: string;
         };

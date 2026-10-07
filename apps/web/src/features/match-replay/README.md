@@ -24,7 +24,7 @@ Deux dossiers de service complètent la liste :
 - `test/` — les doubles partagés (`fakeAudio`, `testDoc`, `recordingContext`, fixtures de pose)
   et `featureFiles.ts`, qui rend à un garde-rail la liste RÉCURSIVE des fichiers du rejeu ;
 - la RACINE ne garde que ce que la Match View consomme (`queries.ts`,
-  `MatchEquipmentUsageSection`, `MatchPadControlSection`) : leur foyer définitif est l'objet de
+  `MatchEquipmentUsageSection`) : leur foyer définitif est l'objet de
   l'item D.13 (constat N4 de l'audit), pas un choix par défaut.
 
 ## Les deux pièges que cette règle évite

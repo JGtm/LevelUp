@@ -168,13 +168,15 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 }
 
 // passerLaPorte ecarte les positions que le film ne peut pas avoir ecrites — anterieures a la
-// creation de leur corps, ou hors de l emprise jouee (cf. positions_porte.go).
+// creation de leur corps, posterieures au depart prouve de l occupant de ce corps quand aucune ne le
+// precede (R-B3, positions_porte_depart.go), ou hors de l emprise jouee (cf. positions_porte.go).
 //
 // APRES `ouvrir`, AVANT toute passe qui lit les positions : l origine et `frameCount` restent lus
 // sur tous les paquets de position (aucun calque ne se decale), et le registre d identite, les
 // traces, les bornes, les etats et les vehicules ne voient plus ces positions.
 func (a *assemblage) passerLaPorte() {
-	a.sorted, a.emprise, a.porte = passerLaPorteDesPositions(a.sorted, a.opt.BipedCreations, a.opt.Fallbacks)
+	a.sorted, a.emprise, a.porte = passerLaPorteDesPositions(a.sorted, a.opt.BipedCreations, a.opt.PlayerEntities,
+		a.opt.Fallbacks)
 }
 
 // fireRefs réduit les événements de tir à ce que les fermetures ont le droit de connaître : QUI

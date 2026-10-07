@@ -89,6 +89,10 @@ func rjeBots(res *killsource.Result) []BotIdentity {
 			continue
 		}
 		id := BotIdentity{FilmIndex: b.Slot, Name: b.Name + killsource.BotSuffix, BotID: b.BotID}
+		if b.Team != nil {
+			equipe := *b.Team
+			id.Team = &equipe
+		}
 		for _, d := range b.Declarations {
 			id.Declarations = append(id.Declarations, [2]uint64{d.FromUS, d.ToUS})
 		}

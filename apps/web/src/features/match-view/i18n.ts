@@ -59,6 +59,8 @@ export interface MatchViewText {
   // (retiré le 2026-07-25 avec le fallback LIVE du Match view, cf. BACKLOG).
   notSyncedTitle: string
   notSyncedDescription: string
+  /** Bouton de la page « indisponible » : la liste des matchs du joueur. */
+  navMatches: string
   noRank: string
   exitContext: string
   outcomeWin: string
@@ -116,31 +118,6 @@ export interface MatchViewText {
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
-  // Hauteur d'engagement (D24, 2026-09-22 ; vocabulaire D26) — nuage distance × hauteur.
-  elevationTitle: string
-  /** Infobulle ⓘ du titre : trois phrases (ce qu'est la hauteur, le signe, la couverture). */
-  elevationInfo: string
-  elevationAxisDistance: string
-  elevationAxisDelta: string
-  /** Légende : mes frags (N), mes morts (N), la bande, le lobby quand il est affiché. */
-  elevationLegendKillsFmt: (n: number) => string
-  elevationLegendDeathsFmt: (n: number) => string
-  elevationLegendBand: string
-  elevationLegendLobbyFmt: (n: number) => string
-  /** Bouton de comparaison au lobby (bascule, état local à la carte). */
-  elevationCompare: string
-  elevationSideKill: string
-  elevationSideDeath: string
-  /** Première ligne d'infobulle : côté, distance, hauteur signée. */
-  elevationPointFmt: (side: string, distance: string, delta: string) => string
-  /** Deuxième ligne : arme et instant, l'un ou l'autre pouvant manquer. */
-  elevationPointWeaponFmt: (weapon: string, clock: string) => string
-  elevationOpenReplay: string
-  elevationLobbyMedianFmt: (m: string) => string
-  /** Réserve de couverture en pied : frags mesurés sur frags du match. */
-  elevationCoverageFmt: (measured: number, total: number) => string
-  /** État vide NOMMÉ : le titre mesure les positions, mais pas sur ce match. */
-  elevationEmpty: string
   // Section médias (dans onglet Général) — le bloc et son titre ne s'affichent que si le
   // match a au moins une capture (2026-09-22) : plus d'état vide « Aucune capture ».
   sectionMedia: string
@@ -239,26 +216,6 @@ export interface MatchViewText {
   // Titres d'axes et infobulle.
   assistRoleAssistant: string
   assistRoleBeneficiary: string
-  // ─── Bloc « Riposte » (D22-2) ───────────────────────────────────────────────────────
-  // Des COMPTES, jamais un taux (D21). Aucune phrase de lecteur sur la carte
-  // (D22-verbosité) : l'explication tient dans l'infobulle ⓘ du titre, en trois phrases.
-  riposteTitle: string
-  riposteInfo: string
-  /** Les deux côtés de l'axe, et la légende qui les nomme en entier. */
-  riposteSideAvenged: string
-  riposteSideDid: string
-  riposteLegendAvenged: string
-  riposteLegendDid: string
-  /** Couples nommés de l'infobulle d'une barre (`s` = délai en secondes, déjà formaté). */
-  riposteAvengedByFmt: (name: string, s: string) => string
-  riposteAvengedForFmt: (name: string, s: string) => string
-  riposteMoreFmt: (n: number) => string
-  /** Pied de carte : les morts vengées sur les morts lues au journal. */
-  riposteFooterFmt: (avenged: number, measured: number) => string
-  /** Le film est là mais aucune mort n'y est lisible ligne à ligne. */
-  riposteNotUsable: string
-  /** Mesuré : personne n'a riposté. */
-  riposteNoData: string
   assistValueAxis: string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
@@ -397,7 +354,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copyTooltip: "Copier l'identifiant unique de ce match dans le presse-papier",
     replayTooltip: 'Voir le rejeu 2D de ce match (vue du dessus)',
     scoreRoundsHint:
-      "Ce mode se joue en manches : le score affiché est le nombre de manches gagnées et perdues. Le score en points renvoyé par l'API est indiqué à côté — sur ces modes, il peut donner l'avantage au camp qui a perdu.",
+      "Ce mode se joue en manches : le score affiché est le nombre de manches gagnées et perdues. Le score en points renvoyé par l'API est indiqué à côté — sur ces modes, il peut donner l'avantage à l'équipe qui a perdu.",
     scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Marquer comme non pertinent',
     reactivate: 'Réactiver',
@@ -427,6 +384,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     notSyncedTitle: 'Match pas encore synchronisé',
     notSyncedDescription:
       "Ce match n'est pas encore présent dans la base locale. S'il vient d'être joué, il apparaîtra ici après la prochaine synchronisation — reviens dans quelques minutes. Vérifie aussi que le lien du match est correct.",
+    navMatches: 'Matchs',
     noRank: 'Pas de rang',
     exitContext: 'Sortir du contexte',
     outcomeWin: 'Victoires',
@@ -486,26 +444,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve:
       "Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
-    elevationTitle: "Hauteur d'engagement",
-    elevationInfo:
-      "La hauteur d'engagement est l'écart de hauteur entre les deux joueurs à l'instant du coup fatal, en mètres. Elle est signée de votre côté : au-dessus de la ligne vous étiez en surplomb, en dessous vous étiez en contrebas, pour un frag comme pour une mort. Ne comptent que les engagements dont la position des deux joueurs est mesurée.",
-    elevationAxisDistance: "Distance de l'engagement (m)",
-    elevationAxisDelta: 'Hauteur (m)',
-    elevationLegendKillsFmt: (n) => `Mes frags — ${n}`,
-    elevationLegendDeathsFmt: (n) => `Mes morts — ${n}`,
-    elevationLegendBand: 'Bande à niveau (± 1 m)',
-    elevationLegendLobbyFmt: (n) => `Lobby — ${n}`,
-    elevationCompare: 'Comparer au lobby',
-    elevationSideKill: 'Frag',
-    elevationSideDeath: 'Mort',
-    elevationPointFmt: (side, distance, delta) => `${side} · ${distance} m · ${delta} m`,
-    elevationPointWeaponFmt: (weapon, clock) => [weapon, clock].filter(Boolean).join(' · '),
-    elevationOpenReplay: "Ouvrir le rejeu à cet instant",
-    elevationLobbyMedianFmt: (m) => `Médiane du lobby ${m} m`,
-    elevationCoverageFmt: (measured, total) =>
-      `${measured}/${total} frags mesurés`,
-    elevationEmpty:
-      "Hauteur d'engagement non mesurée sur ce match — le film a bien été décodé, mais aucun engagement n'y porte la position des deux joueurs.",
     sectionMedia: 'Médias',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
@@ -519,7 +457,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatTugOfWarTitle: 'Dominance',
     scoreCurveTitle: 'Score dans le temps',
     scoreCurveSource:
-      'Décodé du film du match : le score des deux camps, tel qu’il s’affichait en jeu.',
+      'Décodé du film du match : le score des deux équipes, tel qu’il s’affichait en jeu.',
     scoreCurveTruncated:
       'Lecture du film incomplète — la courbe s’arrête avant la fin du match.',
     scoreCurveLead: 'Retournement',
@@ -529,7 +467,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatCadenceTitle: 'Cadence des frags',
     combatKillsLabel: 'Frags',
     combatDeathsLabel: 'Morts',
-    combatTeamLabel: 'Mon équipe',
+    combatTeamLabel: 'Équipe',
     combatEnemyLabel: 'Adversaires',
     combatMomentumDelta: 'Écart',
     combatMomentumCumul: 'Cumul',
@@ -537,8 +475,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNemesisTitle: 'Némésis',
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
-    combatKilledMeFmt: (n) => `T'a martyrisé ${n} fois`,
-    combatIKilledFmt: (n) => `Victimisé ${n} fois`,
+    combatKilledMeFmt: (n) => `A éliminé le joueur ${n} fois`,
+    combatIKilledFmt: (n) => `Éliminé par le joueur ${n} fois`,
     combatNoData: 'Pas de données disponibles',
     combatCtfCaptureLabel: 'Capture',
     combatCtfCaptureTooltip: (player, time) => `${player} — capture à ${time}`,
@@ -570,21 +508,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistAvgShareNote: (pct) => `part moyenne ${pct} %`,
     assistRoleAssistant: 'Larbin',
     assistRoleBeneficiary: 'Patron',
-    riposteTitle: 'Riposte',
-    riposteInfo:
-      'Une riposte, c’est la mort d’un joueur reprise par son camp sur son tueur dans les secondes qui suivent. Ce sont des comptes exhaustifs du match, jamais un taux. Ils demandent le journal des morts du film : sans film décodé, aucun ordre des morts.',
-    riposteSideAvenged: 'a été riposté',
-    riposteSideDid: 'a riposté',
-    riposteLegendAvenged: 'ses morts vengées par son camp',
-    riposteLegendDid: 'les ripostes qu’il a portées',
-    riposteAvengedByFmt: (name, s) => `vengée par ${name}, ${s} s`,
-    riposteAvengedForFmt: (name, s) => `a vengé ${name}, ${s} s`,
-    riposteMoreFmt: (n) => `+${n}`,
-    riposteFooterFmt: (avenged, measured) =>
-      `${avenged} mort${avenged > 1 ? 's' : ''} vengée${avenged > 1 ? 's' : ''} sur ${measured} mesurée${measured > 1 ? 's' : ''}`,
-    riposteNotUsable: 'Riposte non disponible pour ce match (aucune mort lisible ligne à ligne).',
-    riposteNoData: 'Aucune riposte sur ce match.',
-    assistValueAxis: 'Assistances par patron',
+    assistValueAxis: 'a assisté…',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -600,7 +524,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamUnknown: 'Équipe inconnue',
     teamNumberedFmt: (n) => `Équipe ${n}`,
-    teamMine: 'Mon équipe',
+    teamMine: 'Équipe',
     teamEnemy: 'Équipe adverse',
     sbDetailWeapons: 'Armes',
     sbDetailMedalsAndCitations: 'Médailles & citations',
@@ -748,7 +672,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
         bomb_carriers_killed: {
           label: 'Porteurs tués',
           tooltip:
-            'Porteurs de la bombe éliminés (un tir ami sur un porteur de son propre camp compte)',
+            'Porteurs de la bombe éliminés (un tir ami sur un porteur de sa propre équipe compte)',
         },
       },
     },
@@ -793,6 +717,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     notSyncedTitle: 'Match not synced yet',
     notSyncedDescription:
       "This match isn't in the local database yet. If it was just played, it will show up here after the next sync — check back in a few minutes. Also double-check that the match link is correct.",
+    navMatches: 'Matches',
     noRank: 'No rank',
     exitContext: 'Exit context',
     outcomeWin: 'Wins',
@@ -847,25 +772,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve:
       'Only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
-    elevationTitle: 'Engagement height',
-    elevationInfo:
-      'Engagement height is the height gap between both players at the moment of the killing blow, in metres. It is signed from your side: above the line you were on high ground, below it you were on low ground — for a kill as for a death. Only engagements where both positions are measured are counted.',
-    elevationAxisDistance: 'Engagement distance (m)',
-    elevationAxisDelta: 'Height (m)',
-    elevationLegendKillsFmt: (n) => `My kills — ${n}`,
-    elevationLegendDeathsFmt: (n) => `My deaths — ${n}`,
-    elevationLegendBand: 'Level band (± 1 m)',
-    elevationLegendLobbyFmt: (n) => `Lobby — ${n}`,
-    elevationCompare: 'Compare with lobby',
-    elevationSideKill: 'Kill',
-    elevationSideDeath: 'Death',
-    elevationPointFmt: (side, distance, delta) => `${side} · ${distance} m · ${delta} m`,
-    elevationPointWeaponFmt: (weapon, clock) => [weapon, clock].filter(Boolean).join(' · '),
-    elevationOpenReplay: 'Open the replay at this moment',
-    elevationLobbyMedianFmt: (m) => `Lobby median ${m} m`,
-    elevationCoverageFmt: (measured, total) => `${measured}/${total} measured kills`,
-    elevationEmpty:
-      'No engagement height measured on this match — the film was decoded, but no engagement carries both player positions.',
     sectionMedia: 'Media',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
@@ -888,7 +794,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatCadenceTitle: 'Kill cadence',
     combatKillsLabel: 'Kills',
     combatDeathsLabel: 'Deaths',
-    combatTeamLabel: 'My team',
+    combatTeamLabel: 'Team',
     combatEnemyLabel: 'Opponents',
     combatMomentumDelta: 'Delta',
     combatMomentumCumul: 'Cumulative',
@@ -896,8 +802,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatNemesisTitle: 'Nemesis',
     combatBullyTitle: 'Bully target',
     combatNoNemesis: '—',
-    combatKilledMeFmt: (n) => `Martyred you ${n} times`,
-    combatIKilledFmt: (n) => `You victimized them ${n} times`,
+    combatKilledMeFmt: (n) => `Killed the player ${n} times`,
+    combatIKilledFmt: (n) => `Killed by the player ${n} times`,
     combatNoData: 'No data available',
     combatCtfCaptureLabel: 'Capture',
     combatCtfCaptureTooltip: (player, time) => `${player} — captured at ${time}`,
@@ -929,21 +835,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistAvgShareNote: (pct) => `avg share ${pct}%`,
     assistRoleAssistant: 'Lackey',
     assistRoleBeneficiary: 'Boss',
-    riposteTitle: 'Payback',
-    riposteInfo:
-      'A payback is a player’s death taken back by their team on the killer within the following seconds. These are exhaustive counts for the match, never a rate. They require the film’s death log: without a decoded film there is no ordering of deaths.',
-    riposteSideAvenged: 'was avenged',
-    riposteSideDid: 'avenged',
-    riposteLegendAvenged: 'their deaths avenged by their team',
-    riposteLegendDid: 'the paybacks they made',
-    riposteAvengedByFmt: (name, s) => `avenged by ${name}, ${s} s`,
-    riposteAvengedForFmt: (name, s) => `avenged ${name}, ${s} s`,
-    riposteMoreFmt: (n) => `+${n}`,
-    riposteFooterFmt: (avenged, measured) =>
-      `${avenged} death${avenged > 1 ? 's' : ''} avenged out of ${measured} measured`,
-    riposteNotUsable: 'Payback unavailable for this match (no death readable line by line).',
-    riposteNoData: 'No payback in this match.',
-    assistValueAxis: 'Assists per boss',
+    assistValueAxis: 'assisted…',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
@@ -959,7 +851,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     teamLabelFmt: (name) => `Team ${name}`,
     teamUnknown: 'Unknown team',
     teamNumberedFmt: (n) => `Team ${n}`,
-    teamMine: 'My team',
+    teamMine: 'Team',
     teamEnemy: 'Enemy team',
     sbDetailWeapons: 'Weapons',
     sbDetailMedalsAndCitations: 'Medals & commendations',
@@ -1091,7 +983,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
         },
         bomb_carriers_killed: {
           label: 'Carriers killed',
-          tooltip: 'Bomb carriers eliminated (friendly fire on your own carrier counts)',
+          tooltip: 'Bomb carriers eliminated (friendly fire on a carrier of the same team counts)',
         },
       },
     },

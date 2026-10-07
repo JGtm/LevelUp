@@ -27,8 +27,8 @@
  *
  * LES CAMPS SONT CEUX DU FILM, PAS CEUX DU TABLEAU DES SCORES. `team` vaut -1 (inconnu) ou
  * 0/1, attribué par regroupement SPATIAL best-effort (§N de RESEARCH_THEATER_RE) : aucune
- * jointure ne le relie à un xuid ni à un camp nommé. Le filtre écrit donc « Camp A » / « Camp
- * B », jamais « mon équipe » / « adversaires » — nommer un camp qu'on n'a pas mesuré serait
+ * jointure ne le relie à un xuid ni à une équipe nommée. Le filtre écrit donc « Équipe A » /
+ * « Équipe B », jamais « Équipe » / « Adversaire » — nommer un camp qu'on n'a pas mesuré serait
  * exactement la devinette que le reste de la page refuse.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -86,18 +86,18 @@ const TEXT = {
   fr: {
     title: 'Occupation du terrain',
     teamAll: 'Tous',
-    team0: 'Camp A',
-    team1: 'Camp B',
+    team0: 'Équipe A',
+    team1: 'Équipe B',
     narrative:
-      'Les endroits de la carte les plus occupés pendant ce match, tous camps ou camp par camp. Lecture : plus c’est chaud, plus on y a passé de temps.',
+      'Les endroits de la carte les plus occupés pendant ce match, toutes équipes confondues ou par équipe ; plus la teinte est chaude, plus le temps passé est long.',
   },
   en: {
     title: 'Ground occupancy',
     teamAll: 'All',
-    team0: 'Side A',
-    team1: 'Side B',
+    team0: 'Team A',
+    team1: 'Team B',
     narrative:
-      'The busiest spots of the map during this match, all sides or side by side. Read it this way: the hotter, the longer it was held.',
+      'The busiest spots of the map during this match, all teams together or by team; the hotter the shade, the longer the time spent.',
   },
 } as const satisfies Record<Locale, unknown>
 
