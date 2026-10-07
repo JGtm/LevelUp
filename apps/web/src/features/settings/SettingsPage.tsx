@@ -51,7 +51,11 @@ export function SettingsPage() {
   // Copie éditable des réglages serveur : resync quand la requête livre un nouvel
   // objet (ajustement pendant le rendu, pattern React « valeur précédente », au
   // lieu d'un effet). Comportement inchangé : un refetch réaligne l'état local.
-  const [prevSettings, setPrevSettings] = useState(settings)
+  // La valeur précédente part de `undefined`, JAMAIS de `settings` : les réglages sont
+  // presque toujours déjà en cache au montage (la coquille les lit), et partir de
+  // l'objet en cache sautait la première copie — chaque contrôle affichait alors son
+  // défaut (« Coach proactif » activé) au lieu de la valeur enregistrée.
+  const [prevSettings, setPrevSettings] = useState<SettingsResponse | undefined>(undefined)
   if (settings && settings !== prevSettings) {
     setPrevSettings(settings)
     setLocalSettings(settings)
