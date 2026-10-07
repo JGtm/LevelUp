@@ -5,6 +5,14 @@
 > qui reste : il est écrit pour la session qui l'exécutera. Doctrine RE-VÉRIFIER : les
 > lignes citées ont été lues le 2026-10-07 sur `feat/v75` à `94ac8fd68` ; rouvrir chaque
 > fichier avant de coder.
+>
+> **Statut (2026-10-07) : EXÉCUTÉ par l'exécutant** sur `feat/escouade-synergies-textes`
+> (worktree `LevelUp-wt-escouade`, partie de `879f31bbf`), plan
+> `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md` : E1 `4cf68289b` (web), E2 `c23114e18`
+> (Go et contrat), E3 `82020eacf` (textes et garde), E4 (clôture). Écart au §3 : `coordination.Mesurer`
+> RESTE (l'appui et l'isolement le lisent, plan D1). Découvertes : plan §8 (dont §8.5,
+> `TacticalKillEvents.Events` sans lecteur, à trancher). Reste au superviseur : push, revue
+> adversariale (§5.4), fusion (§5.5), mémoire du projet (§5.6).
 
 ## 1. Ce que l'utilisateur a décidé (messages datés)
 

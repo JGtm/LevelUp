@@ -7,7 +7,9 @@
 > la suivante, chaque item statué `[x]` fait et vérifié / `[~]` couvert ailleurs / `[!]` non fait
 > avec justification, zéro correction hors périmètre — les découvertes vont au §8).
 >
-> Statut : **pré-approuvé par le superviseur le 2026-10-07** (exécution enchaînée sans attente).
+> Statut : **pré-approuvé par le superviseur le 2026-10-07** (exécution enchaînée sans attente) ;
+> **CLOS côté exécutant le 2026-10-07** : E1 `4cf68289b`, E2 `c23114e18`, E3 `82020eacf`, E4 (commit de
+> clôture). Revue adversariale, push et fusion : superviseur.
 > Branche `feat/escouade-synergies-textes`, partie de `origin/feat/v75` à `879f31bbf` (Tactique v2
 > fusionnée : `git grep mesurerEchange` vide). Worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-escouade`.
 > Ni push, ni fusion, ni rebase : le superviseur pousse, lance la revue adversariale et fusionne.
@@ -41,7 +43,9 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 - **D2 — Le journal des morts reste lu par l'appui** (`service/coordination_block.go:135`) : le
   port `TacticalRepository.KillEvents` et son lecteur DuckDB ne bougent pas (`platform/duckdb`
   non touché). Côté Escouade, `TeammatesService.tacticalRepo`, `caps` et `WithEchange` perdent leur
-  seul lecteur et partent, avec l'appel de câblage `registry_pages_home.go`.
+  seul lecteur et partent, avec l'appel de câblage `registry_pages_home.go`. Précision relevée en E2 :
+  l'appui n'appelle `KillEvents` que pour son UNIVERS ; les événements eux-mêmes n'ont plus de
+  lecteur — découverte §8.5, laissée au superviseur.
 - **D3 — Le dénivelé du profil de portée part de bout en bout** : champs `ElevationMedianM`,
   `ElevationLobbyDeltaM`, `LobbyElevationMedianM`, leur calcul (`matchRangeMesures.dz`,
   `ecartDeDenivele`, `matchRangeLobby.elevationM`) et `match_range_elevation_test.go`.
@@ -64,6 +68,9 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   et `formatBin`, sans lecteur de production eux non plus, RESTENT : ils font partie de l'API de
   base du wrapper décrite par le catalogue `components/charts/README.md` (au même titre que
   `xAxisLabel`), pas d'un ajout pour la riposte.
+- **D8 — Notes de version** : le §4 du handoff les met hors périmètre pour leur registre (« tu »,
+  décision antérieure). Leur CONTENU devenu faux (la riposte sur l'Escouade, les rôles de hauteur)
+  est corrigé en E4, dans le registre existant, comme l'ont fait les lots Sessions et Vue match.
 
 ## 2. Étapes
 
@@ -100,9 +107,9 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 
 ### E4 — Clôture
 
-- [ ] E4.1 CHANGELOG EN et FR (`docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`) : lignes de coordination et de portée/hauteur alignées, entrée du lot.
-- [ ] E4.2 Registre `.ai/REGISTRE_REPORTS.md` : les deux lignes du §2 du handoff closes.
-- [ ] E4.3 Statut du handoff mis à jour ; statuts du plan ; entrée `.ai/thought_log.md`.
+- [x] E4.1 CHANGELOG EN et FR (`docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`) : lignes de coordination et de portée/hauteur alignées, entrée du lot. Fait : résumé de tête, « Coordination », « Portée face au lobby », entrée « Escouade › Synergies sans riposte ni hauteur », « Page Escouade » ; notes de version EN et FR, deux lignes (D8).
+- [x] E4.2 Registre `.ai/REGISTRE_REPORTS.md` : les deux lignes du §2 du handoff closes. Plus une section du lot avec les découvertes 8.5, 8.6, 8.7.
+- [x] E4.3 Statut du handoff mis à jour ; statuts du plan ; entrée `.ai/thought_log.md`.
 - **Gate E4 (clôture)** : `go test ./internal/...` (au premier plan, par lots si besoin) ; `go vet ./internal/...` ; `make go-api-lint` ; `make openapi-check` ; `tsc -b --force` après purge ; `npm run lint` ; `lint:fields` ; `lint:colors` ; vitest complet ; knip (indicatif) ; `bash scripts/check_test_baseline.sh` en mode présence si exécutable localement.
 
 ## 8. Découvertes hors périmètre (consignées, non corrigées)
@@ -187,3 +194,15 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   `match-view`, `session-detail`, `timeseries`, `components`, `lib` : 406 fichiers / 3 858 tests
   verts (deux tests mis à jour sur les nouvelles chaînes : `squadCompositionGapHint.test.tsx`,
   `MatchViewPage.test.tsx`). Découvertes 8.6, 8.7.
+- 2026-10-07 — **E4 clos, plan clos côté exécutant.** Documents (CHANGELOG EN / FR, notes de version
+  EN / FR, registre, handoff). Gate de clôture : `go test -count=1` des 173 paquets de
+  `./internal/...` en trois lots au premier plan (156 ok, les autres sans test, code de sortie 0
+  partout) ; `go vet ./internal/...` 0 ; `make go-api-lint` 0 issue ; `make openapi-check` à jour ;
+  web `tsc -b --force` après purge 0, ESLint 0 erreur (26 avertissements), champs 0, couleurs 0,
+  imports croisés 7 ≤ 7, vitest complet 859 fichiers / 9 096 tests verts (5 fichiers ignorés, la
+  base ; un premier passage avait un échec isolé de la garde de balayage
+  `lib/clipboard/useCopyToClipboard.guard.test.ts`, verte seule et au passage complet suivant),
+  knip 0 / 0 / 0. `scripts/check_test_baseline.sh` NON lancé localement : en mode autonome il relance
+  la suite du module entier (`./...`, liaison CGO de tous les paquets dont `cmd/`), interdite sur ce
+  poste par le superviseur (disque) ; la présence a été vérifiée par différence en E2.6 (intersection
+  vide) et la CI Linux joue le script.

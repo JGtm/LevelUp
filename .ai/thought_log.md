@@ -116616,3 +116616,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : garde ROUGE avant (9 tests sur 34, 34 entrées, 19 chaînes sources distinctes), VERTE après ; sept mutations rouges, faux positifs contrôlés. tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des zones touchées 3 858 tests verts.
 
 **Conclusion / prochaine étape** : E4 (CHANGELOG et notes de version, registre, statut du handoff, gate de clôture).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E4 : clôture — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E4 ; plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md` clos côté exécutant).
+
+**Décision technique principale** : documents alignés sur le code — CHANGELOG EN / FR (résumé de tête, « Coordination : l'Appui », « La portée face au lobby », entrée du lot, « Page Escouade ») et notes de version EN / FR (contenu seulement, le registre « tu » est gardé) ; registre des reports : les deux lignes du lot Vue match closes, trois découvertes reportées (événements du journal des morts sans lecteur, impératif « Choisis » hors liste, clés `squad.header.*` sans lecteur) ; handoff marqué exécuté.
+
+**Résultats observés** : suite Go `./internal/...` 173 paquets verts en trois lots, vet 0, `make go-api-lint` 0 issue, `openapi-check` à jour ; web tsc forcé 0, ESLint 0 erreur, champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest complet 9 096 tests verts, knip 0. Le script de baseline n'est pas lancé en local (il relance tout le module) ; la présence est prouvée par différence.
+
+**Conclusion / prochaine étape** : au superviseur — push de `feat/escouade-synergies-textes`, CI, revue adversariale, décision sur la découverte §8.5, fusion dans `feat/v75`.
