@@ -80,7 +80,8 @@ inchangés tant qu'aucune sortie publiée ne change. Pas de fusion dans `feat/v7
 - [x] K4.2 Revue adversariale (un relecteur, lentilles L3 + L6) : 0 P0/P1, 4 P2 (trois angles morts de
       test du lot, deux commentaires de `replaybuild` rendus faux par le lot) — traités dans le lot,
       parce qu'ils portent sur ses propres tests et sur une doc qu'il invalide.
-- [ ] K4.3 Commits, push, CI au premier plan, verte.
+- [x] K4.3 Commit `fed3e54be`, poussé ; CI `37634967331` verte (gitleaks `37634967364`, Deploy Pre-Check
+      `37634967300` verts).
 - [x] K4.4 Entrée `.ai/thought_log.md`.
 
 ## Décisions
@@ -104,3 +105,4 @@ inchangés tant qu'aucune sortie publiée ne change. Pas de fusion dans `feat/v7
 ## Journal
 
 - 2026-10-07 : K1-K3 exécutés, gates verts, revue adversariale passée.
+- 2026-10-07 : `fed3e54be` poussé, CI 37634967331 verte ; plan clos.
