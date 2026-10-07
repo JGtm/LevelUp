@@ -14,6 +14,12 @@ package fallback
 // position ; elles sont nommees, comptees dans la couverture du document, et leur critere de
 // retrait est la livraison de cette lecture.
 //
+// Depuis le lot 2.7.d de la representation intermediaire, une position bipede vient d abord d un
+// record que la marche des trames a lu ; l ancrage ne rend plus que les records d un slot qu elle
+// n a pas lu dans le paquet, hors de ce que la fermeture de la trame prouve
+// (`repli_ancrage_bipede_apres_la_marche`). Le faux en-tete reste possible la, et aux naissances de
+// vehicule : les deux gardes restent.
+//
 // Les deux REGLES GRAMMATICALES du meme lot (aucune position de corps avant sa creation) ne sont
 // PAS ici : elles lisent le film (le record de creation), elles ne s y substituent pas.
 

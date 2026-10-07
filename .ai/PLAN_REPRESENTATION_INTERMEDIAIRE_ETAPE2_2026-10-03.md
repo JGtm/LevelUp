@@ -1417,6 +1417,23 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             rouge). Golden des familles de la mini-bobine : `bipedPositions` 28 004 → 29 000 (les 996
             positions du slot 529). Reste : preuve d'équivalence (seules les positions changent),
             puis 2.7.d3.
+            *Instruction du premier gate de corpus (d2 et d3 contre `312073cd3`, 2026-10-08)* :
+            deux règles corrigées dans ce sous-item, chacune née d'un FAUX du banc.
+            1. *Un dead-state qui ne dit pas la mort ne tue pas le corps* (découverte 41) : la règle
+               « un corps mort n'agit plus » de 2.7.b tuait le corps au premier dead-state, même quand
+               il ne dit pas la mort (`Mort` à faux, lu dans une trame refusée : deux sur `a349fea8`,
+               un sur `111fa685`). Sur `a349fea8`, le slot 590 perdait ses positions et ses lectures
+               jusqu'à la fin du film (1 573 positions ; sept ramassages hors vie au banc, V-3 5 → 12).
+               Elle exige désormais `Mort`, comme le canal des morts ; les huit lecteurs de 2.7.b en
+               profitent aussi (changement déclaré).
+            2. *La bande bipède reste la population des positions* (découverte 42) : la marche lit des
+               corps qu'aucune image-clé ne porte — les corps posés en fin de match pour la scène des
+               vainqueurs (`bfecd02b` slot 602, `c75f33b8` slot 592, `f75e7053` slot 601, en hauteur,
+               dans la dernière minute), un joueur né au dernier chunk d'une bobine (slot 529 de la
+               mini-bobine). Publiés en traces, ils donnaient des fins de vie sans identité (O-V2, +1
+               sur cinq films) et des replis de génération inconnue. Les positions de la marche ne se
+               retiennent que pour un slot de la bande bipède du contexte, la population de l'ancrage ;
+               le golden de la mini-bobine revient à 28 004 et son test tient la population.
       - [ ] 2.7.d3 *Pistes et créations des objets du monde derrière la marche* (décisions 1 et 3).
             *Écrit* : `grammar/objets_du_monde_lus.go` — un canal de la marche des trames retient les
             records DELTA à i0 des archétypes à pistes et les records NEW des archétypes de création,
@@ -1439,6 +1456,20 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             mini-bobine : projectiles 53 → 52 (une piste de cinq points, dont quatre dans des trames
             prouvées où la marche ne lit pas ce slot), armes au sol 46 → 42 (des équipements),
             créations d'équipement 38 → 36 (deux créations fortuites). Reste : preuve, puis 2.7.d4.
+            *Instruction du premier gate de corpus (2026-10-08), lectures sur pièces des documents
+            de base et de tête* : les objets que la tête ne publie plus sont des fantômes. Armes au
+            sol perdues sur `4f77afc1` : sept objets « apparus » à z = −500 à −944 m, aux bords x de
+            la carte ; projectiles perdus sur `fb1a1a72` : trente pistes immobiles à x = −230,77 m,
+            souvent par paires au même instant ; véhicules : deux vies au châssis `00155903` (mot
+            d'identité d'une création fortuite, sans famille ni trajectoire) disparaissent sur
+            `084a804d`, et la vie du slot 829 y prend sa vraie naissance (le NEW que la marche lit au
+            chunk 18, châssis `5b80c406`, un Ghost), si bien que le relais vers le slot 835 (même
+            châssis, même point) se fusionne en un seul véhicule ; les bornes de la carte se
+            resserrent quand un point aberrant disparaît (`084a804d` maxX 202,97 → 43,81 ;
+            `50247b26` maxZ 77,13 → 30,82, un point isolé du slot 607). Sur `50247b26`, ce
+            resserrement fait sortir des bornes un véhicule volant (slot 802, 236 images au-dessus
+            de tous les joueurs) : le banc le compte en V-2 ; les bornes viennent des seules traces
+            de joueurs (`boundsOf`), défaut de construction préexistant, hors de ce lot.
       - [ ] 2.7.d4 *Clôture* : registre des replis, montée de `grammar.Rev`, ADR 0037 amendé, doc,
             gate de l'item.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
@@ -1828,6 +1859,15 @@ plan y sont reprises comme items (3.1.2).
    la marche devant lui. Le même principe s'y appliquerait (la marche lit les records `ti=40` et leur
    i0). Non traité : hors de la liste de 2.7.d (positions bipèdes, huit lecteurs, pistes et créations
    des objets du monde).
+41. *(gate de 2.7.d, 2026-10-08)* **La règle « un corps mort n'agit plus » de 2.7.b tuait le corps sur
+   un dead-state qui ne dit pas la mort.** Elle testait la présence du composant, pas son drapeau
+   `Mort` ; un dead-state à `Mort` faux, lu dans une trame refusée, écartait toutes les lectures du
+   corps jusqu'à la fin du film (`a349fea8` slot 590 ; `111fa685` slot 545). Corrigé en 2.7.d2 : il
+   bloquait le gate (V-3).
+42. *(même gate)* **La marche lit des corps bipèdes qu'aucune image-clé ne porte** : les corps posés
+   en fin de match pour la scène des vainqueurs, et un joueur né au dernier chunk d'une bobine. La
+   bande des images-clés reste la population des positions (2.7.d2). Les huit lecteurs de 2.7.b ne
+   filtrent pas leurs records par la bande ; ce qu'ils publient de ces corps n'est pas instruit.
 
 ## 7. Journal
 

@@ -333,8 +333,16 @@ errors by construction: a slot of the biped band that the walk reads as another 
 gives a player position; a band that overlaps another archetype's band no longer receives that
 archetype's records (an equipment item no longer doubles as a ground weapon); and a header found
 inside another record of a frame that the closure proves no longer becomes a position, a track
-sample or a creation (plan of step 2, discoveries 37 to 39). To read the positions behind the walk
-without walking twice, the cook plays its frame walk once, before the identity bridge, and the
+sample or a creation (plan of step 2, discoveries 37 to 39). The positions keep the anchoring's
+population: a position the walk designates is retained only for a slot of the context's biped band,
+because the walk also reads biped bodies that no keyframe carries (the bodies placed for the
+winners' scene at the end of a match, a player born in the last chunk of a reel), which would
+otherwise publish lives without identity (discovery 42). A death state ends a body for the biped
+readers and the positions only when it says death (`Mort`), as in the death channel: the rule of
+lot 2.7.b tested the presence of the component, and a death state read in a refused frame with
+`Mort` false cut a player's readings until the end of the film (discovery 41). To read the
+positions behind the walk without walking twice, the cook plays its frame walk once, before the
+identity bridge, and the
 movement states take its result; the object-death channel joins that walk when the keyframes carry
 vehicle slots, the first condition of the vehicle layer that is scanned after it. A film without
 registry keeps the anchoring and the passes alone, as does a track request that names no archetype
