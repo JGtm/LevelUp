@@ -7,7 +7,6 @@ package teammates
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -192,61 +191,5 @@ func TestBuildSquadIntensityProfile_XUIDsDeLaPage(t *testing.T) {
 		if r := tlRowFor(t, got, gt, "m1"); r.Phases[1] != 1 {
 			t.Errorf("ligne %s : attendu le frag du bucket 1 (xuid de la page), phases %v", gt, r.Phases)
 		}
-	}
-}
-
-// tacticalRepoEspion compte aussi les requêtes du contexte des morts : depuis le retrait du nuage
-// « Frags non ripostés » (plan Emprise vies, décision V7), la page n'en fait AUCUNE.
-type tacticalRepoEspion struct {
-	*mockTacticalRepo
-	vuesMorts []domain.TacticalQuery
-}
-
-func (e *tacticalRepoEspion) MortsAvecContexte(ctx context.Context, q domain.TacticalQuery) (domain.TacticalMortsContexte, error) {
-	e.vuesMorts = append(e.vuesMorts, q)
-	return e.mockTacticalRepo.MortsAvecContexte(ctx, q)
-}
-
-// lignesEscouade : une ligne escouade par match, une minute d'écart.
-func lignesEscouade(ids ...string) []domain.SquadMatchRow {
-	start := time.Date(2026, 9, 1, 20, 0, 0, 0, time.UTC)
-	out := make([]domain.SquadMatchRow, 0, len(ids))
-	for i, id := range ids {
-		out = append(out, domain.SquadMatchRow{MatchID: id, StartTime: start.Add(time.Duration(i) * time.Minute)})
-	}
-	return out
-}
-
-// TestBuildSquadEchange_JournalRestreintALaComposition (L2.4 / D2.4) : le journal des morts est
-// lu UNE fois, avec pour liste blanche l'historique de la COMPOSITION (l'habituel), jamais tout
-// l'historique du joueur ; le contexte des morts n'est plus lu du tout (nuage retiré, V7).
-func TestBuildSquadEchange_JournalRestreintALaComposition(t *testing.T) {
-	ids := []string{"m1", "m2"}
-	espion := &tacticalRepoEspion{mockTacticalRepo: &mockTacticalRepo{
-		lecture: domain.TacticalKillEvents{
-			Univers: universDe(ids...),
-			Events: []domain.KillEvent{
-				{MatchID: "m2", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 10_000},
-				{MatchID: "m2", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 12_000},
-			},
-		},
-	}}
-	svc := &TeammatesService{
-		titleSlug: "halo_infinite", gamertag: "main",
-		tacticalRepo: espion, caps: capsFiables(),
-	}
-	// Le filtre de la page retient m2 ; l'historique de la composition compte m1 et m2.
-	got := svc.buildSquadEchange(context.Background(),
-		lignesEscouade("m2"), lignesEscouade("m1", "m2"), "main", "x_main", echangeMates("Ami"))
-	if got == nil {
-		t.Fatal("section echange attendue")
-	}
-	if len(espion.vues) != 1 || len(espion.vuesMorts) != 0 {
-		t.Fatalf("lectures : journal %d, contexte %d — attendu une du journal, aucune du contexte",
-			len(espion.vues), len(espion.vuesMorts))
-	}
-	q := espion.vues[0]
-	if !q.Matchs.Restreint() || strings.Join(q.Matchs.IDs(), ",") != "m1,m2" {
-		t.Errorf("liste blanche = %v (restreinte %v), attendu l'habituel [m1 m2]", q.Matchs.IDs(), q.Matchs.Restreint())
 	}
 }

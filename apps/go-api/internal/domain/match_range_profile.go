@@ -38,19 +38,6 @@ type MatchRangePlayer struct {
 	// LobbyDeltaM est `MedianM - LobbyMedianM` : SIGNÉ, positif au-dessus du lobby. C'est
 	// l'axe du nuage de l'Escouade et la hauteur du bâton de la session.
 	LobbyDeltaM float64 `json:"lobby_delta_m"`
-	// ElevationMedianM est la médiane du DÉNIVELÉ SIGNÉ de ses frags mesurés du match, en
-	// mètres : `killer_z - victim_z` du côté tueur, POSITIF quand il frague depuis le haut
-	// (cf. analysis.MeasuredKill.DeltaZ — le signe n'est jamais redressé). C'est l'axe
-	// vertical du dénivelé (proposition E1, 2026-09-22), la distance au sol étant l'autre.
-	//
-	// POINTEUR, et pas un zéro : un 0 m se lirait « il frague à plat », ce qui est une
-	// mesure ; l'absence dit « pas de dénivelé mesuré ».
-	ElevationMedianM *float64 `json:"elevation_median_m,omitempty"`
-	// ElevationLobbyDeltaM est `ElevationMedianM - LobbyElevationMedianM` : SIGNÉ, positif
-	// au-dessus du lobby. MÊME normalisation que LobbyDeltaM, et pour la même raison — le
-	// dénivelé typique d'un match dépend de la carte, pas du joueur. Absent dès que l'une
-	// des deux médianes manque.
-	ElevationLobbyDeltaM *float64 `json:"elevation_lobby_delta_m,omitempty"`
 	// Measured est le nombre de frags mesurés du joueur sur ce match — le dénominateur de
 	// sa médiane. Toujours >= 1 : un joueur sans frag mesuré est ABSENT, jamais à zéro.
 	Measured int `json:"measured"`
@@ -73,10 +60,6 @@ type MatchRangeProfile struct {
 	// LobbyMedianM est la médiane des distances de TOUS les frags mesurés du match — le
 	// référentiel. Elle porte sur le lobby entier même quand `Players` n'a qu'une ligne.
 	LobbyMedianM float64 `json:"lobby_median_m"`
-	// LobbyElevationMedianM est la médiane du dénivelé signé de TOUS les frags mesurés du
-	// match — le référentiel vertical. Comme la médiane de portée, elle se calcule SUR LES
-	// FRAGS, jamais comme la moyenne des médianes par joueur.
-	LobbyElevationMedianM *float64 `json:"lobby_elevation_median_m,omitempty"`
 	// LobbyMeasured est le nombre de frags mesurés du match, tous joueurs confondus.
 	LobbyMeasured int `json:"lobby_measured"`
 }

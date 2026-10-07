@@ -422,8 +422,7 @@ type TacticalPositions struct {
 	Points  []TacticalKillPosition
 }
 
-// TacticalKillEvents : l'univers ET le journal des morts de ses matchs, sous la
-// forme que `analysis/coordination` consomme.
+// TacticalKillEvents : l'univers ET le journal des morts de ses matchs.
 type TacticalKillEvents struct {
 	Univers TacticalUnivers
 	Events  []KillEvent

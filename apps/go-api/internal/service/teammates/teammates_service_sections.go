@@ -52,7 +52,6 @@ type sectionsEscouade struct {
 	nativeKillMechanics *domain.SquadKillMechanics
 	firstBlood          []domain.FirstBloodPlayerSeries
 	assistPairs         *domain.SquadAssistPairs
-	echange             *domain.SquadEchange
 	rangeProfiles       *domain.MatchRangeBlock
 	medalDigest         []domain.MedalDigestEntry
 }
@@ -140,14 +139,8 @@ func (s *TeammatesService) graphesDeLaPopulation(
 	siVivante(ctx, func() { out.nativeKillMechanics = s.buildSquadKillMechanics(ctx, p.rows, gt, px, tm) })
 	siVivante(ctx, func() { out.firstBlood = s.buildSquadFirstBlood(ctx, p.rows, gt, px, tm) })
 	siVivante(ctx, func() { out.assistPairs = s.buildSquadAssistPairs(ctx, p.rows, gt, px, tm) })
-	// L'échange compare DEUX périmètres : les matchs filtrés (rows) et l'historique complet
-	// de la composition (rowsTimeline, non filtré par session/période) — la baseline
-	// « habituelle », dont le périmètre filtré est toujours un sous-ensemble. Même mécanique
-	// que buildBriefingBaseline.
-	siVivante(ctx, func() { out.echange = s.buildSquadEchange(ctx, p.rows, p.rowsTimeline, gt, px, tm) })
-	// Roles de portee (D22-5) : MEME cadrage de perimetre et de roster que l'echange
-	// ci-dessus, sur les seuls matchs filtres — la tendance se lit sur ce que la page
-	// affiche, jamais sur un historique que le filtre a ecarte.
+	// Roles de portee (D22-5) : sur les seuls matchs filtres — la tendance se lit sur ce
+	// que la page affiche, jamais sur un historique que le filtre a ecarte.
 	siVivante(ctx, func() { out.rangeProfiles = s.buildSquadRange(ctx, p.rows, gt, px, tm) })
 	siVivante(ctx, func() { out.medalDigest = s.buildMedalDigest(ctx, p.rows, gt, px, tm, p.req.Locale) })
 }

@@ -545,12 +545,6 @@ type TeammatesPageResponse struct {
 	// la sélection, avec la couverture de la mesure. Nil quand aucun match de la
 	// sélection n'a d'assistance mesurée (dont : titre sans décodeur de film).
 	AssistPairs *SquadAssistPairs `json:"assist_pairs,omitempty"`
-	// Echange alimente les trois surfaces de l'ECHANGE (une mort vengee dans les 5 s) :
-	// la matrice « qui echange pour qui » et le KPI sur Synergies, la distribution du
-	// delai sur Dynamique. Nil quand le titre ne nomme pas le tueur de chaque mort
-	// (games.JournalDesMortsFiable) ou quand aucun match de la selection ne porte de
-	// journal des morts — une OMISSION, jamais des zeros.
-	Echange *SquadEchange `json:"echange,omitempty"`
 	// RangeProfiles alimente les « rôles de portée » de la page Escouade (D22-5) : un
 	// profil par match du périmètre filtré, portant la médiane de portée de chaque joueur
 	// du roster ET celle du LOBBY ENTIER du match, qui en est le référentiel — sans quoi

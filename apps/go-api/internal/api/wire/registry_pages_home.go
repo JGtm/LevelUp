@@ -220,11 +220,6 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// Score en MANCHES du tableau historique de l'escouade : MÊME table que la vue
 		// match et l'Explorateur, pour que les trois surfaces s'accordent.
 		WithRoundsDecide(r.roundsDecideFor(pdb)).
-		// Section « échange » (matrice, délais, KPI) : le MÊME lecteur du journal des
-		// morts que l'onglet Tactique, et les capabilities du titre du joueur pour sa
-		// seule porte data-level. Titre qui ne nomme pas le tueur de chaque mort →
-		// section absente du contrat (jamais des zéros). Jamais une comparaison de slug.
-		WithEchange(duckdb.NewTacticalRepo(pdb), r.capabilitiesForPDB(pdb)).
 		// « Groupés ou isolés » de l'Emprise (plan Emprise vies, lot V3) : la portée COURANTE du
 		// radar de chaque match, MÊME table que l'onglet Tactique (radarRangeFor).
 		WithRadarRange(r.radarRangeFor(pdb)).

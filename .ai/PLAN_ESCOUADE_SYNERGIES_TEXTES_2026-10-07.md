@@ -81,13 +81,13 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 
 ### E2 — Go et contrat : le bloc `echange` et le dénivelé
 
-- [ ] E2.1 `domain/squad_echange.go` supprimé ; champ `Echange` de `domain.TeammatesPageResponse` retiré.
-- [ ] E2.2 `service/teammates/teammates_squad_echange.go` et ses tests (`_test`, `_contrat_test`, `_maquette_test`) supprimés ; câblage (`teammates_service_sections.go`, `teammates_service.go` : champ, `WithEchange`, `tacticalRepo`, `caps`) ; part échange de `teammates_service_loads_test.go` ; `api/wire/registry_pages_home.go`.
-- [ ] E2.3 `analysis/coordination/trade.go`, `riposte.go` et leurs tests supprimés ; `domain/coordination.go` réduit (D1) ; `no_naked_rate_test.go` (liste blanche réduite de `BilanEchanges`, `MortSuivie`, justifications), `doc.go` du paquet au présent ; `bloc_appui_golden_test.go` relu (l'appui reste).
-- [ ] E2.4 Dénivelé (D3) : `domain/match_range_profile.go`, `analysis/match_range_profile.go`, `analysis/match_range_elevation_test.go`.
-- [ ] E2.5 Contrat : `make openapi-gen`, `make generate-types`, snapshot `contract-surface.snapshot.json` (`UPDATE_CONTRACT_SURFACE=1`), `tools/lint-contract-ratchet.mjs`, `make openapi-check`.
-- [ ] E2.6 Baseline : différence AVANT / APRÈS des fonctions `Test*` de l'arbre ; paires retirées de `.ai/baselines/tests_pre_migration.jsonl` + paragraphe daté dans `scripts/check_test_baseline.sh`.
-- [ ] E2.7 Grep : `coordination\.(Echanges|Ripostes)`, `SquadEchange`, `FenetreEchangeMs`, `Elevation` dans `apps/go-api` — aucun reste hors historique.
+- [x] E2.1 `domain/squad_echange.go` supprimé ; champ `Echange` de `domain.TeammatesPageResponse` retiré.
+- [x] E2.2 `service/teammates/teammates_squad_echange.go` et ses tests (`_test`, `_contrat_test`, `_maquette_test`) supprimés ; câblage (`teammates_service_sections.go`, `teammates_service.go` : champ, `WithEchange`, `tacticalRepo`, `caps`) ; part échange de `teammates_service_loads_test.go` ; `api/wire/registry_pages_home.go`.
+- [x] E2.3 `analysis/coordination/trade.go`, `riposte.go` et leurs tests supprimés ; `domain/coordination.go` réduit (D1) ; `no_naked_rate_test.go` (liste blanche réduite de `BilanEchanges`, `MortSuivie`, justifications), `doc.go` du paquet au présent ; `bloc_appui_golden_test.go` relu (l'appui reste).
+- [x] E2.4 Dénivelé (D3) : `domain/match_range_profile.go`, `analysis/match_range_profile.go`, `analysis/match_range_elevation_test.go`.
+- [x] E2.5 Contrat : `make openapi-gen`, `make generate-types`, snapshot `contract-surface.snapshot.json` (`UPDATE_CONTRACT_SURFACE=1`), `tools/lint-contract-ratchet.mjs`, `make openapi-check`.
+- [x] E2.6 Baseline : différence AVANT / APRÈS des fonctions `Test*` de l'arbre ; paires retirées de `.ai/baselines/tests_pre_migration.jsonl` + paragraphe daté dans `scripts/check_test_baseline.sh`. Résultat : 38 `Test*` disparus de l'arbre (15 `analysis/coordination`, 2 `analysis`, 21 `service/teammates`), aucun apparu ; AUCUN des 38 n'est dans la baseline (intersection vide, et 0 ligne de la baseline pour ces paquets) : baseline et script inchangés.
+- [x] E2.7 Grep : `coordination\.(Echanges|Ripostes)`, `SquadEchange`, `FenetreEchangeMs`, `Elevation` dans `apps/go-api` — aucun reste hors historique.
 - **Gate E2** : `gofmt -l` ; `go vet ./internal/...` ; `go build ./internal/... ./cmd/levelup ./cmd/openapi-gen` (jamais `go build ./...`) ; `go test` des paquets touchés (`domain`, `analysis`, `analysis/coordination`, `service/teammates`, `service`, `api/...`, `archlint`) ; golangci-lint des paquets touchés ; contrat ; tsc / vitest du web lié au contrat.
 
 ### E3 — Textes sans personne et garde étendue
@@ -115,6 +115,23 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   n'existe plus. Hors périmètre (`features/tactical/` interdit à ce lot).
 - **8.3 (E1)** — `components/charts/sessionBarsTrendChart.test.ts` nomme ses séries d'exemple
   « Je riposte » (données de test d'un composant générique, aucun lecteur produit). Laissé.
+- **8.5 (E2) — hypothèse D2 à corriger, à trancher par le superviseur.** Après ce lot,
+  `domain.TacticalKillEvents.Events` n'a plus AUCUN lecteur de production : le seul appelant restant
+  de `port.TacticalRepository.KillEvents`, le bloc de coordination des pages Sessions et Séries
+  temporelles (`service/coordination_block.go:135`, `ajouter` l. 178-198), ne lit que
+  `lecture.Univers` (matchs, drapeau de mesure, équipes) — exactement ce que rend déjà
+  `port.TacticalRepository.Univers` (`platform/duckdb/tactical_repo_univers.go:312`, même
+  `chargerUnivers`). La requête `QTacticalEvents` (`platform/duckdb/tactical_repo.go:303`) lit donc
+  le journal des morts pour rien à chaque lecture de coordination, et `domain.KillEvent` n'est plus
+  consommé. Correction proposée (lot à part) : faire lire `Univers` au bloc de coordination, puis
+  retirer `KillEvents`, `TacticalKillEvents`, `KillEvent`, `QTacticalEvents`, les doubles de test
+  (`coordination_block_test.go`, `session_page_coordination_test.go`, `tactical_mock_test.go`) et
+  adapter les tests DuckDB qui passent par `KillEvents` (dont le garde-rail I2 de l'ADR 0036,
+  `TestTacticalRepo_PerimetreRestreint_FenetresBornees`, et sa référence dans l'ADR). Non fait ici :
+  c'est un recâblage de la lecture d'autres pages et d'un garde-rail de l'ADR 0036, pas une
+  suppression du périmètre. Les commentaires qui annonçaient un consommateur (port, domaine, paquet
+  `coordination`) sont corrigés ; celui de `QTacticalEvents` (« l'echange se mesure… ») est laissé
+  au lot qui retirera la requête.
 - **8.4 (E1)** — `lib/formatters/lowSampleNote.ts` et sa garde racontent la copie historique dans
   `SquadEchangeKpi` (histoire datée, vraie). Laissé.
 
@@ -131,3 +148,17 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   `components/charts`, `lib`, `timeseries`, `session-detail` : 317 fichiers / 3 021 tests verts
   (premier passage : 5 dépassements du délai de 5 s sur des gardes qui balayent l'arbre, sous
   charge ; verts aux deux passages suivants) ; knip 0 / 0 / 0.
+- 2026-10-07 — **E2 clos.** Bloc `echange` retiré de bout en bout (`domain/squad_echange.go`, producteur
+  et ses trois fichiers de test, câblage `WithEchange` / `tacticalRepo` / `caps`, champ du contrat) ;
+  `trade.go` et `riposte.go` du paquet `coordination` avec leurs tests ; `MortSuivie`,
+  `PaireEchange`, `BilanEchanges` ; liste blanche de `no_naked_rate_test.go` réduite des deux types ;
+  dénivelé du profil de portée (trois champs, calcul, test). `Mesurer` reste (D1). Contrat :
+  `openapi.yaml` −147 lignes, `generated.ts` −56, cinq schémas `SquadEchange*` retirés du snapshot de
+  surface par sa procédure (garde vue rouge sur ces cinq noms avant la mise à jour). Gate :
+  `gofmt -l` muet ; `go build ./internal/... ./cmd/levelup ./cmd/openapi-gen` 0 ; `go vet ./internal/...`
+  0 ; `go test -count=1` `domain`, `analysis`, `analysis/coordination`, `service/teammates`,
+  `archlint`, `api/wire`, `service`, `api/...` : tous ok (le golden `TestOpenAPIYAMLIsUpToDate`
+  rouge avant régénération, vert après) ; golangci-lint des paquets touchés 0 issue ;
+  `lint-contract-ratchet` propre ; `make openapi-check` à jour ; web `tsc -b` purgé 0, vitest
+  `lib/api` + `squad` 818 tests verts. `platform/duckdb` et `persist` non touchés : pas de passe
+  `-tags=integration`. Découverte 8.5.

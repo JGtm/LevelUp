@@ -116596,3 +116596,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : tsc purgé 0, ESLint 0 erreur (26 avertissements, la base), champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest des zones touchées 317 fichiers / 3 021 tests verts, knip 0 / 0 / 0.
 
 **Conclusion / prochaine étape** : E2 (Go et contrat : bloc `echange`, `coordination.Echanges` / `Ripostes`, dénivelé du profil de portée).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E2 : Go et contrat — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E2 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : le bloc `echange` de la page Escouade sort de bout en bout (type de domaine, producteur et ses tests, câblage du service et du registre, champ du contrat) ; avec lui partent `coordination.Echanges`, `coordination.Ripostes` et leurs types (`MortSuivie`, `PaireEchange`, `BilanEchanges`). `coordination.Mesurer` reste : l'appui et l'isolement le lisent. Le dénivelé du profil de portée (trois champs, son calcul) sort aussi ; `MeasuredKill.DeltaZ` reste, lu par la portée par arme. Découverte (plan §8.5, à trancher) : `TacticalKillEvents.Events` n'a plus de lecteur — le bloc de coordination de Sessions et des Séries temporelles ne lit que l'univers ; le recâblage sur `Univers` et le retrait de la requête des événements touchent une autre page et un garde-rail de l'ADR 0036, laissés à un lot dédié.
+
+**Résultats observés** : contrat −147 lignes (openapi) / −56 (types générés), cinq schémas `SquadEchange*` retirés du snapshot de surface ; 38 fonctions de test supprimées, aucune dans la baseline de présence. Build des paquets internes, vet, tests des paquets touchés (dont `service`, `api/...`, `archlint`), golangci-lint 0 issue, `openapi-check` à jour, tsc et vitest web verts.
+
+**Conclusion / prochaine étape** : E3 (garde des textes étendue au jeu de l'Escouade, vue rouge, puis reformulation FR / EN).

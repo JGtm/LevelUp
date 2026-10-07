@@ -18989,12 +18989,6 @@ components:
     MatchRangePlayer:
       additionalProperties: false
       properties:
-        elevation_lobby_delta_m:
-          format: double
-          type: number
-        elevation_median_m:
-          format: double
-          type: number
         gamertag:
           type: string
         lobby_delta_m:
@@ -19017,9 +19011,6 @@ components:
     MatchRangeProfile:
       additionalProperties: false
       properties:
-        lobby_elevation_median_m:
-          format: double
-          type: number
         lobby_measured:
           format: int64
           type: integer
@@ -25876,142 +25867,6 @@ components:
             - array
             - "null"
       type: object
-    SquadEchange:
-      additionalProperties: false
-      properties:
-        cellules:
-          items:
-            $ref: '#/components/schemas/SquadEchangeCell'
-          type:
-            - array
-            - "null"
-        couverture:
-          $ref: '#/components/schemas/Couverture'
-        delai_median_ms:
-          format: int64
-          type: integer
-        delais:
-          items:
-            $ref: '#/components/schemas/SquadEchangeBucket'
-          type:
-            - array
-            - "null"
-        fenetre_ms:
-          format: int64
-          type: integer
-        habituel:
-          $ref: '#/components/schemas/Couverture'
-        joueurs:
-          items:
-            $ref: '#/components/schemas/SquadEchangeJoueur'
-          type:
-            - array
-            - "null"
-        matchs_habituel:
-          format: int64
-          type: integer
-        matchs_mesures:
-          format: int64
-          type: integer
-        matchs_total:
-          format: int64
-          type: integer
-        taux_par_session:
-          items:
-            $ref: '#/components/schemas/SquadEchangeSessionPoint'
-          type:
-            - array
-            - "null"
-      required:
-        - joueurs
-        - cellules
-        - delais
-        - fenetre_ms
-        - couverture
-        - habituel
-        - matchs_habituel
-        - matchs_mesures
-        - matchs_total
-        - delai_median_ms
-        - taux_par_session
-      type: object
-    SquadEchangeBucket:
-      additionalProperties: false
-      properties:
-        debut_ms:
-          format: int64
-          type: integer
-        fin_ms:
-          format: int64
-          type: integer
-        hors_fenetre:
-          type: boolean
-        nombre:
-          format: int64
-          type: integer
-        ouvert:
-          type: boolean
-      required:
-        - debut_ms
-        - fin_ms
-        - ouvert
-        - hors_fenetre
-        - nombre
-      type: object
-    SquadEchangeCell:
-      additionalProperties: false
-      properties:
-        nombre:
-          format: int64
-          type: integer
-        par_match:
-          format: double
-          type: number
-        venge_gamertag:
-          type: string
-        venge_xuid:
-          type: string
-        vengeur_gamertag:
-          type: string
-        vengeur_xuid:
-          type: string
-      required:
-        - vengeur_xuid
-        - vengeur_gamertag
-        - venge_xuid
-        - venge_gamertag
-        - nombre
-        - par_match
-      type: object
-    SquadEchangeJoueur:
-      additionalProperties: false
-      properties:
-        gamertag:
-          type: string
-        xuid:
-          type: string
-      required:
-        - xuid
-        - gamertag
-      type: object
-    SquadEchangeSessionPoint:
-      additionalProperties: false
-      properties:
-        couverture:
-          $ref: '#/components/schemas/Couverture'
-        dans_le_filtre:
-          type: boolean
-        matchs_mesures:
-          format: int64
-          type: integer
-        session_label:
-          type: string
-      required:
-        - session_label
-        - couverture
-        - matchs_mesures
-        - dans_le_filtre
-      type: object
     SquadEmpriseBlock:
       additionalProperties: false
       properties:
@@ -29188,8 +29043,6 @@ components:
           type:
             - array
             - "null"
-        echange:
-          $ref: '#/components/schemas/SquadEchange'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
