@@ -3,6 +3,7 @@ package assetnames
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -166,5 +167,26 @@ func TestResolve_FreshErrorCountsAsError(t *testing.T) {
 	}
 	if res.Skipped != 0 {
 		t.Fatalf("fresh-error: Skipped = %d, want 0", res.Skipped)
+	}
+}
+
+// TestResolve_SansPlafond_70Assets : MaxAssets 0 = aucun plafond. 70 assets distincts (plus que
+// l'ancien plafond implicite de 64) sont tous résolus, aucun n'est écarté.
+func TestResolve_SansPlafond_70Assets(t *testing.T) {
+	names := map[string]string{}
+	refs := make([]AssetRef, 0, 70)
+	for i := 0; i < 70; i++ {
+		id := fmt.Sprintf("map-%02d", i)
+		names[id+"|fr-FR"] = "Carte " + id
+		names[id+"|en-US"] = "Map " + id
+		refs = append(refs, AssetRef{AssetType: "map", AssetID: id, VersionID: "v1"})
+	}
+	s := newMockStore()
+	res, _ := Resolve(context.Background(), &mockFetcher{names: names}, s, refs, Config{TitleID: "hi"})
+	if res.Requested != 70 || res.Resolved != 70 || res.Capped != 0 {
+		t.Fatalf("sans plafond : %+v, want 70 demandés, 70 résolus, 0 écarté", res)
+	}
+	if len(s.upserts) != 140 {
+		t.Errorf("traductions écrites = %d, want 140 (70 assets x 2 langues)", len(s.upserts))
 	}
 }
