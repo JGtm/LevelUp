@@ -132,7 +132,7 @@ func TestContract_NoDuplicateRows(t *testing.T) {
 // TODO(D6) : activer pour V2 ; en V1 ce test sert de baseline (XFAIL
 // documenté avant la bascule prod).
 func TestContract_CrossPlayerDedupOneAPICallPerMatch(t *testing.T) {
-	t.Skip("V1 actif : TestContract_CrossPlayerDedup_V1 (package sync, via knownset.Load : participants du xuid au registre) ; scaffold V2 en attente")
+	t.Skip("couvert ailleurs : V1 TestGate_DeltaSkip_EnrichmentConverges_integration (package sync : match inséré par un coéquipier, delta-skip, 0 inséré) sur la règle knownset (TestLoad_RegimeNormalIdentiqueALAncienneUnion) ; V2 TestContractV2_CrossPlayerDedupOneAPICallPerMatch (package sync/v2)")
 }
 
 // TestContract_PartialFailureIsolation vérifie qu'un échec sur un joueur
