@@ -239,16 +239,15 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 			"celles qu ils infligent ne se publient pas",
 			"film", c.name, "bots", n, "borne_humains", c.roster.borneHumains)
 	}
-	// LE COUPLE (TUEUR, VICTIME) SE LIT AU KILL-EVENT 85 (lot 1.9.3), et il se lit ICI : la
-	// decomposition du kill-feed exige les kill-events et le roster EPINGLE, et la bijection
-	// exige la decomposition. L ordre est donc force, et il est le resultat — resoudre les
-	// couples APRES la bijection les ferait dependre de l inference qu ils alimentent.
-	c.killEvents = scanKillEvents(c.film)
-	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster)
-
+	// LA MARCHE LIT LES MORTS ET LES KILL-EVENTS, PUIS LE COUPLE (TUEUR, VICTIME) SE LIT AU
+	// KILL-EVENT 85 (lot 1.9.3), et il se lit ICI : la decomposition du kill-feed exige les
+	// kill-events et le roster EPINGLE, et la bijection exige la decomposition. L ordre est donc
+	// force, et il est le resultat — resoudre les couples APRES la bijection les ferait dependre de
+	// l inference qu ils alimentent.
 	if err = c.marcher(ctx, src); err != nil {
 		return err
 	}
+	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster)
 	c.scanCands = scanFilm(c.film, c.roster.nPlay)
 	if err = ctx.Err(); err != nil {
 		return err
@@ -339,10 +338,10 @@ func coveredInstants(kills []Kill) map[int]bool {
 	return m
 }
 
-// marcher : la calibration, puis la marche des morts, sur le contexte du film ouvert sous la carte du
-// match — la marche des trames de la grammaire, sous le profil calibre et le decoupage MPP que la
-// grammaire resout pour le film. Ce que le registre, la phase des images-cles et la marche
-// constatent tombe dans les diagnostics.
+// marcher : la calibration, puis la marche des morts et des kill-events, sur le contexte du film
+// ouvert sous la carte du match — la marche des trames de la grammaire, sous le profil calibre et le
+// decoupage MPP que la grammaire resout pour le film. Ce que le registre, la phase des images-cles
+// et la marche constatent tombe dans les diagnostics.
 func (c *decodeCtx) marcher(ctx context.Context, src *source.Film) error {
 	fc := grammar.NewFilmContextForMap(src, c.opts.Carte, nil)
 	reg, err := fc.Registry()
@@ -361,9 +360,12 @@ func (c *decodeCtx) marcher(ctx context.Context, src *source.Film) error {
 		return err
 	}
 	c.signalerLeDecoupageMPP(poserLeProfil(fc, c.calib.Profil))
-	if c.walkRes, err = marcherLesMorts(fc, c.film, c.roster); err != nil {
+	lecture, err := grammar.LireLaMarcheDeKillsource(fc)
+	if err != nil {
 		return err
 	}
+	c.walkRes = mortsDeLaMarche(lecture, c.film, c.roster)
+	c.killEvents = killEventsDeLaMarche(lecture, c.film)
 	fc.Diagnostics().Verser(&c.diag)
 	return nil
 }

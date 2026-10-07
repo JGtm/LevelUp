@@ -207,6 +207,27 @@ type VueA struct {
 	// Genres sont les sélecteurs `R(7)` des messages lus, dans l'ordre, puis celui du message qui a
 	// arrêté la lecture ; le premier est le genre de la tête.
 	Genres []uint8
+	// Kills sont les messages `PlayerKilledEvent` (genre 85) lus, dans l'ordre.
+	Kills []MessageDeKill
+}
+
+// RefAbsente est la valeur d'une référence d'entité qu'un message ne porte pas (garde à 1).
+const RefAbsente int8 = -1
+
+// MessageDeKill est un message `PlayerKilledEvent` (genre 85) de la vue A : sa position et ses
+// champs (`FUN_14104bd08`), lus sans la queue optionnelle.
+//
+// Seize octets : sa taille est gelée par `tailles_test.go`.
+type MessageDeKill struct {
+	// Debut est le premier bit du message : le bit de continuation qui l'annonce.
+	Debut uint32
+	// PartDuTueur et PartDeLAssistant sont ses deux `R(32)` (`[+8]` et `[+0x14]`).
+	PartDuTueur, PartDeLAssistant uint32
+	// Victime, Tueur et Assistant sont ses trois références d'entité (`FUN_1407f2058`, 5 bits),
+	// dans l'ordre de la lecture ; [RefAbsente] pour une référence que le message ne porte pas.
+	Victime, Tueur, Assistant int8
+	// Drapeau est le `R(1)` qui suit la part du tueur (`[+0xc]`).
+	Drapeau uint8
 }
 
 // VueB est la vue des entités (rang 1) d'une trame delta : son étendue et sa sortie. Ses records

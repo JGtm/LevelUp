@@ -79,21 +79,6 @@ func TestTrierBotsParSlot_ExAequoDansLOrdreDeDecouverte(t *testing.T) {
 	}
 }
 
-func TestTrierPaquetsT0_ExAequoDepartagesParChunkEtRang(t *testing.T) {
-	in := make([]packet, nExAequo)
-	for i := range in {
-		in[i] = packet{ts: uint64(i % 3), chunk: i % 2, idx: i}
-	}
-	rand.New(rand.NewSource(graineExAequo)).Shuffle(len(in), func(a, b int) { in[a], in[b] = in[b], in[a] })
-	trierPaquetsT0(in)
-	for i := 1; i < len(in); i++ {
-		a, b := in[i-1], in[i]
-		if !lexInf([]int{int(a.ts), a.chunk, a.idx}, []int{int(b.ts), b.chunk, b.idx}) {
-			t.Fatalf("rang %d : %+v puis %+v — ordre (instant, chunk, paquet) rompu", i, a, b)
-		}
-	}
-}
-
 func TestTrierMortsDeLaMarche_ExAequoDansLOrdreDuFilm(t *testing.T) {
 	cles := make([]int, nExAequo)
 	in := make([]deadRecord, nExAequo)

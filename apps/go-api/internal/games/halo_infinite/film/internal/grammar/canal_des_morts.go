@@ -34,7 +34,7 @@ type canalDesMorts struct {
 	// cadrePose : [ObjectDeathStats.Config] a ete pris de la marche.
 	cadrePose bool
 	// mortsLues : les dead-states `Mort` des records recoltes, avec leur trame et leur position —
-	// gardes seulement quand `garder` (`killsource`, [LireLesMortsDeLaMarche]) ; nil sinon.
+	// gardes seulement quand `garder` (`killsource`, [LireLaMarcheDeKillsource]) ; nil sinon.
 	mortsLues []EtatDeMortLu
 	garder    bool
 }

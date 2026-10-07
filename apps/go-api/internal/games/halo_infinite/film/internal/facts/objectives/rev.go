@@ -127,6 +127,12 @@ package objectives
 // monte a `grammar-2026-10-06.6` (voie image-cle de `grammar.ScanManagedProperties`, ti=13).
 // `grammar/signaux` ne change pas et n appelle pas ce balayage : la lecture des signaux ne change
 // pas. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-07 (lot 2.7.c4 de la representation intermediaire, REVISION CONSTANTE) :
+// `grammar.Rev` monte a `grammar-2026-10-06.7` (la vue A lit le message de kill sans sa queue ; la
+// recherche des kill-events de killsource descend dans la grammaire en rattrapage). `grammar/signaux`
+// ne change pas ; l etape `objectives` de `replay-equiv` est confrontee sur les 20 films de reference
+// par la passe de preuve du lot. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

@@ -1,7 +1,7 @@
 package grammar
 
-// morts_de_la_marche_test.go — LES MORTS QUE LA MARCHE REND A KILLSOURCE, ET LE CRITERE DE SA
-// CALIBRATION, SUR UNE BOBINE.
+// marche_de_killsource_test.go — LES MORTS ET LES KILLS QUE LA MARCHE REND A KILLSOURCE, ET LE
+// CRITERE DE SA CALIBRATION, SUR UNE BOBINE.
 
 import (
 	"slices"
@@ -15,14 +15,14 @@ import (
 const handleAbsent = 0xFFFFFFFF
 
 // TestLesMortsDeLaMarcheSeRelisentALeurPosition : sur la bobine de la marche ([bobineMarcheDir]),
-// chaque dead-state `Mort` que [LireLesMortsDeLaMarche] rend se relit a sa position : sa trame est une
+// chaque dead-state `Mort` que [LireLaMarcheDeKillsource] rend se relit a sa position : sa trame est une
 // trame delta du film (position du chunk, rang, horodatage), et quand son composant est dans la
 // trace, le bit `Mort` y vaut 1 et le handle de tete, s il est lu, suit sa garde. Les chunks de la
 // bobine sont contigus : la position et le numero d un chunk y coincident. MUTATION — le bit du
 // composant decale d un bit : ROUGE.
 func TestLesMortsDeLaMarcheSeRelisentALeurPosition(t *testing.T) {
 	film := bobineDeLaMarche(t)
-	lus, err := LireLesMortsDeLaMarche(NewFilmContext(film))
+	lus, err := LireLaMarcheDeKillsource(NewFilmContext(film))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestLesMortsDeLaMarcheSeRelisentALeurPosition(t *testing.T) {
 		trames[[2]int{p.Chunk, p.Index}] = p
 	}
 	avecBit, avecHandle := 0, 0
-	for _, m := range lus.Lus {
+	for _, m := range lus.Morts {
 		p, ok := trames[[2]int{m.PositionDuChunk, m.Index}]
 		if !ok || p.Type != int(PacketTypeDelta) || p.TS != m.TS {
 			t.Fatalf("mort %+v : trame absente ou differente", m)
@@ -54,7 +54,7 @@ func TestLesMortsDeLaMarcheSeRelisentALeurPosition(t *testing.T) {
 	}
 	if avecBit == 0 || avecHandle == 0 || lus.Stats.Packets == 0 {
 		t.Fatalf("%d mort(s), %d a leur position, %d avec un handle, %d trame(s) : la bobine ne prouve rien",
-			len(lus.Lus), avecBit, avecHandle, lus.Stats.Packets)
+			len(lus.Morts), avecBit, avecHandle, lus.Stats.Packets)
 	}
 }
 

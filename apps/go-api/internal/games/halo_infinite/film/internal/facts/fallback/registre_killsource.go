@@ -63,7 +63,7 @@ var registreKillsource = []Repli{
 		Mecanisme: "seconde passe a LARGEUR LIBRE, essayee seulement apres l'echec de la signature",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "largeurLibre: lus.LargeurLibre}"}, {
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "largeurLibre: l.LargeurLibre}"}, {
 			// Le repli lui-meme : le localisateur unique de `grammar`, appele par les deux sites
 			// qui lisent les morts (killsource ci-dessus ; le canal des morts de la marche des
 			// trames, sur les listes que la cuisson n a pas localisees, ci-dessous).
@@ -169,13 +169,33 @@ var registreKillsource = []Repli{
 		Mecanisme: "code hors des 28 modelises (95 codes sur 123) ou cfgIdx non resolu : la chaine s'arrete",
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "eventchain.go", Ancre: "arretees += unSi(arretee)"}, {Fichier: pkgKillsource + "assist.go", Ancre: "s.chainesArretees += arretees"}, siteDeVersement("NomChaineEvenementCodeNonModelise"),
-			{Fichier: pkgKillsource + "eventbody.go", Ancre: "func evBody(r *curseurEv, code int, gate15 bool) bool {"},
-			{Fichier: pkgKillsource + "eventchain.go", Ancre: "if c < 0 || c >= len(presRange) {"},
+		Sites: []Site{{Fichier: pkgFilmdec + "kills_rattrapes.go", Ancre: "arretees += unSi(arretee)"}, {Fichier: pkgKillsource + "kill_event.go", Ancre: "chainesArretees: l.Rattrapage.ChainesArretees"}, siteDeVersement("NomChaineEvenementCodeNonModelise"),
+			{Fichier: pkgFilmdec + "chaine_d_evenements_corps.go", Ancre: "func evBody(r *curseurEv, code int, gate15 bool) bool {"},
+			{Fichier: pkgFilmdec + "chaine_d_evenements.go", Ancre: "if c < 0 || c >= lignesDePresRange {"},
 		},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "les codes d evenement manquants portes, archetype par archetype, ou leur longueur lue chez l ecrivain ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "les 95 codes non modelises portes, ou leur longueur lue chez l'ecrivain ; 0 arret de chaine sur les 8 builds",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_kill_rattrape_hors_vue_a",
+		Fait: "les kill-events d une trame dont la lecture de la vue A n est pas etablie (la vue B ne commence pas a sa fin)",
+		Mecanisme: "entre le premier genre de la vue A et le debut de la vue B (fin du payload sans liste localisee), hors des messages que la vue A a lus : " +
+			"recherche bit a bit du genre 85 precede d une continuation, champs lus sans queue, tueur et victime presents et distincts, " +
+			"chaine d au moins trois evenements sous la grammaire de la chaine (28 codes), gate15 tranche par film",
+		// LECTURE NON PORTEE : le film ecrit ces messages ; la lecture unique de la vue A s arrete devant
+		// eux (message non porte ou refuse, film sans table des genres) ou finit sur un terminateur que
+		// la marche ne retient pas.
+		Condition: CondLectureNonPortee,
+		// APRES LECTURE : la vue A lit d abord ; le rattrapage ne cherche que dans les trames ou sa
+		// lecture n est pas etablie, avant la vue B.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{Fichier: pkgFilmdec + "kills_rattrapes.go", Ancre: "kills, arretees := killsAvecArrets(p.Payload, f, r.gate15)"},
+			{Fichier: pkgKillsource + "kill_event.go", Ancre: "rattrapes: l.Rattrapage.Kills"}, siteDeVersement("NomKillRattrapeHorsVueA")},
+		DatePose:        "2026-10-07",
+		CibleRetrait:    "la lecture de la vue A etablie sur toutes les trames a evenements (la vue B commence a sa fin) : genres portes, table des genres des films anciens, terminateurs justes",
+		CritereRetrait:  "0 kill-event rattrape sur le corpus du gate de rejeu et sur le parc",
 		CompteurBranche: true,
 	},
 	{
@@ -190,7 +210,7 @@ var registreKillsource = []Repli{
 			// `Meta()` est perdu, donc celle que ce repli decrit. Elle pointait jusque-la sur
 			// la lecture de la version majeure, voisine de hasard, qui a bouge quand cette
 			// version est passee au profil du film.
-			Ancre: "f := &film{src: src, packets: packetsOf(src)}",
+			Ancre: "f := &film{src: src}",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "le type du manifeste voyage jusqu au decodeur (cause racine de l argmax du pied) ; a defaut, " + retraitRegle4,

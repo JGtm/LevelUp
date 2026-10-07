@@ -484,3 +484,14 @@ package killsource
 // l artefact bougent, l artefact dans sa couverture seulement (decompte des voies, ligne du repli
 // retire, revision). Les lignes de `match_kill_events` deviennent candidates au redecodage : backlog
 // sur signal de l utilisateur (D6).
+//
+// COMPLEMENT DU MEME RANG, NON PUBLIE (2026-10-07, lot 2.7.c4) : LES KILL-EVENTS VIENNENT DE LA VUE
+// A. `grammar.Rev` passe a `grammar-2026-10-06.7` : la vue A lit le message de kill sans sa queue et
+// le range ; killsource prend ses kill-events dans la meme marche que ses morts
+// ([grammar.LireLaMarcheDeKillsource], `kill_event.go`), et sa recherche bit a bit (`eventchain.go`,
+// `eventbody.go`, la decision de `gate15`) descend dans la grammaire en rattrapage, borne aux trames
+// dont la lecture de la vue A n est pas etablie, avant la vue B (`repli_kill_rattrape_hors_vue_a`,
+// compte).
+// Killsource ne parcourt plus de paquet : l origine des instants est le plus petit horodatage des
+// paquets de replication, comme le premier de leur tri d avant (`chunks.go`). Le rang
+// `killsource-2026-10-07` n a jamais ete publie : il porte l etat final du lot 2.7.c.

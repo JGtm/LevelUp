@@ -11,7 +11,7 @@ package killsource
 // T4 du scan cache — un catalogue perime — et l ablation d un tag reel le mesure : une
 // architecture scan-d abord perd 224 lignes sur 20 essais, l hybride en perd 20. Facteur 11.2.
 //
-// LA MARCHE EST CELLE DE LA GRAMMAIRE ([grammar.LireLesMortsDeLaMarche]) : la marche des trames du
+// LA MARCHE EST CELLE DE LA GRAMMAIRE ([grammar.LireLaMarcheDeKillsource]) : la marche des trames du
 // contexte du film, son monde, ses debuts de vue B (la fin de la vue A, sinon le localisateur), et
 // les listes qu elle ne localise pas recuperees par le canal des morts (signature, puis largeur
 // libre). killsource y garde sa regle : les records ENTIEREMENT PORTES d un archetype BIPEDE — celui
@@ -43,16 +43,12 @@ type walkResult struct {
 	desync, horsRoster, horsEnum, largeurLibre int
 }
 
-// marcherLesMorts lit les dead-states de la marche des trames du contexte `fc` et les range comme
-// la marche de killsource les rangeait : dans l ordre du film, credibles a part.
-func marcherLesMorts(fc *grammar.FilmContext, f *film, r *roster) (*walkResult, error) {
-	lus, err := grammar.LireLesMortsDeLaMarche(fc)
-	if err != nil {
-		return nil, err
-	}
-	res := &walkResult{withEv: lus.Stats.EventPackets, located: lus.Stats.LocatedPackets,
-		largeurLibre: lus.LargeurLibre}
-	for _, m := range lus.Lus {
+// mortsDeLaMarche range les dead-states que la marche des trames a lus (`l`) comme la marche de
+// killsource les rangeait : dans l ordre du film, credibles a part.
+func mortsDeLaMarche(l grammar.LectureDeKillsource, f *film, r *roster) *walkResult {
+	res := &walkResult{withEv: l.Stats.EventPackets, located: l.Stats.LocatedPackets,
+		largeurLibre: l.LargeurLibre}
+	for _, m := range l.Morts {
 		if m.TypeIndex != grammar.BipedTypeIndex {
 			continue
 		}
@@ -67,7 +63,7 @@ func marcherLesMorts(fc *grammar.FilmContext, f *film, r *roster) (*walkResult, 
 	}
 	trierMortsDeLaMarche(res.deads)
 	res.selectCredible(r)
-	return res, nil
+	return res
 }
 
 // selectCredible : le filtre de credibilite. Deux conditions, toutes structurelles : les deux

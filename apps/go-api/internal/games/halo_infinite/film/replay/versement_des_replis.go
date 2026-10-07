@@ -118,6 +118,7 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomCoupleRecolleSurLeVoisin, func(s sourcesDeReplis) int { return s.killsource.Couples.Recolles }},
 	{fallback.NomChunkDuPiedParArgmax, func(s sourcesDeReplis) int { return s.killsource.Replis.PiedParArgmax }},
 	{fallback.NomChaineEvenementCodeNonModelise, func(s sourcesDeReplis) int { return s.killsource.Replis.ChainesArretees }},
+	{fallback.NomKillRattrapeHorsVueA, func(s sourcesDeReplis) int { return s.killsource.Replis.KillsRattrapes }},
 	{fallback.NomTypeDeChunkPerduDuManifeste, func(s sourcesDeReplis) int { return s.killsource.Replis.TypeDeChunkPerdu }},
 	{fallback.NomMortNonRevendiqueeLaPlusProche, func(s sourcesDeReplis) int { return s.killsource.Appariement.NonRevendiqueeFenetre }},
 	{fallback.NomMortDeBotPremierCandidat, func(s sourcesDeReplis) int { return s.killsource.Appariement.BotFenetre }},

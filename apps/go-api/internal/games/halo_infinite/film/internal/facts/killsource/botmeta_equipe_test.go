@@ -106,9 +106,9 @@ func payloadEcrit(persoBits int, bots ...botEcrit) []byte {
 // grammaire les lit sous la largeur de personnalisation `persoBits`.
 func paquetsEcrits(t *testing.T, persoBits int, persoConnue bool, payloads ...[]byte) []grammar.PaquetBotMetadata {
 	t.Helper()
-	paquets := make([]packet, len(payloads))
+	paquets := make([]paquetDeTest, len(payloads))
 	for i, pl := range payloads {
-		paquets[i] = packet{chunk: i, typ: packetTypeBotMeta, ts: uint64(1_000 * (i + 1)), payload: pl} //nolint:gosec // rang de test
+		paquets[i] = paquetDeTest{chunk: i, typ: grammar.PacketTypeBotMetadata, ts: uint64(1_000 * (i + 1)), payload: pl} //nolint:gosec // rang de test
 	}
 	return grammar.PaquetsBotMetadata(sourceDePaquets(t, paquets...), persoBits, persoConnue)
 }

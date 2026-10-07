@@ -47,13 +47,13 @@
 39082 paquet(s) SANS evenement · 67544072 bits balayes · 1 candidat(s) accepte(s)
 
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
-marche   : 100 propose(s), 96 apparie(s) au couple exact, 96 publiee(s)
-scan     : 1 propose(s), 1 apparie(s) au couple exact, 1 publiee(s)
+marche   : 72 propose(s), 68 apparie(s) au couple exact, 68 publiee(s)
+scan     : 29 propose(s), 29 apparie(s) au couple exact, 29 publiee(s)
 marche, source appartenant a la victime : 2 propose(s), 2 publiee(s)
 scan,   source appartenant a la victime : 9 propose(s), 0 publiee(s)
 morts de BOT : 0 propose(s), 0 publiee(s)
 morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
-102 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 96 · DESACCORD 0
+74 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 68 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 5027 / 5027 paquet(s) a evenements localise(s)

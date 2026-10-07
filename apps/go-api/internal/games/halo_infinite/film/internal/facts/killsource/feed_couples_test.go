@@ -39,10 +39,10 @@ func coupleTemoin() (*killFeed, *roster) {
 	return kf, r
 }
 
-// coupleRec : un kill-event 85 localise a `ms`, tel que [scanKillEvents] le rendrait.
+// coupleRec : un kill-event 85 localise a `ms`, tel que [killEventsDeLaMarche] le rendrait.
 func coupleRec(ms, tueur, victime int) killEventRec {
-	return killEventRec{ms: ms, chain: minChain,
-		fields: killEventFields{killer: tueur, victim: victime, assist: -1, end: 128}}
+	return killEventRec{ms: ms,
+		fields: killEventFields{killer: tueur, victim: victime, assist: -1}}
 }
 
 // TestLeCoupleVientDuKillEvent85 : LE TEMOIN PRINCIPAL. Le film nomme E ; le voisin immediat

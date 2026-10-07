@@ -162,7 +162,7 @@
 // paquet. Le SCAN DIRECT (RE_LOG 7ter.60) a rendu la marche, la calibration et le localisateur
 // slot-123 FACULTATIFS pour la question << quelle source a tue >>. Porter la marche coute donc
 // tout ce que le scan avait rendu inutile : une marche des records et sa calibration. Cette marche
-// est celle de la grammaire ([grammar.LireLesMortsDeLaMarche], `walk.go`), et le critere de la
+// est celle de la grammaire ([grammar.LireLaMarcheDeKillsource], `walk.go`), et le critere de la
 // calibration se compte sous le monde des preliminaires de cette marche (`calibrate.go`) :
 // killsource ne marche pas le film lui-meme.
 //

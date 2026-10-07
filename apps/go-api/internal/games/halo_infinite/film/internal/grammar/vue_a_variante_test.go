@@ -1,12 +1,14 @@
 package grammar
 
-// vue_a_variante_test.go — les vecteurs du lot VA, etape V3 : les charges que la variante de partie
-// du film decide, PlayerKilledEvent (85) et teleport_effects (116). Ecrits d apres leurs ECRIVAINS
-// (`FUN_142f18fd0`, `FUN_142efa2a8`) et avec les immediats de leurs lecteurs.
+// vue_a_variante_test.go — les vecteurs du lot VA, etape V3, et de la lecture du kill sans sa queue :
+// PlayerKilledEvent (85), lu sans sa queue, et teleport_effects (116), que la variante de partie du
+// film decide. Ecrits d apres leurs ECRIVAINS (`FUN_142f18fd0`, `FUN_142efa2a8`) et avec les immediats
+// de leurs lecteurs.
 
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
@@ -24,25 +26,27 @@ func varianteLue(moteur int32, killcam, potg bool) profile.VarianteDePartie {
 		PlayOfTheGameEnabled: potg}
 }
 
-// TestLeJoueurTueSeLitQuandLeFilmDecideSaQueue : `FUN_142f18fd0` ecrit la victime, le tueur
-// (`FUN_142b549c0` : W(1), W(5) s il vaut 0), W(32), W(1), l assistant, W(32), puis la queue si
+// TestLeJoueurTueSeLitSansSaQueue : `FUN_142f18fd0` ecrit la victime, le tueur (`FUN_142b549c0` :
+// W(1), W(5) s il vaut 0), W(32), W(1), l assistant, W(32), puis la queue si
 // `(kill_playback_enabled && moteur != 1 && killcamEnabled) || (play_of_the_game_enabled &&
-// playOfTheGameEnabled)`. Le message se lit, partie fixe seule, quand les drapeaux du film rendent
-// cette garde fausse quels que soient les deux reglages ; sinon, et sans variante lue, il ne se lit
-// pas. MUTATIONS — le drapeau playOfTheGameEnabled ignore ; la condition de moteur inversee : ROUGE.
-func TestLeJoueurTueSeLitQuandLeFilmDecideSaQueue(t *testing.T) {
+// playOfTheGameEnabled)`. Les deux reglages a leur defaut de l executable (faux), la garde est fausse :
+// le message se lit, partie fixe seule, quelle que soit la variante du film, et ses champs sont
+// ranges sur le lecteur. MUTATIONS — la queue lue sous playOfTheGameEnabled ; l assistant lu avant la
+// part du tueur : ROUGES.
+func TestLeJoueurTueSeLitSansSaQueue(t *testing.T) {
+	attendu := lecture.MessageDeKill{Victime: 3, Tueur: lecture.RefAbsente, PartDuTueur: 0xdeadbeef, Drapeau: 1,
+		Assistant: 9, PartDeLAssistant: 7}
 	for _, c := range []struct {
 		nom string
 		v   profile.VarianteDePartie
-		lue bool
 	}{
-		{"drapeaux nuls", varianteLue(2, false, false), true},
-		{"killcamEnabled, moteur 1", varianteLue(1, true, false), true},
-		{"killcamEnabled, moteur 2", varianteLue(2, true, false), false},
-		{"playOfTheGameEnabled", varianteLue(2, false, true), false},
-		{"playOfTheGameEnabled, moteur 1", varianteLue(1, false, true), false},
-		{"variante absente du film", profile.VarianteDePartie{Lue: true}, false},
-		{"variante non lue", profile.VarianteDePartie{}, false},
+		{"drapeaux nuls", varianteLue(2, false, false)},
+		{"killcamEnabled, moteur 1", varianteLue(1, true, false)},
+		{"killcamEnabled, moteur 2", varianteLue(2, true, false)},
+		{"playOfTheGameEnabled", varianteLue(2, false, true)},
+		{"playOfTheGameEnabled, moteur 1", varianteLue(1, false, true)},
+		{"variante absente du film", profile.VarianteDePartie{Lue: true}},
+		{"variante non lue", profile.VarianteDePartie{}},
 	} {
 		var w bitWriter
 		w.bit(0)
@@ -57,8 +61,9 @@ func TestLeJoueurTueSeLitQuandLeFilmDecideSaQueue(t *testing.T) {
 		w.bits(0xffff, 16)
 		br := LecteurSur(w.buf)
 		br.vueA = grammaireDeVariante(c.v, nil)
-		if lue := chargeJoueurTue(br); lue != c.lue || lue && br.BitPos() != fin {
-			t.Errorf("%s : lue %v (fin %d), attendu %v (fin %d)", c.nom, lue, br.BitPos(), c.lue, fin)
+		if lue := chargeJoueurTue(br); !lue || br.BitPos() != fin || br.killLu != attendu {
+			t.Errorf("%s : lue %v (fin %d, champs %+v), attendu lue (fin %d, champs %+v)", c.nom, lue,
+				br.BitPos(), br.killLu, fin, attendu)
 		}
 	}
 }
@@ -118,18 +123,18 @@ func TestLesEffetsDeTeleportationSuiventLeMoteurDuFilm(t *testing.T) {
 	}
 }
 
-// TestLesBobinesRecentesDecidentLeurs85Et116 : sous ce que le `chunk_00` de `fb1a1a72` (HI_1_13_0)
-// et de `bcb6d393` (HI_1_12_0) declare, derive par le code de production, le 116 se lit (moteur 2) et
-// le 85 non (playOfTheGameEnabled vrai : sa queue depend d un reglage que le film ne porte pas).
-func TestLesBobinesRecentesDecidentLeurs85Et116(t *testing.T) {
+// TestLesBobinesRecentesDecidentLeur116 : sous ce que le `chunk_00` de `fb1a1a72` (HI_1_13_0) et de
+// `bcb6d393` (HI_1_12_0) declare, derive par le code de production, la variante est lue et son moteur
+// n est pas le 1 : le 116 se lit.
+func TestLesBobinesRecentesDecidentLeur116(t *testing.T) {
 	for _, film := range []string{"fb1a1a72", "bcb6d393"} {
 		id, err := ReadFilmIdentity(bobineChunk00(t, film))
 		if err != nil {
 			t.Fatalf("%s : %v", film, err)
 		}
 		g := grammaireDeLaVueASousFilm(profilDIdentite(id, nil))
-		if g.variante != (varianteDeLaVueA{lue: true, queueDuKillPossible: true}) {
-			t.Errorf("%s : %+v, attendu lue, moteur autre que 1, queue du 85 possible", film, g.variante)
+		if g.variante != (varianteDeLaVueA{lue: true}) {
+			t.Errorf("%s : %+v, attendu lue, moteur autre que 1", film, g.variante)
 		}
 	}
 }

@@ -19,8 +19,8 @@ package grammar
 //	                      marche — la liaison des images-cles de chaque chunk —, sur l echantillon que
 //	                      killsource prend.
 //
-// Les mesures de la vue A (`TestRI27cVueA`, `TestRI27cVueASansQueue`) sont dans
-// `ri27c_vue_a_research_test.go`.
+// Les mesures de la vue A de cette ouverture (`TestRI27cVueA`, `TestRI27cVueASansQueue`) sont retirees :
+// la lecture du kill sans sa queue, qu elles mesuraient, est celle de la production.
 //
 // Contexte : celui de la cuisson ([ri27cContexte]) — le profil de depart de killsource (generation
 // stricte, largeurs de la carte, controle de corruption du film), la largeur du mot de poignee de
@@ -45,9 +45,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
-
-// ri27cGenreKill est le genre du kill-event (`PlayerKilledEvent`) dans la vue A.
-const ri27cGenreKill = 85
 
 // ri27cEnv lit les variables de l instrument ; Skip sans elles.
 func ri27cEnv(t *testing.T) (films []string, racine, sortie string) {

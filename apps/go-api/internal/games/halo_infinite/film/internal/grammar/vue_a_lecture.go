@@ -28,11 +28,11 @@ package grammar
 // `archlint/film_vue_a_lecteur_unique_test.go`). Deux autres lectures existent hors de ce contrat :
 // la tete seule — le bit de configuration, la continuation et le genre du premier message — est
 // relue par [readPacketHead], et par lui [teteDuPayload], [lireEnteteTir36] et [scanChunkDamages]
-// (ces deux derniers lisent encore le corps du premier message pour leur canal), et, dans la couche
-// facts, par `killsource` (`hasEvents`, `estAncreDeKillEvent`) ; et `killsource` garde sa propre
-// lecture en CHAINE des evenements (`facts/killsource/eventchain.go`, portage de `FUN_14076a1c4` et
-// `FUN_14080a9d4`), qui suit la vue A message par message depuis chaque evenement de mort candidat
-// jusqu au terminateur ou a une longueur bornee — sa lecture pour son canal, pas celle-ci. La marche des trames joue [lireLaVueA] une fois par trame,
+// (ces deux derniers lisent encore le corps du premier message pour leur canal) ; et le rattrapage
+// des kills lit en CHAINE les evenements (`chaine_d_evenements.go`, portage de `FUN_14076a1c4` et
+// `FUN_14080a9d4`) depuis chaque message de kill candidat, dans les trames ou la lecture unique n est
+// pas etablie (la vue B ne commence pas a sa fin) et avant la vue B seulement (`kills_rattrapes.go`).
+// La marche des trames joue [lireLaVueA] une fois par trame,
 // en rangeant la tete ([rangerLaTete]), et passe ce qu elle a lu a la marche par rangs
 // ([lireTrameParRangs]) ; les autres marches par rangs (essais de localisation, cartes) l appellent
 // depuis la tete du paquet. Quand elle atteint le terminateur, sa fin decide du debut de la vue B
@@ -52,6 +52,8 @@ package grammar
 // du cadre (controle de corruption, tables du profil), la grammaire de la vue A que le film declare
 // ([grammaireDeLaVueA] : table des genres, Script, tables de la region jouee) et AUCUNE
 // observation : la vue A ne publie rien.
+
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 
 // FluxVueA est ce que la lecture de la vue A (rang 0) d une trame delta a lu.
 //
@@ -74,6 +76,8 @@ type FluxVueA struct {
 	// PremierPresume : le rang, dans Genres, du premier genre dont la numerotation est presumee
 	// ([premierGenrePresume]) ; len(Genres) quand aucun ne l est.
 	PremierPresume int
+	// Kills : les messages de kill (genre 85) lus, dans l ordre ([chargeJoueurTue]).
+	Kills []lecture.MessageDeKill
 }
 
 // finDeTete rend le bit qui suit la tete : la continuation et, quand elle annonce un message, son
@@ -101,6 +105,7 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 	out := FluxVueA{Debut: debut}
 	br.SetBitPos(debut)
 	for placeDisponible(br, frameLen, 1) {
+		debutDuMessage := br.BitPos()
 		if !br.ReadBit() { // le terminateur
 			out.Porte, out.Vide = true, len(out.Genres) == 0
 			break
@@ -114,6 +119,11 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 		if !lisible || !lireUnMessage(br, genre) || br.Deborde() {
 			br.SetBitPos(finDuGenre)
 			break
+		}
+		if genre == GenreJoueurTue {
+			k := br.killLu
+			k.Debut = uint32(debutDuMessage) //nolint:gosec // position dans un payload
+			out.Kills = append(out.Kills, k)
 		}
 	}
 	out.Fin = br.BitPos()

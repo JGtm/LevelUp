@@ -18,12 +18,13 @@ package archlint
 // `no_raw_film_bytes_outside_source_test.go` : les instruments de mesure lisent des octets par
 // construction.
 //
-// # L EXCEPTION, DATEE
+// # LES EXCEPTIONS, DATEES
 //
-// `facts/killsource` marche encore le film lui-meme : sa marche devient un canal de la marche
-// unique au lot 2.7.c du plan de l etape 2
-// (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`). Son exception part ce jour-la :
-// une exception qui ne couvre plus aucune lecture ROUGIT
+// Aucune : la liste [exceptionsDesFaits] est VIDE, et c est un cliquet. La seule qu elle ait portee,
+// `facts/killsource` (sa propre marche du film), est partie au lot 2.7.c du plan de l etape 2
+// (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : killsource prend ses morts et
+// ses messages de kill dans la marche unique. Une exception ajoutee porte sa date, sa raison et son
+// critere de retrait ; celle qui ne couvre plus aucune lecture ROUGIT
 // (`TestExceptionsDesFaitsSontDateesEtVivantes`).
 //
 // # MUTATIONS JOUEES (2026-10-03), ROUGES, PUIS RETIREES
@@ -67,15 +68,8 @@ type exceptionDesFaits struct {
 	paquet, date, raison, retrait string
 }
 
-var exceptionsDesFaits = []exceptionDesFaits{{
-	paquet: racineDesFaits + "/killsource",
-	date:   "2026-10-03",
-	raison: "la marche du kill-feed (`walk.go`, la timeline, la calibration) lit encore les paquets " +
-		"elle-meme ; ADR 0037 (D-2 amende) la nomme et la replie sur la marche unique a la fin de " +
-		"l etape 2",
-	retrait: "lot 2.7.c du plan de l etape 2 de la representation intermediaire : killsource devient " +
-		"un canal de la marche unique ; la ligne devient perimee, donc ROUGE — la retirer dans ce commit",
-}}
+// exceptionsDesFaits : vide (cliquet), cf. l en-tete.
+var exceptionsDesFaits []exceptionDesFaits
 
 // lectureDesFaits : une lecture d octets dans un fichier de production de la couche des faits.
 type lectureDesFaits struct{ fichier, detail string }

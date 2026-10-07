@@ -3,17 +3,17 @@ package killsource
 // assist_dedup.go — UN ENREGISTREMENT, UNE LECTURE (lot J7.6 du PLAN_SUITE_AUDIT_DECODEUR_FILM,
 // constat FK-6).
 //
-// Le generateur de [killEventsIn] essaie CHAQUE position de bit ; une chaine d evenements valide
-// peut donc etre retenue deux fois dans le meme paquet, a deux positions voisines, avec des champs
-// IDENTIQUES (RE_LOG 7ter.77 : les deux morts a multi-attachement du corpus, a 15 bits d ecart). Le
+// Le generateur du rattrapage des kills (`grammar/kills_rattrapes.go`) essaie CHAQUE position de bit
+// de sa fenetre ; une chaine d evenements valide peut donc etre retenue deux fois dans le meme
+// paquet, a deux positions voisines, avec des champs IDENTIQUES (RE_LOG 7ter.77 : les deux morts a
+// multi-attachement du corpus, a 15 bits d ecart, quand la recherche couvrait toute la trame). Le
 // second exemplaire n est pas un second evenement — un joueur ne tue pas deux fois la meme victime
 // dans le meme paquet — et le laisser libre fabriquait un couple faux pour un kill orphelin voisin
 // (`feed_couples.go`, compte en `Contradiction`).
 //
 // C EST LE MEME GESTE que [dedup] pour les dead-states : meme paquet, memes champs, un seul
 // enregistrement. Le champ `bit` designe l exemplaire garde — le PREMIER, celui du bit le plus bas.
-// `end` (la fin des champs) est exclu de la cle : il suit la position de lecture, donc differe
-// entre les deux exemplaires. Les retires sont COMPTES (`AssistStats.Doublons`).
+// Les retires sont COMPTES (`AssistStats.Doublons`).
 
 // cleDeKillEvent : ce qui fait qu un enregistrement est le meme, position de lecture exclue.
 type cleDeKillEvent struct {

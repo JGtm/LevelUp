@@ -201,8 +201,10 @@ const (
 	NomCoupleRecolleSurLeVoisin Nom = "repli_couple_recolle_sur_le_voisin"
 	// NomChunkDuPiedParArgmax : `grammar/fil_des_kills.go`, verse par `killsource`.
 	NomChunkDuPiedParArgmax Nom = "repli_chunk_du_pied_par_argmax"
-	// NomChaineEvenementCodeNonModelise : `killsource/eventbody.go`, `killsource/eventchain.go`.
+	// NomChaineEvenementCodeNonModelise : `grammar/chaine_d_evenements*.go`, verse par `killsource`.
 	NomChaineEvenementCodeNonModelise Nom = "repli_chaine_evenement_code_non_modelise"
+	// NomKillRattrapeHorsVueA : `grammar/kills_rattrapes.go`, verse par `killsource`.
+	NomKillRattrapeHorsVueA Nom = "repli_kill_rattrape_hors_vue_a"
 	// NomTypeDeChunkPerduDuManifeste : `killsource/chunks.go`.
 	NomTypeDeChunkPerduDuManifeste Nom = "repli_type_de_chunk_perdu_du_manifeste"
 	// NomMortNonRevendiqueeLaPlusProche : `killsource/hybrid.go` (`ApparStats.NonRevendiqueeFenetre`).

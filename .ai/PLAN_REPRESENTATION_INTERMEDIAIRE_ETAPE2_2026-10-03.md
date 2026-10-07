@@ -151,6 +151,13 @@ fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
   killsource y prend ses kill-events ; sa recherche bit à bit ne reste qu'en rattrapage, sur les
   films dont la vue A ne se lit pas, comptée. Changement de grammaire, vérifié sur tout le corpus
   avant fusion (item 2.7.c4).
+- 2026-10-07, en réponse à la vérification de 2.7.c4 sur 28 films (433 kills réels perdus sur quatre
+  films anciens, 200 morts publiées sans assistant ni parts de dégâts, quand la recherche ne suivait
+  qu'un arrêt de la lecture) : « Chercher aussi là (Recommandé) » — le rattrapage cherche dans toute
+  trame dont la lecture de la vue A n'est pas établie (la vue B ne commence pas à sa fin : lecture
+  arrêtée, ou terminateur que la marche ne retient pas), entre le premier genre de la vue A et le
+  début de la vue B (la fin du payload quand la liste n'est pas localisée), sans rendre un message
+  que la vue A a lu.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -1139,17 +1146,116 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
               (`000d5950`) ne bouge que par le score de la poignée (68 → 63, décision inchangée) ;
             - suite du film, garde-rails, `go vet` (avec et sans `research`), `golangci-lint`
               (0 problème) : voir le journal.
-      - [ ] 2.7.c4 *Kill-events par la vue A unique* (décision de l'utilisateur du 2026-10-07) :
+      - [x] 2.7.c4 *Kill-events par la vue A unique* (décision de l'utilisateur du 2026-10-07) :
             la lecture de la vue A lit le genre 85 sans queue — la garde de l'écrivain tient ses deux
             réglages à leur défaut de l'exécutable, faux — et range ses messages de kill (position,
             champs) dans la structure ; killsource les y prend. Sa recherche bit à bit descend dans
             la grammaire comme rattrapage : seulement dans les trames dont la vue A ne se lit pas
-            jusqu'à son terminateur, et seulement au-delà du bit où la lecture s'est arrêtée ; elle
-            se compte au registre des replis (ordre « après la lecture »). `grammar.Rev` monte.
+            jusqu'à son terminateur, et seulement au-delà du bit où la lecture s'est arrêtée (règle
+            amendée par la décision de l'utilisateur du 2026-10-07 après la vérification, §2 : toute
+            trame dont la lecture de la vue A n'est pas établie, avant la vue B) ; elle se compte au
+            registre des replis (ordre « après la lecture »). `grammar.Rev` monte.
+            *Écrit le 2026-10-07* :
+            - `chargeJoueurTue` lit le 85, partie fixe seule, quelle que soit la variante de partie
+              (doc : les deux réglages enregistrés à faux par `FUN_140ad2d08(…, 0)`, valeur
+              présumée) ; la variante ne décide plus que du 116 (`queueDuKillPossible` retiré) ;
+            - la vue A range ses messages de kill : `lecture.VueA.Kills`, `lecture.MessageDeKill`
+              (position du message, victime, tueur, assistant, deux parts, drapeau ; seize octets,
+              gelés), recueillis par la lecture unique (`Lecteur.killLu`) ;
+            - le rattrapage (`grammar/kills_rattrapes.go`) : la recherche bit à bit et la chaîne
+              d'évènements de killsource descendent dans la grammaire (`chaine_d_evenements.go`,
+              `chaine_d_evenements_corps.go` ; tables en fonctions, aucune variable de paquet de
+              plus). Écrit d'abord borné aux trames dont la vue A s'arrête, à partir du genre du
+              message qui l'arrête ; la vérification sur 28 films (ci-dessous) a montré 433 kills
+              réels perdus sur quatre films anciens, derrière des terminateurs que la marche ne
+              retient pas. Règle finale (décision de l'utilisateur du 2026-10-07, §2) : toute trame
+              dont la vue B ne commence pas à la fin de la vue A lue, entre le premier genre de la
+              vue A et le début de la vue B (la fin du payload sans liste localisée), sans rendre un
+              message que la vue A a lu (`fenetreDuRattrapage`, le canal des kills lit la trame
+              après sa marche). Test `TestLeRattrapageCherchePartoutOuLaLectureNEstPasEtablie`
+              (cinq cas) ; mutations jouées, rouges : le rattrapage d'une trame dont la vue B commence
+              à la fin de la vue A, la recherche au-delà du début de la vue B, un message de la vue A
+              rendu deux fois. `gate15` tranché par film, par la même règle, à la première trame qui
+              en a besoin. Repli neuf `repli_kill_rattrape_hors_vue_a` (registre, nom, versement,
+              `ReplisDuDecodage.KillsRattrapes`) ; sites de `repli_chaine_evenement_code_non_modelise`
+              déplacés. L'oracle de la chaîne et la preuve d'équivalence du curseur descendent avec
+              elle, identiques à l'octet ;
+            - killsource prend morts et kill-events dans une seule marche
+              (`grammar.LireLaMarcheDeKillsource`, canal des kills, `kill_event.go`) ; les couples se
+              résolvent après elle. `eventchain.go`, `eventbody.go` et la lecture des octets des
+              paquets (`packet.payload`, `hasEvents`) sortent de killsource ;
+            - killsource ne parcourt plus de paquet : `chunks.go` ne garde que l'origine des instants
+              (le plus petit horodatage des paquets de réplication, la valeur du premier de l'ancien
+              tri) et la version du kill-feed ; `packet`, le tri des paquets de réplication
+              (`trierPaquetsT0` et son test) et `film.ms` sortent (code mort, `ms` signalé par le
+              lint) ; les tests prennent les types de paquet de la grammaire ; l'en-tête de `chunks.go`
+              ne cite plus `world.go` (retiré en c2). L'exception de killsource dans
+              `archlint/film_faits_sans_octets_test.go` devient périmée, donc rouge : retirée ici (le
+              gate de c4 l'exige ; part de 2.7.c5 avancée), la liste reste vide en cliquet. Elle ne
+              tenait plus que par un faux positif : le champ de position `Chunk` d'un paquet. Mutation
+              jouée (`src.Chunk(0)` dans `chunks.go`) : rouge ;
+            - instrument `grammar/ri27c4_kills_research_test.go` : confronte, trame par trame, les
+              kills de la vue A et du rattrapage à la recherche bit à bit d'avant (communs ; d'avant
+              seuls, rangés par leur place dans la vue A ; neufs, avec la longueur de chaîne que la
+              recherche d'avant exigeait) ;
+            - `grammar.Rev` → `grammar-2026-10-06.7` (rang convenu avec levelup-5c, qui tient la
+              série du 2026-10-07) ; `killsource-2026-10-07` garde son rang non publié (complément) ;
+              `objectives` à révision constante (complément) ; fixtures de contrat : seule la révision
+              de grammaire bouge sur les huit bobines.
+            *Clos le 2026-10-07* (preuve : passe c4b, binaires de l'arbre de travail, faits mis de
+            côté, contre la passe c23 ; une première passe sous la règle d'avant la décision a mesuré
+            la perte qui l'a motivée) :
+            - killsource json sur les 19 témoins : contenu des 2 747 morts publiées identique sauf
+              deux qui gagnent un kill-event attaché (une sans assistant, une avec un assistant
+              nommé, parts 64/35) ; 56 morts passent du balayage à la marche, 20 de la marche au
+              balayage (marche 2 505 → 2 541) ; santé : seuls les décomptes par voie bougent,
+              verdicts, couverture, publication et catalogue identiques. Sous la règle d'avant :
+              200 morts perdaient leur kill-event sur quatre films ;
+            - `replay-equiv` sur les 20 films : `killsource` et l'artefact bougent partout ;
+              `killRefs` sur 10 films ; les étapes de la marche (états de mouvement sur 9 films,
+              inventaire et tir continu sur 5, camouflage sur 3, morts de véhicule sur 2, armes
+              tenues sur 1, statistiques de ces étapes sur 14 à 16) bougent avec la vue B des
+              trames à kill, que la fin de la vue A fixe désormais. Contre la passe c4 (règle d'avant),
+              seuls `killsource`, `killRefs` (4 films) et l'artefact diffèrent. Replis : la chaîne
+              arrêtée sur un code non modélisé tombe de 9 697 à 1 110 sur `11de8353` (ordre de
+              grandeur partout), `repli_kill_rattrape_hors_vue_a` compte de 0 à 339 par film,
+              `repli_appariement_par_fenetre_temporelle` et `repli_couple_recolle_sur_le_voisin`
+              reviennent aux comptes d'avant (ils montaient à 130 et 222 sous la règle d'avant) ou
+              baissent ;
+            - marche (instrument de trames, 28 films, contexte de killsource) : fermées 674 171 →
+              698 688, refusées 156 170 → 131 798, records +133 000 ; découverte 34 pour les trames
+              qui régressent ;
+            - kill-events (`ri27c4_kills_research_test.go`, 28 films) : la vue A lit 3 047 messages
+              (2 828 que la recherche d'avant trouvait, 219 qu'elle écartait : découverte 35) ; le
+              rattrapage en retient 867, tous trouvés aussi par la recherche d'avant ; celle-ci en
+              trouvait 563 de plus : 549 de bruit (chaîne courte : 361 derrière le terminateur d'une
+              vue A retenue, 148 au-delà du début de la vue B, 40 dans une vue A retenue) et 14 réels
+              dans une vue A retenue mais mal lue (découvertes 30 et 34) ;
+            - artefacts cuits (`000d5950`, `64e8adfa`, `replay-diff`) : contre c23, couverture (19 et
+              31 écarts sur 942 et 1 008 mesures : trames fermées +197 et +2 387, voies des morts,
+              révision de grammaire) et une posture de sprint perdue sur `64e8adfa` ; contre c4 :
+              identiques ;
+            - `KILLSOURCE_FIXTURES` : goldens régénérés — `000d5950` une mort de la marche au
+              balayage, `78919882` 28 (découverte 34), décomptes par voie et cumul ; la mini-bobine
+              une mort de la marche au balayage. Comptes d'assistance (`assist_test.go`, mesures
+              réécrites avec leur raison) : kill-events −1 à −7 par film (bruit), `fccc61cd` +1 mort
+              attachée avec un assistant nommé (16 → 17, l'écart à l'API passe de 2 à 1) ;
+            - suite du film (19 paquets), `archlint`, `go vet` (avec et sans `research`),
+              `golangci-lint` (0 problème) : verts.
+            Reporté à 2.7.c5, par dépendance d'ordre des fusions : `SchemaVersion` et
+            `SchemaDesFaits` montent à la fusion de `feat/v75`, aux rangs libres à ce moment-là
+            (85 et 10 annoncés) ; `grammar.Rev` s'y renumérote après les rangs des autres sessions.
       - [ ] 2.7.c5 *Clôture* : exception du garde-rail retirée (périmée, donc rouge),
             `killsource.Rev` et `grammar.Rev`, ADR 0037 amendé, registre des replis
             (`repli_largeur_mot_de_poignee_inferee`, `repli_localisation_largeur_libre`,
             `repli_record_desynchronise_jete` : sites déplacés), doc de killsource. Gate de l'item.
+            *Ajouté le 2026-10-07* : à la fusion de `feat/v75`, renumérotation des rangs pris
+            entre-temps (levelup-d0 : `grammar-2026-10-07`, `SchemaDesFaits` 9, `SchemaVersion`
+            84 ; levelup-5c : la série du 2026-10-07) — `grammar.Rev` au premier rang libre après
+            eux ; `SchemaVersion` 85 avec son entrée de chronique (le contenu cuit change : la
+            marche lit au-delà des messages de kill, 2.7.c4) ; `SchemaDesFaits` 10 (la section des
+            kills des faits change de contenu : 2.7.c2 retire un compte de repli, 2.7.c4 en
+            ajoute un). Les rangs dépendent de l'ordre des fusions : ils se posent à la fusion.
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
@@ -1472,6 +1578,10 @@ plan y sont reprises comme items (3.1.2).
    du début d'un message.** La vue A unique est passée par leur bit sans y lire de genre 85 : un
    faux positif du balayage bit à bit (la chaîne de trois messages tient par hasard) ou une vue A
    mal lue avant eux. À instruire avec les kill-events (2.7.c4).
+   *Instruit en 2.7.c4 (2026-10-07)* : les deux. Sur 28 films, la recherche d'avant trouve dans une
+   vue A lue, hors d'un début de message, 14 messages à chaîne longue (douze évènements) dans des
+   trames dont la fin de vue A est retenue — une vue A mal lue, découverte 34 — et 40 à chaîne courte
+   (bruit). Là où la fin n'est pas retenue, le rattrapage les reprend.
 31. *(même mesure)* **Deux règles trouvent le chunk des temps forts.** La cuisson le désigne par le
    type du manifeste (repli : le dernier numéro, `repli_temps_forts_dernier_numero`), killsource
    par son contenu (le chunk qui porte le plus de kills). 2.7.c1 déplace la règle de killsource
@@ -1488,6 +1598,29 @@ plan y sont reprises comme items (3.1.2).
    un composant sans lecteur : la traversée finit avant ou après la frontière, un composant plus loin
    lit faux. Leur fermeture sous 9/5 était une coïncidence (identité inconnue du catalogue, preuve 2) ;
    le composant fautif n'est pas instruit.
+34. *(vérification de 2.7.c4, 2026-10-07)* **Une fin de vue A fausse, après un message de dégâts
+   (genre 0), décide parfois du début de la vue B.** Sur une table des genres égale, la fin lue de la
+   vue A vaut lecture. Lue au-delà des messages de kill, elle décide sur bien plus de trames, et juste
+   presque partout (28 films, contexte de killsource : trames fermées 674 171 → 698 688, refusées
+   156 170 → 131 798, records lus +133 000 ; 24 839 trames deviennent fermées, 322 cessent de l'être).
+   Pas toujours. Sur les quatre films de référence de killsource, parmi les 262 trames à kill que la
+   marche d'avant localisait et fermait, la fin lue sans la queue du 85 tombe au début localisé dans
+   236 ; avec la queue, dans aucune (la queue est bien absente). Les 26 autres portent toutes, après
+   le 85 et ses genres 82, un message de dégâts (genre 0, `damage_aftermath`) ; la lecture finit sur
+   lui ou sur un ou deux messages qui le suivent (genre 1, genres 82), par un terminateur lu des
+   centaines à des milliers de bits trop tôt (`78919882` : 22 trames sur 83 ; `fccc61cd` : 3 ;
+   `9b191a7f` : 1 ; hors de ce compte, `000d5950`, chunk 3, rang 804 : fin au bit 2 787 contre 3 180,
+   où la marche lit 18 records dont une mort créditée). Effet : sur ces trames la marche part trop tôt
+   et refuse le paquet ; killsource passe leurs morts au balayage (`78919882` : 28 morts, contenu
+   publié identique ; 20 sur les 19 témoins, 56 font le chemin inverse), et la cuisson y perd ses
+   records — le même film gagne par ailleurs 4 400 trames fermées. Suspect : une branche de la lecture du genre 0 (`chargeDegatsApres`,
+   `FUN_1407f15a4`, déjà noté pour sa porte à polarité discutée, D-LN-2). À instruire avec la
+   grammaire de la vue A ; non traité.
+35. *(même vérification)* **Des messages de kill que la recherche d'avant écartait par construction
+   sont lus par la vue A** : 42 suicides (tueur = victime), 85 sans tueur, 13 sans victime, 79 dont la
+   chaîne d'évènements qui suit ne se lisait pas (28 films). Ils entrent dans les kill-events de
+   killsource. Sur les 19 témoins, deux morts publiées gagnent un kill-event attaché (l une sans
+   assistant, l autre avec un assistant nommé) ; leur origine n est pas instruite au-delà.
 
 ## 7. Journal
 
@@ -1890,3 +2023,15 @@ plan y sont reprises comme items (3.1.2).
   19 témoins, seules les voies techniques, la couverture de l'artefact et les diagnostics de
   calibration bougent. Le commit de clôture de c1 (`5ee99df38`) emportait par erreur les suppressions
   de fichiers de c2 ; refait sans elles avant tout push (`8aa5c597a`). Découvertes 32 et 33.
+- 2026-10-07 : 2.7.c4 CLOS. La vue A lit le message de kill sans sa partie optionnelle et range
+  ses messages ; killsource y prend ses kill-events dans la marche de ses morts ; la recherche bit à
+  bit descend dans la grammaire en rattrapage compté. La vérification sur 28 films sous la règle
+  décidée d'abord (rattrapage après un arrêt seulement) a montré 433 kills réels perdus sur quatre
+  films anciens derrière des terminateurs que la marche ne retient pas : seconde décision de
+  l'utilisateur (§2), le rattrapage couvre toute trame dont la lecture de la vue A n'est pas établie,
+  avant la vue B. Preuve c4b : publication de killsource identique hors deux kill-events gagnés,
+  marche nettement meilleure (fermées +24 500 sur 28 films), régression localisée sur les trames à
+  kill dont la fin de vue A, fausse après un message de dégâts, est retenue (découverte 34). killsource
+  ne lit plus aucun octet : son exception au garde-rail des faits est retirée. Coordination :
+  levelup-d0 a fusionné `grammar-2026-10-07`, `SchemaDesFaits` 9 et `SchemaVersion` 84 dans
+  `feat/v75` (`292ef56a5`) ; renumérotation à la fusion (2.7.c5). Découvertes 34 et 35 ; 30 instruite.

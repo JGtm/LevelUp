@@ -46,18 +46,17 @@ func TestP4BotMetaHorodatage(t *testing.T) {
 		t.Fatalf("film : %v", err)
 	}
 	n := 0
-	for i := range f.packets {
-		p := &f.packets[i]
-		if p.typ != packetTypeBotMeta {
+	for _, p := range f.src.AllPackets() {
+		if p.Type != grammar.PacketTypeBotMetadata {
 			continue
 		}
 		n++
 		nb := -1
-		if len(p.payload) >= 4 {
-			nb = int(uint32(p.payload[0])<<24 | uint32(p.payload[1])<<16 | uint32(p.payload[2])<<8 | uint32(p.payload[3]))
+		if len(p.Payload) >= 4 {
+			nb = int(uint32(p.Payload[0])<<24 | uint32(p.Payload[1])<<16 | uint32(p.Payload[2])<<8 | uint32(p.Payload[3]))
 		}
-		t.Logf("BOT_METADATA chunk %2d pk %3d ts %d f%5d | taille %d o | nbBots=%d", p.chunk, p.idx, p.ts,
-			(int64(p.ts)-int64(origine))/100_000, len(p.payload), nb)
+		t.Logf("BOT_METADATA chunk %2d pk %3d ts %d f%5d | taille %d o | nbBots=%d", p.Chunk, p.Index, p.TS,
+			(int64(p.TS)-int64(origine))/100_000, len(p.Payload), nb)
 	}
 	paquets := grammar.PaquetsBotMetadata(f.src, 0, false)
 	for _, pq := range paquets {

@@ -9,9 +9,9 @@ package archlint
 // qui la lit une fois par trame dans la marche des trames et la range, `lireTrameParRangs`, qui la
 // lit depuis la tete du paquet quand on ne la lui passe pas. Ce test ne garde pas les autres
 // lectures, qui ne sont pas ce contrat : la tete seule relue par `readPacketHead` (et par lui
-// `teteDuPayload`, `lireEnteteTir36`, `scanChunkDamages`) et par `killsource` (`hasEvents`,
-// `estAncreDeKillEvent`) ; et la lecture en chaine des evenements de `killsource`
-// (`facts/killsource/eventchain.go`), propre a son canal. Il interdit, dans l arbre syntaxique de la
+// `teteDuPayload`, `lireEnteteTir36`, `scanChunkDamages`) ; et la lecture en chaine des evenements
+// du rattrapage des kills (`grammar/chaine_d_evenements*.go`, `grammar/kills_rattrapes.go`), qui ne
+// cherche qu au-dela de l arret de la lecture unique. Il interdit, dans l arbre syntaxique de la
 // production du decodeur :
 //
 //	un appel a `lireLaVueA` hors de ces deux fonctions ;

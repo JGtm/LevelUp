@@ -1,6 +1,6 @@
-package killsource
+package grammar
 
-// equivalence_lecteur_test.go — L EQUIVALENCE BIT A BIT, APPEL PAR APPEL (lot 2.4.1).
+// chaine_d_evenements_equivalence_test.go — L EQUIVALENCE BIT A BIT, APPEL PAR APPEL (lot 2.4.1).
 //
 // # LA METHODE, ET POURQUOI ELLE SUFFIT
 //
@@ -9,7 +9,7 @@ package killsource
 // `bitsN`, plus `bitsWide` sous `rd`). Si chacune rend la MEME valeur, avance le curseur de la
 // MEME distance et leve son drapeau de debordement DANS LES MEMES CAS, alors la marche entiere
 // est identique par recurrence. C est ce que ce fichier prouve ; le golden des triplets
-// (`chaines_evenements_test.go`) le confirme ensuite de bout en bout.
+// (`chaine_d_evenements_oracle_test.go`) le confirme ensuite de bout en bout.
 //
 // LES COPIES DE REFERENCE ci-dessous sont les implantations d AVANT le lot 2.4.1, recopiees ici
 // et NULLE PART AILLEURS — la production n en garde aucune (`evReader`, `bitsWide`, `bitAt`,
@@ -32,7 +32,7 @@ import (
 
 // --- Copies de reference : les implantations d AVANT le lot 2.4.1 (oracles du differentiel) ---
 
-// refEvReader est `killsource.evReader` d avant : tampon propre, position propre, REFUS de lire
+// refEvReader est le `killsource.evReader` d avant : tampon propre, position propre, REFUS de lire
 // au-dela du paquet.
 type refEvReader struct {
 	pl   []byte
@@ -183,22 +183,18 @@ func comparerPrimitives(t *testing.T, dir string, pl []byte, p int) {
 	}
 }
 
-// payloadsAEvents : les payloads des paquets type-0 A EVENTS d une bobine.
+// payloadsAEvents : les payloads des trames delta A EVENTS d une bobine (aucun pour une bobine sans
+// trame delta).
 func payloadsAEvents(t *testing.T, dir string) [][]byte {
 	t.Helper()
 	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : %v", dir, err)
 	}
-	f, err := loadFilm(src)
-	if err != nil {
-		return nil // bobine sans paquet type-0 (fixture partielle) : rien a comparer
-	}
 	var out [][]byte
-	for i := range f.t0 {
-		p := &f.t0[i]
-		if hasEvents(p) {
-			out = append(out, p.payload)
+	for _, p := range src.AllPackets() {
+		if trameAEvenements(p) {
+			out = append(out, p.Payload)
 		}
 	}
 	return out
@@ -216,16 +212,16 @@ func positionsReelles(pl []byte) []int {
 	for _, x := range positionsCandidates(pl) {
 		vues[x], vues[x+7] = true, true
 		r := nouveauCurseurEv(pl, x+7)
-		if !evPresence(r, killEventCode) {
+		if !evPresence(r, GenreJoueurTue) {
 			continue
 		}
 		vues[r.pos()] = true
-		k := readKillEvent(pl, r.pos())
-		if !killEventPlausible(k) {
+		k, fin := lireLeKillDeLaChaine(pl, r.pos())
+		if !killPlausible(k, fin) {
 			continue
 		}
-		vues[k.end] = true
-		marquerBornesDeChaine(pl, k.end, vues)
+		vues[fin] = true
+		marquerBornesDeChaine(pl, fin, vues)
 	}
 	marquerBornesDeChaine(pl, 2, vues)
 	nb := len(pl) * 8

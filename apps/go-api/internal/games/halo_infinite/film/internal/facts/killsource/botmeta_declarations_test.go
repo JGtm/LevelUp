@@ -50,11 +50,19 @@ func ecrireU32BE(d []byte, at int, v uint32) {
 // nomApresLeSlot : l ecart, en octets, du slot au nom d une entree (`0x74`, cf. `grammar/bot_metadata.go`).
 const nomApresLeSlot = 0x74
 
+// paquetDeTest decrit un paquet d un film synthetique : son chunk, son rang, son type, son
+// horodatage et son payload.
+type paquetDeTest struct {
+	chunk, idx, typ int
+	ts              uint64
+	payload         []byte
+}
+
 // sourceDePaquets fabrique un film en memoire dont chaque chunk porte, dans leur ordre, les paquets
 // `ps` de sa position : en-tetes de 16 octets `[u16 type][2 octets][u32 taille][u64 horodatage]`,
 // petit-boutistes. Un payload vide est porte a un octet : la source arrete un chunk sur un en-tete de
 // taille nulle qui n est pas son terminateur.
-func sourceDePaquets(t *testing.T, ps ...packet) *source.Film {
+func sourceDePaquets(t *testing.T, ps ...paquetDeTest) *source.Film {
 	t.Helper()
 	n := 0
 	for _, p := range ps {
@@ -82,10 +90,10 @@ func sourceDePaquets(t *testing.T, ps ...packet) *source.Film {
 
 // botsDePaquets rend l agregat des bots d un film synthetique de paquets BOT_METADATA, lus par la
 // grammaire.
-func botsDePaquets(t *testing.T, paquets ...packet) botMeta {
+func botsDePaquets(t *testing.T, paquets ...paquetDeTest) botMeta {
 	t.Helper()
 	for i := range paquets {
-		paquets[i].typ = packetTypeBotMeta
+		paquets[i].typ = grammar.PacketTypeBotMetadata
 	}
 	return loadBotMeta(grammar.PaquetsBotMetadata(sourceDePaquets(t, paquets...), 0, false))
 }
@@ -96,13 +104,13 @@ func TestBotMetaDeclarationsDesRelais(t *testing.T) {
 	pardon := bot{Slot: 8, BotID: 7, Name: "343 PardonMy"}
 	brew := bot{Slot: 8, BotID: 19, Name: "343 Brew Dog"}
 	m := botsDePaquets(t,
-		packet{chunk: 0, ts: 1_000, payload: payloadBotMeta(1, hundy)},
-		packet{chunk: 1, ts: 21_000, payload: payloadBotMeta(1, hundy)},
-		packet{chunk: 1, ts: 27_300, payload: payloadBotMeta(0)}, // Hundy retire : son depart
-		packet{chunk: 4, ts: 81_300, payload: payloadBotMeta(1, pardon)},
-		packet{chunk: 4, ts: 83_100, payload: payloadBotMeta(0)},
-		packet{chunk: 17, ts: 315_500, payload: payloadBotMeta(1, brew)}, // paquet de changement
-		packet{chunk: 18, ts: 321_300, payload: payloadBotMeta(1, brew)},
+		paquetDeTest{chunk: 0, ts: 1_000, payload: payloadBotMeta(1, hundy)},
+		paquetDeTest{chunk: 1, ts: 21_000, payload: payloadBotMeta(1, hundy)},
+		paquetDeTest{chunk: 1, ts: 27_300, payload: payloadBotMeta(0)}, // Hundy retire : son depart
+		paquetDeTest{chunk: 4, ts: 81_300, payload: payloadBotMeta(1, pardon)},
+		paquetDeTest{chunk: 4, ts: 83_100, payload: payloadBotMeta(0)},
+		paquetDeTest{chunk: 17, ts: 315_500, payload: payloadBotMeta(1, brew)}, // paquet de changement
+		paquetDeTest{chunk: 18, ts: 321_300, payload: payloadBotMeta(1, brew)},
 	)
 	if m.NBots != 1 || m.NPkt != 7 || m.Incomplets != 0 {
 		t.Fatalf("agregat : NBots %d NPkt %d incomplets %d, attendu 1 / 7 / 0", m.NBots, m.NPkt, m.Incomplets)
@@ -131,9 +139,9 @@ func TestBotMetaPaquetIncompletNeFermeRien(t *testing.T) {
 	a := bot{Slot: 8, BotID: 16, Name: "343 Hundy"}
 	b := bot{Slot: 9, BotID: 7, Name: "343 PardonMy"}
 	m := botsDePaquets(t,
-		packet{ts: 1_000, payload: payloadBotMeta(2, a, b)},
-		packet{ts: 2_000, payload: payloadBotMeta(2, a)}, // nbBots dit 2, une seule entree lue
-		packet{ts: 3_000, payload: payloadBotMeta(1, a)}, // complet : b est parti ici
+		paquetDeTest{ts: 1_000, payload: payloadBotMeta(2, a, b)},
+		paquetDeTest{ts: 2_000, payload: payloadBotMeta(2, a)}, // nbBots dit 2, une seule entree lue
+		paquetDeTest{ts: 3_000, payload: payloadBotMeta(1, a)}, // complet : b est parti ici
 	)
 	if m.Incomplets != 1 {
 		t.Fatalf("paquets incomplets : %d, attendu 1", m.Incomplets)
@@ -159,10 +167,10 @@ func TestBotMetaPaquetIncompletNeFermeRien(t *testing.T) {
 func TestBotMetaInstantaneDeTete(t *testing.T) {
 	pardon := bot{Slot: 8, BotID: 7, Name: "343 PardonMy"}
 	m := loadBotMeta(grammar.PaquetsBotMetadata(sourceDePaquets(t,
-		packet{chunk: 6, idx: 1, typ: packetTypeKeyframe, ts: 1_000_000},
-		packet{chunk: 6, idx: 4, typ: packetTypeBotMeta, ts: 1_000_390, payload: payloadBotMeta(1, pardon)},
-		packet{chunk: 6, idx: 5, typ: packetType0, ts: 1_100_000},
-		packet{chunk: 6, idx: 9, typ: packetTypeBotMeta, ts: 2_800_000, payload: payloadBotMeta(0)},
+		paquetDeTest{chunk: 6, idx: 1, typ: int(grammar.PacketTypeKeyframe), ts: 1_000_000},
+		paquetDeTest{chunk: 6, idx: 4, typ: grammar.PacketTypeBotMetadata, ts: 1_000_390, payload: payloadBotMeta(1, pardon)},
+		paquetDeTest{chunk: 6, idx: 5, typ: packetType0, ts: 1_100_000},
+		paquetDeTest{chunk: 6, idx: 9, typ: grammar.PacketTypeBotMetadata, ts: 2_800_000, payload: payloadBotMeta(0)},
 	), 0, false))
 	want := []BotDeclaration{{FromUS: 1_000_000, ToUS: 2_800_000}}
 	if len(m.Bots) != 1 || !reflect.DeepEqual(m.Bots[0].entree().Declarations, want) {

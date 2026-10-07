@@ -62,7 +62,7 @@ func scanFilm(f *film, nParticipants int) []candidate {
 }
 
 // candidatsDuBalayage convertit les positions du gabarit que la grammaire a lues en candidats, dans
-// L ORDRE TOTAL DU FILM — celui de `f.t0` ([trierPaquetsT0] : horodatage, chunk, rang), puis le bit.
+// L ORDRE TOTAL DU FILM : horodatage, chunk, rang dans le chunk, puis le bit.
 func (f *film) candidatsDuBalayage(es []grammar.EtatDeMortBalaye) []candidate {
 	slices.SortStableFunc(es, func(a, b grammar.EtatDeMortBalaye) int {
 		return cmp.Or(cmp.Compare(a.TS, b.TS), cmp.Compare(a.PositionDuChunk, b.PositionDuChunk),

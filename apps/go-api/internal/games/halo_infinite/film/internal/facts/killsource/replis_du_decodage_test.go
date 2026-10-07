@@ -25,7 +25,7 @@ func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 		walkRes:    &walkResult{desync: 1, horsRoster: 3, horsEnum: 4, largeurLibre: 5},
 		roster:     &roster{nomsInventes: 6},
 		feed:       &killFeed{},
-		killEvents: &assistScan{chainesArretees: 8},
+		killEvents: &assistScan{chainesArretees: 8, rattrapes: 9},
 		calib:      calibration{CarteLue: false, ControleDeCorruptionLu: false, PoigneeDecidee: true},
 	}
 	kills := []Kill{{Victim: "A", Feed: FeedTruth{Killer: "B"}}}

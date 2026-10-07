@@ -34,15 +34,6 @@ func trierBotsParSlot(bots []bot) {
 	slices.SortStableFunc(bots, func(a, b bot) int { return cmp.Compare(a.Slot, b.Slot) })
 }
 
-// trierPaquetsT0 range les paquets de replication dans l ORDRE TOTAL DU FILM (lot J10.1, 2026-09-27,
-// DT-9) : horodatage, puis chunk, puis rang dans le chunk — le couple (chunk, rang) est unique. Tout
-// ce qui parcourt `f.t0` (la marche, le balayage, les kill-events) herite de cet ordre.
-func trierPaquetsT0(t0 []packet) {
-	slices.SortFunc(t0, func(a, b packet) int {
-		return cmp.Or(cmp.Compare(a.ts, b.ts), cmp.Compare(a.chunk, b.chunk), cmp.Compare(a.idx, b.idx))
-	})
-}
-
 // trierMortsDeLaMarche range les dead-states de la marche par instant, chunk et paquet, les ex aequo
 // d un meme paquet dans l ORDRE DE LA MARCHE (lot J10.1, 2026-09-27, DT-9). Un record sans position
 // enregistree porte `bit = -1` : il n a pas d autre cle unique que ce rang, et `dedup` garde le

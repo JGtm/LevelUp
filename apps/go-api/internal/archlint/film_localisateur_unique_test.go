@@ -242,7 +242,7 @@ func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 `
 
 // TestGardeRailLocalisateurVecteurs : la copie retiree de killsource rougit sous ses deux formes ;
-// un test de bit precedent sans essai de delta (`killsource/eventchain.go`) et un essai sur une
+// un test de bit precedent sans essai de delta (`grammar/kills_rattrapes.go`) et un essai sur une
 // autre position ne sont pas le localisateur.
 func TestGardeRailLocalisateurVecteurs(t *testing.T) {
 	for _, c := range []struct {

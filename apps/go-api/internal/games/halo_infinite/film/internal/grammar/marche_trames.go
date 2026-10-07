@@ -202,9 +202,10 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 
 // viderLePaquet remet l arene a zero en gardant la capacite de ses tranches.
 func viderLePaquet(p *lecture.Paquet) {
-	genres, entrees, records, comps := p.VueA.Genres[:0], p.VueC.Entrees[:0], p.Records[:0], p.Comps[:0]
+	genres, kills, entrees := p.VueA.Genres[:0], p.VueA.Kills[:0], p.VueC.Entrees[:0]
+	records, comps := p.Records[:0], p.Comps[:0]
 	*p = lecture.Paquet{}
-	p.VueA.Genres, p.VueC.Entrees, p.Records, p.Comps = genres, entrees, records, comps
+	p.VueA.Genres, p.VueA.Kills, p.VueC.Entrees, p.Records, p.Comps = genres, kills, entrees, records, comps
 }
 
 // ajouter cumule `o` dans `l`.

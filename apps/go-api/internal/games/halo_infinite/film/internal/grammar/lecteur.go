@@ -63,6 +63,9 @@ type Lecteur struct {
 	// de la vue A sur SON lecteur ([lireLaVueA]) ; zero sur tout autre lecteur. Les charges de message
 	// qui en dependent (Script, positions a index) la lisent ici.
 	vueA grammaireDeLaVueA
+	// killLu : les champs du dernier message de kill que la charge du genre 85 a lus
+	// ([chargeJoueurTue]) ; la lecture de la vue A les recueille avec la position du message.
+	killLu lecture.MessageDeKill
 	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
 	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
 	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque

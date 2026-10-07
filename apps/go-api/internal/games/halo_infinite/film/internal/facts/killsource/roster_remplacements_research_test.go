@@ -260,11 +260,12 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 	if err != nil {
 		t.Fatalf("calibration : %v", err)
 	}
-	fc.PoserProfilDeBalayage(cal.Profil)
-	w, err := marcherLesMorts(fc, f, r)
+	poserLeProfil(fc, cal.Profil)
+	marche, err := grammar.LireLaMarcheDeKillsource(fc)
 	if err != nil {
 		t.Fatalf("marche : %v", err)
 	}
+	w := mortsDeLaMarche(marche, f, r)
 	t.Logf("DEAD-STATES HORS ROSTER (carte %q, %s)", os.Getenv(ksRosterCarteEnv), cal.String())
 	par := map[[2]int]int{}
 	for _, d := range w.deads {
