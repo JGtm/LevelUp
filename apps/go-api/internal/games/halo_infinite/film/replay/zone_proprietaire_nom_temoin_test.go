@@ -20,6 +20,8 @@ package replay
 import (
 	"reflect"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // proprietaireNommeAttendu : par rang de lettre (0 = A), le camp du PREMIER intervalle publie et
@@ -63,6 +65,17 @@ func TestZoneProprietaireNomTemoin(t *testing.T) {
 	if cp.OwnerVoteDisagreed != 0 || cp.OwnerAgreed != cp.OwnerChecked || cp.OwnerChecked <= ca.OwnerChecked {
 		t.Errorf("controle : vote discordant %d, proprietaire %d/%d (avant %d/%d)", cp.OwnerVoteDisagreed,
 			cp.OwnerAgreed, cp.OwnerChecked, ca.OwnerAgreed, ca.OwnerChecked)
+	}
+	// LE POUSSEUR AUSSI SE LIT PAR LE NOM : chaque zone a le sien, l election ne le contredit
+	// nulle part, et aucune rampe n est plus deduite de son issue.
+	if cp.CapturerNamed != cp.Catalog || cp.CapturerElectionDisagreed != 0 {
+		t.Errorf("pousseur : %d zone(s) nommee(s) sur %d, %d discordance(s) avec l election",
+			cp.CapturerNamed, cp.Catalog, cp.CapturerElectionDisagreed)
+	}
+	for _, f := range apres.Coverage.Fallbacks {
+		if f.Name == string(fallback.NomZoneCampDeCaptureDeduitDeLIssue) && f.Hits > 0 {
+			t.Errorf("%d rampe(s) encore deduite(s) de leur issue", f.Hits)
+		}
 	}
 	for _, st := range apres.ZoneStates {
 		verifierProprietaireNomme(t, st, attendu)

@@ -1394,8 +1394,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   d une zone est designe par le nom de sa jauge, une zone prise une seule fois est publiee.
 	//   `grammar.Rev` monte avec elle. 83 est reserve par un lot parallele. Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 84 {
-		t.Fatalf("SchemaVersion = %d, attendu 84 : incrémenter exige une raison écrite ci-dessus "+
+	// - 86 (2026-10-07, pousseur et colline par le nom) : deux champs de couverture
+	//   (`coverage.zones.capturerNamed`, `capturerElectionDisagreed`) et le CONTENU : le pousseur d une
+	//   zone et le proprietaire d une colline designes par le nom. Publication seule (faits au schema
+	//   9). 85 est reserve par un lot parallele. Detail : `document_chronicle.go`.
+	if SchemaVersion != 86 {
+		t.Fatalf("SchemaVersion = %d, attendu 86 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

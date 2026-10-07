@@ -144,7 +144,11 @@ type zoneSeries struct {
 	// ([zoneKeyOwnerOf]). Seuls les intervalles de propriete les lisent ; aucune election, aucune
 	// jauge, aucune colline.
 	ownerKey map[uint32][]zoneSample
-	slots    int
+	// noms : le NOM de chaque slot lu aux images-cles et l index inverse ([zoneNomsDesSlots]). C est
+	// par lui que le proprietaire et le pousseur d une zone, et le proprietaire d une colline, se
+	// rattachent a leur bloc (zone_states_owner_nom.go).
+	noms  zoneNoms
+	slots int
 }
 
 // buildZoneStates rend l'etat des zones et sa couverture. Rend (nil, nil) quand l'appelant n'a
@@ -162,6 +166,7 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 	cat := zoneCatalogOf(in.Zones)
 	ser := zoneSeriesOf(in.Reads, c)
 	ser.ownerKey = zoneKeyOwnerOf(in.KeyReads, in.Reads, c)
+	ser.noms = zoneNomsDesSlots(in.KeyReads)
 	cov.Slots = ser.slots
 	caps := zoneCapturesOf(c.actions)
 	cov.Captures = len(caps)
@@ -188,7 +193,12 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 				"attribuees", cov.Attributed)
 			return nil, cov
 		}
-		return buildHillStates(cat, ser, zoneTeamSet(in.TeamByXUID), c, cov), cov
+		states := buildHillStates(cat, ser, zoneTeamSet(in.TeamByXUID), c, cov)
+		if cov.OwnerVoteDisagreed > 0 {
+			slog.WarnContext(ctx, "rejeu : le voisin du designateur contredit le nom du proprietaire de la colline — le nom est retenu",
+				"match_id", c.matchID, "discordances", cov.OwnerVoteDisagreed)
+		}
+		return states, cov
 	}
 	states, key, disc := zoneOwnerStates(in, ser, pairs, c, cov)
 	tallyZoneStates(states, cov)
@@ -197,12 +207,13 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 	return states, cov
 }
 
-// logZoneOwnerDiscordances journalise les zones ou le vote elit un autre canal que celui que le
-// nom designe : le nom est retenu, et la discordance se compte (`ownerVoteDisagreed`).
+// logZoneOwnerDiscordances journalise les zones ou la regle de repli designe un autre canal que
+// celui que le nom designe : le nom est retenu, et la discordance se compte (`ownerVoteDisagreed`,
+// `capturerElectionDisagreed`).
 func logZoneOwnerDiscordances(ctx context.Context, matchID string, disc []zoneDiscordance) {
 	for _, d := range disc {
-		slog.WarnContext(ctx, "rejeu : le vote contredit le nom du canal de propriete d'une zone — le nom est retenu",
-			"match_id", matchID, "zone", d.ref, "canalNomme", d.nomme, "canalVote", d.vote)
+		slog.WarnContext(ctx, "rejeu : la regle de repli contredit le nom d un canal de zone — le nom est retenu",
+			"match_id", matchID, "zone", d.ref, "canal", d.canal, "canalNomme", d.nomme, "canalAutre", d.autre)
 	}
 }
 

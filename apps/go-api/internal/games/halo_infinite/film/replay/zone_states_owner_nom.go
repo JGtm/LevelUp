@@ -13,10 +13,12 @@ package replay
 //	index de zone (tag 4) · cle de nommage (tag 5) · PROPRIETAIRE (tag 4) · pousseur (tag 4) ·
 //	JAUGE (tag 3)
 //
-// [zoneBlocsNommes] est ce vocabulaire, reduit a ce que le calque lit : le nom de la JAUGE d'un
-// bloc et celui du PROPRIETAIRE du meme bloc. La jauge d'une zone etant appariee par les captures
-// (cf. pairGaugeSlots), son nom designe le proprietaire sans vote, sans seuil et sans aucune
-// capture concordante — une zone prise une seule fois a son proprietaire comme une zone disputee.
+// [zoneBlocsNommes] est ce vocabulaire, reduit a ce que le rejeu lit : la CLE, le PROPRIETAIRE, le
+// POUSSEUR et la JAUGE de chaque bloc. La jauge d une zone etant appariee par les captures (cf.
+// pairGaugeSlots), son nom designe le proprietaire et le pousseur sans vote, sans seuil et sans
+// aucune capture concordante — une zone prise une seule fois a son proprietaire et son pousseur
+// comme une zone disputee. En colline, le DESIGNATEUR est la cle du bloc de l objet de mode : son
+// nom designe le proprietaire de la colline (hillOwnerSlotOf).
 //
 // # POURQUOI LE NOM ET PAS LE VOISINAGE DE SLOTS
 //
@@ -36,16 +38,17 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
-// zoneBlocNomme est le couple de noms (jauge, proprietaire) d'un bloc de proprietes de zone.
+// zoneBlocNomme est le nom de chaque propriete que le rejeu lit dans un bloc de zone : la CLE de
+// nommage (en colline, le designateur), le PROPRIETAIRE, le POUSSEUR et la JAUGE.
 type zoneBlocNomme struct {
-	jauge, proprietaire uint32
+	cle, proprietaire, pousseur, jauge uint32
 }
 
 // zoneBlocsNommes est le vocabulaire des blocs de zone d'objectif, dans l'ordre des blocs.
 var zoneBlocsNommes = []zoneBlocNomme{
-	{jauge: 1868372999, proprietaire: 904941267},
-	{jauge: 2534649937, proprietaire: 2914281175},
-	{jauge: 316609505, proprietaire: 31084060},
+	{cle: 1535194732, proprietaire: 904941267, pousseur: 2767827992, jauge: 1868372999},
+	{cle: 679735806, proprietaire: 2914281175, pousseur: 1378231552, jauge: 2534649937},
+	{cle: 1693197998, proprietaire: 31084060, pousseur: 4114389774, jauge: 316609505},
 }
 
 // zoneNoms est le nom de chaque slot lu aux images-cles, et l index inverse nom -> slot.
@@ -94,18 +97,51 @@ func zoneNomsDesSlots(keyReads []grammar.ManagedPropertyRead) zoneNoms {
 	return zoneNoms{parSlot: parSlot, parNom: parNom}
 }
 
+// zoneBlocDuSlot rend le bloc du vocabulaire auquel appartient le slot, par le role que son nom y
+// tient (`role` extrait ce nom d'un bloc), ou faux quand le slot n'a pas de nom univoque ou que ce
+// nom n'est pas au vocabulaire.
+func zoneBlocDuSlot(slot uint32, noms zoneNoms, role func(zoneBlocNomme) uint32) (zoneBlocNomme, bool) {
+	nom, ok := noms.parSlot[slot]
+	if !ok {
+		return zoneBlocNomme{}, false
+	}
+	i := slices.IndexFunc(zoneBlocsNommes, func(b zoneBlocNomme) bool { return role(b) == nom })
+	if i < 0 {
+		return zoneBlocNomme{}, false
+	}
+	return zoneBlocsNommes[i], true
+}
+
 // zoneProprietaireNomme rend le slot du proprietaire du bloc dont `jauge` est la jauge, ou faux
 // quand le nom de la jauge n'est pas au vocabulaire ou que le proprietaire n'est pas dans le film.
 func zoneProprietaireNomme(jauge uint32, noms zoneNoms) (uint32, bool) {
-	nom, ok := noms.parSlot[jauge]
+	b, ok := zoneBlocDuSlot(jauge, noms, func(b zoneBlocNomme) uint32 { return b.jauge })
 	if !ok {
 		return 0, false
 	}
-	i := slices.IndexFunc(zoneBlocsNommes, func(b zoneBlocNomme) bool { return b.jauge == nom })
-	if i < 0 {
+	slot, ok := noms.parNom[b.proprietaire]
+	return slot, ok
+}
+
+// zonePousseurNomme rend le slot du POUSSEUR du bloc dont `jauge` est la jauge, ou faux (memes
+// cas que [zoneProprietaireNomme]).
+func zonePousseurNomme(jauge uint32, noms zoneNoms) (uint32, bool) {
+	b, ok := zoneBlocDuSlot(jauge, noms, func(b zoneBlocNomme) uint32 { return b.jauge })
+	if !ok {
 		return 0, false
 	}
-	slot, ok := noms.parNom[zoneBlocsNommes[i].proprietaire]
+	slot, ok := noms.parNom[b.pousseur]
+	return slot, ok
+}
+
+// zoneProprietaireDeCle rend le slot du proprietaire du bloc dont `cle` est la cle de nommage —
+// en colline, le DESIGNATEUR —, ou faux (memes cas que [zoneProprietaireNomme]).
+func zoneProprietaireDeCle(cle uint32, noms zoneNoms) (uint32, bool) {
+	b, ok := zoneBlocDuSlot(cle, noms, func(b zoneBlocNomme) uint32 { return b.cle })
+	if !ok {
+		return 0, false
+	}
+	slot, ok := noms.parNom[b.proprietaire]
 	return slot, ok
 }
 
@@ -122,11 +158,20 @@ type zoneProprietaires struct {
 	discordantes []zoneDiscordance
 }
 
-// zoneDiscordance est une zone ou le vote contredit le nom.
+// zoneDiscordance est une zone ou la regle de repli (vote du proprietaire, election du pousseur,
+// voisin du designateur en colline) designe un AUTRE canal que le nom. Le nom est retenu.
 type zoneDiscordance struct {
-	ref         int
-	nomme, vote uint32
+	ref int
+	// canal nomme le role du canal en cause : [zoneCanalProprietaire] ou [zoneCanalPousseur].
+	canal        string
+	nomme, autre uint32
 }
+
+// Les roles de canal d une discordance, tels que le journal les nomme.
+const (
+	zoneCanalProprietaire = "proprietaire"
+	zoneCanalPousseur     = "pousseur"
+)
 
 // zoneOwnerSlotsOf rattache a chaque zone appariee son canal de propriete : PAR LE NOM d'abord, PAR
 // LE VOTE en repli.
@@ -151,7 +196,7 @@ func zoneOwnerSlotsOf(gaugeSlot, vote map[int]uint32, noms zoneNoms) zoneProprie
 		out.slot[ref], tenus[s] = s, true
 		out.nommees++
 		if v, voted := vote[ref]; voted && v != s {
-			out.discordantes = append(out.discordantes, zoneDiscordance{ref: ref, nomme: s, vote: v})
+			out.discordantes = append(out.discordantes, zoneDiscordance{ref: ref, canal: zoneCanalProprietaire, nomme: s, autre: v})
 		}
 	}
 	for _, ref := range refs {

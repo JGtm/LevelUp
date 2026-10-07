@@ -24,8 +24,10 @@ package replay
 // donc au PREMIER CONTACT avec l'objet (premiere emission de sa jauge, de son proprietaire ou de
 // son designateur) — une borne HAUTE de l'activation, jamais une invention.
 //
-// CE QUE CE VOLET PUBLIE DEPUIS LE 2026-08-26 : le PROPRIETAIRE. Le tag 4 du slot voisin du
-// designateur a ete confronte a trois oracles successifs ; deux se sont reveles inutilisables, le
+// CE QUE CE VOLET PUBLIE DEPUIS LE 2026-08-26 : le PROPRIETAIRE. Son canal est celui du bloc dont le
+// designateur est la cle de nommage, designe par le NOM de propriete (hillOwnerSlotOf ; le slot
+// voisin du designateur en repli, et c est le meme canal sur les films a colline du parc). Ce canal
+// a ete confronte a trois oracles successifs ; deux se sont reveles inutilisables, le
 // troisieme donne 88-89 % d'accord contre un temoin a 56 %. Sous le seuil de 90 % que le plan
 // s'etait fixe — et publie quand meme, par DECISION UTILISATEUR datee. Le verdict complet, les
 // trois campagnes et la reserve (l'erreur est concentree aux bascules) vivent en tete de
@@ -153,9 +155,10 @@ func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 		}
 		kept = append(kept, p)
 	}
-	// LE CANAL DE PROPRIETE EST LE SLOT VOISIN DU DESIGNATEUR — celui que l'election exige deja
-	// (`hillDesignatorMinOwnerSamples`). Niveau de preuve accepte et reserve : cf. hillStatesOf.
-	states := hillStatesOf(kept, ser.owner[h.d.slot+1], h.teams, cov, c.fb)
+	// LE CANAL DE PROPRIETE EST CELUI DU BLOC DONT LE DESIGNATEUR EST LA CLE, designe par le nom
+	// (le slot voisin du designateur en repli). Niveau de preuve accepte et reserve : cf.
+	// hillStatesOf.
+	states := hillStatesOf(kept, ser.owner[hillOwnerSlotOf(ser, h.d, cov, c.fb)], h.teams, cov, c.fb)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
@@ -361,4 +364,23 @@ func closeHillTail(out []hillPeriod, t0 int) []hillPeriod {
 		out = out[:last]
 	}
 	return out
+}
+
+// hillOwnerSlotOf rend le canal de propriete de la colline : le PROPRIETAIRE du bloc dont le
+// designateur est la cle de nommage, designe par le nom (zone_states_owner_nom.go). Faute de nom
+// au vocabulaire, le slot VOISIN du designateur — la structure de l objet de mode que l election
+// du designateur exige deja (repli compte). La ou les deux repondent, le voisin est le controle
+// du nom : une discordance se compte dans `ownerVoteDisagreed`, le nom est retenu.
+func hillOwnerSlotOf(ser zoneSeries, d hillDesignator, cov *ZonesCoverage, fb *fallback.Compteur) uint32 {
+	voisin := d.slot + 1
+	s, ok := zoneProprietaireDeCle(d.slot, ser.noms)
+	if !ok {
+		fb.Declenche(fallback.NomCollineProprietaireVoisinDuDesignateur)
+		return voisin
+	}
+	cov.OwnerNamed++
+	if s != voisin {
+		cov.OwnerVoteDisagreed++
+	}
+	return s
 }

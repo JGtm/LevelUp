@@ -2959,3 +2959,33 @@ package replay
 //	                memes (24 zones sur 24, `ownerVoteDisagreed` 0, `zoneStates` identiques) ; sur
 //	                le Bastion court, les deux zones sans canal elu sont publiees, controle du
 //	                proprietaire 5/5. KOTH : calque identique. Aucun autre calque ne bouge.
+
+// v86 (2026-10-07, pousseur et colline par le nom) : LE POUSSEUR D UNE ZONE ET LE PROPRIETAIRE D UNE
+// COLLINE SONT DESIGNES PAR LE NOM. Deux champs de couverture s ajoutent ; le contenu change.
+//
+//	`zoneStates[]   le canal POUSSEUR d une zone est celui du bloc de sa jauge, designe par le nom
+//	.gaugeRamps[]   (`zoneCapturerOf`) ; l election par le signal devient le repli
+//	.capturing      `repli_zone_pousseur_par_election` et le controle du nom. Un neutre emis a la
+//	Team`           frame du sommet d une rampe est la fin de la poussee, pas son camp
+//	                (`zoneValueDuringRamp`). Moins de rampes deduites de leur issue, des rampes
+//	                avortees qui recoivent le camp qui les poussait.
+//	colline         le proprietaire est celui du bloc dont le designateur est la cle, designe par
+//	                le nom (`hillOwnerSlotOf`) ; le slot voisin du designateur devient le repli
+//	                `repli_colline_proprietaire_voisin_du_designateur` et le controle du nom
+//	                (`ownerNamed`, `ownerVoteDisagreed` comptent aussi la colline).
+//	`coverage.zones `capturerNamed` (zones dont le pousseur est nomme) et
+//	.capturer...`   `capturerElectionDisagreed` (nommees, l election elisant un autre canal).
+//
+//	CE QUI MONTE    `SchemaVersion` 84 -> 86 (85 reserve par un lot parallele). AUCUNE revision de
+//	AVEC ELLE       decodage : les noms sont deja dans les faits (`SchemaDesFaits` 9) — publication
+//	                seule.
+//
+//	LE PARC         un artefact 84 se REPUBLIE depuis ses faits (verdict `republier`, aucun
+//	                decodage). Seuls changent les Bases dont une rampe etait deduite ou muette ;
+//	                les KOTH ne changent que de couverture.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bases et 8 KOTH locaux : le
+//	                pousseur est nomme sur les 27 zones, jamais contredit par l election la ou elle
+//	                aboutit (`capturerElectionDisagreed` 0) ; les deductions passent de 2 a 0 (114b0040,
+//	                5 rampes avortees recoivent leur camp) et de 7 a 0 (e60aaf06, 1 rampe), aucune
+//	                autre rampe ne bouge. Colline : nom = voisin sur les 8 KOTH, calque identique.
