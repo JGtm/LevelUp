@@ -42,6 +42,7 @@ type BackfillRegistryStats struct {
 	PairsConstructed int // part de PairsFixed obtenue par construction « {variante} on {carte} »
 	VariantsScanned  int
 	VariantsFixed    int
+	Matches          int // matchs dont au moins une colonne a été réécrite (en simulation : le serait)
 	Errors           int // matchs dont l'écriture a échoué (journalisés)
 }
 
@@ -99,6 +100,7 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB,
 			continue
 		}
 		if opts.DryRun {
+			stats.Matches++
 			countRegistryWrites(&stats, kindsOf(writes), construite)
 			continue
 		}
@@ -108,6 +110,9 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB,
 			slog.ErrorContext(ctx, "BackfillRegistryNames: écriture échouée",
 				"match_id", row.matchID, "err", err)
 			continue
+		}
+		if len(ecrits) > 0 {
+			stats.Matches++
 		}
 		countRegistryWrites(&stats, ecrits, construite)
 	}
