@@ -801,6 +801,24 @@ vet et tests des paquets touchés, vitest ciblé.
   ajouté) ; `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements, aucun neuf) ; vitest
   `match-view`, `match-replay`, `lib/api` et la garde des textes : 278 fichiers verts ; knip 0 / 0 / 0 ;
   libellés de champ, couleurs, imports croisés 7 ≤ 7.
+### M6.1 — Revue adversariale, ronde 2 (b9b81fc81) : R3 jusqu'au lecteur réel · rapide
+
+- [x] M6.1.1 `platform/duckdb/match_view_repo_assist_pairs.go` : `GetMatchAssistPairs` rendait une portée
+  nulle SANS erreur sur échec du lecteur partagé ou de Q21d (WARN avalé) : l'état `unavailable` de M6 ne
+  pouvait donc jamais naître en production (seul le mock renvoyait l'erreur). Les deux branches rendent
+  désormais `fmt.Errorf("MatchViewRepo.GetMatchAssistPairs: %w", err)`, sans WARN local (le seul
+  appelant, `goLoad`, journalise et dégrade) ; commentaire de tête récrit (un échec est une erreur, une
+  portée nulle d'un match sans film est un résultat) ; doc du port alignée.
+- [x] M6.1.2 Test d'intégration du lecteur réel `match_view_repo_assist_pairs_errors_test.go` : contexte
+  annulé → erreur enveloppant `context.Canceled`, portée nulle ; base de test au journal sans colonne
+  `publishable` (schéma non migré) → erreur, portée nulle. Vu ROUGE avant la correction ; mutation
+  (branche Q21d revenue à `nil`) → ROUGE sur les deux.
+- [x] M6.1.3 Appelants : le service (`goLoad`, déjà journalisant) ; `noopMatchViewRepo` n'est qu'un
+  contrôle de compilation (`port/repository.go:78`), son contrat (portée nulle, pas d'erreur) est gardé.
+- Gate : `go vet` (dont `-tags=integration`) de `platform/duckdb`, `port`, `service`, `api/wire` 0 ;
+  `-tags=integration -p 1 -run 'Assist|MatchView' ./internal/platform/duckdb/` ok ; tests unitaires de
+  `platform/duckdb`, `service`, `api/wire`, `port` ok ; golangci des paquets touchés 0 issue ;
+  `openapi-gen -check` à jour (contrat inchangé) ; web non touché.
 ## 7. Reprise de session
 
 Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières

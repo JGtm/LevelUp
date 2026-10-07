@@ -116313,3 +116313,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : tests rouges avant code (Go et web), quatre mutations rouges ; gate ciblé vert sous la contrainte machine (vet et tests des paquets touchés, intégration ciblée, golangci des paquets, contrat, tsc, lint, vitest ciblé, knip).
 
 **Conclusion / prochaine étape** : push de la branche pour la CI ; ronde suivante de revue au superviseur.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M6.1 : état « lecture indisponible » jusqu'au lecteur réel — Complété (commit et push sur `feat/matchview-emprise`)
+
+**Décision technique principale** : le lecteur DuckDB de la portée des morts (Q21d) remonte ses échecs (lecteur partagé indisponible, requête en échec, délai, contexte annulé) au lieu de rendre une portée nulle sans erreur ; c'est ce qui permet à l'état `unavailable` du journal des morts d'exister en production, et à la page de dire « lecture indisponible » au lieu de « non publiable ».
+
+**Résultats observés** : test d'intégration du lecteur réel vu rouge (contexte annulé, base non migrée), vert après ; mutation rouge ; gate ciblé vert (vet, tests des paquets touchés, intégration ciblée, lint, contrat inchangé).
+
+**Conclusion / prochaine étape** : push pour la CI ; décision de fusion au superviseur.

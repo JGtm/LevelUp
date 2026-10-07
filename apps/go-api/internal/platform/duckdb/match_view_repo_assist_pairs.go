@@ -10,7 +10,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -116,11 +115,12 @@ ORDER BY p.assist_count DESC, p.assist_gamertag, p.feed_killer_xuid`
 // GetMatchAssistPairs retourne les paires (assistant, tueur assisté) du match et la portée
 // de leur lecture (Q21d). Exécutée sur SharedReader (ADR 0016, shared-only).
 //
-// Même dégradation gracieuse que Q21b/Q21c, et pour les mêmes raisons : reader
-// indisponible ou table absente d'une base non migrée rendent une portée VIDE
-// (MatchDeaths = 0), loggée. Le service n'émet alors aucun bloc et l'écran ne rend rien —
-// l'état d'avant ce lot. Jamais une erreur : un titre sans décodeur de film n'est pas une
-// panne.
+// UN ÉCHEC DE LECTURE EST UNE ERREUR, JAMAIS UNE PORTÉE VIDE : lecteur partagé indisponible,
+// table absente d'une base non migrée, délai dépassé ou contexte annulé remontent enveloppés.
+// Une portée à zéro rendue sur échec se lirait « aucune mort publiable » (journal des morts
+// non publiable) alors que la lecture a seulement manqué ; l'appelant journalise l'erreur,
+// dégrade, et la page dit « lecture indisponible ». Un match sans ligne de film rend, lui, une
+// portée nulle sans erreur : c'est un résultat.
 func (r *MatchViewRepo) GetMatchAssistPairs(
 	ctx context.Context,
 	matchID string,
@@ -132,17 +132,13 @@ func (r *MatchViewRepo) GetMatchAssistPairs(
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: paires d'assistance indisponibles (shared reader)",
-			"match_id", matchID, "err", err)
-		return nil, scope, nil
+		return nil, scope, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs: %w", err)
 	}
 	defer release()
 
 	rows, err := sharedDB.QueryContext(ctx, Q21dAssistPairs, matchID, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: paires d'assistance indisponibles (Q21d)",
-			"match_id", matchID, "err", err)
-		return nil, scope, nil
+		return nil, scope, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs: %w", err)
 	}
 	defer rows.Close()
 	return scanAssistPairs(rows)
