@@ -277,7 +277,7 @@ describe('Contrôle des ressources, match par match', () => {
     mount()
     const toggle = screen.getByTestId('emprise-grid-racks-toggle')
     expect(toggle.textContent).toContain('Armes de râtelier')
-    expect(toggle.textContent).toContain('(13, prises)')
+    expect(toggle.textContent).toContain('(13 types d’armes)')
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByText('Déchiqueteur')).toBeNull()
     fireEvent.click(toggle)
