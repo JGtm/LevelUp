@@ -116281,3 +116281,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contrat additif (openapi +115, types +39, 0 retrait) ; onze mutations rouges ; un filtre redondant (mutation verte) retiré de la projection des armes ; gate Go complet vert (six lots), lint 0 issue.
 
 **Conclusion / prochaine étape** : M2 clos ; M3 (onglet web reconstruit, suppressions web, garde des textes étendue).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M3 : onglet web reconstruit, suppressions web, garde des textes étendue — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : l'onglet « Armes et terrain » se reconstruit sur les briques des pages sœurs : « Frags et armes » (anneau | outils de destruction, distance par arme), puis « Équipement et terrain » avec sa couverture (contrôle des ressources par match, prises par joueur sans fiche du reste, usage d'équipements par joueur, frags | rendement par ressource avec leurs raisons fermées, isolement par joueur, positions). Les briques gagnent des props optionnelles au défaut inchangé ; la ligne d'« Isolement » est extraite pour servir une ligne par joueur ; les libellés des outils ont une source unique (troisième copie évitée, garde-rail). Riposte, hauteur d'engagement, contrôle des armes spéciales et part de chaque équipe quittent le web. La garde des textes sans personne couvre désormais la Vue match (textes, manifeste, littéraux de phrase des sources).
+
+**Résultats observés** : garde vue rouge sur douze textes de la page (« Mes matchs », « Mon équipe », « T'a martyrisé », « camp », « vous ») puis verte après réécriture ; dix-sept mutations rouges ; suite web complète verte (862 fichiers), lint sans avertissement neuf, knip 0, imports croisés 7 ≤ 7, crochets de pré-envoi verts (le lint des libellés de champ a imposé une clé de dictionnaire pour « Matchs »). Découvertes notées au plan (§8) sans correction.
+
+**Conclusion / prochaine étape** : M3 clos ; M4 (retrait Go de la riposte et de la hauteur, contrat régénéré).

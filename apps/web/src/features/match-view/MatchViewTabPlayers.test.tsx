@@ -31,12 +31,16 @@ vi.mock('./MatchEncountersTable', () => ({ MatchEncountersTable: () => <div /> }
 // `MatchAssistChart` n'est PAS mocké : c'est sa porte 1 (bloc absent -> rien) que la rangée
 // doit accompagner, et la mocker reviendrait à tester la mise en page contre une fiction.
 vi.mock('@/components/charts/BarStackedChart', () => ({
-  BarStackedChart: ({ title }: { title: string }) => <div data-testid="assistances">{title}</div>,
+  BarStackedChart: ({ title, valueAxisName }: { title: string; valueAxisName: string }) => (
+    <div data-testid="assistances" data-axe={valueAxisName}>
+      {title}
+    </div>
+  ),
 }))
 
 const BLOC_ASSISTANCES = { pairs: [], measured_deaths: 12 } as unknown as MatchAssistPairs
 
-function afficher(assistPairs: MatchAssistPairs | undefined) {
+function afficher(assistPairs: MatchAssistPairs | undefined, locale: 'fr' | 'en' = 'fr') {
   return render(
     <MatchViewTabPlayers
       header={{} as MatchViewHeader}
@@ -46,15 +50,13 @@ function afficher(assistPairs: MatchAssistPairs | undefined) {
       nemesis={[]}
       killerVictim={[]}
       assistPairs={assistPairs}
-      // La riposte a ses propres tests : ici elle est absente, et sa porte 1 ne rend rien.
-      riposte={undefined}
       highlightEvents={[]}
       citations={[]}
       encounters={[]}
       meXUID="me"
       friendGamertags={[]}
-      locale="fr"
-      t={MATCH_VIEW_TEXT.fr}
+      locale={locale}
+      t={MATCH_VIEW_TEXT[locale]}
     />,
   )
 }
@@ -86,5 +88,15 @@ describe('MatchViewTabPlayers — Antagonistes et Assistances sur une rangée', 
     const vue = afficher(BLOC_ASSISTANCES)
     const nemesis = vue.getByTestId('nemesis')
     expect(rangeeDe(vue)?.contains(nemesis)).toBe(false)
+  })
+})
+
+describe('MatchViewTabPlayers — l’axe des assistances', () => {
+  it('nomme l’axe des valeurs par le geste du larbin : « a assisté… » / « assisted… »', () => {
+    expect(afficher(BLOC_ASSISTANCES).getByTestId('assistances').getAttribute('data-axe')).toBe('a assisté…')
+  })
+
+  it('EN : « assisted… »', () => {
+    expect(afficher(BLOC_ASSISTANCES, 'en').getByTestId('assistances').getAttribute('data-axe')).toBe('assisted…')
   })
 })

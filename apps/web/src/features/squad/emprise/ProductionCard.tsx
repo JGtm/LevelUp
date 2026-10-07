@@ -18,6 +18,7 @@ import { useMemo } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 
 import { ObjectifFrame, ObjectifLegend } from '../objectif/ObjectifFrame'
+import { RESOURCE_ORDER } from './emprise.logic'
 import type { EmpriseText } from './empriseStrings'
 import { PisteCampsForm, ThinCampTrack, type PisteCampsRow } from './PisteCampsForm'
 import type { ProductionRow } from './production.logic'
@@ -31,7 +32,27 @@ interface ProductionCompact {
   exposureLine: (name: string, pct: string) => string
 }
 
-export function ProductionCard({ rows, t, compact }: { rows: ProductionRow[]; t: EmpriseText; compact?: ProductionCompact }) {
+/**
+ * Une ressource sans mesure d'un côté (Vue match) : la raison à la place de la barre épaisse, et la
+ * barre fine de l'exposition quand elle existe.
+ */
+export interface ProductionPending {
+  resource: string
+  text: string
+  exposure?: ProductionRow['exposure']
+}
+
+interface Props {
+  rows: ProductionRow[]
+  t: EmpriseText
+  compact?: ProductionCompact
+  /** Lignes « non mesuré » (Vue match), rangées avec les autres dans l'ordre des ressources. */
+  pending?: ProductionPending[]
+  /** Une ligne atténuée sous la barre d'une ressource (Vue match : « aucune prise d'arme spéciale mesurée »). */
+  notes?: Partial<Record<string, string>>
+}
+
+export function ProductionCard({ rows, t, compact, pending, notes }: Props) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -40,15 +61,21 @@ export function ProductionCard({ rows, t, compact }: { rows: ProductionRow[]; t:
           { kind: 'square', label: t.ourSide, color: tokenCssVar('team-ally') },
           { kind: 'square', label: t.opponent, color: tokenCssVar('team-enemy') },
           { kind: 'parity', label: t.parity, color: tokenCssVar('warning') },
-          ...(rows.some((r) => r.exposure)
+          ...(rows.some((r) => r.exposure) || (pending ?? []).some((p) => p.exposure)
             ? [{ kind: 'thin' as const, label: t.production.thinLegend, color: tokenCssVar('team-ally') }]
             : []),
         ]}
       />
     ),
-    [rows, t],
+    [rows, pending, t],
   )
-  const pistes = useMemo<PisteCampsRow[]>(() => rows.map((r) => pisteOf(r, t, compact)), [rows, t, compact])
+  const pistes = useMemo<PisteCampsRow[]>(() => {
+    const out = [
+      ...rows.map((r) => withNote(pisteOf(r, t, compact), notes?.[r.resource])),
+      ...(pending ?? []).map((p) => pendingOf(p, t, compact)),
+    ]
+    return out.sort((a, b) => RESOURCE_ORDER.indexOf(a.key) - RESOURCE_ORDER.indexOf(b.key))
+  }, [rows, pending, notes, t, compact])
   return (
     <ObjectifFrame title={t.production.title} info={t.production.info} legend={legend} testId="emprise-production">
       <div className="mt-2" aria-label={t.production.ariaLabel} role="group">
@@ -73,6 +100,37 @@ function pisteOf(r: ProductionRow, t: EmpriseText, compact: ProductionCompact | 
     usTip: t.production.segmentTip(t.ourSide, sub, r.kills.us, n, t.pctFmt(share)),
     themTip: t.production.segmentTip(t.opponent, sub, r.kills.them, n, t.pctFmt(100 - share)),
     below: r.exposure ? <ExposureLines exposure={r.exposure} resource={r.resource} t={t} compact={compact} /> : undefined,
+  }
+}
+
+function pendingOf(p: ProductionPending, t: EmpriseText, compact: ProductionCompact | undefined): PisteCampsRow {
+  const res = t.resources[p.resource]
+  return {
+    key: p.resource,
+    label: res.label,
+    sublabel: res.productionSub,
+    dot: resourceInk(p.resource),
+    us: 0,
+    them: 0,
+    usTip: '',
+    themTip: '',
+    pending: p.text,
+    below: p.exposure ? <ExposureLines exposure={p.exposure} resource={p.resource} t={t} compact={compact} /> : undefined,
+  }
+}
+
+function withNote(row: PisteCampsRow, note: string | undefined): PisteCampsRow {
+  if (!note) return row
+  return {
+    ...row,
+    below: (
+      <>
+        {row.below}
+        <div className="text-[11px] text-muted-foreground" data-testid={`emprise-production-note-${row.key}`}>
+          {note}
+        </div>
+      </>
+    ),
   }
 }
 

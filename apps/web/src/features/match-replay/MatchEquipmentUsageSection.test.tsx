@@ -1,26 +1,22 @@
 /**
- * Tests — MatchEquipmentUsageSection (le bilan d'équipement de la page match).
+ * Tests — MatchEquipmentUsageSection (« Usage d'équipements, par joueur », page match).
  *
- * CE QU'ILS PROTÈGENT, et ce sont les cinq promesses de la section :
+ * CE QU'ILS PROTÈGENT, et ce sont les promesses de la carte :
  *   1. LA DOUBLE PORTE. Sans artefact — la quasi-totalité des matchs en production — la
- *      section ne rend RIEN ; avec un artefact qui ne porte aucune grandeur, non plus. Un cadre
+ *      carte ne rend RIEN ; avec un artefact qui ne porte aucune grandeur, non plus. Un cadre
  *      vide répété sur chaque page de match est une promesse non tenue à l'infini.
- *   2. LES DEUX VUES, et les colonnes que LA DONNÉE justifie — jamais une liste en dur.
- *   3. LA PART D'UNE ÉQUIPE est la somme des gestes de ses joueurs, pas celle du match. Depuis
- *      le 2026-09-21 (D20, 5.A) elle se lit en PISTES ÉPAISSES : une par colonne de la grille,
- *      même ordre, une seule échelle, mon camp à gauche, compte écrit dedans, total en bout.
- *   4. AUCUN TEXTE DE PIED (décision utilisateur 2026-09-14) : ce qui n'entre pas dans les deux
- *      vues — gestes sans propriétaire, poses d'origine inconnue — se dit en UNE phrase au
- *      survol du TITRE, et les socles de bonus vidés se lisent dans le bloc voisin.
+ *   2. UNE SEULE CARTE, la grille par joueur, et les colonnes que LA DONNÉE justifie — jamais une
+ *      liste en dur. La part de chaque équipe se lit dans « Contrôle des ressources, par match ».
+ *   3. L'ÉQUIPE D'UNE LIGNE SE LIT DANS LE FILM : l'encre de la ligne est celle de l'équipe du
+ *      film du joueur de la page, neutre quand le film tait la sienne.
+ *   4. AUCUN TEXTE DE PIED : l'aide du TITRE dit ce que la grille compte, puis, quand elle n'est
+ *      pas nulle, la réserve (gestes sans propriétaire, poses d'origine inconnue) en une phrase.
  *   5. CE QUI N'EST PAS MESURÉ SE DIT. Aucune colonne pour le répulseur ni le propulseur, et une
- *      phrase le dit au survol du groupe « Équipement » — mais pas la même raison pour les deux
- *      depuis le 2026-09-03 : le répulseur n'a AUCUN canal (une colonne de zéros se lirait « zéro usage »),
- *      le propulseur en a un (schéma 38) mais son geste se lit sur la CARTE, pas ici. Et une
  *      grandeur non mesurée écrit « — » là où un zéro se lirait comme une mesure.
  *
  * LES VALEURS SE LISENT PAR LE NOM ACCESSIBLE DES BARRES (`gridTipFmt` : joueur — grandeur :
- * valeur). C'est ce que porte l'écran depuis que la section est un graphe, et c'est aussi ce
- * qu'entend un lecteur d'écran : l'éprouver ici éprouve les deux d'un coup.
+ * valeur). C'est ce que porte l'écran, et c'est aussi ce qu'entend un lecteur d'écran : l'éprouver
+ * ici éprouve les deux d'un coup.
  *
  * Le calcul est éprouvé chez `equipmentUsageLogic.test.ts` et `valueGridModel.test.ts` ; ici on
  * éprouve le RENDU.
@@ -122,16 +118,15 @@ function afficher(locale: 'fr' | 'en' = 'fr', scoreboard: MatchScoreboardRow[] =
   )
 }
 
-/**
- * survolerTitre — ouvre (ou tente d'ouvrir) l'infobulle du TITRE d'une carte, seul endroit où
- * la réserve de couverture se dit depuis le 2026-09-14. Sans réserve, aucune icône (i) n'est
- * posée et rien ne s'ouvre. Depuis le 2026-09-21 (lot D) les DEUX cartes la portent : on
- * survole la première, la réserve vaut pour les deux vues.
- */
+/** survolerTitre — ouvre l'infobulle (i) du TITRE de la carte : l'aide, puis la réserve. */
 function survolerTitre(vue: ReturnType<typeof afficher>) {
-  const icones = vue.queryAllByRole('button', { name: /informations|more info/i })
-  if (icones.length === 0) return
-  fireEvent.mouseEnter(icones[0])
+  fireEvent.mouseEnter(vue.getByRole('button', { name: /informations|more info/i }))
+}
+
+/** Le texte attendu de l'aide du titre : la mesure, puis la réserve quand elle n'est pas nulle. */
+function aide(reserve = 0): string {
+  const u = t.equipmentUsage
+  return u.infoByPlayer + (reserve > 0 ? u.coverageReserveFmt(reserve) : '')
 }
 
 describe('MatchEquipmentUsageSection — la double porte', () => {
@@ -154,45 +149,51 @@ describe('MatchEquipmentUsageSection — la double porte', () => {
   })
 })
 
-describe('MatchEquipmentUsageSection — les deux vues', () => {
-  // DEUX CARTES SUR LA MÊME RANGÉE depuis le 2026-09-21 (lot D) : « Usages par joueur » et
-  // « Part de chaque équipe » ont chacune sa `SectionCard`, il n'y a plus de carte englobante.
-  it('rend DEUX cartes, chacune nommée par sa vue', () => {
+describe('MatchEquipmentUsageSection — la carte', () => {
+  it('rend UNE carte, nommée « Usage d’équipements, par joueur »', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    expect(vue.queryByRole('region', { name: t.equipmentUsage.title })).toBeNull()
+    expect(vue.getAllByRole('region')).toHaveLength(1)
     expect(vue.getByRole('region', { name: t.equipmentUsage.viewByPlayer })).toBeTruthy()
-    expect(vue.getByRole('region', { name: t.equipmentUsage.viewTeamShare })).toBeTruthy()
+    expect(vue.queryByText('Part de chaque équipe')).toBeNull()
   })
 
-  it('montre une FAMILLE par canal mesuré, en légende comme en part d’équipe', () => {
+  it('montre une colonne par canal mesuré : le grappin, puis chaque famille d’équipement', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    for (const famille of [
-      t.equipmentUsage.groupGrapple,
-      // E2 (2026-09-09) : `groupDeployed`/`groupDropped` ont fusionné en UNE colonne
-      // « équipement » par famille (P2/P3) — plus de section séparée à chercher ici.
-      t.equipmentUsage.groupEquipment,
-    ]) {
-      expect(vue.getAllByText(famille).length).toBeGreaterThan(0)
+    for (const colonne of [t.equipmentUsage.groupGrapple, t.placementFamily.field]) {
+      expect(vue.getByText(colonne)).toBeTruthy()
     }
   })
 
-  it('nomme les colonnes par les tables EXISTANTES du rejeu, jamais un nom en dur', () => {
+  it('nomme les colonnes par les tables EXISTANTES du rejeu, une fois chacune', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     // Familles de pose : libellés de `placementFamily` (par règle de rendu).
-    // `getAllByText` depuis le 2026-09-21 (5.A) : un nom de famille s'écrit DEUX fois — en
-    // en-tête de colonne de la grille et en tête de sa piste de part. C'est le point de la
-    // proposition : les deux vues nomment la même liste dans le même ordre.
     expect(vue.getByText(t.placementFamily.sensor)).toBeTruthy()
-    expect(vue.getAllByText(t.placementFamily.field).length).toBe(2)
-    // AUCUNE colonne de grenade depuis le 2026-09-13 (retrait demandé par l'utilisateur).
+    expect(vue.getAllByText(t.placementFamily.field)).toHaveLength(1)
+    // AUCUNE colonne de grenade.
     expect(vue.queryByText('Fragmentation')).toBeNull()
-    // AUCUN groupe « états actifs » depuis le 2026-09-19 (décision 6) : les deux power-ups
-    // n'ont plus qu'UNE colonne, celle de leur famille d'équipement.
-    expect(vue.getAllByText(t.padEquipmentFamily.powerup_camo).length).toBe(2)
-    expect(vue.getAllByText(t.padEquipmentFamily.powerup_overshield).length).toBe(2)
+    // Les deux power-ups ont UNE colonne chacun, celle de leur famille d'équipement.
+    expect(vue.getAllByText(t.padEquipmentFamily.powerup_camo)).toHaveLength(1)
+    expect(vue.getAllByText(t.padEquipmentFamily.powerup_overshield)).toHaveLength(1)
+  })
+
+  it('pose la LÉGENDE des issues, et les tractions quand le grappin a sa colonne', () => {
+    poserArtefact(TEMOIN)
+    const u = t.equipmentUsage
+    const vue = afficher()
+    for (const libelle of [u.legendUsed, u.legendKept, u.legendDropped, u.legendGrapple]) {
+      expect(vue.getByText(libelle)).toBeTruthy()
+    }
+  })
+
+  it('sans tractions, la légende ne nomme pas le grappin', () => {
+    poserArtefact({ ...TEMOIN, grappleLines: [] } as Partial<ReplayDocument>)
+    const vue = afficher()
+    expect(vue.queryByText(t.equipmentUsage.groupGrapple)).toBeNull()
+    expect(vue.queryByText(t.equipmentUsage.legendGrapple)).toBeNull()
+    expect(vue.getByText(t.equipmentUsage.legendUsed)).toBeTruthy()
   })
 
   it('rend une ligne par joueur, y compris celui que le scoreboard ignore', () => {
@@ -211,9 +212,7 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     expect(vue.getByLabelText(tip('Delta', t.equipmentUsage.groupGrapple, '0'))).toBeTruthy()
   })
 
-  it('l’ÉPISODE d’un power-up alimente le côté « utilisé » de SA colonne d’équipement', () => {
-    // Décision 6 (2026-09-19) : plus de colonne « états actifs ». L'épisode de camouflage
-    // d'Alpha se lit dans la pile de la colonne « Camouflage actif », côté utilisé.
+  it('l’ÉPISODE d’un power-up alimente le côté « servi » de SA colonne d’équipement', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     const u = t.equipmentUsage
@@ -226,17 +225,13 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     ).toBeTruthy()
   })
 
-  it('range le joueur HORS SCOREBOARD dans le camp que le FILM lui donne, nommé par la feuille', () => {
+  it('range le joueur HORS SCOREBOARD dans l’équipe que le FILM lui donne, nommée par la feuille', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    // Son nom porte son camp en infobulle de ligne : celui du film (1), que la feuille de Charlie
-    // nomme — jamais une équipe « inconnue » ou « sans équipe ».
     expect(vue.getByText('Delta').closest('[title]')?.getAttribute('title')).toBe('Delta — Équipe Cobra')
   })
 
   it('un joueur dont le film TAIT l’équipe n’a AUCUNE ligne ; ses gestes rejoignent la réserve', () => {
-    // Le bot bouche-trou du témoin 43716616 : déclaré, vivant, un geste — et aucune équipe écrite
-    // par le film. Ni ligne, ni camp « sans équipe » : son geste compte dans la réserve du titre.
     poserArtefact({
       ...TEMOIN,
       roster: [...(TEMOIN.roster ?? []), { filmIndex: 8, xuid: '', bot: true, name: 'Sandwolf [bot]' }],
@@ -248,124 +243,35 @@ describe('MatchEquipmentUsageSection — les deux vues', () => {
     const vue = afficher('fr', feuille)
     expect(vue.queryByText('Sandwolf')).toBeNull()
     expect(vue.queryByText(/Sans équipe|inconnue/)).toBeNull()
-    // Deux camps, toujours : la légende des parts n'en nomme pas un troisième.
-    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
-    expect(piste.querySelectorAll('[data-testid^="usage-famille-grapple.pulls-camp:"]')).toHaveLength(2)
     survolerTitre(vue)
-    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.coverageReserveFmt(1))
+    expect(screen.getByRole('tooltip').textContent).toBe(aide(1))
   })
 })
 
-describe('MatchEquipmentUsageSection — la part de chaque équipe (5.A, 2026-09-21)', () => {
-  const u = t.equipmentUsage
+describe('MatchEquipmentUsageSection — l’encre des lignes suit le film', () => {
+  /** L'encre de la ligne d'un joueur (le filet coloré devant son nom). */
+  const encreDe = (vue: ReturnType<typeof afficher>, nom: string) =>
+    vue.getByText(nom).closest('[title]')!.querySelector('[aria-hidden="true"]')!.getAttribute('style')
 
-  it('rend UNE piste par colonne de la grille, dans le MÊME ordre', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    const lignes = vue.container.querySelectorAll('[data-testid^="usage-ligne-"]')
-    // L'ordre est celui des colonnes de la grille (`usage.columns.equipment`). LE CAPTEUR N'A
-    // PAS DE LIGNE : le témoin publie ses poses mais aucun ramassage, donc aucun geste compté
-    // par la colonne — une famille sans usage n'a pas de piste (elle garde sa colonne de zéros
-    // dans la grille, qui, elle, mesure joueur par joueur).
-    expect([...lignes].map((l) => l.getAttribute('data-testid'))).toEqual([
-      'usage-ligne-grapple.pulls',
-      'usage-ligne-equipment.equipment.repair_field',
-      'usage-ligne-equipment.equipment.camo',
-      'usage-ligne-equipment.equipment.overshield',
-    ])
-  })
-
-  it('somme les gestes du CAMP, pas ceux du match, et écrit le compte brut dans le segment', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    // Grappin : Alpha + Bravo = 2 tractions pour le camp t0, sur les 3 du match.
-    const segment = vue.getByLabelText(u.shareTipFmt('Équipe Eagle', u.groupGrapple, 2, 3, 67))
-    expect(segment.textContent).toBe('2')
-    expect(
-      vue.getByLabelText(u.shareTipFmt('Équipe Cobra', u.groupGrapple, 1, 3, 33)).textContent,
-    ).toBe('1')
-  })
-
-  it('met MON camp à gauche de chaque piste, et la légende dans le même ordre', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
-    // `is_me` est sur Alpha (t0) : son camp ouvre la barre.
-    expect([...piste.children].map((c) => c.querySelector('[data-testid]')?.getAttribute('data-testid'))).toEqual([
-      'usage-famille-grapple.pulls-camp:0',
-      'usage-famille-grapple.pulls-camp:1',
-    ])
-  })
-
-  /** L'encre du segment d'un camp, sur la piste du grappin. */
-  const encreDuCamp = (vue: ReturnType<typeof afficher>, camp: number) =>
-    vue.container
-      .querySelector(`[data-testid="usage-famille-grapple.pulls-camp:${camp}"]`)!
-      .closest('[style*="background-color"]')!
-      .getAttribute('style')
-
-  it('LE CAMP DU JOUEUR DE LA PAGE SE LIT DANS LE FILM : une feuille qui le dit en face ne change ni l’ordre ni l’encre', () => {
+  it('L’ÉQUIPE DU JOUEUR DE LA PAGE SE LIT DANS LE FILM : une feuille qui la dit en face ne change pas l’encre', () => {
     poserArtefact(TEMOIN)
     // La feuille range Alpha (`is_me`) du côté t1 ; le film l'écrit au camp 0.
     const contradictoire = SCOREBOARD.map((r) => (r.xuid === 'a1' ? { ...r, team_side: 't1' } : r))
     const vue = afficher('fr', contradictoire)
-    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
-    expect(piste.querySelector('[data-testid]')?.getAttribute('data-testid')).toBe('usage-famille-grapple.pulls-camp:0')
-    expect(encreDuCamp(vue, 0)).toContain('team-ally')
-    expect(encreDuCamp(vue, 1)).toContain('team-enemy')
+    expect(encreDe(vue, 'Alpha')).toContain('team-ally')
+    expect(encreDe(vue, 'Charlie')).toContain('team-enemy')
   })
 
-  it('joueur de la page dont le film TAIT l’équipe : aucun camp n’a d’encre d’équipe, l’ordre du film reste', () => {
+  it('joueur de la page dont le film TAIT l’équipe : aucune ligne n’a d’encre d’équipe', () => {
     poserArtefact({
       ...TEMOIN,
       roster: TEMOIN.roster!.map((e) => (e.xuid === 'a1' ? { ...e, team: undefined } : e)),
     } as Partial<ReplayDocument>)
     const vue = afficher()
-    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
-    expect(piste.querySelector('[data-testid]')?.getAttribute('data-testid')).toBe('usage-famille-grapple.pulls-camp:0')
-    for (const camp of [0, 1]) {
-      expect(encreDuCamp(vue, camp)).toContain('muted-foreground')
-      expect(encreDuCamp(vue, camp)).not.toContain('team-')
+    for (const nom of ['Bravo', 'Charlie']) {
+      expect(encreDe(vue, nom)).toContain('muted-foreground')
+      expect(encreDe(vue, nom)).not.toContain('team-')
     }
-  })
-
-  it('met toutes les pistes sur UNE échelle commune : la plus grosse famille fait la longueur', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    // Le grappin est la plus grosse famille du témoin (3 gestes) : il donne la borne. Les
-    // 2 tractions du camp t0 occupent donc les deux tiers de la piste...
-    const largeur = (testid: string) =>
-      vue.container.querySelector(`[data-testid="${testid}"]`)!.parentElement!.parentElement!
-        .getAttribute('style')
-    expect(largeur('usage-famille-grapple.pulls-camp:0')).toContain('66.6')
-    // ...et le champ de réparation, lâché UNE fois, n'en occupe qu'un tiers — sur une barre
-    // 100 % par famille, il aurait fait la même longueur que le grappin.
-    expect(largeur('usage-famille-equipment.equipment.repair_field-camp:1')).toContain('33.3')
-  })
-
-  it('écrit le TOTAL de la famille en bout de ligne', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    const ligne = vue.container.querySelector('[data-testid="usage-ligne-grapple.pulls"]')!
-    expect(ligne.lastElementChild?.textContent).toBe('3')
-  })
-
-  it('ne rend aucune ligne pour une famille qu’aucun camp n’a employée', () => {
-    poserArtefact({ ...TEMOIN, grappleLines: [] } as Partial<ReplayDocument>)
-    const vue = afficher()
-    // Plus de tractions : ni colonne, ni piste, ni entrée de légende.
-    expect(vue.queryByText(t.equipmentUsage.groupGrapple)).toBeNull()
-    expect(vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')).toBeNull()
-  })
-
-  it('porte la RÉSERVE du groupe en infobulle du NOM de la ligne', () => {
-    poserArtefact(TEMOIN)
-    const vue = afficher()
-    // Le nom du champ de réparation apparaît en colonne de la grille PUIS en tête de sa
-    // piste : cette dernière occurrence porte la réserve de mesure du groupe « Équipement ».
-    const noms = vue.getAllByText(t.placementFamily.field)
-    fireEvent.mouseEnter(noms[noms.length - 1] as Element)
-    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.groupEquipmentHint)
   })
 })
 
@@ -375,9 +281,9 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     const vue = afficher()
     // Le pied de carte a porté successivement le paragraphe répulseur/propulseur, la ligne des
     // socles de bonus vidés, les dénominateurs de couverture et les deux réserves. Il ne porte
-    // plus rien : aucune de ces phrases ne doit revenir sous les deux vues.
+    // plus rien : aucune de ces phrases ne doit revenir sous la grille.
     expect(vue.queryByText(/Socles de bonus|États actifs mesurés|traction.* de grappin lue/)).toBeNull()
-    expect(vue.queryByText(/hors des deux vues|origine inconnue/)).toBeNull()
+    expect(vue.queryByText(/hors de la grille|origine inconnue/)).toBeNull()
   })
 
   it('dit la RÉSERVE au survol du TITRE, en une phrase', () => {
@@ -390,14 +296,14 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
     survolerTitre(vue)
-    expect(screen.getByRole('tooltip').textContent).toBe(t.equipmentUsage.coverageReserveFmt(3))
+    expect(screen.getByRole('tooltip').textContent).toBe(aide(3))
   })
 
-  it('ne dit AUCUNE réserve quand rien ne la justifie (titre nu)', () => {
+  it('sans réserve, l’aide du titre dit seulement ce que la grille compte', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     survolerTitre(vue)
-    expect(screen.queryByRole('tooltip')).toBeNull()
+    expect(screen.getByRole('tooltip').textContent).toBe(aide())
   })
 
   it('ne rend JAMAIS les objets pris sans famille connue (décision utilisateur 2026-09-09)', () => {
@@ -427,7 +333,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.queryByText('thruster')).toBeNull()
   })
 
-  it('compte à part les gestes mesurés sans propriétaire, hors des vues', () => {
+  it('compte à part les gestes mesurés sans propriétaire, hors de la grille', () => {
     poserArtefact({
       ...TEMOIN,
       equipmentPlacements: [
@@ -437,9 +343,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
     survolerTitre(vue)
-    expect(screen.getByRole('tooltip').textContent).toBe(
-      REPLAY_TEXT.fr.equipmentUsage.coverageReserveFmt(1),
-    )
+    expect(screen.getByRole('tooltip').textContent).toBe(aide(1))
   })
 })
 
@@ -463,15 +367,16 @@ describe('MatchEquipmentUsageSection — tout est affiché (retrait du repli, 20
 })
 
 describe('MatchEquipmentUsageSection — parité FR/EN', () => {
-  it('EN : les deux titres de carte et les familles passent en anglais', () => {
+  it('EN : le titre, l’aide, la légende et les familles passent en anglais', () => {
     poserArtefact(TEMOIN)
     const vue = afficher('en')
-    const en = REPLAY_TEXT.en
-    expect(vue.getByRole('region', { name: en.equipmentUsage.viewByPlayer })).toBeTruthy()
-    expect(vue.getByRole('region', { name: en.equipmentUsage.viewTeamShare })).toBeTruthy()
-    expect(vue.getAllByText(en.equipmentUsage.groupEquipment).length).toBeGreaterThan(0)
-    expect(vue.getByText(en.placementFamily.sensor)).toBeTruthy()
-    // Le power-up prend son nom EN, pas la clé FR — dans la grille comme dans sa piste.
-    expect(vue.getAllByText(en.padEquipmentFamily.powerup_camo).length).toBe(2)
+    const en = REPLAY_TEXT.en.equipmentUsage
+    expect(vue.getByRole('region', { name: en.viewByPlayer })).toBeTruthy()
+    expect(vue.getByText(en.groupGrapple)).toBeTruthy()
+    expect(vue.getByText(REPLAY_TEXT.en.placementFamily.sensor)).toBeTruthy()
+    expect(vue.getAllByText(REPLAY_TEXT.en.padEquipmentFamily.powerup_camo)).toHaveLength(1)
+    expect(vue.getByText(en.legendKept)).toBeTruthy()
+    survolerTitre(vue)
+    expect(screen.getByRole('tooltip').textContent).toBe(en.infoByPlayer)
   })
 })

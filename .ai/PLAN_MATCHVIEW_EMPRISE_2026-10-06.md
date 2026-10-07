@@ -652,14 +652,14 @@ nommément SANS modification (`SquadEmprisePage.test.tsx`, `SquadContributionsPa
 `SquadObjectiveSection.test.tsx`, `SquadFragSection.test.tsx`, `TimeseriesPage.sections.test.tsx`,
 `TimeseriesPage.usages.test.tsx`, `SessionColumnBody.test.tsx`, `SessionCompareRows.test.tsx`).
 
-- [ ] M3.1 Briques partagées (tests rouges d'abord pour chaque prop) : `PisteCampsRow.indent`,
+- [x] M3.1 Briques partagées (tests rouges d'abord pour chaque prop) : `PisteCampsRow.indent`,
   `.labelNode` (bouton de repli des râteliers) et `.pending` (texte dans une piste atténuée, `below`
   conservé) ; `ProductionCard` prop `pending` (lignes fusionnées dans l'ordre `RESOURCE_ORDER`) ;
   `YieldCard` prop `pending` ; `PickupSheetsCard` `restColor` optionnel (D4) ; `buildPickupSheets`
   paramètre `resources` (D5) ; `LivesNearTeammateRow` extraite (D14), `LivesNearTeammateCard` sur elle.
   Mutations : `pending` ignoré → rouge ; ligne indentée rendue sans retrait → rouge ; section râtelier
   absente malgré `resources` → rouge.
-- [ ] M3.2 `match-view/matchEmprise.logic.ts` (+ test) : modèle D (ressources de `matches[0]`, objets
+- [x] M3.2 `match-view/matchEmprise.logic.ts` (+ test) : modèle D (ressources de `matches[0]`, objets
   dépliés, râteliers repliés par défaut, sous-libellé « prises · N socles vidés » pour les bonus, ligne
   non identifiée D6) ; modèle E (D4, D5, sections du match, fiches dans l'ordre `emprise.players`) ;
   raisons G / H (liste fermée §3) ; modèle I (`buildLivesModel` par joueur, ordre D3, état « frags non
@@ -668,41 +668,58 @@ nommément SANS modification (`SquadEmprisePage.test.tsx`, `SquadContributionsPa
   (m2209, m2407). Tests ROUGES d'abord, une mutation par règle (au moins : raisons G bonus inversées,
   « 0 frag » affiché journal non publiable, ligne non identifiée oubliée, fiche du reste gardée,
   ordre des lignes I différent de E).
-- [ ] M3.3 `matchEmpriseText.ts` (D17) + test : titres, ⓘ, légendes et raisons FR copiés de la
+- [x] M3.3 `matchEmpriseText.ts` (D17) + test : titres, ⓘ, légendes et raisons FR copiés de la
   maquette (`makeTools` l. 948-951, `makeControl` l. 971-974, `makeSheets` l. 1010-1012,
   `makeEquipGrid` l. 1047-1049, `makeProd` l. 1058-1060, `makeYield` l. 1091-1093, `makeLives`
   l. 1127-1129), parité FR / EN par le typage, aucun « Notre camp » / « Our side » / « KDA ».
-- [ ] M3.4 Cartes : `MatchToolsCard.tsx` (B, D9) ; `MatchFragCard.tsx` (D10) ; `MatchResourceControlCard.tsx`
+- [x] M3.4 Cartes : `MatchToolsCard.tsx` (B, D9) ; `MatchFragCard.tsx` (D10) ; `MatchResourceControlCard.tsx`
   (D, légende S9) ; E par `PickupSheetsCard` (identités et couleurs de `buildMatchPlayerColors`,
   initiales) ; G / H par `ProductionCard` / `YieldCard` avec `pending` ; `MatchLivesCard.tsx` (I, ⓘ
   avec le compte des vies écartées des deux causes, comme la maquette l. 1128) ; chaque carte se
   retire par le prédicat M3.2.
-- [ ] M3.5 `MatchViewTabArsenal.tsx` : ordre §3 et S11 ; intertitre D16 ; `MatchElevationSection`,
+- [x] M3.5 `MatchViewTabArsenal.tsx` : ordre §3 et S11 ; intertitre D16 ; `MatchElevationSection`,
   `MatchPadControlSection` et leurs prédicats retirés ; props neuves (`emprise`, `livesNearTeammate`,
   `weaponTools`) passées par `MatchViewPage.tsx` (l. 414-431), `elevation` retirée. Section
   « Équipement et terrain » posée par `equipment || matchEmpriseCards… || hasPositions`.
-- [ ] M3.6 F (D15) : `MatchEquipmentUsageSection` réduit à la grille, titre, ⓘ, légende, mots des
+- [x] M3.6 F (D15) : `MatchEquipmentUsageSection` réduit à la grille, titre, ⓘ, légende, mots des
   infobulles ; §4.D supprimé.
-- [ ] M3.7 C (D12) : `fontSize` explicite des deux styles `rich` ; test sur l'option ECharts.
-- [ ] M3.8 Joueurs : `MatchViewTabPlayers.tsx` sans Riposte (§4.B) ; `assistValueAxis` FR « a
+- [x] M3.7 C (D12) : `fontSize` explicite des deux styles `rich` ; test sur l'option ECharts.
+- [x] M3.8 Joueurs : `MatchViewTabPlayers.tsx` sans Riposte (§4.B) ; `assistValueAxis` FR « a
   assisté… », EN « assisted… » (`match-view/i18n.ts:587`, 946) ; test de l'axe.
-- [ ] M3.9 Rejouer CHAQUE preuve grep de §4.A-E avant de supprimer ; écart → §8, arrêt propre si un
+- [x] M3.9 Rejouer CHAQUE preuve grep de §4.A-E avant de supprimer ; écart → §8, arrêt propre si un
   lecteur inattendu existe.
-- [ ] M3.10 Suppressions web §4.A, §4.B, §4.C, §4.D, §4.E (fichiers, tests, clés, dérogations
+- [x] M3.10 Suppressions web §4.A, §4.B, §4.C, §4.D, §4.E (fichiers, tests, clés, dérogations
   d'import mortes, cas de `goFixtures.contract.test.ts`), commentaires devenus faux corrigés.
-- [ ] M3.11 Paire `match-view=>timeseries` (D14) dans `ALLOWED_CROSS_IMPORTS` avec son commentaire ;
+- [x] M3.11 Paire `match-view=>timeseries` (D14) dans `ALLOWED_CROSS_IMPORTS` avec son commentaire ;
   ratchets : knip 0 / 0 / 0, imports croisés ≤ 7, aucune dérogation morte ; si un plafond baisse,
   l'abaisser.
-- [ ] M3.13 A3 : la garde `textesSansPersonne.test.ts` étendue à `features/match-view/` (textes et
+- [x] M3.13 A3 : la garde `textesSansPersonne.test.ts` étendue à `features/match-view/` (textes et
   littéraux de phrase des sources), vue ROUGE sur « Mes matchs » / « My matches », puis
   `MatchViewPage.tsx:146,177` → « Matchs » / « Matches » (test `MatchViewPage.test.tsx:103-109` suit) ;
   verte.
-- [ ] M3.12 Tests de page : `MatchViewTabs.test.tsx` et `MatchViewTabPlayers.test.tsx` adaptés
+- [x] M3.12 Tests de page : `MatchViewTabs.test.tsx` et `MatchViewTabPlayers.test.tsx` adaptés
   (ordre des cartes A-J, intertitres, retrait par carte, sans film, Halo 5 — seule la barre épaisse
   des armes spéciales de G si la feuille la porte —, anglais, état vide de l'onglet) ; test de page
   NEUF `MatchViewTabArsenal.test.tsx` (le fichier n'existe pas au 2026-10-06 : l'onglet n'est testé
   que par `MatchViewTabs.test.tsx`).
 - Gate : gate web ; preuves §4.A-E rejouées → 0 (côté web).
+Journal M3 (2026-10-07, exécuteur) :
+- **M3.1** Briques : `PisteCampsRow.indent` / `.labelNode` / `.pending` (texte atténué à la place de la barre, `below` gardé) ; `ProductionCard` props `pending` (rangées dans `RESOURCE_ORDER`, barre fine de l'exposition gardée) et `notes` (ligne sous la barre : « aucune prise d'arme spéciale mesurée ») ; `YieldCard` prop `pending` ; `PickupSheetsCard.restColor` optionnel ; `buildPickupSheets(…, resources?)` ; `LivesNearTeammateRow` extraite (ligne, `idPrefix` unique par ligne) avec `livesLayout.ts` (encres et grille hors du fichier de composant, aucun avertissement `react-refresh` de plus) ; `LivesNearTeammateCard` sur elle, exporte `LivesLegend` et `LivesAxis`. Libellés des natures des outils : TROISIÈME copie évitée (`toolKindLabels` dans `squad/charts/squadFragTools.ts`, Escouade et Sessions migrées, garde `squadFragTools.labels.guard.test.ts`). Tests neufs ajoutés à côté des anciens (aucune assertion existante modifiée) : `PisteCampsForm.test.tsx`, `ProductionCard.test.tsx`, `emprise.logic.test.ts` (cas ajoutés), `YieldCard.test.tsx`, `PickupSheetsCard.test.tsx` (neufs) ; tests de page de l'Escouade, des Séries temporelles et de Sessions rejoués sans modification (suite complète verte).
+- **M3.2** `matchEmprise.logic.ts` : D (`buildMatchControl` : ressource puis objets pris, bonus avec socles vidés, râteliers comptés pour le repli, ligne non identifiée sur match mesuré), E (`buildMatchSheets` : fiches de `players`, SANS fiche du reste, sections = ressources prises par l'équipe, râteliers compris), G et H (raisons fermées en clés), I (`buildMatchLives`, ordre des fiches), couverture, `matchEmpriseCards` + `hasEquipmentEmpriseCard`. Écart sur le plan : la carte B garde SON prédicat (`blockPredicates.hasWeaponTools`), retiré de `matchEmpriseCards` (deux prédicats pour la même carte divergeraient). Fixtures `matchEmprise.fixtures.ts` (22/09 Starboard, 24/07 Flood Gulch ; production recalée sur la sémantique Go : frags de la feuille sur les matchs aux niveaux mesurés). 23 tests.
+- **M3.3** `matchEmpriseText.ts` : même carte → même titre (contrôle = titre « par match » de l'Escouade, fiches, frags, rendement, outils), aides récrites « sur le match » / « in the match » en une ou deux phrases, « Isolement, par joueur » ; `squad` réduit à `weaponKills` + `empty` (les seules parties lues). Test `matchEmpriseText.test.ts`.
+- **M3.4** Cartes `MatchToolsCard` (B), `MatchFragCard` (A | B, survol lié retiré), `MatchResourceControlCard` (D : légende Équipe / Adversaire / 50 %, râteliers repliés, ligne non identifiée), E par `PickupSheetsCard` (palette du match, sans fiche du reste), G / H avec `pending`, `MatchLivesCard` (I) ; assemblage `useMatchEmprise.tsx`. Tests `MatchToolsCard.test.tsx`, `MatchLivesCard.test.tsx`, `MatchFragCard.test.tsx` (récrit : le survol lié et le détail par arme ont disparu, D10).
+- **M3.5** Onglet : « Frags et armes » (A | B, C) puis « Équipement et terrain » avec sa couverture ; D, E, F, G | H, I, J ; `MatchElevationSection`, `MatchPadControlSection` et leurs prédicats retirés ; props `weaponTools`, `emprise`, `livesNearTeammate` passées par `MatchViewPage`.
+- **M3.6** F : une seule carte « Usage d'équipements, par joueur », aide (mesure, portée, répulseur ; réserve quand elle n'est pas nulle), légende Servi / Gardé sans servir / Lâché / Tractions de grappin ; infobulles des segments sur les mêmes mots. Devenus morts avec la vue des parts et retirés : `uniqueUsageGroups`, `UsageColumnGroup.label/hint`, textes `groupEquipment`, `groupGrappleHint`, `groupEquipmentHint`. Définition de « servi » corrigée sur le code (`usageUsedOf` : activé pour un bonus, posé pour le mur, charge consommée pour le reste).
+- **M3.7** `_killDistanceChart.ts` : les deux styles `rich` reprennent `axis.axisLabel.fontSize` ; test rouge (`undefined`) puis vert.
+- **M3.8** Joueurs sans Riposte ; axe « a assisté… » / « assisted… » ; test de l'axe (mock du graphe qui expose `valueAxisName`).
+- **M3.9** Preuves §4.A-E rejouées avant suppression : aucun lecteur inattendu (les occurrences hors liste sont des commentaires, dont deux historiques gardés : `section-card.guard.test.ts`, `noIsMeOutsideViewpoint.guard.test.ts`). Après : 0 occurrence de code.
+- **M3.10** Supprimés : `MatchElevationSection.tsx`, `_elevation.ts` (+ test), `MatchRiposteSection.tsx` (+ test), `_riposte.ts` (+ test), `MatchPadControlSection.tsx` (+ test), `model/padControlLogic.ts`, `padControlChart.ts`, `padControlColumns.ts`, `weaponTier.ts` (+ tests), `PadControlText` et le bloc `padControl` (FR, EN), clés `elevation*` et `riposte*`, `buildUsageFamilyBars` / `orderedTeams` et leurs types (+ cas de test), `normalizeFragWeapons` / `COUNT_ONLY_LABELS`, cas `buildPadControl` de `goFixtures.contract.test.ts`, dérogations d'import mortes ; commentaires devenus faux corrigés (`README` du rejeu, `equipmentUsageLogic.ts`, `xuidMeta.test.ts`, `blockPredicates.ts`, `lint-cross-feature-imports.mjs`).
+- **M3.11** `match-view=>timeseries` ajoutée avec son commentaire ; deux dérogations mortes retirées ; imports croisés 7 / plafond 7 (inchangé) ; knip 0 / 0 / 0.
+- **M3.13** Garde `textesSansPersonne.test.ts` étendue (UNE garde) : `MATCH_VIEW_TEXT`, `MATCH_EMPRISE_TEXT`, textes de la carte F, manifeste `match_view.toml`, littéraux de phrase des sources de `features/match-view/` (hors tests, listes de classes et fragments de code), et `m'` / `t'` ajoutés aux mots refusés. Vue ROUGE (6 cas : « Mes matchs » / « My matches », « Mon équipe » / « My team », « T'a martyrisé » / « Martyred you », « You victimized them », « camp » dans quatre textes, « vous / vos » dans deux aides du manifeste, deux messages d'indisponibilité au tutoiement). Corrigés : « Matchs » / « Matches » (clé `navMatches` du dictionnaire : le lint des libellés de champ refuse le littéral dans la page), « Équipe » / « Team », « A fragué le joueur n fois » / « Fragué par le joueur n fois » (EN « Killed the player n times » / « Killed by the player n times »), « équipe » au lieu de « camp » (score à manches, score décodé, porteurs de bombe, positions « Équipe A / B »), aides Rendement et Résistance récrites en mesure et portée, messages d'indisponibilité au joueur de la page / compte connecté. Verte.
+- **M3.12** `MatchViewTabs.test.tsx` adapté (cartes de l'Emprise mockées par leur présence, ordre D-J) ; `MatchViewTabPlayers.test.tsx` (sans Riposte, axe) ; NEUF `MatchViewTabArsenal.test.tsx` sur les vrais modèles : ordre des sept cartes, couverture, rangée G | H, repli des râteliers, objets en retrait, ligne non identifiée, raisons du 24/07, ordre d'« Isolement », retrait par carte, Halo 5 (feuille seule : barre des armes spéciales seule, « sans film »), anglais, état vide.
+- **Écart de méthode** (comme en M2) : le code de M3 a été écrit avant ses tests ; le rouge a été obtenu par mutation sur le code livré. **Mutations** (toutes ROUGES, restauration vérifiée octet à octet) : raisons G du bonus inversées ; « aucun frag » affiché journal non publiable ; ligne non identifiée oubliée ; fiche du reste gardée ; ordre des lignes I = ordre du repo ; `pending` ignoré (piste, frags) ; retrait de l'objet supprimé ; `resources` ignoré ; `pending` du rendement ignoré ; entrée « reste » toujours posée ; `notes` ignorées ; barre fine des frags retirée de la ligne extraite (tests des Séries temporelles) ; axe des assistances revenu à l'ancien texte ; râteliers jamais repliés ; couverture absente ; copie des libellés des outils réintroduite (garde) ; « Mes matchs » réintroduit (garde). Rouge vu avant code : `fontSize` (D12), garde étendue.
+- **Gate** : `tsc -b --force` 0 ; `npm run lint` 0 erreur, 26 avertissements (aucun neuf) ; vitest complet 862 fichiers / 9 096 tests verts ; knip 0 / 0 / 0 ; couleurs 0 ; imports croisés 7 ≤ 7, aucune dérogation morte ; `lefthook run pre-push` vert (dont `lint-no-hardcoded-fields`, rouge au premier passage sur « Matchs » littéral, corrigé par `navMatches`).
+- Seuils : fichiers neufs ≤ 299 L (`matchEmprise.logic.ts`) ; `match-view/i18n.ts` 1 150 → 1 042, `match-replay/i18n/i18n.ts` 918 → 852, `i18nContract.ts` 1 140 → 1 031 (lignes non vides) ; `lib/api/types.ts` + 9 (alias, retirés en M4 pour la riposte et la hauteur).
 
 ### M4 — Go : suppressions et contrat · moyen
 
@@ -795,6 +812,21 @@ lecteur.
 - (phase 1) La feuille de match (`LoadPowerWeaponKills`) et le tableau des scores (Q12) relisent la
   même colonne `power_weapon_kills` dans une requête de la Vue match ; deux lectures distinctes,
   bornées au match, conservées (fusion hors périmètre).
+- (M3) Après le retrait du contrôle des armes spéciales, plus aucun lecteur web du bloc `weaponTiers`
+  du document de rejeu (seul `replayDocumentSchema.ts` le déclare ; le Go le produit). Non traité :
+  le contrat du rejeu n'est pas dans le périmètre (à statuer avec le lot du rejeu).
+- (M3) `combat_tab.weapon_kills` n'a plus de lecteur web (le détail par arme de `MatchFragCard` est
+  parti, D10) ; ni §4.F ni §4.G ne le citent, le Go le produit toujours. Non traité.
+- (M3) Textes du rejeu sans lecteur, antérieurs au lot : `equipmentUsage.title`,
+  `equipmentUsage.outcomeTotalTakenFmt`. Non traités.
+- (M3) `MatchCadenceChart.tsx:99,192` écrit « MA » (moyenne mobile, sigle anglais) devant
+  `combatTeamLabel` : avec « Équipe », la légende se lit « MA Équipe ». Non traité (carte hors lot).
+- (M3) `notSyncedDescription` (Vue match) tutoie à l'impératif (« reviens », « Vérifie ») sans pronom :
+  la garde ne le voit pas. Non traité.
+- (M3) Le jeu de textes de l'Escouade (`getSquadText`) porte des phrases à la personne et « camp »
+  (choix des coéquipiers « your synergies », aide du score « au camp qui a perdu », aides Rendement /
+  Résistance « vous ») : vues par la garde tant que la Vue match embarquait tout le jeu, hors Vue match
+  depuis qu'elle n'en garde que `weaponKills` et `empty`. Non traité (page Escouade).
 
 ## 9. Questions au superviseur — RÉPONDUES le 2026-10-06
 

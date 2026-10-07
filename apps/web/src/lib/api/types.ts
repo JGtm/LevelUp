@@ -1958,6 +1958,8 @@ export interface MatchCombatTab {
    * position mesurée — dégradation propre, jamais d'erreur.
    */
   kill_distance_by_weapon?: MatchKillDistancePlayer[]
+  /** « Outils de destruction » du joueur de la page (builder de l'Escouade et de Sessions). */
+  weapon_tools?: SquadWeaponTools | null
   /**
    * Bloc « Riposte » (D22-2, 2026-09-21) : par mort le couple (victime, vengeur, délai) et
    * le camp de la victime, par joueur ses deux comptes. ABSENT quand le match n'a aucune
@@ -2155,7 +2157,15 @@ export interface MatchViewResponse {
    * "player_stats_empty", "medals_empty".
    */
   partial_reasons?: string[]
+  /** L'Emprise du match, fiches = les joueurs de l'équipe du joueur de la page (absente sans lui). */
+  emprise?: MatchEmpriseBlock | null
+  /** « Isolement » de chaque joueur de l'équipe, dans l'ordre des fiches de l'Emprise. */
+  lives_near_teammate?: MatchLivesNearTeammate | null
 }
+
+export type MatchEmpriseBlock = components['schemas']['MatchEmpriseBlock']
+export type MatchLivesNearTeammate = components['schemas']['MatchLivesNearTeammate']
+export type MatchLivesPlayer = components['schemas']['MatchLivesPlayer']
 
 /** Navigation prev/next entre matchs adjacents d'un joueur (ordre chronologique). */
 export type MatchNeighbors = components['schemas']['MatchNeighbors']
