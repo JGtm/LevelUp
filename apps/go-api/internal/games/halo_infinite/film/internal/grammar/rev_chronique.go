@@ -435,3 +435,8 @@ package grammar
 // composant `matchflow-sequence-data-component` se lit (`FUN_14101cdd8`, `R(4)` puis quatre
 // `R(32)`, [consumeMatchflowSequenceData]). Contre `grammar-2026-10-07.2` : un record `ti=45` qui
 // s arretait sur `i0` se lit jusqu au bout. Carte v2 : aucun sain perdu, aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-07.4` (2026-10-07, lot des arrets de la vue B, `ti=10 i2` a `i17`) : les
+// seize composants `managed-object-navpoint-component` se lisent (`FUN_14107cea4`, `R(32)` plat,
+// [consumeManagedObjectNavpoint]). Contre `grammar-2026-10-07.3` : un record `ti=10` qui s arretait
+// sur l un d eux se lit jusqu au composant suivant. Carte v2 : aucun sain perdu, aucun film en baisse.

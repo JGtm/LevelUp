@@ -18,8 +18,8 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 |---|---|---|---|---|
 | C1 | `ti=43` `i18`..`i40` (reprise de L2, `b12eb7692`) | [x] | `ec9897101` | carte v2 contre `879f31bbf` : +19 797 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07` |
 | C2 | `ti=12 i16 managed-navpoint-override-flags` | [x] | `05ab869d0` | `FUN_140ebf834` = `R(5)` ; carte v2 contre C1 : +110 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.2` |
-| C3 | `ti=45 i0 matchflow-sequence-data-component` | [x] | (ce commit) | `FUN_14101cdd8` = `R(4)` + 4 x `R(32)` ; carte v2 contre C2 : +861 sains, 0 perdu, aucun film en baisse ; mini-bobine : +8 annonces (perte (a) du §2.2 regagnée) ; `grammar-2026-10-07.3` |
-| C4 | `ti=10 i2 managed-object-navpoint-component` | [ ] | | |
+| C3 | `ti=45 i0 matchflow-sequence-data-component` | [x] | `0962d0970` | `FUN_14101cdd8` = `R(4)` + 4 x `R(32)` ; carte v2 contre C2 : +861 sains, 0 perdu, aucun film en baisse ; mini-bobine : +8 annonces (perte (a) du §2.2 regagnée) ; `grammar-2026-10-07.3` |
+| C4 | `ti=10 i2 managed-object-navpoint-component` (et `i3` a `i17`, même nom) | [x] | (ce commit) | `FUN_14107cea4` = `R(32)` ; carte v2 contre C3 : +1 481 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.4` |
 | C5 | `ti=12 i18 managed-navpoint-position-offset` | [ ] | | |
 | D  | point (d) du §2.2 (instruit si la lecture l'éclaire, pas un lot) | [ ] | | |
 
@@ -45,6 +45,7 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 - Mutations C1 et C2 jouées (`tsv/mutations.sh`, overlay) : 20 / 20 ROUGES.
 - C2 : lecteur `FUN_140ebf834` -> `FUN_140ebf854` (`R(5)` vers `etat+0x70c`), écrivain `142ed0e2c` (cinq bits du même mot), trouvés par nom -> `getName` -> descripteur (slot après le thunk `FUN_14076ce9c`). Carte v2 contre C1 : +110 sains (64 arrêtés sur `i16` en C1), 0 perdu ; les autres records `i16` avancent et s arrêtent sur `i18` (63 -> 318) et `i17` (92). Retenu.
 - C3 : lecteur `FUN_14101cdd8` (`FUN_14101d200` = `R(4)` valeur - 1, puis quatre `R(32)`), écrivain `FUN_142edbf94` (`FUN_1407ebac4` = octet + 1 sur quatre bits, puis les quatre mots). Carte v2 contre C2 : +861 sains (dont `1c4c63c2` +779), 0 perdu ; 50 gagnés arrêtés sur `ti=45 i0` en C2, 714 sortaient par rejet. Mini-bobine `000d5950` : la marche du paquet 2:712 passe le slot 122 et lit les huit annonces d emplacement vide des bipèdes 512 à 519 (`heldWeaponChanges` 6 -> 14, records bipèdes 29 511 -> 29 519) : c est la perte (a) du §2.2 du handoff, regagnée. Goldens mis à jour (changement de décodage déclaré). G-film 21 ok. Mutations S1-S3 ROUGES. Retenu.
+- C4 : le registre de `ti=10` pose SEIZE descripteurs sous le nom `managed-object-navpoint-component` (`i2` à `i17`) ; une seule table (accesseur de nom `14064c7d0`, table `143c971d8`), un seul lecteur `FUN_14107cea4` = `R(32)` vers `etat+0x14+4*index` (`index = *(descripteur+8)`), écrivain `142edb304` (32 bits du même mot). Les seize lignes sont portées (G4 157 -> 173). Carte v2 contre C3 : +1 481 sains (`1c4c63c2` +796, `111fa685` +248, `e5adf7b2` +165), 0 perdu ; arrêts suivants : `ti=10 i22` (291), `ti=10 i18`..`i21`. G-film 21 ok. Mutations O1-O2 ROUGES. Retenu.
 
 ## Découvertes
 

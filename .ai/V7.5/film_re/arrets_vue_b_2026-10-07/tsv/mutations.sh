@@ -47,4 +47,8 @@ muter S1 components_matchflow_ti45.go 's/largeurIndexDeSequence uint = 4 /largeu
 muter S2 components_matchflow_ti45.go 's/motsDeSequence              = 4 /motsDeSequence              = 3 /' "ti=45 i0 : trois mots"
 muter S3 components_moteur_de_partie.go 's/\tcase compMatchflowSequenceData: [^\n]*\n\t\tconsumeMatchflowSequenceData\(br\)\n//' "ti=45 i0 debranche"
 ;;
+C4)
+muter O1 components_managed_object.go 's/const largeurNavpointDObjetGere = 32/const largeurNavpointDObjetGere = 31/' "ti=10 i2-i17 : R(31)"
+muter O2 composants_vue_b_m4b.go 's/\tcase compManagedObjectNavpoint: [^\n]*\n\t\tconsumeManagedObjectNavpoint\(br\)\n//' "ti=10 i2-i17 debranche"
+;;
 esac; done
