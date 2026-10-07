@@ -508,6 +508,49 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       Non fusionné dans `feat/v75` ; la re-cuisson du parc reste la décision de l utilisateur (republication
       depuis les faits au schéma des faits 6 suffit : `SchemaDesFaits` ne monte pas).
 
+### Intégration avant la re-cuisson unique (2026-10-07)
+
+- [x] I.1 Fusion de `origin/feat/v75` = `4f112add5` (RI 2.7.b : `grammar-2026-10-06.5`,
+      `killcollector.PlacementRev` = `placement-2026-10-06-v1` ; `killsource.Rev` et `objectives.Rev` inchangées,
+      empreintes re-figées) sur `cdb6233f5` : commit `3f92429b6`. Conflits : les fixtures Go du web seulement
+      (manifeste et `replay_schema_80_*`, modifiées par 2.7.b, supprimées au schéma 81) ; aucun conflit Go.
+- [x] I.2 Fixtures du web régénérées au schéma 81 depuis le code fusionné : les 8 sont identiques aux
+      fixtures 80 de 2.7.b hors marque de version (aucun film des fixtures ne porte un cas de la phase D).
+- [x] I.3 En série : `go test` de `replay`, `killsource`, `grammar`, `fallback`, `sync/killcollector` (verts),
+      `archlint` (vert), golangci-lint depuis `4f112add5` (0 constat), vitest du rejeu hors sandbox (245
+      fichiers verts).
+- [x] I.4 Témoins redécodés un par un en processus (binaire du commit de fusion, racine de scratch, verrou
+      solo, premier plan ; aucun ne republie depuis des faits) : schéma 81, 0 / 0 / 0 / 0 sur les 19 ; D2,
+      D3, D6 inchangés (SplinterCell958 place 2, Mickey place 0, AllGodsLove place 3, aucun bot au roster
+      de `d1dfbc02`) ; place 5 de `43716616` inchangée.
+- [x] I.5 Recette de la re-cuisson unique, à jouer par le superviseur après la fusion du lot dans
+      `feat/v75`, depuis `C:\Users\Guillaume\Downloads\Scripts\LevelUp\apps\go-api` (worktree principal à la
+      tête de `feat/v75`), SERVEUR ARRÊTÉ (port 8000 libre), CGO (`PATH` avec `C:\msys64\ucrt64\bin`,
+      `CGO_ENABLED=1`, `CC=C:\msys64\ucrt64\bin\gcc.exe`), une commande à la fois, aucune en arrière-plan :
+      1. `go run ./cmd/levelup backfill-replay --only-existing --dry-run`, puis
+         `go run ./cmd/levelup backfill-replay --only-existing` : un enfant par film, en série, verrou solo ;
+         `grammar.Rev` monte, chaque artefact se lit `redecoder` : `data/cache/replays/halo_infinite/<id>.json`
+         (schéma 81) et `data/cache/film_facts/halo_infinite/<id>.filmfacts.bin` (schéma des faits 6) ;
+      2. rattrapage du placement des vies (`PlacementRev` monte) :
+         `go run ./cmd/levelup backfill-killsource --dry-run`, puis `go run ./cmd/levelup backfill-killsource`
+         (sélection `matchsAJour`, sans `--force`, 3 ouvriers par défaut, passe des films puis passe
+         crédit-seul) : tout match à vies dont la passe de `match_life_placement_latest` n'est pas à
+         `placement-2026-10-06-v1` (ou plus ancienne que ses vies) est redécodé et son placement réécrit ;
+         `--status` dans un second terminal ;
+      3. `go run ./cmd/levelup backfill-usage-summary` (le schéma d'artefact a bougé : résumé refait sans
+         `--force`) ;
+      4. `go run ./cmd/levelup backfill-pad-tiers --force` ;
+      5. `go run ./cmd/levelup backfill-vehicle-takes --force` (après la passe 2 : il lit les frags de
+         `match_kill_events_latest`) ;
+      6. `go run ./cmd/levelup tactical-rasters --backfill` (aucune base ; réécrit les sidecars dont
+         l'artefact a changé de schéma) ;
+      7. vérification : `coverage.seats` des 19 témoins (`verifier_temoins.sh` du scratchpad, depuis la racine
+         du worktree principal) — schéma 81, 0 / 0 / 0 / 0, place 5 de `43716616` = Slowpoke6743 ->
+         `343 Sandwolf` -> KernelPanic10 ; `go run ./cmd/levelup backfill-killsource --dry-run` doit ne plus
+         rien avoir à décoder (convergence ; seuls restent les matchs sans film en cache).
+      `backfill-bomb-stats` et `backfill-flag-grabs-net` ne sont pas requis (`objectives.Rev` inchangée, la
+      phase D ne touche aucun de leurs calques).
+
 ## Découvertes (notées, non traitées)
 
 - D1 (`c7f94693`) : la vie [947..981] de `343 Donos` est publiée d'équipe 0 par le pont slot -> index

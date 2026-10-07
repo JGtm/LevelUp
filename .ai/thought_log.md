@@ -116308,3 +116308,5 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `textesSansPersonne` + `session-detail` 26 fichiers / 182 tests verts ; tsc purgé 0 ; lint 0 erreur.
 
 **Conclusion / prochaine étape** : lot prêt à intégrer dans `feat/v75` sur accord du superviseur.
+
+**Complément 5 (2026-10-07, intégration de RI 2.7.b avant la re-cuisson)** : fusion de `feat/v75` `4f112add5` (grammar .5, `PlacementRev` placement-2026-10-06-v1) : commit `3f92429b6`, conflits sur les fixtures du web seulement (régénérées au schéma 81, identiques aux fixtures 80 de 2.7.b hors version). Paquets touchés, archlint, golangci-lint (0) et vitest du rejeu verts. 19 témoins redécodés un par un en processus : schéma 81, 0 / 0 / 0 / 0, cas de la phase D inchangés. Recette de la re-cuisson unique consignée au plan (I.5) avec le rattrapage du placement des vies (`backfill-killsource`, sélection `matchsAJour`, sans `--force`).
