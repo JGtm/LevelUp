@@ -29,6 +29,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 import { TipsTicker } from '@/components/ui/tips-ticker'
 import { buildAscensionTips } from './tips'
 import { getAscensionText } from './i18n'
+import { edgeFadeMask, useTabStripScroll } from './useTabStripScroll'
 
 function LightbulbIcon() {
   return (
@@ -70,6 +71,8 @@ export function AscensionLayout() {
   const isRealisations = !!matchRoute({ to: realisationsRoute })
   const isTactical = !!matchRoute({ to: tacticalRoute })
   const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical
+  const activeTab = isObjectives ? 'objectives' : isCoaching ? 'coaching' : isRealisations ? 'realisations' : isTactical ? 'tactical' : 'profile'
+  const { ref: stripRef, edges: stripEdges, onScroll: onStripScroll } = useTabStripScroll(activeTab)
 
   return (
     <main className="space-y-6 p-6">
@@ -84,10 +87,15 @@ export function AscensionLayout() {
         leadingIcon={<LightbulbIcon />}
       />
 
+      {/* Étroite, la barre défile à l'horizontale (barre de défilement masquée, fondu au bord
+          qui cache encore des onglets) et garde l'onglet actif visible. */}
       <nav
+        ref={stripRef}
         role="tablist"
         aria-label={t.tabsAriaLabel}
-        className="flex border-b border-border"
+        className="relative flex overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={edgeFadeMask(stripEdges)}
+        onScroll={onStripScroll}
       >
         <Link
           to={profileRoute}
@@ -145,7 +153,7 @@ export function AscensionLayout() {
 
 function tabClass(active: boolean): string {
   return [
-    'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+    'shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
     active
       ? 'border-primary text-foreground'
       : 'border-transparent text-muted-foreground hover:text-foreground',
