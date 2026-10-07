@@ -8,6 +8,10 @@ package fallback
 // inscrit un repli (plan `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J5.5,
 // 2026-09-27). Déplacement pur : les entrées sont recopiées à l'octet, dans leur ordre.
 
+// dateNomsDeProprietes est la date d entree au registre des replis que pose la lecture des zones
+// par le NOM de propriete `ti=13` (proprietaire, pousseur, designateur et proprietaire de colline).
+const dateNomsDeProprietes = "2026-10-07"
+
 var registreReplayObjectifs = []Repli{
 	{
 		Nom:       "repli_drapeau_seul_en_jeu",
@@ -189,7 +193,7 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_owner.go",
 			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireParVote, prop.votees)",
 		}},
-		DatePose:        "2026-10-07",
+		DatePose:        dateNomsDeProprietes,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
 		CompteurBranche: true,
@@ -208,7 +212,7 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_capturer.go",
 			Ancre:   "fb.Declenche(fallback.NomZonePousseurParElection)",
 		}},
-		DatePose:        "2026-10-07",
+		DatePose:        dateNomsDeProprietes,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
 		CompteurBranche: true,
@@ -224,7 +228,24 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_hill.go",
 			Ancre:   "fb.Declenche(fallback.NomCollineProprietaireVoisinDuDesignateur)",
 		}},
-		DatePose:        "2026-10-07",
+		DatePose:        dateNomsDeProprietes,
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_colline_designateur_par_voisinage",
+		Fait: "quel slot `ti=13` DESIGNE la colline courante en KOTH, et quels slots datent le premier contact avec l'objet de mode",
+		Mecanisme: "aucun slot de tag 5 chaine ne porte un nom de cle du vocabulaire des blocs de zone : " +
+			"le designateur est le slot dont le VOISIN (+1) porte un proprietaire qui parle (au moins " +
+			"deux emissions), et le premier contact se date sur les slots +1 a +3",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill.go",
+			Ancre:   "c.fb.Declenche(fallback.NomCollineDesignateurParVoisinage)",
+		}},
+		DatePose:        dateNomsDeProprietes,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
 		CompteurBranche: true,

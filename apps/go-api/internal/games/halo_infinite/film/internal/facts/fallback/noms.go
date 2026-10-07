@@ -91,6 +91,8 @@ const (
 	NomZonePousseurParElection Nom = "repli_zone_pousseur_par_election"
 	// NomCollineProprietaireVoisinDuDesignateur : `replay/zone_states_hill.go`, `hillOwnerSlotOf`.
 	NomCollineProprietaireVoisinDuDesignateur Nom = "repli_colline_proprietaire_voisin_du_designateur"
+	// NomCollineDesignateurParVoisinage : `replay/zone_states_hill.go`, `buildHillStates`.
+	NomCollineDesignateurParVoisinage Nom = "repli_colline_designateur_par_voisinage"
 	// NomPositionHorsEmpriseEcartee : `replay/positions_porte.go` (points de trace) et
 	// `replay/positions_porte_vehicules.go` (echantillons et naissances de vehicule).
 	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"

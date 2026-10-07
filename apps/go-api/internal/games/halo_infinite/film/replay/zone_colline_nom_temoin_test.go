@@ -7,11 +7,13 @@ package replay
 // production (`BuildFromPositions`, calque du drapeau exclu, cf. `zone_etat_initial_temoin_test.go`),
 // sans puis avec les lectures d image-cle :
 //
-//	sans   aucun nom : le proprietaire est le slot voisin du designateur (repli compte) ;
-//	avec   le nom du designateur designe le proprietaire de son bloc.
+//	sans   aucun nom : le designateur, le premier contact et le proprietaire viennent de la regle
+//	       de voisinage (deux replis comptes) ;
+//	avec   le nom elit le designateur (cle du bloc de l objet de mode), date le premier contact
+//	       sur les slots nommes de ce bloc et designe son proprietaire.
 //
-// Les deux rendent LE MEME calque : le nom designe le canal que le voisinage designait, et la
-// couverture le dit (`ownerNamed` 1, `ownerVoteDisagreed` 0).
+// Les deux rendent LE MEME calque : le nom designe les slots que le voisinage designait, et la
+// couverture le dit (`ownerNamed` 1, `ownerVoteDisagreed` 0, aucun repli de voisinage).
 //
 // SOUS GARDE D'ENVIRONNEMENT (`ZONE_FILM`), un film par processus, avant-plan :
 //
@@ -48,6 +50,12 @@ func TestCollineProprietaireNomTemoin(t *testing.T) {
 	if ca.Method != ZoneMethodDesignator || cp.Method != ZoneMethodDesignator {
 		t.Fatalf("methodes %q / %q : le temoin exige la voie du designateur", ca.Method, cp.Method)
 	}
+	if d := repliDe(avant, fallback.NomCollineDesignateurParVoisinage); d != 1 {
+		t.Errorf("sans nom : designateur par voisinage %d fois, attendu 1", d)
+	}
+	if d := repliDe(apres, fallback.NomCollineDesignateurParVoisinage); d != 0 {
+		t.Errorf("avec les noms : designateur par voisinage %d fois, attendu 0", d)
+	}
 	if repliVoisin(avant) != 1 || ca.OwnerNamed != 0 {
 		t.Errorf("sans nom : repli voisin %d, nommees %d — attendu 1 et 0", repliVoisin(avant), ca.OwnerNamed)
 	}
@@ -63,8 +71,13 @@ func TestCollineProprietaireNomTemoin(t *testing.T) {
 
 // repliVoisin rend le nombre de declenchements du repli « voisin du designateur » d un document.
 func repliVoisin(doc ReplayDocument) int {
+	return repliDe(doc, fallback.NomCollineProprietaireVoisinDuDesignateur)
+}
+
+// repliDe rend le nombre de declenchements du repli `nom` sur un document.
+func repliDe(doc ReplayDocument, nom fallback.Nom) int {
 	for _, f := range doc.Coverage.Fallbacks {
-		if f.Name == string(fallback.NomCollineProprietaireVoisinDuDesignateur) {
+		if f.Name == string(nom) {
 			return f.Hits
 		}
 	}
