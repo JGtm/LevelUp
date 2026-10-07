@@ -115,7 +115,7 @@ func TestKnownLoaderV2_ConnuSeulementSiAuRegistre(t *testing.T) {
 	}
 	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return sharedDB }))
 
-	known, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"})
+	known, err := knownOf(loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}))
 	if err != nil {
 		t.Fatalf("LoadKnown err = %v", err)
 	}
@@ -145,7 +145,7 @@ func TestKnownLoaderV2_BasePartageeAbsenteEstFatale(t *testing.T) {
 	}
 	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return nil }))
 
-	known, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"})
+	known, err := knownOf(loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}))
 	if !errors.Is(err, knownset.ErrSharedUnreadable) {
 		t.Fatalf("err = %v, want knownset.ErrSharedUnreadable", err)
 	}
@@ -201,9 +201,9 @@ func TestKnownLoaderV2_PlayerTableMissingIsTolerated(t *testing.T) {
 	}
 	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return sharedDB }))
 
-	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
+	known, err := knownOf(loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "newplayer", XUID: "999",
-	})
+	}))
 	if err != nil {
 		t.Fatalf("err = %v (tolérance schéma vide attendue)", err)
 	}
@@ -227,4 +227,9 @@ func TestKnownLoaderV2_ReleaseCalledEvenOnError(t *testing.T) {
 	if !released {
 		t.Error("release() not called — defer leak")
 	}
+}
+
+// knownOf projette le résultat de LoadKnown sur l'ensemble connu (Known nil en erreur).
+func knownOf(set knownset.Set, err error) (map[string]bool, error) {
+	return set.Known, err
 }

@@ -25,6 +25,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/objective"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour
@@ -164,6 +166,87 @@ func (e *SyncEngine) fetchMatchData(
 	}
 
 	return fm, nil
+}
+
+// syncHistory récupère l'historique d'un run : pagination (paginateAndPersistHistory), puis
+// récupération PAR match_id des orphelins de l'ensemble connu (in.orphans) que la pagination n'a
+// pas déjà tentés. Sans cette seconde passe, un orphelin plus ancien que le premier match connu
+// n'est jamais revu par un delta. Mute `result`.
+func (e *SyncEngine) syncHistory(ctx context.Context, in historyPaginationInputs, result *domain.SyncResult) {
+	attempted := e.paginateAndPersistHistory(ctx, in, result)
+	e.recoverOrphansByID(ctx, in, attempted, result)
+}
+
+// recoverOrphansByID récupère et persiste par leur match_id les orphelins de in.orphans absents
+// de attempted, par le chemin normal (fetchAndPersistMatches). Aucun orphelin restant ou
+// contexte annulé → aucun appel.
+func (e *SyncEngine) recoverOrphansByID(ctx context.Context, in historyPaginationInputs,
+	attempted map[string]bool, result *domain.SyncResult) {
+	ids := make([]string, 0, len(in.orphans))
+	for _, id := range in.orphans {
+		if !attempted[id] {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 || ctx.Err() != nil {
+		return
+	}
+	persisted := e.fetchAndPersistMatches(ctx, in, ids, result)
+	slog.InfoContext(ctx, "sync: orphelins récupérés par match_id",
+		"gamertag", e.gamertag, "requested", len(in.orphans),
+		"already_paginated", len(in.orphans)-len(ids), "fetched", len(ids), "persisted", persisted)
+}
+
+// fetchAndPersistMatches récupère en parallèle les matchs `ids` (borné à syncFetchParallelism),
+// résout les noms d'assets du lot (resolveCycleAssets, avant l'écriture du registre), puis les
+// persiste séquentiellement dans l'ordre de `ids` (persistFetchedMatch, chemin Collect→Persist).
+// Un échec de fetch ou de persistance est non fatal : journalisé et compté en warning. Rend le
+// nombre de matchs persistés.
+func (e *SyncEngine) fetchAndPersistMatches(ctx context.Context, in historyPaginationInputs,
+	ids []string, result *domain.SyncResult) int {
+	if len(ids) == 0 {
+		return 0
+	}
+	fetchedMatches := make([]*fetchedMatch, len(ids))
+	eg, egCtx := errgroup.WithContext(ctx)
+	// Borne la concurrence du fan-out : sans SetLimit, une page delta initiale lançait une
+	// goroutine PAR match inconnu. Le pool cappe déjà l'API concurrente à sa taille ; la borne
+	// évite l'explosion de goroutines et laisse de la marge au trafic user-facing.
+	eg.SetLimit(syncFetchParallelism)
+	for i, matchID := range ids {
+		eg.Go(func() error {
+			fm, err := e.fetchMatchData(egCtx, in.client, matchID, in.opts)
+			if err != nil {
+				slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
+					"gamertag", e.gamertag, "match_id", matchID, "err", err)
+				result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
+				return nil // non fatal : les autres fetches continuent
+			}
+			fetchedMatches[i] = fm // indice propre à la goroutine : aucune écriture partagée
+			return nil
+		})
+	}
+	_ = eg.Wait() // les goroutines ne rendent jamais d'erreur
+
+	e.resolveCycleAssets(ctx, fetchedMatches)
+
+	persisted := 0
+	for _, fm := range fetchedMatches {
+		if fm == nil {
+			continue
+		}
+		if err := e.persistFetchedMatch(ctx, in.sharedDB, in.playerDB, result, fm); err != nil {
+			slog.WarnContext(ctx, "sync: persistFetchedMatch échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
+			result.AddWarning(fmt.Sprintf("persistFetchedMatch(%s): %v", fm.MatchID, err))
+			continue
+		}
+		persisted++
+		slog.InfoContext(ctx, "sync: match traité (parallèle)",
+			"gamertag", e.gamertag, "match_id", fm.MatchID,
+			"persisted", persisted, "inserted_total", result.MatchesInserted)
+	}
+	return persisted
 }
 
 // hasAnyTeamMMR retourne true si au moins un participant a team_mmr renseigné.

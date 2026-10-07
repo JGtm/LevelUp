@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"levelup/go-api/internal/assets"
@@ -38,8 +37,6 @@ import (
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/knownset"
 	"levelup/go-api/internal/sync/replayartifacts"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -204,8 +201,8 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 // selectMatchesForComebackBadges, loadAllMatchIDsForPlayer, loadFlaggedMatchIDs :
 // déplacés vers engine_backfills.go (refactor 2026-05-21).
 
-// historyPaginationInputs regroupe l'état run()-local consommé par
-// paginateAndPersistHistory (garde la signature ≤ 5 params — CLAUDE.md).
+// historyPaginationInputs regroupe l'état run()-local consommé par syncHistory
+// (garde la signature ≤ 5 params — CLAUDE.md).
 type historyPaginationInputs struct {
 	client   HaloClient
 	opts     domain.SyncOptions
@@ -213,20 +210,23 @@ type historyPaginationInputs struct {
 	sharedDB *sql.DB
 	playerDB *sql.DB
 	isDelta  bool
+	// orphans : orphelins à récupérer par match_id ce cycle (knownset.Set.Recover).
+	orphans []string
 }
 
 // paginateAndPersistHistory parcourt l'historique paginé (GetMatchHistory) et, page par
-// page, filtre les matchs connus, fetche en parallèle les inconnus (borné à
-// syncFetchParallelism) puis les persiste séquentiellement (order-preserving). Arrêts :
-// MaxMatches atteint, page vide, match connu rencontré en delta (APRÈS flush des unknowns
-// déjà collectés de la page), ou page entièrement connue en delta. Extrait de run() (K2b,
-// 2026-07-06) — mute `result` (compteurs + warnings).
+// page, filtre les matchs connus, fetche en parallèle les inconnus puis les persiste
+// (fetchAndPersistMatches). Arrêts : MaxMatches atteint, page vide, match connu rencontré
+// en delta (APRÈS flush des unknowns déjà collectés de la page), ou page entièrement connue
+// en delta. Mute `result` (compteurs + warnings). Rend les match_id dont la récupération a
+// été tentée (réussie ou non).
 //
 // la découper disperserait l'état partagé processed/toFetch/stopAfterFlush et nuirait à
 // la lisibilité du critère d'arrêt delta (bug 2026-05-21 : flush-avant-stop).
 //
 //nolint:funlen // boucle de pagination cohérente (filtre → fetch → persist par page) :
-func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPaginationInputs, result *domain.SyncResult) {
+func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPaginationInputs, result *domain.SyncResult) map[string]bool {
+	attempted := map[string]bool{}
 	processed := 0
 	start := 0
 
@@ -303,73 +303,14 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 			toFetch = append(toFetch, entry.MatchID)
 		}
 
-		if len(toFetch) > 0 {
-			// ─── Phase 2 : Fetch parallèle ───
-			fetchedMatches := make([]*fetchedMatch, len(toFetch))
-			fetchErrors := make([]error, len(toFetch))
-			var mu sync.Mutex
-
-			eg, egCtx := errgroup.WithContext(ctx)
-			// Borne la concurrence du fan-out fetch : sans SetLimit, une page delta
-			// initiale lançait une goroutine PAR match inconnu (des dizaines/centaines
-			// d'un coup). Le pool cappe déjà l'API concurrente à sa taille, mais on
-			// évite ici l'explosion de goroutines et on lisse la pression (pool +
-			// exchanges XBL) pour laisser de la marge au trafic user-facing.
-			eg.SetLimit(syncFetchParallelism)
-			for i, matchID := range toFetch {
-				i, matchID := i, matchID // Capturer pour closure
-				eg.Go(func() error {
-					fm, err := e.fetchMatchData(egCtx, in.client, matchID, in.opts)
-					mu.Lock()
-					fetchedMatches[i] = fm
-					fetchErrors[i] = err
-					mu.Unlock()
-					if err != nil {
-						slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
-							"gamertag", e.gamertag, "match_id", matchID, "err", err,
-						)
-						result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
-					}
-					return nil // Non-fatal : continuer même si fetch échoue
-				})
-			}
-			_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
-
-			// ─── Pré-pass : résolution des noms d'assets (primary write) ───
-			// Peuple metadata.asset_translations pour les assets neufs du cycle
-			// AVANT la phase d'insert, pour qu'EnrichRegistryFromMetadata
-			// (submitOrInsertMatch) écrive un vrai nom dès le 1er passage.
-			// Best-effort, gated (assetPool nil → no-op).
-			e.resolveCycleAssets(ctx, fetchedMatches)
-
-			// ─── Phase 3 : Insert séquentiel (order-preserving) ───
-			for i, fm := range fetchedMatches {
-				if fetchErrors[i] != nil {
-					// Fetch échoué, skip insert
-					continue
-				}
-				if fm == nil {
-					continue
-				}
-
-				if err := e.persistFetchedMatch(ctx, in.sharedDB, in.playerDB, result, fm); err != nil {
-					slog.WarnContext(ctx, "sync: persistFetchedMatch échoué",
-						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-					)
-					result.AddWarning(fmt.Sprintf("persistFetchedMatch(%s): %v", fm.MatchID, err))
-				} else {
-					processed++
-					slog.InfoContext(ctx, "sync: match traité (parallèle)",
-						"gamertag", e.gamertag, "match_id", fm.MatchID,
-						"processed", processed, "inserted_total", result.MatchesInserted,
-					)
-				}
-			}
+		for _, id := range toFetch {
+			attempted[id] = true
 		}
+		processed += e.fetchAndPersistMatches(ctx, in, toFetch, result)
 
 		if stopAfterFlush {
 			// Match connu rencontré, mais les unknowns déjà collectés ont été
-			// fetchés/insérés via Phase 2-3 ci-dessus. On peut sortir.
+			// fetchés/insérés ci-dessus. On peut sortir.
 			break
 		}
 		if in.isDelta && allKnown {
@@ -377,6 +318,7 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		}
 		start += len(entries)
 	}
+	return attempted
 }
 
 // run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
@@ -509,12 +451,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// ─── Match IDs déjà connus (règle unique : internal/sync/knownset) ─────────
 	// Connu = présent au registre partagé pour ce joueur. Base partagée illisible →
 	// arrêt AVANT tout appel API et toute écriture (erreur typée knownset.ErrSharedUnreadable).
-	known, err := knownset.Load(ctx, playerDB, sharedDB, e.xuid)
+	knownSet, err := knownset.Load(ctx, playerDB, sharedDB, e.xuid)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: chargement match_ids connus échoué — sync arrêtée", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run knownset.Load: %w", err)
 	}
-	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag, "known_count", len(known))
+	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag,
+		"known_count", len(knownSet.Known), "orphans_to_recover", len(knownSet.Recover))
 
 	// ─── Client API ────────────────────────────────────────────────────────────
 	var client HaloClient
@@ -547,11 +490,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			"gamertag", e.gamertag, "cache_dir", cacheDir)
 	}
 
-	// ─── Pagination de l'historique ────────────────────────────────────────────
-	// Boucle filtre → fetch parallèle → persist par page, extraite en méthode (K2b).
-	e.paginateAndPersistHistory(ctx, historyPaginationInputs{
-		client: client, opts: opts, known: known,
+	// ─── Historique : pagination puis orphelins par match_id ─────────────────
+	e.syncHistory(ctx, historyPaginationInputs{
+		client: client, opts: opts, known: knownSet.Known,
 		sharedDB: sharedDB, playerDB: playerDB, isDelta: isDelta,
+		orphans: knownSet.Recover,
 	}, &result)
 
 	slog.InfoContext(ctx, "sync: boucle pagination terminée",

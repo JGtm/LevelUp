@@ -7,6 +7,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"slices"
 	"testing"
 
 	syncpkg "levelup/go-api/internal/sync"
@@ -98,5 +100,105 @@ func TestE2E_V2_BasePartageeIllisibleArreteLeCycle(t *testing.T) {
 		if out := res.PerPlayer[p.PlayerSlug]; out.Status != "failed" {
 			t.Errorf("PerPlayer[%s].Status = %q, want failed", p.PlayerSlug, out.Status)
 		}
+	}
+}
+
+// statsDemandees : les match_id dont le client a reçu GetMatchStats, triés.
+func statsDemandees(c *mockNarrowClient) []string {
+	var out []string
+	c.statsSeen.Range(func(k, _ any) bool {
+		out = append(out, k.(string))
+		return true
+	})
+	return slices.Sorted(slices.Values(out))
+}
+
+// TestE2E_V2_OrphelinPlusAncienQueLeConnuRecupereParIdentifiant : historique [m_new, m_old,
+// m_orphelin_ancien] — l'orphelin est PLUS ANCIEN que le premier connu, la pagination delta
+// s'arrête avant lui. Le cycle le récupère quand même, par son match_id (sans sync complète).
+func TestE2E_V2_OrphelinPlusAncienQueLeConnuRecupereParIdentifiant(t *testing.T) {
+	players := []PlayerProfile{{Gamertag: "alice", XUID: "1000000000000001", PlayerSlug: "alice"}}
+	env := setupE2EEnv(t, []string{"alice"})
+	seedKnown(t, env, players[0], "m_old")
+	if _, err := env.playerDBs["alice"].SQLDb().Exec(
+		"INSERT INTO player_match_enrichment (match_id) VALUES ('m_orphelin_ancien')",
+	); err != nil {
+		t.Fatalf("seed orphelin: %v", err)
+	}
+	client := &mockNarrowClient{
+		historyByArg: map[string][]syncpkg.MatchHistoryEntry{
+			"xuid(1000000000000001)": histList("m_new", "m_old", "m_orphelin_ancien"),
+		},
+		statsByMatch: map[string]map[string]any{
+			"m_new":             {"placeholder": 1},
+			"m_orphelin_ancien": {"placeholder": 2},
+		},
+	}
+
+	orch, _ := buildE2EOrchestrator(t, env, client, players)
+	res, err := orch.Run(context.Background(), players)
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if got, want := statsDemandees(client), []string{"m_new", "m_orphelin_ancien"}; !slices.Equal(got, want) {
+		t.Errorf("matchs récupérés = %v, attendu %v", got, want)
+	}
+	if res.UniqueMatches != 2 {
+		t.Errorf("UniqueMatches = %d, attendu 2 (l'orphelin suit dedup → fetch → persist comme un match paginé)", res.UniqueMatches)
+	}
+}
+
+// TestE2E_V2_RecuperationParIdentifiantBornee : knownset.OrphanRecoveryPerCycle+3 orphelins
+// absents de l'historique — le cycle en récupère exactement OrphanRecoveryPerCycle, les premiers
+// en ordre lexicographique.
+func TestE2E_V2_RecuperationParIdentifiantBornee(t *testing.T) {
+	players := []PlayerProfile{{Gamertag: "alice", XUID: "1000000000000001", PlayerSlug: "alice"}}
+	env := setupE2EEnv(t, []string{"alice"})
+	seedKnown(t, env, players[0], "m_old")
+	const n = knownset.OrphanRecoveryPerCycle + 3
+	stats := map[string]map[string]any{}
+	orphelins := make([]string, n)
+	for i := range n {
+		orphelins[i] = fmt.Sprintf("o-%03d", i)
+		stats[orphelins[i]] = map[string]any{"placeholder": i}
+		if _, err := env.playerDBs["alice"].SQLDb().Exec(
+			"INSERT INTO player_match_enrichment (match_id) VALUES (?)", orphelins[i],
+		); err != nil {
+			t.Fatalf("seed orphelin %s: %v", orphelins[i], err)
+		}
+	}
+	client := &mockNarrowClient{
+		historyByArg: map[string][]syncpkg.MatchHistoryEntry{"xuid(1000000000000001)": histList("m_old")},
+		statsByMatch: stats,
+	}
+
+	orch, _ := buildE2EOrchestrator(t, env, client, players)
+	if _, err := orch.Run(context.Background(), players); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if got, want := statsDemandees(client), orphelins[:knownset.OrphanRecoveryPerCycle]; !slices.Equal(got, want) {
+		t.Errorf("matchs récupérés = %d %v, attendu les %d premiers", len(got), got, knownset.OrphanRecoveryPerCycle)
+	}
+}
+
+// TestE2E_V2_RegimeNormalAucunAppelEnPlus : aucun orphelin — seul le match nouveau est
+// récupéré, exactement comme avant la récupération par identifiant.
+func TestE2E_V2_RegimeNormalAucunAppelEnPlus(t *testing.T) {
+	players := []PlayerProfile{{Gamertag: "alice", XUID: "1000000000000001", PlayerSlug: "alice"}}
+	env := setupE2EEnv(t, []string{"alice"})
+	seedKnown(t, env, players[0], "m_old", "m_older")
+	client := &mockNarrowClient{
+		historyByArg: map[string][]syncpkg.MatchHistoryEntry{
+			"xuid(1000000000000001)": histList("m_new", "m_old", "m_older"),
+		},
+		statsByMatch: map[string]map[string]any{"m_new": {"placeholder": 1}},
+	}
+
+	orch, _ := buildE2EOrchestrator(t, env, client, players)
+	if _, err := orch.Run(context.Background(), players); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if got, want := statsDemandees(client), []string{"m_new"}; !slices.Equal(got, want) {
+		t.Errorf("matchs récupérés = %v, attendu %v", got, want)
 	}
 }

@@ -18,9 +18,13 @@
 // Pourquoi pas les enrichissements seuls : la base joueur peut survivre à la base partagée (base
 // partagée restaurée depuis une copie plus ancienne). Un enrichissement sans ligne au registre
 // désignait alors un match « connu » que la base partagée n'avait pas : delta et full le
-// sautaient indéfiniment. Ces enrichissements orphelins sont désormais INCONNUS (re-récupérés),
-// journalisés en une ligne agrégée par appel et comptés (compteur expvar titré
-// `OrphanEnrichmentsCounter`).
+// sautaient indéfiniment. Ces enrichissements ORPHELINS sont INCONNUS, et la pagination seule ne
+// les reprend pas (un delta s'arrête au premier connu, souvent plus récent qu'eux). `Set.Recover`
+// en porte donc au plus `OrphanRecoveryPerCycle` par chargement, que les deux moteurs récupèrent
+// PAR match_id en plus de la pagination, par leur chemin normal de persistance : la sync converge
+// seule, sans sync complète. Une ligne de journal agrégée par chargement et deux compteurs expvar
+// titrés disent combien sont détectés (`OrphanEnrichmentsCounter`) et combien sont demandés
+// (`OrphanRecoveryRequestedCounter`).
 //
 // ÉCHEC. Base partagée absente ou illisible, ou xuid vide : erreur typée
 // (`ErrSharedUnreadable`, `ErrNoXUID`), jamais un ensemble partiel. Un ensemble vide ferait tout
@@ -39,6 +43,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -56,6 +61,28 @@ var ErrNoXUID = errors.New("knownset: xuid vide, ensemble des matchs connus ind�
 // OrphanEnrichmentsCounter : compteur expvar titré (observability.AddIntT) du nombre
 // d'enrichissements joueur sans ligne au registre partagé, cumulé à chaque chargement.
 const OrphanEnrichmentsCounter = "sync_known_orphan_enrichments_total"
+
+// OrphanRecoveryRequestedCounter : compteur expvar titré du nombre d'orphelins placés dans
+// Set.Recover (demandés à la récupération par match_id), cumulé à chaque chargement.
+const OrphanRecoveryRequestedCounter = "sync_known_orphan_recovery_requested_total"
+
+// OrphanRecoveryPerCycle borne les orphelins récupérés par match_id en UN chargement, donc en un
+// cycle de sync du joueur. Pourquoi borner : une base partagée restaurée plus ancienne peut
+// laisser des milliers d'orphelins, et chaque récupération coûte plusieurs appels d'API ; la borne
+// garde le surcoût d'un cycle de l'ordre d'un delta chargé et rattrape N orphelins en
+// N/OrphanRecoveryPerCycle cycles. Ordre lexicographique des match_id : déterministe ; un orphelin
+// récupéré entre au registre et sort de la liste, le cycle suivant prend les suivants.
+const OrphanRecoveryPerCycle = 50
+
+// Set : l'ensemble connu d'un joueur et les orphelins à récupérer par match_id.
+type Set struct {
+	// Known : les matchs connus (règle du paquet). Non nil quand Load réussit, nil en erreur.
+	Known map[string]bool
+	// Recover : orphelins (enrichis côté joueur, absents du registre partagé) à récupérer PAR
+	// match_id ce cycle, en plus de la pagination ; au plus OrphanRecoveryPerCycle, ordre
+	// lexicographique. Vide en régime normal.
+	Recover []string
+}
 
 // registryChunk : nombre de match_id par requête `IN (...)` de vérification au registre.
 const registryChunk = 500
@@ -76,23 +103,24 @@ WHERE mp.xuid || '' = ?
 // enrichmentSQL : les matchs enrichis du joueur (vue append-only, règle ART n° 2).
 const enrichmentSQL = `SELECT match_id FROM player_match_enrichment_latest`
 
-// Load retourne l'ensemble des matchs connus du joueur `xuid` selon la règle du paquet.
+// Load retourne l'ensemble des matchs connus du joueur `xuid` selon la règle du paquet, et les
+// orphelins à récupérer par match_id ce cycle (Set.Recover).
 //
 // sharedDB est obligatoire (nil → ErrSharedUnreadable). playerDB peut être nil : l'ensemble est
-// alors celui des participants du xuid présents au registre, sans décompte des orphelins.
-// Lecture seule sur les deux bases ; aucune écriture.
-func Load(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (map[string]bool, error) {
+// alors celui des participants du xuid présents au registre, sans orphelin.
+// Lecture seule sur les deux bases ; aucune écriture. En erreur, le Set rendu est vide.
+func Load(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (Set, error) {
 	if sharedDB == nil {
-		return nil, fmt.Errorf("%w: aucune connexion", ErrSharedUnreadable)
+		return Set{}, fmt.Errorf("%w: aucune connexion", ErrSharedUnreadable)
 	}
 	xuid = strings.TrimSpace(xuid)
 	if xuid == "" {
-		return nil, ErrNoXUID
+		return Set{}, ErrNoXUID
 	}
 
 	known, err := queryIDs(ctx, sharedDB, sharedKnownSQL, xuid)
 	if err != nil {
-		return nil, fmt.Errorf("%w: participants du xuid %s: %w", ErrSharedUnreadable, xuid, err)
+		return Set{}, fmt.Errorf("%w: participants du xuid %s: %w", ErrSharedUnreadable, xuid, err)
 	}
 	sharedCount := len(known)
 
@@ -105,7 +133,7 @@ func Load(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (map[str
 	}
 	inRegistry, err := filterInRegistry(ctx, sharedDB, outside)
 	if err != nil {
-		return nil, fmt.Errorf("%w: registre: %w", ErrSharedUnreadable, err)
+		return Set{}, fmt.Errorf("%w: registre: %w", ErrSharedUnreadable, err)
 	}
 	var orphans []string
 	for _, id := range outside {
@@ -115,13 +143,13 @@ func Load(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (map[str
 		}
 		orphans = append(orphans, id)
 	}
-	reportOrphans(ctx, xuid, orphans)
+	toRecover := reportOrphans(ctx, xuid, orphans)
 
 	slog.DebugContext(ctx, "knownset: ensemble des matchs connus chargé",
 		"xuid", xuid, "shared_participants", sharedCount,
 		"enriched", len(enriched), "registry_without_participant", len(outside)-len(orphans),
 		"orphans", len(orphans), "known", len(known))
-	return known, nil
+	return Set{Known: known, Recover: toRecover}, nil
 }
 
 // loadEnrichments lit les match_id enrichis du joueur. Un échec (base joueur neuve, vue
@@ -167,15 +195,23 @@ func filterInRegistry(ctx context.Context, sharedDB *sql.DB, ids []string) (map[
 	return present, nil
 }
 
-// reportOrphans journalise en UNE ligne et compte les enrichissements sans ligne au registre.
-func reportOrphans(ctx context.Context, xuid string, orphans []string) {
+// reportOrphans choisit les orphelins demandés ce cycle (les OrphanRecoveryPerCycle premiers en
+// ordre lexicographique), les journalise en UNE ligne et les compte (détectés, demandés). Rend
+// les orphelins demandés ; aucun orphelin → nil, ni journal ni compteur.
+func reportOrphans(ctx context.Context, xuid string, orphans []string) []string {
 	if len(orphans) == 0 {
-		return
+		return nil
 	}
-	sample := orphans[:min(orphanSample, len(orphans))]
-	slog.WarnContext(ctx, "knownset: enrichissements joueur sans match au registre partagé — traités comme inconnus, re-récupérés",
-		"xuid", xuid, "orphans", len(orphans), "sample", strings.Join(sample, ","))
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), OrphanEnrichmentsCounter, int64(len(orphans)))
+	slices.Sort(orphans)
+	toRecover := slices.Clone(orphans[:min(OrphanRecoveryPerCycle, len(orphans))])
+	slog.WarnContext(ctx, "knownset: enrichissements joueur sans match au registre partagé — récupération par match_id",
+		"xuid", xuid, "detected", len(orphans), "requested_this_cycle", len(toRecover),
+		"left_for_next_cycles", len(orphans)-len(toRecover),
+		"sample", strings.Join(toRecover[:min(orphanSample, len(toRecover))], ","))
+	slug := ctxkeys.TitleSlug(ctx)
+	observability.AddIntT(slug, OrphanEnrichmentsCounter, int64(len(orphans)))
+	observability.AddIntT(slug, OrphanRecoveryRequestedCounter, int64(len(toRecover)))
+	return toRecover
 }
 
 // queryIDs exécute une requête à une colonne match_id et rend l'ensemble lu. Toute erreur

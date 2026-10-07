@@ -96,6 +96,10 @@ func orphanCounter() int64 {
 	return observability.LoadCounterT(ctxkeys.TitleSlug(context.Background()), OrphanEnrichmentsCounter)
 }
 
+func requestedCounter() int64 {
+	return observability.LoadCounterT(ctxkeys.TitleSlug(context.Background()), OrphanRecoveryRequestedCounter)
+}
+
 // TestLoad_RegimeNormalIdentiqueALAncienneUnion : quand chaque enrichissement a son match au
 // registre (régime normal), l'ensemble connu est EXACTEMENT l'ancienne union
 // enrichissements ∪ participants du xuid, et aucun orphelin n'est compté.
@@ -107,37 +111,76 @@ func TestLoad_RegimeNormalIdentiqueALAncienneUnion(t *testing.T) {
 		registry:     []string{"m1", "m2", "m3", "m4", "x1"},
 		participants: map[string][]string{xuidJoueur: participants, xuidAutre: {"x1", "m1"}},
 	})
-	avant := orphanCounter()
+	avant, demandesAvant := orphanCounter(), requestedCounter()
 
-	known, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
 	ancienneUnion := slices.Compact(slices.Sorted(slices.Values(append(slices.Clone(enriched), participants...))))
-	assertKnown(t, known, ancienneUnion...)
+	assertKnown(t, set.Known, ancienneUnion...)
 	if d := orphanCounter() - avant; d != 0 {
 		t.Errorf("orphelins comptés = %d, attendu 0 en régime normal", d)
+	}
+	if len(set.Recover) != 0 || requestedCounter() != demandesAvant {
+		t.Errorf("à récupérer = %v (compteur +%d), attendu aucun en régime normal",
+			set.Recover, requestedCounter()-demandesAvant)
 	}
 }
 
 // TestLoad_EnrichissementSansRegistreEstInconnu : un enrichissement dont le match manque au
-// registre partagé (base partagée restaurée plus ancienne) n'est PAS connu — il sera
-// re-récupéré — et il est compté.
+// registre partagé (base partagée restaurée plus ancienne) n'est PAS connu, il est compté, et
+// il est demandé à la récupération par match_id (Set.Recover, ordre lexicographique).
 func TestLoad_EnrichissementSansRegistreEstInconnu(t *testing.T) {
 	playerDB := newPlayerDB(t, "m1", "orphelin-1", "orphelin-2")
 	sharedDB := newSharedDB(t, sharedFixture{
 		registry:     []string{"m1"},
 		participants: map[string][]string{xuidJoueur: {"m1"}},
 	})
-	avant := orphanCounter()
+	avant, demandesAvant := orphanCounter(), requestedCounter()
 
-	known, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	assertKnown(t, known, "m1")
+	assertKnown(t, set.Known, "m1")
 	if d := orphanCounter() - avant; d != 2 {
 		t.Errorf("orphelins comptés = %d, attendu 2", d)
+	}
+	if want := []string{"orphelin-1", "orphelin-2"}; !slices.Equal(set.Recover, want) {
+		t.Errorf("à récupérer = %v, attendu %v", set.Recover, want)
+	}
+	if d := requestedCounter() - demandesAvant; d != 2 {
+		t.Errorf("demandés comptés = %d, attendu 2", d)
+	}
+}
+
+// TestLoad_RecuperationBorneeParCycle : plus de OrphanRecoveryPerCycle orphelins — exactement
+// les OrphanRecoveryPerCycle premiers (ordre lexicographique) sont demandés ce cycle ; tous sont
+// détectés et comptés.
+func TestLoad_RecuperationBorneeParCycle(t *testing.T) {
+	const n = OrphanRecoveryPerCycle + 7
+	var orphelins []string
+	for i := range n {
+		orphelins = append(orphelins, fmt.Sprintf("o-%03d", n-1-i)) // ordre inverse en base
+	}
+	playerDB := newPlayerDB(t, orphelins...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	avant, demandesAvant := orphanCounter(), requestedCounter()
+
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	want := slices.Sorted(slices.Values(orphelins))[:OrphanRecoveryPerCycle]
+	if !slices.Equal(set.Recover, want) {
+		t.Errorf("à récupérer = %v, attendu les %d premiers %v", set.Recover, OrphanRecoveryPerCycle, want)
+	}
+	if d := orphanCounter() - avant; d != n {
+		t.Errorf("orphelins comptés = %d, attendu %d", d, n)
+	}
+	if d := requestedCounter() - demandesAvant; d != OrphanRecoveryPerCycle {
+		t.Errorf("demandés comptés = %d, attendu %d", d, OrphanRecoveryPerCycle)
 	}
 }
 
@@ -152,13 +195,16 @@ func TestLoad_RegistreSansParticipantDuXuidResteConnu(t *testing.T) {
 	})
 	avant := orphanCounter()
 
-	known, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	assertKnown(t, known, "m1", "r1")
+	assertKnown(t, set.Known, "m1", "r1")
 	if d := orphanCounter() - avant; d != 0 {
 		t.Errorf("orphelins comptés = %d, attendu 0 (r1 est au registre)", d)
+	}
+	if len(set.Recover) != 0 {
+		t.Errorf("à récupérer = %v, attendu aucun (r1 au registre : un fetch serait jeté)", set.Recover)
 	}
 }
 
@@ -169,11 +215,11 @@ func TestLoad_ParticipantSansRegistreEstInconnu(t *testing.T) {
 		registry:     []string{"m1"},
 		participants: map[string][]string{xuidJoueur: {"m1", "p1"}},
 	})
-	known, err := Load(context.Background(), newPlayerDB(t), sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), newPlayerDB(t), sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	assertKnown(t, known, "m1")
+	assertKnown(t, set.Known, "m1")
 }
 
 // TestLoad_IsolationEntreXUID : les participants d'un autre joueur ne sont jamais connus.
@@ -182,11 +228,11 @@ func TestLoad_IsolationEntreXUID(t *testing.T) {
 		registry:     []string{"m1", "x1"},
 		participants: map[string][]string{xuidJoueur: {"m1"}, xuidAutre: {"x1"}},
 	})
-	known, err := Load(context.Background(), nil, sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), nil, sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	assertKnown(t, known, "m1")
+	assertKnown(t, set.Known, "m1")
 }
 
 // TestLoad_VerificationDuRegistreParPaquets : plus de registryChunk enrichissements hors
@@ -206,11 +252,11 @@ func TestLoad_VerificationDuRegistreParPaquets(t *testing.T) {
 	sharedDB := newSharedDB(t, sharedFixture{registry: registry})
 	avant := orphanCounter()
 
-	known, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	assertKnown(t, known, registry...)
+	assertKnown(t, set.Known, registry...)
 	if d := orphanCounter() - avant; d != int64(n-len(registry)) {
 		t.Errorf("orphelins comptés = %d, attendu %d", d, n-len(registry))
 	}
@@ -223,11 +269,11 @@ func TestLoad_EnrichissementsIllisiblesTolere(t *testing.T) {
 		registry:     []string{"m1"},
 		participants: map[string][]string{xuidJoueur: {"m1"}},
 	})
-	known, err := Load(context.Background(), openMem(t), sharedDB, xuidJoueur)
+	set, err := Load(context.Background(), openMem(t), sharedDB, xuidJoueur)
 	if err != nil {
 		t.Fatalf("Load: %v (base joueur sans vue tolérée)", err)
 	}
-	assertKnown(t, known, "m1")
+	assertKnown(t, set.Known, "m1")
 }
 
 // TestLoad_BasePartageeIllisibleEstFatale : connexion absente, tables absentes ou registre
@@ -248,12 +294,12 @@ func TestLoad_BasePartageeIllisibleEstFatale(t *testing.T) {
 	}
 	for nom, sharedDB := range cas {
 		t.Run(nom, func(t *testing.T) {
-			known, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+			set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
 			if !errors.Is(err, ErrSharedUnreadable) {
 				t.Fatalf("err = %v, attendu ErrSharedUnreadable", err)
 			}
-			if known != nil {
-				t.Errorf("connus = %v, attendu nil (aucun ensemble partiel)", keys(known))
+			if set.Known != nil {
+				t.Errorf("connus = %v, attendu nil (aucun ensemble partiel)", keys(set.Known))
 			}
 		})
 	}
@@ -288,7 +334,7 @@ func TestLoad_RegistreIllisibleALaVerificationEstFatal(t *testing.T) {
 	if !errors.Is(err, ErrSharedUnreadable) {
 		t.Fatalf("err = %v, attendu ErrSharedUnreadable (vérification au registre en échec)", err)
 	}
-	if set != nil {
-		t.Errorf("connus = %v, attendu nil (aucun ensemble partiel)", keys(set))
+	if set.Known != nil {
+		t.Errorf("connus = %v, attendu nil (aucun ensemble partiel)", keys(set.Known))
 	}
 }

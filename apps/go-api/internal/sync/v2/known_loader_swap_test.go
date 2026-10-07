@@ -151,8 +151,8 @@ func TestKnownLoader_BasculeDemandeePendantLaLecture_AttendSaFin(t *testing.T) {
 		}, nil
 	}
 
-	known, err := NewKnownLoader(opener, borrow).LoadKnown(context.Background(),
-		PlayerProfile{Gamertag: "alice", XUID: xuid})
+	known, err := knownOf(NewKnownLoader(opener, borrow).LoadKnown(context.Background(),
+		PlayerProfile{Gamertag: "alice", XUID: xuid}))
 	if err != nil {
 		t.Fatalf("LoadKnown pendant une bascule demandée : %v", err)
 	}

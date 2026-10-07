@@ -15,6 +15,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"slices"
 	stdsync "sync"
 	"testing"
@@ -121,17 +122,19 @@ func (env *knownSetV1Env) seedOrphan(t *testing.T, id string) {
 	}
 }
 
-// paginate charge l'ensemble connu par la règle unique puis déroule la pagination du moteur.
+// paginate charge l'ensemble connu par la règle unique puis déroule l'historique du moteur
+// comme run() : pagination, puis orphelins par match_id (syncHistory).
 func (env *knownSetV1Env) paginate(t *testing.T, client HaloClient, isDelta bool) {
 	t.Helper()
-	known, err := knownset.Load(t.Context(), env.playerDB, env.sharedDB, env.e.xuid)
+	set, err := knownset.Load(t.Context(), env.playerDB, env.sharedDB, env.e.xuid)
 	if err != nil {
 		t.Fatalf("knownset.Load: %v", err)
 	}
 	result := domain.SyncResult{}
-	env.e.paginateAndPersistHistory(t.Context(), historyPaginationInputs{
-		client: client, opts: env.opts, known: known,
+	env.e.syncHistory(t.Context(), historyPaginationInputs{
+		client: client, opts: env.opts, known: set.Known,
 		sharedDB: env.sharedDB, playerDB: env.playerDB, isDelta: isDelta,
+		orphans: set.Recover,
 	}, &result)
 	if len(result.Errors) > 0 {
 		t.Fatalf("pagination en erreur : %v", result.Errors)
@@ -248,5 +251,64 @@ func TestKnownSetV1_BasePartageeIllisibleArreteLaSync(t *testing.T) {
 	}
 	if enrich != 0 {
 		t.Errorf("enrichissements écrits = %d, attendu 0", enrich)
+	}
+}
+
+// TestKnownSetV1_OrphelinPlusAncienQueLeConnuRecupereParIdentifiant : historique [nouveau,
+// connu, connu, orphelin] — l'orphelin est PLUS ANCIEN que le premier connu, le delta s'arrête
+// avant lui. Il est récupéré quand même, par son match_id, dans le même run (sans sync
+// complète) ; il rejoint le registre et le delta suivant ne récupère plus rien.
+func TestKnownSetV1_OrphelinPlusAncienQueLeConnuRecupereParIdentifiant(t *testing.T) {
+	env := newKnownSetV1Env(t)
+	env.seedSynced(t, ksKnown1, ksKnown2)
+	env.seedOrphan(t, ksOrphan)
+
+	client := newPagedHistoryClient(ksNew, ksKnown1, ksKnown2, ksOrphan)
+	env.paginate(t, client, true)
+	assertFetched(t, client, ksNew, ksOrphan)
+	if !env.inRegistry(t, ksOrphan) {
+		t.Fatal("l'orphelin plus ancien que le connu n'a pas rejoint match_registry")
+	}
+
+	again := newPagedHistoryClient(ksNew, ksKnown1, ksKnown2, ksOrphan)
+	env.paginate(t, again, true)
+	assertFetched(t, again)
+}
+
+// TestKnownSetV1_RecuperationParIdentifiantBornee : knownset.OrphanRecoveryPerCycle+3
+// orphelins absents de l'historique. Un run en récupère exactement OrphanRecoveryPerCycle (les
+// premiers en ordre lexicographique), le suivant les 3 restants, le troisième aucun.
+func TestKnownSetV1_RecuperationParIdentifiantBornee(t *testing.T) {
+	env := newKnownSetV1Env(t)
+	env.seedSynced(t, ksKnown1)
+	const n = knownset.OrphanRecoveryPerCycle + 3
+	orphelins := make([]string, n)
+	for i := range n {
+		orphelins[i] = fmt.Sprintf("aabbccdd-0000-4000-8000-%012d", i)
+		env.seedOrphan(t, orphelins[i])
+	}
+	nouveauClient := func() *pagedHistoryClient {
+		c := newPagedHistoryClient(ksKnown1)
+		for _, id := range orphelins {
+			c.statsBody[id] = makeMatchJSON(id, 2)
+		}
+		return c
+	}
+
+	premier := nouveauClient()
+	env.paginate(t, premier, true)
+	assertFetched(t, premier, orphelins[:knownset.OrphanRecoveryPerCycle]...)
+
+	second := nouveauClient()
+	env.paginate(t, second, true)
+	assertFetched(t, second, orphelins[knownset.OrphanRecoveryPerCycle:]...)
+
+	troisieme := nouveauClient()
+	env.paginate(t, troisieme, true)
+	assertFetched(t, troisieme)
+	for _, id := range orphelins {
+		if !env.inRegistry(t, id) {
+			t.Fatalf("orphelin %s absent du registre après trois runs", id)
+		}
 	}
 }

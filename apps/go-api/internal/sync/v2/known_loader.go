@@ -64,26 +64,26 @@ func NewKnownLoader(playerDBOpener PlayerDBOpener, borrowShared SharedDBAcquirer
 	}
 }
 
-// LoadKnown retourne l'ensemble des matchs connus du joueur (règle knownset). Erreur si la base
-// joueur ne s'ouvre pas, ou si la base partagée ne peut pas être empruntée ou lue
-// (knownset.ErrSharedUnreadable) : le cycle s'arrête alors avant toute récupération (cf.
-// CycleOrchestratorImpl.Run).
-func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (map[string]bool, error) {
+// LoadKnown retourne l'ensemble des matchs connus du joueur et ses orphelins à récupérer par
+// match_id (règle knownset). Erreur si la base joueur ne s'ouvre pas, ou si la base partagée ne
+// peut pas être empruntée ou lue (knownset.ErrSharedUnreadable) : le cycle s'arrête alors avant
+// toute récupération (cf. CycleOrchestratorImpl.Run).
+func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error) {
 	playerDB, release, err := l.openPlayerDB(ctx, p.Gamertag)
 	if err != nil {
-		return nil, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
+		return knownset.Set{}, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
 	}
 	defer release()
 
 	sharedDB, releaseShared, err := l.borrowShared(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("known set %s: %w: emprunt de la base partagée: %w", p.Gamertag, knownset.ErrSharedUnreadable, err)
+		return knownset.Set{}, fmt.Errorf("known set %s: %w: emprunt de la base partagée: %w", p.Gamertag, knownset.ErrSharedUnreadable, err)
 	}
 	defer releaseShared()
 
-	known, err := knownset.Load(ctx, playerDB, sharedDB, p.XUID)
+	set, err := knownset.Load(ctx, playerDB, sharedDB, p.XUID)
 	if err != nil {
-		return nil, fmt.Errorf("known set %s: %w", p.Gamertag, err)
+		return knownset.Set{}, fmt.Errorf("known set %s: %w", p.Gamertag, err)
 	}
-	return known, nil
+	return set, nil
 }
