@@ -135,6 +135,10 @@ type FilmInputs struct {
 	// l'appelant et commande le balayage : sans zones, rien n'est lu et `ZoneScanned` est faux.
 	ZoneReads   []grammar.ManagedPropertyRead
 	ZoneScanned bool
+	// ZoneKeyReads sont les valeurs de ti=13 lues dans les IMAGES-CLES (records fermes seuls),
+	// sous la meme garde que `ZoneReads` : l etat d une zone avant son premier changement, que
+	// les trames delta n emettent pas (cf. grammar.ManagedPropertyScan.KeyReads).
+	ZoneKeyReads []grammar.ManagedPropertyRead
 	// BombReads est l'anneau d'armement de la bombe (ti=12), sur les seuls matchs que l'appelant
 	// reconnait Assaut armable.
 	BombReads []types.NavpointRadialRead
@@ -227,6 +231,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Flag.Marks = in.FlagMarks
 	opt.Flag.Gauge, opt.Flag.GaugeScanned = in.FlagGauge, in.FlagGaugeScanned
 	opt.Zone.Reads, opt.Zone.Scanned = in.ZoneReads, in.ZoneScanned
+	opt.Zone.KeyReads = in.ZoneKeyReads
 	opt.Bomb.Reads = in.BombReads
 	opt.Grenades = in.Grenades
 	opt.Projectiles = in.Projectiles

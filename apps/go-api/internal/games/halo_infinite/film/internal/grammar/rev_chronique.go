@@ -396,3 +396,23 @@ package grammar
 // ferme a l armement (`c75f33b8`), d ou la montee de `killcollector.PlacementRev`.
 // `replay.SchemaVersion` reste 79 : la publication depuis les faits ne change pas, les faits si.
 // Le rang : `.4` est pris par la vue A V2 et V3 de la campagne, fusionnee avant ce lot.
+//
+// ENTREE `grammar-2026-10-06.6` (2026-10-07, branche `feat/zones-etat-initial`) : L ETAT DES
+// PROPRIETES RESEAU DE ti=13 SE LIT AUSSI DANS LES IMAGES-CLES.
+//
+// Ce qui change, contre `grammar-2026-10-06.5` :
+//   - [ScanManagedProperties] joue, apres les trames delta, la phase des images-cles pour un canal
+//     qui interprete la valeur scalaire de ti=13 (`i1`, [canalDesProprietesGerees],
+//     `zone_state_scan_images_cles.go`) : il relit chaque occurrence a son etendue avec le
+//     deserialiseur de production et rend [ManagedPropertyScan.KeyReads], records FERMES seuls,
+//     avec les comptes `KeyRecords`, `KeyClosed`, `KeyBroken`, `KeyUnproven`, `KeyRefused` ;
+//   - les lectures delta (`Reads`) et leurs comptes ne changent pas : aucun bit lu ne change sur la
+//     voie delta.
+//
+// Une propriete n est emise en trame delta qu a son changement ; une base que la variante de
+// Bastion donne a un camp au coup d envoi n apparaissait qu a sa premiere reprise. Le rejeu ouvre
+// desormais le premier intervalle de proprietaire a la premiere image-cle qui le dit
+// (`replay/zone_states_etat_initial.go`, `replay.SchemaVersion` 82). `killsource` et `objectives`
+// n appellent pas ce balayage : leurs revisions restent constantes, leurs empreintes sont
+// regenerees. Le rang : `.5` est pris par le lot 2.7.b de la representation intermediaire,
+// fusionne avant ce lot.

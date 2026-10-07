@@ -166,7 +166,7 @@ var couchesDesCalques = map[string]string{
 	"vehicles":            grammar.Rev, // build_vehicles.go <- FilmInputs.Vehicles
 	"vehicleCycles":       grammar.Rev, // vehicle_cycles.go <- `doc.Vehicles` SEUL : une couche d ANALYSE sur les vies deja publiees, donc la MEME revision que le calque dont elle derive
 	"stances":             grammar.Rev, // document_stances.go <- FilmInputs.MovementStates (i29/i62/i54, lot 5.3.6)
-	"zoneStates":          grammar.Rev, // build_zones.go <- FilmInputs.ZoneReads (le catalogue de zones vient de l appelant, il ne decode rien)
+	"zoneStates":          grammar.Rev, // build_zones.go <- FilmInputs.ZoneReads, ZoneKeyReads (le catalogue de zones vient de l appelant, il ne decode rien)
 
 	// --- LES FAITS : les calques dont les lignes sortent du decodage killsource ou du statborg,
 	// tous deux faits PAR L APPELANT (`internal/replaybuild`) et passes par des options que

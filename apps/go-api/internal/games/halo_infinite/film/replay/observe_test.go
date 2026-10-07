@@ -98,7 +98,11 @@ func declarationsDuBalayage(t *testing.T) map[string]*ast.FuncDecl {
 // L ETAGE DU PONT D IDENTITE (`grammar.ScanPontDIdentite`, lot J4.3, 2026-09-26) rend SIX canaux
 // observes — `translocations`, `positions`, `bipedCreations`, `deaths`, `playerIndices`,
 // `clockOrigin` — d un seul appel, partage avec le collecteur killsource.
-var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTramesAvec": 3, "ScanPontDIdentite": 6}
+//
+// LE DECODEUR DES LECTURES DE ZONE (`decodeFilmZoneReads`) rend DEUX canaux observes — `zoneReads`
+// (trames delta) et `zoneKeyReads` (images-cles) — d un seul balayage de `ti=13`.
+var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTramesAvec": 3, "ScanPontDIdentite": 6,
+	"decodeFilmZoneReads": 2}
 
 // canauxDuBalayage rend le nombre d etapes observees qu un balayage alimente (1 par defaut).
 func canauxDuBalayage(nom string) int {
