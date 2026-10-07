@@ -565,3 +565,14 @@ Plans : `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, `.ai/PLAN_SESSIONS_E
 | Report | Où c’est prouvé | Chemin / propriétaire | Statut |
 |---|---|---|---|
 | **Assertion de temps fragile en CI** : `internal/sync/killcollector` `TestRosterDesFilms_AnnuaireContreJointure` (`backfill_cout_integration_test.go:395`) exige un facteur ≥ 10 entre la jointure par match et l annuaire de passe ; mesuré 9,35 sur le runner Linux le 2026-10-07 (job Coverage de `7cc8d23e3`), vert au rerun. À transformer en mesure non bloquante ou à borner autrement. | CI run 37561939285 | `apps/go-api/internal/sync/killcollector/backfill_cout_integration_test.go` | Ouvert (2026-10-07) |
+
+## Reports du lot « Rejeu : cercle de retour visible en lecture » et de son agent auth (2026-10-07, superviseur)
+
+Branches : `fix/rejeu-zone-retour-image-fractionnaire` (CI verte), `fix/coquille-401-admin-lien-tactique` (CI verte).
+
+| Report | Où c'est prouvé | Chemin / propriétaire | Statut |
+|---|---|---|---|
+| **Connexion Xbox locale en échec à la complétion SISU** : `completeSISUFlowWithURL` reçoit HTTP 400 de `prod.xsts.halowaypoint.com`, corps vide, deux fois de suite sur deux codes d'appareil valides | `apps/go-api/logs/auth.log` 2026-10-07 16:08:34 et 16:09:09 | `internal/platform/auth/sisu_client.go:136` ; à reproduire avec le journal de réponse brute activé | Ouvert (2026-10-07) |
+| **La sync initiale répond 401 `auth_required` quand la session n'a pas de tokens Halo** : sous session par mot de passe, la coquille rechargerait vers `/login` comme pour les anciens 401 de `settings` / `presence` ; un 403 ou 409 serait juste | agent auth, 2026-10-07 | `internal/api/handlers/sync_handler.go:444-446` | Ouvert (2026-10-07) |
+| **La coquille n'a aucun garde-fou contre la boucle de rechargement** : l'anti-rafale est une `ref` React, remise à zéro par le rechargement lui-même ; toute divergence future entre `/bootstrap` et un 401 reproduira la boucle jusqu'au 429 | agent auth, 2026-10-07 ; constaté à l'écran le même jour (429 du limiteur) | `apps/web/src/routes/__root.tsx` (`shell-nav`) | Ouvert (2026-10-07) — à décider : un 401 d'une route secondaire ne devrait pas éjecter quand `/bootstrap` dit connecté |
+| **`/settings` est aussi sous la garde admin** : un compte non admin y reçoit 403 (pas de rechargement), non examiné plus loin | agent auth, 2026-10-07 | `internal/api/server_apiv1.go:532` | Ouvert (2026-10-07) |
