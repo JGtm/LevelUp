@@ -1324,6 +1324,78 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       reste de chaque heuristique s'inscrit au registre « après la lecture », compté, ses records
       marqués `PreuveRecupere` avec leur méthode (DT2-4) ; le cliquet `NbDevantLaLecture` ne monte
       pas.
+      *Ouvert le 2026-10-07 (soir), sur `feat/v75` `312073cd3`* (accord de l'utilisateur : « vas-y tu
+      peux le faire »). Sous-items, dans l'ordre :
+      - [x] 2.7.d0 *Mesure*, avant tout code de production. Corpus : les 28 films de la mesure de
+            2.7.c4 (20 d'équivalence et 8 de killsource), contexte de la cuisson (profil calibré,
+            génération stricte, carte, découpage MPP déclaré). Trois instruments, aucun fichier de
+            production touché : `grammar/ri27d0_images_cles_research_test.go`,
+            `grammar/ri27d0_positions_research_test.go`, `grammar/ri27d0_monde_research_test.go`
+            (sorties `scratchpad/ri/d0`).
+            1. *Images-clés* : pour chaque record bipède, les composants i22, i30 à i48 relus par la
+               grammaire à l'étendue de leur occurrence, contre les fenêtres de la production dans
+               l'emprise du même record. 10 710 records bipèdes : la traversée va au bout dans 9 849,
+               mais 410 seulement se ferment sur le record suivant (3,8 %, preuve de la phase) ; les
+               armes portées s'accordent (mêmes noms) dans 386 records ; la grammaire lit moins
+               d'armes connues que la fenêtre dans 8 180 (emplacements vides `ffffffff` ou
+               identifiants inconnus là où la fenêtre trouve des paires plausibles, MA40 et BR75) ;
+               le compteur de grenades vaut autre chose que 4 dans 9 204 records, alors que
+               l'écrivain l'écrit toujours à 4 ; l'écart entre l'i43 de la traversée et la première
+               famille de la fenêtre se disperse (0 pour 334 records, puis -92, 128, -20, 94…), comme
+               l'écart entre la fin de la traversée et le record suivant. Même dans les records
+               fermés, 123 sur 410 rendent un compteur de grenades faux. La lecture de l'état complet
+               du bipède aux images-clés n'est donc PAS disponible : découverte 36.
+            2. *Positions* : la marche d'abord, l'ancrage derrière selon la règle du canal des
+               lectures bipèdes de 2.7.b (i0 ajouté à ses composants), contre l'ancrage seul.
+               6 987 554 positions communes, égales (90 % lues par la marche, 10 % par l'ancrage
+               derrière), 12 différentes ; 4 307 de l'ancrage seul : 2 244 sur un slot que la marche
+               lit comme un autre objet ou une autre vie (un objet `ti=20` sur un slot de la bande
+               bipède, positions constantes de paquet en paquet : découverte 38), 1 687 d'un corps
+               mort (règle 6 de 2.7.b), 375 dans l'étendue que la fermeture prouve (fausses ancres),
+               1 sans i0 absolu ; 6 740 de la marche seule (5 323 dans des trames fermées, 1 417
+               dans des trames non prouvées).
+            3. *Objets du monde* : les records que la marche lit dans les bandes de la cuisson (DELTA
+               à i0 déquantifiable, NEW des archétypes de création) contre la passe des pistes et la
+               passe des créations, record par record. Pistes : communes au même bit 868 700
+               (`ti=37`), 574 567 (`ti=42`), 358 749 (`ti=41`), 14 à bit différent ; de la passe
+               seule, dans un paquet où la marche lit le slot, 173 698 (`ti=37`) et 459 960 (`ti=42`)
+               — la marche y lit le MÊME record sous l'autre archétype : la passe donne un record à
+               toutes les bandes qui portent son slot (découverte 37) ; dans l'étendue que la
+               fermeture prouve, sans record de la marche pour ce slot, 118 918, 114 306 et 10 308
+               (en-têtes fortuits : découverte 39) ; ailleurs (trames non prouvées, listes non
+               localisées), 520 470, 505 513 et 112 870, que l'ancrage derrière la marche
+               garderait ; de la marche seule, 1 750, 1 239 et 95. Créations : communes 10 064
+               (`ti=37`), 10 188 (`ti=42`), 911 (`ti=40`) ; de la passe seule dans l'étendue prouvée
+               7 565, 6 244 et 208 (découverte 39), ailleurs 7 688, 6 414 et 601 ; de la marche
+               seule 5 337, 664 et 68 (4 129 de l'équipement dans des trames fermées).
+            Gate : chiffres ci-dessus ; décisions d'exécution ci-dessous.
+            *Décisions d'exécution du 2026-10-07* :
+            1. *La marche désigne les records, les lecteurs existants les lisent à leur position.*
+               Positions ([lireLaPosition]), échantillons de pistes ([echantillonDuRecord]) et
+               créations ([equipCreationWalk.creationA]) gardent leurs lecteurs ; seule la source
+               des positions de record change : les records de la marche d'abord, avec l'archétype
+               que sa table d'entités leur donne (un record n'est jamais rendu à la bande d'un autre
+               archétype), puis l'ancrage ou la passe derrière elle, selon la règle de 2.7.b : un
+               slot que la marche n'a pas lu dans le paquet, hors de l'étendue que la fermeture de
+               la trame prouve. Mêmes valeurs aux records communs, par construction.
+            2. *Les positions bipèdes suivent les règles du canal des lectures bipèdes* : corps mort
+               et générations refusées écartés (règles 6 et 8 de 2.7.b) ; une position ne se lit que
+               d'un i0 absolu dans la région jouée (la grammaire d'i0 de l'ancrage). Le compte
+               `repli_ancrage_bipede_apres_la_marche` compte désormais aussi les records qui ne
+               portent qu'une position (changement déclaré).
+            3. *Ce qui reste de la passe des pistes et de celle des créations s'inscrit au registre
+               « après la lecture »*, compté par film, ses échantillons et créations marqués
+               récupérés.
+      - [!] 2.7.d1 *Images-clés : armes portées, marque de portage, inventaire.* Non exécutable tel
+            qu'écrit : la grammaire ne lit pas l'état complet du bipède aux images-clés (mesure 1 de
+            2.7.d0, découverte 36) ; retirer les fenêtres viderait les armes et les grenades des
+            fiches. Décision de l'utilisateur demandée le 2026-10-07 (recommandation : un lot de
+            grammaire d'abord, la lecture de l'état complet du bipède aux images-clés ; 2.7.d1 en
+            dépend).
+      - [ ] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
+      - [ ] 2.7.d3 *Pistes et créations des objets du monde derrière la marche* (décisions 1 et 3).
+      - [ ] 2.7.d4 *Clôture* : registre des replis, montée de `grammar.Rev`, ADR 0037 amendé, doc,
+            gate de l'item.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
   `grammar.Rev` (et `killsource.Rev` pour 2.7.c) ; recuisson et backlog sur signal de l'utilisateur.
 
@@ -1680,6 +1752,31 @@ plan y sont reprises comme items (3.1.2).
    chaîne d'évènements qui suit ne se lisait pas (28 films). Ils entrent dans les kill-events de
    killsource. Sur les 19 témoins, deux morts publiées gagnent un kill-event attaché (l une sans
    assistant, l autre avec un assistant nommé) ; leur origine n est pas instruite au-delà.
+36. *(mesure de 2.7.d0, 2026-10-07)* **La grammaire ne lit pas l'état complet du bipède aux
+   images-clés.** La traversée de `ti=35` va au bout (9 849 records sur 10 710, carte posée), mais
+   410 seulement se ferment sur le record suivant (3,8 %) et les valeurs relues à l'étendue des
+   composants sont fausses : compteur de grenades différent de 4 dans 9 204 records (l'écrivain écrit
+   4), emplacements d'arme vides ou inconnus là où la fenêtre trouve des paires plausibles ; même
+   parmi les 410 records fermés, 123 compteurs faux (fermetures fortuites). L'écart entre l'i43 de la
+   traversée et la première famille trouvée par fenêtre n'est pas constant : un composant de largeur
+   variable est mal lu avant i43 dans la plupart des records. C'est le constat du golden de fermeture
+   d'image-clé (`ti=35` : 0 à 3 records fermés par film, sans carte), que la découverte 8 avait lu
+   comme « la grammaire atteint ces composants ». Non traité : il touche la grammaire des composants
+   (campagne) ; 2.7.d1 en dépend.
+37. *(même mesure)* **La passe des pistes donne un record à toutes les bandes qui portent son slot.**
+   Les bandes de l'équipement et des armes au sol se recouvrent : sur quatre films, 108 386
+   échantillons de la bande des armes au sol sont des records que la marche lit comme de l'équipement
+   (`ti=37`), et 31 284 l'inverse. Une arme au sol et un équipement partagent alors un même échantillon
+   de piste. 2.7.d3 (décision 1) le corrige par construction.
+38. *(même mesure)* **L'ancrage bipède lit la position d'objets qui ne sont pas des joueurs.** Un slot
+   de la bande bipède occupé par un autre archétype (un objet `ti=20` sur `111fa685`, slot 554, position
+   constante de paquet en paquet) passe la grammaire d'en-tête de l'ancrage : 2 244 positions sur 28
+   films. 2.7.d2 (décision 1) le corrige par construction.
+39. *(même mesure)* **Des en-têtes d'objet du monde fortuits, dans des trames que la fermeture
+   prouve.** La passe des pistes rend 243 532 échantillons, et celle des créations 14 017 créations,
+   à des positions où la marche, qui a lu la trame jusqu'à son terminateur, ne lit aucun record de ce
+   slot : ce sont des motifs à l'intérieur d'autres records. 2.7.d3 les écarte (règle de 2.7.b) ; le
+   gate de l'item dira ce qu'ils publiaient.
 
 ## 7. Journal
 
@@ -2104,3 +2201,8 @@ plan y sont reprises comme items (3.1.2).
   DANS `feat/v75` par avance rapide, accord de l'utilisateur du 2026-10-07 (« Ok tu pourras
   fusionner »). Recuisson du parc et backlog killsource : sur signal de l'utilisateur. Suite du
   plan : 2.7.d.
+- 2026-10-07 (nuit) : ouverture de 2.7.d (« vas-y tu peux le faire »). 2.7.d0 CLOS : trois mesures
+  sur 28 films. Les positions et les objets du monde peuvent passer derrière la marche (décisions 1 à
+  3), avec des corrections par construction (découvertes 37 à 39). Les images-clés NON : la grammaire
+  ne lit pas l'état complet du bipède (découverte 36) ; 2.7.d1 statué `[!]`, décision de l'utilisateur
+  demandée (recommandation : lot de grammaire d'abord). Suite : 2.7.d2 puis 2.7.d3.
