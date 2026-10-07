@@ -586,4 +586,19 @@ au chemin de la marche) et `e5adf7b2` `stances/duree-totale/par-slot/516` (duré
 
 ### 8.7 `gate-push`, push, CI
 
-État dans le paragraphe suivant (ajouté après le gate-push).
+- `make gate-push` rejoué étape par étape sur `0c1dd54ab` (TMP `C:/t/vueb`, GOCACHE et cache
+  golangci dédiés), de 0 h 09 à 0 h 40 : golangci-lint `--timeout 5m --new-from-merge-base=origin/main`
+  `0 issues.` ; web typecheck (cache `node_modules/.tmp` purgé) rc 0 ; web lint 0 erreur
+  (26 avertissements préexistants). Baseline : la commande du script (`go test -tags=integration
+  -count=1 -timeout=300s -p 1 -json`) jouée paquet par paquet en sept tranches de moins de dix
+  minutes (plafond d'un appel), les 350 paquets rc 0 (`platform/duckdb` 259 s, `sync` 180 s), puis
+  `check_test_baseline.sh tests --from-jsonl` sur le JSONL concaténé : **rc 0** — 9 532 tests de la
+  baseline tous présents (19 375 au run), aucun test ni paquet en échec. Vitest des fixtures de
+  contrat (`goFixtures.contract.test.ts`) : 85 / 85.
+- Push de `feat/grammaire-arrets-vue-b` (`4e8c1c5d9..0c1dd54ab`), hooks de pré-push verts (vet CGO,
+  govulncheck, knip, ratchets du web).
+- **CI verte** sur `0c1dd54ab` (run 37697853419, de 0 h 42 à 1 h 31) : build et tests Windows et
+  Ubuntu, couverture et baseline (`./...` complet, CGO), golangci-lint, course du film (`-race`),
+  contrat OpenAPI, lint OpenAPI, frontend, lease ; E2E Playwright sauté (réservé aux PR vers
+  `main`). Gitleaks, gate ADR 0021 et Deploy Pre-Check verts. Le §8.7 et la ligne I8 du plan sont les
+  seuls ajouts du commit suivant (Markdown sous `.ai/`).

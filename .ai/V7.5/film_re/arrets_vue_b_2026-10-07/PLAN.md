@@ -64,7 +64,7 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 | I5 | Gate 3 (`killsource json`, 20 films) et `TestGoldenFilms` | [x] | trois morts changent de voie, `read_path` persisté : `killsource-2026-10-07.2` (`5b8af2eaa`, §8.4) ; `TestGoldenFilms` ok |
 | I6 | Gate de corpus contre `312073cd3`, chaque FAUX / PERTE instruit, 0 MANQUE | [x] | banc 19 / 19 ok, 0 FAUX, 0 MANQUE ; PERTE instruites (§8.5) |
 | I7 | Mutations sur la tête | [x] | 33 / 33 rouges |
-| I8 | `make gate-push`, push, CI | voir RAPPORT §8.7 | |
+| I8 | `make gate-push`, push, CI | [x] | gate-push rc 0 (baseline 9 532 / 9 532, 0 échec) ; `0c1dd54ab` poussé ; CI verte (run 37697853419) — RAPPORT §8.7 |
 | I9 | Rapport §8 commité | [x] | ce commit |
 
 ## Journal
