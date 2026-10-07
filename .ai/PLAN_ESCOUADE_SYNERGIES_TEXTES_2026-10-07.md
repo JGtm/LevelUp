@@ -9,7 +9,8 @@
 >
 > Statut : **pré-approuvé par le superviseur le 2026-10-07** (exécution enchaînée sans attente) ;
 > **CLOS côté exécutant le 2026-10-07** : E1 `4cf68289b`, E2 `c23114e18`, E3 `82020eacf`, E4 (commit de
-> clôture). Revue adversariale, push et fusion : superviseur.
+> clôture). Revue adversariale, push et fusion : superviseur. **Ronde 1 de revue** (superviseur,
+> 2026-10-07) : 4 constats recevables, corrigés en E5 ; 1 constat hors diff consigné (§8.8).
 > Branche `feat/escouade-synergies-textes`, partie de `origin/feat/v75` à `879f31bbf` (Tactique v2
 > fusionnée : `git grep mesurerEchange` vide). Worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-escouade`.
 > Ni push, ni fusion, ni rebase : le superviseur pousse, lance la revue adversariale et fusionne.
@@ -112,6 +113,14 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 - [x] E4.3 Statut du handoff mis à jour ; statuts du plan ; entrée `.ai/thought_log.md`.
 - **Gate E4 (clôture)** : `go test ./internal/...` (au premier plan, par lots si besoin) ; `go vet ./internal/...` ; `make go-api-lint` ; `make openapi-check` ; `tsc -b --force` après purge ; `npm run lint` ; `lint:fields` ; `lint:colors` ; vitest complet ; knip (indicatif) ; `bash scripts/check_test_baseline.sh` en mode présence si exécutable localement.
 
+### E5 — Constats de la revue adversariale, ronde 1
+
+- [x] E5.1 (C1) En-têtes du sélecteur sans possessif (`squadPresets.i18n.ts`) ; garde `textesSansPersonne` étendue à `squadPresets.i18n.ts`, `formes/i18n.ts`, `formes/cardsI18n.ts` ; inventaire des jeux de textes de `features/squad/` (journal E5) ; mutations rouges sur chaque jeu ajouté.
+- [x] E5.2 (C2) Options sans lecteur retirées après grep des appelants : `DonutChart.frameless`, `HistogramChart.frameless`, `sessionBarsTrendChart` `dimmed` (+ `OPACITE_HORS_FILTRE`), `stack`, `volumeAxis` (+ `axeDesVolumes`), `SessionBarsTrendCard` `volumeAxis` ; test des volumes réduit à « un seul axe ». Aucune n'avait d'autre lecteur.
+- [x] E5.3 (C3) Garde du vocabulaire : toutes les formes de « venger » (`veng\p{L}*`), « échange(s) » en mot entier (aucun usage légitime dans l'Escouade), lignes `en =` du manifeste et motifs anglais (riposte, payback, retaliat…, trade(s/d/ing), avenge(d/s), revenge) ; mutations rouges, « MA5K Avenger » passe.
+- [x] E5.4 (C4) Commentaires au présent, lecteurs réels : `domain/tactical.go` (`MapID`), `domain/coordination.go` (`Couverture`), `games/kill_journal_gate.go` (lecteurs : `registry_pages.go:304,393`, `service/coordination_block.go:115`), `teammates_squad_range.go` ; même constat corrigé dans `analysis/coordination/measure.go` (exemples « morts vengees ») et `domain/timeseries.go` (bloc « Riposte » des Séries temporelles, maille « frise d'échange »).
+- **Gate E5** : Go `gofmt -l` muet, `go vet ./internal/...` 0, `go test -count=1` `domain/...`, `games`, `service/teammates`, `analysis/coordination` ok ; web `tsc -b` purgé 0, ESLint 0 erreur (26 avertissements), champs 0, couleurs 0, vitest `squad`, `components`, `timeseries`, `session-detail`, `lib` : 358 fichiers / 3 381 tests verts, knip 0.
+
 ## 8. Découvertes hors périmètre (consignées, non corrigées)
 
 - **8.1 (E1, incident)** — une commande de E1 a été lancée avec un `python - 2>/dev/null` tapé par
@@ -146,6 +155,21 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 - **8.7 (E3)** — les clés `squad.header.*` de `squad.toml` (dont `solo_section_title`, reformulée
   parce que la garde lit le manifeste en entier) n'ont aucun lecteur dans `apps/web/src` (grep du
   2026-10-07). Clés mortes antérieures au lot ; non supprimées ici.
+- **8.8 (E5, revue ronde 1, hors diff, préexistant à `879f31bbf`)** —
+  `components/charts/SessionBarsTrendCard.tsx` ne transmet ni `baseline` ni `hollowLegend` au
+  constructeur (`buildSessionBarsTrendOption`), alors que `TimeseriesCoordinationSection.tsx:209-210`
+  les passe : la frise « Appui reçu » des Séries temporelles n'est peut-être pas dessinée en écart
+  au repère alors que son axe est libellé en écart. Non corrigé (E5 a touché ce fichier pour
+  `volumeAxis` seulement).
+- **8.9 (E5)** — `SessionBarsTrendCard` garde une prop `frameless` (défaut vrai) qu'aucun appelant ne
+  passe ; elle n'avait déjà aucun lecteur avant le lot (la frise de la riposte n'utilisait pas ce
+  composant). Laissée.
+- **8.10 (E5)** — `common.toml` `common.groups.title` « Mes groupes » / « My groups » (page des
+  groupes, hors Escouade) et la donnée de test « Mes escouades » de
+  `components/ui/GamertagCombobox.test.tsx` (composant générique) portent un possessif. Hors du jeu
+  de l'Escouade ; laissés.
+- **8.11 (E5)** — `analysis/coordination/isolation.go:7` (« peser sur l'echange ») emploie « échange »
+  au sens d'un échange de tirs, pas de la notion retirée. Laissé.
 - **8.4 (E1)** — `lib/formatters/lowSampleNote.ts` et sa garde racontent la copie historique dans
   `SquadEchangeKpi` (histoire datée, vraie). Laissé.
 
@@ -206,3 +230,19 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   la suite du module entier (`./...`, liaison CGO de tous les paquets dont `cmd/`), interdite sur ce
   poste par le superviseur (disque) ; la présence a été vérifiée par différence en E2.6 (intersection
   vide) et la CI Linux joue le script.
+- 2026-10-07 — **E5 clos (revue adversariale, ronde 1).** Quatre constats recevables, quatre
+  corrigés (E5.1-E5.4), un consigné hors diff (§8.8). Inventaire de la garde des textes sous
+  `features/squad/` — COUVERTS : `i18n.ts` (FR_TEXT / EN_TEXT), `squadFocusStrings.ts`,
+  `squadRangeRolesStrings.ts`, `squadPresets.i18n.ts`, `emprise/empriseStrings.ts`,
+  `emprise/placementStrings.ts`, `emprise/vehicleStrings.ts` (par `EMPRISE_TEXT`),
+  `objectif/objectifStrings.ts`, `formes/i18n.ts`, `formes/cardsI18n.ts`, manifeste `squad.toml` ;
+  NON COUVERTS, avec raison : `SquadFilterBar.tsx`, `SquadLayout.tsx`, `SquadFragSection.tsx`,
+  `charts/squadFragTools.ts`, `charts/squadIntensityProfileChart.ts` (aucune chaîne propre : ils
+  lisent les manifestes partagés `common.toml` / `frags.toml`, servis à toute l'application),
+  `SquadObjectivesPanel.tsx` (libellés FR / EN servis par le serveur),
+  `squadCompositionGapHint.tsx` (séparateur « et » / « and »), `formes/format.ts`,
+  `objectif/objectif.logic.ts` (codes de locale de formatage). Mutations rouges : « Vos escouades »,
+  « Your squads », « Vos drapeaux » (`cardsI18n`), « Vos drapeaux capturés » (`formes/i18n`) ;
+  garde du vocabulaire : « Morts vengées », « Échanges », « Payback » (sources), « vengés »
+  (`fr =`), « Avenged », « Kill trades », « Riposted », « Retaliation » (`en =`) tous rouges,
+  « MA5K Avenger » vert.

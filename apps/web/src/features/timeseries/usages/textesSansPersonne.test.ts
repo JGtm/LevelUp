@@ -1,8 +1,9 @@
 /**
  * textesSansPersonne.test.ts — GARDE : aucun possessif, pronom de personne ni impératif de la 2e
  * personne (« reviens », « vérifie ») dans les textes des Séries temporelles › Usages, de toute la
- * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le manifeste
- * `squad.toml`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
+ * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le sélecteur
+ * `squadPresets.i18n.ts`, les jeux des cartes d'objectif `formes/i18n.ts` et `formes/cardsI18n.ts`,
+ * le manifeste `squad.toml`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
  * aides ⓘ, infobulles, messages), en français comme en anglais. Pour la Vue match, s'y ajoutent les
  * littéraux de phrase de ses sources (`features/match-view/`). Le joueur est désigné par son
  * gamertag, les groupes par « Équipe », « Adversaire », « Reste de l'équipe » ; « camp » n'est
@@ -27,9 +28,12 @@ import { COORDINATION_TEXT } from '@/features/session-detail/coordinationI18n'
 import { SESSION_CARD_TEXT } from '@/features/session-detail/sessionEmpriseText'
 import { EMPRISE_TEXT } from '@/features/squad/emprise/empriseStrings'
 import { PLACEMENT_TEXT } from '@/features/squad/emprise/placementStrings'
+import { FORMES_CARDS_TEXT } from '@/features/squad/formes/cardsI18n'
+import { FORMES_TEXT } from '@/features/squad/formes/i18n'
 import { EN_TEXT as SQUAD_EN, FR_TEXT as SQUAD_FR } from '@/features/squad/i18n'
 import { OBJECTIF_TEXT } from '@/features/squad/objectif/objectifStrings'
 import { getSquadFocusText } from '@/features/squad/squadFocusStrings'
+import { SQUAD_PRESETS_STRINGS } from '@/features/squad/squadPresets.i18n'
 import { getSquadRangeRolesText } from '@/features/squad/squadRangeRolesStrings'
 
 import { EMPRISE_TEXT_SOLO, OBJECTIF_TEXT_SOLO, USAGES_TEXT } from './usagesText'
@@ -114,6 +118,9 @@ const TEXTS = {
   SQUAD_TEXT,
   SQUAD_FOCUS_TEXT,
   SQUAD_RANGE_ROLES_TEXT,
+  SQUAD_PRESETS_STRINGS,
+  FORMES_TEXT,
+  FORMES_CARDS_TEXT,
   EMPRISE_TEXT,
   EMPRISE_TEXT_SOLO,
   PLACEMENT_TEXT,

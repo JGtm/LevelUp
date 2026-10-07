@@ -116626,3 +116626,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : suite Go `./internal/...` 173 paquets verts en trois lots, vet 0, `make go-api-lint` 0 issue, `openapi-check` à jour ; web tsc forcé 0, ESLint 0 erreur, champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest complet 9 096 tests verts, knip 0. Le script de baseline n'est pas lancé en local (il relance tout le module) ; la présence est prouvée par différence.
 
 **Conclusion / prochaine étape** : au superviseur — push de `feat/escouade-synergies-textes`, CI, revue adversariale, décision sur la découverte §8.5, fusion dans `feat/v75`.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E5 : constats de la revue adversariale (ronde 1) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E5 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : revue de la ronde 1 — 4 constats recevables, 4 corrigés, 1 consigné hors diff, 21 conditions tenues. C1 : en-têtes du sélecteur « Mes escouades » / « Mes groupes » devenus « Escouades enregistrées » / « Groupes » (EN « Saved squads » / « Groups »), garde des textes étendue au sélecteur et aux deux jeux des cartes d'objectif, inventaire des jeux de `features/squad/` au plan. C2 : options de graphes partagés dont la riposte était le dernier lecteur retirées (`frameless` du donut et de l'histogramme ; `dimmed`, `stack`, `volumeAxis` de la frise des soirées). C3 : garde du vocabulaire étendue à toutes les formes de « venger », à « échange(s) » et aux lignes anglaises du manifeste. C4 : commentaires Go réécrits au présent avec leurs lecteurs réels. Consigné (plan §8.8, registre) : la carte de la frise ne transmet ni `baseline` ni `hollowLegend`, préexistant.
+
+**Résultats observés** : mutations rouges sur chaque jeu ajouté et chaque nouveau motif, « MA5K Avenger » vert ; Go vet 0 et tests de `domain`, `games`, `service/teammates`, `analysis/coordination` ok ; web tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des dossiers touchés 3 381 tests verts, knip 0.
+
+**Conclusion / prochaine étape** : ronde 2 de revue au superviseur.

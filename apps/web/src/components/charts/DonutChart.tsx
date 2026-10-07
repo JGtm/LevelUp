@@ -55,12 +55,6 @@ export interface DonutChartProps {
   centerValue?: string
   /** Libellé affiché au centre, sous la valeur (petit texte) — ex "Victoires". */
   centerLabel?: string
-  /**
-   * Ni bordure ni fond : le donut est nu et c'est le conteneur parent (une SectionCard)
-   * qui porte le chrome. Propagé tel quel à `ChartCard` (prop ajoutée le 2026-09-21) — un
-   * donut monté DANS une SectionCard produisait un double cadre.
-   */
-  frameless?: boolean
 }
 
 export function DonutChart({
@@ -78,7 +72,6 @@ export function DonutChart({
   compact,
   centerValue,
   centerLabel,
-  frameless,
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
@@ -112,7 +105,6 @@ export function DonutChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
-      frameless={frameless}
       buildOption={buildOption}
     />
   )

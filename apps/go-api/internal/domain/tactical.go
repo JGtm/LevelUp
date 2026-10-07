@@ -226,10 +226,10 @@ type TacticalQuery struct {
 	PlayerXUID string
 
 	// MapID restreint a une carte. Vide = toutes les cartes — c'est le cas de
-	// l'ecran d'entree (MapsPlayed) ET du journal des morts lu par la page
-	// Escouade (KillEvents), qui mesure l'echange d'une COMPOSITION et non d'une
-	// carte. Seule la lecture SPATIALE (KillPositions) l'exige : une grille de
-	// 0,5 m n'a de sens que carte par carte.
+	// l'ecran d'entree (MapsPlayed) ET du journal des morts (KillEvents) lu par le
+	// bloc de coordination des pages Sessions et Series temporelles, qui porte sur une
+	// liste de matchs et non sur une carte. Seule la lecture SPATIALE (KillPositions)
+	// l'exige : une grille de 0,5 m n'a de sens que carte par carte.
 	MapID string
 
 	// Matchs est la liste blanche du perimetre (cf. ListeBlancheMatchs).

@@ -32,7 +32,6 @@ export function SessionBarsTrendChart({
   labels,
   series: specs,
   yAxisLabel,
-  volumeAxis,
   tooltipLines,
 }: SessionBarsTrendChartProps) {
   // La série factice porte l'état « il y a quelque chose à peindre » : les données
@@ -47,10 +46,9 @@ export function SessionBarsTrendChart({
         labels,
         series: specs,
         yAxisLabel,
-        ...(volumeAxis ? { volumeAxis } : {}),
         ...(tooltipLines ? { tooltipLines } : {}),
       }),
-    [labels, specs, yAxisLabel, volumeAxis, tooltipLines],
+    [labels, specs, yAxisLabel, tooltipLines],
   )
   return (
     <ChartCard
