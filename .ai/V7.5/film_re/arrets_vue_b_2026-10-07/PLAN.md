@@ -53,6 +53,20 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 | D9.9 | `make gate-push` | [!] | EXIT 2, instruit sans correction (causes hors périmètre) : lint 0, web vert ; deux paquets non touchés coupés à 300 s puis `ok` seuls (313 s, 310 s) ; un test de durées instable sous charge (2 / 3) ; baseline complète (RAPPORT §7.7) |
 | D9.10 | push, CI | [x] | `20a52831c` poussé ; CI verte (run 37675971549), gitleaks et Deploy Pre-Check verts (RAPPORT §7.7) |
 
+## Intégration dans `feat/v75` (accord de l'utilisateur du 2026-10-07)
+
+| # | Item | Statut | Sortie |
+|---|---|---|---|
+| I1 | Fusion de `origin/feat/v75` (`312073cd3`), conflits : `feat/v75` a raison hors du lot, chroniques des deux côtés | [x] | `caf08c7e6` (RAPPORT §8.1) |
+| I2 | Renumérotation : `grammar.Rev` `.3` à `.8`, `SchemaVersion` 88, empreintes et goldens régénérés, `grep` sans doublon | [x] | RAPPORT §8.2 ; empreintes réelles des rangs intermédiaires |
+| I3 | Compilation, tests de paquets, archlint, gofmt, vet (3 variantes), golangci-lint | [x] | 24 paquets `ok`, `0 issues.` (§8.3) |
+| I4 | Carte v2 et gate 2 contre `312073cd3` | [x] | +22 359 sains, 0 perdu, 0 film en baisse |
+| I5 | Gate 3 (`killsource json`, 20 films) et `TestGoldenFilms` | [x] | trois morts changent de voie, `read_path` persisté : `killsource-2026-10-07.2` (`5b8af2eaa`, §8.4) ; `TestGoldenFilms` ok |
+| I6 | Gate de corpus contre `312073cd3`, chaque FAUX / PERTE instruit, 0 MANQUE | [x] | banc 19 / 19 ok, 0 FAUX, 0 MANQUE ; PERTE instruites (§8.5) |
+| I7 | Mutations sur la tête | [x] | 33 / 33 rouges |
+| I8 | `make gate-push`, push, CI | voir RAPPORT §8.7 | |
+| I9 | Rapport §8 commité | [x] | ce commit |
+
 ## Journal
 
 - 2026-10-07 : plan écrit ; carte v2 de base (binaire de `879f31bbf`, ~2 min pour 20 films).
@@ -65,4 +79,4 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 
 ## Découvertes
 
-Voir RAPPORT.md §4 (D1 à D8).
+Voir RAPPORT.md §4 (D1 à D8), §7.8 (D11, D12) et §8.6 (D13, D14).

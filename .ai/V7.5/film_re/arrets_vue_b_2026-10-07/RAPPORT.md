@@ -455,3 +455,135 @@ décompression et substitution). Dans les goldens d'assemblage, seule la ligne d
   publication dans les changements d'arme. Il servait, selon la décision du 2026-09-24, à nommer
   les mains nues si elles apparaissaient en cours de partie. Autres usages possibles (fil des
   kills, armes de mêlée) non vérifiés : à instruire avant de le juger mort.
+
+## 8. Intégration — fusion de `feat/v75` dans la branche du lot (2026-10-07)
+
+> Accord de l'utilisateur à l'intégration le 2026-10-07. Exécuté sous `plan-execution`. Tête de
+> `origin/feat/v75` fusionnée : **`312073cd3`** (inchangée au `git fetch` de 23 h). La branche du
+> lot reçoit `feat/v75` ; l'avance de `feat/v75` reste au pilote. Aucune cuisson du parc.
+
+### 8.1 Fusion (`caf08c7e6`)
+
+- `git merge origin/feat/v75`, sans rebase ni stash. 21 fichiers en conflit, tous des rangs ou des
+  sorties générées : `grammar.Rev`, `replay.SchemaVersion`, leurs chroniques, `structure_test.go`,
+  les deux plafonds de `archlint/film_file_size_test.go`, les goldens de révision, d'assemblage et
+  de forme, les fixtures de contrat du web et leur manifeste. `feat/v75` est retenu pour tout ce qui
+  n'est pas le lot ; les lecteurs C1 à C5 et le correctif D9 sont gardés tels quels (fusion
+  automatique, aucun conflit dans leurs fichiers). Chroniques : toutes les entrées des deux côtés,
+  celles de `feat/v75` d'abord. `.ai/thought_log.md` : fusion automatique, aucune ligne perdue d'un
+  côté ni de l'autre (vérifié par `git diff` contre chaque parent : 0 suppression).
+- `rev_chronique.go` (grammaire) passait 500 lignes (528) : les rangs `grammar-2026-10-02` à `.3`
+  sont versés mot pour mot dans `rev_chronique_archive_7.go`, comme aux rotations précédentes.
+- Les sorties générées sont reprises du côté `feat/v75`, puis régénérées par les commandes du dépôt.
+
+### 8.2 Rangs finaux
+
+| Révision | Sur la branche | Dans `feat/v75` (`312073cd3`) | Final |
+|---|---|---|---|
+| `grammar.Rev` C1 `ti=43` | `grammar-2026-10-07` | `grammar-2026-10-07` (zones), `.2` (RI 2.7.c) | **`grammar-2026-10-07.3`** |
+| C2 `ti=12 i16` | `.2` | | **`.4`** |
+| C3 `ti=45 i0` | `.3` | | **`.5`** |
+| C4 `ti=10 i2` à `i17` | `.4` | | **`.6`** |
+| C5 `ti=12 i18` | `.5` | | **`.7`** |
+| D9 mains nues | `.6` | | **`.8`** (constante courante) |
+| `replay.SchemaVersion` | 83 (travail) | 87 (84, 86, 87 ; 83 et 85 sans emploi) | **88** |
+| `killsource.Rev` | `killsource-2026-09-27` | `killsource-2026-10-07` | **`killsource-2026-10-07.2`** (§8.4) |
+| `objectives.Rev` | `objectives-2026-09-27` | idem | constante, golden régénéré |
+| `SchemaDesFaits` | 7 | 10 | **10**, constant : aucune section des faits ne change de forme |
+| `profile.Rev`, `source.Rev` | | | constantes |
+
+- Golden de `grammar.Rev` : le test exige une ligne par rang, sans trou. Les rangs `.3` à `.7`
+  portent l'empreinte RÉELLE de chaque état intermédiaire sur la tête combinée (`feat/v75` + C1,
+  + C2, …), calculée par `revision.EmpreinteDeCouche` après application, dans l'ordre, des diffs de
+  source de chaque commit du lot (grammaire, et `filmshell/unarmed.go` pour D9) ; l'arbre est revenu
+  à l'identique ensuite (`diff -r`). Contrôle : l'état `.8` ainsi calculé égale l'empreinte que le
+  test calcule (`e7d248bb…`).
+- Aucun rang en double (`grep` des entrées `ENTREE` de la chronique de grammaire, des entrées `vN`
+  de la chronique du document et des lignes du golden). Le doublon `v14` de la chronique du document
+  est antérieur (déjà dans `feat/v75`).
+- Fixtures de contrat `replay_schema_88_*` : identiques aux `replay_schema_87_*` de `feat/v75` hors
+  chaînes de version et de révision (8 / 8, décompression et substitution). Goldens d'assemblage :
+  seule la ligne de schéma change.
+
+### 8.3 Gates sur la tête combinée
+
+| Gate | Sortie |
+|---|---|
+| gofmt (`film/`, `cmd/`, `archlint`, `replaybuild`, `killcollector`, `filmshell`) | vide |
+| vet, vet `-tags=research`, vet `-tags=integration` (film) | rc 0, rc 0, rc 0 |
+| Tests `film/...`, `replaybuild`, `killcollector`, `replayartifacts`, `filmshell`, archlint (`-count=1`) | 24 paquets `ok`, rc 0 |
+| golangci-lint `--new-from-rev=312073cd3` (film, filmshell, archlint) | `0 issues.` |
+| **Gate 2**, carte v2 (20 films) base `312073cd3` contre tête | **+22 359 sains (464 829 -> 487 188), +216 887 utiles sains (5 837 720 -> 6 054 607), 0 paquet sain perdu, 0 film en baisse** (`tsv/gate2_integration_contre_v75.tsv` ; causes : `tsv/causes_integration.tsv`) |
+| **Gate 3**, `killsource json` (19 témoins + `1c4c63c2`) | 17 identiques à l'octet ; `c75f33b8` : diagnostic `calibration` seul ; `e5adf7b2` et `1c4c63c2` : trois morts changent de voie, contenu identique (§8.4) ; `killsource.Rev` monte (`tsv/killsource_diff_integration.txt`) |
+| `TestGoldenFilms` (`KILLSOURCE_FIXTURES`) | `ok`, 4 / 4 films |
+| **Gate de corpus** `--reference=base --base=312073cd3`, parc copié au scratchpad (base partagée identique à l'octet, chunks, manifestes et artefacts des 19 témoins), en quatre passes `--temoins` | rc 1 à chaque passe (`codePerte`), aucune erreur de cuisson ; **banc de vérité 19 / 19 « ok », 0 FAUX, 0 MANQUE** ; PERTE de filet sur 17 témoins, toutes instruites (§8.5) ; télémétrie `grammarRev` `.2` -> `.8` (19) (`tsv/integration_gate_corpus_verdict.txt`, `tsv/integration_gate_corpus.json`) |
+| Mutations (`tsv/mutations.sh` C1 à C5, `tsv/mutations_d9.sh`) | **33 / 33 ROUGES** (28 + 5), base verte (`tsv/mutations_integration.txt`) |
+| Baseline des tests | contre `feat/v75` : 0 `func Test` retiré ni renommé, 5 ajoutés (ceux du lot) |
+
+Gate 2 par film (tous « ok ») : `bcb6d393` 6 479 -> 18 991, `396cfc92` +4 801, `f75e7053` +1 732,
+`1c4c63c2` +1 600, `4f77afc1` +504, `111fa685` +312, `fb1a1a72` +284, `e5adf7b2` +187, les autres
+de +2 à +108. Les gains sont du même ordre que contre `879f31bbf` (+22 282) : le nouveau début de
+vue B de `feat/v75` (RI 2.7.c) ne retire rien de ce que les lecteurs du lot ouvrent.
+
+### 8.4 Gate 3 : trois morts passent du balayage à la marche
+
+Dans `feat/v75`, killsource lit ses dead-states par la marche des trames (RI 2.7.c). Les lecteurs
+du lot prolongent la vue B de paquets où la marche ne passait pas : trois morts des témoins sont
+désormais lues par la marche au lieu du balayage — `e5adf7b2` à 05:29 (`Madina97294`), `1c4c63c2` à
+08:15 (`elnewtsy117`) et à 13:38 (`Luxiy XCV`). Tout le reste de chaque mort est identique (victime,
+tueur, instant, source, assistances, divergence ; comparaison par `jq` hors du bloc `lecture`) ;
+les comptes `gate_par_voie` et `concordance` suivent. `c75f33b8` ne diffère que par le score et la
+médiane de l'oracle de `calibration` (décision inchangée), comme au §2.
+
+`lecture.voie_identifiant` est persisté dans `match_kill_events.read_path`
+(`killcollector/collector_batch.go`) : la sortie persistée change, donc **`killsource.Rev` monte à
+`killsource-2026-10-07.2`** (D23), entrée de chronique écrite, golden régénéré (commit
+`5b8af2eaa`). Les lignes de kill du parc deviennent candidates au redécodage : backlog sur signal
+de l'utilisateur (D6). `SchemaDesFaits` ne monte pas : aucune section des faits ne change de forme,
+et les faits d'avant sont déjà périmés par leurs révisions de couche.
+
+### 8.5 Gate de corpus : les PERTE, une par une
+
+Chaque clé de perte (`DETAIL DES PERTES`) a été rapprochée des deux gates de corpus précédents de
+ce lot (§2, §7.3). Trois seulement n'y figuraient pas : `e5adf7b2`
+`coverage.deathsPaths.directScan.{matched,published}` 4 -> 3 (la mort de 05:29 du §8.4, qui passe
+au chemin de la marche) et `e5adf7b2` `stances/duree-totale/par-slot/516` (durées d'état, ci-dessous).
+
+- **Durées d'état et compteurs des états** (`stances/duree-totale`, `refusedNews`,
+  `refusedNewFalseReads`, `refusedNewUndecided`, `forgottenBindings`, `jumpsDerived` ; 14 témoins) :
+  même nature qu'au §2.2 (fin d'un état observée plus tôt par des paquets désormais lus). Les
+  totaux sont ceux du §2.2 à quelques unités près (`bcb6d393` 7 104 -> 6 864, `111fa685` 39 123 ->
+  38 606, `f75e7053` 8 880 -> 8 763, `51ebbc0f` 9 004 -> 8 559).
+- **Trous du tir continu** (`coverage.continuousFire.*`, 10 témoins) : même nature qu'au §2.2.
+- **Changements d'arme** (`d9781168`, `c75f33b8`, `51ebbc0f`, `50247b26`) : ce sont exactement les
+  mains nues du correctif D9. Base : 10 changements publiés portent `00007ca9` sur ces quatre
+  témoins (`tsv/compte_mains_nues.sh`) ; tête : 0 sur les 19. En retirant de la base les lâchers des
+  mains nues et en rendant ses « échanges depuis les mains nues » en prises, la liste des
+  changements d'arme est identique à celle de la tête sur `d9781168` et `50247b26` ; sur
+  `51ebbc0f` et `c75f33b8`, la tête n'a en plus que des lectures neuves (une prise à 1275, slot 534 ;
+  la prise et le lâcher du slot 536 à 1300 et 1501, déjà au §2.2).
+- **`11de8353`** (trajet de véhicule 266 -> 198 s, visée, véhicules montés, fin d'arme au sol, trou
+  de rafale du slot 562) : lignes identiques au gate du §2, instruites au §2.2 (le trajet de
+  proximité de la base, doublon du trajet lu, disparaît).
+- **`a349fea8`** `coverage.birthLoadouts.noDisplayable` 31 -> 32 et `coverage.vehicles.deathsUnmatched`
+  0 -> 1 : déjà au gate du §2 (mêmes valeurs). Un record NEW de bipède de plus est lu jusqu'au
+  bout (`closed` 54 -> 55, `unconfirmed` 262 -> 261) et sa dotation ne porte aucune arme affichable ;
+  une mort de véhicule de plus est lue (`deathsRead` 33 -> 34), qu'aucune vie recensée ne reprend.
+  `loadouts`, `vehicles`, `weaponChanges`, `tracks` et `shots` publiés sont identiques à l'octet
+  entre base et tête : ce sont des compteurs de lecture, rien de publié ne se perd. La mort neuve
+  n'a pas été localisée paquet par paquet.
+- Aucune perte de kill, de mort, d'assistance, de score, d'équipe ni de vie (banc 19 / 19 « ok »).
+
+### 8.6 Découvertes
+
+- **D13** Depuis RI 2.7.c, killsource lit la marche des trames : tout lot qui porte un composant
+  de la vue B peut déplacer la voie d'une mort, donc faire monter `killsource.Rev`. Le handoff des
+  composants bloquants (§5) supposait le gate 3 identique ; pour les lots suivants, la règle D23
+  tranche (ici : la révision monte).
+- **D14** Le gate de corpus ne tient pas dans un appel de dix minutes quand la base n'est pas
+  cuite ; il a été joué en quatre passes `--temoins` sur la même copie du parc, verdicts
+  concaténés.
+
+### 8.7 `gate-push`, push, CI
+
+État dans le paragraphe suivant (ajouté après le gate-push).
