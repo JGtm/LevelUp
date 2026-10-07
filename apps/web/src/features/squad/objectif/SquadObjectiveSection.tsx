@@ -29,8 +29,8 @@ import type { Locale } from '@/lib/i18n/locale'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 
 import { FORMES_CARDS_TEXT } from '../formes/cardsI18n'
-import { squadPlayerInk } from '../formes/colors'
 import { FORMES_TEXT } from '../formes/i18n'
+import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
 import { buildObjectiveBalance, buildObjectiveSheets, buildSessionFil, hasSquadObjective, squadSheetsOnly } from './objectif.logic'
 import { ObjectiveBalanceCard } from './ObjectiveBalanceCard'
 import { ObjectiveEveningsCard } from './ObjectiveEveningsCard'
@@ -68,13 +68,14 @@ export function SquadObjectiveSection({
   const fil = useMemo(() => buildSessionFil(b, matchHistory), [b, matchHistory])
   const sheets = useMemo(() => squadSheetsOnly(buildObjectiveSheets(b)), [b])
   const dominance = useMemo(() => dominanceLabels(locale), [locale])
+  const { inkOf } = useSquadPlayerPalette()
   const identities = useMemo<SheetIdentity[]>(() => {
     const emblems = new Map(medalDigest.map((e) => [e.player.toLowerCase(), e.emblem_url]))
-    return (b.squad ?? []).map((p, i) => {
+    return (b.squad ?? []).map((p) => {
       const label = p.gamertag || (p.xuid === b.main_xuid ? mainPlayerLabel : '') || p.xuid
-      return { label, color: squadPlayerInk(i), emblemUrl: emblems.get(label.toLowerCase()) ?? undefined }
+      return { label, color: inkOf(label), emblemUrl: emblems.get(label.toLowerCase()) ?? undefined }
     })
-  }, [b, medalDigest, mainPlayerLabel])
+  }, [b, medalDigest, mainPlayerLabel, inkOf])
 
   if (!hasSquadObjective(b)) return null
 

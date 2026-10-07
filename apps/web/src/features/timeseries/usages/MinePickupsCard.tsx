@@ -17,7 +17,7 @@ import type { SquadEmpriseObject } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 
 import { repliOffsetPct } from '@/features/squad/charts/squadFragBreakdownChart'
-import { TEAM_REST_INK, squadPlayerInk } from '@/features/squad/formes/colors'
+import { SQUAD_MAIN_PLAYER_INK, TEAM_REST_INK } from '@/features/squad/formes/colors'
 import type { EmpriseText } from '@/features/squad/emprise/empriseStrings'
 import { resourceInk } from '@/features/squad/emprise/resourceColors'
 import { TipText } from '@/features/squad/emprise/TipText'
@@ -26,7 +26,7 @@ import { ObjectifFrame, ObjectifLegend } from '@/features/squad/objectif/Objecti
 import { mineByResource, type MineGroup, type MinePickups, type MineResource, type MineRow } from './usages.logic'
 import type { UsagesCardsText } from './usagesCardsText'
 
-const ME_INK = squadPlayerInk(0)
+const ME_INK = SQUAD_MAIN_PLAYER_INK
 /** La barre d'un objet très peu pris garde une largeur lisible (maquette : 2 %). */
 const MIN_TRACK_PCT = 2
 

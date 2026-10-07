@@ -40,7 +40,6 @@ import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/th
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { getSquadPlayerColors } from '../colors'
 import type { PlacementText } from './placementStrings'
 
 /** Les quatre quarts, dans l'ordre des segments de la barre et des textes. */
@@ -125,18 +124,18 @@ export function placementFormats(locale: Locale): PlacementFormats {
 }
 
 /**
- * Les couleurs du graphe, résolues au rendu (thème, palette). Joueurs : `getSquadPlayerColors`
- * (le premier joueur du bloc est le joueur principal, les suivants les coéquipiers dans l'ordre
- * des fiches de l'Emprise). Repère du radar : le violet d'accent de la maquette n'a pas de jeton
+ * Les couleurs du graphe, résolues au rendu (thème, palette). Joueurs : le jeton de la palette
+ * de la page (`useSquadPlayerPalette`, ordre de la sélection), jamais l'ordre du bloc. Repère du radar : le violet d'accent de la maquette n'a pas de jeton
  * homonyme ; `extreme` est la teinte violette du thème, sans usage dans ces deux graphes.
  * Encre sombre : `--warning-foreground`, sombre dans les deux thèmes.
  */
-export function resolvePlacementColors(players: readonly { gamertag: string }[]): PlacementColors {
+export function resolvePlacementColors(tokenOf: (gamertag: string) => SemanticToken | null): PlacementColors {
   const theme = getEChartsThemeColors()
-  const [main, ...teammates] = players.map((p) => p.gamertag)
-  const byGamertag = getSquadPlayerColors(main ?? '', teammates)
   return {
-    player: (gamertag) => byGamertag[gamertag] ?? theme.text,
+    player: (gamertag) => {
+      const token = tokenOf(gamertag)
+      return token ? resolveToken(token) : theme.text
+    },
     quadrant: {
       in_range_productive: resolveToken(QUADRANT_TOKENS.in_range_productive),
       isolated_productive: resolveToken(QUADRANT_TOKENS.isolated_productive),

@@ -15,6 +15,7 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { SquadEmprisePlacementPlayer } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
+import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
 import {
   buildPlacementLifeOption,
   placementFormats,
@@ -28,13 +29,14 @@ const LIFE_HEIGHT = 420
 
 export function PlacementVieCard({ placement, locale, t }: { placement: PlacementBlock; locale: Locale; t: PlacementText }) {
   const formats = useMemo(() => placementFormats(locale), [locale])
+  const { tokenOf } = useSquadPlayerPalette()
   const series = useMemo<ChartSeries<SquadEmprisePlacementPlayer>[]>(
     () => (placement.players?.length ? [{ key: 'emprise-placement-vie', datapoints: placement.players }] : []),
     [placement.players],
   )
   const buildOption = useCallback(
-    () => buildPlacementLifeOption(placement, resolvePlacementColors(placement.players ?? []), { t, formats }),
-    [placement, t, formats],
+    () => buildPlacementLifeOption(placement, resolvePlacementColors(tokenOf), { t, formats }),
+    [placement, tokenOf, t, formats],
   )
   const { coverage } = placement
   return (

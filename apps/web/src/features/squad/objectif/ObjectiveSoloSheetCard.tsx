@@ -10,7 +10,7 @@
  */
 import { Tooltip } from '@/components/ui/tooltip'
 
-import { squadPlayerInk } from '../formes/colors'
+import { SQUAD_MAIN_PLAYER_INK } from '../formes/colors'
 import type { FormesText } from '../formes/i18n'
 import { OBJECTIVE_ROLES, type ObjectiveRole } from '../formes/model/objectives'
 import { SquadPlayerSheet, SquadSheetAvatar, SquadSheetSection } from '../SquadPlayerSheet'
@@ -44,7 +44,7 @@ interface Props {
   compact?: boolean
 }
 
-const INK = squadPlayerInk(0)
+const INK = SQUAD_MAIN_PLAYER_INK
 const NO_SHARE = '—'
 
 export function ObjectiveSoloSheetCard({ sheet, name, emblemUrl, familyLabel, columns, t, compact = false }: Props) {

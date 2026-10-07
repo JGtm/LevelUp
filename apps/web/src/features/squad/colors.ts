@@ -1,20 +1,21 @@
 /**
  * colors.ts — couleurs partagées de la feature Escouade.
  *
- * Source unique des couleurs des joueurs sur la page squad : la pill du
- * joueur actif (gauche du multiselect, token `squad-player-1`) + les 3 slots
- * coéquipiers du `GamertagCombobox` (`SQUAD_TEAMMATE_COLOR_TOKENS`).
+ * SOURCE UNIQUE de l'attribution des couleurs de joueurs sur la page Escouade :
+ * l'ordre de la SÉLECTION. Le joueur de la page prend `squad-player-1` (pill à
+ * gauche du multiselect), ses coéquipiers prennent `squad-player-2..4` dans
+ * l'ordre des slots du `GamertagCombobox`. Aucun onglet n'attribue une couleur
+ * selon l'ordre d'un bloc servi (fiches, nuage des vies, objectif) : un joueur
+ * garde la même teinte d'un onglet à l'autre. Les onglets lisent la palette par
+ * `useSquadPlayerPalette` (contexte de la page) ; garde-rail :
+ * `playerColors.guard.test.ts`.
  *
  * La famille `squad-player-1..4` est dédiée à l'identité joueur : elle n'est
  * empruntée à aucun autre rôle sémantique et ses quatre valeurs sont
  * verrouillées par `lib/accessibility/squadPlayerTokens.test.ts` (contraste et
  * écart perceptuel, daltonisme compris).
- *
- * Tous les charts qui rendent les joueurs côte à côte (per-minute, etc.)
- * doivent passer par `getSquadPlayerColors` pour conserver la cohérence
- * visuelle avec la pill et le combobox.
  */
-import { getSeriesColors, type SemanticToken } from '@/lib/accessibility'
+import { getSeriesColors, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
 /** Token couleur du joueur actif (pill à gauche du multiselect). */
 export const SQUAD_MAIN_PLAYER_TOKEN: SemanticToken = 'squad-player-1'
@@ -30,41 +31,88 @@ export const SQUAD_TEAMMATE_COLOR_TOKENS: SemanticToken[] = [
 ]
 
 /**
- * Nombre maximum de coéquipiers sélectionnables en plus du joueur actif.
- *
- * Défini ICI parce que c'est exactement le nombre de slots de couleur
- * coéquipier : un 4e coéquipier n'aurait pas de teinte propre. Vit dans un
- * module partagé (et non dans un `.tsx`) depuis l'extraction de
- * `SquadFilterBar` le 2026-09-20 — la barre et le layout en ont tous deux
- * besoin (plafond du combobox d'un côté, init depuis les amis de l'autre).
+ * Nombre maximum de coéquipiers sélectionnables en plus du joueur actif : exactement le
+ * nombre de slots de couleur coéquipier (un 4e coéquipier n'aurait pas de teinte propre).
+ * La barre de filtres (plafond du combobox) et le layout (init depuis les amis) le lisent.
  */
 export const MAX_SELECTION = SQUAD_TEAMMATE_COLOR_TOKENS.length
 
+/** Encre d'un joueur absent de la sélection (aucune identité de couleur). */
+const UNSELECTED_PLAYER_INK = 'var(--muted-foreground)'
+
 /**
- * Retourne les couleurs hex résolues (palette active) pour les coéquipiers.
- * Aligné sur le pattern utilisé par SquadLayout (`CHART_COLORS`).
+ * Retourne les couleurs hex résolues (palette active) des slots coéquipiers, dans l'ordre
+ * des slots du combobox de sélection.
  */
 export function getSquadTeammateColors(maxSlots = 3): string[] {
   return getSeriesColors(maxSlots, SQUAD_TEAMMATE_COLOR_TOKENS)
 }
 
 /**
+ * L'ATTRIBUTION : gamertag (casse servie) → jeton, dans l'ordre de la sélection. Le joueur
+ * principal d'abord ; un coéquipier qui le répète ne lui reprend pas sa couleur. Au-delà des
+ * slots, les jetons coéquipiers bouclent (modulo).
+ */
+function squadPlayerTokenEntries(
+  mainGamertag: string,
+  teammateGamertags: readonly string[],
+): [string, SemanticToken][] {
+  const out: [string, SemanticToken][] = []
+  if (mainGamertag) out.push([mainGamertag, SQUAD_MAIN_PLAYER_TOKEN])
+  teammateGamertags.forEach((gt, idx) => {
+    out.push([gt, SQUAD_TEAMMATE_COLOR_TOKENS[idx % SQUAD_TEAMMATE_COLOR_TOKENS.length]])
+  })
+  return out
+}
+
+/**
  * Construit un mapping `gamertag → couleur hex` pour le main player + les
- * coéquipiers sélectionnés. Cohérent avec :
- *   - la pill `squad-player-1` du joueur actif
- *   - les tokens `squad-player-2 / -3 / -4` attribués dans l'ordre par le
- *     `GamertagCombobox`.
+ * coéquipiers sélectionnés, dans l'ordre de la sélection (même attribution que
+ * `squadPlayerPalette`).
  */
 export function getSquadPlayerColors(
   mainGamertag: string,
-  teammateGamertags: string[],
+  teammateGamertags: readonly string[],
 ): Record<string, string> {
-  const mainColor = getSeriesColors(1, [SQUAD_MAIN_PLAYER_TOKEN])[0]
-  const teammateColors = getSquadTeammateColors(SQUAD_TEAMMATE_COLOR_TOKENS.length)
+  const entries = squadPlayerTokenEntries(mainGamertag, teammateGamertags)
+  const hexes = getSeriesColors(entries.length, entries.map(([, token]) => token))
   const out: Record<string, string> = {}
-  if (mainGamertag) out[mainGamertag] = mainColor
-  teammateGamertags.forEach((gt, idx) => {
-    out[gt] = teammateColors[idx % teammateColors.length]
+  entries.forEach(([gt], i) => {
+    if (!(gt in out)) out[gt] = hexes[i]
   })
   return out
+}
+
+/** La palette des joueurs de l'Escouade (une sélection donnée). */
+export interface SquadPlayerPalette {
+  /** gamertag (casse servie) → hex résolu : `colorByPlayer` des graphes ECharts. */
+  colorByPlayer: Record<string, string>
+  /** Jeton d'un joueur, gamertag insensible à la casse ; `null` hors sélection. */
+  tokenOf: (gamertag: string) => SemanticToken | null
+  /** Encre CSS (`var(--…)`) d'un joueur ; hors sélection, l'encre neutre. */
+  inkOf: (gamertag: string) => string
+}
+
+/**
+ * La palette d'une sélection : joueur de la page puis coéquipiers dans l'ordre du combobox.
+ * Les onglets de l'Escouade la lisent par `useSquadPlayerPalette`.
+ */
+export function squadPlayerPalette(
+  mainGamertag: string,
+  teammateGamertags: readonly string[],
+): SquadPlayerPalette {
+  const byKey = new Map<string, SemanticToken>()
+  for (const [gt, token] of squadPlayerTokenEntries(mainGamertag, teammateGamertags)) {
+    const key = gt.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, token)
+  }
+  const tokenOf = (gamertag: string) => byKey.get(gamertag.toLowerCase()) ?? null
+  return {
+    colorByPlayer: getSquadPlayerColors(mainGamertag, teammateGamertags),
+    tokenOf,
+    inkOf: (gamertag) => {
+      const token = tokenOf(gamertag)
+      return token ? tokenCssVar(token) : UNSELECTED_PLAYER_INK
+    },
+  }
 }

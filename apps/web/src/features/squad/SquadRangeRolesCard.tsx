@@ -29,7 +29,6 @@ import type { MatchRangeBlock } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { buildSquadRangeRolesOption } from './charts/squadRangeRolesChart'
-import { getSquadPlayerColors } from './colors'
 import { SquadRangeRolesTape } from './SquadRangeRolesTape'
 import {
   categoriesMatchs,
@@ -46,12 +45,14 @@ export interface SquadRangeRolesCardProps {
   bloc: MatchRangeBlock
   /** Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. */
   roster: string[]
+  /** gamertag → couleur hex, palette de la page (`useSquadPlayerPalette`). */
+  colorByPlayer: Record<string, string>
 }
 
 /** Préfixe des `data-testid` de la carte et de sa bande des rôles. */
 const TID = 'squad-portee'
 
-export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) {
+export function SquadRangeRolesCard({ bloc, roster, colorByPlayer }: SquadRangeRolesCardProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadRangeRolesText(locale)
   const numLoc = intlLocale(locale)
@@ -74,11 +75,6 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
     return out
   }, [series, seuils])
 
-  const couleurs = useMemo(() => {
-    const [main, ...coequipiers] = roster
-    return getSquadPlayerColors(main ?? '', coequipiers)
-  }, [roster])
-
   // Les extrêmes RÉELS de `measured` sur la période : la taille des points s'y projette.
   const mesures = series.flatMap((s) => s.points).map((p) => p.mesures)
   const mesuresMin = mesures.length > 0 ? Math.min(...mesures) : 0
@@ -94,7 +90,7 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
       buildSquadRangeRolesOption(series, {
         categories,
         seuils,
-        couleurs,
+        couleurs: colorByPlayer,
         mesuresMin,
         mesuresMax,
         libelles: {
@@ -108,7 +104,7 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
         },
         fmtM: (v: number) => numFmt.format(v),
       }),
-    [series, categories, seuils, couleurs, mesuresMin, mesuresMax, t, numFmt],
+    [series, categories, seuils, colorByPlayer, mesuresMin, mesuresMax, t, numFmt],
   )
 
   const vide = series.length === 0
