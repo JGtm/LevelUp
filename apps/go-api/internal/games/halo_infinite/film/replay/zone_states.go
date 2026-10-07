@@ -11,6 +11,8 @@ package replay
 //	slot -> zone       la coincidence d'un SOMMET DE JAUGE avec une capture nommee attribuee
 //	                   geometriquement. Vote modal sur tout le match, puis les slots qu'aucune
 //	                   capture ne rattache sont ECARTES (jamais poses sur une zone plausible).
+//	                   Le slot du PROPRIETAIRE suit la jauge par le NOM de propriete
+//	                   (zone_states_owner_nom.go), le vote en repli.
 //	valeur -> equipe   la valeur du tag 4 EST l'index d'equipe (mesure : 100 % et 91,1 % hors
 //	                   emissions neutres). Le roster valide, il n'invente pas : une valeur qui
 //	                   n'est pas un camp connu n'ouvre aucun intervalle et se compte.
@@ -188,10 +190,20 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 		}
 		return buildHillStates(cat, ser, zoneTeamSet(in.TeamByXUID), c, cov), cov
 	}
-	states, key := zoneOwnerStates(in, ser, pairs, c, cov)
+	states, key, disc := zoneOwnerStates(in, ser, pairs, c, cov)
 	tallyZoneStates(states, cov)
 	logZoneKeyTally(ctx, c.matchID, len(in.KeyReads), key)
+	logZoneOwnerDiscordances(ctx, c.matchID, disc)
 	return states, cov
+}
+
+// logZoneOwnerDiscordances journalise les zones ou le vote elit un autre canal que celui que le
+// nom designe : le nom est retenu, et la discordance se compte (`ownerVoteDisagreed`).
+func logZoneOwnerDiscordances(ctx context.Context, matchID string, disc []zoneDiscordance) {
+	for _, d := range disc {
+		slog.WarnContext(ctx, "rejeu : le vote contredit le nom du canal de propriete d'une zone — le nom est retenu",
+			"match_id", matchID, "zone", d.ref, "canalNomme", d.nomme, "canalVote", d.vote)
+	}
 }
 
 // logZoneKeyTally journalise ce que l'etat d'image-cle a fait au calque — et les etats

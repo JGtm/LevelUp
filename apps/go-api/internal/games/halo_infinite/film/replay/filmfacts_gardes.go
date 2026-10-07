@@ -128,7 +128,7 @@ func decodeCarrierMarkScan(r *greader) grammar.CarrierMarkScan {
 
 // encodeManagedPropertyReads / decodeManagedPropertyReads serialisent UNE liste de lectures de
 // `ti=13`. DEUX CANAUX LES EMPLOIENT — l etat des zones et la jauge de retour du drapeau — et
-// c est exactement pourquoi la boucle est ecrite ICI, une seule fois : deux copies de huit champs
+// c est exactement pourquoi la boucle est ecrite ICI, une seule fois : deux copies de dix champs
 // divergeraient au premier champ ajoute, et le fichier de faits se relirait decale.
 func encodeManagedPropertyReads(w *gwriter, rs []grammar.ManagedPropertyRead) {
 	w.u(uint64(len(rs)))
@@ -141,6 +141,8 @@ func encodeManagedPropertyReads(w *gwriter, rs []grammar.ManagedPropertyRead) {
 		w.u(z.Value)
 		w.bool8(z.HasValue)
 		w.bool8(z.Chained)
+		w.u(uint64(z.Name))
+		w.bool8(z.Named)
 	}
 }
 
@@ -157,6 +159,8 @@ func decodeManagedPropertyReads(r *greader) []grammar.ManagedPropertyRead {
 			Value:       r.u(),
 			HasValue:    r.bool8(),
 			Chained:     r.bool8(),
+			Name:        uint32(r.u()),
+			Named:       r.bool8(),
 		})
 	}
 	if len(out) == 0 {

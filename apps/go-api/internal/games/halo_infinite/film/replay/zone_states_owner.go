@@ -12,16 +12,20 @@ package replay
 //	la JAUGE          se rattache a sa zone par le SOMMET de sa rampe, contre une capture nommee
 //	                  attribuee geometriquement. Sans circularite : la zone vient de la position
 //	                  du capteur, pas du canal.
-//	le PROPRIETAIRE   se rattache a sa zone par la jauge quand le meme slot porte les deux ;
-//	                  sinon PAR VOTE — la zone des captures qui tombent dans la fenetre de ses
-//	                  changements. Ce vote est partiellement circulaire, et c'est pourquoi le
-//	                  CONTROLE publie (`ownerChecked` / `ownerAgreed`) porte sur autre chose :
-//	                  la VALEUR contre l'equipe du capteur, que le vote n'a pas servi a choisir.
+//	le PROPRIETAIRE   se rattache a sa zone PAR LE NOM : le nom de la jauge designe celui du
+//	                  proprietaire du meme bloc (zone_states_owner_nom.go), sans vote ni capture.
+//	                  Faute de nom au vocabulaire, PAR VOTE (repli nomme et compte) — la zone des
+//	                  captures qui tombent dans la fenetre de ses changements. Ce vote est
+//	                  partiellement circulaire, et c'est pourquoi le CONTROLE publie
+//	                  (`ownerChecked` / `ownerAgreed`) porte sur autre chose : la VALEUR contre
+//	                  l'equipe du capteur, qu'aucune des deux voies n'a servi a choisir.
 
 import (
 	"cmp"
 	"slices"
 	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // zoneOwnerMinAgreements est le nombre MINIMAL de captures concordantes qu'un canal doit porter
@@ -36,21 +40,25 @@ import (
 const zoneOwnerMinAgreements = 2
 
 // zoneOwnerStates construit les intervalles de propriete de chaque zone appariee, et rend ce que
-// l'etat d'image-cle y a fait.
+// l'etat d'image-cle y a fait et les zones ou le vote contredit le nom.
 func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	cov *ZonesCoverage,
-) ([]ZoneState, zoneKeyTally) {
+) ([]ZoneState, zoneKeyTally, []zoneDiscordance) {
 	var key zoneKeyTally
 	win := zoneWindowFrames(c.intervalMS)
 	ramps := zoneRampsOf(ser)
 	gaugeSlot, unpaired := pairGaugeSlots(ramps, pairs, win)
 	cov.Paired, cov.Unpaired = len(gaugeSlot), unpaired
-	ownerSlot := pairOwnerSlots(ser, pairs, in.TeamByXUID, win)
+	prop := zoneOwnerSlotsOf(gaugeSlot, pairOwnerSlots(ser, pairs, in.TeamByXUID, win),
+		zoneNomsDesSlots(in.KeyReads))
+	ownerSlot := prop.slot
+	cov.OwnerNamed, cov.OwnerVoteDisagreed = prop.nommees, len(prop.discordantes)
+	c.fb.DeclencheN(fallback.NomZoneProprietaireParVote, prop.votees)
 	cov.Method = ZoneMethodCaptures
 	refs := zoneRefsOf(gaugeSlot, ownerSlot)
-	// Les zones dont la jauge est appariee mais dont AUCUN canal n'a ete elu : elles ne sont
-	// pas publiees, et sans ce compteur leur silence serait indistinguable d'une carte qui ne
-	// les declare pas (cf. ZonesCoverage.OwnerUnpaired).
+	// Les zones dont la jauge est appariee mais dont AUCUN canal n'est rattache, ni par le nom ni
+	// par le vote : elles ne sont pas publiees, et sans ce compteur leur silence serait
+	// indistinguable d'une carte qui ne les declare pas (cf. ZonesCoverage.OwnerUnpaired).
 	cov.OwnerUnpaired = len(gaugeSlot) - len(refs)
 	teams := zoneTeamSet(in.TeamByXUID)
 	gap := zoneGaugeGapFrames(c.intervalMS)
@@ -90,7 +98,7 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
-	return out, key
+	return out, key, prop.discordantes
 }
 
 // zoneRefsOf rend les zones qui ont A LA FOIS une jauge et un proprietaire apparies, triees.
@@ -208,8 +216,10 @@ type zoneOwnerCandidate struct {
 	score int
 }
 
-// pairOwnerSlots elit le canal de propriete de chaque zone : les candidats sont notes par
-// l'accord avec le roster, puis attribues par accord decroissant.
+// pairOwnerSlots est le VOTE : il elit le canal de propriete de chaque zone, les candidats notes
+// par l'accord avec le roster puis attribues par accord decroissant. Il n'est retenu que pour une
+// zone dont le nom de la jauge ne designe aucun proprietaire (repli), et sert de controle au nom
+// partout ailleurs (cf. zoneOwnerSlotsOf).
 func pairOwnerSlots(ser zoneSeries, pairs []zonePair, teams map[string]int, win int) map[int]uint32 {
 	return electZoneOwners(zoneOwnerCandidates(ser, pairs, teams, win))
 }

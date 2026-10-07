@@ -32078,7 +32078,13 @@ components:
         ownerChecked:
           format: int64
           type: integer
+        ownerNamed:
+          format: int64
+          type: integer
         ownerUnpaired:
+          format: int64
+          type: integer
+        ownerVoteDisagreed:
           format: int64
           type: integer
         paired:
@@ -32112,6 +32118,8 @@ components:
         - ownerChecked
         - ownerAgreed
         - ownerUnpaired
+        - ownerNamed
+        - ownerVoteDisagreed
         - spans
         - hillPeriods
         - unknownOwner

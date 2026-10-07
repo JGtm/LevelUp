@@ -32,12 +32,14 @@ package grammar
 //	i2..i33   le variant en mode B (une valeur PAR JOUEUR), dont l'index de joueur se
 //	          reconstitue chez l'appelant — ici — par `ManagedPropertyFilmIndex`.
 //
-// Le composant i0 (`managed-object-property-name-component`, le NOM de la propriete reseau) est
-// MARCHE mais pas recolte : personne ne le consomme — la jointure des zones se fait par le slot,
-// et le tag 5 (cle de nommage) est une valeur du variant comme les autres. Le balayage en a
-// publie un extrait (nom dominant par slot) jusqu'a la revue R1 de la phase 2b, qui l'a retire
-// comme sortie morte : une carte de plus a remplir, un second hook global a poser et restaurer,
-// pour une donnee que rien ne lisait.
+// Le composant i0 (`managed-object-property-name-component`, le NOM de la propriete reseau, un
+// identifiant de chaine R(32)) n'est recolte que par la voie IMAGE-CLE, ou l'etat complet de
+// chaque record le porte : chaque lecture d'image-cle porte le nom du record qui la contient
+// ([ManagedPropertyRead.Name]). Le lecteur du jeu le nomme « propertyName » (`FUN_14080dec4`
+// sous `FUN_140ce55e8`) : c est l identite de la propriete, constante d un film a l autre, et c est
+// par elle que l appelant rattache le canal de propriete d une zone a sa jauge. La voie delta ne
+// le recolte pas : une trame delta n'emet `i0` qu'a la creation de la propriete, soit presque
+// jamais une fois le match lance.
 //
 // # CE QU'IL NE DIT PAS
 //
@@ -104,6 +106,11 @@ type ManagedPropertyRead struct {
 	// chainage plafonne encore a 77 % sur le meilleur film du corpus. Un quart des marches
 	// abouties ne retombe pas sur un en-tete.
 	Chained bool
+	// Name est le NOM de la propriete (`i0`, identifiant de chaine R(32)) lu dans le MEME record
+	// que la valeur, et Named dit qu'il l'a ete. Seules les lectures d'IMAGE-CLE le portent :
+	// l'etat complet d'un record ti=13 ecrit toujours `i0`. Faux pour toute lecture delta.
+	Name  uint32
+	Named bool
 }
 
 // ManagedPropertyScan est ce qu'un balayage rend : les lectures, et de quoi juger.

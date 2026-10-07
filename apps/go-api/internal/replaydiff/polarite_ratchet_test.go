@@ -159,7 +159,7 @@ func TestRatchetPolarite_ComptesParClasse(t *testing.T) {
 	t.Logf("inventaire %d feuilles : echec=%d succes=%d neutre=%d telemetrie=%d inconnue=%d",
 		len(inv), comptes[PolariteEchec], comptes[PolariteSucces], comptes[PolariteNeutre],
 		comptes[PolariteTelemetrie], comptes[PolariteInconnue])
-	attendu := map[Polarite]int{PolariteEchec: 176, PolariteSucces: 171, PolariteNeutre: 159,
+	attendu := map[Polarite]int{PolariteEchec: 177, PolariteSucces: 172, PolariteNeutre: 159,
 		PolariteTelemetrie: 2}
 	for p, n := range attendu {
 		if comptes[p] != n {

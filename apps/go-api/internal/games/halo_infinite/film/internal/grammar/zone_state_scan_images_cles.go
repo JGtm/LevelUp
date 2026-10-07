@@ -11,8 +11,10 @@ package grammar
 //
 // # LE CHEMIN : UN CANAL DE LA PHASE DES IMAGES-CLES (ADR 0037 IR-3, IR-4)
 //
-// Le canal declare son interet pour la valeur SCALAIRE de ti=13 (`i1`, le variant en mode A) dans
-// la phase des images-cles ; la distribution parcourt donc l'etat complet des records de ti=13
+// Le canal declare son interet pour la valeur SCALAIRE de ti=13 (`i1`, le variant en mode A) et
+// pour le NOM de la propriete (`i0`, identifiant de chaine R(32), pose sur chaque lecture du record
+// — [ManagedPropertyRead.Name]) dans la phase des images-cles ; la distribution parcourt donc
+// l'etat complet des records de ti=13
 // sous le cadre que la production lit ([WalkKeyframeFullState]) et range chaque occurrence avec
 // son etendue. Le canal relit la valeur A L ETENDUE de l'occurrence avec le deserialiseur de
 // production, et exige que la relecture finisse exactement ou la marche a pose la fin de
@@ -33,16 +35,19 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
-// canalDesProprietesGerees lit, dans la phase des images-cles, la valeur scalaire de chaque record
-// ti=13 ferme.
+// canalDesProprietesGerees lit, dans la phase des images-cles, la valeur scalaire et le NOM de
+// chaque record ti=13 ferme.
 type canalDesProprietesGerees struct {
 	fc   *FilmContext
 	arch Archetype
 	sc   *ManagedPropertyScan
-	// obs est l'observation de la relecture : son crochet depose la valeur dans `cur`.
-	obs *Observation
-	cur ManagedPropertyRead
-	got bool
+	// obs est l'observation de la relecture : son crochet de variant depose la valeur dans `cur`,
+	// son crochet de sonde le nom de la propriete (`i0`) dans `nom`.
+	obs   *Observation
+	cur   ManagedPropertyRead
+	got   bool
+	nom   uint32
+	nomLu bool
 }
 
 // scanKeyframeManagedProperties joue la phase des images-cles du film pour le canal de ti=13 et
@@ -61,11 +66,20 @@ func scanKeyframeManagedProperties(fc *FilmContext, arch Archetype, sc *ManagedP
 		}
 		c.got = true
 	}
+	c.obs.ProbeHook = func(_ uint32, comp ProbeComponent, values []uint64) {
+		if comp != ProbeManagedObjectPropertyName || len(values) == 0 {
+			return
+		}
+		c.nom, c.nomLu = uint32(values[0]), true //nolint:gosec // R(32) : tient sur 32 bits
+	}
 	distribuerLesImagesClesSeules(fc, []Canal{c})
 }
 
 func (*canalDesProprietesGerees) Interets() []Interet {
-	return []Interet{{Phase: PhaseImagesCles, TI: ManagedPropertyTypeIndex, Composant: compManagedObjectProperty}}
+	return []Interet{
+		{Phase: PhaseImagesCles, TI: ManagedPropertyTypeIndex, Composant: compManagedObjectPropName},
+		{Phase: PhaseImagesCles, TI: ManagedPropertyTypeIndex, Composant: compManagedObjectProperty},
+	}
 }
 
 func (*canalDesProprietesGerees) Clore(BilanDeMarche) {}
@@ -101,10 +115,14 @@ func (c *canalDesProprietesGerees) ImageCle(p *lecture.Paquet, _ *MarcheDistribu
 //
 // UNE LECTURE D'IMAGE-CLE EST CHAINEE PAR CONSTRUCTION : son record finit exactement sur l'ancre
 // du suivant, ce qui est plus que le temoin de chainage d'une lecture delta.
+//
+// LE NOM (`i0`) EST CELUI DU RECORD, et il est pose sur chacune de ses lectures une fois le record
+// relu en entier : un record sans `i0` relu ne nomme aucune de ses lectures.
 func (c *canalDesProprietesGerees) relire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeLecture) (
 	[]ManagedPropertyRead, bool,
 ) {
 	var out []ManagedPropertyRead
+	c.nom, c.nomLu = 0, false
 	for _, oc := range p.Comps[r.Comps[0]:r.Comps[1]] {
 		if oc.Etat != lecture.EtatInterprete {
 			continue
@@ -127,6 +145,9 @@ func (c *canalDesProprietesGerees) relire(p *lecture.Paquet, r *lecture.Record, 
 			c.cur.FilmIndex, c.cur.Chained = ManagedPropertyFilmIndex(idx), true
 			out = append(out, c.cur)
 		}
+	}
+	for k := range out {
+		out[k].Name, out[k].Named = c.nom, c.nomLu
 	}
 	return out, true
 }

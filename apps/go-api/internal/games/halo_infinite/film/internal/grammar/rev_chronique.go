@@ -416,3 +416,19 @@ package grammar
 // n appellent pas ce balayage : leurs revisions restent constantes, leurs empreintes sont
 // regenerees. Le rang : `.5` est pris par le lot 2.7.b de la representation intermediaire,
 // fusionne avant ce lot.
+//
+// ENTREE `grammar-2026-10-07` (2026-10-07, branche `feat/zones-proprietaire`) : LE NOM DE CHAQUE
+// PROPRIETE RESEAU DE ti=13 SE LIT AUX IMAGES-CLES.
+//
+// Ce qui change, contre `grammar-2026-10-06.6` :
+//   - [canalDesProprietesGerees] interprete aussi `i0` (`managed-object-property-name-component`,
+//     identifiant de chaine R(32)) et pose ce nom sur chaque lecture d image-cle du record
+//     ([ManagedPropertyRead.Name], [ManagedPropertyRead.Named]) ;
+//   - les lectures delta (`Reads`), les valeurs des lectures d image-cle et tous les comptes ne
+//     changent pas.
+//
+// Le nom est l identite de la propriete : le rejeu rattache par lui le canal de propriete d une
+// zone a sa jauge, au lieu de l elire par un vote qu un match court ne peut pas passer
+// (`replay/zone_states_owner_nom.go`, `replay.SchemaVersion` 84). Le rang : `grammar-2026-10-06.7`
+// est reserve par un lot parallele non fusionne ; la serie passe au jour suivant pour ne pas
+// laisser de trou sur cette branche.

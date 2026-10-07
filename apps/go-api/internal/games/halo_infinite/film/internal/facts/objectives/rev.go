@@ -127,6 +127,11 @@ package objectives
 // monte a `grammar-2026-10-06.6` (voie image-cle de `grammar.ScanManagedProperties`, ti=13).
 // `grammar/signaux` ne change pas et n appelle pas ce balayage : la lecture des signaux ne change
 // pas. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-07 (branche `feat/zones-proprietaire`, REVISION CONSTANTE) : `grammar.Rev`
+// monte a `grammar-2026-10-07` (nom `i0` des proprietes ti=13 lu aux images-cles).
+// `grammar/signaux` ne change pas et n appelle pas ce balayage : la lecture des signaux ne change
+// pas. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

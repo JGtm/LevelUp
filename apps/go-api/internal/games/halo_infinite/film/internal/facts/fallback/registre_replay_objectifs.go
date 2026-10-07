@@ -176,6 +176,25 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:  "repli_zone_proprietaire_par_vote",
+		Fait: "quel canal `ti=13` porte le PROPRIETAIRE d'une zone dont la jauge est appariee",
+		Mecanisme: "le nom de la jauge n'est pas au vocabulaire des blocs de zone (ou le proprietaire " +
+			"nomme est absent du film) : le canal est ELU par l'accord avec le roster — au moins deux " +
+			"captures concordantes, un canal par zone",
+		// `non_resolu` ET NON `film_muet` : le film porte le nom de chaque propriete, c'est le
+		// VOCABULAIRE qui ne le connait pas (build ou mode dont les noms n'ont pas ete releves).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_owner.go",
+			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireParVote, prop.votees)",
+		}},
+		DatePose:        "2026-10-07",
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_periode_entiere",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",
