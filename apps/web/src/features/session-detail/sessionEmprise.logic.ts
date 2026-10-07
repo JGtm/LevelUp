@@ -19,7 +19,6 @@ import { buildControlRows, buildMatchGrid, buildResourceFil } from '@/features/s
 import { gridHasFilmRows } from '@/features/squad/emprise/empriseContent'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from '@/features/squad/emprise/production.logic'
 import { buildVehicleCoverage, type VehicleCoverage } from '@/features/squad/emprise/vehicles.logic'
-import { buildFragBreakdownRows } from '@/features/squad/charts/squadFragBreakdownChart'
 import { buildSquadToolRows, type SquadToolKindLabels } from '@/features/squad/charts/squadFragTools'
 import { objectiveMatches } from '@/features/squad/formes/model/objectives'
 import {
@@ -164,7 +163,7 @@ export function buildSessionEmpriseModels(
 
 /** Les cartes A à L (et B', D14), une clé chacune. */
 export interface SessionCardsPresence {
-  frag_bar: boolean
+  frag_donut: boolean
   tools: boolean
   weapon_accuracy: boolean
   control: boolean
@@ -210,7 +209,7 @@ export function sessionCardsPresence(col: SessionColumnBlocks, m: SessionEmprise
   const classes = entry?.frag_distribution?.classes ?? []
   const tools = buildSquadToolRows(entry?.weapon_tools, { locale: 'fr', labels: COUNT_ONLY_TOOL_LABELS, top: SESSION_TOOLS_TOP })
   return {
-    frag_bar: buildFragBreakdownRows({ me: classes }, ['me']).length > 0,
+    frag_donut: (entry?.frag_distribution?.total_kills ?? 0) > 0 && classes.some((c) => c.kills > 0),
     tools: tools != null,
     weapon_accuracy: (entry?.weapon_accuracy ?? []).length > 0,
     control: m.controlRows.length > 0,

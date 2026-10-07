@@ -133,3 +133,15 @@ describe('PisteCampsForm — lignes de la Vue match (props optionnelles)', () =>
     expect(screen.getByTestId('sous-la-barre')).toBeInTheDocument()
   })
 })
+
+describe('TrackAxis — les étiquettes restent dans la carte', () => {
+  it('graduations centrées, sauf celle du bout droit, calée à droite (elle mordait sur le cadre)', () => {
+    mount()
+    const labels = Array.from(document.querySelectorAll('[aria-hidden] span.absolute'))
+    const fin = labels.find((l) => l.textContent === T.pctIntFmt(100))
+    const milieu = labels.find((l) => l.textContent === '50')
+    expect(fin?.className).toContain('-translate-x-full')
+    expect(fin?.className).not.toContain('-translate-x-1/2')
+    expect(milieu?.className).toContain('-translate-x-1/2')
+  })
+})

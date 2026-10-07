@@ -41,7 +41,7 @@ import {
   type SessionEmpriseModels,
 } from './sessionEmprise.logic'
 import { SESSION_CARD_TEXT, type SessionCardTexts, type SessionCompactCards } from './sessionEmpriseText'
-import { SessionFragBarCard } from './SessionFragBarCard'
+import { SessionFragDonutCard } from './SessionFragDonutCard'
 import { SessionToolsCard } from './SessionToolsCard'
 
 /** Hauteur de « Précision par arme » (B'), celle des cartes de frags d'avant (`ChartCard`). */
@@ -130,7 +130,9 @@ function cardRenderers(x: CardsContext): Record<keyof SessionCardsPresence, () =
   const { col, m, t, cc, compact, locale } = x
   const entry = col.entry
   return {
-    frag_bar: () => <SessionFragBarCard entry={entry} player={x.player} locale={locale} texts={t} compact={cc?.frag} />,
+    frag_donut: () => (
+      <SessionFragDonutCard entry={entry} title={t.squad.performanceCharts.fragBreakdownTitle} info={t.squad.performanceCharts.fragBreakdownInfo} />
+    ),
     tools: () => <SessionToolsCard tools={entry?.weapon_tools} player={x.player} locale={locale} texts={t} compact={compact} />,
     weapon_accuracy: () => (
       <WeaponAccuracyChart weapons={entry?.weapon_accuracy ?? []} weaponKills={entry?.top_weapon_kills ?? []} height={ACCURACY_HEIGHT} />

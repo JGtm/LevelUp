@@ -230,16 +230,25 @@ export function SessionColumnBody(props: Props) {
   // l'intertitre de sous-groupe s'écrivent dans la rangée de leur PREMIÈRE clé : `rowKeys`
   // étant identique des deux côtés, les deux colonnes les posent à la même rangée. Aucune
   // couverture en petit dans cette vue (maquette).
+  //
+  // LA CARTE S'ÉTIRE DANS CE QUI RESTE SOUS LES TITRES, JAMAIS DANS TOUTE LA RANGÉE. Les cartes
+  // de « Frags et usages » portent `h-full` (paires à hauteur égale en pleine page) : posées
+  // directement sous un titre, leurs 100 % valaient la rangée ENTIÈRE, et la carte débordait
+  // de la hauteur du titre sur la rangée suivante (légendes recouvertes, titres de section
+  // survolés). La rangée est une colonne flexible ; la case du contenu prend le reste
+  // (`flex-1`), et c'est elle que la carte remplit.
   const ouvertures = sessionRowOpenings(rowKeys)
   return (
     <>
       {rowKeys.map((key) => {
         const open = ouvertures.get(key)
         return (
-          <div key={key} data-session-section={key} className="min-w-0 [&>*:only-child]:h-full">
+          <div key={key} data-session-section={key} className="flex min-w-0 flex-col">
             {open?.group && <SectionTitle className="mb-4">{t(SESSION_GROUP_TITLE_KEY[open.group])}</SectionTitle>}
             {open?.subgroup && <SessionSubgroupTitle subgroup={open.subgroup} className="mb-3" />}
-            {key in sections ? sections[key] : <SessionSectionPlaceholder />}
+            <div className="min-h-0 min-w-0 flex-1 [&>*:only-child]:h-full">
+              {key in sections ? sections[key] : <SessionSectionPlaceholder />}
+            </div>
           </div>
         )
       })}

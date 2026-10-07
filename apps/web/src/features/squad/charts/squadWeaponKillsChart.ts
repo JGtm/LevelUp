@@ -67,6 +67,12 @@ export interface SquadWeaponKillsOpts {
   shareTotals?: Record<string, number>
   /** Part sous laquelle la part écrite est masquée (mode `share`) ; défaut 5 %. */
   minLabelShare?: number
+  /**
+   * Graphe d'UN SEUL joueur (page Sessions) : chaque barre à la couleur de la CLASSE de sa ligne
+   * (`fragClassColor`, la couleur de la Répartition des frags) au lieu de l'encre du joueur, et
+   * l'infobulle sans le nom du joueur — redondant quand la page n'en montre qu'un.
+   */
+  soloByClass?: boolean
 }
 
 /** Clé de style riche ECharts d'une classe (alphanumérique + souligné seulement). */
@@ -122,7 +128,10 @@ export function buildSquadWeaponKillsOption(
 
   const series = players.map((player) => {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const values = rows.map((r) => r.killsByPlayer[player] ?? 0)
+    const values = rows.map((r) => {
+      const v = r.killsByPlayer[player] ?? 0
+      return opts.soloByClass && r.cls ? { value: v, itemStyle: { color: fragClassColor(r.cls) } } : v
+    })
     return {
       name: player,
       type: 'bar' as const,
@@ -165,7 +174,8 @@ export function buildSquadWeaponKillsOption(
             const v = p.value as number
             const player = p.seriesName ?? ''
             const pct = Math.round(shareOf(player, v) * 100)
-            return `${p.marker ?? ''}${escapeHtml(player)}: ${valueText(v, pct)}`
+            const who = opts.soloByClass ? '' : `${escapeHtml(player)}: `
+            return `${p.marker ?? ''}${who}${valueText(v, pct)}`
           })
         if (lines.length === 0) return ''
         return `<div style="margin-bottom:4px;font-weight:600">${header}</div>${lines.join('<br/>')}`
