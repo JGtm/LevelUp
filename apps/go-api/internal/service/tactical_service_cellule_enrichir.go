@@ -17,7 +17,6 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"strings"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/tactical"
@@ -156,35 +155,15 @@ func (s *TacticalService) poserModeEtScore(ctx context.Context, mapID string, ou
 	}
 }
 
-// scoreDuMatch rend le score d'un match, MON camp d'abord (camp lu sur `Self.TeamID`), en manches
+// scoreDuMatch rend le score d'un match, MON camp d'abord (analysis.EntreeDeScoreCanonique), en manches
 // sur une variante qui se décide aux manches (analysis.ReadTeamScore, ADR 0032), ou rien quand
 // aucun score n'est connu.
 func scoreDuMatch(r canonical.PlayerMatchRow, roundsDecide map[string]bool) (label, kind string) {
-	var mien, autre *canonical.TeamSnapshot
-	for i := range r.Summary.Teams {
-		switch r.Summary.Teams[i].TeamID {
-		case 0:
-			mien = &r.Summary.Teams[i]
-		case 1:
-			autre = &r.Summary.Teams[i]
-		}
-	}
-	if mien == nil || autre == nil {
+	entree, ok := analysis.EntreeDeScoreCanonique(r, roundsDecide)
+	if !ok {
 		return "", ""
 	}
-	if r.Self.TeamID != nil && *r.Self.TeamID == 1 {
-		mien, autre = autre, mien
-	}
-	variante := ""
-	if r.Summary.GameVariant != nil {
-		variante = strings.TrimSpace(r.Summary.GameVariant.DefaultLabel)
-	}
-	d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
-		MyPoints: mien.Score, EnemyPoints: autre.Score,
-		MyRoundsWon: mien.RoundsWon, EnemyRoundsWon: autre.RoundsWon,
-		RoundsTotal:  r.Summary.RoundsTotal,
-		RoundsDecide: roundsDecide[variante],
-	})
+	d, ok := analysis.ReadTeamScore(entree)
 	if !ok {
 		return "", ""
 	}

@@ -352,14 +352,13 @@ type TimeseriesPageResponse struct {
 	// LivesNearTeammate : « Mes vies : près d'un coéquipier ou seul » (timeseries_lives.go). Nil sans
 	// `film.kill_positions`, sur lecture en échec ou sans aucune vie du joueur sur la fenêtre.
 	LivesNearTeammate *TimeseriesLivesNearTeammate `json:"lives_near_teammate,omitempty"`
-	// Coordination : le bloc « Riposte » et « Appui reçu » DANS LE TEMPS (lot N1,
-	// décisions D22) — les mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE
-	// (`sessions`), sur le MÊME scope filtré que le reste de la page.
+	// Coordination : le bloc « Appui reçu » DANS LE TEMPS (lot N1, décisions D22) — les
+	// mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE (`sessions`), sur le MÊME
+	// scope filtré que le reste de la page.
 	//
-	// LA SOIRÉE, PAS LE MATCH : le dénominateur de « je suis couvert », ce sont mes morts
-	// (8 à 14 par match en arène) — une part sur 9 morts bouge de 11 points quand une
-	// seule mort change de côté, et la frise par match dessinerait le bruit. C'est déjà la
-	// maille de la frise d'échange de l'Escouade.
+	// LA SOIRÉE, PAS LE MATCH : à l'échelle d'un match, les dénominateurs des parts d'appui
+	// (frags du joueur, assistances de l'équipe) comptent quelques unités — une part bouge de
+	// plusieurs points pour un seul événement, et la frise par match dessinerait le bruit.
 	//
 	// MÊME producteur que la page Sessions (service/coordination_block.go), même contrat
 	// de dégradation : nil sans match, Available=false avec raison machine sinon.

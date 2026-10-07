@@ -1,6 +1,8 @@
 /**
- * calloutsLayer.ts — les ZONES NOMMÉES (« callouts ») de la carte : normalisation,
- * affectation 3D (zoneAt) et calque canvas. Portage du POC (artefact eb7b8af2,
+ * calloutsPaint.ts — les ZONES NOMMÉES (« callouts ») de la carte : normalisation,
+ * affectation 3D (zoneAt) et peintre canvas. PARTAGÉ (comme heatPaint.ts) par le rejeu 2D et par
+ * le plan de l'onglet Tactique : un seul peintre, donc un seul aspect (garde-rail
+ * calloutsPaint.guard.test.ts). Chaque appelant fournit sa projection monde → toile. Portage du POC (artefact eb7b8af2,
  * l.1033-1094 et l.780-789), qui est LA spec de rendu — pas une réinvention.
  *
  * CE QUE LE POC A ÉTABLI, et qui se retrouve ici tel quel :
@@ -18,10 +20,12 @@
  *   se confondent en 2D.
  */
 import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
-import type { ReplayLocale } from '../i18n/i18n'
-import { type XY } from '../../../lib/replay/replayLogic'
-import { type CanvasView, projectTo } from '../model/replayView'
+import { type XY } from './replayLogic'
+
+/** Projection d'un point MONDE dans la toile de l'appelant (cadrage du rejeu, repère du plan). */
+export type ProjectionMonde = (p: XY) => XY
 
 /** Une zone prête à dessiner : nullabilité du transport résolue, ancre de libellé posée. */
 export interface CalloutZoneReady {
@@ -49,8 +53,13 @@ export interface CalloutZoneReady {
  * seul le DESSIN exige un contour.
  */
 export function normalizeCallouts(entry: ReplayMapCallouts | null | undefined): CalloutZoneReady[] {
-  if (!entry?.zones) return []
-  return entry.zones.map((z) => {
+  return normalizeCalloutZones(entry?.zones)
+}
+
+/** normalizeCalloutZones : la même normalisation, sur une liste de zones (lecture du plan). */
+export function normalizeCalloutZones(zones: readonly ReplayCalloutZone[] | null | undefined): CalloutZoneReady[] {
+  if (!zones) return []
+  return zones.map((z) => {
     const polygon = ring(z.polygon)
     const anchor = polygon.length >= 3 ? centroid(polygon) : { x: z.x, y: z.y }
     return {
@@ -120,7 +129,7 @@ export function zoneAt(zones: CalloutZoneReady[], x: number, y: number, z: numbe
 }
 
 /** calloutLabel rend le libellé officiel dans la langue de l'interface. */
-export function calloutLabel(zone: CalloutZoneReady, locale: ReplayLocale): string {
+export function calloutLabel(zone: CalloutZoneReady, locale: Locale): string {
   return locale === 'fr' ? zone.fr : zone.en
 }
 
@@ -130,7 +139,7 @@ export interface CalloutsStyle {
   bigColors: string[]
   /** Encre neutre unique des zones fines (elles ne se concurrencent pas). */
   fineInk: string
-  locale: ReplayLocale
+  locale: Locale
 }
 
 // Réglages du POC, repris tels quels (ils y ont été réglés à l'écran).
@@ -159,17 +168,29 @@ const LABEL_OUTLINE_WIDTH = 1.9
 
 /**
  * drawCalloutsLayer peint les zones nommées : fines d'abord (dessous), grandes ensuite,
- * libellés en dernier. Calque STATIQUE — l'appelant le cuit hors écran et le recopie,
+ * libellés en dernier. Calque STATIQUE du rejeu — l'appelant le cuit hors écran et le recopie,
  * comme le sol.
  */
 export function drawCalloutsLayer(
   ctx: CanvasRenderingContext2D,
-  zones: CalloutZoneReady[],
-  view: CanvasView,
+  zones: readonly CalloutZoneReady[],
+  px: ProjectionMonde,
   style: CalloutsStyle,
 ): void {
-  const px = (p: XY) => projectTo(view, p)
+  drawCalloutsShapes(ctx, zones, px, style)
+  drawCalloutsLabels(ctx, zones, px, style.locale)
+}
 
+/**
+ * drawCalloutsShapes peint les FORMES des zones, sans libellé : le plan de l'onglet Tactique les
+ * pose SOUS son calque de chaleur et écrit les noms au-dessus (drawCalloutsLabels).
+ */
+export function drawCalloutsShapes(
+  ctx: CanvasRenderingContext2D,
+  zones: readonly CalloutZoneReady[],
+  px: ProjectionMonde,
+  style: CalloutsStyle,
+): void {
   // Les zones FINES, sous les grandes : contour pointillé, teinte neutre, aplat quasi nul.
   for (const c of zones) {
     if (c.big || c.polygon.length < 3) continue
@@ -206,11 +227,9 @@ export function drawCalloutsLayer(
     ctx.stroke()
   }
   ctx.globalAlpha = 1
-
-  drawLabels(ctx, zones, px, style)
 }
 
-function tracePoly(ctx: CanvasRenderingContext2D, pts: XY[], px: (p: XY) => XY): void {
+function tracePoly(ctx: CanvasRenderingContext2D, pts: XY[], px: ProjectionMonde): void {
   pts.forEach((p, k) => {
     const c = px(p)
     if (k === 0) ctx.moveTo(c.x, c.y)
@@ -220,16 +239,16 @@ function tracePoly(ctx: CanvasRenderingContext2D, pts: XY[], px: (p: XY) => XY):
 }
 
 /**
- * drawLabels écrit chaque nom UNE fois, sur la zone dessinée la plus haute qui le porte
+ * drawCalloutsLabels écrit chaque nom UNE fois, sur la zone dessinée la plus haute qui le porte
  * (tri z décroissant, règle du POC — sans dédoublonnage, « Tuyaux » s'écrirait quatre
  * fois). Seules les zones AVEC contour reçoivent un libellé : les volumes secondaires
  * servent zoneAt, pas l'affichage.
  */
-function drawLabels(
+export function drawCalloutsLabels(
   ctx: CanvasRenderingContext2D,
-  zones: CalloutZoneReady[],
-  px: (p: XY) => XY,
-  style: CalloutsStyle,
+  zones: readonly CalloutZoneReady[],
+  px: ProjectionMonde,
+  locale: Locale,
 ): void {
   const written = new Set<string>()
   ctx.font = LABEL_FONT
@@ -249,7 +268,7 @@ function drawLabels(
   const drawn = zones.filter((c) => c.polygon.length >= 3)
   drawn.sort((p, q) => q.z - p.z)
   for (const c of drawn) {
-    const label = calloutLabel(c, style.locale)
+    const label = calloutLabel(c, locale)
     if (!label || written.has(label)) continue
     written.add(label)
     const at = px({ x: c.labelX, y: c.labelY })

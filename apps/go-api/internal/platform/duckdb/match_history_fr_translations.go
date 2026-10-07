@@ -38,7 +38,7 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 	langs := PreferredLangsForLocale("fr")
 	langsEN := PreferredLangsForLocale("en")
 
-	mapNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
+	mapNames := traductionsDeCartes(ctx, pdb.Metadata, mapIDs)
 	pairNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "pair", pairIDs, langs)
 	playlistNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", playlistIDs, langs)
 	// game_variant : source de MODE pour les titres sans pair_name (Halo 5). Résolu en
@@ -107,16 +107,14 @@ func applyMatchHistoryGameVariant(row *domain.MatchHistoryRawRow, variantNamesFR
 	}
 }
 
-// applyMatchHistoryMapFR enrichit MapNameFR si COALESCE SQL a renvoyé l'EN.
+// applyMatchHistoryMapFR pose le libellé canonique de la carte (libelleDeCarte, map_labels.go) :
+// c'est lui que l'Explorateur affiche, propose dans son filtre et compare à `?maps=`.
 func applyMatchHistoryMapFR(row *domain.MatchHistoryRawRow, mapNames map[string]string) {
 	if row.MapID == nil {
 		return
 	}
-	if !needsHomeAssetTranslation(derefString(row.MapNameFR), derefString(row.MapName)) {
-		return
-	}
-	if name := strings.TrimSpace(mapNames[*row.MapID]); name != "" {
-		row.MapNameFR = &name
+	if libelle := libelleDeCarte(derefString(row.MapNameFR), derefString(row.MapName), mapNames[*row.MapID]); libelle != "" {
+		row.MapNameFR = &libelle
 	}
 }
 

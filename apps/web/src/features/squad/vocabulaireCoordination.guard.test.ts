@@ -1,18 +1,23 @@
 /**
- * GARDE-RAIL — le vocabulaire de la Coordination (D19, 2026-09-21).
+ * GARDE-RAIL — le vocabulaire de la section « Appui et portée » de l'Escouade.
  *
- * La section disait la MÊME mesure sous quatre mots : « échange » (Go et carte par
- * session), « vengeance » (délai, matrice en infobulle, nuage), « riposte » (distribution)
- * et « assistance croisée » (deux titres). Le lecteur croyait lire quatre mesures et en
- * lisait une. L'utilisateur a tranché : « riposte » pour la mort vengée, « appui » pour
- * l'assistance entre coéquipiers.
+ * L'assistance entre coéquipiers se dit « appui ». La mort reprise par un coéquipier sur son
+ * tueur (« riposte », « vengeance », « échange » ; en anglais « payback », « trade »,
+ * « retaliation », « avenged ») n'est plus une notion de l'Escouade (décision de l'utilisateur
+ * du 2026-10-05) : aucune chaîne ne la nomme, sous aucun de ses noms ni de ses formes.
  *
- * UNE FACTORISATION SANS GARDE-RAIL RE-DIVERGE (CLAUDE.md n°6) : ce test interdit le retour
- * des mots bannis dans les chaînes UI FR de `features/squad` et du manifest `squad.toml`.
+ * Ce test interdit les formules bannies dans les chaînes UI de `features/squad` (lignes de
+ * chaînes des sources, FR et EN confondus) et dans les chaînes du manifeste `squad.toml`
+ * (lignes `fr =` pour les motifs français, lignes `en =` pour les motifs anglais).
+ *
+ * « ÉCHANGE » EST BANNI EN MOT ENTIER : aucune chaîne de l'Escouade ne l'emploie dans un
+ * autre sens (relevé du 2026-10-07). Un usage légitime à venir (« échange de position »…)
+ * resserrera le motif sur les formules de la notion (« taux d'échange », « échanges de
+ * frags »), pas l'inverse.
  *
  * CE QU'IL NE GARDE PAS, et c'est délibéré : la statistique de jeu « assistances » (assists
- * du KDA, médailles, compteurs). C'est le chiffre officiel du jeu, pas la notion — seules
- * les formules qui DÉSIGNENT LA NOTION sont bannies.
+ * du KDA, médailles, compteurs) et les noms d'armes (« MA5K Avenger » : `avenge` n'est banni
+ * que comme mot entier). Seules les formules qui DÉSIGNENT LA NOTION sont bannies.
  */
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -22,12 +27,21 @@ import { describe, expect, it } from 'vitest'
 const RACINE_SQUAD = join(process.cwd(), 'src', 'features', 'squad')
 const MANIFEST = join(process.cwd(), 'src', 'lib', 'i18n', 'manifests', 'squad.toml')
 
-/** Les formules bannies — chacune désigne la NOTION, jamais la statistique du jeu. */
-const BANNIS: { motif: RegExp; remplacement: string }[] = [
-  { motif: /vengeances?\b/i, remplacement: 'riposte' },
-  { motif: /\bvenger\b/i, remplacement: 'riposter' },
-  { motif: /taux d[’']échange/i, remplacement: 'taux de riposte' },
-  { motif: /assistances crois[ée]es/i, remplacement: 'appui' },
+/** Bornes de mot Unicode : « vengé » ou « échanges » ne se coupent pas sur un accent. */
+const AVANT = '(?<![\\p{L}\\p{N}])'
+const APRES = '(?![\\p{L}\\p{N}])'
+const mot = (corps: string) => new RegExp(`${AVANT}(?:${corps})${APRES}`, 'iu')
+
+/** Les formules bannies — chacune désigne une NOTION, jamais la statistique du jeu. */
+const NOTION_RETIREE = 'rien : notion retirée de l’Escouade'
+const BANNIS: { motif: RegExp; langue: 'fr' | 'en'; remplacement: string }[] = [
+  { motif: /ripost/i, langue: 'fr', remplacement: NOTION_RETIREE },
+  // venger, vengé(e)(s), vengeance(s), vengeur(s) : toute forme du verbe et de ses dérivés.
+  { motif: new RegExp(`${AVANT}veng\\p{L}*`, 'iu'), langue: 'fr', remplacement: NOTION_RETIREE },
+  { motif: mot('[ée]changes?'), langue: 'fr', remplacement: NOTION_RETIREE },
+  { motif: /assistances crois[ée]es/i, langue: 'fr', remplacement: 'appui' },
+  { motif: /ripost/i, langue: 'en', remplacement: NOTION_RETIREE },
+  { motif: mot('paybacks?|retaliat\\p{L}*|trades?|traded|trading|avenge[ds]?|revenge'), langue: 'en', remplacement: NOTION_RETIREE },
 ]
 
 /** Fichiers sources de `features/squad`, tests et fixtures exclus. */
@@ -58,14 +72,14 @@ function lignesDeChaines(source: string): string[] {
     .filter((l) => /['"`]/.test(l))
 }
 
-describe('vocabulaire de la Coordination — « riposte » et « appui »', () => {
+describe('vocabulaire de la section « Appui et portée »', () => {
   const fichiers = sourcesSquad(RACINE_SQUAD)
 
   it('balaye une arborescence NON VIDE (sentinelle : un garde qui ne lit rien ne garde rien)', () => {
     expect(fichiers.length).toBeGreaterThan(30)
   })
 
-  for (const { motif, remplacement } of BANNIS) {
+  for (const { motif, langue, remplacement } of BANNIS) {
     it(`bannit ${motif} des chaînes de features/squad (dire : « ${remplacement} »)`, () => {
       const fautifs: string[] = []
       for (const f of fichiers) {
@@ -76,10 +90,10 @@ describe('vocabulaire de la Coordination — « riposte » et « appui »', () =
       expect(fautifs, `dire « ${remplacement} » — ${fautifs.join(' ; ')}`).toEqual([])
     })
 
-    it(`bannit ${motif} des chaînes FR de squad.toml (dire : « ${remplacement} »)`, () => {
+    it(`bannit ${motif} des chaînes ${langue.toUpperCase()} de squad.toml (dire : « ${remplacement} »)`, () => {
       const fautifs = readFileSync(MANIFEST, 'utf8')
         .split(/\r?\n/)
-        .filter((l) => l.startsWith('fr = ') && motif.test(l))
+        .filter((l) => l.startsWith(`${langue} = `) && motif.test(l))
       expect(fautifs, `dire « ${remplacement} » — ${fautifs.join(' ; ')}`).toEqual([])
     })
   }

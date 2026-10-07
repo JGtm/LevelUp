@@ -116597,6 +116597,15 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : CI de la branche, fusion par le superviseur, puis recuisson du parc (verdict `redecoder` partout).
 
+## [2026-10-07] Tactique v2 — lot L13 « clôture finale » (F1 à F7) — Complété (commits sur `feat/tactique-v2`, poussés)
+
+**Statut** : Complété (worktree `LevelUp-wt-tactique`, branche `feat/tactique-v2` ; base `feat/v75` `879f31bbf`, fusion déjà à jour au début du lot).
+
+**Décision technique principale** : périmètre fermé décidé par l'utilisateur après son gate visuel. F1 `713c74dab` + `074c66136` : une seule règle du libellé de carte (`platform/duckdb/map_labels.go`, `libelleDeCarte` / `traductionsDeCartes`) lue par l'historique de l'Explorateur (et donc ses options de filtre), la grille de l'onglet et le score d'engagement ; `GetAvailableMaps` mort retiré (baseline documentée) ; garde-rail archlint à trois empreintes, 21 résolutions d'autres surfaces gelées et datées ; icône-lien de chaque vignette vers `/explorer?maps=<libellé servi>` (D16 enfin posé, L10.2 couvert). F2 `7e6c33d65` : « Cartes jouées » à la hauteur de la carte du plan au-delà de 1 400 px, constante de 551 px retirée. F3 `b768733aa` : garde-rail de portée sur les trois formes de la ronde 2. F4 `9e68d14a7` : `cacheParChemin[T]`, bornes des cartes décodées une fois par processus. F6 `ffcef4d28` : `lib/text/sansAccents.ts` (quatre copies migrées, garde-rail `.normalize('NFD')`) et `analysis.CampsDuMatch` (accueil, Sessions, détail de zone ; garde-rail archlint). F7 `1a1bb636c` : champ additif `zones` du raster sous `film.replay_artifact` ; calque de zones du rejeu DÉPLACÉ en `lib/replay/calloutsPaint.ts` (projection fournie par l'appelant, formes et noms séparés), lu par le rejeu et par le plan (`planPaint.ts` : contours sous la chaleur, noms au-dessus, encre `text-foreground`), vignettes sans zones, garde-rail « un seul peintre ».
+
+**Résultats observés** : mutations rouges sur chaque point ; une seule verte, le repli du registre sous agrégat (`COALESCE(MAX(map_name_fr), MAX(map_name))`) que l'empreinte 3 de F1 ne lisait pas : garde-rail complété (`074c66136`), rejouée rouge. Gates : Go 349 paquets (196 ok, 153 sans test, 0 échec), intégration duckdb verte (paquet racine rejoué seul avec `-timeout 1800s` après un dépassement du délai par défaut sous charge, 394 s), archlint et gardes nommées PASS, golangci 0 ; contrat en ajout seul, fraîcheur OK ; web tsc 0, lint 0 erreur (26 avertissements de base), vitest 869 fichiers / 9 204 tests, knip 0, couleurs 0, champs 0, imports croisés 7 ≤ 7, pre-push vert.
+
+**Conclusion / prochaine étape** : lot clos, plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md` statué (journal L13). Push de la branche et CI en avant-plan ; verdict au compte rendu du superviseur. Fusion dans `feat/v75` : geste du superviseur.
 ## [2026-10-07] Rejeu, Bases : le propriétaire de chaque zone se lit par le NOM de sa jauge — Complété (branche `feat/zones-proprietaire`)
 
 **Statut** : Complété. Recuisson du parc NON faite (geste du superviseur, sur accord de l'utilisateur).
@@ -116681,3 +116690,62 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : relevé des noms sur les 9 KOTH locaux (01e1f945, 21ece4d8, 26602661, 606d9844, 7f1bbf06, 8076f97f, a36c8bed, f75e7053, 0a247154) : l'objet de mode est le bloc 0 (clé = désignateur, propriétaire = désignateur + 1) partout. `replay-corpus-gate --reference=parc` : 9 Bases, pousseur nommé sur 27 zones, `capturerElectionDisagreed` 0, déductions 2 → 0 (114b0040 : 5 rampes avortées de la base B reçoivent leur camp) et 7 → 0 (e60aaf06 : 1 rampe avortée reçoit son camp), aucune autre rampe ni aucun autre calque ne bouge sur les 7 autres films ; 8 KOTH : `ownerNamed` 1, `ownerVoteDisagreed` 0, `zoneStates` identiques, reste du document identique (écart `pickups` de 26602661 et f75e7053 = surcouche `map_weapon_pads.json` absente de la racine du gate, hors lot). Témoins `ZONE_FILM` : 114b0040 (3 pousseurs nommés, plus aucune déduction), 572e236b, et `TestCollineProprietaireNomTemoin` sur 01e1f945, 606d9844, 8076f97f, 0a247154 (calque identique avec et sans noms). `replay-equiv` sur les 20 films : seule l'étape `artifact` bouge ; références re-figées. Suite Go (un rouge d'environnement : OOM DuckDB sur `TestUpsertItemDefinition_HashChanges_InvalidatesOldEntry`, vert rejoué seul), vet, golangci-lint, tsc, vitest (match-replay, api) verts.
 
 **Conclusion / prochaine étape** : au superviseur — fusion, CI, republication (verdict `republier`, aucun décodage). Découvertes hors périmètre : `hillDesignatorOf` élit encore le désignateur avec la condition « slot + 1 parle » et `hillFirstContact` date le premier contact par les slots +1 à +3, tous deux lisibles par le nom ; la branche part de `475e156c2`, `origin/feat/v75` est à `fad38a03c`.
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E1 : web Synergies — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E1 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la section de coordination de l'onglet Synergies devient « Appui et portée » (« Support and range »), deux rangées : « Appui », puis « Rôles de portée » seule ; titre et aide dans le jeu de l'Appui (`squad/i18n.ts`). Supprimés : les douze fichiers de la riposte (cartes, matrice, frise, logique, fixtures, libellés et leurs tests), la grandeur « hauteur » du nuage de portée (prop, type, branche, préfixe de libellés, option d'étiquette de bout), les blocs de manifeste `squad.riposte.*` (42 clés) et `squad.hauteur.*` (19 clés), les alias `SquadEchange*` et le champ `echange` du type de page. La riposte était aussi le dernier lecteur de quatre options de `HistogramChart` et de `DonutChart.arcLabelKind` : retirées avec leurs tests (D7 ; `yAxisLabel` et `formatBin`, API de base du catalogue des graphes, restent). La garde du vocabulaire de la coordination bannit désormais la notion retirée sous tous ses noms.
+
+**Résultats observés** : tsc purgé 0, ESLint 0 erreur (26 avertissements, la base), champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest des zones touchées 317 fichiers / 3 021 tests verts, knip 0 / 0 / 0.
+
+**Conclusion / prochaine étape** : E2 (Go et contrat : bloc `echange`, `coordination.Echanges` / `Ripostes`, dénivelé du profil de portée).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E2 : Go et contrat — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E2 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : le bloc `echange` de la page Escouade sort de bout en bout (type de domaine, producteur et ses tests, câblage du service et du registre, champ du contrat) ; avec lui partent `coordination.Echanges`, `coordination.Ripostes` et leurs types (`MortSuivie`, `PaireEchange`, `BilanEchanges`). `coordination.Mesurer` reste : l'appui et l'isolement le lisent. Le dénivelé du profil de portée (trois champs, son calcul) sort aussi ; `MeasuredKill.DeltaZ` reste, lu par la portée par arme. Découverte (plan §8.5, à trancher) : `TacticalKillEvents.Events` n'a plus de lecteur — le bloc de coordination de Sessions et des Séries temporelles ne lit que l'univers ; le recâblage sur `Univers` et le retrait de la requête des événements touchent une autre page et un garde-rail de l'ADR 0036, laissés à un lot dédié.
+
+**Résultats observés** : contrat −147 lignes (openapi) / −56 (types générés), cinq schémas `SquadEchange*` retirés du snapshot de surface ; 38 fonctions de test supprimées, aucune dans la baseline de présence. Build des paquets internes, vet, tests des paquets touchés (dont `service`, `api/...`, `archlint`), golangci-lint 0 issue, `openapi-check` à jour, tsc et vitest web verts.
+
+**Conclusion / prochaine étape** : E3 (garde des textes étendue au jeu de l'Escouade, vue rouge, puis reformulation FR / EN).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E3 : textes sans personne et garde étendue — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E3 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la garde `textesSansPersonne.test.ts` lit désormais le jeu entier de la page Escouade (`squad/i18n.ts`, libellés de focus et de portée) et le manifeste `squad.toml` en entier ; la liste FR refuse aussi « reviens » et « vérifie ». Reformulés, FR et EN : invite de sélection, aide de la composition stricte, ligne d'un match écarté (« dans l'équipe »), état vide, aide du score à manches (« l'équipe qui a perdu »), aides Rendement et Résistance (reprises de la Vue match : la mesure, sans phrase de lecture), titre « Statistiques de la session », trois messages vides de Sessions et un des Séries temporelles (« Vérifie… » devenu une parenthèse factuelle), message « Match pas encore synchronisé » de la Vue match.
+
+**Résultats observés** : garde ROUGE avant (9 tests sur 34, 34 entrées, 19 chaînes sources distinctes), VERTE après ; sept mutations rouges, faux positifs contrôlés. tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des zones touchées 3 858 tests verts.
+
+**Conclusion / prochaine étape** : E4 (CHANGELOG et notes de version, registre, statut du handoff, gate de clôture).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E4 : clôture — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E4 ; plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md` clos côté exécutant).
+
+**Décision technique principale** : documents alignés sur le code — CHANGELOG EN / FR (résumé de tête, « Coordination : l'Appui », « La portée face au lobby », entrée du lot, « Page Escouade ») et notes de version EN / FR (contenu seulement, le registre « tu » est gardé) ; registre des reports : les deux lignes du lot Vue match closes, trois découvertes reportées (événements du journal des morts sans lecteur, impératif « Choisis » hors liste, clés `squad.header.*` sans lecteur) ; handoff marqué exécuté.
+
+**Résultats observés** : suite Go `./internal/...` 173 paquets verts en trois lots, vet 0, `make go-api-lint` 0 issue, `openapi-check` à jour ; web tsc forcé 0, ESLint 0 erreur, champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest complet 9 096 tests verts, knip 0. Le script de baseline n'est pas lancé en local (il relance tout le module) ; la présence est prouvée par différence.
+
+**Conclusion / prochaine étape** : au superviseur — push de `feat/escouade-synergies-textes`, CI, revue adversariale, décision sur la découverte §8.5, fusion dans `feat/v75`.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E5 : constats de la revue adversariale (ronde 1) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E5 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : revue de la ronde 1 — 4 constats recevables, 4 corrigés, 1 consigné hors diff, 21 conditions tenues. C1 : en-têtes du sélecteur « Mes escouades » / « Mes groupes » devenus « Escouades enregistrées » / « Groupes » (EN « Saved squads » / « Groups »), garde des textes étendue au sélecteur et aux deux jeux des cartes d'objectif, inventaire des jeux de `features/squad/` au plan. C2 : options de graphes partagés dont la riposte était le dernier lecteur retirées (`frameless` du donut et de l'histogramme ; `dimmed`, `stack`, `volumeAxis` de la frise des soirées). C3 : garde du vocabulaire étendue à toutes les formes de « venger », à « échange(s) » et aux lignes anglaises du manifeste. C4 : commentaires Go réécrits au présent avec leurs lecteurs réels. Consigné (plan §8.8, registre) : la carte de la frise ne transmet ni `baseline` ni `hollowLegend`, préexistant.
+
+**Résultats observés** : mutations rouges sur chaque jeu ajouté et chaque nouveau motif, « MA5K Avenger » vert ; Go vet 0 et tests de `domain`, `games`, `service/teammates`, `analysis/coordination` ok ; web tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des dossiers touchés 3 381 tests verts, knip 0.
+
+**Conclusion / prochaine étape** : ronde 2 de revue au superviseur.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E6 : constats de la revue adversariale (ronde 2) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E6 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`) ; revue adversariale close sur deux rondes.
+
+**Décision technique principale** : ronde 2 — C1 à C3 validés, 24 conditions tenues, 2 constats P2 de commentaires corrigés, commentaires seulement : la documentation de `ListeBlancheMatchs` (`domain/tactical.go`) nomme les appelants réels, qui posent tous une liste ; l'en-tête et la requête du journal des morts (`platform/duckdb/tactical_repo.go`) ne présentent plus l'échange comme une lecture vivante ; `soireesDesRows` (`service/timeseries_service_sections.go`) ne cite plus la frise d'échange de l'Escouade. La lecture sans liste, qui n'a plus d'appelant de production, est écrite comme telle et ajoutée à la découverte §8.5 et au registre, sans suppression (hors lot).
+
+**Résultats observés** : `gofmt -l` muet, `go vet` 0 et tests de `internal/domain`, `internal/platform/duckdb` (sans tag integration) et `internal/service` ok, un paquet à la fois.
+
+**Conclusion / prochaine étape** : au superviseur — push, CI, fusion dans `feat/v75`.

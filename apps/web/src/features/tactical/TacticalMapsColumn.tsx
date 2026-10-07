@@ -3,8 +3,9 @@
  *
  * Un champ de recherche en tête (au fil de la frappe, sans casse ni accents, sur le nom affiché
  * et le nom canonique), la liste des cartes OUVRABLES de la plus jouée à la moins jouée — rangée
- * défilante au-dessus du plan sous 1 400 px de large, colonne de hauteur FIXE à défilement
- * interne au-delà — puis le repli des cartes sous le plancher. La logique vit dans
+ * défilante au-dessus du plan sous 1 400 px de large ; au-delà, colonne À LA HAUTEUR DE LA CARTE DU
+ * PLAN, comme « Zone sélectionnée » (étirée sur la rangée, `contain: size` pour ne pas la peser),
+ * à défilement interne — puis le repli des cartes sous le plancher. La logique vit dans
  * `cockpit.logic` (`colonneDesCartes`) ; ce composant rend ce qu'elle décide.
  *
  * `etat` remplace le corps de la colonne quand la page n'a pas de cartes à montrer (composition
@@ -53,7 +54,7 @@ export function TacticalMapsColumn({
   const colonne = useMemo(() => colonneDesCartes(cartes, recherche, locale), [cartes, recherche, locale])
 
   return (
-    <div className="min-w-0 min-[1400px]:h-[var(--tac-cartes-h)]" data-testid="tactical-maps-column">
+    <div className="min-w-0 min-[1400px]:self-stretch min-[1400px]:[contain:size]" data-testid="tactical-maps-column">
       <SectionCard title={t.mapsTitle} label={t.mapsTitle} className="h-full">
         {etat ?? (
           <>

@@ -9,6 +9,7 @@ import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/ty
 
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
+import type { ProjectionMonde } from '@/lib/replay/calloutsPaint'
 import { buildTacticalGrid, type MapFrame, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
@@ -322,6 +323,18 @@ export function vueDuPlan(
   const largeur = repere.maxX - repere.minX
   if (!(largeur > 0) || !(canvasWidth > 0)) return null
   return { topLeftWorld: { x: 0, y: 0 }, scale: canvasWidth / largeur }
+}
+
+/**
+ * projectionDuPlan — la projection d'un point MONDE dans le canvas du plan, à la même échelle que
+ * la chaleur (`vueDuPlan`) : coin haut-gauche du canvas = (minX, maxY) du repère, Y inversé. C'est
+ * celle que reçoit le peintre des zones nommées (`lib/replay/calloutsPaint.ts`), pour que leurs
+ * contours tombent sur le fond et sous les cellules qu'elles bordent.
+ */
+export function projectionDuPlan(repere: RepereTactique, canvasWidth: number): ProjectionMonde | null {
+  const vue = vueDuPlan(repere, canvasWidth)
+  if (!vue) return null
+  return (p) => ({ x: (p.x - repere.minX) * vue.scale, y: (repere.maxY - p.y) * vue.scale })
 }
 
 /**

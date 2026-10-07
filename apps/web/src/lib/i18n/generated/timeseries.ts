@@ -43,7 +43,7 @@ export const timeseriesManifest = {
   "timeseries.distributions.team_mmr_fallback": { fr: "MMR équipe", en: "Team MMR" },
   "timeseries.empty.no_data": { fr: "Données insuffisantes", en: "Insufficient data" },
   "timeseries.empty.no_data_description": { fr: "Aucun point disponible pour cette période.", en: "No point available for this period." },
-  "timeseries.empty.page_description": { fr: "Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API.", en: "Backend returned no payload for this page. Check filters, local data or API request." },
+  "timeseries.empty.page_description": { fr: "Le serveur n'a renvoyé aucune donnée pour cette page (filtres, données locales ou requête API).", en: "The server returned no data for this page (filters, local data or API request)." },
   "timeseries.empty.page_title": { fr: "Séries temporelles indisponibles", en: "Timeseries unavailable" },
   "timeseries.errors.load_failed": { fr: "Erreur lors du chargement des séries", en: "Failed to load timeseries" },
   "timeseries.errors.retry": { fr: "Réessayer", en: "Retry" },

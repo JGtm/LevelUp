@@ -383,7 +383,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     pagePartialLoad: 'Ce match n\'a pas pu être chargé en totalité.',
     notSyncedTitle: 'Match pas encore synchronisé',
     notSyncedDescription:
-      "Ce match n'est pas encore présent dans la base locale. S'il vient d'être joué, il apparaîtra ici après la prochaine synchronisation — reviens dans quelques minutes. Vérifie aussi que le lien du match est correct.",
+      "Ce match n'est pas encore dans la base locale. Un match qui vient d'être joué apparaît après la prochaine synchronisation, dans quelques minutes ; s'il n'apparaît pas, le lien du match est peut-être erroné ou la synchronisation du joueur inactive.",
     navMatches: 'Matchs',
     noRank: 'Pas de rang',
     exitContext: 'Sortir du contexte',
@@ -716,7 +716,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     pagePartialLoad: 'This match could not be fully loaded.',
     notSyncedTitle: 'Match not synced yet',
     notSyncedDescription:
-      "This match isn't in the local database yet. If it was just played, it will show up here after the next sync — check back in a few minutes. Also double-check that the match link is correct.",
+      "This match isn't in the local database yet. A match that was just played shows up after the next sync, within a few minutes; if it doesn't, the match link may be wrong or the player's sync inactive.",
     navMatches: 'Matches',
     noRank: 'No rank',
     exitContext: 'Exit context',

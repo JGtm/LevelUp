@@ -29,8 +29,8 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Net flag grabs** — juggling folded into a 1.5-second window, so picking your own flag back up twice in a second counts once
 - **Assault** — bomb plants, defuses, carriers killed and the rest of the mode's statistics
 - **Rounds are counted as rounds** — on modes decided by rounds, the score shown is the number of rounds won and lost; the API's point score is kept alongside because on those modes it can hand the advantage to the side that lost
-- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? Read on the Squad, one rule, and support counts the assists between teammates, on the Sessions and over time on the Timeseries
-- **Range and height against your lobby** — your kill range and the height you fight from, read against the whole lobby of each match rather than against the playlist: range roles and height roles
+- **Support** — the assists between teammates, on the Squad, on the Sessions and over time on the Timeseries
+- **Range against your lobby** — your kill range, read against the whole lobby of each match rather than against the playlist: range roles
 - **Distance records by weapon** — your longest measured kill with each weapon, on the Synthesis
 - **Starting weapons read right** — a weapon picked up in the first seconds of a life no longer counts as a starting weapon
 

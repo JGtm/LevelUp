@@ -13,6 +13,7 @@
  * Module placé dans `lib/halo/` (et non `features/match-view/`) pour pouvoir
  * être consommé par plusieurs features sans couplage cross-feature.
  */
+import { sansAccents } from '@/lib/text/sansAccents'
 
 const TEAM_NAMES_HALO_INFINITE: Record<number, string> = {
   0: 'Eagle',
@@ -84,9 +85,6 @@ export function teamLogoPath(
  * donc le test ne produit pas de faux positif sur les noms nus.
  */
 export function labelHasTeamWord(name: string): boolean {
-  const normalized = name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
+  const normalized = sansAccents(name).toLowerCase()
   return /\b(equipe|team)\b/.test(normalized)
 }

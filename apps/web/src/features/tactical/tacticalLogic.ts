@@ -75,6 +75,16 @@ export function barreResultats(carte: TacticalMapCard): BarreResultats {
 }
 
 /**
+ * libelleExplorateur — la valeur `?maps=` du lien d'une vignette vers l'Explorateur : le LIBELLÉ
+ * CANONIQUE de la carte (`map_name_fr`, résolu côté Go par la règle même de l'Explorateur,
+ * `platform/duckdb/map_labels.go`), à défaut le nom du registre — la chaîne que l'Explorateur compare,
+ * telle quelle, quelle que soit la langue de la page.
+ */
+export function libelleExplorateur(carte: TacticalMapCard): string {
+  return carte.map_name_fr.trim() !== '' ? carte.map_name_fr : carte.map_name
+}
+
+/**
  * nomCarte — le nom AFFICHÉ d'une carte. Le français vient du contrat (`map_name_fr`,
  * résolu côté Go depuis `asset_translations`) ; à défaut, et en anglais, le nom canonique.
  */

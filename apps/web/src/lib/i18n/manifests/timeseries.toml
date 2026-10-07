@@ -315,8 +315,8 @@ fr = "Séries temporelles indisponibles"
 en = "Timeseries unavailable"
 
 [timeseries.empty.page_description]
-fr = "Le backend n'a renvoyé aucune charge utile pour cette page. Vérifie les filtres, les données locales ou la requête API."
-en = "Backend returned no payload for this page. Check filters, local data or API request."
+fr = "Le serveur n'a renvoyé aucune donnée pour cette page (filtres, données locales ou requête API)."
+en = "The server returned no data for this page (filters, local data or API request)."
 
 [timeseries.errors.load_failed]
 fr = "Erreur lors du chargement des séries"

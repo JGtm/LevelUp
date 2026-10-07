@@ -46,23 +46,22 @@ func TestTacticalRepo_MapsPlayed(t *testing.T) {
 	if rows[0].MapName != tacCarteA+"_en" {
 		t.Errorf("libelle EN = %q, want %q", rows[0].MapName, tacCarteA+"_en")
 	}
-	// LE nom FR vient de metadata.asset_translations, jamais de match_registry
-	// (colonne systematiquement NULLE en prod) — R3.
+	// LE LIBELLÉ CANONIQUE (map_labels.go) : la traduction de l'asset de la carte.
 	if rows[0].MapNameFR != "Les Rues" {
-		t.Errorf("libelle FR = %q, want %q (resolu par asset_translations)", rows[0].MapNameFR, "Les Rues")
+		t.Errorf("libelle = %q, want %q (traduction de l'asset)", rows[0].MapNameFR, "Les Rues")
 	}
 	if rows[1].MapID != tacCarteB || rows[1].Matchs != 1 || rows[1].Victoires != 1 {
 		t.Errorf("seconde carte = %+v, want %s a 1 match / 1 V", rows[1], tacCarteB)
 	}
-	// Carte sans traduction : nom FR VIDE, sans erreur. L'appelant retombera sur l'EN.
-	if rows[1].MapNameFR != "" {
-		t.Errorf("carte sans traduction : MapNameFR = %q, want vide", rows[1].MapNameFR)
+	// Carte sans traduction : le libellé est le nom du registre, comme dans l'Explorateur.
+	if rows[1].MapNameFR != tacCarteB+"_en" {
+		t.Errorf("carte sans traduction : libelle = %q, want %q", rows[1].MapNameFR, tacCarteB+"_en")
 	}
 }
 
-// TestTacticalRepo_SansMetadata_NomFRVide : une metadata absente (ou une lecture en
-// echec) laisse le nom FR vide sans faire echouer la grille — best-effort assume.
-func TestTacticalRepo_SansMetadata_NomFRVide(t *testing.T) {
+// TestTacticalRepo_SansMetadata_LibelleDuRegistre : une metadata absente (ou une lecture en
+// echec) ne fait pas echouer la grille : le libellé retombe sur le nom du registre.
+func TestTacticalRepo_SansMetadata_LibelleDuRegistre(t *testing.T) {
 	pdb := newTacticalTestPlayerDB(t)
 	seedTacticalCorpus(t, pdb)
 	pdb.Metadata = nil
@@ -72,9 +71,9 @@ func TestTacticalRepo_SansMetadata_NomFRVide(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MapsPlayed sans metadata: %v", err)
 	}
-	if len(rows) != 2 || rows[0].MapNameFR != "" {
-		t.Errorf("sans metadata : %d cartes, FR = %q — want 2 cartes servies, FR vide",
-			len(rows), rows[0].MapNameFR)
+	if len(rows) != 2 || rows[0].MapNameFR != tacCarteA+"_en" {
+		t.Errorf("sans metadata : %d cartes, libelle = %q — want 2 cartes servies, libelle %q",
+			len(rows), rows[0].MapNameFR, tacCarteA+"_en")
 	}
 }
 

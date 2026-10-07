@@ -83,18 +83,6 @@ func TestFiltersRepo_GetAvailablePlaylists(t *testing.T) {
 	}
 }
 
-func TestFiltersRepo_GetAvailableMaps(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewFiltersRepo(pdb)
-	maps, err := repo.GetAvailableMaps(context.Background())
-	if err != nil {
-		t.Fatalf("GetAvailableMaps: %v", err)
-	}
-	if len(maps) != 1 {
-		t.Errorf("attendu 1 carte, obtenu %d", len(maps))
-	}
-}
-
 // ---------------------------------------------------------------------------
 // MatchHistoryRepo
 // ---------------------------------------------------------------------------

@@ -182,19 +182,22 @@ type EchelleTactique struct {
 
 // ListeBlancheMatchs est le PERIMETRE de matchs d'une lecture tactique.
 //
-// POURQUOI UN TYPE ET PAS UN `[]string` (phase 4 bis, 2026-09-06). Deux appelants
-// ont des besoins OPPOSES sur la meme absence de valeur :
+// POURQUOI UN TYPE ET PAS UN `[]string`. Une liste VIDE et l'ABSENCE de liste disent
+// deux choses opposees :
 //
-//	l'onglet Tactique   passe la liste resolue par service.FilteredMatchIDs — et une
-//	                    liste VIDE veut dire AUCUN MATCH (le filtre n'a rien retenu),
-//	                    jamais « tous » ;
-//	la page Escouade    ne passe AUCUNE liste : elle lit le journal des morts sur tout
-//	                    l'historique du joueur, puis resserre en Go.
+//	liste vide          AUCUN MATCH (le filtre n'a rien retenu), jamais « tous » ;
+//	absence de liste    tout l'historique du joueur, sans restriction.
 //
 // Avec un `[]string` nu, ces deux etats sont le meme `len() == 0` — et le jour ou un
 // appelant oublie sa liste, il obtient l'historique ENTIER en silence. Le zero-value
 // de ce type-ci est l'absence de restriction (le seul etat qu'on peut construire par
 // accident) et TOUTE liste, vide comprise, vient de RestreindreAux.
+//
+// Les appelants de production posent TOUJOURS une liste : l'onglet Tactique
+// (service/tactical_service_perimetre.go, requeteDuScope ; tactical_service_cellule_enrichir.go)
+// et le bloc de coordination des pages Sessions et Series temporelles
+// (service/coordination_block.go). L'absence de restriction n'a pas d'appelant de
+// production a ce jour.
 type ListeBlancheMatchs struct {
 	restreint bool
 	ids       []string
@@ -226,10 +229,10 @@ type TacticalQuery struct {
 	PlayerXUID string
 
 	// MapID restreint a une carte. Vide = toutes les cartes — c'est le cas de
-	// l'ecran d'entree (MapsPlayed) ET du journal des morts lu par la page
-	// Escouade (KillEvents), qui mesure l'echange d'une COMPOSITION et non d'une
-	// carte. Seule la lecture SPATIALE (KillPositions) l'exige : une grille de
-	// 0,5 m n'a de sens que carte par carte.
+	// l'ecran d'entree (MapsPlayed) ET du journal des morts (KillEvents) lu par le
+	// bloc de coordination des pages Sessions et Series temporelles, qui porte sur une
+	// liste de matchs et non sur une carte. Seule la lecture SPATIALE (KillPositions)
+	// l'exige : une grille de 0,5 m n'a de sens que carte par carte.
 	MapID string
 
 	// Matchs est la liste blanche du perimetre (cf. ListeBlancheMatchs).
@@ -422,8 +425,7 @@ type TacticalPositions struct {
 	Points  []TacticalKillPosition
 }
 
-// TacticalKillEvents : l'univers ET le journal des morts de ses matchs, sous la
-// forme que `analysis/coordination` consomme.
+// TacticalKillEvents : l'univers ET le journal des morts de ses matchs.
 type TacticalKillEvents struct {
 	Univers TacticalUnivers
 	Events  []KillEvent

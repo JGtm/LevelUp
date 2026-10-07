@@ -29,6 +29,7 @@ export const tacticalManifest = {
   "tactical.filter.view_squad": { fr: "En escouade", en: "With a squad" },
   "tactical.maps.empty_title": { fr: "Aucune carte jouée", en: "No map played" },
   "tactical.maps.error": { fr: "Les cartes n'ont pas pu être chargées.", en: "Maps could not be loaded." },
+  "tactical.maps.explorer_link": { fr: "Voir les matchs de cette carte dans l'Explorateur", en: "See this map's matches in the Explorer" },
   "tactical.maps.floor_count": { fr: "{n} sur {floor}", en: "{n} of {floor}" },
   "tactical.maps.floor_fold": { fr: "{n, plural, one {# carte sous le plancher} other {# cartes sous le plancher}}", en: "{n, plural, one {# map below the floor} other {# maps below the floor}}" },
   "tactical.maps.floor_fold_filtered": { fr: "{shown} sur {n, plural, one {# carte sous le plancher} other {# cartes sous le plancher}}", en: "{shown} of {n, plural, one {# map below the floor} other {# maps below the floor}}" },

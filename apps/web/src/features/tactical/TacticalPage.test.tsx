@@ -38,6 +38,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useNavigate: () => navigate,
     useParams: () => ({ playerSlug: 'JGtm', titleSlug: 'halo_infinite' }),
     useSearch: () => searchCourant,
+    Link: (await import('@/test/linkDouble')).LinkDouble,
   }
 })
 
@@ -241,6 +242,19 @@ describe('TacticalPage — l’écran unique', () => {
     expect(await screen.findByTestId('tactical-carte-hors-filtre')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
     expect(screen.queryByText('streets')).toBeNull()
+  })
+
+  it('à trois colonnes, « Cartes jouées » et « Zone sélectionnée » prennent la hauteur de la carte du plan', async () => {
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    const cartes = screen.getByTestId('tactical-maps-column')
+    expect(cartes.className).toContain('min-[1400px]:self-stretch')
+    expect(cartes.className).toContain('min-[1400px]:[contain:size]')
+    expect(cartes.className).not.toMatch(/\bh-\[/)
+    const zone = screen.getByTestId('tactical-zone-card').parentElement as HTMLElement
+    expect(zone.className).toContain('lg:self-stretch')
+    expect(zone.className).toContain('lg:[contain:size]')
+    expect(screen.getByTestId('tactical-cockpit').getAttribute('style')).not.toContain('--tac-cartes-h')
   })
 
   it('plus de bascule « Grille / Analyse », plus de pied de grille', async () => {
