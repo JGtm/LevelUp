@@ -21,7 +21,10 @@ export interface MatchOwnText {
   coverage: (filmed: boolean, present: number) => string
   /** Sous-libellé de la piste « Prises de bonus » : « 10 socles vidés ». */
   powerupSub: (emptied: number) => string
-  /** Bouton des armes de râtelier : « Armes de râtelier (3, repliées) » / « (3) ». */
+  /**
+   * Bouton des armes de râtelier : « Armes de râtelier (3 types d’armes, repliés) » / « (3 types
+   * d’armes) » — un nombre de TYPES d'armes (`grid.rackTypes` de l'Escouade), pas de prises.
+   */
   racksFolded: (n: number) => string
   racksUnfolded: (n: number) => string
   /** Sous la piste : les prises sur un emplacement non identifié. */
@@ -113,8 +116,8 @@ const OWN: Record<Locale, MatchOwnText> = {
   fr: {
     coverage: (filmed, present) => (filmed ? `film décodé · ${present} ${plural(present, 'joueur présent', 'joueurs présents')} à la fin` : 'sans film'),
     powerupSub: (emptied) => `${emptied} ${plural(emptied, 'socle vidé', 'socles vidés')}`,
-    racksFolded: (n) => `(${n}, repliées)`,
-    racksUnfolded: (n) => `(${n})`,
+    racksFolded: (n) => `(${EMPRISE_TEXT.fr.grid.rackTypes(n)}, repliés)`,
+    racksUnfolded: (n) => `(${EMPRISE_TEXT.fr.grid.rackTypes(n)})`,
     unclassified: (n, team, opponent) =>
       `${n} ${plural(n, 'prise', 'prises')} sur un emplacement non identifié, hors des pistes (équipe ${team}, adversaire ${opponent})`,
     noRankedLife: 'Aucune vie terminée par une mort avec un coéquipier situé',
@@ -141,8 +144,8 @@ const OWN: Record<Locale, MatchOwnText> = {
   en: {
     coverage: (filmed, present) => (filmed ? `film decoded · ${present} ${plural(present, 'player', 'players')} present at the end` : 'no film'),
     powerupSub: (emptied) => `${emptied} ${plural(emptied, 'pad emptied', 'pads emptied')}`,
-    racksFolded: (n) => `(${n}, folded)`,
-    racksUnfolded: (n) => `(${n})`,
+    racksFolded: (n) => `(${EMPRISE_TEXT.en.grid.rackTypes(n)}, folded)`,
+    racksUnfolded: (n) => `(${EMPRISE_TEXT.en.grid.rackTypes(n)})`,
     unclassified: (n, team, opponent) =>
       `${n} ${plural(n, 'pickup', 'pickups')} on an unidentified spot, outside the tracks (team ${team}, opponent ${opponent})`,
     noRankedLife: 'No life ended by a death with a located teammate',

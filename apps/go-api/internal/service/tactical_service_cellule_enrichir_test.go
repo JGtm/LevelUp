@@ -252,14 +252,14 @@ func TestDetail_UneLectureParSource(t *testing.T) {
 }
 
 // TestDetail_OwnershipInchange : un match non ouvrable sort des contributions ET des lectures
-// d'enrichissement ; il reste compté.
+// d'enrichissement (son compte au journal : TestCellule_Ownership_MatchEtrangerCompteSansApparaitre).
 func TestDetail_OwnershipInchange(t *testing.T) {
 	repo, matchs := corpusDetail()
 	repo.ouvrables = map[string]time.Time{"m1": time.Date(2026, 9, 1, 13, 0, 0, 0, time.UTC)}
 	got := celluleLue(t, sourcesCompletes(matchs).service(repo, capsCompletes()),
 		celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, 4, 4))
-	if len(got.Contributions) != 2 || got.MatchsNonOuvrables != 1 {
-		t.Fatalf("contributions = %d, non ouvrables = %d ; want 2 et 1", len(got.Contributions), got.MatchsNonOuvrables)
+	if len(got.Contributions) != 2 {
+		t.Fatalf("contributions = %d ; want 2", len(got.Contributions))
 	}
 	if len(repo.vuContextes) != 1 || strings.Join(repo.vuContextes[0].Matchs.IDs(), ",") != "m1" {
 		t.Errorf("contextes lus pour %+v, want [m1] seulement", repo.vuContextes)

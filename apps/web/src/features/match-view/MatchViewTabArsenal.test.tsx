@@ -97,7 +97,7 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     afficher()
     expect(screen.queryByTestId('piste-camps-row-rack|vk78')).toBeNull()
     const bouton = screen.getByTestId('match-emprise-racks-toggle')
-    expect(bouton.textContent).toContain('(3, repliées)')
+    expect(bouton.textContent).toContain('(3 types d’armes, repliés)')
     fireEvent.click(bouton)
     expect(screen.getByTestId('piste-camps-row-rack|vk78')).toBeInTheDocument()
     expect(bouton.getAttribute('aria-expanded')).toBe('true')

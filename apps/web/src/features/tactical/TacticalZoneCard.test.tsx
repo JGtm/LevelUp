@@ -99,7 +99,6 @@ const DETAIL: TacticalCelluleReponse = {
     contribution(),
     contribution({ match_id: 'm2', instant_ms: 5_000, resultat: 'loss', replay_available: false, match_started_at: '2026-08-30T20:00:00Z' }),
   ],
-  matchs_non_ouvrables: 0,
   zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' },
 }
 

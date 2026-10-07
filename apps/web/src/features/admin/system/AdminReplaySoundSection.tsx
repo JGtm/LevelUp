@@ -17,6 +17,7 @@ import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i1
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { SettingsResponse } from '@/lib/api/types'
+import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { SectionHeader } from '../components/SectionHeader'
 
 /** Valeurs d'usine, alignées sur le serveur : variation du jeu telle quelle, aucune distance. */
@@ -29,14 +30,8 @@ export function AdminReplaySoundSection() {
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
 
-  // Copie éditable des réglages serveur, resynchronisée quand la requête livre un nouvel
-  // objet (pattern « valeur précédente », comme AdminSyncSettingsSection).
-  const [local, setLocal] = useState<Partial<SettingsResponse>>({})
-  const [prevSettings, setPrevSettings] = useState(settings)
-  if (settings && settings !== prevSettings) {
-    setPrevSettings(settings)
-    setLocal(settings)
-  }
+  // Copie éditable des réglages serveur, réalignée à chaque objet servi.
+  const [local, setLocal] = useServerDraft(settings)
 
   function handleChange<K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) {
     setLocal((prev) => ({ ...prev, [field]: value }))

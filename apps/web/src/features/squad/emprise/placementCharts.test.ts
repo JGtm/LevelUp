@@ -11,7 +11,7 @@ import { _resetActivePalette, applyPalette } from '@/lib/accessibility/applyPale
 import { defaultPalette } from '@/lib/accessibility/palettes/default'
 import type { SquadEmprisePlacement } from '@/lib/api/types'
 
-import { getSquadPlayerColors } from '../colors'
+import { squadPlayerPalette } from '../colors'
 import { PLACEMENT_2209 } from './placement.fixtures'
 import {
   buildPlacementLifeOption,
@@ -467,12 +467,15 @@ describe('resolvePlacementColors', () => {
     document.documentElement.style.removeProperty('--warning-foreground')
   })
 
-  it('joueurs : couleurs d’escouade (premier = principal) ; quarts : jetons perf-tier ; repère : jeton', () => {
-    const c = resolvePlacementColors(PLACEMENT_2209.players!)
+  it('joueurs : palette de la page (ordre de la SÉLECTION, pas du bloc) ; quarts : jetons perf-tier ; repère : jeton', () => {
+    // Sélection Madina97294 puis Chocoboflor : l’ordre du bloc (JGtm, Chocoboflor, Madina97294) ne compte pas.
+    const palette = squadPlayerPalette('JGtm', ['Madina97294', 'Chocoboflor'])
+    const c = resolvePlacementColors(palette.tokenOf)
     expect(c.player('JGtm')).toBe(defaultPalette['squad-player-1'])
-    expect(c.player('Chocoboflor')).toBe(defaultPalette['squad-player-2'])
-    expect(c.player('Madina97294')).toBe(defaultPalette['squad-player-3'])
-    expect(c.player('JGtm')).toBe(getSquadPlayerColors('JGtm', ['Chocoboflor', 'Madina97294']).JGtm)
+    expect(c.player('Madina97294')).toBe(defaultPalette['squad-player-2'])
+    expect(c.player('Chocoboflor')).toBe(defaultPalette['squad-player-3'])
+    expect(c.player('madina97294')).toBe(palette.colorByPlayer.Madina97294)
+    expect(c.player('Inconnu')).toBe(c.theme.text)
     expect(c.quadrant.in_range_productive).toBe(defaultPalette['perf-tier-1'])
     expect(c.quadrant.isolated_productive).toBe(defaultPalette['perf-tier-2'])
     expect(c.quadrant.in_range_costly).toBe(defaultPalette['perf-tier-4'])
@@ -481,9 +484,9 @@ describe('resolvePlacementColors', () => {
   })
 
   it('encre des valeurs : la variable d’encre sombre du thème, à défaut la couleur du texte', () => {
-    const players = PLACEMENT_2209.players!
-    expect(resolvePlacementColors(players).ink).toBe(resolvePlacementColors(players).theme.text)
+    const { tokenOf } = squadPlayerPalette('JGtm', [])
+    expect(resolvePlacementColors(tokenOf).ink).toBe(resolvePlacementColors(tokenOf).theme.text)
     document.documentElement.style.setProperty('--warning-foreground', 'rgb(1, 2, 3)')
-    expect(resolvePlacementColors(players).ink).toBe('rgb(1, 2, 3)')
+    expect(resolvePlacementColors(tokenOf).ink).toBe('rgb(1, 2, 3)')
   })
 })

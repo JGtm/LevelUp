@@ -115,7 +115,7 @@ function SectionRows({
         data-testid="emprise-grid-racks-toggle"
       >
         {racksOpen ? '▾' : '▸'} <ResourceDot resource={s.resource} />
-        {res.label} <small className="text-[11px] text-muted-foreground">{t.grid.racksCount(s.items.length)}</small>
+        {res.label} <small className="text-[11px] text-muted-foreground">({t.grid.rackTypes(s.items.length)})</small>
       </button>
     </div>
   ) : (

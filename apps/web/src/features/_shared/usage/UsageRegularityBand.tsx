@@ -46,12 +46,9 @@ export function UsageRegularityBand({
       className={`grid items-center gap-y-0.5 ${dense ? 'gap-x-2' : 'gap-x-3.5'}`}
       style={{ gridTemplateColumns: `${dense ? DENSE_LABEL_WIDTH : LABEL_WIDTH}px 1fr` }}
     >
-      <div
-        className={`overflow-hidden whitespace-nowrap ${dense ? 'text-3xs' : 'text-xs'}`}
-        title={label}
-      >
-        <span className="truncate">{label}</span>
-      </div>
+      {/* Le libellé PASSE À LA LIGNE dans sa colonne (alignée sur celle des jauges) : coupé sur
+          une ligne, « Part des appuis de l'équipe, par match » se lisait tronqué, sans « … ». */}
+      <div className={`min-w-0 break-words leading-tight ${dense ? 'text-3xs' : 'text-xs'}`}>{label}</div>
       <div className={`flex flex-wrap items-center ${dense ? 'gap-[2px]' : 'gap-[3px]'}`}>
         {cells.map((cell) => (
           <Tooltip key={cell.matchId} content={cell.tooltip}>

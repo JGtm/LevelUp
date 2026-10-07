@@ -8,13 +8,12 @@
  * son propre câblage settings (useSettings/useUpdateSettings) et réutilise tel
  * quel le SyncTab existant.
  */
-import { useState } from 'react'
-
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SyncTab } from '@/features/settings/SyncTab'
 import type { SettingsResponse } from '@/lib/api/types'
+import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { SectionHeader } from '../components/SectionHeader'
 
 export function AdminSyncSettingsSection() {
@@ -23,15 +22,8 @@ export function AdminSyncSettingsSection() {
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
 
-  // Copie éditable des réglages serveur : resync quand la requête livre un nouvel
-  // objet (ajustement pendant le rendu, pattern React « valeur précédente », au
-  // lieu d'un effet). Comportement inchangé : un refetch réaligne l'état local.
-  const [local, setLocal] = useState<Partial<SettingsResponse>>({})
-  const [prevSettings, setPrevSettings] = useState(settings)
-  if (settings && settings !== prevSettings) {
-    setPrevSettings(settings)
-    setLocal(settings)
-  }
+  // Copie éditable des réglages serveur, réalignée à chaque objet servi.
+  const [local, setLocal] = useServerDraft(settings)
 
   function handleChange<K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) {
     setLocal((prev) => ({ ...prev, [field]: value }))

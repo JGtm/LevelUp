@@ -49,6 +49,14 @@ describe('AdminReplaySoundSection', () => {
     expect(screen.getByText('0 %')).toBeInTheDocument()
   })
 
+  it('réglages DÉJÀ servis au montage (cache rempli) : les curseurs montrent la valeur enregistrée, pas le défaut', () => {
+    reponseSettings = { replay_sound_variation_percent: 40, replay_sound_distance_percent: 30 }
+    renderWithProviders(<AdminReplaySoundSection />)
+    const [variation, distance] = curseurs()
+    expect(variation.value).toBe('40')
+    expect(distance.value).toBe('30')
+  })
+
   it('retombe sur les valeurs d’usine quand le serveur ne porte pas encore les clés', () => {
     reponseSettings = {}
     renderWithProviders(<AdminReplaySoundSection />)
