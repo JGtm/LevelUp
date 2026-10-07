@@ -75,6 +75,10 @@ type ComptesDesReplis struct {
 	// recuperees par la seconde passe a largeur libre ([LocaliserBoucleDeRecords],
 	// `localisateur.go`). Le site de `killsource` se compte chez lui.
 	LocalisationsALargeurLibre int
+	// AncragesBipedesApresLaMarche : `repli_ancrage_bipede_apres_la_marche` — records bipedes delta
+	// que l ancrage d en-tete rend aux huit lecteurs DERRIERE la marche des trames : un slot qu elle
+	// n a pas lu, dans une trame qu elle n a pas fermee ([canalDesLecturesBipedes]).
+	AncragesBipedesApresLaMarche int
 }
 
 // Plus rend la somme champ a champ des deux rapports.
@@ -97,6 +101,7 @@ func (r ComptesDesReplis) Plus(d ComptesDesReplis) ComptesDesReplis {
 		AmorceGrenadeDeReference:       r.AmorceGrenadeDeReference + d.AmorceGrenadeDeReference,
 		ControleDeCorruptionNonDeclare: r.ControleDeCorruptionNonDeclare + d.ControleDeCorruptionNonDeclare,
 		LocalisationsALargeurLibre:     r.LocalisationsALargeurLibre + d.LocalisationsALargeurLibre,
+		AncragesBipedesApresLaMarche:   r.AncragesBipedesApresLaMarche + d.AncragesBipedesApresLaMarche,
 	}
 }
 

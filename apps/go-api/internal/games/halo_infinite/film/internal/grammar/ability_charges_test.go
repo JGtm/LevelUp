@@ -109,16 +109,16 @@ func TestAbilityChargeMasqueNonArmeNePublieRien(t *testing.T) {
 // film pauvre en changements de charge.
 func TestAbilityChargeDenominateurs(t *testing.T) {
 	var st types.AbilityChargeStats
-	sc := &abilityChargeScanner{st: &st, idx: 56}
-	// La marche n'atteint pas i56 (hook jamais déclenché) : Unread, rien de publié.
+	sc := &abilityChargeScanner{st: &st, idx: 56, obs: NouvelleObservation()}
+	// La lecture n'atteint pas i56 (hook jamais déclenché) : Unread, rien de publié.
 	sc.got = false
-	sc.account(nil, 0, 0, []int{0, 56}, 512, 1, FilmPacket{})
+	sc.account(&recordBipedeLu{Slot: 512, Chunk: 1, masque: masqueDesIndex([]int{0, 56}), arret: -1})
 	if st.WithI56 != 1 || st.Unread != 1 || st.Read != 0 || len(sc.out) != 0 {
 		t.Fatalf("stats %+v, sorties=%d : attendu WithI56=1 Unread=1 Read=0 et rien de publie",
 			st, len(sc.out))
 	}
 	// Un record dont le masque n'annonce PAS i56 ne compte nulle part ici.
-	sc.account(nil, 0, 0, []int{0, 21}, 512, 1, FilmPacket{})
+	sc.account(&recordBipedeLu{Slot: 512, Chunk: 1, masque: masqueDesIndex([]int{0, 21}), arret: -1})
 	if st.WithI56 != 1 {
 		t.Fatalf("WithI56=%d : un record sans i56 a ete compte", st.WithI56)
 	}

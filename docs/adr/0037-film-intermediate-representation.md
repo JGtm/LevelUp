@@ -277,6 +277,31 @@ No other channel sees these records and the walk binds none of them; each list r
 fallback is counted under `repli_localisation_largeur_libre`, already registered after the
 reading.
 
+Since lot 2.7.b, the eight component readers (charges, impulses, ranks, equipment, camouflage,
+grapple, held weapon, inventory deltas) read the frame walk first, and the anchoring runs behind
+it. A frame channel collects every publication of their eleven hooks with the position of the
+walk's reader and, when the frame closes, gives it to the component of the retained biped delta
+record whose extent carries it; a publication that no retained record carries (the body of a NEW
+record that desynchronises, which the walk drops) goes to no record and is counted. The anchoring
+then returns only the records of a slot that the walk did not read in that packet, and only
+outside what the frame's closure proves. A closed frame whose start of view B was read (at the
+packet head, or at the end of a view A read to its terminator) proves the whole packet, so an
+anchored record the walk did not read there is a false anchor. A
+closed frame whose start of view B was located (by the slot-123 signature, by the chain of leading
+NEW records, or by the closure itself) proves only the list read from that start: the first
+candidate from which the walk closes the packet may sit in the middle of the list, and the records
+before it are not read. A frame that does not close proves nothing. The dated live-generation
+guard of the anchored readers applies to the walk's records too: a body is not read before its
+creation record. The returned records are marked recovered and counted
+under `repli_ancrage_bipede_apres_la_marche`, ordered after the reading. Each reader replays the
+publications of a record on its own hooks, component by component, under the contract of the
+record walk, so its logic does not change. A trial read publishes no channel hook: the single
+trial gate covers every hook that a frame channel sets, and a test keeps it so. The positions keep
+the anchoring until lot 2.7.d: the walk does not accumulate positions, and their reader has its
+own i0 grammar. The measurement that decided it, per reader and per closure class on the
+twenty-film corpus, is in the plan of step 2; where both sources read the same record, they
+publish the same values.
+
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
 A value that the payload does not carry (`IDLowBits`, the MPP widths, the i0 layout, `gate15`, the
@@ -322,7 +347,9 @@ A packet's payload is a sub-slice of its chunk. Records and components live in a
 one packet to the next and valid during the iteration only; a test or a tool clones what it keeps.
 Target sizes: about 40 bytes per record and 12 per component, against an estimated 350 bytes
 allocated per four-component delta record today. Interpretation stays where it is: the
-`Observation` hooks publish values during the walk, so no published value moves. The structure is
+`Observation` hooks publish values during the walk, so no published value moves. A reader that
+consumes the walk after it replays the publications recorded during the walk (lot 2.7.b); no bit
+is read twice. The structure is
 never persisted: the facts cache already replays a cook 95 to 442 times faster than a decode
 (ADR 0034 D-7).
 

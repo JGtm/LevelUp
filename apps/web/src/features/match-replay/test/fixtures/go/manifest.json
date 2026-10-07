@@ -6,7 +6,7 @@
    "film": "000d5950",
    "build": "HI_1_13_0",
    "schemaVersion": 81,
-   "bytes": 417852,
+   "bytes": 417854,
    "pointsStride": 1
   },
   {
@@ -62,7 +62,7 @@
    "film": "fb1a1a72",
    "build": "HI_1_13_0",
    "schemaVersion": 81,
-   "bytes": 219166,
+   "bytes": 219167,
    "pointsStride": 5
   }
  ]

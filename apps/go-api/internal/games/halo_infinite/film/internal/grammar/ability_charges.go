@@ -83,8 +83,7 @@ func ScanAbilityCharges(fc *FilmContext) ([]types.AbilityCharge, types.AbilityCh
 	if err != nil {
 		return nil, st, err
 	}
-	sc := &abilityChargeScanner{st: &st, gram: s.gram,
-		idx: componentIndexOfAny(s.gram.arch, abilityEnergyName, abilityEnergyNameAlt)}
+	sc := &abilityChargeScanner{st: &st, idx: componentIndexOfAny(s.gram.arch, abilityEnergyName, abilityEnergyNameAlt)}
 	if sc.idx < 0 {
 		// AUCUNE ERREUR ICI, et c'est délibéré : le film ne déclare pas le composant, donc il
 		// ne transmet pas ce canal — un fait mesuré, que `Absent` publie au lieu de le
@@ -92,46 +91,47 @@ func ScanAbilityCharges(fc *FilmContext) ([]types.AbilityCharge, types.AbilityCh
 		st.Absent, st.Scanned = true, true
 		return nil, st, nil
 	}
+	lu, err := s.fc.lecturesBipedes()
+	if err != nil {
+		return nil, st, err
+	}
 
-	// Le hook est LA grammaire : c'est le désérialiseur lui-même qui publie, on ne relit
-	// pas les bits à côté de lui (même règle que ScanFilmAbilityImpulses).
-	obs := NouvelleObservation()
-	obs.AbilityEnergyHook = func(mask uint32, ch [AbilityEnergyCharges]int) {
+	// Le hook est LA grammaire : c'est le désérialiseur lui-même qui a publié pendant la marche,
+	// et la lecture rejoue sa publication ; on ne relit pas les bits (même règle que
+	// ScanFilmAbilityImpulses).
+	sc.obs = NouvelleObservation()
+	sc.obs.AbilityEnergyHook = func(mask uint32, ch [AbilityEnergyCharges]int) {
 		sc.mask, sc.ch, sc.got = mask, ch, true
 	}
-	sc.gram.obs = obs
-
-	s.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
-	})
+	st.Records = lu.examines
+	for i := range lu.records {
+		sc.account(&lu.records[i])
+	}
 	sortAbilityCharges(sc.out)
 	st.Scanned = true
 	return sc.out, st, nil
 }
 
-// abilityChargeScanner porte l'état du balayage : compteurs, capture du hook, le layout et
-// l'archétype du film (portés ici et non passés à chaque record — même patron que
-// abilityImpulseScanner), et la sortie.
+// abilityChargeScanner porte l'état du balayage : compteurs, l'observation sur laquelle les
+// lectures se rejouent et la capture de son crochet, et la sortie.
 type abilityChargeScanner struct {
 	st   *types.AbilityChargeStats
 	out  []types.AbilityCharge
-	gram grammaireRecord
+	obs  *Observation
 	idx  int
 	mask uint32
 	ch   [AbilityEnergyCharges]int
 	got  bool
 }
 
-// account marche UN record et impute sa lecture d'i56 aux compteurs.
-func (sc *abilityChargeScanner) account(pay []byte, i0, total int, idx []int,
-	slot uint32, chunk int, pk FilmPacket) {
-	if !maskHas(idx, sc.idx) {
+// account rejoue UN record et impute sa lecture d'i56 aux compteurs.
+func (sc *abilityChargeScanner) account(r *recordBipedeLu) {
+	if !r.annonce(sc.idx) {
 		return
 	}
 	sc.st.WithI56++
 	sc.got = false
-	walkRecordTo(pay, i0, total, idx, sc.gram, sc.idx)
+	r.parcourirJusqua(sc.obs, sc.idx)
 	if !sc.got {
 		// Composant annoncé et non atteint : une lecture PERDUE, pas une absence de charge —
 		// le dénominateur doit le dire.
@@ -139,7 +139,7 @@ func (sc *abilityChargeScanner) account(pay []byte, i0, total int, idx []int,
 		return
 	}
 	sc.st.Read++
-	sc.publish(slot, chunk, pk)
+	sc.publish(r.Slot, r.Chunk, r.Packet)
 }
 
 // publish émet une lecture par emplacement ARMÉ du masque. Un bit à 0 signifie « le moteur

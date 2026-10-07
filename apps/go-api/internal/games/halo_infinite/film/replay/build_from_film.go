@@ -297,10 +297,13 @@ func scanFilmInputs(ctx context.Context, matchID string, film *source.Film, fc *
 	if err := s.balayerPositions(); err != nil {
 		return nil, err
 	}
-	s.balayerPortage()
-	s.balayerCapacites()
+	// LA MARCHE DES TRAMES PRECEDE LE PORTAGE ET LES CAPACITES : elle recueille les lectures bipedes
+	// que leurs huit lecteurs rejouent (`grammar/lectures_bipedes.go`). Elle suit le monde, dont le
+	// calque des vehicules decide si elle lit les morts d objet.
 	s.balayerMonde()
 	s.balayerEtatsDeMouvement()
+	s.balayerPortage()
+	s.balayerCapacites()
 	s.balayerPont()
 	return s, nil
 }
