@@ -25,8 +25,9 @@ Assault et VIP). Les 126 artefacts publiés sont à 0 entrée sans équipe.
 - [x] J0.2 Le chemin interne : `replay.PortagesAuSync` (`replay/porteurs_au_sync.go:115-131`) assemble
       par `BuildFromPositions` (l. 126) un document qu'il ne publie pas (`portagesDuDocument` ne relit que
       les quatre calques de porteur et le calage) ; `grammar.ScanPlayerTeams` n'y est appelé que dans la
-      branche `g.Drapeau` (l. 169-177). Hors CTF, le roster interne n'a aucune équipe lue : chaque entrée
-      présente compte dans `sansEquipe` (`replay/sieges_tirs.go:194-197`, indépendant de la table du film).
+      branche `g.Drapeau` (l. 169-177). Hors CTF, seul un bot dont la déclaration BOT_METADATA porte une
+      équipe en reçoit une (`replay/occupants.go`) : toute autre entrée présente, tout humain, compte dans
+      `sansEquipe` (`replay/sieges_tirs.go:194-197`, indépendant de la table du film).
       Reproduit par le test J1.1, rouge avant la correction (ERROR « SANS EQUIPE » sur 4 entrées).
 - [x] J0.3 Les données sont justes : le placement des vies range par camp depuis la base
       (`sync/killcollector/placement_des_vies.go:108`, `Equipes: equipesNumeriques(ids.Equipes)`), jamais
@@ -79,7 +80,11 @@ Assault et VIP). Les 126 artefacts publiés sont à 0 entrée sans équipe.
 - [x] J5.1 D16 notée corrigée dans `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md` (Découvertes), avec la
       réponse à sa question « à vérifier » (le placement range par camp depuis la base).
 - [x] J5.2 Entrée `.ai/thought_log.md` (statut « En cours » jusqu'à la revue et la CI).
-- [ ] J5.3 Revue adversariale (un relecteur frais, premier plan, lecture seule) ; constats traités.
+- [x] J5.3 Revue adversariale, ronde 1 (un relecteur frais, premier plan, lecture seule, contrat écrit,
+      lentilles L6 et L3, diff `7e9c72eaf..6e5eb7689`) : AUCUN constat recevable, 22 conditions vérifiées
+      qui tiennent. Une nuance retenue, corrigée dans les textes du lot (J0.2, D16, thought_log, en-tête
+      du test) : hors CTF, un bot dont la déclaration BOT_METADATA porte l'équipe en reçoit une, donc
+      « toute entrée présente sans équipe » ne vaut que pour les humains. Pas de ronde 2 (aucun P0 ni P1).
 - [ ] J5.4 `delivery-checklist` ; commit(s) `fix(rejeu):` ; push ; CI suivie au premier plan, verte.
 
 ## Décisions
@@ -124,4 +129,6 @@ Assault et VIP). Les 126 artefacts publiés sont à 0 entrée sans équipe.
   `arch-rules`, du code cité.
 - 2026-10-07 : J0 à J4 clos (cause sur pièces, tests d'abord, correction, quatre mutations rouges, gate
   vert) ; `go build ./...` et `go vet ./...` 0 en plus du gate (skill `delivery-checklist`). Découvertes
-  DJ-a et DJ-b notées, non traitées.
+  DJ-a et DJ-b notées, non traitées. Commit `6e5eb7689`.
+- 2026-10-07 : revue adversariale ronde 1 sans constat recevable ; nuance « humains » reportée dans les
+  textes du lot.

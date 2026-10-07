@@ -4,8 +4,8 @@ package replay
 // ([journaliserLesPlaces], [Options.documentInterne]).
 //
 //	JP-INTERNE  le document que `PortagesAuSync` assemble pour un Oddball ne lit pas les equipes du film
-//	            (garde du drapeau seulement) : chaque entree presente y est sans equipe, et ce document,
-//	            qui n'est pas publie, ne l'ecrit pas en ERREUR ;
+//	            (garde du drapeau seulement) : ses entrees humaines presentes y sont sans equipe, et ce
+//	            document, qui n'est pas publie, ne l'ecrit pas en ERREUR ;
 //	JP-PUBLIE   les memes entrees republiees depuis les faits (`BuildFromFacts`, options d'une cuisson) :
 //	            l'entree sans equipe reste une ERREUR, comptee dans `coverage.seats.sansEquipe`.
 
@@ -30,9 +30,9 @@ const extraitSansEquipe = "SANS EQUIPE lue"
 // joueursSansEquipe : le nombre de joueurs de [lecturesSansEquipe].
 const joueursSansEquipe = 4
 
-// lecturesSansEquipe : quatre joueurs presents tout le film (corps 100 a 103, index 0 a 3, xuids 1000 a
+// lecturesSansEquipe : quatre humains presents tout le film (corps 100 a 103, index 0 a 3, xuids 1000 a
 // 1003), nommes par le lien direct de creation et la table d'index ; ni table du film, ni entite ti=9,
-// ni equipe lue — le roster d'un Oddball tel que le chemin des porteurs au sync l'assemble.
+// ni equipe lue — les humains d'un Oddball tels que le chemin des porteurs au sync les assemble.
 func lecturesSansEquipe() IdentityInput {
 	in := IdentityInput{PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: joueursSansEquipe}}
 	for i := range joueursSansEquipe {

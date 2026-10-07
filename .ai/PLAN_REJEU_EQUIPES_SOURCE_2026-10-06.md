@@ -583,8 +583,9 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
   **Corrigée le 2026-10-07** (branche `feat/rejeu-journal-places`, plan
   `.ai/PLAN_REJEU_JOURNAL_PLACES_2026-10-07.md`, cause établie par la session RI levelup-57) : l'ERROR
   vient du document interne que `replay.PortagesAuSync` assemble pour relire les calques de porteur ; il
-  ne lit les équipes du film que sous la garde du drapeau, donc hors CTF chaque entrée de son roster est
-  « sans équipe ». Ce document n'est jamais publié, et le placement range les vies par camp depuis la
+  ne lit les équipes du film que sous la garde du drapeau, donc hors CTF toute entrée présente de son
+  roster est « sans équipe », hormis un bot dont la déclaration BOT_METADATA porte l'équipe. Ce document
+  n'est jamais publié, et le placement range les vies par camp depuis la
   base (`killcollector/placement_des_vies.go`, `equipesNumeriques(ids.Equipes)`) : les données sont
   justes, seul le journal était en trop. Le réglage non exporté `Options.documentInterne`, posé par
   `PortagesAuSync`, tait le journal des places sur ce document ; le chemin publié le garde (tests
