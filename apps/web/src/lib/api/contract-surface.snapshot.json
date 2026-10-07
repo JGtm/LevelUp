@@ -637,7 +637,6 @@
     "MatchViewImpactRole",
     "MatchViewRank",
     "MatchViewResponse",
-    "MatchWeaponKill",
     "MedalCategoryGroup",
     "MedalDigestEntry",
     "MedalDigestItem",
@@ -1408,6 +1407,11 @@
     "IdentityAnomaly.severity": [
       "info",
       "warning"
+    ],
+    "MatchEmpriseBlock.kill_journal": [
+      "not_publishable",
+      "publishable",
+      "unavailable"
     ],
     "MatchHistoryRow.outcome": [
       "dnf",

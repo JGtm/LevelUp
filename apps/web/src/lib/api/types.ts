@@ -1786,15 +1786,6 @@ export type MatchExpectedStats = components['schemas']['MatchExpectedStats']
 
 export type MatchSummaryTab = components['schemas']['MatchSummaryTab']
 
-export interface MatchWeaponKill {
-  weapon_id: number
-  weapon_label: string
-  effective_weapon_id: number | null
-  kill_count: number
-  /** Axe manipulation de l'arme (registre) — recolore le breakdown par classe (sunburst v2). */
-  class?: string
-}
-
 export type PlayerWeaponKillRow = components['schemas']['PlayerWeaponKillRow']
 
 // Champs sprite (médailles Halo 5) — shim manuel comme MatchMedal / MedalDigestItem.
@@ -1927,7 +1918,6 @@ export type MatchKillDistanceWeapon = components['schemas']['MatchKillDistanceWe
 export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePlayer']
 
 export interface MatchCombatTab {
-  weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
   /** V7 */
   tug_of_war: MatchTugOfWarBin[]

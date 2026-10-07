@@ -74,8 +74,8 @@ func TestMatchEmpriseFields_EquipeUnMatchEtJournal(t *testing.T) {
 	if fmt.Sprint(e.Players) != "[{P Papa} {A Alpha} {X Xray}]" {
 		t.Errorf("fiches = %v, attendu l'ordre de la page", e.Players)
 	}
-	if !e.KillJournalPublishable {
-		t.Errorf("journal publiable attendu (3 morts publiables)")
+	if e.KillJournal != domain.MatchKillJournalPublishable {
+		t.Errorf("journal = %q, attendu publiable (3 morts publiables)", e.KillJournal)
 	}
 	l := f.LivesNearTeammate
 	if l == nil || len(l.Players) != 3 || l.Players[0].XUID != "P" || l.Players[1].XUID != "A" || l.Players[2].XUID != "X" {
@@ -91,7 +91,7 @@ func TestMatchEmpriseFields_EquipeUnMatchEtJournal(t *testing.T) {
 
 func TestMatchEmpriseFields_JournalNonPubliable(t *testing.T) {
 	f := serviceMatchEmprise(usageTestRepoMock(), nil).matchEmpriseFields(context.Background(), "m1", nil, donneesDeTest(0), nil)
-	if f.Emprise == nil || f.Emprise.KillJournalPublishable {
+	if f.Emprise == nil || f.Emprise.KillJournal != domain.MatchKillJournalNotPublishable {
 		t.Errorf("emprise = %+v, attendu journal non publiable (0 mort publiable)", f.Emprise)
 	}
 	if f.LivesNearTeammate != nil {
@@ -189,5 +189,30 @@ func TestMatchWeaponTools_ReliquatEtCategories(t *testing.T) {
 	}
 	if tools := svc.matchWeaponTools(context.Background(), "m1", nil, nil); tools != nil {
 		t.Errorf("sans ligne au tableau : %+v, attendu nil", tools)
+	}
+}
+
+// TestMatchEmprise_JournalIndisponibleSurEchecDuChargeur — une lecture Q21d en échec ne dit pas
+// « journal non publiable » : l'état est « indisponible », la page dit que la lecture manque.
+func TestMatchEmprise_JournalIndisponibleSurEchecDuChargeur(t *testing.T) {
+	repo := &mockMatchViewRepo{
+		meta:      &domain.MatchMetaRaw{},
+		board:     tableauDeTest(),
+		assistErr: errors.New("lecture Q21d en échec"),
+	}
+	d, err := NewMatchViewService(repo, "P").loadMatchViewDataParallel(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("chargement : %v (un chargeur en échec dégrade, il ne casse pas la page)", err)
+	}
+	f := serviceMatchEmprise(usageTestRepoMock(), nil).matchEmpriseFields(context.Background(), "m1", nil, d, nil)
+	if f.Emprise == nil || f.Emprise.KillJournal != domain.MatchKillJournalUnavailable {
+		t.Fatalf("emprise = %+v, attendu journal indisponible (lecture en échec)", f.Emprise)
+	}
+	// Lecture réussie sans mort publiable : « non publiable », pas « indisponible ».
+	repo.assistErr = nil
+	d, _ = NewMatchViewService(repo, "P").loadMatchViewDataParallel(context.Background(), "m1")
+	f = serviceMatchEmprise(usageTestRepoMock(), nil).matchEmpriseFields(context.Background(), "m1", nil, d, nil)
+	if f.Emprise == nil || f.Emprise.KillJournal != domain.MatchKillJournalNotPublishable {
+		t.Errorf("emprise = %+v, attendu non publiable (lecture réussie, 0 mort publiable)", f.Emprise)
 	}
 }

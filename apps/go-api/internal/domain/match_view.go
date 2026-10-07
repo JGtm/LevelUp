@@ -291,17 +291,6 @@ type MatchSummaryTab struct {
 // Onglet combat
 // ---------------------------------------------------------------------------
 
-// MatchWeaponKill : kills par arme.
-type MatchWeaponKill struct {
-	WeaponID    int64  `json:"weapon_id"`
-	WeaponLabel string `json:"weapon_label"`
-	KillCount   int    `json:"kill_count"`
-	// Class : axe manipulation de l'arme (shoulder/sidearm/heavy/…), résolu via le
-	// registre (BulkWeaponKillRaw). Vide si l'arme est absente du registre. Recolore
-	// le breakdown par arme par classe (FragWeaponBreakdown, sunburst v2).
-	Class string `json:"class,omitempty"`
-}
-
 // MatchHighlightEvent : événement filmé horodaté.
 //
 // ActorGamertag est le nom à afficher, posé côté repo par l'annuaire du match en portée base (lot A ;
@@ -466,7 +455,6 @@ type MatchKillerVictimPair struct {
 
 // MatchCombatTab : contenu de l'onglet Combat.
 type MatchCombatTab struct {
-	WeaponKills     []MatchWeaponKill      `json:"weapon_kills"`
 	HighlightEvents []MatchHighlightEvent  `json:"highlight_events"`
 	TugOfWar        []MatchTugOfWarBin     `json:"tug_of_war"`
 	ImpactBadges    []MatchImpactBadge     `json:"impact_badges"`

@@ -52,7 +52,7 @@ const resourceOf = (objects: SquadEmpriseObject[], resource: string) => ({
 export const STARBOARD: MatchEmpriseBlock = {
   matches_total: 1,
   matches_measured: 1,
-  kill_journal_publishable: true,
+  kill_journal: 'publishable',
   players: [
     { xuid: XUID.jgtm, gamertag: 'JGtm' },
     { xuid: XUID.jacob, gamertag: 'XL JACOB' },
@@ -95,7 +95,7 @@ const FLOOD_OBJECTS: SquadEmpriseObject[] = [
 export const FLOOD_GULCH: MatchEmpriseBlock = {
   matches_total: 1,
   matches_measured: 1,
-  kill_journal_publishable: false,
+  kill_journal: 'not_publishable',
   players: [{ xuid: XUID.jgtm, gamertag: 'JGtm' }],
   objects: FLOOD_OBJECTS,
   resources: [

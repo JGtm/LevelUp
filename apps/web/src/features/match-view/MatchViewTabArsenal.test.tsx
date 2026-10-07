@@ -123,6 +123,22 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(screen.getByTestId('emprise-yield-pending-powerup').textContent).toContain('Non mesuré : frags pendant l’effet non publiés')
   })
 
+  it('chaque état du journal des morts a son texte (frags et rendement par ressource)', () => {
+    const textes = {
+      publishable: ['Aucun frag pendant l’effet d’un bonus', null],
+      not_publishable: ['Frags pendant l’effet non mesurés : journal des morts non publiable', 'Non mesuré : frags pendant l’effet non publiés'],
+      unavailable: ['Non mesuré : lecture indisponible', 'Non mesuré : lecture indisponible'],
+    } as const
+    for (const [etat, [frags, rendement]] of Object.entries(textes)) {
+      const vue = afficher({ emprise: { ...FLOOD_GULCH, kill_journal: etat as MatchEmpriseBlock['kill_journal'] }, lives: null })
+      expect(within(screen.getByTestId('emprise-production')).getByTestId('piste-camps-pending-powerup').textContent).toBe(frags)
+      const ligne = screen.queryByTestId('emprise-yield-pending-powerup')
+      if (rendement == null) expect(ligne).toBeNull()
+      else expect(ligne?.textContent).toContain(rendement)
+      if (etat === 'unavailable') expect(document.body.textContent).not.toContain('non publiable')
+      vue.unmount()
+    }
+  })
   it('« Isolement » : une ligne par joueur dans l’ordre des fiches de « Prises par joueur »', () => {
     afficher()
     const lives = screen.getByTestId('match-emprise-lives')

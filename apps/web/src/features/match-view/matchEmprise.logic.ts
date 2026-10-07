@@ -30,6 +30,19 @@ import type {
 } from '@/lib/api/types'
 
 const VEHICLES_MEASURED = 'measured'
+/** États du journal des morts (contrat Go `MatchKillJournal*`). */
+const KILL_JOURNAL_PUBLISHABLE = 'publishable'
+const KILL_JOURNAL_UNAVAILABLE = 'unavailable'
+
+/**
+ * La raison d'un temps d'effet sans frag, selon l'état du journal : aucun frag (journal publiable),
+ * frags non mesurés (non publiable), lecture indisponible (la lecture a échoué — jamais « non publiable »).
+ */
+const EFFECT_KILLS_REASON: Record<MatchEmpriseBlock['kill_journal'], ProductionReason> = {
+  publishable: 'powerupNoKills',
+  not_publishable: 'powerupKillsUnpublished',
+  unavailable: 'powerupKillsUnavailable',
+}
 const SHEET_LOAD_FAILED = 'sheet_load_failed'
 
 const total = (c: SquadEmpriseCount | null | undefined) => (c ? c.us + c.them : 0)
@@ -126,6 +139,7 @@ export function buildMatchSheets(block: MatchEmpriseBlock | null | undefined, na
 /** Les raisons d'une ligne sans mesure (liste fermée du plan, §3) ; les textes sont dans `MatchOwnText`. */
 export type ProductionReason =
   | 'powerupKillsUnpublished'
+  | 'powerupKillsUnavailable'
   | 'powerupNoEffect'
   | 'powerupNoKills'
   | 'powerZero'
@@ -175,7 +189,7 @@ export function buildMatchProduction(block: MatchEmpriseBlock | null | undefined
   const pending: MatchProductionPending[] = []
   if (!has(RESOURCE_POWERUP) && measured(m)) {
     const exposure = exposureOf(block, RESOURCE_POWERUP)
-    if (exposure) pending.push({ resource: RESOURCE_POWERUP, reason: block.kill_journal_publishable ? 'powerupNoKills' : 'powerupKillsUnpublished', exposure })
+    if (exposure) pending.push({ resource: RESOURCE_POWERUP, reason: EFFECT_KILLS_REASON[block.kill_journal], exposure })
     else pending.push({ resource: RESOURCE_POWERUP, reason: 'powerupNoEffect' })
   }
   if (!has(RESOURCE_POWER_WEAPON)) {
@@ -191,6 +205,7 @@ export function buildMatchProduction(block: MatchEmpriseBlock | null | undefined
 
 export type YieldPendingReason =
   | { kind: 'powerupUnpublished' }
+  | { kind: 'powerupUnavailable' }
   | { kind: 'noEffect'; team: boolean; teamEffectMs: number; teamKills: number }
   | { kind: 'noPickup'; team: boolean; us: number; them: number }
   | { kind: 'vehicleUnmeasured' }
@@ -220,7 +235,8 @@ export function buildMatchYield(block: MatchEmpriseBlock | null | undefined): Ma
   const pending: MatchYieldPending[] = []
   const bonus = production(block, RESOURCE_POWERUP)?.exposure
   if (!has(RESOURCE_POWERUP) && bonus && total(bonus.value) > 0) {
-    if (!block.kill_journal_publishable) pending.push({ resource: RESOURCE_POWERUP, reason: { kind: 'powerupUnpublished' } })
+    if (block.kill_journal === KILL_JOURNAL_UNAVAILABLE) pending.push({ resource: RESOURCE_POWERUP, reason: { kind: 'powerupUnavailable' } })
+    else if (block.kill_journal !== KILL_JOURNAL_PUBLISHABLE) pending.push({ resource: RESOURCE_POWERUP, reason: { kind: 'powerupUnpublished' } })
     else if (bonus.value.us === 0 || bonus.value.them === 0) {
       pending.push({
         resource: RESOURCE_POWERUP,

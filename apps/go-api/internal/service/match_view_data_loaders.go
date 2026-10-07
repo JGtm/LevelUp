@@ -56,7 +56,9 @@ type matchViewData struct {
 	// (cf. correctMatchViewEventsT0, qui ne le touche pas).
 	assistPairs []domain.MatchAssistPairRaw
 	assistScope domain.MatchAssistScopeRaw
-	kvPairs     []domain.KVPairRaw
+	// assistScopeFailed : la lecture Q21d a échoué — sa portée à zéro n'est pas une mesure.
+	assistScopeFailed bool
+	kvPairs           []domain.KVPairRaw
 	// kvPairsFeed : COPIE des paires killer→victim corrigée T0, réservée à la
 	// décoration du kill feed (clé exacte tueur+instant contre les events corrigés).
 	// kvPairs reste sur l'horloge brute : tug-of-war et KD timeline en dépendent.
@@ -168,6 +170,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	goLoad(gctx, g, matchID, "assist_pairs", func() error {
 		var e error
 		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
+		d.assistScopeFailed = e != nil
 		return e
 	})
 	goLoad(gctx, g, matchID, "kv_pairs", func() error {
@@ -401,7 +404,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	combat := buildCombatTabFull(matchID, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
 	// L'arme du kill et l'équipe du tueur se posent APRÈS l'assemblage : ce sont des
 	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
 	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull

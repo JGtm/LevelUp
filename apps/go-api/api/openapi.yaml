@@ -17720,16 +17720,9 @@ components:
           type:
             - array
             - "null"
-        weapon_kills:
-          items:
-            $ref: '#/components/schemas/MatchWeaponKill'
-          type:
-            - array
-            - "null"
         weapon_tools:
           $ref: '#/components/schemas/SquadWeaponTools'
       required:
-        - weapon_kills
         - highlight_events
         - tug_of_war
         - impact_badges
@@ -17743,8 +17736,12 @@ components:
           type: string
         habit:
           $ref: '#/components/schemas/SquadEmpriseHabit'
-        kill_journal_publishable:
-          type: boolean
+        kill_journal:
+          enum:
+            - publishable
+            - not_publishable
+            - unavailable
+          type: string
         matches:
           items:
             $ref: '#/components/schemas/SquadEmpriseMatch'
@@ -17788,7 +17785,7 @@ components:
         vehicles:
           $ref: '#/components/schemas/SquadEmpriseVehicles'
       required:
-        - kill_journal_publishable
+        - kill_journal
         - matches_total
         - matches_measured
         - players
@@ -19793,24 +19790,6 @@ components:
         - team_tab
         - media_tab
         - citations_tab
-      type: object
-    MatchWeaponKill:
-      additionalProperties: false
-      properties:
-        class:
-          type: string
-        kill_count:
-          format: int64
-          type: integer
-        weapon_id:
-          format: int64
-          type: integer
-        weapon_label:
-          type: string
-      required:
-        - weapon_id
-        - weapon_label
-        - kill_count
       type: object
     MedalCategoryGroup:
       additionalProperties: false

@@ -116305,3 +116305,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contrat à jour, types générés frais, crochets de pré-envoi verts ; aucun fichier de code modifié depuis le gate de M4 (suites Go et web vertes sur le même arbre).
 
 **Conclusion / prochaine étape** : plan exécuté M0-M5 ; push de la branche pour la CI ; en attente de la revue adversariale et de la décision de fusion du superviseur. Découvertes non traitées : §8 du plan.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M6 : constats de la revue adversariale (ronde 1) — Complété (commit et push sur `feat/matchview-emprise`)
+
+**Décision technique principale** : trois constats corrigés en une étape. Le champ `combat_tab.weapon_kills`, sans lecteur depuis M3, est retiré de bout en bout ; les colonnes de nom du lecteur des morts mesurées, sans lecteur depuis M4, aussi ; l'état du journal des morts de l'Emprise du match passe d'un booléen à trois valeurs (`publishable`, `not_publishable`, `unavailable`) pour qu'une lecture en échec ne s'affiche plus comme « journal non publiable » : la page écrit « Non mesuré : lecture indisponible ».
+
+**Résultats observés** : tests rouges avant code (Go et web), quatre mutations rouges ; gate ciblé vert sous la contrainte machine (vet et tests des paquets touchés, intégration ciblée, golangci des paquets, contrat, tsc, lint, vitest ciblé, knip).
+
+**Conclusion / prochaine étape** : push de la branche pour la CI ; ronde suivante de revue au superviseur.

@@ -88,14 +88,14 @@ func (s *MatchViewService) matchEmpriseFields(
 		return domain.MatchViewEmpriseFields{}
 	}
 	return domain.MatchViewEmpriseFields{
-		Emprise:           s.matchEmpriseBlock(ctx, matchID, meta, players, d.assistScope.PublishableDeaths > 0),
+		Emprise:           s.matchEmpriseBlock(ctx, matchID, meta, players, killJournalState(d)),
 		LivesNearTeammate: s.matchLives(ctx, matchID, players),
 	}
 }
 
 // matchEmpriseBlock assemble l'Emprise d'UN match, fiches = les joueurs de l'équipe.
 func (s *MatchViewService) matchEmpriseBlock(
-	ctx context.Context, matchID string, meta *domain.MatchMetaRaw, players []domain.SessionUsageSquadPlayer, journal bool,
+	ctx context.Context, matchID string, meta *domain.MatchMetaRaw, players []domain.SessionUsageSquadPlayer, journal string,
 ) *domain.MatchEmpriseBlock {
 	defer timing.FromContext(ctx).Section("match_emprise")()
 	m := squademprise.Match{MatchID: matchID}
@@ -108,7 +108,20 @@ func (s *MatchViewService) matchEmpriseBlock(
 		Current: []squademprise.Match{m}, UsageRepo: s.emprise.usageRepo, EmpriseRepo: s.emprise.empriseRepo,
 		VehicleRepo: s.emprise.vehicleRepo, Players: players,
 	})
-	return &domain.MatchEmpriseBlock{SquadEmpriseBlock: solo.SquadEmpriseBlock, KillJournalPublishable: journal}
+	return &domain.MatchEmpriseBlock{SquadEmpriseBlock: solo.SquadEmpriseBlock, KillJournal: journal}
+}
+
+// killJournalState rend l'état du journal des morts du match : indisponible quand la lecture de sa
+// portée a échoué, publiable dès une mort publiable, non publiable sinon.
+func killJournalState(d matchViewData) string {
+	switch {
+	case d.assistScopeFailed:
+		return domain.MatchKillJournalUnavailable
+	case d.assistScope.PublishableDeaths > 0:
+		return domain.MatchKillJournalPublishable
+	default:
+		return domain.MatchKillJournalNotPublishable
+	}
 }
 
 // matchLives rend l'« Isolement » de chaque joueur de l'équipe, dans l'ordre des fiches ; nil

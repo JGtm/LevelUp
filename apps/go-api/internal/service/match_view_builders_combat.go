@@ -1,7 +1,7 @@
 // Package service — builders pour l'onglet Combat de la Match View.
 //
 // Extrait de match_view_service.go (audit #1 god files). Couvre :
-//   - buildCombatTabFull : assemblage de l'onglet (weapon kills, events, tug,
+//   - buildCombatTabFull : assemblage de l'onglet (events, tug,
 //     impact badges, KD timeline, killer/victim pairs, cadence, roles).
 //   - buildKillerVictimPairs : agrégation kvPairs -> chart antagonistes.
 //   - buildTugEvents / buildImpactInput / buildKDEvents : adapters vers la
@@ -25,7 +25,6 @@ import (
 
 func buildCombatTabFull(
 	matchID string,
-	bulkWeapons []domain.BulkWeaponKillRaw,
 	events []domain.EventRaw,
 	canonicalEvents []canonical.HighlightEvent,
 	kvPairs []domain.KVPairRaw,
@@ -33,27 +32,6 @@ func buildCombatTabFull(
 	myXUID string,
 	durationMS int64,
 ) domain.MatchCombatTab {
-	wkList := make([]domain.MatchWeaponKill, 0)
-	for _, w := range bulkWeapons {
-		if w.XUID != myXUID {
-			continue
-		}
-		// Breakdown par-ARME = outils de destruction identifiables seulement : on écarte
-		// les buckets non-combat (environnement / autre / non attribué), qui n'ont aucun
-		// engin à nommer et restent absorbés par « Non attribué » dans le sunburst.
-		// Véhicules et tourelles NE sont plus écartés (V73-3.2) : le registre les nomme
-		// par engin, ils apparaissent donc au breakdown comme au sunburst.
-		if domain.IsNonCombatFragClass(w.Class) {
-			continue
-		}
-		wkList = append(wkList, domain.MatchWeaponKill{
-			WeaponID:    w.WeaponID,
-			WeaponLabel: w.WeaponLabel,
-			KillCount:   w.Kills,
-			Class:       w.Class,
-		})
-	}
-
 	events, canonicalEvents = applyKVSynthesisIfNeeded(events, canonicalEvents, kvPairs, matchID)
 
 	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
@@ -117,7 +95,6 @@ func buildCombatTabFull(
 	killerVictim := buildKillerVictimPairs(kvPairs, scoreboard)
 
 	return domain.MatchCombatTab{
-		WeaponKills:     wkList,
 		HighlightEvents: evtList,
 		TugOfWar:        tugDomain,
 		ImpactBadges:    badgesDomain,

@@ -8411,13 +8411,13 @@ export interface components {
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
-            weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
             weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
         MatchEmpriseBlock: {
             film_unavailable?: string;
             habit?: components["schemas"]["SquadEmpriseHabit"];
-            kill_journal_publishable: boolean;
+            /** @enum {string} */
+            kill_journal: "publishable" | "not_publishable" | "unavailable";
             matches: components["schemas"]["SquadEmpriseMatch"][] | null;
             /** Format: int64 */
             matches_measured: number;
@@ -9305,14 +9305,6 @@ export interface components {
             rank: components["schemas"]["MatchViewRank"];
             summary_tab: components["schemas"]["MatchSummaryTab"];
             team_tab: components["schemas"]["MatchTeamTab"];
-        };
-        MatchWeaponKill: {
-            class?: string;
-            /** Format: int64 */
-            kill_count: number;
-            /** Format: int64 */
-            weapon_id: number;
-            weapon_label: string;
         };
         MedalCategoryGroup: {
             category: string;

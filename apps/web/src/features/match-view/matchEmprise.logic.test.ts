@@ -102,8 +102,13 @@ describe('buildMatchProduction — G, raisons fermées', () => {
   })
 
   it('journal publiable, temps d’effet, aucun frag → « aucun frag pendant l’effet »', () => {
-    const p = buildMatchProduction({ ...FLOOD_GULCH, kill_journal_publishable: true })
+    const p = buildMatchProduction({ ...FLOOD_GULCH, kill_journal: 'publishable' })
     expect(p.pending[0].reason).toBe('powerupNoKills')
+  })
+
+  it('lecture du journal indisponible → « lecture indisponible », jamais « non publiable »', () => {
+    const p = buildMatchProduction({ ...FLOOD_GULCH, kill_journal: 'unavailable' })
+    expect(p.pending[0]).toMatchObject({ resource: 'powerup', reason: 'powerupKillsUnavailable' })
   })
 
   it('ni temps d’effet ni frag → « aucun temps d’effet mesuré »', () => {
@@ -147,6 +152,10 @@ describe('buildMatchYield — H, raisons fermées', () => {
     const y = buildMatchYield(FLOOD_GULCH)
     expect(y.pending).toEqual([{ resource: 'powerup', reason: { kind: 'powerupUnpublished' } }])
     expect(y.rows.map((r) => r.resource)).toEqual(['power_weapon'])
+  })
+
+  it('lecture du journal indisponible → bonus « lecture indisponible »', () => {
+    expect(buildMatchYield({ ...FLOOD_GULCH, kill_journal: 'unavailable' }).pending).toEqual([{ resource: 'powerup', reason: { kind: 'powerupUnavailable' } }])
   })
 
   it('match non mesuré : aucune raison', () => {

@@ -31,6 +31,8 @@ export interface MatchOwnText {
   /** Lignes « non mesuré » de « Frags par ressource ». */
   production: {
     powerupKillsUnpublished: string
+    /** La lecture du journal des morts a échoué : la cause n'est pas connue. */
+    powerupKillsUnavailable: string
     powerupNoEffect: string
     powerupNoKills: string
     powerZero: string
@@ -41,6 +43,7 @@ export interface MatchOwnText {
   /** Lignes « non mesurable » de « Rendement par ressource ». */
   yield: {
     powerupUnpublished: string
+    powerupUnavailable: string
     noEffect: (team: boolean, teamEffect: string, teamKills: number) => string
     noPickup: (team: boolean, us: number, them: number) => string
     vehicleUnmeasured: string
@@ -117,6 +120,7 @@ const OWN: Record<Locale, MatchOwnText> = {
     noRankedLife: 'Aucune vie terminée par une mort avec un coéquipier situé',
     production: {
       powerupKillsUnpublished: 'Frags pendant l’effet non mesurés : journal des morts non publiable',
+      powerupKillsUnavailable: 'Non mesuré : lecture indisponible',
       powerupNoEffect: 'Aucun temps d’effet mesuré',
       powerupNoKills: 'Aucun frag pendant l’effet d’un bonus',
       powerZero: '0 frag aux armes spéciales dans les deux équipes',
@@ -126,6 +130,7 @@ const OWN: Record<Locale, MatchOwnText> = {
     },
     yield: {
       powerupUnpublished: 'Non mesuré : frags pendant l’effet non publiés',
+      powerupUnavailable: 'Non mesuré : lecture indisponible',
       noEffect: (team, teamEffect, teamKills) =>
         `Non mesurable : aucun temps d’effet pour ${team ? 'l’équipe' : 'l’adversaire'} (équipe : ${teamEffect}, ${teamKills} ${plural(teamKills, 'frag', 'frags')})`,
       noPickup: (team, us, them) =>
@@ -143,6 +148,7 @@ const OWN: Record<Locale, MatchOwnText> = {
     noRankedLife: 'No life ended by a death with a located teammate',
     production: {
       powerupKillsUnpublished: 'Kills during the effect not measured: kill log not publishable',
+      powerupKillsUnavailable: 'Not measured: reading unavailable',
       powerupNoEffect: 'No effect time measured',
       powerupNoKills: 'No kill during a power-up effect',
       powerZero: '0 power-weapon kills on either team',
@@ -152,6 +158,7 @@ const OWN: Record<Locale, MatchOwnText> = {
     },
     yield: {
       powerupUnpublished: 'Not measured: kills during the effect not published',
+      powerupUnavailable: 'Not measured: reading unavailable',
       noEffect: (team, teamEffect, teamKills) =>
         `Not measurable: no effect time for ${team ? 'the team' : 'the opponent'} (team: ${teamEffect}, ${teamKills} ${plural(teamKills, 'kill', 'kills')})`,
       noPickup: (team, us, them) =>

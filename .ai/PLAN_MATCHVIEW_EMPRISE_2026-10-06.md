@@ -769,6 +769,38 @@ Journal M5 (2026-10-07, exécuteur) :
 - **M5.5** Revue adversariale du diff cumulé (`833ec8e15..` tête) demandée au superviseur : lots à risque M1 (lecture bornée multi-joueurs, Q21d), M2 (agrégats, ordre des fiches), M4 (contrat).
 - **Gate** : aucun fichier de code n'a changé depuis le gate de M4 (documents seulement) ; rejoués après les docs : `openapi-gen -check` à jour, `check-generated-types-fresh` OK, `lefthook run pre-push` vert ; suites Go (six lots, intégration DuckDB) et web (862 fichiers) vertes sur l'arbre de code identique de M4.
 
+### M6 — Constats de la revue adversariale, ronde 1 (2668848b1..815d99657) · rapide
+
+Contrainte machine (re-cuisson du parc en cours) : ni `go build ./...` ni `go test ./...` sur le module ;
+vet et tests des paquets touchés, vitest ciblé.
+
+- [x] M6.1 R1 (règle 7) : `combat_tab.weapon_kills` sans lecteur depuis M3 — construction retirée de
+  `buildCombatTabFull` (paramètre `bulkWeapons` retiré, trois appelants), type `MatchWeaponKill` et champ
+  `MatchCombatTab.WeaponKills`, test `TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown`, clé
+  de la fixture dorée `match_view_slayer.json`, interface et champ web (`lib/api/types.ts`), commentaire
+  de `match_view_raw.go`, entrée `MatchWeaponKill` de `BASELINE_COLLISIONS` (`tools/lint-contract-ratchet.mjs`, refusée par le crochet de pré-envoi au premier push). Grep : aucun symbole restant (`PlayerWeaponKillRow.weapon_kills` du tableau des
+  scores est une autre donnée, lue par `PlayerDetailPanel`).
+- [x] M6.2 R2 (règles 7 et 17) : `kill_measured.go` — champs `victimGT` / `killerGT`, colonnes
+  `victim_gamertag` / `feed_killer_gamertag` et affectation retirés ; `victimXUID` gardé (profils de
+  portée côté victime), commentaire récrit.
+- [x] M6.3 R3 (résultat faux sur chemin dégradé) : le booléen `kill_journal_publishable` devient l'état
+  `kill_journal` à trois valeurs (`publishable` / `not_publishable` / `unavailable`, constantes
+  `domain.MatchKillJournal*`, enum au contrat). `unavailable` quand la lecture Q21d échoue
+  (`matchViewData.assistScopeFailed`, posé par le chargeur), décidé en un point (`killJournalState`).
+  Web : « Frags par ressource » et « Rendement par ressource » écrivent « Non mesuré : lecture
+  indisponible » / « Not measured: reading unavailable », jamais la cause « non publiable ».
+- Tests : Go `TestMatchEmprise_JournalIndisponibleSurEchecDuChargeur` (chargeur en échec → indisponible ;
+  lecture réussie sans mort publiable → non publiable), tests existants adaptés au nouvel état ; web
+  `matchEmprise.logic.test.ts` (deux cas) et `MatchViewTabArsenal.test.tsx` (chaque état → son texte),
+  vus ROUGES avant le code. Mutations ROUGES : drapeau d'échec jamais posé ; « publiable » dès zéro mort ;
+  `unavailable` rangé en « non publiable » (frags) ; raison du rendement ignorée.
+- Gate : `go vet` de `domain`, `service`, `platform/duckdb`, `tests/golden` 0 ; tests de ces paquets ok ;
+  `-tags=integration -run 'KillDistance|KillMeasured|WeaponRange' ./internal/platform/duckdb/` ok ;
+  golangci sur les paquets touchés 0 issue ; contrat régénéré (`openapi-gen -check` à jour, types frais),
+  snapshot de surface régénéré par la procédure (`MatchWeaponKill` retiré, enum de `kill_journal`
+  ajouté) ; `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements, aucun neuf) ; vitest
+  `match-view`, `match-replay`, `lib/api` et la garde des textes : 278 fichiers verts ; knip 0 / 0 / 0 ;
+  libellés de champ, couleurs, imports croisés 7 ≤ 7.
 ## 7. Reprise de session
 
 Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières
