@@ -19,9 +19,9 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **CLOS — lots L1 à L12 exécutés (2026-10-06 / 2026-10-07) sur `feat/tactique-v2`,
-> `feat/v75` fusionnée (`2668848b1`), revue adversariale faite en deux rondes (L11.4, L12) ; seul
-> L10.2 reste statué `[!]` (journal L10).** Fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
+> Statut du plan : **CLOS — lots L1 à L13 exécutés (2026-10-06 / 2026-10-07) sur `feat/tactique-v2`,
+> `feat/v75` fusionnée (`2668848b1`, puis `879f31bbf`), revue adversariale faite en deux rondes (L11.4,
+> L12), clôture finale L13 ; L10.2 couvert par L13.F1 (journal L13).** Fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
 > (créée sur `origin/feat/v75` = `b033d30f0`), worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -1230,9 +1230,10 @@ Journal L9 (2026-10-07, exécuteur, `feat/tactique-v2`) :
 - [x] L10.1 D17 : vérification sur pièces de `MatchViewHeader.MapID` ; état de `feat/matchview-emprise`
   au moment du lot (fusionnée ou non, dit au journal) ; lien posé ; test (route, `search`, absent
   sans `map_id`).
-- [!] L10.2 D16 : vérification sur pièces du libellé FR (tactique vs historique) ; lien posé depuis la
-  vignette et test, OU `[!]` avec la justification. → `[!]` : deux résolutions différentes du libellé
-  et filtre par libellé contre vignette par `map_id` (journal L10).
+- [~] L10.2 D16 : vérification sur pièces du libellé FR (tactique vs historique) ; lien posé depuis la
+  vignette et test, OU `[!]` avec la justification. → `[!]` en L10 : deux résolutions différentes du libellé
+  et filtre par libellé contre vignette par `map_id` (journal L10). Couvert par L13.F1 (une seule
+  résolution, lien posé, journal L13).
 - Gate : gate web (+ gate Go si un fichier Go change).
 
 Journal L10 (2026-10-07, exécuteur, `feat/tactique-v2`) :
@@ -1422,6 +1423,123 @@ Journal L12 (2026-10-07, exécuteur, `feat/tactique-v2`, sur la fusion `f6af334e
   couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lint-contract-ratchet` propre ; pre-push vert.
 - Seuils : fichiers ≤ 446 L ; fonctions modifiées ≤ 57 L (`celluleIsole`).
 
+### L13 — Clôture finale · moyen
+
+Décidé par l'utilisateur le 2026-10-07 après son gate visuel, transmis par le superviseur. PÉRIMÈTRE
+FERMÉ : la liste est exhaustive, le §8 ne grossit plus. Base : `feat/v75` (`879f31bbf`, déjà
+intégrée à la branche au début du lot). Exclus (dits par le superviseur à l'utilisateur) : le registre
+des cartes (103 rangées pour 77 cartes), la règle de nommage du rejeu.
+
+- [x] L13.F1 Une seule résolution du libellé de carte pour l'onglet, l'historique (Explorateur) et la
+  liste des filtres : le helper canonique de l'Explorateur lu par la grille de l'onglet, garde-rail
+  archlint contre toute autre résolution ; icône-lien de chaque vignette vers l'Explorateur
+  (`?maps=<libellé>`, groupe bouton + lien, aria-label FR / EN) ; test : le lien porte le libellé servi.
+- [x] L13.F2 Trois colonnes à la même hauteur au-delà de 1 400 px : « Cartes jouées » s'étire à la
+  hauteur de la carte du plan (constante 551 px retirée), liste à défilement interne ; sous 1 400 px
+  inchangé ; test et mutation.
+- [x] L13.F3 Garde-rail de portée : les trois formes de la ronde 2 reconnues ; auto-test ; aucun faux
+  positif dans le dépôt ; mutation.
+- [x] L13.F4 Catalogue de bornes (`map_quant_bounds.json`) décodé une fois par processus, même patron
+  que `catalogueDeCallouts` ; test « deux appels = une lecture » ; mutation.
+- [x] L13.F6 Helpers : (a) web, normalisation sans accents dans `lib/` remplaçant les quatre copies,
+  garde-rail sur `.normalize('NFD')` ; (b) Go, « mon camp / l'autre camp » d'une ligne canonique lu
+  par `buildScoreLabelCanonical` et `scoreDuMatch`, garde-rail ; mutations.
+- [x] L13.F7 Zones nommées dessinées sur le plan : (1) champ additif `zones` du raster, sous
+  `film.replay_artifact`, contrat régénéré additif ; (2) calque de zones du rejeu déplacé dans
+  `lib/replay/`, lu par le rejeu et par le plan (contours sous la chaleur, noms au-dessus), vignettes
+  sans zones, étiquette de la zone sélectionnée gardée ; tests et garde-rail « un seul peintre ».
+- [x] Gate : gate Go complet + gate web complet + contrat ; push ; CI verte (journal ci-dessous).
+
+#### Journal L13 (2026-10-07)
+
+- **Base** : `git fetch origin feat/v75` puis `git merge origin/feat/v75` : déjà à jour (`879f31bbf`
+  contient `fb3a9cd21`). Commits du lot : `713c74dab` (F1), `7e6c33d65` (F2), `b768733aa` (F3),
+  `9e68d14a7` (F4), `ffcef4d28` (F6), `1a1bb636c` (F7), `074c66136` (F1, garde-rail complété).
+- **F1** `platform/duckdb/map_labels.go` porte LA règle : `libelleDeCarte` (FR du registre s'il se
+  distingue de l'EN, sinon traduction d'asset, sinon FR du registre, sinon EN) et `traductionsDeCartes`
+  (`ResolveAssetNamesBulk("map", …)` en cascade FR, une requête). Lue par l'historique
+  (`applyMatchHistoryMapFR`, donc les options `available_maps` du filtre de l'Explorateur, dérivées
+  des lignes de l'historique), par la grille de l'onglet (`QTacticalMaps` sélectionne `map_name_fr`,
+  `poserLesLibelles`) et par le score d'engagement (`resolveMapNameFR` et
+  `mapNameFRFromAssetTranslations` supprimés). `FiltersRepo.GetAvailableMaps`, sans appelant de
+  production, retiré avec son test `TestFiltersRepo_GetAvailableMaps` (retrait de la baseline JSONL
+  documenté dans `scripts/check_test_baseline.sh`). Garde-rail `archlint/map_label_single_resolution_test.go` :
+  trois empreintes (résolveur d'asset pour `"map"`, `asset_translations` filtré `'map'`, repli
+  `COALESCE` du registre nu ou sous agrégat), 21 résolutions d'autres surfaces gelées au 2026-10-07
+  avec leur raison, entrée morte refusée. Web : `TacticalMapTile` devient un groupe (bouton de
+  sélection + icône-lien `tactical-map-explorer-<id>` vers `/explorer?maps=<libellé servi>`,
+  `libelleExplorateur`), aria-label « Voir les matchs de cette carte dans l'Explorateur » / « See this
+  map's matches in the Explorer » (clé `tactical.maps.explorer_link`) ; double de `Link` partagé
+  `test/linkDouble.tsx`. Tests : `TestLibelleDeCarte_Regle`, `TestResolveMapNameFR`,
+  `TestResolveMapNameFR_NilMetadata`, `TestTacticalRepo_SansMetadata_LibelleDuRegistre`,
+  `TestLibelleCarte_ReconnaitLesResolutions`, `TestLibelleCarte_UneSeuleResolution` ;
+  `TacticalMapsColumn.test.tsx` « chaque vignette a son lien vers l'Explorateur, filtré sur le libellé
+  servi », « sans libellé FR servi, le lien porte le nom du registre ». Mutations ROUGES : lien sur le nom
+  du registre ; traduction ignorée par la règle ; résolution directe dans la grille de l'onglet. Le repli
+  du registre SOUS AGRÉGAT (`COALESCE(MAX(mr.map_name_fr), MAX(mr.map_name))`) restait VERT :
+  l'empreinte 3 lit désormais les arguments d'un `COALESCE` (`074c66136`) ; rejouée ROUGE, avec la
+  forme `NULLIF` et le motif ramené à un niveau (auto-test). D16 tient : même résolution des deux côtés,
+  lien posé (L10.2 passe `[~]`).
+- **F2** « Cartes jouées » : `min-[1400px]:self-stretch min-[1400px]:[contain:size]`, comme « Zone
+  sélectionnée » ; la liste défile dedans ; constante de 551 px et variable `--tac-cartes-h` retirées
+  (`cockpit.logic.ts`) ; sous 1 400 px inchangé. Test `TacticalPage.test.tsx` « à trois colonnes,
+  « Cartes jouées » et « Zone sélectionnée » prennent la hauteur de la carte du plan ». Mutation ROUGE :
+  hauteur fixe remise.
+- **F3** `no_local_portee_comparison_test.go` : portée lue sur un champ ou convertie
+  (`regle.RayonM`, `float64(rayon)`) des deux côtés de la comparaison, distance déclarée avec son type
+  (`var d float64 = *m.PlusProcheM`). `TestNoLocalPorteeComparison_ReconnaitLesCopies` porte les trois
+  formes de la ronde 2 ; `TestNoLocalPorteeComparison` vert sur le dépôt (aucun faux positif).
+  Mutations ROUGES : portée sur un champ ou convertie ignorée ; distance typée ignorée.
+- **F4** `service/catalogue_cache.go` : `cacheParChemin[T]` générique (clé = chemin, échec non gardé,
+  sûr en concurrence) lu par `catalogueDeCallouts` et `catalogueDeBornes` ; `calloutsParModule` lit
+  les bornes par lui. Test `TestCatalogueDeBornes_LuUneFoisParChemin` (deux appels = une lecture).
+  Mutation ROUGE : catalogue non gardé.
+- **F6** (a) `lib/text/sansAccents.ts` remplace les quatre copies (`cockpit.logic.ts`
+  `normaliserRecherche`, `GlossaryTab.tsx` `slugify` et `normalizeForSearch`,
+  `lib/halo/teamNames.ts` `labelHasTeamWord`) ; garde-rail `sansAccents.guard.test.ts`
+  (`.normalize('NFD')` nulle part ailleurs, décomposition écrite à la main reconnue). Mutations
+  ROUGES : helper sans effet ; copie remise dans la colonne des cartes. (b) `analysis/camps_canonical.go`
+  (`CampsDuMatch`, `EntreeDeScoreCanonique`) lu par `ScoreLabelCanonical` (nommée
+  `buildScoreLabelCanonical` au brief, renommée par `b2673d05d`, déjà sur la base) et par
+  `scoreDuMatch` ; garde-rail `archlint/camps_canonical_single_source_test.go`. Mutations ROUGES : camp
+  du joueur ignoré (accueil et Sessions, puis détail de zone) ; copie remise dans `scoreDuMatch`.
+- **F7** Serveur : `TacticalRaster.Zones` (`[]replaydoc.CalloutZone`, `json:"zones,omitempty"`),
+  rempli par `zonesDuPlan` (`tactical_service_zones.go`) sous `film.replay_artifact`, section de
+  durée `tactical_zones`, après une lecture réussie ; `ZoneNommee` gagne `Z` et `Big`. Contrat
+  régénéré en AJOUT seul (`openapi.yaml` +6, `generated.ts` +1), fraîcheur OK. Web : `calloutsLayer.ts`
+  et son test DÉPLACÉS (`git mv`) en `lib/replay/calloutsPaint.ts` ; le peintre reçoit la projection
+  de l'appelant (`ProjectionMonde`) et se scinde en `drawCalloutsShapes` / `drawCalloutsLabels`
+  (`drawCalloutsLayer` = les deux, pour le rejeu) ; `normalizeCalloutZones` lit une liste. Le rejeu
+  l'importe (`useReplayStaticLayers`, `replayCanvasConfig`, `ReplayCanvas`, route `replay.tsx`).
+  Le plan : `projectionDuPlan` (`tacticalView.logic.ts`), `planPaint.ts` peint contours, chaleur
+  puis noms, à l'encre `text-foreground` lue par `getComputedStyle` (le peintre l'atténue) ;
+  `TacticalPlanCard` normalise `lecture.zones` ; vignettes sans zones ; étiquette de la zone
+  sélectionnée inchangée. Tests : `TestRaster_ZonesDuPlan_Servies`,
+  `TestRaster_ZonesDuPlan_SansArtefactDeRejeu` ; `planPaint.test.ts` (ordre formes → chaleur → noms,
+  projection de la chaleur, rien sans zones, rien sans repère) ; `TacticalPlanCard.zones.test.tsx`
+  (zones transmises au peintre, aucune quand absentes) ; `calloutsPaint.test.ts` (+2 : formes et noms
+  séparés, liste) ; garde-rail `calloutsPaint.guard.test.ts` (fonctions du peintre définies là seulement,
+  zones brutes du contrat lues là seulement, plus de `calloutsLayer`, vignette sans peintre). Mutations
+  ROUGES (6 / 6) : chaleur avant les contours ; zones non transmises ; second peintre de noms ; vignette
+  qui importe le peintre ; lecture sans zones ; zones servies sans artefact de rejeu.
+- **Gate Go** : build 0 ; gofmt muet ; vet 0 (dont `go-vet-cgo` du pre-push) ; 349 paquets en quatre lots :
+  196 ok, 153 sans test, 0 échec ; `-tags=integration -p 1 ./internal/platform/duckdb/...` : `halo5`,
+  `prestige`, `sharedprovider` ok, le paquet racine a dépassé le délai par défaut de 10 min (aucun
+  échec, machine chargée), rejoué seul avec `-timeout 1800s` : ok en 394 s ; `archlint` ok ; gardes
+  nommées en `-v` PASS (`TestLibelleCarte_*`, `TestCampsCanonical_*`, `TestNoLocalPorteeComparison*`,
+  `TestNoLocalRadarRangeLookup*`, `TestAucunTauxNu`, `TestTacticalEtCoordinationSontPurs`,
+  `TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`) ; golangci 0 issue. **Contrat** :
+  `openapi-gen -check` à jour, `generate-types` + fraîcheur OK, garde de surface verte sans
+  régénération. **Gate web** : purge `.tmp` ; tsc 0 ; lint 0 erreur (26 avertissements de base) ;
+  vitest 869 fichiers (5 ignorés) / 9 204 tests (23 ignorés) ; manifestes reconstruits (23, 3 575 clés)
+  puis stables ; knip 0 / 0 / 0 ; couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ;
+  `lint-contract-ratchet` propre ; pre-push vert.
+- Seuils : `TacticalPlanCard.tsx` 499 L ; `Raster` 62 L ; les fichiers touchés au-delà de 500 L
+  l'étaient avant le lot (`match_repos_test.go` 802 après −12, `ReplayCanvas.tsx` 771 sur une ligne
+  d'import, `repository.go` 586 après −4, `TacticalFond.mesure.test.ts` 744 +1 double de `Link`,
+  `check_test_baseline.sh` 711 +6 du retrait documenté).
+- Push et CI : voir l'entrée du journal de bord.
+
 ## 7. Reprise de session
 
 Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières
@@ -1473,7 +1591,8 @@ L2.3.
 - (maquette) `pair_name_fr` / `playlist_name_fr` vides en base, playlist « Quick Play » partout
   (MESURES Q13).
 - (maquette) 17 morts par carte sans arme ni catégorie (Illusion et Bazaar, MESURES « Mini-tuiles »).
-- (maquette) Le rejeu 2D nomme les zones par centre 3D le plus proche (`calloutsLayer.zoneAt`), règle
+- (maquette) Le rejeu 2D nomme les zones par centre 3D le plus proche (`zoneAt`, depuis L13 dans
+  `lib/replay/calloutsPaint.ts` ; règle inchangée, exclue de L13), règle
   différente de V6 (Bazaar (−7, −1) : « Porte ouest » à 2,36 m, MESURES « Zones nommées ») ; proposer
   la règle V6 au rejeu.
 - (phase 1) `TacticalRaster.PointsIgnores` n'a aucun lecteur web (pré-existant) ; non retiré.
@@ -1499,13 +1618,15 @@ L2.3.
 - (L3) Deux copies de la lecture « mon camp / l'autre » sur `Summary.Teams` + `Self.TeamID` d'une ligne
   canonique : `analysis.buildScoreLabelCanonical` (`home_canonical_recent.go`, libellé seul) et
   `service.scoreDuMatch` (`tactical_service_cellule_enrichir.go`, libellé et nature). Une troisième
-  imposera le helper exporté et son garde-rail (CLAUDE.md n° 6) ; non traité.
+  imposera le helper exporté et son garde-rail (CLAUDE.md n° 6). TRAITÉ en L13.F6 (`analysis.CampsDuMatch`,
+  garde-rail `camps_canonical_single_source_test.go`).
 - (L3) `TestLUSRV2Shadow_RafalesBornees_300Candidats` a de nouveau rougi dans la suite complète (38,9 s,
   un `api.test` d'une autre session actif), vert rejoué seul : même constat qu'en L1.
 - (L4) Normalisation « minuscules sans diacritiques » : `normaliserRecherche` (`features/tactical/cockpit.logic.ts`,
   prévue par le plan) en fait la QUATRIÈME copie (`features/help/GlossaryTab.tsx` `slugify` et
   `normalizeForSearch`, `lib/halo/teamNames.ts` `labelHasTeamWord`). CLAUDE.md n° 6 : helper
-  `lib/` + garde-rail à poser, migrations hors périmètre ; non traité.
+  `lib/` + garde-rail à poser. TRAITÉ en L13.F6 (`lib/text/sansAccents.ts`, quatre copies migrées,
+  garde-rail `sansAccents.guard.test.ts`).
 - (L4) Le gate de L1 (Go + `vitest src/lib/api`) ne lançait pas `tsc` : le champ obligatoire
   `replay_available` a cassé le typage d'une fixture web (`TacticalCellCard.test.tsx`), découvert au
   gate à blanc de L4 et réparé là. Un lot qui change le contrat devrait passer `tsc -b`.
@@ -1525,15 +1646,17 @@ L2.3.
   seules et au passage complet suivant : sensibles à la charge ; non traité.
 - (L12, consigné par le superviseur) La mise en page à 1 400 px, la bascule en deux rangées et la
   hauteur de la colonne de zone n'ont pas de test automatique : non couvert, gate visuel utilisateur.
+  En partie couvert en L13.F2 (test des classes de hauteur à trois colonnes) ; le rendu reste au gate visuel.
 - (revue ronde 2, P2 consigné, borne des deux rondes atteinte) Le garde-rail
   `archlint/no_local_portee_comparison_test.go` (l. 40 et 43) ne reconnaît pas trois formes :
   `seul := *m.PlusProcheM > regle.RayonM` (portée lue sur un champ à droite),
   `if *d <= float64(rayon) {`, et `var d float64 = *m.PlusProcheM` puis `d >= rayon` —
   `\w*(?i:rayon|portee)` s'arrête sur `.` ou `(`, et `lieeADeref` retient `float64`. Aucune copie de
-  ce genre n'existe dans le dépôt ; non traité.
+  ce genre n'existe dans le dépôt. TRAITÉ en L13.F3 (les trois formes reconnues, auto-test).
 - (L12) Le catalogue de bornes `map_quant_bounds.json` est encore décodé à chaque résolution de
   callouts par module (`calloutsParModule`, `decfilm.LoadMapQuantCatalog`) : même motif que le
-  catalogue de callouts mis en cache par G3, hors de la liste de la revue ; non traité.
+  catalogue de callouts mis en cache par G3, hors de la liste de la revue. TRAITÉ en L13.F4
+  (`cacheParChemin`, `catalogueDeBornes`).
 - (L10) La fonction de `MatchPositionsHeatmap` (lot voisin) dépassait déjà 80 L (183) avant le lien
   « Tactique » ; non découpée (consigne d'insertion minimale), le lien sorti dans un composant local
   pour la limiter à 193 L ; non traité.
