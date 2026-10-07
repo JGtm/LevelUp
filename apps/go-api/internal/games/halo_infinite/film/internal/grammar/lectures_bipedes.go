@@ -40,11 +40,13 @@ package grammar
 //
 // # UN CORPS MORT N AGIT PLUS
 //
-// Le record qui porte le dead-state d un corps, et ceux du meme corps qui le suivent jusqu au record
-// NEW qui recree sa generation, ne vont a aucun lecteur, de l une ou l autre source : ils decrivent
-// le cadavre (emplacements d arme vides, equipement retire), pas un geste du joueur. Les armes qu il
-// laisse tomber sont les objets du monde de `groundWeapons`. Ces records se comptent
-// ([lecturesBipedes.corpsMorts]).
+// Le record qui porte le dead-state d un corps quand ce dead-state dit la mort (`Mort`), et ceux du
+// meme corps qui le suivent jusqu au record NEW qui recree sa generation, ne vont a aucun lecteur,
+// de l une ou l autre source — ni a celui des positions : ils decrivent le cadavre (emplacements
+// d arme vides, equipement retire), pas un geste du joueur. Les armes qu il laisse tomber sont les
+// objets du monde de `groundWeapons`. Un dead-state qui ne dit pas la mort ne tue pas le corps :
+// c est la regle du canal des morts, et celui qu on lit dans une trame refusee peut etre un
+// deraillement. Ces records se comptent ([lecturesBipedes.corpsMorts]).
 //
 // # CE QU UN LECTEUR EN FAIT
 //

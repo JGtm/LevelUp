@@ -76,10 +76,10 @@ func TestUnI0SeLitAbsoluDansLaRegionJouee(t *testing.T) {
 
 // TestLesPositionsSuiventLaMarcheSurLaMiniBobine : sur la mini-bobine (registre compris), chaque
 // position vient d un record retenu — de la marche, ou de l ancrage derriere elle hors de ce que la
-// trame prouve et d un slot qu elle n a pas lu ; aux records que l ancrage seul rendait aussi, au meme
-// bit, les quanta sont les memes ; et la marche rend les positions d un joueur que l ancrage manque.
-// Le slot 529 apparait au chunk 5, le dernier de la bobine, apres sa premiere image-cle : la bande
-// bipede des images-cles ne le porte pas, la table d entites de la marche si.
+// trame prouve et d un slot qu elle n a pas lu ; la marche en designe ; aux records que l ancrage seul
+// rendait aussi, les quanta sont les memes ; et la bande bipede reste la population des positions :
+// le slot 529, ne au chunk 5 (le dernier de la bobine) apres sa premiere image-cle, que la marche lit
+// mais qu aucune image-cle ne porte, n a pas de position.
 func TestLesPositionsSuiventLaMarcheSurLaMiniBobine(t *testing.T) {
 	film, err := source.LoadDir(bobineFamilles, nil)
 	if err != nil {
@@ -119,7 +119,7 @@ func TestLesPositionsSuiventLaMarcheSurLaMiniBobine(t *testing.T) {
 	for _, p := range ancrees {
 		anciennes[cle{p.Chunk, p.PacketIndex, p.Slot}] = p.Q
 	}
-	communes, slot529 := 0, 0
+	communes := 0
 	for _, p := range neuves {
 		if q, ok := anciennes[cle{p.Chunk, p.PacketIndex, p.Slot}]; ok {
 			communes++
@@ -129,15 +129,26 @@ func TestLesPositionsSuiventLaMarcheSurLaMiniBobine(t *testing.T) {
 			}
 		}
 		if p.Slot == 529 && p.Chunk == 5 {
-			slot529++
+			t.Fatalf("le slot 529, hors de la bande bipede, a une position au chunk 5 paquet %d", p.PacketIndex)
 		}
 	}
-	if communes == 0 || slot529 == 0 {
-		t.Fatalf("communes %d, positions du slot 529 au chunk 5 %d : la bobine doit porter les deux", communes, slot529)
-	}
-	for _, p := range ancrees {
-		if p.Slot == 529 && p.Chunk == 5 {
-			t.Fatalf("l ancrage seul lit le slot 529 au chunk 5 : le temoin ne distingue plus les deux lectures")
+	parLaMarche := 0
+	for _, r := range pb.records {
+		if !r.recupere {
+			parLaMarche++
 		}
+	}
+	if communes == 0 || parLaMarche == 0 {
+		t.Fatalf("communes %d, designees par la marche %d : la bobine doit porter les deux", communes, parLaMarche)
+	}
+	marcheLit529 := false
+	for k := range canal.trames {
+		if k.chunk == 5 && slices.Contains(canal.trames[k].slots, 529) {
+			marcheLit529 = true
+			break
+		}
+	}
+	if !marcheLit529 {
+		t.Fatal("la marche ne lit plus le slot 529 au chunk 5 : le temoin de la population ne garde rien")
 	}
 }

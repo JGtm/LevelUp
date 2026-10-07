@@ -191,6 +191,8 @@ type canalDesLecturesBipedes struct {
 	// positionsMarche, positionsRecuperees : les records dont la position se lit, de la marche puis de
 	// l ancrage derriere elle ([positionsBipedes]).
 	positionsMarche, positionsRecuperees positionsBipedes
+	// bande : la bande bipede du contexte ([FilmContext.BipedSlots]), la population des positions.
+	bande SlotBand
 }
 
 // nouveauCanalDesLecturesBipedes prepare le canal des lectures bipedes du film `fc`. Les
@@ -204,6 +206,7 @@ func nouveauCanalDesLecturesBipedes(fc *FilmContext) *canalDesLecturesBipedes {
 	}
 	if lay, err := fc.I0Layout(); err == nil {
 		c.lay, c.layOK = lay, true
+		c.bande = fc.BipedSlots()
 	}
 	fc.GenerationsVivantesA(0)
 	return c
@@ -282,7 +285,7 @@ func (c *canalDesLecturesBipedes) recueillir(p *lecture.Paquet, recs []FrameReco
 			c.lu.generationsRefusees++
 			continue
 		}
-		if _, deja := c.mortA[vie]; !deja && r.Trace.Dead != nil {
+		if _, deja := c.mortA[vie]; !deja && r.Trace.Dead != nil && r.Trace.Dead.Mort {
 			c.mortA[vie] = p.TS
 		}
 		if _, mort := c.mortA[vie]; mort {
@@ -435,10 +438,13 @@ func rendParLAncrage(t trameDuCanal, vu bool, slot uint32, i0 int) bool {
 	return !vu || (!slices.Contains(t.slots, slot) && int64(i0) < int64(t.prouveeDes))
 }
 
-// noterLaPosition retient la position du record `rb` que la marche a lu (`r`) quand son i0 a ete
-// traverse et qu il est absolu dans la region jouee ([i0AbsoluDeLaRegion]).
+// noterLaPosition retient la position du record `rb` que la marche a lu (`r`) quand son slot est de
+// la bande bipede du contexte, que son i0 a ete traverse et qu il est absolu dans la region jouee
+// ([i0AbsoluDeLaRegion]). LA BANDE RESTE LA POPULATION DES POSITIONS, celle de l ancrage : la marche
+// lit aussi des corps qu aucune image-cle ne porte — les corps poses en fin de match pour la scene des
+// vainqueurs, un joueur ne au dernier chunk d une bobine —, que les traces ne publiaient pas.
 func (c *canalDesLecturesBipedes) noterLaPosition(p *lecture.Paquet, r *FrameRecord, rb *recordBipedeLu) {
-	if !c.layOK || len(r.Trace.Comps) == 0 {
+	if !c.layOK || len(r.Trace.Comps) == 0 || !c.bande.Has(rb.Slot) {
 		return
 	}
 	i0 := r.Trace.Comps[0]

@@ -237,7 +237,7 @@ func TestLaMarcheNeDonneQueLesCorpsVivants(t *testing.T) {
 			r.Trace.Comps = append(r.Trace.Comps, CompResult{Index: id, Ported: true, StartBit: 20 + 10*j})
 		}
 		if mort {
-			r.Trace.Dead = &types.DeadState{}
+			r.Trace.Dead = &types.DeadState{Mort: true}
 		}
 		return r
 	}
@@ -252,13 +252,20 @@ func TestLaMarcheNeDonneQueLesCorpsVivants(t *testing.T) {
 	c.recueillir(paquet(2), []FrameRecord{record(recDelta, 520, 1, true, 0, 21)}, nil, gens)  // dead-state
 	c.recueillir(paquet(3), []FrameRecord{record(recDelta, 520, 1, false, 0, 21)}, nil, gens) // corps mort
 	c.recueillir(paquet(4), []FrameRecord{record(recNew, 520, 1, false, 0, 21), record(recDelta, 520, 1, false, 0, 21)}, nil, gens)
+	// Un dead-state qui ne dit pas la mort (`Mort` a faux : lu dans une trame refusee sur `a349fea8`,
+	// slot 590) ne tue pas le corps : ce record et le suivant restent.
+	vivant := record(recDelta, 521, 1, false, 0, 21)
+	vivant.Trace.Dead = &types.DeadState{}
+	c.recueillir(paquet(5), []FrameRecord{vivant}, nil, gens)
+	c.recueillir(paquet(6), []FrameRecord{record(recDelta, 521, 1, false, 0, 21)}, nil, gens)
 	var retenus []uint64
 	for _, r := range c.lu.records {
 		retenus = append(retenus, r.Packet.TimestampUS)
 	}
-	if !slices.Equal(retenus, []uint64{1, 4}) || c.lu.generationsRefusees != 1 || c.lu.corpsMorts != 2 || c.lu.examines != 6 {
-		t.Fatalf("retenus aux instants %v (attendu [1 4]), generations refusees %d (1), corps morts %d (2), examines %d (6)",
-			retenus, c.lu.generationsRefusees, c.lu.corpsMorts, c.lu.examines)
+	if !slices.Equal(retenus, []uint64{1, 4, 5, 6}) || c.lu.generationsRefusees != 1 || c.lu.corpsMorts != 2 ||
+		c.lu.examines != 8 {
+		t.Fatalf("retenus aux instants %v (attendu [1 4 5 6]), generations refusees %d (1), corps morts %d (2), "+
+			"examines %d (8)", retenus, c.lu.generationsRefusees, c.lu.corpsMorts, c.lu.examines)
 	}
 	if got := c.trames[paquetDuFlux{1, 1}]; got.prouveeDes != 0 || !slices.Equal(got.slots, []uint32{520, 520, 521}) {
 		t.Fatalf("trame retenue %+v : prouvee des 0, slots lus 520, 520, 521 attendus", got)
