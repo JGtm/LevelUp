@@ -115,14 +115,14 @@ describe('timeseriesCoordination.logic', () => {
 })
 
 describe('TimeseriesCoordinationSection', () => {
-  it('rend « Appui reçu » seule, ses chiffres d’appel et la couverture — sans phrase de lecteur', async () => {
+  it('rend « Appui reçu » seule et ses chiffres d’appel — sans phrase de lecteur ni couverture', async () => {
     render(<TimeseriesCoordinationSection block={bloc()} locale="fr" />)
     expect(screen.getByRole('region', { name: 'Appui reçu' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Riposte' })).not.toBeInTheDocument()
     // Le canvas est chargé en `lazy` par ChartCard : il arrive après la suspense.
     expect(await screen.findAllByTestId('echarts-mock')).toHaveLength(1)
     expect(screen.getAllByText('41 %').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('24 matchs mesurés sur 30')).toHaveLength(1)
+    expect(screen.queryByText(/mesurés sur/)).not.toBeInTheDocument()
   })
 
   it('CONSERVE la carte quand le bloc est indisponible : un état vide nommé', () => {

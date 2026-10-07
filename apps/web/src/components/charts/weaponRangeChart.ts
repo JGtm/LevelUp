@@ -72,22 +72,6 @@ const BAR_GAP = 4
 const DIAMOND_RADIUS = 5
 
 /**
- * WEAPON_KEYS_WITHOUT_RANGE — les pseudo-armes pour lesquelles une DISTANCE N'A PAS DE SENS.
- *
- * « Chute et environnement » (`hinf_environment`) agrège les morts par chute, écrasement ou
- * élément de décor : la « distance tueur → victime » y mesure l'écart entre la victime et
- * un point de géométrie, pas une portée d'engagement. La ligne polluait l'axe et tirait la
- * médiane (retrait demandé le 2026-09-09).
- *
- * FILTRE CÔTÉ FRONT, ET C'EST UN PIS-ALLER ASSUMÉ : la place durable de cette exclusion est
- * le classifieur de sources côté Go (`port.KillSourceClassifier`), qui sait déjà rattacher
- * un `source_tag` à sa nature — le contrat de portée ne porte pas la classe de l'arme, donc
- * le front n'a que la clé pour trancher. Un `Set` et non un test d'égalité : un autre titre
- * ajoute sa clé sans réécrire la condition.
- */
-const WEAPON_KEYS_WITHOUT_RANGE = new Set(['hinf_environment'])
-
-/**
  * Une ligne du graphe — DEUX MESURES SUPERPOSÉES, et rien de plus.
  *
  * # POURQUOI `top` / `bottom` ET NON `kills` / `deaths` (2026-09-17)
@@ -118,6 +102,9 @@ export interface WeaponRangeLine {
  * L'ORDRE DU BACKEND EST CONSERVÉ (médiane des frags croissante, cf. `mergeWeaponSides`
  * côté Go) : le graphe se lit comme un continuum du contact à la longue portée. Rien n'est
  * retrié ici — deux tris du même fait divergeraient au premier changement de doctrine.
+ * Rien n'est filtré non plus : les sources SANS PORTÉE (armes de contact, chute et
+ * environnement) sont écartées côté Go, d'après l'attribut du registre d'armes
+ * (`weapons.IsWithoutRange`).
  *
  * Le contrat OMET un côté non mesuré (jamais un zéro, qui se lirait « mesuré, à zéro
  * mètre ») ; la projection le normalise en `null` pour que le rendu ait un seul cas à
@@ -127,15 +114,13 @@ export function weaponRangeLines(
   weapons: readonly WeaponRangeRow[] | null | undefined,
   locale: ManifestLocale,
 ): WeaponRangeLine[] {
-  return (weapons ?? [])
-    .filter((w) => !WEAPON_KEYS_WITHOUT_RANGE.has(w.weapon_key))
-    .map((w) => ({
-      weaponKey: w.weapon_key,
-      label: resolveWeaponLabel(w, locale),
-      // Synthèse : les frags EN HAUT, les morts en dessous (l'ordre de la légende).
-      top: w.kills ?? null,
-      bottom: w.deaths ?? null,
-    }))
+  return (weapons ?? []).map((w) => ({
+    weaponKey: w.weapon_key,
+    label: resolveWeaponLabel(w, locale),
+    // Synthèse : les frags EN HAUT, les morts en dessous (l'ordre de la légende).
+    top: w.kills ?? null,
+    bottom: w.deaths ?? null,
+  }))
 }
 
 /**

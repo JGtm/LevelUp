@@ -156,14 +156,16 @@ describe('Onglet Usages — l’Emprise du périmètre solo', () => {
     expect(range.compareDocumentPosition(bilan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('intertitres concis ; « Ressources » porte sa couverture', () => {
+  it('intertitres concis, sans mention de couverture', () => {
     setTitle(['weapon_range'])
     renderUsages(fullPage())
     const titres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')
     for (const t of ['Portée', 'Par carte', 'Prises', 'Rendement des ressources', 'Isolement', 'Objectif', 'Équipement']) {
       expect(titres).toContain(t)
     }
-    expect(titres).toContain('Ressources3 matchs filmés sur 4 · frags de la feuille de match sur les 4')
+    // Aucune mention de couverture à côté de l'intertitre (« N matchs filmés sur M »).
+    expect(titres).toContain('Ressources')
+    expect(titres.join(' ')).not.toMatch(/filmés sur/)
   })
 
   it('chaque bloc monte ses cartes', () => {

@@ -21,8 +21,6 @@ export interface UsagesCardsText {
   pctIntFmt: (v: number) => string
   /** « 1 558 » : un compte, séparateur de milliers de la langue. */
   intFmt: (v: number) => string
-  /** Légende sous la bande de « au fil des matchs » : « 90 matchs, dont 62 filmés ». */
-  filCaption: (matches: number, filmed: number) => string
   /** « 03/07 » : la date d'un match sous l'axe de « au fil des matchs ». */
   dayFmt: (iso: string) => string
   maps: {
@@ -96,7 +94,6 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
   pctFmt: frPct,
   pctIntFmt: (v) => `${Math.round(v)} %`,
   intFmt: frInt,
-  filCaption: (matches, filmed) => `${matches} ${plural(matches, 'match', 'matchs')}, dont ${filmed} ${plural(filmed, 'filmé', 'filmés')}`,
   dayFmt: (iso) => {
     const d = new Date(iso)
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
@@ -170,7 +167,6 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
   pctFmt: enPct,
   pctIntFmt: (v) => `${Math.round(v)}%`,
   intFmt: enInt,
-  filCaption: (matches, filmed) => `${matches} ${plural(matches, 'match', 'matches')}, ${filmed} filmed`,
   dayFmt: (iso) => {
     const d = new Date(iso)
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })

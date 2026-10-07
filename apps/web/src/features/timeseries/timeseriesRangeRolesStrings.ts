@@ -24,7 +24,6 @@ export function getTimeseriesRangeRolesText(locale: Locale) {
     cardTitle: m('timeseries.portee.card_title'),
     sectionLabel: m('timeseries.portee.section_label'),
     help: (floor: number) => m('timeseries.portee.help', { floor }),
-    xAxis: m('timeseries.portee.x_axis'),
     yAxis: m('timeseries.portee.y_axis'),
     lobbyLine: m('timeseries.portee.lobby_line'),
     bandes,
@@ -34,8 +33,6 @@ export function getTimeseriesRangeRolesText(locale: Locale) {
     tooltipMedian: (mValue: string) => m('timeseries.portee.tooltip_median', { m: mValue }),
     tooltipDelta: (delta: string) => m('timeseries.portee.tooltip_delta', { delta }),
     tooltipMeasured: (n: number) => m('timeseries.portee.tooltip_measured', { n }),
-    coverage: (measured: number, total: number) =>
-      m('timeseries.portee.coverage', { measured, total }),
     emptyTitle: m('timeseries.portee.empty_title'),
     emptyDescription: m('timeseries.portee.empty_description'),
   }
