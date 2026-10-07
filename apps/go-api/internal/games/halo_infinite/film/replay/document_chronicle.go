@@ -3053,9 +3053,11 @@ package replay
 //
 //	CE QUI MONTE    `SchemaVersion` 87 -> 88 ; `grammar.Rev` `grammar-2026-10-07.2` ->
 //	AVEC ELLE       `grammar-2026-10-07.8` (`.3` a `.7` les cinq composants, `.8` les mains
-//	                nues). `killsource.Rev` et `objectives.Rev` gardent leur valeur (goldens
-//	                regeneres a revision constante) ; `source`, `profile`, `SchemaDesFaits` ne
-//	                bougent pas.
+//	                nues) ; `killsource.Rev` `killsource-2026-10-07` -> `killsource-2026-10-07.2` :
+//	                sur la marche des trames, trois morts des 19 temoins passent du balayage a la
+//	                marche (`read_path` persiste), contenu publie identique. `objectives.Rev`
+//	                garde sa valeur (golden regenere a revision constante) ; `source`, `profile`,
+//	                `SchemaDesFaits` ne bougent pas.
 //
 //	LE PARC         un artefact 87 porte `grammar-2026-10-07.2` : verdict `redecoder`.
 //

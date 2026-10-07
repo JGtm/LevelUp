@@ -1,0 +1,105 @@
+# killsource json, base 312073cd3 contre tete integration (fusion caf08c7e6), 20 films
+0797ce72 identique
+084a804d identique
+111fa685 identique
+11de8353 identique
+== 1c4c63c2
+3c3
+<   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=10 [PROFIL PLAT (score 443, mediane 404)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6980, mediane 6980]",
+---
+>   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=10 [PROFIL PLAT (score 443, mediane 410)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6980, mediane 6980]",
+90,93c90,93
+<         "population": 272,
+<         "apparies_au_couple_exact": 249,
+<         "lignes_publiees": 249,
+<         "taux": 0.9154411764705882
+---
+>         "population": 265,
+>         "apparies_au_couple_exact": 247,
+>         "lignes_publiees": 247,
+>         "taux": 0.9320754716981132
+96,99c96,99
+<         "population": 244,
+<         "apparies_au_couple_exact": 241,
+<         "lignes_publiees": 241,
+<         "taux": 0.9877049180327869
+---
+>         "population": 251,
+>         "apparies_au_couple_exact": 243,
+>         "lignes_publiees": 243,
+>         "taux": 0.9681274900398407
+103,104c103,104
+<       "enregistrements_lus_par_les_deux_voies": 246,
+<       "accord": 241,
+---
+>       "enregistrements_lus_par_les_deux_voies": 253,
+>       "accord": 243,
+6623c6623
+<         "voie": "balayage",
+---
+>         "voie": "sequentielle",
+6627c6627
+<         "voie_identifiant": "scan"
+---
+>         "voie_identifiant": "marche"
+11198c11198
+<         "voie": "balayage",
+---
+>         "voie": "sequentielle",
+11202c11202
+<         "voie_identifiant": "scan"
+---
+>         "voie_identifiant": "marche"
+396cfc92 identique
+4f77afc1 identique
+50247b26 identique
+51ebbc0f identique
+60ae07c4 identique
+a349fea8 identique
+a521164d identique
+bcb6d393 identique
+bf15f7ab identique
+bfecd02b identique
+== c75f33b8
+3c3
+<   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=13 [PROFIL PLAT (score 74, mediane 70)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 232, mediane 232]",
+---
+>   "calibration": "LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=13 [PROFIL PLAT (score 75, mediane 71)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 235, mediane 235]",
+d9781168 identique
+== e5adf7b2
+90,93c90,93
+<         "population": 5,
+<         "apparies_au_couple_exact": 4,
+<         "lignes_publiees": 4,
+<         "taux": 0.8
+---
+>         "population": 4,
+>         "apparies_au_couple_exact": 3,
+>         "lignes_publiees": 3,
+>         "taux": 0.75
+96,99c96,99
+<         "population": 201,
+<         "apparies_au_couple_exact": 191,
+<         "lignes_publiees": 191,
+<         "taux": 0.9502487562189055
+---
+>         "population": 202,
+>         "apparies_au_couple_exact": 192,
+>         "lignes_publiees": 192,
+>         "taux": 0.9504950495049505
+103,104c103,104
+<       "enregistrements_lus_par_les_deux_voies": 206,
+<       "accord": 191,
+---
+>       "enregistrements_lus_par_les_deux_voies": 207,
+>       "accord": 192,
+4205c4205
+<         "voie": "balayage",
+---
+>         "voie": "sequentielle",
+4209c4209
+<         "voie_identifiant": "scan"
+---
+>         "voie_identifiant": "marche"
+f75e7053 identique
+fb1a1a72 identique

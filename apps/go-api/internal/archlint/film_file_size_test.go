@@ -260,10 +260,10 @@ var plafondsParFichier = map[string]int{
 	// montent, les rangs reserves laisses, l effet au parc et sa mesure). Exception ecrite, dans le
 	// commit qui monte `SchemaVersion`.
 	// SCHEMA 87 -> 88 (2026-10-07, lot des arrets de la vue B, ecrit v83 sur sa branche et renumerote a
-	// la fusion), +36 : l entree v88 (les cinq composants de la vue B lus, les mains nues valent « rien
+	// la fusion), +38 : l entree v88 (les cinq composants de la vue B lus, les mains nues valent « rien
 	// en main » dans les changements d arme, les revisions qui montent et celles qui ne montent pas, la
 	// mesure au parc et au gate de corpus). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3068,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3070,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -367,9 +367,9 @@ var plafondsParFichier = map[string]int{
 	// la montee (deux champs de couverture, publication seule).
 	// SCHEMA 86 -> 87 (2026-10-07, representation intermediaire 2.7.c) : 1405 -> 1411, la
 	// justification de la montee (la vue A lue au-dela des messages de kill, aucun champ neuf).
-	// SCHEMA 87 -> 88 (2026-10-07, lot des arrets de la vue B) : 1411 -> 1415, la justification de la
+	// SCHEMA 87 -> 88 (2026-10-07, lot des arrets de la vue B) : 1411 -> 1416, la justification de la
 	// montee (cinq composants lus, aucun changement d arme publie ne porte les mains nues).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1415,
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1416,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
