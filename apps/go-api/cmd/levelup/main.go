@@ -258,8 +258,8 @@ Commandes:
   populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
   backfill-registry-names  Fait converger les noms de carte, paire, playlist et variante du registre restés NULL ou égaux
                   à leur identifiant vers leurs traductions (paire sans traduction construite « {variante} on {carte} »).
-                  Un match à la fois, idempotente, mode_category jamais touchée (--dry-run : comptes par colonne en
-                  lecture seule ; écriture SERVEUR ARRÊTÉ ; --title)
+                  Un match à la fois, idempotente, mode_category jamais touchée (--dry-run : comptes par colonne,
+                  aucune écriture ; --title). SERVEUR ARRÊTÉ, y compris pour --dry-run (le serveur tient la base).
   identity        Annuaire des identites : identity list (compte / profils / jeton / anomalies par xuid) et
                   identity purge <xuid> [--yes] (retire compte, jeton, profils, dossiers et groupes ; SANS --yes
                   c est une simulation qui imprime le rapport). La base partagee des matchs n est JAMAIS touchee.

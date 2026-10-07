@@ -12,12 +12,15 @@ package main
 //
 // Idempotente : une seconde passe ne trouve plus que les colonnes sans source.
 //
+// SERVEUR ARRÊTÉ, Y COMPRIS POUR --dry-run : le serveur tient metadata.duckdb en écriture en
+// permanence (et la base partagée pendant ses écritures) ; DuckDB refuse alors à tout autre
+// processus d'ouvrir le fichier, même en lecture seule. Une base tenue fait échouer la commande
+// avant toute lecture, par errServeurLance.
+//
 // Usage :
 //
-//	levelup backfill-registry-names --dry-run   # comptes par colonne, aucune écriture (lecture
-//	                                            # seule : serveur arrêté ou non)
-//	levelup backfill-registry-names             # écriture — SERVEUR ARRÊTÉ (OpenReadWrite
-//	                                            # échoue si un autre processus tient la base)
+//	levelup backfill-registry-names --dry-run   # comptes par colonne, aucune écriture
+//	levelup backfill-registry-names             # écriture
 
 import (
 	"context"
@@ -35,10 +38,23 @@ import (
 // errConvergenceIncomplete : des matchs n'ont pas pu être écrits (journalisés un à un).
 var errConvergenceIncomplete = errors.New("convergence des noms incomplète : écritures en échec")
 
+// errServeurLance : une base de la commande est tenue par un autre processus
+// (duckdb.ErrBaseTenueEnEcriture) — le serveur LevelUp, le plus souvent.
+var errServeurLance = errors.New("base tenue par un autre processus : arrêter le serveur LevelUp, y compris pour --dry-run")
+
+// erreurOuverture nomme l'échec d'ouverture de `path` ; une base tenue par un autre processus
+// est rendue sous errServeurLance (message d'origine de DuckDB conservé : il nomme le détenteur).
+func erreurOuverture(quoi, path string, err error) error {
+	if errors.Is(err, duckdb.ErrBaseTenueEnEcriture) {
+		return fmt.Errorf("%s (%s) : %w : %w", quoi, path, errServeurLance, err)
+	}
+	return fmt.Errorf("%s (%s) : %w", quoi, path, err)
+}
+
 func runBackfillRegistryNames(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("backfill-registry-names", flag.ExitOnError)
 	titleSlug := fs.String("title", titlePkg.DefaultSlug, "slug du titre")
-	dryRun := fs.Bool("dry-run", false, "compter par colonne sans rien écrire (lecture seule)")
+	dryRun := fs.Bool("dry-run", false, "compter par colonne sans rien écrire (serveur arrêté, comme l'écriture)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -51,7 +67,7 @@ func runBackfillRegistryNames(cfg *config.AppConfig, args []string) error {
 	}
 	metaDB, releaseMeta, err := duckdb.OpenReadForQuery(metaPath)
 	if err != nil {
-		return fmt.Errorf("open metadata (%s): %w", metaPath, err)
+		return erreurOuverture("open metadata", metaPath, err)
 	}
 	defer releaseMeta()
 
@@ -60,14 +76,14 @@ func runBackfillRegistryNames(cfg *config.AppConfig, args []string) error {
 	if *dryRun {
 		sharedDB, releaseShared, oerr := duckdb.OpenReadForQuery(sharedPath)
 		if oerr != nil {
-			return fmt.Errorf("open shared lecture (%s): %w", sharedPath, oerr)
+			return erreurOuverture("open shared lecture", sharedPath, oerr)
 		}
 		defer releaseShared()
 		stats, err = go_sync.BackfillRegistryNames(ctx, sharedDB, metaDB, go_sync.RegistryNamesOptions{DryRun: true})
 	} else {
 		handle, oerr := duckdb.OpenReadWrite(sharedPath)
 		if oerr != nil {
-			return fmt.Errorf("open shared RW (%s): %w (serveur arrêté ?)", sharedPath, oerr)
+			return erreurOuverture("open shared RW", sharedPath, oerr)
 		}
 		defer handle.Close()
 		stats, err = go_sync.BackfillRegistryNames(ctx, handle.SQLDb(), metaDB, go_sync.RegistryNamesOptions{})
