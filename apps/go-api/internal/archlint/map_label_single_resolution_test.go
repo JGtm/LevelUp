@@ -10,7 +10,9 @@
 // Les empreintes d'une résolution, telles qu'elles s'écrivent (lignes de commentaire ignorées) :
 //  1. un résolveur de noms d'asset appelé pour le type "map" ;
 //  2. une requête sur `asset_translations` filtrée par `asset_type = 'map'` ;
-//  3. le repli de libellé du registre `COALESCE(map_name_fr, map_name …)`.
+//  3. le repli de libellé du registre : un `COALESCE` dont les arguments lisent `map_name_fr` puis
+//     `map_name`, nus ou sous agrégat (`COALESCE(map_name_fr, map_name)`,
+//     `COALESCE(MAX(mr.map_name_fr), MAX(mr.map_name))`, `COALESCE(NULLIF(…), …)`).
 //
 // Hors du helper, seuls les fichiers de `resolutionsGelees` en portent, chacun avec sa raison : des
 // surfaces hors de ce périmètre (accueil, vue match, médias, carrière, relations, escouade) et des
@@ -63,9 +65,22 @@ var (
 	// typeMap et tableTraductions : empreinte 2 (les deux dans le même fichier).
 	typeMap          = regexp.MustCompile(`asset_type\s*=\s*'map'`)
 	tableTraductions = regexp.MustCompile(`\basset_translations\b`)
-	// replisRegistre : empreinte 3.
-	replisRegistre = regexp.MustCompile(`(?i)COALESCE\(\s*(?:\w+\.)?map_name_fr\s*,\s*(?:\w+\.)?map_name\b`)
+	// coalesceEtArguments, champFR, champRegistre : empreinte 3. Les arguments d'un COALESCE, jusqu'à
+	// deux niveaux de parenthèses (un agrégat sous un NULLIF).
+	coalesceEtArguments = regexp.MustCompile(`(?i)COALESCE\(((?:[^()]|\((?:[^()]|\([^()]*\))*\))*)\)`)
+	champFR             = regexp.MustCompile(`(?i)\bmap_name_fr\b`)
+	champRegistre       = regexp.MustCompile(`(?i)\bmap_name\b`)
 )
+
+// replisDuRegistre : un COALESCE lit le libellé FR du registre, puis son nom (empreinte 3).
+func replisDuRegistre(source string) bool {
+	for _, m := range coalesceEtArguments.FindAllStringSubmatch(source, -1) {
+		if fr := champFR.FindStringIndex(m[1]); fr != nil && champRegistre.MatchString(m[1][fr[1]:]) {
+			return true
+		}
+	}
+	return false
+}
 
 // commentaireDeFin : un commentaire Go en fin de ligne (précédé d'un blanc, ce qu'une URL dans une
 // chaîne n'est pas).
@@ -93,7 +108,7 @@ func empreintesDeLibelleCarte(source string) []string {
 	if typeMap.MatchString(source) && tableTraductions.MatchString(source) {
 		out = append(out, "requête asset_translations des cartes")
 	}
-	if replisRegistre.MatchString(source) {
+	if replisDuRegistre(source) {
 		out = append(out, "repli de libellé du registre (map_name_fr, map_name)")
 	}
 	return out
@@ -107,6 +122,9 @@ func TestLibelleCarte_ReconnaitLesResolutions(t *testing.T) {
 		"\tmapNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, \"map\", mapIDs, langs)",
 		// la liste des cartes du filtre avant L13
 		"\t    COALESCE(r.map_name_fr, r.map_name, '') AS label,",
+		// le même repli sous agrégat, dans la requête des vignettes
+		"       COALESCE(MAX(mr.map_name_fr), MAX(mr.map_name)) AS map_name_fr,",
+		"       COALESCE(NULLIF(MAX(mr.map_name_fr), ''),\n\t\t\tMAX(mr.map_name)) AS libelle,",
 	} {
 		if len(empreintesDeLibelleCarte(r)) == 0 {
 			t.Errorf("le garde-rail ne reconnaît pas une résolution :\n%s", r)
@@ -115,6 +133,7 @@ func TestLibelleCarte_ReconnaitLesResolutions(t *testing.T) {
 	for _, sain := range []string{
 		"       COALESCE(MAX(mr.map_name_fr), '') AS map_name_fr,",
 		"\t\t\tCOALESCE(mr.map_name_fr, ''),",
+		"\t\t\tCOALESCE(mr.map_name_fr, ''), COALESCE(mr.map_name, ''),",
 		"\tnoms, err := repo.ResolveAssetNamesBulk(ctx, \"playlist\", ids, langs)",
 		"\t// COALESCE(map_name_fr, map_name) : ce que le registre portait",
 		"\tMapNameFR *string // COALESCE(map_name_fr, map_name), enrichi",
