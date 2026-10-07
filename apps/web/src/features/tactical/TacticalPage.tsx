@@ -30,19 +30,20 @@
  * liste de cartes servie. En RELECTURE (réponse précédente gardée par `placeholderData`), rien ne se
  * démonte.
  */
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 
+import type { TacticalMapCard } from '@/lib/api/types'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { carteEffective, VARIABLES_COCKPIT } from './cockpit.logic'
+import { carteEffective, titreDeLaCarte, VARIABLES_COCKPIT } from './cockpit.logic'
 import { getTacticalText, type TacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { TacticalFilterBar } from './TacticalFilterBar'
 import { TacticalMapsColumn } from './TacticalMapsColumn'
 import { useCoequipierOptions, useTacticalMaps, useTacticalMatchIDs } from './queries'
-import { contexteFiltre, nomCarte, resoudreComposition } from './tacticalLogic'
+import { contexteFiltre, resoudreComposition } from './tacticalLogic'
 import {
   decodeTacticalScope,
   encodeTacticalScope,
@@ -68,8 +69,8 @@ export function TacticalPage() {
   if (p.cartesConnues) listeDesCartes = p.cartes
   else if (p.grilleEnEchec) listeDesCartes = null
   const effective = useMemo(() => carteEffective(scope.carte, listeDesCartes), [scope.carte, listeDesCartes])
-  const carte = p.cartes.find((c) => c.map_id === effective.mapId)
-  const nom = carte ? nomCarte(carte, locale) : effective.mapId
+  const connues = useCartesConnues(p.cartes)
+  const nom = titreDeLaCarte(effective, p.cartes, connues, locale, t.planTitleOutsideFilter)
 
   return (
     <>
@@ -116,6 +117,32 @@ export function TacticalPage() {
       </div>
     </>
   )
+}
+
+/**
+ * useCartesConnues — chaque carte vue dans une liste de la session, la dernière vue gardée : le titre
+ * d'une carte sortie du filtre garde son nom au lieu de retomber sur son identifiant.
+ */
+function useCartesConnues(cartes: readonly TacticalMapCard[]): ReadonlyMap<string, TacticalMapCard> {
+  const [vues, setVues] = useState(() => ({ cartes, connues: avecCartes(new Map(), cartes) }))
+  // Ajustement pendant le rendu quand la liste change (patron React « état dérivé d'une prop ») :
+  // aucun rendu intermédiaire avec une liste de noms en retard.
+  if (vues.cartes !== cartes) {
+    const suivantes = { cartes, connues: avecCartes(vues.connues, cartes) }
+    setVues(suivantes)
+    return suivantes.connues
+  }
+  return vues.connues
+}
+
+/** avecCartes — les cartes connues, complétées (et mises à jour) par une liste. */
+function avecCartes(
+  connues: ReadonlyMap<string, TacticalMapCard>,
+  cartes: readonly TacticalMapCard[],
+): Map<string, TacticalMapCard> {
+  const suivantes = new Map(connues)
+  for (const c of cartes) suivantes.set(c.map_id, c)
+  return suivantes
 }
 
 /** useScopeTactique — l'état de la barre et la carte choisie, persistés dans l'URL. */

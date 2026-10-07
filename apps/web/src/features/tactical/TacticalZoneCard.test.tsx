@@ -106,7 +106,7 @@ const DETAIL: TacticalCelluleReponse = {
 function rendre(
   props: Partial<{
     cellule: CelluleTactique | null
-    detail: { data?: TacticalCelluleReponse; isPending: boolean }
+    detail: { data?: TacticalCelluleReponse; isPending: boolean; isError: boolean }
     question: 'morts' | 'solde' | 'gagne' | 'temps'
     signee: boolean
     locale: 'fr' | 'en'
@@ -122,7 +122,7 @@ function rendre(
       signee={props.signee ?? false}
       pasM={2}
       cellule={props.cellule === undefined ? CELLULE : props.cellule}
-      detail={props.detail ?? { data: DETAIL, isPending: false }}
+      detail={props.detail ?? { data: DETAIL, isPending: false, isError: false }}
     />,
   )
 }
@@ -138,7 +138,7 @@ beforeEach(() => {
 
 describe('TacticalZoneCard — la zone sélectionnée', () => {
   it('sans sélection : le titre « Zone sélectionnée » et une ligne, rien d’autre', () => {
-    rendre({ cellule: null, detail: { isPending: false } })
+    rendre({ cellule: null, detail: { isPending: false, isError: false } })
     const carte = screen.getByTestId('tactical-zone-card')
     expect(carte).toHaveTextContent(t.zoneTitle)
     expect(within(carte).getByText(t.zoneNone)).toBeInTheDocument()
@@ -163,13 +163,13 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
   })
 
   it('pendant la lecture du détail : « Zone sélectionnée », la valeur déjà servie', () => {
-    rendre({ detail: { isPending: true } })
+    rendre({ detail: { isPending: true, isError: false } })
     expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent(t.zoneTitle)
     expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('3')
   })
 
   it('aucune zone ne la nomme : « Zone sans nom »', () => {
-    rendre({ detail: { data: { ...DETAIL, zone: undefined }, isPending: false } })
+    rendre({ detail: { data: { ...DETAIL, zone: undefined }, isPending: false, isError: false } })
     expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent(t.zoneUnnamed)
   })
 
@@ -188,13 +188,13 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
   it('lecture d’artefact : la tuile dit l’entrée dans la zone', () => {
     rendre({
       question: 'temps',
-      detail: { data: { ...DETAIL, contributions: [contribution({ face: 'entree', clock: 'film', autre_gamertag: undefined, placement: undefined })] }, isPending: false },
+      detail: { data: { ...DETAIL, contributions: [contribution({ face: 'entree', clock: 'film', autre_gamertag: undefined, placement: undefined })] }, isPending: false, isError: false },
     })
     expect(screen.getByTestId('tactical-rejeu-tile')).toHaveTextContent('Entrée dans la zone')
   })
 
   it('aucun match ouvrable : la liste le dit', () => {
-    rendre({ detail: { data: { ...DETAIL, contributions: [] }, isPending: false } })
+    rendre({ detail: { data: { ...DETAIL, contributions: [] }, isPending: false, isError: false } })
     expect(screen.getByText(t.zoneContributionsEmpty)).toBeInTheDocument()
   })
 })

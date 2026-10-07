@@ -23,6 +23,8 @@ interface DetailDeZone {
   data?: TacticalCelluleReponse
   /** Le détail de la zone choisie est en cours de lecture. */
   isPending: boolean
+  /** La lecture du détail a échoué : la liste dit l'échec, jamais « aucun match ouvrable ». */
+  isError: boolean
 }
 
 interface TacticalZoneCardProps {
@@ -97,6 +99,13 @@ function ListeDuRejeu({
   playerSlug: string
   detail: DetailDeZone
 }) {
+  if (detail.isError) {
+    return (
+      <p className="text-xs text-muted-foreground" data-testid="tactical-zone-erreur">
+        {t.zoneError}
+      </p>
+    )
+  }
   if (detail.isPending) return <p className="text-xs text-muted-foreground">{t.zoneContributionsLoading}</p>
   const contributions = detail.data?.contributions ?? []
   const nonOuvrables = detail.data?.matchs_non_ouvrables ?? 0

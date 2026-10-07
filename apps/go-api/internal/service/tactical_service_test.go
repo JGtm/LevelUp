@@ -66,12 +66,13 @@ func tsPerimetreDu(repo *mockTacticalRepo) []string {
 	return out
 }
 
-// capsCompletes : profil Halo Infinite — positions capturees du film ET source du
-// degat fatal.
+// capsCompletes : profil Halo Infinite — positions capturees du film, source du degat fatal et
+// artefact de rejeu (porte du nommage des zones).
 func capsCompletes() games.CapabilityMap {
 	return games.CapabilityMap{
-		games.CapFilmKillPositions: games.CapSupported,
-		games.CapFilmKillSource:    games.CapSupported,
+		games.CapFilmKillPositions:  games.CapSupported,
+		games.CapFilmKillSource:     games.CapSupported,
+		games.CapFilmReplayArtifact: games.CapSupported,
 	}
 }
 

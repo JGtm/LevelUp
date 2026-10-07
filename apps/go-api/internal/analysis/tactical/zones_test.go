@@ -85,6 +85,12 @@ func TestNommerZone_EmpileesSansMajorite(t *testing.T) {
 		zone("Fine", 2, carre(0, 0, 10, 10), -0.2, 1.2),
 	}
 	attendreZone(t, 5, 5, []float64{-5, 1, 9}, zones, "Fine", RegleZoneEmpilee)
+	// Comptes INÉGAUX, aucune majorité (3 et 2 sur 7) : la plus peuplée l'emporte, même plus large.
+	zones = []ZoneNommee{
+		zone("Etroite", 1, carre(0, 0, 10, 10), 1, 1.2),
+		zone("Peuplee", 2, carre(0, 0, 10, 10), 0, 3.5),
+	}
+	attendreZone(t, 5, 5, []float64{-9, -8, 1, 1.1, 3, 9, 9.5}, zones, "Peuplee", RegleZoneEmpilee)
 	zones = []ZoneNommee{
 		zone("Second", 7, carre(0, 0, 10, 10), 0, 3),
 		zone("Premier", 3, carre(0, 0, 10, 10), 0, 3),

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // celluleLue sert la demande et échoue le test sur une erreur.
@@ -95,6 +96,22 @@ func TestCellule_ZoneNommeeParLaHauteurDeLaFace(t *testing.T) {
 			t.Errorf("%s : zone = %+v, want %s / %s", c.question, got.Zone, c.fr, c.en)
 		}
 	}
+}
+
+// TestCellule_ZoneSectionDeDuree : le nommage de la zone a sa section de durée (ADR 0036 I6).
+func TestCellule_ZoneSectionDeDuree(t *testing.T) {
+	repo := repoDeuxFaces()
+	svc := NewTacticalService(repo, capsCompletes(), tsMoi).WithCalloutsStore(zonesEmpilees())
+	ctx, chrono := timing.WithTimings(context.Background())
+	if _, err := svc.Cellule(ctx, celluleDemande(repo, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, 4, 4)); err != nil {
+		t.Fatalf("Cellule: %v", err)
+	}
+	for _, sec := range chrono.Snapshot() {
+		if sec.Name == "tactical_cellule_zone" {
+			return
+		}
+	}
+	t.Errorf("section tactical_cellule_zone absente : %+v", chrono.Snapshot())
 }
 
 // TestCellule_ZoneSansNom : aucune zone ne contient le centre ni n'en passe à moins de 2 m — la

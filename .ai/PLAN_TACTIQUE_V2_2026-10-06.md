@@ -1320,6 +1320,107 @@ Journal L11 (2026-10-07, exécuteur, `feat/tactique-v2`) :
   `504d219e4`, L6 `5519f0125`, L7 `beb9c46e2`, L8 `a9fac9c9c`, L9 `629eb588c`, L10 `96eb9ef05`,
   L11 (ce commit).
 
+### L12 — Corrections de la revue adversariale (ronde 1) · moyen
+
+Constats triés par le superviseur le 2026-10-07 (trois relecteurs aveugles ; lentille données : aucun
+constat). Zéro correction hors de cette liste.
+
+- [x] L12.G1 `archlint/no_local_portee_comparison_test.go` : l'empreinte reconnaît toute comparaison
+  (`<`, `<=`, `>`, `>=`) d'une distance déréférencée (ou testée `!= nil`) contre un rayon / une
+  portée ; seule la fonction `APortee` est exclue (plus le fichier `vies_pres_ou_seul.go`) ;
+  auto-test : `Seul: d >= rayon` et `!(d < rayon)` attrapés ; mutation rouge.
+- [x] L12.G2 Nommage de zone du détail (`tactical_service_cellule_enrichir.go`) sous la capability
+  titre de l'onglet, la porte exacte des grappes vérifiée sur pièces ; sans elle : aucun appel au
+  magasin, DEBUG « source zone absente » ; test Halo 5 : aucun appel, aucun WARN.
+- [x] L12.G3 (a) section de durée `tactical_cellule_zone` (ADR 0036 I6) ; (b) catalogue de callouts
+  décodé mis en cache par processus (clé = chemin) au niveau du lecteur ; test : deux appels = une
+  lecture du fichier.
+- [x] L12.G4 `isole` : badge de placement construit depuis le contexte déjà lu par `celluleIsole`,
+  sans `ContextesDeMort` ; test : 0 appel pour `isole`, 1 pour `morts`.
+- [x] L12.G5 Classificateur absent : DEBUG « source armes absente » ; cas `casDesSources`
+  « classificateur absent » avec vérification du journal.
+- [x] L12.W1 Un clic hors de toute cellule servie est IGNORÉ (sélection, cadre et requête
+  inchangés) ; test `RASTER_NOMINAL`, clic en (95, 5) ; mutation rouge.
+- [x] L12.W2 Échec de `/cellule` : état d'échec propre dans la carte de zone (« La zone n'a pas pu
+  être lue » FR + EN, sans conseil), nom et étiquette gardés ; test : POST rejeté → texte d'échec,
+  jamais `zoneContributionsEmpty` ; mutation rouge.
+- [x] L12.W3 Carte de l'URL hors du filtre : jamais un identifiant à l'écran — dernier nom connu de la
+  carte, sinon titre générique « Carte hors du filtre » FR + EN ; test qui figeait `'inconnue'`
+  corrigé ; mutation rouge.
+- [x] L12.T1 `zone.logic.test.ts` : égalité où la cellule au plus de matchs n'est pas la dernière
+  (mutation `>=` rouge) + égalité sur lecture signée.
+- [x] L12.T2 Tests de la vue : changer « Joueurs » et « Réapparition » remet la zone à zéro (mutation :
+  retirer `${qui}` / `${spawn}` de la clé → rouge).
+- [x] L12.T3 `TacticalPage.relecture.test.tsx` : même `<img>` du plan pendant une relecture SANS
+  `?carte=` (sélection d'office) ; mutation `if (p.cartesConnues && !p.enRelecture)` rouge.
+- [x] L12.T4 `zones_test.go` : règle (b) sans majorité avec comptes INÉGAUX (la plus peuplée gagne) ;
+  mutation `>` → `<` rouge.
+- [x] L12.S8 Consigné au §8, non traité : mise en page à 1 400 px, deux rangées, hauteur de la colonne
+  de zone sans test automatique → « non couvert, gate visuel utilisateur ».
+- Gate : gate Go complet + gate web complet + contrat.
+
+Journal L12 (2026-10-07, exécuteur, `feat/tactique-v2`, sur la fusion `f6af334ee`) :
+- **G1** `archlint/no_local_portee_comparison_test.go` : empreinte 1 élargie à `<`, `<=`, `>`, `>=`
+  dans les deux sens, sur une distance déréférencée, liée à une valeur déréférencée
+  (`d := *m.PlusProcheM`) ou testée `!= nil` dans le fichier ; seul le corps de `APortee` est retiré
+  du balayage (plus le fichier). Auto-test : `Seul: d >= rayon`, `!(d < portee)`, `*m.PlusProcheM >
+  rayon`, `rayonRadar < *mort.PlusProcheM`, `!(*d < rayon)` après `d != nil`, et une copie posée dans
+  le fichier du helper, tous attrapés ; sains : la boucle `d <= rayon` du navmesh, `v <= rayon`,
+  `d >= RayonZoneM` (distance calculée), `rayon <= 0`, le helper lui-même. Balayage du dépôt : 0.
+  Mutations ROUGES : opérateurs réduits à `<=` ; identifiants liés ignorés.
+- **G2** Porte vérifiée sur pièces : les zones des grappes ne sont lues que sous
+  `film.replay_artifact` (`tactical_service_rasters.go:94`, `tactical_service_lectures.go:131`) ; la
+  capability titre `replay` vit dans `TitleRegistry` (`domain/title/registry.go:150`), hors de la
+  CapabilityMap du service ; Halo Infinite déclare les deux, Halo 5 aucune. `nommerLaCellule` passe
+  sous `film.replay_artifact` : sans elle, aucun appel au magasin, DEBUG « source zone absente ».
+  `capsCompletes` (profil Halo Infinite des tests) porte désormais aussi l'artefact de rejeu.
+  Test `TestDetail_ZoneSansArtefactDeRejeu` (profil Halo 5 `match.events.spatial`) : 0 appel au
+  magasin, aucun WARN, la ligne DEBUG ; vu rouge avant le code. Mutation ROUGE : porte retirée.
+- **G3** (a) section `tactical_cellule_zone` autour du nommage ; test `TestCellule_ZoneSectionDeDuree`
+  (relevé de `timing.WithTimings`), mutation ROUGE : section retirée. (b) Pas de cache existant côté
+  rejeu : `catalogueDeCallouts` (`service/replay_map_callouts.go`) garde le catalogue décodé par
+  chemin pour la vie du processus (map protégée, un échec n'est pas gardé), lu par
+  `zonesPourIdentites`, donc par le rejeu ET l'onglet. Test `TestCatalogueDeCallouts_LuUneFoisParChemin`
+  : deux appels = une lecture, même catalogue ; un chemin absent relu à chaque fois. Vu rouge (symbole
+  absent) ; mutation ROUGE : catalogue non gardé.
+- **G4** `contributionLue.contexte` : `celluleIsole` y pose le contexte de chaque mort retenue ;
+  `poserPlacements` construit le badge depuis lui et ne lit `ContextesDeMort` que pour les morts qui
+  n'en portent pas (`lireLesContextes`, `matchsDesMorts(retenues, avecContexte)`). Test
+  `TestCellule_PlacementSansRelecture` : 0 lecture pour « isole » (badge « seul · 19 m »), 1 pour
+  « morts » ; vu rouge. Mutation ROUGE : contexte d'« isole » ignoré.
+- **G5** Classificateur absent : `sourceDegradee(armes)` au DEBUG ; cas `casDesSources`
+  « classificateur absent » (journal vérifié), vu rouge. Mutation ROUGE : branche muette.
+- **W1** `choixDuClic` (`zone.logic.ts`) : un clic hors de toute cellule servie ne retient rien ;
+  `useZone.choisir` l'applique. Test (95, 5) sur `RASTER_NOMINAL` : zone (5, 2) gardée, valeur
+  affichée, aucune adresse neuve ; vu rouge. Mutation ROUGE : toute adresse retenue.
+- **W2** `detail.isError` transmis ; la carte de zone dit « La zone n'a pas pu être lue » (EN « The
+  zone could not be read », clé `tactical.zone.error`), valeur et titre gardés. Tests : vue moquée
+  (`isError`) et vraie requête au `/cellule` rejeté (`.fond.test.tsx`) — le texte d'échec, jamais
+  `zoneContributionsEmpty` ; vus rouges. Mutation ROUGE : branche d'échec retirée (2 échecs).
+- **W3** `titreDeLaCarte` (`cockpit.logic.ts`) : la carte du filtre, sinon la dernière liste qui la
+  contenait (`useCartesConnues`, état dérivé pendant le rendu), sinon « Carte hors du filtre » (EN
+  « Map outside the filter », clé `tactical.plan.title_outside_filter`) pour une carte hors du filtre, et
+  rien tant que la liste n'a pas répondu — jamais l'identifiant. Le test qui figeait `'inconnue'` attend
+  le titre générique ; test neuf : carte sortie du filtre → « Ruelles » reste ; vus rouges. Mutations
+  ROUGES : identifiant au titre ; noms connus oubliés.
+- **T1** Égalité de valeur où la cellule au plus de matchs vient d'abord, égalité complète (la première
+  reste), égalité de valeur absolue signée dans les deux ordres. Mutations ROUGES : `s >= score` ;
+  `c.matchs >= meilleure.matchs`.
+- **T2** « Joueurs » (Adversaires) et « Réapparition » (grappe g1) remettent la zone à la plus chaude.
+  Mutations ROUGES : `${qui}` puis `${spawn}` retirés de la clé.
+- **T3** Relecture sans `?carte=` (sélection d'office) : même `<img>`, titre gardé. Mutation ROUGE :
+  `if (p.cartesConnues && !p.enRelecture)`.
+- **T4** Règle (b) sans majorité, comptes 3 et 2 sur 7 : la plus peuplée (plus large) l'emporte.
+  Mutation ROUGE : `>` → `<`.
+- **S8** Consigné au §8.
+- **Gate Go** : build 0 ; gofmt muet ; vet 0 ; 349 paquets en quatre lots : 196 ok, 153 sans test,
+  0 échec ; gardes nommées PASS ; golangci 0 issue. **Contrat** : `openapi-gen -check` à jour (aucun
+  type Go du contrat touché), fraîcheur OK. **Gate web** : tsc 0 ; lint 0 erreur (26 avertissements
+  de base) ; vitest 865 fichiers / 9 223 tests ; manifestes reconstruits (98 clés tactiques) puis
+  stables ; knip 0 / 0 / 0 (exports neufs `choixDuClic`, `titreDeLaCarte` lus en production) ;
+  couleurs 0 ; champs 0 ; imports croisés 7 ≤ 7 ; `lint-contract-ratchet` propre ; pre-push vert.
+- Seuils : fichiers ≤ 446 L ; fonctions modifiées ≤ 57 L (`celluleIsole`).
+
 ## 7. Reprise de session
 
 Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières
@@ -1421,6 +1522,11 @@ L2.3.
 - (L10) Deux gardes de balayage de fichiers étrangères au lot (`features/admin/lab-removal.guard.test.ts`,
   `lib/clipboard/useCopyToClipboard.guard.test.ts`) ont rougi dans un passage complet de vitest, vertes
   seules et au passage complet suivant : sensibles à la charge ; non traité.
+- (L12, consigné par le superviseur) La mise en page à 1 400 px, la bascule en deux rangées et la
+  hauteur de la colonne de zone n'ont pas de test automatique : non couvert, gate visuel utilisateur.
+- (L12) Le catalogue de bornes `map_quant_bounds.json` est encore décodé à chaque résolution de
+  callouts par module (`calloutsParModule`, `decfilm.LoadMapQuantCatalog`) : même motif que le
+  catalogue de callouts mis en cache par G3, hors de la liste de la revue ; non traité.
 - (L10) La fonction de `MatchPositionsHeatmap` (lot voisin) dépassait déjà 80 L (183) avant le lien
   « Tactique » ; non découpée (consigne d'insertion minimale), le lien sorti dans un composant local
   pour la limiter à 193 L ; non traité.

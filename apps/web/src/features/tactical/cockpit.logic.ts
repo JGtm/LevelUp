@@ -79,6 +79,24 @@ export function carteEffective(
   return premiere ? { mapId: premiere.map_id, origine: 'defaut' } : { mapId: '', origine: 'aucune' }
 }
 
+/**
+ * titreDeLaCarte — le nom de la carte affichée, jamais son identifiant : la carte du filtre courant,
+ * sinon la dernière liste qui la contenait (`connues`) ; sans nom connu, un titre générique pour une
+ * carte hors du filtre, et rien tant que la liste n'a pas répondu (ou a échoué).
+ */
+export function titreDeLaCarte(
+  carte: CarteEffective,
+  cartes: readonly TacticalMapCard[],
+  connues: ReadonlyMap<string, TacticalMapCard>,
+  locale: Locale,
+  generique: string,
+): string {
+  if (carte.mapId === '') return ''
+  const connue = cartes.find((c) => c.map_id === carte.mapId) ?? connues.get(carte.mapId)
+  if (connue) return nomCarte(connue, locale)
+  return carte.origine === 'hors_filtre' ? generique : ''
+}
+
 /** carteLue — la carte effective est-elle LUE (requête de lecture) ? */
 export function carteLue(c: CarteEffective): boolean {
   return c.origine === 'url' || c.origine === 'defaut'

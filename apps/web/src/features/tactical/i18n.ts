@@ -109,6 +109,8 @@ export function getTacticalText(locale: Locale) {
     // Les trois états vides ne disent PAS la même chose : périmètre vide, aucune mesure, ou
     // mesures trop dispersées (cf. `planEmptyReason`). Un titre seul, aucun conseil.
     planEmptyNoMatchTitle: m('tactical.plan.empty_no_match_title'),
+    // Le titre d'une carte hors du filtre dont aucun nom n'est connu : jamais son identifiant.
+    planTitleOutsideFilter: m('tactical.plan.title_outside_filter'),
     planEmptyTitle: m('tactical.plan.empty_title'),
     planEmptyDensityTitle: m('tactical.plan.empty_density_title'),
     analysisErrorTitle: m('tactical.analysis.error_title'),
@@ -129,6 +131,7 @@ export function getTacticalText(locale: Locale) {
     zoneReplayHeading: m('tactical.zone.replay_heading'),
     zoneContributionsLoading: m('tactical.zone.contributions_loading'),
     zoneContributionsEmpty: m('tactical.zone.contributions_empty'),
+    zoneError: m('tactical.zone.error'),
     zoneNotOpenable: (n: number) => m('tactical.zone.not_openable', { n }),
 
     // ── Mini-tuile « Rejeu » ────────────────────────────────────────────────

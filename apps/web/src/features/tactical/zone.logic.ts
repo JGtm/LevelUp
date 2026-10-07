@@ -37,6 +37,18 @@ export function zoneLaPlusChaude(cellules: readonly CelluleTactique[], signee: b
   return meilleure
 }
 
+/**
+ * choixDuClic — l'adresse que retient un clic sur le plan : celle d'une cellule SERVIE par la lecture,
+ * sinon `null` (le clic est ignoré : la zone courante reste, aucun détail n'est demandé).
+ */
+export function choixDuClic(
+  cellules: readonly CelluleTactique[],
+  col: number,
+  row: number,
+): { col: number; row: number } | null {
+  return cellules.some((c) => c.col === col && c.lig === row) ? { col, row } : null
+}
+
 /** Un nombre au plus au dixième, signe moins typographique. */
 function metres(v: number, locale: Locale): string {
   const n = new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(Math.abs(v))

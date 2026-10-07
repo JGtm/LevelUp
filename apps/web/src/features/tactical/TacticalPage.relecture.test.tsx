@@ -276,6 +276,18 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
     expect(screen.getByTestId('tactical-plan-title')).toHaveTextContent(TITRE_RUELLES)
   })
 
+  it('ANALYSE SANS ?carte= : la carte lue d’office garde le même <img> pendant la relecture', async () => {
+    const page = monter()
+    const img = await analyseChargee()
+
+    page.cocherSession()
+    await attendrePerimetreSession()
+
+    expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
+    expect(img.isConnected).toBe(true)
+    expect(screen.getByTestId('tactical-plan-title')).toHaveTextContent(TITRE_RUELLES)
+  })
+
   it('ANALYSE : le titre garde le nom de la carte, le fond reste le même <img>', async () => {
     searchCourant = { carte: 'streets' }
     const page = monter()

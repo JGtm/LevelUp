@@ -38,7 +38,7 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
 
 const useTacticalRaster = vi.fn()
 // Le détail de la zone choisie : par défaut, aucune réponse encore.
-const useTacticalCellule = vi.fn<(...args: unknown[]) => { data?: unknown; isPending: boolean }>(() => ({
+const useTacticalCellule = vi.fn<(...args: unknown[]) => { data?: unknown; isPending: boolean; isError?: boolean }>(() => ({
   data: undefined,
   isPending: true,
 }))
@@ -335,6 +335,55 @@ describe('TacticalAnalysisView — la zone choisie', () => {
       largeur.mockRestore()
       hauteur.mockRestore()
     }
+  })
+
+  it('un clic HORS de toute cellule servie est ignoré : même zone, aucune requête neuve', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    try {
+      renderVue()
+      const avant = useTacticalCellule.mock.calls.length
+      // (95 ; 5) px : x = 95 m, y = 45 m → cellule (9, 4), absente de la lecture.
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 95, clientY: 5 })
+      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+      expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
+      expect(screen.queryByText(t.zoneNone)).toBeNull()
+      // Aucune adresse neuve n'a été demandée depuis le clic.
+      const neuves = useTacticalCellule.mock.calls.slice(avant).map((c) => JSON.stringify(c[2]))
+      expect(neuves.every((n) => n === JSON.stringify({ col: 5, lig: 2, pas_m: 10 }))).toBe(true)
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+    }
+  })
+
+  it.each([
+    ['« Joueurs »', () => fireEvent.click(screen.getByRole('button', { name: t.whoOpponents }))],
+    ['« Réapparition »', () => fireEvent.change(screen.getByRole('combobox', { name: t.pillRespawn }), { target: { value: 'g1' } })],
+  ])('changer %s revient à la zone la plus chaude', (_reglage, changer) => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    try {
+      renderVue()
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 25, clientY: 35 })
+      expect(derniereZone()).toEqual({ col: 2, lig: 1, pas_m: 10 })
+      changer()
+      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+    }
+  })
+
+  it('détail de la zone en ÉCHEC : l’échec se dit, jamais « aucun match ouvrable »', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({ data: undefined, isPending: false, isError: true })
+    renderVue()
+    expect(screen.getByTestId('tactical-zone-erreur')).toHaveTextContent(t.zoneError)
+    expect(screen.queryByText(t.zoneContributionsEmpty)).toBeNull()
+    expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
   })
 
   it('le nom de la zone se pose sur le plan, à côté de sa cellule', () => {

@@ -56,6 +56,16 @@ describe('zoneLaPlusChaude (D10)', () => {
     expect(zoneLaPlusChaude([cellule(1, 0.4, 3), cellule(2, -0.9, 3)], true)?.col).toBe(2)
   })
 
+  it('égalité de valeur : le plus de matchs distincts l’emporte même s’il vient d’abord, sinon la première', () => {
+    expect(zoneLaPlusChaude([cellule(1, 5, 6), cellule(2, 5, 3)], false)?.col).toBe(1)
+    expect(zoneLaPlusChaude([cellule(1, 5, 6), cellule(2, 5, 6)], false)?.col).toBe(1)
+  })
+
+  it('égalité de valeur absolue sur une lecture signée : le plus de matchs distincts', () => {
+    expect(zoneLaPlusChaude([cellule(1, -0.9, 6), cellule(2, 0.9, 3)], true)?.col).toBe(1)
+    expect(zoneLaPlusChaude([cellule(1, 0.9, 3), cellule(2, -0.9, 6)], true)?.col).toBe(2)
+  })
+
   it('aucune cellule : aucune zone', () => {
     expect(zoneLaPlusChaude([], false)).toBeNull()
   })

@@ -211,12 +211,36 @@ describe('TacticalPage — l’écran unique', () => {
     expect(screen.getByTestId('tactical-map-streets')).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('la carte de l’URL hors du filtre : son identifiant, aucune lecture', async () => {
+  it('la carte de l’URL hors du filtre, jamais vue : un titre générique, jamais son identifiant', async () => {
     searchCourant = { carte: 'inconnue' }
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByTestId('tactical-carte-hors-filtre')).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'inconnue' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Carte hors du filtre' })).toBeInTheDocument()
+    expect(screen.queryByText('inconnue')).toBeNull()
     expect(lecturesRaster()).toEqual([])
+  })
+
+  it('la carte de l’URL sortie du filtre : le dernier nom connu reste au titre', async () => {
+    searchCourant = { carte: 'streets' }
+    post.mockImplementation((path: string, body: unknown) => {
+      if (path.endsWith('/filters/match-ids')) {
+        const periode = (body as { period?: { start_date?: string | null } }).period
+        return Promise.resolve({ match_ids: periode?.start_date ? ['m9'] : PERIMETRE })
+      }
+      if (path.endsWith('/tactical/maps')) {
+        const ids = (body as { match_ids: string[] }).match_ids
+        return Promise.resolve(ids[0] === 'm9' ? { ...page, cartes: (page.cartes ?? []).filter((c) => c.map_id !== 'streets') } : page)
+      }
+      if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER_VIDE)
+      return Promise.reject(new Error(`appel inattendu : ${path}`))
+    })
+    const rendu = renderWithProviders(<TacticalPage />)
+    expect(await screen.findByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
+    searchCourant = { carte: 'streets', de: '2026-01-01' }
+    rendu.rerender(<TacticalPage />)
+    expect(await screen.findByTestId('tactical-carte-hors-filtre')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
+    expect(screen.queryByText('streets')).toBeNull()
   })
 
   it('plus de bascule « Grille / Analyse », plus de pied de grille', async () => {

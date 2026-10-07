@@ -266,6 +266,10 @@ en = "All"
 fr = "Aucun match sur cette carte dans le filtre"
 en = "No match on this map in the filter"
 
+[tactical.plan.title_outside_filter]
+fr = "Carte hors du filtre"
+en = "Map outside the filter"
+
 [tactical.plan.empty_title]
 fr = "Pas assez de matchs mesurés sur cette carte"
 en = "Not enough measured matches on this map"
@@ -334,6 +338,10 @@ en = "Loading the zone’s matches…"
 [tactical.zone.contributions_empty]
 fr = "Aucun match ouvrable dans cette zone"
 en = "No match to open in this zone"
+
+[tactical.zone.error]
+fr = "La zone n'a pas pu être lue"
+en = "The zone could not be read"
 
 [tactical.zone.not_openable]
 fr = "{n, plural, one {# match du filtre non ouvrable} other {# matchs du filtre non ouvrables}}"

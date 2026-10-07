@@ -32,7 +32,7 @@ import { TacticalZoneCard } from './TacticalZoneCard'
 import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
-import { titreDeZone, zoneLaPlusChaude } from './zone.logic'
+import { choixDuClic, titreDeZone, zoneLaPlusChaude } from './zone.logic'
 
 export interface TacticalAnalysisViewProps {
   playerSlug: string
@@ -235,8 +235,16 @@ function useZone({
   )
   return {
     selected,
-    choisir: (col: number, row: number) => setChoix({ col, row }),
+    // Un clic hors de toute cellule servie ne change rien (choixDuClic).
+    choisir: (col: number, row: number) => {
+      const choisi = lecture ? choixDuClic(lecture.cellules ?? [], col, row) : null
+      if (choisi) setChoix(choisi)
+    },
     cellule,
-    detail: { data: requete.data, isPending: requete.isPending && selected !== null },
+    detail: {
+      data: requete.data,
+      isPending: requete.isPending && selected !== null,
+      isError: requete.isError && selected !== null,
+    },
   }
 }

@@ -98,12 +98,14 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 
 // contributionLue est une contribution telle que sa source la lit, avec ce que l'enrichissement et
 // le nom de zone en utilisent sans le publier : la hauteur de l'événement (face mort : la victime ;
-// face frag : le tueur ; nil = non mesurée ou lecture d'artefact) et sa source de dégât brute.
+// face frag : le tueur ; nil = non mesurée ou lecture d'artefact), sa source de dégât brute, et le
+// contexte de la mort quand la lecture l'a déjà en main (« isole » ; nil ailleurs).
 type contributionLue struct {
 	domain.TacticalContribution
 	z         *float64
 	sourceTag *uint32
 	categorie string
+	contexte  *domain.ContexteDeMort
 }
 
 // garderLesOuvrables ne garde que les contributions des matchs ouvrables, datées et munies de leur
@@ -260,6 +262,10 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 				Clock: domain.TacticalClockMatch, Face: domain.TacticalFaceMort, AutreGamertag: m.KillerGamertag,
 			},
 			z: m.Z, sourceTag: m.SourceTag, categorie: m.SourceCategory,
+			contexte: &domain.ContexteDeMort{
+				MatchID: m.MatchID, VictimXUID: m.VictimXUID, TimeMs: m.TimeMs,
+				PlusProcheM: m.PlusProcheM, Visibles: m.Visibles, HorsDeVue: m.HorsDeVue,
+			},
 		})
 	}
 	return out, lecture.Univers, nil

@@ -116380,3 +116380,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `package-lock.json` inchangé (pas de `npm ci`) ; contrat régénéré identique à l'arbre fusionné (`openapi-gen` + `-check`, `generate-types`, fraîcheur OK), garde de surface 7 / 7 sans régénération ; Go : build 0 (un premier essai : édition de liens « memory exhausted », vert au second), gofmt muet, vet 0, 349 paquets en quatre lots — 196 ok, 153 sans test, 2 plantages au démarrage (`internal/api`, `internal/assets`, 0xc0000005) verts rejoués seuls —, `-tags=integration -p 1 ./internal/platform/duckdb/...` vert (le merge touche `platform/duckdb` et `migration`), gardes nommées PASS, golangci 0 issue ; web : tsc 0, lint 0 erreur, vitest 865 fichiers / 9 214 tests verts (dont `tacticalStrings`, garde anti-anglicismes, garde de surface, `MatchPositionsHeatmap`), manifestes identiques, ratchets et pre-push verts.
 
 **Conclusion / prochaine étape** : arrêt ; reprise sur les constats de revue du superviseur.
+
+## [2026-10-07] Tactique v2, lot L12 : corrections de la revue adversariale (ronde 1) — Complété (commit local sur `feat/tactique-v2`)
+
+**Statut** : Complété (lot L12 du plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md`, treize items `[x]`).
+
+**Décision technique principale** : les douze constats triés par le superviseur, et eux seuls. Go : garde-rail de portée élargi à tout opérateur et à toute distance déréférencée, liée ou testée non nulle, seule la fonction `APortee` exclue (G1) ; nommage de zone sous `film.replay_artifact`, la porte exacte des grappes, avec DEBUG « source zone absente » sans elle (G2) ; section `tactical_cellule_zone` et catalogue de callouts décodé une fois par chemin et par processus, au lecteur partagé rejeu / onglet (G3) ; badge de placement d'« isole » tiré du contexte déjà lu, plus de seconde lecture (G4) ; classificateur absent journalisé (G5). Web : clic hors cellule servie ignoré (W1), échec du détail dit dans la carte de zone (W2), jamais un identifiant au titre — dernier nom connu, sinon « Carte hors du filtre » (W3). Tests de couverture T1 à T4.
+
+**Résultats observés** : chaque correction a son test, vu rouge avant le code (G2, G3b, G4, G5, W1, W2, W3) ou prouvé par mutation (G1, G3a, T1-T4) ; 20 mutations, toutes rouges, restauration vérifiée. Gate Go (349 paquets, 0 échec, golangci 0), contrat à jour, gate web (865 fichiers / 9 223 tests, pre-push vert).
+
+**Conclusion / prochaine étape** : arrêt ; reprise sur les constats de la revue suivante.

@@ -242,6 +242,19 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
     expect(detail()[1][1]).toEqual(expect.objectContaining({ match_ids: ['m1'] }))
   })
 
+  it('détail de la zone : un /cellule rejeté se dit dans la carte de zone, jamais « aucun match ouvrable »', async () => {
+    post.mockImplementation((path: string, corps: unknown) =>
+      path.endsWith('/tactical/streets/raster')
+        ? repondre(corps as CorpsRaster)
+        : path.endsWith('/tactical/streets/cellule')
+          ? Promise.reject(new Error('panne du détail'))
+          : Promise.reject(new Error(`appel inattendu : ${path}`)),
+    )
+    monter(['m1', 'm2'])
+    expect(await screen.findByTestId('tactical-zone-erreur')).toHaveTextContent(t.zoneError)
+    expect(screen.queryByText(t.zoneContributionsEmpty)).toBeNull()
+  })
+
   it('PREMIER CHARGEMENT : le fond est posé, l’indicateur PAR-DESSUS, puis le calque sur le même fond', async () => {
     const premiere = differe<TacticalRaster>()
     repondre = () => premiere.promesse

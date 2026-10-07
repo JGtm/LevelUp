@@ -287,6 +287,30 @@ func TestDetail_TitreSansClassificateurNiCatalogue(t *testing.T) {
 	}
 }
 
+// TestDetail_ZoneSansArtefactDeRejeu : un titre sans artefact de rejeu (Halo 5, positions natives)
+// ne nomme pas les zones — aucun appel au magasin de callouts, aucun WARN, la source dite absente
+// au DEBUG ; les contributions restent servies.
+func TestDetail_ZoneSansArtefactDeRejeu(t *testing.T) {
+	repo, matchs := corpusDetail()
+	src := sourcesCompletes(matchs)
+	magasin := zonesEmpilees()
+	halo5 := games.CapabilityMap{games.CapMatchEventsSpatial: games.CapSupported}
+	got := celluleLue(t, src.service(repo, halo5).WithCalloutsStore(magasin),
+		celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, 4, 4))
+	if len(got.Contributions) != 4 || got.Zone != nil {
+		t.Fatalf("contributions = %d, zone = %+v ; want 4 et aucune", len(got.Contributions), got.Zone)
+	}
+	if magasin.appels != 0 {
+		t.Errorf("magasin de callouts appelé %d fois sans artefact de rejeu", magasin.appels)
+	}
+	if strings.Contains(src.trace.String(), "level=WARN") {
+		t.Errorf("WARN sur un état nominal :\n%s", src.trace.String())
+	}
+	if !strings.Contains(src.trace.String(), "level=DEBUG msg=\"tactique: detail de zone, source zone absente\"") {
+		t.Errorf("journal sans la source zone absente :\n%s", src.trace.String())
+	}
+}
+
 // casDeSource : une source cassée, le champ qu'elle nourrit, le niveau de journal attendu.
 type casDeSource struct {
 	nom, source, niveau string
@@ -308,6 +332,7 @@ func casDesSources() []casDeSource {
 			s.matchs.err = games.ErrCapabilityNotSupported
 		}, sansCanonique},
 		{"canonique en échec", "canonique", "WARN", func(s *sourcesDuDetailTest, _ *mockTacticalRepo) { s.matchs.err = panne }, sansCanonique},
+		{"classificateur absent", "armes", "DEBUG", func(s *sourcesDuDetailTest, _ *mockTacticalRepo) { s.class = nil }, sansArme},
 		{"armes non câblées", "armes", "DEBUG", func(s *sourcesDuDetailTest, _ *mockTacticalRepo) { s.armes = nil }, sansArme},
 		{"armes en échec", "armes", "WARN", func(s *sourcesDuDetailTest, _ *mockTacticalRepo) { s.armes.err = panne }, sansArme},
 		{"contextes non supportés", "contextes", "DEBUG", func(_ *sourcesDuDetailTest, r *mockTacticalRepo) {

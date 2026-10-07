@@ -20,9 +20,13 @@ import (
 )
 
 // mockCallouts double le lecteur de zones nommees.
-type mockCallouts struct{ zones []domain.ZoneNommee }
+type mockCallouts struct {
+	zones  []domain.ZoneNommee
+	appels int
+}
 
 func (m *mockCallouts) ZonesDeLaCarte(context.Context, string) []domain.ZoneNommee {
+	m.appels++
 	return m.zones
 }
 

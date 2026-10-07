@@ -35,6 +35,7 @@ const (
 	sourceArmes     = "armes"
 	sourceContextes = "contextes"
 	sourceRejeu     = "rejeu"
+	sourceZone      = "zone"
 )
 
 // sourcesDuDetail : les dépendances du détail d'une zone, injectées par les `With*` de
@@ -57,8 +58,17 @@ type sourcesDuDetail struct {
 // centre de la cellule au pas demandé, avec la hauteur des événements retenus (aucune pour les
 // lectures d'artefact, dont les sidecars ne portent pas de z). Carte hors catalogue, ou aucune zone
 // qui la nomme : nil — jamais un nom de repli.
+//
+// MÊME PORTE QUE LES ZONES DES GRAPPES DE RÉAPPARITION (`film.replay_artifact`) : les zones viennent
+// du catalogue de callouts du rejeu, qu'un titre sans artefact de rejeu n'a pas. Sans elle, aucun
+// appel au magasin — ni sa requête d'identités de carte, ni la recherche d'un catalogue absent.
 func (s *TacticalService) nommerLaCellule(ctx context.Context, req domain.TacticalCelluleRequest,
 	retenues []contributionLue) *domain.TacticalZoneNom {
+	if !s.caps.Has(games.CapFilmReplayArtifact) {
+		s.sourceDegradee(ctx, sourceZone, req.MapID, nil)
+		return nil
+	}
+	defer timing.FromContext(ctx).Section("tactical_cellule_zone")()
 	zones := s.zonesDeLaCarte(ctx, req.MapID)
 	if len(zones) == 0 {
 		return nil
@@ -95,7 +105,7 @@ func (s *TacticalService) enrichir(ctx context.Context, req domain.TacticalCellu
 	}
 	s.poserModeEtScore(ctx, req.MapID, out)
 	s.poserArmes(ctx, req.MapID, retenues, out)
-	s.poserPlacements(ctx, req.MapID, univers, out)
+	s.poserPlacements(ctx, req.MapID, univers, retenues, out)
 	s.poserRejeu(ctx, req.MapID, out)
 	return out
 }
@@ -187,6 +197,7 @@ func scoreDuMatch(r canonical.PlayerMatchRow, roundsDecide map[string]bool) (lab
 func (s *TacticalService) poserArmes(ctx context.Context, mapID string, retenues []contributionLue,
 	out []domain.TacticalContribution) {
 	if s.detail.classifieur == nil {
+		s.sourceDegradee(ctx, sourceArmes, mapID, nil)
 		return
 	}
 	cles := make([]string, len(retenues))
@@ -233,15 +244,39 @@ func (s *TacticalService) nomsDesArmes(ctx context.Context, mapID string, cles [
 	return noms
 }
 
-// poserPlacements pose le badge de placement de chaque MORT (D7) : la ligne de contexte la plus
-// proche à ± TolerancePlacementMs, comparée à la portée du radar du match. Les contextes sont lus
-// une fois, bornés aux matchs des morts retenues. Un frag, une entrée, une réapparition : aucun
-// badge.
+// poserPlacements pose le badge de placement de chaque MORT (D7), comparé à la portée du radar du
+// match. Une mort qui porte DÉJÀ son contexte (lecture « isole », qui l'a lu avec elle) le garde ;
+// pour les autres, la ligne de contexte la plus proche à ± TolerancePlacementMs, lue une fois et
+// bornée à leurs matchs. Un frag, une entrée, une réapparition : aucun badge.
 func (s *TacticalService) poserPlacements(ctx context.Context, mapID string, univers domain.TacticalUnivers,
-	out []domain.TacticalContribution) {
-	ids := matchsDesMorts(out)
-	if len(ids) == 0 {
+	retenues []contributionLue, out []domain.TacticalContribution) {
+	if len(matchsDesMorts(retenues, true)) == 0 {
 		return
+	}
+	contextes, lus := s.lireLesContextes(ctx, mapID, matchsDesMorts(retenues, false))
+	rayons, _ := s.rayonsParMatch(univers.Matchs)
+	for i := range out {
+		if out[i].Face != domain.TacticalFaceMort {
+			continue
+		}
+		c := retenues[i].contexte
+		if c == nil {
+			if !lus {
+				continue
+			}
+			c = tactical.ContexteLePlusProche(contextes, out[i].MatchID, out[i].XUID, out[i].InstantMs)
+		}
+		rayon, aUnRayon := rayons[out[i].MatchID]
+		out[i].Placement = tactical.PlacementDeLaMort(c, rayon, aUnRayon)
+	}
+}
+
+// lireLesContextes lit les contextes de mort des matchs donnés, en une lecture ; aucun match :
+// aucune lecture. `lus` est faux quand la source manque ou échoue (journalisé).
+func (s *TacticalService) lireLesContextes(ctx context.Context, mapID string,
+	ids []string) (contextes []domain.ContexteDeMort, lus bool) {
+	if len(ids) == 0 {
+		return nil, true
 	}
 	stop := timing.FromContext(ctx).Section("tactical_cellule_contextes")
 	contextes, err := s.repo.ContextesDeMort(ctx, domain.TacticalQuery{
@@ -250,28 +285,22 @@ func (s *TacticalService) poserPlacements(ctx context.Context, mapID string, uni
 	stop()
 	if err != nil {
 		s.sourceDegradee(ctx, sourceContextes, mapID, err)
-		return
+		return nil, false
 	}
-	rayons, _ := s.rayonsParMatch(univers.Matchs)
-	for i := range out {
-		if out[i].Face != domain.TacticalFaceMort {
-			continue
-		}
-		rayon, aUnRayon := rayons[out[i].MatchID]
-		c := tactical.ContexteLePlusProche(contextes, out[i].MatchID, out[i].XUID, out[i].InstantMs)
-		out[i].Placement = tactical.PlacementDeLaMort(c, rayon, aUnRayon)
-	}
+	return contextes, true
 }
 
-// matchsDesMorts rend les matchs distincts des contributions de face « mort », triés.
-func matchsDesMorts(out []domain.TacticalContribution) []string {
-	vus := make(map[string]bool, len(out))
-	ids := make([]string, 0, len(out))
-	for _, c := range out {
-		if c.Face == domain.TacticalFaceMort && !vus[c.MatchID] {
-			vus[c.MatchID] = true
-			ids = append(ids, c.MatchID)
+// matchsDesMorts rend les matchs distincts des contributions de face « mort », triés : toutes
+// (`avecContexte`), ou seulement celles qui ne portent pas déjà leur contexte.
+func matchsDesMorts(retenues []contributionLue, avecContexte bool) []string {
+	vus := make(map[string]bool, len(retenues))
+	ids := make([]string, 0, len(retenues))
+	for _, c := range retenues {
+		if c.Face != domain.TacticalFaceMort || vus[c.MatchID] || (!avecContexte && c.contexte != nil) {
+			continue
 		}
+		vus[c.MatchID] = true
+		ids = append(ids, c.MatchID)
 	}
 	sort.Strings(ids)
 	return ids
