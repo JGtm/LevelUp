@@ -84,9 +84,9 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 }
 
 // balayerLesPositions est le corps des deux entrées : les refus d'entrée, le découpage, la lecture
-// des records, puis les filtres de post-traitement. `parContexte` : les records sont ceux de
-// l'ancrage du contexte ([FilmContext.parcourirLesAncresBipedes]), dont la bande est `band` ;
-// sinon chaque payload est ancré sous `band`.
+// des records, puis les filtres de post-traitement. `parContexte` : les records sont ceux que la
+// marche des trames a lus, puis ceux que l'ancrage du contexte rend derrière elle, sur la bande
+// `band` ([positionsDuContexte]) ; sinon chaque payload est ancré sous `band`.
 func balayerLesPositions(fc *FilmContext, band SlotBand, opt ScanFilmOptions, parContexte bool) (
 	[]BipedPosition, error) {
 	film := fc.Film()
@@ -115,7 +115,7 @@ func balayerLesPositions(fc *FilmContext, band SlotBand, opt ScanFilmOptions, pa
 	var out []BipedPosition
 	var read int
 	if parContexte {
-		out, read = positionsDesAncres(fc, chunks, lay, opt)
+		out, read = positionsDuContexte(fc, chunks, lay, opt)
 	} else {
 		out, read = scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
 	}
@@ -187,9 +187,10 @@ func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile
 	return out, read
 }
 
-// positionsDesAncres lit les positions des records de l'ancrage du contexte et rend, comme
-// [scanBipedChunks], le nombre de chunks LUS parmi `chunks`. Les records d'un payload arrivent à la
-// suite : ils partagent un lecteur, comme dans [ScanBipedRecords].
+// positionsDesAncres lit les positions des records de l'ancrage du contexte SEUL et rend, comme
+// [scanBipedChunks], le nombre de chunks LUS parmi `chunks` : la lecture d'un film sans registre,
+// que la marche des trames ne peut pas jouer ([positionsDuContexte]). Les records d'un payload
+// arrivent à la suite : ils partagent un lecteur, comme dans [ScanBipedRecords].
 func positionsDesAncres(fc *FilmContext, chunks []int, lay profile.I0Layout, opt ScanFilmOptions) (
 	[]BipedPosition, int) {
 	read := 0

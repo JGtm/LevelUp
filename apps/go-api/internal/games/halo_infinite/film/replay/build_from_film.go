@@ -213,6 +213,10 @@ type filmScan struct {
 	// pont porte les six lectures du pont d identite, faites d un seul appel par l etage unique
 	// (`grammar.ScanPontDIdentite`, lot J4.3) et posees par les phases a leur place d avant.
 	pont grammar.LecturesDuPont
+	// marche est la marche des trames du film, jouee une fois avant les positions
+	// ([filmScan.lireLaMarcheDesTrames]) et prise par les etats de mouvement ; errMarche, son echec.
+	marche    grammar.MarcheDesTrames
+	errMarche error
 	// opt porte ce que l'APPELANT a fourni : l'observateur, son horloge, et les gardes de mode
 	// des trois calques qui ne se balaient que sur demande (drapeau, zones, bombe). Les
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.
@@ -294,12 +298,13 @@ func scanFilmInputs(ctx context.Context, matchID string, film *source.Film, fc *
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
 	// (cf. observe.go).
 	s.opt.clock = &stepClock{last: time.Now()}
+	// LA MARCHE DES TRAMES PRECEDE TOUT LE RESTE : elle recueille les records bipedes que les
+	// positions et les huit lecteurs du portage et des capacites lisent ensuite, l ancrage d en-tete
+	// passant derriere elle (`grammar/lectures_bipedes.go`, `grammar/positions_lues.go`).
+	s.lireLaMarcheDesTrames()
 	if err := s.balayerPositions(); err != nil {
 		return nil, err
 	}
-	// LA MARCHE DES TRAMES PRECEDE LE PORTAGE ET LES CAPACITES : elle recueille les lectures bipedes
-	// que leurs huit lecteurs rejouent (`grammar/lectures_bipedes.go`). Elle suit le monde, dont le
-	// calque des vehicules decide si elle lit les morts d objet.
 	s.balayerMonde()
 	s.balayerEtatsDeMouvement()
 	s.balayerPortage()

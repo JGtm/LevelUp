@@ -205,11 +205,10 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 // C'est l'entrée BIPÈDE de [ScanBipedPositionsForBand] : elle ne fait qu'y ajouter la bande de
 // slots `ti=35`. Aucun décodage ne lui est propre.
 //
-// L'ANCRAGE EST CELUI DU CONTEXTE quand les options ne forcent ni chunks, ni générations, ni un
-// découpage autre que le sien ([ancrageDuContexte]) — c'est le cas de la cuisson : la bande, le
-// découpage et les générations sont alors ceux des huit balayages de canal, et les records ancrés
-// les mêmes, paquet par paquet (prouvé sur les vingt films du corpus d'équivalence, lot 2.4,
-// `ancrage_partage_research_test.go`). Sinon, la bande se relève sur les chunks demandés
+// LES RECORDS SONT CEUX DU CONTEXTE quand les options ne forcent ni chunks, ni générations, ni un
+// découpage autre que le sien ([ancrageDuContexte]) — c'est le cas de la cuisson : ceux que la
+// marche des trames a lus, puis ceux que l'ancrage rend derrière elle, les mêmes que pour les huit
+// balayages de canal ([positionsDuContexte]). Sinon, la bande se relève sur les chunks demandés
 // (bipedSlotBand) et chaque payload est ancré.
 func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, error) {
 	film := fc.Film()
@@ -317,11 +316,7 @@ func matchBipedHeader(pay []byte, p, total int, slots SlotBand, gens *Generation
 	if !ok {
 		return 0, 0, nil, false
 	}
-	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
-	if uint32(source.BitsStricts(pay, i0, preGate)) != 0 { // i0 absolu : spine + useDefault nuls
-		return 0, 0, nil, false
-	}
-	if uint32(source.BitsStricts(pay, i0+preGate, lay.GateBits-preGate)) != lay.Region {
+	if !i0AbsoluDeLaRegion(pay, i0, lay) {
 		return 0, 0, nil, false
 	}
 	return i0, slot, idx, true

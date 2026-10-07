@@ -1393,6 +1393,30 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             grammaire d'abord, la lecture de l'état complet du bipède aux images-clés ; 2.7.d1 en
             dépend).
       - [ ] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
+            *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
+            les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
+            de mouvement après le monde. Lire les positions derrière la marche la ferait jouer deux
+            fois (une marche des lectures bipèdes au pont, une seconde aux états de mouvement). La
+            cuisson joue donc sa marche UNE fois, en tête (`filmScan.lireLaMarcheDesTrames`), et les
+            états de mouvement prennent son résultat. Les morts d'objet s'y lisent quand les
+            images-clés portent des slots de véhicule (`LecturesDeLaMarche.MortsSiVehicules`) : la
+            première condition du calque des véhicules, qui ne se balaie qu'après ; leur coût mesuré
+            sur quatre films (deux tours) est dans le bruit (0,68 contre 0,68 s ; 1,51 contre
+            1,50 s ; 3,49 contre 3,53 s). Le collecteur de la synchronisation (pont d'identité, son
+            propre contexte) joue désormais la marche des lectures bipèdes : coût déclaré, rendu par
+            3.1.1 (un contexte par passe du collecteur).
+            *Écrit* : `grammar/positions_lues.go` (records retenus par le canal des lectures bipèdes,
+            i0 ajouté à ses intérêts ; fusion des deux sources dans l'ordre du flux ; lecture par
+            `lireLaPosition` au bit d'i0 ; sans registre, l'ancrage seul), `i0AbsoluDeLaRegion` (la
+            grammaire d'i0 de l'ancrage, partagée), le compte de
+            `repli_ancrage_bipede_apres_la_marche` étendu aux records rendus pour leur seule position
+            (registre mis à jour) ; `replay` joue la marche en tête. Tests : fusion dans l'ordre du
+            flux, grammaire d'i0, positions de la mini-bobine (chaque position d'un record retenu,
+            quanta égaux à ceux de l'ancrage aux records communs, le joueur du slot 529 que la bande
+            des images-clés manque au chunk 5 lu par la marche ; mutation « ancrage seul » jouée
+            rouge). Golden des familles de la mini-bobine : `bipedPositions` 28 004 → 29 000 (les 996
+            positions du slot 529). Reste : preuve d'équivalence (seules les positions changent),
+            puis 2.7.d3.
       - [ ] 2.7.d3 *Pistes et créations des objets du monde derrière la marche* (décisions 1 et 3).
       - [ ] 2.7.d4 *Clôture* : registre des replis, montée de `grammar.Rev`, ADR 0037 amendé, doc,
             gate de l'item.

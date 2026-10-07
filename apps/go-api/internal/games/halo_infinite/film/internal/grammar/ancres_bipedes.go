@@ -5,10 +5,11 @@ package grammar
 //
 // # DEUX LECTEURS, UN ANCRAGE
 //
-// Les positions bipedes, et la recuperation qui passe DERRIERE la marche des trames pour les huit
-// lecteurs de composants ([lecturesBipedes] : changements d arme, deltas d inventaire, rangs,
-// impulsions et charges de capacite, changements d equipement, camouflage, grappin), ancrent les
-// records bipedes des trames delta avec les MEMES parametres : ceux du contexte — ses chunks, sa
+// La recuperation qui passe DERRIERE la marche des trames, pour les huit lecteurs de composants et
+// pour les positions ([lecturesBipedes] : changements d arme, deltas d inventaire, rangs, impulsions
+// et charges de capacite, changements d equipement, camouflage, grappin ; [positionsBipedes]), et
+// les positions d un film sans registre ([positionsDesAncres]), ancrent les records bipedes des
+// trames delta avec les MEMES parametres : ceux du contexte — ses chunks, sa
 // bande bipede, son decoupage d i0, ses generations vivantes datees a l instant du paquet. Le curseur
 // bit a bit de l ancrage ([walkDeltaBipedRecords]) est l essentiel de leur cout : il est donc fait
 // une fois, au premier lecteur, et range ici ; chaque lecteur parcourt ce qui est range, dans

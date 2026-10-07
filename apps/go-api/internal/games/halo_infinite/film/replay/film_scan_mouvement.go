@@ -22,10 +22,10 @@ import (
 // la population pauvre `{i0,i1,i21,i25}` (detail : l en-tete de `grammar/movement_states.go`). Le
 // tir continu y est lu parce que la vue C est le dernier rang de CHAQUE trame que cette marche
 // deroule deja. LES MORTS D OBJET ET L OCCUPATION aussi (canal des morts), quand le calque des
-// vehicules a ete balaye : il les prend ici ([mortsDeVehicule]). Un film sans vehicule ne paie pas
-// leur lecture. Elle recueille enfin les lectures bipedes que les huit lecteurs de composants du
-// portage et des capacites rejouent ensuite, l ancrage d en-tete passant derriere elle : c est
-// pourquoi elle les precede (`build_from_film.go`).
+// vehicules a ete balaye : il les prend ici ([mortsDeVehicule]). Elle recueille enfin les records
+// bipedes que les positions et les huit lecteurs de composants du portage et des capacites lisent
+// ensuite, l ancrage d en-tete passant derriere elle : c est pourquoi elle est jouee AVANT les
+// positions ([filmScan.lireLaMarcheDesTrames]), et prise ici.
 //
 // LA MARCHE TOURNE AUX LARGEURS MPP DU CONTEXTE, et non a celles que les socles et les vehicules
 // calibrent sur les poses des formats sans largeur relue : une largeur mesuree, et non lue dans le
@@ -35,7 +35,7 @@ import (
 // ABSENCE NON FATALE : le rejeu sort sans intervalles d'etat ni rafales, jamais avec des
 // intervalles devines, et les fins de vie de vehicule a la seule borne de recensement.
 func (s *filmScan) balayerEtatsDeMouvement() {
-	m, err := grammar.ScanMarcheDesTramesAvec(s.fc, grammar.LecturesDeLaMarche{Morts: s.in.Vehicles.Scanned})
+	m, err := s.marche, s.errMarche
 	st, tc := m.MovementStateStats, m.ContinuousFireStats
 	if err != nil {
 		slog.WarnContext(s.ctx, "etats de mouvement et tir continu illisibles — rejeu sans intervalles d etat ni rafales",
@@ -74,4 +74,14 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 type mortsEtOccupation struct {
 	Deaths    []types.ObjectDeath
 	Occupancy []types.VehicleOccupancy
+}
+
+// lireLaMarcheDesTrames joue la marche des trames du film, UNE fois, avant les positions : les
+// positions et les huit lecteurs de composants lisent les records bipedes qu elle recueille, et les
+// etats de mouvement prennent son resultat ([filmScan.balayerEtatsDeMouvement]). Elle lit les morts
+// d objet et l occupation quand les images-cles du film portent des slots de vehicule : la premiere
+// condition du calque des vehicules, qui ne se balaie qu apres elle et ne les prend que s il a ete
+// balaye. Un film sans vehicule ne paie pas leur lecture.
+func (s *filmScan) lireLaMarcheDesTrames() {
+	s.marche, s.errMarche = grammar.ScanMarcheDesTramesAvec(s.fc, grammar.LecturesDeLaMarche{MortsSiVehicules: true})
 }

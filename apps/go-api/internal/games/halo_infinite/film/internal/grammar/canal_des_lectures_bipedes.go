@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -183,6 +184,13 @@ type canalDesLecturesBipedes struct {
 	// mortA : l instant du dead-state de chaque vie que la marche a lu, jusqu au record NEW qui la
 	// recree (generation reutilisee).
 	mortA map[types.LifeKey]uint64
+	// lay : le decoupage d i0 du film, qui juge qu un i0 est absolu dans la region jouee ; layOK faux
+	// quand il est illisible (aucune position ne se retient).
+	lay   profile.I0Layout
+	layOK bool
+	// positionsMarche, positionsRecuperees : les records dont la position se lit, de la marche puis de
+	// l ancrage derriere elle ([positionsBipedes]).
+	positionsMarche, positionsRecuperees positionsBipedes
 }
 
 // nouveauCanalDesLecturesBipedes prepare le canal des lectures bipedes du film `fc`. Les
@@ -194,17 +202,24 @@ func nouveauCanalDesLecturesBipedes(fc *FilmContext) *canalDesLecturesBipedes {
 	if arch, err := fc.bipedArchetype(); err == nil {
 		c.utiles = composantsDesLecteursBipedes(arch)
 	}
+	if lay, err := fc.I0Layout(); err == nil {
+		c.lay, c.layOK = lay, true
+	}
 	fc.GenerationsVivantesA(0)
 	return c
 }
 
-// Interets : les composants des huit lecteurs, sur le bipede, dans les trames.
+// Interets : les composants des huit lecteurs, sur le bipede, dans les trames ; et la position (i0),
+// que le canal designe au lecteur de position ([positionsDuContexte]).
 func (c *canalDesLecturesBipedes) Interets() []Interet {
 	arch, err := c.fc.bipedArchetype()
 	if err != nil {
 		return nil
 	}
 	var out []Interet
+	if c.layOK {
+		out = append(out, Interet{Phase: PhaseTrames, TI: BipedTypeIndex, Composant: arch.component(indexDeLaPosition)})
+	}
 	for m := c.utiles; m != 0; m &= m - 1 {
 		id := bits.TrailingZeros64(m)
 		out = append(out, Interet{Phase: PhaseTrames, TI: BipedTypeIndex, Composant: arch.component(id)})
@@ -274,6 +289,7 @@ func (c *canalDesLecturesBipedes) recueillir(p *lecture.Paquet, recs []FrameReco
 			c.lu.corpsMorts++
 			continue
 		}
+		c.noterLaPosition(p, r, &rb)
 		if rb.masque&c.utiles != 0 {
 			c.lu.records = append(c.lu.records, rb)
 		}
@@ -283,12 +299,14 @@ func (c *canalDesLecturesBipedes) recueillir(p *lecture.Paquet, recs []FrameReco
 }
 
 // Clore fait passer l ancrage derriere la marche, range les records dans l ordre du flux et les
-// donne au contexte, avec le compte des records recuperes.
+// donne au contexte, avec le compte des records recuperes : tous ceux que l ancrage rend, pour un des
+// huit lecteurs ou pour leur seule position.
 func (c *canalDesLecturesBipedes) Clore(BilanDeMarche) {
 	rec := c.recuperer()
-	c.lu.recuperes = len(rec)
+	c.lu.recuperes = len(c.positionsRecuperees.records)
 	c.lu.records = append(c.lu.records, rec...)
 	rangerDansLeFlux(c.lu.records, c.fc.ChunkNumbers())
+	c.lu.positions = fondrePositions(&c.positionsMarche, &c.positionsRecuperees, c.fc.ChunkNumbers())
 	c.fc.recup.lectures = &c.lu
 	c.fc.NoterReplis(ComptesDesReplis{AncragesBipedesApresLaMarche: c.lu.recuperes})
 }
@@ -362,8 +380,14 @@ func (c *canalDesLecturesBipedes) recuperer() []recordBipedeLu {
 			return
 		}
 		c.lu.examines++
+		masque := masqueDesIndex(r.Mask)
+		c.positionsRecuperees.noter(r.Chunk, r.Packet, positionLue{i0: uint32(r.I0), slot: r.Slot, gen: uint8(r.Gen), //nolint:gosec // position dans un payload, generation sur 2 bits
+			recupere: true, masque: masque})
+		if masque&c.utiles == 0 {
+			return // sa position seule : aucun des huit lecteurs n y lit rien
+		}
 		rb := recordBipedeLu{Slot: r.Slot, Gen: r.Gen, Chunk: r.Chunk, Packet: r.Packet, I0: r.I0,
-			masque: masqueDesIndex(r.Mask), arret: -1, Recupere: true}
+			masque: masque, arret: -1, Recupere: true}
 		capt.appels = capt.appels[:0]
 		suivant := 1 // rang, dans le masque, du composant que la marche lit ensuite (i0 est le 0)
 		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, g, func(id int) bool {
@@ -382,9 +406,7 @@ func (c *canalDesLecturesBipedes) recuperer() []recordBipedeLu {
 				rb.appels = append(rb.appels, appelDeComposant{composant: rb.arret, rejouer: a.rejouer})
 			}
 		}
-		if rb.masque&c.utiles != 0 {
-			out = append(out, rb)
-		}
+		out = append(out, rb)
 	})
 	return out
 }
@@ -410,4 +432,18 @@ func (m *MarcheDistribuee) attribuable() bool {
 // fermeture prouve.
 func rendParLAncrage(t trameDuCanal, vu bool, slot uint32, i0 int) bool {
 	return !vu || (!slices.Contains(t.slots, slot) && int64(i0) < int64(t.prouveeDes))
+}
+
+// noterLaPosition retient la position du record `rb` que la marche a lu (`r`) quand son i0 a ete
+// traverse et qu il est absolu dans la region jouee ([i0AbsoluDeLaRegion]).
+func (c *canalDesLecturesBipedes) noterLaPosition(p *lecture.Paquet, r *FrameRecord, rb *recordBipedeLu) {
+	if !c.layOK || len(r.Trace.Comps) == 0 {
+		return
+	}
+	i0 := r.Trace.Comps[0]
+	if i0.Index != indexDeLaPosition || !i0.Ported || !i0AbsoluDeLaRegion(p.Payload, i0.StartBit, c.lay) {
+		return
+	}
+	c.positionsMarche.noter(rb.Chunk, rb.Packet, positionLue{i0: uint32(i0.StartBit), slot: rb.Slot, //nolint:gosec // position dans un payload
+		gen: uint8(rb.Gen), masque: rb.masque}) //nolint:gosec // generation sur 2 bits
 }

@@ -180,7 +180,7 @@ func ri27d0Comparer(m *ri27d0Positions, c *canalDesLecturesBipedes, anciens, neu
 			continue
 		}
 		if ns[0].q == as[0].q {
-			src := "marche"
+			src := "lue_par_la_marche"
 			if ns[0].recupere {
 				src = "recuperee"
 			}
@@ -201,7 +201,7 @@ func ri27d0Comparer(m *ri27d0Positions, c *canalDesLecturesBipedes, anciens, neu
 		if t.prouveeDes == rienDeProuve {
 			etat = "trame_non_prouvee"
 		}
-		src := "marche"
+		src := "lue_par_la_marche"
 		if ns[0].recupere {
 			src = "recuperee"
 		}

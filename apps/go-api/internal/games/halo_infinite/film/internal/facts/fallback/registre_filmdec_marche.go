@@ -158,11 +158,11 @@ var registreFilmdecMarche = []Repli{
 	},
 	{
 		Nom:  "repli_ancrage_bipede_apres_la_marche",
-		Fait: "quels records bipedes delta les huit lecteurs de composants (charges, impulsions, rangs, camouflage, grappin, arme portee, inventaire, equipement) lisent hors de ce que la marche des trames a lu",
+		Fait: "quels records bipedes delta les huit lecteurs de composants (charges, impulsions, rangs, camouflage, grappin, arme portee, inventaire, equipement) et le lecteur de position lisent hors de ce que la marche des trames a lu",
 		Mecanisme: "l ancrage d en-tete bipede rend, DERRIERE la marche des trames, les records d un slot dont la marche n a lu aucun record dans le paquet, et seulement hors de ce que la fermeture de la trame prouve — " +
 			"une trame fermee partie de la tete prouve le paquet entier, une trame fermee dont le debut de vue B a ete localise prouve sa liste depuis ce debut, une trame non fermee ne prouve rien ; " +
 			"la garde des generations vivantes datees vaut pour les records des deux sources ; " +
-			"chaque record rendu est marque recupere ; compte = records rendus qui annoncent un composant des huit lecteurs",
+			"chaque record rendu est marque recupere ; compte = records rendus, pour un des huit lecteurs ou pour leur position",
 		// LECTURE NON PORTEE : le film ecrit ces records ; la marche ne les lit pas quand elle ne
 		// localise pas la liste d evenements du paquet, ou quand une largeur fausse devant eux
 		// l arrete ou la decale.

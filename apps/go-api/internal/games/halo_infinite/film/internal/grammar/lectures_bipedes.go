@@ -9,7 +9,8 @@ package grammar
 // Les charges, les impulsions, les rangs, le camouflage, le grappin, l arme portee, les deltas
 // d inventaire et l equipement lisent chacun quelques composants des records bipedes delta. Ils
 // lisent [lecturesBipedes] : ce que la marche des trames a lu de ces records, puis ce que l ancrage
-// d en-tete bipede a recupere DERRIERE elle.
+// d en-tete bipede a recupere DERRIERE elle. Le lecteur de position lit les memes records, de la
+// meme source, a leur composant i0 ([positionsBipedes], `positions_lues.go`).
 //
 // # D OU VIENT CHAQUE RECORD
 //
@@ -135,14 +136,16 @@ func (r *recordBipedeLu) parcourirJusqua(obs *Observation, cible int) bool {
 }
 
 // lecturesBipedes est ce que la marche des trames, puis l ancrage derriere elle, ont lu des records
-// bipedes delta d un film : ceux qui annoncent un composant des huit lecteurs, dans l ordre du flux.
+// bipedes delta d un film : ceux qui annoncent un composant des huit lecteurs, dans l ordre du flux ;
+// et ceux dont la position se lit ([positionsBipedes], `positions_lues.go`).
 type lecturesBipedes struct {
-	records []recordBipedeLu
+	records   []recordBipedeLu
+	positions positionsBipedes
 	// examines : records bipedes delta lus, meme ceux qui n annoncent rien des huit lecteurs ;
-	// recuperes : ceux que l ancrage a rendus ; horsRecord : publications de la marche qu aucun
-	// record retenu ne porte ; corpsMorts : records d un corps mort, ecartes ;
-	// generationsRefusees : records de la marche que la garde des generations vivantes datees
-	// ecarte (l ancrage ne rend que ce qu elle accepte).
+	// recuperes : ceux que l ancrage a rendus, pour un des huit lecteurs ou pour leur position ;
+	// horsRecord : publications de la marche qu aucun record retenu ne porte ; corpsMorts : records
+	// d un corps mort, ecartes ; generationsRefusees : records de la marche que la garde des
+	// generations vivantes datees ecarte (l ancrage ne rend que ce qu elle accepte).
 	examines, recuperes, horsRecord, corpsMorts, generationsRefusees int
 }
 

@@ -125,6 +125,10 @@ type LecturesDeLaMarche struct {
 	// vehicule ne les lit pas : elle ne paie ni leur recolte ni la recuperation des listes que la
 	// marche ne localise pas.
 	Morts bool
+	// MortsSiVehicules : les memes, quand les images-cles du film portent des slots de vehicule
+	// (`ti=40`, [ScanWorldObjectKeyframes]) — la cuisson joue la marche avant de balayer son calque
+	// des vehicules.
+	MortsSiVehicules bool
 }
 
 // MarcheDesTrames est ce que LA marche du frame-processeur rend : les etats de mouvement du
@@ -192,7 +196,7 @@ func ScanMarcheDesTramesAvec(fc *FilmContext, l LecturesDeLaMarche) (MarcheDesTr
 		canaux = append(canaux, nouveauCanalDesLecturesBipedes(fc))
 	}
 	var morts *canalDesMorts
-	if l.Morts {
+	if l.Morts || (l.MortsSiVehicules && len(ScanWorldObjectKeyframes(fc, VehicleTypeIndex).Band) > 0) {
 		morts = nouveauCanalDesMorts(reg)
 		canaux = append(canaux, morts)
 	}
