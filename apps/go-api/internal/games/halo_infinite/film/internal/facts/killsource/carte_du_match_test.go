@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/testutil"
@@ -101,19 +102,15 @@ func TestCarteDuMatchDecideLesLargeursDeLaMarche(t *testing.T) {
 	t.Logf("avec carte : LU %v indexW=%d (Fragmentation)", avec.LueAxisW, avec.LueIndexW)
 }
 
-// calibrationDeLaBobine rejoue la calibration de la bobine sous une entree de catalogue.
+// calibrationDeLaBobine rejoue la calibration de la bobine sous une entree de catalogue, sur le
+// contexte que la marche de killsource ouvre.
 func calibrationDeLaBobine(t *testing.T, src *source.Film, carte *profile.MapQuantEntry) calibration {
 	t.Helper()
-	f, err := loadFilm(src)
+	cal, err := calibrate(grammar.NewFilmContextForMap(src, carte, nil), DefaultOptions().Views, carte)
 	if err != nil {
-		t.Fatalf("film : %v", err)
+		t.Fatalf("calibration : %v", err)
 	}
-	tl, err := newTimeline(f, nil)
-	if err != nil {
-		t.Fatalf("timeline : %v", err)
-	}
-	tl.rewind()
-	return calibrate(f, tl, DefaultOptions().Views, carte)
+	return cal
 }
 
 // TestCarteReelleLueParLaMarche — LA MESURE, SUR UN FILM DONT LA CARTE N EST PAS L INVARIANT.

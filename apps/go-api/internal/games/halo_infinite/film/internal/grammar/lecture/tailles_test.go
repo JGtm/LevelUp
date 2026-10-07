@@ -28,6 +28,7 @@ func TestTaillesDesTypesSontGelees(t *testing.T) {
 		{"Composant", unsafe.Sizeof(lecture.Composant{}), 12, "occurrence de composant lue"},
 		{"EntreeVueC", unsafe.Sizeof(lecture.EntreeVueC{}), 12, "tour de la vue C lu"},
 		{"Etendue", unsafe.Sizeof(lecture.Etendue{}), 16, "lecture citée par un fait"},
+		{"MessageDeKill", unsafe.Sizeof(lecture.MessageDeKill{}), 16, "message de kill lu"},
 	}
 	for _, c := range cas {
 		if c.vue != c.gelee {

@@ -50,6 +50,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -351,9 +352,14 @@ func e193Mesurer(dir string) e193Ligne {
 		return l
 	}
 	table := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(f), true, table, indexParMotif{})
+	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), true, table, indexParMotif{})
 	nom, bot := e193Epinglage(r)
-	recs := scanKillEvents(f).recs
+	marche, err := grammar.LireLaMarcheDeKillsource(grammar.NewFilmContext(f.src))
+	if err != nil {
+		l.Err = err
+		return l
+	}
+	recs := killEventsDeLaMarche(marche, f).recs
 
 	l.Build, l.Refus = table.Build, table.Refusal
 	l.Epingles, l.Bots = len(nom), len(bot)

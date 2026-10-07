@@ -50,15 +50,15 @@
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
 marche   : 93 propose(s), 91 apparie(s) au couple exact, 91 publiee(s)
 scan     : 1 propose(s), 1 apparie(s) au couple exact, 1 publiee(s)
-marche, source appartenant a la victime : 4 propose(s), 3 publiee(s)
-scan,   source appartenant a la victime : 16 propose(s), 0 publiee(s)
+marche, source appartenant a la victime : 5 propose(s), 3 publiee(s)
+scan,   source appartenant a la victime : 15 propose(s), 0 publiee(s)
 morts de BOT : 2 propose(s), 2 publiee(s)
 morts infligees PAR un bot : 1 propose(s), 1 apparie(s), 1 publiee(s)
-101 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 91 · DESACCORD 0
+102 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 91 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 4839 / 4839 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 390, mediane 304)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 1881, mediane 1881]
+calibration resolue automatiquement : LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 368, mediane 301)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 1205, mediane 1205]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL

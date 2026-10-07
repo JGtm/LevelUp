@@ -432,3 +432,50 @@ package grammar
 // (`replay/zone_states_owner_nom.go`, `replay.SchemaVersion` 84). Le rang : `grammar-2026-10-06.7`
 // est reserve par un lot parallele non fusionne ; la serie passe au jour suivant pour ne pas
 // laisser de trou sur cette branche.
+//
+// LOTS 2.7.c1 ET 2.7.c2 DE LA REPRESENTATION INTERMEDIAIRE (2026-10-07, ecrits sur leur branche a
+// revision constante de `grammar-2026-10-06.6`, publies avec le rang suivant) : la grammaire recoit les lectures de killsource — la table, le fil des kills, le motif
+// des xuid, BOT_METADATA (le corps commun des fiches de joueur lit desormais l equipe et son jumeau
+// dans le bloc de 44 octets : meme nombre de bits consommes), le gabarit du dead-state, les morts de
+// la marche des trames avec leur position ([LireLesMortsDeLaMarche] : le canal des morts les garde
+// sur demande) et le critere de la calibration ([FilmContext.ScoresDeCalibration]) ; les entrees de
+// l ancienne marche de killsource (`DebutDeLaVueB`, `VueADuFilm`, `VueADuFilmSousCarte`) sont
+// retirees avec elle. Aucune lecture de la cuisson ne change : empreinte regeneree a revision
+// constante.
+//
+// ENTREE `grammar-2026-10-07.2` (2026-10-07, lot 2.7.c4 de la representation intermediaire) : LA
+// VUE A LIT LE MESSAGE DE KILL SANS SA QUEUE, ET LA RECHERCHE DES KILLS DE KILLSOURCE DESCEND ICI EN
+// RATTRAPAGE.
+//
+// Ce qui change, contre `grammar-2026-10-07` :
+//   - [chargeJoueurTue] lit le genre 85, partie fixe seule, quelle que soit la variante de partie :
+//     la garde de la queue tient ses deux reglages d execution a leur defaut de l executable (faux),
+//     decision de l utilisateur du 2026-10-07 (`vue_a_charges_execution.go`). La vue A va donc
+//     au-dela de chaque message de kill, jusqu a son terminateur quand la suite se lit, et sa fin
+//     decide du debut de la vue B selon la classe du film ([debutParLaVueA]) ;
+//   - la vue A range ses messages de kill ([lecture.VueA.Kills], [lecture.MessageDeKill], seize
+//     octets geles) ;
+//   - la recherche bit a bit des kill-events de killsource et sa chaine d evenements descendent ici
+//     (`chaine_d_evenements*.go`, `kills_rattrapes.go`, a l octet : l oracle de la chaine descend avec
+//     elles), bornees aux trames dont la lecture de la vue A n est pas etablie (la vue B ne commence
+//     pas a sa fin : lecture arretee, terminateur que la marche ne retient pas), entre le premier
+//     genre de la vue A et le debut de la vue B, hors des messages que la vue A a lus (decision de
+//     l utilisateur du 2026-10-07, apres la mesure : 433 kills reels perdus sur quatre films quand
+//     la recherche ne suivait qu un arret) : repli `repli_kill_rattrape_hors_vue_a`, compte ;
+//   - [LireLaMarcheDeKillsource] rend a killsource ses morts et ses messages de kill en une marche.
+//
+// MESURE (2026-10-07, binaires de `e9a64d87b` contre ceux du lot, faits mis de cote) : sur 28 films
+// sous le contexte de killsource, 901 606 trames delta, fermees 674 171 -> 698 688, refusees
+// 156 170 -> 131 798, records lus +133 000 (24 839 trames deviennent fermees, 322 cessent de l etre,
+// dont des trames a kill dont la fin de vue A, fausse apres un message de degats, est retenue :
+// decouverte 34 du plan de l etape 2). Sur
+// les 19 temoins de killsource, contenu des 2 747 morts publiees identique sauf deux qui gagnent un
+// kill-event ; 56 morts passent du balayage a la marche, 20 le chemin inverse. La vue A lit 3 047
+// messages de kill ; la recherche d avant en trouvait 549 de bruit (chaine courte) que plus rien ne
+// rend, et 14 reels dans des vues A dont la fin, retenue, est fausse. Sur les 20 films d equivalence,
+// les etapes de la marche (etats de mouvement, inventaire, tir continu, camouflage, morts de
+// vehicule) bougent avec la vue B des trames a kill ; la queue du 85, essayee sur les quatre films de
+// reference, ne rend la fin localisee dans aucune trame.
+// Le rang : ecrit `grammar-2026-10-06.7` sur sa branche, renumerote a la fusion de `feat/v75`
+// (`fad38a03c`) apres `grammar-2026-10-07` ; `replay.SchemaVersion` 87 et `SchemaDesFaits` 10 montent
+// avec lui (contenu cuit et section des kills des faits changes).

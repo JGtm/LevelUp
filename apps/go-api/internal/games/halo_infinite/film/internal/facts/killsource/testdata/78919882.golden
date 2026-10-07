@@ -29,13 +29,13 @@
 02:35  119861b4  divergence=non  "Autres"  GRENADE  marche
 06:19  0d203522  divergence=non  "Autres"  OBJET_EXPLOSIF  marche
 01:44  d468178e  divergence=oui  "M41 SPNKr"  ARME  marche
-09:18  0d203522  divergence=oui  "Autres"  OBJET_EXPLOSIF  scan
+09:18  0d203522  divergence=oui  "Autres"  OBJET_EXPLOSIF  marche
 
 ## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 2 ligne(s)
 # le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
 # format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
 01:44  Senor Pepper  d468178e  "M41 SPNKr"  credit=MassimilianoAR  marche  source-victime
-09:18  Chocoboflor  0d203522  "Autres"  credit=IZindle  scan  source-victime
+09:18  Chocoboflor  0d203522  "Autres"  credit=IZindle  marche  source-victime
 
 ## MORTS INFLIGEES PAR UN BOT — 0 ligne(s)
 # le feed porte la MORT, pas le kill : le tueur vient du roster de replication
@@ -47,17 +47,17 @@
 39082 paquet(s) SANS evenement · 67544072 bits balayes · 1 candidat(s) accepte(s)
 
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
-marche   : 98 propose(s), 94 apparie(s) au couple exact, 94 publiee(s)
-scan     : 3 propose(s), 3 apparie(s) au couple exact, 3 publiee(s)
-marche, source appartenant a la victime : 1 propose(s), 1 publiee(s)
-scan,   source appartenant a la victime : 10 propose(s), 1 publiee(s)
+marche   : 72 propose(s), 68 apparie(s) au couple exact, 68 publiee(s)
+scan     : 29 propose(s), 29 apparie(s) au couple exact, 29 publiee(s)
+marche, source appartenant a la victime : 2 propose(s), 2 publiee(s)
+scan,   source appartenant a la victime : 9 propose(s), 0 publiee(s)
 morts de BOT : 0 propose(s), 0 publiee(s)
 morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
-99 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 94 · DESACCORD 0
+74 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 68 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
-5025 / 5027 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=11 [PROFIL PLAT (score 153, mediane 147)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 864, mediane 864]
+5027 / 5027 paquet(s) a evenements localise(s)
+calibration resolue automatiquement : LU axisW=[15 15 17] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=11 [PROFIL PLAT (score 142, mediane 137)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 757, mediane 757]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL

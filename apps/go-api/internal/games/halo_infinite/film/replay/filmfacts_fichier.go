@@ -191,7 +191,12 @@ const VersionCodecFaits = 2
 // porte le NOM de sa propriete (`grammar.ManagedPropertyRead.Name` / `Named`, renseigne aux
 // images-cles) ; un fichier d avant se relirait decale. Le rang 8 est reserve par un lot parallele
 // non fusionne.
-const SchemaDesFaits = 9
+// SCHEMA 10 (2026-10-07, lot 2.7.c de la representation intermediaire) : la section 5, le resultat de
+// killsource, change de contenu : ses comptes de replis du decodage (`ReplisDuDecodage`) perdent
+// `HorsBandeBipede` (repli retire avec la bande bipede, 2.7.c2) et gagnent `KillsRattrapes`
+// (rattrapage des kills hors de la vue A lue, 2.7.c4). Le rang 8, reserve a ce lot, reste sans
+// emploi : la serie suit les fusions.
+const SchemaDesFaits = 10
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

@@ -8,8 +8,8 @@ package killsource
 // `killsource-2026-09-16.2` a `.6` viennent donc ici, TELS QUELS — aucun mot reecrit, aucun
 // octet de code touche : les deux fichiers ne portent que des commentaires.
 //
-// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-21` depuis la rotation du
-// 2026-10-06 (plus bas), est dans
+// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-21.2` depuis la rotation du
+// 2026-10-07 (plus bas), est dans
 // `rev_chronique.go`.
 
 // ENTREE `killsource-2026-09-16.2` (2026-09-16, lot 2.6.1) : LA CONSTANTE DESCEND DANS LA COUCHE,
@@ -465,3 +465,28 @@ package killsource
 // publication.
 //
 // `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document.
+//
+// ROTATION DU 2026-10-07 (lot 2.7.c de la representation intermediaire, entree
+// `killsource-2026-10-07`) : `rev_chronique.go` atteignait 500 lignes avec l entree du lot ; le rang
+// `killsource-2026-09-21` vient ici, TEL QUEL — aucun mot reecrit ; la suite VIVANTE part de
+// `killsource-2026-09-21.2`.
+//
+// ENTREE `killsource-2026-09-21` (2026-09-21, lot 5.3.3-a) : LA REVISION MONTE MECANIQUEMENT
+// DERRIERE LA GRAMMAIRE — `i60` EST DECLARE COMPLET QUAND LA CARTE EST LA.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21` :
+// `SimStateComplet` ne se pose plus a la main, il SUIT les largeurs d axe de la carte du match
+// (chronique de `grammar`, entree du meme jour). La traversee du bipede va donc plus loin sur
+// tout film dont la carte est cataloguee — 38 desynchronisations d `i60` en moins sur le seul
+// `bfecd02b`. Cette constante hache la VALEUR de la revision de grammaire : elle monte
+// mecaniquement, et les lignes de `match_kill_events` anterieures deviennent candidates au
+// backlog de redecodage (D6, SUR SIGNAL UTILISATEUR, jamais automatiquement).
+//
+// CE QUE CE BACKLOG RAPPORTERAIT, MESURE AVANT DE L OUVRIR : RIEN. A/B par `replay-build` sur
+// `000d5950` et `bcb6d393`, bascule levee puis abaissee, cache de faits vide a chaque passe :
+// artefact BIT A BIT IDENTIQUE. Le `replay-equiv` du meme film ne deplace que le digest de
+// l etape `killsource`, et ce digest porte la VALEUR du profil calibre — compte et octets du
+// kill-feed inchanges. Le pilote n a donc aucune raison de declencher ce backlog pour cette
+// revision-ci.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et aucun octet cuit ne change.

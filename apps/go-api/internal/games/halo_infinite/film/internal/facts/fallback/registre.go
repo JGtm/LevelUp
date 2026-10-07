@@ -138,3 +138,9 @@ func siteDeVersement(constante string) Site {
 // `goconst` refuse a juste titre une cinquieme occurrence du litteral. C EST UNE DATE, PAS UN LOT,
 // comme [dateVague2] et [dateM3].
 const date0927 = "2026-09-27"
+
+// date1007 : le jour ou naissent le rattrapage des kills de la representation intermediaire (lot
+// 2.7.c4) et les replis de la lecture des zones par le NOM de propriete `ti=13` (proprietaire,
+// pousseur, designateur et proprietaire de colline) ; `goconst` refuse a juste titre une quatrieme
+// occurrence du litteral. C EST UNE DATE, PAS UN LOT, comme [dateVague2], [dateM3] et [date0927].
+const date1007 = "2026-10-07"

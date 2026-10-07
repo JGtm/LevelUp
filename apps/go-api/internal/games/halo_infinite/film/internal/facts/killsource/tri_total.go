@@ -26,21 +26,12 @@ func trierKillEvents(recs []killEventRec) {
 }
 
 // trierBotsParSlot range les bots par slot, les bots d un MEME slot dans leur ORDRE DE DECOUVERTE
-// (lot J10.1, 2026-09-27, DT-9). C est cet ordre que [paquetsBotMeta] garantit et que
+// (lot J10.1, 2026-09-27, DT-9). C est cet ordre que [grammar.PaquetsBotMetadata] garantit et que
 // [roster.pinBots] lit pour decider lequel nomme l indice au kill-feed ; `m.Bots` est bati dans
 // l ordre de decouverte, et ce rang — la seule cle qui separe deux remplacants successifs d un
 // slot — est conserve par le tri STABLE. Sous `sort.Slice`, il ne l etait que sous treize bots.
 func trierBotsParSlot(bots []bot) {
 	slices.SortStableFunc(bots, func(a, b bot) int { return cmp.Compare(a.Slot, b.Slot) })
-}
-
-// trierPaquetsT0 range les paquets de replication dans l ORDRE TOTAL DU FILM (lot J10.1, 2026-09-27,
-// DT-9) : horodatage, puis chunk, puis rang dans le chunk — le couple (chunk, rang) est unique. Tout
-// ce qui parcourt `f.t0` (la marche, le balayage, les kill-events) herite de cet ordre.
-func trierPaquetsT0(t0 []packet) {
-	slices.SortFunc(t0, func(a, b packet) int {
-		return cmp.Or(cmp.Compare(a.ts, b.ts), cmp.Compare(a.chunk, b.chunk), cmp.Compare(a.idx, b.idx))
-	})
 }
 
 // trierMortsDeLaMarche range les dead-states de la marche par instant, chunk et paquet, les ex aequo
@@ -51,11 +42,4 @@ func trierMortsDeLaMarche(deads []deadRecord) {
 	slices.SortStableFunc(deads, func(a, b deadRecord) int {
 		return cmp.Or(cmp.Compare(a.ms, b.ms), cmp.Compare(a.chunk, b.chunk), cmp.Compare(a.pidx, b.pidx))
 	})
-}
-
-// trierImagesCles range les images-cles par horodatage, les ex aequo dans l ORDRE DU FILM (lot J10.1,
-// 2026-09-27, DT-9) : [timeline.preload] retient la PREMIERE declaration de chaque slot, et deux
-// images-cles de meme horodatage n ont pas d autre cle unique que leur rang dans le film.
-func trierImagesCles(events []keyframeEvent) {
-	slices.SortStableFunc(events, func(a, b keyframeEvent) int { return cmp.Compare(a.ts, b.ts) })
 }

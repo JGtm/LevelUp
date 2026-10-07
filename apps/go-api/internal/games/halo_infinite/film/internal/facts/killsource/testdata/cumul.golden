@@ -30,8 +30,8 @@
    autres denominateurs sont INCHANGES, numerateur compris.
 
 ## LE COUT, VENTILE PAR VOIE — jamais deux precisions directement comparables
-marche : 356 / 369 apparie(s) au couple exact = 96.5 %
-scan   : 7 / 8 apparie(s) au couple exact = 87.5 %
+marche : 331 / 345 apparie(s) au couple exact = 95.9 %
+scan   : 32 / 32 apparie(s) au couple exact = 100.0 %
    RESERVE NON LEVEE : la bijection indice -> joueur est ajustee sur l UNION des
    deux voies, dont la marche fournit ~91 % des candidats. Un objectif maximise
    conjointement n est pas neutre : le taux de la marche peut etre flatte et celui

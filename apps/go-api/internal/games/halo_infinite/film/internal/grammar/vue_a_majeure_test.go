@@ -74,9 +74,9 @@ func TestLaClasseDUnFilmSuitLaVersionMajeureQueLeJeuJoue(t *testing.T) {
 
 // TestUnFilmDUneAutreMajeureEstProuvePaquetParPaquet : le paquet de
 // [TestLaFinDeLaVueAPrimeQuandLaMarcheButeEnsuite] — la marche depuis E bute, une signature suit.
-// Sous la grammaire derivee d un film de table native et de majeure 0x29, la cuisson et les marches
-// partent de E ; sous la meme table et la majeure 0x28, E n est pas prouve, et le paquet suit le
-// localisateur a l identique. MUTATION — la garde retiree de [classeSousLaMajeure] : ROUGE.
+// Sous la grammaire derivee d un film de table native et de majeure 0x29, la marche part de E ; sous
+// la meme table et la majeure 0x28, E n est pas prouve, et le paquet suit le localisateur a
+// l identique. MUTATION — la garde retiree de [classeSousLaMajeure] : ROUGE.
 func TestUnFilmDUneAutreMajeureEstProuvePaquetParPaquet(t *testing.T) {
 	pay, e := paquetVueA(1, zoomCourt, func(w *bitWriter) {
 		w.deltaMasque13(124, 5)
@@ -91,15 +91,14 @@ func TestUnFilmDUneAutreMajeureEstProuvePaquetParPaquet(t *testing.T) {
 		t.Fatalf("la marche depuis E ferme le paquet : le vecteur doit la faire buter")
 	}
 	jouee := grammaireDeLaVueASousFilm(profilDeMajeure(versionMajeureJouee, true))
-	if d, comment, m := debutDuPaquet(t, pay, w, jouee); d != e || comment != lecture.DebutParVueA || m != e {
-		t.Errorf("majeure 0x29 : cuisson (%d, %d), marches %d ; attendu %d par la vue A", d, comment, m, e)
+	if d, comment := debutDuPaquet(t, pay, w, jouee); d != e || comment != lecture.DebutParVueA {
+		t.Errorf("majeure 0x29 : debut (%d, %d) ; attendu %d par la vue A", d, comment, e)
 	}
 	s, commentS := localiserLaListe(pay, w, cfg)
-	mS, _ := LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
 	autre := grammaireDeLaVueASousFilm(profilDeMajeure(majeureHI1120, true))
-	if d, comment, m := debutDuPaquet(t, pay, w, autre); d == e || d != s || comment != commentS || m != mS {
-		t.Errorf("majeure 0x28 : cuisson (%d, %d), marches %d ; attendu le localisateur (%d, %d), %d, et pas E = %d",
-			d, comment, m, s, commentS, mS, e)
+	if d, comment := debutDuPaquet(t, pay, w, autre); d == e || d != s || comment != commentS {
+		t.Errorf("majeure 0x28 : debut (%d, %d) ; attendu le localisateur (%d, %d), et pas E = %d",
+			d, comment, s, commentS, e)
 	}
 }
 

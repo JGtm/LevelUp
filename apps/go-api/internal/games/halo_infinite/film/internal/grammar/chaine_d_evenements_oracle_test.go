@@ -1,6 +1,6 @@
-package killsource
+package grammar
 
-// chaines_evenements_test.go — L ORACLE DE LA CHAINE D EVENEMENTS, FIGE AVANT L ABSORPTION
+// chaine_d_evenements_oracle_test.go — L ORACLE DE LA CHAINE D EVENEMENTS, FIGE AVANT L ABSORPTION
 // (lot 2.4.1, item 2.4.1 du PLAN_DECODEUR_FILM_2026-09-13).
 //
 // # CE QUE CE GOLDEN EST, ET QUAND IL A ETE PRODUIT
@@ -15,7 +15,7 @@ package killsource
 // # CE QU IL FIGE
 //
 // Pour chaque bobine versionnee (les huit `replay/testdata/minifilm_*` et les deux
-// `testdata/minibobine_*`), pour chaque paquet type-0 A EVENTS, dans l ordre :
+// `facts/killsource/testdata/minibobine_*`), pour chaque paquet type-0 A EVENTS, dans l ordre :
 //
 //	chaine=   les triplets (code, bit de debut, bit de fin) de la liste d evenements qui
 //	          commence au bit 2, et la maniere dont elle se termine (FIN sur un bit de
@@ -33,16 +33,21 @@ package killsource
 // Un golden qui fige un AVANT ne se regenere pas : le regenerer reviendrait a declarer que la
 // consommation de bits a le droit de bouger. S il rougit, c est que la grammaire a change — et
 // c est alors `grammar.Rev` et `killsource.Rev` qu il faut rouvrir, pas ce fichier.
+//
+// Le golden et ce test sont descendus de `facts/killsource` avec la chaine, que le rattrapage des
+// kills de la grammaire porte desormais (`kills_rattrapes.go`) : le meme fichier, a l octet.
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // cheminGoldenChaines : l oracle, relatif au paquet.
@@ -53,7 +58,7 @@ const cheminGoldenChaines = "testdata/chaines_evenements.golden"
 func bobinesVersionnees(t *testing.T) []string {
 	t.Helper()
 	var out []string
-	for _, motif := range []string{"../../../replay/testdata/minifilm_*", "testdata/minibobine_*"} {
+	for _, motif := range []string{"../../replay/testdata/minifilm_*", "../facts/killsource/testdata/minibobine_*"} {
 		m, err := filepath.Glob(motif)
 		if err != nil {
 			t.Fatalf("glob %s : %v", motif, err)
@@ -111,7 +116,16 @@ func premiereDifference(attendu, obtenu string) string {
 	return "  (contenu identique ligne a ligne : difference de fin de fichier)"
 }
 
-// lignesDeBobine : une ligne par paquet type-0 a events.
+// sansPaquetType0 est la ligne que l oracle fige pour une bobine sans trame delta : le message
+// d erreur du chargeur de `killsource` qui l a produit (`ErrNoPacket`).
+const sansPaquetType0 = "killsource: aucun paquet de replication (type 0)"
+
+// trameAEvenements dit qu un paquet est une trame delta qui annonce une liste d evenements.
+func trameAEvenements(p types.Packet) bool {
+	return p.Type == int(PacketTypeDelta) && source.BitAt(p.Payload, 1) != 0
+}
+
+// lignesDeBobine : une ligne par trame delta a events.
 func lignesDeBobine(t *testing.T, dir string) []string {
 	t.Helper()
 	src, err := source.LoadDir(dir, nil)
@@ -119,19 +133,18 @@ func lignesDeBobine(t *testing.T, dir string) []string {
 		t.Fatalf("%s : %v", dir, err)
 	}
 	nom := filepath.Base(dir)
-	f, err := loadFilm(src)
-	if err != nil {
-		return []string{fmt.Sprintf("%s\tSANS-PAQUET-TYPE-0\t%v", nom, err)}
+	paquets := src.AllPackets()
+	if !slices.ContainsFunc(paquets, func(p types.Packet) bool { return p.Type == int(PacketTypeDelta) }) {
+		return []string{fmt.Sprintf("%s\tSANS-PAQUET-TYPE-0\t%s", nom, sansPaquetType0)}
 	}
-	g15 := pickGate15(f)
+	g15 := trancherGate15(src)
 	var out []string
-	for i := range f.t0 {
-		p := &f.t0[i]
-		if !hasEvents(p) {
+	for _, p := range paquets {
+		if !trameAEvenements(p) {
 			continue
 		}
 		out = append(out, fmt.Sprintf("%s\t%d\t%d\tg15=%v\tchaine=%s\tancres=%s",
-			nom, p.chunk, p.idx, g15, chaineDepuis(p.payload, 2, g15), ancresDuPaquet(p.payload, g15)))
+			nom, p.Chunk, p.Index, g15, chaineDepuis(p.Payload, 2, g15), ancresDuPaquet(p.Payload, g15)))
 	}
 	return out
 }
@@ -158,34 +171,34 @@ func chaineDepuis(pl []byte, depart int, g15 bool) string {
 	return b.String() + "|BORNE"
 }
 
-// ancresDuPaquet : pour chaque position candidate du generateur de kill-events, les six champs
-// lus, la longueur de chaine et les triplets de cette chaine. MEME parcours que [killEventsIn],
+// ancresDuPaquet : pour chaque position candidate du generateur de messages de kill, les six champs
+// lus, la longueur de chaine et les triplets de cette chaine. MEME parcours que [killsAvecArrets],
 // deroule ici pour publier ce qu il lit.
 func ancresDuPaquet(pl []byte, g15 bool) string {
 	var b strings.Builder
 	for _, x := range positionsCandidates(pl) {
 		r := nouveauCurseurEv(pl, x+7)
-		if !evPresence(r, killEventCode) {
+		if !evPresence(r, GenreJoueurTue) {
 			continue
 		}
-		k := readKillEvent(pl, r.pos())
-		if !killEventPlausible(k) {
+		k, fin := lireLeKillDeLaChaine(pl, r.pos())
+		if !killPlausible(k, fin) {
 			continue
 		}
-		fmt.Fprintf(&b, "|%d>%d,%d,%d,%d,%d,%d,%d:%d%s", x, k.end, k.victim, k.killer,
-			k.assist, k.killerPct, k.assistPct, k.flag,
-			evChainLen(pl, k.end, g15, maxChainProbe), chaineDepuis(pl, k.end, g15))
+		fmt.Fprintf(&b, "|%d>%d,%d,%d,%d,%d,%d,%d:%d%s", x, fin, k.Victime, k.Tueur,
+			k.Assistant, k.PartDuTueur, k.PartDeLAssistant, k.Drapeau,
+			evChainLen(pl, fin, g15, maxChainProbe), chaineDepuis(pl, fin, g15))
 	}
 	return b.String()
 }
 
-// positionsCandidates : les positions que le generateur de kill-events retient (bit de
-// continuation a 1 suivi du code 85). MEME condition que [killEventsIn].
+// positionsCandidates : les positions que le generateur de messages de kill retient (bit de
+// continuation a 1 suivi du genre 85). MEME condition que [killsAvecArrets].
 func positionsCandidates(pl []byte) []int {
 	var out []int
 	nb := len(pl) * 8
 	for x := 1; x+8 <= nb; x++ {
-		if !estAncreDeKillEvent(pl, x) {
+		if !estAncreDeKill(pl, x) {
 			continue
 		}
 		out = append(out, x)

@@ -4,7 +4,7 @@ package grammar
 // EST LUE, SINON LE LOCALISATEUR UNIQUE DE LA BOUCLE DE RECORDS.
 //
 // Dans un paquet delta qui porte une liste d evenements (bit 1 du payload), la boucle de records
-// ne commence pas a l amorce. Trois sites en ont besoin, et tous passent par ce fichier — il n en
+// ne commence pas a l amorce. Deux sites en ont besoin, et tous deux passent par ce fichier — il n en
 // existe pas de copie (garde-rails `archlint/film_localisateur_unique_test.go` et
 // `archlint/film_vue_a_lecteur_unique_test.go`) :
 //
@@ -12,12 +12,11 @@ package grammar
 //	cuisson ([marcheurDesTrames.marcherLePaquet])   rangee ([rangerLaTete])  [SignatureStricte] ([localiserLaListe])
 //	canal des morts, liste que la cuisson n a pas   (deja jugee par la       [SignaturePuisLargeurLibre]
 //	  localisee ([debutRecupere])                     cuisson)               ([debutRecupere])
-//	marche de killsource (`killsource.runWalk`)     [DebutDeLaVueB]          [SignaturePuisLargeurLibre]
 //
 // Le canal des morts n a pas de debut a lui : il recoit les records de la cuisson, qui partent de E
 // quand la vue A decide ; il ne cherche, par le localisateur, que la liste que la cuisson n a pas
 // localisee — une liste dont la vue A, lue par la cuisson sous la meme grammaire et la meme regle
-// ([debutParLaVueA]), n a pas decide. Seule la marche de killsource appelle [DebutDeLaVueB].
+// ([debutParLaVueA]), n a pas decide. killsource lit ses morts par ce canal.
 //
 // # LA FIN DE LA VUE A EST LE DEBUT DE LA VUE B : UNE LECTURE (lot VA, etape V2)
 //
@@ -48,10 +47,10 @@ package grammar
 //
 // LES SITES N ONT PAS LE MEME ORDRE, ET LE PARAMETRE LE DIT. La cuisson prend la premiere
 // signature stricte telle quelle, sans controle de generation ni repli : quand elle echoue, c est
-// elle qui essaie ensuite la fermeture par NEW de tete. Les deux sites qui lisent les morts exigent
-// en plus que la generation de la signature soit celle du monde, et essaient le repli a largeur
-// libre quand la signature stricte echoue ; le canal des morts n y vient que pour une liste que le
-// debut de liste de la cuisson n a pas localisee.
+// elle qui essaie ensuite la fermeture par NEW de tete. Le canal des morts exige en plus que la
+// generation de la signature soit celle du monde, et essaie le repli a largeur libre quand la
+// signature stricte echoue ; il n y vient que pour une liste que le debut de liste de la cuisson n a
+// pas localisee.
 //
 // LE BIT NUL QUI PRECEDE LA POSITION. Le jeu ne l ecrit que devant le PREMIER record de la vue B :
 // l ecrivain du tick (`FUN_142f2c3b0`) ecrit la liste d evenements (vue A, `FUN_142f2c050`) puis un
@@ -80,7 +79,7 @@ package grammar
 // essaye qu apres l echec de la signature stricte : les paquets deja localises ne bougent pas d un
 // bit.
 //
-// LE CONTROLE DE GENERATION DES SITES QUI LISENT LES MORTS ([TryDeltaAt] ne l applique pas) n agit
+// LE CONTROLE DE GENERATION DU CANAL DES MORTS ([TryDeltaAt] ne l applique pas) n agit
 // que sous la generation stricte du profil (`Profil.Grammaire.GenerationStricte`) : sans elle,
 // [World.GenerationMatches] rend vrai et le controle est vide. La production tourne sous elle :
 // killsource la leve dans son profil de depart, et la cuisson pose le profil que killsource calibre
@@ -93,7 +92,6 @@ package grammar
 // ([Observation.neutraliserLesCrochetsDeCanal]) ; sans observateur, c est sans effet.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -137,7 +135,7 @@ const (
 	// ni repli. Ordre de la cuisson.
 	SignatureStricte OrdreDeLocalisation = iota
 	// SignaturePuisLargeurLibre : la premiere signature stricte si sa generation est celle du
-	// monde, sinon le repli a largeur libre. Ordre des deux sites qui lisent les morts.
+	// monde, sinon le repli a largeur libre. Ordre du canal des morts.
 	SignaturePuisLargeurLibre
 )
 
@@ -210,7 +208,7 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 // la marche depuis E ferme le paquet sans regle de l ecrivain contredite ([LectureVueC.Fermee] :
 // fermee au bit pres ne suffit pas ; [lectureDEssai], monde restaure).
 //
-// Les deux appelants (la cuisson, [DebutDeLaVueB]) n arrivent qu avec une liste annoncee (le bit 1
+// Son appelant ([debutDeLaVueBDeCuisson]) n arrive qu avec une liste annoncee (le bit 1
 // du payload a 1, ou [listeAnnoncee]) : une vue A portee y compte donc au moins un message, et la
 // condition n a pas a le redire. Une vue A vide portee finirait d ailleurs au bit 2, le debut de la
 // vue B d un paquet sans evenement.
@@ -227,33 +225,6 @@ func debutParLaVueA(pay []byte, a *FluxVueA, classe classeDeLaVueA, w *World, cf
 		}
 	}
 	return -1
-}
-
-// VueADuFilm est la grammaire de la vue A qu un film declare ([grammaireDeLaVueA]), pour la marche
-// qui n ouvre pas de [FilmContext] et ne range pas de structure (celle de killsource) : elle la
-// passe a [DebutDeLaVueB]. La valeur nulle est celle d un film dont la vue A ne se lit pas au-dela
-// de sa tete : [DebutDeLaVueB] rend alors le localisateur seul.
-type VueADuFilm struct {
-	g grammaireDeLaVueA
-}
-
-// VueADuFilmSousCarte derive du film et de l entree de catalogue de sa carte la grammaire de sa vue
-// A, par la meme regle que la cuisson ([grammaireDeLaVueASousFilm]) : table des genres et
-// simulation de l enregistreur lues dans `chunk_00`, positions de la region jouee de la carte.
-func VueADuFilmSousCarte(f *source.Film, carte *profile.MapQuantEntry) VueADuFilm {
-	return VueADuFilm{g: grammaireDeLaVueASousFilm(ResolveProfile(f, carte))}
-}
-
-// DebutDeLaVueB rend le bit de depart de la boucle de records d un paquet a evenements pour la
-// marche de killsource, ou -1, et si la position vient du repli a largeur libre : la fin de la vue A, lue ici par la lecture unique ([lireLaVueA], debut au bit 1, apres le bit de
-// configuration) sous le profil du cadre, quand elle decide ([debutParLaVueA]) ; sinon
-// [LocaliserBoucleDeRecords] dans l ordre des marches, [SignaturePuisLargeurLibre].
-func DebutDeLaVueB(pay []byte, w *World, cfg FrameConfig, v VueADuFilm) (int, bool) {
-	a := lireLaVueA(pay, 1, cfg.Profil, v.g)
-	if e := debutParLaVueA(pay, &a, v.g.classe, w, cfg); e >= 0 {
-		return e, false
-	}
-	return LocaliserBoucleDeRecords(pay, w, cfg, SignaturePuisLargeurLibre)
 }
 
 // precedeDuTerminateur dit que le bit qui precede `tete` est nul : le terminateur de la vue A, que

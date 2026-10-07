@@ -1,8 +1,9 @@
-package killsource
+package grammar
 
-// eventbody.go — LES CORPS D EVENEMENTS, ET SEULEMENT CE QU IL FAUT POUR ENCHAINER.
+// chaine_d_evenements_corps.go — LES CORPS D EVENEMENTS DE LA CHAINE DU RATTRAPAGE DES KILLS
+// (`chaine_d_evenements.go`), ET SEULEMENT CE QU IL FAUT POUR ENCHAINER.
 //
-// Le chainage ne sert qu a VALIDER une position de kill-event : il n a besoin que de la
+// Le chainage ne sert qu a VALIDER une position de message de kill : il n a besoin que de la
 // LONGUEUR des evenements, jamais de leur contenu. Un code non modelise arrete la chaine — il
 // n existe AUCUNE extrapolation, et c est ce qui rend le critere honnete : un faux positif ne
 // peut pas se faire passer pour une chaine en profitant d une longueur devinee.
@@ -14,23 +15,65 @@ package killsource
 // ferait avancer le curseur d une longueur erronee, ce qui est pire qu arreter la chaine — une
 // chaine trop courte perd un candidat, une chaine fausse en fabrique un.
 
-// evBody : avance le curseur de la longueur du CORPS de l evenement `code`. Faux = corps non
-// modelise ou debordement : la chaine s arrete la.
-func evBody(r *curseurEv, code int, gate15 bool) bool {
-	if evStub[code] {
+// evStub dit si `code` est l un des 13 codes dont le deserialiseur est un `return 1` — corps de ZERO
+// bit.
+func evStub(code int) bool {
+	switch code {
+	case 3, 4, 23, 24, 25, 26, 33, 49, 54, 57, 59, 92, 103:
 		return true
 	}
-	if n, ok := evFixed[code]; ok {
+	return false
+}
+
+// evFixed rend la longueur de CORPS du code `code` quand elle est fixe, mesuree contre l oracle du
+// dispatcher sous la grammaire corrigee. Les codes a un seul echantillon (12, 21, 34, 40) sont
+// plausibles mais NON confirmes statistiquement — c est ecrit ici plutot que dissimule.
+func evFixed(code int) (int, bool) {
+	switch code {
+	case 5:
+		return 111, true
+	case 6:
+		return 93, true
+	case 7:
+		return 118, true
+	case 9:
+		return 36, true
+	case 12:
+		return 94, true
+	case 21:
+		return 2, true
+	case 34:
+		return 59, true
+	case 38:
+		return 10, true
+	case 40:
+		return 78, true
+	case 75:
+		return 54, true
+	case 76:
+		return 104, true
+	}
+	return 0, false
+}
+
+// evBody : avance le curseur de la longueur du CORPS de l evenement `code`. Faux = corps non
+// modelise ou debordement : la chaine s arrete la. Le message de kill est le seul dont le contenu
+// est lu ([lireLeKillDeLaChaine]).
+func evBody(r *curseurEv, code int, gate15 bool) bool {
+	if evStub(code) {
+		return true
+	}
+	if n, ok := evFixed(code); ok {
 		r.skip(n)
 		return !r.over
 	}
-	if code == killEventCode {
-		k := readKillEvent(r.octets(), r.pos())
-		if k.end < 0 {
+	if code == GenreJoueurTue {
+		_, fin := lireLeKillDeLaChaine(r.octets(), r.pos())
+		if fin < 0 {
 			r.over = true
 			return false
 		}
-		r.aller(k.end)
+		r.aller(fin)
 		return true
 	}
 	switch code {
@@ -50,9 +93,6 @@ func evBody(r *curseurEv, code int, gate15 bool) bool {
 	return !r.over
 }
 
-// killEventCode : le code d evenement du KILL. C est le seul dont le contenu est lu.
-const killEventCode = 85
-
 // evBody1 : corps du code 1 (FUN_140968368). 10 a 33 bits. Le << +16 >> qu on lisait autrefois
 // n est PAS ici : c est la boucle de presence du dispatcher, donc de l encadrement.
 func evBody1(r *curseurEv) {
@@ -67,14 +107,14 @@ func evBody1(r *curseurEv) {
 }
 
 // evBody15 : corps du code 15 (FUN_14080bb4c). `gate15` est un etat RUNTIME du jeu, pas un bit du
-// flux : il se tranche par film. Le compteur R(10) est une LONGUEUR EN BITS, pas un nombre
-// d enregistrements — confirme au desassemblage.
+// flux : il se tranche par film ([trancherGate15]). Le compteur R(10) est une LONGUEUR EN BITS, pas
+// un nombre d enregistrements — confirme au desassemblage.
 func evBody15(r *curseurEv, gate15 bool) {
 	if gate15 {
 		r.rd(15)
 	}
 	r.rd(13)
-	n := int(r.rd(10))
+	n := int(r.rd(10)) //nolint:gosec // R(10)
 	r.rd(n)
 }
 
@@ -110,7 +150,7 @@ func evBody0(r *curseurEv) {
 	if r.g1() == 0 {
 		r.rd(10)
 	}
-	v58 := int(r.rd(4))
+	v58 := int(r.rd(4)) //nolint:gosec // R(4)
 	if r.g1() != 0 {
 		r.rd(32)
 	}
@@ -128,7 +168,7 @@ func evBody0(r *curseurEv) {
 func evBody82(r *curseurEv) bool {
 	r.rd(32)
 	r.rd(8)
-	n1 := int(r.rd(3))
+	n1 := int(r.rd(3)) //nolint:gosec // R(3)
 	for range n1 {
 		r.rd(32)
 		if !evVariantA(r) {
@@ -137,7 +177,7 @@ func evBody82(r *curseurEv) bool {
 	}
 	if r.g1() == 1 {
 		r.rd(32)
-		n2 := int(r.rd(3))
+		n2 := int(r.rd(3)) //nolint:gosec // R(3)
 		for range n2 {
 			evVariantB(r)
 		}
@@ -149,7 +189,7 @@ func evBody82(r *curseurEv) bool {
 // evVariantA : FUN_14080ef08. Le tag 7 est un vecteur monde quantifie par une configuration
 // RUNTIME : il n est pas modelisable statiquement, et la chaine s arrete plutot que de deviner.
 func evVariantA(r *curseurEv) bool {
-	switch int(r.rd(3)) {
+	switch int(r.rd(3)) { //nolint:gosec // R(3)
 	case 0: // ecrit un octet de sortie, zero bit lu
 	case 1, 2, 3, 6:
 		r.rd(32)
@@ -165,7 +205,7 @@ func evVariantA(r *curseurEv) bool {
 
 // evVariantB : FUN_1407f0ebc.
 func evVariantB(r *curseurEv) {
-	switch int(r.rd(3)) {
+	switch int(r.rd(3)) { //nolint:gosec // R(3)
 	case 0: // ecrit un octet, zero bit
 	case 1:
 		if r.g1() == 0 {

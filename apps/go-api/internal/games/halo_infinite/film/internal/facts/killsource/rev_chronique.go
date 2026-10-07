@@ -11,26 +11,6 @@ package killsource
 
 // # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
 //
-// ENTREE `killsource-2026-09-21` (2026-09-21, lot 5.3.3-a) : LA REVISION MONTE MECANIQUEMENT
-// DERRIERE LA GRAMMAIRE — `i60` EST DECLARE COMPLET QUAND LA CARTE EST LA.
-//
-// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21` :
-// `SimStateComplet` ne se pose plus a la main, il SUIT les largeurs d axe de la carte du match
-// (chronique de `grammar`, entree du meme jour). La traversee du bipede va donc plus loin sur
-// tout film dont la carte est cataloguee — 38 desynchronisations d `i60` en moins sur le seul
-// `bfecd02b`. Cette constante hache la VALEUR de la revision de grammaire : elle monte
-// mecaniquement, et les lignes de `match_kill_events` anterieures deviennent candidates au
-// backlog de redecodage (D6, SUR SIGNAL UTILISATEUR, jamais automatiquement).
-//
-// CE QUE CE BACKLOG RAPPORTERAIT, MESURE AVANT DE L OUVRIR : RIEN. A/B par `replay-build` sur
-// `000d5950` et `bcb6d393`, bascule levee puis abaissee, cache de faits vide a chaque passe :
-// artefact BIT A BIT IDENTIQUE. Le `replay-equiv` du meme film ne deplace que le digest de
-// l etape `killsource`, et ce digest porte la VALEUR du profil calibre — compte et octets du
-// kill-feed inchanges. Le pilote n a donc aucune raison de declencher ce backlog pour cette
-// revision-ci.
-//
-// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et aucun octet cuit ne change.
-
 // ENTREE `killsource-2026-09-21.2` (2026-09-21, lot 5.3.6) : LA REVISION MONTE DERRIERE UN
 // BALAYAGE NEUF DE LA COUCHE GRAMMAIRE.
 //
@@ -474,3 +454,33 @@ package killsource
 // proprietes ti=13 lu aux images-cles par `grammar.ScanManagedProperties`), donc l empreinte. Ni la
 // marche ni la calibration de killsource n appellent ce balayage : sortie inchangee par
 // construction. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-07 (lot 2.7.c1 de la representation intermediaire, REVISION CONSTANTE) :
+// les lectures de killsource hors de sa marche (table des joueurs, fil des kills, motif des xuid,
+// BOT_METADATA, gabarit du dead-state) descendent dans la grammaire a l identique ;
+// `KILLSOURCE_FIXTURES` identique sur les quatre films de reference.
+//
+// ENTREE `killsource-2026-10-07` (2026-10-07, lots 2.7.c2 a 2.7.c4 de la representation
+// intermediaire) : KILLSOURCE EST UN CANAL DE LA MARCHE DES TRAMES.
+//
+// Ce qui change, contre `killsource-2026-09-27` :
+//   - les dead-states viennent de la marche des trames ([grammar.LireLaMarcheDeKillsource]) : son
+//     monde, ses debuts de vue B, et les listes qu elle ne localise pas, recuperees par le canal des
+//     morts. La timeline et le filtre de la bande bipede sont retires (l archetype que la marche lie
+//     au slot les remplace ; `repli_deadstate_hors_bande_bipede` sort du registre) ;
+//   - le critere de la calibration se compte sous le monde des preliminaires de la marche : les
+//     scores publies changent, la decision du mot de poignee reste l invariant ;
+//   - 2.7.c3 : le decoupage du bloc MPP est celui que la grammaire resout pour le film (8/3 sur les
+//     formats anciens), comme la cuisson ; un decoupage non resolu se dit
+//     (`killsource.decoupage_mpp_non_resolu`) ;
+//   - 2.7.c4 : les kill-events viennent de la vue A lue (le message de kill sans sa queue,
+//     `grammar.Rev` `grammar-2026-10-07.2`), et la recherche bit a bit descend dans la grammaire en
+//     rattrapage compte, borne aux trames dont la lecture de la vue A n est pas etablie, avant la vue
+//     B (`repli_kill_rattrape_hors_vue_a`). killsource ne lit plus aucun octet : l origine des
+//     instants est le plus petit horodatage des paquets de replication (`chunks.go`).
+// PREUVE (2026-10-07) : 2.7.c2-c3, contre `killsource-2026-09-27` : sur les 19 temoins, contenu des
+// 2 747 morts publiees identique, 411 changent de voie technique ; sur les 20 films d equivalence,
+// seules `killsource`, `killRefs` et la couverture de l artefact bougent. 2.7.c4, contre c2-c3 :
+// contenu identique sauf deux morts qui gagnent un kill-event ; 56 morts passent du balayage a la
+// marche, 20 l inverse. Les lignes de `match_kill_events` deviennent candidates au redecodage :
+// backlog sur signal de l utilisateur (D6).

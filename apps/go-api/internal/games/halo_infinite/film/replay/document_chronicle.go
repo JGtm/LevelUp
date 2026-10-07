@@ -2989,3 +2989,44 @@ package replay
 //	                aboutit (`capturerElectionDisagreed` 0) ; les deductions passent de 2 a 0 (114b0040,
 //	                5 rampes avortees recoivent leur camp) et de 7 a 0 (e60aaf06, 1 rampe), aucune
 //	                autre rampe ne bouge. Colline : nom = voisin sur les 8 KOTH, calque identique.
+//
+// v87 (2026-10-07, representation intermediaire 2.7.c : killsource sur la marche des trames, kill-events
+// par la vue A) : LA VUE A SE LIT AU-DELA DES MESSAGES DE KILL, ET SA FIN FIXE LE DEBUT DE LA VUE B DES
+// TRAMES A KILL. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
+//
+//	calques de la   le message de kill (genre 85) se lit sans sa partie optionnelle, quelle que
+//	marche          soit la variante de partie : la vue A des trames a kill se lit jusqu a son
+//	                terminateur et sa fin fixe le debut de la vue B selon la classe du film. Les
+//	                etats de mouvement, l inventaire, le tir continu, le camouflage, les armes
+//	                tenues et les morts de vehicule lisent ces trames depuis ce debut.
+//	`killsource`,   kill-events tires de la vue A ; rattrapage bit a bit compte dans les trames
+//	`killRefs`      dont la lecture de la vue A n est pas etablie (`repli_kill_rattrape_hors_vue_a`) ;
+//	                voies des morts (marche, balayage) redistribuees, morts publiees identiques.
+//	`coverage`      comptes de replis (la chaine d evenements arretee chute d un ordre de
+//	                grandeur), trames fermees, revisions.
+//	faits           `SchemaDesFaits` 9 -> 10 : la section des kills change de contenu.
+//
+//	CE QUI MONTE    `SchemaVersion` 86 -> 87 ; `grammar.Rev` `grammar-2026-10-07` ->
+//	AVEC ELLE       `grammar-2026-10-07.2` ; `killsource.Rev` `killsource-2026-09-27` ->
+//	                `killsource-2026-10-07` (backlog killsource sur signal de l utilisateur, D6) ;
+//	                `objectives.Rev` constante. Les schemas 83 et 85 et `SchemaDesFaits` 8, reserves a
+//	                ce lot, restent sans emploi : levelup-d0 a fusionne 84 puis 86 avant lui.
+//
+//	LE PARC         un artefact 86 porte `grammar-2026-10-07` : verdict `redecoder`, tout le parc.
+//
+//	MESURE          `replay-equiv` sur les 20 films d equivalence, avant la fusion de `feat/v75`
+//	                (binaires de `e9a64d87b` contre ceux du lot) : les etapes de la marche bougent
+//	                sur 16 films, `killsource` et l artefact partout, `objectives` nulle part. Sur
+//	                28 films, trames delta fermees 674 171 -> 698 688 et refusees 156 170 ->
+//	                131 798 ; quelques trames a kill regressent quand la fin de la vue A, fausse
+//	                apres un message de degats, est retenue (decouverte 34 du plan de l etape 2).
+//	                `replay-corpus-gate` contre `feat/v75` `fad38a03c` (19 temoins, banc de verite
+//	                compris) : 352 gains, 93 pertes, toutes declarees — voies des morts
+//	                redistribuees (marche et balayage, contenu publie identique), trous du tir continu
+//	                fragmentes (series en hausse, trous en baisse), postures aberrantes coupees
+//	                (`084a804d` : une escalade de 168 s), compteurs de la marche (impulsions, refus,
+//	                liaisons oubliees) ; deux trajets de vehicule raccourcis (`e5adf7b2` : 7 s avant
+//	                la mort de l occupant, 8 tirs de vehicule detaches, decouverte 34 suspecte ;
+//	                `4f77afc1` : 10 s, non instruit). Banc de verite : `repli_kill_rattrape_hors_vue_a`
+//	                nouveau (par decision) et `repli_deadstate_indice_hors_roster` sur trois films
+//	                (morts lues par la marche, d indice hors du roster, non publiees).

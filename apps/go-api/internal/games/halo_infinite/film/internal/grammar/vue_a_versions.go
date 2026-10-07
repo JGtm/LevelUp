@@ -106,7 +106,7 @@ type grammaireDeLaVueA struct {
 	// positions : les tables de position de la region jouee de la carte du match, pour les
 	// positions a index des genres 5 et 6 ([tablesDeLaRegionJouee]) ; vides sans carte.
 	positions tablesDePosition
-	// variante : ce que la variante de partie du film decide des genres 85 et 116 ([varianteDuFilm]).
+	// variante : ce que la variante de partie du film decide du genre 116 ([varianteDuFilm]).
 	variante varianteDeLaVueA
 }
 

@@ -150,6 +150,21 @@ func (m *marcheurDesTrames) parcourir(rendre func(*trameLue) bool) {
 	}
 }
 
+// parcourirLesPreliminaires deroule, chunk par chunk, le seul monde des preliminaires — la table
+// anticipee et la liaison des images-cles du chunk — sans marcher une trame, et appelle `chunk` avec
+// le numero de chaque chunk lie, le monde pose : le critere de la calibration de `killsource`
+// ([FilmContext.ScoresDeCalibration]) se compte sous ce monde.
+func (m *marcheurDesTrames) parcourirLesPreliminaires(chunk func(num int)) {
+	for _, c := range m.chunks {
+		if _, _, ok := m.fc.ChunkAt(c); !ok {
+			continue
+		}
+		m.monde.PoserChunkCourant(c)
+		m.liaisons.ajouter(lierLesImagesClesDuChunk(m.monde, m.prel.liaison.rendre(c), m.cfg.Obs))
+		chunk(c)
+	}
+}
+
 // marcherLePaquet marche UNE trame delta et la range dans l arene. Sa vue A est lue et rangee
 // d abord, une fois ([rangerLaTete]), puis passee a la marche par rangs ; les paquets dont la tete
 // annonce une liste d evenements partent de la fin de leur vue A quand elle decide
@@ -187,9 +202,10 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 
 // viderLePaquet remet l arene a zero en gardant la capacite de ses tranches.
 func viderLePaquet(p *lecture.Paquet) {
-	genres, entrees, records, comps := p.VueA.Genres[:0], p.VueC.Entrees[:0], p.Records[:0], p.Comps[:0]
+	genres, kills, entrees := p.VueA.Genres[:0], p.VueA.Kills[:0], p.VueC.Entrees[:0]
+	records, comps := p.Records[:0], p.Comps[:0]
 	*p = lecture.Paquet{}
-	p.VueA.Genres, p.VueC.Entrees, p.Records, p.Comps = genres, entrees, records, comps
+	p.VueA.Genres, p.VueA.Kills, p.VueC.Entrees, p.Records, p.Comps = genres, kills, entrees, records, comps
 }
 
 // ajouter cumule `o` dans `l`.

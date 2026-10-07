@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -26,7 +27,7 @@ const enTeteDePaquet = 16
 // paquetDeType12 fabrique un paquet BOT_METADATA complet, en-tete compris.
 func paquetDeType12(ts uint64, payload []byte) []byte {
 	p := make([]byte, enTeteDePaquet+len(payload))
-	binary.LittleEndian.PutUint16(p[0:], uint16(packetTypeBotMeta))
+	binary.LittleEndian.PutUint16(p[0:], grammar.PacketTypeBotMetadata)
 	binary.LittleEndian.PutUint32(p[4:], uint32(len(payload))) //nolint:gosec // payload de test borne
 	binary.LittleEndian.PutUint64(p[8:], ts)
 	copy(p[enTeteDePaquet:], payload)

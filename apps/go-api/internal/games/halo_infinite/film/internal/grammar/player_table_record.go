@@ -68,6 +68,9 @@ func gamertagImprimable(s string) bool {
 type slotEnr struct {
 	slot                     types.PlayerSlot
 	masque, n, m, uniteesNom int
+	// equipe, jumeau : les deux octets signes du bloc de 44 octets ([lireLeBloc44]) ; seule l entree
+	// d un bot de BOT_METADATA les publie ([lireLesEntreesDeBots]).
+	equipe, jumeau int
 }
 
 // longueurPredite rend la longueur TOTALE que la grammaire predit pour cet enregistrement. Le
@@ -177,8 +180,9 @@ func decodeSlotQueue(r *slotReader, e *slotEnr, persoBits int) bool {
 	return r.ok
 }
 
-// decodeSlotCorps lit le CORPS d'un enregistrement de joueur : le bloc de 16 octets, les deux
-// champs larges, les six champs courts, le bloc de personnalisation et le bloc de 44 octets.
+// decodeSlotCorps lit le CORPS d un enregistrement de joueur : le bloc de 16 octets, les deux
+// champs larges, les six champs courts, le bloc de personnalisation et le bloc de 44 octets, dont
+// l equipe et son jumeau ([lireLeBloc44]).
 //
 // IL EST PARTAGE AVEC LE PAQUET DE TYPE 8 (lot 5.17.1). Le corps de `sub+0x000` a `sub+0x142c`
 // est le MEME chez les deux ecrivains — `FUN_1407edea8` pour la table de `chunk_00`,
@@ -197,6 +201,6 @@ func decodeSlotCorps(r *slotReader, e *slotEnr, persoBits int) bool {
 	e.slot.Shorts.F7 = uint32(r.bits(7))
 	e.slot.Shorts.F1 = uint32(r.bits(1))
 	r.saute(persoBits)
-	r.saute(slotBloc44Bits)
+	lireLeBloc44(r, e)
 	return r.ok
 }

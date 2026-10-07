@@ -5,7 +5,8 @@ package killsource
 //
 // # LE DEFAUT QUE CE TEMOIN FERME
 //
-// Le generateur de candidats de [killEventsIn] retient parfois DEUX FOIS le meme kill-event 85 dans
+// Le generateur de candidats du rattrapage des kills (`grammar/kills_rattrapes.go`, la recherche
+// bit a bit que killsource faisait sur toute la trame) retient parfois DEUX FOIS le meme kill-event 85 dans
 // un paquet, a deux positions de bit voisines, champs identiques (RE_LOG 7ter.77 : les deux morts a
 // multi-attachement du corpus, a 15 bits d ecart). Le champ `bit` de [killEventRec] etait prevu
 // « pour dedoublonner » et n etait jamais lu. Le premier exemplaire etait consomme par le couple du
@@ -31,10 +32,9 @@ func TestDoublonsDEnregistrement_AucunCoupleFabrique(t *testing.T) {
 	r.perm = []int{0, 1}
 	champs := killEventFields{victim: 1, killer: 0, assist: -1, killerPct: 100, assistPct: 149}
 	premier, second := champs, champs
-	premier.end, second.end = 128, 143 // la fin des champs suit la position de lecture
 	s := &assistScan{recs: []killEventRec{
-		{ms: 1000, chunk: 1, pidx: 5, bit: 100, fields: premier, chain: minChain},
-		{ms: 1000, chunk: 1, pidx: 5, bit: 115, fields: second, chain: minChain},
+		{ms: 1000, chunk: 1, pidx: 5, bit: 100, fields: premier},
+		{ms: 1000, chunk: 1, pidx: 5, bit: 115, fields: second},
 	}}
 	s.dedoublonner()
 	st := kf.resoudreCouples(s.recs, r)

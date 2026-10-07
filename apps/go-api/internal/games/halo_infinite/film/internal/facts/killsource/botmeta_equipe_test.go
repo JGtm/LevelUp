@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/constat"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // persoBitsHI113 : le bloc de personnalisation de HI_1_13_0, 1 852 octets.
@@ -101,15 +102,23 @@ func payloadEcrit(persoBits int, bots ...botEcrit) []byte {
 	return w.b
 }
 
-// lireLesEquipes charge les paquets comme le decodeur et y lit l equipe des bots.
-func lireLesEquipes(persoBits int, persoConnue bool, payloads ...[]byte) botMeta {
-	paquets := make([]packet, len(payloads))
+// paquetsEcrits rend les paquets BOT_METADATA d un film synthetique, un payload par chunk, tels que la
+// grammaire les lit sous la largeur de personnalisation `persoBits`.
+func paquetsEcrits(t *testing.T, persoBits int, persoConnue bool, payloads ...[]byte) []grammar.PaquetBotMetadata {
+	t.Helper()
+	paquets := make([]paquetDeTest, len(payloads))
 	for i, pl := range payloads {
-		paquets[i] = packet{chunk: i, ts: uint64(1_000 * (i + 1)), payload: pl}
+		paquets[i] = paquetDeTest{chunk: i, typ: grammar.PacketTypeBotMetadata, ts: uint64(1_000 * (i + 1)), payload: pl} //nolint:gosec // rang de test
 	}
-	f := filmDePaquetsBotMeta(paquets...)
-	m := loadBotMeta(f)
-	poserLesEquipesDesBots(f, &m, persoBits/8, persoConnue)
+	return grammar.PaquetsBotMetadata(sourceDePaquets(t, paquets...), persoBits, persoConnue)
+}
+
+// lireLesEquipes charge les paquets comme le decodeur et y lit l equipe des bots.
+func lireLesEquipes(t *testing.T, persoBits int, persoConnue bool, payloads ...[]byte) botMeta {
+	t.Helper()
+	paquets := paquetsEcrits(t, persoBits, persoConnue, payloads...)
+	m := loadBotMeta(paquets)
+	poserLesEquipesDesBots(paquets, &m, persoConnue)
 	return m
 }
 
@@ -149,7 +158,7 @@ func exigerBilan(t *testing.T, m botMeta, attendu EquipesDesBots) {
 var sandwolf = botEcrit{slot: 8, bid: 44, nom: "343 Sandwolf", equipe: 1, jumeau: 1}
 
 func TestEquipeDUnBot(t *testing.T) { // EQ-UN
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, sandwolf))
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, sandwolf))
 	exigerEquipe(t, m, "343 Sandwolf", 1)
 	exigerBilan(t, m, EquipesDesBots{Lues: 1})
 }
@@ -158,10 +167,10 @@ func TestEquipesDeDeuxBotsDecales(t *testing.T) { // EQ-DEUX
 	thumb := botEcrit{slot: 8, bid: 57, nom: "343 The Thumb", equipe: 0, jumeau: 0}
 	donos := botEcrit{slot: 9, bid: 6, nom: "343 Donos", equipe: 1, jumeau: 1}
 	pl := payloadEcrit(persoBitsHI113, thumb, donos)
-	if entrees, ferme := marcherLePaquet(pl, persoBitsHI113); !ferme || len(entrees) != 2 {
-		t.Fatalf("marche : %d entree(s), fermee %v", len(entrees), ferme)
+	if ps := paquetsEcrits(t, persoBitsHI113, true, pl); len(ps) != 1 || !ps[0].Ferme || len(ps[0].Ecrites) != 2 {
+		t.Fatalf("marche : %+v", ps)
 	}
-	m := lireLesEquipes(persoBitsHI113, true, pl)
+	m := lireLesEquipes(t, persoBitsHI113, true, pl)
 	exigerEquipe(t, m, "343 The Thumb", 0)
 	exigerEquipe(t, m, "343 Donos", 1)
 	exigerBilan(t, m, EquipesDesBots{Lues: 2})
@@ -169,14 +178,14 @@ func TestEquipesDeDeuxBotsDecales(t *testing.T) { // EQ-DEUX
 
 func TestUneLargeurFausseNeFermePas(t *testing.T) { // EQ-FERMETURE
 	for _, ecart := range []int{-8, 8} {
-		m := lireLesEquipes(persoBitsHI113+ecart, true, payloadEcrit(persoBitsHI113, sandwolf))
+		m := lireLesEquipes(t, persoBitsHI113+ecart, true, payloadEcrit(persoBitsHI113, sandwolf))
 		exigerSansEquipe(t, m, "343 Sandwolf")
 		exigerBilan(t, m, EquipesDesBots{Illisibles: 1, PaquetsNonFermes: 1})
 	}
 }
 
 func TestBuildSansLargeurDePersonnalisation(t *testing.T) { // EQ-PERSO
-	m := lireLesEquipes(0, false, payloadEcrit(persoBitsHI113, sandwolf))
+	m := lireLesEquipes(t, 0, false, payloadEcrit(persoBitsHI113, sandwolf))
 	exigerSansEquipe(t, m, "343 Sandwolf")
 	exigerBilan(t, m, EquipesDesBots{Illisibles: 1, PersoInconnue: true})
 }
@@ -184,7 +193,7 @@ func TestBuildSansLargeurDePersonnalisation(t *testing.T) { // EQ-PERSO
 func TestDeuxPaquetsDeuxEquipes(t *testing.T) { // EQ-CONTRADICTION
 	autre := sandwolf
 	autre.equipe, autre.jumeau = 0, 0
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, sandwolf),
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, sandwolf),
 		payloadEcrit(persoBitsHI113, autre))
 	exigerSansEquipe(t, m, "343 Sandwolf")
 	exigerBilan(t, m, EquipesDesBots{Contradictoires: 1})
@@ -193,7 +202,7 @@ func TestDeuxPaquetsDeuxEquipes(t *testing.T) { // EQ-CONTRADICTION
 func TestJumeauDiscordant(t *testing.T) { // EQ-JUMEAU
 	b := sandwolf
 	b.jumeau = -1
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
 	exigerEquipe(t, m, "343 Sandwolf", 1)
 	exigerBilan(t, m, EquipesDesBots{Lues: 1, JumeauxDiscordants: 1})
 }
@@ -201,7 +210,7 @@ func TestJumeauDiscordant(t *testing.T) { // EQ-JUMEAU
 func TestAucuneEquipeSePublieAMoinsUn(t *testing.T) { // EQ-AUCUNE
 	b := sandwolf
 	b.equipe, b.jumeau = -1, -1
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
 	exigerEquipe(t, m, "343 Sandwolf", -1)
 	exigerBilan(t, m, EquipesDesBots{Lues: 1})
 }
@@ -209,14 +218,14 @@ func TestAucuneEquipeSePublieAMoinsUn(t *testing.T) { // EQ-AUCUNE
 func TestEquipeHorsDomaine(t *testing.T) { // EQ-DOMAINE
 	b := sandwolf
 	b.equipe, b.jumeau = 9, 9
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, b))
 	exigerSansEquipe(t, m, "343 Sandwolf")
 	exigerBilan(t, m, EquipesDesBots{Illisibles: 1, HorsDomaine: 1})
 }
 
 func TestFragmentDuBalayageHorsGrammaire(t *testing.T) { // EQ-FANTOME
 	kale := botEcrit{slot: 8, bid: 48, nom: "343 KaleDucky", equipe: 0, jumeau: 0, octetAvantLeBloc: 0xFF}
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, kale))
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, kale))
 	if len(m.Bots) != 2 || m.Incomplets != 1 {
 		t.Fatalf("le balayage devait lire le fragment : %d bot(s), %d incomplet(s)", len(m.Bots), m.Incomplets)
 	}
@@ -227,7 +236,7 @@ func TestFragmentDuBalayageHorsGrammaire(t *testing.T) { // EQ-FANTOME
 
 func TestEntreeQueLeBalayageNeLitPas(t *testing.T) { // EQ-HORS-BALAYAGE
 	court := botEcrit{slot: 8, bid: 3, nom: "Bob", equipe: 1, jumeau: 1}
-	m := lireLesEquipes(persoBitsHI113, true, payloadEcrit(persoBitsHI113, court))
+	m := lireLesEquipes(t, persoBitsHI113, true, payloadEcrit(persoBitsHI113, court))
 	if len(m.Bots) != 0 {
 		t.Fatalf("le balayage ne lit pas un nom de trois unites : %+v", m.Bots)
 	}

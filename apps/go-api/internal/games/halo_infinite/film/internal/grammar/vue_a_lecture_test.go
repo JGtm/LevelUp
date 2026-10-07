@@ -3,6 +3,8 @@ package grammar
 import (
 	"slices"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
 // vue_a_lecture_test.go — les vecteurs de la lecture de la vue A (lots LN et VA), ecrits d apres
@@ -134,11 +136,45 @@ func TestLaVueANeDevineRien(t *testing.T) {
 	}
 	var k bitWriter
 	k.bit(1)
-	k.ecrireEnTeteDeMessage(85) // PlayerKilledEvent : genre non vide, charge refusee sans variante lue
-	k.bit(0)                    // lu comme un terminateur si le message passait sans sa charge
+	k.ecrireEnTeteDeMessage(GenreJoueurTue) // PlayerKilledEvent : la charge se lit sans variante lue
+	k.bit(0)                                // ... le R(1) de la victime, puis ses cinq bits seulement
 	k.bits(0, 16)
-	if a := lireSous(k.buf, grammaireRecente()); a.Porte || a.Fin != 9 || !slices.Equal(a.Genres, []int{85}) {
-		t.Errorf("genre 85 sans variante lue : %+v, attendu arretee au bit 9 apres le genre 85", a)
+	if a := lireSous(k.buf, grammaireRecente()); a.Porte || a.Fin != 9 || !slices.Equal(a.Genres, []int{85}) ||
+		len(a.Kills) != 0 {
+		t.Errorf("genre 85 tronque : %+v, attendu arretee au bit 9 apres le genre 85, sans kill", a)
+	}
+}
+
+// TestLeKillSeLitSansSaQueueEtSeRange : un PlayerKilledEvent se lit, partie fixe seule, sur un film
+// dont la variante n est pas lue (les reglages de la queue a leur defaut), la lecture continue jusqu au
+// terminateur, et le message est range avec sa position (le bit de sa continuation) et ses champs.
+// MUTATIONS — la queue lue ; la victime et le tueur intervertis : ROUGES.
+func TestLeKillSeLitSansSaQueueEtSeRange(t *testing.T) {
+	var k bitWriter
+	k.bit(1)
+	k.ecrireEnTeteDeMessage(GenreJoueurTue)
+	k.bit(0)
+	k.bits(3, 5) // victime
+	k.bit(1)     // tueur absent
+	k.bits(0xdeadbeef, 32)
+	k.bit(1)
+	k.bit(0)
+	k.bits(9, 5) // assistant
+	k.bits(7, 32)
+	k.bit(0) // terminateur
+	fin := k.n
+	k.bits(0, 16)
+	attendu := lecture.MessageDeKill{Debut: 1, Victime: 3, Tueur: lecture.RefAbsente, PartDuTueur: 0xdeadbeef,
+		Drapeau: 1, Assistant: 9, PartDeLAssistant: 7}
+	a := lireSous(k.buf, grammaireRecente())
+	if !a.Porte || a.Fin != fin || len(a.Kills) != 1 || a.Kills[0] != attendu {
+		t.Fatalf("vue A %+v, attendu portee jusqu au bit %d avec le kill %+v", a, fin, attendu)
+	}
+	var p lecture.Paquet
+	p.Payload = k.buf
+	rangerLaVueA(&p, &a)
+	if len(p.VueA.Kills) != 1 || p.VueA.Kills[0] != attendu {
+		t.Errorf("kills ranges %+v, attendu %+v", p.VueA.Kills, attendu)
 	}
 }
 

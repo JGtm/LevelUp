@@ -127,75 +127,25 @@ const (
 type killEventRec struct {
 	ms          int
 	chunk, pidx int
-	bit         int // position du code R(7) : l exemplaire garde par [assistScan.dedoublonner]
+	bit         int // position du genre R(7) : l exemplaire garde par [assistScan.dedoublonner]
 	fields      killEventFields
-	chain       int
 }
 
-// assistScan : ce que la passe de kill-events a produit et ce qu elle a coute.
+// assistScan : les kill-events de la marche ([killEventsDeLaMarche]) et ce que leur rattrapage a
+// coute.
 type assistScan struct {
 	recs []killEventRec
-	// gate15 : l etat runtime retenu pour ce film (voir [pickGate15]).
+	// gate15 : l etat d execution que le rattrapage des kills a tranche pour ce film ; faux quand
+	// aucune trame ne l a demande.
 	gate15 bool
-	// packetsWithEvents, packetsWithKill : denominateurs de la passe.
-	packetsWithEvents, packetsWithKill int
+	// rattrapes : kill-events que la vue A n a pas lus et que le rattrapage a retrouves
+	// (`repli_kill_rattrape_hors_vue_a`).
+	rattrapes int
 	// chainesArretees : chaines de kill-events plausibles arretees sur un code non modelise
 	// (`repli_chaine_evenement_code_non_modelise`, lot J8.7).
 	chainesArretees int
 	// doublons : exemplaires retires par [assistScan.dedoublonner] (lot J7.6).
 	doublons int
-}
-
-// minChain : profondeur de chaine exigee pour retenir un candidat. Trois evenements — le seuil
-// mesure. NE PAS l abaisser sans re-mesurer : c est lui qui elimine 99.4 % des faux.
-const minChain = 3
-
-// maxChainProbe : borne de la marche avant. Au-dela le critere ne discrimine plus rien et le
-// cout devient inutile.
-const maxChainProbe = 12
-
-// scanKillEvents : localise les kill-events de tous les paquets a evenements.
-func scanKillEvents(f *film) *assistScan {
-	s := &assistScan{}
-	s.gate15 = pickGate15(f)
-	for i := range f.t0 {
-		p := &f.t0[i]
-		if !hasEvents(p) {
-			continue
-		}
-		s.packetsWithEvents++
-		recs, arretees := killEventsAvecArrets(p.payload, s.gate15)
-		s.chainesArretees += arretees
-		if len(recs) > 0 {
-			s.packetsWithKill++
-		}
-		ms := f.ms(p)
-		for _, r := range recs {
-			r.ms, r.chunk, r.pidx = ms, p.chunk, p.idx
-			s.recs = append(s.recs, r)
-		}
-	}
-	s.dedoublonner()
-	trierKillEvents(s.recs)
-	return s
-}
-
-// pickGate15 : `gate15` est un etat RUNTIME du jeu, absent du flux de bits — il ne se lit pas, il
-// se TRANCHE par film. Critere : celui des deux qui enchaine le plus d evenements sur les
-// paquets a evenements. Ce n est pas un reglage libre : les deux valeurs sont essayees et la
-// mesure decide, sur une quantite (longueur de chaine) qui ne regarde AUCUN resultat publie.
-func pickGate15(f *film) bool {
-	score := [2]int{}
-	for i := range f.t0 {
-		p := &f.t0[i]
-		if !hasEvents(p) || len(p.payload) < 64 {
-			continue
-		}
-		for g := range 2 {
-			score[g] += len(killEventsIn(p.payload, g == 1))
-		}
-	}
-	return score[1] > score[0]
 }
 
 // attachAssists : accroche a chaque mort publiee l assistant declare par le kill-event dont le

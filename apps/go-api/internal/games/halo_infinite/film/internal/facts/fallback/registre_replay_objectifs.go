@@ -8,10 +8,6 @@ package fallback
 // inscrit un repli (plan `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J5.5,
 // 2026-09-27). Déplacement pur : les entrées sont recopiées à l'octet, dans leur ordre.
 
-// dateNomsDeProprietes est la date d entree au registre des replis que pose la lecture des zones
-// par le NOM de propriete `ti=13` (proprietaire, pousseur, designateur et proprietaire de colline).
-const dateNomsDeProprietes = "2026-10-07"
-
 var registreReplayObjectifs = []Repli{
 	{
 		Nom:       "repli_drapeau_seul_en_jeu",
@@ -193,7 +189,7 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_owner.go",
 			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireParVote, prop.votees)",
 		}},
-		DatePose:        dateNomsDeProprietes,
+		DatePose:        date1007,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
 		CompteurBranche: true,
@@ -212,7 +208,7 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_capturer.go",
 			Ancre:   "fb.Declenche(fallback.NomZonePousseurParElection)",
 		}},
-		DatePose:        dateNomsDeProprietes,
+		DatePose:        date1007,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de jauge rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a zones du parc et du corpus par build",
 		CompteurBranche: true,
@@ -228,7 +224,7 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_hill.go",
 			Ancre:   "fb.Declenche(fallback.NomCollineProprietaireVoisinDuDesignateur)",
 		}},
-		DatePose:        dateNomsDeProprietes,
+		DatePose:        date1007,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
 		CompteurBranche: true,
@@ -245,7 +241,7 @@ var registreReplayObjectifs = []Repli{
 			Fichier: pkgReplay + "zone_states_hill.go",
 			Ancre:   "c.fb.Declenche(fallback.NomCollineDesignateurParVoisinage)",
 		}},
-		DatePose:        dateNomsDeProprietes,
+		DatePose:        date1007,
 		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
 		CompteurBranche: true,

@@ -227,7 +227,7 @@ func indicesLisibles(par map[int]int) string {
 func journaliserRoster(t *testing.T, f *film, kf *killFeed) {
 	t.Helper()
 	tbl := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(f), DefaultOptions().Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
+	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), DefaultOptions().Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
 	r.perm, _ = solveBijection(r, kf.pairs, nil, DefaultOptions().BijectionRestarts)
 	pub := r.public()
 	t.Logf("ROSTER RETENU — borne nPlay %d, humains %d, noms %d", r.nPlay, pub.Humans, len(pub.Names))
@@ -254,20 +254,21 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 		t.Fatalf("kill-feed : %v", err)
 	}
 	tbl := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(f), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
-	tl, err := newTimeline(f, nil)
+	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
+	fc := grammar.NewFilmContextForMap(f.src, opts.Carte, nil)
+	cal, err := calibrate(fc, opts.Views, opts.Carte)
 	if err != nil {
-		t.Fatalf("timeline : %v", err)
+		t.Fatalf("calibration : %v", err)
 	}
-	tl.rewind()
-	cal := calibrate(f, tl, opts.Views, opts.Carte)
-	w := runWalk(f, tl, r, opts.Views, &cal)
+	poserLeProfil(fc, cal.Profil)
+	marche, err := grammar.LireLaMarcheDeKillsource(fc)
+	if err != nil {
+		t.Fatalf("marche : %v", err)
+	}
+	w := mortsDeLaMarche(marche, f, r)
 	t.Logf("DEAD-STATES HORS ROSTER (carte %q, %s)", os.Getenv(ksRosterCarteEnv), cal.String())
 	par := map[[2]int]int{}
 	for _, d := range w.deads {
-		if d.slot < w.bipLo || d.slot > w.bipHi {
-			continue
-		}
 		if int(d.dead.EnumA) < r.nPlay && int(d.dead.EnumB) < r.nPlay {
 			continue
 		}

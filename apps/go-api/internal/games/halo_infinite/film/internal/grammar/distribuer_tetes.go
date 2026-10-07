@@ -25,16 +25,18 @@ func rangerLaTete(p *lecture.Paquet, bal ProfilDeBalayage, g grammaireDeLaVueA) 
 	return a
 }
 
-// rangerLaVueA range une vue A lue dans `p.VueA` : son etendue, son etat, ses genres et le rang ou
-// leur numerotation devient presumee. Une liste vide termine la vue sur son terminateur ; une vue lue
-// jusqu a son terminateur la termine apres lui ; un message que la lecture ne sait pas lire l arrete
-// apres son genre, et une tete qui ne tient pas dans le payload l arrete sans genre.
+// rangerLaVueA range une vue A lue dans `p.VueA` : son etendue, son etat, ses genres, ses messages de
+// kill et le rang ou leur numerotation devient presumee. Une liste vide termine la vue sur son
+// terminateur ; une vue lue jusqu a son terminateur la termine apres lui ; un message que la lecture
+// ne sait pas lire l arrete apres son genre, et une tete qui ne tient pas dans le payload l arrete
+// sans genre.
 func rangerLaVueA(p *lecture.Paquet, a *FluxVueA) {
 	p.VueA.Debut, p.VueA.Bits, p.VueA.Etat = uint32(a.Debut), uint32(a.Fin-a.Debut), etatDeVue(a.Porte) //nolint:gosec // positions d un payload
 	p.VueA.Genres = p.VueA.Genres[:0]
 	for _, g := range a.Genres {
 		p.VueA.Genres = append(p.VueA.Genres, uint8(g)) //nolint:gosec // genre R(7)
 	}
+	p.VueA.Kills = append(p.VueA.Kills[:0], a.Kills...)
 	p.VueA.PremierPresume = uint16(a.PremierPresume) //nolint:gosec // rang dans la vue A d un payload
 }
 

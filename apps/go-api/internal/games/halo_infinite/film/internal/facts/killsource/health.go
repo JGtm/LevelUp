@@ -85,8 +85,8 @@ func (c *decodeCtx) walkOutOfCatalogue() (int, []uint32) {
 	return n, tags
 }
 
-// outOfRoster : dead-states de la marche, dans la plage bipede, dont un indice DEPASSE le roster
-// retenu. C est le signal << il y a un participant que nous ne comptons pas >>.
+// outOfRoster : dead-states de bipede de la marche dont un indice DEPASSE le roster retenu. C est
+// le signal << il y a un participant que nous ne comptons pas >>.
 //
 // LE COMPTEUR A ETE DURCI PAR SA PROPRE MESURE. La premiere version comptait TOUT dead-state hors
 // roster : elle rendait 2 sur un film NOMINAL et declenchait une alerte fausse. Les deux lignes
@@ -97,9 +97,6 @@ func (c *decodeCtx) walkOutOfCatalogue() (int, []uint32) {
 func (c *decodeCtx) outOfRoster() int {
 	n := 0
 	for _, d := range c.walkRes.deads {
-		if d.slot < c.walkRes.bipLo || d.slot > c.walkRes.bipHi {
-			continue
-		}
 		if int(d.dead.EnumA) < c.roster.nPlay && int(d.dead.EnumB) < c.roster.nPlay {
 			continue
 		}
@@ -135,32 +132,24 @@ type RelaxedProbe struct {
 func (c *decodeCtx) relaxedProbe(covered map[int]bool) RelaxedProbe {
 	var st RelaxedProbe
 	seen := map[uint32]bool{}
-	for i := range c.film.t0 {
-		p := &c.film.t0[i]
-		if !hasEvents(p) {
+	for _, cd := range c.film.candidatsDuBalayage(grammar.BalayerLesEtatsDeMort(c.film.src, c.roster.nPlay, nil, true)) {
+		st.Candidates++
+		if isCatalogued(cd.tag) {
 			continue
 		}
-		ms := c.film.ms(p)
-		for _, cd := range scanRelaxedPayload(p.payload, c.roster.nPlay) {
-			st.Candidates++
-			if isCatalogued(cd.tag) {
-				continue
-			}
-			st.OutOfCatalogue++
-			cd.chunk, cd.pidx, cd.ms = p.chunk, p.idx, ms
-			e, _ := c.matchExact(cd)
-			if e == nil {
-				continue
-			}
-			st.Paired++
-			if covered[e.timeMS] {
-				continue
-			}
-			st.Uncovered++
-			if !seen[cd.tag] {
-				seen[cd.tag] = true
-				st.Tags = append(st.Tags, cd.tag)
-			}
+		st.OutOfCatalogue++
+		e, _ := c.matchExact(cd)
+		if e == nil {
+			continue
+		}
+		st.Paired++
+		if covered[e.timeMS] {
+			continue
+		}
+		st.Uncovered++
+		if !seen[cd.tag] {
+			seen[cd.tag] = true
+			st.Tags = append(st.Tags, cd.tag)
 		}
 	}
 	slices.Sort(st.Tags)
