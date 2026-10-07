@@ -60,6 +60,10 @@ type ZoneInput struct {
 	// Reads sont les lectures de proprietes reseau, deposees par `BuildFromFilm`. L'appelant ne
 	// les remplit pas.
 	Reads []grammar.ManagedPropertyRead
+	// KeyReads sont les lectures des IMAGES-CLES (records fermes seuls), deposees de meme : l'etat
+	// d'une zone avant son premier changement (cf. zone_states_etat_initial.go). Elles n'entrent
+	// que dans les intervalles de propriete.
+	KeyReads []grammar.ManagedPropertyRead
 	// Zones est le catalogue de zones de la carte, DANS L'ORDRE OU LE SERVICE SERT
 	// `mapObjectives.zones` (role par role de la table du titre, puis rang spatial). C'est cet
 	// ordre qui donne son sens a `ZoneState.ZoneRef` — d'ou `Roles`, publie a cote.
@@ -134,7 +138,11 @@ type zoneSeries struct {
 	// serie COMPLETE (mesure du lot C-ter : le filtre coute ~3 % de lectures reelles), et les
 	// deux consommateurs n ont donc pas le meme besoin.
 	ownerChained map[uint32][]zoneSample
-	slots        int
+	// ownerKey : les ETATS D'IMAGE-CLE du canal de propriete (tag 4), par slot
+	// ([zoneKeyOwnerOf]). Seuls les intervalles de propriete les lisent ; aucune election, aucune
+	// jauge, aucune colline.
+	ownerKey map[uint32][]zoneSample
+	slots    int
 }
 
 // buildZoneStates rend l'etat des zones et sa couverture. Rend (nil, nil) quand l'appelant n'a
@@ -151,6 +159,7 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 	}
 	cat := zoneCatalogOf(in.Zones)
 	ser := zoneSeriesOf(in.Reads, c)
+	ser.ownerKey = zoneKeyOwnerOf(in.KeyReads, in.Reads, c)
 	cov.Slots = ser.slots
 	caps := zoneCapturesOf(c.actions)
 	cov.Captures = len(caps)
@@ -179,9 +188,26 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 		}
 		return buildHillStates(cat, ser, zoneTeamSet(in.TeamByXUID), c, cov), cov
 	}
-	states := zoneOwnerStates(in, ser, pairs, c, cov)
+	states, key := zoneOwnerStates(in, ser, pairs, c, cov)
 	tallyZoneStates(states, cov)
+	logZoneKeyTally(ctx, c.matchID, len(in.KeyReads), key)
 	return states, cov
+}
+
+// logZoneKeyTally journalise ce que l'etat d'image-cle a fait au calque — et les etats
+// d'image-cle que les emissions delta contredisent, qui ne doivent pas exister.
+func logZoneKeyTally(ctx context.Context, matchID string, lectures int, key zoneKeyTally) {
+	if lectures == 0 {
+		return
+	}
+	slog.InfoContext(ctx, "rejeu : etat initial des zones lu aux images-cles",
+		"match_id", matchID, "lecturesImageCle", lectures,
+		"zonesOuvertesParImageCle", key.opened, "imagesClesComparees", key.checked,
+		"imagesClesConcordantes", key.agreed, "imagesClesDiscordantes", key.checked-key.agreed)
+	if key.checked > key.agreed {
+		slog.WarnContext(ctx, "rejeu : etats d'image-cle DISCORDANTS avec l'etat que les trames delta reconstituent",
+			"match_id", matchID, "discordants", key.checked-key.agreed, "compares", key.checked)
+	}
 }
 
 // zoneSeriesOf pose les lectures scalaires sur la grille de frames et les range par tag.
