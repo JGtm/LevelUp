@@ -37,17 +37,9 @@ var (
 		"string": true,
 	}
 
-	// typesQualifiesAutorises : les types de resultat rendus AUJOURD'HUI par ce paquet,
-	// verifies sur pieces le 2026-09-06 — `Mesurer` rend domain.Couverture, `Echanges` rend
-	// domain.BilanEchanges. `domain.PaireEchange` n'y figure PAS : il voyage a l'interieur
-	// du bilan, aucune fonction exportee ne le rend directement.
+	// typesQualifiesAutorises : les types de resultat rendus par ce paquet. `Mesurer` rend
+	// domain.Couverture ; les autres sont justifies un par un ci-dessous.
 	//
-	// `domain.MortSuivie` AJOUTE LE 2026-09-06 (phase 3, histogramme du delai d'echange de
-	// la page Escouade). JUSTIFICATION : `Ripostes` le rend pour que l'appelant puisse
-	// BINNER des DELAIS (des millisecondes, ADR 0010 : pre-binning serveur). Le type ne
-	// porte AUCUN quotient — MatchID, deux xuids, un instant, trois booleens et un delai en
-	// int64 : il n'y a rien dedans qu'un lecteur puisse prendre pour un taux, et le seul
-	// taux de ce paquet reste celui de Mesurer.
 	// `domain.BilanIsolement` REMIS LE 2026-09-07 (lot 7C), apres avoir ete retire au lot
 	// 7.10 avec la premiere lecture d'isolement. JUSTIFICATION : `Isolement` le rend parce
 	// que la lecture a besoin de TROIS choses que le taux seul ne porte pas — les morts
@@ -84,8 +76,6 @@ var (
 		"domain.CoordinationBlock":           true,
 		"domain.CoordinationEntree":          true,
 		"domain.Couverture":                  true,
-		"domain.BilanEchanges":               true,
-		"domain.MortSuivie":                  true,
 		"domain.BilanIsolement":              true,
 	}
 )

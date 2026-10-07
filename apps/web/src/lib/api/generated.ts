@@ -8916,10 +8916,6 @@ export interface components {
             profiles: components["schemas"]["MatchRangeProfile"][] | null;
         };
         MatchRangePlayer: {
-            /** Format: double */
-            elevation_lobby_delta_m?: number;
-            /** Format: double */
-            elevation_median_m?: number;
             gamertag?: string;
             /** Format: double */
             lobby_delta_m: number;
@@ -8930,8 +8926,6 @@ export interface components {
             xuid: string;
         };
         MatchRangeProfile: {
-            /** Format: double */
-            lobby_elevation_median_m?: number;
             /** Format: int64 */
             lobby_measured: number;
             /** Format: double */
@@ -11753,55 +11747,6 @@ export interface components {
             radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
-        SquadEchange: {
-            cellules: components["schemas"]["SquadEchangeCell"][] | null;
-            couverture: components["schemas"]["Couverture"];
-            /** Format: int64 */
-            delai_median_ms: number;
-            delais: components["schemas"]["SquadEchangeBucket"][] | null;
-            /** Format: int64 */
-            fenetre_ms: number;
-            habituel: components["schemas"]["Couverture"];
-            joueurs: components["schemas"]["SquadEchangeJoueur"][] | null;
-            /** Format: int64 */
-            matchs_habituel: number;
-            /** Format: int64 */
-            matchs_mesures: number;
-            /** Format: int64 */
-            matchs_total: number;
-            taux_par_session: components["schemas"]["SquadEchangeSessionPoint"][] | null;
-        };
-        SquadEchangeBucket: {
-            /** Format: int64 */
-            debut_ms: number;
-            /** Format: int64 */
-            fin_ms: number;
-            hors_fenetre: boolean;
-            /** Format: int64 */
-            nombre: number;
-            ouvert: boolean;
-        };
-        SquadEchangeCell: {
-            /** Format: int64 */
-            nombre: number;
-            /** Format: double */
-            par_match: number;
-            venge_gamertag: string;
-            venge_xuid: string;
-            vengeur_gamertag: string;
-            vengeur_xuid: string;
-        };
-        SquadEchangeJoueur: {
-            gamertag: string;
-            xuid: string;
-        };
-        SquadEchangeSessionPoint: {
-            couverture: components["schemas"]["Couverture"];
-            dans_le_filtre: boolean;
-            /** Format: int64 */
-            matchs_mesures: number;
-            session_label: string;
-        };
         SquadEmpriseBlock: {
             film_unavailable?: string;
             habit?: components["schemas"]["SquadEmpriseHabit"];
@@ -13087,7 +13032,6 @@ export interface components {
             assist_pairs?: components["schemas"]["SquadAssistPairs"];
             composition_sessions?: components["schemas"]["CompositionSessionEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
-            echange?: components["schemas"]["SquadEchange"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_classes?: {

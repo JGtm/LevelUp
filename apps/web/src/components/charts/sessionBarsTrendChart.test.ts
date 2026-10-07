@@ -95,17 +95,7 @@ describe('buildSessionBarsTrendOption', () => {
     expect(series[2].smooth).toBe(false)
   })
 
-  it('pose les VOLUMES en second rang d’étiquettes quand on les lui donne, sinon un seul axe', () => {
-    const avec = buildSessionBarsTrendOption({
-      labels: LABELS,
-      yAxisLabel: 'y',
-      series: [{ name: 'a', color: '#1', valuesPct: [1, 2, 3] }],
-      volumeAxis: { label: 'morts mesurées', values: ['84', '61', '73'] },
-    }) as Record<string, unknown>
-    const x = avec.xAxis as Record<string, unknown>[]
-    expect(x).toHaveLength(2)
-    expect(x[1].data).toEqual(['84', '61', '73'])
-    expect((x[1].axisLine as { show: boolean }).show).toBe(false)
+  it('pose UN SEUL axe des soirées', () => {
     expect((deuxSeries().xAxis as unknown[])).toHaveLength(1)
   })
 

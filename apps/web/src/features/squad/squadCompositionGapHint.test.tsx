@@ -43,19 +43,19 @@ describe('buildCompositionGapHint', () => {
     render(<>{node}</>)
     expect(screen.getByText(/1 match écarté/)).toBeTruthy()
     expect(screen.getByText(/Aquarius/)).toBeTruthy()
-    expect(screen.getByText(/Nilton410 était dans ton équipe/)).toBeTruthy()
+    expect(screen.getByText(/Nilton410 était dans l'équipe/)).toBeTruthy()
   })
 
   it('deux coequipiers responsables du meme match : accord pluriel "etaient"', () => {
     const node = buildCompositionGapHint([DUO_MATCH], 'fr', FR_TEXT.compositionGap)
     render(<>{node}</>)
-    expect(screen.getByText(/Nilton410 et passivemarquise étaient dans ton équipe/)).toBeTruthy()
+    expect(screen.getByText(/Nilton410 et passivemarquise étaient dans l'équipe/)).toBeTruthy()
   })
 
   it('coequipier non resolu (extra_gamertags null) : repli textuel, jamais une ligne vide', () => {
     const node = buildCompositionGapHint([UNKNOWN_MATCH], 'fr', FR_TEXT.compositionGap)
     render(<>{node}</>)
-    expect(screen.getByText(/un coéquipier non identifié était dans ton équipe/)).toBeTruthy()
+    expect(screen.getByText(/un coéquipier non identifié était dans l'équipe/)).toBeTruthy()
   })
 
   it('plusieurs matchs ecartes : une ligne par match, le titre compte le total', () => {
@@ -67,8 +67,8 @@ describe('buildCompositionGapHint', () => {
   it('EN : accord singulier/pluriel "was"/"were"', () => {
     const node = buildCompositionGapHint([NILTON_MATCH, DUO_MATCH], 'en', EN_TEXT.compositionGap)
     render(<>{node}</>)
-    expect(screen.getByText(/Nilton410 was in your team/)).toBeTruthy()
-    expect(screen.getByText(/Nilton410 and passivemarquise were in your team/)).toBeTruthy()
+    expect(screen.getByText(/Nilton410 was on the team/)).toBeTruthy()
+    expect(screen.getByText(/Nilton410 and passivemarquise were on the team/)).toBeTruthy()
     expect(screen.getByText(/2 matches excluded/)).toBeTruthy()
   })
 })

@@ -14,8 +14,8 @@ fr = "Aucune session disponible"
 en = "No session available"
 
 [session.empty.no_sessions_description]
-fr = "Aucune session n'est disponible dans le scope courant. Vérifie le découpage de sessions ou élargis les filtres."
-en = "No session is available in the current scope. Check session bucketing or broaden filters."
+fr = "Aucune session n'est disponible dans le périmètre courant (découpage des sessions ou filtres trop restrictifs)."
+en = "No session is available in the current scope (session bucketing or filters too narrow)."
 
 [session.errors.retry]
 fr = "Réessayer"
@@ -66,8 +66,8 @@ fr = "Sessions indisponibles"
 en = "Sessions unavailable"
 
 [session.detail.empty_description]
-fr = "Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
-en = "No exploitable response returned for this page. Check computed sessions and active filters."
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page (sessions calculées ou filtres actifs)."
+en = "No usable response was returned for this page (computed sessions or active filters)."
 
 [session.detail.no_session_in_scope_title]
 fr = "Aucune session disponible"
@@ -543,8 +543,8 @@ fr = "Comparaison indisponible"
 en = "Comparison unavailable"
 
 [session.compare.empty_description]
-fr = "Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie les sessions calculées et les filtres actifs."
-en = "No exploitable response returned for this page. Check computed sessions and active filters."
+fr = "Aucune réponse exploitable n'a été renvoyée pour cette page (sessions calculées ou filtres actifs)."
+en = "No usable response was returned for this page (computed sessions or active filters)."
 
 [session.compare.session_a_label]
 fr = "Session A"

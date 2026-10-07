@@ -116671,3 +116671,62 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Complément (2026-10-07, L13 clos)** : `10988004c` sur `feat/tactique-v2`, CI verte (Deploy Pre-Check relancé une fois, erreurs 500 de l'API GitHub) : F1 règle unique du libellé de carte (`platform/duckdb/map_labels.go`, garde-rail `map_label_single_resolution_test.go` avec 21 résolutions gelées et datées, `GetAvailableMaps` sans appelant retiré) + lien vignette → Explorateur `?maps=<libellé>` (L10.2 passe `[~]`) ; F2 trois colonnes à la hauteur du plan ; F3 garde-rail de portée complété (trois formes) ; F4 cache de `map_quant_bounds.json` ; F6 `lib/text/sansAccents.ts` (4 copies) + `analysis.CampsDuMatch` (2 copies) avec garde-rails ; F7 zones nommées servies avec le raster (`zones`, sous `film.replay_artifact`) et peintes sur le plan par le calque du rejeu déplacé dans `lib/replay/calloutsPaint.ts` (contours sous la chaleur, noms au-dessus, garde-rail « un seul peintre »). Registre des cartes exclu (données du sync). feat/v75 (292ef56a5, +11 commits rejeu / schéma 84) refusionnée dans la branche (`743a6e774`), CI en cours ; avance rapide de feat/v75 au vert.
 
 **Clôture (2026-10-07, fusion)** : « ok pour la fusion » de l'utilisateur. `fix/rejeu-zone-retour-image-fractionnaire` (d463b3a08 + e0da70dd7, CI verte) et `fix/coquille-401-admin-lien-tactique` (5aee6f882 + 217f2e631, agent Opus, CI verte) fusionnées dans `feat/v75` sur 292ef56a5 (schéma 84 de la session voisine) : 183cbe328, 516b48d63, puis 0fd544481 (registre des reports, quatre lignes). Poussé. Worktree de l'agent retiré (sans `--force`, aucune jonction). Coordination avec la session `levelup-d0` : serveur :8000 coupé par elle pour la recuisson du parc, redémarrage prévu sur ce HEAD. Gate visuel final de l'utilisateur sur le cercle en lecture : fait sur la branche avant fusion (« wow parfait »), taille jugée correcte.
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E1 : web Synergies — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E1 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la section de coordination de l'onglet Synergies devient « Appui et portée » (« Support and range »), deux rangées : « Appui », puis « Rôles de portée » seule ; titre et aide dans le jeu de l'Appui (`squad/i18n.ts`). Supprimés : les douze fichiers de la riposte (cartes, matrice, frise, logique, fixtures, libellés et leurs tests), la grandeur « hauteur » du nuage de portée (prop, type, branche, préfixe de libellés, option d'étiquette de bout), les blocs de manifeste `squad.riposte.*` (42 clés) et `squad.hauteur.*` (19 clés), les alias `SquadEchange*` et le champ `echange` du type de page. La riposte était aussi le dernier lecteur de quatre options de `HistogramChart` et de `DonutChart.arcLabelKind` : retirées avec leurs tests (D7 ; `yAxisLabel` et `formatBin`, API de base du catalogue des graphes, restent). La garde du vocabulaire de la coordination bannit désormais la notion retirée sous tous ses noms.
+
+**Résultats observés** : tsc purgé 0, ESLint 0 erreur (26 avertissements, la base), champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest des zones touchées 317 fichiers / 3 021 tests verts, knip 0 / 0 / 0.
+
+**Conclusion / prochaine étape** : E2 (Go et contrat : bloc `echange`, `coordination.Echanges` / `Ripostes`, dénivelé du profil de portée).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E2 : Go et contrat — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E2 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : le bloc `echange` de la page Escouade sort de bout en bout (type de domaine, producteur et ses tests, câblage du service et du registre, champ du contrat) ; avec lui partent `coordination.Echanges`, `coordination.Ripostes` et leurs types (`MortSuivie`, `PaireEchange`, `BilanEchanges`). `coordination.Mesurer` reste : l'appui et l'isolement le lisent. Le dénivelé du profil de portée (trois champs, son calcul) sort aussi ; `MeasuredKill.DeltaZ` reste, lu par la portée par arme. Découverte (plan §8.5, à trancher) : `TacticalKillEvents.Events` n'a plus de lecteur — le bloc de coordination de Sessions et des Séries temporelles ne lit que l'univers ; le recâblage sur `Univers` et le retrait de la requête des événements touchent une autre page et un garde-rail de l'ADR 0036, laissés à un lot dédié.
+
+**Résultats observés** : contrat −147 lignes (openapi) / −56 (types générés), cinq schémas `SquadEchange*` retirés du snapshot de surface ; 38 fonctions de test supprimées, aucune dans la baseline de présence. Build des paquets internes, vet, tests des paquets touchés (dont `service`, `api/...`, `archlint`), golangci-lint 0 issue, `openapi-check` à jour, tsc et vitest web verts.
+
+**Conclusion / prochaine étape** : E3 (garde des textes étendue au jeu de l'Escouade, vue rouge, puis reformulation FR / EN).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E3 : textes sans personne et garde étendue — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E3 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la garde `textesSansPersonne.test.ts` lit désormais le jeu entier de la page Escouade (`squad/i18n.ts`, libellés de focus et de portée) et le manifeste `squad.toml` en entier ; la liste FR refuse aussi « reviens » et « vérifie ». Reformulés, FR et EN : invite de sélection, aide de la composition stricte, ligne d'un match écarté (« dans l'équipe »), état vide, aide du score à manches (« l'équipe qui a perdu »), aides Rendement et Résistance (reprises de la Vue match : la mesure, sans phrase de lecture), titre « Statistiques de la session », trois messages vides de Sessions et un des Séries temporelles (« Vérifie… » devenu une parenthèse factuelle), message « Match pas encore synchronisé » de la Vue match.
+
+**Résultats observés** : garde ROUGE avant (9 tests sur 34, 34 entrées, 19 chaînes sources distinctes), VERTE après ; sept mutations rouges, faux positifs contrôlés. tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des zones touchées 3 858 tests verts.
+
+**Conclusion / prochaine étape** : E4 (CHANGELOG et notes de version, registre, statut du handoff, gate de clôture).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E4 : clôture — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E4 ; plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md` clos côté exécutant).
+
+**Décision technique principale** : documents alignés sur le code — CHANGELOG EN / FR (résumé de tête, « Coordination : l'Appui », « La portée face au lobby », entrée du lot, « Page Escouade ») et notes de version EN / FR (contenu seulement, le registre « tu » est gardé) ; registre des reports : les deux lignes du lot Vue match closes, trois découvertes reportées (événements du journal des morts sans lecteur, impératif « Choisis » hors liste, clés `squad.header.*` sans lecteur) ; handoff marqué exécuté.
+
+**Résultats observés** : suite Go `./internal/...` 173 paquets verts en trois lots, vet 0, `make go-api-lint` 0 issue, `openapi-check` à jour ; web tsc forcé 0, ESLint 0 erreur, champs 0, couleurs 0, imports croisés 7 ≤ 7, vitest complet 9 096 tests verts, knip 0. Le script de baseline n'est pas lancé en local (il relance tout le module) ; la présence est prouvée par différence.
+
+**Conclusion / prochaine étape** : au superviseur — push de `feat/escouade-synergies-textes`, CI, revue adversariale, décision sur la découverte §8.5, fusion dans `feat/v75`.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E5 : constats de la revue adversariale (ronde 1) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E5 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : revue de la ronde 1 — 4 constats recevables, 4 corrigés, 1 consigné hors diff, 21 conditions tenues. C1 : en-têtes du sélecteur « Mes escouades » / « Mes groupes » devenus « Escouades enregistrées » / « Groupes » (EN « Saved squads » / « Groups »), garde des textes étendue au sélecteur et aux deux jeux des cartes d'objectif, inventaire des jeux de `features/squad/` au plan. C2 : options de graphes partagés dont la riposte était le dernier lecteur retirées (`frameless` du donut et de l'histogramme ; `dimmed`, `stack`, `volumeAxis` de la frise des soirées). C3 : garde du vocabulaire étendue à toutes les formes de « venger », à « échange(s) » et aux lignes anglaises du manifeste. C4 : commentaires Go réécrits au présent avec leurs lecteurs réels. Consigné (plan §8.8, registre) : la carte de la frise ne transmet ni `baseline` ni `hollowLegend`, préexistant.
+
+**Résultats observés** : mutations rouges sur chaque jeu ajouté et chaque nouveau motif, « MA5K Avenger » vert ; Go vet 0 et tests de `domain`, `games`, `service/teammates`, `analysis/coordination` ok ; web tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des dossiers touchés 3 381 tests verts, knip 0.
+
+**Conclusion / prochaine étape** : ronde 2 de revue au superviseur.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E6 : constats de la revue adversariale (ronde 2) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E6 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`) ; revue adversariale close sur deux rondes.
+
+**Décision technique principale** : ronde 2 — C1 à C3 validés, 24 conditions tenues, 2 constats P2 de commentaires corrigés, commentaires seulement : la documentation de `ListeBlancheMatchs` (`domain/tactical.go`) nomme les appelants réels, qui posent tous une liste ; l'en-tête et la requête du journal des morts (`platform/duckdb/tactical_repo.go`) ne présentent plus l'échange comme une lecture vivante ; `soireesDesRows` (`service/timeseries_service_sections.go`) ne cite plus la frise d'échange de l'Escouade. La lecture sans liste, qui n'a plus d'appelant de production, est écrite comme telle et ajoutée à la découverte §8.5 et au registre, sans suppression (hors lot).
+
+**Résultats observés** : `gofmt -l` muet, `go vet` 0 et tests de `internal/domain`, `internal/platform/duckdb` (sans tag integration) et `internal/service` ok, un paquet à la fois.
+
+**Conclusion / prochaine étape** : au superviseur — push, CI, fusion dans `feat/v75`.

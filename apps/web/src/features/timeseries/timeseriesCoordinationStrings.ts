@@ -3,7 +3,7 @@
  * temporelles (« Appui reçu »), résolus depuis le manifest `timeseries.progression.coord_*` (source unique
  * FR/EN, parité vérifiée par le build manifest, ADR 0003).
  *
- * Même forme que `getSquadRiposteText` : un objet `t` ergonomique consommé par le
+ * Même forme que `getSquadRangeRolesText` : un objet `t` ergonomique consommé par le
  * composant. Aucun littéral FR/EN ici — tout vit dans le TOML.
  */
 import { formatMessage } from '@/lib/i18n/format'

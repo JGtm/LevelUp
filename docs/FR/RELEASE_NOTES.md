@@ -29,8 +29,8 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
 - **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
 - **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
-- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Lue sur l'Escouade, une seule règle, et l'appui compte les assistances entre coéquipiers, sur les Sessions et dans le temps sur les Séries temporelles
-- **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée et rôles de hauteur
+- **L'appui** — les assistances entre coéquipiers, sur l'Escouade, sur les Sessions et dans le temps sur les Séries temporelles
+- **La portée face à ton lobby** — ta portée de frag, lue face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée
 - **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
 - **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
 
