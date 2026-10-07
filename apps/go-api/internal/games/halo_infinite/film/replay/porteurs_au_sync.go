@@ -122,7 +122,9 @@ func PortagesAuSync(ctx context.Context, e EntreePorteursAuSync) (map[uint64][]I
 	poserProfilPuisCarte(ctx, e.Contexte, e.MatchID, Options{ProfilDeBalayage: e.ProfilDeBalayage, Fallbacks: fb})
 	opt := e.optionsDuRegistre(fb)
 	b.Lectures = e.lireLesPorteurs(ctx, b.Gardes, &opt)
-	// Le document n'est pas publié : le titre n'y sert à rien, il reste vide.
+	// Le document n'est pas publié : le titre n'y sert à rien, il reste vide, et le journal des places,
+	// qui dit un défaut du roster publié, se tait (cf. Options.documentInterne).
+	opt.documentInterne = true
 	doc := BuildFromPositions(ctx, e.MatchID, "", e.Identite.Positions, nil, opt)
 	// CE QUE LES LECTURES DU CONTEXTE ONT CONSTATE (grammar, lot J12.3 — ADR 0034 D-4) se journalise
 	// ICI, sous le contexte de l appelant : le collecteur a deja releve celles du pont.

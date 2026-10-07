@@ -580,6 +580,15 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
   de ces matchs qui ont un artefact sont complets au schéma 81 (0 entrée sans équipe) : c'est le chemin
   du placement des vies qui construit un roster sans équipe. À vérifier : le placement de ces matchs
   est-il rangé par camp (risque d'un « camp inconnu » dans les pages qui le lisent) ?
+  **Corrigée le 2026-10-07** (branche `feat/rejeu-journal-places`, plan
+  `.ai/PLAN_REJEU_JOURNAL_PLACES_2026-10-07.md`, cause établie par la session RI levelup-57) : l'ERROR
+  vient du document interne que `replay.PortagesAuSync` assemble pour relire les calques de porteur ; il
+  ne lit les équipes du film que sous la garde du drapeau, donc hors CTF chaque entrée de son roster est
+  « sans équipe ». Ce document n'est jamais publié, et le placement range les vies par camp depuis la
+  base (`killcollector/placement_des_vies.go`, `equipesNumeriques(ids.Equipes)`) : les données sont
+  justes, seul le journal était en trop. Le réglage non exporté `Options.documentInterne`, posé par
+  `PortagesAuSync`, tait le journal des places sur ce document ; le chemin publié le garde (tests
+  `journal_des_places_test.go`, mutations rouges).
 
 - D1 (`c7f94693`) : la vie [947..981] de `343 Donos` est publiée d'équipe 0 par le pont slot -> index
   (désignateur de l'index 8, lu sur l'entité d'un AUTRE bot, Byrontron, en fin de match). Son équipe est

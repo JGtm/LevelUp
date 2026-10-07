@@ -436,6 +436,14 @@ type Options struct {
 	// commence — un appelant qui le fournirait daterait le premier balayage depuis sa propre
 	// preparation. Nil (BuildFromPositions, tests) = aucune mesure, aucun cout.
 	clock *stepClock
+	// documentInterne : le document assemble n'est PAS publie — [PortagesAuSync] en relit les calques de
+	// porteur et le calage, puis le jette. Le journal des places ([journaliserLesPlaces] : l'ERREUR « sans
+	// equipe », l'avertissement des places, le compteur expvar des bots ecartes) dit un defaut du roster
+	// PUBLIE : il se tait sur ce document, dont le roster n'est pas relu (`portagesDuDocument` ne lit que
+	// les calques de porteur et le calage) et dont les equipes du film (entites ti=9) ne se lisent que sous
+	// la garde du drapeau. NON EXPORTE : aucun appelant hors du paquet ne peut le poser (le compilateur le
+	// tient) ; faux, sa valeur zero, est celui de toute cuisson publiee.
+	documentInterne bool
 }
 
 func (o Options) frameIntervalMS() int {

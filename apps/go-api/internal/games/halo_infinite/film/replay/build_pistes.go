@@ -141,7 +141,11 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	a.doc.Roster = sansLesBotsEcartes(a.doc.Roster, a.siegeCov)
 	a.siegeCov.BotsSuccesseurs = botsSuccesseurs + botsParDeclaration
 	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
-	journaliserLesPlaces(a.ctx, a.matchID, a.siegeCov)
+	// LE JOURNAL DES PLACES DIT UN DEFAUT DU ROSTER PUBLIE : un document interne le tait (cf.
+	// Options.documentInterne).
+	if !a.opt.documentInterne {
+		journaliserLesPlaces(a.ctx, a.matchID, a.siegeCov)
+	}
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.ctx, a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.ctx, a.matchID)

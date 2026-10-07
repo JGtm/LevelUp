@@ -161,8 +161,8 @@ type SeatCoverage struct {
 	PlacesEnTrop int `json:"placesEnTrop"`
 	// SansEquipe : les entrees presentes sans equipe lue — ni par leurs entites, ni par leur
 	// declaration BOT_METADATA (occupants.go). Le web ne leur rend aucune tuile (la page Rejeu
-	// regroupe par l'equipe du film seule) : chacune est un defaut de source, journalise en erreur
-	// ([journaliserLesPlaces]). 0 attendu.
+	// regroupe par l'equipe du film seule) : chacune est un defaut de source, journalise en erreur sur
+	// un document publie ([journaliserLesPlaces]). 0 attendu.
 	SansEquipe int `json:"sansEquipe"`
 	// IdentitesHorsRoster : les identites qui nomment une vie publiee sans entree de roster (revue
 	// M2-R1). Sans place ni presence, le web ne leur rend aucune tuile. 0 attendu.
@@ -286,6 +286,9 @@ func poserLesSieges(ctx context.Context, roster []RosterEntry, occ occupants, in
 // journaliserLesPlaces dit ce que la pose laisse a lire : en ERREUR une entree presente sans
 // equipe (aucune lecture du film ne la nomme, et aucun repli ne la remplace), en AVERTISSEMENT une
 // entree sans place, une equipe qui affiche plus d'occupants ou de places que sa capacite.
+//
+// IL NE CONCERNE QUE LE ROSTER PUBLIE : l'assemblage ne l'appelle pas pour un document interne
+// (`Options.documentInterne`, pose par [PortagesAuSync]).
 func journaliserLesPlaces(ctx context.Context, matchID string, cov SeatCoverage) {
 	journaliserLesBotsSansPlace(ctx, matchID, len(cov.botsEcartes), cov.botsSansPlaceAvecVie)
 	if cov.SansEquipe > 0 {
