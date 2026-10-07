@@ -62,7 +62,7 @@ func (s *SessionPageService) WithMatchRange(repo port.MatchRangeRepository, xuid
 }
 
 // attachSessionRange attache le bloc portée de la session COURANTE, celui de la session
-// COMPARÉE — miroir d'attachSessionUsage : les deux colonnes du drawer parlent des mêmes
+// COMPARÉE — comme les autres blocs de la colonne : les deux colonnes du drawer parlent des mêmes
 // matchs — puis la période de référence partagée par les deux.
 func (s *SessionPageService) attachSessionRange(
 	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,

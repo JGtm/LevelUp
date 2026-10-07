@@ -19,7 +19,7 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 9 | `<OutcomeSequenceTape>` | RLE narrative band of recent outcomes | HomePage, MatchHistoryPage, SquadV2Page |
 | 10 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
 | 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | Squad "Dynamique" tab, Timeseries "Progression" tab, Session chart stack |
-| 12 | `<WeaponAccuracyChart>` | Per-weapon accuracy bars, coloured by weapon class, hover linked to the frag sunburst | Synthesis, Timeseries "Résumé" tab, SessionFragCard |
+| 12 | `<WeaponAccuracyChart>` | Per-weapon accuracy bars, coloured by weapon class, hover linked to the frag sunburst | Synthesis, Timeseries "Résumé" tab, Sessions (Halo 5 accuracy card) |
 
 > Wrapper 10 alone is kept in `features/timeseries/` (not in this folder) because it composes `<ChartCard>` directly with a custom `buildOption` and isn't reusable elsewhere. `FirstBloodLanes` (#11) lives in this folder — it's consumed by Squad, Timeseries and Session Detail (see catalog above).
 

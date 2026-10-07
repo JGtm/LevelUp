@@ -4,12 +4,12 @@
 // TROIS SCOPES, UN SEUL PRODUCTEUR (service/coordination_block.go) :
 //
 //	la SESSION AFFICHÉE    → resp.Coordination ;
-//	la SESSION COMPARÉE    → resp.CompareCoordination, miroir exact d'Usage/CompareUsage
+//	la SESSION COMPARÉE    → resp.CompareCoordination, miroir exact
 //	                         et de RangeProfiles/CompareRangeProfiles — les deux colonnes
 //	                         du drawer parlent des mêmes formes, avec leurs propres
 //	                         données, et la rangée partagée D16 n'a plus de placeholder ;
-//	la PÉRIODE DE RÉFÉRENCE → le repère d'HABITUEL des deux jauges qui n'ont pas de parité
-//	                         (« je suis couvert », « on me prépare »).
+//	la PÉRIODE DE RÉFÉRENCE → le repère d'HABITUEL de la jauge qui n'a pas de parité
+//	                         (« on me prépare »).
 //
 // # LA PÉRIODE DE RÉFÉRENCE EST CELLE DE LA PAGE, PAS UNE SECONDE NOTION
 //
@@ -61,9 +61,9 @@ func (s *SessionPageService) WithSessionCoordination(
 // attachSessionCoordination attache le bloc de la session affichée, celui de la session
 // comparée le cas échéant, puis pose le repère d'habituel sur les deux.
 //
-// LES EFFECTIFS DE CAMP viennent du bloc d'usage, qui vient de les calculer (réserve R1) :
-// bloc d'usage indisponible ⇒ table vide ⇒ le bloc de coordination n'a pas de parité, et
-// le dit. Il ne la réinvente jamais.
+// LES EFFECTIFS DE CAMP viennent de la lecture du résumé d'usage de chaque session, par la même
+// définition que les autres blocs (`effectifsDeCamp`, réserve R1) : lecture absente ou en échec ⇒
+// table vide ⇒ le bloc de coordination n'a pas de parité, et le dit. Il ne la réinvente jamais.
 //
 // UNE SEULE LECTURE DU JOURNAL POUR LES TROIS SCOPES (lot L5a du plan perf, 2026-09-23) :
 // la session affichée et la session comparée sont lues ENSEMBLE, puis découpées ; la
@@ -92,11 +92,11 @@ func (s *SessionPageService) lecteursDeCoordination() coordinationQuery {
 		Tactical:   s.coordTactical,
 		Appuis:     s.coordAppuis,
 		Caps:       s.coordCaps,
-		PlayerXUID: s.usageXUID,
+		PlayerXUID: s.sessionXUID,
 	}
 }
 
-// attachCoordinationHabituel pose `riposte.habituel_pct` et `appui.habituel_pct` sur les
+// attachCoordinationHabituel pose `appui.habituel_pct` sur les
 // blocs servis.
 //
 // LA LECTURE DE RÉFÉRENCE N'A LIEU QUE SI ELLE SERT : si les deux blocs sont tautologiques
@@ -104,9 +104,9 @@ func (s *SessionPageService) lecteursDeCoordination() coordinationQuery {
 // sert, elle COMPLÈTE la lecture des deux sessions : seuls les matchs de la référence qui n'y
 // sont pas encore sont lus.
 //
-// AUCUN EFFECTIF DE CAMP n'est passé à la référence, et c'est voulu : les deux grandeurs
-// d'habituel (« je suis couvert », « on me prépare ») ne se rapportent à aucune parité,
-// donc le producteur n'a pas besoin de `TeamSize` pour les calculer.
+// AUCUN EFFECTIF DE CAMP n'est passé à la référence, et c'est voulu : la grandeur
+// d'habituel (« on me prépare ») ne se rapporte à aucune parité,
+// donc le producteur n'a pas besoin de `TeamSize` pour la calculer.
 func (s *SessionPageService) attachCoordinationHabituel(
 	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,
 	lecture *lectureCoordination,
@@ -127,13 +127,11 @@ func (s *SessionPageService) attachCoordinationHabituel(
 			"matchs_reference", len(refIDs))
 		return
 	}
-	couvert := tauxOuRien(ref.Riposte.JeSuisCouvert)
 	prepare := tauxOuRien(ref.Appui.OnMePrepare)
 	for _, bloc := range []*domain.CoordinationBlock{courant, compare} {
 		if bloc == nil {
 			continue
 		}
-		bloc.Riposte.HabituelPct = couvert
 		bloc.Appui.HabituelPct = prepare
 	}
 }
@@ -173,7 +171,7 @@ func memeScope(a, b []string) bool {
 
 // tauxOuRien convertit une couverture en pourcentage de repère. Dénominateur nul = grandeur
 // NON MESURÉE sur la référence : pas de repère, jamais un 0 % qui se lirait « habituellement
-// jamais couvert ».
+// jamais préparé ».
 func tauxOuRien(c domain.Couverture) *float64 {
 	if c.N <= 0 {
 		return nil

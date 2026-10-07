@@ -76,13 +76,13 @@ func TestLoadFlagGrabsNet_LitLaDernierePasseEntiere(t *testing.T) {
 	}
 	vu := map[string]sessionRow{}
 	for _, r := range rows {
-		vu[r.MatchID+"/"+r.XUID] = sessionRow{r.Raw, r.Net, r.Openings, r.WindowMS}
+		vu[r.MatchID+"/"+r.XUID] = sessionRow{r.Net, r.WindowMS}
 	}
-	if got := vu["m1/P"]; got != (sessionRow{9, 6, 30, 1000}) {
-		t.Errorf("m1/P = %+v, attendu {9 6 30 1000}", got)
+	if got := vu["m1/P"]; got != (sessionRow{6, 1000}) {
+		t.Errorf("m1/P = %+v, attendu {6 1000}", got)
 	}
-	if got := vu["m2/P"]; got != (sessionRow{5, 5, 12, 1500}) {
-		t.Errorf("m2/P = %+v, attendu {5 5 12 1500}", got)
+	if got := vu["m2/P"]; got != (sessionRow{5, 1500}) {
+		t.Errorf("m2/P = %+v, attendu {5 1500}", got)
 	}
 
 	// UNE SECONDE PASSE SUR m1, SOUS UNE AUTRE FENÊTRE, QUI NE NOMME PLUS `A`.
@@ -102,8 +102,9 @@ func TestLoadFlagGrabsNet_LitLaDernierePasseEntiere(t *testing.T) {
 	}
 }
 
-// sessionRow : un tuple comparable, pour lire les assertions d'un coup d'œil.
-type sessionRow struct{ raw, net, openings, window int }
+// sessionRow : un tuple comparable (prises nettes, fenêtre — les seules colonnes lues), pour lire
+// les assertions d'un coup d'œil.
+type sessionRow struct{ net, window int }
 
 // TestLoadFlagGrabsNet_ScopeFerme : le filtre match_id est respecté — une page ne lit que son
 // scope.

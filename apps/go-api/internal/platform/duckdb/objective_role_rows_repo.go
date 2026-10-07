@@ -1,13 +1,13 @@
 // Package duckdb — objective_role_rows_repo.go : lignes (match, joueur) de
 // `match_objective_stats_latest` projetées par RÔLE (prendre / défendre / tenir)
-// pour le bloc objectifs de l'agrégat de session (chantier session-usage S2).
+// pour l'échantillon d'objectif de la page Tendances (`trends.ObjectiveSamples`).
 //
 // Les sommes par rôle sont GÉNÉRÉES depuis narrative.ObjectiveRoleColumns
 // (source unique de la classification, objective_roles.go — même doctrine que
 // objectiveIndexSelectColumns) : aucune liste de colonnes locale. La famille de
 // la ligne vient d'objectiveFamilyCaseSQL, le même discriminant que l'index de
 // participation. LES DEUX CAMPS sont chargés (aucun filtre xuid) : les parts
-// joueur/camp/lobby se calculent côté analysis (sessionusage.ComputeObjectives).
+// joueur et équipe se calculent côté analysis (`trends.ObjectiveSamples`).
 package duckdb
 
 import (

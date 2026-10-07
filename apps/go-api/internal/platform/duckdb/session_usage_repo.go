@@ -53,9 +53,9 @@ func (r *SessionUsageRepo) LoadUsageFilms(ctx context.Context, matchIDs []string
 	}
 	defer release()
 
-	// Seules les colonnes consommées par l'agrégat sont lues (0 code mort) :
-	// frame_interval_ms et pad_named restent en table pour d'autres lecteurs.
-	q := `SELECT match_id, duration_ms, pad_unnamed, powerup_pickups_json
+	// Seules les colonnes consommées sont lues (0 code mort) : frame_interval_ms,
+	// pad_named et pad_unnamed restent en table pour d'autres lecteurs.
+	q := `SELECT match_id, duration_ms, powerup_pickups_json
 	      FROM match_usage_films_latest
 	      WHERE match_id IN (` + Placeholders(len(matchIDs)) + `)`
 	rows, err := db.QueryContext(ctx, q, ToAnySlice(matchIDs)...)
@@ -66,7 +66,7 @@ func (r *SessionUsageRepo) LoadUsageFilms(ctx context.Context, matchIDs []string
 	for rows.Next() {
 		var f sessionusage.FilmRow
 		var powerups string
-		if err := rows.Scan(&f.MatchID, &f.DurationMS, &f.PadUnnamed, &powerups); err != nil {
+		if err := rows.Scan(&f.MatchID, &f.DurationMS, &powerups); err != nil {
 			return nil, fmt.Errorf("SessionUsageRepo: films scan: %w", err)
 		}
 		if f.PowerupPickups, err = countMapFromJSON(powerups); err != nil {

@@ -287,16 +287,21 @@ le résumé persisté (§3) et les niveaux de socle (§7) : jamais mieux que la 
 ### Lecteurs de la base (grain session et périmètre)
 
 Tous passent par `platform/duckdb/session_usage_repo.go`, sur les vues `_latest` :
-`match_usage_films_latest` (l. 59 : `duration_ms`, `pad_unnamed`, `powerup_pickups_json`),
+`match_usage_films_latest` (l. 59 : `duration_ms`, `powerup_pickups_json`),
 `match_usage_players_latest` (l. 103 : épisodes, poses, les quatre ventilations d'issue),
 `match_participants` (l. 179, camps) et `match_pad_pickups_by_tier_latest` (l. 243).
 
-- **Page Sessions** : bloc `usage` de `POST …/pages/sessions/detail`
-  (`domain/session_page.go:148`), produit par `service/session_page_usage.go` (films, joueurs,
-  participants l. 111-113, niveaux de socle l. 306 ; calcul `sessionusage.ComputeUsage`).
-  Web : `features/session-detail/SessionColumnBody.tsx:151` monte `SessionUsageSection`
-  (cartes d'équipement l. 97, cartes de socles l. 50). Les trois issues y sont publiées sur
-  les grandeurs `equipment_<famille>` depuis l'étape E3, sous réserve de la recuisson.
+- **Page Sessions** : blocs `emprise` / `compare_emprise` de `POST …/pages/sessions/detail`
+  (`domain/session_page.go:178`, `SoloEmpriseBlock` sans `maps`), produits par
+  `service/solo_emprise_block.go:45` (`buildSoloEmpriseBlock`, appelé par
+  `session_page_emprise.go:20`) sur le résumé d'usage lu UNE fois par session
+  (`session_page_blocks.go:130`, `lireUsageDeSession`), partagé avec `formes_retenues` et
+  l'effectif de camp de la coordination. Même carte « Équipement pris, et ce que j'en ai fait »
+  que les Séries temporelles (ci-dessous), montée par
+  `features/session-detail/useSessionEmpriseCards.tsx`, en vue compacte dans le tiroir de
+  comparaison. L'ancien bloc `usage` (grandeurs `equipment_<famille>`, `sessionusage.ComputeUsage`,
+  `service/session_page_usage.go`) est supprimé (plan `PLAN_SESSIONS_EMPRISE_2026-10-06`, S5,
+  2026-10-06).
 - **Séries temporelles, onglet Usages (Emprise solo)** : bloc `emprise` de
   `POST …/pages/timeseries` (`domain/timeseries.go:348`, `SoloEmpriseBlock` = le bloc de
   l'Escouade plus `maps` et `equipment`), produit par `service/timeseries_service_emprise.go:61`
@@ -473,8 +478,8 @@ La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation
 > et fige la mesure du négatif.
 
 > **CE QUE L'ÉCRAN EN LIT.** Le caractère aléatoire est **servi** par le serveur — champ
-> `weaponTiers.randomStarts` du document de rejeu (vue match) et compteur
-> `pad_tiers.matches_random_starts` (pages d'agrégat). Le web n'en tient aucune liste : celle
+> `weaponTiers.randomStarts` du document de rejeu (vue match) ; le compteur d'agrégat
+> `pad_tiers.matches_random_starts` est parti avec le bloc d'usage de Sessions (2026-10-06). Le web n'en tient aucune liste : celle
 > qu'il a tenue une semaine avait déjà divergé.
 
 ### Où ça vit
@@ -485,6 +490,5 @@ La liste des modes concernés vit dans `config/titles/{slug}/mappings/regulation
 | Projection au fil de l'eau | `internal/sync/replayartifacts/padtiers.go` |
 | Écriture INSERT-only | `internal/persist/pad_tiers_persister.go` (table `match_pad_pickups_by_tier`, vue `_latest`) |
 | Rattrapage du parc | `levelup backfill-pad-tiers` (serveur ARRÊTÉ) |
-| Agrégats | `internal/analysis/sessionusage/pad_tiers.go` |
+| Ligne lue par l'Emprise | `internal/analysis/sessionusage/pad_tiers.go` (`PadTierRow`), `internal/analysis/squademprise/` |
 | Vue match (résolution à la requête) | `features/match-replay/model/weaponTier.ts` |
-| Page Sessions | `features/_shared/usage/usagePadTiersModel.ts` |

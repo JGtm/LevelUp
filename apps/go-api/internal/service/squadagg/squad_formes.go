@@ -9,10 +9,10 @@
 // BEST-EFFORT ET DIT : source non câblée (titre sans film) ⇒ bloc avec une raison MACHINE ;
 // lecture en échec ⇒ idem, jamais un 500. Les colonnes d'objectif, elles, dégradent SEULES.
 //
-// LE CATALOGUE D'ARMES (`WeaponCatalog`, lu par l'Emprise) SE RÉSOUT ICI, À LA REQUÊTE — même
-// arbitrage que `service/session_page_usage_labels.go` : le sidecar ne stocke que la clé de
-// famille du film, et ce qui se résout d'un catalogue du titre se résout au service. Le catalogue
-// est chargé POUR LE TITRE du service : un titre sans ces tables ne reçoit aucun nom.
+// LE CATALOGUE D'ARMES (`WeaponCatalog`, lu par l'Emprise) SE RÉSOUT ICI, À LA REQUÊTE : le
+// sidecar ne stocke que la clé de famille du film, et ce qui se résout d'un catalogue du titre se
+// résout au service. Le catalogue est chargé POUR LE TITRE du service : un titre sans ces tables ne
+// reçoit aucun nom.
 package squadagg
 
 import (

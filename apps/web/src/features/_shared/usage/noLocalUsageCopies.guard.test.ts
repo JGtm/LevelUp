@@ -14,15 +14,14 @@
  * d'importer celle-ci.
  *
  * Ce que ça protège : les DÉFINITIONS (`function`/`interface`/`type`), pas les imports ni les
- * mentions en commentaire ou en JSDoc — importer `buildGaugeRow` depuis
- * `@/features/_shared/usage/usageGaugeModel` est le comportement voulu et ne doit jamais faire
+ * mentions en commentaire ou en JSDoc — importer `usageEmptyMessage` depuis
+ * `@/features/_shared/usage/usageAvailability` est le comportement voulu et ne doit jamais faire
  * rougir ce test. Les motifs ci-dessous exigent tous le mot-clé de déclaration juste avant le
- * nom (`function buildGaugeRow(`, `interface UsageGaugeModel`) : une simple mention en prose ne
- * matche pas.
+ * nom (`function usageEmptyMessage(`, `interface UsageGaugeModel`) : une simple mention en prose
+ * ne matche pas.
  *
- * Preuve de mordant (mutation, 2026-09-09) : une copie de `usageAvailability` insérée dans
- * `features/squad/` fait rougir ce test (voir le journal du plan, section E5.3) ; retirée, il
- * revient au vert. Non committée — seul le garde-rail l'est.
+ * Le bloc d'usage de Sessions a quitté l'app (plan PLAN_SESSIONS_EMPRISE_2026-10-06, S4) : les
+ * motifs suivent ce qui reste des formes partagées (jauge, bande, états vides, encre des rôles).
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -37,15 +36,14 @@ const CANONICAL_DIR = join(FEATURES_ROOT, '_shared', 'usage')
 // (formes, projections, classification, disponibilité) suffit : il n'est pas nécessaire de
 // lister les ~40 exports pour que le garde-rail tienne sa frontière.
 const FORBIDDEN_DEFINITIONS: RegExp[] = [
-  /\bfunction buildGaugeRow\b/,
-  /\bfunction buildOutcomeSegments\b/,
-  /\bfunction buildLobbyTrack\b/,
-  /\bfunction buildRegularityBand\b/,
-  /\bfunction usageAvailability\b/,
-  /\bfunction equipmentMetrics\b/,
+  /\bfunction usageEmptyMessage\b/,
+  /\bfunction usageEmptyTitle\b/,
+  /\bfunction roleToken\b/,
+  /\bfunction formatUsagePct\b/,
   /\binterface UsageGaugeModel\b/,
   /\binterface UsageGaugeRowModel\b/,
-  /\btype UsageOutcomeKind\b/,
+  /\binterface UsageBandCell\b/,
+  /\btype UsageEmptyReason\b/,
 ]
 
 function walk(dir: string): string[] {

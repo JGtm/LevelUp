@@ -1,17 +1,15 @@
 /**
- * SessionCoordination.test — LE LOT O sur la colonne de session : les deux cartes de la
- * section « Coordination » (D22-1, D22-6) et la carte « Portée des engagements » (D22-4).
+ * SessionCoordination.test — LE LOT O sur la colonne de session : la carte « Appui reçu » de la
+ * section « Coordination » (D22-6) et la carte « Portée des engagements » (D22-4). « Riposte » a
+ * quitté la page (plan PLAN_SESSIONS_EMPRISE_2026-10-06, V3).
  *
  * Ce que ces cas verrouillent, et pourquoi chacun compte :
  *
- *   - DEUX JAUGES, DEUX EN-TÊTES PROPRES, UN SEUL TRAIT DE PARITÉ. `UsageGaugeGrid` lisait
+ *   - DEUX JAUGES, DEUX EN-TÊTES PROPRES, AUCUNE HACHURE DE LOBBY. `UsageGaugeGrid` lisait
  *     ses en-têtes dans une table de TROIS dénominateurs du bloc « usages » et reconnaissait
- *     la colonne d'équipe par sa POSITION : montée telle quelle, la carte Riposte aurait
- *     affiché « Mon équipe dans le lobby » au-dessus de « Je suis couvert » et rayé une
- *     colonne sur deux. Le cas fixe les en-têtes ET l'absence de hachure ;
- *   - UNE CASE SANS DÉNOMINATEUR RESTE GRISE. Un match sans mort de camp ne vaut pas 0 % de
- *     ripostes — il n'est pas mesuré. Le tri par `tone` est la seule chose qui distingue les
- *     deux à l'écran ;
+ *     la colonne d'équipe par sa POSITION : le cas fixe les en-têtes ET l'absence de hachure ;
+ *   - UNE CASE SANS DÉNOMINATEUR RESTE GRISE. Un match sans appui dans le camp ne vaut pas 0 % —
+ *     il n'est pas mesuré. Le tri par `tone` est la seule chose qui distingue les deux à l'écran ;
  *   - `available = false` GARDE LA RANGÉE et nomme sa cause (D8) : un bloc escamoté laisse
  *     la rangée bancale et se lit comme un bug ;
  *   - PORTÉE (lot W, D23-4) : le nuage porte la PÉRIODE, la session s'y surligne sur les
@@ -31,12 +29,7 @@ import type {
 
 import { SessionCoordinationSection } from './SessionCoordinationSection'
 import { COORDINATION_TEXT } from './coordinationI18n'
-import {
-  bandCaption,
-  buildAppuiGaugeRows,
-  buildRiposteBand,
-  buildRiposteGaugeRows,
-} from './coordinationModel'
+import { bandCaption, buildAppuiBand, buildAppuiGaugeRows } from './coordinationModel'
 import { nuagePortee, pointDeLaSession, seuilsServis } from './sessionRange.logic'
 
 const t = COORDINATION_TEXT.fr
@@ -50,67 +43,48 @@ function matchPoint(id: string, over: Partial<Record<string, number>> = {}) {
     match_id: id,
     assists_to_me: 2,
     my_assisted_kills: 4,
-    my_deaths: 5,
-    my_deaths_avenged: 3,
     my_measured_kills: 10,
-    my_ripostes: 3,
     team_assists: 12,
-    team_deaths: 20,
-    team_deaths_avenged: 12,
     parity_pct: 25,
-    riposte_share_pct: 40,
     assist_share_of_team_pct: 25,
     team_size: 4,
     ...over,
   }
 }
 
-const BLOC: CoordinationBlock = {
+/** Le bloc tel que la carte le lit : l'appui et la couverture (la riposte n'a plus de lecteur). */
+const BLOC = {
   available: true,
-  fenetre_ms: 5000,
   matches_measured: 3,
   matches_total: 4,
-  riposte: {
-    je_suis_couvert: couverture(0.62, 31, 50),
-    je_riposte: couverture(0.31, 18, 58),
-    parity_pct: 25,
-    team_deaths: 58,
-    team_deaths_avenged: 30,
-    delai_median_ms: 4200,
-  },
   appui: {
     on_me_prepare: couverture(0.44, 22, 50),
     ma_part_des_appuis: couverture(0.34, 17, 50),
     parity_pct: 25,
   },
   per_match: [
-    matchPoint('m1'),
-    // Aucune mort de camp : la case doit rester GRISE malgré une part servie.
-    matchPoint('m2', { team_deaths: 0, riposte_share_pct: 0 }),
-    matchPoint('m3', { riposte_share_pct: 10 }),
+    matchPoint('m1', { assist_share_of_team_pct: 40 }),
+    // Aucun appui dans le camp : la case doit rester GRISE malgré une part servie.
+    matchPoint('m2', { team_assists: 0, assist_share_of_team_pct: 0 }),
+    matchPoint('m3', { assist_share_of_team_pct: 10 }),
   ],
-}
+} as unknown as CoordinationBlock
 
-describe('Section Coordination (D22-1 / D22-6)', () => {
-  it('rend deux jauges nommées par le lot, sans hachure de lobby, et un seul trait de parité', () => {
+describe('Section Coordination : « Appui reçu » seule (D22-6, V3)', () => {
+  it('rend deux jauges nommées par le lot, sans hachure de lobby, sans carte Riposte', () => {
     const { container } = render(<SessionCoordinationSection coordination={BLOC} />)
 
-    // Les en-têtes sont ceux du lot, pas les trois dénominateurs du bloc « usages ».
-    expect(screen.getByText(t.gaugeCovered)).toBeInTheDocument()
-    expect(screen.getByText(t.gaugeIRiposte)).toBeInTheDocument()
     expect(screen.getByText(t.gaugePrepared)).toBeInTheDocument()
     expect(screen.getByText(t.gaugeAssistShare)).toBeInTheDocument()
-
     // Aucune colonne rapportée au lobby → aucune tranche hachurée.
     expect(container.querySelectorAll('[data-gauge-denominator="lobby"]')).toHaveLength(0)
-
-    // Le chiffre d'appel (délai médian) est écrit ; aucune autre phrase (D22-verbosité).
-    expect(container.querySelectorAll('[data-coordination-callout]')).toHaveLength(1)
-    expect(screen.getByText(`${t.delaiMedian} : 4,2 s`)).toBeInTheDocument()
+    // Plus de Riposte : ni sa carte, ni son chiffre d'appel.
+    expect(container.textContent).not.toContain('Riposte')
+    expect(container.querySelectorAll('[data-coordination-callout]')).toHaveLength(0)
   })
 
-  it('grise la case d’un match sans mort de camp et ne la compte pas dans le pied', () => {
-    const cells = buildRiposteBand(BLOC.per_match ?? [], t, 'fr')
+  it('grise la case d’un match sans appui dans le camp et ne la compte pas dans le pied', () => {
+    const cells = buildAppuiBand(BLOC.per_match ?? [], t, 'fr')
     expect(cells.map((c) => c.tone)).toEqual(['above', 'unmeasured', 'below'])
     // 1 case au-dessus sur 2 MESURÉES — la case grise sort du dénominateur.
     expect(bandCaption(cells, t)).toBe('1/2')
@@ -123,40 +97,29 @@ describe('Section Coordination (D22-1 / D22-6)', () => {
       />,
     )
     expect(container.querySelector('[data-session-coordination="empty"]')).not.toBeNull()
-    // Les deux cartes restent, avec leur titre et une cause nommée.
-    expect(screen.getByText(t.cardRiposte)).toBeInTheDocument()
-    expect(screen.getByText(t.cardAppui)).toBeInTheDocument()
-    expect(container.querySelectorAll('[data-usage-empty]')).toHaveLength(2)
+    // La carte reste, avec son titre et une cause nommée.
+    expect(screen.getAllByText(t.cardAppui).length).toBeGreaterThan(0)
+    expect(container.querySelectorAll('[data-usage-empty]')).toHaveLength(1)
   })
 })
 
-describe('Repère d’habituel des jauges sans parité (lot S)', () => {
-  it('pose l’habituel de la période sur « je suis couvert » et « on me prépare »', () => {
-    const bloc: CoordinationBlock = {
-      ...BLOC,
-      riposte: { ...BLOC.riposte, habituel_pct: 55 },
-      appui: { ...BLOC.appui, habituel_pct: 38 },
-    }
-    const [riposte] = buildRiposteGaugeRows(bloc, t, 'fr')
+describe('Repère d’habituel de « on me prépare » (lot S)', () => {
+  it('pose l’habituel de la période sur la jauge sans parité, et le nomme', () => {
+    const bloc = { ...BLOC, appui: { ...BLOC.appui, habituel_pct: 38 } } as CoordinationBlock
     const [appui] = buildAppuiGaugeRows(bloc, t, 'fr')
-
-    // Le trait des deux jauges sans parité EST l'habituel...
-    expect(riposte.gauges[0].parityPct).toBe(55)
+    // Le trait de la jauge sans parité EST l'habituel...
     expect(appui.gauges[0].parityPct).toBe(38)
     // ...et l'infobulle le NOMME, faute de quoi il se lirait comme une parité.
-    expect(riposte.gauges[0].tooltip).toContain('habituel')
     expect(appui.gauges[0].tooltip).toContain('habituel')
     // La jauge voisine garde SA parité, et son infobulle ne parle pas d'habituel.
-    expect(riposte.gauges[1].parityPct).toBe(25)
-    expect(riposte.gauges[1].tooltip).not.toContain('habituel')
+    expect(appui.gauges[1].parityPct).toBe(25)
+    expect(appui.gauges[1].tooltip).not.toContain('habituel')
   })
 
   it('n’invente aucun repère quand le contrat ne sert pas d’habituel', () => {
-    const [riposte] = buildRiposteGaugeRows(BLOC, t, 'fr')
     const [appui] = buildAppuiGaugeRows(BLOC, t, 'fr')
-    expect(riposte.gauges[0].parityPct).toBeNull()
     expect(appui.gauges[0].parityPct).toBeNull()
-    expect(riposte.gauges[0].tooltip).not.toContain('habituel')
+    expect(appui.gauges[0].tooltip).not.toContain('habituel')
   })
 })
 

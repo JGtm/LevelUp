@@ -222,6 +222,11 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // `squad/charts/squadIntensityProfileChart` (courbe d'intensité) plutôt que de le
   // recopier — durable, analogue à session-detail=>explorer.
   'session-detail=>squad',
+  // La page Sessions monte l'Emprise solo des Séries temporelles (« Mes prises dans mon camp »,
+  // « Mes vies », « Équipement pris », leurs modèles `usages.logic` et leurs textes solo) plutôt que de
+  // les recopier : même bloc `SoloEmpriseBlock`, deux pages — durable, analogue à session-detail=>squad
+  // (plan PLAN_SESSIONS_EMPRISE_2026-10-06, D2).
+  'session-detail=>timeseries',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).
