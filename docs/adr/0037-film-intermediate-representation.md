@@ -252,10 +252,9 @@ generations or layout other than the context's; the parameters and the anchored 
 proven equal, packet by packet, on the twenty-film corpus. The biped band is then derived once per
 film, which halves the published `repli_bande_bipede_comblee` count, a declared change. Two
 anchored recoveries keep their own pass, because they use other predicates and find other records:
-the aim-only records, whose mask does not start at i0, and the gated equipment recovery. Marking the
-anchored records as recovered and counting them in the registry waits for a decision. The anchoring
-decides in front of the walk's reading for the records the walk reads, and the registry would
-declare that `devant_la_lecture`. The order is fixed by lot 2.7.b.
+the aim-only records, whose mask does not start at i0, and the gated equipment recovery. The
+anchoring now runs behind the frame walk, its records marked recovered and counted (lots 2.7.b and
+2.7.d, below).
 
 Since lot 2.5, the world-object recovery also runs once per film. The cook scanned the delta
 frames bit by bit four times for world-object tracks (the equipment band twice, the ground-weapon
@@ -266,8 +265,7 @@ another band's cursor. The creation records of the three creation archetypes are
 pass, each archetype keeping its own cursor; a creation header carries its archetype, so a given
 position concerns at most one of them. Both results are kept in the film context and handed out as
 copies. A creation walk is reused only under the same archetype, band, bounds and scan profile,
-MPP widths included. The user's decision on lot 2.7.d applies to these scans as well: they stay
-out of the registry until the walk reads first.
+MPP widths included. Since lot 2.7.d both passes run behind the frame walk (below).
 
 Since lot 2.7.a, an event list that the cook's list start does not locate is recovered for the
 object-death channel only. The unique locator looks for a start in the order of the sites that
@@ -296,9 +294,8 @@ creation record. The returned records are marked recovered and counted
 under `repli_ancrage_bipede_apres_la_marche`, ordered after the reading. Each reader replays the
 publications of a record on its own hooks, component by component, under the contract of the
 record walk, so its logic does not change. A trial read publishes no channel hook: the single
-trial gate covers every hook that a frame channel sets, and a test keeps it so. The positions keep
-the anchoring until lot 2.7.d: the walk does not accumulate positions, and their reader has its
-own i0 grammar. The measurement that decided it, per reader and per closure class on the
+trial gate covers every hook that a frame channel sets, and a test keeps it so. The positions followed
+in lot 2.7.d (below). The measurement that decided it, per reader and per closure class on the
 twenty-film corpus, is in the plan of step 2; where both sources read the same record, they
 publish the same values.
 
@@ -320,6 +317,34 @@ films behind terminators that the walk did not retain). A view A end that is wro
 (an equal table trusts it) still decides: after a damage message (genre 0) the reading sometimes
 ends hundreds to thousands of bits early, the walk then refuses the packet, and that frame's
 deaths go to the scan; the misread message is not yet identified (plan of step 2, discovery 34).
+
+Since lot 2.7.d, the biped positions and the world-object tracks and creations read the frame walk
+first as well. The walk designates the records and their archetype, and the readers that read them
+before read them at the same place: a biped position at the i0 bit of a retained biped delta record
+when that i0 is absolute in the played region (the anchoring's i0 grammar), a world-object track
+sample at the i0 bit of a delta record of a track archetype, a creation at the header of a NEW
+record of a creation archetype. Where both sources designate a record, the value is the same by
+construction. Behind the walk, the anchoring returns positions and the track and creation passes
+return records under the rule of lot 2.7.b (a slot the walk did not read in the packet, outside what
+the frame's closure proves), counted under `repli_ancrage_bipede_apres_la_marche` (which now counts
+the records returned only for their position), `repli_pistes_du_monde_apres_la_marche` and
+`repli_creations_du_monde_apres_la_marche`, ordered after the reading. The rule corrects three scan
+errors by construction: a slot of the biped band that the walk reads as another object no longer
+gives a player position; a band that overlaps another archetype's band no longer receives that
+archetype's records (an equipment item no longer doubles as a ground weapon); and a header found
+inside another record of a frame that the closure proves no longer becomes a position, a track
+sample or a creation (plan of step 2, discoveries 37 to 39). To read the positions behind the walk
+without walking twice, the cook plays its frame walk once, before the identity bridge, and the
+movement states take its result; the object-death channel joins that walk when the keyframes carry
+vehicle slots, the first condition of the vehicle layer that is scanned after it. A film without
+registry keeps the anchoring and the passes alone, as does a track request that names no archetype
+(the instrument wrappers, which scan arbitrary bands). The sync collector, which opens its own
+context for the identity bridge, now plays the walk for its positions; lot 3.1 gives it one context
+per pass. Two scans stay outside this rule. The keyframe bit windows (held weapons, carrier mark,
+inventory) still decide alone: the grammar does not read the biped's full state at keyframes yet
+(3.8 % of the biped keyframe records close on the next record, and the values read there are
+wrong), so it cannot take their place (discovery 36). The vehicle position cloud still anchors on
+its own band (discovery 40).
 
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 

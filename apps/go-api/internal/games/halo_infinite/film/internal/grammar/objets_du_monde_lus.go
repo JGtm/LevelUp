@@ -120,6 +120,8 @@ type canalDesObjetsDuMonde struct {
 	m   *MarcheDistribuee
 	lu  objetsDuMondeLus
 	reg *Registry
+	// aPistes, deCreation : les archetypes retenus, indexes par archetype (sous 64).
+	aPistes, deCreation [64]bool
 }
 
 // nouveauCanalDesObjetsDuMonde prepare le canal des objets du monde du film `fc`.
@@ -128,7 +130,14 @@ func nouveauCanalDesObjetsDuMonde(fc *FilmContext) *canalDesObjetsDuMonde {
 	if err != nil {
 		reg = nil
 	}
-	return &canalDesObjetsDuMonde{fc: fc, reg: reg}
+	c := &canalDesObjetsDuMonde{fc: fc, reg: reg}
+	for _, ti := range archetypesAPistes() {
+		c.aPistes[ti] = true
+	}
+	for _, ti := range archetypesDeCreation() {
+		c.deCreation[ti] = true
+	}
+	return c
 }
 
 // Interets : le composant i0 des archetypes a pistes, dans les trames.
@@ -161,14 +170,15 @@ func (c *canalDesObjetsDuMonde) Trame(p *lecture.Paquet) {
 		ti := int(r.TypeIndex)
 		lu := recordDuMonde{slot: r.Slot, gen: uint8(r.ID >> 30), ti: uint8(ti)} //nolint:gosec // generation sur 2 bits, archetype sur 6
 		switch {
-		case r.Type == recDelta && slices.Contains(archetypesAPistes(), ti):
+		case ti >= len(c.aPistes):
+		case r.Type == recDelta && c.aPistes[ti]:
 			if len(r.Trace.Comps) == 0 || r.Trace.Comps[0].Index != 0 || !r.Trace.Comps[0].Ported {
 				continue
 			}
 			lu.bit = uint32(r.Trace.Comps[0].StartBit) //nolint:gosec // position dans un payload
 			lu.repos = r.Trace.Mask>>projectileRestComponent&1 == 1
 			c.lu.pistes.noter(p.Chunk, pk, lu)
-		case r.Type == recNew && slices.Contains(archetypesDeCreation(), uint32(ti)): //nolint:gosec // archetype sur 6 bits
+		case r.Type == recNew && c.deCreation[ti]:
 			lu.bit = uint32(r.HeaderBit) //nolint:gosec // position dans un payload
 			c.lu.creations.noter(p.Chunk, pk, lu)
 		}
