@@ -725,16 +725,24 @@ Journal M3 (2026-10-07, exécuteur) :
 
 Le web ne lit plus `combat_tab.riposte` ni `combat_tab.elevation` depuis M3.
 
-- [ ] M4.1 Rejouer les preuves §4.F et §4.G (producteurs et lecteurs Go et web).
-- [ ] M4.2 §4.F : chaîne Riposte de la Vue match, types et champ ; tests supprimés avec leur code.
-- [ ] M4.3 §4.G : chaîne de la hauteur (domaine, calcul, port, lecteur DuckDB, chargement, champ) ;
+- [x] M4.1 Rejouer les preuves §4.F et §4.G (producteurs et lecteurs Go et web).
+- [x] M4.2 §4.F : chaîne Riposte de la Vue match, types et champ ; tests supprimés avec leur code.
+- [x] M4.3 §4.G : chaîne de la hauteur (domaine, calcul, port, lecteur DuckDB, chargement, champ) ;
   tests supprimés avec leur code ; `viewerKillCount` si plus lu.
-- [ ] M4.4 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
+- [x] M4.4 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
   listées (attendu : `MatchElevationBlock`, `MatchElevationKill`, `MatchRiposteBlock`,
   `MatchRiposteDeath`, `MatchRiposteePlayer`, et ce que la régénération révèle en plus) ; alias de
   `lib/api/types.ts` (§4.A, §4.B) retirés.
 - Gate : gate Go + `-tags=integration -p 1 ./internal/platform/duckdb/...` + contrat + gate web ;
   preuves §4.A-G rejouées → 0.
+Journal M4 (2026-10-07, exécuteur) :
+- **M4.1** Preuves §4.F et §4.G rejouées : la riposte de la Vue match n'avait qu'un appel (`match_view_data_loaders.go`) et ses aides (`campsDuScoreboard`, `nomsDuScoreboard`, `nomOuRepli`, `riposteMatchKey`, `mortsRiposte`, `joueursRiposte`) aucun autre lecteur ; la hauteur : un chargement, un calcul, un lecteur DuckDB, `viewerKillCount` lu par elle seule ; aucun double de test n'implémentait `LoadMatchElevation`. `coordination.Echanges` et `FenetreEchangeMs` restent (Escouade, Tactique), `analysis.signedElevation` et la portée restent (`weapon_range.go`).
+- **M4.2** Supprimés : `service/match_view_builders_riposte.go` (+ test), le champ `MatchCombatTab.Riposte`, les types `MatchRiposteDeath`, `MatchRiposteePlayer`, `MatchRiposteBlock` et la ligne d'en-tête qui les citait (`domain/coordination_block.go`).
+- **M4.3** Supprimés : `domain/match_elevation.go`, `analysis/match_elevation.go` (+ test), `platform/duckdb/kill_distance_repo_elevation.go` (+ test), `port.KillDistanceRepository.LoadMatchElevation`, le chargement `kill_elevation` et le champ `elevationKills`, le champ `MatchCombatTab.Elevation`, `viewerKillCount` (+ `service/match_view_elevation_test.go`). Le commentaire de `KillDistanceByWeapon` dit désormais la mêlée exclue (M1, D11).
+- **M4.4** Contrat : `openapi.yaml` −138 lignes, `generated.ts` −57, 0 ajout ; `openapi-gen -check` à jour, `check-generated-types-fresh` OK. Snapshot `contract-surface` régénéré par la procédure : disparitions `MatchElevationBlock`, `MatchElevationKill`, `MatchRiposteBlock`, `MatchRiposteDeath`, `MatchRiposteePlayer` (les cinq attendues) ; la régénération ajoute les trois schémas de M2 (`MatchEmpriseBlock`, `MatchLivesNearTeammate`, `MatchLivesPlayer`) et, venus de la base `feat/v75` non encore photographiés, la route `/players/{player_slug}/pages/trends`, `postTrendsPage` et quinze schémas `Trends*`. Alias web retirés (`MatchElevationBlock`, `MatchElevationKill`, `MatchRiposteBlock`, `MatchRiposteDeath`, `MatchRiposteePlayer`, champs `riposte` / `elevation` de `MatchCombatTab`).
+- **Gate** : `go build ./...` 0 ; `gofmt -l internal` muet (un alignement de champ corrigé) ; `go vet` des paquets touchés 0 ; tests des paquets touchés 6 ok ; module en six lots : 67 + 39 + 28 + 13 + 45 + 4 ok, 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok ; garde-rails nommés PASS ; `make go-api-lint` 0 issue ; contrat à jour ; web : `tsc -b --force` 0, vitest complet 862 fichiers / 9 096 tests verts, knip 0 / 0 / 0. Preuves §4.A-G rejouées : 0 occurrence de code (restent les commentaires historiques notés en M3, le contrat ancien des CHANGELOG traité en M5).
+- Seuils : `domain/match_view.go` 881 → 866, `match_view_data_loaders.go` 716 → 695, `port/repository_data.go` 640 → 631, `coordination_block.go` 212 → 154, `match_view_builders_combat.go` 468 → 455.
+- Écart d'ordre : les phrases de `docs/RELEASE_NOTES.md` (EN, FR) de M5.1 ont été préparées pendant l'attente du test d'intégration, laissées hors du commit de M4.
 
 ### M5 — Clôture · rapide
 

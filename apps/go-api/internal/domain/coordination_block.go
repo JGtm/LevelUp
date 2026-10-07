@@ -7,7 +7,6 @@ package domain
 //
 //	Sessions     le bloc + une case par match (PerMatch) ;
 //	Timeseries   le bloc + un point par SOIRÉE (Sessions) ;
-//	Match view   un bloc À PART (MatchRiposteBlock) — un match, ce sont des COMPTES.
 //
 // ─── POURQUOI LE MÊME TYPE POUR SESSIONS ET TIMESERIES ────────────────────────────────
 //
@@ -152,61 +151,4 @@ type CoordinationBlock struct {
 	PerMatch []CoordinationMatchPoint `json:"per_match,omitempty"`
 	// Sessions : un point par soirée mesurée, chronologique (page Séries temporelles).
 	Sessions []CoordinationSessionPoint `json:"sessions,omitempty"`
-}
-
-// ---------------------------------------------------------------------------
-// Page MATCH — des comptes, jamais un taux
-// ---------------------------------------------------------------------------
-
-// MatchRiposteDeath — UNE mort du match et sa riposte.
-//
-// Le camp de la victime vient du scoreboard (`team_id`) : c'est lui qui range les joueurs
-// en deux graphes. Nil = camp inconnu (FFA, joueur absent du tableau des scores).
-type MatchRiposteDeath struct {
-	VictimXUID     string `json:"victim_xuid,omitempty"`
-	VictimGamertag string `json:"victim_gamertag,omitempty"`
-	VictimTeamID   *int   `json:"victim_team_id,omitempty"`
-	KillerXUID     string `json:"killer_xuid,omitempty"`
-	TimeMs         int64  `json:"time_ms"`
-	// Avenged / Avenger* / DelaiMs : la riposte, quand elle a eu lieu DANS la fenêtre.
-	// `DelaiMs` absent quand la mort n'est pas vengée — jamais un 0 qui se lirait
-	// « vengée instantanément ».
-	Avenged         bool   `json:"avenged"`
-	AvengerXUID     string `json:"avenger_xuid,omitempty"`
-	AvengerGamertag string `json:"avenger_gamertag,omitempty"`
-	DelaiMs         *int64 `json:"delai_ms,omitempty"`
-	// Vengeable : un échange était POSSIBLE (tueur identifié, deux camps connus et
-	// adverses). Une mort non vengeable n'est pas un échec de riposte : personne ne
-	// pouvait la venger.
-	Vengeable bool `json:"vengeable"`
-}
-
-// MatchRiposteePlayer — les deux comptes d'UN joueur du match : ses morts vengées par son
-// camp (événement SUBI) et les ripostes qu'il a portées (événement PORTÉ).
-//
-// LES DEUX CÔTÉS NE S'ADDITIONNENT PAS, et c'est pourquoi ils voyagent en deux champs
-// plutôt qu'en un solde : un joueur qui est beaucoup vengé et qui venge peu ne joue pas
-// comme un joueur dont les deux comptes sont faibles.
-type MatchRiposteePlayer struct {
-	XUID     string `json:"xuid,omitempty"`
-	Gamertag string `json:"gamertag,omitempty"`
-	TeamID   *int   `json:"team_id,omitempty"`
-	// DeathsAvenged : ses morts vengées par son camp. Ripostes : les ripostes qu'il a portées.
-	DeathsAvenged int `json:"deaths_avenged"`
-	Ripostes      int `json:"ripostes"`
-}
-
-// MatchRiposteBlock — le bloc « Riposte » de l'onglet Combat.
-//
-// AUCUN TAUX ICI, PAR DÉCISION (D21) : un taux sur 11 morts est du bruit affiché avec deux
-// décimales. Ce sont des comptes exhaustifs du match, et la seule réserve est la couverture
-// du film — sans film décodé, pas d'ordre des morts, donc pas de bloc (nil), jamais une
-// section qui disparaît sans rien dire.
-type MatchRiposteBlock struct {
-	FenetreMs int64 `json:"fenetre_ms"`
-	// MeasuredDeaths : les morts du match lues dans le journal. Zéro n'arrive pas — le
-	// service n'émet alors aucun bloc.
-	MeasuredDeaths int                   `json:"measured_deaths"`
-	Deaths         []MatchRiposteDeath   `json:"deaths"`
-	Players        []MatchRiposteePlayer `json:"players"`
 }

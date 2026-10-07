@@ -483,14 +483,6 @@ type MatchCombatTab struct {
 	// domain.MatchAssistPairs.
 	AssistPairs *MatchAssistPairs `json:"assist_pairs,omitempty"`
 
-	// Riposte : « la mort de X a été vengée dans les 5 s, par Y » — par mort (victime,
-	// vengeur, délai, camp) et par joueur (ses morts vengées, les ripostes qu'il a
-	// portées). Des COMPTES, jamais un taux (D21 : un taux sur 11 morts est du bruit).
-	// NIL quand le match ne porte aucune ligne de journal des morts : sans ordre des
-	// morts il n'y a rien à dire, et l'UI ne rend rien. Même source déjà chargée que le
-	// chart antagoniste — aucune requête de plus.
-	Riposte *MatchRiposteBlock `json:"riposte,omitempty"`
-
 	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
 	// fondations narrative). 8 rôles narratifs typés via
 	// narrative.IdentifyImpactRoles, en parallèle des 4 ImpactBadges
@@ -518,16 +510,9 @@ type MatchCombatTab struct {
 	// n'a de position mesurée (titre/serveur sans capture positions, backfill non
 	// joué, ou couverture du match sous le plancher mesuré 75,8 %) — dégradation
 	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
-	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
+	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur) ; mêlée exclue
+	// (classe `FragClassMelee` : une distance de corps à corps ne dit rien de la portée).
 	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
-
-	// Elevation : le DÉNIVELÉ des engagements du match, un point par frag et par mort du
-	// joueur consulté (lot Y, décision D24). MÊME source que KillDistanceByWeapon, lue au
-	// grain du frag au lieu d'être agrégée par (xuid, arme) : ici la clé est le CÔTÉ, pas
-	// l'arme — « où je frague, où je meurs ». NIL quand le match n'a aucune position
-	// mesurée : la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
-	// Détail de la grandeur et convention de signe : domain/match_elevation.go.
-	Elevation *MatchElevationBlock `json:"elevation,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

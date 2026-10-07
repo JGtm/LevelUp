@@ -8402,7 +8402,6 @@ export interface components {
         MatchCombatTab: {
             assist_pairs?: components["schemas"]["MatchAssistPairs"];
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
-            elevation?: components["schemas"]["MatchElevationBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
@@ -8411,32 +8410,9 @@ export interface components {
             kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
-            riposte?: components["schemas"]["MatchRiposteBlock"];
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
             weapon_tools?: components["schemas"]["SquadWeaponTools"];
-        };
-        MatchElevationBlock: {
-            kills: components["schemas"]["MatchElevationKill"][] | null;
-            lobby?: components["schemas"]["MatchElevationKill"][] | null;
-            /** Format: double */
-            lobby_median_delta_z_m: number;
-            /** Format: int64 */
-            measured_kills: number;
-            /** Format: int64 */
-            total_kills: number;
-        };
-        MatchElevationKill: {
-            /** Format: double */
-            delta_z_m: number;
-            /** Format: double */
-            distance_m: number;
-            opponent?: string;
-            side: string;
-            /** Format: int64 */
-            time_ms: number;
-            weapon?: string;
-            weapon_en?: string;
         };
         MatchEmpriseBlock: {
             film_unavailable?: string;
@@ -8961,39 +8937,6 @@ export interface components {
             /** Format: date-time */
             played_at: string;
             players: components["schemas"]["MatchRangePlayer"][] | null;
-        };
-        MatchRiposteBlock: {
-            deaths: components["schemas"]["MatchRiposteDeath"][] | null;
-            /** Format: int64 */
-            fenetre_ms: number;
-            /** Format: int64 */
-            measured_deaths: number;
-            players: components["schemas"]["MatchRiposteePlayer"][] | null;
-        };
-        MatchRiposteDeath: {
-            avenged: boolean;
-            avenger_gamertag?: string;
-            avenger_xuid?: string;
-            /** Format: int64 */
-            delai_ms?: number;
-            killer_xuid?: string;
-            /** Format: int64 */
-            time_ms: number;
-            vengeable: boolean;
-            victim_gamertag?: string;
-            /** Format: int64 */
-            victim_team_id?: number;
-            victim_xuid?: string;
-        };
-        MatchRiposteePlayer: {
-            /** Format: int64 */
-            deaths_avenged: number;
-            gamertag?: string;
-            /** Format: int64 */
-            ripostes: number;
-            /** Format: int64 */
-            team_id?: number;
-            xuid?: string;
         };
         MatchRosterRow: {
             /** Format: int64 */

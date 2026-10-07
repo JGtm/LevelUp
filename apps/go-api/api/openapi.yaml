@@ -17670,8 +17670,6 @@ components:
           $ref: '#/components/schemas/MatchAssistPairs'
         cadence:
           $ref: '#/components/schemas/ChartSeriesChartPointStacked'
-        elevation:
-          $ref: '#/components/schemas/MatchElevationBlock'
         frag_distribution:
           $ref: '#/components/schemas/FragDistribution'
         highlight_events:
@@ -17716,8 +17714,6 @@ components:
           type:
             - array
             - "null"
-        riposte:
-          $ref: '#/components/schemas/MatchRiposteBlock'
         tug_of_war:
           items:
             $ref: '#/components/schemas/MatchTugOfWarBin'
@@ -17739,62 +17735,6 @@ components:
         - impact_badges
         - kd_timeline
         - nemesis_duels
-      type: object
-    MatchElevationBlock:
-      additionalProperties: false
-      properties:
-        kills:
-          items:
-            $ref: '#/components/schemas/MatchElevationKill'
-          type:
-            - array
-            - "null"
-        lobby:
-          items:
-            $ref: '#/components/schemas/MatchElevationKill'
-          type:
-            - array
-            - "null"
-        lobby_median_delta_z_m:
-          format: double
-          type: number
-        measured_kills:
-          format: int64
-          type: integer
-        total_kills:
-          format: int64
-          type: integer
-      required:
-        - kills
-        - lobby_median_delta_z_m
-        - measured_kills
-        - total_kills
-      type: object
-    MatchElevationKill:
-      additionalProperties: false
-      properties:
-        delta_z_m:
-          format: double
-          type: number
-        distance_m:
-          format: double
-          type: number
-        opponent:
-          type: string
-        side:
-          type: string
-        time_ms:
-          format: int64
-          type: integer
-        weapon:
-          type: string
-        weapon_en:
-          type: string
-      required:
-        - distance_m
-        - delta_z_m
-        - time_ms
-        - side
       type: object
     MatchEmpriseBlock:
       additionalProperties: false
@@ -19102,84 +19042,6 @@ components:
         - players
         - lobby_median_m
         - lobby_measured
-      type: object
-    MatchRiposteBlock:
-      additionalProperties: false
-      properties:
-        deaths:
-          items:
-            $ref: '#/components/schemas/MatchRiposteDeath'
-          type:
-            - array
-            - "null"
-        fenetre_ms:
-          format: int64
-          type: integer
-        measured_deaths:
-          format: int64
-          type: integer
-        players:
-          items:
-            $ref: '#/components/schemas/MatchRiposteePlayer'
-          type:
-            - array
-            - "null"
-      required:
-        - fenetre_ms
-        - measured_deaths
-        - deaths
-        - players
-      type: object
-    MatchRiposteDeath:
-      additionalProperties: false
-      properties:
-        avenged:
-          type: boolean
-        avenger_gamertag:
-          type: string
-        avenger_xuid:
-          type: string
-        delai_ms:
-          format: int64
-          type: integer
-        killer_xuid:
-          type: string
-        time_ms:
-          format: int64
-          type: integer
-        vengeable:
-          type: boolean
-        victim_gamertag:
-          type: string
-        victim_team_id:
-          format: int64
-          type: integer
-        victim_xuid:
-          type: string
-      required:
-        - time_ms
-        - avenged
-        - vengeable
-      type: object
-    MatchRiposteePlayer:
-      additionalProperties: false
-      properties:
-        deaths_avenged:
-          format: int64
-          type: integer
-        gamertag:
-          type: string
-        ripostes:
-          format: int64
-          type: integer
-        team_id:
-          format: int64
-          type: integer
-        xuid:
-          type: string
-      required:
-        - deaths_avenged
-        - ripostes
       type: object
     MatchRosterRow:
       additionalProperties: false

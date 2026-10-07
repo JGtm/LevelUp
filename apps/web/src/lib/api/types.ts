@@ -1960,47 +1960,7 @@ export interface MatchCombatTab {
   kill_distance_by_weapon?: MatchKillDistancePlayer[]
   /** « Outils de destruction » du joueur de la page (builder de l'Escouade et de Sessions). */
   weapon_tools?: SquadWeaponTools | null
-  /**
-   * Bloc « Riposte » (D22-2, 2026-09-21) : par mort le couple (victime, vengeur, délai) et
-   * le camp de la victime, par joueur ses deux comptes. ABSENT quand le match n'a aucune
-   * ligne de journal — l'UI nomme alors l'état, elle ne disparaît pas.
-   */
-  riposte?: MatchRiposteBlock
-  /**
-   * Bloc « Dénivelé » (D24, 2026-09-22) : un point par frag et par mort du joueur consulté,
-   * distance × dénivelé signé de SON côté. ABSENT quand le match n'a aucune position
-   * mesurée — la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
-   */
-  elevation?: MatchElevationBlock
 }
-
-/**
- * Bloc « Dénivelé » de l'onglet Combat. `kills` = mes engagements (les deux côtés, chacun
- * portant son `side`) ; `lobby` = les frags des autres, côté tueur, fond de comparaison du
- * bouton « comparer au lobby » ; `measured_kills` / `total_kills` = la réserve de couverture.
- */
-export type MatchElevationBlock = components['schemas']['MatchElevationBlock']
-
-/**
- * Un engagement mesuré. `delta_z_m` est signé DU CÔTÉ DU JOUEUR CONSULTÉ : positif = il était
- * au-dessus, pour un frag COMME pour une mort. `time_ms` est l'horloge du MATCH (le rejeu
- * s'ouvre avec `?t=<time_ms>&clock=match`).
- */
-export type MatchElevationKill = components['schemas']['MatchElevationKill']
-
-/**
- * Bloc « Riposte » de l'onglet Combat. Ré-export DIRECT du contrat (tableaux nullables
- * compris : huma sérialise ainsi toute tranche Go). `measured_deaths` est le nombre de
- * morts lues au journal — le DÉNOMINATEUR du pied de carte, jamais un dénominateur de taux
- * (D21 : sur un match, des comptes).
- */
-export type MatchRiposteBlock = components['schemas']['MatchRiposteBlock']
-
-/** Une mort du match et sa riposte (vengeur + délai) quand elle a eu lieu dans la fenêtre. */
-export type MatchRiposteDeath = components['schemas']['MatchRiposteDeath']
-
-/** Les deux comptes d'un joueur : ses morts vengées (SUBI) et ses ripostes (PORTÉ). */
-export type MatchRiposteePlayer = components['schemas']['MatchRiposteePlayer']
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
 export type MatchViewImpactRole = components['schemas']['MatchViewImpactRole']

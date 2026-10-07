@@ -116289,3 +116289,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : garde vue rouge sur douze textes de la page (« Mes matchs », « Mon équipe », « T'a martyrisé », « camp », « vous ») puis verte après réécriture ; dix-sept mutations rouges ; suite web complète verte (862 fichiers), lint sans avertissement neuf, knip 0, imports croisés 7 ≤ 7, crochets de pré-envoi verts (le lint des libellés de champ a imposé une clé de dictionnaire pour « Matchs »). Découvertes notées au plan (§8) sans correction.
 
 **Conclusion / prochaine étape** : M3 clos ; M4 (retrait Go de la riposte et de la hauteur, contrat régénéré).
+
+## [2026-10-07] Vue match aux formes de l'Emprise — M4 : retrait Go de la riposte et de la hauteur, contrat — Complété (commit sur `feat/matchview-emprise`)
+
+**Décision technique principale** : la chaîne Riposte de la Vue match (constructeur, types, champ) et la chaîne de la hauteur d'engagement (domaine, calcul, méthode du port, lecteur DuckDB, chargement, champ) sont supprimées avec leurs tests ; le contrat est régénéré, le snapshot de surface aussi par sa procédure, les alias web retirés.
+
+**Résultats observés** : contrat −138 lignes (openapi), −57 (types générés), cinq schémas disparus comme attendu ; le snapshot rattrape aussi les schémas Trends de la base. Gate Go complet vert (six lots, intégration DuckDB 4 ok, lint 0, garde-rails nommés), suite web verte, knip 0.
+
+**Conclusion / prochaine étape** : M4 clos ; M5 (docs, référence des canaux d'équipement, statuts, demande de revue au superviseur, push).
