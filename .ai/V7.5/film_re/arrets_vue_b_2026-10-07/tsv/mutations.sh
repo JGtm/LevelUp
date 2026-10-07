@@ -5,7 +5,7 @@ export GOCACHE=C:/Users/Guillaume/AppData/Local/go-build-vueb CGO_ENABLED=1 CC=g
 API=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-grammaire-arrets-vue-b/apps/go-api
 G=$API/internal/games/halo_infinite/film/internal/grammar
 M=/c/Users/GUILLA~1/AppData/Local/Temp/claude/c--Users-Guillaume-Downloads-Scripts-LevelUp/bfd187a4-ee4b-4656-9ab4-0654cbc1dfb8/scratchpad/mut
-TESTS='TestLesDispositifsLisentCeQueLEcrivainEcrit|TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit|TestG[0-9]|TestLecteurDeMinuteur|TestCaptureConsumesSameBitsAsDispatch|Ratchet|Site'
+TESTS='TestLesDispositifsLisentCeQueLEcrivainEcrit|TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit|TestLeDecalageDuMarqueurLitSousLaGarde|TestChaqueSiteDePositionLitCeQueLeJeuEcrit|TestG[0-9]|TestLecteurDeMinuteur|TestCaptureConsumesSameBitsAsDispatch|Ratchet|Site'
 muter() {
   local id=$1 f=$2 s=$3 d=$4
   perl -0pe "$s" $G/$f > $M/$id.go
@@ -50,5 +50,10 @@ muter S3 components_moteur_de_partie.go 's/\tcase compMatchflowSequenceData: [^\
 C4)
 muter O1 components_managed_object.go 's/const largeurNavpointDObjetGere = 32/const largeurNavpointDObjetGere = 31/' "ti=10 i2-i17 : R(31)"
 muter O2 composants_vue_b_m4b.go 's/\tcase compManagedObjectNavpoint: [^\n]*\n\t\tconsumeManagedObjectNavpoint\(br\)\n//' "ti=10 i2-i17 debranche"
+;;
+C5)
+muter P1 components_navpoint_suite.go 's/niveauPositionOffset = 0x10/niveauPositionOffset = 0x1e/' "ti=12 i18 : niveau 0x1E"
+muter P2 components_navpoint_suite.go 's/func consumeNavpointPositionOffset\(br \*Lecteur\) \{ lireE494\(br, niveauPositionOffset\) \}/func consumeNavpointPositionOffset(br *Lecteur) { lireE524(br, niveauPositionOffset) }/' "ti=12 i18 : sans la garde de pleine precision"
+muter P3 dispatch_biped.go 's/\tcase compNavpointPositionOffset: [^\n]*\n\t\tconsumeNavpointPositionOffset\(br\)\n//' "ti=12 i18 debranche"
 ;;
 esac; done

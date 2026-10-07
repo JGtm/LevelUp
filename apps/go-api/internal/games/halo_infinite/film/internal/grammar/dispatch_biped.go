@@ -314,6 +314,8 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		consumeNavpointRadialProgress(br)
 	case compNavpointOverrideFlags: // ti=12 i16 (FUN_140ebf834) — R(5)
 		consumeNavpointOverrideFlags(br)
+	case compNavpointPositionOffset: // ti=12 i18 (FUN_140f04f68) — position, FUN_14076e494 au niveau 0x10
+		consumeNavpointPositionOffset(br)
 	default:
 		return consumeMoteurDePartie(br, name, level)
 	}

@@ -49,3 +49,20 @@ func TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit(t *testing.T) {
 		}
 	}
 }
+
+// TestLeDecalageDuMarqueurLitSousLaGarde : `ti=12 i18` (`FUN_140f04f68`) garde sa position par
+// `FUN_14076f91c` ; sous la garde (portee de reference), `FUN_1411b259c` lit `R(96)` brut, que
+// l ecrivain (`FUN_1407eb61c`) pose dans la meme portee.
+func TestLeDecalageDuMarqueurLitSousLaGarde(t *testing.T) {
+	buf, total := ecrireFlux(seul(fixe(96)))
+	br := LecteurSur(buf)
+	p := br.Profil()
+	p.Grammaire.PorteeBaseline = true
+	br.PoserProfil(p)
+	if _, _, ok := consumeByName(br, compNavpointPositionOffset, 12, 1); !ok {
+		t.Fatal("ti=12 i18 : non porte")
+	}
+	if got := br.BitPos(); got != total {
+		t.Fatalf("ti=12 i18 sous la garde : %d bits lus, l ecrivain en pose %d", got, total)
+	}
+}

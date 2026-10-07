@@ -74,6 +74,7 @@ func tableDesSitesDePosition() []siteDePosition {
 		{"consumePostureTag3", "", "lireE494", n10, 1, "posture etiquette 3 : FUN_142f264f4, CALL 142f26586"},
 		{"consumeSpartanAbilityTag3", "", "lireE494", n10, 1, "i57 etiquette 3 : FUN_142f262d4, CALL 142f2638b"},
 		{"consumeLowFrequency", "", "lireE494", n10, 2, "ti=3 i0 : FUN_142ed4aec, CALLs 142ed4b1f et 142ed4e7f (thunk FUN_1424e0e38, R8D = R13D = 0x10)"},
+		{"consumeNavpointPositionOffset", "", "lireE494", n10, 1, "ti=12 i18 : FUN_140f04f68, CALL 140f04f8b (MOV R9D,0x10 en 140f04f80), sous FUN_14076f91c"},
 		// Vue A (lots LN et VA) : les charges de message, `vtable + 0x68` de leur descripteur.
 		{"chargeDetonation", "", "lireE494Sur", 0xf, 1, "projectile_detonate : FUN_1408096f8, CALL 140809783 (MOV R9D,0xf 140809775), sous FUN_14076f91c"},
 		{"chargeImpact", "", "lireE494Sur", 0xc, 1, "projectile_impact_effect : FUN_1410f03b4, CALL 1410f045b (MOV R9D,0xc 1410f044d), sous FUN_14076f91c"},

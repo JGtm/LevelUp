@@ -440,3 +440,9 @@ package grammar
 // seize composants `managed-object-navpoint-component` se lisent (`FUN_14107cea4`, `R(32)` plat,
 // [consumeManagedObjectNavpoint]). Contre `grammar-2026-10-07.3` : un record `ti=10` qui s arretait
 // sur l un d eux se lit jusqu au composant suivant. Carte v2 : aucun sain perdu, aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-07.5` (2026-10-07, lot des arrets de la vue B, `ti=12 i18`) : le
+// composant `managed-navpoint-position-offset` se lit (`FUN_140f04f68` : garde de pleine precision,
+// puis la position de `FUN_14076e524` au niveau `0x10`, [consumeNavpointPositionOffset] par
+// [lireE494]). Contre `grammar-2026-10-07.4` : un record `ti=12` qui s arretait sur `i18` se lit
+// jusqu au composant suivant. Carte v2 : aucun sain perdu, aucun film en baisse.

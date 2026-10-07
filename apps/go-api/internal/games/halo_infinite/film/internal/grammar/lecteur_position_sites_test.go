@@ -232,6 +232,14 @@ func casDesTacmaps() []casDeSite {
 		// ti=30 i1 tacmap-poiiconoffset : FUN_142ed485c (descripteur 143d06b00 + 0x28), thunk au 0x10.
 		{nom: "tacmap-poiiconoffset", indexW: 1, flux: e524(-1, 1, axesDefautNiveau16),
 			lire: parNom("tacmap-poiiconoffset", 30, 0)},
+		// ti=12 i18 managed-navpoint-position-offset : FUN_140f04f68, CALL 140f04f8b, niveau 0x10 ;
+		// garde f91c puis e524. L ecrivain (142edb0b4 -> 141f860b0) appelle FUN_1407eb61c au niveau 0x10.
+		{nom: "navpoint-position-offset idx=-1", indexW: 1, flux: e524(-1, 1, axesDefautNiveau16),
+			lire: parNom(compNavpointPositionOffset, 12, 1)},
+		{nom: "navpoint-position-offset idx=0", indexW: 1, flux: e524(0, 1, axesCarteNiveau16),
+			lire: parNom(compNavpointPositionOffset, 12, 1)},
+		{nom: "navpoint-position-offset idx=3 carte a quatre plages", indexW: 2, flux: e524(3, 2, axesCarteNiveau16),
+			lire: parNom(compNavpointPositionOffset, 12, 1)},
 		// ti=34 i7 tacmap-waypointstate : FUN_140f04d88, CALL 140f04de0 ; R(1), R(32), garde f91c +
 		// e524, puis R(1) quand le niveau du registre depasse 1.
 		// EXCEPTION DATEE (lot R3-bis, 2026-09-30) : le site garde son ancien lecteur.
