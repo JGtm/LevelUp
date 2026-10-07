@@ -18,11 +18,11 @@ import "time"
 // `Contributions` ne porte QUE des matchs auxquels le joueur de la page a REELEMENT
 // participe — verifie par `TacticalRepository.MatchsOuvrables`, meme nature de garde que la
 // Couche B de l'ADR (`MatchViewService.IsParticipant`). Un match du perimetre demande qui
-// echoue cette verification n'apparait dans AUCUNE contribution : il est COMPTE dans
-// `MatchsNonOuvrables`, jamais liste. En usage nominal (perimetre resolu par
-// `/filters/match-ids`, sur la base du joueur) ce compte est TOUJOURS zero ; la garde
-// protege un appelant qui poserait un match_id etranger dans le corps de la requete — meme
-// surface de requete que le raster (`match_ids` en liste blanche).
+// echoue cette verification n'apparait dans AUCUNE contribution : il est COMPTE au journal du
+// service (`matchs_non_ouvrables`), jamais liste ni publie — aucun lecteur web ne l'affiche. En
+// usage nominal (perimetre resolu par `/filters/match-ids`, sur la base du joueur) ce compte est
+// TOUJOURS zero ; la garde protege un appelant qui poserait un match_id etranger dans le corps de
+// la requete — meme surface de requete que le raster (`match_ids` en liste blanche).
 
 // Valeurs de TacticalContribution.Clock — cf. sa doc pour la regle par question.
 const (
@@ -154,10 +154,6 @@ const (
 type TacticalCelluleReponse struct {
 	// Contributions est triee par date de match DECROISSANTE puis par instant croissant.
 	Contributions []TacticalContribution `json:"contributions"`
-
-	// MatchsNonOuvrables : les matchs du perimetre demande auxquels le joueur de la page
-	// n'a PAS participe (ADR 0029) — comptes, jamais listes. Cf. la doc d'en-tete.
-	MatchsNonOuvrables int `json:"matchs_non_ouvrables"`
 
 	// Zone : le nom en jeu de la zone de la cellule ; absent quand aucune zone ne la nomme.
 	Zone *TacticalZoneNom `json:"zone,omitempty"`
