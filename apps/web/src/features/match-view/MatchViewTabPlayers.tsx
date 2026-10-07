@@ -13,7 +13,6 @@ import type {
   MatchHighlightEvent,
   MatchKillerVictimPair,
   MatchNemesisRow,
-  MatchRiposteBlock,
   MatchRosterRow,
   MatchScoreboardRow,
   MatchViewHeader,
@@ -26,7 +25,6 @@ import { MatchAssistChart } from './MatchAssistChart'
 import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchFragDiffChart } from './MatchFragDiffChart'
 import { MatchNemesisCards } from './MatchNemesisCards'
-import { MatchRiposteSection } from './MatchRiposteSection'
 import { MatchScoreboard } from './MatchScoreboard'
 import type { MatchViewText } from './i18n'
 
@@ -39,8 +37,6 @@ interface Props {
   killerVictim: MatchKillerVictimPair[]
   /** Bloc « assistances » — absent quand le match n'a aucune ligne de film. */
   assistPairs: MatchAssistPairs | undefined
-  /** Bloc « Riposte » — absent quand le match n'a aucune ligne de journal. */
-  riposte: MatchRiposteBlock | undefined
   highlightEvents: MatchHighlightEvent[]
   citations: MatchCitationSnippet[]
   encounters: MatchEncounterRow[]
@@ -58,7 +54,6 @@ export function MatchViewTabPlayers({
   nemesis,
   killerVictim,
   assistPairs,
-  riposte,
   highlightEvents,
   citations,
   encounters,
@@ -87,17 +82,6 @@ export function MatchViewTabPlayers({
             t={t}
           />
         </div>
-
-        {/* Riposte — même grammaire que les deux graphes ci-dessus : un bloc, deux
-            graphes par joueur (un par camp), des comptes. Rien quand le match n'a pas de
-            journal des morts (cf. porte 1 de MatchRiposteSection). */}
-        <MatchRiposteSection
-          block={riposte}
-          scoreboard={scoreboard}
-          meXUID={meXUID}
-          locale={locale}
-          t={t}
-        />
 
         {/* Frags différentiel cumulé — descendu ici (après Antagonistes) */}
         <MatchFragDiffChart

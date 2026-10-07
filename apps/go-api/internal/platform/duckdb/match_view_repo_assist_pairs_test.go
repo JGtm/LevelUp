@@ -199,6 +199,26 @@ func TestQ21dAssistPairs_NonPubliableEcarte(t *testing.T) {
 	}
 }
 
+// TestQ21dAssistPairs_MortsPubliables : la portée compte aussi les morts PUBLIABLES, assistance
+// connue ou non — le fait « journal des morts publiable » de la Vue match (frags pendant l'effet
+// d'un bonus). Un match sans ligne : zéro.
+func TestQ21dAssistPairs_MortsPubliables(t *testing.T) {
+	db := newAssistPairsDB(t, []killEventRow{
+		{"m1", true, 1000, "v1", strPtr("K1"), false, nil, nil, nil, nil},
+		{"m2", false, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69)},
+		{"m2", false, 2000, "v2", strPtr("K2"), false, nil, nil, nil, nil},
+	})
+	if _, scope := queryAssistPairs(t, db, "m1"); scope.MatchDeaths != 1 || scope.MeasuredDeaths != 0 || scope.PublishableDeaths != 1 {
+		t.Errorf("m1 portée = %+v, attendu {1 0 1}", scope)
+	}
+	if _, scope := queryAssistPairs(t, db, "m2"); scope.MatchDeaths != 2 || scope.PublishableDeaths != 0 {
+		t.Errorf("m2 portée = %+v, attendu 2 morts dont 0 publiable", scope)
+	}
+	if _, scope := queryAssistPairs(t, db, "absent"); scope.PublishableDeaths != 0 {
+		t.Errorf("match absent : %+v", scope)
+	}
+}
+
 // TestQ21dAssistPairs_PartsNonMesureesEtNonBornees : deux réserves de la doctrine, dans un
 // seul test parce qu'elles portent sur les mêmes deux colonnes.
 //

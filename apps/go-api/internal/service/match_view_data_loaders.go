@@ -13,7 +13,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -57,7 +56,9 @@ type matchViewData struct {
 	// (cf. correctMatchViewEventsT0, qui ne le touche pas).
 	assistPairs []domain.MatchAssistPairRaw
 	assistScope domain.MatchAssistScopeRaw
-	kvPairs     []domain.KVPairRaw
+	// assistScopeFailed : la lecture Q21d a échoué — sa portée à zéro n'est pas une mesure.
+	assistScopeFailed bool
+	kvPairs           []domain.KVPairRaw
 	// kvPairsFeed : COPIE des paires killer→victim corrigée T0, réservée à la
 	// décoration du kill feed (clé exacte tueur+instant contre les events corrigés).
 	// kvPairs reste sur l'horloge brute : tug-of-war et KD timeline en dépendent.
@@ -79,11 +80,7 @@ type matchViewData struct {
 	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
 	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
 	// câblé, ou si aucun kill n'a de position mesurée.
-	killDistances []domain.MatchKillDistancePlayer
-	// elevationKills : LES MÊMES frags, un par ligne (lot Y, décision D24) — la matière
-	// de la carte « Dénivelé ». Même porte que killDistances (même repo, même
-	// capability), et chargée EN PARALLÈLE d'elle : le mur d'attente n'en garde qu'une.
-	elevationKills []domain.MatchElevationKillRaw
+	killDistances  []domain.MatchKillDistancePlayer
 	objectiveScore int
 }
 
@@ -173,6 +170,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	goLoad(gctx, g, matchID, "assist_pairs", func() error {
 		var e error
 		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
+		d.assistScopeFailed = e != nil
 		return e
 	})
 	goLoad(gctx, g, matchID, "kv_pairs", func() error {
@@ -236,11 +234,6 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		goLoad(gctx, g, matchID, "kill_distances", func() error {
 			var e error
 			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
-			return e
-		})
-		goLoad(gctx, g, matchID, "kill_elevation", func() error {
-			var e error
-			d.elevationKills, e = s.killDistanceRepo.LoadMatchElevation(gctx, matchID)
 			return e
 		})
 	}
@@ -411,7 +404,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	combat := buildCombatTabFull(matchID, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
 	// L'arme du kill et l'équipe du tueur se posent APRÈS l'assemblage : ce sont des
 	// décorations du feed, pas des entrées du calcul de dominance (les bins, les vagues
 	// et les cumuls ne dépendent d'aucune des deux). Les séparer garde buildCombatTabFull
@@ -431,11 +424,6 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
 	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
 	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
-	// La riposte se lit sur les MÊMES paires killer→victim que le chart antagoniste, plus
-	// le camp du scoreboard : aucune requête de plus. Sur les paires BRUTES, pas sur
-	// `kvPairsFeed` : un délai entre deux morts est invariant par décalage T0, et la copie
-	// corrigée est réservée à la décoration du feed.
-	combat.Riposte = buildMatchRiposte(d.kvPairs, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).
@@ -522,16 +510,11 @@ func (s *MatchViewService) buildMatchViewFromData(
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
 	}
+	combat.WeaponTools = s.matchWeaponTools(ctx, matchID, d.bulkWeapons, findViewerScoreboardRow(team.Scoreboard))
 	// KillDistanceByWeapon (POC LOT G.3) : déjà agrégé par (xuid, weapon_key) côté
 	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
 	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
 	combat.KillDistanceByWeapon = d.killDistances
-	// Elevation (lot Y, D24) : le MÊME chargement, lu au grain du frag et ramené au point
-	// de vue du joueur de la page. Le total de frags vient de SA ligne de scoreboard — il
-	// est le dénominateur de la réserve de couverture, pas une mesure de plus.
-	combat.Elevation = analysis.BuildMatchElevation(
-		d.elevationKills, s.xuid, viewerKillCount(findViewerScoreboardRow(team.Scoreboard)),
-	)
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
@@ -554,16 +537,17 @@ func (s *MatchViewService) buildMatchViewFromData(
 	partialReasons := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
 
 	return domain.MatchViewResponse{
-		Header:         header,
-		Rank:           rank,
-		SummaryTab:     summary,
-		CombatTab:      combat,
-		TeamTab:        team,
-		MediaTab:       mediaTab,
-		CitationsTab:   buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
-		Radar:          radar,
-		IsPartial:      len(partialReasons) > 0,
-		PartialReasons: partialReasons,
+		Header:                 header,
+		Rank:                   rank,
+		SummaryTab:             summary,
+		CombatTab:              combat,
+		TeamTab:                team,
+		MediaTab:               mediaTab,
+		CitationsTab:           buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
+		Radar:                  radar,
+		IsPartial:              len(partialReasons) > 0,
+		PartialReasons:         partialReasons,
+		MatchViewEmpriseFields: s.matchEmpriseFields(ctx, matchID, meta, d, friendsExtras),
 	}
 }
 

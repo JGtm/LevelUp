@@ -103,3 +103,33 @@ describe('PisteCampsForm', () => {
     expect(screen.getByText('50')).toBeInTheDocument()
   })
 })
+
+describe('PisteCampsForm — lignes de la Vue match (props optionnelles)', () => {
+  it('`indent` : le nom de l’objet en retrait sous sa ressource ; sans `indent`, aucun retrait', () => {
+    mockWidths(300, 300)
+    mount([ROW, { ...ROW, key: 'power_weapon|s7', label: 'S7 Sniper', dot: undefined, indent: true }])
+    const objet = screen.getByTestId('piste-camps-row-power_weapon|s7').firstElementChild as HTMLElement
+    expect(objet.dataset.indent).toBe('true')
+    expect(objet.className).toContain('pl-4')
+    const ressource = screen.getByTestId('piste-camps-row-power_weapon').firstElementChild as HTMLElement
+    expect(ressource.dataset.indent).toBeUndefined()
+    expect(ressource.className).not.toContain('pl-4')
+  })
+
+  it('`labelNode` : rendu à la place du nom (bouton de repli), sous-libellé gardé', () => {
+    mockWidths(300, 300)
+    mount([{ ...ROW, labelNode: <button type="button">Armes de râtelier</button> }])
+    const row = screen.getByTestId('piste-camps-row-power_weapon')
+    expect(row.querySelector('button')?.textContent).toBe('Armes de râtelier')
+    expect(row.textContent).not.toContain('Armes spéciales')
+    expect(row.textContent).toContain('prises sur les socles')
+  })
+
+  it('`pending` : le texte atténué à la place de la barre, aucun segment, `below` conservé', () => {
+    mockWidths(300, 300)
+    mount([{ ...ROW, pending: 'Non mesuré', below: <span data-testid="sous-la-barre" /> }])
+    expect(screen.getByTestId('piste-camps-pending-power_weapon').textContent).toBe('Non mesuré')
+    expect(document.querySelectorAll('[data-fit-key]')).toHaveLength(0)
+    expect(screen.getByTestId('sous-la-barre')).toBeInTheDocument()
+  })
+})

@@ -11,7 +11,6 @@
  *   - l'ORDRE ÉCRIT des groupes (grappin, puis équipement) et l'ordre INTERNE des colonnes,
  *     celui des tables de référence (`PLACEMENT_RENDER` : sensor avant seeker) ;
  *   - AUCUN groupe « états actifs », quel que soit le document ;
- *   - `uniqueUsageGroups`, qui ne garde qu'une occurrence par famille de geste ;
  *   - la PILE d'issues d'une colonne d'équipement (utilisé / gardé / lâché).
  *
  * Les colonnes sont une HIÉRARCHIE D'AFFICHAGE : elles ne touchent ni aux mesures ni aux totaux
@@ -23,7 +22,6 @@ import { describe, expect, it } from 'vitest'
 import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
 
 import {
-  uniqueUsageGroups,
   usageColumnGroups,
   type UsageColumnGroup,
 } from './equipmentUsageColumns'
@@ -146,14 +144,6 @@ describe('usageColumnGroups — tout ce que la donnée justifie, dans l’ordre 
       equipmentPlacements: [pose('sensor', 'deployed', 1)],
     } as unknown as Partial<ReplayDocument>)
     expect(pose_seule.map((g) => g.key)).toEqual(['equipment'])
-  })
-})
-
-describe('uniqueUsageGroups — une famille de geste, une occurrence', () => {
-  it('ne garde que la première occurrence d’une même clé de famille', () => {
-    const groupes = groupesDe(TEMOIN)
-    const double = uniqueUsageGroups([...groupes, ...groupes])
-    expect(double.map((g) => g.key)).toEqual(['grapple', 'equipment'])
   })
 })
 

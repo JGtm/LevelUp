@@ -137,13 +137,13 @@ export function MatchViewPage() {
           title={isEN ? 'Match unavailable' : 'Match indisponible'}
           description={
             isEN
-              ? "You didn't take part in this match, so it can't be shown here."
-              : "Tu n'as pas participé à ce match, il ne peut donc pas être affiché ici."
+              ? 'The player of this page did not take part in this match, so it cannot be shown here.'
+              : "Le joueur de la page n'a pas participé à ce match : il ne peut pas être affiché ici."
           }
           actions={[
             { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
             { label: isEN ? 'Back' : 'Précédent', onClick: goBack },
-            { label: isEN ? 'My matches' : 'Mes matchs', onClick: goMatches },
+            { label: t.navMatches, onClick: goMatches },
           ]}
         />
       )
@@ -154,8 +154,8 @@ export function MatchViewPage() {
           title={isEN ? 'Access denied' : 'Accès non autorisé'}
           description={
             isEN
-              ? 'This player is not associated with your account.'
-              : "Ce joueur n'est pas associé à ton compte."
+              ? 'This player is not associated with the signed-in account.'
+              : "Ce joueur n'est pas associé au compte connecté."
           }
           actions={[{ label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' }]}
         />
@@ -174,7 +174,7 @@ export function MatchViewPage() {
           actions={[
             { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
             { label: isEN ? 'Back' : 'Précédent', onClick: goBack },
-            { label: isEN ? 'My matches' : 'Mes matchs', onClick: goMatches },
+            { label: t.navMatches, onClick: goMatches },
           ]}
         />
       )
@@ -219,7 +219,6 @@ export function MatchViewPage() {
   const scoreboard = team_tab.scoreboard ?? []
   const roster = team_tab.roster ?? []
   const nemesis = team_tab.nemesis ?? []
-  const weaponKills = combat_tab.weapon_kills ?? []
   const highlightEvents = combat_tab.highlight_events ?? []
   const killerVictim = combat_tab.killer_victim ?? []
   // assist_pairs n'est PAS normalisé en objet vide : son absence est un ÉTAT
@@ -419,9 +418,10 @@ export function MatchViewPage() {
             scoreboard={scoreboard}
             roster={roster}
             fragDistribution={combat_tab.frag_distribution}
-            weaponKills={weaponKills}
+            weaponTools={combat_tab.weapon_tools}
             killDistance={combat_tab.kill_distance_by_weapon}
-            elevation={combat_tab.elevation}
+            emprise={data.emprise}
+            livesNearTeammate={data.lives_near_teammate}
             meXUID={meXUID}
             friendGamertags={friendGamertags}
             matchPositions={matchPositions}
@@ -439,7 +439,6 @@ export function MatchViewPage() {
             nemesis={nemesis}
             killerVictim={killerVictim}
             assistPairs={assistPairs}
-            riposte={combat_tab.riposte}
             highlightEvents={highlightEvents}
             citations={summary_tab.citations ?? []}
             encounters={team_tab.encounters ?? []}

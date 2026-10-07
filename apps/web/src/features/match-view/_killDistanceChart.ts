@@ -213,12 +213,13 @@ export function buildKillDistanceOption({
       axisLabel: {
         ...axis.axisLabel,
         // Deux genres de ligne, deux plumes : l'arme en gras sur l'encre du thème, le joueur
-        // en retrait sur l'encre d'axe. Le `rich` est indexé par la classe rendue ci-dessous.
+        // en retrait sur l'encre d'axe. Le `rich` est indexé par la classe rendue ci-dessous ; les
+        // deux plumes reprennent la taille de l'axe plutôt que de compter sur l'héritage ECharts.
         formatter: (value: string, index: number) =>
           ordered[index]?.kind === 'weapon' ? `{arme|${value}}` : `{joueur|${value}}`,
         rich: {
-          arme: { fontWeight: 'bold', color: tc.text, align: 'left' },
-          joueur: { color: tc.axisLabel, padding: [0, 0, 0, 10] },
+          arme: { fontWeight: 'bold', color: tc.text, align: 'left', fontSize: axis.axisLabel.fontSize },
+          joueur: { color: tc.axisLabel, padding: [0, 0, 0, 10], fontSize: axis.axisLabel.fontSize },
         },
       },
     },

@@ -105,6 +105,41 @@ func TestSoloLivesRepo_BorneEtDernierePasse(t *testing.T) {
 	}
 }
 
+// Plusieurs joueurs d'un coup (Vue match, « Isolement » par joueur de l'équipe ; ADR 0036 I4 : une
+// lecture pour toute l'équipe) : chaque joueur reçoit SES vies, morts et frags, le journal et les
+// variantes sont communs ; un joueur non demandé n'apparaît pas ; un joueur demandé sans ligne a une
+// lecture vide. Les fenêtres restent bornées aux matchs demandés.
+func TestSoloLivesRepo_ParJoueurs_BorneEtDernierePasse(t *testing.T) {
+	b := newBaseNotee(t)
+	corpusVies(t, b.pdb)
+	b.carnet.vider()
+
+	got, err := NewSoloLivesRepo(b.pdb).LoadLivesNearTeammateForPlayers(context.Background(), []string{"m1", "m9"}, []string{"P", "O", "Z"})
+	if err != nil {
+		t.Fatalf("LoadLivesNearTeammateForPlayers : %v", err)
+	}
+	exigerFenetresBornees(t, b, "LoadLivesNearTeammateForPlayers", 11, 4)
+	if len(got) != 3 {
+		t.Fatalf("joueurs = %d, attendu 3 (P, O, Z)", len(got))
+	}
+	p, o, z := got["P"], got["O"], got["Z"]
+	if len(p.Vies) != 4 || len(o.Vies) != 4 || len(z.Vies) != 0 {
+		t.Errorf("vies P/O/Z = %d/%d/%d, attendu 4/4/0 (dernière passe, deux matchs)", len(p.Vies), len(o.Vies), len(z.Vies))
+	}
+	if len(p.Morts) != 2 || len(o.Morts) != 2 {
+		t.Errorf("morts P/O = %d/%d, attendu 2/2", len(p.Morts), len(o.Morts))
+	}
+	// Frags : m9 n'est pas publiable ; dans m1, P en a deux, O un.
+	if len(p.Frags) != 2 || len(o.Frags) != 1 {
+		t.Errorf("frags P/O = %d/%d, attendu 2/1", len(p.Frags), len(o.Frags))
+	}
+	for _, x := range []string{"P", "O", "Z"} {
+		if fmt.Sprint(got[x].JournalNonPubliable) != "map[m9:true]" || got[x].Variantes["m1"] != "Variante 1" {
+			t.Errorf("%s : journal %v, variantes %v — communs à tous les joueurs", x, got[x].JournalNonPubliable, got[x].Variantes)
+		}
+	}
+}
+
 // Un match dont la dernière passe du journal n'est pas publiable (m9) : aucun de ses frags n'est
 // rendu, mais ses vies et ses morts le sont, et le match est NOMMÉ comme non publiable — c'est ce
 // qui permet au calcul d'écarter et de compter ses vies au lieu de les ranger avec zéro frag. La

@@ -32,8 +32,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 /**
  * Le lobby témoin : deux camps, une ligne « moi » dans `t0`, un bot (clé `bid(N.0)` et suffixe
  * de données ` [bot]` posé par killsource), et une ligne SANS camp transmis — les trois formes
- * que le rejeu croise réellement. Champs réduits à ce que la fonction regarde, patron des
- * fixtures du dossier (`MatchPadControlSection.test.tsx`).
+ * que le rejeu croise réellement. Champs réduits à ce que la fonction regarde.
  */
 const BOARD = [
   { xuid: 'me-1', gamertag: 'Alpha', team_side: 't0', is_me: true },

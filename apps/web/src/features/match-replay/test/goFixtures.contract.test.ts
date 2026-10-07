@@ -64,7 +64,6 @@ import { hasAbilityChargeLayer } from '../model/abilityChargeLogic'
 import { buildEquipmentUsage } from '../model/equipmentUsageLogic'
 import { equippedWeapons } from '../model/equippedLogic'
 import { readHillHold } from '../model/hillHoldLogic'
-import { buildPadControl } from '../model/padControlLogic'
 import { MIN_RENDERABLE_SCHEMA_VERSION } from '../model/replaySchemaStatusLogic'
 import { roundCount } from '../model/roundsLogic'
 import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt } from '../model/seatLogic'
@@ -212,7 +211,6 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
         const doc = pret()
         expect(typeof hasAbilityChargeLayer(doc)).toBe('boolean')
         expect(buildEquipmentUsage(doc, undefined)).toBeDefined()
-        expect(buildPadControl(doc, undefined)).toBeDefined()
         expect(roundCount(doc.scoreTimeline)).toBeGreaterThanOrEqual(0)
         // Ces deux-là lisent un SLOT et une IMAGE : on prend ceux d'une vie réelle du
         // document, pas des valeurs inventées — un slot absent rendrait `null` sans rien

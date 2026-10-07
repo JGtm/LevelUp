@@ -30,8 +30,8 @@
  *     schéma 30 (2026-08-31) `padPickups[].xuid` PEUT être renseigné (l'événement natif porte
  *     son ramasseur), mais cet écran n'a pas été repensé pour l'exploiter : ne pas descendre
  *     reste le comportement VOULU, et ce n'est plus une impossibilité, c'est un choix. Le
- *     ramasseur NOMMÉ est le sujet d'un tableau à part — `padControlLogic.ts` / la section
- *     « Contrôle des armes spéciales », juste sous celle-ci dans l'onglet Chronologie.
+ *     ramasseur NOMMÉ est le sujet d'une carte à part de la Vue match, « Prises par joueur »,
+ *     lue dans l'Emprise que publie le Go.
  *
  * RÉPULSEUR ET PROPULSEUR N'ONT AUCUNE GRANDEUR ICI, et depuis le 2026-09-03 ce n'est plus la
  * même raison pour les deux. Le RÉPULSEUR est une absence de DONNÉE, pas un oubli : le film ne
