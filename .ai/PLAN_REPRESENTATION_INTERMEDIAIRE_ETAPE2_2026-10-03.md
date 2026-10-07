@@ -1210,6 +1210,13 @@ plan y sont reprises comme items (3.1.2).
    grammaire d'abord » — pas de reprise en queue ; les composants bloquants sont au registre des
    reports, avec le handoff `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md` pour un agent frais
    (lancement au choix de l'utilisateur ; recommandation : après la fusion de 2.7.b).
+28. *(clôture de 2.7.b, 2026-10-07)* **Un test de chronométrage rougit la CI et le gate local sous
+   charge.** `TestRosterDesFilms_AnnuaireContreJointure` (`sync/killcollector/backfill_cout_integration_test.go`)
+   exige que la jointure par match coûte au moins dix fois l'annuaire de passe : 7,7 mesuré sur la
+   CI de `9d37645b3`, 9,1 sur le gate local du lot lint ; vert sur les autres exécutions. Hors de ce
+   plan : un rapport de chronos sur une machine partagée ne se fige pas à un seuil fixe. Le paquet
+   `platform/duckdb` tourne en 250 s seul sur ce poste, pour un plafond de 300 s : sous charge, il
+   sort en dépassement.
 
 ## 7. Journal
 
