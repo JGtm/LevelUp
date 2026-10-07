@@ -446,3 +446,15 @@ package grammar
 // puis la position de `FUN_14076e524` au niveau `0x10`, [consumeNavpointPositionOffset] par
 // [lireE494]). Contre `grammar-2026-10-07.4` : un record `ti=12` qui s arretait sur `i18` se lit
 // jusqu au composant suivant. Carte v2 : aucun sain perdu, aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-07.6` (2026-10-07, correctif D9 du lot des arrets de la vue B) : LES
+// MAINS NUES VALENT « RIEN EN MAIN » DANS LA QUALIFICATION DES CHANGEMENTS D ARME.
+//
+// Ce qui change, contre `grammar-2026-10-07.5` : [qualifierContre] tient l objet « mains nues »
+// (`filmshell.IsUnarmedFamily`) pour un emplacement vide. Une annonce vide contre une dotation de
+// naissance qui tient les mains nues est une re-annonce (elle sortait en lacher des mains nues) ;
+// une arme sur un emplacement qui les tenait est une prise (elle sortait en echange depuis les
+// mains nues) ; une emission des mains nues apres une arme est le lacher de cette arme. La remise
+// (mains nues sur un emplacement vide) reste une prise, que la publication ecarte et compte.
+// Aucun bit lu ne change ; `killsource` et `objectives` ne lisent pas ce canal : revisions
+// constantes, empreintes regenerees. Rang de travail de la branche, a renumeroter a la fusion.

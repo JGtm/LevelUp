@@ -111,8 +111,9 @@ func buildWeaponChanges(
 			cov.BeforeOrigin++
 			continue
 		}
-		// LA REMISE DES MAINS NUES N EST PAS UNE PRISE (lot M6.3, cf. `UnarmedGrants`) : seule la
-		// PRISE est ecartee ; un echange vers les mains nues reste publie.
+		// LA REMISE DES MAINS NUES N EST PAS UNE PRISE (lot M6.3, cf. `UnarmedGrants`). C est la
+		// seule nature sous laquelle la qualification rend les mains nues : elle ne les donne
+		// jamais pour objet d un lacher ou d un echange (`grammar` `qualifierContre`).
 		if c.Kind == types.HeldWeaponTaken && filmshell.IsUnarmedFamily(c.Family) {
 			cov.UnarmedGrants++
 			continue
@@ -170,7 +171,8 @@ type WeaponChangeCoverage struct {
 	// adverse, constat R2) : une PRISE (`taken`) de l objet « mains nues » (`filmshell.IsUnarmedFamily`)
 	// est la remise que le jeu fait au premier instant d une vie, pas un ramassage — écartée des
 	// publiés et comptée ici. Partition : `decoded` = `published` + `restated` + `beforeOrigin` +
-	// `unarmedGrants`. Un ÉCHANGE vers les mains nues reste publié (et nommé).
+	// `unarmedGrants`. Aucun lâcher ni échange ne porte les mains nues : la qualification les tient
+	// pour un emplacement vide (découverte D9, 2026-10-07).
 	UnarmedGrants int `json:"unarmedGrants"`
 	// Taken / Dropped / Swapped ventilent les publiés.
 	Taken   int `json:"taken"`

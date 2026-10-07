@@ -2927,3 +2927,34 @@ package replay
 //	                identiques. 3 etats d image-cle discordants sur 2 films, tous contre une
 //	                emission delta non chainee hors des camps. KOTH et CTF : document identique hors
 //	                revisions.
+
+// v83 (2026-10-07, correctif D9 du lot des arrets de la vue B) : LES MAINS NUES VALENT « RIEN EN
+// MAIN » DANS LES CHANGEMENTS D ARME. La FORME du document ne change pas (aucun champ) ; son
+// CONTENU change. Rang de travail de la branche `feat/grammaire-arrets-vue-b`, a renumeroter a la
+// fusion.
+//
+//	`weaponChanges` le jeu remet l objet « mains nues » (`filmshell.IsUnarmedFamily`) a chaque
+//	               naissance, et la dotation de naissance le porte a l emplacement 2. La
+//	               qualification (`grammar` `qualifierContre`) le jugeait comme une arme : l annonce
+//	               « emplacement vide » d un corps neuf sortait en LACHER des mains nues, la prise
+//	               suivante en ECHANGE depuis les mains nues. Il vaut desormais un emplacement vide :
+//	               l annonce vide n est plus publiee (re-annonce), la prise est une PRISE sans
+//	               `from`, une emission des mains nues apres une arme est le lacher de cette arme
+//	               (`w` vide). La remise (mains nues sur un emplacement vide) reste ecartee et
+//	               comptee (`coverage.weaponChanges.unarmedGrants`). Aucun changement publie ne porte
+//	               plus `00007ca9`, ni en `w` ni en `from`.
+//
+//	CE QUI MONTE    `SchemaVersion` 82 -> 83 ; `grammar.Rev` `grammar-2026-10-07.5` ->
+//	AVEC ELLE       `grammar-2026-10-07.6`. `killsource.Rev` et `objectives.Rev` gardent leur
+//	                valeur (ni l un ni l autre ne lit ce canal : goldens regeneres a revision
+//	                constante) ; `source`, `profile`, `SchemaDesFaits` ne bougent pas.
+//
+//	LE PARC         un artefact 82 porte `grammar-2026-10-07.5` : verdict `redecoder`.
+//
+//	MESURE          parc local de 126 artefacts (schema 86 de `feat/v75`) : 14 changements publies
+//	                portent les mains nues, dans 6 films (13 echanges depuis, 1 lacher). Gate de
+//	                corpus, 19 temoins, base `12b8fb3df` : 18 dans 5 temoins (13 lachers, 5 echanges
+//	                depuis) -> 0 ; les 13 lachers ne sont plus publies, les 5 echanges sont des
+//	                prises ; tout autre changement d arme, et le reste du document, identiques hors
+//	                revisions ; banc de verite 19/19 « ok » (detail :
+//	                `.ai/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`, « Correctif D9 »).

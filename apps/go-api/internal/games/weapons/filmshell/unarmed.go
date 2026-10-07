@@ -17,8 +17,13 @@ package filmshell
 // point publie de la vie de leur slot, aucun au milieu d une vie —, et 1 prise (`taken`) du canal
 // `weaponChanges`, au premier point d une vie elle aussi. Aucune n est une prise dans le monde. Un
 // joueur ne le TIENT en main que s il a jete toutes ses armes — cas « quasi impossible » selon
-// l utilisateur, jamais observe au parc : il apparaitrait comme un ECHANGE (`swapped`) vers
-// l objet, publie et nomme.
+// l utilisateur, jamais observe au parc.
+//
+// IL VAUT « RIEN EN MAIN » DANS LES CHANGEMENTS D ARME (decision de l utilisateur du 2026-10-07,
+// decouverte D9 : « lache ses mains nues ne veut absolument rien dire ») : la qualification
+// (`film/internal/grammar/held_weapon_changes.go`, `qualifierContre`) ne le donne jamais pour
+// objet d un lacher, d un echange ou d une prise ; une emission des mains nues apres une arme est
+// le lacher de cette arme.
 //
 // DECISIONS DE L UTILISATEUR (2026-09-24) : exclu de la dotation affichee par une regle NOMMEE ;
 // sa remise classee comme telle, hors des ramassages, avec un compteur dedie ; nomme « Mains
@@ -26,7 +31,8 @@ package filmshell
 // `config/titles/halo_infinite/mappings/weapon_names.toml`, cle `hinf_unarmed`).
 //
 // OU LA REGLE S APPLIQUE (trois chemins de publication) : `pickups` et `weaponChanges` (la remise
-// sort des publies, comptee dans leur `unarmedGrants`), et les dotations, par le passage unique
+// sort des publies, comptee dans leur `unarmedGrants` ; la qualification des changements, en amont,
+// les tient pour un emplacement vide), et les dotations, par le passage unique
 // `dotationWeaponName` (`film/replay/loadouts.go`). UNE SEULE ECRITURE du litteral : ce fichier
 // (garde-rail `internal/archlint/unarmed_family_literal_test.go`) ; UN SEUL passage des dotations
 // vers le catalogue d armes (garde-rail `internal/archlint/unarmed_dotation_gate_test.go`) — les

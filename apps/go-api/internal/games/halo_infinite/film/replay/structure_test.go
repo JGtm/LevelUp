@@ -1389,8 +1389,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Bastion que la variante donne a un camp au coup d envoi est publiee tenue des la premiere
 	//   image-cle qui le dit, et non plus a sa premiere reprise. `grammar.Rev` monte avec elle : un
 	//   v81 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 82 {
-		t.Fatalf("SchemaVersion = %d, attendu 82 : incrémenter exige une raison écrite ci-dessus "+
+	// - 83 (2026-10-07, correctif D9 des changements d arme) : Aucun champ neuf ; le CONTENU change :
+	//   les mains nues valent « rien en main », aucun changement d arme publie ne les porte (ni
+	//   lacher, ni echange, ni prise). `grammar.Rev` monte avec elle : un v82 se lit « a
+	//   redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 83 {
+		t.Fatalf("SchemaVersion = %d, attendu 83 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
