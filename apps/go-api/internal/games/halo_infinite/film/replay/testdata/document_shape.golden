@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 85
-empreinte-stockee 5bc48e0212620375
-empreinte-servie 5bc48e0212620375
-empreinte-cuite d07f9044b34eff14
+schema 87
+empreinte-stockee bbc6aa1a4c3c96d1
+empreinte-servie bbc6aa1a4c3c96d1
+empreinte-cuite f6ca0b4e787882ec
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -1230,6 +1230,8 @@ ZoneState
 ZonesCoverage
   AmbiguousZone json:"ambiguousZone" int
   Attributed json:"attributed" int
+  CapturerElectionDisagreed json:"capturerElectionDisagreed" int
+  CapturerNamed json:"capturerNamed" int
   Captures json:"captures" int
   Catalog json:"catalog" int
   GaugePoints json:"gaugePoints" int

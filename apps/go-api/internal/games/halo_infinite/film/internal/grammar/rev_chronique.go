@@ -477,5 +477,5 @@ package grammar
 // vehicule) bougent avec la vue B des trames a kill ; la queue du 85, essayee sur les quatre films de
 // reference, ne rend la fin localisee dans aucune trame.
 // Le rang : ecrit `grammar-2026-10-06.7` sur sa branche, renumerote a la fusion de `feat/v75`
-// (`fad38a03c`) apres `grammar-2026-10-07` ; `replay.SchemaVersion` 85 et `SchemaDesFaits` 10 montent
+// (`fad38a03c`) apres `grammar-2026-10-07` ; `replay.SchemaVersion` 87 et `SchemaDesFaits` 10 montent
 // avec lui (contenu cuit et section des kills des faits changes).

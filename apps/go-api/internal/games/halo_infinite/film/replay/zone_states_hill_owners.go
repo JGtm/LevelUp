@@ -22,8 +22,9 @@ import (
 //
 // # LE PROPRIETAIRE DE LA COLLINE, ET LE NIVEAU DE PREUVE QUI L'A AUTORISE (2026-08-26)
 //
-// Le canal est le tag 4 du slot VOISIN du designateur (`d.slot+1`) — celui-la meme que la
-// condition d'election du designateur exige deja (`hillDesignatorMinOwnerSamples`). Trois
+// Le canal est le tag 4 du PROPRIETAIRE du bloc dont le designateur est la cle, designe par le nom
+// (`hillOwnerSlotOf`) — le slot voisin du designateur, que la condition d election du designateur
+// exige deja (`hillDesignatorMinOwnerSamples`), en repli. Trois
 // campagnes de mesure l'ont confronte a trois oracles differents, et il faut lire leur verdict
 // ensemble parce qu'il n'est PAS unanime :
 //

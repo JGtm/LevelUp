@@ -2959,8 +2959,38 @@ package replay
 //	                memes (24 zones sur 24, `ownerVoteDisagreed` 0, `zoneStates` identiques) ; sur
 //	                le Bastion court, les deux zones sans canal elu sont publiees, controle du
 //	                proprietaire 5/5. KOTH : calque identique. Aucun autre calque ne bouge.
+
+// v86 (2026-10-07, pousseur et colline par le nom) : LE POUSSEUR D UNE ZONE ET LE PROPRIETAIRE D UNE
+// COLLINE SONT DESIGNES PAR LE NOM. Deux champs de couverture s ajoutent ; le contenu change.
 //
-// v85 (2026-10-07, representation intermediaire 2.7.c : killsource sur la marche des trames, kill-events
+//	`zoneStates[]   le canal POUSSEUR d une zone est celui du bloc de sa jauge, designe par le nom
+//	.gaugeRamps[]   (`zoneCapturerOf`) ; l election par le signal devient le repli
+//	.capturing      `repli_zone_pousseur_par_election` et le controle du nom. Un neutre emis a la
+//	Team`           frame du sommet d une rampe est la fin de la poussee, pas son camp
+//	                (`zoneValueDuringRamp`). Moins de rampes deduites de leur issue, des rampes
+//	                avortees qui recoivent le camp qui les poussait.
+//	colline         le proprietaire est celui du bloc dont le designateur est la cle, designe par
+//	                le nom (`hillOwnerSlotOf`) ; le slot voisin du designateur devient le repli
+//	                `repli_colline_proprietaire_voisin_du_designateur` et le controle du nom
+//	                (`ownerNamed`, `ownerVoteDisagreed` comptent aussi la colline).
+//	`coverage.zones `capturerNamed` (zones dont le pousseur est nomme) et
+//	.capturer...`   `capturerElectionDisagreed` (nommees, l election elisant un autre canal).
+//
+//	CE QUI MONTE    `SchemaVersion` 84 -> 86 (85 reserve par un lot parallele). AUCUNE revision de
+//	AVEC ELLE       decodage : les noms sont deja dans les faits (`SchemaDesFaits` 9) — publication
+//	                seule.
+//
+//	LE PARC         un artefact 84 se REPUBLIE depuis ses faits (verdict `republier`, aucun
+//	                decodage). Seuls changent les Bases dont une rampe etait deduite ou muette ;
+//	                les KOTH ne changent que de couverture.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bases et 8 KOTH locaux : le
+//	                pousseur est nomme sur les 27 zones, jamais contredit par l election la ou elle
+//	                aboutit (`capturerElectionDisagreed` 0) ; les deductions passent de 2 a 0 (114b0040,
+//	                5 rampes avortees recoivent leur camp) et de 7 a 0 (e60aaf06, 1 rampe), aucune
+//	                autre rampe ne bouge. Colline : nom = voisin sur les 8 KOTH, calque identique.
+//
+// v87 (2026-10-07, representation intermediaire 2.7.c : killsource sur la marche des trames, kill-events
 // par la vue A) : LA VUE A SE LIT AU-DELA DES MESSAGES DE KILL, ET SA FIN FIXE LE DEBUT DE LA VUE B DES
 // TRAMES A KILL. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
 //
@@ -2976,13 +3006,13 @@ package replay
 //	                grandeur), trames fermees, revisions.
 //	faits           `SchemaDesFaits` 9 -> 10 : la section des kills change de contenu.
 //
-//	CE QUI MONTE    `SchemaVersion` 84 -> 85 ; `grammar.Rev` `grammar-2026-10-07` ->
+//	CE QUI MONTE    `SchemaVersion` 86 -> 87 ; `grammar.Rev` `grammar-2026-10-07` ->
 //	AVEC ELLE       `grammar-2026-10-07.2` ; `killsource.Rev` `killsource-2026-09-27` ->
 //	                `killsource-2026-10-07` (backlog killsource sur signal de l utilisateur, D6) ;
-//	                `objectives.Rev` constante. Le schema 83 et `SchemaDesFaits` 8, reserves a ce
-//	                lot, restent sans emploi.
+//	                `objectives.Rev` constante. Les schemas 83 et 85 et `SchemaDesFaits` 8, reserves a
+//	                ce lot, restent sans emploi : levelup-d0 a fusionne 84 puis 86 avant lui.
 //
-//	LE PARC         un artefact 84 porte `grammar-2026-10-07` : verdict `redecoder`, tout le parc.
+//	LE PARC         un artefact 86 porte `grammar-2026-10-07` : verdict `redecoder`, tout le parc.
 //
 //	MESURE          `replay-equiv` sur les 20 films d equivalence, avant la fusion de `feat/v75`
 //	                (binaires de `e9a64d87b` contre ceux du lot) : les etapes de la marche bougent

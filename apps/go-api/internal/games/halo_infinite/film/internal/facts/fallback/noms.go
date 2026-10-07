@@ -87,6 +87,10 @@ const (
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"
 	// NomZoneProprietaireParVote : `replay/zone_states_owner_nom.go`, `zoneOwnerSlotsOf`.
 	NomZoneProprietaireParVote Nom = "repli_zone_proprietaire_par_vote"
+	// NomZonePousseurParElection : `replay/zone_states_capturer.go`, `tallyZoneCapturer`.
+	NomZonePousseurParElection Nom = "repli_zone_pousseur_par_election"
+	// NomCollineProprietaireVoisinDuDesignateur : `replay/zone_states_hill.go`, `hillOwnerSlotOf`.
+	NomCollineProprietaireVoisinDuDesignateur Nom = "repli_colline_proprietaire_voisin_du_designateur"
 	// NomPositionHorsEmpriseEcartee : `replay/positions_porte.go` (points de trace) et
 	// `replay/positions_porte_vehicules.go` (echantillons et naissances de vehicule).
 	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"

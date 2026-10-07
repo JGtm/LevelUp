@@ -370,13 +370,23 @@ type ZonesCoverage struct {
 	// « le canal de cette zone n'a pas passe le seuil » se liraient tous les deux comme une
 	// zone absente de `zoneStates`.
 	OwnerUnpaired int `json:"ownerUnpaired"`
-	// OwnerNamed compte les zones dont le canal de propriete est designe PAR LE NOM de la jauge
-	// (zone_states_owner_nom.go) ; les autres zones rattachees le sont par le vote, repli compte
-	// dans `coverage.fallbacks` (`repli_zone_proprietaire_par_vote`).
+	// OwnerNamed compte les zones dont le canal de propriete est designe PAR LE NOM : celui de la
+	// jauge, ou en colline celui du designateur (zone_states_owner_nom.go). Les autres zones
+	// rattachees le sont par la regle de repli — le vote, ou en colline le slot voisin du
+	// designateur —, comptee dans `coverage.fallbacks` (`repli_zone_proprietaire_par_vote`,
+	// `repli_colline_proprietaire_voisin_du_designateur`).
 	OwnerNamed int `json:"ownerNamed"`
-	// OwnerVoteDisagreed compte les zones nommees dont le vote elit un AUTRE canal. Le nom est
-	// retenu ; le vote est le controle du nom la ou il aboutit.
+	// OwnerVoteDisagreed compte les zones nommees dont la regle de repli (le vote ; en colline, le
+	// voisin du designateur) designe un AUTRE canal. Le nom est retenu ; la regle de repli est le
+	// controle du nom la ou elle aboutit.
 	OwnerVoteDisagreed int `json:"ownerVoteDisagreed"`
+	// CapturerNamed compte les zones dont le canal POUSSEUR est designe par le nom de la jauge ;
+	// les autres le sont par l election par le signal, repli compte
+	// (`repli_zone_pousseur_par_election`). Zero en colline.
+	CapturerNamed int `json:"capturerNamed"`
+	// CapturerElectionDisagreed compte les zones dont le pousseur est nomme et dont l election
+	// elit un AUTRE canal. Le nom est retenu.
+	CapturerElectionDisagreed int `json:"capturerElectionDisagreed"`
 	// Spans est le nombre d'intervalles publies, toutes zones confondues.
 	Spans int `json:"spans"`
 	// HillPeriods est le nombre de periodes de COLLINE : publiees (methode par positions), ou

@@ -1294,7 +1294,16 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
               lit désormais, d'indice hors du roster, non publiées). Fusion accordée par
               l'utilisateur le 2026-10-07 (« Ok tu pourras fusionner »), donnée après le point d'étape
               qui annonçait le défaut rare des fins de liste fausses ;
-            - `KILLSOURCE_FIXTURES` après la fusion : vert ; suite du film et `archlint` : verts.
+            - `KILLSOURCE_FIXTURES` après la fusion : vert ; suite du film et `archlint` : verts ;
+            - `make gate-push` sur `27d38aa0d` (après la refusion de `feat/v75` `0a9a327d7`, Tactique
+              v2, sans conflit) : vert en 1 703 s (lint Go 0 problème, typecheck et lint du web sans
+              erreur, baseline : tous les tests présents, aucun échec) ; vitest du web vert (fixtures
+              de contrat) ;
+            - troisième refusion, `feat/v75` `cdd642061` : levelup-d0 y a fusionné `SchemaVersion` 86
+              (pousseur et colline par le nom, publication seule) avant ce lot ; le lot passe donc à
+              `SchemaVersion` 87 (entrée v87 de la chronique, justification et plafonds ; 83 et 85,
+              réservés au lot, restent sans emploi), goldens d'assemblage et de forme et fixtures de
+              contrat régénérés à 87 ; suite du film et `archlint` verts.
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
