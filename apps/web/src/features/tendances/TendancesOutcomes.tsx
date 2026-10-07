@@ -40,6 +40,8 @@ interface DumbbellCardProps {
   xAxisLabel: ((value: number) => string) | null
   emptyTitle: string
   emptyMessage: string
+  /** Remplit la cellule de grille que la voisine étire (rangée « Médailles » / « Types de partie »). */
+  fluid?: boolean
 }
 
 function DumbbellCard(props: DumbbellCardProps) {
@@ -62,7 +64,7 @@ function DumbbellCard(props: DumbbellCardProps) {
     [nameA, nameB, colorA, colorB, reference, xAxisLabel],
   )
   return (
-    <div data-testid={testId}>
+    <div className={props.fluid ? 'h-full' : undefined} data-testid={testId}>
       <ChartCard
         title={titleWithInfo(props.info)(props.title)}
         series={series}
@@ -70,6 +72,7 @@ function DumbbellCard(props: DumbbellCardProps) {
         height={dumbbellHeight(rows.length)}
         emptyTitle={props.emptyTitle}
         emptyMessage={props.emptyMessage}
+        fluid={props.fluid}
       />
     </div>
   )
@@ -134,6 +137,7 @@ export function TendancesMedals({ locale, data, horizon }: TendancesOutcomesProp
       xAxisLabel={xAxisLabel}
       emptyTitle={t.medalsEmptyTitle}
       emptyMessage={t.medalsEmptyDescription}
+      fluid
     />
   )
 }

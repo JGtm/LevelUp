@@ -44,7 +44,7 @@ import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { formatDataIssues } from './squadDataIssues'
 import { readStoredExactComposition, writeStoredExactComposition } from './exactComposition'
-import { empriseHasContent } from './emprise/empriseContent'
+import { empriseTabHasContent } from './emprise/empriseContent'
 
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
@@ -234,10 +234,10 @@ export function SquadLayout() {
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
   const isDynamique = !!matchRoute({ to: dynamiqueRoute, fuzzy: true })
   const isEmprise = !!matchRoute({ to: empriseRoute, fuzzy: true })
-  // D10 (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : sans rien à montrer (Halo 5 sans
+  // D10 (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : sans rien à montrer (Halo 5 sans objectif ni
   // frags aux armes spéciales, périmètre vide), l'onglet Emprise se masque — même prédicat que
   // la page. Visible tant que la réponse n'est pas arrivée, et tant qu'on est dessus.
-  const empriseVisible = useMemo(() => !data || empriseHasContent(data.squad_emprise), [data])
+  const empriseVisible = useMemo(() => !data || empriseTabHasContent(data), [data])
   const showEmprise = isEmprise || empriseVisible
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────

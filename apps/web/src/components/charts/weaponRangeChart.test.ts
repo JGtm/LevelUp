@@ -130,20 +130,6 @@ describe('weaponRangeLines — la projection du contrat', () => {
     expect(weaponRangeLines(null, 'fr')).toEqual([])
     expect(weaponRangeLines(undefined, 'fr')).toEqual([])
   })
-
-  it('écarte les pseudo-armes dont la DISTANCE n’a pas de sens (chute et environnement)', () => {
-    // Sans ce filtre la ligne « Chute et environnement » occupait une bande de l'axe avec
-    // une « portée » qui mesure la géométrie du décor, pas un engagement.
-    const rows: WeaponRangeRow[] = [
-      { weapon_key: 'hinf_environment', label: 'Chute et environnement', kills: side({}) },
-      ...ROWS,
-    ]
-    expect(weaponRangeLines(rows, 'fr').map((l) => l.weaponKey)).toEqual([
-      'hinf_melee',
-      'hinf_commando',
-      'hinf_s7',
-    ])
-  })
 })
 
 describe('weaponRangeCategoryLabel — le nom de l’arme, nu', () => {

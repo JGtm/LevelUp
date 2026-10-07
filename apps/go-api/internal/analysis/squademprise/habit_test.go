@@ -31,7 +31,8 @@ func TestHabit_SoireesComparablesEtCompteDeSession(t *testing.T) {
 	// Soirée « a » : un match Assassin (comparable) et un Bases (écarté).
 	soireeFilmee(&in, "a", t0.Add(-72*time.Hour), "Assassin", 3, 1)
 	soireeFilmee(&in, "a", t0.Add(-71*time.Hour), "Bases", 9, 0)
-	// Soirée « b » : Bases seulement — aucune famille de ce soir, pas de point.
+	// Soirée « b » : Bases seulement — aucune famille de ce soir : hors comparaison, lue sur ses
+	// matchs filmés.
 	soireeFilmee(&in, "b", t0.Add(-48*time.Hour), "Bases", 5, 5)
 	// Soirée « c » : Assassin mais sans film.
 	in.Timeline = append(in.Timeline, Match{MatchID: "c1", StartTime: t0.Add(-24 * time.Hour), SessionLabel: "c", Family: "Assassin"})
@@ -45,19 +46,29 @@ func TestHabit_SoireesComparablesEtCompteDeSession(t *testing.T) {
 	if len(h.Families) != 1 || h.Families[0] != "Assassin" {
 		t.Errorf("familles = %v", h.Families)
 	}
-	if h.Current.SessionLabel != "s" || h.Current.MatchCount != 7 || h.Current.MeasuredMatches != 1 {
+	if h.Current.SessionLabel != "s" || h.Current.MatchCount != 7 || h.Current.MeasuredMatches != 1 || !h.Current.Comparable {
 		t.Errorf("ce soir = %+v", h.Current)
 	}
-	if len(h.Previous) != 1 || h.Previous[0].SessionLabel != "a" || h.Previous[0].MatchCount != 4 {
-		t.Fatalf("soirées précédentes = %+v, attendu la seule « a »", h.Previous)
+	if len(h.Previous) != 2 || h.Previous[0].SessionLabel != "a" || h.Previous[0].MatchCount != 4 ||
+		h.Previous[1].SessionLabel != "b" {
+		t.Fatalf("soirées précédentes = %+v, attendu « a » puis « b » (« c » sans film)", h.Previous)
 	}
-	share := h.Previous[0].Shares
-	if len(share) != 1 || share[0].Taken != (domain.SquadEmpriseCount{Us: 3, Them: 1}) || math.Abs(share[0].Share-0.75) > 1e-9 {
-		t.Errorf("part de « a » = %+v, attendu 3 / 1 (le match Bases écarté)", share)
+	a, b := h.Previous[0], h.Previous[1]
+	if !a.Comparable || len(a.Families) != 1 || a.Families[0] != "Assassin" {
+		t.Errorf("« a » = %+v, attendu comparable, lue sur Assassin", a)
+	}
+	if len(a.Shares) != 1 || a.Shares[0].Taken != (domain.SquadEmpriseCount{Us: 3, Them: 1}) || math.Abs(a.Shares[0].Share-0.75) > 1e-9 {
+		t.Errorf("part de « a » = %+v, attendu 3 / 1 (le match Bases écarté)", a.Shares)
+	}
+	if b.Comparable || len(b.Families) != 1 || b.Families[0] != "Bases" || b.MeasuredMatches != 1 {
+		t.Errorf("« b » = %+v, attendu hors comparaison, lue sur Bases", b)
+	}
+	if len(b.Shares) != 1 || b.Shares[0].Taken != (domain.SquadEmpriseCount{Us: 5, Them: 5}) {
+		t.Errorf("part de « b » = %+v, attendu 5 / 5", b.Shares)
 	}
 	ids := HabitCandidates(chronologique(in.Current), in.Timeline)
-	if len(ids) != 2 {
-		t.Errorf("candidats = %v, attendu le match Assassin de « a » et c1", ids)
+	if len(ids) != 4 {
+		t.Errorf("candidats = %v, attendu les deux matchs de « a », celui de « b » et c1", ids)
 	}
 }
 
@@ -101,5 +112,24 @@ func TestHabit_FiltrePartiel_LaSoireeAfficheeNEstJamaisPrecedente(t *testing.T) 
 	}
 	if len(h.Previous) != 1 || h.Previous[0].SessionLabel != "a" {
 		t.Errorf("soirées précédentes = %+v, attendu la seule « a »", h.Previous)
+	}
+}
+
+// TestHabit_SoireeComparableSansFilmLueHorsComparaison — une soirée dont les matchs de la famille
+// de ce soir ne sont pas filmés, mais dont un autre match l'est : lue sur ses matchs filmés, hors
+// comparaison, ses familles sont celles des seuls matchs lus.
+func TestHabit_SoireeComparableSansFilmLueHorsComparaison(t *testing.T) {
+	in := entreeUnMatch()
+	in.Current[0].StartTime = t0
+	in.Timeline = append(in.Timeline, in.Current...)
+	in.Timeline = append(in.Timeline, Match{MatchID: "e1", StartTime: t0.Add(-49 * time.Hour), SessionLabel: "e", Family: "Assassin"})
+	soireeFilmee(&in, "e", t0.Add(-48*time.Hour), "Bases", 2, 2)
+	h := Build(in).Habit
+	if h == nil || len(h.Previous) != 1 {
+		t.Fatalf("habitude = %+v, attendu la seule soirée « e »", h)
+	}
+	e := h.Previous[0]
+	if e.Comparable || len(e.Families) != 1 || e.Families[0] != "Bases" || e.MeasuredMatches != 1 {
+		t.Errorf("« e » = %+v, attendu hors comparaison, lue sur Bases seulement", e)
 	}
 }

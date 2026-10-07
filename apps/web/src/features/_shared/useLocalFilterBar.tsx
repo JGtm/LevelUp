@@ -105,6 +105,10 @@ interface UseLocalFilterBarOptions {
    *  « Réinitialiser », en plus de la remise à zéro des champs du hook : sinon ↺
    *  laisse la moitié du scope en place, et la lecture reste filtrée. */
   onResetExtras?: () => void
+  /** La barre pose sa PROPRE gouttière latérale (`px-6`, défaut) : la bonne quand la page hôte
+   *  n'a pas de marge. `false` quand l'hôte en pose déjà une (Ascension, `p-6`) : la barre
+   *  s'aligne alors sur la largeur du corps au lieu d'être rentrée d'une seconde gouttière. */
+  gouttiere?: boolean
 }
 
 /** Ce que le hook met à disposition des contrôles supplémentaires. */
@@ -179,6 +183,7 @@ export function useLocalFilterBar({
   extras,
   extrasActifs,
   onResetExtras,
+  gouttiere = true,
 }: UseLocalFilterBarOptions): UseLocalFilterBarResult {
   // Défaut i18n du bouton « Analyser » quand l'appelant ne fournit pas de libellé
   // (le littéral FR figé cassait le bilinguisme — I2, 2026-07-05).
@@ -331,7 +336,7 @@ export function useLocalFilterBar({
   }
 
   const bar = (
-    <div className="sticky top-0 z-20 px-6" style={{ background: 'var(--background)' }}>
+    <div className={gouttiere ? 'sticky top-0 z-20 px-6' : 'sticky top-0 z-20'} style={{ background: 'var(--background)' }}>
       <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
         <ExperienceDropdown
           value={pendingExperience}

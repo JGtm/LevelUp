@@ -41,6 +41,8 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/stats/timeseries', title: { fr: 'Séries temporelles', en: 'Time series' } },
   { pattern: '/stats/sessions', title: { fr: 'Sessions', en: 'Sessions' } },
   { pattern: '/stats/synthesis', title: { fr: 'Synthèse', en: 'Summary' } },
+  // EN aligné sur `common.nav.tab_tendances` (garde-rail `pageTitle.labels.guard.test.ts`).
+  { pattern: '/stats/tendances', title: { fr: 'Tendances', en: 'Trends' } },
   { pattern: '/stats', title: { fr: 'Solo', en: 'Solo' } },
   // Escouade
   { pattern: '/squad/synergies', title: { fr: 'Synergies', en: 'Synergies' } },
@@ -72,20 +74,10 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
     pattern: '/ascension/realisations',
     title: { fr: 'Ascension — Réalisations', en: 'Ascension — Achievements' },
   },
-  // 5e onglet « Tactique » (2026-09-06, plan Tactique phase 4) — masqué pour un titre
-  // sans rejeu mais la route reste réelle : titre non-fallback exigé. EN aligné sur
-  // `common.nav.tab_tactique` (« Tactical », le libellé de l'onglet réel) le 2026-09-23 :
-  // la table disait « Tactics », un mot que l'onglet n'a jamais porté. Les quatre titres
-  // préfixés d'Ascension sont sous garde-rail (`pageTitle.labels.guard.test.ts`).
-  {
-    pattern: '/ascension/tactique',
-    title: { fr: 'Ascension — Tactique', en: 'Ascension — Tactical' },
-  },
-  // 6e onglet « Tendances » (2026-10-05) : EN aligné sur `common.nav.tab_tendances`.
-  {
-    pattern: '/ascension/tendances',
-    title: { fr: 'Ascension — Tendances', en: 'Ascension — Trends' },
-  },
+  // Onglet « Tactique » : le titre est le libellé de l'onglet SANS le préfixe de rubrique.
+  // Masqué pour un titre sans rejeu mais la route reste réelle : titre non-fallback exigé.
+  // EN aligné sur `common.nav.tab_tactique` (garde-rail `pageTitle.labels.guard.test.ts`).
+  { pattern: '/ascension/tactique', title: { fr: 'Tactique', en: 'Tactical' } },
   { pattern: '/ascension', title: { fr: 'Ascension', en: 'Ascension' } },
   // Route historique /objectifs redirect → /ascension/objectifs (préservée pour bookmarks).
   { pattern: '/objectifs', title: { fr: 'Ascension', en: 'Ascension' } },

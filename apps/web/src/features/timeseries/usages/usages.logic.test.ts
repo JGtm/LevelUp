@@ -15,7 +15,6 @@ import {
   buildLivesModel,
   buildMapGrid,
   buildMinePickups,
-  empriseCoverage,
   timeseriesMatchIndex,
   usagesSections,
 } from './usages.logic'
@@ -37,12 +36,6 @@ describe('timeseriesMatchIndex — les matchs de la page, par match_id', () => {
     })
     expect(index.get('m2')).toMatchObject({ map: 'Carte Alpha', outcome: 'loss' })
     expect(index.get('m4')).toMatchObject({ map: 'Carte Charlie (fr)', outcome: 'dnf' })
-  })
-})
-
-describe('empriseCoverage — matchs filmés sur le périmètre', () => {
-  it('3 filmés sur 4', () => {
-    expect(empriseCoverage(soloEmprise())).toEqual({ filmed: 3, total: 4 })
   })
 })
 

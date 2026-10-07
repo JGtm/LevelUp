@@ -37,8 +37,7 @@ export function getTimeseriesCoordinationText(locale: Locale) {
     volMyKills: (n: number) => m('timeseries.progression.coord_vol_my_kills', { n }),
     volTeamAssists: (n: number) => m('timeseries.progression.coord_vol_team_assists', { n }),
 
-    coverage: (measured: number, total: number) =>
-      m('timeseries.progression.coord_coverage', { measured, total }),
+    emptyTitle: m('timeseries.progression.coord_empty_title'),
     empty: m('timeseries.progression.coord_empty'),
     unavailable: m('timeseries.progression.coord_unavailable'),
   }

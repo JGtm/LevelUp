@@ -1,5 +1,5 @@
 /**
- * TimeseriesRangeRolesCard — « Rôles de portée » sur l'onglet Résumé (a.1, D23-a du
+ * TimeseriesRangeRolesCard — « Rôles de portée » sur l'onglet Usages (a.1, D23-a du
  * 2026-09-22).
  *
  * À QUELLE DISTANCE JE JOUE, MATCH APRÈS MATCH, ET CE QUE ÇA A CHANGÉ. Un point par match :
@@ -10,8 +10,8 @@
  *
  * ELLE NE REMPLACE PAS « PORTÉE PAR ARME », elle répond à l'autre question. La carte
  * existante dit avec quoi je tire et à quelle distance chaque arme porte ; celle-ci dit quel
- * joueur je suis devenu sur la fenêtre — un rôle, une dérive, des écarts. Elle se pose juste
- * après elle, dans la même famille de sujet, sous la même capability produit `weapon_range`.
+ * joueur je suis devenu sur la fenêtre — un rôle, une dérive, des écarts. Elle se pose à sa
+ * droite, sur la même rangée, sous la même capability produit `weapon_range`.
  *
  * LE COMPOSANT EST CELUI DE L'ESCOUADE, à une seule série (`squadRangeRolesChart` +
  * `squadRangeRoles.logic` : `PLANCHER_MESURE`, `FENETRE_ROLE`, `roleDeEcart`). Même axe,
@@ -21,7 +21,8 @@
  * joueur n'a personne à nommer.
  *
  * D22-VERBOSITÉ (LOI) : graphe et légendes seulement. La lecture tient dans l'infobulle du
- * titre, en trois phrases ; sous le graphe, rien d'autre que la légende et la couverture.
+ * titre, en trois phrases ; sous le graphe, rien d'autre que la légende, centrée en bas du
+ * bloc. Ni titre d'axe X (les étiquettes « #N · carte » disent l'ordre), ni dénominateur.
  */
 import { useMemo } from 'react'
 
@@ -93,7 +94,8 @@ export function TimeseriesRangeRolesCard({ bloc }: TimeseriesRangeRolesCardProps
         mesuresMin,
         mesuresMax,
         libelles: {
-          xAxis: t.xAxis,
+          // Axe X sans titre : ses étiquettes « #N · carte » disent déjà l'ordre des matchs.
+          xAxis: '',
           yAxis: t.yAxis,
           lobbyLine: t.lobbyLine,
           bandes: t.bandes,
@@ -114,16 +116,18 @@ export function TimeseriesRangeRolesCard({ bloc }: TimeseriesRangeRolesCardProps
       label={t.sectionLabel}
       titleAdornment={titleWithInfo(<TooltipParagraphs items={[t.help(PLANCHER_MESURE)]} />)}
     >
-      <div className="space-y-2 px-3 py-2" data-testid="timeseries-portee-roles">
+      <div className="flex flex-1 flex-col gap-2 px-3 py-2" data-testid="timeseries-portee-roles">
         {vide ? (
-          <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyStateNotice className="my-auto" title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <>
-            <ChartCard series={chartSeries} buildOption={buildOption} height={340} frameless />
+            <div className="my-auto">
+              <ChartCard series={chartSeries} buildOption={buildOption} height={340} frameless />
+            </div>
             {/* Les trois encodages qu'ECharts ne sait pas nommer : le point, le point creux
                 et la tendance. Les bandes, elles, portent leur nom dans le graphe. */}
             <div
-              className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
+              className="flex flex-wrap items-center justify-center gap-4 text-2xs text-muted-foreground"
               data-testid="timeseries-portee-legende"
             >
               <span className="flex items-center gap-1.5">
@@ -149,9 +153,6 @@ export function TimeseriesRangeRolesCard({ bloc }: TimeseriesRangeRolesCardProps
                 {t.legendTrend(FENETRE_ROLE)}
               </span>
             </div>
-            <p className="text-2xs text-muted-foreground" data-testid="timeseries-portee-couverture">
-              {t.coverage(bloc?.kills_measured ?? 0, bloc?.kills_total ?? 0)}
-            </p>
           </>
         )}
       </div>

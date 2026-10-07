@@ -166,3 +166,38 @@ func buildOpening(kills, openings []analysis.MeasuredKill) *domain.SynthesisOpen
 	}
 	return block
 }
+
+// dropWeaponsWithoutRange retire du bloc les lignes d'arme SANS PORTÉE (`withoutRange`,
+// en production `weapons.IsWithoutRange` : armes de contact, chute et environnement) — la
+// liste par arme ET les deux listes « sous le seuil ».
+//
+// LES MÉDIANES GLOBALES NE BOUGENT PAS : elles décrivent tous les frags mesurés du joueur
+// (cf. buildWeaponRangeBlock). Seul le graphe par arme perd des lignes dont la distance ne
+// dit rien d'une portée. L'ordre des lignes restantes est conservé tel quel.
+func dropWeaponsWithoutRange(block *domain.SynthesisWeaponRange, withoutRange func(weaponKey string) bool) {
+	if block == nil {
+		return
+	}
+	kept := make([]domain.WeaponRangeRow, 0, len(block.Weapons))
+	for _, w := range block.Weapons {
+		if !withoutRange(w.WeaponKey) {
+			kept = append(kept, w)
+		}
+	}
+	block.Weapons = kept
+	block.BelowThresholdKills = dropBelowThresholdWithoutRange(block.BelowThresholdKills, withoutRange)
+	block.BelowThresholdDeaths = dropBelowThresholdWithoutRange(block.BelowThresholdDeaths, withoutRange)
+}
+
+// dropBelowThresholdWithoutRange : le même tri sur une liste « sous le seuil ».
+func dropBelowThresholdWithoutRange(
+	rows []domain.WeaponBelowThreshold, withoutRange func(weaponKey string) bool,
+) []domain.WeaponBelowThreshold {
+	var out []domain.WeaponBelowThreshold
+	for _, r := range rows {
+		if !withoutRange(r.WeaponKey) {
+			out = append(out, r)
+		}
+	}
+	return out
+}

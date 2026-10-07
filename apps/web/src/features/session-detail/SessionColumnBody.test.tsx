@@ -6,7 +6,7 @@
  * CE QUE CE FICHIER FIXE :
  *   1. QUATRE titres de groupe, dans l'ORDRE — « Bilan », « Match par match », « Frags et usages »,
  *      « Détail des matchs » ; sous « Frags et usages », les intertitres des sous-groupes dans l'ordre
- *      de la maquette, « Ressources » avec sa couverture (pleine page seulement).
+ *      de la maquette, sans mention de couverture.
  *   2. Les cartes A à L dans l'ordre de la maquette, chacune se retirant seule sans donnée ; un
  *      sous-groupe sans carte n'a pas d'intertitre ; sans aucune carte, « Frags et usages » disparaît.
  *   3. Halo 5 (sans film) : A, B, B' et G seulement, aucun intertitre de ressources.
@@ -45,7 +45,7 @@ const SECTIONS = ['Bilan', 'Match par match', 'Frags et usages', 'Détail des ma
 
 /** Les cadres des cartes A à L, par leur repère de test (B et B' : le titre de leur carte de graphe). */
 const CARD_IDS: [string, string][] = [
-  ['frag_bar', '[data-testid="squad-frag-breakdown"]'],
+  ['frag_donut', '[data-testid="session-frag-donut"]'],
   ['control', '[data-testid="emprise-control"]'],
   ['fil', '[data-testid="emprise-fil"]'],
   ['grid', '[data-testid="emprise-grid"]'],
@@ -87,11 +87,11 @@ function monter(blocks: SessionColumnBlocks, compact = false) {
 }
 
 describe('SessionColumnBody — titres de groupe et intertitres', () => {
-  it('soirée du 22/09 : quatre titres de groupe, intertitres dans l’ordre, couverture des ressources', () => {
+  it('soirée du 22/09 : quatre titres de groupe, intertitres dans l’ordre, sans mention de couverture', () => {
     const { container } = monter(session2209())
     expect(titresRendus()).toEqual([...SECTIONS])
     expect(intertitres(container)).toEqual([
-      'Ressources6 matchs filmés sur 7 · frags de la feuille de match sur les 7',
+      'Ressources',
       'Rendement des ressources',
       'Isolement',
       'Objectif',
@@ -101,7 +101,7 @@ describe('SessionColumnBody — titres de groupe et intertitres', () => {
   it('les cartes A à L, dans l’ordre de la maquette ; l’équipement non servi n’a ni carte ni intertitre', () => {
     const { container } = monter(session2209())
     expect(cartes(container)).toEqual([
-      'frag_bar',
+      'frag_donut',
       'tools',
       'control',
       'fil',
@@ -119,7 +119,7 @@ describe('SessionColumnBody — titres de groupe et intertitres', () => {
   it('les paires A|B, C|D, G|H partagent une rangée en pleine page', () => {
     const { container } = monter(session2209())
     const pairs = Array.from(container.querySelectorAll('[data-session-pair]')).map((n) => n.getAttribute('data-session-pair'))
-    expect(pairs).toEqual(['frag_bar|tools', 'control|fil', 'production|yield'])
+    expect(pairs).toEqual(['frag_donut|tools', 'control|fil', 'production|yield'])
   })
 })
 
@@ -146,7 +146,7 @@ describe('SessionColumnBody — chaque carte se retire seule', () => {
       matches: base.matches,
       emprise: soloEmpriseSansFilm(),
     })
-    expect(cartes(container)).toEqual(['frag_bar', 'tools', 'production'])
+    expect(cartes(container)).toEqual(['frag_donut', 'tools', 'production'])
     expect(screen.getByText('Précision par arme')).toBeInTheDocument()
     expect(intertitres(container)).toEqual(['Rendement des ressources'])
   })
@@ -161,10 +161,12 @@ describe('SessionColumnBody — le tiroir monte les mêmes groupes', () => {
     expect(titresRendus()).toEqual(titresPlein)
   })
 
-  it('compact : chaque carte est en vue compacte (A : parts et total en sous-libellé)', () => {
+  it('compact : chaque carte est en vue compacte (A : le même anneau, sans gamertag)', () => {
     monter(session2209(), true)
-    expect(screen.getByText('65 frags')).toBeInTheDocument()
-    expect(screen.queryByTestId('frag-breakdown-total-JGtm')).not.toBeInTheDocument()
+    const donut = screen.getByTestId('session-frag-donut')
+    expect(donut.querySelector('[data-testid="frag-sunburst"]')).not.toBeNull()
+    expect(donut.textContent).toContain('65')
+    expect(donut.textContent).not.toContain('JGtm')
     // Le jeu de textes de la vue compacte : légende de la grille réduite (maquette `makeGrid`, `cp`).
     expect(screen.getByText('Plus de 50 %')).toBeInTheDocument()
     expect(screen.queryByText('Plus que l’adversaire')).not.toBeInTheDocument()
@@ -188,7 +190,7 @@ describe('SessionColumnBody — anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     const { container } = monter(session2209())
     expect(intertitres(container)).toEqual([
-      'Resources6 filmed matches of 7 · kills from the match sheet over all 7',
+      'Resources',
       'Resource efficiency',
       'Isolation',
       'Objective',

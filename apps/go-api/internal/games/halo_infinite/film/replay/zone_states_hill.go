@@ -5,8 +5,9 @@ package replay
 // DEUX VOIES, ET LA MESURE A DECIDE DE LEUR ORDRE (lot C-ter volet 1, 2026-08-19,
 // `.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET1.md`) :
 //
-//	le DESIGNATEUR   l'objet de mode KOTH tient sur quatre slots `ti=13` consecutifs —
-//	                 [tag 5 designateur][tag 4 proprietaire][tag 4 capteur][tag 3 jauge] — et
+//	le DESIGNATEUR   l objet de mode KOTH est un BLOC de proprietes `ti=13` nommees —
+//	                 [tag 5 designateur][tag 4 proprietaire][tag 4 capteur][tag 3 jauge], le
+//	                 designateur etant la cle du bloc (zone_states_owner_nom.go, hillDesignatorOf) — et
 //	                 le tag 5 y CHANGE de valeur 13 a 21 ms apres chaque capture non terminale
 //	                 (13/13 changements sur 4 films, temoins decales 0 %, hasard 1,5-2,6 %) : il
 //	                 DESIGNE la colline courante (vocabulaire ordinal identique sur 4 cartes).
@@ -43,14 +44,15 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
-// hillDesignatorMinOwnerSamples : un slot de tag 5 n'est un designateur que si le slot SUIVANT
-// porte un canal de proprietaire qui parle (au moins deux emissions) — la structure de l'objet
-// de mode. Sans cette condition, le trio de fin de match (trois string-ids sur trois slots
-// consecutifs, emis 15-21 ms apres la capture terminale sur les 4 films) serait eligible.
+// hillDesignatorMinOwnerSamples : SUR LA REGLE DE VOISINAGE (repli, cf. hillDesignatorOf), un slot de
+// tag 5 n est un designateur que si le slot SUIVANT porte un canal de proprietaire qui parle (au
+// moins deux emissions) — la structure de l objet de mode. Sans cette condition, le trio de fin
+// de match (trois string-ids sur trois slots consecutifs, emis 15-21 ms apres la capture
+// terminale) serait eligible.
 const hillDesignatorMinOwnerSamples = 2
 
-// hillDesignatorSpan : la portee, en slots, dans laquelle on cherche les canaux voisins de
-// l'objet de mode (proprietaire, capteur, jauge) pour dater le premier contact.
+// hillDesignatorSpan : SUR LA REGLE DE VOISINAGE, la portee, en slots, dans laquelle on cherche les
+// canaux voisins de l objet de mode (proprietaire, capteur, jauge) pour dater le premier contact.
 const hillDesignatorSpan = 3
 
 // buildHillStates rend les periodes de garde de la zone ACTIVE, appariees par la grappe.
@@ -62,6 +64,9 @@ func buildHillStates(zones []Zone, ser zoneSeries, teams map[uint64]bool, c zone
 	cov *ZonesCoverage,
 ) []ZoneState {
 	if d, ok := hillDesignatorOf(ser); ok {
+		if d.parVoisinage {
+			c.fb.Declenche(fallback.NomCollineDesignateurParVoisinage)
+		}
 		return buildDesignatedHills(zones, ser, hillCtx{d: d, teams: teams}, c, cov)
 	}
 	return buildRampHills(zones, ser, c, cov)
@@ -82,16 +87,46 @@ type hillDesignator struct {
 	changes []int
 	// first : frame du premier contact avec l'objet de mode (borne haute de l'activation).
 	first int
+	// parVoisinage dit que le designateur et les canaux de l objet de mode viennent de la regle
+	// de VOISINAGE (repli `repli_colline_designateur_par_voisinage`), faute de nom au vocabulaire.
+	parVoisinage bool
 }
 
-// hillDesignatorOf elit le designateur : parmi les slots a serie de tag 5 CHAINEE dont le slot
-// suivant porte un proprietaire qui parle, celui qui bascule le plus (egalite : le plus petit
-// slot). Faux quand aucun slot ne remplit la condition — le repli par les rampes prend la main.
+// hillDesignatorOf elit le designateur : PAR LE NOM d abord — parmi les slots a serie de tag 5
+// CHAINEE, ceux dont le nom est la CLE d un bloc du vocabulaire (zone_states_owner_nom.go) —, PAR
+// LE VOISINAGE en repli — ceux dont le slot suivant porte un proprietaire qui parle. Dans chaque
+// voie, celui qui bascule le plus (egalite : le plus petit slot). Faux quand aucune voie ne rend
+// de designateur — le repli par les rampes prend la main.
+//
+// LE NOM EXCLUT DE LUI-MEME LE TRIO DE FIN DE MATCH (trois string-ids sur trois slots
+// consecutifs, emis 15-21 ms apres la capture terminale) : ses noms ne sont la cle d aucun bloc.
+// La regle de voisinage n avait que la condition sur le slot suivant pour l ecarter.
 func hillDesignatorOf(ser zoneSeries) (hillDesignator, bool) {
+	nomme := func(slot uint32) bool {
+		_, ok := zoneBlocDuSlot(slot, ser.noms, func(b zoneBlocNomme) uint32 { return b.cle })
+		return ok
+	}
+	if d, ok := hillDesignatorWhere(ser, nomme); ok {
+		d.first = hillFirstContact(ser, d, hillModeObjectSlots(ser.noms, d.slot))
+		return d, true
+	}
+	voisin := func(slot uint32) bool { return len(ser.owner[slot+1]) >= hillDesignatorMinOwnerSamples }
+	d, ok := hillDesignatorWhere(ser, voisin)
+	if !ok {
+		return d, false
+	}
+	d.parVoisinage = true
+	d.first = hillFirstContact(ser, d, hillNeighbourSlots(d.slot))
+	return d, true
+}
+
+// hillDesignatorWhere rend, parmi les slots a serie de tag 5 chainee qui passent `eligible`, celui
+// dont la designation bascule le plus (egalite : le plus petit slot).
+func hillDesignatorWhere(ser zoneSeries, eligible func(uint32) bool) (hillDesignator, bool) {
 	var best hillDesignator
 	found := false
 	for _, slot := range sortedZoneSlots(ser.desig) {
-		if len(ser.owner[slot+1]) < hillDesignatorMinOwnerSamples {
+		if !eligible(slot) {
 			continue
 		}
 		var changes []int
@@ -105,19 +140,42 @@ func hillDesignatorOf(ser zoneSeries) (hillDesignator, bool) {
 		}
 		best, found = hillDesignator{slot: slot, changes: changes}, true
 	}
-	if !found {
-		return best, false
-	}
-	best.first = hillFirstContact(ser, best)
-	return best, true
+	return best, found
 }
 
-// hillFirstContact rend la frame de la premiere emission de l'objet de mode : son designateur,
-// ou les canaux des slots voisins (proprietaire, capteur, jauge).
-func hillFirstContact(ser zoneSeries, d hillDesignator) int {
-	first := d.changes[0]
+// hillModeObjectSlots rend les slots de l objet de mode que designe le nom : le proprietaire, le
+// pousseur et la jauge du bloc dont le designateur est la cle. Un role dont le nom manque au film
+// ne rend aucun slot.
+func hillModeObjectSlots(noms zoneNoms, designateur uint32) []uint32 {
+	b, ok := zoneBlocDuSlot(designateur, noms, func(b zoneBlocNomme) uint32 { return b.cle })
+	if !ok {
+		return nil
+	}
+	var out []uint32
+	for _, nom := range []uint32{b.proprietaire, b.pousseur, b.jauge} {
+		if s, ok := noms.parNom[nom]; ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// hillNeighbourSlots rend les slots VOISINS du designateur (`designateur+1` a `+hillDesignatorSpan`),
+// ou la regle de voisinage cherche les canaux de l objet de mode.
+func hillNeighbourSlots(designateur uint32) []uint32 {
+	out := make([]uint32, 0, hillDesignatorSpan)
 	for k := uint32(1); k <= hillDesignatorSpan; k++ {
-		for _, ss := range [][]zoneSample{ser.owner[d.slot+k], ser.gauge[d.slot+k]} {
+		out = append(out, designateur+k)
+	}
+	return out
+}
+
+// hillFirstContact rend la frame de la premiere emission de l'objet de mode : son designateur, ou
+// les canaux de `slots` (proprietaire, capteur, jauge).
+func hillFirstContact(ser zoneSeries, d hillDesignator, slots []uint32) int {
+	first := d.changes[0]
+	for _, slot := range slots {
+		for _, ss := range [][]zoneSample{ser.owner[slot], ser.gauge[slot]} {
 			if len(ss) > 0 && ss[0].t < first {
 				first = ss[0].t
 			}

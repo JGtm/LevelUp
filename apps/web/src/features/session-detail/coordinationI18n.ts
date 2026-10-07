@@ -26,8 +26,6 @@ export interface CoordinationText {
 
   // ─── Pied et infobulles de la carte ──────────────────────────────────────────
   lowSample: string
-  /** Réserve de couverture, en pied de carte : « 7 matchs mesurés sur 9 ». */
-  coverageMatchesFmt: (mesures: number, total: number) => string
   /** Infobulle d'une case de bande : n° de match, part, parité. */
   bandTipFmt: (index: number, part: string, parite: string) => string
   /** Infobulle d'une case non mesurée. */
@@ -61,7 +59,6 @@ export interface CoordinationText {
   rangeTipMedian: (mediane: string) => string
   rangeTipDelta: (ecart: string) => string
   rangeTipMeasured: (frags: number) => string
-  rangeCoverageFmt: (mesures: number, total: number) => string
   rangeLowSample: (seuil: number) => string
   infoRange1: string
   infoRange2: string
@@ -83,7 +80,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoAppui3: 'Parité : 1/n, n étant l’effectif de l’équipe sur le match.',
 
     lowSample: 'échantillon faible',
-    coverageMatchesFmt: (m, t) => `${m} matchs mesurés sur ${t}`,
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parité ${parite})`,
     bandTipUnmeasured: (i) => `Match #${i} · non mesuré`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} sur ${n}`,
@@ -105,7 +101,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeTipMedian: (med) => `Médiane ${med} m`,
     rangeTipDelta: (ecart) => `Écart au lobby ${ecart} m`,
     rangeTipMeasured: (frags) => `${frags} frags mesurés`,
-    rangeCoverageFmt: (m, t) => `${m} frags mesurés sur ${t}`,
     rangeLowSample: (s) => `point creux : moins de ${s} frags mesurés`,
     infoRange1:
       'Chaque point est un match de la période : écart entre la médiane de frag du joueur et celle du lobby.',
@@ -126,7 +121,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoAppui3: 'Parity: 1/n, n being the team’s headcount on the match.',
 
     lowSample: 'low sample',
-    coverageMatchesFmt: (m, t) => `${m} of ${t} matches measured`,
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parity ${parite})`,
     bandTipUnmeasured: (i) => `Match #${i} · not measured`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} of ${n}`,
@@ -148,7 +142,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeTipMedian: (med) => `Median ${med} m`,
     rangeTipDelta: (ecart) => `Gap to lobby ${ecart} m`,
     rangeTipMeasured: (frags) => `${frags} measured kills`,
-    rangeCoverageFmt: (m, t) => `${m} of ${t} kills measured`,
     rangeLowSample: (s) => `hollow dot: fewer than ${s} measured kills`,
     infoRange1:
       'Each dot is one match of the period: the gap between the player’s kill median and the lobby median.',

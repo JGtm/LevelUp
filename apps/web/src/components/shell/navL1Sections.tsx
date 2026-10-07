@@ -97,6 +97,9 @@ export const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => under(p, /^\/(stats\/|synthesis)/),
     tabs: [
       { key: 'synthesis', labelKey: 'common.nav.tab_synthesis', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis' },
+      // Tendances : juste après Synthèse, sans porte de capacité propre (la page dégrade selon
+      // les capacités). L'ancienne URL /ascension/tendances redirige ici.
+      { key: 'tendances', labelKey: 'common.nav.tab_tendances', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances' },
       { key: 'timeseries', labelKey: 'common.nav.tab_timeseries', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries' },
       { key: 'sessions', labelKey: 'common.nav.tab_sessions', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions' },
     ],
@@ -156,8 +159,6 @@ export const L1_SECTIONS: L1Section[] = [
         path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique',
         capability: 'replay',
       },
-      // Tendances : 6e onglet, sans porte de capacité propre (la page dégrade selon les capacités).
-      { key: 'tendances', labelKey: 'common.nav.tab_tendances', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tendances' },
     ],
   },
   {

@@ -76,6 +76,7 @@ import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugSquadUsagesRouteI
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/index'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdIndexRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/index'
 import { Route as Char123LangChar125TTitleSlugPlayersPlayerSlugMatchesMatchIdReplayRouteImport } from './routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay'
@@ -510,6 +511,14 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute =
       getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
     } as any,
   )
+const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute =
+  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRouteImport.update(
+    {
+      id: '/stats/tendances',
+      path: '/stats/tendances',
+      getParentRoute: () => Char123LangChar125TTitleSlugPlayersPlayerSlugRoute,
+    } as any,
+  )
 const Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute =
   Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRouteImport.update(
     {
@@ -598,6 +607,7 @@ export interface FileRoutesByFullPath {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadUsagesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute
@@ -666,6 +676,7 @@ export interface FileRoutesByTo {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadUsagesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute
@@ -739,6 +750,7 @@ export interface FileRoutesById {
   '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugSquadUsagesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
+  '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugAscensionIndexRoute
   '/{-$lang}/t/$titleSlug/players/$playerSlug/community/': typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute
@@ -813,6 +825,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/'
@@ -881,6 +894,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community'
@@ -953,6 +967,7 @@ export interface FileRouteTypes {
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/sessions'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/synthesis'
+    | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/'
     | '/{-$lang}/t/$titleSlug/players/$playerSlug/community/'
@@ -1454,6 +1469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRouteImport
       parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
     }
+    '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances': {
+      id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances'
+      path: '/stats/tendances'
+      fullPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances'
+      preLoaderRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRouteImport
+      parentRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugRoute
+    }
     '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries': {
       id: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries'
       path: '/stats/timeseries'
@@ -1611,6 +1633,7 @@ interface Char123LangChar125TTitleSlugPlayersPlayerSlugRouteChildren {
   Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugPalmaresRelationsRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute
+  Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute
   Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRoute: typeof Char123LangChar125TTitleSlugPlayersPlayerSlugExplorerIndexRoute
@@ -1665,6 +1688,8 @@ const Char123LangChar125TTitleSlugPlayersPlayerSlugRouteChildren: Char123LangCha
       Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSessionsRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugStatsSynthesisRoute,
+    Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute:
+      Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTendancesRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute:
       Char123LangChar125TTitleSlugPlayersPlayerSlugStatsTimeseriesRoute,
     Char123LangChar125TTitleSlugPlayersPlayerSlugCommunityIndexRoute:

@@ -1,6 +1,7 @@
 /**
- * SquadObjectiveSection.test.tsx — la section « Objectif » de Contributions (lot L3) : ordre et
- * disposition des quatre cartes, masquage sans objectif, notes sous le minimum, fiches du 22/09.
+ * SquadObjectiveSection.test.tsx — l'objectif de l'onglet Emprise : ordre et disposition des
+ * blocs (rapport de force à même la section, fiches dans leur propre section), masquage sans
+ * objectif, blocs placeholder sous le minimum, fiches du 22/09 sans reste du camp.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
@@ -34,11 +35,11 @@ function renderSection(block: SquadFormesBlock | undefined, withHistory: 'soir07
 }
 
 describe('SquadObjectiveSection', () => {
-  it('07/09 : les quatre cartes dans l’ordre du débrief, les deux premières côte à côte', async () => {
+  it('07/09 : les blocs dans l’ordre du débrief, les deux premiers côte à côte, les fiches dans leur section', async () => {
     renderSection(block0709(), 'soir0709')
     const section = screen.getByTestId('squad-objective-section')
     expect(within(section).getByText('Objectif')).toBeInTheDocument()
-    const ids = ['objective-balance', 'objective-fil', 'objective-sheets', 'objective-evenings']
+    const ids = ['objective-balance', 'objective-fil', 'objective-evenings', 'objective-sheets']
     const nodes = ids.map((id) => screen.getByTestId(id))
     for (let i = 1; i < nodes.length; i++) {
       expect(nodes[i - 1].compareDocumentPosition(nodes[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -46,10 +47,20 @@ describe('SquadObjectiveSection', () => {
     // Rapport de force | au fil de la session : la même rangée à deux colonnes.
     expect(nodes[0].parentElement).toBe(nodes[1].parentElement)
     expect(nodes[0].parentElement?.className).toContain('lg:grid-cols-2')
-    // Les deux graphes sont tracés (sept matchs, onze soirées).
+    // Le rapport de force est à même la section : ni cadre ni titre de carte (titre redondant).
+    expect(nodes[0].className).not.toContain('border')
+    expect(within(nodes[0]).queryByText('Rapport de force')).toBeNull()
+    // Les fiches ont leur propre section, titrée, sans carte englobante.
+    const sheets = screen.getByTestId('squad-objective-sheets-section')
+    expect(within(sheets).getByText('Répartition de l’objectif dans l’escouade')).toBeInTheDocument()
+    expect(nodes[3].className).not.toContain('border')
+    // Les deux graphes sont tracés (sept matchs, onze soirées) ; aucune phrase sous le graphe,
+    // les abréviations de modes sont dans la légende.
     expect(await screen.findAllByTestId('echarts-mock')).toHaveLength(2)
-    expect(screen.getByTestId('objective-evenings-note').textContent).toContain('Les 10 soirées précédentes')
-    expect(screen.getByTestId('objective-evenings-note').textContent).toContain('B : Bases, D : Drapeau')
+    expect(screen.queryByTestId('objective-evenings-note')).toBeNull()
+    const legend = within(nodes[2]).getByTestId('chart-card-legend')
+    expect(legend.textContent).toContain('B : Bases')
+    expect(legend.textContent).toContain('D : Drapeau')
   })
 
   it('rapport de force : un cadre par famille, « Bases · 4 matchs », actions sous Prendre / Défendre / Tenir', () => {
@@ -74,10 +85,19 @@ describe('SquadObjectiveSection', () => {
     expect(within(jg).getByText('Rôle dominant')).toBeInTheDocument()
     expect(within(jg).getByText('Rôle dominant').nextElementSibling?.textContent).toBe('Tenir')
     expect(jg.textContent).toContain('1 min 05')
-    expect(screen.getByTestId('objective-sheet-rest').textContent).toContain('Reste de l’équipe')
-    // Deux matchs à objectif : ni courbe au fil de la session, ni point ce soir — les notes.
-    expect(screen.getByTestId('objective-fil-note').textContent).toContain('2 matchs à objectif ce soir')
-    expect(screen.getByTestId('objective-evenings-note').textContent).toContain('24 soirées de la composition sur 49')
+    // Pas de fiche du reste du camp : les trois joueurs de l'escouade seulement.
+    expect(screen.queryByTestId('objective-sheet-null')).toBeNull()
+    expect(screen.queryByText('Reste de l’équipe')).toBeNull()
+    expect(screen.getAllByText('Rôle dominant')).toHaveLength(3)
+    // Deux matchs à objectif : ni courbe au fil de la session, ni point ce soir — les blocs
+    // placeholder (EmptyStateNotice tiretée), titre en gras puis la cause.
+    const fil = screen.getByTestId('objective-fil-note')
+    expect(fil.textContent).toContain('2 matchs à objectif ce soir')
+    expect(fil.textContent).toContain('Sous le minimum de trois, la carte se masque.')
+    expect(fil.querySelector('.border-dashed')).not.toBeNull()
+    const evenings = screen.getByTestId('objective-evenings-note')
+    expect(evenings.textContent).toContain('24 soirées de la composition sur 49')
+    expect(evenings.querySelector('.border-dashed')).not.toBeNull()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
   })
 

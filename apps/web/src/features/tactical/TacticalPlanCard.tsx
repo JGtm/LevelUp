@@ -1,13 +1,14 @@
 /**
  * TacticalPlanCard — la carte du plan de l'écran unique : bandeau (nom de la carte, aide ⓘ, trois
  * réglages en pilules), bandeau d'état des lectures d'artefact, puis le fond de la carte, le calque
- * de la lecture par-dessus et la rampe verticale de la légende au bord droit.
+ * de la lecture par-dessus, la commande de zoom dans l'angle bas-droit et la rampe verticale de la
+ * légende au bord droit.
  *
  * ─── LE FOND NE BOUGE JAMAIS (retours rejeu L2, 2026-09-23) ──────────────────────────────────
  *
  * La carte est TOUJOURS rendue dès qu'une carte est connue, et le cadre + le fond vivent dans
- * `TacticalPlanFond`, qui ne reçoit que la carte et le calage. Ce qui se pose PAR-DESSUS dépend de
- * l'état du plan (`etatDuPlan`, `plan.logic.ts`) :
+ * `TacticalPlanFond`, qui ne reçoit que la carte, le calage, la hauteur et le cadrage. Ce qui se
+ * pose PAR-DESSUS dépend de l'état du plan (`etatDuPlan`, `plan.logic.ts`) :
  *   - `attente`    : l'indicateur de chargement, sur le cadre déjà posé (au rapport par défaut tant
  *                    qu'aucune carte n'est connue) ;
  *   - `relecture`  : l'ancien calque, sa légende et ses messages d'état ESTOMPÉS sous « Mise à
@@ -18,48 +19,54 @@
  *   - `sans_carte` : rien (la colonne des cartes dit pourquoi) ;
  *   - `pret`       : le calque, ou l'état vide du plan (un titre seul).
  *
- * ─── LE REPÈRE EST LE CADRE DU FOND ──────────────────────────────────────────────────────────
+ * ─── LE REPÈRE EST LE CADRE DU FOND, LA VUE EST SA FENÊTRE ───────────────────────────────────
  *
  * Le calque projette sur le CALAGE publié avec chaque fond (`useTacticalMapBackgroundFrame`),
  * exactement comme « Occupation du terrain » de la vue match et le rejeu 2D ; une carte sans fond
- * figé retombe sur ses propres bornes. Le fond (`<img>`) et le calque (`<canvas>`,
- * `drawTacticalHeatmap`, noyau partagé de `lib/replay/heatPaint.ts`) partagent le même cadre monde.
- * Les zones nommées s'y dessinent avec le peintre du rejeu 2D (`planPaint.ts`) ; les vignettes, non.
+ * figé retombe sur ses propres bornes. Le zoom (`useCadrageDuPlan`, les gestes du rejeu 2D) en tire
+ * la FENÊTRE visible, sur laquelle se projettent l'image du fond, la chaleur, les zones nommées
+ * (peintre du rejeu, `planPaint.ts`), la sélection et l'étiquette. La boîte prend la hauteur que la
+ * fenêtre du navigateur lui laisse (`useHauteurDuPlan`), au rapport du fond.
  *
  * COULEURS : rampe d'INTENSITÉ pour les grandeurs neutres (des morts, des frags, du temps) ; rampe
  * DIVERGENTE pour les lectures SIGNÉES (« victoires − défaites », « solde ») — leur zéro a deux
  * côtés, et la rampe d'intensité effacerait tout le côté négatif. Unité, source et rampe viennent de
  * la question À LAQUELLE LA LECTURE RÉPOND (`questionServie`), jamais de la question demandée.
  */
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
-import { Spinner } from '@/components/ui/spinner'
 import { titleWithInfo } from '@/components/ui/title-with-info'
+import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { TacticalGrappe, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
-import { normalizeCalloutZones, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
-import { heatRamp, heatRampDivergent, type TacticalGrid } from '@/lib/replay/heatPaint'
+import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
+import { heatRamp, heatRampDivergent } from '@/lib/replay/heatPaint'
 
 import { RAMPE_HAUTEUR_PX } from './cockpit.logic'
-import { peindreLePlan } from './planPaint'
 import type { TacticalText } from './i18n'
-import { infoDuPlan, legendeDuPlan, MARGE_LEGENDE, rampeVerticale, type EtatDuPlan, type BornesDeLegende } from './plan.logic'
+import {
+  cadrageDuFond,
+  infoDuPlan,
+  legendeDuPlan,
+  MARGE_LEGENDE,
+  rampeVerticale,
+  type BornesDeLegende,
+  type EtatDuPlan,
+} from './plan.logic'
 import { useTacticalMapBackgroundFrame } from './queries'
-import { positionEtiquette } from './zone.logic'
 import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
+import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
+import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
 import {
-  celluleDuClic,
   grilleDuPlan,
   planEmptyReason,
   titreDuPlanVide,
-  rectSelection,
   repereDuPlan,
   statusMessages,
   unitForQuestion,
@@ -67,11 +74,15 @@ import {
   type TacticalQuestion,
   type TacticalQui,
 } from './tacticalView.logic'
+import { useCadrageDuPlan } from './useCadrageDuPlan'
+import { useHauteurDuPlan } from './useHauteurDuPlan'
 
 /** Les trois réglages du bandeau (état local de la vue). */
 export interface ReglagesDuPlan {
   question: TacticalQuestion
   onQuestionChange: (question: TacticalQuestion) => void
+  /** La pilule « Lecture » est survolée ou prend le focus : l'intention de changer de lecture. */
+  onQuestionIntent?: () => void
   qui: TacticalQui
   onQuiChange: (qui: TacticalQui) => void
   escouadeDisponible: boolean
@@ -98,9 +109,10 @@ export interface TacticalPlanCardProps {
   /** Le nom de la zone choisie, posé à côté de sa cellule sur le plan ; `null` tant qu'il n'est pas connu. */
   etiquette: string | null
   reglages: ReglagesDuPlan
-  /** La cellule choisie, encadrée sur le plan — `null` tant que rien n'est cliqué. */
+  /** La cellule choisie, entourée sur le plan — `null` tant que rien n'est cliqué. */
   selected: { col: number; row: number } | null
-  onCellSelect: (col: number, row: number) => void
+  /** Le point MONDE d'un clic sur le plan ; la vue retient la cellule servie qu'il vise. */
+  onPointSelect: (point: { x: number; y: number }) => void
 }
 
 export function TacticalPlanCard({
@@ -116,14 +128,17 @@ export function TacticalPlanCard({
   etiquette,
   reglages,
   selected,
-  onCellSelect,
+  onPointSelect,
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
   const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
-  const repere = lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m) : null
+  const repere = useMemo(() => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m) : null), [cadreFond, lue])
+  const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond)
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
+  const boite = useRef<HTMLDivElement>(null)
+  const hauteurMax = useHauteurDuPlan(boite)
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
@@ -145,27 +160,36 @@ export function TacticalPlanCard({
           ))}
         </div>
       )}
-      <div className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
-        <TacticalPlanFond playerSlug={playerSlug} mapId={mapId} aspect={aspectDuPlan(cadreFond, repere)}>
+      <div ref={boite} className="relative mx-3 mb-3 mt-2.5 flex justify-center" style={{ paddingRight: MARGE_LEGENDE }}>
+        <TacticalPlanFond
+          playerSlug={playerSlug}
+          mapId={mapId}
+          aspect={aspectDuPlan(cadreFond, repere)}
+          hauteurMax={hauteurMax}
+          cadrage={cadrageDuFond(scene, fenetre)}
+        >
           {lue && raisonVide === null && (
             <CalqueDuPlan
               grid={peinture.grid}
               repere={repere}
+              fenetre={fenetre}
+              zoom={zoom}
               ramp={peinture.ramp}
               zones={zones}
               locale={locale}
               selected={selected}
-              onCellSelect={onCellSelect}
+              onPointSelect={onPointSelect}
               estompe={estompe}
             />
           )}
-          {lue && repere && selected && etiquette && (
-            <EtiquetteDeZone selected={selected} repere={repere} texte={etiquette} estompe={estompe} />
+          {repere && selected && etiquette && (
+            <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
           )}
           <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
             {lue && raisonVide ? titreDuPlanVide(t, raisonVide) : null}
           </AvisSurLeFond>
           <IndicateurDeLecture t={t} etat={etat} />
+          {mapId && <ReplayZoomControl zoom={zoom} locale={locale} />}
         </TacticalPlanFond>
         <RampeVerticale
           t={t}
@@ -194,6 +218,7 @@ function ReglagesEnPilules({
   locale,
   question,
   onQuestionChange,
+  onQuestionIntent,
   qui,
   onQuiChange,
   escouadeDisponible,
@@ -204,7 +229,7 @@ function ReglagesEnPilules({
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
-      <label className={PILULE}>
+      <label className={PILULE} onPointerEnter={onQuestionIntent} onFocus={onQuestionIntent}>
         <span className={ETIQUETTE}>{t.pillReading}</span>
         <select
           value={question}
@@ -278,7 +303,10 @@ function usePeinture(
     const tokens = heatmapRampTokens(modeRampe).map(resolveToken)
     return modeRampe === 'divergent' ? heatRampDivergent(tokens) : heatRamp(tokens)
   }, [paletteVersion, modeRampe])
-  const grid = lecture && repere ? grilleDuPlan(lecture.cellules ?? [], repere, lecture.echelle) : null
+  const grid = useMemo(
+    () => (lecture && repere ? grilleDuPlan(lecture.cellules ?? [], repere, lecture.echelle) : null),
+    [lecture, repere],
+  )
   return { legende, ramp, grid }
 }
 
@@ -325,175 +353,5 @@ function RampeVerticale({
         <b className="block font-medium text-foreground">{legende ? legende.lo : '—'}</b>
       </span>
     </div>
-  )
-}
-
-/**
- * AvisSurLeFond — le message posé SUR le fond, jamais à sa place : l'échec (composition impossible
- * ou panne), la carte hors du filtre, ou l'état vide du plan (`children`, un titre seul).
- */
-function AvisSurLeFond({
-  t,
-  etat,
-  inconnus,
-  estompe,
-  children,
-}: {
-  t: TacticalText
-  etat: EtatDuPlan
-  inconnus: string[] | null
-  estompe: string
-  children: string | null
-}) {
-  if (etat === 'echec') {
-    return (
-      <div className="absolute inset-0 grid place-items-center p-3" data-testid="tactical-plan-avis">
-        {inconnus ? (
-          <EmptyStateNotice
-            title={t.unknownTeammateTitle}
-            description={t.unknownTeammateDescription(inconnus.join(', '))}
-            className="bg-card"
-          />
-        ) : (
-          <p className="rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-sm text-muted-foreground">
-            {t.analysisErrorTitle}
-          </p>
-        )}
-      </div>
-    )
-  }
-  const titre = etat === 'hors_filtre' ? t.planEmptyNoMatchTitle : children
-  if (!titre) return null
-  return (
-    <div
-      className={`pointer-events-none absolute inset-0 grid place-items-center p-3${estompe}`}
-      data-testid={etat === 'hors_filtre' ? 'tactical-carte-hors-filtre' : 'tactical-plan-vide'}
-    >
-      <p className="rounded-md border border-border bg-card px-2.5 py-1.5 text-center text-sm text-muted-foreground">{titre}</p>
-    </div>
-  )
-}
-
-/** CalqueDuPlan — le `<canvas>` des zones nommées et du calque de chaleur, posé sur le fond, et son clic. */
-function CalqueDuPlan({
-  grid,
-  repere,
-  ramp,
-  zones,
-  locale,
-  selected,
-  onCellSelect,
-  estompe,
-}: {
-  grid: TacticalGrid | null
-  repere: RepereTactique | null
-  ramp: readonly string[]
-  zones: readonly CalloutZoneReady[]
-  locale: Locale
-  selected: { col: number; row: number } | null
-  onCellSelect: (col: number, row: number) => void
-  estompe: string
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !grid || !repere) return
-    const width = canvas.clientWidth
-    const height = canvas.clientHeight
-    if (width <= 0 || height <= 0) return
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.clearRect(0, 0, width, height)
-    // L'ENCRE DU TEXTE (`text-foreground` lue par `getComputedStyle`) : contours des zones et cadre de
-    // la sélection ne disent aucune SIGNIFICATION qu'un jeton sémantique porterait — « ce lieu », « ici ».
-    const encre = getComputedStyle(canvas).color
-    peindreLePlan(ctx, repere, width, { grid, ramp, zones, locale, encre })
-    // LE CADRE DE LA CELLULE CHOISIE, par-dessus les calques : le retour immédiat au clic.
-    const cadreSel = rectSelection(selected, repere, width)
-    if (!cadreSel) return
-    ctx.strokeStyle = encre
-    ctx.lineWidth = 2
-    ctx.strokeRect(cadreSel.x - 1, cadreSel.y - 1, cadreSel.size + 2, cadreSel.size + 2)
-  }, [grid, ramp, repere, selected, zones, locale])
-
-  function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current
-    if (!canvas || !repere) return
-    const rect = canvas.getBoundingClientRect()
-    // L'ADRESSE RENDUE EST CELLE DU SERVEUR (ancrée sur l'origine du monde) : c'est elle que
-    // `/tactical/{map}/cellule` attend, et celle que portent les cellules de la réponse.
-    const cellule = celluleDuClic(
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-      { width: canvas.clientWidth, height: canvas.clientHeight },
-      repere,
-    )
-    if (cellule) onCellSelect(cellule.col, cellule.row)
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className={`absolute inset-0 h-full w-full cursor-crosshair text-foreground transition-opacity${estompe}`}
-      onClick={handleClick}
-      data-testid="tactical-plan-canvas"
-    />
-  )
-}
-
-/**
- * IndicateurDeLecture — ce qui se pose PAR-DESSUS le fond selon l'état de la lecture : l'indicateur
- * du premier chargement (visuel seul, sans texte d'attente : l'occupation est dite par `aria-busy`
- * sur le corps de la vue), ou la mention « Mise à jour… » d'une relecture. Jamais À LA PLACE du fond.
- */
-function IndicateurDeLecture({ t, etat }: { t: TacticalText; etat: EtatDuPlan }) {
-  if (etat === 'attente') {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center" data-testid="tactical-analysis-pending">
-        <Spinner />
-      </div>
-    )
-  }
-  if (etat === 'relecture') {
-    return (
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <p
-          role="status"
-          className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground shadow-sm"
-          data-testid="tactical-analysis-updating"
-        >
-          {t.analysisUpdating}
-        </p>
-      </div>
-    )
-  }
-  return null
-}
-
-/** EtiquetteDeZone — le nom de la zone choisie, posé à côté de sa cellule, du côté où il tient. */
-function EtiquetteDeZone({
-  selected,
-  repere,
-  texte,
-  estompe,
-}: {
-  selected: { col: number; row: number }
-  repere: RepereTactique
-  texte: string
-  estompe: string
-}) {
-  const position = positionEtiquette(selected, repere)
-  if (!position) return null
-  return (
-    <span
-      className={`pointer-events-none absolute z-[2] whitespace-nowrap rounded border border-border bg-card px-[5px] py-px text-[11px] leading-[14px] text-foreground${estompe}`}
-      style={position}
-      data-testid="tactical-zone-label"
-    >
-      {texte}
-    </span>
   )
 }

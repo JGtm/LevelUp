@@ -54,8 +54,8 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
   }, [models.objective, playerName])
 
   const filAxe = useMemo<FilAxe>(
-    () => ({ kind: 'period', dateOf: ut.cards.dayFmt, caption: ut.cards.filCaption(models.fil?.matches.length ?? 0, models.coverage.filmed) }),
-    [ut, models.fil, models.coverage.filmed],
+    () => ({ kind: 'period', dateOf: ut.cards.dayFmt }),
+    [ut],
   )
 
   return {

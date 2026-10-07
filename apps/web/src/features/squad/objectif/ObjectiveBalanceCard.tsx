@@ -1,5 +1,5 @@
 /**
- * ObjectiveBalanceCard — « Rapport de force par famille de mode » (Escouade › Contributions,
+ * ObjectiveBalanceCard — « Rapport de force par famille de mode » (Escouade › Emprise,
  * section Objectif ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, maquette C3EW).
  *
  * Un CADRE par famille de mode, bandeau « Bases · 4 matchs » ; dedans, les actions rangées sous
@@ -36,6 +36,8 @@ interface Props {
    * entière seule dans les segments ; les comptes restent dans l'infobulle.
    */
   compact?: boolean
+  /** Escouade › Emprise : les cadres de famille à même la section (titre et aide sur son intertitre). */
+  bare?: boolean
 }
 
 const fitKey = (family: string, key: string, side: 'us' | 'them') => `${family}|${key}|${side}`
@@ -49,7 +51,7 @@ function compactFamilies(families: BalanceFamily[]): BalanceFamily[] {
   }))
 }
 
-export function ObjectiveBalanceCard({ families: actions, familyLabel, columns, t, compact = false }: Props) {
+export function ObjectiveBalanceCard({ families: actions, familyLabel, columns, t, compact = false, bare = false }: Props) {
   const families = useMemo(() => (compact ? compactFamilies(actions) : actions), [actions, compact])
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(bodyRef, families)
@@ -68,10 +70,10 @@ export function ObjectiveBalanceCard({ families: actions, familyLabel, columns, 
     [t],
   )
   return (
-    <ObjectifFrame title={t.balance.title} info={t.balance.info} legend={legend} testId="objective-balance">
+    <ObjectifFrame title={t.balance.title} info={t.balance.info} legend={legend} testId="objective-balance" bare={bare}>
       <div ref={bodyRef} className="flex flex-col gap-3">
         {families.map((f) => (
-          <div key={f.family} className="overflow-hidden rounded-lg border border-border" data-testid={`objective-balance-family-${f.family}`}>
+          <div key={f.family} className="overflow-hidden rounded-lg border border-border bg-card" data-testid={`objective-balance-family-${f.family}`}>
             <div className="flex items-baseline gap-2 border-b border-border bg-muted px-3 py-[7px] text-sm font-semibold">
               {familyLabel(f.family)}
               <span className="text-[11.5px] font-normal text-muted-foreground">{t.matchesFmt(f.matches)}</span>

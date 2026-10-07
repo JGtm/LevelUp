@@ -11774,6 +11774,8 @@ export interface components {
             us: number;
         };
         SquadEmpriseEvening: {
+            comparable: boolean;
+            families: string[] | null;
             /** Format: int64 */
             match_count: number;
             /** Format: int64 */
@@ -12923,6 +12925,7 @@ export interface components {
             question: string;
             qui: string;
             rayons_radar_m?: number[] | null;
+            voisines?: components["schemas"]["TacticalRaster"][] | null;
             zones?: components["schemas"]["CalloutZone"][] | null;
         };
         TacticalRasterBody: {

@@ -27,8 +27,8 @@ import { testReplayDoc } from '../test/testDoc'
 
 /** Les deux chaînes de `ReplayTeams.tsx`, recopiées À L'OCTET : le test les compare au source ET au DOM. */
 const SEATS_GRID_CLASS =
-  'grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-1 overflow-y-auto'
-const SEATS_COLUMN_CLASS = 'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto'
+  'grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-1 overflow-y-auto overflow-x-hidden'
+const SEATS_COLUMN_CLASS = 'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden'
 
 const START_TIME = '2026-07-24T20:00:00Z'
 const EN_TETE_BTB = { start_time: START_TIME, mode_category: 'BTB' }

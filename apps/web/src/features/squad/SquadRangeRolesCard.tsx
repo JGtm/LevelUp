@@ -10,11 +10,12 @@
  * `FENETRE_ROLE` matchs) dit le rôle ; un point atypique se voit sans faire basculer
  * l'étiquette.
  *
- * ELLE SE PLACE SOUS L'APPUI : l'appui dit ce que l'escouade se donne, la portée à quelle
- * distance chacun se tient.
+ * ELLE SE PLACE À DROITE DE L'APPUI, MÊME HAUTEUR : l'appui dit ce que l'escouade se donne, la
+ * portée à quelle distance chacun se tient.
  *
- * D22-VERBOSITÉ (LOI) : graphe et légendes seulement. La lecture tient dans l'infobulle du
- * titre, en trois phrases ; sous le graphe, rien d'autre que la légende et la couverture.
+ * D22-VERBOSITÉ (LOI) : graphe et légende du graphe seulement. La lecture (point creux sous le
+ * plancher de frags mesurés, tendance glissante) tient dans l'infobulle du titre ; sous le graphe,
+ * ni légende ajoutée ni compte de frags mesurés.
  */
 import { useMemo } from 'react'
 
@@ -32,13 +33,11 @@ import { getSquadPlayerColors } from './colors'
 import { SquadRangeRolesTape } from './SquadRangeRolesTape'
 import {
   categoriesMatchs,
-  FENETRE_ROLE,
   ordonnerProfils,
   PLANCHER_MESURE,
   rolesFenetre,
   seriesPortee,
   seuilsRoles,
-  TAILLE_POINT_MIN,
   type RoleDePortee,
 } from './squadRangeRoles.logic'
 import { getSquadRangeRolesText } from './squadRangeRolesStrings'
@@ -119,35 +118,13 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
       title={t.cardTitle}
       label={t.sectionLabel}
       titleAdornment={titleWithInfo(<TooltipParagraphs items={[t.help(PLANCHER_MESURE)]} />)}
+      className="h-full"
     >
-      <div className="space-y-2 px-3 py-2" data-testid={`${TID}-roles`}>
+      <div className="flex flex-1 flex-col justify-center px-3 py-2" data-testid={`${TID}-roles`}>
         {vide ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
-          <>
-            <ChartCard series={chartSeries} buildOption={buildOption} height={380} frameless />
-            {/* Légende des deux encodages qu'ECharts ne sait pas nommer : le point creux et
-                la tendance. Les joueurs, eux, sont dans la légende du graphe. */}
-            <div
-              className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
-              data-testid={`${TID}-legende`}
-            >
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block rounded-full border border-dashed border-muted-foreground"
-                  style={{ width: TAILLE_POINT_MIN, height: TAILLE_POINT_MIN }}
-                />
-                {t.legendLowSample(PLANCHER_MESURE)}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-px w-5 bg-muted-foreground" />
-                {t.legendTrend(FENETRE_ROLE)}
-              </span>
-            </div>
-            <p className="text-2xs text-muted-foreground" data-testid={`${TID}-couverture`}>
-              {t.coverage(bloc.kills_measured, bloc.kills_total)}
-            </p>
-          </>
+          <ChartCard series={chartSeries} buildOption={buildOption} height={380} frameless />
         )}
       </div>
       {!vide && (

@@ -69,8 +69,7 @@ describe('Véhicules — bilan et fil', () => {
   it('une piste « Véhicules » : 5 · 62,5 % contre 37,5 % · 3, pastille de la couleur de la ressource', () => {
     mount()
     const piste = within(screen.getByTestId('emprise-control')).getByTestId('piste-camps-row-vehicle')
-    expect(piste.textContent).toContain('Véhicules')
-    expect(piste.textContent).toContain('prises')
+    expect(piste.textContent).toContain('Prises de véhicules')
     expect(piste.textContent).toContain('5 · 62,5 %')
     expect(piste.textContent).toContain('37,5 % · 3')
     const dot = piste.querySelector('span[style*="background"]') as HTMLElement
@@ -92,8 +91,9 @@ describe('Véhicules — fiches (D3 : pastilles pleines)', () => {
     expect(warthog.querySelectorAll('[data-dot="lost"]')).toHaveLength(0)
     expect(screen.getByTestId(`emprise-sheet-line-${XUID.jgtm}-unknown`).textContent).toContain('Véhicule inconnu')
     expect(text(`emprise-sheet-foot-${XUID.jgtm}-vehicle`)).toBe('3 véhicules')
-    // Le libellé du titre pour la tourelle fixe, chez le reste du camp.
-    expect(screen.getByTestId('emprise-sheet-line-rest-tourelle_fixe').textContent).toContain('Tourelle fixe')
+    // La tourelle fixe, prise par le seul reste du camp (joueurs inconnus), n'a pas de ligne.
+    expect(screen.queryByTestId(`emprise-sheet-line-${XUID.jgtm}-tourelle_fixe`)).toBeNull()
+    expect(within(screen.getByTestId('emprise-sheets')).queryByText('Tourelle fixe')).toBeNull()
     for (const dot of screen.getAllByTestId('emprise-sheets')[0].querySelectorAll('[data-dot="lost"]')) {
       // Seuls les bonus perdus (Madina97294, Camouflage) ont une pastille vide.
       expect(dot.closest('[data-testid^="emprise-sheet-line-"]')?.getAttribute('data-testid')).toContain('powerup')
@@ -122,7 +122,7 @@ describe('Véhicules — frags et rendement (D5, D9)', () => {
   it('Frags obtenus : tous les frags (14 · 60,9 %), temps à bord 3 min 30 · 67,7 %', () => {
     mount()
     const row = within(screen.getByTestId('emprise-production')).getByTestId('piste-camps-row-vehicle')
-    expect(row.textContent).toContain('frags depuis un véhicule')
+    expect(row.textContent).toContain('Frags depuis un véhicule')
     expect(row.textContent).toContain('14 · 60,9 %')
     expect(row.textContent).toContain('39,1 % · 9')
     expect(text('emprise-production-exposure-vehicle')).toBe('temps à bord : 3 min 30 · 67,7 %1 min 40')
@@ -175,8 +175,7 @@ describe('Véhicules — anglais (S12)', () => {
     useAppShellStore.setState({ locale: 'en' })
     mount()
     const piste = within(screen.getByTestId('emprise-control')).getByTestId('piste-camps-row-vehicle')
-    expect(piste.textContent).toContain('Vehicles')
-    expect(piste.textContent).toContain('takes')
+    expect(piste.textContent).toContain('Vehicle takes')
     expect(text('emprise-production-exposure-vehicle')).toBe('time aboard: 3 min 30 · 67.7%1 min 40')
     expect(within(screen.getByTestId('emprise-grid')).getAllByText('not measured')).toHaveLength(5)
     expect(text('emprise-yield-vehicle-note')).toContain('11 of 23 kills (47.8%)')

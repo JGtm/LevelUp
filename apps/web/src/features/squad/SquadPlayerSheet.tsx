@@ -5,7 +5,7 @@
  * en haut à droite, sections à étiquette en capitales de 9 px, pied de fiche.
  *
  * Une seule coquille pour les fiches de médailles (Contributions), de l'objectif
- * (Contributions) et des prises (Emprise) : trois copies auraient divergé au premier réglage.
+ * (Emprise) et des prises (Emprise) : trois copies auraient divergé au premier réglage.
  * Le contenu de chaque section appartient à l'appelant.
  */
 import type { ReactNode } from 'react'
@@ -15,13 +15,10 @@ export function SquadSheetAvatar({
   label,
   color,
   emblemUrl,
-  initial,
 }: {
   label: string
   color: string
   emblemUrl?: string
-  /** Le signe affiché sans emblème (défaut : l'initiale du nom). */
-  initial?: string
 }) {
   if (emblemUrl) {
     return (
@@ -39,7 +36,7 @@ export function SquadSheetAvatar({
       className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
       style={{ background: color, color: '#fff' }} // color-allow: blanc structurel sur fond joueur
     >
-      {initial ?? label.charAt(0).toUpperCase()}
+      {label.charAt(0).toUpperCase()}
     </span>
   )
 }

@@ -27,7 +27,6 @@ describe('textes FR', () => {
       'Objectif',
       'Équipement',
     ])
-    expect(U.sections.bilanCoverage(62, 90)).toBe('62 matchs filmés sur 90 · frags de la feuille de match sur les 90')
   })
 
   it('une seule source des intertitres : les textes de l’Emprise solo ne surchargent pas ceux de l’Escouade', () => {
@@ -75,7 +74,6 @@ describe('textes FR', () => {
     expect(E.grid.untieredTip).toBe('Niveaux de socle non mesurés sur ces matchs : armes spéciales et armes de râtelier ne se séparent pas.')
     expect(U.cards.maps.tipHead('Carte Alpha', 12, 1)).toBe('Carte Alpha (12 matchs, 1 filmé)')
     expect(U.cards.maps.others).toBe('Autres cartes')
-    expect(U.cards.filCaption(90, 62)).toBe('90 matchs, dont 62 filmés')
   })
 
   it('vies : causes d’écart comptées dans l’aide', () => {

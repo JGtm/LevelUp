@@ -909,7 +909,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       (vies sans identité de `a349fea8` et `50247b26`, mêmes comptes qu'en b1 ; équipe de bot non
       lue de `bcb6d393`, lot des équipes). `replay.SchemaVersion` reste 80. Accord de fusion de
       l'utilisateur du 2026-10-07 (CI verte).
-- [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
+- [x] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
       gagne killsource et le ratchet de fermeture d'image-clé : golden régénéré, chaque baisse
@@ -1245,7 +1245,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             Reporté à 2.7.c5, par dépendance d'ordre des fusions : `SchemaVersion` et
             `SchemaDesFaits` montent à la fusion de `feat/v75`, aux rangs libres à ce moment-là
             (85 et 10 annoncés) ; `grammar.Rev` s'y renumérote après les rangs des autres sessions.
-      - [ ] 2.7.c5 *Clôture* : exception du garde-rail retirée (périmée, donc rouge),
+      - [x] 2.7.c5 *Clôture* : exception du garde-rail retirée (périmée, donc rouge),
             `killsource.Rev` et `grammar.Rev`, ADR 0037 amendé, registre des replis
             (`repli_largeur_mot_de_poignee_inferee`, `repli_localisation_largeur_libre`,
             `repli_record_desynchronise_jete` : sites déplacés), doc de killsource. Gate de l'item.
@@ -1303,7 +1303,18 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
               (pousseur et colline par le nom, publication seule) avant ce lot ; le lot passe donc à
               `SchemaVersion` 87 (entrée v87 de la chronique, justification et plafonds ; 83 et 85,
               réservés au lot, restent sans emploi), goldens d'assemblage et de forme et fixtures de
-              contrat régénérés à 87 ; suite du film et `archlint` verts.
+              contrat régénérés à 87 ; suite du film et `archlint` verts ;
+            - CI de `ff2b1c969` : tout vert sauf le lint (`goconst` : la fusion réunit quatre
+              `DatePose` « 2026-10-07 », le rattrapage des kills et trois replis du rejeu des zones
+              par le nom) ; constante `date1007` posée dans `registre.go` comme `date0927`
+              (`0e65358bf`), aucune valeur ne change ;
+            - quatrième fusion de `feat/v75` (`92c6a5d6a`, levelup-d0 : désignateur de colline et
+              premier contact par le nom, sans révision ni schéma, `SchemaVersion` 87 tient) : seul
+              conflit, les `DatePose` du registre des replis des objectifs ; la constante
+              `dateNomsDeProprietes` de levelup-d0 et `date1007` deviennent la seule `date1007`
+              (convenu entre les deux sessions), cinq entrées la portent ; vet du film et
+              d'`archlint`, tests du registre, d'`archlint`, du rejeu et des armes verts ; CI de la
+              tête fusionnée verte.
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
@@ -2083,3 +2094,13 @@ plan y sont reprises comme items (3.1.2).
   ne lit plus aucun octet : son exception au garde-rail des faits est retirée. Coordination :
   levelup-d0 a fusionné `grammar-2026-10-07`, `SchemaDesFaits` 9 et `SchemaVersion` 84 dans
   `feat/v75` (`292ef56a5`) ; renumérotation à la fusion (2.7.c5). Découvertes 34 et 35 ; 30 instruite.
+- 2026-10-07 (soir) : 2.7.c5 CLOS, donc 2.7.c. Quatre refusions de `feat/v75` (`fad38a03c`,
+  `0a9a327d7`, `cdd642061`, `92c6a5d6a`) avec renumérotation négociée : `grammar-2026-10-07.2`,
+  `SchemaVersion` 87 (levelup-d0 a fusionné 84 puis 86 avant ; 83 et 85 restent sans emploi),
+  `SchemaDesFaits` 10. ADR 0037 amendé (IR-6, IR-7, D-2), doc de killsource. Gate de corpus contre
+  `feat/v75` : 352 gains, 93 pertes déclarées, banc de vérité expliqué (repli du rattrapage nouveau
+  par décision, un repli existant sur trois films) ; une régression probable notée (un trajet de
+  véhicule raccourci, découverte 34). `make gate-push` vert, CI verte sur la tête fusionnée. FUSION
+  DANS `feat/v75` par avance rapide, accord de l'utilisateur du 2026-10-07 (« Ok tu pourras
+  fusionner »). Recuisson du parc et backlog killsource : sur signal de l'utilisateur. Suite du
+  plan : 2.7.d.

@@ -95,6 +95,8 @@ export function TacticalFilterBar({
     // PAS : c'est une SÉLECTION dans la grille, pas un filtre.
     extrasActifs: scope.sessions.length > 0 || scope.coequipiers.length > 0,
     onResetExtras: () => setScope({ sessions: [], coequipiers: [] }),
+    // Ascension pose déjà sa gouttière (`p-6`) : la barre prend la largeur du corps de l'onglet.
+    gouttiere: false,
     // Fonction, et pas un nœud : les sessions proposées viennent de ce que le hook
     // charge pour ses propres counts — donc elles n'existent pas encore ici.
     extras: ({ sessionOptions: dispo }) => (
@@ -136,7 +138,7 @@ export function TacticalFilterBar({
         <div
           role="status"
           data-testid="tactical-sessions-hors-liste"
-          className="mx-6 mt-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning"
+          className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning"
         >
           {t.sessionsHorsListe(horsListe.length, horsListe.join(', '))}
         </div>

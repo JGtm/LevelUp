@@ -8,6 +8,7 @@ import {
   buildSoloObjectiveSheet,
   familyMix,
   median,
+  squadSheetsOnly,
 } from './objectif.logic'
 import {
   block0709,
@@ -143,6 +144,23 @@ describe('buildObjectiveSheets — répartition de l’objectif dans l’escouad
   it('rôle dominant = le rôle où le joueur pèse le plus dans notre camp', () => {
     // JGtm : 7/22 prendre, 10/33 défendre, 64,9/137,5 tenir → Tenir.
     expect(sheets.dominant).toEqual(['hold', 'take', 'defend', 'defend'])
+  })
+})
+
+describe('squadSheetsOnly — les fiches de l’escouade seule (22/09)', () => {
+  const only = squadSheetsOnly(buildObjectiveSheets(block2209()))
+  const line = (key: string) => only.families[0].lines.find((l) => l.key === key)!
+
+  it('la fiche du reste du camp se retire, valeurs, totaux et rôles dominants alignés', () => {
+    expect(only.owners.map((o) => o.xuid)).toEqual(['xj', 'xc', 'xm'])
+    expect(line('flag_steals').values).toEqual([3, 4, 5])
+    expect(only.roleTotals).toHaveLength(3)
+    expect(only.dominant).toEqual(['hold', 'take', 'defend'])
+  })
+
+  it('l’échelle d’une ligne se recalcule sur les fiches restantes', () => {
+    expect(line('flag_steals').max).toBe(5)
+    expect(line('flag_captures').max).toBe(4)
   })
 })
 

@@ -8,6 +8,10 @@
  *
  * `frameless` par défaut : la frise vit DANS une carte de section, un second cadre ferait
  * un cadre dans un cadre.
+ *
+ * TOUTES les options de la frise sont transmises au module d'option, `baseline` (mode écart)
+ * et `hollowLegend` (témoin des soirées à échantillon faible) compris : une option reçue puis
+ * tue laisserait l'axe annoncer des écarts sous des bâtons tracés en valeur absolue.
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 
@@ -33,6 +37,8 @@ export function SessionBarsTrendChart({
   series: specs,
   yAxisLabel,
   tooltipLines,
+  baseline,
+  hollowLegend,
 }: SessionBarsTrendChartProps) {
   // La série factice porte l'état « il y a quelque chose à peindre » : les données
   // vivent dans la closure de `buildOption`, comme dans `ChartFromOption`.
@@ -47,8 +53,10 @@ export function SessionBarsTrendChart({
         series: specs,
         yAxisLabel,
         ...(tooltipLines ? { tooltipLines } : {}),
+        ...(baseline ? { baseline } : {}),
+        ...(hollowLegend ? { hollowLegend } : {}),
       }),
-    [labels, specs, yAxisLabel, tooltipLines],
+    [labels, specs, yAxisLabel, tooltipLines, baseline, hollowLegend],
   )
   return (
     <ChartCard

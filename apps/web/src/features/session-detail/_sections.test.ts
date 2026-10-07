@@ -18,7 +18,7 @@ import {
 const TOUT: SessionSectionPresence = {
   coordination: true,
   range: true,
-  frag_bar: true,
+  frag_donut: true,
   tools: true,
   weapon_accuracy: true,
   control: true,
@@ -34,7 +34,7 @@ const TOUT: SessionSectionPresence = {
 }
 
 const CARTES = [
-  'frag_bar',
+  'frag_donut',
   'tools',
   'weapon_accuracy',
   'control',
@@ -73,7 +73,7 @@ describe('groupSessionSections — groupes et sous-groupes', () => {
     const ku = runs.find((r) => r.group === 'kills_usage')
     expect(ku?.keys).toEqual(CARTES)
     expect(ku?.subruns.map((s) => [s.subgroup, s.keys])).toEqual([
-      [null, ['frag_bar', 'tools', 'weapon_accuracy']],
+      [null, ['frag_donut', 'tools', 'weapon_accuracy']],
       ['resources', ['control', 'fil', 'grid', 'mine']],
       ['prendre', ['production', 'yield']],
       ['lives', ['lives']],
@@ -93,7 +93,7 @@ describe('groupSessionSections — groupes et sous-groupes', () => {
 
 describe('sessionRowOpenings — l’intertitre se pose sur la première clé PRÉSENTE', () => {
   it('groupe et sous-groupe dans la rangée de leur première clé', () => {
-    const open = sessionRowOpenings(sessionSectionKeys({ ...TOUT, frag_bar: false, tools: false, weapon_accuracy: false, control: false }))
+    const open = sessionRowOpenings(sessionSectionKeys({ ...TOUT, frag_donut: false, tools: false, weapon_accuracy: false, control: false }))
     // « Frags et usages » s'ouvre sur `fil` : A, B, B' et C manquent ; le sous-groupe aussi.
     expect(open.get('fil')).toEqual({ group: 'kills_usage', subgroup: 'resources' })
     expect(open.get('grid')).toBeUndefined()
@@ -105,7 +105,7 @@ describe('sessionRowOpenings — l’intertitre se pose sur la première clé PR
     const open = sessionRowOpenings(sessionSectionKeys(TOUT))
     expect(open.has('summary')).toBe(false)
     expect(open.has('matches')).toBe(false)
-    expect(open.get('frag_bar')).toEqual({ group: 'kills_usage' })
+    expect(open.get('frag_donut')).toEqual({ group: 'kills_usage' })
     expect(open.get('tools')).toBeUndefined()
   })
 })
@@ -125,7 +125,7 @@ describe('pairSessionKeys — les paires de la pleine page', () => {
   it('A|B, C|D, G|H partagent une rangée ; le reste est seul', () => {
     const rows = pairSessionKeys(CARTES as never)
     expect(rows).toEqual([
-      ['frag_bar', 'tools'],
+      ['frag_donut', 'tools'],
       ['weapon_accuracy'],
       ['control', 'fil'],
       ['grid'],

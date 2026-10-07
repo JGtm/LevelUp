@@ -40,11 +40,13 @@ export function isCommunityPath(pathname: string): boolean {
 const PERSONAL_STATS_RE = /^\/stats\/(summary|maps-modes|distributions|progression|advanced)/
 // Synthèse : sa propre barre (PeriodePill/SaisonPill), pas la barre solo.
 const SYNTHESIS_RE = /^\/stats\/synthesis/
+// Tendances : ses propres commandes (vue, type de partie, horizon), pas la barre solo.
+const TRENDS_RE = /^\/stats\/tendances/
 const STATS_RE = /^\/stats\//
 
 /**
  * La page courante montre-t-elle la barre de filtres SOLO (FilterOmnibar + rail du
- * store solo) ? Pages Stats uniquement, hors stats personnelles et Synthèse, qui
+ * store solo) ? Pages Stats uniquement, hors stats personnelles, Synthèse et Tendances, qui
  * ont chacune leur propre barre.
  *
  * Source UNIQUE (lot perf L4a, D4.4, 2026-09-23) : NavL2 s'en sert pour rendre la
@@ -55,7 +57,9 @@ const STATS_RE = /^\/stats\//
 export function routeShowsSoloFilters(pathname: string): boolean {
   const suffix = playerRelativePath(pathname)
   if (suffix === null) return false
-  if (PERSONAL_STATS_RE.test(suffix) || SYNTHESIS_RE.test(suffix)) return false
+  if (PERSONAL_STATS_RE.test(suffix) || SYNTHESIS_RE.test(suffix) || TRENDS_RE.test(suffix)) {
+    return false
+  }
   return STATS_RE.test(suffix)
 }
 

@@ -41,17 +41,14 @@ import {
   type SessionEmpriseModels,
 } from './sessionEmprise.logic'
 import { SESSION_CARD_TEXT, type SessionCardTexts, type SessionCompactCards } from './sessionEmpriseText'
-import { SessionFragBarCard } from './SessionFragBarCard'
+import { SessionFragDonutCard } from './SessionFragDonutCard'
 import { SessionToolsCard } from './SessionToolsCard'
 
 /** Hauteur de « Précision par arme » (B'), celle des cartes de frags d'avant (`ChartCard`). */
 const ACCURACY_HEIGHT = 320
 
-interface SessionEmpriseCards {
-  cards: Partial<Record<keyof SessionCardsPresence, ReactNode>>
-  /** « 6 matchs filmés sur 7 · … » sous « Ressources de la soirée », en pleine page ; null sans Emprise. */
-  coverage: string | null
-}
+/** Les cartes présentes de la colonne, par clé de section. */
+type SessionEmpriseCards = Partial<Record<keyof SessionCardsPresence, ReactNode>>
 
 export function useSessionEmpriseCards(
   col: SessionColumnBlocks,
@@ -100,11 +97,11 @@ export function useSessionEmpriseCards(
     dominance, outcomeLabels,
   }
   const render = cardRenderers(ctx)
-  const cards: SessionEmpriseCards['cards'] = {}
+  const cards: SessionEmpriseCards = {}
   for (const key of Object.keys(render) as (keyof SessionCardsPresence)[]) {
     if (present[key]) cards[key] = render[key]()
   }
-  return { cards, coverage: emprise ? texts.coverage(models.coverage.filmed, models.coverage.total) : null }
+  return cards
 }
 
 interface CardsContext {
@@ -130,7 +127,9 @@ function cardRenderers(x: CardsContext): Record<keyof SessionCardsPresence, () =
   const { col, m, t, cc, compact, locale } = x
   const entry = col.entry
   return {
-    frag_bar: () => <SessionFragBarCard entry={entry} player={x.player} locale={locale} texts={t} compact={cc?.frag} />,
+    frag_donut: () => (
+      <SessionFragDonutCard entry={entry} title={t.squad.performanceCharts.fragBreakdownTitle} info={t.squad.performanceCharts.fragBreakdownInfo} />
+    ),
     tools: () => <SessionToolsCard tools={entry?.weapon_tools} player={x.player} locale={locale} texts={t} compact={compact} />,
     weapon_accuracy: () => (
       <WeaponAccuracyChart weapons={entry?.weapon_accuracy ?? []} weaponKills={entry?.top_weapon_kills ?? []} height={ACCURACY_HEIGHT} />

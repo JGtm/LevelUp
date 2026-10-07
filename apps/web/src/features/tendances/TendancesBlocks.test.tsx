@@ -43,7 +43,7 @@ const optionIn = async (testId: string) => {
 }
 
 describe('TendancesCalendar', () => {
-  it('jours joués : carte titrée, grille de cases, rampe divergente 0..1 sans réglette', async () => {
+  it('jours joués : carte titrée, grille de cases, rampe divergente 0..1, légende en dégradé verticale à droite', async () => {
     const data = response({
       calendar: [
         { date: '2026-10-01', matches: 4, wins: 3, losses: 1, win_rate: 0.75 },
@@ -55,7 +55,9 @@ describe('TendancesCalendar', () => {
     const option = await optionIn('tendances-calendar')
     expect(option.series[0].type).toBe('heatmap')
     expect(option.series[0].data).toHaveLength(14)
-    expect(option.visualMap.show).toBe(false)
+    expect(option.visualMap.show).toBe(true)
+    expect(option.visualMap.orient).toBe('vertical')
+    expect(option.visualMap.right).toBeDefined()
     expect(option.visualMap.min).toBe(0)
     expect(option.visualMap.max).toBe(1)
     expect(option.yAxis.inverse).toBe(true)

@@ -230,6 +230,23 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:  "repli_colline_designateur_par_voisinage",
+		Fait: "quel slot `ti=13` DESIGNE la colline courante en KOTH, et quels slots datent le premier contact avec l'objet de mode",
+		Mecanisme: "aucun slot de tag 5 chaine ne porte un nom de cle du vocabulaire des blocs de zone : " +
+			"le designateur est le slot dont le VOISIN (+1) porte un proprietaire qui parle (au moins " +
+			"deux emissions), et le premier contact se date sur les slots +1 a +3",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill.go",
+			Ancre:   "c.fb.Declenche(fallback.NomCollineDesignateurParVoisinage)",
+		}},
+		DatePose:        date1007,
+		CibleRetrait:    "le vocabulaire des blocs couvre tout nom de designateur rencontre ; a defaut, " + retraitRegle4,
+		CritereRetrait:  "0 declenchement sur les films a colline du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_periode_entiere",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",

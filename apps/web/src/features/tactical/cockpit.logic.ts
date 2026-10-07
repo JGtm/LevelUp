@@ -23,8 +23,13 @@ import { estOuvrable, nomCarte, trierCartes } from './tacticalLogic'
 const COLONNE_CARTES_LARGEUR_PX = 208
 /** Largeur de la colonne « Zone sélectionnée », en px. */
 const COLONNE_ZONE_LARGEUR_PX = 360
-/** Hauteur maximale de la boîte du plan (fond + calque), en px. */
-export const PLAN_BOITE_HAUTEUR_MAX_PX = 800
+/**
+ * Hauteur minimale de la boîte du plan (fond + calque), en px : sa hauteur suit l'espace laissé par
+ * la fenêtre sous le bandeau du plan (`useHauteurDuPlan`), sans descendre sous ce plancher.
+ */
+export const PLAN_HAUTEUR_MIN_PX = 360
+/** Ce qui reste sous la boîte du plan jusqu'au bas de la fenêtre : marge de la carte, son bord et la gouttière de la page, en px. */
+export const PLAN_MARGE_BAS_PX = 40
 /** Hauteur de la rampe verticale de la légende, en px. */
 export const RAMPE_HAUTEUR_PX = 220
 /** Marge droite réservée à la légende à côté du fond, en px. */
