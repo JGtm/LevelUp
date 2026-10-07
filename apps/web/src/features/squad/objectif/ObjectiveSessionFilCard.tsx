@@ -1,6 +1,6 @@
 /**
  * ObjectiveSessionFilCard — « Rapport de force au fil de la session » (Escouade ›
- * Contributions, section Objectif ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26,
+ * Emprise, section Objectif ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26,
  * maquette C3EW).
  *
  * Un graphe, trois courbes de rôle cumulées (moyenne des parts, chaque match pèse pareil, D7),
@@ -8,7 +8,7 @@
  * volume) ; le point final grossi et la valeur au bout de chaque courbe ; le trait 50 % ; sous
  * l'axe, l'heure, la bande de résultats (encoche de dominance quand le drapeau existe, S9), la
  * carte et le mode. Sous trois matchs à objectif, la courbe ne se trace pas : la carte garde sa
- * place et dit pourquoi (note de la maquette).
+ * place et dit pourquoi, dans le bloc placeholder (`EmptyStateNotice` tiretée).
  */
 import { useCallback, useMemo } from 'react'
 
@@ -22,7 +22,7 @@ import { formatMatchTime } from '../formes/format'
 import type { Locale } from '@/lib/i18n/locale'
 import { OBJECTIVE_MIN_MATCHES, type FilMatch } from './objectif.logic'
 import { buildFilOption, resolveObjectifColors } from './objectifCharts'
-import { ObjectifFrame, ObjectifLegend, ObjectifNote } from './ObjectifFrame'
+import { ObjectifFrame, ObjectifLegend, ObjectifPlaceholder } from './ObjectifFrame'
 import type { ObjectifText } from './objectifStrings'
 
 /** Hauteur du graphe (maquette : 480 × 262). */
@@ -77,7 +77,7 @@ export function ObjectiveSessionFilCard({ matches, familyLabel, dominanceLabels,
   if (matches.length < OBJECTIVE_MIN_MATCHES) {
     return (
       <ObjectifFrame title={t.fil.title} info={t.fil.info} testId="objective-fil">
-        <ObjectifNote note={t.fil.belowMinimum(matches.length)} testId="objective-fil-note" />
+        <ObjectifPlaceholder notice={t.fil.belowMinimum(matches.length)} testId="objective-fil-note" />
       </ObjectifFrame>
     )
   }

@@ -25952,6 +25952,14 @@ components:
     SquadEmpriseEvening:
       additionalProperties: false
       properties:
+        comparable:
+          type: boolean
+        families:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
         match_count:
           format: int64
           type: integer
@@ -25973,6 +25981,8 @@ components:
         - start_time
         - match_count
         - measured_matches
+        - comparable
+        - families
         - shares
       type: object
     SquadEmpriseExposure:

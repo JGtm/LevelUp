@@ -120,31 +120,25 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
-      {/* SECTION « APPUI ET PORTÉE » — DEUX CARTES, DEUX RANGÉES :
-            1. « Appui » seul, dans la colonne de gauche de sa grille — les assistances que
-               les joueurs de l'escouade se donnent ;
-            2. « Rôles de portée » seule, dans la colonne de gauche de sa grille — la
-               distance à laquelle chaque joueur frague, rapportée au lobby.
+      {/* SECTION « APPUI ET PORTÉE » — DEUX CARTES, UNE RANGÉE, MÊME HAUTEUR :
+            « Appui » à gauche — les assistances que les joueurs de l'escouade se donnent ;
+            « Rôles de portée » à droite — la distance à laquelle chaque joueur frague,
+            rapportée au lobby.
 
           CHAQUE CARTE SE MONTE INDÉPENDAMMENT : l'appui vient du résumé du film, les rôles des
-          films décodés. L'absence d'un bloc est un ÉTAT (rien de mesuré sur la sélection) :
-          sa rangée n'est pas montée, et sans aucun des deux la section ne l'est pas. */}
+          films décodés. L'absence d'un bloc est un ÉTAT (rien de mesuré sur la sélection) : sa
+          cellule n'est pas montée (la carte restante garde sa demi-largeur), et sans aucun des
+          deux la section ne l'est pas. */}
       {(assistPairs || rangeProfiles) && (
         <section className="space-y-4" aria-label={t.sections.appuiPortee}>
           <SectionTitle className="flex items-center gap-1.5">
             {t.sections.appuiPortee}
             <InfoTooltip content={<TooltipParagraphs items={t.sections.appuiPorteeHelp} />} />
           </SectionTitle>
-          {assistPairs && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <SquadAppuiCard block={assistPairs} roster={roster} />
-            </div>
-          )}
-          {rangeProfiles && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="squad-appui-portee-row">
+            {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} />}
+            {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />}
+          </div>
         </section>
       )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +

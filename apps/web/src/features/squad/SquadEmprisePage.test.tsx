@@ -103,8 +103,10 @@ describe('SquadEmprisePage — structure', () => {
       expect(sections[i - 1].compareDocumentPosition(sections[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }
     expect(within(sections[0]).getByText('Ressources')).toBeInTheDocument()
-    // « Prises par joueur » : l'intertitre ET le titre de sa carte.
-    expect(within(sections[1]).getAllByText('Prises par joueur')).toHaveLength(2)
+    // « Prises par joueur » : l'intertitre seul — les fiches sont à même la section, sans carte
+    // englobante ni titre redondant.
+    expect(within(sections[1]).getAllByText('Prises par joueur')).toHaveLength(1)
+    expect(screen.getByTestId('emprise-sheets').className).not.toContain('border')
     expect(within(sections[2]).getByText('Par match')).toBeInTheDocument()
     const control = screen.getByTestId('emprise-control')
     const fil = screen.getByTestId('emprise-fil')
@@ -139,13 +141,14 @@ describe('Contrôle des ressources', () => {
   it('une piste par ressource, pastille de couleur, « compte · part » dans chaque segment', () => {
     mount()
     const bonus = within(screen.getByTestId('emprise-control')).getByTestId('piste-camps-row-powerup')
-    expect(bonus.textContent).toContain('Bonus')
-    expect(bonus.textContent).toContain('prises · camouflage, surbouclier')
+    expect(bonus.textContent).toContain('Prises de bonus')
+    expect(bonus.textContent).toContain('camouflage, surbouclier')
+    expect(bonus.textContent).not.toContain('prises ·')
     expect(bonus.textContent).toContain('12 · 60 %')
     expect(bonus.textContent).toContain('40 % · 8')
     const power = within(screen.getByTestId('emprise-control')).getByTestId('piste-camps-row-power_weapon')
-    expect(power.textContent).toContain('Armes spéciales')
-    expect(power.textContent).toContain('prises sur les socles')
+    expect(power.textContent).toContain('Prises d’armes spéciales')
+    expect(power.textContent).not.toContain('prises sur les socles')
     expect(power.textContent).toContain('23 · 44,2 %')
     expect(power.textContent).toContain('55,8 % · 29')
   })
@@ -190,19 +193,19 @@ describe('Répartition des prises dans l’escouade', () => {
     expect(within(screen.getByTestId('emprise-losses-us')).getByRole('img', { name: 'Équipe' })).toBeInTheDocument()
   })
 
-  it('fiches JGtm, Chocoboflor, Madina97294 puis le reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
+  it('fiches JGtm, Chocoboflor, Madina97294, sans fiche du reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
     mount()
-    for (const id of [XUID.jgtm, XUID.choco, XUID.madina, 'rest']) {
+    for (const id of [XUID.jgtm, XUID.choco, XUID.madina]) {
       expect(screen.getByTestId(`emprise-sheet-${id}`)).toBeInTheDocument()
     }
+    expect(screen.queryByTestId('emprise-sheet-rest')).toBeNull()
+    expect(screen.queryByText('Reste de l’équipe')).toBeNull()
     expect(text(`emprise-sheet-foot-${XUID.jgtm}-powerup`)).toBe('3 bonus')
     expect(text(`emprise-sheet-foot-${XUID.jgtm}-power_weapon`)).toBe('9 armes spéciales')
-    expect(text('emprise-sheet-foot-rest-power_weapon')).toBe('8 armes spéciales')
     const jgtm = screen.getByTestId(`emprise-sheet-${XUID.jgtm}`)
     expect(jgtm.textContent).toContain('Ressource dominante')
     expect(jgtm.textContent).toContain('Armes spéciales')
     expect(screen.getByTestId(`emprise-sheet-${XUID.madina}`).textContent).toContain('Bonus')
-    expect(screen.getByTestId('emprise-sheet-rest').textContent).toContain('Reste de l’équipe')
   })
 
   it('une pastille par prise, pastille vide = bonus perdu ; un zéro reste une ligne atténuée', () => {
@@ -212,9 +215,11 @@ describe('Répartition des prises dans l’escouade', () => {
     expect(madinaCamo.querySelectorAll('[data-dot="lost"]')).toHaveLength(1)
     const jgtmSurb = screen.getByTestId(`emprise-sheet-line-${XUID.jgtm}-powerup_overshield`)
     expect(jgtmSurb.querySelectorAll('[data-dot="taken"]')).toHaveLength(2)
-    const restCamo = screen.getByTestId('emprise-sheet-line-rest-powerup_camo')
-    expect(restCamo.getAttribute('data-zero')).toBe('true')
-    expect(restCamo.querySelectorAll('[data-dot]')).toHaveLength(0)
+    const jgtmCamo = screen.getByTestId(`emprise-sheet-line-${XUID.jgtm}-powerup_camo`)
+    expect(jgtmCamo.getAttribute('data-zero')).toBeNull()
+    const zero = screen.getByTestId(`emprise-sheet-${XUID.madina}`).querySelector('[data-zero="true"]')
+    expect(zero).not.toBeNull()
+    expect(zero!.querySelectorAll('[data-dot]')).toHaveLength(0)
   })
 
   it('mêmes lignes, même ordre sur toutes les fiches', () => {
@@ -224,22 +229,22 @@ describe('Répartition des prises dans l’escouade', () => {
         el.getAttribute('data-testid')!.split('-').pop(),
       )
     const ref = order(XUID.jgtm)
-    expect(ref).toHaveLength(9)
-    for (const id of [XUID.choco, XUID.madina, 'rest']) expect(order(id)).toEqual(ref)
+    // Neuf objets pris par l'équipe, moins les deux que seul le reste de l'équipe a pris.
+    expect(ref).toHaveLength(7)
+    for (const id of [XUID.choco, XUID.madina]) expect(order(id)).toEqual(ref)
   })
 })
 
 describe('Contrôle des ressources, match par match', () => {
-  it('colonnes : heure, carte, mode, « Victoire 3–0 » et « Domination » à Starboard', () => {
+  it('colonnes : heure, carte, mode, « Victoire 3–0 », sans badge de dominance', () => {
     mount()
     const head = text('emprise-grid-head-m1')
     expect(head).toContain(formatMatchTime(HISTORY_2209[0].start_time, 'fr'))
     expect(head).toContain('Starboard')
     expect(head).toContain('Drapeau')
     expect(text('emprise-grid-result-m1')).toBe('Victoire 3–0')
-    expect(text('emprise-grid-dominance-m1')).toBe('Domination')
+    expect(screen.queryByTestId('emprise-grid-dominance-m1')).toBeNull()
     expect(text('emprise-grid-result-m3')).toBe('Défaite 1–3')
-    expect(screen.queryByTestId('emprise-grid-dominance-m3')).toBeNull()
   })
 
   it('cases « 5–2 », « — » sans objet, « sans film » à Detachment ; frags aux armes spéciales lus sans film', () => {
@@ -249,7 +254,9 @@ describe('Contrôle des ressources, match par match', () => {
     expect(within(table).getAllByText('sans film').length).toBeGreaterThan(0)
     expect(within(table).getAllByText('—').length).toBeGreaterThan(0)
     expect(within(table).getByText('9–13')).toBeInTheDocument()
-    expect(within(table).getByText('frags obtenus avec')).toBeInTheDocument()
+    expect(within(table).getByText('Frags avec arme spéciale')).toBeInTheDocument()
+    expect(within(table).getAllByText('Prises de bonus').length).toBeGreaterThan(0)
+    expect(within(table).queryByText('frags obtenus avec')).toBeNull()
   })
 
   it('constat R2 (revue L6.1) : un match filmé à équipe inconnue dit « équipe inconnue », pas « — »', () => {
@@ -318,12 +325,13 @@ describe('Rendement des ressources', () => {
     mount()
     const card = screen.getByTestId('emprise-production')
     const bonus = within(card).getByTestId('piste-camps-row-powerup')
-    expect(bonus.textContent).toContain('frags pendant l’effet')
+    expect(bonus.textContent).toContain('Frags pendant l’effet d’un bonus')
     expect(bonus.textContent).toContain('8 · 61,5 %')
     expect(bonus.textContent).toContain('38,5 % · 5')
     expect(text('emprise-production-exposure-powerup')).toBe('temps d’effet : 2 min 39 · 58,5 %1 min 53')
     const armes = within(card).getByTestId('piste-camps-row-power_weapon')
-    expect(armes.textContent).toContain('frags obtenus avec')
+    expect(armes.textContent).toContain('Frags avec arme spéciale')
+    expect(armes.textContent).not.toContain('frags obtenus avec')
     // Constat R3 (revue L6.1) : la barre épaisse des armes spéciales porte sur la population de la
     // fine et du rendement (38 / 41, matchs aux prises mesurées), pas sur la feuille entière (47 / 54).
     expect(armes.textContent).toContain('38 · 48,1 %')
@@ -354,33 +362,6 @@ describe('Rendement des ressources', () => {
     const legend = within(card).getByTestId('objectif-legend')
     expect(legend.textContent).toContain('Équipe plus productive')
     expect(legend.textContent).toContain('Moins')
-  })
-})
-
-describe('Soirées précédentes', () => {
-  it('dernier bloc ; « Contrôle des ressources, par soirée » en demi-largeur à gauche, rien à sa droite', () => {
-    mount()
-    const prendre = screen.getByTestId('emprise-section-prendre')
-    const habitude = screen.getByTestId('emprise-section-habitude')
-    expect(prendre.compareDocumentPosition(habitude) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    const card = screen.getByTestId('emprise-habit')
-    expect(card.parentElement?.className).toContain('lg:grid-cols-2')
-    expect(card.parentElement?.children).toHaveLength(1)
-    expect(within(card).getByTestId('echarts-mock')).toBeInTheDocument()
-    const legend = within(card).getByTestId('chart-card-legend')
-    for (const label of ['Bonus', 'Armes spéciales', '50 % : autant que l’adversaire']) expect(legend.textContent).toContain(label)
-  })
-
-  it('sans soirée précédente : la carte le dit, avec les parts de ce soir', () => {
-    mount({ pageData: page({ ...EMPRISE_2209, habit: { ...EMPRISE_2209.habit!, previous: [] } }) })
-    expect(text('emprise-habit-note')).toBe(
-      'Aucune soirée précédente comparable. Ce soir, part de l’équipe dans les prises : bonus 60 %, armes spéciales 44 %.',
-    )
-  })
-
-  it('sans habitude publiée : le bloc se retire', () => {
-    mount({ pageData: page({ ...EMPRISE_2209, habit: undefined }) })
-    expect(screen.queryByTestId('emprise-section-habitude')).toBeNull()
   })
 })
 

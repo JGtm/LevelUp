@@ -5,8 +5,9 @@
  *
  * Au-dessus des fiches, la ligne « Bonus perdus » : pour chaque camp, sa pastille d'équipe
  * (`team-ally` / `team-enemy`, S4 : pas de « nous » / « eux ») puis « 2 sur 12 (17 %) ».
- * Une fiche par joueur de l'escouade, plus le reste du camp, dans la coquille des fiches de
- * médailles (`SquadPlayerSheet`, S7) : « Ressource dominante » en haut à droite (celle où le
+ * Une fiche par joueur de l'escouade (jamais de fiche du reste du camp : les joueurs inconnus
+ * n'ont pas de fiche, leurs prises restent comptées dans celles de l'équipe), dans la coquille des
+ * fiches de médailles (`SquadPlayerSheet`, S7) : « Ressource dominante » en haut à droite (celle où le
  * joueur pèse le plus dans les prises de notre camp) ; une section par ressource, pastille de sa
  * couleur devant le nom (S8) ; les MÊMES objets dans le même ordre sur toutes les fiches, un
  * zéro reste une ligne atténuée avec un trait pointillé ; UNE PASTILLE PAR PRISE à la couleur du
@@ -14,7 +15,7 @@
  * « 3 bonus · 9 armes spéciales ». Rôles sans jugement (S10) : aucun classement, aucune couleur
  * de valeur.
  */
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -31,8 +32,6 @@ export interface PickupIdentity {
   label: string
   color: string
   emblemUrl?: string
-  /** Signe de l'emblème sans image (« + » pour le reste du camp). */
-  initial?: string
 }
 
 interface Props {
@@ -40,12 +39,12 @@ interface Props {
   identities: PickupIdentity[]
   /** Le nom d'un objet (bonus nommé par le web, arme par le titre). */
   itemName: (line: PickupLine) => string
-  /** Encre du reste de l'équipe (légende) ; absente : pas de fiche du reste, pas d'entrée de légende (Vue match). */
-  restColor?: string
+  /** Escouade › Emprise : les fiches à même la section (titre et aide sur son intertitre). */
+  bare?: boolean
   t: EmpriseText
 }
 
-export function PickupSheetsCard({ sheets, identities, itemName, restColor, t }: Props) {
+export function PickupSheetsCard({ sheets, identities, itemName, bare = false, t }: Props) {
   const legend = useMemo(() => {
     const fg = 'var(--foreground)' // color-allow: encre neutre des marques de légende (maquette)
     return (
@@ -54,16 +53,18 @@ export function PickupSheetsCard({ sheets, identities, itemName, restColor, t }:
         items={[
           { kind: 'dot', label: t.sheets.legendTaken, color: fg },
           { kind: 'ring', label: t.sheets.legendLost, color: fg },
-          ...(restColor ? [{ kind: 'dot' as const, label: t.sheets.legendRest, color: restColor }] : []),
         ]}
       />
     )
-  }, [t, restColor])
+  }, [t])
 
   return (
-    <ObjectifFrame title={t.sheets.title} info={t.sheets.info} legend={legend} testId="emprise-sheets">
+    <ObjectifFrame title={t.sheets.title} info={t.sheets.info} legend={legend} testId="emprise-sheets" bare={bare}>
       {sheets.losses && <LossesLine losses={sheets.losses} t={t} />}
-      <div className="grid grid-cols-1 gap-4 min-[561px]:grid-cols-2 min-[1001px]:grid-cols-4">
+      <div
+        className="grid grid-cols-1 gap-4 min-[561px]:grid-cols-2 min-[1001px]:[grid-template-columns:repeat(var(--sheets),minmax(0,1fr))]"
+        style={{ '--sheets': Math.min(Math.max(sheets.owners.length, 2), 4) } as CSSProperties}
+      >
         {sheets.owners.map((owner, si) => {
           const who = identities[si]
           const dom = sheets.dominant[si]
@@ -75,7 +76,7 @@ export function PickupSheetsCard({ sheets, identities, itemName, restColor, t }:
               className="min-w-0"
               color={who.color}
               name={who.label}
-              avatar={<SquadSheetAvatar label={who.label} color={who.color} emblemUrl={who.emblemUrl} initial={who.initial} />}
+              avatar={<SquadSheetAvatar label={who.label} color={who.color} emblemUrl={who.emblemUrl} />}
               dominant={dom ? { caption: t.sheets.dominant, label: t.resources[dom].label } : undefined}
               footer={sheets.sections.map((s) => (
                 <span key={s.resource} data-testid={`emprise-sheet-foot-${id}-${s.resource}`}>

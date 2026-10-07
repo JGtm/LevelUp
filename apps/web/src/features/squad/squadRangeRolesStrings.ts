@@ -29,13 +29,9 @@ export function getSquadRangeRolesText(locale: Locale) {
     yAxis: m('squad.portee.y_axis'),
     lobbyLine: m('squad.portee.lobby_line'),
     bandes,
-    legendLowSample: (floor: number) => m('squad.portee.legend_low_sample', { floor }),
-    legendTrend: (n: number) => m('squad.portee.legend_trend', { n }),
     tooltipMedian: (mValue: string) => m('squad.portee.tooltip_median', { m: mValue }),
     tooltipDelta: (delta: string) => m('squad.portee.tooltip_delta', { delta }),
     tooltipMeasured: (n: number) => m('squad.portee.tooltip_measured', { n }),
-    coverage: (measured: number, total: number) =>
-      m('squad.portee.coverage', { measured, total }),
     emptyTitle: m('squad.portee.empty_title'),
     emptyDescription: m('squad.portee.empty_description'),
     foldTape: m('squad.portee.fold_tape'),

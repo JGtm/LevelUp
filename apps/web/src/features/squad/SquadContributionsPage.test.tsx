@@ -131,9 +131,9 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
   })
 
-  // LOT L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : la section « Objectif » suit
-  // « Frags et armes » et précède « Performance » ; elle se retire sans match à objectif.
-  it('monte la section « Objectif » après « Frags et armes », avant « Performance »', () => {
+  // L'objectif est parti dans l'onglet Emprise : même avec des matchs à objectif, Contributions
+  // n'en monte plus aucune carte.
+  it('ne monte plus la section « Objectif » (partie dans l’onglet Emprise)', () => {
     mockSquadContext({
       confirmedGamertags: ['Chocoboflor', 'Madina97294'],
       pageData: {
@@ -143,20 +143,8 @@ describe('SquadContributionsPage', () => {
         squad_objective_history: history0709Evenings(),
       } as unknown as TeammatesPageResponse,
     })
-    const { container } = renderWithProviders(<SquadContributionsPage />)
-    const text = container.textContent ?? ''
-    const frags = text.indexOf('Frags et armes')
-    const objectif = text.indexOf('Rapport de force')
-    const perf = text.indexOf('Performance')
-    expect(screen.getByTestId('squad-objective-section')).toBeInTheDocument()
-    expect(frags).toBeLessThan(objectif)
-    expect(objectif).toBeLessThan(perf)
-    expect(screen.getByText('Répartition de l’objectif dans l’escouade')).toBeInTheDocument()
-  })
-
-  it('sans match à objectif, pas de section « Objectif »', () => {
-    mockSquadContext({})
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.queryByTestId('squad-objective-section')).toBeNull()
+    expect(screen.queryByText('Répartition de l’objectif dans l’escouade')).toBeNull()
   })
 })

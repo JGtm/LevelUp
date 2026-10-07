@@ -76,11 +76,10 @@ interface PisteContext {
 
 function pisteOf(r: MatchControlRow, x: PisteContext): PisteCampsRow {
   const res = x.t.resources[r.resource]
-  const label = r.object ? x.objectName(r.object) : res.label
-  const sub = r.object ? undefined : r.resource === RESOURCE_POWERUP && (r.padsEmptied ?? 0) > 0 ? x.own.powerupSub(r.padsEmptied ?? 0) : res.gridSub
+  const label = r.object ? x.objectName(r.object) : res.gridTitle
+  const sub = !r.object && r.resource === RESOURCE_POWERUP && (r.padsEmptied ?? 0) > 0 ? x.own.powerupSub(r.padsEmptied ?? 0) : undefined
   const n = r.us + r.them
   const share = n > 0 ? (r.us / n) * 100 : 0
-  const tipSub = sub ?? res.gridSub
   return {
     key: r.key,
     label,
@@ -88,8 +87,8 @@ function pisteOf(r: MatchControlRow, x: PisteContext): PisteCampsRow {
     dot: r.object ? undefined : resourceInk(r.resource),
     us: r.us,
     them: r.them,
-    usTip: x.t.control.segmentTip(x.t.ourSide, label, tipSub, r.us, n, x.t.pctFmt(share)),
-    themTip: x.t.control.segmentTip(x.t.opponent, label, tipSub, r.them, n, x.t.pctFmt(100 - share)),
+    usTip: x.t.control.segmentTip(x.t.ourSide, label, sub, r.us, n, x.t.pctFmt(share)),
+    themTip: x.t.control.segmentTip(x.t.opponent, label, sub, r.them, n, x.t.pctFmt(100 - share)),
     indent: !!r.object,
     labelNode: !r.object && r.resource === RESOURCE_RACK && x.racks > 0 ? <RacksToggle label={label} x={x} /> : undefined,
   }

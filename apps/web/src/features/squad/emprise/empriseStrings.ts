@@ -9,20 +9,25 @@ import type { Locale } from '@/lib/i18n/locale'
 import { buildVehicleText, type VehicleText } from './vehicleStrings'
 
 /**
- * Les noms d'une ressource, selon l'endroit où elle s'écrit : `label` (« Bonus »), sous-libellé
- * de la piste du bilan (« prises · camouflage, surbouclier ») et de la synthèse de la grille
- * (« prises »), mot du pied de fiche (« armes spéciales »).
+ * Les noms d'une ressource, selon l'endroit où elle s'écrit : `label` (« Bonus » : légendes,
+ * fiches), titres de ligne qui se lisent seuls (« Prises de bonus », « Frags avec arme
+ * spéciale » — jamais le nom suivi d'un sous-libellé qui le complète), mot du pied de fiche
+ * (« armes spéciales »).
  */
 export interface ResourceText {
   label: string
-  pisteSub: string
-  gridSub: string
+  /** Piste du bilan : titre (« Prises de bonus ») et précision facultative (« camouflage, surbouclier »). */
+  pisteTitle: string
+  pisteSub?: string
+  /** Synthèse de la grille match par match (« Prises de bonus »). */
+  gridTitle: string
   footer: string
   /** Cases vides : synthèse (« Aucun bonus sur cette carte. »), objet (« : pas sur cette carte. », après son nom). */
   absent: string
   itemAbsent: string
-  /** Sous-libellés de « Frags par ressource » (« frags pendant l’effet ») et du « Rendement… » (« frags par prise »). */
-  productionSub: string
+  /** Ligne de « Frags par ressource » (« Frags avec arme spéciale »). */
+  productionTitle: string
+  /** Sous-libellé du « Rendement… » (« frags par prise »). */
   yieldSub: string
 }
 
@@ -45,7 +50,7 @@ export interface EmpriseText {
     title: string
     info: string
     ariaLabel: string
-    segmentTip: (side: string, resource: string, sub: string, value: number, total: number, pct: string) => string
+    segmentTip: (side: string, resource: string, sub: string | undefined, value: number, total: number, pct: string) => string
   }
   fil: {
     title: string
@@ -60,10 +65,8 @@ export interface EmpriseText {
     title: string
     info: string
     dominant: string
-    rest: string
     legendTaken: string
     legendLost: string
-    legendRest: string
     lossesTitle: string
     lossesFmt: (lost: number, taken: number) => string
     lineTip: (player: string, item: string, n: number, camp: number, lost: string | null) => string
@@ -76,7 +79,7 @@ export interface EmpriseText {
     ariaLabel: string
     thinLegend: string
     exposure: Record<string, ExposureText>
-    segmentTip: (side: string, sub: string, value: number, total: number, pct: string) => string
+    segmentTip: (side: string, title: string, value: number, total: number, pct: string) => string
     thinTip: (side: string, name: string, value: string, pct: string) => string
     exposureLine: (name: string, value: string, pct: string) => string
   }
@@ -99,8 +102,11 @@ export interface EmpriseText {
     pointTip: (resource: string, evening: string, value: string, median: string | null) => string
     eveningOf: (date: string) => string
     medianTip: (resource: string, value: string) => string
-    noHistory: (list: string) => { lead: string; rest: string }
-    shareItem: (resource: string, pct: string) => string
+    /** Légende et infobulle d'une soirée hors comparaison (aucun mode de ce soir filmé). */
+    notComparable: string
+    notComparableTip: (families: string) => string
+    /** Le bloc placeholder : aucune soirée, ce soir compris, n'a de part. */
+    empty: { title: string; description: string }
   }
   grid: {
     title: string
@@ -116,7 +122,6 @@ export interface EmpriseText {
     untieredCell: string
     untieredTip: string
     unestablishedTip: string
-    killsSub: string
     killsName: string
     killsAbsent: string
     racks: string
@@ -165,32 +170,33 @@ const FR: BaseEmpriseText = {
   resources: {
     powerup: {
       label: 'Bonus',
-      pisteSub: 'prises · camouflage, surbouclier',
-      gridSub: 'prises',
+      pisteTitle: 'Prises de bonus',
+      pisteSub: 'camouflage, surbouclier',
+      gridTitle: 'Prises de bonus',
       footer: 'bonus',
       absent: 'Aucun bonus sur cette carte.',
       itemAbsent: ' : pas sur cette carte.',
-      productionSub: 'frags pendant l’effet',
+      productionTitle: 'Frags pendant l’effet d’un bonus',
       yieldSub: 'frags par minute d’effet',
     },
     power_weapon: {
       label: 'Armes spéciales',
-      pisteSub: 'prises sur les socles',
-      gridSub: 'prises sur les socles',
+      pisteTitle: 'Prises d’armes spéciales',
+      gridTitle: 'Prises d’armes spéciales',
       footer: 'armes spéciales',
       absent: 'Aucune arme spéciale prise.',
       itemAbsent: ' : aucune prise sur cette carte.',
-      productionSub: 'frags obtenus avec',
+      productionTitle: 'Frags avec arme spéciale',
       yieldSub: 'frags par prise',
     },
     rack: {
       label: 'Armes de râtelier',
-      pisteSub: 'prises',
-      gridSub: 'prises',
+      pisteTitle: 'Prises d’armes de râtelier',
+      gridTitle: 'Prises d’armes de râtelier',
       footer: 'armes de râtelier',
       absent: 'Aucune arme de râtelier prise.',
       itemAbsent: ' : aucune prise sur cette carte.',
-      productionSub: 'frags obtenus avec',
+      productionTitle: 'Frags avec arme de râtelier',
       yieldSub: 'frags par prise',
     },
   },
@@ -205,7 +211,7 @@ const FR: BaseEmpriseText = {
       'Prises de chaque ressource par l’équipe et par l’adversaire, en comptes, sur les matchs filmés de la ' +
       'soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
     ariaLabel: 'Part de l’équipe dans les prises de chaque ressource, face à l’adversaire',
-    segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource} (${sub})\n${value} sur ${tot} (${pct})`,
+    segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource}${sub ? ` (${sub})` : ''}\n${value} sur ${tot} (${pct})`,
   },
   fil: {
     title: 'Contrôle des ressources, cumul par match',
@@ -226,10 +232,8 @@ const FR: BaseEmpriseText = {
       'Prises de chaque bonus, arme spéciale et véhicule par joueur de l’équipe sur la soirée, une pastille par ' +
       'prise. Pastille vide : bonus perdu (gardé sans être activé, ou lâché à la mort).',
     dominant: 'Ressource dominante',
-    rest: 'Reste de l’équipe',
     legendTaken: 'Prise',
     legendLost: 'Bonus pris puis perdu',
-    legendRest: 'Reste de l’équipe',
     lossesTitle: 'Bonus perdus',
     lossesFmt: (lost, taken) => `${lost} sur ${taken}`,
     lineTip: (player, item, n, camp, lost) =>
@@ -255,7 +259,7 @@ const FR: BaseEmpriseText = {
       effect_ms: { name: 'temps d’effet', fmt: duration },
       pickups: { name: 'prises sur les socles', fmt: (v) => `${v} prise${v > 1 ? 's' : ''}` },
     },
-    segmentTip: (side, sub, value, tot, pct) => `${side} · ${sub}\n${value} sur ${tot} (${pct})`,
+    segmentTip: (side, title, value, tot, pct) => `${side} · ${title}\n${value} sur ${tot} (${pct})`,
     thinTip: (side, name, value, pct) => `${side} · ${name}\n${value} (${pct})`,
     exposureLine: (name, value, pct) => `${name} : ${value} · ${pct}`,
   },
@@ -276,15 +280,17 @@ const FR: BaseEmpriseText = {
   habit: {
     title: 'Contrôle des ressources, par soirée',
     info:
-      'Part de l’équipe dans les prises de chaque ressource, par soirée comparable de la composition (mêmes ' +
-      'familles de mode), la plus récente à droite ; pointillé fin : médiane des soirées précédentes.',
+      'Part de l’équipe dans les prises de chaque ressource, par soirée de la composition, la plus récente à ' +
+      'droite. Point gris : soirée sans aucun des modes de ce soir, hors médiane ; pointillé fin : médiane ' +
+      'des soirées précédentes jouées dans les modes de ce soir.',
     tonight: 'ce soir',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening} : ${value}${med ? `\nMédiane des soirées précédentes : ${med}` : ''}`,
     eveningOf: (date) => `Soirée du ${date}`,
     medianTip: (resource, value) => `${resource}\nMédiane des soirées précédentes : ${value}`,
-    noHistory: (list) => ({ lead: 'Aucune soirée précédente comparable. ', rest: `Ce soir, part de l’équipe dans les prises : ${list}.` }),
-    shareItem: (resource, pct) => `${resource.toLowerCase()} ${pct}`,
+    notComparable: 'Autres modes que ce soir',
+    notComparableTip: (families) => `Autres modes que ce soir${families ? ` (${families})` : ''} : hors médiane`,
+    empty: { title: 'Aucune prise mesurée', description: 'Aucune soirée de la composition n’a de prise lue au film.' },
   },
   grid: {
     title: 'Contrôle des ressources, par match',
@@ -302,8 +308,7 @@ const FR: BaseEmpriseText = {
     untieredCell: 'non classé',
     untieredTip: 'Niveaux de socle non mesurés sur ce match : armes spéciales et armes de râtelier ne se séparent pas.',
     unestablishedTip: 'Carte absente de la référence des socles : armes spéciales et armes de râtelier ne se séparent pas.',
-    killsSub: 'frags obtenus avec',
-    killsName: 'Frags aux armes spéciales',
+    killsName: 'Frags avec arme spéciale',
     killsAbsent: 'Aucun frag à l’arme spéciale.',
     racks: 'Armes de râtelier',
     racksCount: (n) => `(${n}, prises)`,
@@ -328,32 +333,33 @@ const EN: BaseEmpriseText = {
   resources: {
     powerup: {
       label: 'Power-ups',
-      pisteSub: 'pickups · camo, overshield',
-      gridSub: 'pickups',
+      pisteTitle: 'Power-up pickups',
+      pisteSub: 'camo, overshield',
+      gridTitle: 'Power-up pickups',
       footer: 'power-ups',
       absent: 'No power-up on this map.',
       itemAbsent: ': not on this map.',
-      productionSub: 'kills during the effect',
+      productionTitle: 'Kills during a power-up effect',
       yieldSub: 'kills per minute of effect',
     },
     power_weapon: {
       label: 'Power weapons',
-      pisteSub: 'pickups from the pads',
-      gridSub: 'pickups from the pads',
+      pisteTitle: 'Power weapon pickups',
+      gridTitle: 'Power weapon pickups',
       footer: 'power weapons',
       absent: 'No power weapon picked up.',
       itemAbsent: ': not picked up on this map.',
-      productionSub: 'kills with them',
+      productionTitle: 'Kills with power weapons',
       yieldSub: 'kills per pickup',
     },
     rack: {
       label: 'Rack weapons',
-      pisteSub: 'pickups',
-      gridSub: 'pickups',
+      pisteTitle: 'Rack weapon pickups',
+      gridTitle: 'Rack weapon pickups',
       footer: 'rack weapons',
       absent: 'No rack weapon picked up.',
       itemAbsent: ': not picked up on this map.',
-      productionSub: 'kills with them',
+      productionTitle: 'Kills with rack weapons',
       yieldSub: 'kills per pickup',
     },
   },
@@ -368,7 +374,7 @@ const EN: BaseEmpriseText = {
       'Pickups of each resource by the team and by the opponent, in counts, over the session’s filmed ' +
       'matches; orange line: 50%. Power-ups with no known picker count for neither team.',
     ariaLabel: 'The team’s share of each resource’s pickups, against the opponent',
-    segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource} (${sub})\n${value} of ${tot} (${pct})`,
+    segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource}${sub ? ` (${sub})` : ''}\n${value} of ${tot} (${pct})`,
   },
   fil: {
     title: 'Resource control, cumulative by match',
@@ -389,10 +395,8 @@ const EN: BaseEmpriseText = {
       'Pickups of each power-up, power weapon and vehicle by each player of the team over the session, one ' +
       'dot per pickup. Hollow dot: a lost power-up (held without being activated, or dropped on death).',
     dominant: 'Main resource',
-    rest: 'Rest of the team',
     legendTaken: 'Pickup',
     legendLost: 'Power-up picked up, then lost',
-    legendRest: 'Rest of the team',
     lossesTitle: 'Lost power-ups',
     lossesFmt: (lost, taken) => `${lost} of ${taken}`,
     lineTip: (player, item, n, camp, lost) =>
@@ -417,7 +421,7 @@ const EN: BaseEmpriseText = {
       effect_ms: { name: 'effect time', fmt: duration },
       pickups: { name: 'pickups from the pads', fmt: (v) => `${v} pickup${v > 1 ? 's' : ''}` },
     },
-    segmentTip: (side, sub, value, tot, pct) => `${side} · ${sub}\n${value} of ${tot} (${pct})`,
+    segmentTip: (side, title, value, tot, pct) => `${side} · ${title}\n${value} of ${tot} (${pct})`,
     thinTip: (side, name, value, pct) => `${side} · ${name}\n${value} (${pct})`,
     exposureLine: (name, value, pct) => `${name}: ${value} · ${pct}`,
   },
@@ -438,15 +442,17 @@ const EN: BaseEmpriseText = {
   habit: {
     title: 'Resource control, by session',
     info:
-      'The team’s share of each resource’s pickups, per comparable session of the line-up (same mode ' +
-      'families), the latest on the right; thin dotted line: median of the previous sessions.',
+      'The team’s share of each resource’s pickups, per session of the line-up, the latest on the right. ' +
+      'Grey dot: a session with none of tonight’s modes, left out of the median; thin dotted line: median of ' +
+      'the previous sessions played in tonight’s modes.',
     tonight: 'tonight',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening}: ${value}${med ? `\nMedian of the previous sessions: ${med}` : ''}`,
     eveningOf: (date) => `Session of ${date}`,
     medianTip: (resource, value) => `${resource}\nMedian of the previous sessions: ${value}`,
-    noHistory: (list) => ({ lead: 'No comparable previous session. ', rest: `Tonight, the team’s share of the pickups: ${list}.` }),
-    shareItem: (resource, pct) => `${resource.toLowerCase()} ${pct}`,
+    notComparable: 'Other modes than tonight',
+    notComparableTip: (families) => `Other modes than tonight${families ? ` (${families})` : ''}: left out of the median`,
+    empty: { title: 'No pickup measured', description: 'No session of the line-up has pickups read from the film.' },
   },
   grid: {
     title: 'Resource control, by match',
@@ -464,8 +470,7 @@ const EN: BaseEmpriseText = {
     untieredCell: 'unsorted',
     untieredTip: 'Pad levels not measured for this match: power weapons and rack weapons can’t be told apart.',
     unestablishedTip: 'Map missing from the pad reference: power weapons and rack weapons can’t be told apart.',
-    killsSub: 'kills with them',
-    killsName: 'Power weapon kills',
+    killsName: 'Kills with power weapons',
     killsAbsent: 'No power weapon kill.',
     racks: 'Rack weapons',
     racksCount: (n) => `(${n}, pickups)`,

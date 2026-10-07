@@ -19,6 +19,8 @@ import {
   JITTER_MAX,
   lifeJitter,
   lifeSymbolSize,
+  MEDIAN_SPREAD,
+  medianOffsets,
   medianSymbolSize,
   placementFormats,
   QUADRANT_TOKENS,
@@ -196,6 +198,45 @@ describe('buildPlacementLifeOption — décalage vertical déterministe', () => 
   })
 })
 
+describe('medianOffsets — les gros points qui se recouvrent sont écartés (Escouade OKLM, 22/09)', () => {
+  // Les médianes relevées sur la soirée du 22/09 : Madina97294 et Chocoboflor à 0,0025 portée
+  // l'un de l'autre, au même compte de frags — le second tracé cachait le premier.
+  const spot = (xuid: string, gamertag: string, ratio: number, kills: number) => ({
+    ...PLACEMENT_2209.players![0],
+    xuid,
+    gamertag,
+    median_radar_ratio: ratio,
+    median_kills: kills,
+  })
+  const oklm = [spot('xj', 'JGtm', 0.4394, 0), spot('xm', 'Madina97294', 0.4256, 1), spot('xc', 'Chocoboflor', 0.4231, 1)]
+
+  it('deux gros points confondus : écartés de part et d’autre de leur valeur, dans l’ordre du bloc', () => {
+    const off = medianOffsets(oklm)
+    expect(off.get('xm')).toBeCloseTo(-MEDIAN_SPREAD / 2, 10)
+    expect(off.get('xc')).toBeCloseTo(MEDIAN_SPREAD / 2, 10)
+    // JGtm, une frag plus bas : seul, pas décalé.
+    expect(off.get('xj')).toBe(0)
+  })
+
+  it('trois gros points confondus : un pas entre chacun, centré, gardé dans l’axe en bas', () => {
+    const off = medianOffsets([spot('a', 'A', 0.4, 0), spot('b', 'B', 0.41, 0), spot('c', 'C', 0.42, 0)])
+    const ys = ['a', 'b', 'c'].map((x) => off.get(x)!)
+    expect(ys[1] - ys[0]).toBeCloseTo(MEDIAN_SPREAD, 10)
+    expect(ys[2] - ys[1]).toBeCloseTo(MEDIAN_SPREAD, 10)
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(-0.25 - 1e-9)
+  })
+
+  it('le nuage pose le gros point décalé ; l’infobulle garde la vraie médiane', () => {
+    const block = { ...PLACEMENT_2209, players: oklm }
+    const madina = scatterOf(life(block), 'Madina97294')[1]
+    const choco = scatterOf(life(block), 'Chocoboflor')[1]
+    const yM = (madina.data[0] as Datum).value[1]
+    const yC = (choco.data[0] as Datum).value[1]
+    expect(yC - yM).toBeCloseTo(MEDIAN_SPREAD, 10)
+    expect((madina.data[0] as Datum).tip).toContain('Madina97294')
+  })
+})
+
 describe('buildPlacementLifeOption — repères et quarts', () => {
   it('repère du radar : trait vertical pointillé au seuil du bloc (pas une constante), étiquette en haut à l’intérieur, aucune zone teintée', () => {
     const radar = radarOf(life({ ...PLACEMENT_2209, isolated_from_ratio: 1.25 }))
@@ -278,7 +319,9 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
   })
 
   it('le gros point : médiane X × médiane des frags', () => {
-    const big = scatterOf(life(), 'Chocoboflor')[1].data[0] as Datum
+    // Seul dans le nuage : aucun autre gros point ne le recouvre, rien ne l’écarte (medianOffsets).
+    const choco = PLACEMENT_2209.players!.find((p) => p.gamertag === 'Chocoboflor')!
+    const big = scatterOf(life({ ...PLACEMENT_2209, players: [choco] }), 'Chocoboflor')[1].data[0] as Datum
     // Vies à 0,4 / 0,5 / 1,1 / 1,4 : médiane 0,8 ; frags 0, 1, 0, 2 : médiane 0,5.
     expect(big.value[0]).toBeCloseTo(0.8, 10)
     expect(big.value[1]).toBe(0.5)
