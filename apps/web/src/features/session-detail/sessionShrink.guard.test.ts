@@ -101,14 +101,15 @@ describe('garde-rail rétrécissement de la colonne de session (drawer de compar
   })
 
   it('les paires de cartes de « Frags et usages » passent par le gabarit (une colonne en compact)', () => {
-    // Les paires A|B, C|D, G|H et la rangée seule d'« Appui reçu » décident leur nombre de colonnes
-    // sur `compact`, par `pairGridClass` — jamais par un littéral de grille.
+    // Les paires A|B, C|D, G|H décident leur nombre de colonnes sur `compact`, par `pairGridClass`
+    // — jamais par un littéral de grille. « Appui reçu » est seule, sur toute la largeur : aucune
+    // grille à deux colonnes non plus.
+    expect(source('/src/features/session-detail/SessionColumnBody.tsx')).toMatch(/pairGridClass\(compact\)/)
     for (const path of [
       '/src/features/session-detail/SessionColumnBody.tsx',
       '/src/features/session-detail/SessionCoordinationSection.tsx',
     ]) {
       const code = source(path)
-      expect(code, path).toMatch(/className=\{pairGridClass\(compact\)\}|pairGridClass\(compact\)/)
       expect(code.match(/className="[^"]*\bgrid-cols-2\b[^"]*"/g) ?? [], path).toEqual([])
     }
   })
@@ -118,6 +119,18 @@ describe('garde-rail rétrécissement de la colonne de session (drawer de compar
     const row = code.match(/data-session-section=\{key\}[\s\S]{0,200}?className="([^"]*)"/)
     expect(row, 'La rangée partagée de la comparaison a changé de forme').not.toBeNull()
     expect(row?.[1]).toContain('min-w-0')
+  })
+
+  it('la carte d’une rangée partagée s’étire sous les titres, jamais sur toute la rangée', () => {
+    // Une carte `h-full` posée sous un titre de groupe ou de sous-groupe valait 100 % de la RANGÉE
+    // et débordait de la hauteur du titre sur la rangée suivante. La rangée est une colonne
+    // flexible ; la case du contenu (`flex-1`) porte l'étirement de la carte.
+    const code = source('/src/features/session-detail/SessionColumnBody.tsx')
+    const row = code.match(/data-session-section=\{key\} className="([^"]*)"/)
+    expect(row, 'La rangée partagée de la comparaison a changé de forme').not.toBeNull()
+    expect(row?.[1]).toContain('flex-col')
+    expect(row?.[1]).not.toContain('h-full')
+    expect(code).toMatch(/className="[^"]*\bflex-1\b[^"]*\[&>\*:only-child\]:h-full[^"]*"/)
   })
 
   it('la carte de section partagée porte min-w-0', () => {

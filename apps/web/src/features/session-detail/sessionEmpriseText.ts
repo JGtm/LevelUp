@@ -20,7 +20,6 @@ import type { ProductionCard } from '@/features/squad/emprise/ProductionCard'
 import { getSquadText, type SquadText } from '@/features/squad/i18n'
 import type { SoloSheetText } from '@/features/squad/objectif/ObjectiveSoloSheetCard'
 import { OBJECTIF_TEXT, type ObjectifText } from '@/features/squad/objectif/objectifStrings'
-import type { SquadFragBreakdownCard } from '@/features/squad/SquadFragBreakdownCard'
 import type { EquipmentOutcomesCard } from '@/features/timeseries/usages/EquipmentOutcomesCard'
 import type { LivesNearTeammateCard } from '@/features/timeseries/usages/LivesNearTeammateCard'
 import type { MinePickupsCard } from '@/features/timeseries/usages/MinePickupsCard'
@@ -31,7 +30,6 @@ type CompactOf<P extends { compact?: unknown }> = NonNullable<P['compact']>
 
 /** Les formateurs propres aux cartes de la vue compacte (maquette, `cp = true`). */
 export interface SessionCompactCards {
-  frag: CompactOf<ComponentProps<typeof SquadFragBreakdownCard>>
   production: CompactOf<ComponentProps<typeof ProductionCard>>
   mine: CompactOf<ComponentProps<typeof MinePickupsCard>>
   equipment: CompactOf<ComponentProps<typeof EquipmentOutcomesCard>>
@@ -54,9 +52,8 @@ export interface SessionCardTexts {
   coverage: (filmed: number, total: number) => string
 }
 
-/** Les aides propres à chaque vue : les deux cartes de frags (A, B) et « Contribution aux prises » (F). */
+/** Les aides propres à chaque vue : « Outils de destruction » (B) et « Contribution aux prises » (F). */
 interface ViewInfos {
-  fragInfo: string
   toolsInfo: string
   /**
    * L'aide des Séries temporelles, portée « la soirée » au lieu du « périmètre » (décision V6 du plan) :
@@ -76,6 +73,8 @@ interface CompactInfos extends ViewInfos {
 }
 
 interface LocaleOverrides {
+  /** L'aide de « Répartition des frags » (A) : le même anneau dans les deux vues. */
+  fragInfo: string
   full: ViewInfos
   compact: CompactInfos
   compactCards: SessionCompactCards
@@ -84,19 +83,20 @@ interface LocaleOverrides {
 const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
 
 const FR: LocaleOverrides = {
+  fragInfo:
+    'Frags du joueur sur la soirée : anneau intérieur par classe d’arme, anneau extérieur par rôle ; total au ' +
+    'centre, part de chaque classe en légende.',
   full: {
-    fragInfo: 'Frags du joueur sur la soirée, par classe d’arme ; dans chaque segment, son compte de frags, le total au bout de la barre.',
     toolsInfo:
-      'Frags du joueur sur la soirée, arme par arme ; pastille : couleur de la classe de l’arme dans la Répartition des frags.',
+      'Frags du joueur sur la soirée, arme par arme ; couleur de la barre : classe de l’arme, celle de la Répartition des frags.',
     mineInfo:
       'Objets pris par l’équipe sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en ' +
       'comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
   },
   compact: {
-    fragInfo: 'Frags du joueur sur la soirée, par classe d’arme ; dans chaque segment, sa part des frags, compte au survol.',
     toolsInfo:
-      'Les six armes les plus meurtrières du joueur sur la soirée, en part des frags du joueur ; pastille : couleur ' +
-      'de la classe, compte au survol.',
+      'Les six armes les plus meurtrières du joueur sur la soirée, en part des frags du joueur ; couleur de la ' +
+      'barre : classe de l’arme, compte au survol.',
     controlInfo:
       'Prises de chaque ressource par l’équipe et par l’adversaire, en parts (comptes au survol), sur les matchs ' +
       'filmés de la soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
@@ -122,7 +122,6 @@ const FR: LocaleOverrides = {
       'pas de ligne.',
   },
   compactCards: {
-    frag: { totalSub: (n) => `${n} ${plural(n, 'frag', 'frags')}`, pctFmt: (v) => `${Math.round(v)} %` },
     production: { exposureLine: (name, pct) => `${name} : ${pct}` },
     mine: { resourceSub: 'prises de l’équipe' },
     equipment: {
@@ -138,19 +137,20 @@ const FR: LocaleOverrides = {
 }
 
 const EN: LocaleOverrides = {
+  fragInfo:
+    'The player’s kills over the evening: inner ring by weapon class, outer ring by role; total in the centre, ' +
+    'each class’s share in the legend.',
   full: {
-    fragInfo: 'The player’s kills over the evening, by weapon class; in each segment, its kill count, the total at the end of the bar.',
     toolsInfo:
-      'The player’s kills over the evening, weapon by weapon; swatch: colour of the weapon’s class in the Kill type distribution.',
+      'The player’s kills over the evening, weapon by weapon; bar colour: the weapon’s class, as in the Kill type distribution.',
     mineInfo:
       'Items the team picked up over the session’s filmed matches: the player’s share and the rest of the ' +
       'team’s, in counts, by decreasing volume. Lost power-ups: held without being activated, or dropped.',
   },
   compact: {
-    fragInfo: 'The player’s kills over the evening, by weapon class; in each segment, its share of the kills, count on hover.',
     toolsInfo:
-      'The player’s six deadliest weapons over the evening, as a share of the player’s kills; swatch: class colour, ' +
-      'count on hover.',
+      'The player’s six deadliest weapons over the evening, as a share of the player’s kills; bar colour: ' +
+      'the weapon’s class, count on hover.',
     controlInfo:
       'Pickups of each resource by the team and by the opponent, as shares (counts on hover), over the session’s ' +
       'filmed matches; orange line: 50%. Power-ups with no known picker count for neither team.',
@@ -174,7 +174,6 @@ const EN: LocaleOverrides = {
       'Only families held in the lobby are listed; the repulsor, with no usage measure, has no row.',
   },
   compactCards: {
-    frag: { totalSub: (n) => `${n} ${plural(n, 'kill', 'kills')}`, pctFmt: (v) => `${Math.round(v)}%` },
     production: { exposureLine: (name, pct) => `${name}: ${pct}` },
     mine: { resourceSub: 'team pickups' },
     equipment: {
@@ -212,7 +211,7 @@ function textsFor(locale: Locale, view: 'full' | 'compact'): SessionCardTexts {
   return {
     squad: {
       ...squad,
-      performanceCharts: { ...squad.performanceCharts, fragBreakdownInfo: own.fragInfo },
+      performanceCharts: { ...squad.performanceCharts, fragBreakdownInfo: o.fragInfo },
       weaponKills: { ...squad.weaponKills, info: own.toolsInfo },
     },
     emprise: empriseFor(locale, c),

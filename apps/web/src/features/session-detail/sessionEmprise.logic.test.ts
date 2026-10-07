@@ -72,7 +72,7 @@ describe('sessionColumnBlocks — la colonne affichée et la colonne comparée',
 describe('sessionCardsPresence — une carte n’existe que si elle dessine quelque chose', () => {
   it('soirée d’escouade du 22/09 : tout sauf la précision (Halo 5) et l’équipement (non servi)', () => {
     expect(sessionColumnPresence(session2209())).toEqual({
-      frag_bar: true,
+      frag_donut: true,
       tools: true,
       weapon_accuracy: false,
       control: true,
@@ -112,7 +112,7 @@ describe('sessionCardsPresence — une carte n’existe que si elle dessine quel
     }
     const p = sessionColumnPresence(col)
     expect(Object.entries(p).filter(([, v]) => v).map(([k]) => k)).toEqual([
-      'frag_bar',
+      'frag_donut',
       'tools',
       'weapon_accuracy',
       'production',

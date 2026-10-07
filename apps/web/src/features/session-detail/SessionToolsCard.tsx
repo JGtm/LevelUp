@@ -1,7 +1,8 @@
 /**
  * SessionToolsCard — carte B de « Frags et usages » (plan PLAN_SESSIONS_EMPRISE_2026-10-06, §3) :
- * « Outils de destruction » du joueur de la page, une barre par outil, à l'encre `squad-player-1`,
- * la pastille de la classe devant l'outil.
+ * « Outils de destruction » du joueur de la page, une barre par outil, à la couleur de la CLASSE de
+ * l'outil (celle de la Répartition des frags, comme avant la reconstruction de la page), la pastille de
+ * la classe devant l'outil ; aucun gamertag dans l'infobulle : la page ne montre qu'un joueur.
  *
  * Le graphe de l'Escouade (`SquadWeaponKillsChart` + `buildSquadToolRows`) sur le bloc
  * `weapon_tools` de la session (D6). Pleine page : tous les outils, le compte au bout. Vue compacte
@@ -58,6 +59,7 @@ export function SessionToolsCard({ tools, player, locale, texts, compact }: Prop
       valueLabel={compact ? 'share' : 'count'}
       shareTotals={shareTotals}
       minLabelShare={compact ? 0 : undefined}
+      soloByClass
     />
   )
 }

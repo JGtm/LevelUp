@@ -26,7 +26,7 @@ export interface CoordinationText {
 
   // ─── Pied et infobulles de la carte ──────────────────────────────────────────
   lowSample: string
-  /** Réserve de couverture, en pied de carte : « 7 matchs mesurés sur 9 ». */
+  /** Couverture, dans l'aide (i) d'« Appui reçu » : « 7 matchs mesurés sur 9 ». */
   coverageMatchesFmt: (mesures: number, total: number) => string
   /** Infobulle d'une case de bande : n° de match, part, parité. */
   bandTipFmt: (index: number, part: string, parite: string) => string
@@ -61,7 +61,6 @@ export interface CoordinationText {
   rangeTipMedian: (mediane: string) => string
   rangeTipDelta: (ecart: string) => string
   rangeTipMeasured: (frags: number) => string
-  rangeCoverageFmt: (mesures: number, total: number) => string
   rangeLowSample: (seuil: number) => string
   infoRange1: string
   infoRange2: string
@@ -105,7 +104,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeTipMedian: (med) => `Médiane ${med} m`,
     rangeTipDelta: (ecart) => `Écart au lobby ${ecart} m`,
     rangeTipMeasured: (frags) => `${frags} frags mesurés`,
-    rangeCoverageFmt: (m, t) => `${m} frags mesurés sur ${t}`,
     rangeLowSample: (s) => `point creux : moins de ${s} frags mesurés`,
     infoRange1:
       'Chaque point est un match de la période : écart entre la médiane de frag du joueur et celle du lobby.',
@@ -148,7 +146,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeTipMedian: (med) => `Median ${med} m`,
     rangeTipDelta: (ecart) => `Gap to lobby ${ecart} m`,
     rangeTipMeasured: (frags) => `${frags} measured kills`,
-    rangeCoverageFmt: (m, t) => `${m} of ${t} kills measured`,
     rangeLowSample: (s) => `hollow dot: fewer than ${s} measured kills`,
     infoRange1:
       'Each dot is one match of the period: the gap between the player’s kill median and the lobby median.',

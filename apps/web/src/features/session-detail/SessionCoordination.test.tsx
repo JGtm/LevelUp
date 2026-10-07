@@ -17,7 +17,7 @@
  *     référence absente replie sur la session seule sans bandes ni surbrillance, et en
  *     comparaison les deux colonnes surlignent DEUX fenêtres du MÊME nuage.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { buildSquadRangeRolesOption } from '@/features/squad/charts/squadRangeRolesChart'
@@ -28,9 +28,13 @@ import type {
 } from '@/lib/api/types'
 
 import { SessionCoordinationSection } from './SessionCoordinationSection'
+import { SessionRangeCard } from './SessionRangeCard'
 import { COORDINATION_TEXT } from './coordinationI18n'
 import { bandCaption, buildAppuiBand, buildAppuiGaugeRows } from './coordinationModel'
 import { nuagePortee, pointDeLaSession, seuilsServis } from './sessionRange.logic'
+
+// ECharts (canvas) ne peint pas dans jsdom : la carte de portée se lit par son cadre et sa légende.
+vi.mock('echarts-for-react', () => ({ default: () => null }))
 
 const t = COORDINATION_TEXT.fr
 
@@ -282,5 +286,16 @@ describe('Carte Portée des engagements (lot W, D23-4)', () => {
     const dataB = option(b).series[0].data
     expect(dataB[0].itemStyle.color).toBe('#111')
     expect(dataB[2].itemStyle.color).toBe('#999')
+  })
+})
+
+describe('Carte « Portée des engagements » : graphe et légende, rien d’autre', () => {
+  it('aucune mention de couverture sous le graphe ; légende centrée en bas de la carte', () => {
+    const { container } = render(<SessionRangeCard block={BLOC_SESSION} reference={REFERENCE} meLabel="Moi" />)
+    expect(container.textContent).not.toMatch(/mesurés sur|measured/)
+    expect(container.querySelector('[data-testid="session-portee-couverture"]')).toBeNull()
+    const legende = container.querySelector('[data-testid="session-portee-legende"]')
+    expect(legende?.className).toContain('justify-center')
+    expect(legende?.parentElement?.lastElementChild).toBe(legende)
   })
 })

@@ -102,6 +102,24 @@ describe('buildSquadWeaponKillsOption', () => {
     expect(html).not.toContain('F1')
   })
 
+  it('un seul joueur (Sessions) : chaque barre à la couleur de sa classe, infobulle sans nom de joueur', () => {
+    const d: SquadBarRows = {
+      players: ['Me'],
+      rows: [
+        { key: 'weapon:br', label: 'BR75', cls: 'shoulder', killsByPlayer: { Me: 30 }, total: 30 },
+        { key: 'x', label: 'Sans classe', killsByPlayer: { Me: 2 }, total: 2 },
+      ],
+    }
+    const opt = buildSquadWeaponKillsOption(d, { colorByPlayer: COLORS, soloByClass: true })
+    const [me] = opt.series as { data: unknown[] }[]
+    expect(me.data).toEqual([{ value: 30, itemStyle: { color: 'hex:shoulder' } }, 2])
+    const html = (opt.tooltip as { formatter: (raw: unknown) => string }).formatter([
+      { seriesName: 'Me', value: 30, marker: '', dataIndex: 0 },
+    ])
+    expect(html).toContain('BR75')
+    expect(html).not.toContain('Me')
+  })
+
   describe('mode `share` (Mécaniques de frag, inchangé)', () => {
     it('part du total du joueur au bout des barres assez larges, masquée sous 5 %', () => {
       const series = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS, valueLabel: 'share' })
