@@ -3,7 +3,8 @@
  *
  * LES RACCOURCIS SONT CEUX QUE TOUT LE MONDE CONNAÎT DÉJÀ, et pas un de plus : Espace et K
  * pour lecture/pause, ←/→ et J/L pour ±10 s, M pour le son, R pour recommencer, « , » et « . »
- * pour l'image par image. Inventer une convention maison ferait apprendre ce que le lecteur
+ * pour l'image par image ; au cadrage, + / − pour grossir et réduire, 0 pour toute la carte,
+ * Maj + flèche pour se déplacer. Inventer une convention maison ferait apprendre ce que le lecteur
  * sait déjà.
  *
  * IL NE VOLE PAS LA FRAPPE : un raccourci ne part jamais depuis un champ de saisie, un
@@ -54,8 +55,40 @@ export interface ReplayShortcutHandlers {
   zoom?: {
     zoomIn: () => void
     zoomOut: () => void
+    reset: () => void
     panStep: (dx: number, dy: number) => void
   }
+}
+
+/** Ce qu'une touche commande au cadrage. */
+export type ZoomKeyCommand = 'in' | 'out' | 'reset'
+
+/**
+ * LES TOUCHES DU ZOOM, une seule table pour le rejeu et les plans qui reprennent son zoom (Vue
+ * match, Tactique : `useReplayZoomKeys`). `=` et `_` viennent avec `+` et `-`, parce que `+` et `-`
+ * exigent Maj sur beaucoup de dispositions — sans eux, la moitié des claviers n'aurait pas de zoom.
+ * `0` revoit toute la carte, comme le bouton ⌂.
+ */
+export function zoomKeyCommand(key: string): ZoomKeyCommand | null {
+  switch (key) {
+    case '+':
+    case '=':
+      return 'in'
+    case '-':
+    case '_':
+      return 'out'
+    case '0':
+      return 'reset'
+    default:
+      return null
+  }
+}
+
+/** Applique une commande de touche au cadrage. */
+export function applyZoomKey(command: ZoomKeyCommand, zoom: { zoomIn: () => void; zoomOut: () => void; reset: () => void }): void {
+  if (command === 'in') zoom.zoomIn()
+  else if (command === 'out') zoom.zoomOut()
+  else zoom.reset()
 }
 
 /**
@@ -69,7 +102,7 @@ const ARROW_PAN: Record<string, [number, number] | undefined> = {
   ArrowRight: [1, 0],
 }
 
-function isTypingTarget(target: EventTarget | null): boolean {
+export function isTypingTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
   if (!el) return false
   // LA FRISE DU LECTEUR EST EXEMPTÉE, ET ELLE SEULE (cf. l'en-tête) : l'exemption est portée par
@@ -109,6 +142,13 @@ export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
           return
         }
       }
+      // LE ZOOM AU CLAVIER : la table partagée (`zoomKeyCommand`), avant les touches du lecteur.
+      const zoomCommand = z ? zoomKeyCommand(e.key) : null
+      if (z && zoomCommand) {
+        e.preventDefault()
+        applyZoomKey(zoomCommand, z)
+        return
+      }
       switch (e.key) {
         case ' ':
         case 'k':
@@ -135,20 +175,6 @@ export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
         case '.':
           e.preventDefault()
           stepFrames(1)
-          return
-        // LE ZOOM AU CLAVIER : `=` et `_` viennent avec, parce que `+` et `-` exigent Maj sur
-        // beaucoup de dispositions — sans eux, la moitie des claviers n aurait pas de zoom.
-        case '+':
-        case '=':
-          if (!z) break
-          e.preventDefault()
-          z.zoomIn()
-          return
-        case '-':
-        case '_':
-          if (!z) break
-          e.preventDefault()
-          z.zoomOut()
           return
         case 'm':
         case 'M':
