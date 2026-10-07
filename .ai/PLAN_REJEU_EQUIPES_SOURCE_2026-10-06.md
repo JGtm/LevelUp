@@ -550,8 +550,36 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
          rien avoir à décoder (convergence ; seuls restent les matchs sans film en cache).
       `backfill-bomb-stats` et `backfill-flag-grabs-net` ne sont pas requis (`objectives.Rev` inchangée, la
       phase D ne touche aucun de leurs calques).
+- [x] I.6 Re-cuisson unique exécutée par le superviseur le 2026-10-07, sur accord de l'utilisateur, après la
+      fusion de RI 2.7.b et du lot (`feat/v75` = `efa0a7363`), binaire construit depuis cette tête, serveur
+      arrêté, depuis `apps/go-api` du worktree principal :
+      1. `backfill-replay --only-existing` : 03:54:20 -> 04:11:55 (17 min 33 s), 126 / 126 redécodés,
+         schéma 81, pic 1,01 Gio, 0 erreur de décodage, 0 mort mémoire ; 1 ERROR attendue (bot fantôme
+         de l'ancien lecteur sur `8076f97f`, D9) ;
+      2. `backfill-killsource` : 04:12:36 -> 05:31:14 (1 h 18 min 38 s), 1 686 films écrits, 0 erreur ;
+         crédit 9 216 matchs en 4 min 51 s ; une seconde passe `--films-only` (32 s) n'a pris que 6 films ;
+      3. à 6. `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`,
+         `tactical-rasters --backfill` : 126 chacun, 21 s en tout, 0 erreur ;
+      7. 19 / 19 témoins au schéma 81 et à 0 / 0 / 0 / 0, place 5 de `43716616` = Slowpoke6743 (lu) ->
+         `343 Sandwolf` (apparié) -> KernelPanic10 (tirs), sans place 8 ; les 126 artefacts à 0 sur les
+         quatre compteurs ; `backfill-replay --dry-run` : 0 à construire. Écart à l'attendu :
+         `backfill-killsource --dry-run` annonce encore 105 films que la passe réelle ne prend pas (D14).
+      Total 03:54:20 -> 05:34:50, soit 1 h 40 min 30 s ; serveur et front relancés à 05:35.
 
 ## Découvertes (notées, non traitées)
+
+- D14 (re-cuisson du 2026-10-07) : après la passe, `backfill-killsource --dry-run` annonce encore 105 films
+  à décoder, mais une passe réelle `--films-only` n'en prend que 6 (6 écrits, dont 3 sans kill-feed et
+  3 passes non publiables). La sélection du `--dry-run` et celle de la passe réelle divergent.
+- D15 (re-cuisson du 2026-10-07) : pendant `backfill-killsource`, 10 matchs journalisent « l'entité ti=9
+  d'un bot et son entrée BOT_METADATA disent deux équipes » (l'entité est publiée, l'écart compté), à
+  instruire sur pièces (laquelle a raison ?).
+- D16 (re-cuisson du 2026-10-07) : pendant `backfill-killsource`, 82 matchs journalisent « entrée(s) du
+  roster présente(s) SANS ÉQUIPE lue », dont 73 avec TOUTES leurs entrées sans équipe ; surtout des
+  Oddball classés (Lattice, Recharge, Live Fire, Streets), puis Assault et VIP, build HI_1_13_0. Les 8
+  de ces matchs qui ont un artefact sont complets au schéma 81 (0 entrée sans équipe) : c'est le chemin
+  du placement des vies qui construit un roster sans équipe. À vérifier : le placement de ces matchs
+  est-il rangé par camp (risque d'un « camp inconnu » dans les pages qui le lisent) ?
 
 - D1 (`c7f94693`) : la vie [947..981] de `343 Donos` est publiée d'équipe 0 par le pont slot -> index
   (désignateur de l'index 8, lu sur l'entité d'un AUTRE bot, Byrontron, en fin de match). Son équipe est
