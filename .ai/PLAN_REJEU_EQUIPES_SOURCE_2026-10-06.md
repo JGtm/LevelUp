@@ -346,7 +346,7 @@ Relance du superviseur après la fusion du lot dans `feat/v75` (`b5c9489ef`) : m
 Cible 0 / 0 / 0 / 0 (`sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements`) sur les 19 témoins, et au
 parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le film ne dit pas qui part.
 
-**État : D2, D3, D6 implémentés, 0/0/0/0 sur les 19 témoins ; relecture, push et CI en cours (D.7d).**
+**État : Phase D close — D2, D3, D6 implémentés, 0/0/0/0 sur les 19 témoins, CI `37548529382` verte, non fusionné.**
 
 - [x] D.0 Départ : `git pull --ff-only` (avance rapide sur `b5c9489ef`). Compteurs de départ, 19 témoins
       en processus (faits au schéma des faits 6) : 0 / 3 / 3 / 60 ; `859da825` 0/1/1/4,
@@ -503,7 +503,10 @@ parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le fi
       baseline) ; (7) doctrine de `sieges.go` (le bot sans vie ni place) et commentaire de `passerLaPorte`
       (R-B3) mis à jour. Dix mutations rejouées sur ces chemins, toutes rouges (deux reprises sous une
       forme qui compile). Pas de ronde 2 (aucun P0 ni P1).
-- [ ] D.7e Push, CI au premier plan, CR.
+- [x] D.7e Push de `34c544737` ; CI `37548529382` suivie au premier plan (`gh run watch --exit-status`) : verte, tous les
+      jobs (E2E sauté hors PR vers `main`) ; `Deploy Pre-Check` et `Secrets (gitleaks)` verts. CR au superviseur.
+      Non fusionné dans `feat/v75` ; la re-cuisson du parc reste la décision de l utilisateur (republication
+      depuis les faits au schéma des faits 6 suffit : `SchemaDesFaits` ne monte pas).
 
 ## Découvertes (notées, non traitées)
 
