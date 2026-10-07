@@ -5,6 +5,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/assetnames"
@@ -169,5 +170,36 @@ func TestResolveRefs_NilFetcher(t *testing.T) {
 	res := resolveRefs(context.Background(), nil, nil, "halo_infinite", "test", refs, 0)
 	if res.Requested != 0 || res.Resolved != 0 {
 		t.Fatalf("nil fetcher: %+v", res)
+	}
+}
+
+// TestResolveRefs_PremiereEcriture_SansPlafond : le pré-pass d'un cycle (assetFirstWriteMaxAssets)
+// résout TOUS les assets neufs du cycle, même au-delà de 64. Un asset écarté entrerait au
+// registre avec son identifiant pour nom.
+func TestResolveRefs_PremiereEcriture_SansPlafond(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+	fetcher := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
+	var refs []assetnames.AssetRef
+	for i := 0; i < 70; i++ {
+		id := fmt.Sprintf("map-neuve-%02d", i)
+		fetcher.names[id+"|fr-FR"] = "Carte " + id
+		fetcher.names[id+"|en-US"] = "Map " + id
+		refs = append(refs, collectAssetRefsFromRegistry(&MatchRegistryRow{
+			MapID:        strPtrNonEmpty(id),
+			MapName:      strPtrNonEmpty(id), // nom = identifiant : non résolu
+			MapVersionID: strPtrNonEmpty("v1"),
+		})...)
+	}
+	res := resolveRefs(ctx, fetcher, meta, "halo_infinite", "test", refs, assetFirstWriteMaxAssets)
+	if res.Resolved != 70 || res.Capped != 0 {
+		t.Fatalf("première écriture : %+v, want 70 résolus, 0 écarté", res)
+	}
+	var n int
+	if err := meta.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_id LIKE 'map-neuve-%'`).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 140 {
+		t.Fatalf("asset_translations = %d lignes, want 140 (70 cartes x 2 langues)", n)
 	}
 }

@@ -29,7 +29,6 @@ func TestCampaignExclusionTokenWiredInStatQueries(t *testing.T) {
 		{"Q23StatsMatchesShared (stats/perf)", Q23StatsMatchesShared},
 		{"Q26HomeMatchesSharedPart (home matches)", Q26HomeMatchesSharedPart},
 		{"Q26gPlaylistPhaseBShared (home last playlists)", Q26gPlaylistPhaseBShared},
-		{"Q33SynthesisHeatmap (synthesis heatmap)", Q33SynthesisHeatmap},
 		{"Q33bSynthesisSharedQuery (synthesis top weeks)", Q33bSynthesisSharedQuery},
 		{"Q26bCountPlayerMatches (home total count)", Q26bCountPlayerMatches},
 		{"Q19cTargetRecentMatches (explorer target recent)", Q19cTargetRecentMatches},

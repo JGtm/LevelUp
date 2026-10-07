@@ -339,20 +339,6 @@ JOIN match_participants main
 WHERE p.match_id IN (%s)
 ORDER BY p.match_id, p.xuid`
 
-// Q33 : Synthèse — heatmap win rate par combinaison carte × mode.
-// Paramètre : ?1 = xuid du joueur.
-const Q33SynthesisHeatmap = `
-SELECT
-    COALESCE(r.map_name_fr, r.map_name, 'Unknown')    AS map_name,
-    COALESCE(r.pair_name_fr, r.pair_name, 'Unknown')  AS mode_name,
-    COUNT(DISTINCT p.match_id)                         AS match_count,
-    SUM(CASE WHEN %s THEN 1 ELSE 0 END)    AS wins
-FROM match_participants p
-JOIN v_match_full r ON r.match_id = p.match_id
-WHERE p.xuid = ? ` + campaignExclusionToken + `
-GROUP BY 1, 2
-ORDER BY match_count DESC`
-
 // Q33bSynthesisSharedQuery : (ADR 0016) — partie shared du split
 // LoadSynthesisMatches. 12 cols shared depuis match_participants + match_registry.
 // Les 3 cols player (is_with_friends, performance_score, session_label) sont

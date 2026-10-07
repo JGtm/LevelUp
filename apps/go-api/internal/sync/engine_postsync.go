@@ -323,11 +323,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}
 	clock.lap("convergence_psa", r.ConvergedPSA)
 
-	// Registry names heal DÉCOMMISSIONNÉ (2026-06-01) — map_name/pair_name/
+	// Pas de réécriture des noms du registre ici : map_name/pair_name/
 	// playlist_name/game_variant_name sont résolus au sync PRIMAIRE via
-	// EnrichRegistryFromMetadata (metadata saine). Le nettoyage one-shot des
-	// GUID hérités d'un incident ART metadata se fait via `cmd/backfill_registry_names`
-	// (CLI explicite), pas un heal post-sync automatique.
+	// EnrichRegistryFromMetadata. Les noms restés en identifiant convergent par
+	// sync.BackfillRegistryNames, après le balayage périodique des noms d'assets
+	// (serveur) ou par `levelup backfill-registry-names` (CLI).
 
 	// Catalogue in-sync (chemin V1/CLI) : inscrit les nouvelles playlists/maps/
 	// paires/variantes dans les tables catalogue (zéro réseau) → résorbe les

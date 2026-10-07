@@ -32,6 +32,12 @@ import (
 // distincts est bornée (centaines) ; ExistsFresh rend les balayages suivants ~no-op.
 const assetSweepMaxAssets = 500
 
+// assetFirstWriteMaxAssets : AUCUN plafond pour la première écriture (pré-pass d'un cycle
+// de sync, V1 et V2). Un asset écarté par un plafond n'a pas de traduction au moment de
+// l'insertion : son match entre au registre avec l'identifiant pour nom. Le coût est borné
+// par les assets des matchs du cycle, déjà dédupliqués.
+const assetFirstWriteMaxAssets = 0
+
 // WithAssetNameResolution branche le POOL unifié de tokens (auth/pool — la même
 // source que tous les syncs) pour la résolution autonome des noms d'assets au
 // sync (pré-pass primary-write). p nil → résolution désactivée (parité legacy).
@@ -39,6 +45,14 @@ const assetSweepMaxAssets = 500
 func (e *SyncEngine) WithAssetNameResolution(p pool.Pool) *SyncEngine {
 	e.assetPool = p
 	return e
+}
+
+// ResolvesAssetNames dit si la résolution des noms d'assets est branchée sur ce moteur (pool
+// posé par WithAssetNameResolution). Tout moteur qui INSÈRE des matchs doit l'avoir : sans
+// elle, un match dont l'asset n'est pas encore traduit entre au registre avec l'identifiant
+// en guise de nom. Lu par les tests de câblage des constructeurs de moteur.
+func (e *SyncEngine) ResolvesAssetNames() bool {
+	return e.assetPool != nil
 }
 
 // resolveCycleAssets résout les noms des assets neufs du cycle vers
@@ -56,7 +70,7 @@ func (e *SyncEngine) resolveCycleAssets(ctx context.Context, fetched []*fetchedM
 		}
 		refs = append(refs, collectAssetRefsFromRegistry(fm.Registry)...)
 	}
-	resolveRefsWithPool(ctx, e.assetPool, e.metaDB, e.titleSlug, e.gamertag, refs, 0)
+	resolveRefsWithPool(ctx, e.assetPool, e.metaDB, e.titleSlug, e.gamertag, refs, assetFirstWriteMaxAssets)
 }
 
 // ResolveAssetsFromStats résout les noms des assets neufs d'un lot de matchs
@@ -80,7 +94,7 @@ func ResolveAssetsFromStats(ctx context.Context, p pool.Pool, metaDB *sql.DB, ti
 		}
 		refs = append(refs, collectAssetRefsFromRegistry(reg)...)
 	}
-	resolveRefsWithPool(ctx, p, metaDB, titleSlug, "v2_cycle", refs, 0)
+	resolveRefsWithPool(ctx, p, metaDB, titleSlug, "v2_cycle", refs, assetFirstWriteMaxAssets)
 }
 
 // ResolveUnresolvedAssetNames balaye match_registry pour les assets restés en UUID
@@ -109,7 +123,7 @@ func ResolveUnresolvedAssetNames(ctx context.Context, p pool.Pool, metaDB, share
 // Acquiert un token du POOL unifié (PolicyAnyPublic, comme le watcher/drain),
 // construit le fetcher authentifié, résout, libère le lease. Gaté par le
 // kill-switch LEVELUP_SYNC_RESOLVE_ASSETS. logCtx identifie la source dans les
-// logs (gamertag V1, "v2_cycle", "sweep"). maxAssets 0 → défaut du résolveur.
+// logs (gamertag V1, "v2_cycle", "sweep"). maxAssets 0 → aucun plafond.
 func resolveRefsWithPool(
 	ctx context.Context,
 	p pool.Pool,

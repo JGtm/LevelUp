@@ -3,7 +3,9 @@
 // repair_data_consistency — outil one-shot de réparation des inconsistances
 // résiduelles détectées par diag_db_health (2026-05-08).
 //
-// Couvre 3 chantiers :
+// Couvre 3 chantiers (1, 3 et 4). Le numéro 2 (vider les noms de carte et de paire du registre
+// restés en identifiant) est retiré : un nom manquant se fait converger vers sa traduction
+// (sync.BackfillRegistryNames, la mécanique du balayage périodique des noms d'assets).
 //
 //  1. PLAYER MIGRATIONS — force l'application des migrations TargetPlayer
 //     sur TOUTES les player DBs sous `data/titles/halo_infinite/players/*`.
@@ -13,17 +15,14 @@
 //     `cleanup_spartan_customization_garbage_urls` aux DBs qui ont raté le
 //     premier passage.
 //
-//  2. MATCH_REGISTRY UUIDs — vide les colonnes `map_name` et `pair_name`
-//     contenant un UUID brut (sync n'a pas résolu). Le code-side cascade
-//     resolver (`MatchViewRepo.resolveAssetName`) reprend la résolution via
-//     `asset_translations` à l'affichage, donc une fois le brut purgé, les
-//     UI affichent les noms propres au lieu de l'UUID.
-//
 //  3. XUID_ALIASES BACKFILL — cross-match : pour chaque xuid orphelin
 //     (présent en match_participants mais absent de xuid_aliases ET sans
 //     gamertag dans match_participants), tente de retrouver son gamertag
 //     dans match_participants (lignes rares avec gamertag non-null pour le
 //     même xuid). Si trouvé, INSERT dans shared.xuid_aliases.
+//
+//  4. BITS MENTEURS — délègue à ops.ResetLyingBits (même logique que l'action admin
+//     POST /admin/actions/lying-bits/reset).
 //
 // Read-write. NE PAS lancer pendant que le serveur Air tourne (locks).
 //
@@ -63,10 +62,6 @@ func main() {
 	titleDir := filepath.Join(*dataRoot, "titles", "halo_infinite")
 	if err := chantier1ForcePlayerMigrations(filepath.Join(titleDir, "players"), *dryRun); err != nil {
 		fmt.Printf("[chantier 1] ERR: %v\n", err)
-	}
-	fmt.Println()
-	if err := chantier2CleanupRegistryUUIDs(filepath.Join(titleDir, "warehouse", "shared_matches_v2.duckdb"), *dryRun); err != nil {
-		fmt.Printf("[chantier 2] ERR: %v\n", err)
 	}
 	fmt.Println()
 	if err := chantier3BackfillXUIDAliases(filepath.Join(titleDir, "warehouse", "shared_matches_v2.duckdb"), *dryRun); err != nil {
@@ -164,53 +159,6 @@ func chantier1ForcePlayerMigrations(playersDir string, dryRun bool) error {
 		rwDB.Close()
 		fmt.Printf("│ ✓ %s : migrations appliquées\n", name)
 	}
-	fmt.Println("└────────────────────────────────────────────────────────")
-	return nil
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Chantier 2 — Cleanup match_registry UUIDs résiduels
-// ─────────────────────────────────────────────────────────────────────────
-
-func chantier2CleanupRegistryUUIDs(sharedPath string, dryRun bool) error {
-	fmt.Println("┌─ [chantier 2] Cleanup match_registry UUIDs ────────────")
-	rwDB, err := duckdb.OpenReadWrite(sharedPath)
-	if err != nil {
-		return err
-	}
-	defer rwDB.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	const uuidPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
-
-	var mapCount, pairCount int
-	_ = rwDB.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, uuidPattern).Scan(&mapCount)
-	_ = rwDB.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, uuidPattern).Scan(&pairCount)
-	fmt.Printf("│ map_name UUID brut    : %d matchs\n", mapCount)
-	fmt.Printf("│ pair_name UUID brut   : %d matchs\n", pairCount)
-
-	if dryRun {
-		fmt.Printf("│ [dry] would NULL these columns (code-side resolve cascade kicks in)\n")
-		fmt.Println("└────────────────────────────────────────────────────────")
-		return nil
-	}
-
-	res, err := rwDB.Exec(ctx, `UPDATE match_registry SET map_name = NULL WHERE map_name ~ ?`, uuidPattern)
-	if err != nil {
-		return fmt.Errorf("UPDATE map_name: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	fmt.Printf("│ ✓ map_name vidé sur %d lignes\n", n)
-
-	res, err = rwDB.Exec(ctx, `UPDATE match_registry SET pair_name = NULL WHERE pair_name ~ ?`, uuidPattern)
-	if err != nil {
-		return fmt.Errorf("UPDATE pair_name: %w", err)
-	}
-	n, _ = res.RowsAffected()
-	fmt.Printf("│ ✓ pair_name vidé sur %d lignes\n", n)
-	fmt.Println("│ → resolveAssetName (côté MatchViewRepo + home) cascade")
-	fmt.Println("│   désormais via asset_translations à l'affichage.")
 	fmt.Println("└────────────────────────────────────────────────────────")
 	return nil
 }
