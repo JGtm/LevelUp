@@ -29,6 +29,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
 import { useTitleSlug } from '@/lib/title-routing'
 
+import { lisserLaGrille } from './chaleurLissee'
 import { VIGNETTE_LARGEUR_PX } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundUrl } from './queries'
@@ -126,7 +127,8 @@ function LienExplorateur({ carte, playerSlug, t }: { carte: TacticalMapCard; pla
 /**
  * MiniPlan — le calque « où je meurs » de la vignette. MÊME NOYAU DE PEINTURE et MÊME rampe
  * d'intensité que le plan de la carte, MÊME REPÈRE (le cadre du fond quand il est connu) : la
- * vignette et le plan se lisent pareil. Sans bornes, rien n'est posé sur le fond.
+ * vignette et le plan se lisent pareil, en chaleur lissée (`chaleurLissee.ts`). Sans bornes, rien
+ * n'est posé sur le fond.
  */
 function MiniPlan({ carte, playerSlug }: { carte: TacticalMapCard; playerSlug: string }) {
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, carte.map_id)
@@ -136,12 +138,15 @@ function MiniPlan({ carte, playerSlug }: { carte: TacticalMapCard; playerSlug: s
     void paletteVersion
     return heatRamp(heatmapRampTokens('intensity').map(resolveToken))
   }, [paletteVersion])
-  const bornes = carte.bornes
-  const repere = bornes && carte.pas_m ? repereDuPlan(cadreFond, bornes, carte.pas_m) : null
-  const grid = repere && carte.echelle ? grilleDuPlan(carte.cellules ?? [], repere, carte.echelle) : null
+  const peinture = useMemo(() => {
+    const repere = carte.bornes && carte.pas_m ? repereDuPlan(cadreFond, carte.bornes, carte.pas_m) : null
+    const grille = repere && carte.echelle ? grilleDuPlan(carte.cellules ?? [], repere, carte.echelle) : null
+    const lissee = grille ? lisserLaGrille(grille) : null
+    return repere && lissee ? { repere, grid: lissee } : null
+  }, [carte, cadreFond])
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !grid || !repere) return
+    if (!canvas || !peinture) return
     const width = canvas.clientWidth
     const height = canvas.clientHeight
     if (width <= 0 || height <= 0) return
@@ -150,11 +155,11 @@ function MiniPlan({ carte, playerSlug }: { carte: TacticalMapCard; playerSlug: s
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    const vue = vueContain(repere, width, height)
+    const vue = vueContain(peinture.repere, width, height)
     if (!vue) return
-    drawTacticalHeatmap(ctx, grid, vue, { ramp, k: 1 })
-  }, [grid, ramp, repere])
-  if (!grid) return null
+    drawTacticalHeatmap(ctx, peinture.grid, vue, { ramp, k: 1 })
+  }, [peinture, ramp])
+  if (!peinture) return null
   return (
     <canvas
       ref={canvasRef}

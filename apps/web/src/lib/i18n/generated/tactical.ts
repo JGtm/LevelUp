@@ -96,7 +96,6 @@ export const tacticalManifest = {
   "tactical.zone.kills_deaths": { fr: "{f, plural, one {# frag} other {# frags}}, {m, plural, one {# mort} other {# morts}}", en: "{f, plural, one {# kill} other {# kills}}, {m, plural, one {# death} other {# deaths}}" },
   "tactical.zone.matches": { fr: "{n, plural, one {# match distinct} other {# matchs distincts}}", en: "{n, plural, one {# distinct match} other {# distinct matches}}" },
   "tactical.zone.none": { fr: "Aucune zone sélectionnée", en: "No zone selected" },
-  "tactical.zone.not_openable": { fr: "{n, plural, one {# match du filtre non ouvrable} other {# matchs du filtre non ouvrables}}", en: "{n, plural, one {# match of the filter cannot be opened} other {# matches of the filter cannot be opened}}" },
   "tactical.zone.replay_heading": { fr: "Rejeu", en: "Replay" },
   "tactical.zone.title": { fr: "Zone sélectionnée", en: "Selected zone" },
   "tactical.zone.unnamed": { fr: "Zone sans nom", en: "Unnamed zone" },

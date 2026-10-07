@@ -77,7 +77,7 @@ function rendre(lecture: TacticalRaster) {
       etiquette={null}
       reglages={REGLAGES}
       selected={null}
-      onCellSelect={() => {}}
+      onPointSelect={() => {}}
     />,
   )
 }

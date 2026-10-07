@@ -28765,6 +28765,12 @@ components:
           type:
             - array
             - "null"
+        voisines:
+          items:
+            $ref: '#/components/schemas/TacticalRaster'
+          type:
+            - array
+            - "null"
         zones:
           items:
             $ref: '#/components/schemas/CalloutZone'

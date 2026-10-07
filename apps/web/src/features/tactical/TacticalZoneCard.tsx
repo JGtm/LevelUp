@@ -8,7 +8,7 @@
  * Sans sélection (aucune cellule dans la lecture) : le titre « Zone sélectionnée » et une ligne.
  *
  * OWNERSHIP (ADR 0029) : les contributions sont déjà filtrées côté serveur ; les matchs du périmètre
- * qui ne sont pas au joueur sont comptés en pied de liste, jamais listés.
+ * qui ne sont pas au joueur ne sont jamais listés (le serveur les compte, la carte ne les dit pas).
  */
 import { SectionCard } from '@/components/ui/section-card'
 import type { CelluleTactique, TacticalCelluleReponse } from '@/lib/api/types'
@@ -87,7 +87,7 @@ export function TacticalZoneCard({ t, locale, playerSlug, question, signee, pasM
   )
 }
 
-/** ListeDuRejeu — les mini-tuiles des contributions, à défilement interne, et le pied d'ownership. */
+/** ListeDuRejeu — les mini-tuiles des contributions, à défilement interne. */
 function ListeDuRejeu({
   t,
   locale,
@@ -108,29 +108,18 @@ function ListeDuRejeu({
   }
   if (detail.isPending) return <p className="text-xs text-muted-foreground">{t.zoneContributionsLoading}</p>
   const contributions = detail.data?.contributions ?? []
-  const nonOuvrables = detail.data?.matchs_non_ouvrables ?? 0
+  if (contributions.length === 0) return <p className="text-xs text-muted-foreground">{t.zoneContributionsEmpty}</p>
   return (
-    <>
-      {contributions.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t.zoneContributionsEmpty}</p>
-      ) : (
-        <ul className="-mx-3 min-h-0 flex-1 overflow-y-auto" data-testid="tactical-rejeu-list">
-          {contributions.map((c, i) => (
-            <TacticalRejeuTile
-              key={`${c.match_id}-${c.instant_ms}-${i}`}
-              t={t}
-              locale={locale}
-              playerSlug={playerSlug}
-              contribution={c}
-            />
-          ))}
-        </ul>
-      )}
-      {nonOuvrables > 0 && (
-        <p className="flex-none text-[11px] text-muted-foreground" data-testid="tactical-zone-not-openable">
-          {t.zoneNotOpenable(nonOuvrables)}
-        </p>
-      )}
-    </>
+    <ul className="-mx-3 min-h-0 flex-1 overflow-y-auto" data-testid="tactical-rejeu-list">
+      {contributions.map((c, i) => (
+        <TacticalRejeuTile
+          key={`${c.match_id}-${c.instant_ms}-${i}`}
+          t={t}
+          locale={locale}
+          playerSlug={playerSlug}
+          contribution={c}
+        />
+      ))}
+    </ul>
   )
 }

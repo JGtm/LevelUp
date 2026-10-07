@@ -136,13 +136,14 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	if err := s.remplirLectureArtefact(ctx, out, univers, sidecars, scope, ignores); err != nil {
 		return err
 	}
+	out.Voisines = s.voisinesDesSidecars(ctx, out, univers, sidecars, scope, ignores)
 	s.logger.InfoContext(ctx, "tactique: lecture d'artefact",
 		"player", s.xuid, "map_id", out.MapID, "question", out.Question, "qui", out.Qui,
 		"spawn", scope.Spawn, "grappes", len(out.Grappes),
 		"matchs_filtres", out.MatchsFiltres, "matchs_retenus", out.MatchsRetenus,
 		"matchs_en_attente", out.MatchsEnAttente, "matchs_non_cuisables", out.MatchsNonCuisables,
 		"coequipiers", len(scope.Coequipiers), "cellules", len(out.Cellules),
-		"duration", time.Since(debut))
+		"voisines", len(out.Voisines), "duration", time.Since(debut))
 	return nil
 }
 
