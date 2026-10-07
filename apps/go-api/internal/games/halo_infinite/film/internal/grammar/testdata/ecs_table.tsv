@@ -974,7 +974,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 43	device (dispositif de carte)	39	device-machine-flags-component	1	porte	FUN_14107bb68	R(9)	9	components_device_ti43.go:133		aucun	inconnu		haute	lu dans HaloInfinite.exe HI_1_13_0 (lecteur a descripteur + 0x40), lot L2 de la campagne de grammaire
 43	device (dispositif de carte)	40	device-interaction-start-time-override-component	1	porte	FUN_141fd7bc0	Q(8 ; 0..60)	8	components_device_ti43.go:108		aucun	inconnu		haute	lu dans HaloInfinite.exe HI_1_13_0 (lecteur a descripteur + 0x40), lot L2 de la campagne de grammaire
 44	asset-transform	0	asset-transform-component	1	porte	FUN_142ed3c64	5 x (R(1) porte [+ R(1) index] + 3 x R(6+niveau))	~115	dispatch_biped.go:159		aucun	cinq positions/orientations d'un objet pose	Le mobilier Forge qui BOUGE pendant le match (plateformes mobiles). Le fond de carte est aujourd'hui fige.	haute	
-45	matchflow-*	0	matchflow-sequence-data-component	1	non_porte						aucun	inconnu		aucune	
+45	matchflow-*	0	matchflow-sequence-data-component	1	porte	FUN_14101cdd8	R(4) valeur - 1 (FUN_14101d200) + 4 x R(32)	132	components_matchflow_ti45.go:26		aucun	les donnees de sequence du deroulement de partie (un index et quatre mots)	lu et saute ; aucune valeur publiee	haute	lu dans le jeu 2026-10-07 (lecteur et ecrivain FUN_142edbf94 -> FUN_1407ebac4) ; lot arrets vue B C3
 45	matchflow-*	1	matchflow-focus-data-component	1	non_porte						aucun	inconnu		aucune	
 46	state-broker-state-*	0	state-broker-state-changed-data-component	0	non_porte						aucun	inconnu		aucune	
 46	state-broker-state-*	1	state-broker-state-changed-data-component	0	non_porte						aucun	inconnu		aucune	

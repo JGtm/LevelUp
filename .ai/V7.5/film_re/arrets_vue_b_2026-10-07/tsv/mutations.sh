@@ -42,4 +42,9 @@ C2)
 muter N1 components_navpoint_suite.go 's/navpointOverrideFlagsBits = 5/navpointOverrideFlagsBits = 4/' "ti=12 i16 : R(4)"
 muter N2 dispatch_biped.go 's/\tcase compNavpointOverrideFlags: [^\n]*\n\t\tconsumeNavpointOverrideFlags\(br\)\n//' "ti=12 i16 debranche"
 ;;
+C3)
+muter S1 components_matchflow_ti45.go 's/largeurIndexDeSequence uint = 4 /largeurIndexDeSequence uint = 3 /' "ti=45 i0 : index R(3)"
+muter S2 components_matchflow_ti45.go 's/motsDeSequence              = 4 /motsDeSequence              = 3 /' "ti=45 i0 : trois mots"
+muter S3 components_moteur_de_partie.go 's/\tcase compMatchflowSequenceData: [^\n]*\n\t\tconsumeMatchflowSequenceData\(br\)\n//' "ti=45 i0 debranche"
+;;
 esac; done

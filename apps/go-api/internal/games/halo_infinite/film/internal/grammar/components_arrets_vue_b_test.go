@@ -24,6 +24,10 @@ var vecteursArrets = []vecteurArret{
 	// ti=12 i16 : l ecrivain (142ed0e2c) ecrit les cinq bits du mot etat+0x70c.
 	{"N16a", compNavpointOverrideFlags, 12, 1, "10110"},
 	{"N16b", compNavpointOverrideFlags, 12, 1, "00000"},
+	// ti=45 i0 : l ecrivain (FUN_142edbf94) ecrit l index plus 1 sur quatre bits (FUN_1407ebac4), puis
+	// les mots etat+0xc, +0x10, +0x4, +0x8 sur 32 bits chacun.
+	{"S0a", compMatchflowSequenceData, 45, 1, "0011 | 00000000000000000000000000000001 | 11111111111111111111111111111111 | 10000000000000000000000000000000 | 01010101010101010101010101010101"},
+	{"S0b", compMatchflowSequenceData, 45, 1, "0000 | 00000000000000000000000000000000 | 00000000000000000000000000000000 | 00000000000000000000000000000000 | 00000000000000000000000000000000"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.
