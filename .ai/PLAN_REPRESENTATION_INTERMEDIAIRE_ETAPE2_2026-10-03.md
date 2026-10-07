@@ -1256,6 +1256,45 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             marche lit au-delà des messages de kill, 2.7.c4) ; `SchemaDesFaits` 10 (la section des
             kills des faits change de contenu : 2.7.c2 retire un compte de repli, 2.7.c4 en
             ajoute un). Les rangs dépendent de l'ordre des fusions : ils se posent à la fusion.
+            *Écrit le 2026-10-07* :
+            - exception du garde-rail des faits : `[~]` retirée en 2.7.c4 (le gate de c4 l'exigeait) ;
+            - fusion de `feat/v75` `fad38a03c` (`c4116f88c`) : conflits des chroniques et goldens de
+              révision, des formes des types et des fixtures de contrat résolus côté `feat/v75`, puis
+              renumérotation convenue avec levelup-d0 et levelup-5c (qui fusionnera après) :
+              `grammar.Rev` `grammar-2026-10-07.2` (écrit `.6.7` sur la branche, entrée de chronique
+              renumérotée, les compléments c1-c2 regroupés devant elle) ; `SchemaVersion` 85 (entrée
+              v85, justification de `TestStructureIsOptionalInDocument`, plafonds des deux fichiers de
+              chronique montés de leur entrée, exception écrite) ; `SchemaDesFaits` 10 (section des
+              kills) ; 83 et 8, réservés au lot, restent sans emploi. `killsource-2026-10-07` garde son
+              rang ; sa chronique, condensée (une entrée pour c2 à c4), tient sous 500 lignes ;
+              `objectives` à révision constante (complément, étape identique sur les 20 films) ;
+              goldens de révision, d'assemblage, de forme et fixtures de contrat régénérés ;
+            - ADR 0037 amendé : IR-6 (killsource canal de la marche, message de kill sans sa queue,
+              règle du rattrapage et les deux décisions de l'utilisateur, la fin de vue A fausse
+              retenue de la découverte 34), IR-7 (killsource et le ratchet sous le découpage déclaré),
+              D-2 (la marche de killsource repliée, exception retirée, liste vide en cliquet) ;
+            - registre des replis : les sites de `repli_largeur_mot_de_poignee_inferee`,
+              `repli_localisation_largeur_libre` et `repli_record_desynchronise_jete` pointent déjà
+              sur le code en place (`calibrate.go`, `walk.go`, `localisateur.go`,
+              `canal_des_morts.go` ; `TestToutSiteDuRegistreExiste` vert) : rien à déplacer ;
+            - doc de killsource (`doc.go`) : ce que le paquet lit — rien, la grammaire lit pour lui.
+            *Gate de l'item, le 2026-10-07* :
+            - `replay-corpus-gate` contre `feat/v75` `fad38a03c` (19 témoins, banc de vérité
+              compris, 14 min) : 352 gains, 93 pertes, toutes déclarées (entrée v85) — voies des
+              morts redistribuées entre marche et balayage (contenu publié identique) ; trous du tir
+              continu fragmentés (séries en hausse, trous en baisse) ; postures aberrantes coupées
+              (`084a804d` : une escalade de 168 s ; `11de8353` : sprints coupés à leur vraie fin) ;
+              compteurs de la marche (impulsions −1 à −6, refus +1 à +2, liaisons oubliées +12) ;
+              deux trajets de véhicule raccourcis : `e5adf7b2` finit 7 s avant la mort de son
+              occupant, sans trace à pied entre les deux (8 tirs de véhicule détachés) — régression
+              probable, découverte 34 suspecte, non instruite trame par trame ; `4f77afc1`
+              (passager, 10 s), sens non instruit. Banc de vérité : `repli_kill_rattrape_hors_vue_a`
+              nouveau (le rattrapage compté que la décision du 2026-10-07 a créé) et
+              `repli_deadstate_indice_hors_roster` sur trois films (0 → 1 ou 2 : morts que la marche
+              lit désormais, d'indice hors du roster, non publiées). Fusion accordée par
+              l'utilisateur le 2026-10-07 (« Ok tu pourras fusionner »), donnée après le point d'étape
+              qui annonçait le défaut rare des fins de liste fausses ;
+            - `KILLSOURCE_FIXTURES` après la fusion : vert ; suite du film et `archlint` : verts.
 - [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la

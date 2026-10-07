@@ -113,6 +113,16 @@
 // ecriture per-match issue de ce decodage passe par `internal/persist/BatchBuilder` (regle
 // anti-ART, ADR 0019/0030).
 //
+// # CE QUE CE PAQUET LIT : RIEN, LA GRAMMAIRE LIT POUR LUI (ADR 0037, lot 2.7.c)
+//
+// killsource ne lit aucun octet du film (garde-rail `archlint/film_faits_sans_octets_test.go`,
+// sans exception). La marche des trames de la grammaire lui rend ses morts et ses messages de kill
+// en une marche ([grammar.LireLaMarcheDeKillsource]) ; la table des joueurs, le fil des kills, le
+// motif des xuid, BOT_METADATA et le gabarit du dead-state sont des lectures de la grammaire. Les
+// kill-events sont les messages de kill que la vue A lit ; la recherche bit a bit d avant n est
+// plus qu un rattrapage de la grammaire, nomme et compte, dans les trames dont la lecture de la
+// vue A n est pas etablie (`repli_kill_rattrape_hors_vue_a`).
+//
 // # OFFLINE PUR — ET C EST PROUVE, PAS AFFIRME
 //
 // Le catalogue des 468 ids `jpt!` et la table de nommage sont EMBARQUES par `go:embed` dans

@@ -2990,3 +2990,13 @@ package replay
 //	                28 films, trames delta fermees 674 171 -> 698 688 et refusees 156 170 ->
 //	                131 798 ; quelques trames a kill regressent quand la fin de la vue A, fausse
 //	                apres un message de degats, est retenue (decouverte 34 du plan de l etape 2).
+//	                `replay-corpus-gate` contre `feat/v75` `fad38a03c` (19 temoins, banc de verite
+//	                compris) : 352 gains, 93 pertes, toutes declarees — voies des morts
+//	                redistribuees (marche et balayage, contenu publie identique), trous du tir continu
+//	                fragmentes (series en hausse, trous en baisse), postures aberrantes coupees
+//	                (`084a804d` : une escalade de 168 s), compteurs de la marche (impulsions, refus,
+//	                liaisons oubliees) ; deux trajets de vehicule raccourcis (`e5adf7b2` : 7 s avant
+//	                la mort de l occupant, 8 tirs de vehicule detaches, decouverte 34 suspecte ;
+//	                `4f77afc1` : 10 s, non instruit). Banc de verite : `repli_kill_rattrape_hors_vue_a`
+//	                nouveau (par decision) et `repli_deadstate_indice_hors_roster` sur trois films
+//	                (morts lues par la marche, d indice hors du roster, non publiees).

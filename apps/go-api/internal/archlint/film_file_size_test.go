@@ -251,11 +251,11 @@ var plafondsParFichier = map[string]int{
 	// jauge qui designe le proprietaire, les deux champs de couverture, `SchemaDesFaits`, les revisions
 	// qui montent et celles qui ne montent pas, les rangs reserves, l effet au parc et sa mesure).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	// SCHEMA 84 -> 85 (2026-10-07, representation intermediaire 2.7.c), +31 : l entree v85 (la vue A
+	// SCHEMA 84 -> 85 (2026-10-07, representation intermediaire 2.7.c), +41 : l entree v85 (la vue A
 	// lue au-dela des messages de kill, le rattrapage compte, `SchemaDesFaits`, les revisions qui
 	// montent, les rangs reserves laisses, l effet au parc et sa mesure). Exception ecrite, dans le
 	// commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2992,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3002,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
