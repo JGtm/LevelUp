@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildTendancesDumbbellOption,
   dumbbellHeight,
+  dumbbellXBounds,
   type DumbbellRow,
   type TendancesDumbbellInput,
 } from './tendancesDumbbell.logic'
@@ -108,6 +109,28 @@ describe('buildTendancesDumbbellOption', () => {
     const o = build(input({ xAxisLabel: (v) => `${v} /match` }))
     expect(o.xAxis.axisLabel.formatter(0.5)).toBe('0.5 /match')
     expect(o.xAxis.type).toBe('value')
+  })
+
+  it('axe X tiré des SEULS points : le segment encode ses valeurs sur X, la ligne sur Y', () => {
+    // Sans `encode`, la première dimension du segment (le numéro de ligne) étirait l'axe X
+    // jusqu'au nombre de lignes : tous les points tassés dans un coin.
+    expect(build(input()).series[0].encode).toEqual({ x: [1, 2], y: 0 })
+  })
+
+  it('axe X avec repère : symétrique autour de lui, le point le plus éloigné près du bord', () => {
+    const o = build(input({ reference: 0 }))
+    // Point le plus éloigné du repère : 0,8 ; marge de 12 %.
+    expect(o.xAxis.min).toBeCloseTo(-0.896)
+    expect(o.xAxis.max).toBeCloseTo(0.896)
+    expect(o.xAxis.scale).toBeUndefined()
+  })
+
+  it('axe X sans repère : ajusté aux points, sans bornes imposées', () => {
+    const o = build(input())
+    expect(o.xAxis.scale).toBe(true)
+    expect(o.xAxis.min).toBeUndefined()
+    expect(dumbbellXBounds(input().rows, undefined)).toBeNull()
+    expect(dumbbellXBounds([], 0)).toBeNull()
   })
 
   it('légende en bas et centrée, avec les deux séries', () => {

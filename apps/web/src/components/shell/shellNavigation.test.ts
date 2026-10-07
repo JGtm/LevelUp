@@ -16,8 +16,9 @@ describe('routeShowsSoloFilters (lot perf L4a, D4.4)', () => {
     expect(routeShowsSoloFilters('/en/t/halo_5/players/p/stats/timeseries')).toBe(true)
   })
 
-  it('Stats à barre propre (Synthèse, stats personnelles) : non', () => {
+  it('Stats à barre propre (Synthèse, Tendances, stats personnelles) : non', () => {
     expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/synthesis')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/tendances')).toBe(false)
     expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/summary')).toBe(false)
   })
 

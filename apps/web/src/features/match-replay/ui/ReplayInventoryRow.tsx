@@ -375,11 +375,12 @@ function GrenadeChip({
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-0.5 ${selected ? 'rounded-sm px-0.5 font-semibold' : ''}`}
+      // SANS BORDURE (demande utilisateur du 2026-10-07) : l'encre `warning` et le fond teinté
+      // suffisent à désigner le type équipé ; le liseré encadrait la case pour rien.
       style={
         selected
           ? {
               color: tokenCssVar('warning'),
-              boxShadow: `0 0 0 1px ${tokenCssVar('warning')}`,
               background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, transparent)`,
             }
           : undefined

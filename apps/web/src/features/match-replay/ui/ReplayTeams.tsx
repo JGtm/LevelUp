@@ -85,10 +85,16 @@ const FLASH_MS = 1_400
  * l'octet), ou une grille à remplissage automatique de tuiles de 115 px minimum (gabarit
  * compact). ÉCRITES EN CLASSES SANS ESPACE : une valeur arbitraire Tailwind qui contient un
  * espace ou un `calc(` ne produit aucune règle, en silence (`rosterHeight.guard.test.ts`).
+ *
+ * `overflow-x-hidden` N'EST PAS DÉCORATIF : `overflow-y-auto` passe AUSSI l'axe horizontal en
+ * `auto`, et tout ce qui dépasse le bord d'une tuile ouvrait une barre de défilement
+ * horizontale dans une colonne à largeur fixe — le filigrane de porteur d'objectif, posé à
+ * 6 px au-delà de la tuile (`ReplayObjectiveMark`), suffisait (235 px visibles, 240 de
+ * contenu). La colonne ne défile que verticalement.
  */
-const SEATS_COLUMN_CLASS = 'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto'
+const SEATS_COLUMN_CLASS = 'flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden'
 const SEATS_GRID_CLASS =
-  'grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-1 overflow-y-auto'
+  'grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(115px,1fr))] gap-1 overflow-y-auto overflow-x-hidden'
 
 interface ReplayTeamsProps {
   doc: ReplayDocumentReady

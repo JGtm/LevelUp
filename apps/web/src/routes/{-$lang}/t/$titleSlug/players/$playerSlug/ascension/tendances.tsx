@@ -1,13 +1,8 @@
-/**
- * Route /players/$playerSlug/ascension/tendances — onglet « Tendances ».
- *
- * Câblage seul : la page vit dans `features/tendances/`. Pas de porte de capacité propre —
- * la page dégrade selon les capacités que l'API déclare dans sa réponse.
- */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { TendancesTab } from '@/features/tendances/TendancesTab'
-
+// Redirection legacy : Tendances est passée sous la section Solo (/stats/tendances).
 export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tendances')({
-  component: TendancesTab,
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/tendances', params, replace: true })
+  },
 })

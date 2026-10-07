@@ -28,9 +28,11 @@
  *    une egalite stricte y serait fausse.
  *  - Ascension (ajoute le 2026-09-23) : les titres de la table sont PREFIXES
  *    (« Ascension — Objectifs »), la relation est donc « prefixe + `common.nav.tab_*` »,
- *    pas l'egalite stricte. C'est la relation verrouillee ci-dessous pour les quatre
- *    sous-routes : la premiere divergence attrapee etait `tab_tactique` = 'Tactical'
- *    quand la table disait 'Tactics' — un mot que l'onglet n'a jamais porte.
+ *    pas l'egalite stricte. C'est la relation verrouillee ci-dessous pour Objectifs,
+ *    Entrainement et Realisations. Tactique porte le libelle de l'onglet SANS prefixe
+ *    (demande utilisateur du 2026-10-07) : egalite stricte avec `common.nav.tab_tactique`.
+ *  - Tendances (onglet de Solo, /stats/tendances) : egalite stricte avec
+ *    `common.nav.tab_tendances`, verrouillee dans la meme table.
  *    `/ascension` (onglet « Profil ») reste titre « Ascension » sans prefixe : c'est
  *    l'entree de la rubrique, pas un onglet de plus ; hors garde-rail.
  */
@@ -72,26 +74,30 @@ describe('garde-rail : les titres de page des onglets Escouade suivent features/
 
 /**
  * Suffixe de route Ascension -> cle `common.nav.*` que l'onglet L1/L2 affiche reellement
- * (`components/shell/navL1Sections.tsx`). Le titre de page est le libellé de l'onglet
- * PREFIXE par la rubrique, dans les deux langues.
+ * (`components/shell/navL1Sections.tsx`). `prefixed` : le titre de page est le libelle de
+ * l'onglet PREFIXE par la rubrique ; sinon le libelle seul. Dans les deux langues.
  */
 const ASCENSION_TITLE_PREFIX = 'Ascension — '
 const ASCENSION_TAB_SOURCES = [
-  { suffix: '/ascension/objectifs', navKey: 'common.nav.tab_objectives' },
-  { suffix: '/ascension/coaching', navKey: 'common.nav.tab_coaching' },
-  { suffix: '/ascension/realisations', navKey: 'common.nav.tab_realisations' },
-  { suffix: '/ascension/tactique', navKey: 'common.nav.tab_tactique' },
-  { suffix: '/ascension/tendances', navKey: 'common.nav.tab_tendances' },
+  { suffix: '/ascension/objectifs', navKey: 'common.nav.tab_objectives', prefixed: true },
+  { suffix: '/ascension/coaching', navKey: 'common.nav.tab_coaching', prefixed: true },
+  { suffix: '/ascension/realisations', navKey: 'common.nav.tab_realisations', prefixed: true },
+  { suffix: '/ascension/tactique', navKey: 'common.nav.tab_tactique', prefixed: false },
+  { suffix: '/stats/tendances', navKey: 'common.nav.tab_tendances', prefixed: false },
 ] as const
 
-describe('garde-rail : les titres de page des onglets Ascension = prefixe + common.nav.*', () => {
-  it.each(ASCENSION_TAB_SOURCES)('$suffix === prefixe + $navKey (FR + EN)', ({ suffix, navKey }) => {
-    for (const locale of LOCALES) {
-      const expected = `${ASCENSION_TITLE_PREFIX}${commonManifest[navKey][locale]}`
-      expect(
-        resolvePageTitle(`/t/halo_infinite/players/x${suffix}`, locale),
-        `locale=${locale} suffix=${suffix} : la TABLE pageTitle.ts doit s'aligner sur le manifeste common (${navKey} = "${commonManifest[navKey][locale]}"), jamais l'inverse`,
-      ).toBe(`LevelUp - ${expected}`)
-    }
-  })
+describe('garde-rail : les titres de page des onglets Ascension et de Tendances suivent common.nav.*', () => {
+  it.each(ASCENSION_TAB_SOURCES)(
+    '$suffix === (prefixe si $prefixed) + $navKey (FR + EN)',
+    ({ suffix, navKey, prefixed }) => {
+      for (const locale of LOCALES) {
+        const label = commonManifest[navKey][locale]
+        const expected = prefixed ? `${ASCENSION_TITLE_PREFIX}${label}` : label
+        expect(
+          resolvePageTitle(`/t/halo_infinite/players/x${suffix}`, locale),
+          `locale=${locale} suffix=${suffix} : la TABLE pageTitle.ts doit s'aligner sur le manifeste common (${navKey} = "${label}"), jamais l'inverse`,
+        ).toBe(`LevelUp - ${expected}`)
+      }
+    },
+  )
 })

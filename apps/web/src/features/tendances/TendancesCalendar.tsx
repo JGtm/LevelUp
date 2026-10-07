@@ -4,8 +4,10 @@
  * taux de victoire du jour.
  *
  * Seules les briques existantes : `SectionCard` + `titleWithInfo` pour la carte, le wrapper de
- * grille canonique `Heatmap2DChart` sans cadre, rampe divergente bornée à 0..1, sans réglette
- * ni nombre dans les cases, jours non joués masqués. Aucun jour joué : la notice d'état vide.
+ * grille canonique `Heatmap2DChart` sans cadre, rampe divergente bornée à 0..1 dont la légende
+ * en dégradé est VERTICALE, à droite (norme des légendes en dégradé, demande utilisateur du
+ * 2026-10-07), aucun nombre dans les cases, jours non joués masqués. Aucun jour joué : la
+ * notice d'état vide.
  */
 import { useMemo } from 'react'
 
@@ -18,9 +20,14 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import { getTendancesText } from './i18n'
 import { buildCalendarGrid, formatCalendarTooltip } from './tendancesCalendar.logic'
-import type { Horizon } from './tendances.logic'
+import { formatTrendValue, type Horizon } from './tendances.logic'
 
 const VALUE_RANGE: [number, number] = [0, 1]
+/**
+ * Marges du tracé avec la légende VERTICALE à droite : l'orientation verticale du wrapper
+ * réserve à gauche et en bas la place de titres d'axes que ce calendrier n'a pas.
+ */
+const GRID_OVERRIDE = { top: 16, bottom: 32, left: 64 }
 /** Hauteur du graphique (sept lignes de jours), en pixels. */
 const CHART_HEIGHT = 240
 
@@ -49,6 +56,10 @@ export function TendancesCalendar({ locale, data, horizon }: TendancesCalendarPr
     () => (point: ChartPointHeatmap) => formatCalendarTooltip(point, locale),
     [locale],
   )
+  const formatLegend = useMemo(
+    () => (value: number) => formatTrendValue(value, 'ratio', 2, locale),
+    [locale],
+  )
 
   return (
     <SectionCard title={t.calendarTitle} titleAdornment={titleWithInfo(t.calendarInfo)}>
@@ -67,7 +78,9 @@ export function TendancesCalendar({ locale, data, horizon }: TendancesCalendarPr
             frameless
             paletteMode="divergent"
             valueRange={VALUE_RANGE}
-            showVisualMap={false}
+            visualMapOrient="vertical"
+            visualMapFormatter={formatLegend}
+            gridOverride={GRID_OVERRIDE}
             emptyCells="hidden"
             showCellLabel={false}
             yAxisInverse

@@ -117,17 +117,38 @@ function tooltipFormatter(rows: readonly DumbbellRow[]) {
   }
 }
 
+/** Marge au-delà du point le plus éloigné du repère, en part de cet écart. */
+const X_PADDING_RATIO = 0.12
+
+/**
+ * Bornes de l'axe X d'un haltère À REPÈRE : SYMÉTRIQUES autour du repère (au centre), le
+ * point le plus éloigné près du bord, une marge pour les valeurs écrites. `null` sans repère
+ * ou sans point : l'axe s'ajuste alors aux points (`scale`), graduations arrondies.
+ */
+export function dumbbellXBounds(
+  rows: readonly DumbbellRow[],
+  reference: number | undefined,
+): { min: number; max: number } | null {
+  const xs = rows.flatMap((r) => [r.a, r.b]).filter((x): x is number => x != null)
+  if (reference == null || xs.length === 0) return null
+  const half = Math.max(...xs.map((x) => Math.abs(x - reference))) || 1
+  const span = half * (1 + X_PADDING_RATIO)
+  return { min: reference - span, max: reference + span }
+}
+
 /** Axes de l'haltère : X en valeurs (étiquettes selon la fonction fournie), Y en catégories inversées. */
 function dumbbellAxes(
   rows: readonly DumbbellRow[],
-  xAxisLabel: TendancesDumbbellInput['xAxisLabel'],
+  input: Pick<TendancesDumbbellInput, 'xAxisLabel' | 'reference'>,
   axis: ReturnType<typeof getAxisBase>,
 ) {
+  const { xAxisLabel } = input
+  const bounds = dumbbellXBounds(rows, input.reference)
   return {
     xAxis: {
       ...axis,
       type: 'value',
-      scale: true,
+      ...(bounds ?? { scale: true }),
       axisLabel: xAxisLabel ? { ...axis.axisLabel, formatter: xAxisLabel } : { show: false },
     },
     yAxis: {
@@ -149,12 +170,19 @@ function segmentsOf(rows: readonly DumbbellRow[]): number[][] {
   return segments
 }
 
-/** Série `custom` du segment, sous les points ; muette, hors légende. */
+/**
+ * Série `custom` du segment, sous les points ; muette, hors légende.
+ *
+ * `encode` EST OBLIGATOIRE : sans lui, la première dimension de [ligne, a, b] (la LIGNE) part
+ * sur l'axe X, dont l'étendue s'étirait jusqu'au nombre de lignes — tous les points tassés
+ * dans un coin du graphe.
+ */
 function segmentSeries(segments: number[][], linkColor: string): object {
   return {
     type: 'custom',
     silent: true,
     z: 1,
+    encode: { x: [1, 2], y: 0 },
     data: segments,
     renderItem: (
       _params: unknown,
@@ -214,7 +242,7 @@ export function buildTendancesDumbbellOption(input: TendancesDumbbellInput): ECh
       formatter: tooltipFormatter(rows),
     },
     legend: { ...getLegendBase(tc), left: 'center', data: legendEntries(entries) },
-    ...dumbbellAxes(rows, input.xAxisLabel, axis),
+    ...dumbbellAxes(rows, input, axis),
     series: [
       segmentSeries(segmentsOf(rows), linkColor),
       pointSeries(input.nameA, colorA, dataA, tc.text, {}),
