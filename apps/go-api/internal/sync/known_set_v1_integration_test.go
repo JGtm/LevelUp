@@ -19,6 +19,7 @@ import (
 	"slices"
 	stdsync "sync"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -310,5 +311,53 @@ func TestKnownSetV1_RecuperationParIdentifiantBornee(t *testing.T) {
 		if !env.inRegistry(t, id) {
 			t.Fatalf("orphelin %s absent du registre après trois runs", id)
 		}
+	}
+}
+
+// TestKnownSetV1_RunDelta_EnrichiAuRegistreSansParticipantResteConnu : par le point d'entrée
+// réel (RunDelta → run), base partagée servie par un provider réel. Le match R est au registre
+// (inséré par un autre joueur, sans ligne de participant pour le xuid de user0) et enrichi dans
+// la base de user0. R est CONNU — seul l'enrichissement le borne au joueur — : le delta s'arrête
+// sur lui sans le récupérer. Si la base joueur n'atteignait pas knownset.Load, R serait
+// inconnu et re-récupéré à chaque cycle (le fetch serait jeté : registre déjà écrit).
+func TestKnownSetV1_RunDelta_EnrichiAuRegistreSansParticipantResteConnu(t *testing.T) {
+	env := newMultiUserEnv(t, 2)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	opts := domain.SyncOptions{
+		MatchType: "matchmaking", MaxMatches: 5, WithParticipants: true, WithMedals: true, RequestsPerSecond: 100,
+	}
+	const matchR = "c0000000-0000-4000-8000-000000000003"
+	body := map[string]map[string]any{matchR: makeMatchJSON(matchR, 2)} // participants Player0/Player1
+
+	// user1 insère R : registre + participants (xuids de makeMatchJSON, ni user0 ni user1).
+	env.users[1].mock.history = makeHistory(matchR)
+	env.users[1].mock.statsBody = body
+	if _, err := env.users[1].engine.RunDelta(ctx, opts); err != nil {
+		t.Fatalf("RunDelta user1: %v", err)
+	}
+
+	// user0 : R enrichi dans sa base joueur.
+	u := env.users[0]
+	ph, err := OpenPlayerDB(u.engine.playerDBPath)
+	if err != nil {
+		t.Fatalf("OpenPlayerDB user0: %v", err)
+	}
+	if err := UpsertPlayerEnrichment(ctx, ph.SQLDb(), matchR, ""); err != nil {
+		t.Fatalf("UpsertPlayerEnrichment: %v", err)
+	}
+	_ = ph.Close()
+
+	u.mock.history = makeHistory(matchR)
+	u.mock.statsBody = body
+	// Le post-sync peut interroger l'API pour ses propres convergences : on lit les compteurs
+	// de la pagination (R sauté comme connu, rien inséré), pas le nombre d'appels du client.
+	res, err := u.engine.RunDelta(ctx, opts)
+	if err != nil {
+		t.Fatalf("RunDelta user0: %v", err)
+	}
+	if res.MatchesSkipped != 1 || res.MatchesInserted != 0 {
+		t.Errorf("sauté = %d, inséré = %d, attendu 1 et 0 (R connu : au registre et enrichi, arrêt delta sur lui)",
+			res.MatchesSkipped, res.MatchesInserted)
 	}
 }
