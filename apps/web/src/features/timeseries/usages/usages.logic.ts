@@ -72,15 +72,6 @@ export function timeseriesMatchIndex(rows: TimeseriesMatchRow[]): EmpriseMatchIn
   )
 }
 
-/**
- * Matchs filmés sur le périmètre. Lu par la page Sessions (couverture de « Ressources de la
- * soirée ») ; l'onglet Usages n'affiche aucune mention de couverture.
- */
-export function empriseCoverage(block: SoloEmpriseBlock): { filmed: number; total: number } {
-  const matches = block.matches ?? []
-  return { filmed: matches.filter((m) => m.has_film).length, total: block.matches_total || matches.length }
-}
-
 // ---------------------------------------------------------------------------
 // Contrôle des ressources, carte par carte
 // ---------------------------------------------------------------------------

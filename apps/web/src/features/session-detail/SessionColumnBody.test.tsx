@@ -6,7 +6,7 @@
  * CE QUE CE FICHIER FIXE :
  *   1. QUATRE titres de groupe, dans l'ORDRE — « Bilan », « Match par match », « Frags et usages »,
  *      « Détail des matchs » ; sous « Frags et usages », les intertitres des sous-groupes dans l'ordre
- *      de la maquette, « Ressources » avec sa couverture (pleine page seulement).
+ *      de la maquette, sans mention de couverture.
  *   2. Les cartes A à L dans l'ordre de la maquette, chacune se retirant seule sans donnée ; un
  *      sous-groupe sans carte n'a pas d'intertitre ; sans aucune carte, « Frags et usages » disparaît.
  *   3. Halo 5 (sans film) : A, B, B' et G seulement, aucun intertitre de ressources.
@@ -87,11 +87,11 @@ function monter(blocks: SessionColumnBlocks, compact = false) {
 }
 
 describe('SessionColumnBody — titres de groupe et intertitres', () => {
-  it('soirée du 22/09 : quatre titres de groupe, intertitres dans l’ordre, couverture des ressources', () => {
+  it('soirée du 22/09 : quatre titres de groupe, intertitres dans l’ordre, sans mention de couverture', () => {
     const { container } = monter(session2209())
     expect(titresRendus()).toEqual([...SECTIONS])
     expect(intertitres(container)).toEqual([
-      'Ressources6 matchs filmés sur 7 · frags de la feuille de match sur les 7',
+      'Ressources',
       'Rendement des ressources',
       'Isolement',
       'Objectif',
@@ -190,7 +190,7 @@ describe('SessionColumnBody — anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     const { container } = monter(session2209())
     expect(intertitres(container)).toEqual([
-      'Resources6 filmed matches of 7 · kills from the match sheet over all 7',
+      'Resources',
       'Resource efficiency',
       'Isolation',
       'Objective',

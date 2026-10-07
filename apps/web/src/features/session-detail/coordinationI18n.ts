@@ -26,8 +26,6 @@ export interface CoordinationText {
 
   // ─── Pied et infobulles de la carte ──────────────────────────────────────────
   lowSample: string
-  /** Couverture, dans l'aide (i) d'« Appui reçu » : « 7 matchs mesurés sur 9 ». */
-  coverageMatchesFmt: (mesures: number, total: number) => string
   /** Infobulle d'une case de bande : n° de match, part, parité. */
   bandTipFmt: (index: number, part: string, parite: string) => string
   /** Infobulle d'une case non mesurée. */
@@ -82,7 +80,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoAppui3: 'Parité : 1/n, n étant l’effectif de l’équipe sur le match.',
 
     lowSample: 'échantillon faible',
-    coverageMatchesFmt: (m, t) => `${m} matchs mesurés sur ${t}`,
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parité ${parite})`,
     bandTipUnmeasured: (i) => `Match #${i} · non mesuré`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} sur ${n}`,
@@ -124,7 +121,6 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoAppui3: 'Parity: 1/n, n being the team’s headcount on the match.',
 
     lowSample: 'low sample',
-    coverageMatchesFmt: (m, t) => `${m} of ${t} matches measured`,
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parity ${parite})`,
     bandTipUnmeasured: (i) => `Match #${i} · not measured`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} of ${n}`,

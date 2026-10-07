@@ -80,10 +80,6 @@ describe('SESSION_CARD_TEXT — pleine page', () => {
     expect(fr.full.objectif).toBe(OBJECTIF_TEXT.fr)
     expect(fr.full.objectif.balance.title).toBe('Rapport de force')
   })
-
-  it('couverture de l’intertitre « Ressources »', () => {
-    expect(fr.full.coverage(6, 7)).toBe('6 matchs filmés sur 7 · frags de la feuille de match sur les 7')
-  })
 })
 
 describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {

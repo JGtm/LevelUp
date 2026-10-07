@@ -48,8 +48,6 @@ export interface SessionCardTexts {
   cards: UsagesCardsText
   /** K. */
   sheet: SoloSheetText
-  /** « n matchs filmés sur N · frags de la feuille de match sur les N » (intertitre des ressources). */
-  coverage: (filmed: number, total: number) => string
 }
 
 /** Les aides propres à chaque vue : « Outils de destruction » (B) et « Contribution aux prises » (F). */
@@ -229,7 +227,6 @@ function textsFor(locale: Locale, view: 'full' | 'compact'): SessionCardTexts {
           pctFmt: (x: number) => OBJECTIF_TEXT[locale].pctFmt(x, 0),
         }
       : usages.sheet,
-    coverage: usages.sections.bilanCoverage,
   }
 }
 

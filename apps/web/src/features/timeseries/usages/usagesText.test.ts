@@ -27,7 +27,6 @@ describe('textes FR', () => {
       'Objectif',
       'Équipement',
     ])
-    expect(U.sections.bilanCoverage(62, 90)).toBe('62 matchs filmés sur 90 · frags de la feuille de match sur les 90')
   })
 
   it('une seule source des intertitres : les textes de l’Emprise solo ne surchargent pas ceux de l’Escouade', () => {

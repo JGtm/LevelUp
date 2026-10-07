@@ -14,8 +14,8 @@
  * quelque chose (`sessionCardsPresence`, le MÊME prédicat que la page lit pour ses rangées) —
  * un groupe ou un sous-groupe sans carte disparaît, titre compris.
  *
- * PLEINE PAGE : les paires A|B, C|D, G|H partagent une rangée (`pairGridClass`) ; l'intertitre
- * « Ressources de la soirée » porte sa couverture. COMPARAISON : une rangée par carte, chaque
+ * PLEINE PAGE : les paires A|B, C|D, G|H partagent une rangée (`pairGridClass`) ; aucune mention
+ * de couverture sous les intertitres. COMPARAISON : une rangée par carte, chaque
  * colonne en vue compacte, la carte absente d'un côté remplacée par le marqueur « Sans équivalent
  * dans cette session ».
  *
@@ -76,11 +76,8 @@ interface Props {
   rowKeys?: readonly SessionSectionKey[]
 }
 
-/** Sections de la colonne, indexées par clé stable (`_sections.ts`), et la couverture des ressources. */
-function useSessionColumnSections(props: Props): {
-  sections: Partial<Record<SessionSectionKey, ReactNode>>
-  coverage: string | null
-} {
+/** Sections de la colonne, indexées par clé stable (`_sections.ts`). */
+function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKey, ReactNode>> {
   const t = useSessionT()
   const locale = useAppShellStore((s) => s.locale)
   const { blocks, playerSlug, compact, participationSide = 'right' } = props
@@ -98,12 +95,12 @@ function useSessionColumnSections(props: Props): {
   })
   // SECTION « Frags et usages » — les cartes A à L, chacune sa clé, chacune en vue compacte quand
   // la colonne l'est (drawer ouvert = vue compacte DES DEUX CÔTÉS).
-  const emprise = useSessionEmpriseCards(blocks, compact, playerSlug, locale)
+  const empriseCards = useSessionEmpriseCards(blocks, compact, playerSlug, locale)
 
   const sections: Partial<Record<SessionSectionKey, ReactNode>> = {
     summary: <SessionSummaryCard entry={entry} compact={compact} />,
     ...chartSections,
-    ...emprise.cards,
+    ...empriseCards,
     // Sections transverses de la vague 3 (D22) : « Appui reçu » puis la Portée. Deux clés
     // distinctes : ce sont deux rangées partagées, et la comparaison sert les deux (lot S).
     ...(coordination
@@ -135,7 +132,7 @@ function useSessionColumnSections(props: Props): {
       </div>
     ),
   }
-  return { sections, coverage: emprise.coverage }
+  return sections
 }
 
 /**
@@ -157,13 +154,12 @@ function SessionSectionPlaceholder() {
   )
 }
 
-/** L'intertitre d'un sous-groupe (`h4`, sous le titre de groupe `h3`), sa couverture en petit à côté. */
-function SessionSubgroupTitle({ subgroup, sub, className }: { subgroup: SessionSubgroup; sub?: string | null; className?: string }) {
+/** L'intertitre d'un sous-groupe (`h4`, sous le titre de groupe `h3`). */
+function SessionSubgroupTitle({ subgroup, className }: { subgroup: SessionSubgroup; className?: string }) {
   const t = useSessionT()
   return (
     <h4 className={`text-sm font-semibold text-foreground${className ? ` ${className}` : ''}`} data-session-subgroup={subgroup}>
       {t(SESSION_SUBGROUP_TITLE_KEY[subgroup])}
-      {sub && <small className="ml-2 text-xs font-normal text-muted-foreground">{sub}</small>}
     </h4>
   )
 }
@@ -189,7 +185,7 @@ function PairedRows({ keys, sections, compact }: { keys: SessionSectionKey[]; se
 
 export function SessionColumnBody(props: Props) {
   const t = useSessionT()
-  const { sections, coverage } = useSessionColumnSections(props)
+  const sections = useSessionColumnSections(props)
   const { rowKeys, compact } = props
 
   // Vue pleine page : pile simple, dans l'ordre canonique, chaque GROUPE de clés coiffé
@@ -209,7 +205,7 @@ export function SessionColumnBody(props: Props) {
                     <PairedRows key={sub.keys[0]} keys={sub.keys} sections={sections} compact={compact} />
                   ) : (
                     <div key={sub.subgroup} className="space-y-3">
-                      <SessionSubgroupTitle subgroup={sub.subgroup} sub={sub.subgroup === 'resources' ? coverage : null} />
+                      <SessionSubgroupTitle subgroup={sub.subgroup} />
                       <div className="space-y-6">
                         <PairedRows keys={sub.keys} sections={sections} compact={compact} />
                       </div>
@@ -228,8 +224,7 @@ export function SessionColumnBody(props: Props) {
   // cles dans le MEME ordre, donc la i-eme section de gauche et celle de droite
   // partagent la rangee (donc la hauteur, donc la ligne de titre). Le titre de groupe ET
   // l'intertitre de sous-groupe s'écrivent dans la rangée de leur PREMIÈRE clé : `rowKeys`
-  // étant identique des deux côtés, les deux colonnes les posent à la même rangée. Aucune
-  // couverture en petit dans cette vue (maquette).
+  // étant identique des deux côtés, les deux colonnes les posent à la même rangée.
   //
   // LA CARTE S'ÉTIRE DANS CE QUI RESTE SOUS LES TITRES, JAMAIS DANS TOUTE LA RANGÉE. Les cartes
   // de « Frags et usages » portent `h-full` (paires à hauteur égale en pleine page) : posées

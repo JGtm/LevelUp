@@ -47,11 +47,8 @@ import { SessionToolsCard } from './SessionToolsCard'
 /** Hauteur de « Précision par arme » (B'), celle des cartes de frags d'avant (`ChartCard`). */
 const ACCURACY_HEIGHT = 320
 
-interface SessionEmpriseCards {
-  cards: Partial<Record<keyof SessionCardsPresence, ReactNode>>
-  /** « 6 matchs filmés sur 7 · … » sous « Ressources de la soirée », en pleine page ; null sans Emprise. */
-  coverage: string | null
-}
+/** Les cartes présentes de la colonne, par clé de section. */
+type SessionEmpriseCards = Partial<Record<keyof SessionCardsPresence, ReactNode>>
 
 export function useSessionEmpriseCards(
   col: SessionColumnBlocks,
@@ -100,11 +97,11 @@ export function useSessionEmpriseCards(
     dominance, outcomeLabels,
   }
   const render = cardRenderers(ctx)
-  const cards: SessionEmpriseCards['cards'] = {}
+  const cards: SessionEmpriseCards = {}
   for (const key of Object.keys(render) as (keyof SessionCardsPresence)[]) {
     if (present[key]) cards[key] = render[key]()
   }
-  return { cards, coverage: emprise ? texts.coverage(models.coverage.filmed, models.coverage.total) : null }
+  return cards
 }
 
 interface CardsContext {

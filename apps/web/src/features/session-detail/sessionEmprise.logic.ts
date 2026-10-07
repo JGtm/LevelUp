@@ -31,7 +31,6 @@ import {
   buildEquipmentRows,
   buildLivesModel,
   buildMinePickups,
-  empriseCoverage,
   type EquipmentRow,
   type LivesModel,
   type MinePickups,
@@ -119,7 +118,6 @@ export function sessionMatchIndex(rows: SessionDetailMatchRow[]): EmpriseMatchIn
 
 /** Les modèles des cartes de l'Emprise, de « Mes vies » et de l'Objectif d'une colonne. */
 export interface SessionEmpriseModels {
-  coverage: { filmed: number; total: number }
   controlRows: ControlRow[]
   fil: ResourceFil | null
   grid: MatchGrid | null
@@ -145,7 +143,6 @@ export function buildSessionEmpriseModels(
   const objective = formes && objectiveMatches(formes).length > 0 ? formes : null
   const index = sessionMatchIndex(col.matches)
   return {
-    coverage: block ? empriseCoverage(block) : { filmed: 0, total: 0 },
     controlRows: block ? buildControlRows(block) : [],
     fil: block ? buildResourceFil(block, index) : null,
     grid: block ? buildMatchGrid(block, index) : null,

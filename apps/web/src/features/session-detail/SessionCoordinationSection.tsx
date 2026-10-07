@@ -145,13 +145,11 @@ export function SessionCoordinationSection({
     )
   }
 
-  const coverage = t.coverageMatchesFmt(coordination.matches_measured, coordination.matches_total)
-
   return (
     <div className={rowClass} data-session-coordination="">
       <CoordinationCard
         title={t.cardAppui}
-        info={usageCardTitle(t.infoAppui1, t.infoAppui2, t.infoAppui3, coverage)}
+        info={usageCardTitle(t.infoAppui1, t.infoAppui2, t.infoAppui3)}
         rows={appuiRows}
         columns={[
           { header: t.gaugePrepared },
