@@ -425,3 +425,8 @@ package grammar
 // de la campagne, repris ; `i37` par [lireMinuteur142ba78dc], n = 10). Un record `ti=43` qui
 // arretait la traversee se lit jusqu au bout ; `i31` au-dela de huit moniteurs arrete le record
 // comme le jeu. Carte v2 des 20 films : aucun paquet sain perdu, aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-07.2` (2026-10-07, lot des arrets de la vue B, `ti=12 i16`) : le
+// composant `managed-navpoint-override-flags` se lit (`FUN_140ebf834`, `R(5)` plat,
+// [consumeNavpointOverrideFlags]). Contre `grammar-2026-10-07` : un record `ti=12` qui s arretait
+// sur `i16` se lit jusqu au composant suivant. Carte v2 : aucun sain perdu, aucun film en baisse.

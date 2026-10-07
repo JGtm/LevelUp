@@ -312,6 +312,8 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		consumeNavpointManualTimerCurrent(br)
 	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
 		consumeNavpointRadialProgress(br)
+	case compNavpointOverrideFlags: // ti=12 i16 (FUN_140ebf834) — R(5)
+		consumeNavpointOverrideFlags(br)
 	default:
 		return consumeMoteurDePartie(br, name, level)
 	}

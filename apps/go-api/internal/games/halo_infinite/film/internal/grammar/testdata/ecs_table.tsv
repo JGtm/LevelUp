@@ -315,7 +315,7 @@ ti	archetype	i	component	level	status	deser_addr	grammar	bits_typ	code_source	do
 12	managed-navpoint (point de navigation)	13	managed-navpoint-top-progress	1	non_porte						aucun	inconnu		aucune	
 12	managed-navpoint (point de navigation)	14	managed-navpoint-radial-progress	1	porte	FUN_140fc8d14	R(8) dequantifie dans [-1,1]	8	components_managed_object.go:197		rejeu : bombArmings[] (compte a rebours de l'armement) — hook pose en grammar/navpoint_radial_scan.go:203-204 (ScanNavpointRadial), appele par replay/bomb_armings.go:162, publie en replay/bomb_armings.go:209	la PROGRESSION RADIALE du marqueur d objectif (la jauge de capture)	74,7 et 93,1 pourcent de tous les records ti=12 des 2 films Strongholds, 140x et 868x le plancher de bruit : LE canal de la zone en delta (lot C phase 0)	haute	
 12	managed-navpoint (point de navigation)	15	managed-navpoint-bottom-progress	1	non_porte						aucun	inconnu		aucune	
-12	managed-navpoint (point de navigation)	16	managed-navpoint-override-flags	1	non_porte						aucun	inconnu		aucune	
+12	managed-navpoint (point de navigation)	16	managed-navpoint-override-flags	1	porte	FUN_140ebf834	R(5) (FUN_140ebf854, vers etat+0x70c)	5	components_navpoint_suite.go:26		aucun	des drapeaux de surcharge du marqueur (cinq bits)	mot plat lu et saute ; aucune valeur publiee	haute	lu dans le jeu 2026-10-07 (lecteur et ecrivain 142ed0e2c) ; lot arrets vue B C2
 12	managed-navpoint (point de navigation)	17	managed-navpoint-object-marker	1	non_porte						aucun	inconnu		aucune	
 12	managed-navpoint (point de navigation)	18	managed-navpoint-position-offset	1	non_porte						aucun	inconnu		aucune	
 12	managed-navpoint (point de navigation)	19	managed-navpoint-visual-states-component	2	non_porte						aucun	inconnu		aucune	

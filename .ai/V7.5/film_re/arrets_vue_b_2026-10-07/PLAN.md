@@ -16,8 +16,8 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 
 | # | Composant | Statut | Commit | Note |
 |---|---|---|---|---|
-| C1 | `ti=43` `i18`..`i40` (reprise de L2, `b12eb7692`) | [x] | (ce commit) | carte v2 contre `879f31bbf` : +19 797 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07` |
-| C2 | `ti=12 i16 managed-navpoint-override-flags` | [ ] | | |
+| C1 | `ti=43` `i18`..`i40` (reprise de L2, `b12eb7692`) | [x] | `ec9897101` | carte v2 contre `879f31bbf` : +19 797 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07` |
+| C2 | `ti=12 i16 managed-navpoint-override-flags` | [x] | (ce commit) | `FUN_140ebf834` = `R(5)` ; carte v2 contre C1 : +110 sains, 0 perdu, aucun film en baisse ; `grammar-2026-10-07.2` |
 | C3 | `ti=45 i0 matchflow-sequence-data-component` | [ ] | | |
 | C4 | `ti=10 i2 managed-object-navpoint-component` | [ ] | | |
 | C5 | `ti=12 i18 managed-navpoint-position-offset` | [ ] | | |
@@ -42,6 +42,8 @@ cause est dans la lecture, sinon retiré et consigné. Un commit par composant r
 
 - 2026-10-07 : plan écrit ; carte v2 de base (binaire de `879f31bbf`, ~2 min pour 20 films).
 - C1 : port de L2 repris sur la tête (le maillon s insère entre M4b et `ti=40` ; `i37` passe par le lecteur de minuteur unique `lireMinuteur142ba78dc`, venu depuis L2 ; la règle du masque de `pasDEssai` était déjà en tête, lot LT). Ghidra relu : `i19` `FUN_1410156e4`, `i21` `FUN_1407f0678` / `FUN_1407f08bc` / `FUN_1407f08f8`. Carte v2 : 0 perte, la perte de `1c4c63c2` de L2 (second rang) ne se reproduit pas (+13). Retenu.
+- Mutations C1 et C2 jouées (`tsv/mutations.sh`, overlay) : 20 / 20 ROUGES.
+- C2 : lecteur `FUN_140ebf834` -> `FUN_140ebf854` (`R(5)` vers `etat+0x70c`), écrivain `142ed0e2c` (cinq bits du même mot), trouvés par nom -> `getName` -> descripteur (slot après le thunk `FUN_14076ce9c`). Carte v2 contre C1 : +110 sains (64 arrêtés sur `i16` en C1), 0 perdu ; les autres records `i16` avancent et s arrêtent sur `i18` (63 -> 318) et `i17` (92). Retenu.
 
 ## Découvertes
 

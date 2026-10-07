@@ -1,0 +1,44 @@
+package grammar
+
+import (
+	"strings"
+	"testing"
+)
+
+// components_arrets_vue_b_test.go — les lecteurs des composants ou la marche depuis la fin de la
+// vue A s arretait (`ti=12`, `ti=45`, `ti=10`), confrontes a des vecteurs ECRITS COMME L ECRIVAIN
+// DU JEU LES ECRIT : bits dans l ordre d ecriture, chaque champ poids fort en tete. Un vecteur est
+// tenu quand le lecteur de production, appele par la chaine de dispatch avec l archetype du
+// composant, consomme EXACTEMENT ses bits ; une queue de 64 uns suit chaque vecteur
+// ([tamponDeVecteur]), qu un lecteur qui lirait trop consommerait.
+
+// vecteurArret : un etat ecrit par l ecrivain du jeu, l archetype et le niveau du composant.
+type vecteurArret struct {
+	id, composant string
+	ti, niveau    uint32
+	bits          string // '0' et '1' ; tout autre caractere est un separateur de lecture
+}
+
+// vecteursArrets : un vecteur par composant et par forme de l ecrivain.
+var vecteursArrets = []vecteurArret{
+	// ti=12 i16 : l ecrivain (142ed0e2c) ecrit les cinq bits du mot etat+0x70c.
+	{"N16a", compNavpointOverrideFlags, 12, 1, "10110"},
+	{"N16b", compNavpointOverrideFlags, 12, 1, "00000"},
+}
+
+// TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.
+func TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit(t *testing.T) {
+	for _, v := range vecteursArrets {
+		buf, n := tamponDeVecteur(v.bits)
+		br := LecteurSur(buf)
+		_, _, porte := consumeByName(br, v.composant, v.ti, v.niveau)
+		if !porte {
+			t.Errorf("%s (%s) : non porte", v.id, v.composant)
+			continue
+		}
+		if got := br.BitPos(); got != n {
+			t.Errorf("%s (%s) : %d bits consommes, l ecrivain en a ecrit %d (%s)", v.id, v.composant,
+				got, n, strings.TrimSpace(v.bits))
+		}
+	}
+}
