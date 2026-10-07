@@ -1217,6 +1217,15 @@ plan y sont reprises comme items (3.1.2).
    plan : un rapport de chronos sur une machine partagée ne se fige pas à un seuil fixe. Le paquet
    `platform/duckdb` tourne en 250 s seul sur ce poste, pour un plafond de 300 s : sous charge, il
    sort en dépassement.
+29. *(recuisson unique du parc par levelup-dc, 2026-10-07)* **Le document des porteurs au sync
+   journalise « roster SANS ÉQUIPE » en erreur sur les modes à crâne, bombe et VIP.**
+   `replay.PortagesAuSync` ne lit les équipes du film que pour le drapeau ; son document (jamais
+   publié) passe quand même par `journaliserLesPlaces` (`replay/sieges.go`) : 82 matchs journalisés
+   pendant le rattrapage, dont 73 sans aucune équipe. Le placement des vies, lui, se range par camp
+   depuis la feuille du match (`placement_des_vies.go`). Journal en trop ; correction proposée à
+   levelup-dc (son journal) ; à reprendre avec 2.7.c, qui passe ce chemin sur la marche unique. Le
+   même rattrapage laisse 105 matchs que le `--dry-run` sélectionne et que la passe réelle ne prend
+   pas (sélection contre `killcollector.PlacementRev`), non instruit.
 
 ## 7. Journal
 
