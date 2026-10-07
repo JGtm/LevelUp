@@ -189,6 +189,30 @@ describe('flagReturnAt', () => {
     expect(now).toHaveLength(1)
     expect(now[0].radiusM).toBe(RULE.radiusM)
   })
+
+  it('une image FRACTIONNAIRE (lecture en cours) rend le lâcher, avec des valeurs finies', () => {
+    // La boucle de lecture avance de dt × fps : l'image courante n'est presque jamais entière.
+    // Un index fractionnaire sur les tableaux typés rendait `undefined` → NaN → aucun tracé :
+    // la zone n'apparaissait que sur une image posée par un saut (2026-10-07).
+    const drops = buildFlagReturnDrops(
+      [
+        carry([
+          { state: 'dropped', t0: 10, t1: 20 },
+          { state: 'carried', t0: 21, t1: 30 },
+        ]),
+      ],
+      { rule: RULE, frameIntervalMs: 100, ...PERSONNE },
+    )
+    for (const frame of [10.01, 15.37, 20.99]) {
+      const now = flagReturnAt(drops, frame)
+      expect(now, `image ${frame}`).toHaveLength(1)
+      expect(Number.isFinite(now[0].x), `x à ${frame}`).toBe(true)
+      expect(Number.isFinite(now[0].y), `y à ${frame}`).toBe(true)
+      expect(Number.isFinite(now[0].progress), `jauge à ${frame}`).toBe(true)
+    }
+    expect(flagReturnAt(drops, 9.99), 'juste avant le lâcher').toEqual([])
+    expect(flagReturnAt(drops, 21.0), 'juste après').toEqual([])
+  })
 })
 
 /** Un contexte qui enregistre chaque tracé (arc, remplissage, trait) avec l'état courant. */
