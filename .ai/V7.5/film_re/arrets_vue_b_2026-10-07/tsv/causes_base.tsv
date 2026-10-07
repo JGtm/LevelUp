@@ -1,0 +1,25 @@
+116736	vue B : sortie par rejet
+24222	liste d evenements non localisee
+12201	ti=43 i35 device-animation-layer-state-component
+11524	vue C : terminateur hors cadre
+2795	vue C : kind non porte
+2069	ecrivain : masque au-dela de l archetype
+981	vue C : bloc 0xbc (desalignement)
+886	ti=43 i21 device-position-group-component
+669	vue B : fin de payload
+641	ti=10 i2 managed-object-navpoint-component
+551	ti=12 i21 managed-navpoint-visual-state-groups-component-1
+494	ti=12 i22 managed-navpoint-visual-state-groups-component-2
+454	ti=12 i16 managed-navpoint-override-flags
+248	ti=35 i59 biped-spartan-ability-non-predicted-state
+237	ti=56 archetype hors registre
+231	ti=43 i19 device-position-animation-name-component
+151	ecrivain : ordre de la vue B
+133	ti=12 i20 managed-navpoint-visual-state-groups-component-0
+119	ti=11 i4 managed-objective-interaction-filter-component
+108	ti=51 archetype hors registre
+102	ti=43 i39 device-machine-flags-component
+86	ti=59 archetype hors registre
+80	ti=10 i22 managed-object-interaction-filter-component
+68	ti=45 i0 matchflow-sequence-data-component
+56	ecrivain : masque epars non croissant

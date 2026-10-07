@@ -416,3 +416,12 @@ package grammar
 // n appellent pas ce balayage : leurs revisions restent constantes, leurs empreintes sont
 // regenerees. Le rang : `.5` est pris par le lot 2.7.b de la representation intermediaire,
 // fusionne avant ce lot.
+//
+// ENTREE `grammar-2026-10-07` (2026-10-07, lot des arrets de la vue B, `ti=43`) : LES COMPOSANTS
+// `device-*` DU DISPOSITIF DE CARTE SE LISENT.
+//
+// Ce qui change, contre `grammar-2026-10-06.6` : le maillon [consumeComposantsDispositif]
+// (`components_device_ti43.go`) lit `ti=43` `i18` a `i40` par les lecteurs du jeu (port du lot L2
+// de la campagne, repris ; `i37` par [lireMinuteur142ba78dc], n = 10). Un record `ti=43` qui
+// arretait la traversee se lit jusqu au bout ; `i31` au-dela de huit moniteurs arrete le record
+// comme le jeu. Carte v2 des 20 films : aucun paquet sain perdu, aucun film en baisse.

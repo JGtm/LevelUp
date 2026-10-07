@@ -194,9 +194,6 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	case compObjectiveOutroPhaseDuration: // ti=11 i32 (FUN_142edb740) — R(8) quantifié
 		consumeObjectiveOutroPhaseDuration(br)
 		return variant, nil, true
-	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
-		consumeDevicePosition(br)
-		return variant, nil, true
 	case "game-engine-campaign-timer-component": // ti2 (FUN_1407ee764) — R(16)+R(16)+R(5)
 		consumeGameEngineCampaignTimer(br)
 		return variant, nil, true
