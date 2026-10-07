@@ -40,10 +40,14 @@ Ce lot n'ajoute aucune statistique : il supprime et il reformule.
   sont PAS gardés.
 - **Lot vivant à ne pas croiser** : Tactique v2 (session levelup-3f, worktree
   `LevelUp-wt-tactique`, branche `feat/tactique-v2`) travaille `features/tactical/` et
-  `service/tactical_service*.go`. La page Tactique affiche encore un taux de « morts
-  vengées » (`tactical_service.go:358-382`, `coordination.Echanges`) et ses textes : ce lot
-  N'Y TOUCHE PAS ; le signaler à la session Tactique (message inter-sessions) comme reste de
-  la décision du 05/10, c'est à elle de le retirer dans son lot.
+  `service/tactical_service*.go`. Sur `feat/v75` à `94ac8fd68`, la page Tactique affiche
+  encore un taux de « morts vengées » (`tactical_service.go:358-382`, `mesurerEchange` via
+  `coordination.Echanges`) ; `feat/tactique-v2` (`0641aceb6`, vérifié le 07/10 : plus de
+  `mesurerEchange`, plus de `TacticalCoordinationCard`) l'a DÉJÀ retiré et sa fusion dans
+  `feat/v75` est imminente. Ce lot ne touche pas Tactique ; il part de la tête de `feat/v75`
+  APRÈS cette fusion (vérifier : `git grep mesurerEchange` vide), et à ce moment le SEUL
+  lecteur de production de `coordination.Echanges` / `Mesurer` est
+  `service/teammates/teammates_squad_echange.go` — donc ces helpers partent avec lui (§3).
 - Registre `.ai/REGISTRE_REPORTS.md`, section « Pages solo aux formes de l'Emprise » et
   lignes du 2026-10-07 du lot Vue match : les entrées « Match pas encore synchronisé tutoie »
   et « Textes de l'Escouade à la personne et avec camp » sont à CLORE par ce lot.
@@ -91,10 +95,14 @@ tests, types, fixtures, clés i18n et entrées de contrat) :
   `teammates_service_loads_test.go` pour la part échange), le champ du contrat
   (`make openapi-gen && make generate-types`, snapshot `contract-surface.snapshot.json`,
   `tools/lint-contract-ratchet.mjs` si une entrée le nomme) ;
-- `coordination.Ripostes` (dans `analysis/coordination/riposte.go`) si plus aucun lecteur
-  hors tests après ce retrait ; `coordination.Echanges` RESTE (lu par `tactical_service.go`,
-  lot Tactique). `domain/coordination.go` : `PaireEchange` (L85-100) part avec son dernier
-  lecteur ;
+- `coordination.Ripostes`, `coordination.Echanges` et `coordination.Mesurer`
+  (`analysis/coordination/riposte.go` et voisins) : après la fusion de Tactique v2 (§2),
+  leur seul lecteur de production est `teammates_squad_echange.go` ; ils partent donc avec
+  lui, tests compris (`riposte_test.go`, la part « échange » de `no_naked_rate_test.go`,
+  `bloc_appui_golden_test.go` à relire : l'APPUI reste). Vérifier par
+  `git grep -n 'coordination\.\(Echanges\|Ripostes\|Mesurer\)'` qu'il ne reste aucun lecteur
+  hors tests avant de supprimer. `domain/coordination.go` : `PaireEchange` (L85-100) et les
+  types d'échange partent avec leur dernier lecteur ; ce qui sert à l'Appui reste ;
 - le dénivelé des profils de portée : `domain/match_range_profile.go` champs
   `ElevationMedianM` (L48), `ElevationLobbyDeltaM` (L53), `LobbyElevationMedianM` (L79), et
   le calcul qui les remplit (le 07/10, aucun fichier de `platform/duckdb/` ne porte le mot
