@@ -94,9 +94,12 @@ func ScanEquipmentChanges(
 		return nil, types.EquipmentChangeStats{}, err
 	}
 	var strict []abilityEmission
-	walk := walkAbilityEmissionsWith(setup, func(e abilityEmission) {
+	walk, err := walkAbilityEmissionsWith(setup, func(e abilityEmission) {
 		strict = append(strict, e)
 	})
+	if err != nil {
+		return nil, types.EquipmentChangeStats{}, err
+	}
 	// PAR VIE, PAS PAR SLOT (lot J5.3) : un slot porte ses corps successifs depuis que les generations
 	// >= 2 du handle sont lues (lot J5.2) ; chaque corps a sa chaine de compteur R(3).
 	parVie := map[types.LifeKey][]abilityEmission{}

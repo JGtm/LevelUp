@@ -32,7 +32,6 @@ function medal(over: Partial<MedalEvent> = {}): MedalEvent {
     tMs: 1_000,
     xuid: 'me',
     gamertag: 'JGtm',
-    teamID: 0,
     name: 'Double Kill',
     label: 'Doublé',
     description: 'Deux éliminations en quatre secondes.',

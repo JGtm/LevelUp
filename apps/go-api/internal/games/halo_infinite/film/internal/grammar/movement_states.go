@@ -163,7 +163,8 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 // canaux, distribues sur UNE marche ([Distribuer]) : les etats de mouvement, le tir continu et, avec
 // [LecturesDeLaMarche.Morts], les morts d objet et l occupation. Les listes que le canal des morts
 // recupere par le repli a largeur libre se comptent au rapport du contexte
-// (`repli_localisation_largeur_libre`).
+// (`repli_localisation_largeur_libre`). Les lectures bipedes des huit lecteurs de composants
+// ([lecturesBipedes]) se recueillent sur la meme marche quand le contexte ne les tient pas deja.
 //
 // UN FILM SANS ETATS DE MOUVEMENT EST MARCHE QUAND MEME depuis le lot M4b : son archetype bipede
 // ne declare aucun des composants d etat (`Absent`), mais sa vue de controle porte le tir continu.
@@ -187,6 +188,9 @@ func ScanMarcheDesTramesAvec(fc *FilmContext, l LecturesDeLaMarche) (MarcheDesTr
 	sc := nouveauCanalDesEtats(st, reg, arch)
 	tir := nouveauCollecteurTirContinu(&m.ContinuousFireStats)
 	canaux := []Canal{sc, tir}
+	if fc.recup.lectures == nil {
+		canaux = append(canaux, nouveauCanalDesLecturesBipedes(fc))
+	}
 	var morts *canalDesMorts
 	if l.Morts {
 		morts = nouveauCanalDesMorts(reg)
@@ -289,20 +293,24 @@ func (sc *movementStateScanner) Brancher(obs *Observation, m *MarcheDistribuee) 
 	}
 }
 
-// Trame compte UNE trame delta de la marche, dans la structure. Les paquets a liste d evenements
-// PLEINE sont localises par la marche ([localiserLaListe]) ; ceux qu elle ne localise pas sont
-// comptes et sautes, parce que sauter la liste bit-exactement demanderait la grammaire de charge de
-// chaque type d evenement.
+// Trame compte UNE trame delta de la marche, dans la structure. Le debut de la liste d un paquet a
+// liste d evenements PLEINE est lu a la fin de sa vue A quand elle en decide, sinon localise par la
+// marche ([localiserLaListe]) ; les paquets qu elle ne localise pas sont comptes et sautes, parce
+// que sauter la liste bit-exactement demanderait la grammaire de charge de chaque type d evenement.
 func (sc *movementStateScanner) Trame(p *lecture.Paquet) {
 	if p.Debut != lecture.DebutEnTete {
 		sc.st.EventPackets++
-		if p.Debut == lecture.DebutNonLocalise {
+		switch p.Debut {
+		case lecture.DebutNonLocalise:
 			sc.st.EventPacketsUnlocated++
 			return
-		}
-		sc.st.EventPacketsLocated++
-		if p.Debut != lecture.DebutParSignature {
-			sc.st.EventPacketsNewRecordStart++
+		case lecture.DebutParVueA:
+			// Un debut LU (la fin de la vue A) : ni localise, ni ouvert par un NEW de tete.
+		default:
+			sc.st.EventPacketsLocated++
+			if p.Debut != lecture.DebutParSignature {
+				sc.st.EventPacketsNewRecordStart++
+			}
 		}
 	}
 	sc.st.Packets++

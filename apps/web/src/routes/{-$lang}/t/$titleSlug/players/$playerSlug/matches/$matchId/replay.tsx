@@ -26,7 +26,7 @@
  * approximatif présenté comme exact.
  */
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 import { z } from 'zod'
 
 import { normalizeCallouts } from '@/features/match-replay/layers/calloutsLayer'
@@ -54,9 +54,7 @@ import { ReplayVictoryOverlay } from '@/features/match-replay/ui/ReplayVictoryOv
 import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
 import { buildMatchHeadingStr } from '@/features/match-view/format'
 import { useMatchView } from '@/features/match-view/queries'
-import type { TeamColorResolver } from '@/features/match-view/teamColor'
 import { useFriendGamertags } from '@/features/friends/queries'
-import { tokenCssVar } from '@/lib/accessibility'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 import { themedIconSrc } from '@/lib/themedIcon'
@@ -154,13 +152,8 @@ function ReplayPage() {
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
-  // surchargeables par les réglages. La cascade d'identité du fil (couleur backend, puis
-  // couleur officielle de l'équipe) reste celle de la Match View, qui ne change pas : c'est
-  // pourquoi le résolveur est passé en prop plutôt qu'imposé dans le composant.
-  const colorOfTeam = useCallback<TeamColorResolver>(
-    (_teamID, ally) => tokenCssVar(ally ? 'team-ally' : 'team-enemy'),
-    [],
-  )
+  // surchargeables par les réglages — et la MÊME allégeance, lue dans le film et vue du point de
+  // vue (`model.allegiance`, 2026-10-06). Chaque surface la reçoit ; aucune ne la recalcule.
   const nowMs = data ? frameToMs(frame, data) : 0
   // LA FIN DE PARTIE SONORE (lot C) reste À LA PAGE, et pour une raison précise : elle dépend
   // de la LANGUE (voix d'annonceur), que le modèle ne connaît pas. C'est la MÊME lecture que
@@ -173,8 +166,8 @@ function ReplayPage() {
   // qu'on regarde — l'incohérence apparente entre les deux appels est voulue, ne pas la
   // « corriger ».
   const endMatchSound = useMemo(
-    () => endMatchSoundSpec(scoreboard, matchView?.header.outcome_code, locale),
-    [scoreboard, matchView?.header.outcome_code, locale],
+    () => endMatchSoundSpec(model.allegiance, scoreboard, matchView?.header.outcome_code, locale),
+    [model.allegiance, scoreboard, matchView?.header.outcome_code, locale],
   )
 
   const hasReplay = !!data && data.tracks.length > 0
@@ -297,8 +290,7 @@ function ReplayPage() {
                 montage déclaratif suffit, aucun pilotage par ref n'est nécessaire. */}
             <ReplayScoreBanner
               doc={data}
-              scoreboard={scoreboard}
-              xuidMeta={xuidMeta}
+              allegiance={model.allegiance}
               frame={frame}
               nowMs={nowMs}
               playWindow={playWindow}
@@ -313,7 +305,7 @@ function ReplayPage() {
               background={mapBackground}
               callouts={callouts}
               scoreboard={scoreboard}
-              xuidMeta={xuidMeta}
+              allegiance={model.allegiance}
               marks={marks}
               endMatch={endMatchSound}
               viewpoint={viewpoint.xuid}
@@ -352,7 +344,7 @@ function ReplayPage() {
                   <ReplayVictoryOverlay
                     doc={data}
                     scoreboard={scoreboard}
-                    xuidMeta={xuidMeta}
+                    allegiance={model.allegiance}
                     outcomeCode={matchView?.header.outcome_code}
                     viewpoint={viewpoint.xuid}
                     finalScore={model.score}
@@ -397,7 +389,7 @@ function ReplayPage() {
                   scoreboard={scoreboard}
                   frame={frame}
                   locale={locale}
-                  xuidMeta={xuidMeta}
+                  allegiance={model.allegiance}
                   header={matchView?.header}
                 />
               </div>
@@ -408,9 +400,9 @@ function ReplayPage() {
                   playWindow={playWindow}
                   scoreboard={scoreboard}
                   xuidMeta={xuidMeta}
+                  allegiance={model.allegiance}
                   locale={locale}
                   marks={marks}
-                  colorOf={colorOfTeam}
                 />
               </div>
             </div>

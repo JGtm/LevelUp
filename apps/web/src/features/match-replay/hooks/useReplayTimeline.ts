@@ -52,6 +52,7 @@ import { presenceShades, teammatesAbsence } from '../model/presenceTrackLogic'
 import { roundTransitions } from '../model/roundsLogic'
 import { buildViewpointOptions, type ViewpointOptionLabels } from '../model/viewpointOptions'
 import { campLabel } from '../../../lib/replay/replayCamps'
+import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
@@ -76,8 +77,8 @@ export interface ReplayTimelineOptions {
    * (`model.viewpoint`), relayé par le canvas — jamais redécouvert ici.
    */
   viewpoint: string | null
-  /** Camp de chaque xuid RELATIF au point de vue (`model.identity`) : qui est coéquipier. */
-  identity: ReadonlyMap<string, { ally: boolean }>
+  /** L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : qui est coéquipier. */
+  allegiance: FilmAllegiance
   /** Le roster joint du match (`model.players`) : ce que le menu de point de vue propose. */
   players: readonly ReplayPlayer[]
   /** Poser le point de vue depuis le menu. `null` revient au joueur de la page. */
@@ -129,7 +130,7 @@ export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, '
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale, zoom } = o
-  const { media: mediaItems = EMPTY_MEDIA, viewpoint, identity, players, onSelectViewpoint } = o
+  const { media: mediaItems = EMPTY_MEDIA, viewpoint, allegiance, players, onSelectViewpoint } = o
   const t = REPLAY_TEXT[locale]
   const { frameIntervalMs, frameCount } = doc
   // LE REPLI EST UNE PRÉFÉRENCE DU LECTEUR, pas un calque : il ne passe pas par le tiroir mais
@@ -160,8 +161,8 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   // est de son camp, qui est un ami. Groupées, elles n'allongent pas la liste d'arguments et se
   // mémoïsent d'un bloc — les trois changent en même temps, à chaque bascule de point de vue.
   const audience = useMemo(
-    () => ({ viewpoint, identity, marks }),
-    [viewpoint, identity, marks],
+    () => ({ viewpoint, allegiance, marks }),
+    [viewpoint, allegiance, marks],
   )
   const tracks = useMemo(
     () => buildEventTracks(reduit, audience, frameIntervalMs ?? 0, scale, clockOf),
@@ -179,17 +180,9 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     () => presenceShades(feedEntries, viewpoint, frameIntervalMs ?? 0, scale, clockOf),
     [feedEntries, viewpoint, frameIntervalMs, scale, clockOf],
   )
-  // L'EFFECTIF DE RÉFÉRENCE DE LA PISTE COÉQUIPIERS : les alliés du point de vue, lui-même
-  // exclu. `identity` est déjà RELATIVE au point de vue (cf. `resolveXuidMeta` à trois
-  // arguments) — « allié » y veut dire « du côté de celui qu'on regarde », jamais du joueur de
-  // la page.
-  const teammateXuids = useMemo(() => {
-    const out: string[] = []
-    for (const [xuid, meta] of identity) {
-      if (meta.ally && xuid !== viewpoint) out.push(xuid)
-    }
-    return out
-  }, [identity, viewpoint])
+  // L'EFFECTIF DE RÉFÉRENCE DE LA PISTE COÉQUIPIERS : les alliés du point de vue dans le FILM,
+  // lui-même exclu (`teammatesOf`). Un bot allié en est.
+  const teammateXuids = useMemo(() => teammatesOf(players, allegiance, viewpoint), [players, allegiance, viewpoint])
   const absence = useMemo(
     () => teammatesAbsence(feedEntries, teammateXuids, frameIntervalMs ?? 0, scale),
     [feedEntries, teammateXuids, frameIntervalMs, scale],
@@ -237,7 +230,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     teammates: tracks.teammates,
     shades,
     absence,
-    identity,
+    allegiance,
     onSeekFrame: playback.seekToFrame,
     viewpoint,
     viewpointGroups,
@@ -256,6 +249,22 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     onRequestPause: playback.togglePlay,
     locale,
   }
+}
+
+/**
+ * teammatesOf — les coéquipiers du point de vue : les joueurs que l'allégeance du FILM dit alliés,
+ * lui-même exclu, désignés comme le fil désigne ses lignes de présence (le xuid de base quand la
+ * jointure a abouti, la clé du film sinon — cf. `presenceFeed`).
+ */
+function teammatesOf(
+  players: readonly ReplayPlayer[],
+  allegiance: FilmAllegiance,
+  viewpoint: string | null,
+): string[] {
+  return players
+    .filter((p) => allegiance.ofPlayer(p) === true)
+    .map((p) => p.board?.xuid ?? p.xuid)
+    .filter((xuid) => xuid !== viewpoint)
 }
 
 /**

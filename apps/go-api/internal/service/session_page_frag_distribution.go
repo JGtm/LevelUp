@@ -37,9 +37,10 @@ func (s *SessionPageService) attachSessionFragDistribution(
 	if entry == nil {
 		return
 	}
-	fd, top := s.sessionFragDistribution(ctx, canonRows, matchIDs)
+	fd, top, tools := s.sessionFragDistribution(ctx, canonRows, matchIDs)
 	entry.FragDistribution = fd
 	entry.TopWeaponKills = top
+	entry.WeaponTools = tools
 	// Précision par arme (Halo 5 natif) : MÊME builder partagé que Synthesis
 	// (buildWeaponAccuracy → nil si aucune arme valide → champ omis). Découplé du
 	// gate frags (une session peut avoir des tirs mesurés) ; best-effort (repo nil /
@@ -47,18 +48,18 @@ func (s *SessionPageService) attachSessionFragDistribution(
 	entry.WeaponAccuracy = buildWeaponAccuracy(s.loadSessionWeaponAccuracy(ctx, matchIDs), synthesisWeaponChartTopN)
 }
 
-// sessionFragDistribution construit la FragDistribution + le top armes de la session
-// délimitée par matchIDs. Best-effort : nil/nil si le scope est vide (total 0 → le
-// front rend null). Les classes API (melee/grenade/spartan + total) proviennent des
+// sessionFragDistribution construit la FragDistribution, le top armes et les « Outils de
+// destruction » de la session délimitée par matchIDs. Best-effort : tout nil si le scope est vide
+// (total 0 → le front rend null). Les classes API (melee/grenade/spartan + total) proviennent des
 // rows canoniques du scope ; les classes gun + rôles d'arme + top armes du registre.
 func (s *SessionPageService) sessionFragDistribution(
 	ctx context.Context,
 	canonRows []canonical.PlayerMatchRow,
 	matchIDs []string,
-) (*domain.FragDistribution, []domain.SynthesisWeaponKillEntry) {
+) (*domain.FragDistribution, []domain.SynthesisWeaponKillEntry, *domain.SquadWeaponTools) {
 	defer timing.FromContext(ctx).Section("frag_distribution")()
 	if len(matchIDs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	idSet := make(map[string]struct{}, len(matchIDs))
 	for _, id := range matchIDs {
@@ -76,7 +77,7 @@ func (s *SessionPageService) sessionFragDistribution(
 		}
 	}
 	if totalKills <= 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	// Compteurs kill-type API canoniques du scope session (même agrégation que
 	// Synthesis). provideSpree non pertinent ici (spree non utilisée pour les frags).
@@ -90,9 +91,11 @@ func (s *SessionPageService) sessionFragDistribution(
 		Total:         totalKills,
 	}
 	rows := s.loadSessionWeaponKillRows(ctx, matchIDs)
-	fd := fragdist.Build(rows, counts, titleHasNativeKillMechanics(s.titleSlug))
+	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
+	fd := fragdist.Build(rows, counts, hasMechanics)
 	logFragDistribution(ctx, "session page", s.titleSlug, s.gamertag, fd)
-	return &fd, buildTopWeaponKills(rows, synthesisWeaponChartTopN)
+	tools := s.sessionWeaponTools(ctx, rows, counts, matchIDs, hasMechanics)
+	return &fd, buildTopWeaponKills(rows, synthesisWeaponChartTopN), tools
 }
 
 // loadSessionWeaponKillRows charge les rows agrégées d'armes de la session

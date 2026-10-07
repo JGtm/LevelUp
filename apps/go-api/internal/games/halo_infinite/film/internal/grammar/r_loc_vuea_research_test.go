@@ -39,7 +39,7 @@ type rlocEssaiVueA struct{ debut, essais int }
 // rlocCandidatsVueA rend, tries, les departs `e < fin` precedes d un bit nul qui portent un
 // en-tete de record lisible.
 func rlocCandidatsVueA(pay []byte, w *World, cfg FrameConfig, fin int) []int {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()()
+	defer cfg.Obs.neutraliserLesCrochetsDeCanal()()
 	neufs := map[int]bool{}
 	if motFacultatifDEnTete(cfg) == 0 {
 		for _, p := range candidatsDeTete(pay, fin, w) {

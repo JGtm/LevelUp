@@ -10,7 +10,7 @@ package grammar
 // Il n imite pas `ScanMovementStates` : il L APPELLE. C est le seul moyen de dire ce que le
 // document publiera, et c est le point du lot 5.7.4 — la porte des etats de mouvement
 // publiait les ESSAIS D ALIGNEMENT de la marche, dans un rapport de 14 a 152 pour un. Depuis
-// que la porte s inscrit dans `neutraliserEtatsDeMouvement`, elle ne doit plus rendre que les
+// que la porte s inscrit dans la porte des essais (`neutraliserLesCrochetsDeCanal`), elle ne doit plus rendre que les
 // lectures des records RETENUS, et ce fichier le verifie contre les comptes de
 // `mouvement_5_7_retenus_research_test.go` (relecture a `StartBit`, 0 ecart de largeur).
 //

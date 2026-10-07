@@ -9,14 +9,18 @@
  * `side == null`) : un repli de ce genre se réécrit de bonne foi — d'où ce test, qui refuse la
  * FORME et pas seulement la valeur.
  *
- * DEUX INTERDITS, sur le code (commentaires ôtés) de `features/match-replay` et `lib/replay`
+ * TROIS INTERDITS, sur le code (commentaires ôtés) de `features/match-replay` et `lib/replay`
  * (tests exclus) :
  *   (a) lire `.team_side` hors du helper de libellé (`replayCamps.ts`), sauf dans les fichiers
  *       de l'allowlist ci-dessous — chacun JUSTIFIÉ, DATÉ et COMPTÉ (le compte est un cliquet :
  *       une lecture de plus échoue, une de moins aussi, pour que la liste dise toujours vrai) ;
  *   (b) le retour de « Sans équipe » / « No team » dans le CODE (chaîne ou texte JSX, casse
  *       ignorée), des clés `teamUnknown` / `viewpointNoTeam`, ou de la clé de rendu
- *       `sans-equipe` — ici, et sur la route de la page Rejeu.
+ *       `sans-equipe` — ici, et sur la route de la page Rejeu ;
+ *   (c) depuis le 2026-10-06, l'ALLÉGEANCE (allié / adverse) lue ailleurs que dans le film :
+ *       une table d'identité interrogée pour son drapeau `ally` (`….get(xuid)?.ally`), ou le
+ *       lecteur de feuille de la page Match (`allyOfTeamId`). Le seul calcul d'allégeance du
+ *       rejeu est `filmAllegiance.ts` — ici aussi sur la route.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -36,48 +40,17 @@ const ROUTE = import.meta.glob('/src/routes/**/replay.tsx', {
 const HELPER = '/src/lib/replay/replayCamps.ts'
 
 /**
- * (a) L'ALLOWLIST — les lectures de `team_side` qui NE décident PAS de l'appartenance d'un joueur
- * à un camp de la page, revues le 2026-10-06 (lot « Rejeu : aucune section sans équipe »). Toutes
- * relèvent de la famille ENCRE / ALLÉGEANCE (allié ou adverse du joueur regardé, issue, score),
- * que la feuille porte et que ce lot n'a pas refondue (point 6 du brief). Ajouter une ligne ici
- * demande une raison écrite et datée ; un fichier de regroupement n'y a pas sa place.
+ * (a) L'ALLOWLIST — les lectures de `team_side` qui ne font que NOMMER un camp. Depuis que
+ * l'encre et l'allégeance viennent du film (2026-10-06, `filmAllegiance.ts`), il n'en reste
+ * qu'une famille : le helper de libellé lui-même. Les huit entrées de l'encre (tables de l'onglet
+ * Arsenal, objectifs, bandeau, écran de fin, fil, opposition du capteur, calque de score) en sont
+ * sorties une à une, le compte à zéro. Ajouter une ligne ici demande une raison écrite et datée,
+ * et une lecture qui NOMME : ni un regroupement, ni une encre n'y ont leur place.
  */
 const ALLOWLIST: Readonly<Record<string, { lectures: number; raison: string }>> = {
   [HELPER]: {
     lectures: 2,
     raison: '2026-10-06 — LE helper de libellé : nomme un camp du film (côté majoritaire de ses membres, lignes de son côté).',
-  },
-  '/src/features/match-replay/MatchEquipmentUsageSection.tsx': {
-    lectures: 1,
-    raison: '2026-10-06 — encre allié / adverse des tables : le côté du joueur de la page (`is_me`) dit lequel des camps du film est le sien.',
-  },
-  '/src/features/match-replay/MatchPadControlSection.tsx': {
-    lectures: 1,
-    raison: '2026-10-06 — même encre allié / adverse, bloc du contrôle des socles.',
-  },
-  '/src/features/match-replay/model/matchSides.ts': {
-    lectures: 3,
-    raison: '2026-10-06 — camp allié et camp par xuid des calques d’objectifs (drapeau, zones, crâne) : allégeance, pas appartenance à une section.',
-  },
-  '/src/features/match-replay/model/scoreBannerLogic.ts': {
-    lectures: 1,
-    raison: '2026-10-06 — les deux camps du bandeau de score et leur allégeance.',
-  },
-  '/src/features/match-replay/model/victoryLogic.ts': {
-    lectures: 5,
-    raison: '2026-10-06 — écran de fin : l’API ne publie l’issue que du côté de la feuille du joueur de la page.',
-  },
-  '/src/features/match-replay/ui/ReplayKillFeed.tsx': {
-    lectures: 1,
-    raison: '2026-10-06 — camp du tueur dans le fil, qui vient de la base comme le fil lui-même (encre, dominance aux frags).',
-  },
-  '/src/lib/replay/rosterLogic.ts': {
-    lectures: 1,
-    raison: '2026-10-06 — `sideResolver` : opposition du capteur de menaces (découverte D2 du plan, laissée sur la feuille).',
-  },
-  '/src/lib/replay/scoreTimeline.ts': {
-    lectures: 1,
-    raison: '2026-10-06 — `allyOfTeamId` : allégeance d’un camp du calque de score.',
   },
 }
 
@@ -108,6 +81,13 @@ const LECTURES = [
 ]
 /** (b) Le retour de la section « sans équipe » dans le code : son libellé, ses clés. */
 const SANS_EQUIPE = [/sans équipe|no team/i, /\bteamUnknown\b/, /\bviewpointNoTeam\b/, /sans-equipe/]
+/**
+ * (c) L'allégeance lue hors du film : le drapeau `ally` d'une table d'identité (une lecture
+ * `get(…)` suivie de `.ally`, chaîne optionnelle comprise), et le lecteur de feuille de la page
+ * Match. Les propriétés `ally` STRUCTURELLES (le côté allié d'un bandeau, d'un score, d'une
+ * table de sons) ne sont pas des lectures d'identité et ne sont pas prises.
+ */
+const ALLEGEANCE_HORS_FILM = [/\.get\([^()]*\)\s*\??\.\s*ally\b/, /\ballyOfTeamId\b/]
 
 function lectures(source: string): number {
   const c = code(source)
@@ -146,6 +126,16 @@ describe('garde-rail : l’appartenance d’un joueur du rejeu vient du film seu
       expect(chemins.has(chemin), chemin).toBe(true)
       expect(raison, chemin).toMatch(/^\d{4}-\d{2}-\d{2} — .{20,}/)
     }
+  })
+
+  it('(c) aucune allégeance lue hors du film : ni `….get(xuid)?.ally`, ni `allyOfTeamId`', () => {
+    const fautifs = [...sourcesDuPerimetre(), ...Object.entries(ROUTE)]
+      .filter(([, source]) => ALLEGEANCE_HORS_FILM.some((motif) => motif.test(code(source))))
+      .map(([chemin]) => chemin)
+    expect(
+      fautifs,
+      'l’allégeance du rejeu vient du film (`filmAllegiance.ts`) — la table d’identité ne sert qu’aux noms',
+    ).toEqual([])
   })
 
   it('(b) ni « Sans équipe », ni « No team », ni `teamUnknown`, `viewpointNoTeam` ou `sans-equipe`', () => {
@@ -190,5 +180,17 @@ describe('garde-rail : contre-épreuves des détecteurs', () => {
     expect(pris('const fmt = (n: number) => `No team (${n})`')).toBe(true)
     expect(pris('// jamais une section « sans équipe »\nconst x = 1')).toBe(false)
     expect(pris("const label = campLabel(camp, rows, t)")).toBe(false)
+  })
+
+  it('(c) la lecture d’allégeance dans une table d’identité est prise, l’allégeance du film et les `ally` structurels non', () => {
+    const pris = (s: string) => ALLEGEANCE_HORS_FILM.some((motif) => motif.test(code(s)))
+    expect(pris('const isAlly = (xuid: string) => xuidMeta?.get(xuid)?.ally ?? false')).toBe(true)
+    expect(pris('if (identity.get(k.xuid)?.ally !== true) continue')).toBe(true)
+    expect(pris('const a = meta.get(x).ally')).toBe(true)
+    expect(pris('allyOf: (teamId) => allyOfTeamId(board, xuidMeta, teamId)')).toBe(true)
+    expect(pris('const ally = allegiance.ofXuid(xuid)')).toBe(false)
+    expect(pris('readHillHold(doc, reading.ally.teamId, reading.enemy.teamId, frame)')).toBe(false)
+    expect(pris("if (side === 'ally') return entry.ally")).toBe(false)
+    expect(pris('// jamais xuidMeta.get(xuid)?.ally\nconst x = 1')).toBe(false)
   })
 })

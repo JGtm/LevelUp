@@ -20,23 +20,28 @@
  * `MarkerStyle`). Ce sont les caméras et les spectateurs de fin de partie ; les replier sur
  * l'encre neutre semait des pions gris qui ne désignaient personne (retour utilisateur du
  * 2026-08-20). La marque et le nom, eux, tombent déjà sur `undefined` / `null`.
+ *
+ * UN JOUEUR SANS ALLÉGEANCE SE DESSINE, À L'ENCRE NEUTRE (2026-10-06). L'encre allié / adverse
+ * est celle de l'équipe du FILM, vue de la référence (`filmAllegiance.ts`) : un joueur dont le
+ * film tait l'équipe — ou tout joueur, vu d'une référence qui n'en a pas — est nommé, donc
+ * dessiné, mais sans encre de camp (`neutral`). Aucun repli sur la feuille de match.
  */
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 
-import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import {
   buildPlayers,
   buildSlotOwnership,
+  campResolver,
   colorByXuidResolver,
   colorResolver,
   colorResolverOrLast,
   markResolver,
   nameByXuidResolver,
   nameResolver,
-  sideResolver,
   type ReplayPlayer,
   type SlotOwnership,
 } from '../../../lib/replay/rosterLogic'
@@ -80,25 +85,27 @@ export interface SlotIdentity {
    */
   colorOfXuid: (xuid: string) => string | null
   /**
-   * CAMP de la vie qui occupe le slot à l'image (`team_side`), null quand il est inconnu ou le
-   * slot libre. Distinct de la couleur : celle-ci ne connaît que « allié / adverse » vu du
-   * joueur de la page, alors qu'opposer deux vies demande leur camp réel (cf. rosterLogic).
-   * Le capteur de menaces en a besoin.
+   * CAMP de la vie qui occupe le slot à l'image (son équipe du FILM), null quand il est inconnu
+   * ou le slot libre. Distinct de la couleur : celle-ci ne connaît que « allié / adverse » vu de
+   * la référence, alors qu'opposer deux vies demande leur camp réel (cf. `campResolver`). Le
+   * capteur de menaces en a besoin.
    */
-  sideOfSlot: (slot: number, frame: number) => string | null
+  campOfSlot: (slot: number, frame: number) => number | null
 }
 
 export interface SlotIdentityInput {
   doc: ReplayDocumentReady
   scoreboard: MatchScoreboardRow[] | undefined
-  xuidMeta: XuidMeta | undefined
+  /** L'allégeance de chaque joueur, lue dans le film et vue de la référence (`model.allegiance`). */
+  allegiance: FilmAllegiance
   marks: ReadonlyMap<string, PlayerMarkKind> | undefined
   /** Couleur d'un camp, tokens déjà résolus par l'appelant (ils suivent la palette). */
   teamColorOf: (ally: boolean) => string
   /**
-   * Encre servie à une entrée de roster SANS xuid : elle a un slot, donc elle se dessine,
-   * mais aucune équipe ne peut lui être attribuée (cf. `rosterLogic.colorResolver`). À ne pas
-   * confondre avec un slot LIBRE à cette image — celui-là ne se dessine pas du tout.
+   * Encre servie à un joueur SANS ALLÉGEANCE (le film tait son équipe, ou celle de la
+   * référence) : il a un slot, donc il se dessine, mais sans encre de camp (cf.
+   * `rosterLogic.colorResolver`). À ne pas confondre avec un slot LIBRE à cette image —
+   * celui-là ne se dessine pas du tout.
    */
   neutral: string
   /**
@@ -152,20 +159,23 @@ function distinctColorFactory(
 }
 
 export function useSlotIdentity({
-  doc, scoreboard, xuidMeta, marks, teamColorOf, neutral, distinctColors,
+  doc, scoreboard, allegiance, marks, teamColorOf, neutral, distinctColors,
 }: SlotIdentityInput): SlotIdentity {
   // LA JOINTURE FILM <-> BASE, faite une fois : elle donne à chaque vie son propriétaire.
   const players = useMemo(() => buildPlayers(doc, scoreboard ?? []), [doc, scoreboard])
   // L'INDEX DE PROPRIÉTÉ PAR IMAGE : slot -> vies triées, résolu à `ownerAtFrame`. Construit une
   // fois par jointure ; les résolveurs ci-dessous ne font que le lire.
   const ownership = useMemo(() => buildSlotOwnership(players), [players])
-  const isAlly = useCallback((xuid: string) => xuidMeta?.get(xuid)?.ally ?? false, [xuidMeta])
+  // L'ALLÉGEANCE D'UN PROPRIÉTAIRE : son équipe du film comparée à celle de la référence — la
+  // même réponse pour un bot (clé `bot:<nom>`) que pour un humain, ce que la table d'identité de
+  // la feuille, clée par xuid de base, ne savait pas donner.
+  const allyOf = allegiance.ofPlayer
   const colorOfSlot = useMemo(
     () =>
       distinctColors && distinctColors.length > 0
         ? distinctColorResolver(ownership, players, distinctColors)
-        : colorResolver(ownership, teamColorOf, isAlly, neutral),
-    [ownership, players, distinctColors, teamColorOf, isAlly, neutral],
+        : colorResolver(ownership, teamColorOf, allyOf, neutral),
+    [ownership, players, distinctColors, teamColorOf, allyOf, neutral],
   )
   // LA VARIANTE DE FRONTIÈRE (objets lâchés, effets de mort) : même mode que `colorOfSlot`, mais
   // qui retombe sur la vie juste précédente dans un trou — jamais le dernier-gagnant du match.
@@ -173,8 +183,8 @@ export function useSlotIdentity({
     () =>
       distinctColors && distinctColors.length > 0
         ? distinctColorResolverOrLast(ownership, players, distinctColors)
-        : colorResolverOrLast(ownership, teamColorOf, isAlly, neutral),
-    [ownership, players, distinctColors, teamColorOf, isAlly, neutral],
+        : colorResolverOrLast(ownership, teamColorOf, allyOf, neutral),
+    [ownership, players, distinctColors, teamColorOf, allyOf, neutral],
   )
   const markOfSlot = useMemo(() => markResolver(ownership, marks ?? NO_MARKS), [ownership, marks])
   const nameOfSlot = useMemo(() => nameResolver(ownership), [ownership])
@@ -183,13 +193,13 @@ export function useSlotIdentity({
     () =>
       distinctColors && distinctColors.length > 0
         ? distinctColorByXuid(players, distinctColors)
-        : colorByXuidResolver(players, teamColorOf, isAlly, neutral),
-    [players, distinctColors, teamColorOf, isAlly, neutral],
+        : colorByXuidResolver(players, teamColorOf, allyOf, neutral),
+    [players, distinctColors, teamColorOf, allyOf, neutral],
   )
-  const sideOfSlot = useMemo(() => sideResolver(ownership), [ownership])
+  const campOfSlot = useMemo(() => campResolver(ownership), [ownership])
 
   return {
-    colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot,
+    colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot,
   }
 }
 

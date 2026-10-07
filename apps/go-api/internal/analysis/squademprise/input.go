@@ -18,7 +18,7 @@
 // # CAMP
 //
 // Notre camp est celui du joueur de la page dans CE match. Un participant sans camp connu dans un
-// match à camp connu compte pour l'adversaire (même règle que computeOutcomes) ; un match dont le
+// match à camp connu compte pour l'adversaire ; un match dont le
 // camp du joueur est inconnu ne publie aucun compte camp contre camp.
 //
 // Pur : aucune ouverture de base, aucune horloge, aucune chaîne de langue. Les familles de mode,

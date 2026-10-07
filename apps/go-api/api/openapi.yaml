@@ -12062,9 +12062,6 @@ components:
           $ref: '#/components/schemas/CoordinationAppui'
         available:
           type: boolean
-        fenetre_ms:
-          format: int64
-          type: integer
         matches_measured:
           format: int64
           type: integer
@@ -12077,8 +12074,6 @@ components:
           type:
             - array
             - "null"
-        riposte:
-          $ref: '#/components/schemas/CoordinationRiposte'
         sessions:
           items:
             $ref: '#/components/schemas/CoordinationSessionPoint'
@@ -12089,10 +12084,8 @@ components:
           type: string
       required:
         - available
-        - fenetre_ms
         - matches_measured
         - matches_total
-        - riposte
         - appui
       type: object
     CoordinationMatchPoint:
@@ -12107,39 +12100,18 @@ components:
         assists_to_me:
           format: int64
           type: integer
-        covered_share_pct:
-          format: double
-          type: number
         match_id:
           type: string
         my_assisted_kills:
           format: int64
           type: integer
-        my_deaths:
-          format: int64
-          type: integer
-        my_deaths_avenged:
-          format: int64
-          type: integer
         my_measured_kills:
-          format: int64
-          type: integer
-        my_ripostes:
           format: int64
           type: integer
         parity_pct:
           format: double
           type: number
-        riposte_share_pct:
-          format: double
-          type: number
         team_assists:
-          format: int64
-          type: integer
-        team_deaths:
-          format: int64
-          type: integer
-        team_deaths_avenged:
           format: int64
           type: integer
         team_size:
@@ -12147,43 +12119,10 @@ components:
           type: integer
       required:
         - match_id
-        - team_deaths
-        - team_deaths_avenged
-        - my_deaths
-        - my_deaths_avenged
-        - my_ripostes
         - my_measured_kills
         - my_assisted_kills
         - team_assists
         - assists_to_me
-      type: object
-    CoordinationRiposte:
-      additionalProperties: false
-      properties:
-        delai_median_ms:
-          format: int64
-          type: integer
-        habituel_pct:
-          format: double
-          type: number
-        je_riposte:
-          $ref: '#/components/schemas/Couverture'
-        je_suis_couvert:
-          $ref: '#/components/schemas/Couverture'
-        parity_pct:
-          format: double
-          type: number
-        team_deaths:
-          format: int64
-          type: integer
-        team_deaths_avenged:
-          format: int64
-          type: integer
-      required:
-        - je_suis_couvert
-        - je_riposte
-        - team_deaths
-        - team_deaths_avenged
       type: object
     CoordinationSessionPoint:
       additionalProperties: false
@@ -12196,15 +12135,12 @@ components:
         matches_total:
           format: int64
           type: integer
-        riposte:
-          $ref: '#/components/schemas/CoordinationRiposte'
         session_label:
           type: string
       required:
         - session_label
         - matches_measured
         - matches_total
-        - riposte
         - appui
       type: object
     CorrelationDataPair:
@@ -24723,6 +24659,8 @@ components:
           type:
             - array
             - "null"
+        weapon_tools:
+          $ref: '#/components/schemas/SquadWeaponTools'
         win_rate:
           format: double
           type: number
@@ -24869,6 +24807,9 @@ components:
         delta_mmr:
           format: double
           type: number
+        dominance_flag:
+          format: int64
+          type: integer
         dominant_category:
           type: string
         duration_seconds:
@@ -24937,6 +24878,8 @@ components:
           type: integer
         playlist_name:
           type: string
+        score_label:
+          type: string
         session_label:
           type: string
         skill_rating_delta:
@@ -24964,65 +24907,6 @@ components:
         - kills
         - deaths
         - assists
-      type: object
-    SessionFlagGrabsNetBlock:
-      additionalProperties: false
-      properties:
-        lobby_raw_total:
-          format: int64
-          type: integer
-        lobby_total:
-          format: int64
-          type: integer
-        matches_measured:
-          format: int64
-          type: integer
-        matches_team_known:
-          format: int64
-          type: integer
-        matches_with_flag_family:
-          format: int64
-          type: integer
-        openings_total:
-          format: int64
-          type: integer
-        player_raw_total:
-          format: int64
-          type: integer
-        player_share_of_team_pct:
-          format: double
-          type: number
-        player_team_scope_raw_total:
-          format: int64
-          type: integer
-        player_team_scope_total:
-          format: int64
-          type: integer
-        player_total:
-          format: int64
-          type: integer
-        team_raw_total:
-          format: int64
-          type: integer
-        team_total:
-          format: int64
-          type: integer
-        window_seconds:
-          format: double
-          type: number
-      required:
-        - matches_with_flag_family
-        - matches_measured
-        - matches_team_known
-        - openings_total
-        - player_total
-        - lobby_total
-        - player_raw_total
-        - lobby_raw_total
-        - player_team_scope_total
-        - team_total
-        - player_team_scope_raw_total
-        - team_raw_total
       type: object
     SessionGroup:
       additionalProperties: false
@@ -25133,97 +25017,6 @@ components:
         - cumulative
         - accuracy
       type: object
-    SessionObjectiveFamilyBlock:
-      additionalProperties: false
-      properties:
-        family:
-          type: string
-        matches:
-          format: int64
-          type: integer
-        roles:
-          items:
-            $ref: '#/components/schemas/SessionObjectiveRoleMetric'
-          type:
-            - array
-            - "null"
-      required:
-        - family
-        - matches
-        - roles
-      type: object
-    SessionObjectiveRoleMetric:
-      additionalProperties: false
-      properties:
-        is_duration:
-          type: boolean
-        lobby_total:
-          format: double
-          type: number
-        player_share_of_lobby_pct:
-          format: double
-          type: number
-        player_share_of_team_pct:
-          format: double
-          type: number
-        player_total:
-          format: double
-          type: number
-        role:
-          type: string
-        squad:
-          items:
-            $ref: '#/components/schemas/SessionUsageSquadShare'
-          type:
-            - array
-            - "null"
-        team_share_of_lobby_pct:
-          format: double
-          type: number
-        team_total:
-          format: double
-          type: number
-      required:
-        - role
-        - player_total
-        - lobby_total
-      type: object
-    SessionObjectivesBlock:
-      additionalProperties: false
-      properties:
-        families:
-          items:
-            $ref: '#/components/schemas/SessionObjectiveFamilyBlock'
-          type:
-            - array
-            - "null"
-        flag_grabs_net:
-          $ref: '#/components/schemas/SessionFlagGrabsNetBlock'
-        lobby_parity_pct:
-          format: double
-          type: number
-        lobby_size_avg:
-          format: double
-          type: number
-        matches_with_objectives:
-          format: int64
-          type: integer
-        roles:
-          items:
-            $ref: '#/components/schemas/SessionObjectiveRoleMetric'
-          type:
-            - array
-            - "null"
-        team_parity_pct:
-          format: double
-          type: number
-        team_size_avg:
-          format: double
-          type: number
-      required:
-        - matches_with_objectives
-        - roles
-      type: object
     SessionOption:
       additionalProperties: false
       properties:
@@ -25292,6 +25085,8 @@ components:
             - "null"
         compare_coordination:
           $ref: '#/components/schemas/CoordinationBlock'
+        compare_emprise:
+          $ref: '#/components/schemas/SoloEmpriseBlock'
         compare_enabled:
           type: boolean
         compare_first_blood:
@@ -25300,12 +25095,16 @@ components:
           type:
             - array
             - "null"
+        compare_formes_retenues:
+          $ref: '#/components/schemas/SquadFormesBlock'
         compare_intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
           type:
             - array
             - "null"
+        compare_lives_near_teammate:
+          $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         compare_matches:
           items:
             $ref: '#/components/schemas/SessionDetailMatchRow'
@@ -25322,24 +25121,28 @@ components:
           $ref: '#/components/schemas/MatchRangeBlock'
         compare_session:
           $ref: '#/components/schemas/SessionCompareEntry'
-        compare_usage:
-          $ref: '#/components/schemas/SessionUsageBlock'
         coordination:
           $ref: '#/components/schemas/CoordinationBlock'
         current_session:
           $ref: '#/components/schemas/SessionCompareEntry'
+        emprise:
+          $ref: '#/components/schemas/SoloEmpriseBlock'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'
           type:
             - array
             - "null"
+        formes_retenues:
+          $ref: '#/components/schemas/SquadFormesBlock'
         intensity_rows:
           items:
             $ref: '#/components/schemas/IntensityMatchRow'
           type:
             - array
             - "null"
+        lives_near_teammate:
+          $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         matches:
           items:
             $ref: '#/components/schemas/SessionDetailMatchRow'
@@ -25347,6 +25150,8 @@ components:
             - array
             - "null"
         next_session_label:
+          type: string
+        player_emblem_url:
           type: string
         previous_session_label:
           type: string
@@ -25356,8 +25161,6 @@ components:
           $ref: '#/components/schemas/RangeReferenceBlock'
         suggested_compare:
           $ref: '#/components/schemas/SessionCompareSuggestion'
-        usage:
-          $ref: '#/components/schemas/SessionUsageBlock'
       required:
         - current_session
         - available_sessions
@@ -25378,321 +25181,6 @@ components:
         - name
         - value
       type: object
-    SessionUsageBlock:
-      additionalProperties: false
-      properties:
-        available:
-          type: boolean
-        lobby_parity_pct:
-          format: double
-          type: number
-        lobby_size_avg:
-          format: double
-          type: number
-        matches_measured:
-          format: int64
-          type: integer
-        matches_total:
-          format: int64
-          type: integer
-        measured_duration_seconds:
-          format: double
-          type: number
-        metrics:
-          items:
-            $ref: '#/components/schemas/SessionUsageMetric'
-          type:
-            - array
-            - "null"
-        objectives:
-          $ref: '#/components/schemas/SessionObjectivesBlock'
-        pad_families:
-          items:
-            $ref: '#/components/schemas/SessionUsagePadFamily'
-          type:
-            - array
-            - "null"
-        pad_tiers:
-          $ref: '#/components/schemas/SessionUsagePadTiersBlock'
-        pad_unnamed_total:
-          format: int64
-          type: integer
-        powerup_pickups:
-          items:
-            $ref: '#/components/schemas/SessionUsagePowerup'
-          type:
-            - array
-            - "null"
-        squad_players:
-          items:
-            $ref: '#/components/schemas/SessionUsageSquadPlayer'
-          type:
-            - array
-            - "null"
-        team_parity_pct:
-          format: double
-          type: number
-        team_size_avg:
-          format: double
-          type: number
-        unavailable_reason:
-          type: string
-      required:
-        - available
-        - matches_measured
-        - matches_total
-      type: object
-    SessionUsageMatchPoint:
-      additionalProperties: false
-      properties:
-        match_id:
-          type: string
-        player_share_of_lobby_pct:
-          format: double
-          type: number
-        player_share_of_team_pct:
-          format: double
-          type: number
-        player_team:
-          format: int64
-          type: integer
-        team_share_of_lobby_pct:
-          format: double
-          type: number
-        team_size:
-          format: int64
-          type: integer
-      required:
-        - match_id
-      type: object
-    SessionUsageMetric:
-      additionalProperties: false
-      properties:
-        key:
-          type: string
-        lobby_per_match:
-          format: double
-          type: number
-        lobby_total:
-          format: double
-          type: number
-        matches_above_lobby_parity:
-          format: int64
-          type: integer
-        matches_above_team_parity:
-          format: int64
-          type: integer
-        outcomes:
-          $ref: '#/components/schemas/SessionUsageOutcomes'
-        per_match:
-          items:
-            $ref: '#/components/schemas/SessionUsageMatchPoint'
-          type:
-            - array
-            - "null"
-        player_per_match:
-          format: double
-          type: number
-        player_share_of_lobby_pct:
-          format: double
-          type: number
-        player_share_of_team_pct:
-          format: double
-          type: number
-        player_total:
-          format: double
-          type: number
-        squad:
-          items:
-            $ref: '#/components/schemas/SessionUsageSquadShare'
-          type:
-            - array
-            - "null"
-        team_per_match:
-          format: double
-          type: number
-        team_share_of_lobby_pct:
-          format: double
-          type: number
-        team_total:
-          format: double
-          type: number
-      required:
-        - key
-        - matches_above_lobby_parity
-        - player_total
-        - lobby_total
-      type: object
-    SessionUsageOutcomes:
-      additionalProperties: false
-      properties:
-        dropped:
-          format: double
-          type: number
-        kept:
-          format: double
-          type: number
-        opponents_used_rate_pct:
-          format: double
-          type: number
-        taken:
-          format: double
-          type: number
-        teammates_used_rate_pct:
-          format: double
-          type: number
-        used:
-          format: double
-          type: number
-        used_rate_pct:
-          format: double
-          type: number
-      required:
-        - used
-        - kept
-        - dropped
-        - taken
-      type: object
-    SessionUsagePadFamily:
-      additionalProperties: false
-      properties:
-        family_key:
-          type: string
-        family_label:
-          type: string
-        lobby_total:
-          format: double
-          type: number
-        player_share_of_lobby_pct:
-          format: double
-          type: number
-        player_share_of_team_pct:
-          format: double
-          type: number
-        player_total:
-          format: double
-          type: number
-        team_share_of_lobby_pct:
-          format: double
-          type: number
-        team_total:
-          format: double
-          type: number
-      required:
-        - family_key
-        - player_total
-        - lobby_total
-      type: object
-    SessionUsagePadTier:
-      additionalProperties: false
-      properties:
-        lobby_total:
-          format: double
-          type: number
-        player_per_match:
-          format: double
-          type: number
-        player_share_of_lobby_pct:
-          format: double
-          type: number
-        player_share_of_team_pct:
-          format: double
-          type: number
-        player_total:
-          format: double
-          type: number
-        team_share_of_lobby_pct:
-          format: double
-          type: number
-        team_total:
-          format: double
-          type: number
-        tier:
-          type: string
-        weapons:
-          items:
-            $ref: '#/components/schemas/SessionUsagePadTierWeapon'
-          type:
-            - array
-            - "null"
-      required:
-        - tier
-        - player_total
-        - lobby_total
-      type: object
-    SessionUsagePadTierWeapon:
-      additionalProperties: false
-      properties:
-        family_key:
-          type: string
-        family_label:
-          type: string
-        lobby_pickups:
-          format: double
-          type: number
-        player_pickups:
-          format: double
-          type: number
-      required:
-        - family_key
-        - player_pickups
-        - lobby_pickups
-      type: object
-    SessionUsagePadTiersBlock:
-      additionalProperties: false
-      properties:
-        lobby_parity_pct:
-          format: double
-          type: number
-        matches_measured:
-          format: int64
-          type: integer
-        matches_random_starts:
-          format: int64
-          type: integer
-        matches_tiers_established:
-          format: int64
-          type: integer
-        matches_total:
-          format: int64
-          type: integer
-        matches_with_pads:
-          format: int64
-          type: integer
-        team_of_lobby_parity_pct:
-          format: double
-          type: number
-        team_parity_pct:
-          format: double
-          type: number
-        tiers:
-          items:
-            $ref: '#/components/schemas/SessionUsagePadTier'
-          type:
-            - array
-            - "null"
-      required:
-        - matches_total
-        - matches_measured
-        - matches_with_pads
-        - matches_tiers_established
-        - matches_random_starts
-      type: object
-    SessionUsagePowerup:
-      additionalProperties: false
-      properties:
-        family_key:
-          type: string
-        occupations:
-          format: int64
-          type: integer
-        per_match:
-          format: double
-          type: number
-      required:
-        - family_key
-        - occupations
-      type: object
     SessionUsageSquadPlayer:
       additionalProperties: false
       properties:
@@ -25703,27 +25191,6 @@ components:
       required:
         - xuid
         - gamertag
-      type: object
-    SessionUsageSquadShare:
-      additionalProperties: false
-      properties:
-        per_match:
-          format: double
-          type: number
-        share_of_lobby_pct:
-          format: double
-          type: number
-        share_of_team_pct:
-          format: double
-          type: number
-        total:
-          format: double
-          type: number
-        xuid:
-          type: string
-      required:
-        - xuid
-        - total
       type: object
     SessionsFilter:
       additionalProperties: false

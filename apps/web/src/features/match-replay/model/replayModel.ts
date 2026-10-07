@@ -20,7 +20,8 @@
  *   1. le SCOREBOARD, d'où sortent l'identité (`identity`) et les marques (`marks`) ;
  *   2. l'HORLOGE (`clock`), qui ne dépend que de l'artefact et du countdown ;
  *   3. la FENÊTRE de gameplay (`window`), qui exige l'horloge ET la durée jouable ;
- *   4. le ROSTER (`players`), jointure du film et du scoreboard ;
+ *   4. le ROSTER (`players`), jointure du film et du scoreboard, et l'ALLÉGEANCE (`allegiance`)
+ *      qu'il donne avec le point de vue : l'équipe du film de chacun, comparée à la sienne ;
  *   5. le FIL (`feed`), qui exige les quatre précédents — c'est lui qui porte le recalage,
  *      ASSEMBLÉ ICI ET NULLE PART AILLEURS (cf. `killFeedLogic`, et le garde-rail de J2).
  *
@@ -32,7 +33,7 @@
  * Zéro dépendance React : testable en pur (`replayModel.test.ts`).
  */
 import { collectKillEvents, type KillEvent } from '@/features/match-view/_momentum'
-import { meXUIDOf, resolveXuidMeta, type XuidMeta } from '@/features/match-view/xuidMeta'
+import { meXUIDOf, resolveXuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow, MatchViewResponse } from '@/lib/api/types'
 
 import {
@@ -41,6 +42,7 @@ import {
   type MedalEvent,
   type ReplayFeedEntry,
 } from './killFeedLogic'
+import { buildFilmAllegiance, NO_ALLEGIANCE, type FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import { buildPlayerMarks, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { mergeFeedWithPresence, presenceEntries } from './presenceFeed'
 import { buildReplayMedia } from './replayMediaLogic'
@@ -71,8 +73,19 @@ export interface ReplayModel {
    * pour qu'aucune d'elles ne la redécouvre de son côté.
    */
   viewpoint: string | null
-  /** Camp et gamertag de chaque xuid — la cascade « allié = même camp que le point de vue ». */
-  identity: XuidMeta
+  /**
+   * Gamertag de chaque xuid de la feuille : les NOMS du fil, et le filtre des kills de la base
+   * (`collectKillEvents` écarte un acteur absent de la feuille). JAMAIS L'ALLÉGEANCE : son
+   * drapeau `ally` vient de la feuille, et la page Rejeu ne le lit pas — la sienne vient du film
+   * (`allegiance`). Le TYPE ne porte que le gamertag : relire le drapeau ne compile pas.
+   */
+  identity: ReadonlyMap<string, { gamertag: string }>
+  /**
+   * ALLIÉ OU ADVERSE, LU DANS LE FILM (2026-10-06) : l'équipe du film de chaque joueur comparée à
+   * celle du point de vue (`filmAllegiance.ts`). Construite UNE fois ici ; toutes les surfaces
+   * d'encre de la page la reçoivent — aucune ne la recalcule.
+   */
+  allegiance: FilmAllegiance
   /** Marques d'identité (moi, ami) par xuid : forme du point sur la carte, glyphe au fil. */
   marks: ReadonlyMap<string, PlayerMarkKind>
   /**
@@ -101,6 +114,7 @@ const VIDE: ReplayModel = {
   scoreboard: [],
   viewpoint: null,
   identity: new Map(),
+  allegiance: NO_ALLEGIANCE,
   marks: new Map(),
   players: [],
   clock: null,
@@ -132,11 +146,9 @@ export function buildReplayModel(
   // s'il y en a un, sinon celui de la page. Tout ce qui dépend d'un « moi » en dessous le
   // reçoit en paramètre — plus aucune surface ne relit `is_me` pour le redécouvrir.
   const subject = viewpoint ?? meXUIDOf(scoreboard)
-  // TROIS ARGUMENTS, ET LE TROISIÈME COMPTE : sans lui, vu depuis un adversaire, la ligne du
-  // joueur de la page resterait alliée EN PLUS du camp regardé (cf. `xuidMeta.test.ts`, cas c).
-  // Quand le sujet EST le joueur de la page, la table rendue est identique à celle d'avant le
-  // chantier — c'est ce que fixe `replayModel.test.ts`.
-  const identity = resolveXuidMeta(scoreboard, subject, subject)
+  // LA TABLE D'IDENTITÉ NE SERT QU'AUX NOMS (et au filtre des kills de la base) : celle de la page
+  // Match, à deux arguments. L'allégeance de la page Rejeu vient du film (`allegiance`, plus bas).
+  const identity = resolveXuidMeta(scoreboard, meXUIDOf(scoreboard))
   const marks = buildPlayerMarks(scoreboard, settings?.friendGamertags ?? [], subject)
 
   // LES DEUX HORLOGES NE COÏNCIDENT PAS : cf. `killFeedLogic` et `header.t0_ms`.
@@ -146,6 +158,7 @@ export function buildReplayModel(
   // 5-6 s, et les deux bornes demandent l'artefact ET l'en-tête.
   const window = replayWindow(doc, header)
   const players = buildPlayers(doc, scoreboard)
+  const allegiance = buildFilmAllegiance(players, subject)
 
   // LE KILL FEED VIENT DE LA BASE, PAS DU FILM : le rejeu ne porte pas les kills ; la vue
   // match, elle, les sert déjà résolus (auteur, équipe, ARME du kill avec son icône).
@@ -156,6 +169,7 @@ export function buildReplayModel(
     scoreboard,
     viewpoint: subject,
     identity,
+    allegiance,
     marks,
     players,
     clock,
@@ -173,7 +187,7 @@ export function buildReplayModel(
     // depuis le 2026-09-07 : l'API l'ancre sur le joueur de la page, et l'écran de fin le
     // préfère à la lecture du calque — vu depuis un adversaire, les deux nombres seraient dans
     // l'ordre de quelqu'un d'autre que l'issue affichée juste au-dessus.
-    score: finalScoreFromHeader(header, scoreboard, subject),
+    score: finalScoreFromHeader(header, allegiance, meXUIDOf(scoreboard), subject),
     t0Ms,
   }
 }

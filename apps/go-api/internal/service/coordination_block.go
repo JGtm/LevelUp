@@ -3,15 +3,15 @@
 //
 // UN SEUL PRODUCTEUR POUR LES DEUX PAGES, et c'est le point du fichier. Les deux posent la
 // même question à deux mailles ; deux constructeurs auraient donné deux définitions de
-// « morts de mon camp » libres de diverger au premier correctif — le défaut que la
+// « appuis de mon camp » libres de diverger au premier correctif — le défaut que la
 // migration des sections transverses (timeseries_service_sections.go) a déjà évité pour la
 // portée des engagements et l'usage d'équipement.
 //
 // ─── DEUX LECTURES, JAMAIS UNE PAR MATCH ──────────────────────────────────────────────
 //
 //	le JOURNAL DES MORTS   port.TacticalRepository.KillEvents, UNE fois, sur la liste
-//	                       blanche du scope : il rend l'univers (matchs retenus, drapeau
-//	                       « mesuré », table des équipes) ET les événements ;
+//	                       blanche du scope : le bloc en lit l'univers (matchs retenus, drapeau
+//	                       « mesuré », table des équipes) ;
 //	les APPUIS             port.CoordinationRepository.LoadAppuis, UNE fois, sur la même
 //	                       liste.
 //
@@ -28,7 +28,7 @@
 // qui lui manquent, et chaque bloc se découpe dedans — par le même coordination.Restreindre
 // que la maille soirée.
 //
-// LE DÉCOUPAGE EST EXACT : l'univers, les équipes, le journal et les appuis sont tous des
+// LE DÉCOUPAGE EST EXACT : l'univers, les équipes et les appuis sont tous des
 // lectures PAR MATCH — aucun prédicat ne relie deux matchs — donc la tranche d'une lecture
 // large est la lecture de la tranche. La référence reste lue SEULEMENT si elle sert (cf.
 // session_page_coordination.go) : la lecture se complète, elle n'anticipe pas.
@@ -173,8 +173,7 @@ func (l *lectureCoordination) manquants(ids []string) []string {
 //
 // UN COMPLÉMENT REVERSE SES MATCHS DANS L'ORDRE DU LECTEUR (identifiant croissant, celui de
 // son ORDER BY) : l'entrée complétée se lit dans le même ordre qu'une lecture d'un seul
-// tenant. Les événements et les appuis, eux, n'ont pas d'ordre à tenir — l'analyse les range
-// par match et par instant (coordination.Echanges).
+// tenant. Les appuis, eux, n'ont pas d'ordre à tenir — l'analyse les range par match.
 func (l *lectureCoordination) ajouter(
 	lecture domain.TacticalKillEvents, appuis []domain.CoordinationAppuiRow, lus []string,
 ) {
@@ -190,7 +189,6 @@ func (l *lectureCoordination) ajouter(
 	for matchID, equipes := range lecture.Univers.Equipes {
 		l.entree.Equipes[matchID] = equipes
 	}
-	l.entree.Kills = append(l.entree.Kills, lecture.Events...)
 	l.entree.Appuis = append(l.entree.Appuis, appuis...)
 	for _, id := range lus {
 		l.lus[id] = struct{}{}
@@ -208,7 +206,6 @@ func (l *lectureCoordination) bloc(
 	if l.echec != "" {
 		return &domain.CoordinationBlock{
 			UnavailableReason: l.echec,
-			FenetreMs:         coordination.FenetreEchangeMs,
 			MatchesTotal:      len(ids),
 		}
 	}
@@ -229,7 +226,7 @@ func (l *lectureCoordination) bloc(
 	stop()
 	slog.InfoContext(ctx, "coordination_bloc",
 		"player", l.q.PlayerXUID, "matchs", bloc.MatchesTotal, "matchs_mesures", bloc.MatchesMeasured,
-		"morts_de_camp", bloc.Riposte.TeamDeaths, "morts_ripostees", bloc.Riposte.TeamDeathsAvenged,
+		"appuis_de_camp", bloc.Appui.MaPartDesAppuis.N,
 		"mes_frags_mesures", bloc.Appui.OnMePrepare.N, "soirees", len(bloc.Sessions))
 	return &bloc
 }
@@ -264,8 +261,8 @@ func avecEffectifs(matchs []domain.CoordinationMatch, teamSize map[string]int) [
 }
 
 // chargerAppuis lit les appuis de `ids`. Lecteur absent ou en échec ⇒ aucune ligne, loggé :
-// le versant appui a alors des dénominateurs vides (que la couverture publie), et le
-// versant riposte reste servi. Dégrader UN sujet vaut mieux que retirer le bloc entier.
+// le versant appui a alors des dénominateurs vides (que la couverture publie), et la
+// couverture reste servie. Dégrader UN sujet vaut mieux que retirer le bloc entier.
 func (q coordinationQuery) chargerAppuis(ctx context.Context, ids []string) []domain.CoordinationAppuiRow {
 	defer timing.FromContext(ctx).Section("appuis")()
 	if q.Appuis == nil {
@@ -298,7 +295,6 @@ func soireesDuScope(entree domain.CoordinationEntree, soirees []coordinationSoir
 			SessionLabel:    s.Label,
 			MatchesMeasured: bloc.MatchesMeasured,
 			MatchesTotal:    bloc.MatchesTotal,
-			Riposte:         bloc.Riposte,
 			Appui:           bloc.Appui,
 		})
 	}

@@ -236,8 +236,8 @@ func TestBuild_SansEchelleDeTemps_HorsDuRendementDesBonus(t *testing.T) {
 }
 
 // TestBuild_ParticipantSansCamp_EstAdversaire — constat R11 de la revue L6.1 : dans un match à
-// camp connu, un participant dont le camp est inconnu compte pour l'ADVERSAIRE (même règle que
-// computeOutcomes), jamais pour nous — côté film (prises) comme côté feuille de match.
+// camp connu, un participant dont le camp est inconnu compte pour l'ADVERSAIRE,
+// jamais pour nous — côté film (prises) comme côté feuille de match.
 func TestBuild_ParticipantSansCamp_EstAdversaire(t *testing.T) {
 	in := entreeUnMatch()
 	// « X » a pris deux camouflages mais n'est pas dans les participants (camp inconnu).

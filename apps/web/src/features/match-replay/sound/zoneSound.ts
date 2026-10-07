@@ -46,8 +46,8 @@
  *
  * ## Sans camp allié, trois des quatre se taisent
  *
- * Même règle que partout dans la chaîne sonore : sans ligne « moi » au tableau de score, le
- * rejeu ne devine pas un camp. La capture en cours et les tics se taisent ; la nouvelle
+ * Même règle que partout dans la chaîne sonore : sans camp allié (le film ne situe pas le
+ * joueur regardé), le rejeu ne devine pas un camp. La capture en cours et les tics se taisent ; la nouvelle
  * colline sonne quand même, elle n'affirme rien.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -185,8 +185,8 @@ interface ScoreStairsLike {
 /**
  * zoneSoundEvents — les sons d'état de zone, posés sur l'horloge du rejeu.
  *
- * `allyTeam` est l'identifiant d'équipe alliée (celui de la ligne « moi » du tableau de score),
- * ou `null` quand il n'est pas résolu.
+ * `allyTeam` est l'identifiant d'équipe alliée (l'équipe du film du joueur regardé,
+ * `FilmAllegiance.allyTeam`), ou `null` quand il n'est pas résolu.
  */
 export function zoneSoundEvents(
   doc: ReplayDocumentReady,

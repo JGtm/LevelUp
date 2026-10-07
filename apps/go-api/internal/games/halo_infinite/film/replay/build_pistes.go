@@ -104,14 +104,19 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	a.equipes = newTeamPublication(a.reg, a.opt.PlayerTeams, a.opt.TeamScan, a.opt.ScoreboardTeams)
 	// LE BOT QUI SUCCEDE A UN HUMAIN SUR SON INDEX Y ENTRE AUSSI (revue M2-R1) : ses vies sont
 	// nommees, il lui faut son entree, donc sa place — celle du partant (roster_bots_successeurs.go).
-	var botsSuccesseurs int
+	var botsSuccesseurs, botsParDeclaration int
 	a.doc.Roster, botsSuccesseurs = rosterDesOccupants(a.reg.TableDIndex(), nomsDesJoueurs(a.reg, a.opt.Deaths),
 		a.opt.Bots, a.opt.PlayerEntities, a.equipes)
+	// LE BOT SANS ENTITE DONT LES DECLARATIONS ONT NOMME UN CORPS Y ENTRE AUSSI (identity_registry_declarations.go) :
+	// une piste publiee porte son nom, il lui faut son entree, donc sa place.
+	a.doc.Roster, botsParDeclaration = admettreLesBotsNommesParDeclaration(a.doc.Roster, a.opt.Bots,
+		a.opt.PlayerEntities, a.equipes, a.doc.Tracks)
 	// LES OCCUPANTS (lot M2.3) : chaque entree du roster liee a SES entites ti=9 — son equipe, sa
 	// presence. L'equipe par entree remplace celle de l'index sur le roster, les vies et le
 	// drapeau ; sans entite lue, elle vaut celle de l'index et rien ne change.
 	occ := lierLesOccupants(a.doc.Roster, a.doc.Tracks, entreesDesOccupants{
 		scan: a.opt.PlayerEntities, bots: a.opt.Bots, horloge: a.horloge(), parIndex: a.opt.PlayerTeams})
+	journaliserLesEquipesDeclarees(a.ctx, a.matchID, occ)
 	a.equipes.poserEquipesParEntree(a.doc.Roster, occ)
 	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
 	// LA PLACE APRES LE ROSTER ET APRES LES TRACES, parce qu'elle a besoin des deux : l'index lu,
@@ -132,8 +137,11 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	}
 	a.siegeCov = poserLesSieges(a.ctx, a.doc.Roster, occ, entreesDesPlaces{
 		table: a.opt.FilmTable, fire: tirsDesPlaces, tireurs: tireurs, horloge: a.horloge()})
-	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
+	// LE BOT SANS VIE NI PLACE SORT DU ROSTER PUBLIE (sieges_bots_sans_place.go) : une tuile de trop sinon.
+	a.doc.Roster = sansLesBotsEcartes(a.doc.Roster, a.siegeCov)
+	a.siegeCov.BotsSuccesseurs = botsSuccesseurs + botsParDeclaration
 	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
+	journaliserLesPlaces(a.ctx, a.matchID, a.siegeCov)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.ctx, a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.ctx, a.matchID)

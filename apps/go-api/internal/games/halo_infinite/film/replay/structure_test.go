@@ -1377,12 +1377,20 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 79 (2026-10-05, rejeu « cercle de retour du drapeau ») : la base et le camp de chaque
 	//   drapeau se lisent dans le film quand le catalogue se tait ; quatre compteurs `omitempty`
 	//   dans `coverage.flagCarries`. Un v78 se lit « a republier ». Detail : `document_chronicle.go`.
-	// - 80 (2026-10-06, zones a l etat initial) : Aucun champ neuf ; le CONTENU change : une zone de
+	// - 80 (2026-10-06, rejeu « toute entree du roster a l equipe que le film ecrit ») : l equipe d un
+	//   bot sans entite se lit dans sa declaration BOT_METADATA, le bouche-trou prend la place du
+	//   partant et l humain qui arrive lui succede ; aucun champ neuf. Un v79 se lit « a republier »,
+	//   et ses faits au schema des faits 5 au plus le font redecoder. Detail : `document_chronicle.go`.
+	// - 81 (2026-10-07, rejeu « aucune fiche en trop ») : une vie apres le depart prouve de l occupant
+	//   de son corps n est plus publiee, le corps d un index humain se lit aux declarations de ses bots
+	//   quand l humain est absent, un bot sans vie ni place sort du roster publie ; aucun champ neuf.
+	//   Un v80 se republie depuis ses faits. Detail : `document_chronicle.go`.
+	// - 82 (2026-10-07, zones a l etat initial) : Aucun champ neuf ; le CONTENU change : une zone de
 	//   Bastion que la variante donne a un camp au coup d envoi est publiee tenue des la premiere
 	//   image-cle qui le dit, et non plus a sa premiere reprise. `grammar.Rev` monte avec elle : un
-	//   v79 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 80 {
-		t.Fatalf("SchemaVersion = %d, attendu 80 : incrémenter exige une raison écrite ci-dessus "+
+	//   v81 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 82 {
+		t.Fatalf("SchemaVersion = %d, attendu 82 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

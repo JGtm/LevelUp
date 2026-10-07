@@ -53,6 +53,9 @@ type bot struct {
 	// declarations : les intervalles pendant lesquels BOT_METADATA declare ce bot, dans l ordre
 	// du film (cf. l en-tete).
 	declarations []BotDeclaration
+	// equipe / equipeLue : l equipe que ses paquets FERMES lui donnent (botmeta_equipe.go).
+	equipe    int
+	equipeLue bool
 }
 
 // BotDeclaration est UN intervalle pendant lequel BOT_METADATA declare un bot : du premier paquet
@@ -78,12 +81,22 @@ type BotEntry struct {
 	// lient le bot a SON entite `ti=9` par le temps (publication du rejeu) ; aucune ligne de kill
 	// ne les lit.
 	Declarations []BotDeclaration
+	// Team : l equipe que l entree BOT_METADATA du bot ECRIT (botmeta_equipe.go) — -1 pour aucune,
+	// 0..8 sinon, la valeur du designateur d equipe de `ti=9`. NIL quand aucun paquet ferme ne la
+	// donne, ou que deux la donnent differente : l absence n est pas « aucune equipe ». Aucune ligne
+	// de kill ne la lit.
+	Team *int `json:",omitempty"`
 }
 
 // entree rend la forme publiee d un bot.
 func (b bot) entree() BotEntry {
-	return BotEntry{Slot: b.Slot, BotID: b.BotID, Name: b.Name,
+	e := BotEntry{Slot: b.Slot, BotID: b.BotID, Name: b.Name,
 		Declarations: append([]BotDeclaration(nil), b.declarations...)}
+	if b.equipeLue {
+		v := b.equipe
+		e.Team = &v
+	}
+	return e
 }
 
 // botMeta : ce que le film declare sur ses bots, tous chunks confondus.
@@ -94,6 +107,8 @@ type botMeta struct {
 	// Incomplets : paquets dont le scan n a pas retrouve `nbBots` entrees. Ils n ont ferme aucune
 	// declaration (cf. l en-tete).
 	Incomplets int
+	// Equipes : le bilan de la lecture de l equipe des bots (botmeta_equipe.go).
+	Equipes EquipesDesBots
 }
 
 const (

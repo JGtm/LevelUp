@@ -16,11 +16,12 @@ import (
 // retenu alors fut celui de keyframe_loadout.go : ancrer sur une CONSTANTE cherchée bit à bit.
 //
 // CETTE JUSTIFICATION-LÀ N'EST PLUS LA BONNE, et le dire évite de reproduire le raisonnement.
-// La chaîne de composants MARCHE désormais, sur le chemin ANCRÉ (matchBipedHeader +
-// walkRecordTo) : sur 000d5950, i22 y rend 120 lectures sur 120 avec compteur == 4 et valeurs
+// La chaîne de composants MARCHE désormais, sur le chemin ANCRÉ (matchBipedHeader puis la
+// marche de record) : sur 000d5950, i22 y rend 120 lectures sur 120 avec compteur == 4 et valeurs
 // dans {0, 1, 2} (étude du 2026-08-24,
-// .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3), et c'est ce chemin
-// que ScanFilmInventoryDeltas (inventory_delta.go) exploite pour SUIVRE les compteurs.
+// .ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md §1.3), et
+// ScanFilmInventoryDeltas (inventory_delta.go) SUIT les compteurs sur la marche des trames, ce
+// chemin passant derrière elle (`lectures_bipedes.go`).
 //
 // CE DÉCODEUR RESTE, pour ce qu'i22 ne donne pas : le TYPE lancé et son AUTEUR à l'instant du
 // lancer. i22 donne un ÉTAT (combien il en reste, par rang) ; ce fichier donne un ÉVÉNEMENT.

@@ -80,60 +80,55 @@ func ScanGrappleReads(fc *FilmContext) ([]types.GrappleRead, GrappleStats, error
 	if slots.Count() == 0 {
 		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, err := fc.I0Layout()
-	if err != nil {
+	if _, err := fc.I0Layout(); err != nil {
 		return nil, st, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, st, err
 	}
-	i59idx := -1
-	for _, name := range []string{grappleComponentName, grappleComponentNameAlt} {
-		if ids := arch.indicesOf(name); len(ids) > 0 {
-			i59idx = ids[0]
-			break
-		}
-	}
+	i59idx := componentIndexOfAny(arch, grappleComponentName, grappleComponentNameAlt)
 	if i59idx < 0 {
 		return nil, st, fmt.Errorf("composant %q absent de l'archétype biped du film", grappleComponentName)
 	}
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		return nil, st, err
+	}
 
-	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit
-	// pas les bits à côté de lui (même règle que ScanFilmAbilityRanks et ScanFilmCamoStates).
-	sc := &grappleScanner{st: &st, gram: grammaireRecord{lay: lay, arch: arch,
-		prof: fc.ProfilDeBalayage()}, i59idx: i59idx}
-	obs := NouvelleObservation()
-	obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) { sc.last, sc.got = s, true }
-	sc.gram.obs = obs
-
-	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		if maskHas(r.Mask, i59idx) {
-			sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
+	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui a publié pendant la marche,
+	// et la lecture rejoue sa publication ; on ne relit pas les bits (même règle que
+	// ScanFilmAbilityRanks et ScanFilmCamoStates).
+	sc := &grappleScanner{st: &st, i59idx: i59idx, obs: NouvelleObservation()}
+	sc.obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) { sc.last, sc.got = s, true }
+	st.Records = lu.examines
+	for i := range lu.records {
+		if r := &lu.records[i]; r.annonce(i59idx) {
+			sc.account(r)
 		}
-	})
+	}
 	return sc.out, st, nil
 }
 
-// grappleScanner porte l'état du balayage : compteurs, capture du hook, et sortie.
+// grappleScanner porte l'état du balayage : compteurs, l'observation sur laquelle les lectures se
+// rejouent et la capture de son hook, et sortie.
 type grappleScanner struct {
 	st     *GrappleStats
 	out    []types.GrappleRead
-	gram   grammaireRecord
+	obs    *Observation
 	i59idx int
 	last   AbilityNonPredictedState
 	got    bool
 }
 
-// account marche UN record annonçant i59 et impute la lecture aux compteurs. La marche
-// vers la cible tolère un corps cassé (le tag et le début du corps restent publiés par le
-// hook — c'est la SUITE du record qui n'est plus digne de confiance).
-func (sc *grappleScanner) account(pay []byte, i0, total int, idx []int,
-	slot uint32, chunk int, pk FilmPacket) {
+// account rejoue UN record annonçant i59 et impute la lecture aux compteurs. La lecture vers la
+// cible tolère un corps cassé (le tag et le début du corps restent publiés par le hook — c'est la
+// SUITE du record qui n'est plus digne de confiance).
+func (sc *grappleScanner) account(r *recordBipedeLu) {
+	slot, chunk, pk := r.Slot, r.Chunk, r.Packet
 	sc.st.WithI59++
 	sc.got = false
-	walkRecordTo(pay, i0, total, idx, sc.gram, sc.i59idx)
+	r.parcourirJusqua(sc.obs, sc.i59idx)
 	if !sc.got {
 		sc.st.Unread++
 		return

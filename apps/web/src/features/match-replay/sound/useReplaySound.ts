@@ -61,11 +61,8 @@ import {
   type SoundCategory,
   type SoundCategoryFilter,
 } from './replaySound'
-import {
-  allyTeamFromScoreboard,
-  sideResolverFromScoreboard,
-  type ScoreboardSide,
-} from './objectiveSound'
+import { objectiveSideResolver } from './objectiveSound'
+import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import { pickVariantStem, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   advanceSoundCursor,
@@ -302,35 +299,29 @@ function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }
 
 /**
  * ReplaySoundContext — les entrées de `useReplaySound` qui dépendent du CONTEXTE de la page
- * (scoreboard, fin de partie, langue, point de vue), plutôt que de la piste elle-même
+ * (allégeance vue du point de vue, fin de partie, langue), plutôt que de la piste elle-même
  * (`doc`/`kills`/`speed`, restés positionnels).
  *
  * Regroupées en objet le 2026-09-10 (lot hygiène 5.3, `.ai/REGISTRE_REPORTS.md`, L575) :
  * le hook avait 7 paramètres positionnels (seuil du dépôt CLAUDE.md n°5 : 5), une exemption
  * commentée en attendant ce lot, qui touche les 8 appels du hook — dont 7 tests.
  *
- * LES QUATRE CHAMPS RESTENT TOUS REQUIS (`null`/`undefined` explicite), même garantie de
- * compilation qu'avant le regroupement sur le relais du POINT DE VUE (2026-09-06, décision 11 —
- * « allié »/« adverse » se disent par rapport à CE joueur ; seule la fin de partie, `endMatch`,
- * reste ancrée sur le joueur de la page ; `null` = la ligne « moi », comportement d'origine).
- * Rendu obligatoire depuis le 2026-09-07 (revue F4) : TypeScript n'accepte pas un champ requis
- * après un optionnel dans un type positionnel, ce qui avait forcé les trois précédents
- * (`scoreboard`, `endMatch`, `locale`) à le devenir aussi. Un appelant qui l'omettait laissait
- * les tics de zone et la voix d'objectif sur le camp du joueur de la page pendant que la carte
- * suivait le joueur choisi, et les tests restaient verts.
+ * LES TROIS CHAMPS SONT REQUIS (`null`/`undefined` explicite). L'allégeance porte le POINT DE
+ * VUE (décision 11 du 2026-09-06 : « allié » / « adverse » se disent par rapport au joueur
+ * regardé ; seule la fin de partie, `endMatch`, reste ancrée sur le joueur de la page) : un
+ * appelant qui l'omettrait laisserait les tics de zone et la voix d'objectif sur un autre camp
+ * que celui de la carte, et les tests resteraient verts — requise, l'oubli ne compile pas.
  */
 export interface ReplaySoundContext {
-  /** Le tableau de score, d'où se DÉDUIT le camp de l'auteur d'une action d'objectif (résolveur
-   *  pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
-   *  deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
-   *  que l'encre des calques. */
-  scoreboard: readonly ScoreboardSide[] | undefined
+  /** L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : le camp de
+   *  l'auteur d'une action d'objectif (`objectiveSideResolver`) et le camp allié des sons de
+   *  zone. Sans allégeance, les actions qui ont deux variantes d'équipe restent MUETTES — le
+   *  rejeu ne devine jamais un camp, même règle que l'encre des calques. */
+  allegiance: FilmAllegiance
   endMatch: EndMatchSoundSpec | null
   /** La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
    *  `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait. */
   locale: ReplayLocale | undefined
-  /** LE POINT DE VUE de la page — voir l'en-tête de cette interface. */
-  viewpoint: string | null
 }
 
 export function useReplaySound(
@@ -340,17 +331,11 @@ export function useReplaySound(
   speed: number,
   context: ReplaySoundContext,
 ): ReplaySound {
-  const { scoreboard, endMatch, locale, viewpoint } = context
-  const sideOfXuid = useMemo(
-    () => sideResolverFromScoreboard(scoreboard, viewpoint),
-    [scoreboard, viewpoint],
-  )
+  const { allegiance, endMatch, locale } = context
+  const sideOfXuid = useMemo(() => objectiveSideResolver(allegiance), [allegiance])
   // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
-  // pas sur le xuid d'un joueur. Même lecture du tableau de score que le résolveur ci-dessus.
-  const allyTeam = useMemo(
-    () => allyTeamFromScoreboard(scoreboard, viewpoint),
-    [scoreboard, viewpoint],
-  )
+  // pas sur le xuid d'un joueur. Même allégeance du film que le résolveur ci-dessus.
+  const allyTeam = allegiance.allyTeam
   const [on, setOn] = useState(() => readStoredFlag(SOUND_ON_KEY, false))
   const [volume, setVolumeState] = useState(() =>
     readStoredNumber(SOUND_VOLUME_KEY, SOUND_VOLUME_DEFAULT, (v) => v > 0 && v <= 1),

@@ -60,8 +60,8 @@ func TestJoindrePrisesNettes_LaGrandeurArriveSurLesLignes(t *testing.T) {
 	repo := &repoObjectifsFactice{
 		colonnes: colonnesCTF(),
 		prises: []sessionusage.FlagGrabsNetRow{
-			{MatchID: "m1", XUID: "P", Raw: 9, Net: 3, Openings: 25, WindowMS: 1500},
-			{MatchID: "m1", XUID: "A", Raw: 4, Net: 4, Openings: 25, WindowMS: 1500},
+			{MatchID: "m1", XUID: "P", Net: 3, WindowMS: 1500},
+			{MatchID: "m1", XUID: "A", Net: 4, WindowMS: 1500},
 		},
 	}
 	rows := loadFormesObjectives(context.Background(),
@@ -86,7 +86,7 @@ func TestJoindrePrisesNettes_SansMesureAucuneCle(t *testing.T) {
 	repo := &repoObjectifsFactice{
 		colonnes: colonnesCTF(),
 		prises: []sessionusage.FlagGrabsNetRow{
-			{MatchID: "m1", XUID: "P", Raw: 9, Net: 3, Openings: 25, WindowMS: 1500},
+			{MatchID: "m1", XUID: "P", Net: 3, WindowMS: 1500},
 		},
 	}
 	rows := loadFormesObjectives(context.Background(),

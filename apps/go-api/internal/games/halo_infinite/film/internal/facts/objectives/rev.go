@@ -123,8 +123,8 @@ package objectives
 // lot). Golden regenere a revision constante. Mesures : `campagne_grammaire_2026-10-01/LOT_VA_V2.md`,
 // `LOT_VA_V3.md` (§15).
 //
-// COMPLEMENT DU 2026-10-06 (branche `feat/zones-etat-initial`, REVISION CONSTANTE) : `grammar.Rev`
-// monte a `grammar-2026-10-06.5` (voie image-cle de `grammar.ScanManagedProperties`, ti=13).
+// COMPLEMENT DU 2026-10-07 (branche `feat/zones-etat-initial`, REVISION CONSTANTE) : `grammar.Rev`
+// monte a `grammar-2026-10-06.6` (voie image-cle de `grammar.ScanManagedProperties`, ti=13).
 // `grammar/signaux` ne change pas et n appelle pas ce balayage : la lecture des signaux ne change
 // pas. Golden regenere a revision constante.
 

@@ -243,15 +243,15 @@ describe('drawSensor — la zone officielle et son onde', () => {
 })
 
 describe('la marque « révélé », tracée dans ce calque', () => {
-  /** Le capteur pinge à l'image 50 ; le poseur (slot 3) est du camp « t0 ». */
+  /** Le capteur pinge à l'image 50 ; le poseur (slot 3) est du camp 0. */
   const sensorPose = pose({ family: 'sensor', id: SENSOR_ID, t0: 50, x: 5, y: 5 })
-  const sides: Record<number, string | null> = { 3: 't0', 4: 't0', 7: 't1' }
-  const sideOfSlot = (slot: number) => sides[slot] ?? null
+  const sides: Record<number, number | null> = { 3: 0, 4: 0, 7: 1 }
+  const campOfSlot = (slot: number) => sides[slot] ?? null
   const arcsOf = (ops: ReturnType<typeof draw>) => ops.filter((o) => o.op === 'arc')
 
   it('un adversaire dans le rayon reçoit un halo, à la position du JOUEUR', () => {
     const foe = life(7, 6, 5) // 1 m du capteur, camp adverse
-    const ops = draw([sensorPose], TIME, { lives: [foe], sideOfSlot })
+    const ops = draw([sensorPose], TIME, { lives: [foe], campOfSlot })
     const c = projected(6, 5)
     const marks = ops.filter(
       (o) =>
@@ -267,7 +267,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
   it('la marque porte la teinte de l’équipe du POSEUR — c’est son camp qui voit', () => {
     const foe = life(7, 6, 5)
     // Une encre par slot : le poseur est le slot 3, la cible le slot 7.
-    const ops = draw([sensorPose], TIME, { lives: [foe], sideOfSlot }, {
+    const ops = draw([sensorPose], TIME, { lives: [foe], campOfSlot }, {
       colorOfSlot: (slot: number) => `slot${slot}`,
       neutral: 'neutre',
       wall: 'mur',
@@ -279,25 +279,25 @@ describe('la marque « révélé », tracée dans ce calque', () => {
 
   it('un coéquipier du poseur n’est pas marqué : rien de plus que la zone', () => {
     const mate = life(4, 6, 5)
-    expect(arcsOf(draw([sensorPose], TIME, { lives: [mate], sideOfSlot }))).toHaveLength(2)
+    expect(arcsOf(draw([sensorPose], TIME, { lives: [mate], campOfSlot }))).toHaveLength(2)
   })
 
   it('sans camp connu, aucune marque — le ping se dessine quand même', () => {
     const foe = life(7, 6, 5)
     // Poseur non mesuré : le capteur existe et pinge, mais il ne révèle personne.
     const sansPoseur = pose({ family: 'sensor', id: SENSOR_ID, t0: 50, owner: -1 })
-    expect(arcsOf(draw([sansPoseur], TIME, { lives: [foe], sideOfSlot }))).toHaveLength(2)
+    expect(arcsOf(draw([sansPoseur], TIME, { lives: [foe], campOfSlot }))).toHaveLength(2)
   })
 
   it('un mur seul ne révèle rien : la révélation appartient au capteur', () => {
     const foe = life(7, 6, 5)
-    expect(arcsOf(draw([pose({ h: 90 })], TIME, { lives: [foe], sideOfSlot }))).toHaveLength(0)
+    expect(arcsOf(draw([pose({ h: 90 })], TIME, { lives: [foe], campOfSlot }))).toHaveLength(0)
   })
 
   it('un capteur LÂCHÉ ne révèle personne : il n’est même pas dessiné', () => {
     const foe = life(7, 6, 5)
     const lache = pose({ family: 'sensor', id: SENSOR_ID, t0: 50, origin: 'dropped' })
-    expect(arcsOf(draw([lache], TIME, { lives: [foe], sideOfSlot }))).toHaveLength(0)
+    expect(arcsOf(draw([lache], TIME, { lives: [foe], campOfSlot }))).toHaveLength(0)
   })
 })
 

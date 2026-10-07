@@ -50,6 +50,19 @@ var buildFromFilmSteps = []string{
 	// LES DOTATIONS DE NAISSANCE (lot M3.2) : apres les images-cles, avant les prises d arme
 	// dont elles qualifient la premiere emission de chaque vie.
 	"birthLoadouts", "birthLoadouts.stats",
+	"zoomEvents",
+	"placements", "placements.stats", "spawnEvents",
+	"pads", "vehicles", "carrierMarks", "zoneReads", "zoneKeyReads", "flagGauge", "bombReads",
+	// LES ETATS DE MOUVEMENT (schema 65, lot 5.3.6) : `balayerEtatsDeMouvement` tourne apres le
+	// monde, et cette liste suit l ORDRE des appels.
+	"movementStates", "movementStates.stats",
+	// LE TIR CONTINU (lot M4b) : la MEME marche, la vue C de chaque trame.
+	"continuousFire", "continuousFire.stats",
+	// LES MORTS DE VEHICULE ET L OCCUPATION : la MEME marche, le canal des morts ; vides quand le
+	// calque des vehicules n a pas ete balaye.
+	"vehicleDeaths", "vehicleDeaths.stats",
+	// LE PORTAGE ET LES CAPACITES suivent la marche, dont ils rejouent les lectures bipedes (lot
+	// 2.7.b de la representation intermediaire).
 	"heldWeaponChanges", "heldWeaponChanges.stats",
 	"pickups", "pickups.stats",
 	"inventory", "inventory.stats",
@@ -59,17 +72,6 @@ var buildFromFilmSteps = []string{
 	"camoStates", "camoStates.stats",
 	"grappleReads", "grappleReads.stats",
 	"abilityImpulses", "abilityCharges",
-	"zoomEvents",
-	"placements", "placements.stats", "spawnEvents",
-	"pads", "vehicles", "carrierMarks", "zoneReads", "zoneKeyReads", "flagGauge", "bombReads",
-	// LES ETATS DE MOUVEMENT (schema 65, lot 5.3.6) : `balayerEtatsDeMouvement` tourne apres le
-	// monde et avant le pont, et cette liste suit l ORDRE des appels.
-	"movementStates", "movementStates.stats",
-	// LE TIR CONTINU (lot M4b) : la MEME marche, la vue C de chaque trame.
-	"continuousFire", "continuousFire.stats",
-	// LES MORTS DE VEHICULE ET L OCCUPATION : la MEME marche, le canal des morts ; vides quand le
-	// calque des vehicules n a pas ete balaye.
-	"vehicleDeaths", "vehicleDeaths.stats",
 	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
 

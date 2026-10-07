@@ -69,7 +69,7 @@ const ZONE_ACTIVE_STROKE_WIDTH = 3.5
  *
  * LE SEUIL EST `owner === null`, PAS `held` — et la nuance est du sens. `held` est faux dans
  * DEUX cas : personne ne tient la zone (une MESURE du film), ou bien quelqu'un la tient mais
- * la page ne sait pas situer son camp (aucune ligne « moi » au tableau de bord). Le second
+ * la page ne sait pas situer son camp (le film ne situe pas le joueur regardé). Le second
  * n'est pas une zone libre : la griser dirait au lecteur qu'elle est à prendre alors qu'elle
  * est tenue. Elle garde donc le trait plein, à l'encre neutre.
  */
@@ -121,8 +121,8 @@ export interface ZonePaint {
   /**
    * `false` = pas de camp À TEINTER : LISERÉ SEUL, aucun remplissage d'appartenance. Deux
    * situations distinctes le produisent — personne ne tient la zone, ou son camp n'est pas
-   * situable (aucune ligne « moi ») — et seule la PREMIÈRE grise le contour (cf.
-   * ZONE_FREE_STROKE_*, qui se décide sur `now.owner`, pas sur ce drapeau).
+   * situable (le film ne situe pas le joueur regardé) — et seule la PREMIÈRE grise le contour
+   * (cf. ZONE_FREE_STROKE_*, qui se décide sur `now.owner`, pas sur ce drapeau).
    */
   held: boolean
   /**

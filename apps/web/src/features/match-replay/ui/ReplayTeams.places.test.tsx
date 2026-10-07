@@ -10,6 +10,8 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import { ReplayTeams } from './ReplayTeams'
 import { REPLAY_TEXT } from '../i18n/i18n'
 import { scoreboardRow } from '../test/scoreboardRow'
@@ -40,7 +42,7 @@ function documentDesPlaces() {
 }
 
 function colonne(frame: number, locale: 'fr' | 'en' = 'fr') {
-  return render(<ReplayTeams doc={documentDesPlaces()} scoreboard={[]} frame={frame} locale={locale} />)
+  return render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentDesPlaces()} scoreboard={[]} frame={frame} locale={locale} />)
 }
 
 describe('ReplayTeams — la règle des places', () => {
@@ -76,7 +78,7 @@ describe('ReplayTeams — la règle des places', () => {
   it('les deux tuiles parlent anglais en anglais', () => {
     const vue = colonne(80, 'en')
     expect(vue.getByText('Open slot')).toBeTruthy()
-    vue.rerender(<ReplayTeams doc={documentDesPlaces()} scoreboard={[]} frame={110} locale="en" />)
+    vue.rerender(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentDesPlaces()} scoreboard={[]} frame={110} locale="en" />)
     expect(vue.getByText('Not spawned yet')).toBeTruthy()
   })
 
@@ -130,7 +132,7 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
   for (const locale of ['fr', 'en'] as const) {
     it(`deux colonnes à chaque image, jamais une troisième, et jamais « sans équipe » (${locale})`, () => {
       for (const frame of [0, 200, 250, 260, 281, 300, 318, 400]) {
-        const vue = render(<ReplayTeams doc={document43716616()} scoreboard={feuille} frame={frame} locale={locale} />)
+        const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={document43716616()} scoreboard={feuille} frame={frame} locale={locale} />)
         expect(vue.container.querySelectorAll('.overflow-y-auto').length, `image ${frame}`).toBe(2)
         expect(tuilesRendues(vue.container), `image ${frame}`).toBe(2)
         expect(vue.container.textContent, `image ${frame}`).not.toMatch(/Sans équipe|No team|Sandwolf/)
@@ -161,18 +163,18 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
       scoreboardRow('bid(7.0)', '343 Forge Lord', 't0', { is_bot: true }),
       scoreboardRow('SC', 'SplinterCell958', 't0'),
     ]
-    const pendantLeBot = render(<ReplayTeams doc={doc} scoreboard={feuille} frame={175} locale="fr" />)
+    const pendantLeBot = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={feuille} frame={175} locale="fr" />)
     expect(pendantLeBot.queryByText('343 Forge Lord')).toBeNull()
     expect(tuilesRendues(pendantLeBot.container)).toBe(2) // la place de SplinterCell958 attend, libre
     pendantLeBot.unmount()
-    const apres = render(<ReplayTeams doc={doc} scoreboard={feuille} frame={300} locale="fr" />)
+    const apres = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={feuille} frame={300} locale="fr" />)
     expect(apres.getByText('SplinterCell958')).toBeTruthy()
     expect(apres.container.querySelectorAll('.overflow-y-auto')).toHaveLength(1)
     apres.unmount()
   })
 
   it('les colonnes portent les noms de la feuille : Eagle, puis Cobra', () => {
-    const vue = render(<ReplayTeams doc={document43716616()} scoreboard={feuille} frame={260} locale="fr" />)
+    const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={document43716616()} scoreboard={feuille} frame={260} locale="fr" />)
     expect([...vue.container.querySelectorAll('h3')].map((h) => h.textContent)).toEqual(['Équipe Eagle', 'Équipe Cobra'])
     // Pendant la déclaration du bot, la place 5 reste à Slowpoke6743 (jusqu'à son `toMax`).
     expect(vue.getByText('Slowpoke6743')).toBeTruthy()
@@ -197,7 +199,7 @@ describe('ReplayTeams — ce qu’une place ne rend PAS (revue M2, 2026-09-24)',
       tracks: [vie('P', 512, 0, 199), vie('T', 513, 0, 199), { ...vie('', 530, 120, 180), bot: 'Robot' }],
     })
     for (const frame of [0, 80, 110, 150, 190]) {
-      const vue = render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
+      const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
       // Une seule colonne : le bot sans équipe n'en ouvre pas une troisième (c75f33b8).
       expect(vue.container.querySelectorAll('.overflow-y-auto').length, `image ${frame}`).toBe(1)
       expect(tuilesRendues(vue.container), `image ${frame}`).toBe(2)
@@ -222,11 +224,11 @@ describe('ReplayTeams — ce qu’une place ne rend PAS (revue M2, 2026-09-24)',
       ],
       tracks: [vie('P', 512, 30, 199), vie('T', 513, 0, 199)],
     })
-    const avant = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    const avant = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={10} locale="fr" />)
     expect(avant.queryByText(REPLAY_TEXT.fr.seatVacant)).toBeNull()
     expect(tuilesRendues(avant.container)).toBe(1)
     avant.unmount()
-    const apres = render(<ReplayTeams doc={doc} scoreboard={[]} frame={40} locale="fr" />)
+    const apres = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={40} locale="fr" />)
     expect(tuilesRendues(apres.container)).toBe(2)
     apres.unmount()
   })
@@ -279,7 +281,7 @@ describe('ReplayTeams — les tuiles d’attente ont la boîte d’une fiche, da
 
   for (const g of GABARITS) {
     it(`${g.nom} : même boîte, même ligne du nom, même corps fixe pour les trois sortes de tuile`, () => {
-      const vue = render(<ReplayTeams doc={documentTroisTuiles()} scoreboard={[]} frame={110} locale="fr" header={g.header} />)
+      const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentTroisTuiles()} scoreboard={[]} frame={110} locale="fr" header={g.header} />)
       const conteneurs = [...vue.container.querySelectorAll('.overflow-y-auto')]
       expect(conteneurs).toHaveLength(1)
       const tuiles = [...conteneurs[0].children] as HTMLElement[]
@@ -310,7 +312,7 @@ describe('ReplayTeams — les tuiles d’attente ont la boîte d’une fiche, da
   }
 
   it('le nom de l’occupant pas encore apparu s’écrit comme sur sa fiche : sans le suffixe « [bot] »', () => {
-    const vue = render(<ReplayTeams doc={documentTroisTuiles()} scoreboard={[]} frame={110} locale="fr" />)
+    const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={documentTroisTuiles()} scoreboard={[]} frame={110} locale="fr" />)
     expect(vue.getByText('Attente')).toBeTruthy()
     expect(vue.container.textContent).not.toContain('[bot]')
   })

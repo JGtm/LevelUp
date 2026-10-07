@@ -41,6 +41,8 @@ type poseDesPlaces struct {
 	// [poseDesPlaces.estimerLaCapacite]) ; [poseDesPlaces.capaciteDe] y ajoute ce que les entites
 	// lues disent de chaque equipe.
 	capacite int
+	// sansPlace : les bots d equipe lue sans place, ecartes ou comptes (sieges_bots_sans_place.go).
+	sansPlace botsSansPlace
 }
 
 func nouvellePoseDesPlaces(roster []RosterEntry, occ *occupants, in entreesDesPlaces) *poseDesPlaces {
@@ -157,17 +159,86 @@ func (pp *poseDesPlaces) marquerLesArrivantsSansPresence() {
 	}
 }
 
-// libre dit si une place est libre pendant TOUTES les presences CERTAINES d'une entree.
+// libre dit si une place est libre pendant TOUTES les presences CERTAINES d'une entree. Deux
+// presences qui se recouvrent ne se contredisent pas quand le recouvrement est une SUCCESSION que
+// le film date ([poseDesPlaces.successionAdmise]).
 func (pp *poseDesPlaces) libre(p *placeDeLaTable, i int) bool {
 	for _, iv := range pp.occ.parEntree[i].presence {
 		for _, o := range p.occupations {
 			autre := pp.occ.parEntree[o.entree].presence[o.intervalle]
-			if iv.de <= autre.a && autre.de <= iv.a {
+			if iv.de <= autre.a && autre.de <= iv.a && !pp.successionAdmise(i, iv, o.entree, autre) {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+// successionAdmise dit que deux presences certaines d'une meme place ne se recouvrent que par une
+// succession : un relais a la frame ([poseDesPlaces.relaisALaFrame]), ou l'humain qui succede a un
+// bot ([poseDesPlaces.succedeAuBot]), dans un sens ou dans l'autre.
+func (pp *poseDesPlaces) successionAdmise(i int, iv intervalleDePresence, j int, autre intervalleDePresence) bool {
+	return pp.relaisALaFrame(i, iv, j, autre) || pp.succedeAuBot(i, iv, j, autre) || pp.succedeAuBot(j, autre, i, iv)
+}
+
+// relaisALaFrame dit que deux presences ne partagent que la frame d'un RELAIS — l'une commence a la
+// frame ou l'autre finit, apres elle — et que l'une des deux est celle d'un bot que BOT_METADATA
+// date a la frame pres : le depart et l'arrivee tombent dans la meme frame du document
+// (`572e236b` : la derniere vie de biOly goLab1054 finit a la frame 582, ou `343 Bachici` est
+// declare). Deux bornes lues aux images-cles qui se touchent sont deux occupants a la meme
+// image-cle : la contradiction reste.
+func (pp *poseDesPlaces) relaisALaFrame(i int, iv intervalleDePresence, j int, autre intervalleDePresence) bool {
+	if !pp.occ.parEntree[i].declaree && !pp.occ.parEntree[j].declaree {
+		return false
+	}
+	return (iv.de == autre.a && autre.de < iv.de) || (autre.de == iv.a && iv.de < autre.de)
+}
+
+// succedeAuBot dit que l'entree `h` est l'HUMAIN qui remplace le bot `b` sur sa place (Q23 : un
+// humain qui arrive remplace le bot) : ARRIVE — lu par son entite, a l'image-cle pres — APRES le
+// debut de la declaration du bot et avant son retrait EXACT, sans aucune vie avant ce retrait, et
+// ENCORE LA apres lui (`43e96765` : Cmillward21 lu a l'image-cle de la frame 1145, `343 PardonMy`
+// declare jusqu'a la frame 1344, premier corps de Cmillward21 a la frame 1367). Le jeu tient les
+// deux pendant que l'humain se charge ; la place est au bot jusqu'a son retrait. Un humain dont la
+// presence certaine s'acheve avant ce retrait, ou avec lui, ne le remplace pas : il ne tiendrait la
+// place a aucune frame.
+func (pp *poseDesPlaces) succedeAuBot(b int, ivb intervalleDePresence, h int, ivh intervalleDePresence) bool {
+	if !pp.roster[b].Bot || !pp.occ.parEntree[b].declaree || pp.roster[h].Bot {
+		return false
+	}
+	// STRICTEMENT apres le debut du bot : un occupant deja la quand le bot arrive (au coup d'envoi,
+	// avant sa premiere vie) ne le remplace pas, il le cotoie.
+	if ivh.de <= ivb.de || ivh.de > ivb.a || ivh.a <= ivb.a {
+		return false
+	}
+	for _, v := range pp.occ.parEntree[h].vies {
+		if v[0] <= ivb.a {
+			return false
+		}
+	}
+	return true
+}
+
+// placeDuBotRemplace rend la place de son equipe ou l'arrivant `i` succede a un bot
+// ([poseDesPlaces.succedeAuBot]) : c'est la place du bot qu'il remplace, avant tout chainage — celle
+// du bot qui se retire LE PREMIER apres son arrivee quand plusieurs le pourraient (le jeu retire un
+// bot quand l'humain rejoint). Nil : aucune.
+func (pp *poseDesPlaces) placeDuBotRemplace(i, t int) *placeDeLaTable {
+	iv := pp.occ.parEntree[i].presence[0]
+	var elue *placeDeLaTable
+	retrait := math.MaxInt
+	for _, idx := range pp.ordre {
+		p := pp.places[idx]
+		if p.equipe == nil || *p.equipe != t || !pp.libre(p, i) {
+			continue
+		}
+		for _, o := range p.occupations {
+			if b := pp.intervalle(o); pp.succedeAuBot(o.entree, *b, i, iv) && b.a < retrait {
+				elue, retrait = p, b.a
+			}
+		}
+	}
+	return elue
 }
 
 // memeEquipe dit si une entree peut tenir une place d'apres les equipes : une equipe inconnue,
@@ -193,6 +264,9 @@ func (pp *poseDesPlaces) chainerLesArrivants() (apparies, ouvertes, sansPlace in
 			continue
 		}
 		if pp.placesDeLEquipe(*t) >= pp.capaciteDe(*t) {
+			if pp.ecarterLeBotSansVie(i) {
+				continue
+			}
 			pp.roster[i].SeatSource = SeatSourceIndex
 			sansPlace++
 			continue
@@ -203,11 +277,15 @@ func (pp *poseDesPlaces) chainerLesArrivants() (apparies, ouvertes, sansPlace in
 	return apparies, ouvertes, sansPlace
 }
 
-// placeParChainage choisit la place d'un arrivant dans son equipe, dans l'ordre du repli : la
-// place liberee le plus tot avant son arrivee (un remplacant prend la place du partant), puis une
-// place de son equipe sans occupant anterieur, puis — si son equipe n'a pas sa capacite — un
-// siege de la table jamais tenu. Nil : aucune.
+// placeParChainage choisit la place d'un arrivant dans son equipe, dans l'ordre du repli : la place
+// du bot auquel il succede ([poseDesPlaces.placeDuBotRemplace]), la place liberee le plus tot avant
+// son arrivee (un remplacant prend la place du partant), puis une place de son equipe sans occupant
+// anterieur, puis — si son equipe n'a pas sa capacite — un siege de la table jamais tenu. Nil :
+// aucune.
 func (pp *poseDesPlaces) placeParChainage(i, t int) *placeDeLaTable {
+	if p := pp.placeDuBotRemplace(i, t); p != nil {
+		return p
+	}
 	arrivee := pp.occ.parEntree[i].presence[0].de
 	var liberee, sansAnterieur *placeDeLaTable
 	liberation := math.MaxInt
@@ -272,11 +350,12 @@ func (pp *poseDesPlaces) ouvrirUnePlace(i int) *placeDeLaTable {
 }
 
 // derniereFinAvant rend la fin CERTAINE la plus tardive des occupations d'une place qui finissent
-// avant un instant, et dit s'il y en a une.
+// avant un instant — ou A cet instant : sur une place que [poseDesPlaces.libre] a admise, une fin a
+// la frame d'arrivee est un relais a la frame —, et dit s'il y en a une.
 func (pp *poseDesPlaces) derniereFinAvant(p *placeDeLaTable, t int) (int, bool) {
 	fin, vu := -1, false
 	for _, o := range p.occupations {
-		if a := pp.occ.parEntree[o.entree].presence[o.intervalle].a; a < t && a > fin {
+		if a := pp.occ.parEntree[o.entree].presence[o.intervalle].a; a <= t && a > fin {
 			fin, vu = a, true
 		}
 	}
@@ -295,17 +374,23 @@ func (pp *poseDesPlaces) placesDeLEquipe(t int) int {
 }
 
 // bornerAuSuccesseur borne l'AFFICHAGE de chaque occupant a la veille de l'arrivee du suivant
-// sur la meme place, et compte les presences certaines qui se recouvrent.
-func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements int) {
+// sur la meme place, et compte les presences certaines qui se recouvrent. L'humain qui succede a un
+// bot ([poseDesPlaces.succedeAuBot]) commence au lendemain de son retrait exact — pose AVANT le tri
+// ([poseDesPlaces.ouvrirApresLeBot]), et compte a part (journalise par [poserLesSieges]) ; un relais
+// a la frame ([poseDesPlaces.relaisALaFrame]) borne le partant sans etre un chevauchement.
+func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements, successions int) {
 	for _, idx := range pp.ordre {
 		occ := pp.places[idx].occupations
+		successions += pp.ouvrirApresLeBot(occ)
 		slices.SortStableFunc(occ, func(a, b occupation) int {
 			return cmp.Compare(pp.intervalle(a).de, pp.intervalle(b).de)
 		})
 		for k := 0; k+1 < len(occ); k++ {
 			cur, suiv := pp.intervalle(occ[k]), pp.intervalle(occ[k+1])
 			if cur.a >= suiv.de {
-				chevauchements++
+				if !pp.relaisALaFrame(occ[k].entree, *cur, occ[k+1].entree, *suiv) {
+					chevauchements++
+				}
 				cur.a = max(cur.de, suiv.de-1)
 			}
 			if cur.aMax >= suiv.de {
@@ -314,7 +399,27 @@ func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements int) {
 			}
 		}
 	}
-	return bornes, chevauchements
+	return bornes, chevauchements, successions
+}
+
+// ouvrirApresLeBot ouvre la presence de chaque humain qui succede a un bot d'une place au lendemain
+// du retrait du bot — du DERNIER, s'il en remplace plusieurs —, et rend le nombre d'humains ainsi
+// ouverts. Les debuts se calculent TOUS sur les presences d'avant, puis se posent : le tri qui suit
+// voit chaque humain a sa place, apres le bot qu'il remplace. La presence certaine de l'humain ne se
+// vide jamais (il est encore la apres le retrait, cf. [poseDesPlaces.succedeAuBot]).
+func (pp *poseDesPlaces) ouvrirApresLeBot(occ []occupation) int {
+	debuts := map[int]int{} // rang de l'occupation de l'humain -> son nouveau debut
+	for j, h := range occ {
+		for _, b := range occ {
+			if bot := pp.intervalle(b); pp.succedeAuBot(b.entree, *bot, h.entree, *pp.intervalle(h)) {
+				debuts[j] = max(debuts[j], bot.a+1)
+			}
+		}
+	}
+	for j, de := range debuts {
+		pp.intervalle(occ[j]).de = de
+	}
+	return len(debuts)
 }
 
 // retirerLesAffichagesVides retire les intervalles que la borne au successeur a VIDES (affichage

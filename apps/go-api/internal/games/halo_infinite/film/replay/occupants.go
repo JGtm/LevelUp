@@ -49,9 +49,12 @@ package replay
 
 import (
 	"cmp"
+	"context"
+	"log/slog"
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/observability"
 )
 
 // intervalleDePresence est une presence en FRAMES, bornes incluses : `[de, a]` est certain,
@@ -72,6 +75,10 @@ type occupantDuRoster struct {
 	presence []intervalleDePresence
 	// lue : la presence vient d'une entite ou de BOT_METADATA, pas des seules vies.
 	lue bool
+	// declaree : la presence d'un bot vient de ses declarations BOT_METADATA — son retrait est EXACT,
+	// a la frame pres (cf. [presencesDeclarees]) ; c'est ce qui fait d'une frame partagee un relais et
+	// de l'humain qui le remplace un successeur (sieges_places.go).
+	declaree bool
 }
 
 // occupants est le resultat de la liaison : une entree par entree de roster, dans le meme ordre.
@@ -82,6 +89,10 @@ type occupants struct {
 	// entitesNonLiees / entitesContestees / equipesDivergentes : ce que la liaison n'a pas su
 	// poser, compte.
 	entitesNonLiees, entitesContestees, equipesDivergentes int
+	// equipesParDeclaration / equipesContreDeclaration : les entrees de bot dont l'equipe vient de
+	// leur seule declaration BOT_METADATA, et celles dont l'entite contredit la declaration (cf.
+	// [occupants.equipeDe]).
+	equipesParDeclaration, equipesContreDeclaration int
 	// trous : les trous d'entite (images-cles manquees entre la premiere et la derniere).
 	trous int
 	// imagesDouteuses / bornesDifferees : les images-cles porteuses ou l'absence d'au moins une entite
@@ -138,6 +149,7 @@ func lierLesOccupants(roster []RosterEntry, tracks []Track, in entreesDesOccupan
 	for i := range roster {
 		out.parEntree[i].equipe = out.equipeDe(roster[i], i, in)
 		out.parEntree[i].presence, out.parEntree[i].lue = presenceDe(roster[i], out.parEntree[i], in)
+		out.parEntree[i].declaree = len(presencesDeclarees(roster[i], in)) > 0
 	}
 	return out
 }
@@ -270,28 +282,79 @@ func humainsDeLIndex(roster []RosterEntry, idx int) int {
 	return n
 }
 
-// equipeDe rend l'equipe PAR ENTREE : le designateur de ses entites a l'unanimite ; sans entite
-// liee, la table de CONTROLE sur un index non divergent (la meme valeur que l'ancienne equipe
-// par index, donc aucune entree ne perd l'equipe qu'elle avait).
+// equipeDe rend l'equipe PAR ENTREE, dans l'ordre des lectures du film :
+//
+//  1. le designateur de ses entites `ti=9`, a l'unanimite ;
+//  2. sinon, pour un bot, l'equipe que son entree BOT_METADATA ecrit (`BotIdentity.Team`, lot
+//     « toute entree du roster a l'equipe que le film ecrit », 2026-10-06) : un bot declare entre
+//     deux images-cles porteuses n'a aucune entite lue, et sa declaration dit son equipe ;
+//  3. sinon, pour un humain — ou sur un film dont les entites ne sont pas balayees —, la table de
+//     CONTROLE sur un index non divergent (la meme valeur que l'ancienne equipe par index).
+//
+// Une entite et une declaration qui se CONTREDISENT : l'entite est publiee et l'ecart se compte
+// ([occupants.equipesContreDeclaration], journalise), il ne s'arbitre pas en silence. Un bot d'un
+// film balaye que ni ses entites ni sa declaration ne nomment reste SANS equipe : la table par
+// index lui preterait celle d'un autre occupant de son index (`c7f94693`, `343 Donos`).
 func (o *occupants) equipeDe(e RosterEntry, i int, in entreesDesOccupants) *int {
-	ents := o.parEntree[i].entites
-	if len(ents) == 0 {
-		if t, ok := in.parIndex[e.FilmIndex]; ok && !o.balaye {
-			return &t
-		}
-		if t, ok := in.parIndex[e.FilmIndex]; ok && !indexPorteParUneEntiteLiee(o, in.scan, e.FilmIndex) {
-			return &t
-		}
-		return nil
-	}
-	t := in.scan.Entities[ents[0]].Team
-	for _, k := range ents[1:] {
-		if in.scan.Entities[k].Team != t {
-			o.equipesDivergentes++
+	declaree := equipeDeclaree(e, in.bots)
+	if ents := o.parEntree[i].entites; len(ents) > 0 {
+		t, ok := o.equipeDesEntites(ents, in.scan)
+		if !ok {
 			return nil
 		}
+		if declaree != nil && *declaree != t {
+			o.equipesContreDeclaration++
+		}
+		return &t
 	}
-	return &t
+	if declaree != nil {
+		o.equipesParDeclaration++
+		return declaree
+	}
+	if e.Bot && o.balaye {
+		return nil
+	}
+	if t, ok := in.parIndex[e.FilmIndex]; ok && !o.balaye {
+		return &t
+	}
+	if t, ok := in.parIndex[e.FilmIndex]; ok && !indexPorteParUneEntiteLiee(o, in.scan, e.FilmIndex) {
+		return &t
+	}
+	return nil
+}
+
+// equipeDesEntites rend le designateur des entites liees a une entree quand elles s'accordent ;
+// faux (et compte) quand deux d'entre elles divergent.
+func (o *occupants) equipeDesEntites(ents []int, scan grammar.PlayerEntityScan) (int, bool) {
+	t := scan.Entities[ents[0]].Team
+	for _, k := range ents[1:] {
+		if scan.Entities[k].Team != t {
+			o.equipesDivergentes++
+			return 0, false
+		}
+	}
+	return t, true
+}
+
+// equipeDeclaree rend l'equipe que BOT_METADATA ecrit pour l'entree d'un bot — meme cle que ses
+// declarations (nom et index, cf. [declarationsDe]) —, nil pour un humain, pour un bot dont
+// l'equipe n'est pas lue, ou si deux identites de cette cle en disent deux.
+func equipeDeclaree(e RosterEntry, bots []BotIdentity) *int {
+	if !e.Bot {
+		return nil
+	}
+	var out *int
+	for _, b := range bots {
+		if b.Name != e.Name || b.FilmIndex != e.FilmIndex || b.Team == nil {
+			continue
+		}
+		if out != nil && *out != *b.Team {
+			return nil
+		}
+		t := *b.Team
+		out = &t
+	}
+	return out
 }
 
 // indexPorteParUneEntiteLiee dit qu'une entite de cet index est deja liee a une AUTRE entree :
@@ -305,4 +368,24 @@ func indexPorteParUneEntiteLiee(o *occupants, scan grammar.PlayerEntityScan, idx
 		}
 	}
 	return false
+}
+
+// metriqueEquipesContreDeclaration : le compteur expvar des bots dont l'entite `ti=9` et l'entree
+// BOT_METADATA disent deux equipes (cf. [occupants.equipeDe]).
+const metriqueEquipesContreDeclaration = "rejeu_bots_equipe_contre_declaration"
+
+// journaliserLesEquipesDeclarees dit d'ou viennent les equipes des bots que la liaison a posees :
+// combien de leur seule declaration BOT_METADATA (une lecture du film) ; et, en ERREUR et au
+// compteur, les bots dont l'entite contredit la declaration — l'entite est publiee, l'ecart ne
+// s'arbitre pas en silence.
+func journaliserLesEquipesDeclarees(ctx context.Context, matchID string, occ occupants) {
+	if occ.equipesParDeclaration > 0 {
+		slog.InfoContext(ctx, "rejeu : equipe de bot(s) lue dans leur declaration BOT_METADATA, faute d'entite ti=9",
+			"match_id", matchID, "bots", occ.equipesParDeclaration)
+	}
+	if occ.equipesContreDeclaration > 0 {
+		observability.AddInt(metriqueEquipesContreDeclaration, int64(occ.equipesContreDeclaration))
+		slog.ErrorContext(ctx, "rejeu : l'entite ti=9 d'un bot et son entree BOT_METADATA disent deux equipes — "+
+			"l'entite est publiee, l'ecart est compte", "match_id", matchID, "bots", occ.equipesContreDeclaration)
+	}
 }

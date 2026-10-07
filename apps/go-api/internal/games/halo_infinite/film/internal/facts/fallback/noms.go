@@ -179,6 +179,9 @@ const (
 	// NomLocalisationLargeurLibre : `grammar/localisateur.go`, compte par les deux marches qui
 	// l appellent (morts d objet, `killsource`).
 	NomLocalisationLargeurLibre Nom = "repli_localisation_largeur_libre"
+	// NomAncrageBipedeApresLaMarche : `grammar/canal_des_lectures_bipedes.go`, compte par
+	// `grammar/replis_du_film.go`.
+	NomAncrageBipedeApresLaMarche Nom = "repli_ancrage_bipede_apres_la_marche"
 
 	// LES REPLIS DE `killsource` (sous-lot killsource du lot J8.7, 2026-09-27) : comptes en DONNEES
 	// dans `killsource.Stats` (`Replis`, et les comptes que le decodeur tenait deja), verses par la

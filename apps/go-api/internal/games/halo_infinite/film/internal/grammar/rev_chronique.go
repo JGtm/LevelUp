@@ -369,10 +369,38 @@ package grammar
 // `LOT_VA_V3.md` (etape V3, contre `8c83e2d3a` ; §15 : fusion et corrections de la revue, contre
 // `fed1efed2` ; §16 : decisions du pilote, contre `b033d30f0`).
 //
-// ENTREE `grammar-2026-10-06.5` (2026-10-06, branche `feat/zones-etat-initial`) : L ETAT DES
-// PROPRIETES RESEAU DE ti=13 SE LIT AUSSI DANS LES IMAGES-CLES.
+// ENTREE `grammar-2026-10-06.5` (2026-10-06, lot 2.7.b de la representation intermediaire,
+// `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES HUIT LECTEURS DE COMPOSANTS
+// BIPEDES LISENT LA MARCHE DES TRAMES, L ANCRAGE PASSE DERRIERE ELLE.
 //
 // Ce qui change, contre `grammar-2026-10-06.4` :
+//   - [canalDesLecturesBipedes] recueille, pendant la marche des trames, les publications des onze
+//     crochets des huit lecteurs (charges, impulsions, rangs, camouflage, grappin, arme portee,
+//     deltas d inventaire, equipement), datees de la position du lecteur de la marche, et les
+//     attribue au composant du record bipede delta qui les porte ; les lecteurs les rejouent
+//     ([lecturesBipedes]) au lieu de marcher les records ancres ;
+//   - l ancrage d en-tete bipede ne rend plus que les records d un slot que la marche n a pas lu
+//     dans le paquet, hors de ce que la fermeture de la trame prouve (repli
+//     `repli_ancrage_bipede_apres_la_marche`) : un debut de vue B LU (tete, fin de la vue A) prouve
+//     tout le paquet, un debut LOCALISE seulement la liste lue depuis lui ;
+//   - un corps mort n agit plus (le record du dead-state et ceux du meme corps jusqu au NEW) ; une
+//     emission d arme portee qui repete la famille precedente de l emplacement, ou annonce un
+//     emplacement vide sans occupant connu, est `Restated` ; la garde des generations vivantes
+//     datees vaut pour les records de la marche ;
+//   - la porte des essais eteint les douze crochets de canal ([Observation.neutraliserLesCrochetsDeCanal]) ;
+//   - le canal des etats de mouvement ne compte plus un paquet a debut lu dans la vue A comme
+//     localise ni comme ouvert par un NEW de tete.
+//
+// Preuve : gate de corpus (19 temoins) : aucun oracle ne bouge ; les lectures montent partout,
+// aucune n est perdue contre la base hors des lachers d une arme inconnue ; un portage de bombe se
+// ferme a l armement (`c75f33b8`), d ou la montee de `killcollector.PlacementRev`.
+// `replay.SchemaVersion` reste 79 : la publication depuis les faits ne change pas, les faits si.
+// Le rang : `.4` est pris par la vue A V2 et V3 de la campagne, fusionnee avant ce lot.
+//
+// ENTREE `grammar-2026-10-06.6` (2026-10-07, branche `feat/zones-etat-initial`) : L ETAT DES
+// PROPRIETES RESEAU DE ti=13 SE LIT AUSSI DANS LES IMAGES-CLES.
+//
+// Ce qui change, contre `grammar-2026-10-06.5` :
 //   - [ScanManagedProperties] joue, apres les trames delta, la phase des images-cles pour un canal
 //     qui interprete la valeur scalaire de ti=13 (`i1`, [canalDesProprietesGerees],
 //     `zone_state_scan_images_cles.go`) : il relit chaque occurrence a son etendue avec le
@@ -384,6 +412,7 @@ package grammar
 // Une propriete n est emise en trame delta qu a son changement ; une base que la variante de
 // Bastion donne a un camp au coup d envoi n apparaissait qu a sa premiere reprise. Le rejeu ouvre
 // desormais le premier intervalle de proprietaire a la premiere image-cle qui le dit
-// (`replay/zone_states_etat_initial.go`, `replay.SchemaVersion` 80). `killsource` et `objectives`
+// (`replay/zone_states_etat_initial.go`, `replay.SchemaVersion` 82). `killsource` et `objectives`
 // n appellent pas ce balayage : leurs revisions restent constantes, leurs empreintes sont
-// regenerees.
+// regenerees. Le rang : `.5` est pris par le lot 2.7.b de la representation intermediaire,
+// fusionne avant ce lot.

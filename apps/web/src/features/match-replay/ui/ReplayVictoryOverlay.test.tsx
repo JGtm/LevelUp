@@ -15,6 +15,8 @@ import { render, screen } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
+import { buildFilmAllegiance } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { normalizeScoreTimeline, type ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 import { fieldMappingsQueryKey } from '@/lib/i18n/fieldMappings'
 import { createTestQueryClient } from '@/test/render-utils'
@@ -51,10 +53,18 @@ const SB: MatchScoreboardRow[] = [
   { xuid: 'eux', team_side: 't1', is_me: false },
 ] as MatchScoreboardRow[]
 
-const META = new Map([
-  ['moi', { gamertag: 'Moi', ally: true }],
-  ['eux', { gamertag: 'Eux', ally: false }],
-])
+/**
+ * L'allégeance du FILM vue de `reference` (le point de vue, comme le modèle de la page) :
+ * `moi` au camp 0 et `eux` au camp 1 par défaut, chacun joint à sa ligne de feuille, qui nomme
+ * son camp. `-1` = le film ne donne aucune équipe.
+ */
+function filmVu(reference: string, equipes: Array<[string, number]> = [['moi', 0], ['eux', 1]]) {
+  const joueurs = equipes.map(
+    ([xuid, team]) =>
+      ({ xuid, team, lives: [], board: { xuid, team_side: team >= 0 ? `t${team}` : null } }) as unknown as ReplayPlayer,
+  )
+  return buildFilmAllegiance(joueurs, reference)
+}
 
 /** La fenêtre de gameplay du témoin : la fin tombe au frame 500. */
 const WINDOW: ReplayWindowBounds = {
@@ -115,7 +125,7 @@ function renderOverlay(
     <ReplayVictoryOverlay
       doc={docOf(SLAYER_TEAMS)}
       scoreboard={SB}
-      xuidMeta={META}
+      allegiance={filmVu(over.viewpoint ?? 'moi')}
       outcomeCode={2}
       viewpoint={null}
       playWindow={WINDOW}
@@ -173,6 +183,7 @@ describe('ReplayVictoryOverlay — l’habillage est celui du joueur de la page'
         { xuid: 'moi', team_side: 't0', is_me: false },
         { xuid: 'eux', team_side: 't1', is_me: true },
       ] as MatchScoreboardRow[],
+      allegiance: filmVu('eux'),
     })
     expect(screen.getByText('Équipe Cobra')).toBeInTheDocument()
     // Le camp change, la couleur NON : c'est toujours celle du joueur de la page.
@@ -268,13 +279,8 @@ describe('ReplayVictoryOverlay — quand il ne se rend pas', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('lecture nulle (FFA) : rien', () => {
-    const { container } = renderOverlay({
-      scoreboard: [
-        { xuid: 'moi', team_side: null, is_me: true },
-        { xuid: 'eux', team_side: null, is_me: false },
-      ] as MatchScoreboardRow[],
-    })
+  it('lecture nulle (FFA : le film ne donne aucune équipe) : rien', () => {
+    const { container } = renderOverlay({ allegiance: filmVu('moi', [['moi', -1], ['eux', -1]]) })
     expect(container).toBeEmptyDOMElement()
   })
 

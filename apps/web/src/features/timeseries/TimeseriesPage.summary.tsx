@@ -22,7 +22,7 @@ import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdown'
 // Précision par arme : réutilise le graphe Synthesis (recoloré par classe + survol lié)
-// — même choix que SessionFragCard. Import cross-feature durable déclaré
+// — même choix que la page Sessions. Import cross-feature durable déclaré
 // (timeseries=>synthesis, cf. tools/lint-cross-feature-imports.mjs), analogue à
 // session-detail=>synthesis.
 import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'

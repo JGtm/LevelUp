@@ -125,7 +125,8 @@ export interface EquipmentUsageTally {
 
 /**
  * La ligne d'un joueur : son identité, ses grandeurs, et son CAMP DU FILM (`team`, plus le côté
- * de feuille `side` qui ne fait que le nommer et l'encrer — cf. `replayCamps.ts`).
+ * de feuille `side` qui ne fait que le nommer — cf. `replayCamps.ts` ; l'encre allié / adverse
+ * est l'allégeance du film, `filmAllegiance.ts`).
  */
 export interface EquipmentUsageRow extends EquipmentUsageTally, ReplayCamp {
   xuid: string
@@ -290,7 +291,7 @@ function isDeployableFamily(family: string): boolean {
  * buildEquipmentUsage — l'agrégation complète, en une passe par calque.
  *
  * `scoreboard` peut manquer (chargement, titre sans tableau des scores) : les camps restent ceux
- * du film, seuls leurs noms et leur encre attendent la feuille. Aucun camp n'est deviné.
+ * du film, seuls leurs noms attendent la feuille. Aucun camp n'est deviné.
  */
 export function buildEquipmentUsage(
   doc: ReplayDocumentReady,

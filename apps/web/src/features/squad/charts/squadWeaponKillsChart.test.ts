@@ -111,6 +111,18 @@ describe('buildSquadWeaponKillsOption', () => {
       expect(me({ value: 2, dataIndex: 0 })).toBe('')
     })
 
+    it('dénominateur fourni (vue compacte de Sessions : la part de TOUS mes frags) et aucun seuil', () => {
+      const series = buildSquadWeaponKillsOption(data(), {
+        colorByPlayer: COLORS,
+        valueLabel: 'share',
+        shareTotals: { Me: 200 },
+        minLabelShare: 0,
+      }).series as Serie[]
+      const me = series[0].label.formatter
+      expect(me({ value: 30, dataIndex: 1 })).toBe('15 %')
+      expect(me({ value: 2, dataIndex: 0 })).toBe('1 %')
+    })
+
     it('infobulle par défaut : valeur en gras + part', () => {
       const opt = buildSquadWeaponKillsOption(data(), { colorByPlayer: COLORS, valueLabel: 'share' })
       const html = (opt.tooltip as { formatter: (raw: unknown) => string }).formatter([

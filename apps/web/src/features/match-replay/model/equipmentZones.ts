@@ -15,8 +15,8 @@
  *    du jeu soigne quiconque s'y tient, la bulle cache dans les deux sens. Aucun camp n'entre
  *    dans la règle, et c'est fidèle au jeu, pas une simplification ;
  *  - le CAPTEUR DE MENACES ne concerne que les ADVERSAIRES du poseur, et la règle de camp est
- *    EXACTEMENT celle de `sensorReveals` (threatSensor.ts) : `team_side` de la base des deux
- *    côtés, et sans camp connu — poseur non mesuré, vie sans ligne de scoreboard — RIEN n'est
+ *    EXACTEMENT celle de `sensorReveals` (threatSensor.ts) : l'équipe du FILM des deux côtés,
+ *    et sans camp connu — poseur non mesuré, vie dont le film tait l'équipe — RIEN n'est
  *    affirmé. La fiche dit ici l'ÉTAT (« il se tient dans la zone d'un capteur adverse »),
  *    au présent et en continu ; la marque de RÉVÉLATION de la carte, elle, garde sa propre
  *    règle (appartenance mesurée à l'instant du ping) — deux affirmations distinctes, toutes
@@ -38,11 +38,11 @@ import { REPAIR_FIELD_RADIUS_M, SHROUD_RADIUS_M } from '../layers/placementShape
 import { SENSOR_RADIUS_M, sensorPingAgeMs } from './threatSensor'
 
 /** Ce que la fiche a besoin de LIRE : les poses, et le camp de la vie qui occupe un slot À UNE
- *  IMAGE (même contrat que `PlacementScene.sideOfSlot` — null = camp inconnu, donc jamais un
+ *  IMAGE (même contrat que `PlacementScene.campOfSlot` — null = camp inconnu, donc jamais un
  *  ennemi ; la frame lève l'ambiguïté d'un slot réattribué entre manches). */
 export interface ZoneScene {
   placements: readonly ReplayEquipmentPlacement[]
-  sideOfSlot: (slot: number, frame: number) => string | null
+  campOfSlot: (slot: number, frame: number) => number | null
 }
 
 /** Le joueur interrogé : sa vie (slot), sa position MONDE à l'image, et l'image. */
@@ -116,7 +116,7 @@ export function zonePresenceAt(
   let sensorSincePingMs: number | null = null
   // Le joueur interrogé est vivant à l'image (la fiche l'a résolu depuis sa vie courante) : son
   // camp se lit donc à `query.frame`, jamais figé pour tout le match.
-  const side = scene.sideOfSlot(query.slot, query.frame)
+  const side = scene.campOfSlot(query.slot, query.frame)
   for (const p of scene.placements) {
     const kind = placementKind(p, NO_TOGGLES)
     if (!kind) continue
@@ -137,7 +137,7 @@ export function zonePresenceAt(
       // n'affirme aucune inimitié.
       if (p.owner < 0 || side === null) continue
       // Le poseur se lit à l'instant de sa POSE (`p.t0`), où il était vivant sur ce slot.
-      const owner = scene.sideOfSlot(p.owner, p.t0)
+      const owner = scene.campOfSlot(p.owner, p.t0)
       if (owner === null || owner === side) continue
       const since = sensorPingAgeMs((query.frame - p.t0) * time.frameMs)
       if (sensorSincePingMs === null || since < sensorSincePingMs) sensorSincePingMs = since

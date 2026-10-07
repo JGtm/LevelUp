@@ -29,7 +29,8 @@ import (
 // HeldWeaponChangeStats compte ce que le balayage a vu, pour que l'appelant puisse juger la
 // couverture sans relire le film.
 type HeldWeaponChangeStats struct {
-	// Records est le nombre de records bipède ancrés dans le flux delta.
+	// Records est le nombre de records delta bipède reconnus : lus par la marche des trames, ou
+	// rendus par l ancrage derrière elle ([lecturesBipedes]).
 	Records int
 	// WithComponent est le nombre de records dont le masque annonce un emplacement d'arme.
 	WithComponent int
@@ -91,23 +92,27 @@ func ScanHeldWeaponChanges(
 	if err != nil {
 		return nil, st, err
 	}
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		return nil, st, err
+	}
 	var last struct {
 		high, low uint32
 		got       bool
 	}
 	obs := NouvelleObservation()
 	obs.HeldWeaponHook = func(h, l uint32) { last.high, last.low, last.got = h, l, true }
-	cfg.gram.obs = obs
 
 	chaine := newHeldWeaponChain(spawn)
 	var out []types.HeldWeaponChange
-	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		if !heldWeaponMaskHas(r.Mask, cfg.emplacements) {
-			return
+	st.Records = lu.examines
+	for i := range lu.records {
+		r := &lu.records[i]
+		if !heldWeaponMaskHas(r, cfg.emplacements) {
+			continue
 		}
 		st.WithComponent++
-		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, cfg.gram, func(id int) bool {
+		r.parcourir(obs, func(id int) bool {
 			rang, arme := cfg.emplacements[id]
 			if !arme || !last.got {
 				last.got = false
@@ -125,7 +130,7 @@ func ScanHeldWeaponChanges(
 			out = append(out, ch)
 			return true
 		})
-	})
+	}
 	return out, st, nil
 }
 
@@ -178,41 +183,30 @@ func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange, gen uint32) (rep
 }
 
 // qualifyHeldWeaponChange qualifie un changement. Une émission qui SUIT une autre sur le même
-// emplacement se lit contre elle. La PREMIÈRE émission d'un emplacement se juge contre le spawn :
+// emplacement se lit contre elle ; quand elle en répète la famille, c'est une RÉ-ANNONCE. La
+// PREMIÈRE émission d'un emplacement se juge contre le spawn :
 //
 //   - DOTATION DE NAISSANCE connue pour cet emplacement (lot M3.2) : la même famille est une
 //     ré-annonce ; sinon le changement part de l'arme de naissance, qui devient `Previous` — une
 //     prise sur emplacement vide, un échange, ou un lâcher qui NOMME l'arme lâchée ;
 //   - sinon, un ENSEMBLE de familles (relevé d'image-clé passé) : une famille déjà portée n'est
-//     qu'une ré-annonce, une famille absente est une acquisition.
+//     qu'une ré-annonce, une famille absente est une acquisition ;
+//   - un emplacement annoncé VIDE dont l'occupant n'est pas connu (ni dotation qui le situe, ni
+//     émission antérieure de la vie) est une RÉ-ANNONCE, pas un lâcher : rien ne dit qu'une arme
+//     l'occupait. La marche des trames, qui lit aussi les records sans position, en rend à chaque
+//     mise en place des joueurs (l'emplacement 2 de chacun, avant ses premières positions).
 func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st SpawnState, ok bool) {
-	switch {
-	case hadPrevious && ch.Family == noVariant:
-		ch.Kind = types.HeldWeaponDropped
-		return
-	case hadPrevious && ch.Previous == noVariant:
-		ch.Kind = types.HeldWeaponTaken
-		return
-	case hadPrevious:
-		ch.Kind = types.HeldWeaponSwapped
+	if hadPrevious {
+		qualifierContre(ch, ch.Previous)
 		return
 	}
 	if prev, connu := st.ParEmplacement[ch.Emplacement]; ok && connu {
-		switch {
-		case ch.Family == prev:
-			ch.Kind = types.HeldWeaponRestated
-		case ch.Family == noVariant:
-			ch.Previous, ch.Kind = prev, types.HeldWeaponDropped
-		case prev == noVariant:
-			ch.Kind = types.HeldWeaponTaken
-		default:
-			ch.Previous, ch.Kind = prev, types.HeldWeaponSwapped
-		}
+		qualifierContre(ch, prev)
 		return
 	}
 	switch {
 	case ch.Family == noVariant:
-		ch.Kind = types.HeldWeaponDropped
+		ch.Kind = types.HeldWeaponRestated
 	case ok && st.Families[ch.Family]:
 		ch.Kind = types.HeldWeaponRestated
 	default:
@@ -220,11 +214,25 @@ func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st Sp
 	}
 }
 
+// qualifierContre qualifie `ch` contre la famille `prev` qui occupait son emplacement : la même
+// famille est une ré-annonce, rien ne change ; un emplacement vidé est un lâcher, un emplacement
+// vide rempli une prise, une autre famille un échange. Un lâcher et un échange nomment l'arme
+// précédente.
+func qualifierContre(ch *types.HeldWeaponChange, prev uint32) {
+	switch {
+	case ch.Family == prev:
+		ch.Kind = types.HeldWeaponRestated
+	case ch.Family == noVariant:
+		ch.Previous, ch.Kind = prev, types.HeldWeaponDropped
+	case prev == noVariant:
+		ch.Kind = types.HeldWeaponTaken
+	default:
+		ch.Previous, ch.Kind = prev, types.HeldWeaponSwapped
+	}
+}
+
 // heldWeaponScan porte la configuration résolue une fois pour un film.
 type heldWeaponScan struct {
-	chunks []int
-	slots  SlotBand
-	gram   grammaireRecord
 	// emplacements donne le RANG de chaque composant `weapon-state-type-info` (index de
 	// composant -> rang), cf. [weaponEmplacements].
 	emplacements map[int]int
@@ -234,23 +242,19 @@ type heldWeaponScan struct {
 // du registre du film, jamais de constantes : un index de composant est un numéro de build.
 func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	var s heldWeaponScan
-	s.chunks = fc.ChunkNumbers()
-	if len(s.chunks) == 0 {
+	if len(fc.ChunkNumbers()) == 0 {
 		return s, ErrNoFilmChunk
 	}
-	s.slots = fc.BipedSlots()
-	if s.slots.Count() == 0 {
+	if fc.BipedSlots().Count() == 0 {
 		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, err := fc.I0Layout()
-	if err != nil {
+	if _, err := fc.I0Layout(); err != nil {
 		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return s, err
 	}
-	s.gram = grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
 	s.emplacements = weaponEmplacements(arch)
 	if len(s.emplacements) == 0 {
 		return s, fmt.Errorf("aucun %s dans l'archétype biped du film", compWeaponStateTypeInfo)
@@ -258,10 +262,10 @@ func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	return s, nil
 }
 
-// heldWeaponMaskHas dit si le masque annonce au moins un emplacement d'arme.
-func heldWeaponMaskHas(idx []int, emplacements map[int]int) bool {
-	for _, id := range idx {
-		if _, ok := emplacements[id]; ok {
+// heldWeaponMaskHas dit si le masque du record annonce au moins un emplacement d'arme.
+func heldWeaponMaskHas(r *recordBipedeLu, emplacements map[int]int) bool {
+	for id := range emplacements {
+		if r.annonce(id) {
 			return true
 		}
 	}

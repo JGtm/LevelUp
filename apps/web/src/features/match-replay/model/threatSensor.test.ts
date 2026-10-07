@@ -32,7 +32,7 @@ import {
 /** 100 ms par image : l'échelle réelle des artefacts du corpus (frameIntervalMs = 100). */
 const FRAME_MS = 100
 
-/** Le capteur du test : posé à l'origine, image 10, poseur = slot 1 (camp « t0 »). */
+/** Le capteur du test : posé à l'origine, image 10, poseur = slot 1 (camp 0). */
 function sensor(over: Partial<ReplayEquipmentPlacement> = {}): ReplayEquipmentPlacement {
   return { t0: 10, t1: 300, x: 0, y: 0, family: 'sensor', id: '0xcapteur', owner: 1, ...over }
 }
@@ -47,8 +47,8 @@ function life(slot: number, x: number, y: number, start = 0, end = 300): ReplayT
 }
 
 /** Camps : slot 1 et 2 dans « t0 », slot 3 dans « t1 », slot 9 sans camp connu. */
-const SIDES: Record<number, string | null> = { 1: 't0', 2: 't0', 3: 't1', 9: null }
-const sideOfSlot = (slot: number) => SIDES[slot] ?? null
+const SIDES: Record<number, number | null> = { 1: 0, 2: 0, 3: 1, 9: null }
+const campOfSlot = (slot: number) => SIDES[slot] ?? null
 
 describe('les chiffres officiels du capteur', () => {
   it('sont exactement ceux de la source citée', () => {
@@ -133,44 +133,44 @@ describe('sensorReveals — qui le ping révèle, et qui il ne révèle pas', ()
   const foeInside = life(3, 2, 0)
 
   it('un adversaire dans le rayon au ping est révélé', () => {
-    const out = sensorReveals([sensor()], { lives: [foeInside], sideOfSlot }, time)
+    const out = sensorReveals([sensor()], { lives: [foeInside], campOfSlot }, time)
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({ slot: 3, owner: 1, sinceMs: 0, x: 2, y: 0 })
   })
 
   it('un coéquipier du poseur ne l’est pas : le capteur ne montre pas son propre camp', () => {
     const mate = life(2, 2, 0)
-    expect(sensorReveals([sensor()], { lives: [mate], sideOfSlot }, time)).toEqual([])
+    expect(sensorReveals([sensor()], { lives: [mate], campOfSlot }, time)).toEqual([])
   })
 
   it('un adversaire hors du rayon ne l’est pas — la portée est celle de la source', () => {
     const far = life(3, SENSOR_RADIUS_M + 0.01, 0)
-    expect(sensorReveals([sensor()], { lives: [far], sideOfSlot }, time)).toEqual([])
+    expect(sensorReveals([sensor()], { lives: [far], campOfSlot }, time)).toEqual([])
     // Et juste à l'intérieur, il l'est : la borne est bien là où la source la met.
     const edge = life(3, SENSOR_RADIUS_M - 0.01, 0)
-    expect(sensorReveals([sensor()], { lives: [edge], sideOfSlot }, time)).toHaveLength(1)
+    expect(sensorReveals([sensor()], { lives: [edge], campOfSlot }, time)).toHaveLength(1)
   })
 
   it('une vie qui ne couvre pas l’image n’est pas révélée : un mort ne se détecte pas', () => {
     const dead = life(3, 2, 0, 0, 5) // vie close à l'image 5, le ping est à l'image 10
-    expect(sensorReveals([sensor()], { lives: [dead], sideOfSlot }, time)).toEqual([])
+    expect(sensorReveals([sensor()], { lives: [dead], campOfSlot }, time)).toEqual([])
   })
 
   it('sans poseur mesuré, AUCUNE révélation : on ignore le camp du capteur', () => {
     const orphan = sensor({ owner: -1 })
-    expect(sensorReveals([orphan], { lives: [foeInside], sideOfSlot }, time)).toEqual([])
+    expect(sensorReveals([orphan], { lives: [foeInside], campOfSlot }, time)).toEqual([])
   })
 
   it('sans camp connu (ni pour le poseur, ni pour la cible), aucune révélation non plus', () => {
     // Poseur sans ligne de scoreboard.
-    expect(sensorReveals([sensor({ owner: 9 })], { lives: [foeInside], sideOfSlot }, time)).toEqual([])
+    expect(sensorReveals([sensor({ owner: 9 })], { lives: [foeInside], campOfSlot }, time)).toEqual([])
     // Cible sans ligne de scoreboard : on ne l'appelle pas « ennemie » pour autant.
     const unknown = life(9, 2, 0)
-    expect(sensorReveals([sensor()], { lives: [unknown], sideOfSlot }, time)).toEqual([])
+    expect(sensorReveals([sensor()], { lives: [unknown], campOfSlot }, time)).toEqual([])
   })
 
   it('la marque dure 0,75 s après le ping, puis le capteur attend le suivant', () => {
-    const scene = { lives: [foeInside], sideOfSlot }
+    const scene = { lives: [foeInside], campOfSlot }
     const at = (ms: number) => sensorReveals([sensor()], scene, { frame: 10 + ms / FRAME_MS, frameMs: FRAME_MS })
     expect(at(0)).toHaveLength(1)
     expect(at(SENSOR_REVEAL_MS)).toHaveLength(1)
@@ -192,7 +192,7 @@ describe('sensorReveals — qui le ping révèle, et qui il ne révèle pas', ()
         { t: 15, x: 20, y: 0 },
       ],
     }
-    const out = sensorReveals([sensor()], { lives: [leaving], sideOfSlot }, { frame: 15, frameMs: FRAME_MS })
+    const out = sensorReveals([sensor()], { lives: [leaving], campOfSlot }, { frame: 15, frameMs: FRAME_MS })
     // Elle reste marquée (elle était là au ping) ET la marque a suivi jusqu'à sa position.
     expect(out).toHaveLength(1)
     expect(out[0].x).toBeCloseTo(20, 6)
@@ -209,14 +209,14 @@ describe('sensorReveals — qui le ping révèle, et qui il ne révèle pas', ()
         { t: 15, x: 1, y: 0 },
       ],
     }
-    expect(sensorReveals([sensor()], { lives: [entering], sideOfSlot }, { frame: 15, frameMs: FRAME_MS })).toEqual([])
+    expect(sensorReveals([sensor()], { lives: [entering], campOfSlot }, { frame: 15, frameMs: FRAME_MS })).toEqual([])
   })
 
   it('deux capteurs sur la même vie ne posent qu’UNE marque, la plus fraîche', () => {
     // Le second est posé 5 images plus tard : son ping est donc plus récent à l'image 12.
     const a = sensor({ id: '0xa', t0: 10, owner: 1 })
     const b = sensor({ id: '0xb', t0: 12, owner: 2 })
-    const out = sensorReveals([a, b], { lives: [foeInside], sideOfSlot }, { frame: 12, frameMs: FRAME_MS })
+    const out = sensorReveals([a, b], { lives: [foeInside], campOfSlot }, { frame: 12, frameMs: FRAME_MS })
     expect(out).toHaveLength(1)
     expect(out[0].owner).toBe(2)
     expect(out[0].sinceMs).toBe(0)
@@ -233,7 +233,7 @@ describe('sensorReveals — qui le ping révèle, et qui il ne révèle pas', ()
         { t: 13, x: 1, y: 4 },
       ],
     }
-    const out = sensorReveals([sensor()], { lives: [moving], sideOfSlot }, { frame: 13, frameMs: FRAME_MS })
+    const out = sensorReveals([sensor()], { lives: [moving], campOfSlot }, { frame: 13, frameMs: FRAME_MS })
     expect(out).toHaveLength(1)
     expect(out[0].y).toBeCloseTo(4, 6)
   })
@@ -241,28 +241,28 @@ describe('sensorReveals — qui le ping révèle, et qui il ne révèle pas', ()
   // MULTI-MANCHE : un slot de biped est réattribué entre manches. Le camp doit se lire à
   // l'image qui identifie le bon joueur — le POSEUR à sa pose, la CIBLE au ping — jamais à
   // l'image courante, où le slot peut appartenir à quelqu'un d'un autre camp. Les deux tests
-  // ci-dessous le prouvent par CONTRE-ÉPREUVE : le double `sideOfSlot` renvoie, à l'image
+  // ci-dessous le prouvent par CONTRE-ÉPREUVE : le double `campOfSlot` renvoie, à l'image
   // courante, un camp qui FERAIT ÉCHOUER la révélation ; elle n'a lieu que si la bonne image
   // a été employée.
   it('le POSEUR se lit à sa POSE (t0), jamais à l’image courante', () => {
-    // Slot 1 : poseur de camp « t0 » en manche 0 ; le slot revient à un joueur de camp « t1 »
-    // plus tard. La cible (slot 3) est de camp « t1 ». Résolu à t0=10 → t0, adversaire de la
-    // cible → révélation. Résolu à l'image courante 30 → t1 = la cible → aucune.
+    // Slot 1 : poseur du camp 0 en manche 0 ; le slot revient à un joueur du camp 1 plus tard.
+    // La cible (slot 3) est du camp 1. Résolu à t0=10 → camp 0, adversaire de la cible →
+    // révélation. Résolu à l'image courante 30 → camp 1 = la cible → aucune.
     const sideAt = (slot: number, frame: number) =>
-      slot === 1 ? (frame < 20 ? 't0' : 't1') : slot === 3 ? 't1' : null
-    const out = sensorReveals([sensor()], { lives: [foeInside], sideOfSlot: sideAt }, { frame: 30, frameMs: FRAME_MS })
+      slot === 1 ? (frame < 20 ? 0 : 1) : slot === 3 ? 1 : null
+    const out = sensorReveals([sensor()], { lives: [foeInside], campOfSlot: sideAt }, { frame: 30, frameMs: FRAME_MS })
     expect(out).toHaveLength(1)
     // L'image de la pose voyage avec la révélation : le calque colore la marque par le poseur.
     expect(out[0].ownerFrame).toBe(10)
   })
 
   it('la CIBLE se lit au PING, jamais à l’image courante', () => {
-    // Slot 3 : adversaire (« t1 ») au ping (image 28) ; le slot passe au camp du poseur (« t0 »)
-    // à l'image courante 30. Résolue au ping → t1, adversaire → révélation ; résolue à 30 → t0 =
-    // poseur → aucune.
+    // Slot 3 : adversaire (camp 1) au ping (image 28) ; le slot passe au camp du poseur (camp 0)
+    // à l'image courante 30. Résolue au ping → camp 1, adversaire → révélation ; résolue à 30 →
+    // camp 0 = poseur → aucune.
     const sideAt = (slot: number, frame: number) =>
-      slot === 1 ? 't0' : slot === 3 ? (frame < 29 ? 't1' : 't0') : null
-    const out = sensorReveals([sensor()], { lives: [foeInside], sideOfSlot: sideAt }, { frame: 30, frameMs: FRAME_MS })
+      slot === 1 ? 0 : slot === 3 ? (frame < 29 ? 1 : 0) : null
+    const out = sensorReveals([sensor()], { lives: [foeInside], campOfSlot: sideAt }, { frame: 30, frameMs: FRAME_MS })
     expect(out).toHaveLength(1)
   })
 })

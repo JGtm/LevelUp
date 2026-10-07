@@ -12,6 +12,8 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from '../test/testDoc'
 
@@ -37,7 +39,7 @@ describe('ReplayPlayerCard — aucun état de mouvement (décision du 2026-09-23
       const doc = documentAvecEtats()
       // Le document porte bien les cinq genres : c'est la fiche qui se tait, pas la donnée.
       expect(doc.stances).toHaveLength(GENRES.length)
-      const { container } = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale={locale} />)
+      const { container } = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={[]} frame={10} locale={locale} />)
       const texte = container.textContent ?? ''
       // La fiche est bien rendue (le nom est là) : l'absence ne vient pas d'une fiche vide.
       expect(texte).toContain('Alpha')

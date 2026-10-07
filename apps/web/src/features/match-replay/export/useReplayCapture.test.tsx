@@ -25,6 +25,8 @@ import { captureCanvasImage, triggerDownload } from './replayCapture'
 import { pickVideoMimeType } from './replayRecording'
 import { testReplayDoc } from '../test/testDoc'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { buildFilmAllegiance, NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
+import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 import { useReplayCapture } from './useReplayCapture'
 
 /**
@@ -78,7 +80,7 @@ function mount(
   const play = vi.fn()
   const view = renderHook(
     ({ playing }: { playing: boolean }) =>
-      useReplayCapture({ canvasRef, doc: DOC, frameRef, playing, play, audioTrack, viewpoint: null }),
+      useReplayCapture({ canvasRef, doc: DOC, frameRef, playing, play, audioTrack, viewpoint: null, allegiance: NO_ALLEGIANCE }),
     { initialProps: { playing: true }, wrapper: Provider },
   )
   return { ...view, play }
@@ -404,6 +406,17 @@ describe('useReplayCapture — le mot du verdict transmis à l’export', () => 
   /** Le même lobby, plus un COÉQUIPIER du joueur de la page. */
   const SB_TRIO = [...SB, { xuid: 'pote', team_side: 't0', is_me: false } as MatchScoreboardRow]
 
+  /**
+   * L'allégeance du FILM de la page, vue du point de vue (le joueur de la page à défaut, comme le
+   * modèle) : chaque joueur de la feuille porte au film l'équipe de son côté.
+   */
+  function allegeanceDe(board: MatchScoreboardRow[], viewpoint: string | null) {
+    const joueurs = board.map(
+      (r) => ({ xuid: r.xuid, team: Number((r.team_side ?? '').slice(1)), lives: [], board: r }) as ReplayPlayer,
+    )
+    return buildFilmAllegiance(joueurs, viewpoint ?? 'moi')
+  }
+
   /** Monte la capture avec un verdict et un point de vue, et rend les options vues par l'export. */
   function optionsPour(
     viewpoint: string | null,
@@ -426,6 +439,7 @@ describe('useReplayCapture — le mot du verdict transmis à l’export', () => 
           // hook tourne quand même, mais son résultat est jeté — et les options nous échappent.
           redraw: vi.fn(),
           scoreboard: board,
+          allegiance: allegeanceDe(board, viewpoint),
           outcome: OUTCOME,
           viewpoint,
         }),

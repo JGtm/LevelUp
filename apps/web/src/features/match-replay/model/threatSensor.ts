@@ -48,12 +48,12 @@
  *  - ELLE NE SURVIT PAS À SA CIBLE : une vie qui se termine pendant la fenêtre perd sa marque
  *    à l'image même. La mort a déjà son calque, la marque n'a rien à y ajouter.
  *
- * LE CAMP EST CELUI DE LA BASE (`team_side`), PAS « allié / adverse ». Le drapeau d'alliance
- * est relatif au joueur de la page : il rangerait tout le monde en deux camps, ce qui est faux
- * en mêlée générale et en BTB à quatre camps. Ce qu'il faut savoir ici, c'est si DEUX vies
- * s'opposent. Sans camp connu — poseur non mesuré (`owner < 0`), ou vie sans ligne de
- * scoreboard — AUCUNE révélation : le ping se dessine quand même (il est mesuré, lui), et
- * rien n'affirme une inimitié dont on ne sait rien.
+ * LE CAMP EST L'ÉQUIPE DU FILM (`campResolver`), PAS « allié / adverse ». Le drapeau d'alliance
+ * est relatif au joueur regardé : il rangerait tout le monde en deux camps, ce qui est faux en
+ * BTB à quatre camps. Ce qu'il faut savoir ici, c'est si DEUX vies s'opposent. Sans camp connu
+ * — poseur non mesuré (`owner < 0`), vie dont le film tait l'équipe ou n'en donne aucune
+ * (mêlée générale) — AUCUNE révélation : le ping se dessine quand même (il est mesuré, lui),
+ * et rien n'affirme une inimitié dont on ne sait rien.
  *
  * COÛT PAR IMAGE, MESURÉ SUR LE CORPUS LOCAL (27 artefacts, 2026-08-17). Un seul en porte :
  * `000d5950`, 19 capteurs, tous avec poseur mesuré — au plus DEUX actifs en même temps, et au
@@ -159,11 +159,11 @@ export interface SensorScene {
   /** Toutes les vies : le balayage filtre lui-même sur la fenêtre de vie. */
   lives: readonly ReplayTrackReady[]
   /**
-   * Camp de la vie qui occupe un slot À UNE IMAGE (`team_side` de la base) ; null = camp inconnu,
+   * Camp de la vie qui occupe un slot À UNE IMAGE (son équipe du FILM) ; null = camp inconnu,
    * donc jamais un ennemi. La frame est nécessaire parce qu'un slot de biped est réattribué
    * entre manches : le poseur se lit à l'instant de sa POSE, la cible à l'instant du PING.
    */
-  sideOfSlot: (slot: number, frame: number) => string | null
+  campOfSlot: (slot: number, frame: number) => number | null
 }
 
 /** L'onde du ping courant : où elle en est de sa course, et ce qu'il lui reste d'opacité. */
@@ -254,7 +254,7 @@ export function sensorReveals(
     if (s.owner < 0) continue
     // LE POSEUR SE LIT À L'INSTANT DE LA POSE (`s.t0`) : il était alors vivant sur ce slot, et
     // c'est SON camp qui voit. À l'image courante, le slot pourrait déjà être libre ou à un autre.
-    const side = scene.sideOfSlot(s.owner, s.t0)
+    const side = scene.campOfSlot(s.owner, s.t0)
     if (side === null) continue
     const sinceMs = sensorPingAgeMs((time.frame - s.t0) * time.frameMs)
     if (sinceMs > SENSOR_REVEAL_MS) continue
@@ -268,7 +268,7 @@ export function sensorReveals(
       if (!isAliveAt(life, time.frame)) continue
       // La CIBLE se lit à l'instant du PING, où elle est vivante (contrôle ci-dessus) : c'est le
       // camp de la vie qui occupe alors ce slot, jamais celui d'une autre manche.
-      const other = scene.sideOfSlot(life.slot, pingFrame)
+      const other = scene.campOfSlot(life.slot, pingFrame)
       if (other === null || other === side) continue
       const atPing = positionAt(life.points, pingFrame)
       if (!atPing) continue

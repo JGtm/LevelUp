@@ -297,6 +297,38 @@ describe('MatchEquipmentUsageSection — la part de chaque équipe (5.A, 2026-09
     ])
   })
 
+  /** L'encre du segment d'un camp, sur la piste du grappin. */
+  const encreDuCamp = (vue: ReturnType<typeof afficher>, camp: number) =>
+    vue.container
+      .querySelector(`[data-testid="usage-famille-grapple.pulls-camp:${camp}"]`)!
+      .closest('[style*="background-color"]')!
+      .getAttribute('style')
+
+  it('LE CAMP DU JOUEUR DE LA PAGE SE LIT DANS LE FILM : une feuille qui le dit en face ne change ni l’ordre ni l’encre', () => {
+    poserArtefact(TEMOIN)
+    // La feuille range Alpha (`is_me`) du côté t1 ; le film l'écrit au camp 0.
+    const contradictoire = SCOREBOARD.map((r) => (r.xuid === 'a1' ? { ...r, team_side: 't1' } : r))
+    const vue = afficher('fr', contradictoire)
+    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
+    expect(piste.querySelector('[data-testid]')?.getAttribute('data-testid')).toBe('usage-famille-grapple.pulls-camp:0')
+    expect(encreDuCamp(vue, 0)).toContain('team-ally')
+    expect(encreDuCamp(vue, 1)).toContain('team-enemy')
+  })
+
+  it('joueur de la page dont le film TAIT l’équipe : aucun camp n’a d’encre d’équipe, l’ordre du film reste', () => {
+    poserArtefact({
+      ...TEMOIN,
+      roster: TEMOIN.roster!.map((e) => (e.xuid === 'a1' ? { ...e, team: undefined } : e)),
+    } as Partial<ReplayDocument>)
+    const vue = afficher()
+    const piste = vue.container.querySelector('[data-testid="usage-famille-grapple.pulls"]')!
+    expect(piste.querySelector('[data-testid]')?.getAttribute('data-testid')).toBe('usage-famille-grapple.pulls-camp:0')
+    for (const camp of [0, 1]) {
+      expect(encreDuCamp(vue, camp)).toContain('muted-foreground')
+      expect(encreDuCamp(vue, camp)).not.toContain('team-')
+    }
+  })
+
   it('met toutes les pistes sur UNE échelle commune : la plus grosse famille fait la longueur', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()

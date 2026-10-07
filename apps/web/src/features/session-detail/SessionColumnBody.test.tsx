@@ -1,31 +1,31 @@
 /**
- * SessionColumnBody.test.tsx — LES QUATRE TITRES DE SECTION de la page session, et la
- * seule chose qui doit les faire bouger : la donnée.
+ * SessionColumnBody.test.tsx — LES TITRES DE LA PAGE SESSION et les cartes « Frags et usages » qu'ils
+ * coiffent (plan PLAN_SESSIONS_EMPRISE_2026-10-06, S4.8), et la seule chose qui doit les faire bouger :
+ * la donnée.
  *
- * CE QUE CE FICHIER FIXE, et pourquoi chaque point a sa raison d'être :
- *   1. QUATRE titres, dans l'ORDRE — « Bilan », « Match par match », « Frags et usages »,
- *      « Détail des matchs ». Ni cinq, ni un onglet.
- *   2. UN TITRE NE SE POSE JAMAIS AU-DESSUS DE RIEN : sans frags ni usages, la section 3
- *      disparaît ENTIÈREMENT, titre compris. C'est le seul groupe dont tous les blocs
- *      peuvent manquer à la fois.
- *   3. L'état « aucun film » COMPTE POUR UN BLOC : il porte une phrase et un dénominateur,
- *      la section reste donc titrée au-dessus de lui.
- *   4. IDENTITÉ compact / non compact — le drawer de comparaison monte le MÊME composant ;
- *      des titres différents d'un côté décaleraient les deux colonnes d'une ligne, ce qui
- *      est exactement ce que la comparaison côte à côte doit empêcher.
+ * CE QUE CE FICHIER FIXE :
+ *   1. QUATRE titres de groupe, dans l'ORDRE — « Bilan », « Match par match », « Frags et usages »,
+ *      « Détail des matchs » ; sous « Frags et usages », les intertitres des sous-groupes dans l'ordre
+ *      de la maquette, « Ressources » avec sa couverture (pleine page seulement).
+ *   2. Les cartes A à L dans l'ordre de la maquette, chacune se retirant seule sans donnée ; un
+ *      sous-groupe sans carte n'a pas d'intertitre ; sans aucune carte, « Frags et usages » disparaît.
+ *   3. Halo 5 (sans film) : A, B, B' et G seulement, aucun intertitre de ressources.
+ *   4. IDENTITÉ compact / non compact des titres de groupe (le tiroir monte le MÊME composant).
+ *   5. L'anglais.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-
-import type { SessionCompareEntry, SessionUsageBlock } from '@/lib/api/types'
-
-import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
+import { soloEmpriseSansFilm } from '@/features/timeseries/usages/usages.fixtures'
+import type { SessionCompareEntry } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { SessionColumnBody } from './SessionColumnBody'
+import { session0709, session2209, sessionSolo } from './sessionEmprise.fixtures'
+import type { SessionColumnBlocks } from './sessionEmprise.logic'
 
-// ECharts (canvas) ne peint pas dans jsdom : ce fichier ne lit que des titres.
+// ECharts (canvas) ne peint pas dans jsdom : ce fichier lit des titres et des cadres de cartes.
 vi.mock('echarts-for-react', () => ({ default: () => null }))
 
 // Le tableau des matchs monte des liens de route ; on n'en teste rien ici.
@@ -39,57 +39,36 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
+afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
+
 const SECTIONS = ['Bilan', 'Match par match', 'Frags et usages', 'Détail des matchs'] as const
 
-/** Session dont la répartition des frags est servie → la carte des frags se dessine. */
-const ENTRY_AVEC_FRAGS = {
-  session_label: '2026-04-21 19h30',
-  start_time: '2026-04-21T19:30:00Z',
-  end_time: '2026-04-21T20:05:00Z',
-  total_matches: 2,
-  wins: 2,
-  losses: 0,
-  kda: 2.4,
-  kdr: 1.8,
-  kills_per_match: 13,
-  win_rate: 100,
-  performance_score: 68.5,
-  with_friends: false,
-  dominant_category: 'Ranked',
-  matches: null,
-  match_series: null,
-  participation: null,
-  frag_distribution: {
-    total_kills: 26,
-    classes: [{ class: 'shoulder', kills: 26, roles: [] }],
-  },
-  top_weapon_kills: [{ label: 'MA40', kills: 12, class: 'shoulder' }],
-} as unknown as SessionCompareEntry
+/** Les cadres des cartes A à L, par leur repère de test (B et B' : le titre de leur carte de graphe). */
+const CARD_IDS: [string, string][] = [
+  ['frag_bar', '[data-testid="squad-frag-breakdown"]'],
+  ['control', '[data-testid="emprise-control"]'],
+  ['fil', '[data-testid="emprise-fil"]'],
+  ['grid', '[data-testid="emprise-grid"]'],
+  ['mine', '[data-testid="usages-mine"]'],
+  ['production', '[data-testid="emprise-production"]'],
+  ['yield', '[data-testid="emprise-yield"]'],
+  ['lives', '[data-testid="usages-lives"]'],
+  ['objective_balance', '[data-testid="objective-balance"]'],
+  ['objective_sheet', '[data-testid="objective-solo-sheet"]'],
+  ['equipment', '[data-testid="usages-equipment"]'],
+]
 
-/** Même session, sans aucune donnée de frags : la carte des frags rend `null`. */
-const ENTRY_SANS_FRAGS = {
-  ...ENTRY_AVEC_FRAGS,
-  frag_distribution: undefined,
-  top_weapon_kills: [],
-} as unknown as SessionCompareEntry
-
-/** Bloc d'usage mesuré : la carte « Contrôle des armes spéciales » se dessine. */
-const USAGE_MESURE: SessionUsageBlock = {
-  available: true,
-  matches_measured: 4,
-  matches_total: 6,
-  team_parity_pct: 25,
-  metrics: [
-    {
-      key: 'pad_pickups',
-      player_total: 9,
-      team_total: 20,
-      lobby_total: 43,
-      matches_above_lobby_parity: 1,
-      player_share_of_team_pct: 45,
-      per_match: [{ match_id: 'm1', player_share_of_team_pct: 45 }],
-    },
-  ],
+/** Les cartes rendues, dans l'ordre du document ; B repérée par son titre. */
+function cartes(container: HTMLElement): string[] {
+  const sel = CARD_IDS.map(([, s]) => s).join(', ')
+  const nodes = Array.from(container.querySelectorAll(`${sel}, [data-testid="chart-card"]`))
+  return nodes
+    .map((n) => {
+      const hit = CARD_IDS.find(([, s]) => n.matches(s))
+      if (hit) return hit[0]
+      return n.textContent?.includes('Outils de destruction') || n.textContent?.includes('Tools of destruction') ? 'tools' : ''
+    })
+    .filter((k, i, all) => k !== '' && all.indexOf(k) === i)
 }
 
 function titresRendus(): string[] {
@@ -99,86 +78,122 @@ function titresRendus(): string[] {
     .filter((label) => (SECTIONS as readonly string[]).includes(label))
 }
 
-function monter(props: Partial<React.ComponentProps<typeof SessionColumnBody>> = {}) {
-  return renderWithProviders(
-    <SessionColumnBody
-      entry={ENTRY_AVEC_FRAGS}
-      matches={[]}
-      playerSlug="moi"
-      compact={false}
-      usage={USAGE_MESURE}
-      {...props}
-    />,
-  )
+function intertitres(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('[data-session-subgroup]')).map((h) => h.textContent ?? '')
 }
 
-describe('SessionColumnBody — les quatre titres de section', () => {
-  it('donnée complète : les quatre titres, dans l’ordre', () => {
-    monter()
+function monter(blocks: SessionColumnBlocks, compact = false) {
+  return renderWithProviders(<SessionColumnBody blocks={blocks} playerSlug="moi" compact={compact} />)
+}
+
+describe('SessionColumnBody — titres de groupe et intertitres', () => {
+  it('soirée du 22/09 : quatre titres de groupe, intertitres dans l’ordre, couverture des ressources', () => {
+    const { container } = monter(session2209())
     expect(titresRendus()).toEqual([...SECTIONS])
+    expect(intertitres(container)).toEqual([
+      'Ressources6 matchs filmés sur 7 · frags de la feuille de match sur les 7',
+      'Rendement des ressources',
+      'Isolement',
+      'Objectif',
+    ])
   })
 
-  it('la bande KPI reste sans titre (elle n’est pas une 5e section)', () => {
-    monter()
-    // Exactement quatre titres de section reconnus, pas un de plus.
-    expect(titresRendus()).toHaveLength(4)
+  it('les cartes A à L, dans l’ordre de la maquette ; l’équipement non servi n’a ni carte ni intertitre', () => {
+    const { container } = monter(session2209())
+    expect(cartes(container)).toEqual([
+      'frag_bar',
+      'tools',
+      'control',
+      'fil',
+      'grid',
+      'mine',
+      'production',
+      'yield',
+      'lives',
+      'objective_balance',
+      'objective_sheet',
+    ])
+    expect(screen.queryByText('Équipement')).not.toBeInTheDocument()
   })
 
-  it('la section 3 coiffe BIEN les cartes d’usage (et pas une section voisine)', () => {
-    monter()
-    const section = screen.getByText('Frags et usages').closest('section')
-    expect(section).not.toBeNull()
-    expect(
-      within(section as HTMLElement).getByText(USAGE_TEXT.fr.blockPadControl),
-    ).toBeInTheDocument()
+  it('les paires A|B, C|D, G|H partagent une rangée en pleine page', () => {
+    const { container } = monter(session2209())
+    const pairs = Array.from(container.querySelectorAll('[data-session-pair]')).map((n) => n.getAttribute('data-session-pair'))
+    expect(pairs).toEqual(['frag_bar|tools', 'control|fil', 'production|yield'])
   })
 })
 
-describe('SessionColumnBody — un titre ne se pose pas au-dessus de rien', () => {
-  it('ni frags ni usages : la section « Frags et usages » disparaît ENTIÈREMENT', () => {
-    monter({ entry: ENTRY_SANS_FRAGS, usage: undefined })
+describe('SessionColumnBody — chaque carte se retire seule', () => {
+  it('session solo sans match à objectif : ni rapport de force, ni fiche, ni intertitre « Objectif »', () => {
+    const { container } = monter(sessionSolo())
+    expect(cartes(container)).not.toContain('objective_balance')
+    expect(cartes(container)).not.toContain('objective_sheet')
+    expect(intertitres(container)).not.toContain('Objectif')
+    // Aucune prise de ressource : ni contrôle, ni fil, ni « Contribution aux prises ».
+    expect(cartes(container)).not.toContain('control')
+    expect(cartes(container)).not.toContain('mine')
+  })
+
+  it('aucune carte : « Frags et usages » disparaît ENTIÈREMENT, titre compris', () => {
+    monter({ entry: { ...session2209().entry, frag_distribution: undefined, weapon_tools: undefined } as unknown as SessionCompareEntry, matches: [] })
     expect(titresRendus()).toEqual(['Bilan', 'Match par match', 'Détail des matchs'])
-    expect(screen.queryByText('Frags et usages')).not.toBeInTheDocument()
   })
 
-  it('titre sans décodeur de film (unsupported) et sans frags : toujours pas de section 3', () => {
-    monter({
-      entry: ENTRY_SANS_FRAGS,
-      usage: { available: false, unavailable_reason: 'unsupported', matches_measured: 0, matches_total: 6 },
+  it('Halo 5 (sans film) : A, B, B’ et G seulement, sans intertitre de ressources', () => {
+    const base = session2209()
+    const { container } = monter({
+      entry: { ...base.entry, weapon_accuracy: [{ weapon_name: 'BR', shots_fired: 10, shots_hit: 5, accuracy: 50 }] } as unknown as SessionCompareEntry,
+      matches: base.matches,
+      emprise: soloEmpriseSansFilm(),
     })
-    expect(screen.queryByText('Frags et usages')).not.toBeInTheDocument()
-  })
-
-  it('frags seuls (aucun bloc d’usage) : la section 3 existe quand même', () => {
-    monter({ usage: undefined })
-    expect(titresRendus()).toEqual([...SECTIONS])
-  })
-
-  it('usages seuls, état « aucun film » : c’est un bloc visible, la section 3 le coiffe', () => {
-    monter({
-      entry: ENTRY_SANS_FRAGS,
-      usage: { available: true, matches_measured: 0, matches_total: 6 },
-    })
-    expect(titresRendus()).toEqual([...SECTIONS])
-    // Le vocabulaire des états vides a été refondu le 2026-09-21 (D8, `usageEmptyMessage`) :
-    // la cause est NOMMÉE (« aucun film décodé ») au lieu du « aucune donnée » d'avant.
-    expect(screen.getByText(USAGE_TEXT.fr.emptyNoFilm)).toBeInTheDocument()
+    expect(cartes(container)).toEqual(['frag_bar', 'tools', 'production'])
+    expect(screen.getByText('Précision par arme')).toBeInTheDocument()
+    expect(intertitres(container)).toEqual(['Rendement des ressources'])
   })
 })
 
-describe('SessionColumnBody — le mode comparer monte les mêmes sections', () => {
-  it('compact et non compact : mêmes titres, même ordre', () => {
-    const plein = monter()
+describe('SessionColumnBody — le tiroir monte les mêmes groupes', () => {
+  it('compact et non compact : mêmes titres de groupe, même ordre', () => {
+    const plein = monter(session2209())
     const titresPlein = titresRendus()
     plein.unmount()
-
-    monter({ compact: true, participationSide: 'left' })
+    monter(session2209(), true)
     expect(titresRendus()).toEqual(titresPlein)
-    expect(titresRendus()).toEqual([...SECTIONS])
   })
 
-  it('compact : la section 3 disparaît aux mêmes conditions que la colonne pleine', () => {
-    monter({ compact: true, entry: ENTRY_SANS_FRAGS, usage: undefined })
-    expect(titresRendus()).toEqual(['Bilan', 'Match par match', 'Détail des matchs'])
+  it('compact : chaque carte est en vue compacte (A : parts et total en sous-libellé)', () => {
+    monter(session2209(), true)
+    expect(screen.getByText('65 frags')).toBeInTheDocument()
+    expect(screen.queryByTestId('frag-breakdown-total-JGtm')).not.toBeInTheDocument()
+    // Le jeu de textes de la vue compacte : légende de la grille réduite (maquette `makeGrid`, `cp`).
+    expect(screen.getByText('Plus de 50 %')).toBeInTheDocument()
+    expect(screen.queryByText('Plus que l’adversaire')).not.toBeInTheDocument()
+  })
+
+  it('compact, 07/09 : le rapport de force par rôle (Bases, prendre : 46 % / 54 %, MESURES §3)', () => {
+    monter(session0709(), true)
+    const row = screen.getByTestId('objective-balance-row-zones_strongholds-take')
+    expect([...row.querySelectorAll('[data-fit-label]')].map((l) => l.textContent)).toEqual(['46 %', '54 %'])
+  })
+
+  it('pleine page, 07/09 : les actions, pas la barre par rôle', () => {
+    monter(session0709())
+    expect(screen.queryByTestId('objective-balance-row-zones_strongholds-take')).not.toBeInTheDocument()
+    expect(screen.getByTestId('objective-balance')).toBeInTheDocument()
+  })
+})
+
+describe('SessionColumnBody — anglais', () => {
+  it('titres et intertitres en anglais', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    const { container } = monter(session2209())
+    expect(intertitres(container)).toEqual([
+      'Resources6 filmed matches of 7 · kills from the match sheet over all 7',
+      'Resource efficiency',
+      'Isolation',
+      'Objective',
+    ])
+    // L'intertitre et le titre de la carte portent le même nom (Séries temporelles).
+    expect(screen.getAllByText('Isolation')).toHaveLength(2)
   })
 })

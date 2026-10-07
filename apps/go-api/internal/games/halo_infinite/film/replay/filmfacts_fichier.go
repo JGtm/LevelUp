@@ -177,10 +177,17 @@ const VersionCodecFaits = 2
 // doctrine (« il monte quand une section change de contenu ») au lieu de s en remettre a elles. Le
 // lot 5.18.1 (`ControleDeCorruption`, 2026-09-22) avait elargi la meme section sans le monter : tout
 // fichier du schema 4 est desormais refuse sur son en-tete, celui-la compris.
-// SCHEMA 6 (2026-10-06, branche `feat/zones-etat-initial`) : la section 1 porte, a la suite des
+// SCHEMA 6 (2026-10-06, lot « Rejeu : toute entree du roster a l equipe que le film ecrit ») : la
+// section 5 porte L EQUIPE DE CHAQUE BOT lue dans BOT_METADATA (`BotEntry.Team`) et le bilan de sa
+// lecture (`Roster.BotEquipes`) ; la liaison des occupants en fait l equipe des bots qu aucune
+// entite `ti=9` ne porte. Les faits du schema 5 (vue A) ne la portent pas. `killsource.Rev` ne monte
+// pas (aucune ligne de kill ne change, cf. sa chronique) : c est ce numero qui refuse, SUR L EN-TETE,
+// un fichier d avant — sans lui, des faits « frais » sans equipe de bot se rejoueraient, et le
+// correctif n atteindrait aucun artefact.
+// SCHEMA 7 (2026-10-07, branche `feat/zones-etat-initial`) : la section 1 porte, a la suite des
 // lectures delta de l etat des zones, ses lectures d IMAGE-CLE (`FilmInputs.ZoneKeyReads`,
 // `encodeGardesDeMode`). Le blob ne change pas ; ce que la section porte, si.
-const SchemaDesFaits = 6
+const SchemaDesFaits = 7
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

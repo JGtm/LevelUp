@@ -2833,7 +2833,69 @@ package replay
 //
 //	LE PARC         un artefact 78 dont les faits sont sur disque : verdict `republier`.
 
-// v80 (2026-10-06, zones a l etat initial) : UNE ZONE TENUE DES LE COUP D ENVOI SE PUBLIE TENUE DES
+// v80 (2026-10-06, rejeu « toute entree du roster a l equipe que le film ecrit ») : L EQUIPE D UN
+// BOT QU AUCUNE ENTITE NE PORTE SE LIT DANS SA DECLARATION BOT_METADATA, ET LE BOUCHE-TROU PREND LA
+// PLACE DU PARTANT.
+//
+//	`roster[].team` un bot declare entre deux images-cles porteuses (aucune entite `ti=9` lue) prend
+//	`tracks[].team` l equipe que son entree BOT_METADATA ecrit (`killsource/botmeta_equipe.go`) ; la
+//	               table par index ne la remplace plus (elle pretait celle d un autre occupant de
+//	               l index : `c7f94693`, vie de `343 Donos` publiee 0, equipe 1). Ses vies la suivent.
+//	`roster[].seat` le bot prend la place du partant par le chainage d equipe ; un relais a la frame
+//	`roster[].     (bot declare a la frame ou finit la derniere vie du partant) n est plus un
+//	presence`      chevauchement ; l humain lu pendant la declaration du bot, sans vie avant son
+//	               retrait, lui succede : sa presence commence au lendemain du retrait. Sur les 19
+//	               temoins du lot (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.5) :
+//	               `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `depassements` 229 -> 60 ; les trois
+//	               restes ne viennent pas de l equipe (une vie nommee apres l absence prouvee de son
+//	               entite, un bot non epingle hors du roster, un depart apres la derniere image-cle).
+//	forme          AUCUN CHAMP NEUF : la forme du document ne change pas, son CONTENU change.
+//	journal        une entree presente sans equipe en ERREUR ; un bot dont l entite contredit la
+//	               declaration en ERREUR et au compteur `rejeu_bots_equipe_contre_declaration` (l entite
+//	               est publiee) ; une entree sans place ou une equipe au-dela de sa capacite en
+//	               avertissement ; les equipes lues par declaration et les successions en info.
+//
+//	CE QUI MONTE    `SchemaVersion` 79 -> 80, et `SchemaDesFaits` 5 -> 6 (la section 5 des faits
+//	AVEC ELLE       porte l equipe de chaque bot ; le 5 est celui de la vue A). `source`,
+//	                `profile`, `grammar`, `killsource`, `objectives`,
+//	                `killcollector.IsolationDecoderRev` et `PlacementRev` gardent leur valeur :
+//	                aucune ligne de kill ne change.
+//
+//	LE PARC         un artefact 79 cuit sous les revisions de couche courantes se lit « decodage
+//	                intact » (ce lot n en monte aucune) et « schema perime » : verdict `republier`.
+//	                Mais ses faits sont au schema des faits 5 au plus, refuses sur leur en-tete : la
+//	                cuisson REDECODE le film et ecrit des faits au schema 6. Le recapitulatif de
+//	                `backfill-replay` le range parmi les « republies » alors qu il redecode : sa duree
+//	                est celle d un decodage. Un artefact cuit sous d autres revisions se lit
+//	                `redecoder` d emblee.
+//
+// v81 (2026-10-07, rejeu « aucune fiche en trop », phase D du lot des equipes) : UNE EQUIPE A
+// EXACTEMENT SES PLACES.
+//
+//	`tracks[]`     une vie qui commence apres le depart PROUVE (image-cle) de l occupant vivant a la
+//	               creation de son corps, sur un corps cree avant ce depart, n est plus publiee : ses
+//	               positions viennent du balayage par ancrage, que la marche ne contient pas (porte des
+//	               positions, regle R-B3, `positions_porte_depart.go`).
+//	`tracks[].bot` le corps d un index qu un humain tient se lit aux declarations BOT_METADATA de ses
+//	`roster[]`     bots quand les entites de l humain prouvent son absence ; un corps cree juste avant
+//	               la declaration de son bot (aucune autre declaration, aucune image-cle entre les
+//	               deux) est le sien. Le bot sans entite ainsi nomme entre au roster
+//	               (`botsSuccesseurs`) et prend une place.
+//	`roster[]`     un bot declare qui n a aucune vie et ne trouve aucune place dans son equipe n entre
+//	               pas au roster publie (`sieges_bots_sans_place.go`) ; un bot sans place qui a une vie
+//	               reste, sans place, en ERREUR. Sur les 19 temoins du lot
+//	               (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, phase D) : `sansPlace` 3 -> 0,
+//	               `placesEnTrop` 3 -> 0, `depassements` 60 -> 0.
+//	forme          AUCUN CHAMP NEUF : les comptes de ces regles vont au journal et a l expvar
+//	               (`rejeu_vies_apres_depart_ecartees`, `rejeu_bots_sans_vie_ni_place_ecartes`).
+//
+//	CE QUI MONTE    `SchemaVersion` 80 -> 81 seul. `SchemaDesFaits` et les revisions de couche gardent
+//	AVEC ELLE       leur valeur : ces regles sont de publication, rejouables depuis les faits.
+//
+//	LE PARC         un artefact 80 dont les faits sont au schema des faits 6 se REPUBLIE depuis eux
+//	                (verdict `republier`, aucun decodage).
+
+// v82 (2026-10-07, zones a l etat initial) : UNE ZONE TENUE DES LE COUP D ENVOI SE PUBLIE TENUE DES
 // LA PREMIERE IMAGE-CLE. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
 //
 //	`zoneStates[]  certaines variantes de Bastion donnent une base a chaque camp au coup d envoi.
@@ -2846,21 +2908,22 @@ package replay
 //	               jauge, la colline et la jauge de retour du drapeau lisent les seules trames delta.
 //	journal        les etats d image-cle posterieurs a la premiere emission se comparent a l etat
 //	               reconstitue : `imagesClesDiscordantes` (et un avertissement s il y en a).
-//	faits          `SchemaDesFaits` 5 -> 6 : la section 1 porte `FilmInputs.ZoneKeyReads`.
+//	faits          `SchemaDesFaits` 6 -> 7 : la section 1 porte `FilmInputs.ZoneKeyReads`.
 //
-//	CE QUI MONTE    `SchemaVersion` 79 -> 80 ; `grammar.Rev` `grammar-2026-10-06.4` ->
-//	AVEC ELLE       `grammar-2026-10-06.5`. `killsource.Rev` et `objectives.Rev` gardent leur
+//	CE QUI MONTE    `SchemaVersion` 81 -> 82 ; `grammar.Rev` `grammar-2026-10-06.5` ->
+//	AVEC ELLE       `grammar-2026-10-06.6`. `killsource.Rev` et `objectives.Rev` gardent leur
 //	                valeur (ni l une ni l autre n appelle le balayage de ti=13 : goldens
 //	                regeneres a revision constante) ; `source`, `profile`,
 //	                `killcollector.IsolationDecoderRev` et `PlacementRev` ne bougent pas.
 //
-//	LE PARC         un artefact 79 porte `grammar-2026-10-06.4` sur ses calques de grammaire :
+//	LE PARC         un artefact 81 porte `grammar-2026-10-06.5` sur ses calques de grammaire :
 //	                verdict `redecoder`, tout le parc (la revision de grammaire est commune a tous
 //	                les calques). Seuls les Bastions voient leur calque de zones changer.
 //
 //	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bastions locaux, 2 KOTH et
-//	                2 CTF : 8 Bastions ouvrent A et C a la premiere image-cle (frames 0 a 167 au
-//	                lieu de 431 a 1774), B inchangee ; le 9e part neutre et ne change pas ; aucun
-//	                autre calque ne bouge, `ownerChecked` / `ownerAgreed` identiques. 3 etats
-//	                d image-cle discordants sur 2 films, tous contre une emission delta non
-//	                chainee hors des camps. KOTH et CTF : document identique hors revisions.
+//	                2 CTF (base `21305abb4`) : 8 Bastions ouvrent A et C a la premiere image-cle
+//	                (frames 0 a 167 au lieu de 431 a 1774), B inchangee ; le 9e part neutre et ne
+//	                change pas ; aucun autre calque ne bouge, `ownerChecked` / `ownerAgreed`
+//	                identiques. 3 etats d image-cle discordants sur 2 films, tous contre une
+//	                emission delta non chainee hors des camps. KOTH et CTF : document identique hors
+//	                revisions.

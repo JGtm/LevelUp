@@ -81,7 +81,7 @@ func ScanAbilityImpulses(fc *FilmContext) ([]types.AbilityImpulse, types.Ability
 	if err != nil {
 		return nil, st, err
 	}
-	sc := &abilityImpulseScanner{st: &st, gram: s.gram,
+	sc := &abilityImpulseScanner{st: &st,
 		i57idx: componentIndexOfAny(s.gram.arch, abilityPredictedName, abilityPredictedNameAlt),
 		i59idx: componentIndexOfAny(s.gram.arch, grappleComponentName, grappleComponentNameAlt),
 	}
@@ -94,19 +94,23 @@ func ScanAbilityImpulses(fc *FilmContext) ([]types.AbilityImpulse, types.Ability
 		return nil, st, nil
 	}
 
-	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas
-	// les bits à côté de lui (même règle que ScanFilmGrappleReads et ScanFilmAbilityRanks).
-	obs := NouvelleObservation()
-	obs.SpartanAbilityHook = func(tag, _, _ uint64, _ bool) { sc.tag57, sc.got57 = tag, true }
-	obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) {
+	lu, err := s.fc.lecturesBipedes()
+	if err != nil {
+		return nil, st, err
+	}
+
+	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui a publié pendant la marche, et
+	// la lecture rejoue sa publication ; on ne relit pas les bits (même règle que
+	// ScanFilmGrappleReads et ScanFilmAbilityRanks).
+	sc.obs = NouvelleObservation()
+	sc.obs.SpartanAbilityHook = func(tag, _, _ uint64, _ bool) { sc.tag57, sc.got57 = tag, true }
+	sc.obs.AbilityNonPredictedHook = func(s AbilityNonPredictedState) {
 		sc.tag59, sc.got59 = uint64(s.Tag), true
 	}
-	sc.gram.obs = obs
-
-	s.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		st.Records++
-		sc.account(r.Payload, r.I0, r.Total, r.Mask, r.Slot, r.Chunk, r.Packet)
-	})
+	st.Records = lu.examines
+	for i := range lu.records {
+		sc.account(&lu.records[i])
+	}
 	sortAbilityImpulses(sc.out)
 	st.Scanned = true
 	return sc.out, st, nil
@@ -123,24 +127,23 @@ func componentIndexOfAny(arch Archetype, names ...string) int {
 	return -1
 }
 
-// abilityImpulseScanner porte l'état du balayage : compteurs, capture des deux hooks, et
-// sortie.
+// abilityImpulseScanner porte l'état du balayage : compteurs, l'observation sur laquelle les
+// lectures se rejouent et la capture de ses deux hooks, et sortie.
 type abilityImpulseScanner struct {
 	st             *types.AbilityImpulseStats
 	out            []types.AbilityImpulse
-	gram           grammaireRecord
+	obs            *Observation
 	i57idx, i59idx int
 	tag57, tag59   uint64
 	got57, got59   bool
 }
 
-// account marche UN record et impute ses lectures aux compteurs. LES DEUX COMPOSANTS SE
-// LISENT DANS LE MÊME RECORD quand le masque les annonce tous deux : la marche s'arrête au
+// account rejoue UN record et impute ses lectures aux compteurs. LES DEUX COMPOSANTS SE
+// LISENT DANS LE MÊME RECORD quand le masque les annonce tous deux : la lecture s'arrête au
 // PLUS LOINTAIN des deux, et le hook de l'autre a déjà parlé en chemin.
-func (sc *abilityImpulseScanner) account(pay []byte, i0, total int, idx []int,
-	slot uint32, chunk int, pk FilmPacket) {
-	has57 := sc.i57idx >= 0 && maskHas(idx, sc.i57idx)
-	has59 := sc.i59idx >= 0 && maskHas(idx, sc.i59idx)
+func (sc *abilityImpulseScanner) account(r *recordBipedeLu) {
+	has57 := sc.i57idx >= 0 && r.annonce(sc.i57idx)
+	has59 := sc.i59idx >= 0 && r.annonce(sc.i59idx)
 	if !has57 && !has59 {
 		return
 	}
@@ -155,8 +158,8 @@ func (sc *abilityImpulseScanner) account(pay []byte, i0, total int, idx []int,
 	if !has57 || (has59 && sc.i59idx > target) {
 		target = sc.i59idx
 	}
-	walkRecordTo(pay, i0, total, idx, sc.gram, target)
-	sc.emit(has57, has59, slot, chunk, pk)
+	r.parcourirJusqua(sc.obs, target)
+	sc.emit(has57, has59, r.Slot, r.Chunk, r.Packet)
 }
 
 // emit impute les DEUX lectures du record — celle du composant prédit et celle de son jumeau —

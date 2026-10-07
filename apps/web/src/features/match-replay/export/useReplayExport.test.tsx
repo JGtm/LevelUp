@@ -18,6 +18,7 @@ import type { ExportLayout } from './exportFormats'
 import { readInk } from '../layers/canvasInk'
 import { canvasPixelRatio, isExportActive, isExportLayoutApplied, useExportLayout } from './exportLayoutStore'
 import { testReplayDoc } from '../test/testDoc'
+import { NO_ALLEGIANCE } from '@/lib/replay/filmAllegiance'
 
 // La SIGNATURE est portee par le TYPE du mock, pas par des parametres nommes : sans elle,
 // `mock.calls` est un tuple vide et l'assertion sur l'indice d'image ne compile pas ; avec des
@@ -101,6 +102,7 @@ function setup() {
       doc: DOC,
       playWindow: null,
       scoreboard: [],
+      allegiance: NO_ALLEGIANCE,
       outcome: null,
       // LE POINT DE VUE EST OBLIGATOIRE depuis le 2026-09-07 (revue F4) : `null` = le joueur de
       // la page, le comportement d'origine. Il l'est aux six montages de ce fichier, et c'est le
@@ -235,6 +237,7 @@ describe('useReplayExport — non-régressions de la revue adversariale', () => 
         doc: DOC,
         playWindow,
         scoreboard: [],
+        allegiance: NO_ALLEGIANCE,
         outcome: null,
         viewpoint: null,
         titleSlug: 'halo_infinite',
@@ -309,6 +312,7 @@ describe('useReplayExport — le repli MUET quand le navigateur refuse la piste'
         doc: DOC,
         playWindow: null,
         scoreboard: [],
+        allegiance: NO_ALLEGIANCE,
         outcome: null,
         viewpoint: null,
         titleSlug: 'halo_infinite',
@@ -342,6 +346,7 @@ describe('useReplayExport — le format du fichier', () => {
         doc: DOC,
         playWindow: null,
         scoreboard: [],
+        allegiance: NO_ALLEGIANCE,
         outcome: null,
         viewpoint: null,
         titleSlug: 'halo_infinite',
@@ -476,6 +481,7 @@ describe('useReplayExport — le format du fichier', () => {
         doc: DOC,
         playWindow: null,
         scoreboard: [],
+        allegiance: NO_ALLEGIANCE,
         outcome: null,
         viewpoint: null,
         titleSlug: 'halo_infinite',
@@ -507,6 +513,7 @@ describe('useReplayExport — le format du fichier', () => {
         doc: DOC,
         playWindow: null,
         scoreboard: [],
+        allegiance: NO_ALLEGIANCE,
         outcome: null,
         viewpoint: null,
         titleSlug: 'halo_infinite',
@@ -544,6 +551,7 @@ describe('useReplayExport — les pistes sonores separees', () => {
         doc: DOC,
         playWindow: null,
         scoreboard: [],
+        allegiance: NO_ALLEGIANCE,
         outcome: null,
         viewpoint: null,
         titleSlug: 'halo_infinite',

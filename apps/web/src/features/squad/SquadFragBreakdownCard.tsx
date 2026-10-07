@@ -41,6 +41,17 @@ interface SquadFragBreakdownCardProps {
   classLabel: (cls: string) => string
   emptyTitle: string
   t: SquadText
+  /**
+   * Vue compacte du tiroir de comparaison de Sessions (maquette `makeFragbar` avec `cp`) : la part
+   * entière de chaque classe dans son segment et au repli (`pctFmt`), le total en sous-libellé du nom
+   * (`totalSub`), rien au bout de la barre ; les comptes restent dans l'infobulle.
+   */
+  compact?: FragBreakdownCompact
+}
+
+interface FragBreakdownCompact {
+  totalSub: (total: number) => string
+  pctFmt: (v: number) => string
 }
 
 const fitKey = (player: string, cls: string) => `${player}|${cls}`
@@ -52,6 +63,7 @@ export function SquadFragBreakdownCard({
   classLabel,
   emptyTitle,
   t,
+  compact,
 }: SquadFragBreakdownCardProps) {
   const rows = useMemo(
     () => buildFragBreakdownRows(fragClassesByPlayer, playerOrder),
@@ -101,6 +113,7 @@ export function SquadFragBreakdownCard({
                 tones={tones}
                 classLabel={classLabel}
                 t={t}
+                compact={compact}
               />
             ))}
           </div>
@@ -122,20 +135,24 @@ interface FragBreakdownBarProps {
   tones: Map<string, 'dark' | 'light'>
   classLabel: (cls: string) => string
   t: SquadText
+  compact?: FragBreakdownCompact
 }
 
-function FragBreakdownBar({ row, color, hidden, tones, classLabel, t }: FragBreakdownBarProps) {
+function FragBreakdownBar({ row, color, hidden, tones, classLabel, t, compact }: FragBreakdownBarProps) {
   const isHidden = (cls: string) => hidden.has(fitKey(row.player, cls))
   const offset = repliOffsetPct(row.segments, isHidden)
+  // Ce qu'écrit un segment : son compte, ou sa part entière du total du joueur en vue compacte.
+  const textOf = (s: FragBreakdownSegment) => (compact ? compact.pctFmt(row.total > 0 ? (s.kills / row.total) * 100 : 0) : String(s.kills))
   return (
     <div
-      className="grid grid-cols-[7rem_minmax(0,1fr)_2.5rem] items-center gap-2.5 text-xs"
+      className={`grid ${compact ? 'grid-cols-[6rem_minmax(0,1fr)]' : 'grid-cols-[7rem_minmax(0,1fr)_2.5rem]'} items-center gap-2.5 text-xs`}
       data-testid={`frag-breakdown-row-${row.player}`}
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden />
-        <span className="truncate" title={row.player}>
+        <span className="min-w-0 truncate" title={row.player}>
           {row.player}
+          {compact && <small className="block text-[11px] text-muted-foreground">{compact.totalSub(row.total)}</small>}
         </span>
       </div>
       <div className="flex min-w-0 flex-col gap-[3px]">
@@ -145,6 +162,7 @@ function FragBreakdownBar({ row, color, hidden, tones, classLabel, t }: FragBrea
             offset={offset}
             folded={row.segments.filter((s) => isHidden(s.cls))}
             classLabel={classLabel}
+            textOf={textOf}
           />
         )}
         <div
@@ -162,13 +180,16 @@ function FragBreakdownBar({ row, color, hidden, tones, classLabel, t }: FragBrea
               tone={tones.get(s.cls)}
               classLabel={classLabel}
               t={t}
+              text={textOf(s)}
             />
           ))}
         </div>
       </div>
-      <div className="text-right font-semibold tabular-nums" data-testid={`frag-breakdown-total-${row.player}`}>
-        {row.total}
-      </div>
+      {!compact && (
+        <div className="text-right font-semibold tabular-nums" data-testid={`frag-breakdown-total-${row.player}`}>
+          {row.total}
+        </div>
+      )}
     </div>
   )
 }
@@ -179,11 +200,13 @@ function FragBreakdownRepli({
   offset,
   folded,
   classLabel,
+  textOf,
 }: {
   row: FragBreakdownRow
   offset: number
   folded: FragBreakdownSegment[]
   classLabel: (cls: string) => string
+  textOf: (s: FragBreakdownSegment) => string
 }) {
   return (
     <div
@@ -198,7 +221,7 @@ function FragBreakdownRepli({
             style={{ backgroundColor: fragClassCssVar(s.cls) }}
             aria-hidden
           />
-          {s.kills}
+          {textOf(s)}
         </span>
       ))}
     </div>
@@ -214,6 +237,7 @@ function FragBreakdownSeg({
   tone,
   classLabel,
   t,
+  text,
 }: {
   row: FragBreakdownRow
   seg: FragBreakdownSegment
@@ -222,6 +246,8 @@ function FragBreakdownSeg({
   tone: 'dark' | 'light' | undefined
   classLabel: (cls: string) => string
   t: SquadText
+  /** Ce qui s'écrit dans le segment (compte, ou part en vue compacte). */
+  text: string
 }) {
   return (
     <div
@@ -245,7 +271,7 @@ function FragBreakdownSeg({
             }`}
             style={{ visibility: hidden ? 'hidden' : 'visible' }}
           >
-            {s.kills}
+            {text}
           </span>
         </div>
       </Tooltip>

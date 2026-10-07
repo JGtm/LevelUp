@@ -17,7 +17,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 
 import type { FormesText } from '../formes/i18n'
-import type { BalanceFamily, BalanceLine } from './objectif.logic'
+import { buildBalanceByRole, type BalanceFamily, type BalanceLine } from './objectif.logic'
 import { ObjectifFrame, ObjectifLegend } from './ObjectifFrame'
 import type { ObjectifText } from './objectifStrings'
 
@@ -30,13 +30,30 @@ interface Props {
   familyLabel: (family: string) => string
   columns: FormesText['columns']
   t: ObjectifText
+  /**
+   * Vue compacte du tiroir de comparaison de Sessions (maquette `makeBalance` avec `cp`) : une barre
+   * par RÔLE (somme de ses actions, `buildBalanceByRole`) puis les colonnes facultatives, la part
+   * entière seule dans les segments ; les comptes restent dans l'infobulle.
+   */
+  compact?: boolean
 }
 
 const fitKey = (family: string, key: string, side: 'us' | 'them') => `${family}|${key}|${side}`
 
-export function ObjectiveBalanceCard({ families, familyLabel, columns, t }: Props) {
+/** Les lignes d'une famille en vue compacte, à la forme des lignes d'action (nom = rôle ou colonne). */
+function compactFamilies(families: BalanceFamily[]): BalanceFamily[] {
+  return buildBalanceByRole(families).map((f) => ({
+    family: f.family,
+    matches: f.matches,
+    roles: [{ role: 'take' as const, lines: f.lines.map((l) => ({ key: l.key, duration: l.duration, optional: l.role == null, us: l.us, them: l.them, share: l.share })) }],
+  }))
+}
+
+export function ObjectiveBalanceCard({ families: actions, familyLabel, columns, t, compact = false }: Props) {
+  const families = useMemo(() => (compact ? compactFamilies(actions) : actions), [actions, compact])
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(bodyRef, families)
+  const lineLabel = (key: string) => (compact && key in t.roles ? t.roles[key as keyof typeof t.roles] : (columns[key] ?? key))
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -62,15 +79,16 @@ export function ObjectiveBalanceCard({ families, familyLabel, columns, t }: Prop
             <div className="flex flex-col gap-[5px] px-3 pb-2.5 pt-2">
               {f.roles.map((r) => (
                 <div key={r.role} className="flex flex-col gap-[5px]">
-                  <div className="mt-[3px] text-[10.5px] uppercase tracking-[.04em] text-muted-foreground">{t.roles[r.role]}</div>
+                  {!compact && <div className="mt-[3px] text-[10.5px] uppercase tracking-[.04em] text-muted-foreground">{t.roles[r.role]}</div>}
                   {r.lines.map((l) => (
                     <BalanceBar
                       key={l.key}
                       family={f.family}
                       line={l}
-                      label={columns[l.key] ?? l.key}
+                      label={lineLabel(l.key)}
                       hidden={hidden}
                       t={t}
+                      pctOnly={compact}
                     />
                   ))}
                 </div>
@@ -89,17 +107,20 @@ function BalanceBar({
   label,
   hidden,
   t,
+  pctOnly,
 }: {
   family: string
   line: BalanceLine
   label: string
   hidden: ReadonlySet<string>
   t: ObjectifText
+  /** Vue compacte : la part entière seule dans chaque segment. */
+  pctOnly: boolean
 }) {
   const fmt = (v: number) => (line.duration ? t.durationFmt(v) : String(Math.round(v * 10) / 10))
   const sharePct = line.share * 100
-  const usText = `${fmt(line.us)} · ${t.pctFmt(sharePct)}`
-  const themText = fmt(line.them)
+  const usText = pctOnly ? t.pctFmt(sharePct) : `${fmt(line.us)} · ${t.pctFmt(sharePct)}`
+  const themText = pctOnly ? t.pctFmt(100 - sharePct) : fmt(line.them)
   // Un segment vide n'a pas de place : sa valeur part au repli, comme celle qui ne tient pas.
   const usHidden = line.us <= 0 || hidden.has(fitKey(family, line.key, 'us'))
   const themHidden = line.them <= 0 || hidden.has(fitKey(family, line.key, 'them'))
@@ -142,7 +163,7 @@ function BalanceBar({
               fitKey={fitKey(family, line.key, 'them')}
               text={themText}
               hidden={themHidden}
-              tip={t.balance.segmentTip(t.opponent, label, themText, t.pctFmt(100 - sharePct))}
+              tip={t.balance.segmentTip(t.opponent, label, fmt(line.them), t.pctFmt(100 - sharePct))}
             />
           )}
           <div

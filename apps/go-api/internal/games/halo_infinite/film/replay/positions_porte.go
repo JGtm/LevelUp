@@ -27,6 +27,9 @@ package replay
 //	R-B2  aucune vie avant ce record : une vie entierement anterieure est ecartee
 //	      (`coverage.tracks.viesAvantPremiereCreation`, ses points dans `avantCreation`).
 //
+// Puis R-B3 (positions_porte_depart.go) : aucune vie d un corps apres le depart PROUVE de l occupant qui
+// vivait a sa creation — comptee au journal et a l expvar, pas dans la couverture servie.
+//
 // LA GENERATION EST LA GARDE, ET ELLE N EST PAS UN DETAIL. Un slot recycle porte plusieurs corps
 // (`084a804d` : `gen=1` en tete de film, `gen=2` apres la 11e minute). Si le PREMIER record lu d un
 // slot n est pas `gen=1`, un corps anterieur a existe dont la creation n a pas ete lue (film
@@ -80,6 +83,10 @@ type couverturePorte struct {
 	// `premiereGenerationDuCorps`).
 	SlotsArmes    int
 	SlotsDesarmes int
+	// ApresDepart / CorpsApresDepart : positions et corps que R-B3 ecarte (positions_porte_depart.go).
+	// Journalises et comptes en expvar, jamais servis : la couverture servie ne change pas.
+	ApresDepart      int
+	CorpsApresDepart int
 }
 
 // premiereCreation est, pour un slot, l instant de son premier record de creation et sa generation.
@@ -92,7 +99,7 @@ type premiereCreation struct {
 // Rend les positions retenues (nouvelle tranche, l entree n est pas modifiee), l emprise mesuree
 // et ce qui a ete ecarte.
 func passerLaPorteDesPositions(sorted []grammar.BipedPosition, creations []grammar.BipedCreation,
-	fb *fallback.Compteur,
+	scan grammar.PlayerEntityScan, fb *fallback.Compteur,
 ) ([]grammar.BipedPosition, empriseJouee, couverturePorte) {
 	var cov couverturePorte
 	premieres := premieresCreations(creations)
@@ -104,6 +111,7 @@ func passerLaPorteDesPositions(sorted []grammar.BipedPosition, creations []gramm
 		}
 	}
 	retenues := ecarterAvantCreation(sorted, premieres, &cov)
+	retenues = ecarterApresLeDepart(retenues, creations, scan, &cov)
 	emprise := empriseDesAxes(axesDesPositions(retenues))
 	rejets := rejetsParSlot(retenues, emprise)
 	out := make([]grammar.BipedPosition, 0, len(retenues))
@@ -205,6 +213,7 @@ func axesDesPositions(pos []grammar.BipedPosition) (xs, ys, zs []float32) {
 
 // poserSur publie ce que la porte a ecarte dans la couverture des traces, et le journalise.
 func (c couverturePorte) poserSur(ctx context.Context, tc *TrackCoverage, matchID string) {
+	c.journaliserLesViesApresDepart(ctx, matchID)
 	tc.AvantCreation, tc.ViesAvantPremiereCreation, tc.HorsEmprise =
 		c.AvantCreation, c.ViesAvantPremiereCreation, c.HorsEmprise
 	tc.SlotsArmes, tc.SlotsDesarmes = c.SlotsArmes, c.SlotsDesarmes

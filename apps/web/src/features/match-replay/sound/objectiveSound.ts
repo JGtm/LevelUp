@@ -23,16 +23,7 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import { replayClock } from '../model/replayClock'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
-import {
-  allyTeamFromScoreboard,
-  teamOfXuidFromScoreboard,
-  type ScoreboardSide,
-} from '../model/matchSides'
-
-// LES DEUX LECTURES DU TABLEAU DE SCORE ONT LEUR FOYER DANS `matchSides` (K1/K2,
-// 2026-09-06) : ce module les re-expose pour ses appelants historiques, il ne les
-// ecrit plus.
-export { allyTeamFromScoreboard, type ScoreboardSide }
+import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 
 /** Le camp de l'auteur d'une action, vu de la page — la même notion que le fil et les calques. */
 export type ObjectiveSide = 'ally' | 'enemy' | 'unknown'
@@ -45,9 +36,9 @@ export type ObjectiveSide = 'ally' | 'enemy' | 'unknown'
  * film donne pour une action d'objectif. Une statistique absente de cette table est MUETTE —
  * jamais le son d'une action voisine, même règle que partout ailleurs dans la chaîne sonore.
  *
- * CAMP INCONNU = SILENCE sur les actions qui ont deux variantes. Sans ligne « moi » au tableau
- * de score (match d'un autre joueur, tableau absent), jouer l'une des deux serait affirmer un
- * camp. Le rejeu se tait plutôt que de choisir — même règle que l'encre des calques, qui passe
+ * CAMP INCONNU = SILENCE sur les actions qui ont deux variantes. Sans allégeance du film (le
+ * film tait l'équipe de l'auteur ou celle du joueur regardé), jouer l'une des deux serait
+ * affirmer un camp. Le rejeu se tait plutôt que de choisir — même règle que l'encre des calques, qui passe
  * au neutre du thème dans ce cas.
  *
  * `flag_returns` N'A PAS DE VARIANTE D'ÉQUIPE DANS LE JEU, et c'est une mesure, pas un
@@ -129,30 +120,26 @@ export function objectiveSoundStem(stat: string, side: ObjectiveSide): string | 
 }
 
 /**
- * sideResolverFromScoreboard — LA SEULE SOURCE DU CAMP, et c'est la même que celle des
- * calques : la ligne « moi » du tableau de score donne l'équipe alliée, chaque autre ligne
- * donne l'équipe de son joueur (`parseTeamSideID`, partagé avec `useReplayFlagCarries`).
+ * objectiveSideResolver — LE CAMP DE L'AUTEUR D'UNE ACTION, et c'est la même source que les
+ * calques : son allégeance du FILM, vue du joueur regardé (`FilmAllegiance.ofXuid`, 2026-10-06).
  *
  * ELLE VIT ICI ET PAS DANS LE COMPOSANT (règle « pas de logique métier dans un composant ») :
- * `ReplayCanvas` n'a qu'à la brancher. Sans camp de référence, ou pour un xuid absent du
- * tableau, elle rend `unknown` — et le son se tait plutôt que d'affirmer un camp.
+ * `useReplaySound` n'a qu'à la brancher. Sans allégeance — le film tait l'équipe de l'auteur ou
+ * celle du joueur regardé, ou l'auteur en est absent — elle rend `unknown` : le son se tait
+ * plutôt que d'affirmer un camp.
  *
  * ELLE SUIT LE POINT DE VUE (décision 11 du plan, 2026-09-06) : les sons d'objectif EN COURS de
  * match — tics de zone alliée/adverse, voix d'objectif — sont des rendus de la perspective
  * courante, au même titre que les couleurs. Seul le VERDICT de fin de partie reste ancré sur le
- * joueur de la page (décision 3, cf. `endMatchSound`). Sans point de vue : la ligne « moi ».
+ * joueur de la page (décision 3, cf. `endMatchSound`).
  */
-export function sideResolverFromScoreboard(
-  scoreboard: readonly ScoreboardSide[] | undefined,
-  viewpoint?: string | null,
+export function objectiveSideResolver(
+  allegiance: Pick<FilmAllegiance, 'ofXuid'>,
 ): (xuid: string) => ObjectiveSide {
-  const allyTeam = allyTeamFromScoreboard(scoreboard, viewpoint)
-  const teamOf = teamOfXuidFromScoreboard(scoreboard)
   return (xuid: string): ObjectiveSide => {
-    if (allyTeam === null) return 'unknown'
-    const team = teamOf.get(xuid)
-    if (team === null || team === undefined) return 'unknown'
-    return team === allyTeam ? 'ally' : 'enemy'
+    const ally = allegiance.ofXuid(xuid)
+    if (ally === null) return 'unknown'
+    return ally ? 'ally' : 'enemy'
   }
 }
 

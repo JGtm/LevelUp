@@ -9,7 +9,7 @@ package grammar
 //
 // Les deux tests du § 5.7.2 (montee de vz, sejour) portaient sur la porte POLLUEE : de 14 a 152
 // lectures d essai pour une lecture retenue. Depuis que la porte s inscrit dans
-// `neutraliserEtatsDeMouvement`, la population est celle des records RETENUS — et les deux
+// la porte des essais (`neutraliserLesCrochetsDeCanal`), la population est celle des records RETENUS — et les deux
 // questions se reposent proprement :
 //
 //	(a) LE SPRINT. La vitesse AU SOL du bipede a-t-elle DEUX BOSSES ? Un jeu ou l on marche a
