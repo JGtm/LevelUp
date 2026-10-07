@@ -41,6 +41,14 @@ func (e *SyncEngine) WithAssetNameResolution(p pool.Pool) *SyncEngine {
 	return e
 }
 
+// ResolvesAssetNames dit si la résolution des noms d'assets est branchée sur ce moteur (pool
+// posé par WithAssetNameResolution). Tout moteur qui INSÈRE des matchs doit l'avoir : sans
+// elle, un match dont l'asset n'est pas encore traduit entre au registre avec l'identifiant
+// en guise de nom. Lu par les tests de câblage des constructeurs de moteur.
+func (e *SyncEngine) ResolvesAssetNames() bool {
+	return e.assetPool != nil
+}
+
 // resolveCycleAssets résout les noms des assets neufs du cycle vers
 // asset_translations, AVANT la phase d'insert (donc avant EnrichRegistryFromMetadata
 // dans persistFetchedMatch). Best-effort, convergent. No-op si le pool n'est pas

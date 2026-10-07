@@ -78,6 +78,11 @@ func buildCLITokenPool(
 // passés au moteur sont volontairement VIDES (`&domain.HaloTokens{}`) : c'est le client
 // poolé posé par SetCustomClient qui fournit l'authentification, lease par lease.
 //
+// Le même pool sert la RÉSOLUTION DES NOMS D'ASSETS (WithAssetNameResolution), comme le
+// planificateur (scheduler/auto_sync_engine.go) : le pré-pass traduit les cartes, modes,
+// playlists et variantes neufs AVANT l'insertion des matchs. Sans lui, une sync CLI inscrit
+// au registre l'identifiant de l'asset en guise de nom (pool_engine_test.go).
+//
 // Source unique des trois chemins (mono-joueur, `--all` delta, `--all` full) : avant, la
 // même séquence de sept lignes était recopiée par appelant, et le chemin mono-joueur en
 // divergeait (tokens du joueur, pas de pool).
@@ -88,7 +93,8 @@ func newPooledEngine(
 	player domain.PlayerSummary,
 ) *go_sync.SyncEngine {
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
-		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
+		WithCSRSeasonID(cfg.CurrentCSRSeasonID).
+		WithAssetNameResolution(pool)
 	cache := loadLocalFilmCache()
 	if cache != nil {
 		engine.SetLocalFilmCache(cache)
