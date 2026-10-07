@@ -12978,6 +12978,7 @@ export interface components {
             question: string;
             qui: string;
             rayons_radar_m?: number[] | null;
+            zones?: components["schemas"]["CalloutZone"][] | null;
         };
         TacticalRasterBody: {
             /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */

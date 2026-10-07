@@ -29,7 +29,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { z } from 'zod'
 
-import { normalizeCallouts } from '@/features/match-replay/layers/calloutsLayer'
+import { normalizeCallouts } from '@/lib/replay/calloutsPaint'
 import { endMatchSoundSpec } from '@/features/match-replay/sound/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'

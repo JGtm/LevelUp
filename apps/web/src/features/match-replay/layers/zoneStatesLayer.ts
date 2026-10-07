@@ -269,7 +269,7 @@ export interface ZoneStatesLayerInput {
   gaugeHoldFrames: number
 }
 
-// LA LETTRE DE LA ZONE. Même technique que les libellés de callouts (`calloutsLayer.ts`) :
+// LA LETTRE DE LA ZONE. Même technique que les libellés de callouts (`lib/replay/calloutsPaint.ts`) :
 // blanc cerné de noir, volontairement HORS thème, cerne arrondi pour que les angles des lettres
 // ne produisent pas de pointes. C'est une encre STRUCTURELLE de calque — elle ne dit aucun rôle
 // métier, elle porte du contraste sur les aplats de la carte, exactement comme le HUD du jeu —,

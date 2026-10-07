@@ -24,6 +24,7 @@
  * exactement comme « Occupation du terrain » de la vue match et le rejeu 2D ; une carte sans fond
  * figé retombe sur ses propres bornes. Le fond (`<img>`) et le calque (`<canvas>`,
  * `drawTacticalHeatmap`, noyau partagé de `lib/replay/heatPaint.ts`) partagent le même cadre monde.
+ * Les zones nommées s'y dessinent avec le peintre du rejeu 2D (`planPaint.ts`) ; les vignettes, non.
  *
  * COULEURS : rampe d'INTENSITÉ pour les grandeurs neutres (des morts, des frags, du temps) ; rampe
  * DIVERGENTE pour les lectures SIGNÉES (« victoires − défaites », « solde ») — leur zéro a deux
@@ -42,9 +43,11 @@ import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersi
 import type { TacticalGrappe, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
-import { drawTacticalHeatmap, heatRamp, heatRampDivergent, type TacticalGrid } from '@/lib/replay/heatPaint'
+import { normalizeCalloutZones, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
+import { heatRamp, heatRampDivergent, type TacticalGrid } from '@/lib/replay/heatPaint'
 
 import { RAMPE_HAUTEUR_PX } from './cockpit.logic'
+import { peindreLePlan } from './planPaint'
 import type { TacticalText } from './i18n'
 import { infoDuPlan, legendeDuPlan, MARGE_LEGENDE, rampeVerticale, type EtatDuPlan, type BornesDeLegende } from './plan.logic'
 import { useTacticalMapBackgroundFrame } from './queries'
@@ -60,7 +63,6 @@ import {
   repereDuPlan,
   statusMessages,
   unitForQuestion,
-  vueDuPlan,
   type RepereTactique,
   type TacticalQuestion,
   type TacticalQui,
@@ -121,6 +123,7 @@ export function TacticalPlanCard({
   const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
   const repere = lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m) : null
   const peinture = usePeinture(t, locale, question, lue, repere)
+  const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
@@ -149,6 +152,8 @@ export function TacticalPlanCard({
               grid={peinture.grid}
               repere={repere}
               ramp={peinture.ramp}
+              zones={zones}
+              locale={locale}
               selected={selected}
               onCellSelect={onCellSelect}
               estompe={estompe}
@@ -369,11 +374,13 @@ function AvisSurLeFond({
   )
 }
 
-/** CalqueDuPlan — le `<canvas>` du calque de chaleur, posé sur le fond, et son clic. */
+/** CalqueDuPlan — le `<canvas>` des zones nommées et du calque de chaleur, posé sur le fond, et son clic. */
 function CalqueDuPlan({
   grid,
   repere,
   ramp,
+  zones,
+  locale,
   selected,
   onCellSelect,
   estompe,
@@ -381,6 +388,8 @@ function CalqueDuPlan({
   grid: TacticalGrid | null
   repere: RepereTactique | null
   ramp: readonly string[]
+  zones: readonly CalloutZoneReady[]
+  locale: Locale
   selected: { col: number; row: number } | null
   onCellSelect: (col: number, row: number) => void
   estompe: string
@@ -398,18 +407,17 @@ function CalqueDuPlan({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    const vue = vueDuPlan(repere, width)
-    if (!vue) return
-    drawTacticalHeatmap(ctx, grid, vue, { ramp, k: 1 })
-    // LE CADRE DE LA CELLULE CHOISIE, par-dessus le calque : le retour immédiat au clic. Son encre
-    // est celle du texte de l'app (`text-foreground` lu par `getComputedStyle`) : un jeton
-    // sémantique dirait une SIGNIFICATION que cette sélection n'a pas — elle dit seulement « ici ».
+    // L'ENCRE DU TEXTE (`text-foreground` lue par `getComputedStyle`) : contours des zones et cadre de
+    // la sélection ne disent aucune SIGNIFICATION qu'un jeton sémantique porterait — « ce lieu », « ici ».
+    const encre = getComputedStyle(canvas).color
+    peindreLePlan(ctx, repere, width, { grid, ramp, zones, locale, encre })
+    // LE CADRE DE LA CELLULE CHOISIE, par-dessus les calques : le retour immédiat au clic.
     const cadreSel = rectSelection(selected, repere, width)
     if (!cadreSel) return
-    ctx.strokeStyle = getComputedStyle(canvas).color
+    ctx.strokeStyle = encre
     ctx.lineWidth = 2
     ctx.strokeRect(cadreSel.x - 1, cadreSel.y - 1, cadreSel.size + 2, cadreSel.size + 2)
-  }, [grid, ramp, repere, selected])
+  }, [grid, ramp, repere, selected, zones, locale])
 
   function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current

@@ -164,27 +164,30 @@ func (s *TacticalService) Raster(ctx context.Context, req domain.TacticalRasterR
 		// memes fichiers (revue P2).
 		dejaLus = per.Sidecars
 	}
-	if lectureDArtefact(question) {
+	var err error
+	switch {
+	case lectureDArtefact(question):
 		// L'OCCUPATION A SA PROPRE PORTE ET SON PROPRE SUBSTRAT (cf.
 		// tactical_service_rasters.go) : elle ne lit pas `kill_positions` du tout, elle
 		// somme des sidecars tires des PISTES du film.
 		// L'ERREUR EST CAPTUREE AVANT LE RETOUR : `return out, f(&out)` laisserait
 		// l'ordre d'evaluation des operandes decider si la reponse rendue est celle
 		// d'avant ou d'apres le remplissage.
-		err := s.rasterArtefact(ctx, &out, scope, dejaLus)
-		return out, err
-	}
-	if question == domain.TacticalQuestionIsole {
+		err = s.rasterArtefact(ctx, &out, scope, dejaLus)
+	case question == domain.TacticalQuestionIsole:
 		// « ISOLE » LIT LA BASE COMME LES LECTURES DE PLACEMENT, mais sur DEUX tables de
 		// plus : le contexte de chaque mort, ecrit au sync, et les positions pour le lieu.
 		// Elle n'attend AUCUN artefact — la ventilation en attente / non cuisables ne la
 		// concerne donc pas.
 		// `rasterIsole` POSE LUI-MEME la section : elle sort de la lecture des morts qu'il
 		// fait deja, et la redemander serait une seconde requete pour la meme table.
-		err := s.rasterIsole(ctx, &out, scope)
-		return out, err
+		err = s.rasterIsole(ctx, &out, scope)
+	default:
+		err = s.rasterDeKills(ctx, &out, scope)
 	}
-	err := s.rasterDeKills(ctx, &out, scope)
+	if err == nil {
+		out.Zones = s.zonesDuPlan(ctx, carte)
+	}
 	return out, err
 }
 
