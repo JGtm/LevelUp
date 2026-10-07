@@ -1389,8 +1389,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Bastion que la variante donne a un camp au coup d envoi est publiee tenue des la premiere
 	//   image-cle qui le dit, et non plus a sa premiere reprise. `grammar.Rev` monte avec elle : un
 	//   v81 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 82 {
-		t.Fatalf("SchemaVersion = %d, attendu 82 : incrémenter exige une raison écrite ci-dessus "+
+	// - 84 (2026-10-07, proprietaire des zones par le nom) : deux champs de couverture
+	//   (`coverage.zones.ownerNamed`, `ownerVoteDisagreed`) et le CONTENU : le canal de propriete
+	//   d une zone est designe par le nom de sa jauge, une zone prise une seule fois est publiee.
+	//   `grammar.Rev` monte avec elle. 83 est reserve par un lot parallele. Detail :
+	//   `document_chronicle.go`.
+	if SchemaVersion != 84 {
+		t.Fatalf("SchemaVersion = %d, attendu 84 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

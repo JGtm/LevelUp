@@ -338,20 +338,6 @@ func passeDesFilms(
 	// `AvecArretDoux` qui porte l arret, et il l applique ENTRE deux films.
 	ctxTravail := context.WithoutCancel(ctx)
 
-	candidats, bilan, err := filmsACollecter(ctxTravail, db, cacheRoot, selectionSansBorne(o))
-	if err != nil {
-		return nil, err
-	}
-	if len(candidats) == 0 || o.dryRun {
-		fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
-		fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
-		if len(candidats) > 0 {
-			// Sous `--match` la liste est COURTE et c est elle qu on veut relire en entier.
-			afficherPlan(candidats, o.match != "")
-		}
-		return nil, nil
-	}
-
 	caps, err := capabilitesDuTitre(cfg, o.titleSlug)
 	if err != nil {
 		return nil, err
@@ -371,12 +357,19 @@ func passeDesFilms(
 	defer cleanupPositions()
 
 	collecteur := collecteurHorsLigne(cache, db, porte, caps, capture).AvecArretDoux(ctx)
-	// LES MATCHS SANS CARTE SORTENT AVANT LA BORNE ET AVANT TOUT DECODAGE (2026-09-27, cf.
-	// cmd_backfill_killsource_carte.go) : `--limit` s applique a ceux qui ont une carte.
-	candidats = candidatsAvecCarte(ctxTravail, collecteur, candidats, o.limit)
+	// UNE SEULE SELECTION POUR LE PLAN ET POUR LA PASSE (cf. cmd_backfill_killsource_carte.go) : les
+	// matchs sans carte sortent avant la borne et avant tout decodage, `--dry-run` compris.
+	candidats, bilan, err := candidatsDeLaPasse(ctxTravail, db, cacheRoot, o, collecteur)
+	if err != nil {
+		return nil, err
+	}
 	fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
 	fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
-	if len(candidats) == 0 {
+	if len(candidats) == 0 || o.dryRun {
+		if len(candidats) > 0 {
+			// Sous `--match` la liste est COURTE et c est elle qu on veut relire en entier.
+			afficherPlan(candidats, o.match != "")
+		}
 		return nil, nil
 	}
 	// LE SUIVI (lot 5.24.3) : il ecrit le fichier d etat APRES CHAQUE FILM et journalise une

@@ -2927,3 +2927,35 @@ package replay
 //	                identiques. 3 etats d image-cle discordants sur 2 films, tous contre une
 //	                emission delta non chainee hors des camps. KOTH et CTF : document identique hors
 //	                revisions.
+
+// v84 (2026-10-07, proprietaire des zones par le nom) : LE CANAL DE PROPRIETE D UNE ZONE EST DESIGNE
+// PAR LE NOM DE SA JAUGE. Deux champs de couverture s ajoutent ; le contenu change.
+//
+//	`zoneStates[]`  chaque propriete reseau `ti=13` porte un nom (`i0`), lu aux images-cles et pose
+//	                sur leurs lectures (`grammar.ManagedPropertyRead.Name`). Les proprietes d une
+//	                zone forment un bloc dont les noms se repondent : le nom de la jauge appariee
+//	                designe celui du proprietaire (`zone_states_owner_nom.go`), sans vote, sans
+//	                seuil et sans capture concordante. Une zone prise une seule fois (match court)
+//	                est desormais publiee ; un nom hors vocabulaire retombe sur le vote, repli
+//	                `repli_zone_proprietaire_par_vote`.
+//	`coverage.zones ownerNamed` (zones designees par le nom) et `ownerVoteDisagreed` (zones nommees
+//	.ownerNamed`,   dont le vote elit un autre canal : le nom est retenu, la discordance se compte
+//	`.ownerVote     et se journalise).
+//	Disagreed`
+//	faits           `SchemaDesFaits` 7 -> 9 : chaque lecture de `ti=13` porte son nom.
+//
+//	CE QUI MONTE    `SchemaVersion` 82 -> 84 ; `grammar.Rev` `grammar-2026-10-06.6` ->
+//	AVEC ELLE       `grammar-2026-10-07`. `killsource.Rev` et `objectives.Rev` gardent leur valeur
+//	                (ni l une ni l autre n appelle le balayage de ti=13 : goldens regeneres a
+//	                revision constante). Le schema 83, `SchemaDesFaits` 8 et `grammar-2026-10-06.7`
+//	                sont reserves par un lot parallele non fusionne.
+//
+//	LE PARC         un artefact 82 porte `grammar-2026-10-06.6` sur ses calques de grammaire :
+//	                verdict `redecoder`, tout le parc. Seuls les Bastions dont une zone n avait pas
+//	                assez de captures concordantes voient leur calque de zones changer.
+//
+//	MESURE          `replay-corpus-gate --reference=parc` sur les 9 Bastions locaux et 3 KOTH :
+//	                sur les 8 Bastions ou le vote elisait les trois canaux, le nom designe les
+//	                memes (24 zones sur 24, `ownerVoteDisagreed` 0, `zoneStates` identiques) ; sur
+//	                le Bastion court, les deux zones sans canal elu sont publiees, controle du
+//	                proprietaire 5/5. KOTH : calque identique. Aucun autre calque ne bouge.

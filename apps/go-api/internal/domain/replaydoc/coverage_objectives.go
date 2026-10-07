@@ -190,23 +190,25 @@ type ObjectiveObjectsCoverage struct {
 // exhaustivite, et un film d'un autre mode serait indistinguable d'un film dont l'appariement a
 // echoue.
 type ZonesCoverage struct {
-	Method        string `json:"method"`
-	Roles         string `json:"roles,omitempty"`
-	Catalog       int    `json:"catalog"`
-	Slots         int    `json:"slots"`
-	Paired        int    `json:"paired"`
-	Unpaired      int    `json:"unpaired"`
-	Captures      int    `json:"captures"`
-	Attributed    int    `json:"attributed"`
-	NoPosition    int    `json:"noPosition"`
-	Outside       int    `json:"outside"`
-	AmbiguousZone int    `json:"ambiguousZone"`
-	OwnerChecked  int    `json:"ownerChecked"`
-	OwnerAgreed   int    `json:"ownerAgreed"`
-	OwnerUnpaired int    `json:"ownerUnpaired"`
-	Spans         int    `json:"spans"`
-	HillPeriods   int    `json:"hillPeriods"`
-	UnknownOwner  int    `json:"unknownOwner"`
-	Letters       int    `json:"letters"`
-	GaugePoints   int    `json:"gaugePoints"`
+	Method             string `json:"method"`
+	Roles              string `json:"roles,omitempty"`
+	Catalog            int    `json:"catalog"`
+	Slots              int    `json:"slots"`
+	Paired             int    `json:"paired"`
+	Unpaired           int    `json:"unpaired"`
+	Captures           int    `json:"captures"`
+	Attributed         int    `json:"attributed"`
+	NoPosition         int    `json:"noPosition"`
+	Outside            int    `json:"outside"`
+	AmbiguousZone      int    `json:"ambiguousZone"`
+	OwnerChecked       int    `json:"ownerChecked"`
+	OwnerAgreed        int    `json:"ownerAgreed"`
+	OwnerUnpaired      int    `json:"ownerUnpaired"`
+	OwnerNamed         int    `json:"ownerNamed"`
+	OwnerVoteDisagreed int    `json:"ownerVoteDisagreed"`
+	Spans              int    `json:"spans"`
+	HillPeriods        int    `json:"hillPeriods"`
+	UnknownOwner       int    `json:"unknownOwner"`
+	Letters            int    `json:"letters"`
+	GaugePoints        int    `json:"gaugePoints"`
 }

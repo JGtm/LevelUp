@@ -73,25 +73,32 @@ const originControlToleranceMS = 1000
 // l'information sur les films les plus fragiles.
 const originControlMinMatches = 5
 
+// temoinDuFil est le calage du fil des morts que `bestDeathOffset` mesure : `horlogeFilm =
+// horlogeFil + offsetMS`, sur `appariees` morts appariees.
+type temoinDuFil struct {
+	offsetMS  int64
+	appariees int
+}
+
 // resolveOriginMs rend l'origine de la frame 0 sur l'horloge du fil, ou nil quand elle
 // n'est pas etablie.
 //
 // firstPosUS est l'horodatage du premier paquet de position (l'origine des frames) ;
-// filmClockUS celui du premier paquet du film. Le temoin (deathOffsetMS, matched) vient de
-// `bestDeathOffset` : `horlogeFilm = horlogeFil + deathOffsetMS`, d'ou une seconde
-// expression de la meme origine, `firstPosUS/1000 − deathOffsetMS`.
-func resolveOriginMs(ctx context.Context, firstPosUS, filmClockUS uint64, deathOffsetMS int64, matched int) *int64 {
+// filmClockUS celui du premier paquet du film. Le temoin donne une seconde expression de la
+// meme origine, `firstPosUS/1000 − offsetMS`. Un refus se journalise au `niveau` que
+// l'appelant donne ([niveauDePublication] : il dit un defaut du document PUBLIE).
+func resolveOriginMs(ctx context.Context, firstPosUS, filmClockUS uint64, temoin temoinDuFil, niveau slog.Level) *int64 {
 	if filmClockUS == 0 || firstPosUS < filmClockUS {
-		slog.WarnContext(ctx, "rejeu : origine d'horloge non etablie — le client retombera sur l'appariement",
+		slog.Log(ctx, niveau, "rejeu : origine d'horloge non etablie — le client retombera sur l'appariement",
 			"premierPaquetPositionUS", firstPosUS, "premierPaquetFilmUS", filmClockUS)
 		return nil
 	}
 	read := int64(firstPosUS-filmClockUS) / 1000
-	if matched >= originControlMinMatches {
-		control := int64(firstPosUS)/1000 - deathOffsetMS
+	if temoin.appariees >= originControlMinMatches {
+		control := int64(firstPosUS)/1000 - temoin.offsetMS
 		if ecart := control - read; ecart > originControlToleranceMS || ecart < -originControlToleranceMS {
-			slog.WarnContext(ctx, "rejeu : origine LUE contredite par le fil des morts — aucune origine publiee",
-				"origineLueMs", read, "origineTemoinMs", control, "ecartMs", ecart, "mortsAppariees", matched)
+			slog.Log(ctx, niveau, "rejeu : origine LUE contredite par le fil des morts — aucune origine publiee",
+				"origineLueMs", read, "origineTemoinMs", control, "ecartMs", ecart, "mortsAppariees", temoin.appariees)
 			return nil
 		}
 	}
@@ -108,10 +115,11 @@ func resolveOriginMs(ctx context.Context, firstPosUS, filmClockUS uint64, deathO
 // CONSEQUENCE sur les calques, qui n'est pas la meme information.
 //
 // L'artefact le DIT desormais, et pas seulement le journal : `coverage.originResolved` vaut
-// faux, et le rendu masque ces calques plutot que de les poser au mauvais instant.
-func originMSOf(ctx context.Context, origin *int64, matchID string) int {
+// faux, et le rendu masque ces calques plutot que de les poser au mauvais instant. Le repli se
+// journalise au `niveau` que l'appelant donne ([niveauDePublication]).
+func originMSOf(ctx context.Context, origin *int64, matchID string, niveau slog.Level) int {
 	if origin == nil {
-		slog.WarnContext(ctx,
+		slog.Log(ctx, niveau,
 			"rejeu : aucune origine etablie — calques dates sur l'horloge du film NON recales",
 			"match_id", matchID)
 		return 0

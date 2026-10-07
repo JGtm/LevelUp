@@ -187,7 +187,11 @@ const VersionCodecFaits = 2
 // SCHEMA 7 (2026-10-07, branche `feat/zones-etat-initial`) : la section 1 porte, a la suite des
 // lectures delta de l etat des zones, ses lectures d IMAGE-CLE (`FilmInputs.ZoneKeyReads`,
 // `encodeGardesDeMode`). Le blob ne change pas ; ce que la section porte, si.
-const SchemaDesFaits = 7
+// SCHEMA 9 (2026-10-07, branche `feat/zones-proprietaire`) : chaque lecture de `ti=13` de la section 1
+// porte le NOM de sa propriete (`grammar.ManagedPropertyRead.Name` / `Named`, renseigne aux
+// images-cles) ; un fichier d avant se relirait decale. Le rang 8 est reserve par un lot parallele
+// non fusionne.
+const SchemaDesFaits = 9
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
