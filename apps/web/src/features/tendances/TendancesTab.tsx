@@ -1,5 +1,6 @@
 /**
- * TendancesTab — l'onglet « Tendances » d'Ascension (vues Solo et Escouade).
+ * TendancesTab — la page « Tendances » de la section Solo (vues Solo et Escouade), à la largeur
+ * des autres pages Solo : pleine largeur, marge `p-6`.
  *
  * Ordre de la page : la bascule de vue et le filtre « Type de partie » (plus, en vue Escouade,
  * le sélecteur d'escouade), la matrice par mois et par horizon, la barre « Horizon », la section
@@ -79,7 +80,7 @@ function TendancesPage({ playerSlug }: { playerSlug: string }) {
   const offered = (squadWithoutTeammate ? undefined : data?.game_types) ?? []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <TendancesControls
         playerSlug={playerSlug}
         locale={locale}

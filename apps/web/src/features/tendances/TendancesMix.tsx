@@ -44,11 +44,15 @@ export function TendancesMix({ locale, data, horizon, step }: TendancesMixProps)
   )
   return (
     <SectionCard title={t.mixTitle} titleAdornment={titleWithInfo(t.mixInfo)}>
-      <div data-testid="tendances-mix">
+      {/* LE GRAPHE REMPLIT LE BLOC (`fluid`) : la cellule voisine (« Médailles par match »)
+          fixe souvent la hauteur de la rangée ; sans cela, le graphe restait collé en haut d'un
+          bloc étiré, sa légende loin du bas. CHART_HEIGHT devient le minimum. */}
+      <div className="flex min-h-0 flex-1 flex-col" data-testid="tendances-mix">
         <BarStackedChart
           series={chart.series}
           height={CHART_HEIGHT}
           frameless
+          fluid
           componentColors={chart.componentColors}
           componentOrder={chart.componentOrder}
           tooltipHideZero

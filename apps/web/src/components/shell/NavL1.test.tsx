@@ -206,21 +206,26 @@ describe('NavL1', () => {
     ).toBeTruthy()
   })
 
-  // ─── Onglet Tendances (2026-10-05) : 6e onglet, dernier, sans porte de capacité propre.
-  it('expose Tendances en DERNIER dans la dropdown Ascension, apres Tactique', () => {
+  // ─── Onglet Tendances : sous Solo, juste après Synthèse, sans porte de capacité propre.
+  it('expose Tendances dans la dropdown Solo, juste apres Synthese', () => {
+    renderWithProviders(<NavL1 />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Solo' }))
+
+    const items = screen.getAllByRole('menuitem').map((n) => n.textContent)
+    expect(items.indexOf('Tendances')).toBe(items.indexOf('Synthèse') + 1)
+    expect(screen.getByRole('menuitem', { name: 'Tendances' })).toHaveAttribute(
+      'href',
+      '/t/halo_infinite/players/test-player/stats/tendances',
+    )
+  })
+
+  it('ne propose plus Tendances dans la dropdown Ascension', () => {
     renderWithProviders(<NavL1 />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
 
-    const tactique = screen.getByRole('menuitem', { name: 'Tactique' })
-    const tendances = screen.getByRole('menuitem', { name: 'Tendances' })
-    expect(tendances).toHaveAttribute(
-      'href',
-      '/t/halo_infinite/players/test-player/ascension/tendances',
-    )
-    expect(
-      tactique.compareDocumentPosition(tendances) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    expect(screen.queryByRole('menuitem', { name: 'Tendances' })).not.toBeInTheDocument()
   })
 
   it('garde Tendances pour un titre sans capability replay', () => {
@@ -228,7 +233,7 @@ describe('NavL1', () => {
 
     renderWithProviders(<NavL1 />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Onglets Ascension' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Onglets Solo' }))
 
     expect(screen.getByRole('menuitem', { name: 'Tendances' })).toBeInTheDocument()
   })
