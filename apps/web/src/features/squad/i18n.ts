@@ -414,7 +414,7 @@ const FR_TEXT: SquadText = {
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
-    prompt: 'Sélectionne jusqu\'à 3 coéquipiers pour analyser vos synergies.',
+    prompt: "Jusqu'à 3 coéquipiers pour l'analyse des synergies de l'escouade.",
   },
   filter: {
     experience: 'Expérience',
@@ -424,7 +424,7 @@ const FR_TEXT: SquadText = {
     analyse: 'Analyser',
     exactComposition: 'Composition stricte',
     exactCompositionTitle:
-      'Cochée par défaut : seuls les matchs joués avec exactement cette composition sont comptés. Décochez pour inclure tous les matchs commencés ensemble, même si un autre joueur connu vous accompagnait.',
+      "Cochée par défaut : seuls les matchs joués avec exactement cette composition sont comptés. Décochée : tous les matchs commencés ensemble sont comptés, même avec un autre joueur connu dans l'équipe.",
   },
   dataIssues: {
     title: 'Données partielles : certains chiffres sont incomplets.',
@@ -447,7 +447,7 @@ const FR_TEXT: SquadText = {
     heading: (excludedCount) =>
       `${excludedCount} match${excludedCount > 1 ? 's' : ''} écarté${excludedCount > 1 ? 's' : ''} de cette session par la composition exacte :`,
     excludedLine: (dateLabel, mapLabel, culpritsLabel, culpritCount) =>
-      `${dateLabel} — ${mapLabel} : écarté, ${culpritsLabel} ${culpritCount > 1 ? 'étaient' : 'était'} dans ton équipe`,
+      `${dateLabel} — ${mapLabel} : écarté, ${culpritsLabel} ${culpritCount > 1 ? 'étaient' : 'était'} dans l'équipe`,
     culpritUnknown: 'un coéquipier non identifié',
   },
   table: {
@@ -471,7 +471,7 @@ const FR_TEXT: SquadText = {
     noChartDescription: 'Le graphique n\'a pas pu être construit avec les données actuelles.',
     noDataTitle: 'Données d\'escouade indisponibles',
     noDataDescription:
-      'Aucune réponse exploitable n\'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés.',
+      "Aucune réponse exploitable n'a été renvoyée pour cette page (filtres ou disponibilité des matchs partagés).",
     noBlockData: 'Aucune donnée pour cette sélection.',
     noDecodedFilmTitle: 'Aucun film décodé',
     noDecodedFilmDescription: 'Aucun film décodé pour cette sélection.',
@@ -538,7 +538,7 @@ const FR_TEXT: SquadText = {
     replayHeader: 'Rejeu',
     sortByAriaLabel: (col) => `Trier par ${col}`,
     scoreTooltip:
-      "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage au camp qui a perdu.",
+      "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage à l'équipe qui a perdu.",
     winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
     winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
     teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe.',
@@ -657,9 +657,9 @@ const FR_TEXT: SquadText = {
     rendementCardTitle: 'Rendement',
     resistanceCardTitle: 'Résistance',
     rendementHelp:
-      'Ce qu\'une vie de dégâts infligés vous rapporte en frags effectifs (frags + assistances / 3). 100 % = un frag par vie dépensée. Au-dessus du repère (fond vert), vos dégâts portent ; en dessous (fond rouge), ils se dispersent.',
+      'Frags effectifs (frags + assistances / 3) obtenus par vie de dégâts infligés. 100 % = un frag par vie dépensée.',
     resistanceHelp:
-      'Les dégâts encaissés avant chaque mort, rapportés à une vie de Spartan. 100 % = une vie exactement. Au-dessus du repère (fond vert), vous survivez à plus que votre barre de vie ; en dessous (fond rouge), vous tombez plus tôt.',
+      'Dégâts encaissés avant chaque mort, rapportés à une vie de Spartan. 100 % = une vie exactement.',
     offensiveMetric: 'Rendement',
     defensiveMetric: 'Résistance',
     oneLife: '1 vie',
@@ -775,7 +775,7 @@ const EN_TEXT: SquadText = {
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
-    prompt: 'Pick up to 3 teammates to analyze your synergies.',
+    prompt: 'Up to 3 teammates for the squad synergy analysis.',
   },
   filter: {
     experience: 'Experience',
@@ -785,7 +785,7 @@ const EN_TEXT: SquadText = {
     analyse: 'Analyse',
     exactComposition: 'Strict line-up',
     exactCompositionTitle:
-      'Ticked by default: only matches played with exactly this line-up are counted. Untick to include every match started together, even if another known player was with you.',
+      'Ticked by default: only matches played with exactly this line-up are counted. Unticked: every match started together is counted, even with another known player on the team.',
   },
   dataIssues: {
     title: 'Partial data: some numbers are incomplete.',
@@ -807,7 +807,7 @@ const EN_TEXT: SquadText = {
     heading: (excludedCount) =>
       `${excludedCount} match${excludedCount > 1 ? 'es' : ''} excluded from this session by the exact composition filter:`,
     excludedLine: (dateLabel, mapLabel, culpritsLabel, culpritCount) =>
-      `${dateLabel} — ${mapLabel}: excluded, ${culpritsLabel} ${culpritCount > 1 ? 'were' : 'was'} in your team`,
+      `${dateLabel} — ${mapLabel}: excluded, ${culpritsLabel} ${culpritCount > 1 ? 'were' : 'was'} on the team`,
     culpritUnknown: 'an unidentified teammate',
   },
   table: {
@@ -831,7 +831,7 @@ const EN_TEXT: SquadText = {
     noChartDescription: 'The chart could not be built with the current data.',
     noDataTitle: 'Squad data unavailable',
     noDataDescription:
-      'No usable response was returned for this page. Check filters or shared matches availability.',
+      'No usable response was returned for this page (filters or shared match availability).',
     noBlockData: 'No data for this selection.',
     noDecodedFilmTitle: 'No decoded film',
     noDecodedFilmDescription: 'No decoded film for this selection.',
@@ -898,7 +898,7 @@ const EN_TEXT: SquadText = {
     replayHeader: 'Replay',
     sortByAriaLabel: (col) => `Sort by ${col}`,
     scoreTooltip:
-      'Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing side there.',
+      'Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing team there.',
     winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
     winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
     teamMmrTooltip: 'Average estimated skill level (MMR) of the team.',
@@ -1017,9 +1017,9 @@ const EN_TEXT: SquadText = {
     rendementCardTitle: 'Efficiency',
     resistanceCardTitle: 'Resistance',
     rendementHelp:
-      'What one life worth of damage dealt earns you in effective kills (kills + assists / 3). 100% = one kill per life spent. Above the marker (green band), your damage lands; below it (red band), it scatters.',
+      'Effective kills (kills + assists / 3) earned per life worth of damage dealt. 100% = one kill per life spent.',
     resistanceHelp:
-      'The damage absorbed before each death, measured against one Spartan life. 100% = exactly one life. Above the marker (green band), you outlast your own health bar; below it (red band), you go down sooner.',
+      'Damage absorbed before each death, measured against one Spartan life. 100% = exactly one life.',
     offensiveMetric: 'Efficiency',
     defensiveMetric: 'Resistance',
     oneLife: '1 life',

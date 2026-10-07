@@ -12,8 +12,8 @@
 # ─── S2 : En-têtes ──────────────────────────────────────────────────────────
 
 [squad.header.solo_section_title]
-fr = "Mes stats sur cette session"
-en = "My session stats"
+fr = "Statistiques de la session"
+en = "Session stats"
 
 [squad.header.squad_section_title]
 fr = "Score d'équipe"

@@ -116606,3 +116606,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contrat −147 lignes (openapi) / −56 (types générés), cinq schémas `SquadEchange*` retirés du snapshot de surface ; 38 fonctions de test supprimées, aucune dans la baseline de présence. Build des paquets internes, vet, tests des paquets touchés (dont `service`, `api/...`, `archlint`), golangci-lint 0 issue, `openapi-check` à jour, tsc et vitest web verts.
 
 **Conclusion / prochaine étape** : E3 (garde des textes étendue au jeu de l'Escouade, vue rouge, puis reformulation FR / EN).
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E3 : textes sans personne et garde étendue — Complété (commit local sur `feat/escouade-synergies-textes`)
+
+**Statut** : Complété (étape E3 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`).
+
+**Décision technique principale** : la garde `textesSansPersonne.test.ts` lit désormais le jeu entier de la page Escouade (`squad/i18n.ts`, libellés de focus et de portée) et le manifeste `squad.toml` en entier ; la liste FR refuse aussi « reviens » et « vérifie ». Reformulés, FR et EN : invite de sélection, aide de la composition stricte, ligne d'un match écarté (« dans l'équipe »), état vide, aide du score à manches (« l'équipe qui a perdu »), aides Rendement et Résistance (reprises de la Vue match : la mesure, sans phrase de lecture), titre « Statistiques de la session », trois messages vides de Sessions et un des Séries temporelles (« Vérifie… » devenu une parenthèse factuelle), message « Match pas encore synchronisé » de la Vue match.
+
+**Résultats observés** : garde ROUGE avant (9 tests sur 34, 34 entrées, 19 chaînes sources distinctes), VERTE après ; sept mutations rouges, faux positifs contrôlés. tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des zones touchées 3 858 tests verts.
+
+**Conclusion / prochaine étape** : E4 (CHANGELOG et notes de version, registre, statut du handoff, gate de clôture).

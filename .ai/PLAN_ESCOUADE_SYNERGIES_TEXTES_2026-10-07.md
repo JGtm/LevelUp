@@ -92,10 +92,10 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 
 ### E3 — Textes sans personne et garde étendue
 
-- [ ] E3.1 Garde `textesSansPersonne.test.ts` étendue : `squad/i18n.ts` entier (FR, EN), les `*Strings.ts` de `features/squad/` (`squadFocusStrings`, `squadRangeRolesStrings`, `emprise/vehicleStrings` en plus des trois déjà gardés), manifeste `squad.toml` entier ; listes FR (+ « reviens », « vérifie ») et EN (« you », « your » déjà présents) ; vue ROUGE, nombre de chaînes fautives noté.
-- [ ] E3.2 Reformulation FR et EN de chaque chaîne fautive (`squad/i18n.ts`, `*Strings.ts`, `squad.toml`) selon la sémantique du 06/10 ; tests qui citent les anciennes chaînes mis à jour.
-- [ ] E3.3 `match-view/i18n.ts` `notSyncedDescription` FR et EN : phrase factuelle, sans impératif ni personne.
-- [ ] E3.4 Garde VERTE ; mutations de contrôle (une chaîne fautive réintroduite dans chaque nouvelle source : rouge).
+- [x] E3.1 Garde `textesSansPersonne.test.ts` étendue : `squad/i18n.ts` entier (FR, EN), les `*Strings.ts` de `features/squad/` (`squadFocusStrings`, `squadRangeRolesStrings`, `emprise/vehicleStrings` en plus des trois déjà gardés), manifeste `squad.toml` entier ; listes FR (+ « reviens », « vérifie ») et EN (« you », « your » déjà présents) ; vue ROUGE, nombre de chaînes fautives noté.
+- [x] E3.2 Reformulation FR et EN de chaque chaîne fautive (`squad/i18n.ts`, `*Strings.ts`, `squad.toml`) selon la sémantique du 06/10 ; tests qui citent les anciennes chaînes mis à jour.
+- [x] E3.3 `match-view/i18n.ts` `notSyncedDescription` FR et EN : phrase factuelle, sans impératif ni personne.
+- [x] E3.4 Garde VERTE ; mutations de contrôle (une chaîne fautive réintroduite dans chaque nouvelle source : rouge).
 - **Gate E3** : manifestes régénérés ; tsc purgé ; lint ; `lint:fields` ; `lint:colors` ; vitest des features touchées.
 
 ### E4 — Clôture
@@ -132,6 +132,13 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   suppression du périmètre. Les commentaires qui annonçaient un consommateur (port, domaine, paquet
   `coordination`) sont corrigés ; celui de `QTacticalEvents` (« l'echange se mesure… ») est laissé
   au lot qui retirera la requête.
+- **8.6 (E3)** — `squad/i18n.ts` `empty.noSelectionDescription` FR « Choisis 1 à 3 coéquipiers pour
+  analyser les synergies de l'escouade. » reste à l'impératif de la 2e personne : aucun mot de la liste
+  du §4 du handoff ne le porte, la garde ne le voit pas. Non traité (hors des sept chaînes et de la
+  liste arrêtées) ; à décider avec l'utilisateur, comme l'extension de la garde aux impératifs.
+- **8.7 (E3)** — les clés `squad.header.*` de `squad.toml` (dont `solo_section_title`, reformulée
+  parce que la garde lit le manifeste en entier) n'ont aucun lecteur dans `apps/web/src` (grep du
+  2026-10-07). Clés mortes antérieures au lot ; non supprimées ici.
 - **8.4 (E1)** — `lib/formatters/lowSampleNote.ts` et sa garde racontent la copie historique dans
   `SquadEchangeKpi` (histoire datée, vraie). Laissé.
 
@@ -162,3 +169,21 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   `lint-contract-ratchet` propre ; `make openapi-check` à jour ; web `tsc -b` purgé 0, vitest
   `lib/api` + `squad` 818 tests verts. `platform/duckdb` et `persist` non touchés : pas de passe
   `-tags=integration`. Découverte 8.5.
+- 2026-10-07 — **E3 clos.** Garde `textesSansPersonne.test.ts` étendue au jeu entier de l'Escouade
+  (`squad/i18n.ts` FR et EN, libellés de focus, « Rôles de portée » ; véhicules déjà couverts par
+  `EMPRISE_TEXT`), au manifeste `squad.toml` entier, et la liste FR complétée de « reviens »,
+  « vérifie » (EN : « you », « your » y étaient). Un code de locale (`en-US`) n'est pas un texte :
+  exclu par sa forme. **ROUGE avant reformulation : 9 tests sur 34, 34 entrées fautives** —
+  19 chaînes sources distinctes (`squad/i18n.ts` 7 FR et 5 EN, `squad.toml` 1 clé FR + EN,
+  `session.toml` 3 lignes FR, `timeseries.toml` 1 ligne FR, Vue match 1 FR), vues aussi par les
+  jeux qui les relisent (Sessions, Emprise du match), plus le faux positif `en-US`. **VERTE après**
+  (34/34). EN reformulés en parité, y compris là où la liste EN ne voyait rien (« Check… »,
+  « check back »). Mutations rouges : « Vos » et « Your » dans `squad/i18n.ts`, « Mes rôles de
+  portée » et « notre session » dans `squad.toml` (manifeste régénéré), « reviens » dans la Vue
+  match, « camp » dans `squad/i18n.ts`, « vérifie » dans `emprise/vehicleStrings.ts` (rouge sur
+  les quatre jeux qui le relisent) ; faux positifs contrôlés : « vouloir », « vérifié »,
+  « campagne », « mesuré », « youth », « Usage » passent. Gate : manifestes régénérés ; `tsc -b`
+  purgé 0 ; ESLint 0 erreur (26 avertissements) ; champs 0 ; couleurs 0 ; vitest `squad`,
+  `match-view`, `session-detail`, `timeseries`, `components`, `lib` : 406 fichiers / 3 858 tests
+  verts (deux tests mis à jour sur les nouvelles chaînes : `squadCompositionGapHint.test.tsx`,
+  `MatchViewPage.test.tsx`). Découvertes 8.6, 8.7.

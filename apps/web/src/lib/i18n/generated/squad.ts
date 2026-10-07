@@ -80,7 +80,7 @@ export const squadManifest = {
   "squad.focus.saving": { fr: "Enregistrement…", en: "Saving…" },
   "squad.focus.target": { fr: "Cible {n, number} / membre", en: "Target {n, number} / member" },
   "squad.focus.title": { fr: "Objectifs d'escouade", en: "Squad objectives" },
-  "squad.header.solo_section_title": { fr: "Mes stats sur cette session", en: "My session stats" },
+  "squad.header.solo_section_title": { fr: "Statistiques de la session", en: "Session stats" },
   "squad.header.squad_grade_label": { fr: "Grade", en: "Grade" },
   "squad.header.squad_score_base": { fr: "Base", en: "Base" },
   "squad.header.squad_score_bonus": { fr: "{base, number} (+{bonus, number})", en: "{base, number} (+{bonus, number})" },
