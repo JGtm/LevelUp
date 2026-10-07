@@ -16,12 +16,17 @@
  *  - `home` — il est à sa base.
  *
  * QUI CLIGNOTE, ET POURQUOI (retour utilisateur du 2026-08-27 : le drapeau doit « clignoter hors
- * de son socle »). Les TROIS états hors base — `carried`, `carried_open`, `dropped` — clignotent ;
- * `home` est stable. La lecture que cela sert est celle d'un match de CTF : ce qui compte, c'est
- * de repérer d'un coup d'œil qu'un drapeau est SORTI, sans avoir à comparer deux positions. Un
- * clignotement au socle dirait l'inverse — que la situation est en cours — alors qu'un drapeau
- * chez lui est justement le repos. `prefers-reduced-motion` éteint le clignotement : opacité
- * pleine et fixe, le glyphe reste localisable (même règle que tous les effets du rejeu).
+ * de son socle »). Les DEUX états PORTÉS — `carried`, `carried_open` — clignotent ; `home` est
+ * stable. La lecture que cela sert est celle d'un match de CTF : ce qui compte, c'est de repérer
+ * d'un coup d'œil qu'un drapeau est SORTI, sans avoir à comparer deux positions. Un clignotement
+ * au socle dirait l'inverse — que la situation est en cours — alors qu'un drapeau chez lui est
+ * justement le repos. `prefers-reduced-motion` éteint le clignotement : opacité pleine et fixe,
+ * le glyphe reste localisable (même règle que tous les effets du rejeu).
+ *
+ * `dropped` NE CLIGNOTE PAS (décision utilisateur du 2026-10-07) : un drapeau au sol est posé au
+ * centre de sa zone de retour (`flagReturnZone.ts`), et c'est la zone — disque, anneau, jauge —
+ * qui dit « il est sorti, et il rentre ». Un glyphe qui bat sur un cercle fixe se lit comme un
+ * défaut d'affichage, pas comme un signal ; le fantôme reste, plein et stable.
  *
  * L'ATTÉNUATION NE PORTE PLUS L'INCERTITUDE, LE CREUX LA PORTE. `carried_open` clignote comme les
  * autres états hors base et garde son fanion CREUX : deux signaux pour deux choses différentes —
@@ -302,7 +307,8 @@ export function flagPlaceAt(now: FlagNow, frame: number, posOf: FlagCarriesInput
 }
 
 /**
- * flagBlinkAlpha — l'opacité du glyphe à cette image : STABLE à la base, CLIGNOTANTE ailleurs.
+ * flagBlinkAlpha — l'opacité du glyphe à cette image : CLIGNOTANTE quand il est PORTÉ, STABLE
+ * à la base et au sol (cf. l'en-tête : au sol, c'est la zone de retour qui porte le signal).
  *
  * FONCTION PURE, exportée : le calque du crâne d'Oddball la réutilisera telle quelle (renvoi
  * écrit dans PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md, décision 7) — un objet porté hors de son socle
@@ -317,7 +323,7 @@ export function flagPlaceAt(now: FlagNow, frame: number, posOf: FlagCarriesInput
  */
 export function flagBlinkAlpha(state: string, frame: number, reducedMotion: boolean): number {
   if (reducedMotion) return ALPHA_SOLID
-  if (state !== 'carried' && state !== 'carried_open' && state !== 'dropped') return ALPHA_SOLID
+  if (state !== 'carried' && state !== 'carried_open') return ALPHA_SOLID
   const phase = (2 * Math.PI * frame) / BLINK_PERIOD_FRAMES
   return BLINK_MIN + (BLINK_MAX - BLINK_MIN) * (0.5 + 0.5 * Math.cos(phase))
 }

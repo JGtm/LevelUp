@@ -25,8 +25,8 @@
 //   - le raster range chaque point sur l'axe « moi / escouade / adversaires »
 //     d'apres l'identite de la victime ou du tueur — une identite permutee peint
 //     le point du mauvais cote ;
-//   - l'echange demande QUI a venge QUI — une identite permutee fabrique une
-//     vengeance qui n'a pas eu lieu.
+//   - le journal des morts (KillEvents) rend chaque mort avec sa victime et son tueur
+//     credite — une identite permutee attribue la mort au mauvais joueur.
 //
 // Une passe non publiable est donc ECARTEE ici, comme dans KillDistanceRepo, et
 // contrairement a KillSourceClassRepo (qui, lui, ne produit que des cumuls).
@@ -39,12 +39,12 @@
 // PERIMETRE (liste blanche de match_id, composition) vient de l'appelant et se pose
 // au meme endroit pour les trois lectures — cf. tactical_repo_univers.go.
 //
-// KillEvents, elle, accepte une carte VIDE depuis le 2026-09-06 (phase 3) : la
-// page Escouade lit le journal des morts d'une COMPOSITION, qui n'a pas de carte,
-// et le perimetre de matchs y est resserre en Go. Ecrire une seconde requete pour
-// ce seul predicat aurait donne deux definitions de « le journal des morts du
-// joueur » ; le SELECT est donc le meme, la carte devenant un parametre neutre
-// (`? = ” OR mr.map_id = ?`). La borne reste le joueur, jamais la table entiere.
+// KillEvents, elle, accepte une carte VIDE : son appelant de production, le bloc de
+// coordination des pages Sessions et Series temporelles (service/coordination_block.go),
+// lit une LISTE de matchs (`RestreindreAux`), qui n'a pas de carte. Le SELECT reste le
+// meme, la carte devenant un parametre neutre (`? = ” OR mr.map_id = ?`). La borne
+// reste le joueur, jamais la table entiere. Une lecture SANS liste (zero-value de
+// ListeBlancheMatchs) reste acceptee mais n'a pas d'appelant de production a ce jour.
 package duckdb
 
 import (
@@ -291,9 +291,9 @@ func tagOuNil(v sql.NullInt64) *uint32 {
 
 // QTacticalEvents : le journal des morts des matchs de l'univers.
 //
-// Aucune jointure sur les positions : l'echange se mesure sur des INSTANTS et des
-// IDENTITES, pas sur des coordonnees — exiger une position mesuree ecarterait les
-// morts d'un match non decode et gonflerait le taux.
+// Aucune jointure sur les positions : le journal porte des INSTANTS et des IDENTITES,
+// pas des coordonnees — exiger une position mesuree ecarterait les morts d'un match non
+// decode.
 //
 // %s = la liste des matchs de l'univers (listeDeLUnivers) : une liste de constantes, que
 // DuckDB pousse sous la fenetre de la vue (0,74 s -> 0,05 s pour 6 matchs, mesure lot L5a).

@@ -1372,25 +1372,6 @@ export type SquadAssistPair = components['schemas']['SquadAssistPair']
 export type SquadAssistPairs = components['schemas']['SquadAssistPairs']
 
 /**
- * L'ÉCHANGE de l'escouade — une mort vengée dans les 5 s. Ré-exports DIRECTS du
- * contrat, sans réécrire les `… | null` : le tableau nullable est la forme réelle du
- * fil (toute tranche Go sort ainsi), et la combler ici la ferait mentir.
- *
- * `couverture` / `habituel` sont des `Couverture` (taux + brut + par match + N +
- * échantillon faible) : un taux ne voyage jamais seul.
- */
-export type SquadEchange = components['schemas']['SquadEchange']
-export type SquadEchangeCell = components['schemas']['SquadEchangeCell']
-export type SquadEchangeBucket = components['schemas']['SquadEchangeBucket']
-export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
-
-/**
- * Le taux d'échange du camp sur UNE session (soirée) — la série de la carte « Taux
- * d'échange par session ». Même mesure que `SquadEchange.couverture`, découpée par soirée.
- */
-export type SquadEchangeSessionPoint = components['schemas']['SquadEchangeSessionPoint']
-
-/**
  * La PORTÉE DES ENGAGEMENTS de tous les joueurs d'un match (lot N2, 2026-09-21) : une
  * médiane de distance de frag par (match, joueur), et la médiane du LOBBY du match — qui se
  * calcule sur les frags, jamais comme la moyenne des médianes par joueur. `lobby_delta_m`
@@ -1412,14 +1393,6 @@ export type MatchRangePlayer = components['schemas']['MatchRangePlayer']
 // `TimeseriesPageResponse.range_profiles` est, lui, un `MatchRangeBlock` ordinaire sur la
 // fenêtre de la page (joueur consulté seul, lobby entier pour la médiane).
 export type RangeReferenceBlock = components['schemas']['RangeReferenceBlock']
-
-// DÉNIVELÉ (proposition E1, 2026-09-22) : `MatchRangePlayer` porte désormais, à côté de sa
-// portée, `elevation_median_m` (médiane du dénivelé SIGNÉ de ses frags mesurés du match —
-// `killer_z - victim_z`, positif = fragué depuis le haut) et `elevation_lobby_delta_m`
-// (écart à `lobby_elevation_median_m` du profil, médiane du dénivelé de TOUS les frags
-// mesurés du match). Les trois sont OPTIONNELS : absents = pas de dénivelé mesuré ; un 0 m,
-// lui, est une mesure (« à plat »). Servis partout où `MatchRangeProfile` l'est — Escouade,
-// Sessions (session, comparée, référence) et Timeseries.
 
 export interface TeammatesPageResponse {
   options: TeammateOption[]
@@ -1453,11 +1426,6 @@ export interface TeammatesPageResponse {
   /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
    *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
   assist_pairs?: SquadAssistPairs
-  /** L'ÉCHANGE (mort vengée dans les 5 s) : matrice « qui échange pour qui » +
-   *  KPI sur Synergies, distribution du délai sur Dynamique. ABSENT quand le titre
-   *  ne nomme pas le tueur de chaque mort, ou quand aucun match de la sélection ne
-   *  porte de journal des morts — une omission, jamais des zéros. */
-  echange?: SquadEchange
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
@@ -2242,7 +2210,7 @@ export interface SessionPageRequest {
 
 export type SessionPageResponse = components['schemas']['SessionPageResponse']
 
-// ─── Vague 3 (D22) : sections transverses Riposte / Appui / Portée ────────────────────
+// ─── Vague 3 (D22) : sections transverses Appui / Portée ─────────────────────────────
 // Contrat Go : internal/domain/coordination.go et internal/domain/match_range.go, servis
 // DANS la réponse de page existante (aucune requête de plus). `Couverture` est le même
 // type que côté Tactique (taux + brut + par match + N + drapeau d'échantillon faible) :

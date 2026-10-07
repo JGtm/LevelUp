@@ -73,8 +73,19 @@ export const Route = createFileRoute(
   // `URLSearchParams` depuis `routerState.location.search` en supposant CHAQUE valeur déjà
   // une chaîne — un champ numérique ici casse leur build, sans rapport avec ce lot. La
   // conversion en nombre se fait au composant (`Number(search.t)`), une fois validée.
+  //
+  // ...MAIS L'ENTRÉE ACCEPTE AUSSI UN NOMBRE : le routeur lit chaque valeur de recherche en
+  // JSON, donc un lien écrit à la main `?t=612000` arrive comme le NOMBRE 612000. Refusé par
+  // `z.string()`, il tombait dans `.catch` et le rejeu s'ouvrait au début sans un mot. Les
+  // liens de l'app (`MatchReplayLink`) passent par le sérialiseur, qui cite la chaîne
+  // (`?t=%224200%22`) ; les deux formes donnent ici la même chaîne. Le type de SORTIE, seul
+  // fusionné dans `FullSearchSchema`, reste `string`.
   validateSearch: z.object({
-    t: z.string().optional().catch(undefined),
+    t: z
+      .union([z.string(), z.number()])
+      .transform((v) => String(v))
+      .optional()
+      .catch(undefined),
     clock: z.enum(['match', 'film']).optional().catch(undefined),
   }),
   component: () => (

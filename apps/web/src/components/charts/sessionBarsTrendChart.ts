@@ -1,11 +1,8 @@
 /**
  * sessionBarsTrendChart — LA frise « une soirée, un bâton », partagée.
  *
- * Hissée depuis `features/squad/charts/squadRiposteSessionsChart.ts` (lot J) le
- * 2026-09-22 : la page Séries temporelles demande la même frise sur deux sujets
- * (Riposte, Appui reçu) et la règle des deux copies interdit de la recopier. Le module
- * de l'Escouade n'est plus qu'un ADAPTATEUR — il traduit sa `FriseRiposte` en séries
- * génériques et n'écrit plus une seule clé d'option ECharts.
+ * Un appelant passe des séries génériques et n'écrit aucune clé d'option ECharts
+ * (garde-rail : `sessionBarsTrendChart.guard.test.ts`).
  *
  * GRAMMAIRE TENUE (celle de `squadSessionTimelineChart.ts`, désignée comme référence par
  * l'utilisateur) : bâtons à 18 px, courbe pleine 2 px NON lissée, légende nommant chaque
@@ -24,9 +21,8 @@
  *      trait plein, dont l'étiquette NOMME les repères qu'elle remplace ; l'axe cesse de
  *      compter des parts et compte des POINTS d'écart, et l'infobulle porte les deux
  *      lectures — la valeur absolue ET l'écart.
- *   3. LE DÉNOMINATEUR VOYAGE AVEC LE TAUX : soit en second rang d'étiquettes sous l'axe
- *      des dates (`volumeAxis`), soit en lignes d'infobulle (`tooltipLines`). Une frise
- *      qui n'en montre aucun laisse lire une soirée à 3 morts comme une soirée à 80.
+ *   3. LE DÉNOMINATEUR VOYAGE AVEC LE TAUX, en lignes d'infobulle (`tooltipLines`). Une
+ *      frise qui n'en montre aucun laisse lire une soirée à 3 appuis comme une soirée à 80.
  *
  * UN BÂTON CREUX (`hollow`) dit « échantillon faible » : il est rendu en contour, jamais
  * absent — la trame du temps ne doit pas mentir — et l'appelant l'exclut de sa tendance.
@@ -64,19 +60,6 @@ export interface SessionBarsSeriesSpec {
   valuesPct: (number | null)[]
   /** Par soirée : bâton en contour (échantillon faible). */
   hollow?: boolean[]
-  /**
-   * Par soirée : bâton ATTÉNUÉ — il est dans la trame du temps mais hors du périmètre que
-   * le lecteur a demandé.
-   *
-   * MÊME GRAMMAIRE QUE LE NUAGE DE LA PORTÉE (lot W, D23-4 du 2026-09-21) : la population
-   * entière est tracée, et ce que le filtre retient est en ENCRE PLEINE. Retirer les
-   * autres reviendrait à ne montrer qu'un point — et un point n'a pas de population où se
-   * situer. Se combine avec `hollow` : la fiabilité et l'appartenance au filtre sont deux
-   * choses distinctes.
-   */
-  dimmed?: boolean[]
-  /** Nom de pile — deux séries de même pile occupent la même colonne (verdicts à trous). */
-  stack?: string
   usual?: SessionBarsUsual
   trend?: SessionBarsTrend
 }
@@ -101,8 +84,6 @@ export interface SessionBarsTrendOpts {
   labels: string[]
   series: SessionBarsSeriesSpec[]
   yAxisLabel: string
-  /** Second rang d'étiquettes sous l'axe des dates (un volume par soirée). */
-  volumeAxis?: { label: string; values: string[] }
   /** Lignes ajoutées à l'infobulle d'une soirée (ses dénominateurs). */
   tooltipLines?: (index: number) => string[]
   /** Présent = MODE ÉCART : valeur tracée = `value - usual`, une seule ligne à zéro. */
@@ -138,27 +119,14 @@ function decalageDe(spec: SessionBarsSeriesSpec, ecart: boolean): number {
   return ecart && spec.usual ? spec.usual.valuePct : 0
 }
 
-/**
- * Opacité d'un bâton hors du périmètre filtré. Assez basse pour que l'encre pleine du
- * filtre se détache au premier coup d'œil, assez haute pour que la forme de la population
- * reste lisible — c'est elle qui justifie de tracer ces bâtons.
- */
-const OPACITE_HORS_FILTRE = 0.3
-
 function barData(spec: SessionBarsSeriesSpec, decalage: number): unknown[] {
   return spec.valuesPct.map((v, i) => {
     if (v == null) return null
     const value = round1(v - decalage)
-    const creux = spec.hollow?.[i] === true
-    const attenue = spec.dimmed?.[i] === true
-    if (!creux && !attenue) return value
+    if (spec.hollow?.[i] !== true) return value
     // Bâton CREUX : contour de la couleur de la série sur un fond transparent. Le bâton
     // reste à sa place et à sa hauteur — c'est sa FIABILITÉ qui est dite, pas sa valeur.
-    const itemStyle: Record<string, unknown> = creux
-      ? { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 }
-      : {}
-    if (attenue) itemStyle.opacity = OPACITE_HORS_FILTRE
-    return { value, itemStyle }
+    return { value, itemStyle: { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 } }
   })
 }
 
@@ -229,7 +197,6 @@ function barreDe(
   return {
     type: 'bar',
     name: s.name,
-    ...(s.stack ? { stack: s.stack } : {}),
     barMaxWidth: 18,
     itemStyle: { borderRadius: [3, 3, 0, 0] },
     color: s.color,
@@ -257,28 +224,6 @@ function tendanceDe(
     itemStyle: { color: trend.color },
     symbol: ecart ? 'none' : 'circle',
     symbolSize: 6,
-  }
-}
-
-function axeDesVolumes(
-  volumeAxis: NonNullable<SessionBarsTrendOpts['volumeAxis']>,
-  axisColor: string,
-): Record<string, unknown> {
-  // Le rang des volumes : un axe de catégories SANS ligne ni graduation, posé sous le
-  // premier. Il ne porte aucune série — seulement ses étiquettes.
-  return {
-    type: 'category',
-    data: volumeAxis.values,
-    position: 'bottom',
-    offset: 22,
-    axisLine: { show: false },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    name: volumeAxis.label,
-    nameLocation: 'end',
-    nameGap: 8,
-    nameTextStyle: { color: axisColor, fontSize: 10 },
-    axisLabel: { color: axisColor, fontSize: 10 },
   }
 }
 
@@ -325,11 +270,10 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
     : []
 
   const xAxis: Record<string, unknown>[] = [{ ...axis, type: 'category', data: opts.labels }]
-  if (opts.volumeAxis) xAxis.push(axeDesVolumes(opts.volumeAxis, tc.axisLabel))
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 36, bottom: opts.volumeAxis ? 64 : 44, left: 8, right: 24, containLabel: true },
+    grid: { top: 36, bottom: 44, left: 8, right: 24, containLabel: true },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',

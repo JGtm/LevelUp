@@ -59,31 +59,19 @@ type MatchRangeInput struct {
 	PublishOrder []string
 }
 
-// matchRangeMesures accumule les DEUX grandeurs d'un même lot de frags : la distance au sol
-// et le dénivelé SIGNÉ. Une struct plutôt que deux maps parallèles — elles se rempliraient
-// et se videraient ensemble, et une seule des deux finirait par être mise à jour.
+// matchRangeMesures accumule les distances au sol d'un lot de frags.
 type matchRangeMesures struct {
 	dist []float64
-	// dz est le dénivelé BRUT du côté tueur (`killer_z - victim_z`, cf. MeasuredKill.DeltaZ) :
-	// positif = j'ai fragué depuis le haut. Le signe N'EST PAS redressé ici.
-	dz []float64
 }
 
 func (m *matchRangeMesures) ajouter(k MeasuredKill) {
 	m.dist = append(m.dist, k.DistanceM)
-	m.dz = append(m.dz, k.DeltaZ)
 }
 
-// medianes trie et rend les deux médianes du lot. Le dénivelé est un POINTEUR : un lot vide
-// n'a pas de dénivelé médian, et un 0 m se lirait « à plat », ce qui est une mesure.
-func (m *matchRangeMesures) medianes() (float64, *float64) {
+// mediane trie et rend la médiane des distances du lot.
+func (m *matchRangeMesures) mediane() float64 {
 	sort.Float64s(m.dist)
-	if len(m.dz) == 0 {
-		return percentileLinear(m.dist, 50), nil
-	}
-	sort.Float64s(m.dz)
-	dz := percentileLinear(m.dz, 50)
-	return percentileLinear(m.dist, 50), &dz
+	return percentileLinear(m.dist, 50)
 }
 
 // MatchRangeProfiles calcule un profil de portée par match du scope.
@@ -115,16 +103,14 @@ func MatchRangeProfiles(in MatchRangeInput) []domain.MatchRangeProfile {
 			// Aucun frag mesuré : pas de référentiel, donc aucun écart n'a de sens.
 			continue
 		}
-		lobby, lobbyDZ := lot.medianes()
-		ref := matchRangeLobby{medianM: lobby, elevationM: lobbyDZ}
+		lobby := lot.mediane()
 		out = append(out, domain.MatchRangeProfile{
-			MatchID:               m.MatchID,
-			PlayedAt:              m.PlayedAt,
-			MapName:               m.MapName,
-			Players:               matchRangePlayers(parJoueur[m.MatchID], ordre, in.Publish, ref),
-			LobbyMedianM:          lobby,
-			LobbyElevationMedianM: lobbyDZ,
-			LobbyMeasured:         len(lot.dist),
+			MatchID:       m.MatchID,
+			PlayedAt:      m.PlayedAt,
+			MapName:       m.MapName,
+			Players:       matchRangePlayers(parJoueur[m.MatchID], ordre, in.Publish, lobby),
+			LobbyMedianM:  lobby,
+			LobbyMeasured: len(lot.dist),
 		})
 	}
 	return out
@@ -157,7 +143,7 @@ func matchRangePublishOrder(in MatchRangeInput) []string {
 // sur ce match n'y a pas de ligne.
 func matchRangePlayers(
 	parJoueur map[string]*matchRangeMesures, ordre []string, publish map[string]string,
-	lobby matchRangeLobby,
+	lobbyMedianM float64,
 ) []domain.MatchRangePlayer {
 	out := make([]domain.MatchRangePlayer, 0, len(ordre))
 	for _, xuid := range ordre {
@@ -165,33 +151,14 @@ func matchRangePlayers(
 		if lot == nil || len(lot.dist) == 0 {
 			continue
 		}
-		med, dz := lot.medianes()
+		med := lot.mediane()
 		out = append(out, domain.MatchRangePlayer{
-			XUID:                 xuid,
-			Gamertag:             publish[xuid],
-			MedianM:              med,
-			LobbyDeltaM:          med - lobby.medianM,
-			ElevationMedianM:     dz,
-			ElevationLobbyDeltaM: ecartDeDenivele(dz, lobby.elevationM),
-			Measured:             len(lot.dist),
+			XUID:        xuid,
+			Gamertag:    publish[xuid],
+			MedianM:     med,
+			LobbyDeltaM: med - lobbyMedianM,
+			Measured:    len(lot.dist),
 		})
 	}
 	return out
-}
-
-// matchRangeLobby porte le référentiel d'UN match — les deux médianes du lobby, passées
-// ensemble pour tenir la limite de paramètres du dépôt.
-type matchRangeLobby struct {
-	medianM    float64
-	elevationM *float64
-}
-
-// ecartDeDenivele rend `joueur - lobby`, ou nil si l'une des deux grandeurs manque : un
-// écart calculé contre un référentiel absent serait une valeur inventée.
-func ecartDeDenivele(joueur, lobby *float64) *float64 {
-	if joueur == nil || lobby == nil {
-		return nil
-	}
-	d := *joueur - *lobby
-	return &d
 }

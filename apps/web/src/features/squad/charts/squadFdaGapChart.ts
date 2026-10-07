@@ -119,7 +119,7 @@ function fdaGapPlayerSeries(
     symbol: 'circle' as const,
     symbolSize: 4,
     connectNulls: true,
-    // Valeur de fin au bout de la courbe (précédent : squadRangeRolesChart). ECharts la
+    // Valeur de fin au bout de la courbe. ECharts la
     // pose sur le dernier point NON nul ; `moveOverlap: 'shiftY'` écarte verticalement
     // les étiquettes de TOUTES les séries qui se chevauchent (vérifié au rendu SVG).
     endLabel: {
