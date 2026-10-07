@@ -1015,7 +1015,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
                reste qu'en rattrapage compté là où la vue A ne se lit pas (item c4).
             5. Le contenu publié ne change pas sur les 23 films ; le changement de voie technique se
                déclare, avec la montée de `killsource.Rev` en c2.
-      - [ ] 2.7.c1 *Lectures déplacées, sans différence* : `feed.go`, `film_table.go`,
+      - [x] 2.7.c1 *Lectures déplacées, sans différence* : `feed.go`, `film_table.go`,
             BOT_METADATA (repliées sur le lecteur de la grammaire de la fiche joueur si
             l'équivalence tient, sinon déplacées telles quelles), le gabarit du dead-state et sa
             sonde relâchée descendent dans la grammaire ; killsource consomme leurs résultats.
@@ -1047,6 +1047,12 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             `eventchain.go` et `assist.go`. Preuve d'équivalence (`replay-equiv` et killsource
             json) interrompue le 2026-10-07 à 11 h 10 pour laisser la machine à la recuisson du
             parc de levelup-d0 ; elle se rejoue sur `feat/v75` fusionnée (`48fce6602`).
+            *Clos le 2026-10-07*, sur `c11f30159` (fusion de `feat/v75` `48fce6602`) : passe de référence
+            c0 (binaires de `origin/feat/v75`, références d'équivalence re-figées : aucune ne bouge) puis
+            passe c1 (binaires de la branche) — `replay-equiv` 20 films identiques
+            (`depuis_les_faits=false`), faits identiques à l'octet sur les 20 films, killsource json
+            identique sur les 19 témoins ; `KILLSOURCE_FIXTURES` vert ; suite du film et garde-rails
+            verts.
       - [ ] 2.7.c2 *La marche de killsource devient un canal de la marche des trames* : dead-states
             bipèdes avec leur trame et leur position, rendus par la grammaire ; timeline retirée ;
             calibration en préliminaire du contexte. Règles (filtre de bande ou d'archétype,
@@ -1779,3 +1785,10 @@ plan y sont reprises comme items (3.1.2).
   indépendamment, et l'exécutable enregistre les deux réglages de la queue à faux par défaut.
   Décisions d'exécution 1 à 3 et 5 écrites ; la décision 4 (kill-events) est demandée à
   l'utilisateur. Découvertes 30 et 31.
+- 2026-10-07 : 2.7.c1 CLOS. Décision de l'utilisateur sur les kill-events (« Lire sans la partie
+  optionnelle ») consignée (§2, décision 4 de c0, item c4). Lectures de killsource hors de sa
+  marche descendues dans la grammaire (`b00ba0989`) ; preuve interrompue à 11 h 10 pour la recuisson
+  du parc de levelup-d0 (passes arrêtées, fichiers partiels retirés), `feat/v75` `48fce6602`
+  re-fusionnée (`c11f30159`, conflits des empreintes de révision : `feat/v75` a raison, empreintes
+  recopiées), puis passes c0 et c1 rejouées après la recuisson (11 h 33 – 11 h 54) : identiques à
+  l'octet. c2 et c3 écrits dans l'arbre de travail pendant l'attente, non commités.
