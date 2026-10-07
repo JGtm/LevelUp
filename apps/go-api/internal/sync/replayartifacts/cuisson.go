@@ -10,7 +10,9 @@ package replayartifacts
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -130,6 +132,10 @@ type bilanCuisson struct {
 	// « le jeu a change » dans le bruit des cuissons qui plantent. Le journal PAR MATCH dit lequel.
 	ecartes      int
 	budgetEpuise bool
+	// horsCatalogue : films refusés pour carte HORS CATALOGUE de bornes, par carte (ses noms
+	// candidats, tels que la cuisson les a reçus). Comptés aussi dans `echecs` ; signalés une fois
+	// par carte et par cycle ([signalerCartesHorsCatalogue]).
+	horsCatalogue map[string]int
 	// ranges : les artefacts RANGÉS par ce cycle, à dériver une fois TOUTE cuisson terminée
 	// (cf. derivations.go). Ils voyagent dans le bilan plutôt que d'être dérivés ici : un
 	// burst writer au milieu d'une boucle de décodage est exactement ce que le découpage du
@@ -139,6 +145,30 @@ type bilanCuisson struct {
 	// document rangé. Deux listes séparées auraient divergé au premier crochet ajouté — c'est
 	// déjà ce que disait l'ancien champ `usage`, qui servait aussi les statistiques d'Assaut.
 	ranges []ArtefactRange
+}
+
+// noterHorsCatalogue compte un film refusé pour sa carte hors catalogue.
+func (b *bilanCuisson) noterHorsCatalogue(mapNames []string) {
+	if b.horsCatalogue == nil {
+		b.horsCatalogue = make(map[string]int, 1)
+	}
+	b.horsCatalogue[fmt.Sprint(mapNames)]++
+}
+
+// signalerCartesHorsCatalogue dit en WARN, UNE FOIS PAR CARTE ET PAR CYCLE, chaque carte hors
+// catalogue de bornes et le nombre de ses films que le cycle n'a pas pu cuire : une carte absente
+// du catalogue bloque TOUS ses films, et cela doit se voir sans le niveau DEBUG. Ordre des cartes
+// stable (tri) : deux cycles identiques écrivent le même journal.
+func signalerCartesHorsCatalogue(ctx context.Context, d Deps, parCarte map[string]int) {
+	cartes := make([]string, 0, len(parCarte))
+	for carte := range parCarte {
+		cartes = append(cartes, carte)
+	}
+	sort.Strings(cartes)
+	for _, carte := range cartes {
+		slog.WarnContext(ctx, "post-sync: rejeu 2D — carte hors catalogue de bornes, films non cuits",
+			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "carte", carte, "films", parCarte[carte])
+	}
 }
 
 // traites : les matchs que la boucle a examinés et décidés (construits, à jour, sans film,
@@ -272,6 +302,7 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		}
 		cuireUnMatch(ctx, d, w, &b, solde)
 	}
+	signalerCartesHorsCatalogue(ctx, d, b.horsCatalogue)
 	return b
 }
 
@@ -313,40 +344,7 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 	defer annuler()
 	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
 	if berr != nil {
-		// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
-		// Les deux sont best-effort, mais seuls les seconds méritent un WARN.
-		logFn := slog.WarnContext
-		if errors.Is(berr, replaybuild.ErrMapNotInCatalog) {
-			logFn = slog.DebugContext
-		}
-		// CLÉ INCONNUE = ÉCARTÉ, PAS UN ÉCHEC (lot 3.1.1). Le film est là et lisible ; ce qui
-		// manque est une ligne de table côté dépôt. Le compter en échec ferait chercher une
-		// panne, et noierait dans le bruit le seul signal qui compte : le jeu a changé.
-		//
-		// LE CLASSEMENT PORTE SUR LE TYPE, JAMAIS SUR LE TEXTE (lot J2.12, décision DT-5) :
-		// l'erreur traverse une frontière de processus, mais la RAISON du refus la traverse
-		// aussi, en jeton de protocole (`filmproc.EmitRaison`), et `replaychild` rend l'erreur
-		// typée enveloppée — `errors.Is` a donc de quoi mordre.
-		if errors.Is(berr, replaybuild.ErrUnknownFilmKey) {
-			slog.WarnContext(ctx, "post-sync: artefact rejeu ECARTE — clé du film absente de la "+
-				"table de profil (ajouter la ligne : docs/RUNBOOK_FILM_PROFILES.md)",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
-			b.ecartes++
-			return
-		}
-		// FILM NON FINALISÉ = ÉCARTÉ, PAS UN ÉCHEC (lot L3, 2026-09-23). La cuisson refuse un
-		// film dont le manifeste ne porte pas le morceau des temps forts, ou dont des morceaux ne
-		// sont pas décrits par le manifeste : cuire un film TRONQUÉ publierait un document faux
-		// (`ab526724`). Même frontière de processus, donc même classement par le type.
-		if errors.Is(berr, finalise.ErrFilmNonFinalise) {
-			slog.InfoContext(ctx, "post-sync: artefact rejeu ÉCARTÉ — film non finalisé au cache",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
-			b.ecartes++
-			return
-		}
-		logFn(ctx, "post-sync: artefact rejeu non construit",
-			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
-		b.echecs++
+		classerRefus(ctx, d, w, b, berr)
 		return
 	}
 	b.construits++
@@ -362,6 +360,50 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		"gamertag", d.Gamertag, "match_id", w.matchID,
 		"tracks", out.stored.Tracks, "bytes", out.stored.Bytes,
 		"duration", out.dur, "pic_octets", out.peak)
+}
+
+// classerRefus range le refus d'une cuisson : écarté (clé de profil inconnue, film non finalisé),
+// carte hors catalogue (échec compté par carte), ou échec ordinaire (WARN par film).
+func classerRefus(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, berr error) {
+	// CLÉ INCONNUE = ÉCARTÉ, PAS UN ÉCHEC (lot 3.1.1). Le film est là et lisible ; ce qui
+	// manque est une ligne de table côté dépôt. Le compter en échec ferait chercher une
+	// panne, et noierait dans le bruit le seul signal qui compte : le jeu a changé.
+	//
+	// LE CLASSEMENT PORTE SUR LE TYPE, JAMAIS SUR LE TEXTE (lot J2.12, décision DT-5) :
+	// l'erreur traverse une frontière de processus, mais la RAISON du refus la traverse
+	// aussi, en jeton de protocole (`filmproc.EmitRaison`), et `replaychild` rend l'erreur
+	// typée enveloppée — `errors.Is` a donc de quoi mordre.
+	if errors.Is(berr, replaybuild.ErrUnknownFilmKey) {
+		slog.WarnContext(ctx, "post-sync: artefact rejeu ECARTE — clé du film absente de la "+
+			"table de profil (ajouter la ligne : docs/RUNBOOK_FILM_PROFILES.md)",
+			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+		b.ecartes++
+		return
+	}
+	// FILM NON FINALISÉ = ÉCARTÉ, PAS UN ÉCHEC (lot L3, 2026-09-23). La cuisson refuse un
+	// film dont le manifeste ne porte pas le morceau des temps forts, ou dont des morceaux ne
+	// sont pas décrits par le manifeste : cuire un film TRONQUÉ publierait un document faux
+	// (`ab526724`). Même frontière de processus, donc même classement par le type.
+	if errors.Is(berr, finalise.ErrFilmNonFinalise) {
+		slog.InfoContext(ctx, "post-sync: artefact rejeu ÉCARTÉ — film non finalisé au cache",
+			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+		b.ecartes++
+		return
+	}
+	// CARTE HORS CATALOGUE DE BORNES : échec voulu (Forge, ou module absent de l'installation),
+	// compté en échec. Le film se dit en DEBUG ; la CARTE se dit en WARN, une fois par cycle
+	// ([signalerCartesHorsCatalogue]) : elle bloque tous ses films, et un WARN par film
+	// noierait le journal quand un DEBUG seul la cachait.
+	if errors.Is(berr, replaybuild.ErrMapNotInCatalog) {
+		slog.DebugContext(ctx, "post-sync: artefact rejeu non construit — carte hors catalogue",
+			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+		b.noterHorsCatalogue(w.mapNames)
+		b.echecs++
+		return
+	}
+	slog.WarnContext(ctx, "post-sync: artefact rejeu non construit",
+		"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+	b.echecs++
 }
 
 // persistFilmToCache télécharge les chunks COMPLETS du film et les persiste au cache
