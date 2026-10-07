@@ -412,14 +412,16 @@ describe('drawFlagCarries', () => {
     expect(cernes[cernes.length - 1].alpha).toBeCloseTo(fills[0].alpha, 10)
   })
 
-  it('AU SOL : le drapeau CLIGNOTE — son opacité change avec l\'image', () => {
+  it('AU SOL : le drapeau est STABLE et PLEIN — même opacité à toute image (2026-10-07)', () => {
+    // Le fantôme posé au centre de sa zone de retour ne bat pas : la zone porte le signal.
     const alphas = new Set<number>()
     for (const frame of [20, 22, 25, 27]) {
       const { ctx, calls } = mockCtx()
       drawFlagCarries(ctx, layerWith(null), [FLAG_0], VIEW, frame)
       alphas.add(calls.filter((c) => c.method === 'fill')[0].alpha)
     }
-    expect(alphas.size).toBeGreaterThan(1)
+    expect(alphas.size).toBe(1)
+    expect([...alphas][0]).toBe(0.95)
   })
 
   it('PORTÉ : le drapeau clignote AUSSI — c\'est « hors de sa base » qui bat, pas « au sol »', () => {
@@ -503,11 +505,11 @@ describe('flagAt (survol)', () => {
   })
 })
 
-describe('flagBlinkAlpha (le clignotement hors base, 2026-08-27)', () => {
-  /** Les trois états HORS BASE : ce sont eux, et eux seuls, qui battent. */
-  const DEHORS = ['carried', 'carried_open', 'dropped'] as const
+describe('flagBlinkAlpha (le clignotement du drapeau porté, 2026-08-27 ; au sol stable, 2026-10-07)', () => {
+  /** Les deux états PORTÉS : ce sont eux, et eux seuls, qui battent. */
+  const DEHORS = ['carried', 'carried_open'] as const
 
-  it('les TROIS états hors base clignotent : leur opacité dépend de l\'image', () => {
+  it('les DEUX états portés clignotent : leur opacité dépend de l\'image', () => {
     for (const s of DEHORS) {
       const vues = new Set([0, 2, 5, 7].map((f) => flagBlinkAlpha(s, f, false)))
       expect(vues.size, `${s} ne bouge pas`).toBeGreaterThan(1)
@@ -516,6 +518,12 @@ describe('flagBlinkAlpha (le clignotement hors base, 2026-08-27)', () => {
 
   it('`home` est STABLE et PLEIN — insensible à l\'image', () => {
     for (const f of [0, 1, 3, 7, 40, 1_000]) expect(flagBlinkAlpha('home', f, false)).toBe(0.95)
+  })
+
+  it('`dropped` est STABLE et PLEIN : au sol, c\'est la zone de retour qui signale (2026-10-07)', () => {
+    // Le fantôme posé au centre du cercle ne bat pas : un glyphe qui clignote sur un cercle fixe
+    // se lit comme un défaut d'affichage (constat utilisateur), pas comme un signal.
+    for (const f of [0, 1, 2, 3, 5, 7, 40, 1_000]) expect(flagBlinkAlpha('dropped', f, false)).toBe(0.95)
   })
 
   it('un état INCONNU suit le comportement « présent » : plein et fixe, jamais clignotant', () => {
@@ -540,7 +548,7 @@ describe('flagBlinkAlpha (le clignotement hors base, 2026-08-27)', () => {
     }
     // Et le battement PARCOURT TOUT l'intervalle, sur des images ENTIÈRES : c'est ce que le
     // cosinus achète (un sinus s'arrêterait à 0,36 et 0,94 — cf. BLINK_PERIOD_FRAMES).
-    const vues = Array.from({ length: 120 }, (_, f) => flagBlinkAlpha('dropped', f, false))
+    const vues = Array.from({ length: 120 }, (_, f) => flagBlinkAlpha('carried', f, false))
     expect(Math.min(...vues)).toBeCloseTo(0.35, 10)
     expect(Math.max(...vues)).toBeCloseTo(0.95, 10)
   })
@@ -548,12 +556,12 @@ describe('flagBlinkAlpha (le clignotement hors base, 2026-08-27)', () => {
   it('LA PÉRIODE EST CELLE ATTENDUE : deux images à une demi-période d\'écart s\'opposent', () => {
     // Période de 10 images (≈ 1 s au pas de 100 ms) : 0 et 5 sont à une demi-période l'une de
     // l'autre, donc aux deux bouts de la course — l'écart doit être franc, pas cosmétique.
-    const haut = flagBlinkAlpha('dropped', 0, false)
-    const bas = flagBlinkAlpha('dropped', 5, false)
+    const haut = flagBlinkAlpha('carried', 0, false)
+    const bas = flagBlinkAlpha('carried', 5, false)
     expect(Math.abs(haut - bas)).toBeGreaterThan(0.5)
     // Une période PLEINE ramène la même valeur : c'est ce qui fait un cycle, pas une dérive.
-    expect(flagBlinkAlpha('dropped', 10, false)).toBeCloseTo(haut, 10)
-    expect(flagBlinkAlpha('dropped', 15, false)).toBeCloseTo(bas, 10)
+    expect(flagBlinkAlpha('carried', 10, false)).toBeCloseTo(haut, 10)
+    expect(flagBlinkAlpha('carried', 15, false)).toBeCloseTo(bas, 10)
   })
 })
 
