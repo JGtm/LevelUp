@@ -136,3 +136,28 @@ func TestRunRegistryNamesBackfill_RefuseLaBaseDUnAutreTitre(t *testing.T) {
 		t.Errorf("autre titre : h5 map_name = %q, want NULL (aucune écriture)", nom.String)
 	}
 }
+
+// TestRunRegistryNamesBackfill_SimulationSansMetadonnees_CompteLesCandidats : base de
+// métadonnées absente — la simulation admin compte les candidats (noms NULL ou égaux à
+// l'identifiant), aucun réparable, au lieu de rendre zéro.
+func TestRunRegistryNamesBackfill_SimulationSansMetadonnees_CompteLesCandidats(t *testing.T) {
+	repoRoot := t.TempDir()
+	sharedPath := titlePkg.NewPathResolver(repoRoot).SharedDBPath(titlePkg.DefaultSlug)
+	creerBase(t, sharedPath, ddlRegistreNoms,
+		`INSERT INTO match_registry (match_id, map_id, map_name, mode_category)
+			VALUES ('m1', 'map-x', NULL, 'other'), ('m2', 'map-x', 'map-x', 'other'), ('m3', 'map-x', 'Streets', 'other')`)
+	prov, err := sharedprovider.New(sharedPath)
+	if err != nil {
+		t.Fatalf("sharedprovider.New: %v", err)
+	}
+	t.Cleanup(func() { _ = prov.Close() })
+	reg := &ServiceRegistry{cfg: &config.AppConfig{RepoRoot: repoRoot, SharedProvider: prov}}
+
+	res, err := reg.RunRegistryNamesBackfill(context.Background(), titlePkg.DefaultSlug, true)
+	if err != nil {
+		t.Fatalf("simulation: %v", err)
+	}
+	if !res.DryRun || res.MapsScanned != 2 || res.MapsFixed != 0 || res.TotalFixed != 0 {
+		t.Errorf("simulation sans métadonnées = %+v, want 2 candidats, 0 réparable", res)
+	}
+}

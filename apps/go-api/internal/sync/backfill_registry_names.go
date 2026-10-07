@@ -77,12 +77,13 @@ ORDER BY match_id`
 
 // BackfillRegistryNames fait converger les noms d'assets de match_registry vers les traductions
 // de metadata (cf. en-tête). sharedDB doit porter le writer de shared_matches_v2 hors
-// simulation. metadataDB nil → avertissement et stats vides (rien à quoi converger).
+// simulation. metadataDB nil : aucune source de nom — en écriture, avertissement et stats vides ;
+// en simulation, les candidats sont comptés (XScanned), tous sans source (XFixed = 0).
 func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB,
 	opts RegistryNamesOptions) (BackfillRegistryStats, error) {
 	stats := BackfillRegistryStats{DryRun: opts.DryRun}
-	if metadataDB == nil {
-		slog.WarnContext(ctx, "BackfillRegistryNames: metadata DB nil — abort")
+	if metadataDB == nil && !opts.DryRun {
+		slog.WarnContext(ctx, "BackfillRegistryNames: metadata DB nil — aucune source de nom, rien écrit")
 		return stats, nil
 	}
 	if sharedDB == nil {
@@ -91,6 +92,12 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB,
 	rows, err := loadRegistryNameCandidates(ctx, sharedDB)
 	if err != nil {
 		return stats, err
+	}
+	if metadataDB == nil {
+		countCandidatesWithoutSource(rows, &stats)
+		slog.WarnContext(ctx, "BackfillRegistryNames: metadata DB nil — simulation : candidats comptés, tous sans source",
+			"candidats", len(rows))
+		return stats, nil
 	}
 	names := newTranslationCache(metadataDB)
 	persister := persist.NewRegistryNamesPersister(sharedDB)
@@ -175,6 +182,26 @@ func planRegistryNames(ctx context.Context, row registryNameRow, names *translat
 		return append(writes, persist.RegistryNameWrite{Kind: games.AssetKindPair, Name: construit}), true
 	}
 	return writes, false
+}
+
+// countCandidatesWithoutSource compte, par colonne, les matchs dont le nom est à faire converger
+// (XScanned), sans aucune écriture planifiée : simulation sans base de métadonnées.
+func countCandidatesWithoutSource(rows []registryNameRow, stats *BackfillRegistryStats) {
+	for _, r := range rows {
+		for _, c := range []struct {
+			id, name sql.NullString
+			scanned  *int
+		}{
+			{r.playlistID, r.playlistName, &stats.PlaylistsScanned},
+			{r.mapID, r.mapName, &stats.MapsScanned},
+			{r.pairID, r.pairName, &stats.PairsScanned},
+			{r.variantID, r.varName, &stats.VariantsScanned},
+		} {
+			if nameNeedsConvergence(c.id, c.name) {
+				*c.scanned++
+			}
+		}
+	}
 }
 
 // nameNeedsConvergence : identifiant renseigné et nom NULL ou égal à l'identifiant — la même

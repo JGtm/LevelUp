@@ -264,3 +264,28 @@ func TestBackfillRegistryNames_NilMetadata_NoOp(t *testing.T) {
 		t.Errorf("total = %d, want 0", stats.Total())
 	}
 }
+
+// TestBackfillRegistryNames_SimulationSansMetadonnees_CompteLesCandidats : simulation sans base
+// de métadonnées — chaque colonne NULL ou égale à son identifiant est comptée candidate, aucune
+// n'est réparable (pas de source), un vrai nom n'est pas compté, rien n'est écrit.
+func TestBackfillRegistryNames_SimulationSansMetadonnees_CompteLesCandidats(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, _ := setupBackfillRegistryDBs(t)
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', 'pl', 'pl', 'map', NULL, 'pair', 'pair', 'gv', 'Slayer', 'other'),
+		('m2', 'pl', 'Ranked', 'map', 'map', NULL, NULL, 'gv', 'gv', 'other')`); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := BackfillRegistryNames(ctx, sharedDB, nil, RegistryNamesOptions{DryRun: true})
+	if err != nil {
+		t.Fatalf("simulation sans métadonnées: %v", err)
+	}
+	want := BackfillRegistryStats{DryRun: true, PlaylistsScanned: 1, MapsScanned: 2, PairsScanned: 1, VariantsScanned: 1}
+	if stats != want {
+		t.Errorf("stats = %+v, want %+v", stats, want)
+	}
+	var nom sql.NullString
+	if err := sharedDB.QueryRow(`SELECT map_name FROM match_registry WHERE match_id = 'm1'`).Scan(&nom); err != nil || nom.Valid {
+		t.Errorf("m1 map_name = %v (err %v), want NULL (aucune écriture)", nom, err)
+	}
+}
