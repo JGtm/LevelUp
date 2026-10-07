@@ -179,4 +179,46 @@ var registreFilmdecMarche = []Repli{
 		CritereRetrait:  "0 record bipede rendu par l ancrage derriere la marche sur le corpus du gate de rejeu et sur le parc",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_pistes_du_monde_apres_la_marche",
+		Fait: "quels echantillons de piste d objet du monde (equipement, armes au sol, projectiles) se lisent hors de ce que la marche des trames a lu",
+		Mecanisme: "la passe des pistes rend, DERRIERE la marche des trames, les records d un slot dont la marche n a lu aucun record dans le paquet, et seulement hors de ce que la fermeture de la trame prouve " +
+			"(la regle de l ancrage bipede derriere la marche) ; la marche, elle, rend chaque record a l archetype que sa table d entites lui donne ; " +
+			"compte = echantillons rendus par la passe, par archetype et par bande demandes",
+		// LECTURE NON PORTEE : le film ecrit ces records ; la marche ne les lit pas quand elle ne
+		// localise pas la liste d evenements du paquet, ou quand une largeur fausse devant eux
+		// l arrete ou la decale.
+		Condition: CondLectureNonPortee,
+		// APRES LECTURE : la marche lit d abord, la passe ne rend que ce qu elle n a pas lu.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "pistes_du_monde.go",
+			Ancre:   "c.NoterReplis(ComptesDesReplis{PistesDuMondeApresLaMarche: recuperes})",
+		}, siteDeVersement("NomPistesDuMondeApresLaMarche")},
+		DatePose: date1007,
+		CibleRetrait: "la marche des trames qui lit la vue B de chaque paquet : listes localisees par la fin de la vue A " +
+			"et largeurs des trames refusees",
+		CritereRetrait:  "0 echantillon de piste rendu par la passe derriere la marche sur le corpus du gate de rejeu et sur le parc",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_creations_du_monde_apres_la_marche",
+		Fait: "quelles creations d objet du monde (equipement, armes au sol, vehicules) se lisent hors de ce que la marche des trames a lu",
+		Mecanisme: "la passe des creations rend, DERRIERE la marche des trames, les records NEW d un slot dont la marche n a lu aucun record dans le paquet, et seulement hors de ce que la fermeture de la trame prouve " +
+			"(la regle de l ancrage bipede derriere la marche) ; la marche, elle, rend chaque record NEW a l archetype que son en-tete porte, lu a son en-tete par le lecteur de creation ; " +
+			"compte = creations rendues par la passe, par marche de creation",
+		// LECTURE NON PORTEE : meme raison que les pistes.
+		Condition: CondLectureNonPortee,
+		// APRES LECTURE : la marche lit d abord, la passe ne rend que ce qu elle n a pas lu.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "creations_du_monde.go",
+			Ancre:   "c.NoterReplis(ComptesDesReplis{CreationsDuMondeApresLaMarche: recuperees})",
+		}, siteDeVersement("NomCreationsDuMondeApresLaMarche")},
+		DatePose: date1007,
+		CibleRetrait: "la marche des trames qui lit la vue B de chaque paquet : listes localisees par la fin de la vue A " +
+			"et largeurs des trames refusees",
+		CritereRetrait:  "0 creation rendue par la passe derriere la marche sur le corpus du gate de rejeu et sur le parc",
+		CompteurBranche: true,
+	},
 }

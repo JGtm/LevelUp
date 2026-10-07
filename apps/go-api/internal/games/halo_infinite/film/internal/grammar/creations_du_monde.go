@@ -55,21 +55,26 @@ func (k cleDeCreation) egale(o cleDeCreation) bool {
 	return k.ti == o.ti && k.wr == o.wr && slices.Equal(k.slots, o.slots) && reflect.DeepEqual(k.prof, o.prof)
 }
 
-// creationsRelevees : ce qu une marche de creation a rendu, sous sa cle.
+// creationsRelevees : ce qu une marche de creation de la passe a rendu, sous sa cle ; et, une fois
+// la marche des trames passee devant elle, les creations rendues ([FilmContext.creationsDerriereLaMarche]).
 type creationsRelevees struct {
 	cle       cleDeCreation
 	creations []types.EquipmentCreation
 	stats     types.EquipmentCreationStats
+	// fondues dit si les creations rendues sont faites ; finales et statsFinales les portent.
+	fondues      bool
+	finales      []types.EquipmentCreation
+	statsFinales types.EquipmentCreationStats
 }
 
 // creationsDe rend ce qui a ete marche sous la cle `k`.
-func (m *memoDesRecuperations) creationsDe(k cleDeCreation) (creationsRelevees, bool) {
+func (m *memoDesRecuperations) creationsDe(k cleDeCreation) (*creationsRelevees, bool) {
 	for _, r := range m.creations {
 		if r.cle.egale(k) {
 			return r, true
 		}
 	}
-	return creationsRelevees{}, false
+	return nil, false
 }
 
 // marcheDeCreation construit la marche de creation de l archetype `ti` sur la bande `band`, sous le
@@ -107,14 +112,32 @@ func (c *FilmContext) marcheDeCreation(ti uint32, wr *profile.Vec3Range, band ma
 	return w, nil
 }
 
-// creationsRelevees rend les creations et les comptes de la marche `w` : une copie de ce qui a ete
-// marche sous sa cle, ou, au premier appel, une passe qui la marche avec celles des autres
-// archetypes de creation de la cuisson.
+// creationsRelevees rend les creations et les comptes de la marche `w` : celles des records NEW que
+// la marche des trames a lus, puis celles que la passe rend derriere elle
+// ([FilmContext.creationsDerriereLaMarche]). La passe se fait au premier appel, avec les autres
+// archetypes de creation de la cuisson ; ce qu elle rend derriere la marche se compte une fois par
+// cle.
 func (c *FilmContext) creationsRelevees(w equipCreationWalk) ([]types.EquipmentCreation,
 	types.EquipmentCreationStats) {
-	if r, ok := c.recup.creationsDe(cleDe(w)); ok {
-		return copierLesCreations(r.creations), r.stats
+	r, ok := c.recup.creationsDe(cleDe(w))
+	if !ok {
+		c.releverLesCreationsDe(w)
+		r, _ = c.recup.creationsDe(cleDe(w))
 	}
+	if !r.fondues {
+		var recuperees int
+		r.finales, r.statsFinales, recuperees = c.creationsDerriereLaMarche(w, r.creations, r.stats)
+		r.fondues = true
+		// Repli `repli_creations_du_monde_apres_la_marche` : les creations que la passe rend derriere
+		// la marche (2.7.d3).
+		c.NoterReplis(ComptesDesReplis{CreationsDuMondeApresLaMarche: recuperees})
+	}
+	return copierLesCreations(r.finales), r.statsFinales
+}
+
+// releverLesCreationsDe fait la passe des creations de la marche `w`, avec celles des autres
+// archetypes de creation de la cuisson qui ne sont pas deja relevees, et les range sous leur cle.
+func (c *FilmContext) releverLesCreationsDe(w equipCreationWalk) {
 	marches := []equipCreationWalk{w}
 	for _, ti := range archetypesDeCreation() {
 		if ti == w.archetype() {
@@ -134,10 +157,9 @@ func (c *FilmContext) creationsRelevees(w equipCreationWalk) ([]types.EquipmentC
 	}
 	creations, stats := releverLesCreations(c, marches)
 	for i, m := range marches {
-		c.recup.creations = append(c.recup.creations, creationsRelevees{cle: cleDe(m), creations: creations[i],
+		c.recup.creations = append(c.recup.creations, &creationsRelevees{cle: cleDe(m), creations: creations[i],
 			stats: stats[i]})
 	}
-	return copierLesCreations(creations[0]), stats[0]
 }
 
 // copierLesCreations rend une copie profonde de creations ; nil reste nil.

@@ -145,7 +145,7 @@ func ScanEquipmentPlacements(
 			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	tracks, err := ScanWorldObjectsForBand(fc, wr, band)
+	tracks, err := ScanWorldObjectsForBand(fc, wr, EquipmentTypeIndex, band)
 	if err != nil {
 		return nil, st, err
 	}

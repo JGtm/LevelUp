@@ -36,44 +36,59 @@ func archetypesAPistes() []int {
 // maxBandesParPasse borne les bandes d une passe : l appartenance d un slot est un masque de bits.
 const maxBandesParPasse = 32
 
-// pistesRelevees : les pistes d une bande, aux bornes et aux largeurs ou elles ont ete relevees.
+// pistesRelevees : les echantillons que la passe a releves pour une bande, aux bornes et aux
+// largeurs du releve ; et les pistes rendues, par archetype demande, faites une fois.
 type pistesRelevees struct {
-	wr     profile.Vec3Range
-	lg     profile.PrecisionDescriptor
-	slots  []uint32
-	pistes []types.ProjectileTrack
+	wr    profile.Vec3Range
+	lg    profile.PrecisionDescriptor
+	slots []uint32
+	brut  []projSample
+	// finales : les pistes rendues pour chaque archetype demande ([FilmContext.pistesDerriereLaMarche]).
+	finales map[int][]types.ProjectileTrack
 }
 
-// pistesDeLaBande rend une copie des pistes de la bande `band` aux bornes `wr` et aux largeurs
-// `lg`, relevees au premier appel avec celles des bandes a pistes de la cuisson.
-func (c *FilmContext) pistesDeLaBande(wr profile.Vec3Range, lg profile.PrecisionDescriptor,
+// pistesDeLaBande rend une copie des pistes de l archetype `ti` sur la bande `band`, aux bornes `wr`
+// et aux largeurs `lg` : celles des records que la marche des trames a lus, puis celles que la passe
+// releve derriere elle ([FilmContext.pistesDerriereLaMarche]). La passe se fait au premier appel,
+// avec les bandes a pistes de la cuisson ; ce qu elle rend derriere la marche se compte une fois par
+// archetype et par bande.
+func (c *FilmContext) pistesDeLaBande(wr profile.Vec3Range, lg profile.PrecisionDescriptor, ti int,
 	band map[uint32]bool) []types.ProjectileTrack {
 	demandee := slotsDeLaBande(band)
-	if p, ok := c.recup.pistesDe(wr, lg, demandee); ok {
-		return copierLesPistes(p)
-	}
-	bandes := [][]uint32{demandee}
-	for _, ti := range archetypesAPistes() {
-		s := slotsDeLaBande(worldObjectSlotBand(c, ti))
-		_, deja := c.recup.pistesDe(wr, lg, s)
-		if len(s) == 0 || deja || slices.ContainsFunc(bandes, func(b []uint32) bool { return slices.Equal(b, s) }) {
-			continue
+	p, ok := c.recup.pistesDe(wr, lg, demandee)
+	if !ok {
+		bandes := [][]uint32{demandee}
+		for _, a := range archetypesAPistes() {
+			s := slotsDeLaBande(worldObjectSlotBand(c, a))
+			_, deja := c.recup.pistesDe(wr, lg, s)
+			if len(s) == 0 || deja || slices.ContainsFunc(bandes, func(b []uint32) bool { return slices.Equal(b, s) }) {
+				continue
+			}
+			bandes = append(bandes, s)
 		}
-		bandes = append(bandes, s)
+		for i, brut := range releverLesPistes(c.Film(), wr, lg, bandes) {
+			c.recup.pistes = append(c.recup.pistes, &pistesRelevees{wr: wr, lg: lg, slots: bandes[i], brut: brut,
+				finales: map[int][]types.ProjectileTrack{}})
+		}
+		p, _ = c.recup.pistesDe(wr, lg, demandee)
 	}
-	for i, pistes := range releverLesPistes(c.Film(), wr, lg, bandes) {
-		c.recup.pistes = append(c.recup.pistes, pistesRelevees{wr: wr, lg: lg, slots: bandes[i], pistes: pistes})
+	if f, ok := p.finales[ti]; ok {
+		return copierLesPistes(f)
 	}
-	p, _ := c.recup.pistesDe(wr, lg, demandee)
-	return copierLesPistes(p)
+	pistes, recuperes := c.pistesDerriereLaMarche(wr, lg, ti, band, p.brut)
+	p.finales[ti] = pistes
+	// Repli `repli_pistes_du_monde_apres_la_marche` : les echantillons que la passe rend derriere la
+	// marche (2.7.d3).
+	c.NoterReplis(ComptesDesReplis{PistesDuMondeApresLaMarche: recuperes})
+	return copierLesPistes(pistes)
 }
 
-// pistesDe rend les pistes relevees pour ces bornes, ces largeurs et cette bande.
+// pistesDe rend ce que la passe a releve pour ces bornes, ces largeurs et cette bande.
 func (m *memoDesRecuperations) pistesDe(wr profile.Vec3Range, lg profile.PrecisionDescriptor,
-	slots []uint32) ([]types.ProjectileTrack, bool) {
+	slots []uint32) (*pistesRelevees, bool) {
 	for _, p := range m.pistes {
 		if p.wr == wr && p.lg == lg && slices.Equal(p.slots, slots) {
-			return p.pistes, true
+			return p, true
 		}
 	}
 	return nil, false
@@ -100,15 +115,12 @@ func copierLesPistes(p []types.ProjectileTrack) []types.ProjectileTrack {
 	return out
 }
 
-// releverLesPistes releve, en une passe sur les payloads delta du film, les pistes de chacune des
-// `bandes` (au plus [maxBandesParPasse]).
+// releverLesPistes releve, en une passe sur les payloads delta du film, les echantillons de chacune
+// des `bandes` (au plus [maxBandesParPasse]), chacun avec son paquet et le bit de son en-tete.
 func releverLesPistes(film *source.Film, wr profile.Vec3Range, lg profile.PrecisionDescriptor,
-	bandes [][]uint32) [][]types.ProjectileTrack {
+	bandes [][]uint32) [][]projSample {
 	appartenance := appartenanceDesBandes(bandes)
-	vies := make([]map[vieDePiste][]types.ProjectileSample, len(bandes))
-	for i := range vies {
-		vies[i] = map[vieDePiste][]types.ProjectileSample{}
-	}
+	out := make([][]projSample, len(bandes))
 	for _, c := range FilmChunkNumbers(film) {
 		chunk, pks, ok := FilmChunkAt(film, c)
 		if !ok {
@@ -120,16 +132,11 @@ func releverLesPistes(film *source.Film, wr profile.Vec3Range, lg profile.Precis
 			}
 			for i, echantillons := range echantillonsDesBandes(p.Payload(chunk), appartenance, len(bandes), &wr, lg) {
 				for _, s := range echantillons {
-					s.TimestampUS, s.Chunk = p.TimestampUS, c
-					k := vieDePiste{s.slot, s.gen}
-					vies[i][k] = append(vies[i][k], s.ProjectileSample)
+					s.TimestampUS, s.Chunk, s.paquet = p.TimestampUS, c, p.Index
+					out[i] = append(out[i], s)
 				}
 			}
 		}
-	}
-	out := make([][]types.ProjectileTrack, len(bandes))
-	for i := range vies {
-		out[i] = pistesDesVies(vies[i])
 	}
 	return out
 }
@@ -206,6 +213,6 @@ func echantillonDuRecord(pay []byte, p int, h types.LifeKey, wr *profile.Vec3Ran
 	}
 	return projSample{
 		ProjectileSample: types.ProjectileSample{X: v[0], Y: v[1], Z: v[2], AtRest: rest},
-		slot:             rec.Slot, gen: rec.Gen,
+		slot:             rec.Slot, gen: rec.Gen, bit: p,
 	}, true
 }

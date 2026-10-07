@@ -106,6 +106,8 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomControleCorruptionSectionAbsente, func(s sourcesDeReplis) int { return s.grammaire.ControleDeCorruptionNonDeclare }},
 	{fallback.NomLocalisationLargeurLibre, func(s sourcesDeReplis) int { return s.grammaire.LocalisationsALargeurLibre }},
 	{fallback.NomAncrageBipedeApresLaMarche, func(s sourcesDeReplis) int { return s.grammaire.AncragesBipedesApresLaMarche }},
+	{fallback.NomPistesDuMondeApresLaMarche, func(s sourcesDeReplis) int { return s.grammaire.PistesDuMondeApresLaMarche }},
+	{fallback.NomCreationsDuMondeApresLaMarche, func(s sourcesDeReplis) int { return s.grammaire.CreationsDuMondeApresLaMarche }},
 
 	// `killsource` : ses statistiques (lot J8.7, sous-lot killsource). Une entree que le decodeur
 	// comptait DEJA sous un autre nom est lue a sa source d origine, sans recopie.

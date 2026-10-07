@@ -79,6 +79,14 @@ type ComptesDesReplis struct {
 	// que l ancrage d en-tete rend aux huit lecteurs DERRIERE la marche des trames : un slot qu elle
 	// n a pas lu, dans une trame qu elle n a pas fermee ([canalDesLecturesBipedes]).
 	AncragesBipedesApresLaMarche int
+	// PistesDuMondeApresLaMarche : `repli_pistes_du_monde_apres_la_marche` — echantillons de pistes
+	// d objet du monde que la passe des pistes rend DERRIERE la marche des trames
+	// ([FilmContext.pistesDerriereLaMarche]).
+	PistesDuMondeApresLaMarche int
+	// CreationsDuMondeApresLaMarche : `repli_creations_du_monde_apres_la_marche` — creations d objet
+	// du monde que la passe des creations rend DERRIERE la marche des trames
+	// ([FilmContext.creationsDerriereLaMarche]).
+	CreationsDuMondeApresLaMarche int
 }
 
 // Plus rend la somme champ a champ des deux rapports.
@@ -102,6 +110,8 @@ func (r ComptesDesReplis) Plus(d ComptesDesReplis) ComptesDesReplis {
 		ControleDeCorruptionNonDeclare: r.ControleDeCorruptionNonDeclare + d.ControleDeCorruptionNonDeclare,
 		LocalisationsALargeurLibre:     r.LocalisationsALargeurLibre + d.LocalisationsALargeurLibre,
 		AncragesBipedesApresLaMarche:   r.AncragesBipedesApresLaMarche + d.AncragesBipedesApresLaMarche,
+		PistesDuMondeApresLaMarche:     r.PistesDuMondeApresLaMarche + d.PistesDuMondeApresLaMarche,
+		CreationsDuMondeApresLaMarche:  r.CreationsDuMondeApresLaMarche + d.CreationsDuMondeApresLaMarche,
 	}
 }
 

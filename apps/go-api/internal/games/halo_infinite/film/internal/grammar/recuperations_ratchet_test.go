@@ -53,13 +53,15 @@ var appelantsDesReleves = map[string]map[string]string{
 			"consommateur est un instrument de mesure",
 	},
 	"releverLesCreations": {
-		"creations_du_monde.go:creationsRelevees": "la memoire des creations, au premier lecteur sous sa cle",
+		"creations_du_monde.go:releverLesCreationsDe": "la memoire des creations, au premier lecteur sous sa cle",
 	},
 	"nouvellePasseDesCreations": {
 		"creations_du_monde.go:releverLesCreations": "la passe des creations sur le film",
 	},
 	"creationA": {
 		"creations_du_monde.go:payload": "la passe des creations, un curseur par archetype",
+		"objets_du_monde_lus.go:creationsDerriereLaMarche": "les records NEW que la marche des trames a lus, " +
+			"lus a leur en-tete (2.7.d3) : la marche designe, aucun parcours bit a bit",
 	},
 	"matchWorldObjectNewHeader": {
 		"creations_du_monde.go:payload": "la passe des creations",

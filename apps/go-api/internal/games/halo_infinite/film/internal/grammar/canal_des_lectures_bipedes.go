@@ -307,6 +307,7 @@ func (c *canalDesLecturesBipedes) Clore(BilanDeMarche) {
 	c.lu.records = append(c.lu.records, rec...)
 	rangerDansLeFlux(c.lu.records, c.fc.ChunkNumbers())
 	c.lu.positions = fondrePositions(&c.positionsMarche, &c.positionsRecuperees, c.fc.ChunkNumbers())
+	c.lu.trames = c.trames
 	c.fc.recup.lectures = &c.lu
 	c.fc.NoterReplis(ComptesDesReplis{AncragesBipedesApresLaMarche: c.lu.recuperes})
 }

@@ -30,7 +30,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // ri27d0CleMonde designe un record d objet du monde.
@@ -235,17 +234,16 @@ func TestRI27d0Monde(t *testing.T) {
 		}
 		anciennes := ri27d0PistesAnciennes(fc, wr, lg, tis, bandes)
 		creations := map[ri27d0CleMonde]int{}
-		for ti, scan := range map[int]func(*FilmContext, *profile.Vec3Range, map[uint32]bool) (
-			[]types.EquipmentCreation, types.EquipmentCreationStats, error){
-			EquipmentTypeIndex: ScanEquipmentCreationsForBand, GroundWeaponTypeIndex: ScanGroundWeaponCreationsForBand,
-			VehicleTypeIndex: ScanVehicleCreationsForBand,
-		} {
-			cre, _, err := scan(fc, &wr, c.bandesCrea[ti])
+		// LA PASSE SEULE (depuis 2.7.d3, les points d entree de production font passer la marche devant
+		// elle) : chaque archetype de creation marche par [releverLesCreations].
+		for ti, band := range c.bandesCrea {
+			w, err := fc.marcheDeCreation(uint32(ti), &wr, band) //nolint:gosec // archetype de creation
 			if err != nil {
 				t.Logf("%s : creations ti=%d : %v", court, ti, err)
 				continue
 			}
-			for _, x := range cre {
+			cres, _ := releverLesCreations(fc, []equipCreationWalk{w})
+			for _, x := range cres[0] {
 				creations[ri27d0CleMonde{x.Chunk, x.PacketIndex, ti, x.Slot, x.Gen}] = x.BitPos
 			}
 		}

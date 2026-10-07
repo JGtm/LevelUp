@@ -110,7 +110,7 @@ func decodeFilmPadScan(ctx context.Context,
 			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
-	tracks, err := grammar.ScanWorldObjectsForBand(fc, wr, kf.Band)
+	tracks, err := grammar.ScanWorldObjectsForBand(fc, wr, arch.ti, kf.Band)
 	if err != nil {
 		slog.WarnContext(ctx, "socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
 			" apparition passerait pour un objet apparu au repos)",

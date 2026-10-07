@@ -270,6 +270,12 @@ func (w equipCreationWalk) creationA(pay []byte, p int, h types.LifeKey, lieu li
 	}
 	cre.Slot, cre.Gen, cre.BitPos = h.Slot, h.Gen, p
 	cre.Chunk, cre.PacketIndex, cre.TimestampUS = lieu.chunk, lieu.pk.Index, lieu.pk.TimestampUS
+	compterLaCreation(st, cre)
+	return cre, true
+}
+
+// compterLaCreation compte une creation acceptee dans `st`.
+func compterLaCreation(st *types.EquipmentCreationStats, cre types.EquipmentCreation) {
 	st.Accepted++
 	st.MaskSparse, st.MaskFull = st.MaskSparse+b2i(!cre.MaskFull), st.MaskFull+b2i(cre.MaskFull)
 	st.NoI0 += b2i(!cre.MaskHasI0)
@@ -282,7 +288,6 @@ func (w equipCreationWalk) creationA(pay []byte, p int, h types.LifeKey, lieu li
 	if cre.HasAmmo {
 		st.WithAmmo++
 	}
-	return cre, true
 }
 
 // matchEquipmentNewHeader reconnaît un en-tête de record de CRÉATION d'objet d'ÉQUIPEMENT.

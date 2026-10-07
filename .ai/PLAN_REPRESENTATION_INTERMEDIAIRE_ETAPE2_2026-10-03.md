@@ -1418,6 +1418,27 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             positions du slot 529). Reste : preuve d'équivalence (seules les positions changent),
             puis 2.7.d3.
       - [ ] 2.7.d3 *Pistes et créations des objets du monde derrière la marche* (décisions 1 et 3).
+            *Écrit* : `grammar/objets_du_monde_lus.go` — un canal de la marche des trames retient les
+            records DELTA à i0 des archétypes à pistes et les records NEW des archétypes de création,
+            avec l'archétype que la marche leur donne (même condition de trame que le canal des
+            lectures bipèdes : lue et marchée par classes de vue) ; les pistes d'un archétype se lisent
+            au bit d'i0 de ses records (`decodeWorldObjectPos`), ses créations à leur en-tête
+            (`creationA`), puis la passe rend derrière la marche ce qu'elle n'a pas lu (règle de
+            2.7.b, les trames du canal des lectures bipèdes, désormais gardées dans le contexte).
+            `ScanWorldObjectsForBand` prend l'archétype de la bande (`ArchetypeDeBandeInconnu` : la
+            passe seule, pour les enveloppes d'instrument qui balaient des bandes arbitraires) ;
+            deux replis neufs au registre, ordre « après la lecture » :
+            `repli_pistes_du_monde_apres_la_marche`, `repli_creations_du_monde_apres_la_marche`.
+            Les comptes de création décrivent désormais les créations rendues (lues par la marche,
+            ou rendues par la passe). Ratchet des appelants nommés mis à jour (le lecteur de
+            création lu aux records que la marche désigne n'est pas un parcours bit à bit). Tests :
+            le slot 1596 de la mini-bobine, dans les bandes des armes au sol et de l'équipement, lu
+            comme un équipement par la marche, n'est plus rendu qu'à l'équipement ; la création
+            fortuite du slot 1476 (paquet 4:576, trame prouvée depuis son début) ne se rend plus ;
+            créations communes égales ; deux mutations jouées rouges. Golden des familles de la
+            mini-bobine : projectiles 53 → 52 (une piste de cinq points, dont quatre dans des trames
+            prouvées où la marche ne lit pas ce slot), armes au sol 46 → 42 (des équipements),
+            créations d'équipement 38 → 36 (deux créations fortuites). Reste : preuve, puis 2.7.d4.
       - [ ] 2.7.d4 *Clôture* : registre des replis, montée de `grammar.Rev`, ADR 0037 amendé, doc,
             gate de l'item.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
@@ -1801,6 +1822,12 @@ plan y sont reprises comme items (3.1.2).
    à des positions où la marche, qui a lu la trame jusqu'à son terminateur, ne lit aucun record de ce
    slot : ce sont des motifs à l'intérieur d'autres records. 2.7.d3 les écarte (règle de 2.7.b) ; le
    gate de l'item dira ce qu'ils publiaient.
+40. *(2.7.d3, 2026-10-07)* **Le nuage de positions des véhicules ancre encore sous la grammaire
+   d'en-tête bipède.** Le calque des véhicules lit ses positions par `ScanBipedPositionsForBand` sur la
+   bande `ti=40` (un ancrage de payload, hors de l'ancrage du contexte : décision 1 du lot 2.4), sans
+   la marche devant lui. Le même principe s'y appliquerait (la marche lit les records `ti=40` et leur
+   i0). Non traité : hors de la liste de 2.7.d (positions bipèdes, huit lecteurs, pistes et créations
+   des objets du monde).
 
 ## 7. Journal
 

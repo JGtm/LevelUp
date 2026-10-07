@@ -135,7 +135,7 @@ func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]
 	if len(band) == 0 {
 		return nil, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film", typeIndex)
 	}
-	return ScanWorldObjectsForBand(fc, wr, band)
+	return ScanWorldObjectsForBand(fc, wr, typeIndex, band)
 }
 
 // ScanFilmWorldObjectsForBand décode les trajectoires d'une BANDE DE SLOTS déjà relevée.
@@ -154,16 +154,18 @@ func ScanFilmWorldObjectsForBand(
 	if err != nil {
 		return nil, err
 	}
-	return ScanWorldObjectsForBand(contexteDeBobine(film), wr, band)
+	return ScanWorldObjectsForBand(contexteDeBobine(film), wr, ArchetypeDeBandeInconnu, band)
 }
 
-// ScanWorldObjectsForBand décode les trajectoires d'une bande de slots dans un film DEJA CHARGE.
+// ScanWorldObjectsForBand décode les trajectoires des objets de l'archétype `ti` sur une bande de slots,
+// dans un film DEJA CHARGE : ceux que la marche des trames a lus, puis ceux que la passe des pistes
+// rend derrière elle (`objets_du_monde_lus.go`). [ArchetypeDeBandeInconnu] : la passe seule.
 //
 // LES PISTES SE RELÈVENT UNE FOIS PAR CONTEXTE, POUR TOUTES LES BANDES À PISTES DE LA CUISSON
 // (`pistes_du_monde.go`) : un appel rend une copie de ce qui est relevé pour sa bande, à ses bornes
 // et aux largeurs du moment.
 func ScanWorldObjectsForBand(
-	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *profile.Vec3Range, ti int, band map[uint32]bool,
 ) ([]types.ProjectileTrack, error) {
 	if wr == nil {
 		return nil, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
@@ -171,7 +173,7 @@ func ScanWorldObjectsForBand(
 	if len(FilmChunkNumbers(fc.Film())) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	return fc.pistesDeLaBande(*wr, fc.ProfilDeBalayage().LargeursObjetDuMonde(), band), nil
+	return fc.pistesDeLaBande(*wr, fc.ProfilDeBalayage().LargeursObjetDuMonde(), ti, band), nil
 }
 
 // vieDePiste est la vie d'un objet du monde (slot, génération) : la clé qui regroupe ses
@@ -333,6 +335,9 @@ func splitLives(pts []types.ProjectileSample) [][]types.ProjectileSample {
 type projSample struct {
 	types.ProjectileSample
 	slot, gen uint32
+	// paquet et bit situent le record dans le film : le rang de son paquet dans le chunk et le premier
+	// bit de son en-tete — la place que la regle de la passe derriere la marche juge ([rendParLAncrage]).
+	paquet, bit int
 }
 
 // scanProjectileRecords balaye un payload delta. PUR (aucune I/O).

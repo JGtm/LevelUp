@@ -146,13 +146,13 @@ func TestLesCreationsDUnePasseSontCellesDesArchetypesSeuls(t *testing.T) {
 func TestLesObjetsDuMondeReleveSeRendentEnCopie(t *testing.T) {
 	fc, wr := contexteDesObjetsDuMonde(t)
 	band := worldObjectSlotBand(fc, EquipmentTypeIndex)
-	premieres, err := ScanWorldObjectsForBand(fc, &wr, band)
+	premieres, err := ScanWorldObjectsForBand(fc, &wr, EquipmentTypeIndex, band)
 	if err != nil || len(premieres) == 0 || len(premieres[0].Pts) == 0 {
 		t.Fatalf("pistes d equipement : %v (%d piste(s))", err, len(premieres))
 	}
 	attendues := copierLesPistes(premieres)
 	premieres[0].Pts[0].X, premieres[0] = premieres[0].Pts[0].X+1, types.ProjectileTrack{}
-	secondes, err := ScanWorldObjectsForBand(fc, &wr, band)
+	secondes, err := ScanWorldObjectsForBand(fc, &wr, EquipmentTypeIndex, band)
 	if err != nil || !reflect.DeepEqual(secondes, attendues) {
 		t.Fatalf("seconde demande de pistes : %v, differente de la premiere avant modification", err)
 	}

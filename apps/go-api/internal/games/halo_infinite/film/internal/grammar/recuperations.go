@@ -12,8 +12,10 @@ package grammar
 // memoDesRecuperations porte ce que la couche de recuperation a releve pour un film.
 type memoDesRecuperations struct {
 	ancres    *ancresBipedes
-	pistes    []pistesRelevees
-	creations []creationsRelevees
+	pistes    []*pistesRelevees
+	creations []*creationsRelevees
+	// objets : les records d objets du monde que la marche a lus ([objetsDuMondeLus]).
+	objets *objetsDuMondeLus
 	// lectures : les lectures bipedes de la marche et de l ancrage derriere elle ([lecturesBipedes]).
 	lectures *lecturesBipedes
 }
