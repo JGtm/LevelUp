@@ -40,8 +40,8 @@ interface Props {
   identities: PickupIdentity[]
   /** Le nom d'un objet (bonus nommé par le web, arme par le titre). */
   itemName: (line: PickupLine) => string
-  /** Encre du reste du camp (légende). */
-  restColor: string
+  /** Encre du reste de l'équipe (légende) ; absente : pas de fiche du reste, pas d'entrée de légende (Vue match). */
+  restColor?: string
   t: EmpriseText
 }
 
@@ -54,7 +54,7 @@ export function PickupSheetsCard({ sheets, identities, itemName, restColor, t }:
         items={[
           { kind: 'dot', label: t.sheets.legendTaken, color: fg },
           { kind: 'ring', label: t.sheets.legendLost, color: fg },
-          { kind: 'dot', label: t.sheets.legendRest, color: restColor },
+          ...(restColor ? [{ kind: 'dot' as const, label: t.sheets.legendRest, color: restColor }] : []),
         ]}
       />
     )

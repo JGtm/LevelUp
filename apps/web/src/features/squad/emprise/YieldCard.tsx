@@ -17,6 +17,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 
 import { MINUS_INK, PLUS_INK } from '../formes/colors'
 import { ObjectifFrame, ObjectifLegend } from '../objectif/ObjectifFrame'
+import { RESOURCE_ORDER } from './emprise.logic'
 import type { EmpriseText } from './empriseStrings'
 import { TrackAxis } from './PisteCampsForm'
 import { pisteColumns } from './pisteLayout'
@@ -34,7 +35,21 @@ const TICK_AT = [0, 25, 50, 75, 100] as const
 /** Au-delà de ±40 % d'écart, la valeur s'écrit dans le bout de la barre. */
 const INSIDE_FROM_PCT = 40
 
-export function YieldCard({ rows, coverage, t }: { rows: YieldRow[]; coverage?: VehicleCoverage | null; t: EmpriseText }) {
+/** Un rendement qui ne se calcule pas (Vue match) : la raison, à la place de la barre. */
+export interface YieldPending {
+  resource: string
+  text: string
+}
+
+interface Props {
+  rows: YieldRow[]
+  coverage?: VehicleCoverage | null
+  t: EmpriseText
+  /** Lignes « non mesurable » (Vue match), rangées avec les autres dans l'ordre des ressources. */
+  pending?: YieldPending[]
+}
+
+export function YieldCard({ rows, coverage, t, pending }: Props) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -50,13 +65,34 @@ export function YieldCard({ rows, coverage, t }: { rows: YieldRow[]; coverage?: 
   return (
     <ObjectifFrame title={t.yield.title} info={t.yield.info} legend={legend} testId="emprise-yield">
       <div className="mt-2 flex flex-col gap-4" aria-label={t.yield.ariaLabel} role="group">
-        {rows.map((r) => (
-          <YieldLine key={r.resource} row={r} t={t} />
-        ))}
+        {orderedLines(rows, pending ?? []).map((l) =>
+          'gap' in l ? <YieldLine key={l.resource} row={l} t={t} /> : <YieldPendingLine key={l.resource} line={l} t={t} />,
+        )}
         <TrackAxis columns={COLUMNS} ticks={TICK_AT.map((at, i) => ({ at, label: t.yield.axis[i] }))} />
         {coverage && <VehicleNote coverage={coverage} t={t} />}
       </div>
     </ObjectifFrame>
+  )
+}
+
+/** Les rendements calculés et les lignes sans rendement, dans l'ordre des ressources. */
+function orderedLines(rows: YieldRow[], pending: YieldPending[]): (YieldRow | YieldPending)[] {
+  return [...rows, ...pending].sort((a, b) => RESOURCE_ORDER.indexOf(a.resource) - RESOURCE_ORDER.indexOf(b.resource))
+}
+
+function YieldPendingLine({ line, t }: { line: YieldPending; t: EmpriseText }) {
+  const res = t.resources[line.resource]
+  return (
+    <div className="grid items-center gap-3" style={{ gridTemplateColumns: COLUMNS }} data-testid={`emprise-yield-pending-${line.resource}`}>
+      <div className="min-w-0 text-[12.5px] leading-tight">
+        <span className="inline-flex items-center">
+          <span className="mr-1.5 inline-block h-[9px] w-[9px] shrink-0 rounded-[2px]" style={{ backgroundColor: resourceInk(line.resource) }} aria-hidden />
+          {res.label}
+        </span>
+        <small className="block text-[11px] text-muted-foreground">{res.yieldSub}</small>
+      </div>
+      <div className="flex h-[22px] items-center rounded-[3px] bg-muted px-2 text-[11.5px] text-muted-foreground">{line.text}</div>
+    </div>
   )
 }
 

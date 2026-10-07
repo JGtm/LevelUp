@@ -47,8 +47,8 @@ export function equipmentFamilyLabel(family: string, t: ReplayText): string {
  * LES DEUX FAMILLES DE GESTE (E2, 2026-09-09 : `deployed` et `dropped` FUSIONNENT en
  * `equipment` — une seule colonne par famille, empilée sur ses issues, P2/P3 ; `episodes`
  * retiré le 2026-09-19, décision 6 du plan d'ajustements pré-v7.5). Ces clés sont
- * l'axe de regroupement de tout ce que la section montre : les groupes de colonnes, la couleur
- * des barres, et les lignes de la vue « Part de chaque équipe ». Le typage les rend
+ * l'axe de regroupement de tout ce que la carte montre : les groupes de colonnes et la couleur
+ * des barres. Le typage les rend
  * exhaustives — une famille ajoutée ici force la table des encres à la peindre
  * (cf. `equipmentUsageChart`).
  */
@@ -92,11 +92,9 @@ export interface UsageColumn {
   tooltip?: (tally: EquipmentUsageTally) => string
 }
 
-/** Un groupe de colonnes : l'en-tête de premier niveau et sa réserve de mesure. */
+/** Un groupe de colonnes : sa famille de geste (encre et légende) et ses colonnes. */
 export interface UsageColumnGroup {
   key: UsageGroupKey
-  label: string
-  hint: string
   columns: UsageColumn[]
 }
 
@@ -136,8 +134,6 @@ export function usageColumnGroups(
   if (usage.columns.grapple) {
     groups.push({
       key: 'grapple',
-      label: u.groupGrapple,
-      hint: u.groupGrappleHint,
       columns: [
         {
           key: 'pulls',
@@ -202,8 +198,6 @@ function equipmentGroup(
 ): UsageColumnGroup {
   return {
     key: 'equipment',
-    label: u.groupEquipment,
-    hint: u.groupEquipmentHint,
     columns: usage.columns.equipment.map((family) => ({
       key: `equipment.${family}`,
       label: equipmentFamilyLabel(family, t),
@@ -229,20 +223,3 @@ function equipmentGroup(
     })),
   }
 }
-
-/**
- * uniqueUsageGroups — une seule occurrence par famille de geste, la première.
- *
- * La légende et la vue « Part de chaque équipe » raisonnent PAR FAMILLE DE GESTE (`key`), pas
- * par colonne : un groupe qui apparaîtrait deux fois dans la liste n'y vaut qu'UNE ligne —
- * même libellé, même réserve, et un compte de gestes qui vient du tally.
- */
-export function uniqueUsageGroups(groups: UsageColumnGroup[]): UsageColumnGroup[] {
-  const vus = new Set<UsageGroupKey>()
-  return groups.filter((g) => {
-    if (vus.has(g.key)) return false
-    vus.add(g.key)
-    return true
-  })
-}
-

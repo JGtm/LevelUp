@@ -44,6 +44,12 @@ export interface PisteCampsRow {
   themTip: string
   /** Sous la barre, dans sa colonne (« Frags obtenus avec les ressources » : la barre fine et la ligne d'exposition). */
   below?: ReactNode
+  /** Ligne d'un objet sous sa ressource (Vue match, « Contrôle des ressources, par match ») : nom en retrait. */
+  indent?: boolean
+  /** Le nom rendu à la place de `label` (un bouton de repli, par exemple) ; `label` reste le nom lu. */
+  labelNode?: ReactNode
+  /** Une piste sans mesure : ce texte, atténué, à la place de la barre (Vue match : « Non mesuré : … »). */
+  pending?: string
 }
 
 export interface PisteCampsFormProps {
@@ -122,15 +128,28 @@ function PisteRow({
       style={{ gridTemplateColumns: columns }}
       data-testid={`piste-camps-row-${row.key}`}
     >
-      <div className="min-w-0 text-[12.5px] leading-tight">
-        <span className="inline-flex items-center">
-          {row.dot && (
-            <span className="mr-1.5 inline-block h-[9px] w-[9px] shrink-0 rounded-[2px]" style={{ backgroundColor: row.dot }} aria-hidden />
-          )}
-          {row.label}
-        </span>
+      <div className={`min-w-0 text-[12.5px] leading-tight ${row.indent ? 'pl-4' : ''}`} data-indent={row.indent ? 'true' : undefined}>
+        {row.labelNode ?? (
+          <span className="inline-flex items-center">
+            {row.dot && (
+              <span className="mr-1.5 inline-block h-[9px] w-[9px] shrink-0 rounded-[2px]" style={{ backgroundColor: row.dot }} aria-hidden />
+            )}
+            {row.label}
+          </span>
+        )}
         {row.sublabel && <small className="block text-[11px] text-muted-foreground">{row.sublabel}</small>}
       </div>
+      {row.pending != null ? (
+        <div className="flex min-w-0 flex-col gap-1">
+          <div
+            className="flex h-[22px] items-center rounded-[3px] bg-muted px-2 text-[11.5px] text-muted-foreground"
+            data-testid={`piste-camps-pending-${row.key}`}
+          >
+            {row.pending}
+          </div>
+          {row.below}
+        </div>
+      ) : (
       <div className="flex min-w-0 flex-col gap-1">
         {(usHidden || themHidden) && (
           <div
@@ -150,6 +169,7 @@ function PisteRow({
         />
         {row.below}
       </div>
+      )}
     </div>
   )
 }

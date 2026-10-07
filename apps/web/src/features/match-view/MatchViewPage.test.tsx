@@ -100,13 +100,13 @@ describe('MatchViewPage — match_not_found (pas encore synchronisé)', () => {
     expect(screen.queryByText('Réessayer')).not.toBeInTheDocument()
   })
 
-  it('propose des actions de navigation (Accueil / Précédent / Mes matchs)', () => {
+  it('propose des actions de navigation (Accueil / Précédent / Matchs)', () => {
     hoisted.matchView.error = { code: 'match_not_found', message: 'match introuvable : m1' }
     renderWithProviders(<MatchViewPage />)
 
     expect(screen.getByRole('button', { name: 'Accueil' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Précédent' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mes matchs' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Matchs' })).toBeInTheDocument()
   })
 
   it('conserve la branche existante match_not_participant (ADR 0029, non régressée)', () => {
