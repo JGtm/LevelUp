@@ -2,8 +2,9 @@
  * colors.ts — LES ENCRES partagées par l'Emprise et les cartes d'objectif (Escouade, Séries
  * temporelles), toutes en jetons sémantiques (aucun hex, aucune classe Tailwind de couleur).
  *
- *   - le joueur de la page -> `squad-player-1`, ses coéquipiers -> SQUAD_TEAMMATE_COLOR_TOKENS
- *     (source unique de la feature) : la couleur d'un joueur ne change pas d'un écran à l'autre ;
+ *   - le joueur de la page -> `squad-player-1` (`SQUAD_MAIN_PLAYER_INK`) ; les coéquipiers de
+ *     l'Escouade prennent la palette de la page (`useSquadPlayerPalette`, ordre de la sélection) :
+ *     la couleur d'un joueur ne change pas d'un écran à l'autre ;
  *   - le reste de mon camp (sans identité de joueur) -> `team-ally` à demi-opacité ;
  *   - au-dessus / en dessous de la référence -> `divergent-pos` / `divergent-neg` ;
  *   - la hachure du non mesuré -> motif neutre (le match sans film, jamais une donnée).
@@ -12,7 +13,7 @@ import type { CSSProperties } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility'
 
-import { SQUAD_MAIN_PLAYER_TOKEN, SQUAD_TEAMMATE_COLOR_TOKENS } from '../colors'
+import { SQUAD_MAIN_PLAYER_TOKEN } from '../colors'
 
 /** Au-dessus / en dessous de la référence : comparer, pas juger. */
 export const PLUS_INK = tokenCssVar('divergent-pos')
@@ -26,16 +27,8 @@ export const TRACK_INK = 'var(--muted)'
  */
 export const TEAM_REST_INK = `color-mix(in oklab, ${tokenCssVar('team-ally')} 55%, var(--muted))`
 
-/**
- * L'encre d'un joueur de l'escouade par son RANG (0 = le joueur de la page).
- * Même convention que toute l'app : la couleur d'un joueur ne change pas d'un
- * écran à l'autre.
- */
-export function squadPlayerInk(index: number): string {
-  if (index <= 0) return tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN)
-  const token = SQUAD_TEAMMATE_COLOR_TOKENS[(index - 1) % SQUAD_TEAMMATE_COLOR_TOKENS.length]
-  return tokenCssVar(token)
-}
+/** L'encre du joueur de la page (`squad-player-1`). */
+export const SQUAD_MAIN_PLAYER_INK = tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN)
 
 /**
  * LA HACHURE DU NON MESURÉ — le match sans film décodé (une hachure, jamais un aplat,

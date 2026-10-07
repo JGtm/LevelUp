@@ -16,14 +16,13 @@ import (
 )
 
 // TestTacticalHandler_CelluleNominal : 200, le corps (perimetre + lecture + cellule)
-// atteint le service tel quel, et la reponse (contributions + matchs_non_ouvrables)
-// traverse le contrat.
+// atteint le service tel quel, et la reponse (contributions) traverse le contrat ; le compte
+// des matchs non ouvrables n'en fait pas partie (journal du service seulement).
 func TestTacticalHandler_CelluleNominal(t *testing.T) {
 	svc := &fakeTacticalSvc{cellule: domain.TacticalCelluleReponse{
 		Contributions: []domain.TacticalContribution{
 			{MatchID: "m1", InstantMs: 4200, XUID: "2533274000000001", Clock: domain.TacticalClockMatch},
 		},
-		MatchsNonOuvrables: 1,
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
 
@@ -52,8 +51,8 @@ func TestTacticalHandler_CelluleNominal(t *testing.T) {
 	if got.Contributions[0].Clock != domain.TacticalClockMatch {
 		t.Errorf("clock = %q, want %q (traverse le contrat, lot M1b)", got.Contributions[0].Clock, domain.TacticalClockMatch)
 	}
-	if got.MatchsNonOuvrables != 1 {
-		t.Errorf("matchs_non_ouvrables = %d, want 1", got.MatchsNonOuvrables)
+	if strings.Contains(w.Body.String(), "matchs_non_ouvrables") {
+		t.Errorf("la reponse publie matchs_non_ouvrables : %s", w.Body.String())
 	}
 }
 

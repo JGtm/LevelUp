@@ -48,6 +48,7 @@ function bloc(profiles: MatchRangeProfile[]): MatchRangeBlock {
 }
 
 const roster = ['JGtm', 'Kaya']
+const COULEURS = { JGtm: '#111111', Kaya: '#222222' }
 
 /** Le graphe est chargé en `lazy` : attendre son stub avant de lire l'option. */
 async function option(): Promise<Record<string, unknown>> {
@@ -57,7 +58,8 @@ async function option(): Promise<Record<string, unknown>> {
 
 describe('SquadRangeRolesCard', () => {
   it('rend un ÉTAT VIDE NOMMÉ quand aucun profil n’est servi', () => {
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster}
+        colorByPlayer={COULEURS} />)
     expect(screen.getByText('Aucune portée mesurée')).toBeTruthy()
     expect(screen.queryByTestId('portee-nuage-stub')).toBeNull()
     expect(screen.queryByTestId('squad-portee-fold-bande')).toBeNull()
@@ -68,6 +70,7 @@ describe('SquadRangeRolesCard', () => {
       <SquadRangeRolesCard
         bloc={bloc([profil(1, 12, 'Streets'), profil(0, 12, 'Fragmentation')])}
         roster={roster}
+        colorByPlayer={COULEURS}
       />,
     )
     const x = (await option()).xAxis as { data: string[] }
@@ -79,6 +82,7 @@ describe('SquadRangeRolesCard', () => {
       <SquadRangeRolesCard
         bloc={bloc([profil(0, PLANCHER_MESURE), profil(1, PLANCHER_MESURE - 1)])}
         roster={roster}
+        colorByPlayer={COULEURS}
       />,
     )
     const series = (await option()).series as Array<{
@@ -94,7 +98,8 @@ describe('SquadRangeRolesCard', () => {
 
   it('trace une TENDANCE par joueur et trois bandes de rôle, la ligne du lobby à zéro', async () => {
     const profils = Array.from({ length: 6 }, (_, i) => profil(i))
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster}
+        colorByPlayer={COULEURS} />)
     const series = (await option()).series as Array<Record<string, unknown>>
     expect(series.filter((s) => s.type === 'line')).toHaveLength(2)
     const markArea = series[0].markArea as { data: unknown[] }
@@ -104,7 +109,8 @@ describe('SquadRangeRolesCard', () => {
   })
 
   it('rien sous le graphe : ni légende ajoutée (point creux, tendance), ni compte de frags mesurés', () => {
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster}
+        colorByPlayer={COULEURS} />)
     expect(screen.queryByTestId('squad-portee-couverture')).toBeNull()
     expect(screen.queryByTestId('squad-portee-legende')).toBeNull()
     expect(screen.queryByText(/frags mesurés/)).toBeNull()
@@ -113,7 +119,8 @@ describe('SquadRangeRolesCard', () => {
 
   it('la bande des rôles laisse les quatre premiers matchs SANS RÔLE', () => {
     const profils = Array.from({ length: 6 }, (_, i) => profil(i))
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster}
+        colorByPlayer={COULEURS} />)
     fireEvent.click(screen.getByText('Bande des rôles'))
     const jetons = screen.getAllByTestId('squad-portee-jeton')
     // 2 joueurs × 6 matchs, et les 4 premiers de chaque ligne sans rôle.
@@ -129,12 +136,14 @@ describe('SquadRangeRolesCard', () => {
 
   it('rend deux textes distincts en FR et en EN', () => {
     const { unmount } = renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc([])} roster={roster} />,
+      <SquadRangeRolesCard bloc={bloc([])} roster={roster}
+        colorByPlayer={COULEURS} />,
     )
     expect(screen.getByText('Aucune portée mesurée')).toBeTruthy()
     unmount()
     useAppShellStore.setState({ locale: 'en' })
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster}
+        colorByPlayer={COULEURS} />)
     expect(screen.getByText('No range measured')).toBeTruthy()
   })
 })
@@ -146,7 +155,8 @@ describe('SquadRangeRolesCard', () => {
 describe('SquadRangeRolesCard — encre', () => {
   it('points ET tendance en encre pleine, aucune étiquette de bout', async () => {
     const profils = Array.from({ length: 5 }, (_, i) => profil(i))
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster}
+        colorByPlayer={COULEURS} />)
     const series = (await option()).series as Array<Record<string, unknown>>
     const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
     expect(points.every((p) => p.itemStyle.opacity === 1)).toBe(true)

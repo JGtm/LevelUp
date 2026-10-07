@@ -17,6 +17,7 @@ import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import { SetPasswordCard } from '@/features/auth/SetPasswordCard'
 import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
 import type { SettingsResponse } from '@/lib/api/types'
+import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { AnalyseTab } from './AnalyseTab'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
@@ -34,7 +35,8 @@ export function SettingsPage() {
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  const [localSettings, setLocalSettings] = useState<Partial<SettingsResponse>>({})
+  // Copie éditable des réglages serveur, réalignée à chaque objet servi.
+  const [localSettings, setLocalSettings] = useServerDraft(settings)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -48,18 +50,6 @@ export function SettingsPage() {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
-  // Copie éditable des réglages serveur : resync quand la requête livre un nouvel
-  // objet (ajustement pendant le rendu, pattern React « valeur précédente », au
-  // lieu d'un effet). Comportement inchangé : un refetch réaligne l'état local.
-  // La valeur précédente part de `undefined`, JAMAIS de `settings` : les réglages sont
-  // presque toujours déjà en cache au montage (la coquille les lit), et partir de
-  // l'objet en cache sautait la première copie — chaque contrôle affichait alors son
-  // défaut (« Coach proactif » activé) au lieu de la valeur enregistrée.
-  const [prevSettings, setPrevSettings] = useState<SettingsResponse | undefined>(undefined)
-  if (settings && settings !== prevSettings) {
-    setPrevSettings(settings)
-    setLocalSettings(settings)
-  }
 
   useEffect(() => {
     return () => {

@@ -10,7 +10,7 @@ import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import type { SquadEmpriseObject, TeammatesPageResponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { squadPlayerInk } from '../formes/colors'
+import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
 import { buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil, empriseMatchIndex, squadPickupSheets } from './emprise.logic'
 import { buildHabitView } from './habit.logic'
 import { empriseObjectName } from './objectName'
@@ -44,13 +44,15 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   const habit = useMemo(() => (block ? buildHabitView(block) : ({ kind: 'none' } as const)), [block])
   const placement = block?.placement ?? null
 
+  // Couleurs : la palette de la page (ordre de la sélection), jamais l'ordre des fiches.
+  const { inkOf } = useSquadPlayerPalette()
   const identities = useMemo<PickupIdentity[]>(() => {
     const emblems = new Map(medalDigest.map((e) => [e.player.toLowerCase(), e.emblem_url]))
     return (sheets?.owners ?? []).map((o, i) => {
       const label = o.gamertag || (i === 0 ? mainPlayerLabel : '') || (o.xuid ?? '')
-      return { label, color: squadPlayerInk(i), emblemUrl: emblems.get(label.toLowerCase()) ?? undefined }
+      return { label, color: inkOf(label), emblemUrl: emblems.get(label.toLowerCase()) ?? undefined }
     })
-  }, [sheets, medalDigest, mainPlayerLabel])
+  }, [sheets, medalDigest, mainPlayerLabel, inkOf])
 
   const playerName = useCallback(
     (xuid: string) => block?.players?.find((p) => p.xuid === xuid)?.gamertag ?? '',

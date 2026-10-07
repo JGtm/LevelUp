@@ -6,10 +6,10 @@
  */
 import { tokenCssVar } from '@/lib/accessibility'
 
-import { squadPlayerInk } from '@/features/squad/formes/colors'
+import { SQUAD_MAIN_PLAYER_INK } from '@/features/squad/formes/colors'
 import { pisteColumns } from '@/features/squad/emprise/pisteLayout'
 
-export const LIVES_NEAR_INK = squadPlayerInk(0)
+export const LIVES_NEAR_INK = SQUAD_MAIN_PLAYER_INK
 export const LIVES_ALONE_INK = tokenCssVar('extreme')
 /** Colonne des noms : 150 px (maquette). */
 export const LIVES_COLUMNS = pisteColumns(150)

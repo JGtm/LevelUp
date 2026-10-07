@@ -186,8 +186,10 @@ interface OptionNuage {
     {
       data: { value: [number, number]; itemStyle: Record<string, unknown> }[]
       markArea?: { data: Record<string, unknown>[][] }
+      markLine?: { label: { position: string } }
     },
   ]
+  xAxis: { axisLabel: { hideOverlap?: boolean } }
   legend?: unknown
 }
 
@@ -246,6 +248,13 @@ describe('Carte Portée des engagements (lot W, D23-4)', () => {
     expect(zones[3][0].name).toBe(t.rangeThisSession)
     // Une seule série : la légende du graphe n'a rien à nommer.
     expect(opt.legend).toBeUndefined()
+  })
+
+  it('lisibilité en colonne étroite : étiquettes de match sans chevauchement, médiane du lobby à droite des libellés de bande', () => {
+    const opt = option(nuagePortee(REFERENCE, BLOC_SESSION, 'moi'))
+    expect(opt.xAxis.axisLabel.hideOverlap).toBe(true)
+    // Les libellés de bande s’écrivent à gauche : la médiane du lobby va en fin de ligne.
+    expect(opt.series[0].markLine!.label.position).toBe('insideEndTop')
   })
 
   it('n’assied aucune bande quand le serveur ne sert pas les seuils', () => {

@@ -393,7 +393,7 @@ describe('TacticalAnalysisView — la zone choisie', () => {
   it('le nom de la zone se pose sur le plan, à côté de sa cellule', () => {
     mockRaster({ data: RASTER_NOMINAL })
     useTacticalCellule.mockReturnValue({
-      data: { contributions: [], matchs_non_ouvrables: 0, zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
+      data: { contributions: [], zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
       isPending: false,
     })
     renderVue()
@@ -403,7 +403,7 @@ describe('TacticalAnalysisView — la zone choisie', () => {
 
   it('aucune zone ne la nomme : « Zone sans nom » sur le plan', () => {
     mockRaster({ data: RASTER_NOMINAL })
-    useTacticalCellule.mockReturnValue({ data: { contributions: [], matchs_non_ouvrables: 0 }, isPending: false })
+    useTacticalCellule.mockReturnValue({ data: { contributions: [] }, isPending: false })
     renderVue()
     expect(within(cadre()).getByTestId('tactical-zone-label')).toHaveTextContent(t.zoneUnnamed)
   })

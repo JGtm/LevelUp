@@ -210,3 +210,42 @@ describe('useReplayShortcuts — la frise du lecteur est exemptée, elle seule',
     expect(h.restart).not.toHaveBeenCalled()
   })
 })
+
+describe('useReplayShortcuts — le zoom au clavier', () => {
+  function zoomSpies() {
+    return { zoomIn: vi.fn(), zoomOut: vi.fn(), reset: vi.fn(), panStep: vi.fn() }
+  }
+
+  it('+ / = grossissent, − / _ réduisent, 0 revoit toute la carte', () => {
+    const zoom = zoomSpies()
+    mount({ zoom })
+    press('+')
+    press('=')
+    expect(zoom.zoomIn).toHaveBeenCalledTimes(2)
+    press('-')
+    press('_')
+    expect(zoom.zoomOut).toHaveBeenCalledTimes(2)
+    expect(press('0').defaultPrevented).toBe(true)
+    expect(zoom.reset).toHaveBeenCalledTimes(1)
+  })
+
+  it('sans cadrage fourni, ces touches restent au navigateur', () => {
+    const h = mount()
+    expect(press('+').defaultPrevented).toBe(false)
+    expect(press('0').defaultPrevented).toBe(false)
+    expect(h.togglePlay).not.toHaveBeenCalled()
+  })
+
+  it('aucun conflit : les touches du lecteur gardent leur commande', () => {
+    const zoom = zoomSpies()
+    const h = mount({ zoom })
+    press(' ')
+    press('ArrowLeft')
+    press('.')
+    expect(h.togglePlay).toHaveBeenCalledTimes(1)
+    expect(h.seekBy).toHaveBeenCalledTimes(1)
+    expect(h.stepFrames).toHaveBeenCalledTimes(1)
+    expect(zoom.zoomIn).not.toHaveBeenCalled()
+    expect(zoom.reset).not.toHaveBeenCalled()
+  })
+})

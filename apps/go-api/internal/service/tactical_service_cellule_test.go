@@ -13,10 +13,13 @@ package service
 //	                        chaque test de question verifie SA valeur (mutation : inverser
 //	                        les deux constantes dans le service rougit ces assertions) ;
 //	OWNERSHIP (ADR 0029)    un match d'un autre joueur n'apparait dans AUCUNE
-//	                        contribution mais est COMPTE dans MatchsNonOuvrables ;
+//	                        contribution mais est COMPTE au journal (matchs_non_ouvrables) ;
 //	le tri                  date de match decroissante puis instant croissant.
 import (
+	"bytes"
 	"context"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,7 +54,8 @@ func TestCellule_Ownership_MatchEtrangerCompteSansApparaitre(t *testing.T) {
 	// m2 est ABSENT de la map d'ouvrabilite : c'est un match d'un autre joueur.
 	repo.ouvrables = map[string]time.Time{"m1": base}
 
-	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
+	var journal bytes.Buffer
+	svc := NewTacticalService(repo, capsCompletes(), tsMoi).WithLogger(slog.New(slog.NewJSONHandler(&journal, nil)))
 	got, err := svc.Cellule(context.Background(), celluleDemande(repo, domain.TacticalQuestionMorts, domain.TacticalQuiMoi, 4, 4))
 	if err != nil {
 		t.Fatalf("Cellule: %v", err)
@@ -59,8 +63,9 @@ func TestCellule_Ownership_MatchEtrangerCompteSansApparaitre(t *testing.T) {
 	if len(got.Contributions) != 1 || got.Contributions[0].MatchID != "m1" {
 		t.Fatalf("contributions = %+v, want une seule (m1)", got.Contributions)
 	}
-	if got.MatchsNonOuvrables != 1 {
-		t.Errorf("matchs_non_ouvrables = %d, want 1 (m2)", got.MatchsNonOuvrables)
+	// Le compte n'est plus publie (aucun lecteur web) : il se lit au journal du service.
+	if !strings.Contains(journal.String(), `"matchs_non_ouvrables":1`) {
+		t.Errorf("journal = %s, want matchs_non_ouvrables=1 (m2)", journal.String())
 	}
 	if repo.vuOuvrXUID != tsMoi {
 		t.Errorf("MatchsOuvrables appele avec xuid=%q, want %q", repo.vuOuvrXUID, tsMoi)

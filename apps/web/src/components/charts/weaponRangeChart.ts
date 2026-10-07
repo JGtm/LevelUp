@@ -70,6 +70,8 @@ const BAR_HEIGHT = 7
 const BAR_GAP = 4
 /** Demi-diagonale du losange de médiane. */
 const DIAMOND_RADIUS = 5
+/** Largeur maximale d'un nom d'arme sur l'axe (px) : au-delà, « … » à droite. */
+const WEAPON_RANGE_AXIS_LABEL_MAX_PX = 120
 
 /**
  * Une ligne du graphe — DEUX MESURES SUPERPOSÉES, et rien de plus.
@@ -391,6 +393,10 @@ export function buildWeaponRangeOption({
       type: 'category',
       data: ordered.map(weaponRangeCategoryLabel),
       ...axis,
+      // Colonne des noms BORNÉE, nom tronqué À DROITE avec « … » : sans borne, un nom long
+      // débordait la carte en demi-largeur et se lisait coupé par le début (« usil d'assaut
+      // MA40 »). Le nom complet reste en tête de l'infobulle de la ligne et dans le tableau.
+      axisLabel: { ...axis.axisLabel, width: WEAPON_RANGE_AXIS_LABEL_MAX_PX, overflow: 'truncate', ellipsis: '…' },
       splitLine: { show: false },
     },
     series: [

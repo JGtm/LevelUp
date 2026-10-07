@@ -95,7 +95,7 @@ beforeEach(() => {
     path.endsWith('/tactical/streets/raster')
       ? repondre(corps as CorpsRaster)
       : path.endsWith('/tactical/streets/cellule')
-        ? Promise.resolve({ contributions: [], matchs_non_ouvrables: 0 })
+        ? Promise.resolve({ contributions: [] })
         : Promise.reject(new Error(`appel inattendu : ${path}`)),
   )
 })
