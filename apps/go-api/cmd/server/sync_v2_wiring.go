@@ -89,7 +89,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	}
 
 	// getSharedDB retourne la connexion shared courante via le cache process-wide.
-	// Appelé à l'instant T (LoadKnown, RunPostSync) — après chaque swap provider
+	// Appelé à l'instant T (persister V2, LoadKnown en mode legacy) — après chaque swap provider
 	// RO→RW→RO, LookupCachedDB retourne la connexion fraîche rouverte en RO.
 	// Évite le pointeur fixe capturé au boot (deps.SharedDB) qui devient stale
 	// après le premier cycle (le swap ferme l'ancienne *sql.DB).
@@ -112,7 +112,15 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
 		return duckdbpkg.OpenReadForQuery(path)
 	}
-	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, getSharedDB)
+	// Base partagée de l'ensemble connu : EMPRUNTÉE au provider du titre (Get + release) pour
+	// toute la durée de la lecture — une bascule RO↔RW (rejeu, action admin, convergence des
+	// noms, sync V1) attend la fin de la lecture au lieu de fermer la connexion sous elle.
+	// Sans provider (kill-switch legacy) : connexion en cache, aucune bascule dans le process.
+	var providerRead syncv2.SharedDBAcquirer
+	if sr := deps.Cfg.SharedReaderForTitle(deps.TitleSlug); sr != nil {
+		providerRead = sr.Get
+	}
+	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, syncv2.SharedBorrower(providerRead, getSharedDB))
 
 	// CRITIQUE — Adapter PostSyncRunner : ouvre la stats.duckdb du joueur
 	// en READ-WRITE car les heals post-sync UPDATE/INSERT sur 14+ tables

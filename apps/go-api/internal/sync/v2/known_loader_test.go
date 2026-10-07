@@ -113,7 +113,7 @@ func TestKnownLoaderV2_ConnuSeulementSiAuRegistre(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, func() *sql.DB { return sharedDB })
+	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return sharedDB }))
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"})
 	if err != nil {
@@ -143,7 +143,7 @@ func TestKnownLoaderV2_BasePartageeAbsenteEstFatale(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
+	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return nil }))
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"})
 	if !errors.Is(err, knownset.ErrSharedUnreadable) {
@@ -161,7 +161,7 @@ func TestKnownLoaderV2_XUIDVideEstFatal(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, func() *sql.DB { return sharedDB })
+	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return sharedDB }))
 
 	_, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "  "})
 	if !errors.Is(err, knownset.ErrNoXUID) {
@@ -175,7 +175,7 @@ func TestKnownLoaderV2_OpenPlayerDBFailureIsFatal(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return nil, nil, sql.ErrConnDone
 	}
-	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
+	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return nil }))
 	_, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice"})
 	if err == nil {
 		t.Fatal("LoadKnown should return err when openPlayerDB fails")
@@ -199,7 +199,7 @@ func TestKnownLoaderV2_PlayerTableMissingIsTolerated(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return freshDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, func() *sql.DB { return sharedDB })
+	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return sharedDB }))
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "newplayer", XUID: "999",
@@ -220,7 +220,7 @@ func TestKnownLoaderV2_ReleaseCalledEvenOnError(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() { released = true }, nil
 	}
-	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
+	loader := NewKnownLoader(opener, SharedBorrower(nil, func() *sql.DB { return nil }))
 	if _, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice", XUID: "999"}); err == nil {
 		t.Fatal("LoadKnown sans base partagée doit échouer")
 	}
