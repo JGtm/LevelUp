@@ -50,7 +50,8 @@ func TestCandidatsAvecCarte_LaPlaceVaAuSuivant(t *testing.T) {
 	if o := selectionSansBorne(killsourceOptions{limit: 2}); o.limit != 0 {
 		t.Errorf("selection bornee a %d : la borne s applique AVANT le retrait des matchs sans carte", o.limit)
 	}
-	if o := selectionSansBorne(killsourceOptions{limit: 2, dryRun: true}); o.limit != 2 {
-		t.Errorf("--dry-run : borne %d, attendu 2 (le plan ne resout pas les cartes)", o.limit)
+	if o := selectionSansBorne(killsourceOptions{limit: 2, dryRun: true}); o.limit != 0 {
+		t.Errorf("--dry-run : selection bornee a %d — le plan est la selection de la passe, borne apres "+
+			"le retrait des matchs sans carte", o.limit)
 	}
 }

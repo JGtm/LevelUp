@@ -160,7 +160,7 @@ func TestSoclesDe_SansCatalogueNiCarte(t *testing.T) {
 
 // TestEntreeDesPorteurs_PorteCeQueLaPasseALu — LA COUTURE vers `replay.PortagesAuSync`. Chaque
 // champ transmis est pince : la variante (garde de mode), la feuille (pont par manche), les
-// socles de la carte (par `map_id`), les libelles, et le materiau de la passe tel quel. La feuille
+// equipes de la feuille (arbitre d'un bot que son film contredit), les socles de la carte (par `map_id`), les libelles, et le materiau de la passe tel quel. La feuille
 // ne sert au pont que sur certains films — son retrait laisserait verts les temoins reels
 // (mutation constatee au lot V2 : sans elle, les films CTF et Oddball temoins rendent les memes
 // portages).
@@ -177,7 +177,8 @@ func TestEntreeDesPorteurs_PorteCeQueLaPasseALu(t *testing.T) {
 		carte: decfilm.MapQuantEntry{Module: "module-1"}, profil: &decfilm.ProfilDeBalayage{},
 		identite: replay.IdentityInput{MatchID: "m1"}}
 	ids := MatchIdentities{Variante: "CTF:Arena", CarteID: "carte-1",
-		Feuille: []decfilm.PlayerLine{{XUID: "111", Kills: 3, Deaths: 1, Assists: 2}}}
+		Feuille: []decfilm.PlayerLine{{XUID: "111", Kills: 3, Deaths: 1, Assists: 2}},
+		Equipes: map[string]int{"111": 0, "bid(7.0)": 1}}
 
 	e := d.entreeDesPorteurs(context.Background(), "m1", mat, ids)
 
@@ -190,6 +191,9 @@ func TestEntreeDesPorteurs_PorteCeQueLaPasseALu(t *testing.T) {
 	}
 	if len(e.Lignes) != 1 || e.Lignes[0] != ids.Feuille[0] {
 		t.Fatalf("feuille = %+v : le pont par manche perdrait son triplet", e.Lignes)
+	}
+	if len(e.Equipes) != 2 || e.Equipes["bid(7.0)"] != 1 {
+		t.Fatalf("equipes = %+v : la feuille ne trancherait plus un bot que son film contredit", e.Equipes)
 	}
 	if len(e.Socles) != 1 || e.Socles[0] != (replay.FlagSpawn{Team: 1, X: 4, Y: 2}) {
 		t.Fatalf("socles = %+v, attendu le socle d'equipe 1 de la carte", e.Socles)

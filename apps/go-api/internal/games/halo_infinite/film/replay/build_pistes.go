@@ -45,9 +45,10 @@ func (a *assemblage) poserLesPistes() {
 		Participants: a.opt.Participants,
 		Statborg: StatborgIdentityInput{
 			Identity: a.opt.StatborgIdentity, Records: scoreRecordsOf(a.opt.Score)},
-		Clock:     IdentityClock{OriginUS: a.origin, StepUS: a.step, FrameCount: a.doc.FrameCount},
-		MatchID:   a.matchID,
-		Fallbacks: a.opt.Fallbacks,
+		Clock:           IdentityClock{OriginUS: a.origin, StepUS: a.step, FrameCount: a.doc.FrameCount},
+		MatchID:         a.matchID,
+		Fallbacks:       a.opt.Fallbacks,
+		documentInterne: a.opt.documentInterne,
 	})
 	if !a.reg.Section.Empty() {
 		a.doc.Identity = &a.reg.Section
@@ -98,8 +99,9 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// film y a deja pose ses sieges, et ses gamertags nomment les joueurs a ZERO MORT, que le fil
 	// des morts ne peut pas nommer. Relire `opt.PlayerIndices` ici republierait la table d'AVANT la
 	// composition — deux tables du meme film, ce que le registre existe pour empecher.
-	// L'EQUIPE VIENT DU FILM, ET DE LUI SEUL (lot 1.7, decision utilisateur V4). Elle se pose
-	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
+	// L'EQUIPE VIENT DU FILM (lot 1.7, decision utilisateur V4). Elle se pose sur les vies ET sur le
+	// roster ; la base entre dans `coverage.teams` comme CONTROLE, et ne tranche que la
+	// contradiction d'un bot entre son entite et sa declaration (plus bas).
 	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
 	a.equipes = newTeamPublication(a.reg, a.opt.PlayerTeams, a.opt.TeamScan, a.opt.ScoreboardTeams)
 	// LE BOT QUI SUCCEDE A UN HUMAIN SUR SON INDEX Y ENTRE AUSSI (revue M2-R1) : ses vies sont
@@ -114,8 +116,11 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// LES OCCUPANTS (lot M2.3) : chaque entree du roster liee a SES entites ti=9 — son equipe, sa
 	// presence. L'equipe par entree remplace celle de l'index sur le roster, les vies et le
 	// drapeau ; sans entite lue, elle vaut celle de l'index et rien ne change.
+	// LA FEUILLE DE MATCH TRANCHE la contradiction d'un bot entre son entite et sa declaration
+	// (occupants_equipe_arbitree.go) ; elle ne pose aucune autre equipe.
 	occ := lierLesOccupants(a.doc.Roster, a.doc.Tracks, entreesDesOccupants{
-		scan: a.opt.PlayerEntities, bots: a.opt.Bots, horloge: a.horloge(), parIndex: a.opt.PlayerTeams})
+		scan: a.opt.PlayerEntities, bots: a.opt.Bots, horloge: a.horloge(), parIndex: a.opt.PlayerTeams,
+		base: a.opt.ScoreboardTeams})
 	journaliserLesEquipesDeclarees(a.ctx, a.matchID, occ)
 	a.equipes.poserEquipesParEntree(a.doc.Roster, occ)
 	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
@@ -147,7 +152,8 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 		journaliserLesPlaces(a.ctx, a.matchID, a.siegeCov)
 	}
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
-	a.doc.OriginMs = resolveOriginMs(a.ctx, a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
+	a.doc.OriginMs = resolveOriginMs(a.ctx, a.origin, a.opt.FilmClockOriginUS,
+		temoinDuFil{offsetMS: a.reg.DeathOffsetMS(), appariees: a.reg.DeathOffsetMatches()}, a.niveauDePublication())
 	a.reg.logRegistry(a.ctx, a.matchID)
 }
 
@@ -213,8 +219,8 @@ func (a *assemblage) poserScoreEtObjectifs() {
 	// `doc.Coverage` n'existe qu'a partir de `buildCoverage`. Elle a besoin du roster, qui est
 	// son denominateur.
 	a.teamCov = a.equipes.couverture(a.viesTotal, a.viesNommees, a.viesSlotAmbigu, a.doc.Roster)
-	logTeamCoverage(a.ctx, a.matchID, a.teamCov)
-	a.clock = replayScoreClock(a.ctx, &a.doc, a.interval, a.matchID)
+	logTeamCoverage(a.ctx, a.matchID, a.teamCov, a.niveauDePublication())
+	a.clock = replayScoreClock(a.ctx, &a.doc, a.interval, a.matchID, a.niveauDePublication())
 	a.objCov = attachObjectiveActions(a.ctx, &a.doc, a.opt, a.reg, a.clock)
 	a.scoreCov = attachScoreTimeline(a.ctx, &a.doc, a.opt, a.clock, a.matchID)
 }

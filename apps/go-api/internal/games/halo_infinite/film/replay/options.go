@@ -218,8 +218,9 @@ type Options struct {
 	// désignateur` (`-1` = aucune équipe), lue par [grammar.ScanPlayerTeams] dans le composant
 	// i0 de ti=9.
 	//
-	// C'EST LA SEULE SOURCE D'ÉQUIPE DU DOCUMENT (décision utilisateur du 2026-09-13, V4 du
-	// PLAN_DECODEUR_FILM) : la base n'en pose aucune, elle CONTRÔLE (cf. `ScoreboardTeams`).
+	// C'EST LA SOURCE D'ÉQUIPE DU DOCUMENT (décision utilisateur du 2026-09-13, V4 du
+	// PLAN_DECODEUR_FILM) : la base CONTRÔLE (cf. `ScoreboardTeams`), et ne tranche que la
+	// contradiction d'un bot entre son entité et sa déclaration (occupants_equipe_arbitree.go).
 	// Vide = le film n'a pas été lu, et `coverage.teams.refusal` dit pourquoi.
 	PlayerTeams map[int]int
 	// TeamScan est le rapport de cette lecture : records, rejets par domaine, divergences. Il
@@ -231,11 +232,12 @@ type Options struct {
 	// roster (cf. occupants.go). `Scanned` faux = aucune entité lue : le roster retombe alors sur
 	// l'enveloppe des vies, repli nommé et compté.
 	PlayerEntities grammar.PlayerEntityScan
-	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
-	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
-	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne
-	// se corrige pas en silence. Vide (CLI hors ligne, ouvrier sans faits) : le contrôle se tait
-	// et le document est le même, à l'octet près.
+	// ScoreboardTeams est la table `identifiant -> équipe` de la FEUILLE DE MATCH (xuid d'un humain,
+	// `bid(N.0)` d'un bot). Elle CONTRÔLE : elle alimente `coverage.teams.{accord, contradiction,
+	// silence}` — une contradiction avec le film se compte, elle ne se corrige pas en silence. Elle
+	// ne pose qu'une équipe : celle d'un bot dont l'entité `ti=9` et la déclaration BOT_METADATA se
+	// contredisent (occupants_equipe_arbitree.go, décision utilisateur du 2026-10-07). Vide (CLI hors
+	// ligne, ouvrier sans faits) : le contrôle se tait, et un tel bot garde l'équipe de son entité.
 	ScoreboardTeams map[string]int
 	// BipedCreations : les records de CRÉATION de bipède du film (`grammar.ScanBipedCreations`).
 	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
@@ -441,7 +443,8 @@ type Options struct {
 	// equipe », l'avertissement des places, le compteur expvar des bots ecartes) dit un defaut du roster
 	// PUBLIE : il se tait sur ce document, dont le roster n'est pas relu (`portagesDuDocument` ne lit que
 	// les calques de porteur et le calage) et dont les equipes du film (entites ti=9) ne se lisent que sous
-	// la garde du drapeau. NON EXPORTE : aucun appelant hors du paquet ne peut le poser (le compilateur le
+	// la garde du drapeau. Les avertissements propres a un document publie y descendent en Debug
+	// ([niveauDePublication], journal_de_publication.go). NON EXPORTE : aucun appelant hors du paquet ne peut le poser (le compilateur le
 	// tient) ; faux, sa valeur zero, est celui de toute cuisson publiee.
 	documentInterne bool
 }

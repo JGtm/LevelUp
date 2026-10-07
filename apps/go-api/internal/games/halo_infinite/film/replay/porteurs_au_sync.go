@@ -74,6 +74,10 @@ type EntreePorteursAuSync struct {
 	Identite IdentityInput
 	// Lignes : la feuille du match (xuid, frags, morts, assistances), pour le pont par manche.
 	Lignes []types.PlayerLine
+	// Equipes : l'equipe de chaque participant de la feuille (`match_participants.team_id`, bots
+	// compris sous `bid(N.0)`), posee en `Options.ScoreboardTeams` comme a la cuisson : elle tranche
+	// la contradiction d'un bot entre son entite et sa declaration (occupants_equipe_arbitree.go).
+	Equipes map[string]int
 	// Socles : les socles de drapeau de la carte (catalogue d'objectifs), comme à la cuisson.
 	Socles []FlagSpawn
 	// Libelles : le catalogue de libellés du titre (objets d'objectif du drapeau).
@@ -140,7 +144,7 @@ func (e EntreePorteursAuSync) optionsDuRegistre(fb *fallback.Compteur) Options {
 		MapQuant: &carte, Labels: e.Libelles, Fallbacks: fb,
 		RosterXUIDs: e.Identite.RosterXUIDs, Participants: e.Identite.Participants,
 		Bots: e.Identite.Bots, Deaths: e.Identite.Deaths, PlayerIndices: e.Identite.PlayerIndices,
-		BipedCreations: e.Identite.BipedCreations,
+		BipedCreations: e.Identite.BipedCreations, ScoreboardTeams: e.Equipes,
 	}
 }
 

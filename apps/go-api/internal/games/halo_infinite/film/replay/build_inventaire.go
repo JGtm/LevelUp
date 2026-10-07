@@ -129,7 +129,7 @@ func (a *assemblage) poserImpulsionsEtCharges() {
 		a.doc.Coverage.AbilityImpulses = &aiCov
 		logAbilityImpulseCoverage(a.ctx, aiCov)
 	} else {
-		slog.WarnContext(a.ctx, "rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
+		slog.Log(a.ctx, a.niveauDePublication(), "rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
 			"lectures", len(a.opt.AbilityImpulses))
 	}
 	// LES CHARGES RESTANTES, par la MEME palette et la MEME jointure d'identite que les
@@ -150,7 +150,7 @@ func (a *assemblage) poserImpulsionsEtCharges() {
 		a.doc.Coverage.AbilityCharges = &acCov
 		logAbilityChargeCoverage(a.ctx, acCov)
 	} else {
-		slog.WarnContext(a.ctx, "rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
+		slog.Log(a.ctx, a.niveauDePublication(), "rejeu : charges d equipement NON BALAYEES — aucune couverture publiee",
 			"lectures", len(a.opt.AbilityCharges))
 	}
 }

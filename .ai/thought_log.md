@@ -116596,3 +116596,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : `replay-equiv` base 19ec2c8ba contre branche sur 7344d24f, 696a9d7c, 01e1f945, 64e8adfa : 62 étapes sur 64 identiques. Suite Go complète verte, golangci-lint 0, témoin 572e236b vert (A camp 1 et C camp 0 dès la frame 95), vitest rejeu 3502/3502.
 
 **Conclusion / prochaine étape** : CI de la branche, fusion par le superviseur, puis recuisson du parc (verdict `redecoder` partout).
+
+## [2026-10-07] Rejeu : trois derniers correctifs (bot à deux équipes, avertissements du document interne, `--dry-run`) — Complété (branche `feat/rejeu-journal-places`, poussée ; pas de fusion dans feat/v75)
+
+**Plan** : `.ai/PLAN_REJEU_DERNIERS_CORRECTIFS_2026-10-07.md`.
+
+**Décision technique principale** : (1) un bot dont l'entité ti=9 et la déclaration BOT_METADATA disent deux équipes prend l'équipe de la feuille de match (`ScoreboardTeams`, jointe par `bid(N.0)`, valeur comparée au désignateur sans traduction — convention du contrôle des équipes, 1 123 accords / 0 contradiction sur les 126 artefacts, 68 / 0 sur les bots) ; bot inconnu de la feuille : entité publiée, ERROR + compteur `rejeu_bots_equipe_sans_arbitre`. La feuille atteint aussi le document interne du sync (`EntreePorteursAuSync.Equipes`). (2) `niveauDePublication` : sur le document interne de `PortagesAuSync`, les six avertissements propres à une publication (et la contradiction base/film, l'origine contredite) descendent en Debug ; collecteur et cuisson gardent WARN. (3) `candidatsDeLaPasse` / `idsDeLaPasseEnLigne` : une seule sélection pour `--dry-run` et la passe, hors ligne et en ligne, garde-rail AST sur leurs lectures.
+
+**Résultats observés** : mesure en processus (cuisson par le binaire de la branche, faits d'une copie de la base) sur 4 des 10 matchs, 5 bots : entité 1, déclaration 0, base 1 — la base confirme l'entité, aucune équipe publiée ne change ; aucun des 10 n'a d'artefact au parc, aucune contradiction dans la re-cuisson des 126 : SchemaVersion et révisions inchangés. `--dry-run` : l'écart 105/10 venait des 95 matchs sans carte que le plan ne retirait pas ; les 4 non écrits sur 10 sont des verdicts du décodage. Tests ciblés + mutations rouges (13), suites `replay`, `killcollector`, `cmd/levelup`, `replaybuild` (integration, -p 1), archlint, golangci-lint 0. Revue adversariale : 0 P0/P1, 4 P2 sur les tests et la doc du lot, traités.
+
+**Conclusion / prochaine étape** : CI de la branche ; découvertes au plan (D1 : lecture de l'équipe BOT_METADATA suspecte sur `HI_1_12_0` — déclaration 0 sur les 5 bots contredits).

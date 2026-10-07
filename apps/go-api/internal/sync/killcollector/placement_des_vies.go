@@ -153,7 +153,8 @@ func (d depsDuPlacement) entreeDesPorteurs(
 	return replay.EntreePorteursAuSync{
 		MatchID: matchID, Film: mat.film, Contexte: mat.contexte, Carte: mat.carte,
 		Variante: ids.Variante, ProfilDeBalayage: mat.profil, Identite: mat.identite,
-		Lignes: ids.Feuille, Socles: d.soclesDe(ctx, matchID, ids.CarteID), Libelles: d.libelles,
+		Lignes: ids.Feuille, Equipes: ids.Equipes, Socles: d.soclesDe(ctx, matchID, ids.CarteID),
+		Libelles: d.libelles,
 	}
 }
 

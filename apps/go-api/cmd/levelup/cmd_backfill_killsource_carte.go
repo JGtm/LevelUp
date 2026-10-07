@@ -7,8 +7,11 @@ package main
 // fiable. Pas de repli. »). La passe `--online` le telechargeait quand meme, et les deux passes lui
 // donnaient une place de `--limit`. La selection se fait donc SANS borne, les matchs sans carte en
 // sont retires par le collecteur (`RetenirLesMatchsAvecCarte`, le meme filtre que le post-sync),
-// et `--limit` s applique APRES : la place d un match sans carte va au suivant. Le `--dry-run`
-// garde la borne a la selection — il n ouvre pas la base de metadonnees qui resout les cartes.
+// et `--limit` s applique APRES : la place d un match sans carte va au suivant.
+//
+// LE `--dry-run` ANNONCE LA SELECTION DE LA PASSE QUI DECODE : il passe par la MEME fonction
+// ([candidatsDeLaPasse], [idsDeLaPasseEnLigne]), retrait des matchs sans carte compris. Un plan qui
+// ne resoudrait pas les cartes annoncerait des matchs que la passe retire aussitot.
 
 import (
 	"context"
@@ -20,13 +23,37 @@ import (
 	"levelup/go-api/internal/sync/killcollector"
 )
 
-// selectionSansBorne : les options de SELECTION — sans `--limit` hors `--dry-run`, parce que la
-// borne s applique apres le retrait des matchs sans carte.
+// selectionSansBorne : les options de SELECTION — sans `--limit`, parce que la borne s applique
+// apres le retrait des matchs sans carte.
 func selectionSansBorne(o killsourceOptions) killsourceOptions {
-	if !o.dryRun {
-		o.limit = 0
-	}
+	o.limit = 0
 	return o
+}
+
+// candidatsDeLaPasse : LA selection de la passe hors ligne, pour le plan (`--dry-run`) comme pour
+// la passe qui decode — les films du cache a decoder ([filmsACollecter], sans borne), les matchs
+// sans carte retires par le collecteur, puis `--limit`.
+func candidatsDeLaPasse(
+	ctx context.Context, db *sql.DB, cacheRoot string, o killsourceOptions, col *killcollector.KillSourceCollector,
+) ([]filmCandidat, bilanDeSelection, error) {
+	candidats, bilan, err := filmsACollecter(ctx, db, cacheRoot, selectionSansBorne(o))
+	if err != nil {
+		return nil, bilanDeSelection{}, err
+	}
+	return candidatsAvecCarte(ctx, col, candidats, o.limit), bilan, nil
+}
+
+// idsDeLaPasseEnLigne : LA selection de la passe `--online`, pour le plan comme pour la passe — les
+// matchs sans passe de film ([matchsSansPasseDeFilm], sans borne), les matchs sans carte retires,
+// puis `--limit`. Aucun aller-retour reseau : la carte se resout en base.
+func idsDeLaPasseEnLigne(
+	ctx context.Context, db *sql.DB, o killsourceOptions, col *killcollector.KillSourceCollector,
+) ([]string, error) {
+	ids, err := matchsSansPasseDeFilm(ctx, db, selectionSansBorne(o))
+	if err != nil {
+		return nil, err
+	}
+	return idsAvecCarte(ctx, col, ids, o.limit), nil
 }
 
 // idsAvecCarte : les identifiants dont la carte se resout, dans l ordre, au plus `limit` (0 : tous).
