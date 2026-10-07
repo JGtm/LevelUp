@@ -116636,3 +116636,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : mutations rouges sur chaque jeu ajouté et chaque nouveau motif, « MA5K Avenger » vert ; Go vet 0 et tests de `domain`, `games`, `service/teammates`, `analysis/coordination` ok ; web tsc purgé 0, ESLint 0 erreur, champs 0, couleurs 0, vitest des dossiers touchés 3 381 tests verts, knip 0.
 
 **Conclusion / prochaine étape** : ronde 2 de revue au superviseur.
+
+## [2026-10-07] Escouade › Synergies sans riposte ni hauteur, textes sans personne — E6 : constats de la revue adversariale (ronde 2) — Complété (commit local sur `feat/escouade-synergies-textes`, non poussé)
+
+**Statut** : Complété (étape E6 du plan `.ai/PLAN_ESCOUADE_SYNERGIES_TEXTES_2026-10-07.md`) ; revue adversariale close sur deux rondes.
+
+**Décision technique principale** : ronde 2 — C1 à C3 validés, 24 conditions tenues, 2 constats P2 de commentaires corrigés, commentaires seulement : la documentation de `ListeBlancheMatchs` (`domain/tactical.go`) nomme les appelants réels, qui posent tous une liste ; l'en-tête et la requête du journal des morts (`platform/duckdb/tactical_repo.go`) ne présentent plus l'échange comme une lecture vivante ; `soireesDesRows` (`service/timeseries_service_sections.go`) ne cite plus la frise d'échange de l'Escouade. La lecture sans liste, qui n'a plus d'appelant de production, est écrite comme telle et ajoutée à la découverte §8.5 et au registre, sans suppression (hors lot).
+
+**Résultats observés** : `gofmt -l` muet, `go vet` 0 et tests de `internal/domain`, `internal/platform/duckdb` (sans tag integration) et `internal/service` ok, un paquet à la fois.
+
+**Conclusion / prochaine étape** : au superviseur — push, CI, fusion dans `feat/v75`.

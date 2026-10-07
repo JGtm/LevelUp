@@ -11,6 +11,8 @@
 > **CLOS côté exécutant le 2026-10-07** : E1 `4cf68289b`, E2 `c23114e18`, E3 `82020eacf`, E4 (commit de
 > clôture). Revue adversariale, push et fusion : superviseur. **Ronde 1 de revue** (superviseur,
 > 2026-10-07) : 4 constats recevables, corrigés en E5 ; 1 constat hors diff consigné (§8.8).
+> **Ronde 2** : C1-C3 validés, 24 conditions tenues, 2 constats P2 (commentaires) corrigés en E6.
+> **Revue close sur deux rondes.**
 > Branche `feat/escouade-synergies-textes`, partie de `origin/feat/v75` à `879f31bbf` (Tactique v2
 > fusionnée : `git grep mesurerEchange` vide). Worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-escouade`.
 > Ni push, ni fusion, ni rebase : le superviseur pousse, lance la revue adversariale et fusionne.
@@ -121,6 +123,12 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
 - [x] E5.4 (C4) Commentaires au présent, lecteurs réels : `domain/tactical.go` (`MapID`), `domain/coordination.go` (`Couverture`), `games/kill_journal_gate.go` (lecteurs : `registry_pages.go:304,393`, `service/coordination_block.go:115`), `teammates_squad_range.go` ; même constat corrigé dans `analysis/coordination/measure.go` (exemples « morts vengees ») et `domain/timeseries.go` (bloc « Riposte » des Séries temporelles, maille « frise d'échange »).
 - **Gate E5** : Go `gofmt -l` muet, `go vet ./internal/...` 0, `go test -count=1` `domain/...`, `games`, `service/teammates`, `analysis/coordination` ok ; web `tsc -b` purgé 0, ESLint 0 erreur (26 avertissements), champs 0, couleurs 0, vitest `squad`, `components`, `timeseries`, `session-detail`, `lib` : 358 fichiers / 3 381 tests verts, knip 0.
 
+### E6 — Constats de la revue adversariale, ronde 2 (commentaires seulement)
+
+- [x] E6.1 `domain/tactical.go` (`ListeBlancheMatchs`) : plus de « page Escouade » ni de « deux appelants » ; les appelants de production réels, vérifiés sur pièces, posent tous une liste (`service/tactical_service_perimetre.go:69` `requeteDuScope`, `tactical_service_cellule_enrichir.go:283`, `service/coordination_block.go:137`) ; l'absence de restriction est écrite « sans appelant de production à ce jour ».
+- [x] E6.2 `platform/duckdb/tactical_repo.go` : en-tête (lectures par ligne : le journal des morts, plus « QUI a vengé QUI » ; `KillEvents` à carte vide lue par le bloc de coordination de Sessions et des Séries temporelles, lecture sans liste sans appelant de production) et doc de `QTacticalEvents` sans l'échange ; `service/timeseries_service_sections.go` (`soireesDesRows`) sans la « frise d'échange de l'Escouade ».
+- **Gate E6** : `gofmt -l` muet sur `internal/domain`, `internal/platform/duckdb`, `internal/service` ; `go vet` des trois paquets 0 ; `go test -count=1` un paquet à la fois : `domain` ok, `platform/duckdb` ok (sans tag integration, commentaires seuls), `service` ok.
+
 ## 8. Découvertes hors périmètre (consignées, non corrigées)
 
 - **8.1 (E1, incident)** — une commande de E1 a été lancée avec un `python - 2>/dev/null` tapé par
@@ -148,6 +156,12 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   suppression du périmètre. Les commentaires qui annonçaient un consommateur (port, domaine, paquet
   `coordination`) sont corrigés ; celui de `QTacticalEvents` (« l'echange se mesure… ») est laissé
   au lot qui retirera la requête.
+  **Complément E6 (revue ronde 2)** : la lecture SANS liste (zero-value de `ListeBlancheMatchs`)
+  n'a plus aucun appelant de production — tous les `TacticalQuery` de production posent
+  `RestreindreAux` (`service/coordination_block.go:137`, `service/tactical_service_perimetre.go:69`,
+  `service/tactical_service_cellule_enrichir.go:283`). Écrit dans `domain/tactical.go:199-200` et
+  `platform/duckdb/tactical_repo.go:46-47` ; chemin non supprimé (hors lot). La carte VIDE de
+  `KillEvents`, elle, reste lue par le bloc de coordination.
 - **8.6 (E3)** — `squad/i18n.ts` `empty.noSelectionDescription` FR « Choisis 1 à 3 coéquipiers pour
   analyser les synergies de l'escouade. » reste à l'impératif de la 2e personne : aucun mot de la liste
   du §4 du handoff ne le porte, la garde ne le voit pas. Non traité (hors des sept chaînes et de la
@@ -246,3 +260,6 @@ arme, autre grandeur, lecteur `DeltaZ` conservé).
   garde du vocabulaire : « Morts vengées », « Échanges », « Payback » (sources), « vengés »
   (`fr =`), « Avenged », « Kill trades », « Riposted », « Retaliation » (`en =`) tous rouges,
   « MA5K Avenger » vert.
+- 2026-10-07 — **E6 clos (revue adversariale, ronde 2).** C1-C3 validés, 24 conditions tenues ;
+  2 constats P2 de commentaires corrigés (E6.1, E6.2) ; complément de la découverte §8.5 (lecture
+  sans liste sans appelant de production). Revue close sur deux rondes.
