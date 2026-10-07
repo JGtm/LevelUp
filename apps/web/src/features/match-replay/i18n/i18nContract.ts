@@ -11,7 +11,6 @@
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
-import type { PadTier } from '../model/weaponTier'
 
 /**
  * Les munitions de l'ARME EN MAIN telles que la tuile compacte les dit en infobulle (I9 du plan
@@ -25,27 +24,15 @@ export type AmmoHint =
   | { kind: 'full' }
 
 /**
- * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet « Contrôle »). Il compte, sur
- * tout le match, ce que le rejeu ne montre qu'image par image.
+ * « Usage d'équipements, par joueur » (Vue match, onglet « Armes et terrain ») : la grille compte,
+ * sur tout le match, ce que le rejeu ne montre qu'image par image.
  *
- * DEUX RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre. Les deux autres sont
- * parties le 2026-09-19 avec le groupe de colonnes « états actifs » (décision 6 du plan
- * d'ajustements pré-v7.5) : celle de l'épisode lui-même (sa source n'est pas établie) et celle
- * de la cellule « — » des frags sous effet non mesurés. L'épisode de camouflage ou de
- * surbouclier ne fait plus de colonne à lui : il alimente le côté « utilisé » de la colonne
- * d'équipement du power-up. `killBadgeHint` porte encore la réserve de l'épisode, pour le badge.
- *
- *  1. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine
- *     — ou dont l'auteur n'a pas d'équipe écrite par le film (défaut de source, compté par
- *     `coverage.seats.sansEquipe`) — n'entrent dans aucune des deux vues. La réserve NE SE CACHE PAS (décision utilisateur
- *     2026-09-09) : depuis le 2026-09-14 elle tient en UNE phrase, au survol du TITRE de la
- *     carte, le pied de carte ayant été supprimé (aucun texte de pied sous ce bloc).
- *  2. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
- *     fouillés, négatif mesuré le 2026-09-03). Pas de colonne vide (elle se lirait « zéro
- *     utilisation ») : une phrase qui le dit. LE PROPULSEUR EN EST SORTI le même jour — son
- *     usage est mesuré (schéma 38, `abilityImpulses`) et validé contre un relevé Theater ; il
- *     n'a pas de colonne pour autant, parce que le geste dure une demi-seconde et se lit sur
- *     la CARTE (le dash du pion), pas dans un compte de tableau. La phrase dit les deux.
+ * DEUX RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
+ *  1. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine,
+ *     ou dont l'auteur n'a pas d'équipe écrite par le film, n'entrent pas dans la grille. La
+ *     réserve ne se cache pas : elle tient en UNE phrase dans l'aide du TITRE, sans pied de carte.
+ *  2. `infoByPlayer` — le RÉPULSEUR n'a aucun canal d'activation dans le film : pas de colonne
+ *     vide (elle se lirait « zéro usage »), une phrase qui le dit.
  *
  * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
  * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
@@ -53,42 +40,19 @@ export type AmmoHint =
  */
 export interface EquipmentUsageText {
   title: string
-  /**
-   * LES DEUX VUES EMPILEES DE LA SECTION (2026-09-03). Le tableau a deux niveaux d'en-tete a
-   * ete remplace par un graphe : `viewByPlayer` classe les joueurs par grandeur,
-   * `viewTeamShare` dit quel camp s'est appuye sur quel outil. Deux titres et pas un : les
-   * deux vues repondent a deux questions, et une carte sans titre de vue laisserait croire
-   * a deux lectures de la meme.
-   */
+  /** Titre de la carte : la grille des joueurs, une colonne par famille d'équipement. */
   viewByPlayer: string
-  viewTeamShare: string
+  /** Aide du titre : ce que la grille compte et sur quel périmètre (une ou deux phrases). */
+  infoByPlayer: string
+  /** Légende : les trois issues d'une pile, puis les tractions de grappin. */
+  legendUsed: string
+  legendKept: string
+  legendDropped: string
+  legendGrapple: string
   /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
   gridTipFmt: (player: string, column: string, value: string) => string
-  /**
-   * Infobulle d'un segment de la vue « Part de chaque equipe ». Le COMPTE BRUT y figure avec
-   * son total, jamais le seul pourcentage : deux segments a 50 % ne disent pas s'ils valent 1
-   * ou 40. LE POURCENTAGE Y EST ENTRE LE 2026-09-21 (D20, proposition 5.A) : la longueur du
-   * segment dit desormais le VOLUME sur une echelle commune, plus la part — la part se lit
-   * donc ici, et nulle part ailleurs.
-   */
-  shareTipFmt: (
-    team: string,
-    family: string,
-    count: number,
-    total: number,
-    percent: number,
-  ) => string
-  /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
+  /** En-tête de la colonne des tractions de grappin (la seule ACTIVATION de capacité attribuée). */
   groupGrapple: string
-  groupGrappleHint: string
-  /**
-   * LA COLONNE FUSIONNÉE « équipement » (E2, PLAN_EQUIPEMENT_GACHIS_2026-09-09.md) : REMPLACE
-   * `groupDeployed`/`groupDropped` — une famille, trois issues empilées (utilisé / gardé sans
-   * l'utiliser / lâché en mourant), jamais deux sections séparées « activés »/« déployés »
-   * (P2/P3).
-   */
-  groupEquipment: string
-  groupEquipmentHint: string
   /**
    * LES TROIS ISSUES D'UNE PILE (P1), formatées pour l'infobulle d'UN segment — pas pour un
    * en-tête de colonne (celui-ci reste `equipmentFamilyLabel`). Le total de la cellule
@@ -100,11 +64,10 @@ export interface EquipmentUsageText {
   outcomeTotalTakenFmt: (count: number) => string
   /**
    * LA RÉSERVE DE COUVERTURE, EN UNE PHRASE ET DANS L'INFOBULLE DU TITRE (2026-09-14) : les
-   * gestes mesurés sans propriétaire ou d'un joueur rangé dans aucun camp (le film tait son
-   * équipe, 2026-10-06), et les poses d'origine inconnue, additionnés. La phrase affichée ne nomme
-   * que l'auteur et l'origine : le cas d'un auteur sans équipe (0 geste au parc du 2026-10-06)
-   * attend une décision de libellé. Ils ont eu
-   * lieu, aucune des deux vues ne peut les compter — la réserve ne se cache pas (décision
+   * gestes mesurés sans propriétaire ou d'un joueur rangé dans aucune équipe (le film tait son
+   * équipe), et les poses d'origine inconnue, additionnés. La phrase affichée ne nomme que l'auteur
+   * et l'origine : le cas d'un auteur sans équipe (0 geste au parc du 2026-10-06) attend une décision
+   * de libellé. Ils ont eu lieu, la grille ne peut pas les compter — la réserve ne se cache pas (décision
    * utilisateur 2026-09-09), elle ne s'écrit simplement plus en pied de carte (décision
    * utilisateur 2026-09-14 : AUCUN texte de pied sous ce bloc).
    */
@@ -121,74 +84,6 @@ export interface EquipmentUsageText {
   /** Infobulle du badge : la réserve de l'état actif (source non distinguée, bornes
    * à la précision de la retransmission, camo seul sous le seuil de mesure en lecture large). */
   killBadgeHint: string
-}
-
-/**
- * PadControlText — LE VOCABULAIRE DU CONTRÔLE DES ARMES SPÉCIALES (tableau de la page match).
- *
- * IL VIT ICI, PAS DANS `match-view/i18n.ts`, pour la raison qui vaut déjà pour le bilan
- * d'équipement : les noms d'ARME viennent du catalogue du document et de la table des familles
- * de socle (`padNameFor`), tous deux dans le dictionnaire du rejeu. Une seconde table de noms
- * côté `match-view` divergerait au premier ajout du manifeste du titre.
- *
- * CE QUE LA VENTILATION DOIT DIRE, ET POURQUOI ELLE EXISTE. Le tableau ne montre que les
- * occupations dont l'événement natif nomme le ramasseur ; toutes les autres sont réelles et
- * doivent se voir, sans quoi le lecteur croit avoir sous les yeux la totalité des socles pris du
- * match. D'où une note de bas de tableau plutôt qu'un silence, et un libellé par CAUSE — une
- * abstention pour ambiguïté n'est pas une absence de mesure.
- */
-export interface PadControlText {
-  title: string
-  /** Infobulle du titre : d'où vient l'attribution, et ce qu'elle refuse de faire. */
-  titleHint: string
-  /** Infobulle d'un segment : le joueur, son camp, le socle, ses prises. */
-  barTipFmt: (player: string, team: string, weapon: string, count: number) => string
-  /**
-   * L'ANNOTATION DE DROITE : les occupations de CE socle dont l'événement natif ne nomme pas le
-   * ramasseur. Elles ne sont versées à aucun camp — les afficher à part est la seule façon de
-   * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
-   */
-  unnamedFmt: (count: number) => string
-  /**
-   * LES INTERTITRES DE NIVEAU (2026-09-14). Le bloc range ses armes en base / terrain /
-   * puissance / non classé — le niveau vient de la CARTE (l'emplacement Forge qui confirme le
-   * socle) et de l'équipement de départ du film, jamais du nom de l'arme. Le niveau `powerup`
-   * existe pour l'exhaustivité du type : un socle de bonus n'ayant jamais de ramasseur nommé,
-   * son groupe est toujours vide à l'écran.
-   */
-  tierLabels: Record<PadTier, string>
-  /** Le sous-total d'un niveau, écrit à côté de son intertitre. */
-  tierSubtotalFmt: (count: number) => string
-  /**
-   * LE TITRE COURT D'UN NIVEAU (2026-09-21, D18). Il s'écrit DANS le graphe, centré au-dessus
-   * de son groupe de colonnes et suivi de son sous-total (« Puissance · 24 prises ») : à cette
-   * place, « Armes de puissance » répéterait le mot « armes » que le titre de la carte porte
-   * déjà, et mangerait la largeur du groupe.
-   */
-  tierShortLabels: Record<PadTier, string>
-  /**
-   * AUCUNE COLONNE À DESSINER : le match n'a vu prendre aucun socle de puissance ni de terrain
-   * (les armes de base, elles, restent dans leur dépliable). La carte reste affichée et nomme
-   * la cause — politique D8 des états vides.
-   */
-  chartEmpty: string
-  /** Mode à équipements de départ aléatoires (Fiesta) : le niveau « base » n'est pas publié. */
-  randomStartsNote: string
-  /** Aucun emplacement de la carte n'a confirmé de socle : les niveaux ne sont pas établis. */
-  tiersUnmeasuredNote: string
-  /**
-   * LE BOUTON DU DÉPLIABLE DES ARMES DE BASE (2026-09-21, décision D2). Le niveau « base »
-   * passe en dernier et FERMÉ : reprendre son fusil d'assaut n'est pas contrôler la carte, et
-   * ses lignes noyaient les socles décisifs en tête de bloc. Le compte est dans le libellé —
-   * un dépliable qui ne dit pas ce qu'il cache ne s'ouvre jamais.
-   */
-  baseToggleFmt: (count: number) => string
-  /**
-   * LES PRISES SUR EMPLACEMENT NON IDENTIFIÉ, DANS L'INFOBULLE DU TITRE (2026-09-21, D2). Le
-   * groupe ne se rend plus : une ligne « non identifié » dans la grille faisait lire une
-   * absence de mesure comme un niveau de jeu. Le compte, lui, ne disparaît pas.
-   */
-  unclassifiedHintFmt: (count: number) => string
 }
 
 export interface ReplayText {
@@ -1031,11 +926,6 @@ export interface ReplayText {
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.
    */
   equipmentUsage: EquipmentUsageText
-  /**
-   * LE TABLEAU DU CONTRÔLE DES ARMES SPÉCIALES (onglet Chronologie, sous le bilan d'équipement).
-   * Le seul écran du dépôt qui NOMME le ramasseur d'un socle — cf. `PadControlText`.
-   */
-  padControl: PadControlText
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string

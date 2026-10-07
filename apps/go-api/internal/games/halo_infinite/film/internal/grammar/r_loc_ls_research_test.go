@@ -67,7 +67,7 @@ func rlocArchetypesHF(reg *Registry) map[uint32]bool {
 // generation, comme `marchLocateStrict`) et la premiere signature stricte sur un autre slot lie
 // a un archetype high-frequency (generation du profil). -1 : absente.
 func rlocSignatures(pay []byte, w *World, cfg FrameConfig, hf map[uint32]bool) (s123, sHF int, slotHF uint32) {
-	defer cfg.Obs.neutraliserEtatsDeMouvement()()
+	defer cfg.Obs.neutraliserLesCrochetsDeCanal()()
 	s123, sHF = -1, -1
 	nb := len(pay) * 8
 	for s, largeur := 2, largeurDeSignature(cfg); s+largeur < nb; s++ {

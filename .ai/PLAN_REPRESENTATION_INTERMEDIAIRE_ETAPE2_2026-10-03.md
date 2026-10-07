@@ -138,6 +138,14 @@ fermeture d'un épisode par le même objet occupant est déjà dans 2.7.a.
   admises » — les baisses instruites des huit films (postures, changements d'arme, tir continu,
   dotations de naissance, trajets) sont admises ; « Par joueur » — la primauté de la lecture
   nomme les occupants par joueur, plus par corps (découverte 16).
+- 2026-10-06, en réponse à l'instruction du gate de 2.7.b (item 2.7.b) : « Oui, admis » — le
+  repli neuf signalé par construction, les 24 lectures de capacité faites à la création d'un corps
+  avant son premier mouvement et la remise à zéro d'équipement de fin de manche lue « utilisée »
+  sont admis ; les deux derniers restent notés (découvertes 22 et 24). Même jour : « Oui, fusionne
+  au vert » — le lot lint du décodeur (`feat/lint-decodeur`) se fusionne dans `feat/v75` juste après
+  la vue A de la campagne, au vert.
+- 2026-10-07 : « tu pourras fusionner si la CI est verte » — accord de fusion de 2.7.b dans
+  `feat/v75`, sous condition d'une CI verte sur la tête fusionnée.
 
 **Techniques** (une objection de l'utilisateur les rouvre) :
 - **DT2-1 — Un distributeur.** `grammar.Distribuer(fc, canaux ...Canal)` marche UNE fois les deux
@@ -768,8 +776,127 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       killsource sur films réels identique à `feat/v75`. La part (a) de la décision du 2026-10-05
       (listes que la marche ne localise pas) attend le lot « vue A » V2, qui localisera la vue B
       par la fin de la vue A.
-- [ ] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
+- [x] 2.7.b Canaux delta lus par la marche là où elle couvre au moins autant que la recherche
       d'ancres, canal par canal, mesuré sur le corpus.
+      *Mesure du 2026-10-06* (instrument `grammar/ri27b_canaux_marche_research_test.go`, les 20
+      films du corpus d'équivalence, contexte de la cuisson : génération stricte, carte, découpage
+      MPP résolu ; références re-figées sur `feat/v75` `fed1efed2`, `0e0143148`). Pour les neuf
+      lecteurs ancrés, record par record (paquet, slot) et crochet par crochet, ce que l'ancrage lit
+      contre ce que la marche des trames lit (ses records relus à l'étendue de leur trace, sous son
+      cadre) :
+      - quand les deux lisent le même record, la valeur est la même : 7 divergences sur 4,6 millions
+        de positions communes, aucune sur les onze crochets ;
+      - records bipèdes delta : ancrage 5 436 632, marche 5 088 890 (et 101 148 de plus par la
+        récupération des listes non localisées du canal des morts), communs 4 615 828 ;
+      - l'ancrage seul (820 804 records) ne porte presque jamais un slot que la marche a lu dans le
+        même paquet (50) : ce sont d'autres records. Dans les trames fermées, 35 678, tous en deçà
+        de la fin de la lecture de la marche sauf 68. *Lecture corrigée à l'instruction du gate
+        (même jour)* : « en deçà de la fin » comptait aussi ce qui PRÉCÈDE un début de vue B
+        localisé ; 35 256 de ces records précèdent le début qu'a choisi la fermeture
+        (`DebutParFermeture`), 185 seulement sont dans l'étendue lue — ce ne sont pas de fausses
+        ancres (décision 9).
+        Ailleurs : listes non localisées 313 606 (la récupération en relit 162 770 avec la marche,
+        85 276 communs) ; trames refusées 376 550, dont 269 899 au-delà du dernier record de la
+        marche ; queues opaques 17 458 ;
+      - la marche seule (574 210 records) : dans les trames fermées 258 629 (records sans i0, que
+        l'ancrage ne trouve pas), dans les trames refusées 270 813 ;
+      - par crochet, la marche seule lit plus que l'ancrage l'arme portée (7 665 contre 1 855), les
+        cartouches, les charges, l'équipement, les grenades et le rang ; moins le camouflage (49 301
+        contre 53 538), les deux capacités, les munitions (74 658 contre 92 706) et les positions
+        (4 619 747 contre 5 436 632, 85 %). L'écart est dans les listes non localisées et au-delà de
+        la fin de la marche des trames refusées ;
+      - fidélité : quand la trame part de sa tête, les crochets que la marche publie elle-même sont
+        ceux de ses records ; quand le localisateur a cherché le début de la liste, ses essais en
+        publient 5 à 40 fois plus (découverte 19).
+      *Décisions d'exécution du 2026-10-06* :
+      1. Les huit lecteurs à crochets (charges, impulsions, rangs, camouflage, grappin, arme portée,
+         deltas d'inventaire, équipement) deviennent des canaux de la marche des trames. L'ancrage
+         passe derrière elle (option A de l'utilisateur ; la part « avec 2.7.b » de 2.7.d) : il ne
+         lit plus que les records dont la marche n'a lu aucun record du même slot dans le paquet,
+         dans une trame qu'elle n'a pas fermée ; ses lectures se comptent au registre des replis,
+         ordre « après la lecture ». Par lecteur, la couverture devient : communs, plus la marche
+         seule, plus l'ancrage récupéré — au moins celle d'aujourd'hui, moins les fausses ancres des
+         trames fermées.
+      2. Les positions restent à l'ancrage dans ce lot : la marche seule en lit 85 %, elle
+         n'accumule pas les positions (découverte 21) et leur lecteur a sa propre grammaire d'i0.
+         Elles passent derrière la grammaire avec 2.7.d.
+      3. Les essais de la marche ne publient plus aucun crochet de canal : la porte unique des états
+         de mouvement couvre tous les crochets que les canaux de la marche posent, garde-rail
+         compris. Préalable des canaux (découverte 19).
+      4. Les lectures des records NEW bipèdes ne sont pas prises (découverte 20) : les lecteurs
+         gardent leur sens, des deltas.
+      5. Les lectures des deux sources se rangent dans l'ordre du flux (paquet, puis bit du record)
+         avant le traitement de chaque lecteur, inchangé : la source change, pas la logique.
+      *Décisions d'exécution ajoutées à l'instruction du gate (2026-10-06)* :
+      6. Un corps mort n'agit plus : le record qui porte le dead-state d'une vie et ceux du même
+         corps qui le suivent, jusqu'au record NEW qui recrée la génération, ne vont à aucun lecteur,
+         d'une source ou de l'autre (ils décrivent le cadavre : emplacements vidés, équipement
+         retiré). Ils se comptent.
+      7. Une annonce n'est pas un changement : une émission d'arme portée qui répète la famille
+         précédente de l'emplacement, ou qui annonce un emplacement vide sans occupant connu, est
+         `Restated`, pas une prise ni un lâcher.
+      8. La garde des générations vivantes datées (lot R2-bis), que l'ancrage applique à chaque
+         en-tête, s'applique aussi aux records de la marche : aucun record de trame fermée ne la
+         rate sur les 20 films ; 15 records de trames refusées ou à queue opaque, aux masques
+         manifestement faux, sont écartés et comptés.
+      9. Une trame fermée ne prouve sa liste qu'à partir de son début de vue B quand ce début a été
+         LOCALISÉ (signature, chaîne de NEW de tête, fermeture) : le premier candidat d'où la marche
+         ferme le paquet peut être au milieu de la liste. L'ancrage rend ce qui précède ce début,
+         pour un slot que la marche n'a pas lu. Un début LU (la tête ; la fin de la vue A quand le
+         lot V2 de la campagne arrive) prouve tout le paquet.
+      *Écrit* (`a5232e3e5`, `4f4049ebd`, puis les décisions 8 et 9) : canal des lectures bipèdes
+      (`grammar/canal_des_lectures_bipedes.go`, `grammar/lectures_bipedes.go`) — il recueille les
+      publications des onze crochets des huit lecteurs, datées de la position du lecteur de la marche,
+      les attribue trame par trame au composant du record bipède delta retenu dont l'étendue les
+      porte, puis fait passer l'ancrage derrière (records marqués récupérés, repli
+      `repli_ancrage_bipede_apres_la_marche` au registre, ordre « après la lecture ») et range tout
+      dans l'ordre du flux ; les huit lecteurs (charges, impulsions, rangs, camouflage, grappin, arme
+      portée, deltas d'inventaire, équipement et équipement d'unité) rejouent ces publications sur
+      leurs crochets sans relire un bit ; porte unique des essais étendue aux douze crochets de canal
+      (`grammar/porte_des_essais.go`, garde-rail) ; la cuisson distribue le canal avec les états de
+      mouvement, et ses étapes depuis le film se réordonnent (monde, états de mouvement, portage,
+      capacités, pont) ; ADR 0037 IR-6 et IR-8 amendés.
+      *Gate de corpus contre `fed1efed2`, après les décisions 6 à 9* (19 témoins) : aucun oracle ne
+      bouge (kills, morts, assistances, score personnel, équipes, vies, V-1, V-2, V-4 à V-8) ; aucune
+      lecture d'un lecteur ne baisse contre la base, sauf les lâchers d'une arme inconnue (48 → 0,
+      décision 7) ; les lectures montent partout (prises et échanges d'arme, rangs `i48`, charges,
+      impulsions, grenades, équipement), les prises d'arme se lient à leur objet au sol (fins
+      « vues » devenues « ramassées »), les récupérations gatées d'équipement deviennent inutiles
+      (la marche lit ces records : mêmes valeurs), un portage de bombe se ferme à l'armement au lieu
+      de rester ouvert jusqu'à la fin du film (`c75f33b8`), les épisodes de camouflage finissent à
+      leur première lecture. FAUX du banc, instruits : (a) R-1 du repli neuf sur les 19 témoins, par
+      construction (mécanisme D-L0-5 de la campagne) ; (b) R-1 de deux replis existants vus pour la
+      première fois (`repli_lien_prise_arme_abandonne`, plus de prises dont certaines sans position
+      d'acteur à ±250 ms ; `repli_rang_capacite_vie_elargie`, plus d'impulsions et de charges en bord
+      de vie) ; (c) V-3 sur trois témoins : 24 lectures du rang de capacité 13 à 15 ms après la
+      création du corps, avant son premier mouvement — la piste d'une vie ne part que du premier
+      mouvement (découverte 22) ; (d) V-3 sur `51ebbc0f` : l'équipement retiré par le jeu en fin de
+      manche, lu comme dépensé (découverte 24). Admis par l'utilisateur le 2026-10-06 (§2).
+      *Reprise de `feat/v75` après la vue A V2 et V3 de la campagne* (`c16708f2c`, fusion de
+      `2707fdb31`) : `grammar.Rev` = `grammar-2026-10-06.5` (la vue A prend `.4`) ; le canal des
+      états de mouvement ne compte plus un paquet à début lu dans la vue A (`DebutParVueA`) comme
+      localisé ni comme ouvert par un NEW de tête (constat P1 de la relecture de V2 et V3, correction
+      convenue avec la campagne : décompte seul, format des faits inchangé,
+      `TestUnDebutLuNEstNiLocaliseNiOuvertParUnNeuf`) ; un début lu dans la vue A prouve tout le paquet
+      pour l'ancrage derrière la marche (`TestCeQueLaFermetureProuve`). Population des huit lecteurs
+      sur les 20 films, même code avec et sans V2 et V3 : +806 records, −51 (32 annonces
+      d'emplacement vide, quelques ancres démenties par une trame désormais fermée, une quinzaine de
+      records perdus là où la marche depuis la fin de la vue A bute ; instruits au handoff de la
+      campagne `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md`, §2.2). Gate de corpus contre
+      `2707fdb31` (19 témoins) : les familles admises, à l'identique (mêmes V-3, mêmes replis vus pour
+      la première fois, toutes les lectures en hausse hors des lâchers d'une arme inconnue) ; une
+      lecture de capacité de plus non publiée faute de piste (`111fa685`, télémétrie).
+      *Clos le 2026-10-07, sur `feat/v75` `b5c9489ef`* (lot lint, clôture de la campagne, lot
+      « équipes source » de levelup-dc : SchemaDesFaits 6, schéma 80) : gate de corpus contre
+      `b5c9489ef` (19 témoins) : les mêmes FAUX et les mêmes familles en baisse que le gate admis, à
+      l'identique ; `KILLSOURCE_FIXTURES` vert ; passe de référence b6 (20 films décodés depuis le
+      film, `depuis_les_faits=false`, faits mis de côté `film_facts_b6`) : références d'équivalence
+      re-figées, elles prennent la vue A V2 et V3, le lot des équipes et 2.7.b ; killsource json sur
+      les 19 témoins identique à la passe b1 sauf un compteur de diagnostic de calibration
+      (`c75f33b8`, lectures par les deux voies 5 → 6) ; erreurs de passe d'avant ce lot seulement
+      (vies sans identité de `a349fea8` et `50247b26`, mêmes comptes qu'en b1 ; équipe de bot non
+      lue de `bcb6d393`, lot des équipes). `replay.SchemaVersion` reste 80. Accord de fusion de
+      l'utilisateur du 2026-10-07 (CI verte).
 - [ ] 2.7.c killsource EN DERNIER : `runWalk`, timeline, calibration deviennent des canaux et des
       préliminaires de la même marche ; contexte partagé avec la cuisson (décision de l'utilisateur
       du 2026-10-03) ; `IDLowBits` unifié (IR-7). Le découpage MPP déclaré par le film (2.7.a0)
@@ -805,7 +932,9 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
 
 ### Lot 3.2 — Mesure (taille S)
 - [ ] 3.2.1 Durées par étape, pic mémoire, nombre de parcours du film ; rapport publié, comparé à la
-      mesure M.1.
+      mesure M.1. Y compris la lecture des porteurs au sync des matchs à bombe
+      (`replay.PortagesAuSync`) : depuis 2.7.b, ses changements d'arme tenue marchent les trames du
+      film au lieu du seul ancrage.
 
 ## 4. Contrat d'exécution
 
@@ -1013,6 +1142,10 @@ plan y sont reprises comme items (3.1.2).
    ce plan compris) n'est donc tenu aux seuils que par la relecture : la relecture de V1 y a trouvé
    deux aiguillages à complexité 20 et 22 sans justification. Non traité ici ; à porter à
    l'utilisateur (resserrer l'exemption au code d'avant une date, comme `only-new-issues`).
+   Décision de l'utilisateur du 2026-10-06 : « Option 1 » — `gocyclo` et `funlen` sortent de
+   l'exemption (`lll` y reste), les fonctions qui dépassent (16 mesurées, toutes de complexité)
+   sont simplifiées quand c'est simple et couvert, sinon exemptées avec une raison écrite ; lot
+   séparé `feat/lint-decodeur`, mené par un agent en parallèle de ce plan.
 18. *(fusion de `feat/v75` dans la branche, 2026-10-05)* **Le banc killsource sur films réels
    (`TestGoldenFilms`, sauté sans `KILLSOURCE_FIXTURES`, donc absent de la CI) était rouge sur
    `feat/v75` depuis au moins `87cdfa761`** : trois films, la seule ligne de diagnostic de
@@ -1020,6 +1153,70 @@ plan y sont reprises comme items (3.1.2).
    branche fusionnée identique à `feat/v75` seule. Signalé à la campagne, qui a régénéré les
    goldens (`65c99b669`, même famille que sa découverte D23). Un banc qui ne tourne qu'en local
    peut rougir sans que personne le voie : à rejouer à chaque fusion qui touche le décodeur.
+19. *(lot 2.7.b, mesure du 2026-10-06)* **Les essais du localisateur de liste publient les crochets
+   de composant.** La porte unique des essais ne couvre que les états de mouvement : quand le
+   localisateur cherche le début d'une liste, ses lectures d'essai déposent, sur les 20 films,
+   243 949 appels d'arme portée pour 16 032 lectures retenues, 258 086 de munitions pour 61 998 —
+   tous les crochets des huit lecteurs ancrés, 5 à 40 fois les lectures retenues. Dans les trames
+   parties de leur tête, les crochets de la marche sont exactement ceux de ses records, sauf 135
+   appels de capacité non prédite (à rapporter à la réparation d'un composant non porté). Sans
+   incidence aujourd'hui (aucun de ces crochets n'est posé sur la marche) ; préalable de 2.7.b.
+20. *(lot 2.7.b, même mesure)* **Les records NEW bipèdes portent les composants des lecteurs
+   ancrés** : 9 447 lectures d'arme portée, 4 413 de cartouches, 4 398 de munitions, 2 345 de
+   grenades sur les 20 films. L'ancrage ne les voit jamais. Matière possible des dotations de
+   naissance ; hors de ce plan.
+21. *(lot 2.7.b, même mesure)* **La marche n'accumule pas les positions** : l'accumulateur de la
+   capture de position (`captureDePosition.accum`) n'a pas d'écrivain de production, le décodeur
+   de positions accumule de son côté. Une position lue par la marche n'est qu'un delta quantifié
+   tant que la marche ne tient pas un monde de positions.
+22. *(lot 2.7.b, instruction du gate du 2026-10-06)* **La piste d'une vie part de son premier
+   mouvement, pas de sa création.** Le record NEW d'un bipède porte sa position de naissance (i0),
+   que le décodeur de positions ne lit pas ; un corps immobile (gel d'avant-match, quelques
+   dixièmes de seconde après une réapparition) n'a pas de delta de position. La marche lit le rang
+   de capacité que le jeu transmet 13 à 15 ms après la création (`0797ce72` slot 524 : NEW à
+   3642,645 s, rang à 3642,658 s, première position à 3643,426 s) : le banc le juge « hors vie ».
+   À traiter avec les positions derrière la grammaire (2.7.d) : la position du NEW ouvrirait la
+   piste.
+23. *(même instruction)* **Un début de liste choisi par la fermeture ne prouve que la suite de la
+   liste.** `debutParFermetureRangee` prend le PREMIER candidat (un NEW) d'où la marche ferme le
+   paquet ; il peut être au milieu de la liste. Sur les 20 films, 2 449 paquets fermés à début
+   `DebutParFermeture` portent 35 256 records ancrés avant ce début (2 152 avec un composant des
+   huit lecteurs). La campagne avait mesuré ~600 paquets où deux débuts incompatibles ferment ;
+   son lot V2 (début lu à la fin de la vue A) en tranchera une part. Liste des paquets remise à la
+   campagne (`scratchpad/ri/ri27b/paquets_par_fermeture.tsv`). Traité dans 2.7.b pour les lecteurs
+   (décision 9) ; la grammaire elle-même garde son premier rang (campagne).
+24. *(même instruction)* **En fin de manche, le jeu retire l'équipement des corps.** La marche lit ce
+   retrait (records sans position, après le dernier mouvement) et le lecteur d'équipement le publie
+   « dépensé » : `51ebbc0f`, deux à la fin de la manche 1 (un hors de la piste, V-3). Ce n'est pas
+   un geste. Un signal de fin de manche manque à la grammaire ; le rejeu connaît les bornes de
+   manche. Hors de ce lot.
+25. *(même instruction)* **La garde des générations vivantes datées ne valait que pour l'ancrage.**
+   Le lot R2-bis l'a posée sur « tous les lecteurs de records delta bipèdes » ; le canal de 2.7.b
+   l'avait perdue pour les records de la marche (décision 8). Un record de trame non prouvée peut
+   être lu au-delà d'une largeur fausse : génération 0 sur un slot vivant en 1, masque à trente
+   composants.
+26. *(relecture de la vue A V2 et V3 de la campagne, 2026-10-06, constat P2)* **Un essai de début de
+   liste peut armer le diagnostic de la liaison par anticipation.** `lectureDEssai` restaure la
+   table d'entités (`World.Snapshot`/`Restore` : `slots` seulement) ; un DELTA lu pendant l'essai sur
+   un slot non lié qu'une image-clé ultérieure déclare laisse `anticipationDite` vrai, et le
+   diagnostic « repli actif » part avec le slot d'un essai jeté, que le compte de la liaison (sur
+   l'observation neuve de l'essai) ne voit pas. Préexistant par `debutParFermetureRangee` ; la vue A
+   V2 l'étend à chaque paquet d'un film préfixe. Signalé à la campagne.
+27. *(reprise de la vue A V2 et V3, 2026-10-06)* **La marche partie de la fin de la vue A bute sur les
+   composants que le décodeur ne porte pas** (`ti=43 i19`, `ti=12 i16`, `ti=45 i0`, `ti=10 i2`…) ;
+   ce qui les suit dans le paquet n'est plus lu par aucun canal, alors que la signature du slot 123
+   le faisait lire. Pour les huit lecteurs, une quinzaine de records sur 20 films (mini-bobine :
+   paquet 2:712). Décision de l'utilisateur du 2026-10-06, rapportée par la campagne : « Non,
+   grammaire d'abord » — pas de reprise en queue ; les composants bloquants sont au registre des
+   reports, avec le handoff `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md` pour un agent frais
+   (lancement au choix de l'utilisateur ; recommandation : après la fusion de 2.7.b).
+28. *(clôture de 2.7.b, 2026-10-07)* **Un test de chronométrage rougit la CI et le gate local sous
+   charge.** `TestRosterDesFilms_AnnuaireContreJointure` (`sync/killcollector/backfill_cout_integration_test.go`)
+   exige que la jointure par match coûte au moins dix fois l'annuaire de passe : 7,7 mesuré sur la
+   CI de `9d37645b3`, 9,1 sur le gate local du lot lint ; vert sur les autres exécutions. Hors de ce
+   plan : un rapport de chronos sur une machine partagée ne se fige pas à un seuil fixe. Le paquet
+   `platform/duckdb` tourne en 250 s seul sur ce poste, pour un plafond de 300 s : sous charge, il
+   sort en dépassement.
 
 ## 7. Journal
 
@@ -1340,3 +1537,51 @@ plan y sont reprises comme items (3.1.2).
   Banc killsource sur films réels : rouge sur `feat/v75` avant la fusion (découverte 18), vert après
   la régénération de la campagne. 2.7.a CLOS. Reste avant la fusion dans `feat/v75` : CI de la
   branche, `make gate-push`, accord de l'utilisateur.
+- 2026-10-06 : FUSION DE 2.7.a ET 2.7.a0 DANS `feat/v75` = `8dfadd07e` (avance rapide depuis
+  `65c99b669`, accord de l'utilisateur du 2026-10-05 « fusionne au vert ») : CI au niveau job verte
+  sur `8dfadd07e` après relance (la première exécution avait été annulée par un arrêt du runner
+  GitHub, sans échec réel), gitleaks et pré-contrôle de déploiement verts, `make gate-push` vert
+  (suite rejouée : la première avait été faussée par la mise en veille du poste). Campagne prévenue
+  avant et après ; elle rebase LR sur cette tête. Suite du plan : 2.7.b.
+- 2026-10-06 : FUSION DE `feat/v75` (`fed1efed2` : LR de la campagne, page Tendances) dans la
+  branche (`db44b91e5`), puis passe de référence v75w3 : `replay-equiv -update` sur les 20 films,
+  tous décodés depuis le film, et killsource json sur les 19 témoins. Références d'équivalence
+  re-figées (`0e0143148`) : elles dataient du 2026-10-04 et prennent 2.7.a, 2.7.a0, la vue A V1 et
+  LR. killsource identique à la passe d'avant LR, sauf la ligne de diagnostic de calibration
+  (7 témoins sur 19). Faits de la passe mis de côté (`film_facts_v75w3`). Mesure de 2.7.b sur les
+  20 films en trois exécutions (la dernière avec la récupération des listes, la répartition de
+  l'ancrage seul et la fidélité selon le localisateur) : décisions d'exécution 1 à 5, découvertes
+  19 à 21. Campagne prévenue avant et après la passe et la mesure.
+- 2026-10-06 : 2.7.b ÉCRIT, GATE INSTRUIT. Premier gate de corpus complet (19 témoins, contre
+  `fed1efed2`) : 220 actions hors vie (V-3) dues aux records de cadavres et aux annonces
+  d'emplacements vides → décisions 6 et 7 (`4f4049ebd`). Deuxième gate : V-3 résiduels instruits
+  témoin par témoin (lectures de naissance, une remise à zéro de fin de manche, un record déchet
+  de génération 0 dans une queue opaque), une lecture de grenade perdue sur `c75f33b8` (paquet
+  22:376 : la marche part d'un NEW du milieu de la liste) → mesures sur les 20 films (garde des
+  générations, ancres seules par verdict et par début de vue B) → décisions 8 et 9. Troisième
+  gate : plus aucune lecture perdue contre la base hors des lâchers d'arme inconnue ; FAUX
+  restants instruits (item 2.7.b), à faire admettre. Découvertes 22 à 25 ; liste des paquets à
+  début choisi par la fermeture remise à la campagne pour son lot V2. Campagne prévenue avant et
+  après chaque passe.
+- 2026-10-06 (soir) : relecture de la vue A V2 et V3 de la campagne rendue (un relecteur Opus en
+  contexte frais : aucun P0, un P1 dans `movement_states.go`, un P2 consigné, découverte 26) ;
+  campagne fusionnée dans `feat/v75` (`2707fdb31`), reprise dans la branche (`c16708f2c`, rang
+  `.5`, P1 corrigé), CI de la branche corrigée (paramètre inutile de `maskHas`, golden des formes).
+  Population des huit lecteurs avec et sans V2 (+806 / −51), chiffres versés au handoff de la
+  campagne ; gate de corpus contre `2707fdb31` : familles admises, à l'identique. Lot lint : fusion de
+  `feat/v75` dans sa branche (`9321554d6`), CI et `make gate-push` en cours avant son avance rapide.
+- 2026-10-06 (soir) : FUSION DU LOT LINT DU DÉCODEUR DANS `feat/v75` = `9321554d6` (avance rapide depuis
+  `2707fdb31`, accord de l'utilisateur du même jour « Oui, fusionne au vert », découverte 17) : fusion
+  de `feat/v75` dans sa branche sans conflit hors du journal, `golangci-lint` sans remarque, CI verte
+  au niveau job, `make gate-push` vert hors de deux dépassements dus à la charge (`platform/duckdb`
+  au plafond de 300 s, test de rapport de coût de `killcollector`), verts rejoués seuls. Campagne et
+  levelup-dc prévenus avant et après. Ordre convenu ensuite : clôture de la campagne (doc), lot
+  « équipes source » de levelup-dc (SchemaDesFaits 6), puis 2.7.b.
+- 2026-10-07 (nuit) : 2.7.b CLOS. Reprise de `feat/v75` `b5c9489ef` (`95f28c138` : fixtures du web
+  passées au schéma 80 puis régénérées, golden d'empreinte de killsource re-figé ; un épisode de
+  disque plein pendant un `go build ./...`, refait proprement), CI verte au niveau job sur
+  `95f28c138`, gate de corpus contre `b5c9489ef` identique au gate admis, `KILLSOURCE_FIXTURES`
+  vert, passe de référence b6 et références re-figées. Accord de fusion de l'utilisateur (« tu
+  pourras fusionner si la CI est verte »). Reste : CI verte sur la tête finale, `make gate-push`,
+  avance rapide de `feat/v75`, signal à levelup-dc pour la recuisson unique du parc (avec le
+  rattrapage du placement des vies : `killcollector.PlacementRev` monte). Suite du plan : 2.7.c.

@@ -236,11 +236,13 @@ export interface PickupSheets {
  * buildPickupSheets — une fiche par joueur de l'escouade (l'ordre de `players`), puis le reste
  * du camp. Une section par ressource du bilan ; dedans, les objets que notre camp a pris, rangés
  * par prises décroissantes puis par nom (`nameOf`) — MÊMES lignes dans le même ordre sur toutes
- * les fiches, un zéro reste une ligne.
+ * les fiches, un zéro reste une ligne. `resources` : les sections, dans cet ordre (Vue match : les
+ * ressources du match, râteliers compris) ; défaut : les ressources du bilan.
  */
 export function buildPickupSheets(
   block: SquadEmpriseBlock,
   nameOf: (o: SquadEmpriseObject) => string,
+  resources?: readonly string[],
 ): PickupSheets {
   const players = block.players ?? []
   const owners: PickupOwner[] = [...players.map((p) => ({ xuid: p.xuid, gamertag: p.gamertag })), { xuid: null, gamertag: '' }]
@@ -249,7 +251,8 @@ export function buildPickupSheets(
     const i = players.findIndex((p) => p.xuid === xuid)
     return i >= 0 ? i : owners.length - 1
   }
-  const sections = buildControlRows(block).map(({ resource }) => {
+  const sectionResources = resources ?? buildControlRows(block).map((r) => r.resource)
+  const sections = sectionResources.map((resource) => {
     const lines = (block.objects ?? [])
       .filter((o) => o.resource === resource && o.taken.us > 0)
       .map((object) => {

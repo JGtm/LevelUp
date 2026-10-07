@@ -1786,15 +1786,6 @@ export type MatchExpectedStats = components['schemas']['MatchExpectedStats']
 
 export type MatchSummaryTab = components['schemas']['MatchSummaryTab']
 
-export interface MatchWeaponKill {
-  weapon_id: number
-  weapon_label: string
-  effective_weapon_id: number | null
-  kill_count: number
-  /** Axe manipulation de l'arme (registre) — recolore le breakdown par classe (sunburst v2). */
-  class?: string
-}
-
 export type PlayerWeaponKillRow = components['schemas']['PlayerWeaponKillRow']
 
 // Champs sprite (médailles Halo 5) — shim manuel comme MatchMedal / MedalDigestItem.
@@ -1927,7 +1918,6 @@ export type MatchKillDistanceWeapon = components['schemas']['MatchKillDistanceWe
 export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePlayer']
 
 export interface MatchCombatTab {
-  weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
   /** V7 */
   tug_of_war: MatchTugOfWarBin[]
@@ -1958,47 +1948,9 @@ export interface MatchCombatTab {
    * position mesurée — dégradation propre, jamais d'erreur.
    */
   kill_distance_by_weapon?: MatchKillDistancePlayer[]
-  /**
-   * Bloc « Riposte » (D22-2, 2026-09-21) : par mort le couple (victime, vengeur, délai) et
-   * le camp de la victime, par joueur ses deux comptes. ABSENT quand le match n'a aucune
-   * ligne de journal — l'UI nomme alors l'état, elle ne disparaît pas.
-   */
-  riposte?: MatchRiposteBlock
-  /**
-   * Bloc « Dénivelé » (D24, 2026-09-22) : un point par frag et par mort du joueur consulté,
-   * distance × dénivelé signé de SON côté. ABSENT quand le match n'a aucune position
-   * mesurée — la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
-   */
-  elevation?: MatchElevationBlock
+  /** « Outils de destruction » du joueur de la page (builder de l'Escouade et de Sessions). */
+  weapon_tools?: SquadWeaponTools | null
 }
-
-/**
- * Bloc « Dénivelé » de l'onglet Combat. `kills` = mes engagements (les deux côtés, chacun
- * portant son `side`) ; `lobby` = les frags des autres, côté tueur, fond de comparaison du
- * bouton « comparer au lobby » ; `measured_kills` / `total_kills` = la réserve de couverture.
- */
-export type MatchElevationBlock = components['schemas']['MatchElevationBlock']
-
-/**
- * Un engagement mesuré. `delta_z_m` est signé DU CÔTÉ DU JOUEUR CONSULTÉ : positif = il était
- * au-dessus, pour un frag COMME pour une mort. `time_ms` est l'horloge du MATCH (le rejeu
- * s'ouvre avec `?t=<time_ms>&clock=match`).
- */
-export type MatchElevationKill = components['schemas']['MatchElevationKill']
-
-/**
- * Bloc « Riposte » de l'onglet Combat. Ré-export DIRECT du contrat (tableaux nullables
- * compris : huma sérialise ainsi toute tranche Go). `measured_deaths` est le nombre de
- * morts lues au journal — le DÉNOMINATEUR du pied de carte, jamais un dénominateur de taux
- * (D21 : sur un match, des comptes).
- */
-export type MatchRiposteBlock = components['schemas']['MatchRiposteBlock']
-
-/** Une mort du match et sa riposte (vengeur + délai) quand elle a eu lieu dans la fenêtre. */
-export type MatchRiposteDeath = components['schemas']['MatchRiposteDeath']
-
-/** Les deux comptes d'un joueur : ses morts vengées (SUBI) et ses ripostes (PORTÉ). */
-export type MatchRiposteePlayer = components['schemas']['MatchRiposteePlayer']
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
 export type MatchViewImpactRole = components['schemas']['MatchViewImpactRole']
@@ -2155,7 +2107,15 @@ export interface MatchViewResponse {
    * "player_stats_empty", "medals_empty".
    */
   partial_reasons?: string[]
+  /** L'Emprise du match, fiches = les joueurs de l'équipe du joueur de la page (absente sans lui). */
+  emprise?: MatchEmpriseBlock | null
+  /** « Isolement » de chaque joueur de l'équipe, dans l'ordre des fiches de l'Emprise. */
+  lives_near_teammate?: MatchLivesNearTeammate | null
 }
+
+export type MatchEmpriseBlock = components['schemas']['MatchEmpriseBlock']
+export type MatchLivesNearTeammate = components['schemas']['MatchLivesNearTeammate']
+export type MatchLivesPlayer = components['schemas']['MatchLivesPlayer']
 
 /** Navigation prev/next entre matchs adjacents d'un joueur (ordre chronologique). */
 export type MatchNeighbors = components['schemas']['MatchNeighbors']

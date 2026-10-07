@@ -29,8 +29,8 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
 - **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
 - **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
-- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade et fiche du match — et l'appui compte les assistances entre coéquipiers, sur les Sessions et dans le temps sur les Séries temporelles
-- **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée, rôles de hauteur, et la hauteur d'engagement de chaque frag sur la fiche du match
+- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Lue sur l'Escouade, une seule règle, et l'appui compte les assistances entre coéquipiers, sur les Sessions et dans le temps sur les Séries temporelles
+- **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée et rôles de hauteur
 - **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
 - **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
 
@@ -65,10 +65,8 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 **Fiche du match**
 - **Un seul gabarit de carte pour toute la page** — les trois tableaux difficiles à comparer sont devenus des graphes
 - **Le score dans le temps, selon le mode** — un mode à manches ne trace plus une courbe de points qui contredit son propre résultat
-- **La distance par arme**, la répartition des frags en deux niveaux, et le contrôle des armes spéciales ventilé par niveau d'arme
-- **Les tournants d'abord** — les équipements et les armes qui n'ont rien changé se replient
-- **Un onglet « Armes et terrain »** — frags et armes, distance, hauteur d'engagement, usages d'équipement, contrôle des socles et positions du film au même endroit ; le contrôle des armes spéciales en colonnes par socle, la part de chaque équipe en pistes horizontales, et une occupation du terrain plus grande et zoomable
-- **La riposte par joueur**, un graphe par camp
+- **La distance par arme** (mêlée exclue) et la répartition des frags en deux niveaux, à côté des outils de destruction
+- **Un onglet « Armes et terrain » qui lit l'Emprise du match** — ce que ton équipe a pris et ce que l'adversaire a pris, objet par objet, qui a pris quoi dans ton équipe, ce que ces ressources ont valu en frags et face à l'adversaire (et pourquoi une ligne n'est pas mesurée quand elle ne l'est pas), ce que chaque joueur a fait de l'équipement, si chaque coéquipier est mort près de quelqu'un ou seul, et une occupation du terrain plus grande et zoomable
 
 **Cartes, médailles et médias**
 - **109 fonds de carte**, convertis sans perte et lus quel que soit leur format, avec les zones Forge nommées à 100 %

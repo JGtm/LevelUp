@@ -168,10 +168,12 @@ type MovementStateStats struct {
 	// Packets est le nombre de paquets delta effectivement decodes.
 	Packets int
 	// EventPackets / EventPacketsLocated / EventPacketsUnlocated : les paquets a liste
-	// d evenements PLEINE, et ce que la signature du depot en a localise. Un paquet non
-	// localise est SAUTE — sauter sa liste bit-exactement demanderait la grammaire de charge de
-	// chaque type d evenement. Sans ces trois-la, « N lectures » ne dit pas sur quelle part du
-	// film elles portent.
+	// d evenements PLEINE, ceux dont un localisateur a trouve le debut de la liste, et ceux dont
+	// il ne l a pas trouve. Un paquet dont la fin de la vue A lue donne le debut n est ni l un ni
+	// l autre : c est une lecture (EventPackets - EventPacketsLocated - EventPacketsUnlocated). Un
+	// paquet non localise est SAUTE — sauter sa liste bit-exactement demanderait la grammaire de
+	// charge de chaque type d evenement. Sans ces trois-la, « N lectures » ne dit pas sur quelle
+	// part du film elles portent.
 	EventPackets, EventPacketsLocated, EventPacketsUnlocated int
 	// EventPacketsNewRecordStart : les paquets a liste d evenements dont la liste COMMENCE a un
 	// record NEW de tete que le localisateur sautait (lot M4b, `grammar/debut_de_liste.go`) : prouve

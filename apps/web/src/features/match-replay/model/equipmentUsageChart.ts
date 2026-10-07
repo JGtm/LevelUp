@@ -1,36 +1,20 @@
 /**
- * equipmentUsageChart.ts — LA PROJECTION DES DEUX VUES DU BILAN D'ÉQUIPEMENT, et l'encre des
- * quatre familles de geste (E2, 2026-09-09 : `deployed` et `dropped` ont fusionné en
- * `equipment` — cf. `USAGE_GROUP_TOKENS`).
+ * equipmentUsageChart.ts — LA PROJECTION DE LA GRILLE « Usage d'équipements, par joueur », et
+ * l'encre des familles de geste (`USAGE_GROUP_TOKENS`) et des issues (`USAGE_OUTCOME_TOKENS`).
  *
- * LE TABLEAU EST DEVENU UN GRAPHE (2026-09-03, retours utilisateur sur l'onglet Chronologie).
- * Deux vues empilées remplacent le tableau à deux niveaux d'en-tête :
- *   1. « Nombre de gestes par joueur » — la grille partagée (`components/charts/ValueGrid`),
- *      une colonne par colonne de mesure, chaque colonne avec SON échelle ;
- *   2. « Part de chaque équipe » — depuis le 2026-09-21 (D20, proposition 5.A), une barre
- *      ÉPAISSE par famille, toutes sur LA MÊME échelle d'usages (et non plus une barre 100 %
- *      par groupe de colonnes, qui donnait deux barres de même longueur pour 24 et 38 gestes).
+ * La grille partagée (`components/charts/ValueGrid`) : une ligne par joueur, une colonne par
+ * colonne de mesure, chaque colonne avec SON échelle. La part de chaque équipe se lit dans
+ * « Contrôle des ressources, par match » (Vue match), pas ici.
  *
  * LA FAMILLE, PAS LA COLONNE, PORTE LA COULEUR. `usageColumnGroups` décide déjà quelles
- * familles la mesure justifie (grappin, états actifs, poses, lâchés, lancers) ; la table des
- * encres est indexée PAR CETTE CLÉ, jamais par le rang de la colonne — une famille absente d'un
- * match ne doit pas repeindre les autres, sans quoi deux matchs voisins se liraient avec deux
- * conventions de couleur. Le typage `Record<UsageGroupKey, …>` rend la table exhaustive.
+ * familles la mesure justifie ; la table des encres est indexée PAR CETTE CLÉ, jamais par le rang
+ * de la colonne — une famille absente d'un match ne doit pas repeindre les autres, sans quoi deux
+ * matchs voisins se liraient avec deux conventions de couleur. Le typage
+ * `Record<UsageGroupKey, …>` rend la table exhaustive.
  *
- * POURQUOI LA FAMILLE `frag-*` PLUTÔT QUE CINQ JETONS DE GAMMES DIFFÉRENTES. Les cinq teintes
- * validées par la maquette (ambre, cyan, rose, violet, vert) sont, à une nuance de vert près,
- * exactement celles de la famille `frag-*` de la palette. Et c'est la SEULE famille du dépôt
- * dont la distance perceptuelle toutes-paires est tenue par un garde-rail PALETTE PAR PALETTE
- * (`fragClass.guard.test.ts`) : emprunter cinq jetons à cinq gammes ordinales ou de statut
- * (`perf-tier-*`, `warning`, `narrative-*`) donnerait cinq teintes distinctes sur la palette
- * défaut et deux teintes confondues sur Okabe-Ito. Ici la couleur ne dit rien d'ordinal — elle
- * ne fait qu'identifier une famille — donc la gamme est un vocabulaire, pas un jugement.
- *
- * LA VUE 2 LIT LA MÊME MESURE QUE LA CELLULE DE LA GRILLE : la `value()` de la colonne,
- * appliquée au compteur d'un CAMP au lieu de celui d'un joueur. `usageGestureCount`, qui
- * recomptait les gestes d'un GROUPE entier pour l'ancien découpage, est mort avec lui (lot K,
- * 2026-09-21) : un second calcul du même nombre finit toujours par diverger de celui que la
- * grille écrit juste à côté (CLAUDE.md n°6).
+ * POURQUOI LA FAMILLE `frag-*`. C'est la SEULE famille du dépôt dont la distance perceptuelle
+ * toutes-paires est tenue par un garde-rail PALETTE PAR PALETTE (`fragClass.guard.test.ts`) :
+ * la couleur ne dit rien d'ordinal, elle identifie une famille.
  *
  * Pur : aucun React, aucun hex, aucune langue — les libellés et les encres d'équipe arrivent
  * par l'appelant.
@@ -148,121 +132,4 @@ export function buildUsageGrid(input: UsageGridInput): ValueGridModel {
         leaves[c].column.tooltip?.(players[r]) ?? text,
       ),
   })
-}
-
-/** Un camp dans la barre d'une famille : son nom, son encre, son compte et ses deux parts. */
-export interface UsageFamilyBarSegment {
-  /** Le désignateur du camp du film : la clé du segment. */
-  team: number
-  label: string
-  accent: string
-  count: number
-  /** Part du camp DANS SA FAMILLE (0..100, arrondi) — l'infobulle, jamais la longueur. */
-  percent: number
-  /** Longueur du segment, en % de la BORNE COMMUNE à toutes les lignes (0..100). */
-  widthPct: number
-}
-
-/** Une famille de geste et la barre de ses deux camps. */
-export interface UsageFamilyBarRow {
-  key: string
-  label: string
-  /** La réserve de mesure de la famille (`UsageColumnGroup.hint`), portée par son nom. */
-  hint: string
-  total: number
-  segments: UsageFamilyBarSegment[]
-}
-
-/** Un camp en légende de la vue 2 : dans l'ordre des segments, mon camp d'abord. */
-export interface UsageFamilyBarTeam {
-  /** Le désignateur du camp du film : la clé de l'entrée de légende. */
-  team: number
-  label: string
-  accent: string
-}
-
-/**
- * Les barres de la vue 2. LA BORNE COMMUNE N'EST PAS PUBLIÉE : elle est déjà DÉPENSÉE dans le
- * `widthPct` de chaque segment — la republier donnerait à l'appelant de quoi refaire la
- * division, donc de quoi la refaire autrement.
- */
-export interface UsageFamilyBars {
-  rows: UsageFamilyBarRow[]
-  /** La légende des camps, dans l'ORDRE DES SEGMENTS — sans quoi elle se lit à l'envers. */
-  legend: UsageFamilyBarTeam[]
-}
-
-/** Ce que `buildUsageFamilyBars` demande en plus de l'habillage des camps. */
-export interface UsageFamilyBarsInput extends UsageTeamVisual {
-  teams: EquipmentUsageTeam[]
-  groups: UsageColumnGroup[]
-  /**
-   * L'équipe du FILM du joueur de la page (`FilmAllegiance.allyTeam`) : son camp ouvre chaque
-   * barre. `null` = ordre des camps du film.
-   */
-  allyTeam: number | null
-}
-
-/**
- * orderedTeams — MON CAMP D'ABORD (D20, 2026-09-21). Le segment de gauche est toujours le
- * mien : une barre qui changerait de main d'une famille à l'autre ne se compare pas d'un
- * coup d'œil. Sans camp connu (le film ne situe pas le joueur de la page), l'ordre du film reste.
- */
-function orderedTeams(teams: EquipmentUsageTeam[], allyTeam: number | null): EquipmentUsageTeam[] {
-  if (allyTeam == null) return teams
-  return [...teams].sort((a, b) => Number(b.team === allyTeam) - Number(a.team === allyTeam))
-}
-
-/**
- * buildUsageFamilyBars — la vue 2 depuis le 2026-09-21 (D20, proposition 5.A de la maquette).
- *
- * UNE BARRE PAR FAMILLE, PAS PAR GROUPE, ET SUR UNE SEULE ÉCHELLE. La vue rendait jusque-là
- * une barre 100 % par GROUPE de colonnes : deux barres de même longueur, l'une valant 24
- * gestes et l'autre 38, dont la seconde mêlait murs, capteurs, propulseurs, surbouclier et
- * camouflage — aucune des colonnes de la grille voisine ne s'y retrouvait. Les lignes sont
- * maintenant LES COLONNES DE LA GRILLE (`usageLeaves`), même liste et même ordre, et leur
- * longueur est le nombre de gestes RÉEL rapporté à la borne commune : la barre du grappin
- * (24) fait quatre fois celle du capteur (6).
- *
- * LA FAMILLE PORTE SA PROPRE MESURE : le compte d'un camp est la `value()` de la colonne sur
- * le compteur du camp — la même plume que la cellule de la grille, jamais un second calcul
- * (CLAUDE.md n°6). Une famille dont aucun camp n'a fait le moindre geste n'a pas de ligne.
- *
- * Le pourcentage reste calculé (infobulle) ; le COMPTE BRUT fait foi et s'écrit dans le
- * segment quand il tient.
- */
-export function buildUsageFamilyBars(input: UsageFamilyBarsInput): UsageFamilyBars {
-  const teams = orderedTeams(input.teams, input.allyTeam)
-  const mesures = usageLeaves(input.groups)
-    .map((leaf) => {
-      const counts = teams.map((team) => leaf.column.value(team.total) ?? 0)
-      return { leaf, counts, total: counts.reduce((a, b) => a + b, 0) }
-    })
-    .filter((m) => m.total > 0)
-  const bound = Math.max(1, ...mesures.map((m) => m.total))
-  return {
-    legend: teams.map((team) => ({
-      team: team.team,
-      label: input.teamLabel(team),
-      accent: input.teamAccent(team),
-    })),
-    rows: mesures.map(({ leaf, counts, total }) => ({
-      // LA MÊME CLÉ QUE LA COLONNE DE LA GRILLE (`buildUsageGrid`) : les deux vues nomment la
-      // même liste, elles doivent la nommer pareil.
-      key: `${leaf.group}.${leaf.column.key}`,
-      label: leaf.column.label,
-      hint: input.groups.find((g) => g.key === leaf.group)?.hint ?? '',
-      total,
-      segments: teams
-        .map((team, i) => ({
-          team: team.team,
-          label: input.teamLabel(team),
-          accent: input.teamAccent(team),
-          count: counts[i],
-          percent: Math.round((counts[i] / total) * 100),
-          widthPct: (counts[i] / bound) * 100,
-        }))
-        .filter((s) => s.count > 0),
-    })),
-  }
 }

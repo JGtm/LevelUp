@@ -147,8 +147,9 @@ func (r *KillDistanceRepo) queryMeasuredKills(ctx context.Context, matchID strin
 	return queryMeasuredKills(ctx, db, q, args, "KillDistanceRepo("+matchID+")")
 }
 
-// resolveRows traduit source_tag -> weapon_key (classificateur), agrège par
-// (xuid, weapon_key), puis habille le résultat de son libellé.
+// resolveRows traduit source_tag -> weapon_key (classificateur), résout les libellés et la classe
+// de chaque clé, agrège par (xuid, weapon_key) en écartant la MÊLÉE (classe `melee` au registre :
+// la carte « Distance par arme » ne la montre pas — décision utilisateur du 2026-10-06).
 func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killMeasured) []domain.MatchKillDistancePlayer {
 	type key struct {
 		xuid, weaponKey string
@@ -156,15 +157,27 @@ func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killMeasu
 	agg := map[key]*killDistanceAgg{}
 	keysSeen := map[string]bool{}
 	weaponKeys := make([]string, 0)
-
-	for _, m := range measured {
+	keyOf := make([]string, len(measured))
+	for i, m := range measured {
 		wk, ok := r.classifier.KillSourceRegistryKey(m.sourceTag)
 		if !ok {
 			continue // source hors registre : cette mort n'entre pas dans le POC (jamais de devinette)
 		}
+		keyOf[i] = wk
 		if !keysSeen[wk] {
 			keysSeen[wk] = true
 			weaponKeys = append(weaponKeys, wk)
+		}
+	}
+	if len(weaponKeys) == 0 {
+		return nil
+	}
+	meta := resolveWeaponKeyLabelsAny(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponKeys)
+
+	for i, m := range measured {
+		wk := keyOf[i]
+		if wk == "" || meta[wk].class == domain.FragClassMelee {
+			continue
 		}
 		k := key{xuid: m.killerXUID, weaponKey: wk}
 		a, exists := agg[k]
@@ -184,8 +197,6 @@ func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killMeasu
 	if len(agg) == 0 {
 		return nil
 	}
-
-	meta := resolveWeaponKeyLabelsAny(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponKeys)
 
 	byPlayer := map[string][]domain.MatchKillDistanceWeapon{}
 	for k, a := range agg {

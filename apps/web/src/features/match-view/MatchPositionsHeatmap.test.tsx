@@ -109,9 +109,9 @@ describe('MatchPositionsHeatmap', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
-    expect(screen.queryByText(/plus c’est chaud/)).toBeNull()
+    expect(screen.queryByText(/teinte est chaude/)).toBeNull()
     await user.hover(screen.getByRole('button', { name: /informations/i }))
-    expect(screen.getByRole('tooltip').textContent).toMatch(/plus c’est chaud/)
+    expect(screen.getByRole('tooltip').textContent).toMatch(/teinte est chaude/)
   })
 
   // 2026-09-21 (lot D) : le plan se zoome et se déplace, avec la commande du rejeu 2D.
@@ -142,21 +142,21 @@ describe('MatchPositionsHeatmap', () => {
     expect(cadre.getAttribute('style')).toContain('min(72%')
   })
 
-  it('propose le filtre par camp quand au moins une position porte un camp', () => {
+  it('propose le filtre par équipe quand au moins une position porte une équipe', () => {
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={sample} locale="fr" />,
     )
     expect(screen.getByText('Tous')).toBeTruthy()
-    expect(screen.getByText('Camp A')).toBeTruthy()
-    expect(screen.getByText('Camp B')).toBeTruthy()
+    expect(screen.getByText('Équipe A')).toBeTruthy()
+    expect(screen.getByText('Équipe B')).toBeTruthy()
   })
 
-  it('masque le filtre quand aucune position ne porte de camp', () => {
+  it('masque le filtre quand aucune position ne porte d’équipe', () => {
     const unknown: MatchPlayerPosition[] = [{ timeMs: 0, x: 1, y: 2, z: 0, team: -1 }]
     render(
       <MatchPositionsHeatmap playerSlug="JGtm" matchId="m1" positions={unknown} locale="fr" />,
     )
-    expect(screen.queryByText('Camp A')).toBeNull()
+    expect(screen.queryByText('Équipe A')).toBeNull()
   })
 
   // PORTE 1 — aucune position décodée.

@@ -18,7 +18,7 @@ Une entrée du roster a TOUJOURS une équipe ; aucune section « sans équipe »
 de match. L'équipe se lit dans le film (ADR 0034 D-9, D-10 ; la grammaire prime). Résidu impossible =
 compteur + `slog.ErrorContext`, jamais un affichage « inconnu ».
 
-## État : CHECKPOINT (i) levé par le superviseur — G3 implémenté, G5 préparé (aucune republication)
+## État : lot fusionné dans `feat/v75` (`b5c9489ef`) ; Phase D (D2, D3, D6) au CHECKPOINT
 
 Le champ d'équipe de BOT_METADATA est établi chez l'écrivain (Ghidra, F.2) et lu dans
 `film/internal/facts/killsource` (G3.0) ; la publication du rejeu en fait l'équipe des bots qu'aucune
@@ -340,7 +340,246 @@ l'image-clé près, 20 s).
 - [x] C.3 Entrée `.ai/thought_log.md` (2026-10-06, statut En cours, arrêt au CHECKPOINT) ; CR au
       superviseur.
 
+### Phase D — aucune fiche en trop : D2, D3, D6 (consigne de l'utilisateur du 2026-10-06, « Y a pas de places en trop »)
+
+Relance du superviseur après la fusion du lot dans `feat/v75` (`b5c9489ef`) : même worktree, même branche.
+Cible 0 / 0 / 0 / 0 (`sansEquipe`, `sansPlace`, `placesEnTrop`, `depassements`) sur les 19 témoins, et au
+parc si c'est mesurable en processus. CHECKPOINT avant toute déduction si le film ne dit pas qui part.
+
+**État : Phase D close — D2, D3, D6 implémentés, 0/0/0/0 sur les 19 témoins, CI `37548529382` verte, non fusionné.**
+
+- [x] D.0 Départ : `git pull --ff-only` (avance rapide sur `b5c9489ef`). Compteurs de départ, 19 témoins
+      en processus (faits au schéma des faits 6) : 0 / 3 / 3 / 60 ; `859da825` 0/1/1/4,
+      `bf2a9f05` 0/1/1/16, `d1dfbc02` 0/1/1/40.
+- [x] D.1 Instruments. Dans le dépôt : `film/replay/rejeu_fiches_en_trop_research_test.go` (faits et
+      artefacts seuls) ; `rjeBots` de `rejeu_equipes_research_test.go` copie désormais l'équipe (sinon
+      la liaison rejouée diffère de la publiée). Hors dépôt (scratchpad du superviseur,
+      `instruments_rejeu_equipes/rejeu_departs_research_test.go`) : la marche des trames rejouée sous
+      le contexte de la cuisson (profil calibré des faits, carte), qui importe `grammar/lecture`
+      (ADR 0037 IR-9 : la publication ne voit pas la structure de lecture). Sorties : `departs2.txt`,
+      `departs3.txt`, `morts_corps.txt`, `vies_apres_depart.txt`, `fiches_en_trop.txt`.
+- [x] D.2 Diagnostic D2 (`859da825`). La « vie » [3167..3170] du slot 548 n'est la vie de PERSONNE :
+      - le corps 548 est créé à 1519 avec l'index 2 (opresko, présent) ; la marche des trames lit ses
+        records de 1519 à 1534, puis plus rien jusqu'à la fin ; ni suppression, ni dead-state ;
+      - l'entité d'opresko (slot 1329) est lue jusqu'à l'image-clé 9 (1627), son absence est prouvée à
+        l'image-clé 10 (1827) ;
+      - les 5 échantillons [3167..3170] (quantum X constant 528) viennent du balayage de positions par
+        ancrage (`grammar.ScanBipedPositions`) ; la marche lit TOUS les paquets des frames 3164 à 3172
+        jusqu'à leur terminateur, verdict de fermeture « fermé », et aucun ne porte de record du slot
+        548. C'est une lecture fausse du balayage par ancrage : il n'y a pas d'autre joueur à nommer.
+      - Empreinte sur les 19 témoins : 1 vie commence après le départ prouvé de son entrée (celle-ci),
+        corps créé avant ce départ.
+      - Propositions : P2 (recommandée, publication) : une vie qui commence après le départ prouvé du
+        joueur que la création de son corps nomme, sur un corps créé avant ce départ, n'est pas
+        publiée (comptée et journalisée ; « la grammaire prime » : la preuve d'absence aux images-clés
+        contre des échantillons d'ancrage). P1 : la vie reste publiée mais n'ouvre aucune présence
+        (pion fantôme de 4 frames). Source : faire recouper l'ancrage par la marche dans `grammar`
+        (faits, re-cuisson complète, hors périmètre). Attendu avec P2 : 0/0/0/0, SplinterCell958 sur
+        la place 2 après `343 Forge Lord`.
+- [x] D.3 Diagnostic D3 (`bf2a9f05`), confirmé par la marche :
+      - le corps 529 est créé à 1004 avec l'index 8, lu jusqu'à 1019, supprimé à 1021 ;
+      - BOT_METADATA : `343 Mickey` [1008..1023] et `343 BF Scrub` [772..783] sur l'index 8 ;
+      - l'entité d'AllGodsLove (slot 1758, index 8) est créée à 1640 (marche), lue de l'image-clé 11
+        (1824), absence prouvée à l'image-clé 10 (1624) ;
+      - cause : le registre retombe sur l'index -> xuid (AllGodsLove) parce que la lecture par
+        déclaration (`identity_registry_declarations.go`) se limite aux index sans humain ET exige que
+        la déclaration couvre la création (1004 < 1008 : le paquet BOT_METADATA suit la création,
+        cas déjà décrit en tête du fichier) ; Mickey, sans entité, n'a pas d'entrée de roster.
+      - Correction (publication) : lecture par déclaration étendue à l'index d'un humain quand ses
+        entités prouvent son absence sur toute la vie, et à une création qu'aucune déclaration ne
+        couvre et qui précède la seule déclaration croisant la vie ; le bot ainsi nommé entre au roster
+        (présence = sa déclaration, équipe lue 0). Attendu : 0/0/0/0, Mickey sur la place 0
+        (Aeroflame -> Mickey -> Luigi107763), AllGodsLove sur la place 3 (après yolojoe13, parti à
+        1631). BF Scrub (aucune vie) reste hors roster.
+- [x] D.4 Diagnostic D6 (`d1dfbc02`). Le film n'écrit pas qui part :
+      - dernière image-clé porteuse 30 (5870), les 8 humains y sont lus ; `343 Ham Sammich` déclaré de
+        5947 à la fin (index 8, équipe 0), son entité de participant créée à 5947 (marche, slot 2530) ;
+      - aucune suppression d'entité de participant des 8 humains avant la fin du film (la marche en lit
+        ailleurs : `bf2a9f05` Aeroflame 846, yolojoe13 1631, AllGodsLove 3177, Shiva1663 3592 ;
+        `859da825` Witty Hole 4248, après la dernière image-clé 4227 ; elle en manque : opresko,
+        HiEmilio9212) ;
+      - dead-states de bipède (marche ; les faits ne gardent que ceux des véhicules) : le corps de
+        NerdGaiden est tué à 5932 par l'index 3 (Da5BearJud3n), lui-même tué à 5928 par l'index 5 —
+        deux morts absentes du fil des morts (dernière : 5910). NerdGaiden joue donc jusqu'à 5932 ;
+      - délais de réapparition du film (faits) : 97 écarts entre deux vies d'un joueur, tous de 80 à
+        90 frames ;
+      - équipe 0 à 5947 : JGtm en vie (records jusqu'à 5988) ; NerdGaiden mort à 5932 (réapparition au
+        plus tôt 6012, après la fin 5986) ; BlU3KN1GHT5479 mort à 5910 (au plus tôt 5990) ;
+        `stitch vs all` mort à 5845, attendu entre 5925 et 5935, non réapparu jusqu'à la fin (141
+        frames). Seule lecture qui désigne quelqu'un : le délai de réapparition — une DÉDUCTION.
+      - Options : (a) laisser D6 compté (0/1/1/40) ; (b) déduction par le délai de réapparition
+        (publication) : un membre de l'équipe du bot arrivant, mort et non réapparu au-delà du plus long
+        écart mesuré dans le film, est réputé parti à son réapparition manquée ; le bot lui succède
+        (attendu 0/0/0/0) ; (c) source : départs à la frame près par les suppressions d'entités de
+        participant (faits, re-cuisson) — ne règle pas `d1dfbc02`.
+- [x] D.5 `SchemaDesFaits` : aucune des corrections proposées (D2 P1/P2, D3, D6 b) ne touche les faits :
+      republication depuis les faits au schéma des faits 6 (`SchemaVersion` 80 -> 81). Seules les voies
+      « source » (D2 dans `grammar`, D6 c) montent `SchemaDesFaits` (re-cuisson complète). Mesure au
+      parc : les faits du parc local sont au schéma des faits 5, refusés au schéma 6 ; une mesure en
+      processus redécode les 126 films un par un (environ 30 min, pic proche de 1 Gio par film) : pas
+      faite sans go.
+- [x] D.5b Décisions du superviseur (2026-10-07) : D2 en P2, la cause racine au registre des reports pour
+      la session RI (constat, film, frames, aucune correction ici) ; D3 : go ; D6 : question posée à
+      l'utilisateur, puis sa décision — pas de déduction par le délai de réapparition, lire la donnée de
+      l'API (`domain.MatchPlayerFact.LeftInProgress` / `LeaveMatchMS`, calée par le pont), et CHECKPOINT
+      si elle ne désigne pas UN partant cohérent ; pas de mesure au parc ; `SchemaVersion` 81.
+- [x] D.5c Registre des reports : la cause racine de D2 (le balayage par ancrage publie des positions que la
+      marche ne contient pas) y est consignée, adressée à la session RI.
+- [x] D.6c D6, donnée de l'API vérifiée sur la COPIE de la base (racine de scratch) : pour `d1dfbc02`, les
+      8 humains ont `left_in_progress` faux, `last_leave_time` nul, `present_at_beginning` et
+      `present_at_completion` vrais, 575 s de jeu chacun (match de 606 s) ; aucune ligne pour
+      `343 Ham Sammich` (la base ne connaît pas le bot). L'API ne désigne PERSONNE : CHECKPOINT, rien
+      d'implémenté pour D6 (retour au superviseur avec les chiffres).
+- [x] D.6d D12, mesure seulement (instrument `TestRJEDepartsDeLaBase`, base copiée, 19 témoins, sans
+      redécodage) : 34 départs d'humains datés par la base ; calés par le pont, 2 présences publiées
+      courent au-delà (`9ffce8ef` Fxrdzy, et opresko sur `859da825`, par la vie fantôme de D2), 9 avec
+      la correction de -22 s des relais. Mais sur les départs, l'écart base - suppression lue par la
+      marche vaut 375 frames pour les 4 départs de `bf2a9f05` et 368 pour Witty Hole sur `859da825` :
+      le retard de la base sur un départ (environ 37 s, constant par film) n'est pas celui des arrivées.
+      Calée sans ce retard, la base place le départ de Witty Hole après la fin du film. Rien de
+      généralisé.
+- [x] D.5d Décision du superviseur pour D6 (2026-10-07) : ni le film ni l'API ne montrent de départ, le bot
+      n'a pas de place à reprendre ; un bot déclaré sans AUCUNE vie qui ne trouve AUCUNE place n'entre pas
+      au roster publié (compté, AVERTISSEMENT), aucun partant déduit ; un bot sans place qui a une vie
+      reste un défaut en ERREUR. Cible 0/0/0/0.
+- [x] D.6a D2 (P2) : règle R-B3 de la porte des positions (`positions_porte_depart.go`) : les positions d'un
+      corps dont l'occupant vivant à la création (unique entité stable de l'index dont la fenêtre large
+      contient la création) a son départ prouvé par une image-clé, et dont aucune position ne précède ce
+      départ, sont écartées ; journal en AVERTISSEMENT, expvar `rejeu_vies_apres_depart_ecartees`, aucun
+      champ servi (`couverturePorte.ApresDepart`, `CorpsApresDepart`). 7 tests (écarte, vie commencée avant,
+      absence non prouvée, deux entités, sans balayage, corps suivant, par l'assemblage) ; 2 mutations
+      rejouées, rouges.
+- [x] D.6b D3 : lecture par déclaration (`identity_registry_declarations.go`) étendue aux index d'un humain
+      dont les entités prouvent l'absence sur [création, fin de vie] (au moins une entité à lui, aucune
+      instable, aucune fenêtre large qui touche) et à la création antérieure à la seule déclaration qui
+      croise la vie (aucun bot déclaré à la création, une seule déclaration croisée, née après la
+      création, qui couvre la vie jusqu'à son terme, aucune image-clé porteuse entre les deux, film
+      balayé). R-CREATION inversé (`TestDeclarationNeeApresLaCreationNommeLeCorps`) ; tests de garde
+      R-IMAGE-CLE, R-UNE-SEULE, R-HUMAIN-ABSENT, R-HUMAIN-PRESENT ; 5 mutations rouges. Admission au roster
+      du bot sans entité dont une piste publiée porte le nom et dont les déclarations ne touchent la
+      fenêtre large d'aucune entité de son index (`admettreLesBotsNommesParDeclaration`, compté dans
+      `botsSuccesseurs`) ; 4 tests, 2 mutations rouges.
+- [x] D.6e D6 : `sieges_bots_sans_place.go` — dans le chaînage, un bot d'équipe lue sans place (équipe à sa
+      capacité) et sans vie est écarté (présence vidée, retiré du roster publié par
+      `sansLesBotsEcartes`, expvar `rejeu_bots_sans_vie_ni_place_ecartes`, AVERTISSEMENT) ; un bot sans place
+      avec une vie reste `index`, compté `sansPlace`, ERREUR ; un humain n'est jamais écarté. 3 tests
+      (B-ECARTE, B-AVEC-VIE, B-HUMAIN) ; 3 mutations rouges. Un arrivant sans équipe lue garde son
+      traitement (le défaut d'équipe se lit dans `sansEquipe`).
+- [x] D.7a `SchemaVersion` 80 -> 81 (contenu, aucun champ neuf), chronique v81, `structure_test.go`, plafonds
+      de la chronique (+26) et du test de structure (+4), golden de forme et 8 goldens d'assemblage (ligne de
+      schéma seule), 8 fixtures Go du web régénérées (`replay_schema_81_*`).
+- [x] D.7b Témoins, republication depuis les faits (schéma des faits 6, binaire `replay-build-phased.exe`,
+      un film à la fois, aucun décodage : `depuis_les_faits=true` partout) :
+      | | sansEquipe | sansPlace | placesEnTrop | depassements |
+      |---|---|---|---|---|
+      | AVANT (`b5c9489ef`) | 0 | 3 | 3 | 60 |
+      | APRÈS | 0 | 0 | 0 | 0 |
+      Seuls les 3 documents de D2, D3, D6 changent (les 16 autres : identiques hors marque de schéma).
+      `859da825` : la piste fantôme du slot 548 disparaît (bornes de carte rendues : minX -17,65 -> -11,43,
+      minZ -28,86 -> -0,26), opresko présent 0-1627 (affichage 1708), SplinterCell958 sur la place 2 lue
+      dans ses tirs, 147 tirs de plus publiés par la place, 3 rafales par la place ; 4 lectures
+      d'image-clé du slot 548 à 1627 passent « non publiées ». `bf2a9f05` : vie [1004..1019] nommée
+      `343 Mickey` (lecture directe), Mickey sur la place 0 entre Aeroflame (affichage borné à 1003) et
+      Luigi107763, AllGodsLove sur la place 3 après yolojoe13, 28 tirs de plus par la place.
+      `d1dfbc02` : `343 Ham Sammich` hors du roster publié (8 entrées). Témoin `43716616` : place 5 =
+      Slowpoke6743 -> `343 Sandwolf` -> KernelPanic10, aucune place 8.
+- [x] D.7c Gates locaux : `go test` de `games/halo_infinite/...`, `replaybuild`, `service/replayview`,
+      `sync/killcollector` (verts), `archlint` (vert), `go vet` avec et sans `research`, golangci-lint
+      (paquets touchés, depuis `b5c9489ef`) : 0 constat ; vitest du rejeu (fixtures au schéma 81) : 245
+      fichiers, 3 591 tests verts.
+- [x] D.7d Relecture adversariale au premier plan (un relecteur frais, contrat écrit, lecture seule,
+      chemin absolu du worktree) : 0 P0, 0 P1, 16 conditions vérifiées qui tiennent (tri des positions,
+      attribution au corps, bornes des fenêtres, conversions, alignement roster / occupants pendant la
+      pose, compteurs après l'écart, passes postérieures sur le roster filtré, champs non servis
+      invisibles à la forme, vies nommées jamais renommées, gardes du cas b, admission d'un bot à entité
+      exclue, D6 limité aux équipes lues et pleines, journal, seuils, montée de schéma, doutes d'absence
+      persistés). 7 P2, traités dans le lot : (1) garde de la fenêtre de R-B3 tenue par
+      R-B3-SANS-ENTITE ; (2) journal et expvar de R-B3 tenus par l'assemblage (R-B3-JOURNAL) ; (3) les
+      deux passes de `build_pistes.go` tenues de bout en bout (`roster_places_assemblage_test.go`,
+      AS-DECLARATION, AS-SANS-PLACE) ; (4) couverture de la vie au cas b tenue (R-CREATION-DEBORDE) ;
+      (5) gardes secondaires tenues (entité instable dans la porte et chez l'humain, film non balayé et
+      bot sans déclaration à l'admission) ; (6) R-HUMAIN réécrit sur la règle qu'il tient (humain sans
+      entité à lui, test renommé `TestDeclarationSeTaitQuandLHumainDeLIndexNAAucuneEntite`, absent de la
+      baseline) ; (7) doctrine de `sieges.go` (le bot sans vie ni place) et commentaire de `passerLaPorte`
+      (R-B3) mis à jour. Dix mutations rejouées sur ces chemins, toutes rouges (deux reprises sous une
+      forme qui compile). Pas de ronde 2 (aucun P0 ni P1).
+- [x] D.7e Push de `34c544737` ; CI `37548529382` suivie au premier plan (`gh run watch --exit-status`) : verte, tous les
+      jobs (E2E sauté hors PR vers `main`) ; `Deploy Pre-Check` et `Secrets (gitleaks)` verts. CR au superviseur.
+      Non fusionné dans `feat/v75` ; la re-cuisson du parc reste la décision de l utilisateur (republication
+      depuis les faits au schéma des faits 6 suffit : `SchemaDesFaits` ne monte pas).
+
+### Intégration avant la re-cuisson unique (2026-10-07)
+
+- [x] I.1 Fusion de `origin/feat/v75` = `4f112add5` (RI 2.7.b : `grammar-2026-10-06.5`,
+      `killcollector.PlacementRev` = `placement-2026-10-06-v1` ; `killsource.Rev` et `objectives.Rev` inchangées,
+      empreintes re-figées) sur `cdb6233f5` : commit `3f92429b6`. Conflits : les fixtures Go du web seulement
+      (manifeste et `replay_schema_80_*`, modifiées par 2.7.b, supprimées au schéma 81) ; aucun conflit Go.
+- [x] I.2 Fixtures du web régénérées au schéma 81 depuis le code fusionné : les 8 sont identiques aux
+      fixtures 80 de 2.7.b hors marque de version (aucun film des fixtures ne porte un cas de la phase D).
+- [x] I.3 En série : `go test` de `replay`, `killsource`, `grammar`, `fallback`, `sync/killcollector` (verts),
+      `archlint` (vert), golangci-lint depuis `4f112add5` (0 constat), vitest du rejeu hors sandbox (245
+      fichiers verts).
+- [x] I.4 Témoins redécodés un par un en processus (binaire du commit de fusion, racine de scratch, verrou
+      solo, premier plan ; aucun ne republie depuis des faits) : schéma 81, 0 / 0 / 0 / 0 sur les 19 ; D2,
+      D3, D6 inchangés (SplinterCell958 place 2, Mickey place 0, AllGodsLove place 3, aucun bot au roster
+      de `d1dfbc02`) ; place 5 de `43716616` inchangée.
+- [x] I.5 Recette de la re-cuisson unique, à jouer par le superviseur après la fusion du lot dans
+      `feat/v75`, depuis `C:\Users\Guillaume\Downloads\Scripts\LevelUp\apps\go-api` (worktree principal à la
+      tête de `feat/v75`), SERVEUR ARRÊTÉ (port 8000 libre), CGO (`PATH` avec `C:\msys64\ucrt64\bin`,
+      `CGO_ENABLED=1`, `CC=C:\msys64\ucrt64\bin\gcc.exe`), une commande à la fois, aucune en arrière-plan :
+      1. `go run ./cmd/levelup backfill-replay --only-existing --dry-run`, puis
+         `go run ./cmd/levelup backfill-replay --only-existing` : un enfant par film, en série, verrou solo ;
+         `grammar.Rev` monte, chaque artefact se lit `redecoder` : `data/cache/replays/halo_infinite/<id>.json`
+         (schéma 81) et `data/cache/film_facts/halo_infinite/<id>.filmfacts.bin` (schéma des faits 6) ;
+      2. rattrapage du placement des vies (`PlacementRev` monte) :
+         `go run ./cmd/levelup backfill-killsource --dry-run`, puis `go run ./cmd/levelup backfill-killsource`
+         (sélection `matchsAJour`, sans `--force`, 3 ouvriers par défaut, passe des films puis passe
+         crédit-seul) : tout match à vies dont la passe de `match_life_placement_latest` n'est pas à
+         `placement-2026-10-06-v1` (ou plus ancienne que ses vies) est redécodé et son placement réécrit ;
+         `--status` dans un second terminal ;
+      3. `go run ./cmd/levelup backfill-usage-summary` (le schéma d'artefact a bougé : résumé refait sans
+         `--force`) ;
+      4. `go run ./cmd/levelup backfill-pad-tiers --force` ;
+      5. `go run ./cmd/levelup backfill-vehicle-takes --force` (après la passe 2 : il lit les frags de
+         `match_kill_events_latest`) ;
+      6. `go run ./cmd/levelup tactical-rasters --backfill` (aucune base ; réécrit les sidecars dont
+         l'artefact a changé de schéma) ;
+      7. vérification : `coverage.seats` des 19 témoins (`verifier_temoins.sh` du scratchpad, depuis la racine
+         du worktree principal) — schéma 81, 0 / 0 / 0 / 0, place 5 de `43716616` = Slowpoke6743 ->
+         `343 Sandwolf` -> KernelPanic10 ; `go run ./cmd/levelup backfill-killsource --dry-run` doit ne plus
+         rien avoir à décoder (convergence ; seuls restent les matchs sans film en cache).
+      `backfill-bomb-stats` et `backfill-flag-grabs-net` ne sont pas requis (`objectives.Rev` inchangée, la
+      phase D ne touche aucun de leurs calques).
+- [x] I.6 Re-cuisson unique exécutée par le superviseur le 2026-10-07, sur accord de l'utilisateur, après la
+      fusion de RI 2.7.b et du lot (`feat/v75` = `efa0a7363`), binaire construit depuis cette tête, serveur
+      arrêté, depuis `apps/go-api` du worktree principal :
+      1. `backfill-replay --only-existing` : 03:54:20 -> 04:11:55 (17 min 33 s), 126 / 126 redécodés,
+         schéma 81, pic 1,01 Gio, 0 erreur de décodage, 0 mort mémoire ; 1 ERROR attendue (bot fantôme
+         de l'ancien lecteur sur `8076f97f`, D9) ;
+      2. `backfill-killsource` : 04:12:36 -> 05:31:14 (1 h 18 min 38 s), 1 686 films écrits, 0 erreur ;
+         crédit 9 216 matchs en 4 min 51 s ; une seconde passe `--films-only` (32 s) n'a pris que 6 films ;
+      3. à 6. `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`,
+         `tactical-rasters --backfill` : 126 chacun, 21 s en tout, 0 erreur ;
+      7. 19 / 19 témoins au schéma 81 et à 0 / 0 / 0 / 0, place 5 de `43716616` = Slowpoke6743 (lu) ->
+         `343 Sandwolf` (apparié) -> KernelPanic10 (tirs), sans place 8 ; les 126 artefacts à 0 sur les
+         quatre compteurs ; `backfill-replay --dry-run` : 0 à construire. Écart à l'attendu :
+         `backfill-killsource --dry-run` annonce encore 105 films que la passe réelle ne prend pas (D14).
+      Total 03:54:20 -> 05:34:50, soit 1 h 40 min 30 s ; serveur et front relancés à 05:35.
+
 ## Découvertes (notées, non traitées)
+
+- D14 (re-cuisson du 2026-10-07) : après la passe, `backfill-killsource --dry-run` annonce encore 105 films
+  à décoder, mais une passe réelle `--films-only` n'en prend que 6 (6 écrits, dont 3 sans kill-feed et
+  3 passes non publiables). La sélection du `--dry-run` et celle de la passe réelle divergent.
+- D15 (re-cuisson du 2026-10-07) : pendant `backfill-killsource`, 10 matchs journalisent « l'entité ti=9
+  d'un bot et son entrée BOT_METADATA disent deux équipes » (l'entité est publiée, l'écart compté), à
+  instruire sur pièces (laquelle a raison ?).
+- D16 (re-cuisson du 2026-10-07) : pendant `backfill-killsource`, 82 matchs journalisent « entrée(s) du
+  roster présente(s) SANS ÉQUIPE lue », dont 73 avec TOUTES leurs entrées sans équipe ; surtout des
+  Oddball classés (Lattice, Recharge, Live Fire, Streets), puis Assault et VIP, build HI_1_13_0. Les 8
+  de ces matchs qui ont un artefact sont complets au schéma 81 (0 entrée sans équipe) : c'est le chemin
+  du placement des vies qui construit un roster sans équipe. À vérifier : le placement de ces matchs
+  est-il rangé par camp (risque d'un « camp inconnu » dans les pages qui le lisent) ?
 
 - D1 (`c7f94693`) : la vie [947..981] de `343 Donos` est publiée d'équipe 0 par le pont slot -> index
   (désignateur de l'index 8, lu sur l'entité d'un AUTRE bot, Byrontron, en fin de match). Son équipe est
@@ -377,6 +616,18 @@ l'image-clé près, 20 s).
   refusés sur leur en-tête et la cuisson redécode. Le récapitulatif de `backfill-replay` range donc ces
   films parmi les « republiés » alors que chacun redécode : la durée d'une telle passe est celle d'un
   décodage. Non traité (le comportement est juste, seul le compte trompe).
+- D11 (`d1dfbc02`) : le fil des morts n'a pas les deux dernières morts que les dead-states de bipède lisent
+  (5928 : Da5BearJud3n tué par l'index 5 ; 5932 : NerdGaiden tué par l'index 3) ; sa dernière mort est à
+  5910. La vie de NerdGaiden finit donc à 5931 sans mort. Non traité.
+- D12 : la marche des trames lit à la frame près la création et la suppression des entités de
+  participant (`ti=9`), que les faits ne portent pas (images-clés seulement). `859da825` : Witty Hole
+  supprimé à 4248, après la dernière image-clé (4227), publié présent jusqu'à la fin (4338). La marche
+  manque des suppressions (opresko, HiEmilio9212). Non traité (faits, re-cuisson).
+- D13 (`bf2a9f05`) : `xuidOfPublishedTrack` (published_tracks.go) donne a une piste de BOT (nom de bot, xuid
+  vide) le xuid que le pont de son slot donne : la piste de `343 Mickey` (slot 529) compte comme
+  trajectoire publiee d AllGodsLove dans `publishedXUIDs` et ajoute 1 au repli `repli_nom_piste_par_le_pont`.
+  Comportement anterieur au lot (toute piste de bot sur un slot ponte vers un humain) ; sans effet sur
+  les places ni les compteurs des temoins. Non traite.
 - Revue adversariale (ronde 1, relecteur frais) : 0 P0 ; 1 P1 (G2.a généralisé au-delà des 2 films
   mesurés : corrigé en restreignant l'affirmation) ; 5 P2 d'imprécision (formulation de G1.2 et durée
   maximale, place 1 de `4f77afc1`, décompte des films et build HI_1_12_0 à N = 1, équipe de Ham Sammich
@@ -396,3 +647,9 @@ l'image-clé près, 20 s).
   `g4_bouche_trou.txt` et `g4_intervalles.tsv` (scratchpad du superviseur). Dans les films où des bots
   existent, 43 des 44 intervalles demandés sont recoupés par un bot ; troisième contrôle du champ :
   0 désaccord sur 76 bots.
+- 2026-10-06 : Phase D (D2, D3, D6) après la fusion du lot (`b5c9489ef`). Instruments sur les faits et la
+  marche des trames ; D2 : la vie fautive est une lecture fausse du balayage par ancrage (la marche
+  ferme tous les paquets des frames 3164 à 3172 sans record du slot 548) ; D3 : cause confirmée,
+  correction de publication ; D6 : le film n'écrit pas le départ, seule une déduction par le délai
+  de réapparition désigne `stitch vs all`. CHECKPOINT, retour au superviseur ; aucune ligne de
+  production écrite.

@@ -128,9 +128,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	// capability_not_supported — non plus un 200 [] indistinguable d'un match sans données.
 	// Le pourquoi et la chaîne complète : registry_pages_film.go.
 	svc = r.filmArtifactReposFor(svc, pdb)
-	if repo := r.killDistanceRepoFor(pdb); repo != nil {
-		svc = svc.WithKillDistanceRepo(repo)
-	}
+	svc = r.cablerFilmMatchView(svc, pdb) // distance par arme et Emprise : registry_pages_matchview.go
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}

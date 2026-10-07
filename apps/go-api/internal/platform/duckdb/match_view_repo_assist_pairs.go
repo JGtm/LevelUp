@@ -10,14 +10,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/domain"
 )
 
-// Q21dAssistPairs : les paires (assistant, tueur assisté) d'un match, ET les deux
-// dénominateurs qui rendent une liste vide lisible.
+// Q21dAssistPairs : les paires (assistant, tueur assisté) d'un match, ET les dénominateurs qui
+// rendent une liste vide lisible.
 //
 // SŒUR de Q21b/Q21c (queries_match.go), mais d'une NATURE différente : celles-là rendent
 // une ligne PAR MORT pour décorer le feed et s'apparient aux events par (tueur, instant) ;
@@ -25,7 +24,7 @@ import (
 // temporelle ne sort d'ici, donc RIEN à recaler sur T0. Un agrégat par match_id ne
 // s'apparie à rien — la correction T0 n'aurait ni objet ni prise.
 //
-// ─── LES DEUX DÉNOMINATEURS, ET POURQUOI DEUX ─────────────────────────────────────────
+// ─── LES DÉNOMINATEURS ────────────────────────────────────────────────────────────────
 //
 //	match_deaths     toutes les lignes du match, portées confondues. Zéro = le match n'est
 //	                 jamais passé au décodeur de film (ou le titre n'en a pas). Le service
@@ -35,6 +34,9 @@ import (
 //	                 match_deaths > 0 = « non mesuré pour ce match » (le film est là,
 //	                 l'assistance non — ou la passe n'est pas publiable ligne à ligne,
 //	                 cas BTB). C'est un état à AFFICHER, jamais « aucune assistance ».
+//	publishable_deaths les lignes `publishable`, assistance connue ou non : le journal des
+//	                 morts se lit ligne à ligne. Lu par la Vue match (frags pendant l'effet
+//	                 d'un bonus), pas par les paires.
 //
 // ─── LA JOINTURE SUR TRUE N'EST PAS UNE COQUETTERIE ───────────────────────────────────
 //
@@ -66,15 +68,16 @@ import (
 // de plafonner que `stolen_count` (mesures jusqu'à 228) : c'est une moyenne de parts
 // mesurées, pas un dégât chiffré.
 //
-// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 8 colonnes :
-// match_deaths, measured_deaths, assist_xuid, assist_gamertag, feed_killer_xuid,
-// assist_count, stolen_count, avg_assist_pct — les six dernières NULL quand aucune paire
-// ne sort.
+// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 9 colonnes :
+// match_deaths, measured_deaths, publishable_deaths, assist_xuid, assist_gamertag,
+// feed_killer_xuid, assist_count, stolen_count, avg_assist_pct — les six dernières NULL quand
+// aucune paire ne sort.
 const Q21dAssistPairs = `
 WITH scope AS (
     SELECT
         COUNT(*)                                             AS match_deaths,
-        COUNT(*) FILTER (WHERE publishable AND assist_known)  AS measured_deaths
+        COUNT(*) FILTER (WHERE publishable AND assist_known)  AS measured_deaths,
+        COUNT(*) FILTER (WHERE publishable)                   AS publishable_deaths
     FROM ` + KillEventsCanonicalTable + `
     WHERE match_id = ?
 ),
@@ -98,6 +101,7 @@ pairs AS (
 SELECT
     s.match_deaths,
     s.measured_deaths,
+    s.publishable_deaths,
     p.assist_xuid,
     p.assist_gamertag,
     p.feed_killer_xuid,
@@ -111,11 +115,12 @@ ORDER BY p.assist_count DESC, p.assist_gamertag, p.feed_killer_xuid`
 // GetMatchAssistPairs retourne les paires (assistant, tueur assisté) du match et la portée
 // de leur lecture (Q21d). Exécutée sur SharedReader (ADR 0016, shared-only).
 //
-// Même dégradation gracieuse que Q21b/Q21c, et pour les mêmes raisons : reader
-// indisponible ou table absente d'une base non migrée rendent une portée VIDE
-// (MatchDeaths = 0), loggée. Le service n'émet alors aucun bloc et l'écran ne rend rien —
-// l'état d'avant ce lot. Jamais une erreur : un titre sans décodeur de film n'est pas une
-// panne.
+// UN ÉCHEC DE LECTURE EST UNE ERREUR, JAMAIS UNE PORTÉE VIDE : lecteur partagé indisponible,
+// table absente d'une base non migrée, délai dépassé ou contexte annulé remontent enveloppés.
+// Une portée à zéro rendue sur échec se lirait « aucune mort publiable » (journal des morts
+// non publiable) alors que la lecture a seulement manqué ; l'appelant journalise l'erreur,
+// dégrade, et la page dit « lecture indisponible ». Un match sans ligne de film rend, lui, une
+// portée nulle sans erreur : c'est un résultat.
 func (r *MatchViewRepo) GetMatchAssistPairs(
 	ctx context.Context,
 	matchID string,
@@ -127,17 +132,13 @@ func (r *MatchViewRepo) GetMatchAssistPairs(
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: paires d'assistance indisponibles (shared reader)",
-			"match_id", matchID, "err", err)
-		return nil, scope, nil
+		return nil, scope, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs: %w", err)
 	}
 	defer release()
 
 	rows, err := sharedDB.QueryContext(ctx, Q21dAssistPairs, matchID, matchID)
 	if err != nil {
-		slog.WarnContext(ctx, "match_view: paires d'assistance indisponibles (Q21d)",
-			"match_id", matchID, "err", err)
-		return nil, scope, nil
+		return nil, scope, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs: %w", err)
 	}
 	defer rows.Close()
 	return scanAssistPairs(rows)
@@ -154,14 +155,16 @@ func scanAssistPairs(rows *sql.Rows) ([]domain.MatchAssistPairRaw, domain.MatchA
 	for rows.Next() {
 		var (
 			matchDeaths, measured    int
+			publishable              int
 			ax, agt, kx              sql.NullString
 			assistN, stolenN, avgPct sql.NullInt64
 		)
-		if err := rows.Scan(&matchDeaths, &measured, &ax, &agt, &kx, &assistN, &stolenN, &avgPct); err != nil {
+		if err := rows.Scan(&matchDeaths, &measured, &publishable, &ax, &agt, &kx, &assistN, &stolenN, &avgPct); err != nil {
 			return nil, domain.MatchAssistScopeRaw{}, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs scan: %w", err)
 		}
 		scope.MatchDeaths = matchDeaths
 		scope.MeasuredDeaths = measured
+		scope.PublishableDeaths = publishable
 		// Ligne de portée SEULE (aucune paire) : le LEFT JOIN ON TRUE laisse les cinq
 		// colonnes de paire à NULL. C'est l'état « mesuré, zéro assistant nommé » —
 		// on garde la portée et on n'invente pas de paire.

@@ -1,14 +1,10 @@
 /**
- * Tests — equipmentUsageChart (la projection des deux vues du bilan d'équipement).
+ * Tests — equipmentUsageChart (la projection de la grille d'usage d'équipements).
  *
  * CE QU'ILS PROTÈGENT :
  *   1. LA COULEUR SUIT LA FAMILLE, JAMAIS SON RANG. Une famille absente d'un match ne doit pas
  *      repeindre les autres — c'est ce qui rend deux matchs comparables à l'œil.
- *   2. LA VUE DES PARTS SUIT LA GRILLE : une ligne par COLONNE, même liste et même ordre, et
- *      toutes les lignes sur UNE échelle commune bornée par le plus gros total (D20, 5.A).
- *   3. UNE FAMILLE QU'AUCUN CAMP N'A EMPLOYÉE N'A PAS DE LIGNE : une barre vide n'est pas une
- *      part.
- *   4. L'ORDRE DES LIGNES DE LA GRILLE est celui des camps puis du roster — un joueur se lit en
+ *   2. L'ORDRE DES LIGNES DE LA GRILLE est celui des camps puis du roster — un joueur se lit en
  *      ligne d'une colonne à l'autre.
  */
 import { describe, expect, it } from 'vitest'
@@ -16,7 +12,6 @@ import { describe, expect, it } from 'vitest'
 import {
   USAGE_GROUP_TOKENS,
   buildUsageGrid,
-  buildUsageFamilyBars,
   usageGroupColor,
   usageLeaves,
 } from './equipmentUsageChart'
@@ -71,8 +66,6 @@ const TEAMS: EquipmentUsageTeam[] = [
 const GROUPS: UsageColumnGroup[] = [
   {
     key: 'grapple',
-    label: 'Grappin',
-    hint: 'réserve grappin',
     columns: [
       {
         key: 'pulls',
@@ -84,8 +77,6 @@ const GROUPS: UsageColumnGroup[] = [
   },
   {
     key: 'equipment',
-    label: 'Équipement',
-    hint: 'réserve équipement',
     columns: [
       {
         key: 'camo.count',
@@ -185,68 +176,5 @@ describe('buildUsageGrid — la grille par joueur', () => {
     const m = grille()
     expect(m.cells[0][2]).toMatchObject({ value: null, text: '—', fraction: 0 })
     expect(m.cells[2][3]).toMatchObject({ value: 0, text: '0' })
-  })
-})
-
-describe('buildUsageFamilyBars — la part de chaque équipe (5.A, 2026-09-21)', () => {
-  const barres = (allyTeam: number | null = 0) =>
-    buildUsageFamilyBars({ teams: TEAMS, groups: GROUPS, allyTeam, ...VISUAL })
-  /** La clé d'une ligne = celle de la colonne de la grille : groupe puis colonne. */
-  const cle = (group: string, column: string) => `${group}.${column}`
-  const ligne = (group: string, column: string) =>
-    barres().rows.find((r) => r.key === cle(group, column))!
-
-  it('rend UNE ligne par colonne de la grille, dans le MÊME ordre — pas une par groupe', () => {
-    expect(barres().rows.map((r) => r.key)).toEqual([
-      cle('grapple', 'pulls'),
-      cle('equipment', 'camo.count'),
-      cle('equipment', 'wall'),
-    ])
-    expect(barres().rows.map((r) => r.label)).toEqual(['Grappin', 'Camouflage', 'Mur de protection'])
-  })
-
-  it('met toutes les lignes sur UNE échelle commune, bornée par le plus gros total', () => {
-    const grappin = ligne('grapple', 'pulls')
-    expect(grappin.total).toBe(4)
-    // 3 tractions sur une borne de 10 : la piste est remplie à 30 %, pas à 75 %.
-    expect(grappin.segments.map((s) => s.widthPct)).toEqual([30, 10])
-    expect(ligne('equipment', 'wall').segments[0].widthPct).toBe(100)
-  })
-
-  it('garde le pourcentage DE LA FAMILLE, pour l’infobulle et elle seule', () => {
-    const grappin = ligne('grapple', 'pulls')
-    expect(grappin.segments.map((s) => [s.label, s.count, s.percent])).toEqual([
-      ['Équipe t0', 3, 75],
-      ['Équipe t1', 1, 25],
-    ])
-  })
-
-  it('ouvre chaque barre par MON camp, quel que soit l’ordre du film', () => {
-    expect(barres(1).rows[0].segments.map((s) => s.team)).toEqual([1, 0])
-    expect(barres(1).legend.map((l) => l.team)).toEqual([1, 0])
-    // Sans camp connu, l'ordre du film reste — aucune des deux encres n'est « la mienne ».
-    expect(barres(null).rows[0].segments.map((s) => s.team)).toEqual([0, 1])
-  })
-
-  it('n’écrit aucun segment pour un camp qui n’a rien fait de cette famille', () => {
-    expect(ligne('equipment', 'wall').segments.map((s) => s.count)).toEqual([10])
-  })
-
-  it('ne rend aucune ligne pour une famille qu’aucun camp n’a employée', () => {
-    // `camo.kills` n'est pas mesurée (value -> null) : elle n'a pas de ligne, et une piste
-    // vide n'apparaît jamais.
-    expect(barres().rows.some((r) => r.key === cle('equipment', 'camo.kills'))).toBe(false)
-    const vide = buildUsageFamilyBars({
-      teams: TEAMS.map((team) => ({ ...team, total: tally() })),
-      groups: GROUPS,
-      allyTeam: 0,
-      ...VISUAL,
-    })
-    expect(vide.rows).toEqual([])
-  })
-
-  it('porte la réserve de mesure du GROUPE sur chacune de ses lignes', () => {
-    expect(ligne('equipment', 'wall').hint).toBe('réserve équipement')
-    expect(barres().rows[0].hint).toBe('réserve grappin')
   })
 })

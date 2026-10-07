@@ -586,8 +586,7 @@
     "MatchCitationSnippet",
     "MatchCitationsTab",
     "MatchCombatTab",
-    "MatchElevationBlock",
-    "MatchElevationKill",
+    "MatchEmpriseBlock",
     "MatchEncounterBadge",
     "MatchEncounterRow",
     "MatchEvent",
@@ -608,6 +607,8 @@
     "MatchKillDistancePlayer",
     "MatchKillDistanceWeapon",
     "MatchKillerVictimPair",
+    "MatchLivesNearTeammate",
+    "MatchLivesPlayer",
     "MatchMedal",
     "MatchMediaTab",
     "MatchNativeCommendation",
@@ -622,9 +623,6 @@
     "MatchRangeBlock",
     "MatchRangePlayer",
     "MatchRangeProfile",
-    "MatchRiposteBlock",
-    "MatchRiposteDeath",
-    "MatchRiposteePlayer",
     "MatchRosterRow",
     "MatchScoreboardObjective",
     "MatchScoreboardRow",
@@ -639,7 +637,6 @@
     "MatchViewImpactRole",
     "MatchViewRank",
     "MatchViewResponse",
-    "MatchWeaponKill",
     "MedalCategoryGroup",
     "MedalDigestEntry",
     "MedalDigestItem",
@@ -1410,6 +1407,11 @@
     "IdentityAnomaly.severity": [
       "info",
       "warning"
+    ],
+    "MatchEmpriseBlock.kill_journal": [
+      "not_publishable",
+      "publishable",
+      "unavailable"
     ],
     "MatchHistoryRow.outcome": [
       "dnf",

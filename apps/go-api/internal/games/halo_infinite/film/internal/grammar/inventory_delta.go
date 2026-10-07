@@ -12,12 +12,12 @@ package grammar
 //	i47  `biped-desired-grenade-set-component`  le masque des types portés et le type
 //	                                            SÉLECTIONNÉ (celui qui partira au lancer).
 //
-// LE CHEMIN EST CELUI D'i48 (ability_rank.go), à la lettre : ancre bit à bit
-// `matchBipedHeader` sur la bande de slots bipèdes des images-clés, puis marche des
-// composants du masque par les DÉSERS DE PRODUCTION (`walkRecordComponents` ->
-// `consumeByName`). Aucun motif d'octets, aucune table de largeurs parallèle, aucune capture
-// Cheat Engine : le désérialiseur PUBLIE ce qu'il lit, on ne relit jamais les bits à côté de
-// lui — deux lecteurs du même champ divergeraient.
+// LE CHEMIN EST CELUI D'i48 (ability_rank.go), à la lettre : les records bipèdes delta que la
+// marche des trames lit, puis ceux que l'ancrage d'en-tête rend derrière elle
+// ([lecturesBipedes]), leurs composants lus par les DÉSERS DE PRODUCTION (`consumeByName`) et
+// leurs publications rejouées. Aucun motif d'octets, aucune table de largeurs parallèle, aucune
+// capture Cheat Engine : le désérialiseur PUBLIE ce qu'il lit, on ne relit jamais les bits à côté
+// de lui — deux lecteurs du même champ divergeraient.
 //
 // LE TEST RÉFUTABLE EST DANS LA DONNÉE, pas dans un seuil choisi. `unit_weaponstate.go`
 // l'énonce lui-même : la vérité terrain donne 35 bits FIXES pour i22 (3 + 4x8), donc le
@@ -90,22 +90,23 @@ func ScanInventoryDeltas(fc *FilmContext) ([]types.InventoryDelta, InventoryDelt
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
-	sc.gram.obs = sc.installHooks()
-
-	fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		sc.st.Records++
-		sc.readRecord(r.Chunk, r.Packet, r.Payload, r.I0, r.Total, r.Slot, r.Mask)
-	})
+	lu, err := fc.lecturesBipedes()
+	if err != nil {
+		return nil, InventoryDeltaStats{}, err
+	}
+	sc.obs = sc.installHooks()
+	sc.st.Records = lu.examines
+	for i := range lu.records {
+		sc.readRecord(&lu.records[i])
+	}
 	sc.refuseAmmoIfContaminated()
 	return sc.out, sc.st, nil
 }
 
-// invDeltaScanner porte l'état d'un balayage : la configuration résolue une fois (bande de
-// slots, découpage i0, archétype, index des deux composants) et l'accumulateur.
+// invDeltaScanner porte l'état d'un balayage : la configuration résolue une fois (les rôles des
+// composants), l'observation sur laquelle les lectures se rejouent, et l'accumulateur.
 type invDeltaScanner struct {
-	chunks []int
-	slots  SlotBand
-	gram   grammaireRecord
+	obs *Observation
 	// role dit, pour un index de composant du masque, CE QU'IL EST pour l'inventaire — et,
 	// pour les munitions, DE QUEL emplacement d'arme il parle. C'est la seule table câblée du
 	// balayage, et elle est construite depuis les NOMS du registre du film, jamais depuis des
@@ -162,27 +163,20 @@ func (sc *invDeltaScanner) resetRecord() {
 
 // newInvDeltaScanner résout tout ce qui ne dépend PAS du paquet — une fois pour le film.
 func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
-	chunks := fc.ChunkNumbers()
-	if len(chunks) == 0 {
+	if len(fc.ChunkNumbers()) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	slots := fc.BipedSlots()
-	if slots.Count() == 0 {
+	if fc.BipedSlots().Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, err := fc.I0Layout()
-	if err != nil {
+	if _, err := fc.I0Layout(); err != nil {
 		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, err
 	}
-	sc := &invDeltaScanner{
-		chunks: chunks, slots: slots,
-		gram: grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()},
-		role: invDeltaRoles(arch),
-	}
+	sc := &invDeltaScanner{role: invDeltaRoles(arch)}
 	if len(sc.role) == 0 {
 		return nil, fmt.Errorf("aucun composant d'inventaire dans l'archétype biped du film")
 	}
@@ -249,19 +243,17 @@ func (sc *invDeltaScanner) installHooks() *Observation {
 // (L'ancrage des records d'un paquet vivait ici, en copie de huit autres. Il est passé dans
 // `walkDeltaBipedRecords` le 2026-09-05, lot E, item E.4.)
 
-// readRecord marche UNE SEULE FOIS le record et récolte au passage tous les composants
+// readRecord rejoue UNE SEULE FOIS le record et récolte au passage tous les composants
 // d'inventaire que son masque annonce.
 //
-// UN SEUL PARCOURS POUR N CIBLES : appeler la marche une fois par composant relirait le
-// record six fois (i22, i47, les deux chargeurs, les deux réserves) pour le même résultat.
-// La marche s'arrête dès que tous les composants attendus ont été consommés — au-delà,
-// dérouler la fin du record ne rapporterait rien.
-func (sc *invDeltaScanner) readRecord(
-	chunk int, pk FilmPacket, pay []byte, i0, total int, slot uint32, idx []int,
-) {
+// UN SEUL PARCOURS POUR N CIBLES : le rejouer une fois par composant reprendrait le record six
+// fois (i22, i47, les deux chargeurs, les deux réserves) pour le même résultat. Le parcours
+// s'arrête dès que tous les composants attendus ont été consommés — au-delà, dérouler la fin du
+// record ne rapporterait rien.
+func (sc *invDeltaScanner) readRecord(r *recordBipedeLu) {
 	want := 0
-	for _, id := range idx[1:] {
-		if _, ok := sc.role[id]; ok {
+	for id := range sc.role {
+		if r.annonce(id) {
 			want++
 		}
 	}
@@ -269,16 +261,17 @@ func (sc *invDeltaScanner) readRecord(
 		return
 	}
 	sc.resetRecord()
-	sc.countAnnounced(idx)
+	sc.countAnnounced(r)
 	seen := 0
-	walkRecordComponents(pay, i0, total, idx, sc.gram, func(id int) bool {
-		if r, ok := sc.role[id]; ok {
-			sc.capture(r)
+	r.parcourir(sc.obs, func(id int) bool {
+		if ro, ok := sc.role[id]; ok {
+			sc.capture(ro)
 			seen++
 		}
 		return seen < want
 	})
-	rec := types.InventoryDelta{Slot: slot, Chunk: chunk, PacketIndex: pk.Index, TimestampUS: pk.TimestampUS}
+	rec := types.InventoryDelta{Slot: r.Slot, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
+		TimestampUS: r.Packet.TimestampUS}
 	emit := sc.collectI22(&rec)
 	emit = sc.collectI47(&rec) || emit
 	emit = sc.collectAmmo(&rec) || emit
@@ -290,10 +283,9 @@ func (sc *invDeltaScanner) readRecord(
 }
 
 // countAnnounced incrémente les dénominateurs « le masque annonce ce composant ».
-func (sc *invDeltaScanner) countAnnounced(idx []int) {
-	for _, id := range idx[1:] {
-		r, ok := sc.role[id]
-		if !ok {
+func (sc *invDeltaScanner) countAnnounced(rec *recordBipedeLu) {
+	for id, r := range sc.role {
+		if !rec.annonce(id) {
 			continue
 		}
 		switch r.kind {

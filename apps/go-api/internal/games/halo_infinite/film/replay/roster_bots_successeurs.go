@@ -37,8 +37,13 @@ package replay
 // Ce qu'une entree de bot admise devient ensuite n'a rien de particulier : la liaison
 // (occupants.go) lui donne ses entites, son equipe et sa presence ; la pose des places (sieges.go)
 // l'assoit — sur la place du partant quand son index est un siege de la table (lecture `lu`, borne
-// au successeur), par chainage sinon. Un bot que cette lecture laisse dehors mais dont une vie est
-// nommee se COMPTE (`coverage.seats.identitesHorsRoster`).
+// au successeur), par chainage sinon.
+//
+// UN BOT SANS ENTITE ENTRE AUSSI PAR SES DECLARATIONS ([admettreLesBotsNommesParDeclaration]) : une
+// piste publiee porte son nom (la lecture par declaration a nomme son corps, l humain de l index
+// absent), et ses declarations ne touchent la fenetre large d aucune entite de son index. Un bot que
+// les deux lectures laissent dehors mais dont une vie est nommee se COMPTE
+// (`coverage.seats.identitesHorsRoster`).
 
 import (
 	"cmp"
@@ -60,7 +65,17 @@ func rosterDesOccupants(idx types.PlayerIndexTable, names map[uint64]string, bot
 // Rend le roster, trie comme [buildRoster] le trie, et le nombre de bots admis.
 func admettreLesBotsSuccesseurs(roster []RosterEntry, bots []BotIdentity, scan grammar.PlayerEntityScan,
 	equipes teamPublication) ([]RosterEntry, int) {
-	if !scan.Scanned || len(bots) == 0 {
+	if !scan.Scanned {
+		return roster, 0
+	}
+	return admettreLesBots(roster, bots, equipes, func(b BotIdentity) bool { return botSuccesseurLu(scan, b) })
+}
+
+// admettreLesBots ajoute au roster les bots ecartes par [buildRoster] (index tenu par un humain) que
+// `admissible` accepte. Rend le roster, trie comme [buildRoster] le trie, et le nombre de bots admis.
+func admettreLesBots(roster []RosterEntry, bots []BotIdentity, equipes teamPublication,
+	admissible func(BotIdentity) bool) ([]RosterEntry, int) {
+	if len(bots) == 0 {
 		return roster, 0
 	}
 	humains, presents := map[int]bool{}, map[string]bool{}
@@ -73,7 +88,7 @@ func admettreLesBotsSuccesseurs(roster []RosterEntry, bots []BotIdentity, scan g
 	}
 	admis := 0
 	for _, b := range bots {
-		if !humains[b.FilmIndex] || b.Name == "" || presents[b.Name] || !botSuccesseurLu(scan, b) {
+		if !humains[b.FilmIndex] || b.Name == "" || presents[b.Name] || !admissible(b) {
 			continue
 		}
 		presents[b.Name] = true
@@ -114,6 +129,49 @@ func botSuccesseurLu(scan grammar.PlayerEntityScan, b BotIdentity) bool {
 		for _, a := range autres {
 			if s.FirstKF <= a.LastKF && a.FirstKF <= s.LastKF {
 				return false // deux occupants a la meme image-cle : la contradiction d'origine
+			}
+		}
+	}
+	return true
+}
+
+// admettreLesBotsNommesParDeclaration ajoute au roster les bots SANS ENTITE que [buildRoster] a
+// ecartes (index tenu par un humain), quand une piste publiee porte leur nom — la lecture par
+// declaration a nomme leur corps, l'humain de l'index absent (identity_registry_declarations.go) —
+// et que leurs declarations ne touchent la fenetre large d'aucune entite de leur index : les deux
+// occupants ne sont jamais simultanes. Rend le roster et le nombre de bots admis.
+func admettreLesBotsNommesParDeclaration(roster []RosterEntry, bots []BotIdentity, scan grammar.PlayerEntityScan,
+	equipes teamPublication, pistes []Track) ([]RosterEntry, int) {
+	if !scan.Scanned {
+		return roster, 0
+	}
+	nommes := map[string]bool{}
+	for _, tr := range pistes {
+		if tr.Bot != "" {
+			nommes[tr.Bot] = true
+		}
+	}
+	return admettreLesBots(roster, bots, equipes, func(b BotIdentity) bool {
+		return nommes[b.Name] && botSansEntiteDisjoint(scan, b)
+	})
+}
+
+// botSansEntiteDisjoint dit que la fenetre large de chaque entite de l index du bot evite toutes ses
+// declarations : aucun autre occupant n y est pendant qu il est declare, et le bot n a aucune entite
+// (la sienne toucherait ses declarations — un bot qui en a une se lit par [botSuccesseurLu]). Faux
+// sans declaration datee.
+func botSansEntiteDisjoint(scan grammar.PlayerEntityScan, b BotIdentity) bool {
+	if len(b.Declarations) == 0 {
+		return false
+	}
+	for _, e := range scan.Entities {
+		if e.Index != b.FilmIndex {
+			continue
+		}
+		f := fenetreLargeDe(scan, e)
+		for _, d := range b.Declarations {
+			if f.touche(d[0], finDeDeclaration(d)-1) {
+				return false
 			}
 		}
 	}

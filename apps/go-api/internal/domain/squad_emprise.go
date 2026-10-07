@@ -186,6 +186,10 @@ type SquadEmpriseMatch struct {
 	// machine d'un match non mesuré.
 	Vehicles       string `json:"vehicles,omitempty"`
 	VehiclesReason string `json:"vehicles_reason,omitempty"`
+	// UnclassifiedPickups : les prises sur un emplacement de socle NON IDENTIFIÉ (niveau
+	// `non_classe`), équipe contre adversaire, sur un match filmé au camp connu — hors des pistes des
+	// ressources. Nil sans prise non classée.
+	UnclassifiedPickups *SquadEmpriseCount `json:"unclassified_pickups,omitempty"`
 }
 
 // SquadEmpriseMatchResource — une ressource d'un match et ses objets.
