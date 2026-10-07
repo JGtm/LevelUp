@@ -251,7 +251,11 @@ var plafondsParFichier = map[string]int{
 	// jauge qui designe le proprietaire, les deux champs de couverture, `SchemaDesFaits`, les revisions
 	// qui montent et celles qui ne montent pas, les rangs reserves, l effet au parc et sa mesure).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2961,
+	// SCHEMA 84 -> 86 (2026-10-07, pousseur et colline par le nom), +30 : l entree v86 (le pousseur et le
+	// proprietaire de colline designes par le nom, le neutre au sommet, les deux champs de couverture,
+	// la publication seule, l effet au parc et sa mesure). Exception ecrite, dans le commit qui monte
+	// `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2991,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -351,7 +355,9 @@ var plafondsParFichier = map[string]int{
 	// montee (une base tenue au coup d envoi publiee des la premiere image-cle).
 	// SCHEMA 82 -> 84 (2026-10-07, proprietaire des zones par le nom) : 1396 -> 1401, la justification
 	// de la montee (deux champs de couverture, une zone prise une seule fois publiee).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1401,
+	// SCHEMA 84 -> 86 (2026-10-07, pousseur et colline par le nom) : 1401 -> 1405, la justification de
+	// la montee (deux champs de couverture, publication seule).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1405,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

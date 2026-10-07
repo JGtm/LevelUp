@@ -14233,6 +14233,10 @@ export interface components {
             /** Format: int64 */
             attributed: number;
             /** Format: int64 */
+            capturerElectionDisagreed: number;
+            /** Format: int64 */
+            capturerNamed: number;
+            /** Format: int64 */
             captures: number;
             /** Format: int64 */
             catalog: number;

@@ -137,7 +137,7 @@ func zpSerie(rs []ManagedPropertyRead, t0 uint64) string {
 			continue
 		}
 		prevTag, prevVal = r.Tag, r.Value
-		if n++; n > 40 {
+		if n++; n > 40 && os.Getenv("ZPROP_SANS_LIMITE") == "" {
 			b.WriteString("...")
 			break
 		}

@@ -32049,6 +32049,12 @@ components:
         attributed:
           format: int64
           type: integer
+        capturerElectionDisagreed:
+          format: int64
+          type: integer
+        capturerNamed:
+          format: int64
+          type: integer
         captures:
           format: int64
           type: integer
@@ -32120,6 +32126,8 @@ components:
         - ownerUnpaired
         - ownerNamed
         - ownerVoteDisagreed
+        - capturerNamed
+        - capturerElectionDisagreed
         - spans
         - hillPeriods
         - unknownOwner

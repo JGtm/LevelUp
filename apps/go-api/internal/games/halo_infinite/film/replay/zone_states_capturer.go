@@ -16,10 +16,10 @@ package replay
 // la selection de zone de REAPPARITION —, et le film ne l instancie meme pas (0 slot recense aux
 // images-cles de deux films a zones, quand la meme marche rend 26 slots pour `ti=13`).
 //
-// Le porteur est `ti=13`, deja porte. CHAQUE ZONE A DEUX CANAUX `tag 4` A VALEURS D EQUIPE, et
-// le depot en nommait deja un « canal neutre » (`zone_states_owner.go`, blocs de pas 5 :
-// « proprietaire, canal neutre, jauge ») parce qu il vaut `0xFFFFFFFF` quand personne ne
-// capture. C EST LE POUSSEUR. Triplet mesure : proprietaire N, POUSSEUR N+1, jauge N+2.
+// Le porteur est `ti=13`, deja porte. CHAQUE ZONE A DEUX CANAUX `tag 4` A VALEURS D EQUIPE dans
+// son bloc de proprietes (zone_states_owner_nom.go) : le PROPRIETAIRE, et un canal qui vaut
+// `0xFFFFFFFF` quand personne ne capture et le camp qui pousse pendant une rampe. C EST LE
+// POUSSEUR. Mesure du lot 5.6 (proprietaire N, pousseur N+1, jauge N+2 sur ces deux films) :
 //
 //	| film     | jauge | pousseur | proprietaire | abouties | accord | desaccord | avortees nommees |
 //	|---|---:|---:|---:|---:|---:|---:|---:|
@@ -30,12 +30,12 @@ package replay
 //	| 7344d24f | 1537  | 1536     | 1535         | 12 | 12 | 0 | 5 / 5 |
 //	| 7344d24f | 1542  | 1541     | 1540         | 11 | 11 | 0 | 3 / 3 |
 //
-// # L ELECTION, ET POURQUOI PAS L ARITHMETIQUE DE SLOT
+// # LE NOM, ET L ELECTION EN REPLI
 //
-// Le triplet est REGULIER sur les deux films mesures, mais un numero de slot est un ORDRE
-// D ALLOCATION du moteur au chargement (c est deja ce que `zoneLetterRanks` en dit) : figer
-// « pousseur = proprietaire + 1 » figerait une coincidence. Le pousseur est donc ELU PAR LE
-// SIGNAL, comme le proprietaire l est deja :
+// Le pousseur se designe PAR LE NOM du pousseur du bloc dont la jauge de la zone est la jauge
+// ([zoneCapturerOf]) : c est l identite de la propriete, pas un numero de slot. Faute de nom au
+// vocabulaire, il est ELU PAR LE SIGNAL (repli nomme et compte, `repli_zone_pousseur_par_election`),
+// et la ou les deux repondent l election est le controle du nom :
 //
 //	candidat   un canal `tag 4` a valeurs d equipe, AUTRE que le proprietaire de la zone ;
 //	critere    sur chaque rampe ABOUTIE de la zone, sa valeur PENDANT la rampe doit valoir ce
@@ -43,10 +43,9 @@ package replay
 //	           la deduction du schema 64 publiait ;
 //	seuil      au moins [zoneCapturerMinAgreements] accords et AUCUN desaccord.
 //
-// Le seuil est celui du proprietaire (`zoneOwnerMinAgreements`) et pour la meme raison : sur des
-// canaux qui ne prennent que trois valeurs, UN accord est ce que le hasard produit tout seul.
-// Le zero desaccord, lui, est plus dur que pour le proprietaire — et il le peut : la mesure rend
-// 0 desaccord sur 69 rampes abouties de deux films.
+// Le seuil est celui du vote du proprietaire (`zoneOwnerMinAgreements`) et pour la meme raison :
+// sur des canaux qui ne prennent que trois valeurs, UN accord est ce que le hasard produit tout
+// seul. C est ce seuil qu une zone peu disputee ne passe pas — et que le nom n exige pas.
 //
 // # LE TEMOIN DE CHAINAGE EST OBLIGATOIRE, ET C EST MESURE
 //
@@ -56,14 +55,12 @@ package replay
 // d equipe : la contamination d ancrage le disqualifie avant meme l election. Avec lui, il rend
 // 12 accords sur 12. Le filtre ne change rien aux trois zones de `396cfc92` (memes elus).
 //
-// # LA DEDUCTION SURVIT EN REPLI NOMME, ET C EST UNE MESURE QUI L IMPOSE
+// # LA DEDUCTION SURVIT EN REPLI NOMME
 //
-// Le brief du lot demandait de SUPPRIMER la deduction. Elle reste, sous
-// [fallback.NomZoneCampDeCaptureDeduitDeLIssue], parce qu une zone peut n avoir aucun canal
-// elu — la quatrieme jauge de `396cfc92` (slot 1622) n a qu une rampe aboutie, sous le seuil —
-// et que retirer la deduction ferait alors PERDRE des camps aujourd hui publies. Un repli qui
-// fait perdre est un repli qu on garde, nomme et compte (D14). Il se retire le jour ou le parc
-// rend 0 declenchement.
+// Elle reste, sous [fallback.NomZoneCampDeCaptureDeduitDeLIssue], pour une rampe ABOUTIE que le
+// canal pousseur retenu ne dit pas : aucun canal (nom inconnu et election sans elu), ou un canal
+// muet pendant la rampe. La retirer ferait PERDRE des camps aujourd hui publies ; elle se retire le
+// jour ou le parc rend 0 declenchement.
 
 import "levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 
@@ -106,13 +103,45 @@ type zoneCapturerCtx struct {
 	win int
 }
 
-// electZoneCapturer rend la serie du canal POUSSEUR d une zone, ou nil quand aucun candidat ne
-// passe le critere.
+// zoneCapturerChoix est le canal POUSSEUR retenu pour une zone, et ce que le nom et l election en
+// ont dit.
+type zoneCapturerChoix struct {
+	// serie est la serie CHAINEE du canal retenu, nil quand aucun ne l est.
+	serie []zoneSample
+	// nomme : le canal est designe par le nom du pousseur du bloc de la jauge.
+	nomme bool
+	// parElection : le canal vient de l election, faute de nom (repli compte).
+	parElection bool
+	// slot est le canal retenu ; eluSlot est celui que l election elit (eluOK), pour le controle
+	// du nom.
+	slot, eluSlot uint32
+	eluOK         bool
+}
+
+// zoneCapturerOf rend le canal POUSSEUR d une zone dont `jauge` est le slot de jauge : PAR LE NOM du
+// pousseur du meme bloc (zone_states_owner_nom.go), l ELECTION par le signal en repli et en
+// controle (une discordance se compte, le nom est retenu).
+//
+// LA SERIE EST LA SERIE CHAINEE, quel que soit le chemin : la contamination d ancrage fait porter
+// des `u32` hors plage d equipe aux lectures non chainees (cf. zoneSeries.ownerChained).
+func zoneCapturerOf(ser zoneSeries, ramps []zoneRamp, jauge uint32, c zoneCapturerCtx) zoneCapturerChoix {
+	elu, eluOK := electZoneCapturer(ser, ramps, c)
+	if s, ok := zonePousseurNomme(jauge, ser.noms); ok {
+		return zoneCapturerChoix{serie: ser.ownerChained[s], nomme: true, slot: s, eluSlot: elu, eluOK: eluOK}
+	}
+	if !eluOK {
+		return zoneCapturerChoix{}
+	}
+	return zoneCapturerChoix{serie: ser.ownerChained[elu], parElection: true, slot: elu}
+}
+
+// electZoneCapturer ELIT le canal POUSSEUR d une zone par le signal, et rend son slot ; faux quand
+// aucun candidat ne passe le critere.
 //
 // LE PARCOURS EST DETERMINISTE (`sortedZoneSlots`) et l egalite se tranche par le slot le plus
 // petit : deux cuissons du meme film doivent elire le meme canal.
-func electZoneCapturer(ser zoneSeries, ramps []zoneRamp, c zoneCapturerCtx) []zoneSample {
-	var best []zoneSample
+func electZoneCapturer(ser zoneSeries, ramps []zoneRamp, c zoneCapturerCtx) (uint32, bool) {
+	best, found := uint32(0), false
 	bestN := 0
 	for _, slot := range sortedZoneSlots(ser.ownerChained) {
 		if slot == c.ownerSlot {
@@ -126,9 +155,9 @@ func electZoneCapturer(ser zoneSeries, ramps []zoneRamp, c zoneCapturerCtx) []zo
 		if desaccord > 0 || accord < zoneCapturerMinAgreements || accord <= bestN {
 			continue
 		}
-		best, bestN = ss, accord
+		best, bestN, found = slot, accord, true
 	}
-	return best
+	return best, found
 }
 
 // zoneCapturerScore compte les accords et les desaccords d un candidat sur les rampes ABOUTIES.
@@ -156,10 +185,16 @@ func zoneCapturerScore(ss []zoneSample, ramps []zoneRamp, c zoneCapturerCtx) (in
 }
 
 // zoneValueDuringRamp rend la valeur qu un canal porte PENDANT la rampe : la DERNIERE emission
-// dans `[t0, tPeak]`. Sans emission dans la fenetre, le canal ne dit rien de cette rampe.
+// dans `[t0, tPeak]`, hors d un NEUTRE emis a la frame du sommet. Sans emission dans la fenetre, le
+// canal ne dit rien de cette rampe.
 //
 // LA DERNIERE ET NON LA PREMIERE : une rampe peut commencer avant que le camp pousseur soit
 // pose, et c est la valeur au SOMMET qui designe celui qui a mene la poussee a son terme.
+//
+// LE NEUTRE A LA FRAME DU SOMMET N EST PAS LA POUSSEE, C EST SA FIN : quand une capture aboutit,
+// le pousseur repasse au neutre a l instant meme ou la jauge retombe, et cette emission tombe
+// parfois dans la frame du dernier echantillon de la rampe. La lire ferait dire « personne ne
+// pousse » d une rampe que le film montre poussee jusqu au bout.
 func zoneValueDuringRamp(ss []zoneSample, r zoneRamp) (uint64, bool) {
 	var v uint64
 	found := false
@@ -169,6 +204,9 @@ func zoneValueDuringRamp(ss []zoneSample, r zoneRamp) (uint64, bool) {
 		}
 		if s.t > r.tPeak {
 			break
+		}
+		if s.t == r.tPeak && s.v == zoneNeutralOwner && found {
+			continue
 		}
 		v, found = s.v, true
 	}
@@ -213,4 +251,23 @@ func zoneRampCapturerDeduit(r zoneRamp, owner []zoneSample, teams map[uint64]boo
 	}
 	fb.Declenche(fallback.NomZoneCampDeCaptureDeduitDeLIssue)
 	return team
+}
+
+// tallyZoneCapturer porte le choix du pousseur d une zone dans la couverture et le compteur de
+// replis, et rend les discordances augmentees de celle du nom contre l election, s il y en a une.
+func tallyZoneCapturer(choix zoneCapturerChoix, ref int, cov *ZonesCoverage, fb *fallback.Compteur,
+	disc []zoneDiscordance,
+) []zoneDiscordance {
+	switch {
+	case choix.nomme:
+		cov.CapturerNamed++
+		if choix.eluOK && choix.eluSlot != choix.slot {
+			cov.CapturerElectionDisagreed++
+			disc = append(disc, zoneDiscordance{ref: ref, canal: zoneCanalPousseur,
+				nomme: choix.slot, autre: choix.eluSlot})
+		}
+	case choix.parElection:
+		fb.Declenche(fallback.NomZonePousseurParElection)
+	}
+	return disc
 }

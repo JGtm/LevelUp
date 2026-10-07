@@ -50,10 +50,11 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	gaugeSlot, unpaired := pairGaugeSlots(ramps, pairs, win)
 	cov.Paired, cov.Unpaired = len(gaugeSlot), unpaired
 	prop := zoneOwnerSlotsOf(gaugeSlot, pairOwnerSlots(ser, pairs, in.TeamByXUID, win),
-		zoneNomsDesSlots(in.KeyReads))
+		ser.noms)
 	ownerSlot := prop.slot
 	cov.OwnerNamed, cov.OwnerVoteDisagreed = prop.nommees, len(prop.discordantes)
 	c.fb.DeclencheN(fallback.NomZoneProprietaireParVote, prop.votees)
+	disc := prop.discordantes
 	cov.Method = ZoneMethodCaptures
 	refs := zoneRefsOf(gaugeSlot, ownerSlot)
 	// Les zones dont la jauge est appariee mais dont AUCUN canal n'est rattache, ni par le nom ni
@@ -86,19 +87,20 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		// en cours que le film montre, et l'ecran doit la montrer aussi.
 		ramps := findZoneRamps(slot, gauge)
 		st.Gauge = zoneGaugeSeriesOf(gauge, rampWindowsOf(ramps), gap)
-		// LE CAMP QUI POUSSE CHAQUE RAMPE : LU dans le film (lot 5.6) sur le canal POUSSEUR de
-		// la zone, elu par le signal contre le canal de propriete — et non plus deduit de
-		// l issue. Le repli nomme garde la deduction pour les zones sans canal elu (cf.
+		// LE CAMP QUI POUSSE CHAQUE RAMPE : LU dans le film sur le canal POUSSEUR de la zone,
+		// designe par le nom de la jauge (l election par le signal en repli et en controle). Le
+		// repli nomme garde la deduction de l issue pour les rampes que ce canal ne dit pas (cf.
 		// zone_states_capturer.go).
-		capt := electZoneCapturer(ser, ramps, zoneCapturerCtx{
+		choix := zoneCapturerOf(ser, ramps, slot, zoneCapturerCtx{
 			owner: ser.owner[ownerSlot[ref]], ownerSlot: ownerSlot[ref], win: win,
 		})
-		st.GaugeRamps = zoneGaugeRampsOf(ramps, ser.owner[ownerSlot[ref]], capt,
+		disc = tallyZoneCapturer(choix, ref, cov, c.fb, disc)
+		st.GaugeRamps = zoneGaugeRampsOf(ramps, ser.owner[ownerSlot[ref]], choix.serie,
 			zoneRampsCtx{teams: teams, win: win, fb: c.fb})
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
-	return out, key, prop.discordantes
+	return out, key, disc
 }
 
 // zoneRefsOf rend les zones qui ont A LA FOIS une jauge et un proprietaire apparies, triees.
