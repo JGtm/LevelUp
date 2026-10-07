@@ -557,3 +557,11 @@ Plan : `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md` (Phase D, D.2).
 | Report | Où c'est prouvé | Chemin / propriétaire | Statut |
 |---|---|---|---|
 | **Le balayage de positions par ancrage (`grammar.ScanBipedPositions`) publie des échantillons que la marche des trames ne contient pas** : `859da825`, slot 548, 5 échantillons aux frames 3167 à 3170 (quantum X constant 528), sur un corps créé à 1519 (index 2, opresko) dont la marche lit les records de 1519 à 1534 seulement ; la marche lit les 54 paquets des frames 3164 à 3172 jusqu'à leur terminateur, verdict « fermé », sans aucun record du slot 548. La publication en faisait une vie d'opresko après son départ prouvé (image-clé 1827) | plan, Phase D, D.2 ; instrument hors dépôt `instruments_rejeu_equipes/rejeu_departs_research_test.go` (scratchpad du superviseur), sorties `departs2.txt` | Session RI (grammar) : recouper l'ancrage par la marche ; aucune correction dans le lot | Adressé à RI. La publication écarte la vie (règle P2 du lot : vie postérieure au départ prouvé, corps créé avant, comptée et journalisée) |
+
+## Reports du lot « Pages solo aux formes de l’Emprise » (2026-10-07, superviseur)
+
+Plans : `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md` (tous clos).
+
+| Report | Où c’est prouvé | Chemin / propriétaire | Statut |
+|---|---|---|---|
+| **Assertion de temps fragile en CI** : `internal/sync/killcollector` `TestRosterDesFilms_AnnuaireContreJointure` (`backfill_cout_integration_test.go:395`) exige un facteur ≥ 10 entre la jointure par match et l annuaire de passe ; mesuré 9,35 sur le runner Linux le 2026-10-07 (job Coverage de `7cc8d23e3`), vert au rerun. À transformer en mesure non bloquante ou à borner autrement. | CI run 37561939285 | `apps/go-api/internal/sync/killcollector/backfill_cout_integration_test.go` | Ouvert (2026-10-07) |
