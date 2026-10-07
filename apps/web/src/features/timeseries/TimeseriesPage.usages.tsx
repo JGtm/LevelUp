@@ -78,7 +78,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
         rangeRoles
       )}
       {show.bilan && m.fil && (
-        <Block id="bilan" title={ut.sections.bilan} sub={ut.sections.bilanCoverage(m.coverage.filmed, m.coverage.total)}>
+        <Block id="bilan" title={ut.sections.bilan}>
           <div className="grid gap-4 lg:grid-cols-2">
             <ResourceControlCard rows={m.controlRows} t={et} />
             <ResourceFilCard fil={m.fil} dominanceLabels={dominance} outcomeLabels={outcomes} locale={locale} t={et} axe={u.filAxe} />
@@ -128,14 +128,11 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
   )
 }
 
-/** Un bloc de l'onglet : son intertitre (et sa couverture, à côté, en petit), puis ses cartes. */
-function Block({ id, title, sub, children }: { id: string; title: string; sub?: string; children: ReactNode }) {
+/** Un bloc de l'onglet : son intertitre, puis ses cartes. Aucune mention de couverture. */
+function Block({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section className="space-y-2" data-testid={`usages-section-${id}`}>
-      <SectionTitle>
-        {title}
-        {sub && <small className="ml-2 text-xs font-normal text-muted-foreground">{sub}</small>}
-      </SectionTitle>
+      <SectionTitle>{title}</SectionTitle>
       {children}
     </section>
   )

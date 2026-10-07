@@ -26,6 +26,7 @@ import { useMemo, type ReactNode } from 'react'
 
 import { SessionBarsTrendChart } from '@/components/charts/SessionBarsTrendCard'
 import type { SessionBarsSeriesSpec } from '@/components/charts/sessionBarsTrendChart'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { titleWithInfo } from '@/components/ui/title-with-info'
@@ -192,6 +193,7 @@ function CarteAppui({
         { label: t.myShare, value: pctFmt.format(a.ma_part_des_appuis.taux) },
       ]}
       indisponible={indisponible}
+      emptyTitle={t.emptyTitle}
       empty={t.empty}
       testId="timeseries-coord-appui"
     >
@@ -225,6 +227,7 @@ interface CarteDeCoordinationProps {
   appels: AppelChiffre[]
   /** Raison d'indisponibilité servie par le serveur — l'état vide NOMMÉ de la carte. */
   indisponible: string | null
+  emptyTitle: string
   empty: string
   testId: string
   children: ReactNode
@@ -236,6 +239,7 @@ function CarteDeCoordination({
   aide,
   appels,
   indisponible,
+  emptyTitle,
   empty,
   testId,
   children,
@@ -248,7 +252,7 @@ function CarteDeCoordination({
     >
       <div className="flex flex-1 flex-col justify-center gap-2 px-3 py-2" data-testid={testId}>
         {indisponible ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{indisponible}</p>
+          <EmptyStateNotice title={emptyTitle} description={indisponible} />
         ) : (
           <>
             <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
@@ -263,9 +267,7 @@ function CarteDeCoordination({
                 </span>
               ))}
             </div>
-            {children || (
-              <p className="py-6 text-center text-sm text-muted-foreground">{empty}</p>
-            )}
+            {children || <EmptyStateNotice title={emptyTitle} description={empty} />}
           </>
         )}
       </div>

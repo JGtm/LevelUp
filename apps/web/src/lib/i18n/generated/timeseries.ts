@@ -96,6 +96,7 @@ export const timeseriesManifest = {
   "timeseries.progression.coord_appui_title": { fr: "Appui reçu", en: "Support received" },
   "timeseries.progression.coord_appui_tooltip": { fr: "Écart de chaque soirée à son repère : « frags appuyés » (frags du joueur ayant reçu une assistance, sur ses frags) face à l'habituel du joueur, « part des appuis de l'équipe » (assistances reçues par le joueur, sur toutes celles de l'équipe) face à la part équitable 1/n.", en: "Each session's gap to its reference: \"assisted kills\" (the player's kills that received an assist, over the player's kills) against the player's usual, \"share of the team's assists\" (assists received by the player, over all of the team's) against the 1/n fair share." },
   "timeseries.progression.coord_empty": { fr: "Aucune soirée mesurée sur ce périmètre.", en: "No session measured on this scope." },
+  "timeseries.progression.coord_empty_title": { fr: "Aucun appui mesuré", en: "No support measured" },
   "timeseries.progression.coord_hollow": { fr: "Échantillon faible", en: "Low sample" },
   "timeseries.progression.coord_my_share": { fr: "Part des appuis de l'équipe", en: "Share of the team's assists" },
   "timeseries.progression.coord_parity": { fr: "parité {rate}", en: "fair share {rate}" },

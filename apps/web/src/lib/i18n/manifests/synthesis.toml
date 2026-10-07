@@ -517,6 +517,10 @@ en = "Distance closed before the kill in {pct} of kills"
 # État vide de la carte : toutes les armes sous le seuil de publication. La section reste
 # affichée (tuiles, armes nommées, note de couverture) — c'est le GRAPHE qui n'a rien à
 # tracer, et il le DIT. Un graphe vide sans explication se lirait « bug ».
+[synthesis.weapon_range.empty_below_threshold_title]
+fr = "Aucune arme publiable"
+en = "No weapon to show"
+
 [synthesis.weapon_range.empty_below_threshold]
 fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
 en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."

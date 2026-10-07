@@ -98,6 +98,7 @@ export const synthesisManifest = {
   "synthesis.stats_detail.shots_hit_fallback": { fr: "Tirs au but", en: "Shots hit" },
   "synthesis.weapon_range.card_title": { fr: "Portée par arme", en: "Range by weapon" },
   "synthesis.weapon_range.empty_below_threshold": { fr: "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme.", en: "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon." },
+  "synthesis.weapon_range.empty_below_threshold_title": { fr: "Aucune arme publiable", en: "No weapon to show" },
   "synthesis.weapon_range.heading": { fr: "Portée", en: "Range" },
   "synthesis.weapon_range.legend_label": { fr: "Légende", en: "Legend" },
   "synthesis.weapon_range.no_measure": { fr: "aucune mesure", en: "no measurement" },

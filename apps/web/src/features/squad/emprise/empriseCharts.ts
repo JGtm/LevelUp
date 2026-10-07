@@ -95,12 +95,12 @@ function smallPickupRadius(pickups: number): number {
 /**
  * L'axe du graphe : un match par colonne avec son heure et sa carte (`match`, une soirée de
  * l'Escouade), ou une PÉRIODE (`period`, la fenêtre des Séries temporelles) — la date du premier
- * match de chaque mois sous l'axe, la légende de couverture sous la bande, pas d'encoche de
+ * match de chaque mois sous l'axe, aucune mention de couverture, pas d'encoche de
  * dominance (plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, D12).
  */
 export type FilAxe =
   | { kind: 'match'; compact?: boolean }
-  | { kind: 'period'; dateOf: (iso: string) => string; caption: string }
+  | { kind: 'period'; dateOf: (iso: string) => string }
 
 /**
  * Le mode match COMPACT (tiroir de comparaison de Sessions, maquette Sessions `renderFil` avec `cp`) :
@@ -290,9 +290,6 @@ export function buildResourceFilOption(
     // La légende est rendue HORS canvas (pied de carte, S2).
     legend: { show: false },
     aria: { enabled: true },
-    ...(axe.kind === 'period'
-      ? { graphic: [{ type: 'text', right: GRID_RIGHT, bottom: 0, style: { text: axe.caption, fill: tc.axisLabel, fontSize: 10.5 } }] }
-      : {}),
   }
 }
 

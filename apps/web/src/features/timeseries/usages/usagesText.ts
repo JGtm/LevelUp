@@ -29,7 +29,10 @@ export interface UsagesSectionsText {
   lives: string
   objectif: string
   equipment: string
-  /** « 12 matchs filmés sur 40 · frags de la feuille de match sur les 40 », à côté de « Ressources ». */
+  /**
+   * « 12 matchs filmés sur 40 · frags de la feuille de match sur les 40 » : couverture lue par la
+   * page Sessions (`sessionEmpriseText`). L'onglet Usages ne l'affiche pas.
+   */
   bilanCoverage: (filmed: number, total: number) => string
 }
 

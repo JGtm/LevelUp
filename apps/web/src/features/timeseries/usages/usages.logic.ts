@@ -72,7 +72,10 @@ export function timeseriesMatchIndex(rows: TimeseriesMatchRow[]): EmpriseMatchIn
   )
 }
 
-/** Matchs filmés sur le périmètre : la légende de « au fil des matchs » et le sous-titre du bilan. */
+/**
+ * Matchs filmés sur le périmètre. Lu par la page Sessions (couverture de « Ressources de la
+ * soirée ») ; l'onglet Usages n'affiche aucune mention de couverture.
+ */
 export function empriseCoverage(block: SoloEmpriseBlock): { filmed: number; total: number } {
   const matches = block.matches ?? []
   return { filmed: matches.filter((m) => m.has_film).length, total: block.matches_total || matches.length }
@@ -286,7 +289,6 @@ export function buildLivesModel(b: TimeseriesLivesNearTeammate | null | undefine
 
 export interface UsagesModels {
   block: SoloEmpriseBlock | null
-  coverage: { filmed: number; total: number }
   controlRows: ControlRow[]
   fil: ResourceFil | null
   mapGrid: MapGrid | null
@@ -306,7 +308,6 @@ export function buildUsagesModels(data: TimeseriesPageResponse, nameOf: (o: Squa
   const formes = data.formes_retenues
   return {
     block,
-    coverage: block ? empriseCoverage(block) : { filmed: 0, total: 0 },
     controlRows: block ? buildControlRows(block) : [],
     fil: block ? buildResourceFil(block, timeseriesMatchIndex(data.match_rows ?? [])) : null,
     mapGrid: block ? buildMapGrid(block) : null,

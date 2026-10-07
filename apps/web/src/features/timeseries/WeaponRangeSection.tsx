@@ -29,6 +29,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { SynthesisWeaponRange } from '@/lib/api/types'
@@ -217,10 +218,11 @@ function useWeaponRangeOption(lines: WeaponRangeLine[], f: RangeFormats, t: Tran
 }
 
 /**
- * RangeChartBody — le graphe de portée, OU la phrase qui explique pourquoi il n'y en a pas.
+ * RangeChartBody — le graphe de portée, OU le bloc d'état vide (bordure tiretée) qui explique
+ * pourquoi il n'y en a pas.
  *
  * Le second cas est nominal (toutes les armes sous le seuil de publication) : la section garde
- * ses tuiles et ses armes nommées, et le corps DIT pourquoi il est vide. Un graphe sans barre
+ * ses tuiles, et le corps DIT pourquoi il est vide. Un graphe sans barre
  * ne se lit pas « rien à montrer », il se lit « bug ».
  */
 function RangeChartBody({
@@ -230,6 +232,7 @@ function RangeChartBody({
   height,
   legendItems,
   legendLabel,
+  emptyTitle,
   emptyMessage,
 }: {
   publiable: boolean
@@ -238,6 +241,8 @@ function RangeChartBody({
   height: number
   legendItems: ChartLegendItem[]
   legendLabel: string
+  /** Titre du bloc d'état vide (norme « bloc placeholder », bordure tiretée). */
+  emptyTitle: string
   /**
    * La phrase d'état vide DE CETTE CARTE — chaque carte a la sienne (finitions
    * 2026-09-13) : le dénivelé affichait la phrase de la portée (« les portées mesurées
@@ -246,7 +251,11 @@ function RangeChartBody({
   emptyMessage: string
 }) {
   if (!publiable) {
-    return <p className="px-3 pb-1 pt-2.5 text-xs text-muted-foreground">{emptyMessage}</p>
+    return (
+      <div className="flex flex-1 flex-col justify-center p-3">
+        <EmptyStateNotice title={emptyTitle} description={emptyMessage} />
+      </div>
+    )
   }
   // `fluid` + `flex-1` : la carte s'étire à la hauteur de sa voisine de rangée (« Rôles de
   // portée ») et le graphe la remplit — la légende reste posée au ras du bas du bloc.
@@ -323,6 +332,7 @@ export function WeaponRangeSection({ range, aside }: WeaponRangeSectionProps) {
             height={height}
             legendItems={rangeLegendItems(t)}
             legendLabel={t('synthesis.weapon_range.legend_label')}
+            emptyTitle={t('synthesis.weapon_range.empty_below_threshold_title')}
             emptyMessage={t('synthesis.weapon_range.empty_below_threshold', {
               min: WEAPON_RANGE_MIN_MEASURED,
             })}

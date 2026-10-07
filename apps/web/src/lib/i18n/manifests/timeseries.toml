@@ -756,6 +756,10 @@ en = "player kills: {n}"
 fr = "appuis de l'équipe : {n}"
 en = "team assists: {n}"
 
+[timeseries.progression.coord_empty_title]
+fr = "Aucun appui mesuré"
+en = "No support measured"
+
 [timeseries.progression.coord_empty]
 fr = "Aucune soirée mesurée sur ce périmètre."
 en = "No session measured on this scope."
