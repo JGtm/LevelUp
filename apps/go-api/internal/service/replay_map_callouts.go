@@ -29,7 +29,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
@@ -94,33 +93,33 @@ func zonesPourIdentites(ctx context.Context, repoRoot, titleSlug string,
 	return &entry, true
 }
 
-// chargerCallouts lit et décode le catalogue d'un chemin ; variable de paquet pour que le test compte
-// les lectures du fichier.
-var chargerCallouts = replay.LoadMapCallouts
+// chargerCallouts et chargerBornes lisent et décodent un catalogue ; variables de paquet pour que les
+// tests comptent les lectures du fichier.
+var (
+	chargerCallouts = replay.LoadMapCallouts
+	chargerBornes   = decfilm.LoadMapQuantCatalog
+)
 
-// cataloguesDeCallouts : les catalogues décodés, par chemin, pour la vie du processus.
-var cataloguesDeCallouts = struct {
-	sync.Mutex
-	parChemin map[string]*replay.MapCalloutsCatalog
-}{parChemin: map[string]*replay.MapCalloutsCatalog{}}
+// Les catalogues de callouts et de bornes des cartes, décodés une fois par chemin et par processus
+// (catalogue_cache.go).
+var (
+	cataloguesDeCallouts = nouveauCacheParChemin(func(chemin string) (*replay.MapCalloutsCatalog, error) {
+		return chargerCallouts(chemin)
+	})
+	cataloguesDeBornes = nouveauCacheParChemin(func(chemin string) (*decfilm.MapQuantCatalog, error) {
+		return chargerBornes(chemin)
+	})
+)
 
-// catalogueDeCallouts rend le catalogue décodé d'un chemin, lu UNE fois par processus : le fichier est
-// versionné (plusieurs Mo de JSON) et ne change qu'au déploiement, donc au redémarrage. Le décoder à
-// chaque requête — chaque clic sur une zone de l'onglet Tactique, chaque ouverture d'un rejeu —
-// payait ce décodage à chaque fois. Un échec n'est pas gardé : la lecture suivante réessaie. Le
-// catalogue rendu est partagé et se lit sans être modifié.
+// catalogueDeCallouts rend le catalogue de callouts décodé d'un chemin (plusieurs Mo de JSON).
 func catalogueDeCallouts(chemin string) (*replay.MapCalloutsCatalog, error) {
-	cataloguesDeCallouts.Lock()
-	defer cataloguesDeCallouts.Unlock()
-	if cat, ok := cataloguesDeCallouts.parChemin[chemin]; ok {
-		return cat, nil
-	}
-	cat, err := chargerCallouts(chemin)
-	if err != nil {
-		return nil, err
-	}
-	cataloguesDeCallouts.parChemin[chemin] = cat
-	return cat, nil
+	return cataloguesDeCallouts.lire(chemin)
+}
+
+// catalogueDeBornes rend le catalogue des bornes des cartes (`map_quant_bounds.json`) décodé d'un
+// chemin.
+func catalogueDeBornes(chemin string) (*decfilm.MapQuantCatalog, error) {
+	return cataloguesDeBornes.lire(chemin)
 }
 
 // calloutsParModule tente l'essai 1 : nom de carte -> module -> entrée du catalogue.
@@ -134,7 +133,7 @@ func calloutsParModule(ctx context.Context, repoRoot, titleSlug string,
 		return nil, false
 	}
 	res := title.NewPathResolver(repoRoot)
-	quant, err := decfilm.LoadMapQuantCatalog(res.MapQuantBoundsPath(titleSlug))
+	quant, err := catalogueDeBornes(res.MapQuantBoundsPath(titleSlug))
 	if err != nil {
 		slog.WarnContext(ctx, "callouts : catalogue de bornes illisible — essai par module abandonné",
 			"err", err, "titleSlug", titleSlug)

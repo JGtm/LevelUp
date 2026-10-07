@@ -9,11 +9,15 @@ package domain
 // declarait deja par un commentaire de section — CE QU'ON DEMANDE au lecteur d'un cote, CE
 // QU'ON PUBLIE de l'autre.
 
+import "levelup/go-api/internal/domain/replaydoc"
+
 // TacticalMapCard est une carte de l'ecran d'entree : la ligne du lecteur, plus
 // le verdict de lisibilite.
 type TacticalMapCard struct {
-	MapID     string `json:"map_id"`
-	MapName   string `json:"map_name"`
+	MapID   string `json:"map_id"`
+	MapName string `json:"map_name"`
+	// MapNameFR : le LIBELLÉ CANONIQUE de la carte (platform/duckdb/map_labels.go), celui que
+	// l'Explorateur affiche et compare à `?maps=` — le lien d'une vignette vers l'Explorateur le porte.
 	MapNameFR string `json:"map_name_fr"`
 
 	Matchs    int `json:"matchs"`
@@ -183,4 +187,9 @@ type TacticalRaster struct {
 	// accompagner. Les compter au denominateur ferait monter le taux avec les hecatombes de
 	// l'equipe, c'est-a-dire avec quelque chose que le placement du joueur ne commande pas.
 	MortsEquipeATerre int `json:"morts_equipe_a_terre,omitempty"`
+
+	// Zones : les zones nommées de la carte (callouts du jeu), dans la forme même du rejeu 2D,
+	// que le plan dessine — contours sous la chaleur, noms au-dessus. Servies sous la porte des
+	// zones des grappes (`film.replay_artifact`) ; absentes sinon, ou hors catalogue.
+	Zones []replaydoc.CalloutZone `json:"zones,omitempty"`
 }

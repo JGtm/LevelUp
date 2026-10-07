@@ -101,7 +101,6 @@ type FiltersRepository interface {
 	GetMatchCount(ctx context.Context) (int, error)
 	GetPlayerMatchCount(ctx context.Context) (int, error)
 	GetAvailablePlaylists(ctx context.Context) ([]domain.LabelValue, error)
-	GetAvailableMaps(ctx context.Context) ([]domain.LabelValue, error)
 }
 
 // MatchHistoryRepository fournit les données pour l'historique des parties.
@@ -405,9 +404,6 @@ func (n *noopFiltersRepo) LoadMatchesForFilters(_ context.Context) ([]domain.Fil
 func (n *noopFiltersRepo) GetMatchCount(_ context.Context) (int, error)       { return 0, nil }
 func (n *noopFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error) { return 0, nil }
 func (n *noopFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.LabelValue, error) {
-	return nil, nil
-}
-func (n *noopFiltersRepo) GetAvailableMaps(_ context.Context) ([]domain.LabelValue, error) {
 	return nil, nil
 }
 

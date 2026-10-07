@@ -30,9 +30,6 @@ func (m *mockFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error) {
 func (m *mockFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.LabelValue, error) {
 	return nil, nil
 }
-func (m *mockFiltersRepo) GetAvailableMaps(_ context.Context) ([]domain.LabelValue, error) {
-	return nil, nil
-}
 
 // --- tests FiltersService ---
 

@@ -124,7 +124,7 @@ const LOGO_ALPHA = 0.2
  * LE NOIR EST ÉCRIT EN CLAIR, ET CE N'EST PAS UNE ENTORSE AUX TOKENS. Une ombre portée n'est
  * pas une couleur du thème : c'est un assombrissement de ce qu'il y a DESSOUS, identique en
  * thème clair et sombre — c'est d'ailleurs ainsi que Tailwind lui-même la définit. Même statut
- * que les contours de texte de `calloutsLayer.ts` et `zoneStatesLayer.ts`, écrits de la même
+ * que les contours de texte de `lib/replay/calloutsPaint.ts` et `zoneStatesLayer.ts`, écrits de la même
  * façon dans cette feature. Ce que la règle des tokens interdit, c'est une couleur qui DIT
  * quelque chose ; une ombre ne dit rien.
  */

@@ -1,5 +1,5 @@
 /**
- * Tests — calloutsLayer (zones nommées : normalisation, zoneAt 3D, calque).
+ * Tests — calloutsPaint (zones nommées : normalisation, zoneAt 3D, peintre partagé).
  *
  * CE QU'ILS PROTÈGENT : l'affectation d'un joueur à sa zone se fait en DISTANCE 3D (les
  * étages se confondent en 2D — règle du POC), et le calque écrit chaque nom UNE fois.
@@ -8,7 +8,15 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayMapCallouts } from '@/lib/api/types'
 
-import { calloutLabel, drawCalloutsLayer, normalizeCallouts, zoneAt } from './calloutsLayer'
+import {
+  calloutLabel,
+  drawCalloutsLabels,
+  drawCalloutsLayer,
+  drawCalloutsShapes,
+  normalizeCalloutZones,
+  normalizeCallouts,
+  zoneAt,
+} from './calloutsPaint'
 
 const ENTRY: ReplayMapCallouts = {
   module: 'ridgeline',
@@ -120,7 +128,8 @@ function mockCtx() {
   return { ctx: ctx as unknown as CanvasRenderingContext2D, calls }
 }
 
-const VIEW = { bounds: { minX: -20, minY: -20, maxX: 25, maxY: 20 }, width: 800, height: 480, pad: 24 }
+/** Une projection quelconque : le peintre ne connaît que celle que l'appelant lui donne. */
+const VIEW = (p: { x: number; y: number }) => ({ x: 400 + p.x * 10, y: 240 - p.y * 10 })
 
 describe('drawCalloutsLayer', () => {
   it('écrit chaque nom UNE fois (dédoublonné), en MAJUSCULES', () => {
@@ -163,6 +172,23 @@ describe('drawCalloutsLayer', () => {
       locale: 'fr',
     })
     expect(calls.some((c) => c.method === 'fill' && c.args[0] === 'evenodd')).toBe(true)
+  })
+
+  it('formes et libellés se peignent aussi séparément (plan de l’onglet Tactique) : les formes sans texte, les libellés seuls', () => {
+    const style = { bigColors: ['#111111'], fineInk: '#222222', locale: 'fr' as const }
+    const formes = mockCtx()
+    drawCalloutsShapes(formes.ctx, normalizeCallouts(ENTRY), VIEW, style)
+    expect(formes.calls.some((c) => c.method === 'fillText' || c.method === 'strokeText')).toBe(false)
+    expect(formes.calls.some((c) => c.method === 'stroke')).toBe(true)
+    const libelles = mockCtx()
+    drawCalloutsLabels(libelles.ctx, normalizeCallouts(ENTRY), VIEW, 'fr')
+    expect(libelles.calls.some((c) => c.method === 'stroke' || c.method === 'fill')).toBe(false)
+    expect(libelles.calls.filter((c) => c.method === 'fillText').map((c) => c.args[0])).toContain('FER À CHEVAL')
+  })
+
+  it('normalizeCalloutZones lit une liste de zones comme normalizeCallouts lit une entrée', () => {
+    expect(normalizeCalloutZones(ENTRY.zones)).toEqual(normalizeCallouts(ENTRY))
+    expect(normalizeCalloutZones(null)).toEqual([])
   })
 
   it('les zones fines sont POINTILLÉES, jamais remplies en pair-impair', () => {
