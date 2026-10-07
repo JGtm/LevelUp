@@ -24,7 +24,7 @@
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
 > Statut du plan : **ACCEPTÉ par le superviseur le 2026-10-06 (D1-D22 fermes, réponses §9)** ;
-> **phase 2 exécutée** le 2026-10-07 (M0-M5 clos, revue adversariale demandée au superviseur) (signal du superviseur : rebase sur la tête de `feat/v75`
+> **CLOS le 2026-10-07** : M0-M6.1 exécutés, revue adversariale en deux rondes close, tête de code `7cc8d23e3` sur `feat/matchview-emprise` (poussée, fusion décidée par l'utilisateur) (signal du superviseur : rebase sur la tête de `feat/v75`
 > `2668848b1`, qui porte les lots Séries temporelles et Sessions, puis « go » M0-M5 ; push à la fin,
 > CI ; ni merge ni autre rebase). Amendements de M0 : §1.4.
 > Branche : `feat/matchview-emprise`, créée sur `651bbe972` (tête L6 de `feat/ts-usages-emprise`),
@@ -757,7 +757,7 @@ Journal M4 (2026-10-07, exécuteur) :
   (`weaponTier.ts` s'il est supprimé).
 - [x] M5.3 ADR 0036 (fait en M1, vérifié ici) ; aucune ADR neuve.
 - [x] M5.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
-- [~] M5.5 (demandée au superviseur dans le compte rendu de clôture) Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
+- [x] M5.5 (faite par le superviseur en deux rondes ; constats de la ronde 1 clos en M6, `b9b81fc81` ; constat de la ronde 2 clos en M6.1, `7cc8d23e3`) Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
   sous-agent) — lots à risque : M1 (lecture bornée multi-joueurs, Q21d), M2 (agrégats, ordre D3),
   M4 (contrat).
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
@@ -861,10 +861,10 @@ lecteur.
 
 ## 8. Découvertes (à consigner ici, pas à traiter)
 
-- (phase 1) Les « Vies » des Séries temporelles (et de Sessions) comptent 0 frag pendant les vies d'un
-  match dont le journal des morts n'est pas publiable (`qSoloFrags` ne lit que `publishable`) : zéro
-  silencieux sur ces matchs. La Vue match le dit (D7, D14) ; les deux autres pages ne sont pas
-  touchées (hors périmètre).
+- (phase 1, CADUQUE au M0) Les « Vies » des Séries temporelles (et de Sessions) comptaient 0 frag pendant
+  les vies d'un match au journal des morts non publiable. Relu sur pièces au M0 (amendement A1) : la
+  règle existe déjà en amont (`qSoloJournalNonPubliable`, `coordination.ViesPresOuSeul` écarte ces vies et
+  les compte dans `ExcludedUnpublishable`) ; rien à reporter.
 - (phase 1) Q20 (`GetMatchKVPairs`, `platform/duckdb/match_view_repo_extras.go:130-180`) lit le journal
   sans filtre `publishable` (constat MESURES §3 / thought_log : 32 « morts vengées » sur 294 lignes non
   publiables) ; ses lecteurs restants (tug-of-war, courbe FDA, victime du fil, antagonistes) héritent

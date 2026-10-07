@@ -116321,3 +116321,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : test d'intégration du lecteur réel vu rouge (contexte annulé, base non migrée), vert après ; mutation rouge ; gate ciblé vert (vet, tests des paquets touchés, intégration ciblée, lint, contrat inchangé).
 
 **Conclusion / prochaine étape** : push pour la CI ; décision de fusion au superviseur.
+
+## [2026-10-07] Vue match aux formes de l'Emprise — clôture documentaire — Complété (commit docs et push sur `feat/matchview-emprise`)
+
+**Décision technique principale** : plan déclaré clos (tête de code `7cc8d23e3`) ; revue adversariale statuée faite (deux rondes, constats clos en M6 `b9b81fc81` et M6.1 `7cc8d23e3`) ; trois découvertes reportées au registre des reports (paires tueur→victime sans filtre publiable, tutoiement de « Match pas encore synchronisé », textes de l'Escouade à la personne). La découverte « zéro frag silencieux des vies » n'est PAS reportée : relue sur pièces, elle était déjà réglée en amont (amendement A1 du M0) ; le §8 du plan la marque caduque.
+
+**Résultats observés** : documents seulement, aucun code touché.
+
+**Conclusion / prochaine étape** : lot terminé ; fusion dans `feat/v75` décidée par l'utilisateur.
