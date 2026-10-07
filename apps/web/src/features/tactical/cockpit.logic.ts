@@ -20,8 +20,6 @@ import { estOuvrable, nomCarte, trierCartes } from './tacticalLogic'
 // ─── Mesures de la grille (D13, maquette l. 195-228) ───────────────────────────────────────
 /** Largeur de la colonne « Cartes jouées », en px. */
 const COLONNE_CARTES_LARGEUR_PX = 208
-/** Hauteur FIXE de la colonne « Cartes jouées » à trois colonnes, en px : la liste défile dedans. */
-const COLONNE_CARTES_HAUTEUR_PX = 551
 /** Largeur de la colonne « Zone sélectionnée », en px. */
 const COLONNE_ZONE_LARGEUR_PX = 360
 /** Hauteur maximale de la boîte du plan (fond + calque), en px. */
@@ -40,7 +38,6 @@ export const VIGNETTE_LARGEUR_PX = 100
  */
 export const VARIABLES_COCKPIT = {
   '--tac-cartes-l': `${COLONNE_CARTES_LARGEUR_PX}px`,
-  '--tac-cartes-h': `${COLONNE_CARTES_HAUTEUR_PX}px`,
   '--tac-zone-l': `${COLONNE_ZONE_LARGEUR_PX}px`,
 } as CSSProperties
 
