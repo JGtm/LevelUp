@@ -116390,3 +116390,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : chaque correction a son test, vu rouge avant le code (G2, G3b, G4, G5, W1, W2, W3) ou prouvé par mutation (G1, G3a, T1-T4) ; 20 mutations, toutes rouges, restauration vérifiée. Gate Go (349 paquets, 0 échec, golangci 0), contrat à jour, gate web (865 fichiers / 9 223 tests, pre-push vert).
 
 **Conclusion / prochaine étape** : arrêt ; reprise sur les constats de la revue suivante.
+
+## [2026-10-07] Tactique v2 : clôture de la revue adversariale — Complété (commit local puis push de `feat/tactique-v2`)
+
+**Statut** : Complété — plan `.ai/PLAN_TACTIQUE_V2_2026-10-06.md` clos (L1 à L12 ; seul L10.2 reste `[!]`, justifié).
+
+**Décision technique principale** : la revue adversariale est faite et L11.4 passe à `[x]` — ronde 1, trois relecteurs aveugles (R1 0 constat / 14 tenues, R2 5 / 17, R3 8 / 17), corrections en L12 ; ronde 2, un relecteur (1 P2 / 18 tenues). Le P2 est consigné au §8 sans correction (borne des deux rondes atteinte) : le garde-rail de portée ne reconnaît pas `seul := *m.PlusProcheM > regle.RayonM`, `if *d <= float64(rayon) {` ni `var d float64 = *m.PlusProcheM` puis `d >= rayon` ; aucune copie de ce genre dans le dépôt.
+
+**Résultats observés** : plan, §8 et journal à jour ; branche poussée pour la CI.
+
+**Conclusion / prochaine étape** : arrêt définitif de l'exécuteur ; fusion dans `feat/v75` par le superviseur.

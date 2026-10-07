@@ -19,9 +19,9 @@
 > `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
 > Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
 >
-> Statut du plan : **PHASE 2 EXÉCUTÉE — lots L1 à L11 clos (2026-10-06 / 2026-10-07), commits locaux
-> sur `feat/tactique-v2` ; L10.2 et L11.4 statués `[!]` (journaux L10 et L11).** Revue adversariale
-> du diff cumulé et fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
+> Statut du plan : **CLOS — lots L1 à L12 exécutés (2026-10-06 / 2026-10-07) sur `feat/tactique-v2`,
+> `feat/v75` fusionnée (`2668848b1`), revue adversariale faite en deux rondes (L11.4, L12) ; seul
+> L10.2 reste statué `[!]` (journal L10).** Fusion dans `feat/v75` : à la charge du superviseur. Branche `feat/tactique-v2`
 > (créée sur `origin/feat/v75` = `b033d30f0`), worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-tactique`.
 
 ## 0. Objectif, critère de succès, hors périmètre
@@ -1285,9 +1285,10 @@ Journal L10 (2026-10-07, exécuteur, `feat/tactique-v2`) :
 - [x] L11.2 ADR 0036 relue (test I2 de L2.2 présent dans la liste et le tableau) ; aucune autre ADR
   concernée.
 - [x] L11.3 Statut de chaque item ; §8 relue ; entrée finale du journal.
-- [!] L11.4 Revue adversariale du diff cumulé (lots à risque : L2 lectures bornées, L3 enrichissement
+- [x] L11.4 Revue adversariale du diff cumulé (lots à risque : L2 lectures bornées, L3 enrichissement
   et câblage, L9 contrat) : à demander au SUPERVISEUR (l'exécuteur n'a pas de sous-agent) ; `[!]`
-  tant qu'il ne l'a pas lancée. → `[!]` : revue adversariale à la charge du superviseur.
+  tant qu'il ne l'a pas lancée. → `[x]` : revue adversariale faite : ronde 1 trois relecteurs (R1
+  0 constat / 14 tenues, R2 5 / 17, R3 8 / 17), L12, ronde 2 un relecteur (1 P2 consigné / 18 tenues).
 - Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
 
 Journal L11 (2026-10-07, exécuteur, `feat/tactique-v2`) :
@@ -1524,6 +1525,12 @@ L2.3.
   seules et au passage complet suivant : sensibles à la charge ; non traité.
 - (L12, consigné par le superviseur) La mise en page à 1 400 px, la bascule en deux rangées et la
   hauteur de la colonne de zone n'ont pas de test automatique : non couvert, gate visuel utilisateur.
+- (revue ronde 2, P2 consigné, borne des deux rondes atteinte) Le garde-rail
+  `archlint/no_local_portee_comparison_test.go` (l. 40 et 43) ne reconnaît pas trois formes :
+  `seul := *m.PlusProcheM > regle.RayonM` (portée lue sur un champ à droite),
+  `if *d <= float64(rayon) {`, et `var d float64 = *m.PlusProcheM` puis `d >= rayon` —
+  `\w*(?i:rayon|portee)` s'arrête sur `.` ou `(`, et `lieeADeref` retient `float64`. Aucune copie de
+  ce genre n'existe dans le dépôt ; non traité.
 - (L12) Le catalogue de bornes `map_quant_bounds.json` est encore décodé à chaque résolution de
   callouts par module (`calloutsParModule`, `decfilm.LoadMapQuantCatalog`) : même motif que le
   catalogue de callouts mis en cache par G3, hors de la liste de la revue ; non traité.
