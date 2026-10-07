@@ -43,58 +43,67 @@ type ti13Partage struct {
 	fc      *grammar.FilmContext
 	matchID string
 	fait    bool
-	reads   []grammar.ManagedPropertyRead
+	// reads sont les lectures des trames delta (les CHANGEMENTS), keyReads celles des
+	// images-cles (l ETAT a chaque image-cle, records fermes seuls) : deux voies, deux listes
+	// (cf. grammar.ManagedPropertyScan).
+	reads, keyReads []grammar.ManagedPropertyRead
 }
 
-// lire rend les lectures, en ne balayant le film qu une fois.
+// lire balaye le film une fois et range ses lectures.
 //
 // TOUT ECHEC EST NON FATAL : un film dont l archetype n est pas au registre, ou dont aucun slot
 // n apparait aux images-cles, reste un rejeu parfaitement valide — simplement sans etat de zone
 // et sans jauge de retour. Le refus est journalise, jamais avale, et il n est journalise QU UNE
 // FOIS puisque la lecture n a lieu qu une fois.
-func (p *ti13Partage) lire(ctx context.Context) []grammar.ManagedPropertyRead {
+func (p *ti13Partage) lire(ctx context.Context) {
 	if p.fait {
-		return p.reads
+		return
 	}
 	p.fait = true
 	sc, err := grammar.ScanManagedProperties(p.fc)
 	if err != nil {
 		slog.InfoContext(ctx, "rejeu : proprietes ti=13 illisibles — rejeu sans etat de zone ni jauge de retour",
 			"err", err, "match_id", p.matchID)
-		return nil
+		return
 	}
 	slog.InfoContext(ctx, "rejeu : proprietes ti=13 balayees",
 		"match_id", p.matchID, "slots", sc.Slots, "records", sc.Records, "marches", sc.Walked,
-		"cassees", sc.Broken, "chainees", sc.Chained, "lectures", len(sc.Reads))
-	p.reads = sc.Reads
-	return p.reads
+		"cassees", sc.Broken, "chainees", sc.Chained, "lectures", len(sc.Reads),
+		"recordsImageCle", sc.KeyRecords, "fermesImageCle", sc.KeyClosed,
+		"cassesImageCle", sc.KeyBroken, "nonProuvesImageCle", sc.KeyUnproven,
+		"refusesImageCle", sc.KeyRefused, "lecturesImageCle", len(sc.KeyReads))
+	p.reads, p.keyReads = sc.Reads, sc.KeyReads
 }
 
-// decodeFilmZoneReads rend les lectures de `ti=13` POUR L ETAT DES ZONES — sur les seuls matchs
-// dont l appelant a fourni le catalogue de zones. Sans lui, aucun intervalle ne serait publiable
-// (la carte slot -> zone n aurait pas de cible) : c est la regle deja tenue par le marqueur de
-// portage du drapeau, qui ne balaye que les films de CTF.
+// decodeFilmZoneReads rend les lectures de `ti=13` POUR L ETAT DES ZONES — celles des trames
+// delta, puis celles des images-cles — sur les seuls matchs dont l appelant a fourni le catalogue
+// de zones. Sans lui, aucun intervalle ne serait publiable (la carte slot -> zone n aurait pas de
+// cible) : c est la regle deja tenue par le marqueur de portage du drapeau, qui ne balaye que les
+// films de CTF.
 //
 // ET C EST L APPELANT QUI DECIDE PAR LE MODE, PAS PAR LA CARTE (`replaybuild/zones.go`,
 // `heldZoneRoles`) : il ne fournit de zones que pour les roles de zone TENUE — Bastion, colline
 // de KOTH. Un CTF sur une carte qui declare des livraisons en cylindre, une Extraction avec ses
 // zones, arrivent ici SANS catalogue et ne paient rien de ce cote.
-func decodeFilmZoneReads(ctx context.Context, p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
+func decodeFilmZoneReads(ctx context.Context, p *ti13Partage, garde bool) (reads, keyReads []grammar.ManagedPropertyRead) {
 	if !garde {
 		slog.DebugContext(ctx, "rejeu : aucune zone au catalogue — proprietes ti=13 non consommees par les zones",
 			"match_id", p.matchID)
-		return nil
+		return nil, nil
 	}
-	return p.lire(ctx)
+	p.lire(ctx)
+	return p.reads, p.keyReads
 }
 
-// decodeFilmFlagReturnGauge rend les MEMES lectures POUR LA JAUGE DE RETOUR du drapeau — sur les
-// seuls films que les trois signaux reconnaissent CTF (cf. flag_return_gauge.go).
+// decodeFilmFlagReturnGauge rend les lectures DELTA POUR LA JAUGE DE RETOUR du drapeau — sur les
+// seuls films que les trois signaux reconnaissent CTF (cf. flag_return_gauge.go). La jauge se lit
+// dans ses changements ; l etat d image-cle ne lui sert pas.
 func decodeFilmFlagReturnGauge(ctx context.Context, p *ti13Partage, garde bool) []grammar.ManagedPropertyRead {
 	if !garde {
 		return nil
 	}
-	return p.lire(ctx)
+	p.lire(ctx)
+	return p.reads
 }
 
 // attachZoneStates pose l'etat des zones sur le document, avec sa couverture et son journal.

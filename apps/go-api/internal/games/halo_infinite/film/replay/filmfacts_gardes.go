@@ -42,6 +42,9 @@ func encodeGardesDeMode(w *gwriter, in FilmInputs) {
 	encodeCarrierMarkScan(w, in.FlagMarks)
 	encodeManagedPropertyReads(w, in.ZoneReads)
 	w.bool8(in.ZoneScanned)
+	// LES LECTURES D IMAGE-CLE VOYAGENT A COTE DES LECTURES DELTA, EN LISTE A PART : meme garde,
+	// meme calque, deux voies que le calque ne confond pas.
+	encodeManagedPropertyReads(w, in.ZoneKeyReads)
 	// LA JAUGE DE RETOUR DU DRAPEAU VOYAGE ICI, ET PAS AVEC `ZoneReads` : c est le MEME canal
 	// de film (`ti=13`), mais ce sont DEUX entrees, gardees par deux modes differents et lues
 	// par deux calques. Les fondre ferait publier a un CTF la couverture de zones d un KOTH.
@@ -60,6 +63,7 @@ func decodeGardesDeMode(r *greader, in *FilmInputs) {
 	in.FlagMarks = decodeCarrierMarkScan(r)
 	in.ZoneReads = decodeManagedPropertyReads(r)
 	in.ZoneScanned = r.bool8()
+	in.ZoneKeyReads = decodeManagedPropertyReads(r)
 	in.FlagGauge = decodeManagedPropertyReads(r)
 	in.FlagGaugeScanned = r.bool8()
 	n := r.compte(4)

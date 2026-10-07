@@ -88,6 +88,23 @@ var p2aCorpus = map[string]p2aFilm{
 			{"2533274917930188", 15, 17, 4, 1},
 			{"2535438933682278", 9, 12, 4, 1},
 		}},
+	// Le Bastion a BASES TENUES AU COUP D ENVOI (A au camp 1, C au camp 0, B neutre ; diagnostic
+	// confirme au Theater le 2026-10-06), temoin de l etat initial lu aux images-cles
+	// (`zone_etat_initial_temoin_test.go`). Releve du 2026-10-07 par `levelup replay-facts-export`
+	// (lecture seule de la base partagee).
+	"572e236b": {Mode: "Strongholds", ObjType: objectives.ObjectiveTypeZone,
+		Carte: "fortress", MapID: "0d1c9255-d912-416c-befc-5f3e5e176df2", Players: []p2aPlayer{
+			{"2535448131958677", 8, 1, 2, 0},
+			{"2535450759128461", 10, 4, 7, 0},
+			{"2535452521259564", 15, 10, 3, 0},
+			{"2535461109438273", 1, 1, 0, 0},
+			{"2696798348309366", 10, 6, 8, 0},
+			{"bid(33.0)", 0, 0, 0, 0},
+			{"2533274823110022", 7, 12, 3, 1},
+			{"2533274833178266", 1, 10, 1, 1},
+			{"2533274858283686", 9, 11, 3, 1},
+			{"2535469190789936", 5, 11, 6, 1},
+		}},
 	// Les KOTH : CB.2a.3. `0a247154` joue sur Solitude, ABSENTE du catalogue de formes — le
 	// negatif est ecrit plutot que contourne (et la phase 1 y avait deja mesure 0 rampe).
 	"01e1f945": {Mode: "KOTH", ObjType: "none",

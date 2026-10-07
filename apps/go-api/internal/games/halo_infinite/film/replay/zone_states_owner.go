@@ -35,10 +35,12 @@ import (
 // pas une preuve ; elles ferment le cas ou le canal n'a jamais ete confirme qu'une seule fois.
 const zoneOwnerMinAgreements = 2
 
-// zoneOwnerStates construit les intervalles de propriete de chaque zone appariee.
+// zoneOwnerStates construit les intervalles de propriete de chaque zone appariee, et rend ce que
+// l'etat d'image-cle y a fait.
 func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 	cov *ZonesCoverage,
-) []ZoneState {
+) ([]ZoneState, zoneKeyTally) {
+	var key zoneKeyTally
 	win := zoneWindowFrames(c.intervalMS)
 	ramps := zoneRampsOf(ser)
 	gaugeSlot, unpaired := pairGaugeSlots(ramps, pairs, win)
@@ -61,11 +63,16 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		if rank, ok := letters[ref]; ok {
 			st.LetterRank = &rank
 		}
-		st.Spans = ownerSpansOf(ser.owner[ownerSlot[ref]], gauge,
-			zoneSpanCtx{frames: c.frames, teams: teams}, cov)
+		delta, etats := ser.owner[ownerSlot[ref]], ser.ownerKey[ownerSlot[ref]]
+		serie := ownerSeriesWithInitialState(delta, etats, teams)
+		st.Spans = ownerSpansOf(serie, gauge, zoneSpanCtx{frames: c.frames, teams: teams}, cov)
 		if len(st.Spans) == 0 {
 			continue
 		}
+		if len(delta) > 0 && st.Spans[0].T0 < delta[0].t {
+			key.opened++
+		}
+		tallyKeyAgreement(delta, etats, &key)
 		// LA JAUGE EN DIRECT (schema 18) : TOUTES les rampes du slot de jauge de la zone, pas
 		// seulement celles qu'une capture a rattachees — une montee interrompue est une capture
 		// en cours que le film montre, et l'ecran doit la montrer aussi.
@@ -83,7 +90,7 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 		out = append(out, st)
 	}
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
-	return out
+	return out, key
 }
 
 // zoneRefsOf rend les zones qui ont A LA FOIS une jauge et un proprietaire apparies, triees.
@@ -308,8 +315,11 @@ func zoneChanges(ss []zoneSample) []zoneSample {
 // ownerSpansOf construit les intervalles de propriete d'une zone : une valeur tenue jusqu'a la
 // suivante, la derniere jusqu'a la fin de l'axe.
 //
-// L'INTERVALLE COMMENCE A LA PREMIERE EMISSION, PAS A LA FRAME 0 : avant elle, le film ne dit
-// rien de cette zone. L'etendre jusqu'au debut affirmerait une neutralite qui n'est pas mesuree.
+// LE PREMIER INTERVALLE COMMENCE AU PREMIER ECHANTILLON DE LA SERIE, JAMAIS A LA FRAME 0 PAR
+// DEFAUT : la serie est celle de [ownerSeriesWithInitialState] — l'etat de la premiere image-cle
+// qui dit un camp quand une image-cle precede la premiere emission delta, la premiere emission
+// sinon. Avant ce premier echantillon le film ne dit rien de la zone ; etendre l'intervalle
+// jusqu'au debut affirmerait un etat qui n'est pas lu.
 func ownerSpansOf(owner, gauge []zoneSample, c zoneSpanCtx, cov *ZonesCoverage) []ZoneSpan {
 	groups := mergeZoneRuns(owner)
 	out := make([]ZoneSpan, 0, len(groups))

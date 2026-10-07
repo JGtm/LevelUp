@@ -127,7 +127,7 @@ func (in *FilmInputs) restreindreAuxGardes(d GardesDeCuisson) {
 		in.FlagGauge, in.FlagGaugeScanned = nil, false
 	}
 	if !d.Zones {
-		in.ZoneReads, in.ZoneScanned = nil, false
+		in.ZoneReads, in.ZoneKeyReads, in.ZoneScanned = nil, nil, false
 	}
 	if !d.Bombe {
 		in.BombReads = nil
