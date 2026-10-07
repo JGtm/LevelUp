@@ -17,8 +17,8 @@
  * (`FeatureUnavailable`, libellé `replay` FR/EN).
  *
  * `?t=<instant_ms>&clock=match|film` OUVRE LE REJEU À L'INSTANT EXACT (lot M1b, 2026-09-08,
- * décision utilisateur ferme « corriger le décalage ») — lien posé par `TacticalCellCard`
- * depuis une cellule de la grille Tactique. La route attend le document (il porte l'offset
+ * décision utilisateur ferme « corriger le décalage ») — lien posé par la tuile « Rejeu » de la
+ * zone choisie de l'onglet Tactique (`MatchReplayLink`). La route attend le document (il porte l'offset
  * de calage), convertit avec la fonction pure `resolveTacticalReplayInstant` +
  * `msToFrames` (`lib/replay/replayLogic.ts`), et positionne `ReplayCanvas` via `openAtFrame`.
  * `clock=match` sur un artefact dont le pont n'a apparié aucune mort (schéma < 49, ou pont

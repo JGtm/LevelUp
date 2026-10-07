@@ -1,14 +1,17 @@
 /**
- * La GRILLE des cartes de l'onglet Tactique, rendue depuis une réponse de contrat.
+ * L'ÉCRAN UNIQUE de l'onglet Tactique (cockpit), rendu depuis une réponse de contrat.
  *
  * Ce que ces tests cadenassent :
- *   - la grille rend une vignette par carte, dans l'ordre décidé par la logique ;
- *   - une carte SOUS LE PLANCHER est désaturée, DÉSACTIVÉE (`aria-disabled`), et porte sa
- *     raison en clair — jamais une vignette qui promet une ouverture qui n'arrivera pas ;
- *   - une carte ouvrable est un bouton qui DIT ce qu'il fait, et son clic écrit la carte
- *     choisie dans l'URL (aucun lien mort vers la route de la phase 5, qui n'existe pas) ;
- *   - aucune carte -> `EmptyState`, jamais une grille vide muette ;
- *   - le pied de carte sert la couverture ET la phrase du plancher ;
+ *   - la colonne rend une vignette par carte OUVRABLE, la plus jouée en tête ; une carte SOUS
+ *     LE PLANCHER n'est pas une vignette, elle est dans le repli avec « n sur plancher » ;
+ *   - sans `?carte=`, la plus jouée des ouvrables est lue d'office et l'URL n'est PAS réécrite ;
+ *     le clic sur une vignette, lui, écrit la carte dans l'URL ;
+ *   - la carte de l'URL est lue si elle est ouvrable ; sous le plancher ou hors du filtre, elle
+ *     est nommée, sans requête de lecture ;
+ *   - plus de bascule « Grille / Analyse », plus de pied de grille ;
+ *   - l'échec du périmètre et la composition impossible se disent SUR le plan, cadre posé ; la
+ *     colonne ne dit que ses propres états (liste en échec, attente, aucune carte) ;
+ *   - aucune carte -> `EmptyState`, jamais une colonne vide muette ;
  *   - LE PERIMETRE : la barre produit un contexte de filtre, `/filters/match-ids` le
  *     resout, et la grille poste les `match_id` obtenus (phase 4 bis). Sans ces
  *     assertions, une grille qui ignorerait le filtre resterait verte.
@@ -94,7 +97,7 @@ const page: TacticalMapsPage = {
 }
 
 /** Réponse minimale du raster : suffit à faire sortir `TacticalAnalysisView` de son état
- *  d'attente. Le détail de cette lecture (KPI, plan, cellule) est cadenassé ailleurs
+ *  d'attente. Le détail de cette lecture (plan, zone) est cadenassé ailleurs
  *  (`TacticalAnalysisView.test.tsx`) — ici on vérifie seulement QUI s'affiche quand
  *  `?carte=` est posé, pas ce que la vue d'analyse en fait. */
 const RASTER_VIDE: TacticalRaster = {
@@ -109,8 +112,6 @@ const RASTER_VIDE: TacticalRaster = {
   matchs_retenus: 0,
   matchs_victoire: 0,
   matchs_defaite: 0,
-  evenements_journal: 0,
-  evenements_localises: 0,
   points_ignores: 0,
 }
 
@@ -131,6 +132,8 @@ beforeEach(() => {
   post.mockImplementation((path: string) => {
     if (path.endsWith('/filters/match-ids')) return Promise.resolve({ match_ids: PERIMETRE })
     if (path.endsWith('/tactical/maps')) return Promise.resolve(page)
+    // La carte lue d'office (la plus jouée des ouvrables) : sa lecture répond.
+    if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER_VIDE)
     return Promise.reject(new Error(`appel inattendu : ${path}`))
   })
   getBlob.mockReset()
@@ -139,99 +142,114 @@ beforeEach(() => {
 })
 afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
-describe('TacticalPage — la grille des cartes', () => {
-  it('rend une vignette par carte, la plus jouée en tête', async () => {
-    renderWithProviders(<TacticalPage />)
-    const streets = await screen.findByTestId('tactical-map-streets')
-    const aquarius = screen.getByTestId('tactical-map-aquarius')
-    expect(streets).toBeInTheDocument()
-    expect(aquarius).toBeInTheDocument()
-    // L'ordre du DOM EST l'ordre affiché : Streets (24 matchs) avant Aquarius (9).
-    expect(streets.compareDocumentPosition(aquarius) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .toBeTruthy()
-    // Le nom FR vient du contrat, pas du nom canonique.
-    expect(streets.textContent).toContain('Ruelles')
-    expect(streets.textContent).toContain('24 matchs')
-  })
+/** Les lectures de raster postées, par carte. */
+function lecturesRaster(): string[] {
+  return post.mock.calls
+    .map((c) => c[0] as string)
+    .filter((p) => p.endsWith('/raster'))
+}
 
-  it('sert le compte de victoires ET de défaites — jamais un taux seul', async () => {
+describe('TacticalPage — l’écran unique', () => {
+  it('la colonne : une vignette par carte ouvrable, les cartes sous le plancher dans le repli', async () => {
     renderWithProviders(<TacticalPage />)
     const streets = await screen.findByTestId('tactical-map-streets')
-    // UNE SEULE LIGNE depuis la conformité à la maquette 034b1915 : « N matchs · V V / D D ».
-    // Le nom accessible de la barre, lui, garde les deux comptes en toutes lettres.
-    expect(streets.textContent).toContain('24 matchs · 14 V / 9 D')
+    // Le nom FR vient du contrat, pas du nom canonique ; le résumé tient sur une ligne.
+    expect(streets.textContent).toContain('Ruelles')
+    expect(streets.textContent).toContain('24 · 14 V / 9 D')
     const barre = streets.querySelector('[role="img"]')
     expect(barre?.getAttribute('aria-label')).toContain('14 victoires')
     expect(barre?.getAttribute('aria-label')).toContain('9 défaites')
+    // Aquarius (9 matchs, sous le plancher) n'est pas une vignette : une ligne du repli.
+    expect(screen.queryByTestId('tactical-map-aquarius')).toBeNull()
+    expect(screen.getByTestId('tactical-map-plancher-aquarius').textContent).toContain('9 sur 10')
+    expect(screen.getByText('1 carte sous le plancher')).toBeInTheDocument()
   })
 
-  it('carte SOUS LE PLANCHER : désaturée, désactivée, avec sa raison en clair', async () => {
+  it('sans ?carte= : la plus jouée des ouvrables est lue d’office, l’URL n’est pas réécrite', async () => {
     renderWithProviders(<TacticalPage />)
-    const aquarius = await screen.findByTestId('tactical-map-aquarius')
-    expect(aquarius).toHaveAttribute('aria-disabled', 'true')
-    expect(aquarius).toBeDisabled()
-    // Désaturation par des utilitaires SANS couleur : aucun token détourné.
-    expect(aquarius.className).toContain('grayscale')
-    expect(aquarius.className).toContain('opacity-60')
-    expect(screen.getByTestId('tactical-map-plancher-aquarius').textContent).toContain(
-      '9 matchs sur 10 requis',
-    )
+    expect(await screen.findByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
+    expect(screen.getByTestId('tactical-map-streets')).toHaveAttribute('aria-pressed', 'true')
+    expect(lecturesRaster()).toEqual(['/players/JGtm/tactical/streets/raster'])
+    expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('carte ouvrable : bouton actif qui DIT ce qu’il fait', async () => {
+  it('la vignette DIT ce qu’elle fait, et son clic écrit la carte dans l’URL — et rien d’autre', async () => {
     renderWithProviders(<TacticalPage />)
     const streets = await screen.findByTestId('tactical-map-streets')
-    expect(streets).not.toBeDisabled()
     expect(streets).toHaveAttribute('aria-label', 'Sélectionner Ruelles')
-    expect(streets).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  it('le clic écrit la carte choisie dans l’URL — aucun lien mort', async () => {
-    renderWithProviders(<TacticalPage />)
-    fireEvent.click(await screen.findByTestId('tactical-map-streets'))
+    fireEvent.click(streets)
     expect(navigate).toHaveBeenCalledTimes(1)
     const arg = navigate.mock.calls[0][0] as {
       search: (p: Record<string, unknown>) => Record<string, unknown>
     }
-    // L'objet ENTIER : la garantie n'est pas seulement « carte est ecrite », c'est
-    // « et RIEN d'autre » — un encodage qui poserait `vue=all` ou `pl=` a chaque clic
-    // salirait l'URL de parametres neutres sans qu'aucune autre assertion ne le voie.
+    // L'objet ENTIER : un encodage qui poserait `vue=all` ou `pl=` a chaque clic salirait
+    // l'URL de parametres neutres sans qu'aucune autre assertion ne le voie.
     expect(arg.search({})).toEqual({ carte: 'streets' })
   })
 
   it('une carte sous le plancher ne navigue nulle part', async () => {
     renderWithProviders(<TacticalPage />)
-    fireEvent.click(await screen.findByTestId('tactical-map-aquarius'))
+    fireEvent.click(await screen.findByTestId('tactical-map-plancher-aquarius'))
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('la carte sélectionnée dans l’URL ouvre la vue d’analyse, pas la grille', async () => {
-    // Décision phase 5 : le clic SÉLECTIONNE (phase 4), et une carte sélectionnée
-    // OUVRE désormais la vue d'analyse — elle ne se contente plus de marquer une
-    // vignette dans une grille qui resterait affichée à côté.
+  it('la carte de l’URL, ouvrable : lue, et la colonne reste à côté', async () => {
     searchCourant = { carte: 'streets' }
-    post.mockImplementation((path: string) => {
-      if (path.endsWith('/filters/match-ids')) return Promise.resolve({ match_ids: PERIMETRE })
-      if (path.endsWith('/tactical/maps')) return Promise.resolve(page)
+    renderWithProviders(<TacticalPage />)
+    expect(await screen.findByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
+    expect(screen.getByTestId('tactical-map-streets')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('la carte de l’URL sous le plancher : nommée, « aucun match », aucune lecture', async () => {
+    searchCourant = { carte: 'aquarius' }
+    renderWithProviders(<TacticalPage />)
+    const horsFiltre = await screen.findByTestId('tactical-carte-hors-filtre')
+    expect(horsFiltre).toHaveTextContent('Aucun match sur cette carte dans le filtre')
+    expect(screen.getByRole('region', { name: 'Aquarius' })).toBeInTheDocument()
+    expect(lecturesRaster()).toEqual([])
+    // Aucune vignette n'est présentée comme active : la carte affichée n'est pas dans la liste.
+    expect(screen.getByTestId('tactical-map-streets')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('la carte de l’URL hors du filtre, jamais vue : un titre générique, jamais son identifiant', async () => {
+    searchCourant = { carte: 'inconnue' }
+    renderWithProviders(<TacticalPage />)
+    expect(await screen.findByTestId('tactical-carte-hors-filtre')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Carte hors du filtre' })).toBeInTheDocument()
+    expect(screen.queryByText('inconnue')).toBeNull()
+    expect(lecturesRaster()).toEqual([])
+  })
+
+  it('la carte de l’URL sortie du filtre : le dernier nom connu reste au titre', async () => {
+    searchCourant = { carte: 'streets' }
+    post.mockImplementation((path: string, body: unknown) => {
+      if (path.endsWith('/filters/match-ids')) {
+        const periode = (body as { period?: { start_date?: string | null } }).period
+        return Promise.resolve({ match_ids: periode?.start_date ? ['m9'] : PERIMETRE })
+      }
+      if (path.endsWith('/tactical/maps')) {
+        const ids = (body as { match_ids: string[] }).match_ids
+        return Promise.resolve(ids[0] === 'm9' ? { ...page, cartes: (page.cartes ?? []).filter((c) => c.map_id !== 'streets') } : page)
+      }
       if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER_VIDE)
       return Promise.reject(new Error(`appel inattendu : ${path}`))
     })
-    renderWithProviders(<TacticalPage />)
-    // `findByText` REPOLLE jusqu'à disparition du nom de repli (`scope.carte` brut) :
-    // le titre existe dès le premier rendu, mais son texte ne porte le nom traduit
-    // qu'une fois la grille (même requête que la page précédente) chargée.
-    expect(await screen.findByText('Plan de Ruelles — Où je meurs')).toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-map-streets')).not.toBeInTheDocument()
+    const rendu = renderWithProviders(<TacticalPage />)
+    expect(await screen.findByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
+    searchCourant = { carte: 'streets', de: '2026-01-01' }
+    rendu.rerender(<TacticalPage />)
+    expect(await screen.findByTestId('tactical-carte-hors-filtre')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
+    expect(screen.queryByText('streets')).toBeNull()
   })
 
-  it('pied de carte : la couverture ET la phrase du plancher', async () => {
+  it('plus de bascule « Grille / Analyse », plus de pied de grille', async () => {
     renderWithProviders(<TacticalPage />)
-    const couverture = await screen.findByTestId('tactical-couverture')
-    expect(couverture.textContent).toContain('2 cartes jouées')
-    expect(couverture.textContent).toContain('33 matchs')
-    // Le plancher est dit DANS LA MÊME PHRASE (maquette 034b1915) : la note séparée
-    // disait la même chose une deuxième fois.
-    expect(couverture.textContent).toContain('sous 10 matchs')
+    await screen.findByTestId('tactical-map-streets')
+    // Ni les libellés de l'ancienne bascule ni la phrase de l'ancien pied ne sont plus rendus.
+    expect(screen.queryByText('Grille des cartes')).toBeNull()
+    expect(screen.queryByText("Analyse d'une carte")).toBeNull()
+    expect(screen.queryByText(/sur la période/)).toBeNull()
   })
 
   it('aucune carte : état vide explicite, jamais une grille muette', async () => {
@@ -245,7 +263,6 @@ describe('TacticalPage — la grille des cartes', () => {
     // La grille a REELLEMENT repondu : sans cette assertion, le test passerait aussi
     // sur un etat vide rendu AVANT la reponse (le defaut W1).
     expect(corpsGrille()).toBeDefined()
-    expect(screen.queryByTestId('tactical-couverture')).toBeNull()
   })
 
   it('cartes nulles au contrat (slice Go vide) : même état vide, aucun plantage', async () => {
@@ -324,7 +341,8 @@ describe('TacticalPage — la grille des cartes', () => {
   it('un coequipier introuvable ARRETE la grille — jamais un perimetre elargi', async () => {
     searchCourant = { eq: 'Inconnu' }
     renderWithProviders(<TacticalPage />)
-    expect(await screen.findByText('Coéquipier introuvable')).toBeInTheDocument()
+    // Le plan le dit SUR son fond, une seule fois.
+    expect(await screen.findByTestId('tactical-plan-avis')).toHaveTextContent('Coéquipier introuvable')
     expect(corpsGrille()).toBeUndefined()
   })
 
@@ -343,6 +361,8 @@ describe('TacticalPage — la grille des cartes', () => {
     )
     renderWithProviders(<TacticalPage />)
     expect(await screen.findByText('Chargement des cartes…')).toBeInTheDocument()
+    // Le plan, sans carte encore : son cadre sous l'indicateur.
+    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
     expect(screen.queryByText('Aucune carte jouée')).toBeNull()
     // Et la grille n'est PAS demandee tant que le perimetre n'existe pas.
     expect(corpsGrille()).toBeUndefined()
@@ -357,7 +377,9 @@ describe('TacticalPage — la grille des cartes', () => {
     )
     try {
       renderWithProviders(<TacticalPage />)
-      expect(await screen.findByTestId('tactical-erreur')).toBeInTheDocument()
+      // Le plan le dit SUR son fond (cadre posé, sans carte encore) ; la colonne se tait.
+      expect(await screen.findByTestId('tactical-plan-avis')).toHaveTextContent("L'analyse n'a pas pu être chargée.")
+      expect(screen.getByTestId('tactical-plan-frame')).toBeInTheDocument()
       expect(screen.queryByText('Aucune carte jouée')).toBeNull()
       // L'echec est JOURNALISE, jamais avale.
       expect(erreurs).toHaveBeenCalled()
@@ -419,6 +441,6 @@ describe('TacticalPage — la grille des cartes', () => {
     renderWithProviders(<TacticalPage />)
     const streets = await screen.findByTestId('tactical-map-streets')
     expect(streets.textContent).toContain('Streets')
-    expect(streets.textContent).toContain('24 matches')
+    expect(streets.textContent).toContain('24 · 14 W / 9 L')
   })
 })

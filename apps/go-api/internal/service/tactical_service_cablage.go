@@ -51,3 +51,38 @@ func (s *TacticalService) WithRetentionMois(f func() int) *TacticalService {
 	s.retentionMois = f
 	return s
 }
+
+// ─── Les sources du détail d'une zone (tactical_service_cellule_enrichir.go) ─────────────────
+// Chacune nourrit un champ de la mini-tuile « Rejeu » ; absente, elle retire ce champ et le
+// journal le dit, la liste des contributions reste servie.
+
+// WithPlayerMatches injecte la lecture canonique des matchs du joueur (mode et score). Chainable.
+func (s *TacticalService) WithPlayerMatches(repo port.PlayerMatchesRepository, slug, gamertag string) *TacticalService {
+	s.detail.matchs, s.detail.slug, s.detail.gamertag = repo, slug, gamertag
+	return s
+}
+
+// WithRoundsDecide injecte la table des variantes qui se décident aux manches (ADR 0032). Chainable.
+func (s *TacticalService) WithRoundsDecide(table map[string]bool) *TacticalService {
+	s.detail.roundsDecide = table
+	return s
+}
+
+// WithKillSourceClassifier injecte la traduction source de dégât → clé du registre d'armes ; nil
+// pour un titre qui n'en a pas (ni arme ni catégorie publiées). Chainable.
+func (s *TacticalService) WithKillSourceClassifier(c port.KillSourceClassifier) *TacticalService {
+	s.detail.classifieur = c
+	return s
+}
+
+// WithWeaponLabels injecte le registre des noms d'armes (FR et EN). Chainable.
+func (s *TacticalService) WithWeaponLabels(r port.WeaponLabelResolver) *TacticalService {
+	s.detail.armes = r
+	return s
+}
+
+// WithReplay injecte le service de rejeu 2D, dont seule la présence des artefacts est lue. Chainable.
+func (s *TacticalService) WithReplay(r port.ReplayService) *TacticalService {
+	s.detail.rejeu = r
+	return s
+}

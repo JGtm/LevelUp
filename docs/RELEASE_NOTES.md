@@ -40,10 +40,10 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Charges are visible** — a deployable shows how much of it is left before the first use
 
 **A Tactics tab**
-- **The maps you play** — one tile per map, its record, and a floor below which a map is not shown rather than shown wrong
-- **An analysis view on the map plan** — where you spend your time, where you die, where you kill, where you die isolated, where the wins and the losses part ways, and the routes you take
-- **A cell opens the replay at the exact moment** — click a square, land on the second where it happened
-- **Team coordination** — how far apart your squad actually plays, read per match from the variant reference rather than from a threshold somebody picked
+- **One screen** — the maps you play on the left, the map plan in the centre, the zone you pick on the right; the map you play most opens on its own
+- **Seven readings on the map plan** — where you die, where you kill, your kills − deaths balance, where the wins and the losses part ways, where you spend your time, the routes you take after respawning, and where you die alone
+- **Zones with their in-game names** — the hottest one is picked for you, and its mini-tiles say what happened, with which weapon, alone or near a teammate, and how the match ended
+- **Straight to the replay** — every mini-tile opens the replay at the exact second, and the match view's "Ground occupancy" opens the tab on that match's map
 
 **Squad, sessions and progression**
 - **The shapes you keep** — the objective cards: the balance of power by mode family, and each player's share of their side's objective

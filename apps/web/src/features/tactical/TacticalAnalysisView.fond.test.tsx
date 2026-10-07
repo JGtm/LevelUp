@@ -63,8 +63,6 @@ function raster(question: string, p95: number): TacticalRaster {
     matchs_retenus: 9,
     matchs_victoire: 5,
     matchs_defaite: 4,
-    evenements_journal: 50,
-    evenements_localises: 48,
     points_ignores: 0,
   }
 }
@@ -113,7 +111,7 @@ function monter(matchIds: string[] | null) {
   const vue = (ids: string[] | null) => (
     <TacticalAnalysisView
       playerSlug="JGtm"
-      mapId="streets"
+      carte={{ mapId: 'streets', origine: 'url' }}
       mapName="Ruelles"
       locale="fr"
       t={t}
@@ -147,7 +145,7 @@ function enRelecture(img: HTMLImageElement) {
   memeFond(img)
   expect(screen.getByTestId('tactical-analysis-updating')).toHaveTextContent(t.analysisUpdating)
   expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
-  expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
+  expect(screen.getByTestId('tactical-plan-canvas')).toBeInTheDocument()
 }
 
 function relectureFinie(img: HTMLImageElement) {
@@ -160,12 +158,12 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
   it('changement de QUESTION : même <img> pendant l’attente, ancien calque dit « Mise à jour… »', async () => {
     const kills = differe<TacticalRaster>()
     monter(['m1', 'm2'])
-    await screen.findByTestId('kpi-strip')
+    await screen.findByTestId('tactical-plan-canvas')
     const img = await fondCharge()
 
     repondre = (corps) =>
       corps.question === 'kills' ? kills.promesse : Promise.resolve(raster('morts', 5))
-    fireEvent.change(screen.getByRole('combobox', { name: t.questionLabel }), {
+    fireEvent.change(screen.getByRole('combobox', { name: t.pillReading }), {
       target: { value: 'kills' },
     })
     await waitFor(() =>
@@ -189,7 +187,7 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
   it('changement de FILTRE (matchIds → null → autre liste) : même <img> tout du long', async () => {
     const autre = differe<TacticalRaster>()
     const vue = monter(['m1', 'm2'])
-    await screen.findByTestId('kpi-strip')
+    await screen.findByTestId('tactical-plan-canvas')
     const img = await fondCharge()
 
     // Le périmètre se résout : la liste passe par `null` (non résolu).
@@ -217,41 +215,44 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
 
   // Revue L2-R5 (a) : pendant une relecture, la réponse affichée est la PRÉCÉDENTE ; son
   // `pas_m` n'adresse pas forcément la même cellule dans la nouvelle. Le détail attend.
-  it('détail de cellule : aucun /cellule pendant une relecture de filtre, reparti ensuite', async () => {
-    // jsdom ne mesure rien : sans taille de canevas, le clic ne désigne aucune cellule.
-    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
-    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
-    const contexte = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+  it('détail de la zone : aucun /cellule pendant une relecture de filtre, reparti ensuite', async () => {
     const detail = () =>
       post.mock.calls.filter(([path]) => (path as string).endsWith('/tactical/streets/cellule'))
-    try {
-      const autre = differe<TacticalRaster>()
-      const vue = monter(['m1', 'm2'])
-      await screen.findByTestId('kpi-strip')
-      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 30, clientY: 20 })
-      await waitFor(() => expect(detail()).toHaveLength(1))
+    const autre = differe<TacticalRaster>()
+    const vue = monter(['m1', 'm2'])
+    await screen.findByTestId('tactical-plan-canvas')
+    // La zone la plus chaude est présélectionnée : son détail part dès que la lecture est prête.
+    await waitFor(() => expect(detail()).toHaveLength(1))
 
-      repondre = (corps) =>
-        corps.match_ids.length === 1 ? autre.promesse : Promise.resolve(raster('morts', 5))
-      vue.rerender(null)
-      vue.rerender(['m1'])
-      await waitFor(() =>
-        expect(post).toHaveBeenCalledWith(
-          '/players/JGtm/tactical/streets/raster',
-          expect.objectContaining({ match_ids: ['m1'] }),
-        ),
-      )
-      expect(screen.getByTestId('tactical-analysis-updating')).toBeInTheDocument()
-      expect(detail()).toHaveLength(1)
+    repondre = (corps) =>
+      corps.match_ids.length === 1 ? autre.promesse : Promise.resolve(raster('morts', 5))
+    vue.rerender(null)
+    vue.rerender(['m1'])
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        '/players/JGtm/tactical/streets/raster',
+        expect.objectContaining({ match_ids: ['m1'] }),
+      ),
+    )
+    expect(screen.getByTestId('tactical-analysis-updating')).toBeInTheDocument()
+    expect(detail()).toHaveLength(1)
 
-      autre.liberer(raster('morts', 9))
-      await waitFor(() => expect(detail()).toHaveLength(2))
-      expect(detail()[1][1]).toEqual(expect.objectContaining({ match_ids: ['m1'] }))
-    } finally {
-      largeur.mockRestore()
-      hauteur.mockRestore()
-      contexte.mockRestore()
-    }
+    autre.liberer(raster('morts', 9))
+    await waitFor(() => expect(detail()).toHaveLength(2))
+    expect(detail()[1][1]).toEqual(expect.objectContaining({ match_ids: ['m1'] }))
+  })
+
+  it('détail de la zone : un /cellule rejeté se dit dans la carte de zone, jamais « aucun match ouvrable »', async () => {
+    post.mockImplementation((path: string, corps: unknown) =>
+      path.endsWith('/tactical/streets/raster')
+        ? repondre(corps as CorpsRaster)
+        : path.endsWith('/tactical/streets/cellule')
+          ? Promise.reject(new Error('panne du détail'))
+          : Promise.reject(new Error(`appel inattendu : ${path}`)),
+    )
+    monter(['m1', 'm2'])
+    expect(await screen.findByTestId('tactical-zone-erreur')).toHaveTextContent(t.zoneError)
+    expect(screen.queryByText(t.zoneContributionsEmpty)).toBeNull()
   })
 
   it('PREMIER CHARGEMENT : le fond est posé, l’indicateur PAR-DESSUS, puis le calque sur le même fond', async () => {
@@ -262,11 +263,11 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
     const img = await fondCharge()
     const cadre = screen.getByTestId('tactical-plan-frame')
     expect(within(cadre).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
-    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
     expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
 
     premiere.liberer(raster('morts', 5))
-    await screen.findByTestId('kpi-strip')
+    await screen.findByTestId('tactical-plan-canvas')
     expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
     memeFond(img)
   })

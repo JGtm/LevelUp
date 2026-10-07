@@ -32,6 +32,7 @@
  * exactement la devinette que le reste de la page refuse.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { titleWithInfo } from '@/components/ui/title-with-info'
@@ -49,10 +50,12 @@ import type { ReplayBounds } from '@/lib/api/types'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
 import { visibleBounds } from '@/lib/replay/replayLogic'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
+import { useTitleSlug } from '@/lib/title-routing'
 
 import { hasPositions } from './blockPredicates'
 
 import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
+import { useMatchView } from './queries'
 
 /**
  * PLAFOND DE HAUTEUR DU PLAN (2026-09-19, lot 2 du plan d'ajustements pré-v7.5). Le cadre
@@ -88,6 +91,8 @@ const TEXT = {
     teamAll: 'Tous',
     team0: 'Équipe A',
     team1: 'Équipe B',
+    tactics: 'Tactique',
+    tacticsLabel: 'Ouvrir cette carte dans l’onglet Tactique',
     narrative:
       'Les endroits de la carte les plus occupés pendant ce match, toutes équipes confondues ou par équipe ; plus la teinte est chaude, plus le temps passé est long.',
   },
@@ -96,6 +101,8 @@ const TEXT = {
     teamAll: 'All',
     team0: 'Team A',
     team1: 'Team B',
+    tactics: 'Tactics',
+    tacticsLabel: 'Open this map in the Tactics tab',
     narrative:
       'The busiest spots of the map during this match, all teams together or by team; the hotter the shade, the longer the time spent.',
   },
@@ -239,19 +246,29 @@ export function MatchPositionsHeatmap({
          (lot D) : elle dit comment lire le plan, pas ce que le match a produit — sa place
          est au survol du (i), pas en pied de carte. */
       titleAdornment={titleWithInfo(<p>{t.narrative}</p>, {
-        trailing: teamSplit ? (
-          <span className="flex gap-1">
-            <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
-              {t.teamAll}
-            </TeamButton>
-            <TeamButton active={teamFilter === 0} onClick={() => setTeamFilter(0)}>
-              {t.team0}
-            </TeamButton>
-            <TeamButton active={teamFilter === 1} onClick={() => setTeamFilter(1)}>
-              {t.team1}
-            </TeamButton>
+        trailing: (
+          <span className="flex items-center gap-1">
+            {teamSplit ? (
+              <span className="flex gap-1">
+                <TeamButton active={teamFilter === 'all'} onClick={() => setTeamFilter('all')}>
+                  {t.teamAll}
+                </TeamButton>
+                <TeamButton active={teamFilter === 0} onClick={() => setTeamFilter(0)}>
+                  {t.team0}
+                </TeamButton>
+                <TeamButton active={teamFilter === 1} onClick={() => setTeamFilter(1)}>
+                  {t.team1}
+                </TeamButton>
+              </span>
+            ) : null}
+            <LienTactique
+              playerSlug={playerSlug}
+              matchId={matchId}
+              texte={t.tactics}
+              label={t.tacticsLabel}
+            />
           </span>
-        ) : null,
+        ),
       })}
     >
       <div className="p-3">
@@ -282,6 +299,35 @@ export function MatchPositionsHeatmap({
         </div>
       </div>
     </SectionCard>
+  )
+}
+
+/**
+ * LienTactique — ouvre la carte du match dans l'onglet Tactique. La carte est celle de l'onglet
+ * (`match_registry.map_id`, en-tête de la réponse de la page, déjà en cache) ; rien sans elle.
+ */
+interface LienTactiqueProps {
+  playerSlug: string
+  matchId: string
+  texte: string
+  label: string
+}
+
+function LienTactique({ playerSlug, matchId, texte, label }: LienTactiqueProps) {
+  const titleSlug = useTitleSlug()
+  const mapId = useMatchView(playerSlug, matchId).data?.header.map_id
+  if (!mapId) return null
+  return (
+    <Link
+      to="/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique"
+      params={{ titleSlug, playerSlug }}
+      search={{ carte: mapId }}
+      title={label}
+      aria-label={label}
+      className="inline-flex h-7 items-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {texte}
+    </Link>
   )
 }
 

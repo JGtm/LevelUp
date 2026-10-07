@@ -103,8 +103,7 @@ func TestVentilation_LInvariantDeSomme(t *testing.T) {
 // somme ne vaut donc QUE pour les lectures d'artefact.
 func TestVentilation_LaLectureDeBaseNeVentilePas(t *testing.T) {
 	univ := universEligibilite(map[string]bool{"m1": true, "m2": false, "m3": true})
-	pos, ev := posEtEvents(univ)
-	repo := &mockTacticalRepo{univ: univ, pos: pos, ev: ev}
+	repo := &mockTacticalRepo{univ: univ, pos: positionsDe(univ)}
 	svc := NewTacticalService(repo, capsCompletes(), tsMoi)
 
 	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{

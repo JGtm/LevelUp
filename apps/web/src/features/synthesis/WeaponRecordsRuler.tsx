@@ -103,7 +103,7 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
     void navigate({
       to: '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay',
       params: { titleSlug, playerSlug, matchId: row.record.match_id },
-      // `t` est une CHAÎNE dans le schéma de la route (cf. TacticalCellCard) ; `clock: match`
+      // `t` est une CHAÎNE dans le schéma de la route (cf. `MatchReplayLink`) ; `clock: match`
       // parce que `time_ms` est l'horloge du match, recalée par la route du rejeu.
       search: { t: String(row.record.time_ms), clock: 'match' },
     })

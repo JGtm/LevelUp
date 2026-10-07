@@ -140,7 +140,7 @@ export function useTacticalMaps(
     enabled: !!playerSlug && matchIDs !== null,
     staleTime: 2 * 60 * 1000,
     // La grille précédente reste affichée pendant la relecture : les vignettes (fond et
-    // mini-plan) ne sont plus démontées, et le titre de l'écran d'analyse, qui lit le NOM
+    // mini-plan) ne sont plus démontées, et le titre de la carte du plan, qui lit le NOM
     // de la carte dans cette grille, ne retombe plus sur l'identifiant brut.
     placeholderData: precedenteDuMemeJoueur(playerSlug, titleSlug),
   })

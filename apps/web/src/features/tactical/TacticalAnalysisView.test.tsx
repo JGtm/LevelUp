@@ -1,34 +1,31 @@
 /**
- * TacticalAnalysisView — la vue d'analyse d'une carte (items 5.2-5.6).
+ * TacticalAnalysisView — la carte du plan et la zone choisie (plan Tactique v2, L5).
  *
- * Ce que ces tests cadenassent, `useTacticalRaster` MOQUÉ (la lecture réseau est déjà
- * couverte côté contrat par les tests Go et par `queries.ts` ; les TRANSITIONS de clé, avec
- * la vraie lecture, dans `TacticalAnalysisView.fond.test.tsx`) :
- *   - PREMIER CHARGEMENT (aucune donnée) -> le cadre du plan est posé, l'indicateur
- *     par-dessus, aucun KPI ;
- *   - EN ÉCHEC (`isError`, ou le PÉRIMÈTRE en échec) -> le message d'échec, aucun KPI ni
- *     calque — même quand une réponse précédente est gardée —, le cadre reste ;
- *   - RELECTURE (`isPlaceholderData`) -> la réponse précédente estompée sous « Mise à
- *     jour… » (KPI, calque, cartes Cellule et Coordination, messages d'état du plan),
- *     légende et source de la question À LAQUELLE elle répond ;
- *   - VIDE (réponse reçue, aucune cellule au-dessus du plancher) -> le message du
- *     plancher dans la carte « Plan », le bandeau de KPI reste servi ;
- *   - NOMINAL -> les quatre tuiles de KPI, le canevas du plan, le placeholder de la
- *     carte « Cellule sélectionnée » tant qu'aucune cellule n'est cliquée.
+ * Ce que ces tests cadenassent, `useTacticalRaster` MOQUÉ (les TRANSITIONS de clé, avec la vraie
+ * lecture, sont dans `TacticalAnalysisView.fond.test.tsx`) :
+ *   - la carte du plan est TOUJOURS rendue : premier chargement → l'indicateur sur le cadre ;
+ *     échec (lecture, périmètre) et composition impossible → le message SUR le fond ; relecture →
+ *     l'ancien calque et la légende estompés sous « Mise à jour… » ; carte hors du filtre → la
+ *     dire, sans lecture ; sans carte encore → cadre au rapport par défaut, sans titre ;
+ *   - le bandeau : nom de la carte, aide ⓘ, pilules « Lecture » (ordre des lectures),
+ *     « Joueurs » (« Escouade » désactivé sans composition, avec son infobulle), « Réapparition » ;
+ *   - le bandeau d'état des lectures d'artefact ; les trois états vides en titre seul ;
+ *   - la rampe verticale : une unité par lecture, divergente pour les lectures signées.
  *
- * PAS DE TEST CANVAS (jsdom n'implémente pas le contexte 2D) : `TacticalPlanCard` garde
- * son `if (!ctx) return`, ces tests ne vérifient que le rendu React autour.
+ * PAS DE TEST CANVAS (jsdom n'implémente pas le contexte 2D) : le calque garde son
+ * `if (!ctx) return`, ces tests ne vérifient que le rendu React autour.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 import type { TacticalRaster } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
 
+import type { CarteEffective } from './cockpit.logic'
 import { getTacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
-import { PLAN_ASPECT_DEFAUT, PLAN_HAUTEUR_MAX_PX } from './tacticalView.logic'
+import { PLAN_ASPECT_DEFAUT } from './tacticalView.logic'
 
 const getBlob = vi.fn()
 vi.mock('@/lib/api/client', async (importOriginal) => {
@@ -40,13 +37,21 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
 })
 
 const useTacticalRaster = vi.fn()
+// Le détail de la zone choisie : par défaut, aucune réponse encore.
+const useTacticalCellule = vi.fn<(...args: unknown[]) => { data?: unknown; isPending: boolean; isError?: boolean }>(() => ({
+  data: undefined,
+  isPending: true,
+}))
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>()
-  return { ...actual, useTacticalRaster: (...args: unknown[]) => useTacticalRaster(...args) }
+  return {
+    ...actual,
+    useTacticalRaster: (...args: unknown[]) => useTacticalRaster(...args),
+    useTacticalCellule: (...args: unknown[]) => useTacticalCellule(...args),
+  }
 })
 
 const t = getTacticalText('fr')
-
 const BORNES = { min_x: 0, max_x: 100, min_y: 0, max_y: 50, valide: true }
 
 const RASTER_NOMINAL: TacticalRaster = {
@@ -57,31 +62,9 @@ const RASTER_NOMINAL: TacticalRaster = {
   pas_m: 10,
   echelle: { p50: 1, p95: 5, borne: 5, n_cellules: 2, symetrique: false },
   cellules: [
-    {
-      col: 2,
-      lig: 1,
-      valeur: 3,
-      brut: 3,
-      matchs: 4,
-      matchs_victoire: 2,
-      matchs_defaite: 2,
-      centre_x: 25,
-      centre_y: 15,
-    },
-    {
-      col: 5,
-      lig: 2,
-      valeur: 5,
-      brut: 5,
-      matchs: 6,
-      matchs_victoire: 3,
-      matchs_defaite: 3,
-      centre_x: 55,
-      centre_y: 25,
-    },
+    { col: 2, lig: 1, valeur: 3, brut: 3, matchs: 4, matchs_victoire: 2, matchs_defaite: 2, centre_x: 25, centre_y: 15 },
+    { col: 5, lig: 2, valeur: 5, brut: 5, matchs: 6, matchs_victoire: 3, matchs_defaite: 3, centre_x: 55, centre_y: 25 },
   ],
-  echange: { taux: 0.42, brut: 21, n: 50, par_match: 0.4, echantillon_faible: false },
-  isolement: { taux: 0.18, brut: 9, n: 50, par_match: 0.18, echantillon_faible: false },
   grappes: [{ id: 'g1', nom_fr: 'Base Rouge', nom_en: 'Red Base', matchs: 10, x: 10, y: 10 }],
   matchs_filtres: 50,
   matchs_retenus: 45,
@@ -89,8 +72,6 @@ const RASTER_NOMINAL: TacticalRaster = {
   matchs_defaite: 25,
   matchs_en_attente: 0,
   matchs_non_cuisables: 0,
-  evenements_journal: 500,
-  evenements_localises: 480,
   points_ignores: 0,
 }
 
@@ -98,10 +79,10 @@ const RASTER_VIDE: TacticalRaster = {
   ...RASTER_NOMINAL,
   cellules: [],
   echelle: { p50: 0, p95: 0, borne: 0, n_cellules: 0, symetrique: false },
-  echange: undefined,
-  isolement: undefined,
   matchs_retenus: 2,
 }
+
+const LUE: CarteEffective = { mapId: 'streets', origine: 'url' }
 
 function mockRaster(partial: Partial<UseQueryResult<TacticalRaster>>) {
   useTacticalRaster.mockReturnValue({
@@ -112,245 +93,321 @@ function mockRaster(partial: Partial<UseQueryResult<TacticalRaster>>) {
   } as UseQueryResult<TacticalRaster>)
 }
 
-function renderVue(perimetre: { perimetreEnEchec?: boolean } = {}) {
+function renderVue(
+  options: {
+    carte?: CarteEffective
+    mapName?: string
+    perimetreEnEchec?: boolean
+    coequipiersInconnus?: string[] | null
+    coequipiers?: string[]
+  } = {},
+) {
+  const { carte = LUE, mapName = 'Ruelles', coequipiers = [], ...reste } = options
   return renderWithProviders(
     <TacticalAnalysisView
       playerSlug="JGtm"
-      mapId="streets"
-      mapName="Ruelles"
+      carte={carte}
+      mapName={mapName}
       locale="fr"
       t={t}
       matchIds={['m1', 'm2']}
-      coequipiers={[]}
-      {...perimetre}
+      coequipiers={coequipiers}
+      {...reste}
     />,
   )
 }
 
-/** La réponse NOMINALE avec sa carte Coordination et des matchs en attente de cuisson. */
-const RASTER_COMPLET: TacticalRaster = {
-  ...RASTER_NOMINAL,
-  matchs_en_attente: 2,
-  coordination: {
-    fenetre_echange_secondes: 5,
-    matchs_mesures: 40,
-    morts_sans_distance: 0,
-    n_distances: 0,
-    distribution_distances: [],
-    rayons_m: [30],
-  },
-}
+const cadre = () => screen.getByTestId('tactical-plan-frame')
 
 afterEach(() => {
   vi.clearAllMocks()
+  // Une valeur de retour posée par un test ne doit pas passer au suivant.
+  useTacticalCellule.mockReset()
+  useTacticalCellule.mockImplementation(() => ({ data: undefined, isPending: true }))
 })
 
-describe('TacticalAnalysisView — états de la lecture', () => {
-  // PREMIER CHARGEMENT (retours rejeu L2, 2026-09-23) : l'indicateur se pose SUR le cadre
-  // du plan, il ne le remplace plus — le fond est là dès le premier rendu et n'est jamais
-  // démonté ensuite (la transition de clé est jouée dans `TacticalAnalysisView.fond.test.tsx`).
-  it('PREMIER CHARGEMENT : le cadre est posé, l’indicateur par-dessus, aucun KPI', () => {
+describe('TacticalAnalysisView — la carte du plan, toujours rendue', () => {
+  it('PREMIER CHARGEMENT : le cadre est posé, l’indicateur par-dessus, aucun calque', () => {
     mockRaster({ isPending: true })
     renderVue()
-    const cadre = screen.getByTestId('tactical-plan-frame')
-    expect(within(cadre).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
-    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
+    expect(within(cadre()).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('region', { name: 'Ruelles' })).toBeInTheDocument()
   })
 
-  it('EN ÉCHEC : le message d’échec, aucun KPI, le cadre du fond reste', () => {
+  it('EN ÉCHEC : le message SUR le fond, aucun calque, le cadre reste', () => {
     mockRaster({ isError: true })
     renderVue()
-    expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
-    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
-    expect(screen.getByTestId('tactical-plan-frame')).toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-analysis-pending')).not.toBeInTheDocument()
+    expect(within(cadre()).getByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
   })
 
-  // Revue L2-R5 (b) : une lecture qui vient d'échouer peut encore porter la réponse d'avant
-  // (`data` gardée) ; elle ne se présente JAMAIS comme courante.
-  it('EN ÉCHEC avec une réponse gardée : ni KPI, ni calque, ni carte Coordination', () => {
-    mockRaster({ isError: true, data: RASTER_COMPLET })
+  it('EN ÉCHEC avec une réponse gardée : ni calque, ni légende chiffrée, aucune zone choisie', () => {
+    mockRaster({ isError: true, data: RASTER_NOMINAL })
     renderVue()
-    expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
-    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-coordination')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-plan-canvas')).toBeNull()
+    expect(screen.queryByRole('img', { name: /Échelle de la lecture/ })).toBeNull()
+    expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
   })
 
-  // Revue L2-R1 : le PÉRIMÈTRE a échoué — le raster, suspendu, garde son placeholder. L'échec
-  // prime : jamais une « Mise à jour… » qui ne viendra pas.
-  it('PÉRIMÈTRE EN ÉCHEC : le message d’échec, jamais « Mise à jour… »', () => {
+  it('PÉRIMÈTRE EN ÉCHEC : le message sur le fond, jamais « Mise à jour… »', () => {
     mockRaster({ data: RASTER_NOMINAL, isPlaceholderData: true })
     renderVue({ perimetreEnEchec: true })
-    expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
-    expect(screen.queryByTestId('tactical-analysis-updating')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
-    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+    expect(within(cadre()).getByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
   })
 
-  // RELECTURE : la réponse affichée est la PRÉCÉDENTE. Légende, unité et source décrivent
-  // la question À LAQUELLE ELLE RÉPOND (`raster.data.question`), pas la question demandée
-  // (« Où je meurs » par défaut ici) — sinon la légende mentirait pendant l'attente.
-  it('RELECTURE : réponse précédente estompée sous « Mise à jour… », légende de SA question', () => {
-    mockRaster({ data: { ...RASTER_NOMINAL, question: 'temps' }, isPlaceholderData: true })
+  it('COMPOSITION IMPOSSIBLE : « Coéquipier introuvable » sur le fond, jamais la panne générique', () => {
+    mockRaster({ data: RASTER_NOMINAL, isPlaceholderData: true })
+    renderVue({ coequipiersInconnus: ['Inconnu'] })
+    expect(within(cadre()).getByText(t.unknownTeammateTitle)).toBeInTheDocument()
+    expect(screen.queryByText(t.analysisErrorTitle)).toBeNull()
+  })
+
+  it('RELECTURE : calque et légende de SA lecture estompés sous « Mise à jour… »', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, question: 'kills' }, isPlaceholderData: true })
     renderVue()
     expect(screen.getByTestId('tactical-analysis-updating')).toHaveTextContent(t.analysisUpdating)
-    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByTestId('kpi-strip').className).toContain('opacity-50')
-    expect(screen.getByTestId('tactical-plan-canvas').getAttribute('class')).toContain('opacity-50')
-    expect(screen.getByTestId('tactical-plan-legend')).toHaveTextContent(t.units.temps)
-    expect(screen.getByTestId('tactical-plan-retained')).toHaveTextContent(t.sourceReplay)
-  })
-
-  // Revue L2-R6 : TOUT ce qui vient de la réponse précédente est dit périmé, pas seulement le
-  // calque et les KPI — la carte Coordination (échange, isolement, rayons), la carte Cellule
-  // et les messages d'état du plan aussi.
-  it('RELECTURE : cartes Coordination et Cellule, messages d’état du plan estompés', () => {
-    mockRaster({ data: RASTER_COMPLET, isPlaceholderData: true })
-    renderVue()
-    expect(screen.getByTestId('tactical-coordination').closest('.opacity-50')).not.toBeNull()
-    expect(screen.getByTestId('tactical-cell-card').closest('.opacity-50')).not.toBeNull()
-    expect(screen.getByText(t.statusPending(2)).closest('.opacity-50')).not.toBeNull()
+    expect(screen.getByTestId('tactical-plan-canvas').className).toContain('opacity-50')
+    const legende = screen.getByTestId('tactical-plan-legend')
+    expect(legende.className).toContain('opacity-50')
+    // L'unité est celle de la lecture À LAQUELLE la réponse affichée répond (« kills »).
+    expect(legende).toHaveTextContent(t.units.kills)
   })
 
   it('RÉPONSE COURANTE : ni mention, ni estompage, corps non occupé', () => {
-    mockRaster({ data: RASTER_COMPLET })
+    mockRaster({ data: RASTER_NOMINAL })
     renderVue()
-    expect(screen.queryByTestId('tactical-analysis-updating')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
+    expect(screen.getByTestId('tactical-plan-canvas').className).not.toContain('opacity-50')
     expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
-    expect(screen.getByTestId('kpi-strip').className).not.toContain('opacity-50')
-    expect(screen.getByTestId('tactical-coordination').closest('.opacity-50')).toBeNull()
-    expect(screen.getByTestId('tactical-cell-card').closest('.opacity-50')).toBeNull()
-    expect(screen.getByText(t.statusPending(2)).closest('.opacity-50')).toBeNull()
   })
 
-  // VIDE — TROIS CAUSES, TROIS MESSAGES (point 21, lot 3.2). Le message générique « pas
-  // assez de matchs mesurés » mentait quand les matchs étaient là mais dispersés.
-  it('VIDE, matchs mesurés dispersés : « densité insuffisante », le KPI reste servi', () => {
+  it('CARTE HORS DU FILTRE : « Aucun match sur cette carte dans le filtre », sans lecture', () => {
+    mockRaster({})
+    renderVue({ carte: { mapId: 'aquarius', origine: 'hors_filtre' }, mapName: 'Aquarius' })
+    expect(within(cadre()).getByTestId('tactical-carte-hors-filtre')).toHaveTextContent(t.planEmptyNoMatchTitle)
+    expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
+    const params = useTacticalRaster.mock.calls[0][2] as { match_ids: string[] | null }
+    expect(params.match_ids).toBeNull()
+  })
+
+  it('SANS CARTE ENCORE : le cadre au rapport par défaut sous l’indicateur, aucun titre', () => {
+    mockRaster({})
+    renderVue({ carte: { mapId: '', origine: 'attente' }, mapName: '' })
+    expect(within(cadre()).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
+    expect(cadre().style.maxWidth).toBe(`${PLAN_ASPECT_DEFAUT * 800}px`)
+    expect(screen.queryByRole('region', { name: 'Ruelles' })).toBeNull()
+  })
+
+  it('AUCUNE CARTE OUVRABLE : rien sur le fond (la colonne le dit)', () => {
+    mockRaster({})
+    renderVue({ carte: { mapId: '', origine: 'aucune' }, mapName: '' })
+    expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-avis')).toBeNull()
+  })
+})
+
+describe('TacticalAnalysisView — états vides en titre seul', () => {
+  it('matchs mesurés dispersés : « densité insuffisante », sans conseil', () => {
     mockRaster({ data: RASTER_VIDE })
     renderVue()
-    expect(screen.getByText(t.planEmptyDensityTitle)).toBeInTheDocument()
-    expect(screen.queryByText(t.planEmptyTitle)).not.toBeInTheDocument()
-    expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
+    expect(within(cadre()).getByTestId('tactical-plan-vide')).toHaveTextContent(t.planEmptyDensityTitle)
+    expect(screen.queryByText(/Élargis/)).toBeNull()
   })
 
-  it('VIDE, aucun match mesuré : le message historique reste servi', () => {
-    mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0, matchs_filtres: 12 } })
+  it('aucun match mesuré : le titre de l’absence de mesure', () => {
+    mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0 } })
     renderVue()
-    expect(screen.getByText(t.planEmptyTitle)).toBeInTheDocument()
-    expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
+    expect(screen.getByTestId('tactical-plan-vide')).toHaveTextContent(t.planEmptyTitle)
   })
 
-  it('VIDE, aucun match dans le filtre : le message du périmètre', () => {
+  it('aucun match dans le filtre : le titre du périmètre vide', () => {
     mockRaster({ data: { ...RASTER_VIDE, matchs_retenus: 0, matchs_filtres: 0 } })
     renderVue()
-    expect(screen.getByText(t.planEmptyNoMatchTitle)).toBeInTheDocument()
-    expect(screen.queryByText(t.planEmptyDensityTitle)).not.toBeInTheDocument()
-  })
-
-  // UN PLAN VIDE GARDE UN CADRE DE TAILLE NORMALE (lot 3.2) : ni canvas de 13 375 px, ni
-  // carte qui se rétracte à la hauteur d'un message.
-  it('VIDE : le cadre du plan reste posé, au rapport du fond, hauteur bornée', () => {
-    mockRaster({ data: { ...RASTER_VIDE, bornes: { ...BORNES, valide: false } } })
-    renderVue()
-    const cadre = screen.getByTestId('tactical-plan-frame')
-    // jsdom normalise `aspect-ratio: <n>` en « <n> / 1 ».
-    expect(cadre.style.aspectRatio).toBe(`${PLAN_ASPECT_DEFAUT} / 1`)
-    expect(cadre.style.maxWidth).toBe(`${PLAN_ASPECT_DEFAUT * PLAN_HAUTEUR_MAX_PX}px`)
-    // Aucun calque de chaleur à peindre : le canevas n'est pas monté.
-    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
-  })
-
-  it('des bornes très allongées ne rendent plus un cadre de 13 375 px', () => {
-    mockRaster({
-      data: {
-        ...RASTER_NOMINAL,
-        bornes: { min_x: 0, max_x: 8, min_y: 0, max_y: 100, valide: true },
-      },
-    })
-    renderVue()
-    const cadre = screen.getByTestId('tactical-plan-frame')
-    // Largeur plafonnée à 0,08 x 720 px : la hauteur ne peut plus dépasser 720 px.
-    expect(cadre.style.maxWidth).toBe(`${0.08 * PLAN_HAUTEUR_MAX_PX}px`)
-  })
-
-  it('NOMINAL : les KPI, le canevas du plan, le placeholder de la cellule', () => {
-    mockRaster({ data: RASTER_NOMINAL })
-    renderVue()
-
-    expect(screen.getByTestId('kpi-strip')).toBeInTheDocument()
-    const cartes = screen.getAllByTestId('kpi-card')
-    expect(cartes).toHaveLength(4) // retenus, couverture, échange, isolement
-
-    expect(screen.getByTestId('tactical-plan-canvas')).toBeInTheDocument()
-    expect(screen.getByText(t.cellPlaceholder)).toBeInTheDocument()
-
-    expect(
-      screen.getByRole('heading', { name: 'Plan de Ruelles — Où je meurs' }),
-    ).toBeInTheDocument()
-  })
-
-  // LE PAS RETENU EST AFFICHÉ, PAS DEVINÉ (lot 3.2, décision D6) : depuis le pas
-  // adaptatif, deux cartes peuvent se lire à deux résolutions différentes — sans le dire,
-  // elles ne se comparent plus.
-  it('NOMINAL : le pied du plan annonce le pas de grille publié par le serveur', () => {
-    mockRaster({ data: { ...RASTER_NOMINAL, pas_m: 2 } })
-    renderVue()
-    expect(screen.getByTestId('tactical-plan-grid-step')).toHaveTextContent('Grille : 2 m par cellule')
-  })
-
-  it('NOMINAL : un pas fractionnaire s’affiche dans la locale de la page', () => {
-    mockRaster({ data: { ...RASTER_NOMINAL, pas_m: 0.5 } })
-    renderVue()
-    expect(screen.getByTestId('tactical-plan-grid-step')).toHaveTextContent('Grille : 0,5 m par cellule')
-  })
-
-  it('la carte Plan omet échange/isolement quand le contrat ne les publie pas', () => {
-    mockRaster({ data: { ...RASTER_NOMINAL, echange: undefined, isolement: undefined } })
-    renderVue()
-    expect(screen.getAllByTestId('kpi-card')).toHaveLength(2)
+    expect(screen.getByTestId('tactical-plan-vide')).toHaveTextContent(t.planEmptyNoMatchTitle)
   })
 })
 
-describe('TacticalAnalysisView — réserve d’échantillon faible (doctrine : interdit de comparer, pas de cacher)', () => {
-  it('avec echantillon_faible=true, les tuiles Échange et Isolement rendent la réserve', () => {
-    mockRaster({
-      data: {
-        ...RASTER_NOMINAL,
-        echange: { ...RASTER_NOMINAL.echange!, echantillon_faible: true },
-        isolement: { ...RASTER_NOMINAL.isolement!, echantillon_faible: true },
-      },
-    })
+describe('TacticalAnalysisView — le cadre du fond', () => {
+  it('au rapport des bornes, jamais plus de 800 px de haut', () => {
+    mockRaster({ data: RASTER_VIDE })
     renderVue()
-    const cartes = screen.getAllByTestId('kpi-card')
-    const tradeCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-trade')
-    const isoCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-isolation')
-    expect(tradeCard?.textContent).toContain(t.lowSample)
-    expect(isoCard?.textContent).toContain(t.lowSample)
+    expect(cadre().style.maxWidth).toBe('1600px')
   })
 
-  it('sans echantillon_faible, aucune tuile ne mentionne la réserve', () => {
-    mockRaster({ data: RASTER_NOMINAL })
+  it('des bornes très allongées ne rendent pas un cadre démesuré', () => {
+    mockRaster({ data: { ...RASTER_VIDE, bornes: { min_x: 0, max_x: 4, min_y: 0, max_y: 50, valide: true } } })
     renderVue()
-    const cartes = screen.getAllByTestId('kpi-card')
-    const tradeCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-trade')
-    const isoCard = cartes.find((c) => c.getAttribute('data-id') === 'tactical-isolation')
-    expect(tradeCard?.textContent).not.toContain(t.lowSample)
-    expect(isoCard?.textContent).not.toContain(t.lowSample)
+    expect(cadre().style.maxWidth).toBe(`${0.08 * 800}px`)
   })
 })
 
-describe('TacticalAnalysisView — note de couverture « matchs sans rayon connu » (tuile Isolement)', () => {
-  it('matchs_sans_rayon > 0 : la note apparaît sur la tuile Isolement', () => {
-    mockRaster({ data: { ...RASTER_NOMINAL, matchs_sans_rayon: 3 } })
+describe('TacticalAnalysisView — le bandeau', () => {
+  it('le nom de la carte, l’aide ⓘ et la pilule « Lecture » dans l’ordre des lectures', () => {
+    mockRaster({ data: RASTER_NOMINAL })
     renderVue()
-    expect(screen.getByTestId('tactical-isolation-no-radius')).toHaveTextContent(t.kpiNoRadiusNote(3))
+    const titre = screen.getByTestId('tactical-plan-title')
+    expect(titre).toHaveTextContent('Ruelles')
+    expect(within(titre).getByRole('button')).toBeInTheDocument()
+    const lecture = screen.getByRole('combobox', { name: t.pillReading })
+    const options = within(lecture).getAllByRole('option').map((o) => o.getAttribute('value'))
+    expect(options).toEqual(['morts', 'kills', 'solde', 'gagne', 'temps', 'routes', 'isole'])
   })
 
-  it('matchs_sans_rayon absent ou nul : aucune note', () => {
-    mockRaster({ data: { ...RASTER_NOMINAL, matchs_sans_rayon: 0 } })
+  it('« Joueurs » : Moi pressé, « Escouade » désactivé sans composition, avec son infobulle', () => {
+    mockRaster({ data: RASTER_NOMINAL })
     renderVue()
-    expect(screen.queryByTestId('tactical-isolation-no-radius')).not.toBeInTheDocument()
+    const joueurs = screen.getByRole('group', { name: t.pillPlayers })
+    expect(within(joueurs).getByRole('button', { name: t.whoMe })).toHaveAttribute('aria-pressed', 'true')
+    const escouade = within(joueurs).getByRole('button', { name: t.whoSquad })
+    expect(escouade).toBeDisabled()
+    expect(escouade).toHaveAttribute('title', t.planSquadDisabled)
+  })
+
+  it('« Escouade » actif avec une composition', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue({ coequipiers: ['xuid(42)'] })
+    expect(screen.getByRole('button', { name: t.whoSquad })).not.toBeDisabled()
+  })
+
+  it('« Réapparition » : « Toutes » puis les grappes de la lecture', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue()
+    const reapparition = screen.getByRole('combobox', { name: t.pillRespawn })
+    expect(within(reapparition).getAllByRole('option').map((o) => o.textContent)).toEqual([t.pillRespawnAll, 'Base Rouge'])
+  })
+
+  it('bandeau d’état des lectures d’artefact : les matchs en attente se disent', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, question: 'temps', matchs_en_attente: 2 } })
+    renderVue()
+    expect(screen.getByTestId('tactical-plan-status')).toHaveTextContent(t.statusPending(2))
+  })
+})
+
+describe('TacticalAnalysisView — la rampe verticale, une unité par lecture', () => {
+  const SIGNEE = { p50: 0, p95: 0, borne: 2, n_cellules: 2, symetrique: true }
+  it.each([
+    ['morts', false],
+    ['kills', false],
+    ['solde', true],
+    ['gagne', true],
+    ['temps', false],
+    ['routes', false],
+    ['isole', false],
+  ] as const)('%s : son unité, rampe %s', (question, signee) => {
+    mockRaster({ data: { ...RASTER_NOMINAL, question, echelle: signee ? SIGNEE : RASTER_NOMINAL.echelle } })
+    renderVue()
+    const legende = screen.getByTestId('tactical-plan-legend')
+    expect(legende).toHaveTextContent(t.units[question])
+    const rampe = within(legende).getByRole('img', { name: /Échelle de la lecture/ })
+    expect(rampe).toHaveAttribute('data-mode', signee ? 'divergent' : 'intensity')
+  })
+})
+
+describe('TacticalAnalysisView — la zone choisie', () => {
+  /** L'adresse demandée au détail de la zone au dernier rendu. */
+  const derniereZone = () => {
+    const appels = useTacticalCellule.mock.calls
+    return appels[appels.length - 1]?.[2] as { col: number; lig: number; pas_m: number } | null
+  }
+
+  it('la zone la plus chaude est présélectionnée, son détail demandé', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue()
+    expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+    expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
+  })
+
+  it('le clic sur le plan choisit une autre zone ; changer de lecture revient à la plus chaude', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    try {
+      renderVue()
+      // (25 ; 35) px sur un plan de 100 x 50 m : x = 25 m, y = 50 − 35 = 15 m → cellule (2, 1).
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 25, clientY: 35 })
+      expect(derniereZone()).toEqual({ col: 2, lig: 1, pas_m: 10 })
+      fireEvent.change(screen.getByRole('combobox', { name: t.pillReading }), { target: { value: 'kills' } })
+      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+    }
+  })
+
+  it('un clic HORS de toute cellule servie est ignoré : même zone, aucune requête neuve', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    try {
+      renderVue()
+      const avant = useTacticalCellule.mock.calls.length
+      // (95 ; 5) px : x = 95 m, y = 45 m → cellule (9, 4), absente de la lecture.
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 95, clientY: 5 })
+      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+      expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
+      expect(screen.queryByText(t.zoneNone)).toBeNull()
+      // Aucune adresse neuve n'a été demandée depuis le clic.
+      const neuves = useTacticalCellule.mock.calls.slice(avant).map((c) => JSON.stringify(c[2]))
+      expect(neuves.every((n) => n === JSON.stringify({ col: 5, lig: 2, pas_m: 10 }))).toBe(true)
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+    }
+  })
+
+  it.each([
+    ['« Joueurs »', () => fireEvent.click(screen.getByRole('button', { name: t.whoOpponents }))],
+    ['« Réapparition »', () => fireEvent.change(screen.getByRole('combobox', { name: t.pillRespawn }), { target: { value: 'g1' } })],
+  ])('changer %s revient à la zone la plus chaude', (_reglage, changer) => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    try {
+      renderVue()
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 25, clientY: 35 })
+      expect(derniereZone()).toEqual({ col: 2, lig: 1, pas_m: 10 })
+      changer()
+      expect(derniereZone()).toEqual({ col: 5, lig: 2, pas_m: 10 })
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+    }
+  })
+
+  it('détail de la zone en ÉCHEC : l’échec se dit, jamais « aucun match ouvrable »', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({ data: undefined, isPending: false, isError: true })
+    renderVue()
+    expect(screen.getByTestId('tactical-zone-erreur')).toHaveTextContent(t.zoneError)
+    expect(screen.queryByText(t.zoneContributionsEmpty)).toBeNull()
+    expect(screen.getByTestId('tactical-zone-value')).toHaveTextContent('5')
+  })
+
+  it('le nom de la zone se pose sur le plan, à côté de sa cellule', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({
+      data: { contributions: [], matchs_non_ouvrables: 0, zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
+      isPending: false,
+    })
+    renderVue()
+    expect(within(cadre()).getByTestId('tactical-zone-label')).toHaveTextContent('Nid blindé')
+    expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent('Nid blindé')
+  })
+
+  it('aucune zone ne la nomme : « Zone sans nom » sur le plan', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({ data: { contributions: [], matchs_non_ouvrables: 0 }, isPending: false })
+    renderVue()
+    expect(within(cadre()).getByTestId('tactical-zone-label')).toHaveTextContent(t.zoneUnnamed)
+  })
+
+  it('une lecture sans cellule : « Aucune zone sélectionnée »', () => {
+    mockRaster({ data: RASTER_VIDE })
+    renderVue()
+    expect(screen.getByText(t.zoneNone)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-zone-label')).toBeNull()
   })
 })

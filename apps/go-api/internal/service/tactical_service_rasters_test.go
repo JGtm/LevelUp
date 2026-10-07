@@ -90,14 +90,7 @@ func universTroisMatchs(ids ...string) domain.TacticalUnivers {
 
 // occupationSvc monte le service avec un univers pose et un magasin de sidecars.
 func occupationSvc(univ domain.TacticalUnivers, store *mockRasterStore) (*TacticalService, *mockTacticalRepo) {
-	// Le journal des morts est servi VIDE : `capsOccupation` ne declare pas
-	// `film.kill_source`, donc le KPI d'echange reste silencieux — et la couverture
-	// d'evenements doit rendre 0 parce que l'occupation ne regarde aucune face d'une
-	// mort, pas parce que la lecture aurait echoue.
-	repo := &mockTacticalRepo{univ: univ, ev: domain.TacticalKillEvents{
-		Univers: univ,
-		Events:  []domain.KillEvent{{MatchID: "m1", VictimXUID: tsMoi, KillerXUID: tsAdv}},
-	}}
+	repo := &mockTacticalRepo{univ: univ}
 	return NewTacticalService(repo, capsOccupation(), tsMoi).WithRasterStore(store), repo
 }
 
@@ -158,12 +151,6 @@ func TestOccupation_SommeEtDenominateur(t *testing.T) {
 	}
 	if out.PasM != tactical.PasParDefautM {
 		t.Fatalf("pas_m = %v", out.PasM)
-	}
-	// L'occupation ne lit AUCUN journal des morts : sa couverture est l'ecart
-	// matchs_retenus / matchs_filtres, pas un compte d'evenements.
-	if out.EvenementsJournal != 0 || out.EvenementsLocalises != 0 {
-		t.Fatalf("couverture d'evenements = %d/%d, attendu 0/0 pour une lecture d'occupation",
-			out.EvenementsLocalises, out.EvenementsJournal)
 	}
 	// La question et l'axe sont republies tels quels.
 	if out.Question != domain.TacticalQuestionTemps || out.Qui != domain.TacticalQuiMoi {
@@ -428,54 +415,5 @@ func TestOccupation_SidecarVideCompteAuDenominateur(t *testing.T) {
 	// 24 echantillons x 0,25 s / 4 matchs = 1,5 s. Avec 3 au denominateur ce serait 2,0.
 	if out.Cellules[0].Valeur != 1.5 {
 		t.Fatalf("valeur = %v s, attendu 1,5 (24 x 0,25 s / 4 matchs mesures)", out.Cellules[0].Valeur)
-	}
-}
-
-// TestOccupation_EchangeServiSousTemps — C4 : la decision « le KPI d'echange est celui de
-// la CARTE, pas de la question » n'etait prouvee nulle part — les huit cas d'occupation
-// montaient un titre sans `film.kill_source`, si bien que supprimer l'appel au journal
-// laissait la suite verte.
-//
-// Ce test tient les DEUX moities : l'echange EST servi sous `temps`, et la couverture
-// d'evenements reste a zero — l'occupation ne regarde aucune face d'une mort.
-func TestOccupation_EchangeServiSousTemps(t *testing.T) {
-	univ := universTroisMatchs("m1", "m2", "m3")
-	// Le journal des morts : deux morts de mon camp, une vengee dans la fenetre.
-	events := []domain.KillEvent{
-		{MatchID: "m1", VictimXUID: tsMoi, KillerXUID: tsAdv, TimeMs: 10_000},
-		{MatchID: "m1", VictimXUID: tsAdv, KillerXUID: tsAmi, TimeMs: 12_000},
-		{MatchID: "m2", VictimXUID: tsAmi, KillerXUID: tsAdv2, TimeMs: 30_000},
-	}
-	caps := games.CapabilityMap{
-		games.CapFilmReplayArtifact: games.CapSupported,
-		games.CapFilmKillPositions:  games.CapSupported,
-		games.CapFilmKillSource:     games.CapSupported,
-	}
-	repo := &mockTacticalRepo{univ: univ, ev: domain.TacticalKillEvents{Univers: univ, Events: events}}
-	store := &mockRasterStore{sidecars: map[string]*domain.TacticalRasterSidecar{
-		"m1": sidecarPose("m1", joueurEn(tsMoi, 2, 3, 8)),
-		"m2": sidecarPose("m2", joueurEn(tsMoi, 2, 3, 8)),
-		"m3": sidecarPose("m3", joueurEn(tsMoi, 2, 3, 8)),
-	}}
-	svc := NewTacticalService(repo, caps, tsMoi).WithRasterStore(store)
-	out, err := svc.Raster(context.Background(), domain.TacticalRasterRequest{
-		MapID: "streets", Question: domain.TacticalQuestionTemps, Qui: domain.TacticalQuiMoi,
-		Scope: domain.TacticalScope{MatchIDs: []string{"m1", "m2", "m3"}},
-	})
-	if err != nil {
-		t.Fatalf("lecture: %v", err)
-	}
-	if out.Echange == nil {
-		t.Fatal("l'echange n'est PAS servi sous `temps` : c'est le KPI de la CARTE, pas celui " +
-			"de la question — supprimer l'appel au journal doit faire tomber ce test")
-	}
-	if out.Echange.N == 0 {
-		t.Fatalf("echange = %+v, attendu au moins une mort vengeable", out.Echange)
-	}
-	// ET la couverture d'evenements reste a zero : l'occupation ne lit aucune face d'une
-	// mort, son denominateur de couverture est l'ecart matchs_retenus / matchs_filtres.
-	if out.EvenementsJournal != 0 {
-		t.Fatalf("evenements_journal = %d, attendu 0 sous une lecture d'occupation",
-			out.EvenementsJournal)
 	}
 }

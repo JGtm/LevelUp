@@ -128,6 +128,13 @@ type TacticalRepository interface {
 	// deux colonnes, le meme perimetre en liste blanche.
 	MortsParCarte(ctx context.Context, filtre domain.TacticalQuery) (map[string][]domain.PositionSample, error)
 
+	// ContextesDeMort rend le voisinage mesure au sync (`match_death_context_latest`) de TOUTES
+	// les morts des matchs de la liste blanche `filtre.Matchs` — obligatoire : une liste non posee
+	// est refusee, jamais lue sur l'historique entier ; vide = aucune ligne. Sert le placement
+	// d'une mort (seul / pres) au detail d'une zone ; l'appariement a une mort precise est fait
+	// par l'appelant.
+	ContextesDeMort(ctx context.Context, filtre domain.TacticalQuery) ([]domain.ContexteDeMort, error)
+
 	// MatchsOuvrables verifie, pour la liste de match_id donnee, lesquels `playerXUID` a
 	// REELLEMENT joues (ADR 0029, meme garde que Couche B / IsParticipant) et rend leur
 	// date de debut canonique — le tri des contributions d'une cellule s'appuie dessus. Un

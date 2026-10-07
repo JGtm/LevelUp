@@ -63,18 +63,16 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 	morts := mortsDeLaCible(lecture, dans)
 	bilan := coordination.Isolement(morts, rayons, len(rayons))
 	bilan.MatchsSansRayon = sansRayon
-	// LA SECTION « COORDINATION » SORT DE LA MEME LECTURE, jamais d'une seconde requete :
-	// c'est la meme table de morts, deja en main.
-	out.Coordination = construireCoordination(morts, rayons)
 
 	// L'UNIVERS DE CETTE LECTURE EST CELUI DES MATCHS AYANT UN RAYON. Rasteriser sur tous
 	// les matchs mesures diviserait les cellules par des matchs qu'on a refuse de lire —
 	// c'est le defaut deja corrige trois fois sous « correction G2 ».
 	out.MatchsRetenus = len(rayons)
 	out.MatchsSansRayon = bilan.MatchsSansRayon
+	// LES PORTEES DE RADAR DE LA LECTURE, DISTINCTES ET TRIEES : le web nomme le seuil de chaque
+	// format, jamais une moyenne qui ne serait la regle d'aucun match.
+	out.RayonsRadarM = rayonsDistincts(rayons)
 	out.MortsEquipeATerre = bilan.EquipeATerre
-	cov := bilan.Couverture
-	out.Isolement = &cov
 
 	// LES MORTS SE REPROJETTENT A CHAQUE PAS ESSAYE, elles ne se regroupent pas : leurs
 	// positions sont en main (contrairement aux sidecars, deja agreges), et projeter la
@@ -90,7 +88,6 @@ func (s *TacticalService) rasterIsole(ctx context.Context, out *domain.TacticalR
 	// `ignores` VAUT ZERO ET C'EST STRUCTUREL : cette lecture ne lit aucun sidecar, donc
 	// aucun point n'a pu etre ecarte a la cuisson.
 	remplirDepuisSidecars(out, lue.Raster, 0)
-	s.lireLeJournal(ctx, out, scope)
 
 	s.logger.InfoContext(ctx, "tactique: lecture d'isolement",
 		"player", s.xuid, "map_id", out.MapID, "qui", out.Qui,
@@ -166,27 +163,6 @@ func (s *TacticalService) rayonsParMatch(matchs []domain.TacticalMatch) (map[str
 	return mappings.PorteesDuRadarParMatch(s.radar, variantes)
 }
 
-// construireCoordination assemble la section « Coordination d'equipe » : la FORME de la
-// distance a l'equipier (mediane, distribution) et les denominateurs que la note nomme.
-//
-// LES RAYONS SORTENT DISTINCTS ET TRIES, jamais moyennes : un filtre qui melange Arene
-// (18 m) et BTB (24 m) melange DEUX REGLES DU JEU, et la moyenne des deux n'est la regle
-// d'aucun match. Le web pose alors deux seuils sur l'histogramme.
-func construireCoordination(morts []domain.MortAExaminer,
-	rayons map[string]float64,
-) *domain.TacticalCoordination {
-	d := coordination.Distances(morts, rayons)
-	return &domain.TacticalCoordination{
-		DistanceMedianeM:       d.Mediane,
-		Distribution:           d.Distribution,
-		NDistances:             d.N,
-		MortsSansDistance:      d.MortsSansDistance,
-		RayonsM:                rayonsDistincts(rayons),
-		MatchsMesures:          len(rayons),
-		FenetreEchangeSecondes: int(coordination.FenetreEchangeMs / 1000),
-	}
-}
-
 // rayonsDistincts rend les portees DISTINCTES des matchs lus, triees croissant.
 func rayonsDistincts(rayons map[string]float64) []float64 {
 	vus := make(map[float64]bool, 2)
@@ -200,45 +176,4 @@ func rayonsDistincts(rayons map[string]float64) []float64 {
 	}
 	sort.Float64s(out)
 	return out
-}
-
-// mesurerCoordination sert la section « Coordination d'equipe » pour les lectures QUI NE
-// SONT PAS « ou je meurs isole ».
-//
-// POURQUOI UNE LECTURE DE PLUS, ET POURQUOI ELLE EST LEGITIME : la section est affichee
-// sur TOUTES les questions (maquette 034b1915) — savoir ou l'on meurt et savoir si l'on y
-// meurt seul sont deux reponses a la meme question de placement. C'est exactement le
-// regime deja en place pour le KPI d'ECHANGE (`lireLeJournal`), qui lit lui aussi le
-// journal des morts a chaque raster.
-//
-// LE TAUX D'ISOLEMENT EST POSE ICI AUSSI : il ne depend pas de la question, seulement des
-// morts du joueur sur la carte. Le reserver a la question « isole » obligeait a changer de
-// question pour lire un chiffre qui ne change pas.
-//
-// UN ECHEC EST JOURNALISE PUIS DEGRADE : la lecture de placement reste servie, la section
-// reste silencieuse. Aucune erreur avalee.
-func (s *TacticalService) mesurerCoordination(ctx context.Context, out *domain.TacticalRaster,
-	scope domain.TacticalScope,
-) {
-	if !positionsDeKillLisibles(s.caps) {
-		return
-	}
-	lecture, err := s.repo.MortsAvecContexte(ctx, requeteDuScope(s.xuid, out.MapID, scope))
-	if err != nil {
-		s.logger.ErrorContext(ctx, "tactique: coordination non servie (lecture des morts en echec)",
-			"player", s.xuid, "map_id", out.MapID, "question", out.Question, "err", err)
-		return
-	}
-	if len(lecture.Univers.Matchs) == 0 {
-		return
-	}
-	rayons, sansRayon := s.rayonsParMatch(lecture.Univers.Matchs)
-	dans := cible(lecture.Univers.Equipes, out.Qui, s.xuid, scope.Coequipiers)
-	morts := mortsDeLaCible(lecture, dans)
-	bilan := coordination.Isolement(morts, rayons, len(rayons))
-	cov := bilan.Couverture
-	out.Isolement = &cov
-	out.MatchsSansRayon = sansRayon
-	out.MortsEquipeATerre = bilan.EquipeATerre
-	out.Coordination = construireCoordination(morts, rayons)
 }

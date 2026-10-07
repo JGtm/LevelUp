@@ -142,6 +142,11 @@ type CelluleTactique struct {
 	Matchs         int `json:"matchs"`
 	MatchsVictoire int `json:"matchs_victoire"`
 	MatchsDefaite  int `json:"matchs_defaite"`
+
+	// Frags et Morts sont les deux faces de la lecture « solde » (frags − morts) : les comptes
+	// bruts dont `Brut` est la difference. Nuls (et omis) sur toute autre lecture.
+	Frags int `json:"frags,omitempty"`
+	Morts int `json:"morts,omitempty"`
 }
 
 // EchelleTactique porte les reperes de coloration d'une lecture. Les quantiles sont
@@ -368,6 +373,14 @@ type TacticalKillPosition struct {
 	// placement agregees (elles n'en ont pas besoin) ; publie uniquement par le detail
 	// d'une cellule (TacticalContribution.InstantMs).
 	TimeMs int64
+
+	// Pour le detail d'une zone (nom en jeu, mini-tuile) : la hauteur de chaque face (nil = non
+	// mesuree, jamais 0), les noms du kill-feed, et la source de degat brute du film (tag nil et
+	// categorie vide = non mesuree).
+	KillerZ, VictimZ               *float64
+	KillerGamertag, VictimGamertag string
+	SourceTag                      *uint32
+	SourceCategory                 string
 }
 
 // MortContexte est une mort LOCALISEE de l'univers, avec ce que le collecteur a mesure de son
@@ -388,6 +401,13 @@ type MortContexte struct {
 	// TimeMs est l'instant de la mort (memes raisons que TacticalKillPosition.TimeMs) —
 	// ajoute pour le detail d'une cellule de la lecture « isole » (lot M1).
 	TimeMs int64
+
+	// Z : la hauteur de la victime (nil = non mesuree) ; KillerGamertag, SourceTag,
+	// SourceCategory : memes champs, meme sens que sur TacticalKillPosition.
+	Z              *float64
+	KillerGamertag string
+	SourceTag      *uint32
+	SourceCategory string
 }
 
 // TacticalMortsContexte : l'univers ET ses morts localisees avec leur voisinage.
@@ -445,6 +465,10 @@ const (
 	// kills confondrait « ou je gagne » avec « ou je tue », qui est deja une
 	// question a part. Substitution prevue : l'occupation, quand elle existera.
 	TacticalQuestionGagne = "gagne"
+	// TacticalQuestionSolde : le SOLDE frags − morts — lecture SIGNEE sur les deux faces d'un
+	// engagement (le tueur sur un frag, la victime sur une mort), chaque face ramenee au MEME
+	// nombre de matchs mesures (analysis/tactical.CellulesSolde).
+	TacticalQuestionSolde = "solde"
 )
 
 // L'axe QUI.

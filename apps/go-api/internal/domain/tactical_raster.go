@@ -280,6 +280,16 @@ type ZoneNommee struct {
 	NomFR string
 	NomEN string
 	X, Y  float64
+
+	// Polygone, Parties, Trous : la forme au sol, en metres monde (contour principal, parties
+	// detachees, trous — regle pair-impair) ; ZBas / ZHaut : la tranche verticale habitee ;
+	// VolumeIndex : l'indice de la zone dans son catalogue. Ils nomment une CELLULE du plan
+	// (analysis/tactical.NommerZone) ; une zone sans forme n'en nomme aucune.
+	Polygone    [][2]float64
+	Parties     [][][2]float64
+	Trous       [][][2]float64
+	ZBas, ZHaut float64
+	VolumeIndex int
 }
 
 // TacticalGrappe est une grappe de reapparition, telle que la page la recoit.

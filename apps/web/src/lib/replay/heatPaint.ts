@@ -30,10 +30,11 @@ import type { ReplayDocumentReady } from './replayNormalize'
 /** Paliers de la rampe précalculée : un `rgba()` par palier, indexé pendant le dessin. — color-allow: 2026-09-06 (ronde 2, N1) — ligne de PROSE qui DECRIT la rampe du theme, elle n'en pose aucune. */
 export const HEAT_RAMP_STEPS = 64
 
-/** Opacités des extrémités (A8, 2026-08-18 : plafond 0,55 -> 0,75, mesuré 5x plus efficace
- *  que d'abaisser le quantile bas). */
-const HEAT_ALPHA_MIN = 0.12
-const HEAT_ALPHA_MAX = 0.75
+/** Opacités des extrémités de la rampe : les zones les plus faibles restent lisibles sur le fond.
+ *  Noyau PARTAGÉ : elles valent pour le plan tactique, « Occupation du terrain » de la vue match et
+ *  le rejeu 2D. */
+const HEAT_ALPHA_MIN = 0.45
+const HEAT_ALPHA_MAX = 0.85
 
 /** Un composant RVB lu d'un hex résolu. */
 interface Rgb {

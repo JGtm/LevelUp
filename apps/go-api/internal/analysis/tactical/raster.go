@@ -40,6 +40,10 @@ type Raster struct {
 	// ignores : les points ecartes parce que leur position n'etait pas finie. Compte
 	// expose plutot qu'avale : un decodage qui derape se voit ici.
 	ignores int
+
+	// faces : par cellule, les comptes des deux faces d'une lecture « solde » (cf. solde.go).
+	// NIL sur toute autre lecture : `cellules` y suffit.
+	faces map[Cellule]comptesFaces
 }
 
 // Rasterise compte les points sur la grille pour l'univers `matchs` — la liste des matchs

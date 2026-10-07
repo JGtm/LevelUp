@@ -36,6 +36,7 @@ func validerLecture(carte, question, qui string, coequipiers []string) error {
 	}
 	switch question {
 	case domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne,
+		domain.TacticalQuestionSolde,
 		domain.TacticalQuestionTemps, domain.TacticalQuestionRoutes,
 		domain.TacticalQuestionIsole:
 	default:
@@ -150,22 +151,5 @@ func adversairesDuMatch(equipes domain.EquipesParMatch, moi string) predicatQui 
 		monEquipe, jeSuisLa := duMatch[moi]
 		son, ilEstLa := duMatch[xuid]
 		return jeSuisLa && ilEstLa && son != monEquipe
-	}
-}
-
-// campDuMatch : MON CAMP au sens de la page Escouade — mes coequipiers DU MATCH,
-// moi exclu. Distinct de l'axe « escouade » depuis le 2026-09-06 : le KPI d'echange
-// porte sur le camp ENTIER (decision utilisateur), la ou les rasters portent sur la
-// composition choisie. Deux perimetres, deux predicats — les confondre ferait varier
-// le denominateur du taux avec le contenu du selecteur de coequipiers.
-func campDuMatch(equipes domain.EquipesParMatch, moi string) predicatQui {
-	return func(matchID, xuid string) bool {
-		if xuid == "" || xuid == moi {
-			return false
-		}
-		duMatch := equipes[matchID]
-		monEquipe, jeSuisLa := duMatch[moi]
-		son, ilEstLa := duMatch[xuid]
-		return jeSuisLa && ilEstLa && son == monEquipe
 	}
 }

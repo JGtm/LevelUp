@@ -38,7 +38,7 @@ type TacticalMapCard struct {
 	//
 	// CES CHAMPS SONT ABSENTS quand le titre ne sait pas lire les positions, ou quand la
 	// lecture a echoue : la vignette s'affiche alors avec son seul fond, comme avant. Une
-	// degradation, jamais une panne (meme regime que le KPI d'echange).
+	// degradation, jamais une panne.
 
 	// Cellules sont les cellules MESUREES de la carte, plancher applique — memes valeurs
 	// et meme adressage (ancre sur l'origine du monde) que la lecture « ou je meurs ».
@@ -127,23 +127,6 @@ type TacticalRaster struct {
 	// plutot qu'avale — un decodage qui derape se voit ici.
 	PointsIgnores int `json:"points_ignores"`
 
-	// EvenementsJournal et EvenementsLocalises disent CE QUE LA CARTE NE MONTRE PAS
-	// (ajout 2026-09-06) : combien d'evenements de la cible le journal des morts
-	// compte sur l'univers (morts pour « ou je meurs », kills pour « ou je tue »,
-	// les deux pour « ou je gagne »), et combien d'entre eux ont une position
-	// mesuree. Le pied de carte les rend en clair — « N morts, M localisees ».
-	//
-	// POURQUOI C'EST OBLIGATOIRE. Une position n'existe que si le producteur a su
-	// resoudre les deux identites et si l'instant n'etait pas ambigu (double kill) ;
-	// une carte muette sur un pan entier de la partie ressemble sinon a un pan de
-	// terrain ou il ne se passe rien. L'ecart est une PROPRIETE DE LA MESURE, pas
-	// un detail d'implementation.
-	//
-	// EvenementsJournal vaut 0 quand le journal n'a pas pu etre lu : le pied de
-	// carte doit alors taire la couverture plutot qu'annoncer 0 sur M.
-	EvenementsJournal   int `json:"evenements_journal"`
-	EvenementsLocalises int `json:"evenements_localises"`
-
 	// Grappes sont les amas de REAPPARITION du joueur sur cette carte, calcules a la
 	// lecture depuis les spawns de depart des sidecars. Servis avec toutes les lectures
 	// d'artefact : ce sont eux que le filtre `spawn` designe.
@@ -188,6 +171,11 @@ type TacticalRaster struct {
 	// amputee ressemblerait a une lecture complete.
 	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
 
+	// RayonsRadarM : les portees de radar DISTINCTES des matchs de la lecture « isole »
+	// (regulation.toml [radar_range_m]), triees croissant — jamais une moyenne, qui ne serait la
+	// regle d'aucun match. Vide sur les autres lectures.
+	RayonsRadarM []float64 `json:"rayons_radar_m,omitempty"`
+
 	// MortsEquipeATerre : les morts ECARTEES de la lecture « isole » parce qu'AUCUN
 	// coequipier n'etait en mesure d'accompagner (tous morts, partis, ou aucun).
 	//
@@ -195,24 +183,4 @@ type TacticalRaster struct {
 	// accompagner. Les compter au denominateur ferait monter le taux avec les hecatombes de
 	// l'equipe, c'est-a-dire avec quelque chose que le placement du joueur ne commande pas.
 	MortsEquipeATerre int `json:"morts_equipe_a_terre,omitempty"`
-
-	// Isolement est la part des morts SANS coequipier visible a portee, sous la forme
-	// canonique (taux + brut + par match + N + echantillon faible).
-	//
-	// SERVI SUR TOUTES LES QUESTIONS depuis le lot F (2026-09-13, conformite a la maquette
-	// 034b1915) : il ne depend pas de la question, seulement des morts du joueur sur la
-	// carte. Le reserver a « ou je meurs isole » obligeait a changer de question pour lire
-	// un chiffre qui ne changeait pas. nil quand le titre ne sait pas lire les positions.
-	Isolement *Couverture `json:"isolement,omitempty"`
-
-	// Coordination porte la FORME de la distance a l'equipier au moment de mes morts —
-	// mediane et distribution par intervalles (binning SERVEUR, ADR 0010). nil quand
-	// aucune mort n'a pu etre lue. Cf. domain/tactical_coordination.go.
-	Coordination *TacticalCoordination `json:"coordination,omitempty"`
-
-	// Echange est le taux de morts vengees de mon equipe SUR CETTE CARTE. nil quand
-	// le titre ne sait pas lire la source des morts (capability `film.kill_source`
-	// absente) : la lecture de placement reste servie, le KPI est simplement
-	// silencieux — jamais un zero, qui se lirait comme une contre-performance.
-	Echange *Couverture `json:"echange,omitempty"`
 }
