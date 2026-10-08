@@ -6,8 +6,8 @@
 // set, le match est skip → il ne reçoit jamais ses events/weapons. Le clear
 // débloque la convergence au prochain sync delta.
 //
-// Extrait du chantier 4 de cmd/repair_data_consistency pour être appelable
-// in-process depuis l'action admin (writer shared sérialisé) ET depuis le CLI.
+// Appelé in-process par l'action admin POST /admin/actions/lying-bits/reset
+// (writer shared sérialisé avec les syncs).
 package ops
 
 import (
