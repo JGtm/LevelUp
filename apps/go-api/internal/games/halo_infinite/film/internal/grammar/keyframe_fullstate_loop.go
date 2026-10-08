@@ -170,13 +170,12 @@ type ArretDuLecteur uint8
 const (
 	// ArretAucun : aucun lecteur n a echoue.
 	ArretAucun ArretDuLecteur = iota
-	// ArretPositionNonFinie : la branche absolue d i0 sous la portee, ou world-object i0 sous la garde,
-	// a lu un flottant non fini ([consumeAbsoluSousLaPortee] ; `FUN_1406cfe44` comme `FUN_14076e29c`
-	// rend faux, `FUN_142e2c690` s arrete).
+	// ArretPositionNonFinie : la branche absolue d i0 sous la portee a lu un flottant non fini
+	// ([consumeAbsoluSousLaPortee] ; `FUN_1406cfe44` rend faux, `FUN_142e2c690` s arrete).
 	ArretPositionNonFinie
-	// ArretLargeurHandleMoteurUn : la meme forme annonce sa queue (h, ou precHigh, = 1) dans un film
-	// qui n exclut pas le type de moteur 1 ([GrammaireBalayage.MoteurUnPossible]) : la largeur de
-	// l index de son handle n est pas etablie ([consumeAbsoluSousLaPortee]).
+	// ArretLargeurHandleMoteurUn : la branche absolue d i0 sous la portee annonce un handle (h = 1)
+	// dans un film qui n exclut pas le type de moteur 1 ([GrammaireBalayage.MoteurUnPossible]) : la
+	// largeur de son index n est pas etablie ([consumeAbsoluSousLaPortee]).
 	ArretLargeurHandleMoteurUn
 )
 

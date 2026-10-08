@@ -1011,6 +1011,33 @@ refusionner, rejouer l'étape 0).
   retiré par le commit suivant. La lecture du jeu reste à porter : la retenir demande d'adjuger cette
   perte (fermeture sans lecture d'un film illisible dès i22, D-4), ce que la règle de LK.5 ne prévoit
   pas.
+- D-18 *(LK.5.4.1, REJETÉ — le levier le plus fort de LK.5)* world-object i0
+  (`consumeObjectPositionMonde`) sous la garde : la forme de `FUN_14076e29c` (precHigh R(1), R(96) par
+  `FUN_14076e420` → `FUN_14076e494`, queue `FUN_14076e3e4(precHigh)` — `MOV R9B,AL` en 14076e2c5 —,
+  R(2) si les trois flottants sont finis, faux sinon en 14076e2fe ; `REF/g2/dis_14076e29c.txt`), la
+  même que la branche absolue d'i0 (`consumeAbsoluSousLaPortee`). Mesure contre `$S/lk5.2` →
+  `$S/lk5.4.1` : I-ferm, 82 hausses — `ti=38` 6 565 → 110 221 / 119 142, `ti=42` 1 107 → 10 162 /
+  23 402, `ti=43` 2 560 → 36 550 / 40 712 sur 28 films — et 15 BAISSES : `ti=37` (équipement, qui porte
+  le même i0) 196 → 143 sur 11 films (`396cfc92` 16 → 0 à records constants, `084a804d` 20 → 14,
+  `a349fea8` 17 → 4, `1c4c63c2` 21 → 14, …) ; `50247b26` `ti=38` 488 → 158 et `ti=42` 76 → 11 (arrêt
+  `position_non_finie` sur i0 : les 96 bits n'y sont pas trois flottants finis ; sans la garde E-4,
+  mesure temporaire `$S/lk5.4.1/sans_garde_e4`, 158 et 23) ; `1c4c63c2` `ti=12` 5 → 4 ; une ligne
+  disparue (`696a9d7c` `ti=0`, 0/1). Goldens de fermeture (7 bobines) : hausses `ti=38/42/43`, BAISSE
+  `ti=37` (cuisson `11de8353` 4 → 1 ; sans carte `11de8353` et `111fa685` 2 → 1). I-d0 (bipèdes)
+  inchangé. ÉLECTION DES ANCRES CHANGÉE sur 5 films (I-ancres `$S/lk5.4.1/m2_*` contre `$S/lk3`) :
+  élections `1c4c63c2` 4 926 → 4 898, `a349fea8` 9 044 → 9 008, `696a9d7c` 1 047 → 1 065, `0797ce72`
+  390 → 401, `53ce4390` 1 807 → 1 806 (des ancres `ti=37`/`ti=42` passent d'élues à écartées et
+  inversement), et par elle la CARTE DELTA change : `1c4c63c2` 44 424 → 44 374 paquets fermés (−50),
+  `696a9d7c` +1, listes non localisées de ±1 à ±9 sur 4 films. Commit mesuré `64ef3baa7`, retiré par le
+  commit suivant. Le retenir demande une décision : adjuger les baisses `ti=37` (fermetures rares,
+  0,66 % → 0,48 %, d'un archétype dont un autre composant est probablement mal porté), celles de
+  `50247b26` (film illisible dès i22, D-4), et accepter le changement d'élection et de carte, contraire
+  au critère 1 de LK (ancres identiques à la base).
+- D-19 *(LK.5.4.1)* Avec la queue fidèle de `FUN_14076e3e4` (LK.5.2), la largeur W0 du handle n'est
+  utilisée que quand la porte de `FUN_1408f0ac4` vaut 1 ; la garde E-4 (LK.3.7) arrête dès h (ou
+  precHigh) = 1. La placer sur cette porte arrêterait moins de records des films sans section
+  d'identification sans présumer aucune largeur. Non mesuré sur les bipèdes ; non traité (décision de
+  LK.3.7).
 
 ## 8. Journal
 
