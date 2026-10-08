@@ -3030,3 +3030,41 @@ package replay
 //	                `4f77afc1` : 10 s, non instruit). Banc de verite : `repli_kill_rattrape_hors_vue_a`
 //	                nouveau (par decision) et `repli_deadstate_indice_hors_roster` sur trois films
 //	                (morts lues par la marche, d indice hors du roster, non publiees).
+//
+// v88 (2026-10-07, lot des arrets de la vue B : cinq composants et correctif D9) : LES MAINS NUES
+// VALENT « RIEN EN MAIN » DANS LES CHANGEMENTS D ARME, ET CINQ COMPOSANTS OU LA VUE B BUTAIT SE
+// LISENT. La FORME du document ne change pas (aucun champ) ; son CONTENU change. Ecrite v83 sur la
+// branche `feat/grammaire-arrets-vue-b` (base `879f31bbf`), renumerotee 88 a la fusion de
+// `feat/v75` (`312073cd3`).
+//
+//	calques de la   `ti=43` `i18` a `i40`, `ti=12` `i16` et `i18`, `ti=45` `i0`, `ti=10` `i2` a
+//	marche          `i17` se lisent par les lecteurs du jeu (`grammar` `.3` a `.7`) : des records
+//	                qui arretaient la vue B se lisent jusqu au bout, et les paquets avec eux.
+//	`weaponChanges` le jeu remet l objet « mains nues » (`filmshell.IsUnarmedFamily`) a chaque
+//	               naissance, et la dotation de naissance le porte a l emplacement 2. La
+//	               qualification (`grammar` `qualifierContre`) le jugeait comme une arme : l annonce
+//	               « emplacement vide » d un corps neuf sortait en LACHER des mains nues, la prise
+//	               suivante en ECHANGE depuis les mains nues. Il vaut desormais un emplacement vide :
+//	               l annonce vide n est plus publiee (re-annonce), la prise est une PRISE sans
+//	               `from`, une emission des mains nues apres une arme est le lacher de cette arme
+//	               (`w` vide). La remise (mains nues sur un emplacement vide) reste ecartee et
+//	               comptee (`coverage.weaponChanges.unarmedGrants`). Aucun changement publie ne porte
+//	               plus `00007ca9`, ni en `w` ni en `from`.
+//
+//	CE QUI MONTE    `SchemaVersion` 87 -> 88 ; `grammar.Rev` `grammar-2026-10-07.2` ->
+//	AVEC ELLE       `grammar-2026-10-07.8` (`.3` a `.7` les cinq composants, `.8` les mains
+//	                nues) ; `killsource.Rev` `killsource-2026-10-07` -> `killsource-2026-10-07.2` :
+//	                sur la marche des trames, trois morts des 19 temoins passent du balayage a la
+//	                marche (`read_path` persiste), contenu publie identique. `objectives.Rev`
+//	                garde sa valeur (golden regenere a revision constante) ; `source`, `profile`,
+//	                `SchemaDesFaits` ne bougent pas.
+//
+//	LE PARC         un artefact 87 porte `grammar-2026-10-07.2` : verdict `redecoder`.
+//
+//	MESURE          parc local de 126 artefacts (schema 86 de `feat/v75`) : 14 changements publies
+//	                portent les mains nues, dans 6 films (13 echanges depuis, 1 lacher). Gate de
+//	                corpus, 19 temoins, base `12b8fb3df` : 18 dans 5 temoins (13 lachers, 5 echanges
+//	                depuis) -> 0 ; les 13 lachers ne sont plus publies, les 5 echanges sont des
+//	                prises ; tout autre changement d arme, et le reste du document, identiques hors
+//	                revisions ; banc de verite 19/19 « ok » (detail :
+//	                `.ai/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`, « Correctif D9 »).

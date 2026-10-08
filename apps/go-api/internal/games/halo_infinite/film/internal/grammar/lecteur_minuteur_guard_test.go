@@ -17,7 +17,7 @@ import (
 // largeurNommeeDeMinuteur : un argument de `Skip` qui nomme une largeur de minuteur — la queue de
 // FUN_1407f0354 ou un n que les appelants passent a FUN_140d580d0. Aucun saut de production ne
 // les nomme : ces largeurs ne servent qu au lecteur unique et a ses appelants.
-var largeurNommeeDeMinuteur = regexp.MustCompile(`\b(largeurQueueMinuteur|roundTimerBits|largeurMinuteurSoftKill)\b`)
+var largeurNommeeDeMinuteur = regexp.MustCompile(`\b(largeurQueueMinuteur|roundTimerBits|largeurMinuteurSoftKill|largeurMinuteurDistributeur)\b`)
 
 // formesDeMinuteur compte, dans la suite d appels `seq` d une fonction, les lectures en ligne de
 // FUN_140d580d0 et les sauts de sa forme. Le saut de 15 bits n est pas interdit :

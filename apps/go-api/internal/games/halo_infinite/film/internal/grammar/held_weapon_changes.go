@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // HeldWeaponChangeStats compte ce que le balayage a vu, pour que l'appelant puisse juger la
@@ -188,7 +189,8 @@ func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange, gen uint32) (rep
 //
 //   - DOTATION DE NAISSANCE connue pour cet emplacement (lot M3.2) : la même famille est une
 //     ré-annonce ; sinon le changement part de l'arme de naissance, qui devient `Previous` — une
-//     prise sur emplacement vide, un échange, ou un lâcher qui NOMME l'arme lâchée ;
+//     prise sur emplacement vide, un échange, ou un lâcher qui NOMME l'arme lâchée. Les mains
+//     nues de la dotation valent un emplacement vide ([qualifierContre]) ;
 //   - sinon, un ENSEMBLE de familles (relevé d'image-clé passé) : une famille déjà portée n'est
 //     qu'une ré-annonce, une famille absente est une acquisition ;
 //   - un emplacement annoncé VIDE dont l'occupant n'est pas connu (ni dotation qui le situe, ni
@@ -218,17 +220,34 @@ func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st Sp
 // famille est une ré-annonce, rien ne change ; un emplacement vidé est un lâcher, un emplacement
 // vide rempli une prise, une autre famille un échange. Un lâcher et un échange nomment l'arme
 // précédente.
+//
+// LES MAINS NUES VALENT « RIEN EN MAIN » ([armeEnMain]) : l'objet que le jeu remet à chaque
+// naissance (`filmshell.IsUnarmedFamily`) n'est ni lâché, ni échangé, ni pris. Contre lui, une
+// annonce vide est une ré-annonce, une arme une prise (sans `Previous`) ; une émission des mains
+// nues après une arme est le lâcher de cette arme, emplacement publié vide. Seule la REMISE (les
+// mains nues sur un emplacement vide) garde sa nature de prise : la publication l'écarte et la
+// compte (`unarmedGrants`).
 func qualifierContre(ch *types.HeldWeaponChange, prev uint32) {
 	switch {
 	case ch.Family == prev:
 		ch.Kind = types.HeldWeaponRestated
-	case ch.Family == noVariant:
-		ch.Previous, ch.Kind = prev, types.HeldWeaponDropped
-	case prev == noVariant:
+	case prev == noVariant && filmshell.IsUnarmedFamily(ch.Family):
 		ch.Kind = types.HeldWeaponTaken
+	case !armeEnMain(prev) && !armeEnMain(ch.Family):
+		ch.Kind = types.HeldWeaponRestated
+	case !armeEnMain(ch.Family):
+		ch.Previous, ch.Family, ch.Kind = prev, noVariant, types.HeldWeaponDropped
+	case !armeEnMain(prev):
+		ch.Previous, ch.Kind = noVariant, types.HeldWeaponTaken
 	default:
 		ch.Previous, ch.Kind = prev, types.HeldWeaponSwapped
 	}
+}
+
+// armeEnMain dit si une famille d'emplacement est une ARME : ni l'emplacement vide, ni l'objet
+// « mains nues », qui vaut rien en main.
+func armeEnMain(fam uint32) bool {
+	return fam != noVariant && !filmshell.IsUnarmedFamily(fam)
 }
 
 // heldWeaponScan porte la configuration résolue une fois pour un film.

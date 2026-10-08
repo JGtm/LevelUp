@@ -1404,8 +1404,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   n est plus qu un rattrapage compte. `grammar.Rev` et `killsource.Rev` montent avec elle : un
 	//   v86 se lit « a redecoder ». 83 et 85, reserves a ce lot, restent sans emploi. Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 87 {
-		t.Fatalf("SchemaVersion = %d, attendu 87 : incrémenter exige une raison écrite ci-dessus "+
+	// - 88 (2026-10-07, lot des arrets de la vue B) : Aucun champ neuf ; le CONTENU change : cinq
+	//   composants ou la vue B butait se lisent (calques de la marche), et les mains nues valent
+	//   « rien en main », aucun changement d arme publie ne les porte. `grammar.Rev` et
+	//   `killsource.Rev` montent avec elle : un v87 se lit « a redecoder ». Detail :
+	//   `document_chronicle.go`.
+	if SchemaVersion != 88 {
+		t.Fatalf("SchemaVersion = %d, attendu 88 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

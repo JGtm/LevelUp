@@ -194,9 +194,6 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	case compObjectiveOutroPhaseDuration: // ti=11 i32 (FUN_142edb740) — R(8) quantifié
 		consumeObjectiveOutroPhaseDuration(br)
 		return variant, nil, true
-	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
-		consumeDevicePosition(br)
-		return variant, nil, true
 	case "game-engine-campaign-timer-component": // ti2 (FUN_1407ee764) — R(16)+R(16)+R(5)
 		consumeGameEngineCampaignTimer(br)
 		return variant, nil, true
@@ -315,6 +312,10 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		consumeNavpointManualTimerCurrent(br)
 	case compNavpointRadialProgress: // ti=12 i14 (FUN_140fc8d14) — R(8), publie
 		consumeNavpointRadialProgress(br)
+	case compNavpointOverrideFlags: // ti=12 i16 (FUN_140ebf834) — R(5)
+		consumeNavpointOverrideFlags(br)
+	case compNavpointPositionOffset: // ti=12 i18 (FUN_140f04f68) — position, FUN_14076e494 au niveau 0x10
+		consumeNavpointPositionOffset(br)
 	default:
 		return consumeMoteurDePartie(br, name, level)
 	}
