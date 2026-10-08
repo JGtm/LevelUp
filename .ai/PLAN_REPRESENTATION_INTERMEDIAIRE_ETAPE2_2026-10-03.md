@@ -1392,7 +1392,10 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             2.7.d0, découverte 36) ; retirer les fenêtres viderait les armes et les grenades des
             fiches. Décision de l'utilisateur demandée le 2026-10-07 (recommandation : un lot de
             grammaire d'abord, la lecture de l'état complet du bipède aux images-clés ; 2.7.d1 en
-            dépend).
+            dépend). Décision de l'utilisateur du 2026-10-08 (« Pour le point 2 met un workflow
+            ultracode dessus ») : traité maintenant, lot de grammaire d'abord (lecture des
+            images-clés sous la portée de l'état complet, lot LK de la campagne), puis 2.7.d1 ; plan
+            dédié en préparation (journal du 2026-10-08, après-midi). Reste `[!]` jusqu'à sa clôture.
       - [x] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
             *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
             les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
@@ -2410,3 +2413,23 @@ plan y sont reprises comme items (3.1.2).
   arrêts de la vue B compris), 0 erreur, 18 min ; projections rejouées (usage, niveaux d'armes,
   véhicules, Assaut, drapeaux), 0 échec ; serveur local relancé (binaire reconstruit). Backfill
   killsource (`killsource-2026-10-07.2`, lot de la vue B) : décision de l'utilisateur demandée.
+- 2026-10-08 (après-midi) : BACKFILL KILLSOURCE FAIT, accord de l'utilisateur (« Ok pour 1 ») :
+  serveur local coupé et pairs prévenus avant, `levelup backfill-killsource` sur le parc, 66 min,
+  code 0. 1 809 matchs collectés, 189 164 morts écrites, 0 erreur de décodage, 0 erreur d'écriture,
+  43 passes non publiables, 26 matchs sans fil des morts ; 48 matchs écartés faute de carte résolue
+  (ils restent candidats). Signalements connus : équipe de bots non lue dans `BOT_METADATA` sur 66
+  matchs (`HI_1_12_0`, découverte D1 du lot killsource), vies publiées sans identité sur 5 matchs, un
+  film à la séquence de chunks trouée. Serveur local relancé. 2.7.d1 rouvert par l'utilisateur
+  (« Pour le point 2 met un workflow ultracode dessus ») : première passe à sept agents (comprendre,
+  mesurer, concevoir, deux contre-vérifications). Mesure sur 28 films, lecture des images-clés sous
+  la portée de l'état complet et forme d'`i0` du jeu : records bipèdes d'image-clé fermés 410 ->
+  5 399 sur 10 710, compteur de grenades différent de 4 : 9 204 -> 380, armes égales à la fenêtre :
+  386 -> 6 955, aucun autre archétype ne bouge. Les contre-vérifications valident la lecture du jeu
+  (huit fonctions posent la portée, pas six ; le `R(2)` final de la queue d'`i0` est lu, seule la
+  borne `N` reste d'exécution) et corrigent le plan : deux baisses non adjugées (un film où une
+  image-clé ne ferme plus, un format où quelques grenades se dégradent), un gate vide (le golden des
+  bobines est joué sans carte et ne voit pas la portée), le critère écrit de la bascule à rejouer
+  AVANT tout retrait, la décision du gate objectives à chaque montée de `grammar.Rev`, une mesure de
+  coût, la règle d'admission à écrire comme un amendement de 2.7.b, le résidu sous la portée (88
+  arrêts, pas 861). Seconde passe lancée (cinq agents : Ghidra, deux mesures, plan réécrit, une
+  contre-vérification), aucun code de production ; plan dédié à suivre.
