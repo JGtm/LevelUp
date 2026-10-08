@@ -5,11 +5,11 @@
  * Couvre aussi le toggle "Connexion admin (mot de passe)".
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { ComponentPropsWithoutRef } from 'react'
+import { StrictMode, type ComponentPropsWithoutRef } from 'react'
 import { screen, waitFor, fireEvent, render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { renderWithProviders } from '@/test/render-utils'
+import { renderWithProviders, createTestQueryClient } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
@@ -130,6 +130,33 @@ describe('XboxLoginPage', () => {
     })
     // Pas de code affiché : le flow n'a pas démarré.
     expect(screen.queryByText(/ABCD-1234/i)).not.toBeInTheDocument()
+  })
+
+  it('un seul démarrage du flow au montage, même en StrictMode', async () => {
+    // En StrictMode à la racine (comme main.tsx, dev) l'effet de montage s'exécute
+    // deux fois : sans garde, deux tentatives étaient ouvertes côté serveur pour une
+    // seule connexion. StrictMode doit envelopper la racine : imbriqué sous le
+    // wrapper de test, React ne rejoue pas les effets de montage.
+    let startCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return HttpResponse.json({ attempt_id: 'attempt-1', user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+      }),
+    )
+
+    render(
+      <StrictMode>
+        <QueryClientProvider client={createTestQueryClient()}>
+          <XboxLoginPage />
+        </QueryClientProvider>
+      </StrictMode>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/ABCD-1234/i)).toBeInTheDocument()
+    })
+    expect(startCount).toBe(1)
   })
 
   it('relance automatiquement le flow sur attempt_not_found (récupération gracieuse)', async () => {

@@ -2,7 +2,7 @@
 //
 // RFC 8628 pur — aucune dépendance externe (pas de MSAL).
 // Utilisé par SISUProvider pour obtenir l'access_token + refresh_token Microsoft
-// avant de compléter le flow SISU.
+// avant l'échange XBL (sisuDeviceFlow.ExchangeFlow).
 //
 // Endpoints :
 //   - POST https://login.live.com/oauth20_connect.srf  (start)
@@ -29,6 +29,12 @@ const (
 	// 2026-07-13, vérifié par POST direct : .srf → 200 + device_code, /device → 404).
 	xboxDeviceCodeURL = "https://login.live.com/oauth20_connect.srf"
 	xboxTokenURL      = "https://login.live.com/oauth20_token.srf"
+	// sisuMSAScope est le scope MSA natif demandé avec le client Xbox natif : le
+	// ticket rendu (famille MSA) s'échange en User Token XBL avec le préfixe
+	// RpsTicket « t= ». Les scopes Azure AD (Xboxlive.signin …) produiraient un JWT
+	// AAD hors de cette famille. Sert aussi au refresh MSA natif
+	// (postMSATokenExchange).
+	sisuMSAScope = "service::user.auth.xboxlive.com::MBI_SSL"
 	// pollSlowDownIncrement est l'augmentation d'intervalle sur slow_down (RFC 8628 §3.5).
 	pollSlowDownIncrement = 5
 	// pollMaxInterval est le plafond d'intervalle de polling en secondes.
@@ -62,11 +68,10 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 	form := url.Values{
 		oauthFieldClientID: {clientID},
 		// Scope MSA natif (sisuMSAScope) et NON les scopes Azure AD (xboxScopes) :
-		// l'access_token issu de ce flow est présenté à sisu.xboxlive.com/authorize
-		// en "t=<ticket>" (famille MSA). Avec Xboxlive.signin, login.live.com
-		// émettait un JWT AAD → SISU répondait 401 à la complétion (cause racine
-		// du bug 2026-07-15 ; cross-référencé sur XAL/OpenXbox : scope MBI_SSL,
-		// client_id = AppId Xbox).
+		// l'access_token issu de ce flow est présenté à user.auth.xboxlive.com en
+		// RpsTicket "t=<ticket>" (famille MSA). Avec Xboxlive.signin, login.live.com
+		// émettrait un JWT AAD hors de cette famille (cross-référencé sur
+		// XAL/OpenXbox : scope MBI_SSL, client_id = AppId Xbox).
 		oauthFieldScope: {sisuMSAScope},
 		"response_type": {oauthFieldDeviceCode},
 	}

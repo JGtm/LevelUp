@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"levelup/go-api/internal/domain/title"
 )
 
 // redirectTransport redirige toutes les requêtes vers une URL cible fixe (pour mocker les URLs hardcodées).
@@ -296,7 +298,10 @@ func TestRequestXSTSToken_MissingToken(t *testing.T) {
 	}
 }
 
-// requestSpartanToken
+// requestSpartanTokenWith (descripteur Halo par défaut)
+
+// haloAuth est le descripteur d'auth Halo par défaut, celui de la chaîne d'échange.
+var haloAuth = title.DefaultHaloAuthDescriptor()
 
 func TestRequestSpartanToken_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +309,7 @@ func TestRequestSpartanToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"SpartanToken": "spartan_xyz"})
 	}))
 	defer srv.Close()
-	token, _, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
+	token, _, err := requestSpartanTokenWith(context.Background(), mockClient(srv.URL), "xsts_tok", haloAuth.SpartanAudience, haloAuth.SpartanTokenURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,13 +324,13 @@ func TestRequestSpartanToken_Missing(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"other": "value"})
 	}))
 	defer srv.Close()
-	_, _, err := requestSpartanToken(context.Background(), mockClient(srv.URL), "xsts_tok")
+	_, _, err := requestSpartanTokenWith(context.Background(), mockClient(srv.URL), "xsts_tok", haloAuth.SpartanAudience, haloAuth.SpartanTokenURL)
 	if err == nil {
 		t.Error("expected error when SpartanToken absent")
 	}
 }
 
-// requestClearanceToken
+// requestClearanceTokenWith (descripteur Halo par défaut)
 
 func TestRequestClearanceToken_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -337,7 +342,7 @@ func TestRequestClearanceToken_Success(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"FlightConfigurationId": "flight_123"})
 	}))
 	defer srv.Close()
-	token, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
+	token, err := requestClearanceTokenWith(context.Background(), mockClient(srv.URL), "spartan_tok", haloAuth.ClearanceURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +356,7 @@ func TestRequestClearanceToken_HTTPError(t *testing.T) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 	}))
 	defer srv.Close()
-	_, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
+	_, err := requestClearanceTokenWith(context.Background(), mockClient(srv.URL), "spartan_tok", haloAuth.ClearanceURL)
 	if err == nil {
 		t.Error("expected error for HTTP 403")
 	}
@@ -363,7 +368,7 @@ func TestRequestClearanceToken_MissingField(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"other": "value"})
 	}))
 	defer srv.Close()
-	_, err := requestClearanceToken(context.Background(), mockClient(srv.URL), "spartan_tok")
+	_, err := requestClearanceTokenWith(context.Background(), mockClient(srv.URL), "spartan_tok", haloAuth.ClearanceURL)
 	if err == nil {
 		t.Error("expected error when FlightConfigurationId absent")
 	}
