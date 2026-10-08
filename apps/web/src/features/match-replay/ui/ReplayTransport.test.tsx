@@ -108,6 +108,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
       settingsOpen={false}
       onToggleSettings={onToggleSettings}
       settingsButtonRef={createRef<HTMLButtonElement>()}
+      fullscreen={{ active: false, disabled: false, toggle: vi.fn() }}
       {...over}
     />,
   )
@@ -479,5 +480,46 @@ describe('ReplayTransport — lecture automatique', () => {
       'title',
       expect.stringContaining('ni en lecture ni en pause'),
     )
+  })
+})
+
+/**
+ * LE PLEIN ÉCRAN (2026-10-08) : un bouton à état, comme lecture/pause — le nom dit ce que le clic
+ * va faire, l'infobulle rappelle la touche F. Il est DÉSACTIVÉ pendant un export : le mode ne
+ * bascule pas tant qu'un export tient la toile (cf. useReplayFullscreen).
+ */
+describe('ReplayTransport — plein écran', () => {
+  it('fermé : « Plein écran (F) », et le clic bascule le mode', () => {
+    const toggle = vi.fn()
+    renderTransport({ fullscreen: { active: false, disabled: false, toggle } })
+    const btn = screen.getByRole('button', { name: 'Plein écran' })
+    expect(btn).toHaveAttribute('title', 'Plein écran (F)')
+    fireEvent.click(btn)
+    expect(toggle).toHaveBeenCalledTimes(1)
+  })
+
+  it('ouvert : le nom dit la sortie', () => {
+    renderTransport({ fullscreen: { active: true, disabled: false, toggle: vi.fn() } })
+    expect(screen.getByRole('button', { name: 'Quitter le plein écran' })).toHaveAttribute(
+      'title',
+      'Quitter le plein écran (F)',
+    )
+  })
+
+  it('pendant un export : désactivé, le clic ne fait rien', () => {
+    const toggle = vi.fn()
+    renderTransport({ fullscreen: { active: false, disabled: true, toggle } })
+    const btn = screen.getByRole('button', { name: 'Plein écran' })
+    expect(btn).toBeDisabled()
+    fireEvent.click(btn)
+    expect(toggle).not.toHaveBeenCalled()
+  })
+
+  it('en anglais : « Full screen » et « Exit full screen »', () => {
+    const ferme = renderTransport({ locale: 'en' })
+    expect(screen.getByRole('button', { name: 'Full screen' })).toBeTruthy()
+    ferme.unmount()
+    renderTransport({ locale: 'en', fullscreen: { active: true, disabled: false, toggle: vi.fn() } })
+    expect(screen.getByRole('button', { name: 'Exit full screen' })).toBeTruthy()
   })
 })

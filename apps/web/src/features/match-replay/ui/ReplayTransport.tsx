@@ -45,6 +45,7 @@ import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import { SlidersIcon } from '../settings/SlidersIcon'
 import type { ReplayCapture } from '../export/useReplayCapture'
+import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import type { ReplaySound } from '../sound/useReplaySound'
 
 interface ReplayTransportProps {
@@ -71,12 +72,14 @@ interface ReplayTransportProps {
   settingsOpen: boolean
   onToggleSettings: () => void
   settingsButtonRef: RefObject<HTMLButtonElement | null>
+  /** Le mode plein écran de la page (useReplayFullscreen) : le bouton n'en est que la commande. */
+  fullscreen: ReplayFullscreen
 }
 
 export function ReplayTransport({
   playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
   speed, onSetSpeed, sound, capture, locale,
-  settingsOpen, onToggleSettings, settingsButtonRef,
+  settingsOpen, onToggleSettings, settingsButtonRef, fullscreen,
 }: ReplayTransportProps) {
   // LE DIALOGUE D'EXPORT s'ouvre depuis la barre et se pose au-dessus d'elle. Son ouverture
   // vit ICI et pas dans le canvas : c'est le bouton qui la commande, et le canvas est à son
@@ -246,6 +249,8 @@ export function ReplayTransport({
           )}
         </div>
 
+        <FullscreenButton fullscreen={fullscreen} locale={locale} />
+
         {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
         <button
           ref={settingsButtonRef}
@@ -263,6 +268,54 @@ export function ReplayTransport({
       </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * LE BOUTON PLEIN ÉCRAN, juste avant les réglages. Bouton à état, comme lecture/pause : le nom
+ * dit ce que le clic va faire, l'icône aussi (coins qui s'ouvrent, coins qui se referment).
+ * DÉSACTIVÉ PENDANT UN EXPORT : le mode ne bascule pas tant qu'un export tient la toile.
+ */
+function FullscreenButton({ fullscreen, locale }: { fullscreen: ReplayFullscreen; locale: ReplayLocale }) {
+  const t = REPLAY_TEXT[locale]
+  const label = fullscreen.active ? t.fullscreenExit : t.fullscreenEnter
+  return (
+    <button
+      type="button"
+      onClick={fullscreen.toggle}
+      disabled={fullscreen.disabled}
+      aria-label={label}
+      title={`${label} (F)`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+        fullscreen.disabled
+          ? 'cursor-not-allowed text-muted-foreground opacity-40'
+          : 'cursor-pointer text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+      }`}
+    >
+      <FullscreenIcon exit={fullscreen.active} />
+    </button>
+  )
+}
+
+/** Icône plein écran : quatre coins vers l'extérieur pour entrer, vers l'intérieur pour sortir. */
+function FullscreenIcon({ exit }: { exit: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-[15px] w-[15px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {exit ? (
+        <path d="M6 2.5V6H2.5M10 2.5V6h3.5M6 13.5V10H2.5M10 13.5V10h3.5" />
+      ) : (
+        <path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10" />
+      )}
+    </svg>
   )
 }
 

@@ -74,6 +74,8 @@ export function ReplayMediaLightbox({ item, locale, onClose }: ReplayMediaLightb
         ref={panelRef}
         tabIndex={-1}
         role="dialog"
+        // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
+        data-replay-escape-layer=""
         aria-label={item.label ?? t.mediaOpen}
         className="flex w-full max-w-[560px] flex-col gap-3 outline-none"
       >
