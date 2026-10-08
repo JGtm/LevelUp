@@ -1,0 +1,7 @@
+SL	13:6 ts 3173042387 monde slot 553 -> non lie
+SL	14:6 ts 3193047062 monde slot 553 -> ti 20 id 00000229 soft false liaison 2
+SL	14:1094 ts 3202115655 ferme true cause "" : record type 1 id 40000229 ti 35 desync -1 liaison 0 debut 89
+SL	14:1096 ts 3202128264 ferme false cause "vue B : sortie par rejet" : record type 3 id 40000229 ti 20 desync -1 liaison 2 debut 123
+SL	14:1098 ts 3202145441 ferme false cause "vue B : sortie par rejet" : record type 3 id 40000229 ti 20 desync -1 liaison 2 debut 2
+SL	14:1100 ts 3202162077 ferme false cause "vue B : sortie par rejet" : record type 3 id 40000229 ti 20 desync -1 liaison 2 debut 2
+SL	14:1094 refus {slot:553 neuf:35 vivant:20}

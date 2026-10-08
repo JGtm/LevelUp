@@ -111,3 +111,11 @@ package grammar
 // composant `managed-navpoint-bottom-progress` se lit (`FUN_142ed4fe4`, `R(8)` quantifie, le meme
 // lecteur que `i13`, [consumeNavpointBarreDeProgression]). Contre `grammar-2026-10-08.10` : un record
 // `ti=12` qui s arretait sur `i15` se lit jusqu au composant suivant.
+//
+// ENTREE `grammar-2026-10-08.12` (2026-10-08, lot des arrets de la vue B, suite, point (2)) :
+// world-object i0 ([consumeObjectPositionMonde], exception datee GA2-5) lit, porte posee, la ligne
+// 0x10 de la table DEFAUT (22/22/22) comme `FUN_14076e524` hors portee, au lieu des largeurs de la
+// carte. Contre `grammar-2026-10-08.11` : sur `fccc61cd` (Launch Site), 599 des 635 trames a message
+// de degats (genre 0) qui ne se fermaient pas se ferment (+10 949 paquets sains) ; les 20 films de
+// la carte v2 ne changent pas. Images-cles (lues hors portee, comme avant) : ti=38 et ti=42 montent,
+// deux records ti=37 cessent de fermer (golden de fermeture regenere, justification ecrite).

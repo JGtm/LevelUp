@@ -128,7 +128,8 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 				"ti=21 1/60 -> 0/60, ti=4 240 -> 239"},
 		"world-object-i0": {"consumeObjectPositionMonde", 0x10, "world-object i0 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0",
 			"GA2-5 : image-cle ti=38 11de8353 99 -> 83, a521164d 122 -> 119 ; ti=42 60ae07c4 5 -> 4, " +
-				"11de8353 3 -> 2, 111fa685 2 -> 1 (hausses sur les builds recents)"},
+				"11de8353 3 -> 2, 111fa685 2 -> 1 (hausses sur les builds recents). Depuis le 2026-10-08 la porte posee " +
+				"lit la table DEFAUT hors portee, comme le jeu ; l ecart restant est la portee (garde de pleine precision)"},
 		"ti38-i18": {"consumeGenericRigidBodyTransforms", 0x10, "ti=38 i18 : FUN_142f036f0, CALL 142f03837",
 			"image-cle ti=38 fb1a1a72 317 -> 245, 111fa685 72 -> 30, 11de8353 99 -> 19, sans aucune hausse"},
 		// Lot J6-bis (2026-09-28), meme situation, meme format.

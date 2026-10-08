@@ -192,8 +192,8 @@ func choisir(idx int, a, b [3]uint) [3]uint {
 func casDesObjetsDuMonde() []casDeSite {
 	wo := parNom(compObjectPosition, 38, 0)
 	return []casDeSite{
-		// precHigh = 0, porte posee : table DEFAUT, 22/22/22 — GA2-5.
-		{nom: "world-object i0 precHigh=0 idx=-1", indexW: 1, exception: "world-object-i0",
+		// precHigh = 0, porte posee : table DEFAUT, 22/22/22 — GA2-5, suivi hors portee depuis le 2026-10-08.
+		{nom: "world-object i0 precHigh=0 idx=-1", indexW: 1,
 			flux: concat(seul(bit(false)), e524(-1, 1, axesDefautNiveau16), seul(fixe(2))), lire: wo},
 		{nom: "world-object i0 precHigh=0 idx=0", indexW: 1,
 			flux: concat(seul(bit(false)), e524(0, 1, axesCarteNiveau16), seul(fixe(2))), lire: wo},
