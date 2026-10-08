@@ -49,7 +49,6 @@ import { useReplaySkullCarrier } from '../layers/useReplaySkullCarrier'
 import { useReplayBombBlast } from '../layers/useReplayBombBlast'
 import { useReplayGrenadeRest } from '../layers/useReplayGrenadeRest'
 import { useReplayFlagCarries } from '../layers/useReplayFlagCarries'
-import { useGrenadeIcons } from '../layers/useGrenadeIcons'
 import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
@@ -79,7 +78,6 @@ import { backgroundRect } from '../layers/mapBackground'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   drawGeometryLayer,
-  drawGrenadesLayer,
   drawKillFxLayer,
   drawShotsLayer,
 } from '../layers/replayDraw'
@@ -335,9 +333,6 @@ export function ReplayCanvas({
   // au moment de l'appel, jamais une capture figee (l'assignation vit avec le redraw plus bas).
   const drawRef = useRef<() => void>(() => {})
   const redraw = useCallback(() => drawRef.current(), [])
-  // Vignettes de TYPE de grenade, teintées à l'encre du thème (masques HUD blanc/gris + alpha)
-  // et remplies hors rendu, par rang : un rang sans visuel garde l'anneau seul.
-  const grenadeIconsRef = useGrenadeIcons(doc.grenadeLabels, floorStyle.edge, redraw)
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
@@ -434,7 +429,7 @@ export function ReplayCanvas({
       const bgRect = mapImage
         ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
         : null
-      // La FENETRE D'EVENEMENT, commune aux tirs, aux grenades, aux pulses et aux morts.
+      // La FENETRE D'EVENEMENT, commune aux tirs, aux pulses et aux morts.
       const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
       // Un calque CUIT se repose tel quel, decale de `lo` : sa geometrie ne bouge pas.
       const cuit = (c: HTMLCanvasElement | null): LayerPaint => () => {
@@ -456,7 +451,6 @@ export function ReplayCanvas({
           placements: placements.counts.drawable > 0,
           fireMarks: fireMarks.length > 0,
           shotFx: shotFx.length > 0,
-          grenades: !!doc.grenades?.length,
           zoneStates: doc.zoneStates.length > 0,
           objectivePulses: objectivePulses.length > 0,
           killFx: killFx.length > 0,
@@ -537,11 +531,6 @@ export function ReplayCanvas({
             drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
               ink: fxInk, k, reducedMotion, vehicleSizeOf: vehicles.sizeOf,
             }),
-          grenades: () =>
-            drawGrenadesLayer(ctx, doc.grenades ?? [], view, win, {
-              color: grenadeColor,
-              iconOf: (rank) => grenadeIconsRef.current.get(rank) ?? null,
-            }),
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
           'pulses-objectif': () =>
             drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
@@ -556,7 +545,7 @@ export function ReplayCanvas({
     [
       doc, geometryColor, zRange, timing, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    zonesRef, heatRef, objectivesRef, grenadeIconsRef, cookedRef,
+    zonesRef, heatRef, objectivesRef, cookedRef,
     renderWidth, viewH, canvasView,
     placements.counts.drawable,
     placements.windowTime,
