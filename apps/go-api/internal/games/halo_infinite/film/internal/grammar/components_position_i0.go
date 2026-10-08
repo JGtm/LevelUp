@@ -47,7 +47,7 @@ func consumeObjectPositionDynamicPrecisionD(br *Lecteur, pd profile.PrecisionDes
 	// bUsePred==0, bDelta==0: ABSOLUTE -> FUN_14076e524, then tail (no fresh handle bit).
 	if !bDelta {
 		if br.portee {
-			consumeAbsoluSousLaPortee(br, pd)
+			consumeAbsoluSousLaPortee(br)
 			return
 		}
 		consumeAbsoluteWithGate(br)
@@ -267,17 +267,16 @@ func consumeAbsoluteWithGate(br *Lecteur) {
 // UN FLOTTANT NON FINI FAIT ECHOUER LE LECTEUR : `FUN_1406cfe44` rend faux sans lire le R(2), et
 // la boucle d etat complet `FUN_142e2c690` s arrete sur lui ([ArretPositionNonFinie]).
 //
-// LA QUEUE EST [consumePositionHandleTail], la forme en ligne du portage : le handle y est lu sur
-// `pd.IndexW` bits, quand `FUN_14076e3e4` le lit par `FUN_1408f0ac4(.., 0)`, sur 13 bits pour la
-// table d objets statique (`DAT_144706100 = 0x1FFF`). Cette table ne grandit, donc cette largeur
-// ne change, que sous le type de moteur 1 (`FUN_140d10a78` pose ses drapeaux de croissance a
-// `DAT_145121140 == 1`) : un handle PRESENT (h = 1) dans un film qui n exclut pas ce type
-// ([GrammaireBalayage.MoteurUnPossible]) arrete donc la lecture ([ArretLargeurHandleMoteurUn])
-// plutot que de lire une largeur que le film n etablit pas.
+// LA QUEUE EST [consumeQueueDePoignee], le port de `FUN_14076e3e4` : son handle est lu par
+// `FUN_1408f0ac4(.., 0)`, sur 13 bits pour la table d objets statique (`DAT_144706100 = 0x1FFF`).
+// Cette table ne grandit, donc cette largeur ne change, que sous le type de moteur 1
+// (`FUN_140d10a78` pose ses drapeaux de croissance a `DAT_145121140 == 1`) : une queue annoncee
+// (h = 1) dans un film qui n exclut pas ce type ([GrammaireBalayage.MoteurUnPossible]) arrete donc
+// la lecture ([ArretLargeurHandleMoteurUn]) plutot que de lire une largeur que le film n etablit pas.
 //
 // Les 96 bits ne sont pas semes comme position : la graine d accumulation ne lit que la plage
 // cataloguee ([semerPositionAbsolue]).
-func consumeAbsoluSousLaPortee(br *Lecteur, pd profile.PrecisionDescriptor) {
+func consumeAbsoluSousLaPortee(br *Lecteur) {
 	h := br.ReadBit() // FUN_1406cf008
 	var mots [3]uint32
 	for k := range mots {
@@ -287,12 +286,26 @@ func consumeAbsoluSousLaPortee(br *Lecteur, pd profile.PrecisionDescriptor) {
 		br.arreter(ArretLargeurHandleMoteurUn)
 		return
 	}
-	consumePositionHandleTail(br, h, pd) // FUN_14076e3e4(h)
-	if !flottantsFinis(mots) {           // FUN_140492128
+	consumeQueueDePoignee(br, h) // FUN_14076e3e4(h)
+	if !flottantsFinis(mots) {   // FUN_140492128
 		br.arreter(ArretPositionNonFinie)
 		return
 	}
 	br.ReadBits(2) // FUN_14076e304
+}
+
+// consumeQueueDePoignee porte `FUN_14076e3e4(h)` (14230d04c, relu le 2026-10-08) : h a 0, rien n est
+// lu (les deux champs valent 0xFFFFFFFF) ; h a 1, `FUN_1408f0ac4(.., 0)` — une porte R(1), puis
+// l entier a largeur variable de la categorie 0 ([consume1408f0ac4] : R(13), puis R(2)) —, puis
+// une porte R(1) (`FUN_1406cf008`) et, posee, le mot de region R(11).
+func consumeQueueDePoignee(br *Lecteur, h bool) {
+	if !h {
+		return
+	}
+	consume1408f0ac4(br, 0) // FUN_1408f0ac4(param_2 + 0x2a4, lecteur, 0)
+	if br.ReadBit() {       // FUN_1406cf008
+		br.ReadBits(11) // R(0xb), etendu en signe par le jeu
+	}
 }
 
 // masqueExposantFlottant : les huit bits d exposant d un flottant IEEE-754 simple precision ;
@@ -318,10 +331,12 @@ func kindDuCheminAbsolu(br *Lecteur) PosKind {
 	return PosKindAbsolute
 }
 
-// consumePositionHandleTail mirrors the bHandle-gated tail shared by FUN_1406cfe44
-// (inline) and FUN_14076e3e4: if bHandle clear the field is 0xFFFFFFFF (0 bits);
+// consumePositionHandleTail is the bHandle-gated tail of the INLINE form (FUN_1406cfe44,
+// keep-baseline and delta paths): if bHandle clear the field is 0xFFFFFFFF (0 bits);
 // else a handle-resolve word (R(IndexW)+R(2)) and an optional 11-bit region word.
-// FUN_1406cb0cc reads 0 bits (runtime validity predicate only).
+// FUN_1406cb0cc reads 0 bits (runtime validity predicate only). The absolute branch under
+// the full-state scope reads FUN_14076e3e4 itself ([consumeQueueDePoignee]), whose handle
+// width is varWidthBits(0), not pd.IndexW (plan LK, D-1: the inline form is out of scope).
 func consumePositionHandleTail(br *Lecteur, bHandle bool, pd profile.PrecisionDescriptor) {
 	if !bHandle {
 		return // field = 0xFFFFFFFF, 0 bits

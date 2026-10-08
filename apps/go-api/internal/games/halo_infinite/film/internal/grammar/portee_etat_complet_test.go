@@ -11,7 +11,8 @@ package grammar
 //
 // Mutations jouees le 2026-10-08, chacune rouge puis retiree : la portee posee dans
 // `TraverseEntity` ; la remise a faux oubliee (etat par defaut, boucle) ; le R(2) lu avant la
-// queue ; la portee posee sur la boucle sans l etre sur l etat par defaut.
+// queue ; la portee posee sur la boucle sans l etre sur l etat par defaut. Plan LK, LK.5.2 : la
+// queue lue par la forme en ligne (handle sur `pd.IndexW`) ; `FUN_1408f0ac4` lu en categorie 1.
 
 import (
 	"testing"
@@ -27,9 +28,9 @@ const motFlottantFini = 0x55555555
 const motInfini = 0x0000807f
 
 // ecrireI0AbsoluSousLaPortee ecrit i0 tel que l ecrivain d etat complet le pose sur la branche
-// absolue : bUsePred = 0, bDelta = 0, h, trois mots bruts, puis (h = 1) une queue sans handle
-// resolu et a region etendue (sel = 0, region = 1, ext = 1, R(11)), puis le R(2). Rend le nombre
-// de bits ecrits.
+// absolue : bUsePred = 0, bDelta = 0, h, trois mots bruts, puis (h = 1) la queue de
+// `FUN_14076e3e4` sans handle et avec le mot de region (`FUN_1408f0ac4` ferme, porte posee,
+// R(11)), puis le R(2). Rend le nombre de bits ecrits.
 func ecrireI0AbsoluSousLaPortee(w *bitWriter, h bool, mots [3]uint64, avecR2 bool) int {
 	debut := w.n
 	w.bits(0, 2) // bUsePred, bDelta
@@ -42,10 +43,9 @@ func ecrireI0AbsoluSousLaPortee(w *bitWriter, h bool, mots [3]uint64, avecR2 boo
 		w.bits(m, 32)
 	}
 	if h {
-		w.bit(0)              // sel : pas de handle resolu
-		w.bit(1)              // region presente
-		w.bit(1)              // region etendue
-		w.bits(motif(11), 11) // mot de region
+		w.bit(0)              // FUN_1408f0ac4 : porte fermee, pas de handle
+		w.bit(1)              // FUN_1406cf008 : le mot de region suit
+		w.bits(motif(11), 11) // R(11)
 	}
 	if avecR2 {
 		w.bits(0b10, 2)
@@ -57,8 +57,7 @@ func ecrireI0AbsoluSousLaPortee(w *bitWriter, h bool, mots [3]uint64, avecR2 boo
 func troisMots(m uint64) [3]uint64 { return [3]uint64{m, m, m} }
 
 // TestLaBrancheAbsolueDI0SousLaPorteeLitLaFormeDuJeu : h = 0, 1 + 1 + 1 + 96 + 2 = 101 bits ;
-// h = 1, la queue entre les 96 bits et le R(2). Lire le R(2) avant la queue lirait 108 bits au
-// lieu de 115.
+// h = 1, la queue de `FUN_14076e3e4` (ici 1 + 1 + 11 bits) entre les 96 bits et le R(2), 114 bits.
 func TestLaBrancheAbsolueDI0SousLaPorteeLitLaFormeDuJeu(t *testing.T) {
 	for _, h := range []bool{false, true} {
 		var w bitWriter
@@ -68,12 +67,37 @@ func TestLaBrancheAbsolueDI0SousLaPorteeLitLaFormeDuJeu(t *testing.T) {
 		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
 		attendu := 101
 		if h {
-			attendu = 115
+			attendu = 114
 		}
 		if n != attendu || br.BitPos() != attendu || br.arret != ArretAucun {
 			t.Errorf("h=%v : %d bits lus (ecrits %d), arret %v ; attendu %d, aucun arret", h,
 				br.BitPos(), n, br.arret, attendu)
 		}
+	}
+}
+
+// TestLaQueueDePoigneeLitLeHandleSurTreizeBits : sous la portee, la queue de `FUN_14076e3e4` lit le
+// handle par `FUN_1408f0ac4(.., 0)` — porte, R(13) (`varWidthBits(0)`, table d objets statique),
+// R(2) —, puis la porte du mot de region, ici fermee : 3 + 96 + 17 + 2 = 118 bits.
+func TestLaQueueDePoigneeLitLeHandleSurTreizeBits(t *testing.T) {
+	var w bitWriter
+	w.bits(0, 2) // bUsePred, bDelta
+	w.bit(1)     // h
+	for range 3 {
+		w.bits(motFlottantFini, 32)
+	}
+	w.bit(1)              // FUN_1408f0ac4 : le handle suit
+	w.bits(motif(13), 13) // FUN_1406d3140, categorie 0 : 13 bits
+	w.bits(0b01, 2)       // FUN_1406d3140 : queue de 2 bits
+	w.bit(0)              // FUN_1406cf008 : pas de mot de region
+	w.bits(0b10, 2)       // FUN_14076e304
+	fin := w.n
+	w.bits(^uint64(0), 64)
+	br := sousLaPortee(LecteurSur(w.buf))
+	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
+	if fin != 118 || br.BitPos() != fin || br.arret != ArretAucun {
+		t.Fatalf("queue a handle present : %d bits lus (ecrits %d), arret %v ; attendu 118, aucun arret",
+			br.BitPos(), fin, br.arret)
 	}
 }
 
