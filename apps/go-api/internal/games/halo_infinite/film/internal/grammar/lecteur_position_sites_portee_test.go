@@ -25,6 +25,9 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 		{nom: "player-desired-respawn-location", indexW: 1,
 			flux: concat(seul(bit(true)), brut96(), seul(fixe(19))),
 			lire: parNom(compPlayerDesiredRespawnLoc, 5, 0)},
+		// ti=14 i0 crew-order (FUN_142ed9120) : FUN_142b1cf3c R(3), porte, R(96).
+		{nom: "crew-order", indexW: 1, flux: concat(seul(fixe(3), bit(true)), brut96()),
+			lire: parNom("crew-order-component", 14, 0)},
 	}
 }
 

@@ -282,6 +282,15 @@ func consumeTacmapCoopTetherArea(br *Lecteur) {
 // `084a804d` (HI_1_10_0, 14 entrees), que l ancien lecteur fermait au bit pres, ne se localise plus
 // (+26 bits) ; elle en ferme une autre, `e5adf7b2` chunk 4 paquet 900 (liste, 12 entrees).
 func consumeCrewOrder(br *Lecteur, level uint32) {
+	// SOUS LA GARDE (plan LK, LK.5.4.3, relu le 2026-10-08) : `FUN_142ed9120` lit `FUN_142b1cf3c`
+	// R(3), la porte, puis `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde, sans precHigh.
+	if fullPrecisionGate(br) {
+		br.ReadBits(3)    // FUN_142b1cf3c
+		if br.ReadBit() { // presence du vecteur
+			br.ReadBits(rawVec3Bits) // FUN_1411b259c
+		}
+		return
+	}
 	br.noterExceptionDatee()
 	br.ReadBits(3)    // FUN_142b1cf3c
 	if br.ReadBit() { // presence du vecteur
