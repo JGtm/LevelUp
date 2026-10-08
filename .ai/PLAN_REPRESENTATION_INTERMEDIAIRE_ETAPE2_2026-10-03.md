@@ -1470,8 +1470,65 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             resserrement fait sortir des bornes un véhicule volant (slot 802, 236 images au-dessus
             de tous les joueurs) : le banc le compte en V-2 ; les bornes viennent des seules traces
             de joueurs (`boundsOf`), défaut de construction préexistant, hors de ce lot.
-      - [ ] 2.7.d4 *Clôture* : registre des replis, montée de `grammar.Rev`, ADR 0037 amendé, doc,
+            *Après la fusion de `feat/v75` `acfe4851a` (arrêts de la vue B, 2026-10-08)* : plus de
+            trames se ferment, donc plus d'en-têtes fortuits tombent dans une étendue prouvée.
+            Mini-bobine : projectiles 52 → 51, pistes de la bande des armes au sol 42 → 51
+            (découverte 44 : des vies d'équipement y gardent des fragments, qu'aucun objet publié ne
+            lit), créations d'équipement 36 → 35 (slot 1465, chunk 2 paquet 1882), créations d'armes
+            au sol 28 → 27 (slot 1529 génération 2, chunk 3 paquet 378, avant la vraie création de
+            génération 1 du même slot au paquet 540) ; le test du point 6 de `ti=42` passe à 27
+            créations et 21 références, mutation de la porte rejouée rouge. Le premier gate contre
+            `acfe4851a` a révélé la découverte 43 (fin du film des socles), corrigée ici : la fin
+            du film des armes au sol est strictement après la dernière image-clé, comme celle des
+            poses (`gwFilmEndUS`, test `TestGwFilmEndApresLaDerniereImageCle`, mutation jouée
+            rouge).
+      - [x] 2.7.d4 *Clôture* : registre des replis, montée de `grammar.Rev`, ADR 0037 amendé, doc,
             gate de l'item.
+            *Fait (2026-10-08, sur `feat/v75` `acfe4851a` fusionnée, rangs alignés avec le lot des
+            arrêts de la vue B, fusionné avant)* : registre des replis (deux entrées neuves, ordre
+            « après la lecture », et le texte de `repli_ancrage_bipede_apres_la_marche` étendu aux
+            positions ; doc du registre des positions) ; `grammar.Rev` `grammar-2026-10-07.8` →
+            `grammar-2026-10-08` (chronique, empreinte) ; `killsource.Rev` et `objectives.Rev`
+            constantes (sorties identiques, complément de chronique, goldens régénérés) ;
+            `replay.SchemaVersion` 88 → 89 (chronique v89, `structure_test`, plafonds du ratchet de
+            taille), `SchemaDesFaits` 10 constant (aucune section ne change de forme) ; fixtures de
+            contrat, forme du document, goldens d'assemblage, formes des types, références
+            d'équivalence re-figées ; ADR 0037 IR-6 amendé (positions, objets du monde, population,
+            `Mort`).
+            *Gate de l'item* :
+            - `replay-equiv`, binaires de `acfe4851a` (références re-figées par lui) contre ceux du
+              lot : 20 films sur 20 divergent, par les étapes attendues — positions, socles,
+              poses (orientation du poseur, qui suit les positions) et l'artefact partout,
+              projectiles sur 17 films, véhicules sur 10 ; les huit lecteurs bipèdes sur deux
+              films seulement (`a349fea8`, `e5adf7b2` : le dead-state qui ne dit pas la mort) ;
+              `killsource` et `objectives` identiques.
+            - `cmd/killsource json` sur les 19 témoins, binaire de `acfe4851a` contre binaire du
+              lot : sorties identiques à l'octet (`killsource.Rev` reste).
+            - `replay-corpus-gate` contre `acfe4851a` (19 témoins, banc de vérité compris), après
+              le correctif de la découverte 43 : FAUX partout par les deux replis neufs (R-1,
+              nouveaux par construction) ; gains V-2 sur six témoins (`fb1a1a72` 4 → 0,
+              `d9781168` 1 → 0, `c75f33b8` 2 → 0, `084a804d` 10 → 9, `4f77afc1` 10 → 3,
+              `f75e7053` 2 → 1), `084a804d` O-V1 FP 1 → 0 et V-4 1 → 0, fins de vie sans identité
+              en baisse sur trois témoins. FAUX instruits : `0797ce72` V-3 10 → 17 (sept
+              changements d'arme des slots 595 et 611, 66 s avant leurs vies, lus dans des trames
+              refusées : un dead-state sans mort les coupait, la règle de `Mort` les rend) et
+              `repli_lien_prise_arme_abandonne` 0 → 4 ; `e5adf7b2` V-3 13 → 14 et un mort de
+              moins par les vies pour un joueur (12 → 11) ; `a349fea8`
+              `repli_impulsion_fusionnee_dans_le_geste` 0 → 1 (lectures du slot 590 rendues) ;
+              `396cfc92` une fin de vie sans identité de plus et
+              `repli_vie_coupee_au_trou_de_replication` 0 → 1 (une vraie position précoce, slot 520
+              au chunk 1, trame fermée, avance l'origine du rejeu de 28 006 à 17 578 ms) ;
+              `50247b26` V-2 899 → 1 135 (2.7.d3, bornes). Filet (sans oracle) : projectiles −1 à
+              −30, armes au sol −1 à −7, véhicules −1 à −5 (châssis de créations fortuites ;
+              naissances moins écartées, l'emprise jouée se mesurant sur des positions sans
+              fantômes : 69 → 4 sur `4f77afc1`, 47 → 11 sur `084a804d` ; d'où des relais au même
+              point que la règle des relais fond), tirs −1 à −15 (des véhicules), des occupations de
+              socle sans ramasseur daté de plus là où une création fortuite coupait une vie
+              (`4f77afc1` +4, `d9781168` +1, `084a804d` +1 ; `c75f33b8` une occupation non couverte
+              de plus), un socle de Disrupteur reconnu sur `f75e7053` (sa première arme était lue à
+              z = −755 m).
+            - Tests du film, d'`archlint`, de `replaybuild`, vet (avec `research`), golangci-lint :
+              verts ; `KILLSOURCE_FIXTURES` et `make gate-push` : ci-dessous.
 - Gate : `replay-corpus-gate` et banc de vérité ; `KILLSOURCE_FIXTURES` en local ; montée de
   `grammar.Rev` (et `killsource.Rev` pour 2.7.c) ; recuisson et backlog sur signal de l'utilisateur.
 
@@ -1868,6 +1925,23 @@ plan y sont reprises comme items (3.1.2).
    en fin de match pour la scène des vainqueurs, et un joueur né au dernier chunk d'une bobine. La
    bande des images-clés reste la population des positions (2.7.d2). Les huit lecteurs de 2.7.b ne
    filtrent pas leurs records par la bande ; ce qu'ils publient de ces corps n'est pas instruit.
+43. *(gate de 2.7.d après la fusion de `feat/v75` `acfe4851a`, 2026-10-08)* **La fin du film des armes
+   au sol tenait à des créations fortuites.** `gwFilmEndUS` prenait la plus tardive de la dernière
+   image-clé, des positions et des créations ; sur `bcb6d393`, une création fortuite 2,6 s après la
+   dernière image-clé la portait au-delà. Retirée (trame prouvée), la fin du film tombait SUR la
+   dernière image-clé, que la fenêtre de recensement (exclusive à droite) retranchait alors de la vie
+   des objets encore recensés : huit socles sortaient pris entre les deux dernières images-clés au
+   lieu de jamais pris, treize armes « vues » au lieu d'« ouvertes ». La règle des poses
+   (`equipment_placement_ends.go` : fin du film = dernière image-clé + 1) vaut désormais pour les
+   socles. Corrigée en 2.7.d3 : elle bloquait le gate (régression publiée que le lot révélait).
+44. *(même gate)* **Des vies d'équipement gardent des fragments sous la bande des armes au sol.**
+   Derrière la marche, dans les trames qu'elle ne prouve pas, la passe des pistes rend encore à la
+   bande des armes au sol les échantillons d'un équipement dont le slot tombe dans les deux bandes :
+   sur la mini-bobine, sept vies d'équipement s'y découpent en 22 pistes (les pistes de la bande
+   passent de 46 à 51), dix autres disparaissent. Aucun objet publié ne les lit : les armes au sol
+   naissent des créations de leur archétype et ne prennent que les pistes de leurs vies. Règle
+   candidate, non traitée : une vie (slot, génération) que la marche lit sous un archétype ne se
+   rend pas à la bande d'un autre.
 
 ## 7. Journal
 

@@ -138,6 +138,13 @@ package objectives
 // recherche des kill-events de killsource descend dans la grammaire en rattrapage). `grammar/signaux`
 // ne change pas ; l etape `objectives` de `replay-equiv` est IDENTIQUE sur les 20 films de reference
 // (binaires de `e9a64d87b` contre ceux du lot). Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-08 (lot 2.7.d de la representation intermediaire, REVISION CONSTANTE) :
+// `grammar.Rev` monte a `grammar-2026-10-08` (positions bipedes, pistes et creations des objets du
+// monde lues par la marche des trames d abord) et le registre des replis gagne deux entrees.
+// `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv` est IDENTIQUE sur les 20
+// films de reference (binaires de `acfe4851a` contre ceux du lot). Golden regenere a revision
+// constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

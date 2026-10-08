@@ -363,8 +363,14 @@ func gwTracksByKey(
 // gwFilmEndUS rend la fin du film au sens de ce calque : le dernier instant qu'une de ses trois
 // sources porte. C'est la borne haute de dernier recours — celle d'un objet créé après la
 // dernière image-clé, dont rien ne prouve la disparition.
+//
+// ELLE EST STRICTEMENT APRÈS LA DERNIÈRE IMAGE-CLÉ, comme celle des poses
+// (`equipment_placement_ends.go`) : la fenêtre de recensement (`gwPickupSeenWithin`) est EXCLUSIVE
+// sur sa borne haute. Quand aucune position ni aucune création ne passe la dernière image-clé, une
+// fin égale à elle retrancherait cette image-clé de la vie d'un objet qui y est encore recensé : il
+// sortirait pris entre les deux dernières images-clés au lieu de jamais pris.
 func gwFilmEndUS(scan WorldObjectScan, positions []grammar.BipedPosition) uint64 {
-	end := scan.Keyframes.LastTimeUS()
+	end := scan.Keyframes.LastTimeUS() + 1
 	for _, p := range positions {
 		if p.TimestampUS > end {
 			end = p.TimestampUS

@@ -461,3 +461,29 @@ package grammar
 // `879f31bbf`, cartes v2 de chaque entree mesurees contre elle), renumerotes `.3` a `.8` a la fusion
 // de `feat/v75` (`312073cd3`), apres `grammar-2026-10-07.2` ; `replay.SchemaVersion` 88 monte avec
 // le dernier. La carte v2 de la tete combinee, contre `312073cd3` : aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-08` (2026-10-08, lot 2.7.d de la representation intermediaire) : LES
+// POSITIONS BIPEDES ET LES OBJETS DU MONDE LISENT LA MARCHE DES TRAMES D ABORD.
+//
+// Ce qui change, contre `grammar-2026-10-07.8` :
+//   - une position bipede se lit au bit d i0 d un record que le canal des lectures bipedes retient
+//     (i0 ajoute a ses interets, `positions_lues.go`), quand cet i0 est absolu dans la region jouee
+//     ([i0AbsoluDeLaRegion]) et que le slot est de la bande bipede du contexte ; l ancrage rend
+//     derriere la marche ce qu elle n a pas lu (regle de 2.7.b), et son repli compte aussi les
+//     records rendus pour leur seule position ;
+//   - un dead-state ne tue le corps, pour les huit lecteurs et les positions, que s il dit la mort ;
+//   - une piste d objet du monde se lit au bit d i0 des records DELTA que la marche lit sous son
+//     archetype, une creation a l en-tete de ses records NEW ([canalDesObjetsDuMonde]) ; la passe
+//     des pistes et celle des creations ne rendent que ce que la marche n a pas lu
+//     (`repli_pistes_du_monde_apres_la_marche`, `repli_creations_du_monde_apres_la_marche`) ;
+//     [ScanWorldObjectsForBand] prend l archetype de la bande ;
+//   - la marche de la cuisson lit les morts d objet quand les images-cles portent des slots de
+//     vehicule ([LecturesDeLaMarche.MortsSiVehicules]) : elle est jouee avant les positions.
+//
+// MESURE (2026-10-08, binaires de `acfe4851a` contre ceux du lot) : `replay-equiv` sur les 20 films
+// de reference : positions, socles, poses (orientation du poseur) partout, projectiles sur 17 films,
+// vehicules sur 10 ; les huit lecteurs bipedes seulement sur `a349fea8` et `e5adf7b2` (le dead-state
+// qui ne dit pas la mort) ; `killsource` et `objectives` identiques. `replay-corpus-gate` (19
+// temoins) : les deux replis neufs sur chaque temoin, des objets fantomes retires (V-2 en baisse sur
+// six temoins), les autres verdicts instruits au plan de l etape 2 (2.7.d4). `killsource.Rev` et
+// `objectives.Rev` restent ; `replay.SchemaVersion` 89.

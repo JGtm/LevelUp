@@ -103,6 +103,25 @@ func TestGwPickupBorneHauteSuitLaRepriseDeCle(t *testing.T) {
 	}
 }
 
+// TestGwFilmEndApresLaDerniereImageCle : sans position ni creation au-dela de la derniere
+// image-cle, la fin du film la depasse d un instant, et un objet encore recense a cette image-cle
+// reste jamais ramasse — la fenetre de recensement est exclusive sur sa borne haute.
+func TestGwFilmEndApresLaDerniereImageCle(t *testing.T) {
+	kf := []uint64{10, 30, 50, 70}
+	scan := WorldObjectScan{Keyframes: grammar.WorldObjectKeyframes{TimesUS: kf}}
+	fin := gwFilmEndUS(scan, []grammar.BipedPosition{{TimestampUS: 65}})
+	if fin <= 70 {
+		t.Fatalf("fin du film %d, attendu apres la derniere image-cle (70)", fin)
+	}
+	b := gwPickupBoundsFrom(5, fin, fin, kf, gwPickupSeenWithin([]uint64{10, 30, 50, 70}, 5, fin))
+	if !b.NeverPicked {
+		t.Fatalf("objet recense a la derniere image-cle, sans autre source au-dela : jamais ramasse attendu : %+v", b)
+	}
+	if got := gwFilmEndUS(scan, []grammar.BipedPosition{{TimestampUS: 95}}); got != 95 {
+		t.Fatalf("fin du film %d, attendu 95 (la derniere position)", got)
+	}
+}
+
 // TestGwPickupPremierPassageEtPasLePlusProche : la regle tranchee est « le premier », et le
 // departage a instant egal est la distance puis le slot.
 func TestGwPickupPremierPassageEtPasLePlusProche(t *testing.T) {

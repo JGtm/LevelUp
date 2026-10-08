@@ -3068,3 +3068,43 @@ package replay
 //	                prises ; tout autre changement d arme, et le reste du document, identiques hors
 //	                revisions ; banc de verite 19/19 « ok » (detail :
 //	                `.ai/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`, « Correctif D9 »).
+//
+// v89 (2026-10-08, representation intermediaire 2.7.d : positions et objets du monde derriere la
+// marche des trames) : LES POSITIONS DES JOUEURS, LES PISTES ET LES CREATIONS DES OBJETS DU MONDE SE
+// LISENT D ABORD PAR LA MARCHE DES TRAMES. La FORME du document ne change pas (aucun champ) ; son
+// CONTENU change.
+//
+//	`tracks`        une position se lit au bit d i0 d un record bipede que la marche a lu, pour
+//	                un slot de la bande bipede ; l ancrage ne rend que ce qu elle n a pas lu, hors
+//	                de ce que la fermeture de la trame prouve. Un objet lu sur un slot de joueur, un
+//	                en-tete fortuit d une trame prouvee, un corps mort ne donnent plus de point ; un
+//	                dead-state qui ne dit pas la mort ne coupe plus la vie d un joueur.
+//	objets du monde une piste ou une creation se lit sur les records que la marche lit sous son
+//	                archetype ; les passes ne rendent que ce qu elle n a pas lu. Disparaissent des
+//	                objets fantomes (armes sous la carte, pistes immobiles, chassis d une creation
+//	                fortuite) ; un equipement ne passe plus pour une arme au sol. La fin du film des
+//	                socles est strictement apres la derniere image-cle, comme celle des poses.
+//	`coverage`      comptes des creations rendues et des ancres ; deux replis nouveaux,
+//	                `repli_pistes_du_monde_apres_la_marche` et
+//	                `repli_creations_du_monde_apres_la_marche`.
+//
+//	CE QUI MONTE    `SchemaVersion` 88 -> 89 ; `grammar.Rev` `grammar-2026-10-07.8` ->
+//	AVEC ELLE       `grammar-2026-10-08`. `killsource.Rev` et `objectives.Rev` gardent leur valeur
+//	                (sorties identiques, goldens regeneres a revision constante) ; `SchemaDesFaits`
+//	                ne bouge pas (aucune section ne change de forme).
+//
+//	LE PARC         un artefact 88 porte `grammar-2026-10-07.8` : verdict `redecoder`.
+//
+//	MESURE          `replay-equiv` sur les 20 films de reference, binaires de `acfe4851a` contre
+//	                ceux du lot : positions, socles, poses (orientation du poseur) partout,
+//	                projectiles sur 17 films, vehicules sur 10, lecteurs bipedes sur deux
+//	                (`a349fea8`, `e5adf7b2`) ; `killsource` et `objectives` identiques.
+//	                `replay-corpus-gate` contre `acfe4851a` (19 temoins, banc de verite compris) :
+//	                projectiles -1 a -30 (pistes immobiles, `fb1a1a72` x = -230,77 m), armes au
+//	                sol -1 a -7 (`4f77afc1` : sept objets a z = -500 a -944 m), vehicules -1 a -5
+//	                (chassis de creations fortuites ; naissances moins ecartees par une emprise
+//	                mesuree sans positions fantomes, d ou des relais au meme point fondus) ; V-2
+//	                en baisse sur six temoins ; instruits : `0797ce72` V-3 +7 et `e5adf7b2` V-3
+//	                +1 (lectures que le dead-state sans mort ne coupe plus), `50247b26` V-2 +236
+//	                (vehicule volant hors des bornes resserrees), `396cfc92` origine du rejeu
+//	                avancee par une vraie position precoce (detail : plan de l etape 2, 2.7.d4).

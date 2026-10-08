@@ -493,3 +493,8 @@ package killsource
 // (`read_path` `scan` -> `marche`), contenu publie identique ; les 17 autres temoins ne changent que
 // par le diagnostic `calibration`. `read_path` est persiste : la revision monte (D23), backlog sur
 // signal de l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-08 (lot 2.7.d de la representation intermediaire, REVISION CONSTANTE) :
+// `grammar.Rev` monte a `grammar-2026-10-08` (positions et objets du monde derriere la marche).
+// `cmd/killsource json` sur les 19 temoins, binaire de `acfe4851a` contre binaire du lot :
+// sorties identiques a l octet. Golden regenere a revision constante.

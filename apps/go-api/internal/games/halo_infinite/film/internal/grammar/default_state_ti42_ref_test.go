@@ -10,12 +10,18 @@ package grammar
 //     polarite retournee change le compte de references transmises — c'est la mutation que ce
 //     test attrape, et elle a ete jouee ;
 //  3. la valeur tient sur 5 bits. Une largeur elargie decalerait tout ce qui suit et le
-//     balayage n'accepterait plus 28 records.
+//     balayage n'accepterait plus 27 records.
 //
-// LE COMPTE EST FIGE PARCE QU'IL EST DISCRIMINANT : 22 references transmises sur 28 creations.
-// MUTATION JOUEE LE 2026-09-10 : le `!` retire de la porte, le balayage n'accepte plus que
-// 1 record sur 28 — la porte inversee consomme 5 bits de trop et tout ce qui suit se decale.
+// LE COMPTE EST FIGE PARCE QU'IL EST DISCRIMINANT : 21 references transmises sur 27 creations.
+// MUTATION JOUEE LE 2026-09-10, REJOUEE LE 2026-10-08 : le `!` retire de la porte, le balayage
+// n'accepte plus qu'un record — la porte inversee consomme 5 bits de trop et tout ce qui suit se
+// decale.
 // Le test rougit donc sur le COMPTE avant meme d'arriver aux references.
+//
+// Les creations sont celles que la marche des trames lit, puis celles que la passe rend derriere
+// elle : la 28e creation de la mesure (slot 1529, generation 2, chunk 3 paquet 378, avec sa
+// reference), un en-tete trouve dans une trame dont la fermeture prouve le paquet, ne se rend plus
+// (plan de l etape 2 de la representation intermediaire, 2.7.d3).
 
 import (
 	"testing"
@@ -24,10 +30,10 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
-// bobineTI42RefsTransmises / bobineTI42Creations : la mesure de la mini-bobine (2026-09-10).
+// bobineTI42RefsTransmises / bobineTI42Creations : la mesure de la mini-bobine.
 const (
-	bobineTI42Creations      = 28
-	bobineTI42RefsTransmises = 22
+	bobineTI42Creations      = 27
+	bobineTI42RefsTransmises = 21
 )
 
 // entityRefIndex5Max borne la valeur du point 6 : `ECS_ReadEntityRefIndex5` lit R(5).
