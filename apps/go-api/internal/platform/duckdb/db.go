@@ -334,7 +334,7 @@ func openCachedDB(
 		slog.WarnContext(context.Background(),
 			"duckdb: cache ping fail — swap in-place du sqlDB pour préserver les refs externes",
 			"path", oldDB.path, "op", oldDB.op, "key", key)
-		newSQLDB, err := openSQLDBFor(oldDB.dsn, oldDB.timezone, oldDB.op, oldDB.path)
+		newSQLDB, err := openPhysicalSQLDB(oldDB)
 		if err != nil {
 			// Reopen impossible (fichier inaccessible, lock, etc.) — fallback :
 			// délai standard, Close + delete + signal au caller.
@@ -345,7 +345,6 @@ func openCachedDB(
 				"path", oldDB.path, "op", oldDB.op, "err", err)
 			return nil, marqueBaseTenue(err)
 		}
-		applyConnLimits(newSQLDB, oldDB.maxOpenConns, oldDB.maxIdleConns)
 		// Fermer l'ancien sqlDB en best-effort puis swap atomique.
 		_ = oldDB.loadSQL().Close()
 		oldDB.sqlDB.Store(newSQLDB)
@@ -354,7 +353,16 @@ func openCachedDB(
 		return oldDB, nil
 	}
 
-	sqlDB, err := openSQLDBFor(dsn, timezone, op, path)
+	db := &DB{
+		path:         path,
+		cacheKey:     key,
+		dsn:          dsn,
+		maxOpenConns: maxOpenConns,
+		maxIdleConns: maxIdleConns,
+		timezone:     timezone,
+		op:           op,
+	}
+	sqlDB, err := openPhysicalSQLDB(db)
 	if err != nil {
 		// Phase 2 plan stabilisation 2026-05-22 : démoté de Error à Debug. Cette
 		// branche est principalement déclenchée par les retries au boot
@@ -369,17 +377,6 @@ func openCachedDB(
 	}
 	if timezone != "" {
 		slog.Debug("duckdb: timezone appliquée", "timezone", timezone, "path", path)
-	}
-	applyConnLimits(sqlDB, maxOpenConns, maxIdleConns)
-
-	db := &DB{
-		path:         path,
-		cacheKey:     key,
-		dsn:          dsn,
-		maxOpenConns: maxOpenConns,
-		maxIdleConns: maxIdleConns,
-		timezone:     timezone,
-		op:           op,
 	}
 	db.sqlDB.Store(sqlDB)
 	openDBs[key] = &cachedDB{db: db, refCount: 1}
@@ -446,7 +443,7 @@ func (db *DB) UpsertNoConflict(
 }
 
 // openSQLDBFor construit un *sql.DB depuis un DSN + timezone, avec ping.
-// Extrait de openCachedDB pour réutilisation par Reopen.
+// Seul appelant : openPhysicalSQLDB (physical_open.go), point unique des ouvertures physiques.
 func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
 	// Toutes les connexions passent par le connector pour appliquer les limites
 	// ressources (memory_limit + threads, J2) + la timezone. Auparavant seule la
