@@ -999,6 +999,18 @@ refusionner, rejouer l'étape 0).
   `111fa685` (HI_1_10_0, même registre) ; i57, i55, i58 divergent en aval selon la population ; un
   bit constant reste non localisé. Commandes et sorties : LK.4.2 (`$S/lk4/sonde_f24/`). À relire dans
   le jeu avant toute correction (règle des largeurs lues).
+- D-17 *(LK.5.1, REJETÉ)* i20 `lireViseeDActeurAncienne` sous la garde de pleine précision : R(96) par
+  emplacement a = 0, comme le jeu (`FUN_14058c058`, les deux appels `FUN_14076e494(.., 0x10, 0,
+  param_3, 0)` relus le 2026-10-08, `$S/lk5/dec_14058c058.txt`). Mesure contre la tête (`$S/lk5.0`,
+  identique à `$S/lk3` à l'octet) → `$S/lk5.1` : I-ferm, UNE ligne change, `50247b26` `ti=35` 6 → 5,
+  aucune hausse sur les 28 films ; I-d0 : seul `50247b26` bouge (traversés 588 → 590, fermés 6 → 5,
+  n(i22) ≠ 4 332 → 328) ; goldens de fermeture (sans carte, cuisson) inchangés ; carte identique à
+  `e0` (14/14, 14/14, 15/15). Le record perdu (TS 6586064022, slot 552, bit 198 373, classe A,
+  n(i22) = 0) fermait sans lire aucune famille ; sous la garde il lit les armes de la fenêtre
+  (Bandit Evo + MA40 AR) et finit 33 bits plus loin (2 663 contre 2 630). Commit mesuré `f4f8f893b`,
+  retiré par le commit suivant. La lecture du jeu reste à porter : la retenir demande d'adjuger cette
+  perte (fermeture sans lecture d'un film illisible dès i22, D-4), ce que la règle de LK.5 ne prévoit
+  pas.
 
 ## 8. Journal
 

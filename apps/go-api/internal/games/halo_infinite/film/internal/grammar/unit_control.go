@@ -151,9 +151,8 @@ func actorStateWidth(p uint32) uint {
 // LE 0x10 EST UN NIVEAU, PAS UNE LARGEUR (lot J6.3, releve du 2026-09-27, CALLs 1422cddc1 et
 // 1422cde0e : `FUN_14076e494(param_2, ..., 0x10, 0, param_3, 0)`). Ce port lisait R(16) plat ;
 // le jeu lit la garde, la porte, l index et trois axes a la ligne 0x10. LES DEUX VECTEURS SONT UNE
-// EXCEPTION DATEE du portage unique (lot R3-bis, 2026-09-30) : hors de la garde de pleine
-// precision, ils gardent leurs seize bits plats ; sous elle (la portee de l etat complet), ils lisent
-// R(96) comme le jeu (`lireViseeDActeurAncienne`, `lecteur_position_exceptions.go`).
+// EXCEPTION DATEE du portage unique (lot R3-bis, 2026-09-30) : ils gardent leurs seize bits plats
+// (`lireViseeDActeurAncienne`, `lecteur_position_exceptions.go`).
 func consume14058c058(br *Lecteur) {
 	for range 5 {
 		if !br.ReadBit() { // present
