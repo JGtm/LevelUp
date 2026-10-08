@@ -96,6 +96,8 @@ func mesurerFermetureCuisson(t *testing.T) string {
 	b.WriteString("#     Aucune ligne ne bouge.\n")
 	b.WriteString("#   2026-10-08 plan LK (LK.5.4.4) : ti=30 i0 tacmap-poiicon sous la portee (le vecteur R(96)).\n")
 	b.WriteString("#     Aucune ligne ne bouge.\n")
+	b.WriteString("#   2026-10-08 plan LK (LK.5.4.5) : ti=32 i0 tacmap-areaofinterest sous la portee (R(32), R(3),\n")
+	b.WriteString("#     R(96), R(12)). Aucune ligne ne bouge.\n")
 	for _, court := range closureMiniFilms() {
 		stats := fermetureDeCuisson(t, court)
 		tis := make([]int, 0, len(stats))

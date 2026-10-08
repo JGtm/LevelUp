@@ -255,11 +255,18 @@ func consumeTacmapDisplayAsset(br *Lecteur) {
 // au bit pres, ne ferme plus (le composant passe de 67 a 96 bits). Elle en ferme trois autres :
 // `11de8353` 19:394 (liste, 13 entrees), `fb1a1a72` 38:8 (6), `60ae07c4` 3:1790 (0) ; scindee par la
 // porte, aucune forme ne ferme les deux familles.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.5, relu le 2026-10-08) : `FUN_142ed7764` lit R(32) (`aoi-id`), R(3),
+// le thunk `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde —, puis `FUN_1406d84b4` R(12).
 func consumeTacmapAreaOfInterest(br *Lecteur) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(32)
 	br.ReadBits(3)
-	lireCorpsDeTraverseeAncien(br)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireCorpsDeTraverseeAncien(br)
+	}
 	br.ReadBits(12)
 }
 
