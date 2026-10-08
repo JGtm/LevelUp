@@ -191,8 +191,10 @@ for one request only: the next request sees the database as it is. On the Squad 
 `pourLaRequete` (`service/teammates/teammates_service_loads.go`) gives each request a copy of the
 service whose shared readers go through that memo: the impact events (Q32) are read once for the
 impact matrix, the impact points per evening, the intensity profile, the performance series and the
-first frag (`prechargerImpacts`, on the squad population plus the previous evenings of the impact
-points; a block asking for a subset of that read gets its matches' rows without a second read), the
+first frag (`prechargerImpacts`, one read over groups of matches: the squad population and each
+previous evening of the impact points; `SquadRepo.LoadImpactEventsParGroupes` decides the
+reconstructed-kills fallback per group, so each group gets exactly what a dedicated read would
+return, and a block asking for one of those groups gets its rows without a second read), the
 death journal of the "Thief" role once for the matrix and the evenings
 (`service/teammates/teammates_squad_impact.go`), and each member's history once per (title,
 gamertag). The Career resolves

@@ -5,7 +5,9 @@
 //
 // Une lecture des événements d'impact (Q32, partagée par la mémoire de la requête,
 // teammates_service_loads.go) et une lecture du journal des morts (badge « Voleur ») couvrent
-// les matchs des deux surfaces ; chaque match passe UNE fois par squadimpact.RolesOfMatch.
+// les matchs des deux surfaces ; chaque match passe UNE fois par squadimpact.RolesOfMatch. Q32
+// est lu par GROUPES (groupesDImpact) : chaque groupe reçoit ce que sa lecture dédiée lui
+// aurait rendu, repli des frags reconstitués compris.
 package teammates
 
 import (
@@ -61,18 +63,31 @@ func eveningMatches(rows []domain.SquadMatchRow) []squadimpact.EveningMatch {
 	return out
 }
 
-// matchsDImpact — les matchs dont les rôles sont calculés : ceux de la population, puis ceux
-// des soirées publiées, sans doublon. Le préchargement de Q32 lit exactement cet ensemble.
-func matchsDImpact(rows []domain.SquadMatchRow, evenings []squadimpact.Evening) []string {
-	out := collectSharedMatchIDsForDigest(rows)
-	seen := make(map[string]bool, len(out))
-	for _, id := range out {
-		seen[id] = true
+// groupesDImpact — les groupes de matchs dont les rôles sont calculés : la population (celle
+// que lisent la matrice et les autres blocs), puis chaque soirée publiée hors de la population
+// (les soirées précédentes). Chaque groupe est ce qu'une lecture dédiée aurait lu : le repli
+// des frags reconstitués se décide groupe par groupe. Le préchargement de Q32 lit exactement
+// ces groupes.
+func groupesDImpact(rows []domain.SquadMatchRow, evenings []squadimpact.Evening) [][]string {
+	population := collectSharedMatchIDsForDigest(rows)
+	if len(population) == 0 {
+		return nil
 	}
-	for _, id := range squadimpact.MatchIDs(evenings) {
-		if !seen[id] {
-			seen[id] = true
-			out = append(out, id)
+	dans := make(map[string]bool, len(population))
+	for _, id := range population {
+		dans[id] = true
+	}
+	out := [][]string{population}
+	for _, e := range evenings {
+		var g []string
+		for _, m := range e.Matches {
+			if !dans[m.MatchID] {
+				dans[m.MatchID] = true
+				g = append(g, m.MatchID)
+			}
+		}
+		if len(g) > 0 {
+			out = append(out, g)
 		}
 	}
 	return out
@@ -92,7 +107,7 @@ func (s *TeammatesService) buildSquadImpact(
 	// choisi) : Q29 et Q32b nomment chacune par l'annuaire de SES matchs, un même xuid peut y
 	// porter deux casses.
 	squad := resolveSquadScope(in.rows, s.gamertag, in.mainXUID, in.teammates).gtByXUID
-	roles := s.rolesDesMatchs(ctx, in, matchsDImpact(in.rows, in.evenings), squad)
+	roles := s.rolesDesMatchs(ctx, in, groupesDImpact(in.rows, in.evenings), squad)
 	players := joueursDeLEscouade(s.gamertag, in.selected)
 	history := squadimpact.BuildHistory(squadimpact.HistoryInput{
 		Evenings: in.evenings, Players: players, Roles: roles,
@@ -100,15 +115,19 @@ func (s *TeammatesService) buildSquadImpact(
 	return assemblerMatrice(in.rows, players, roles), history
 }
 
-// rolesDesMatchs calcule, par match, les rôles tombés sur l'escouade. Les événements sont
-// ramenés au référentiel gameplay (T0 retranché) ; l'équipe alliée complète du joueur
-// principal sert au calcul team-wide (sans xuid du principal, aucune équipe n'est
+// rolesDesMatchs calcule, par match des groupes, les rôles tombés sur l'escouade. Les
+// événements sont ramenés au référentiel gameplay (T0 retranché) ; l'équipe alliée complète du
+// joueur principal sert au calcul team-wide (sans xuid du principal, aucune équipe n'est
 // attribuable) ; le « Voleur » vient du journal des morts, lu sur l'escouade seule.
 func (s *TeammatesService) rolesDesMatchs(
-	ctx context.Context, in impactEscouade, matchIDs []string, squad map[string]string,
+	ctx context.Context, in impactEscouade, groupes [][]string, squad map[string]string,
 ) map[string][]squadimpact.Attribution {
+	var matchIDs []string
+	for _, g := range groupes {
+		matchIDs = append(matchIDs, g...)
+	}
 	t0Rows := append(append([]domain.SquadMatchRow(nil), in.timeline...), in.rows...)
-	eventsByMatch := s.loadImpactEventsByMatch(ctx, matchIDs, timeline.BuildTimelinesFromSquadRows(t0Rows))
+	eventsByMatch := s.loadImpactEventsByMatch(ctx, groupes, timeline.BuildTimelinesFromSquadRows(t0Rows))
 	thiefByMatch := s.loadThiefBadgesByMatch(ctx, matchIDs, squad)
 	allyByMatch := map[string][]analysis.ParticipantSnap{}
 	if in.mainXUID != "" {

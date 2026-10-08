@@ -354,7 +354,7 @@ func (s *TeammatesService) GetPage(
 	// population et ces soirées (teammates_squad_impact.go).
 	soireesImpact := soireesDImpact(allSquadRows, allSquadRowsForTimeline, len(req.SelectedGamertags) > 0)
 	siVivante(ctx, func() {
-		lectures.precharger(ctx, req.SelectedGamertags, matchsDImpact(allSquadRows, soireesImpact))
+		lectures.precharger(ctx, req.SelectedGamertags, groupesDImpact(allSquadRows, soireesImpact))
 	})
 	sec := s.sectionsDeLaPopulation(ctx, populationEscouade{
 		playerXUID: playerXUID, req: req, rows: allSquadRows, rowsTimeline: allSquadRowsForTimeline,

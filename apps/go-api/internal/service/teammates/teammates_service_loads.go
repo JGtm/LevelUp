@@ -43,9 +43,9 @@ type lecturesDeLaPage struct {
 	loader squadagg.SquadV2Loader // idem pour l'historique des membres
 	// slug, principal : le titre et le joueur de la page (clés du préchargement).
 	slug, principal string
-	// impacts : Q32 par ENSEMBLE de match_id (clé canonique, cf. cleDEnsemble). Les blocs
+	// impacts : Q32 par GROUPES de match_id (clé canonique, cf. cleDesGroupes). Les blocs
 	// passent tous les matchs uniques de la population escouade, dans des ordres
-	// différents : l'ensemble, pas la liste, identifie la lecture.
+	// différents : les ensembles, pas les listes, identifient la lecture.
 	impacts map[string]lectureImpacts
 	// membres : LoadFor par (titre, gamertag), filtres nuls — la seule forme que la page
 	// appelle ; tout autre filtre passe tel quel au chargeur réel.
@@ -60,11 +60,12 @@ type lectureMembre struct {
 }
 
 // lectureImpacts : le résultat d'UNE lecture Q32, erreur comprise — chaque bloc
-// consommateur reçoit la même et la journalise comme avant. matchs : l'ensemble lu.
+// consommateur reçoit la même et la journalise comme avant. groupes : la clé (cleDEnsemble)
+// de chaque groupe lu.
 type lectureImpacts struct {
-	rows   []domain.ImpactEventRow
-	err    error
-	matchs map[string]bool
+	rows    []domain.ImpactEventRow
+	err     error
+	groupes map[string]bool
 }
 
 // pourLaRequete rend une copie du service dont les lecteurs partagés passent par la mémoire
@@ -89,15 +90,15 @@ func (s *TeammatesService) pourLaRequete() (*TeammatesService, *lecturesDeLaPage
 //   - l'historique de chaque membre — les coéquipiers sélectionnés dès qu'il y en a (le
 //     bandeau les lit toujours), le joueur principal quand la population escouade existe
 //     (radar et séries de performance, seuls à le relire par LoadFor) ;
-//   - les événements d'impact des matchs de la population escouade et des soirées précédentes
-//     des points d'impact (impactMatchIDs, cf. matchsDImpact) : les blocs qui ne lisent que la
-//     population en reçoivent la part, sans seconde lecture (impactsDe).
+//   - les événements d'impact, en une lecture, de la population escouade et de chaque soirée
+//     précédente des points d'impact (impactGroupes, cf. groupesDImpact) : les blocs qui ne
+//     lisent que la population en reçoivent la part, sans seconde lecture (impactsDe).
 //
 // Exactement les lectures que les blocs faisaient au moins une fois : aucune de plus.
-func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, impactMatchIDs []string) {
+func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, impactGroupes [][]string) {
 	if len(selected) > 0 {
 		membres := selected
-		if len(impactMatchIDs) > 0 {
+		if len(impactGroupes) > 0 {
 			membres = append([]string{l.principal}, selected...)
 		}
 		l.prechargerMembres(ctx, membres)
@@ -105,7 +106,7 @@ func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, im
 	if ctx.Err() != nil {
 		return // requête annulée (D2.7) : GetPage rend l'erreur
 	}
-	l.prechargerImpacts(ctx, impactMatchIDs)
+	l.prechargerImpacts(ctx, impactGroupes)
 }
 
 // loaderDeLaPage : le chargeur d'historiques de la requête. Seul LoadFor est partagé ; tout le
@@ -158,49 +159,58 @@ func (l *lecturesDeLaPage) prechargerMembres(ctx context.Context, gamertags []st
 	}
 }
 
-// repoDeLaPage : le lecteur Escouade de la requête. Seul LoadImpactEvents est partagé ; tout
-// le reste passe tel quel au lecteur réel.
+// repoDeLaPage : le lecteur Escouade de la requête. Seule la lecture des événements d'impact
+// (Q32) est partagée ; tout le reste passe tel quel au lecteur réel.
 type repoDeLaPage struct {
 	port.SquadRepository
 	lectures *lecturesDeLaPage
 }
 
-// LoadImpactEvents sert la lecture Q32 de la requête pour cet ensemble de matchs.
+// LoadImpactEvents sert la lecture Q32 de la requête pour cet ensemble de matchs (un groupe).
 func (r repoDeLaPage) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
-	return r.lectures.impactsDe(ctx, matchIDs)
+	return r.lectures.impactsDe(ctx, [][]string{matchIDs})
 }
 
-// impactsDe rend Q32 pour un ensemble de matchs, lu au premier appel puis servi de mémoire.
-// Un ensemble contenu dans une lecture déjà faite en reçoit les lignes de ses matchs (dans
-// l'ordre de la lecture) au lieu d'être relu : les lignes de Q32 d'un match ne dépendent pas
-// des autres matchs lus. Une limite : le repli kvPairs du dépôt (frags synthétisés) se décide
-// sur la lecture ENTIÈRE ; sur un titre sans frags horodatés il s'applique à tous ses matchs,
-// mais une population dont aucun match n'en porte, lue avec des soirées qui en portent, n'en
-// reçoit pas. Chaque appelant reçoit sa propre copie de la tranche : un bloc qui la
+// LoadImpactEventsParGroupes sert la lecture Q32 de la requête pour ces groupes.
+func (r repoDeLaPage) LoadImpactEventsParGroupes(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
+	return r.lectures.impactsDe(ctx, groupes)
+}
+
+// impactsDe rend Q32 pour des groupes de matchs, lu au premier appel puis servi de mémoire.
+// Des groupes qui sont chacun un groupe d'une lecture déjà faite en reçoivent les lignes de
+// leurs matchs (dans l'ordre de la lecture) au lieu d'être relus : le dépôt rend à chaque
+// groupe ce que sa lecture dédiée lui aurait rendu, repli des frags reconstitués compris
+// (décidé par groupe, port.SquadRepository.LoadImpactEventsParGroupes). Un groupe qui n'est
+// pas un groupe lu (partie ou réunion de groupes) est relu : sa décision de repli peut
+// différer. Chaque appelant reçoit sa propre copie de la tranche : un bloc qui la
 // réordonnerait ne changerait pas ce que voient les autres.
-func (l *lecturesDeLaPage) impactsDe(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
-	cle := cleDEnsemble(matchIDs)
+func (l *lecturesDeLaPage) impactsDe(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
+	groupes = groupesNonVides(groupes)
+	cle := cleDesGroupes(groupes)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if lu, ok := l.impacts[cle]; ok {
 		return slices.Clone(lu.rows), lu.err
 	}
-	if large, ok := l.lectureQuiCouvre(matchIDs); ok {
-		return lignesDesMatchs(large.rows, matchIDs), large.err
+	if large, ok := l.lectureQuiCouvre(groupes); ok {
+		return lignesDesMatchs(large.rows, groupes), large.err
 	}
-	rows, err := l.repo.LoadImpactEvents(ctx, matchIDs)
-	lu := lectureImpacts{rows: rows, err: err, matchs: ensembleDe(matchIDs)}
+	rows, err := l.repo.LoadImpactEventsParGroupes(ctx, groupes)
+	lu := lectureImpacts{rows: rows, err: err, groupes: make(map[string]bool, len(groupes))}
+	for _, g := range groupes {
+		lu.groupes[cleDEnsemble(g)] = true
+	}
 	l.impacts[cle] = lu
 	return slices.Clone(lu.rows), lu.err
 }
 
-// lectureQuiCouvre rend une lecture Q32 déjà faite dont l'ensemble contient tous les matchs
-// demandés. Appelée sous l.mu.
-func (l *lecturesDeLaPage) lectureQuiCouvre(matchIDs []string) (lectureImpacts, bool) {
+// lectureQuiCouvre rend une lecture Q32 déjà faite dont chaque groupe demandé est un groupe.
+// Appelée sous l.mu.
+func (l *lecturesDeLaPage) lectureQuiCouvre(groupes [][]string) (lectureImpacts, bool) {
 	for _, lu := range l.impacts {
 		couvre := true
-		for _, id := range matchIDs {
-			if !lu.matchs[id] {
+		for _, g := range groupes {
+			if !lu.groupes[cleDEnsemble(g)] {
 				couvre = false
 				break
 			}
@@ -212,9 +222,14 @@ func (l *lecturesDeLaPage) lectureQuiCouvre(matchIDs []string) (lectureImpacts, 
 	return lectureImpacts{}, false
 }
 
-// lignesDesMatchs — les lignes des matchs demandés, dans l'ordre de la lecture (copie).
-func lignesDesMatchs(rows []domain.ImpactEventRow, matchIDs []string) []domain.ImpactEventRow {
-	garde := ensembleDe(matchIDs)
+// lignesDesMatchs — les lignes des matchs des groupes, dans l'ordre de la lecture (copie).
+func lignesDesMatchs(rows []domain.ImpactEventRow, groupes [][]string) []domain.ImpactEventRow {
+	garde := map[string]bool{}
+	for _, g := range groupes {
+		for _, id := range g {
+			garde[id] = true
+		}
+	}
 	out := make([]domain.ImpactEventRow, 0, len(rows))
 	for _, r := range rows {
 		if garde[r.MatchID] {
@@ -224,27 +239,40 @@ func lignesDesMatchs(rows []domain.ImpactEventRow, matchIDs []string) []domain.I
 	return out
 }
 
-// ensembleDe — l'ensemble des identifiants d'une liste.
-func ensembleDe(ids []string) map[string]bool {
-	out := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		out[id] = true
+// groupesNonVides — les groupes qui ont au moins un match.
+func groupesNonVides(groupes [][]string) [][]string {
+	out := make([][]string, 0, len(groupes))
+	for _, g := range groupes {
+		if len(g) > 0 {
+			out = append(out, g)
+		}
 	}
 	return out
 }
 
-// prechargerImpacts lit Q32 UNE fois pour les matchs donnés (D2.2), sous la section
+// cleDesGroupes : la clé d'une lecture par groupes — les clés des groupes, triées.
+func cleDesGroupes(groupes [][]string) string {
+	cles := make([]string, 0, len(groupes))
+	for _, g := range groupes {
+		cles = append(cles, cleDEnsemble(g))
+	}
+	slices.Sort(cles)
+	return strings.Join(cles, "\x01")
+}
+
+// prechargerImpacts lit Q32 UNE fois pour les groupes donnés (D2.2), sous la section
 // `impact_events_shared`, avant les blocs qui la consomment. Sans lecteur ou sans match : rien
 // à lire, chaque bloc garde sa dégradation.
-func (l *lecturesDeLaPage) prechargerImpacts(ctx context.Context, matchIDs []string) {
-	if l.repo == nil || len(matchIDs) == 0 {
+func (l *lecturesDeLaPage) prechargerImpacts(ctx context.Context, groupes [][]string) {
+	groupes = groupesNonVides(groupes)
+	if l.repo == nil || len(groupes) == 0 {
 		return
 	}
 	defer timing.FromContext(ctx).Section("impact_events_shared")()
-	if _, err := l.impactsDe(ctx, matchIDs); err != nil {
+	if _, err := l.impactsDe(ctx, groupes); err != nil {
 		// Chaque bloc consommateur reçoit cette erreur et la journalise lui-même en WARN.
 		slog.DebugContext(ctx, "teammates_impact_events_shared_failed",
-			"n_matches", len(matchIDs), "err", err)
+			"n_groupes", len(groupes), "err", err)
 	}
 }
 

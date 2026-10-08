@@ -7,7 +7,10 @@ package teammates
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -203,8 +206,9 @@ func TestGetPage_PointsParSoiree_UneLectureDesEvenementsEtDuJournal(t *testing.T
 	}
 }
 
-// TestImpactsDe_PartDUneLectureLarge : un ensemble contenu dans une lecture déjà faite reçoit
-// les lignes de ses matchs sans relire ; un ensemble qui déborde relit.
+// TestImpactsDe_PartDUneLectureLarge : un groupe d'une lecture déjà faite en reçoit les lignes
+// sans relire ; une partie ou une réunion de groupes est relue (sa décision de repli des frags
+// reconstitués peut différer de celle des groupes lus).
 func TestImpactsDe_PartDUneLectureLarge(t *testing.T) {
 	repo := &countingSquadRepo{mockSquadRepo: &mockSquadRepo{impactRows: []domain.ImpactEventRow{
 		{MatchID: "m1", XUID: "a", EventType: "kill", TimeMS: 1},
@@ -213,17 +217,103 @@ func TestImpactsDe_PartDUneLectureLarge(t *testing.T) {
 	}}}
 	_, l := (&TeammatesService{repo: repo}).pourLaRequete()
 	ctx := context.Background()
-	if _, err := l.impactsDe(ctx, []string{"m1", "m2", "m3"}); err != nil {
+	if _, err := l.impactsDe(ctx, [][]string{{"m1", "m2"}, {"m3"}}); err != nil {
 		t.Fatal(err)
 	}
-	part, _ := l.impactsDe(ctx, []string{"m3", "m1"})
-	if repo.impactCalls != 1 || len(part) != 2 || part[0].MatchID != "m1" || part[1].MatchID != "m3" {
-		t.Errorf("part : %d lecture(s), lignes %+v ; attendu 1 lecture, m1 puis m3", repo.impactCalls, part)
+	part, _ := l.impactsDe(ctx, [][]string{{"m2", "m1"}})
+	if repo.impactCalls != 1 || len(part) != 2 || part[0].MatchID != "m1" || part[1].MatchID != "m2" {
+		t.Errorf("groupe lu : %d lecture(s), lignes %+v ; attendu 1 lecture, m1 puis m2", repo.impactCalls, part)
 	}
-	if _, err := l.impactsDe(ctx, []string{"m1", "m4"}); err != nil {
+	if _, err := l.impactsDe(ctx, [][]string{{"m1"}}); err != nil {
 		t.Fatal(err)
 	}
-	if repo.impactCalls != 2 {
-		t.Errorf("un ensemble qui déborde la lecture doit relire : %d lecture(s)", repo.impactCalls)
+	if _, err := l.impactsDe(ctx, [][]string{{"m1", "m2", "m3"}}); err != nil {
+		t.Fatal(err)
 	}
+	if repo.impactCalls != 3 {
+		t.Errorf("une partie puis une réunion de groupes doivent relire : %d lecture(s), attendu 3", repo.impactCalls)
+	}
+}
+
+// fixtureS2SansFragNatif — la composition des soirées S1 / S2, mais les matchs de S2 n'ont dans
+// highlight_events que des médailles : leurs frags et morts sont ceux que le dépôt reconstitue
+// (impactSynth). S1 garde ses frags natifs.
+func fixtureS2SansFragNatif() *mockSquadRepo {
+	repo, _ := soireesFixture()
+	var natifs, synth []domain.ImpactEventRow
+	for _, r := range repo.impactRows {
+		if strings.HasPrefix(r.MatchID, "S2") {
+			synth = append(synth, r)
+			continue
+		}
+		natifs = append(natifs, r)
+	}
+	for _, r := range repo.squadRows {
+		if strings.HasPrefix(r.MatchID, "S2") {
+			natifs = append(natifs, domain.ImpactEventRow{MatchID: r.MatchID, XUID: "x_main", EventType: "medal", TimeMS: 5_000})
+		}
+	}
+	repo.impactRows, repo.impactSynth = natifs, synth
+	return repo
+}
+
+// TestGetPage_PointsParSoiree_FragsReconstituesParGroupe : la population affichée (S2) n'a aucun
+// frag natif, la soirée précédente (S1) en a. Lue avec S1 en une seule lecture, la population
+// reçoit quand même ses frags reconstitués : sa matrice est celle d'une lecture dédiée (Premier
+// sang, Finisseur… présents), le premier frag est servi, et le net de S1 égale sa matrice
+// dédiée.
+func TestGetPage_PointsParSoiree_FragsReconstituesParGroupe(t *testing.T) {
+	mock := fixtureS2SansFragNatif()
+	repo := &countingSquadRepo{mockSquadRepo: mock}
+	var mainRows, allyRows []canonical.PlayerMatchRow
+	for _, r := range mock.squadRows {
+		mainRows = append(mainRows, rowWithStatsXUID("x_main", r.MatchID, r.StartTime, canonical.OutcomeWin, 10, 5, 3, 600, 45, 60))
+		allyRows = append(allyRows, rowWithStatsXUID("x_ally", r.MatchID, r.StartTime, canonical.OutcomeWin, 4, 7, 1, 600, 40, 50))
+	}
+	svc := NewTeammatesService(repo, nil).
+		WithPlayerMatchesRepo(newSynthMockFromRows(mock.synthRows, nil), "halo_infinite", "Main").
+		WithSquadLoader(&fakeSquadLoader{rowsByGT: map[string][]canonical.PlayerMatchRow{"Main": mainRows, "Ally": allyRows}})
+	resp, err := svc.GetPage(context.Background(), "x_main", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"Ally"}, PickedSquadSessions: []string{"S2"},
+	})
+	if err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if repo.impactCalls != 1 {
+		t.Errorf("LoadImpactEvents : %d lectures %v, attendu 1", repo.impactCalls, repo.impactMatchs)
+	}
+
+	// Lectures dédiées, sans la mémoire de la page : la population seule, S1 seule.
+	dedie := &TeammatesService{repo: mock, titleSlug: "halo_infinite", gamertag: "Main"}
+	tm := []domain.TeammateRow{{Gamertag: "Ally", XUID: strPtr("x_ally")}}
+	matrice := func(label string) *domain.SquadImpactMatrix {
+		m, _ := dedie.buildSquadImpact(context.Background(), impactEscouade{
+			rows: lignesDeSession(mock.squadRows, label), mainXUID: "x_main", selected: []string{"Ally"},
+			teammates: tm, allies: mock.allyRows,
+		})
+		if m == nil {
+			t.Fatalf("%s : matrice dédiée nulle", label)
+		}
+		return m
+	}
+	s2 := matrice("S2")
+	premierSang := false
+	for _, c := range s2.Cells {
+		premierSang = premierSang || slices.Contains(c.BadgeKeys, "first_blood")
+	}
+	if !premierSang {
+		t.Fatal("la lecture dédiée de S2 doit porter Premier sang (frags reconstitués)")
+	}
+	if !reflect.DeepEqual(resp.ImpactMatrix, s2) {
+		t.Errorf("matrice de la page ≠ matrice d'une lecture dédiée de la population :\n page   %+v\n dédiée %+v", resp.ImpactMatrix, s2)
+	}
+	if len(resp.FirstBlood) == 0 {
+		t.Error("premier frag / première mort : la population doit recevoir ses frags reconstitués")
+	}
+	h := resp.SquadImpactHistory
+	if h == nil || len(h.Evenings) != 2 {
+		t.Fatalf("points par soirée : attendu S1 puis S2, obtenu %+v", h)
+	}
+	comparerSoireeEtMatrice(t, "S1", h.Evenings[0], matrice("S1"))
+	comparerSoireeEtMatrice(t, "S2", h.Evenings[1], s2)
 }

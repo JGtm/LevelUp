@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -385,19 +386,25 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 	return result, rows.Err()
 }
 
-// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32 dynamique).
-// matchIDs est la liste des identifiants — si vide, retourne nil directement.
-//
-// Title-agnostic (centralisé au niveau lecture) : highlight_events ne porte pas
-// forcément les kills selon le titre. Infinite y stocke kill/death/medal ; Halo 5
-// n'y stocke QUE des médailles, les kills horodatés vivant dans killer_victim_pairs.
-// Si le lot chargé ne contient AUCUN kill/death (HasCanonicalKillOrDeath==false),
-// on synthétise les kill/death depuis killer_victim_pairs (LoadKVPairs) via le
-// helper partagé analysis.SynthesizeKillEventsFromKVPairs (source unique de la
-// règle) et on les fusionne, triés par TimeMS. NO-OP sur Infinite (kills déjà
-// présents → fallback jamais pris). Évite que les 4 builders Escouade (first
-// events, intensité, matrice d'impact, squad V1) restent vides en H5.
+// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32 dynamique) :
+// une lecture d'un seul groupe (cf. LoadImpactEventsParGroupes). Vide → nil.
 func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
+	return r.LoadImpactEventsParGroupes(ctx, [][]string{matchIDs})
+}
+
+// LoadImpactEventsParGroupes lit Q32 UNE fois sur l'union de groupes de matchs disjoints, et
+// rend à chaque groupe exactement ce que sa lecture dédiée lui aurait rendu.
+//
+// Title-agnostic (centralisé au niveau lecture) : highlight_events ne porte pas forcément les
+// kills selon le titre. Infinite y stocke kill/death/medal ; Halo 5 n'y stocke QUE des
+// médailles. Un groupe dont aucune ligne n'est un frag ou une mort
+// (analysis.ImpactMatchesNeedingKVFallback — décision PAR GROUPE, jamais sur l'union) reçoit
+// des kill/death synthétisés depuis le journal des frags (Q32c, une lecture pour tous les
+// groupes qui en ont besoin) via analysis.SynthesizeKillEventsFromKVPairs, fusionnés et triés
+// par TimeMS. Évite que les builders Escouade (premier frag, intensité, matrice d'impact,
+// points par soirée, squad V1) restent vides en H5.
+func (r *SquadRepo) LoadImpactEventsParGroupes(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
+	matchIDs := unionDesGroupes(groupes)
 	if len(matchIDs) == 0 {
 		return nil, nil
 	}
@@ -434,17 +441,19 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
 	}
 
-	// Fallback title-agnostic : kills/deaths absents → synthèse depuis kvPairs.
-	if !impactRowsHaveKillOrDeath(result) {
-		kvPairs, kvErr := r.loadKVPairsOn(ctx, db, matchIDs)
-		if kvErr != nil {
-			slog.WarnContext(ctx, "LoadImpactEvents: kv pairs fallback indisponible (best-effort)",
-				"err", kvErr, "n_matches", len(matchIDs))
-			return result, nil
-		}
-		if synth := synthesizeImpactRowsFromKVPairs(kvPairs); len(synth) > 0 {
-			result = mergeImpactRowsByTime(result, synth)
-		}
+	// Repli title-agnostic, groupe par groupe : kills/deaths absents → synthèse depuis le journal.
+	besoin := analysis.ImpactMatchesNeedingKVFallback(result, groupes)
+	if len(besoin) == 0 {
+		return result, nil
+	}
+	kvPairs, kvErr := r.loadKVPairsOn(ctx, db, besoin)
+	if kvErr != nil {
+		slog.WarnContext(ctx, "LoadImpactEvents: kv pairs fallback indisponible (best-effort)",
+			"err", kvErr, "n_matches", len(besoin))
+		return result, nil
+	}
+	if synth := synthesizeImpactRowsFromKVPairs(kvPairs); len(synth) > 0 {
+		result = mergeImpactRowsByTime(result, synth)
 	}
 	return result, nil
 }
