@@ -70,6 +70,9 @@ func (m *mockSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]d
 func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
 	return m.impactRows, m.impactErr
 }
+func (m *mockSquadRepo) LoadImpactEventsParGroupes(ctx context.Context, _ [][]string) ([]domain.ImpactEventRow, error) {
+	return m.LoadImpactEvents(ctx, nil)
+}
 func (m *mockSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
 }

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
@@ -24,16 +25,19 @@ type mockSquadRepo struct {
 	tmErr               error
 	impactRows          []domain.ImpactEventRow
 	impactErr           error
-	kvPairs             []domain.KVPairRaw
-	assistPairs         []domain.SquadAssistPairRaw
-	assistMeasured      int
-	assistErr           error
-	killLog             []domain.SquadKillLogRow
-	kvErr               error
-	synthRows           []legacymatch.SynthesisMatchRow
-	synthErr            error
-	allyRows            []domain.AllyParticipant
-	allyErr             error
+	// impactSynth : les frags reconstitués que le dépôt ajouterait aux matchs d'un groupe sans
+	// frag ni mort natif (règle analysis.ImpactMatchesNeedingKVFallback, appliquée par groupe).
+	impactSynth    []domain.ImpactEventRow
+	kvPairs        []domain.KVPairRaw
+	assistPairs    []domain.SquadAssistPairRaw
+	assistMeasured int
+	assistErr      error
+	killLog        []domain.SquadKillLogRow
+	kvErr          error
+	synthRows      []legacymatch.SynthesisMatchRow
+	synthErr       error
+	allyRows       []domain.AllyParticipant
+	allyErr        error
 	// mapStats + captures : renvoyé par LoadMapStatsForSquad ; les slices capturent
 	// les derniers arguments reçus (composition exacte : test de l'anti-join pool).
 	mapStats             map[string]domain.MapSquadStats
@@ -108,8 +112,28 @@ func (m *mockSquadRepo) LoadSquadMatches(_ context.Context, _, teammateXUID stri
 func (m *mockSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]domain.TeammateMatchRow, error) {
 	return m.tmRows, m.tmErr
 }
-func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
-	return m.impactRows, m.impactErr
+func (m *mockSquadRepo) LoadImpactEvents(ctx context.Context, ids []string) ([]domain.ImpactEventRow, error) {
+	return m.LoadImpactEventsParGroupes(ctx, [][]string{ids})
+}
+
+// LoadImpactEventsParGroupes rend impactRows (sans filtre par match, comme LoadImpactEvents
+// l'a toujours fait ici), plus les lignes d'impactSynth des matchs que la règle du dépôt ferait
+// reconstituer, groupe par groupe.
+func (m *mockSquadRepo) LoadImpactEventsParGroupes(_ context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
+	if m.impactErr != nil || len(m.impactSynth) == 0 {
+		return m.impactRows, m.impactErr
+	}
+	besoin := map[string]bool{}
+	for _, id := range analysis.ImpactMatchesNeedingKVFallback(m.impactRows, groupes) {
+		besoin[id] = true
+	}
+	out := slices.Clone(m.impactRows)
+	for _, r := range m.impactSynth {
+		if besoin[r.MatchID] {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }
 func (m *mockSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr

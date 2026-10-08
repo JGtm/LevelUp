@@ -609,34 +609,6 @@ func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
 	}
 }
 
-// ---------- impactScoreWeights (teammates.07) ----------
-
-func TestImpactScoreWeights_Coverage(t *testing.T) {
-	for _, badge := range impactBadgeOrd {
-		if _, ok := impactScoreWeights[badge]; !ok {
-			t.Errorf("badge %q manque dans impactScoreWeights", badge)
-		}
-	}
-	// Sanity : les weights matchent la spec (cf. .ai/charts_specs/teammates/07_impact_taquinerie.yaml).
-	expected := map[string]float64{
-		"clutch_finisher":   2.0,
-		"first_blood":       2.0,
-		"last_casualty":     -2.0,
-		"silent_hero":       1.5,
-		"false_brother":     -1.5,
-		"last_group_kill":   -1.0,
-		"first_group_death": -1.0,
-		"kamikaze":          -1.0,
-		"thief":             -1.0,
-		"top_killer":        1.0,
-	}
-	for k, v := range expected {
-		if impactScoreWeights[k] != v {
-			t.Errorf("%s: weight=%v, want %v", k, impactScoreWeights[k], v)
-		}
-	}
-}
-
 // ---------- buildSquadMapHeatmap (teammates.03) ----------
 
 // rowWithMap est un helper local (pas de collision avec rowWithStats) qui
@@ -755,7 +727,7 @@ func TestBuildSquadImpactMatrix_TeamWideAllyDropped(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeWin},
 	}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
+	matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: allSquadRows, mainXUID: mainXUID, selected: []string{"A"}, teammates: coequipierA(), allies: repo.allyRows})
 	if matrix == nil {
 		t.Fatal("matrix should be non-nil")
 	}
@@ -820,7 +792,7 @@ func TestBuildSquadImpactMatrix_TeamWideNoFallback(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeLoss},
 	}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
+	matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: allSquadRows, mainXUID: mainXUID, selected: []string{"A"}, teammates: coequipierA(), allies: repo.allyRows})
 
 	// false_brother doit aller à NS (max deaths=9, min assists=0). Donc :
 	// - A ne doit PAS recevoir false_brother malgré ses 5 deaths (squad-only,
@@ -1260,7 +1232,7 @@ func TestBuildSquadImpactMatrix_ThiefBadge(t *testing.T) {
 	}
 	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "main"}
 	rows := []domain.SquadMatchRow{{MatchID: matchID, StartTime: time.Now(), Outcome: domain.OutcomeWin}}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), rows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
+	matrix, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: rows, mainXUID: mainXUID, selected: []string{"A"}, teammates: coequipierA(), allies: repo.allyRows})
 	if matrix == nil {
 		t.Fatal("matrix should be non-nil")
 	}

@@ -12039,6 +12039,26 @@ export interface components {
             match_id: string;
             player: string;
         };
+        SquadImpactEvening: {
+            /** Format: int64 */
+            matches: number;
+            players: components["schemas"]["SquadImpactEveningPlayer"][] | null;
+            session_label: string;
+            start_time: string;
+            /** Format: int64 */
+            wins: number;
+        };
+        SquadImpactEveningPlayer: {
+            player: string;
+            /** Format: double */
+            points: number;
+            roles: components["schemas"]["SquadImpactRoleCount"][] | null;
+        };
+        SquadImpactHistory: {
+            evenings: components["schemas"]["SquadImpactEvening"][] | null;
+            players: string[] | null;
+            scale: components["schemas"]["SquadImpactRoleWeight"][] | null;
+        };
         SquadImpactMatchHeader: {
             match_id: string;
             /** Format: int64 */
@@ -12055,6 +12075,18 @@ export interface components {
             player: string;
             /** Format: double */
             score: number;
+        };
+        SquadImpactRoleCount: {
+            /** Format: int64 */
+            count: number;
+            /** Format: double */
+            points: number;
+            role: string;
+        };
+        SquadImpactRoleWeight: {
+            /** Format: double */
+            points: number;
+            role: string;
         };
         SquadIntensityMatchRow: {
             label: string;
@@ -13063,6 +13095,7 @@ export interface components {
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
             squad_emprise?: components["schemas"]["SquadEmpriseBlock"];
+            squad_impact_history?: components["schemas"]["SquadImpactHistory"];
             squad_objective_history?: components["schemas"]["SquadObjectiveHistory"];
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;
             teammates: components["schemas"]["TeammateRow"][] | null;

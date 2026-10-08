@@ -39,6 +39,12 @@ type SquadRepository interface {
 	// et les fusionne, triés par TimeMS. NO-OP sur Infinite (kills déjà présents).
 	LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error)
 
+	// LoadImpactEventsParGroupes lit Q32 UNE fois sur l'union de groupes de matchs disjoints et
+	// rend à chaque groupe ce que sa lecture dédiée (LoadImpactEvents) lui aurait rendu : le
+	// repli des kill/death synthétisés se décide PAR GROUPE
+	// (analysis.ImpactMatchesNeedingKVFallback), jamais sur l'union.
+	LoadImpactEventsParGroupes(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error)
+
 	// LoadKVPairs charge les paires killer→victim horodatées (killer_victim_pairs)
 	// pour une liste de match_ids (lecture batch, shared DB). Source du fallback
 	// title-agnostic de synthèse d'events kill/death utilisé par LoadImpactEvents
@@ -314,6 +320,9 @@ func (n *noopSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]d
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadImpactEventsParGroupes(_ context.Context, _ [][]string) ([]domain.ImpactEventRow, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {

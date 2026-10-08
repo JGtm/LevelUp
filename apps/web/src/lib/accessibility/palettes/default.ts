@@ -10,6 +10,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
+import { IMPACT_ROLE_COLORS } from './_impactRoleColors'
 
 export const defaultPalette: Palette = {
   // ── Perf tiers (source : perf-color.ts) ────────────────────────────────────
@@ -117,6 +118,9 @@ export const defaultPalette: Palette = {
   // ── Badges encounter (source : narrative/encounter.go ColorToken) ──────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts)
   ...ENCOUNTER_BADGE_COLORS,
+
+  // ── Rôles d'impact — rampes invariantes (cf. _impactRoleColors.ts) ─────────
+  ...IMPACT_ROLE_COLORS,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // Valeurs = EXACTEMENT celles que résolvaient les anciens tokens empruntés

@@ -133,7 +133,7 @@ func TestGetPage_AnnuleeEntreDeuxSections(t *testing.T) {
 		{"pendant le préchargement des membres", "LoadFor", []string{"Ally"},
 			"squad_members", []string{"impact_events_shared", "enrich_assets", "map_stats"}},
 		{"pendant une section de la population", "LoadMapStatsForSquad", []string{"Ally"},
-			"map_stats", []string{"match_history", "session_timeline", "map_heatmap", "impact_matrix",
+			"map_stats", []string{"match_history", "session_timeline", "map_heatmap", "squad_impact",
 				"medal_digest", "briefing_header", "composition_sessions", "usage_shared"}},
 		{"pendant les lectures d'usage", "usage", []string{"Ally"},
 			"usage_shared", []string{"squad_formes"}},
@@ -182,7 +182,7 @@ func TestGetPage_NonAnnuleeToutesLesSections(t *testing.T) {
 	for _, nom := range []string{
 		"top_teammates", "player_matches", "teammate_rows", "main_team_allies", "squad_members",
 		"impact_events_shared", "enrich_assets", "map_stats", "match_history", "session_timeline",
-		"map_heatmap", "impact_matrix", "medal_digest", "briefing_header",
+		"map_heatmap", "squad_impact", "medal_digest", "briefing_header",
 		"composition_sessions", "usage_shared", "squad_formes",
 	} {
 		if !vues[nom] {

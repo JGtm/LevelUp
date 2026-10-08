@@ -25,11 +25,19 @@ type countingSquadRepo struct {
 }
 
 func (c *countingSquadRepo) LoadImpactEvents(ctx context.Context, ids []string) ([]domain.ImpactEventRow, error) {
+	return c.LoadImpactEventsParGroupes(ctx, [][]string{ids})
+}
+
+func (c *countingSquadRepo) LoadImpactEventsParGroupes(ctx context.Context, groupes [][]string) ([]domain.ImpactEventRow, error) {
+	var ids []string
+	for _, g := range groupes {
+		ids = append(ids, g...)
+	}
 	c.mu.Lock()
 	c.impactCalls++
-	c.impactMatchs = append(c.impactMatchs, append([]string(nil), ids...))
+	c.impactMatchs = append(c.impactMatchs, ids)
 	c.mu.Unlock()
-	return c.mockSquadRepo.LoadImpactEvents(ctx, ids)
+	return c.mockSquadRepo.LoadImpactEventsParGroupes(ctx, groupes)
 }
 
 // pageCompleteFixture : le main (x_main) et un coéquipier suivi (Ally, x_ally) sur trois

@@ -4,7 +4,8 @@
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
  * charts de contribution par joueur : K/D/A par minute, synergies radar, frags et armes
  * (Répartition des frags, Outils de destruction — arrivés d'Usages au lot L2 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), performance, impact des coéquipiers, médailles,
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), performance, impact des coéquipiers (matrice
+ * puis points d'impact par soirée et par rôle), médailles,
  * mécaniques de frag. L'objectif est parti dans l'onglet Emprise (2026-10-07). Le
  * « Premier frag / première mort » a rejoint l'onglet Dynamique (chart lanes) ;
  * l'impact et les médailles sont arrivés de Synergies (lot 3, 2026-09-22).
@@ -17,6 +18,7 @@ import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { MedalDigestEntry, TeammatesPageResponse } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 import { useSquadContext } from './SquadContext'
 import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 import { getSquadText, type SquadText } from './i18n'
@@ -27,6 +29,7 @@ import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
 import { SquadFragSection } from './SquadFragSection'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
+import { SquadImpactHistoryCard } from './impact/SquadImpactHistoryCard'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 
 export function SquadContributionsPage() {
@@ -136,6 +139,7 @@ export function SquadContributionsPage() {
         inkOf={palette.inkOf}
         medalDigest={medalDigest}
         playerColors={playerColors}
+        locale={locale}
         t={t}
       />
     </div>
@@ -175,14 +179,17 @@ function ImpactMedalsMechanics({
   inkOf,
   medalDigest,
   playerColors,
+  locale,
   t,
 }: {
   pageData: TeammatesPageResponse | null
   inkOf: (player: string) => string
   medalDigest: MedalDigestEntry[]
   playerColors: Record<string, string>
+  locale: Locale
   t: SquadText
 }) {
+  const impactHistory = pageData?.squad_impact_history
   return (
     <>
       {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
@@ -194,6 +201,12 @@ function ImpactMedalsMechanics({
         <SquadImpactScoreboard
           matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
         />
+        {/* Points d'impact par soirée : mêmes rôles et même barème que la matrice, la soirée
+            affichée et les précédentes. Absent de la réponse (titre sans événements horodatés
+            ni équipe alliée) : rien n'est monté. */}
+        {impactHistory && (
+          <SquadImpactHistoryCard history={impactHistory} colorByPlayer={playerColors} inkOf={inkOf} locale={locale} />
+        )}
       </section>
 
       {/* MÉDAILLES — arrivées de Synergies avec l'impact. Elles restent EN DERNIER de
