@@ -1,7 +1,8 @@
 /**
  * MatchToolsCard — « Outils de destruction » du joueur de la page sur la Vue match (plan
  * PLAN_MATCHVIEW_EMPRISE_2026-10-06, carte B, D9) : une barre par outil (arme, grenade, mêlée, objet
- * explosif, chute), la pastille de la classe devant l'outil, le compte au bout, à l'encre du joueur.
+ * explosif, chute) à la couleur de la CLASSE de l'outil (celle de la Répartition des frags), la pastille
+ * de la classe devant l'outil, le compte au bout ; aucun gamertag dans l'infobulle : un seul joueur.
  *
  * Le graphe de l'Escouade et de Sessions (`SquadWeaponKillsChart` + `buildSquadToolRows`) sur le bloc
  * `combat_tab.weapon_tools` du match ; libellés des natures par la source unique `toolKindLabels`.
@@ -35,6 +36,7 @@ export function MatchToolsCard({ tools, locale }: { tools: SquadWeaponTools | nu
       colorByPlayer={colors}
       valueText={t.weaponKills.killsShare}
       valueLabel="count"
+      soloByClass
     />
   )
 }
