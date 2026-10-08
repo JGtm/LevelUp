@@ -31,6 +31,15 @@ var vecteursArrets = []vecteurArret{
 	// ti=10 i2 a i17 : l ecrivain (142edb304) ecrit le mot etat+0x14+4*index sur 32 bits.
 	{"O2a", compManagedObjectNavpoint, 10, 1, "11111111111111111111111111111110"},
 	{"O2b", compManagedObjectNavpoint, 10, 1, "00000000000000000000000000000000"},
+	// ti=12 i20 a i27 : l ecrivain (142edb178) ecrit la presence ; present : le mot etat+0x850, puis
+	// FUN_142c94dd4 : le bloc de filtres de FUN_142c7023c (masque sur quatre bits, drapeau d un bit,
+	// par filtre present le tag sur quatre bits, le R(1) commun et la charge du tag), le mot, un mot
+	// par filtre present, puis une entree d ordre de trois bits par filtre present.
+	{"V20a", compNavpointVisualStateGroups0, 12, 1, "0"},
+	{"V20b", compNavpointVisualStateGroups0, 12, 1, "1 | 00000000000000000000000000001011 | 0000 0 | 11111111111111111111111111111111"},
+	{"V21", compNavpointVisualStateGroups1, 12, 1, "1 | 10000000000000000000000000000001 | 0101 1 | 0001 1 0 | 1001 0 00000000000000000000000000000111 | " +
+		"00000000000000000000000000000010 | 00000000000000000000000000000011 | 11111111111111111111111111111100 | 001 000"},
+	{"V27", compNavpointVisualStateGroups7, 12, 1, "1 | 00000000000000000000000000000000 | 1000 1 | 0000 | 01010101010101010101010101010101 | 11111111111111111111111111111111 | 111"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.

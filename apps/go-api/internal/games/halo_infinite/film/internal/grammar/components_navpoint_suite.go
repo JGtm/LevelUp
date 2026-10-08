@@ -14,7 +14,59 @@ package grammar
 const (
 	compNavpointOverrideFlags  = "managed-navpoint-override-flags"
 	compNavpointPositionOffset = "managed-navpoint-position-offset"
+
+	// `i20` a `i27` : huit descripteurs d une meme table (accesseur de nom `14064c620`, table
+	// `143d07f00`, index en `descripteur + 8`), un seul lecteur ([consumeNavpointVisualStateGroup]).
+	compNavpointVisualStateGroups0 = "managed-navpoint-visual-state-groups-component-0"
+	compNavpointVisualStateGroups1 = "managed-navpoint-visual-state-groups-component-1"
+	compNavpointVisualStateGroups2 = "managed-navpoint-visual-state-groups-component-2"
+	compNavpointVisualStateGroups3 = "managed-navpoint-visual-state-groups-component-3"
+	compNavpointVisualStateGroups4 = "managed-navpoint-visual-state-groups-component-4"
+	compNavpointVisualStateGroups5 = "managed-navpoint-visual-state-groups-component-5"
+	compNavpointVisualStateGroups6 = "managed-navpoint-visual-state-groups-component-6"
+	compNavpointVisualStateGroups7 = "managed-navpoint-visual-state-groups-component-7"
 )
+
+// Largeurs du groupe d etats visuels (`i20` a `i27`), lues dans `FUN_140dbe1bc` et ses appeles.
+const (
+	// groupeEtatsVisuelsMotBits : les mots `R(32)` du groupe (`FUN_14080dec4`) : l identifiant
+	// (`etat + 0x850` pour le groupe 0), le mot qui suit le jeu de filtres (`+ 0x108`) et le mot de
+	// chaque filtre present (`+ 0x10c + 4 * i`).
+	groupeEtatsVisuelsMotBits = 32
+	// groupeEtatsVisuelsVersion : le `v` que `FUN_140dbe1bc` passe au bloc de filtres et a l ordre
+	// (`MOV R8D, 1` en `140dbe1f4`, recopie dans `R9D` puis `R8D` par `FUN_140dbe218` et
+	// `FUN_140dbe25c`) : drapeau d un bit, pas d octet legacy, ordre sur trois bits.
+	groupeEtatsVisuelsVersion = true
+)
+
+// consumeNavpointVisualStateGroup (ti=12 `i20` a `i27`) — `FUN_140dbe1bc` :
+//
+//	R(1) presence (`FUN_1406cf008`) ; absent : le champ vaut -1, rien d autre n est lu
+//	R(32) identifiant (`FUN_140dbe218` -> `FUN_14080dec4`, `etat + 0x728 + 0x130 * index + 0x128`)
+//	`FUN_140dbe25c(groupe, flux, v = 1)` : bloc de filtres ([consumeFilterSet]) ; R(32) ;
+//	  un R(32) par filtre present ; K entrees d ordre de trois bits ([consumeNavpointFilterOrder])
+//
+// L ecrivain (`142edb178`) ecrit la presence (`FUN_1406d49c4`, champ different de -1), le mot
+// (`FUN_141d12268`), puis `FUN_142c94dd4` : le bloc de filtres (`FUN_142c7023c`), le mot, un mot
+// par filtre present et les K entrees d ordre sur trois bits. Le seul echec est celui du bloc de
+// filtres (tag 15, qui ne revient pas chez le jeu).
+func consumeNavpointVisualStateGroup(br *Lecteur) bool {
+	if !br.ReadBit() {
+		return true
+	}
+	br.ReadBits(groupeEtatsVisuelsMotBits)
+	mask, ok := consumeFilterSet(br, groupeEtatsVisuelsVersion)
+	if !ok {
+		return false
+	}
+	br.ReadBits(groupeEtatsVisuelsMotBits)
+	k := navpointFilterCount(mask)
+	for range k {
+		br.ReadBits(groupeEtatsVisuelsMotBits)
+	}
+	consumeNavpointFilterOrder(br, k, groupeEtatsVisuelsVersion)
+	return true
+}
 
 // Largeurs lues dans le jeu.
 const (
