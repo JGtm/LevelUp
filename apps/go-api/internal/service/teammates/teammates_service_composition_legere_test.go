@@ -255,6 +255,11 @@ func (l *lecturesComptees) LoadImpactEvents(ctx context.Context, ids []string) (
 	return l.mockSquadRepo.LoadImpactEvents(ctx, ids)
 }
 
+func (l *lecturesComptees) LoadImpactEventsParGroupes(ctx context.Context, g [][]string) ([]domain.ImpactEventRow, error) {
+	l.lues = append(l.lues, "section:Q32")
+	return l.mockSquadRepo.LoadImpactEventsParGroupes(ctx, g)
+}
+
 func (l *lecturesComptees) LoadKVPairs(ctx context.Context, ids []string) ([]domain.KVPairRaw, error) {
 	l.lues = append(l.lues, "section:kv")
 	return l.mockSquadRepo.LoadKVPairs(ctx, ids)

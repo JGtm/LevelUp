@@ -15,6 +15,7 @@ export type { SemanticToken, Palette } from './semantic-tokens'
 
 // Application de palette (usage : ThemeProvider)
 export { applyPalette } from './applyPalette'
+export { paletteForTheme } from './paletteForTheme'
 
 // Résolution synchrone (usage : Plotly layouts, canvas)
 export { resolveToken } from './resolveToken'

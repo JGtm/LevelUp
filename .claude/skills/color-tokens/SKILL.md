@@ -75,6 +75,16 @@ passe par ces cinq jetons, dans toutes les pages :
 - **Distance de couleur** dans un test : importer `deltaE` / `simulateCvd` depuis
   `lib/accessibility/colorDistance.ts` (copie de la matrice OKLab interdite par ratchet).
 
+## Rôles d'impact — seuls jetons qui dépendent du THÈME (2026-10-08)
+
+`impact-gain-1..4` et `impact-loss-1..3` : rampes ordinales des rôles d'impact (graphe « Points
+d'impact par soirée et par rôle », Escouade › Contributions). Pas 1 = plus fort barème, contre
+l'axe, le plus contrasté sur la carte. Valeurs dans `palettes/_impactRoleColors.ts`, INVARIANTES
+par palette (le rôle se lit à la clarté et au côté de l'axe) ; la valeur sombre est posée par
+`paletteForTheme` (ThemeProvider), c'est le seul mécanisme de jeton thème-dépendant : un nouveau
+jeton qui en a besoin s'y ajoute, jamais par un `isDark` dans un graphe. Garde-fou :
+`lib/accessibility/impactRoleTokens.test.ts`.
+
 ## Exceptions tolérées (avec commentaire justificatif)
 
 | Exception | Localisation |

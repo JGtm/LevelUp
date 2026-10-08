@@ -14,6 +14,7 @@ import * as squadContextModule from './SquadContext'
 import type { TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
 import { block0709, history0709, history0709Evenings } from './objectif/objectif.fixtures'
+import { impactHistory3 } from './impact/impactHistory.fixtures'
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
@@ -129,6 +130,26 @@ describe('SquadContributionsPage', () => {
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByText('Répartition des frags')).toBeInTheDocument()
     expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
+  })
+
+  // Points d'impact par soirée : sous la matrice d'impact, monté seulement quand la réponse
+  // porte le bloc (un titre sans événements horodatés ni équipe alliée ne l'a pas).
+  it('monte « Points d’impact par soirée et par rôle » sous la matrice quand le bloc est servi', () => {
+    mockSquadContext({
+      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      pageData: { main_player: 'JGtm', squad_impact_history: impactHistory3 } as unknown as TeammatesPageResponse,
+    })
+    const { container } = renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByTestId('squad-impact-history')).toBeInTheDocument()
+    const text = container.textContent ?? ''
+    expect(text.indexOf('Impact des coéquipiers')).toBeLessThan(text.indexOf('Points d’impact par soirée et par rôle'))
+    expect(text.indexOf('Points d’impact par soirée et par rôle')).toBeLessThan(text.search(/Médailles/))
+  })
+
+  it('ne monte pas les points d’impact par soirée sans le bloc', () => {
+    mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.queryByTestId('squad-impact-history')).toBeNull()
   })
 
   // L'objectif est parti dans l'onglet Emprise : même avec des matchs à objectif, Contributions

@@ -1341,6 +1341,10 @@ export type SquadImpactCell = components['schemas']['SquadImpactCell']
 /** Données du scoreboard impact teammates.07. */
 export type SquadImpactMatrix = components['schemas']['SquadImpactMatrix']
 
+/** Points d'impact par soirée et par rôle (même barème que la matrice, calculé côté Go). */
+export type SquadImpactHistory = components['schemas']['SquadImpactHistory']
+export type SquadImpactEvening = components['schemas']['SquadImpactEvening']
+
 /**
  * Ligne du tableau historique escouade (teammates.11). Une ligne par match
  * unique sur le scope filtré, triée serveur-side par start_time DESC.
@@ -1408,6 +1412,12 @@ export interface TeammatesPageResponse {
   session_timeline?: SquadSessionPoint[]
   map_heatmap?: SquadMapHeatmap
   impact_matrix?: SquadImpactMatrix
+  /**
+   * « Points d'impact par soirée et par rôle » : la soirée affichée et les soirées précédentes
+   * de la composition, mêmes rôles et même barème que la matrice. Absent sans coéquipier
+   * sélectionné ou quand aucun rôle ne tombe sur l'escouade.
+   */
+  squad_impact_history?: SquadImpactHistory
   per_minute_stats?: SquadPerMinuteEntry[]
   synergy_radar?: SquadSynergyRadarSeries[]
   intensity_profile?: SquadIntensityProfile

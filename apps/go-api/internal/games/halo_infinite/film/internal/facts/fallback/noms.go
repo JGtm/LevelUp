@@ -98,6 +98,9 @@ const (
 	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"
 	// NomEchantillonVehiculeAuTraversDUnSilenceEcarte : `replay/positions_porte_vehicules.go`.
 	NomEchantillonVehiculeAuTraversDUnSilenceEcarte Nom = "repli_echantillon_vehicule_au_travers_d_un_silence_ecarte"
+	// NomSocleHorsEmpriseAuLieuDesPrises : `replay/ground_weapon_pads_releve.go` ; compte par
+	// `replay/build_calques.go`, `releverLesSocles`.
+	NomSocleHorsEmpriseAuLieuDesPrises Nom = "repli_socle_hors_emprise_au_lieu_des_prises"
 	// NomAncreDImageCleParElection : `filmdec/keyframe_world.go`, `kfScanNext` ; compte par
 	// `replay/film_scan.go`, `balayerPositions` (lot M3.1).
 	NomAncreDImageCleParElection Nom = "repli_ancre_d_image_cle_par_election"

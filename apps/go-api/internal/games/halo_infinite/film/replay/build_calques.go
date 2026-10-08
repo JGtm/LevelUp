@@ -11,6 +11,8 @@ package replay
 
 import (
 	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // poserGrappinEtPoses publie les tractions de grappin (qui exigent les bornes de la carte) et
@@ -97,6 +99,23 @@ func (a *assemblage) poserPrisesEtSocles() {
 	slog.InfoContext(a.ctx, "rejeu : datation des occupations de socle",
 		"occupations", padDating.Occupations, "datees", padDating.Dated, "nommees", padDating.Named,
 		"ambigues", padDating.Ambiguous, "nonCouvertes", padDating.Uncovered)
+	a.releverLesSocles(judge)
+}
+
+// releverLesSocles releve les socles d arme hors de l emprise jouee au lieu ou leurs armes sont prises
+// (ground_weapon_pads_releve.go). APRES la datation : ce sont les occupations datees qui localisent.
+func (a *assemblage) releverLesSocles(judge *pickupOriginJudge) {
+	cov := a.doc.Coverage.GroundWeapons
+	if cov == nil {
+		return
+	}
+	n := releverLesSoclesHorsEmprise(a.doc.WeaponPads, a.doc.PadPickups, entreesDuReleve{
+		natifs: a.opt.Pickups, position: judge.positionDe, emprise: a.emprise,
+		clock: replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount},
+	}, cov)
+	a.opt.Fallbacks.DeclencheN(fallback.NomSocleHorsEmpriseAuLieuDesPrises, n)
+	slog.InfoContext(a.ctx, "rejeu : socles d arme hors de l emprise jouee",
+		"horsEmprise", cov.HorsEmprise, "releves", cov.Releves, "plusieursLieux", cov.PlusieursLieux)
 }
 
 // poserArmesAuSolEtVehicules publie les armes au sol objet par objet, les vehicules, et la

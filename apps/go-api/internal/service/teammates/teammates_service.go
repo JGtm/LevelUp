@@ -350,12 +350,17 @@ func (s *TeammatesService) GetPage(
 
 	// Sections de la population escouade (composition exacte comprise) : tableaux puis graphes,
 	// chacune sautée dès que la requête est annulée (teammates_service_sections.go).
-	siVivante(ctx, func() { lectures.precharger(ctx, req.SelectedGamertags, allSquadRows) })
+	// Soirées des points d'impact : connues AVANT le préchargement, qui lit Q32 une fois sur la
+	// population et ces soirées (teammates_squad_impact.go).
+	soireesImpact := soireesDImpact(allSquadRows, allSquadRowsForTimeline, len(req.SelectedGamertags) > 0)
+	siVivante(ctx, func() {
+		lectures.precharger(ctx, req.SelectedGamertags, groupesDImpact(allSquadRows, soireesImpact))
+	})
 	sec := s.sectionsDeLaPopulation(ctx, populationEscouade{
 		playerXUID: playerXUID, req: req, rows: allSquadRows, rowsTimeline: allSquadRowsForTimeline,
 		teammates: teammates, allies: allies, mainTeamByMatch: mainTeamByMatch,
 		sessionMatchIDs: sessionMatchIDs, selectedXUIDs: selectedXUIDs, extraPool: extraPool,
-		issues: issues,
+		soireesImpact: soireesImpact, issues: issues,
 	})
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)
@@ -443,6 +448,7 @@ func (s *TeammatesService) GetPage(
 		SessionTimeline:     sec.sessionTimeline,
 		MapHeatmap:          sec.mapHeatmap,
 		ImpactMatrix:        sec.impactMatrix,
+		SquadImpactHistory:  sec.impactHistory,
 		PerMinuteStats:      sec.perMinuteStats,
 		SynergyRadar:        sec.synergyRadar,
 		IntensityProfile:    sec.intensityProfile,

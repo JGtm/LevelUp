@@ -436,6 +436,16 @@ Trois affirmations fausses à ne pas répéter :
 | **Puissance** | ce même emplacement est un SOCLE DE PUISSANCE (`power`) | idem |
 | **Non classé** | aucun emplacement ne confirme le socle (carte hors référence, ou socle hors rayon) | reste VISIBLE avec son compte, jamais fondu ailleurs |
 
+> **Socle dont l'arme apparaît hors de la carte (2026-10-08, schéma 90).** Sur
+> certaines cartes Forge, le script crée l'arme sous le niveau puis la pose sur son socle ; le film
+> n'écrit que la création. Le socle d'arme dont la position tombe hors de l'emprise jouée se publie
+> au centroïde de ses ramasseurs, aux occupations que l'événement natif date, quand au moins deux le
+> localisent à moins de 1,5 m (`replay/ground_weapon_pads_releve.go`, repli
+> `repli_socle_hors_emprise_au_lieu_des_prises`) ; il peut alors confirmer un emplacement. Quand
+> les prises tombent en PLUSIEURS lieux (un même point de création sert plusieurs socles de la
+> carte), rien n'est relevé et le socle reste non classé : `coverage.groundWeapons.horsEmprise`,
+> `releves`, `plusieursLieux` le disent film par film.
+
 ### Le négatif qui compte : LE RÔLE DE L'ARME N'EST PAS LE NIVEAU
 
 Mesure du 2026-09-14 (76 artefacts, 669 socles confirmés) : **70 socles sur 669 (10,5 %)**

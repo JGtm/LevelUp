@@ -55,7 +55,7 @@ func TestLeCoupleEcritPrendLeRecordDeSaVictime(t *testing.T) {
 	kf, r := coupleTemoinDeuxVictimes()
 	recs := []killEventRec{coupleRec(2000, 1, 2), coupleRec(2100, 1, 3)}
 
-	st := kf.resoudreCouples(recs, r)
+	st := kf.resoudreCouples(recs, r, nil)
 
 	if len(kf.pairs) != 2 {
 		t.Fatalf("couples = %+v, attendu 2 : celui que le feed ECRIT et celui que la lecture rend",

@@ -247,8 +247,8 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	if err = c.marcher(ctx, src); err != nil {
 		return err
 	}
-	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster)
 	c.scanCands = scanFilm(c.film, c.roster.nPlay)
+	c.couples = c.feed.resoudreCouples(c.killEvents.recs, c.roster, c.mortsLues())
 	if err = ctx.Err(); err != nil {
 		return err
 	}
@@ -258,6 +258,13 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	c.roster.perm, score = solveBijection(c.roster, c.feed.pairs, c.scanCands, c.opts.BijectionRestarts)
 	c.bijScore = score
 	return nil
+}
+
+// mortsLues : les dead-states du film, ceux de la marche puis ceux du balayage — ce que le recollage
+// du kill-feed consulte avant de prendre une mort ([resolveurDeCouples.mortLueDUnAutreTueur]).
+func (c *decodeCtx) mortsLues() []candidate {
+	marche, _ := c.walkRes.candidates()
+	return append(marche, c.scanCands...)
 }
 
 // finish : la passe hybride, les denominateurs, la sante.

@@ -1,7 +1,8 @@
 // Package duckdb — squad_repo_kv_fallback.go : fallback title-agnostic de synthèse
 // d'events kill/death depuis killer_victim_pairs (kvPairs). Découpe de squad_repo.go
 // (god-file split, dépassement limite 500 L). LoadImpactEvents reste dans squad_repo.go ;
-// ce fichier porte la lecture batch des kvPairs et la reconstruction/fusion des events.
+// ce fichier porte la lecture batch des kvPairs et la reconstruction/fusion des events ; la
+// décision du repli est analysis.ImpactMatchesNeedingKVFallback.
 package duckdb
 
 import (
@@ -14,7 +15,6 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/canonical"
 )
 
 // LoadKVPairs charge les paires killer→victim horodatées (killer_victim_pairs)
@@ -66,21 +66,6 @@ func (r *SquadRepo) loadKVPairsOn(ctx context.Context, db *sql.DB, matchIDs []st
 		result = append(result, kv)
 	}
 	return result, rows.Err()
-}
-
-// impactRowsHaveKillOrDeath indique si le lot d'events highlight escouade contient
-// au moins un kill ou death. Miroir de analysis.HasCanonicalKillOrDeath pour la
-// forme domain.ImpactEventRow (mêmes valeurs canoniques "kill"/"death"). Sert à
-// décider du fallback synthétique kvPairs → events (titres dont highlight_events
-// ne porte que des médailles, ex. Halo 5).
-func impactRowsHaveKillOrDeath(rows []domain.ImpactEventRow) bool {
-	for _, r := range rows {
-		switch canonical.HighlightEventType(r.EventType) {
-		case canonical.EventKill, canonical.EventDeath:
-			return true
-		}
-	}
-	return false
 }
 
 // synthesizeImpactRowsFromKVPairs reconstruit des ImpactEventRow kill/death (1
@@ -142,5 +127,20 @@ func mergeImpactRowsByTime(existing, synth []domain.ImpactEventRow) []domain.Imp
 	out = append(out, existing...)
 	out = append(out, synth...)
 	sort.SliceStable(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
+	return out
+}
+
+// unionDesGroupes — les identifiants des groupes, sans doublon ni vide, dans l'ordre.
+func unionDesGroupes(groupes [][]string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, g := range groupes {
+		for _, id := range g {
+			if id != "" && !seen[id] {
+				seen[id] = true
+				out = append(out, id)
+			}
+		}
+	}
 	return out
 }
