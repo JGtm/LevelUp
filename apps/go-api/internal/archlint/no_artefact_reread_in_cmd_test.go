@@ -1,5 +1,5 @@
 // Package archlint — no_artefact_reread_in_cmd_test.go : garde-rail de la lecture d'un artefact
-// de rejeu par les commandes hors ligne (plan `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`,
+// de rejeu par les commandes hors ligne (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`,
 // item L7.5.1 RV3, CLAUDE.md regle 6).
 //
 // La lecture « `os.ReadFile` + `json.Unmarshal` vers un `replay.ReplayDocument` » etait copiee

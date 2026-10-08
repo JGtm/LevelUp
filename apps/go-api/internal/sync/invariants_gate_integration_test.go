@@ -6,8 +6,8 @@
 // Scénario cadenassé (incidents 2026-05-27 et 2026-06-10) : une escouade de
 // 3 joueurs joue le MÊME match. Le joueur dont le sync passe en premier
 // insère le match en shared (registry + participants des 3 joueurs). Les deux
-// autres syncs voient alors le match comme « déjà connu » (loadKnownMatchIDs
-// source 2) et SKIPPENT le traitement per-player (delta-skip, 0 inséré).
+// autres syncs voient alors le match comme « déjà connu » (knownset.Load :
+// participants du xuid au registre) et SKIPPENT le traitement per-player (delta-skip, 0 inséré).
 //
 // CONTRAT : malgré le skip, la convergence (runConditionalPostSync →
 // ensurePlayerEnrichmentRows) DOIT créer la row player_match_enrichment de

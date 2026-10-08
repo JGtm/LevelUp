@@ -1615,35 +1615,20 @@ func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.H
 	fileServer.ServeHTTP(w, req)
 }
 
-// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* : un fichier du
-// dist servi tel quel ; un chemin a extension statique absent du dist → 404 franc
-// (cf. middleware.IsStaticAssetPath) ; sinon index.html (route client-side React) avec injection
-// Open Graph. Les routes /api/v1 sont montees AVANT (r.Route dans server.go) : un
-// chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais ici.
-// Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
+// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* (cf. newSPAHandler), avec
+// injection Open Graph sur index.html. Les routes /api/v1 sont montees AVANT (r.Route dans
+// server.go) : un chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais
+// ici. Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
 func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, reg *wire.ServiceRegistry) {
-	if dist := cfg.WebDistDir; dist != "" {
-		indexPath := filepath.Join(dist, "index.html")
-		if _, statErr := os.Stat(indexPath); statErr == nil {
-			fileServer := http.FileServer(http.Dir(dist))
-			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
-				if fi, err := os.Stat(filepath.Join(dist, filepath.Clean(req.URL.Path))); err == nil && !fi.IsDir() {
-					serveStaticFile(w, req, fileServer)
-					return
-				}
-				if middleware.IsStaticAssetPath(req.URL.Path) {
-					// Log volontairement non throttle : c'est le silence de
-					// l'ancien fallback (200 text/html sur tout asset absent)
-					// qui rendait ce genre de manque invisible en prod.
-					slog.WarnContext(req.Context(), "static asset not found", "path", req.URL.Path)
-					http.NotFound(w, req)
-					return
-				}
-				reg.ServeIndexWithOG(w, req, indexPath)
-			})
-			slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
-		} else {
-			slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
-		}
+	dist := cfg.WebDistDir
+	if dist == "" {
+		return
 	}
+	spa, ok := newSPAHandler(dist, reg.ServeIndexWithOG)
+	if !ok {
+		slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
+		return
+	}
+	r.Get("/*", spa)
+	slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
 }

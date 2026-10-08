@@ -1,5 +1,5 @@
 // Package service — session_page_match_scores.go : SCORE ET DOMINANCE DES LIGNES DE MATCH de la page
-// Sessions (plan `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D15) — la bande de résultats, l'encoche
+// Sessions (plan `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D15) — la bande de résultats, l'encoche
 // de dominance et les en-têtes de la grille match par match les lisent.
 package service
 

@@ -43,9 +43,12 @@ var catalogQueries = []string{
 	`SELECT 'table', table_name, table_name FROM duckdb_tables() WHERE schema_name = 'main'`,
 	`SELECT 'view', view_name, view_name FROM duckdb_views() WHERE schema_name = 'main' AND NOT internal`,
 	`SELECT 'index', table_name, index_name FROM duckdb_indexes() WHERE schema_name = 'main'`,
-	`SELECT 'sequence', '', sequence_name FROM duckdb_sequences() WHERE schema_name = 'main'`,
+	sequenceCatalogQuery,
 	`SELECT 'column', table_name, column_name FROM duckdb_columns() WHERE schema_name = 'main'`,
 }
+
+// sequenceCatalogQuery — famille « séquence » du catalogue, lue aussi seule par SequenceCreated.
+const sequenceCatalogQuery = `SELECT 'sequence', '', sequence_name FROM duckdb_sequences() WHERE schema_name = 'main'`
 
 // Snapshot photographie les objets de schéma de la DB. Retourne nil si l'introspection
 // échoue — la détection de dérive est alors DÉSACTIVÉE pour cet appel (jamais bloquante :
@@ -159,4 +162,27 @@ func currentDatabasePath(ctx context.Context, db *sql.DB) string {
 		return ""
 	}
 	return path
+}
+
+// SequenceCreated dit si une séquence absente de `before` existe maintenant : le soin vient
+// d'en créer une (CREATE SEQUENCE … START 1, conversion append-only), qui peut rendre un id
+// déjà posé dans la colonne qu'elle alimente. Prudente : rend true quand `before` manque
+// (introspection indisponible, déjà journalisée) ou que le catalogue ne répond pas (échec
+// journalisé ici) — l'appelant réaligne alors plutôt que de laisser une séquence en retard.
+func SequenceCreated(ctx context.Context, db *sql.DB, before map[Object]struct{}) bool {
+	if before == nil {
+		return true
+	}
+	now := make(map[Object]struct{}, 32)
+	if err := collect(ctx, db, sequenceCatalogQuery, now); err != nil {
+		slog.ErrorContext(ctx, "schemadrift.SequenceCreated: catalogue des séquences illisible — réalignement par prudence",
+			"err", err)
+		return true
+	}
+	for obj := range now {
+		if _, existed := before[obj]; !existed {
+			return true
+		}
+	}
+	return false
 }

@@ -1,5 +1,5 @@
 // Package service — session_page_blocks.go : LES BLOCS DU FILM DE LA COLONNE DE SESSION (plan
-// `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, lot S2) — leurs sources, et l'ordre dans lequel la page
+// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, lot S2) — leurs sources, et l'ordre dans lequel la page
 // les pose sur la session affichée et, tiroir ouvert, sur la session comparée.
 //
 // UNE LECTURE DU RÉSUMÉ D'USAGE PAR SESSION (ADR 0036 I4) : films, joueurs et participants sont lus

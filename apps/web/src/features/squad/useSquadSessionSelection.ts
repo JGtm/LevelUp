@@ -3,8 +3,8 @@
  * moment où sa requête lourde (POST `/pages/teammates`) a le droit de partir.
  *
  * Extrait de `SquadLayout` le 2026-09-23 (campagne perf, lot L4a —
- * `.ai/PLAN_PERF_CHARGEMENTS_2026-09-23.md` §4). Défaut mesuré le même jour
- * (`.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` §1.2 et C3) : un premier
+ * `.ai/V7.5/PLAN_PERF_CHARGEMENTS_2026-09-23.md` §4). Défaut mesuré le même jour
+ * (`.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` §1.2 et C3) : un premier
  * passage envoyait une requête SANS coéquipier (la composition arrive par
  * `GET /friends`), puis chaque snap ou clic du rail en envoyait DEUX (une
  * intermédiaire jamais affichée : 8,2 s + 26,8 s par clic). Deux règles :

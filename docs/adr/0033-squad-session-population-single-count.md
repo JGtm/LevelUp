@@ -1,6 +1,6 @@
 # ADR 0033 — One population, one count, for a squad session
 
-**Status**: Accepted (2026-09-09)
+**Status**: Accepted (2026-09-09). Decision 1 amended on 2026-10-08 (known-teammate pool).
 
 **Branch**: `wt/escouade-hors-cadre`
 
@@ -59,8 +59,33 @@ presence at the end of the match.** A match belongs to the population when:
 regardless of `present_at_beginning`, `present_at_completion`, `left_in_progress`,
 `joined_in_progress` or `last_leave_time`. Under the optional exclusive filter
 (`filter_exact_composition = true`), one further condition applies: no *known* teammate
-outside the selection (top-50 with-friends teammates ∪ configured friends) is on that team.
-Lobby fills, bots and opponents never break a composition.
+outside the selection is on that team. A known teammate is a **declared friend** of the main
+player or a **tracked profile** of the title, and nothing else (see the amendment below).
+Lobby fills, bots and opponents never break a composition, however many matches they shared
+with the main player.
+
+*Amended (2026-10-08).* The known-teammate pool was "top-50 with-friends teammates ∪
+configured friends". The top 50 is a ranking, not an identity: on 2026-10-08 the main player
+had 612 with-friends matches, and every rank from 18 to 50 was a tie at two matches together,
+broken by xuid. A stranger who filled the fourth slot in two matches of one evening (7 October
+2026, eight matches with the same three players from start to finish) ranked 40th — and the
+strict option removed precisely those two matches. The same self-reference produced the
+`passivemarquise` (35th) exclusions measured in *Context*. The pool is now defined by
+configuration only (`internal/service/teammates/coequipiers_connus.go`):
+
+- the main player's declared friends (per-player friend list), resolved to xuids through the
+  profile registry first, then one read for the others (the resolution shared with the Career
+  encounters, ADR 0036 I4);
+- the title's profiles in `db_profiles.json` that are not `auth_only` (credential-lending
+  accounts are not teammates). A paused title stays known: the squad page is a read path, and
+  `domain.SyncablePlayers` does not apply to it.
+
+The with-friends ranking (Q29) still feeds the teammate picker and the resolution of a chosen
+gamertag; it no longer decides who is known. Pinned by
+`TestCompositionStricte_Soiree7Octobre_InconnuFrequentNEcartePas` and
+`TestCompositionStricte_Soiree7Octobre_ConnuEcarte`
+(`internal/service/teammates/composition_stricte_soiree_test.go`). A match excluded by the
+option names its culprit by the known teammate's profile key or declared name.
 
 **2. `composition_sessions[].match_count` is the single source of a session count in squad
 context.** Every surface — session multi-select, rail pill, rail trailing counter, KPIs,

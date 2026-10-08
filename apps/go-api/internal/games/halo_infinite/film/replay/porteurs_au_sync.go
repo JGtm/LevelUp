@@ -2,7 +2,7 @@ package replay
 
 // porteurs_au_sync.go — LES INTERVALLES DE PORT D'OBJECTIF, LUS AU SYNC PAR L'ASSEMBLEUR DE LA CUISSON.
 //
-// # POURQUOI (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, décision V6, voie (b) retenue le 2026-09-28)
+// # POURQUOI (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, décision V6, voie (b) retenue le 2026-09-28)
 //
 // Le placement d'une vie (`placement_des_vies.go`) écarte les instants où le joueur PORTE
 // l'objectif. Ce fait n'existait qu'à la cuisson du rejeu ; le plan le veut au sync, par le

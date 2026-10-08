@@ -67,6 +67,8 @@ export function ReplaySpeedMenu({ speed, onSetSpeed, locale }: ReplaySpeedMenuPr
         <div
           role="group"
           aria-label={t.speed}
+          // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
+          data-replay-escape-layer=""
           className="absolute bottom-[calc(100%+6px)] right-0 z-20 flex min-w-[110px] flex-col rounded-lg border border-border bg-popover p-1 shadow-xl"
         >
           {SPEED_MULTIPLIERS.map((m) => (

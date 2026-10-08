@@ -48,22 +48,24 @@ var lyingBitsResetMu gosync.Mutex
 // le lease — on rend la main au front plutôt que de pendre la requête).
 const acquireWriterTimeout = 60 * time.Second
 
-// RunRegistryNamesBackfill résout les assets UUID bruts de match_registry via
-// metadata.asset_translations (sync.BackfillRegistryNames, idempotent).
-// dryRun → scan seul en RO, aucun UPDATE.
+// RunRegistryNamesBackfill fait converger les noms d'assets de match_registry (NULL ou égaux à
+// l'identifiant) vers metadata.asset_translations — sync.BackfillRegistryNames, la mécanique
+// du balayage périodique et de `levelup backfill-registry-names`. dryRun → même planification
+// sur une lecture shared, aucune écriture.
 func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlug string, dryRun bool) (res domain.RegistryNamesBackfillResult, err error) {
 	res = domain.RegistryNamesBackfillResult{DryRun: dryRun}
 	if dryRun {
-		// Locale sans objet ici (seuls les compteurs RawUUID* sont lus) → défaut ops.
-		counts, cErr := r.DataQualityCounts(ctx, titleSlug, "")
-		if cErr != nil {
-			return res, cErr
+		sharedSQL, metaSQL, closeAll, hErr := r.dataQualityHandles(ctx, titleSlug)
+		if hErr != nil {
+			return res, hErr
 		}
-		res.PlaylistsScanned = counts.RawUUIDPlaylists
-		res.MapsScanned = counts.RawUUIDMaps
-		res.PairsScanned = counts.RawUUIDPairs
-		res.VariantsScanned = counts.RawUUIDVariants
-		return res, nil
+		defer closeAll()
+		stats, bErr := sync_pkg.BackfillRegistryNames(ctx, sharedSQL, metaSQL,
+			sync_pkg.RegistryNamesOptions{DryRun: true})
+		if bErr != nil {
+			return res, bErr
+		}
+		return registryNamesToDomain(stats), nil
 	}
 
 	if !registryNamesMu.TryLock() {
@@ -74,37 +76,11 @@ func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlu
 	// journalisés — placés avant ce defer). err = erreur finale nommée.
 	defer func() { r.journalAction(ctx, adminstate.ActionRegistryNames, err) }()
 
-	if r.cfg.SharedProvider == nil {
-		return res, fmt.Errorf("shared provider non câblé (mode legacy) — backfill indisponible")
-	}
-
-	acquireCtx, cancel := context.WithTimeout(ctx, acquireWriterTimeout)
-	defer cancel()
-	writer, err := r.cfg.SharedProvider.AcquireWriter(ctxkeys.WithDBWriterLabel(acquireCtx, "admin_registry_names"))
-	if err != nil {
-		return res, fmt.Errorf("acquisition writer shared (sync en cours ?): %w", err)
-	}
-	defer writer.Release()
-
-	metaPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).MetadataDBPath(titleSlug)
-	if _, statErr := os.Stat(metaPath); statErr != nil {
-		return res, fmt.Errorf("metadata absente pour %s: %w", titleSlug, statErr)
-	}
-	metaDB, err := duckdb.OpenReadWriteShared(metaPath)
-	if err != nil {
-		return res, fmt.Errorf("open metadata: %w", err)
-	}
-	defer metaDB.Close() //nolint:errcheck // ref-count
-
-	stats, err := sync_pkg.BackfillRegistryNames(ctx, writer.DB(), metaDB.SQLDb())
+	stats, err := r.convergeRegistryNames(ctx, titleSlug, "admin_registry_names")
 	if err != nil {
 		return res, err
 	}
-	res.PlaylistsScanned, res.PlaylistsFixed = stats.PlaylistsScanned, stats.PlaylistsFixed
-	res.MapsScanned, res.MapsFixed = stats.MapsScanned, stats.MapsFixed
-	res.PairsScanned, res.PairsFixed = stats.PairsScanned, stats.PairsFixed
-	res.VariantsScanned, res.VariantsFixed = stats.VariantsScanned, stats.VariantsFixed
-	res.TotalFixed = stats.Total()
+	res = registryNamesToDomain(stats)
 
 	monitoringLog.InfoContext(ctx, "admin_actions: backfill registry names terminé",
 		"title", titleSlug, "total_fixed", res.TotalFixed)
@@ -434,4 +410,16 @@ func (r *ServiceRegistry) RunPlayerInitialSync(ctx context.Context, titleSlug, p
 		"max_matches", opts.MaxMatches, "status", syncRes.Status())
 	observability.IncCounter("admin_action_player_initial_sync_total")
 	return result, nil
+}
+
+// registryNamesToDomain projette les compteurs de convergence vers le contrat admin.
+func registryNamesToDomain(stats sync_pkg.BackfillRegistryStats) domain.RegistryNamesBackfillResult {
+	return domain.RegistryNamesBackfillResult{
+		DryRun:           stats.DryRun,
+		PlaylistsScanned: stats.PlaylistsScanned, PlaylistsFixed: stats.PlaylistsFixed,
+		MapsScanned: stats.MapsScanned, MapsFixed: stats.MapsFixed,
+		PairsScanned: stats.PairsScanned, PairsFixed: stats.PairsFixed,
+		VariantsScanned: stats.VariantsScanned, VariantsFixed: stats.VariantsFixed,
+		TotalFixed: stats.Total(),
+	}
 }

@@ -1,7 +1,7 @@
 package wire
 
 // registry_pages_sessions_wiring_test.go — LE CABLAGE DES BLOCS DU FILM DE LA PAGE SESSIONS (plan
-// `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, lot S2.9).
+// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, lot S2.9).
 //
 // Même mode de panne que l'Escouade et les Séries temporelles : le service dégrade EN SILENCE sur
 // une dépendance nil. Les options sont lues dans l'arbre syntaxique des factories — leur argument et

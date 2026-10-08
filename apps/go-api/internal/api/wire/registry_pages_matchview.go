@@ -1,7 +1,7 @@
 package wire
 
 // registry_pages_matchview.go — LE CABLAGE DES BLOCS DU FILM DE LA VUE MATCH (distance par arme,
-// Emprise du match ; plan `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, D18), appele par la factory
+// Emprise du match ; plan `.ai/V7.5/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, D18), appele par la factory
 // `MatchView` (registry_pages.go, qui depasse deja le seuil de taille du depot). Chaque dependance
 // sous la porte de sa donnee ; jamais slug==.
 

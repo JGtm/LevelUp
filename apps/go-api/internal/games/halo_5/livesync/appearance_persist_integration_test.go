@@ -10,13 +10,16 @@ package livesync
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
+	"levelup/go-api/internal/platform/dblease"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -86,5 +89,49 @@ func TestPersistAppearance_RoundTrip(t *testing.T) {
 	}
 	if banner != "jgtm" || emblem != "jgtm" {
 		t.Errorf("banner=%q emblem=%q, want slug relatif 'jgtm'", banner, emblem)
+	}
+}
+
+// TestPersistAppearance_DelaiCourt : l'écriture passe sous le verrou d'écrivain
+// (KindPlayer) de la player DB, qui n'est pas réentrant. Aucun appelant de
+// PersistAppearance ne le tient (cron de personnalisation, CLI h5-appearance-backfill) :
+// sous un délai court, l'écriture aboutit. Quand un autre écrivain le tient, elle
+// échoue à la fin du délai avec dblease.ErrDBLocked, sans rester bloquée.
+func TestPersistAppearance_DelaiCourt(t *testing.T) {
+	tmp := t.TempDir()
+	playerPath := filepath.Join(tmp, "player", "stats.duckdb")
+	cacheRoot := filepath.Join(tmp, "cache")
+	src := &fakeAppearanceSource{
+		app:       &halo5.H5Appearance{Gamertag: "Chocoboflor", ServiceTag: "OKLM"},
+		emblemPNG: testPNG,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	out, err := PersistAppearance(ctx, src, playerPath, cacheRoot, "Chocoboflor", "xuid-choco")
+	cancel()
+	if err != nil || !out.Persisted {
+		t.Fatalf("écriture sous délai court, verrou libre : persisted=%v err=%v", out.Persisted, err)
+	}
+
+	db, err := syncpkg.OpenPlayerDB(playerPath)
+	if err != nil {
+		t.Fatalf("OpenPlayerDB : %v", err)
+	}
+	defer db.Close()
+	held, err := dblease.AcquireWriter(db.SQLDb(), db.Path(), dblease.KindPlayer, dblease.PlayerLeaseTimeout)
+	if err != nil {
+		t.Fatalf("prise du verrou par l'écrivain concurrent : %v", err)
+	}
+	defer held.Release()
+
+	short, cancelShort := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancelShort()
+	start := time.Now()
+	_, err = PersistAppearance(short, src, playerPath, cacheRoot, "Chocoboflor", "xuid-choco")
+	if !errors.Is(err, dblease.ErrDBLocked) {
+		t.Fatalf("écriture pendant que le verrou est tenu : err=%v, attendu dblease.ErrDBLocked", err)
+	}
+	if waited := time.Since(start); waited > 2*time.Second {
+		t.Fatalf("écriture restée bloquée %v au-delà de son délai", waited)
 	}
 }

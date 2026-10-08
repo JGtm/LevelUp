@@ -3,7 +3,7 @@
  *
  * LES RACCOURCIS SONT CEUX QUE TOUT LE MONDE CONNAÎT DÉJÀ, et pas un de plus : Espace et K
  * pour lecture/pause, ←/→ et J/L pour ±10 s, M pour le son, R pour recommencer, « , » et « . »
- * pour l'image par image ; au cadrage, + / − pour grossir et réduire, 0 pour toute la carte,
+ * pour l'image par image, F pour le plein écran ; au cadrage, + / − pour grossir et réduire, 0 pour toute la carte,
  * Maj + flèche pour se déplacer. Inventer une convention maison ferait apprendre ce que le lecteur
  * sait déjà.
  *
@@ -41,6 +41,8 @@ export interface ReplayShortcutHandlers {
   stepFrames: (frames: number) => void
   restart: () => void
   toggleSound: () => void
+  /** Ouvre ou ferme le mode plein écran (useReplayFullscreen) : la touche F. */
+  toggleFullscreen: () => void
   /** Le saut des flèches, en secondes (cf. SKIP_SECONDS de la barre). */
   skipSeconds: number
   /** `false` quand la page n'a pas de rejeu chargé : rien n'est écouté. */
@@ -102,6 +104,32 @@ const ARROW_PAN: Record<string, [number, number] | undefined> = {
   ArrowRight: [1, 0],
 }
 
+/** Ce qu'une touche commande au LECTEUR (le cadrage a sa propre table, `zoomKeyCommand`). */
+type PlayerKeyAction =
+  | 'play'
+  | 'back'
+  | 'forward'
+  | 'previousFrame'
+  | 'nextFrame'
+  | 'sound'
+  | 'restart'
+  | 'fullscreen'
+
+/**
+ * LES TOUCHES DU LECTEUR, majuscules comprises : Verr. Maj allumé ne doit éteindre aucun
+ * raccourci. Une `Map` et non un objet : une clé de touche ne doit jamais tomber sur une
+ * propriété héritée d'`Object.prototype`.
+ */
+const PLAYER_KEYS = new Map<string, PlayerKeyAction>([
+  [' ', 'play'], ['k', 'play'], ['K', 'play'],
+  ['ArrowLeft', 'back'], ['j', 'back'], ['J', 'back'],
+  ['ArrowRight', 'forward'], ['l', 'forward'], ['L', 'forward'],
+  [',', 'previousFrame'], ['.', 'nextFrame'],
+  ['m', 'sound'], ['M', 'sound'],
+  ['r', 'restart'], ['R', 'restart'],
+  ['f', 'fullscreen'], ['F', 'fullscreen'],
+])
+
 export function isTypingTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
   if (!el) return false
@@ -116,7 +144,7 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
-  const { togglePlay, seekBy, stepFrames, restart, toggleSound, skipSeconds, enabled, zoom } = h
+  const { togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullscreen, skipSeconds, enabled, zoom } = h
   // LE CADRAGE PAR RÉFÉRENCE, et pas en dépendance de l'effet : son objet est recréé à chaque
   // rendu, et le cadrage change soixante fois par seconde pendant la lecture. En dépendance,
   // l'écouteur clavier se réabonnerait à cette cadence. La référence s'écrit dans un effet —
@@ -127,12 +155,22 @@ export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
   }, [zoom])
   useEffect(() => {
     if (!enabled) return
+    const actions: Record<PlayerKeyAction, () => void> = {
+      play: togglePlay,
+      back: () => seekBy(-skipSeconds),
+      forward: () => seekBy(skipSeconds),
+      previousFrame: () => stepFrames(-1),
+      nextFrame: () => stepFrames(1),
+      sound: toggleSound,
+      restart,
+      fullscreen: toggleFullscreen,
+    }
     function onKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey) return
       if (isTypingTarget(e.target)) return
-      // MAJ + FLÈCHE DÉPLACE LE CADRAGE, et ce court-circuit vient AVANT le `switch` : les
-      // flèches nues y valent le saut temporel, qui est le geste le plus fréquent d'un rejeu et
-      // qu'on ne déplace pas. Sans le `return`, une même frappe ferait les deux.
+      // MAJ + FLÈCHE DÉPLACE LE CADRAGE, et ce court-circuit vient AVANT les touches du
+      // lecteur : les flèches nues y valent le saut temporel, qui est le geste le plus fréquent
+      // d'un rejeu et qu'on ne déplace pas. Sans le `return`, une même frappe ferait les deux.
       const z = liveZoom.current
       if (z && e.shiftKey) {
         const p = ARROW_PAN[e.key]
@@ -149,48 +187,14 @@ export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
         applyZoomKey(zoomCommand, z)
         return
       }
-      switch (e.key) {
-        case ' ':
-        case 'k':
-        case 'K':
-          e.preventDefault()
-          togglePlay()
-          return
-        case 'ArrowLeft':
-        case 'j':
-        case 'J':
-          e.preventDefault()
-          seekBy(-skipSeconds)
-          return
-        case 'ArrowRight':
-        case 'l':
-        case 'L':
-          e.preventDefault()
-          seekBy(skipSeconds)
-          return
-        case ',':
-          e.preventDefault()
-          stepFrames(-1)
-          return
-        case '.':
-          e.preventDefault()
-          stepFrames(1)
-          return
-        case 'm':
-        case 'M':
-          e.preventDefault()
-          toggleSound()
-          return
-        case 'r':
-        case 'R':
-          e.preventDefault()
-          restart()
-          return
-        default:
-          return
-      }
+      // `preventDefault` SUR LES SEULES TOUCHES TRAITÉES (cf. l'en-tête) : une touche hors table
+      // reste au navigateur.
+      const action = PLAYER_KEYS.get(e.key)
+      if (!action) return
+      e.preventDefault()
+      actions[action]()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [enabled, togglePlay, seekBy, stepFrames, restart, toggleSound, skipSeconds])
+  }, [enabled, togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullscreen, skipSeconds])
 }

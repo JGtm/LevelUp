@@ -63,27 +63,8 @@ func ComputeSquadBreakdown(rows []domain.SquadMatchRow) domain.SquadBreakdownSta
 }
 
 // =============================================================================
-// Synthèse — Heatmap + Top Weeks
+// Synthèse — Top Weeks
 // =============================================================================
-
-// ComputeSynthesisHeatmap convertit les lignes DuckDB en cellules de heatmap.
-// Calcule le win rate (%) pour chaque combinaison carte × mode.
-func ComputeSynthesisHeatmap(rows []domain.SynthesisHeatmapRow) []domain.HeatmapCell {
-	cells := make([]domain.HeatmapCell, 0, len(rows))
-	for _, r := range rows {
-		var value float64
-		if r.MatchCount > 0 {
-			value = math.Round(float64(r.Wins)/float64(r.MatchCount)*1000) / 10
-		}
-		cells = append(cells, domain.HeatmapCell{
-			MapName:  r.MapName,
-			ModeName: r.ModeName,
-			Value:    value,
-			Count:    r.MatchCount,
-		})
-	}
-	return cells
-}
 
 // ComputeTopWeeks calcule les 5 meilleures semaines depuis les lignes squad.
 // Une semaine valide a >= 3 matchs. Tri par win_rate decroissant.

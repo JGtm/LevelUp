@@ -1,5 +1,5 @@
 // Package service — session_page_objectif.go : LA FEUILLE D'OBJECTIF ET L'EMBLÈME DE LA PAGE
-// SESSIONS (plan `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D7).
+// SESSIONS (plan `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D7).
 //
 // Le bloc `formes_retenues` (réduit à l'objectif) de l'Escouade et des Séries temporelles, sur les
 // matchs de chaque session, le joueur de la page SEUL dans l'escouade du bloc (V1) ; les prises

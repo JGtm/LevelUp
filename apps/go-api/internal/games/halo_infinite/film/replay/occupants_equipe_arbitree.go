@@ -15,7 +15,7 @@ package replay
 //
 // La valeur de la feuille se compare au designateur du film SANS TRADUCTION : c'est la convention
 // du controle des equipes ([teamPublication.controler], `coverage.teams.{accord, contradiction}`),
-// et la mesure qui la fonde est au plan `.ai/PLAN_REJEU_DERNIERS_CORRECTIFS_2026-10-07.md` (K1.2).
+// et la mesure qui la fonde est au plan `.ai/V7.5/PLAN_REJEU_DERNIERS_CORRECTIFS_2026-10-07.md` (K1.2).
 //
 // # CE QUI NE S'ARBITRE PAS
 //

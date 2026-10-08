@@ -1,5 +1,5 @@
 // Package persist — life_placement_persister.go : ecriture INSERT-ONLY de `match_life_placement`,
-// le placement et le rendement de chaque vie nommee (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`,
+// le placement et le rendement de chaque vie nommee (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`,
 // lot V2).
 //
 // MEME PATRON QUE [LivesPersister], ET POUR LA MEME RAISON : la table nait d'une passe de

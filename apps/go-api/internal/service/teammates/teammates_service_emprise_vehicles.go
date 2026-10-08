@@ -1,5 +1,5 @@
 // Package teammates — teammates_service_emprise_vehicles.go : LA RESSOURCE « VEHICULES » du bloc
-// Emprise (plan `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3 ; calcul :
+// Emprise (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3 ; calcul :
 // analysis/squademprise/vehicles.go, type publié : domain/squad_emprise_vehicles.go).
 //
 // La lecture est `squadagg.EmpriseLecteur.Vehicules` (partagée avec les Séries temporelles) : UNE

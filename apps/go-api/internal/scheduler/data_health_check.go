@@ -17,9 +17,11 @@
 //   - xuids orphelins (informatif uniquement)
 //   - banner garbage URLs (`/Waypoint/file/images/`) résiduelles
 //
-// Aucune action de repair automatique : l'admin déclenche manuellement
-// `cmd/repair_data_consistency` ou `cmd/diag_db_health` si besoin
-// d'investiguer un compteur qui bouge.
+// Aucune action de repair automatique : l'admin déclenche manuellement les
+// actions correctives de la page Qualité des données (POST
+// /admin/actions/lying-bits/reset pour les bits menteurs, POST
+// /admin/actions/registry-names/backfill pour les noms du registre), ou
+// `cmd/diag_db_health` pour investiguer un compteur qui bouge.
 package scheduler
 
 import (

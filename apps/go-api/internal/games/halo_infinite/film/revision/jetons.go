@@ -2,7 +2,7 @@ package revision
 
 // jetons.go — CE QUI ENTRE DANS L EMPREINTE D UNE SOURCE : SES JETONS, PAS SES OCTETS (lot J3.1 du
 // PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (a), constat « faiblesse 1 » de
-// `.ai/AUDIT_DECODEUR_FILM_2026-09-24.md`).
+// `.ai/V7.5/AUDIT_DECODEUR_FILM_2026-09-24.md`).
 //
 // # LE DEFAUT QUE CE FICHIER FERME
 //

@@ -63,7 +63,7 @@ func (s *TeammatesService) loadEmprise(
 	vehIDs := append(squadagg.EmpriseMatchIDs(current), squademprise.HabitCandidates(current, timeline)...)
 	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, s.vehicleRepo, vehIDs, playerXUID, req.Locale)
 	if in.Film != nil {
-		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, in.Film.Participants, req.SelectedGamertags)
+		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, in.Film.Participants, p.membres)
 	} else {
 		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, nil, nil)
 	}

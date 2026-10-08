@@ -36,6 +36,10 @@ import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/mode
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import {
+  REPLAY_FULLSCREEN_FRAME,
+  useReplayFullscreen,
+} from '@/features/match-replay/hooks/useReplayFullscreen'
+import {
   useMatchReplay,
   useReplayMapBackground,
   useReplayMapCallouts,
@@ -182,6 +186,9 @@ function ReplayPage() {
   )
 
   const hasReplay = !!data && data.tracks.length > 0
+  // LE MODE PLEIN ÉCRAN vit ICI parce qu'il change le cadre de LA GRILLE (cf. useReplayFullscreen) ;
+  // le canvas n'en reçoit que la commande, pour le bouton de la barre de lecture et la touche F.
+  const fullscreen = useReplayFullscreen()
 
   // Fil d'Ariane : même label que la vue match (mode + map). Il est calculé ICI et NULLE PART
   // AILLEURS — le rappel du match, qui le recalculait, ne porte plus que la date et la playlist.
@@ -269,8 +276,16 @@ function ReplayPage() {
            FIL remplit le reste (« pour la hauteur faudrait que ça s'adapte »).
 
            SOUS 1280 px (`xl`) la rangée n'a plus la place : la carte reprend toute la largeur
-           et fiches puis fil passent dessous, chacun borné à 60 % de la hauteur d'écran. */
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch">
+           et fiches puis fil passent dessous, chacun borné à 60 % de la hauteur d'écran.
+
+           EN PLEIN ÉCRAN, LA GRILLE DEVIENT LE CADRE (`REPLAY_FULLSCREEN_FRAME`) : sa hauteur est
+           celle de la fenêtre, la rangée s'y étire, et la colonne de droite — absolue dans sa
+           cellule — descend donc jusqu'en bas. Sous `xl`, le même empilement, dans le cadre. */
+        <div
+          className={`grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch${
+            fullscreen.active ? ` ${REPLAY_FULLSCREEN_FRAME}` : ''
+          }`}
+        >
           {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
               contraindre — c'est la colonne que le ResizeObserver du canvas mesure. */}
           {/* `relative` : c'est le repère de l'ÉCRAN DE VICTOIRE, qui coiffe toute la colonne
@@ -320,6 +335,7 @@ function ReplayPage() {
               marks={marks}
               endMatch={endMatchSound}
               viewpoint={viewpoint.xuid}
+              fullscreen={fullscreen}
               players={model.players}
               onSelectViewpoint={viewpoint.select}
               outcome={{

@@ -80,36 +80,20 @@ func TestFilterExactComposition_NilMapGraceful(t *testing.T) {
 	}
 }
 
-// TestBuildExtraPoolXUIDs : pool = (top ∪ amis) \ sélection \ main.
+// TestBuildExtraPoolXUIDs : pool = coéquipiers connus \ sélection \ main.
 func TestBuildExtraPoolXUIDs(t *testing.T) {
-	top := []domain.TopTeammateRow{
-		{XUID: "xa", Gamertag: "AllyA"},
-		{XUID: "xb", Gamertag: "AllyB"},
-		{XUID: "xc", Gamertag: "AllyC"},
+	connus := map[string]string{"px": "Moi", "xa": "AllyA", "xb": "AllyB", "xc": "AllyC", "xf": "Ami", "": "vide"}
+	pool := buildExtraPoolXUIDs(connus, []string{"xa", "xb"}, "px")
+	if len(pool) != 2 {
+		t.Errorf("pool = %v, attendu {xc, xf}", pool)
 	}
-	friends := []string{"xf"}
-	pool := buildExtraPoolXUIDs(top, friends, []string{"xa", "xb"}, "px")
-	if _, ok := pool["xc"]; !ok {
-		t.Errorf("xc (top non sélectionné) doit être dans le pool")
+	for _, x := range []string{"xc", "xf"} {
+		if _, ok := pool[x]; !ok {
+			t.Errorf("%s (connu non sélectionné) doit être dans le pool", x)
+		}
 	}
-	if _, ok := pool["xf"]; !ok {
-		t.Errorf("xf (ami) doit être dans le pool")
-	}
-	if _, ok := pool["xa"]; ok {
-		t.Errorf("xa (sélectionné) ne doit PAS être dans le pool")
-	}
-	if _, ok := pool["px"]; ok {
-		t.Errorf("le main ne doit PAS être dans le pool")
-	}
-}
-
-// TestResolveFriendXUIDs : amis résolus via la table gamertag→xuid des top rows,
-// case-insensitive ; amis hors top ignorés.
-func TestResolveFriendXUIDs(t *testing.T) {
-	top := []domain.TopTeammateRow{{XUID: "xa", Gamertag: "AllyA"}}
-	got := resolveFriendXUIDs([]string{"allya", "InconnuHorsTop"}, top)
-	if len(got) != 1 || got[0] != "xa" {
-		t.Errorf("resolveFriendXUIDs: want [xa], got %v", got)
+	if buildExtraPoolXUIDs(nil, []string{"xa"}, "px") == nil {
+		t.Errorf("sans connu : pool vide, jamais nil")
 	}
 }
 
@@ -136,8 +120,8 @@ func TestBuildMainTeamXUIDSet(t *testing.T) {
 }
 
 // newExtraTeammateRepo : composition {AllyA, AllyB} dont l'intersection donne
-// {m1, m2} ; m2 avait AllyC (top coéquipier connu hors sélection) sur l'équipe du
-// main. C'est le scénario {JGtm, Chocoboflor} + Madina97294.
+// {m1, m2} ; m2 avait AllyC (profil suivi, donc coéquipier connu, hors sélection) sur
+// l'équipe du main. C'est le scénario {JGtm, Chocoboflor} + Madina97294.
 func newExtraTeammateRepo() *mockSquadRepo {
 	tS1 := time.Date(2026, 6, 1, 20, 0, 0, 0, time.UTC)
 	tS2 := time.Date(2026, 6, 8, 20, 0, 0, 0, time.UTC)
@@ -149,7 +133,11 @@ func newExtraTeammateRepo() *mockSquadRepo {
 		topRows: []domain.TopTeammateRow{
 			{XUID: "xa", Gamertag: "AllyA", GamesTogether: 10},
 			{XUID: "xb", Gamertag: "AllyB", GamesTogether: 10},
-			{XUID: "xc", Gamertag: "AllyC", GamesTogether: 8}, // connu, PAS sélectionné
+			{XUID: "xc", Gamertag: "AllyC", GamesTogether: 8},
+		},
+		// AllyC est un profil suivi : connu, PAS sélectionné.
+		profils: []domain.PlayerSummary{
+			profilSuivi("px", "Test"), profilSuivi("xa", "AllyA"), profilSuivi("xb", "AllyB"), profilSuivi("xc", "AllyC"),
 		},
 		squadRowsByTeammate: map[string][]domain.SquadMatchRow{
 			"xa": shared,
@@ -170,7 +158,7 @@ func newExtraTeammateRepo() *mockSquadRepo {
 // population, et le compte par session est exposé (MatchCount).
 func TestGetPage_DefaultKeepsMatchesStartedTogether(t *testing.T) {
 	repo := newExtraTeammateRepo()
-	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+	svc := avecConnus(NewTeammatesService(repo, nil), repo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
 	)
 
@@ -214,7 +202,7 @@ func TestGetPage_DefaultKeepsMatchesStartedTogether(t *testing.T) {
 // demande explicite de l'utilisateur.
 func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
 	repo := newExtraTeammateRepo()
-	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+	svc := avecConnus(NewTeammatesService(repo, nil), repo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
 	)
 
@@ -263,10 +251,11 @@ func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
 
 // newExactCompositionGapRepo : composition {AllyA, AllyB}, UNE session "S1" avec
 // 5 matchs "commencés ensemble" (roster) : m1 exact (gardé), m2 écarté par
-// Nilton410 seul, m3 écarté par passivemarquise seul, m4 écarté par un xuid connu
-// SANS gamertag résolu (repli "Joueur <4 derniers>", même repli que Q32b), m5
-// écarté par Nilton410 ET passivemarquise ensemble. Scénario ADR 0033 : l'écart
-// affiché doit nommer, match par match, le(s) coéquipier(s) responsable(s).
+// Nilton410 seul (ami déclaré hors registre, résolu par la lecture), m3 écarté par
+// passivemarquise seul (profil suivi), m4 écarté par un profil suivi SANS nom (repli
+// "Joueur <4 derniers>" de l'annuaire), m5 écarté par Nilton410 ET passivemarquise
+// ensemble. Scénario ADR 0033 : l'écart affiché doit nommer, match par match, le(s)
+// coéquipier(s) responsable(s).
 func newExactCompositionGapRepo() *mockSquadRepo {
 	tS1 := time.Date(2026, 8, 27, 19, 0, 0, 0, time.UTC)
 	shared := []domain.SquadMatchRow{
@@ -280,12 +269,14 @@ func newExactCompositionGapRepo() *mockSquadRepo {
 		topRows: []domain.TopTeammateRow{
 			{XUID: "xa", Gamertag: "AllyA", GamesTogether: 10},
 			{XUID: "xb", Gamertag: "AllyB", GamesTogether: 10},
-			{XUID: "xn", Gamertag: "Nilton410", GamesTogether: 4},
-			{XUID: "xp", Gamertag: "passivemarquise", GamesTogether: 5},
-			// xu : connu (dans le pool) mais SANS gamertag résolu côté Q29 — cas
-			// du repli "Joueur <4 derniers>".
-			{XUID: "xuid0009", Gamertag: "", GamesTogether: 1},
 		},
+		profils: []domain.PlayerSummary{
+			profilSuivi("xa", "AllyA"), profilSuivi("xb", "AllyB"), profilSuivi("xp", "passivemarquise"),
+			// Connu (dans le pool) mais SANS nom — cas du repli "Joueur <4 derniers>".
+			profilSuivi("xuid0009", ""),
+		},
+		amis:    []string{"AllyA", "AllyB", "Nilton410"},
+		amisLus: map[string]string{"Nilton410": "xn"},
 		squadRowsByTeammate: map[string][]domain.SquadMatchRow{
 			"xa": shared,
 			"xb": shared,
@@ -311,7 +302,7 @@ func newExactCompositionGapRepo() *mockSquadRepo {
 // n'existent pas encore — échec de COMPILATION, pas d'assertion.
 func TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches(t *testing.T) {
 	repo := newExactCompositionGapRepo()
-	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+	svc := avecConnus(NewTeammatesService(repo, nil), repo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
 	)
 
@@ -383,7 +374,7 @@ func TestGetPage_ExactComposition_RosterMatchSansEquipeConnue(t *testing.T) {
 		}
 	}
 	repo.allyRows = sansM2
-	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+	svc := avecConnus(NewTeammatesService(repo, nil), repo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
 	)
 	resp, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{

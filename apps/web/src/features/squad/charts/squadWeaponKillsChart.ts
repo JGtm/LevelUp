@@ -68,7 +68,7 @@ export interface SquadWeaponKillsOpts {
   /** Part sous laquelle la part écrite est masquée (mode `share`) ; défaut 5 %. */
   minLabelShare?: number
   /**
-   * Graphe d'UN SEUL joueur (page Sessions) : chaque barre à la couleur de la CLASSE de sa ligne
+   * Graphe d'UN SEUL joueur (Sessions, Vue match) : chaque barre à la couleur de la CLASSE de sa ligne
    * (`fragClassColor`, la couleur de la Répartition des frags) au lieu de l'encre du joueur, et
    * l'infobulle sans le nom du joueur — redondant quand la page n'en montre qu'un.
    */

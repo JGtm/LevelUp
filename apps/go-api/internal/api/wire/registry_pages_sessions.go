@@ -1,7 +1,7 @@
 package wire
 
 // registry_pages_sessions.go — LE CABLAGE DES BLOCS DU FILM DE LA PAGE SESSIONS (Emprise du joueur,
-// vies, feuille d'objectif, emblème, score des lignes ; plan `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`,
+// vies, feuille d'objectif, emblème, score des lignes ; plan `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`,
 // lot S2.9), appelé par la factory `SessionPage` (registry_pages.go, qui dépasse déjà le seuil de
 // taille du dépôt), résumé d'usage compris (film.usage_summary).
 

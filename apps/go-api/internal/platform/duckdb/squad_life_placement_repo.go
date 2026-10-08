@@ -1,5 +1,5 @@
 // Package duckdb — squad_life_placement_repo.go : le placement des vies du bloc « Groupés ou
-// isolés » de l'Emprise (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.1, décision V11).
+// isolés » de l'Emprise (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.1, décision V11).
 //
 // UN CHARGEMENT, UNE REQUÊTE, BORNÉE DEUX FOIS (ADR 0036) :
 //

@@ -2,7 +2,7 @@ package replay
 
 // occupants_equipe_declaree_test.go — L'EQUIPE D'UN BOT QU'AUCUNE ENTITE NE PORTE EST CELLE QUE SON
 // ENTREE BOT_METADATA ECRIT (lot « toute entree du roster a l'equipe que le film ecrit »,
-// 2026-10-06, `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`).
+// 2026-10-06, `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`).
 //
 //	E-DECLAREE    un bot declare entre deux images-cles porteuses n'a aucune entite : son equipe est
 //	              celle de sa declaration, et la table par index (l'equipe d'un AUTRE occupant de

@@ -15,17 +15,12 @@ const slayerMode = "Slayer"
 // --- mock ---
 
 type mockMatchHistoryRepo struct {
-	rows     []domain.MatchHistoryRawRow
-	loadErr  error
-	winRates map[string][2]int
-	winErr   error
+	rows    []domain.MatchHistoryRawRow
+	loadErr error
 }
 
 func (m *mockMatchHistoryRepo) LoadAll(_ context.Context) ([]domain.MatchHistoryRawRow, error) {
 	return m.rows, m.loadErr
-}
-func (m *mockMatchHistoryRepo) LoadMapWinRates(_ context.Context) (map[string][2]int, error) {
-	return m.winRates, m.winErr
 }
 
 // --- tests ---

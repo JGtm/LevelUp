@@ -1,7 +1,7 @@
 package domain
 
 // solo_emprise.go — L'EMPRISE DU PÉRIMÈTRE SOLO, onglet « Usages » des Séries temporelles (plan
-// `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, décisions D2-D4).
+// `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, décisions D2-D4).
 //
 // Le bloc EMBARQUE SquadEmpriseBlock : mêmes ressources, mêmes objets, même grille match par
 // match, mêmes règles de mesure que l'onglet Emprise de l'Escouade — calculés par le même

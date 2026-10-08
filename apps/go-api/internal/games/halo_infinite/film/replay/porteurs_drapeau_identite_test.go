@@ -7,7 +7,7 @@ import (
 )
 
 // porteurs_drapeau_identite_test.go — DEPLACE de `replaybuild/flagidentity_test.go` le 2026-09-28 (lot
-// V1.4 du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`) avec le code qu'il teste : le pont par manche
+// V1.4 du plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`) avec le code qu'il teste : le pont par manche
 // et les entrees des calques de porteur vivent desormais dans ce paquet, partages par la cuisson et
 // par le collecteur de sync.
 //

@@ -85,7 +85,7 @@ func (d DemoLayout) SharedPVEDBPath(slug string) string {
 
 // PlayersRootDir rend le dossier des joueurs démo d'un titre.
 func (d DemoLayout) PlayersRootDir(slug string) string {
-	return filepath.Join(d.TitleDir(slug), "players")
+	return filepath.Join(d.TitleDir(slug), playersDirName)
 }
 
 // PlayerDir rend le dossier d'un joueur démo (dir = nom de dossier du roster, ex. DEMO).
@@ -95,7 +95,7 @@ func (d DemoLayout) PlayerDir(slug, dir string) string {
 
 // PlayerDBPath rend la base d'un joueur démo.
 func (d DemoLayout) PlayerDBPath(slug, dir string) string {
-	return filepath.Join(d.PlayerDir(slug, dir), "stats.duckdb")
+	return filepath.Join(d.PlayerDir(slug, dir), playerDBFileName)
 }
 
 // TitleSettingsPath rend l'overlay de réglages d'un titre dans la fixture (miroir de

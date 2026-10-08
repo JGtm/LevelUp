@@ -2,7 +2,7 @@
 
 package replay
 
-// emprise_v1_porteurs_research_test.go — LOT V1.4 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
+// emprise_v1_porteurs_research_test.go — LOT V1.4 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
 // L'ENTREE DE PRODUCTION `PortagesAuSync` REND-ELLE LES PORTAGES DU DOCUMENT DE REJEU ?
 //
 // # LE PROTOCOLE EST CELUI DU V0, L'INSTRUMENT EST REMPLACE PAR LA PRODUCTION

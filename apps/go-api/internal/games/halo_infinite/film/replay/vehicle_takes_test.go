@@ -1,7 +1,7 @@
 package replay
 
 // vehicle_takes_test.go — UN TEST PAR REGLE de `ProjectVehicleTakes` (lot L7.1 du plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`). Chaque test est rouge sous une mutation nommee au
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`). Chaque test est rouge sous une mutation nommee au
 // compte rendu du lot ; aucun ne lit un film.
 
 import "testing"

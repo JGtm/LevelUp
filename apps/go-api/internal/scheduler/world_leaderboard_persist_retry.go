@@ -1,6 +1,6 @@
 // Package scheduler — world_leaderboard_persist_retry.go : nouvelle tentative bornée
 // de l'acquisition du writer shared par le cron du classement mondial (lot B1,
-// décision D-2 du plan `.ai/PLAN_BACKLOG_2026-09-26.md`).
+// décision D-2 du plan `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md`).
 //
 // CONSTAT : au boot, le scrape (~18 s) se terminait pendant que les lecteurs du
 // démarrage tenaient encore le handle RO ; la vidange du provider expirait (5 s),

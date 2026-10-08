@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/platform/duckdb"
@@ -207,6 +208,9 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
 	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver(pdb.XUID)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		// Coéquipiers connus de la composition stricte (ADR 0033) : les profils du titre, puis
+		// la MÊME lecture que les rencontres de la Carrière pour les amis hors registre.
+		WithCoequipiersConnus(r.profilsDuTitre(pdb.TitleSlug), duckdb.NewCareerRepo(pdb).ResolveFriendXUIDs).
 		WithSquadLoader(briefingLoader).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
 		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
@@ -293,6 +297,19 @@ func (r *ServiceRegistry) friendGamertagsResolver(xuid string) teammates.FriendG
 			return nil
 		}
 		return friends
+	}
+}
+
+// profilsDuTitre rend la lecture des profils déclarés du titre (db_profiles.json, relu à chaque
+// appel) : le registre des coéquipiers connus de l'Escouade. nil sans configuration — la page
+// n'a alors de connus que les amis que la lecture résout.
+func (r *ServiceRegistry) profilsDuTitre(titleSlug string) teammates.ProfilsDuTitre {
+	if r.cfg == nil {
+		return nil
+	}
+	cfg := r.cfg
+	return func(context.Context) ([]domain.PlayerSummary, error) {
+		return cfg.LoadPlayers(titleSlug)
 	}
 }
 

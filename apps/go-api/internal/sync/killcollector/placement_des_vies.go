@@ -1,7 +1,7 @@
 package killcollector
 
 // placement_des_vies.go — LA TROISIEME PROJECTION DE LA PASSE DE POSITIONS : le placement et le
-// rendement de chaque vie (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2).
+// rendement de chaque vie (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2).
 //
 // # POURQUOI ICI (decision V1 du plan)
 //

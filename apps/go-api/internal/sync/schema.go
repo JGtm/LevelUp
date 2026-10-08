@@ -355,6 +355,11 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	if err := ensurePlayerAppendOnlyTables(db); err != nil {
 		return err
 	}
+	// Séquence créée par le soin (START 1 près d'ids posés) : réalignée ici. Sans création,
+	// l'alignement de l'ouverture physique (platform/duckdb/physical_open.go) suffit.
+	if schemadrift.SequenceCreated(ctx, db, before) {
+		migration.AlignSequencesBestEffort(ctx, db, "sync.EnsurePlayerSchema")
+	}
 	schemadrift.Report(ctx, db, before, "sync.EnsurePlayerSchema")
 	return nil
 }

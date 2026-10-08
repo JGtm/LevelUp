@@ -2,7 +2,7 @@ package migration
 
 // steps_shared_vehicle_takes.go — table `match_vehicle_takes` : LA RESSOURCE VEHICULES DE
 // L'EMPRISE (prises, temps a bord, frags apparies), par camp, joueur et famille de vehicule, LUE
-// DE L'ARTEFACT DE REJEU (plan `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.2).
+// DE L'ARTEFACT DE REJEU (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.2).
 //
 // # CE QUE LA TABLE PORTE
 //

@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"levelup/go-api/internal/assets"
@@ -36,9 +35,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/historyretry"
 	"levelup/go-api/internal/sync/killcollector"
+	"levelup/go-api/internal/sync/knownset"
 	"levelup/go-api/internal/sync/replayartifacts"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -203,8 +201,8 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 // selectMatchesForComebackBadges, loadAllMatchIDsForPlayer, loadFlaggedMatchIDs :
 // déplacés vers engine_backfills.go (refactor 2026-05-21).
 
-// historyPaginationInputs regroupe l'état run()-local consommé par
-// paginateAndPersistHistory (garde la signature ≤ 5 params — CLAUDE.md).
+// historyPaginationInputs regroupe l'état run()-local consommé par syncHistory
+// (garde la signature ≤ 5 params — CLAUDE.md).
 type historyPaginationInputs struct {
 	client   HaloClient
 	opts     domain.SyncOptions
@@ -212,20 +210,23 @@ type historyPaginationInputs struct {
 	sharedDB *sql.DB
 	playerDB *sql.DB
 	isDelta  bool
+	// orphans : orphelins à récupérer par match_id ce cycle (knownset.Set.Recover).
+	orphans []string
 }
 
 // paginateAndPersistHistory parcourt l'historique paginé (GetMatchHistory) et, page par
-// page, filtre les matchs connus, fetche en parallèle les inconnus (borné à
-// syncFetchParallelism) puis les persiste séquentiellement (order-preserving). Arrêts :
-// MaxMatches atteint, page vide, match connu rencontré en delta (APRÈS flush des unknowns
-// déjà collectés de la page), ou page entièrement connue en delta. Extrait de run() (K2b,
-// 2026-07-06) — mute `result` (compteurs + warnings).
+// page, filtre les matchs connus, fetche en parallèle les inconnus puis les persiste
+// (fetchAndPersistMatches). Arrêts : MaxMatches atteint, page vide, match connu rencontré
+// en delta (APRÈS flush des unknowns déjà collectés de la page), ou page entièrement connue
+// en delta. Mute `result` (compteurs + warnings). Rend les match_id dont la récupération a
+// été tentée (réussie ou non).
 //
 // la découper disperserait l'état partagé processed/toFetch/stopAfterFlush et nuirait à
 // la lisibilité du critère d'arrêt delta (bug 2026-05-21 : flush-avant-stop).
 //
 //nolint:funlen // boucle de pagination cohérente (filtre → fetch → persist par page) :
-func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPaginationInputs, result *domain.SyncResult) {
+func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPaginationInputs, result *domain.SyncResult) map[string]bool {
+	attempted := map[string]bool{}
 	processed := 0
 	start := 0
 
@@ -302,73 +303,14 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 			toFetch = append(toFetch, entry.MatchID)
 		}
 
-		if len(toFetch) > 0 {
-			// ─── Phase 2 : Fetch parallèle ───
-			fetchedMatches := make([]*fetchedMatch, len(toFetch))
-			fetchErrors := make([]error, len(toFetch))
-			var mu sync.Mutex
-
-			eg, egCtx := errgroup.WithContext(ctx)
-			// Borne la concurrence du fan-out fetch : sans SetLimit, une page delta
-			// initiale lançait une goroutine PAR match inconnu (des dizaines/centaines
-			// d'un coup). Le pool cappe déjà l'API concurrente à sa taille, mais on
-			// évite ici l'explosion de goroutines et on lisse la pression (pool +
-			// exchanges XBL) pour laisser de la marge au trafic user-facing.
-			eg.SetLimit(syncFetchParallelism)
-			for i, matchID := range toFetch {
-				i, matchID := i, matchID // Capturer pour closure
-				eg.Go(func() error {
-					fm, err := e.fetchMatchData(egCtx, in.client, matchID, in.opts)
-					mu.Lock()
-					fetchedMatches[i] = fm
-					fetchErrors[i] = err
-					mu.Unlock()
-					if err != nil {
-						slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
-							"gamertag", e.gamertag, "match_id", matchID, "err", err,
-						)
-						result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
-					}
-					return nil // Non-fatal : continuer même si fetch échoue
-				})
-			}
-			_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
-
-			// ─── Pré-pass : résolution des noms d'assets (primary write) ───
-			// Peuple metadata.asset_translations pour les assets neufs du cycle
-			// AVANT la phase d'insert, pour qu'EnrichRegistryFromMetadata
-			// (submitOrInsertMatch) écrive un vrai nom dès le 1er passage.
-			// Best-effort, gated (assetPool nil → no-op).
-			e.resolveCycleAssets(ctx, fetchedMatches)
-
-			// ─── Phase 3 : Insert séquentiel (order-preserving) ───
-			for i, fm := range fetchedMatches {
-				if fetchErrors[i] != nil {
-					// Fetch échoué, skip insert
-					continue
-				}
-				if fm == nil {
-					continue
-				}
-
-				if err := e.persistFetchedMatch(ctx, in.sharedDB, in.playerDB, result, fm); err != nil {
-					slog.WarnContext(ctx, "sync: persistFetchedMatch échoué",
-						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-					)
-					result.AddWarning(fmt.Sprintf("persistFetchedMatch(%s): %v", fm.MatchID, err))
-				} else {
-					processed++
-					slog.InfoContext(ctx, "sync: match traité (parallèle)",
-						"gamertag", e.gamertag, "match_id", fm.MatchID,
-						"processed", processed, "inserted_total", result.MatchesInserted,
-					)
-				}
-			}
+		for _, id := range toFetch {
+			attempted[id] = true
 		}
+		processed += e.fetchAndPersistMatches(ctx, in, toFetch, result)
 
 		if stopAfterFlush {
 			// Match connu rencontré, mais les unknowns déjà collectés ont été
-			// fetchés/insérés via Phase 2-3 ci-dessus. On peut sortir.
+			// fetchés/insérés ci-dessus. On peut sortir.
 			break
 		}
 		if in.isDelta && allKnown {
@@ -376,6 +318,7 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		}
 		start += len(entries)
 	}
+	return attempted
 }
 
 // run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
@@ -505,16 +448,16 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
-	// ─── Match IDs déjà connus (player DB) ───────────────────────────────────
-	// Known set étendu : player_match_enrichment ∪ shared.match_participants
-	// WHERE xuid=e.xuid. Permet de skipper le fetch API quand un autre joueur
-	// du même cycle a déjà ingéré le match en shared (cross-player dedup).
-	known, err := loadKnownMatchIDs(ctx, playerDB, sharedDB, e.xuid)
+	// ─── Match IDs déjà connus (règle unique : internal/sync/knownset) ─────────
+	// Connu = présent au registre partagé pour ce joueur. Base partagée illisible →
+	// arrêt AVANT tout appel API et toute écriture (erreur typée knownset.ErrSharedUnreadable).
+	knownSet, err := knownset.Load(ctx, playerDB, sharedDB, e.xuid)
 	if err != nil {
-		slog.ErrorContext(ctx, "sync: chargement match_ids connus échoué", "gamertag", e.gamertag, "err", err)
-		return result, fmt.Errorf("run loadKnownMatchIDs: %w", err)
+		slog.ErrorContext(ctx, "sync: chargement match_ids connus échoué — sync arrêtée", "gamertag", e.gamertag, "err", err)
+		return result, fmt.Errorf("run knownset.Load: %w", err)
 	}
-	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag, "known_count", len(known))
+	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag,
+		"known_count", len(knownSet.Known), "orphans_to_recover", len(knownSet.Recover))
 
 	// ─── Client API ────────────────────────────────────────────────────────────
 	var client HaloClient
@@ -547,11 +490,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			"gamertag", e.gamertag, "cache_dir", cacheDir)
 	}
 
-	// ─── Pagination de l'historique ────────────────────────────────────────────
-	// Boucle filtre → fetch parallèle → persist par page, extraite en méthode (K2b).
-	e.paginateAndPersistHistory(ctx, historyPaginationInputs{
-		client: client, opts: opts, known: known,
+	// ─── Historique : pagination puis orphelins par match_id ─────────────────
+	e.syncHistory(ctx, historyPaginationInputs{
+		client: client, opts: opts, known: knownSet.Known,
 		sharedDB: sharedDB, playerDB: playerDB, isDelta: isDelta,
+		orphans: knownSet.Recover,
 	}, &result)
 
 	slog.InfoContext(ctx, "sync: boucle pagination terminée",
@@ -808,82 +751,6 @@ func reconcileInsertedAgainstRegistry(ctx context.Context, sharedDB *sql.DB, res
 		result.MatchesInserted = 0
 	}
 	result.MatchesSkipped += dropped
-}
-
-// loadKnownMatchIDs retourne l'ensemble des match_ids déjà présents dans
-// player_match_enrichment (player DB).
-// loadKnownMatchIDs construit le set des match_id "connus" pour ce joueur.
-//
-// Source 1 — playerDB.player_match_enrichment : matchs déjà ingérés dans la
-// pipeline complète (registry + participants + enrichment per-player).
-//
-// Source 2 — sharedDB.match_participants WHERE xuid=? : matchs déjà présents
-// en shared pour ce joueur (typiquement parce qu'un AUTRE joueur du même
-// cycle de sync a déjà fait le fetch + persist via le chemin batch — qui
-// écrit toutes les rows participants y compris celle de notre xuid). Avant
-// 2026-05-22 ce 2e check n'existait pas, donc Chocoboflor re-fetchait depuis
-// Halo API 21 matchs déjà insérés par Madina dans le même tick (84 calls
-// inutiles). Le post-sync (batchComputePerformanceScores, batchComputeLUSR,
-// citations) UPSERT naturellement les rows enrichment manquantes pour les
-// matchs déjà en shared.
-//
-// sharedDB peut être nil (cas tests / boot avant shared init) → seule la
-// source 1 est consultée.
-//
-// aujourd'hui best-effort interne (tables manquantes = warning silencieux), mais
-// future migration cross-DB pourrait remonter une erreur ici.
-//
-//nolint:unparam // err maintenu pour signature standard (caller engine.go:241 check),
-func loadKnownMatchIDs(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (map[string]bool, error) {
-	known := make(map[string]bool, 512)
-
-	// Source 1 : player_match_enrichment (per-player).
-	if rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment_latest"); err == nil {
-		for rows.Next() {
-			var id string
-			if scanErr := rows.Scan(&id); scanErr == nil {
-				known[id] = true
-			}
-		}
-		_ = rows.Close()
-	}
-	// Note: erreur ignorée (table peut ne pas exister sur schéma frais).
-
-	// Source 2 : shared.match_participants pour ce xuid (cross-player dedup).
-	//
-	// Phase 3 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 :
-	//   - Cast defensif `xuid || ''` aligne sur recompute_after_art_rebuild.go:156.
-	//     Empeche un mismatch silencieux si la colonne xuid drift en type sur un
-	//     titre futur (UBIGINT vs VARCHAR), incident observe en prod 2026-05-24
-	//     ou known_count=22 alors que total_matches=30 pour XxDaemonGamerxX.
-	//   - Erreur query : warn explicite (plus de swallow silencieux) pour
-	//     visibilite. Cas pathologique = known set partiel → 285s perdues sur
-	//     un joueur inactif.
-	if sharedDB != nil && strings.TrimSpace(xuid) != "" {
-		rows, err := sharedDB.QueryContext(ctx,
-			"SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?", xuid)
-		if err != nil {
-			slog.WarnContext(ctx,
-				"loadKnownMatchIDs: shared.match_participants query failed — known set partiel (source 1 seule)",
-				"xuid", xuid, "err", err)
-		} else {
-			addedFromShared := 0
-			for rows.Next() {
-				var id string
-				if scanErr := rows.Scan(&id); scanErr == nil {
-					if !known[id] {
-						addedFromShared++
-					}
-					known[id] = true
-				}
-			}
-			_ = rows.Close()
-			slog.DebugContext(ctx, "loadKnownMatchIDs: source 2 (shared) ajoutee",
-				"xuid", xuid, "added_from_shared", addedFromShared, "total_known", len(known))
-		}
-	}
-
-	return known, nil
 }
 
 // runPostSyncPipeline : déplacé vers engine_postsync.go (refactor 2026-05-21).

@@ -4,7 +4,7 @@
  * POURQUOI CE FICHIER EXISTE. Le canvas du rejeu porte une dette de taille GELÉE par un
  * seuil (`max-lines` eslint, R5) : toute addition s'y fait par EXTRACTION, jamais
  * par empilement — c'est la manœuvre que le seuil existe pour imposer, et c'est la
- * quatrième fois qu'elle sert (useReplayInks, useGrenadeIcons, useReplayWeaponPads avant lui).
+ * quatrième fois qu'elle sert (useReplayInks, les vignettes de grenade, useReplayWeaponPads avant lui).
  * Le lot R3 allonge la croix de mort et devait écrire pourquoi : les réglages temporels et
  * leur conversion partent donc ici, avec leurs justifications.
  *

@@ -7,7 +7,7 @@
 > mesures (mesure 1 : `ref_corrigee/`, mesure 2 : `m2/`). Installé le 2026-10-08 dans
 > `feat/ri-lk-images-cles` avec les treize corrections de sa propre contre-vérification
 > (`REF/wf2_verdict.json`, champ `corrections` ; détail au journal, §8). Item parent : 2.7.d1 du plan
-> `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md` (statué `[!]` jusqu'à la clôture de
+> `.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md` (statué `[!]` jusqu'à la clôture de
 > ce plan), découverte 36 de ce plan.
 >
 > **Contrat** : skill `plan-execution` (ce plan fait foi en cas de divergence) : ordre strict, une
@@ -23,7 +23,7 @@
 > - `docs/adr/0037-film-intermediate-representation.md` — IR-6 (couche de récupération, règle de
 >   2.7.b, paragraphe 2.7.d, dernier alinéa : « The keyframe bit windows ... still decide alone ») ;
 > - `docs/adr/0034-*.md` — D-7 (faits persistés, publication rejouée depuis eux), D-10 (replis) ;
-> - `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md` — item 2.7.d (2.7.d0, d1), §4
+> - `.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md` — item 2.7.d (2.7.d0, d1), §4
 >   (gates, pièges d'exploitation), §6 découvertes 36 et 45 ;
 > - `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` §6 (portée, R7) ;
 > - sorties de la passe de mesure, dossier `REF` (§1.4) : `README.txt` de `ref_corrigee/` et de `m2/`,
@@ -295,9 +295,13 @@ fondaient restent écrits sous chacune, pour l'exécution de D1.0.
   chronique de `grammar.Rev` avec la mesure (LK.3.4, LK.6.1). Le dénominateur 599 (et non 591) est
   un écart nommé (§7 D-3).
 - **U-5 — Fusions : (a), UNE seule fusion dans `feat/v75`, à la fin de D1.4** (une recuisson, un
-  backfill killsource ; 2026-10-08, « Je suis ok »). Chacun de ces trois gestes reste soumis à
-  l'accord explicite de l'utilisateur le moment venu. Les montées de révision restent une par jalon
-  (LK.6, D1.4).
+  backfill killsource ; 2026-10-08, « Je suis ok »). **Accord DONNÉ d'avance pour ces trois gestes**
+  (message de l'utilisateur du 2026-10-08, « Pour le 3 tu as déjà mon accord », en réponse au
+  point « mise en commun, recalcul des rejeux et du fil des morts » de la liste du reste à faire) :
+  ils se font à la fin de D1.4 sans redemander, sous les conditions du gate D1.4 (gates verts, CI
+  verte, revue adversariale passée), en prévenant les sessions pairs avant la coupure du serveur
+  local et à la fusion, et avec un compte rendu à l'utilisateur après. Les montées de révision
+  restent une par jalon (LK.6, D1.4).
   *Fondement* : LK et 2.7.d1 font chacun monter `grammar.Rev`, donc `killsource.Rev` change de valeur
   hachée ; l'option (b) (fusion de LK seul à LK.6) coûtait deux recuissons et deux backfills ; LK ne
   change ni les ancres ni les équipes (R-10).
@@ -885,8 +889,9 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
 - [ ] D1.4.5 Plan de l'étape 2 : 2.7.d1 `[x]`, 2.7.d clos ; REGISTRE_REPORTS ; thought_log ;
       `make gate-push` ; push ; CI.
 - [ ] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués.
-- [ ] D1.4.7 Demande de fusion dans `feat/v75` (U-5) ; recuisson du parc et backfill killsource :
-      annoncés, lancés seulement sur accord explicite et après la fin du backfill en cours.
+- [ ] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
+      parc et backfill killsource, après la fin de tout backfill en cours ; pairs prévenus avant la
+      coupure du serveur local et à la fusion ; compte rendu à l'utilisateur.
 - Gate D1.4 : fiches au moins aussi pleines qu'avant (records avec armes = grammaire + repli ≥
   fenêtre seule, par film) ; aucune perte non adjugée dans `replay-equiv` ; aucune mort perdue
   (killsource) ; banc de vérité vert ; **coût ≤ +10 % (cuisson et sync, 4 films)** ; CI verte.
@@ -1183,3 +1188,17 @@ refusionner, rejouer l'étape 0).
   1 400 records, armes 55/1 184), D-6 (témoin : 226 fermés dont 222 en vrai, hasard propre 4/5 311).
   **Gate LK.4** : chaque point du §7 porte un chiffre et une commande ; aucun code de production ni de
   test modifié. Prochaine étape : LK.5 (non commencée, consigne du superviseur).
+- 2026-10-08 (soir, superviseur) : lot A relu sur pièces. Gates rejoués par le superviseur sur la
+  tête du lot (`31e150144`) : `go vet` du film, d'archlint et de killcollector, vet `research` : verts ;
+  `go test` de grammar (-skip des gardes de révision), des paquets facts, replay, types et decfilm,
+  et d'archlint : verts ; gardes de révision : seul `TestGrammarRevSuitLaGrammaire` rouge, attendu
+  jusqu'à la montée de LK.6 (killsource et objectives verts). Refusion de `origin/feat/v75`
+  (`bc3f28e89` : archivage du plan de l'étape 2 sous `.ai/V7.5/` et repointage des références,
+  disk-hygiene, lots aj-apparence et aj-demarrage) sans conflit ; les deux renvois de ce plan vers
+  le plan de l'étape 2 repointés. Accord de l'utilisateur donné d'avance pour la fusion finale, la
+  recuisson et le backfill (U-5, D1.4.7). Garde E-4 sur les films sans section d'identification :
+  maintenue (aucune largeur présumée ; 74 records arrêtés sur `50247b26`, format où les valeurs après
+  `i22` sont fausses de toute façon). Coordination : levelup-5c corrige la lecture HORS portée de
+  `consumeObjectPositionMonde` (`39510278d`, branche `feat/grammaire-arrets-vue-b-2`, non fusionnée) ;
+  LK.5 pose la branche SOUS portée de la même exception en tête de fonction, pour un recollage
+  trivial. Suite : lot B (LK.5 puis LK.6).

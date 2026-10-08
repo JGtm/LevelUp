@@ -12,13 +12,12 @@ package duckdb
 import (
 	"context"
 
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 )
 
 // SynthesisRepo implémente port.SynthesisRepository.
-// Wraps SquadRepo (LoadSynthesisMatches, LoadSynthesisHeatmap) + HomeRepo
+// Wraps SquadRepo (LoadSynthesisMatches) + HomeRepo
 // (EnrichCanonicalAssetTranslations).
 type SynthesisRepo struct {
 	squadRef *SquadRepo
@@ -36,11 +35,6 @@ func NewSynthesisRepo(pdb *PlayerDB) *SynthesisRepo {
 // LoadSynthesisMatches délègue à SquadRepo.
 func (r *SynthesisRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]legacymatch.SynthesisMatchRow, error) {
 	return r.squadRef.LoadSynthesisMatches(ctx, xuid)
-}
-
-// LoadSynthesisHeatmap délègue à SquadRepo.
-func (r *SynthesisRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
-	return r.squadRef.LoadSynthesisHeatmap(ctx, xuid)
 }
 
 // EnrichCanonicalAssetTranslations délègue à HomeRepo qui possède déjà

@@ -12,8 +12,11 @@ package v2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/sync/knownset"
 )
 
 // ─── Mock fetcher implémentant les 5 interfaces nécessaires ────────────
@@ -164,6 +167,44 @@ func TestCycle_PhaseDiscoveryFailureProperlyCaptured(t *testing.T) {
 	}
 	if res.PerPlayer["bob"].Status != "ok" {
 		t.Errorf("bob status = %q, want ok", res.PerPlayer["bob"].Status)
+	}
+}
+
+// TestCycle_BasePartageeIllisibleArreteToutLeCycle : un seul joueur dont l'ensemble connu bute
+// sur la base partagée illisible suffit à arrêter le cycle — la base est commune : ni fetch, ni
+// persistance, ni post-sync, pour PERSONNE. (Une erreur de discovery d'une autre nature reste
+// cantonnée au joueur : TestCycle_PhaseDiscoveryFailureProperlyCaptured.)
+func TestCycle_BasePartageeIllisibleArreteToutLeCycle(t *testing.T) {
+	players := mkPlayers("alice", "bob")
+	loader := &mockLoader{
+		known: map[string]map[string]bool{"bob": {}},
+		failFor: map[string]error{
+			"alice": fmt.Errorf("known set alice: %w", knownset.ErrSharedUnreadable),
+		},
+	}
+	listProvider := &mockProvider{allMatches: map[string][]string{"bob": {"m1"}}}
+	sharedFetcher := &mockFetcher{perMatchData: map[string]map[string]any{"m1": {"k": 1}}}
+	persister := &mockCyclePersister{}
+	postSync := &mockPostSyncRunner{}
+
+	orch := NewCycleOrchestrator(loader, listProvider, sharedFetcher, &mockEnrichmentFetcher{}, persister, postSync, CycleConfig{})
+	res, err := orch.Run(context.Background(), players)
+	if !errors.Is(err, knownset.ErrSharedUnreadable) {
+		t.Fatalf("err = %v, want knownset.ErrSharedUnreadable", err)
+	}
+	if got := sharedFetcher.totalCalls.Load(); got != 0 {
+		t.Errorf("sharedFetcher calls = %d, want 0", got)
+	}
+	if persister.callCount() != 0 {
+		t.Errorf("persister calls = %d, want 0", persister.callCount())
+	}
+	if got := postSync.totalCalls.Load(); got != 0 {
+		t.Errorf("postSync calls = %d, want 0", got)
+	}
+	for _, slug := range []string{"alice", "bob"} {
+		if res.PerPlayer[slug].Status != "failed" {
+			t.Errorf("%s status = %q, want failed", slug, res.PerPlayer[slug].Status)
+		}
 	}
 }
 

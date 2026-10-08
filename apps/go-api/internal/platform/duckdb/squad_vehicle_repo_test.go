@@ -1,7 +1,7 @@
 package duckdb
 
 // squad_vehicle_repo_test.go — LA RESSOURCE VEHICULES SE LIT BORNÉE, SUR LES VUES `_latest` (plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3 ; ADR 0036 I2, ADR 0026).
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3 ; ADR 0036 I2, ADR 0026).
 //
 // Base `:memory:` migrée (les vraies migrations shared, donc les vraies vues) et le VRAI registre
 // d'armes en metadata (la classe d'une source vient du même résolveur que la Répartition des

@@ -282,6 +282,13 @@ export interface ReplayText {
   settingsButton: string
   settingsClose: string
   /**
+   * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture, touche F) : un bouton à état, comme
+   * lecture/pause — le nom accessible dit ce que le CLIC va faire. L'infobulle y ajoute le
+   * raccourci entre parenthèses, comme les autres commandes de la barre.
+   */
+  fullscreenEnter: string
+  fullscreenExit: string
+  /**
    * LA LECTURE : la seule section du tiroir qui parle du LECTEUR et non de ce qu'il montre
    * (demande utilisateur du 2026-08-29, point 22 — « lecture automatique dans les réglages,
    * avec persistance du choix »).

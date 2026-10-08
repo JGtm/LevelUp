@@ -20,6 +20,12 @@ make restart      # stop + dev
 
 Ouvrir http://localhost:5173 une fois `make dev` lancé.
 
+Démarrage : le serveur Go écoute dès sa configuration chargée, avant d'ouvrir ses bases. Tant
+qu'il n'est pas prêt, `/health` et `/api/*` répondent `503` avec le code `server_starting`
+(l'étape en cours dans `details.step`) et la page affiche « Démarrage du serveur… » en
+réinterrogeant chaque seconde. `make dev` et `make go-api-dev` considèrent un serveur en
+démarrage comme déjà lancé.
+
 Requêtes lentes : une requête d'API d'au moins `LEVELUP_SLOW_REQUEST_MS` millisecondes (défaut `1000`, lu
 une fois au démarrage du serveur) est journalisée dans `logs/http.log` avec `slow: true`, au moins en INFO.
 Si elle a chronométré des sections (pages Escouade, Synthèse, Sessions et Séries temporelles, filtres),
@@ -78,9 +84,18 @@ séparé de carrière en direct (`service.CareerLiveService`), et `career_synced
 `false` dans le résumé du sync, jeton ou pas. `/careerranks` est lui-même PUBLIC : mesuré le
 2026-09-16 avec trois jetons prêteurs différents sur un xuid tiers, il rend le même rang et la
 même XP que l'appel du propriétaire — le client poolé l'acquiert donc en `PolicyAnyPublic`
-comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation Spartan est le
-seul appelant qui exige le jeton propre du joueur (403 pour un tiers, mesuré), et garde pour
-cette raison son contrôle `HasPlayer`.
+comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation Spartan (toutes
+les 8 h, premier passage au démarrage du serveur) préfère le jeton propre du joueur, qui ouvre
+la vue privée `/customization/appearance` (403 pour un tiers, mesuré). Quand ce jeton est
+inutilisable (jeton de rafraîchissement refusé, créneau malsain), le joueur est lu avec le jeton
+de l'utilisateur de l'instance seulement : le compte dont le xuid est lié à un compte de rôle
+`admin` parmi les comptes de l'instance (`data/auth/users.json`, lus par le store des comptes).
+Le jeton d'un autre utilisateur ne porte jamais la lecture. Si ce jeton est lui aussi
+inutilisable, ou les comptes illisibles, rien n'est lu ni écrit (journalisé, compté dans
+`spartan_cron_no_bearer_total`). Avec le jeton admin, le client se replie sur la vue publique
+`/customization?view=public`, qui porte le même emblème, le même fond et le même tag de service
+pour n'importe quel joueur. La ligne est écrite dans la base du joueur lu ; aucun jeton n'est
+capturé ni rafraîchi hors du pool.
 
 Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le
@@ -1134,6 +1149,36 @@ particularité d'environnement.
 ```powershell
 powershell -File scripts/gate-push.ps1
 ```
+
+### Hygiène du disque (`disk-hygiene.ps1`)
+
+Go ne retire de son cache que les entrées inutilisées depuis 5 jours, et seulement quand une
+commande réutilise ce même cache : un `GOCACHE` dédié laissé à la clôture d'un lot ne rétrécit
+jamais, pas plus que les racines de gate gardées dans les scratchpads des sessions.
+`scripts/disk-hygiene.ps1` rend cette place. Il **simule par défaut** ; rien n'est supprimé sans
+`-Apply`.
+
+```powershell
+powershell -File scripts/disk-hygiene.ps1                    # simulation : ce qui serait libéré, rapport des worktrees
+powershell -File scripts/disk-hygiene.ps1 -Apply             # passe réelle (celle de la tâche planifiée)
+powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # clôture de lot : supprime go-build-<lot> et golangci-<lot>
+```
+
+- Périmètre : `%LOCALAPPDATA%\go-build-*` et `golangci-*` (hors `golangci-lint`, le cache par
+  défaut), `%USERPROFILE%\gocache-*`, `C:\*-gocache`, les dossiers de session sous
+  `%TEMP%\claude`, `C:\t\*`. Jamais `data\`, un worktree, `.git` ni le cache des modules.
+- Seuils : cache dédié inactif depuis 48 h ; cache partagé vidé par `go clean -cache` au-delà de
+  25 Go ; dossier de session dont le transcript et le contenu n'ont pas bougé depuis 72 h ; dans une
+  session active, `gate_work*` / `gocache*` / `golangci*` / `parc*` inactifs depuis 24 h ;
+  `C:\t\*` inactifs depuis 72 h. Âge = l'écriture la plus récente dans tout l'arbre.
+- Sécurité : aucune suppression tant qu'un processus `go`, `compile`, `link`, `*.test`,
+  `golangci-lint`, `gate`, `replay-*` ou `levelup*` tourne (rapport seul). `-Lot` refuse un cache
+  écrit dans les 10 dernières minutes. Un arbre qui contient une jonction ou un lien n'est jamais
+  supprimé, seulement signalé. Les worktrees sont signalés, jamais retirés.
+- Journal : `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (espace libre avant et après,
+  chaque suppression et chaque refus ; `ALERTE` sous 60 Go libres).
+- Tâche planifiée `LevelUp-disk-hygiene` : chaque jour à 4 h, utilisateur courant, sans élévation,
+  `-Apply`.
 
 ---
 

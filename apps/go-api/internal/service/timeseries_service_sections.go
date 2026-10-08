@@ -97,7 +97,7 @@ func (s *TimeseriesService) attachMigratedSections(
 	stop()
 	// LES TROIS LECTURES DU RÉSUMÉ D'USAGE, UNE FOIS pour les blocs qui les lisent (ADR 0036 I4).
 	lu := s.lireUsageDuScope(ctx, synthesisMatchIDs(filteredCanon))
-	// « Les formes retenues » (cartes d'objectif) : les match_id de la fenêtre. `SelectedGamertags`
+	// « Les formes retenues » (cartes d'objectif) : les match_id de la fenêtre. `SelectedMembers`
 	// reste vide — cette page n'a pas d'escouade.
 	stop = timing.FromContext(ctx).Section("squad_formes")
 	resp.SquadFormes = squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{

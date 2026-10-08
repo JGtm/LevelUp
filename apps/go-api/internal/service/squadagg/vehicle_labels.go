@@ -1,7 +1,7 @@
 package squadagg
 
 // vehicle_labels.go — LE NOM DES FAMILLES DE VEHICULE QUE LE TITRE QUALIFIE (ressource véhicules de
-// l'Emprise, plan `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3).
+// l'Emprise, plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3).
 //
 // Un nom de famille de véhicule est un NOM PROPRE du jeu (Warthog, Banshee) : il ne se traduit pas
 // et la clé publiée par le calque EST ce nom ; le client l'affiche depuis la clé. Seules les
