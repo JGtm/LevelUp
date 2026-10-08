@@ -2433,3 +2433,20 @@ plan y sont reprises comme items (3.1.2).
   coût, la règle d'admission à écrire comme un amendement de 2.7.b, le résidu sous la portée (88
   arrêts, pas 861). Seconde passe lancée (cinq agents : Ghidra, deux mesures, plan réécrit, une
   contre-vérification), aucun code de production ; plan dédié à suivre.
+- 2026-10-08 (fin d'après-midi) : seconde passe de 2.7.d1 finie (cinq agents, 74 min, aucun code de
+  production). Ghidra : largeur du handle de la queue d'`i0` LUE (13 bits, déjà dans le Go, non
+  câblée : le chemin actuel la lit sur 1 bit) ; `i42` porte l'emplacement DÉSIRÉ des deux mains et
+  l'identifiant de la demande, pas l'emplacement dégainé ; la marque de portage est une configuration
+  des champs de fin d'`i11`, pas un identifiant ; l'état par défaut de `ti=9` n'a aucun lecteur de
+  position sous la portée. Mesures : sous la portée, ancres, élections, preuves et équipes
+  identiques, carte des trames delta identique à l'octet, seule la fermeture des records bouge (+4 999,
+  −10 : fermetures de hasard de la base, adjugées) ; critère écrit de la bascule : la portée seule
+  8/599, la portée avec la forme d'`i0` du jeu 369/599 (61,6 %) avec et sans bouchons, l'instrument
+  que la doc nomme aveugle depuis le lot 2.3 (0/599 dans tous les cas) ; forme de l'écrivain en delta :
+  0 trame saine perdue, +2 au mieux ; ratchet de fermeture en contexte de cuisson sur les sept bobines
+  53 -> 666 / 1 368 ; admission : dans les formats 24 à 27, les records non fermés à `n(i22) = 4` sont
+  aussi justes que les fermés, les formats 20 et 21 sont faux après `i22` ; la « Dynamo » de la
+  fenêtre est le M41 SPNKr lu un bit trop tôt (100 %). Plan dédié réécrit (700 lignes), contre-vérifié
+  « partiel » (commandes de gate à corriger, décisions à rendre à l'utilisateur). Demandé à
+  l'utilisateur : amendement du critère écrit, une ou deux fusions, règle d'admission, marque de
+  portage, valeurs publiées qui changent, coût de la mise en œuvre.
