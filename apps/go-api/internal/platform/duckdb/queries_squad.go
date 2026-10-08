@@ -26,10 +26,10 @@ GROUP BY match_id`
 // (squad_repo_annuaire.go), même cascade, sur les xuids du top et les mêmes matchs.
 //
 // ORDRE TOTAL (lot perf L8, 2026-09-23) : games_together DESC, puis wins_together DESC, puis
-// p2.xuid ASC. Sans départage, la coupe du LIMIT 50 parmi les ex aequo changeait d'une lecture
-// à l'autre, donc la liste des coéquipiers connus que la composition exacte exclut aussi : ses
-// sessions et leurs comptes (page Escouade comme lecture légère) n'étaient pas reproductibles
-// (données réelles, lot L4b : cinq pages de suite, quatre différentes de la première).
+// p2.xuid ASC. Sans départage, la coupe du LIMIT 50 parmi les ex aequo changerait d'une lecture
+// à l'autre, donc la liste proposée et la résolution d'un gamertag choisi. Ce top ne définit PAS
+// les coéquipiers connus de la composition stricte (amis déclarés et profils suivis seulement,
+// ADR 0033 ; service/teammates/coequipiers_connus.go).
 //
 // Paramètres positionnels :
 //

@@ -9,7 +9,10 @@
 // Décomposé de teammates_service.go (limite 500 lignes, CLAUDE.md règle 5).
 package teammates
 
-import "levelup/go-api/internal/domain"
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+)
 
 // buildCompositionSessionEntries assemble les CompositionSessionEntry publiées
 // par GetPage. kept/roster/excluded partagent tous la population
@@ -23,18 +26,19 @@ import "levelup/go-api/internal/domain"
 //   - excluded : matchs écartés par le filtre — regroupés par session pour
 //     ExcludedByExactComposition.
 //
-// teamByMatch/extraPool/topRows ne servent qu'à nommer les responsables d'un
-// match écarté (extraPresentOn + résolution gamertag) ; nil/vide => aucun écart
-// à publier (option OFF ou dégradation gracieuse du chargement de l'équipe).
+// teamByMatch/extraPool/noms ne servent qu'à nommer les responsables d'un
+// match écarté (extraPresentOn, puis noms = xuid -> nom des coéquipiers connus) ;
+// nil/vide => aucun écart à publier (option OFF ou dégradation gracieuse du
+// chargement de l'équipe).
 func buildCompositionSessionEntries(
 	kept, roster, excluded []domain.SquadMatchRow,
 	teamByMatch map[string]map[string]struct{},
 	extraPool map[string]struct{},
-	topRows []domain.TopTeammateRow,
+	noms map[string]string,
 ) []domain.CompositionSessionEntry {
 	keptSessions := buildCompositionSessionLabels(kept)
 	rosterCounts := sessionMatchCounts(roster)
-	excludedBySession := groupExcludedBySession(excluded, teamByMatch, extraPool, topRows)
+	excludedBySession := groupExcludedBySession(excluded, teamByMatch, extraPool, noms)
 
 	out := make([]domain.CompositionSessionEntry, 0, len(keptSessions))
 	for _, session := range keptSessions {
@@ -86,12 +90,11 @@ func groupExcludedBySession(
 	excluded []domain.SquadMatchRow,
 	teamByMatch map[string]map[string]struct{},
 	extraPool map[string]struct{},
-	topRows []domain.TopTeammateRow,
+	noms map[string]string,
 ) map[string][]domain.CompositionExcludedMatch {
 	if len(excluded) == 0 {
 		return nil
 	}
-	gtByXUID := topGamertagsByXUID(topRows)
 	out := make(map[string][]domain.CompositionExcludedMatch)
 	for _, m := range excluded {
 		if m.SessionLabel == nil || *m.SessionLabel == "" {
@@ -100,7 +103,7 @@ func groupExcludedBySession(
 		culprits := extraPresentOn(teamByMatch[m.MatchID], extraPool)
 		gamertags := make([]string, 0, len(culprits))
 		for _, xuid := range culprits {
-			gamertags = append(gamertags, resolveGamertagFallback(xuid, gtByXUID))
+			gamertags = append(gamertags, resolveGamertagFallback(xuid, noms))
 		}
 		label := *m.SessionLabel
 		out[label] = append(out[label], domain.CompositionExcludedMatch{
@@ -130,29 +133,12 @@ func countDistinctCulpritXUIDs(
 	return len(seen)
 }
 
-// topGamertagsByXUID indexe topRows (Q29, déjà chargé) par xuid -> gamertag.
-// Les gamertags vides (non résolus côté requête) ne sont pas indexés : le
-// repli resolveGamertagFallback s'applique alors.
-func topGamertagsByXUID(topRows []domain.TopTeammateRow) map[string]string {
-	out := make(map[string]string, len(topRows))
-	for _, r := range topRows {
-		if r.XUID != "" && r.Gamertag != "" {
-			out[r.XUID] = r.Gamertag
-		}
-	}
-	return out
-}
-
-// resolveGamertagFallback résout un xuid en gamertag via la table topRows,
-// avec le même repli que la requête SQL Q32b (Q32bMainTeamParticipantsTemplate,
-// queries_squad.go) : "Joueur <4 derniers>" — jamais une chaîne vide.
+// resolveGamertagFallback résout un xuid en nom via la table des coéquipiers
+// connus, avec le repli du libellé masqué de l'annuaire (analysis.MaskedXuidLabel,
+// "Joueur <4 derniers>") — jamais une chaîne vide.
 func resolveGamertagFallback(xuid string, byXUID map[string]string) string {
-	if gt, ok := byXUID[xuid]; ok && gt != "" {
+	if gt := byXUID[xuid]; gt != "" {
 		return gt
 	}
-	last4 := xuid
-	if len(xuid) > 4 {
-		last4 = xuid[len(xuid)-4:]
-	}
-	return "Joueur " + last4
+	return analysis.MaskedXuidLabel(xuid)
 }

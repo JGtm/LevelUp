@@ -2,6 +2,8 @@ package teammates
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"strings"
 
 	"levelup/go-api/internal/domain"
@@ -45,6 +47,41 @@ type mockSquadRepo struct {
 	assetFR map[string]map[string]string
 	// modeFR : mode_name_tr FR (mode EN normalisé -> FR).
 	modeFR map[string]string
+	// amis / profils / amisLus : les sources des coéquipiers connus du SCÉNARIO (pas des
+	// lectures du dépôt Escouade) — les amis déclarés du joueur, le registre des profils du titre
+	// et la lecture des amis hors registre (gamertag tel que demandé -> xuid), injectés par
+	// avecConnus.
+	amis    []string
+	profils []domain.PlayerSummary
+	amisLus map[string]string
+}
+
+// avecConnus branche sur svc les coéquipiers connus du scénario du dépôt : ses amis déclarés
+// (quand il en déclare), le registre des profils et la lecture des amis hors registre.
+func avecConnus(svc *TeammatesService, m *mockSquadRepo) *TeammatesService {
+	if m.amis != nil {
+		amis := slices.Clone(m.amis)
+		svc.friendGamertags = func(context.Context) []string { return amis }
+	}
+	profils := slices.Clone(m.profils)
+	lus := maps.Clone(m.amisLus)
+	return svc.WithCoequipiersConnus(
+		func(context.Context) ([]domain.PlayerSummary, error) { return profils, nil },
+		func(_ context.Context, gts []string) (map[string]string, error) {
+			out := map[string]string{}
+			for _, gt := range gts {
+				if x, ok := lus[gt]; ok {
+					out[gt] = x
+				}
+			}
+			return out, nil
+		},
+	)
+}
+
+// profilSuivi : un profil suivi du titre (sync actif, pas auth_only).
+func profilSuivi(xuid, gamertag string) domain.PlayerSummary {
+	return domain.PlayerSummary{XUID: xuid, Gamertag: gamertag, PlayerSlug: gamertag, SyncEnabled: true}
 }
 
 func (m *mockSquadRepo) LoadTopTeammates(_ context.Context, _ string) ([]domain.TopTeammateRow, error) {
