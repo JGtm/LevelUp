@@ -424,7 +424,7 @@ func (s *TeammatesService) GetPage(
 	usage := s.loadUsageBlocks(ctx, playerXUID, porteeUsage{
 		filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,
 		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory, pairNames: pairNamesOf(canonicalRows, allSquadRowsForTimeline),
-		compositionSessions: compositionSessions,
+		compositionSessions: compositionSessions, membres: membresChoisis(teammates),
 	}, req)
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)
