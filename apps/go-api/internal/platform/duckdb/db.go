@@ -163,10 +163,10 @@ func PoolStatsSnapshot() map[string]sql.DBStats {
 func LookupCachedDB(path string) (*DB, bool) {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
-	if cached, ok := openDBs["rw:"+path]; ok && cached.db != nil && !cached.db.closed.Load() {
+	if cached, ok := openDBs[rwCacheKeyPrefix+path]; ok && cached.db != nil && !cached.db.closed.Load() {
 		return cached.db, true
 	}
-	if cached, ok := openDBs["ro:"+path]; ok && cached.db != nil && !cached.db.closed.Load() {
+	if cached, ok := openDBs[roCacheKeyPrefix+path]; ok && cached.db != nil && !cached.db.closed.Load() {
 		return cached.db, true
 	}
 	return nil, false
@@ -208,7 +208,7 @@ func EvictAndCloseCached(path string) int {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
 	closed := 0
-	for _, key := range []string{"rw:" + path, "ro:" + path} {
+	for _, key := range []string{rwCacheKeyPrefix + path, roCacheKeyPrefix + path} {
 		cached, ok := openDBs[key]
 		if !ok || cached.db == nil {
 			continue
@@ -255,7 +255,7 @@ func OpenReadOnly(path string, timezone ...string) (*DB, error) {
 		}
 	}
 	return openCachedDB(
-		"ro:"+path,
+		roCacheKeyPrefix+path,
 		path,
 		path+"?access_mode=read_only",
 		poolMaxOpenShared,
@@ -278,7 +278,7 @@ func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, poolMaxOpenShared, poolMaxIdleShared, "OpenReadWriteShared", tz)
+	return openCachedDB(rwCacheKeyPrefix+path, path, path, poolMaxOpenShared, poolMaxIdleShared, "OpenReadWriteShared", tz)
 }
 
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
@@ -293,7 +293,7 @@ func OpenReadWrite(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, poolSingleConn, poolSingleConn, "OpenReadWrite", tz)
+	return openCachedDB(rwCacheKeyPrefix+path, path, path, poolSingleConn, poolSingleConn, "OpenReadWrite", tz)
 }
 
 // Limites de pool DuckDB (J8, 2026-07-05 : ex-magic 4/2/1). Le driver DuckDB est

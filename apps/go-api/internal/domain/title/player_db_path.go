@@ -24,9 +24,5 @@ func IsPlayerDBPath(path string) bool {
 	if filepath.Base(clean) != playerDBFileName {
 		return false
 	}
-	playerDir := filepath.Dir(clean)
-	if filepath.Base(playerDir) == playersDirName {
-		return false // `players/stats.duckdb` : pas de dossier de joueur
-	}
-	return filepath.Base(filepath.Dir(playerDir)) == playersDirName
+	return filepath.Base(filepath.Dir(filepath.Dir(clean))) == playersDirName
 }

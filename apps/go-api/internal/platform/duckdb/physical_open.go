@@ -34,8 +34,12 @@ import (
 	"levelup/go-api/internal/observability"
 )
 
-// rwCacheKeyPrefix — préfixe des clés de cache des handles en écriture.
-const rwCacheKeyPrefix = "rw:"
+// Préfixes des clés du cache openDBs (db.go) : un fichier a au plus un handle en écriture
+// et un en lecture, clés rwCacheKeyPrefix+path et roCacheKeyPrefix+path.
+const (
+	rwCacheKeyPrefix = "rw:"
+	roCacheKeyPrefix = "ro:"
+)
 
 // playerOpenCareCounter — compteur expvar (/debug/vars, clé "levelup") des soins appliqués
 // à l'ouverture physique d'une base joueur en écriture.

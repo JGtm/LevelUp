@@ -14,6 +14,7 @@ func TestIsPlayerDBPath(t *testing.T) {
 	oui := []string{
 		pr.PlayerDBPath(DefaultSlug, "Chocoboflor"),
 		pr.PlayerDBPath("halo_5", "Joueur Avec Espace"),
+		pr.PlayerDBPath(DefaultSlug, "players"), // gamertag homonyme du répertoire
 		demo.PlayerDBPath(DefaultSlug, "DEMO"),
 		filepath.Join("data", "titles", DefaultSlug, "players", "GT", "stats.duckdb"),
 	}
@@ -27,7 +28,7 @@ func TestIsPlayerDBPath(t *testing.T) {
 		pr.MetadataDBPath(DefaultSlug),
 		pr.SharedSocialDBPath(DefaultSlug),
 		pr.SharedPVEDBPath(DefaultSlug),
-		filepath.Join(pr.PlayersRootDir(DefaultSlug), "stats.duckdb"),
+		filepath.Join(pr.PlayersRootDir(DefaultSlug), "stats.duckdb"), // .../players/stats.duckdb : pas de dossier de joueur
 		filepath.Join(pr.PlayerDir(DefaultSlug, "GT"), "archive", "stats.duckdb"),
 		filepath.Join(pr.PlayerDir(DefaultSlug, "GT"), "autre.duckdb"),
 		filepath.Join(root, "stats.duckdb"),
