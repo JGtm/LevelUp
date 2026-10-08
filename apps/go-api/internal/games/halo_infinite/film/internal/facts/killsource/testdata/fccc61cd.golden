@@ -58,7 +58,7 @@ morts infligees PAR un bot : 1 propose(s), 1 apparie(s), 1 publiee(s)
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 4839 / 4839 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 368, mediane 301)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 1205, mediane 1205]
+calibration resolue automatiquement : LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 368, mediane 301)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 1211, mediane 1211]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL

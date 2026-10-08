@@ -9,8 +9,8 @@
 // filterExactComposition s'y applique dans GetPage) ∩ filteredMatches (période, cascade,
 // sessions). Sans coéquipier sélectionné, filteredMatches seul : la page reste utile en solo.
 // Avant D2, le périmètre était filteredMatches même avec une escouade : les cartes d'usage
-// comptaient des matchs joués sans les coéquipiers affichés. Les « amis » des blocs sont les
-// coéquipiers SÉLECTIONNÉS (req.SelectedGamertags), pas les amis configurés (app_settings).
+// comptaient des matchs joués sans les coéquipiers affichés. Les membres des blocs sont les
+// coéquipiers SÉLECTIONNÉS, résolus par xuid (membresChoisis), pas les amis configurés.
 package teammates
 
 import (
@@ -48,6 +48,22 @@ type porteeUsage struct {
 	// fin du fil doit tomber sur le point « ce soir ».
 	pairNames           map[string]string
 	compositionSessions []domain.CompositionSessionEntry
+	// membres : les coéquipiers sélectionnés résolus (membresChoisis) — l'escouade des blocs.
+	membres []domain.SessionUsageSquadPlayer
+}
+
+// membresChoisis — les coéquipiers sélectionnés que la page a résolus (teammates[].XUID), sous le
+// nom choisi : l'escouade des blocs d'usage et de l'Emprise. Comme la matrice d'impact
+// (resolveSquadScope), l'appartenance se décide par xuid et le nom est celui de la ligne choisie,
+// jamais une égalité avec le gamertag des participants (ADR 0035), qui peut être vide.
+func membresChoisis(teammates []domain.TeammateRow) []domain.SessionUsageSquadPlayer {
+	out := make([]domain.SessionUsageSquadPlayer, 0, len(teammates))
+	for _, t := range teammates {
+		if t.XUID != nil && *t.XUID != "" {
+			out = append(out, domain.SessionUsageSquadPlayer{XUID: *t.XUID, Gamertag: t.Gamertag})
+		}
+	}
+	return out
 }
 
 // blocsUsage — les trois blocs publiés.
@@ -70,7 +86,7 @@ func (s *TeammatesService) loadUsageBlocks(
 	var lectures *squadagg.LecturesUsage
 	var out blocsUsage
 	siVivante(ctx, func() { lectures = s.lireUsagePartage(ctx, playerXUID, scope) })
-	siVivante(ctx, func() { out.formes = s.loadSquadFormes(ctx, playerXUID, scope, p, req, lectures) })
+	siVivante(ctx, func() { out.formes = s.loadSquadFormes(ctx, playerXUID, scope, p, lectures) })
 	if selection {
 		siVivante(ctx, func() {
 			out.objectif = s.loadObjectiveHistory(ctx, lignesDuPerimetre(p.squadRows, scope), p.timelineRows, p.mainTeamByMatch, p.pairNames)

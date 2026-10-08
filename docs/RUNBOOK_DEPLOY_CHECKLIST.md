@@ -90,7 +90,11 @@ Each item cites its source so it can be re-verified against the code. Structure:
 - [ ] **`GET /health` returns 200** on `127.0.0.1:8000` — the healthcheck opens metadata +
       shared read-only and returns match count + DuckDB version, so 200 confirms both the
       binary is up and the DBs open (source: `scripts/deploy.sh` step 4; deploy fails if it
-      does not respond within 90 s).
+      does not respond within 90 s). While it boots, the server already listens: `/health`
+      and `/api/*` answer **503 `server_starting`** (step in `details.step`) and the web page
+      is served and waits. `deploy.sh` (`curl -sf`) and the Docker healthcheck
+      (`-health-check`, `start_period` 20 s) only accept 200, so both keep waiting for the
+      real "ready" — a 503 during the first seconds is expected, not a failure.
 - [ ] **Boot logs show migrations OK, no FATAL.** Logs are per-category files under
       `/opt/levelup/data/logs/*.log` — grep ALL of them, not just one:
       `grep -riE 'FATAL|panic' /opt/levelup/data/logs/*.log`. Check `migration.log`,

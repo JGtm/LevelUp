@@ -7,94 +7,13 @@ package killsource
 // (`archlint/film_file_size_test.go`) refuse de grandir. AUCUN OCTET DE CODE N EST TOUCHE — le
 // fichier ne porte que des commentaires, exactement comme `grammar/rev_chronique.go`, dont ce
 // decoupage reprend la forme. La regle de la chronique est INCHANGEE : une entree par rang,
-// jamais reecrite, et la revision se decide AVANT le golden. Les rangs anterieurs a
-// `killsource-2026-09-26` vivent dans `rev_chronique_archive.go` puis `rev_chronique_archive_2.go`.
+// jamais reecrite, et la revision se decide AVANT le golden.
 
 // # LA CHRONIQUE — UNE ENTREE PAR RANG, ET RIEN QU UNE
 //
-// ENTREE `killsource-2026-09-26` (2026-09-26, jalon J7 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : LA
-// REVISION MONTE UNE FOIS POUR LES SEPT CONSTATS FK-1 A FK-7, ET LA SORTIE DU KILL-FEED CHANGE.
-//
-//	FK-2 (J7.1)  un nom de remplissage (`?`, `?N`) n est plus jamais publie : un assistant pose
-//	             par l inference sur un remplissage sort REJETE `hors-roster` (colonne
-//	             `assist_gamertag` NULL, `assist_rejected` = `hors-roster`) ; les temps 4 et 5 ne
-//	             publient pas une ligne dont le nom pris au roster serait un remplissage
-//	             (`Stats.NomsDeRemplissageRefuses`). Predicat unique `estNomDeRemplissage`.
-//	FK-1 (J7.2)  l espace des humains est le NOMBRE DE SIEGES de la table du film, et non plus le
-//	             nombre de noms du kill-feed : un remplacant ne desepingle plus le bot de relais. Un
-//	             bot n est desepingle que si son slot tombe sous cette borne ET sur un siege que la
-//	             table NOMME (revue adverse : un siege VACANT intercale ne desepingle rien). Sans
-//	             table, aucun bot n est desepingle. Les bots non epingles sont publies
-//	             (`Coverage.BotsNonEpingles`), journalises par film, et comptes par
-//	             `replayidentity` (`killsource_bots_non_epingles`).
-//	FK-3 (J7.3)  le lien par motif du xuid cherche aussi les joueurs qui tuent sans mourir. Ces
-//	             candidats ne font que COMPLETER (revue adverse) : une lecture qui se contredit ou
-//	             tombe sur un indice deja retenu les ecarte SEULS (`MotifTueursEcartes`), sans faire
-//	             tomber l epinglage par motif du film.
-//	FK-4 (J7.4)  le temps 4 ne reecrit plus un instant publie (`Stats.CollisionsDeMortDeBot`),
-//	             SAUF une ligne du temps 3 posee sur un couple RECOLLE : elle ne confirme pas le
-//	             tueur du couple, et cede a la mort de bot verifiee au meme instant (revue adverse,
-//	             `Stats.AutoInfligeesSurCoupleFabriqueRemplacees`). Un couple recolle n est fantome
-//	             que si sa mort de bot est PUBLIEE, ce qui tient `Covered <= RealPairs`. Revue ronde
-//	             2 : « au meme instant » est a la milliseconde — le dead-state de la mort de bot doit
-//	             tomber a l instant du kill-feed que la ligne porte ; une mort de bot prise par la
-//	             fenetre a un kill VOISIN n est plus publiee a une fausse date et ne prive plus ce
-//	             voisin de sa ligne. Un remplacement retire la provenance de la ligne remplacee :
-//	             `Stats.Appariement` compte une provenance PAR LIGNE PUBLIEE (plus de `Fenetre`
-//	             gonfle d une ligne disparue).
-//	FK-5 (J7.5)  le numerateur de sante ne compte que des candidats, une fois : le temps 3 laisse
-//	             les indices de bot aux temps de bot, et les inexpliques a indice de bot se
-//	             comptent sur la population (plus sur le scan entier).
-//	FK-6 (J7.6)  un kill-event lu deux fois dans le meme paquet (champs identiques) n est garde
-//	             qu une fois, au bit le plus bas (`AssistStats.Doublons`) : plus de couple fabrique
-//	             pour un kill orphelin voisin, plus de multi-attachement par doublon.
-//	FK-7 (J7.7)  une carte fournie egale a l invariant (Cliffhanger) est une carte APPLIQUEE : plus
-//	             de faux repli `repli_carte_absente_largeurs_par_defaut` ni de faux avertissement.
-//
-// LES LIGNES DE KILL DEJA EN BASE DEVIENNENT CANDIDATES AU BACKLOG DE REDECODAGE
-// (`conditionBacklog`, `sync/killcollector/postsync.go`) : il est traite a la vague unique J11,
-// geste de PRODUCTION pris par le pilote SUR SIGNAL UTILISATEUR (D6), jamais automatique.
-// `SchemaVersion` ne monte pas (la forme du document de rejeu ne change pas) ; le codec des faits
-// ne monte pas : la section 5 gagne des champs JSON, et un fichier ecrit sous la revision
-// anterieure est refuse sur son EN-TETE, qui porte `killsource.Rev`.
-//
-// COMPLEMENT DU 2026-09-27, MEME RANG, MEME LOT NON PUBLIE (correctif J7 « carte obligatoire »,
-// enquete ENQUETE_MARCHE_KILLSOURCE_2026-09-27). La revision NE MONTE PAS : `killsource-2026-09-26`
-// n est pas publiee (la serie en base est `killsource-2026-09-24`), et deux changements d un meme
-// lot partagent un rang — en ouvrir un second ferait redecoder le parc deux fois. L empreinte, elle,
-// change (golden regenere par sa porte). Ce que la sortie gagne :
-//
-//	CARTE OBLIGATOIRE  `Decode` sans entree de catalogue portant des largeurs rend
-//	                   `ErrCarteAbsente` ; plus aucun decodage aux largeurs de l invariant
-//	                   (Cliffhanger) en production. Le collecteur met le film de cote
-//	                   (`ecarte-carte-non-resolue`, `killsource_ecartes_carte_non_resolue`, aucun
-//	                   marqueur de registre : il reste au backlog et sera decode quand sa carte se
-//	                   resoudra). Le repli `repli_carte_absente_largeurs_par_defaut` est RETIRE du
-//	                   registre ; seuls les instruments de recherche decodent sans carte, et le
-//	                   DECLARENT (`Options.RechercheSansCarte`, interdit en production par ratchet).
-//	CARTE LUE          la presence de la carte se lit sur l ENTREE (`carteApplicable`), plus sur une
-//	                   difference de largeurs — acheve FK-7 sur l entree commise de Cliffhanger.
-//
-// LA MARCHE REVIENT SUR LE BANC, PAS EN PRODUCTION : le banc `TestGoldenFilms` decodait sans carte
-// depuis `f3a2f00eb` ; sous leur carte, les quatre films rendent marche 356/369 et scan 7/8 au
-// cumul (000d5950 94/91, 9b191a7f 84/80, 78919882 98/94, fccc61cd 93/91). En production, seuls les
-// matchs SANS CARTE RESOLUE changent : ils etaient publies par le scan aux largeurs d une autre carte ;
-// les NOUVELLES passes ne les publient plus (le match est mis de cote, il reste au backlog). LES
-// LIGNES DEJA EN BASE RESTENT : celles d un match sans carte decode a `killsource-2026-09-24` (aux
-// largeurs de Cliffhanger) demeurent dans `match_kill_events`, et aucune passe ne les remplace —
-// le match n est plus jamais decode tant que sa carte ne se resout pas. Leur sort (purge ou non)
-// est une decision renvoyee a J11 ; ce lot ne touche a aucune donnee.
-//
-// CORRECTIONS DE REVUE DU MEME JOUR, SANS EFFET SUR LA SORTIE (l empreinte ne bouge pas) : un match
-// dont le registre ne porte ni `map_id` ni `map_name` (`port.ErrMatchMapUnknown`) est une carte NON
-// RESOLUE, plus une panne retentee et telechargee a chaque cycle ; le post-sync ne relit plus la
-// carte d un match deja constate sans elle sous le meme catalogue de bornes, pendant six heures au
-// plus (registre en memoire, jauge `killsource_postsync_backlog_sans_carte`) et ne compte plus le
-// backlog qu une fois par cycle. Le resolveur de carte du post-sync EMPRUNTE les metadonnees que le
-// processus tient : un `map_name` reste UUID brut au registre est traduit comme au backfill hors
-// ligne, au lieu d etre ecarte pour toujours (regression de la carte obligatoire, fermee le meme
-// jour). Residu accepte : un film expire SANS carte n est jamais telecharge, donc jamais marque
-// `MBitFilmAbsent`, et reste au backlog.
+// Les rangs `killsource-2026-09-16.2` a `.6` vivent dans `rev_chronique_archive.go`, les rangs
+// `killsource-2026-09-21.2` a `killsource-2026-09-26` dans `rev_chronique_archive_2.go` (rotation
+// du 2026-10-08).
 
 // ENTREE `killsource-2026-09-27` (2026-09-27, lot J5.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25) :
 // LA REVISION MONTE DERRIERE LA GRAMMAIRE, PAR LA RECETTE DU SENS UNIQUE (ADR 0034 D-6 (2) et (3)).
@@ -281,11 +200,23 @@ package killsource
 // `grammar.Rev` monte a `grammar-2026-10-08` (positions et objets du monde derriere la marche).
 // `cmd/killsource json` sur les 19 temoins, binaire de `acfe4851a` contre binaire du lot :
 // sorties identiques a l octet. Golden regenere a revision constante.
+
+// ENTREE `killsource-2026-10-08` (2026-10-08, lot des arrets de la vue B, suite, `grammar`
+// `grammar-2026-10-08.2` a `.13`) : aucune source de la couche ne change. Les lecteurs de la vue B
+// portes par le lot (groupes d etats visuels et barres de `ti=12`, filtres d interaction de `ti=10`
+// et `ti=11`, corps de l ancre d `i59`, drapeaux et proprietes de `ti=10`, `ti=45 i1`), la porte
+// posee de world-object i0 et la liaison des NEW prouves prolongent la marche des trames : sur les
+// 20 films du kit, 81 morts passent du balayage a la marche (`read_path` `scan` -> `marche` :
+// `1c4c63c2` 57, `60ae07c4` 20, `084a804d`, `11de8353`, `51ebbc0f` et `c75f33b8` une chacun), contenu
+// publie identique (victime, tueur, instant, source, assistances) ; `0797ce72` lit un dead-state
+// candidat de plus, non publie (compteurs de sante) ; treize films ne different que par le
+// diagnostic `calibration`. `read_path` est persiste : la revision monte (D23), backlog sur signal
+// de l utilisateur (D6).
 //
-// ENTREE `killsource-2026-10-08` (2026-10-08, lot `feat/aj-film`, point 18 des ajustements) : LES
-// MORTS QUI TOUCHENT UN BOT. NUMERO PROVISOIRE, a renumeroter a la fusion dans `feat/v75`.
+// ENTREE `killsource-2026-10-08.2` (2026-10-08, lot `feat/aj-film`, point 18 des ajustements) : LES
+// MORTS QUI TOUCHENT UN BOT.
 //
-// Ce qui change, contre `killsource-2026-10-07.2` :
+// Ce qui change, contre `killsource-2026-10-08` :
 //   - les morts DE bot et PAR un bot gardent leur premiere passe (premier candidat de la fenetre), puis
 //     un COMPLEMENT reprend les seuls kills qu elle laisse sans ligne faute de dead-state libre, avec
 //     les seuls dead-states qu aucun temps n a servis (`bot_affectation.go`) : il ajoute des lignes, il
@@ -297,7 +228,7 @@ package killsource
 //     autre tueur ; il ne va jamais chercher la mort suivante (`repli_couple_recolle_sur_le_voisin`) ;
 //   - le nom d un bot publie se lit a l instant de la ligne : sur un indice que plusieurs bots tiennent
 //     l un apres l autre, celui que BOT_METADATA declare a cet instant (`hybrid_bots.go`).
-// PREUVE (2026-10-08, `cmd/killsource json`, binaire de `6375eaf3c` contre binaire du lot) : sur
+// PREUVE (2026-10-08, `cmd/killsource json`, binaire de `2761162de` contre binaire du lot) : sur
 // `0a08d2f2`, 119 -> 124 lignes, +4 morts de bot (trois de SuSpec7c0br4, une de JGtm, dont une par
 // la source du bot) et +1 mort infligee par un bot (Madina97294) ; `ca684191` 79 -> 80 (une mort
 // infligee par un bot que le recollage prenait) ; `760fb768` une victime renommee a l instant

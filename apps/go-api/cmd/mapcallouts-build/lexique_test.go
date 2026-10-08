@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 // cheminReference rend le dossier reference/ du titre par défaut depuis ce paquet.
@@ -20,10 +21,10 @@ func cheminReference(t *testing.T) string {
 	return filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite", "reference")
 }
 
-func lexiqueVersionne(t *testing.T) libellesParStringID {
+func lexiqueVersionne(t *testing.T) mapcatalog.Lexique {
 	t.Helper()
 	p := filepath.Join(cheminReference(t), nomLexique)
-	lex, err := chargeLexique(p)
+	lex, err := mapcatalog.ChargerLexique(p)
 	if err != nil {
 		t.Fatalf("lexique versionné (%s) : %v", p, err)
 	}
@@ -54,8 +55,8 @@ func TestLexiqueVersionnePorteDesLibellesReels(t *testing.T) {
 			t.Errorf("string_id %08X absent du lexique", c.sid)
 			continue
 		}
-		if got.en != c.en || got.fr != c.fr {
-			t.Errorf("string_id %08X = (%q, %q), attendu (%q, %q)", c.sid, got.en, got.fr, c.en, c.fr)
+		if got.EN != c.en || got.FR != c.fr {
+			t.Errorf("string_id %08X = (%q, %q), attendu (%q, %q)", c.sid, got.EN, got.FR, c.en, c.fr)
 		}
 	}
 }
@@ -82,15 +83,15 @@ func TestLexiqueCouvreLeCSVFigeAuCaractereRes(t *testing.T) {
 		if !ok {
 			absents++
 			if absents <= 5 {
-				t.Errorf("string_id %08X (%q) absent du lexique", sid, attendu.en)
+				t.Errorf("string_id %08X (%q) absent du lexique", sid, attendu.EN)
 			}
 			continue
 		}
-		if got.en != attendu.en || got.fr != attendu.fr {
+		if got != attendu {
 			divergents++
 			if divergents <= 5 {
 				t.Errorf("string_id %08X : lexique (%q, %q) != CSV (%q, %q)",
-					sid, got.en, got.fr, attendu.en, attendu.fr)
+					sid, got.EN, got.FR, attendu.EN, attendu.FR)
 			}
 		}
 	}
@@ -114,7 +115,7 @@ func TestLexiqueEstTrieEtSansTexteVide(t *testing.T) {
 	if len(lignes) < 2 {
 		t.Fatal("lexique vide")
 	}
-	if lignes[0] != strings.Join(colonnesLexique, ";") {
+	if lignes[0] != strings.Join(mapcatalog.ColonnesLexique, ";") {
 		t.Fatalf("en-tête = %q", lignes[0])
 	}
 	precedent := ""
@@ -133,10 +134,10 @@ func TestLexiqueEstTrieEtSansTexteVide(t *testing.T) {
 // TestFusionneLexiqueRefuseUneDivergence — la fusion ne tranche JAMAIS entre deux textes
 // concurrents pour un même string_id : elle échoue, et rien n'est publié.
 func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
-	base := libellesParStringID{0x11111111: {en: "Cave", fr: "Grotte", stringID: 0x11111111}}
-	lex := libellesParStringID{
-		0x11111111: {en: "Cavern", fr: "Caverne", stringID: 0x11111111},
-		0x22222222: {en: "River", fr: "Rivière", stringID: 0x22222222},
+	base := mapcatalog.Lexique{0x11111111: {EN: "Cave", FR: "Grotte"}}
+	lex := mapcatalog.Lexique{
+		0x11111111: {EN: "Cavern", FR: "Caverne"},
+		0x22222222: {EN: "River", FR: "Rivière"},
 	}
 	if _, _, err := fusionneLexique(base, lex); err == nil {
 		t.Fatal("une divergence de texte doit faire échouer la fusion")
@@ -147,7 +148,7 @@ func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fusion saine : %v", err)
 	}
-	if ajouts != 1 || len(out) != 2 || out[0x11111111].en != "Cave" || out[0x22222222].en != "River" {
+	if ajouts != 1 || len(out) != 2 || out[0x11111111].EN != "Cave" || out[0x22222222].EN != "River" {
 		t.Fatalf("fusion = %d ajouts, %d entrées : %+v", ajouts, len(out), out)
 	}
 }
@@ -168,11 +169,11 @@ func TestEcritLexiqueEcarteUnCoupleIncomplet(t *testing.T) {
 	if n != 1 || ecartes != 2 {
 		t.Fatalf("écrites %d, écartées %d ; attendu 1 et 2", n, ecartes)
 	}
-	relu, err := chargeLexique(p)
+	relu, err := mapcatalog.ChargerLexique(p)
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	if len(relu) != 1 || relu[0x00000002].fr != "Rivière" {
+	if len(relu) != 1 || relu[0x00000002].FR != "Rivière" {
 		t.Fatalf("relu = %+v", relu)
 	}
 }

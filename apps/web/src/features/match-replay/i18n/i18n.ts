@@ -100,6 +100,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
     settingsButton: 'Réglages',
     settingsClose: 'Fermer les réglages',
+    fullscreenEnter: 'Plein écran',
+    fullscreenExit: 'Quitter le plein écran',
     autoPlay: 'Lecture automatique',
     autoPlayHint:
       "Allumé, le rejeu démarre tout seul à l'ouverture de la page. Éteint — le réglage par défaut — il s'ouvre en pause au coup d'envoi et attend le bouton Lecture. Le choix est retenu d'un match à l'autre ; il ne met ni en lecture ni en pause le rejeu déjà ouvert.",
@@ -519,6 +521,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
     settingsButton: 'Settings',
     settingsClose: 'Close settings',
+    fullscreenEnter: 'Full screen',
+    fullscreenExit: 'Exit full screen',
     autoPlay: 'Auto-play',
     autoPlayHint:
       'Turned on, the replay starts on its own when the page opens. Turned off — the default — it opens paused at kickoff and waits for the Play button. The choice is kept from one match to the next; it neither plays nor pauses a replay that is already open.',

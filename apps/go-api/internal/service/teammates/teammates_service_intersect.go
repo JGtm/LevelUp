@@ -7,16 +7,16 @@
 // principal a joué avec TOUS les coéquipiers sélectionnés — mais PAS qu'aucun
 // autre coéquipier connu n'était présent. filterExactComposition ajoute cette
 // exclusivité : à partir de l'équipe alliée du main par match, il écarte les
-// matchs où un coéquipier connu HORS sélection (extraPool = amis ∪ top \ sélection)
-// figure sur l'équipe du main. Les fills de lobby / bots / adversaires (hors
-// pool) n'entrent jamais dans la comparaison → ils sont conservés.
+// matchs où un coéquipier connu HORS sélection (extraPool = coéquipiers connus \
+// sélection, cf. coequipiers_connus.go) figure sur l'équipe du main. Les fills de
+// lobby / bots / adversaires (hors pool) n'entrent jamais dans la comparaison → ils
+// sont conservés.
 package teammates
 
 import (
 	"context"
 	"log/slog"
 	"sort"
-	"strings"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/timing"
@@ -96,63 +96,26 @@ func collectSelectedXUIDs(teammates []domain.TeammateRow) []string {
 	return out
 }
 
-// resolveFriendXUIDs traduit les gamertags amis du joueur consulté en
-// xuids via la table gamertag→xuid des top coéquipiers déjà chargés (Q29). Les
-// amis hors top-50 ne sont pas résolus ici (co-jouer avec eux serait de toute
-// façon marginal ; le pool top les couvre pour l'essentiel). Case-insensitive.
-func resolveFriendXUIDs(friendGamertags []string, topRows []domain.TopTeammateRow) []string {
-	if len(friendGamertags) == 0 {
-		return nil
-	}
-	gtToXUID := make(map[string]string, len(topRows))
-	for _, r := range topRows {
-		if r.XUID != "" {
-			gtToXUID[strings.ToLower(strings.TrimSpace(r.Gamertag))] = r.XUID
-		}
-	}
-	out := make([]string, 0, len(friendGamertags))
-	for _, gt := range friendGamertags {
-		if x, ok := gtToXUID[strings.ToLower(strings.TrimSpace(gt))]; ok {
-			out = append(out, x)
-		}
-	}
-	return out
-}
-
 // buildExtraPoolXUIDs calcule le set des "autres coéquipiers connus" à écarter
-// pour une composition exacte : tous les top coéquipiers (Q29) ∪ les amis résolus,
-// MOINS la composition sélectionnée et le joueur principal. Les fills de lobby,
-// bots et adversaires n'appartenant pas à ce pool ne cassent jamais la composition.
+// pour une composition exacte : les coéquipiers connus (xuid -> nom, cf.
+// coequipiers_connus.go) MOINS la composition sélectionnée et le joueur principal.
+// Les fills de lobby, bots et adversaires n'appartenant pas à ce pool ne cassent
+// jamais la composition, quel que soit le nombre de matchs joués ensemble.
 func buildExtraPoolXUIDs(
-	topRows []domain.TopTeammateRow,
-	friendXUIDs []string,
+	connus map[string]string,
 	selectedXUIDs []string,
 	mainXUID string,
 ) map[string]struct{} {
 	exclude := make(map[string]struct{}, len(selectedXUIDs)+1)
 	for _, x := range selectedXUIDs {
-		if x != "" {
-			exclude[x] = struct{}{}
+		exclude[x] = struct{}{}
+	}
+	exclude[mainXUID] = struct{}{}
+	pool := make(map[string]struct{}, len(connus))
+	for x := range connus {
+		if _, skip := exclude[x]; x != "" && !skip {
+			pool[x] = struct{}{}
 		}
-	}
-	if mainXUID != "" {
-		exclude[mainXUID] = struct{}{}
-	}
-	pool := make(map[string]struct{}, len(topRows)+len(friendXUIDs))
-	add := func(x string) {
-		if x == "" {
-			return
-		}
-		if _, skip := exclude[x]; skip {
-			return
-		}
-		pool[x] = struct{}{}
-	}
-	for _, r := range topRows {
-		add(r.XUID)
-	}
-	for _, x := range friendXUIDs {
-		add(x)
 	}
 	return pool
 }

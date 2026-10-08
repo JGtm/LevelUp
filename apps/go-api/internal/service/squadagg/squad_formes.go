@@ -43,8 +43,9 @@ type SquadFormesQuery struct {
 	MainGamertag string
 	// Metas : le scope dans l'ordre d'affichage — c'est LUI qui fait le scope.
 	Metas []squadformes.MatchMeta
-	// SelectedGamertags : les coéquipiers sélectionnés de la page.
-	SelectedGamertags []string
+	// SelectedMembers : les coéquipiers sélectionnés de la page, résolus par la page (xuid) et
+	// sous le nom qu'elle leur donne. Vide : le joueur de la page seul.
+	SelectedMembers []domain.SessionUsageSquadPlayer
 	// Lectures : les trois lectures du résumé d'usage déjà faites sur ce scope par la page,
 	// partagées avec l'Emprise (ADR 0036 I4). Nil ⇒ lues ici.
 	Lectures *LecturesUsage
@@ -81,7 +82,7 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 	tc := sessionusage.BuildTeamContext(q.PlayerXUID, participants)
 	in := squadformes.Input{
 		PlayerXUID:   q.PlayerXUID,
-		SquadPlayers: SquadPlayers(q.PlayerXUID, q.MainGamertag, participants, q.SelectedGamertags),
+		SquadPlayers: SquadPlayers(q.PlayerXUID, q.MainGamertag, participants, q.SelectedMembers),
 		Metas:        q.Metas,
 		Matches:      sessionusage.BuildMatchInputs(matchIDs, films, players, tc),
 		Objectives:   loadFormesObjectives(ctx, q, matchIDs),
@@ -97,14 +98,14 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 }
 
 // SquadPlayers — le joueur de la page EN TÊTE, puis les coéquipiers
-// sélectionnés résolus contre les participants du scope (même résolution que le
-// bloc d'usage : ResolveScopeFriends, insensible à la casse du gamertag).
+// sélectionnés alliés dans le scope (sessionusage.ResolveScopeMembers : par xuid,
+// jamais par égalité de gamertag — ADR 0035).
 //
-// LE NOM DU JOUEUR DE LA PAGE VIENT DE LA PAGE, et les participants ne sont que
-// son repli : sur un scope dont aucune ligne de participant ne porte son
-// gamertag, l'écran affichait son XUID.
+// LES NOMS VIENNENT DE LA PAGE, et les participants ne sont que leur repli : sur
+// un scope dont aucune ligne de participant ne porte un gamertag, l'écran
+// affichait le XUID du joueur, et ses coéquipiers disparaissaient du bloc.
 func SquadPlayers(
-	playerXUID, mainGamertag string, participants []sessionusage.ParticipantRow, selected []string,
+	playerXUID, mainGamertag string, participants []sessionusage.ParticipantRow, selected []domain.SessionUsageSquadPlayer,
 ) []domain.SessionUsageSquadPlayer {
 	me := domain.SessionUsageSquadPlayer{XUID: playerXUID, Gamertag: mainGamertag}
 	for _, p := range participants {
@@ -115,10 +116,10 @@ func SquadPlayers(
 			me.Gamertag = p.Gamertag
 		}
 	}
-	friends := sessionusage.ResolveScopeFriends(playerXUID, participants, selected)
-	out := make([]domain.SessionUsageSquadPlayer, 0, 1+len(friends))
+	membres := sessionusage.ResolveScopeMembers(playerXUID, participants, selected)
+	out := make([]domain.SessionUsageSquadPlayer, 0, 1+len(membres))
 	out = append(out, me)
-	return append(out, friends...)
+	return append(out, membres...)
 }
 
 // loadFormesObjectives — les colonnes d'objectif du scope. DÉGRADATION SEULE :

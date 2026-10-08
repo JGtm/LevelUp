@@ -96,7 +96,7 @@ const compLoopingSound = "managed-object-looping-sound-component"
 const largeurSonEnBoucle = 32
 
 // consumeComposantsVueBM4b est un maillon de la chaine de dispatch (cf. l en-tete de
-// `dispatch_object.go`) : les ports du lot M4b, et `ti=10 i2` a `i17` (lot des arrets de la vue B).
+// `dispatch_object.go`) : les ports du lot M4b, et `ti=10 i2` a `i21` et `i23` (lots des arrets de la vue B).
 // Un maillon a lui plutot qu un case de plus dans un maillon existant : ceux-ci sont au plafond du
 // ratchet de longueur de fonction.
 func consumeComposantsVueBM4b(br *Lecteur, name string) (variant uint32, dead *types.DeadState, ported bool) {
@@ -112,6 +112,10 @@ func consumeComposantsVueBM4b(br *Lecteur, name string) (variant uint32, dead *t
 		br.ReadBits(largeurSonEnBoucle)
 	case compManagedObjectNavpoint: // ti=10 i2 a i17 (FUN_14107cea4) — R(32), lot des arrets de la vue B
 		consumeManagedObjectNavpoint(br)
+	case compManagedObjectFlags: // ti=10 i23 (FUN_1410d9b5c) — R(2)
+		consumeManagedObjectFlags(br)
+	case compManagedObjectNetworkedProperty: // ti=10 i18 a i21 (FUN_142ed5358) — R(32)
+		consumeManagedObjectNetworkedProperty(br)
 	default:
 		return consumeComposantsDispositif(br, name)
 	}

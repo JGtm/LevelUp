@@ -17,7 +17,9 @@ func (r *ServiceRegistry) Resolve() PlayerResolver { return r.resolve }
 // HiCapabilities retourne les capabilities HI chargées au boot (nil possible).
 func (r *ServiceRegistry) HiCapabilities() games.CapabilityMap { return r.hiCapabilities }
 
-// ServeIndexWithOG sert l'index.html avec injection des meta Open Graph.
+// ServeIndexWithOG sert l'index.html avec injection des meta Open Graph. Sûr sur un
+// registre nil (carte générique) : la page servie pendant le démarrage du serveur, avant
+// que le registre existe, passe par là (cf. api.NewBootPageHandler).
 func (r *ServiceRegistry) ServeIndexWithOG(w http.ResponseWriter, req *http.Request, indexPath string) {
 	r.serveIndexWithOG(w, req, indexPath)
 }

@@ -3,8 +3,8 @@
 /**
  * Garde-rail : CHAQUE ID DE CALQUE EST LIÉ AU PEINTRE DE MÊME NOM.
  *
- * POURQUOI (2026-09-06, revue R1 du lot v2 D, constat C2). `buildScene` associe 25 ids à
- * 25 peintres. Les 25 valeurs ont le même type (`LayerPaint`) : le compilateur ne peut pas
+ * POURQUOI (2026-09-06, revue R1 du lot v2 D, constat C2). `buildScene` associe 24 ids à
+ * 24 peintres. Les 24 valeurs ont le même type (`LayerPaint`) : le compilateur ne peut pas
  * départager. La revue a interverti `'couronne-vip': skullCarrier.paint` et
  * `'crane-porte': vipCrown.paint` — 2 350 tests verts, `tsc` exit 0, et à l'écran la couronne
  * du VIP remplacée par le crâne d'Oddball. C'est la seule faute que la refonte D.7 pouvait
@@ -15,7 +15,7 @@
  *    son `paint` et `bindPainters` en dérive la liaison. La faute n'est plus écrivable — ce
  *    fichier vérifie que la dérivation MARCHE (oracle sur `bindPainters`) et que le canvas
  *    ne renomme aucun d'eux à la main.
- *  - QUATORZE calques sont des fermetures écrites dans la table. Leur peintre nomme une
+ *  - TREIZE calques sont des fermetures écrites dans la table. Leur peintre nomme une
  *    fonction de dessin (ou une cuisson) : la table attendue est écrite À LA MAIN ci-dessous
  *    et confrontée à la source. Un swap y déplace le nom de la fonction appelée.
  */
@@ -40,7 +40,7 @@ const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
 ]
 
 /**
- * Les quatorze fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
+ * Les treize fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
  * main : chaque id est suivi du symbole que son peintre doit nommer.
  */
 const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
@@ -54,7 +54,6 @@ const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
   ['trajectoires', 'drawTracksLayer('],
   ['marques-de-tir', 'drawFireMarks('],
   ['tirs', 'drawShotsLayer('],
-  ['grenades', 'drawGrenadesLayer('],
   ['etat-zones', 'drawZoneStates('],
   ['pulses-objectif', 'drawObjectivePulses('],
   ['morts', 'drawKillFxLayer('],
@@ -62,9 +61,9 @@ const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
 
 /**
  * La seule TABLE DE LIAISON du canvas — le bloc `paint: {` de `buildScene`. Le découpage
- * commence là et pas au fichier entier : le bloc `has:` juste au-dessus porte les mêmes clés
- * (`projectiles`, `grenades`…) pour des booléens, et les confondre ferait lire une condition
- * à la place d'un peintre.
+ * commence là et pas au fichier entier : le bloc `has:` juste au-dessus porte des clés de même
+ * nom (`projectiles`) pour des booléens, et les confondre ferait lire une condition à la place
+ * d'un peintre.
  */
 function tableDeLiaison(): string {
   const src = lire(fichierNomme('ReplayCanvas.tsx'))
@@ -83,7 +82,7 @@ function entreeDeTable(table: string, id: ReplayLayerId): string {
   return fin > 0 ? suite.slice(0, fin) : suite.slice(0, 600)
 }
 describe('garde-rail : la liaison id -> peintre', () => {
-  it('les 25 ids de LAYER_ORDER sont couverts, une fois chacun', () => {
+  it('les 24 ids de LAYER_ORDER sont couverts, une fois chacun', () => {
     const couverts = [...CABLES_PAR_HOOK.map(([id]) => id), ...FERMETURES.map(([id]) => id)]
     expect(couverts).toHaveLength(LAYER_ORDER.length)
     expect([...couverts].sort()).toEqual([...LAYER_ORDER].sort())
@@ -122,7 +121,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     expect(table).toContain('...bindPainters(')
   })
 
-  it('chacune des quatorze fermetures peint bien ce que son id annonce', () => {
+  it('chacune des treize fermetures peint bien ce que son id annonce', () => {
     const table = tableDeLiaison()
     for (const [id, attendu] of FERMETURES) {
       expect(entreeDeTable(table, id), `l'entrée ${id} ne peint pas ${attendu}`).toContain(attendu)

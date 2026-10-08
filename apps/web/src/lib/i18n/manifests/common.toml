@@ -915,6 +915,28 @@ en = "Retry"
 fr = "Chargement LevelUp…"
 en = "Loading LevelUp…"
 
+[common.root.server_starting]
+fr = "Démarrage du serveur…"
+en = "Server starting…"
+
+# Étape d'initialisation annoncée par le serveur (details.step de la réponse 503
+# server_starting ; codes : apps/go-api/cmd/server/boot_gate.go).
+[common.root.server_step.migrations]
+fr = "Mise à jour des bases"
+en = "Updating databases"
+
+[common.root.server_step.databases]
+fr = "Ouverture des bases"
+en = "Opening databases"
+
+[common.root.server_step.accounts]
+fr = "Connexion des comptes"
+en = "Connecting accounts"
+
+[common.root.server_step.services]
+fr = "Lancement des services"
+en = "Starting services"
+
 # ─── Reauth banner (refresh_token Xbox mort) ────────────────────────────
 
 [common.reauth.message]

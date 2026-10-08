@@ -69,7 +69,7 @@ type CareerService struct {
 	// perf L9-go) — d'abord le registre des profils suivis (gamertag → xuid connu, aucune
 	// lecture), puis UNE lecture pour les autres. friendXUIDs nil : aucune exclusion d'amis.
 	friendsSuivis func(ctx context.Context) map[string]string
-	friendXUIDs   FriendXUIDsReader
+	friendXUIDs   teammates.FriendXUIDsReader
 	// seasonsCatalog : optionnel — résolveur saisons (TOML + DB + lazy fetch).
 	// Utilisé par GetHighlightMatchIDs pour traduire les SeasonIDs sélectionnés
 	// en fenêtres temporelles SQL et pour calculer les cascade counts. Quand
@@ -137,15 +137,11 @@ func (s *CareerService) WithFriendGamertagsResolver(r teammates.FriendGamertagsR
 	return s
 }
 
-// FriendXUIDsReader résout des gamertags en xuids en UNE lecture (clé : le gamertag tel que
-// demandé ; absent = non résolu) — CareerRepo.ResolveFriendXUIDs en production.
-type FriendXUIDsReader func(ctx context.Context, gamertags []string) (map[string]string, error)
-
 // WithFriendXUIDSources injecte la résolution des amis de GetTopEncounters (la requête
 // travaille en xuids) : `suivis` rend gamertag → xuid des profils suivis (db_profiles.json ;
 // nil = pas de registre), `lire` résout les autres en une lecture. Avant (lot perf L9-go) :
 // un ExplorerRepo.ResolveXUIDByGamertag par ami, 1,8 à 2,8 s chacun (vue des noms entière).
-func (s *CareerService) WithFriendXUIDSources(suivis func(ctx context.Context) map[string]string, lire FriendXUIDsReader) *CareerService {
+func (s *CareerService) WithFriendXUIDSources(suivis func(ctx context.Context) map[string]string, lire teammates.FriendXUIDsReader) *CareerService {
 	s.friendsSuivis = suivis
 	s.friendXUIDs = lire
 	return s

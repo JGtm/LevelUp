@@ -63,7 +63,6 @@ export const LAYER_ORDER = [
   'gestes-capacite',
   // LES ÉVÉNEMENTS, qui se lisent sur les trajectoires.
   'tirs',
-  'grenades',
   'fin-de-vol',
   'etat-zones',
   'drapeaux',
@@ -116,7 +115,6 @@ export interface SceneMatter {
   placements: boolean
   fireMarks: boolean
   shotFx: boolean
-  grenades: boolean
   zoneStates: boolean
   objectivePulses: boolean
   killFx: boolean
@@ -151,7 +149,7 @@ export interface NamedLayerPainter<Id extends ReplayLayerId = ReplayLayerId> {
  * bindPainters DÉRIVE la liaison id -> peintre des calques eux-mêmes.
  *
  * Le type de retour porte l'union EXACTE des ids passés : un calque oublié fait rougir le
- * compilateur chez l'appelant (la table `paint` de `ReplayScene` exige ses 25 clés), et un id
+ * compilateur chez l'appelant (la table `paint` de `ReplayScene` exige toutes ses clés), et un id
  * ne peut plus être écrit en face du mauvais peintre puisqu'il n'est plus écrit du tout.
  */
 export function bindPainters<const L extends readonly NamedLayerPainter[]>(
@@ -171,7 +169,7 @@ export interface ReplayLayer {
 }
 
 /**
- * sceneLayers rend les vingt-cinq calques dans l'ordre, chacun avec sa condition.
+ * sceneLayers rend les calques de `LAYER_ORDER` dans l'ordre, chacun avec sa condition.
  *
  * LES DEUX REPLIS DU SOL SONT EXCLUSIFS, et c'est la seule dépendance entre deux conditions :
  * les props Forge ne se peignent que si l'image calée manque. Partout ailleurs, une condition
@@ -199,7 +197,6 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'marques-de-tir': t.shotFx && h.fireMarks,
     'gestes-capacite': true,
     tirs: t.shotFx && h.shotFx,
-    grenades: h.grenades,
     'fin-de-vol': true,
     'etat-zones': t.modeObjectives && h.zoneStates,
     drapeaux: true,

@@ -97,11 +97,11 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeBipedSpartanAbility(br)
 		return variant, nil, true
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
-		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
-		// ported=false sur les seules valeurs internes jamais observées — désync propre,
-		// même contrat qu i57 ci-dessus. param_4 est le `level` du registre du film (i59 -> 2,
+		// Corps tag==3 (FUN_142f25e90, ancre du grappin) : ses huit étiquettes, lues dans le jeu
+		// le 2026-10-08 ; aucune n échoue. param_4 est le `level` du registre du film (i59 -> 2,
 		// la queue R(3) est lue — l ancien global brut valait 0 et la sautait).
-		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, level)
+		consumeBipedSpartanAbilityNonPredictedState(br, level)
+		return variant, nil, true
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
 		// GRAMMAIRE COMPLÈTE depuis le 2026-08-17 (lot R7-b) : structure connue (flag +
 		// 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8) PLUS la queue FUN_14076e494, dont le prédicat
@@ -152,8 +152,8 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 		return variant, nil, true
 	// ti=11 — l'archétype des objectifs gérés (components_managed_objective.go). Toutes les
 	// largeurs viennent du sérialiseur réseau du descripteur de composant (`+0x38`), recette R7-d.
-	// SEUL i4 `interaction-filter` reste dehors : sa queue est un appel virtuel de largeur
-	// inconnue, et le porter à moitié désynchroniserait au lieu d'arrêter proprement.
+	// i4 `interaction-filter` (le bloc de filtres) est lu par le maillon des navpoints
+	// ([consumeNavpointComponent]), comme ti=12 i5 et i6.
 	case compObjectiveTimers: // ti=11 i0 (FUN_142edbac8) — 2 x R(7), publie
 		consumeObjectiveTimers(br)
 		return variant, nil, true
@@ -314,8 +314,20 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		consumeNavpointRadialProgress(br)
 	case compNavpointOverrideFlags: // ti=12 i16 (FUN_140ebf834) — R(5)
 		consumeNavpointOverrideFlags(br)
+	case compNavpointObjectMarker: // ti=12 i17 (FUN_141169e68) — R(32)
+		consumeNavpointObjectMarker(br)
+	case compNavpointTopProgress, compNavpointBottomProgress: // ti=12 i13 et i15 (FUN_142ed51d8, FUN_142ed4fe4) — R(8)
+		consumeNavpointBarreDeProgression(br)
 	case compNavpointPositionOffset: // ti=12 i18 (FUN_140f04f68) — position, FUN_14076e494 au niveau 0x10
 		consumeNavpointPositionOffset(br)
+	case compNavpointVisualStateGroups0, compNavpointVisualStateGroups1, compNavpointVisualStateGroups2,
+		compNavpointVisualStateGroups3, compNavpointVisualStateGroups4, compNavpointVisualStateGroups5,
+		compNavpointVisualStateGroups6, compNavpointVisualStateGroups7: // ti=12 i20 a i27 (FUN_140dbe1bc)
+		return variant, nil, consumeNavpointVisualStateGroup(br)
+	case compManagedObjectInteractionFilter: // ti=10 i22 (FUN_140dbdf5c) — bloc de filtres seul, comme i5 et i6
+		return variant, nil, consumeManagedObjectInteractionFilter(br, level)
+	case compObjectiveInteractionFilter: // ti=11 i4 (FUN_140dbe170) — bloc de filtres seul, comme i5 et i6
+		return variant, nil, consumeObjectiveInteractionFilter(br, level)
 	default:
 		return consumeMoteurDePartie(br, name, level)
 	}

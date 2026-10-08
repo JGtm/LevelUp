@@ -51,6 +51,9 @@ type World struct {
 	anticipationDite bool
 	// debutNonProuve : la marche annoncee par [World.marquerDebutNonProuve], nil sans annonce.
 	debutNonProuve *debutDeMarche
+	// neufsSuspendus : les NEW de la trame en cours refuses contre une entite vivante, que la
+	// fermeture de la trame peut prouver ([World.lierLesNeufsProuves]).
+	neufsSuspendus []neufSuspendu
 }
 
 // nsImageCleInconnu : la valeur de [World.nsImageCle] avant toute liaison d image-cle.

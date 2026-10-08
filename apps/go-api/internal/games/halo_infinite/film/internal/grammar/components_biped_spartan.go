@@ -33,27 +33,24 @@ import "math/bits"
 // « pied de 3 bits » mesuré entre chaque record i59 et le suivant (TestI59AnchorWalkProof,
 // écarts p10=p50=p90=3 sur 988 témoins) est exactement cette queue. Corrigé le 2026-08-16.
 //
-// LE CORPS tag==3 EST PORTÉ (2026-08-16, plan PLAN_GRAPPIN_LIGNE phase 0) : voir
-// consumeAbilityAnchorBody (components_biped_anchor.go). Il rend false sur ses valeurs
-// internes jamais observées — même contrat de désync propre que consumeBipedSpartanAbility
-// (i57). Le hook publie la lecture complète, tag externe compris, pour TOUTES les
-// lectures (le corps désactivé ou cassé se voit : BodyWalked/BodyOK).
-func consumeBipedSpartanAbilityNonPredictedState(br *Lecteur, rsp uint32) bool {
+// LE CORPS tag==3 EST PORTÉ (2026-08-16, plan PLAN_GRAPPIN_LIGNE phase 0 ; relu dans le jeu le
+// 2026-10-08, ses huit étiquettes) : voir consumeAbilityAnchorBody (components_biped_anchor.go).
+// Aucune étiquette n'y échoue. Le hook publie la lecture complète, tag externe compris, pour
+// TOUTES les lectures (le corps désactivé se voit : BodyWalked).
+func consumeBipedSpartanAbilityNonPredictedState(br *Lecteur, rsp uint32) {
 	st := AbilityNonPredictedState{Inner: -1}
 	st.Tag = uint32(br.ReadBits(2)) // FUN_142f2679c: FUN_1406d310c(4)=2 -> flat R(2) tag.
-	ok := true
 	if st.Tag == 3 && br.p.Grammaire.CorpsAncrageCapacite {
 		st.BodyWalked = true
-		ok = consumeAbilityAnchorBody(br, &st) // FUN_142f25e90
-		st.BodyOK = ok
+		consumeAbilityAnchorBody(br, &st) // FUN_142f25e90
+		st.BodyOK = true
 	}
-	if ok && rsp > 1 {
+	if rsp > 1 {
 		br.ReadBits(3) // FUN_140fc147c flat R(3), gated on param_4>1.
 	}
 	if br.obs != nil && br.obs.AbilityNonPredictedHook != nil {
 		br.obs.AbilityNonPredictedHook(st) // publication seule, aucune largeur ne change
 	}
-	return ok
 }
 
 // ---------------------------------------------------------------------------

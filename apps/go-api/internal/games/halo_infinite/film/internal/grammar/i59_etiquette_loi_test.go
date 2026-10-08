@@ -1,7 +1,7 @@
 package grammar
 
-// i59_etiquette_loi_test.go — LA LOI DE L ETIQUETTE DU CORPS `i59` ET LE PERIMETRE DU PORT
-// (lot 5.3.3-c, 2026-09-21).
+// i59_etiquette_loi_test.go — LA LOI DE L ETIQUETTE DU CORPS `i59` ET LES HUIT ETIQUETTES DU
+// PORT (lot 5.3.3-c, 2026-09-21 ; port complet le 2026-10-08, lot des arrets de la vue B, suite).
 //
 // # CE QUE L ECRIVAIN DIT, LU A L OCTET
 //
@@ -11,37 +11,18 @@ package grammar
 //	*(param_1 + 0x2c) += 3            // le compteur de bits avance de 3, et de 3 seulement
 //	*param_3 = (octet de tete >> 5) + 1
 //
-// `FUN_142f25e90` dispatche ensuite sur cette valeur RANGEE, de 1 a 6, et **rend la main sans
-// lire un bit de plus au-dela de 6**. Trois consequences, et chacune corrige une lecture du
-// depot :
+// `FUN_142f25e90` lit ensuite le prefixe (`FUN_142f26e40`) et six drapeaux (`FUN_14297ea84`),
+// puis dispatche sur la valeur RANGEE, de 1 a 6, et **rend la main sans lire un bit de plus
+// au-dela de 6**. L ecrivain (`FUN_142f272ac`) ecrit les memes champs dans le meme ordre.
 //
-//	(1) L ETIQUETTE VAUT `brut + 1`. Le champ `AbilityNonPredictedState.Inner` du port porte le
-//	    BRUT ; ses deux constantes (`anchorInnerLight` = 1, `anchorInnerHeavy` = 2) designent
-//	    donc les etiquettes 2 et 3 de l ecrivain, pas 1 et 2.
-//	(2) LA BRANCHE `etiquette == 0` DE L ECRIVAIN EST INATTEIGNABLE : `brut + 1 >= 1`. Le
-//	    `if (*pcVar1 == '\0')` de tete est du code mort du point de vue du flux.
-//	(3) LES BRUTS 6 ET 7 (etiquettes 7 et 8) NE PORTENT AUCUNE CHARGE PROPRE : l ecrivain sort
-//	    du `switch` par son `return`. Le port les compte aujourd hui en desync.
+// # CE QUE CE TEST FIGE
 //
-// # CE QUE CE TEST FIGE, ET POURQUOI IL FIGE AUSSI LE MANQUE
-//
-// Il epingle, pour les HUIT valeurs brutes, la consommation de bits du port ET son verdict. Les
-// six valeurs que le port ne modelise pas y sont figees comme NON PORTEES : un lot qui en
-// portera une devra mettre ce tableau a jour DELIBEREMENT, et la mesure du cout (5.3.3-c :
-// 38 records desynchronises sur 31 530, soit 0,12 %) restera lisible a cote.
-//
-// LA MESURE QUI JUSTIFIE DE NE PAS PORTER PLUS LOIN, ICI : les branches restantes exigent la
-// largeur bit-exacte de `FUN_142f26e40`, de `FUN_1408f0ac4` (categories 0 et 5) et de
-// `FUN_1407f08bc`, qu aucune lecture n a encore etablies ; et le port actuel lit sa porte
-// `FUN_1407f08bc` AVANT le `switch`, la ou l ecrivain la lit DANS ses etiquettes 1 et 2. Un
-// port partiel deplacerait donc le curseur sur les corps qui aboutissent aujourd hui — ceux
-// qui publient `grappleLines[]` au document. Report consigne.
+// Pour les HUIT valeurs brutes, un corps ECRIT COMME L ECRIVAIN L ECRIT (portes ouvertes et
+// fermees melangees, pour qu une porte lue a la place d une autre se voie), que le port doit
+// consommer au bit pres ; et la position du prefixe, rendue aux largeurs de la carte quand la
+// reference est absente et que la plage est indexee.
 
-import (
-	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-)
+import "testing"
 
 // i59LoiBits est la largeur de l etiquette chez l ecrivain : trois bits, pas un de plus.
 const i59LoiBits = 3
@@ -57,7 +38,7 @@ func TestI59LoiDeLEtiquetteEstBrutPlusUn(t *testing.T) {
 			t.Fatalf("brut %d : etiquette %d, attendu %d", brut, got, veut)
 		}
 	}
-	// L ETIQUETTE 0 EST INATTEIGNABLE, et c est le point (2) de l en-tete.
+	// L ETIQUETTE 0 EST INATTEIGNABLE : la branche morte de l ecrivain.
 	for brut := range uint64(8) {
 		if i59LoiEtiquette(brut) == 0 {
 			t.Fatalf("brut %d rend l etiquette 0 : la branche morte de l ecrivain serait "+
@@ -72,75 +53,85 @@ func TestI59LoiDeLEtiquetteEstBrutPlusUn(t *testing.T) {
 	}
 }
 
-// TestI59PerimetreDuPortParEtiquette fige la consommation de bits du port pour les huit valeurs
-// brutes, et NOMME les six qu il ne modelise pas.
-func TestI59PerimetreDuPortParEtiquette(t *testing.T) {
-	// LE PROFIL EST EXPLICITE : la position absolue du corps se lit aux largeurs d axe de la
-	// CARTE, donc un profil implicite rendrait ce test dependant d un defaut de catalogue.
-	prof := ProfilDeBalayageParDefaut()
-	prof.PoserLargeursObjetDuMondeDepuisDecoupage(i59LoiDecoupage())
-	axes := prof.LargeursObjetDuMonde().AxisW
-	somme := int(axes[0] + axes[1] + axes[2])
+// Les morceaux de flux de l ecrivain du corps, en largeurs du jeu.
+var (
+	// i59RefAbsente : `FUN_1408f0ac4` porte fermee.
+	i59RefAbsente = seul(bit(false))
+	// i59RefCategorie5 / i59RefCategorie0 : porte ouverte, l entier de la categorie (8 et 13 bits),
+	// la queue R(2).
+	i59RefCategorie5 = seul(bit(true), fixe(8), fixe(2))
+	i59RefCategorie0 = seul(bit(true), fixe(13), fixe(2))
+	// i59VecPlein / i59VecConstant : `FUN_142f26e9c`, porte a 0 (R(24) + R(12)) ou a 1.
+	i59VecPlein    = seul(bit(false), fixe(24), fixe(12))
+	i59VecConstant = seul(bit(true))
+)
 
-	// enTete : etiquette(3) + Zero3(3) + trois axes + Mid7(7) + la porte(1), gate a 0.
-	enTete := i59LoiBits + anchorZeroBits + somme + anchorMidBits + 1
+// i59Prefixe : `FUN_142f27da4` sans reference — la porte fermee, puis la position de
+// `FUN_1407eb600` au niveau 0x10, a l index 0 de la plage (largeurs de la carte) — et les six
+// drapeaux de `FUN_1429980a0`.
+func i59Prefixe() []champDeFlux {
+	return concat(i59RefAbsente, e524(0, 1, axesCarteNiveau16), seul(fixe(6)))
+}
 
-	cas := []struct {
-		brut  uint64
-		porte bool
-		bits  int
-		dit   string
-	}{
-		{0, false, enTete, "etiquette 1 de l ecrivain : NON PORTEE (le port sort sur `default`)"},
-		{1, true, enTete, "etiquette 2 : portee — le corps LEGER, aucune charge de plus"},
-		{2, true, enTete + 3*1 + anchorPackedBits + anchorTailBits,
-			"etiquette 3 : portee — trois vecteurs (portes a 1, donc 1 bit chacun), R(24), R(9)"},
-		{3, false, enTete, "etiquette 4 : NON PORTEE"},
-		{4, false, enTete, "etiquette 5 : NON PORTEE"},
-		{5, false, enTete, "etiquette 6 : NON PORTEE"},
-		{6, false, enTete, "etiquette 7 : NON PORTEE — l ecrivain n y lit AUCUNE charge propre"},
-		{7, false, enTete, "etiquette 8 : NON PORTEE — idem"},
+// i59CorpsParEtiquette rend, par valeur brute, ce que l ecrivain pose apres le prefixe.
+func i59CorpsParEtiquette() map[uint64][]champDeFlux {
+	return map[uint64][]champDeFlux{
+		0: seul(bit(true), fixe(8)),                   // etiquette 1 : FUN_142ecf8a0
+		1: concat(i59RefCategorie5, seul(bit(false))), // etiquette 2 : le tir
+		2: concat(i59RefCategorie0, i59RefAbsente, i59VecPlein, i59VecConstant, i59VecPlein,
+			seul(fixe(24), fixe(9))), // etiquette 3 : l accroche
+		3: concat(i59RefAbsente, i59VecConstant, e524(-1, 1, axesDefautNiveau16), seul(fixe(24), fixe(9))),
+		4: concat(i59RefCategorie5, i59VecPlein, e524(0, 1, axesCarteNiveau16), seul(fixe(24), fixe(9))),
+		5: concat(seul(bit(false)), i59RefCategorie5, i59RefAbsente, i59VecConstant, i59VecPlein,
+			seul(bit(true), fixe(24))), // etiquette 6 : porte fermee -> categorie 5
+		6: nil, // etiquette 7 : aucune charge
+		7: nil, // etiquette 8 : aucune charge
 	}
-	for _, c := range cas {
-		br := LecteurSur(i59LoiCorps(c.brut, somme))
-		br.PoserProfil(prof)
-		var st AbilityNonPredictedState
-		st.Inner = -1
-		got := consumeAbilityAnchorBody(br, &st)
-		if got != c.porte {
-			t.Errorf("brut %d (%s) : porte = %v, attendu %v", c.brut, c.dit, got, c.porte)
+}
+
+// TestI59LesHuitEtiquettesLisentCeQueLEcrivainEcrit : chaque corps est consomme au bit pres, et la
+// position du prefixe est rendue aux largeurs de la carte.
+func TestI59LesHuitEtiquettesLisentCeQueLEcrivainEcrit(t *testing.T) {
+	for brut, corps := range i59CorpsParEtiquette() {
+		flux := concat(seul(champDeFlux{brut, i59LoiBits}), i59Prefixe(), corps)
+		buf, total := ecrireFlux(flux)
+		br := LecteurSur(buf)
+		st := AbilityNonPredictedState{Inner: -1}
+		consumeAbilityAnchorBody(br, &st)
+		if got := br.BitPos(); got != total {
+			t.Errorf("brut %d (etiquette %d) : %d bits consommes, l ecrivain en pose %d", brut,
+				i59LoiEtiquette(brut), got, total)
 		}
-		if br.BitPos() != c.bits {
-			t.Errorf("brut %d (%s) : %d bits consommes, attendu %d",
-				c.brut, c.dit, br.BitPos(), c.bits)
+		if st.Inner != int(brut) {
+			t.Errorf("brut %d : Inner = %d — le champ porte le BRUT, pas l etiquette", brut, st.Inner)
 		}
-		if st.Inner != int(c.brut) {
-			t.Errorf("brut %d : Inner = %d — le champ porte le BRUT, pas l etiquette",
-				c.brut, st.Inner)
+		if !st.PosCarte || st.Reference {
+			t.Errorf("brut %d : position du prefixe non rendue (PosCarte %v, Reference %v)", brut,
+				st.PosCarte, st.Reference)
+		}
+		if st.PosQ[2] != uint32(motif(axesCarteNiveau16[2])) {
+			t.Errorf("brut %d : PosQ[2] = %d, l ecrivain a pose %d", brut, st.PosQ[2],
+				motif(axesCarteNiveau16[2]))
 		}
 	}
 }
 
-// i59LoiDecoupage rend un decoupage d axes VALIDE et explicite pour ce test.
-func i59LoiDecoupage() profile.I0Layout {
-	return profile.I0Layout{GateBits: 5, AxisW: [3]uint{13, 13, 14}}
-}
-
-// i59LoiCorps fabrique un corps synthetique : l etiquette, `Zero3 = 0`, les trois axes a zero,
-// `Mid7 = 0`, la porte a 0, puis de quoi nourrir les trois vecteurs (portes a 1) et les deux
-// champs de queue de l etiquette 3.
-func i59LoiCorps(brut uint64, sommeAxes int) []byte {
-	var w bitWriter
-	w.bits(brut, i59LoiBits)
-	w.bits(0, anchorZeroBits)
-	w.bits(0, sommeAxes)
-	w.bits(0, anchorMidBits)
-	w.bit(0) // porte FUN_1407f08bc fermee
-	for range 3 {
-		w.bit(1) // vecteur constant : aucune charge
+// TestI59LePrefixeAReferenceNeRendPasDePosition : la reference presente (categorie 1, sonde a 0)
+// fait lire a `FUN_142f04664` sa branche `c` — R(2), trois R(13), R(1)[R(16)] — et aucune position.
+func TestI59LePrefixeAReferenceNeRendPasDePosition(t *testing.T) {
+	flux := concat(seul(champDeFlux{1, i59LoiBits}),
+		seul(bit(true), bit(false), fixe(13), fixe(2)),
+		seul(fixe(2), fixe(13), fixe(13), fixe(13), bit(true), fixe(16)),
+		seul(fixe(6)), i59CorpsParEtiquette()[1])
+	buf, total := ecrireFlux(flux)
+	br := LecteurSur(buf)
+	st := AbilityNonPredictedState{Inner: -1}
+	consumeAbilityAnchorBody(br, &st)
+	if got := br.BitPos(); got != total {
+		t.Fatalf("%d bits consommes, l ecrivain en pose %d", got, total)
 	}
-	w.bits(0, anchorPackedBits)
-	w.bits(0, anchorTailBits)
-	w.bits(0, 8) // marge : le lecteur ne doit jamais manquer d octets
-	return w.buf
+	if !st.Reference || st.PosCarte {
+		t.Fatalf("Reference %v, PosCarte %v : attendu une reference et aucune position", st.Reference,
+			st.PosCarte)
+	}
 }

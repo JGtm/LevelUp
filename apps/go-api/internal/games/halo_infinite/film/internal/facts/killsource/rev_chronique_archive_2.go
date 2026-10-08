@@ -1,12 +1,12 @@
 package killsource
 
-// rev_chronique_archive_2.go — LES RANGS `killsource-2026-09-21.2` A `killsource-2026-09-24` DE LA
-// CHRONIQUE DES FAITS, TELS QU ILS ETAIENT ECRITS.
+// rev_chronique_archive_2.go — LES RANGS ANCIENS DE LA CHRONIQUE DES FAITS, SECONDE ARCHIVE.
 //
-// ROTATION ORDINAIRE : `rev_chronique.go` atteignait 500 lignes et le ratchet de taille
-// (`archlint/film_file_size_test.go`) refuse de le laisser grandir. Aucun mot n est reecrit, aucun
-// octet de code n est touche : le fichier ne porte que des commentaires. La suite vivante de la
-// chronique, a partir de `killsource-2026-09-26`, est dans `rev_chronique.go`.
+// ROTATION DU 2026-10-08 (lot des arrets de la vue B, suite), geste ordinaire : `rev_chronique.go`
+// comptait 500 lignes et le ratchet de taille (`archlint/film_file_size_test.go`) refuse de le
+// laisser grandir. Les rangs `killsource-2026-09-21.2` a `killsource-2026-09-26` (et son
+// complement du 2026-09-27) viennent donc ici, TELS QUELS — aucun mot reecrit, aucun octet de code
+// touche. La suite VIVANTE, a partir de `killsource-2026-09-27`, est dans `rev_chronique.go`.
 
 // ENTREE `killsource-2026-09-21.2` (2026-09-21, lot 5.3.6) : LA REVISION MONTE DERRIERE UN
 // BALAYAGE NEUF DE LA COUCHE GRAMMAIRE.
@@ -225,3 +225,87 @@ package killsource
 // `repli_episode_borne_par_la_vie_suivante`) dont les gardes vivent dans la PUBLICATION (episodes
 // d occupation du calque des vehicules). Aucune ligne de kill ne change ; le backlog reste celui
 // de la vague. L entree de la branche, datee a son rang, reste dans `rev_chronique_archive.go`.
+
+// ENTREE `killsource-2026-09-26` (2026-09-26, jalon J7 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : LA
+// REVISION MONTE UNE FOIS POUR LES SEPT CONSTATS FK-1 A FK-7, ET LA SORTIE DU KILL-FEED CHANGE.
+//
+//	FK-2 (J7.1)  un nom de remplissage (`?`, `?N`) n est plus jamais publie : un assistant pose
+//	             par l inference sur un remplissage sort REJETE `hors-roster` (colonne
+//	             `assist_gamertag` NULL, `assist_rejected` = `hors-roster`) ; les temps 4 et 5 ne
+//	             publient pas une ligne dont le nom pris au roster serait un remplissage
+//	             (`Stats.NomsDeRemplissageRefuses`). Predicat unique `estNomDeRemplissage`.
+//	FK-1 (J7.2)  l espace des humains est le NOMBRE DE SIEGES de la table du film, et non plus le
+//	             nombre de noms du kill-feed : un remplacant ne desepingle plus le bot de relais. Un
+//	             bot n est desepingle que si son slot tombe sous cette borne ET sur un siege que la
+//	             table NOMME (revue adverse : un siege VACANT intercale ne desepingle rien). Sans
+//	             table, aucun bot n est desepingle. Les bots non epingles sont publies
+//	             (`Coverage.BotsNonEpingles`), journalises par film, et comptes par
+//	             `replayidentity` (`killsource_bots_non_epingles`).
+//	FK-3 (J7.3)  le lien par motif du xuid cherche aussi les joueurs qui tuent sans mourir. Ces
+//	             candidats ne font que COMPLETER (revue adverse) : une lecture qui se contredit ou
+//	             tombe sur un indice deja retenu les ecarte SEULS (`MotifTueursEcartes`), sans faire
+//	             tomber l epinglage par motif du film.
+//	FK-4 (J7.4)  le temps 4 ne reecrit plus un instant publie (`Stats.CollisionsDeMortDeBot`),
+//	             SAUF une ligne du temps 3 posee sur un couple RECOLLE : elle ne confirme pas le
+//	             tueur du couple, et cede a la mort de bot verifiee au meme instant (revue adverse,
+//	             `Stats.AutoInfligeesSurCoupleFabriqueRemplacees`). Un couple recolle n est fantome
+//	             que si sa mort de bot est PUBLIEE, ce qui tient `Covered <= RealPairs`. Revue ronde
+//	             2 : « au meme instant » est a la milliseconde — le dead-state de la mort de bot doit
+//	             tomber a l instant du kill-feed que la ligne porte ; une mort de bot prise par la
+//	             fenetre a un kill VOISIN n est plus publiee a une fausse date et ne prive plus ce
+//	             voisin de sa ligne. Un remplacement retire la provenance de la ligne remplacee :
+//	             `Stats.Appariement` compte une provenance PAR LIGNE PUBLIEE (plus de `Fenetre`
+//	             gonfle d une ligne disparue).
+//	FK-5 (J7.5)  le numerateur de sante ne compte que des candidats, une fois : le temps 3 laisse
+//	             les indices de bot aux temps de bot, et les inexpliques a indice de bot se
+//	             comptent sur la population (plus sur le scan entier).
+//	FK-6 (J7.6)  un kill-event lu deux fois dans le meme paquet (champs identiques) n est garde
+//	             qu une fois, au bit le plus bas (`AssistStats.Doublons`) : plus de couple fabrique
+//	             pour un kill orphelin voisin, plus de multi-attachement par doublon.
+//	FK-7 (J7.7)  une carte fournie egale a l invariant (Cliffhanger) est une carte APPLIQUEE : plus
+//	             de faux repli `repli_carte_absente_largeurs_par_defaut` ni de faux avertissement.
+//
+// LES LIGNES DE KILL DEJA EN BASE DEVIENNENT CANDIDATES AU BACKLOG DE REDECODAGE
+// (`conditionBacklog`, `sync/killcollector/postsync.go`) : il est traite a la vague unique J11,
+// geste de PRODUCTION pris par le pilote SUR SIGNAL UTILISATEUR (D6), jamais automatique.
+// `SchemaVersion` ne monte pas (la forme du document de rejeu ne change pas) ; le codec des faits
+// ne monte pas : la section 5 gagne des champs JSON, et un fichier ecrit sous la revision
+// anterieure est refuse sur son EN-TETE, qui porte `killsource.Rev`.
+//
+// COMPLEMENT DU 2026-09-27, MEME RANG, MEME LOT NON PUBLIE (correctif J7 « carte obligatoire »,
+// enquete ENQUETE_MARCHE_KILLSOURCE_2026-09-27). La revision NE MONTE PAS : `killsource-2026-09-26`
+// n est pas publiee (la serie en base est `killsource-2026-09-24`), et deux changements d un meme
+// lot partagent un rang — en ouvrir un second ferait redecoder le parc deux fois. L empreinte, elle,
+// change (golden regenere par sa porte). Ce que la sortie gagne :
+//
+//	CARTE OBLIGATOIRE  `Decode` sans entree de catalogue portant des largeurs rend
+//	                   `ErrCarteAbsente` ; plus aucun decodage aux largeurs de l invariant
+//	                   (Cliffhanger) en production. Le collecteur met le film de cote
+//	                   (`ecarte-carte-non-resolue`, `killsource_ecartes_carte_non_resolue`, aucun
+//	                   marqueur de registre : il reste au backlog et sera decode quand sa carte se
+//	                   resoudra). Le repli `repli_carte_absente_largeurs_par_defaut` est RETIRE du
+//	                   registre ; seuls les instruments de recherche decodent sans carte, et le
+//	                   DECLARENT (`Options.RechercheSansCarte`, interdit en production par ratchet).
+//	CARTE LUE          la presence de la carte se lit sur l ENTREE (`carteApplicable`), plus sur une
+//	                   difference de largeurs — acheve FK-7 sur l entree commise de Cliffhanger.
+//
+// LA MARCHE REVIENT SUR LE BANC, PAS EN PRODUCTION : le banc `TestGoldenFilms` decodait sans carte
+// depuis `f3a2f00eb` ; sous leur carte, les quatre films rendent marche 356/369 et scan 7/8 au
+// cumul (000d5950 94/91, 9b191a7f 84/80, 78919882 98/94, fccc61cd 93/91). En production, seuls les
+// matchs SANS CARTE RESOLUE changent : ils etaient publies par le scan aux largeurs d une autre carte ;
+// les NOUVELLES passes ne les publient plus (le match est mis de cote, il reste au backlog). LES
+// LIGNES DEJA EN BASE RESTENT : celles d un match sans carte decode a `killsource-2026-09-24` (aux
+// largeurs de Cliffhanger) demeurent dans `match_kill_events`, et aucune passe ne les remplace —
+// le match n est plus jamais decode tant que sa carte ne se resout pas. Leur sort (purge ou non)
+// est une decision renvoyee a J11 ; ce lot ne touche a aucune donnee.
+//
+// CORRECTIONS DE REVUE DU MEME JOUR, SANS EFFET SUR LA SORTIE (l empreinte ne bouge pas) : un match
+// dont le registre ne porte ni `map_id` ni `map_name` (`port.ErrMatchMapUnknown`) est une carte NON
+// RESOLUE, plus une panne retentee et telechargee a chaque cycle ; le post-sync ne relit plus la
+// carte d un match deja constate sans elle sous le meme catalogue de bornes, pendant six heures au
+// plus (registre en memoire, jauge `killsource_postsync_backlog_sans_carte`) et ne compte plus le
+// backlog qu une fois par cycle. Le resolveur de carte du post-sync EMPRUNTE les metadonnees que le
+// processus tient : un `map_name` reste UUID brut au registre est traduit comme au backfill hors
+// ligne, au lieu d etre ecarte pour toujours (regression de la carte obligatoire, fermee le meme
+// jour). Residu accepte : un film expire SANS carte n est jamais telecharge, donc jamais marque
+// `MBitFilmAbsent`, et reste au backlog.

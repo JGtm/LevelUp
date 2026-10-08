@@ -22,27 +22,35 @@ package grammar
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+
 // consumeObjectPositionMonde lit world-object i0 (`FUN_14076e29c` -> `FUN_14076e420(0x10)`, CALL
 // 14076e2c0) avec le lecteur d AVANT le lot J6.3 : precHigh R(1) ; a 1, R(59) mesure ; a 0, la
-// porte, l index sur `DAT_144632be0` bits, TROIS AXES AUX LARGEURS DE LA CARTE QUELLE QUE SOIT LA
-// PORTE, puis R(2).
+// porte, l index sur `DAT_144632be0` bits et les trois axes AUX LARGEURS DE LA CARTE quand la porte
+// est a 0, AUX LARGEURS DE LA TABLE DEFAUT a la ligne 0x10 (22/22/22) quand elle est posee, puis R(2).
 //
-// EXCEPTION (GA2-5) : chez le jeu la porte posee lit la table DEFAUT, 22/22/22. Portee ainsi, la
-// fermeture d image-cle monte sur les builds recents (ti=38 : bcb6d393 134 -> 713, fb1a1a72
-// 317 -> 349, 60ae07c4 30 -> 46, e5adf7b2 49 -> 56 ; ti=42 : bcb6d393 5 -> 70, fb1a1a72 9 -> 25)
-// et BAISSE sur les anciens (ti=38 : 11de8353 99 -> 83, a521164d 122 -> 119 ; ti=42 : 60ae07c4
-// 5 -> 4, 11de8353 3 -> 2, 111fa685 2 -> 1). La garde de pleine precision n est pas lue non plus.
+// EXCEPTION (GA2-5) : la garde de pleine precision n est pas lue. LA PORTE POSEE SUIT LE JEU DEPUIS
+// LE 2026-10-08 (lot des arrets de la vue B, suite) : `FUN_14076e524` lit la ligne du NIVEAU de la
+// table DEFAUT (`DAT_1445cc9e0 + niveau * 0xc`) quand sa porte vaut 1, et l ecrivain
+// (`FUN_140770640` -> `FUN_1407eb6a8`) pose la porte a 1 pour l index -1 et prend la meme ligne. Ce
+// site lisait les largeurs de la carte quelle que soit la porte : sur `fccc61cd` (Launch Site), 437
+// trames a message de degats (genre 0) s arretaient apres un record `ti=38` lu ainsi. Le releve du
+// 2026-09-27 (fermeture d image-cle en baisse sur les anciens builds, ti=38 11de8353 99 -> 83,
+// a521164d 122 -> 119) portait sur la lecture entiere du portage, garde comprise.
 func consumeObjectPositionMonde(br *Lecteur) {
 	br.noterExceptionDatee()
 	if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
 		br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
 		return
 	}
+	axes := br.worldObjectPrecision().AxisW
 	if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
 		br.ReadBits(br.worldObjectPrecision().IndexW)
+	} else {
+		axes = profile.LargeursAxeParDefautDuBuild(niveauPosition) // porte posee : table DEFAUT
 	}
 	for a := range 3 {
-		br.ReadBits(br.worldObjectPrecision().AxisW[a]) // FUN_140cc5128 axe a
+		br.ReadBits(axes[a]) // FUN_140cc5128 axe a
 	}
 	br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
 }

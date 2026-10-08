@@ -166,12 +166,18 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
   const [startError, setStartError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recoveryCountRef = useRef(0)
+  // Un seul démarrage au montage : en StrictMode (dev) l'effet de montage s'exécute
+  // deux fois avant que `isPending` ne reflète le premier appel, ce qui ouvrait deux
+  // tentatives côté serveur (deux codes, dont un sondé pour rien jusqu'à expiration).
+  const mountStartedRef = useRef(false)
 
   const startFlow = useStartDeviceFlow()
   const { data: status, error } = useDeviceFlowStatus(attemptId ?? '', !!attemptId)
 
   // Démarrer le flow au montage.
   useEffect(() => {
+    if (mountStartedRef.current) return
+    mountStartedRef.current = true
     if (!attemptId && !startFlow.isPending && !startError) {
       startFlow.mutate(undefined, {
         onSuccess: (data) => {

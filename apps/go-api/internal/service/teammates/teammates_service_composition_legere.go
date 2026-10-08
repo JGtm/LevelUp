@@ -15,11 +15,13 @@
 // Ces deux champs ne dépendent d'aucun filtre de la page (session, période, cascade) ni
 // d'aucune section : ils se calculent sur l'historique COMPLET de la composition. Leurs
 // seules lectures :
-//   - Q29 (top coéquipiers) : résout un gamertag en xuid, forme l'extraPool de la
-//     composition exacte et nomme le coéquipier responsable d'un match écarté ;
+//   - Q29 (top coéquipiers) : résout un gamertag en xuid ;
 //   - Q30 par coéquipier (matchs communs, historique complet) ;
-//   - Q32b (équipe alliée du joueur principal) SOUS L'OPTION composition exacte seulement :
-//     hors option aucun match n'est écarté, et GetPage ne lit l'équipe que pour ses sections ;
+//   - SOUS L'OPTION composition exacte seulement — hors option aucun match n'est écarté, et
+//     GetPage ne lit l'équipe que pour ses sections : Q32b (équipe alliée du joueur principal)
+//     et les coéquipiers connus (coequipiers_connus.go : profils du titre, et une lecture pour
+//     les amis déclarés que ce registre ne connaît pas), qui forment l'extraPool et nomment le
+//     coéquipier responsable d'un match écarté ;
 //   - sans coéquipier : l'historique du joueur principal (ses sessions escouade).
 //
 // Q29 et Q32b lisent l'annuaire du lot L2 (plus de jointure v_gamertag_lookup). Le calcul
@@ -43,7 +45,6 @@ import (
 
 // compositionLue : ce que les lectures d'une composition rendent au calcul de ses sessions.
 type compositionLue struct {
-	topRows []domain.TopTeammateRow
 	// roster : intersection des matchs communs (historique complet), AVANT l'option
 	// composition exacte — le rosterRowsForTimeline de GetPage.
 	roster []domain.SquadMatchRow
@@ -54,11 +55,13 @@ type compositionLue struct {
 }
 
 // filtreDeComposition : le roster après l'option composition exacte, et ce qu'il faut pour
-// nommer les responsables d'un écart (nil hors option ou sans équipe lisible).
+// nommer les responsables d'un écart (nil hors option ou sans équipe lisible) — noms : xuid ->
+// nom des coéquipiers connus.
 type filtreDeComposition struct {
 	kept, excluded []domain.SquadMatchRow
 	teamByMatch    map[string]map[string]struct{}
 	extraPool      map[string]struct{}
+	noms           map[string]string
 }
 
 // CompositionSessions : cf. l'en-tête du fichier. Mêmes erreurs fatales que GetPage (Q29 ;
@@ -97,7 +100,7 @@ func (s *TeammatesService) CompositionSessions(
 	}
 
 	stop = timing.FromContext(ctx).Section("composition_sessions")
-	sessions := buildCompositionSessionEntries(f.kept, compo.roster, f.excluded, f.teamByMatch, f.extraPool, topRows)
+	sessions := buildCompositionSessionEntries(f.kept, compo.roster, f.excluded, f.teamByMatch, f.extraPool, f.noms)
 	stop()
 	var latest string
 	if len(sessions) > 0 {
@@ -123,7 +126,7 @@ func (s *TeammatesService) lireComposition(
 ) (compositionLue, error) {
 	defer timing.FromContext(ctx).Section("squad_matches")()
 	var sets [][]domain.SquadMatchRow
-	compo := compositionLue{topRows: topRows}
+	var compo compositionLue
 	for _, gt := range gamertags {
 		if err := ctx.Err(); err != nil {
 			return compositionLue{}, fmt.Errorf("TeammatesService: requete annulee: %w", err)
@@ -183,7 +186,7 @@ func (s *TeammatesService) xuidDuCoequipier(
 }
 
 // appliquerCompositionExacte applique l'option composition exacte au roster comme GetPage :
-// l'extraPool (top coéquipiers et amis, hors composition et hors joueur principal), l'équipe
+// l'extraPool (coéquipiers connus, hors composition et hors joueur principal), l'équipe
 // alliée lue une fois (Q32b) sur les matchs du roster, puis filterExactComposition. Hors
 // option, sans coéquipier résolu ou sans match : roster intact, aucun écart.
 //
@@ -207,7 +210,7 @@ func (s *TeammatesService) appliquerCompositionExacte(
 }
 
 // filtrerCompositionExacte applique le filtre de composition exacte aux camps alliés déjà
-// lus (teamByMatch, index de lireEquipeAlliee) : l'extraPool (top coéquipiers et amis, hors
+// lus (teamByMatch, index de lireEquipeAlliee) : l'extraPool (coéquipiers connus, hors
 // composition et hors joueur principal) puis filterExactComposition. teamByMatch nil
 // (aucune équipe lue) : roster intact, aucun écart. Partagée par la lecture légère des
 // sessions et par la page Tendances, qui lit l'équipe une seule fois.
@@ -219,7 +222,8 @@ func (s *TeammatesService) filtrerCompositionExacte(
 	if s.friendGamertags != nil {
 		friendGTs = s.friendGamertags(ctx)
 	}
-	f.extraPool = buildExtraPoolXUIDs(compo.topRows, resolveFriendXUIDs(friendGTs, compo.topRows), compo.selectedXUIDs, playerXUID)
+	f.noms = s.coequipiersConnus(ctx, friendGTs)
+	f.extraPool = buildExtraPoolXUIDs(f.noms, compo.selectedXUIDs, playerXUID)
 	if teamByMatch == nil {
 		return f
 	}
