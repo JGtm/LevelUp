@@ -1394,8 +1394,11 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             grammaire d'abord, la lecture de l'état complet du bipède aux images-clés ; 2.7.d1 en
             dépend). Décision de l'utilisateur du 2026-10-08 (« Pour le point 2 met un workflow
             ultracode dessus ») : traité maintenant, lot de grammaire d'abord (lecture des
-            images-clés sous la portée de l'état complet, lot LK de la campagne), puis 2.7.d1 ; plan
-            dédié en préparation (journal du 2026-10-08, après-midi). Reste `[!]` jusqu'à sa clôture.
+            images-clés sous la portée de l'état complet, lot LK de la campagne), puis 2.7.d1.
+            **Plan dédié : `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`** (jalons LK puis
+            D1.0 à D1.4 ; décisions de l'utilisateur du 2026-10-08, « Je suis ok », à son §3.1 ;
+            branche `feat/ri-lk-images-cles`). Son avancement fait foi ; cet item reste `[!]`
+            jusqu'à sa clôture (D1.4.5).
       - [x] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
             *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
             les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
