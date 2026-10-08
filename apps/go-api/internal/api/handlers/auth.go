@@ -32,8 +32,9 @@ const (
 	deviceFlowPollIntervalSec = 5
 	// deviceFlowReadyTimeout borne l'attente d'un start single-flight sur une
 	// tentative encore en cours d'initialisation par la requête créatrice
-	// (InitDeviceFlow = 3 appels réseau, typiquement 1-3 s). Au-delà, on renvoie
-	// une erreur retryable plutôt qu'un payload sans user_code (client bloqué).
+	// (InitDeviceFlow = un seul appel à login.live.com, typiquement < 1 s ; 15 s
+	// laissent une large marge à un service lent). Au-delà, on renvoie une erreur
+	// retryable plutôt qu'un payload sans user_code (client bloqué).
 	deviceFlowReadyTimeout = 15 * time.Second
 	// deviceFlowReadyPollInterval est le pas de scrutation de l'attente ci-dessus.
 	deviceFlowReadyPollInterval = 150 * time.Millisecond

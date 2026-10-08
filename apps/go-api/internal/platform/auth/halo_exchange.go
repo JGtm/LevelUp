@@ -374,13 +374,6 @@ func extractDisplayClaims(resp map[string]any) (string, string) {
 	return gamertag, xuid
 }
 
-// requestSpartanToken échange un XSTS Token Halo contre un Spartan Token (défaut Halo).
-// Retourne aussi l'expiry RÉEL du token (cf. requestSpartanTokenWith).
-func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken string) (string, time.Time, error) {
-	d := title.DefaultHaloAuthDescriptor()
-	return requestSpartanTokenWith(ctx, client, xstsToken, d.SpartanAudience, d.SpartanTokenURL)
-}
-
 // requestSpartanTokenWith échange un XSTS Token contre un Spartan Token avec une
 // audience + un endpoint paramétrés (MT-02). MinVersion="4" et le proof TokenType
 // "Xbox_XSTSv3" restent en dur : ce sont des constantes du PROTOCOLE spartan, pas
@@ -426,11 +419,6 @@ func parseSpartanExpiry(resp map[string]any) time.Time {
 		return time.Time{}
 	}
 	return t.UTC()
-}
-
-// requestClearanceToken obtient le Clearance Token (FlightConfigurationId) (défaut Halo).
-func requestClearanceToken(ctx context.Context, client *http.Client, spartanToken string) (string, error) {
-	return requestClearanceTokenWith(ctx, client, spartanToken, title.DefaultHaloAuthDescriptor().ClearanceURL)
 }
 
 // requestClearanceTokenWith obtient le Clearance Token via un endpoint paramétré (MT-02).
