@@ -87,3 +87,13 @@ func consumeNavpointOverrideFlags(br *Lecteur) { br.ReadBits(navpointOverrideFla
 // quantifiee (`FUN_14076e524` au niveau `0x10`, `CALL 140f04f8b`) : la forme de `FUN_14076e494`,
 // portee par [lireE494]. La position est rangee a `etat + 0x714` ; aucun consommateur ne la lit.
 func consumeNavpointPositionOffset(br *Lecteur) { lireE494(br, niveauPositionOffset) }
+
+// compNavpointObjectMarker : l etiquette de registre de `ti=12 i17`.
+const compNavpointObjectMarker = "managed-navpoint-object-marker"
+
+// navpointObjectMarkerBits : `i17`, `FUN_141169e68` -> `FUN_14080dec4` (`+0x2c += 0x20`) vers
+// `etat + 0x710` ; l ecrivain (`142edb084` -> `FUN_1407edaf4`) ecrit les 32 bits du meme mot.
+const navpointObjectMarkerBits = 32
+
+// consumeNavpointObjectMarker (ti=12 i17) — `FUN_141169e68` : `R(32)` plat, sans porte.
+func consumeNavpointObjectMarker(br *Lecteur) { br.ReadBits(navpointObjectMarkerBits) }

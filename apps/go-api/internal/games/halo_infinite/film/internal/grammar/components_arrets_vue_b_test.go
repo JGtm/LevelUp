@@ -52,6 +52,9 @@ var vecteursArrets = []vecteurArret{
 	// ti=10 i23 : l ecrivain (142edb23c -> FUN_142ed0ec8) ecrit les deux bits de l octet etat+0x170.
 	{"O23a", compManagedObjectFlags, 10, 1, "10"},
 	{"O23b", compManagedObjectFlags, 10, 1, "01"},
+	// ti=12 i17 : l ecrivain (142edb084 -> FUN_1407edaf4) ecrit le mot etat+0x710 sur 32 bits.
+	{"N17a", compNavpointObjectMarker, 12, 1, "00000000000000000000010011010010"},
+	{"N17b", compNavpointObjectMarker, 12, 1, "11111111111111111111111111111111"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.

@@ -57,8 +57,8 @@ const ecsProbeBytes = 512
 //
 // D OU VIENNENT LES DEUX VALEURS : les lecteurs portes, par archetype (index des lignes).
 //
-//	FIXES (174)
-//	ti=0  (9)  i2 i5 i6 i7 i8 i9 i11 i16 i17     ti=12 (9)  i0 i1 i7 i8 i10 i11 i12 i14 i16
+//	FIXES (175)
+//	ti=0  (9)  i2 i5 i6 i7 i8 i9 i11 i16 i17     ti=12 (10) i0 i1 i7 i8 i10 i11 i12 i14 i16 i17
 //	ti=1  (1)  i11                                ti=13 (2)  i0 i1 (ecart admis)
 //	ti=2  (4)  i3 i11 i16 i17                     ti=14 (1)  i2
 //	ti=3  (1)  i1                                 ti=16 (1)  i1
@@ -84,7 +84,7 @@ const ecsProbeBytes = 512
 // les deux constantes. L historique date des deux comptes vit dans les comptes rendus des lots qui
 // les ont fait bouger (le dernier releve : `LOT_L4a.md` §14 de la campagne de grammaire).
 const (
-	ecsLargeursFixes   = 174
+	ecsLargeursFixes   = 175
 	ecsLargeursGardees = 66
 )
 
