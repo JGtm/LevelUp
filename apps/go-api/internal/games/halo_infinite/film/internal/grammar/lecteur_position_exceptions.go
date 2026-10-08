@@ -21,6 +21,11 @@ package grammar
 // Le test de chaque site (`lecteur_position_sites_test.go`) est marque « ecart attendu » par
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
+//
+// SOUS LA GARDE DE PLEINE PRECISION (`FUN_14076f91c`, [fullPrecisionGate] : la portee de l etat
+// complet, plan LK, LK.5), un site dont la lecture sous la garde est relue chez le jeu la porte EN
+// TETE de sa fonction, dans un bloc autonome : il y lit comme le jeu, sans noter d exception, et
+// l exception ne vaut que hors de la garde. Ses cas : `lecteur_position_sites_portee_test.go`.
 
 // consumeObjectPositionMonde lit world-object i0 (`FUN_14076e29c` -> `FUN_14076e420(0x10)`, CALL
 // 14076e2c0) avec le lecteur d AVANT le lot J6.3 : precHigh R(1) ; a 1, R(59) mesure ; a 0, la
@@ -297,6 +302,10 @@ func consumePrecHautDuBipede(br *Lecteur) {
 // lireViseeDActeurAncienne lit le vecteur d un emplacement de visee de unit-actor-state
 // (`FUN_14058c058`, branches a = 0) comme avant le lot J6.3 : seize bits plats.
 //
+// SOUS LA GARDE DE PLEINE PRECISION ([fullPrecisionGate] : la portee de l etat complet), LE SITE LIT
+// COMME LE JEU (plan LK, LK.5.1, 2026-10-08) : `FUN_14076e494` y lit le vecteur BRUT
+// (`FUN_1411b259c`, R(96)), relu sur les deux CALLs. L exception ne vaut que hors de la garde.
+//
 // EXCEPTION (lot R3-bis, 2026-09-30) : chez le jeu, `FUN_14076e494(..., 0x10, 0, param_3, 0)` (CALLs
 // 1422cddc1 et 1422cde0e, une par branche a = 0) — garde, porte, index, trois axes a la ligne
 // 0x10, 49 a 67 bits. Portee ainsi, des paquets de `4f77afc1` (HI_1_13_0) que l ancien lecteur
@@ -309,6 +318,10 @@ func consumePrecHautDuBipede(br *Lecteur) {
 // lit la lecture du jeu ne departagent pas les deux familles (porte a 0, index 0 et 1 de part et
 // d autre ; la porte posee n apparait que chez les secondes).
 func lireViseeDActeurAncienne(br *Lecteur) {
+	if fullPrecisionGate(br) { // FUN_14076f91c, 0 bit : vraie sous la portee de l etat complet
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
+		return
+	}
 	br.noterExceptionDatee()
 	br.ReadBits(16)
 }
