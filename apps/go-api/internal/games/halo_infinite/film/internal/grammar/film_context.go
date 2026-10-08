@@ -207,7 +207,7 @@ func (c *FilmContext) PoserLargeursObjetDuMonde(d profile.PrecisionDescriptor) {
 }
 
 // PoserLargeursObjetDuMondeDepuisDecoupage installe les largeurs d axe de la CARTE sur ce
-// contexte. C est la porte de `replay.installWorldObjectPrecision` et des instruments.
+// contexte : la porte de l enveloppe D2 et des instruments (la cuisson : [FilmContext.PoserLaCarteEtLeDecoupage]).
 func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) {
 	c.NoterReplis(c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l))
 }

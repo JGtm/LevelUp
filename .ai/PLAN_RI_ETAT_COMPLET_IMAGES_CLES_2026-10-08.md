@@ -180,7 +180,7 @@ Commandes nommées, réutilisées par les gates (§5) :
   idem `-films $F8 -sortie $S/<e>/carte8`, et `-films $F20,$F8 -mpp-declare -sortie $S/<e>/carte_mpp` (cet ORDRE est celui de la référence `m2/carte_v2_mpp_base` : la carte écrit ses lignes dans l'ordre des films, et `-films $FILMS` rend les mêmes lignes dans un autre ordre, constaté le 2026-10-08).
   Comparaison : `cmp` de chaque TSV contre la référence, `fermeture_films.tsv` par `cut -f1-16`.
 - **Gardes de révision passées sous `-skip`** (gates intermédiaires, entre deux montées ; correction 4) :
-  `SKIPREV='TestGrammarRevSuitLaGrammaire|TestChroniqueCouvreLaRevisionCourante|TestKillsourceRevSuitLaSortie|TestChroniqueDeKillsourceCouvreLaRevisionCourante|TestObjectivesRevSuitLaSortie|TestChroniqueDObjectivesCouvreLaRevisionCourante'`,
+  `SKIPREV='TestGrammarRevSuitLaGrammaire|TestChroniqueCouvreLaRevisionCourante|TestKillsourceRevSuitLaSortie|TestChroniqueDeKillsourceCouvreLaRevisionCourante|TestObjectivesRevSuitLaSortie|TestChroniqueDObjectivesCouvreLaRevisionCourante|TestChaqueRevisionEgaleSonGolden'` (le dernier, `film/revision`, rejoue l'empreinte de chaque couche contre son golden : ajouté le 2026-10-08 en LK.2, rouge comme le gate de la couche),
   puis `go test <paquets> -count=1 -skip "$SKIPREV"`. Toute source non-test de `grammar` touchée avant la
   montée du jalon (LK.2.3 compris) fait rougir `TestGrammarRevSuitLaGrammaire` : c'est attendu, et
   c'est pourquoi aucun push n'a lieu avant la montée (E-7).
@@ -510,14 +510,14 @@ rougissent entre deux montées).
   codée » et son site reste hors portée (sa lecture actuelle), nommé au §7 ; LK.1.10 statué.
 
 ### Étape LK.2 — Dérive du golden et ratchet de cuisson, à la base (deux commits séparés)
-- [ ] LK.2.1 Attribuer la dérive R-12 au lot qui l'a produite : `git log --oneline -- $G/testdata/keyframe_closure.golden`
+- [x] LK.2.1 Attribuer la dérive R-12 au lot qui l'a produite : `git log --oneline -- $G/testdata/keyframe_closure.golden`
       (dernier `-update`), puis `git log` des lecteurs `ti=43` depuis ce commit ; bisection sur les 7
       bobines si besoin (`go test -run KeyframeClosureRatchet $G`, ~2 s par passe).
-- [ ] LK.2.2 Commit 1 `ri-lk(LK.2): golden keyframe_closure, derive de la tete figee` :
+- [x] LK.2.2 Commit 1 `ri-lk(LK.2): golden keyframe_closure, derive de la tete figee` :
       `go test $G -run KeyframeClosureRatchet -update-keyframe-closure`, ligne d'historique datée qui
       nomme les 7 hausses `ti=43` (0 → 34, 9, 52, 31, 57, 15, 6), les bloquants `ti=10/43/45` changés
       et le lot d'origine (LK.2.1) ; aucune autre ligne ne doit changer.
-- [ ] LK.2.3 Helper unique de contexte de carte (E-5, recompté) : une fonction exportée de la
+- [x] LK.2.3 Helper unique de contexte de carte (E-5, recompté) : une fonction exportée de la
       grammaire qui pose les largeurs de la carte du profil du film sur le profil de balayage
       (`PoserLargeursObjetDuMondeDepuisDecoupage`) et le découpage MPP (`ResolutionMPP` +
       `PoserMPP`), et rend ce qu'elle a fait pour que l'appelant journalise et compte comme avant ;
@@ -529,7 +529,7 @@ rougissent entre deux montées).
       sa raison), aucun fichier non `_test.go` du module n'appelle
       `PoserLargeursObjetDuMondeDepuisDecoupage` ; mutation : un appel ajouté dans un fichier de
       `replay` le fait rougir.
-- [ ] LK.2.4 Commit 2 `ri-lk(LK.2): ratchet de fermeture d image-cle en contexte de cuisson` :
+- [x] LK.2.4 Commit 2 `ri-lk(LK.2): ratchet de fermeture d image-cle en contexte de cuisson` :
       `grammar/keyframe_closure_cuisson_ratchet_test.go` + `testdata/keyframe_closure_cuisson.golden`.
       Contexte : `NewFilmContextForMap(film, &entree, nil)` puis le helper LK.2.3 ; carte tirée du
       catalogue commis `data/titles/halo_infinite/reference/map_quant_bounds.json` (déjà lu en CI par
@@ -815,7 +815,7 @@ commentaires = contrat (règle 17).
 
 | Nom | Commande (depuis `$WT/apps/go-api`) |
 |---|---|
-| G-unit | `go test <paquets du lot> -count=1` (entre deux jalons : `-skip "$SKIPREV"`, la liste des six gardes de révision et de chronique du §1.4) |
+| G-unit | `go test <paquets du lot> -count=1` (entre deux jalons : `-skip "$SKIPREV"`, la liste des sept gardes de révision, de chronique et d'équivalence du §1.4) |
 | G-arch | `go test ./internal/archlint/ -count=1` |
 | G-vet | `go vet ./internal/games/halo_infinite/film/...` (CGO) et `go vet -tags=research ./internal/games/halo_infinite/film/...` |
 | G-film | `go test ./internal/games/halo_infinite/film/... ./internal/replaybuild/... ./internal/sync/killcollector/... -count=1` |
@@ -961,3 +961,36 @@ refusionner, rejouer l'étape 0).
   `DAT_145121140 == 1` ; `FUN_140a938b4` -> `FUN_14051a4b8` -> `FUN_140a93ec8` ; recherche
   d'instructions rejouée sur tout le programme, résidu nommé : une copie de structure) ; E-4 et
   LK.3.7 mis à jour. **Gate LK.1** : tableau complet, aucune case vide, aucune largeur non lue.
+- 2026-10-08 (soir) : ÉTAPE LK.2 CLOSE (LK.2.1 à LK.2.4 `[x]`). Sorties sous `$S/lk2/`.
+  **LK.2.1** : dernier `-update` du golden sans carte = `e9a64d87b` (2.7.c3) ; bissection par
+  `git archive` d'`apps/go-api` à chaque commit (lecture seule du dépôt) et régénération du golden
+  hors du worktree : `e9a64d87b` régénéré = golden commis ; `1685ee2bf` (juste avant la fusion de la
+  vue B) = golden commis ; `167bd211a` (fusion de feat/v75 `acfe4851a`, arrêts de la vue B) = la
+  tête, 21 lignes de dérive, rien ne bouge après. Dans le lot de la vue B : `ec9897101` (C1, ti=43
+  device-*) change les 7 lignes ti=43, `0962d0970` (C3) les 7 bloquants ti=45, `e480f6dbb` (C4) les 7
+  bloquants ti=10 ; C2 et C5 rien. **LK.2.2** : commit `383faf5a2`, golden régénéré = sortie de
+  `167bd211a` à l'octet, 21 lignes (7 × ti=10, ti=43, ti=45), 0 baisse, historique dans le générateur
+  (`keyframe_closure_ratchet_test.go` 410 → 419 lignes). **LK.2.3** : geste unique
+  `grammar.FilmContext.PoserLaCarteEtLeDecoupage` (`grammar/contexte_de_carte.go`, nouveau, hors de
+  `film_context.go` qui est à 500 lignes) : la séquence de `replay.installWorldObjectPrecision`
+  déplacée telle quelle (profil rendu, pose, profil reposé) puis la résolution MPP ;
+  `installWorldObjectPrecision` l'appelle et garde son compte et son journal d'une entrée sans
+  largeurs ; `poserLeDecoupageMPPDuFilm` devient `signalerLeDecoupageMPP` (journal seul) ;
+  `poserProfilPuisCarte` inchangé dans son ordre ; ancres du registre déplacées
+  (`repli_largeurs_monde_par_defaut_conservees` -> `contexte_de_carte.go` ;
+  `repli_largeurs_axe_par_defaut_conservees` : décision dans `contexte_de_carte.go`, compte dans
+  `world_object_precision.go`) ; renvois de commentaires corrigés (`film_context.go`, `mpp_declare.go`
+  de la grammaire et de `cmd_fermeture`, `killsource/decode.go` — commentaires seuls, hors empreinte) ;
+  `TestLaCuissonPoseLeDecoupageDeclareParLeFilm` joue désormais `poserProfilPuisCarte`. Garde-rail
+  `archlint/pose_de_carte_unique_test.go` (AST, appels de `PoserLargeursObjetDuMondeDepuisDecoupage`
+  en production, liste fermée datée : le geste, `film_context.go`, `killsource/decode.go` en
+  exception) ; mutation jouée (appel ajouté dans `replay/world_object_precision.go`) : ROUGE, retirée.
+  **LK.2.4** : `keyframe_closure_cuisson_ratchet_test.go` + `testdata/keyframe_closure_cuisson.golden`
+  (215 lignes, `ti=35` 53/1 368) = lignes « cuisson base » de la référence R-7 à l'octet. **Gate
+  LK.2** : mutation « portée sur toute la marche » : HAUSSE de ti=35 sur 5 bobines (6 → 78, 13 → 163,
+  3 → 57, 16 → 186, 12 → 180) et BAISSE 60ae07c4 2 → 1, ROUGE (total 666) ; mutation « sans les
+  largeurs de la carte » : 15 lignes en BAISSE (ti=35 ×2, 37, 38 ×2, 42 ×6, 43 ×4), ROUGE ; les deux
+  restaurées. Tests : grammaire 56 s, reste de `film/...` 34 s, `replaybuild`, `killcollector`,
+  `archlint` verts sous `-skip "$SKIPREV"` ; vet avec et sans `research` vert. Correction du plan
+  sur pièces : `TestChaqueRevisionEgaleSonGolden` (`film/revision`) rougit lui aussi entre deux
+  montées (il rejoue l'empreinte de chaque couche) : ajouté à `SKIPREV` (§1.4).

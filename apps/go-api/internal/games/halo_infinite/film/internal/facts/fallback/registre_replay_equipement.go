@@ -244,8 +244,14 @@ var registreReplayEquipement = []Repli{
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "world_object_precision.go",
+			// La decision : l entree de la carte ne porte pas ses trois largeurs (pose du contexte
+			// de carte, geste unique de la grammaire).
+			Fichier: pkgFilmdec + "contexte_de_carte.go",
 			Ancre:   "if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {",
+		}, {
+			// Le compte et le journal, chez l appelant de la cuisson.
+			Fichier: pkgReplay + "world_object_precision.go",
+			Ancre:   "if pose.LargeursAbsentes {",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "les largeurs par carte et par build, donnees de profil ; a defaut, " + retraitRegle4,

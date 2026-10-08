@@ -114,7 +114,9 @@ var worldObjectPrecisionReaders = map[string]string{
 		"largeurs installées par l'appelant (le corps d'i59 les lit, cf. " +
 		"components_biped_anchor.go) — aucune lecture de la valeur ici",
 	"internal/games/halo_infinite/film/replay/world_object_precision.go": "l'INSTALLATEUR de production : " +
-		"pose les largeurs de la carte du match et rend la restauration",
+		"appelle le geste unique du contexte de carte (`FilmContext.PoserLaCarteEtLeDecoupage`, " +
+		"2026-10-08), qui pose les largeurs de la carte du match, puis compte et journalise une entrée " +
+		"de catalogue sans largeurs",
 	"internal/games/halo_infinite/film/replay/build_from_film.go": "le BRANCHEMENT : `BuildFromFilm` appelle " +
 		"`installWorldObjectPrecision` depuis `Options.MapQuant`, qui les pose sur le CONTEXTE " +
 		"du film (lot 2.3 — plus aucun état de processus). " +

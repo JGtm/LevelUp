@@ -35,39 +35,26 @@ import (
 // d'`AxisWidths` réclame — accord 7 films sur 7 le 2026-08-15 — jamais l'entrée : s'il
 // contredisait le catalogue, ce seraient les BORNES qui seraient fausses.
 
-// installWorldObjectPrecision installe, pour la durée du décodage, les largeurs d'axe de la
-// CARTE DU MATCH sur le chemin world-object — SUR LE PROFIL DE BALAYAGE DU CONTEXTE DU FILM.
+// installWorldObjectPrecision pose sur le contexte du film le CONTEXTE DE CARTE de la cuisson, par le
+// geste unique de la grammaire ([grammar.FilmContext.PoserLaCarteEtLeDecoupage]) : les largeurs d'axe
+// de la carte du match (un champ du profil du film, résolu une fois par `BuildFromFilm`) sur le profil
+// de balayage du contexte, puis le découpage du bloc MPP que la grammaire résout pour le film. Les
+// balayages de la cuisson construisent leurs lecteurs par ce contexte : rien à restaurer, le contexte
+// meurt avec la cuisson.
 //
-// IL LIT LE PROFIL DU FILM DEPUIS LE LOT 2.1 (item 2.1.3) : la carte du match n'arrive plus par
-// un paramètre à part, elle est un CHAMP du profil résolu une fois par `BuildFromFilm`.
-//
-// IL ÉCRIT SUR LE CONTEXTE DEPUIS LE LOT 2.3, plus dans le processus. La double écriture datée
-// (`doubleEcritureGlobales`, posée au lot 2.1 avec « retrait cible : lot 2.3 ») est RETIRÉE avec
-// la variable de paquet qu'elle alimentait : les quarante balayages de `BuildFromFilm`
-// construisent leurs lecteurs par le contexte (`FilmContext.NouveauLecteur`, ou en recevant son
-// profil), donc le canal existe sans état de processus — et deux films peuvent se décoder en
-// parallèle. Aucune restauration n'est nécessaire : le contexte meurt avec la cuisson.
-//
-// Largeurs absentes de l'entrée (catalogue antérieur au champ, entrée fabriquée à la main) :
-// le défaut est CONSERVÉ et l'écart est LOGGÉ. Jamais de dégradation silencieuse.
-//
-// Le journal porte le `ctx` de l appelant de la cuisson (lot J12.3).
+// Largeurs absentes de l'entrée (catalogue antérieur au champ, entrée fabriquée à la main) : le défaut
+// est CONSERVÉ, compté et journalisé ; un découpage MPP qui ne décide pas est journalisé
+// ([signalerLeDecoupageMPP]). Jamais de dégradation silencieuse. Le journal porte le `ctx` de
+// l'appelant de la cuisson.
 func installWorldObjectPrecision(ctx context.Context, fc *grammar.FilmContext, matchID string, fb *fallback.Compteur) {
-	e := fc.Profile().Map()
-	if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {
+	pose := fc.PoserLaCarteEtLeDecoupage()
+	if pose.LargeursAbsentes {
 		// REPLI NOMME ET COMPTE (D14) : le defaut conserve est celui d'UNE carte, applique a
-		// toutes. Le journal le disait deja ; le compte le fait voyager avec l'artefact.
+		// toutes. Le journal le dit ; le compte le fait voyager avec l'artefact.
 		fb.Declenche(fallback.NomLargeursAxeParDefautConservees)
 		slog.WarnContext(ctx, "largeurs d'axe absentes de l'entrée de catalogue — objets du monde déquantifiés aux largeurs par défaut",
-			"module", e.Module, "match_id", matchID,
+			"module", fc.Profile().Map().Module, "match_id", matchID,
 			"defaut", fc.ProfilDeBalayage().LargeursObjetDuMonde().AxisW)
-		return
 	}
-	// e.Layout() porte les largeurs d'axe ET la largeur de l'index de région (2 bits sur
-	// Live Fire — lot C catalogues, 2026-08-27) : les deux sont des constantes par carte.
-	// La pose rend ses replis (largeurs ou index de region par defaut) : ils rejoignent le rapport
-	// du contexte, que le balayage verse au compteur de la cuisson (lot J8.7).
-	bal := fc.ProfilDeBalayage()
-	fc.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout()))
-	fc.PoserProfilDeBalayage(bal)
+	signalerLeDecoupageMPP(ctx, matchID, pose.MPP)
 }

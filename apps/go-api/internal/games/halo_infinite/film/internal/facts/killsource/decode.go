@@ -373,7 +373,7 @@ func (c *decodeCtx) marcher(ctx context.Context, src *source.Film) error {
 // poserLeProfil pose le profil `p` sur le contexte de la marche, puis le decoupage du bloc MPP que la
 // grammaire resout pour le film ([grammar.FilmContext.ResolutionMPP] : celui de sa version de format,
 // ou celui qu il declare), comme la cuisson le pose apres son profil
-// (`replay.poserLeDecoupageMPPDuFilm`) ; elle rend la resolution. Rien de resolu : le contexte garde
+// (`grammar.FilmContext.PoserLaCarteEtLeDecoupage`) ; elle rend la resolution. Rien de resolu : le contexte garde
 // le decoupage du profil. Le profil calibre ne porte pas ce decoupage : la cuisson le pose elle-meme.
 func poserLeProfil(fc *grammar.FilmContext, p grammar.ProfilDeBalayage) grammar.ResolutionMPP {
 	fc.PoserProfilDeBalayage(p)

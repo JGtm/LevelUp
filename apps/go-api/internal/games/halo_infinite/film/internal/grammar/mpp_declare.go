@@ -19,7 +19,7 @@ package grammar
 // LA RESOLUTION NE PASSE PAS PAR L EN-TETE DE LA MARCHE ([FilmContext.EnTete]). La preuve des
 // ancres d image-cle lit l en-tete : y poser la declaration changerait ce que la preuve prouve, donc
 // les ancres de toutes les lectures du film. La cuisson et killsource posent la resolution sur LEUR
-// contexte, apres leur profil (`replay.poserLeDecoupageMPPDuFilm`, `killsource.poserLeProfil`).
+// contexte, apres leur profil ([FilmContext.PoserLaCarteEtLeDecoupage], `killsource.poserLeProfil`).
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
