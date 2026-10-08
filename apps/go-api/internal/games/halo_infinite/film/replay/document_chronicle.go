@@ -3110,8 +3110,8 @@ package replay
 //	                (vehicule volant hors des bornes resserrees), `396cfc92` origine du rejeu
 //	                avancee par une vraie position precoce (detail : plan de l etape 2, 2.7.d4).
 //
-// v90 (2026-10-08, lot `feat/aj-film`, points 11 et 18 des ajustements, NUMERO PROVISOIRE a
-// renumeroter a la fusion dans `feat/v75`) : UN SOCLE D ARME HORS DE LA CARTE SE RELEVE LA OU SES
+// v90 (2026-10-08, lot `feat/aj-film`, points 11 et 18 des ajustements, fusionne apres le lot des
+// arrets de la vue B, `grammar-2026-10-08.13`) : UN SOCLE D ARME HORS DE LA CARTE SE RELEVE LA OU SES
 // ARMES SONT PRISES, ET LES MORTS QUI TOUCHENT UN BOT SE PUBLIENT.
 //
 //	`weaponPads`    un socle d ARME dont la position (centroide des creations) tombe hors de
@@ -3128,11 +3128,11 @@ package replay
 //	                laissees sans ligne, avec les dead-states libres ; mort de bot par sa propre
 //	                source ; recollage qui respecte la lecture ; nom de bot a l instant.
 //
-//	CE QUI MONTE    `SchemaVersion` 89 -> 90 ; `killsource.Rev` `killsource-2026-10-07.2` ->
-//	AVEC ELLE       `killsource-2026-10-08`. `grammar.Rev`, `objectives.Rev` et `SchemaDesFaits` ne
+//	CE QUI MONTE    `SchemaVersion` 89 -> 90 ; `killsource.Rev` `killsource-2026-10-08` ->
+//	AVEC ELLE       `killsource-2026-10-08.2`. `grammar.Rev`, `objectives.Rev` et `SchemaDesFaits` ne
 //	                bougent pas : l assemblage rejoue les faits persistes tels quels.
 //
-//	LE PARC         un artefact 89 porte `killsource-2026-10-07.2` : verdict `redecoder`.
+//	LE PARC         un artefact 89 porte `killsource-2026-10-08` : verdict `redecoder`.
 //
 //	MESURE          artefacts du parc local (schema 89, 172 documents, 133 sur une carte de la
 //	                reference) : 43 socles non confirmes sur 38 matchs ayant au moins un socle

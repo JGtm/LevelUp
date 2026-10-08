@@ -436,7 +436,7 @@ Trois affirmations fausses à ne pas répéter :
 | **Puissance** | ce même emplacement est un SOCLE DE PUISSANCE (`power`) | idem |
 | **Non classé** | aucun emplacement ne confirme le socle (carte hors référence, ou socle hors rayon) | reste VISIBLE avec son compte, jamais fondu ailleurs |
 
-> **Socle dont l'arme apparaît hors de la carte (2026-10-08, schéma 90, numéro provisoire).** Sur
+> **Socle dont l'arme apparaît hors de la carte (2026-10-08, schéma 90).** Sur
 > certaines cartes Forge, le script crée l'arme sous le niveau puis la pose sur son socle ; le film
 > n'écrit que la création. Le socle d'arme dont la position tombe hors de l'emprise jouée se publie
 > au centroïde de ses ramasseurs, aux occupations que l'événement natif date, quand au moins deux le
