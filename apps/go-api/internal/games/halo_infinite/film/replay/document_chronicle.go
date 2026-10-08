@@ -3140,7 +3140,7 @@ package replay
 //	                Streets en variante classee, Refuge, Perilous, Flood Gulch, Prism). Banc des
 //	                faits (10 temoins, meme binaire de recherche sur la base et sur le lot, aucun
 //	                film decode) : 2 socles releves et confirmes (`5c38f581` Needler -> socle de
-//	                puissance a 0,41 m, `4f77afc1` -> ratelier a 0,48 m), 2 en plusieurs lieux, 4
+//	                puissance a 0,41 m, `4f77afc1` -> ratelier a 0,48 m), 3 en plusieurs lieux, 4
 //	                sans assez de prises datees ; aucun socle confirme ne bouge, et rien d autre ne
 //	                change que les comptes et les revisions. Cuissons du film (`5c38f581`, `0a08d2f2`),
 //	                binaire de la base contre binaire du lot : seuls le socle releve, les comptes, les
