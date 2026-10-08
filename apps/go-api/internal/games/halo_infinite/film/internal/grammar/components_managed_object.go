@@ -222,3 +222,14 @@ const largeurNavpointDObjetGere = 32
 
 // consumeManagedObjectNavpoint (ti=10 i2 a i17) — `FUN_14107cea4` : `R(32)` plat, sans porte.
 func consumeManagedObjectNavpoint(br *Lecteur) { br.ReadBits(largeurNavpointDObjetGere) }
+
+// compManagedObjectInteractionFilter : l etiquette de registre de `ti=10 i22` (niveau 2).
+const compManagedObjectInteractionFilter = "managed-object-interaction-filter-component"
+
+// consumeManagedObjectInteractionFilter (ti=10 i22) — `FUN_140dbdf5c` : `FUN_140dbe400(etat + 0x68,
+// flux, v = 1 < param_4)`, le bloc de filtres SEUL, comme `ti=12 i5` et `i6`
+// ([consumeNavpointFilterOnly]). L ecrivain (`142edb250`) saute a `FUN_142c7023c` sur la meme
+// destination : le masque, le drapeau, puis par filtre present le tag et sa charge.
+func consumeManagedObjectInteractionFilter(br *Lecteur, level uint32) bool {
+	return consumeNavpointFilterOnly(br, level > 1)
+}

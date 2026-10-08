@@ -320,6 +320,8 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		compNavpointVisualStateGroups3, compNavpointVisualStateGroups4, compNavpointVisualStateGroups5,
 		compNavpointVisualStateGroups6, compNavpointVisualStateGroups7: // ti=12 i20 a i27 (FUN_140dbe1bc)
 		return variant, nil, consumeNavpointVisualStateGroup(br)
+	case compManagedObjectInteractionFilter: // ti=10 i22 (FUN_140dbdf5c) — bloc de filtres seul, comme i5 et i6
+		return variant, nil, consumeManagedObjectInteractionFilter(br, level)
 	default:
 		return consumeMoteurDePartie(br, name, level)
 	}

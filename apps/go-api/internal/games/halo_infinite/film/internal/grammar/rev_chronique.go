@@ -54,3 +54,9 @@ package grammar
 // (`FUN_140dbe1bc` : presence, puis identifiant, bloc de filtres, mot, un mot et une entree d ordre
 // par filtre present, [consumeNavpointVisualStateGroup]). Contre `grammar-2026-10-08` : un record
 // `ti=12` qui s arretait sur l un d eux se lit jusqu au composant suivant.
+//
+// ENTREE `grammar-2026-10-08.3` (2026-10-08, lot des arrets de la vue B, suite, `ti=10 i22`) : le
+// composant `managed-object-interaction-filter-component` se lit (`FUN_140dbdf5c` : le bloc de
+// filtres seul, `v = 1 < param_4`, [consumeManagedObjectInteractionFilter]). Contre
+// `grammar-2026-10-08.2` : un record `ti=10` qui s arretait sur `i22` se lit jusqu au composant
+// suivant.

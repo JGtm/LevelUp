@@ -40,6 +40,10 @@ var vecteursArrets = []vecteurArret{
 	{"V21", compNavpointVisualStateGroups1, 12, 1, "1 | 10000000000000000000000000000001 | 0101 1 | 0001 1 0 | 1001 0 00000000000000000000000000000111 | " +
 		"00000000000000000000000000000010 | 00000000000000000000000000000011 | 11111111111111111111111111111100 | 001 000"},
 	{"V27", compNavpointVisualStateGroups7, 12, 1, "1 | 00000000000000000000000000000000 | 1000 1 | 0000 | 01010101010101010101010101010101 | 11111111111111111111111111111111 | 111"},
+	// ti=10 i22 (niveau 2) : l ecrivain (142edb250 -> FUN_142c7023c) ecrit le masque, le drapeau d un
+	// bit, puis par filtre present le tag sur quatre bits, le R(1) commun et la charge du tag.
+	{"I22a", compManagedObjectInteractionFilter, 10, 2, "0000 1"},
+	{"I22b", compManagedObjectInteractionFilter, 10, 2, "0011 0 | 0100 1 101010101 | 1000 0 10101010"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.
