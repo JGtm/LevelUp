@@ -39,6 +39,10 @@ export function StepDeviceCode() {
 
   // Récupération gracieuse : compteur de relances auto + bascule manuelle.
   const recoveryCountRef = useRef(0)
+  // Un seul démarrage au montage : en StrictMode (dev) l'effet de montage s'exécute
+  // deux fois, ce qui ouvrait deux tentatives côté serveur (deux codes, dont un sondé
+  // pour rien jusqu'à expiration).
+  const mountStartedRef = useRef(false)
   const [recoveryExhausted, setRecoveryExhausted] = useState(false)
 
   // Échec du démarrage du flow (POST /device-flow/start en 500/503) : sans état
@@ -87,6 +91,8 @@ export function StepDeviceCode() {
 
   // Démarrer le flow au montage si pas encore en cours
   useEffect(() => {
+    if (mountStartedRef.current) return
+    mountStartedRef.current = true
     if (!currentAttemptId) {
       startDeviceFlow()
     }
