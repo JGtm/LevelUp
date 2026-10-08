@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { impactHistory3 } from './impactHistory.fixtures'
-import { buildImpactHistoryView, pointKey, roleToken, scaleSentence, showAxisLabel } from './impactHistory.logic'
+import { buildImpactHistoryView, pointKey, impactRoleToken, scaleSentence, showAxisLabel } from './impactHistory.logic'
 import { IMPACT_HISTORY_TEXT } from './impactHistoryStrings'
 
 const fr = IMPACT_HISTORY_TEXT.fr
@@ -108,10 +108,10 @@ describe('buildImpactHistoryView', () => {
   })
 })
 
-describe('roleToken', () => {
+describe('impactRoleToken', () => {
   it('un rôle inconnu prend le bout de la rampe de son signe', () => {
-    expect(roleToken('nouveau', 1)).toBe('impact-gain-4')
-    expect(roleToken('nouveau', -1)).toBe('impact-loss-3')
+    expect(impactRoleToken('nouveau', 1)).toBe('impact-gain-4')
+    expect(impactRoleToken('nouveau', -1)).toBe('impact-loss-3')
   })
 })
 
