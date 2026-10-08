@@ -235,3 +235,9 @@ package killsource
 // (343 Cliffton -> 343 Chilies) ; `b1ad85eb`, `4f77afc1`, `50f16538` identiques. Aucune ligne
 // existante ne change de tueur ni de source. Les lignes de `match_kill_events` deviennent candidates
 // au redecodage : backlog sur signal de l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09` (records d image-cle lus sous la
+// portee de l etat complet). `cmd/killsource json` sur les 19 temoins, binaire de `feat/v75`
+// (`d429dc517`) contre binaire du lot fusionne : sorties identiques a l octet. Golden regenere a
+// revision constante.

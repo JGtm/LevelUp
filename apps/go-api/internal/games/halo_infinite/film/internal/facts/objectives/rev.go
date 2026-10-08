@@ -145,6 +145,12 @@ package objectives
 // `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv` est IDENTIQUE sur les 20
 // films de reference (binaires de `acfe4851a` contre ceux du lot). Golden regenere a revision
 // constante.
+//
+// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09` (records d image-cle lus sous la
+// portee de l etat complet). `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv`
+// est IDENTIQUE sur les 20 films de reference (binaires de `d429dc517` contre ceux du lot). Golden
+// regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"
