@@ -20,8 +20,10 @@ type resolvedSource struct {
 	resolved *ResolvedTokens
 }
 
-// bootOutcome : issue de la résolution d'une source.
+// bootOutcome : issue de la résolution d'une source. launched=false : source jamais
+// lancée (issue vide, ni succès ni échec).
 type bootOutcome struct {
+	launched bool
 	resolved *ResolvedTokens
 	err      error
 }
@@ -33,8 +35,9 @@ type bootDone struct {
 }
 
 // resolveBootSources rend les sources résolues de sorted, dans l'ordre de sorted, au plus
-// maxSize (0 = sans plafond). Une source en échec est journalisée et sautée ; elle ne
-// consomme pas le plafond.
+// maxSize (0 = sans plafond ; NewPool ramène un plafond négatif à 0). Une source en échec
+// est journalisée et sautée ; elle ne consomme pas le plafond. Une source jamais lancée
+// n'est jamais rendue.
 //
 // Le résultat est celui de la boucle en série « résoudre chaque source dans l'ordre
 // jusqu'à maxSize succès » : mêmes sources tentées, mêmes slots, même ordre. Seule la durée
@@ -46,9 +49,12 @@ func resolveBootSources(ctx context.Context, resolver Resolver, sorted []Credent
 		if maxSize > 0 && len(out) == maxSize {
 			break
 		}
-		// Invariant de runBootResolutions : tant que le plafond n'est pas atteint par les
-		// sources 0..i-1, la source i a été tentée — outcomes[i] est renseigné.
 		o := outcomes[i]
+		// Les sources sont lancées dans l'ordre : la première jamais lancée clôt la liste
+		// (plafond atteint par les précédentes).
+		if !o.launched {
+			break
+		}
 		if o.err != nil {
 			slog.WarnContext(ctx, "pool: impossible de résoudre token au boot, skip slot",
 				"gamertag", src.Gamertag, "err", o.err)
@@ -60,14 +66,14 @@ func resolveBootSources(ctx context.Context, resolver Resolver, sorted []Credent
 }
 
 // runBootResolutions résout les sources de sorted en parallèle et rend l'issue de chacune,
-// au même rang. Une source jamais tentée garde une issue vide.
+// au même rang. Une source jamais lancée garde une issue vide (launched=false).
 //
 // Contrat :
 //   - les sources sont LANCÉES dans l'ordre de sorted ;
 //   - la source i n'est lancée que si les sources 0..i-1 ne peuvent pas atteindre maxSize
 //     succès, même en comptant comme réussies toutes celles encore en vol : l'ensemble des
 //     sources tentées est exactement celui de la boucle en série, aucune résolution réseau
-//     de plus (maxSize = 0 : toutes les sources sont tentées) ;
+//     de plus (maxSize = 0 : toutes les sources sont tentées ; maxSize < 0 : aucune) ;
 //   - deux sources qui portent le même refresh token sont résolues l'une APRÈS l'autre,
 //     dans l'ordre de sorted, jamais en même temps : Microsoft fait tourner le jeton à
 //     chaque usage, deux échanges concurrents du même jeton en perdraient la rotation ;
@@ -89,7 +95,7 @@ func runBootResolutions(ctx context.Context, resolver Resolver, sorted []Credent
 			(sameTokenBefore[next] < 0 || finished[sameTokenBefore[next]]) {
 			go func(i int) {
 				resolved, err := resolver.Resolve(ctx, sorted[i])
-				results <- bootDone{idx: i, outcome: bootOutcome{resolved: resolved, err: err}}
+				results <- bootDone{idx: i, outcome: bootOutcome{launched: true, resolved: resolved, err: err}}
 			}(next)
 			next++
 			inFlight++

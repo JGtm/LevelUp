@@ -128,7 +128,11 @@ func NewPool(
 	sources []CredentialSource,
 	opts PoolOptions,
 ) (Pool, error) {
-	// Appliquer les valeurs par défaut.
+	// Appliquer les valeurs par défaut. Un plafond négatif (`--token-pool-size -1`) veut
+	// dire « sans plafond », comme 0 : seul point de normalisation de MaxSize.
+	if opts.MaxSize < 0 {
+		opts.MaxSize = 0
+	}
 	if opts.PerTokenRPS == 0 {
 		opts.PerTokenRPS = 1
 	}

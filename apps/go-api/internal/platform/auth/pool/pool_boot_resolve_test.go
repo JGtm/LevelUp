@@ -300,3 +300,40 @@ func sortedKeys(m map[string]bool) []string {
 	sort.Strings(out)
 	return out
 }
+
+// TestNewPool_MaxSizeNegatif_SansPlafond : un plafond négatif (`--token-pool-size -1`, passé
+// tel quel par le CLI) veut dire « sans plafond », comme 0 : tous les comptes sont résolus et
+// chaque slot porte ses tokens. Jamais un slot sans tokens compté comme succès.
+func TestNewPool_MaxSizeNegatif_SansPlafond(t *testing.T) {
+	gts := []string{"Alice", "Bianca", "Chocoboflor"}
+	resolver := newTimedResolver(func(string) time.Duration { return 5 * time.Millisecond })
+	p, err := NewPool(context.Background(), resolver, sourcesFor(gts...), PoolOptions{MaxSize: -1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+
+	if got := resolver.attemptedSet(); len(got) != len(gts) {
+		t.Errorf("sources tentées = %v, attendu les %d (plafond négatif = sans plafond)", sortedKeys(got), len(gts))
+	}
+	if got := slotGamertags(t, p); fmt.Sprint(got) != fmt.Sprint(gts) {
+		t.Errorf("slots = %v, attendu %v", got, gts)
+	}
+	for _, s := range p.(*poolImpl).slots {
+		if s.resolved == nil || s.resolved.Tokens == nil {
+			t.Errorf("slot %s sans tokens : une source non résolue comptée comme succès", s.gamertag)
+		}
+	}
+}
+
+// TestResolveBootSources_SourceNonLanceeJamaisSucces : appelé sans la normalisation de
+// NewPool, un plafond négatif ne lance rien ; aucune source non lancée ne doit ressortir
+// comme résolue.
+func TestResolveBootSources_SourceNonLanceeJamaisSucces(t *testing.T) {
+	resolver := newTimedResolver(func(string) time.Duration { return 0 })
+	for _, rs := range resolveBootSources(context.Background(), resolver, sourcesFor("Alice", "Bianca"), -1) {
+		if rs.resolved == nil {
+			t.Errorf("source %s rendue comme résolue sans tokens", rs.src.Gamertag)
+		}
+	}
+}
