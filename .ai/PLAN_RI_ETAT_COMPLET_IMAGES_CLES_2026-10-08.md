@@ -178,7 +178,11 @@ Commandes nommées, réutilisées par les gates (§5) :
 - **I-carte** (carte v2 delta) : `go build -tags=research -o $S/<e>/cmd_fermeture.exe ./internal/games/halo_infinite/film/research/cmd_fermeture` puis
   `$S/<e>/cmd_fermeture.exe -racine $R -films $F20 -sortie $S/<e>/carte -plafond-gib 4 -top 40 -mode v2 -paquets`,
   idem `-films $F8 -sortie $S/<e>/carte8`, et `-films $F20,$F8 -mpp-declare -sortie $S/<e>/carte_mpp` (cet ORDRE est celui de la référence `m2/carte_v2_mpp_base` : la carte écrit ses lignes dans l'ordre des films, et `-films $FILMS` rend les mêmes lignes dans un autre ordre, constaté le 2026-10-08).
-  Comparaison : `cmp` de chaque TSV contre la référence, `fermeture_films.tsv` par `cut -f1-16`.
+  « idem » = les MÊMES drapeaux (`-racine $R -plafond-gib 4 -top 40 -mode v2 -paquets`) : sans eux, la
+  carte MPP n'écrit que cinq fichiers (constaté en LK.3, 2026-10-08) ; un dossier de sortie neuf par
+  passe, sans quoi les fichiers d'une passe précédente restent et faussent le `cmp`.
+  Comparaison : `cmp` de chaque TSV contre la référence, `fermeture_films.tsv` par `cut -f1-16`
+  (`fermeture_resume.md` porte le pic mémoire, il diffère d'une passe à l'autre).
 - **Gardes de révision passées sous `-skip`** (gates intermédiaires, entre deux montées ; correction 4) :
   `SKIPREV='TestGrammarRevSuitLaGrammaire|TestChroniqueCouvreLaRevisionCourante|TestKillsourceRevSuitLaSortie|TestChroniqueDeKillsourceCouvreLaRevisionCourante|TestObjectivesRevSuitLaSortie|TestChroniqueDObjectivesCouvreLaRevisionCourante|TestChaqueRevisionEgaleSonGolden'` (le dernier, `film/revision`, rejoue l'empreinte de chaque couche contre son golden : ajouté le 2026-10-08 en LK.2, rouge comme le gate de la couche),
   puis `go test <paquets> -count=1 -skip "$SKIPREV"`. Toute source non-test de `grammar` touchée avant la
