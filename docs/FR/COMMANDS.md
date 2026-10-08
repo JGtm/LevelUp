@@ -249,6 +249,18 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 #    caractères, résolus contre le registre comme backfill-killsource ; inconnu / ambigu /
 #    trop court = refusé, rien d écrit.
 
+# 4 quater. Zones nommées (callouts) des cartes Forge jouées qui n'en ont pas -> le catalogue
+#    GÉNÉRÉ reference/generated/map_callouts.json (ignoré par git ; le map_callouts.json
+#    versionné n'est jamais écrit). La variante (.mvar) de chaque carte est lue au cache
+#    (data/cache/mvar/<map_id>/), sinon téléchargée UNE fois par le pool de jetons de la CLI et
+#    déposée au cache. AUCUNE RECUISSON : les zones se résolvent au service, à la lecture.
+#    Idempotente (cartes couvertes sautées, ajout seul). Une ligne par carte et un bilan
+#    chiffré, avec les string_id de lieu absents du lexique. La synchronisation fait de même
+#    pour chaque nouvelle carte (étape post-sync, après le rattrapage des socles). Capability
+#    map.forge_callouts. SERVEUR ARRÊTÉ (lecture du registre + pool de jetons).
+go run ./cmd/levelup backfill-map-callouts --dry-run
+go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [--rps N] [--cache-dir D] [--title S]
+
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
@@ -426,8 +438,10 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexi
   UGC, sans jeton). Un garde-fou bloque l'écriture d'une carte qui perdrait des sommets par
   rapport au fichier déjà commité (`--accepte-perte` pour outrepasser).
 - À rejouer : mise à jour du jeu (passe native, ou `--lexique`, qui « ne se rejoue qu'à une
-  mise à jour du jeu » selon son propre en-tête) ; une nouvelle carte Forge a besoin de ses
-  callouts (`--forge-fetch`).
+  mise à jour du jeu » selon son propre en-tête) ; une carte Forge relue en revue est à
+  promouvoir au catalogue versionné (`--forge-fetch`). Une NOUVELLE carte Forge n'en a plus
+  besoin : la synchronisation et `levelup backfill-map-callouts` rangent ses callouts au
+  catalogue généré.
 
 #### mapfond-build
 

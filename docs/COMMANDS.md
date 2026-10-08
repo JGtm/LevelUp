@@ -240,6 +240,18 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 #    against the registry like backfill-killsource; unknown / ambiguous / too short = refused,
 #    nothing written.
 
+# 4 quater. Named zones (callouts) of the Forge maps played that have none -> the GENERATED
+#    catalogue reference/generated/map_callouts.json (git-ignored; the committed
+#    map_callouts.json is never written). Each map's variant (.mvar) is read from the cache
+#    (data/cache/mvar/<map_id>/), otherwise downloaded ONCE through the CLI token pool and
+#    stored in the cache. NO RE-COOK: zones are resolved by the service at read time.
+#    Idempotent (covered maps skipped, append-only). Prints one line per map and a tally,
+#    with the place string_ids missing from the lexicon. The sync does the same for every
+#    new map (post-sync step, after the weapon-pad catch-up). Capability map.forge_callouts.
+#    SERVER STOPPED (registry read + token pool).
+go run ./cmd/levelup backfill-map-callouts --dry-run
+go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [--rps N] [--cache-dir D] [--title S]
+
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
@@ -414,7 +426,9 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
   network only with `--forge-fetch` (anonymous UGC blob fetch, no token). A loss guard blocks
   writing a map that would lose vertices vs. the committed file (`--accepte-perte` overrides).
 - Replay when: game update (native pass, or `--lexique`, which "only replays on a game
-  update" per its own header) ; a new Forge map needs its callouts (`--forge-fetch`).
+  update" per its own header) ; a reviewed Forge map is to be promoted into the committed
+  catalogue (`--forge-fetch`). A NEW Forge map no longer needs it: the sync and
+  `levelup backfill-map-callouts` store its callouts in the generated catalogue.
 
 #### mapfond-build
 
