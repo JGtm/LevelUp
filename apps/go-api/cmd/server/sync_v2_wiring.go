@@ -89,7 +89,8 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	}
 
 	// getSharedDB retourne la connexion shared courante via le cache process-wide.
-	// Appelé à l'instant T (persister V2, LoadKnown en mode legacy) — après chaque swap provider
+	// Appelé à l'instant T (persister V2, LoadKnown en mode legacy ou pendant une écriture : la
+	// connexion RW de l'écrivain) — après chaque swap provider
 	// RO→RW→RO, LookupCachedDB retourne la connexion fraîche rouverte en RO.
 	// Évite le pointeur fixe capturé au boot (deps.SharedDB) qui devient stale
 	// après le premier cycle (le swap ferme l'ancienne *sql.DB).
@@ -112,15 +113,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
 		return duckdbpkg.OpenReadForQuery(path)
 	}
-	// Base partagée de l'ensemble connu : EMPRUNTÉE au provider du titre (Get + release) pour
-	// toute la durée de la lecture — une bascule RO↔RW (rejeu, action admin, convergence des
-	// noms, sync V1) attend la fin de la lecture au lieu de fermer la connexion sous elle.
-	// Sans provider (kill-switch legacy) : connexion en cache, aucune bascule dans le process.
-	var providerRead syncv2.SharedDBAcquirer
-	if sr := deps.Cfg.SharedReaderForTitle(deps.TitleSlug); sr != nil {
-		providerRead = sr.Get
-	}
-	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, syncv2.SharedBorrower(providerRead, getSharedDB))
+	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, knownSetSharedBorrower(deps, getSharedDB))
 
 	// CRITIQUE — Adapter PostSyncRunner : ouvre la stats.duckdb du joueur
 	// en READ-WRITE car les heals post-sync UPDATE/INSERT sur 14+ tables
@@ -224,6 +217,20 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		syncv2.CycleConfig{},
 	).WithSnapshotProducer(snapshotCutter).
 		WithPrestigeHook(deps.PrestigeHook)
+}
+
+// knownSetSharedBorrower rend l'emprunt de la base partagée de l'ensemble connu (cf.
+// syncv2.SharedBorrower) : provider B-swap du titre — emprunt suivi en RO, connexion de
+// l'écrivain pendant une écriture, attente bornée pendant une bascule. Sans provider
+// (kill-switch legacy) : connexion en cache, aucune bascule dans le process.
+func knownSetSharedBorrower(deps SyncV2WiringDeps, cached func() *sql.DB) syncv2.SharedDBAcquirer {
+	reader := deps.Cfg.SharedReaderForTitle(deps.TitleSlug)
+	src, ok := reader.(syncv2.SharedSwapSource)
+	if reader != nil && !ok {
+		slog.Warn("sync.v2 wiring: lecteur partagé sans état de bascule — ensemble connu lu sur la connexion en cache",
+			"titleSlug", deps.TitleSlug, "reader", fmt.Sprintf("%T", reader))
+	}
+	return syncv2.SharedBorrower(src, cached)
 }
 
 // ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────

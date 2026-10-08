@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/sync/knownset"
 )
@@ -22,31 +23,6 @@ import (
 // Les implémentations doivent être thread-safe (peut être appelée
 // concurremment pour N joueurs en Phase 1).
 type PlayerDBOpener func(ctx context.Context, gamertag string) (db *sql.DB, release func(), err error)
-
-// errNoCachedShared : mode legacy (aucun provider), la connexion partagée n'est pas ouverte.
-var errNoCachedShared = errors.New("aucune connexion partagée ouverte (mode legacy)")
-
-// SharedBorrower choisit l'emprunt RO de la base partagée servi au KnownLoader.
-//
-// provider non nil (B-swap, ADR 0016 : `sharedprovider.Provider.Get`) : c'est l'emprunt rendu.
-// Tant que son release n'est pas appelé, le provider compte un lecteur en vol et une bascule
-// RO→RW attend la fin de la lecture (vidange) au lieu de fermer la connexion sous elle ; un Get
-// pendant une bascule attend le retour en RO.
-//
-// provider nil (kill-switch LEVELUP_USE_SHARED_PROVIDER=0, aucune bascule dans le process) :
-// la connexion en cache `cached()` est servie avec un release sans effet ; nil → erreur.
-func SharedBorrower(provider SharedDBAcquirer, cached func() *sql.DB) SharedDBAcquirer {
-	if provider != nil {
-		return provider
-	}
-	return func(context.Context) (*sql.DB, func(), error) {
-		db := cached()
-		if db == nil {
-			return nil, nil, errNoCachedShared
-		}
-		return db, func() {}, nil
-	}
-}
 
 // knownLoaderV2 implémente KnownLoader en déléguant à knownset.Load.
 type knownLoaderV2 struct {
@@ -68,6 +44,10 @@ func NewKnownLoader(playerDBOpener PlayerDBOpener, borrowShared SharedDBAcquirer
 // match_id (règle knownset). Erreur si la base joueur ne s'ouvre pas, ou si la base partagée ne
 // peut pas être empruntée ou lue (knownset.ErrSharedUnreadable) : le cycle s'arrête alors avant
 // toute récupération (cf. CycleOrchestratorImpl.Run).
+//
+// Une LECTURE en échec sur la base partagée (emprunt abouti) est refaite UNE fois sur un nouvel
+// emprunt : la connexion de l'écrivain servie pendant une écriture (cf. SharedBorrower) se ferme à sa
+// libération, éventuellement sous la lecture ; le second emprunt sert la connexion rouverte.
 func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error) {
 	playerDB, release, err := l.openPlayerDB(ctx, p.Gamertag)
 	if err != nil {
@@ -75,15 +55,27 @@ func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (knownse
 	}
 	defer release()
 
-	sharedDB, releaseShared, err := l.borrowShared(ctx)
-	if err != nil {
-		return knownset.Set{}, fmt.Errorf("known set %s: %w: emprunt de la base partagée: %w", p.Gamertag, knownset.ErrSharedUnreadable, err)
+	set, borrowed, err := l.loadOnce(ctx, playerDB, p)
+	if borrowed && errors.Is(err, knownset.ErrSharedUnreadable) && ctx.Err() == nil {
+		slog.WarnContext(ctx, "sync.v2: lecture de l'ensemble connu en échec — nouvel emprunt de la base partagée",
+			"player", p.Gamertag, "err", err)
+		set, _, err = l.loadOnce(ctx, playerDB, p)
 	}
-	defer releaseShared()
-
-	set, err := knownset.Load(ctx, playerDB, sharedDB, p.XUID)
 	if err != nil {
 		return knownset.Set{}, fmt.Errorf("known set %s: %w", p.Gamertag, err)
 	}
 	return set, nil
+}
+
+// loadOnce emprunte la base partagée, lit l'ensemble connu (knownset.Load) et rend l'emprunt.
+// borrowed dit si l'emprunt a abouti : un emprunt impossible (attente déjà bornée par
+// l'emprunteur) est rendu comme knownset.ErrSharedUnreadable et n'est pas refait.
+func (l *knownLoaderV2) loadOnce(ctx context.Context, playerDB *sql.DB, p PlayerProfile) (set knownset.Set, borrowed bool, err error) {
+	sharedDB, releaseShared, err := l.borrowShared(ctx)
+	if err != nil {
+		return knownset.Set{}, false, fmt.Errorf("%w: emprunt de la base partagée: %w", knownset.ErrSharedUnreadable, err)
+	}
+	defer releaseShared()
+	set, err = knownset.Load(ctx, playerDB, sharedDB, p.XUID)
+	return set, true, err
 }
