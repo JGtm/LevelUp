@@ -38,20 +38,20 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 | G1 | carte v2 base contre tête, gate 2 | [x] | +19 440 sains (487 188 -> 506 628), +349 211 utiles, 0 perdu, 0 film en baisse (`tsv/gate2_lot_contre_base.tsv`) |
 | G2 | gate 3 : `killsource json` (19 témoins + `1c4c63c2`) | [x] | 7 identiques, 6 diagnostic `calibration` seul, 7 avec des morts qui passent du balayage à la marche (81 morts, contenu identique) et `0797ce72` un candidat de santé de plus ; `read_path` persisté : `killsource-2026-10-08` (rotation de la chronique : archive_2) ; `tsv/gate3_killsource.tsv` |
 | G3 | `TestGoldenFilms` | [x] | 4 / 4 ok après régénération de `fccc61cd.golden` : seul le score de l oracle de `calibration` change (1205 -> 1211) |
-| G4 | gate de corpus sur une copie du parc, chaque FAUX / PERTE instruit, 0 MANQUE | [ ] | |
-| G5 | gofmt, vet (normal, research, integration), archlint | [ ] | |
-| G6 | golangci-lint 0 issue | [ ] | |
-| G7 | mutations rouges | [ ] | |
-| G8 | baseline des tests (aucun test retiré ni renommé) | [ ] | |
-| G9 | `make gate-push` (TMP court dédié) | [ ] | |
-| G10 | push + CI | [ ] | |
+| G4 | gate de corpus sur une copie du parc, chaque FAUX / PERTE instruit, 0 MANQUE | [!] | banc 17/19 ok ; FAUX 084a804d admis par le pilote ; MANQUE 0797ce72 (P2, image-clé) soumis à l utilisateur ; PERTE instruites (RAPPORT §4) |
+| G5 | gofmt, vet (normal, research, integration), archlint | [x] | vide ; rc 0 ×3 ; archlint ok |
+| G6 | golangci-lint 0 issue | [x] | 0 issues (film et module) |
+| G7 | mutations rouges | [x] | 16 / 16 |
+| G8 | baseline des tests (aucun test retiré ni renommé) | [x] | un test remplacé, absent de la baseline ; 5 ajoutés |
+| G9 | `make gate-push` (TMP court dédié) | [x] | par étapes : lint 0, web vert, baseline 9 532 / 9 532, 0 échec |
+| G10 | push + CI | [~] | push autorisé par le pilote ; état de la CI dans le message de clôture |
 
 ## Périmètre (2) et (3) : en attente du feu vert du pilote
 
 | # | Item | Statut |
 |---|---|---|
 | P2 | message de dégâts (genre 0) mal lu, fin de vue A trop tôt (découverte 34 de levelup-57) | [x] `39510278d` : genre 0 bien lu (FUN_1407f15a4 = port) ; cause dans la vue B : world-object i0 porte posée lue aux largeurs de la carte (exception GA2-5) ; correctif hors portée (table DÉFAUT), accord levelup-57 + utilisateur ; fccc61cd +10 949 sains, 599 / 635 trames à genre 0 fermées ; 20 films inchangés ; `grammar-2026-10-08.12` |
-| P3 | NEW de bipède lu dans une trame non fermée (`bf15f7ab`, slot 553, découverte 45) | [x] (ce commit) : le NEW est lu dans une trame FERMÉE et refusé par `contreditUneEntiteVivante` (slot lié en dur à `ti=20` gén. 0 par l image-clé, DEL jamais lu) ; règle : un NEW refusé est lié en fin de trame quand la fermeture prouve son en-tête (`neufs_prouves.go`) ; `bf15f7ab` 14:1094-1230 : 69 / 69 trames fermées (30 avant) ; carte v2 +1 046 sains, 0 perdu ; `rendParLAncrage` inchangé ; `grammar-2026-10-08.13` |
+| P3 | NEW de bipède lu dans une trame non fermée (`bf15f7ab`, slot 553, découverte 45) | [x] `e72132295` : le NEW est lu dans une trame FERMÉE et refusé par `contreditUneEntiteVivante` (slot lié en dur à `ti=20` gén. 0 par l image-clé, DEL jamais lu) ; règle : un NEW refusé est lié en fin de trame quand la fermeture prouve son en-tête (`neufs_prouves.go`) ; `bf15f7ab` 14:1094-1230 : 69 / 69 trames fermées (30 avant) ; carte v2 +1 046 sains, 0 perdu ; `rendParLAncrage` inchangé ; `grammar-2026-10-08.13` |
 
 ## Journal
 
@@ -70,6 +70,8 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 
 - (2) : chargeDegatsApres confrontée au lecteur `FUN_1407f15a4` et à l écrivain `FUN_142f19d34` (descripteur `143d0f978`, domaines 1,1,7 en `14080a018`) : identique. 4 films de killsource : 635 trames à genre 0 non fermées ; 543 avec S0 = E ; 11 où un début plus loin ferme, la marche depuis E y lit 6 à 8 records cohérents sur 2 700 à 3 900 bits (E est le vrai début) ; recherche exhaustive des fins de message : aucune chaîne ne mène au début localisé. Dernier record avant l échec : 437 fois `ti=38` (i0 + i2) dans `fccc61cd`, i0 precHigh 0, porte 1, 53 bits : l exception datée world-object i0 lisait les largeurs de la carte malgré la porte. Niveau de la ligne de table : immédiat `0x10` (`LEA R8D,[R9+0x10]` en `14076e2bc`), aucune dépendance au registre. Correctif hors portée (accord levelup-57 et utilisateur) ; deux baisses ti=37 d images-clés justifiées dans le golden. 78919882 : échecs après des records `ti=1`/`ti=0` du moteur (slot 4), non instruits plus avant.
 - (3) en cours : `bf15f7ab` slot 553 : le NEW `ti=35` gén. 1 de 14:1094 est lu dans une trame FERMÉE (et non « non fermée ») ; il est refusé par `contreditUneEntiteVivante` car le monde tient le slot lié en dur à `ti=20` gén. 0 (image-clé 14:6) sans DEL lu. 829 refus sur les 20 films (`p3_refus_20films.txt`).
+
+- Gates du lot : RAPPORT §4. Gate de corpus en 4 passes sur une copie du parc (scratchpad) ; bisections par `--base` sur `0797ce72` et `084a804d`.
 
 ## Découvertes
 
