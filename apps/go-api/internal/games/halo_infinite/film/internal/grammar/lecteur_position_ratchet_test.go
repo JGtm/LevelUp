@@ -75,6 +75,7 @@ func tableDesSitesDePosition() []siteDePosition {
 		{"consumeSpartanAbilityTag3", "", "lireE494", n10, 1, "i57 etiquette 3 : FUN_142f262d4, CALL 142f2638b"},
 		{"consumeLowFrequency", "", "lireE494", n10, 2, "ti=3 i0 : FUN_142ed4aec, CALLs 142ed4b1f et 142ed4e7f (thunk FUN_1424e0e38, R8D = R13D = 0x10)"},
 		{"consumeNavpointPositionOffset", "", "lireE494", n10, 1, "ti=12 i18 : FUN_140f04f68, CALL 140f04f8b (MOV R9D,0x10 en 140f04f80), sous FUN_14076f91c"},
+		{"consumeAbilityAnchorDeplacement", "", "lireE494", n10, 1, "i59 corps etiquettes 4 et 5 : FUN_142f25e90, CALL 142f2605d (LEA R8D,[RBP+0x11], RBP = -1)"},
 		// Vue A (lots LN et VA) : les charges de message, `vtable + 0x68` de leur descripteur.
 		{"chargeDetonation", "", "lireE494Sur", 0xf, 1, "projectile_detonate : FUN_1408096f8, CALL 140809783 (MOV R9D,0xf 140809775), sous FUN_14076f91c"},
 		{"chargeImpact", "", "lireE494Sur", 0xc, 1, "projectile_impact_effect : FUN_1410f03b4, CALL 1410f045b (MOV R9D,0xc 1410f044d), sous FUN_14076f91c"},
@@ -174,10 +175,6 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 // que parce qu elle n est PAS un portage de `FUN_14076e524`, ou parce que le site est une exception
 // datee du portage.
 var exemptionsDeLecteurLocal = map[string]string{
-	"components_biped_anchor.go": "2026-09-27 (lot J6.3) : le corps tag==3 d i59 lit trois axes aux " +
-		"largeurs de la carte selon une grammaire MESUREE ; chez l ecrivain `FUN_142f25e90`, " +
-		"l appel a `FUN_14076e494(0x10)` (CALL 142f2605d) est dans les etiquettes 4 et 5, pas dans la " +
-		"3 que ce port lit — ce n est donc pas un site du lecteur. Decouverte consignee au rapport J6.3.",
 	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur), 2026-09-28 (lot J6-bis) et " +
 		"2026-09-29 (lot R3), 2026-09-30 (lot R3-bis) : les treize exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
 }

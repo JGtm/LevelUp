@@ -60,3 +60,18 @@ package grammar
 // filtres seul, `v = 1 < param_4`, [consumeManagedObjectInteractionFilter]). Contre
 // `grammar-2026-10-08.2` : un record `ti=10` qui s arretait sur `i22` se lit jusqu au composant
 // suivant.
+//
+// ENTREE `grammar-2026-10-08.4` (2026-10-08, lot des arrets de la vue B, suite, `ti=35 i59`) : LE
+// CORPS DE L ANCRE DU GRAPPIN SE LIT COMME LE JEU LE LIT (`FUN_142f25e90`, ses huit etiquettes,
+// [consumeAbilityAnchorBody]).
+//
+// Ce qui change, contre `grammar-2026-10-08.3` : la grammaire MESUREE du 2026-08-16 (deux etiquettes,
+// trois « drapeaux » et un champ de sept bits) est remplacee par celle du lecteur du jeu : le prefixe
+// `FUN_142f26e40` (une reference de categorie 1, puis `FUN_142f04664`, dont la position de
+// `FUN_14076e494` au niveau 0x10 quand la reference est absente), six drapeaux, puis la branche de
+// l etiquette. Aucune etiquette n arrete plus la marche. La position d une ancre n est publiee
+// (`grappleReads`) que lue par `FUN_14076e524` a un index de plage, aux largeurs de la carte
+// ([AbilityNonPredictedState.PosCarte]) ; [consume142f04664] rend sa position. Mini-bobine : les
+// trames 3:636 et 3:722 passent le slot 513 et se ferment ; un record bipede de plus, et la passe
+// des armes au sol ne rend plus les records `ti=37` de ces deux trames (`worldObjects_ti42` 54 -> 53,
+// les points des slots 1525 a 1535 a ces deux instants).

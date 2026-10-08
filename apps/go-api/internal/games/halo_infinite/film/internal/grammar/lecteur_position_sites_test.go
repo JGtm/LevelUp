@@ -240,6 +240,11 @@ func casDesTacmaps() []casDeSite {
 			lire: parNom(compNavpointPositionOffset, 12, 1)},
 		{nom: "navpoint-position-offset idx=3 carte a quatre plages", indexW: 2, flux: e524(3, 2, axesCarteNiveau16),
 			lire: parNom(compNavpointPositionOffset, 12, 1)},
+		// i59, corps etiquettes 4 et 5 : FUN_142f25e90, CALL 142f2605d, niveau 0x10 ; l ecrivain
+		// (FUN_142f272ac) pose la reference de categorie 5, un vecteur, FUN_1407eb600(0x10), R(24), R(9).
+		{nom: "i59 corps etiquettes 4 et 5", indexW: 1,
+			flux: concat(seul(bit(false), bit(true)), e524(0, 1, axesCarteNiveau16), seul(fixe(24), fixe(9))),
+			lire: func(br *Lecteur) { consumeAbilityAnchorDeplacement(br, &AbilityNonPredictedState{}) }},
 		// ti=34 i7 tacmap-waypointstate : FUN_140f04d88, CALL 140f04de0 ; R(1), R(32), garde f91c +
 		// e524, puis R(1) quand le niveau du registre depasse 1.
 		// EXCEPTION DATEE (lot R3-bis, 2026-09-30) : le site garde son ancien lecteur.

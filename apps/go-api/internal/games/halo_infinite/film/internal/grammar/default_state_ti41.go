@@ -128,17 +128,18 @@ func consume1408eff64(br *Lecteur, p bool) {
 
 // consume142f04664 lit `FUN_142f04664(dst, lecteur, c, p)` : c nul -> `FUN_14076e494(lecteur,
 // dst, 0x10, 0, p, 0)` (la position de niveau 16) ; sinon R(2), `FUN_140c1e924` = trois R(13)
-// (`MOV R9D,0xd` @142f04745, boucle de `FUN_140c1e9d4`), puis R(1)[R(16)].
-func consume142f04664(br *Lecteur, c bool) {
+// (`MOV R9D,0xd` @142f04745, boucle de `FUN_140c1e9d4`), puis R(1)[R(16)]. Rend la position et
+// `true` quand c est nul ; `false` sinon (la branche `c` ne lit pas de position de `FUN_14076e524`).
+func consume142f04664(br *Lecteur, c bool) (positionQuantifiee, bool) {
 	if !c {
-		lireE494(br, niveauPosition)
-		return
+		return lireE494(br, niveauPosition), true
 	}
 	br.ReadBits(2)
 	for range 3 {
 		br.ReadBits(largeurAxe142f04664)
 	}
 	consumeGateR(br, 16)
+	return positionQuantifiee{idx: -1}, false
 }
 
 // largeurAxe142f04664 : la largeur des trois axes de `FUN_140c1e9d4` (`MOV R9D,0xd`).

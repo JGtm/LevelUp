@@ -97,11 +97,11 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeBipedSpartanAbility(br)
 		return variant, nil, true
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
-		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
-		// ported=false sur les seules valeurs internes jamais observées — désync propre,
-		// même contrat qu i57 ci-dessus. param_4 est le `level` du registre du film (i59 -> 2,
+		// Corps tag==3 (FUN_142f25e90, ancre du grappin) : ses huit étiquettes, lues dans le jeu
+		// le 2026-10-08 ; aucune n échoue. param_4 est le `level` du registre du film (i59 -> 2,
 		// la queue R(3) est lue — l ancien global brut valait 0 et la sautait).
-		return variant, nil, consumeBipedSpartanAbilityNonPredictedState(br, level)
+		consumeBipedSpartanAbilityNonPredictedState(br, level)
+		return variant, nil, true
 	case "simulation-state", "simulation-state-component": // i60 (thunk 142f02434 -> FUN_142ED6D88, vérifié live)
 		// GRAMMAIRE COMPLÈTE depuis le 2026-08-17 (lot R7-b) : structure connue (flag +
 		// 2×gate5 + 8×R16 + 2×R2 + R1[R19]+R8) PLUS la queue FUN_14076e494, dont le prédicat
