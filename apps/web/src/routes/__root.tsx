@@ -9,12 +9,11 @@
 import { createRootRouteWithContext, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import type { RouterContext } from '@/app/router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  bootstrapRetryDelay,
+  createBootstrapRetryPolicy,
   isServerStartingError,
   serverStartingStepKey,
-  shouldRetryBootstrap,
 } from '@/app/serverStartup'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
@@ -41,6 +40,8 @@ export function RootLayout() {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // Politique de rejeu à état (compteur cumulé de TanStack) : une par instance, stable.
+  const [bootstrapRetry] = useState(() => createBootstrapRetryPolicy())
 
   const { data, isLoading, isError, failureReason } = useQuery({
     queryKey: queryKeys.bootstrap,
@@ -61,8 +62,8 @@ export function RootLayout() {
     refetchOnWindowFocus: () => !useAppShellStore.getState().isTitleSwitching,
     // Serveur qui démarre (réseau, 502, 503 server_starting) : réinterrogation chaque
     // seconde jusqu'au plafond, puis l'écran « API injoignable » (cf. serverStartup.ts).
-    retry: shouldRetryBootstrap,
-    retryDelay: bootstrapRetryDelay,
+    retry: bootstrapRetry.retry,
+    retryDelay: bootstrapRetry.retryDelay,
   })
 
   // Mécanisme UNIQUE de titre d'onglet (I18) : keyé sur [pathname, locale] — un

@@ -7,18 +7,19 @@
  * réseau) ou sur un 502 du proxy (Vite en dev, nginx en prod). Ces trois cas sont « le
  * serveur démarre » : la page réinterroge chaque seconde, sans compteur, jusqu'à
  * SERVER_STARTUP_MAX_WAIT_MS ; au-delà, l'écran « API injoignable ». Toute autre erreur
- * du /bootstrap garde quelques rejeux espacés (BOOTSTRAP_OTHER_ERROR_RETRIES).
+ * du /bootstrap garde quelques rejeux espacés (BOOTSTRAP_OTHER_ERROR_RETRIES). Cf.
+ * createBootstrapRetryPolicy.
  */
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
 
 /** Intervalle de réinterrogation pendant le démarrage du serveur. */
 export const SERVER_STARTUP_POLL_MS = 1000
 
-/** Attente maximale d'un serveur qui démarre (couvre une compilation par air). */
+/**
+ * Attente maximale d'un serveur qui démarre (couvre une compilation par air), mesurée en
+ * temps depuis le premier échec « en démarrage » de la série de tentatives.
+ */
 export const SERVER_STARTUP_MAX_WAIT_MS = 120_000
-
-/** Nombre de réinterrogations correspondant à SERVER_STARTUP_MAX_WAIT_MS. */
-export const SERVER_STARTUP_MAX_RETRIES = Math.ceil(SERVER_STARTUP_MAX_WAIT_MS / SERVER_STARTUP_POLL_MS)
 
 /** Code d'erreur de la réponse 503 d'un serveur en cours d'initialisation. */
 export const SERVER_STARTING_CODE = 'server_starting'
@@ -76,14 +77,60 @@ export function serverStartingStepKey(error: unknown): CommonManifestKey | undef
   return STEP_MESSAGE_KEYS[step]
 }
 
-/** Rejeu du /bootstrap : chaque seconde tant que le serveur démarre, quelques fois sinon. */
-export function shouldRetryBootstrap(failureCount: number, error: unknown): boolean {
-  const limit = isServerStartingError(error) ? SERVER_STARTUP_MAX_RETRIES : BOOTSTRAP_OTHER_ERROR_RETRIES
-  return failureCount < limit
+/** Politique de rejeu du /bootstrap, à brancher sur `retry` et `retryDelay` de useQuery. */
+export interface BootstrapRetryPolicy {
+  retry: (failureCount: number, error: unknown) => boolean
+  retryDelay: (failureCount: number, error: unknown) => number
 }
 
-/** Délai avant le rejeu n° attempt (0 = premier rejeu) du /bootstrap. */
-export function bootstrapRetryDelay(attempt: number, error: unknown): number {
-  if (isServerStartingError(error)) return SERVER_STARTUP_POLL_MS
-  return Math.min(BOOTSTRAP_OTHER_ERROR_BASE_DELAY_MS * 2 ** attempt, BOOTSTRAP_OTHER_ERROR_MAX_DELAY_MS)
+/**
+ * Crée la politique de rejeu d'UNE requête /bootstrap (état propre à l'instance).
+ *
+ * TanStack Query passe un compteur d'échecs CUMULÉ sur toute une série de tentatives, et
+ * appelle retryDelay puis retry pour chaque échec. La politique en tire :
+ *   - serveur qui démarre : réinterrogation chaque seconde tant que moins de
+ *     SERVER_STARTUP_MAX_WAIT_MS se sont écoulées depuis le premier échec « en
+ *     démarrage » de la série (plafond mesuré en temps) ;
+ *   - autre erreur : BOOTSTRAP_OTHER_ERROR_RETRIES rejeux espacés de 0,5 s à 4 s, comptés
+ *     à partir de la dernière erreur « en démarrage » (pas sur le compteur cumulé) : un
+ *     serveur enfin prêt qui rend une erreur ordinaire obtient tous ses rejeux.
+ * Un compteur qui repart en arrière (ou un même rang avec une autre erreur) ouvre une
+ * nouvelle série.
+ */
+export function createBootstrapRetryPolicy(now: () => number = Date.now): BootstrapRetryPolicy {
+  let last: { failureCount: number; error: unknown } | null = null
+  let startupSince: number | null = null
+  // Rang (compteur cumulé) de la première erreur ordinaire qui suit la dernière attente.
+  let ordinaryBase = 0
+
+  function observe(failureCount: number, error: unknown): void {
+    if (last && last.failureCount === failureCount && last.error === error) return
+    if (!last || failureCount <= last.failureCount) {
+      startupSince = null
+      ordinaryBase = 0
+    }
+    last = { failureCount, error }
+    if (isServerStartingError(error)) {
+      startupSince ??= now()
+      ordinaryBase = failureCount + 1
+    }
+  }
+
+  return {
+    retry(failureCount, error) {
+      observe(failureCount, error)
+      if (isServerStartingError(error)) {
+        return now() - (startupSince ?? now()) < SERVER_STARTUP_MAX_WAIT_MS
+      }
+      return failureCount - ordinaryBase < BOOTSTRAP_OTHER_ERROR_RETRIES
+    },
+    retryDelay(failureCount, error) {
+      observe(failureCount, error)
+      if (isServerStartingError(error)) return SERVER_STARTUP_POLL_MS
+      return Math.min(
+        BOOTSTRAP_OTHER_ERROR_BASE_DELAY_MS * 2 ** (failureCount - ordinaryBase),
+        BOOTSTRAP_OTHER_ERROR_MAX_DELAY_MS,
+      )
+    },
+  }
 }
