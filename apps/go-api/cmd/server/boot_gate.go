@@ -5,8 +5,8 @@
 // répond au reste — API, sondes de santé, routes serveur — un 503 JSON
 // {"code":"server_starting","retryable":true,"details":{"step":"<étape>"}} ; la page attend
 // donc le serveur au lieu d'échouer. Le routeur est branché d'un seul échange atomique
-// (bootServer.openRouter), exactement là où le port s'ouvrait auparavant : il ne reçoit
-// aucune requête avant d'être entièrement câblé.
+// (bootServer.openRouter) à la toute fin de l'initialisation : il ne reçoit aucune requête
+// avant d'être entièrement câblé (registre, crons et tâches de fond compris).
 //
 // Arrêt : le premier signal (Ctrl+C, SIGTERM) pendant l'initialisation est mémorisé — main
 // finit l'initialisation puis enchaîne l'arrêt propre habituel (bases fermées) sans brancher

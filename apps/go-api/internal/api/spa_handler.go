@@ -35,9 +35,8 @@ func newSPAHandler(dist string, serveIndex indexServer) (h http.HandlerFunc, ok 
 			return
 		}
 		if middleware.IsStaticAssetPath(req.URL.Path) {
-			// Log volontairement non throttle : c'est le silence de l'ancien fallback
-			// (200 text/html sur tout asset absent) qui rendait ce genre de manque
-			// invisible en prod.
+			// Log volontairement non throttle : un asset absent du dist doit rester
+			// visible en prod (un repli silencieux en index.html le masquerait).
 			slog.WarnContext(req.Context(), "static asset not found", "path", req.URL.Path)
 			http.NotFound(w, req)
 			return
