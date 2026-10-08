@@ -657,13 +657,49 @@ rougissent entre deux montées).
   Tout écart avec la mesure du crochet est expliqué avant LK.4.
 
 ### Étape LK.4 — Instruction du résidu sous LK (sans correction)
-- [ ] LK.4.1 Publier, depuis I-d0 de `$S/lk3`, le résidu chiffré : 88 arrêts (55 i59, 33 i58) ;
+- [x] LK.4.1 Publier, depuis I-d0 de `$S/lk3`, le résidu chiffré : 88 arrêts (55 i59, 33 i58) ;
       bloquant vide sur 21 films, arrêt sur 7 (R-6) ; écarts de fin R-5.
-- [ ] LK.4.2 `60ae07c4` +33 bits : premier composant de largeur divergente (dump R, largeurs modales
+      *Fait (sous la production de LK.3, sorties `$S/lk4/`)* : **135 arrêts** sur 10 710 records
+      bipèdes — 55 sur i59 (`0797ce72` 1, `084a804d` 1, `111fa685` 2, `60ae07c4` 2, `a349fea8` 34,
+      `a521164d` 15 ; inchangé), 28 sur i58 et 52 au début d'i0, tous sur `50247b26` (51
+      `largeur_handle_moteur_un`, 1 `position_non_finie`) ; les 88 du crochet deviennent 135 par la
+      seule garde E-4 et l'arrêt de finitude sur ce film sans section d'identification (5 de ses 33
+      arrêts i58 et 47 de ses traversées s'arrêtent désormais sur i0 ; journal LK.3). Bloquant `ti=35`
+      (I-ferm) vide sur 21 films, arrêt sur 7 : i59 sur `0797ce72`, `084a804d`, `111fa685`,
+      `60ae07c4`, `a349fea8`, `a521164d` ; i0 sur `50247b26` (i58 sous le crochet, R-6). Écarts de
+      fin : 0 pour 5 328, multiple de −108 pour 2 801, autre pour 2 223 dont 2 099 sur 4 films
+      (`a349fea8` 967, `50247b26` 414, `a521164d` 387, `60ae07c4` 331) — R-5 à un record près, passé
+      de « autre » à « −108 » sur `50247b26`. Commandes : `awk` des lignes `S` `desync_*` de
+      `$S/lk3/images_cles.tsv` (`$S/lk4/desync_lk3.txt`) ; colonne 6 des lignes `ti=35` de
+      `$S/lk3/fermeture_corpus.tsv` (`$S/lk4/bloquant_ti35_lk3.txt`) ; `awk -f $S/lk4/ecart_fin.awk`
+      (règle vérifiée : rend R-5 à l'identique sur `images_cles_portee.tsv`) → `$S/lk4/ecart_fin_lk3.txt`.
+- [x] LK.4.2 `60ae07c4` +33 bits : premier composant de largeur divergente (dump R, largeurs modales
       comparées à `084a804d` et `111fa685` : `sonde_f24/modal.txt`) ; candidats nommés i57 (28 bits
       dans 250/331 records contre 2) et i53 (36 contre 30) ; conclusion écrite (adjugé ou nommé).
-- [ ] LK.4.3 Formats 20-21 après i22, `50247b26` avant i22, témoin +1 bit absorbé (223/227) : une
+      *Fait — NOMMÉ, non adjugé.* Sonde rejouée sous LK.3 (`RI27D1_RECORDS=60ae07c4,084a804d,111fa685
+      RI27C_FILMS=` les mêmes, I-d0 → `$S/lk4/sonde_f24/`) ; largeurs modales par `$S/lk4/modal.awk`
+      (règle vérifiée : rend `sonde_f24/modal.txt` à l'identique sur l'ancien `r.tsv`) : identiques à
+      la sonde du crochet. Registre `ti=35` relu sur les trois films (instrument temporaire, non
+      commité) : i43..i59 de mêmes noms et niveaux (`60ae07c4` = HI_1_8_0, les deux autres
+      HI_1_10_0). Largeurs de `60ae07c4` jamais vues dans les records fermés des deux références :
+      i43 (201) et i44 — les armes, de largeur propre à l'arme : Bandit Evo, lue ÉGALE à la fenêtre
+      dans 254 records sur 332, l'alignement tient donc au moins jusqu'à l'identité de l'arme d'i43 —,
+      puis **i53** `biped-malleable-property-component`
+      (`FUN_140ff6764`) 36 bits dans 308/332 records contre 30 dans 953/956 records fermés des
+      références, et i57 `biped-spartan-ability-component` 28 contre 2. Écart de fin PAR RECORD
+      (frontière = bit du record du slot suivant de la même trame, 223 records appariés) : les 163
+      records à +33 ont TOUS i53 = 36 et i57 = 28 (+6 + 26 = +32) ; 46 records à +18 ont i53 = 36,
+      i55 = 4, i57 = 2, i58 = 19 (+6 − 1 + 12 = +17). Les deux populations partagent i53 = 36 et un bit
+      de plus que la somme des écarts de largeur. Conclusion : le premier composant de largeur
+      divergente est **i53** ; i57, i55 et i58 divergent EN AVAL, selon la population ; le bit
+      constant restant n'est pas localisé par la comparaison modale (il peut précéder i53, dans un
+      composant de largeur dépendante des données). Non adjugé faute d'oracle : la grammaire de
+      `FUN_140ff6764` (dont le champ de largeur R(5) puis R(n)) est à relire dans le jeu sur ce build
+      avant toute correction (§7, D-16).
+- [x] LK.4.3 Formats 20-21 après i22, `50247b26` avant i22, témoin +1 bit absorbé (223/227) : une
       ligne d'état par point au §7 (D-4 à D-6), sans correction.
+      *Fait* : une ligne « État sous LK.3 » à D-4, D-5 et D-6, chacune avec ses chiffres et sa
+      commande (`taux.sh`, `par_format.sh`, lignes `S` de l'instrument d0).
 - Gate LK.4 : le §7 porte un chiffre et une commande pour chaque point ; aucun code.
 
 ### Étape LK.5 — Fidélité sous la portée, une correction à la fois, retenue seulement sans baisse
@@ -899,10 +935,28 @@ refusionner, rejouer l'étape 0).
   instruit (la marche `WalkKeyframeWorld` a probablement changé depuis R7).
 - D-4 *(mesure 1)* `50247b26` (format 20) illisible en i22 dans les deux modes, alors que `a349fea8`
   (même format) lit n(i22) = 4 dans 979 records sous LK.
+  *État sous LK.3 (2026-10-08, LK.4.3, sans correction)* : inchangé. `50247b26` : n(i22) = 4 dans 37
+  records sur 668 (11 égales, 14 différentes, 12 grammaire seule), i22 lu à un autre compte dans 332,
+  non atteint dans 299 (247 sous le crochet) — dont les 52 records qui s'arrêtent désormais au début
+  d'i0 (51 `largeur_handle_moteur_un`, 1 `position_non_finie` ; le film n'a pas de section
+  d'identification) ;
+  `a349fea8` : 979 sur 984. Commande : I-d0 (§1.4) → `$S/lk3/images_cles.tsv`, puis
+  `awk -F'\t' '$1=="S" && ($2=="50247b26"||$2=="a349fea8") && $3 ~ /^(grenades|desync_)/ && $3 !~ /\|/'`.
 - D-5 *(mesure 1)* Formats 20-21 : records fermés (24) et à n(i22) = 4 (1 404) à armes et munitions
   fausses après i22.
+  *État sous LK.3 (LK.4.3, sans correction)* : inchangé pour les fermés — classe A 24 records, armes
+  0/16, grenades 11/11, chargeurs 0/12 et 0/10, réserves 0/15 et 0/15 ; classe B 1 400 records (1 404
+  sous le crochet : les quatre records de `50247b26` arrêtés au début d'i0 passent en C), armes
+  55/1 184, grenades 1 138/1 155, chargeur0 45/791, réserve0 49/1 155. Commande :
+  `bash $REF/ref_corrigee/taux.sh $S/lk3/images_cles.tsv` → `$S/lk4/taux_lk3.txt`.
 - D-6 *(mesure 1)* Sous LK, le témoin +1 bit ferme 227 records dont 223 aussi fermés en vrai : le
   décalage d'un bit est absorbé, le témoin n'y est plus indépendant ; taux de hasard propre 4/5 311.
+  *État sous LK.3 (LK.4.3, sans correction)* : 226 fermés au témoin, dont 222 aussi fermés en vrai
+  (f24 63/62, f25 12/12, f27 149/148, f20 1/0, f21 1/0) ; le record de `f25` perdu par le témoin s'y
+  arrête sur `position_non_finie` (lecture décalée ; attribué par la mesure sans les arrêts,
+  `$S/lk3/sans_arrets/`) ; taux de hasard propre inchangé, 4/5 311 (226 − 222 fermetures du seul
+  témoin sur 10 710 − 5 399 records non fermés). Commande :
+  `bash $REF/ref_corrigee/par_format.sh $S/lk3/images_cles.tsv` → `$S/lk4/par_format_lk3.tsv`.
 - D-7 *(plan)* La garde low-frequency de `ti=3` repose sur une sonde (D-REV-2 : `fb1a1a72` 0/26 →
   19/26), pas sur une lecture : à relire (LK.1.8).
 - D-8 *(mesure 2)* Sous LK, traversées changées sans changement de fermeture : `ti=40` 6 183 (désync
@@ -930,6 +984,12 @@ refusionner, rejouer l'étape 0).
 - D-15 *(LK.3)* Les instruments `campagne_overlay` (`r_veh_ti40`, `r_veh_ti40_variantes`,
   `r_veh_imagecle`) ont été adaptés sans pouvoir être compilés : leur surcouche (`r_veh_overlay/`, les
   `overlay_campagne.json`) n'est pas dans le dépôt et remplace des fichiers entiers d'une tête ancienne.
+- D-16 *(LK.4.2)* `60ae07c4` (HI_1_8_0) : le premier composant de largeur divergente du +33 est i53
+  `biped-malleable-property-component` (`FUN_140ff6764` : bloc `FUN_1407efc5c`, puis R(5) = n et
+  R(n)) — 36 bits dans 308/332 records contre 30 dans 953/956 records fermés de `084a804d` et
+  `111fa685` (HI_1_10_0, même registre) ; i57, i55, i58 divergent en aval selon la population ; un
+  bit constant reste non localisé. Commandes et sorties : LK.4.2 (`$S/lk4/sonde_f24/`). À relire dans
+  le jeu avant toute correction (règle des largeurs lues).
 
 ## 8. Journal
 
@@ -1105,3 +1165,17 @@ refusionner, rejouer l'étape 0).
   (tranche 30, slot 672, bit 199 752) et des témoins négatifs s'arrêtent sur `position_non_finie`.
   Aucun de ces records ne fermait sous le crochet (fermés inchangés partout). Découvertes D-12 à
   D-15 (§7).
+- 2026-10-08 (nuit) : ÉTAPE LK.4 CLOSE (LK.4.1 à LK.4.3 `[x]`), aucune ligne de code (un instrument
+  temporaire de relevé du registre, joué puis supprimé, jamais commité). Sorties sous `$S/lk4/`.
+  **LK.4.1** : résidu sous la production de LK.3 — 135 arrêts (55 i59 inchangés ; 28 i58 et 52 au
+  début d'i0, tous sur `50247b26`, film sans section d'identification : 51 `largeur_handle_moteur_un`,
+  1 `position_non_finie`) ; bloquant `ti=35` vide sur 21 films, arrêt sur 7 (i59 sur six, i0 sur
+  `50247b26`) ; écarts de fin 5 328 / 2 801 / 2 223 (R-5 à un record près). **LK.4.2** : NOMMÉ, non
+  adjugé — premier composant de largeur divergente de `60ae07c4` : i53
+  `biped-malleable-property-component` (36 contre 30) ; les 163 records à +33 ont tous i53 = 36 et
+  i57 = 28, les 46 à +18 ont i53 = 36 et i55, i58 divergents ; un bit constant non localisé (D-16).
+  **LK.4.3** : lignes d'état à D-4 (`50247b26` toujours illisible en i22 : 37 records à n = 4 sur 668 ;
+  `a349fea8` 979/984), D-5 (formats 20-21 : classe A 24 records, armes 0/16, munitions 0 ; classe B
+  1 400 records, armes 55/1 184), D-6 (témoin : 226 fermés dont 222 en vrai, hasard propre 4/5 311).
+  **Gate LK.4** : chaque point du §7 porte un chiffre et une commande ; aucun code de production ni de
+  test modifié. Prochaine étape : LK.5 (non commencée, consigne du superviseur).
