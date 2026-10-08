@@ -30,6 +30,7 @@ package migration
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -92,17 +93,20 @@ ORDER BY s.sequence_name, c.table_name, c.column_name`
 // qu'elle alimente (contrat en tête de fichier). Idempotente : une base saine, ou une base
 // déjà alignée, n'est pas touchée (aucune valeur consommée, aucun log). Chaque séquence
 // avancée est journalisée (base, séquence, avant, après) et comptée. Rend la liste des
-// séquences avancées ; la première erreur arrête la passe.
+// séquences avancées. Une séquence en échec n'empêche pas d'aligner les suivantes : la passe
+// va au bout et rend les erreurs réunies (errors.Join).
 func AlignSequencesToColumns(ctx context.Context, db *sql.DB) ([]SequenceAlignment, error) {
 	uses, err := loadSequenceUses(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 	var aligned []SequenceAlignment
+	var errs []error
 	for _, u := range uses {
 		a, moved, err := alignSequence(ctx, db, u)
 		if err != nil {
-			return aligned, err
+			errs = append(errs, err)
+			continue
 		}
 		if !moved {
 			continue
@@ -114,7 +118,7 @@ func AlignSequencesToColumns(ctx context.Context, db *sql.DB) ([]SequenceAlignme
 			"next_before", a.NextBefore, "column_max", a.ColumnMax,
 			"next_after", a.NextAfter, "consumed", a.Consumed)
 	}
-	return aligned, nil
+	return aligned, errors.Join(errs...)
 }
 
 // AlignSequencesBestEffort applique AlignSequencesToColumns à l'ouverture d'une base sans

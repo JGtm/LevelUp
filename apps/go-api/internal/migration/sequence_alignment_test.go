@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/observability"
 )
 
 func openSeqTestDB(t *testing.T, path string) *sql.DB {
@@ -222,5 +224,95 @@ func TestAlignSequences_SequencePartageeEtIdsNullIntacts(t *testing.T) {
 	}
 	if nulls != 2 || total != 3 {
 		t.Fatalf("lignes modifiées : %d NULL / %d lignes, attendu 2 / 3", nulls, total)
+	}
+}
+
+// Séquence en retard dont l'écart dépasse maxSequenceCatchUp : refus, rien consommé. Un max de
+// colonne à 20 M suffit, aucune valeur n'est réellement tirée.
+func TestAlignSequences_RefusAuDelaDeLaBorneDeRattrapage(t *testing.T) {
+	db := openSeqTestDB(t, filepath.Join(t.TempDir(), "borne.duckdb"))
+	execSeq(t, db,
+		`CREATE SEQUENCE s START 1`,
+		`CREATE TABLE t (id BIGINT DEFAULT nextval('s'), v INTEGER)`,
+		`INSERT INTO t (id, v) VALUES (20000000, 0)`,
+	)
+	got, err := AlignSequencesToColumns(context.Background(), db)
+	if err == nil || !strings.Contains(err.Error(), "refusé") || len(got) != 0 {
+		t.Fatalf("refus attendu au-delà de %d valeurs : got=%+v err=%v", maxSequenceCatchUp, got, err)
+	}
+	if next := nextOf(t, db, "s"); next != 1 {
+		t.Fatalf("séquence consommée malgré le refus : prochaine %d, attendu 1", next)
+	}
+}
+
+// Séquence en retard à pas négatif ou en CYCLE : non alignable, refus explicite, rien consommé.
+func TestAlignSequences_RefusPasNegatifOuCycle(t *testing.T) {
+	cases := []struct {
+		name, ddl string
+		nextWant  int64
+	}{
+		{"cycle", `CREATE SEQUENCE s START 1 MAXVALUE 1000 CYCLE`, 1},
+		{"pas_negatif", `CREATE SEQUENCE s INCREMENT BY -1`, -1},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			db := openSeqTestDB(t, filepath.Join(t.TempDir(), c.name+".duckdb"))
+			execSeq(t, db, c.ddl,
+				`CREATE TABLE t (id BIGINT DEFAULT nextval('s'), v INTEGER)`,
+				`INSERT INTO t (id, v) VALUES (5, 0)`,
+			)
+			got, err := AlignSequencesToColumns(context.Background(), db)
+			if err == nil || !strings.Contains(err.Error(), "non alignable") || len(got) != 0 {
+				t.Fatalf("refus « non alignable » attendu : got=%+v err=%v", got, err)
+			}
+			if next := nextOf(t, db, "s"); next != c.nextWant {
+				t.Fatalf("séquence consommée malgré le refus : prochaine %d, attendu %d", next, c.nextWant)
+			}
+		})
+	}
+}
+
+// Une séquence en échec (ici : max de colonne au-delà de MAXVALUE) n'empêche pas d'aligner les
+// suivantes ; l'erreur est rendue. Les noms sont choisis pour que l'échec passe EN PREMIER
+// (catalogue trié par nom de séquence).
+func TestAlignSequences_UneErreurNArretePasLaPasse(t *testing.T) {
+	db := openSeqTestDB(t, filepath.Join(t.TempDir(), "passe.duckdb"))
+	execSeq(t, db,
+		`CREATE SEQUENCE a_borne MAXVALUE 100`,
+		`CREATE TABLE a (id BIGINT DEFAULT nextval('a_borne'), v INTEGER)`,
+		`INSERT INTO a (id, v) VALUES (100, 0)`,
+		`CREATE SEQUENCE z_retard START 1`,
+		`CREATE TABLE z (id BIGINT DEFAULT nextval('z_retard') PRIMARY KEY, v INTEGER)`,
+		`INSERT INTO z (id, v) SELECT range + 1, range FROM range(10)`,
+	)
+	got, err := AlignSequencesToColumns(context.Background(), db)
+	if err == nil || !strings.Contains(err.Error(), "MAXVALUE") {
+		t.Fatalf("erreur MAXVALUE de a_borne attendue, err=%v", err)
+	}
+	if len(got) != 1 || got[0].Sequence != "z_retard" || got[0].NextAfter != 11 {
+		t.Fatalf("z_retard doit être alignée malgré l'échec de a_borne : %+v", got)
+	}
+	if next := nextOf(t, db, "a_borne"); next != 1 {
+		t.Fatalf("a_borne consommée malgré l'échec : prochaine %d", next)
+	}
+}
+
+// Chaque séquence réellement avancée incrémente duckdb_sequence_aligned_total ; une passe sans
+// retard ne le touche pas.
+func TestAlignSequences_CompteurDesAlignements(t *testing.T) {
+	db := openSeqTestDB(t, filepath.Join(t.TempDir(), "compteur.duckdb"))
+	execSeq(t, db, lagSchema...)
+	before := observability.LoadCounter(sequenceAlignedCounter)
+	if got, err := AlignSequencesToColumns(context.Background(), db); err != nil || len(got) != 1 {
+		t.Fatalf("alignement: got=%+v err=%v", got, err)
+	}
+	if d := observability.LoadCounter(sequenceAlignedCounter) - before; d != 1 {
+		t.Fatalf("%s : +%d, attendu +1", sequenceAlignedCounter, d)
+	}
+	if _, err := AlignSequencesToColumns(context.Background(), db); err != nil {
+		t.Fatalf("2e passage: %v", err)
+	}
+	if d := observability.LoadCounter(sequenceAlignedCounter) - before; d != 1 {
+		t.Fatalf("passe sans retard comptée : +%d au total, attendu +1", d)
 	}
 }
