@@ -31,9 +31,9 @@ import (
 //
 //   - internal/scheduler/spartan_customization_bearer.go (2026-10-08) : le cron de
 //     personnalisation Spartan choisit le token qui lit l'apparence d'un joueur. `HasPlayer`
-//     y dit si le joueur, puis chaque porteur candidat, a un créneau avant de le prendre en
-//     PolicyPinnedPlayer ; un joueur sans token propre est lu avec le token d'un porteur
-//     (acquireReaderToken), jamais sauté.
+//     y dit si le joueur, puis le compte admin de l'instance, a un créneau avant de le prendre
+//     en PolicyPinnedPlayer ; un joueur sans token propre est lu avec le token du compte admin
+//     (acquireReaderToken), et sans lui l'échec est journalisé et compté, jamais tu.
 var exemptionsHasPlayer = map[string]bool{
 	"internal/scheduler/spartan_customization_bearer.go": true,
 }

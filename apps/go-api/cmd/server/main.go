@@ -1204,7 +1204,7 @@ func main() {
 	// (même path que la visite home) → kickoffBackgroundRefresh → persistPartial
 	// field-aware. Garantit qu'un joueur qui n'ouvre jamais l'app a quand
 	// même sa customisation populée en DB, y compris quand ses propres jetons
-	// sont morts (lecture par le token d'un autre compte, cf. acquireReaderToken).
+	// sont morts (lecture par le token du compte admin, cf. acquireReaderToken).
 	if autoSyncPool != nil && reg != nil {
 		// Provider qui adapte la signature ServiceRegistry.CareerLiveCtx vers
 		// celle attendue par le cron (retourne uniquement le SpartanIdentityFetcher).
@@ -1216,7 +1216,7 @@ func main() {
 			return svc, nil
 		}
 		// Comptes de l'instance (store partagé `us`) : un joueur aux jetons morts est lu
-		// d'abord avec le token du compte de rôle admin, celui de l'utilisateur.
+		// avec le token du compte de rôle admin, celui de l'utilisateur, et d'aucun autre.
 		spartanCron := scheduler.NewSpartanCustomizationCron(
 			cfg, autoSyncPool, provider, titleSlug, 0,
 		).WithAccounts(us)

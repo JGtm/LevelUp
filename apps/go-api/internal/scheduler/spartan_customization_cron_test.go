@@ -143,8 +143,8 @@ func TestSpartanCron_RunOnce_WithPlayerInPool(t *testing.T) {
 }
 
 // TestSpartanCron_RunOnce_SkipPlayerNotInPool : joueur configuré mais absent du
-// pool, et aucun autre compte du parc pour porter la lecture → fetcher non appelé.
-// Avec un porteur valide, la lecture a lieu (spartan_customization_bearer_test.go).
+// pool, et aucun compte admin pour porter la lecture → fetcher non appelé.
+// Avec le token du compte admin, la lecture a lieu (spartan_customization_bearer_test.go).
 func TestSpartanCron_RunOnce_SkipPlayerNotInPool(t *testing.T) {
 	repoRoot := t.TempDir()
 	writeTestProfiles(t, repoRoot, "TestGT", "1234567890123456")
@@ -164,7 +164,7 @@ func TestSpartanCron_RunOnce_SkipPlayerNotInPool(t *testing.T) {
 }
 
 // TestSpartanCron_RunOnce_AcquireFails : pool.Acquire échoue pour le joueur et le
-// parc n'a pas d'autre compte → fetcher non appelé, pas de panic.
+// cron n'a pas de compte admin → fetcher non appelé, pas de panic.
 func TestSpartanCron_RunOnce_AcquireFails(t *testing.T) {
 	repoRoot := t.TempDir()
 	writeTestProfiles(t, repoRoot, "TestGT", "1234567890123456")

@@ -13,44 +13,38 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// TestOrderBearerCandidates_AdminPuisOrdreAlphabetique : les profils dont le xuid
-// est lié à un compte de rôle admin passent en tête, les autres suivent par gamertag
-// sans tenir compte de la casse, un gamertag déclaré pour deux titres n'apparaît
-// qu'une fois et un profil sans xuid est écarté. L'ordre ne dépend pas de l'ordre de
-// lecture du fichier.
-func TestOrderBearerCandidates_AdminPuisOrdreAlphabetique(t *testing.T) {
+// TestAdminBearerCandidates_CompteAdminSeulement : seuls les profils dont le xuid est
+// lié à un compte de rôle admin sont candidats, par gamertag sans tenir compte de la
+// casse ; un gamertag déclaré pour deux titres n'apparaît qu'une fois ; l'ordre ne
+// dépend pas de l'ordre de lecture du fichier. Sans compte admin, aucun candidat.
+func TestAdminBearerCandidates_CompteAdminSeulement(t *testing.T) {
 	players := []domain.PlayerSummary{
 		{Gamertag: "Trimbutton", XUID: "5", TitleSlug: "halo_infinite", AuthOnly: true},
+		{Gamertag: "zAdmin", XUID: "7", TitleSlug: "halo_infinite"},
 		{Gamertag: "JGtm", XUID: "2", TitleSlug: "halo_infinite"},
 		{Gamertag: "chocoboflor", XUID: "1", TitleSlug: "halo_infinite"},
 		{Gamertag: "DankerGlue", XUID: "3", TitleSlug: "halo_infinite", AuthOnly: true},
 		{Gamertag: "JGtm", XUID: "2", TitleSlug: "halo_5"},
 		{Gamertag: "SansXuid", XUID: "", TitleSlug: "halo_infinite"},
 	}
-	admins := map[string]bool{"2": true}
+	admins := map[string]bool{"2": true, "7": true}
 
-	got := orderBearerCandidates(players, admins)
-	want := []bearerCandidate{
-		{gamertag: "JGtm", xuid: "2", admin: true},
-		{gamertag: "chocoboflor", xuid: "1"},
-		{gamertag: "DankerGlue", xuid: "3"},
-		{gamertag: "Trimbutton", xuid: "5"},
-	}
+	got := adminBearerCandidates(players, admins)
+	want := []bearerCandidate{{gamertag: "JGtm", xuid: "2"}, {gamertag: "zAdmin", xuid: "7"}}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("ordre des porteurs avec admin :\n got %+v\nwant %+v", got, want)
+		t.Fatalf("candidats porteurs :\n got %+v\nwant %+v", got, want)
 	}
 
 	reversed := make([]domain.PlayerSummary, len(players))
 	for i, p := range players {
 		reversed[len(players)-1-i] = p
 	}
-	if again := orderBearerCandidates(reversed, admins); !reflect.DeepEqual(again, want) {
+	if again := adminBearerCandidates(reversed, admins); !reflect.DeepEqual(again, want) {
 		t.Fatalf("l'ordre dépend de l'ordre de lecture :\n got %+v\nwant %+v", again, want)
 	}
 
-	sansAdmin := orderBearerCandidates(players, nil)
-	if sansAdmin[0].gamertag != "chocoboflor" || sansAdmin[1].gamertag != "DankerGlue" {
-		t.Fatalf("sans compte admin, l'ordre doit être alphabétique : %+v", sansAdmin)
+	if none := adminBearerCandidates(players, nil); len(none) != 0 {
+		t.Fatalf("sans compte admin, aucun candidat attendu : %+v", none)
 	}
 }
 

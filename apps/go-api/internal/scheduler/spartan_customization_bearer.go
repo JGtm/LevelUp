@@ -4,15 +4,17 @@
 // Le token du joueur lui-même passe en premier : il ouvre la vue privée de sa
 // personnalisation (/customization/appearance). Quand ce token n'est pas utilisable
 // (refresh token refusé, donc aucun créneau dans le pool ; créneau malsain ou en
-// pause de débit), la lecture passe par le token d'un AUTRE compte du parc, le
-// porteur. Les endpoints lus ciblent le joueur dans l'URL et ne dérivent jamais
-// l'identité du token appelant : careerranks (xuid), customization et sa vue
-// publique `?view=public` (xuid, repli de haloclient.fetchCustomizationAppearance
-// sur un 403), profils Halo 5 (gamertag).
+// pause de débit), la lecture passe par le token du compte de l'utilisateur de
+// l'instance — le xuid lié à un compte de rôle admin —, le porteur, et par AUCUN
+// autre : le token d'un autre utilisateur ne lit jamais l'apparence d'un tiers sans
+// son accord. Sans porteur utilisable, rien n'est lu ni écrit.
 //
-// Le porteur ne fait que LIRE. Aucun token n'est capturé ni rafraîchi ici : le pool
-// s'en charge (ADR 0023). La ligne écrite va dans la base du joueur lu, sous son
-// xuid, par le chemin d'écriture habituel du refresher du titre.
+// Les endpoints lus ciblent le joueur dans l'URL et ne dérivent jamais l'identité du
+// token appelant : careerranks (xuid), customization et sa vue publique
+// `?view=public` (xuid, repli de haloclient.fetchCustomizationAppearance sur un 403),
+// profils Halo 5 (gamertag). Le porteur ne fait que LIRE. Aucun token n'est capturé
+// ni rafraîchi ici : le pool s'en charge (ADR 0023). La ligne écrite va dans la base
+// du joueur lu, sous son xuid, par le chemin d'écriture habituel du refresher du titre.
 package scheduler
 
 import (
@@ -29,15 +31,16 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 )
 
-// errNoBearer : ni le token du joueur ni celui d'un autre compte du parc n'est
-// utilisable. Rien n'est lu ni écrit, et le cycle compte un échec.
-var errNoBearer = errors.New("spartan_cron: aucun token utilisable, ni propre ni porteur")
+// errNoBearer : ni le token du joueur ni celui du compte admin n'est utilisable.
+// Rien n'est lu ni écrit, et le cycle compte un échec.
+var errNoBearer = errors.New("spartan_cron: aucun token utilisable, ni propre ni du compte admin")
 
 // errNoOwnToken : le joueur n'a pas de créneau dans le pool (refresh token absent,
 // ou refusé quand le pool l'a résolu).
 var errNoOwnToken = errors.New("aucun token propre dans le pool")
 
-// Compteurs expvar des lectures portées par un autre compte.
+// Compteurs expvar des lectures portées par le compte admin, et des lectures
+// abandonnées faute de tout token utilisable.
 const (
 	metricBearerReads = "spartan_cron_bearer_reads_total"
 	metricNoBearer    = "spartan_cron_no_bearer_total"
@@ -50,40 +53,33 @@ type AccountsReader interface {
 	List() ([]domain.AdminUserSummary, error)
 }
 
-// bearerCandidate est un compte déclaré dont le token peut porter la lecture de
-// l'apparence d'un autre joueur. admin : son xuid est lié à un compte de rôle admin.
+// bearerCandidate est un profil déclaré dont le xuid est lié à un compte de rôle
+// admin : son token peut porter la lecture de l'apparence d'un autre joueur.
 type bearerCandidate struct {
 	gamertag string
 	xuid     string
-	admin    bool
 }
 
-// orderBearerCandidates rend les comptes déclarés dans l'ordre où un porteur est
-// cherché : ceux dont le xuid est lié à un compte de rôle admin d'abord (adminXUIDs),
-// puis les autres ; dans chaque groupe, par gamertag insensible à la casse. L'ordre
-// est le même à chaque cycle, quel que soit l'ordre de lecture des fichiers.
+// adminBearerCandidates rend les profils déclarés dont le xuid est lié à un compte de
+// rôle admin (adminXUIDs), par gamertag insensible à la casse : l'ordre est le même à
+// chaque cycle, quel que soit l'ordre de lecture des fichiers. Aucun autre profil
+// n'est candidat, quel que soit l'état de son token.
 //
 // La jointure se fait par xuid, seule clé commune aux comptes et aux profils (ADR
-// 0035 D1) : le gamertag est la clé du créneau dans le pool, pas une identité.
-// Tous les profils déclarés comptent, y compris les comptes auth_only (qui n'existent
-// que pour prêter leur token au parc) et ceux en pause : porter une lecture n'est ni
-// un sync ni un suivi. Un gamertag déclaré pour plusieurs titres n'apparaît qu'une
-// fois. Un profil sans xuid est écarté : le porteur doit être nommé dans les journaux
-// et le budget de débit se compte par xuid.
-func orderBearerCandidates(players []domain.PlayerSummary, adminXUIDs map[string]bool) []bearerCandidate {
+// 0035 D1) : le gamertag est la clé du créneau dans le pool, pas une identité. Un
+// profil en pause ou auth_only compte : porter une lecture n'est ni un sync ni un
+// suivi. Un gamertag déclaré pour plusieurs titres n'apparaît qu'une fois.
+func adminBearerCandidates(players []domain.PlayerSummary, adminXUIDs map[string]bool) []bearerCandidate {
 	seen := make(map[string]bool, len(players))
-	out := make([]bearerCandidate, 0, len(players))
+	out := make([]bearerCandidate, 0, len(adminXUIDs))
 	for _, p := range players {
-		if p.Gamertag == "" || p.XUID == "" || seen[p.Gamertag] {
+		if p.Gamertag == "" || !adminXUIDs[p.XUID] || seen[p.Gamertag] {
 			continue
 		}
 		seen[p.Gamertag] = true
-		out = append(out, bearerCandidate{gamertag: p.Gamertag, xuid: p.XUID, admin: adminXUIDs[p.XUID]})
+		out = append(out, bearerCandidate{gamertag: p.Gamertag, xuid: p.XUID})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].admin != out[j].admin {
-			return out[i].admin
-		}
 		li, lj := strings.ToLower(out[i].gamertag), strings.ToLower(out[j].gamertag)
 		if li != lj {
 			return li < lj
@@ -94,11 +90,11 @@ func orderBearerCandidates(players []domain.PlayerSummary, adminXUIDs map[string
 }
 
 // errAccountsUnreadable : les comptes de l'instance n'ont pas pu être lus, donc le
-// compte de l'utilisateur ne peut pas être préféré.
+// compte de l'utilisateur ne peut pas être reconnu.
 var errAccountsUnreadable = errors.New("comptes de l'instance illisibles")
 
 // adminXUIDs rend les xuid liés aux comptes de rôle admin. Sans lecteur de comptes
-// câblé (tests, process sans comptes), aucun compte n'est préféré.
+// câblé (tests, process sans comptes), aucun : seul le token propre reste possible.
 func (c *SpartanCustomizationCron) adminXUIDs() (map[string]bool, error) {
 	if c.accounts == nil {
 		return nil, nil
@@ -116,14 +112,11 @@ func (c *SpartanCustomizationCron) adminXUIDs() (map[string]bool, error) {
 	return out, nil
 }
 
-// bearerCandidates charge les comptes déclarés de TOUS les titres (le pool est
-// indexé par gamertag, un compte peut prêter son token pour n'importe quel titre)
-// dans l'ordre de orderBearerCandidates.
-//
-// Une lecture en échec est journalisée et rend une liste vide : seul le token propre
-// reste possible pendant ce cycle. Pour les comptes, c'est voulu : sans eux, le
-// compte de l'utilisateur ne se distingue pas des autres, et la lecture n'est
-// jamais confiée au compte d'un autre utilisateur faute de savoir lequel préférer.
+// bearerCandidates charge les profils déclarés de TOUS les titres (le pool est indexé
+// par gamertag, un compte peut porter la lecture pour n'importe quel titre) et en
+// garde ceux du compte admin (adminBearerCandidates). Une lecture des comptes ou des
+// profils en échec est journalisée et rend une liste vide : seul le token propre reste
+// possible pendant ce cycle.
 func (c *SpartanCustomizationCron) bearerCandidates(ctx context.Context) []bearerCandidate {
 	adminXUIDs, err := c.adminXUIDs()
 	if err != nil {
@@ -131,22 +124,25 @@ func (c *SpartanCustomizationCron) bearerCandidates(ctx context.Context) []beare
 			"err", err)
 		return nil
 	}
+	if len(adminXUIDs) == 0 {
+		return nil
+	}
 	players, err := c.cfg.LoadPlayers()
 	if err != nil {
-		slog.ErrorContext(ctx, "spartan_cron: lecture des comptes porteurs impossible — seul le token propre sera essayé",
+		slog.ErrorContext(ctx, "spartan_cron: lecture des profils impossible — seul le token propre sera essayé",
 			"err", err)
 		return nil
 	}
-	return orderBearerCandidates(players, adminXUIDs)
+	return adminBearerCandidates(players, adminXUIDs)
 }
 
 // acquireReaderToken rend le lease dont les tokens liront l'apparence de p et le
 // xuid du compte qui les porte : le token de p s'il est utilisable (xuid == p.XUID),
-// sinon celui du premier candidat utilisable. errNoBearer si aucun ne l'est.
+// sinon celui du premier candidat admin utilisable. errNoBearer si aucun ne l'est,
+// compté dans spartan_cron_no_bearer_total.
 //
 // Les deux recherches passent par PolicyPinnedPlayer : elle désigne le token d'un
-// compte précis, ce qui rend le choix du porteur déterministe (PolicyAnyPublic
-// tourne en rond sur le parc).
+// compte précis, quand PolicyAnyPublic tournerait sur tout le parc.
 func (c *SpartanCustomizationCron) acquireReaderToken(
 	ctx context.Context,
 	p domain.PlayerSummary,
@@ -166,15 +162,14 @@ func (c *SpartanCustomizationCron) acquireReaderToken(
 		}
 		lease, err := c.pool.Acquire(ctx, pool.PolicyPinnedPlayer, cand.gamertag)
 		if err != nil || lease == nil {
-			slog.DebugContext(ctx, "spartan_cron: porteur indisponible, candidat suivant",
+			slog.DebugContext(ctx, "spartan_cron: token du compte admin indisponible",
 				"gamertag", p.Gamertag, "bearer", cand.gamertag, "err", leaseError(err))
 			continue
 		}
 		observability.AddInt(metricBearerReads, 1)
-		slog.InfoContext(ctx, "spartan_cron: apparence lue avec le token d'un porteur",
+		slog.InfoContext(ctx, "spartan_cron: apparence lue avec le token du compte admin",
 			"gamertag", p.Gamertag, "xuid", p.XUID,
-			"bearer", cand.gamertag, "bearer_xuid", cand.xuid, "bearer_admin", cand.admin,
-			"own_token_err", ownErr)
+			"bearer", cand.gamertag, "bearer_xuid", cand.xuid, "own_token_err", ownErr)
 		return lease, cand.xuid, nil
 	}
 	observability.AddInt(metricNoBearer, 1)

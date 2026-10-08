@@ -15,7 +15,7 @@
 //     le refresh A UN REFRESHER ENREGISTRE PAR TITRE (map[slug]CustomizationRefresher).
 //   - La sequence COMMUNE (choix du token, lease pinned, ctx auth, timeout) reste ici :
 //     le refresher recoit un ctx DEJA muni d'un token utilisable — celui du joueur,
-//     ou celui d'un porteur quand le sien ne l'est pas (spartan_customization_bearer.go)
+//     ou celui du compte admin quand le sien ne l'est pas (spartan_customization_bearer.go)
 //     — avec le joueur comme sujet, et ne fait QUE l'appel metier specifique au titre.
 //   - Le WIRING CONCRET des refreshers se fait dans cmd/server/main.go :
 //   - halo_infinite -> CareerLiveService.GetSpartanIdentityFor(p.XUID) (chemin
@@ -59,7 +59,7 @@ type CareerLiveServiceProvider func(ctx context.Context, slug string) (SpartanId
 
 // CustomizationRefresher rafraichit la customisation Spartan d'UN joueur d'UN
 // titre donne. Le ctx fourni porte DEJA un token utilisable (celui du joueur, ou
-// celui d'un porteur, cf. readerContext), le joueur comme sujet (ctxkeys.HaloXUID)
+// celui du compte admin, cf. readerContext), le joueur comme sujet (ctxkeys.HaloXUID)
 // et un timeout : le refresher ne fait QUE l'appel metier specifique au titre (live
 // career identity, fetch appearance…), toujours pour p, jamais pour le porteur.
 // Abstraction title-agnostic : le scheduler ne depend d'AUCUN package de titre ;
@@ -69,7 +69,7 @@ type CustomizationRefresher func(ctx context.Context, p domain.PlayerSummary) er
 // SpartanCustomizationCron itere sur tous les titres actifs et, pour chacun,
 // sur tous ses profils suivis toutes les N heures, en appelant le refresher
 // enregistre pour CE titre avec un token utilisable en context (celui du joueur,
-// sinon celui d'un porteur, cf. acquireReaderToken). Cela declenche
+// sinon celui du compte admin, cf. acquireReaderToken). Cela declenche
 // le path de rafraichissement propre au titre.
 type SpartanCustomizationCron struct {
 	cfg        *config.AppConfig
@@ -77,8 +77,8 @@ type SpartanCustomizationCron struct {
 	registry   *titlePkg.Registry
 	refreshers map[string]CustomizationRefresher
 	interval   time.Duration
-	// accounts : comptes de l'instance, d'où le compte de l'utilisateur (rôle admin) que
-	// le choix du porteur préfère. nil = aucun compte préféré (cf. WithAccounts).
+	// accounts : comptes de l'instance, d'où le compte de l'utilisateur (rôle admin), seul
+	// porteur admis. nil = aucun porteur, seul le token propre (cf. WithAccounts).
 	accounts AccountsReader
 }
 
@@ -149,8 +149,8 @@ func (c *SpartanCustomizationCron) WithRegistry(reg *titlePkg.Registry) *Spartan
 }
 
 // WithAccounts branche les comptes de l'instance : quand le token d'un joueur est
-// inutilisable, sa lecture est portée d'abord par le token du xuid lié à un compte de
-// rôle admin (celui de l'utilisateur), par les autres comptes seulement à défaut.
+// inutilisable, sa lecture est portée par le token du xuid lié à un compte de rôle admin
+// (celui de l'utilisateur), et par aucun autre compte ; sans lui, rien n'est lu.
 // nil-safe. Le wiring (cmd/server) passe le store des comptes, *userstore.Store.
 func (c *SpartanCustomizationCron) WithAccounts(r AccountsReader) *SpartanCustomizationCron {
 	if c != nil && r != nil {
@@ -288,7 +288,7 @@ const (
 )
 
 // refreshReport est l'issue du rafraîchissement d'un joueur. viaBearer dit si la
-// lecture a été portée par le token d'un autre compte.
+// lecture a été portée par le token du compte admin.
 type refreshReport struct {
 	outcome   refreshOutcome
 	viaBearer bool
@@ -356,7 +356,7 @@ func (t *cycleTally) err(players int) error {
 }
 
 // refreshOne rafraîchit la customisation d'UN joueur : choisit le token qui lira
-// (le sien, sinon celui d'un porteur, cf. acquireReaderToken), le pose dans le ctx
+// (le sien, sinon celui du compte admin, cf. acquireReaderToken), le pose dans le ctx
 // avec le joueur comme sujet, puis délègue au refresher du titre. Best-effort, ne
 // bloque pas le cycle. Aucun profil suivi n'est sauté faute de token propre : seule
 // l'absence de tout token utilisable empêche la lecture, et elle compte un échec.

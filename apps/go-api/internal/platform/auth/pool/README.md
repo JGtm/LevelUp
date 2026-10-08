@@ -85,10 +85,10 @@ stats, err := client.GetMatchStats(ctx, matchID)
 - Spartan customization cron (`internal/scheduler/spartan_customization_bearer.go`) — the
   player's own token first, because it opens the private view `/customization/appearance`
   (a third-party token gets 403, measured 2026-09-16). If that token is unusable, the cron
-  pins another declared account (first the one whose xuid is linked to an `admin`-role account of
-  the instance, read through the account store; only failing that the others, by gamertag) and the
-  client falls back to the public view `/customization?view=public`, which carries the same
-  appearance block for any player.
+  pins the instance user only (the account whose xuid is linked to an `admin`-role account of the
+  instance, read through the account store; no other user's token ever carries the read, and
+  without it nothing is read) and the client falls back to the public view
+  `/customization?view=public`, which carries the same appearance block for any player.
 - Halo 5 live-sync (`games/halo_5/livesync`)
 
 ```go
@@ -124,7 +124,7 @@ the pool*).
 | `cmd/levelup archive-films`, `backfill-killsource --online`, `replay-events` | `PolicyAnyPublic` | **No** |
 | `internal/scheduler` auto-sync cycle (`checkSyncPreconditions` → `BuildEngine`) | `PolicyAnyPublic` | **No** |
 | `PooledHaloClient.GetCareerRank` | `PolicyAnyPublic` | **No** — `/careerranks` is fully public (measured 2026-09-16, D4 of the sync robustness plan) |
-| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` (own account, else another declared account) | **No** — the own token is preferred for the private view; without it the player is read with another account's token through the public view. The only `HasPlayer(` call left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
+| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` (own account, else the instance admin account) | **No** — the own token is preferred for the private view; without it the player is read with the instance admin account token through the public view, never with another user's. The only `HasPlayer(` call left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
 
 Before 2026-09-16 three call sites short-circuited the doctrine with `if !pool.HasPlayer(gt) {
 skip }` — the two `--all` CLI loops and the auto-sync cycle — and the single-player CLI resolved

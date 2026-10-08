@@ -1,8 +1,9 @@
 package scheduler_test
 
 // spartan_customization_bearer_test.go — le cron de personnalisation Spartan lit
-// l'apparence d'un profil suivi dont les jetons sont morts avec le token d'un autre
-// compte, et l'enregistre dans la base de CE profil.
+// l'apparence d'un profil suivi dont les jetons sont morts avec le token du compte de
+// l'utilisateur de l'instance (rôle admin), jamais avec celui d'un autre utilisateur,
+// et l'enregistre dans la base de CE profil.
 //
 // Chaîne réelle de bout en bout, réseau excepté : pool de tokens réel (pool.NewPool,
 // résolveur factice qui refuse le refresh token du joueur aux jetons morts), service
@@ -267,8 +268,8 @@ const profilesChocoJGtmDanker = `{"version":"3.0","admin":"DankerGlue","profiles
 
 // TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree : Chocoboflor (profil
 // suivi, refresh token refusé : aucun créneau dans le pool) est lu avec le token de
-// JGtm, lié au compte de rôle admin de l'instance, préféré à DankerGlue qui le
-// précède dans l'ordre alphabétique (et que nomme le champ « admin » de
+// JGtm, lié au compte de rôle admin de l'instance, jamais avec celui de DankerGlue,
+// autre utilisateur au token valide (que nomme pourtant le champ « admin » de
 // db_profiles.json). La ligne lue (emblème, statut « ok ») va dans la base de
 // Chocoboflor, sous son xuid. JGtm, aux jetons valides, reste lu avec son propre
 // token et écrit dans SA base.
@@ -313,9 +314,11 @@ func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 	}
 }
 
-// TestSpartanCron_CompteAdminInutilisable_AutreCompteADefaut : le token du compte
-// admin (JGtm) est malsain ; à défaut, Chocoboflor est lu avec celui de DankerGlue.
-func TestSpartanCron_CompteAdminInutilisable_AutreCompteADefaut(t *testing.T) {
+// TestSpartanCron_CompteAdminInutilisable_AucunPorteur : le token du compte admin
+// (JGtm) est malsain. DankerGlue, autre utilisateur au token valide, ne porte jamais
+// la lecture : Chocoboflor et JGtm ne sont ni lus ni écrits, chaque absence de token
+// est comptée et le cycle rapporte l'échec.
+func TestSpartanCron_CompteAdminInutilisable_AucunPorteur(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
 	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
@@ -323,26 +326,28 @@ func TestSpartanCron_CompteAdminInutilisable_AutreCompteADefaut(t *testing.T) {
 		"Chocoboflor": xuidChoco, "JGtm": xuidJGtm, "DankerGlue": xuidDanker,
 	}, "Chocoboflor")
 	tokens.MarkUnhealthy("JGtm", errors.New("401 en test"))
-	rec := &liveRecorder{emblems: map[string]string{xuidChoco: emblemChoco, xuidJGtm: emblemJGtm}}
+	rec := &liveRecorder{}
 	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
 	var providerCalls callCounter
+	noBearerBefore := observability.LoadCounter("spartan_cron_no_bearer_total")
 
 	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
 		WithAccounts(jgtmAdminAccounts()).
 		RunOnce(context.Background())
 
-	choco := repos["Chocoboflor"].wait(t, "Chocoboflor")
-	if choco.xuid != xuidChoco || deref(choco.partial.EmblemImageURL) != emblemChoco {
-		t.Errorf("ligne de Chocoboflor : xuid=%q emblème=%q", choco.xuid, deref(choco.partial.EmblemImageURL))
+	assertNothingRead(t, rec, &providerCalls, repos)
+	if got := observability.LoadCounter("spartan_cron_no_bearer_total") - noBearerBefore; got != 2 {
+		t.Errorf("absences de token comptées : %d, attendu 2 (Chocoboflor et JGtm)", got)
 	}
-	repos["JGtm"].wait(t, "JGtm")
-	assertCalls(t, rec.callsFor(xuidChoco), "Chocoboflor", liveCall{token: "spartan-DankerGlue", owner: xuidDanker})
+	if msg := spartanCronError(t); !strings.Contains(msg, "aucun token utilisable") {
+		t.Errorf("le cycle doit rapporter l'absence de token, erreur rapportée : %q", msg)
+	}
 }
 
 // TestSpartanCron_ComptesIllisibles_AucunAutreCompte : sans lecture des comptes de
-// l'instance, le compte de l'utilisateur ne se distingue pas des autres : aucun
-// porteur n'est pris. Chocoboflor n'est ni lu ni écrit, l'échec est rapporté ; JGtm
-// reste lu avec son propre token.
+// l'instance, le compte de l'utilisateur n'est pas reconnu : aucun porteur n'est
+// pris. Chocoboflor n'est ni lu ni écrit, l'absence est comptée et l'échec rapporté ;
+// JGtm reste lu avec son propre token.
 func TestSpartanCron_ComptesIllisibles_AucunAutreCompte(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
@@ -353,6 +358,7 @@ func TestSpartanCron_ComptesIllisibles_AucunAutreCompte(t *testing.T) {
 	rec := &liveRecorder{emblems: map[string]string{xuidJGtm: emblemJGtm}}
 	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
 	var providerCalls callCounter
+	noBearerBefore := observability.LoadCounter("spartan_cron_no_bearer_total")
 
 	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
 		WithAccounts(instanceAccounts{err: errors.New("users.json illisible en test")}).
@@ -361,42 +367,38 @@ func TestSpartanCron_ComptesIllisibles_AucunAutreCompte(t *testing.T) {
 	repos["JGtm"].wait(t, "JGtm")
 	assertCalls(t, rec.callsFor(xuidJGtm), "JGtm", liveCall{token: "spartan-JGtm", owner: xuidJGtm})
 	if calls := rec.callsFor(xuidChoco); len(calls) != 0 || providerCalls.get() != 1 {
-		t.Errorf("Chocoboflor lu sans compte préféré connu : %d appels API, %d services", len(calls), providerCalls.get())
+		t.Errorf("Chocoboflor lu sans compte admin reconnu : %d appels API, %d services", len(calls), providerCalls.get())
+	}
+	if got := observability.LoadCounter("spartan_cron_no_bearer_total") - noBearerBefore; got != 1 {
+		t.Errorf("absences de token comptées : %d, attendu 1 (Chocoboflor)", got)
 	}
 	if msg := spartanCronError(t); !strings.Contains(msg, "aucun token utilisable") {
 		t.Errorf("le cycle doit rapporter l'absence de token pour Chocoboflor, erreur rapportée : %q", msg)
 	}
 }
 
-// TestSpartanCron_AucunPorteurValide_RienNEstEcrit : le seul autre compte du parc a
-// un créneau malsain. La lecture n'est pas tentée, rien n'est écrit, et le cycle
-// rapporte l'échec avec sa cause.
+// TestSpartanCron_AucunPorteurValide_RienNEstEcrit : le compte admin (JGtm) n'a pas
+// de profil déclaré, donc pas de créneau ; DankerGlue, au token valide, n'est pas le
+// compte de l'utilisateur. Chocoboflor n'est ni lu ni écrit.
 func TestSpartanCron_AucunPorteurValide_RienNEstEcrit(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
 	cfg := writeProfilesJSON(t, `{"version":"3.0","profiles":{"halo_infinite":{`+
 		`"Chocoboflor":{"db_path":"unused","xuid":"`+xuidChoco+`"},`+
-		`"JGtm":{"db_path":"unused","xuid":"`+xuidJGtm+`","auth_only":true}}}}`)
-	tokens := newBearerPool(t, map[string]string{"Chocoboflor": xuidChoco, "JGtm": xuidJGtm}, "Chocoboflor")
-	tokens.MarkUnhealthy("JGtm", errors.New("401 en test"))
+		`"DankerGlue":{"db_path":"unused","xuid":"`+xuidDanker+`","auth_only":true}}}}`)
+	tokens := newBearerPool(t, map[string]string{"Chocoboflor": xuidChoco, "DankerGlue": xuidDanker}, "Chocoboflor")
 	rec := &liveRecorder{}
 	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo()}
 	var providerCalls callCounter
 	noBearerBefore := observability.LoadCounter("spartan_cron_no_bearer_total")
 
 	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
+		WithAccounts(jgtmAdminAccounts()).
 		RunOnce(context.Background())
 
-	if providerCalls.get() != 0 || rec.total() != 0 {
-		t.Errorf("lecture tentée sans token utilisable : %d services, %d appels API", providerCalls.get(), rec.total())
-	}
-	select {
-	case row := <-repos["Chocoboflor"].written:
-		t.Errorf("ligne écrite sans token utilisable : %+v", row)
-	default:
-	}
+	assertNothingRead(t, rec, &providerCalls, repos)
 	if got := observability.LoadCounter("spartan_cron_no_bearer_total") - noBearerBefore; got != 1 {
-		t.Errorf("absences de porteur comptées : %d, attendu 1", got)
+		t.Errorf("absences de token comptées : %d, attendu 1", got)
 	}
 	if msg := spartanCronError(t); !strings.Contains(msg, "aucun token utilisable") {
 		t.Errorf("le cycle doit rapporter l'absence de token, erreur rapportée : %q", msg)
@@ -405,27 +407,43 @@ func TestSpartanCron_AucunPorteurValide_RienNEstEcrit(t *testing.T) {
 
 // TestSpartanCron_ProfilNonSuivi_RienNEstLu : un profil en pause et un compte
 // auth_only ne sont pas des profils suivis (domain.SyncablePlayers, la définition de
-// domain.ProfileGate) : même avec un porteur valide dans le parc, aucun n'est lu ni
-// écrit. Un xuid absent de db_profiles.json n'est jamais énuméré par le cron.
+// domain.ProfileGate) : même avec le token du compte admin valide dans le parc, aucun
+// n'est lu ni écrit. Un xuid absent de db_profiles.json n'est jamais énuméré par le cron.
 func TestSpartanCron_ProfilNonSuivi_RienNEstLu(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
 	cfg := writeProfilesJSON(t, `{"version":"3.0","profiles":{"halo_infinite":{`+
 		`"Chocoboflor":{"db_path":"unused","xuid":"`+xuidChoco+`","sync_enabled":false},`+
-		`"DankerGlue":{"db_path":"unused","xuid":"`+xuidDanker+`","auth_only":true}}}}`)
-	tokens := newBearerPool(t, map[string]string{"Chocoboflor": xuidChoco, "DankerGlue": xuidDanker}, "Chocoboflor")
+		`"JGtm":{"db_path":"unused","xuid":"`+xuidJGtm+`","auth_only":true}}}}`)
+	tokens := newBearerPool(t, map[string]string{"Chocoboflor": xuidChoco, "JGtm": xuidJGtm}, "Chocoboflor")
 	rec := &liveRecorder{}
-	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo(), "DankerGlue": newPlayerCareerRepo()}
+	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
 	var providerCalls callCounter
 
 	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
+		WithAccounts(jgtmAdminAccounts()).
 		RunOnce(context.Background())
 
-	if providerCalls.get() != 0 || rec.total() != 0 {
-		t.Errorf("profil non suivi lu : %d services, %d appels API", providerCalls.get(), rec.total())
-	}
+	assertNothingRead(t, rec, &providerCalls, repos)
 	if msg := spartanCronError(t); msg != "" {
 		t.Errorf("aucun profil suivi n'est pas un échec, erreur rapportée : %q", msg)
+	}
+}
+
+// assertNothingRead vérifie qu'aucun service d'identité n'a été construit, qu'aucun
+// appel API n'a eu lieu et qu'aucune ligne n'a été écrite. Aucune lecture n'ayant été
+// lancée, aucune écriture d'arrière-plan ne peut arriver plus tard.
+func assertNothingRead(t *testing.T, rec *liveRecorder, providerCalls *callCounter, repos map[string]*playerCareerRepo) {
+	t.Helper()
+	if providerCalls.get() != 0 || rec.total() != 0 {
+		t.Errorf("lecture tentée : %d services, %d appels API", providerCalls.get(), rec.total())
+	}
+	for who, repo := range repos {
+		select {
+		case row := <-repo.written:
+			t.Errorf("ligne écrite dans la base de %s : %+v", who, row)
+		default:
+		}
 	}
 }
 

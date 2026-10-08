@@ -82,10 +82,11 @@ comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation S
 les 8 h, premier passage au démarrage du serveur) préfère le jeton propre du joueur, qui ouvre
 la vue privée `/customization/appearance` (403 pour un tiers, mesuré). Quand ce jeton est
 inutilisable (jeton de rafraîchissement refusé, créneau malsain), le joueur est lu avec le jeton
-d'un autre compte déclaré : d'abord celui dont le xuid est lié à un compte de rôle `admin`
-parmi les comptes de l'instance (`data/auth/users.json`, lus par le store des comptes), celui de
-l'utilisateur ; à défaut seulement les autres, par gamertag. Si les comptes sont illisibles, aucun
-autre compte ne porte la lecture. Le client se replie alors sur la vue publique
+de l'utilisateur de l'instance seulement : le compte dont le xuid est lié à un compte de rôle
+`admin` parmi les comptes de l'instance (`data/auth/users.json`, lus par le store des comptes).
+Le jeton d'un autre utilisateur ne porte jamais la lecture. Si ce jeton est lui aussi
+inutilisable, ou les comptes illisibles, rien n'est lu ni écrit (journalisé, compté dans
+`spartan_cron_no_bearer_total`). Avec le jeton admin, le client se replie sur la vue publique
 `/customization?view=public`, qui porte le même emblème, le même fond et le même tag de service
 pour n'importe quel joueur. La ligne est écrite dans la base du joueur lu ; aucun jeton n'est
 capturé ni rafraîchi hors du pool.

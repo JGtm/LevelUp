@@ -79,10 +79,11 @@ pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync ro
 The Spartan customization cron (every 8 h, first pass at server start) prefers the player s own
 token, which opens the private view `/customization/appearance` (403 for a third party,
 measured). When that token is unusable (refresh token refused, unhealthy slot), the player is
-read with the token of another declared account: first the one whose xuid is linked to an
-account with the `admin` role in the instance accounts (`data/auth/users.json`, read through the
-account store), the instance user; only failing that the others, by gamertag. If the accounts
-cannot be read, no other account carries the read. The client then falls back to the public view
+read with the token of the instance user only: the account whose xuid is linked to an account
+with the `admin` role in the instance accounts (`data/auth/users.json`, read through the account
+store). No other user s token ever carries the read. If that token is unusable too, or the
+accounts cannot be read, nothing is read or written (logged, counted in
+`spartan_cron_no_bearer_total`). With the admin token, the client falls back to the public view
 `/customization?view=public`, which carries the same emblem, backdrop and service tag for any
 player. The row is written to the player s own database; no token is captured or refreshed
 outside the pool.
