@@ -28,7 +28,8 @@ const ogInjectTimeout = 3 * time.Second
 // reelles sont ownership-gated (un non-proprietaire voit "Indisponible"), donc
 // exposer leurs KPIs a un crawler anonyme serait a la fois une fuite et un
 // apercu trompeur. Filet de securite : toute erreur → carte generique, jamais
-// d'echec de page.
+// d'echec de page. Registre nil (page servie pendant le demarrage) → carte
+// generique : reg n'est jamais dereference sans test prealable.
 func (reg *ServiceRegistry) serveIndexWithOG(w http.ResponseWriter, req *http.Request, indexPath string) {
 	// no-cache : l'index ne doit pas masquer un nouveau build apres redeploiement.
 	w.Header().Set("Cache-Control", "no-cache")

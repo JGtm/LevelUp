@@ -20,6 +20,11 @@ make restart      # stop + dev
 
 Open http://localhost:5173 once `make dev` is running.
 
+Startup: the Go server listens as soon as its configuration is loaded, before opening its
+databases. Until it is ready, `/health` and `/api/*` answer `503` with code `server_starting`
+(the current step is in `details.step`) and the page shows "Server starting…" and polls every
+second. `make dev` and `make go-api-dev` treat a starting server as already running.
+
 Slow requests: an API request taking at least `LEVELUP_SLOW_REQUEST_MS` milliseconds (default `1000`,
 read once at server start) is logged in `logs/http.log` with `slow: true`, at least at INFO. If it timed
 sections (Squad, Synthesis, Sessions and Timeseries pages, filters), an `http_timings` line follows,
