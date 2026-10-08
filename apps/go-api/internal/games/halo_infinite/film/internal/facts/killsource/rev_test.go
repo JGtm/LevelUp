@@ -56,7 +56,7 @@ var fichiersDeChroniqueKillsource = []string{"rev.go", "rev_chronique.go"}
 
 // fichiersHorsKillsource : les fichiers qui DECRIVENT la revision ne sont pas de la couche.
 var fichiersHorsKillsource = map[string]bool{
-	"rev.go": true, "rev_chronique.go": true, "rev_chronique_archive.go": true,
+	"rev.go": true, "rev_chronique.go": true, "rev_chronique_archive.go": true, "rev_chronique_archive_2.go": true,
 }
 
 // porteKillsourceRev / messagesKillsourceRev : ce que la couche declare au mecanisme central.

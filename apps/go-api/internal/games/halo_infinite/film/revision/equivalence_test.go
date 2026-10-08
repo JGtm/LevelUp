@@ -115,7 +115,7 @@ func couchesMesurees(t *testing.T) []coucheMesuree {
 		},
 		{
 			nom: "killsource", revisionDuCode: killsource.Rev,
-			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go"},
+			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go", "rev_chronique_archive_2.go"},
 			valeurs:    map[string]string{"source": source.Rev, "profile": profile.Rev, "grammar": grammar.Rev},
 			golden:     filepath.Join(film, "facts", "killsource", "testdata", "killsource_rev.golden"),
 		},

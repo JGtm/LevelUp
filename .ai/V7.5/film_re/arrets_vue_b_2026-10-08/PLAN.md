@@ -35,9 +35,9 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 
 | # | Gate | Statut | Sortie |
 |---|---|---|---|
-| G1 | carte v2 base contre tête, gate 2 | [ ] | |
-| G2 | gate 3 : `killsource json` (19 témoins + `1c4c63c2`) | [ ] | |
-| G3 | `TestGoldenFilms` | [ ] | |
+| G1 | carte v2 base contre tête, gate 2 | [x] | +19 440 sains (487 188 -> 506 628), +349 211 utiles, 0 perdu, 0 film en baisse (`tsv/gate2_lot_contre_base.tsv`) |
+| G2 | gate 3 : `killsource json` (19 témoins + `1c4c63c2`) | [x] | 7 identiques, 6 diagnostic `calibration` seul, 7 avec des morts qui passent du balayage à la marche (81 morts, contenu identique) et `0797ce72` un candidat de santé de plus ; `read_path` persisté : `killsource-2026-10-08` (rotation de la chronique : archive_2) ; `tsv/gate3_killsource.tsv` |
+| G3 | `TestGoldenFilms` | [x] | 4 / 4 ok après régénération de `fccc61cd.golden` : seul le score de l oracle de `calibration` change (1205 -> 1211) |
 | G4 | gate de corpus sur une copie du parc, chaque FAUX / PERTE instruit, 0 MANQUE | [ ] | |
 | G5 | gofmt, vet (normal, research, integration), archlint | [ ] | |
 | G6 | golangci-lint 0 issue | [ ] | |
