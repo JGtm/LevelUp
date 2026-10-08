@@ -1087,6 +1087,34 @@ this is a local-only fallback for that specific environment quirk.
 powershell -File scripts/gate-push.ps1
 ```
 
+### Disk hygiene (`disk-hygiene.ps1`)
+
+Go only trims entries unused for 5 days, and only when a command reuses that same cache: a
+dedicated `GOCACHE` left behind when a lot closes never shrinks, and neither do the gate work roots
+kept in session scratchpads. `scripts/disk-hygiene.ps1` gives that space back. It **simulates by
+default**; nothing is deleted without `-Apply`.
+
+```powershell
+powershell -File scripts/disk-hygiene.ps1                    # simulation: what would be freed, worktree report
+powershell -File scripts/disk-hygiene.ps1 -Apply             # real pass (what the scheduled task runs)
+powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # lot closure: deletes go-build-<lot> and golangci-<lot>
+```
+
+- Scope: `%LOCALAPPDATA%\go-build-*` and `golangci-*` (not the default `golangci-lint`),
+  `%USERPROFILE%\gocache-*`, `C:\*-gocache`, session folders under `%TEMP%\claude`, `C:\t\*`. Never
+  `data\`, a worktree, `.git` or the module cache.
+- Thresholds: dedicated cache idle 48 h; shared cache emptied by `go clean -cache` above 25 GB;
+  session folder whose transcript and content are idle for 72 h; inside an active session,
+  `gate_work*` / `gocache*` / `golangci*` / `parc*` idle for 24 h; `C:\t\*` idle for 72 h. Age = the
+  most recent write anywhere in the tree.
+- Safety: no deletion while a `go`, `compile`, `link`, `*.test`, `golangci-lint`, `gate`,
+  `replay-*` or `levelup*` process runs (report only). `-Lot` refuses a cache written in the last
+  10 minutes. A tree containing a junction or link is never deleted, only reported. Worktrees are
+  reported, never removed.
+- Log: `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (free space before and after, every
+  deletion and refusal; `ALERTE` below 60 GB free).
+- Scheduled task `LevelUp-disk-hygiene`: daily at 04:00, current user, not elevated, `-Apply`.
+
 ---
 
 ## Environment variables

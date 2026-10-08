@@ -1135,6 +1135,36 @@ particularité d'environnement.
 powershell -File scripts/gate-push.ps1
 ```
 
+### Hygiène du disque (`disk-hygiene.ps1`)
+
+Go ne retire de son cache que les entrées inutilisées depuis 5 jours, et seulement quand une
+commande réutilise ce même cache : un `GOCACHE` dédié laissé à la clôture d'un lot ne rétrécit
+jamais, pas plus que les racines de gate gardées dans les scratchpads des sessions.
+`scripts/disk-hygiene.ps1` rend cette place. Il **simule par défaut** ; rien n'est supprimé sans
+`-Apply`.
+
+```powershell
+powershell -File scripts/disk-hygiene.ps1                    # simulation : ce qui serait libéré, rapport des worktrees
+powershell -File scripts/disk-hygiene.ps1 -Apply             # passe réelle (celle de la tâche planifiée)
+powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # clôture de lot : supprime go-build-<lot> et golangci-<lot>
+```
+
+- Périmètre : `%LOCALAPPDATA%\go-build-*` et `golangci-*` (hors `golangci-lint`, le cache par
+  défaut), `%USERPROFILE%\gocache-*`, `C:\*-gocache`, les dossiers de session sous
+  `%TEMP%\claude`, `C:\t\*`. Jamais `data\`, un worktree, `.git` ni le cache des modules.
+- Seuils : cache dédié inactif depuis 48 h ; cache partagé vidé par `go clean -cache` au-delà de
+  25 Go ; dossier de session dont le transcript et le contenu n'ont pas bougé depuis 72 h ; dans une
+  session active, `gate_work*` / `gocache*` / `golangci*` / `parc*` inactifs depuis 24 h ;
+  `C:\t\*` inactifs depuis 72 h. Âge = l'écriture la plus récente dans tout l'arbre.
+- Sécurité : aucune suppression tant qu'un processus `go`, `compile`, `link`, `*.test`,
+  `golangci-lint`, `gate`, `replay-*` ou `levelup*` tourne (rapport seul). `-Lot` refuse un cache
+  écrit dans les 10 dernières minutes. Un arbre qui contient une jonction ou un lien n'est jamais
+  supprimé, seulement signalé. Les worktrees sont signalés, jamais retirés.
+- Journal : `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (espace libre avant et après,
+  chaque suppression et chaque refus ; `ALERTE` sous 60 Go libres).
+- Tâche planifiée `LevelUp-disk-hygiene` : chaque jour à 4 h, utilisateur courant, sans élévation,
+  `-Apply`.
+
 ---
 
 ## Variables d'environnement
