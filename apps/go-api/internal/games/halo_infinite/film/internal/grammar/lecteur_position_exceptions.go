@@ -285,9 +285,15 @@ func consumeTacmapAreaOfInterest(br *Lecteur) {
 // ainsi, la liste d evenements du chunk 21 paquet 1012 de `c75f33b8` (HI_1_13_0), que l ancien lecteur
 // fermait au bit pres, ne se localise plus (+48 bits, porte posee) ; aucune fermeture ne monte sur
 // les douze films.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.7, relu le 2026-10-08) : `FUN_142ed4198` lit le thunk
+// `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde —, puis deux `FUN_1406d84b4` R(12).
 func consumeTacmapCoopTetherArea(br *Lecteur) {
-	br.noterExceptionDatee()
-	lireCorpsDeTraverseeAncien(br)
+	if br.sousLaGardeSinonException() {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireCorpsDeTraverseeAncien(br)
+	}
 	br.ReadBits(12)
 	br.ReadBits(12)
 }

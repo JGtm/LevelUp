@@ -44,6 +44,9 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 			flux: concat(seul(fixe(32), fixe(32), fixe(2)), brut96(),
 				seul(fixe(64), fixe(32), fixe(64), fixe(32), bit(true))),
 			lire: parNom("tacmap-displayasset", 33, 0)},
+		// ti=34 i11 tacmap-cooptetherarea (FUN_142ed4198) : R(96), R(12), R(12).
+		{nom: "tacmap-cooptetherarea", indexW: 1, flux: concat(brut96(), seul(fixe(12), fixe(12))),
+			lire: parNom("tacmap-cooptetherarea", 34, 0)},
 	}
 }
 
