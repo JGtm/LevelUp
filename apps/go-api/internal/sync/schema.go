@@ -355,6 +355,8 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	if err := ensurePlayerAppendOnlyTables(db); err != nil {
 		return err
 	}
+	// Après les conversions (qui créent des séquences) : aucune ne rend un id déjà pris.
+	migration.AlignSequencesBestEffort(ctx, db, "sync.EnsurePlayerSchema")
 	schemadrift.Report(ctx, db, before, "sync.EnsurePlayerSchema")
 	return nil
 }
