@@ -554,21 +554,42 @@ rougissent entre deux montées).
     est vert (le helper ne change aucune valeur) ; sinon, instruire avant de continuer.
 
 ### Étape LK.3 — La portée en production, i0 absolu sous portée, retrait des bascules
-- [ ] LK.3.1 Champ `Lecteur.portee` (miroir de `DAT_144e61ea0`, doc = contrat) ;
+- [x] LK.3.1 Champ `Lecteur.portee` (miroir de `DAT_144e61ea0`, doc = contrat) ;
       `fullPrecisionGate` = `br.portee || br.fullPrecision()`.
-- [ ] LK.3.2 `consumeFullStateDefaultBlock` pose la portée avant l'état par défaut et la retire après
+      *Fait* : `lecteur.go` (champ et contrat : qui la pose, où, ce qu'elle change, qui ne la pose
+      jamais) ; `components_movement.go` (garde et doc réécrites).
+- [x] LK.3.2 `consumeFullStateDefaultBlock` pose la portée avant l'état par défaut et la retire après
       le mot de contrôle (n2 hors portée) ; `walkKeyframeFullState` la pose sur toute la boucle et la
       remet à faux sur chaque sortie (y compris n2 = 0 et échec de lecteur) ; elle n'est posée que si
       n1 > 0 pour l'état par défaut et n2 > 0 pour la boucle, comme le jeu.
-- [ ] LK.3.3 Branche absolue d'i0 sous portée = forme du jeu (G-2) : R(1) h, R(96), queue, R(2)
+      *Fait* : branche `n1 > 0` de `consumeFullStateDefaultBlock` (écritures 142e2c46f / 142e2c530,
+      relues dans Ghidra) ; `traverserSousLaPortee` (142e2c6b8 / 142e2c76a) autour de
+      `traverseComponentLoop`, remise à faux au retour, arrêt de lecteur compris ; `n2 = 0` ne lance
+      pas la boucle, donc ne pose rien.
+- [x] LK.3.3 Branche absolue d'i0 sous portée = forme du jeu (G-2) : R(1) h, R(96), queue, R(2)
       conditionné à la finitude ; un flottant non fini ARRÊTE la marche (cause nommée
       `position_non_finie`). À ce pas la queue reste `consumePositionHandleTail` (reproduire
       exactement le crochet mesuré) ; son port fidèle est LK.5.2.
-- [ ] LK.3.4 Retrait de `PorteeBaseline` et `GrammaireEcrivainI0` du profil (kill-switches retirés à
+      *Fait* : `consumeAbsoluSousLaPortee` (`components_position_i0.go`) ; finitude = `FUN_140492128`
+      sur l'image mémoire (`bits.ReverseBytes32` du mot lu : `FUN_1406d676c` range les octets dans
+      l'ordre du flux), exposant `0x7f800000` ; échec = `grammar.ArretDuLecteur`
+      (`ArretPositionNonFinie`), porté par `EntityTrace.Arret` ; la boucle de composants s'arrête au
+      début du composant (`DesyncAt`, curseur remis au début). Reproduction du crochet PROUVÉE : les
+      deux arrêts neutralisés le temps d'une mesure, I-d0 et I-ancres rendent la référence du crochet
+      à l'octet (journal LK.3).
+- [x] LK.3.4 Retrait de `PorteeBaseline` et `GrammaireEcrivainI0` du profil (kill-switches retirés à
       la bascule) et de leur doc ; doc du critère et sa mesure (R-8) déplacées dans la chronique de
       `grammar.Rev` (LK.6) et dans WALK_PORT_NOTES ; doc de `components_movement.go`
       (`keyframeBaselineScope`, D-REV-1) réécrite (règle 17).
-- [ ] LK.3.5 Tests qui posaient les bascules : `components_arrets_vue_b_test.go`,
+      *Fait* : champs et doc retirés de `profil_balayage.go` (plus aucun lecteur dans le module ; seules
+      les graines de fuzz de `replay` les nomment encore, et restent valides : la charge des morts
+      d'objet est du JSON relu sans exiger ses clés — `TestCodecCouvreFilmInputs` et
+      `FuzzDecodeFilmFactsFile` verts) ; critère et mesure : WALK_PORT_NOTES §6.5 E (la chronique de
+      `grammar.Rev` suit à LK.6.1) ; `components_movement.go` : blocs `keyframeBaselineScope` et
+      `keyframeWriterI0Grammar` retirés, `fullPrecision` / `fullPrecisionGate` réécrits ;
+      `components_frequences.go` et le commentaire de `consumeAbsoluteWithGate`, qui citaient les
+      bascules, corrigés.
+- [x] LK.3.5 Tests qui posaient les bascules : `components_arrets_vue_b_test.go`,
       `lecteur_position_sites_test.go`, `keyframe_fullstate_loop_test.go` (`kf7eCases` : (d+e) devient
       REF), `r_veh_ti40_research_test.go`, `r_veh_imagecle_research_test.go` → posent `br.portee` par
       le seul assistant de test, ou sont retirés quand leur instrument est périmé ;
@@ -578,16 +599,41 @@ rougissent entre deux montées).
       les bascules sur sa copie du profil en mode portée : elle pose désormais `br.portee` par
       l'assistant de test, sans quoi elle relirait quantifié et le gate 3 ci-dessous ne pourrait pas
       reproduire `images_cles_portee.tsv` (découverte 36).
-- [ ] LK.3.6 Ratchet d'écriture (archlint ou grammar) : `portee` n'est écrit que dans
+      *Fait* : assistant unique `sousLaPortee` (`harnais_portee_test.go`) ; marqueur ti=12 et
+      translocateur par lui ; `TestLaGrammaireDeLEcrivainI0LitLaTableAPrecHaut` RETIRÉ (la grammaire
+      d'écrivain hors portée n'existe plus, E-3) et remplacé par les tests de
+      `portee_etat_complet_test.go` ; `kf7eCases` = REF (l'ancienne (d+e)) et (c) ; `TestKF7EProfileI0`
+      retiré (A/B d'une bascule disparue) ; `keyframe_baseline_scope_test.go` SUPPRIMÉ (instrument
+      aveugle, U-0) ; `walkKeyframeBody` CONSERVÉ (quatre instruments l'appellent encore) ; `ri27d0`
+      `lire` par `sousLaPortee` (fichier toujours à 500 lignes) ; `ri27d1_m2_critere` réduit à REF ;
+      table de `lecteur_position_ratchet_test.go` : le site de la bascule (`lireE420` depuis
+      `consumeObjectPositionDynamicPrecisionD`) retiré, le jeu n'y appelle pas `FUN_14076e420` ;
+      instruments `campagne_overlay` `r_veh_ti40`, `r_veh_ti40_variantes`, `r_veh_imagecle` : variantes
+      de portée et d'i0 retirées (elles sont la production), relectures d'état complet sous
+      `sousLaPortee` — non compilables sans leur surcouche, absente du dépôt (§7, D-15).
+- [x] LK.3.6 Ratchet d'écriture (archlint ou grammar) : `portee` n'est écrit que dans
       `keyframe_fullstate_loop.go` (et, en D1.1, dans l'assistant de relecture à l'étendue) ;
       `TraverseEntity`, `decodeDelta`, la vue A (`vue_a_charges*.go`) ne la posent jamais.
-- [ ] LK.3.7 Garde E-4 : sous la portée, h = 1 et le prédicat de croissance de la table d'objets
+      *Fait* : `grammar/portee_ecriture_guard_test.go` (AST de tous les fichiers du paquet, tests et
+      instruments compris ; compte exact : `keyframe_fullstate_loop.go` 4, `harnais_portee_test.go`
+      1). Mutation « portée posée dans `TraverseEntity` » : ROUGE (ce ratchet et
+      `TestLeRecordNeufEtLeDeltaNePosentPasLaPortee`), retirée.
+- [x] LK.3.7 Garde E-4 : sous la portée, h = 1 et le prédicat de croissance de la table d'objets
       établi en LK.1.10 (attendu : `TypeDeMoteur` = 1) → arrêt nommé `largeur_handle_moteur_un` ; test
       unitaire. Si LK.1.10 n'établit aucun prédicat lisible dans le film : `[!]` et ARRÊT (E-4).
-- [ ] LK.3.8 Régénérer `keyframe_closure_cuisson.golden` (`-update-keyframe-closure-cuisson`) avec
+      *Fait* : `GrammaireBalayage.MoteurUnPossible`, dérivé du film comme le contrôle de corruption
+      (`grammaireSousFilm` : identité non lue, variante non lue, ou type 1 déclaré → vrai ; variante
+      absente → type 0 → faux ; défaut de structure faux = valeur du jeu sans variante), posé à chaque
+      rendu par `FilmContext.poserLaGrammaireDuFilm` (profil du contexte et preuve d'image-clé) ;
+      arrêt `ArretLargeurHandleMoteurUn` avant la queue. Tests : `TestLaGardeDuHandleArreteSousLeMoteurUn`,
+      `TestLeTypeDeMoteurVientDuFilm`, cas « moteur 1 possible » de `TestLaMarcheDEtatCompletPoseLaPortee`.
+- [x] LK.3.8 Régénérer `keyframe_closure_cuisson.golden` (`-update-keyframe-closure-cuisson`) avec
       sa ligne d'historique : `ti=35` 53 → 666 / 1 368 ; baisse `60ae07c4` 2 → 1 = slot 539, bit
       200 424, fermeture de hasard de la base (adjugée, §2) ; le golden `keyframe_closure` (sans carte)
       ne doit PAS bouger.
+      *Fait* : 666/1 368 exactement, seules les sept lignes `ti=35` changent (fermés, et bloquant
+      vidé sur quatre bobines) ; historique dans le générateur ; golden sans carte inchangé
+      (`-run KeyframeClosure` vert sans régénération).
 - Tests unitaires : i0 sous portée h = 0 (1 + 1 + 1 + 96 + 2 = 101 bits) et h = 1 ; flottant non fini
   → arrêt ; trame média de l'état par défaut bipède sous portée = 96 bits ; la vue A et un paquet
   delta lisent à l'identique (portée jamais posée). Mutations (chacune doit rougir un test) : poser
@@ -869,6 +915,21 @@ refusionner, rejouer l'étape 0).
   delta n'est hors portée que dans son contexte d'appel par le film — d'où une portée portée par le
   Lecteur et posée par la seule marche d'état complet.
 - D-11 *(mesure 1)* Écart de réserve ~5 % identique en A et en B (D1.0.7 l'instruit).
+- D-12 *(LK.3)* La structure de lecture ne porte pas la cause d'un arrêt de lecteur : `EntityTrace.Arret`
+  la nomme, mais `lecture.Record` ne garde que l'index (`Desync`), et `KeyframeClosure` comme I-ferm
+  nomment « bloquant » le composant arrêté (`i0 object-position-dynamic-precision-component` sur
+  `50247b26` `ti=35`, à la place de `i58`) : un arrêt de lecteur s'y lit comme un composant non porté.
+- D-13 *(LK.3)* `Mouvement.FullPrecision`, miroir de `DAT_145121140 == 1`, est présumé faux pour tous
+  les films (`profile_table.go`, « Movement.FullPrecision » = false), alors que le film déclare son type
+  de moteur (`VarianteDePartie.TypeDeMoteur`, déjà lu par la vue A) ; un film de type 1 lirait toutes
+  ses positions en brut. Sans effet mesuré : type 2 sur les 26 films à identité du corpus
+  (`$S/lk3/variantes_28.tsv`) et sur les 1 656 du cache (LOT VA).
+- D-14 *(LK.3)* Sous la portée, les 96 bits de la branche absolue d'i0 sont la position EXACTE du
+  bipède (trois `float32`) ; `semerPositionAbsolue` ne sème pas une forme brute, la graine
+  d'accumulation ne la lit donc pas (consommateurs du rejeu : D1.3).
+- D-15 *(LK.3)* Les instruments `campagne_overlay` (`r_veh_ti40`, `r_veh_ti40_variantes`,
+  `r_veh_imagecle`) ont été adaptés sans pouvoir être compilés : leur surcouche (`r_veh_overlay/`, les
+  `overlay_campagne.json`) n'est pas dans le dépôt et remplace des fichiers entiers d'une tête ancienne.
 
 ## 8. Journal
 
@@ -994,3 +1055,53 @@ refusionner, rejouer l'étape 0).
   `archlint` verts sous `-skip "$SKIPREV"` ; vet avec et sans `research` vert. Correction du plan
   sur pièces : `TestChaqueRevisionEgaleSonGolden` (`film/revision`) rougit lui aussi entre deux
   montées (il rejoue l'empreinte de chaque couche) : ajouté à `SKIPREV` (§1.4).
+- 2026-10-08 (nuit) : ÉTAPE LK.3 CLOSE (LK.3.1 à LK.3.8 `[x]`). Sorties sous `$S/lk3/`. Production :
+  `Lecteur.portee` posée par la seule marche d'état complet (`consumeFullStateDefaultBlock`,
+  `traverserSousLaPortee`), `fullPrecisionGate` = portée ou réglage, branche absolue d'i0 sous la
+  portée (`consumeAbsoluSousLaPortee`), arrêts nommés `grammar.ArretDuLecteur` (`position_non_finie`,
+  `largeur_handle_moteur_un`) portés par `EntityTrace.Arret`, `GrammaireBalayage.MoteurUnPossible`
+  dérivé du film (`grammaireSousFilm`, `FilmContext.poserLaGrammaireDuFilm`), `PorteeBaseline` et
+  `GrammaireEcrivainI0` retirés. **Tests unitaires** (`portee_etat_complet_test.go`) : i0 sous portée
+  h = 0 = 101 bits, h = 1 = 115 bits (queue entre les 96 bits et le R(2)) ; flottant infini → arrêt
+  après 99 bits, sans R(2) ; garde E-4 ; marche d'état complet (fermeture, deux arrêts au début d'i0) ;
+  état par défaut `ti=40` sous la portée (feuille quaternion R(96)) ; trame média du bipède sous la
+  portée = 96 + 1 bits ; remise à faux des deux portées (arrêt de lecteur compris) ; record NEW et
+  DELTA hors portée (i0 = 47 bits) ; type de moteur dérivé du film. **Mutations**, chacune ROUGE puis
+  retirée (`$S/lk3/mut/m*.log`) : portée posée dans `TraverseEntity` ; remise à faux oubliée après
+  l'état par défaut, puis après la boucle ; R(2) lu avant la queue (108 bits au lieu de 115) ; portée
+  sur la boucle sans l'état par défaut (fin 355 au lieu de 388) ; et en plus : finitude lue sans
+  inverser les octets, garde E-4 désarmée, dérivation du type de moteur retirée du contexte.
+  **Commandes** : `go test $G -count=1 -skip "$SKIPREV"` vert (64,7 s) ; `go test ./internal/archlint/
+  -count=1` vert ; `go vet ./internal/games/halo_infinite/film/...` et `go vet -tags=research
+  ./internal/games/halo_infinite/film/... ./internal/sync/killcollector/` code 0 ; `golangci-lint run
+  --new-from-merge-base=origin/main` sur `grammar` et `archlint` : 0 problème ; registre des replis et
+  codec des faits (`TestCodecCouvreFilmInputs`, `FuzzDecodeFilmFactsFile`) verts. **Gate LK.3**, dans
+  l'ordre : (1) I-ancres : colonnes 1-9 de `m2_ancres_tete.tsv` identiques à `$S/e0` (0 ligne),
+  totaux de `m2_stats_tete.tsv` hors `fermes` identiques à `$S/e0`, `m2_stats_tete.tsv` identique à
+  `m2_stats_lk.tsv` à l'octet ; `m2_ancres_tete.tsv` diffère de `m2_ancres_lk.tsv` sur 75 lignes, toutes
+  de `50247b26` (52 `ti=35`, 23 `ti=40`) qui s'arrêtent désormais au début d'i0 ; I-equipes : 28
+  lignes identiques aux lignes `lk` de la référence et à `$S/e0`. (2) I-carte : 20 films, 8 films et
+  28 films sous MPP déclaré (`-plafond-gib 4 -top 40 -mode v2 -paquets -mpp-declare`, ordre
+  `$F20,$F8`) : tous les TSV identiques à `$S/e0`, `fermeture_films.tsv` colonnes 1-16 identiques,
+  `fermeture_resume.md` ne diffère que par la colonne du pic mémoire. (3) I-d0 : `agg.tsv` TOTAL
+  10710 10575 5399 9968 332 6955 1566 5324 4 4319 contre R-2 10710 10622 5399 9972 380 6955 1612 5324 4
+  4319 : seule la ligne `50247b26` change (traversés 635 → 588, grenades lues 41 → 37, compte ≠ 4
+  380 → 332, fenêtre en plus 358 → 312 ; fermés 6 inchangés) ; `diff` des lignes triées contre
+  `images_cles_portee.tsv` : 3 862 lignes, réparties entre `50247b26` (ses lignes et les agrégats de
+  format 20 et « tous ») et les lignes `T`/`TF` des témoins négatifs (en-tête décalé d'un bit) de
+  tous les films. (4) I-ferm : `--- PASS`, 839 lignes, colonnes film/archétype/fermés/total
+  identiques aux lignes `portee` de la référence ; `ti=35` 5 399 / 10 710 (base 410) ; une seule ligne
+  change, le bloquant le plus fréquent de `50247b26` `ti=35` (`i58` → `i0`). (5) I-critere : REF
+  125 + 124 + 120 = 369/599 = 61,60 % dans `TestKF7EFullStateLoop` et `TestRI27d1M2Critere`, avec et
+  sans bouchons ; la ligne (c) vaut l'ancienne (c+d+e), 3/599. (6) `-run KeyframeClosure` vert :
+  golden sans carte inchangé, cuisson régénérée à 666/1 368. **Écart avec le crochet, EXPLIQUÉ** :
+  rejoué sur `$S/lk3/sans_arrets/` avec les deux arrêts neutralisés le temps de la mesure (code
+  restauré, `MESURE TEMPORAIRE` absent de l'arbre), I-d0 rend `images_cles_portee.tsv` à l'octet (0
+  ligne de `diff`) et I-ancres `m2_ancres_lk.tsv` à l'octet ; avec la garde E-4 seule neutralisée
+  (`$S/lk3/sans_garde_e4/`), il reste une ligne. Donc : 74 records de `50247b26` s'arrêtent sur
+  `largeur_handle_moteur_un` — `50247b26` et `a349fea8` n'ont pas de section d'identification
+  (instrument V3, `$S/lk3/variantes_28.tsv` : 26 films à identité, tous `TypeDeMoteur` 2), le type de
+  moteur n'y est pas établi, et la garde E-4 s'arme comme le plan l'écrit ; 1 record de `50247b26`
+  (tranche 30, slot 672, bit 199 752) et des témoins négatifs s'arrêtent sur `position_non_finie`.
+  Aucun de ces records ne fermait sous le crochet (fermés inchangés partout). Découvertes D-12 à
+  D-15 (§7).

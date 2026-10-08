@@ -1,6 +1,10 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+import (
+	"math/bits"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+)
 
 // components_position_i0.go — LE DESERIALISEUR DE POSITION i0 (FUN_1406cfe44) ET SES TROIS
 // CHEMINS DE CHARGE UTILE : delta predit, absolu quantifie, copie pleine precision ; plus la
@@ -17,8 +21,10 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 //	bUsePred = R(1) ; bDelta = R(1)  (header)
 //
 // Three mutually-exclusive payload paths + the shared bHandle tail. AxisW/IndexW
-// from the runtime profile.PrecisionDescriptor (pd); `Lecteur.fullPrecision` = the
-// FUN_14076f91c runtime gate (received, not read from the stream).
+// from the runtime profile.PrecisionDescriptor (pd); `fullPrecisionGate` = the
+// FUN_14076f91c runtime gate (the full-state scope [Lecteur.portee] or the process setting;
+// received, not read from the stream). Under the scope, the absolute path is
+// [consumeAbsoluSousLaPortee].
 func consumeObjectPositionDynamicPrecisionD(br *Lecteur, pd profile.PrecisionDescriptor) {
 	br.cap.startBit = br.BitPos()  // bit d entree (== StartBit du composant) pour l attribution
 	br.cap.slot = br.cap.accumSlot // slot du record courant (attribution multi-entites)
@@ -40,15 +46,8 @@ func consumeObjectPositionDynamicPrecisionD(br *Lecteur, pd profile.PrecisionDes
 
 	// bUsePred==0, bDelta==0: ABSOLUTE -> FUN_14076e524, then tail (no fresh handle bit).
 	if !bDelta {
-		if br.p.Grammaire.GrammaireEcrivainI0 {
-			// Grammaire de l'ÉCRIVAIN d'état complet (FUN_14320696c / FUN_14076e420) : le
-			// bit h est precHigh, il garde la QUEUE, et le champ de 2 bits vient APRÈS.
-			// h = 1 lit `FUN_141f85880` (trois axes sur +/-100), pas la plage de la carte
-			// (lot J6.3, relevé du 2026-09-27 : `FUN_14076e29c` -> `FUN_14076e420(0x10)`).
-			h, pos := lireE420(br, niveauPosition)
-			semerPositionAbsolue(br, pos, PosKindAbsolute)
-			consumePositionHandleTail(br, h, pd)
-			br.ReadBits(2) // FUN_14076e304, EN DERNIER
+		if br.portee {
+			consumeAbsoluSousLaPortee(br, pd)
 			return
 		}
 		consumeAbsoluteWithGate(br)
@@ -247,8 +246,68 @@ func consumeAbsoluteWithGate(br *Lecteur) {
 	//
 	// PLACE DU CHAMP : ici il est lu AVANT la queue de handle, qui est de toute façon éteinte
 	// sur ce chemin (`consumePositionHandleTail(br, false, ...)`). L'écrivain du jeu le pose
-	// APRÈS la queue — l'ordre n'est donc observable que sous `keyframeWriterI0Grammar`.
+	// APRÈS la queue — l'ordre n'est donc observable que sous la portée
+	// ([consumeAbsoluSousLaPortee]).
 	br.ReadBits(2)
+}
+
+// consumeAbsoluSousLaPortee porte la branche ABSOLUE de `FUN_1406cfe44` (bUsePred = 0, bDelta = 0)
+// SOUS LA PORTEE `DAT_144e61ea0` ([Lecteur.portee]), dans l ordre du jeu :
+//
+//	h      R(1)    FUN_1406cf008 (1406d005f) ; la porte de la queue
+//	garde  0 bit   FUN_14076f91c (1406d0076), vraie sous la portee
+//	brut   R(96)   FUN_1411b259c -> FUN_1406d676c(.., 0x60) : trois flottants IEEE-754
+//	queue          FUN_14076e3e4(h) (1406d00be)
+//	fini   0 bit   FUN_140492128 (LAB_1406cffd7) : l exposant de chaque flottant n est pas 0xFF
+//	R(2)           FUN_14076e304, lu SEULEMENT si les trois flottants sont finis
+//
+// L ecrivain d etat complet pose la meme forme (`FUN_14320696c` -> `FUN_142e2c9bc`) : le bit h ne
+// supprime pas la charge, il porte la queue, et le R(2) vient en dernier.
+//
+// UN FLOTTANT NON FINI FAIT ECHOUER LE LECTEUR : `FUN_1406cfe44` rend faux sans lire le R(2), et
+// la boucle d etat complet `FUN_142e2c690` s arrete sur lui ([ArretPositionNonFinie]).
+//
+// LA QUEUE EST [consumePositionHandleTail], la forme en ligne du portage : le handle y est lu sur
+// `pd.IndexW` bits, quand `FUN_14076e3e4` le lit par `FUN_1408f0ac4(.., 0)`, sur 13 bits pour la
+// table d objets statique (`DAT_144706100 = 0x1FFF`). Cette table ne grandit, donc cette largeur
+// ne change, que sous le type de moteur 1 (`FUN_140d10a78` pose ses drapeaux de croissance a
+// `DAT_145121140 == 1`) : un handle PRESENT (h = 1) dans un film qui n exclut pas ce type
+// ([GrammaireBalayage.MoteurUnPossible]) arrete donc la lecture ([ArretLargeurHandleMoteurUn])
+// plutot que de lire une largeur que le film n etablit pas.
+//
+// Les 96 bits ne sont pas semes comme position : la graine d accumulation ne lit que la plage
+// cataloguee ([semerPositionAbsolue]).
+func consumeAbsoluSousLaPortee(br *Lecteur, pd profile.PrecisionDescriptor) {
+	h := br.ReadBit() // FUN_1406cf008
+	var mots [3]uint32
+	for k := range mots {
+		mots[k] = uint32(br.ReadBits(32)) //nolint:gosec // 32 bits lus
+	}
+	if h && br.p.Grammaire.MoteurUnPossible {
+		br.arreter(ArretLargeurHandleMoteurUn)
+		return
+	}
+	consumePositionHandleTail(br, h, pd) // FUN_14076e3e4(h)
+	if !flottantsFinis(mots) {           // FUN_140492128
+		br.arreter(ArretPositionNonFinie)
+		return
+	}
+	br.ReadBits(2) // FUN_14076e304
+}
+
+// masqueExposantFlottant : les huit bits d exposant d un flottant IEEE-754 simple precision ;
+// tous a 1, le flottant est infini ou NaN (`FUN_140492128` : `& 0x7f800000 != 0x7f800000`).
+const masqueExposantFlottant = 0x7f800000
+
+// flottantsFinis porte `FUN_140492128` sur trois mots lus du flux. `FUN_1406d676c` range les
+// octets dans l ordre du flux : l image memoire du flottant est le mot lu, octets inverses.
+func flottantsFinis(mots [3]uint32) bool {
+	for _, m := range mots {
+		if bits.ReverseBytes32(m)&masqueExposantFlottant == masqueExposantFlottant {
+			return false
+		}
+	}
+	return true
 }
 
 // kindDuCheminAbsolu rend la forme de la graine : le repli du delta predit se distingue.

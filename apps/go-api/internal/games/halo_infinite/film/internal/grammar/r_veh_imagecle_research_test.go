@@ -19,10 +19,12 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
-// rviVariante : une lecture des images-cles.
+// rviVariante : une lecture des images-cles. La portee `DAT_144e61ea0` sur le record d etat
+// complet et le chemin absolu d i0 de l ecrivain sont ceux de la production (plan LK, 2026-10-08) :
+// les variantes qui les posaient se confondent avec celles qui restent.
 type rviVariante struct {
-	nom                  string
-	crochet, portee, m83 bool
+	nom          string
+	crochet, m83 bool
 }
 
 // rviCompte : par archetype.
@@ -35,8 +37,7 @@ func TestRVehImagesClesTousArchetypes(t *testing.T) {
 	variantes := []rviVariante{
 		{nom: "production"},
 		{nom: "ti40-composants", crochet: true},
-		{nom: "ti40-composants+portee+i0-ecrivain", crochet: true, portee: true},
-		{nom: "mpp8/3+ti40-composants+portee+i0-ecrivain", crochet: true, portee: true, m83: true},
+		{nom: "mpp8/3+ti40-composants", crochet: true, m83: true},
 		{nom: "mpp8/3+production", m83: true},
 	}
 	lignes := []string{"film\tbuild\tvariante\tti\trecords\tfermes\tvoisins\tvoisins_fermes"}
@@ -52,8 +53,6 @@ func TestRVehImagesClesTousArchetypes(t *testing.T) {
 				f.fc.PoserMPP(profile.MPPWidths{Lead: 8, Index: 3})
 			}
 			ctx := f.fc.ContexteDeLecture()
-			ctx.Profil.Grammaire.PorteeBaseline = v.portee
-			ctx.Profil.Grammaire.GrammaireEcrivainI0 = v.portee
 			ctx.Obs = &Observation{MppHook: func(fl MPPField, val uint64, present bool) {
 				if fl == MPPWord32 && present {
 					b2vPorte = physique[uint32(val)] == 6 //nolint:gosec // mot de 32 bits

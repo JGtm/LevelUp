@@ -109,9 +109,18 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 	}
 	t.Mask = ^uint64(0) // etat complet : aucun masque de presence, tous les composants presents
 	br.etatComplet = true
-	traverseComponentLoop(br, arch, &t)
+	traverserSousLaPortee(br, arch, &t)
 	t.EndBit = br.BitPos()
 	return t
+}
+
+// traverserSousLaPortee joue la boucle de composants d etat complet (`FUN_142e2c690`) sous la
+// portee qu elle pose : `DAT_144e61ea0 = 1` a son entree (142e2c6b8), remis a 0 sur sa sortie
+// commune (142e2c76a), atteinte aussi quand un lecteur de composant echoue.
+func traverserSousLaPortee(br *Lecteur, arch Archetype, t *EntityTrace) {
+	br.portee = true
+	traverseComponentLoop(br, arch, t)
+	br.portee = false
 }
 
 // consumeFullStateDefaultBlock joue ce que `FUN_142e2bfd0` lit ENTRE l'en-tete par entite et la
@@ -129,18 +138,56 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 // `default_state_n2_constant_test.go` ecarte « trois a quinze records par groupe dont le `n1`
 // s'ecarte du modal (en pratique 0) » en les appelant des ANCRES FORTUITES. L'ecrivain dit
 // qu'un `n1` nul est un record LEGITIME sans etat par defaut.
+//
+// LA PORTEE `DAT_144e61ea0` ([Lecteur.portee]) couvre l'etat par defaut et le mot de controle,
+// pas `n2` : `FUN_142e2bfd0` la pose juste avant `vtable[0x60]` (142e2c46f) et la remet a 0 apres
+// le mot de controle (142e2c530), dans la branche `n1 > 0` seulement.
 func consumeFullStateDefaultBlock(br *Lecteur, ti uint32, sansEtatParDefaut bool) bool {
 	// LA LARGEUR DU MOT DE TAILLE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c).
 	mot := uint(br.cadre().MotDeTailleBits) //nolint:gosec // largeur de profil, bornee a 32
 	n1 := int32(br.ReadBits(mot))           //nolint:gosec // 32 bits lus, compares SIGNES
 	if !sansEtatParDefaut && n1 > 0 {       // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
+		br.portee = true
 		consumeKeyframeDefaultState(br, ti)
 		if br.p.Grammaire.ControleDeCorruption {
 			// FUN_142e2bfd0 : mot de controle INCONDITIONNEL (pas de R(1) de garde ici,
 			// contrairement au controle PAR COMPOSANT de FUN_142e2c690).
 			br.ReadBits(mot)
 		}
+		br.portee = false
 	}
 	// n2 : meme comparaison SIGNEE ; > 0 => vtable[0x88] puis la boucle de composants.
 	return int32(br.ReadBits(mot)) > 0 //nolint:gosec // idem
+}
+
+// ArretDuLecteur nomme l ECHEC d un lecteur de composant du jeu : son deserialiseur rend faux, et
+// la boucle de composants s arrete sur lui ([EntityTrace.Arret]). Ce n est pas un composant non
+// porte : sa largeur est lue, c est ce qu il lit qui fait echouer le jeu, ou ce que le film
+// n etablit pas.
+type ArretDuLecteur uint8
+
+// Les causes d echec d un lecteur de composant.
+const (
+	// ArretAucun : aucun lecteur n a echoue.
+	ArretAucun ArretDuLecteur = iota
+	// ArretPositionNonFinie : la branche absolue d i0 sous la portee a lu un flottant non fini
+	// ([consumeAbsoluSousLaPortee] ; `FUN_1406cfe44` rend faux, `FUN_142e2c690` s arrete).
+	ArretPositionNonFinie
+	// ArretLargeurHandleMoteurUn : la branche absolue d i0 sous la portee annonce un handle (h = 1)
+	// dans un film qui n exclut pas le type de moteur 1 ([GrammaireBalayage.MoteurUnPossible]) : la
+	// largeur de son index n est pas etablie ([consumeAbsoluSousLaPortee]).
+	ArretLargeurHandleMoteurUn
+)
+
+// String rend le nom de la cause.
+func (a ArretDuLecteur) String() string {
+	switch a {
+	case ArretAucun:
+		return "aucun"
+	case ArretPositionNonFinie:
+		return "position_non_finie"
+	case ArretLargeurHandleMoteurUn:
+		return "largeur_handle_moteur_un"
+	}
+	return "arret_inconnu"
 }

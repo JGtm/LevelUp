@@ -365,24 +365,6 @@ func TestLeCheminI0DuBipedeLitCeQueLeJeuEcrit(t *testing.T) {
 	}
 }
 
-// TestLaGrammaireDeLEcrivainI0LitLaTableAPrecHaut — la grammaire d ecrivain d i0
-// (`GrammaireEcrivainI0`, FUN_14076e29c) : h = precHigh = 1 lit FUN_141f85880 (3 x 14), pas la
-// porte, l index et les axes de la carte ; puis la queue de poignee (h = 1 : deux portes a 0) et
-// le R(2).
-func TestLaGrammaireDeLEcrivainI0LitLaTableAPrecHaut(t *testing.T) {
-	flux := concat(seul(bit(false), bit(false)), seul(bit(true)), axesSeuls(axesPrecHautNiveau16),
-		seul(bit(false), bit(false)), seul(fixe(2)))
-	buf, total := ecrireFlux(flux)
-	br := lecteurDeSite(buf, 2) // quatre plages : sous Cliffhanger, 1 + 1 + 40 = 42 = 3 x 14 masquerait l ecart
-	p := br.Profil()
-	p.Grammaire.GrammaireEcrivainI0 = true
-	br.PoserProfil(p)
-	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
-	if got := br.BitPos(); got != total {
-		t.Fatalf("i0, grammaire de l ecrivain, h = 1 : %d bits lus, l ecrivain en pose %d", got, total)
-	}
-}
-
 // TestLaTeleportationDuTranslocateurLitSousLaGarde — le second portage : `FUN_140f04fb8` (CALLs
 // 140f04ff0 et 140f05023, niveau 0x10 aux deux) garde CHAQUE position par `FUN_14076f91c` ; sous la
 // garde, `FUN_1411b259c` lit R(96) brut. `transloc_events.go` recopiait le lecteur sans la garde.
@@ -392,10 +374,7 @@ func TestLaTeleportationDuTranslocateurLitSousLaGarde(t *testing.T) {
 		AxisWidths: axesCarteNiveau16}
 	flux := seul(fixe(96))
 	buf, total := ecrireFlux(flux)
-	br := LecteurSur(buf)
-	p := br.Profil()
-	p.Grammaire.PorteeBaseline = true
-	br.PoserProfil(p)
+	br := sousLaPortee(LecteurSur(buf))
 	if _, ok := readTranslocVec(br, entree); ok {
 		t.Error("sous la garde, la position est BRUTE : aucune coordonnee quantifiee a rendre")
 	}

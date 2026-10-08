@@ -110,38 +110,21 @@ func consumeObjectAngularVelocity(br *Lecteur) {
 // « réplication haute précision » du process. NOT a bitstream bit. Default false
 // (retail high-prec path inactive).
 //
-// CORRECTION DE MODÈLE, lot R7-c (2026-08-17). Ce champ portait auparavant les DEUX
-// globaux de `FUN_14076f91c` à la fois, ce qui était faux : `DAT_144e61ea0` est une
-// PORTÉE (cf. keyframeBaselineScope) et `DAT_145121140` un réglage de process, et ils
-// ne gardent PAS les mêmes lecteurs. Sous la seule portée baseline, `i49`
-// (`FUN_14107166c`), `i2 forward-and-up` (`FUN_140c5f938`) et le bloc MPP
-// (`FUN_14080cfe8`) — qui lisent `DAT_145121140` SEUL — ne bougent pas.
+// CE N'EST PAS LA PORTÉE `DAT_144e61ea0` ([Lecteur.portee]), et les deux ne gardent PAS les
+// mêmes lecteurs : `i49` (`FUN_14107166c`), `i2 forward-and-up` (`FUN_140c5f938`) et le bloc
+// MPP (`FUN_14080cfe8`) lisent `DAT_145121140` SEUL — la portée ne les change pas.
 //
 // C'ÉTAIT LA VARIABLE DE PAQUET `PositionFullPrecision` JUSQU'AU LOT 2.2.a : elle vient
 // désormais du PROFIL que le lecteur porte ([Lecteur.poserMouvement]).
 func (b *Lecteur) fullPrecision() bool { return b.p.Mouvement.FullPrecision }
 
-// keyframeBaselineScope mirroite `DAT_144e61ea0` : une PORTÉE, pas un réglage. Les huit
-// lecteurs d'état complet du groupe `142e2*`/`142e3*` (dont `FUN_142e2bfd0`) le lèvent à 1
-// juste AVANT l'appel `vtable[0x60]` (état par défaut) et le remettent à 0 juste APRÈS.
-// Pendant cette portée, `FUN_14076f91c()` est vrai et tous les lecteurs de position du
-// moteur passent du quantifié au BRUT 96 bits.
-//
-// KILL-SWITCH — défaut `false` depuis le 2026-08-17. La bascule du défaut est conditionnée
-// à UN critère mesurable : que la lecture d'un corps d'image-clé sous cette portée fasse
-// remonter l'atterrissage bit-exact des 591 records `ti=35` bornés au-dessus de 50 %
-// (mesure `TestKF35CBaselineScope`). Retrait cible du drapeau : à la bascule.
-// C'ÉTAIT LA VARIABLE DE PAQUET `keyframeBaselineScope` JUSQU'AU LOT 2.3 : la portée vit dans
-// [GrammaireBalayage.PorteeBaseline], que le lecteur porte.
-
-// fullPrecisionGate porte `FUN_14076f91c` : `DAT_144e61ea0 != 0 || DAT_145121140 == 1`.
-// Zéro bit consommé — c'est un prédicat de CONTEXTE, jamais un bit du flux.
-//
-// LA PORTÉE ET LE RÉGLAGE VIENNENT DE DEUX ENDROITS DU PROFIL, et c'est voulu : la portée
-// (`DAT_144e61ea0`) est une BASCULE DE GRAMMAIRE que les lecteurs d'état complet lèvent autour
-// d'un appel ; le réglage (`DAT_145121140`) est une valeur de MOUVEMENT, arrivée au lot 2.2.a.
+// fullPrecisionGate porte `FUN_14076f91c` : `DAT_144e61ea0 != 0 || DAT_145121140 == 1`, soit la
+// PORTÉE de la lecture d'état complet ([Lecteur.portee]), que le lecteur porte, ou le RÉGLAGE
+// de process ([Lecteur.fullPrecision]), que son profil porte. Zéro bit consommé — c'est un
+// prédicat de CONTEXTE, jamais un bit du flux. Vrai, les lecteurs de position du moteur lisent le
+// vecteur BRUT de 96 bits (`FUN_1411b259c` = `FUN_1406d676c(.., 0x60)`) au lieu du quantifié.
 func fullPrecisionGate(br *Lecteur) bool {
-	return br.p.Grammaire.PorteeBaseline || br.fullPrecision()
+	return br.portee || br.fullPrecision()
 }
 
 // deltaHasHandleTail mirrors the runtime field bVar16 = (precIndex != -1)
@@ -172,26 +155,3 @@ func (b *Lecteur) calibratedSkip() bool { return b.p.Mouvement.CalibratedSkip }
 // C'ÉTAIT UNE VARIABLE DE PAQUET JUSQU'AU LOT 2.2.b : le quantum vit dans le PROFIL que le
 // lecteur porte (`Movement.DeltaQuantum`).
 func (b *Lecteur) deltaQuantum() float32 { return b.p.Mouvement.DeltaQuantum }
-
-// keyframeWriterI0Grammar route le chemin ABSOLU d'i0 sur la grammaire que l'ECRIVAIN d'état
-// complet du jeu pose, et que le lecteur du jeu relit — les deux disent la même chose CONTRE
-// le port (lot R7-d, `WALK_PORT_NOTES.md` section « i0 — LE LECTEUR DU JEU DIT LA MÊME CHOSE
-// QUE L'ÉCRIVAIN ») :
-//
-//	écrivain FUN_14320678c -> FUN_14320696c -> FUN_142e2d86c ; lecteur FUN_14076e29c ->
-//	FUN_14076e420 : le 3e bit ne SUPPRIME pas la charge utile (il choisit la table de plage
-//	DAT_143b8c6d0 = ±100) et il est la PORTE DE LA QUEUE DE HANDLE ; le champ de 2 bits est
-//	INCONDITIONNEL et vient EN DERNIER, après la queue.
-//
-// Le port actuel fait `if precHigh { return }` (0 bit de charge) et force la queue à false :
-// une sous-lecture de `1 + [idxW] + 3 x axisW` bits dès que ce bit vaut 1.
-//
-// KILL-SWITCH — défaut OFF posé le 2026-08-17 (lot R7-e) : la correction n'est pas encore
-// prouvée bit-exacte sur l'oracle de frontière, et le chemin absolu d'i0 sert la trajectoire
-// de PRODUCTION du rejeu 2D. Critère de bascule du défaut : atterrissage bit-exact en hausse
-// sur les 591 records `ti=35` bornés ET non-régression delta verte. Retrait de la bascule (une
-// seule grammaire, celle du jeu) visé à la clôture du chantier image-clé, au plus tard le
-// 2026-10-31 — si le critère n'est pas tenu d'ici là, c'est le port qu'il faut rouvrir, pas la
-// bascule qu'il faut prolonger.
-// C'ÉTAIT LA VARIABLE DE PAQUET `keyframeWriterI0Grammar` JUSQU'AU LOT 2.3 : la bascule vit
-// dans [GrammaireBalayage.GrammaireEcrivainI0], que le lecteur porte.

@@ -168,7 +168,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 			g.rangLu = true
 			obs.AbilitySetHook = func(_ uint64, rk int, _ int) { g.rang = rk }
 		}
-		br := LecteurSur(p.Payload)
+		br := sousLaPortee(LecteurSur(p.Payload)) // la marche d etat complet l a lu sous la portee
 		br.PoserContexte(ctx)
 		br.etatComplet = true
 		br.obs = obs

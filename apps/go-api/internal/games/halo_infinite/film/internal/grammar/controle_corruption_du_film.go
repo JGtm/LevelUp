@@ -1,7 +1,8 @@
 package grammar
 
 // controle_corruption_du_film.go — LA GRAMMAIRE QU UN FILM DECLARE, DANS SON CONTEXTE : le controle
-// de corruption par composant (lot 5.18.2) et la grammaire de la vue A (lot VA).
+// de corruption par composant (lot 5.18.2), la possibilite du type de moteur 1
+// ([GrammaireBalayage.MoteurUnPossible]) et la grammaire de la vue A (lot VA).
 //
 // FICHIER SEPARE PAR LA TAILLE, PAS PAR LE SENS : `film_context.go` franchissait les 500 lignes
 // du depot avec ces methodes ; elles restent celles de [FilmContext], et la REGLE qu elles
@@ -13,11 +14,13 @@ package grammar
 // quand le kill-feed n a pas pu se decoder. Un champ range dans `bal` serait donc efface par
 // ce geste, sans un mot. Ils sont DERIVES a chaque rendu, depuis le film, et memorises une fois.
 
-// grammaireDuFilm est ce que le film declare, derive une fois : son controle de corruption
-// ([grammaireSousFilm]) et la grammaire de sa vue A ([grammaireDeLaVueASousFilm]) ; s il porte sa
-// section d identification, et si son absence a ete comptee.
+// grammaireDuFilm est ce que le film declare, derive une fois : son controle de corruption et la
+// possibilite du type de moteur 1 ([grammaireSousFilm]), la grammaire de sa vue A
+// ([grammaireDeLaVueASousFilm]) ; s il porte sa section d identification, et si son absence a ete
+// comptee.
 type grammaireDuFilm struct {
 	controle bool
+	moteurUn bool
 	vueA     grammaireDeLaVueA
 	lue      bool
 	derive   bool
@@ -31,10 +34,18 @@ func (c *FilmContext) grammaireDuFilmDerivee() *grammaireDuFilm {
 		c.duFilm.derive = true
 		var g GrammaireBalayage
 		g, c.duFilm.lue = grammaireSousFilm(c.bal.Grammaire, c.Profile())
-		c.duFilm.controle = g.ControleDeCorruption
+		c.duFilm.controle, c.duFilm.moteurUn = g.ControleDeCorruption, g.MoteurUnPossible
 		c.duFilm.vueA = grammaireDeLaVueASousFilm(c.Profile())
 	}
 	return &c.duFilm
+}
+
+// poserLaGrammaireDuFilm pose sur `g` ce que le film declare : son controle de corruption, dont le
+// repli se compte une fois par film ([FilmContext.controleDeCorruptionDuFilm]), et la possibilite du
+// type de moteur 1. Les profils que ce contexte rend passent par la.
+func (c *FilmContext) poserLaGrammaireDuFilm(g *GrammaireBalayage) {
+	g.ControleDeCorruption = c.controleDeCorruptionDuFilm()
+	g.MoteurUnPossible = c.grammaireDuFilmDerivee().moteurUn
 }
 
 // controleDeCorruptionDuFilm rend le bit du film, pour un lecteur qui l EMPLOIE : un film sans

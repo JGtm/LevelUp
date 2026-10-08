@@ -1171,6 +1171,37 @@ si `m_gameEngineType` vaut 1**, valeur que le film porte (`profile.VarianteDePar
 une variante ABSENTE (`Presente` faux) veut dire `FUN_14051a4b8(type) == 0`, donc pas de croissance.
 Residu non couvert : une copie de structure (memcpy) qui recopierait les deux drapeaux.
 
+**E. La portee en production (LK.3, 2026-10-08) : les deux bascules retirees, leur critere.**
+`GrammaireBalayage.PorteeBaseline` et `GrammaireBalayage.GrammaireEcrivainI0`, kill-switches de
+defaut faux depuis le 2026-08-17 (retrait vise au plus tard le 2026-10-31), sont RETIRES : la portee
+est un champ du lecteur (`Lecteur.portee`), pose par la seule marche d etat complet la ou le jeu la
+pose (`FUN_142e2bfd0` 142e2c46f/142e2c530 autour de l etat par defaut et du mot de controle quand
+`n1 > 0` ; `FUN_142e2c690` 142e2c6b8/142e2c76a sur toute la boucle quand `n2 > 0`), et la branche
+absolue d i0 sous la portee lit la forme de `FUN_1406cfe44` (G-2 du plan : h, R(96), queue, R(2) si
+les trois flottants sont finis). Deux arrets nommes (`grammar.ArretDuLecteur`) : `position_non_finie`
+(`FUN_140492128` faux, le lecteur du jeu rend faux) et `largeur_handle_moteur_un` (h = 1 dans un film
+qui n exclut pas le type de moteur 1, D ci-dessus ; `GrammaireBalayage.MoteurUnPossible`, derive du
+film comme le controle de corruption). La queue reste la forme en ligne (`consumePositionHandleTail`,
+handle sur `pd.IndexW`) : son port fidele est LK.5.2.
+
+Le critere ecrit des deux bascules — « atterrissage bit-exact des 591 records `ti=35` bornes
+au-dessus de 50 % » ; 599 bornes a la mesure — n etait PAS tenu par la portee seule : (d) = 8/599
+(1,3 %), REF = 25/599 (4,17 %). Il est tenu par la portee ET la branche absolue d i0 de l ecrivain,
+(d+e) = 125/192 + 124/209 + 120/198 = 369/599 = 61,6 %, avec et sans bouchons
+(`TestKF7EFullStateLoop`, `TestRI27d1M2Critere`, `KF35_ROOT=<film_chunks>`) ; decision U-0 de
+l utilisateur (2026-10-08) : le critere se juge sur (d+e). L instrument que la doc nommait,
+`TestKF35CBaselineScope`, etait aveugle (0/599 sur toutes ses variantes : `walkKeyframeBody` ne pose
+pas le contexte) ; il est retire. Apres LK.3, la ligne REF de `TestKF7EFullStateLoop` vaut 369/599.
+
+Mesures de la bascule (plan LK, gate LK.3, sorties `scratchpad/ri/lk/lk3/`) : ratchet de fermeture en
+contexte de cuisson, `ti=35` 53 -> 666 / 1 368 (une baisse adjugee : `60ae07c4` 2 -> 1, slot 539, bit
+200 424) ; corpus de 28 films, `ti=35` 410 -> 5 399 / 10 710, aucun autre archetype ne change ; carte
+delta identique ; election des ancres identique. Ecart avec la mesure du crochet de recherche,
+attribue en rejouant la mesure sans les deux arrets (alors identique) : 75 records d image-cle de
+`50247b26`, film sans section d identification — 74 arretes par `largeur_handle_moteur_un` (type de
+moteur non etabli), 1 par `position_non_finie` ; aucun ne fermait sous le crochet. Les temoins negatifs
+de l instrument (en-tete decale d un bit) s arretent plus souvent sur `position_non_finie`.
+
 # LA BOUCLE D ETAT COMPLET, PORTEE — et le decalage de niveau du registre (lot R7-e, 2026-08-17)
 
 R7-d avait TROUVE `FUN_142e2c690` sans la PORTER. Ce lot la porte, avec son en-tete, et mesure.

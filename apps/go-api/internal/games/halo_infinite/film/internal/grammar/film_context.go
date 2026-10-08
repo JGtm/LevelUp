@@ -169,14 +169,14 @@ func (c *FilmContext) Observation() *Observation {
 }
 
 // ProfilDeBalayage rend le profil que les lecteurs de ce contexte portent. PAR VALEUR : un
-// appelant qui modifie ce qu il recoit ne modifie pas celui du contexte. Le CONTROLE DE
-// CORRUPTION y est derive du film a chaque rendu (`controle_corruption_du_film.go`).
+// appelant qui modifie ce qu il recoit ne modifie pas celui du contexte. Ce que le FILM DECLARE
+// y est derive a chaque rendu ([FilmContext.poserLaGrammaireDuFilm]).
 func (c *FilmContext) ProfilDeBalayage() ProfilDeBalayage {
 	if c == nil {
 		return ProfilDeBalayageParDefaut()
 	}
 	bal := c.bal
-	bal.Grammaire.ControleDeCorruption = c.controleDeCorruptionDuFilm()
+	c.poserLaGrammaireDuFilm(&bal.Grammaire)
 	return bal
 }
 

@@ -23,7 +23,7 @@ type CompResult struct {
 	Index    int    // archetype iterator index (= mask bit)
 	Name     string // component name from the registry
 	Variant  uint32 // variant-name for obje/weapon components (else noVariant)
-	Ported   bool   // false => no bit-exact deser; traversal must stop here
+	Ported   bool   // false => no bit-exact deser, or its game reader failed ([EntityTrace.Arret]); traversal must stop here
 	StartBit int
 	// Prov dit d ou vient la largeur avec laquelle le composant a ete traverse (ADR 0037 IR-4) ;
 	// [lecture.LargeurNonRenseignee] pour un composant non porte.
@@ -42,8 +42,11 @@ type EntityTrace struct {
 	Mask        uint64
 	Comps       []CompResult
 	Dead        *types.DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
-	DesyncAt    int              // iterator index of the first un-ported present component (-1 if all consumed)
+	DesyncAt    int              // iterator index of the first un-ported present component, or of the component whose reader failed ([EntityTrace.Arret]) (-1 if all consumed)
 	EndBit      int
+	// Arret : le lecteur du composant DesyncAt a echoue ([ArretDuLecteur]) ; la traversee s arrete
+	// au debut de ce composant. [ArretAucun] pour un composant non porte ou une traversee complete.
+	Arret ArretDuLecteur
 	// MasqueNonEcrit : la regle de `FUN_142e2da44` que le masque lu contredit ([lireMasque],
 	// [traverseComponentLoopFrom]) ; [InvariantAucun] pour un masque que l ecrivain peut ecrire.
 	MasqueNonEcrit InvariantEcrivain
@@ -295,6 +298,14 @@ func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from
 		variant, dead, payload, ported := consumeByNameCapturing(br, arch.Components[i], t.TypeIndex, arch.Level(i))
 		if dead != nil {
 			t.Dead = dead
+		}
+		if br.arret != ArretAucun {
+			// Le lecteur du jeu a echoue : la boucle s arrete sur ce composant, a son debut.
+			t.Arret, br.arret = br.arret, ArretAucun
+			br.SetBitPos(start)
+			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: false, StartBit: start})
+			t.DesyncAt = i
+			return
 		}
 		if !ported {
 			// CALIBRATION HOOK: an un-ported component normally desyncs (we can't trust

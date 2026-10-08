@@ -5,19 +5,20 @@ package grammar
 //
 // LA QUESTION : la boucle d'ETAT COMPLET du jeu (`FUN_142e2bfd0` -> `FUN_1428e2b68` ->
 // `FUN_142e2c690`, lue par R7-d) portee TELLE QUELLE sur le payload type-2 atterrit-elle
-// bit-exact ? Les variables, allumees UNE A LA FOIS :
+// bit-exact ? La variable qui reste, allumee seule :
 //
 //	(c) le CONTROLE par composant — `R(1) [+R(32)]` sous le drapeau film
-//	(d) `DAT_144e61ea0`          — vec3 brut 96 bits contre 3 x axisW quantifies
-//	(e) `i0`                     — la grammaire de l'ECRIVAIN (`FUN_14320678c`)
 //
-// DEUX VARIABLES ONT ETE TRANCHEES ET LIVREES, ET ELLES ONT DISPARU DE LA MATRICE :
+// QUATRE VARIABLES ONT ETE TRANCHEES ET LIVREES, ET ELLES ONT DISPARU DE LA MATRICE :
 //
 //	(a) « le niveau du composant `i` est celui de l entree `i` » — lot 1.2 (2026-09-14) : c est
 //	    la lecture du registre (`registry.go`), avec `KeyframeFullStateOpt.LevelShift`.
 //	(b) l EN-TETE par entite (108 bits + deux `R(32)` de taille, contre 64) — lot 1.4
 //	    (2026-09-14) : c est la lecture de production (`WalkKeyframeFullState`, sans argument de
 //	    cadre), avec `KeyframeFullStateOpt` tout entier.
+//	(d) `DAT_144e61ea0` et (e) la grammaire de l'ECRIVAIN d'`i0` — plan LK (2026-10-08) : la marche
+//	    d'etat complet pose la portee ([Lecteur.portee]), sous laquelle la branche absolue d'`i0`
+//	    lit la forme de l'ecrivain ([consumeAbsoluSousLaPortee]). L'ancienne ligne (d+e) est la REF.
 //
 // Elles ont disparu parce que le CHOIX a disparu, pas parce qu on aurait cesse de mesurer.
 //
@@ -123,7 +124,7 @@ func TestKF7ETableLayout(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------------------
-// LA MESURE — les cinq variables, allumees une a une.
+// LA MESURE — la REF, puis la variable qui reste.
 // ---------------------------------------------------------------------------------------
 
 // kf7eCase est UNE configuration mesuree : un libelle, les options de marche, et les
@@ -131,8 +132,6 @@ func TestKF7ETableLayout(t *testing.T) {
 type kf7eCase struct {
 	Label string
 	Corr  bool // (c) le controle par composant du mode film
-	I0    bool // (e) la grammaire d'ECRIVAIN d'`i0`
-	Scope bool // (d) la portee `DAT_144e61ea0` (vec3 brut 96 bits au lieu du quantifie)
 }
 
 // kf7eTally compte ce qu'une configuration a rencontre sur un film. Memes denominateurs et
@@ -206,11 +205,7 @@ func kf7eChain(f kf35Film, pay []byte, from int, b kf35Bound) bool {
 
 // kf7ePass mesure UNE configuration sur UN film, bascules globales installees et restaurees.
 func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
-	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
-		g.PorteeBaseline = c.Scope
-		g.ControleDeCorruption = c.Corr
-		g.GrammaireEcrivainI0 = c.I0
-	})()
+	defer poserBasculeDInstrument(func(g *GrammaireBalayage) { g.ControleDeCorruption = c.Corr })()
 	tal := newKF7ETally()
 	for _, pay := range f.Pays {
 		for _, b := range kf35BoundedRecs(pay) {
@@ -228,17 +223,13 @@ func kf7ePass(f kf35Film, c kf7eCase) kf7eTally {
 // c'est la lecture de production (`WalkKeyframeFullState`, sans argument de cadre). Les quatre
 // lignes qui la balayaient (REF en-tete 64, b1, b2, b3) ont donc disparu de cette matrice —
 // parce que le CHOIX a disparu, pas parce qu'on aurait cesse de mesurer. Toutes les lignes
-// ci-dessous lisent desormais le meme cadre, celui du jeu ; ce qui varie est ce qui reste
-// ouvert : le controle par composant (c), la portee (d) et la grammaire d'ecrivain d'i0 (e).
+// ci-dessous lisent desormais le meme cadre, celui du jeu, sous la portee que la marche pose avec
+// la branche absolue d i0 de l ecrivain (d, e : la REF depuis le plan LK) ; ce qui varie est ce
+// qui reste ouvert : le controle par composant (c).
 func kf7eCases() []kf7eCase {
 	return []kf7eCase{
-		{Label: "REF    cadre d'etat complet, bascules par defaut"},
+		{Label: "REF    cadre d etat complet, portee et i0 de l ecrivain"},
 		{Label: "(c)    + controle par composant", Corr: true},
-		{Label: "(e)    + grammaire d'ECRIVAIN d'i0", I0: true},
-		{Label: "(c+e)  + controle + i0 ecrivain", Corr: true, I0: true},
-		{Label: "(d)    + portee DAT_144e61ea0 (brut 96)", Scope: true},
-		{Label: "(d+e)  + portee + i0 ecrivain", I0: true, Scope: true},
-		{Label: "(c+d+e) TOUT", Corr: true, I0: true, Scope: true},
 	}
 }
 
@@ -293,44 +284,5 @@ func kf7eLogBreaks(t *testing.T, hist map[string]int, n int) {
 	}
 	for _, x := range xs {
 		t.Logf("        %-62s %4d fois", x.k, x.n)
-	}
-}
-
-// TestKF7EProfileI0 publie la largeur consommee par `i0` sous la grammaire d'ECRIVAIN, face a
-// la largeur PREDITE par le decoupage de la carte. Sans lui, « (e) ameliore » ne se verifie pas.
-func TestKF7EProfileI0(t *testing.T) {
-	films := kf35Films(t)
-
-	defer poserBasculeDInstrument(func(g *GrammaireBalayage) {
-		g.SimStateComplet = true
-		g.ControleDeCorruption = false
-	})()
-
-	for _, f := range films {
-		kf7eProfileOne(t, f)
-	}
-}
-
-func kf7eProfileOne(t *testing.T, f kf35Film) {
-	t.Helper()
-	lay, restorePrec := kf35bInstallPrecision(t, f.Name)
-	defer restorePrec()
-	_, restoreStubs := kf35ApplyStubs(f, kf7dVariant)
-	defer restoreStubs()
-
-	for _, on := range []bool{false, true} {
-		prev := poserBasculeDInstrument(func(g *GrammaireBalayage) { g.GrammaireEcrivainI0 = on })
-		stats := kf35bProfile(f, kf7dVariant)
-		prev()
-		for _, s := range stats {
-			if s.Name != kf7dI0 {
-				continue
-			}
-			t.Logf("  [%s] i0 ecrivain=%-5v · vu %d fois · largeur MEDIANE %d bits"+
-				" · franchissements %d | PREDITE (6 + %d+%d+%d) = %d",
-				f.Name, on, s.Seen, kf35Median(s.Bits), s.Break,
-				lay.AxisW[0], lay.AxisW[1], lay.AxisW[2], kf7dPredicted(lay))
-			break
-		}
 	}
 }

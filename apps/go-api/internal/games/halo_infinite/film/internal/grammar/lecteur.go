@@ -72,6 +72,17 @@ type Lecteur struct {
 	// ([consumeComposantsVehiculeTi40]) ou de la portee `DAT_144e61ea0` que `FUN_142e2c690` pose
 	// sur toute sa boucle (`low-frequency`, cf. `components_frequences.go`) le consultent.
 	etatComplet bool
+	// portee mirroite `DAT_144e61ea0` : une PORTEE de la lecture d etat complet, pas un reglage.
+	// Seule la marche d etat complet la pose ([walkKeyframeFullState], `keyframe_fullstate_loop.go`),
+	// la ou le jeu la pose : autour de l etat par defaut et de son mot de controle quand `n1 > 0`
+	// (`FUN_142e2bfd0`), et sur toute la boucle de composants quand `n2 > 0` (`FUN_142e2c690`), remise
+	// a faux a chaque sortie. Vraie, la garde de pleine precision ([fullPrecisionGate]) l est aussi :
+	// les lecteurs de position lisent le vecteur BRUT de 96 bits. Le chemin delta, le record NEW et
+	// la vue A ne la posent jamais (garde-rail : `portee_ecriture_guard_test.go`).
+	portee bool
+	// arret : le lecteur du jeu du composant en cours a ECHOUE ([ArretDuLecteur]) ; la boucle de
+	// composants s arrete sur lui et le remet a [ArretAucun] ([traverseComponentLoopFrom]).
+	arret ArretDuLecteur
 	// etatIllisible : le lecteur d etat de creation du jeu (`vtable+0x60` de l archetype, appele
 	// par `FUN_1408f1aa4`) ECHOUE sur le record en cours ([Lecteur.echouerLEtatDeCreation]).
 	// [TraverseEntity] le remet a faux avant l etat par defaut et arrete le record s il est pose.
@@ -84,6 +95,9 @@ type Lecteur struct {
 
 // echouerLEtatDeCreation note que le lecteur d etat de creation du record en cours echoue.
 func (b *Lecteur) echouerLEtatDeCreation() { b.etatIllisible = true }
+
+// arreter note que le lecteur du jeu du composant en cours echoue, pour la cause `a`.
+func (b *Lecteur) arreter(a ArretDuLecteur) { b.arret = a }
 
 // noterExceptionDatee marque le composant en cours : sa largeur vient d un lecteur en exception
 // datee, pas du portage de l ecrivain.
