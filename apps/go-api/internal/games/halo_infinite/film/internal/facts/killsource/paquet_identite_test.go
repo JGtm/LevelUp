@@ -111,7 +111,7 @@ func TestLIdentiteDePaquetVoyageAvecLeCouple(t *testing.T) {
 	}
 	rec := killEventRec{ms: 3000, chunk: 4, pidx: 19,
 		fields: killEventFields{killer: 1, victim: 2, assist: -1}}
-	kf.resoudreCouples([]killEventRec{rec}, paquetRoster())
+	kf.resoudreCouples([]killEventRec{rec}, paquetRoster(), nil)
 
 	if len(kf.pairs) != 1 {
 		t.Fatalf("couples = %+v, attendu le seul (A, B)", kf.pairs)
@@ -151,9 +151,7 @@ func TestLaMortDeBotSuitAussiLIdentite(t *testing.T) {
 	}
 	m := botMatch{event: feedEvent{timeMS: 5000, killer: "A", victim: "Bob" + BotSuffix,
 		paquet: paquetID{chunk: 2, pidx: 90, ok: true}}, victimeLue: 5}
-	ms := []botMatch{m}
-	c.affecterLesMortsDeBot(ms)
-	m = ms[0]
+	c.apparierMortDeBot(&m)
 
 	if !m.found || m.cand.pidx != 90 {
 		t.Fatalf("candidat retenu = %+v (trouve %v), attendu celui du paquet (2, 90) que le film "+

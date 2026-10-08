@@ -286,14 +286,15 @@ package killsource
 // MORTS QUI TOUCHENT UN BOT. NUMERO PROVISOIRE, a renumeroter a la fusion dans `feat/v75`.
 //
 // Ce qui change, contre `killsource-2026-10-07.2` :
-//   - un dead-state ne decrit qu UNE mort de bot : les couples (kill, dead-state) de la fenetre se
-//     servent du plus proche au plus lointain, au lieu du premier candidat de la fenetre de chaque
-//     kill, qui donnait au second de deux kills voisins le dead-state du premier
-//     (`bot_affectation.go`) ; la mort PAR un bot ne propose plus un dead-state deja servi ;
+//   - les morts DE bot et PAR un bot gardent leur premiere passe (premier candidat de la fenetre), puis
+//     un COMPLEMENT reprend les seuls kills qu elle laisse sans ligne faute de dead-state libre, avec
+//     les seuls dead-states qu aucun temps n a servis (`bot_affectation.go`) : il ajoute des lignes, il
+//     n en retire aucune ;
 //   - une mort de bot dont le dead-state designe le bot lui-meme (chute, source globale) se publie au
 //     credit du feed, divergence levee — le temps 3 de l hybride, pour les bots ;
-//   - le recollage d un kill sur la mort voisine ne prend plus une mort deja consommee, ni une mort
-//     qu un kill-event 85 de sa fenetre ecrit d un autre tueur (`repli_couple_recolle_sur_le_voisin`) ;
+//   - le recollage d un kill ne prend que la PREMIERE mort voisine, et pas quand elle est deja
+//     consommee, qu un kill-event 85 l ecrit d un autre tueur, ou que les dead-states la donnent a un
+//     autre tueur ; il ne va jamais chercher la mort suivante (`repli_couple_recolle_sur_le_voisin`) ;
 //   - le nom d un bot publie se lit a l instant de la ligne : sur un indice que plusieurs bots tiennent
 //     l un apres l autre, celui que BOT_METADATA declare a cet instant (`hybrid_bots.go`).
 // PREUVE (2026-10-08, `cmd/killsource json`, binaire de `6375eaf3c` contre binaire du lot) : sur

@@ -23,7 +23,7 @@ func rosterABots() *roster {
 // passeDesBots : la passe hybride jouee jusqu au temps 5 sur un feed et des dead-states donnes.
 func passeDesBots(kf *killFeed, r *roster, recs []killEventRec, cands []candidate) *pass {
 	kf.xuidDe = map[string]uint64{}
-	kf.resoudreCouples(recs, r)
+	kf.resoudreCouples(recs, r, cands)
 	c := &decodeCtx{roster: r, feed: kf, opts: DefaultOptions(), scanCands: cands, film: &film{}}
 	p := &pass{ctx: c, byTime: map[int]Kill{}, botUsed: map[[3]int]bool{}, fantomes: map[int]bool{}}
 	p.population(nil, cands, 0)
@@ -38,8 +38,8 @@ func passeDesBots(kf *killFeed, r *roster, recs []killEventRec, cands []candidat
 // chaque kill est dans la fenetre de l autre dead-state. Les deux lignes sortent, chacune avec SON
 // bot.
 //
-// MUTATION QUI DOIT LE FAIRE ROUGIR : rendre au repli « le premier candidat de la fenetre » (le
-// second kill y retrouve le dead-state du premier, deja servi, et perd sa ligne).
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer le complement de [pass.runBots] (le second kill retrouve
+// au premier candidat de sa fenetre le dead-state du premier, deja servi, et perd sa ligne).
 func TestDeuxKillsVoisinsSurDeuxBotsGardentChacunLeurMort(t *testing.T) {
 	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 2600, killer: "K"}},
 		names: []string{"K", "V"}}
@@ -105,7 +105,7 @@ func TestLeRecollageNePrendPasUneMortQueLeFilmDonneAUnAutreTueur(t *testing.T) {
 func TestUneMortNeSeRecollePasDeuxFois(t *testing.T) {
 	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 1100, killer: "K"},
 		{timeMS: 1200, victim: "V"}}, names: []string{"K", "V"}, xuidDe: map[string]uint64{}}
-	kf.resoudreCouples(nil, rosterABots())
+	kf.resoudreCouples(nil, rosterABots(), nil)
 	if len(kf.fab) != 1 || kf.fab[0].timeMS != 1000 || len(kf.orphK) != 1 || kf.orphK[0].timeMS != 1100 {
 		t.Fatalf("recolles %+v, orphelins %+v — attendu le seul kill de 1000 recolle, celui de 1100 "+
 			"orphelin", kf.fab, kf.orphK)
@@ -135,5 +135,120 @@ func TestLeNomDuBotSeLitALInstant(t *testing.T) {
 	}
 	if nom, ok := p.ctx.nomDuBotA(3, 30); ok {
 		t.Errorf("a 30 ms aucune declaration ne couvre l instant, et %q est rendu", nom)
+	}
+}
+
+// rosterAvecW : K, V et W epingles par la table du film, le bot A epingle par BOT_METADATA.
+func rosterAvecW() *roster {
+	return &roster{
+		names:   []string{"K", "V", "W", "343 A" + BotSuffix},
+		perm:    []int{0, 1, 2, 3},
+		pin:     map[int]int{0: 0, 1: 1, 2: 2, 3: 3},
+		seatPin: map[int]bool{0: true, 1: true, 2: true},
+		nPlay:   4,
+	}
+}
+
+// verifierLigne : la ligne publiee a `ms` porte ce tueur, cette victime et cette origine.
+func verifierLigne(t *testing.T, p *pass, ms int, tueur, victime string, origine Origin) {
+	t.Helper()
+	k, ok := p.byTime[ms]
+	if !ok || k.Feed.Killer != tueur || k.Victim != victime || k.Read.Origin != origine {
+		t.Errorf("instant %d : publie %v, tueur %q, victime %q, origine %q — attendu %q tue %q (%q)",
+			ms, ok, k.Feed.Killer, k.Victim, k.Read.Origin, tueur, victime, origine)
+	}
+}
+
+// TestUnKillDejaExpliqueNePrendPasLaMortDeBotDUnAutreKill — K tue V (kill 1000, mort 1001 recollee,
+// publiee au temps 1) puis un bot (kill seul 1010). Le dead-state du bot (1004) est plus proche du
+// kill 1000, qui porte deja sa ligne : il revient au kill 1010, comme avant le lot.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : affecter les morts de bot du plus proche au plus lointain sur
+// TOUS les kills, deja expliques compris, au lieu de la premiere passe puis du complement.
+func TestUnKillDejaExpliqueNePrendPasLaMortDeBotDUnAutreKill(t *testing.T) {
+	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 1001, victim: "V"},
+		{timeMS: 1010, killer: "K"}}, names: []string{"K", "V"}}
+	p := passeDesBots(kf, rosterABots(), nil, []candidate{
+		{chunk: 1, pidx: 1, bit: 10, ms: 999, victim: 1, killer: 0, tag: 0xacd1cff4},
+		{chunk: 1, pidx: 2, bit: 10, ms: 1004, victim: 3, killer: 0, tag: 0xacd1cff4},
+	})
+	verifierLigne(t, p, 1000, "K", "V", OriginCredit)
+	verifierLigne(t, p, 1010, "K", "343 A"+BotSuffix, OriginBot)
+}
+
+// TestUneMortDeBotNeRemplacePasLaLigneDUnKillVoisin — la variante au temps 3 : la ligne de V a 1000
+// vient de sa propre source, et le dead-state du bot tombe a 1000 a la milliseconde. Le kill seul de
+// 1010 le prend toujours ; la ligne de V reste.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : la meme que ci-dessus.
+func TestUneMortDeBotNeRemplacePasLaLigneDUnKillVoisin(t *testing.T) {
+	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 1001, victim: "V"},
+		{timeMS: 1010, killer: "K"}}, names: []string{"K", "V"}}
+	p := passeDesBots(kf, rosterABots(), nil, []candidate{
+		{chunk: 1, pidx: 1, bit: 10, ms: 1001, victim: 1, killer: 1, tag: 0xacd1cff4},
+		{chunk: 1, pidx: 2, bit: 10, ms: 1000, victim: 3, killer: 0, tag: 0xacd1cff4},
+	})
+	verifierLigne(t, p, 1000, "K", "V", OriginSelfSource)
+	verifierLigne(t, p, 1010, "K", "343 A"+BotSuffix, OriginBot)
+}
+
+// TestLeRecollageNePrendPasUneMortQueLeDeadStateDonneAUnAutreTueur — deux kills de K (1000, 1001),
+// deux morts sans kill (V 1002, W 1003), aucun kill-event ; le dead-state dit « K tue V » et « le bot
+// A tue W ». Le second kill ne va pas chercher W au-dela de V : la ligne « A tue W » reste.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer [resolveurDeCouples.mortLueDUnAutreTueur] du recollage
+// ET y passer a la mort suivante sur une mort refusee (chacune des deux gardes suffit ici).
+func TestLeRecollageNePrendPasUneMortQueLeDeadStateDonneAUnAutreTueur(t *testing.T) {
+	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 1001, killer: "K"},
+		{timeMS: 1002, victim: "V"}, {timeMS: 1003, victim: "W"}}, names: []string{"K", "V", "W"}}
+	p := passeDesBots(kf, rosterAvecW(), nil, []candidate{
+		{chunk: 1, pidx: 1, bit: 10, ms: 1000, victim: 1, killer: 0, tag: 0xacd1cff4},
+		{chunk: 1, pidx: 2, bit: 10, ms: 1002, victim: 2, killer: 3, tag: 0xacd1cff4},
+	})
+	for _, c := range kf.fab {
+		if c.victim == "W" {
+			t.Errorf("couple fabrique (%q, W) a %d : le dead-state donne W au bot A", c.killer, c.timeMS)
+		}
+	}
+	verifierLigne(t, p, 1003, "343 A"+BotSuffix, "W", OriginBotKiller)
+}
+
+// TestLeRecollageNePrendPasUneMortQueLeDeadStateDonneAUnBot — K tue (kill seul a 1000), W meurt (mort
+// seule a 1001), aucun kill-event ; le seul dead-state de W dit « le bot A tue W ». Le kill de K ne
+// se recolle pas sur la mort de W, et le temps 5 la publie tuee par A.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer [resolveurDeCouples.mortLueDUnAutreTueur] du recollage.
+func TestLeRecollageNePrendPasUneMortQueLeDeadStateDonneAUnBot(t *testing.T) {
+	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 1001, victim: "W"}},
+		names: []string{"K", "W"}}
+	p := passeDesBots(kf, rosterAvecW(), nil, []candidate{
+		{chunk: 1, pidx: 2, bit: 10, ms: 1001, victim: 2, killer: 3, tag: 0xacd1cff4},
+	})
+	if len(kf.fab) != 0 {
+		t.Errorf("couples fabriques %+v : le dead-state donne W au bot A", kf.fab)
+	}
+	verifierLigne(t, p, 1001, "343 A"+BotSuffix, "W", OriginBotKiller)
+}
+
+// TestLeRecollageNeVaPasChercherLaMortSuivante — deux kills de K (1000, 1001), deux morts sans kill
+// (V 1002, W 1003) ; W meurt de sa propre source et personne ne revendique sa mort. Le premier kill
+// prend V ; le second, dont la premiere mort voisine est deja prise, reste orphelin : la mort de W
+// reste a personne, comme le film le dit.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : passer a la mort suivante (`continue`) au lieu de s arreter
+// (`break`) sur une mort refusee dans [resolveurDeCouples.repliRecollageSurLeVoisin].
+func TestLeRecollageNeVaPasChercherLaMortSuivante(t *testing.T) {
+	kf := &killFeed{events: []feedEvent{{timeMS: 1000, killer: "K"}, {timeMS: 1001, killer: "K"},
+		{timeMS: 1002, victim: "V"}, {timeMS: 1003, victim: "W"}}, names: []string{"K", "V", "W"}}
+	p := passeDesBots(kf, rosterAvecW(), nil, []candidate{
+		{chunk: 1, pidx: 1, bit: 10, ms: 1000, victim: 1, killer: 0, tag: 0xacd1cff4},
+		{chunk: 1, pidx: 2, bit: 10, ms: 1002, victim: 2, killer: 2, tag: 0x00403594},
+	})
+	p.runUnclaimed()
+	if len(kf.fab) != 1 || kf.fab[0].victim != "V" {
+		t.Errorf("couples fabriques %+v : seul (K, V) a 1000 est attendu", kf.fab)
+	}
+	if len(p.unclaimed) != 1 || p.unclaimed[0].TimeMS != 1003 || p.unclaimed[0].Victim != "W" {
+		t.Errorf("morts non revendiquees %+v : attendu celle de W a 1003", p.unclaimed)
 	}
 }

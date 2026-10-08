@@ -3124,9 +3124,9 @@ package replay
 //	`coverage.groundWeapons`  trois compteurs neufs : `horsEmprise`, `releves`, `plusieursLieux`
 //	                (prises en plusieurs lieux : un meme point de creation sert plusieurs socles de
 //	                la carte, rien n est releve).
-//	killsource      `killsource.Rev` monte (chronique de `killsource`) : morts de bot affectees une
-//	                par dead-state, du couple le plus proche au plus lointain ; mort de bot par sa
-//	                propre source ; recollage qui respecte le kill-event 85 ; nom de bot a l instant.
+//	killsource      `killsource.Rev` monte (chronique de `killsource`) : complement des morts de bot
+//	                laissees sans ligne, avec les dead-states libres ; mort de bot par sa propre
+//	                source ; recollage qui respecte la lecture ; nom de bot a l instant.
 //
 //	CE QUI MONTE    `SchemaVersion` 89 -> 90 ; `killsource.Rev` `killsource-2026-10-07.2` ->
 //	AVEC ELLE       `killsource-2026-10-08`. `grammar.Rev`, `objectives.Rev` et `SchemaDesFaits` ne

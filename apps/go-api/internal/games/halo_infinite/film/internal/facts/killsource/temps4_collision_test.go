@@ -16,8 +16,7 @@ package killsource
 //
 // Deux kills de K sans mort en face (1000 et 1500), recolles sur les morts voisines de V et de W ;
 // un dead-state lit K -> V a 1000, un autre K -> W a 1500 (le temps 1 les publie), et UN SEUL
-// dead-state lit K -> bot a 1200, dans la fenetre des deux. Un dead-state ne decrit qu une mort : il
-// va au kill le plus proche (1000), qui porte deja une ligne — une collision, et une seule.
+// dead-state lit K -> bot a 1200, dans la fenetre des deux.
 //
 // # MUTATIONS QUI DOIVENT LES FAIRE ROUGIR
 //
@@ -40,7 +39,7 @@ func passeAvecCollision(t *testing.T) (*decodeCtx, *pass) {
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 2, 3}
-	kf.resoudreCouples(nil, r)
+	kf.resoudreCouples(nil, r, nil)
 	if len(kf.fab) != 2 {
 		t.Fatalf("temoin sans valeur : %d couples recolles, attendu 2", len(kf.fab))
 	}
@@ -65,12 +64,11 @@ func TestTemps4_NeReecritJamaisUnInstantPublie(t *testing.T) {
 				ms, k.Read.Origin, OriginCredit)
 		}
 	}
-	if p.collisionsBot != 1 {
-		t.Errorf("collisions comptees = %d, attendu 1 — la mort de bot ecartee se compte, et le "+
-			"dead-state unique ne sert qu un kill", p.collisionsBot)
+	if p.collisionsBot != 2 {
+		t.Errorf("collisions comptees = %d, attendu 2 — une mort de bot ecartee se compte", p.collisionsBot)
 	}
-	if st := p.stats(&walkResult{}); st.CollisionsDeMortDeBot != 1 {
-		t.Errorf("collisions publiees = %d, attendu 1", st.CollisionsDeMortDeBot)
+	if st := p.stats(&walkResult{}); st.CollisionsDeMortDeBot != 2 {
+		t.Errorf("collisions publiees = %d, attendu 2", st.CollisionsDeMortDeBot)
 	}
 }
 
@@ -99,7 +97,7 @@ func passeAutoSurFabrique(t *testing.T) (*decodeCtx, *pass) {
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 3, 2}
-	kf.resoudreCouples(nil, r)
+	kf.resoudreCouples(nil, r, nil)
 	if len(kf.fab) != 1 {
 		t.Fatalf("temoin sans valeur : %d couple(s) recolle(s), attendu 1", len(kf.fab))
 	}
@@ -192,7 +190,7 @@ func TestTemps4_UneMortDeBotDUnAutreInstantNeRemplacePas(t *testing.T) {
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 2, 3}
-	kf.resoudreCouples(nil, r)
+	kf.resoudreCouples(nil, r, nil)
 	if len(kf.fab) != 2 {
 		t.Fatalf("temoin sans valeur : %d couple(s) recolle(s), attendu 2", len(kf.fab))
 	}

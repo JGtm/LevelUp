@@ -46,7 +46,7 @@ func TestRecollageSurLeVoisinEtOrphelins(t *testing.T) {
 		},
 		xuidDe: map[string]uint64{},
 	}
-	st := kf.resoudreCouples(nil, rosterSansEpinglage())
+	st := kf.resoudreCouples(nil, rosterSansEpinglage(), nil)
 	if len(kf.pairs) != 2 {
 		t.Fatalf("couples = %d, attendu 2 (%v)", len(kf.pairs), kf.pairs)
 	}
@@ -79,7 +79,7 @@ func TestLaDecompositionIsoleLesMortsSansTueur(t *testing.T) {
 		},
 		xuidDe: map[string]uint64{},
 	}
-	kf.resoudreCouples(nil, rosterSansEpinglage())
+	kf.resoudreCouples(nil, rosterSansEpinglage(), nil)
 	if len(kf.orphD) != 1 || kf.orphD[0].victim != "E" {
 		t.Fatalf("morts sans tueur = %v, attendu la seule mort de E", kf.orphD)
 	}

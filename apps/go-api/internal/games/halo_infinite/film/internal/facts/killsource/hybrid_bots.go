@@ -13,48 +13,75 @@ package killsource
 // indice A CET INSTANT ([decodeCtx.nomDuBotA]). Hors de toute declaration, le nom du roster reste
 // celui de la ligne : aucune regle ne decide la ou le film se tait.
 
-// runBots : temps 4 — la premiere population NEUVE, la mort DU bot.
+// runBots : temps 4 — la premiere population NEUVE, la mort DU bot. La premiere passe publie ce que
+// chaque kill trouve au premier candidat de sa fenetre ; le complement ([decodeCtx.completerLesMortsDeBot])
+// n ajoute que des lignes, aux kills qu elle laisse sans ligne et avec les dead-states qu elle n a pas
+// servis.
 func (p *pass) runBots() {
-	for _, m := range p.ctx.resolveBotDeaths() {
+	ms := p.ctx.resolveBotDeaths()
+	trouves, aCompleter := make(map[int]bool, len(ms)), make(map[int]bool, len(ms))
+	for _, m := range ms {
 		p.botStats.Population++
+		if !m.found {
+			aCompleter[m.event.timeMS] = true
+			continue
+		}
+		trouves[m.event.timeMS] = true
+		p.botStats.Matched++
+		if !p.publierMortDeBot(m) {
+			aCompleter[m.event.timeMS] = true
+		}
+	}
+	sansLigne := func(t int) bool { _, deja := p.byTime[t]; return aCompleter[t] && !deja }
+	for _, m := range p.ctx.completerLesMortsDeBot(ms, sansLigne, copieDesServis(p.botUsed)) {
 		if !m.found {
 			continue
 		}
-		p.botStats.Matched++
-		k := positionDuCandidat(m.cand)
-		if p.botUsed[k] {
-			continue
+		if !trouves[m.event.timeMS] {
+			p.botStats.Matched++
 		}
-		remplace := false
-		if prev, deja := p.byTime[m.event.timeMS]; deja {
-			if !autoSurCoupleFabrique(m, prev) {
-				p.collisionsBot++ // FK-4 (lot J7.4) : un instant publie ne se reecrit jamais
-				continue
-			}
-			remplace = true
-		}
-		victime, publiable := p.nomPubliableA(m.cand.victim, m.event.timeMS)
-		if !publiable {
-			continue
-		}
-		if remplace {
-			p.autoSurFabriqueRemplacees++
-			p.retirerLigne(m.event.timeMS) // une ligne publiee, une provenance
-		}
-		p.botUsed[k] = true
-		if m.fab {
-			p.fantomes[m.event.timeMS] = true // le couple recolle etait une mort de bot : fantome
-		}
-		p.botStats.Published++
-		p.noterLigne(m.event.timeMS, m.parLaFenetre, &p.appar.BotFenetre)
-		// `inFeed = false` : le kill est au feed, la MORT n y est pas. La victime vient du
-		// roster de replication, pas du kill-feed — et le consommateur doit pouvoir le savoir.
-		// Une source qui appartient au bot lui-meme leve la divergence, comme au temps 3 : le feed
-		// credite un autre joueur que celui que le dead-state designe.
-		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
-			victim: victime, killer: m.event.killer,
-			origin: OriginBot, diverges: m.sourceDeLaVictime}, sourcedCandidate{m.cand, PathScan})
+		p.publierMortDeBot(m)
 	}
+}
+
+// publierMortDeBot publie la mort de bot `m` — sauf un instant deja publie que la mort de bot n a
+// pas le droit de remplacer ([autoSurCoupleFabrique]), et un nom de remplissage. Rend faux pour un
+// dead-state deja servi, seul refus que le complement peut reprendre avec un autre dead-state.
+func (p *pass) publierMortDeBot(m botMatch) bool {
+	k := positionDuCandidat(m.cand)
+	if p.botUsed[k] {
+		return false
+	}
+	remplace := false
+	if prev, deja := p.byTime[m.event.timeMS]; deja {
+		if !autoSurCoupleFabrique(m, prev) {
+			p.collisionsBot++ // FK-4 (lot J7.4) : un instant publie ne se reecrit jamais
+			return true
+		}
+		remplace = true
+	}
+	victime, publiable := p.nomPubliableA(m.cand.victim, m.event.timeMS)
+	if !publiable {
+		return true
+	}
+	if remplace {
+		p.autoSurFabriqueRemplacees++
+		p.retirerLigne(m.event.timeMS) // une ligne publiee, une provenance
+	}
+	p.botUsed[k] = true
+	if m.fab {
+		p.fantomes[m.event.timeMS] = true // le couple recolle etait une mort de bot : fantome
+	}
+	p.botStats.Published++
+	p.noterLigne(m.event.timeMS, m.parLaFenetre, &p.appar.BotFenetre)
+	// `inFeed = false` : le kill est au feed, la MORT n y est pas. La victime vient du roster de
+	// replication, pas du kill-feed — et le consommateur doit pouvoir le savoir. Une source qui
+	// appartient au bot lui-meme leve la divergence, comme au temps 3 : le feed credite un autre
+	// joueur que celui que le dead-state designe.
+	p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
+		victim: victime, killer: m.event.killer,
+		origin: OriginBot, diverges: m.sourceDeLaVictime}, sourcedCandidate{m.cand, PathScan})
+	return true
 }
 
 // runBotKillers : temps 5 — la seconde population NEUVE, la mort infligee PAR un bot.
@@ -70,30 +97,57 @@ func (p *pass) runBots() {
 // DEUX GARDES, ET AUCUN N EST DECORATIF. Sans le premier, une mort orpheline tombant a la
 // milliseconde d une mort deja publiee l ECRASERAIT en silence ; sans le second — le meme que le
 // temps 4 — un SEUL dead-state servirait DEUX morts orphelines et publierait deux fois la meme
-// source. La resolution ([decodeCtx.resolveBotKillerDeaths]) ne propose plus un dead-state deja
-// servi : le second garde est le filet de cette regle.
+// source. Les morts que la premiere passe laisse sans ligne se completent ensuite, avec les seuls
+// dead-states qu aucun temps n a servis : le complement ajoute des lignes, il n en retire aucune.
 func (p *pass) runBotKillers() {
-	for _, m := range p.ctx.resolveBotKillerDeaths(p.all, p.botUsed) {
+	ms := p.ctx.resolveBotKillerDeaths(p.all)
+	trouves := make(map[int]bool, len(ms))
+	var restantes []feedEvent
+	for _, m := range ms {
 		p.botKillerStats.Population++
+		if !m.found {
+			restantes = append(restantes, m.event)
+			continue
+		}
+		trouves[m.event.timeMS] = true
+		p.botKillerStats.Matched++
+		if !p.publierMortParUnBot(m) {
+			restantes = append(restantes, m.event)
+		}
+	}
+	for _, m := range p.ctx.apparierMortsParUnBot(restantes, p.all, copieDesServis(p.botUsed)) {
 		if !m.found {
 			continue
 		}
-		p.botKillerStats.Matched++
-		k := positionDuCandidat(m.cand.candidate)
-		if _, deja := p.byTime[m.event.timeMS]; deja || p.botUsed[k] {
-			continue
+		if !trouves[m.event.timeMS] {
+			p.botKillerStats.Matched++
 		}
-		tueur, publiable := p.nomPubliableA(m.cand.killer, m.event.timeMS)
-		if !publiable {
-			continue
-		}
-		p.botUsed[k] = true
-		p.botKillerStats.Published++
-		p.noterLigne(m.event.timeMS, m.parLaFenetre, &p.appar.BotFenetre)
-		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
-			victim: m.event.victim, killer: tueur,
-			inFeed: true, origin: OriginBotKiller}, m.cand)
+		p.publierMortParUnBot(m)
 	}
+}
+
+// publierMortParUnBot publie la mort `m` infligee par un bot — sauf un instant deja publie, un
+// dead-state deja servi et un nom de remplissage. Rend faux pour un dead-state deja servi a un
+// instant libre, seul refus que le complement peut reprendre avec un autre dead-state.
+func (p *pass) publierMortParUnBot(m botKillerMatch) bool {
+	k := positionDuCandidat(m.cand.candidate)
+	if _, deja := p.byTime[m.event.timeMS]; deja {
+		return true
+	}
+	if p.botUsed[k] {
+		return false
+	}
+	tueur, publiable := p.nomPubliableA(m.cand.killer, m.event.timeMS)
+	if !publiable {
+		return true
+	}
+	p.botUsed[k] = true
+	p.botKillerStats.Published++
+	p.noterLigne(m.event.timeMS, m.parLaFenetre, &p.appar.BotFenetre)
+	p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
+		victim: m.event.victim, killer: tueur,
+		inFeed: true, origin: OriginBotKiller}, m.cand)
+	return true
 }
 
 // nomPubliableA : [pass.nomPubliable], au nom que l indice porte A L INSTANT `ms` de la ligne

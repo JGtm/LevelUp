@@ -78,7 +78,7 @@ func journaliserFeed(t *testing.T, c *decodeCtx) {
 func journaliserMortsParUnBot(t *testing.T, c *decodeCtx) {
 	t.Helper()
 	t.Logf("MORTS DU FEED SANS TUEUR HUMAIN : %d", len(c.feed.orphD))
-	for _, m := range c.resolveBotKillerDeaths(nil, nil) {
+	for _, m := range c.resolveBotKillerDeaths(nil) {
 		t.Logf("   %7d ms  victime %-16s", m.event.timeMS, m.event.victim)
 	}
 }

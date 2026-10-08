@@ -8,7 +8,7 @@ package killsource
 //
 // L appariement d une mort lue au DEAD-STATE avec une ligne du KILL-FEED se decide aujourd hui
 // par une FENETRE TEMPORELLE de 2,5 s ([tolMS]), a cinq endroits ([decodeCtx.matchExact],
-// [decodeCtx.matchVictim], [decodeCtx.affecterLesMortsDeBot], [decodeCtx.resolveBotKillerDeaths],
+// [decodeCtx.matchVictim], [decodeCtx.apparierMortDeBot], [decodeCtx.resolveBotKillerDeaths],
 // [pass.runUnclaimed]). La valeur n a jamais ete derivee d une mesure : son commentaire dit
 // « valeur historique du chantier, employee par TOUTES les mesures publiees ».
 //

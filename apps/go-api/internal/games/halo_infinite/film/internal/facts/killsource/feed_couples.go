@@ -66,9 +66,11 @@ type killDeBot struct {
 //
 // Elle remplit `pairs`, `real`, `lus`, `fab`, `botLus`, `orphK` et `orphD`, et rend ses
 // compteurs. `recs` nil ou `r` sans epinglage = la lecture se tait partout, et le comportement
-// est EXACTEMENT celui d avant le lot : c est ce que les tests purs exercent.
-func (kf *killFeed) resoudreCouples(recs []killEventRec, r *roster) types.CoupleStats {
-	res := &resolveurDeCouples{kf: kf, recs: recs, r: r,
+// est EXACTEMENT celui d avant le lot : c est ce que les tests purs exercent. `morts` porte les
+// dead-states du film (marche et balayage) : le recollage ne prend pas une mort qu ils donnent a un
+// autre tueur ([resolveurDeCouples.mortLueDUnAutreTueur]).
+func (kf *killFeed) resoudreCouples(recs []killEventRec, r *roster, morts []candidate) types.CoupleStats {
+	res := &resolveurDeCouples{kf: kf, recs: recs, r: r, morts: morts,
 		pris: make([]bool, len(recs)), prisMort: make([]bool, len(kf.events))}
 	res.consommerLesCouplesDuMemeInstant()
 	res.resoudre()
@@ -81,6 +83,8 @@ type resolveurDeCouples struct {
 	kf   *killFeed
 	recs []killEventRec
 	r    *roster
+	// morts : les dead-states du film, que le recollage consulte avant de prendre une mort.
+	morts []candidate
 	// pris : les kill-events deja consommes. Un enregistrement ne parle que d UNE mort.
 	pris []bool
 	// prisMort : les instants du feed dont la MORT a ete consommee par un couple.
@@ -245,16 +249,21 @@ const porteeDuRecollage = 2
 // desaccord avec elle — l ordre est fixe : lire d abord, se replier ensuite.
 //
 // Deux morts a la meme seconde n arrivent pas toujours dans le meme instant du feed ; le kill
-// orphelin prend alors la mort du voisin immediat. DEUX MORTS NE SE PRENNENT PAS, et c est encore
-// lire d abord : une mort qu un couple a deja consommee ([resolveurDeCouples.prisMort]), et une mort
-// dont le film ECRIT un autre tueur ([resolveurDeCouples.mortEcriteDUnAutreTueur]) — le kill-event 85
-// qui la decrit nomme sa victime ET son tueur, souvent un bot que le feed humain-seul ne nomme pas.
+// orphelin prend alors la PREMIERE mort voisine. Il ne la prend pas, et reste orphelin, quand la
+// lecture dit qu elle n est pas la sienne : une mort qu un couple a deja consommee
+// ([resolveurDeCouples.prisMort]), une mort dont un kill-event 85 ECRIT un autre tueur
+// ([resolveurDeCouples.mortEcriteDUnAutreTueur]), une mort que les dead-states donnent a un autre
+// tueur ([resolveurDeCouples.mortLueDUnAutreTueur]). Il ne va jamais chercher la mort suivante : une
+// mort plus lointaine est celle d un autre kill, ou d un autre tueur que le feed ne nomme pas.
 func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {
 	e := res.kf.events[i]
 	for d := 1; d <= porteeDuRecollage && i+d < len(res.kf.events); d++ {
 		o := res.kf.events[i+d]
-		if o.victim == "" || o.killer != "" || res.prisMort[i+d] || res.mortEcriteDUnAutreTueur(o, e.killer) {
+		if o.victim == "" || o.killer != "" {
 			continue
+		}
+		if res.prisMort[i+d] || res.mortEcriteDUnAutreTueur(o, e.killer) || res.mortLueDUnAutreTueur(o, e.killer) {
+			break
 		}
 		couple := feedEvent{timeMS: e.timeMS, killer: e.killer, victim: o.victim, victimXUID: o.victimXUID}
 		res.kf.pairs = append(res.kf.pairs, couple)
@@ -265,6 +274,29 @@ func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {
 	}
 	res.kf.orphK = append(res.kf.orphK, e)
 	res.stats.Perdus++
+}
+
+// mortLueDUnAutreTueur : les dead-states de la fenetre de cette mort la donnent-ils a un AUTRE tueur
+// que `tueur`, sans qu aucun ne la donne a `tueur` ? Les deux indices doivent etre EPINGLES. Un
+// dead-state dont la source appartient a la victime ne contredit aucun tueur : le feed credite alors
+// un autre joueur, et c est precisement ce que le couple recolle publie (temps 3).
+func (res *resolveurDeCouples) mortLueDUnAutreTueur(mort feedEvent, tueur string) bool {
+	autre := false
+	for _, cd := range res.morts {
+		if !dansLaFenetre(cd.ms, mort.timeMS) {
+			continue
+		}
+		v, okV := res.r.nomEpingle(cd.victim)
+		k, okK := res.r.nomEpingle(cd.killer)
+		if !okV || !okK || v != mort.victim {
+			continue
+		}
+		if k == tueur || cd.killer == cd.victim {
+			return false
+		}
+		autre = true
+	}
+	return autre
 }
 
 // mortEcriteDUnAutreTueur : un kill-event NON CONSOMME de la fenetre de cette mort nomme-t-il sa

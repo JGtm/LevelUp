@@ -5,19 +5,24 @@ import (
 	"slices"
 )
 
-// bot_affectation.go — QUEL DEAD-STATE DECRIT LA MORT D UN BOT (temps 4 de l hybride).
+// bot_affectation.go — LES KILLS SUR UN BOT QUE LA PREMIERE PASSE LAISSE SANS LIGNE (temps 4 de
+// l hybride).
 //
-// # UN DEAD-STATE NE DECRIT QU UNE MORT
+// # CE QUE LA PREMIERE PASSE MANQUE
 //
 // Le kill-feed est humain-seul : un kill dont la victime est un bot n a presque jamais de kill-event
 // 85 en face, donc presque jamais d identite de paquet, et la fenetre de 2,5 s ([tolMS]) est sa voie
-// normale (`repli_mort_de_bot_premier_candidat`). Deux kills voisins d un meme tueur sur deux bots
-// ont chacun leur dead-state, a quelques millisecondes de LEUR instant, et chacun tombe dans la
-// fenetre de l autre. Laisser chaque kill prendre « le premier candidat » donnait au second kill le
-// dead-state du premier : deja servi, la ligne du second se perdait, et le dead-state du second
-// restait libre.
+// normale (`repli_mort_de_bot_premier_candidat`). Chaque kill y prend le PREMIER candidat de sa
+// fenetre ([decodeCtx.apparierMortDeBot]). Deux kills voisins d un meme tueur sur deux bots ont
+// chacun leur dead-state, et chacun tombe dans la fenetre de l autre : le second reprend le
+// dead-state du premier, deja servi, et perd sa ligne pendant que le sien reste libre. Et une mort de
+// bot dont le dead-state designe le bot lui-meme (chute, source globale) n a aucun candidat.
 //
-// L AFFECTATION EST DONC GLOBALE, et elle ne depend pas de l ordre des kills :
+// # LE COMPLEMENT
+//
+// Il ne touche QUE les kills que la premiere passe laisse sans ligne faute de dead-state libre (aucun
+// candidat, ou un candidat deja servi), et QUE les dead-states qu elle n a pas servis : aucune ligne
+// de la premiere passe ne change, il en ajoute.
 //
 //	LECTURE   un kill dont le paquet est identifie prend le premier dead-state libre de CE paquet
 //	          qui satisfait la contrainte de couple ;
@@ -29,20 +34,33 @@ import (
 // la source qui appartient au bot lui-meme ([botMatch.sourceDeLaVictime]) — le temps 3 de
 // l hybride, pour la population des bots.
 
-// affecterLesMortsDeBot pose, sur chaque kill de `ms`, le dead-state qui decrit sa mort de bot.
-func (c *decodeCtx) affecterLesMortsDeBot(ms []botMatch) {
-	servis := map[[3]int]bool{}
+// completerLesMortsDeBot rend les kills de `ms` (la premiere passe) que `aCompleter` designe par
+// leur instant — sans ligne, et sans dead-state ou avec un dead-state deja servi —, chacun avec le
+// dead-state que le complement lui donne parmi ceux que `servis` ne porte pas. `servis` recoit les
+// dead-states retenus.
+func (c *decodeCtx) completerLesMortsDeBot(ms []botMatch, aCompleter func(int) bool,
+	servis map[[3]int]bool,
+) []botMatch {
+	var reste []botMatch
+	for _, m := range ms {
+		if !aCompleter(m.event.timeMS) {
+			continue
+		}
+		m.found, m.cand, m.parLaFenetre, m.sourceDeLaVictime = false, candidate{}, false, false
+		reste = append(reste, m)
+	}
 	for _, deLaVictime := range []bool{false, true} {
 		if deLaVictime && !c.opts.SelfSource {
-			return
+			break
 		}
 		couple := func(m *botMatch, i int) bool {
 			return !m.found && !servis[positionDuCandidat(c.scanCands[i])] &&
 				c.coupleDeMortDeBot(m, c.scanCands[i], deLaVictime)
 		}
-		c.affecterParLePaquet(ms, servis, couple, deLaVictime)
-		c.affecterParLaFenetre(ms, servis, couple, deLaVictime)
+		c.affecterParLePaquet(reste, servis, couple, deLaVictime)
+		c.affecterParLaFenetre(reste, servis, couple, deLaVictime)
 	}
+	return reste
 }
 
 // affecterParLePaquet : la LECTURE — le paquet que le kill-event 85 du kill designe.
@@ -93,4 +111,14 @@ func (c *decodeCtx) affecterParLaFenetre(ms []botMatch, servis map[[3]int]bool,
 // poserMortDeBot : le dead-state `i` decrit la mort de bot du kill `m`.
 func (c *decodeCtx) poserMortDeBot(m *botMatch, i int, parLaFenetre, deLaVictime bool) {
 	m.found, m.cand, m.parLaFenetre, m.sourceDeLaVictime = true, c.scanCands[i], parLaFenetre, deLaVictime
+}
+
+// copieDesServis rend une copie de la table des dead-states servis : le complement y ajoute ce qu il
+// retient sans toucher a celle de la passe.
+func copieDesServis(servis map[[3]int]bool) map[[3]int]bool {
+	out := make(map[[3]int]bool, len(servis))
+	for k := range servis {
+		out[k] = true
+	}
+	return out
 }

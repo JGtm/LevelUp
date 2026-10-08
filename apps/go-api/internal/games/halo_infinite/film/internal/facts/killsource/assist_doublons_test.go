@@ -37,7 +37,7 @@ func TestDoublonsDEnregistrement_AucunCoupleFabrique(t *testing.T) {
 		{ms: 1000, chunk: 1, pidx: 5, bit: 115, fields: second},
 	}}
 	s.dedoublonner()
-	st := kf.resoudreCouples(s.recs, r)
+	st := kf.resoudreCouples(s.recs, r, nil)
 
 	if st.Contradiction != 0 || st.Lus != 0 || len(kf.pairs) != 1 {
 		t.Fatalf("couples %+v, compteurs %+v : le second exemplaire du meme enregistrement a fabrique "+
