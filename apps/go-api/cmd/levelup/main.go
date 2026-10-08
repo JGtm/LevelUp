@@ -148,6 +148,8 @@ func main() {
 		exitErr = runBackfillPadTiers(cfg, args)
 	case "backfill-vehicle-takes":
 		exitErr = runBackfillVehicleTakes(cfg, args)
+	case "backfill-map-callouts":
+		exitErr = runBackfillMapCallouts(cfg, args)
 	case "tactical-rasters":
 		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
@@ -239,6 +241,11 @@ Commandes:
   backfill-vehicle-takes  Projette en base la ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies par camp/joueur/famille) lue du calque
                   vehicules des artefacts de rejeu deja ranges (match_vehicle_takes append-only) : AUCUN decodage, AUCUNE recuisson. Un artefact
                   de schema < 67 est ecrit « non mesure ». Apres une recuisson, --force (--dry-run, --force, --match, --limit, serveur arrete)
+  backfill-map-callouts  Donne leurs ZONES NOMMEES (callouts) aux cartes Forge jouees qui n en ont pas : variante .mvar lue au cache,
+                  sinon telechargee une fois (pool de jetons) et deposee au cache, zones rangees au catalogue GENERE
+                  reference/generated/map_callouts.json (le versionne n est jamais ecrit). AUCUNE recuisson : les zones se
+                  resolvent au service. Idempotente ; bilan chiffre et string_id sans libelle (--dry-run, --hors-ligne,
+                  --carte ID[,ID...], --rps, --cache-dir, --title, serveur arrete)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild,
                   UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par
                   SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force,

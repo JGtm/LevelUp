@@ -9,7 +9,7 @@ package replay
 //	Maps      clé = MODULE INSTALLÉ (« ridgeline », « ctf_bazaar ») — cartes intégrées, tag
 //	          levl du jeu, libellés FR/EN figés dans callouts_i18n.csv (816 zones sur
 //	          22 cartes, liaison nom<->volume 816/816).
-//	MapsByID  clé = MAP_ID (asset UGC) — cartes FORGE, objets `himap.TypeIDZoneNommee` du
+//	MapsByID  clé = MAP_ID (asset UGC) — cartes FORGE, objets `mapvar.TypeIDZoneNommee` du
 //	          map.mvar de la carte. Même vocabulaire de StringId que les natives.
 //
 // Le tout est produit par cmd/mapcallouts-build et VERSIONNÉ comme donnée de référence —

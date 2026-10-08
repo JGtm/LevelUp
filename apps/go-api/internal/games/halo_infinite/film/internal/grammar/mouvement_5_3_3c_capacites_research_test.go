@@ -11,7 +11,7 @@ package grammar
 // PROPRE — une branche que le depot refuse de deviner. Avant d en porter une seule, il faut
 // savoir LAQUELLE coute des records, et combien :
 //
-//	i59  le corps `Tag==3` rend `ported=false` sur `Zero3 != 0` ou `Inner` hors {1,2}.
+//	i59  le corps `Tag==3` : ses huit etiquettes sont portees depuis le 2026-10-08 (aucune n echoue).
 //	     L ECRIVAIN (`FUN_142f25e90`) dispatche sur SEPT valeurs internes (0 a 6) : le port en
 //	     modelise DEUX. Combien de lectures tombent sur les cinq autres ?
 //	i57  la branche `tag==3` rend `ported=false` des que son premier bit vaut 1
@@ -40,10 +40,10 @@ import (
 
 // m533cStat : ce que les deux hooks et la ventilation des desyncs rapportent.
 type m533cStat struct {
-	// i59 : par tag externe, puis par valeur interne et par Zero3 pour le corps tag==3.
+	// i59 : par tag externe, puis par valeur interne et par drapeaux R(6) pour le corps tag==3.
 	i59Tags              map[uint32]int
 	i59Inner             map[int]int
-	i59Zero3             map[uint32]int
+	i59Drapeaux          map[uint32]int
 	i59Corps, i59CorpsOK int
 	// i57 : par tag, et l issue de la branche 3.
 	i57Tags map[uint64]int
@@ -70,7 +70,7 @@ func TestMouvement533CCapacites(t *testing.T) {
 		defer restore()
 	}
 	st := m533cStat{i59Tags: map[uint32]int{}, i59Inner: map[int]int{},
-		i59Zero3: map[uint32]int{}, i57Tags: map[uint64]int{}, fautifs: map[int]int{}}
+		i59Drapeaux: map[uint32]int{}, i57Tags: map[uint64]int{}, fautifs: map[int]int{}}
 	cfg := fc.CadreDeBalayage()
 	cfg.Obs = m533cObservateur(&st)
 	w := NewWorld(reg)
@@ -155,7 +155,7 @@ func m533cObservateur(st *m533cStat) *Observation {
 				st.i59CorpsOK++
 			}
 			st.i59Inner[s.Inner]++
-			st.i59Zero3[s.Zero3]++
+			st.i59Drapeaux[s.Drapeaux]++
 		},
 		SpartanAbilityHook: func(tag, _, _ uint64, _ bool) { st.i57Tags[tag]++ },
 	}
@@ -172,7 +172,7 @@ func m533cRendre(t *testing.T, st m533cStat) {
 		m533bPart(st.i59CorpsOK, st.i59Corps))
 	t.Logf("  VALEUR INTERNE (l ecrivain en dispatche SEPT, 0 a 6 ; le port en porte DEUX) : %s",
 		m533cTable(st.i59Inner))
-	t.Logf("  Zero3 (desync quand != 0) : %s", m533cTableU32(st.i59Zero3))
+	t.Logf("  drapeaux R(6) du corps : %s", m533cTableU32(st.i59Drapeaux))
 	t.Logf("i57 : tags %s (le tag 3 est la seule branche a desync)", m533cTableU64(st.i57Tags))
 }
 

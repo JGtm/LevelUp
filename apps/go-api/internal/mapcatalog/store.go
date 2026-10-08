@@ -189,11 +189,18 @@ func chargerOuCreerOverlay(overlay, titleSlug string) (*replay.MapWeaponPadsCata
 
 // WriteAtomic ecrit le catalogue par fichier temporaire A NOM UNIQUE puis `rename`.
 func WriteAtomic(cat *replay.MapWeaponPadsCatalog, path string) error {
+	return ecrireJSONAtomique(cat, path)
+}
+
+// ecrireJSONAtomique serialise `v` et l'ecrit par fichier temporaire A NOM UNIQUE puis
+// `rename` : un lecteur voit l'ancien fichier ou le nouveau, jamais un fichier a moitie ecrit.
+// Partage par les deux catalogues que le runtime complete (socles, zones nommees).
+func ecrireJSONAtomique(v any, path string) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	buf, err := json.MarshalIndent(cat, "", "  ")
+	buf, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}

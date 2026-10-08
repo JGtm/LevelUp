@@ -105,10 +105,6 @@ var worldObjectPrecisionReaders = map[string]string{
 		"`CarteLue` l'est",
 	"internal/games/halo_infinite/film/internal/grammar/keyframe_ground_weapons.go": "CITATION en commentaire " +
 		"(parenté des archétypes d'objet du monde) — aucune lecture de la valeur",
-	"internal/games/halo_infinite/film/internal/grammar/components_biped_anchor.go": "le corps tag==3 d'i59 (ancre du " +
-		"grappin, 2026-08-16) lit sa position absolue aux largeurs d'axe de la CARTE — mêmes " +
-		"chemins d'installation que le reste : production via BuildFromFilm/" +
-		"installWorldObjectPrecision, instruments via i59aSetup (installation + restauration)",
 	"internal/games/halo_infinite/film/internal/grammar/grapple_state.go": "CITATION en commentaire : le balayage de " +
 		"production des événements de grappin documente que ses quanta de position sont aux " +
 		"largeurs installées par l'appelant (le corps d'i59 les lit, cf. " +

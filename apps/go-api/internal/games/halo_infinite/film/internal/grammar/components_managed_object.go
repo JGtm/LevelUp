@@ -222,3 +222,38 @@ const largeurNavpointDObjetGere = 32
 
 // consumeManagedObjectNavpoint (ti=10 i2 a i17) — `FUN_14107cea4` : `R(32)` plat, sans porte.
 func consumeManagedObjectNavpoint(br *Lecteur) { br.ReadBits(largeurNavpointDObjetGere) }
+
+// compManagedObjectInteractionFilter : l etiquette de registre de `ti=10 i22` (niveau 2).
+const compManagedObjectInteractionFilter = "managed-object-interaction-filter-component"
+
+// consumeManagedObjectInteractionFilter (ti=10 i22) — `FUN_140dbdf5c` : `FUN_140dbe400(etat + 0x68,
+// flux, v = 1 < param_4)`, le bloc de filtres SEUL, comme `ti=12 i5` et `i6`
+// ([consumeNavpointFilterOnly]). L ecrivain (`142edb250`) saute a `FUN_142c7023c` sur la meme
+// destination : le masque, le drapeau, puis par filtre present le tag et sa charge.
+func consumeManagedObjectInteractionFilter(br *Lecteur, level uint32) bool {
+	return consumeNavpointFilterOnly(br, level > 1)
+}
+
+// compManagedObjectFlags : l etiquette de registre de `ti=10 i23`.
+const compManagedObjectFlags = "managed-object-flags-component"
+
+// largeurDrapeauxDObjetGere : `FUN_1410d9b5c` -> `FUN_140f72efc` (`+0x2c += 2`) vers `etat + 0x170` ;
+// l ecrivain (`142edb23c` -> `FUN_142ed0ec8`) ecrit les deux bits du meme octet.
+const largeurDrapeauxDObjetGere = 2
+
+// consumeManagedObjectFlags (ti=10 i23) — `FUN_1410d9b5c` : `R(2)` plat, sans porte.
+func consumeManagedObjectFlags(br *Lecteur) { br.ReadBits(largeurDrapeauxDObjetGere) }
+
+// compManagedObjectNetworkedProperty : l etiquette de registre de `ti=10 i18` a `i21`. Le registre
+// de l archetype pose QUATRE descripteurs sous ce nom, qui partagent l accesseur de nom (`1411720d0`)
+// et le lecteur : seul l index d entree, `*(descripteur + 8)`, les distingue.
+const compManagedObjectNetworkedProperty = "managed-object-networked-property-component"
+
+// largeurProprieteReseauDObjetGere : `FUN_142ed5358` (`+0x2c += 0x20`) vers
+// `etat + 0x54 + 4 * index` ; l ecrivain (`142edb3a4`) ecrit les 32 bits du meme mot.
+const largeurProprieteReseauDObjetGere = 32
+
+// consumeManagedObjectNetworkedProperty (ti=10 i18 a i21) — `FUN_142ed5358` : `R(32)` plat, sans porte.
+func consumeManagedObjectNetworkedProperty(br *Lecteur) {
+	br.ReadBits(largeurProprieteReseauDObjetGere)
+}

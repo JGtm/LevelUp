@@ -342,6 +342,10 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	//
 	// Il ne peut pas faire echouer le cycle : voir mvar_rattrapage.go.
 	rattraperCartesAbsentes(ctx, d, work, d.MvarFetcher)
+	// Les ZONES NOMMEES des cartes qui n'en ont pas, APRES les socles : une variante que le
+	// rattrapage ci-dessus vient de deposer au cache se relit sans second appel. Meme regime
+	// best-effort (zones_rattrapage.go). Les zones se resolvent au service : rien a recuire.
+	rattraperZonesNommees(ctx, d, work, d.MvarFetcher)
 	if d.Placement == replaybuild.PlacementWorker {
 		// EN PLACEMENT « OUVRIER » CE PROCESS NE CUIT RIEN, mais les artefacts que l'ouvrier a
 		// déposés sont bien sur le disque : leur rattrapage est posé en `defer` par [Run], et

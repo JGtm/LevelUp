@@ -79,6 +79,8 @@ func consumeMoteurDePartie(br *Lecteur, name string, level uint32) (variant uint
 		br.ReadBits(largeurDrapeauxMatchflow)
 	case compMatchflowSequenceData: // ti=45 i0 (FUN_14101cdd8) — R(4) + 4 x R(32)
 		consumeMatchflowSequenceData(br)
+	case compMatchflowFocusData: // ti=45 i1 (FUN_141167744) — R(6) + R(4)
+		consumeMatchflowFocusData(br)
 	default:
 		return consumeComposantsVueBM4b(br, name)
 	}

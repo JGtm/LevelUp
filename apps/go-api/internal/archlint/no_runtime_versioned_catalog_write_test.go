@@ -38,6 +38,12 @@
 // plan décodeur). Son cas est plus STRICT que celui des socles : il n'a pas d'overlay. Le
 // décodeur le LIT, un point c'est tout ; ce qu'il y écrirait à l'exécution serait une valeur de
 // profil devinée, exactement ce que le chantier interdit.
+//
+// `map_callouts.json` — le catalogue des zones nommées — et son lexique `callouts_lexique.csv`
+// entrent sous la même garde (2026-10-08) : le runtime rattrape désormais les zones des cartes
+// Forge (`sync/replayartifacts/zones_rattrapage.go`). Le catalogue a son overlay
+// (`PathResolver.MapCalloutsOverlayPath`, écrit par `mapcatalog.AddCalloutsOverlayEntry`) ; le
+// lexique n'en a pas, le runtime le LIT.
 package archlint
 
 import (
@@ -61,6 +67,11 @@ var chemsVersionnes = map[string]string{
 	"FilmProfilesPath": "le catalogue des profils de film n'a PAS d'overlay : le runtime le " +
 		"LIT (filmprofile.Charger), il ne l'écrit jamais — une valeur de profil se relit chez " +
 		"l'écrivain ou se mesure sur un témoin, par cmd/film-profiles-build, hors serveur",
+	"MapCalloutsPath": "le runtime doit écrire le catalogue GÉNÉRÉ des zones " +
+		"(PathResolver.MapCalloutsOverlayPath, via mapcatalog.AddCalloutsOverlayEntry), jamais " +
+		"le fichier suivi par git",
+	"MapCalloutsLexiquePath": "le lexique des noms de lieu n'a PAS d'overlay : le runtime le " +
+		"LIT (mapcatalog.ChargerLexique), seul cmd/mapcallouts-build --lexique l'écrit",
 }
 
 // nomsDesChemsVersionnes rend les méthodes gardées, triées — pour des messages stables.
@@ -109,6 +120,9 @@ var exceptionsChaineDeFabrication = map[string]string{
 	"cmd/film-profiles-build": "2026-09-16 (lot 3.1.2) — LA chaîne de fabrication du catalogue " +
 		"des profils de film : elle produit son bloc `derived` hors serveur, recopie la part " +
 		"saisie sans y toucher, et son résultat passe en revue",
+	"cmd/mapcallouts-build": "2026-10-08 — LA chaîne de fabrication du catalogue des zones et " +
+		"de son lexique : elle les produit à la main, hors serveur (jeu installé pour la passe " +
+		"native et le lexique), et son résultat passe en revue",
 }
 
 func estVerbeDEcriture(nom string) bool {
@@ -332,7 +346,9 @@ func TestRuntimeNEcritPasLeCatalogueVersionne(t *testing.T) {
 			"local l'avale sans relecture. Pour les socles, le runtime écrit l'OVERLAY "+
 			"(PathResolver.MapWeaponPadsOverlayPath, ignoré par git) via "+
 			"mapcatalog.AddOverlayEntry et la fusion se fait à la LECTURE "+
-			"(replay.LoadMapWeaponPadsMerged) ; pour les profils de film, il n'écrit RIEN.",
+			"(replay.LoadMapWeaponPadsMerged) ; pour les zones nommées, il écrit le catalogue "+
+			"GÉNÉRÉ (PathResolver.MapCalloutsOverlayPath, mapcatalog.AddCalloutsOverlayEntry) ; "+
+			"pour les profils de film et le lexique des lieux, il n'écrit RIEN.",
 			len(violations), strings.Join(violations, "\n  - "), nomsDesChemsVersionnes())
 	}
 }
@@ -352,6 +368,8 @@ func citeUnCheminVersionne(source string) bool {
 var fichiersVersionnesGardes = map[string]string{
 	"map_weapon_pads.json": "MapWeaponPadsPath (lecture) ou MapWeaponPadsOverlayPath (runtime)",
 	"film_profiles.json":   "FilmProfilesPath (lecture ; seul cmd/film-profiles-build écrit)",
+	"map_callouts.json":    "MapCalloutsPath (lecture) ou MapCalloutsOverlayPath (runtime)",
+	"callouts_lexique.csv": "MapCalloutsLexiquePath (lecture ; seul cmd/mapcallouts-build écrit)",
 }
 
 // TestCatalogueVersionneNommeParLeResolverSeul — LE CONTOURNEMENT PAR LE LITTÉRAL.
@@ -438,6 +456,15 @@ func f(res R, d Deps) {
 }`,
 		"chemin du profil confié à un littéral composite": `package p
 func f(res R) { _ = Config{Sortie: res.FilmProfilesPath(slug)} }`,
+		// LE CATALOGUE DES ZONES (2026-10-08) : le rattrapage écrit l'overlay ; lui passer le
+		// chemin versionné est le défaut A0 rejoué sur un autre fichier.
+		"ajout d'une carte au catalogue versionné des zones": `package p
+func f(res R, d Deps) {
+	chemin := res.MapCalloutsPath(d.TitleSlug)
+	_ = mapcatalog.AddCalloutsOverlayEntry(chemin, d.TitleSlug, id, entry)
+}`,
+		"écriture directe du lexique": `package p
+func f(res R) { _ = os.WriteFile(res.MapCalloutsLexiquePath(slug), blob, 0o644) }`,
 	}
 	for nom, src := range refuses {
 		t.Run("refusé/"+nom, func(t *testing.T) {
@@ -471,6 +498,18 @@ func f(res R, d Deps) {
 		return
 	}
 	_ = cat
+}`,
+		"zones : lecture du versionné et du lexique, écriture du généré (la production)": `package p
+func f(res R, d Deps) {
+	versionne := res.MapCalloutsPath(d.TitleSlug)
+	if cat, err := replay.LoadMapCallouts(versionne); err != nil {
+		slog.WarnContext(ctx, "illisible", "err", err, "path", versionne)
+	} else {
+		_ = cat
+	}
+	lex, _ := mapcatalog.ChargerLexique(res.MapCalloutsLexiquePath(d.TitleSlug))
+	_ = mapcatalog.AddCalloutsOverlayEntry(res.MapCalloutsOverlayPath(d.TitleSlug), d.TitleSlug, id, entry)
+	_ = lex
 }`,
 		"écriture d'un AUTRE fichier dans la même fonction": `package p
 func f(res R, d Deps) {

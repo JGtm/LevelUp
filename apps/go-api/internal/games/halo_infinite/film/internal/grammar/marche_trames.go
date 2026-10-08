@@ -187,6 +187,8 @@ func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
 			return
 		}
 	}
+	m.monde.oublierLesNeufsSuspendus() // les marches d essai du debut ne lient rien
+	defer func() { m.monde.lierLesNeufsProuves(preuveDeLaTrame(p)) }()
 	if t.parRangs {
 		br := LecteurSur(pay)
 		br.poserCadre(m.cfg)

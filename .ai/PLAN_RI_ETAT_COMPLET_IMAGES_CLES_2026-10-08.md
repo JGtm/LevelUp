@@ -1341,3 +1341,14 @@ refusionner, rejouer l'étape 0).
   final (`$S/lk5.4.10/critere_*.log`) : REF 369/599 inchangé. État final = `$S/lk5.4.10` : I-ferm 839
   lignes, I-d0 TOTAL `10710 10575 5399 9968 332 6955 1566 5324 4 4319` (= LK.3), carte identique à
   `e0`. Découvertes D-17 à D-23. Prochaine étape : LK.6.
+- 2026-10-08 (nuit, lot B) : LK.6 ouverte. D-12 TRAITÉE (`643c4dab9`, §7). Passe killsource de la base
+  (`83dc72eab`, binaire extrait par `git archive`) et du lot sur les 19 témoins (`$S/lk6/ks_{base,lk}`).
+  FUSION de `origin/feat/v75` `2761162de` (consigne du superviseur : le lot de levelup-5c — correctif
+  HORS portée de `consumeObjectPositionMonde` `39510278d`, `neufs_prouves.go`, rangs
+  `grammar-2026-10-08.13`, `killsource-2026-10-08`, chronique déjà rotée en
+  `rev_chronique_archive_8.go`). Conflits : historique du golden sans carte (les deux lignées gardées,
+  ligne de fusion ajoutée) et `keyframe_closure.golden` (celui de `feat/v75` repris puis régénéré :
+  seules mes cinq lignes `ti=21` diffèrent de lui, 0 baisse) ; `lecteur_position_exceptions.go`
+  fusionné sans conflit (LK.5.4.1 rejeté : aucun bloc sous la garde dans `consumeObjectPositionMonde`).
+  Ratchet de cuisson régénéré avec sa ligne d'historique : 42 lignes montent (lot fusionné), 0 baisse.
+  Les gates de LK.5 sont rejoués sur la base fusionnée (entrée suivante).

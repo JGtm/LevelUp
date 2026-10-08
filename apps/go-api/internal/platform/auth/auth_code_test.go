@@ -3,6 +3,8 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,8 +13,24 @@ import (
 	"testing"
 )
 
-// (La correction S256 de GeneratePKCE est déjà couverte par TestGeneratePKCE
-// dans sisu_client_test.go ; ici on teste son câblage dans l'URL /authorize.)
+// TestGeneratePKCE vérifie la cohérence verifier/challenge (S256) et l'unicité.
+func TestGeneratePKCE(t *testing.T) {
+	verifier, challenge, err := GeneratePKCE()
+	if err != nil {
+		t.Fatalf("GeneratePKCE: %v", err)
+	}
+	if len(verifier) == 0 || len(challenge) == 0 {
+		t.Fatalf("verifier/challenge vides : %q / %q", verifier, challenge)
+	}
+	sum := sha256.Sum256([]byte(verifier))
+	if want := base64.RawURLEncoding.EncodeToString(sum[:]); challenge != want {
+		t.Errorf("challenge incohérent avec verifier: attendu %q, obtenu %q", want, challenge)
+	}
+	v2, c2, _ := GeneratePKCE()
+	if verifier == v2 || challenge == c2 {
+		t.Error("GeneratePKCE doit retourner des valeurs uniques à chaque appel")
+	}
+}
 
 func TestBuildAuthorizeURL_PKCEChallenge(t *testing.T) {
 	redirect := "https://lvelup.info/auth/xbox/callback"

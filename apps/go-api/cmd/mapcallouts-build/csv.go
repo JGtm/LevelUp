@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 type libelle struct {
@@ -31,7 +32,7 @@ type libelle struct {
 // libelles indexe les lignes du CSV par (carte, volumeIndex).
 type libelles map[string]map[int]libelle
 
-// libellesParStringID indexe les MÊMES lignes par string_id.
+// L'index par string_id des MÊMES lignes est un `mapcatalog.Lexique`.
 //
 // POURQUOI CE SECOND INDEX. Une carte Forge n'a ni module ni indice de volume : son
 // map.mvar ne porte que le StringId du lieu. C'est donc la SEULE clé de jointure possible
@@ -41,9 +42,7 @@ type libelles map[string]map[int]libelle
 // un CSV où deux lignes se contrediraient.
 //
 // CET INDEX EST COMPLÉTÉ PAR LE LEXIQUE (lexique.go) avant la passe Forge : seul, il ne
-// résolvait que 66 des 266 string_id employés par la rotation Forge (25 %) ; avec le
-// lexique, 266/266.
-type libellesParStringID map[uint32]libelle
+// couvre que le vocabulaire des cartes intégrées.
 
 // Colonnes attendues du CSV (en-tête vérifié : un CSV réordonné doit échouer).
 var colonnesAttendues = []string{"carte", "volumeIndex", "string_id", "nom_conception",
@@ -52,13 +51,13 @@ var colonnesAttendues = []string{"carte", "volumeIndex", "string_id", "nom_conce
 // chargeLibelles lit le CSV versionné (séparateur « ; », BOM UTF-8 toléré) et rend les
 // DEUX index : par (carte, volumeIndex) pour les cartes intégrées, par string_id pour les
 // cartes Forge.
-func chargeLibelles(path string) (libelles, libellesParStringID, error) {
+func chargeLibelles(path string) (libelles, mapcatalog.Lexique, error) {
 	rows, err := litCSVLibelles(path)
 	if err != nil {
 		return nil, nil, err
 	}
 	out := libelles{}
-	parSID := libellesParStringID{}
+	parSID := mapcatalog.Lexique{}
 	for n, row := range rows[1:] {
 		carte := row[0]
 		vi, err := strconv.Atoi(row[1])
@@ -80,11 +79,12 @@ func chargeLibelles(path string) (libelles, libellesParStringID, error) {
 		// Un string_id qui porterait DEUX libellés différents rendrait la jointure Forge
 		// indéterminée : on refuse plutôt que de trancher au hasard de l'ordre des lignes.
 		// Mesuré sain sur le CSV versionné : 463 string_id, un seul couple (en, fr) chacun.
-		if vu, deja := parSID[l.stringID]; deja && (vu.en != l.en || vu.fr != l.fr) {
+		parLieu := mapcatalog.Libelle{EN: l.en, FR: l.fr}
+		if vu, deja := parSID[l.stringID]; deja && vu != parLieu {
 			return nil, nil, fmt.Errorf("CSV ligne %d : string_id %08x porte deux libellés (%q/%q puis %q/%q)",
-				n+2, l.stringID, vu.en, vu.fr, l.en, l.fr)
+				n+2, l.stringID, vu.EN, vu.FR, l.en, l.fr)
 		}
-		parSID[l.stringID] = l
+		parSID[l.stringID] = parLieu
 	}
 	return out, parSID, nil
 }

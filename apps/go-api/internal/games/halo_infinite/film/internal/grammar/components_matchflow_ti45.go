@@ -1,6 +1,6 @@
 package grammar
 
-// components_matchflow_ti45.go — L ARCHETYPE `matchflow-*` (ti=45), composant `i0`.
+// components_matchflow_ti45.go — L ARCHETYPE `matchflow-*` (ti=45), composants `i0` et `i1`.
 //
 // Lu dans le jeu (HaloInfinite.exe HI_1_13_0, Ghidra, lecture seule) : nom -> accesseur de nom
 // (141177bc0) -> descripteur (slot 143d07be0) -> lecteur `FUN_14101cdd8`, ecrivain `FUN_142edbf94`.
@@ -28,4 +28,21 @@ func consumeMatchflowSequenceData(br *Lecteur) {
 	for range motsDeSequence {
 		br.ReadBits(largeurMotDeSequence)
 	}
+}
+
+// compMatchflowFocusData : l etiquette de registre de `ti=45 i1`.
+const compMatchflowFocusData = "matchflow-focus-data-component"
+
+// Largeurs du lecteur `FUN_141167744` (accesseur de nom 141177bb0, descripteur 143d07b90) : deux
+// entiers signes, etendus par leur bit de poids fort. L ecrivain (`142edbda4`) ecrit `etat+0x14 & 0x3f`
+// sur six bits puis `etat+0x18 & 0xf` sur quatre.
+const (
+	largeurFocusA uint = 6 // `+0x2c += 6`, signe par le bit 0x20 -> etat+0x14
+	largeurFocusB uint = 4 // `+0x2c += 4`, signe par le bit 0x8 -> etat+0x18
+)
+
+// consumeMatchflowFocusData (ti=45 i1) — `FUN_141167744` : `R(6)` puis `R(4)`, sans porte.
+func consumeMatchflowFocusData(br *Lecteur) {
+	br.ReadBits(largeurFocusA)
+	br.ReadBits(largeurFocusB)
 }

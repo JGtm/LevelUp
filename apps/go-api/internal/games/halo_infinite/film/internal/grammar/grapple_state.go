@@ -146,6 +146,9 @@ func (sc *grappleScanner) account(r *recordBipedeLu) {
 	if !heavy && sc.last.Inner != anchorInnerLight {
 		return // valeur interne connue mais hors des deux corps de grappin : rien à publier
 	}
+	if !sc.last.PosCarte {
+		return // pas de position aux largeurs de la carte : aucun point d'ancre à publier
+	}
 	sc.out = append(sc.out, types.GrappleRead{
 		Slot: slot, Chunk: chunk, PacketIndex: pk.Index, TimestampUS: pk.TimestampUS,
 		Heavy: heavy, PosQ: sc.last.PosQ,
