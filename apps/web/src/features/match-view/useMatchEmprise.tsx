@@ -3,10 +3,13 @@
  * PLAN_MATCHVIEW_EMPRISE_2026-10-06, cartes D, E, G, H, I) : les modèles (`matchEmprise.logic.ts`),
  * les textes (`matchEmpriseText.ts`) et la palette des joueurs du match, assemblés une fois ; chaque
  * carte n'est rendue que si le prédicat de présence la dit présente — la même lecture que l'onglet
- * pour poser l'intertitre.
+ * pour poser l'intertitre. « Prises par joueur » est posé à même la section, comme sur l'Emprise de
+ * l'Escouade : intertitre avec son aide, fiches sans cadre.
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 
+import { SectionTitle } from '@/components/ui/detail-section'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { empriseObjectName } from '@/features/squad/emprise/objectName'
 import { PickupSheetsCard, type PickupIdentity } from '@/features/squad/emprise/PickupSheetsCard'
@@ -73,7 +76,13 @@ export function useMatchEmprise(x: Input): MatchEmprise {
     coverage: cov ? own.coverage(cov.filmed, cov.present) : null,
     control: present.control && <MatchResourceControlCard control={models.control} objectName={objectName} t={texts.emprise} own={own} />,
     sheets: present.sheets && models.sheets && (
-      <PickupSheetsCard sheets={models.sheets} identities={identities} itemName={(line) => objectName(line.object)} t={texts.emprise} />
+      <section className="space-y-2" data-testid="match-emprise-sheets-section">
+        <SectionTitle className="flex items-center gap-1.5">
+          {texts.emprise.sheets.title}
+          <InfoTooltip content={texts.emprise.sheets.info} />
+        </SectionTitle>
+        <PickupSheetsCard sheets={models.sheets} identities={identities} itemName={(line) => objectName(line.object)} bare t={texts.emprise} />
+      </section>
     ),
     production: present.production && (
       <ProductionCard
