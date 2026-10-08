@@ -18,6 +18,11 @@ package grammar
 //	la lecture du jeu fait monter la fermeture sans aucune baisse sur les bobines, ou la
 //	grammaire dependante du build est etablie.
 //
+// SOUS LA GARDE DE PLEINE PRECISION (`FUN_14076f91c`, [fullPrecisionGate] : la portee de l etat
+// complet, plan LK, LK.5.4), un site dont la lecture sous la garde est relue chez le jeu la porte EN
+// TETE de sa fonction, dans un bloc autonome : il y lit comme le jeu, sans noter d exception, et
+// l exception ne vaut que hors de la garde. Ses cas : `lecteur_position_sites_portee_test.go`.
+//
 // Le test de chaque site (`lecteur_position_sites_test.go`) est marque « ecart attendu » par
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
@@ -33,6 +38,14 @@ package grammar
 // et BAISSE sur les anciens (ti=38 : 11de8353 99 -> 83, a521164d 122 -> 119 ; ti=42 : 60ae07c4
 // 5 -> 4, 11de8353 3 -> 2, 111fa685 2 -> 1). La garde de pleine precision n est pas lue non plus.
 func consumeObjectPositionMonde(br *Lecteur) {
+	// SOUS LA GARDE (plan LK, LK.5.4, relu le 2026-10-08) : `FUN_14076e29c` lit precHigh et R(96)
+	// (`FUN_14076e420` -> `FUN_14076e494`, garde vraie), la queue `FUN_14076e3e4(precHigh)` (MOV
+	// R9B,AL en 14076e2c5), puis R(2) si les trois flottants sont finis, et rend faux sinon
+	// (14076e2fe) : la forme de la branche absolue d i0 du bipede ([consumeAbsoluSousLaPortee]).
+	if fullPrecisionGate(br) {
+		consumeAbsoluSousLaPortee(br)
+		return
+	}
 	br.noterExceptionDatee()
 	if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
 		br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)

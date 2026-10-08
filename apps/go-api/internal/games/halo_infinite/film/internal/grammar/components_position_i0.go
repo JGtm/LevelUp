@@ -264,6 +264,10 @@ func consumeAbsoluteWithGate(br *Lecteur) {
 // L ecrivain d etat complet pose la meme forme (`FUN_14320696c` -> `FUN_142e2c9bc`) : le bit h ne
 // supprime pas la charge, il porte la queue, et le R(2) vient en dernier.
 //
+// C EST AUSSI LA FORME DE world-object i0 SOUS LA GARDE (`FUN_14076e29c`, [consumeObjectPositionMonde],
+// plan LK, LK.5.4) : le bit precHigh de `FUN_14076e420` y tient la place de h, `FUN_14076e494` lit les
+// 96 bits, puis la meme queue, le meme controle de finitude et le meme R(2).
+//
 // UN FLOTTANT NON FINI FAIT ECHOUER LE LECTEUR : `FUN_1406cfe44` rend faux sans lire le R(2), et
 // la boucle d etat complet `FUN_142e2c690` s arrete sur lui ([ArretPositionNonFinie]).
 //
