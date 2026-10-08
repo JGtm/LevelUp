@@ -99,7 +99,7 @@ func verifierLeRecordDEtatComplet(t *testing.T, nom string, p *lecture.Paquet) {
 			if c.Debut < r.Debut || c.Debut+c.Bits > r.Debut+r.Bits || (k+1 < len(cs) && c.Debut+c.Bits != cs[k+1].Debut) {
 				t.Errorf("%s : record %d, composant %+v hors de son etendue ou non contigu", ou, i, c)
 			}
-			if c.Etat == lecture.EtatInfranchissable && (k+1 != len(cs) || r.Desync != int16(c.Index)) {
+			if (c.Etat == lecture.EtatInfranchissable || c.Etat == lecture.EtatArrete) && (k+1 != len(cs) || r.Desync != int16(c.Index)) {
 				t.Errorf("%s : record %d, composant infranchissable %+v qui n arrete pas le record", ou, i, c)
 			}
 		}

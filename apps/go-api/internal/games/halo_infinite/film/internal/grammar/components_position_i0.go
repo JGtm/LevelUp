@@ -3,6 +3,7 @@ package grammar
 import (
 	"math/bits"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
@@ -265,14 +266,15 @@ func consumeAbsoluteWithGate(br *Lecteur) {
 // supprime pas la charge, il porte la queue, et le R(2) vient en dernier.
 //
 // UN FLOTTANT NON FINI FAIT ECHOUER LE LECTEUR : `FUN_1406cfe44` rend faux sans lire le R(2), et
-// la boucle d etat complet `FUN_142e2c690` s arrete sur lui ([ArretPositionNonFinie]).
+// la boucle d etat complet `FUN_142e2c690` s arrete sur lui ([lecture.ArretPositionNonFinie]).
 //
 // LA QUEUE EST [consumeQueueDePoignee], le port de `FUN_14076e3e4` : son handle est lu par
 // `FUN_1408f0ac4(.., 0)`, sur 13 bits pour la table d objets statique (`DAT_144706100 = 0x1FFF`).
 // Cette table ne grandit, donc cette largeur ne change, que sous le type de moteur 1
 // (`FUN_140d10a78` pose ses drapeaux de croissance a `DAT_145121140 == 1`) : une queue annoncee
 // (h = 1) dans un film qui n exclut pas ce type ([GrammaireBalayage.MoteurUnPossible]) arrete donc
-// la lecture ([ArretLargeurHandleMoteurUn]) plutot que de lire une largeur que le film n etablit pas.
+// la lecture ([lecture.ArretLargeurHandleMoteurUn]) plutot que de lire une largeur que le film
+// n etablit pas.
 //
 // Les 96 bits ne sont pas semes comme position : la graine d accumulation ne lit que la plage
 // cataloguee ([semerPositionAbsolue]).
@@ -283,12 +285,12 @@ func consumeAbsoluSousLaPortee(br *Lecteur) {
 		mots[k] = uint32(br.ReadBits(32)) //nolint:gosec // 32 bits lus
 	}
 	if h && br.p.Grammaire.MoteurUnPossible {
-		br.arreter(ArretLargeurHandleMoteurUn)
+		br.arreter(lecture.ArretLargeurHandleMoteurUn)
 		return
 	}
 	consumeQueueDePoignee(br, h) // FUN_14076e3e4(h)
 	if !flottantsFinis(mots) {   // FUN_140492128
-		br.arreter(ArretPositionNonFinie)
+		br.arreter(lecture.ArretPositionNonFinie)
 		return
 	}
 	br.ReadBits(2) // FUN_14076e304

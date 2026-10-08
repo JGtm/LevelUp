@@ -389,7 +389,7 @@ func (c *ri27d0Canal) situerLesFenetres(p *lecture.Paquet, r *lecture.Record, fi
 	comps := p.Comps[r.Comps[0]:r.Comps[1]]
 	situer := func(b int) (string, int) {
 		for _, co := range comps {
-			if co.Etat == lecture.EtatInfranchissable {
+			if co.Etat == lecture.EtatInfranchissable || co.Etat == lecture.EtatArrete {
 				return fmt.Sprintf("au_dela_de_i%d_infranchissable", co.Index), 0
 			}
 			if b >= int(co.Debut) && b < int(co.Debut+co.Bits) {

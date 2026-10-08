@@ -1016,6 +1016,14 @@ refusionner, rejouer l'étape 0).
   la nomme, mais `lecture.Record` ne garde que l'index (`Desync`), et `KeyframeClosure` comme I-ferm
   nomment « bloquant » le composant arrêté (`i0 object-position-dynamic-precision-component` sur
   `50247b26` `ti=35`, à la place de `i58`) : un arrêt de lecteur s'y lit comme un composant non porté.
+  *TRAITÉE en LK.6 (2026-10-08, lot B)* : l'IR-4 de l'ADR 0037 définit l'état infranchissable comme
+  « largeur inconnue (lecteur non porté) », exige trois états jamais confondus et des arrêts à cause
+  typée ; les arrêts nés de LK le contredisaient. La structure de lecture porte un quatrième état,
+  `lecture.EtatArrete`, et sa cause (`lecture.CauseDArret`, dans l'octet de bourrage de `Composant` :
+  taille gelée inchangée) ; `composantLu` la pose sur la dernière occurrence d'une trace arrêtée ;
+  `KeyframeClosure` nomme le bloquant `… (arret <cause>)`. Effet mesuré (`$S/lk6.d12`) : seul le
+  bloquant de `50247b26` `ti=35` change, I-d0 identique hors l'état numérique des 52 records arrêtés,
+  goldens inchangés, film et archlint verts ; mutations rouges.
 - D-13 *(LK.3)* `Mouvement.FullPrecision`, miroir de `DAT_145121140 == 1`, est présumé faux pour tous
   les films (`profile_table.go`, « Movement.FullPrecision » = false), alors que le film déclare son type
   de moteur (`VarianteDePartie.TypeDeMoteur`, déjà lu par la vue A) ; un film de type 1 lirait toutes

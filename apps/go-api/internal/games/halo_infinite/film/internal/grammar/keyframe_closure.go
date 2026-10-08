@@ -51,7 +51,9 @@ type KeyframeClosureStat struct {
 	// pas de frontiere : il n'est pas compte).
 	Total int
 	// Blocking nomme le composant non porte LE PLUS FREQUENT, sous la forme `i<idx> <nom>`, ou
-	// l'index nu si le registre ne porte pas son nom. Vide quand aucun record n'a desynchronise.
+	// l'index nu si le registre ne porte pas son nom. Vide quand aucun record n'a desynchronise. Un
+	// lecteur du jeu en ECHEC ([lecture.EtatArrete]) n'est pas un composant non porte : il est nomme
+	// `i<idx> <nom> (arret <cause>)` (plan LK, D-12).
 	//
 	// LE PLUS FREQUENT, PAS LE PREMIER VU : un archetype bute a des endroits differents selon le
 	// film, et c'est celui qui arrete le plus de records qu'il faut porter d'abord. A egalite, le
@@ -158,7 +160,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 type mesureDeFermeture struct {
 	reg *Registry
 	// stats : les comptes par archetype ; bloquants : par archetype, combien de records chaque
-	// composant non porte a arretes.
+	// composant non porte, ou chaque lecteur en echec avec sa cause, a arretes.
 	stats     map[uint32]KeyframeClosureStat
 	bloquants map[uint32]map[string]int
 }
@@ -177,6 +179,9 @@ func (m *mesureDeFermeture) accumuler(p *lecture.Paquet) {
 		switch {
 		case r.Desync >= 0:
 			nom := nomComposantBloquant(m.reg, int(r.TI), int(r.Desync))
+			if c, ok := composantDArret(p, r); ok {
+				nom += " (arret " + nomDeLArret(c.Arret) + ")" // un lecteur en echec n est pas un composant non porte
+			}
 			if m.bloquants[ti] == nil {
 				m.bloquants[ti] = map[string]int{}
 			}
@@ -186,6 +191,16 @@ func (m *mesureDeFermeture) accumuler(p *lecture.Paquet) {
 		}
 		m.stats[ti] = s
 	}
+}
+
+// composantDArret rend la derniere occurrence du record `r` quand le lecteur du jeu y a echoue
+// ([lecture.EtatArrete]) : la marche s y est arretee, cause nommee.
+func composantDArret(p *lecture.Paquet, r *lecture.Record) (lecture.Composant, bool) {
+	if r.Comps[1] == r.Comps[0] {
+		return lecture.Composant{}, false
+	}
+	c := p.Comps[r.Comps[1]-1]
+	return c, c.Etat == lecture.EtatArrete
 }
 
 // nomComposantBloquant nomme le composant qui a arrete la marche, ou l'index nu si le registre ne

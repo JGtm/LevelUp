@@ -16,6 +16,8 @@ package grammar
 import (
 	"go/ast"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 )
 
 // brut96 est le vecteur brut de `FUN_1411b259c` : trois flottants de 32 bits, finis (motif alterne).
@@ -112,7 +114,7 @@ func TestChaqueExceptionLitLeFluxDuJeuSousLaPortee(t *testing.T) {
 			buf, total := ecrireFlux(c.flux)
 			br := sousLaPortee(lecteurDeSite(buf, c.indexW))
 			c.lire(br)
-			if got := br.BitPos(); got != total || br.arret != ArretAucun {
+			if got := br.BitPos(); got != total || br.arret != lecture.ArretAucun {
 				t.Fatalf("%s sous la portee : %d bits lus, arret %v ; l ecrivain du jeu en pose %d", c.nom, got,
 					br.arret, total)
 			}

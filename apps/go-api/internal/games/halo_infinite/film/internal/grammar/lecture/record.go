@@ -42,6 +42,31 @@ const (
 	// EtatInfranchissable : la largeur est inconnue (lecteur non porté) ; la traversée s'arrête au
 	// début de l'occurrence, et le reste de la vue est une queue opaque ([QueueOpaque]).
 	EtatInfranchissable
+	// EtatArrete : le lecteur du jeu de l'occurrence est porté, et il ÉCHOUE (cause
+	// [Composant.Arret]) : ce qu'il lit fait échouer le jeu, ou le film n'établit pas une largeur
+	// qu'il lirait. La boucle d'état complet du jeu s'arrête sur lui, et la traversée s'arrête au
+	// début de l'occurrence. Ce n'est pas un composant non porté (plan LK, découverte D-12). Seuls les
+	// records d'image-clé le portent : ses causes naissent sous la portée de l'état complet, que ni le
+	// record NEW ni le DELTA ne posent.
+	EtatArrete
+)
+
+// CauseDArret nomme l'ÉCHEC d'un lecteur de composant du jeu ([EtatArrete]) : son désérialiseur rend
+// faux, et la boucle de composants s'arrête sur lui. Sa largeur est lue ; c'est ce qu'il lit qui fait
+// échouer le jeu, ou ce que le film n'établit pas.
+type CauseDArret uint8
+
+// Les causes d'échec d'un lecteur de composant.
+const (
+	// ArretAucun : aucun lecteur n'a échoué.
+	ArretAucun CauseDArret = iota
+	// ArretPositionNonFinie : la position absolue lue sous la portée porte un flottant non fini
+	// (`FUN_140492128`) ; le lecteur du jeu rend faux.
+	ArretPositionNonFinie
+	// ArretLargeurHandleMoteurUn : la position absolue lue sous la portée annonce la queue de son
+	// handle dans un film qui n'exclut pas le type de moteur 1 : la largeur de l'index du handle n'est
+	// pas établie.
+	ArretLargeurHandleMoteurUn
 )
 
 // ProvenanceLargeur dit d'où vient la largeur avec laquelle une occurrence a été traversée. Elle
@@ -139,11 +164,14 @@ type Composant struct {
 	// Etat est l'état de l'occurrence.
 	Etat Etat
 	// Prov est la provenance de la largeur, [LargeurNonRenseignee] pour une occurrence
-	// infranchissable.
+	// infranchissable ou arrêtée.
 	Prov ProvenanceLargeur
+	// Arret est la cause de l'échec du lecteur d'une occurrence [EtatArrete], [ArretAucun] sinon. Il
+	// tient dans l'octet de bourrage qui précède [Composant.Debut] : la taille reste celle gelée.
+	Arret CauseDArret
 	// Debut est le premier bit de l'occurrence.
 	Debut uint32
-	// Bits est sa longueur, zéro pour une occurrence infranchissable.
+	// Bits est sa longueur, zéro pour une occurrence infranchissable ou arrêtée.
 	Bits uint32
 }
 
@@ -167,9 +195,9 @@ type Record struct {
 	TI int16
 	// Desync est l'index d'itération où la traversée s'est arrêtée, [SansDesynchronisation] pour
 	// un record traversé jusqu'au bout, [CorpsNonParcouru] pour un record d'image-clé dont le
-	// corps n'a pas été parcouru. Quand le dernier composant du record est [EtatInfranchissable],
-	// c'est son index ; sinon la traversée s'est arrêtée avant tout composant (archétype hors du
-	// registre, slot non lié).
+	// corps n'a pas été parcouru. Quand le dernier composant du record est [EtatInfranchissable] ou
+	// [EtatArrete], c'est son index ; sinon la traversée s'est arrêtée avant tout composant (archétype
+	// hors du registre, slot non lié).
 	Desync int16
 	// Vie est l'identité du record (ADR 0034, `LifeKey`) : son slot et les deux bits de tête de son
 	// identifiant, la « tête » que la table d'entités compare — la génération du handle d'un record

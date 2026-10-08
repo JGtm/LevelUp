@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -160,33 +161,20 @@ func consumeFullStateDefaultBlock(br *Lecteur, ti uint32, sansEtatParDefaut bool
 	return int32(br.ReadBits(mot)) > 0 //nolint:gosec // idem
 }
 
-// ArretDuLecteur nomme l ECHEC d un lecteur de composant du jeu : son deserialiseur rend faux, et
-// la boucle de composants s arrete sur lui ([EntityTrace.Arret]). Ce n est pas un composant non
-// porte : sa largeur est lue, c est ce qu il lit qui fait echouer le jeu, ou ce que le film
-// n etablit pas.
-type ArretDuLecteur uint8
+// L ECHEC D UN LECTEUR DE COMPOSANT DU JEU est nomme par [lecture.CauseDArret] (`position_non_finie`,
+// `largeur_handle_moteur_un`, nees de la branche absolue d i0 sous la portee,
+// [consumeAbsoluSousLaPortee]) : son deserialiseur rend faux, et la boucle de composants s arrete
+// sur lui ([EntityTrace.Arret]). La structure de lecture porte la cause sur l occurrence
+// ([lecture.EtatArrete]) : ce n est pas un composant non porte (plan LK, D-12).
 
-// Les causes d echec d un lecteur de composant.
-const (
-	// ArretAucun : aucun lecteur n a echoue.
-	ArretAucun ArretDuLecteur = iota
-	// ArretPositionNonFinie : la branche absolue d i0 sous la portee a lu un flottant non fini
-	// ([consumeAbsoluSousLaPortee] ; `FUN_1406cfe44` rend faux, `FUN_142e2c690` s arrete).
-	ArretPositionNonFinie
-	// ArretLargeurHandleMoteurUn : la branche absolue d i0 sous la portee annonce un handle (h = 1)
-	// dans un film qui n exclut pas le type de moteur 1 ([GrammaireBalayage.MoteurUnPossible]) : la
-	// largeur de son index n est pas etablie ([consumeAbsoluSousLaPortee]).
-	ArretLargeurHandleMoteurUn
-)
-
-// String rend le nom de la cause.
-func (a ArretDuLecteur) String() string {
+// nomDeLArret rend le nom d une cause d echec de lecteur, tel que les mesures l ecrivent.
+func nomDeLArret(a lecture.CauseDArret) string {
 	switch a {
-	case ArretAucun:
+	case lecture.ArretAucun:
 		return "aucun"
-	case ArretPositionNonFinie:
+	case lecture.ArretPositionNonFinie:
 		return "position_non_finie"
-	case ArretLargeurHandleMoteurUn:
+	case lecture.ArretLargeurHandleMoteurUn:
 		return "largeur_handle_moteur_un"
 	}
 	return "arret_inconnu"

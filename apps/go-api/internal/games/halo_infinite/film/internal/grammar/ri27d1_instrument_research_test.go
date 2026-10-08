@@ -122,7 +122,7 @@ func fenetresDe(pay []byte, debut, fin int, vues map[uint32]bool) [][2]int {
 // situer rend le composant (index, nom) qui contient le bit `b`, et le decalage dans ce composant.
 func (c *ri27d0Canal) situerBit(comps []lecture.Composant, b int) (string, string, int) {
 	for _, co := range comps {
-		if co.Etat == lecture.EtatInfranchissable {
+		if co.Etat == lecture.EtatInfranchissable || co.Etat == lecture.EtatArrete {
 			return fmt.Sprintf("au_dela_de_i%d", co.Index), c.arch.component(int(co.Index)), b - int(co.Debut)
 		}
 		if b >= int(co.Debut) && b < int(co.Debut+co.Bits) {

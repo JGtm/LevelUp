@@ -5,7 +5,7 @@ package grammar
 //
 // La branche absolue d i0 sous la portee lit la forme de `FUN_1406cfe44` (h, R(96), queue, R(2) si
 // les trois flottants sont finis) ; un flottant non fini et un handle dont la largeur n est pas
-// etablie arretent la lecture ([ArretDuLecteur]). La marche d etat complet pose la portee autour
+// etablie arretent la lecture ([lecture.CauseDArret]). La marche d etat complet pose la portee autour
 // de l etat par defaut (`n1 > 0`) et de la boucle de composants (`n2 > 0`), et la retire a chaque
 // sortie ; le record NEW et le DELTA ne la posent pas.
 //
@@ -17,6 +17,7 @@ package grammar
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
@@ -69,7 +70,7 @@ func TestLaBrancheAbsolueDI0SousLaPorteeLitLaFormeDuJeu(t *testing.T) {
 		if h {
 			attendu = 114
 		}
-		if n != attendu || br.BitPos() != attendu || br.arret != ArretAucun {
+		if n != attendu || br.BitPos() != attendu || br.arret != lecture.ArretAucun {
 			t.Errorf("h=%v : %d bits lus (ecrits %d), arret %v ; attendu %d, aucun arret", h,
 				br.BitPos(), n, br.arret, attendu)
 		}
@@ -95,7 +96,7 @@ func TestLaQueueDePoigneeLitLeHandleSurTreizeBits(t *testing.T) {
 	w.bits(^uint64(0), 64)
 	br := sousLaPortee(LecteurSur(w.buf))
 	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
-	if fin != 118 || br.BitPos() != fin || br.arret != ArretAucun {
+	if fin != 118 || br.BitPos() != fin || br.arret != lecture.ArretAucun {
 		t.Fatalf("queue a handle present : %d bits lus (ecrits %d), arret %v ; attendu 118, aucun arret",
 			br.BitPos(), fin, br.arret)
 	}
@@ -139,9 +140,40 @@ func TestUnFlottantNonFiniArreteLaLecture(t *testing.T) {
 	ecrireI0AbsoluSousLaPortee(&w, false, [3]uint64{motFlottantFini, motInfini, motFlottantFini}, true)
 	br := sousLaPortee(LecteurSur(w.buf))
 	consumeObjectPositionDynamicPrecisionD(br, br.traversal())
-	if br.arret != ArretPositionNonFinie || br.BitPos() != 99 {
+	if br.arret != lecture.ArretPositionNonFinie || br.BitPos() != 99 {
 		t.Fatalf("flottant infini : arret %v apres %d bits, attendu %v apres 99 (sans le R(2))",
-			br.arret, br.BitPos(), ArretPositionNonFinie)
+			br.arret, br.BitPos(), lecture.ArretPositionNonFinie)
+	}
+}
+
+// TestLArretDuLecteurPorteSaCauseDansLaStructure — plan LK, D-12 : l occurrence dont le lecteur du
+// jeu echoue est ARRETEE dans la structure de lecture, cause nommee, et non infranchissable (ADR 0037
+// IR-4 : infranchissable veut dire largeur inconnue) ; la mesure de fermeture la nomme avec sa cause.
+// Mutations jouees : la branche d arret retiree de `composantLu` ; la cause retiree du bloquant.
+func TestLArretDuLecteurPorteSaCauseDansLaStructure(t *testing.T) {
+	var w bitWriter
+	enTeteDImageCle(&w, 35)
+	w.bits(0, 32) // n1 = 0
+	w.bits(1, 32) // n2 = 1
+	ecrireI0AbsoluSousLaPortee(&w, false, [3]uint64{motInfini, motFlottantFini, motFlottantFini}, true)
+	w.bits(^uint64(0), 64)
+	tr := WalkKeyframeFullState(w.buf, 0, registreI0(), ContexteParDefaut())
+	if c := composantLu(&tr, len(tr.Comps)-1, true); c.Etat != lecture.EtatArrete ||
+		c.Arret != lecture.ArretPositionNonFinie || c.Bits != 0 {
+		t.Fatalf("occurrence arretee : %+v ; attendu EtatArrete, cause position_non_finie, 0 bit", c)
+	}
+	tr.Arret = lecture.ArretAucun // le meme composant non porte, sans echec de lecteur
+	if c := composantLu(&tr, len(tr.Comps)-1, true); c.Etat != lecture.EtatInfranchissable || c.Arret != lecture.ArretAucun {
+		t.Fatalf("composant non porte : %+v ; attendu infranchissable, sans cause", c)
+	}
+	p := &lecture.Paquet{
+		Comps:   []lecture.Composant{{Etat: lecture.EtatArrete, Arret: lecture.ArretPositionNonFinie}},
+		Records: []lecture.Record{{TI: 35, Desync: 0, Comps: [2]uint32{0, 1}}, {TI: 35}},
+	}
+	m := mesureDeFermeture{reg: registreI0(), stats: map[uint32]KeyframeClosureStat{}, bloquants: map[uint32]map[string]int{}}
+	m.accumuler(p)
+	if attendu := "i0 " + kf7dI0 + " (arret position_non_finie)"; m.bloquants[35][attendu] != 1 {
+		t.Fatalf("bloquant de la mesure de fermeture : %v ; attendu %q", m.bloquants[35], attendu)
 	}
 }
 
@@ -156,11 +188,11 @@ func TestLaGardeDuHandleArreteSousLeMoteurUn(t *testing.T) {
 		p.Grammaire.MoteurUnPossible = true
 		br.PoserProfil(p)
 		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
-		if h && (br.arret != ArretLargeurHandleMoteurUn || br.BitPos() != 99) {
+		if h && (br.arret != lecture.ArretLargeurHandleMoteurUn || br.BitPos() != 99) {
 			t.Errorf("h=1 sous le moteur 1 possible : arret %v apres %d bits, attendu %v apres 99",
-				br.arret, br.BitPos(), ArretLargeurHandleMoteurUn)
+				br.arret, br.BitPos(), lecture.ArretLargeurHandleMoteurUn)
 		}
-		if !h && (br.arret != ArretAucun || br.BitPos() != 101) {
+		if !h && (br.arret != lecture.ArretAucun || br.BitPos() != 101) {
 			t.Errorf("h=0 sous le moteur 1 possible : arret %v apres %d bits, attendu aucun apres 101",
 				br.arret, br.BitPos())
 		}
@@ -191,12 +223,12 @@ func TestLaMarcheDEtatCompletPoseLaPortee(t *testing.T) {
 		h        bool
 		mots     [3]uint64
 		moteurUn bool
-		arret    ArretDuLecteur
+		arret    lecture.CauseDArret
 	}{
-		{"fini, h = 0", false, troisMots(motFlottantFini), false, ArretAucun},
-		{"fini, h = 1", true, troisMots(motFlottantFini), false, ArretAucun},
-		{"infini", false, [3]uint64{motInfini, motFlottantFini, motFlottantFini}, false, ArretPositionNonFinie},
-		{"h = 1, moteur 1 possible", true, troisMots(motFlottantFini), true, ArretLargeurHandleMoteurUn},
+		{"fini, h = 0", false, troisMots(motFlottantFini), false, lecture.ArretAucun},
+		{"fini, h = 1", true, troisMots(motFlottantFini), false, lecture.ArretAucun},
+		{"infini", false, [3]uint64{motInfini, motFlottantFini, motFlottantFini}, false, lecture.ArretPositionNonFinie},
+		{"h = 1, moteur 1 possible", true, troisMots(motFlottantFini), true, lecture.ArretLargeurHandleMoteurUn},
 	}
 	for _, c := range cas {
 		var w bitWriter
@@ -210,10 +242,10 @@ func TestLaMarcheDEtatCompletPoseLaPortee(t *testing.T) {
 		ctx.Profil.Grammaire.MoteurUnPossible = c.moteurUn
 		tr := WalkKeyframeFullState(w.buf, 0, registreI0(), ctx)
 		switch {
-		case c.arret == ArretAucun && (tr.DesyncAt != -1 || tr.EndBit != debutI0+n):
+		case c.arret == lecture.ArretAucun && (tr.DesyncAt != -1 || tr.EndBit != debutI0+n):
 			t.Errorf("%s : arret a %d (%v), fin %d ; attendu aucun arret, fin %d", c.nom, tr.DesyncAt,
 				tr.Arret, tr.EndBit, debutI0+n)
-		case c.arret != ArretAucun && (tr.Arret != c.arret || tr.DesyncAt != 0 || tr.EndBit != debutI0):
+		case c.arret != lecture.ArretAucun && (tr.Arret != c.arret || tr.DesyncAt != 0 || tr.EndBit != debutI0):
 			t.Errorf("%s : arret %v a %d, fin %d ; attendu %v a 0, fin %d (debut d i0)", c.nom, tr.Arret,
 				tr.DesyncAt, tr.EndBit, c.arret, debutI0)
 		}
@@ -296,7 +328,7 @@ func TestLaPorteeRetombeASaSortie(t *testing.T) {
 		bi := LecteurSur(wi.buf)
 		tr := EntityTrace{DesyncAt: -1, Mask: ^uint64(0)}
 		traverserSousLaPortee(bi, registreI0().Archetypes[35], &tr)
-		if bi.portee || bi.arret != ArretAucun {
+		if bi.portee || bi.arret != lecture.ArretAucun {
 			t.Errorf("boucle (arret %v) : portee %v, arret du lecteur %v en sortie ; attendu faux, aucun",
 				tr.Arret, bi.portee, bi.arret)
 		}

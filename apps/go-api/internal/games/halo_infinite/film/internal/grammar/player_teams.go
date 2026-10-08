@@ -269,7 +269,7 @@ func lireEquipeALEtendue(p *lecture.Paquet, r *lecture.Record, arch Archetype, c
 	}
 	c0 := p.Comps[r.Comps[0]]
 	if int(c0.Index) >= len(arch.Components) || arch.Components[c0.Index] != teamDesignatorComponent ||
-		c0.Etat == lecture.EtatInfranchissable {
+		c0.Etat == lecture.EtatInfranchissable || c0.Etat == lecture.EtatArrete {
 		return 0, 0, false
 	}
 	return lireEquipeA(p.Payload, int(r.Debut), int(c0.Debut), ctx)

@@ -44,9 +44,9 @@ type EntityTrace struct {
 	Dead        *types.DeadState // captured object-dead-state heavy form (nil if no dead-state component present)
 	DesyncAt    int              // iterator index of the first un-ported present component, or of the component whose reader failed ([EntityTrace.Arret]) (-1 if all consumed)
 	EndBit      int
-	// Arret : le lecteur du composant DesyncAt a echoue ([ArretDuLecteur]) ; la traversee s arrete
-	// au debut de ce composant. [ArretAucun] pour un composant non porte ou une traversee complete.
-	Arret ArretDuLecteur
+	// Arret : le lecteur du composant DesyncAt a echoue ([lecture.CauseDArret]) ; la traversee s arrete
+	// au debut de ce composant. [lecture.ArretAucun] pour un composant non porte ou une traversee complete.
+	Arret lecture.CauseDArret
 	// MasqueNonEcrit : la regle de `FUN_142e2da44` que le masque lu contredit ([lireMasque],
 	// [traverseComponentLoopFrom]) ; [InvariantAucun] pour un masque que l ecrivain peut ecrire.
 	MasqueNonEcrit InvariantEcrivain
@@ -299,9 +299,9 @@ func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from
 		if dead != nil {
 			t.Dead = dead
 		}
-		if br.arret != ArretAucun {
+		if br.arret != lecture.ArretAucun {
 			// Le lecteur du jeu a echoue : la boucle s arrete sur ce composant, a son debut.
-			t.Arret, br.arret = br.arret, ArretAucun
+			t.Arret, br.arret = br.arret, lecture.ArretAucun
 			br.SetBitPos(start)
 			t.Comps = append(t.Comps, CompResult{Index: i, Name: arch.Components[i], Variant: variant, Ported: false, StartBit: start})
 			t.DesyncAt = i
