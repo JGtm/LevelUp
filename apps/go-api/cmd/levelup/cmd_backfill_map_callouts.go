@@ -134,7 +134,7 @@ func cartesDeLaPasse(ctx context.Context, cfg *config.AppConfig, o mapCalloutsOp
 func passeMapCallouts(ctx context.Context, cfg *config.AppConfig, o mapCalloutsOptions,
 	cartes []replayartifacts.CarteJouee) (*bilanMapCallouts, error) {
 	opts := replayartifacts.OptionsRattrapageZones{
-		RepoRoot: cfg.RepoRoot, TitleSlug: o.titleSlug, CacheRoot: racineDuCache(cfg, o), ABlanc: o.dryRun,
+		RepoRoot: cfg.RepoRoot, TitleSlug: o.titleSlug, CacheRoot: racineDesVariantes(cfg, o), ABlanc: o.dryRun,
 	}
 	horsLigne, err := replayartifacts.PreparerRattrapageZones(ctx, opts)
 	if err != nil {
@@ -170,8 +170,8 @@ func passeMapCallouts(ctx context.Context, cfg *config.AppConfig, o mapCalloutsO
 	return b, nil
 }
 
-// racineDuCache : la racine sous laquelle le serveur dépose les variantes (`<racine>/mvar/`).
-func racineDuCache(cfg *config.AppConfig, o mapCalloutsOptions) string {
+// racineDesVariantes : la racine sous laquelle le serveur dépose les variantes (`<racine>/mvar/`).
+func racineDesVariantes(cfg *config.AppConfig, o mapCalloutsOptions) string {
 	if v := strings.TrimSpace(o.cacheDir); v != "" {
 		return v
 	}
