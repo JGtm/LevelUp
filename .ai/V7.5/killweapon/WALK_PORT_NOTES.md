@@ -1083,6 +1083,94 @@ payload du FILM est ecrit HORS de la portee `DAT_144e61ea0`, contrairement au sn
 **C est la contradiction a trancher au lot suivant**, et elle est nommee : une seule variable,
 `DAT_144e61ea0`, decide entre 96 bits bruts et 3 x axisW quantifies.
 
+### 6.5 LK (2026-10-08) — les lecteurs de la portee, site par site, avant de la poser en production
+
+Plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etape LK.1. Relectures Ghidra de la
+session (LECTURE SEULE, `GET` sur `127.0.0.1:8089` : `decompile_function`, `disassemble_function`,
+`get_xrefs_to`, `read_memory`, `search_instructions`) ; sorties brutes sous
+`scratchpad/ri/lk/lk1/`. « Garde » = `FUN_14076f91c` (`DAT_144e61ea0 != 0 || DAT_145121140 == 1`),
+`fullPrecisionGate` en Go. Les numeros de ligne Go datent de `fe5832e5b`.
+
+**A. Qui consulte la garde chez le jeu (LK.1.7).** `get_xrefs_to(14076f91c)` : 18 appels, plus une
+DATA (`143ed92b0`) ; `get_xrefs_to(144e61ea0)` : la lecture de `FUN_14076f91c`, 16 ECRITURES (les
+huit poseurs de la portee, D-10 du plan) et 18 lectures EN LIGNE dans 14 fonctions
+`141dc8600..141ddb460`.
+
+| Lecteur du jeu (site de la garde) | Composant / role | Lecteur Go | Garde en Go | Lecture sous la portee | Statut |
+|---|---|---|---|---|---|
+| `FUN_1406cfe44` @1406d0076 | i0 `object-position-dynamic-precision` (ti=35, ti=40), branche ABSOLUE | `consumeAbsoluteWithGate` ; sous la bascule `GrammaireEcrivainI0` : `lireE420` | oui | R(1) h, R(96), queue `FUN_14076e3e4(h)`, R(2) si les trois flottants sont finis (G-1, G-2 du plan) | NON CONFORME : sans bascule, R(96) puis plus rien ; avec, la queue lit le handle sur `pd.IndexW` (LK.3.3, LK.5.2) |
+| `FUN_1406cfe44` @1406cff26 | i0, delta predit, `predFlag = 0` | `consumeObjectPositionDynamicPrecisionD` | oui | R(96) | conforme |
+| `FUN_14076e4ec` @14076e4f8 | i0, delta predit, `predFlag = 1` (`FUN_140f7ea14`, CALL 140f7ea5c recontrole) | `consumePredictedAbsolute` -> `lireE420` | oui | R(1), R(96) | conforme |
+| `FUN_14076e494` @14076e4a0 | l enveloppe de position (niveau transmis) | `lireE494`, `lireE494Sur` | oui | R(96) | conforme : tous les sites de `lecteur_position_ratchet_test.go` ; CALL recontroles : spawn-filter 142b6ef31, selectable-zone 14145437e, asset-transform 142ed9556 -> `FUN_14076e494` |
+| `FUN_1408f02c8` @1408f03aa | i54 `biped-mobility-action`, 1re position (garde en ligne puis `FUN_14076e524`) ; 2e par `FUN_14076e494` | `consumeMobilityActionBody` (`lireE494` x2) | oui | R(96) x2 | conforme |
+| `FUN_140ee7270` @140ee727a | ti=21 i16 `flock-position` | `consumeFlockPosition` | oui | R(96) | conforme (la seule exception datee qui consulte la garde) |
+| `FUN_140f04d88` @140f04dc4 | ti=34 i7 `tacmap-waypointstate` | `consumeTacmapWaypointState` (exception) | NON | R(1), R(32), R(96), [R(1) si niveau > 1] | non conforme, LK.5.4 |
+| `FUN_140f04f68` @140f04f72 | ti=12 i18 `navpoint-position-offset` (garde en ligne, puis CALL 140f04f8b -> `FUN_14076e524`) | `consumeNavpointPositionOffset` (`lireE494`) | oui | R(96) | conforme |
+| `FUN_140fb8af0` @140fb8b22 | ti=21 i2..i11 `flock-destination` | `consumeFlockDestination` (exception) | NON | R(1), R(96), [R(2) `FUN_1424e268c` si niveau > 1] | non conforme, LK.5.4 |
+| `FUN_140f04f18` @140f04f21 | sac de proprietes, etiquette 7 (`FUN_14080eff0`) | `lireValeurDePropriete` (`lireE494`) | oui | jamais (vue A) | conforme |
+| `FUN_140f04fb8` @140f04fd4, @140f05007 | `EquipmentTranslocatorTeleportEffects`, positions A et B | `readTranslocVec` (`lireE494Sur`) | oui | jamais (vue A) | conforme |
+| `FUN_1408096f8` @140809760 | `projectile_detonate` (niveau 0x0F) | `chargeDetonation` (`lireE494Sur`) | oui | jamais (vue A) | conforme |
+| `FUN_1410f03b4` @1410f0438 | `projectile_impact_effect` (0x0C) | `chargeImpact` (`lireE494Sur`) | oui | jamais (vue A) | conforme |
+| `FUN_14112134c` @141121367 | `ObjectCollisionDamage` (0x0C) | aucun | — | — | non porte, hors LK |
+| `FUN_14076f75c` @14076f77d | quantification d un vec3 (aucun lecteur de bits en parametre) | — | — | — | sans objet |
+| `FUN_1407eb61c` @1407eb632 | ECRIVAIN de position (`FUN_1406d60f4` = 64 bits par mot, brut ; sinon `FUN_1407eb6a8`), appele par `FUN_142e2d86c` | — | — | — | sans objet (ecriture) |
+| `FUN_142e2c9bc` @142e2ca36 | ECRIVAIN de la branche absolue d i0 (`FUN_14320696c` -> `FUN_142e2c9bc`) | — | — | — | sans objet (ecriture), symetrique de la 1re ligne |
+| lectures EN LIGNE : `FUN_141dc8600`, `FUN_141dcc4a0`, `FUN_141dcf120`, `FUN_141dcfbc0` (x2), `FUN_141dd86b0`, `FUN_141dda340`, `FUN_141ddae80` | union etiquetee de la famille 0x1E (repartiteurs `FUN_141df1130`, `FUN_141df06c0`) | aucun | — | — | non porte ; appartenance au film non etablie (releve J6) |
+| lectures EN LIGNE : `FUN_141dc8a70`, `FUN_141dccaa0` (x2), `FUN_141dcf690`, `FUN_141dd0210`, `FUN_141dd8870`, `FUN_141dda8f0`, `FUN_141ddb460` | ECRIVAINS de la meme famille (`FUN_1406d60f4` ; `FUN_141dccaa0` appele par `FUN_141ded300`) | — | — | — | sans objet (ecriture) |
+
+**B. Les treize exceptions datees, sous la portee (G-3 du plan, LK.1.6).** Source : le releve de la
+seconde passe (`scratchpad/ri/d1/g2/`, G-3 du plan), sauf les lignes `consumeFlockDestination` et
+`consumeGenericRigidBodyTransforms`, relues ce jour (decompiles `FUN_140fb8af0`, `FUN_142f036f0`,
+`FUN_140c1e79c`, `FUN_1424e268c`, `FUN_1406d84b4` et desassemblage de `FUN_140c1e79c`). Toutes passent par la
+garde chez le jeu ; une seule la consulte en Go.
+
+| Exception Go | Lecteur du jeu | Lecture sous la portee | Largeur | Statut |
+|---|---|---|---|---|
+| `consumeObjectPositionMonde` (ti=36..43 i0) | `FUN_14076e29c` -> `FUN_14076e420` (CALL 14076e2c0) | R(1) precHigh, R(96), queue `FUN_14076e3e4(precHigh)`, R(2) si fini | LUE | NON CONFORME (LK.5.4) |
+| `consumePlayerDesiredRespawnLocation` (ti=5 i12) | `FUN_142f03ec8` -> `FUN_14076e494` (CALL 142f03f0b) | R(1) ; si 1 : R(96), R(19) | LUE | NON CONFORME (LK.5.4) |
+| `consumeCrewOrder` (ti=14 i0) | `FUN_142ed4274` -> `FUN_142ed9120` (CALL 142ed918e) | R(3) (`FUN_142b1cf3c`), R(1) ; si 1 : R(96) | LUE | NON CONFORME (LK.5.4) |
+| `consumeTacmapPoiIcon` (ti=30 i0) | `FUN_142ed8418`, CALL 142ed86d7 (thunk `FUN_1424e0e38`) | le vecteur devient R(96) | LUE | NON CONFORME (LK.5.4) |
+| `consumeTacmapAreaOfInterest` (ti=32 i0) | `FUN_142ed7764`, CALL 142ed7853 | R(32), R(3), R(96), R(12) | LUE | NON CONFORME (LK.5.4) |
+| `consumeTacmapDisplayAsset` (ti=33 i0) | `FUN_142ed7d38`, CALL 142ed7edf | la position devient R(96) | LUE | NON CONFORME (LK.5.4) |
+| `consumeTacmapCoopTetherArea` (ti=34 i11) | `FUN_142ed4198`, CALL 142ed41ba | R(96), R(12), R(12) | LUE | NON CONFORME (LK.5.4) |
+| `consumeTacmapWaypointState` (ti=34 i7) | `FUN_140f04d74` -> `FUN_140f04d88` | ligne de A | LUE | NON CONFORME (LK.5.4) |
+| `consumeFlockDestination` (ti=21 i2..i11) | `FUN_140fb8af0` (decompile relu ce jour) | R(1) (`FUN_1406cf008`), garde : `FUN_1411b259c` R(96) sinon `FUN_14076e524(0x10)`, puis si `param_4 > 1` : `FUN_1424e268c` | **LUE ce jour** : `FUN_1424e268c` = R(2) (decompile : deux bits lus, rendus) | NON CONFORME (LK.5.4) |
+| `consumeGenericRigidBodyTransforms` (ti=38 i18) | `FUN_142f036f0` (CALL 142f03837) : R(8) masque, puis par bit `FUN_140c1e79c` et `FUN_14076e494(0x10)` | R(8) ; par bit : `FUN_140c1e79c` + R(96) | **LUE ce jour** : `FUN_140c1e79c` = R(1) (140c1e7d9) ; si 0 : R(19) (`ADD [RBX+0x2c],0x13` 140c1e84e, puis `FUN_1406d8288(.., 0x13)` 140c1e875), sinon le vecteur constant `PTR_DAT_14474c2e8` ; puis `FUN_1406d84b4` avec la largeur 8 posee en `[RSP+0x20]` (140c1e80f) = R(8). Egal au Go `consumeCompressedDir140c1e79c` | NON CONFORME pour la position (LK.5.4) |
+| `consumePrecHautDuBipede` (i0 absolu, precHigh = 1) | `FUN_1406cfe44`, saut 1422f4ca9 | inatteinte sous la portee (`consumeAbsoluteWithGate` teste la garde d abord) | LUE | LK.5.3 (test de non-atteinte) |
+| `lireViseeDActeurAncienne` (unit-actor-state i20) | `FUN_14058c058` (CALLs 1422cddc1, 1422cde0e) | R(96) par emplacement a = 0 | LUE | NON CONFORME (LK.5.1) |
+| `consumeFlockPosition` (ti=21 i16) | `FUN_140ee7270` | R(96) | LUE | conforme |
+
+Les deux largeurs que le plan disait NON LUES (reprises de commentaires Go) sont LUES ce jour :
+aucune largeur de ces sites n est plus presumee.
+
+**C. La garde `low-frequency` de ti=3 (LK.1.8).** Lien LU : `FUN_142ed4aec` (ti=3 i0) lit ses
+positions par `FUN_1424e0e38` (CALLs 142ed4b1f et 142ed4e7f, niveau `R8D = R13D = R9 + 0x10`),
+thunk vers `FUN_14076e494` dont la garde est `FUN_14076f91c` (CALL 14076e4a0) : sous la portee, chaque
+position est R(96). Son orientation avant/haut `FUN_140c5f938` (CALLs 142ed4b38, 142ed4e98) ne lit
+que `DAT_145121140` (lecture 140c5f947), pas la portee : elle ne change pas. En Go,
+`consumeLowFrequency` lit ses positions par `lireE494`, qui consulte la garde : sous une portee
+posee par la marche, il lirait comme le jeu. La garde `etatComplet` qui le refuse dans un etat
+complet (`components_frequences.go:62-66`) devient donc levable sous la portee (LK.5.5), et
+`ecs_table.tsv:76` passera de « partiel » a « porte » avec elle.
+
+**D. La largeur du handle d i0 et le type de moteur (LK.1.10, avant l arret E-4).** W0 = 13 vaut
+pour `DAT_144706100 = 0x1FFF` (image statique). Cette valeur ne change que par la CROISSANCE de la
+table d objets, et la croissance n a que deux ecrivains : `FUN_142f2f0cc` (ecriture 142f2f2b1,
+apres les tests 142f2f21c `CMP byte [RDI+0x138],0` et 142f2f229 `CMP byte [RDI+0x158],0`) et
+`FUN_1408f1618` (ecriture 1423503d3, sous `index >= taille && [+0x138] && [+0x158]`). Les deux
+drapeaux sont poses par `FUN_140d10a78` a `(DAT_145121140 == 1)` (140d10afd `CMP`, 140d10b11 et
+140d10b24 `MOV byte [RBX+0x138|0x158], AL` apres `SETZ`). Recherche d instructions sur tout le
+programme (rejouee ce jour, non tronquee) : quatre fonctions ecrivent un octet a la fois en +0x138
+et en +0x158 — `FUN_140d10a78`, `FUN_1420b27c0` (ecrit 0), `FUN_1435d44bc` (constructeur d un
+autre objet, ecrit 0), `FUN_1406a6290` (une chaine std) ; aucun `SETcc` en memoire ; un `OR`/`AND`
+sur `[RBX+0x138]` dans `FUN_143239418` seul, sans +0x158. `DAT_145121140` n a que deux ecrivains :
+`FUN_140a93ec8(t)` (140a93ee6), qui le pose a t pour t = 0, 2, 3 et appelle `FUN_142b5c658`
+(142b5c6ab : pose 1) pour t = 1 ; `FUN_140a938b4` l appelle avec `FUN_14051a4b8(*(options + 4))`,
+et `FUN_14051a4b8` rend 1 pour 1, 3 pour 2, 2 pour 3, 0 sinon. **Donc W0 ne peut differer de 13 que
+si `m_gameEngineType` vaut 1**, valeur que le film porte (`profile.VarianteDePartie.TypeDeMoteur`) ;
+une variante ABSENTE (`Presente` faux) veut dire `FUN_14051a4b8(type) == 0`, donc pas de croissance.
+Residu non couvert : une copie de structure (memcpy) qui recopierait les deux drapeaux.
+
 # LA BOUCLE D ETAT COMPLET, PORTEE — et le decalage de niveau du registre (lot R7-e, 2026-08-17)
 
 R7-d avait TROUVE `FUN_142e2c690` sans la PORTER. Ce lot la porte, avec son en-tete, et mesure.

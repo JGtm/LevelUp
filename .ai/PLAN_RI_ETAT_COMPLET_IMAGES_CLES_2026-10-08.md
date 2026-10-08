@@ -177,7 +177,7 @@ Commandes nommées, réutilisées par les gates (§5) :
   `KF35_ROOT=$R go test -count=1 -run '^TestKF35CBaselineScope$' -timeout 580s -v $G` (correction 7).
 - **I-carte** (carte v2 delta) : `go build -tags=research -o $S/<e>/cmd_fermeture.exe ./internal/games/halo_infinite/film/research/cmd_fermeture` puis
   `$S/<e>/cmd_fermeture.exe -racine $R -films $F20 -sortie $S/<e>/carte -plafond-gib 4 -top 40 -mode v2 -paquets`,
-  idem `-films $F8 -sortie $S/<e>/carte8`, et `-films $F20,$F8 -mpp-declare -sortie $S/<e>/carte_mpp` (cet ORDRE est celui de la référence `m2/carte_v2_mpp_base` : la carte écrit ses lignes dans l ordre des films, et `-films $FILMS` rend les mêmes lignes dans un autre ordre, constaté le 2026-10-08).
+  idem `-films $F8 -sortie $S/<e>/carte8`, et `-films $F20,$F8 -mpp-declare -sortie $S/<e>/carte_mpp` (cet ORDRE est celui de la référence `m2/carte_v2_mpp_base` : la carte écrit ses lignes dans l'ordre des films, et `-films $FILMS` rend les mêmes lignes dans un autre ordre, constaté le 2026-10-08).
   Comparaison : `cmp` de chaque TSV contre la référence, `fermeture_films.tsv` par `cut -f1-16`.
 - **Gardes de révision passées sous `-skip`** (gates intermédiaires, entre deux montées ; correction 4) :
   `SKIPREV='TestGrammarRevSuitLaGrammaire|TestChroniqueCouvreLaRevisionCourante|TestKillsourceRevSuitLaSortie|TestChroniqueDeKillsourceCouvreLaRevisionCourante|TestObjectivesRevSuitLaSortie|TestChroniqueDObjectivesCouvreLaRevisionCourante'`,
@@ -214,9 +214,9 @@ sauf mention. Rien n'a été commité ; aucune base ouverte.
 **Relectures Ghidra acquises (seconde passe, lecture seule, sorties `REF/g2/`).**
 - G-1 Queue d'i0 quand h = 1 (`FUN_14076e3e4`, 14230d04c) : `FUN_1408f0ac4(cat 0)` = R(1) [R(W0) R(2)],
   puis R(1) [R(11)] ; W0 = `ceil(log2 N0)` avec N0 = 0x1DFF ou 0x1FFF (`DAT_144706100` = 0x1FFF,
-  image statique ; « ne croît que si `m_gameEngineType` = 1 » est NON VÉRIFIÉ : aucun fichier de `g2/`
-  ne relie les deux écrivains de croissance, `FUN_1408f1618` et `FUN_142f2f0cc`, au type de moteur —
-  relu en LK.1.10 avant de coder l'arrêt E-4, correction 9), donc **W0 = 13, LU**, déjà porté par
+  image statique ; « ne croît que si `m_gameEngineType` = 1 » était NON VÉRIFIÉ à la rédaction — LU le
+  2026-10-08 en LK.1.10 : la croissance exige les drapeaux +0x138/+0x158 de la table d'objets, posés à
+  `(DAT_145121140 == 1)`, c'est-à-dire `m_gameEngineType` = 1, WALK_PORT_NOTES §6.5 D), donc **W0 = 13, LU**, déjà porté par
   `varWidthBits(0)` (`varwidth.go:86`) et `consume1408f0ac4(br, 0)` (`bit_leaf_readers.go:92`).
   `consumePositionHandleTail` (`components_position_i0.go:266`) lit le handle sur `pd.IndexW` = 1 et
   ajoute deux R(1) (sélection, extension) : écart de 12 bits de handle et 2 bits structurels quand le
@@ -227,8 +227,8 @@ sauf mention. Rien n'a été commité ; aucune base ouverte.
   marche, pas un compteur.
 - G-3 Treize exceptions datées de position passent par la portée chez le jeu (tableau complet dans
   le relevé Ghidra de la seconde passe) ; une seule est conforme en Go (`consumeFlockPosition`).
-  Largeurs sous portée LUES pour toutes, SAUF `FUN_140c1e79c` (`ti=38` i18) et `FUN_1424e268c`
-  (+2 bits, `ti=21` i2..i11), reprises de commentaires Go (NON LUES).
+  Largeurs sous portée LUES pour toutes ; `FUN_140c1e79c` (`ti=38` i18 : R(1) [R(19)] R(8)) et `FUN_1424e268c`
+  (`ti=21` i2..i11 : R(2)), reprises de commentaires Go à la rédaction, sont LUES le 2026-10-08 (LK.1.6).
 - G-4 L'état par défaut de `ti=9` (`FUN_1410d7540`) et son désignateur (`FUN_140f581e8` →
   `FUN_1407ef804`, R(4)) n'ont aucun lecteur de position : LK ne change pas les équipes (confirmé
   par R-10).
@@ -359,6 +359,11 @@ E-9.
   observable, la garde porte sur celui-là ; si elle ne permet d'en écrire aucun, LK.3.7 est statué `[!]`
   et l'exécution s'ARRÊTE (décision de doctrine : présumer 13 ou ne pas lire). Les deux largeurs NON
   LUES de G-3 (`FUN_140c1e79c`, `FUN_1424e268c`) ne sont codées qu'après relecture (LK.1.6, LK.5).
+  *Relu le 2026-10-08 (LK.1.10, WALK_PORT_NOTES §6.5 D)* : la table ne grandit, donc W0 ne diffère de
+  13, que si `DAT_145121140 == 1`, c'est-à-dire si `m_gameEngineType` vaut 1 ; une variante absente
+  du film (`Presente` faux) vaut `FUN_14051a4b8(type) == 0`, donc pas de croissance. La garde de LK.3.7
+  porte donc sur ce que le film déclare : type de moteur 1, ou type NON ÉTABLI (identité ou variante
+  non lue), arrêt nommé ; les deux largeurs de G-3 sont LUES (LK.1.6).
 - **E-5 — Gate de non-régression de LK = ratchet en contexte de cuisson** (R-7), pas le golden des
   bobines sans carte (où LK est invisible). RECOMPTÉ (correction 3). Le contexte de carte d'une
   cuisson — les largeurs de la carte posées sur le profil, puis le découpage MPP que la grammaire
@@ -478,21 +483,21 @@ rougissent entre deux montées).
 - [x] LK.1.3 Queue d'i0 h = 1, W0 = 13 : G-1 ; forme absolue sous portée : G-2.
 - [x] LK.1.4 Équipes : G-4.
 - [x] LK.1.5 Baisses adjugées (§2, « Adjudication »).
-- [ ] LK.1.6 Relire dans Ghidra les deux largeurs NON LUES de G-3 : `FUN_140c1e79c` (`ti=38` i18, par
+- [x] LK.1.6 Relire dans Ghidra les deux largeurs NON LUES de G-3 : `FUN_140c1e79c` (`ti=38` i18, par
       bit du masque de `FUN_142f036f0`) et `FUN_1424e268c` (`ti=21`). Sortie : adresses, largeurs,
       statut LU / NON LU.
-- [ ] LK.1.7 Faire correspondre chaque appelant lecteur de `FUN_14076f91c` (`FUN_1406cfe44`,
+- [x] LK.1.7 Faire correspondre chaque appelant lecteur de `FUN_14076f91c` (`FUN_1406cfe44`,
       `FUN_14076e494`, `FUN_14076e4ec`, `FUN_1408f02c8`, `FUN_140ee7270`,
       `FUN_140f04d88/f18/f68/fb8`, `FUN_140fb8af0`, `FUN_14076f75c`, `FUN_1408096f8`,
       `FUN_1410f03b4`, `FUN_14112134c`) et les 14 lecteurs en ligne `141dc8600..141ddb460` à leur
       lecteur Go, avec : consulte la garde (`fullPrecisionGate` / `lireE494*` / `lireE420`) oui ou non.
       Recontrôler les CALL des sites non exceptés (navpoint, spawn-filter, selectable-zone,
       asset-transform, i0 prédit).
-- [ ] LK.1.8 Relire le lien entre la garde low-frequency de `ti=3` (`components_frequences.go:62-66`,
+- [x] LK.1.8 Relire le lien entre la garde low-frequency de `ti=3` (`components_frequences.go:62-66`,
       `ecs_table.tsv:76` « partiel ») et `FUN_14076f91c`.
-- [ ] LK.1.9 Consigner le tout dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` §6 (sous-section LK) :
+- [x] LK.1.9 Consigner le tout dans `.ai/V7.5/killweapon/WALK_PORT_NOTES.md` §6 (sous-section LK) :
       un tableau composant/exception, adresse, lecture sous portée, largeur, statut.
-- [ ] LK.1.10 Relire dans Ghidra, AVANT de coder l'arrêt de E-4 (LK.3.7 ; correction 9), le lien
+- [x] LK.1.10 Relire dans Ghidra, AVANT de coder l'arrêt de E-4 (LK.3.7 ; correction 9), le lien
       entre la croissance de `DAT_144706100` (écrivains `FUN_142f2f0cc` @142f2f2b1 et `FUN_1408f1618`
       @1423503d3, octets +0x138/+0x158 de la table d'objets) et le type de moteur : qui pose ces
       octets (`FUN_140d10a78`, sous quelle condition), et ce qui pose `DAT_145121140`
@@ -935,3 +940,24 @@ refusionner, rejouer l'étape 0).
   documents), aucun fichier `film/` ; non fusionnés (consigne du superviseur). À la fusion du §1.3,
   le renvoi de 2.7.d1 (commit `ri-lk(0)`) suit le fichier déplacé et les chemins de ce plan vers le
   plan de l'étape 2 sont à mettre à jour.
+- 2026-10-08 (soir) : ÉTAPE LK.1 CLOSE (LK.1.1 à LK.1.10 `[x]`, aucune largeur restée non lue).
+  Relectures Ghidra en lecture seule (sorties `$S/lk1/`), consignées en WALK_PORT_NOTES §6.5.
+  **LK.1.6** : `FUN_140c1e79c` = R(1) (140c1e7d9) ; si 0 : R(19) (140c1e84e, `FUN_1406d8288(.., 0x13)`
+  140c1e875), sinon vecteur constant ; puis `FUN_1406d84b4` avec la largeur 8 posée en `[RSP+0x20]`
+  (140c1e80f) = R(8) — égal au Go `consumeCompressedDir140c1e79c` ; `FUN_1424e268c` = R(2). Les deux
+  LUES. **LK.1.7** : `get_xrefs_to(14076f91c)` = 18 appels dans 17 fonctions ; deux absentes de la
+  liste du plan sont des ÉCRIVAINS (`FUN_1407eb61c`, `FUN_142e2c9bc`, ce dernier écrit la branche
+  absolue d'i0), `FUN_14076f75c` quantifie un vec3 sans lecteur de bits ; les lecteurs consultent la
+  garde en Go sauf deux exceptions datées (waypoint-state, flock-destination) ; quatre sont des
+  charges de vue A (jamais sous la portée), `ObjectCollisionDamage` n'est pas porté. Les 14 lectures
+  en ligne de `DAT_144e61ea0` : 7 lecteurs de la famille 0x1E (non portés) et 7 écrivains. CALL
+  recontrôlés : navpoint (garde en ligne 140f04f72 puis 140f04f8b -> `FUN_14076e524`), spawn-filter
+  142b6ef31, selectable-zone 14145437e, asset-transform 142ed9556 (-> `FUN_14076e494`), i0 prédit
+  140f7ea5c (-> `FUN_14076e4ec`) : tous gardés, comme leurs lecteurs Go. **LK.1.8** : lien LU — les
+  positions de `low-frequency` passent par `FUN_1424e0e38` -> `FUN_14076e494` -> la garde ; son
+  avant/haut (`FUN_140c5f938`) ne lit que `DAT_145121140` : la garde `etatComplet` de
+  `consumeLowFrequency` est levable sous la portée (LK.5.5). **LK.1.10** : LU — W0 ne diffère de 13
+  que si `m_gameEngineType` = 1 (drapeaux de croissance +0x138/+0x158 posés par `FUN_140d10a78` à
+  `DAT_145121140 == 1` ; `FUN_140a938b4` -> `FUN_14051a4b8` -> `FUN_140a93ec8` ; recherche
+  d'instructions rejouée sur tout le programme, résidu nommé : une copie de structure) ; E-4 et
+  LK.3.7 mis à jour. **Gate LK.1** : tableau complet, aucune case vide, aucune largeur non lue.
