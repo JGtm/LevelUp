@@ -111,6 +111,28 @@ describe('SetupPage', () => {
     expect(startCount).toBe(1)
   })
 
+  it("affiche le message d'accès Halo quand le serveur signale halo_exchange_error", async () => {
+    // Le code est celui qu'écrit le handler device-flow (handlers/auth.go) quand
+    // l'échange en jetons Halo échoue après la saisie du code.
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      setupRequired: true,
+      setupState: 'no_halo_link',
+    })
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({ attempt_id: 'attempt-1', status: 'failed', error_code: 'halo_exchange_error', error_detail: 'détail serveur' }),
+      ),
+    )
+
+    renderWithProviders(<SetupPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Impossible d'obtenir un accès Halo/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Échec de l'authentification/i)).not.toBeInTheDocument()
+  })
+
   // Garde-rail anti-régression du « spinner infini » (Lot A) : quand
   // POST /device-flow/start renvoie 500, l'UI doit basculer sur un message
   // d'erreur + bouton « Réessayer », jamais rester bloquée sur le spinner.

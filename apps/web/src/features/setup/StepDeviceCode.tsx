@@ -151,7 +151,7 @@ export function StepDeviceCode() {
     const errorMessage: Record<string, string> = {
       device_flow_denied: t('common.device_code.err_denied'),
       device_flow_error: t('common.device_code.err_ms'),
-      halo_exchange_failed: t('common.device_code.err_halo'),
+      halo_exchange_error: t('common.device_code.err_halo'),
       identity_resolution_failed: t('common.device_code.err_identity'),
     }
     return (
