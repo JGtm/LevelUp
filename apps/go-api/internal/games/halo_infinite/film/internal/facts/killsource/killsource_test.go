@@ -290,7 +290,7 @@ type reference struct {
 
 var references = []reference{
 	{"000d5950", 93, 1, 0, 0, 0, 93, "Cliffhanger"},
-	{"9b191a7f", 84, 2, 3, 1, 3, 90, "Bazaar"},
+	{"9b191a7f", 84, 2, 3, 0, 3, 90, "Bazaar"},
 	{"78919882", 99, 2, 0, 0, 0, 99, "High Ground"},
 	{"fccc61cd", 95, 3, 2, 0, 1, 98, "Launch Site"},
 }

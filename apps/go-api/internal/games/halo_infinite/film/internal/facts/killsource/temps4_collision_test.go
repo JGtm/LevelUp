@@ -16,7 +16,8 @@ package killsource
 //
 // Deux kills de K sans mort en face (1000 et 1500), recolles sur les morts voisines de V et de W ;
 // un dead-state lit K -> V a 1000, un autre K -> W a 1500 (le temps 1 les publie), et UN SEUL
-// dead-state lit K -> bot a 1200, dans la fenetre des deux.
+// dead-state lit K -> bot a 1200, dans la fenetre des deux. Un dead-state ne decrit qu une mort : il
+// va au kill le plus proche (1000), qui porte deja une ligne — une collision, et une seule.
 //
 // # MUTATIONS QUI DOIVENT LES FAIRE ROUGIR
 //
@@ -64,11 +65,12 @@ func TestTemps4_NeReecritJamaisUnInstantPublie(t *testing.T) {
 				ms, k.Read.Origin, OriginCredit)
 		}
 	}
-	if p.collisionsBot != 2 {
-		t.Errorf("collisions comptees = %d, attendu 2 — une mort de bot ecartee se compte", p.collisionsBot)
+	if p.collisionsBot != 1 {
+		t.Errorf("collisions comptees = %d, attendu 1 — la mort de bot ecartee se compte, et le "+
+			"dead-state unique ne sert qu un kill", p.collisionsBot)
 	}
-	if st := p.stats(&walkResult{}); st.CollisionsDeMortDeBot != 2 {
-		t.Errorf("collisions publiees = %d, attendu 2", st.CollisionsDeMortDeBot)
+	if st := p.stats(&walkResult{}); st.CollisionsDeMortDeBot != 1 {
+		t.Errorf("collisions publiees = %d, attendu 1", st.CollisionsDeMortDeBot)
 	}
 }
 

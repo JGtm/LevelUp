@@ -8,9 +8,8 @@ package killsource
 // `killsource-2026-09-16.2` a `.6` viennent donc ici, TELS QUELS — aucun mot reecrit, aucun
 // octet de code touche : les deux fichiers ne portent que des commentaires.
 //
-// La suite VIVANTE de la chronique, a partir de `killsource-2026-09-21.2` depuis la rotation du
-// 2026-10-07 (plus bas), est dans
-// `rev_chronique.go`.
+// La suite de la chronique, a partir de `killsource-2026-09-21.2`, est dans
+// `rev_chronique_archive_2.go`, puis dans `rev_chronique.go`.
 
 // ENTREE `killsource-2026-09-16.2` (2026-09-16, lot 2.6.1) : LA CONSTANTE DESCEND DANS LA COUCHE,
 // SA VALEUR NE BOUGE PAS. Le rang est celui de la fusion du lot 1.9.7 (l appariement par identite

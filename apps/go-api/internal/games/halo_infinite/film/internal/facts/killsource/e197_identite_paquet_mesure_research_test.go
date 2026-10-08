@@ -8,7 +8,7 @@ package killsource
 //
 // L appariement d une mort lue au DEAD-STATE avec une ligne du KILL-FEED se decide aujourd hui
 // par une FENETRE TEMPORELLE de 2,5 s ([tolMS]), a cinq endroits ([decodeCtx.matchExact],
-// [decodeCtx.matchVictim], [decodeCtx.apparierMortDeBot], [decodeCtx.resolveBotKillerDeaths],
+// [decodeCtx.matchVictim], [decodeCtx.affecterLesMortsDeBot], [decodeCtx.resolveBotKillerDeaths],
 // [pass.runUnclaimed]). La valeur n a jamais ete derivee d une mesure : son commentaire dit
 // « valeur historique du chantier, employee par TOUTES les mesures publiees ».
 //
@@ -400,7 +400,7 @@ func (m *e197Mesure) e197PopulationDeBot() []botMatch {
 func (m *e197Mesure) temps4() {
 	for _, b := range m.e197PopulationDeBot() {
 		cands := m.c.scanCands
-		couple := func(a candidate) bool { return m.c.coupleDeMortDeBot(&b, a) }
+		couple := func(a candidate) bool { return m.c.coupleDeMortDeBot(&b, a, false) }
 		j := e197ParLaFenetre(len(cands), b.event.timeMS, func(i int) int { return cands[i].ms },
 			func(i int) bool { return couple(cands[i]) })
 		if j >= 0 {

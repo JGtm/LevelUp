@@ -244,15 +244,16 @@ const porteeDuRecollage = 2
 // D14). Il ne se declenche QUE sur un silence ou une ambiguite de la lecture, jamais sur un
 // desaccord avec elle — l ordre est fixe : lire d abord, se replier ensuite.
 //
-// MECANISME INCHANGE depuis l origine du chantier, et c est voulu : la conversion change QUI
-// DECIDE, pas ce que le repli fait quand il reprend la main. Deux morts a la meme seconde
-// n arrivent pas toujours dans le meme instant du feed ; le kill orphelin prend alors la mort du
-// voisin immediat.
+// Deux morts a la meme seconde n arrivent pas toujours dans le meme instant du feed ; le kill
+// orphelin prend alors la mort du voisin immediat. DEUX MORTS NE SE PRENNENT PAS, et c est encore
+// lire d abord : une mort qu un couple a deja consommee ([resolveurDeCouples.prisMort]), et une mort
+// dont le film ECRIT un autre tueur ([resolveurDeCouples.mortEcriteDUnAutreTueur]) — le kill-event 85
+// qui la decrit nomme sa victime ET son tueur, souvent un bot que le feed humain-seul ne nomme pas.
 func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {
 	e := res.kf.events[i]
 	for d := 1; d <= porteeDuRecollage && i+d < len(res.kf.events); d++ {
 		o := res.kf.events[i+d]
-		if o.victim == "" || o.killer != "" {
+		if o.victim == "" || o.killer != "" || res.prisMort[i+d] || res.mortEcriteDUnAutreTueur(o, e.killer) {
 			continue
 		}
 		couple := feedEvent{timeMS: e.timeMS, killer: e.killer, victim: o.victim, victimXUID: o.victimXUID}
@@ -264,6 +265,23 @@ func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {
 	}
 	res.kf.orphK = append(res.kf.orphK, e)
 	res.stats.Perdus++
+}
+
+// mortEcriteDUnAutreTueur : un kill-event NON CONSOMME de la fenetre de cette mort nomme-t-il sa
+// victime et un AUTRE tueur que `tueur` ? Les deux indices doivent etre EPINGLES (table du film ou
+// BOT_METADATA, jamais la bijection) : un indice libre ne dit pas qui il est, et la lecture se tait.
+func (res *resolveurDeCouples) mortEcriteDUnAutreTueur(mort feedEvent, tueur string) bool {
+	for i := range res.recs {
+		if res.pris[i] || !dansLaFenetre(res.recs[i].ms, mort.timeMS) {
+			continue
+		}
+		v, okV := res.r.nomEpingle(res.recs[i].fields.victim)
+		k, okK := res.r.nomEpingle(res.recs[i].fields.killer)
+		if okV && okK && v == mort.victim && k != tueur {
+			return true
+		}
+	}
+	return false
 }
 
 // isolerLesMortsSansTueur : les morts que AUCUN couple n a consommees. Le kill-feed porte la

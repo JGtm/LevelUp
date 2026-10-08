@@ -151,7 +151,9 @@ func TestLaMortDeBotSuitAussiLIdentite(t *testing.T) {
 	}
 	m := botMatch{event: feedEvent{timeMS: 5000, killer: "A", victim: "Bob" + BotSuffix,
 		paquet: paquetID{chunk: 2, pidx: 90, ok: true}}, victimeLue: 5}
-	c.apparierMortDeBot(&m)
+	ms := []botMatch{m}
+	c.affecterLesMortsDeBot(ms)
+	m = ms[0]
 
 	if !m.found || m.cand.pidx != 90 {
 		t.Fatalf("candidat retenu = %+v (trouve %v), attendu celui du paquet (2, 90) que le film "+

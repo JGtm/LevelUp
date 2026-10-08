@@ -16,8 +16,8 @@
    les couples que la reconstruction de kill-feed produit, MOINS les couples
    FABRIQUES. C EST LE DENOMINATEUR DE REFERENCE : un couple fabrique n est pas une
    mort manquee, c est une mort qui n existe pas (la vraie victime est un bot).
-371 / 372 couples reconstruits par la reconstruction de kill-feed = 99.7 %
-   dont 1 couple(s) FABRIQUE(S).
+371 / 371 couples reconstruits par la reconstruction de kill-feed = 100.0 %
+   dont 0 couple(s) FABRIQUE(S).
 371 / 375 morts du KILL-FEED = 98.9 %
    le chunk HIGHLIGHT est HUMAIN SEUL : il ne contient AUCUNE mort de bot.
 380 / 380 morts de l API = 100.0 %

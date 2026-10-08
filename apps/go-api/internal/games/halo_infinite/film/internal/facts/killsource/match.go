@@ -93,7 +93,16 @@ type botMatch struct {
 	// kill-feed etant humain-seul, un instant qui ne porte pas de kill humain ne porte aucun
 	// kill-event 85 a associer : le repli est ici la voie NORMALE, et son compte le dit.
 	parLaFenetre bool
+	// sourceDeLaVictime : le dead-state retenu designe le bot LUI-MEME en tueur (chute, explosion de
+	// son propre objet) — la source du degat fatal appartient a la victime, et le kill-feed credite
+	// un autre joueur. C est le pendant, pour la population des bots, du temps 3 de l hybride : la
+	// ligne publie le credit du feed et leve le drapeau de divergence.
+	sourceDeLaVictime bool
 }
+
+// positionDuCandidat : la POSITION d un dead-state dans le film — `(chunk, paquet, bit)`, la cle qui
+// dit qu un enregistrement a deja servi une mort.
+func positionDuCandidat(cd candidate) [3]int { return [3]int{cd.chunk, cd.pidx, cd.bit} }
 
 // resolveBotDeaths : confronte au scan chaque kill dont la victime n est pas au feed.
 //
@@ -105,7 +114,8 @@ type botMatch struct {
 //	FABRIQUEE le REPLI a recolle un voisin, peut-etre a tort (`fab`) — le cas que la lecture
 //	          fait disparaitre partout ou elle se prononce.
 //
-// C est le DEAD-STATE qui tranche, jamais la structure du feed.
+// C est le DEAD-STATE qui tranche, jamais la structure du feed, et un dead-state ne sert qu UNE
+// mort ([decodeCtx.affecterLesMortsDeBot]).
 func (c *decodeCtx) resolveBotDeaths() []botMatch {
 	ms := make([]botMatch, 0, len(c.feed.orphK)+len(c.feed.fab)+len(c.feed.botLus))
 	for _, b := range c.feed.botLus {
@@ -117,36 +127,24 @@ func (c *decodeCtx) resolveBotDeaths() []botMatch {
 	for _, e := range c.feed.fab {
 		ms = append(ms, botMatch{event: e, fab: true, victimeLue: -1})
 	}
-	for i := range ms {
-		c.apparierMortDeBot(&ms[i])
-	}
+	c.affecterLesMortsDeBot(ms)
 	return ms
 }
 
-// apparierMortDeBot : le candidat dont la victime est LE bot nomme (ou, a defaut de nom lu, un
-// bot epingle quelconque) et dont le tueur est celui du feed — pris au PAQUET que le film ecrit
-// quand il en ecrit un, a la fenetre sinon.
-func (c *decodeCtx) apparierMortDeBot(m *botMatch) {
-	i, repli := choisirParIdentitePuisFenetre(len(c.scanCands),
-		func(i int) bool { return m.event.paquet.memeQue(c.scanCands[i].chunk, c.scanCands[i].pidx) },
-		func(i int) bool { return dansLaFenetre(c.scanCands[i].ms, m.event.timeMS) },
-		func(i int) bool { return c.coupleDeMortDeBot(m, c.scanCands[i]) })
-	if i < 0 {
-		return
-	}
-	m.found, m.cand, m.parLaFenetre = true, c.scanCands[i], repli
-}
-
-// coupleDeMortDeBot : LA CONTRAINTE DE COUPLE d une mort de bot, inchangee depuis l origine. La
-// victime doit etre L INDICE NOMME par le kill-event 85 quand le film le nomme ; sinon, un indice
-// epingle sur un bot. Le tueur est celui du feed dans les deux cas.
-func (c *decodeCtx) coupleDeMortDeBot(m *botMatch, cd candidate) bool {
+// coupleDeMortDeBot : LA CONTRAINTE DE COUPLE d une mort de bot. La victime doit etre L INDICE NOMME
+// par le kill-event 85 quand le film le nomme ; sinon, un indice epingle sur un bot. Le tueur est
+// celui du feed ; ou, quand `deLaVictime`, le bot lui-meme, et le candidat doit alors passer les deux
+// discriminants d une source auto-infligee ([decodeCtx.selfSourceOK]).
+func (c *decodeCtx) coupleDeMortDeBot(m *botMatch, cd candidate, deLaVictime bool) bool {
 	if m.victimeLue >= 0 {
 		if cd.victim != m.victimeLue {
 			return false
 		}
 	} else if !c.roster.isBotIndex(cd.victim) {
 		return false
+	}
+	if deLaVictime {
+		return cd.killer == cd.victim && c.selfSourceOK(cd, c.mult)
 	}
 	return c.roster.nameOf(cd.killer) == m.event.killer
 }
@@ -174,10 +172,18 @@ type botKillerMatch struct {
 //
 // `all` arrive DANS L ORDRE DE PRIORITE de l hybride (marche puis scan) : le premier candidat qui
 // satisfait le couple gagne, donc la marche garde la priorite ici comme partout.
-func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate) []botKillerMatch {
+//
+// `dejaServis` porte les dead-states que les temps precedents ont publies : ils ne se proposent
+// plus, et un candidat retenu ici sort a son tour de la population des morts suivantes — un
+// dead-state ne decrit qu UNE mort. La table de l appelant n est pas modifiee.
+func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate, dejaServis map[[3]int]bool) []botKillerMatch {
 	ms := make([]botKillerMatch, 0, len(c.feed.orphD))
 	for _, e := range c.feed.orphD {
 		ms = append(ms, botKillerMatch{event: e})
+	}
+	servis := make(map[[3]int]bool, len(dejaServis))
+	for k := range dejaServis {
+		servis[k] = true
 	}
 	for i := range ms {
 		e := ms[i].event
@@ -185,12 +191,14 @@ func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate) []botKillerMa
 			func(j int) bool { return e.paquet.memeQue(all[j].chunk, all[j].pidx) },
 			func(j int) bool { return dansLaFenetre(all[j].ms, e.timeMS) },
 			func(j int) bool {
-				return c.roster.isBotIndex(all[j].killer) && c.roster.nameOf(all[j].victim) == e.victim
+				return !servis[positionDuCandidat(all[j].candidate)] &&
+					c.roster.isBotIndex(all[j].killer) && c.roster.nameOf(all[j].victim) == e.victim
 			})
 		if j < 0 {
 			continue
 		}
 		ms[i].found, ms[i].cand, ms[i].parLaFenetre = true, all[j], repli
+		servis[positionDuCandidat(all[j].candidate)] = true
 	}
 	return ms
 }
