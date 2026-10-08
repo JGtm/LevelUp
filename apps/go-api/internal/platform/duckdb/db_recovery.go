@@ -133,14 +133,12 @@ func (db *DB) Reopen() error {
 	defer openDBsMu.Unlock()
 
 	// Construit le nouveau sqlDB avec la même config qu'à l'ouverture initiale.
-	newSQLDB, err := openSQLDBFor(db.dsn, db.timezone, db.op, db.path)
+	newSQLDB, err := openPhysicalSQLDB(db)
 	if err != nil {
 		slog.Error("duckdb: Reopen a échoué (fichier inaccessible ?)",
 			"path", db.path, "op", db.op, "err", err)
 		return err
 	}
-	applyConnLimits(newSQLDB, db.maxOpenConns, db.maxIdleConns)
-
 	// Ferme l'ancien sqlDB en best-effort (déjà invalidé côté DuckDB).
 	if old := db.loadSQL(); old != nil {
 		_ = old.Close()

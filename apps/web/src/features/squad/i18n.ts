@@ -589,7 +589,7 @@ const FR_TEXT: SquadText = {
     badgeStowawayShort: 'Passager clandestin',
     badgeNames: {
       first_blood: 'Premier sang',
-      clutch_finisher: 'Décisif',
+      clutch_finisher: 'Finisseur',
       last_casualty: 'Boulet (dernière mort)',
       last_group_kill: 'Touriste (premier frag tardif)',
       first_group_death: 'Première victime',
@@ -949,7 +949,7 @@ const EN_TEXT: SquadText = {
     badgeStowawayShort: 'Stowaway',
     badgeNames: {
       first_blood: 'First blood',
-      clutch_finisher: 'Clutch',
+      clutch_finisher: 'Finisher',
       last_casualty: 'Last casualty',
       last_group_kill: 'Late starter',
       first_group_death: 'First down',

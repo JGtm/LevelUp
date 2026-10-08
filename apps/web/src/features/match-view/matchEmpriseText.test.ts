@@ -22,11 +22,12 @@ describe('MATCH_EMPRISE_TEXT — titres des cartes partagées', () => {
       expect(t.emprise.production.title).toBe(base.production.title)
       expect(t.emprise.yield.title).toBe(base.yield.title)
       expect(t.squad.weaponKills.title).toBe(getSquadText(locale).weaponKills.title)
+      expect(t.squad.performanceCharts.fragBreakdownTitle).toBe(getSquadText(locale).performanceCharts.fragBreakdownTitle)
     })
 
     it(`${locale} : les aides disent la portée du match`, () => {
       const scope = locale === 'fr' ? 'sur le match' : 'in the match'
-      for (const info of [t.emprise.control.info, t.emprise.sheets.info, t.emprise.production.info, t.emprise.yield.info, t.squad.weaponKills.info]) {
+      for (const info of [t.emprise.control.info, t.emprise.sheets.info, t.emprise.production.info, t.emprise.yield.info, t.squad.weaponKills.info, t.squad.performanceCharts.fragBreakdownInfo]) {
         expect(info).toContain(scope)
       }
     })

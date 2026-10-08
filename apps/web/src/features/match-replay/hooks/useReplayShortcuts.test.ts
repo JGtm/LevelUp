@@ -22,6 +22,7 @@ function mount(over: Partial<ReplayShortcutHandlers> = {}) {
     stepFrames: vi.fn(),
     restart: vi.fn(),
     toggleSound: vi.fn(),
+    toggleFullscreen: vi.fn(),
     skipSeconds: 10,
     enabled: true,
     ...over,
@@ -79,6 +80,13 @@ describe('useReplayShortcuts — les commandes', () => {
     expect(h.restart).toHaveBeenCalledTimes(2)
   })
 
+  it('F ouvre ou ferme le plein écran — majuscule comprise, défaut du navigateur retenu', () => {
+    const h = mount()
+    expect(press('f').defaultPrevented).toBe(true)
+    press('F')
+    expect(h.toggleFullscreen).toHaveBeenCalledTimes(2)
+  })
+
   it('une touche non traitée ne fait rien, et laisse le navigateur tranquille', () => {
     const h = mount()
     const event = press('a')
@@ -115,6 +123,21 @@ describe('useReplayShortcuts — ce qu’il refuse de capter', () => {
     press('r', { metaKey: true })
     press('r', { ctrlKey: true })
     expect(h.restart).not.toHaveBeenCalled()
+  })
+
+  it('Ctrl+F et Cmd+F cherchent dans la page — ils n’ouvrent pas le plein écran', () => {
+    const h = mount()
+    press('f', { ctrlKey: true })
+    press('f', { metaKey: true })
+    expect(h.toggleFullscreen).not.toHaveBeenCalled()
+  })
+
+  it('F depuis un champ de saisie écrit un f', () => {
+    const h = mount()
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    press('f', { target: input })
+    expect(h.toggleFullscreen).not.toHaveBeenCalled()
   })
 
   it('un raccourci avec Alt n’est pas capté non plus', () => {

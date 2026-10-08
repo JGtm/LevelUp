@@ -43,17 +43,17 @@ func (s *TeammatesService) WithSquadFormes(
 // communes du résumé d'usage, déjà faites (nil ⇒ le bloc les fait).
 func (s *TeammatesService) loadSquadFormes(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
-	p porteeUsage, req domain.TeammatesQueryRequest, lectures *squadagg.LecturesUsage,
+	p porteeUsage, lectures *squadagg.LecturesUsage,
 ) *domain.SquadFormesBlock {
 	defer timing.FromContext(ctx).Section("squad_formes")()
 	return squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
-		Repo:              s.formesUsageRepo,
-		Lectures:          lectures,
-		Objectives:        s.formesObjectiveRepo,
-		PlayerXUID:        playerXUID,
-		MainGamertag:      s.gamertag,
-		Metas:             formesMatchMetas(filteredMatches, p.history, s.modesEcartes(p.pairNames)),
-		SelectedGamertags: req.SelectedGamertags,
+		Repo:            s.formesUsageRepo,
+		Lectures:        lectures,
+		Objectives:      s.formesObjectiveRepo,
+		PlayerXUID:      playerXUID,
+		MainGamertag:    s.gamertag,
+		Metas:           formesMatchMetas(filteredMatches, p.history, s.modesEcartes(p.pairNames)),
+		SelectedMembers: p.membres,
 	})
 }
 

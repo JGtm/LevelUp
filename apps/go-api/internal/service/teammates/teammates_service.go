@@ -43,6 +43,10 @@ type FriendGamertagsResolver func(ctx context.Context) []string
 type TeammatesService struct {
 	repo            port.SquadRepository
 	friendGamertags FriendGamertagsResolver
+	// profils / lireAmis : les sources des coéquipiers connus (pool de la composition stricte),
+	// cf. coequipiers_connus.go.
+	profils  ProfilsDuTitre
+	lireAmis FriendXUIDsReader
 	// playerMatchesRepo (P4.3 finale) : loader canonical-only. Câblé en DI
 	// universellement via registry.go (ServiceRegistry.playerMatchesAdapterFor).
 	// IMPORTANT : cet adapteur est BOUND au gamertag du joueur principal (ignore
@@ -104,8 +108,9 @@ type TeammatesService struct {
 // NewTeammatesService crée un TeammatesService.
 //
 // friendGamertags : optionnel. Si nil, le filtre amis-only est désactivé
-// (top retourné brut, ancien comportement). Quand fourni, le top dropdown
-// est restreint aux amis configurés.
+// (top retourné brut). Quand fourni, le top dropdown est restreint aux amis
+// configurés, et ces amis comptent parmi les coéquipiers connus de la
+// composition stricte (coequipiers_connus.go).
 func NewTeammatesService(repo port.SquadRepository, friendGamertags FriendGamertagsResolver) *TeammatesService {
 	return &TeammatesService{repo: repo, friendGamertags: friendGamertags}
 }
@@ -320,16 +325,20 @@ func (s *TeammatesService) GetPage(
 	// matchs et partagée par ses trois consommateurs (filtre composition exacte,
 	// matrice d'impact, courbe « équipe » du profil d'intensité) — cf. loadMainTeamAllies.
 	selectedXUIDs := collectSelectedXUIDs(teammates)
-	friendXUIDs := resolveFriendXUIDs(friendGTs, topRows)
-	extraPool := buildExtraPoolXUIDs(topRows, friendXUIDs, selectedXUIDs, playerXUID)
+	// Coéquipiers connus (amis déclarés et profils suivis, coequipiers_connus.go) : le pool de
+	// l'option, lu sous l'option seulement — hors option aucun match n'est écarté.
+	var connus map[string]string
+	if req.FilterExactComposition && len(selectedXUIDs) > 0 {
+		connus = s.coequipiersConnus(ctx, friendGTs)
+	}
+	extraPool := buildExtraPoolXUIDs(connus, selectedXUIDs, playerXUID)
 	allies, mainTeamByMatch := s.loadMainTeamAllies(
 		ctx, playerXUID, collectMatchIDs(allSquadRowsForTimeline, allSquadRows),
 		req.FilterExactComposition && len(selectedXUIDs) > 0, issues)
 
-	// Option « composition exacte » (req.FilterExactComposition, défaut OFF —
-	// décision produit 2026-08-02) : restreint en plus aux matchs où AUCUN autre
-	// coéquipier connu (extraPool) n'était sur l'équipe alliée du main. Alliés non
-	// chargés : intersection du roster gardée (dégradation gracieuse), filtre
+	// Option « composition exacte » (req.FilterExactComposition) : restreint en plus aux
+	// matchs où AUCUN autre coéquipier connu (extraPool) n'était sur l'équipe alliée du main.
+	// Alliés non chargés : intersection du roster gardée (dégradation gracieuse), filtre
 	// briefing désactivé (exactTeamByMatch nil), échec remonté à l'UI par loadMainTeamAllies.
 	var exactTeamByMatch map[string]map[string]struct{}
 	var excludedForTimeline []domain.SquadMatchRow
@@ -378,7 +387,7 @@ func (s *TeammatesService) GetPage(
 		stop = timing.FromContext(ctx).Section("composition_sessions")
 		compositionSessions = buildCompositionSessionEntries(
 			allSquadRowsForTimeline, rosterRowsForTimeline, excludedForTimeline,
-			mainTeamByMatch, extraPool, topRows,
+			mainTeamByMatch, extraPool, connus,
 		)
 		stop()
 		if len(compositionSessions) > 0 {
@@ -415,7 +424,7 @@ func (s *TeammatesService) GetPage(
 	usage := s.loadUsageBlocks(ctx, playerXUID, porteeUsage{
 		filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,
 		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory, pairNames: pairNamesOf(canonicalRows, allSquadRowsForTimeline),
-		compositionSessions: compositionSessions,
+		compositionSessions: compositionSessions, membres: membresChoisis(teammates),
 	}, req)
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)

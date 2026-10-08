@@ -80,9 +80,9 @@ export interface FragSunburstProps {
   distribution?: FragDistribution | null
   title?: string
   /**
-   * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère
-   * (ex. `FragWeaponBreakdown` via `MatchFragCard`). Quand renseignée, les autres
-   * classes du sunburst sont estompées même si le survol vient de l'extérieur.
+   * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère (ex.
+   * `FragWeaponBreakdown` sur la Synthèse, `FragClassLegend` sur la Vue match). Quand
+   * renseignée, les autres classes du sunburst sont estompées même si le survol vient de l'extérieur.
    * Non fournie → le composant reste autonome (son propre survol interne pilote).
    */
   externalHoveredClass?: string | null
@@ -95,9 +95,9 @@ export interface FragSunburstProps {
   /** Largeur max (px) du SVG, centré (opt-in Match view) — borne la hauteur `h-auto`. */
   maxWidthPx?: number
   /** Position de la légende des classes : 'bottom' (défaut, sous l'anneau), 'left' (colonne
-   *  le long de la bordure gauche, opt-in Match view), ou 'none' (légende NON rendue en
-   *  interne — à placer soi-même via <FragClassLegend>, ex. encart Explorer : légende
-   *  centrée en bas du bloc entier). */
+   *  le long de la bordure gauche, opt-in Synthèse et Séries temporelles), ou 'none' (légende
+   *  NON rendue en interne — à placer soi-même via <FragClassLegend>, ex. encart Explorer,
+   *  Vue match, Sessions : légende centrée en bas du bloc entier). */
   legendSide?: 'bottom' | 'left' | 'none'
   /** Mode « nu » (opt-in) : rend le SVG + légende SANS la carte racine (bordure + barre de
    *  titre) — pour intégrer le sunburst dans un bloc parent (ex. encart Explorer) sans
@@ -186,7 +186,7 @@ export function FragSunburst({
 
   // Légende des classes (pastille + nom + valeur). Position pilotée par legendSide : 'bottom'
   // = ligne sous l'anneau (défaut, autres surfaces) ; 'left' = colonne verticale le long de la
-  // bordure gauche, à côté de l'anneau (opt-in Match view).
+  // bordure gauche, à côté de l'anneau (opt-in Synthèse et Séries temporelles).
   // En mode 'bottom' AVEC hauteur fixe (heightPx — cards Sessions, drawer compare) :
   // hauteur de légende RÉSERVÉE constante (2 lignes), pour que deux cards côte à
   // côte (session courante vs comparée) gardent la même hauteur totale même si
