@@ -1413,8 +1413,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   les positions des joueurs, les pistes et les creations des objets du monde se lisent d abord
 	//   par la marche des trames, les passes derriere elle. `grammar.Rev` monte avec elle : un v88 se
 	//   lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 89 {
-		t.Fatalf("SchemaVersion = %d, attendu 89 : incrémenter exige une raison écrite ci-dessus "+
+	// - 90 (2026-10-08, lot `feat/aj-film`, NUMERO PROVISOIRE) : trois compteurs neufs dans
+	//   `coverage.groundWeapons` (`horsEmprise`, `releves`, `plusieursLieux`) ; le CONTENU change : un
+	//   socle d arme hors de l emprise jouee se releve au lieu ou ses armes sont prises, et les morts
+	//   qui touchent un bot se publient (`killsource.Rev` monte). Un v89 se lit « a redecoder ».
+	//   Detail : `document_chronicle.go`.
+	if SchemaVersion != 90 {
+		t.Fatalf("SchemaVersion = %d, attendu 90 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

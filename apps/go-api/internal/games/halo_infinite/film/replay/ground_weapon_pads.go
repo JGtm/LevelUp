@@ -134,6 +134,13 @@ type GroundWeaponCoverage struct {
 	// PowerupPads est le nombre de socles de power-up publiés — le sous-ensemble de
 	// `weaponPads` que cette voie porte.
 	PowerupPads int `json:"powerupPads"`
+	// HorsEmprise : les socles d'ARME dont la position tombe hors de l'emprise jouée du film.
+	// Releves : ceux que leurs prises datées relèvent au lieu où l'arme est prise ;
+	// PlusieursLieux : ceux dont les prises datées tombent en plusieurs lieux. Les autres n'ont pas
+	// assez de prises datées pour se localiser (ground_weapon_pads_releve.go).
+	HorsEmprise    int `json:"horsEmprise"`
+	Releves        int `json:"releves"`
+	PlusieursLieux int `json:"plusieursLieux"`
 }
 
 // Balanced vérifie les deux invariants du calque : toute création acceptée est retenue ou

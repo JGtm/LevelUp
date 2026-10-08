@@ -23,8 +23,11 @@ package fallback
 // Les deux REGLES GRAMMATICALES du meme lot (aucune position de corps avant sa creation) ne sont
 // PAS ici : elles lisent le film (le record de creation), elles ne s y substituent pas.
 
-// dateM1RetoursRejeu : le jour du lot M1 des retours du rejeu, qui pose les deux entrees.
+// dateM1RetoursRejeu : le jour du lot M1 des retours du rejeu, qui pose les deux premieres entrees.
 const dateM1RetoursRejeu = "2026-09-23"
+
+// dateSoclesHorsEmprise : le jour du lot qui pose le releve des socles hors de l emprise.
+const dateSoclesHorsEmprise = "2026-10-08"
 
 // cibleOption2Positions : la lecture qui retire les deux replis de ce fichier.
 const cibleOption2Positions = "option 2 du rapport positions_limbe (porte grammaticale au decodage : " +
@@ -71,6 +74,28 @@ var registreReplayPositions = []Repli{
 		// deux echantillons d une meme vie, 21 avec un deplacement de plus de 2 m, et les 21
 		// touchent un echantillon aberrant ; aucun deplacement reel pendant un silence.
 		CritereRetrait:  "coverage.vehicles.echantillonsAuTraversDUnSilence a 0 sur le parc une fois la porte grammaticale livree",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_socle_hors_emprise_au_lieu_des_prises",
+		Fait: "ou se trouve un socle d arme dont les armes apparaissent hors de l emprise jouee du film",
+		Mecanisme: "le socle est releve au centroide des positions de ses ramasseurs aux occupations que " +
+			"l evenement natif `biped_pickup` date, quand au moins 2 (`gwPadMinHits`) le localisent et que " +
+			"toutes tombent a moins de 1,5 m (`originDropMaxDist`) de ce centroide ; sinon il reste a la " +
+			"position de creation, et la raison se compte (coverage.groundWeapons.plusieursLieux)",
+		// LA LECTURE QUI MANQUE : le film ecrit la CREATION de l arme (sous le niveau, ou un script de
+		// la carte la cree) et pas sa POSE sur le socle — aucune piste delta ne suit l objet, et les
+		// images-cles ne portent pas la position d une arme au sol (`grammar/keyframe_ground_weapons.go`).
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{Fichier: pkgReplay + "build_calques.go", Ancre: "a.opt.Fallbacks.DeclencheN(fallback.NomSocleHorsEmpriseAuLieuDesPrises, n)"},
+			{Fichier: pkgReplay + "ground_weapon_pads_releve.go", Ancre: "func releverLesSoclesHorsEmprise("},
+		},
+		DatePose:     dateSoclesHorsEmprise,
+		CibleRetrait: "la grammaire lit la position de l arme posee sur son socle (le deplacement que le script de la carte replique)",
+		CritereRetrait: "coverage.groundWeapons.releves a 0 sur le parc une fois cette lecture livree : les socles " +
+			"se publient alors a leur position lue",
 		CompteurBranche: true,
 	},
 }

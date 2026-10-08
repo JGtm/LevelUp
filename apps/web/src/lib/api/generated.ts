@@ -7474,6 +7474,8 @@ export interface components {
             /** Format: int64 */
             dropped: number;
             /** Format: int64 */
+            horsEmprise: number;
+            /** Format: int64 */
             kept: number;
             /** Format: int64 */
             never: number;
@@ -7484,6 +7486,8 @@ export interface components {
             /** Format: int64 */
             pads: number;
             /** Format: int64 */
+            plusieursLieux: number;
+            /** Format: int64 */
             powerupAccepted: number;
             /** Format: int64 */
             powerupKept: number;
@@ -7492,6 +7496,8 @@ export interface components {
             powerupScanned: boolean;
             /** Format: int64 */
             rejected: number;
+            /** Format: int64 */
+            releves: number;
             scanned: boolean;
             /** Format: int64 */
             slots: number;

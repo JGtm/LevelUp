@@ -15467,6 +15467,9 @@ components:
         dropped:
           format: int64
           type: integer
+        horsEmprise:
+          format: int64
+          type: integer
         kept:
           format: int64
           type: integer
@@ -15482,6 +15485,9 @@ components:
         pads:
           format: int64
           type: integer
+        plusieursLieux:
+          format: int64
+          type: integer
         powerupAccepted:
           format: int64
           type: integer
@@ -15494,6 +15500,9 @@ components:
         powerupScanned:
           type: boolean
         rejected:
+          format: int64
+          type: integer
+        releves:
           format: int64
           type: integer
         scanned:
@@ -15529,6 +15538,9 @@ components:
         - powerupAccepted
         - powerupKept
         - powerupPads
+        - horsEmprise
+        - releves
+        - plusieursLieux
       type: object
     GroundWeaponItemsCoverage:
       additionalProperties: false

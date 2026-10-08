@@ -57,6 +57,9 @@ func toGroundWeaponCoverage(v replay.GroundWeaponCoverage) replaydoc.GroundWeapo
 		PowerupAccepted: v.PowerupAccepted,
 		PowerupKept:     v.PowerupKept,
 		PowerupPads:     v.PowerupPads,
+		HorsEmprise:     v.HorsEmprise,
+		Releves:         v.Releves,
+		PlusieursLieux:  v.PlusieursLieux,
 	}
 }
 

@@ -267,7 +267,10 @@ var plafondsParFichier = map[string]int{
 	// positions, les pistes et les creations lues par la marche d abord, la fin du film des socles,
 	// les revisions qui montent et celles qui ne montent pas, la mesure a l equivalence et au gate de
 	// corpus). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3111,
+	// SCHEMA 89 -> 90 (2026-10-08, lot `feat/aj-film`, numero provisoire), +37 : l entree v90 (le
+	// releve des socles hors de l emprise, ses trois compteurs, la montee de killsource, la mesure au
+	// parc et au banc des faits). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3148,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -375,7 +378,9 @@ var plafondsParFichier = map[string]int{
 	// montee (cinq composants lus, aucun changement d arme publie ne porte les mains nues).
 	// SCHEMA 88 -> 89 (2026-10-08, representation intermediaire 2.7.d) : 1416 -> 1420, la
 	// justification de la montee (positions et objets du monde lus par la marche d abord).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1420,
+	// SCHEMA 89 -> 90 (2026-10-08, lot `feat/aj-film`, numero provisoire) : 1420 -> 1425, la
+	// justification de la montee (trois compteurs de socles, socles releves, morts de bot publiees).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1425,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
