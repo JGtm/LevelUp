@@ -81,6 +81,10 @@ const (
 	JaugeZonesSansLibelle   = "postsync_zones_cartes_sans_libelle"
 	JaugeZonesTelechargees  = "postsync_zones_variantes_telechargees"
 	JaugeZonesEchecs        = "postsync_zones_echecs"
+	// CompteurZonesPasseDejaEnCours : cycles retires parce qu un autre joueur du meme titre
+	// rattrapait deja les zones (zones_rattrapage.go, passesDeZones). Etat normal d un cycle
+	// multi-joueur, jamais un echec.
+	CompteurZonesPasseDejaEnCours = "postsync_zones_passe_deja_en_cours_total"
 	// Report du coup d'envoi mesure dans le film vers `match_registry` (cf. t0film.go).
 	// CompteurT0FilmReportes : lignes de registre corrigees ; CompteurT0FilmDejaLa : matchs
 	// deja marques `film_movement` a la meme valeur (la garde a mordu) ; CompteurT0FilmEchecs :

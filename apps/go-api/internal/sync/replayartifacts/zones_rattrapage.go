@@ -57,6 +57,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/verrous"
 )
 
 // entreeZonesFn est la couture qui rend le CHEMIN NOMINAL testable sans `.mvar` reel porteur
@@ -170,6 +171,16 @@ func (b *bilanZones) compter(r ResultatZones) {
 	}
 }
 
+// passesDeZones : UN rattrapage des zones par (processus, titre) a la fois.
+//
+// Le post-sync v2 lance chaque joueur dans sa goroutine, et leurs lots partagent des matchs (les
+// arrieres du rejeu sont globaux) : sans exclusion, N cycles liraient le meme cache vide et
+// telechargeraient N fois la meme carte, ou reliraient un depot en cours. Meme regle que la passe
+// de la source des kills (`killcollector/postsync_exclusivite.go`) : `TryLock` APRES la porte de
+// capability, et le perdant passe son tour — la passe en cours traite les memes cartes, et un
+// match du perdant est repris au film suivant de sa carte.
+var passesDeZones verrous.Registre
+
 // rattraperZonesNommees donne leurs zones aux cartes DISTINCTES du lot qui n'en ont pas.
 //
 // Appelee une fois par lot, APRES le rattrapage des socles (cf. l'en-tete). La porte est la
@@ -177,16 +188,25 @@ func (b *bilanZones) compter(r ResultatZones) {
 // `fetcher` nil n'eteint pas l'etape : les variantes deja au cache sont lues hors ligne.
 func rattraperZonesNommees(ctx context.Context, d Deps, work []buildWork, fetcher MvarFetcher) {
 	var b bilanZones
-	// Publiees sur TOUS les chemins de sortie, y compris les sorties precoces (meme patron que
-	// publierBilanRattrapage).
-	defer func() { publierBilanZones(ctx, b) }()
 	armee, incident := porteCapability(ctx, d, games.CapMapForgeCallouts, "zones nommees Forge", nil)
 	if !armee {
 		if incident {
 			b.echecs++
 		}
+		publierBilanZones(ctx, b)
 		return
 	}
+	passe := passesDeZones.De(d.TitleSlug)
+	if !passe.TryLock() {
+		// PAS UN ECHEC, et pas de jauges : celles de la passe en cours font foi.
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurZonesPasseDejaEnCours, 1)
+		slog.DebugContext(ctx, "zones nommees: rattrapage deja en cours pour ce titre, cycle retire",
+			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug)
+		return
+	}
+	defer passe.Unlock()
+	// Publiees sur TOUS les chemins de sortie de la passe (meme patron que publierBilanRattrapage).
+	defer func() { publierBilanZones(ctx, b) }()
 	r, err := PreparerRattrapageZones(ctx, OptionsRattrapageZones{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, CacheRoot: d.CacheRoot, Fetcher: fetcher,
 	})
@@ -252,14 +272,9 @@ func (r *RattrapageZones) TraiterCarte(ctx context.Context, id mapcatalog.Identi
 		out.Statut, out.Origine = ZonesDejaCouvertes, origine
 		return out
 	}
-	blob, statut, err := r.variante(ctx, id.MapID, &out)
+	entry, couv, statut, err := r.lireLaVariante(ctx, id.MapID, &out)
 	if statut != "" {
 		out.Statut, out.Err = statut, err
-		return out
-	}
-	entry, couv, err := entreeZonesFn(blob, r.lexique)
-	if err != nil {
-		out.Statut, out.Err = ZonesVarianteIllisible, err
 		return out
 	}
 	out.Couverture = couv
@@ -274,31 +289,66 @@ func (r *RattrapageZones) TraiterCarte(ctx context.Context, id mapcatalog.Identi
 	return out
 }
 
-// variante rend les octets de la variante d'une carte : cache d'abord, reseau ensuite. Un
-// statut NON VIDE dit que la carte s'arrete la (et pourquoi).
-func (r *RattrapageZones) variante(ctx context.Context, mapID string, out *ResultatZones,
-) ([]byte, StatutZones, error) {
-	blob, err := lireMvarEnCache(r.cacheRoot, mapID)
-	switch {
-	case err == nil:
-		return blob, "", nil
-	case !errors.Is(err, os.ErrNotExist):
-		return nil, ZonesVarianteIllisible, err
-	case r.fetcher == nil || r.aBlanc:
-		return nil, ZonesATelecharger, nil
+// lireLaVariante lit la variante d'une carte et en tire l'entree de ses zones : cache d'abord,
+// reseau ensuite. Un statut NON VIDE dit que la carte s'arrete la (et pourquoi).
+//
+// UNE VARIANTE DU CACHE QUI NE SE LIT PAS N'EST PAS UNE IMPASSE. Fichier vide ou tronque (un
+// depot d'avant l'ecriture atomique, un disque plein), octets qui ne decodent pas : elle est
+// ECARTEE — journalisee, retiree du cache sauf a blanc — puis retelechargee UNE fois dans le
+// meme passage. Sans cela, chaque cycle la relirait et echouerait pareil, pour toujours.
+//
+// Seule une variante telechargee QUI SE LIT est deposee au cache.
+func (r *RattrapageZones) lireLaVariante(ctx context.Context, mapID string, out *ResultatZones,
+) (replay.MapCalloutsEntry, mapcatalog.CouvertureLibelles, StatutZones, error) {
+	var vide replay.MapCalloutsEntry
+	chemin, blob, err := lireMvarEnCache(r.cacheRoot, mapID)
+	if err == nil {
+		entry, couv, perr := entreeZonesFn(blob, r.lexique)
+		if perr == nil {
+			return entry, couv, "", nil
+		}
+		err = perr
+	}
+	causeCache := err
+	if errors.Is(err, os.ErrNotExist) {
+		causeCache = nil
+	} else {
+		r.ecarterDuCache(ctx, mapID, chemin, err)
+	}
+	if r.fetcher == nil || r.aBlanc {
+		return vide, mapcatalog.CouvertureLibelles{}, ZonesATelecharger, causeCache
 	}
 	blob, base, err := r.fetcher.FetchMvarForMap(ctx, mapID, mapcatalog.NomDeLaVariante)
 	if err != nil {
-		return nil, ZonesEchecTelechargement, err
+		return vide, mapcatalog.CouvertureLibelles{}, ZonesEchecTelechargement, err
 	}
 	out.Telechargee = true
+	entry, couv, err := entreeZonesFn(blob, r.lexique)
+	if err != nil {
+		return vide, mapcatalog.CouvertureLibelles{}, ZonesVarianteIllisible, err
+	}
 	if err := deposerMvar(r.cacheRoot, mapID, base, blob); err != nil {
 		// Le depot est une TRACE (la relecture hors ligne au cycle suivant), pas une
 		// dependance : la carte se traite quand meme.
 		slog.WarnContext(ctx, "zones nommees: depot de la variante au cache echoue",
 			"map_id", mapID, "err", err, "titleSlug", r.titleSlug)
 	}
-	return blob, "", nil
+	return entry, couv, "", nil
+}
+
+// ecarterDuCache journalise une variante du cache illisible et la retire (sauf a blanc, qui
+// n'ecrit rien) : le prochain passage en ligne la retelechargera au lieu de la relire.
+func (r *RattrapageZones) ecarterDuCache(ctx context.Context, mapID, chemin string, cause error) {
+	slog.WarnContext(ctx, "zones nommees: variante du cache illisible — ecartee, retelechargee "+
+		"si le reseau est permis", "map_id", mapID, "path", chemin, "err", cause,
+		"a_blanc", r.aBlanc, "titleSlug", r.titleSlug)
+	if r.aBlanc || chemin == "" {
+		return
+	}
+	if err := os.Remove(chemin); err != nil && !errors.Is(err, os.ErrNotExist) {
+		slog.WarnContext(ctx, "zones nommees: variante illisible non retiree du cache",
+			"map_id", mapID, "path", chemin, "err", err, "titleSlug", r.titleSlug)
+	}
 }
 
 // publier range une carte au catalogue genere (ou dit qu'elle y entrerait, a blanc).
@@ -321,13 +371,14 @@ func (r *RattrapageZones) publier(mapID string, entry replay.MapCalloutsEntry) (
 	return ZonesAjoutees, nil
 }
 
-// lireMvarEnCache lit la variante d'une carte deposee au cache. `os.ErrNotExist` quand aucune
-// variante n'y est. Le fichier retenu suit la regle unique du choix de variante.
-func lireMvarEnCache(cacheRoot, mapID string) ([]byte, error) {
+// lireMvarEnCache lit la variante d'une carte deposee au cache, et rend son chemin.
+// `os.ErrNotExist` quand aucune variante n'y est (chemin vide). Le fichier retenu suit la
+// regle unique du choix de variante.
+func lireMvarEnCache(cacheRoot, mapID string) (string, []byte, error) {
 	dir := dossierMvar(cacheRoot, mapID)
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	var noms []string
 	for _, e := range entrees {
@@ -336,7 +387,9 @@ func lireMvarEnCache(cacheRoot, mapID string) ([]byte, error) {
 		}
 	}
 	if len(noms) == 0 {
-		return nil, fmt.Errorf("aucune variante sous %s : %w", dir, os.ErrNotExist)
+		return "", nil, fmt.Errorf("aucune variante sous %s : %w", dir, os.ErrNotExist)
 	}
-	return os.ReadFile(filepath.Join(dir, mapcatalog.ChoisirFichierVariante(noms, mapcatalog.NomDeLaVariante)))
+	chemin := filepath.Join(dir, mapcatalog.ChoisirFichierVariante(noms, mapcatalog.NomDeLaVariante))
+	blob, err := os.ReadFile(chemin)
+	return chemin, blob, err
 }

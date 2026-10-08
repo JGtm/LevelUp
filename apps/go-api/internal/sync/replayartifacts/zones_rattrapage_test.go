@@ -17,7 +17,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
@@ -181,7 +184,7 @@ func TestZonesUnAppelParCarteEtDepot(t *testing.T) {
 	if f.appels != 1 {
 		t.Fatalf("appels = %d, attendu 1 (une fois par carte, jamais par match)", f.appels)
 	}
-	if _, err := lireMvarEnCache(cache, "cccc"); err != nil {
+	if _, _, err := lireMvarEnCache(cache, "cccc"); err != nil {
 		t.Fatalf("variante non déposée au cache : %v", err)
 	}
 	if got := observability.LoadCounterT(title.DefaultSlug, JaugeZonesSansZone); got != 1 {
@@ -221,13 +224,24 @@ func TestZonesVerdictsEtEchecs(t *testing.T) {
 	racine, cache := zrRacine(t), t.TempDir()
 	zrDeposer(t, cache, "eeee", zrVarianteMuette)
 	zrDeposer(t, cache, "ffff", "octets quelconques")
-	r := zrPreparer(t, racine, cache, &mrFetcherEspion{err: errors.New("403")}, false)
-	cas := map[string]StatutZones{"eeee": ZonesSansLibelle, "ffff": ZonesVarianteIllisible, "gggg": ZonesEchecTelechargement}
+	// Le réseau rend lui aussi des octets illisibles : la variante en cache écartée est
+	// retéléchargée, reste illisible, et n'est PAS redéposée.
+	r := zrPreparer(t, racine, cache, &mrFetcherEspion{blob: []byte("octets quelconques"), base: "map.mvar"}, false)
+	cas := map[string]StatutZones{"eeee": ZonesSansLibelle, "ffff": ZonesVarianteIllisible, "gggg": ZonesVarianteIllisible}
 	for mapID, attendu := range cas {
 		res := r.TraiterCarte(context.Background(), mapcatalog.IdentitesDeCarte{MapID: mapID})
 		if res.Statut != attendu {
 			t.Errorf("%s : statut %q, attendu %q (err %v)", mapID, res.Statut, attendu, res.Err)
 		}
+	}
+	for _, mapID := range []string{"ffff", "gggg"} {
+		if _, _, err := lireMvarEnCache(cache, mapID); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s : une variante illisible est au cache (%v)", mapID, err)
+		}
+	}
+	refus := zrPreparer(t, racine, cache, &mrFetcherEspion{err: errors.New("403")}, false)
+	if res := refus.TraiterCarte(context.Background(), mapcatalog.IdentitesDeCarte{MapID: "hhhh"}); res.Statut != ZonesEchecTelechargement {
+		t.Errorf("téléchargement refusé : statut %q, attendu %q", res.Statut, ZonesEchecTelechargement)
 	}
 	if res := r.TraiterCarte(context.Background(), mapcatalog.IdentitesDeCarte{MapID: "eeee"}); res.Couverture.SansLibelle() != 1 {
 		t.Errorf("sans libellé : %d string_id non résolu(s), attendu 1", res.Couverture.SansLibelle())
@@ -272,4 +286,88 @@ func TestZonesPorteSurLesTOMLLivres(t *testing.T) {
 // zrTravail fabrique un match du lot portant une carte.
 func zrTravail(matchID, mapID string) buildWork {
 	return buildWork{matchID: matchID, facts: port.MatchFacts{MapID: mapID}}
+}
+
+// TestZonesVarianteEnCacheIllisibleRetelechargee — une variante VIDE ou tronquée au cache
+// (disque plein, processus tué pendant un dépôt) ne bloque pas la carte pour toujours : elle est
+// écartée, puis retéléchargée UNE fois dans le même passage, et le cache est réparé. Hors ligne,
+// elle est retirée du cache (le passage suivant la téléchargera) ; à blanc, rien ne bouge.
+func TestZonesVarianteEnCacheIllisibleRetelechargee(t *testing.T) {
+	zrExtractionFactice(t)
+	racine, cache := zrRacine(t), t.TempDir()
+	zrDeposer(t, cache, "iiii", "")
+	f := &mrFetcherEspion{blob: []byte(zrVarianteAvecZones), base: mapcatalog.NomDeLaVariante}
+	res := zrPreparer(t, racine, cache, f, false).TraiterCarte(context.Background(), mapcatalog.IdentitesDeCarte{MapID: "iiii"})
+	if res.Statut != ZonesAjoutees || f.appels != 1 || !res.Telechargee {
+		t.Fatalf("variante en cache vide : statut %q, %d appel(s), err %v ; attendu ajoutée après UN téléchargement",
+			res.Statut, f.appels, res.Err)
+	}
+	if _, blob, err := lireMvarEnCache(cache, "iiii"); err != nil || string(blob) != zrVarianteAvecZones {
+		t.Errorf("cache non réparé : %q / %v", blob, err)
+	}
+
+	zrDeposer(t, cache, "jjjj", "")
+	r := zrPreparer(t, racine, cache, &mrFetcherEspion{}, true)
+	if res := r.TraiterCarte(context.Background(), mapcatalog.IdentitesDeCarte{MapID: "jjjj"}); res.Statut != ZonesATelecharger {
+		t.Errorf("à blanc : statut %q, attendu à télécharger", res.Statut)
+	}
+	if _, _, err := lireMvarEnCache(cache, "jjjj"); err != nil {
+		t.Errorf("à blanc : la variante illisible a été retirée du cache (%v)", err)
+	}
+	r = zrPreparer(t, racine, cache, nil, false)
+	if res := r.TraiterCarte(context.Background(), mapcatalog.IdentitesDeCarte{MapID: "jjjj"}); res.Statut != ZonesATelecharger {
+		t.Errorf("hors ligne : statut %q, attendu à télécharger", res.Statut)
+	}
+	if _, _, err := lireMvarEnCache(cache, "jjjj"); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("hors ligne : la variante illisible est restée au cache (%v)", err)
+	}
+}
+
+// zrFetcherBloquant compte ses appels et retient chacun jusqu'à `relache`.
+type zrFetcherBloquant struct {
+	appels  atomic.Int32
+	relache chan struct{}
+}
+
+func (f *zrFetcherBloquant) FetchMvarForMap(context.Context, string, string) ([]byte, string, error) {
+	f.appels.Add(1)
+	<-f.relache
+	return []byte(zrVarianteAvecZones), mapcatalog.NomDeLaVariante, nil
+}
+
+// TestZonesUnePasseParTitre — le post-sync lance un joueur par goroutine, et leurs arriérés
+// partagent des matchs : sans exclusion, N cycles lisent le même cache vide et téléchargent N
+// fois la même carte. Une seule passe par (processus, titre) travaille ; les autres passent leur
+// tour sans échec compté.
+func TestZonesUnePasseParTitre(t *testing.T) {
+	zrExtractionFactice(t)
+	racine := zrRacine(t)
+	d := Deps{RepoRoot: racine, TitleSlug: title.DefaultSlug, CacheRoot: t.TempDir()}
+	ctx := ctxkeys.WithTitleSlug(context.Background(), title.DefaultSlug)
+	f := &zrFetcherBloquant{relache: make(chan struct{})}
+	const joueurs = 4
+	var finis atomic.Int32
+	var wg sync.WaitGroup
+	for i := range joueurs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer finis.Add(1)
+			rattraperZonesNommees(ctx, d, []buildWork{zrTravail(fmt.Sprintf("m%d", i), "kkkk")}, f)
+		}()
+	}
+	// Relâcher quand tous les perdants sont sortis (exclusion) OU quand chaque joueur est entré
+	// dans le téléchargement (pas d'exclusion) : l'issue ne dépend pas de l'ordonnanceur.
+	limite := time.Now().Add(10 * time.Second)
+	for finis.Load() < joueurs-1 && f.appels.Load() < joueurs && time.Now().Before(limite) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	close(f.relache)
+	wg.Wait()
+	if n := f.appels.Load(); n != 1 {
+		t.Fatalf("téléchargements de la même carte = %d pour %d cycles simultanés, attendu 1", n, joueurs)
+	}
+	if got := observability.LoadCounterT(title.DefaultSlug, JaugeZonesEchecs); got != 0 {
+		t.Errorf("jauge d'échecs = %d : un cycle qui passe son tour n'est pas un échec", got)
+	}
 }
