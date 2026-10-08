@@ -46,7 +46,9 @@ var phrasesCumul = []string{
 	"LES QUATRE DENOMINATEURS — ne jamais ecrire << X % des morts >> sans dire lequel",
 	"couples REELS = 100.0 %",
 	"C EST LE DENOMINATEUR DE REFERENCE",
-	"couples reconstruits par la reconstruction de kill-feed = 99.7 %",
+	// Aucun couple fabrique sur les quatre films : le recollage ne prend pas une mort qu un
+	// kill-event 85 ecrit d un autre tueur.
+	"couples reconstruits par la reconstruction de kill-feed = 100.0 %",
 	"morts du KILL-FEED = 98.9 %",
 	"le chunk HIGHLIGHT est HUMAIN SEUL",
 	// LE SEUL TAUX PUBLIE QUI A CHANGE AVEC RE_LOG 7ter.79 — il valait 98.9 % (376/380). Les

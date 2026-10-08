@@ -51,6 +51,11 @@ type GroundWeaponCoverage struct {
 	PowerupAccepted int  `json:"powerupAccepted"`
 	PowerupKept     int  `json:"powerupKept"`
 	PowerupPads     int  `json:"powerupPads"`
+	// HorsEmprise / Releves / PlusieursLieux : les socles d arme hors de l emprise jouee, ceux que
+	// leurs prises datees relevent, ceux dont les prises tombent en plusieurs lieux.
+	HorsEmprise    int `json:"horsEmprise"`
+	Releves        int `json:"releves"`
+	PlusieursLieux int `json:"plusieursLieux"`
 }
 
 // GroundWeaponItemsCoverage dit ce que le calque a vu, lié, et refusé de dire.

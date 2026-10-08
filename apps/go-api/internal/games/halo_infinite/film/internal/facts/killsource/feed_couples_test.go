@@ -54,7 +54,7 @@ func coupleRec(ms, tueur, victime int) killEventRec {
 // le repli republie (C, D). Jouee et restauree au lot 1.9.3.
 func TestLeCoupleVientDuKillEvent85(t *testing.T) {
 	kf, r := coupleTemoin()
-	st := kf.resoudreCouples([]killEventRec{coupleRec(2000, 1, 3)}, r)
+	st := kf.resoudreCouples([]killEventRec{coupleRec(2000, 1, 3)}, r, nil)
 
 	if len(kf.pairs) != 1 || kf.pairs[0].victim != "E" {
 		t.Fatalf("couples = %+v, attendu le seul (C, E) — le film ECRIT E, le voisin porte D", kf.pairs)
@@ -84,7 +84,7 @@ func TestLeCoupleVientDuKillEvent85(t *testing.T) {
 // part vers la population des morts de bot, et AUCUNE mort de voisin n est consommee.
 func TestUneVictimeBotNeFabriquePlusDeCouple(t *testing.T) {
 	kf, r := coupleTemoin()
-	st := kf.resoudreCouples([]killEventRec{coupleRec(2000, 1, 9)}, r)
+	st := kf.resoudreCouples([]killEventRec{coupleRec(2000, 1, 9)}, r, nil)
 
 	if len(kf.pairs) != 0 {
 		t.Fatalf("couples = %+v, attendu AUCUN : la victime est un bot, il n y a pas de couple "+
@@ -106,7 +106,7 @@ func TestUneVictimeBotNeFabriquePlusDeCouple(t *testing.T) {
 // le lot — mecanisme inchange, et le repli se compte.
 func TestLeRepliNeSertQueLeSilence(t *testing.T) {
 	kf, r := coupleTemoin()
-	st := kf.resoudreCouples(nil, r)
+	st := kf.resoudreCouples(nil, r, nil)
 
 	if len(kf.pairs) != 1 || kf.pairs[0].victim != "D" || kf.pairs[0].victimXUID != 44 {
 		t.Fatalf("couples = %+v, attendu le seul (C, D) recolle sur le voisin immediat", kf.pairs)
@@ -123,7 +123,7 @@ func TestLeRepliNeSertQueLeSilence(t *testing.T) {
 // jamais sur un desaccord avec la lecture, seulement sur son silence ou son indecision.
 func TestLeRepliNeSertPasUneLectureAMBIGUE(t *testing.T) {
 	kf, r := coupleTemoin()
-	st := kf.resoudreCouples([]killEventRec{coupleRec(2000, 1, 3), coupleRec(2400, 1, 2)}, r)
+	st := kf.resoudreCouples([]killEventRec{coupleRec(2000, 1, 3), coupleRec(2400, 1, 2)}, r, nil)
 
 	if len(kf.fab) != 1 || kf.pairs[0].victim != "D" {
 		t.Fatalf("couples = %+v / recolles = %d, attendu le repli sur (C, D)", kf.pairs, len(kf.fab))
@@ -143,7 +143,7 @@ func TestLeCoupleDuMemeInstantConsommeSonEnregistrement(t *testing.T) {
 	// Une mort ecrite au meme instant : A(1) tue E(3) a 1900.
 	kf.events = append([]feedEvent{{timeMS: 1900, killer: "C", victim: "E", victimXUID: 55}}, kf.events...)
 
-	st := kf.resoudreCouples([]killEventRec{coupleRec(1900, 1, 3)}, r)
+	st := kf.resoudreCouples([]killEventRec{coupleRec(1900, 1, 3)}, r, nil)
 
 	if st.MemeInstant != 1 {
 		t.Fatalf("couples au meme instant = %d, attendu 1", st.MemeInstant)

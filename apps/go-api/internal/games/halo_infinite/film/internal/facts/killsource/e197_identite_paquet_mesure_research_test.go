@@ -400,7 +400,7 @@ func (m *e197Mesure) e197PopulationDeBot() []botMatch {
 func (m *e197Mesure) temps4() {
 	for _, b := range m.e197PopulationDeBot() {
 		cands := m.c.scanCands
-		couple := func(a candidate) bool { return m.c.coupleDeMortDeBot(&b, a) }
+		couple := func(a candidate) bool { return m.c.coupleDeMortDeBot(&b, a, false) }
 		j := e197ParLaFenetre(len(cands), b.event.timeMS, func(i int) int { return cands[i].ms },
 			func(i int) bool { return couple(cands[i]) })
 		if j >= 0 {

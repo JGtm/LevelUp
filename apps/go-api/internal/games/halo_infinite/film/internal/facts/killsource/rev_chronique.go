@@ -212,3 +212,26 @@ package killsource
 // candidat de plus, non publie (compteurs de sante) ; treize films ne different que par le
 // diagnostic `calibration`. `read_path` est persiste : la revision monte (D23), backlog sur signal
 // de l utilisateur (D6).
+//
+// ENTREE `killsource-2026-10-08.2` (2026-10-08, lot `feat/aj-film`, point 18 des ajustements) : LES
+// MORTS QUI TOUCHENT UN BOT.
+//
+// Ce qui change, contre `killsource-2026-10-08` :
+//   - les morts DE bot et PAR un bot gardent leur premiere passe (premier candidat de la fenetre), puis
+//     un COMPLEMENT reprend les seuls kills qu elle laisse sans ligne faute de dead-state libre, avec
+//     les seuls dead-states qu aucun temps n a servis (`bot_affectation.go`) : il ajoute des lignes, il
+//     n en retire aucune ;
+//   - une mort de bot dont le dead-state designe le bot lui-meme (chute, source globale) se publie au
+//     credit du feed, divergence levee — le temps 3 de l hybride, pour les bots ;
+//   - le recollage d un kill ne prend que la PREMIERE mort voisine, et pas quand elle est deja
+//     consommee, qu un kill-event 85 l ecrit d un autre tueur, ou que les dead-states la donnent a un
+//     autre tueur ; il ne va jamais chercher la mort suivante (`repli_couple_recolle_sur_le_voisin`) ;
+//   - le nom d un bot publie se lit a l instant de la ligne : sur un indice que plusieurs bots tiennent
+//     l un apres l autre, celui que BOT_METADATA declare a cet instant (`hybrid_bots.go`).
+// PREUVE (2026-10-08, `cmd/killsource json`, binaire de `2761162de` contre binaire du lot) : sur
+// `0a08d2f2`, 119 -> 124 lignes, +4 morts de bot (trois de SuSpec7c0br4, une de JGtm, dont une par
+// la source du bot) et +1 mort infligee par un bot (Madina97294) ; `ca684191` 79 -> 80 (une mort
+// infligee par un bot que le recollage prenait) ; `760fb768` une victime renommee a l instant
+// (343 Cliffton -> 343 Chilies) ; `b1ad85eb`, `4f77afc1`, `50f16538` identiques. Aucune ligne
+// existante ne change de tueur ni de source. Les lignes de `match_kill_events` deviennent candidates
+// au redecodage : backlog sur signal de l utilisateur (D6).

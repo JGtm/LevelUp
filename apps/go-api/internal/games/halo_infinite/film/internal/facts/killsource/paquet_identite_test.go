@@ -111,7 +111,7 @@ func TestLIdentiteDePaquetVoyageAvecLeCouple(t *testing.T) {
 	}
 	rec := killEventRec{ms: 3000, chunk: 4, pidx: 19,
 		fields: killEventFields{killer: 1, victim: 2, assist: -1}}
-	kf.resoudreCouples([]killEventRec{rec}, paquetRoster())
+	kf.resoudreCouples([]killEventRec{rec}, paquetRoster(), nil)
 
 	if len(kf.pairs) != 1 {
 		t.Fatalf("couples = %+v, attendu le seul (A, B)", kf.pairs)

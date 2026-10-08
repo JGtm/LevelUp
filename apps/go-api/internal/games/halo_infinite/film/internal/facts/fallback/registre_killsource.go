@@ -121,9 +121,12 @@ var registreKillsource = []Repli{
 		// le 2026-09-15 sans avoir publie ce compte sous son nom de registre.
 	},
 	{
-		Nom:       "repli_couple_recolle_sur_le_voisin",
-		Fait:      "la VICTIME d'un kill que le kill feed porte sans mort en face",
-		Mecanisme: "la mort d'un instant VOISIN (deux instants au plus) est prise pour victime de ce kill",
+		Nom:  "repli_couple_recolle_sur_le_voisin",
+		Fait: "la VICTIME d'un kill que le kill feed porte sans mort en face",
+		Mecanisme: "la PREMIERE mort d'un instant VOISIN (deux instants au plus) est prise pour victime de ce kill ; " +
+			"le kill reste orphelin quand cette mort est deja consommee par un couple, qu'un kill-event 85 non " +
+			"consomme l'ecrit d'un AUTRE tueur, ou que les dead-states la donnent a un AUTRE tueur sans la " +
+			"donner a celui-ci (indices epingles)",
 		// LE FILM ECRIT CE COUPLE (kill-event 85, `victime(E5) tueur(E5)`) et le lot 1.9.3 le LIT.
 		// Le repli ne reprend la main que sur un silence de cette lecture : aucun kill-event de la
 		// fenetre ne nomme ce tueur par deux indices EPINGLES (table des joueurs du film ou
@@ -247,13 +250,17 @@ var registreKillsource = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_mort_de_bot_premier_candidat",
-		Fait:      "quel dead-state correspond a la mort d'un bot, ou a une mort causee par un bot",
-		Mecanisme: "aucune identite de paquet en face : le PREMIER candidat de la fenetre de 2,5 s gagne, l'unicite n'est pas verifiee",
+		Nom:  "repli_mort_de_bot_premier_candidat",
+		Fait: "quel dead-state correspond a la mort d'un bot, ou a une mort causee par un bot",
+		Mecanisme: "aucune identite de paquet en face : le PREMIER candidat de la fenetre de 2,5 s gagne ; les " +
+			"morts que cette passe laisse sans ligne faute de dead-state libre se completent avec les seuls " +
+			"dead-states qu'aucun temps n'a servis (morts DE bot : du couple le plus proche au plus lointain ; " +
+			"morts PAR un bot : le premier libre dans l'ordre de priorite de l'hybride)",
 		// LE KILL-EVENT 85 QUI NOMME UN BOT EN VICTIME PORTE SON PAQUET, et le lot 1.9.7 le LIT
 		// d'abord ([decodeCtx.apparierMortDeBot], [decodeCtx.resolveBotKillerDeaths]). Mais le
 		// kill feed est HUMAIN-SEUL : un instant qui ne porte pas de kill humain n'a aucun
-		// kill-event a associer, et le repli reste la voie normale de ces deux populations.
+		// kill-event a associer, et le repli reste la voie normale de ces deux populations. Le nom du
+		// mecanisme est un identifiant stable : il ne suit pas le mecanisme, il le designe.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{siteDeVersement("NomMortDeBotPremierCandidat"),
@@ -268,6 +275,10 @@ var registreKillsource = []Repli{
 			{
 				Fichier: pkgKillsource + "match.go",
 				Ancre:   "func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate) []botKillerMatch {",
+			},
+			{
+				Fichier: pkgKillsource + "bot_affectation.go",
+				Ancre:   "func (c *decodeCtx) affecterParLaFenetre(ms []botMatch, servis map[[3]int]bool,",
 			},
 		},
 		DatePose:     dateAudit0E,

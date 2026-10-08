@@ -3109,3 +3109,40 @@ package replay
 //	                +1 (lectures que le dead-state sans mort ne coupe plus), `50247b26` V-2 +236
 //	                (vehicule volant hors des bornes resserrees), `396cfc92` origine du rejeu
 //	                avancee par une vraie position precoce (detail : plan de l etape 2, 2.7.d4).
+//
+// v90 (2026-10-08, lot `feat/aj-film`, points 11 et 18 des ajustements, fusionne apres le lot des
+// arrets de la vue B, `grammar-2026-10-08.13`) : UN SOCLE D ARME HORS DE LA CARTE SE RELEVE LA OU SES
+// ARMES SONT PRISES, ET LES MORTS QUI TOUCHENT UN BOT SE PUBLIENT.
+//
+//	`weaponPads`    un socle d ARME dont la position (centroide des creations) tombe hors de
+//	                l emprise jouee du film se publie au centroide des positions de ses ramasseurs,
+//	                aux occupations que l evenement natif date, quand au moins deux le localisent
+//	                et qu elles tombent toutes a moins de 1,5 m de ce centroide
+//	                (`repli_socle_hors_emprise_au_lieu_des_prises`) ; apparitions, presence,
+//	                occupations et cycle inchanges. Le cas : un script de carte Forge cree l arme
+//	                sous le niveau puis la pose sur son socle, et le film n ecrit que la creation.
+//	`coverage.groundWeapons`  trois compteurs neufs : `horsEmprise`, `releves`, `plusieursLieux`
+//	                (prises en plusieurs lieux : un meme point de creation sert plusieurs socles de
+//	                la carte, rien n est releve).
+//	killsource      `killsource.Rev` monte (chronique de `killsource`) : complement des morts de bot
+//	                laissees sans ligne, avec les dead-states libres ; mort de bot par sa propre
+//	                source ; recollage qui respecte la lecture ; nom de bot a l instant.
+//
+//	CE QUI MONTE    `SchemaVersion` 89 -> 90 ; `killsource.Rev` `killsource-2026-10-08` ->
+//	AVEC ELLE       `killsource-2026-10-08.2`. `grammar.Rev`, `objectives.Rev` et `SchemaDesFaits` ne
+//	                bougent pas : l assemblage rejoue les faits persistes tels quels.
+//
+//	LE PARC         un artefact 89 porte `killsource-2026-10-08` : verdict `redecoder`.
+//
+//	MESURE          artefacts du parc local (schema 89, 172 documents, 133 sur une carte de la
+//	                reference) : 43 socles non confirmes sur 38 matchs ayant au moins un socle
+//	                confirme, dont 19 sous la carte sur 17 matchs (Origin, Lattice, Solitude et
+//	                Streets en variante classee, Refuge, Perilous, Flood Gulch, Prism). Banc des
+//	                faits (10 temoins, meme binaire de recherche sur la base et sur le lot, aucun
+//	                film decode) : 2 socles releves et confirmes (`5c38f581` Needler -> socle de
+//	                puissance a 0,41 m, `4f77afc1` -> ratelier a 0,48 m), 3 en plusieurs lieux, 4
+//	                sans assez de prises datees ; aucun socle confirme ne bouge, et rien d autre ne
+//	                change que les comptes et les revisions. Cuissons du film (`5c38f581`, `0a08d2f2`),
+//	                binaire de la base contre binaire du lot : seuls le socle releve, les comptes, les
+//	                revisions et les replis verses par killsource changent. `cmd/killsource json` :
+//	                `0a08d2f2` 119 -> 124 lignes, aucune ligne existante modifiee.

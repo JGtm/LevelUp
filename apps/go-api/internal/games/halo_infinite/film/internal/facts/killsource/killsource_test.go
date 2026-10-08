@@ -46,7 +46,7 @@ func TestRecollageSurLeVoisinEtOrphelins(t *testing.T) {
 		},
 		xuidDe: map[string]uint64{},
 	}
-	st := kf.resoudreCouples(nil, rosterSansEpinglage())
+	st := kf.resoudreCouples(nil, rosterSansEpinglage(), nil)
 	if len(kf.pairs) != 2 {
 		t.Fatalf("couples = %d, attendu 2 (%v)", len(kf.pairs), kf.pairs)
 	}
@@ -79,7 +79,7 @@ func TestLaDecompositionIsoleLesMortsSansTueur(t *testing.T) {
 		},
 		xuidDe: map[string]uint64{},
 	}
-	kf.resoudreCouples(nil, rosterSansEpinglage())
+	kf.resoudreCouples(nil, rosterSansEpinglage(), nil)
 	if len(kf.orphD) != 1 || kf.orphD[0].victim != "E" {
 		t.Fatalf("morts sans tueur = %v, attendu la seule mort de E", kf.orphD)
 	}
@@ -290,7 +290,7 @@ type reference struct {
 
 var references = []reference{
 	{"000d5950", 93, 1, 0, 0, 0, 93, "Cliffhanger"},
-	{"9b191a7f", 84, 2, 3, 1, 3, 90, "Bazaar"},
+	{"9b191a7f", 84, 2, 3, 0, 3, 90, "Bazaar"},
 	{"78919882", 99, 2, 0, 0, 0, 99, "High Ground"},
 	{"fccc61cd", 95, 3, 2, 0, 1, 98, "Launch Site"},
 }
