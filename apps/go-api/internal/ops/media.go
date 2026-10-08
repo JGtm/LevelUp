@@ -21,12 +21,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/verrous"
 )
 
 // Kinds de média indexés dans media_files.kind. Aussi utilisés dans la
@@ -55,13 +55,10 @@ const (
 
 // indexMu sérialise les IndexMedia par chemin de DB cible.
 // DuckDB ne supporte pas ATTACH/DETACH concurrent sur la même instance.
-var (
-	indexMuMap sync.Map // map[string]*sync.Mutex
-)
+var indexMu verrous.Registre
 
 func indexLock(path string) func() {
-	val, _ := indexMuMap.LoadOrStore(path, &sync.Mutex{})
-	mu := val.(*sync.Mutex)
+	mu := indexMu.De(path)
 	mu.Lock()
 	return mu.Unlock
 }

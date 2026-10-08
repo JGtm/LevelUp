@@ -39,25 +39,16 @@ import (
 	"sync"
 
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/verrous"
 )
 
-var (
-	passesEnCoursMu sync.Mutex
-	passesEnCours   = map[string]*sync.Mutex{}
-)
+// passesEnCours porte un verrou de passe par titre (registre partagé du dépôt,
+// `platform/verrous` : il ne rétrécit jamais).
+var passesEnCours verrous.Registre
 
-// verrouDePasse rend (et cree au besoin) le verrou de passe d un titre. Meme forme que
-// `platform/dblease.leaseMutex` : le registre ne retrecit jamais, il compte un verrou par titre
-// actif du processus.
+// verrouDePasse rend (et cree au besoin) le verrou de passe d un titre.
 func verrouDePasse(titre string) *sync.Mutex {
-	passesEnCoursMu.Lock()
-	defer passesEnCoursMu.Unlock()
-	if mu, ok := passesEnCours[titre]; ok {
-		return mu
-	}
-	mu := &sync.Mutex{}
-	passesEnCours[titre] = mu
-	return mu
+	return passesEnCours.De(titre)
 }
 
 // signalerPasseDejaEnCours compte et journalise le retrait d un appel perdant. DEBUG, pas WARN :
