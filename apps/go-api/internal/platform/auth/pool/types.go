@@ -54,6 +54,8 @@ type ResolvedTokens struct {
 
 // Resolver échange CredentialSource → ResolvedTokens frais.
 // Mémoïse les tokens pendant leur durée de vie (~3h30).
+// Sûr pour des appels concurrents : NewPool résout plusieurs comptes en parallèle (jamais
+// deux sources au même refresh token à la fois, cf. runBootResolutions).
 type Resolver interface {
 	// Resolve échange une CredentialSource en tokens Halo frais.
 	// Cache internalisé — appels répétés pour le même gamertag rendent le cached résultat jusqu'à expiration.
