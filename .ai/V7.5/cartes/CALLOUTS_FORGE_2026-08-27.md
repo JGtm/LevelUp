@@ -186,6 +186,13 @@ du bruit, pas une information. 3 cartes sont ecartees par cette regle.
 1. ~~**L'extraction `uslg` des 200 StringId sans texte**~~ **LIVRE le 2026-09-02** — section 8.
 2. **Les cartes hors rotation du 2026-08-27** : l'inventaire est date. Une carte jouee depuis
    n'y est pas — il faudra le regenerer (balayage Discovery authentifie, une fois).
+   **MAJ 2026-10-08** : traite sans regenerer l'inventaire. La chaine Forge tourne au runtime
+   (`mapvar.ZonesNommeesForge` + `mapcatalog.EntreeCalloutsForge`, Go pur) : le rattrapage au
+   fetch de film (`sync/replayartifacts/zones_rattrapage.go`) et `levelup backfill-map-callouts`
+   rangent les zones des cartes jouees dans le catalogue GENERE
+   (`reference/generated/map_callouts.json`), que le service lit apres le versionne. Mesure sur
+   les 6 variantes en cache : 428 zones dont 427 nommees ; le string_id manquant (0x4C39AD38,
+   Origin - Ranked) est absent des listes de chaines du jeu installe, `--lexique` ne l'ajoutera pas.
 3. **Gate visuel** : aucune planche n'a ete faite. Le rendu d'une carte Forge n'a jamais ete
    regarde a l'ecran — maintenant que toutes ses zones portent un nom, c'est le vrai reste.
 
