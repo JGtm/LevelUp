@@ -101,6 +101,37 @@ func TestLaQueueDePoigneeLitLeHandleSurTreizeBits(t *testing.T) {
 	}
 }
 
+// TestLaBranchePrecHautDuBipedeNEstPasAtteinteSousLaPortee — plan LK, LK.5.3 : l exception datee
+// [consumePrecHautDuBipede] (precHigh = 1, rien apres le bit) n est jamais atteinte sous la portee.
+// La branche absolue d i0 y lit la forme du jeu ([consumeAbsoluSousLaPortee]) quel que soit son
+// premier bit, et [consumeAbsoluteWithGate] consulte la garde de pleine precision AVANT precHigh :
+// sous elle, R(96). Aucun des deux chemins ne note d exception. Mutation jouee (precHigh teste avant
+// la garde) : rouge.
+func TestLaBranchePrecHautDuBipedeNEstPasAtteinteSousLaPortee(t *testing.T) {
+	for _, h := range []bool{false, true} {
+		var w bitWriter
+		ecrireI0AbsoluSousLaPortee(&w, h, troisMots(motFlottantFini), true)
+		w.bits(^uint64(0), 64)
+		br := sousLaPortee(LecteurSur(w.buf))
+		consumeObjectPositionDynamicPrecisionD(br, br.traversal())
+		if br.exceptionDatee {
+			t.Errorf("i0 absolu sous la portee, premier bit %v : exception datee notee", h)
+		}
+	}
+	var w bitWriter
+	w.bit(1) // precHigh
+	for range 3 {
+		w.bits(motFlottantFini, 32)
+	}
+	w.bits(^uint64(0), 64)
+	br := sousLaPortee(LecteurSur(w.buf))
+	consumeAbsoluteWithGate(br)
+	if br.exceptionDatee || br.BitPos() != 97 {
+		t.Fatalf("consumeAbsoluteWithGate sous la portee, precHigh = 1 : %d bits lus, exception %v ; "+
+			"attendu 1 + 96, aucune exception", br.BitPos(), br.exceptionDatee)
+	}
+}
+
 // TestUnFlottantNonFiniArreteLaLecture : `FUN_140492128` juge l image memoire du flottant ; un
 // exposant plein fait echouer le lecteur, sans lire le R(2).
 func TestUnFlottantNonFiniArreteLaLecture(t *testing.T) {

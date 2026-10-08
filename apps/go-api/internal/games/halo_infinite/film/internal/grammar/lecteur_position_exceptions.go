@@ -283,6 +283,10 @@ func consumeCrewOrder(br *Lecteur, level uint32) {
 // paquet 356 (21 entrees ; delta du slot 685, dont la lecture d accroupi) et chunk 37 paquet 22 (10
 // entrees ; NEW ti=35 slot 527) ; aucune fermeture ne monte sur les douze films. Les deux autres
 // sites a precHigh (grammaire d ecrivain d i0, delta predit a cVar1 = 1) gardent la lecture du jeu.
+//
+// JAMAIS ATTEINT SOUS LA PORTEE DE L ETAT COMPLET (plan LK, LK.5.3) : la branche absolue d i0 y lit
+// [consumeAbsoluSousLaPortee], et son seul appelant, [consumeAbsoluteWithGate], consulte la garde de
+// pleine precision avant precHigh (test : `TestLaBranchePrecHautDuBipedeNEstPasAtteinteSousLaPortee`).
 func consumePrecHautDuBipede(br *Lecteur) {
 	br.noterExceptionDatee()
 }
