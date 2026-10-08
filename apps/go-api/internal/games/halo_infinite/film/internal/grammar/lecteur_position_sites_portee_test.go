@@ -47,6 +47,13 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 		// ti=34 i11 tacmap-cooptetherarea (FUN_142ed4198) : R(96), R(12), R(12).
 		{nom: "tacmap-cooptetherarea", indexW: 1, flux: concat(brut96(), seul(fixe(12), fixe(12))),
 			lire: parNom("tacmap-cooptetherarea", 34, 0)},
+		// ti=34 i7 tacmap-waypointstate (FUN_140f04d88) : R(1), R(32), R(96), puis R(1) au niveau 2 ;
+		// au niveau 1, pas de R(1).
+		{nom: "tacmap-waypointstate niveau registre 2", indexW: 1,
+			flux: concat(seul(bit(true), fixe(32)), brut96(), seul(bit(true))),
+			lire: parNom("tacmap-waypointstate", 34, 2)},
+		{nom: "tacmap-waypointstate niveau registre 1", indexW: 1,
+			flux: concat(seul(bit(true), fixe(32)), brut96()), lire: parNom("tacmap-waypointstate", 34, 1)},
 	}
 }
 

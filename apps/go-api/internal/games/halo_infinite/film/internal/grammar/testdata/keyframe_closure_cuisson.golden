@@ -26,6 +26,8 @@
 #     R(96)). Aucune ligne ne bouge.
 #   2026-10-08 plan LK (LK.5.4.7) : ti=34 i11 tacmap-cooptetherarea sous la portee (R(96), R(12),
 #     R(12)). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.8) : ti=34 i7 tacmap-waypointstate sous la portee (R(1), R(32),
+#     R(96), R(1) au-dela du niveau 1). Aucune ligne ne bouge.
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	

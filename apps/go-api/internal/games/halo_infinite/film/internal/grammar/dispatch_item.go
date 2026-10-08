@@ -106,7 +106,7 @@ func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, l
 		br.ReadBits(12)
 		return variant, nil, true
 	case "tacmap-waypointstate": // ti=34 i7 (FUN_140f04d74 -> FUN_140f04d88) — exception datee R3-bis
-		consumeTacmapWaypointState(br)
+		consumeTacmapWaypointState(br, level)
 		return variant, nil, true
 	case "tacmap-dungeonstate": // ti=34 i4 (FUN_142ed4350) — R(1)+R(96)
 		br.ReadBit()

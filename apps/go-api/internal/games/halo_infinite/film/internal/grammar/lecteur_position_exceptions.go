@@ -375,11 +375,22 @@ func lireViseeDActeurAncienne(br *Lecteur) {
 // liste d evenements du chunk 34 paquet 336 de `d9781168` (HI_1_13_0, 4 entrees), que l ancien
 // lecteur fermait au bit pres, ne se localise plus (+30 bits) ; il faut les deux ecarts (position et
 // R(1)) pour la rendre. Aucune fermeture ne monte sur les vingt films.
-func consumeTacmapWaypointState(br *Lecteur) {
-	br.noterExceptionDatee()
+//
+// SOUS LA GARDE (plan LK, LK.5.4.8, relu le 2026-10-08) : `FUN_140f04d88` lit R(1), R(32), la garde
+// `FUN_14076f91c` -> `FUN_1411b259c` R(96), puis R(1) quand le niveau du registre depasse 1
+// (`param_4`, `level` ici).
+func consumeTacmapWaypointState(br *Lecteur, level uint32) {
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBit()
 	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
-	lireCorpsDeTraverseeAncien(br)
+	if !sousLaGarde {
+		lireCorpsDeTraverseeAncien(br)
+		return
+	}
+	br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	if level > 1 {
+		br.ReadBit() // if (1 < param_4)
+	}
 }
 
 // lireCorpsDeTraverseeAncien est la position que les sites tacmap lisaient avant le lot J6.3
