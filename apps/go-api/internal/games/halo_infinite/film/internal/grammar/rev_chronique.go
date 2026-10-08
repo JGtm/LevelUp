@@ -91,3 +91,8 @@ package grammar
 // composant `managed-navpoint-object-marker` se lit (`FUN_141169e68`, `R(32)` plat,
 // [consumeNavpointObjectMarker]). Contre `grammar-2026-10-08.6` : un record `ti=12` qui s arretait
 // sur `i17` se lit jusqu au composant suivant.
+//
+// ENTREE `grammar-2026-10-08.8` (2026-10-08, lot des arrets de la vue B, suite, `ti=10 i18` a `i21`) :
+// les quatre composants `managed-object-networked-property-component` se lisent (`FUN_142ed5358`,
+// `R(32)` plat, [consumeManagedObjectNetworkedProperty]). Contre `grammar-2026-10-08.7` : un record
+// `ti=10` qui s arretait sur l un d eux se lit jusqu au composant suivant.

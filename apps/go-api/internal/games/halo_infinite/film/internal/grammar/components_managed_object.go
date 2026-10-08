@@ -243,3 +243,17 @@ const largeurDrapeauxDObjetGere = 2
 
 // consumeManagedObjectFlags (ti=10 i23) — `FUN_1410d9b5c` : `R(2)` plat, sans porte.
 func consumeManagedObjectFlags(br *Lecteur) { br.ReadBits(largeurDrapeauxDObjetGere) }
+
+// compManagedObjectNetworkedProperty : l etiquette de registre de `ti=10 i18` a `i21`. Le registre
+// de l archetype pose QUATRE descripteurs sous ce nom, qui partagent l accesseur de nom (`1411720d0`)
+// et le lecteur : seul l index d entree, `*(descripteur + 8)`, les distingue.
+const compManagedObjectNetworkedProperty = "managed-object-networked-property-component"
+
+// largeurProprieteReseauDObjetGere : `FUN_142ed5358` (`+0x2c += 0x20`) vers
+// `etat + 0x54 + 4 * index` ; l ecrivain (`142edb3a4`) ecrit les 32 bits du meme mot.
+const largeurProprieteReseauDObjetGere = 32
+
+// consumeManagedObjectNetworkedProperty (ti=10 i18 a i21) — `FUN_142ed5358` : `R(32)` plat, sans porte.
+func consumeManagedObjectNetworkedProperty(br *Lecteur) {
+	br.ReadBits(largeurProprieteReseauDObjetGere)
+}
