@@ -38,13 +38,13 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 | G1 | carte v2 base contre tête, gate 2 | [x] | +19 440 sains (487 188 -> 506 628), +349 211 utiles, 0 perdu, 0 film en baisse (`tsv/gate2_lot_contre_base.tsv`) |
 | G2 | gate 3 : `killsource json` (19 témoins + `1c4c63c2`) | [x] | 7 identiques, 6 diagnostic `calibration` seul, 7 avec des morts qui passent du balayage à la marche (81 morts, contenu identique) et `0797ce72` un candidat de santé de plus ; `read_path` persisté : `killsource-2026-10-08` (rotation de la chronique : archive_2) ; `tsv/gate3_killsource.tsv` |
 | G3 | `TestGoldenFilms` | [x] | 4 / 4 ok après régénération de `fccc61cd.golden` : seul le score de l oracle de `calibration` change (1205 -> 1211) |
-| G4 | gate de corpus sur une copie du parc, chaque FAUX / PERTE instruit, 0 MANQUE | [!] | banc 17/19 ok ; FAUX 084a804d admis par le pilote ; MANQUE 0797ce72 (P2, image-clé) soumis à l utilisateur ; PERTE instruites (RAPPORT §4) |
+| G4 | gate de corpus sur une copie du parc, chaque FAUX / PERTE instruit, 0 MANQUE | [x] | banc 17/19 ok ; FAUX 084a804d admis par le pilote ; MANQUE 0797ce72 (P2, image-clé) admis par l utilisateur le 2026-10-08 ; PERTE instruites (RAPPORT §4) |
 | G5 | gofmt, vet (normal, research, integration), archlint | [x] | vide ; rc 0 ×3 ; archlint ok |
 | G6 | golangci-lint 0 issue | [x] | 0 issues (film et module) |
 | G7 | mutations rouges | [x] | 16 / 16 |
 | G8 | baseline des tests (aucun test retiré ni renommé) | [x] | un test remplacé, absent de la baseline ; 5 ajoutés |
 | G9 | `make gate-push` (TMP court dédié) | [x] | par étapes : lint 0, web vert, baseline 9 532 / 9 532, 0 échec |
-| G10 | push + CI | [~] | push autorisé par le pilote ; état de la CI dans le message de clôture |
+| G10 | push + CI | [x] | `aacc5237b` poussé ; CI verte (run 37834421031), gitleaks et Deploy Pre-Check verts |
 
 ## Périmètre (2) et (3) : en attente du feu vert du pilote
 

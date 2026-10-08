@@ -116,14 +116,14 @@ liste non localisée 20 783, vue C (terminateur hors cadre 11 639).
 | Gate 2 (carte v2, 20 films) | +19 440 sains, 0 perdu, 0 film en baisse |
 | Gate 3 (`killsource json`, 19 témoins + `1c4c63c2`) | 7 identiques, 6 diagnostic `calibration` seul, 7 avec des morts qui passent du balayage à la marche (81 morts : `1c4c63c2` 57, `60ae07c4` 20, quatre films une chacun), contenu identique ; `0797ce72` un candidat de santé de plus. `read_path` persisté : **`killsource-2026-10-08`** (`dbdfc3320`, chronique rotée en `rev_chronique_archive_2.go`) ; `tsv/gate3_killsource.tsv` |
 | `TestGoldenFilms` | 4/4 ok ; `fccc61cd.golden` régénéré (score de l'oracle de `calibration` 1205 -> 1211) |
-| Gate de corpus (copie du parc, 4 passes) | rc 1 ; banc **17/19 ok, 1 FAUX, 1 MANQUE** (§4.1) ; PERTE de filet instruites (§4.2) ; `tsv/gate_corpus_passe*.log.txt` |
+| Gate de corpus (copie du parc, 4 passes) | rc 1 ; banc **17/19 ok, 1 FAUX (admis par le pilote), 1 MANQUE (admis par l utilisateur)** (§4.1) ; PERTE de filet instruites (§4.2) ; `tsv/gate_corpus_passe*.log.txt` |
 | gofmt ; vet, vet `-tags=research`, vet `-tags=integration` (film) | vide ; rc 0 ×3 |
 | archlint | ok (77 s) |
 | golangci-lint (`--new-from-rev=a4515e66c`, film ; `--new-from-merge-base=origin/main`, module) | `0 issues.` |
 | Mutations (`tsv/mutations.sh`) | **16/16 ROUGES** (`tsv/mutations_lot.txt`) |
 | Baseline | `TestI59PerimetreDuPortParEtiquette` remplacé (absent de la baseline) ; 5 tests ajoutés |
 | `make gate-push` (TMP `C:/t/vueb2`), par étapes | golangci 0 issue ; web typecheck vert ; web lint 0 erreur (26 avertissements préexistants) ; baseline en 9 tranches `-p 1` : 0 échec, `check_test_baseline.sh --from-jsonl` rc 0 (9 532 / 9 532) |
-| Push, CI | message de clôture |
+| Push, CI | `aacc5237b` poussé ; **CI verte** (run 37834421031 : build et tests Windows et Ubuntu, couverture et baseline `./...` complet CGO, golangci-lint, course du film `-race`, contrat et lint OpenAPI, frontend, lease ; E2E sauté, réservé aux PR vers `main`) ; gitleaks et Deploy Pre-Check verts |
 
 `objectives.Rev`, `profile.Rev`, `source.Rev`, `SchemaVersion` (89), `SchemaDesFaits` : constants.
 
@@ -136,8 +136,9 @@ liste non localisée 20 783, vue C (terminateur hors cadre 11 639).
 - **MANQUE `0797ce72`** : P-2 « preuves contradictoires (image-clé) » 0 -> 1 (bisection : P2). Effet publié :
   4 lignes, des fins d'objets au sol (mur du slot 549 à t=1490, grappin et deux armes lâchés par le slot 541
   à t=1505) qui restent vus jusqu'à t=1561 au lieu de leur seule apparition ; pistes, vies, morts, équipes,
-  ancres inchangées. Records d'image-clé lus hors portée. **Admission : décision de l'utilisateur, avant
-  fusion** (soumise par le pilote).
+  ancres inchangées ; ces objets restent vus 5,6 à 7,1 s de plus. Record d image-clé lu hors portée, que la lecture
+  sous portée (LK) remplacera. **Admis par l utilisateur le 2026-10-08** (« Ok avec ta reco d accepter », relayé par
+  le pilote).
 
 ### 4.2 PERTE de filet (aucune mesure du banc ne les couvre)
 
@@ -168,7 +169,7 @@ liste non localisée 20 783, vue C (terminateur hors cadre 11 639).
 
 ## 6. Ce qui reste
 
-- Admission du MANQUE `0797ce72` : décision de l'utilisateur, avant fusion.
+- MANQUE `0797ce72` admis par l utilisateur, FAUX `084a804d` admis par le pilote (2026-10-08).
 - Fusion dans `feat/v75` : geste de l'utilisateur ; à la fusion, renuméroter les rangs `grammar` et
   `killsource` pris entre-temps (levelup-57), refaire la carte v2 et le gate 2 sur la tête combinée ;
   `keyframe_closure.golden` : le premier fusionné garde le sien, l'autre le régénère.
