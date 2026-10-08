@@ -177,7 +177,7 @@ Commandes nommées, réutilisées par les gates (§5) :
   `KF35_ROOT=$R go test -count=1 -run '^TestKF35CBaselineScope$' -timeout 580s -v $G` (correction 7).
 - **I-carte** (carte v2 delta) : `go build -tags=research -o $S/<e>/cmd_fermeture.exe ./internal/games/halo_infinite/film/research/cmd_fermeture` puis
   `$S/<e>/cmd_fermeture.exe -racine $R -films $F20 -sortie $S/<e>/carte -plafond-gib 4 -top 40 -mode v2 -paquets`,
-  idem `-films $F8 -sortie $S/<e>/carte8`, et `-films $FILMS -mpp-declare -sortie $S/<e>/carte_mpp`.
+  idem `-films $F8 -sortie $S/<e>/carte8`, et `-films $F20,$F8 -mpp-declare -sortie $S/<e>/carte_mpp` (cet ORDRE est celui de la référence `m2/carte_v2_mpp_base` : la carte écrit ses lignes dans l ordre des films, et `-films $FILMS` rend les mêmes lignes dans un autre ordre, constaté le 2026-10-08).
   Comparaison : `cmp` de chaque TSV contre la référence, `fermeture_films.tsv` par `cut -f1-16`.
 - **Gardes de révision passées sous `-skip`** (gates intermédiaires, entre deux montées ; correction 4) :
   `SKIPREV='TestGrammarRevSuitLaGrammaire|TestChroniqueCouvreLaRevisionCourante|TestKillsourceRevSuitLaSortie|TestChroniqueDeKillsourceCouvreLaRevisionCourante|TestObjectivesRevSuitLaSortie|TestChroniqueDObjectivesCouvreLaRevisionCourante'`,
@@ -411,34 +411,52 @@ pas de fusion ; AUCUN push avant la montée de révision du jalon (E-7 : les gar
 rougissent entre deux montées).
 
 ### Étape 0 — Worktree, instruments, références rejouées à la tête (aucun code de production)
-- [ ] 0.1 Branche `feat/ri-lk-images-cles` (créée par le superviseur depuis `feat/ri-etape2`
+- [x] 0.1 Branche `feat/ri-lk-images-cles` (créée par le superviseur depuis `feat/ri-etape2`
       `81d4831d6`) dans le worktree réutilisé `LevelUp-wt-ri` (§1.1) : branche, propreté de l'arbre
       et trois jonctions vérifiées ; `data/cache/film_facts` absent ou dossier réel.
 - [x] 0.2 Copier ce plan dans `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md` du worktree, avec
       les corrections de la contre-vérification et les décisions de l'utilisateur ; dans le plan de
       l'étape 2, l'item 2.7.d1 renvoie à ce fichier.
-- [ ] 0.3 Patch relu des instruments (§1.2) : `git -C LevelUp-wt-imagecle diff` et copie des
+- [x] 0.3 Patch relu des instruments (§1.2) : `git -C LevelUp-wt-imagecle diff` et copie des
       fichiers non suivis, crochet et variables d'environnement retirés, mode unique et noms de
       sortie du §1.2 ; relecture ligne à ligne consignée au journal ; `go vet -tags=research $G` vert.
-- [ ] 0.4 Références à la tête, dans le worktree LK (code de production inchangé) :
+- [x] 0.4 Références à la tête, dans le worktree LK (code de production inchangé) :
       I-d0 → `$S/e0` ; I-ferm → `$S/e0` ; I-ancres, I-equipes → `$S/e0` ; I-carte → `$S/e0`.
-- [ ] 0.5 Critère écrit rejoué dans le worktree LK, bascules EN PLACE (I-critere, AVEC
+- [x] 0.5 Critère écrit rejoué dans le worktree LK, bascules EN PLACE (I-critere, AVEC
       `TestKF35CBaselineScope`, l'instrument que la doc nomme ; correction 7) → `$S/e0/critere*.log`.
-- [ ] 0.6 Coût, mesure de la base (correction 13). Cuisson : 4 films, `084a804d`, `e5adf7b2`,
-      `60ae07c4`, `11de8353` (ceux de la mesure M.1 de l'étape 2). Lecture des porteurs au sync : les
-      4 premiers films de `$FILMS` (ordre de la liste) qui ont des faits d'équivalence versionnés
-      (`replay/testdata/equivalence/<id>.facts.json`) et dont la garde de mode lit des images-clés :
-      `g := replay.GardesDeLaVariante(gameVariantName); g.Drapeau || g.Bombe` (le prédicat réel de la
-      garde, `porteurs_entrees.go` ; « ModeAPorteur » n'existe pas dans le code), listés au journal.
-      Ajouter le banc `BenchmarkPorteursAuSync` au paquet
-      `internal/games/halo_infinite/film/replay` (fichier de test sous le tag `research` : il lit le
-      cache de films local, absent de la CI), films par la variable `PORTEURS_BENCH_FILMS` (ids courts,
-      séparés par des virgules), racine du cache par `PORTEURS_BENCH_CACHE` (le `data/cache` qui
-      contient `film_chunks/`), saut sans elles ; l'entrée de `PortagesAuSync` est rebâtie comme la
-      passe du collecteur la rebâtit (contexte sous la carte, positions, morts, index, créations,
-      profil calibré par killsource), la feuille et le roster venant des faits d'équivalence ; la
-      boucle chronométrée (`b.Loop`) ne couvre que `PortagesAuSync`, sur un contexte neuf à chaque
-      tour. Mesurer la base : G-perf (§5) → `$S/e0/perf_base.txt`.
+- [!] 0.6 Coût, mesure de la base (correction 13). Cuisson : 4 films, `084a804d`, `e5adf7b2`,
+      `60ae07c4`, `11de8353` (ceux de la mesure M.1 de l'étape 2). Lecture des porteurs au sync :
+      les trois premiers films à drapeau et le premier film à bombe de `$FILMS` (ordre de la liste)
+      qui ont des faits d'équivalence versionnés (`replay/testdata/equivalence/<id>.facts.json`) —
+      la garde de mode réelle est `replay.GardesDeLaVariante(gameVariantName)` (`porteurs_entrees.go` ;
+      « ModeAPorteur » n'existe pas dans le code), et ses deux familles qui lisent des images-clés
+      sont `Drapeau` (équipes, objets du monde, marques) et `Bombe` (canal des armes tenues, que D1.3
+      branche sur la lecture) : `084a804d` (BTB Heavies:CTF), `1c4c63c2` (BTB:One Flag CTF),
+      `51101d1d` (CTF:Arena Neutral Flag), `9f57c612` (Assault:One Bomb). Banc
+      `BenchmarkPorteursAuSync` dans le paquet `internal/sync/killcollector` (fichier
+      `porteurs_au_sync_bench_research_test.go`, tag `research` : il lit le cache de films local,
+      absent de la CI). Paquet du collecteur et non `replay` (décision d'exécution, 2026-10-08) :
+      l'entrée de `PortagesAuSync` s'y rebâtit par les COUTURES de production du collecteur
+      (`decoderLeFilm`, `lireLePontDuCollecteur`, `entreeDuRegistre`, `entreeDesPorteurs`,
+      `cataloguesDuPlacement`) au lieu de les recopier (règle 6), et `replay` ne peut pas importer
+      `replayidentity` (cycle). Variables : `PORTEURS_BENCH_FILMS` (ids courts, virgules) et
+      `PORTEURS_BENCH_CACHE` (le `data/cache` qui contient `film_chunks/`), saut sans elles ; le
+      roster, la feuille, les équipes, la variante et la carte viennent des faits d'équivalence (le
+      banc n'ouvre aucune base). La boucle `b.Loop` ne chronomètre que `PortagesAuSync`, sur un
+      contexte neuf à chaque tour (étage du pont rejoué chronomètre arrêté) ; métriques `ns/op`,
+      `pic-Mio` (empreinte `filmproc.Footprint` échantillonnée à 10 ms), `portages`, `B/op`.
+      Mesurer la base : G-perf (§5) → `$S/e0/perf_base.txt`.
+      *Statut `[!]` (2026-10-08, ressource externe indisponible)* : banc écrit, vet `research` vert,
+      joué sur les quatre films (il saute sans variables) ; binaires de base gardés
+      (`$S/e0/bench_base.test`, `$S/e0/replay-equiv_base.exe`) ; cuisson de base jouée une fois
+      (4/4 identiques aux références d'équivalence). Mais AUCUNE mesure n'a pu être prise sur machine
+      calme : de 19:02 à 19:34, d'autres sessions ont fait tourner leurs tests Go en continu (2 à 13
+      processus `go`/`*.test` étrangers : tests `-tags=integration` de sync, duckdb, ops, archlint,
+      sonde `i59` de la grammaire) ; le script qui n'accepte qu'une mesure sans processus étranger
+      avant ET après n'en a obtenu aucune en 20 minutes. Les mesures prises sont publiées, marquées
+      perturbées (`perf_base.txt`). Report valide : la machine calme est une ressource externe, et
+      LK.1 à LK.6 n'en dépendent pas ; la mesure de base se refait EN PAIRES avec le lot au gate de
+      coût de D1.1 (D1.1.7), qui en avait besoin de toute façon.
 - Gate 0 :
   - `diff <(sort $REF/ref_corrigee/images_cles_base.tsv) <(sort $S/e0/images_cles.tsv)` vide
     (instrument repris = instrument mesuré) ; `agg.tsv` TOTAL = R-1 ;
@@ -701,8 +719,10 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       `keyframe_fullstate_loop.go` et de l'assistant.
 - [ ] D1.1.6 Une seule distribution remplace les trois balayages actuels des fenêtres pour les
       records admis ; `KeyframeWalkCoverage` conservé ; aucun import de lecture côté `replay`.
-- [ ] D1.1.7 Coût : G-perf cuisson (4 films) et `BenchmarkPorteursAuSync` (4 films) contre
-      `$S/e0/perf_base.txt` → `$S/d11/perf.txt`.
+- [ ] D1.1.7 Coût : G-perf cuisson (4 films) et `BenchmarkPorteursAuSync` (4 films), en PAIRES
+      alternées des binaires de base de l'étape 0 (`$S/e0/bench_base.test`,
+      `$S/e0/replay-equiv_base.exe`) et de ceux du lot, sur machine calme → `$S/d11/perf.txt`
+      (la mesure de base seule de 0.6 est non concluante, machine chargée).
 - Tests : unitaires sur records fermés tirés de fixtures (i22, i42, i43..i46, i47 base 0, capacité hors
   domaine, débordement compté) ; mutations : retirer `portee` dans l'assistant (la grammaire relit
   quantifié, rouge) ; inverser la base d'i47 ; admettre un record sans T ; garde-rails
@@ -797,7 +817,7 @@ commentaires = contrat (règle 17).
 | G-equiv | `go run ./cmd/replay-equiv -repo-root $WT` (faits mis de côté, `depuis_les_faits=false`) |
 | killsource | `go run ./cmd/killsource json <film> -carte <carte> -cache $WT/data/cache` sur les 19 témoins de `config/replay_corpus.toml`, avant/après, `cmp` |
 | G-corpus | `go run ./cmd/replay-corpus-gate` (mode `base` contre `83dc72eab`, banc `cmd/replay-verite` compris). OUVRE LA BASE PARTAGÉE EN LECTURE : `levelup replay-facts-export` par `OpenReadForQuery` (`cmd/replay-corpus-gate/facts.go`) ; seulement quand aucun backfill ni cuisson du parc ne tourne (§0, correction 5) |
-| G-perf | (correction 13) Binaires de base (`83dc72eab`, ou la tête de l'étape 0) et du lot ALTERNÉS (base, lot, base, lot…), au moins TROIS paires, machine calme (aucune autre commande `go`, aucun agent qui compile), faits effacés avant chaque cuisson (`data/cache/film_facts` renommé). Cuisson : `replay-equiv -films 084a804d,e5adf7b2,60ae07c4,11de8353` (journal des étapes : durée et pic par film). Sync : `PORTEURS_BENCH_FILMS=<4 films de 0.6> PORTEURS_BENCH_CACHE=$WT/data/cache go test -tags=research -run '^$' -bench '^BenchmarkPorteursAuSync$' -benchmem -count=3 ./internal/games/halo_infinite/film/replay/` (paquet `replay`, durée par tour et pic de tas mesuré par le banc). **Jugement du seuil de 10 % sous un bruit annoncé de 15 %** : on compare des PAIRES (base et lot mesurés l'un après l'autre, dans le même état de machine), jamais deux sessions ; le verdict porte sur la MÉDIANE des rapports lot/base par film ; le bruit du moment se mesure par l'écart entre les mesures de base de la même session (max/min − 1). Si ce bruit dépasse 5 %, la mesure n'est PAS concluante : on la refait sur machine calme, on ne conclut rien. Bruit ≤ 5 % et médiane ≤ 1,10 sur chaque film : seuil tenu ; médiane > 1,10 sur un film : ARRÊT du gate (mesure publiée, l'utilisateur décide). Écart par paire, médiane et bruit publiés |
+| G-perf | (correction 13) Binaires de base (la tête de l'étape 0, code de production de `83dc72eab`) et du lot, construits une fois chacun et ALTERNÉS (base, lot, base, lot…), au moins TROIS paires, machine calme (aucune autre commande `go`, aucun `*.test.exe` d'une autre session : `tasklist` contrôlé avant et après chaque tour), faits jamais relus. **Cuisson** : `replay-equiv` (binaire `go build -o <bin> ./cmd/replay-equiv`) `-repo-root $WT -films 084a804d,e5adf7b2,60ae07c4,11de8353` ; il force le décodage (`SansFaitsPersistes`) et imprime durée et pic (`filmproc.Footprint`, sentinelle) par film. **Sync** : banc `BenchmarkPorteursAuSync` du paquet `internal/sync/killcollector` (binaire `go test -c -tags=research -o <bin> ./internal/sync/killcollector/`, lancé depuis le dossier du paquet), un film par lancement : `PORTEURS_BENCH_FILMS=<film> PORTEURS_BENCH_CACHE=$WT/data/cache <bin> -test.run '^$' -test.bench '^BenchmarkPorteursAuSync$' -test.benchtime=<N>x -test.count=1 -test.benchmem`, N = 1 pour `084a804d` et `1c4c63c2` (10 à 30 s par appel), N = 5 pour `51101d1d` et `9f57c612` (moins d'une seconde par appel : la moyenne de cinq tours amortit le bruit) ; métriques `ns/op` et `pic-Mio`. **Jugement du seuil de 10 % sous un bruit annoncé de 15 %** : on compare des PAIRES (base et lot mesurés l'un après l'autre, dans le même état de machine), jamais deux sessions ; le verdict porte sur la MÉDIANE des rapports lot/base par film ; le bruit du moment se mesure par l'écart entre les mesures de base de la même session (max/min − 1). Si ce bruit dépasse 5 %, la mesure n'est PAS concluante : on la refait sur machine calme, on ne conclut rien. Bruit ≤ 5 % et médiane ≤ 1,10 sur chaque film : seuil tenu ; médiane > 1,10 sur un film : ARRÊT du gate (mesure publiée, l'utilisateur décide). Le pic de la cuisson se juge en plus sur le tas vivant par phase (trace du ramasse-miettes) quand il bouge, découverte 9 du plan de l'étape 2. Écart par paire, médiane et bruit publiés |
 | G-CI | `gh run list --branch feat/ri-lk-images-cles --limit 3` → jobs verts |
 | G-push | `make gate-push` avant toute demande de fusion |
 
@@ -879,3 +899,39 @@ refusionner, rejouer l'étape 0).
   0.6). Instruments : noms de sortie en mode unique fixés au §1.2 ; `TestRI27d1FermeturePortee` et
   `TestRI27d1M2Bobines` laissés de côté (mesures du crochet seulement). Plan de l'étape 2 : 2.7.d1
   renvoie à ce plan (reste `[!]`). Item 0.2 `[x]` au commit `ri-lk(0)`.
+- 2026-10-08 (soir) : ÉTAPE 0 CLOSE (0.1 à 0.5 `[x]`, 0.6 `[!]`). Sorties sous `$S/e0/` (`S` =
+  `scratchpad/ri/lk`). **0.1** : branche `feat/ri-lk-images-cles`, arbre propre, jonctions
+  `film_chunks`, `film_manifests`, `node_modules` en place, `data/cache/film_facts` absent.
+  **0.3** : patch relu fichier par fichier contre `LevelUp-wt-imagecle` (`diff` consigné à la
+  session) : `ri27d0_images_cles_research_test.go` = version du worktree de mesure moins le bloc
+  `rechercheLK` de `ImageCle`, moins le choix de sortie par `RI27D1_PORTEE`/`RI27D1_NOM` (sortie
+  unique `images_cles.tsv`), moins le champ `marques` devenu mort, en-tête réécrit ;
+  `ri27d1_instrument_research_test.go` = identique, en-tête réécrit ;
+  `ri27d1_fermeture_portee_research_test.go` = `TestRI27d1FermetureCorpus` en mode unique (étiquette
+  `tete`) et `TestRI27d1Formats`, `TestRI27d1FermeturePortee` laissé de côté ;
+  `ri27d1_m2_critere_research_test.go` = cas REF et « (d+e) bascules du profil », cas du crochet
+  retiré ; `ri27d1_m2_ancres_research_test.go` = `TestRI27d1M2Ancres` (sorties `m2_*_tete.tsv`) et
+  `TestRI27d1M2Equipes` en mode unique, `TestRI27d1M2Bobines` et `ri27d1M2ContexteCarte` laissés de
+  côté (§1.2). Non repris : le crochet, `ri27d1_crochet_env_research.go`, la variante de
+  `cmd_fermeture`. `gofmt` propre ; `go vet -tags=research $G` code 0. **0.4** : I-d0 (21,5 s) :
+  71 496 lignes, `diff` des lignes triées contre `ref_corrigee/images_cles_base.tsv` VIDE, agrégat
+  TOTAL = R-1 à l'octet (`cmp` contre `plan_verif/agg_base.tsv`) ; I-ferm : `--- PASS` (12,8 s), 839
+  lignes, identiques aux lignes `base` de la référence ; I-ancres : `m2_ancres_tete.tsv` (477 665
+  lignes) et `m2_stats_tete.tsv` identiques à l'octet à `m2_*_base.tsv` ; I-equipes : 28 lignes
+  identiques aux lignes `base` ; I-carte : 20 films 14/14 TSV identiques, 8 films 14/14, 28 films
+  sous MPP déclaré 15/15 — après correction de la commande : la référence MPP a été mesurée dans
+  l'ordre `$F20,$F8`, et `-films $FILMS` rend les mêmes lignes dans un autre ordre (contenu trié
+  identique) ; la commande I-carte du §1.4 nomme désormais l'ordre. **0.5** : bascules en place,
+  `TestKF35CBaselineScope` 0/599 sur ses 24 variantes (lignes identiques à la mesure 2) ;
+  `TestKF7EFullStateLoop` : REF 9 + 9 + 7 = 25/599, (d) 1 + 5 + 2 = 8/599, (e) 25/599, (d+e)
+  125 + 124 + 120 = 369/599 ; `TestRI27d1M2Critere` : REF 25/599, (d+e) 369/599 = 61,60 % avec ET
+  sans bouchons. **0.6** : `[!]`, détail à l'item (banc `BenchmarkPorteursAuSync` dans
+  `internal/sync/killcollector`, paquet du collecteur pour en réutiliser les coutures ; films du
+  sync : trois à drapeau et un à bombe ; aucune mesure prise sur machine calme, d'autres sessions
+  testant en continu ; cuisson de base 4/4 identique aux références). **Gate 0** : toutes les
+  lignes vertes ; aucune différence avec `REF` hors l'ordre des films de la carte MPP, expliqué.
+  `feat/v75` a avancé de deux commits DOCUMENTAIRES pendant l'étape (`fe6308b71` : journal ; `e3384ec3b`
+  « Archivage » : le plan de l'étape 2 passe de `.ai/` à `.ai/V7.5/`, avec trente-quatre autres
+  documents), aucun fichier `film/` ; non fusionnés (consigne du superviseur). À la fusion du §1.3,
+  le renvoi de 2.7.d1 (commit `ri-lk(0)`) suit le fichier déplacé et les chemins de ce plan vers le
+  plan de l'étape 2 sont à mettre à jour.
