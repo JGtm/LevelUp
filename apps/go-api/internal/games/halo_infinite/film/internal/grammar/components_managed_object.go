@@ -233,3 +233,13 @@ const compManagedObjectInteractionFilter = "managed-object-interaction-filter-co
 func consumeManagedObjectInteractionFilter(br *Lecteur, level uint32) bool {
 	return consumeNavpointFilterOnly(br, level > 1)
 }
+
+// compManagedObjectFlags : l etiquette de registre de `ti=10 i23`.
+const compManagedObjectFlags = "managed-object-flags-component"
+
+// largeurDrapeauxDObjetGere : `FUN_1410d9b5c` -> `FUN_140f72efc` (`+0x2c += 2`) vers `etat + 0x170` ;
+// l ecrivain (`142edb23c` -> `FUN_142ed0ec8`) ecrit les deux bits du meme octet.
+const largeurDrapeauxDObjetGere = 2
+
+// consumeManagedObjectFlags (ti=10 i23) — `FUN_1410d9b5c` : `R(2)` plat, sans porte.
+func consumeManagedObjectFlags(br *Lecteur) { br.ReadBits(largeurDrapeauxDObjetGere) }

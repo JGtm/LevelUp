@@ -23,8 +23,9 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 | E1 | `ti=12 i20`..`i27 managed-navpoint-visual-state-groups-component-0..7` (1 675 arrêts) | [x] | `ec54f6fd5` | `FUN_140dbe1bc` = R(1) présence + R(32) + `FUN_140dbe25c(v=1)` ; carte v2 contre la base : +6 617 sains, +131 689 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.2` |
 | E2 | `ti=10 i22 managed-object-interaction-filter-component` (299) | [x] | `a89373059` | `FUN_140dbdf5c` = `FUN_140dbe400(v = 1 < param_4)`, le bloc de filtres seul (comme `ti=12 i5`, `i6`) ; carte v2 contre E1 : +89 sains, +2 252 utiles, 0 perdu, aucun film en baisse ; arrêt suivant `ti=10 i23 flags` (201) ; `grammar-2026-10-08.3` |
 | E3 | `ti=35 i59 biped-spartan-ability-non-predicted-state` (250, et `i58` 1) | [x] | `eed9347c1` | corps `FUN_142f25e90` relu dans le jeu, ses huit étiquettes portées (la grammaire mesurée du 2026-08-16 remplacée) ; carte v2 contre E2 : +268 sains, +6 670 utiles, 0 perdu, aucun film en baisse ; images-clés `ti=35` (20 films) : 544 + 32 arrêts sans la portée, 574 + 29 avec, 0 et 0 après ; aucun fichier interdit touché ; `grammar-2026-10-08.4` |
-| E4 | `ti=11 i4 managed-objective-interaction-filter-component` (382 à l entrée, 165 en base) | [x] | (ce commit) | `FUN_140dbe170` = `FUN_140dbe400(v = 1 < param_4)`, le bloc de filtres seul ; carte v2 contre E3 : +6 312 sains, +80 762 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.5` |
-| E5 | suivants par fréquence si le temps le permet (`ti=10 i18`..`i21`, `ti=12 i17`, `ti=45 i1`, …) | [ ] | | |
+| E4 | `ti=11 i4 managed-objective-interaction-filter-component` (382 à l entrée, 165 en base) | [x] | `ced5b3995` | `FUN_140dbe170` = `FUN_140dbe400(v = 1 < param_4)`, le bloc de filtres seul ; carte v2 contre E3 : +6 312 sains, +80 762 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.5` |
+| E5a | `ti=10 i23 managed-object-flags-component` (201) | [x] | (ce commit) | `FUN_1410d9b5c` -> `FUN_140f72efc` = R(2) ; écrivain `142edb23c` -> `FUN_142ed0ec8` ; carte v2 contre E4 : +4 957 sains, +108 064 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.6` |
+| E5 | suivants par fréquence (`ti=12 i17`, `ti=10 i18`..`i21`, `ti=45 i1`, `ti=12 i13`, `i15`) | [ ] | | |
 
 ## Gates du lot entier (base `a4515e66c`)
 

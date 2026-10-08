@@ -49,6 +49,9 @@ var vecteursArrets = []vecteurArret{
 	// tag 11 (index derriere une porte inversee).
 	{"O4a", compObjectiveInteractionFilter, 11, 2, "0000 0"},
 	{"O4b", compObjectiveInteractionFilter, 11, 2, "1001 1 | 0110 1 0001 0 | 1011 0 0 10101"},
+	// ti=10 i23 : l ecrivain (142edb23c -> FUN_142ed0ec8) ecrit les deux bits de l octet etat+0x170.
+	{"O23a", compManagedObjectFlags, 10, 1, "10"},
+	{"O23b", compManagedObjectFlags, 10, 1, "01"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.

@@ -81,3 +81,8 @@ package grammar
 // filtres seul, `v = 1 < param_4`, [consumeObjectiveInteractionFilter]). Contre
 // `grammar-2026-10-08.4` : un record `ti=11` qui s arretait sur `i4` se lit jusqu au composant
 // suivant.
+//
+// ENTREE `grammar-2026-10-08.6` (2026-10-08, lot des arrets de la vue B, suite, `ti=10 i23`) : le
+// composant `managed-object-flags-component` se lit (`FUN_1410d9b5c` -> `FUN_140f72efc`, `R(2)` plat,
+// [consumeManagedObjectFlags]). Contre `grammar-2026-10-08.5` : un record `ti=10` qui s arretait sur
+// `i23` se lit jusqu au composant suivant.
