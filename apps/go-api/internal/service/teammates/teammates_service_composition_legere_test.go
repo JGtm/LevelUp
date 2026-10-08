@@ -249,11 +249,6 @@ func (l *lecturesComptees) LoadSquadKillLog(ctx context.Context, ids, x []string
 	return l.mockSquadRepo.LoadSquadKillLog(ctx, ids, x)
 }
 
-func (l *lecturesComptees) LoadSynthesisHeatmap(ctx context.Context, x string) ([]domain.SynthesisHeatmapRow, error) {
-	l.lues = append(l.lues, "section:heatmap")
-	return l.mockSquadRepo.LoadSynthesisHeatmap(ctx, x)
-}
-
 func (l *lecturesComptees) LoadAssetTranslationsFR(ctx context.Context, kind string, ids []string) (map[string]string, error) {
 	l.lues = append(l.lues, "section:assets")
 	return l.mockSquadRepo.LoadAssetTranslationsFR(ctx, kind, ids)

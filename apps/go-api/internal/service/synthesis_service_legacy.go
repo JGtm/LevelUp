@@ -1,5 +1,5 @@
 // Package service - synthesis_service_legacy.go : builders legacy
-// (SynthesisMatchRow / SynthesisHeatmapRow) pour la page Synthese.
+// (SynthesisMatchRow) pour la page Synthese.
 // Decoupe de synthesis_service.go (god-file split, refactor 2026-05-27).
 package service
 
@@ -149,70 +149,8 @@ func topNByFunc(rows []legacymatch.SynthesisMatchRow, n int, less func(a, b lega
 	return cp[:n]
 }
 
-// buildBreakdowns agrège les données heatmap en breakdowns carte et mode.
-func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdowns {
-	if len(rows) == 0 {
-		return domain.SynthesisBreakdowns{
-			TopMaps:  []domain.SynthesisMapEntry{},
-			TopModes: []domain.SynthesisModeEntry{},
-		}
-	}
-
-	mapAgg := map[string][2]int{}  // map_name →' [match_count, wins]
-	modeAgg := map[string][2]int{} // mode_name →' [match_count, wins]
-	for _, r := range rows {
-		m := mapAgg[r.MapName]
-		m[0] += r.MatchCount
-		m[1] += r.Wins
-		mapAgg[r.MapName] = m
-
-		mo := modeAgg[r.ModeName]
-		mo[0] += r.MatchCount
-		mo[1] += r.Wins
-		modeAgg[r.ModeName] = mo
-	}
-
-	mapEntries := make([]domain.SynthesisMapEntry, 0, len(mapAgg))
-	for name, v := range mapAgg {
-		wr := 0.0
-		if v[0] > 0 {
-			wr = float64(v[1]) / float64(v[0]) * 100
-		}
-		mapEntries = append(mapEntries, domain.SynthesisMapEntry{
-			MapName:    name,
-			MatchCount: v[0],
-			Wins:       v[1],
-			WinRate:    wr,
-		})
-	}
-	modeEntries := make([]domain.SynthesisModeEntry, 0, len(modeAgg))
-	for name, v := range modeAgg {
-		wr := 0.0
-		if v[0] > 0 {
-			wr = float64(v[1]) / float64(v[0]) * 100
-		}
-		modeEntries = append(modeEntries, domain.SynthesisModeEntry{
-			ModeName:   name,
-			MatchCount: v[0],
-			Wins:       v[1],
-			WinRate:    wr,
-		})
-	}
-	// tri par MatchCount desc (sélection partielle des top 10)
-	sortMapEntries(mapEntries)
-	sortModeEntries(modeEntries)
-	if len(mapEntries) > 10 {
-		mapEntries = mapEntries[:10]
-	}
-	if len(modeEntries) > 10 {
-		modeEntries = modeEntries[:10]
-	}
-	return domain.SynthesisBreakdowns{TopMaps: mapEntries, TopModes: modeEntries}
-}
-
 // buildBreakdownsFromCanonical agrège les rows canoniques filtrés en breakdowns
 // carte et mode, avec décompte complet des outcomes (wins/losses/ties/unfinished).
-// Remplace buildBreakdowns(heatmapRows) pour être period-aware.
 func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisBreakdowns {
 	type entry struct{ wins, losses, ties, unfinished, total int }
 	maps := map[string]*entry{}

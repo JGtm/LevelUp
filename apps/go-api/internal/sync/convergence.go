@@ -287,7 +287,7 @@ func extractAliasPairsFromMatchJSON(matchJSON map[string]any) []aliasPair {
 //
 // Cas couvert (gate 2026-06-10) : cycle « pur skip » — tous les matchs du
 // joueur ont été insérés en shared par le watcher d'un coéquipier (delta-skip
-// via loadKnownMatchIDs source 2), donc matchesInserted=0 pour ce joueur. Si
+// via la règle knownset : participants du xuid au registre), donc matchesInserted=0 pour ce joueur. Si
 // par ailleurs ses scores existants sont complets et events/weapons chargés,
 // AUCUN déclencheur ne lançait le pipeline → ensurePlayerEnrichmentRows ne
 // tournait jamais → enrichment manquant à durée indéterminée (la convergence
@@ -301,7 +301,7 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 	if playerDB == nil || sharedDB == nil || xuid == "" {
 		return 0
 	}
-	known := make(map[string]struct{}, 512)
+	enriched := make(map[string]struct{}, 512)
 	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
 		slog.WarnContext(ctx, "convergence: lecture player_match_enrichment échouée", "xuid", xuid, "err", err)
@@ -310,17 +310,17 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 	for rows.Next() {
 		var id string
 		if scanErr := rows.Scan(&id); scanErr == nil {
-			known[id] = struct{}{}
+			enriched[id] = struct{}{}
 		}
 	}
 	if iterErr := rows.Err(); iterErr != nil {
-		// Itération tronquée = known partiel = sur-déclenchement possible du
+		// Itération tronquée = ensemble enrichi partiel = sur-déclenchement possible du
 		// pipeline (bénin, le heal est idempotent) — mais on le trace.
 		slog.WarnContext(ctx, "convergence: itération enrichment interrompue", "xuid", xuid, "err", iterErr)
 	}
 	_ = rows.Close()
 
-	// Cast défensif xuid || '' aligné sur loadKnownMatchIDs ET sur
+	// Cast défensif xuid || '' aligné sur knownset.Load ET sur
 	// ensurePlayerEnrichmentRows (le repareur) — même prédicat partout, sinon
 	// un drift de type ferait diverger déclencheur et réparateur (re-trigger
 	// infini sans convergence).
@@ -337,7 +337,7 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 		if scanErr := shared.Scan(&id); scanErr != nil {
 			continue
 		}
-		if _, ok := known[id]; !ok {
+		if _, ok := enriched[id]; !ok {
 			missing++
 		}
 	}

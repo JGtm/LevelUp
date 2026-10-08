@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,8 +29,13 @@ import (
 type e2eEnv struct {
 	playerDBs map[string]*duckdbpkg.DB // gamertag → DB ouverte
 	sharedDB  *duckdbpkg.DB
+	// getShared : connexion partagée servie au KnownLoader (par défaut sharedDB ; un test
+	// la remplace pour simuler une base partagée illisible).
+	getShared func() *sql.DB
 	queue     *persist.BatchQueue
 	stopAcker func()
+	// acked : batches reçus par le faux worker (0 = rien persisté).
+	acked atomic.Int32
 }
 
 // setupE2EEnv prépare l'env : DuckDB temp pour shared + N players, schéma
@@ -38,7 +44,7 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 	t.Helper()
 	tmpDir := t.TempDir()
 
-	// Shared DB avec table match_participants (knownLoader cross-player).
+	// Shared DB avec match_registry + match_participants (règle knownset).
 	sharedPath := filepath.Join(tmpDir, "shared.duckdb")
 	sharedDB, err := duckdbpkg.OpenReadWrite(sharedPath)
 	if err != nil {
@@ -46,9 +52,10 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 	}
 	t.Cleanup(func() { _ = sharedDB.Close() })
 	if _, err := sharedDB.SQLDb().Exec(`
-		CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)
+		CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY);
+		CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR);
 	`); err != nil {
-		t.Fatalf("create match_participants: %v", err)
+		t.Fatalf("create shared tables: %v", err)
 	}
 
 	// Player DBs avec table player_match_enrichment (knownLoader source 1).
@@ -91,6 +98,13 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 		t.Fatalf("queue: %v", err)
 	}
 
+	env := &e2eEnv{
+		playerDBs: playerDBs,
+		sharedDB:  sharedDB,
+		getShared: sharedDB.SQLDb,
+		queue:     q,
+	}
+
 	ackerCtx, ackerCancel := context.WithCancel(context.Background())
 	ackerDone := make(chan struct{})
 	go func() {
@@ -104,6 +118,7 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 				if !ok {
 					return
 				}
+				env.acked.Add(1)
 				_ = q.ACK(batch.BatchID)
 				q.RecordPersistResult(true)
 			}
@@ -119,12 +134,28 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 		_ = q.Close()
 	}
 	t.Cleanup(stopAcker)
+	env.stopAcker = stopAcker
+	return env
+}
 
-	return &e2eEnv{
-		playerDBs: playerDBs,
-		sharedDB:  sharedDB,
-		queue:     q,
-		stopAcker: stopAcker,
+// seedKnown inscrit des matchs comme le ferait une sync complète du joueur : ligne au
+// registre, ligne de participant pour son xuid, enrichissement dans sa base joueur.
+func seedKnown(t *testing.T, env *e2eEnv, p PlayerProfile, matchIDs ...string) {
+	t.Helper()
+	for _, mID := range matchIDs {
+		for _, q := range []struct {
+			db   *sql.DB
+			sql  string
+			args []any
+		}{
+			{env.sharedDB.SQLDb(), "INSERT INTO match_registry (match_id) VALUES (?)", []any{mID}},
+			{env.sharedDB.SQLDb(), "INSERT INTO match_participants (match_id, xuid) VALUES (?, ?)", []any{mID, p.XUID}},
+			{env.playerDBs[p.Gamertag].SQLDb(), "INSERT INTO player_match_enrichment (match_id) VALUES (?)", []any{mID}},
+		} {
+			if _, err := q.db.Exec(q.sql, q.args...); err != nil {
+				t.Fatalf("seedKnown %s : %s : %v", mID, q.sql, err)
+			}
+		}
 	}
 }
 
@@ -145,7 +176,7 @@ func buildE2EOrchestrator(t *testing.T, env *e2eEnv, client *mockNarrowClient, p
 		return d.SQLDb(), func() {}, nil
 	}
 
-	knownLoader := NewKnownLoader(playerDBOpener, func() *sql.DB { return env.sharedDB.SQLDb() })
+	knownLoader := NewKnownLoader(playerDBOpener, SharedBorrower(nil, func() *sql.DB { return env.getShared() }))
 	clientFactory := func(_, _ string) HaloClient { return client }
 	matchListProvider := NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
 	sharedFetcher := NewSharedMatchFetcher(clientFactory)
@@ -251,12 +282,8 @@ func TestE2E_V2_KnownMatchesSkippedAtDiscovery(t *testing.T) {
 	}
 	env := setupE2EEnv(t, []string{"alice"})
 
-	// Pré-seed m_old dans player_match_enrichment d'alice.
-	if _, err := env.playerDBs["alice"].SQLDb().Exec(
-		"INSERT INTO player_match_enrichment (match_id) VALUES ('m_old')",
-	); err != nil {
-		t.Fatalf("seed m_old: %v", err)
-	}
+	// Régime normal : m_old synchronisé (registre + participant + enrichissement).
+	seedKnown(t, env, players[0], "m_old")
 
 	// API renvoie [m_new, m_old] → delta stop sur m_old → seul m_new unknown.
 	client := &mockNarrowClient{
@@ -361,11 +388,7 @@ func TestE2E_V2_QueueDrainSuccessOnEmptyCycle(t *testing.T) {
 	env := setupE2EEnv(t, []string{"alice"})
 
 	// API renvoie [m_old] qui est dans known → 0 nouveau.
-	if _, err := env.playerDBs["alice"].SQLDb().Exec(
-		"INSERT INTO player_match_enrichment (match_id) VALUES ('m_old')",
-	); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	seedKnown(t, env, players[0], "m_old")
 
 	client := &mockNarrowClient{
 		historyByArg: map[string][]syncpkg.MatchHistoryEntry{

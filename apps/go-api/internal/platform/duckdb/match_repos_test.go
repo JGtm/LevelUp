@@ -113,18 +113,6 @@ func TestMatchHistoryRepo_LoadAll_WithData(t *testing.T) {
 	}
 }
 
-func TestMatchHistoryRepo_LoadMapWinRates(t *testing.T) {
-	pdb := newTestPlayerDB(t)
-	repo := NewMatchHistoryRepo(pdb)
-	rates, err := repo.LoadMapWinRates(context.Background())
-	if err != nil {
-		t.Fatalf("LoadMapWinRates: %v", err)
-	}
-	if len(rates) != 1 {
-		t.Errorf("attendu 1 carte, obtenu %d", len(rates))
-	}
-}
-
 // ---------------------------------------------------------------------------
 // CitationsRepo
 // ---------------------------------------------------------------------------

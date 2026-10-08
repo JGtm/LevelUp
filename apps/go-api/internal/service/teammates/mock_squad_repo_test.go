@@ -28,8 +28,6 @@ type mockSquadRepo struct {
 	assistErr           error
 	killLog             []domain.SquadKillLogRow
 	kvErr               error
-	heatmapRows         []domain.SynthesisHeatmapRow
-	heatmapErr          error
 	synthRows           []legacymatch.SynthesisMatchRow
 	synthErr            error
 	allyRows            []domain.AllyParticipant
@@ -87,9 +85,6 @@ func (m *mockSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]do
 }
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr
-}
-func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
-	return m.heatmapRows, m.heatmapErr
 }
 func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, assetType string, _ []string) (map[string]string, error) {
 	if m.assetFR == nil {

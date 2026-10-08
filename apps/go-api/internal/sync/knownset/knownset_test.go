@@ -1,0 +1,461 @@
+package knownset
+
+// knownset_test.go — la règle « connu » sur DuckDB réel (en mémoire) : régime normal identique
+// à l'ancienne union, enrichissement orphelin inconnu et compté, base partagée illisible fatale.
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"maps"
+	"slices"
+	"testing"
+	"time"
+
+	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/observability"
+)
+
+const (
+	xuidJoueur = "2533274823110022"
+	xuidAutre  = "2535469190789936"
+)
+
+func openMem(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
+}
+
+func exec(t *testing.T, db *sql.DB, query string, args ...any) {
+	t.Helper()
+	if _, err := db.Exec(query, args...); err != nil {
+		t.Fatalf("exec %q: %v", query, err)
+	}
+}
+
+// newPlayerDB : base joueur avec la vraie vue player_match_enrichment_latest (migration
+// append-only) et une ligne d'enrichissement par match_id.
+func newPlayerDB(t *testing.T, enriched ...string) *sql.DB {
+	t.Helper()
+	db := openMem(t)
+	exec(t, db, `CREATE TABLE player_match_enrichment (
+		match_id VARCHAR PRIMARY KEY, performance_score FLOAT, session_id VARCHAR,
+		session_label VARCHAR, is_with_friends BOOLEAN DEFAULT FALSE, teammates_signature VARCHAR)`)
+	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db); err != nil {
+		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
+	}
+	for _, id := range enriched {
+		exec(t, db, `INSERT INTO player_match_enrichment (match_id) VALUES (?)`, id)
+	}
+	return db
+}
+
+// sharedFixture : contenu de la base partagée — registre et participants par xuid.
+type sharedFixture struct {
+	registry     []string
+	participants map[string][]string // xuid → match_id
+}
+
+func newSharedDB(t *testing.T, f sharedFixture) *sql.DB {
+	t.Helper()
+	db := openMem(t)
+	exec(t, db, `CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY)`)
+	exec(t, db, `CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)`)
+	for _, id := range f.registry {
+		exec(t, db, `INSERT INTO match_registry VALUES (?)`, id)
+	}
+	for xuid, ids := range f.participants {
+		for _, id := range ids {
+			exec(t, db, `INSERT INTO match_participants VALUES (?, ?)`, id, xuid)
+		}
+	}
+	return db
+}
+
+func keys(m map[string]bool) []string {
+	return slices.Sorted(maps.Keys(m))
+}
+
+func assertKnown(t *testing.T, got map[string]bool, want ...string) {
+	t.Helper()
+	slices.Sort(want)
+	if !slices.Equal(keys(got), want) {
+		t.Errorf("connus = %v, attendu %v", keys(got), want)
+	}
+}
+
+func orphanCounter() int64 {
+	return observability.LoadCounterT(ctxkeys.TitleSlug(context.Background()), OrphanEnrichmentsCounter)
+}
+
+func requestedCounter() int64 {
+	return observability.LoadCounterT(ctxkeys.TitleSlug(context.Background()), OrphanRecoveryRequestedCounter)
+}
+
+// TestLoad_RegimeNormalIdentiqueALAncienneUnion : quand chaque enrichissement a son match au
+// registre (régime normal), l'ensemble connu est EXACTEMENT l'ancienne union
+// enrichissements ∪ participants du xuid, et aucun orphelin n'est compté.
+func TestLoad_RegimeNormalIdentiqueALAncienneUnion(t *testing.T) {
+	enriched := []string{"m1", "m2", "m3"}
+	participants := []string{"m1", "m2", "m3", "m4"} // m4 : inséré par un coéquipier, pas encore enrichi
+	playerDB := newPlayerDB(t, enriched...)
+	sharedDB := newSharedDB(t, sharedFixture{
+		registry:     []string{"m1", "m2", "m3", "m4", "x1"},
+		participants: map[string][]string{xuidJoueur: participants, xuidAutre: {"x1", "m1"}},
+	})
+	avant, demandesAvant := orphanCounter(), requestedCounter()
+
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ancienneUnion := slices.Compact(slices.Sorted(slices.Values(append(slices.Clone(enriched), participants...))))
+	assertKnown(t, set.Known, ancienneUnion...)
+	if d := orphanCounter() - avant; d != 0 {
+		t.Errorf("orphelins comptés = %d, attendu 0 en régime normal", d)
+	}
+	if len(set.Recover) != 0 || requestedCounter() != demandesAvant {
+		t.Errorf("à récupérer = %v (compteur +%d), attendu aucun en régime normal",
+			set.Recover, requestedCounter()-demandesAvant)
+	}
+}
+
+// TestLoad_EnrichissementSansRegistreEstInconnu : un enrichissement dont le match manque au
+// registre partagé (base partagée restaurée plus ancienne) n'est PAS connu, il est compté, et
+// il est demandé à la récupération par match_id (Set.Recover, rendu en ordre lexicographique).
+func TestLoad_EnrichissementSansRegistreEstInconnu(t *testing.T) {
+	playerDB := newPlayerDB(t, "m1", "orphelin-1", "orphelin-2")
+	sharedDB := newSharedDB(t, sharedFixture{
+		registry:     []string{"m1"},
+		participants: map[string][]string{xuidJoueur: {"m1"}},
+	})
+	avant, demandesAvant := orphanCounter(), requestedCounter()
+
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	assertKnown(t, set.Known, "m1")
+	if d := orphanCounter() - avant; d != 2 {
+		t.Errorf("orphelins comptés = %d, attendu 2", d)
+	}
+	if want := []string{"orphelin-1", "orphelin-2"}; !slices.Equal(set.Recover, want) {
+		t.Errorf("à récupérer = %v, attendu %v", set.Recover, want)
+	}
+	if d := requestedCounter() - demandesAvant; d != 2 {
+		t.Errorf("demandés comptés = %d, attendu 2", d)
+	}
+}
+
+// TestLoad_RecuperationBorneeParCycle : plus de OrphanRecoveryPerCycle orphelins — exactement
+// OrphanRecoveryPerCycle d'entre eux, distincts, sont demandés ce cycle (ordre lexicographique) ;
+// tous sont détectés et comptés.
+func TestLoad_RecuperationBorneeParCycle(t *testing.T) {
+	const n = OrphanRecoveryPerCycle + 7
+	var orphelins []string
+	for i := range n {
+		orphelins = append(orphelins, fmt.Sprintf("o-%03d", n-1-i)) // ordre inverse en base
+	}
+	playerDB := newPlayerDB(t, orphelins...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	avant, demandesAvant := orphanCounter(), requestedCounter()
+
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(set.Recover) != OrphanRecoveryPerCycle {
+		t.Fatalf("à récupérer = %d, attendu %d", len(set.Recover), OrphanRecoveryPerCycle)
+	}
+	if !slices.IsSorted(set.Recover) || len(slices.Compact(slices.Clone(set.Recover))) != len(set.Recover) {
+		t.Errorf("à récupérer = %v, attendu des match_id distincts en ordre lexicographique", set.Recover)
+	}
+	for _, id := range set.Recover {
+		if !slices.Contains(orphelins, id) {
+			t.Errorf("à récupérer : %s n'est pas un orphelin", id)
+		}
+	}
+	if d := orphanCounter() - avant; d != n {
+		t.Errorf("orphelins comptés = %d, attendu %d", d, n)
+	}
+	if d := requestedCounter() - demandesAvant; d != OrphanRecoveryPerCycle {
+		t.Errorf("demandés comptés = %d, attendu %d", d, OrphanRecoveryPerCycle)
+	}
+}
+
+// avecHorloge fixe l'horloge de la rotation pour la durée du test.
+func avecHorloge(t *testing.T, now *time.Time) {
+	t.Helper()
+	precedente := rotationNow
+	rotationNow = func() time.Time { return *now }
+	t.Cleanup(func() { rotationNow = precedente })
+}
+
+// TestLoad_RotationOrphelinsEnEchecPermanent : 60 orphelins dont les 50 premiers en ordre
+// lexicographique échouent à CHAQUE récupération (ils restent orphelins). Les 10 autres, une
+// fois demandés, sont récupérés (ils entrent au registre). Un cycle par heure : la sélection
+// tourne, les 10 sont tous demandés en quelques cycles — un ordre fixe les affamerait.
+func TestLoad_RotationOrphelinsEnEchecPermanent(t *testing.T) {
+	const (
+		n          = 60
+		enEchec    = OrphanRecoveryPerCycle
+		maxCycles  = 6
+		xuidCycles = xuidJoueur
+	)
+	var orphelins []string
+	for i := range n {
+		orphelins = append(orphelins, fmt.Sprintf("o-%03d", i))
+	}
+	recuperables := orphelins[enEchec:]
+	playerDB := newPlayerDB(t, orphelins...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	now := time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC)
+	avecHorloge(t, &now)
+
+	recuperes := map[string]bool{}
+	cycles := 0
+	for cycles < maxCycles && len(recuperes) < len(recuperables) {
+		cycles++
+		set, err := Load(context.Background(), playerDB, sharedDB, xuidCycles)
+		if err != nil {
+			t.Fatalf("Load (cycle %d): %v", cycles, err)
+		}
+		if want := min(OrphanRecoveryPerCycle, n-len(recuperes)); len(set.Recover) != want {
+			t.Fatalf("cycle %d : %d demandés, attendu %d", cycles, len(set.Recover), want)
+		}
+		for _, id := range set.Recover {
+			if slices.Contains(recuperables, id) {
+				exec(t, sharedDB, `INSERT INTO match_registry VALUES (?)`, id)
+				recuperes[id] = true
+			}
+		}
+		now = now.Add(orphanRotationPeriod)
+	}
+	if len(recuperes) != len(recuperables) {
+		t.Fatalf("après %d cycles, %d/%d orphelins récupérables demandés : %v", cycles,
+			len(recuperes), len(recuperables), keys(recuperes))
+	}
+	t.Logf("%d orphelins récupérables tous demandés en %d cycles", len(recuperables), cycles)
+}
+
+// TestLoad_SelectionStableDansLHeureTourneEnsuite : 60 orphelins, aucun récupéré. Deux
+// chargements dans la même heure demandent la même sélection (pas d'état, pas de hasard) ; le
+// chargement de l'heure suivante en demande une autre.
+func TestLoad_SelectionStableDansLHeureTourneEnsuite(t *testing.T) {
+	var orphelins []string
+	for i := range 60 {
+		orphelins = append(orphelins, fmt.Sprintf("o-%03d", i))
+	}
+	playerDB := newPlayerDB(t, orphelins...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	now := time.Date(2026, 10, 8, 10, 5, 0, 0, time.UTC)
+	avecHorloge(t, &now)
+	charger := func() []string {
+		t.Helper()
+		set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		return set.Recover
+	}
+
+	premiere := charger()
+	now = now.Add(50 * time.Minute) // même heure
+	if meme := charger(); !slices.Equal(premiere, meme) {
+		t.Errorf("même heure, sélections différentes : %v / %v", premiere, meme)
+	}
+	now = now.Add(orphanRotationPeriod)
+	if suivante := charger(); slices.Equal(premiere, suivante) {
+		t.Error("heure suivante, même sélection : la rotation ne tourne pas")
+	}
+}
+
+// TestRotationOrder_StableDansLaPeriodeChangeEntrePeriodes : même période → même ordre (sans
+// état, déterministe) ; périodes successives → ordres différents ; toujours une permutation.
+func TestRotationOrder_StableDansLaPeriodeChangeEntrePeriodes(t *testing.T) {
+	var ids []string
+	for i := range 60 {
+		ids = append(ids, fmt.Sprintf("o-%03d", i))
+	}
+	entree := slices.Clone(ids)
+	a, b := rotationOrder(ids, 491234), rotationOrder(ids, 491234)
+	if !slices.Equal(a, b) {
+		t.Error("même période, ordres différents")
+	}
+	if !slices.Equal(ids, entree) {
+		t.Error("rotationOrder a modifié son entrée")
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(a)), ids) {
+		t.Errorf("rotationOrder n'est pas une permutation : %v", a)
+	}
+	if c := rotationOrder(ids, 491235); slices.Equal(a[:OrphanRecoveryPerCycle], c[:OrphanRecoveryPerCycle]) {
+		t.Error("périodes successives, même sélection")
+	}
+}
+
+// TestLoad_RegistreSansParticipantDuXuidResteConnu : un match enrichi présent au registre mais
+// sans ligne de participant pour ce xuid reste connu — la persistance le sauterait de toute
+// façon (idempotence sur match_registry), le re-récupérer à chaque cycle ne réparerait rien.
+func TestLoad_RegistreSansParticipantDuXuidResteConnu(t *testing.T) {
+	playerDB := newPlayerDB(t, "m1", "r1")
+	sharedDB := newSharedDB(t, sharedFixture{
+		registry:     []string{"m1", "r1"},
+		participants: map[string][]string{xuidJoueur: {"m1"}, xuidAutre: {"r1"}},
+	})
+	avant := orphanCounter()
+
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	assertKnown(t, set.Known, "m1", "r1")
+	if d := orphanCounter() - avant; d != 0 {
+		t.Errorf("orphelins comptés = %d, attendu 0 (r1 est au registre)", d)
+	}
+	if len(set.Recover) != 0 {
+		t.Errorf("à récupérer = %v, attendu aucun (r1 au registre : un fetch serait jeté)", set.Recover)
+	}
+}
+
+// TestLoad_ParticipantSansRegistreEstInconnu : une ligne de participant dont le match manque
+// au registre n'est pas « dans la base partagée » au sens de la persistance.
+func TestLoad_ParticipantSansRegistreEstInconnu(t *testing.T) {
+	sharedDB := newSharedDB(t, sharedFixture{
+		registry:     []string{"m1"},
+		participants: map[string][]string{xuidJoueur: {"m1", "p1"}},
+	})
+	set, err := Load(context.Background(), newPlayerDB(t), sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	assertKnown(t, set.Known, "m1")
+}
+
+// TestLoad_IsolationEntreXUID : les participants d'un autre joueur ne sont jamais connus.
+func TestLoad_IsolationEntreXUID(t *testing.T) {
+	sharedDB := newSharedDB(t, sharedFixture{
+		registry:     []string{"m1", "x1"},
+		participants: map[string][]string{xuidJoueur: {"m1"}, xuidAutre: {"x1"}},
+	})
+	set, err := Load(context.Background(), nil, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	assertKnown(t, set.Known, "m1")
+}
+
+// TestLoad_VerificationDuRegistreParPaquets : plus de registryChunk enrichissements hors
+// participants, dont la moitié au registre — le découpage des requêtes IN ne perd ni n'ajoute
+// aucun match.
+func TestLoad_VerificationDuRegistreParPaquets(t *testing.T) {
+	const n = 2*registryChunk + 37
+	var enriched, registry []string
+	for i := range n {
+		id := fmt.Sprintf("e-%04d", i)
+		enriched = append(enriched, id)
+		if i%2 == 0 {
+			registry = append(registry, id)
+		}
+	}
+	playerDB := newPlayerDB(t, enriched...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: registry})
+	avant := orphanCounter()
+
+	set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	assertKnown(t, set.Known, registry...)
+	if d := orphanCounter() - avant; d != int64(n-len(registry)) {
+		t.Errorf("orphelins comptés = %d, attendu %d", d, n-len(registry))
+	}
+}
+
+// TestLoad_EnrichissementsIllisiblesTolere : base joueur neuve (vue absente) — la règle ne
+// dépend que de la base partagée, le chargement aboutit.
+func TestLoad_EnrichissementsIllisiblesTolere(t *testing.T) {
+	sharedDB := newSharedDB(t, sharedFixture{
+		registry:     []string{"m1"},
+		participants: map[string][]string{xuidJoueur: {"m1"}},
+	})
+	set, err := Load(context.Background(), openMem(t), sharedDB, xuidJoueur)
+	if err != nil {
+		t.Fatalf("Load: %v (base joueur sans vue tolérée)", err)
+	}
+	assertKnown(t, set.Known, "m1")
+}
+
+// TestLoad_BasePartageeIllisibleEstFatale : connexion absente, tables absentes ou registre
+// absent → ErrSharedUnreadable et aucun ensemble (ni vide, ni « enrichissements seuls »).
+func TestLoad_BasePartageeIllisibleEstFatale(t *testing.T) {
+	playerDB := newPlayerDB(t, "m1", "m2")
+	sansRegistre := openMem(t)
+	exec(t, sansRegistre, `CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)`)
+	exec(t, sansRegistre, `INSERT INTO match_participants VALUES ('m1', ?)`, xuidJoueur)
+	fermee := openMem(t)
+	_ = fermee.Close()
+
+	cas := map[string]*sql.DB{
+		"connexion absente": nil,
+		"base vide":         openMem(t),
+		"registre absent":   sansRegistre,
+		"connexion fermée":  fermee,
+	}
+	for nom, sharedDB := range cas {
+		t.Run(nom, func(t *testing.T) {
+			set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+			if !errors.Is(err, ErrSharedUnreadable) {
+				t.Fatalf("err = %v, attendu ErrSharedUnreadable", err)
+			}
+			if set.Known != nil {
+				t.Errorf("connus = %v, attendu nil (aucun ensemble partiel)", keys(set.Known))
+			}
+		})
+	}
+}
+
+// TestLoad_XUIDVideEstFatal : sans xuid, les participants ne peuvent pas être bornés au joueur.
+func TestLoad_XUIDVideEstFatal(t *testing.T) {
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	for _, xuid := range []string{"", "   "} {
+		if _, err := Load(context.Background(), newPlayerDB(t, "m1"), sharedDB, xuid); !errors.Is(err, ErrNoXUID) {
+			t.Errorf("xuid %q : err = %v, attendu ErrNoXUID", xuid, err)
+		}
+	}
+}
+
+// TestRotationOrder_MatchIDVoisinsSelectionnesAFrequenceEquitable : 300 match_id voisins (même
+// préfixe, suffixe numérique) sur 1 000 périodes — chacun est parmi les OrphanRecoveryPerCycle
+// premiers au moins 60 % du nombre de fois attendu (1 000 × 50/300). Un hachage à faible
+// diffusion classe les voisins ensemble et en laisse certains bien plus souvent de côté.
+func TestRotationOrder_MatchIDVoisinsSelectionnesAFrequenceEquitable(t *testing.T) {
+	const (
+		n       = 300
+		periods = 1000
+	)
+	var ids []string
+	for i := range n {
+		ids = append(ids, fmt.Sprintf("aabbccdd-0000-4000-8000-%012d", i))
+	}
+	selections := make(map[string]int, n)
+	for e := range int64(periods) {
+		for _, id := range rotationOrder(ids, 497616+e)[:OrphanRecoveryPerCycle] {
+			selections[id]++
+		}
+	}
+	attendu := float64(periods) * OrphanRecoveryPerCycle / n
+	for _, id := range ids {
+		if got := selections[id]; float64(got) < 0.6*attendu {
+			t.Errorf("%s sélectionné %d fois sur %d périodes, attendu ≈ %.0f", id, got, periods, attendu)
+		}
+	}
+}

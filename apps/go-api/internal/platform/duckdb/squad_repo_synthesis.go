@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -71,43 +70,6 @@ func scanMainTeamParticipants(ctx context.Context, db *sql.DB, query string, arg
 			&row.Outcome,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
-		}
-		result = append(result, row)
-	}
-	return result, rows.Err()
-}
-
-// LoadSynthesisHeatmap charge les données heatmap map×mode (Q33).
-func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	// shared-only via SharedReader.
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("LoadSynthesisHeatmap: shared reader: %w", err)
-	}
-	defer release()
-
-	// PMT-5 : win title-aware (fallback "p.outcome = 2" byte-identique Halo).
-	winExpr := outcomeSQLEq(ctx, "p.outcome", canonical.OutcomeWin, "p.outcome = 2")
-	heatmapQ := resolveCampaignExclusion(fmt.Sprintf(Q33SynthesisHeatmap, winExpr), r.pdb.TitleSlug, "r")
-	rows, err := db.QueryContext(ctx, heatmapQ, xuid)
-	if err != nil {
-		return nil, fmt.Errorf("LoadSynthesisHeatmap: %w", err)
-	}
-	defer rows.Close()
-
-	var result []domain.SynthesisHeatmapRow
-	for rows.Next() {
-		var row domain.SynthesisHeatmapRow
-		if err := rows.Scan(
-			&row.MapName,
-			&row.ModeName,
-			&row.MatchCount,
-			&row.Wins,
-		); err != nil {
-			return nil, fmt.Errorf("LoadSynthesisHeatmap scan: %w", err)
 		}
 		result = append(result, row)
 	}
