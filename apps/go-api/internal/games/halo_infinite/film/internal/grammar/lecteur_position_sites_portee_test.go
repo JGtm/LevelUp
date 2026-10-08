@@ -54,6 +54,12 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 			lire: parNom("tacmap-waypointstate", 34, 2)},
 		{nom: "tacmap-waypointstate niveau registre 1", indexW: 1,
 			flux: concat(seul(bit(true), fixe(32)), brut96()), lire: parNom("tacmap-waypointstate", 34, 1)},
+		// ti=21 i2..i11 flock-destination (FUN_140fb8af0) : R(1), R(96), puis R(2) au-dela du niveau 1.
+		{nom: "flock-destination niveau registre 2", indexW: 1,
+			flux: concat(seul(bit(true)), brut96(), seul(fixe(2))),
+			lire: parNom("flock-destination-component", 21, 2)},
+		{nom: "flock-destination niveau registre 1", indexW: 1,
+			flux: concat(seul(bit(true)), brut96()), lire: parNom("flock-destination-component", 21, 1)},
 	}
 }
 

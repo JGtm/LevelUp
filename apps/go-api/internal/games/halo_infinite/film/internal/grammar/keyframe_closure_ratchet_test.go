@@ -387,6 +387,9 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("#         bloquant i19 device-position-animation-name -> i31 device-dispenser-monitors-changed\n")
 	b.WriteString("#       C3 0962d0970 (ti=45 i0 lu) : bloquant de ti=45 i0 -> i1 matchflow-focus-data\n")
 	b.WriteString("#       C4 e480f6dbb (ti=10 i2 a i17 lus) : bloquant de ti=10 i2 -> i18 managed-object-networked-property\n")
+	b.WriteString("#   2026-10-08 plan LK (LK.5.4.10) : ti=21 i2..i11 flock-destination sous la portee de l etat\n")
+	b.WriteString("#     complet (R(1), R(96), R(2) au-dela du niveau 1). ti=21 MONTE, 0 -> 285 sur 357 : bcb6d393\n")
+	b.WriteString("#     0 -> 126, 60ae07c4 0 -> 66, e5adf7b2 0 -> 40, a521164d 0 -> 40, 11de8353 0 -> 13 ; 0 baisse.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)

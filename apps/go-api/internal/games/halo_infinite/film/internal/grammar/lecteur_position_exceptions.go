@@ -121,10 +121,18 @@ func consumeGenericRigidBodyTransforms(br *Lecteur) {
 // 494 (16 entrees de controle) et chunk 9 paquet 1146 (22 entrees) — l ancien lit ce composant sur
 // 29 et 4 bits, la lecture du jeu sur 52 et 70. Elle en ferme une autre, `000d5950` (HI_1_13_0) chunk 20
 // paquet 1322 (8 entrees) : le format depend du build ou du contenu, ce que ce lot n etablit pas.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.10, relu le 2026-10-08 ; `FUN_1424e268c` = R(2), lu en LK.1.6) :
+// `FUN_140fb8af0` lit R(1), la garde `FUN_14076f91c` -> `FUN_1411b259c` R(96), puis R(2) quand le
+// niveau du registre depasse 1.
 func consumeFlockDestination(br *Lecteur, level uint32) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBit()
-	lireVecteurAncienAuNiveauDuRegistre(br, level)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireVecteurAncienAuNiveauDuRegistre(br, level)
+	}
 	if level > 1 {
 		br.ReadBits(2) // FUN_1424e268c
 	}
