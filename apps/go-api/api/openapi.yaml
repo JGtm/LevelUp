@@ -26651,6 +26651,77 @@ components:
         - match_id
         - badge_keys
       type: object
+    SquadImpactEvening:
+      additionalProperties: false
+      properties:
+        matches:
+          format: int64
+          type: integer
+        players:
+          items:
+            $ref: '#/components/schemas/SquadImpactEveningPlayer'
+          type:
+            - array
+            - "null"
+        session_label:
+          type: string
+        start_time:
+          type: string
+        wins:
+          format: int64
+          type: integer
+      required:
+        - session_label
+        - start_time
+        - matches
+        - wins
+        - players
+      type: object
+    SquadImpactEveningPlayer:
+      additionalProperties: false
+      properties:
+        player:
+          type: string
+        points:
+          format: double
+          type: number
+        roles:
+          items:
+            $ref: '#/components/schemas/SquadImpactRoleCount'
+          type:
+            - array
+            - "null"
+      required:
+        - player
+        - roles
+        - points
+      type: object
+    SquadImpactHistory:
+      additionalProperties: false
+      properties:
+        evenings:
+          items:
+            $ref: '#/components/schemas/SquadImpactEvening'
+          type:
+            - array
+            - "null"
+        players:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        scale:
+          items:
+            $ref: '#/components/schemas/SquadImpactRoleWeight'
+          type:
+            - array
+            - "null"
+      required:
+        - players
+        - scale
+        - evenings
+      type: object
     SquadImpactMatchHeader:
       additionalProperties: false
       properties:
@@ -26714,6 +26785,34 @@ components:
         - player
         - counts
         - score
+      type: object
+    SquadImpactRoleCount:
+      additionalProperties: false
+      properties:
+        count:
+          format: int64
+          type: integer
+        points:
+          format: double
+          type: number
+        role:
+          type: string
+      required:
+        - role
+        - count
+        - points
+      type: object
+    SquadImpactRoleWeight:
+      additionalProperties: false
+      properties:
+        points:
+          format: double
+          type: number
+        role:
+          type: string
+      required:
+        - role
+        - points
       type: object
     SquadIntensityMatchRow:
       additionalProperties: false
@@ -29152,6 +29251,8 @@ components:
             - "null"
         squad_emprise:
           $ref: '#/components/schemas/SquadEmpriseBlock'
+        squad_impact_history:
+          $ref: '#/components/schemas/SquadImpactHistory'
         squad_objective_history:
           $ref: '#/components/schemas/SquadObjectiveHistory'
         synergy_radar:

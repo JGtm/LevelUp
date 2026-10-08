@@ -190,14 +190,19 @@ its own duration section. The memo is keyed by the set of its inputs, not their 
 for one request only: the next request sees the database as it is. On the Squad page,
 `pourLaRequete` (`service/teammates/teammates_service_loads.go`) gives each request a copy of the
 service whose shared readers go through that memo: the impact events (Q32) are read once for the
-impact matrix, the intensity profile, the performance series and the first frag
-(`prechargerImpacts`), and each member's history once per (title, gamertag). The Career resolves
+impact matrix, the impact points per evening, the intensity profile, the performance series and the
+first frag (`prechargerImpacts`, on the squad population plus the previous evenings of the impact
+points; a block asking for a subset of that read gets its matches' rows without a second read), the
+death journal of the "Thief" role once for the matrix and the evenings
+(`service/teammates/teammates_squad_impact.go`), and each member's history once per (title,
+gamertag). The Career resolves
 friends through the tracked-profile registry first, then one read for the others, never one read
 per friend.
 
 **Guardrails**: `service/teammates/teammates_service_loads_test.go` —
 `TestGetPage_LitLesEvenementsDImpactUneSeuleFois`, `TestGetPage_UnLoadForParMembre`,
-`TestGetPage_DeuxRequetesDeuxLectures`; `service/career_service_friends_test.go` —
+`TestGetPage_DeuxRequetesDeuxLectures`; `service/teammates/teammates_squad_impact_test.go` —
+`TestGetPage_PointsParSoiree_UneLectureDesEvenementsEtDuJournal`; `service/career_service_friends_test.go` —
 `TestCareerService_ResolveFriendXUIDs_RegistreDAbordPuisUneLecture`.
 
 ### I5 — A steady-state sync takes no writer when nothing is new

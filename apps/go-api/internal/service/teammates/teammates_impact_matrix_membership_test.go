@@ -33,7 +33,7 @@ func TestBuildSquadImpactMatrix_AppartenanceParXUID(t *testing.T) {
 	rows := []domain.SquadMatchRow{{MatchID: matchID, StartTime: time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC), Outcome: domain.OutcomeWin}}
 	for _, choisi := range []string{"Madina", "madina", "MADINA"} {
 		teammates := []domain.TeammateRow{{Gamertag: choisi, XUID: strPtr("x_t")}}
-		m := svc.buildSquadImpactMatrix(context.Background(), rows, mainXUID, []string{choisi}, teammates, allies)
+		m, _ := svc.buildSquadImpact(context.Background(), impactEscouade{rows: rows, mainXUID: mainXUID, selected: []string{choisi}, teammates: teammates, allies: allies})
 		if m == nil {
 			t.Fatalf("choisi %q : matrice nulle", choisi)
 		}

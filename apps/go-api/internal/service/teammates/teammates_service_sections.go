@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/squadimpact"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/timing"
 )
@@ -29,7 +30,10 @@ type populationEscouade struct {
 	sessionMatchIDs    map[string]bool
 	selectedXUIDs      []string
 	extraPool          map[string]struct{}
-	issues             *dataIssues
+	// soireesImpact : les soirées des points d'impact (soireesDImpact), connues avant le
+	// préchargement pour que Q32 soit lu une fois sur la population et ces soirées.
+	soireesImpact []squadimpact.Evening
+	issues        *dataIssues
 }
 
 // sectionsEscouade : les sections de la réponse calculées sur la population escouade. Toutes
@@ -42,6 +46,7 @@ type sectionsEscouade struct {
 	sessionTimeline     []domain.SquadSessionPoint
 	mapHeatmap          *domain.SquadMapHeatmap
 	impactMatrix        *domain.SquadImpactMatrix
+	impactHistory       *domain.SquadImpactHistory
 	perMinuteStats      []domain.SquadPerMinuteEntry
 	synergyRadar        []domain.SquadSynergyRadarSeries
 	intensityProfile    *domain.SquadIntensityProfile
@@ -125,7 +130,12 @@ func (s *TeammatesService) graphesDeLaPopulation(
 ) {
 	gt, px, sel, tm := s.gamertag, p.playerXUID, p.req.SelectedGamertags, p.teammates
 	siVivante(ctx, func() { out.mapHeatmap = s.buildSquadMapHeatmap(ctx, p.rows, sel, p.issues) })
-	siVivante(ctx, func() { out.impactMatrix = s.buildSquadImpactMatrix(ctx, p.rows, px, sel, tm, p.allies) })
+	siVivante(ctx, func() {
+		out.impactMatrix, out.impactHistory = s.buildSquadImpact(ctx, impactEscouade{
+			rows: p.rows, timeline: p.rowsTimeline, evenings: p.soireesImpact,
+			mainXUID: px, selected: sel, teammates: tm, allies: p.allies,
+		})
+	})
 	siVivante(ctx, func() { out.perMinuteStats = s.buildSquadPerMinuteStats(ctx, p.rows, gt, sel, p.sessionMatchIDs) })
 	siVivante(ctx, func() { out.synergyRadar = s.buildSquadSynergyRadar(ctx, p.rows, gt, sel) })
 	siVivante(ctx, func() {

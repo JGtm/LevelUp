@@ -511,6 +511,11 @@ type TeammatesPageResponse struct {
 	MapHeatmap *SquadMapHeatmap `json:"map_heatmap,omitempty"`
 	// ImpactMatrix alimente teammates.07 (scoreboard impact, 8 badges).
 	ImpactMatrix *SquadImpactMatrix `json:"impact_matrix,omitempty"`
+	// SquadImpactHistory alimente « Points d'impact par soirée et par rôle » (onglet
+	// Contributions, sous la matrice) : la soirée affichée et les soirées précédentes de la
+	// composition, mêmes rôles et même barème que la matrice (squad_impact_history.go). Nil
+	// sans coéquipier sélectionné ou quand aucun rôle ne tombe sur l'escouade.
+	SquadImpactHistory *SquadImpactHistory `json:"squad_impact_history,omitempty"`
 	// PerMinuteStats alimente teammates.14 (bars groupées K/D/A par minute par joueur).
 	PerMinuteStats []SquadPerMinuteEntry `json:"per_minute_stats,omitempty"`
 	// SynergyRadar alimente teammates.06 (radar 6 axes par joueur sur les

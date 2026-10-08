@@ -60,10 +60,11 @@ type lectureMembre struct {
 }
 
 // lectureImpacts : le résultat d'UNE lecture Q32, erreur comprise — chaque bloc
-// consommateur reçoit la même et la journalise comme avant.
+// consommateur reçoit la même et la journalise comme avant. matchs : l'ensemble lu.
 type lectureImpacts struct {
-	rows []domain.ImpactEventRow
-	err  error
+	rows   []domain.ImpactEventRow
+	err    error
+	matchs map[string]bool
 }
 
 // pourLaRequete rend une copie du service dont les lecteurs partagés passent par la mémoire
@@ -88,13 +89,15 @@ func (s *TeammatesService) pourLaRequete() (*TeammatesService, *lecturesDeLaPage
 //   - l'historique de chaque membre — les coéquipiers sélectionnés dès qu'il y en a (le
 //     bandeau les lit toujours), le joueur principal quand la population escouade existe
 //     (radar et séries de performance, seuls à le relire par LoadFor) ;
-//   - les événements d'impact de la population escouade.
+//   - les événements d'impact des matchs de la population escouade et des soirées précédentes
+//     des points d'impact (impactMatchIDs, cf. matchsDImpact) : les blocs qui ne lisent que la
+//     population en reçoivent la part, sans seconde lecture (impactsDe).
 //
 // Exactement les lectures que les blocs faisaient au moins une fois : aucune de plus.
-func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, allSquadRows []domain.SquadMatchRow) {
+func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, impactMatchIDs []string) {
 	if len(selected) > 0 {
 		membres := selected
-		if len(allSquadRows) > 0 {
+		if len(impactMatchIDs) > 0 {
 			membres = append([]string{l.principal}, selected...)
 		}
 		l.prechargerMembres(ctx, membres)
@@ -102,7 +105,7 @@ func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, al
 	if ctx.Err() != nil {
 		return // requête annulée (D2.7) : GetPage rend l'erreur
 	}
-	l.prechargerImpacts(ctx, allSquadRows)
+	l.prechargerImpacts(ctx, impactMatchIDs)
 }
 
 // loaderDeLaPage : le chargeur d'historiques de la requête. Seul LoadFor est partagé ; tout le
@@ -168,26 +171,72 @@ func (r repoDeLaPage) LoadImpactEvents(ctx context.Context, matchIDs []string) (
 }
 
 // impactsDe rend Q32 pour un ensemble de matchs, lu au premier appel puis servi de mémoire.
-// Chaque appelant reçoit sa propre copie de la tranche : un bloc qui la réordonnerait ne
-// changerait pas ce que voient les autres.
+// Un ensemble contenu dans une lecture déjà faite en reçoit les lignes de ses matchs (dans
+// l'ordre de la lecture) au lieu d'être relu : les lignes de Q32 d'un match ne dépendent pas
+// des autres matchs lus. Une limite : le repli kvPairs du dépôt (frags synthétisés) se décide
+// sur la lecture ENTIÈRE ; sur un titre sans frags horodatés il s'applique à tous ses matchs,
+// mais une population dont aucun match n'en porte, lue avec des soirées qui en portent, n'en
+// reçoit pas. Chaque appelant reçoit sa propre copie de la tranche : un bloc qui la
+// réordonnerait ne changerait pas ce que voient les autres.
 func (l *lecturesDeLaPage) impactsDe(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
 	cle := cleDEnsemble(matchIDs)
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	lu, ok := l.impacts[cle]
-	if !ok {
-		rows, err := l.repo.LoadImpactEvents(ctx, matchIDs)
-		lu = lectureImpacts{rows: rows, err: err}
-		l.impacts[cle] = lu
+	if lu, ok := l.impacts[cle]; ok {
+		return slices.Clone(lu.rows), lu.err
 	}
+	if large, ok := l.lectureQuiCouvre(matchIDs); ok {
+		return lignesDesMatchs(large.rows, matchIDs), large.err
+	}
+	rows, err := l.repo.LoadImpactEvents(ctx, matchIDs)
+	lu := lectureImpacts{rows: rows, err: err, matchs: ensembleDe(matchIDs)}
+	l.impacts[cle] = lu
 	return slices.Clone(lu.rows), lu.err
 }
 
-// prechargerImpacts lit Q32 UNE fois pour les matchs de la population escouade (D2.2), sous
-// la section `impact_events_shared`, avant les quatre blocs qui la consomment. Sans lecteur
-// ou sans match : rien à lire, chaque bloc garde sa dégradation.
-func (l *lecturesDeLaPage) prechargerImpacts(ctx context.Context, allSquadRows []domain.SquadMatchRow) {
-	matchIDs := collectSharedMatchIDsForDigest(allSquadRows)
+// lectureQuiCouvre rend une lecture Q32 déjà faite dont l'ensemble contient tous les matchs
+// demandés. Appelée sous l.mu.
+func (l *lecturesDeLaPage) lectureQuiCouvre(matchIDs []string) (lectureImpacts, bool) {
+	for _, lu := range l.impacts {
+		couvre := true
+		for _, id := range matchIDs {
+			if !lu.matchs[id] {
+				couvre = false
+				break
+			}
+		}
+		if couvre {
+			return lu, true
+		}
+	}
+	return lectureImpacts{}, false
+}
+
+// lignesDesMatchs — les lignes des matchs demandés, dans l'ordre de la lecture (copie).
+func lignesDesMatchs(rows []domain.ImpactEventRow, matchIDs []string) []domain.ImpactEventRow {
+	garde := ensembleDe(matchIDs)
+	out := make([]domain.ImpactEventRow, 0, len(rows))
+	for _, r := range rows {
+		if garde[r.MatchID] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// ensembleDe — l'ensemble des identifiants d'une liste.
+func ensembleDe(ids []string) map[string]bool {
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out
+}
+
+// prechargerImpacts lit Q32 UNE fois pour les matchs donnés (D2.2), sous la section
+// `impact_events_shared`, avant les blocs qui la consomment. Sans lecteur ou sans match : rien
+// à lire, chaque bloc garde sa dégradation.
+func (l *lecturesDeLaPage) prechargerImpacts(ctx context.Context, matchIDs []string) {
 	if l.repo == nil || len(matchIDs) == 0 {
 		return
 	}
