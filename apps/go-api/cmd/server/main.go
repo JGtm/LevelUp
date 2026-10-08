@@ -1203,7 +1203,8 @@ func main() {
 	// de l'usage UI. Réutilise CareerLiveService.GetSpartanIdentityFor(p.XUID)
 	// (même path que la visite home) → kickoffBackgroundRefresh → persistPartial
 	// field-aware. Garantit qu'un joueur qui n'ouvre jamais l'app a quand
-	// même sa customisation populée en DB.
+	// même sa customisation populée en DB, y compris quand ses propres jetons
+	// sont morts (lecture par le token d'un autre compte, cf. acquireReaderToken).
 	if autoSyncPool != nil && reg != nil {
 		// Provider qui adapte la signature ServiceRegistry.CareerLiveCtx vers
 		// celle attendue par le cron (retourne uniquement le SpartanIdentityFetcher).
@@ -1223,7 +1224,9 @@ func main() {
 		// closure title-spécifique est injectée. halo_5 → livesync.PersistAppearance
 		// (fetch /h5/profiles/{gt}/{appearance,spartan,emblem} + persist service tag /
 		// rendu Spartan / emblème dans career_progression h5, append-only). Le ctx
-		// porte déjà l'auth du joueur (posée par le cron) → NewAppearanceSource la lit.
+		// porte le token retenu par le cron (celui du joueur, sinon celui d'un autre
+		// compte du parc) → NewAppearanceSource le lit ; les profils h5 se lisent par
+		// gamertag, la ligne va dans la base de p.
 		// Best-effort : un échec source/fetch est remonté en err (loggé par le cron).
 		spartanCron.WithRefresher(halo5.TitleSlug, func(rctx context.Context, p domain.PlayerSummary) error {
 			src, err := halo5.NewAppearanceSource(rctx)

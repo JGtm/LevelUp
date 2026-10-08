@@ -1,6 +1,6 @@
 // Package scheduler — spartan_customization_cron.go : cron leger qui
 // rafraichit la customisation Spartan (banniere, emblem, backdrop,
-// spartan_id / service tag) pour tous les joueurs du pool toutes les N heures,
+// spartan_id / service tag) de tous les profils suivis toutes les N heures,
 // POUR TOUS LES TITRES ACTIFS (title-aware, capability-driven).
 //
 // Pourquoi : meme apres Phase 4-7 V2 (live a chaque visite home avec
@@ -13,9 +13,10 @@
 //   - Le cron NE connait AUCUN titre concret (pas d'import internal/games/*).
 //     Il itere sur les titres du registre (DefaultRegistry().All()) et delegue
 //     le refresh A UN REFRESHER ENREGISTRE PAR TITRE (map[slug]CustomizationRefresher).
-//   - La sequence COMMUNE (lookup pool, lease pinned, ctx auth, timeout) reste ici :
-//     le refresher recoit un ctx DEJA muni des tokens du joueur et ne fait QUE
-//     l'appel metier specifique au titre.
+//   - La sequence COMMUNE (choix du token, lease pinned, ctx auth, timeout) reste ici :
+//     le refresher recoit un ctx DEJA muni d'un token utilisable — celui du joueur,
+//     ou celui d'un porteur quand le sien ne l'est pas (spartan_customization_bearer.go)
+//     — avec le joueur comme sujet, et ne fait QUE l'appel metier specifique au titre.
 //   - Le WIRING CONCRET des refreshers se fait dans cmd/server/main.go :
 //   - halo_infinite -> CareerLiveService.GetSpartanIdentityFor(p.XUID) (chemin
 //     live unifie, MEME path que la visite home → kickoffBackgroundRefresh →
@@ -37,7 +38,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
@@ -58,16 +58,18 @@ type SpartanIdentityFetcher interface {
 type CareerLiveServiceProvider func(ctx context.Context, slug string) (SpartanIdentityFetcher, error)
 
 // CustomizationRefresher rafraichit la customisation Spartan d'UN joueur d'UN
-// titre donne. Le ctx fourni porte DEJA les tokens d'auth du joueur (poses par
-// le cron via ctxkeys.WithHaloAuth) et un timeout : le refresher ne fait QUE
-// l'appel metier specifique au titre (live career identity, fetch appearance…).
+// titre donne. Le ctx fourni porte DEJA un token utilisable (celui du joueur, ou
+// celui d'un porteur, cf. readerContext), le joueur comme sujet (ctxkeys.HaloXUID)
+// et un timeout : le refresher ne fait QUE l'appel metier specifique au titre (live
+// career identity, fetch appearance…), toujours pour p, jamais pour le porteur.
 // Abstraction title-agnostic : le scheduler ne depend d'AUCUN package de titre ;
 // chaque titre injecte son implementation au boot (cf. cmd/server/main.go).
 type CustomizationRefresher func(ctx context.Context, p domain.PlayerSummary) error
 
 // SpartanCustomizationCron itere sur tous les titres actifs et, pour chacun,
-// sur tous ses joueurs du pool toutes les N heures, en appelant le refresher
-// enregistre pour CE titre avec les tokens du joueur en context. Cela declenche
+// sur tous ses profils suivis toutes les N heures, en appelant le refresher
+// enregistre pour CE titre avec un token utilisable en context (celui du joueur,
+// sinon celui d'un porteur, cf. acquireReaderToken). Cela declenche
 // le path de rafraichissement propre au titre.
 type SpartanCustomizationCron struct {
 	cfg        *config.AppConfig
@@ -119,9 +121,9 @@ func NewSpartanCustomizationCron(
 // careerIdentityRefresher adapte un CareerLiveServiceProvider (chemin live unifie
 // Halo Infinite) en CustomizationRefresher : resout le fetcher per-player puis
 // appelle GetSpartanIdentityFor avec le SUJET EXPLICITE p.XUID (finding ID4)
-// (→ kickoffBackgroundRefresh → persistPartial). Le ctx porte deja l'auth du joueur
-// (WithHaloAuth(ctx, lease.Tokens, p.XUID) dans refreshOne), donc porteur == sujet.
-// Comportement HINF identique a l'historique.
+// (→ kickoffBackgroundRefresh → persistPartial). Le ctx posé par refreshOne a p.XUID
+// pour sujet (HaloXUID) quel que soit le compte qui porte le token : la persistance
+// du chemin live (réservée au sujet == HaloXUID) écrit donc dans la base de p.
 func careerIdentityRefresher(svcProvider CareerLiveServiceProvider) CustomizationRefresher {
 	return func(ctx context.Context, p domain.PlayerSummary) error {
 		svc, err := svcProvider(ctx, p.PlayerSlug)
@@ -246,63 +248,21 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 			"titleSlug", titleSlug, "skipped_profiles", skippedProfiles)
 	}
 
-	var succeeded, skipped, failed, nonLockFailed int
-	var lockedDBs []string
-	var firstNonLockErr error
+	var tally cycleTally
+	var candidates []bearerCandidate
+	if c.pool != nil && len(players) > 0 {
+		candidates = c.bearerCandidates(ctx)
+	}
 	for _, p := range players {
-		outcome, rerr := c.refreshOne(ctx, p, refresher)
-		switch outcome {
-		case refreshOK:
-			succeeded++
-		case refreshSkipped:
-			skipped++
-		case refreshFailed:
-			failed++
-			// Un lock concurrent (2e writer air/CLI) est une contention TRANSITOIRE de
-			// poste de dev, auto-résolutive — best-effort interne (WARN + expvar plus
-			// bas), PAS un échec du cron. Toute AUTRE cause est un échec réel (D1).
-			if duckdb.IsFileLockError(rerr) {
-				lockedDBs = append(lockedDBs, p.Gamertag)
-			} else {
-				nonLockFailed++
-				if firstNonLockErr == nil {
-					firstNonLockErr = rerr
-				}
-			}
-		}
+		tally.record(p.Gamertag, c.refreshOne(ctx, p, refresher, candidates))
 	}
-	// Diagnostic agrégé "fail-fast" : si une ou plusieurs player DB sont
-	// verrouillées par un autre process (CLI backfill, 2e instance serveur,
-	// hot-reload Air pas encore libéré), on émet UNE ligne ERROR claire et
-	// actionnable plutôt que N WARN éparpillés qui noient la cause racine.
-	// Pas d'abort du process : les locks au boot sont souvent transitoires
-	// (cf. db.go IsFileLockError + commentaire Air post-SIGKILL).
-	if len(lockedDBs) > 0 {
-		// B3.3 : lock concurrent player DB = bruit LOCAL à cause connue (2e writer
-		// air/worktree/CLI), self-healing à la fermeture du writer. Une seule ligne
-		// WARN agrégée par cycle (les per-joueur sont en Debug) + compteur expvar
-		// (DC-B2) — pas d'ERROR : ce n'est pas un incident serveur, c'est une
-		// contention de poste de dev qui se résorbe seule.
-		observability.AddInt("spartan_cron_player_db_locked_total", int64(len(lockedDBs)))
-		slog.WarnContext(ctx, "spartan_cron: player DB(s) verrouillée(s) par un autre process — "+
-			"un writer concurrent (CLI backfill / 2e instance serveur / Air pas encore libéré) tient le fichier RW ; "+
-			"ces joueurs restent dégradés jusqu'à sa fermeture (DuckDB est mono-writer par fichier)",
-			"titleSlug", titleSlug, "locked_players", lockedDBs, "count", len(lockedDBs))
-	}
+	tally.reportLocked(ctx, titleSlug)
 	slog.InfoContext(ctx, "spartan_cron: cycle done",
 		"titleSlug", titleSlug, "players", len(players),
-		"ok", succeeded, "skipped", skipped, "failed", failed, "locked", len(lockedDBs),
+		"ok", tally.succeeded, "skipped", tally.skipped, "failed", tally.failed,
+		"locked", len(tally.lockedDBs), "via_bearer", tally.viaBearer,
 		"duration", time.Since(start))
-
-	// Échec partiel = échec avec cause (D1). Les échecs par lock (transitoires) sont
-	// EXCLUS : seuls les échecs non-lock remontent au statut du cron.
-	if nonLockFailed > 0 {
-		if firstNonLockErr != nil {
-			return fmt.Errorf("%d/%d joueurs en échec de refresh (ex: %w)", nonLockFailed, len(players), firstNonLockErr)
-		}
-		return fmt.Errorf("%d/%d joueurs en échec de refresh", nonLockFailed, len(players))
-	}
-	return nil
+	return tally.err(len(players))
 }
 
 type refreshOutcome int
@@ -313,39 +273,98 @@ const (
 	refreshFailed
 )
 
-// refreshOne refresh la customisation d'UN joueur en posant ses tokens dans le ctx
-// puis en deleguant au refresher du titre. Best-effort, ne bloque pas le cycle. La
-// sequence COMMUNE (lookup pool, lease pinned, ctx auth, timeout) est ici ; le
-// refresher ne fait que l'appel metier specifique au titre.
-func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.PlayerSummary, refresher CustomizationRefresher) (refreshOutcome, error) {
-	if c.pool == nil {
-		return refreshSkipped, nil
-	}
-	if p.XUID == "" || p.Gamertag == "" {
-		return refreshSkipped, nil
-	}
-	// SEULE exemption légitime à D1 (plan 2026-09-16, 2.6) : l'appel qui suit est
-	// PolicyPinnedPlayer — la personnalisation Spartan est privacy-gated, aucun autre
-	// token du parc ne peut la lire. Partout ailleurs (sync CLI, auto-sync), un profil
-	// suivi sans token propre est servi par le pool et ne DOIT pas être sauté.
-	if !c.pool.HasPlayer(p.Gamertag) {
-		slog.DebugContext(ctx, "spartan_cron: skip (pas de token propre, endpoint privacy-gated)",
-			"gamertag", p.Gamertag)
-		return refreshSkipped, nil
-	}
+// refreshReport est l'issue du rafraîchissement d'un joueur. viaBearer dit si la
+// lecture a été portée par le token d'un autre compte.
+type refreshReport struct {
+	outcome   refreshOutcome
+	viaBearer bool
+	err       error
+}
 
-	// Acquire un lease pinned sur ce joueur (customisation = endpoint privacy-gated).
-	lease, err := c.pool.Acquire(ctx, pool.PolicyPinnedPlayer, p.Gamertag)
-	if err != nil || lease == nil {
-		slog.WarnContext(ctx, "spartan_cron: pool acquire failed",
-			"gamertag", p.Gamertag, "err", err)
-		return refreshFailed, err
+// cycleTally est le bilan d'un cycle de rafraîchissement d'un titre.
+type cycleTally struct {
+	succeeded, skipped, failed, nonLockFailed, viaBearer int
+	lockedDBs                                            []string
+	firstNonLockErr                                      error
+}
+
+// record compte l'issue du rafraîchissement d'un joueur. Un verrou concurrent sur
+// la player DB (second écrivain air/worktree/CLI) est une contention transitoire de
+// poste de dev qui se résorbe seule : comptée à part, elle ne fait pas échouer le
+// cycle. Toute autre cause, dont l'absence de tout token utilisable, est un échec
+// réel (D1).
+func (t *cycleTally) record(gamertag string, r refreshReport) {
+	if r.viaBearer {
+		t.viaBearer++
+	}
+	switch r.outcome {
+	case refreshOK:
+		t.succeeded++
+	case refreshSkipped:
+		t.skipped++
+	case refreshFailed:
+		t.failed++
+		if duckdb.IsFileLockError(r.err) {
+			t.lockedDBs = append(t.lockedDBs, gamertag)
+			return
+		}
+		t.nonLockFailed++
+		if t.firstNonLockErr == nil {
+			t.firstNonLockErr = r.err
+		}
+	}
+}
+
+// reportLocked émet UNE ligne WARN agrégée par cycle pour les player DB tenues par
+// un autre process (les lignes par joueur sont en Debug) et le compteur expvar
+// associé : une cause connue et locale, pas un incident serveur.
+func (t *cycleTally) reportLocked(ctx context.Context, titleSlug string) {
+	if len(t.lockedDBs) == 0 {
+		return
+	}
+	observability.AddInt("spartan_cron_player_db_locked_total", int64(len(t.lockedDBs)))
+	slog.WarnContext(ctx, "spartan_cron: player DB(s) verrouillée(s) par un autre process — "+
+		"un writer concurrent (CLI backfill / 2e instance serveur / Air pas encore libéré) tient le fichier RW ; "+
+		"ces joueurs restent dégradés jusqu'à sa fermeture (DuckDB est mono-writer par fichier)",
+		"titleSlug", titleSlug, "locked_players", t.lockedDBs, "count", len(t.lockedDBs))
+}
+
+// err rend l'échec du cycle : un échec partiel est un échec avec cause (D1), les
+// échecs par verrou concurrent en sont exclus.
+func (t *cycleTally) err(players int) error {
+	if t.nonLockFailed == 0 {
+		return nil
+	}
+	if t.firstNonLockErr != nil {
+		return fmt.Errorf("%d/%d joueurs en échec de refresh (ex: %w)", t.nonLockFailed, players, t.firstNonLockErr)
+	}
+	return fmt.Errorf("%d/%d joueurs en échec de refresh", t.nonLockFailed, players)
+}
+
+// refreshOne rafraîchit la customisation d'UN joueur : choisit le token qui lira
+// (le sien, sinon celui d'un porteur, cf. acquireReaderToken), le pose dans le ctx
+// avec le joueur comme sujet, puis délègue au refresher du titre. Best-effort, ne
+// bloque pas le cycle. Aucun profil suivi n'est sauté faute de token propre : seule
+// l'absence de tout token utilisable empêche la lecture, et elle compte un échec.
+func (c *SpartanCustomizationCron) refreshOne(
+	ctx context.Context,
+	p domain.PlayerSummary,
+	refresher CustomizationRefresher,
+	candidates []bearerCandidate,
+) refreshReport {
+	if c.pool == nil || p.XUID == "" || p.Gamertag == "" {
+		return refreshReport{outcome: refreshSkipped}
+	}
+	lease, readerXUID, err := c.acquireReaderToken(ctx, p, candidates)
+	if err != nil {
+		slog.WarnContext(ctx, "spartan_cron: apparence non lue — aucun token utilisable",
+			"gamertag", p.Gamertag, "xuid", p.XUID, "slug", p.TitleSlug, "err", err)
+		return refreshReport{outcome: refreshFailed, err: err}
 	}
 	defer lease.Release()
+	viaBearer := readerXUID != p.XUID
 
-	// Construit un ctx avec les tokens du joueur pour que le refresher du titre
-	// puisse appeler l'API Halo en son nom.
-	playerCtx := ctxkeys.WithHaloAuth(ctx, lease.Tokens, p.XUID)
+	playerCtx := readerContext(ctx, lease.Tokens, readerXUID, p.XUID)
 	playerCtx, cancel := context.WithTimeout(playerCtx, 30*time.Second)
 	defer cancel()
 
@@ -357,9 +376,9 @@ func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.Play
 				"gamertag", p.Gamertag, "err", err)
 		} else {
 			slog.WarnContext(ctx, "spartan_cron: refresher failed",
-				"gamertag", p.Gamertag, "slug", p.TitleSlug, "err", err)
+				"gamertag", p.Gamertag, "slug", p.TitleSlug, "via_bearer", viaBearer, "err", err)
 		}
-		return refreshFailed, err
+		return refreshReport{outcome: refreshFailed, viaBearer: viaBearer, err: err}
 	}
-	return refreshOK, nil
+	return refreshReport{outcome: refreshOK, viaBearer: viaBearer}
 }

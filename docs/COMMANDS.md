@@ -76,8 +76,14 @@ The career rank is NOT part of the sync at all: it is served by the separate liv
 or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
 tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
 pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
-The Spartan customization cron is the one caller that needs the player s own token (403 for a
-third party, measured), and keeps its `HasPlayer` guard for that reason.
+The Spartan customization cron (every 8 h, first pass at server start) prefers the player s own
+token, which opens the private view `/customization/appearance` (403 for a third party,
+measured). When that token is unusable (refresh token refused, unhealthy slot), the player is
+read with the token of another declared account, picked in a fixed order (the `admin` of
+`db_profiles.json` first, then by gamertag): the client then falls back to the public view
+`/customization?view=public`, which carries the same emblem, backdrop and service tag for any
+player. The row is written to the player s own database; no token is captured or refreshed
+outside the pool.
 
 The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
