@@ -1352,3 +1352,19 @@ refusionner, rejouer l'étape 0).
   fusionné sans conflit (LK.5.4.1 rejeté : aucun bloc sous la garde dans `consumeObjectPositionMonde`).
   Ratchet de cuisson régénéré avec sa ligne d'historique : 42 lignes montent (lot fusionné), 0 baisse.
   Les gates de LK.5 sont rejoués sur la base fusionnée (entrée suivante).
+- 2026-10-08 (nuit, lot B) : GATES DE LK.5 REJOUÉS SUR LA BASE FUSIONNÉE (`f1859e682`). Tête fusionnée →
+  `$S/lk6.fusion` ; la même tête SANS les effets des sous-pas retenus de LK.5 (mesure temporaire : le
+  geste `sousLaGardeSinonException` rend l'ancien lecteur, la queue d'i0 reprend la forme en ligne ;
+  code restauré, `MESURE TEMPORAIRE` absent de l'arbre) → `$S/lk6.fusion_sansLK5`. Écart = LK.5 seul :
+  I-ferm 14 hausses, 0 baisse, `ti=21` 0 → 1 315 / 1 750 (identique à l'écart d'avant la fusion) ;
+  I-d0 identique hors témoin décalé ; ancres colonnes 1 à 9 identiques. Carte de la tête fusionnée
+  contre celle de `feat/v75` `2761162de` seule (binaire extrait par `git archive`, `$S/lk6.carte_v75`) :
+  identique sur 20, 8 et 28 films (MPP) — LK ne touche pas la marche delta ; la référence `e0` est
+  périmée par le lot fusionné. Contre mon état d'avant la fusion (`$S/lk6.d12`), le lot fusionné fait
+  monter `ti=10` 40 → 14 265, `ti=11` 2 → 2 221, `ti=38` 6 565 → 30 733, `ti=42` 1 107 → 3 125, `ti=43`
+  2 560 → 10 919, `ti=45` 0 → 737, `ti=35` 5 399 → 5 401, et baisser 11 lignes (`ti=42` et `ti=43` sur
+  `1c4c63c2`, `50247b26`, `7344d24f`, `bf15f7ab`, `bfecd02b` ; `ti=38` de `50247b26` ; `ti=37` de
+  `53ce4390` ; deux lignes `ti=0` disparues) : présentes avec et sans LK.5, elles sont celles du lot
+  fusionné (records d'objets du monde lus hors garde par l'exception, D-18). Base des comparaisons de
+  LK.6 (killsource, gate de corpus) : `2761162de`, la `feat/v75` fusionnée, au lieu de `83dc72eab`
+  (écart au plan, conséquence de la fusion ordonnée).
