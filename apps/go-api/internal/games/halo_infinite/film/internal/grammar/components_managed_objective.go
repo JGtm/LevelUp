@@ -41,7 +41,7 @@ package grammar
 //	i1  color                      FUN_142edb548  4 x R(8)  (quantifie 0..255, FUN_142ed1a78)
 //	i2  formatted-text             FUN_142edb5bc -> FUN_142c70d5c  (cf. components_batch3.go)
 //	i3  object-reference           FUN_142edb6a4  R(32)
-//	i4  interaction-filter         FUN_142edb5cc -> FUN_142c7023c  NON PORTE (cf. plus bas)
+//	i4  interaction-filter         FUN_142edb5cc -> FUN_142c7023c  le bloc de filtres (cf. plus bas)
 //	i5  type                       FUN_142edbb00  R(32)     (enumere « objective-type »)
 //	i6  enabled                    FUN_142edb594  R(1)
 //	i7  priority                   FUN_142edb820  R(8)
@@ -57,16 +57,13 @@ package grammar
 //	i32 outro-phase-duration       FUN_142edb740  R(8) quantifie [0, DAT_143cd84b8]
 //	i33 forced-update              FUN_142edb5a8  R(1)
 //
-// # LE SEUL COMPOSANT LAISSE DEHORS, ET POURQUOI
+// # i4, LE BLOC DE FILTRES (porte le 2026-10-08)
 //
-// i4 `interaction-filter` : `FUN_142c7023c` lit R(4) de masque, R(1), puis pour chacun des
-// quatre bits poses un R(4) de tag SUIVI D'UN APPEL VIRTUEL (`FUN_141e99630` case 1..5 :
-// R(1) puis `(*vtable[8])(filtre)`). La largeur de cette queue depend de la sous-classe du
-// filtre et n'est pas lisible sans enumerer ces sous-classes. Le porter a moitie
-// DESYNCHRONISERAIT le record au lieu de l'arreter proprement, ce qui est strictement pire.
-// COUT MESURE de ce trou : i4 est present dans 10 des 265 records porteurs de jauge (4 %).
-// CONDITION DE RETRAIT : porte quand les sous-classes de filtre seront enumerees, ou supprime
-// de cette liste si la mesure montre qu'il ne coute plus rien.
+// i4 `interaction-filter` est reste dehors jusqu au 2026-10-08 : `FUN_142c7023c` (l ECRIVAIN)
+// ecrit pour chaque filtre un tag suivi d un appel virtuel, et la largeur de cette queue semblait
+// dependre de sous-classes non enumerees. Son LECTEUR (`FUN_140dbe170`) est `FUN_140dbe400`, le bloc
+// de filtres que `ti=12 i2`..`i6` partagent et que `components_navpoint_filters.go` porte tag par
+// tag depuis le lot 5.1.1 : [consumeObjectiveInteractionFilter].
 //
 // # CE QUE CE FICHIER NE DIT PAS, ET C'EST IMPORTANT
 //
@@ -257,3 +254,13 @@ func ObjectiveTimerValue(q uint64) int { return int(q) - 1 }
 // rend cette relecture probable — mais tant qu'une mesure sur film ne l'a pas confirmee,
 // l'appelant qui veut le brut lit le brut.
 func ObjectiveProgressFloat(q uint64) float32 { return math.Float32frombits(uint32(q)) }
+
+// compObjectiveInteractionFilter : l etiquette de registre de `ti=11 i4` (niveau 2).
+const compObjectiveInteractionFilter = "managed-objective-interaction-filter-component"
+
+// consumeObjectiveInteractionFilter (ti=11 i4) — `FUN_140dbe170` : `FUN_140dbe400(etat + 0x48, flux,
+// v = 1 < param_4)`, le bloc de filtres SEUL, comme `ti=12 i5` et `i6` ([consumeNavpointFilterOnly]).
+// L ecrivain (`142edb5cc`) saute a `FUN_142c7023c` sur la meme destination.
+func consumeObjectiveInteractionFilter(br *Lecteur, level uint32) bool {
+	return consumeNavpointFilterOnly(br, level > 1)
+}

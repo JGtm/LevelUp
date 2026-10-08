@@ -44,6 +44,11 @@ var vecteursArrets = []vecteurArret{
 	// bit, puis par filtre present le tag sur quatre bits, le R(1) commun et la charge du tag.
 	{"I22a", compManagedObjectInteractionFilter, 10, 2, "0000 1"},
 	{"I22b", compManagedObjectInteractionFilter, 10, 2, "0011 0 | 0100 1 101010101 | 1000 0 10101010"},
+	// ti=11 i4 (niveau 2) : l ecrivain (142edb5cc -> FUN_142c7023c) ecrit le meme bloc ; ici un filtre
+	// de tag 6 (liste de references : R(4) de compte, par entree une porte puis la reference) et un de
+	// tag 11 (index derriere une porte inversee).
+	{"O4a", compObjectiveInteractionFilter, 11, 2, "0000 0"},
+	{"O4b", compObjectiveInteractionFilter, 11, 2, "1001 1 | 0110 1 0001 0 | 1011 0 0 10101"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.

@@ -75,3 +75,9 @@ package grammar
 // trames 3:636 et 3:722 passent le slot 513 et se ferment ; un record bipede de plus, et la passe
 // des armes au sol ne rend plus les records `ti=37` de ces deux trames (`worldObjects_ti42` 54 -> 53,
 // les points des slots 1525 a 1535 a ces deux instants).
+//
+// ENTREE `grammar-2026-10-08.5` (2026-10-08, lot des arrets de la vue B, suite, `ti=11 i4`) : le
+// composant `managed-objective-interaction-filter-component` se lit (`FUN_140dbe170` : le bloc de
+// filtres seul, `v = 1 < param_4`, [consumeObjectiveInteractionFilter]). Contre
+// `grammar-2026-10-08.4` : un record `ti=11` qui s arretait sur `i4` se lit jusqu au composant
+// suivant.

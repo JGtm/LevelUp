@@ -142,7 +142,7 @@ type ObjectiveScan struct {
 	// Slots est la taille de la bande d'ancrage : le denominateur de tout ce qui suit.
 	Slots int
 	// Records / Walked / Broken : records DELTA ancres, records dont la marche a abouti, et ceux
-	// dont elle s'est arretee (composant non porte — en pratique `i4 interaction-filter` —
+	// dont elle s est arretee (composant non porte, tag de filtre hors [0, 14] —
 	// ou debordement du payload).
 	Records, Walked, Broken int
 	// Chained compte les marches DELTA abouties dont la position de fin porte un EN-TETE DE
@@ -340,7 +340,7 @@ func (w *objectiveWalk) masqueDansLeDomaine(idx []int) bool {
 //
 // ELLE S'ARRETE DES QU'UN COMPOSANT N'EST PAS PORTE ou que la marche deborde : au-dela, la
 // position du curseur ne serait plus digne de confiance, et lire du bruit vaut moins que ne rien
-// lire. Sur ti=11 le seul composant qui l'arrete est `i4 interaction-filter`.
+// lire. Depuis le 2026-10-08 (`i4 interaction-filter` porte), tous les composants de ti=11 se lisent.
 func (w *objectiveWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 	sc *ObjectiveScan,
 ) (int, bool) {
@@ -373,8 +373,8 @@ func (w *objectiveWalk) walk(pay []byte, rec WorldObjectRecord, ts uint64,
 // sans bande de slots ni fenetre de balayage.
 //
 // CE QUE LE CHANGEMENT DE CADRE COUTE ICI, DIT AVANT D'ETRE DECOUVERT. Sur ti=11 la marche
-// d'etat complet desynchronise a `i4 managed-objective-interaction-filter-component`, qui n'est
-// pas porte : la voie image-cle ne rend plus de lecture tant que ce composant ne l'est pas
+// d etat complet desynchronisait a `i4 managed-objective-interaction-filter-component`, porte le
+// 2026-10-08 seulement : jusque-la, la voie image-cle ne rendait aucune lecture
 // (lot 3.6). Le chiffre d'avant ne prouvait rien — sous l'ancien cadre les 27 marches des six
 // films de recherche « aboutissaient » toutes et CHAINAIENT ZERO fois, aucune ne fermait (releve
 // du 2026-09-13). L'ancienne mesure du 2026-09-01 (2 211 marches sur 2 248, « masques

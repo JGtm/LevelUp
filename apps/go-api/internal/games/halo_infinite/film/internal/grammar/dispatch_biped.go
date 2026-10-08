@@ -152,8 +152,8 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 		return variant, nil, true
 	// ti=11 — l'archétype des objectifs gérés (components_managed_objective.go). Toutes les
 	// largeurs viennent du sérialiseur réseau du descripteur de composant (`+0x38`), recette R7-d.
-	// SEUL i4 `interaction-filter` reste dehors : sa queue est un appel virtuel de largeur
-	// inconnue, et le porter à moitié désynchroniserait au lieu d'arrêter proprement.
+	// i4 `interaction-filter` (le bloc de filtres) est lu par le maillon des navpoints
+	// ([consumeNavpointComponent]), comme ti=12 i5 et i6.
 	case compObjectiveTimers: // ti=11 i0 (FUN_142edbac8) — 2 x R(7), publie
 		consumeObjectiveTimers(br)
 		return variant, nil, true
@@ -322,6 +322,8 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		return variant, nil, consumeNavpointVisualStateGroup(br)
 	case compManagedObjectInteractionFilter: // ti=10 i22 (FUN_140dbdf5c) — bloc de filtres seul, comme i5 et i6
 		return variant, nil, consumeManagedObjectInteractionFilter(br, level)
+	case compObjectiveInteractionFilter: // ti=11 i4 (FUN_140dbe170) — bloc de filtres seul, comme i5 et i6
+		return variant, nil, consumeObjectiveInteractionFilter(br, level)
 	default:
 		return consumeMoteurDePartie(br, name, level)
 	}
