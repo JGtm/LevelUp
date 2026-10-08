@@ -95,22 +95,12 @@ func largeurAncienneDuFlock(level uint) uint {
 // `FUN_14076e494(..., 0x10, 0, *(param_3+0x38), 0)` par bit — le portage unique. Portee ainsi, la
 // fermeture d image-cle ti=38 BAISSE sans aucune hausse (fb1a1a72 317 -> 245, 111fa685 72 -> 30,
 // 11de8353 99 -> 19) ; lue R(96) brut, elle baisse aussi (281, 30, 19).
-//
-// SOUS LA GARDE (plan LK, LK.5.4.9, relu le 2026-10-08 ; largeurs de `FUN_140c1e79c` lues en LK.1.6) :
-// `FUN_142f036f0` lit le masque R(8), puis par bit `FUN_140c1e79c` (R(1), R(19) si 0, R(8)) et
-// `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde. Le jeu rend faux quand `FUN_140501798`
-// refuse l orientation decodee (deux vecteurs unitaires et orthogonaux) : ce controle, sans bit, n est
-// pas porte (decouverte D-21 du plan LK).
 func consumeGenericRigidBodyTransforms(br *Lecteur) {
-	sousLaGarde := br.sousLaGardeSinonException()
+	br.noterExceptionDatee()
 	mask := br.ReadBits(8)
 	for i := range uint(8) {
 		if mask&(1<<i) != 0 {
 			consumeCompressedDir140c1e79c(br)
-			if sousLaGarde {
-				br.ReadBits(rawVec3Bits) // FUN_1411b259c
-				continue
-			}
 			if !br.ReadBit() { // FUN_14076e524 index-present select
 				br.ReadBits(br.traversal().IndexW)
 			}

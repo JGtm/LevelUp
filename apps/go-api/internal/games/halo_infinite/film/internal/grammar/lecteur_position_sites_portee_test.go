@@ -54,12 +54,6 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 			lire: parNom("tacmap-waypointstate", 34, 2)},
 		{nom: "tacmap-waypointstate niveau registre 1", indexW: 1,
 			flux: concat(seul(bit(true), fixe(32)), brut96()), lire: parNom("tacmap-waypointstate", 34, 1)},
-		// ti=38 i18 generic-rigid-body-transforms (FUN_142f036f0) : masque R(8) ; par bit
-		// FUN_140c1e79c (R(1), R(19) si 0, R(8)) puis R(96).
-		{nom: "generic-rigid-body-transforms", indexW: 1,
-			flux: concat(seul(champDeFlux{0b101, 8}), seul(bit(false), fixe(19), fixe(8)), brut96(),
-				seul(bit(true), fixe(8)), brut96()),
-			lire: parNom("generic-rigid-body-transforms-component", 38, 0)},
 	}
 }
 

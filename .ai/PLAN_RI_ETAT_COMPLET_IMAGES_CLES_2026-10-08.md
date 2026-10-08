@@ -1043,6 +1043,20 @@ refusionner, rejouer l'étape 0).
   portent la provenance « exception datée » alors qu'elles sont lues comme le jeu. Hors de la liste de
   LK.5 ; seule consultation directe de la garde admise par le garde-rail
   `TestLesExceptionsDecidentLaGardeParUnSeulGeste` (liste datée). Non traité.
+- D-21 *(LK.5.4.9, REJETÉ)* `consumeGenericRigidBodyTransforms` (`ti=38` i18) sous la garde : masque
+  R(8), puis par bit `FUN_140c1e79c` (R(1), R(19) si 0, R(8) ; largeurs lues en LK.1.6) et
+  `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) (`FUN_142f036f0` relu le 2026-10-08). Mesure contre
+  `$S/lk5.4.8` → `$S/lk5.4.9` : I-ferm `ti=38` 9 BAISSES (`fb1a1a72` 331 → 167, `51ebbc0f` 222 → 105,
+  `60ae07c4` 152 → 112, `a349fea8` 406 → 357, `a521164d` 154 → 135, `bf15f7ab` 572 → 546, `f75e7053`
+  360 → 336, `d9781168` 408 → 396, `01e1f945` 65 → 61) et 4 hausses (`084a804d` 399 → 564, `53ce4390`
+  39 → 123, `bcb6d393` 134 → 173, `64e8adfa` 65 → 67), total 6 565 → 6 400 ; goldens en baisse
+  (`11de8353` 175 → 79 sans carte, …) ; I-d0 et carte identiques. Commit mesuré `d045b2ec7`, retiré par
+  le commit suivant. CETTE MESURE NE JUGE PAS i18 SEUL : sous la portée, i0 des records `ti=38` est
+  encore lu par l'exception hors garde (LK.5.4.1 rejeté, D-18), tout ce qui le suit y est désaligné, et
+  les fermetures `ti=38` de la base (5,5 %) sont pour l'essentiel fortuites. À rejouer derrière D-18 si
+  elle est adjugée. Par ailleurs, le jeu rend faux quand `FUN_140501798` refuse l'orientation décodée
+  par `FUN_140c1e79c` (deux vecteurs unitaires et orthogonaux, `$S/lk5/dec_140501798.txt`) : ce
+  contrôle sans bit n'est porté ni hors ni sous la garde. Non traité.
 
 ## 8. Journal
 
