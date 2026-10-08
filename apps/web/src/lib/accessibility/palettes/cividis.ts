@@ -19,6 +19,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
+import { IMPACT_ROLE_COLORS } from './_impactRoleColors'
 
 // Échantillons Cividis aux positions t = 0.00, 0.10, 0.25, 0.40, 0.50, 0.60, 0.75, 0.90, 1.00
 // Source : nuñez/cividis lookup table (PLOS ONE 2018, supplément S1)
@@ -170,6 +171,9 @@ export const cividisPalette: Palette = {
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;
   //  labels disambiguent pour les daltoniens)
   ...ENCOUNTER_BADGE_COLORS,
+
+  // ── Rôles d'impact — rampes invariantes (cf. _impactRoleColors.ts) ─────────
+  ...IMPACT_ROLE_COLORS,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // AVANT cette famille : lourde ≡ capacité spartan (#00224E) et épaule ≡

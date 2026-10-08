@@ -1344,7 +1344,6 @@ export type SquadImpactMatrix = components['schemas']['SquadImpactMatrix']
 /** Points d'impact par soirée et par rôle (même barème que la matrice, calculé côté Go). */
 export type SquadImpactHistory = components['schemas']['SquadImpactHistory']
 export type SquadImpactEvening = components['schemas']['SquadImpactEvening']
-export type SquadImpactEveningPlayer = components['schemas']['SquadImpactEveningPlayer']
 
 /**
  * Ligne du tableau historique escouade (teammates.11). Une ligne par match

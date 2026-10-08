@@ -10,7 +10,9 @@
  * `features/` ou `components/` qui nomme une stat (kill, frag, death, assist) ET porte en
  * littéral un jeton d'un AUTRE rôle. Les familles qui encodent autre chose qu'une stat
  * restent permises sans justification : équipe (`team-*`), joueur d'escouade
- * (`squad-player-*`), classe d'arme (`frag-*`).
+ * (`squad-player-*`), classe d'arme (`frag-*`), rôle d'impact (`impact-*` : la couleur nomme
+ * un rôle de la matrice d'impact, dont les clés — `top_killer`, `first_group_death` — portent
+ * « kill » / « death » sans dire la stat).
  *
  * Les usages CONSERVÉS (la couleur dit l'équipe, le joueur, l'issue, la qualité ou le
  * récit, pas la stat) sont listés ci-dessous par fichier + jeton, avec leur raison. Une
@@ -24,7 +26,7 @@ import { ALL_TOKENS } from './semantic-tokens'
 const SRC = join(process.cwd(), 'src')
 const SCANNED_DIRS = ['features', 'components']
 
-const PERMITTED_FAMILIES = /^(stat-|assist-received$|assist-given$|team-|squad-player-|frag-)/
+const PERMITTED_FAMILIES = /^(stat-|assist-received$|assist-given$|team-|squad-player-|frag-|impact-)/
 const BORROWED = ALL_TOKENS.filter((t) => !PERMITTED_FAMILIES.test(t))
 const BORROWED_RE = new RegExp(`['"\`](${BORROWED.join('|')})['"\`]`, 'g')
 // « fragment » n'est pas un frag.
