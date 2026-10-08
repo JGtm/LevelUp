@@ -712,7 +712,7 @@ func (p *PathResolver) SharedSocialDBPath(titleSlug string) string {
 // archlint/no_players_root_join_test.go).
 // Ex: data/titles/halo_infinite/players/
 func (p *PathResolver) PlayersRootDir(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "players")
+	return filepath.Join(p.TitleDataDir(titleSlug), playersDirName)
 }
 
 // PlayerDir retourne le répertoire d'un joueur pour un titre.
@@ -724,7 +724,7 @@ func (p *PathResolver) PlayerDir(titleSlug, gamertag string) string {
 // PlayerDBPath retourne le chemin de la DB stats d'un joueur.
 // Ex: data/titles/halo_infinite/players/Chocoboflor/stats.duckdb
 func (p *PathResolver) PlayerDBPath(titleSlug, gamertag string) string {
-	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "stats.duckdb")
+	return filepath.Join(p.PlayerDir(titleSlug, gamertag), playerDBFileName)
 }
 
 // PlayerArchiveDir retourne le répertoire d'archive d'un joueur.
