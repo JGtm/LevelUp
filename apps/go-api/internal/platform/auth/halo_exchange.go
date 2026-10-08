@@ -77,11 +77,18 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 // ExchangeAccessTokenWithDescriptor échange un access_token Microsoft contre des
 // tokens d'un titre donné (MT-02). Le descripteur porte l'audience XSTS, l'audience
 // + endpoint spartan, et l'endpoint clearance. ExchangeAccessToken délègue avec le
-// défaut Halo → byte-identique. (Le *http.Client est construit en interne ; les
-// tests de parité ciblent les fonctions de leg, qui prennent le client.)
+// défaut Halo → byte-identique.
 func ExchangeAccessTokenWithDescriptor(ctx context.Context, accessToken string, d title.AuthDescriptor) (*ExchangeResult, error) {
-	client := &http.Client{Timeout: 20 * time.Second}
+	return exchangeAccessTokenWithClient(ctx, &http.Client{Timeout: xblExchangeTimeout}, accessToken, d)
+}
 
+// xblExchangeTimeout borne chaque appel HTTP de la chaîne d'échange.
+const xblExchangeTimeout = 20 * time.Second
+
+// exchangeAccessTokenWithClient exécute la chaîne access_token → XBL user → XSTS
+// du titre → Spartan → Clearance avec le client fourni (injectable en test). Le
+// préfixe RpsTicket suit la provenance posée en ctx (WithTokenClientFamily).
+func exchangeAccessTokenWithClient(ctx context.Context, client *http.Client, accessToken string, d title.AuthDescriptor) (*ExchangeResult, error) {
 	// Étape 1 : User Token XBL (title-agnostic, Xbox platform)
 	userToken, err := requestUserToken(ctx, client, accessToken)
 	if err != nil {

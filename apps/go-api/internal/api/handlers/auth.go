@@ -259,10 +259,9 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 }
 
 // exchangeAfterAcquire complète l'échange en tokens Halo après l'acquisition de
-// l'access_token. Un DeviceFlow qui porte son propre contexte d'échange
-// (auth.FlowExchanger — flow SISU interactif) le complète lui-même (contexte
-// per-flow, jamais un slot partagé) ; sinon on retombe sur l'échange stateless du
-// provider (MSAL, stub).
+// l'access_token. Un DeviceFlow qui sait compléter son propre échange
+// (auth.FlowExchanger — device-flow Xbox natif, provenance du ticket connue) le
+// complète lui-même ; sinon on retombe sur l'échange stateless du provider (stub).
 func exchangeAfterAcquire(
 	ctx context.Context, provider auth_platform.TokenProvider, flow auth_platform.DeviceFlow, accessToken string,
 ) (*auth_platform.ExchangeResult, error) {
@@ -292,12 +291,13 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		return
 	}
 
-	// Chaîne d'échange : access_token → tokens Halo + identité. Un flow qui porte son
-	// propre contexte d'échange (FlowExchanger, ex. SISU interactif) le complète
-	// lui-même — pas de slot partagé sur le provider, donc pas de course avec le pool
-	// auto-sync. Les autres flows (MSAL, stub) retombent sur l'échange stateless.
+	// Chaîne d'échange : access_token → tokens Halo + identité (cf. exchangeAfterAcquire).
 	result, err := exchangeAfterAcquire(ctx, h.provider, flow, accessToken)
 	if err != nil {
+		// Logger AVANT la dégradation (règle n°3) : sans ce log, la cause n'existe
+		// que dans la tentative en mémoire, affichée au navigateur puis purgée.
+		slog.ErrorContext(ctx, "auth: échange en jetons Halo refusé après le device-flow",
+			"attempt_id", attemptID, "err", err)
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "halo_exchange_error"
@@ -309,7 +309,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	// PR 2.5a : capture des éléments nécessaires pour persistance RTA via SSO Xbox.
 	// Best-effort : tout échec ici est non bloquant (l'user peut quand même se connecter).
 	var xstsRTA *auth_platform.XSTSResult
-	// Refresh token OAuth brut, exposé par le device flow SISU après AcquireToken.
+	// Refresh token OAuth brut, exposé par le device-flow Xbox natif après AcquireToken.
 	var oauthRefreshToken string
 	if rtFlow, ok := flow.(interface{ OAuthRefreshToken() string }); ok {
 		oauthRefreshToken = rtFlow.OAuthRefreshToken()
@@ -324,12 +324,11 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		xstsRTA = xstsRTAResult
 	}
 
-	// Identité : le XSTS du titre retourné par SISU /authorize ne porte PAS
-	// gtg/xid dans ses DisplayClaims (constaté 2026-07-15 — l'UI restait sur
-	// « Chargement… » car OnAuthSuccess refuse une identité vide). On complète
-	// depuis le XSTS Xbox Live (RTA) acquis juste au-dessus, qui les porte
-	// toujours. Si les deux manquent, l'attempt échoue explicitement plutôt
-	// que de laisser le client poller un authorized inutilisable.
+	// Identité : le XSTS de l'audience du titre ne porte pas toujours gtg/xid
+	// dans ses DisplayClaims (OnAuthSuccess refuse une identité vide). On
+	// complète depuis le XSTS Xbox Live (RTA) acquis juste au-dessus, qui les
+	// porte. Si les deux manquent, l'attempt échoue explicitement plutôt que de
+	// laisser le client poller un authorized inutilisable.
 	gamertag, xuid := result.Gamertag, result.XUID
 	if (gamertag == "" || xuid == "") && xstsRTA != nil {
 		gamertag, xuid = xstsRTA.Gamertag, xstsRTA.XUID

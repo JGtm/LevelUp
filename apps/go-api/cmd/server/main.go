@@ -88,10 +88,10 @@ var version = "dev"
 // internal/api/wire/build_queue_writer_budget_test.go lit cette constante.
 const serverWriteTimeout = 120 * time.Second
 
-// buildTokenProvider instancie le TokenProvider : SISU, seul provider depuis le
-// retrait de MSAL (2026-07-15, SISU validé bout-en-bout — authentification
-// native Xbox, ZÉRO app Azure : LevelUp est distribué à des self-hosters qui ne
-// peuvent pas tous enregistrer une app Azure). L'ancien réglage
+// buildTokenProvider instancie le TokenProvider : SISUProvider, seul provider
+// (login Xbox natif — device-flow login.live.com puis chaîne XBL classique —,
+// ZÉRO app Azure : LevelUp est distribué à des self-hosters qui ne peuvent pas
+// tous enregistrer une app Azure). L'ancien réglage
 // app_settings.json:auth_provider="msal" est ignoré avec un warning.
 func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescriptor) auth.TokenProvider {
 	// MT-02 (PMT-2 leg 3) : les SISU app/title id viennent du descripteur du titre

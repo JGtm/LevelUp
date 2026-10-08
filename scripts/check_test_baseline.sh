@@ -166,6 +166,20 @@
 # diff complet baseline ↔ fonctions de test des paquets touchés : aucune autre absence
 # introduite par le lot.
 #
+# RETRAIT DU 2026-10-08 (connexion Xbox du device-flow : échange par la chaîne XBL classique,
+# l'appel sisu.xboxlive.com/authorize — 400 corps vide — est supprimé avec la paire PoP et le
+# device token qui ne servaient qu'à lui) : 20 tests retirés de `internal/platform/auth` —
+# TestDERtoP1363_{WellFormed,SmallRS,InvalidDER}, TestGeneratePoPKeyPair{,_CurveIsP256},
+# TestSignRequest_{Base64Standard,TimestampEncoded,VerifiableSignature}, TestWindowsFILETIME,
+# TestExtractPathAndQuery, TestProofKey_IndependentInstances (pop_signing.go supprimé),
+# TestCompleteSISUFlow_{ExtractsXSTSFields,MissingToken,MissingAuthorizationToken}
+# (sisu_client.go supprimé), TestRequestDeviceToken_{Success,HTTPError,MissingTokenField,
+# DeviceIDFormat} (device_token.go supprimé), TestSISUProvider_InitDeviceFlow_DeviceTokenError
+# (plus de device token à l'initialisation) et TestSISUProvider_InitDeviceFlowWithURLs_HappyPath
+# (renommé TestSISUProvider_InitDeviceFlowWithURL_HappyPath, présent dans le run courant). La
+# complétion est couverte par TestSISUDeviceFlow_ExchangeFlow_{ClassicChain,PropagatesXboxError}.
+# 89 lignes JSONL, exactement 20 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.
