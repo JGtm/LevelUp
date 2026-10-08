@@ -48,7 +48,10 @@ type CareerProgressionPartial = domain.CareerProgressionPartial
 //
 // La comparaison à la dernière ligne et l'INSERT se font sous le verrou d'écrivain
 // de la player DB (KindPlayer), attendu au plus jusqu'à la fin de ctx : aucune
-// autre écriture du process sur cette base ne s'intercale entre les deux.
+// autre écriture du process sur cette base ne s'intercale entre les deux. L'appelant
+// ne tient pas ce verrou : il n'est pas réentrant, et le tenir ferait échouer
+// l'écriture à la fin de ctx (TestPersistAppearance_DelaiCourt fixe ce contrat pour
+// le chemin Halo 5).
 //
 // Cette méthode remplace InsertCareerProgressionIfChanged pour les chemins
 // post-refactor V2. Le legacy reste pour compat tests existants.
