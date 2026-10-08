@@ -39,6 +39,11 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 		// ti=32 i0 tacmap-areaofinterest (FUN_142ed7764) : R(32), R(3), R(96), R(12).
 		{nom: "tacmap-areaofinterest", indexW: 1, flux: concat(seul(fixe(32), fixe(3)), brut96(), seul(fixe(12))),
 			lire: parNom("tacmap-areaofinterest", 32, 0)},
+		// ti=33 i0 tacmap-displayasset (FUN_142ed7d38) : R(32), R(32), R(2), R(96), R(96), R(96), R(1).
+		{nom: "tacmap-displayasset", indexW: 1,
+			flux: concat(seul(fixe(32), fixe(32), fixe(2)), brut96(),
+				seul(fixe(64), fixe(32), fixe(64), fixe(32), bit(true))),
+			lire: parNom("tacmap-displayasset", 33, 0)},
 	}
 }
 

@@ -234,12 +234,20 @@ func lireVecteurAncienAuNiveauDuRegistre(br *Lecteur, level uint32) (q [3]uint64
 // (20), `11de8353` 29:208 (16), `fb1a1a72` 7:2380 (0), `60ae07c4` 32:2062 (7). Scindee par la porte,
 // aucune forme ne ferme les deux familles : l ancien lecteur sur la seule porte posee ferme les dix
 // et perd 14:42, 7:2380 et 32:2062 ; sur la seule porte a 0, il perd 46:10 et 29:208 sans rien fermer.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.6, relu le 2026-10-08) : `FUN_142ed7d38` lit R(32) (`asset-id`), R(32),
+// R(2), le thunk `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde —, deux
+// `FUN_1406d676c` (R(96) chacun), puis R(1).
 func consumeTacmapDisplayAsset(br *Lecteur) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(32)
 	br.ReadBits(32)
 	br.ReadBits(2)
-	lireCorpsDeTraverseeAncien(br)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireCorpsDeTraverseeAncien(br)
+	}
 	br.ReadBits(64)
 	br.ReadBits(32)
 	br.ReadBits(64)
