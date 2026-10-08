@@ -25,7 +25,7 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
    - Implements `sync.HaloClient` interface
    - Uses `PolicyAnyPublic` for EVERY endpoint it serves (round-robin), career rank included
      since the 2026-09-16 measurement
-   - Pins no player at all: pinning lives where an endpoint truly requires the owner token
+   - Pins no player at all: pinning lives where a caller wants the token of one named account
      (Spartan customization cron, Halo 5 live-sync)
 
 ---
@@ -81,17 +81,22 @@ client := halo.NewHaloAPIClient(lease.Tokens)
 stats, err := client.GetMatchStats(ctx, matchID)
 ```
 
-**PolicyPinnedPlayer** — Token of specific player only, for the two endpoints that really
-are gated on the token owner:
-- Spartan customization (`/customization/appearance`) — the scheduler cron; a third-party
-  token gets 403 (measured 2026-09-16)
+**PolicyPinnedPlayer** — Token of one named account. Two callers use it:
+- Spartan customization cron (`internal/scheduler/spartan_customization_bearer.go`) — the
+  player's own token first, because it opens the private view `/customization/appearance`
+  (a third-party token gets 403, measured 2026-09-16). If that token is unusable, the cron
+  pins the instance user only (the account whose xuid is linked to an `admin`-role account of the
+  instance, read through the account store; no other user's token ever carries the read, and
+  without it nothing is read) and the client falls back to the public view
+  `/customization?view=public`, which carries the same appearance block for any player.
 - Halo 5 live-sync (`games/halo_5/livesync`)
 
 ```go
 lease, err := pool.Acquire(ctx, auth.PolicyPinnedPlayer, gamertag)
 if err != nil {
-    // gamertag has no token or token is unhealthy → skip silently
-    return nil, nil
+    // gamertag has no token, or its token is unhealthy or rate-limited:
+    // the caller picks another account (customization cron) or another policy (H5 live-sync)
+    return nil, err
 }
 defer lease.Release()
 client := halo.NewHaloAPIClient(lease.Tokens)
@@ -119,7 +124,7 @@ the pool*).
 | `cmd/levelup archive-films`, `backfill-killsource --online`, `replay-events` | `PolicyAnyPublic` | **No** |
 | `internal/scheduler` auto-sync cycle (`checkSyncPreconditions` → `BuildEngine`) | `PolicyAnyPublic` | **No** |
 | `PooledHaloClient.GetCareerRank` | `PolicyAnyPublic` | **No** — `/careerranks` is fully public (measured 2026-09-16, D4 of the sync robustness plan) |
-| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` | **Yes** — the only legitimate `HasPlayer(` guard left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
+| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` (own account, else the instance admin account) | **No** — the own token is preferred for the private view; without it the player is read with the instance admin account token through the public view, never with another user's. The only `HasPlayer(` call left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
 
 Before 2026-09-16 three call sites short-circuited the doctrine with `if !pool.HasPlayer(gt) {
 skip }` — the two `--all` CLI loops and the auto-sync cycle — and the single-player CLI resolved

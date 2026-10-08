@@ -84,9 +84,18 @@ séparé de carrière en direct (`service.CareerLiveService`), et `career_synced
 `false` dans le résumé du sync, jeton ou pas. `/careerranks` est lui-même PUBLIC : mesuré le
 2026-09-16 avec trois jetons prêteurs différents sur un xuid tiers, il rend le même rang et la
 même XP que l'appel du propriétaire — le client poolé l'acquiert donc en `PolicyAnyPublic`
-comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation Spartan est le
-seul appelant qui exige le jeton propre du joueur (403 pour un tiers, mesuré), et garde pour
-cette raison son contrôle `HasPlayer`.
+comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation Spartan (toutes
+les 8 h, premier passage au démarrage du serveur) préfère le jeton propre du joueur, qui ouvre
+la vue privée `/customization/appearance` (403 pour un tiers, mesuré). Quand ce jeton est
+inutilisable (jeton de rafraîchissement refusé, créneau malsain), le joueur est lu avec le jeton
+de l'utilisateur de l'instance seulement : le compte dont le xuid est lié à un compte de rôle
+`admin` parmi les comptes de l'instance (`data/auth/users.json`, lus par le store des comptes).
+Le jeton d'un autre utilisateur ne porte jamais la lecture. Si ce jeton est lui aussi
+inutilisable, ou les comptes illisibles, rien n'est lu ni écrit (journalisé, compté dans
+`spartan_cron_no_bearer_total`). Avec le jeton admin, le client se replie sur la vue publique
+`/customization?view=public`, qui porte le même emblème, le même fond et le même tag de service
+pour n'importe quel joueur. La ligne est écrite dans la base du joueur lu ; aucun jeton n'est
+capturé ni rafraîchi hors du pool.
 
 Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le

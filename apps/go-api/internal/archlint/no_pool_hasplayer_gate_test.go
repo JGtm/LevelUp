@@ -11,8 +11,8 @@ package archlint
 // jamais été synchronisé — alors que seul son rang de carrière lui est inaccessible.
 //
 // LA RÈGLE. Hors du paquet `pool` (qui l'implémente) et des tests, `HasPlayer(` n'apparaît que
-// là où l'appel SUIVANT est PolicyPinnedPlayer. Une seule ligne au monde le justifie
-// aujourd'hui : le cron de personnalisation Spartan.
+// là où l'appel SUIVANT est PolicyPinnedPlayer et où il CHOISIT un token sans jamais sauter un
+// profil suivi. Les sites admis sont listés dans exemptionsHasPlayer.
 //
 // Mutation qui doit le faire rougir : remettre un `if !pool.HasPlayer(...)` dans
 // `cmd/levelup/cmd_sync.go` ou dans `internal/scheduler/auto_sync_run.go`.
@@ -26,13 +26,16 @@ import (
 
 // exemptionsHasPlayer — allowlist DATÉE, une entrée. Chemins relatifs à `apps/go-api`, en
 // slash. Y ajouter une ligne demande la même démonstration : l'appel qui suit immédiatement
-// est `Acquire(ctx, pool.PolicyPinnedPlayer, …)` sur un endpoint privacy-gated.
+// est `Acquire(ctx, pool.PolicyPinnedPlayer, …)`, et un profil sans token propre n'est pas
+// sauté pour autant.
 //
-//   - internal/scheduler/spartan_customization_cron.go (2026-09-16) : la personnalisation
-//     Spartan est privacy-gated ; aucun autre token du parc ne peut la lire. Le `HasPlayer`
-//     y évite un Acquire voué à l'échec, il ne saute pas une synchronisation.
+//   - internal/scheduler/spartan_customization_bearer.go (2026-10-08) : le cron de
+//     personnalisation Spartan choisit le token qui lit l'apparence d'un joueur. `HasPlayer`
+//     y dit si le joueur, puis le compte admin de l'instance, a un créneau avant de le prendre
+//     en PolicyPinnedPlayer ; un joueur sans token propre est lu avec le token du compte admin
+//     (acquireReaderToken), et sans lui l'échec est journalisé et compté, jamais tu.
 var exemptionsHasPlayer = map[string]bool{
-	"internal/scheduler/spartan_customization_cron.go": true,
+	"internal/scheduler/spartan_customization_bearer.go": true,
 }
 
 // TestHasPlayerNeGardePasLaSync — LE RATCHET.
