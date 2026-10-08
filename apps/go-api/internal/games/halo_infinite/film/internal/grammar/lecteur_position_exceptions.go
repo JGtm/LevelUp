@@ -18,6 +18,11 @@ package grammar
 //	la lecture du jeu fait monter la fermeture sans aucune baisse sur les bobines, ou la
 //	grammaire dependante du build est etablie.
 //
+// SOUS LA GARDE DE PLEINE PRECISION (`FUN_14076f91c`, [fullPrecisionGate] : la portee de l etat
+// complet, plan LK, LK.5.4), un site dont la lecture sous la garde est relue chez le jeu la porte EN
+// TETE de sa fonction, dans un bloc autonome : il y lit comme le jeu, sans noter d exception, et
+// l exception ne vaut que hors de la garde. Ses cas : `lecteur_position_sites_portee_test.go`.
+//
 // Le test de chaque site (`lecteur_position_sites_test.go`) est marque « ecart attendu » par
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
@@ -162,6 +167,18 @@ func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
 // pres, ne se localise plus (le composant passe de 44 a 71 bits) ; elle en ferme deux autres
 // (`e5adf7b2` chunk 6 paquet 50, 4 entrees ; `111fa685` chunk 14 paquet 552, 2 entrees).
 func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
+	// SOUS LA GARDE (plan LK, LK.5.4.2, relu le 2026-10-08) : `FUN_142f03ec8` lit la porte, puis
+	// `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde — et `FUN_14076dc04` R(19). Les 96 bits
+	// ne sont pas des quanta : l identifiant seul est publie, `present` faux.
+	if fullPrecisionGate(br) {
+		if !br.ReadBit() {
+			br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
+			return
+		}
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, br.ReadBits(19))
+		return
+	}
 	br.noterExceptionDatee()
 	if !br.ReadBit() {
 		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)

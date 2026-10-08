@@ -14,6 +14,8 @@
 #     fermait par hasard a la base (plan LK, §2 « Adjudication »).
 #   2026-10-08 plan LK (LK.5.2) : queue de FUN_14076e3e4 fidele sous la portee (handle par
 #     FUN_1408f0ac4(.., 0), 13 bits ; puis le mot de region). Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.2) : ti=5 i12 player-desired-respawn-location sous la portee
+#     (porte, R(96), R(19)). Aucune ligne ne bouge.
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	
