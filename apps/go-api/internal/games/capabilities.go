@@ -41,6 +41,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapFilmWeaponTiers,
 		CapFilmVehicleUsage,
 		CapFilmReplayArtifact,
+		CapMapForgeCallouts,
 	}
 }
 

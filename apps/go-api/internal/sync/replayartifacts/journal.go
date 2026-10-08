@@ -71,6 +71,16 @@ const (
 	JaugeMvarSansMapID     = "postsync_mvar_matchs_sans_map_id"
 	JaugeMvarHorsObjectifs = "postsync_mvar_cartes_hors_catalogue_objectifs"
 	JaugeMvarEchecs        = "postsync_mvar_echecs"
+	// Bilan du rattrapage des ZONES NOMMEES des cartes Forge (cf. zones_rattrapage.go), par
+	// cycle. JAUGES publiees MEME A ZERO, pour la meme raison que les precedentes.
+	// JaugeZonesEchecs : telechargement refuse, variante illisible, ecriture du catalogue
+	// genere refusee, lexique ou capabilities illisibles — un defaut, jamais un etat normal.
+	JaugeZonesAjoutees      = "postsync_zones_cartes_ajoutees"
+	JaugeZonesDejaCouvertes = "postsync_zones_cartes_deja_couvertes"
+	JaugeZonesSansZone      = "postsync_zones_cartes_sans_zone"
+	JaugeZonesSansLibelle   = "postsync_zones_cartes_sans_libelle"
+	JaugeZonesTelechargees  = "postsync_zones_variantes_telechargees"
+	JaugeZonesEchecs        = "postsync_zones_echecs"
 	// Report du coup d'envoi mesure dans le film vers `match_registry` (cf. t0film.go).
 	// CompteurT0FilmReportes : lignes de registre corrigees ; CompteurT0FilmDejaLa : matchs
 	// deja marques `film_movement` a la meme valeur (la garde a mordu) ; CompteurT0FilmEchecs :
