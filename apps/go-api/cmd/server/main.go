@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -358,6 +357,18 @@ func main() {
 			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
 	}
 
+	// --- 2 bis. Écoute immédiate (boot_gate.go) : la page est servie et l'API répond 503
+	// server_starting jusqu'à bootSrv.openRouter ; un port occupé arrête ici, avant les bases.
+	gate := newBootGate(cfg)
+	srv := &http.Server{
+		Addr:         cfg.ServerAddr(),
+		Handler:      gate,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: serverWriteTimeout,
+		IdleTimeout:  60 * time.Second,
+	}
+	bootSrv := startBootServer(srv, gate)
+
 	// --- Outillage média (ffmpeg/ffprobe) — check observable NON-bloquant ---
 	// L'app exécute ffmpeg/ffprobe pour les miniatures WebP, le transcodage HLS
 	// et le remux live des clips. Leur absence — ou un ffmpeg compilé sans
@@ -504,6 +515,8 @@ func main() {
 			slog.Debug("migrations player appliquées")
 		}
 	}
+
+	gate.setStep(context.Background(), bootStepDatabases)
 
 	// Architecture B-swap (sprint sharedprovider, ADR 0016) — ACTIVÉ PAR DÉFAUT
 	// au commit 9.
@@ -752,10 +765,12 @@ func main() {
 	// Le callback onRotated persiste le refresh_token rotaté par Microsoft dans le
 	// MultiUserTokenStore — sans ça, le prochain refresh échouerait avec
 	// invalid_grant (Microsoft rotate systématiquement le RT à chaque usage).
+	gate.setStep(ctx, bootStepAccounts)
 	var autoSyncPool pool.Pool
 	if !boot.cutInDemo(stepTokenPool) {
 		autoSyncPool = buildAutoSyncPool(ctx, cfg, tokenProvider)
 	}
+	gate.setStep(ctx, bootStepServices)
 	if autoSyncPool != nil {
 		defer autoSyncPool.Close()
 		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
@@ -1329,32 +1344,8 @@ func main() {
 	// comme les autres sous-systèmes. OFF par défaut (cf. internal/notifications/external).
 	external.LogBootState(context.Background(), cfg.AppSettingsPath)
 
-	srv := &http.Server{
-		Addr:         cfg.ServerAddr(),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: serverWriteTimeout,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	// --- 7. Démarrage + graceful shutdown ---
-	// On bind le port en premier pour détecter immédiatement un conflit.
-	ln, err := net.Listen("tcp", cfg.ServerAddr())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "  [ERR] Port %s deja occupe -- fermez l'ancien processus\n", cfg.ServerAddr())
-		os.Exit(1)
-	}
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-
-	fmt.Fprintf(os.Stderr, "\n  [OK] LevelUp API ready -> http://%s\n\n", cfg.ServerAddr())
-	go func() {
-		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			slog.Error("server error", "err", err)
-			os.Exit(1)
-		}
-	}()
+	// --- 7. Routeur branché (le port écoute depuis 2 bis) + graceful shutdown ---
+	bootSrv.openRouter(ctx, router)
 
 	// Heartbeat 30s — sentinelle de vie du process. Si les logs cessent de
 	// montrer "alive" mais que le binaire est toujours en mémoire → deadlock
@@ -1366,7 +1357,7 @@ func main() {
 	// LE log Info de boot qui liste, en démo, ce qui est coupé (no-op hors démo).
 	boot.logCut(ctx)
 
-	<-sigCh
+	<-bootSrv.stopRequested()
 	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
 
 	cancelScheduler()

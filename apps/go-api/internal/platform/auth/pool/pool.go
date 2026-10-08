@@ -113,8 +113,10 @@ func poolTitleOf(sources []CredentialSource) string {
 
 // NewPool crée un Pool à partir d'une liste de CredentialSources découvertes.
 // opts.MaxSize = nombre maximal de slots SAINS (0 = tous ceux que les sources permettent) ;
-// les sources sont parcourues en entier, dans l'ordre alphabétique des gamertags, et une
-// résolution en échec ne consomme pas le quota. opts.PerTokenRPS = 0 → défaut 1 RPS.
+// les sources sont prises dans l'ordre alphabétique des gamertags, et une résolution en
+// échec ne consomme pas le quota. Les comptes sont résolus en parallèle : le Resolver doit
+// accepter des appels concurrents pour des comptes distincts (cf. resolveBootSources).
+// opts.PerTokenRPS = 0 → défaut 1 RPS.
 //
 // Constructeur : câblage cohésif des dépendances du pool (sources, rate limiter,
 // refresher, cooldown) ; découper fragmenterait l'assemblage DI (K3f, exemption).
@@ -126,7 +128,11 @@ func NewPool(
 	sources []CredentialSource,
 	opts PoolOptions,
 ) (Pool, error) {
-	// Appliquer les valeurs par défaut.
+	// Appliquer les valeurs par défaut. Un plafond négatif (`--token-pool-size -1`) veut
+	// dire « sans plafond », comme 0 : seul point de normalisation de MaxSize.
+	if opts.MaxSize < 0 {
+		opts.MaxSize = 0
+	}
 	if opts.PerTokenRPS == 0 {
 		opts.PerTokenRPS = 1
 	}
@@ -154,39 +160,25 @@ func NewPool(
 	copy(sorted, sources)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Gamertag < sorted[j].Gamertag })
 
-	capacity := len(sorted)
-	if opts.MaxSize > 0 && capacity > opts.MaxSize {
-		capacity = opts.MaxSize
-	}
+	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la SUIVANTE. Les
+	// comptes sont résolus en parallèle (cf. resolveBootSources : même parc, même ordre
+	// qu'une résolution en série, durée du plus lent au lieu de la somme).
+	resolveStart := time.Now()
+	resolvedSources := resolveBootSources(ctx, resolver, sorted, opts.MaxSize)
+	resolveDuration := time.Since(resolveStart)
 
-	// Créer les slots. Une source en échec est SKIPPÉE et on passe à la
-	// SUIVANTE (fix 2026-06-11 : l'ancienne boucle `i--` + `poolSize--`
-	// retentait le même index en boucle et abandonnait silencieusement toutes
-	// les sources situées après la première en échec — cf. burst de 7
-	// tentatives DankerGlue au boot, .ai/archive/V7/PLAN_AUTH_WARNING_NOISE.md).
-	slots := make([]*slot, 0, capacity)
+	slots := make([]*slot, 0, len(resolvedSources))
 	slotsByKey := make(map[string]int)
-
-	for _, src := range sorted {
-		if opts.MaxSize > 0 && len(slots) == opts.MaxSize {
-			break
-		}
-		resolved, err := resolver.Resolve(ctx, src)
-		if err != nil {
-			slog.WarnContext(ctx, "pool: impossible de résoudre token au boot, skip slot",
-				"gamertag", src.Gamertag, "err", err)
-			continue
-		}
-
-		slotsByKey[gtKey(poolTitle, src.Gamertag)] = len(slots)
+	for _, rs := range resolvedSources {
+		slotsByKey[gtKey(poolTitle, rs.src.Gamertag)] = len(slots)
 		slots = append(slots, &slot{
-			gamertag: src.Gamertag,
-			xuid:     src.XUID,
-			resolved: resolved,
+			gamertag: rs.src.Gamertag,
+			xuid:     rs.src.XUID,
+			resolved: rs.resolved,
 			// Budget PAR COMPTE partagé process-wide (sujet 2 T1) : tous les
 			// consommateurs du même xuid (pool, career_live, worldenrich)
 			// attendent sur le MÊME token bucket — le pool voit la vraie pression.
-			limiter:     ratebudget.ForXUID(src.XUID, float64(opts.PerTokenRPS)),
+			limiter:     ratebudget.ForXUID(rs.src.XUID, float64(opts.PerTokenRPS)),
 			healthy:     true,
 			lastRefresh: time.Now(),
 		})
@@ -221,7 +213,8 @@ func NewPool(
 	}
 
 	slog.InfoContext(ctx, "pool: créé",
-		"size", len(p.slots), "perTokenRPS", opts.PerTokenRPS)
+		"size", len(p.slots), "perTokenRPS", opts.PerTokenRPS,
+		"sources", len(sorted), "resolve_ms", resolveDuration.Milliseconds())
 
 	// Lancer le refresher en arrière-plan (ne pas attendre).
 	go p.refresherLoop(context.Background())

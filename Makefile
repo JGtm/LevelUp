@@ -96,6 +96,10 @@ GO_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 # Surchargeable via env si on veut pointer ailleurs.
 LEVELUP_DATA_ROOT ?=
 VITE_API_PROXY_TARGET ?= http://127.0.0.1:$(API_PORT)
+# Vrai si une API est déjà en route sur API_PORT : prête (/health 200) OU en démarrage
+# (/health 503 server_starting : le serveur écoute avant d'avoir ouvert ses bases, cf.
+# apps/go-api/cmd/server/boot_gate.go). Utilisé dans un `if` shell.
+API_RUNNING_CHECK = { curl -fsS "http://127.0.0.1:$(API_PORT)/health" >/dev/null 2>&1 || curl -sS "http://127.0.0.1:$(API_PORT)/health" 2>/dev/null | grep -q '"server_starting"'; }
 GO_LDFLAGS := -ldflags "-X main.version=$(GO_VERSION)"
 # air hot-reload — which air donne le chemin complet depuis le PATH (plus robuste
 # que go env GOPATH qui retourne vide quand USERPROFILE n'est pas transmis au shell make)
@@ -134,8 +138,8 @@ go-api-build:
 
 # (interne) Demarre le serveur Go seul avec hot-reload (air)
 _go-api-run:
-	@if curl -fsS "http://127.0.0.1:$(API_PORT)/health" >/dev/null 2>&1; then \
-		echo "  [i] LevelUp API deja disponible sur http://127.0.0.1:$(API_PORT) -- reutilisation."; \
+	@if $(API_RUNNING_CHECK); then \
+		echo "  [i] LevelUp API deja en route (prete ou en demarrage) sur http://127.0.0.1:$(API_PORT) -- reutilisation."; \
 		exit 0; \
 	fi
 	@$(GO_API_CLEANUP_CMD)
@@ -148,8 +152,8 @@ _go-api-run:
 
 ## Demarre l'app LevelUp (API Go + frontend Vite). Ctrl+C arrete tout.
 dev:
-	@if curl -fsS "http://127.0.0.1:$(API_PORT)/health" >/dev/null 2>&1; then \
-		echo "  [!] LevelUp API deja en cours sur le port $(API_PORT). Arretez-la d'abord."; \
+	@if $(API_RUNNING_CHECK); then \
+		echo "  [!] LevelUp API deja en cours (prete ou en demarrage) sur le port $(API_PORT). Arretez-la d'abord."; \
 		exit 1; \
 	fi
 	@echo "  [*] Demarrage API (port $(API_PORT)) + Web (port 5173)..."
