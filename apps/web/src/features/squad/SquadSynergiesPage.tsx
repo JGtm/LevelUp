@@ -33,6 +33,7 @@ import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadAppuiCard } from './SquadAppuiCard'
 import { SquadRangeRolesCard } from './SquadRangeRolesCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
+import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 
 export function SquadSynergiesPage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -56,13 +57,13 @@ export function SquadSynergiesPage() {
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase) : on aligne sur main_player.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
-  // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. Le
-  // graphe d appui s'en sert pour l'ordre des barres ET pour les couleurs par
-  // joueur — mêmes teintes que partout ailleurs sur la page.
+  // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers (ordre
+  // des barres de l'appui). Couleurs : la palette de la page, mêmes teintes dans tous les onglets.
   const roster = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags],
     [mainPlayerKey, confirmedGamertags],
   )
+  const { colorByPlayer } = useSquadPlayerPalette()
   const outcomes = mappings?.outcomes
   const outcomeLabels = useMemo(
     () => ({
@@ -136,8 +137,8 @@ export function SquadSynergiesPage() {
             <InfoTooltip content={<TooltipParagraphs items={t.sections.appuiPorteeHelp} />} />
           </SectionTitle>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="squad-appui-portee-row">
-            {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} />}
-            {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />}
+            {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} colorByPlayer={colorByPlayer} />}
+            {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} colorByPlayer={colorByPlayer} />}
           </div>
         </section>
       )}

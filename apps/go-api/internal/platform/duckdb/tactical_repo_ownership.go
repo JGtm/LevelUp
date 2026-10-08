@@ -8,8 +8,8 @@
 // OUVRABLE par construction. Cette methode-ci verifie autre chose — le PERIMETRE
 // DEMANDE lui-meme (`scope.MatchIDs`, le corps de la requete), AVANT toute lecture
 // d'occupation. Un client qui poserait un match_id d'un autre joueur dans ce
-// corps (bug, cache perime, appel hostile) doit voir ce match COMPTE dans
-// `matchs_non_ouvrables`, jamais mele aux contributions — meme garde que la
+// corps (bug, cache perime, appel hostile) voit ce match ECARTE des contributions et
+// COMPTE au journal du service (`matchs_non_ouvrables`), jamais mele aux contributions — meme garde que la
 // Couche B de l'ADR (`MatchViewRepo.IsParticipant` / `Q17bIsParticipant`), en
 // version BATCH puisque le detail d'une cellule verifie tout le perimetre d'un
 // coup plutot qu'un match a la fois.

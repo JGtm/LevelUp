@@ -22,6 +22,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject
 
 import { useReplayDrag } from '@/features/match-replay/hooks/useReplayDrag'
 import { useReplayWheelZoom } from '@/features/match-replay/hooks/useReplayWheelZoom'
+import { useReplayZoomKeys } from '@/features/match-replay/hooks/useReplayZoomKeys'
 import type { ReplayZoom } from '@/features/match-replay/hooks/useReplayZoom'
 import type { ReplayBounds } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -88,6 +89,7 @@ export function CalqueDuPlan({
   const view = useMemo(() => ({ bounds: fenetre, width: taille.width, height: taille.height, pad: 0 }), [fenetre, taille])
   const drag = useReplayDrag(zoom, view)
   useReplayWheelZoom(canvasRef, zoom, view)
+  useReplayZoomKeys(canvasRef, zoom) // + / − / 0, plan survolé ou focus dedans
   const lissee = useMemo(() => (grid ? lisserLaGrille(grid) : null), [grid])
   const appui = useRef<{ x: number; y: number } | null>(null)
 

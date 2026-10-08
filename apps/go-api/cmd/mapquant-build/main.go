@@ -149,9 +149,20 @@ const deployVariant = "ds"
 //	fo11_blank   Ecotone, Threshold, Pharaoh, Credence, Disciple, Nadair, Warehouse
 //	fo05_desert  Solution, Flood Gulch, Dawnbreaker, Vallaheim Firefight
 //	fo13_frost   Outlook, Lattice - Ranked, 944396dd-5661-4a16-b1d8-a6053f762c55
+//
+// Detachment et Argyle sont des cartes Forge dont l'asset ne publie AUCUN fichier-lien de
+// canevas : leur module se prouve par le level_id seul (`himap.TestSondeCanevasCartesOrphelines`,
+// unicité exigée sur les modules `any/levels` + `ds/levels`), la méthode de
+// `TestPreuveLevelIDCartes` moins la corroboration par le fichier-lien. Ce sont les mêmes
+// canevas que `himap.CartesForge` déclare pour leurs fonds :
+//
+//	Detachment  1437677928 (0x55B13968) -> fo09_academy
+//	Argyle      426470249  (0x196B6B69) -> fo11_blank   (couvre aussi « Argyle - Ranked »,
+//	            même level_id, clé normalisée `argyle`)
 var mapModule = map[string]string{
 	"Absolution":          "fo09_academy",
 	"Aquarius":            "ctf_aquarius",
+	"Argyle":              "fo11_blank",
 	"Banished Narrows":    "fo05_desert",
 	"Bazaar":              "ctf_bazaar",
 	"Behemoth":            "va_behemoth",
@@ -168,6 +179,7 @@ var mapModule = map[string]string{
 	"Curfew":              "fo11_blank",
 	"Dawnbreaker":         "fo05_desert",
 	"Deadlock":            "btb_drydock",
+	"Detachment":          "fo09_academy",
 	"Disciple":            "fo11_blank",
 	"Domicile":            "fo05_desert",
 	"Dredge":              "fo06_deepsea",

@@ -1,0 +1,987 @@
+{
+  "couverture_incomplete": false,
+  "temoins": [
+    {
+      "id": "bcb6d393",
+      "famille": "ctf_mono_manche",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 6341,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "fb1a1a72",
+      "famille": "ctf_multi_manche",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 14922,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "d9781168",
+      "famille": "oddball",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 2,
+      "pertes": 9,
+      "changements": 4,
+      "dureeMs": 11191,
+      "verite": {
+        "statut": "ok",
+        "filets": [
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.from/presents",
+            "sens": "perte",
+            "ancien": "39",
+            "nouveau": "37"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.k/presents",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "93"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.kind/presents",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "93"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.slot/presents",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "93"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.t/presents",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "93"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/n",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "93"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/dropped",
+            "sens": "perte",
+            "ancien": "11",
+            "nouveau": "10"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/swapped",
+            "sens": "perte",
+            "ancien": "28",
+            "nouveau": "27"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.weaponChanges.published",
+            "sens": "perte",
+            "ancien": "94",
+            "nouveau": "93"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.from/presents",
+          "sens": "perte",
+          "ancien": "39",
+          "nouveau": "37"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.k/presents",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "93"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.kind/presents",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "93"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.slot/presents",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "93"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.t/presents",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "93"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/n",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "93"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/dropped",
+          "sens": "perte",
+          "ancien": "11",
+          "nouveau": "10"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/swapped",
+          "sens": "perte",
+          "ancien": "28",
+          "nouveau": "27"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.published",
+          "sens": "perte",
+          "ancien": "94",
+          "nouveau": "93"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.dropped",
+          "sens": "changement",
+          "ancien": "11",
+          "nouveau": "10"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.restated",
+          "sens": "changement",
+          "ancien": "0",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.swapped",
+          "sens": "changement",
+          "ancien": "28",
+          "nouveau": "27"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.taken",
+          "sens": "changement",
+          "ancien": "55",
+          "nouveau": "56"
+        }
+      ]
+    },
+    {
+      "id": "c75f33b8",
+      "famille": "assaut_bombe",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 2,
+      "pertes": 9,
+      "changements": 4,
+      "dureeMs": 7237,
+      "verite": {
+        "statut": "ok",
+        "filets": [
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.from/presents",
+            "sens": "perte",
+            "ancien": "36",
+            "nouveau": "26"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.k/presents",
+            "sens": "perte",
+            "ancien": "73",
+            "nouveau": "66"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.kind/presents",
+            "sens": "perte",
+            "ancien": "73",
+            "nouveau": "66"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.slot/presents",
+            "sens": "perte",
+            "ancien": "73",
+            "nouveau": "66"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.t/presents",
+            "sens": "perte",
+            "ancien": "73",
+            "nouveau": "66"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/n",
+            "sens": "perte",
+            "ancien": "73",
+            "nouveau": "66"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/dropped",
+            "sens": "perte",
+            "ancien": "22",
+            "nouveau": "15"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/swapped",
+            "sens": "perte",
+            "ancien": "14",
+            "nouveau": "11"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.weaponChanges.published",
+            "sens": "perte",
+            "ancien": "73",
+            "nouveau": "66"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.from/presents",
+          "sens": "perte",
+          "ancien": "36",
+          "nouveau": "26"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.k/presents",
+          "sens": "perte",
+          "ancien": "73",
+          "nouveau": "66"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.kind/presents",
+          "sens": "perte",
+          "ancien": "73",
+          "nouveau": "66"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.slot/presents",
+          "sens": "perte",
+          "ancien": "73",
+          "nouveau": "66"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.t/presents",
+          "sens": "perte",
+          "ancien": "73",
+          "nouveau": "66"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/n",
+          "sens": "perte",
+          "ancien": "73",
+          "nouveau": "66"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/dropped",
+          "sens": "perte",
+          "ancien": "22",
+          "nouveau": "15"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/swapped",
+          "sens": "perte",
+          "ancien": "14",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.published",
+          "sens": "perte",
+          "ancien": "73",
+          "nouveau": "66"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.dropped",
+          "sens": "changement",
+          "ancien": "22",
+          "nouveau": "15"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.restated",
+          "sens": "changement",
+          "ancien": "9",
+          "nouveau": "16"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.swapped",
+          "sens": "changement",
+          "ancien": "14",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.taken",
+          "sens": "changement",
+          "ancien": "37",
+          "nouveau": "40"
+        }
+      ]
+    },
+    {
+      "id": "bf15f7ab",
+      "famille": "slayer",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 8198,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "51ebbc0f",
+      "famille": "deux_manches",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 2,
+      "pertes": 2,
+      "changements": 2,
+      "dureeMs": 35165,
+      "verite": {
+        "statut": "ok",
+        "filets": [
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.from/presents",
+            "sens": "perte",
+            "ancien": "29",
+            "nouveau": "28"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/swapped",
+            "sens": "perte",
+            "ancien": "12",
+            "nouveau": "11"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.from/presents",
+          "sens": "perte",
+          "ancien": "29",
+          "nouveau": "28"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/swapped",
+          "sens": "perte",
+          "ancien": "12",
+          "nouveau": "11"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.swapped",
+          "sens": "changement",
+          "ancien": "12",
+          "nouveau": "11"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.taken",
+          "sens": "changement",
+          "ancien": "44",
+          "nouveau": "45"
+        }
+      ]
+    },
+    {
+      "id": "084a804d",
+      "famille": "vehicules",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 82742,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "0797ce72",
+      "famille": "region_index_2_bits",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 9211,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "111fa685",
+      "famille": "version_39",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 17700,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "e5adf7b2",
+      "famille": "version_40_build_1_11",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 19558,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "60ae07c4",
+      "famille": "version_37",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 15862,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "a349fea8",
+      "famille": "version_33_sans_identification",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 90753,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "a521164d",
+      "famille": "version_33_build_1_4_1",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 23482,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "11de8353",
+      "famille": "version_38_build_1_9_0",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 22543,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "50247b26",
+      "famille": "version_31_sans_identification",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 8,
+      "changements": 2,
+      "dureeMs": 55877,
+      "verite": {
+        "statut": "ok",
+        "constats": [
+          {
+            "mesure": "V-3 action hors vie",
+            "sens": "gain",
+            "avant": "4",
+            "apres": "3",
+            "detail": [
+              "- changement d'arme slot 512 @447"
+            ]
+          }
+        ],
+        "filets": [
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.from/presents",
+            "sens": "perte",
+            "ancien": "28",
+            "nouveau": "26"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.k/presents",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "110"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.kind/presents",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "110"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.slot/presents",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "110"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.t/presents",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "110"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/n",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "110"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/dropped",
+            "sens": "perte",
+            "ancien": "26",
+            "nouveau": "24"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.weaponChanges.published",
+            "sens": "perte",
+            "ancien": "112",
+            "nouveau": "110"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.from/presents",
+          "sens": "perte",
+          "ancien": "28",
+          "nouveau": "26"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.k/presents",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "110"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.kind/presents",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "110"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.slot/presents",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "110"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.t/presents",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "110"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/n",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "110"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/dropped",
+          "sens": "perte",
+          "ancien": "26",
+          "nouveau": "24"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.published",
+          "sens": "perte",
+          "ancien": "112",
+          "nouveau": "110"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.dropped",
+          "sens": "changement",
+          "ancien": "26",
+          "nouveau": "24"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.restated",
+          "sens": "changement",
+          "ancien": "29",
+          "nouveau": "31"
+        }
+      ]
+    },
+    {
+      "id": "bfecd02b",
+      "famille": "vehicules_v41_utilisateur",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 14347,
+      "verite": {
+        "statut": "ok"
+      }
+    },
+    {
+      "id": "4f77afc1",
+      "famille": "equipement_origine_utilisateur",
+      "statut": "PERTE",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 8,
+      "changements": 2,
+      "dureeMs": 59326,
+      "verite": {
+        "statut": "ok",
+        "filets": [
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.from/presents",
+            "sens": "perte",
+            "ancien": "167",
+            "nouveau": "164"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.k/presents",
+            "sens": "perte",
+            "ancien": "325",
+            "nouveau": "322"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.kind/presents",
+            "sens": "perte",
+            "ancien": "325",
+            "nouveau": "322"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.slot/presents",
+            "sens": "perte",
+            "ancien": "325",
+            "nouveau": "322"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges.t/presents",
+            "sens": "perte",
+            "ancien": "325",
+            "nouveau": "322"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/n",
+            "sens": "perte",
+            "ancien": "325",
+            "nouveau": "322"
+          },
+          {
+            "axe": "armes",
+            "metrique": "weaponChanges/par-kind/dropped",
+            "sens": "perte",
+            "ancien": "30",
+            "nouveau": "27"
+          },
+          {
+            "axe": "couverture",
+            "metrique": "coverage.weaponChanges.published",
+            "sens": "perte",
+            "ancien": "325",
+            "nouveau": "322"
+          }
+        ]
+      },
+      "pertesDetail": [
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.from/presents",
+          "sens": "perte",
+          "ancien": "167",
+          "nouveau": "164"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.k/presents",
+          "sens": "perte",
+          "ancien": "325",
+          "nouveau": "322"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.kind/presents",
+          "sens": "perte",
+          "ancien": "325",
+          "nouveau": "322"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.slot/presents",
+          "sens": "perte",
+          "ancien": "325",
+          "nouveau": "322"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges.t/presents",
+          "sens": "perte",
+          "ancien": "325",
+          "nouveau": "322"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/n",
+          "sens": "perte",
+          "ancien": "325",
+          "nouveau": "322"
+        },
+        {
+          "axe": "armes",
+          "metrique": "weaponChanges/par-kind/dropped",
+          "sens": "perte",
+          "ancien": "30",
+          "nouveau": "27"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.published",
+          "sens": "perte",
+          "ancien": "325",
+          "nouveau": "322"
+        }
+      ],
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.dropped",
+          "sens": "changement",
+          "ancien": "30",
+          "nouveau": "27"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.restated",
+          "sens": "changement",
+          "ancien": "26",
+          "nouveau": "29"
+        }
+      ]
+    },
+    {
+      "id": "396cfc92",
+      "famille": "strongholds_zones",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 2,
+      "dureeMs": 12447,
+      "verite": {
+        "statut": "ok"
+      },
+      "changementsDetail": [
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.beforeOrigin",
+          "sens": "changement",
+          "ancien": "2",
+          "nouveau": "1"
+        },
+        {
+          "axe": "couverture",
+          "metrique": "coverage.weaponChanges.restated",
+          "sens": "changement",
+          "ancien": "7",
+          "nouveau": "8"
+        }
+      ]
+    },
+    {
+      "id": "f75e7053",
+      "famille": "koth_collines",
+      "statut": "ok",
+      "baseDuCache": false,
+      "baseArtefactEnCache": true,
+      "baseFaitsEnCache": true,
+      "schemaReference": 82,
+      "schemaHead": 83,
+      "gains": 1,
+      "pertes": 0,
+      "changements": 0,
+      "dureeMs": 6839,
+      "verite": {
+        "statut": "ok"
+      }
+    }
+  ]
+}

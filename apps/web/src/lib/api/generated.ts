@@ -12828,8 +12828,6 @@ export interface components {
         };
         TacticalCelluleReponse: {
             contributions: components["schemas"]["TacticalContribution"][] | null;
-            /** Format: int64 */
-            matchs_non_ouvrables: number;
             zone?: components["schemas"]["TacticalZoneNom"];
         };
         TacticalContribution: {

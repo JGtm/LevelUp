@@ -1,0 +1,5 @@
+M1_vide_contre_mains_nues : ROUGE
+M2_mains_nues_sont_une_arme : ROUGE
+M3_prise_garde_previous : ROUGE
+M4_lacher_garde_famille : ROUGE
+M5_remise_supprimee : ROUGE

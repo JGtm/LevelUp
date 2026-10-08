@@ -1,0 +1,41 @@
+package killsource
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+func TestSondeRoster(t *testing.T) {
+	cat, err := profile.LoadMapQuantCatalog(os.Getenv("SONDE_CAT"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := cat.Lookup(os.Getenv("SONDE_CARTE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	film, err := source.LoadDir(os.Getenv("SONDE_FILM"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := DefaultOptions()
+	o.Carte = &e
+	o.normalize()
+	c := &decodeCtx{name: "sonde", opts: o}
+	if err := c.prepare(context.Background(), film); err != nil {
+		t.Fatal(err)
+	}
+	r := c.walkRes
+	fmt.Printf("SONDE nPlay=%d bip=[%d,%d] deads=%d credible=%d desync=%d horsBande=%d horsRoster=%d horsEnum=%d located=%d\n",
+		c.roster.nPlay, r.bipLo, r.bipHi, len(r.deads), len(r.credible), r.desync, r.horsBande, r.horsRoster, r.horsEnum, r.located)
+	for _, d := range r.deads {
+		if d.slot >= r.bipLo && d.slot <= r.bipHi && (d.dead.EnumA < 0 || int(d.dead.EnumA) >= c.roster.nPlay || d.dead.EnumB < 0 || int(d.dead.EnumB) >= c.roster.nPlay) {
+			fmt.Printf("SONDE horsRoster ms=%d chunk=%d pidx=%d slot=%d bit=%d dead=%+v\n", d.ms, d.chunk, d.pidx, d.slot, d.bit, d.dead)
+		}
+	}
+}

@@ -13,8 +13,8 @@
  * PART dans les assistances mesurées de l'escouade — « 3 assistances sur 6 n'est pas 3 sur
  * 300 » —, plus les éliminations volées quand il y en a.
  *
- * COULEURS PAR JOUEUR (`getSquadPlayerColors`) : un joueur garde la même teinte partout sur
- * la page. Un segment désigne donc le bénéficiaire par sa couleur, sans lecture de légende.
+ * COULEURS PAR JOUEUR (`colorByPlayer`, palette de la page `useSquadPlayerPalette`) : un joueur
+ * garde la même teinte partout sur la page. Un segment désigne donc le bénéficiaire par sa couleur, sans lecture de légende.
  *
  * STYLE DE BLOC CANONIQUE (`SectionCard`) ET LECTURE EN INFOBULLE ⓘ (2026-09-19) : le bloc
  * se rend comme les autres de la page, et la phrase qui dit ce qu'on lit vit dans l'aide du
@@ -35,7 +35,6 @@ import { intlLocale } from '@/lib/formatters'
 import type { SquadAssistPairs } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { getSquadPlayerColors } from './colors'
 import { getSquadText } from './i18n'
 import {
   assistBeneficiaires,
@@ -49,9 +48,11 @@ export interface SquadAppuiCardProps {
   block: SquadAssistPairs
   /** Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. */
   roster: string[]
+  /** gamertag → couleur hex, palette de la page (`useSquadPlayerPalette`). */
+  colorByPlayer: Record<string, string>
 }
 
-export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
+export function SquadAppuiCard({ block, roster, colorByPlayer }: SquadAppuiCardProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const labels = t.assists
@@ -76,18 +77,15 @@ export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
   const volees = useMemo(() => assistVoleesParCouple(pairs), [pairs])
   const parts = useMemo(() => assistPartParCouple(block), [block])
 
-  // Couleurs par joueur : le premier du roster est le joueur principal (pastille
-  // `squad-player-1`), les suivants prennent les tokens coéquipiers dans l'ordre.
+  // Couleurs par joueur : celles de la page, restreintes aux bénéficiaires (les segments).
   const componentHexColors = useMemo(() => {
-    const [main, ...teammates] = roster
-    const parJoueur = getSquadPlayerColors(main ?? '', teammates)
     const out: Record<string, string> = {}
     for (const gt of beneficiaires) {
-      const couleur = parJoueur[gt]
+      const couleur = colorByPlayer[gt]
       if (couleur) out[gt] = couleur
     }
     return out
-  }, [roster, beneficiaires])
+  }, [colorByPlayer, beneficiaires])
 
   // Les deux rôles du graphe, nommés (décision utilisateur 2026-09-17) : la barre est le
   // LARBIN (il a assisté), le segment le PATRON (il a eu le frag crédité). Les titres

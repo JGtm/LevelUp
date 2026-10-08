@@ -26,8 +26,8 @@
 // resultats sont ouvrables PAR CONSTRUCTION. La verification `repo.MatchsOuvrables` porte
 // sur le PERIMETRE DEMANDE (`scope.MatchIDs`, le corps de la requete) et sert deux choses :
 // la date de tri des contributions, et le compte de ce que le perimetre contenait de non
-// ouvrable — un match_id etranger glisse alors dans `MatchsNonOuvrables`, jamais dans
-// `Contributions`, meme s'il n'aurait de toute facon produit aucune donnee (defense en
+// ouvrable — un match_id etranger est alors COMPTE au journal (`matchs_non_ouvrables`), jamais
+// rendu dans `Contributions`, meme s'il n'aurait de toute facon produit aucune donnee (defense en
 // profondeur : une contribution dont le match n'est pas dans la carte d'ouvrabilite est
 // REFUSEE au lieu d'etre triee a une date arbitraire).
 package service
@@ -84,7 +84,7 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 			"player", s.xuid, "map_id", req.MapID, "err", err)
 		return out, err
 	}
-	out.MatchsNonOuvrables = matchsNonOuvrables(scope.MatchIDs, ouvrables)
+	nonOuvrables := matchsNonOuvrables(scope.MatchIDs, ouvrables)
 	retenues := s.garderLesOuvrables(ctx, req.MapID, lues, ouvrables, resultatsDeLUnivers(univers))
 	out.Zone = s.nommerLaCellule(ctx, req, retenues)
 	out.Contributions = s.enrichir(ctx, req, univers, retenues)
@@ -92,7 +92,7 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	s.logger.InfoContext(ctx, "tactique: detail de cellule",
 		"player", s.xuid, "map_id", req.MapID, "question", req.Question, "qui", req.Qui,
 		"col", req.Col, "lig", req.Lig, "contributions", len(out.Contributions),
-		"matchs_non_ouvrables", out.MatchsNonOuvrables)
+		"matchs_non_ouvrables", nonOuvrables)
 	return out, nil
 }
 

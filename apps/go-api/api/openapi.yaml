@@ -28546,14 +28546,10 @@ components:
           type:
             - array
             - "null"
-        matchs_non_ouvrables:
-          format: int64
-          type: integer
         zone:
           $ref: '#/components/schemas/TacticalZoneNom'
       required:
         - contributions
-        - matchs_non_ouvrables
       type: object
     TacticalContribution:
       additionalProperties: false

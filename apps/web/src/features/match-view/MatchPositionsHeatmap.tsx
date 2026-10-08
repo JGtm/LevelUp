@@ -45,6 +45,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { useReplayDrag } from '@/features/match-replay/hooks/useReplayDrag'
 import { useReplayWheelZoom } from '@/features/match-replay/hooks/useReplayWheelZoom'
 import { useReplayZoom } from '@/features/match-replay/hooks/useReplayZoom'
+import { useReplayZoomKeys } from '@/features/match-replay/hooks/useReplayZoomKeys'
 import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
 import type { ReplayBounds } from '@/lib/api/types'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
@@ -191,6 +192,8 @@ export function MatchPositionsHeatmap({
   )
   const drag = useReplayDrag(zoom, view)
   useReplayWheelZoom(canvasRef, zoom, view)
+  // + / − / 0 au clavier, plan survolé ou focus dedans (la Vue match change de match aux flèches).
+  useReplayZoomKeys(canvasRef, zoom)
 
   useEffect(() => {
     const canvas = canvasRef.current

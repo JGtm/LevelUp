@@ -18,6 +18,7 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { MedalDigestEntry, TeammatesPageResponse } from '@/lib/api/types'
 import { useSquadContext } from './SquadContext'
+import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 import { getSquadText, type SquadText } from './i18n'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
@@ -27,7 +28,6 @@ import { SquadFragSection } from './SquadFragSection'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
-import { getSquadPlayerColors } from './colors'
 
 export function SquadContributionsPage() {
   const { confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -44,13 +44,11 @@ export function SquadContributionsPage() {
   const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
-  // pour que le mapping couleurs matche les clés des SquadPerMinuteEntry.player
+  // pour que l'ordre des joueurs matche les clés des SquadPerMinuteEntry.player
   // / SquadSynergyRadarSeries.player etc.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = useMemo(
-    () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
-    [mainPlayerKey, confirmedGamertags],
-  )
+  const palette = useSquadPlayerPalette()
+  const playerColors = palette.colorByPlayer
   const playerOrder = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p]),
     [mainPlayerKey, confirmedGamertags, performanceSeries],
@@ -135,7 +133,7 @@ export function SquadContributionsPage() {
 
       <ImpactMedalsMechanics
         pageData={pageData}
-        mainPlayer={pageData?.main_player ?? playerSlug}
+        inkOf={palette.inkOf}
         medalDigest={medalDigest}
         playerColors={playerColors}
         t={t}
@@ -174,13 +172,13 @@ function SynergyRadarTitle({ t }: { t: SquadText }) {
  */
 function ImpactMedalsMechanics({
   pageData,
-  mainPlayer,
+  inkOf,
   medalDigest,
   playerColors,
   t,
 }: {
   pageData: TeammatesPageResponse | null
-  mainPlayer: string
+  inkOf: (player: string) => string
   medalDigest: MedalDigestEntry[]
   playerColors: Record<string, string>
   t: SquadText
@@ -205,7 +203,7 @@ function ImpactMedalsMechanics({
         <SectionTitle>{t.medals.title}</SectionTitle>
         <MedalDigest
           entries={medalDigest}
-          mainPlayer={mainPlayer}
+          inkOf={inkOf}
           t={t.medals}
         />
       </section>

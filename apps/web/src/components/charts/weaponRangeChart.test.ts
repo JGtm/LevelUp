@@ -90,7 +90,7 @@ function optionOf(lines: WeaponRangeLine[]) {
     },
   }) as {
     xAxis: { max: number }
-    yAxis: { data: string[] }
+    yAxis: { data: string[]; axisLabel: { width: number; overflow: string; ellipsis: string } }
     tooltip: { formatter: (p: unknown) => string }
     series: {
       type: string
@@ -159,6 +159,11 @@ describe('weaponRangeChartHeight / weaponRangeAxisMax', () => {
 })
 
 describe('buildWeaponRangeOption — l’axe et la série', () => {
+  it('noms d’armes : colonne bornée, troncature À DROITE avec « … » (jamais coupés par le début)', () => {
+    const { axisLabel } = optionOf(weaponRangeLines(ROWS, 'fr')).yAxis
+    expect(axisLabel).toMatchObject({ width: 120, overflow: 'truncate', ellipsis: '…' })
+  })
+
   it('la première arme du backend est EN HAUT : l’axe Y inverse la liste', () => {
     const o = optionOf(weaponRangeLines(ROWS, 'fr'))
     expect(o.yAxis.data).toEqual([

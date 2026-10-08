@@ -30,8 +30,10 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //	                                         etat de mort), arme, bipede, etat de simulation
 //	consumeManagedAndObjectiveComponent      objet gere (ti=10/13), objectif (ti=11), unite
 //	consumeNavpointComponent                 point de navigation gere (ti=12), EN ENTIER de i0 a i14
-//	consumeMoteurDePartie                    fin du moteur de partie (ti=0/1/2, i11 a i17)
+//	consumeMoteurDePartie                    fin du moteur de partie (ti=0/1/2, i11 a i17), ti=45 i0
 //	consumeComposantsVueBM4b                 les ports du lot M4b (`composants_vue_b_m4b.go`)
+//	consumeComposantsDispositif              dispositif de carte (ti=43), les `device-*` i18 a i40
+//	                                         (`components_device_ti43.go`)
 //	consumeComposantsVehiculeTi40            les composants propres au vehicule, ti=40 i30 a i47
 //	                                         (`composants_vehicule_ti40.go`) ; son `default` rend
 //	                                         le `default` d origine
@@ -45,10 +47,10 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 // arbitraires sans rendre un maillon plus lisible ni plus sur. Le decoupage retenu suit donc
 // les familles dominantes et les frontieres de lots de portage, pas un quota de lignes.
 // Cette exemption vaut pour les sept maillons qui portent `//nolint:gocyclo,funlen // dette gelee`
-// (fichiers `dispatch_*.go`). Les cinq autres maillons de la chaine (douze en tout) restent sous
-// le seuil : `consumeNavpointComponent` et `consumeManagedPlayerComponent` n exemptent que
-// `gocyclo`, `consumeMoteurDePartie`, `consumeComposantsVueBM4b` et
-// `consumeComposantsVehiculeTi40` n exemptent rien.
+// (fichiers `dispatch_*.go`). Les six autres maillons de la chaine (treize en tout) restent sous
+// le seuil : `consumeNavpointComponent`, `consumeManagedPlayerComponent` et
+// `consumeComposantsDispositif` n exemptent que `gocyclo`, `consumeMoteurDePartie`,
+// `consumeComposantsVueBM4b` et `consumeComposantsVehiculeTi40` n exemptent rien.
 //
 // # LES SEPT `//nolint:gocyclo,funlen // dette gelee`, ET POURQUOI ILS APPARAISSENT AU LOT 2.6.2
 //

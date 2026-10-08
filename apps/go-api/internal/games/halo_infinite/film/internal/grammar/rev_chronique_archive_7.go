@@ -1,6 +1,6 @@
 package grammar
 
-// rev_chronique_archive_7.go - LA CHRONIQUE DE [Rev], RANGS `grammar-2026-09-24` A `grammar-2026-09-27.3`.
+// rev_chronique_archive_7.go - LA CHRONIQUE DE [Rev], RANGS `grammar-2026-09-24` A `grammar-2026-10-02.3`.
 //
 // # POURQUOI CETTE SEPTIEME ARCHIVE (2026-10-03, integration de la vague 1 de la campagne de grammaire)
 //
@@ -11,7 +11,9 @@ package grammar
 // archive est dans `fichiersDeChroniqueGrammar` (`rev_test.go`), donc hors de l empreinte : y
 // ecrire ne fait pas monter la couche. Le 2026-10-06 (lot VA de la campagne, fusion de `feat/v75`),
 // les rangs `grammar-2026-09-27` a `.3` y ont ete verses a leur tour, mot pour mot, pour la meme
-// raison ; la suite VIVANTE repart a `grammar-2026-10-02`.
+// raison ; la suite VIVANTE repart a `grammar-2026-10-02`. Le 2026-10-07 (fusion de `feat/v75` dans le lot
+// des arrets de la vue B), les rangs `grammar-2026-10-02` a `.3` y ont ete verses, mot pour mot, pour
+// la meme raison ; la suite VIVANTE repart a `grammar-2026-10-03`.
 
 // ENTREE `grammar-2026-09-24` (2026-09-24, integration de la vague D des retours du rejeu) : UNE
 // SEULE MONTEE POUR LES LOTS DE LA VAGUE, partis de `fe7079f41` et qui avaient chacun pose
@@ -375,3 +377,70 @@ package grammar
 // `param_4 > 1` ; `d9781168` 34:336, 4 entrees). Prix : onze paquets que J6 avait gagnes, jamais
 // fermes a la reference (`084a804d` six, `e5adf7b2` deux, `111fa685`, `4f77afc1`, `d9781168` un
 // chacun). Plus aucun paquet ferme a la reference ne se perd sur les vingt films.
+//
+// ENTREE `grammar-2026-10-02` (2026-10-02, lot L0 de la campagne de grammaire,
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FERMETURE D UN PAQUET SUIT LES REGLES DE
+// L ECRIVAIN (decision D2).
+//
+// Un paquet delta est FERME quand sa vue C se lit jusqu a son terminateur avec un reste de 0 a 7
+// bits nuls ET qu aucune regle de l ecrivain n est contredite (`ecrivain_invariants.go`) : sortie de
+// la vue B sur un en-tete rejete (`FUN_142f2e174`, `FUN_142f2cee0`, `FUN_142f2cc78`), ordre NEW*,
+// DELTA*, DEL* a slots croissants (`FUN_14076b9c8`), masque que `FUN_142e2da44` peut ecrire (aucun bit
+// au-dela du dernier composant de l archetype, juge a la traversee ; epars de sept au plus a index
+// croissants ; dense au-dela), vue C de l enregistreur (`FUN_142f2c3b0`, `FUN_14076b0e8`,
+// `FUN_1406d5bf4` : kind 0, index croissants, 32 entrees au plus, bit d en-tete a 0, jamais le code
+// analogique 63). [LectureVueC] porte les deux verdicts (`FermeeAuBit`, `Fermee`) et la premiere
+// regle contredite.
+//
+// Ce qui change en sortie : les deux lecteurs de `Fermee` en production. `debutParFermeture` prend
+// le premier candidat d ou le paquet FERME, a defaut le premier d ou il ferme au bit pres (la tete
+// gardee, le paquet non ferme) ; ce second rang est le repli `repli_debut_de_liste_ferme_au_bit`,
+// compte dans `coverage.fallbacks` (un nom neuf du rapport, aucun champ neuf). Le collecteur du tir
+// continu voit un trou la ou il lisait une vue C factice. Le masque se lit par `lireMasque` (memes bits que `consumeMask`). La carte de fermeture
+// classe la sortie par rejet avant les causes de la vue C, la regle contredite apres elles, et
+// requalifie le bloc 0xbc en desalignement. Mesure sur 20 films (`campagne_grammaire_2026-10-01/
+// LOT_L0.md`) : 284 704 paquets fermes au bit pres avant, 276 327 fermes apres ; sous le juge de ce
+// lot, aucun paquet sain perdu, aucun film en baisse en paquets ni en records utiles sains (sous
+// l ancien juge a trois regles, la sortie par rejet requalifie environ 1 008 paquets sains : c est
+// l objet de D2).
+//
+// `killsource.Rev` NE MONTE PAS : sa fermeture hache la valeur de cette constante, mais aucun de ses
+// lecteurs ne lit `Fermee` ; sortie JSON identique a l octet sur les 19 temoins, golden regenere a
+// revision constante. `source.Rev` non plus (un accesseur neuf, aucune valeur lue changee).
+// `replay.SchemaVersion` reste 76 : le document ne change que par les revisions de calque et par le
+// tir continu (compteurs, rafales lues sur des paquets factices retirees) et les etats de mouvement
+// de quelques listes, que la revision de grammaire des calques signale deja ; `replay-equiv` : 5
+// etapes sur 61 divergent sur les 20 films, les 56 autres sont identiques a l octet.
+//
+// ENTREE `grammar-2026-10-02.2` (2026-10-02, lot L8 de la campagne de grammaire,
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : `ti=3 low-frequency` EST PORTE, ET `high-frequency`
+// SE LIT PAR LA TABLE DE L ARCHETYPE.
+//
+// `low-frequency` (`ti=3 i0`) se lit par FUN_142ed4aec (table 0x143d07b40, ecrivain FUN_142eda938) :
+// position, orientation, R(16) + R(8) + R(2), puis R(6) entrees {R(3) drapeaux, position et
+// orientation sous drapeau, R(16), R(5)} ; il n etait pas porte (traversee arretee). `high-frequency`
+// est enregistre sous DEUX tables : `ti=3 i1` (FUN_140e460fc, table 0x143d07af0, FUN_142ed4880 :
+// R(16) + R(8) + R(2), 26 bits), lu jusqu ici par le R(8) de `ti=4 i0` (FUN_140e462d8, table
+// 0x143d06a60, FUN_14076d034), qui ne change pas ; un autre archetype ne le lit plus
+// (`components_frequences.go`). `ecs_table.tsv` porte les trois lecteurs ; le controle G6
+// (`ecs_dispatch_table_guard_test.go`) tient le routage par table.
+//
+// Ce qui change en sortie : les records `ti=3` se traversent, les paquets qui les portent se lisent
+// plus loin (carte de fermeture et mesures : `campagne_grammaire_2026-10-01/LOT_L8.md`).
+//
+// ENTREE `grammar-2026-10-02.3` (2026-10-02, lot L3a de la campagne de grammaire,
+// `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`) : LA FIN DU MOTEUR DE PARTIE, LUE DANS LE JEU.
+//
+// Six composants des archetypes du moteur (`ti=0`, `ti=1`, `ti=2`, index `i11` a `i17`) passent de
+// « non porte » (arret du record) a porte, chacun sur son lecteur et son ecrivain relus dans
+// HaloInfinite.exe HI_1_13_0 (`components_moteur_de_partie.go`) : `i11` R(128) ; `i13` compte R(13)
+// puis un bit par volume ; `i14` tronc commun puis la forme que le NIVEAU du registre du film
+// designe (`CMP R9D, 2` de `FUN_142f0328c`) ; `i15` masque R(64) puis les fentes presentes
+// (`FUN_1407ee87c`) ; `i16` R(7) + R(1) ; `i17` R(8). Le lecteur de minuteur `FUN_140d580d0` (et sa
+// forme longue `FUN_142ba78dc`) n existe plus qu une fois (`lecteur_minuteur.go`, garde-rail
+// `lecteur_minuteur_guard_test.go`) ; ses cinq copies (`ti=5 i2`, `ti=0 i5`, `i6`, `i7`, `i12`)
+// lisent les memes bits qu avant.
+//
+// Ce qui change en sortie : les records du moteur se lisent jusqu au bout au lieu de s arreter sur
+// le premier de ces composants ; les paquets qui les portent peuvent fermer. Mesures et pertes
+// instruites : `campagne_grammaire_2026-10-01/LOT_L3a.md`.

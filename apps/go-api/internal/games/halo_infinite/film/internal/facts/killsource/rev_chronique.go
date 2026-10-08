@@ -484,3 +484,12 @@ package killsource
 // contenu identique sauf deux morts qui gagnent un kill-event ; 56 morts passent du balayage a la
 // marche, 20 l inverse. Les lignes de `match_kill_events` deviennent candidates au redecodage :
 // backlog sur signal de l utilisateur (D6).
+//
+// ENTREE `killsource-2026-10-07.2` (2026-10-07, fusion de `feat/v75` dans le lot des arrets de la
+// vue B, `grammar` `.3` a `.8`) : aucune source de la couche ne change. Les cinq composants que la
+// marche des trames lit desormais (`ti=43`, `ti=12` `i16` et `i18`, `ti=45` `i0`, `ti=10` `i2` a
+// `i17`) prolongent la vue B de paquets ou killsource cherche ses dead-states : trois morts des 19
+// temoins (`e5adf7b2` 05:29, `1c4c63c2` 08:15 et 13:38) passent du balayage a la marche
+// (`read_path` `scan` -> `marche`), contenu publie identique ; les 17 autres temoins ne changent que
+// par le diagnostic `calibration`. `read_path` est persiste : la revision monte (D23), backlog sur
+// signal de l utilisateur (D6).

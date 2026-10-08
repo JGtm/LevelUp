@@ -15,28 +15,17 @@
  * Grille adaptative : N joueurs → N colonnes égales (repeat(N, 1fr)).
  */
 import { useState } from 'react'
-import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty, boxShadowForDifficulty } from '@/lib/medalDifficulty'
 import { MedalIcon } from '@/components/ui/MedalIcon'
 import type { MedalDigestEntry, MedalDigestItem } from '@/lib/api/types'
-import {
-  SQUAD_MAIN_PLAYER_TOKEN,
-  SQUAD_TEAMMATE_COLOR_TOKENS,
-} from './colors'
 import type { SquadText } from './i18n'
 import { SquadPlayerSheet, SquadSheetAvatar, SquadSheetSection } from './SquadPlayerSheet'
 
 interface MedalDigestProps {
   entries: MedalDigestEntry[]
-  mainPlayer: string
+  /** Encre d'un joueur, palette de la page (`useSquadPlayerPalette`). */
+  inkOf: (player: string) => string
   t: SquadText['medals']
-}
-
-function playerColorVar(mainPlayer: string, player: string, allPlayers: string[]): string {
-  if (player === mainPlayer) return tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN)
-  const idx = allPlayers.filter((p) => p !== mainPlayer).indexOf(player)
-  const token = SQUAD_TEAMMATE_COLOR_TOKENS[idx] ?? SQUAD_TEAMMATE_COLOR_TOKENS[0]
-  return tokenCssVar(token)
 }
 
 function medalTooltip(item: MedalDigestItem): string {
@@ -269,7 +258,7 @@ function PlayerMedalCard({
   )
 }
 
-export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
+export function MedalDigest({ entries, inkOf, t }: MedalDigestProps) {
   // État « voir toutes les médailles » PARTAGÉ entre toutes les cartes joueur :
   // un clic sur n'importe quel bouton déplie/replie tout le monde (demande user).
   const [expanded, setExpanded] = useState(false)
@@ -284,8 +273,6 @@ export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
     )
   }
 
-  const allPlayers = entries.map((e) => e.player)
-
   // Toujours N colonnes égales — squads 2-4 joueurs, largeur fixe.
   const gridCols = `repeat(${entries.length}, 1fr)`
 
@@ -298,7 +285,7 @@ export function MedalDigest({ entries, mainPlayer, t }: MedalDigestProps) {
         <PlayerMedalCard
           key={entry.player}
           entry={entry}
-          color={playerColorVar(mainPlayer, entry.player, allPlayers)}
+          color={inkOf(entry.player)}
           t={t}
           expanded={expanded}
           onToggle={() => setExpanded((e) => !e)}

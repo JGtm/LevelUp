@@ -59,7 +59,8 @@ const (
 )
 
 // consumeMoteurDePartie est un maillon de la chaine de dispatch (cf. l en-tete de
-// `dispatch_object.go`) : les composants `i11` a `i17` du moteur de partie.
+// `dispatch_object.go`) : les composants `i11` a `i17` du moteur de partie, et `ti=45 i0` (le
+// deroulement de partie, `components_matchflow_ti45.go`).
 func consumeMoteurDePartie(br *Lecteur, name string, level uint32) (variant uint32, dead *types.DeadState, ported bool) {
 	variant = noVariant
 	switch name {
@@ -76,6 +77,8 @@ func consumeMoteurDePartie(br *Lecteur, name string, level uint32) (variant uint
 		br.ReadBit()
 	case compMatchflowIsPlayingFlags: // ti=0/2 i17 (FUN_141101038) — R(8)
 		br.ReadBits(largeurDrapeauxMatchflow)
+	case compMatchflowSequenceData: // ti=45 i0 (FUN_14101cdd8) — R(4) + 4 x R(32)
+		consumeMatchflowSequenceData(br)
 	default:
 		return consumeComposantsVueBM4b(br, name)
 	}

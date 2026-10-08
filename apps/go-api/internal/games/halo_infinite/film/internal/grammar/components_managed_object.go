@@ -210,3 +210,15 @@ func dequantMidpoint(q uint64, bits uint, min, max float32) float32 {
 	steps := float32(uint64(1) << bits)
 	return min + (float32(q)+0.5)*(max-min)/steps
 }
+
+// compManagedObjectNavpoint : l etiquette de registre de `ti=10 i2` a `i17`. Le registre de
+// l archetype pose SEIZE descripteurs sous ce nom, qui partagent l accesseur de nom (14064c7d0 ->
+// table 143c971d8) et le lecteur : seul l index d entree, `*(descripteur + 8)`, les distingue.
+const compManagedObjectNavpoint = "managed-object-navpoint-component"
+
+// largeurNavpointDObjetGere : `FUN_14107cea4`, `ADD [flux+0x2c], 0x20`, vers
+// `etat + 0x14 + 4 * index` ; l ecrivain (`142edb304`) ecrit les 32 bits du meme mot.
+const largeurNavpointDObjetGere = 32
+
+// consumeManagedObjectNavpoint (ti=10 i2 a i17) — `FUN_14107cea4` : `R(32)` plat, sans porte.
+func consumeManagedObjectNavpoint(br *Lecteur) { br.ReadBits(largeurNavpointDObjetGere) }

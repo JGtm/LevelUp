@@ -18,6 +18,7 @@ import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBl
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
+import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 import { getSquadText, type SquadText } from './i18n'
 import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
@@ -27,7 +28,6 @@ import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
-import { getSquadPlayerColors } from './colors'
 
 export function SquadDynamiquePage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -46,12 +46,9 @@ export function SquadDynamiquePage() {
   const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
-  // pour que le mapping couleurs matche les clés des séries par joueur.
+  // pour que l'ordre des joueurs matche les clés des séries par joueur.
   const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = useMemo(
-    () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
-    [mainPlayerKey, confirmedGamertags],
-  )
+  const { colorByPlayer: playerColors } = useSquadPlayerPalette()
   /** Roster complet — ordre des bandes du profil d'intensité. */
   const roster = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags],

@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@/lib/accessibility', () => ({
   getSeriesColors: (n: number, tokens: string[]) =>
     Array.from({ length: n }, (_, i) => `hex(${tokens[i % tokens.length]})`),
+  tokenCssVar: (token: string) => `var(--${token})`,
 }))
 
 import {
@@ -13,6 +14,7 @@ import {
   SQUAD_TEAMMATE_COLOR_TOKENS,
   getSquadPlayerColors,
   getSquadTeammateColors,
+  squadPlayerPalette,
 } from './colors'
 
 describe('SQUAD_MAIN_PLAYER_TOKEN / SQUAD_TEAMMATE_COLOR_TOKENS', () => {
@@ -54,5 +56,33 @@ describe('getSquadPlayerColors', () => {
   it('cycle si plus de teammates que de tokens (modulo)', () => {
     const map = getSquadPlayerColors('Me', ['F1', 'F2', 'F3', 'F4'])
     expect(map.F4).toBe('hex(squad-player-2)') // wrap-around
+  })
+})
+
+describe('squadPlayerPalette — ordre de la SÉLECTION, la seule attribution', () => {
+  it('attribue main puis coéquipiers dans l’ordre donné, quel que soit l’ordre d’un bloc', () => {
+    const p = squadPlayerPalette('JGtm', ['Chocoboflor', 'Madina97294'])
+    expect(p.tokenOf('JGtm')).toBe('squad-player-1')
+    expect(p.tokenOf('Chocoboflor')).toBe('squad-player-2')
+    expect(p.tokenOf('Madina97294')).toBe('squad-player-3')
+    expect(p.colorByPlayer).toEqual(getSquadPlayerColors('JGtm', ['Chocoboflor', 'Madina97294']))
+  })
+
+  it('clé insensible à la casse (URL en minuscules, backend en casse mixte)', () => {
+    const p = squadPlayerPalette('JGtm', ['Madina97294'])
+    expect(p.tokenOf('madina97294')).toBe('squad-player-2')
+    expect(p.inkOf('JGTM')).toBe('var(--squad-player-1)')
+  })
+
+  it('hors sélection : aucun jeton, encre neutre', () => {
+    const p = squadPlayerPalette('JGtm', ['Madina97294'])
+    expect(p.tokenOf('Inconnu')).toBeNull()
+    expect(p.inkOf('Inconnu')).toBe('var(--muted-foreground)')
+  })
+
+  it('un coéquipier qui répète le joueur principal ne lui reprend pas sa couleur', () => {
+    const p = squadPlayerPalette('JGtm', ['jgtm', 'Kaya'])
+    expect(p.tokenOf('JGtm')).toBe('squad-player-1')
+    expect(p.tokenOf('Kaya')).toBe('squad-player-3')
   })
 })

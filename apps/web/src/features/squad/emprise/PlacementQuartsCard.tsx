@@ -13,6 +13,7 @@ import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { SquadEmprisePlacementPlayer } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
+import { useSquadPlayerPalette } from '../useSquadPlayerPalette'
 import {
   buildPlacementQuartsOption,
   placementFormats,
@@ -26,13 +27,14 @@ const QUARTS_HEIGHT = 230
 
 export function PlacementQuartsCard({ placement, locale, t }: { placement: PlacementBlock; locale: Locale; t: PlacementText }) {
   const formats = useMemo(() => placementFormats(locale), [locale])
+  const { tokenOf } = useSquadPlayerPalette()
   const series = useMemo<ChartSeries<SquadEmprisePlacementPlayer>[]>(
     () => (placement.players?.length ? [{ key: 'emprise-placement-quarts', datapoints: placement.players }] : []),
     [placement.players],
   )
   const buildOption = useCallback(
-    () => buildPlacementQuartsOption(placement, resolvePlacementColors(placement.players ?? []), { t, formats }),
-    [placement, t, formats],
+    () => buildPlacementQuartsOption(placement, resolvePlacementColors(tokenOf), { t, formats }),
+    [placement, tokenOf, t, formats],
   )
   const iso = placement.isolated_from_ratio
   return (
