@@ -1,8 +1,8 @@
 /**
  * useSquadPageRequests — les DEUX requêtes de la page Escouade et l'ancrage qui les
- * ordonne (lot perf L4b, 2026-09-23 — `.ai/PLAN_PERF_CHARGEMENTS_2026-09-23.md` §9).
+ * ordonne (lot perf L4b, 2026-09-23 — `.ai/V7.5/PLAN_PERF_CHARGEMENTS_2026-09-23.md` §9).
  *
- * Défaut mesuré (`.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` §1.2 et C3) : le
+ * Défaut mesuré (`.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` §1.2 et C3) : le
  * sélecteur de sessions et l'ancrage sur la dernière session de la composition ne
  * lisaient que la réponse LOURDE (POST `/pages/teammates`). La première requête lourde
  * partait donc sur tout l'historique, puis l'ancrage la relançait sur la bonne session :

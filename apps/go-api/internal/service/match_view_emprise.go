@@ -1,5 +1,5 @@
 // Package service — match_view_emprise.go : L'EMPRISE SUR LA VUE MATCH (plan
-// `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, lot M2 ; types publiés : domain/match_emprise.go).
+// `.ai/V7.5/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, lot M2 ; types publiés : domain/match_emprise.go).
 //
 // Orchestration seule. Un match, les joueurs de l'équipe du joueur de la page connus un par un :
 // l'Emprise vient de l'assemblage commun aux Séries temporelles et à Sessions

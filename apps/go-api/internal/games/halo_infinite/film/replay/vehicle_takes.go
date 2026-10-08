@@ -2,7 +2,7 @@ package replay
 
 // vehicle_takes.go — LA RESSOURCE « VEHICULES » DE L EMPRISE : prises par camp et par joueur, et
 // temps a bord, projetes depuis le calque vehicules du document (plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.1, decisions D2, D4, D6, D8).
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.1, decisions D2, D4, D6, D8).
 //
 // PUR : aucune I/O, aucune lecture de film, aucune base. L entree est le document deja assemble
 // (`vehicles[].rides[]`, `family`, `part`, `carrier`, `roster[].team`, `vehicleScenery`), et la

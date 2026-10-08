@@ -4,7 +4,7 @@ package archlint
 // `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, 2026-09-30).
 //
 // Un commentaire qui renvoie à un document ou à une commande est un contrat : le lecteur le
-// suit. L'audit du décodeur (`.ai/AUDIT_DECODEUR_FILM_2026-09-24.md`, faiblesse 11) comptait des
+// suit. L'audit du décodeur (`.ai/V7.5/AUDIT_DECODEUR_FILM_2026-09-24.md`, faiblesse 11) comptait des
 // chemins `.ai/` morts (les documents clos déménagent sous `.ai/V7.5/` ou `.ai/archive/`) et 170
 // commandes `go test` qui visaient un paquet disparu. Rien ne les voyait : un commentaire ne
 // compile pas.

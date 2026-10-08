@@ -2,7 +2,7 @@ package replay
 
 // placement_des_vies.go — OÙ ÉTAIT CHAQUE VIE PAR RAPPORT À SON ÉQUIPE, ET CE QU'ELLE A RAPPORTÉ.
 //
-// # LA QUESTION (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, décision V3)
+// # LA QUESTION (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, décision V3)
 //
 // Le graphe « Placement et rendement de chaque vie » pose un point par vie : sa distance médiane
 // au coéquipier le plus proche, et ses frags. Ce fichier mesure une vie, sans rien lire : on lui

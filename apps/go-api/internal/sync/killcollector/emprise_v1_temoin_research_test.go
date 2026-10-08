@@ -2,7 +2,7 @@
 
 package killcollector
 
-// emprise_v1_temoin_research_test.go — LOT V1.3 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
+// emprise_v1_temoin_research_test.go — LOT V1.3 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
 // LE TÉMOIN DU CALCUL PUR `replay.PlacementDesVies` SUR DE VRAIS FILMS.
 //
 // # NOURRI COMME LE COLLECTEUR LE NOURRIRA

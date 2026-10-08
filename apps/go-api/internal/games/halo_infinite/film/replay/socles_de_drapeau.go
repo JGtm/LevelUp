@@ -3,7 +3,7 @@ package replay
 // socles_de_drapeau.go — LES SOCLES DE DRAPEAU D'UNE CARTE, projetes pour le calque du drapeau.
 //
 // DEPLACE depuis `replaybuild/flagspawns.go` le 2026-09-29 (lot V2 du plan
-// `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle : le collecteur de kills lit
+// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle : le collecteur de kills lit
 // desormais les porteurs du drapeau au sync (`PortagesAuSync`) et a besoin des MEMES socles que
 // la cuisson. Une projection recopiee au sync aurait diverge au premier ajustement de la regle
 // du socle neutre ; elle est ecrite ICI, une fois, et les deux appelants la lisent. Le

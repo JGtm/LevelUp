@@ -1,7 +1,7 @@
 package domain
 
 // squad_emprise_placement.go — LE BLOC « GROUPÉS OU ISOLÉS » de l'onglet Emprise (plan
-// `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3, décisions V3, V4, V5, V8 ; rendu : §2 du plan).
+// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3, décisions V3, V4, V5, V8 ; rendu : §2 du plan).
 //
 // Une vie = une ligne de `match_life_placement_latest`, écrite AU SYNC par le collecteur de kills.
 // Chaque vie MESURÉE de la composition (le joueur de la page et les coéquipiers sélectionnés,

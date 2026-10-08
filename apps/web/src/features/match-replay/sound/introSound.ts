@@ -6,7 +6,7 @@
  * [R − 1 s ; R + 2 s], où R est la RÉSOLUTION de la montée, sa dernière attaque forte (3,19 s
  * dans la source, mesurée le 2026-09-27). Le préambule du rejeu dure une seconde (`LEAD_IN_MS`) :
  * lancé au départ de la lecture, l'extrait fait donc tomber sa résolution sur le coup d'envoi, à
- * 1×. Recette ffmpeg et mesures au journal du plan `.ai/PLAN_BACKLOG_2026-09-26.md` (lot A4).
+ * 1×. Recette ffmpeg et mesures au journal du plan `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md` (lot A4).
  *
  * QUAND ELLE PART, ET QUAND ELLE SE TAIT :
  *  - au DÉPART DEPUIS LE PRÉAMBULE seulement (« Lecture » à l'ouverture, « Recommencer »,

@@ -2,7 +2,7 @@
 
 package replay
 
-// emprise_v0_porteurs_research_test.go — LOT V0.2 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
+// emprise_v0_porteurs_research_test.go — LOT V0.2 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
 // LES PORTEURS D'OBJECTIF LUS AU SYNC, DEUX VOIES MESUREES SUR LE FILM QUE LE COLLECTEUR A OUVERT.
 //
 // # CE QUE CET INSTRUMENT REJOUE

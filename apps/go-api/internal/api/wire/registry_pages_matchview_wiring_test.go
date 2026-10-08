@@ -1,7 +1,7 @@
 package wire
 
 // registry_pages_matchview_wiring_test.go — LE CABLAGE DES BLOCS DU FILM DE LA VUE MATCH (plan
-// `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, D18). Meme mode de panne que l'Escouade et les Series
+// `.ai/V7.5/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, D18). Meme mode de panne que l'Escouade et les Series
 // temporelles : le service degrade EN SILENCE sur une dependance nil. Les options sont lues dans
 // l'arbre syntaxique — leur argument et la porte `if` qui les entoure.
 

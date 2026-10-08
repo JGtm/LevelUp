@@ -1,7 +1,7 @@
 package squademprise
 
 // vehicles.go — LA RESSOURCE « VEHICULES » : lecture (types), index, décompte d'un match, somme
-// d'une soirée, production et couverture (plan `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot
+// d'une soirée, production et couverture (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot
 // L7.3 ; type publié : domain/squad_emprise_vehicles.go, décisions D2 à D10).
 //
 // Les prises, le temps à bord et les frags appariés sont ÉCRITS par la dérivation de l'artefact

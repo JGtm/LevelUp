@@ -5,7 +5,7 @@
 // son statut démo. Une tâche « coupée » n'est pas lancée en démo : elle écrit, supprime ou lit
 // comme état des fichiers hors de la racine démo (le harnais visuel lance la démo sur le VRAI
 // checkout). Une tâche « gardée » ne touche que la racine démo, la mémoire, ou rien.
-// Inventaire de référence : tableau B5.0 du journal de .ai/PLAN_BACKLOG_2026-09-26.md.
+// Inventaire de référence : tableau B5.0 du journal de .ai/V7.5/PLAN_BACKLOG_2026-09-26.md.
 //
 // Hors démo, rien ne change : toutes les tâches sont lancées, dans le même ordre, sur les
 // mêmes contextes et groupes d'attente qu'avant l'extraction.

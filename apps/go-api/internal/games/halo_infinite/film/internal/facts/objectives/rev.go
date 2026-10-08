@@ -80,7 +80,7 @@ package objectives
 // remplacant arrive 2 min 30 plus tard.
 //
 // COMPLEMENT DU 2026-10-02 (retrait des replis nuls, decision DU-7, REVISION CONSTANTE) : deux replis
-// a compte NUL sur le parc sortent de la couche (`.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, 1 227
+// a compte NUL sur le parc sortent de la couche (`.ai/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md`, 1 227
 // artefacts de la vague J11.4). `repli_instant_sur_la_premiere_manche` : un instant anterieur a toute
 // manche connue n est plus range dans la premiere — [RoundIdentity.RoundAt] rend faux et
 // [RoundIdentity.At] ne nomme personne ; `repli_mort_sans_xuid_ignoree` : la mort sans xuid reste hors

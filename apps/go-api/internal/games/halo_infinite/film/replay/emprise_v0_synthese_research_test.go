@@ -2,7 +2,7 @@
 
 package replay
 
-// emprise_v0_synthese_research_test.go — LOT V0 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
+// emprise_v0_synthese_research_test.go — LOT V0 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
 // LE RAPPORT AGREGE. `TestEmpriseV0Rapport` relit les resultats poses par le volet collecteur
 // (`col/`, dont la mesure V0.1) et par le volet porteurs (`porteurs/`), et imprime les tableaux
 // colles au journal du lot, avec le verdict chiffre de chaque seuil. Il se saute sans

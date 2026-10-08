@@ -361,7 +361,7 @@ the difference is written here; the history of how each decision was reached is 
 
 ## Amendment of 2026-09-26 — the revision model and the freshness of facts (audit follow-up, J3)
 
-Source: `.ai/AUDIT_DECODEUR_FILM_2026-09-24.md` (findings SRC-1, RA1-1, RA1-2, RA1-4 and
+Source: `.ai/V7.5/AUDIT_DECODEUR_FILM_2026-09-24.md` (findings SRC-1, RA1-1, RA1-2, RA1-4 and
 architecture weakness 1), decisions DU-2 and DU-9 of
 `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, milestone J3. No decode revision rose:
 `source.Rev`, `profile.Rev`, `grammar.Rev` keep their values and their fingerprints were re-frozen

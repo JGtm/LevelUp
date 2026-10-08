@@ -1,7 +1,7 @@
 package duckdb
 
 // solo_lives_repo_test.go — LES VIES D'UN JOUEUR SE LISENT BORNÉES, SUR LES VUES `_latest` (plan
-// `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L3.3 ; ADR 0036 I2).
+// `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L3.3 ; ADR 0036 I2).
 //
 // Base `:memory:` migrée (les vraies migrations shared, donc les vraies vues). Ce que chaque test
 // verrouille :

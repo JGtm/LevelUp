@@ -1,7 +1,7 @@
 //go:build integration
 
 // Package persist — life_placement_persister_integration_test.go : `match_life_placement` sur
-// les VRAIES migrations (lot V2 du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
+// les VRAIES migrations (lot V2 du plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
 //
 // Ce que ces tests prouvent tient au SQL et au schema : l'aller-retour des colonnes (NULL compris),
 // la vue `_latest` qui retient une PASSE ENTIERE, et les refus de la validation.

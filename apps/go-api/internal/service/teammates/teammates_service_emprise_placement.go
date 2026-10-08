@@ -1,5 +1,5 @@
 // Package teammates — teammates_service_emprise_placement.go : LE BLOC « GROUPÉS OU ISOLÉS » de
-// l'onglet Emprise (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.3 ; type publié :
+// l'onglet Emprise (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.3 ; type publié :
 // domain.SquadEmprisePlacement, calcul : analysis/squademprise.Placement).
 //
 // Orchestration seule, sur le périmètre D2 de l'Emprise et sa composition (les fiches du bloc) :

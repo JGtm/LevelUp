@@ -1,7 +1,7 @@
 package replay
 
 // porteurs_au_sync_test.go — LA GARDE DE MODE ET LA RELECTURE DES CALQUES DE L'ENTREE DU SYNC
-// (lot V1.4 du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`). La fidelite aux documents de rejeu
+// (lot V1.4 du plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`). La fidelite aux documents de rejeu
 // sur de vrais films est mesuree par `emprise_v1_porteurs_research_test.go`.
 
 import (
