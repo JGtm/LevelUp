@@ -279,8 +279,8 @@ func TestKnownSetV1_OrphelinPlusAncienQueLeConnuRecupereParIdentifiant(t *testin
 }
 
 // TestKnownSetV1_RecuperationParIdentifiantBornee : knownset.OrphanRecoveryPerCycle+3
-// orphelins absents de l'historique. Un run en récupère exactement OrphanRecoveryPerCycle (les
-// premiers en ordre lexicographique), le suivant les 3 restants, le troisième aucun.
+// orphelins absents de l'historique. Un run en récupère exactement OrphanRecoveryPerCycle (choisis
+// par rotation, cf. knownset), le suivant les 3 restants, le troisième aucun.
 func TestKnownSetV1_RecuperationParIdentifiantBornee(t *testing.T) {
 	env := newKnownSetV1Env(t)
 	env.seedSynced(t, ksKnown1)
@@ -300,11 +300,20 @@ func TestKnownSetV1_RecuperationParIdentifiantBornee(t *testing.T) {
 
 	premier := nouveauClient()
 	env.paginate(t, premier, true)
-	assertFetched(t, premier, orphelins[:knownset.OrphanRecoveryPerCycle]...)
+	recuperes := premier.fetchedSorted()
+	if len(recuperes) != knownset.OrphanRecoveryPerCycle {
+		t.Fatalf("premier run : %d récupérés, attendu %d", len(recuperes), knownset.OrphanRecoveryPerCycle)
+	}
+	var restants []string
+	for _, id := range orphelins {
+		if !slices.Contains(recuperes, id) {
+			restants = append(restants, id)
+		}
+	}
 
 	second := nouveauClient()
 	env.paginate(t, second, true)
-	assertFetched(t, second, orphelins[knownset.OrphanRecoveryPerCycle:]...)
+	assertFetched(t, second, restants...)
 
 	troisieme := nouveauClient()
 	env.paginate(t, troisieme, true)

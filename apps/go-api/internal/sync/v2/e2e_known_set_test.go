@@ -149,8 +149,8 @@ func TestE2E_V2_OrphelinPlusAncienQueLeConnuRecupereParIdentifiant(t *testing.T)
 }
 
 // TestE2E_V2_RecuperationParIdentifiantBornee : knownset.OrphanRecoveryPerCycle+3 orphelins
-// absents de l'historique — le cycle en récupère exactement OrphanRecoveryPerCycle, les premiers
-// en ordre lexicographique.
+// absents de l'historique — le cycle en récupère exactement OrphanRecoveryPerCycle, tous des
+// orphelins (la sélection tourne d'une période à l'autre, cf. knownset).
 func TestE2E_V2_RecuperationParIdentifiantBornee(t *testing.T) {
 	players := []PlayerProfile{{Gamertag: "alice", XUID: "1000000000000001", PlayerSlug: "alice"}}
 	env := setupE2EEnv(t, []string{"alice"})
@@ -176,8 +176,14 @@ func TestE2E_V2_RecuperationParIdentifiantBornee(t *testing.T) {
 	if _, err := orch.Run(context.Background(), players); err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if got, want := statsDemandees(client), orphelins[:knownset.OrphanRecoveryPerCycle]; !slices.Equal(got, want) {
-		t.Errorf("matchs récupérés = %d %v, attendu les %d premiers", len(got), got, knownset.OrphanRecoveryPerCycle)
+	got := statsDemandees(client)
+	if len(got) != knownset.OrphanRecoveryPerCycle {
+		t.Errorf("matchs récupérés = %d %v, attendu %d", len(got), got, knownset.OrphanRecoveryPerCycle)
+	}
+	for _, id := range got {
+		if !slices.Contains(orphelins, id) {
+			t.Errorf("match récupéré %s : pas un orphelin", id)
+		}
 	}
 }
 

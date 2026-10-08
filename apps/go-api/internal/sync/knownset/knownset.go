@@ -38,13 +38,18 @@
 package knownset
 
 import (
+	"bytes"
+	"cmp"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
@@ -70,17 +75,30 @@ const OrphanRecoveryRequestedCounter = "sync_known_orphan_recovery_requested_tot
 // cycle de sync du joueur. Pourquoi borner : une base partagée restaurée plus ancienne peut
 // laisser des milliers d'orphelins, et chaque récupération coûte plusieurs appels d'API ; la borne
 // garde le surcoût d'un cycle de l'ordre d'un delta chargé et rattrape N orphelins en
-// N/OrphanRecoveryPerCycle cycles. Ordre lexicographique des match_id : déterministe ; un orphelin
-// récupéré entre au registre et sort de la liste, le cycle suivant prend les suivants.
+// N/OrphanRecoveryPerCycle cycles quand les récupérations aboutissent. La sélection TOURNE (cf.
+// orphanRotationPeriod) : des orphelins en échec permanent ne retiennent pas la place des autres.
 const OrphanRecoveryPerCycle = 50
+
+// orphanRotationPeriod : durée pendant laquelle la sélection des orphelins demandés reste la même.
+// Au-delà de OrphanRecoveryPerCycle orphelins, la sélection est faite dans un ordre mélangé par
+// une clé dérivée de la période courante (cf. rotationOrder) : sans état, déterministe pour une
+// période donnée, différente d'une période à l'autre. Un orphelin dont la récupération échoue à
+// chaque fois (match disparu de l'API) ne garde donc pas sa place : chaque orphelin est demandé
+// avec une probabilité OrphanRecoveryPerCycle/N à chaque période. Une heure : deux cycles V2,
+// espacés de plusieurs heures, voient deux sélections indépendantes ; les syncs V1 d'une même
+// heure demandent la même.
+const orphanRotationPeriod = time.Hour
+
+// rotationNow est l'horloge de la rotation des orphelins, surchargeable en test.
+var rotationNow = time.Now
 
 // Set : l'ensemble connu d'un joueur et les orphelins à récupérer par match_id.
 type Set struct {
 	// Known : les matchs connus (règle du paquet). Non nil quand Load réussit, nil en erreur.
 	Known map[string]bool
 	// Recover : orphelins (enrichis côté joueur, absents du registre partagé) à récupérer PAR
-	// match_id ce cycle, en plus de la pagination ; au plus OrphanRecoveryPerCycle, ordre
-	// lexicographique. Vide en régime normal.
+	// match_id ce cycle, en plus de la pagination ; au plus OrphanRecoveryPerCycle, choisis par
+	// rotation (cf. orphanRotationPeriod), rendus en ordre lexicographique. Vide en régime normal.
 	Recover []string
 }
 
@@ -195,23 +213,51 @@ func filterInRegistry(ctx context.Context, sharedDB *sql.DB, ids []string) (map[
 	return present, nil
 }
 
-// reportOrphans choisit les orphelins demandés ce cycle (les OrphanRecoveryPerCycle premiers en
-// ordre lexicographique), les journalise en UNE ligne et les compte (détectés, demandés). Rend
-// les orphelins demandés ; aucun orphelin → nil, ni journal ni compteur.
+// reportOrphans choisit les orphelins demandés ce cycle (les OrphanRecoveryPerCycle premiers de
+// rotationOrder pour la période courante), les journalise en UNE ligne et les compte (détectés,
+// demandés). Rend les orphelins demandés en ordre lexicographique ; aucun orphelin → nil, ni
+// journal ni compteur.
 func reportOrphans(ctx context.Context, xuid string, orphans []string) []string {
 	if len(orphans) == 0 {
 		return nil
 	}
-	slices.Sort(orphans)
-	toRecover := slices.Clone(orphans[:min(OrphanRecoveryPerCycle, len(orphans))])
+	epoch := rotationNow().Unix() / int64(orphanRotationPeriod/time.Second)
+	ordered := rotationOrder(orphans, epoch)
+	toRecover := slices.Sorted(slices.Values(ordered[:min(OrphanRecoveryPerCycle, len(ordered))]))
 	slog.WarnContext(ctx, "knownset: enrichissements joueur sans match au registre partagé — récupération par match_id",
 		"xuid", xuid, "detected", len(orphans), "requested_this_cycle", len(toRecover),
-		"left_for_next_cycles", len(orphans)-len(toRecover),
+		"left_for_next_cycles", len(orphans)-len(toRecover), "rotation_epoch", epoch,
 		"sample", strings.Join(toRecover[:min(orphanSample, len(toRecover))], ","))
 	slug := ctxkeys.TitleSlug(ctx)
 	observability.AddIntT(slug, OrphanEnrichmentsCounter, int64(len(orphans)))
 	observability.AddIntT(slug, OrphanRecoveryRequestedCounter, int64(len(toRecover)))
 	return toRecover
+}
+
+// rotationOrder rend ids dans l'ordre de la rotation de la période epoch : tri par le SHA-256 de
+// « epoch:match_id », puis par match_id à empreinte égale. Pur et déterministe : même
+// période, même ordre ; périodes différentes, ordres indépendants. Un hachage à bonne diffusion est
+// requis : des match_id voisins (même préfixe) doivent recevoir des clés indépendantes, sinon ils
+// sont pris ou laissés ensemble et certains orphelins passent bien plus rarement que d'autres.
+// ids n'est pas modifié.
+func rotationOrder(ids []string, epoch int64) []string {
+	type keyed struct {
+		key [sha256.Size]byte
+		id  string
+	}
+	prefix := strconv.FormatInt(epoch, 10) + ":"
+	ks := make([]keyed, len(ids))
+	for i, id := range ids {
+		ks[i] = keyed{key: sha256.Sum256([]byte(prefix + id)), id: id}
+	}
+	slices.SortFunc(ks, func(a, b keyed) int {
+		return cmp.Or(bytes.Compare(a.key[:], b.key[:]), strings.Compare(a.id, b.id))
+	})
+	out := make([]string, len(ks))
+	for i, k := range ks {
+		out[i] = k.id
+	}
+	return out
 }
 
 // queryIDs exécute une requête à une colonne match_id et rend l'ensemble lu. Toute erreur

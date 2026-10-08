@@ -11,6 +11,7 @@ import (
 	"maps"
 	"slices"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
@@ -130,7 +131,7 @@ func TestLoad_RegimeNormalIdentiqueALAncienneUnion(t *testing.T) {
 
 // TestLoad_EnrichissementSansRegistreEstInconnu : un enrichissement dont le match manque au
 // registre partagé (base partagée restaurée plus ancienne) n'est PAS connu, il est compté, et
-// il est demandé à la récupération par match_id (Set.Recover, ordre lexicographique).
+// il est demandé à la récupération par match_id (Set.Recover, rendu en ordre lexicographique).
 func TestLoad_EnrichissementSansRegistreEstInconnu(t *testing.T) {
 	playerDB := newPlayerDB(t, "m1", "orphelin-1", "orphelin-2")
 	sharedDB := newSharedDB(t, sharedFixture{
@@ -156,8 +157,8 @@ func TestLoad_EnrichissementSansRegistreEstInconnu(t *testing.T) {
 }
 
 // TestLoad_RecuperationBorneeParCycle : plus de OrphanRecoveryPerCycle orphelins — exactement
-// les OrphanRecoveryPerCycle premiers (ordre lexicographique) sont demandés ce cycle ; tous sont
-// détectés et comptés.
+// OrphanRecoveryPerCycle d'entre eux, distincts, sont demandés ce cycle (ordre lexicographique) ;
+// tous sont détectés et comptés.
 func TestLoad_RecuperationBorneeParCycle(t *testing.T) {
 	const n = OrphanRecoveryPerCycle + 7
 	var orphelins []string
@@ -172,15 +173,132 @@ func TestLoad_RecuperationBorneeParCycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	want := slices.Sorted(slices.Values(orphelins))[:OrphanRecoveryPerCycle]
-	if !slices.Equal(set.Recover, want) {
-		t.Errorf("à récupérer = %v, attendu les %d premiers %v", set.Recover, OrphanRecoveryPerCycle, want)
+	if len(set.Recover) != OrphanRecoveryPerCycle {
+		t.Fatalf("à récupérer = %d, attendu %d", len(set.Recover), OrphanRecoveryPerCycle)
+	}
+	if !slices.IsSorted(set.Recover) || len(slices.Compact(slices.Clone(set.Recover))) != len(set.Recover) {
+		t.Errorf("à récupérer = %v, attendu des match_id distincts en ordre lexicographique", set.Recover)
+	}
+	for _, id := range set.Recover {
+		if !slices.Contains(orphelins, id) {
+			t.Errorf("à récupérer : %s n'est pas un orphelin", id)
+		}
 	}
 	if d := orphanCounter() - avant; d != n {
 		t.Errorf("orphelins comptés = %d, attendu %d", d, n)
 	}
 	if d := requestedCounter() - demandesAvant; d != OrphanRecoveryPerCycle {
 		t.Errorf("demandés comptés = %d, attendu %d", d, OrphanRecoveryPerCycle)
+	}
+}
+
+// avecHorloge fixe l'horloge de la rotation pour la durée du test.
+func avecHorloge(t *testing.T, now *time.Time) {
+	t.Helper()
+	precedente := rotationNow
+	rotationNow = func() time.Time { return *now }
+	t.Cleanup(func() { rotationNow = precedente })
+}
+
+// TestLoad_RotationOrphelinsEnEchecPermanent : 60 orphelins dont les 50 premiers en ordre
+// lexicographique échouent à CHAQUE récupération (ils restent orphelins). Les 10 autres, une
+// fois demandés, sont récupérés (ils entrent au registre). Un cycle par heure : la sélection
+// tourne, les 10 sont tous demandés en quelques cycles — un ordre fixe les affamerait.
+func TestLoad_RotationOrphelinsEnEchecPermanent(t *testing.T) {
+	const (
+		n          = 60
+		enEchec    = OrphanRecoveryPerCycle
+		maxCycles  = 6
+		xuidCycles = xuidJoueur
+	)
+	var orphelins []string
+	for i := range n {
+		orphelins = append(orphelins, fmt.Sprintf("o-%03d", i))
+	}
+	recuperables := orphelins[enEchec:]
+	playerDB := newPlayerDB(t, orphelins...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	now := time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC)
+	avecHorloge(t, &now)
+
+	recuperes := map[string]bool{}
+	cycles := 0
+	for cycles < maxCycles && len(recuperes) < len(recuperables) {
+		cycles++
+		set, err := Load(context.Background(), playerDB, sharedDB, xuidCycles)
+		if err != nil {
+			t.Fatalf("Load (cycle %d): %v", cycles, err)
+		}
+		if want := min(OrphanRecoveryPerCycle, n-len(recuperes)); len(set.Recover) != want {
+			t.Fatalf("cycle %d : %d demandés, attendu %d", cycles, len(set.Recover), want)
+		}
+		for _, id := range set.Recover {
+			if slices.Contains(recuperables, id) {
+				exec(t, sharedDB, `INSERT INTO match_registry VALUES (?)`, id)
+				recuperes[id] = true
+			}
+		}
+		now = now.Add(orphanRotationPeriod)
+	}
+	if len(recuperes) != len(recuperables) {
+		t.Fatalf("après %d cycles, %d/%d orphelins récupérables demandés : %v", cycles,
+			len(recuperes), len(recuperables), keys(recuperes))
+	}
+	t.Logf("%d orphelins récupérables tous demandés en %d cycles", len(recuperables), cycles)
+}
+
+// TestLoad_SelectionStableDansLHeureTourneEnsuite : 60 orphelins, aucun récupéré. Deux
+// chargements dans la même heure demandent la même sélection (pas d'état, pas de hasard) ; le
+// chargement de l'heure suivante en demande une autre.
+func TestLoad_SelectionStableDansLHeureTourneEnsuite(t *testing.T) {
+	var orphelins []string
+	for i := range 60 {
+		orphelins = append(orphelins, fmt.Sprintf("o-%03d", i))
+	}
+	playerDB := newPlayerDB(t, orphelins...)
+	sharedDB := newSharedDB(t, sharedFixture{registry: []string{"m1"}})
+	now := time.Date(2026, 10, 8, 10, 5, 0, 0, time.UTC)
+	avecHorloge(t, &now)
+	charger := func() []string {
+		t.Helper()
+		set, err := Load(context.Background(), playerDB, sharedDB, xuidJoueur)
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		return set.Recover
+	}
+
+	premiere := charger()
+	now = now.Add(50 * time.Minute) // même heure
+	if meme := charger(); !slices.Equal(premiere, meme) {
+		t.Errorf("même heure, sélections différentes : %v / %v", premiere, meme)
+	}
+	now = now.Add(orphanRotationPeriod)
+	if suivante := charger(); slices.Equal(premiere, suivante) {
+		t.Error("heure suivante, même sélection : la rotation ne tourne pas")
+	}
+}
+
+// TestRotationOrder_StableDansLaPeriodeChangeEntrePeriodes : même période → même ordre (sans
+// état, déterministe) ; périodes successives → ordres différents ; toujours une permutation.
+func TestRotationOrder_StableDansLaPeriodeChangeEntrePeriodes(t *testing.T) {
+	var ids []string
+	for i := range 60 {
+		ids = append(ids, fmt.Sprintf("o-%03d", i))
+	}
+	entree := slices.Clone(ids)
+	a, b := rotationOrder(ids, 491234), rotationOrder(ids, 491234)
+	if !slices.Equal(a, b) {
+		t.Error("même période, ordres différents")
+	}
+	if !slices.Equal(ids, entree) {
+		t.Error("rotationOrder a modifié son entrée")
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(a)), ids) {
+		t.Errorf("rotationOrder n'est pas une permutation : %v", a)
+	}
+	if c := rotationOrder(ids, 491235); slices.Equal(a[:OrphanRecoveryPerCycle], c[:OrphanRecoveryPerCycle]) {
+		t.Error("périodes successives, même sélection")
 	}
 }
 
@@ -311,6 +429,33 @@ func TestLoad_XUIDVideEstFatal(t *testing.T) {
 	for _, xuid := range []string{"", "   "} {
 		if _, err := Load(context.Background(), newPlayerDB(t, "m1"), sharedDB, xuid); !errors.Is(err, ErrNoXUID) {
 			t.Errorf("xuid %q : err = %v, attendu ErrNoXUID", xuid, err)
+		}
+	}
+}
+
+// TestRotationOrder_MatchIDVoisinsSelectionnesAFrequenceEquitable : 300 match_id voisins (même
+// préfixe, suffixe numérique) sur 1 000 périodes — chacun est parmi les OrphanRecoveryPerCycle
+// premiers au moins 60 % du nombre de fois attendu (1 000 × 50/300). Un hachage à faible
+// diffusion classe les voisins ensemble et en laisse certains bien plus souvent de côté.
+func TestRotationOrder_MatchIDVoisinsSelectionnesAFrequenceEquitable(t *testing.T) {
+	const (
+		n       = 300
+		periods = 1000
+	)
+	var ids []string
+	for i := range n {
+		ids = append(ids, fmt.Sprintf("aabbccdd-0000-4000-8000-%012d", i))
+	}
+	selections := make(map[string]int, n)
+	for e := range int64(periods) {
+		for _, id := range rotationOrder(ids, 497616+e)[:OrphanRecoveryPerCycle] {
+			selections[id]++
+		}
+	}
+	attendu := float64(periods) * OrphanRecoveryPerCycle / n
+	for _, id := range ids {
+		if got := selections[id]; float64(got) < 0.6*attendu {
+			t.Errorf("%s sélectionné %d fois sur %d périodes, attendu ≈ %.0f", id, got, periods, attendu)
 		}
 	}
 }
