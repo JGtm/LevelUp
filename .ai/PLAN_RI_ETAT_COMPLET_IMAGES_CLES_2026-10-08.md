@@ -408,6 +408,13 @@ E-9.
   montée de `killsource.Rev`.
 - **E-8 — Pas d'élargissement de la forme des faits** (emplacement, variante, méthode de
   récupération) : `SchemaDesFaits` ne monte que si le test de survie de D1.3 l'exige.
+- **E-10 — Un sous-pas de LK.5 qui change l'élection des ancres est rejeté** (2026-10-08, lot B,
+  exécutant). Le gate écrit de LK.5 (I-ferm, ratchet de cuisson, carte, I-d0) ne regarde pas les
+  ancres ; le critère 1 de LK les veut identiques à la base. I-ancres est donc joué sur chaque sous-pas
+  qui change une fermeture : colonnes 1 à 9 identiques à `$S/lk3` exigées, et « écartés prouvés »
+  inchangé. Les « prouvés » (la preuve d'image-clé jouée sur chaque ancre) peuvent monter : la preuve
+  est la même lecture que la fermeture (LK.5.4.10 : +1 315 prouvés = les 1 315 records `ti=21` qui
+  ferment désormais). Appliquée à LK.5.5 (D-23). Une objection de l'utilisateur la rouvre.
 - **E-9 — Instruction du résidu sans correction** : le +33 bits de `60ae07c4`, l'illisibilité de
   `50247b26` en i22, les formats 20-21 après i22, les traversées `ti=40` (6 183), `ti=21` (1 750,
   +76/+77 bits) et `ti=44` (5) modifiées sans fermeture, l'écart de réserve ~5 %, le témoin +1 bit
@@ -1057,6 +1064,24 @@ refusionner, rejouer l'étape 0).
   elle est adjugée. Par ailleurs, le jeu rend faux quand `FUN_140501798` refuse l'orientation décodée
   par `FUN_140c1e79c` (deux vecteurs unitaires et orthogonaux, `$S/lk5/dec_140501798.txt`) : ce
   contrôle sans bit n'est porté ni hors ni sous la garde. Non traité.
+- D-22 *(LK.5.5)* Les sources `fichier:ligne` de `ecs_table.tsv` vers `dispatch_item.go` dérivent
+  (`player-respawn-safety-component` → 122, qui est le cas `high-frequency` ; `statborg-entry-index-and-type-component`
+  → 133, …) : le garde-rail G1 n'en vérifie que l'existence. Non traité.
+- D-23 *(LK.5.5, REJETÉ)* Garde `low-frequency` de `ti=3` levée sous la portée (lien LU en LK.1.8 :
+  positions par le thunk `FUN_1424e0e38` → `FUN_14076e494`, R(96) sous la garde ; orientation
+  `FUN_140c5f938` sur `DAT_145121140` seul) : garde `etatComplet` retirée, cas de dispatch rendant
+  `true`, `ecs_table.tsv:76` « porte ». Mesure contre `$S/lk5.4.10` → `$S/lk5.5` : I-ferm `ti=3`
+  14 → 53 / 81 (`fb1a1a72` 2 → 28, `51ebbc0f` 12 → 25), aucune baisse de fermeture ; goldens en hausse
+  (`fb1a1a72` `ti=3` 0 → 19) ; carte et I-d0 identiques — les quatre instruments du gate de LK.5
+  passent. MAIS l'ÉLECTION DES ANCRES CHANGE (I-ancres `$S/lk5.5/m2_*`, critère 1 de LK) : sur
+  `51ebbc0f`, cinq ancres élues (`ti=1` slots 175 et 219, tranches 15 et 17 ; `ti=2` slot 152,
+  tranches 20 à 22) sont réfutées et écartées (élections 887 → 882, réfutations 2 → 7, ancres
+  13 561 → 13 556 ; totaux `ti=1` 11 → 9 et `ti=2` 41 → 38 dans I-ferm), chacune en concurrence avec un
+  candidat `ti=3` décalé d'UN bit (slot 350 ou 438 ou 304, génération 2) que la preuve d'image-clé
+  accepte désormais ; 37 candidats écartés deviennent « prouvés » (`fb1a1a72` 18, `51ebbc0f` 19 ; 0
+  avant). Commit mesuré `51749d5d4`, retiré par le commit suivant (décision d'exécution E-10). Le
+  retenir demande une décision : la lecture du jeu fait monter `ti=3`, mais ses records longs à compte
+  variable se « prouvent » aussi décalés d'un bit, et la preuve d'élection en réfute des ancres.
 
 ## 8. Journal
 

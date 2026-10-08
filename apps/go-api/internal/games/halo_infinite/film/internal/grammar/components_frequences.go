@@ -24,15 +24,15 @@ package grammar
 // grammaire d un autre archetype. Le garde-fou de cette regle est
 // `TestG6LesHomonymesSeRoutentParTable` (`ecs_dispatch_table_guard_test.go`).
 //
-// `low-frequency` SE LIT DANS LES DEUX BOUCLES, LA PORTEE DECIDANT DE SES LARGEURS (plan LK, LK.5.5,
-// lien relu en LK.1.8). La boucle de l etat complet d image-cle, `FUN_142e2c690`, pose
-// `DAT_144e61ea0 = 1` a son entree (142e2c6b8) et le remet a 0 a sa sortie commune (142e2c76a) ;
-// chaque lecteur de composant (CALL 142e2c7c9) s y execute sous cette portee, ou `FUN_14076f91c` rend
-// vrai : les positions de FUN_142ed4aec (thunk `FUN_1424e0e38` -> `FUN_14076e494`, CALLs 142ed4b1f et
-// 142ed4e7f) y sont BRUTES (`FUN_1411b259c`, R(96)), et son orientation (`FUN_140c5f938`, CALLs
-// 142ed4b38 et 142ed4e98) ne lit que `DAT_145121140`, pas la portee. La boucle delta
-// (`FUN_14076cb60`) ne pose pas la portee. Le portage lit ses positions par [lireE494], qui consulte la
-// garde : sous la portee posee par la marche d etat complet ([Lecteur.portee]), il lit comme le jeu.
+// `low-frequency` NE SE LIT QUE DANS UN RECORD A MASQUE (DELTA, NEW). La boucle de l etat complet
+// d image-cle, `FUN_142e2c690`, pose `DAT_144e61ea0 = 1` a son entree (142e2c6b8) et le remet a 0
+// a sa sortie commune (142e2c76a) ; chaque lecteur de composant (CALL 142e2c7c9) s y execute sous
+// cette portee, ou `FUN_14076f91c` rend vrai et `FUN_14076e494` lit la position BRUTE
+// (`FUN_1411b259c` = `FUN_1406d676c(..., 0x60)`, R(96)) : la tete et chaque entree de
+// FUN_142ed4aec y ont une autre largeur. La boucle delta (`FUN_14076cb60`) ne pose pas la portee.
+// La marche d etat complet du depot pose cette portee ([Lecteur.portee]), sous laquelle
+// [lireE494] lit comme le jeu ; dans un etat complet ([Lecteur.etatComplet]), le composant reste
+// pourtant non porte (la traversee s arrete) : sa lecture n y a pas ete mesuree.
 
 // Les archetypes qui enregistrent `high-frequency`, lus dans leurs fonctions d enregistrement.
 const (
@@ -59,8 +59,11 @@ const largeurEntreesBasseFrequence = 6
 //	         si f & 2 : avant / haut (FUN_140c5f938, mode 0) ;
 //	         R(16) (+0x24) ; R(5) (FUN_1424ccc74, +0x26)
 //
-// Sous la portee de l etat complet, chaque position est R(96) (cf. l en-tete).
-func consumeLowFrequency(br *Lecteur) {
+// Rend faux, sans lire un bit, dans un etat complet d image-cle ([Lecteur.etatComplet], cf. l en-tete).
+func consumeLowFrequency(br *Lecteur) bool {
+	if br.etatComplet {
+		return false
+	}
 	lireE494(br, niveauPosition)
 	consumeObjectForwardAndUp(br)
 	consumeChampsDeFrequence(br)
@@ -75,6 +78,7 @@ func consumeLowFrequency(br *Lecteur) {
 		br.ReadBits(16)
 		br.ReadBits(5)
 	}
+	return true
 }
 
 // consumeChampsDeFrequence lit les trois champs que les deux lecteurs de l archetype 3 partagent,

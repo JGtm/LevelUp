@@ -51,22 +51,7 @@ type entreeBasseFrequence struct {
 // ecrireBasseFrequence suit FUN_142eda938 champ par champ ; `teteAvecDirection` choisit la branche
 // de la porte de l orientation de tete.
 func ecrireBasseFrequence(w *bitWriter, teteAvecDirection bool, entrees []entreeBasseFrequence) {
-	ecrireBasseFrequenceAvec(w, ecrirePositionSansIndex, teteAvecDirection, entrees)
-}
-
-// ecrirePositionBrute ecrit une position sous la portee de l etat complet : `FUN_1411b259c`, trois mots
-// de 32 bits.
-func ecrirePositionBrute(w *bitWriter, axes [3]uint64) {
-	for _, v := range axes {
-		w.bits(v, 32)
-	}
-}
-
-// ecrireBasseFrequenceAvec est [ecrireBasseFrequence] avec l ecriture des positions en parametre : la
-// forme quantifiee hors de la portee, la forme brute sous elle ([ecrirePositionBrute]).
-func ecrireBasseFrequenceAvec(w *bitWriter, position func(*bitWriter, [3]uint64), teteAvecDirection bool,
-	entrees []entreeBasseFrequence) {
-	position(w, [3]uint64{5, 9, 3})
+	ecrirePositionSansIndex(w, [3]uint64{5, 9, 3})
 	ecrireAvantHaut(w, 0x4a1b2, teteAvecDirection, 0x7f)
 	w.bits(0xbeef, 16) // +0x52c
 	w.bits(0xa5, 8)    // +0x52e
@@ -75,7 +60,7 @@ func ecrireBasseFrequenceAvec(w *bitWriter, position func(*bitWriter, [3]uint64)
 	for _, e := range entrees {
 		w.bits(e.drapeaux, 3) // FUN_142b67fe8
 		if e.drapeaux&1 != 0 {
-			position(w, [3]uint64{1, 2, 3})
+			ecrirePositionSansIndex(w, [3]uint64{1, 2, 3})
 		}
 		if e.drapeaux&2 != 0 {
 			ecrireAvantHaut(w, 0x2c3d4, e.direction, 0x11)
@@ -150,28 +135,26 @@ func TestBasseFrequenceSuitSonEcrivain(t *testing.T) {
 	}
 }
 
-// TestBasseFrequenceSousLaPortee — plan LK, LK.5.5 : sous la portee de l etat complet (`FUN_142e2c690`
-// la pose sur toute sa boucle), les positions de `ti=3 i0` passent par `FUN_14076e494`, dont la garde
-// lit R(96) ; l orientation (`FUN_140c5f938`) ne lit que `DAT_145121140`. Le composant se lit en entier
-// dans un etat complet sous la portee ; le meme flux lu hors portee ne tombe pas juste. Mutation jouee
-// (la garde `etatComplet` remise) : rouge.
-func TestBasseFrequenceSousLaPortee(t *testing.T) {
-	entrees := []entreeBasseFrequence{{drapeaux: 3, mot: 0x8001, code: 16}, {drapeaux: 1, mot: 7, code: 2}}
-	for _, portee := range []bool{true, false} {
+// TestBasseFrequenceNonPorteeDansUnEtatComplet : sous la boucle d etat complet (`FUN_142e2c690`,
+// portee `DAT_144e61ea0` posee), `ti=3 i0` n est pas lu aux largeurs du delta ; le composant rend
+// « non porte » sans consommer un bit, et le meme vecteur se lit en entier hors etat complet.
+func TestBasseFrequenceNonPorteeDansUnEtatComplet(t *testing.T) {
+	for _, etatComplet := range []bool{false, true} {
 		w := &bitWriter{}
-		ecrireBasseFrequenceAvec(w, ecrirePositionBrute, true, entrees)
+		ecrireBasseFrequence(w, true, []entreeBasseFrequence{{drapeaux: 3, mot: 0x8001, code: 16}})
 		br, fin := lireAuTemoin(w)
-		if portee {
-			sousLaPortee(br).etatComplet = true
+		br.etatComplet = etatComplet
+		_, _, porte := consumeByName(br, compLowFrequency, archetypeFrequences, 0)
+		if etatComplet {
+			if porte || br.BitPos() != 0 {
+				t.Fatalf("etat complet : porte=%v, %d bits lus ; attendu non porte, 0 bit", porte, br.BitPos())
+			}
+			continue
 		}
-		if _, _, porte := consumeByName(br, compLowFrequency, archetypeFrequences, 0); !porte {
-			t.Fatalf("portee %v : low-frequency declare non porte", portee)
+		if !porte {
+			t.Fatal("record a masque : low-frequency declare non porte")
 		}
-		if portee {
-			verifierTemoin(t, br, fin, "etat complet sous la portee")
-		} else if br.BitPos() == fin {
-			t.Fatal("hors portee : le flux brut se lit en entier, la portee ne se distingue pas")
-		}
+		verifierTemoin(t, br, fin, "record a masque")
 	}
 }
 
