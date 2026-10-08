@@ -58,6 +58,10 @@ var vecteursArrets = []vecteurArret{
 	// ti=10 i18 a i21 : l ecrivain (142edb3a4) ecrit le mot etat+0x54+4*index sur 32 bits.
 	{"O18a", compManagedObjectNetworkedProperty, 10, 1, "10000000000000000000000000000011"},
 	{"O18b", compManagedObjectNetworkedProperty, 10, 1, "00000000000000000000000000000000"},
+	// ti=45 i1 : l ecrivain (142edbda4) ecrit etat+0x14 & 0x3f sur six bits, puis etat+0x18 & 0xf sur
+	// quatre.
+	{"S1a", compMatchflowFocusData, 45, 1, "111110 | 0011"},
+	{"S1b", compMatchflowFocusData, 45, 1, "000000 | 1000"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.

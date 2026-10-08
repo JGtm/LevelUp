@@ -96,3 +96,8 @@ package grammar
 // les quatre composants `managed-object-networked-property-component` se lisent (`FUN_142ed5358`,
 // `R(32)` plat, [consumeManagedObjectNetworkedProperty]). Contre `grammar-2026-10-08.7` : un record
 // `ti=10` qui s arretait sur l un d eux se lit jusqu au composant suivant.
+//
+// ENTREE `grammar-2026-10-08.9` (2026-10-08, lot des arrets de la vue B, suite, `ti=45 i1`) : le
+// composant `matchflow-focus-data-component` se lit (`FUN_141167744`, `R(6)` puis `R(4)`,
+// [consumeMatchflowFocusData]). Contre `grammar-2026-10-08.8` : un record `ti=45` qui s arretait sur
+// `i1` se lit jusqu au composant suivant.

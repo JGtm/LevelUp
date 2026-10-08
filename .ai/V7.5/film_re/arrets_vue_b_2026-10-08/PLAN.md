@@ -26,8 +26,9 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 | E4 | `ti=11 i4 managed-objective-interaction-filter-component` (382 à l entrée, 165 en base) | [x] | `ced5b3995` | `FUN_140dbe170` = `FUN_140dbe400(v = 1 < param_4)`, le bloc de filtres seul ; carte v2 contre E3 : +6 312 sains, +80 762 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.5` |
 | E5a | `ti=10 i23 managed-object-flags-component` (201) | [x] | `d23a7bdab` | `FUN_1410d9b5c` -> `FUN_140f72efc` = R(2) ; écrivain `142edb23c` -> `FUN_142ed0ec8` ; carte v2 contre E4 : +4 957 sains, +108 064 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.6` |
 | E5b | `ti=12 i17 managed-navpoint-object-marker` (92) | [x] | `3b01c5d59` | `FUN_141169e68` = R(32) ; écrivain `142edb084` -> `FUN_1407edaf4` ; carte v2 contre E5a : +140 sains, +3 768 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.7` |
-| E5c | `ti=10 i18`..`i21 managed-object-networked-property-component` (40) | [x] | (ce commit) | `FUN_142ed5358` = R(32) vers `etat + 0x54 + 4 * index` ; écrivain `142edb3a4` ; carte v2 contre E5b : +1 sain, 0 perdu, aucun film en baisse ; les 40 paquets avancent puis s arrêtent ailleurs (20 rejets, 9 terminateurs hors cadre, 8 fins de payload, D-E5c) ; `grammar-2026-10-08.8` |
-| E5 | suivants par fréquence (`ti=45 i1`, `ti=12 i13`, `i15`) | [ ] | | |
+| E5c | `ti=10 i18`..`i21 managed-object-networked-property-component` (40) | [x] | `7f6e69d69` | `FUN_142ed5358` = R(32) vers `etat + 0x54 + 4 * index` ; écrivain `142edb3a4` ; carte v2 contre E5b : +1 sain, 0 perdu, aucun film en baisse ; les 40 paquets avancent puis s arrêtent ailleurs (20 rejets, 9 terminateurs hors cadre, 8 fins de payload, D-E5c) ; `grammar-2026-10-08.8` |
+| E5d | `ti=45 i1 matchflow-focus-data-component` (16) | [x] | (ce commit) | `FUN_141167744` = R(6) + R(4), signés ; écrivain `142edbda4` ; carte v2 contre E5c : +10 sains, +57 utiles, 0 perdu, aucun film en baisse ; `grammar-2026-10-08.9` |
+| E5 | suivants par fréquence (`ti=12 i13`, `i15`) | [ ] | | |
 
 ## Gates du lot entier (base `a4515e66c`)
 

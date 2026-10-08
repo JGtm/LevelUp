@@ -6,7 +6,7 @@
    "film": "000d5950",
    "build": "HI_1_13_0",
    "schemaVersion": 89,
-   "bytes": 417860,
+   "bytes": 417859,
    "pointsStride": 1
   },
   {
@@ -14,7 +14,7 @@
    "film": "a521164d",
    "build": "HI_1_4_1",
    "schemaVersion": 89,
-   "bytes": 370398,
+   "bytes": 370397,
    "pointsStride": 5
   },
   {
@@ -38,7 +38,7 @@
    "film": "111fa685",
    "build": "HI_1_10_0",
    "schemaVersion": 89,
-   "bytes": 452621,
+   "bytes": 452620,
    "pointsStride": 5
   },
   {
@@ -54,7 +54,7 @@
    "film": "bcb6d393",
    "build": "HI_1_12_0",
    "schemaVersion": 89,
-   "bytes": 92972,
+   "bytes": 92971,
    "pointsStride": 5
   },
   {
