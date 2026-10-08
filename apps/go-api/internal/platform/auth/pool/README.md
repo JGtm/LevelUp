@@ -85,7 +85,8 @@ stats, err := client.GetMatchStats(ctx, matchID)
 - Spartan customization cron (`internal/scheduler/spartan_customization_bearer.go`) — the
   player's own token first, because it opens the private view `/customization/appearance`
   (a third-party token gets 403, measured 2026-09-16). If that token is unusable, the cron
-  pins another declared account (admin of `db_profiles.json` first, then by gamertag) and the
+  pins another declared account (first the one whose xuid is linked to an `admin`-role account of
+  the instance, read through the account store; only failing that the others, by gamertag) and the
   client falls back to the public view `/customization?view=public`, which carries the same
   appearance block for any player.
 - Halo 5 live-sync (`games/halo_5/livesync`)

@@ -241,19 +241,41 @@ func spartanCronError(t *testing.T) string {
 	return ""
 }
 
+// instanceAccounts tient lieu du store des comptes (*userstore.Store) : JGtm est le
+// compte de rôle admin, DankerGlue un autre utilisateur de l'instance.
+type instanceAccounts struct {
+	users []domain.AdminUserSummary
+	err   error
+}
+
+func (a instanceAccounts) List() ([]domain.AdminUserSummary, error) { return a.users, a.err }
+
+func jgtmAdminAccounts() instanceAccounts {
+	return instanceAccounts{users: []domain.AdminUserSummary{
+		{Username: "DankerGlue", Role: domain.RoleUser, Gamertag: "DankerGlue", XUID: xuidDanker},
+		{Username: "JGtm", Role: domain.RoleAdmin, Gamertag: "JGtm", XUID: xuidJGtm},
+	}}
+}
+
+// profilesChocoJGtmDanker déclare Chocoboflor et JGtm suivis, DankerGlue auth_only.
+// Le champ « admin » de db_profiles.json nomme DankerGlue : le choix du porteur ne
+// le lit pas, seul le rôle des comptes de l'instance compte.
+const profilesChocoJGtmDanker = `{"version":"3.0","admin":"DankerGlue","profiles":{"halo_infinite":{` +
+	`"Chocoboflor":{"db_path":"unused","xuid":"` + xuidChoco + `"},` +
+	`"JGtm":{"db_path":"unused","xuid":"` + xuidJGtm + `"},` +
+	`"DankerGlue":{"db_path":"unused","xuid":"` + xuidDanker + `","auth_only":true}}}}`
+
 // TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree : Chocoboflor (profil
 // suivi, refresh token refusé : aucun créneau dans le pool) est lu avec le token de
-// JGtm, admin désigné de l'instance, préféré à DankerGlue qui le précède dans
-// l'ordre alphabétique. La ligne lue (emblème, statut « ok ») va dans la base de
+// JGtm, lié au compte de rôle admin de l'instance, préféré à DankerGlue qui le
+// précède dans l'ordre alphabétique (et que nomme le champ « admin » de
+// db_profiles.json). La ligne lue (emblème, statut « ok ») va dans la base de
 // Chocoboflor, sous son xuid. JGtm, aux jetons valides, reste lu avec son propre
 // token et écrit dans SA base.
 func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 	observability.ResetCronStatus()
 	t.Cleanup(observability.ResetCronStatus)
-	cfg := writeProfilesJSON(t, `{"version":"3.0","admin":"JGtm","profiles":{"halo_infinite":{`+
-		`"Chocoboflor":{"db_path":"unused","xuid":"`+xuidChoco+`"},`+
-		`"JGtm":{"db_path":"unused","xuid":"`+xuidJGtm+`"},`+
-		`"DankerGlue":{"db_path":"unused","xuid":"`+xuidDanker+`","auth_only":true}}}}`)
+	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
 	tokens := newBearerPool(t, map[string]string{
 		"Chocoboflor": xuidChoco, "JGtm": xuidJGtm, "DankerGlue": xuidDanker,
 	}, "Chocoboflor")
@@ -263,6 +285,7 @@ func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 	bearerReadsBefore := observability.LoadCounter("spartan_cron_bearer_reads_total")
 
 	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
+		WithAccounts(jgtmAdminAccounts()).
 		RunOnce(context.Background())
 
 	choco := repos["Chocoboflor"].wait(t, "Chocoboflor")
@@ -287,6 +310,61 @@ func TestSpartanCron_JetonsMorts_PorteurValide_LigneEnregistree(t *testing.T) {
 	}
 	if msg := spartanCronError(t); msg != "" {
 		t.Errorf("cycle en échec alors que les deux joueurs ont été lus : %s", msg)
+	}
+}
+
+// TestSpartanCron_CompteAdminInutilisable_AutreCompteADefaut : le token du compte
+// admin (JGtm) est malsain ; à défaut, Chocoboflor est lu avec celui de DankerGlue.
+func TestSpartanCron_CompteAdminInutilisable_AutreCompteADefaut(t *testing.T) {
+	observability.ResetCronStatus()
+	t.Cleanup(observability.ResetCronStatus)
+	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
+	tokens := newBearerPool(t, map[string]string{
+		"Chocoboflor": xuidChoco, "JGtm": xuidJGtm, "DankerGlue": xuidDanker,
+	}, "Chocoboflor")
+	tokens.MarkUnhealthy("JGtm", errors.New("401 en test"))
+	rec := &liveRecorder{emblems: map[string]string{xuidChoco: emblemChoco, xuidJGtm: emblemJGtm}}
+	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
+	var providerCalls callCounter
+
+	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
+		WithAccounts(jgtmAdminAccounts()).
+		RunOnce(context.Background())
+
+	choco := repos["Chocoboflor"].wait(t, "Chocoboflor")
+	if choco.xuid != xuidChoco || deref(choco.partial.EmblemImageURL) != emblemChoco {
+		t.Errorf("ligne de Chocoboflor : xuid=%q emblème=%q", choco.xuid, deref(choco.partial.EmblemImageURL))
+	}
+	repos["JGtm"].wait(t, "JGtm")
+	assertCalls(t, rec.callsFor(xuidChoco), "Chocoboflor", liveCall{token: "spartan-DankerGlue", owner: xuidDanker})
+}
+
+// TestSpartanCron_ComptesIllisibles_AucunAutreCompte : sans lecture des comptes de
+// l'instance, le compte de l'utilisateur ne se distingue pas des autres : aucun
+// porteur n'est pris. Chocoboflor n'est ni lu ni écrit, l'échec est rapporté ; JGtm
+// reste lu avec son propre token.
+func TestSpartanCron_ComptesIllisibles_AucunAutreCompte(t *testing.T) {
+	observability.ResetCronStatus()
+	t.Cleanup(observability.ResetCronStatus)
+	cfg := writeProfilesJSON(t, profilesChocoJGtmDanker)
+	tokens := newBearerPool(t, map[string]string{
+		"Chocoboflor": xuidChoco, "JGtm": xuidJGtm, "DankerGlue": xuidDanker,
+	}, "Chocoboflor")
+	rec := &liveRecorder{emblems: map[string]string{xuidJGtm: emblemJGtm}}
+	repos := map[string]*playerCareerRepo{"Chocoboflor": newPlayerCareerRepo(), "JGtm": newPlayerCareerRepo()}
+	var providerCalls callCounter
+
+	scheduler.NewSpartanCustomizationCron(cfg, tokens, careerProvider(repos, rec, &providerCalls), "halo_infinite", 0).
+		WithAccounts(instanceAccounts{err: errors.New("users.json illisible en test")}).
+		RunOnce(context.Background())
+
+	repos["JGtm"].wait(t, "JGtm")
+	assertCalls(t, rec.callsFor(xuidJGtm), "JGtm", liveCall{token: "spartan-JGtm", owner: xuidJGtm})
+	if calls := rec.callsFor(xuidChoco); len(calls) != 0 || providerCalls.get() != 1 {
+		t.Errorf("Chocoboflor lu sans compte préféré connu : %d appels API, %d services", len(calls), providerCalls.get())
+	}
+	if msg := spartanCronError(t); !strings.Contains(msg, "aucun token utilisable") {
+		t.Errorf("le cycle doit rapporter l'absence de token pour Chocoboflor, erreur rapportée : %q", msg)
 	}
 }
 

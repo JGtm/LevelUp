@@ -1215,9 +1215,11 @@ func main() {
 			}
 			return svc, nil
 		}
+		// Comptes de l'instance (store partagé `us`) : un joueur aux jetons morts est lu
+		// d'abord avec le token du compte de rôle admin, celui de l'utilisateur.
 		spartanCron := scheduler.NewSpartanCustomizationCron(
 			cfg, autoSyncPool, provider, titleSlug, 0,
-		)
+		).WithAccounts(us)
 		// Title-aware (refactor h5-capability-unification) : enregistre le refresher
 		// de customisation des AUTRES titres (Halo 5+). Le scheduler n'importe AUCUN
 		// package de titre — c'est ICI (boot, qui importe déjà halo5/livesync) que la

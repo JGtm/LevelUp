@@ -77,6 +77,9 @@ type SpartanCustomizationCron struct {
 	registry   *titlePkg.Registry
 	refreshers map[string]CustomizationRefresher
 	interval   time.Duration
+	// accounts : comptes de l'instance, d'où le compte de l'utilisateur (rôle admin) que
+	// le choix du porteur préfère. nil = aucun compte préféré (cf. WithAccounts).
+	accounts AccountsReader
 }
 
 // DefaultSpartanCustomizationInterval est l'intervalle par defaut (8h)
@@ -141,6 +144,17 @@ func careerIdentityRefresher(svcProvider CareerLiveServiceProvider) Customizatio
 func (c *SpartanCustomizationCron) WithRegistry(reg *titlePkg.Registry) *SpartanCustomizationCron {
 	if c != nil && reg != nil {
 		c.registry = reg
+	}
+	return c
+}
+
+// WithAccounts branche les comptes de l'instance : quand le token d'un joueur est
+// inutilisable, sa lecture est portée d'abord par le token du xuid lié à un compte de
+// rôle admin (celui de l'utilisateur), par les autres comptes seulement à défaut.
+// nil-safe. Le wiring (cmd/server) passe le store des comptes, *userstore.Store.
+func (c *SpartanCustomizationCron) WithAccounts(r AccountsReader) *SpartanCustomizationCron {
+	if c != nil && r != nil {
+		c.accounts = r
 	}
 	return c
 }

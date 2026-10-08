@@ -82,10 +82,13 @@ comme tout le reste (D4, plan robustesse du sync). Le cron de personnalisation S
 les 8 h, premier passage au démarrage du serveur) préfère le jeton propre du joueur, qui ouvre
 la vue privée `/customization/appearance` (403 pour un tiers, mesuré). Quand ce jeton est
 inutilisable (jeton de rafraîchissement refusé, créneau malsain), le joueur est lu avec le jeton
-d'un autre compte déclaré, choisi dans un ordre fixe (l'`admin` de `db_profiles.json` d'abord,
-puis par gamertag) : le client se replie alors sur la vue publique `/customization?view=public`,
-qui porte le même emblème, le même fond et le même tag de service pour n'importe quel joueur. La
-ligne est écrite dans la base du joueur lu ; aucun jeton n'est capturé ni rafraîchi hors du pool.
+d'un autre compte déclaré : d'abord celui dont le xuid est lié à un compte de rôle `admin`
+parmi les comptes de l'instance (`data/auth/users.json`, lus par le store des comptes), celui de
+l'utilisateur ; à défaut seulement les autres, par gamertag. Si les comptes sont illisibles, aucun
+autre compte ne porte la lecture. Le client se replie alors sur la vue publique
+`/customization?view=public`, qui porte le même emblème, le même fond et le même tag de service
+pour n'importe quel joueur. La ligne est écrite dans la base du joueur lu ; aucun jeton n'est
+capturé ni rafraîchi hors du pool.
 
 Les passes `backfill --csr` / `--shared-csr` et les commandes de films (`archive-films`,
 `backfill-killsource --online`, `replay-events`) suivent la même doctrine : `--gamertag` nomme le
