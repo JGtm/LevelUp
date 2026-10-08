@@ -126,7 +126,7 @@ var tablePolarites = []blocPolarites{
 		Succes:  "ammoRead dropperNamed endPickup endSeen objects pickupLinked published",
 		Neutres: "atRest takesTotal"},
 	{Blocs: []string{"coverage.groundWeapons."},
-		Echecs: "unknown",
+		Echecs: "horsEmprise plusieursLieux releves unknown",
 		Succes: "accepted cycles dated kept pads powerupAccepted powerupKept powerupPads",
 		Neutres: "anchors atRest clusters dropped never objectives occupancies rejected slots " +
 			"spawned"},
