@@ -52,6 +52,25 @@ func avecAliasHorsTop() *mockSquadRepo {
 	return repo
 }
 
+// allyCAmiDeclare : AllyC n'est plus un profil suivi ; il est connu comme ami déclaré, que
+// la lecture des amis hors registre résout.
+func allyCAmiDeclare() *mockSquadRepo {
+	repo := newExtraTeammateRepo()
+	repo.profils = slices.DeleteFunc(slices.Clone(repo.profils), func(p domain.PlayerSummary) bool {
+		return p.Gamertag == "AllyC"
+	})
+	repo.amisLus = map[string]string{"AllyC": "xc"}
+	return repo
+}
+
+// allyCInconnu : AllyC reste dans le top des coéquipiers fréquents, mais n'est ni un ami
+// déclaré ni un profil suivi : il ne casse pas la composition (ADR 0033, décision 1).
+func allyCInconnu() *mockSquadRepo {
+	repo := allyCAmiDeclare()
+	repo.amisLus = nil
+	return repo
+}
+
 // sansEquipeConnueSurM2 : le scénario de l'écart, sans aucune ligne d'allié pour m2.
 func sansEquipeConnueSurM2() *mockSquadRepo {
 	repo := newExactCompositionGapRepo()
@@ -100,7 +119,8 @@ func casDeLaParite() []casDeParite {
 	return []casDeParite{
 		{nom: "roster, option off", repo: newExtraTeammateRepo, gts: both, attendu: []string{"S_with_C", "S_exact"}},
 		{nom: "composition exacte : AllyC ecarte m2", repo: newExtraTeammateRepo, gts: both, exact: true, attendu: []string{"S_exact"}},
-		{nom: "amis du joueur dans l extraPool", repo: newExtraTeammateRepo, amis: []string{"AllyC"}, gts: both, exact: true, attendu: []string{"S_exact"}},
+		{nom: "amis du joueur dans l extraPool", repo: allyCAmiDeclare, amis: []string{"AllyC"}, gts: both, exact: true, attendu: []string{"S_exact"}},
+		{nom: "frequent du top ni ami ni suivi : garde", repo: allyCInconnu, gts: both, exact: true, attendu: []string{"S_with_C", "S_exact"}},
 		{nom: "ecart publie et nomme", repo: newExactCompositionGapRepo, gts: both, exact: true, attendu: []string{"S1"}},
 		{nom: "ecart, option off", repo: newExactCompositionGapRepo, gts: both, attendu: []string{"S1"}},
 		{nom: "match sans equipe connue", repo: sansEquipeConnueSurM2, gts: both, exact: true, attendu: []string{"S1"}},
@@ -116,13 +136,14 @@ func casDeLaParite() []casDeParite {
 	}
 }
 
-// serviceDe : le service des deux chemins d'un cas (même dépôt, même historique).
+// serviceDe : le service des deux chemins d'un cas (même dépôt, mêmes coéquipiers connus,
+// même historique).
 func serviceDe(repo *mockSquadRepo, amis []string) *TeammatesService {
 	var resolver FriendGamertagsResolver
 	if amis != nil {
 		resolver = func(context.Context) []string { return amis }
 	}
-	return NewTeammatesService(repo, resolver).WithPlayerMatchesRepo(
+	return avecConnus(NewTeammatesService(repo, resolver), repo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test",
 	)
 }
@@ -414,7 +435,7 @@ func TestCompositionSessions_EquipeAllieeIllisible_Erreur(t *testing.T) {
 	baseOccupee := errors.New("database is locked")
 	gts := []string{"AllyA", "AllyB"}
 	repo := &q32bEnEchecAuPremierAppel{mockSquadRepo: newExtraTeammateRepo(), err: baseOccupee}
-	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+	svc := avecConnus(NewTeammatesService(repo, nil), repo.mockSquadRepo).WithPlayerMatchesRepo(
 		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	sessions, latest, err := svc.CompositionSessions(context.Background(), "px", gts, true)

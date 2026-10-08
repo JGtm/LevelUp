@@ -21,7 +21,8 @@ type TeammatesQueryRequest struct {
 	// Locale de l'utilisateur (ex. "fr", "en") pour les libellés localisés.
 	Locale string `json:"locale,omitempty"`
 	// FilterExactComposition restreint la population aux matchs où AUCUN autre
-	// coéquipier connu (hors sélection) n'était sur l'équipe du joueur principal.
+	// coéquipier connu (hors sélection) n'était sur l'équipe du joueur principal —
+	// connu = ami déclaré du joueur ou profil suivi du titre (ADR 0033, décision 1).
 	//
 	// Défaut (false) = règle canonique « matchs commencés ensemble » : intersection
 	// du roster, c'est-à-dire tous les matchs joués par le joueur principal ET tous

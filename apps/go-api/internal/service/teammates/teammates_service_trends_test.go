@@ -46,7 +46,7 @@ func historiqueTendances() []legacymatch.SynthesisMatchRow {
 }
 
 func nouveauServiceTendances(wrapped *lecturesComptees) *TeammatesService {
-	return NewTeammatesService(wrapped, nil).
+	return avecConnus(NewTeammatesService(wrapped, nil), wrapped.mockSquadRepo).
 		WithPlayerMatchesRepo(newSynthMockFromRows(historiqueTendances(), nil), "halo_infinite", "Test").
 		WithTrends(TrendsDeps{Now: func() time.Time { return tendancesNow }})
 }
