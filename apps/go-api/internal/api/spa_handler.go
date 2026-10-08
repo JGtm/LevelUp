@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/api/wire"
+	"levelup/go-api/internal/config"
 )
 
 // indexServer sert index.html (chemin donné) pour une route client-side de la page.
@@ -71,23 +72,26 @@ func isServerRoutePath(urlPath string) bool {
 }
 
 // NewBootPageHandler rend le handler servi PENDANT le démarrage du serveur, avant que le
-// routeur soit prêt : les fichiers du build Vite (dist) et index.html pour les routes de la
-// page, pour que la page s'affiche et attende l'API. Toute autre requête — route du
-// routeur (isServerRoutePath), méthode autre que GET/HEAD — va à starting. Sans page à
-// servir (dist vide ou sans index.html : en dev, Vite sert la page), rend starting.
+// routeur soit prêt : les fichiers du build Vite (cfg.WebDistDir) et index.html pour les
+// routes de la page, pour que la page s'affiche et attende l'API. Toute autre requête —
+// route du routeur (isServerRoutePath), méthode autre que GET/HEAD — va à starting. Sans
+// page à servir (dist vide ou sans index.html : en dev, Vite sert la page), tout va à
+// starting. Toutes ses réponses portent les en-têtes de sécurité du routeur
+// (middleware.SecurityHeaders).
 //
 // index.html y reçoit la carte Open Graph générique (registre nil : cf. serveIndexWithOG).
-func NewBootPageHandler(dist string, starting http.Handler) http.Handler {
+func NewBootPageHandler(cfg *config.AppConfig, starting http.Handler) http.Handler {
+	secure := middleware.SecurityHeaders(cfg.TrustProxyHeaders)
 	var noRegistry *wire.ServiceRegistry
-	spa, ok := newSPAHandler(dist, noRegistry.ServeIndexWithOG)
+	spa, ok := newSPAHandler(cfg.WebDistDir, noRegistry.ServeIndexWithOG)
 	if !ok {
-		return starting
+		return secure(starting)
 	}
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	return secure(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if (req.Method != http.MethodGet && req.Method != http.MethodHead) || isServerRoutePath(req.URL.Path) {
 			starting.ServeHTTP(w, req)
 			return
 		}
 		spa(w, req)
-	})
+	}))
 }

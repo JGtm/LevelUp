@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/api"
+	"levelup/go-api/internal/config"
 )
 
 // bootStep : étape d'initialisation en cours. Code stable, en anglais, exposé tel quel aux
@@ -88,14 +89,14 @@ type bootGate struct {
 	durations   []string
 }
 
-// newBootGate crée la porte sur l'étape bootStepMigrations. dist : build de la page servi
-// par le serveur ("" : la page n'est pas servie par le serveur, en dev Vite la sert).
-func newBootGate(dist string) *bootGate {
+// newBootGate crée la porte sur l'étape bootStepMigrations. cfg.WebDistDir : build de la page
+// servi par le serveur ("" : la page n'est pas servie par le serveur, en dev Vite la sert).
+func newBootGate(cfg *config.AppConfig) *bootGate {
 	now := time.Now()
 	g := &bootGate{started: now, stepStarted: now}
 	first := bootStepMigrations
 	g.step.Store(&first)
-	g.booting = api.NewBootPageHandler(dist, http.HandlerFunc(g.writeStarting))
+	g.booting = api.NewBootPageHandler(cfg, http.HandlerFunc(g.writeStarting))
 	return g
 }
 

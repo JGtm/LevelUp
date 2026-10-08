@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/config"
 )
 
 // startingMarker : réponse de la doublure « serveur en démarrage ».
@@ -42,7 +44,7 @@ func bootGet(h http.Handler, method, path string) *httptest.ResponseRecorder {
 
 func TestNewBootPageHandler_SansPageAServir_ToutVaAuDemarrage(t *testing.T) {
 	for name, dist := range map[string]string{"dist vide": "", "dist sans index.html": t.TempDir()} {
-		h := NewBootPageHandler(dist, startingStub())
+		h := NewBootPageHandler(&config.AppConfig{WebDistDir: dist}, startingStub())
 		for _, path := range []string{"/", "/players/x/home", "/api/v1/bootstrap", "/health"} {
 			if w := bootGet(h, http.MethodGet, path); w.Code != http.StatusServiceUnavailable || w.Body.String() != startingMarker {
 				t.Errorf("%s, GET %s : %d %q, attendu la réponse de démarrage", name, path, w.Code, w.Body.String())
@@ -52,7 +54,7 @@ func TestNewBootPageHandler_SansPageAServir_ToutVaAuDemarrage(t *testing.T) {
 }
 
 func TestNewBootPageHandler_ServeLaPageEtRenvoieLeResteAuDemarrage(t *testing.T) {
-	h := NewBootPageHandler(newBootDist(t), startingStub())
+	h := NewBootPageHandler(&config.AppConfig{WebDistDir: newBootDist(t)}, startingStub())
 
 	for _, path := range []string{"/", "/players/JGtm/home", "/login"} {
 		w := bootGet(h, http.MethodGet, path)
@@ -61,6 +63,10 @@ func TestNewBootPageHandler_ServeLaPageEtRenvoieLeResteAuDemarrage(t *testing.T)
 		}
 		if cc := w.Header().Get("Cache-Control"); cc != "no-cache" {
 			t.Errorf("GET %s : Cache-Control = %q, attendu no-cache (index jamais figé)", path, cc)
+		}
+		if xfo, nosniff := w.Header().Get("X-Frame-Options"), w.Header().Get("X-Content-Type-Options"); xfo != "DENY" || nosniff != "nosniff" {
+			t.Errorf("GET %s : X-Frame-Options=%q X-Content-Type-Options=%q, attendu les en-têtes de sécurité du routeur",
+				path, xfo, nosniff)
 		}
 	}
 

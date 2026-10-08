@@ -17,6 +17,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/config"
 )
 
 // routerStub : routeur de test qui signe ses réponses.
@@ -47,6 +49,9 @@ func assertStarting(t *testing.T, w *httptest.ResponseRecorder, want bootStep) {
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("Cache-Control = %q, attendu no-store", cc)
 	}
+	if xfo := w.Header().Get("X-Frame-Options"); xfo != "DENY" {
+		t.Errorf("X-Frame-Options = %q, attendu DENY (en-têtes de sécurité du routeur)", xfo)
+	}
 	var body struct {
 		Code      string `json:"code"`
 		Message   string `json:"message"`
@@ -64,7 +69,7 @@ func assertStarting(t *testing.T, w *httptest.ResponseRecorder, want bootStep) {
 }
 
 func TestBootGate_AvantOuverture_503ServerStartingAvecEtape(t *testing.T) {
-	g := newBootGate("")
+	g := newBootGate(&config.AppConfig{})
 	for _, path := range []string{"/health", "/healthz", "/api/v1/bootstrap", "/"} {
 		assertStarting(t, gateGet(g, path), bootStepMigrations)
 	}
@@ -76,7 +81,7 @@ func TestBootGate_AvantOuverture_503ServerStartingAvecEtape(t *testing.T) {
 }
 
 func TestBootGate_ApresOuverture_ToutVaAuRouteur(t *testing.T) {
-	g := newBootGate("")
+	g := newBootGate(&config.AppConfig{})
 	g.setStep(context.Background(), bootStepDatabases)
 	g.setStep(context.Background(), bootStepAccounts)
 	g.setStep(context.Background(), bootStepServices)
@@ -102,7 +107,7 @@ func TestBootGate_PageServiePendantLInitialisation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dist, "index.html"), []byte(`<div id="root"></div>`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	g := newBootGate(dist)
+	g := newBootGate(&config.AppConfig{WebDistDir: dist})
 
 	if w := gateGet(g, "/players/x/home"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `id="root"`) {
 		t.Errorf("route de la page pendant l'initialisation : %d, attendu index.html", w.Code)
@@ -120,7 +125,7 @@ func TestBootGate_PageServiePendantLInitialisation(t *testing.T) {
 // soit la réponse de démarrage, soit celle du routeur — jamais autre chose ; une fois
 // l'échange fait, plus aucune réponse de démarrage.
 func TestBootGate_EchangeSousRequetesConcurrentes(t *testing.T) {
-	g := newBootGate("")
+	g := newBootGate(&config.AppConfig{})
 	const workers, afterOpenPerWorker = 8, 50
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -183,7 +188,7 @@ func TestBootServer_EcouteReelle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := newBootGate("")
+	g := newBootGate(&config.AppConfig{})
 	srv := &http.Server{Handler: g, ReadHeaderTimeout: 5 * time.Second}
 	exits := make(chan int, 1)
 	b := newBootServer(srv, g, func(code int) { exits <- code })
@@ -233,7 +238,7 @@ func httpGet(t *testing.T, url string) (int, string) {
 // startSignalWatch lance watchSignals sur un canal de test ; exits reçoit les sorties forcées.
 func startSignalWatch(t *testing.T) (b *bootServer, sigCh chan os.Signal, exits chan int) {
 	t.Helper()
-	g := newBootGate("")
+	g := newBootGate(&config.AppConfig{})
 	exits = make(chan int, 1)
 	b = newBootServer(&http.Server{Handler: g, ReadHeaderTimeout: time.Second}, g, func(code int) { exits <- code })
 	sigCh = make(chan os.Signal, 2)

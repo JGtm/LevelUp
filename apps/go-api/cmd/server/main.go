@@ -359,7 +359,7 @@ func main() {
 
 	// --- 2 bis. Écoute immédiate (boot_gate.go) : la page est servie et l'API répond 503
 	// server_starting jusqu'à bootSrv.openRouter ; un port occupé arrête ici, avant les bases.
-	gate := newBootGate(cfg.WebDistDir)
+	gate := newBootGate(cfg)
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
 		Handler:      gate,
