@@ -58,14 +58,18 @@ export interface MatchEmpriseText {
   emprise: EmpriseText
   /** I : « Isolement » des Séries temporelles, une ligne par joueur. */
   cards: UsagesCardsText
-  /** B : « Outils de destruction » de l'Escouade (aide propre) et son état vide. */
-  squad: Pick<SquadText, 'weaponKills' | 'empty'>
+  /**
+   * A : « Répartition des frags » (titre de l'Escouade, aide propre) ; B : « Outils de destruction » de
+   * l'Escouade (aide propre) et son état vide.
+   */
+  squad: Pick<SquadText, 'performanceCharts' | 'weaponKills' | 'empty'>
   own: MatchOwnText
 }
 
 const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
 
 interface Infos {
+  frags: string
   tools: string
   control: string
   sheets: string
@@ -77,7 +81,10 @@ interface Infos {
 
 const INFOS: Record<Locale, Infos> = {
   fr: {
-    tools: 'Frags du joueur sur le match, arme par arme ; pastille : couleur de la classe de l’arme dans la Répartition des frags.',
+    frags:
+      'Frags du joueur sur le match : anneau intérieur par classe d’arme, anneau extérieur par rôle ; total au centre, ' +
+      'part de chaque classe en légende.',
+    tools: 'Frags du joueur sur le match, arme par arme ; couleur de la barre : classe de l’arme, celle de la Répartition des frags.',
     control:
       'Prises de chaque ressource, puis de chacun de ses objets, par l’équipe et par l’adversaire sur le match, en comptes ; ' +
       'trait orange : 50 %. Une prise sans ramasseur connu ne compte dans aucune équipe.',
@@ -94,7 +101,10 @@ const INFOS: Record<Locale, Infos> = {
     livesLead: 'Une ligne par joueur de l’équipe. ',
   },
   en: {
-    tools: 'The player’s kills in the match, weapon by weapon; swatch: colour of the weapon’s class in the Kill type distribution.',
+    frags:
+      'The player’s kills in the match: inner ring by weapon class, outer ring by role; total in the centre, each ' +
+      'class’s share in the legend.',
+    tools: 'The player’s kills in the match, weapon by weapon; bar colour: the weapon’s class, as in the Kill type distribution.',
     control:
       'Pickups of each resource, then of each of its items, by the team and by the opponent in the match, in counts; ' +
       'orange line: 50%. A pickup with no known picker counts for neither team.',
@@ -192,7 +202,11 @@ function textsFor(locale: Locale): MatchEmpriseText {
         info: (unlocated, noRadar, unpublishable) => i.livesLead + cards.lives.info(unlocated, noRadar, unpublishable),
       },
     },
-    squad: { weaponKills: { ...squad.weaponKills, info: i.tools }, empty: squad.empty },
+    squad: {
+      performanceCharts: { ...squad.performanceCharts, fragBreakdownInfo: i.frags },
+      weaponKills: { ...squad.weaponKills, info: i.tools },
+      empty: squad.empty,
+    },
     own: OWN[locale],
   }
 }

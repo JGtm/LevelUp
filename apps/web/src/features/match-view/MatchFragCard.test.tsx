@@ -1,16 +1,27 @@
 /**
  * MatchFragCard.test.tsx — la rangée « Répartition des frags » | « Outils de destruction » (cartes A et
- * B de la Vue match). Les deux enfants sont mockés : seule la MISE EN PAGE est testée ici (deux
- * colonnes égales quand les deux cartes existent, une carte seule pleine largeur, rien sans aucune).
+ * B de la Vue match). L'anneau, sa légende et les outils sont mockés : seule la MISE EN PAGE est testée
+ * ici (deux colonnes égales quand les deux cartes existent, une carte seule pleine largeur, rien sans
+ * aucune ; carte A montée comme sur Sessions : titre et aide, anneau nu, légende en pied, survol lié).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { MatchFragCard } from './MatchFragCard'
 import type { FragDistribution, SquadWeaponTools } from '@/lib/api/types'
 
+type Survol = { onClassHover?: (c: string | null) => void }
+const recu = vi.hoisted(() => ({ anneau: null as null | Record<string, unknown>, legende: null as null | Record<string, unknown> }))
+
 vi.mock('@/components/charts/FragSunburst', () => ({
-  FragSunburst: () => <div data-testid="sunburst" />,
+  FragSunburst: (p: Record<string, unknown>) => {
+    recu.anneau = p
+    return <div data-testid="sunburst" />
+  },
+  FragClassLegend: (p: Record<string, unknown> & Survol) => {
+    recu.legende = p
+    return <button type="button" data-testid="legende" onMouseEnter={() => p.onClassHover?.('melee')} />
+  },
 }))
 vi.mock('./MatchToolsCard', () => ({
   MatchToolsCard: () => <div data-testid="outils" />,
@@ -34,6 +45,24 @@ describe('MatchFragCard — anneau et outils de destruction', () => {
     expect(screen.getByTestId('sunburst')).toBeInTheDocument()
     expect(screen.getByTestId('outils')).toBeInTheDocument()
     expect(container.firstElementChild?.className).toContain('lg:grid-cols-2')
+  })
+
+  it('carte A comme sur Sessions : titre et aide, anneau nu sans légende interne, légende des classes en pied', () => {
+    render(<MatchFragCard distribution={DIST} tools={TOOLS} locale="fr" />)
+    const carte = screen.getByTestId('match-frag-donut')
+    expect(within(carte).getByText('Répartition des frags')).toBeInTheDocument()
+    fireEvent.click(within(carte).getByRole('button', { name: /informations/ }))
+    expect(screen.getByRole('tooltip').textContent).toContain('Frags du joueur sur le match')
+    expect(recu.anneau).toMatchObject({ bare: true, legendSide: 'none', hideCenterLabel: true })
+    expect(within(within(carte).getByTestId('objectif-legend')).getByTestId('legende')).toBeInTheDocument()
+  })
+
+  it('survol lié : la classe survolée dans la légende estompe les autres arcs de l’anneau', () => {
+    render(<MatchFragCard distribution={DIST} tools={TOOLS} locale="fr" />)
+    expect(recu.anneau?.externalHoveredClass).toBeNull()
+    fireEvent.mouseEnter(screen.getByTestId('legende'))
+    expect(recu.anneau?.externalHoveredClass).toBe('melee')
+    expect(recu.legende?.hoveredClass).toBe('melee')
   })
 
   it('anneau seul (aucun outil) : pleine largeur, sans grille', () => {

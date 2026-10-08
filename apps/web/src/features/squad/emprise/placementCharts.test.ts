@@ -5,6 +5,7 @@
  * (seuils du bloc), quatre quarts dont un seul teinté, légende native, couleurs par jeton, seuil
  * de 8 %, infobulles FR et EN.
  */
+import * as echarts from 'echarts'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { _resetActivePalette, applyPalette } from '@/lib/accessibility/applyPalette'
@@ -82,7 +83,8 @@ type Axis = {
   name?: string
   nameLocation?: string
   data?: string[]
-  axisLabel: { formatter: (v: number) => string; fontWeight?: number }
+  axisTick?: { customValues?: number[] }
+  axisLabel: { formatter: (v: number) => string; fontWeight?: number; customValues?: number[] }
 }
 interface Opt {
   series: Series[]
@@ -114,16 +116,21 @@ describe('buildPlacementLifeOption — axes et plafonds', () => {
     expect(life(PLACEMENT_2209, 'en').xAxis.name).toBe('median distance to the nearest teammate during the life, in radar ranges')
   })
 
-  it('Y : −0,5 à 5,5 par pas de 1, libellés : les seuls entiers ≥ 0 (ni « -0,5 » ni « 5,5 »)', () => {
+  it('Y : étendue −0,5 à 5,5, graduations et libellés posés sur 0 à 5 (« 5+ » au plafond), titre vertical', () => {
     const o = life()
-    expect(o.yAxis).toMatchObject({ min: -0.5, max: 5.5, interval: 1 })
+    expect(o.yAxis).toMatchObject({ min: -0.5, max: 5.5, nameLocation: 'middle' })
     expect(o.yAxis.name).toBe('frags dans la vie')
-    expect(o.yAxis.axisLabel.formatter(-0.5)).toBe('')
-    expect(o.yAxis.axisLabel.formatter(0)).toBe('0')
-    expect(o.yAxis.axisLabel.formatter(5)).toBe('5')
-    // ECharts ajoute une graduation à chaque borne de l'étendue : 5,5 ne doit rien écrire.
-    expect(o.yAxis.axisLabel.formatter(5.5)).toBe('')
-    for (const v of [-0.5, 0.5, 4.5, 5.5]) expect(o.yAxis.axisLabel.formatter(v)).not.toMatch(/[.,]/)
+    expect(o.yAxis.axisTick?.customValues).toEqual([0, 1, 2, 3, 4, 5])
+    expect(o.yAxis.axisLabel.customValues).toEqual([0, 1, 2, 3, 4, 5])
+    expect([0, 1, 2, 3, 4, 5].map((v) => o.yAxis.axisLabel.formatter(v))).toEqual(['0', '1', '2', '3', '4', '5+'])
+  })
+
+  it('Y : le rendu écrit les six libellés (les graduations calculées, sur les demi-unités, n’en écrivaient aucun)', () => {
+    const chart = echarts.init(null, null, { renderer: 'svg', ssr: true, width: 900, height: 420 })
+    chart.setOption(buildPlacementLifeOption(PLACEMENT_2209, COLORS, opts()))
+    const texts = [...chart.renderToSVGString().matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1])
+    chart.dispose()
+    for (const label of ['0', '1', '2', '3', '4', '5+', 'frags dans la vie']) expect(texts).toContain(label)
   })
 
   it('une vie à 2,80 portées et 7 frags est posée à 2 et à 5 (± décalage) ; l’infobulle garde les vraies valeurs', () => {
