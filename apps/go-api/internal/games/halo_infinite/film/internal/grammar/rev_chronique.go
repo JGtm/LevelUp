@@ -119,3 +119,11 @@ package grammar
 // de degats (genre 0) qui ne se fermaient pas se ferment (+10 949 paquets sains) ; les 20 films de
 // la carte v2 ne changent pas. Images-cles (lues hors portee, comme avant) : ti=38 et ti=42 montent,
 // deux records ti=37 cessent de fermer (golden de fermeture regenere, justification ecrite).
+//
+// ENTREE `grammar-2026-10-08.13` (2026-10-08, lot des arrets de la vue B, suite, point (3)) : UN NEW
+// QUE LA FERMETURE DE SA TRAME PROUVE CREE SON ENTITE. Un NEW refuse contre une entite vivante
+// ([contreditUneEntiteVivante]) est lie a la fin de la trame quand la fermeture prouve son en-tete
+// ([World.lierLesNeufsProuves], `neufs_prouves.go`) ; hors de l etendue prouvee il reste refuse.
+// Contre `grammar-2026-10-08.12` : `bf15f7ab` slot 553, le NEW du bipede de 14:1094 (trame fermee)
+// est lie, et les 69 trames de 14:1094 a 14:1230 se ferment (30 avant). Carte v2 : +1 046 paquets
+// sains, aucun perdu, aucun film en baisse.

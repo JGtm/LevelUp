@@ -50,8 +50,8 @@ fait baisser un film : cause instruite ; hors de la lecture : retiré et consign
 
 | # | Item | Statut |
 |---|---|---|
-| P2 | message de dégâts (genre 0) mal lu, fin de vue A trop tôt (découverte 34 de levelup-57) | [x] (ce commit) : genre 0 bien lu (FUN_1407f15a4 = port) ; cause dans la vue B : world-object i0 porte posée lue aux largeurs de la carte (exception GA2-5) ; correctif hors portée (table DÉFAUT), accord levelup-57 + utilisateur ; fccc61cd +10 949 sains, 599 / 635 trames à genre 0 fermées ; 20 films inchangés ; `grammar-2026-10-08.12` |
-| P3 | NEW de bipède lu dans une trame non fermée (`bf15f7ab`, slot 553, découverte 45) | [ ] feu vert du pilote reçu (après (2)) |
+| P2 | message de dégâts (genre 0) mal lu, fin de vue A trop tôt (découverte 34 de levelup-57) | [x] `39510278d` : genre 0 bien lu (FUN_1407f15a4 = port) ; cause dans la vue B : world-object i0 porte posée lue aux largeurs de la carte (exception GA2-5) ; correctif hors portée (table DÉFAUT), accord levelup-57 + utilisateur ; fccc61cd +10 949 sains, 599 / 635 trames à genre 0 fermées ; 20 films inchangés ; `grammar-2026-10-08.12` |
+| P3 | NEW de bipède lu dans une trame non fermée (`bf15f7ab`, slot 553, découverte 45) | [x] (ce commit) : le NEW est lu dans une trame FERMÉE et refusé par `contreditUneEntiteVivante` (slot lié en dur à `ti=20` gén. 0 par l image-clé, DEL jamais lu) ; règle : un NEW refusé est lié en fin de trame quand la fermeture prouve son en-tête (`neufs_prouves.go`) ; `bf15f7ab` 14:1094-1230 : 69 / 69 trames fermées (30 avant) ; carte v2 +1 046 sains, 0 perdu ; `rendParLAncrage` inchangé ; `grammar-2026-10-08.13` |
 
 ## Journal
 

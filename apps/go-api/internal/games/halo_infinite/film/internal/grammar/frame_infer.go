@@ -219,6 +219,7 @@ func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 		// le record suivant desynchronise de lui-meme ; arreter la trame ici perdait les records
 		// qui suivent une traversee tombee juste (`81c02726` : un sprint perdu a cet essai).
 		cfg.Obs.refuserUnNeuf(w, rec)
+		w.suspendreUnNeuf(rec)
 	case br.marcheNonProuvee:
 		// NON LIE : la marche part d un debut que rien ne prouve (debut_non_prouve.go).
 	case repaired:
@@ -245,7 +246,8 @@ func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 // R(32), lot M3.2) ecrasait le `ti 4` que l image-cle et chaque paquet donnaient a ce slot ; les
 // paquets suivants s arretaient apres un ou deux records, et onze vies perdaient leurs etats de
 // mouvement. Un DEL manque (suppression non lue) laisse une liaison que l image-cle suivante
-// OUBLIE (`keyframe_liaison.go`) : le refus ne survit pas a son chunk.
+// OUBLIE (`keyframe_liaison.go`) : le refus ne survit pas a son chunk ; et quand la fermeture de la
+// trame prouve le NEW, il est lie a la fin de la trame (`neufs_prouves.go`).
 func contreditUneEntiteVivante(w *World, rec *FrameRecord) bool {
 	s, lie := w.slots[rec.Slot]
 	return lie && !s.Soft && s.TypeIndex != rec.TypeIndex
