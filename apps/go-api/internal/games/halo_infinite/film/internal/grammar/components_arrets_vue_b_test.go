@@ -62,6 +62,9 @@ var vecteursArrets = []vecteurArret{
 	// quatre.
 	{"S1a", compMatchflowFocusData, 45, 1, "111110 | 0011"},
 	{"S1b", compMatchflowFocusData, 45, 1, "000000 | 1000"},
+	// ti=12 i13 : l ecrivain (142edb134 -> FUN_142ed18e8) quantifie etat+0x700 sur huit bits.
+	{"N13a", compNavpointTopProgress, 12, 1, "10000000"},
+	{"N13b", compNavpointTopProgress, 12, 1, "11111111"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.

@@ -97,3 +97,15 @@ const navpointObjectMarkerBits = 32
 
 // consumeNavpointObjectMarker (ti=12 i17) — `FUN_141169e68` : `R(32)` plat, sans porte.
 func consumeNavpointObjectMarker(br *Lecteur) { br.ReadBits(navpointObjectMarkerBits) }
+
+// compNavpointTopProgress : l etiquette de registre de `ti=12 i13`.
+const compNavpointTopProgress = "managed-navpoint-top-progress"
+
+// navpointBarreBits : la largeur que `i13` (`FUN_142ed51d8`, vers `etat + 0x700`) passe a
+// `FUN_1406d84b4` (`MOV dword [RSP+0x20], 8`), bornes `DAT_143cd84ec` / `DAT_143cd8374` ; l ecrivain
+// (`142edb134` -> `FUN_142ed18e8`) quantifie la meme valeur sur huit bits.
+const navpointBarreBits = 8
+
+// consumeNavpointBarreDeProgression (ti=12 i13) — `R(8)` quantifie, sans porte ; la valeur n est pas
+// publiee.
+func consumeNavpointBarreDeProgression(br *Lecteur) { br.ReadBits(navpointBarreBits) }

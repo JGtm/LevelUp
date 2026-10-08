@@ -101,3 +101,8 @@ package grammar
 // composant `matchflow-focus-data-component` se lit (`FUN_141167744`, `R(6)` puis `R(4)`,
 // [consumeMatchflowFocusData]). Contre `grammar-2026-10-08.8` : un record `ti=45` qui s arretait sur
 // `i1` se lit jusqu au composant suivant.
+//
+// ENTREE `grammar-2026-10-08.10` (2026-10-08, lot des arrets de la vue B, suite, `ti=12 i13`) : le
+// composant `managed-navpoint-top-progress` se lit (`FUN_142ed51d8`, `R(8)` quantifie,
+// [consumeNavpointBarreDeProgression]). Contre `grammar-2026-10-08.9` : un record `ti=12` qui
+// s arretait sur `i13` se lit jusqu au composant suivant.
