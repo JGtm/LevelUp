@@ -127,3 +127,38 @@ package grammar
 // Contre `grammar-2026-10-08.12` : `bf15f7ab` slot 553, le NEW du bipede de 14:1094 (trame fermee)
 // est lie, et les 69 trames de 14:1094 a 14:1230 se ferment (30 avant). Carte v2 : +1 046 paquets
 // sains, aucun perdu, aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-09` (2026-10-09, jalon LK du plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
+// RECORDS D IMAGE-CLE SE LISENT SOUS LA PORTEE `DAT_144e61ea0` DE L ETAT COMPLET.
+//
+// Ce qui change, contre `grammar-2026-10-08.13` :
+//   - la portee est un champ du lecteur ([Lecteur.portee]), posee par la seule marche d etat complet
+//     la ou le jeu la pose (autour de l etat par defaut et de son mot de controle quand `n1 > 0`,
+//     sur toute la boucle de composants quand `n2 > 0`) ; la garde de pleine precision
+//     ([fullPrecisionGate]) en depend : les lecteurs de position y lisent le vecteur brut, R(96) ;
+//   - la branche absolue d i0 sous la portee lit la forme de `FUN_1406cfe44` : h, R(96), la queue
+//     fidele de `FUN_14076e3e4` ([consumeQueueDePoignee] : handle par `FUN_1408f0ac4(.., 0)`, 13 bits,
+//     puis le mot de region), R(2) si les trois flottants sont finis ; deux arrets nommes,
+//     `position_non_finie` et `largeur_handle_moteur_un` (handle annonce dans un film qui n exclut pas
+//     le type de moteur 1, [GrammaireBalayage.MoteurUnPossible], derive du film) ;
+//   - la structure de lecture porte l arret d un lecteur ([lecture.EtatArrete], cause
+//     [lecture.CauseDArret]) au lieu de le confondre avec un composant non porte (ADR 0037 IR-4) ;
+//   - sous la garde, sept exceptions datees du portage lisent comme le jeu
+//     (player-desired-respawn-location, crew-order, tacmap-poiicon, -areaofinterest, -displayasset,
+//     -cooptetherarea, -waypointstate, qui recoit le niveau du registre) et flock-destination ; le
+//     geste [Lecteur.sousLaGardeSinonException] decide, l exception ne vaut que hors de la garde ;
+//   - les bascules de profil `PorteeBaseline` et `GrammaireEcrivainI0` sont retirees. Leur critere
+//     ecrit (atterrissage des records `ti=35` bornes au-dessus de 50 %) n etait pas tenu par la portee
+//     seule (8/599) ; il l est par la portee et la forme d i0 du jeu ensemble, 369/599 = 61,6 %, avec
+//     et sans bouchons (`TestKF7EFullStateLoop`) — amendement du critere decide par l utilisateur
+//     (U-0, 2026-10-08) ; l instrument qu il nommait, `TestKF35CBaselineScope`, aveugle, est retire.
+//
+// MESURE (contexte de cuisson, plan LK) : records bipedes d image-cle fermes 410 -> 5 399 sur 10 710
+// (28 films) ; ratchet de cuisson `ti=35` 53 -> 666 sur 1 368 (sept bobines) ; `ti=21` 0 -> 1 315 sur
+// 1 750 (flock-destination) ; election des ancres, equipes et carte des trames delta identiques. Les
+// baisses sont adjugees au plan (§2) : des fermetures de hasard de la base (`60ae07c4` slot 539 ;
+// `50247b26`, film illisible des i22). Quatre lectures du jeu sous la garde sont REJETEES par la
+// regle du jalon (une baisse, ou l election des ancres changee) et restent hors de la grammaire :
+// unit-actor-state, world-object i0, generic-rigid-body-transforms, low-frequency (plan LK, §7 D-17,
+// D-18, D-21, D-23).
