@@ -1398,7 +1398,9 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             **Plan dédié : `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`** (jalons LK puis
             D1.0 à D1.4 ; décisions de l'utilisateur du 2026-10-08, « Je suis ok », à son §3.1 ;
             branche `feat/ri-lk-images-cles`). Son avancement fait foi ; cet item reste `[!]`
-            jusqu'à sa clôture (D1.4.5).
+            jusqu'à sa clôture (D1.4.5). Jalon LK clos le 2026-10-09, prêt pour sa revue
+            (`grammar-2026-10-09`, `SchemaDesFaits` 11) : records bipèdes d'image-clé fermés 410 ->
+            5 399 / 10 710 ; quatre lectures du jeu sous la garde rejetées, à décider (plan dédié, §7).
       - [x] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
             *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
             les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
@@ -2453,3 +2455,12 @@ plan y sont reprises comme items (3.1.2).
   « partiel » (commandes de gate à corriger, décisions à rendre à l'utilisateur). Demandé à
   l'utilisateur : amendement du critère écrit, une ou deux fusions, règle d'admission, marque de
   portage, valeurs publiées qui changent, coût de la mise en œuvre.
+- 2026-10-09 (lot B du plan LK, `feat/ri-lk-images-cles`) : jalon LK du plan dédié
+  (`.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) prêt pour sa revue. La grammaire lit les
+  records d'image-clé sous la portée de l'état complet : records bipèdes d'image-clé fermés 410 ->
+  5 399 / 10 710 (28 films), `ti=21` 0 -> 1 315 / 1 750 ; ancres, équipes, carte delta identiques ;
+  l'arrêt d'un lecteur est un état de la structure de lecture (ADR 0037 IR-4). Révisions :
+  `grammar-2026-10-09`, `SchemaDesFaits` 11 (profil calibré de la section 5), `killsource.Rev`,
+  `objectives.Rev` et `SchemaVersion` constants (sorties et document identiques hors révision).
+  2.7.d1 reste `[!]` jusqu'à D1.4 ; quatre lectures du jeu sous la garde rejetées attendent une
+  décision (plan LK, §7 D-17, D-18, D-21, D-23).

@@ -173,7 +173,11 @@ one phase: a delta channel's hooks receive no keyframe value, so its interests m
 occurrence. A value is published to the channel's `Observation` hook — or, in the keyframe phase,
 read by the channel at the occurrence's extent — and stays outside the structure (IR-8); a walk
 without channels interprets nothing. Since step 2 the state no longer depends on the trace's
-capture. The `status`
+capture. Since the LK milestone (2026-10-09), a fourth state, **stopped** (`lecture.EtatArrete`), is
+kept apart from untraversable: the game's reader of the occurrence is ported and FAILS, with a typed
+cause (`lecture.CauseDArret`: a non-finite absolute position, or a handle width the film does not
+establish). The full-state loop of the game stops on it; the traversal stops at its start. It only
+occurs in keyframe records, under the full-state scope (below). The `status`
 column of `internal/grammar/testdata/ecs_table.tsv` (`porte`, `partiel`, `non_porte`) is a static
 capability; the state belongs to the occurrence.
 
@@ -354,10 +358,16 @@ registry keeps the anchoring and the passes alone, as does a track request that 
 (the instrument wrappers, which scan arbitrary bands). The sync collector, which opens its own
 context for the identity bridge, now plays the walk for its positions; lot 3.1 gives it one context
 per pass. Two scans stay outside this rule. The keyframe bit windows (held weapons, carrier mark,
-inventory) still decide alone: the grammar does not read the biped's full state at keyframes yet
-(3.8 % of the biped keyframe records close on the next record, and the values read there are
-wrong), so it cannot take their place (discovery 36). The vehicle position cloud still anchors on
-its own band (discovery 40).
+inventory) still decide alone. Since the LK milestone (2026-10-09, `feat/ri-lk-images-cles`), the
+grammar reads the biped's full state at keyframes: the full-state scope `DAT_144e61ea0` is a
+property of the full-state walk (`Lecteur.portee`), set where the game sets it — around the default
+state and its control word when `n1 > 0`, over the whole component loop when `n2 > 0` — and never by
+a delta, a NEW record or view A. Under it the position readers read the raw vector, and the absolute
+branch of i0 reads the game's form. On 28 films, 5 399 of the 10 710 biped keyframe records close on
+the next record, against 410 before (3.8 %), with the anchor election, the teams and the delta frame
+map unchanged. The windows keep deciding until 2.7.d1 branches this reading as a keyframe channel,
+the windows behind it as named, ordered and counted fallbacks (discovery 36). The vehicle position
+cloud still anchors on its own band (discovery 40).
 
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 

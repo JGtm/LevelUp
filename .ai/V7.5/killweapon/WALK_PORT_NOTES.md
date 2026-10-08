@@ -1202,6 +1202,27 @@ attribue en rejouant la mesure sans les deux arrets (alors identique) : 75 recor
 moteur non etabli), 1 par `position_non_finie` ; aucun ne fermait sous le crochet. Les temoins negatifs
 de l instrument (en-tete decale d un bit) s arretent plus souvent sur `position_non_finie`.
 
+**F. La fidelite sous la portee (LK.5, 2026-10-08/09) et l arret porte par la structure (LK.6).**
+Chaque lecture sous la garde a ete relue dans le jeu (sorties `scratchpad/ri/lk/lk5/dec_*.txt` et
+`REF/g2/`), portee seule, mesuree, et retenue SEULEMENT sans baisse (plan LK, §4 LK.5 et decision
+E-10 : l election des ancres doit rester identique). RETENUES : la queue fidele de `FUN_14076e3e4` sur
+la branche absolue d i0 (`consumeQueueDePoignee` : `FUN_1408f0ac4(.., 0)`, R(13), R(2), puis R(1) [R(11)])
+— aucun record reel ne bouge ; sous la garde, `player-desired-respawn-location` (porte, R(96), R(19)),
+`crew-order` (R(3), porte, R(96)), `tacmap-poiicon`, `-areaofinterest` (R(32), R(3), R(96), R(12)),
+`-displayasset`, `-cooptetherarea` (R(96), R(12), R(12)), `-waypointstate` (R(1), R(32), R(96), R(1) au-dela
+du niveau 1) et `flock-destination` (R(1), R(96), R(2) au-dela du niveau 1 : `ti=21` 0 -> 1 315 / 1 750 sur
+28 films). Le geste `Lecteur.sousLaGardeSinonException` decide « lecture du jeu sous la garde, sinon
+exception notee ». REJETEES, la lecture du jeu restant a porter sur decision : i20 `unit-actor-state`
+(R(96) par emplacement : `50247b26` `ti=35` 6 -> 5), world-object i0 (meme forme que la branche absolue
+du bipede : `ti=38/42/43` de 10 232 a 156 933 fermetures, mais baisses `ti=37`, election des ancres et
+carte delta changees), `generic-rigid-body-transforms` (R(8), par bit `FUN_140c1e79c` puis R(96) : mesure
+non concluante tant que world-object i0 est rejete ; `FUN_142f036f0` rend faux si `FUN_140501798` refuse
+l orientation, controle non porte), `low-frequency` de `ti=3` (positions R(96) : `ti=3` 14 -> 53, mais cinq
+ancres de `51ebbc0f` refutees par des candidats decales d un bit). Detail au plan LK, §7 D-17 a D-23.
+Enfin l ARRET d un lecteur (`position_non_finie`, `largeur_handle_moteur_un`) n est plus enregistre
+comme un composant non porte : la structure de lecture porte `lecture.EtatArrete` et sa cause (ADR
+0037 IR-4), et la mesure de fermeture nomme le bloquant « (arret <cause>) ».
+
 # LA BOUCLE D ETAT COMPLET, PORTEE — et le decalage de niveau du registre (lot R7-e, 2026-08-17)
 
 R7-d avait TROUVE `FUN_142e2c690` sans la PORTER. Ce lot la porte, avec son en-tete, et mesure.

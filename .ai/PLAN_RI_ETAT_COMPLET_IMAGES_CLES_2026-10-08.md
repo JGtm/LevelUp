@@ -773,28 +773,54 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   `$S/lk5.<n>`.
 
 ### Étape LK.6 — Révisions, gates de cuisson, clôture du jalon LK
-- [ ] LK.6.1 `grammar.Rev` (aujourd'hui `grammar-2026-10-08`) monte au rang suivant ;
+- [x] LK.6.1 `grammar.Rev` (aujourd'hui `grammar-2026-10-08`) monte au rang suivant ;
       `rev_chronique.go` : les mesures (R-2, R-7, R-8, LK.5), le critère amendé et son instrument
       (U-0), l'adjudication des baisses ; golden par la porte `LEVELUP_UPDATE_GRAMMAR_REV=1` (§1.4).
-- [ ] LK.6.2 Gate objectives (E-7) : étape objectives de `replay-equiv` identique → porte
+      *Fait* (`da8da2450`, après la fusion de `2761162de`) : `grammar-2026-10-08.13` →
+      `grammar-2026-10-09` (rang daté du jour de la montée, hors de la série `.N` du 2026-10-08 que
+      d'autres lots prolongent) ; aucune rotation (faite par le lot fusionné, archive `_8`).
+- [x] LK.6.2 Gate objectives (E-7) : étape objectives de `replay-equiv` identique → porte
       `LEVELUP_UPDATE_OBJECTIVES_REV=1 go test ./internal/games/halo_infinite/film/internal/facts/objectives/ -count=1 -run '^TestObjectivesRevSuitLaSortie$' -update-objectives-rev`,
       qui régénère `testdata/objectives_rev.golden` (révision ET empreinte) à révision constante, +
       COMPLÉMENT daté dans `facts/objectives/rev.go` ; sinon montée d'`objectives.Rev` (correction 2).
-- [ ] LK.6.3 killsource (E-7) : `killsource_rev.golden` régénéré par
+      *Fait* (`1fd7a78d8`) : étape `objectives` identique sur les 20 films (binaires de `d429dc517`
+      contre ceux du lot) ; `objectives-2026-09-27` reste, complément daté, golden régénéré.
+- [x] LK.6.3 killsource (E-7) : `killsource_rev.golden` régénéré par
       `LEVELUP_UPDATE_KILLSOURCE_REV=1 go test ./internal/games/halo_infinite/film/internal/facts/killsource/ -count=1 -run '^TestKillsourceRevSuitLaSortie$' -update-killsource-rev` ;
       `cmd/killsource json` sur les 19 témoins avant/après → identique : complément à révision
       constante dans `facts/killsource/rev_chronique.go` ; sinon montée de `killsource.Rev`.
-- [ ] LK.6.4 `replay-equiv` sur les 20 films, faits mis de côté (`data/cache/film_facts` renommé,
+      *Fait* (`1fd7a78d8`) : sur les 19 témoins, `cmd/killsource json` du lot identique à l'octet à
+      celui de `d429dc517` (et, avant cette fusion, à celui de `2761162de`) ; `killsource-2026-10-08.2`
+      reste, complément daté, golden régénéré.
+- [x] LK.6.4 `replay-equiv` sur les 20 films, faits mis de côté (`data/cache/film_facts` renommé,
       `depuis_les_faits=false` vérifié) ; `replay.SchemaVersion` (89) monte si et seulement si le
       document publié change (chronique `document_chronicle.go`, plafonds, goldens d'assemblage et de
       forme, fixtures de contrat) ; `SchemaDesFaits` (10) inchangé (forme des faits intacte).
-- [ ] LK.6.5 `replay-corpus-gate` (banc de vérité compris) contre `83dc72eab` ; chaque divergence
+      *Fait* (`1fd7a78d8`) : binaires de `d429dc517` contre ceux du lot, 40 cuissons à
+      `depuis_les_faits=false`. Étapes divergentes sur les 20 films, adjugées : `artifact` (les seules
+      valeurs de révision, 31 ou 32 occurrences par film ; documents de `000d5950`, `084a804d`,
+      `11de8353` cuits des deux côtés identiques hors révision) ; `vehicles` et `vehicleDeaths.stats`
+      (le profil de balayage que portent leurs comptes, non publié) ; `killsource` (section 5 des
+      faits). `SchemaVersion` reste 90 (89 → 90 vient de la fusion) : fixtures de contrat et golden des
+      formes régénérés pour la seule révision. ÉCART : `SchemaDesFaits` 10 → 11, la forme des faits
+      n'est PAS intacte — le profil calibré de la section 5 perd `PorteeBaseline` et
+      `GrammaireEcrivainI0` et gagne `MoteurUnPossible` (constaté dans les fichiers de faits des deux
+      cuissons) ; doctrine du schéma (« il monte quand une section change de contenu »).
+- [x] LK.6.5 `replay-corpus-gate` (banc de vérité compris) contre `83dc72eab` ; chaque divergence
       adjugée par un record d'image-clé qui ferme désormais, ou nommée. Ouvre la base partagée EN
       LECTURE (`OpenReadForQuery` via `replay-facts-export`, correction 5) : vérifier avant qu'aucun
       backfill ni cuisson du parc ne tourne (§0).
-- [ ] LK.6.6 ADR 0037 IR-6 : la portée est une propriété de la marche d'état complet (paragraphe
+      *Fait* : base `origin/feat/v75` = `d429dc517` (ÉCART : la base de la branche a avancé par les deux
+      fusions ordonnées ; `83dc72eab` ne mesurerait plus LK seul) ; aucun backfill ni cuisson en cours
+      (contrôle des processus) ; trois tranches (`$S/lk6/gate_t{1,2,3}.{log,json}`) : 19/19 témoins
+      `ok` au banc de vérité, 0 gain, 0 perte, 0 changement ; seule télémétrie, la valeur de
+      `grammarRev`. Worktrees de base retirés.
+- [x] LK.6.6 ADR 0037 IR-6 : la portée est une propriété de la marche d'état complet (paragraphe
       2.7.d, dernier alinéa réécrit : la lecture existe désormais, 2.7.d1 la branche) ; WALK_PORT_NOTES ;
       plan de l'étape 2 (journal) ; `.ai/REGISTRE_REPORTS.md` (lignes LK) ; `.ai/thought_log.md`.
+      *Fait* : ADR 0037 (IR-4 : quatrième état « stopped » ; IR-6 : dernier alinéa de 2.7.d réécrit) ;
+      WALK_PORT_NOTES §6.5 F ; plan de l'étape 2 (item 2.7.d1 et journal) ; registre des reports (LK
+      engagé, deux lignes) ; thought_log.
 - [ ] LK.6.7 `make gate-push`, push de la branche, CI (`gh run list --branch feat/ri-lk-images-cles --limit 3`).
 - [ ] LK.6.8 Revue adversariale du diff du jalon (skill `adversarial-review`, contexte frais) ;
       chaque constat statué.
@@ -1368,3 +1394,14 @@ refusionner, rejouer l'étape 0).
   fusionné (records d'objets du monde lus hors garde par l'exception, D-18). Base des comparaisons de
   LK.6 (killsource, gate de corpus) : `2761162de`, la `feat/v75` fusionnée, au lieu de `83dc72eab`
   (écart au plan, conséquence de la fusion ordonnée).
+- 2026-10-09 (lot B) : LK.6.1 à LK.6.6 FAITS. Montée `grammar-2026-10-09` (`da8da2450`). `feat/v75`
+  ayant encore avancé (lot film de levelup-2c : `killsource-2026-10-08.2`, `SchemaVersion` 90), seconde
+  fusion `d429dc517` (`533b2f03b`, sans conflit, aucun fichier de grammaire) AVANT les décisions de
+  révision, qui se prennent sur cette base : killsource identique à l'octet (19 témoins), étape
+  `objectives` identique (20 films) — révisions constantes, compléments datés ; `replay-equiv` : quatre
+  étapes divergentes adjugées (révision, profil de balayage porté par les comptes et les faits) ;
+  `SchemaVersion` 90 constant, `SchemaDesFaits` 10 → 11 (écart au plan, LK.6.4) ; gate de corpus
+  19/19 `ok`, 0 perte (`1fd7a78d8`). Gate LK.6 local : G-film (21 paquets, gardes de révision
+  comprises), `archlint`, vet avec et sans `research`, `-tags=integration -p 1` des paquets touchés
+  (grammar, lecture, facts, replay, types, revision) : verts. Reste LK.6.7 (gate-push, push, CI) ;
+  LK.6.8 et LK.6.9 reviennent au superviseur.
