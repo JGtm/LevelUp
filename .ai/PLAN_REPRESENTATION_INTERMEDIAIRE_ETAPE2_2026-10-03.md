@@ -2404,3 +2404,9 @@ plan y sont reprises comme items (3.1.2).
   trames non fermées (45). 2.7.d reste ouvert par 2.7.d1 `[!]` (décision de l'utilisateur). Suite :
   `make gate-push`, CI, accord de fusion ; puis 3.1 si l'utilisateur tranche 2.7.d1 en faveur d'un
   lot de grammaire d'abord.
+- 2026-10-08 (matin) : FUSION DANS `feat/v75` par avance rapide (`2c8b16a47`), accord de l'utilisateur
+  (« Ok pour la fusion et le recalcul »), CI verte sur la tête ; checkout principal avancé, pairs
+  prévenus (levelup-5c ×2, levelup-d0). RECUISSON DU PARC FAITE : 172 artefacts au schéma 89 (lot des
+  arrêts de la vue B compris), 0 erreur, 18 min ; projections rejouées (usage, niveaux d'armes,
+  véhicules, Assaut, drapeaux), 0 échec ; serveur local relancé (binaire reconstruit). Backfill
+  killsource (`killsource-2026-10-07.2`, lot de la vue B) : décision de l'utilisateur demandée.
