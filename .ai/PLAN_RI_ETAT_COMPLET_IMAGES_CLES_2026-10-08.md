@@ -722,23 +722,50 @@ Règle (découvertes retenues une à une) : chaque sous-pas est un commit ; il e
 commit, noté au §7) si une ligne (archétype × film) baisse dans I-ferm, si `ti=35` baisse dans le
 ratchet de cuisson, ou si la carte delta change ; jamais retenu en partie. Hausses chiffrées par
 archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu.
-- [ ] LK.5.1 i20 `lireViseeDActeurAncienne` (emplacements a = 0 : `FUN_14058c058`, CALL 1422cddc1 /
+- [!] LK.5.1 i20 `lireViseeDActeurAncienne` (emplacements a = 0 : `FUN_14058c058`, CALL 1422cddc1 /
       1422cde0e) : sous la portée, R(96) par emplacement au lieu de 16 bits plats ; hors portée,
       l'exception reste.
-- [ ] LK.5.2 Port fidèle de `FUN_14076e3e4` pour la seule branche absolue sous portée :
+      *REJETÉ par la règle (2026-10-08, lot B)* : `50247b26` `ti=35` 6 → 5, aucune hausse ; commit
+      mesuré `f4f8f893b`, retiré `4a0274dbd` ; §7 D-17. À revoir avec l'utilisateur.
+- [x] LK.5.2 Port fidèle de `FUN_14076e3e4` pour la seule branche absolue sous portée :
       `consume1408f0ac4(br, 0)`, R(1), [R(11)] (G-1) ; `consumePositionHandleTail` inchangé pour la
       forme en ligne.
-- [ ] LK.5.3 `consumePrecHautDuBipede` : vérifier qu'il n'est plus atteint sous la portée (G-3) ;
+      *Retenu* (`7a7278645`) : `consumeQueueDePoignee` ; aucun record réel ne bouge (I-ferm, I-d0,
+      goldens identiques, carte identique à `e0`), seul le témoin décalé d'un bit ferme moins (226 →
+      222). Garde E-4 laissée sur h = 1 (LK.3.7 ; D-19).
+- [x] LK.5.3 `consumePrecHautDuBipede` : vérifier qu'il n'est plus atteint sous la portée (G-3) ;
       test de non-atteinte.
-- [ ] LK.5.4 Exceptions d'objets sous la portée, une par sous-pas, dans cet ordre, chacune sur sa
+      *Fait* (`1adaf1ccd`) : seul appelant `consumeAbsoluteWithGate`, garde testée avant precHigh ;
+      `TestLaBranchePrecHautDuBipedeNEstPasAtteinteSousLaPortee`, mutation rouge. Aucune ligne de
+      production.
+- [x] LK.5.4 Exceptions d'objets sous la portée, une par sous-pas, dans cet ordre, chacune sur sa
       lecture LUE (G-3) : `consumeObjectPositionMonde` (`ti=36..43` i0) ;
       `consumePlayerDesiredRespawnLocation` (`ti=5` i12) ; `consumeCrewOrder` (`ti=14` i0) ;
       `consumeTacmapPoiIcon` (`ti=30` i0) ; `consumeTacmapAreaOfInterest` (`ti=32` i0) ;
       `consumeTacmapDisplayAsset` (`ti=33` i0) ; `consumeTacmapCoopTetherArea` (`ti=34` i11) ;
       `consumeTacmapWaypointState` (`ti=34` i7) ; `consumeGenericRigidBodyTransforms` (`ti=38` i18) et
       `consumeFlockDestination` (`ti=21` i2..i11) SEULEMENT si LK.1.6 a lu leurs largeurs, sinon `[!]`.
-- [ ] LK.5.5 Garde low-frequency de `ti=3` levée sous la portée SEULEMENT si LK.1.8 a établi le lien
+      *Les dix sous-pas joués et jugés par la règle (2026-10-08, lot B)* :
+  - [!] LK.5.4.1 world-object i0 : REJETÉ (`ti=37` en baisse sur 11 films, `50247b26`, élection des
+        ancres et carte changées) ; `64ef3baa7`, retiré `72785f870` ; §7 D-18.
+  - [x] LK.5.4.2 player-desired-respawn-location (`3e4968a22`), aucune ligne ne bouge.
+  - [x] LK.5.4.3 crew-order (`3f5b5cbc2`), aucune ligne ne bouge.
+  - [x] LK.5.4.4 tacmap-poiicon (`d9823ed8a`), aucune ligne ne bouge ; geste unique
+        `Lecteur.sousLaGardeSinonException` et son garde-rail (règle 6).
+  - [x] LK.5.4.5 tacmap-areaofinterest (`563ace217`), aucune ligne ne bouge.
+  - [x] LK.5.4.6 tacmap-displayasset (`da331527b`), aucune ligne ne bouge.
+  - [x] LK.5.4.7 tacmap-cooptetherarea (`4e816247f`), aucune ligne ne bouge.
+  - [x] LK.5.4.8 tacmap-waypointstate (`25f3ea574`), le lecteur reçoit le niveau ; aucune ligne ne
+        bouge.
+  - [!] LK.5.4.9 generic-rigid-body-transforms : REJETÉ (`ti=38` 9 baisses, mesure non concluante
+        tant que world-object i0 est rejeté) ; `d045b2ec7`, retiré `421f7c1cb` ; §7 D-21.
+  - [x] LK.5.4.10 flock-destination (`37b87e5cb`) : `ti=21` 0 → 1 315 / 1 750 sur 14 films, aucune
+        baisse, ancres et équipes identiques à LK.3.
+- [!] LK.5.5 Garde low-frequency de `ti=3` levée sous la portée SEULEMENT si LK.1.8 a établi le lien
       (sinon `[!]`, D-7) ; `ecs_table.tsv:76` « partiel » → « porte » avec elle.
+      *REJETÉ (décision d'exécution E-10)* : le lien est LU (LK.1.8) et les quatre instruments passent
+      (`ti=3` 14 → 53 / 81), mais l'élection des ancres change sur `51ebbc0f` ; `51749d5d4`, retiré
+      `6324f40a2` ; §7 D-23. À revoir avec l'utilisateur.
 - Tests par sous-pas : largeurs sous portée et hors portée du site (`lecteur_position_sites_test.go`) ;
   mutation : retirer la condition `br.portee` → la carte delta (I-carte) ou un test de site rougit.
 - Gate par sous-pas : I-ferm (aucune baisse), ratchet de cuisson (aucune baisse), I-carte identique
@@ -1285,3 +1312,24 @@ refusionner, rejouer l'étape 0).
   `consumeObjectPositionMonde` (`39510278d`, branche `feat/grammaire-arrets-vue-b-2`, non fusionnée) ;
   LK.5 pose la branche SOUS portée de la même exception en tête de fonction, pour un recollage
   trivial. Suite : lot B (LK.5 puis LK.6).
+- 2026-10-08 (nuit, lot B) : ÉTAPE LK.5 CLOSE (items statués : LK.5.2, LK.5.3, LK.5.4 `[x]` dont
+  LK.5.4.1 et LK.5.4.9 `[!]` ; LK.5.1 et LK.5.5 `[!]`). Base rejouée à la tête `d13214466` → `$S/lk5.0`
+  (I-ferm, I-d0 identiques à `$S/lk3` à l'octet ; goldens verts sans hausse). Chaque sous-pas : relecture
+  Ghidra de son lecteur (lecture seule, `$S/lk5/dec_*.txt` et relevé `REF/g2/`), code, cas sous la
+  portée, mutation rouge, puis gate du §4 — I-ferm, I-d0, les deux goldens de fermeture, carte sur
+  20, 8 et 28 films (MPP) — contre le sous-pas précédent retenu, sorties `$S/lk5.<n>` ; tests du paquet
+  `grammar` (gardes de révision sous `-skip`) avant chaque commit retenu ; un sous-pas rejeté est
+  commité tel que mesuré puis retiré par un revert qui porte sa note au §7. **Retenus** : LK.5.2 (queue
+  fidèle de `FUN_14076e3e4` : aucun record réel ne bouge, le témoin décalé ferme moins, 226 → 222) ;
+  LK.5.3 (non-atteinte de precHigh, test seul) ; LK.5.4.2 à LK.5.4.8 (aucune ligne ne bouge : les
+  composants sont fermés ou absents des images-clés mesurées ; l'exception n'est plus notée sous la
+  garde) ; LK.5.4.10 (`ti=21` 0 → 1 315 / 1 750 sur 14 films, goldens 0 → 285 / 357 sur cinq bobines,
+  sans carte comme en cuisson ; ancres colonnes 1 à 9 et équipes identiques à LK.3 ; les « prouvés »
+  montent d'autant, 1 315). Règle 6 : `Lecteur.sousLaGardeSinonException` décide « lecture du jeu sous la
+  garde, sinon exception notée » pour sept sites, garde-rail
+  `TestLesExceptionsDecidentLaGardeParUnSeulGeste`. **Rejetés** : LK.5.1 (D-17), LK.5.4.1 (D-18, le levier
+  le plus fort : `ti=38/42/43` de 10 232 à 156 933 fermetures, mais baisses `ti=37`, ancres et carte
+  changées), LK.5.4.9 (D-21), LK.5.5 (D-23, ancres de `51ebbc0f`, décision E-10). Critère écrit à l'état
+  final (`$S/lk5.4.10/critere_*.log`) : REF 369/599 inchangé. État final = `$S/lk5.4.10` : I-ferm 839
+  lignes, I-d0 TOTAL `10710 10575 5399 9968 332 6955 1566 5324 4 4319` (= LK.3), carte identique à
+  `e0`. Découvertes D-17 à D-23. Prochaine étape : LK.6.
