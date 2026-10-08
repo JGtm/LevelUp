@@ -15,9 +15,11 @@ package grammar
 //
 // # CE QUE LA REGLE CORRIGE
 //
-// Un slot de la bande bipede que la marche lit comme un autre objet ne se lit plus comme un joueur ;
-// un en-tete fortuit dans l etendue que la fermeture de la trame prouve n est plus une position ;
-// un cadavre ne se deplace plus (mesure 2 de 2.7.d0, decouverte 38 du plan).
+// Un slot de la bande bipede que la marche lit comme un autre objet, dans une trame que sa fermeture
+// prouve, ne se lit plus comme un joueur ; un en-tete fortuit dans l etendue que la fermeture de la
+// trame prouve n est plus une position ; un cadavre ne se deplace plus (mesure 2 de 2.7.d0,
+// decouverte 38 du plan). Dans une trame qu elle ne prouve pas, l archetype que la marche donne au
+// slot ne l est pas non plus : seul un record bipede de la marche y ecarte l en-tete ancre.
 //
 // # SANS REGISTRE, L ANCRAGE SEUL
 //

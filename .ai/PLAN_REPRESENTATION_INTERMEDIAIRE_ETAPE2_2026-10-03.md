@@ -1325,7 +1325,8 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
       marqués `PreuveRecupere` avec leur méthode (DT2-4) ; le cliquet `NbDevantLaLecture` ne monte
       pas.
       *Ouvert le 2026-10-07 (soir), sur `feat/v75` `312073cd3`* (accord de l'utilisateur : « vas-y tu
-      peux le faire »). Sous-items, dans l'ordre :
+      peux le faire »). *État au 2026-10-08 : d0, d2, d3, d4 clos ; d1 `[!]`, décision de
+      l'utilisateur demandée — l'item reste ouvert par elle.* Sous-items, dans l'ordre :
       - [x] 2.7.d0 *Mesure*, avant tout code de production. Corpus : les 28 films de la mesure de
             2.7.c4 (20 d'équivalence et 8 de killsource), contexte de la cuisson (profil calibré,
             génération stricte, carte, découpage MPP déclaré). Trois instruments, aucun fichier de
@@ -1392,7 +1393,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             fiches. Décision de l'utilisateur demandée le 2026-10-07 (recommandation : un lot de
             grammaire d'abord, la lecture de l'état complet du bipède aux images-clés ; 2.7.d1 en
             dépend).
-      - [ ] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
+      - [x] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
             *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
             les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
             de mouvement après le monde. Lire les positions derrière la marche la ferait jouer deux
@@ -1434,7 +1435,18 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
                sur cinq films) et des replis de génération inconnue. Les positions de la marche ne se
                retiennent que pour un slot de la bande bipède du contexte, la population de l'ancrage ;
                le golden de la mini-bobine revient à 28 004 et son test tient la population.
-      - [ ] 2.7.d3 *Pistes et créations des objets du monde derrière la marche* (décisions 1 et 3).
+            3. *Dans une trame que sa fermeture ne prouve pas, l'archétype que la marche donne au slot
+               ne l'est pas non plus* (découverte 45, instruite sur une perte de filet du gate contre
+               `acfe4851a` : un trou de 5,6 s dans la trace d'un joueur de `bf15f7ab`, quatre tirs
+               sans tireur). La marche lisait le joueur du slot 553 sous l'archétype de l'objet qui
+               occupait son slot, dans des trames non fermées, et la règle de 2.7.b (un slot lu écarte
+               l'en-tête ancré) écartait ses vraies positions. Dans une telle trame, seul un record
+               de la marche du même archétype écarte désormais l'en-tête ancré ou l'enregistrement de
+               la passe ([rendParLAncrage], deux cas ajoutés au test de la règle, deux mutations
+               jouées rouges) ; la règle vaut aussi pour les huit lecteurs de 2.7.b (changement
+               déclaré). Mini-bobine : positions inchangées, pistes de la bande des armes au sol
+               51 → 54 (des fragments d'équipement dans des trames non prouvées, découverte 44).
+      - [x] 2.7.d3 *Pistes et créations des objets du monde derrière la marche* (décisions 1 et 3).
             *Écrit* : `grammar/objets_du_monde_lus.go` — un canal de la marche des trames retient les
             records DELTA à i0 des archétypes à pistes et les records NEW des archétypes de création,
             avec l'archétype que la marche leur donne (même condition de trame que le canal des
@@ -1472,9 +1484,10 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             de joueurs (`boundsOf`), défaut de construction préexistant, hors de ce lot.
             *Après la fusion de `feat/v75` `acfe4851a` (arrêts de la vue B, 2026-10-08)* : plus de
             trames se ferment, donc plus d'en-têtes fortuits tombent dans une étendue prouvée.
-            Mini-bobine : projectiles 52 → 51, pistes de la bande des armes au sol 42 → 51
-            (découverte 44 : des vies d'équipement y gardent des fragments, qu'aucun objet publié ne
-            lit), créations d'équipement 36 → 35 (slot 1465, chunk 2 paquet 1882), créations d'armes
+            Mini-bobine : projectiles 52 → 51, pistes de la bande des armes au sol 42 → 51, puis 54
+            avec la règle de la découverte 45 (découverte 44 : des vies d'équipement y gardent des
+            fragments, qu'aucun objet publié ne lit ; le test du slot 1596 ne lui interdit plus que
+            les trames prouvées), créations d'équipement 36 → 35 (slot 1465, chunk 2 paquet 1882), créations d'armes
             au sol 28 → 27 (slot 1529 génération 2, chunk 3 paquet 378, avant la vraie création de
             génération 1 du même slot au paquet 540) ; le test du point 6 de `ti=42` passe à 27
             créations et 21 références, mutation de la porte rejouée rouge. Le premier gate contre
@@ -1499,13 +1512,14 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             - `replay-equiv`, binaires de `acfe4851a` (références re-figées par lui) contre ceux du
               lot : 20 films sur 20 divergent, par les étapes attendues — positions, socles,
               poses (orientation du poseur, qui suit les positions) et l'artefact partout,
-              projectiles sur 17 films, véhicules sur 10 ; les huit lecteurs bipèdes sur deux
-              films seulement (`a349fea8`, `e5adf7b2` : le dead-state qui ne dit pas la mort) ;
-              `killsource` et `objectives` identiques.
+              projectiles sur 17 films, véhicules sur 10 ; les huit lecteurs bipèdes sur quatre
+              films (`a349fea8`, `e5adf7b2` : le dead-state qui ne dit pas la mort ; `111fa685`,
+              `1c4c63c2` : la règle des trames non prouvées, 1 à 10 lectures rendues par lecteur) ;
+              `killsource` et `objectives` identiques. Références re-figées par le binaire final.
             - `cmd/killsource json` sur les 19 témoins, binaire de `acfe4851a` contre binaire du
               lot : sorties identiques à l'octet (`killsource.Rev` reste).
             - `replay-corpus-gate` contre `acfe4851a` (19 témoins, banc de vérité compris), après
-              le correctif de la découverte 43 : FAUX partout par les deux replis neufs (R-1,
+              les correctifs des découvertes 43 et 45 : FAUX partout par les deux replis neufs (R-1,
               nouveaux par construction) ; gains V-2 sur six témoins (`fb1a1a72` 4 → 0,
               `d9781168` 1 → 0, `c75f33b8` 2 → 0, `084a804d` 10 → 9, `4f77afc1` 10 → 3,
               `f75e7053` 2 → 1), `084a804d` O-V1 FP 1 → 0 et V-4 1 → 0, fins de vie sans identité
@@ -1522,7 +1536,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
               −30, armes au sol −1 à −7, véhicules −1 à −5 (châssis de créations fortuites ;
               naissances moins écartées, l'emprise jouée se mesurant sur des positions sans
               fantômes : 69 → 4 sur `4f77afc1`, 47 → 11 sur `084a804d` ; d'où des relais au même
-              point que la règle des relais fond), tirs −1 à −15 (des véhicules), des occupations de
+              point que la règle des relais fond ; `4f77afc1` : 15 tirs de véhicule non placés), des occupations de
               socle sans ramasseur daté de plus là où une création fortuite coupait une vie
               (`4f77afc1` +4, `d9781168` +1, `084a804d` +1 ; `c75f33b8` une occupation non couverte
               de plus), un socle de Disrupteur reconnu sur `f75e7053` (sa première arme était lue à
@@ -1942,6 +1956,17 @@ plan y sont reprises comme items (3.1.2).
    naissent des créations de leur archétype et ne prennent que les pistes de leurs vies. Règle
    candidate, non traitée : une vie (slot, génération) que la marche lit sous un archétype ne se
    rend pas à la bande d'un autre.
+45. *(gate de 2.7.d après la fusion de `acfe4851a`, 2026-10-08)* **La table d'entités de la marche
+   peut lire un joueur sous l'archétype de l'objet qui occupait son slot avant lui.** `bf15f7ab`,
+   slot 553 : la marche lit le NEW du bipède (`ti=35`, génération 1, chunk 14 paquet 1094), puis
+   ses records delta sous `ti=20` pendant 11 s, dans des trames qu'elle ne ferme pas, jusqu'à ce
+   que la table redonne `ti=35`. La règle de l'ancrage de 2.7.b (un slot que la marche a lu
+   écarte l'en-tête ancré) écartait alors les vraies positions du joueur : 605 positions perdues,
+   un trou de 5,6 s dans sa trace, quatre tirs sans tireur (et, avant 2.7.d, les lectures des
+   huit lecteurs du même corps). Corrigé en 2.7.d2 : dans une trame que la fermeture ne prouve
+   pas, seul un record de la marche du même archétype écarte l'en-tête ancré ou l'enregistrement
+   de la passe. La cause dans la table (un NEW lu dans une trame non fermée qui ne reste pas
+   dans la table ?) n'est pas instruite : elle relève de la marche, pour la campagne de grammaire.
 
 ## 7. Journal
 
@@ -2371,3 +2396,11 @@ plan y sont reprises comme items (3.1.2).
   3), avec des corrections par construction (découvertes 37 à 39). Les images-clés NON : la grammaire
   ne lit pas l'état complet du bipède (découverte 36) ; 2.7.d1 statué `[!]`, décision de l'utilisateur
   demandée (recommandation : lot de grammaire d'abord). Suite : 2.7.d2 puis 2.7.d3.
+- 2026-10-08 : 2.7.d2, 2.7.d3 et 2.7.d4 CLOS sur `feat/v75` `acfe4851a` fusionnée (arrêts de la vue
+  B, fusionnés avant ce lot ; rangs alignés avec levelup-5c : `grammar-2026-10-08`,
+  `SchemaVersion` 89 ; `killsource.Rev`, `objectives.Rev` et `SchemaDesFaits` constants). Les gates
+  ont fait corriger quatre règles dans le lot : le dead-state qui ne dit pas la mort (découverte
+  41), la population des positions (42), la fin du film des socles (43), l'archétype non prouvé des
+  trames non fermées (45). 2.7.d reste ouvert par 2.7.d1 `[!]` (décision de l'utilisateur). Suite :
+  `make gate-push`, CI, accord de fusion ; puis 3.1 si l'utilisateur tranche 2.7.d1 en faveur d'un
+  lot de grammaire d'abord.

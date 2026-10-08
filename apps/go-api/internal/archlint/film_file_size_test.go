@@ -263,11 +263,11 @@ var plafondsParFichier = map[string]int{
 	// la fusion), +38 : l entree v88 (les cinq composants de la vue B lus, les mains nues valent « rien
 	// en main » dans les changements d arme, les revisions qui montent et celles qui ne montent pas, la
 	// mesure au parc et au gate de corpus). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	// SCHEMA 88 -> 89 (2026-10-08, representation intermediaire 2.7.d), +40 : l entree v89 (les
+	// SCHEMA 88 -> 89 (2026-10-08, representation intermediaire 2.7.d), +41 : l entree v89 (les
 	// positions, les pistes et les creations lues par la marche d abord, la fin du film des socles,
 	// les revisions qui montent et celles qui ne montent pas, la mesure a l equivalence et au gate de
 	// corpus). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3110,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3111,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du

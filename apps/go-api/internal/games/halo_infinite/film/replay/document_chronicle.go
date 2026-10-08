@@ -3097,8 +3097,9 @@ package replay
 //
 //	MESURE          `replay-equiv` sur les 20 films de reference, binaires de `acfe4851a` contre
 //	                ceux du lot : positions, socles, poses (orientation du poseur) partout,
-//	                projectiles sur 17 films, vehicules sur 10, lecteurs bipedes sur deux
-//	                (`a349fea8`, `e5adf7b2`) ; `killsource` et `objectives` identiques.
+//	                projectiles sur 17 films, vehicules sur 10, lecteurs bipedes sur quatre
+//	                (dead-state sans mort, trames non prouvees) ; `killsource` et `objectives`
+//	                identiques.
 //	                `replay-corpus-gate` contre `acfe4851a` (19 temoins, banc de verite compris) :
 //	                projectiles -1 a -30 (pistes immobiles, `fb1a1a72` x = -230,77 m), armes au
 //	                sol -1 a -7 (`4f77afc1` : sept objets a z = -500 a -944 m), vehicules -1 a -5

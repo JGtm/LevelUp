@@ -328,13 +328,18 @@ construction. Behind the walk, the anchoring returns positions and the track and
 return records under the rule of lot 2.7.b (a slot the walk did not read in the packet, outside what
 the frame's closure proves), counted under `repli_ancrage_bipede_apres_la_marche` (which now counts
 the records returned only for their position), `repli_pistes_du_monde_apres_la_marche` and
-`repli_creations_du_monde_apres_la_marche`, ordered after the reading. The rule corrects three scan
-errors by construction: a slot of the biped band that the walk reads as another object no longer
-gives a player position; a band that overlaps another archetype's band no longer receives that
-archetype's records (an equipment item no longer doubles as a ground weapon); and a header found
-inside another record of a frame that the closure proves no longer becomes a position, a track
-sample or a creation (plan of step 2, discoveries 37 to 39). The positions keep the anchoring's
-population: a position the walk designates is retained only for a slot of the context's biped band,
+`repli_creations_du_monde_apres_la_marche`, ordered after the reading. In a frame that its closure
+proves, the rule corrects three scan errors by construction: a slot of the biped band that the walk
+reads as another object no longer gives a player position; a band that overlaps another
+archetype's band no longer receives that archetype's records (an equipment item no longer doubles
+as a ground weapon); and a header found inside another record no longer becomes a position, a track
+sample or a creation (plan of step 2, discoveries 37 to 39). A frame that its closure does not prove
+does not prove the archetype that the walk's entity table gives a slot either: the walk can read a
+player's records under the archetype of the object that held the slot before (discovery 45), so
+there a record the walk reads excludes an anchored header or a pass record only when it has the
+same archetype; this amends the rule of lot 2.7.b for the eight biped readers too. The positions
+keep the anchoring's population: a position the walk designates is retained only for a slot of the
+context's biped band,
 because the walk also reads biped bodies that no keyframe carries (the bodies placed for the
 winners' scene at the end of a match, a player born in the last chunk of a reel), which would
 otherwise publish lives without identity (discovery 42). A death state ends a body for the biped

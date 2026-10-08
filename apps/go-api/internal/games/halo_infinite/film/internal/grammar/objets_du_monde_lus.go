@@ -17,17 +17,18 @@ package grammar
 //
 // La passe des pistes ([echantillonsDesBandes]) et celle des creations ([releverLesCreations]) ne
 // rendent plus qu un record d un slot que la marche n a pas lu dans le paquet, hors de ce que la
-// fermeture de la trame prouve — la regle des huit lecteurs bipedes ([rendParLAncrage]). Ce qu elles
-// rendent se compte (`repli_pistes_du_monde_apres_la_marche`,
+// fermeture de la trame prouve ; dans une trame qu elle ne prouve pas, d un slot que la marche n a
+// pas lu sous l archetype demande — la regle des huit lecteurs bipedes ([rendParLAncrage]). Ce
+// qu elles rendent se compte (`repli_pistes_du_monde_apres_la_marche`,
 // `repli_creations_du_monde_apres_la_marche`, ordre « apres la lecture »).
 //
 // # CE QUE LA REGLE CORRIGE
 //
 // Une bande de slots recouvre parfois celle d un autre archetype : la passe donnait alors un meme
 // record a toutes les bandes qui portent son slot, et un equipement passait aussi pour une arme au
-// sol ; la marche le rend a son seul archetype. Un en-tete fortuit a l interieur d un autre record
-// d une trame que la fermeture prouve n est plus une piste ni une creation (decouvertes 37 et 39 du
-// plan, mesure 3 de 2.7.d0).
+// sol ; dans une trame que la fermeture prouve, la marche le rend a son seul archetype. Un en-tete
+// fortuit a l interieur d un autre record d une trame que la fermeture prouve n est plus une piste
+// ni une creation (decouvertes 37 et 39 du plan, mesure 3 de 2.7.d0).
 //
 // # SANS REGISTRE, OU SANS ARCHETYPE, LA PASSE SEULE
 //
@@ -233,7 +234,7 @@ func (c *FilmContext) pistesDerriereLaMarche(wr profile.Vec3Range, lg profile.Pr
 	recuperes := 0
 	for _, s := range brut {
 		t, vu := trames[paquetDuFlux{s.Chunk, s.paquet}]
-		if !rendParLAncrage(t, vu, s.slot, s.bit) {
+		if !rendParLAncrage(t, vu, s.slot, ti, s.bit) {
 			continue
 		}
 		recuperes++
@@ -264,7 +265,7 @@ func (c *FilmContext) creationsDerriereLaMarche(w equipCreationWalk, brut []type
 	recuperes := 0
 	for _, x := range brut {
 		t, vu := trames[paquetDuFlux{x.Chunk, x.PacketIndex}]
-		if !rendParLAncrage(t, vu, x.Slot, x.BitPos) {
+		if !rendParLAncrage(t, vu, x.Slot, int(w.archetype()), x.BitPos) {
 			continue
 		}
 		recuperes++

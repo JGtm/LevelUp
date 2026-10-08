@@ -26,7 +26,9 @@ package grammar
 // un record ancre que la marche n y a pas lu est une fausse ancre. Une trame fermee dont le debut
 // de vue B a ete LOCALISE ne prouve que la
 // liste lue depuis ce debut : un record ancre qui le precede, la marche ne l a pas lu. Une trame
-// qui n est pas fermee ne prouve rien. Un record rendu par l ancrage est marque recupere
+// qui n est pas fermee ne prouve rien, pas meme l archetype que la table d entites de la marche
+// donne a un slot : un record que la marche y lit n ecarte l en-tete ancre que s il est bipede lui
+// aussi ([rendParLAncrage]). Un record rendu par l ancrage est marque recupere
 // ([recordBipedeLu.Recupere]) et compte au rapport des replis du contexte
 // (`repli_ancrage_bipede_apres_la_marche`, ordre « apres la lecture »).
 //

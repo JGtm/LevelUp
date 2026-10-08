@@ -197,8 +197,10 @@ func comparerLesSources(t *testing.T, fc *FilmContext, parLaMarche map[cleDeReco
 }
 
 // TestLAncrageNeRendQueCeQueLaMarcheNaPasLu : la regle de l ancrage derriere la marche, cas par cas,
-// pour un record du slot 520 dont l i0 commence au bit 300.
+// pour un record bipede du slot 520 dont l i0 commence au bit 300. Dans une trame que sa fermeture ne
+// prouve pas, seul un record de la marche du meme archetype ecarte l en-tete ancre.
 func TestLAncrageNeRendQueCeQueLaMarcheNaPasLu(t *testing.T) {
+	bipede, objet := []uint8{BipedTypeIndex}, []uint8{20}
 	cas := []struct {
 		nom   string
 		trame trameDuCanal
@@ -207,16 +209,17 @@ func TestLAncrageNeRendQueCeQueLaMarcheNaPasLu(t *testing.T) {
 	}{
 		{"trame que la marche n a pas rendue", trameDuCanal{}, false, true},
 		{"trame fermee depuis la tete", trameDuCanal{prouveeDes: 0}, true, false},
-		{"trame fermee depuis la tete, sans le slot", trameDuCanal{slots: []uint32{600}}, true, false},
-		{"debut localise apres le record", trameDuCanal{prouveeDes: 400, slots: []uint32{600}}, true, true},
-		{"debut localise avant le record", trameDuCanal{prouveeDes: 200, slots: []uint32{600}}, true, false},
-		{"debut localise apres le record, slot lu", trameDuCanal{prouveeDes: 400, slots: []uint32{520}}, true, false},
-		{"trame non fermee ou la marche a lu le slot", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{520}}, true, false},
-		{"trame non fermee sans le slot", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{600}}, true, true},
+		{"trame fermee depuis la tete, sans le slot", trameDuCanal{slots: []uint32{600}, archetypes: bipede}, true, false},
+		{"debut localise apres le record", trameDuCanal{prouveeDes: 400, slots: []uint32{600}, archetypes: bipede}, true, true},
+		{"debut localise avant le record", trameDuCanal{prouveeDes: 200, slots: []uint32{600}, archetypes: bipede}, true, false},
+		{"debut localise apres le record, slot lu", trameDuCanal{prouveeDes: 400, slots: []uint32{520}, archetypes: objet}, true, false},
+		{"trame non fermee ou la marche a lu le slot", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{520}, archetypes: bipede}, true, false},
+		{"trame non fermee ou la marche a lu le slot sous un autre archetype", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{520}, archetypes: objet}, true, true},
+		{"trame non fermee sans le slot", trameDuCanal{prouveeDes: rienDeProuve, slots: []uint32{600}, archetypes: bipede}, true, true},
 		{"trame non fermee sans record lu", trameDuCanal{prouveeDes: rienDeProuve}, true, true},
 	}
 	for _, c := range cas {
-		if got := rendParLAncrage(c.trame, c.vu, 520, 300); got != c.rend {
+		if got := rendParLAncrage(c.trame, c.vu, 520, BipedTypeIndex, 300); got != c.rend {
 			t.Errorf("%s : rend %v, attendu %v", c.nom, got, c.rend)
 		}
 	}

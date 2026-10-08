@@ -472,6 +472,9 @@ package grammar
 //     derriere la marche ce qu elle n a pas lu (regle de 2.7.b), et son repli compte aussi les
 //     records rendus pour leur seule position ;
 //   - un dead-state ne tue le corps, pour les huit lecteurs et les positions, que s il dit la mort ;
+//   - dans une trame que sa fermeture ne prouve pas, seul un record de la marche du meme archetype
+//     ecarte l en-tete ancre ou l enregistrement de la passe ([rendParLAncrage]) : la table d entites
+//     peut y lire un joueur sous l archetype de l objet qui occupait son slot ;
 //   - une piste d objet du monde se lit au bit d i0 des records DELTA que la marche lit sous son
 //     archetype, une creation a l en-tete de ses records NEW ([canalDesObjetsDuMonde]) ; la passe
 //     des pistes et celle des creations ne rendent que ce que la marche n a pas lu
@@ -482,8 +485,8 @@ package grammar
 //
 // MESURE (2026-10-08, binaires de `acfe4851a` contre ceux du lot) : `replay-equiv` sur les 20 films
 // de reference : positions, socles, poses (orientation du poseur) partout, projectiles sur 17 films,
-// vehicules sur 10 ; les huit lecteurs bipedes seulement sur `a349fea8` et `e5adf7b2` (le dead-state
-// qui ne dit pas la mort) ; `killsource` et `objectives` identiques. `replay-corpus-gate` (19
+// vehicules sur 10 ; les huit lecteurs bipedes sur quatre (le dead-state qui ne dit pas la mort, les
+// trames non prouvees) ; `killsource` et `objectives` identiques. `replay-corpus-gate` (19
 // temoins) : les deux replis neufs sur chaque temoin, des objets fantomes retires (V-2 en baisse sur
 // six temoins), les autres verdicts instruits au plan de l etape 2 (2.7.d4). `killsource.Rev` et
 // `objectives.Rev` restent ; `replay.SchemaVersion` 89.

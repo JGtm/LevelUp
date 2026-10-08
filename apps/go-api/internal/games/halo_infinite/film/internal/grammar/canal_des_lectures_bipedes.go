@@ -129,7 +129,7 @@ func (c *capteurDeLectures) brancherLInventaire(obs *Observation) {
 }
 
 // trameDuCanal est ce que le canal retient d une trame pour l ancrage qui passe derriere : d ou sa
-// fermeture prouve sa liste, et les slots des records que la marche y a lus.
+// fermeture prouve sa liste, et les slots des records que la marche y a lus avec leur archetype.
 type trameDuCanal struct {
 	// prouveeDes est le premier bit que la fermeture de la trame prouve. Une trame fermee dont le
 	// debut de vue B a ete LU (la tete du paquet, ou la fin de sa vue A lue) prouve tout le paquet
@@ -138,7 +138,20 @@ type trameDuCanal struct {
 	// la liste lue depuis ce debut : ce qui le precede, la marche ne l a pas lu. Une trame qui n est
 	// pas fermee ne prouve rien ([rienDeProuve]).
 	prouveeDes uint32
+	// slots : les slots des records que la marche a lus ; archetypes : l archetype que sa table
+	// d entites donne a chacun, au meme rang.
 	slots      []uint32
+	archetypes []uint8
+}
+
+// luSous dit si la marche a lu, dans la trame, un record du slot `slot` sous l archetype `ti`.
+func (t trameDuCanal) luSous(slot uint32, ti int) bool {
+	for i, s := range t.slots {
+		if s == slot && i < len(t.archetypes) && int(t.archetypes[i]) == ti {
+			return true
+		}
+	}
+	return false
 }
 
 // rienDeProuve est le [trameDuCanal.prouveeDes] d une trame que sa fermeture ne prouve pas.
@@ -264,6 +277,7 @@ func (c *canalDesLecturesBipedes) recueillir(p *lecture.Paquet, recs []FrameReco
 	for i := range recs {
 		r := &recs[i]
 		t.slots = append(t.slots, r.Slot)
+		t.archetypes = append(t.archetypes, uint8(r.TypeIndex)) //nolint:gosec // archetype sur 6 bits
 		if r.TypeIndex != BipedTypeIndex {
 			continue
 		}
@@ -376,7 +390,7 @@ func (c *canalDesLecturesBipedes) recuperer() []recordBipedeLu {
 	g := grammaireRecord{lay: lay, arch: arch, prof: c.fc.ProfilDeBalayage(), obs: obs}
 	var out []recordBipedeLu
 	c.fc.parcourirLesAncresBipedes(func(r deltaBipedRecord) {
-		if t, vu := c.trames[paquetDuFlux{r.Chunk, r.Packet.Index}]; !rendParLAncrage(t, vu, r.Slot, r.I0) {
+		if t, vu := c.trames[paquetDuFlux{r.Chunk, r.Packet.Index}]; !rendParLAncrage(t, vu, r.Slot, BipedTypeIndex, r.I0) {
 			return
 		}
 		if mort, connue := c.mortA[r.Vie()]; connue && r.Packet.TimestampUS >= mort {
@@ -430,12 +444,21 @@ func (m *MarcheDistribuee) attribuable() bool {
 	return m.marche != nil && m.marche.trame.parRangs
 }
 
-// rendParLAncrage dit si l ancrage rend un record du slot `slot`, dont le composant i0 commence au
-// bit `i0`, dans une trame que le canal a vue (`vu`) telle que `t` : une trame que la marche n a pas
-// rendue ; sinon un slot dont la marche n a lu aucun record dans la trame, hors de ce que sa
-// fermeture prouve.
-func rendParLAncrage(t trameDuCanal, vu bool, slot uint32, i0 int) bool {
-	return !vu || (!slices.Contains(t.slots, slot) && int64(i0) < int64(t.prouveeDes))
+// rendParLAncrage dit si l ancrage rend un record d archetype `ti` du slot `slot`, dont le composant
+// i0 commence au bit `i0`, dans une trame que le canal a vue (`vu`) telle que `t` : une trame que la
+// marche n a pas rendue ; une trame fermee, pour un slot dont la marche n a lu aucun record, hors de
+// ce que sa fermeture prouve ; une trame que sa fermeture ne prouve pas, pour un slot que la marche
+// n a pas lu sous cet archetype. L archetype que la table d entites de la marche donne a un slot n y
+// est pas prouve : elle peut lire les records d un bipede sous l archetype de l objet qui occupait
+// son slot avant lui, et ce record-la n ecarte pas l en-tete bipede que l ancrage trouve.
+func rendParLAncrage(t trameDuCanal, vu bool, slot uint32, ti, i0 int) bool {
+	switch {
+	case !vu:
+		return true
+	case t.prouveeDes == rienDeProuve:
+		return !t.luSous(slot, ti)
+	}
+	return !slices.Contains(t.slots, slot) && int64(i0) < int64(t.prouveeDes)
 }
 
 // noterLaPosition retient la position du record `rb` que la marche a lu (`r`) quand son slot est de

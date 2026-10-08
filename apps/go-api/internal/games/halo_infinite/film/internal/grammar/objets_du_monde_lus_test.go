@@ -9,6 +9,7 @@ package grammar
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -26,6 +27,42 @@ func contexteDeLaMiniBobine(t *testing.T) (*FilmContext, profile.Vec3Range) {
 	return NewFilmContext(film), profile.QuantRangeCEBiped()
 }
 
+// echantillonsDuSlot compte les echantillons des pistes du slot `slot`.
+func echantillonsDuSlot(pistes []types.ProjectileTrack, slot uint32) int {
+	n := 0
+	for _, p := range pistes {
+		if p.Slot == slot {
+			n += len(p.Pts)
+		}
+	}
+	return n
+}
+
+// preuvesDesEchantillons rend, pour les echantillons que la passe a releves pour le slot `slot` sur la
+// bande `band`, si la trame de leur paquet est prouvee, par instant ; et combien la passe en releve
+// dans une trame prouvee ou la marche a lu ce slot. La passe doit avoir ete faite sur ce contexte.
+func preuvesDesEchantillons(t *testing.T, fc *FilmContext, wr profile.Vec3Range, band map[uint32]bool,
+	slot uint32) (prouveeA map[uint64]bool, prouves int) {
+	t.Helper()
+	p, ok := fc.recup.pistesDe(wr, fc.ProfilDeBalayage().LargeursObjetDuMonde(), slotsDeLaBande(band))
+	if !ok || fc.recup.lectures == nil {
+		t.Fatal("la passe et la marche doivent avoir ete faites sur ce contexte")
+	}
+	prouveeA = map[uint64]bool{}
+	for _, s := range p.brut {
+		if s.slot != slot {
+			continue
+		}
+		tr, vu := fc.recup.lectures.trames[paquetDuFlux{s.Chunk, s.paquet}]
+		prouvee := vu && tr.prouveeDes != rienDeProuve
+		prouveeA[s.TimestampUS] = prouvee
+		if prouvee && slices.Contains(tr.slots, slot) {
+			prouves++
+		}
+	}
+	return prouveeA, prouves
+}
+
 // pisteDuSlot dit si des pistes portent le slot `slot`.
 func pisteDuSlot(pistes []types.ProjectileTrack, slot uint32) bool {
 	for _, p := range pistes {
@@ -37,8 +74,10 @@ func pisteDuSlot(pistes []types.ProjectileTrack, slot uint32) bool {
 }
 
 // TestUnePisteNEstRendueQuASonArchetype : les bandes des armes au sol et de l equipement se recouvrent ;
-// la passe seule rend le slot 1596 aux deux, la marche le lit comme un equipement et ne le rend qu a
-// l equipement. MUTATION — rendre tous les echantillons de la passe : ROUGE.
+// la passe seule rend le slot 1596 aux deux. La marche le lit comme un equipement : dans une trame que
+// sa fermeture prouve, la passe ne le rend plus aux armes au sol ; dans une trame qu elle ne prouve
+// pas, l archetype que la marche donne au slot n y est pas prouve, et la passe le rend encore.
+// MUTATION — rendre tous les echantillons de la passe : ROUGE.
 func TestUnePisteNEstRendueQuASonArchetype(t *testing.T) {
 	const temoin = 1596
 	fc, wr := contexteDeLaMiniBobine(t)
@@ -51,8 +90,24 @@ func TestUnePisteNEstRendueQuASonArchetype(t *testing.T) {
 		t.Fatalf("la passe seule doit rendre le slot %d a la bande des armes au sol (%v)", temoin, err)
 	}
 	pistesArmes, err := ScanWorldObjectsForBand(fc, &wr, GroundWeaponTypeIndex, armes)
-	if err != nil || pisteDuSlot(pistesArmes, temoin) {
-		t.Fatalf("le slot %d, lu comme un equipement par la marche, rendu aux armes au sol (%v)", temoin, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prouveeA, prouves := preuvesDesEchantillons(t, fc, wr, armes, temoin)
+	if prouves == 0 {
+		t.Fatalf("la passe ne releve le slot %d dans aucune trame prouvee : le temoin ne distingue plus rien", temoin)
+	}
+	for _, p := range pistesArmes {
+		for _, s := range p.Pts {
+			if p.Slot == temoin && prouveeA[s.TimestampUS] {
+				t.Fatalf("slot %d, lu comme un equipement par la marche, rendu aux armes au sol a %d dans une trame "+
+					"que la fermeture prouve", temoin, s.TimestampUS)
+			}
+		}
+	}
+	if n, m := echantillonsDuSlot(pistesArmes, temoin), echantillonsDuSlot(seule, temoin); n == 0 || n >= m {
+		t.Fatalf("slot %d aux armes au sol : %d echantillons derriere la marche contre %d par la passe seule ; "+
+			"ceux des trames non prouvees doivent rester", temoin, n, m)
 	}
 	pistesEquipement, err := ScanWorldObjectsForBand(fc, &wr, EquipmentTypeIndex, equipement)
 	if err != nil || !pisteDuSlot(pistesEquipement, temoin) {

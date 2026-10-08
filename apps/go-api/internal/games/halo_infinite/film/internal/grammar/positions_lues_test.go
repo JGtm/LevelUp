@@ -75,8 +75,8 @@ func TestUnI0SeLitAbsoluDansLaRegionJouee(t *testing.T) {
 }
 
 // TestLesPositionsSuiventLaMarcheSurLaMiniBobine : sur la mini-bobine (registre compris), chaque
-// position vient d un record retenu — de la marche, ou de l ancrage derriere elle hors de ce que la
-// trame prouve et d un slot qu elle n a pas lu ; la marche en designe ; aux records que l ancrage seul
+// position vient d un record retenu — de la marche, ou de l ancrage derriere elle la ou sa regle le
+// permet ([rendParLAncrage]) ; la marche en designe ; aux records que l ancrage seul
 // rendait aussi, les quanta sont les memes ; et la bande bipede reste la population des positions :
 // le slot 529, ne au chunk 5 (le dernier de la bobine) apres sa premiere image-cle, que la marche lit
 // mais qu aucune image-cle ne porte, n a pas de position.
@@ -97,9 +97,9 @@ func TestLesPositionsSuiventLaMarcheSurLaMiniBobine(t *testing.T) {
 	}
 	pb := &fc.recup.lectures.positions
 	for k, p := range pb.paquets {
-		tr := canal.trames[paquetDuFlux{p.chunk, p.paquet.Index}]
+		tr, vu := canal.trames[paquetDuFlux{p.chunk, p.paquet.Index}]
 		for _, r := range pb.recordsDu(k) {
-			if r.recupere && (int64(r.i0) >= int64(tr.prouveeDes) || slices.Contains(tr.slots, r.slot)) {
+			if r.recupere && !rendParLAncrage(tr, vu, r.slot, BipedTypeIndex, int(r.i0)) {
 				t.Fatalf("position recuperee chunk %d paquet %d slot %d dans ce que la trame prouve ou d un slot lu",
 					p.chunk, p.paquet.Index, r.slot)
 			}
