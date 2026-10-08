@@ -206,3 +206,11 @@ schema_version = 1
 # ⚠ Clé FINE, même doctrine que les cinq film.* ci-dessus : elle gouverne l'ARTEFACT, pas ce
 # que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
 "film.replay_artifact"   = "supported"
+# map.forge_callouts — les ZONES NOMMEES (callouts) des cartes Forge, lues dans la variante
+# .mvar de l asset UGC de la carte, et rangees au catalogue GENERE des zones
+# (reference/generated/map_callouts.json, non versionne). Elle gouverne la PRODUCTION : le
+# rattrapage au fetch de film (sync/replayartifacts) et `levelup backfill-map-callouts`. La
+# lecture au service ne la consulte pas (pas de catalogue genere, rien a servir).
+# ABSENTE pour Halo 5 : pas de variante .mvar dans ce format — silence propre.
+# Clé FINE, distincte de film.replay_artifact : les zones viennent de la carte, pas du film.
+"map.forge_callouts"     = "supported"

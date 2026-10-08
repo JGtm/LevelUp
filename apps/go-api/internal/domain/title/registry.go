@@ -937,6 +937,30 @@ func (p *PathResolver) MapCalloutsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_callouts.json")
 }
 
+// MapCalloutsOverlayPath retourne le chemin du catalogue GÉNÉRÉ des zones nommées : les cartes
+// Forge dont le RUNTIME a lu les zones dans la variante (`.mvar`) — rattrapage au fetch de film
+// et commande `levelup backfill-map-callouts`. Même forme que le catalogue versionné (section
+// `maps_by_id` seule).
+//
+// MÊME RÈGLE QUE MapWeaponPadsOverlayPath : le fichier versionné est une ENTRÉE produite à la
+// main par `cmd/mapcallouts-build` et relue en revue ; celui-ci est une SORTIE de runtime,
+// jetable et reconstructible, sous `reference/generated/` (ignoré par git — un déploiement
+// `git reset --hard` ne l'efface pas, un commit ne l'avale pas). La lecture recolle les deux,
+// et le versionné prime.
+// Ex: data/titles/halo_infinite/reference/generated/map_callouts.json
+func (p *PathResolver) MapCalloutsOverlayPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated", "map_callouts.json")
+}
+
+// MapCalloutsLexiquePath retourne le chemin du LEXIQUE des noms de lieu (string_id -> libellé
+// EN/FR) qui nomme les zones des cartes Forge. Donnée de RÉFÉRENCE versionnée, produite par
+// `mapcallouts-build --lexique` (jeu installé) ; le serveur la LIT pour nommer les zones qu'il
+// rattrape, sans le jeu.
+// Ex: data/titles/halo_infinite/reference/callouts_lexique.csv
+func (p *PathResolver) MapCalloutsLexiquePath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "callouts_lexique.csv")
+}
+
 // MapGeometryDir retourne le répertoire des PROPS d'UNE carte (géométrie Forge : socles,
 // caisses, rampes posées dans la variante), lus pour poser des repères contextuels sur le
 // rejeu 2D — à distinguer de la STRUCTURE, qui est le sol. Donnée de RÉFÉRENCE versionnée

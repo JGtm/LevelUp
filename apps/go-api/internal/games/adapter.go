@@ -302,6 +302,22 @@ const (
 	// ⚠ Clé FINE, même doctrine que les cinq `film.*` ci-dessus : elle gouverne l'ARTEFACT,
 	// pas ce que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
 	CapFilmReplayArtifact CapabilityKey = "film.replay_artifact"
+
+	// CapMapForgeCallouts — le titre sait lire les ZONES NOMMÉES (callouts) d'une carte Forge
+	// dans la variante de la carte (`.mvar` de l'asset UGC), et les range au catalogue GÉNÉRÉ
+	// des zones (`reference/generated/map_callouts.json`, PathResolver.MapCalloutsOverlayPath).
+	//
+	// ELLE GOUVERNE LA PRODUCTION de ce catalogue, sur ses deux chemins : le rattrapage au
+	// fetch de film (`sync/replayartifacts`) et la commande `levelup backfill-map-callouts`.
+	// La LECTURE ne la consulte pas : un titre qui ne produit rien n'a simplement pas de
+	// catalogue généré, et le service sert ce qui existe.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — ses cartes n'ont pas de variante `.mvar`
+	// dans ce format ; rien n'est produit, silence propre.
+	//
+	// ⚠ Clé FINE, distincte de `film.replay_artifact` : les zones ne viennent pas du film mais
+	// de la carte, et elles servent aussi l'onglet Tactique. Ne pas l'élargir.
+	CapMapForgeCallouts CapabilityKey = "map.forge_callouts"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

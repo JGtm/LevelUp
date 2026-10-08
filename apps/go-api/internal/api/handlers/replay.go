@@ -131,9 +131,9 @@ func (h *ReplayHandler) handleGetBackground(ctx context.Context, in *replayInput
 type calloutsOutput struct{ Body replaydoc.MapCalloutsEntry }
 
 // handleGetCallouts retourne les ZONES NOMMÉES officielles de la carte du match :
-// polygones monde, tranche verticale, libellés FR/EN. 404 quand la carte n'en a pas —
-// absence NORMALE (les 22 cartes intégrées en ont ; une carte Forge n'en aura jamais,
-// son canevas n'en porte aucune) : le client n'affiche simplement pas le calque zones.
+// polygones monde, tranche verticale, libellés FR/EN. 404 quand la carte n'en a pas au
+// catalogue — absence NORMALE (carte Forge pas encore rattrapée, variante sans zone) : le
+// client n'affiche simplement pas le calque zones.
 func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) (*calloutsOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {

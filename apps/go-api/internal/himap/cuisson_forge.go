@@ -174,7 +174,7 @@ type OptionsCuissonForge struct {
 	// SeuilArete : voir Rendu.SeuilArete.
 	SeuilArete float64
 	// RogneAuxZones EFFACE la matiere hors des zones de callout de la carte, dilatees de
-	// `MargeZones`. Les zones sont lues dans les OBJETS de la variante (`ZonesNommeesForge`) —
+	// `MargeZones`. Les zones sont lues dans les OBJETS de la variante (`mapvar.ZonesNommeesForge`) —
 	// rien a fournir, rien a telecharger. La mesure, elle, est INCONDITIONNELLE : elle seule
 	// dit si le rognage est defendable sur cette carte.
 	//
@@ -460,7 +460,7 @@ func cadreAuxAncresEtZonesForge(ctx context.Context, r *Rendu, opts OptionsCuiss
 		}
 	}
 	if opts.CadreAuxZones {
-		if bz, ok := BoiteDesZones(ZonesNommeesForge(opts.Objets), MargeCadreZones); ok {
+		if bz, ok := BoiteDesZones(mapvar.ZonesNommeesForge(opts.Objets), MargeCadreZones); ok {
 			var bz2 BilanCuisson
 			borneALaBoite(ctx, r, &bz2, bz)
 			n := bz2.CellulesHorsBoite
@@ -999,7 +999,7 @@ func journalisePixelsParType(ctx context.Context, r *Rendu, b BilanCuisson, obje
 // native — meme masque, meme dilatation, meme journal — a ceci pres que les zones ne sont pas
 // fournies mais LUES DANS LES OBJETS deja charges.
 func mesureEtRogneZonesForge(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuissonForge) {
-	zs := ZonesNommeesForge(opts.Objets)
+	zs := mapvar.ZonesNommeesForge(opts.Objets)
 	if len(zs) == 0 {
 		return
 	}
