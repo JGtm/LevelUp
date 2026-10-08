@@ -6,6 +6,8 @@
 //
 //   - un enrichissement joueur dont le match manque au registre partagé est re-récupéré, en
 //     delta comme en full, puis devient connu (convergence) ;
+//   - un orphelin plus ancien que le premier connu est récupéré par son match_id (passe dédiée
+//     de syncHistory, alimentée par run()) ;
 //   - en régime normal (chaque enrichissement a son match au registre), seuls les nouveaux
 //     matchs sont récupérés ;
 //   - base partagée illisible : RunDelta s'arrête avec l'erreur typée, sans appel API ni écriture.
@@ -360,4 +362,74 @@ func TestKnownSetV1_RunDelta_EnrichiAuRegistreSansParticipantResteConnu(t *testi
 		t.Errorf("sauté = %d, inséré = %d, attendu 1 et 0 (R connu : au registre et enrichi, arrêt delta sur lui)",
 			res.MatchesSkipped, res.MatchesInserted)
 	}
+}
+
+// TestKnownSetV1_RunDelta_OrphelinPlusAncienQueLeConnuRecupere : par le point d'entrée réel
+// (RunDelta → run), provider réel. K est connu (au registre, enrichi) ; l'orphelin O (enrichi,
+// absent du registre) est PLUS ANCIEN que K dans l'historique : le delta s'arrête sur K avant
+// de le voir. run() transmet Set.Recover à syncHistory : O est récupéré par son match_id dans
+// le même run et rejoint le registre.
+func TestKnownSetV1_RunDelta_OrphelinPlusAncienQueLeConnuRecupere(t *testing.T) {
+	env := newMultiUserEnv(t, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	opts := domain.SyncOptions{
+		MatchType: "matchmaking", MaxMatches: 5, WithParticipants: true, WithMedals: true, RequestsPerSecond: 100,
+	}
+	const (
+		matchK = "c0000000-0000-4000-8000-0000000000a1"
+		matchO = "c0000000-0000-4000-8000-0000000000b1"
+	)
+	u := env.users[0]
+	u.mock.statsBody = map[string]map[string]any{
+		matchK: makeMatchJSON(matchK, 2),
+		matchO: makeMatchJSON(matchO, 2),
+	}
+
+	// K : synchronisé (registre, participants, enrichissement de user0).
+	u.mock.history = makeHistory(matchK)
+	if _, err := u.engine.RunDelta(ctx, opts); err != nil {
+		t.Fatalf("RunDelta K: %v", err)
+	}
+	// O : enrichissement seul (base partagée restaurée plus ancienne).
+	ph, err := OpenPlayerDB(u.engine.playerDBPath)
+	if err != nil {
+		t.Fatalf("OpenPlayerDB user0: %v", err)
+	}
+	if err := UpsertPlayerEnrichment(ctx, ph.SQLDb(), matchO, ""); err != nil {
+		t.Fatalf("UpsertPlayerEnrichment: %v", err)
+	}
+	_ = ph.Close()
+	if inSharedRegistry(ctx, t, env, matchO) {
+		t.Fatal("pré-condition : O déjà au registre")
+	}
+
+	u.mock.history = makeHistory(matchK, matchO)
+	res, err := u.engine.RunDelta(ctx, opts)
+	if err != nil {
+		t.Fatalf("RunDelta K, O: %v", err)
+	}
+	if !inSharedRegistry(ctx, t, env, matchO) {
+		t.Fatalf("orphelin plus ancien que le connu non récupéré par son match_id (inséré = %d, sauté = %d)",
+			res.MatchesInserted, res.MatchesSkipped)
+	}
+	if res.MatchesInserted != 1 {
+		t.Errorf("inséré = %d, attendu 1 (O seul : le delta s'arrête sur K)", res.MatchesInserted)
+	}
+}
+
+// inSharedRegistry : le match a sa ligne match_registry dans la base partagée (lecture par le
+// provider).
+func inSharedRegistry(ctx context.Context, t *testing.T, env *multiUserEnv, id string) bool {
+	t.Helper()
+	db, release, err := env.provider.Get(ctx)
+	if err != nil {
+		t.Fatalf("provider.Get: %v", err)
+	}
+	defer release()
+	var n int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_registry WHERE match_id = ?`, id).Scan(&n); err != nil {
+		t.Fatalf("lecture registre: %v", err)
+	}
+	return n == 1
 }
