@@ -96,6 +96,7 @@ import { useReplayTiming } from '../hooks/useReplayTiming'
 import { CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 import { useReplayViewport } from '../hooks/useReplayViewport'
+import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
 import { useReplayDrag } from '../hooks/useReplayDrag'
 
@@ -174,6 +175,11 @@ interface ReplayCanvasProps {
    */
   viewpoint: string | null
   /**
+   * LE MODE PLEIN ÉCRAN, tenu par la page (il change le cadre de SA grille) : le canvas n'en
+   * relaie que la commande, au bouton de la barre de lecture et à la touche F.
+   */
+  fullscreen: ReplayFullscreen
+  /**
    * LE ROSTER JOINT DU MATCH (`model.players`) et le geste qui pose le point de vue : les deux
    * ne servent qu'au MENU de la frise (2026-09-07, lot L3). Ils traversent le canvas comme le
    * fil et les médias — assemblés une fois par la page, jamais reconstruits ici. Roster vide et
@@ -204,7 +210,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, marks,
-  allegiance, viewpoint, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
@@ -642,7 +648,7 @@ export function ReplayCanvas({
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
-    lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
+    lead: teamCascades, playback, toggleSound: sound.toggle, toggleFullscreen: fullscreen.toggle, zoom,
     // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. L'allégeance
     // est celle des calques (`model.allegiance`, lue dans le film et vue du point de vue) —
     // c'est elle qui dit qui est coéquipier du joueur regardé.
@@ -745,7 +751,7 @@ export function ReplayCanvas({
             clockRef={clockRef} timeline={timeline}
             autoPlay={settings.autoPlay} onToggleAutoPlay={settings.toggleAutoPlay}
             speed={multiplier} onSetSpeed={settings.setSpeed}
-            sound={sound} capture={capture} locale={locale}
+            sound={sound} capture={capture} locale={locale} fullscreen={fullscreen}
             settingsOpen={drawer.open} onToggleSettings={drawer.toggle}
             settingsButtonRef={drawer.buttonRef}
           />
