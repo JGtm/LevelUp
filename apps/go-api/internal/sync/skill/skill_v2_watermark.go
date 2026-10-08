@@ -3,7 +3,7 @@ package skill
 // skill_v2_watermark.go — ce qui est NOUVEAU pour le shadow LUSR v2 se décide sur
 // un LECTEUR, avant toute prise d'écrivain (lot perf L6, 2026-09-23).
 //
-// Mesure du 2026-09-23 (.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md, C7) : le
+// Mesure du 2026-09-23 (.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md, C7) : le
 // post-sync prenait l'écrivain partagé tous les 3 candidats et ne testait le « déjà
 // traité » qu'à l'intérieur de la rafale — 1 233 bascules RO→RW→RO en moins de deux
 // minutes (cinq joueurs, 9 416 candidats) pour ZÉRO ligne écrite. Chaque bascule

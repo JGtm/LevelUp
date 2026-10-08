@@ -7,7 +7,7 @@ import (
 )
 
 // porteurs_crane_identite_test.go — DEPLACE de `replaybuild/skullidentity_test.go` le 2026-09-28 (lot
-// V1.4 du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`) avec le code qu'il teste.
+// V1.4 du plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`) avec le code qu'il teste.
 //
 // LE PONT D'IDENTITE DESCEND JUSQU'AU PORTEUR DU CRANE d'Oddball.
 //

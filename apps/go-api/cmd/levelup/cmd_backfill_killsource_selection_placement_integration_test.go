@@ -3,7 +3,7 @@
 package main
 
 // cmd_backfill_killsource_selection_placement_integration_test.go — LA FRAICHEUR DU PLACEMENT DES
-// VIES DANS LA SELECTION DU RATTRAPAGE (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, decision V12).
+// VIES DANS LA SELECTION DU RATTRAPAGE (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, decision V12).
 //
 // `matchsAJour` exige, pour tout match qui a des vies, une passe de `match_life_placement_latest`
 // a `killcollector.PlacementRev`. La requete tourne ici sur une vraie base migree : les quatre

@@ -1,6 +1,6 @@
 // Package teammates — teammates_service_composition_legere.go : LES SESSIONS D'UNE
 // COMPOSITION, SANS LA PAGE (lot perf L4b, 2026-09-23 —
-// .ai/PLAN_PERF_CHARGEMENTS_2026-09-23.md §9, D4b.1).
+// .ai/V7.5/PLAN_PERF_CHARGEMENTS_2026-09-23.md §9, D4b.1).
 //
 // # LE DÉFAUT
 //
@@ -8,7 +8,7 @@
 // composition ne lisaient que deux champs de POST /pages/teammates
 // (composition_sessions, latest_composition_session) : la page entière partait d'abord sur
 // tout l'historique, puis l'ancrage la relançait sur la bonne session
-// (.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md §1.2 et C3).
+// (.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md §1.2 et C3).
 //
 // # CE QUE CETTE LECTURE FAIT, ET SEULEMENT CELA
 //

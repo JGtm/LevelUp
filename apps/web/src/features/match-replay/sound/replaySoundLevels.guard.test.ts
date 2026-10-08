@@ -20,7 +20,7 @@
  * Les bandes laissent environ 3 dB de part et d'autre de ces mesures. Elles ne jugent pas un
  * dixième de LU : elles attrapent une chaîne de livraison qui a perdu (ou ajouté) plusieurs
  * décibels. La mesure exacte en LUFS reste le travail d'ffmpeg (`ebur128`, recette au journal
- * du plan `.ai/PLAN_BACKLOG_2026-09-26.md`, lot A4).
+ * du plan `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md`, lot A4).
  */
 /// <reference types="node" />
 import { describe, expect, it } from 'vitest'

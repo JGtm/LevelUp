@@ -1,5 +1,5 @@
 // Package service — match_view_tools.go : « OUTILS DE DESTRUCTION » DU JOUEUR DE LA PAGE sur la Vue
-// match (plan `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, D9) — le builder de l'Escouade et de
+// match (plan `.ai/V7.5/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`, D9) — le builder de l'Escouade et de
 // Sessions (`squadagg.BuildWeaponTools`), un joueur, un match.
 //
 // Aucune lecture neuve hors des catégories de source : les lignes par arme sont les frags par arme du

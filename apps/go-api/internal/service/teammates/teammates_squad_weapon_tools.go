@@ -1,6 +1,6 @@
 // Package teammates — teammates_squad_weapon_tools.go : « Outils de destruction » de
 // l'Escouade, chaque frag nommé (décision D8 du plan
-// .ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md).
+// .ai/V7.5/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md).
 //
 // Les LECTURES et leurs traces vivent ici (feuille de match par joueur, catégories de source du
 // film) ; le builder pur est `squadagg.BuildWeaponTools`, partagé avec la page Sessions.

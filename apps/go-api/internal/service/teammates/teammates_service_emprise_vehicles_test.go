@@ -1,7 +1,7 @@
 package teammates
 
 // teammates_service_emprise_vehicles_test.go — la ressource « véhicules » de l'Emprise publiée par
-// GetPage (plan `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3), avec un dépôt simulé : une
+// GetPage (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3), avec un dépôt simulé : une
 // lecture par requête bornée par les matchs du périmètre (ADR 0036 I4), indépendante du film, et les
 // dégradations (capability absente, dépôt non supporté, lecture en échec) — la page ne tombe jamais.
 

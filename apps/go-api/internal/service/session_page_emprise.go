@@ -1,5 +1,5 @@
 // Package service — session_page_emprise.go : L'EMPRISE ET « MES VIES » DE LA PAGE SESSIONS (plan
-// `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D3, D4, D5).
+// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D3, D4, D5).
 //
 // Le joueur de la page SEUL, en contexte escouade comme en solo (décision utilisateur V1) : aucun
 // coéquipier suivi n'a de fiche. Orchestration seule : l'assemblage est `buildSoloEmpriseBlock`

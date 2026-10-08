@@ -1,7 +1,7 @@
 package duckdb
 
 // squad_life_placement_repo_test.go — LE PLACEMENT DES VIES SE LIT BORNÉ, SUR LA VUE `_latest`
-// (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.1, décision V11 ; ADR 0036 I2).
+// (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.1, décision V11 ; ADR 0036 I2).
 //
 // Base `:memory:` migrée (les vraies migrations shared, donc la vraie vue). Ce que chaque test
 // verrouille :

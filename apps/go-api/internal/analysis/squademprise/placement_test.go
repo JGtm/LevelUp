@@ -1,6 +1,6 @@
 package squademprise
 
-// placement_test.go — une règle par test (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.2).
+// placement_test.go — une règle par test (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.2).
 // Chaque test a été vu ROUGE sous la mutation nommée au journal V3 du plan.
 
 import (

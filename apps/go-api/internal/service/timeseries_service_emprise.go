@@ -1,6 +1,6 @@
 // Package service — timeseries_service_emprise.go : L'ONGLET « USAGES » DES SÉRIES TEMPORELLES,
 // l'Emprise appliquée aux matchs solo de la fenêtre (plan
-// `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2 ; type publié :
+// `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2 ; type publié :
 // domain.SoloEmpriseBlock).
 //
 // Orchestration seule : l'assemblage est `buildSoloEmpriseBlock` (solo_emprise_block.go, partagé avec

@@ -1,7 +1,7 @@
 /**
  * Tests — les REQUÊTES de la page Escouade (lots perf L4a puis L4b, 2026-09-23).
  *
- * Séquence mesurée le 2026-09-23 (`.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md`
+ * Séquence mesurée le 2026-09-23 (`.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md`
  * §1.2, C3) : une requête teammates SANS coéquipier au premier passage (la
  * composition arrive par GET /friends), puis, à chaque snap ou clic du rail, DEUX
  * requêtes (deux sources de vérité de la session, deux clés : 8,2 s à vide +

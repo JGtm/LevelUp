@@ -4,7 +4,7 @@ package migration
 // quelles lignes elle garde.
 //
 // Une table n'entre ici que si (inventaire C.1 du plan
-// `.ai/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, DC.1) :
+// `.ai/V7.5/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, DC.1) :
 //   (a) sa vue `_latest` retient « toutes les lignes de la dernière passe par match » ou « la
 //       dernière ligne par clé », sans fusion de colonnes ;
 //   (b) aucun lecteur ne lit ses anciennes passes — elles sont des passes de DÉCODAGE supersédées,

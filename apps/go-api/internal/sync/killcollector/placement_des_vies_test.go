@@ -1,7 +1,7 @@
 package killcollector
 
 // placement_des_vies_test.go — LA PROJECTION DU PLACEMENT DES VIES, SANS FIXTURE DE FILM (plan
-// `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2). Meme patron que `isolation_facts_test.go` :
+// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2). Meme patron que `isolation_facts_test.go` :
 // ses gardes, ses traductions et son chemin d'erreur sont verifies partout, films absents.
 
 import (

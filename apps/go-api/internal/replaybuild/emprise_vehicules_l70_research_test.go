@@ -3,7 +3,7 @@
 package replaybuild
 
 // emprise_vehicules_l70_research_test.go — LOT L7.0 DU PLAN
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md` : LES MESURES DE LA RESSOURCE « VEHICULES » sur les
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md` : LES MESURES DE LA RESSOURCE « VEHICULES » sur les
 // huit soirees temoins, sur un document construit EN MEMOIRE par le code actuel.
 //
 // # CE QUE CE FICHIER MESURE

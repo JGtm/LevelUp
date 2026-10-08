@@ -16,9 +16,9 @@ constrains), [ADR 0035](0035-player-directory-single-identity-key.md) (the xuid 
 key; a gamertag is a display value). Supersedes nothing.
 
 Paths are relative to `apps/go-api/internal/` unless they start with `docs/` or `.ai/`. Every
-figure comes from `.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` (sections 1 and 6),
-`.ai/HANDOFF_PERF_CHARGEMENTS_2026-09-24.md` (section 2) or the lot journals of
-`.ai/PLAN_PERF_CHARGEMENTS_2026-09-23.md`.
+figure comes from `.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` (sections 1 and 6),
+`.ai/V7.5/HANDOFF_PERF_CHARGEMENTS_2026-09-24.md` (section 2) or the lot journals of
+`.ai/V7.5/PLAN_PERF_CHARGEMENTS_2026-09-23.md`.
 
 ---
 
@@ -289,10 +289,10 @@ SQL cost, two to four times shorter.
 
 Every read below is outside an invariant today, with its measured cost (copy, 2 threads /
 512 MB, player `JGtm` and his last match, one call, unless stated) and what retires it. Lot A,
-step P2 of `.ai/PLAN_PERF_LECTURES_PERIMETRE_2026-09-26.md` (reads only, no write, no anti-ART
+step P2 of `.ai/V7.5/PLAN_PERF_LECTURES_PERIMETRE_2026-09-26.md` (reads only, no write, no anti-ART
 invariant touched: the one structural lot accepted before the production measurement), was done
 on 2026-09-26: its five reads of the view left the I1 table below, and what it leaves behind is
-listed under I2. Lot B (step B of `.ai/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, after
+listed under I2. Lot B (step B of `.ai/V7.5/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, after
 the compaction of step C) was done on 2026-09-27: three reads left the I2 table below, and its
 remeasure of the two I3 pages is written in their rows.
 An exception leaves this list together with its read; a new one needs a line here, a measured cost
@@ -381,7 +381,7 @@ view read (`platform/duckdb/squad_repo_annuaire.go`, `localiserKillFeed`). A sin
 victim) is the lead; not measured. Not assigned.
 
 **The cost of these windows follows the number of passes, and compaction is the maintenance that
-bounds it** (step C of `.ai/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, 2026-09-26).
+bounds it** (step C of `.ai/V7.5/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, 2026-09-26).
 Every re-decode of a film appends a full pass to the film tables (INSERT-only, ADR 0026); a
 `_latest` view serves only the last one, but its window partitions every pass. On the local
 database of 2026-09-26, 90 % of the film-table rows were superseded passes (11.27 M raw rows for

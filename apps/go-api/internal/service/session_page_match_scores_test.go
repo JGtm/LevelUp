@@ -1,7 +1,7 @@
 package service
 
 // session_page_match_scores_test.go — SCORE ET DOMINANCE DES LIGNES DE MATCH de la session (plan
-// `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D15) : le libellé de la source unique (manches pour
+// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D15) : le libellé de la source unique (manches pour
 // une variante déclarée), la dominance de l'enrichissement, rien d'inventé sans ligne canonique.
 
 import (

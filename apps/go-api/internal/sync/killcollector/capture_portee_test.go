@@ -1,7 +1,7 @@
 package killcollector
 
 // capture_portee_test.go — LA PORTEE DU RADAR VOYAGE PAR LA CAPTURE (plan
-// `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2b.1).
+// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2b.1).
 //
 // Les trois lieux de naissance du collecteur appliquent la capture (garde-rail
 // `archlint/no_collecteur_sans_capture_test.go`) ; ces tests pincent les deux maillons qui leur

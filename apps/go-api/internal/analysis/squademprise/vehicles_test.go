@@ -1,7 +1,7 @@
 package squademprise
 
 // vehicles_test.go — LA RESSOURCE « VEHICULES » DE L'EMPRISE (plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3). Une règle par test : prises par camp et
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3). Une règle par test : prises par camp et
 // par joueur (D2), temps à bord (D4), frags de classe véhicule par camp (D5), périmètre commun du
 // rendement et rendement sur les frags appariés (D9), « non mesuré » contre zéro mesuré (D8),
 // épisodes sans xuid en couverture (D10), nom des familles qualifiées, habitude.

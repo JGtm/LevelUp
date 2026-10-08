@@ -3,7 +3,7 @@ package replay
 // pont_par_manche.go — LE PONT SLOT D'ENTITE STATBORG -> XUID, PAR MANCHE, DE LA CUISSON ET DU SYNC.
 //
 // DEPLACE depuis `replaybuild/matchfacts.go` le 2026-09-28 (lot V1.4 du plan
-// `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle : le collecteur de sync lit
+// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle : le collecteur de sync lit
 // desormais les porteurs d'objectif par l'assembleur de production (`porteurs_au_sync.go`), et ce
 // pont nomme les porteurs du drapeau et du crane. Deux producteurs du meme fait ne peuvent pas
 // resoudre deux ponts : il vit ICI, ou les deux le trouvent, et `replaybuild` l'appelle.
