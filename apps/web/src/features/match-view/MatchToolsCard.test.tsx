@@ -12,10 +12,11 @@ import type { SquadWeaponTools } from '@/lib/api/types'
 import { MATCH_EMPRISE_TEXT } from './matchEmpriseText'
 import { MatchToolsCard } from './MatchToolsCard'
 
-const recu = vi.hoisted(() => ({ props: null as null | { data: { players: string[]; rows: { label: string; total: number }[] } | null } }))
+type Recu = { title: React.ReactNode; data: { players: string[]; rows: { label: string; total: number }[] } | null; soloByClass?: boolean }
+const recu = vi.hoisted(() => ({ props: null as null | Recu }))
 
 vi.mock('@/features/squad/SquadWeaponKillsChart', () => ({
-  SquadWeaponKillsChart: (p: { title: React.ReactNode; data: { players: string[]; rows: { label: string; total: number }[] } | null }) => {
+  SquadWeaponKillsChart: (p: Recu) => {
     recu.props = p
     return <div data-testid="outils">{p.title}</div>
   },
@@ -33,6 +34,11 @@ describe('MatchToolsCard', () => {
     render(<MatchToolsCard tools={TEMOIN} locale="fr" />)
     expect(recu.props?.data?.players).toEqual(['JGtm'])
     expect(recu.props?.data?.rows.map((r) => `${r.label} ${r.total}`)).toEqual(['VK78 Commando 1', 'Grenade frag 1', 'Mêlée 2', 'MK50 Sidekick 7'])
+  })
+
+  it('barres à la couleur de la classe de l’outil, sans gamertag (un seul joueur sur la page)', () => {
+    render(<MatchToolsCard tools={TEMOIN} locale="fr" />)
+    expect(recu.props?.soloByClass).toBe(true)
   })
 
   it('titre de l’Escouade, aide portée « le match »', () => {

@@ -19,7 +19,7 @@ Go paths are relative to `apps/go-api/internal/games/halo_infinite/film/`, excep
 with `cmd/` or `internal/archlint/`, which are relative to `apps/go-api/`, and those that start with
 `docs/` or `.ai/`, which are relative to the repository root. Figures were measured on `feat/v75`
 `8b894a677` (2026-10-01) and come from
-`.ai/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md` (sections 1 and 2) and the
+`.ai/V7.5/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md` (sections 1 and 2) and the
 two reports it cites; they are re-measured at each step closure.
 
 ---
@@ -69,7 +69,7 @@ must be a separate, named and counted layer.
 
 ### Corrections to the specification
 
-The specification (`.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md`, with a draft ADR in
+The specification (`.ai/V7.5/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md`, with a draft ADR in
 its section 12) was checked against the code on 2026-10-01 and corrected on eight points (C1 to C8,
 section 2 of the analysis): one entity table, not three (C1); two phases, not one pass (C2); a
 refused closure distinct from an opaque tail (C3); recovery that already lives inside the walk
@@ -544,7 +544,7 @@ Costs and risks, each with its parry:
 - **A parallel grammar campaign that changes outputs.** After each merge of a campaign wave into
   `feat/v75`, the equivalence references move: this effort merges `feat/v75`, re-freezes its
   references and replays its zero-difference proof against them. File ownership is agreed per step
-  (`.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`, section 1.3).
+  (`.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md`, section 1.3).
 - **Memory.** The film stays resident (the forward reads of IR-3 forbid releasing a chunk after its
   walk); the gain of IR-8 is on records, not on the film. Duration and memory peak of a cook are
   measured before and after each step on three witnesses and one BTB; a regression beyond 10 % stops
@@ -554,13 +554,13 @@ Costs and risks, each with its parry:
 
 ## References
 
-- `.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md` — the specification and its draft ADR.
-- `.ai/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md` — the corrections C1 to C8,
+- `.ai/V7.5/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md` — the specification and its draft ADR.
+- `.ai/V7.5/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md` — the corrections C1 to C8,
   the form, the lots, the order.
 - `.ai/V7.5/film_re/RAPPORT_IR_CARTOGRAPHIE_GO_2026-10-01.md` — the inventory of passes, the germs,
   the Go design, the detailed migration.
 - `.ai/V7.5/film_re/RAPPORT_PORT_RUST_2026-10-01.md` — the third-party port and the measurement on
   our witnesses.
-- `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md` — the execution plan of step 1.
+- `.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE1_2026-10-02.md` — the execution plan of step 1.
 - Every package, test and ratchet named above, cited inline where it applies. Chronicle, not
   source: the code is.

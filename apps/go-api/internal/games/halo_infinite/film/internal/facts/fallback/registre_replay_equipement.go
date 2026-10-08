@@ -175,7 +175,7 @@ var registreReplayEquipement = []Repli{
 		// 20 -> 13 et 8 -> 1. Le compteur n'a pas ete cable au passage, donc le RESIDU n'a pas
 		// de chiffre a lui.
 		CibleRetrait:    "mesurer le residu du compteur desormais cable ; a defaut, " + retraitRegle4,
-		CritereRetrait:  "0 elargissement necessaire sur le parc — residu MESURE NON NUL le 2026-10-02 : 2 matchs / 4 elargissements sur 1 227 artefacts (.ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md)",
+		CritereRetrait:  "0 elargissement necessaire sur le parc — residu MESURE NON NUL le 2026-10-02 : 2 matchs / 4 elargissements sur 1 227 artefacts (.ai/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md)",
 		CompteurBranche: true,
 	},
 	{

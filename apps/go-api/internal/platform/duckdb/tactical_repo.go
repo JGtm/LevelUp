@@ -79,7 +79,7 @@ func NewTacticalRepo(pdb *PlayerDB) *TacticalRepo {
 
 // ─── LES TROIS LECTURES ────────────────────────────────────────────────────────
 
-// QTacticalMaps : les cartes JOUEES par le joueur dans le perimetre.
+// QTacticalMaps : les cartes JOUEES par le joueur dans le perimetre, UNE rangee par map_id.
 //
 // Les codes d'issue sont des PARAMETRES LIES (domain.OutcomeWin / OutcomeLoss),
 // jamais des litteraux dans la chaine SQL — un `outcome = 2` en dur est
@@ -88,16 +88,34 @@ func NewTacticalRepo(pdb *PlayerDB) *TacticalRepo {
 // Meme token Campagne que QTacticalUnivers, et pour la meme raison : sans lui, la
 // grille d'entree d'un joueur Halo 5 affichait ses cartes de Campagne a cote de
 // ses cartes d'arene.
-const QTacticalMaps = `
+//
+// LA CLE EST LE SEUL map_id. Le nom du registre varie d'un match a l'autre pour une meme
+// carte (vrai nom, NULL, ou map_id recopie quand la sync n'avait pas encore la traduction) :
+// grouper aussi sur lui scinde une carte en plusieurs rangees, dont chacune porte une part
+// du compte — et le plancher de matchs du service s'applique alors a une part. Le nom
+// retenu est celui du match le plus recent qui en porte un VRAI (ni NULL, ni vide, ni le
+// map_id) ; a defaut, vide, et le libelle vient de la traduction de l'asset
+// (poserLesLibelles). Garde-rail : archlint/no_group_by_registry_name_test.go.
+var QTacticalMaps = `
 SELECT mr.map_id,
-       COALESCE(mr.map_name, '') AS map_name,
-       COALESCE(MAX(mr.map_name_fr), '') AS map_name_fr,
+       ` + nomDeCarteRetenuSQL("map_name") + ` AS map_name,
+       ` + nomDeCarteRetenuSQL("map_name_fr") + ` AS map_name_fr,
        COUNT(*)                          AS matchs,
        COUNT(*) FILTER (WHERE mp.outcome = ?) AS victoires,
        COUNT(*) FILTER (WHERE mp.outcome = ?) AS defaites
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND mr.map_id IS NOT NULL AND mr.map_id <> ''` + clausePvEExclu + campaignExclusionToken
+
+// nomDeCarteRetenuSQL rend l'agregat qui choisit, pour un groupe de matchs d'une meme carte
+// (alias `mr`), le nom porte par la colonne `col` au match le plus recent (debut canonique)
+// parmi ceux qui en ont un vrai. Un match sans horodatage n'entre pas dans arg_max ; le MAX
+// filtre le relaie quand AUCUN match nomme n'est horodate. Jamais NULL : chaine vide a defaut.
+func nomDeCarteRetenuSQL(col string) string {
+	vrai := "mr." + col + " IS NOT NULL AND mr." + col + " <> '' AND mr." + col + " <> mr.map_id"
+	return "COALESCE(arg_max(mr." + col + ", " + StartTimeCanonicalSQL("mr") + ") FILTER (WHERE " + vrai +
+		"), MAX(mr." + col + ") FILTER (WHERE " + vrai + "), '')"
+}
 
 // MapsPlayed liste les cartes jouees, matchs decroissants puis map_id.
 func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
@@ -117,7 +135,7 @@ func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) (
 	perim, perimArgs := clausePerimetre(q)
 	args := append([]any{domain.OutcomeWin, domain.OutcomeLoss, q.PlayerXUID}, perimArgs...)
 	query := resolveCampaignExclusion(QTacticalMaps, r.pdb.TitleSlug, "mr") + perim +
-		` GROUP BY mr.map_id, mr.map_name ORDER BY matchs DESC, mr.map_id`
+		` GROUP BY mr.map_id ORDER BY matchs DESC, mr.map_id`
 
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {

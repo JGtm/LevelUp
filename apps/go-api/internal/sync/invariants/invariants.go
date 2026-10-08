@@ -131,7 +131,7 @@ func CheckShared(ctx context.Context, playerDB, sharedDB *sql.DB) (Report, error
 //
 // Contrat : tout match présent dans shared.match_participants pour ce xuid a
 // une row player_match_enrichment dans la player DB. C'est LE contrat du
-// delta-skip cross-player (loadKnownMatchIDs source 2 + ensurePlayerEnrichmentRows) :
+// delta-skip cross-player (knownset.Load : participants du xuid au registre + ensurePlayerEnrichmentRows) :
 // un match peut être inséré en shared par le sync d'un coéquipier, mais la
 // convergence DOIT créer la row enrichment du joueur courant.
 // Incidents : 2026-05-27 (Madina/Choco/XxDaemon), 2026-06-10 (session du 09/06).

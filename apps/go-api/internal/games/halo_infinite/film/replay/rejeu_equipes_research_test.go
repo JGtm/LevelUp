@@ -3,7 +3,7 @@
 package replay
 
 // rejeu_equipes_research_test.go — INSTRUMENT du lot « toute entree du roster a l'equipe que le film
-// ecrit » (2026-10-06, `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, etape G1). Lecture seule : le
+// ecrit » (2026-10-06, `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, etape G1). Lecture seule : le
 // fichier de faits persiste d'un film et son artefact publie, jamais le film.
 //
 // Pour chaque entree du roster publie sans place (`seatSource: index`), il rend ce que la liaison

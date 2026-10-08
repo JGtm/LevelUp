@@ -3,7 +3,7 @@
 package killcollector
 
 // placement_des_vies_integration_test.go — LE PLACEMENT DES VIES ECRIT PAR LE COLLECTEUR, sur une
-// vraie base migree (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2).
+// vraie base migree (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2).
 //
 //	TestProjeterPlacementDesVies_*   synthetique, tourne partout : la ligne ecrite, la revision,
 //	                                 la portee, la passe qui remplace la precedente.

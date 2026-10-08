@@ -1,7 +1,7 @@
 package teammates
 
 // teammates_service_emprise_placement_test.go — le bloc « Groupés ou isolés » publié par GetPage
-// (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.3), avec un dépôt simulé : une lecture
+// (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V3.3), avec un dépôt simulé : une lecture
 // bornée par requête (ADR 0036 I4), la portée courante résolue par la source unique, et les
 // dégradations (capability absente, lecture en échec, portée périmée) — la page ne tombe jamais.
 

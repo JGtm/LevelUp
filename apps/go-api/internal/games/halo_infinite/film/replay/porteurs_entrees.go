@@ -4,7 +4,7 @@ package replay
 // (drapeau, crane, couronne VIP, bombe), POUR LA CUISSON ET POUR LE SYNC.
 //
 // DEPLACE depuis `replaybuild/matchfacts.go` et `replaybuild/zones.go` le 2026-09-28 (lot V1.4
-// du plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle. Le plan exige que le
+// du plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`), sans changement de regle. Le plan exige que le
 // collecteur lise les porteurs « sous la meme garde de mode que la cuisson » : une garde recopiee
 // au sync aurait diverge au premier ajustement d'un nom de variante. Elle est ecrite ICI, une fois,
 // et `replaybuild` comme `PortagesAuSync` l'appellent.

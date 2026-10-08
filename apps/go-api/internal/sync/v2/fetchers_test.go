@@ -31,6 +31,7 @@ type mockNarrowClient struct {
 	historyArgSeenMu   gosync.Mutex
 	historyArgSeen     []string
 	statsCallCount     atomic.Int32
+	statsSeen          gosync.Map // matchID → struct{} : matchs dont les stats ont été demandées
 	skillCallCount     atomic.Int32
 	highlightCallCount atomic.Int32
 }
@@ -55,6 +56,7 @@ func (m *mockNarrowClient) GetMatchHistory(ctx context.Context, arg, matchType s
 
 func (m *mockNarrowClient) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
 	m.statsCallCount.Add(1)
+	m.statsSeen.Store(matchID, struct{}{})
 	if m.statsErr != nil {
 		return nil, m.statsErr
 	}

@@ -9,7 +9,7 @@
 //	watcher JGtm a sync les 8 matchs → INSERT dans shared.match_registry
 //	+ shared.match_participants (rows pour les 4 joueurs). Mais pour
 //	Madina/Choco/XxDaemon eux-mêmes, leur sync delta voit ces 8 match_ids
-//	comme "déjà connus" (loadKnownMatchIDs source #2 = shared.match_participants
+//	comme "déjà connus" (règle knownset.Load : shared.match_participants au registre
 //	WHERE xuid=?) → arrête le delta → PlayerPersister.Persist jamais appelé
 //	→ aucune row dans player_match_enrichment côté Madina/Choco/XxDaemon.
 //
@@ -70,7 +70,7 @@ func ensurePlayerEnrichmentRows(
 
 	// Lire les match_ids du joueur côté shared. Cast défensif xuid || '' :
 	// MÊME prédicat que le déclencheur countSharedMatchesMissingEnrichment et
-	// que loadKnownMatchIDs — un drift de type ferait diverger déclencheur et
+	// que knownset.Load — un drift de type ferait diverger déclencheur et
 	// réparateur (re-trigger infini sans convergence).
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT DISTINCT match_id

@@ -4,7 +4,7 @@ package killsource
 
 // botmeta_equipe_research_test.go — LA LECTURE DE L EQUIPE DES BOTS CONTRE SON ORACLE, SUR LE PARC
 // (lot « toute entree du roster a l'equipe que le film ecrit », 2026-10-06,
-// `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.0).
+// `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.0).
 //
 // L ORACLE est independant de la lecture : l equipe que l entite `ti=9` d un bot lui donne, liee par
 // ses declarations BOT_METADATA (TSV de `replay/rejeu_equipes_research_test.go`,

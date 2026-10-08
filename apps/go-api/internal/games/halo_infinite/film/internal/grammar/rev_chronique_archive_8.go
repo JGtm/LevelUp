@@ -129,7 +129,7 @@ package grammar
 // fusionnee, empreinte egale a celle du `.4`).
 //
 // ENTREE `grammar-2026-10-04` (2026-10-04, lot 2.7.a de la representation intermediaire,
-// `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES MORTS D OBJET ET L OCCUPATION
+// `.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES MORTS D OBJET ET L OCCUPATION
 // SONT UN CANAL DE LA MARCHE DES TRAMES ; LA MARCHE A HUIT VUES EST RETIREE.
 //
 // Ce qui change, contre `grammar-2026-10-03.5` :
@@ -269,7 +269,7 @@ package grammar
 // `fed1efed2` ; §16 : decisions du pilote, contre `b033d30f0`).
 //
 // ENTREE `grammar-2026-10-06.5` (2026-10-06, lot 2.7.b de la representation intermediaire,
-// `.ai/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES HUIT LECTEURS DE COMPOSANTS
+// `.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : LES HUIT LECTEURS DE COMPOSANTS
 // BIPEDES LISENT LA MARCHE DES TRAMES, L ANCRAGE PASSE DERRIERE ELLE.
 //
 // Ce qui change, contre `grammar-2026-10-06.4` :

@@ -112,6 +112,38 @@ func TestTeammatesService_GetPage_PublieLesBlocsDUsageSurLePerimetreEscouade(t *
 	}
 }
 
+// TestTeammatesService_GetPage_CoequipierSansGamertagDeParticipant — la soirée du 7 octobre
+// 2026 : aucune ligne de `match_participants` ne portait le gamertag des coéquipiers (ni celui du
+// joueur principal). Comparés par nom, ils disparaissaient de « Répartition de l'objectif dans
+// l'escouade » et des fiches de l'Emprise ; retrouvés par xuid, ils y sont, sous le nom choisi.
+func TestTeammatesService_GetPage_CoequipierSansGamertagDeParticipant(t *testing.T) {
+	t.Parallel()
+	repo, usageRepo := usageFixture(time.Now().UTC().Add(-time.Hour))
+	for i := range usageRepo.participants {
+		usageRepo.participants[i].Gamertag = ""
+	}
+	svc := NewTeammatesService(repo, nil).
+		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main").
+		WithUsageSummary(usageRepo).
+		WithSquadFormes(usageRepo, nil, "").
+		WithEmprise(feuilleM1())
+
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"Ally1"},
+	})
+	if err != nil {
+		t.Fatalf("erreur inattendue : %v", err)
+	}
+	want := []domain.SessionUsageSquadPlayer{{XUID: "player-xuid", Gamertag: "Main"}, {XUID: "x1", Gamertag: "Ally1"}}
+	if b := resp.SquadFormes; b == nil || len(b.Squad) != 2 || b.Squad[0] != want[0] || b.Squad[1] != want[1] {
+		t.Fatalf("escouade du bloc formes = %+v, attendu %+v", resp.SquadFormes, want)
+	}
+	e := resp.SquadEmprise
+	if e == nil || len(e.Players) != 2 || e.Players[1].XUID != "x1" || e.Players[1].Gamertag != "Ally1" {
+		t.Errorf("fiches de l'Emprise = %+v, attendu Main puis Ally1", e)
+	}
+}
+
 // TestTeammatesService_GetPage_SansSelectionLePerimetreEstLeScopeFiltre — D2, repli : sans
 // coéquipier sélectionné, les blocs d'usage lisent tous les matchs filtrés du joueur.
 func TestTeammatesService_GetPage_SansSelectionLePerimetreEstLeScopeFiltre(t *testing.T) {

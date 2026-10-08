@@ -1,5 +1,5 @@
 // Package duckdb — squad_vehicle_repo.go : la ressource « véhicules » du bloc Emprise (plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3, décisions D5, D8, D9, D10 ; ADR 0036).
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3, décisions D5, D8, D9, D10 ; ADR 0036).
 //
 // UN CHARGEMENT PAR REQUÊTE, TROIS LECTURES BORNÉES PAR LA LISTE DES MATCHS :
 //

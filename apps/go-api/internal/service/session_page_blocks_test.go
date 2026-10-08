@@ -1,7 +1,7 @@
 package service
 
 // session_page_blocks_test.go — LES BLOCS DU FILM DE LA COLONNE DE SESSION (plan
-// `.ai/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, lot S2) : une lecture du résumé d'usage par session
+// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, lot S2) : une lecture du résumé d'usage par session
 // partagée par tous les blocs, la coordination qui garde son joueur et son effectif de camp,
 // l'Emprise d'un seul joueur, les vies et l'objectif de chaque session, l'emblème.
 

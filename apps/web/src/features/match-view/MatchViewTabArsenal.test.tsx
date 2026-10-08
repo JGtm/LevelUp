@@ -3,8 +3,8 @@
  *
  * Les cartes de l'Emprise sont RÉELLES (modèles, textes, briques partagées) sur les deux témoins de
  * `matchEmprise.fixtures.ts` ; seules les feuilles qui lisent l'artefact de rejeu, les positions ou
- * ECharts sont mockées. Couvre : l'ordre des cartes (plan §3), l'intertitre et sa couverture, la
- * rangée G | H, le repli des râteliers, la ligne non identifiée, l'ordre des lignes d'« Isolement »,
+ * ECharts sont mockées. Couvre : l'ordre des cartes (plan §3), l'intertitre et sa couverture, « Prises
+ * par joueur » sorti de sa carte (intertitre, aide, fiches sans cadre), la rangée G | H, le repli des râteliers, la ligne non identifiée, l'ordre des lignes d'« Isolement »,
  * le retrait par carte, un match sans film, l'anglais et l'état vide de l'onglet.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -84,6 +84,18 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     afficher()
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionEquipmentTerrain)).toBeInTheDocument()
     expect(screen.getByTestId('match-emprise-coverage').textContent).toBe('film décodé · 8 joueurs présents à la fin')
+  })
+
+  it('« Prises par joueur » : un intertitre avec son aide, les fiches posées à même la section, sans cadre', () => {
+    afficher()
+    const section = screen.getByTestId('match-emprise-sheets-section')
+    const titre = within(section).getByText('Prises par joueur')
+    expect(titre.tagName).toBe('H3')
+    expect(within(section).getAllByText('Prises par joueur')).toHaveLength(1)
+    fireEvent.click(within(titre).getByRole('button'))
+    expect(screen.getByRole('tooltip').textContent).toContain('par joueur de l’équipe sur le match')
+    const fiches = within(section).getByTestId('emprise-sheets')
+    expect(fiches.className).not.toContain('border')
   })
 
   it('« Frags par ressource » et « Rendement par ressource » côte à côte', () => {
@@ -179,6 +191,7 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(screen.getByText(MATCH_VIEW_TEXT.en.sectionEquipmentTerrain)).toBeInTheDocument()
     expect(screen.getByText('Resource control, by match')).toBeInTheDocument()
     expect(screen.getByText('Isolation, by player')).toBeInTheDocument()
+    expect(within(screen.getByTestId('match-emprise-sheets-section')).getByText('Pickups by player').tagName).toBe('H3')
     expect(screen.getByTestId('match-emprise-coverage').textContent).toBe('film decoded · 8 players present at the end')
   })
 

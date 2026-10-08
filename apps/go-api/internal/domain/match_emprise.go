@@ -1,7 +1,7 @@
 package domain
 
 // match_emprise.go — LES BLOCS DE L'EMPRISE SUR LA VUE MATCH (plan
-// `.ai/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`) : un match, en comptes exhaustifs, les joueurs de
+// `.ai/V7.5/PLAN_MATCHVIEW_EMPRISE_2026-10-06.md`) : un match, en comptes exhaustifs, les joueurs de
 // l'équipe du joueur de la page connus un par un.
 
 // MatchViewEmpriseFields — embarqué dans MatchViewResponse : les champs s'aplatissent dans le JSON

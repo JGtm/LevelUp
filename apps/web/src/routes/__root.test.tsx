@@ -17,12 +17,20 @@ const navigateMock = vi.fn()
 
 // Données pilotées par test, lues par le mock useQuery.
 let queryData: BootstrapResponse | undefined
+// État de chargement piloté par test (écran d'attente du /bootstrap).
+let queryLoading = false
+let queryFailureReason: unknown = null
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    useQuery: () => ({ data: queryData, isLoading: false, isError: false, failureCount: 0 }),
+    useQuery: () => ({
+      data: queryData,
+      isLoading: queryLoading,
+      isError: false,
+      failureReason: queryFailureReason,
+    }),
   }
 })
 
@@ -188,5 +196,70 @@ describe('RootLayout — titre d’onglet locale-aware (I18)', () => {
     })
 
     expect(document.title).toBe('LevelUp - Home')
+  })
+})
+
+/**
+ * Écran d'attente du /bootstrap : un serveur qui démarre (réseau, 502, 503
+ * server_starting) affiche « Démarrage du serveur… » et l'étape annoncée, sans
+ * compteur de tentatives ; sinon « Chargement LevelUp… ».
+ */
+describe('RootLayout — attente du serveur qui démarre', () => {
+  beforeEach(() => {
+    log._resetForTests()
+    useAppShellStore.setState({ currentUsername: null, isBootstrapped: false, locale: 'fr' })
+    queryLoading = true
+  })
+
+  afterEach(() => {
+    queryLoading = false
+    queryFailureReason = null
+  })
+
+  const serverStarting = (step: string) => ({
+    code: 'server_starting',
+    message: 'server starting',
+    retryable: true,
+    status: 503,
+    details: { step },
+  })
+
+  it('premier chargement, aucun échec → « Chargement LevelUp… »', () => {
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Chargement LevelUp…')
+  })
+
+  it('503 server_starting → « Démarrage du serveur… » + étape, sans compteur', () => {
+    queryFailureReason = serverStarting('accounts')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toContain('Démarrage du serveur…')
+    expect(container.textContent).toContain('Connexion des comptes')
+    expect(container.textContent).not.toMatch(/tentative|\d+\s*\/\s*\d+/)
+  })
+
+  it('erreur réseau (serveur pas encore à l’écoute) → « Démarrage du serveur… » sans étape', () => {
+    queryFailureReason = new TypeError('Failed to fetch')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Démarrage du serveur…')
+  })
+
+  it('étape inconnue → message de démarrage seul', () => {
+    queryFailureReason = serverStarting('etape_future')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Démarrage du serveur…')
+  })
+
+  it('anglais → « Server starting… » + étape en anglais', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    queryFailureReason = serverStarting('migrations')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toContain('Server starting…')
+    expect(container.textContent).toContain('Updating databases')
+  })
+
+  it('autre erreur en cours de rejeu → « Chargement LevelUp… »', () => {
+    queryFailureReason = { code: 'bootstrap_error', status: 500, retryable: true }
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Chargement LevelUp…')
   })
 })

@@ -10,7 +10,7 @@
 //	  -> jointure des libellés FR/EN par (carte, volume_index) sur callouts_i18n.csv
 //	     (copie VERSIONNÉE — data/titles/{slug}/reference/callouts_i18n.csv : 816/816
 //	     résolus par string_id)
-//	  -> classement grandes/fines par recouvrement (classify.go, étalonné sur le POC)
+//	  -> classement grandes/fines par recouvrement (mapcatalog.ClasserGrandes, étalonné sur le POC)
 //	  -> Ridgeline : polygones remplacés par le dump DÉCOUPÉ versionné (decoupe.go)
 //
 // INVARIANTS MESURÉS, et la passe ÉCHOUE s'ils bougent : 22 cartes avec zones, 816 zones,
@@ -56,6 +56,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 // deployVariant : la variante sur laquelle la table levl a été établie et mesurée
@@ -193,9 +194,9 @@ func construitLexique(opts options) {
 // Son absence est journalisée en AVERTISSEMENT et n'arrête rien : le catalogue natif
 // n'en dépend pas. Mais elle fait retomber la couverture Forge au seul vocabulaire des
 // cartes intégrées — un silence ici publierait des cartes muettes sans le dire.
-func joinsLexique(opts options, base libellesParStringID) libellesParStringID {
+func joinsLexique(opts options, base mapcatalog.Lexique) mapcatalog.Lexique {
 	path := cheminLexique(opts.outPath)
-	lex, err := chargeLexique(path)
+	lex, err := mapcatalog.ChargerLexique(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			slog.Warn("lexique absent — les zones Forge hors vocabulaire natif resteront muettes",
@@ -336,7 +337,7 @@ func ingereModule(cat *replay.MapCalloutsCatalog, opts options, labels libelles,
 // Elle ne s'exécute QUE si on la demande (`--forge-only` ou `--forge-fetch`) : sans cela,
 // la section existante est conservée telle quelle. Une passe Forge qui repartirait d'un
 // cache vide effacerait silencieusement des cartes déjà extraites.
-func passeForge(cat *replay.MapCalloutsCatalog, opts options, labels libellesParStringID) {
+func passeForge(cat *replay.MapCalloutsCatalog, opts options, labels mapcatalog.Lexique) {
 	if !opts.forgeOnly && !opts.forgeFetch {
 		return
 	}
@@ -415,13 +416,13 @@ func ecritCatalogue(cat replay.MapCalloutsCatalog, outPath string, acceptePerte 
 
 // construitEntree joint les libellés et classe les zones d'une carte intégrée.
 func construitEntree(module string, cs []himap.Callout, labels libelles) (replay.MapCalloutsEntry, error) {
-	var shaped []shapedPoly
+	var formes []mapcatalog.FormeDeZone
 	for _, c := range cs {
 		if c.HasShape && len(c.Polygon) >= 3 {
-			shaped = append(shaped, shapedPoly{vi: c.VolumeIndex, poly: c.Polygon})
+			formes = append(formes, mapcatalog.FormeDeZone{Index: c.VolumeIndex, Contour: c.Polygon})
 		}
 	}
-	big := classifyBig(shaped)
+	big := mapcatalog.ClasserGrandes(formes)
 
 	entry := replay.MapCalloutsEntry{
 		Module:     module,

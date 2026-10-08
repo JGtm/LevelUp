@@ -142,9 +142,8 @@ type MapBackgroundStats struct {
 
 // MapCalloutsEntry porte les ZONES NOMMEES d'une carte : le corps de
 // `GET /players/{slug}/matches/{id}/replay/callouts`. Le service resout la carte du match
-// (par module, comme le fond) puis PROJETTE l'entree du catalogue versionne sur cette forme.
-// 404 quand la carte n'en a pas — cas nominal d'une carte Forge, dont le canevas n'en porte
-// aucune.
+// (module, puis map_id au catalogue versionne et au catalogue genere) puis PROJETTE l'entree
+// trouvee sur cette forme. 404 quand la carte n'en a pas au catalogue.
 type MapCalloutsEntry struct {
 	Module     string        `json:"module"`
 	Provenance string        `json:"provenance"`

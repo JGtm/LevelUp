@@ -7,15 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"strings"
+	"maps"
+	"slices"
 	"time"
 
 	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // GetTopMatches retourne les 10 meilleurs et 10 moins bons matchs.
@@ -179,58 +179,23 @@ func (s *CareerService) GetRivals(ctx context.Context) (domain.CareerRivalsRespo
 	}, nil
 }
 
-// resolveFriendXUIDs résout la liste des amis configurés (gamertags) en XUIDs, TOUS à la fois
-// (lot perf L9-go) : d'abord le registre des profils suivis — un ami suivi a un xuid connu,
-// sans lecture —, puis une seule lecture pour les autres (CareerRepo.ResolveFriendXUIDs :
-// alias puis participants de l'historique du joueur, sans casse). Dégrade gracieusement : un
-// ami non résolu n'est pas exclu ; les non résolus sont journalisés en WARN (dérive de
-// config : un gamertag des réglages que rien ne connaît), la lecture en échec aussi (DEBUG si
-// la requête a pris fin).
+// resolveFriendXUIDs résout la liste des amis configurés (gamertags) en XUIDs, TOUS à la fois,
+// par la résolution partagée avec la composition stricte de l'Escouade
+// (teammates.ResolveFriendXUIDs) : d'abord le registre des profils suivis — un ami suivi a un
+// xuid connu, sans lecture —, puis une seule lecture pour les autres
+// (CareerRepo.ResolveFriendXUIDs : alias puis participants de l'historique du joueur, sans
+// casse). Dégrade gracieusement : un ami non résolu n'est pas exclu (journalisé). XUIDs triés :
+// la liste d'exclusion ne dépend pas de l'ordre d'itération d'une map.
 func (s *CareerService) resolveFriendXUIDs(ctx context.Context) []string {
 	if s.friendGamertags == nil || s.friendXUIDs == nil {
 		return nil
 	}
 	var suivis map[string]string
 	if s.friendsSuivis != nil {
-		suivis = make(map[string]string)
-		for gt, xuid := range s.friendsSuivis(ctx) {
-			suivis[strings.ToLower(strings.TrimSpace(gt))] = xuid
-		}
+		suivis = s.friendsSuivis(ctx)
 	}
-	var out, aLire []string
-	for _, gt := range s.friendGamertags(ctx) {
-		if gt = strings.TrimSpace(gt); gt == "" {
-			continue
-		}
-		if xuid := suivis[strings.ToLower(gt)]; xuid != "" {
-			out = append(out, xuid)
-			continue
-		}
-		aLire = append(aLire, gt)
-	}
-	if len(aLire) == 0 {
-		return out
-	}
-	lus, err := s.friendXUIDs(ctx, aLire)
-	if err != nil {
-		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelWarn),
-			"career.top_encounters.friends_read_failed", "friends", aLire, "err", err)
-	}
-	var unresolved []string
-	for _, gt := range aLire {
-		if xuid := lus[gt]; xuid != "" {
-			out = append(out, xuid)
-		} else {
-			unresolved = append(unresolved, gt)
-		}
-	}
-	if len(unresolved) > 0 {
-		slog.WarnContext(ctx, "career.top_encounters.friends_unresolved",
-			"unresolved", unresolved,
-			"resolved", len(out),
-		)
-	}
-	return out
+	resolus := teammates.ResolveFriendXUIDs(ctx, "career", s.friendGamertags(ctx), suivis, s.friendXUIDs)
+	return slices.Sorted(maps.Keys(resolus))
 }
 
 // computeCareerEncounterBadges attribue les badges de rencontre de la page Carrière

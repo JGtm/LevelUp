@@ -67,9 +67,6 @@ type SquadRepository interface {
 	// l'équipe alliée complète au lieu du squad sélectionné uniquement.
 	LoadMainTeamParticipants(ctx context.Context, mainXUID string, matchIDs []string) ([]domain.AllyParticipant, error)
 
-	// LoadSynthesisHeatmap charge les données heatmap carte × mode (Q33).
-	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
-
 	// LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
 	// assetType : "map" | "playlist". Retourne nil sans erreur si table absente ou IDs vides.
 	LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error)
@@ -99,8 +96,6 @@ type SquadRepository interface {
 //
 // P4.3 finale : LoadSynthesisMatches retiré.
 type SynthesisRepository interface {
-	// LoadSynthesisHeatmap charge la heatmap carte×mode (Q33).
-	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
 	// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les AssetReference
 	// (Map, Playlist, GameVariant, PairMode) des rows canoniques depuis
 	// metadata.asset_translations + mode_name_tr quand match_registry.{...}_name_fr
@@ -331,9 +326,6 @@ func (n *noopSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]do
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
-	return nil, nil
-}
-func (n *noopSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ []string) (map[string]string, error) {

@@ -318,7 +318,7 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           UN symbole neuf, re-mesure sur la base `e3e322b74` :
 //	                                           277.
 //	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
-//	                                           sync (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           sync (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
 //	                                           HUIT par `replaybuild`, qui appelle desormais le pont
 //	                                           par manche, les gardes de mode et les entrees des
 //	                                           calques de porteur DEPLACES dans `replay` pour que

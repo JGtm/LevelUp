@@ -1,5 +1,5 @@
 // Package service — timeseries_service_lives.go : « MES VIES : PRÈS D'UN COÉQUIPIER OU SEUL »
-// (Séries temporelles › Usages ; plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L3 ;
+// (Séries temporelles › Usages ; plan `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L3 ;
 // calcul : analysis/coordination.ViesPresOuSeul, type publié : domain.TimeseriesLivesNearTeammate).
 //
 // Orchestration seule : la lecture bornée et le calcul sont `lireViesPresOuSeul`

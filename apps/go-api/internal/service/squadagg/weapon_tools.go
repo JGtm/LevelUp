@@ -1,5 +1,5 @@
 // Package squadagg — weapon_tools.go : « OUTILS DE DESTRUCTION », chaque frag nommé (décision D8 du
-// plan .ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md), commun à l'Escouade et à la page Sessions.
+// plan .ai/V7.5/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md), commun à l'Escouade et à la page Sessions.
 //
 // # Ce que ce builder est, et pourquoi il n'est pas fragdist
 //

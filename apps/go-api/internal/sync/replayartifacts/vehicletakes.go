@@ -1,7 +1,7 @@
 package replayartifacts
 
 // vehicletakes.go — LA RESSOURCE VEHICULES DE L'EMPRISE, PERSISTEE AU FIL DE L'EAU (plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.2, decisions D1, D8, D9, D10).
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.2, decisions D1, D8, D9, D10).
 //
 // # CE QUE CE FICHIER FAIT
 //

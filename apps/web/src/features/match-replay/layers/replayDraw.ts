@@ -1,11 +1,15 @@
 /**
  * replayDraw.ts — couches de DÉCOR et d'ÉVÉNEMENTS du rejeu 2D : sol reconstruit, props Forge
- * (en repli), tirs et lancers de grenade. Le joueur lui-même vit dans replayMarkers.ts.
+ * (en repli), tirs et morts. Le joueur lui-même vit dans replayMarkers.ts.
  * Pas de React : uniquement un CanvasRenderingContext2D + de la géométrie pure
  * (replayLogic.ts). Les couleurs arrivent DÉJÀ RÉSOLUES depuis les tokens sémantiques
  * (getSeriesColors / resolveToken) — aucun littéral de couleur ici (règle color-tokens).
+ *
+ * UN LANCER DE GRENADE NE POSE AUCUNE MARQUE AU POINT DE DÉPART : il se lit par son VOL
+ * (replayProjectiles.ts), sa FIN DE VOL (useReplayGrenadeRest.ts) et le badge de lancer de
+ * la fiche du lanceur (model/grenadeFx.ts).
  */
-import type { ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
+import type { ReplayMapObject } from '@/lib/api/types'
 
 import type { FxInk } from './fxInk'
 import { drawMuzzleFlash } from './muzzleFlash'
@@ -72,11 +76,6 @@ export function drawGeometryLayer(
 // Les TRAJECTOIRES et les marqueurs de joueur vivent dans replayMarkers.ts : ce calque a
 // gagné le cône de visée, le bouclier, les anneaux d'étage, l'apparition et la mort, et il
 // aurait fait de ce fichier un god file.
-
-// Événements ponctuels : un tir est un éclair de bouche (sa géométrie vit dans
-// muzzleFlash.ts), un lancer une marque plus lisible.
-const GRENADE_RADIUS = 4
-const GRENADE_RING = 6.5
 
 /**
  * Couleurs héritées du sol reconstruit, SUPPRIMÉ le 2026-09-03 (décision utilisateur : ce repli
@@ -256,9 +255,6 @@ export function drawKillFxLayer(
   ctx.globalAlpha = 1
 }
 
-/** Côté de la vignette de type posée au-dessus de l'anneau d'un lancer (POC : 18 px). */
-const GRENADE_ICON_PX = 18
-
 /**
  * tintedIconCanvas — un masque du HUD (blanc/gris + alpha) TEINT à une encre du thème,
  * une fois pour toutes dans un canvas hors écran. Un canvas ne connaît pas le
@@ -351,59 +347,6 @@ export function outlinedSpriteCanvas(
   octx.drawImage(outline, (off.width - outline.naturalWidth) / 2, (off.height - outline.naturalHeight) / 2)
   octx.drawImage(tintedSprite, (off.width - tintedSprite.width) / 2, (off.height - tintedSprite.height) / 2)
   return off
-}
-
-/** Style du calque des lancers : la couleur des marques, et la vignette du TYPE par rang. */
-export interface GrenadeStyle {
-  color: string
-  /** Vignette teintée du rang, ou null : l'anneau seul reste juste — jamais la vignette
-   *  d'un type voisin. */
-  iconOf: (rank: number) => CanvasImageSource | null
-}
-
-/**
- * drawGrenadesLayer dessine les lancers de grenade.
- *
- * CE QUI EST DESSINÉ EST LE POINT DE DÉPART, pas une trajectoire : l'arc et le point de chute
- * ne sont pas décodés, et rien ici ne les invente. L'anneau distingue le lancer d'un tir ;
- * la VIGNETTE au-dessus dit le TYPE (item 2.4 — le rang est écrit dans le film, la table
- * grenadeLabels le nomme).
- */
-export function drawGrenadesLayer(
-  ctx: CanvasRenderingContext2D,
-  grenades: ReplayGrenade[],
-  view: CanvasView,
-  win: EventWindow,
-  style: GrenadeStyle,
-): void {
-  ctx.strokeStyle = style.color
-  ctx.fillStyle = style.color
-  for (const g of grenades) {
-    const age = win.frame - g.t
-    if (age < 0 || age > win.hold) continue
-    const fade = 1 - age / Math.max(win.hold, 1)
-    const c = projectTo(view, g)
-    ctx.globalAlpha = fade
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, GRENADE_RADIUS, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.arc(c.x, c.y, GRENADE_RING, 0, Math.PI * 2)
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-    const icon = style.iconOf(g.rank)
-    if (icon) {
-      ctx.globalAlpha = Math.min(1, 1.2 * fade)
-      ctx.drawImage(
-        icon,
-        c.x - GRENADE_ICON_PX / 2,
-        c.y - GRENADE_ICON_PX / 2 - 13,
-        GRENADE_ICON_PX,
-        GRENADE_ICON_PX,
-      )
-    }
-  }
-  ctx.globalAlpha = 1
 }
 
 /**

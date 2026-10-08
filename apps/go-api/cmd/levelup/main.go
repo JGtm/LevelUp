@@ -19,6 +19,7 @@
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //	levelup populate-assets [--types map,playlist] [--langs fr-FR] [--dry-run] [--force] [--title-id slug]
+//	levelup backfill-registry-names [--dry-run] [--title slug]
 //	levelup identity       list | purge <xuid> [--yes]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
@@ -30,6 +31,7 @@
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
 //   - cmd_populate_assets.go - populate-assets (traductions d'assets Discovery UGC)
+//   - cmd_backfill_registry_names.go - backfill-registry-names (convergence des noms du registre)
 //   - cmd_identity.go - identity list / identity purge (annuaire des identites, ADR 0035)
 package main
 
@@ -136,6 +138,8 @@ func main() {
 		exitErr = runBackfillReplay(cfg, args)
 	case "backfill-usage-summary":
 		exitErr = runBackfillUsageSummary(cfg, args)
+	case "backfill-registry-names":
+		exitErr = runBackfillRegistryNames(cfg, args)
 	case "backfill-bomb-stats":
 		exitErr = runBackfillBombStats(cfg, args)
 	case "backfill-flag-grabs-net":
@@ -144,6 +148,8 @@ func main() {
 		exitErr = runBackfillPadTiers(cfg, args)
 	case "backfill-vehicle-takes":
 		exitErr = runBackfillVehicleTakes(cfg, args)
+	case "backfill-map-callouts":
+		exitErr = runBackfillMapCallouts(cfg, args)
 	case "tactical-rasters":
 		exitErr = runTacticalRasters(cfg, args)
 	case "replay-facts-export":
@@ -235,6 +241,11 @@ Commandes:
   backfill-vehicle-takes  Projette en base la ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies par camp/joueur/famille) lue du calque
                   vehicules des artefacts de rejeu deja ranges (match_vehicle_takes append-only) : AUCUN decodage, AUCUNE recuisson. Un artefact
                   de schema < 67 est ecrit « non mesure ». Apres une recuisson, --force (--dry-run, --force, --match, --limit, serveur arrete)
+  backfill-map-callouts  Donne leurs ZONES NOMMEES (callouts) aux cartes Forge jouees qui n en ont pas : variante .mvar lue au cache,
+                  sinon telechargee une fois (pool de jetons) et deposee au cache, zones rangees au catalogue GENERE
+                  reference/generated/map_callouts.json (le versionne n est jamais ecrit). AUCUNE recuisson : les zones se
+                  resolvent au service. Idempotente ; bilan chiffre et string_id sans libelle (--dry-run, --hors-ligne,
+                  --carte ID[,ID...], --rps, --cache-dir, --title, serveur arrete)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild,
                   UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par
                   SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force,
@@ -252,6 +263,10 @@ Commandes:
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
   populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
+  backfill-registry-names  Fait converger les noms de carte, paire, playlist et variante du registre restés NULL ou égaux
+                  à leur identifiant vers leurs traductions (paire sans traduction construite « {variante} on {carte} »).
+                  Un match à la fois, idempotente, mode_category jamais touchée (--dry-run : comptes par colonne,
+                  aucune écriture ; --title). SERVEUR ARRÊTÉ, y compris pour --dry-run (le serveur tient la base).
   identity        Annuaire des identites : identity list (compte / profils / jeton / anomalies par xuid) et
                   identity purge <xuid> [--yes] (retire compte, jeton, profils, dossiers et groupes ; SANS --yes
                   c est une simulation qui imprime le rapport). La base partagee des matchs n est JAMAIS touchee.

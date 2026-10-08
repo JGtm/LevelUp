@@ -335,6 +335,8 @@ export function ReplaySettingsDrawer({
       ref={panelRef}
       tabIndex={-1}
       role="region"
+      // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
+      data-replay-escape-layer=""
       aria-label={t.settingsButton}
       style={{ left: pos.left, bottom: pos.bottom, width: PANEL_WIDTH, maxHeight: pos.maxHeight }}
       className="fixed z-50 flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"

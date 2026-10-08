@@ -2,7 +2,7 @@
 
 package killcollector
 
-// emprise_v0_passe_research_test.go — LOT V0 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`,
+// emprise_v0_passe_research_test.go — LOT V0 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`,
 // VOLET COLLECTEUR : la passe ACTUELLE chronometree, et la mesure V0.1 (le joueur en vehicule
 // n'est pas situe).
 //

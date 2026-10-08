@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/sync/knownset"
 )
 
 // ─── Mocks ────────────────────────────────────────────────────────────
@@ -18,13 +20,14 @@ import (
 // (PlayerSlug → known set) et un compteur d'appels concurrents max.
 type mockLoader struct {
 	known        map[string]map[string]bool
+	orphans      map[string][]string // PlayerSlug → orphelins à récupérer (knownset.Set.Recover)
 	failFor      map[string]error
 	delay        time.Duration
 	callsInFligh atomic.Int32
 	maxInFlight  atomic.Int32
 }
 
-func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (map[string]bool, error) {
+func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error) {
 	cur := m.callsInFligh.Add(1)
 	defer m.callsInFligh.Add(-1)
 	for {
@@ -37,16 +40,17 @@ func (m *mockLoader) LoadKnown(ctx context.Context, p PlayerProfile) (map[string
 		select {
 		case <-time.After(m.delay):
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return knownset.Set{}, ctx.Err()
 		}
 	}
 	if err, ok := m.failFor[p.PlayerSlug]; ok {
-		return nil, err
+		return knownset.Set{}, err
 	}
-	if k, ok := m.known[p.PlayerSlug]; ok {
-		return k, nil
+	k, ok := m.known[p.PlayerSlug]
+	if !ok {
+		k = map[string]bool{}
 	}
-	return map[string]bool{}, nil
+	return knownset.Set{Known: k, Recover: m.orphans[p.PlayerSlug]}, nil
 }
 
 // mockProvider implémente MatchListProvider avec un mapping statique
@@ -288,3 +292,26 @@ func keysOf(m map[string][]string) []string {
 
 // Compile-time check : suppress unused gosync alias warning if any.
 var _ = gosync.Mutex{}
+
+// TestDiscovery_OrphelinsAjoutesSansDoublon : les orphelins de l'ensemble connu sont ajoutés à
+// la suite de la liste paginée du joueur, sans doubler un match déjà listé ; un joueur sans
+// orphelin garde exactement sa liste paginée.
+func TestDiscovery_OrphelinsAjoutesSansDoublon(t *testing.T) {
+	players := mkPlayers("alice", "bob")
+	loader := &mockLoader{orphans: map[string][]string{"alice": {"m2", "o1", "o2"}}}
+	provider := &mockProvider{allMatches: map[string][]string{
+		"alice": {"m1", "m2"},
+		"bob":   {"m3"},
+	}}
+
+	res, err := RunDiscovery(context.Background(), players, loader, provider)
+	if err != nil {
+		t.Fatalf("RunDiscovery: %v", err)
+	}
+	if got, want := fmt.Sprint(res.PerPlayer["alice"]), fmt.Sprint([]string{"m1", "m2", "o1", "o2"}); got != want {
+		t.Errorf("alice = %s, attendu %s", got, want)
+	}
+	if got, want := fmt.Sprint(res.PerPlayer["bob"]), fmt.Sprint([]string{"m3"}); got != want {
+		t.Errorf("bob = %s, attendu %s (aucun orphelin, liste inchangée)", got, want)
+	}
+}

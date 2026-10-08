@@ -2845,7 +2845,7 @@ package replay
 //	`roster[].     (bot declare a la frame ou finit la derniere vie du partant) n est plus un
 //	presence`      chevauchement ; l humain lu pendant la declaration du bot, sans vie avant son
 //	               retrait, lui succede : sa presence commence au lendemain du retrait. Sur les 19
-//	               temoins du lot (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.5) :
+//	               temoins du lot (`.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G3.5) :
 //	               `sansEquipe` 18 -> 0, `sansPlace` 21 -> 3, `depassements` 229 -> 60 ; les trois
 //	               restes ne viennent pas de l equipe (une vie nommee apres l absence prouvee de son
 //	               entite, un bot non epingle hors du roster, un depart apres la derniere image-cle).
@@ -2884,7 +2884,7 @@ package replay
 //	`roster[]`     un bot declare qui n a aucune vie et ne trouve aucune place dans son equipe n entre
 //	               pas au roster publie (`sieges_bots_sans_place.go`) ; un bot sans place qui a une vie
 //	               reste, sans place, en ERREUR. Sur les 19 temoins du lot
-//	               (`.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, phase D) : `sansPlace` 3 -> 0,
+//	               (`.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, phase D) : `sansPlace` 3 -> 0,
 //	               `placesEnTrop` 3 -> 0, `depassements` 60 -> 0.
 //	forme          AUCUN CHAMP NEUF : les comptes de ces regles vont au journal et a l expvar
 //	               (`rejeu_vies_apres_depart_ecartees`, `rejeu_bots_sans_vie_ni_place_ecartes`).

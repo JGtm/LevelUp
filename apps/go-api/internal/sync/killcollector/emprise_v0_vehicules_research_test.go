@@ -2,7 +2,7 @@
 
 package killcollector
 
-// emprise_v0_vehicules_research_test.go — LOT V0.1 DU PLAN `.ai/PLAN_EMPRISE_VIES_2026-09-28.md` :
+// emprise_v0_vehicules_research_test.go — LOT V0.1 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
 // LE JOUEUR EN VEHICULE N'EST PAS SITUE.
 //
 // LA QUESTION. La cause `unplaced` (« en vehicule ou position non lue ») ne couvre le vehicule que

@@ -35,7 +35,7 @@
 # `.facts.json` touche ; 20 cuissons `depuis_les_faits=false`.
 #
 # REFERENCES RE-FIGEES AU RETRAIT DES REPLIS NULS (DU-7), SCHEMA 76, LE 2026-10-02 (branche
-# feat/retrait-replis-nuls ; mesure du parc : .ai/MESURES_PARC_REPLIS_NULS_2026-10-02.md).
+# feat/retrait-replis-nuls ; mesure du parc : .ai/V7.5/MESURES_PARC_REPLIS_NULS_2026-10-02.md).
 # CLASSIFICATION AVANT `-update`, sortie complete : 20 films, 20 ecarts, et sur les VINGT les trois
 # memes etapes des 61 — `flag`, `killsource`, `skull`. `artifact` (le document cuit) et les 57
 # autres etapes sont IDENTIQUES A L OCTET. Les trois objets observes perdent des champs de COMPTE de

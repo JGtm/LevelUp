@@ -1,7 +1,7 @@
 package domain
 
 // squad_emprise_vehicles.go — LA RESSOURCE « VEHICULES » DU BLOC EMPRISE (plan
-// `.ai/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3, décisions D2 à D10).
+// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3, décisions D2 à D10).
 //
 // Elle entre dans les listes existantes du bloc (une ressource = une entrée de liste, masquée si
 // absente) : `Resources` (prises par camp), `Objects` et `Matches[].Resources[].Objects` (un objet

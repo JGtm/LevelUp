@@ -29,7 +29,7 @@ package killsource
 // de 36 films du parc (55 HI_1_13_0, 1 HI_1_12_0) : 56/56 (`botmeta_equipe_research_test.go`) ; le
 // jumeau egal a l equipe sur les 78 bots dont l equipe se lit (79 bots du lecteur historique sur 48
 // films, dont un fantome, cf. [EquipesDesBots.HorsGrammaire] ;
-// `.ai/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G2.c, F.2 et G3.0).
+// `.ai/V7.5/PLAN_REJEU_EQUIPES_SOURCE_2026-10-06.md`, G2.c, F.2 et G3.0).
 //
 // # LA LECTURE VIT DANS LA GRAMMAIRE
 //

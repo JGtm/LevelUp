@@ -9,7 +9,12 @@
 import { createRootRouteWithContext, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import type { RouterContext } from '@/app/router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  createBootstrapRetryPolicy,
+  isServerStartingError,
+  serverStartingStepKey,
+} from '@/app/serverStartup'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { resolvePageTitle } from '@/lib/pageTitle'
@@ -35,8 +40,10 @@ export function RootLayout() {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // Politique de rejeu à état (compteur cumulé de TanStack) : une par instance, stable.
+  const [bootstrapRetry] = useState(() => createBootstrapRetryPolicy())
 
-  const { data, isLoading, isError, failureCount } = useQuery({
+  const { data, isLoading, isError, failureReason } = useQuery({
     queryKey: queryKeys.bootstrap,
     queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
     staleTime: 2 * 60 * 1000,
@@ -53,12 +60,10 @@ export function RootLayout() {
     // est vrai, on ne refetch pas au focus ; applyActiveTitle fait lui-même le
     // re-bootstrap final avec le bon header.
     refetchOnWindowFocus: () => !useAppShellStore.getState().isTitleSwitching,
-    // Le serveur Go peut mettre 5–15 s à démarrer (CGO + DuckDB) en dev
-    // (`air`) ou sur VPS (cold start, redéploiement). On retry en backoff
-    // exponentiel pour absorber la fenêtre de démarrage avant d'afficher
-    // l'écran "API injoignable" : 0.5 → 1 → 2 → 4 → 4 → 4 s ≈ 15 s total.
-    retry: 6,
-    retryDelay: (n) => Math.min(500 * 2 ** n, 4000),
+    // Serveur qui démarre (réseau, 502, 503 server_starting) : réinterrogation chaque
+    // seconde jusqu'au plafond, puis l'écran « API injoignable » (cf. serverStartup.ts).
+    retry: bootstrapRetry.retry,
+    retryDelay: bootstrapRetry.retryDelay,
   })
 
   // Mécanisme UNIQUE de titre d'onglet (I18) : keyé sur [pathname, locale] — un
@@ -181,13 +186,14 @@ export function RootLayout() {
   }, [data, hydrateFromBootstrap, navigate])
 
   if (isLoading) {
+    const starting = isServerStartingError(failureReason)
+    const stepKey = starting ? serverStartingStepKey(failureReason) : undefined
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen flex-col items-center justify-center gap-1">
         <span className="text-sm text-muted-foreground animate-pulse">
-          {failureCount > 0
-            ? `Connexion à l'API… (tentative ${failureCount + 1}/7)`
-            : t('common.root.loading_app')}
+          {starting ? t('common.root.server_starting') : t('common.root.loading_app')}
         </span>
+        {stepKey && <span className="text-xs text-muted-foreground">{t(stepKey)}</span>}
       </div>
     )
   }

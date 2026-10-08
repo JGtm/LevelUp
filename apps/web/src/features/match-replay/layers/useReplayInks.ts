@@ -56,7 +56,8 @@ const NEUTRAL_TOKEN: SemanticToken = 'divergent-neutral'
  */
 const ZONE_NEUTRAL_TOKEN: SemanticToken = 'zone-neutral'
 /**
- * Événements ponctuels. Le LANCER emprunte un token d'information ; le TIR, lui, ne prend plus
+ * Événements ponctuels. Le VOL d'une grenade et le halo de sa fin de vol empruntent un token
+ * d'information (aucune marque au point de lancer) ; le TIR, lui, ne prend plus
  * aucun token de données : sa couleur dit la NATURE DE LA DÉCHARGE et vient des teintes
  * diégétiques du thème (fxInk.ts, décision utilisateur du 2026-08-15). Le token d'alerte reste
  * employé par les effets de MORT, qui n'ont pas changé.
@@ -146,7 +147,7 @@ export interface ReplayInks {
   geometry: string
   /** Effets de MORT (le tir, lui, prend sa teinte de la décharge : cf. `fx`). */
   shot: string
-  /** Lancers de grenade. */
+  /** Vol des grenades et halo de leur fin de vol. */
   grenade: string
   /** Sol reconstruit ; `edge` sert aussi d'encre de mise en page à ce qui n'a pas de rôle. */
   floor: ReplayFloorInk

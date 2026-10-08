@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/canonical"
 )
 
 // MatchHistoryRepo implémente port.MatchHistoryRepository.
@@ -301,45 +300,4 @@ func applyTeamScore(row *domain.MatchHistoryRawRow, teamID *int, scores teamScor
 	}
 	row.MyTeamScore, row.EnemyTeamScore = scores.team1, scores.team0
 	row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds1, scores.rounds0
-}
-
-// LoadMapWinRates calcule le win_rate historique par carte (sur tous les matchs).
-// Retourne map[map_name] -> {wins, total}.
-func (r *MatchHistoryRepo) LoadMapWinRates(ctx context.Context) (map[string][2]int, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	// PMT-5 : win title-aware (fallback "p.outcome = 2" byte-identique Halo).
-	winExpr := outcomeSQLEq(ctx, "p.outcome", canonical.OutcomeWin, "p.outcome = 2")
-	q := `
-	SELECT r.map_name,
-	       SUM(CASE WHEN ` + winExpr + ` THEN 1 ELSE 0 END) AS wins,
-	       COUNT(*) AS total
-	FROM match_registry r
-	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + ` AND r.map_name IS NOT NULL
-	GROUP BY r.map_name`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("LoadMapWinRates: %w", err)
-	}
-	defer release()
-
-	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
-	if err != nil {
-		return nil, fmt.Errorf("LoadMapWinRates: %w", err)
-	}
-	defer rows.Close()
-
-	result := make(map[string][2]int)
-	for rows.Next() {
-		var mapName string
-		var wins, total int
-		if err := rows.Scan(&mapName, &wins, &total); err != nil {
-			return nil, err
-		}
-		result[mapName] = [2]int{wins, total}
-	}
-	return result, rows.Err()
 }

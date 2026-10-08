@@ -60,6 +60,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/atomicfile"
 )
 
 // entryFromMvarFn est la couture qui rend le CHEMIN NOMINAL testable sans `.mvar` reel.
@@ -200,7 +201,7 @@ func ajouterCarteAuCatalogue(ctx context.Context, d Deps, fetcher MvarFetcher,
 			"map_id", mapID, "err", err)
 		return false
 	}
-	if err := deposerMvar(d, mapID, base, blob); err != nil {
+	if err := deposerMvar(d.CacheRoot, mapID, base, blob); err != nil {
 		// Le depot est une TRACE, pas une dependance : on continue meme s'il echoue.
 		slog.WarnContext(ctx, "rattrapage mvar: depot du .mvar au cache echoue",
 			"map_id", mapID, "err", err)
@@ -245,10 +246,21 @@ func ajouterCarteAuCatalogue(ctx context.Context, d Deps, fetcher MvarFetcher,
 //
 // POURQUOI LE GARDER : il rend la passe REJOUABLE hors ligne. `mapopads-build --from` relit un
 // dossier de `.mvar` ; sans depot, regenerer le catalogue exigerait de re-telecharger.
-func deposerMvar(d Deps, mapID, base string, blob []byte) error {
-	dir := filepath.Join(d.CacheRoot, "mvar", mapID)
+//
+// Le MEME dossier sert le rattrapage des zones nommees (`lireMvarEnCache`) : une carte dont ce
+// rattrapage-ci vient de rapatrier la variante n'est pas telechargee une seconde fois. Le
+// cache est donc une SOURCE, et le depot est ATOMIQUE (temporaire du meme dossier puis
+// renommage, `atomicfile.WriteFileStrict`) : un disque plein ou un processus tue laisse
+// l'ancien fichier ou aucun, jamais une variante tronquee que les cycles suivants reliraient.
+func deposerMvar(cacheRoot, mapID, base string, blob []byte) error {
+	dir := dossierMvar(cacheRoot, mapID)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, base), blob, 0o600)
+	return atomicfile.WriteFileStrict(filepath.Join(dir, base), blob, 0o600)
+}
+
+// dossierMvar rend le dossier du cache ou vivent les variantes d'une carte.
+func dossierMvar(cacheRoot, mapID string) string {
+	return filepath.Join(cacheRoot, "mvar", mapID)
 }

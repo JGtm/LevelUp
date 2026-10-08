@@ -1,5 +1,5 @@
 // Package archlint — no_local_radar_range_lookup_test.go : garde-rail de la resolution
-// « variante -> portee du radar » (plan `.ai/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2b,
+// « variante -> portee du radar » (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2b,
 // CLAUDE.md regle 6).
 //
 // La table `[radar_range_m]` de regulation.toml se lisait par variante en deux copies
@@ -21,7 +21,7 @@
 // attrapent les anciennes copies : un garde-rail qui ne voit rien ne garde rien. Tests compris
 // (la troisieme copie en etait un). Pas d'allowlist hors du helper et de ce fichier.
 //
-// EMPREINTE 3 (2026-10-06, plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L1) : la
+// EMPREINTE 3 (2026-10-06, plan `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L1) : la
 // resolution PAR MATCH (boucle sur les matchs d'une lecture, appel de `PorteeDuRadar`, compte des
 // sans-portee) existait en deux copies de production et une troisieme s'annoncait ; elle est
 // `mappings.PorteesDuRadarParMatch`. Tout APPEL de `PorteeDuRadar(` dans un fichier de production

@@ -1,7 +1,7 @@
 package wire
 
 // registry_pages_timeseries_wiring_test.go — LE CABLAGE DE L'ONGLET « USAGES » DES SERIES
-// TEMPORELLES (Emprise solo, plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2.8).
+// TEMPORELLES (Emprise solo, plan `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2.8).
 //
 // Meme mode de panne que l'Escouade (registry_pages_home_teammates_wiring_test.go) : le service
 // degrade EN SILENCE sur une dependance nil. Les options sont lues dans l'arbre syntaxique de la

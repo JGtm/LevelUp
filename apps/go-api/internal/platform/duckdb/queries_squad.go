@@ -26,10 +26,10 @@ GROUP BY match_id`
 // (squad_repo_annuaire.go), même cascade, sur les xuids du top et les mêmes matchs.
 //
 // ORDRE TOTAL (lot perf L8, 2026-09-23) : games_together DESC, puis wins_together DESC, puis
-// p2.xuid ASC. Sans départage, la coupe du LIMIT 50 parmi les ex aequo changeait d'une lecture
-// à l'autre, donc la liste des coéquipiers connus que la composition exacte exclut aussi : ses
-// sessions et leurs comptes (page Escouade comme lecture légère) n'étaient pas reproductibles
-// (données réelles, lot L4b : cinq pages de suite, quatre différentes de la première).
+// p2.xuid ASC. Sans départage, la coupe du LIMIT 50 parmi les ex aequo changerait d'une lecture
+// à l'autre, donc la liste proposée et la résolution d'un gamertag choisi. Ce top ne définit PAS
+// les coéquipiers connus de la composition stricte (amis déclarés et profils suivis seulement,
+// ADR 0033 ; service/teammates/coequipiers_connus.go).
 //
 // Paramètres positionnels :
 //
@@ -338,20 +338,6 @@ JOIN match_participants main
     AND p.team_id    = main.team_id
 WHERE p.match_id IN (%s)
 ORDER BY p.match_id, p.xuid`
-
-// Q33 : Synthèse — heatmap win rate par combinaison carte × mode.
-// Paramètre : ?1 = xuid du joueur.
-const Q33SynthesisHeatmap = `
-SELECT
-    COALESCE(r.map_name_fr, r.map_name, 'Unknown')    AS map_name,
-    COALESCE(r.pair_name_fr, r.pair_name, 'Unknown')  AS mode_name,
-    COUNT(DISTINCT p.match_id)                         AS match_count,
-    SUM(CASE WHEN %s THEN 1 ELSE 0 END)    AS wins
-FROM match_participants p
-JOIN v_match_full r ON r.match_id = p.match_id
-WHERE p.xuid = ? ` + campaignExclusionToken + `
-GROUP BY 1, 2
-ORDER BY match_count DESC`
 
 // Q33bSynthesisSharedQuery : (ADR 0016) — partie shared du split
 // LoadSynthesisMatches. 12 cols shared depuis match_participants + match_registry.

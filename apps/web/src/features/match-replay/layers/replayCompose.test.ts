@@ -55,7 +55,6 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   placements: true,
   fireMarks: true,
   shotFx: true,
-  grenades: true,
   zoneStates: true,
   objectivePulses: true,
   killFx: true,
@@ -107,7 +106,6 @@ const ORDRE_ATTENDU = [
   'marques-de-tir',
   'gestes-capacite',
   'tirs',
-  'grenades',
   'fin-de-vol',
   'etat-zones',
   'drapeaux',
@@ -121,7 +119,7 @@ const ORDRE_ATTENDU = [
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-cinq calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les vingt-quatre calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -208,7 +206,6 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
     ['placements', ['poses-equipement']],
     ['fireMarks', ['marques-de-tir']],
     ['shotFx', ['tirs']],
-    ['grenades', ['grenades']],
     ['zoneStates', ['etat-zones']],
     ['objectivePulses', ['pulses-objectif']],
     ['killFx', ['morts']],

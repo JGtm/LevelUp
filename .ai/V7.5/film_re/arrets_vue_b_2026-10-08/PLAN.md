@@ -4,7 +4,7 @@
 > contrat `plan-execution`. GO de l'utilisateur le 2026-10-08. Worktree
 > `LevelUp-wt-grammaire-arrets-vue-b-2`, branche `feat/grammaire-arrets-vue-b-2`, base `a4515e66c`
 > (`feat/v75` : `grammar-2026-10-08`, `SchemaVersion` 89, `killsource-2026-10-07.2`, faits 10).
-> Méthode, gates et garde-fous : handoff `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md`
+> Méthode, gates et garde-fous : handoff `.ai/V7.5/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md`
 > §4 à §6. Aucune fusion, aucune cuisson du parc.
 
 ## Méthode par composant

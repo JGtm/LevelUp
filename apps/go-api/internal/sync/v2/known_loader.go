@@ -1,25 +1,18 @@
-// Package v2 — known_loader.go : implémentation V2-native de KnownLoader
-// (D6.2 du plan ADR 0027).
+// Package v2 — known_loader.go : implémentation de KnownLoader (D6.2 du plan ADR 0027).
 //
-// Réimplémentation indépendante de V1 (engine.go::loadKnownMatchIDs) pour
-// satisfaire la règle de duplication ciblée : V1 ne reçoit aucune
-// modification. Algorithme identique à V1 :
-//
-//  1. SELECT match_id FROM player_match_enrichment    (source player)
-//  2. SELECT DISTINCT match_id FROM match_participants
-//     WHERE xuid || ” = ?                            (source shared, cross-player dedup)
-//
-// Cast défensif `xuid || ”` aligne sur recompute_after_art_rebuild.go:156
-// pour éviter les mismatchs silencieux si la colonne drift en type
-// (VARCHAR vs UBIGINT) — incident observé en prod 2026-05-24.
+// La règle « connu » n'est PAS ici : elle vit dans internal/sync/knownset, partagée avec le
+// moteur V1 (garde-rail archlint/known_set_single_source_test.go). Ce fichier ne fait
+// qu'ouvrir la base joueur et EMPRUNTER la base partagée le temps de la lecture.
 package v2
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
+
+	"levelup/go-api/internal/sync/knownset"
 )
 
 // PlayerDBOpener ouvre la stats.duckdb d'un joueur en read-only et retourne
@@ -31,86 +24,58 @@ import (
 // concurremment pour N joueurs en Phase 1).
 type PlayerDBOpener func(ctx context.Context, gamertag string) (db *sql.DB, release func(), err error)
 
-// knownLoaderV2 implémente KnownLoader sans dépendance à internal/sync.
-// Utilise *sql.DB du package standard — aucun lien avec V1.
+// knownLoaderV2 implémente KnownLoader en déléguant à knownset.Load.
 type knownLoaderV2 struct {
 	openPlayerDB PlayerDBOpener
-	getSharedDB  func() *sql.DB // retourne la connexion shared courante à chaque appel
+	borrowShared SharedDBAcquirer // emprunt RO de la base partagée, rendu après la lecture
 }
 
-// NewKnownLoader construit un KnownLoader prêt à être injecté dans le
-// CycleOrchestrator. getSharedDB peut retourner nil (source 2 désactivée,
-// comportement V1-compatible — la source 1 player suffit pour la dedup
-// intra-player). Utiliser un getter plutôt qu'un *sql.DB fixe évite les
-// connexions stales après un swap provider RO→RW→RO.
-func NewKnownLoader(playerDBOpener PlayerDBOpener, getSharedDB func() *sql.DB) KnownLoader {
+// NewKnownLoader construit un KnownLoader prêt à être injecté dans le CycleOrchestrator.
+// borrowShared est appelé à chaque LoadKnown et son release après knownset.Load (cf.
+// SharedBorrower) : la base partagée est empruntée pour TOUTE la durée de la lecture.
+func NewKnownLoader(playerDBOpener PlayerDBOpener, borrowShared SharedDBAcquirer) KnownLoader {
 	return &knownLoaderV2{
 		openPlayerDB: playerDBOpener,
-		getSharedDB:  getSharedDB,
+		borrowShared: borrowShared,
 	}
 }
 
-// LoadKnown retourne l'union player_match_enrichment ∪ shared.match_participants
-// pour le xuid du joueur. Erreurs partielles (1 source échoue) → log WARN +
-// retour de l'autre source (best-effort).
+// LoadKnown retourne l'ensemble des matchs connus du joueur et ses orphelins à récupérer par
+// match_id (règle knownset). Erreur si la base joueur ne s'ouvre pas, ou si la base partagée ne
+// peut pas être empruntée ou lue (knownset.ErrSharedUnreadable) : le cycle s'arrête alors avant
+// toute récupération (cf. CycleOrchestratorImpl.Run).
 //
-// Erreur fatale uniquement si openPlayerDB échoue (impossible d'avoir la
-// source 1).
-func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (map[string]bool, error) {
-	known := make(map[string]bool, 512)
-
-	// Source 1 : player_match_enrichment (DB per-joueur).
+// Une LECTURE en échec sur la base partagée (emprunt abouti) est refaite UNE fois sur un nouvel
+// emprunt : la connexion de l'écrivain servie pendant une écriture (cf. SharedBorrower) se ferme à sa
+// libération, éventuellement sous la lecture ; le second emprunt sert la connexion rouverte.
+func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (knownset.Set, error) {
 	playerDB, release, err := l.openPlayerDB(ctx, p.Gamertag)
 	if err != nil {
-		return nil, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
+		return knownset.Set{}, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
 	}
 	defer release()
 
-	rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment_latest")
-	if err == nil {
-		for rows.Next() {
-			var id string
-			if scanErr := rows.Scan(&id); scanErr == nil {
-				known[id] = true
-			}
-		}
-		_ = rows.Close()
-	} else {
-		// Table absente (schéma frais) ou autre erreur — pas fatal.
-		slog.DebugContext(ctx, "v2 LoadKnown: player_match_enrichment query failed (table absent ?)",
-			"gamertag", p.Gamertag, "err", err)
+	set, borrowed, err := l.loadOnce(ctx, playerDB, p)
+	if borrowed && errors.Is(err, knownset.ErrSharedUnreadable) && ctx.Err() == nil {
+		slog.WarnContext(ctx, "sync.v2: lecture de l'ensemble connu en échec — nouvel emprunt de la base partagée",
+			"player", p.Gamertag, "err", err)
+		set, _, err = l.loadOnce(ctx, playerDB, p)
 	}
-
-	// Source 2 : shared.match_participants WHERE xuid (cross-player dedup).
-	// getSharedDB() retourne la connexion courante (fraîche après chaque swap
-	// provider RO→RW→RO) plutôt qu'un pointeur capturé au boot qui devient
-	// stale après le premier cycle.
-	sharedDB := l.getSharedDB()
-	if sharedDB != nil && strings.TrimSpace(p.XUID) != "" {
-		sharedRows, err := sharedDB.QueryContext(ctx,
-			"SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?", p.XUID)
-		if err != nil {
-			// Warn explicite (cohérent avec V1) : known set partiel peut
-			// dégrader la dedup cross-player → re-fetch inutile.
-			slog.WarnContext(ctx, "v2 LoadKnown: shared.match_participants query failed — known set partiel",
-				"gamertag", p.Gamertag, "xuid", p.XUID, "err", err)
-		} else {
-			addedFromShared := 0
-			for sharedRows.Next() {
-				var id string
-				if scanErr := sharedRows.Scan(&id); scanErr == nil {
-					if !known[id] {
-						addedFromShared++
-					}
-					known[id] = true
-				}
-			}
-			_ = sharedRows.Close()
-			slog.DebugContext(ctx, "v2 LoadKnown: source 2 (shared) ajoutee",
-				"gamertag", p.Gamertag, "xuid", p.XUID,
-				"added_from_shared", addedFromShared, "total_known", len(known))
-		}
+	if err != nil {
+		return knownset.Set{}, fmt.Errorf("known set %s: %w", p.Gamertag, err)
 	}
+	return set, nil
+}
 
-	return known, nil
+// loadOnce emprunte la base partagée, lit l'ensemble connu (knownset.Load) et rend l'emprunt.
+// borrowed dit si l'emprunt a abouti : un emprunt impossible (attente déjà bornée par
+// l'emprunteur) est rendu comme knownset.ErrSharedUnreadable et n'est pas refait.
+func (l *knownLoaderV2) loadOnce(ctx context.Context, playerDB *sql.DB, p PlayerProfile) (set knownset.Set, borrowed bool, err error) {
+	sharedDB, releaseShared, err := l.borrowShared(ctx)
+	if err != nil {
+		return knownset.Set{}, false, fmt.Errorf("%w: emprunt de la base partagée: %w", knownset.ErrSharedUnreadable, err)
+	}
+	defer releaseShared()
+	set, err = knownset.Load(ctx, playerDB, sharedDB, p.XUID)
+	return set, true, err
 }

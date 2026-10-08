@@ -1,7 +1,7 @@
 package wire
 
 // registry_pages_timeseries.go — LE CABLAGE DE L'ONGLET « USAGES » DES SERIES TEMPORELLES (Emprise
-// solo, plan `.ai/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2.8), appele par la factory
+// solo, plan `.ai/V7.5/PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05.md`, lot L2.8), appele par la factory
 // `Timeseries` (registry_pages.go, qui depasse deja le seuil de taille du depot). Le resume d'usage,
 // lui, reste cable par la factory sous film.usage_summary : il sert aussi d'autres blocs.
 

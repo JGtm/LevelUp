@@ -20,6 +20,11 @@ make restart      # stop + dev
 
 Open http://localhost:5173 once `make dev` is running.
 
+Startup: the Go server listens as soon as its configuration is loaded, before opening its
+databases. Until it is ready, `/health` and `/api/*` answer `503` with code `server_starting`
+(the current step is in `details.step`) and the page shows "Server starting…" and polls every
+second. `make dev` and `make go-api-dev` treat a starting server as already running.
+
 Slow requests: an API request taking at least `LEVELUP_SLOW_REQUEST_MS` milliseconds (default `1000`,
 read once at server start) is logged in `logs/http.log` with `slow: true`, at least at INFO. If it timed
 sections (Squad, Synthesis, Sessions and Timeseries pages, filters), an `http_timings` line follows,
@@ -76,8 +81,17 @@ The career rank is NOT part of the sync at all: it is served by the separate liv
 or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
 tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
 pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
-The Spartan customization cron is the one caller that needs the player s own token (403 for a
-third party, measured), and keeps its `HasPlayer` guard for that reason.
+The Spartan customization cron (every 8 h, first pass at server start) prefers the player s own
+token, which opens the private view `/customization/appearance` (403 for a third party,
+measured). When that token is unusable (refresh token refused, unhealthy slot), the player is
+read with the token of the instance user only: the account whose xuid is linked to an account
+with the `admin` role in the instance accounts (`data/auth/users.json`, read through the account
+store). No other user s token ever carries the read. If that token is unusable too, or the
+accounts cannot be read, nothing is read or written (logged, counted in
+`spartan_cron_no_bearer_total`). With the admin token, the client falls back to the public view
+`/customization?view=public`, which carries the same emblem, backdrop and service tag for any
+player. The row is written to the player s own database; no token is captured or refreshed
+outside the pool.
 
 The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
 `backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
@@ -239,6 +253,18 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 #    --match: comma-separated match ids or unambiguous prefixes of 8+ characters, resolved
 #    against the registry like backfill-killsource; unknown / ambiguous / too short = refused,
 #    nothing written.
+
+# 4 quater. Named zones (callouts) of the Forge maps played that have none -> the GENERATED
+#    catalogue reference/generated/map_callouts.json (git-ignored; the committed
+#    map_callouts.json is never written). Each map's variant (.mvar) is read from the cache
+#    (data/cache/mvar/<map_id>/), otherwise downloaded ONCE through the CLI token pool and
+#    stored in the cache. NO RE-COOK: zones are resolved by the service at read time.
+#    Idempotent (covered maps skipped, append-only). Prints one line per map and a tally,
+#    with the place string_ids missing from the lexicon. The sync does the same for every
+#    new map (post-sync step, after the weapon-pad catch-up). Capability map.forge_callouts.
+#    SERVER STOPPED (registry read + token pool).
+go run ./cmd/levelup backfill-map-callouts --dry-run
+go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [--rps N] [--cache-dir D] [--title S]
 
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
@@ -414,7 +440,9 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
   network only with `--forge-fetch` (anonymous UGC blob fetch, no token). A loss guard blocks
   writing a map that would lose vertices vs. the committed file (`--accepte-perte` overrides).
 - Replay when: game update (native pass, or `--lexique`, which "only replays on a game
-  update" per its own header) ; a new Forge map needs its callouts (`--forge-fetch`).
+  update" per its own header) ; a reviewed Forge map is to be promoted into the committed
+  catalogue (`--forge-fetch`). A NEW Forge map no longer needs it: the sync and
+  `levelup backfill-map-callouts` store its callouts in the generated catalogue.
 
 #### mapfond-build
 
@@ -1086,6 +1114,34 @@ this is a local-only fallback for that specific environment quirk.
 ```powershell
 powershell -File scripts/gate-push.ps1
 ```
+
+### Disk hygiene (`disk-hygiene.ps1`)
+
+Go only trims entries unused for 5 days, and only when a command reuses that same cache: a
+dedicated `GOCACHE` left behind when a lot closes never shrinks, and neither do the gate work roots
+kept in session scratchpads. `scripts/disk-hygiene.ps1` gives that space back. It **simulates by
+default**; nothing is deleted without `-Apply`.
+
+```powershell
+powershell -File scripts/disk-hygiene.ps1                    # simulation: what would be freed, worktree report
+powershell -File scripts/disk-hygiene.ps1 -Apply             # real pass (what the scheduled task runs)
+powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply  # lot closure: deletes go-build-<lot> and golangci-<lot>
+```
+
+- Scope: `%LOCALAPPDATA%\go-build-*` and `golangci-*` (not the default `golangci-lint`),
+  `%USERPROFILE%\gocache-*`, `C:\*-gocache`, session folders under `%TEMP%\claude`, `C:\t\*`. Never
+  `data\`, a worktree, `.git` or the module cache.
+- Thresholds: dedicated cache idle 48 h; shared cache emptied by `go clean -cache` above 25 GB;
+  session folder whose transcript and content are idle for 72 h; inside an active session,
+  `gate_work*` / `gocache*` / `golangci*` / `parc*` idle for 24 h; `C:\t\*` idle for 72 h. Age = the
+  most recent write anywhere in the tree.
+- Safety: no deletion while a `go`, `compile`, `link`, `*.test`, `golangci-lint`, `gate`,
+  `replay-*` or `levelup*` process runs (report only). `-Lot` refuses a cache written in the last
+  10 minutes. A tree containing a junction or link is never deleted, only reported. Worktrees are
+  reported, never removed.
+- Log: `%LOCALAPPDATA%\levelup-disk-hygiene\disk-hygiene.log` (free space before and after, every
+  deletion and refusal; `ALERTE` below 60 GB free).
+- Scheduled task `LevelUp-disk-hygiene`: daily at 04:00, current user, not elevated, `-Apply`.
 
 ---
 

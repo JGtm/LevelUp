@@ -107,7 +107,6 @@ type FiltersRepository interface {
 // Implémenté par platform/duckdb.MatchHistoryRepo.
 type MatchHistoryRepository interface {
 	LoadAll(ctx context.Context) ([]domain.MatchHistoryRawRow, error)
-	LoadMapWinRates(ctx context.Context) (map[string][2]int, error)
 }
 
 // CareerRepository fournit les données de progression de carrière.
@@ -411,9 +410,6 @@ func (n *noopFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.Lab
 type noopMatchHistoryRepo struct{}
 
 func (n *noopMatchHistoryRepo) LoadAll(_ context.Context) ([]domain.MatchHistoryRawRow, error) {
-	return nil, nil
-}
-func (n *noopMatchHistoryRepo) LoadMapWinRates(_ context.Context) (map[string][2]int, error) {
 	return nil, nil
 }
 

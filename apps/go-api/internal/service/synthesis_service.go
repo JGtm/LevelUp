@@ -10,11 +10,11 @@
 // le constructeur, les Withers et GetSynthesisPage (entry point) +
 // loaders helpers. Les autres responsabilites vivent dans :
 //
-//   - synthesis_service_legacy.go    : builders legacy SynthesisMatchRow /
-//     SynthesisHeatmapRow (filterByPeriod,
+//   - synthesis_service_legacy.go    : builders legacy SynthesisMatchRow
+//     (filterByPeriod,
 //     buildScopeDescription,
 //     buildHighlightsPreview, buildRivalriesPreview,
-//     buildBreakdowns, sortMap/ModeEntries)
+//     sortMap/ModeEntries)
 //   - synthesis_service_canonical.go : filtres + best refs + overview
 //     (filterSynthesisByPeriodCanonical,
 //     bestTracker, computeSynthesisBestRefs,

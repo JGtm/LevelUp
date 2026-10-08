@@ -215,24 +215,6 @@ func TestComputeSquadBreakdown_WinRate(t *testing.T) {
 }
 
 // =============================================================================
-// Tests ComputeSynthesisHeatmap
-// =============================================================================
-
-func TestComputeSynthesisHeatmap(t *testing.T) {
-	rows := []domain.SynthesisHeatmapRow{
-		{MapName: "Aquarius", ModeName: "Slayer", MatchCount: 10, Wins: 6},
-		{MapName: "Aquarius", ModeName: "CTF", MatchCount: 5, Wins: 2},
-	}
-	cells := ComputeSynthesisHeatmap(rows)
-	if len(cells) != 2 {
-		t.Fatalf("attendu 2 cellules, got %d", len(cells))
-	}
-	if cells[0].Value != 60.0 {
-		t.Errorf("win rate Aquarius/Slayer attendu 60.0, got %.1f", cells[0].Value)
-	}
-}
-
-// =============================================================================
 // Tests ComputeTopWeeks
 // =============================================================================
 
@@ -312,24 +294,6 @@ func TestComputeSynthesisBreakdown_Squad(t *testing.T) {
 // ─── fmtPct ─────────────────────────────────────────────────────────────────
 
 // ─── ComputeSynthesisHeatmap ────────────────────────────────────────────────
-
-func TestComputeSynthesisHeatmap_Empty(t *testing.T) {
-	result := ComputeSynthesisHeatmap(nil)
-	if len(result) != 0 {
-		t.Error("expected empty")
-	}
-}
-
-func TestComputeSynthesisHeatmap_WithData(t *testing.T) {
-	rows := []domain.SynthesisHeatmapRow{
-		{MapName: "Aquarius", ModeName: "Slayer", Wins: 5, MatchCount: 10},
-		{MapName: "Aquarius", ModeName: "CTF", Wins: 3, MatchCount: 8},
-	}
-	result := ComputeSynthesisHeatmap(rows)
-	if len(result) != 2 {
-		t.Errorf("expected 2 cells, got %d", len(result))
-	}
-}
 
 // ─── ComputeSynthesisKPIs ───────────────────────────────────────────────────
 
