@@ -1038,6 +1038,11 @@ refusionner, rejouer l'étape 0).
   precHigh) = 1. La placer sur cette porte arrêterait moins de records des films sans section
   d'identification sans présumer aucune largeur. Non mesuré sur les bipèdes ; non traité (décision de
   LK.3.7).
+- D-20 *(LK.5.4.4)* `consumeFlockPosition` (`ti=21` i16), seule exception datée qui lit comme le jeu
+  sous la garde depuis le lot J6.3, note l'exception MÊME sous la garde : ses occurrences d'image-clé
+  portent la provenance « exception datée » alors qu'elles sont lues comme le jeu. Hors de la liste de
+  LK.5 ; seule consultation directe de la garde admise par le garde-rail
+  `TestLesExceptionsDecidentLaGardeParUnSeulGeste` (liste datée). Non traité.
 
 ## 8. Journal
 

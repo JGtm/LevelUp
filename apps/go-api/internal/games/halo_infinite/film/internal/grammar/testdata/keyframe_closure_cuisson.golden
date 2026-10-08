@@ -18,6 +18,8 @@
 #     (porte, R(96), R(19)). Aucune ligne ne bouge.
 #   2026-10-08 plan LK (LK.5.4.3) : ti=14 i0 crew-order sous la portee (R(3), porte, R(96)).
 #     Aucune ligne ne bouge.
+#   2026-10-08 plan LK (LK.5.4.4) : ti=30 i0 tacmap-poiicon sous la portee (le vecteur R(96)).
+#     Aucune ligne ne bouge.
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	

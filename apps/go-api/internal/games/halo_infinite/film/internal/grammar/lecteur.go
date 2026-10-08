@@ -103,6 +103,20 @@ func (b *Lecteur) arreter(a ArretDuLecteur) { b.arret = a }
 // datee, pas du portage de l ecrivain.
 func (b *Lecteur) noterExceptionDatee() { b.exceptionDatee = true }
 
+// sousLaGardeSinonException decide la lecture d un site en exception datee
+// (`lecteur_position_exceptions.go`) dont la lecture sous la garde est relue chez le jeu (plan LK,
+// LK.5.4) : SOUS la garde de pleine precision ([fullPrecisionGate], la portee de l etat complet), le
+// site lit comme le jeu, et rend vrai ; HORS d elle, il garde son ancien lecteur, l exception est
+// notee ([Lecteur.noterExceptionDatee]), et rend faux. Garde-rail : dans ce fichier, seul ce geste
+// consulte la garde (`TestLesExceptionsDecidentLaGardeParUnSeulGeste`).
+func (b *Lecteur) sousLaGardeSinonException() bool {
+	if fullPrecisionGate(b) {
+		return true
+	}
+	b.noterExceptionDatee()
+	return false
+}
+
 // LecteurSur rend un lecteur de grammaire positionne sur le premier bit de `buf`. C est la
 // SEULE porte de construction du paquet, et elle passe par la couche source
 // ([source.NewBits]) : `filmdec` ne fabrique plus de lecteur de bits.

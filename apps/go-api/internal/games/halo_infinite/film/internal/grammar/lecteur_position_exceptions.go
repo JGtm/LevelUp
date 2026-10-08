@@ -19,9 +19,11 @@ package grammar
 //	grammaire dependante du build est etablie.
 //
 // SOUS LA GARDE DE PLEINE PRECISION (`FUN_14076f91c`, [fullPrecisionGate] : la portee de l etat
-// complet, plan LK, LK.5.4), un site dont la lecture sous la garde est relue chez le jeu la porte EN
-// TETE de sa fonction, dans un bloc autonome : il y lit comme le jeu, sans noter d exception, et
-// l exception ne vaut que hors de la garde. Ses cas : `lecteur_position_sites_portee_test.go`.
+// complet, plan LK, LK.5.4), un site dont la lecture sous la garde est relue chez le jeu lit comme le
+// jeu, sans noter d exception ; l exception ne vaut que hors de la garde. Le site le decide par un seul
+// geste, [Lecteur.sousLaGardeSinonException], en tete de sa fonction ; la lecture du jeu y est un bloc
+// de tete quand la position ouvre le composant, et prend la place du vecteur sinon. Ses cas :
+// `lecteur_position_sites_portee_test.go`.
 //
 // Le test de chaque site (`lecteur_position_sites_test.go`) est marque « ecart attendu » par
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
@@ -136,8 +138,11 @@ func consumeFlockDestination(br *Lecteur, level uint32) {
 // ainsi, la liste d evenements du chunk 21 paquet 1032 de `11de8353` (HI_1_9_0), que l ancien
 // lecteur fermait au bit pres (0 entree de controle), ne se localise plus : le composant passe de
 // 239 a 264 bits ; aucune fermeture ne monte sur les huit builds.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.4, relu le 2026-10-08) : `FUN_142ed8418` lit le meme bloc, puis le
+// thunk `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde, sans precHigh —, puis la queue.
 func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(32) // icon-id
 	br.ReadBits(32) // icon-missionid
 	br.ReadBit()
@@ -146,7 +151,11 @@ func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
 	br.ReadBits(32) // icon-bitmapbg
 	br.ReadBits(9)
 	br.ReadBits(9)
-	lireVecteurAncienAuNiveauDuRegistre(br, level)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireVecteurAncienAuNiveauDuRegistre(br, level)
+	}
 	br.ReadBits(32) // string-id
 	br.ReadBit()
 	br.ReadBits(8)
@@ -170,18 +179,14 @@ func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
 	// SOUS LA GARDE (plan LK, LK.5.4.2, relu le 2026-10-08) : `FUN_142f03ec8` lit la porte, puis
 	// `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde — et `FUN_14076dc04` R(19). Les 96 bits
 	// ne sont pas des quanta : l identifiant seul est publie, `present` faux.
-	if fullPrecisionGate(br) {
-		if !br.ReadBit() {
-			br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
-			return
-		}
-		br.ReadBits(rawVec3Bits) // FUN_1411b259c
-		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, br.ReadBits(19))
-		return
-	}
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	if !br.ReadBit() {
 		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
+		return
+	}
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, br.ReadBits(19))
 		return
 	}
 	q, ok := lireVecteurAncienAuNiveauDuRegistre(br, level)
@@ -284,17 +289,14 @@ func consumeTacmapCoopTetherArea(br *Lecteur) {
 func consumeCrewOrder(br *Lecteur, level uint32) {
 	// SOUS LA GARDE (plan LK, LK.5.4.3, relu le 2026-10-08) : `FUN_142ed9120` lit `FUN_142b1cf3c`
 	// R(3), la porte, puis `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde, sans precHigh.
-	if fullPrecisionGate(br) {
-		br.ReadBits(3)    // FUN_142b1cf3c
-		if br.ReadBit() { // presence du vecteur
-			br.ReadBits(rawVec3Bits) // FUN_1411b259c
-		}
-		return
-	}
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(3)    // FUN_142b1cf3c
 	if br.ReadBit() { // presence du vecteur
-		lireVecteurAncienAuNiveauDuRegistre(br, level)
+		if sousLaGarde {
+			br.ReadBits(rawVec3Bits) // FUN_1411b259c
+		} else {
+			lireVecteurAncienAuNiveauDuRegistre(br, level)
+		}
 	}
 }
 

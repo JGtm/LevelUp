@@ -13,7 +13,10 @@ package grammar
 //
 // Mutation jouee pour chaque site (retirer le bloc de tete) : son cas rougit.
 
-import "testing"
+import (
+	"go/ast"
+	"testing"
+)
 
 // brut96 est le vecteur brut de `FUN_1411b259c` : trois flottants de 32 bits, finis (motif alterne).
 func brut96() []champDeFlux { return seul(fixe(32), fixe(32), fixe(32)) }
@@ -28,6 +31,52 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 		// ti=14 i0 crew-order (FUN_142ed9120) : FUN_142b1cf3c R(3), porte, R(96).
 		{nom: "crew-order", indexW: 1, flux: concat(seul(fixe(3), bit(true)), brut96()),
 			lire: parNom("crew-order-component", 14, 0)},
+		// ti=30 i0 tacmap-poiicon (FUN_142ed8418) : le bloc, R(96) (thunk FUN_1424e0e38), la queue.
+		{nom: "tacmap-poiicon", indexW: 1,
+			flux: concat(seul(fixe(32), fixe(32), bit(true), fixe(3), fixe(32), fixe(32), fixe(9), fixe(9)),
+				brut96(), seul(fixe(32), bit(false), fixe(8), fixe(8), fixe(8), fixe(8))),
+			lire: parNom("tacmap-poiicon", 30, 0)},
+	}
+}
+
+// consultationsDirectesDeLaGarde : les fonctions de `lecteur_position_exceptions.go` qui consultent
+// encore la garde sans passer par [Lecteur.sousLaGardeSinonException], et pourquoi (date).
+var consultationsDirectesDeLaGarde = map[string]string{
+	"consumeFlockPosition": "2026-10-08 (plan LK) : conforme sous la garde depuis le lot J6.3, hors de " +
+		"la liste de LK.5 ; il note l exception meme sous la garde (decouverte D-20 du plan LK)",
+}
+
+// TestLesExceptionsDecidentLaGardeParUnSeulGeste — regle 6 : un site en exception datee decide entre la
+// lecture du jeu sous la garde et son ancien lecteur par [Lecteur.sousLaGardeSinonException] ; hors de
+// la liste datee, aucune fonction du fichier n appelle `fullPrecisionGate`. Mutation jouee (un site qui
+// consulte la garde a la main) : rouge.
+func TestLesExceptionsDecidentLaGardeParUnSeulGeste(t *testing.T) {
+	asts, fset := parserFichiers(t, []string{fichierDesExceptions})
+	vus := map[string]bool{}
+	for _, d := range asts[fichierDesExceptions].Decls {
+		fd, ok := d.(*ast.FuncDecl)
+		if !ok || fd.Body == nil {
+			continue
+		}
+		ast.Inspect(fd.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "fullPrecisionGate" {
+				vus[fd.Name.Name] = true
+				if _, permis := consultationsDirectesDeLaGarde[fd.Name.Name]; !permis {
+					t.Errorf("%s : %s consulte la garde a la main — passer par sousLaGardeSinonException",
+						fset.Position(call.Pos()), fd.Name.Name)
+				}
+			}
+			return true
+		})
+	}
+	for nom := range consultationsDirectesDeLaGarde {
+		if !vus[nom] {
+			t.Errorf("%s ne consulte plus la garde : le retirer de consultationsDirectesDeLaGarde", nom)
+		}
 	}
 }
 
