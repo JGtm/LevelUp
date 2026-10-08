@@ -106,6 +106,11 @@ const compNavpointTopProgress = "managed-navpoint-top-progress"
 // (`142edb134` -> `FUN_142ed18e8`) quantifie la meme valeur sur huit bits.
 const navpointBarreBits = 8
 
-// consumeNavpointBarreDeProgression (ti=12 i13) — `R(8)` quantifie, sans porte ; la valeur n est pas
+// consumeNavpointBarreDeProgression (ti=12 i13 et i15) — `R(8)` quantifie, sans porte ; la valeur n est pas
 // publiee.
 func consumeNavpointBarreDeProgression(br *Lecteur) { br.ReadBits(navpointBarreBits) }
+
+// compNavpointBottomProgress : l etiquette de registre de `ti=12 i15`. Son lecteur (`FUN_142ed4fe4`,
+// vers `etat + 0x708`) passe la meme largeur et les memes bornes a `FUN_1406d84b4` que celui de
+// `i13` ; l ecrivain (`142edadf0` -> `FUN_142ed18e8`) aussi : [consumeNavpointBarreDeProgression].
+const compNavpointBottomProgress = "managed-navpoint-bottom-progress"

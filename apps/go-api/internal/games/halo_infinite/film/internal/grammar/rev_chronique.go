@@ -106,3 +106,8 @@ package grammar
 // composant `managed-navpoint-top-progress` se lit (`FUN_142ed51d8`, `R(8)` quantifie,
 // [consumeNavpointBarreDeProgression]). Contre `grammar-2026-10-08.9` : un record `ti=12` qui
 // s arretait sur `i13` se lit jusqu au composant suivant.
+//
+// ENTREE `grammar-2026-10-08.11` (2026-10-08, lot des arrets de la vue B, suite, `ti=12 i15`) : le
+// composant `managed-navpoint-bottom-progress` se lit (`FUN_142ed4fe4`, `R(8)` quantifie, le meme
+// lecteur que `i13`, [consumeNavpointBarreDeProgression]). Contre `grammar-2026-10-08.10` : un record
+// `ti=12` qui s arretait sur `i15` se lit jusqu au composant suivant.

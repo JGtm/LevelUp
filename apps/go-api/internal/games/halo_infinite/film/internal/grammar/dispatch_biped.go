@@ -316,7 +316,7 @@ func consumeNavpointComponent(br *Lecteur, name string, level uint32) (variant u
 		consumeNavpointOverrideFlags(br)
 	case compNavpointObjectMarker: // ti=12 i17 (FUN_141169e68) — R(32)
 		consumeNavpointObjectMarker(br)
-	case compNavpointTopProgress: // ti=12 i13 (FUN_142ed51d8) — R(8)
+	case compNavpointTopProgress, compNavpointBottomProgress: // ti=12 i13 et i15 (FUN_142ed51d8, FUN_142ed4fe4) — R(8)
 		consumeNavpointBarreDeProgression(br)
 	case compNavpointPositionOffset: // ti=12 i18 (FUN_140f04f68) — position, FUN_14076e494 au niveau 0x10
 		consumeNavpointPositionOffset(br)

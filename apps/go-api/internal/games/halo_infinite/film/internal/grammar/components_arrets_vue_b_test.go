@@ -65,6 +65,9 @@ var vecteursArrets = []vecteurArret{
 	// ti=12 i13 : l ecrivain (142edb134 -> FUN_142ed18e8) quantifie etat+0x700 sur huit bits.
 	{"N13a", compNavpointTopProgress, 12, 1, "10000000"},
 	{"N13b", compNavpointTopProgress, 12, 1, "11111111"},
+	// ti=12 i15 : l ecrivain (142edadf0 -> FUN_142ed18e8) quantifie etat+0x708 sur huit bits.
+	{"N15a", compNavpointBottomProgress, 12, 1, "01111111"},
+	{"N15b", compNavpointBottomProgress, 12, 1, "00000000"},
 }
 
 // TestLesArretsDeLaVueBLisentCeQueLEcrivainEcrit : chaque vecteur est consomme au bit pres.
