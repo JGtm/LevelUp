@@ -61,10 +61,15 @@ export const QUADRANT_TOKENS: Record<SquadEmprisePlacementQuadrant, SemanticToke
 /** Axe X : 0 à 2 portées de radar, pas de 0,25 ; au-delà de 2, le point est posé à 2. */
 export const X_MAX = 2
 export const X_STEP = 0.25
-/** Axe Y : −0,5 à 5,5, pas de 1 ; au-delà de 5 frags, le point est posé à 5. */
+/**
+ * Axe Y : étendue −0,5 à 5,5 (marge du décalage vertical) ; graduations, grille et libellés posés
+ * sur `Y_TICKS` (calculés, ils tomberaient sur les demi-unités), « 5+ » au plafond de 5 frags.
+ */
 export const Y_MIN = -0.5
 export const Y_MAX = 5.5
 export const KILLS_CAP = 5
+const Y_TICKS: readonly number[] = Array.from({ length: KILLS_CAP + 1 }, (_, i) => i)
+const yTickLabel = (v: number) => (v >= KILLS_CAP ? `${KILLS_CAP}+` : String(v))
 /** Décalage vertical maximal (± 0,25) qui décolle les points de même compte. */
 export const JITTER_MAX = 0.25
 /**
@@ -383,8 +388,8 @@ export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColo
   return {
     backgroundColor: CHART_BG,
     animation: false,
-    // Place du titre de l'axe X (nameGap 30) ET de la légende, en pied.
-    grid: { left: 56, right: 20, top: 16, bottom: 78 },
+    // Pied : titre de l'axe X (nameGap 30) et légende ; gauche : libellés Y et titre vertical.
+    grid: { left: 64, right: 20, top: 16, bottom: 78 },
     legend: {
       ...getLegendBase(tc),
       bottom: 4,
@@ -407,11 +412,13 @@ export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColo
       ...axis,
       type: 'value',
       name: t.life.yAxis,
+      nameLocation: 'middle',
+      nameGap: 34,
       nameTextStyle: { color: tc.axisLabel },
       min: Y_MIN,
       max: Y_MAX,
-      interval: 1,
-      axisLabel: { ...axis.axisLabel, formatter: (v: number) => (v >= 0 && Number.isInteger(v) ? String(v) : '') },
+      axisTick: { ...axis.axisTick, customValues: [...Y_TICKS] },
+      axisLabel: { ...axis.axisLabel, customValues: [...Y_TICKS], formatter: yTickLabel },
     },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: tipOf },
     series: [
