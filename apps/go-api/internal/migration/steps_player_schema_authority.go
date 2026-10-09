@@ -172,7 +172,7 @@ const PlayerRetiredARTIndexesDropSQL = PlayerRetiredPSAIndexesDropSQL + PlayerRe
 	PlayerRetiredSecondaryIndexesDropSQL
 
 // L'ordre de Register() dans cet init() est CONTRAINT : il doit reproduire l'ordre de ces
-// 7 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
+// 8 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
 // Ils y occupent les positions qui suivent immédiatement repair_match_citations_primary_key
 // (fin du bloc player).
 func init() {
@@ -238,6 +238,16 @@ func init() {
 		ApplySchema: func(db *sql.DB) error {
 			return execScript(db, PlayerRetiredSecondaryIndexesDropSQL)
 		},
+	})
+	// Enregistré ICI (et non dans son fichier) : l'ordre du registre doit suivre canonicalOrder,
+	// où il succède au step précédent (steps_player_repair_append_only_ids.go).
+	Register(Migration{
+		Name:     "repair_player_append_only_ids_v1",
+		TargetDB: TargetPlayer,
+		Description: "Reconstruit (swap, sans UPDATE ni DELETE) les tables append-only joueur dont " +
+			"l'id est NULL, en double ou hors clé primaire : ids neufs de la séquence réalignée, " +
+			"clé primaire et DEFAULT reposés",
+		ApplySchema: applyRepairAppendOnlyIDs,
 	})
 }
 

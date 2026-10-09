@@ -59,6 +59,9 @@ var stepDependencies = map[string]string{
 	// (les créateurs de lusr_component_history et la conversion de player_match_enrichment le
 	// précèdent aussi dans canonicalOrder).
 	"drop_player_secondary_art_indexes_v1": "create_player_csr_snapshots_player_v1",
+	// repair_player_append_only_ids_v1 (2026-10-09, lot C4) reconstruit les cinq tables
+	// append-only joueur sans en créer aucune : il DOIT suivre leur dernier créateur.
+	"repair_player_append_only_ids_v1": "create_player_csr_snapshots_player_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la
