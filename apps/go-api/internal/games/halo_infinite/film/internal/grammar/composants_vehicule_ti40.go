@@ -141,8 +141,8 @@ func lireComposantStatiqueTi40(br *Lecteur, name string) {
 	case compVehicleSentryState: // i36 FUN_142f04b34 : R(3) puis R(1)
 		br.ReadBits(largeurEtatSentinelle)
 		br.ReadBit()
-	case compVehicleWeaponSet: // i38 14116d3cc -> FUN_1406d01fc
-		lireJeuDArmes(br)
+	case compVehicleWeaponSet: // i38 14116d3cc -> FUN_1406d01fc, son retour est celui du deserialiseur
+		arreterSiJeuDArmesRefuse(br, lireJeuDArmes(br))
 	case compVehicleAutoTurret: // i39 FUN_142f04884 : R(2)
 		br.ReadBits(largeurTourelleAuto)
 	case compVehicleEquipmentTurretParent: // i40 FUN_142f04a00 -> FUN_1408f0ac4 categorie 0

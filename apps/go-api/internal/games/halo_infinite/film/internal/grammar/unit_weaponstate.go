@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+
 // Per-component bit-consume decoders for the BIPED archetype (#35) component
 // range i18..i46, reverse-engineered statically from HaloInfinite.exe (Ghidra).
 //
@@ -368,6 +370,9 @@ func consumeWeaponStateOverheated(br *Lecteur) {
 // au crochet du bipede.
 func consumeBipedDesiredWeaponSet(br *Lecteur) {
 	j := lireJeuDArmes(br)
+	if arreterSiJeuDArmesRefuse(br, j) {
+		return
+	}
 	if br.obs != nil && br.obs.DesiredWeaponSetHook != nil {
 		br.obs.DesiredWeaponSetHook(j)
 	}
@@ -398,6 +403,26 @@ func lireJeuDArmes(br *Lecteur) JeuDArmes {
 	principal := lireID2(br)          // FUN_1406d00ec
 	second := lireID2(br)             // FUN_1406d00ec
 	return JeuDArmes{Demande: demande, Principal: principal, Second: second}
+}
+
+// refuse dit si `FUN_1406d01fc` rend FAUX sur ce jeu d armes : il rend vrai, sauf quand param[1] vaut
+// autre chose que -1 et egale param[2] (relu le 2026-10-09, revue D1.4.6, constat 2).
+func (j JeuDArmes) refuse() bool { return j.Principal != -1 && j.Principal == j.Second }
+
+// arreterSiJeuDArmesRefuse porte le retour de `FUN_1406d01fc` la ou un thunk le rend comme celui du
+// deserialiseur : i42 du bipede (`14109d298` : `MOV RCX,[R8+0x10] ; ADD RCX,0x13d8 ; JMP 1406d01fc`)
+// et i38 du vehicule (`14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`) ; la queue de l arme tenue
+// (`FUN_1407f06bc`) l appelle et ignore son retour. Sous la portee de l etat complet, la boucle de
+// composants `FUN_142e2c690` s arrete sur un retour faux (`142e2c7cc` : `TEST AL,AL ; JZ 142e2c762`) :
+// un jeu refuse arrete la marche sur ce composant ([lecture.ArretJeuDArmesRefuse]), et rien n est lu
+// au-dela. Hors de la portee (records NEW et DELTA), le traitement d un retour faux par la boucle
+// delta n est pas relu : la lecture continue. Rend vrai quand la marche s arrete.
+func arreterSiJeuDArmesRefuse(br *Lecteur, j JeuDArmes) bool {
+	if !br.portee || !j.refuse() {
+		return false
+	}
+	br.arreter(lecture.ArretJeuDArmesRefuse)
+	return true
 }
 
 // ---------------------------------------------------------------------------
