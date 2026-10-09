@@ -31,13 +31,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 
-	_ "github.com/duckdb/duckdb-go/v2"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 func main() {
@@ -65,12 +64,18 @@ func run(ctx context.Context, dbPath, chain string, dryRun, commit bool) error {
 		return fmt.Errorf("mode indéterminé : utiliser -dry-run (défaut) ou -commit")
 	}
 
-	// RW exclusif : le serveur DOIT être arrêté (modèle mono-process, ADR 0013).
-	db, err := sql.Open("duckdb", dbPath)
+	// RW exclusif : le serveur DOIT être arrêté (modèle mono-process, ADR 0013). Ouverture
+	// par la porte unique de platform/duckdb : une base joueur y a ses séquences alignées.
+	handle, err := duckdbpkg.OpenReadWrite(dbPath)
 	if err != nil {
 		return fmt.Errorf("ouverture RW de %s (le serveur est-il arrêté ?): %w", dbPath, err)
 	}
-	defer func() { _ = db.Close() }()
+	defer func() {
+		if err := handle.Close(); err != nil {
+			slog.WarnContext(ctx, "purge_foreign_lusr_chain: fermeture", "db", dbPath, "err", err)
+		}
+	}()
+	db := handle.SQLDb()
 
 	before, err := censusForeignChain(ctx, db, chain)
 	if err != nil {

@@ -22,6 +22,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+
+	"levelup/go-api/internal/migration"
 )
 
 // chainCensus — photographie des lignes d'une chaîne dans une player DB.
@@ -162,6 +164,12 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 	}
 	committed = true
 
+	// Le swap repose msr_seq par CREATE SEQUENCE IF NOT EXISTS ... START 1 : une séquence
+	// absente renaîtrait à 1 sous des ids déjà pris (« Duplicate key » à chaque insertion LUSR
+	// suivante). Réalignement explicite sur max(id), échec = erreur de l'outil.
+	if _, err := migration.AlignSequencesToColumns(ctx, db); err != nil {
+		return fmt.Errorf("alignement des séquences après swap: %w", err)
+	}
 	// CHECKPOINT : sans lui le WAL peut être perdu à la fermeture (leçon ADR 0022).
 	if _, err := db.ExecContext(ctx, `CHECKPOINT`); err != nil {
 		return fmt.Errorf("CHECKPOINT après swap: %w", err)
