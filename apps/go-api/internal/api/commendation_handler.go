@@ -28,7 +28,7 @@ func (h *commendationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	// Essai 1 : chemin décodé (r.URL.Path est décodé par net/http)
 	decodedRel := strings.TrimPrefix(r.URL.Path, "/static/")
 	fullDecoded := filepath.Join(h.dir, filepath.FromSlash(decodedRel))
-	if f, fi, ok := openFile(fullDecoded); ok {
+	if f, fi, ok := h.openUnder(fullDecoded); ok {
 		defer f.Close()
 		http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
 		return
@@ -41,7 +41,7 @@ func (h *commendationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if rawPath != "" {
 		if unescaped, err := url.PathUnescape(strings.TrimPrefix(rawPath, "/static/")); err == nil && unescaped != decodedRel {
 			fullForcedDecoded := filepath.Join(h.dir, filepath.FromSlash(unescaped))
-			if f, fi, ok := openFile(fullForcedDecoded); ok {
+			if f, fi, ok := h.openUnder(fullForcedDecoded); ok {
 				defer f.Close()
 				http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
 				return
@@ -55,7 +55,7 @@ func (h *commendationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	encodedRel := strings.TrimPrefix(rawPath, "/static/")
 	fullEncoded := filepath.Join(h.dir, filepath.FromSlash(encodedRel))
-	if f, fi, ok := openFile(fullEncoded); ok {
+	if f, fi, ok := h.openUnder(fullEncoded); ok {
 		defer f.Close()
 		http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
 		return
@@ -64,13 +64,24 @@ func (h *commendationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	http.NotFound(w, r)
 }
 
-func openFile(path string) (*os.File, os.FileInfo, bool) {
-	f, err := os.Open(path)
+// openUnder ouvre `path` seulement s'il reste sous le dossier des citations
+// (`<static>/commendations`). Les trois essais de ServeHTTP construisent le chemin
+// depuis l'URL, décodée ou brute : un segment `..` (en clair ou encodé `%2f`,
+// `%2e%2e`, `%5c`) y ferait sortir le chemin du dossier servi et lirait n'importe quel
+// fichier du serveur. Tout chemin qui sort du dossier est refusé comme absent.
+func (h *commendationHandler) openUnder(path string) (*os.File, os.FileInfo, bool) {
+	base := filepath.Clean(filepath.Join(h.dir, "commendations"))
+	clean := filepath.Clean(path)
+	rel, err := filepath.Rel(base, clean)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return nil, nil, false
+	}
+	f, err := os.Open(clean)
 	if err != nil {
 		return nil, nil, false
 	}
 	fi, err := f.Stat()
-	if err != nil {
+	if err != nil || fi.IsDir() {
 		f.Close()
 		return nil, nil, false
 	}
