@@ -13,7 +13,9 @@
 // même règle qu'au sync) à partir des noms effectifs de la variante et de la carte. Sans source,
 // la colonne reste en l'état et est comptée (Scanned - Fixed).
 //
-// CE QUI N'EST JAMAIS TOUCHÉ : un vrai nom (garde SQL du persister), `mode_category` (indexée).
+// CE QUI N'EST JAMAIS TOUCHÉ : un vrai nom (garde SQL du persister). La catégorie de mode
+// (`mode_category`) suit le nom de la paire écrit : elle est recalculée dans le même UPDATE
+// (règle canonique `analysis/modelabel`), tant qu'aucun index ne couvre la colonne.
 //
 // ÉCRITURE : persist.RegistryNamesPersister, un match à la fois, gardé, idempotent.
 package sync
@@ -24,6 +26,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/persist"
 )
@@ -101,8 +104,15 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB,
 	}
 	names := newTranslationCache(metadataDB)
 	persister := persist.NewRegistryNamesPersister(sharedDB)
+	withCategory, err := modeCategoryWritable(ctx, sharedDB)
+	if err != nil {
+		return stats, err
+	}
 	for _, row := range rows {
 		writes, construite := planRegistryNames(ctx, row, names, &stats)
+		if !withCategory {
+			dropModeCategories(writes)
+		}
 		if len(writes) == 0 {
 			continue
 		}
@@ -176,12 +186,46 @@ func planRegistryNames(ctx context.Context, row registryNameRow, names *translat
 	}
 	stats.PairsScanned++
 	if n := names.lookup(ctx, games.AssetKindPair, row.pairID.String); n != "" {
-		return append(writes, persist.RegistryNameWrite{Kind: games.AssetKindPair, Name: n}), false
+		return append(writes, pairNameWrite(n)), false
 	}
 	if construit, ok := constructPairName(&variante, &row.variantID.String, &carte, &row.mapID.String); ok {
-		return append(writes, persist.RegistryNameWrite{Kind: games.AssetKindPair, Name: construit}), true
+		return append(writes, pairNameWrite(construit)), true
 	}
 	return writes, false
+}
+
+// pairNameWrite : l'écriture d'un nom de paire, avec la catégorie de mode que ce nom donne.
+func pairNameWrite(name string) persist.RegistryNameWrite {
+	return persist.RegistryNameWrite{
+		Kind: games.AssetKindPair, Name: name, ModeCategory: modelabel.InferCategory(name),
+	}
+}
+
+// qModeCategoryIndexes : les index de match_registry qui couvrent mode_category.
+const qModeCategoryIndexes = `SELECT COUNT(*) FROM duckdb_indexes()
+	WHERE table_name = 'match_registry' AND sql ILIKE '%mode_category%'`
+
+// modeCategoryWritable dit si la catégorie peut être réécrite avec le nom : seulement si aucun
+// index ne couvre la colonne (un UPDATE d'une colonne indexée est le vecteur du bug ART DuckDB
+// #23645). Une base pas encore migrée garde sa catégorie, avec un avertissement.
+func modeCategoryWritable(ctx context.Context, sharedDB *sql.DB) (bool, error) {
+	var n int
+	if err := sharedDB.QueryRowContext(ctx, qModeCategoryIndexes).Scan(&n); err != nil {
+		return false, fmt.Errorf("BackfillRegistryNames: index de mode_category: %w", err)
+	}
+	if n > 0 {
+		slog.WarnContext(ctx, "BackfillRegistryNames: mode_category encore indexée — catégorie non réécrite "+
+			"(migration shared_recompute_mode_category_v1 à appliquer)", "index", n)
+		return false, nil
+	}
+	return true, nil
+}
+
+// dropModeCategories retire la catégorie de chaque écriture planifiée.
+func dropModeCategories(writes []persist.RegistryNameWrite) {
+	for i := range writes {
+		writes[i].ModeCategory = ""
+	}
 }
 
 // countCandidatesWithoutSource compte, par colonne, les matchs dont le nom est à faire converger

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 )
@@ -61,7 +62,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row := &MatchRegistryRow{
 		MatchID:      matchID,
 		StartTime:    startTime,
-		ModeCategory: modeCategoryOther,
+		ModeCategory: modelabel.CategoryOther,
 		FirstSyncBy:  syncBy,
 	}
 
@@ -98,7 +99,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 		row.SeasonID = strPtrNonEmpty(sid)
 	}
 	if row.PairName != nil {
-		row.ModeCategory = determineModeCategory(*row.PairName)
+		row.ModeCategory = modelabel.InferCategory(*row.PairName)
 	}
 
 	// Durées

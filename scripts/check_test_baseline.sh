@@ -180,6 +180,16 @@
 # complétion est couverte par TestSISUDeviceFlow_ExchangeFlow_{ClassicChain,PropagatesXboxError}.
 # 89 lignes JSONL, exactement 20 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-09 (lot F des recommandations, catégorie de mode : une seule règle) : 16 tests
+# de premier niveau retirés — 15 de `internal/games/halo_infinite` (TestStripMapSuffix_*, TestNormalizeModeCase_*,
+# TestAllKnownPairNamePrefixes_*, TestPairNamePrefixesForCategory{,_*}, TestInferModeCategoryFromPairName),
+# DÉPLACÉS avec la règle dans `internal/analysis/modelabel` (category_test.go : TestInferCategory,
+# TestPrefixesForCategory{,_*}, TestKnownPrefixes_*, TestNormalizeModeCase_*, TestStripMapSuffix_*),
+# et TestDetermineModeCategoryTable de `internal/sync` (le classifieur par sous-chaînes qu'il
+# figeait est supprimé ; remplacé par TestExtractRegistry_CategorieSuitLeNomDeLaPaire et
+# TestModeCategoryRuleIsSingle). 320 lignes JSONL, exactement 67 paires (Package, Test) dont les
+# sous-tests, vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

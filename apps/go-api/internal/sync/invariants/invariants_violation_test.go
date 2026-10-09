@@ -104,7 +104,7 @@ func TestCheckPlayer_FirefightExcludedFromSkillRank(t *testing.T) {
 	const xuid = "1111"
 	shared := openMemDB(t, sharedDDL)
 	player := openMemDB(t, playerDDL)
-	mustExec(t, shared, `INSERT INTO match_registry VALUES ('ff1','Firefight on Oasis','firefight')`)
+	mustExec(t, shared, `INSERT INTO match_registry VALUES ('ff1','Firefight on Oasis','Firefight')`)
 	mustExec(t, shared, `INSERT INTO match_participants VALUES ('ff1',?)`, xuid)
 	mustExec(t, player, `INSERT INTO player_match_enrichment (match_id, session_id, performance_score, psa_checked_at)
 		VALUES ('ff1','s1',50.0, now())`)

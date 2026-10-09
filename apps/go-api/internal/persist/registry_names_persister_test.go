@@ -48,7 +48,8 @@ func lireNoms(t *testing.T, db *sql.DB, matchID string) nomsDuRegistre {
 }
 
 // TestRegistryNamesPersister_GardeEtIdempotence : NULL et nom = identifiant sont réécrits, un
-// vrai nom ne l'est jamais, mode_category n'est pas touchée, et une seconde passe n'écrit rien.
+// vrai nom ne l'est jamais, mode_category n'est pas touchée sans catégorie fournie, et une seconde
+// passe n'écrit rien.
 func TestRegistryNamesPersister_GardeEtIdempotence(t *testing.T) {
 	db := openRegistryNamesTestDB(t)
 	ctx := context.Background()
@@ -147,5 +148,41 @@ func TestRegistryNamesPersister_VraiNomJamaisEcrase(t *testing.T) {
 	if got.playlist.String != "Ranked Arena" || got.carte.String != "Recharge" ||
 		got.paire.String != "Slayer on Recharge" || got.variante.String != "Slayer" {
 		t.Errorf("un vrai nom a été écrasé : %+v", got)
+	}
+}
+
+// TestRegistryNamesPersister_CategorieSuitLaPaireEcrite : la catégorie fournie avec la paire est
+// écrite dans le MÊME UPDATE ; une catégorie NULL (titre qui ne la renseigne pas) reste NULL ; un
+// vrai nom en place garde sa catégorie ; une catégorie sur un autre genre est refusée.
+func TestRegistryNamesPersister_CategorieSuitLaPaireEcrite(t *testing.T) {
+	db := openRegistryNamesTestDB(t)
+	ctx := context.Background()
+	if _, err := db.Exec(`INSERT INTO match_registry
+		(match_id, pair_id, pair_name, mode_category) VALUES
+		('c1', 'pair-1', 'pair-1', 'Other'),
+		('c2', 'pair-2', 'pair-2', NULL),
+		('c3', 'pair-3', 'Arena:Slayer on Recharge', 'Assassin')`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	p := NewRegistryNamesPersister(db)
+	ecriture := []RegistryNameWrite{{Kind: RegistryNamePair, Name: "Ranked:CTF on Streets", ModeCategory: "Ranked"}}
+	for _, id := range []string{"c1", "c2", "c3"} {
+		if _, err := p.WriteMatchNames(ctx, id, ecriture); err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+	}
+	if got := lireNoms(t, db, "c1"); got.paire.String != "Ranked:CTF on Streets" || got.categorie.String != "Ranked" {
+		t.Errorf("c1 = %+v, want paire et catégorie Ranked", got)
+	}
+	if got := lireNoms(t, db, "c2"); got.paire.String != "Ranked:CTF on Streets" || got.categorie.Valid {
+		t.Errorf("c2 = %+v, catégorie NULL attendue inchangée", got)
+	}
+	if got := lireNoms(t, db, "c3"); got.paire.String != "Arena:Slayer on Recharge" || got.categorie.String != "Assassin" {
+		t.Errorf("c3 = %+v, vrai nom et catégorie à conserver", got)
+	}
+	_, err := p.WriteMatchNames(ctx, "c1", []RegistryNameWrite{
+		{Kind: RegistryNameMap, Name: "Ok", ModeCategory: "BTB"}})
+	if err == nil {
+		t.Error("catégorie sur un genre autre que la paire : refus attendu")
 	}
 }

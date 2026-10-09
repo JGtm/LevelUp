@@ -6,7 +6,7 @@ package main
 // game_variant_name) restés NULL ou égaux à leur identifiant vers leurs traductions en-US de
 // metadata.asset_translations. Même mécanique que le balayage périodique du serveur et que
 // l'action admin : sync.BackfillRegistryNames → persist.RegistryNamesPersister (un match à la
-// fois, garde `x IS NULL OR x = x_id`, jamais mode_category). Une paire sans traduction est
+// fois, garde `x IS NULL OR x = x_id` ; la catégorie de mode suit le nom de paire écrit). Une paire sans traduction est
 // construite « {variante} on {carte} » quand la variante et la carte ont un nom ; sinon la
 // colonne reste en l'état et est comptée « sans source ».
 //

@@ -147,3 +147,11 @@ func TestToAnalysisEvent_NilFieldsBecomeZero(t *testing.T) {
 			got.XUID, got.TimeMS, got.TypeHint)
 	}
 }
+
+func TestToSyncRegistry_CategoryFollowsKnownPairName(t *testing.T) {
+	pair := "Ranked:Strongholds on Live Fire"
+	got := toSyncRegistry(mapper.MatchRegistryRow{PairName: &pair})
+	if got.ModeCategory != "Ranked" {
+		t.Errorf("ModeCategory: want 'Ranked' from the pair name, got %q", got.ModeCategory)
+	}
+}

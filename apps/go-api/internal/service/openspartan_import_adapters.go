@@ -3,6 +3,7 @@ package service
 import (
 	"strconv"
 
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/sync"
@@ -27,9 +28,14 @@ func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 		team1 = &v
 	}
 
-	modeCategory := "Other"
-	if m.ModeCategory != nil && *m.ModeCategory != "" {
+	// Catégorie explicite, sinon celle de la règle canonique sur le nom de paire connu, sinon
+	// Other : elle se recalcule avec le nom quand le recompute post-import le résout.
+	modeCategory := modelabel.CategoryOther
+	switch {
+	case m.ModeCategory != nil && *m.ModeCategory != "":
 		modeCategory = *m.ModeCategory
+	case m.PairName != nil:
+		modeCategory = modelabel.InferCategory(*m.PairName)
 	}
 
 	return sync.MatchRegistryRow{

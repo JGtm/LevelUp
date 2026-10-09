@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/games"
 )
 
@@ -89,8 +90,12 @@ func EnrichRegistryFromMetadata(ctx context.Context, metadataDB *sql.DB, row *Ma
 			row.GameVariantName, row.GameVariantID, row.MapName, row.MapID,
 		); ok {
 			row.PairName = &constructed
-			row.ModeCategory = determineModeCategory(constructed)
 		}
+	}
+	// La catégorie suit TOUJOURS le nom de paire final : ExtractRegistry l'a calculée sur le nom
+	// brut de l'API (souvent l'identifiant), les résolutions ci-dessus ont pu le changer.
+	if row.PairName != nil {
+		row.ModeCategory = modelabel.InferCategory(*row.PairName)
 	}
 	return nil
 }

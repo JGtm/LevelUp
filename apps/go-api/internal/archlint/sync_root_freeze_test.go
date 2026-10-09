@@ -27,7 +27,7 @@ import (
 // rouge). La baseline N'A PAS BOUGÉ — c'est le fichier qui est parti : l'étape vit dans
 // internal/sync/replayartifacts, le paquet sync ne garde que la délégation, dans
 // convergence.go (fichier existant). Le ratchet a fait exactement son travail.
-const syncRootFileBaseline = 80
+const syncRootFileBaseline = 79
 
 func TestSyncRootPackageFrozen(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
