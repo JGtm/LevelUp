@@ -95,7 +95,7 @@ const vueWeaponKillsSQL = `CREATE OR REPLACE VIEW v_weapon_kills AS
 			) WHERE rk = 1`
 
 // vuesDesTablesDuTitre : la vue de dernière génération (nom live) de chaque table de sharedSnapshotTitleOwnedRaw.
-var vuesDesTablesDuTitre = map[string]string{"weapon_kills": vueWeaponKillsSQL}
+var vuesDesTablesDuTitre = map[string]string{tableWeaponKills: vueWeaponKillsSQL}
 
 // OpenSnapshotShared ouvre la version courante comme une DuckDB :memory: reconstruisant
 // le SCHÉMA SHARED COMPLET — toutes les tables de base + TOUTES les vues aux noms live
