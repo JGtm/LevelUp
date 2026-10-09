@@ -92,11 +92,10 @@ var bareDuckDBRWOpenAllowlist = map[string]int{
 	"cmd/snapshot-world-leaderboard/main.go":  1,
 	"cmd/wal_forensic_compare/main.go":        5,
 	"cmd/world-aliases-persist/main.go":       1,
-	// CLI principale : sous-commandes ponctuelles (restauration CSR, reconstruction PME,
+	// CLI principale : sous-commandes ponctuelles (reconstruction PME,
 	// consolidation des alias), même régime que les outils ci-dessus.
 	"cmd/levelup/cmd_consolidate_aliases.go": 1,
 	"cmd/levelup/cmd_rebuild_pme.go":         1,
-	"cmd/levelup/cmd_restore_csr.go":         1,
 	// internal/ops : seeds (metadata, démo, synthétiques : bases fabriquées par la commande),
 	// restauration et archive (CLI `levelup data`), repli d'indexation média sur shared_social.
 	"internal/ops/archive.go":                    1,
