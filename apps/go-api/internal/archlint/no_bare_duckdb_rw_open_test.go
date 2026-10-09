@@ -104,7 +104,6 @@ var bareDuckDBRWOpenAllowlist = map[string]int{
 	"internal/ops/restore.go":                    1,
 	"internal/ops/seed.go":                       4,
 	"internal/ops/seed_demo.go":                  5,
-	"internal/ops/seed_demo_corpus.go":           1,
 	"internal/ops/seed_demo_media.go":            1,
 	"internal/ops/seed_demo_media_h5.go":         1,
 	"internal/ops/seed_demo_prestige.go":         1,
