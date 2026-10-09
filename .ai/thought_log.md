@@ -1,3 +1,13 @@
+## [2026-10-09] Ecarts de fin multiples de -108 bits (R-VEH-4) : slots liberes de la table d image-cle — Complete (recherche, branche `feat/ri-ecart-108`, non commitee)
+
+**Statut** : Complete (recherche ; aucun code de production ; deux instruments `research` ajoutes, non commites).
+
+**Decision technique principale** : la table d image-cle est un tableau de 0x1fff entrees indexe par slot (`FUN_1408be074`, `FUN_1405d5dbc`), ecrit en entier par `FUN_142e2d08c` et relu en entier par `FUN_142e2bfd0` sans compte dans le flux ; une entree d archetype `0xffffffff` n a pas de corps (108 bits) et c est l etat d un slot libere (`FUN_1408f1948` : id, archetype, mot +0xc a `0xffffffff`). Regle proposee (Rslot) : entre deux ancres de slots s et t, lire exactement t-s-1 entrees par la grammaire d entree avant de juger la fermeture.
+
+**Resultats observes** (`TestEcart108`, 28 films, sorties `scratchpad/ri/ecart108/final/`) : 2 838 des 2 841 bipedes a ecart -108k sont suivis de k entrees liberees, k = ecart de slots dans tous les cas ; fermeture ti=35 5 401 -> 8 242 ; admis T1 et T2 6 507 -> 6 507 (les gagnes etaient deja B ou refuses par T1) ; tous archetypes 240 470 -> 267 811, 44 pertes ti=37 (fermetures contredites par l index de slot, temoin 24 -> 0) ; temoin decale bipedes hasard 3 -> 4 ; queue de table : 162 paquets finissent a moins d un octet de la fin du payload apres 0x1ffe-slot entrees liberees.
+
+**Conclusion / prochaine etape** : rapport `.ai/RAPPORT_ECART_108_R_VEH_4_2026-10-09.md`. A instruire en lot : la regle dans `preuveDeLEtatComplet`, puis dans `PreuveDImageCle.prouve` et la marche d ancres (non simulees de bout en bout : effet sur les elections a mesurer).
+
 ## [2026-09-23] Reprise post-serie 5 du decodeur : lot 5.26 (residu film dense, arret ecrit), docs de release v7.5, archivage `.ai` — Complete (trois lots Opus en parallele, fusionnes dans `feat/recherche-decodeur-film` avancee sur feat/v75, CI puis fast-forward de feat/v75)
 
 **Statut** : Complete cote code et documents ; push + CI + fast-forward de feat/v75 dans la foulee ; 13 documents `.ai` A ARBITRER par l utilisateur (liste dans `.ai/V7.5/README.md`).
