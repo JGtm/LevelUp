@@ -61,32 +61,49 @@ func (c *canalDeLEtatCompletBipede) fenetresDerriereLaLecture(p *lecture.Paquet,
 	}
 	a := &c.out.Admission
 	a.FenetresArmes += nonAdmis
-	a.FenetresInventaire += nonAdmis
-	a.FenetresMarque += nonAdmis
-	mots := motsParRecord(p.Payload, recs, keyframeBipedTI, c.known, carrierMarkViews)
+	// ARMES SEULES ([ScanArmesDesImagesCles]) : ni le jeu de mots de la marque ni les regles
+	// d inventaire ne tournent, et leurs replis ne voient aucun record.
+	jeux := []map[uint32]bool{c.known}
+	if !c.armesSeules {
+		a.FenetresInventaire += nonAdmis
+		a.FenetresMarque += nonAdmis
+		jeux = append(jeux, carrierMarkViews)
+	}
+	mots := motsParRecord(p.Payload, recs, keyframeBipedTI, jeux...)
 	familles, marques := map[uint32][]uint32{}, map[uint32]bool{}
 	for _, rf := range mots[0] {
 		familles[rf.Rec.Debut] = rf.Families
 	}
-	for _, rf := range mots[1] {
-		marques[rf.Rec.Debut] = true
+	var emprises []invRecordSpan
+	if !c.armesSeules {
+		for _, rf := range mots[1] {
+			marques[rf.Rec.Debut] = true
+		}
+		emprises = invRecordSpansDe(p.Payload, recs)
 	}
-	emprises := invRecordSpansDe(p.Payload, recs)
 	for i := range rendus {
 		if !rendus[i].bipede || rendus[i].admis {
 			continue
 		}
-		c.rendreParLaFenetre(p, &p.Records[i], emprises[i], familles, marques, &rendus[i])
+		var emprise invRecordSpan
+		if emprises != nil {
+			emprise = emprises[i]
+		}
+		c.rendreParLaFenetre(p, &p.Records[i], emprise, familles, marques, &rendus[i])
 	}
 }
 
-// rendreParLaFenetre rend ce que les fenetres trouvent d UN record non admis.
+// rendreParLaFenetre rend ce que les fenetres trouvent d UN record non admis (ses armes seules sous
+// [ScanArmesDesImagesCles]).
 func (c *canalDeLEtatCompletBipede) rendreParLaFenetre(p *lecture.Paquet, r *lecture.Record, emprise invRecordSpan,
 	familles map[uint32][]uint32, marques map[uint32]bool, rendu *renduDuRecord) {
 	rendu.recupere = RecordRecupere{TimestampUS: p.TS, Slot: r.Vie.Slot}
 	if fs := familles[r.Debut]; len(fs) > 0 {
 		rendu.armes = &types.KeyframeLoadout{Slot: r.Vie.Slot, Families: fs}
 		rendu.recupere.Armes = true
+	}
+	if c.armesSeules {
+		return
 	}
 	if invs := keyframeInventoriesDe(p.Payload, []invRecordSpan{emprise}, c.known, c.grenMax); len(invs) == 1 {
 		rendu.inventaire = &invs[0]

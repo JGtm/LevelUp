@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // verifierLesRepliesDeLaBobine : chaque record non admis est donne aux trois fenetres et compte ;
@@ -102,4 +103,36 @@ func TestLaFenetreNeVoitQueLesRecordsNonAdmis(t *testing.T) {
 		t.Fatalf("%d records admis dont %d ou la fenetre lirait autre chose : le test ne mord plus", total, mordants)
 	}
 	t.Logf("%d records admis, %d ou la fenetre lirait autre chose", total, mordants)
+}
+
+// TestLesArmesSeulesSontCellesDeLaMarcheComplete : la lecture reduite aux armes (celle du sync,
+// [ScanArmesDesImagesCles]) rend, sur chaque bobine du golden, les dotations de la marche complete
+// record pour record, et seul le repli des armes compte un record : ni les regles d inventaire ni le
+// jeu de mots de la marque ne tournent (plan, §7 D-28).
+//
+// Mutation jouee le 2026-10-09, rouge puis retiree : les fenetres d inventaire et de marque jouees
+// sous les armes seules.
+func TestLesArmesSeulesSontCellesDeLaMarcheComplete(t *testing.T) {
+	for _, court := range closureMiniFilms() {
+		complete := etatsDeLaBobine(t, court)
+		fc := contexteDeLaBobine(t, court)
+		armes, err := ScanArmesDesImagesCles(fc, catalogueDesFamilles())
+		if err != nil {
+			t.Fatalf("%s : %v", court, err)
+		}
+		if !slices.EqualFunc(armes, complete.Loadouts, func(a, b types.KeyframeLoadout) bool {
+			return a.TimestampUS == b.TimestampUS && a.Slot == b.Slot && a.Chunk == b.Chunk &&
+				a.PacketIndex == b.PacketIndex && slices.Equal(a.Families, b.Families)
+		}) {
+			t.Errorf("%s : %d dotations sous les armes seules, %d sous la marche complete, ou valeurs differentes",
+				court, len(armes), len(complete.Loadouts))
+		}
+		r := fc.ComptesDesReplis()
+		if r.FenetresArmesImageCle != complete.Admission.FenetresArmes || r.FenetresInventaireImageCle != 0 ||
+			r.FenetresMarqueDePortage != 0 {
+			t.Errorf("%s : replis sous les armes seules %d / %d / %d, attendu %d / 0 / 0", court,
+				r.FenetresArmesImageCle, r.FenetresInventaireImageCle, r.FenetresMarqueDePortage,
+				complete.Admission.FenetresArmes)
+		}
+	}
 }

@@ -3,8 +3,14 @@ package types
 // grammar_inventaire.go — L INVENTAIRE D UN BIPED A UNE IMAGE-CLE, ET LE COMPTE DE SA LECTURE
 // (couche `grammar`).
 //
-// Deplaces depuis `film/replay` au lot J4.2 (2026-09-26) SANS REECRITURE, avec
-// `inventory_decode.go` qui les produit (cf. grammar_pont.go pour la regle du deplacement).
+// Deplaces depuis `film/replay` au lot J4.2 (2026-09-26) SANS REECRITURE (cf. grammar_pont.go pour
+// la regle du deplacement).
+//
+// DEUX PRODUCTEURS, UN SEUL TYPE (2.7.d1, 2026-10-09) : la lecture de l etat complet du bipede par
+// la grammaire sur les records que sa regle d admission retient
+// (`grammar/keyframe_etat_complet_admission.go`), et, derriere elle, la fenetre de bits
+// (`grammar/inventory_decode.go`) sur les autres, sous le repli `repli_fenetre_inventaire_image_cle`.
+// Les champs ci-dessous disent ce que vaut chaque valeur selon son producteur.
 
 // KeyframeInventory est l'inventaire d'un biped à l'instant d'une image-clé.
 type KeyframeInventory struct {
@@ -25,17 +31,22 @@ type KeyframeInventory struct {
 	// même position 1 167 fois. C'est une TÉLÉMÉTRIE : elle alimente KeyframeInventoryStats,
 	// pour qu'une dérive du repli se voie au lieu de se fondre dans le total.
 	GrenadesByPosition bool
-	// SelectedGrenadeRank est le rang de grenade SÉLECTIONNÉ (i47), ou -1 non lu. C'est le
-	// type qui partira au prochain lancer. Publié seulement si le masque lu recoupe
-	// exactement les compteurs i22 et si la sélection est unanime dans la fenêtre (cf.
-	// invGrenadeSelLo) : à défaut, -1 — une sélection ne se devine pas.
+	// SelectedGrenadeRank est le rang de grenade SÉLECTIONNÉ (i47), EN BASE 0 (0 = le premier
+	// rang de Grenades), ou -1 : non lu, ou aucun type désigné. C'est le type qui partira au
+	// prochain lancer. Lu par la grammaire : la sélection R(3) d'i47, en base 1 dans le film,
+	// moins un (décision U-3 du 2026-10-08), sur un record dont le masque d'i47 égale la bitmap des
+	// compteurs i22 (règle d'admission). Rendu par la fenêtre : publié seulement si le masque lu
+	// recoupe exactement les compteurs i22 et si la sélection est unanime dans la fenêtre (cf.
+	// invGrenadeSelLo) — une sélection ne se devine pas.
 	SelectedGrenadeRank int
 	// AbilityRank est le RANG de palette de la capacité portée, ou -1 non lu.
 	//
 	// C'EST UN RANG, PAS UN INDEX — il l'est depuis le 2026-08-14 (cf. invAbilityRankHigh), et
-	// le champ a changé de nom parce qu'il a changé de grandeur. Ce canal ne voit QUE la
-	// fenêtre 16..23 de la palette : hors d'elle, l'ancre ne matche pas et la lecture n'existe
-	// pas. Le rang complet, sur toute la palette, vient d'i48 (grammar.ScanFilmAbilityRanks).
+	// le champ a changé de nom parce qu'il a changé de grandeur. Il n'est publié que dans la
+	// fenêtre 16..23 de la palette : la fenêtre de bits ne voit qu'elle (hors d'elle, l'ancre ne
+	// matche pas), et la grammaire, qui lit le rang complet d'i48 dans l'image-clé, COMPTE et ne
+	// publie pas un rang hors de 16..23 (décision U-3 du 2026-10-08, `CapaciteHorsDomaine`). Le
+	// rang complet, sur toute la palette, vient d'i48 des paquets delta (grammar.ScanFilmAbilityRanks).
 	//
 	// Le NOM ne se décide pas ici : la table est partielle ET propre à la palette du match,
 	// et la nommer est le travail de la couche qui possède le catalogue.
@@ -45,12 +56,16 @@ type KeyframeInventory struct {
 	// critère de parse (44 bits nuls).
 	Ammo     [InventorySlotCount]SlotAmmo
 	AmmoRead bool
-	// DrawnSlot est le sélecteur i42 : 0 ou 1 = cet emplacement est dégainé, 2 = aucune arme
-	// dégainée, -1 = non lu. LE 2 EST UNE VALEUR : au premier keyframe le match n'a pas
-	// commencé et les huit joueurs ont leurs armes rangées.
+	// DrawnSlot est l'EMPLACEMENT D'ARME DÉSIRÉ EN MAIN PRINCIPALE (i42, param[1] de
+	// `FUN_1406d01fc` : unité +0x389), un index d'emplacement 0..3 — égal à l'emplacement
+	// dégainé hors d'un changement d'arme en cours —, ou -1 : absent (porte de `FUN_1406d00ec`
+	// levée) ou non lu ; un -1 est publié comme une ABSENCE (décisions U-3 et U-4 du 2026-10-08).
+	// Aucun lecteur relu du jeu ne donne à une valeur le sens « aucune arme dégainée ». Rendu par
+	// la fenêtre, c'est le DERNIER R(2) présent du bloc (param[2], seconde main, en ambidextrie).
 	DrawnSlot int
-	// AmmoCandidates est le nombre de débuts de bloc qui satisfaisaient le critère. 1 = lecture
-	// unique ; au-delà, le plus long a été retenu et ce nombre dit que le départage a eu lieu.
+	// AmmoCandidates est le nombre de débuts de bloc qui satisfaisaient le critère de la fenêtre.
+	// 1 = lecture unique (toujours 1 pour une lecture de la grammaire) ; au-delà, le plus long a
+	// été retenu et ce nombre dit que le départage a eu lieu.
 	AmmoCandidates int
 }
 

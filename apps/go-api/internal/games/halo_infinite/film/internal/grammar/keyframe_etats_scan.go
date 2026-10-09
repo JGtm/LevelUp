@@ -62,7 +62,27 @@ func ScanEtatsDesImagesCles(fc *FilmContext, known map[uint32]bool, grenMax uint
 	if grenMax == 0 {
 		grenMax = DefaultGrenadeMax
 	}
-	c := nouveauCanalDeLEtatComplet(fc, known, grenMax)
+	return marcherLesImagesCles(fc, nouveauCanalDeLEtatComplet(fc, known, grenMax))
+}
+
+// ScanArmesDesImagesCles est [ScanEtatsDesImagesCles] reduite aux ARMES PORTEES, pour un appelant
+// qui ne lit qu elles (la lecture des porteurs au sync, `replay/porteurs_au_sync.go`) : la meme
+// marche et la meme regle d admission, mais aucun inventaire ni marque de portage n est publie, et
+// derriere la lecture seule la fenetre des familles tourne — ni les regles d inventaire ni le jeu
+// de mots de la marque (plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, §7 D-28 : +17 %
+// sur le sync de `9f57c612` quand il les payait sans les lire). Seul
+// `repli_fenetre_armes_image_cle` se compte : les deux autres fenetres ne voient aucun record. Les
+// armes rendues sont celles de [ScanEtatsDesImagesCles], record pour record.
+func ScanArmesDesImagesCles(fc *FilmContext, known map[uint32]bool) ([]types.KeyframeLoadout, error) {
+	c := nouveauCanalDeLEtatComplet(fc, known, DefaultGrenadeMax)
+	c.armesSeules = true
+	e, err := marcherLesImagesCles(fc, c)
+	return e.Loadouts, err
+}
+
+// marcherLesImagesCles distribue la phase des images-cles de `fc` au canal `c`, puis note les comptes
+// des trois replis sur le contexte.
+func marcherLesImagesCles(fc *FilmContext, c *canalDeLEtatCompletBipede) (EtatsDesImagesCles, error) {
 	distribuerLesImagesClesSeules(fc, []Canal{c})
 	c.out.StatsInventaire.Chunks = len(fc.ChunkNumbers())
 	c.out.StatsInventaire.ChunksUnread = c.out.StatsInventaire.Chunks - c.lus
@@ -84,7 +104,9 @@ type canalDeLEtatCompletBipede struct {
 	grenMax uint32
 	// lisible : le registre du film declare l archetype bipede ; sans lui, aucun corps n est
 	// parcouru et aucun record n est admis.
-	lisible            bool
+	lisible bool
+	// armesSeules : seules les armes portees sont publiees ([ScanArmesDesImagesCles]).
+	armesSeules        bool
 	arch               Archetype
 	roles              map[int]roleDOccurrence
 	dernierEmplacement int
@@ -177,6 +199,9 @@ func (c *canalDeLEtatCompletBipede) compterLeVerdict(v raisonDeRefus) bool {
 // lu rend ce que la grammaire publie d un record admis.
 func (c *canalDeLEtatCompletBipede) lu(slot uint32, l *lectureDEtatComplet) renduDuRecord {
 	armes := l.armesDe(slot)
+	if c.armesSeules {
+		return renduDuRecord{bipede: true, admis: true, armes: &armes}
+	}
 	inv, horsDomaine := l.inventaireDe(slot)
 	if horsDomaine {
 		c.out.Admission.CapaciteHorsDomaine++

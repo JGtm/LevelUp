@@ -196,9 +196,12 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 // lireLesArmesTenues lit le canal des armes tenues dans l'ordre de la cuisson : images-clés
 // d'armes, dotations de naissance, puis changements qualifiés par elles (`spawnSetFrom`).
 // Absence non fatale, journalisée : la bombe sort alors sans portage.
+//
+// LES IMAGES-CLÉS SONT LUES POUR LEURS SEULES ARMES ([grammar.ScanArmesDesImagesCles]) : les mêmes
+// armes que la cuisson, record pour record, sans l'inventaire ni la marque de portage que le sync ne
+// lit pas, et sans les fenêtres qui les rendraient derrière la lecture.
 func (e EntreePorteursAuSync) lireLesArmesTenues(ctx context.Context) []types.HeldWeaponChange {
-	etats, err := grammar.ScanEtatsDesImagesCles(e.Contexte, loadoutFamilies(), 0)
-	loadouts := etats.Loadouts
+	loadouts, err := grammar.ScanArmesDesImagesCles(e.Contexte, loadoutFamilies())
 	if err != nil {
 		slog.WarnContext(ctx, "porteurs au sync : images-cles d'armes illisibles", "match_id", e.MatchID, "err", err)
 		loadouts = nil

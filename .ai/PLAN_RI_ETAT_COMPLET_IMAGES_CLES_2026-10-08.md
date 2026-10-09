@@ -1113,20 +1113,64 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   `TestChaqueRevisionEgaleSonGolden` rouges, attendu jusqu'à la montée de D1.4 (E-7).
 
 ### Étape D1.3 — Consommateurs du rejeu et survie depuis les faits
-- [ ] D1.3.1 `replay/film_scan.go` (`balayerInventaire`), `porteurs_au_sync.go`
+- [x] D1.3.1 `replay/film_scan.go` (`balayerInventaire`), `porteurs_au_sync.go`
       (`lireLesArmesTenues`, l.199), `build_objectives_live.go` (marques), `loadouts.go`,
       `inventory.go`, `grenade_reads.go`, `abilities.go`, `document_weapon_changes.go` lisent le canal,
       puis la fenêtre sur les seuls records récupérés. L'ordre de `Loadout.W` ne bouge pas
       (`inventory[].am`) ; aucun ajout à `decfilm` (`film_facade_surface_test`).
-- [ ] D1.3.2 Survie depuis les faits (ADR 0034) : test du paquet `replay` qui cuit une bobine
+      *Fait (lot D, 2026-10-09)*. Vérifié sur pièces : la cuisson (`film_scan.go`, inventaire,
+      armes, marques de `build_objectives_live.go`) lisait déjà la marche unique depuis D1.1.6 ;
+      `document_weapon_changes.go` ne prend que `s.in.Loadouts` (ensemble de naissance) ; l'ordre de
+      `Loadout.W` reste celui des emplacements (grammaire) ou des bits (fenêtre), `am` par index
+      d'emplacement, comme avant. Changements : (1) **D-28 TRAITÉE** — la lecture des porteurs au
+      sync passe par `grammar.ScanArmesDesImagesCles` (même marche, même admission, armes seules :
+      ni règles d'inventaire ni jeu de mots de la marque derrière la lecture, seul
+      `repli_fenetre_armes_image_cle` compté) ; `TestLesArmesSeulesSontCellesDeLaMarcheComplete`
+      (7 bobines, dotations identiques record pour record à la marche complète, replis 199/0/0 …),
+      mutation rouge (fenêtres d'inventaire et de marque jouées sous les armes seules). Banc
+      `BenchmarkPorteursAuSync` de `9f57c612` (`$S/../d1y/perf/`) : contre l'état D1.2, rapports
+      0,80 à 0,86 sur quatre paires (−60 ms par tour) ; contre la base de l'étape 0, 0,86 à 0,96
+      sur cinq paires, médiane 0,92 (bruit de la base 6 %, mesure indicative : le gate de coût est
+      D1.4.4). (2) La marque « récupéré » est consommée par la cuisson : `lireLesImagesCles`
+      journalise les records récupérés par méthode (`recuperesArmes`, `recuperesInventaire`,
+      `recuperesMarque`). DÉCISION D'EXÉCUTION : elle n'est pas publiée par record (E-8, forme des
+      faits inchangée ; précédents 2.7.b et 2.7.d3) ; ce qui est publié d'elle, les comptes des trois
+      replis et les valeurs des records récupérés, survit (D1.3.2). (3) Doc = contrat (règle 17) :
+      `types.KeyframeInventory` (deux producteurs ; `DrawnSlot` = emplacement désiré, −1 absence,
+      aucun sens « aucune arme dégainée » — U-4 ; `SelectedGrenadeRank` en base 0 — U-3 ;
+      `AbilityRank` borné à 16..23 sur les deux producteurs ; `AmmoCandidates`), `Inventory.D` et
+      `Inventory.Cand`, en-têtes de `inventory.go`, `loadouts.go`, `grenade_reads.go`, `abilities.go`.
+      Aucun ajout à `decfilm`.
+- [x] D1.3.2 Survie depuis les faits (ADR 0034) : test du paquet `replay` qui cuit une bobine
       fraîche puis publie depuis ses faits, et compare les comptes des trois replis, les marques
       `PreuveRecupere` et les valeurs d'inventaire publiées. Identiques → `SchemaDesFaits` 10 reste ;
       sinon les faits portent ce qui manque (section `rapport de replis`, `filmfacts_fichier.go:206`)
       et `SchemaDesFaits` 10 → 11, avec sa chronique.
+      *Fait (lot D)* : `replay/images_cles_faits_test.go`,
+      `TestLesImagesClesSurviventALaPublicationDepuisLesFaits` — bobine `minifilm_11de8353`
+      (registre et 16 images-clés réelles) en contexte de cuisson, lue par les phases de production
+      (`lireLesImagesCles`, `balayerInventaire`), versement et capture des faits de la cuisson
+      (`versementDuBalayage`, `faitsDuBalayage`), positions du fixture du même film ; document de la
+      cuisson et document rejoué depuis les faits (encodés puis relus) IDENTIQUES à l'octet ; comptes
+      des trois replis 50 / 50 / 50 = records non admis donnés, publiés à l'identique par les deux
+      chemins ; records récupérés publiés dans l'inventaire avec la même lecture. Mutation rouge
+      (trois lignes de versement retirées). **`SchemaDesFaits` reste 11** (valeur de la branche,
+      montée en LK.6.4 pour une autre raison) : rien de ce que la publication porte de la lecture des
+      images-clés ne manque aux faits.
 - Tests : goldens d'assemblage et de forme ; unitaires `buildInventory`, `buildGrenadeReads`,
   `buildAbilityReads` avec Src « kf » ; `markInventoryDeadReadings` conservé (règles 6 et 8 de 2.7.b).
 - Gate D1.3 : tests du paquet `replay` verts ; diffs de goldens tous expliqués par une valeur de la
   grammaire (U-3) ; test de survie vert.
+- *Gate D1.3 joué le 2026-10-09 (lot D)* : **PASSÉ.** G-film (21 paquets, gardes de révision sous
+  `-skip`, `$S/../d1y/d13/gfilm.log`), `archlint`, vet avec et sans `research` (film et
+  `killcollector`), `golangci-lint --new-from-merge-base=origin/main` sur `grammar`, `replay`, `types`
+  (0 problème) : verts. Unitaires : `TestBuildInventoryPublieLaSelectionEnBaseZero` (nouveau), le
+  message de `TestBuildInventoryProjectsAndDropsPreOrigin` corrigé (U-4) ; `markInventoryDeadReadings`
+  inchangé. Test de survie vert (D1.3.2). **Aucun golden ne bouge** : les goldens d'assemblage se
+  bâtissent sur les fixtures d'entrées figés, que ce lot ne régénère pas — DÉCISION D'EXÉCUTION,
+  §7 D-29 (les fixtures sont périmés par des lots antérieurs, et leur régénération sur le code de
+  `3aa885e37`, d'avant D1.1, fait rougir cinq tests de mesure étrangers à D1) ; les changements de
+  valeur de D1 se jugent sur pièces dans `replay-equiv` (U-3, D1.4.4).
 
 ### Étape D1.4 — Gates, révisions, clôture de 2.7.d1
 - [ ] D1.4.1 `grammar.Rev` monte (chronique : couverture, admission, replis ; porte
@@ -1365,6 +1409,26 @@ refusionner, rejouer l'étape 0).
   essayé à chaque bit du payload par `motsParRecord`, et les règles d'inventaire jouées sur les records
   non admis alors que le sync ne lit que les armes. Non traité (D1.2 close) ; le gate de coût de D1.4 le
   jugera — à instruire avant lui.
+  *TRAITÉE en D1.3.1 (2026-10-09, lot D)* : cause établie par la mesure — à l'état D1.2, le sync
+  jouait la marche complète (`ScanEtatsDesImagesCles`), donc les règles d'inventaire et le jeu de mots
+  de la marque sur les records non admis. `grammar.ScanArmesDesImagesCles` (armes seules) : contre
+  l'état D1.2, 0,80 à 0,86 (−60 ms par tour) ; contre la base, médiane 0,92.
+- D-29 *(D1.3)* Les fixtures d'entrées du paquet `replay` (`testdata/inputs_*.bin.gz`, huit builds) ne
+  décrivent plus la production, et cela PRÉCÈDE ce lot : `TestGoldenInputsFidelite` (local, cache de
+  films ; sauté en CI) est rouge sur les huit builds à la tête de D1.2 (`$S/../d1y/d13/fidelite_avant.log`,
+  577 lignes sur 671 pour `000d5950` : trajectoires, pistes de projectile, lectures delta, i48), et la
+  régénération faite sur le code de `3aa885e37` (production d'avant D1.1, extrait par `git archive`
+  sous `$S/../d1y/base_a`) les remet d'accord avec la production de ce commit mais fait rougir cinq
+  tests de mesure qui figent des chiffres d'autres lots (`TestProjectilesAndInventoryCounts` 436 → 433
+  trajectoires, `TestGoldenAssemblyFigeLesChiffresDuChantier`, `TestCoupuresDeVieOntLeurCause`,
+  `TestViesDUnEchantillonOntLeurOracle`, fixtures de contrat). Non traité (hors périmètre : ces écarts
+  ne sont pas de D1) ; à régénérer et adjuger dans un lot dédié.
+- D-30 *(D1.3)* Le client web lit `inventory[].d == 2` comme « rien de dégainé »
+  (`apps/web/src/features/match-replay/model/equippedLogic.ts`, `holstered: d === 2`, et son test
+  « D=2 : RIEN de dégainé — une mesure »), sens qu'aucun lecteur relu du jeu n'appuie (U-4 : `d` est
+  l'emplacement désiré, un index 0..3). Effet à l'écran : la rangée d'armes ne marque aucune arme en
+  main et tait l'indice « dégainée ? ». La doc Go est corrigée (U-4) ; le client n'est pas touché par
+  ce lot (aucune décision de l'utilisateur sur l'affichage). Non traité.
 
 ## 8. Journal
 
@@ -1658,3 +1722,11 @@ refusionner, rejouer l'étape 0).
   Mesure informative à l'état D1.2 : sync de `9f57c612` +17 % (§7 D-28), à instruire avant le gate de
   D1.4. Découvertes D-24 à D-28. D1.3 non commencée (consigne). Gardes de révision rouges jusqu'à la
   montée de D1.4 (E-7) ; rien de poussé.
+- 2026-10-09 (lot D) : **D1.3 CLOSE** (D1.3.1, D1.3.2 `[x]`), tête de départ `c68913160`. Sorties sous
+  `$REF/../d1y/` (`d13/`, `perf/`). D-28 instruite et traitée d'abord (mode « armes seules » de la
+  marche unique pour le sync, mesure en paires sur `9f57c612`) ; consommateurs de la cuisson vérifiés
+  sur pièces (ils lisaient déjà la marche unique) ; marque « récupéré » journalisée par méthode, non
+  publiée par record (E-8) ; doc des champs d'inventaire corrigée (U-3, U-4). Survie depuis les faits
+  prouvée sur la bobine `11de8353` (document identique, trois replis 50/50/50) : `SchemaDesFaits`
+  reste 11. Fixtures d'entrées non régénérés (D-29, dérive antérieure au lot) ; découverte D-30 (le
+  client lit `d == 2` comme « rien de dégainé »). Gardes de révision rouges jusqu'à la montée de D1.4.

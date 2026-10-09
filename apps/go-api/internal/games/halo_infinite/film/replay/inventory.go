@@ -10,9 +10,12 @@ import (
 
 // inventory.go — L'INVENTAIRE porté à la grille du rejeu.
 //
-// SOURCE : ScanFilmKeyframeInventory (inventory_decode.go) — les records de biped des paquets
-// d'image-clé, les mêmes que les armes portées. Les règles d'ancrage et les contrôles vivent
-// là-bas ; ici on ne fait que projeter sur l'axe de temps et nommer.
+// SOURCE : la marche unique des images-clés (`grammar.ScanEtatsDesImagesCles`, 2.7.d1) — les
+// records de biped des paquets d'image-clé, les mêmes que les armes portées. La grammaire lit
+// l'état complet du bipède et publie les records que sa règle d'admission retient ; la fenêtre de
+// bits (inventory_decode.go) rend les autres DERRIÈRE elle, sous le repli compté
+// `repli_fenetre_inventaire_image_cle`. La règle, les contrôles et les deux producteurs vivent
+// là-bas (cf. types.KeyframeInventory) ; ici on ne fait que projeter sur l'axe de temps et nommer.
 //
 // CE QUE LE CALQUE GARANTIT : à l'instant T, ce slot AVAIT cet inventaire. Contrôle terrain
 // relevé à l'écran sur une image-clé, huit joueurs : 8/8 sur la grenade portée, 8/8 sur le nom
@@ -78,14 +81,18 @@ type Inventory struct {
 	// palette et sur son propre axe de temps : le canal i48 la transmet dans les paquets
 	// delta, pas aux images-clés (cf. abilities.go).
 	//
-	// D est le sélecteur d'emplacement : 0 ou 1 = cet emplacement est dégainé, 2 = AUCUNE arme
-	// dégainée. Pointeur pour la même raison, et le 2 compte : à la première image-clé le match
-	// n'a pas commencé et les huit joueurs ont leurs armes rangées.
+	// D est l'emplacement d'arme DÉSIRÉ en main principale (i42), un index d'emplacement 0..3,
+	// égal à l'emplacement dégainé hors d'un changement d'arme en cours (cf.
+	// types.KeyframeInventory.DrawnSlot). Pointeur pour la même raison : l'emplacement 0 est une
+	// valeur. ABSENT = le film ne désigne aucun emplacement ou la lecture n'a rien lu ; aucun
+	// lecteur relu du jeu ne donne à une valeur le sens « aucune arme dégainée » (décision U-4 du
+	// 2026-10-08).
 	D *int `json:"d,omitempty"`
 	// Am est l'état de munitions des emplacements portant une arme, dans l'ordre de Loadout.W.
 	Am []AmmoSlot `json:"am,omitempty"`
-	// Cand est le nombre de lectures possibles du bloc de munitions. 1 = lecture unique ;
-	// au-delà, la plus longue a été retenue et ce nombre rend le départage visible.
+	// Cand est le nombre de lectures possibles du bloc de munitions par la fenêtre. 1 = lecture
+	// unique (et toute lecture de la grammaire) ; au-delà, la plus longue a été retenue et ce
+	// nombre rend le départage visible.
 	Cand int `json:"cand,omitempty"`
 	// Empty MARQUE une lecture qui ne rend RIEN — ni compteur de grenade, ni munition — et dit
 	// POURQUOI. ABSENT = la lecture porte quelque chose ; les deux seules valeurs présentes sont
@@ -234,7 +241,7 @@ func keepInventoryOfPublishedTracks(inv []Inventory, tracks []Track) []Inventory
 // n'en dépend), et il n'incrémente donc pas SchemaVersion — même règle que
 // Structure/StructureBounds (cf. TestStructureIsOptionalInDocument, structure_test.go).
 type InventoryCoverage struct {
-	// Decoded est le nombre de lectures que le décodeur a produites (ScanFilmKeyframeInventory),
+	// Decoded est le nombre de lectures que le décodeur a produites (la marche des images-clés),
 	// avant tout filtrage — le dénominateur.
 	Decoded int `json:"decoded"`
 	// DroppedBeforeOrigin est le nombre de lectures écartées parce que leur horodatage précède
