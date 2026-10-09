@@ -117026,7 +117026,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : correctif de texte, puis fusion dans `feat/v75` sur accord du user ; prédicat de B1 à confirmer par le user.
 
-## [2026-10-09] Roi de la colline au rejeu : une seule colline à sa vraie place, sa capture, la barre de garde Doubles/Classé, l'étage — En cours (`feat/koth-colline`, plan `.ai/PLAN_KOTH_REJEU_2026-10-09.md`)
+## [2026-10-09] Roi de la colline au rejeu : une seule colline à sa vraie place, sa capture, la barre de garde Doubles/Classé, l'étage — Complété (`feat/koth-colline`, 6 commits, CI verte au niveau job ; plan `.ai/PLAN_KOTH_REJEU_2026-10-09.md`)
 
 **Demande** : signalement du user sur son 2v2 Roi de la colline (`0d9a9af9`) : toutes les collines affichées, capture invisible, barre de garde absente, pas d'étage sur la colline.
 
@@ -117034,4 +117034,4 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Résultats observés** : témoin P3 z4 / P4 z2 (avant : z2 / z2) ; 11 films KOTH recuits un par un en cache isolé, 0 période fusionnée, 0 repli ; séquence de collines identique sur trois films classés de Lattice. La jauge de capture de colline existe dans le film (0 -> 1 en ~1 s, vidange ~1 s) sauf en Classé (prise instantanée, 0 émission). Seuils de garde mesurés : Doubles 35, Classé 40 (Vacancy, Lattice, Solitude), Arène 35 (contrôle). E2 : jauge de capture des collines publiée (schéma 92, champ `draining` des segments) ; témoin recuit : 531 points, 24 prises au camp lu, 20 vidanges. E3 : seuils Doubles 35 et Classé 40, cibles Doubles 3 et Squad 3 déclarés ; Squad sans seuil (aucun film mesurable). E4 : rendu web (une colline visible pendant ses intervalles, sa jauge de prise et de vidange, ses contours d étage ; le son ignore la jauge des collines). E5 : 11 films recuits un par un ; deux défauts de publication trouvés au contrôle et corrigés (retour à zéro d une vidange perdu à l allègement, lecture non chaînée isolée) ; oracle 165/165 prises précédées d une montée du même camp, montée médiane 1 s.
 
-**Conclusion / prochaine étape** : E2 (publication de la jauge des collines, schéma 92), E3 (régulation), E4 (rendu), E5 (recuisson témoin), E6 (livraison).
+**Conclusion / prochaine étape** : lot livré sur sa branche (CI `b5d20f3cb` verte). Au superviseur : fusion dans `feat/v75` puis, sur accord du user, republication du parc au schéma 92 (assemblage seul ; les collines changent sur les 10 artefacts KOTH du parc local). Restent ouverts (registre des reports) : seuil de garde Squad (aucun film mesurable), courbes de score de deux films classés de Lattice, cartes Harvest et Vacancy - Ranked hors bornes.
