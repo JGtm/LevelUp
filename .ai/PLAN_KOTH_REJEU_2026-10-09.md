@@ -96,13 +96,13 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 - Gate : tests `internal/games/mappings`.
 
 ### E4 — Web : une colline, sa capture, son étage
-- [ ] Calque statique : les zones d'un document à collines ne s'y dessinent plus (le calque
+- [x] (`staticObjectivesOf`, `useZoneStates.staticElements`) Calque statique : les zones d'un document à collines ne s'y dessinent plus (le calque
   vivant les porte) ; Bastion / Total Control inchangés.
-- [ ] Calque vivant : la colline active porte ses contours d'étage (réemploi de
+- [x] (`paintZoneAt`, `gaugeRampAt`, `isHillState`) Calque vivant : la colline active porte ses contours d'étage (réemploi de
   `drawZoneFloorContours`) ; la jauge qui se vide prend l'encre du camp qui tenait.
-- [ ] Son : les rampes de jauge d'une colline ne déclenchent pas les sons de capture de Bastion
+- [x] (`zoneSoundEvents`) Son : les rampes de jauge d'une colline ne déclenchent pas les sons de capture de Bastion
   (la colline garde sa grammaire sonore).
-- [ ] Barre de garde : comportement vérifié par test sur la mécanique décrite (ne descend pas,
+- [x] (`hillHoldLogic.test.ts`, 3 cas) Barre de garde : comportement vérifié par test sur la mécanique décrite (ne descend pas,
   reprend, vide au point).
 - Gate : `make check-types`, vitest des fichiers touchés, lint web.
 
@@ -132,6 +132,8 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 - **E2 close (2026-10-09)**. Jauge des collines publiee (serie allegee par periode active, segments a pousseur constant, champ `draining`), schema 91 -> 92 (chronique v92, plafonds de `document_chronicle.go` 3181 -> 3208 et `structure_test.go` 1430 -> 1434 par l exception ecrite du ratchet de taille), goldens d assemblage et de forme, fixtures de contrat web regenerees (8, schema 92), `openapi.yaml` (+2 lignes) et `generated.ts` (+1). Gate : `go test` replay 37 s, archlint 70 s, replayview, replaybuild, `internal/api -run OpenAPI` verts. Recuisson du temoin : 531 points de jauge, 48 segments (24 prises au camp lu, 20 vidanges, 4 sans camp), `depuis_les_faits=true` (faits inchanges). Premiere prise du temoin : 0,067 -> 0,967 en 10 frames (1 s) puis 0.
 
 - **E3 close (2026-10-09)**. `[hold_ticks_per_point]` Doubles 35, Classe 40 ; `[score_target]` Doubles 3, Squad 3 (registre + regle enoncee par le user pour le 2v2, deux sources citees). Le garde `TestRadarRangeM_TableLivree` exige que toute variante des autres tables ait sa portee radar : Doubles et Squad entrent a 18 m par la regle d affectation ecrite (hors BTB = 18 m, utilisateur 2026-09-05) — consequence : leurs matchs entrent dans la lecture « ou je meurs isole » de Tactique. Commentaires TOML et `loader_regulation.go` corriges (la prise de colline est une capture courte, instantanee en classe). Gate : `go test ./internal/games/mappings/` vert.
+
+- **E4 close (2026-10-09)**. Web : le calque statique ne dessine plus les zones d un document a collines (Bastion et Total Control inchanges, test) ; le calque vivant peint la colline seulement pendant ses intervalles (jauge comprise), avec ses contours d etage (`drawZoneFloorContours` exporte, aucun ajout de ligne a `objectivesLayer.ts`, 519 L gele) et la vidange a l encre du camp tenant ; le son ignore la jauge des collines. Commentaires faux corriges (`zoneStatesLayer.ts`, `zoneSound.ts`, `hillHoldLogic.ts`, `types.ts`). Aucune chaine d interface neuve. Gate : `npm run typecheck` vert, eslint des 11 fichiers touches vert, vitest `src/features/match-replay src/lib/replay src/lib/api` 250 fichiers / 3 590 tests verts (dont `zoneStatesHill.test.ts` 8 cas, fixtures de contrat schema 92).
 
 ## Découvertes (hors périmètre, non traitées)
 

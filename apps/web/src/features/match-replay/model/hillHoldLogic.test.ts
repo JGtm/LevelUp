@@ -31,7 +31,7 @@ function doc(over: {
 const PER_POINT = 35
 
 describe('readHillHold — les cas où la jauge NE DOIT PAS se dessiner', () => {
-  it('se tait sans dénominateur mesuré — le cas du KOTH CLASSÉ, jamais une valeur devinée', () => {
+  it('se tait sans dénominateur mesuré — le cas du KOTH SQUAD, jamais une valeur devinée', () => {
     expect(readHillHold(doc({}), 0, 1, 500)).toBeNull()
   })
 
@@ -145,5 +145,31 @@ describe('readHillHold — la progression', () => {
       expect(v).toBeGreaterThanOrEqual(prev)
       prev = v
     }
+  })
+})
+
+describe('readHillHold — la mécanique de garde énoncée par l utilisateur (2026-10-09)', () => {
+  // Le camp 0 tient la colline (10 tics à la frame 100), la perd au camp 1 (5 tics de 150 à 200),
+  // la reprend (20 tics à 300), puis marque (35 à 400) : la barre du camp 0 NE DESCEND PAS
+  // pendant la perte, REPREND où elle en était, et les deux barres se VIDENT au point.
+  const d = doc({
+    points: { 0: [{ t: 400, v: 1 }], 1: [] },
+    hold: {
+      0: [{ t: 100, v: 10 }, { t: 300, v: 20 }, { t: 400, v: 35 }],
+      1: [{ t: 150, v: 2 }, { t: 200, v: 5 }],
+    },
+    perPoint: PER_POINT,
+  })
+  it('ne descend pas quand la colline est perdue', () => {
+    expect(readHillHold(d, 0, 1, 120)!.ally).toBeCloseTo(10 / 35)
+    expect(readHillHold(d, 0, 1, 250)!.ally).toBeCloseTo(10 / 35)
+    expect(readHillHold(d, 0, 1, 250)!.enemy).toBeCloseTo(5 / 35)
+  })
+  it('reprend où elle en était quand le camp reprend la colline', () => {
+    expect(readHillHold(d, 0, 1, 350)!.ally).toBeCloseTo(20 / 35)
+  })
+  it('se vide pour les deux camps au point marqué', () => {
+    expect(readHillHold(d, 0, 1, 400)).toEqual({ ally: 0, enemy: 0 })
+    expect(readHillHold(d, 0, 1, 450)).toEqual({ ally: 0, enemy: 0 })
   })
 })

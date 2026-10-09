@@ -348,7 +348,7 @@ export function ReplayCanvas({
     frozen: drag.dragging,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
-    objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
+    objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
   // LES EMPLACEMENTS D'ARME (schéma 11) : tracé, survol et infobulle dans un seul hook. Ils
