@@ -11,9 +11,13 @@
  * Relations les prend au VOLUME (échelle log), la tuile de match à la PART
  * (`assistShareSegments`). Ce composant ne connaît que des largeurs.
  *
- * Extrait de AssistButterflyBar.tsx le 2026-09-18 (lot 3, tuile de match) : le
- * papillon en compose deux (gauche renversée, droite), la tuile en pose une seule.
+ * Le papillon en compose deux (gauche renversée, droite), la tuile en pose une seule.
+ *
+ * `notMeasured` (tuile de match) : la part de la base dont l'assistance n'est pas lue,
+ * hachurée au bout EXTÉRIEUR de la piste — jamais dans le vide de la piste, qui dit « non
+ * assisté ». Entre les deux reste la piste nue : les frags connus non assistés.
  */
+import { NOT_MEASURED_HATCH } from '@/components/charts/notMeasuredHatch'
 import { Tooltip } from '@/components/ui/tooltip'
 import type { Locale } from '@/lib/i18n/locale'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -33,6 +37,12 @@ export const ASSIST_GIVEN_TOKEN: SemanticToken = 'assist-given'
  */
 export type AssistTierBarVariant = 'card' | 'row' | 'tile'
 
+/** Part non mesurée de la base : largeur en % de la piste, infobulle déjà rédigée. */
+export interface AssistNotMeasuredSegment {
+  widthPct: number
+  tooltip: string
+}
+
 const VARIANT: Record<AssistTierBarVariant, { bar: string; track: boolean }> = {
   card: { bar: 'h-3', track: false },
   row: { bar: 'h-2', track: true },
@@ -47,6 +57,7 @@ export function AssistTierBar({
   locale,
   variant,
   testId,
+  notMeasured,
 }: {
   segments: AssistSegment[]
   /** Sens de lecture : `left` = du centre vers la gauche (demi-barre gauche du papillon). */
@@ -55,8 +66,9 @@ export function AssistTierBar({
   text: AssistsText
   locale: Locale
   variant: AssistTierBarVariant
-  /** Préfixe des `data-testid` de segment (`<testId>-<tier>`). */
+  /** Préfixe des `data-testid` de segment (`<testId>-<tier>`, `<testId>-not-measured`). */
   testId: string
+  notMeasured?: AssistNotMeasuredSegment | null
 }) {
   const v = VARIANT[variant]
   // Du centre vers l'extérieur : à gauche l'ordre se lit donc à l'envers.
@@ -80,6 +92,16 @@ export function AssistTierBar({
           </Tooltip>
         </span>
       ))}
+      {notMeasured && notMeasured.widthPct > 0 && (
+        <span
+          className={`flex h-full ${side === 'left' ? 'order-first mr-auto' : 'ml-auto'}`}
+          style={{ width: `${notMeasured.widthPct}%` }}
+        >
+          <Tooltip className="h-full w-full" content={notMeasured.tooltip}>
+            <span className="block h-full w-full cursor-help" style={NOT_MEASURED_HATCH} data-testid={`${testId}-not-measured`} />
+          </Tooltip>
+        </span>
+      )}
     </div>
   )
 }

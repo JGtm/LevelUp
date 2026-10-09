@@ -88,9 +88,11 @@ func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, item
 	}
 }
 
-// enrichMatchesWithAssistedFrags pose AssistedFrags (part des frags assistés par un
-// coéquipier, par tranche) sur chaque tuile dont le match est MESURÉ, via un appel
-// batch sur le repo. Un match absent de la map reste nil (« on ne sait pas »).
+// enrichMatchesWithAssistedFrags pose AssistedFrags (frags assistés par un coéquipier,
+// par tranche) sur chaque tuile dont le match est MESURÉ, via un appel batch sur le repo,
+// rapportés aux frags officiels de la tuile (WithOfficialFrags : la différence avec les
+// frags mesurés est dite « sans information », jamais « non assistée »). Un match absent
+// de la map reste nil (« on ne sait pas »).
 //
 // En erreur : journalisée en WARN puis dégradation (tous les champs restent nil) — la
 // tuile n'affiche rien plutôt que de faire tomber la page. Contrairement aux voisins
@@ -110,7 +112,7 @@ func enrichMatchesWithAssistedFrags(ctx context.Context, repo port.HomeRepositor
 	}
 	for i, item := range items {
 		if a, ok := byMatch[item.MatchID]; ok {
-			af := a
+			af := a.WithOfficialFrags(item.Kills)
 			items[i].AssistedFrags = &af
 		}
 	}

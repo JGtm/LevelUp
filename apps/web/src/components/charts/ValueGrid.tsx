@@ -25,21 +25,12 @@
  * dessine dans l'ORDRE DU TABLEAU, l'un après l'autre sur la même largeur de rail, et porte
  * SON PROPRE `aria-label` — le conteneur externe garde le sien (le total), comme avant.
  */
-import { Fragment, type CSSProperties } from 'react'
+import { Fragment } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 
+import { NOT_MEASURED_HATCH } from './notMeasuredHatch'
 import type { ValueGridModel, ValueGridSegment } from './valueGridModel'
-
-/**
- * La hachure d'une cellule NON MESURÉE (option `hatchNotMeasured`) : un motif
- * neutre du thème, jamais un jeton de donnée — une absence n'est pas une valeur.
- */
-const NOT_MEASURED_HATCH: CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(45deg, transparent 0px, transparent 3px, var(--muted-foreground) 3px, var(--muted-foreground) 4px)',
-  opacity: 0.3,
-}
 
 /** Largeur PAR DÉFAUT de la colonne des noms (px). */
 const NAME_WIDTH = 152
