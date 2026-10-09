@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
@@ -77,14 +76,7 @@ func TestRenduForgeVagabond(t *testing.T) {
 // jointure par le compte d'objets — sans quoi on cuirait la carte d'une autre.
 func chargeCarteForge(t *testing.T, c CarteForge) (*mapvar.Variant, replay.MapObjectivesEntry) {
 	t.Helper()
-	chemin, err := cheminDepuisDepot(filepath.Join(DepotVariantesCarte, c.FichierMvar))
-	if err != nil {
-		t.Skip(err)
-	}
-	brut, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
-	if err != nil {
-		t.Fatal(err)
-	}
+	brut := lireVarianteDuDepot(t, c.FichierMvar)
 	v, err := mapvar.Parse(brut)
 	if err != nil {
 		t.Fatal(err)

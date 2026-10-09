@@ -22,12 +22,12 @@ package himap
 //     dossier installe — celui attendu. Deux occurrences = la preuve ne departage pas,
 //     zero = elle ne prouve rien : dans les deux cas le test est ROUGE.
 //
-// Le depot de variantes (`.ai/re_dump/mapvar`) et l'installation du jeu ne sont pas
-// versionnes : leur absence fait SKIP avec sa raison, jamais un vert silencieux.
+// Le depot de variantes (`DepotVariantesCarte`) et l'installation du jeu ne sont pas
+// versionnes. L'installation absente fait SKIP avec sa raison ; le depot absent, ou une variante
+// manquante, fait ECHOUER le test (lireVarianteDuDepot) : jamais un vert silencieux.
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -208,14 +208,7 @@ func mvarLien(carte, module string) string { return mvarBase(carte) + "_" + modu
 // levelIDDuDepot lit le level_id (root[1][0][0]) d'un .mvar du depot de variantes.
 func levelIDDuDepot(t *testing.T, fichier string) int32 {
 	t.Helper()
-	chemin, err := cheminDepuisDepot(filepath.Join(DepotVariantesCarte, fichier))
-	if err != nil {
-		t.Skip(err)
-	}
-	brut, err := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
-	if err != nil {
-		t.Fatal(err)
-	}
+	brut := lireVarianteDuDepot(t, fichier)
 	v, err := mapvar.Parse(brut)
 	if err != nil {
 		t.Fatalf("%s : %v", fichier, err)
