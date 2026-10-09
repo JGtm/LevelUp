@@ -43,7 +43,7 @@ package killsource
 // est reprise sans renumerotation (V15 (16)).
 
 // Rev est la revision de la sortie killsource.
-const Rev = "killsource-2026-10-08.2"
+const Rev = "killsource-2026-10-09"
 
 // L EMPREINTE DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_rev.golden` porte le couple (revision, empreinte) avec son historique — c est

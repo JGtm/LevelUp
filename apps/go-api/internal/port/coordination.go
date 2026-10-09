@@ -23,8 +23,9 @@ import (
 // CoordinationRepository lit les APPUIS mesurés d'une liste blanche de matchs.
 //
 // Source : `shared.match_kill_events_latest` — vue `_latest` UNIQUEMENT (règle ART n 2,
-// jamais la table brute), mêmes portes de mesure que Q21d (`publishable AND assist_known`).
-// Implémenté par platform/duckdb.CoordinationRepo.
+// jamais la table brute), mêmes portes de mesure que Q21d (`publishable AND assist_known`),
+// et `match_participants` pour la base officielle (règle des bases de
+// domain/relation_assists.go). Implémenté par platform/duckdb.CoordinationRepo.
 //
 // DÉGRADATION GRACIEUSE : zéro ligne est l'état NOMINAL d'un titre sans décodeur de film
 // ou d'un scope dont aucun match n'est décodé — pas une panne. Le service publie alors un
@@ -33,8 +34,11 @@ type CoordinationRepository interface {
 	// LoadAppuis rend, par match et par couple (assistant, tueur crédité), le nombre de
 	// morts mesurées correspondantes.
 	//
-	// UN ASSISTANT VIDE EST UN ÉTAT MESURÉ (« personne n'a assisté »), pas une absence de
-	// ligne : c'est lui qui porte le dénominateur « mes frags mesurés ». Liste de matchs
-	// vide ⇒ aucune requête, aucune ligne.
+	// UNE LIGNE SANS ASSISTANT NOMMÉ EST UN ÉTAT MESURÉ (« personne n'a assisté »), pas une
+	// absence de ligne. Les bots y sont (xuid vide). Liste de matchs vide ⇒ aucune requête,
+	// aucune ligne.
 	LoadAppuis(ctx context.Context, matchIDs []string) ([]domain.CoordinationAppuiRow, error)
+	// LoadFragsOfficiels rend les frags de `playerXUID` par match, d'après la feuille de
+	// match : la base de « on me prépare ». Match sans compte ⇒ absent de la map.
+	LoadFragsOfficiels(ctx context.Context, playerXUID string, matchIDs []string) (map[string]int, error)
 }

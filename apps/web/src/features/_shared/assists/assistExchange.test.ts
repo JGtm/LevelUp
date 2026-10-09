@@ -18,7 +18,6 @@ import {
 
 function assists(over: Partial<RelationAssists> = {}): RelationAssists {
   return {
-    matches_measured: 4,
     my_frags: 100,
     partner_frags: 50,
     received: { total: 20, low: 5, mid: 10, high: 5 },

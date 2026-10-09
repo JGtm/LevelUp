@@ -27,7 +27,27 @@ type sortieJSON struct {
 	Couverture  couvertureJSON  `json:"couverture"`
 	Sante       santeJSON       `json:"sante"`
 	Publication publicationJSON `json:"publication"`
+	AuFil       auFilJSON       `json:"assistant_au_fil"`
 	Morts       []mortJSON      `json:"morts"`
+}
+
+// auFilJSON : la lecture de l assistant des morts sans kill-event au fil des evenements, et la
+// confrontation du type d assistance que le film apprend de ses kill-events
+// (`repli_type_d_assistance_appris_par_film`). `lexique_retenu` faux : aucune mort ne se lit au fil.
+type auFilJSON struct {
+	LexiqueRetenu           bool `json:"lexique_retenu"`
+	TypesAppris             int  `json:"types_appris"`
+	Apprentissages          int  `json:"apprentissages"`
+	Accords                 int  `json:"accords"`
+	Desaccords              int  `json:"desaccords"`
+	AssistantsSansEvenement int  `json:"kill_events_a_assistant_sans_evenement"`
+	EvenementsSansAssistant int  `json:"kill_events_sans_assistant_avec_evenement"`
+	MortsAuFil              int  `json:"morts_au_fil"`
+	Nommes                  int  `json:"assistants_nommes"`
+	SansAssistant           int  `json:"sans_assistant_mesure"`
+	Rejetes                 int  `json:"assistants_refuses"`
+	AssistantsMultiples     int  `json:"morts_a_plusieurs_assistants"`
+	TramesArretees          int  `json:"trames_arretees"`
 }
 
 type catalogueJSON struct {
@@ -147,6 +167,7 @@ type assistJSON struct {
 	IndiceReplication int    `json:"indice_replication"`
 	Refus             string `json:"refus,omitempty"`
 	Surplus           int    `json:"assistants_en_surplus"`
+	LuAuFil           bool   `json:"lu_au_fil,omitempty"`
 	Note              string `json:"note"`
 }
 
@@ -226,6 +247,7 @@ func construireJSON(r *rapport) sortieJSON {
 		Couverture:  couvertureDeJSON(res.Coverage),
 		Sante:       santeDeJSON(res),
 		Publication: publicationDeJSON(res),
+		AuFil:       auFilJSON(res.Stats.Assist.Fil),
 		Morts:       make([]mortJSON, 0, len(res.Kills)),
 	}
 	for _, k := range res.Kills {
@@ -236,21 +258,26 @@ func construireJSON(r *rapport) sortieJSON {
 
 // assistDeJSON : les trois etats, explicites. La note DIT lequel, pour qu un lecteur presse ne
 // puisse pas confondre << pas d assistant >> avec << on ne sait pas >>.
-func assistDeJSON(a decfilm.Assist) assistJSON {
+func assistDeJSON(a decfilm.Assist, luAuFil bool) assistJSON {
 	j := assistJSON{
 		Connu: a.Known, Joueur: a.Name, IndiceReplication: a.Index,
-		Refus: a.Rejected, Surplus: a.Extra,
+		Refus: a.Rejected, Surplus: a.Extra, LuAuFil: luAuFil,
 	}
 	switch {
 	case !a.Known:
-		j.Note = "ON NE SAIT PAS : aucun kill-event n a ete attache a cette mort. Ce n est PAS " +
-			"<< pas d assistant >>"
+		j.Note = "ON NE SAIT PAS : ni kill-event attache a cette mort, ni fil des evenements lisible. " +
+			"Ce n est PAS << pas d assistant >>"
 	case a.Rejected != "":
 		j.Note = "un assistant etait declare mais il est REFUSE (" + a.Rejected + ") ; la mort " +
 			"est publiee sans assistant"
+	case a.Name == "" && luAuFil:
+		j.Note = "PAS D ASSISTANT, et c est une MESURE : la trame de la mort, lue entiere, porte le " +
+			"fil des evenements de son couple sans evenement d assistance"
 	case a.Name == "":
 		j.Note = "PAS D ASSISTANT, et c est une MESURE : le kill-event est lu et son champ " +
 			"assistant est absent"
+	case luAuFil:
+		j.Note = "assistant lu au fil des evenements de la trame de la mort (aucun kill-event)"
 	default:
 		j.Note = "assistant lu dans le kill-event attache a cette mort"
 	}
@@ -329,7 +356,7 @@ func mortDeJSON(k decfilm.Kill) mortJSON {
 			Statut: string(k.Source.Status), Detail: k.Source.Detail,
 			Reserve: k.Source.Reserve, Categorie: k.Source.Category.Name(),
 		},
-		Assistant:     assistDeJSON(k.Assist),
+		Assistant:     assistDeJSON(k.Assist, k.AssistLuAuFil),
 		PartsDeDegats: partsDeJSON(k),
 		Divergence:    k.Diverges,
 		Lecture: lectureJSON{

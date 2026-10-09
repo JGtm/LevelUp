@@ -134,6 +134,7 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomLibelleDeSourceAutres, func(s sourcesDeReplis) int { return s.killsource.Replis.LibellesAutres }},
 	{fallback.NomControleCorruptionSectionAbsente, func(s sourcesDeReplis) int { return s.killsource.Replis.ControleDeCorruptionNonDeclare }},
 	{fallback.NomLargeurMotDePoigneeInferee, func(s sourcesDeReplis) int { return s.killsource.Replis.MotDePoigneeInfere }},
+	{fallback.NomTypeDAssistanceApprisParFilm, func(s sourcesDeReplis) int { return s.killsource.Replis.AssistancesAuTypeAppris }},
 
 	// `objectives` : le balayage du statborg et la construction du pont d identite par manche (lot
 	// J8.7, sous-lot objectives).

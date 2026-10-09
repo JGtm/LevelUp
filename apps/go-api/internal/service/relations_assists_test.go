@@ -8,9 +8,9 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// TestGetRelationsPage_Assists : le bloc d'assistances est posé sur les seules relations
-// mesurées ; une relation absente de la map (ou à zéro match mesuré) reste nil — jamais un
-// objet à zéro qui s'afficherait « 0 assistance ».
+// TestGetRelationsPage_Assists : le bloc d'assistances est posé sur les relations présentes
+// dans la map, objet à zéro compris (« zéro assistance » sur des matchs porteurs) ; une
+// relation absente de la map reste nil — jamais un objet fabriqué « 0 assistance ».
 func TestGetRelationsPage_Assists(t *testing.T) {
 	repo := &mockRelationsRepo{
 		rows: []domain.RelationRawRow{
@@ -19,10 +19,10 @@ func TestGetRelationsPage_Assists(t *testing.T) {
 			{XUID: "x3", Gamertag: "Zero", TotalMatches: 5, TeammateCount: 5},
 		},
 		assistsByXUID: map[string]domain.RelationAssists{
-			"x1": {MatchesMeasured: 3, MyFrags: 40, PartnerFrags: 30,
+			"x1": {MyFrags: 40, PartnerFrags: 30,
 				Received: domain.AssistTiers{Total: 7, Low: 1, Mid: 2, High: 4},
 				Given:    domain.AssistTiers{Total: 5, Low: 2, Mid: 2, High: 1}},
-			"x3": {MatchesMeasured: 0},
+			"x3": {MyFrags: 12, PartnerFrags: 9},
 		},
 	}
 	page, err := NewRelationsService(repo).withNow(fixedNow()).
@@ -35,14 +35,14 @@ func TestGetRelationsPage_Assists(t *testing.T) {
 		byGT[r.Gamertag] = r
 	}
 	got := byGT["Mesure"].Assists
-	if got == nil || got.Received.High != 4 || got.Given.Total != 5 || got.MatchesMeasured != 3 {
+	if got == nil || got.Received.High != 4 || got.Given.Total != 5 || got.MyFrags != 40 {
 		t.Fatalf("Mesure assists = %+v", got)
 	}
 	if byGT["Absent"].Assists != nil {
 		t.Fatal("relation absente de la map : assists doit rester nil")
 	}
-	if byGT["Zero"].Assists != nil {
-		t.Fatal("relation à zéro match mesuré : assists doit rester nil")
+	if z := byGT["Zero"].Assists; z == nil || z.Received.Total != 0 || z.MyFrags != 12 {
+		t.Fatalf("relation à zéro assistance : objet attendu, got %+v", z)
 	}
 }
 
@@ -67,13 +67,13 @@ func TestGetRelationsPage_AssistsErrorIsBestEffort(t *testing.T) {
 func TestAttachEncounterAssists(t *testing.T) {
 	rows := []domain.MatchEncounterRow{{XUID: "a"}, {XUID: "b"}}
 	attachEncounterAssists(rows, map[string]domain.RelationAssists{
-		"a": {MatchesMeasured: 2, Received: domain.AssistTiers{Total: 3}},
+		"a": {MyFrags: 9, Received: domain.AssistTiers{Total: 3}},
 	})
 	if rows[0].Assists == nil || rows[0].Assists.Received.Total != 3 {
 		t.Fatalf("a = %+v", rows[0].Assists)
 	}
 	if rows[1].Assists != nil {
-		t.Fatal("b non mesuré : nil attendu")
+		t.Fatal("b absent de la map : nil attendu")
 	}
 	attachEncounterAssists(rows, nil) // map nil : aucune panique
 }

@@ -48,6 +48,21 @@ type KillLu struct {
 	Chaine   int
 }
 
+// FilLu est un message du fil des evenements ([lecture.EvenementDeFil]) d une trame delta, avec la
+// position de la trame, comme pour [KillLu] ; TS est son horodatage.
+type FilLu struct {
+	PositionDuChunk, Index int
+	TS                     uint64
+	// Complet dit que la vue A de la trame est lue jusqu a son terminateur : la trame ne porte aucun
+	// message que la lecture n ait rendu.
+	Complet bool
+	// Evenement est le message.
+	Evenement lecture.EvenementDeFil
+}
+
+// Destine dit que le participant `i` est un destinataire du message ([DestineA]).
+func (f FilLu) Destine(i int) bool { return DestineA(f.Evenement, i) }
+
 // BilanDuRattrapage dit ce que le rattrapage des kills a fait sur un film : les messages retenus, les
 // chaines arretees sur un code non modelise, et `gate15` — Tranche faux quand aucune trame ne l a
 // demande.
@@ -62,6 +77,9 @@ type LectureDeKillsource struct {
 	// les deux dans l ordre du flux.
 	Morts []EtatDeMortLu
 	Kills []KillLu
+	// Fil sont les messages du fil des evenements des vues A lues, dans l ordre du flux. Le
+	// rattrapage des kills n en lit aucun.
+	Fil []FilLu
 	// Stats sont les denominateurs du canal des morts ; LargeurLibre, les listes recuperees par le
 	// repli a largeur libre (`repli_localisation_largeur_libre`).
 	Stats        ObjectDeathStats
@@ -83,7 +101,7 @@ func LireLaMarcheDeKillsource(fc *FilmContext) (LectureDeKillsource, error) {
 		return LectureDeKillsource{}, err
 	}
 	r := &kills.rattrapage
-	return LectureDeKillsource{Morts: morts.mortsLues, Kills: kills.kills, Stats: morts.st,
+	return LectureDeKillsource{Morts: morts.mortsLues, Kills: kills.kills, Fil: kills.fil, Stats: morts.st,
 		LargeurLibre: morts.largeurLibre, Rattrapage: BilanDuRattrapage{Kills: kills.rattrapes,
 			ChainesArretees: r.chainesArretees, Gate15: r.gate15, Tranche: r.tranche}}, nil
 }
@@ -92,6 +110,7 @@ func LireLaMarcheDeKillsource(fc *FilmContext) (LectureDeKillsource, error) {
 type canalDesKills struct {
 	fc         *FilmContext
 	kills      []KillLu
+	fil        []FilLu
 	rattrapage rattrapageDesKills
 	rattrapes  int
 }
@@ -108,9 +127,13 @@ func (c *canalDesKills) Interets() []Interet { return nil }
 func (c *canalDesKills) Clore(BilanDeMarche) {}
 
 // Tete recueille les messages de kill de la trame `p`, marchee (la marche des morts l accompagne) :
-// ceux de sa vue A, puis ceux du rattrapage.
+// ceux de sa vue A, puis ceux du rattrapage ; et les messages du fil de sa vue A.
 func (c *canalDesKills) Tete(p *lecture.Paquet) {
 	pos := filmChunkPos(c.fc.Film(), p.Chunk)
+	complet := p.VueA.Etat == lecture.VueTerminee
+	for _, e := range p.VueA.Fil {
+		c.fil = append(c.fil, FilLu{PositionDuChunk: pos, Index: p.Index, TS: p.TS, Complet: complet, Evenement: e})
+	}
 	for _, k := range p.VueA.Kills {
 		c.kills = append(c.kills, KillLu{PositionDuChunk: pos, Index: p.Index, TS: p.TS, Kill: k})
 	}

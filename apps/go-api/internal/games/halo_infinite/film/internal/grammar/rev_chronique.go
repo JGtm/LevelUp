@@ -128,9 +128,22 @@ package grammar
 // est lie, et les 69 trames de 14:1094 a 14:1230 se ferment (30 avant). Carte v2 : +1 046 paquets
 // sains, aucun perdu, aucun film en baisse.
 //
-// ENTREE `grammar-2026-10-09` (2026-10-09, jalon LK du plan
+// ENTREE `grammar-2026-10-09` (2026-10-09, lot `assist-film`) : LE FIL DES EVENEMENTS DE LA VUE A SE
+// GARDE. La charge `PlayerGameEventSmall` (genre 82, [chargeEvenementJoueurCourt]) rend son `R(32)` de
+// tete et son masque de destinataires (`32 x R(1)`) au lieu de les sauter ; un message dont le sac
+// texte nomme un couple de participants se range dans `lecture.VueA.Fil` ([lecture.EvenementDeFil]),
+// et la marche de killsource les rend (`LectureDeKillsource.Fil`). Contre `grammar-2026-10-08.13` :
+// aucun bit n est lu autrement, aucune vue ne s arrete ailleurs ; seuls les messages a couple sont
+// gardes en plus.
+//
+// ENTREE `grammar-2026-10-09.2` (2026-10-09, jalon LK du plan
 // `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
 // RECORDS D IMAGE-CLE SE LISENT SOUS LA PORTEE `DAT_144e61ea0` DE L ETAT COMPLET.
+//
+// RENUMEROTEE (2026-10-09, fusion de `feat/v75` `54b47a2b8` dans `feat/ri-lk-images-cles`) : cette
+// entree etait `grammar-2026-10-09` sur la branche ; le lot `assist-film`, fusionne avant elle dans
+// `feat/v75`, a pris ce rang. Elle passe au rang libre suivant ; ce qu elle decrit est mesure contre
+// `grammar-2026-10-08.13` et s ajoute a `grammar-2026-10-09`, qui ne touche pas la marche d etat complet.
 //
 // Ce qui change, contre `grammar-2026-10-08.13` :
 //   - la portee est un champ du lecteur ([Lecteur.portee]), posee par la seule marche d etat complet
@@ -163,12 +176,12 @@ package grammar
 // unit-actor-state, world-object i0, generic-rigid-body-transforms, low-frequency (plan LK, §7 D-17,
 // D-18, D-21, D-23).
 //
-// ENTREE `grammar-2026-10-09.2` (2026-10-09, lot 2.7.d1 du plan
+// ENTREE `grammar-2026-10-09.3` (2026-10-09, lot 2.7.d1 du plan
 // `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
 // `feat/ri-lk-images-cles`) : L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES
 // FENETRES DE BITS PASSENT DERRIERE LA LECTURE.
 //
-// Ce qui change, contre `grammar-2026-10-09` :
+// Ce qui change, contre `grammar-2026-10-09.2` :
 //   - une seule marche de la phase des images-cles ([ScanEtatsDesImagesCles]) rend les armes
 //     portees, l inventaire et la marque de portage de chaque record bipede ; les composants sont
 //     resolus par NOM dans le registre du film et relus a l etendue de leur occurrence par

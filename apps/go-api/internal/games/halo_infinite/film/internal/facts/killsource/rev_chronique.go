@@ -236,15 +236,39 @@ package killsource
 // existante ne change de tueur ni de source. Les lignes de `match_kill_events` deviennent candidates
 // au redecodage : backlog sur signal de l utilisateur (D6).
 //
-// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
-// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09` (records d image-cle lus sous la
-// portee de l etat complet). `cmd/killsource json` sur les 19 temoins, binaire de `feat/v75`
-// (`d429dc517`) contre binaire du lot fusionne : sorties identiques a l octet. Golden regenere a
-// revision constante.
+// ENTREE `killsource-2026-10-09` (2026-10-09, lot `assist-film`) : L ASSISTANT D UNE MORT SANS
+// KILL-EVENT SE LIT AU FIL DES EVENEMENTS (`assist_fil.go`, `grammar` `grammar-2026-10-09`).
 //
-// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
-// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (etat complet du bipede aux
-// images-cles lu par la grammaire, fenetres de bits derriere la lecture). `cmd/killsource json` sur
-// les 19 temoins, binaire de `3aa885e37` (production d avant 2.7.d1) contre binaire du lot fusionne
-// avec `feat/v75` (`b5c15d218` + montee) : sorties identiques a l octet. Golden regenere a revision
-// constante.
+// Ce qui change, contre `killsource-2026-10-08.2` :
+//   - le kill-event (genre 85) ne s ecrit pas quand la victime est un bot (recherche bit a bit de
+//     toutes les tetes de genre 85 sur `0a08d2f2` : au couple des 23 morts de bot, une coincidence
+//     sans chaine ; la marche n en lit aucun a victime bot, trames de ces morts lues entieres) ; ces
+//     morts restaient `Known = false` ;
+//   - sur une mort sans kill-event attache, l assistant se lit au message `PlayerGameEventSmall` que le
+//     jeu adresse, au couple (tueur, victime), a chaque assistant, dans la trame du dead-state ; le type
+//     de ce message s apprend par film contre ses kill-events (unique, sans desaccord), repli
+//     `repli_type_d_assistance_appris_par_film` au registre ; plusieurs destinataires : le premier
+//     ecrit est nomme, les autres comptes a part (`Extra` et `assist_extra_count` gardent leur sens) ;
+//     parts de degats non mesurees ; `Kill.AssistLuAuFil` le dit (non persiste).
+//   - les comptes de la lecture (`AssistStats.Fil`) sortent dans `cmd/killsource json`
+//     (`assistant_au_fil`) et dans les compteurs `killsource_assistant_fil_*` du collecteur.
+// PREUVE (2026-10-09, `cmd/killsource json`, binaire de `fe1f3d954` contre binaire du lot, 8 films a
+// bots de 2024-10 a 2026-10) : lignes, instants, tueurs, victimes, sources et assistances deja
+// connues identiques ; morts de bot `Known` 4 -> 209 sur 285 (79 assistants nommes, dont un bot) ;
+// deux films de 2024 sans fil lisible (0 -> 0) ; deux morts humaines sans kill-event gagnent leur
+// assistance. Assistants nommes par joueur contre le total de l API : ecart absolu 135 -> 59 sur six
+// films, aucun joueur au-dela de son total. Confrontation du type appris : 47 accords sur `0a08d2f2`,
+// 43 sur `3abf0258` (trois kill-events sans assistant dont le fil en nomme un), zero desaccord. Les
+// lignes de `match_kill_events` deviennent candidates au redecodage : backlog sur signal de
+// l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-09 (jalon LK et lot 2.7.d1 du plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, fusionnes apres le lot `assist-film`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
+// portee de l etat complet) puis a `grammar-2026-10-09.3` (etat complet du bipede aux images-cles lu
+// par la grammaire, fenetres de bits derriere la lecture). Sur la branche, ces deux montees etaient
+// ecrites `grammar-2026-10-09` et `grammar-2026-10-09.2`, en complements de `killsource-2026-10-08.2`
+// (sorties identiques a l octet contre `d429dc517`, puis contre `3aa885e37`) ; elles sont renumerotees
+// a la fusion de `feat/v75` `54b47a2b8`. `cmd/killsource json` sur les 19 temoins, binaire de
+// `54b47a2b8` contre binaire de la tete fusionnee : sorties identiques a l octet. Golden regenere a
+// revision constante.

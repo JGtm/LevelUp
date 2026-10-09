@@ -89,10 +89,9 @@ func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, item
 }
 
 // enrichMatchesWithAssistedFrags pose AssistedFrags (frags assistés par un coéquipier,
-// par tranche) sur chaque tuile dont le match est MESURÉ, via un appel batch sur le repo,
-// rapportés aux frags officiels de la tuile (WithOfficialFrags : la différence avec les
-// frags mesurés est dite « sans information », jamais « non assistée »). Un match absent
-// de la map reste nil (« on ne sait pas »).
+// par tranche) sur chaque tuile dont le film porte l'assistance, via un appel batch sur le
+// repo, rapportés aux frags officiels de la tuile (WithOfficialFrags, règle des bases de
+// domain/relation_assists.go). Un match absent de la map reste nil : la tuile n'affiche rien.
 //
 // En erreur : journalisée en WARN puis dégradation (tous les champs restent nil) — la
 // tuile n'affiche rien plutôt que de faire tomber la page. Contrairement aux voisins

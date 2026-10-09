@@ -10,8 +10,8 @@
  *    deux dénominateurs différents, que mélanger donnerait un nombre sans sens ;
  *  - la PARITÉ est `parity_pct` = 1/n avec n l'effectif du camp DU MATCH (R1), jamais 1/4.
  *
- * UNE CASE SANS DÉNOMINATEUR RESTE GRISE (`unmeasured`) — non mesuré n'est pas zéro : un
- * match sans appui dans le camp ne vaut pas 0 %.
+ * UNE CASE SANS DÉNOMINATEUR RESTE GRISE (ton `unmeasured`) : un match sans appui dans le
+ * camp ne vaut pas 0 %. Son infobulle le dit tel quel (« aucun appui d'équipe »).
  *
  * Pur : aucun React, aucune couleur en dur, aucune lecture de store.
  */
@@ -122,7 +122,7 @@ function buildBand(
     const share = reader.share(p)
     const parity = p.parity_pct
     if (reader.denominator(p) <= 0 || share == null || parity == null) {
-      return { matchId: p.match_id, tone: 'unmeasured', tooltip: t.bandTipUnmeasured(i + 1) }
+      return { matchId: p.match_id, tone: 'unmeasured', tooltip: t.bandTipNoTeamAssist(i + 1) }
     }
     const delta = share - parity
     return {

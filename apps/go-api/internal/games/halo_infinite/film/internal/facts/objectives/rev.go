@@ -146,19 +146,25 @@ package objectives
 // films de reference (binaires de `acfe4851a` contre ceux du lot). Golden regenere a revision
 // constante.
 //
+// COMPLEMENT DU 2026-10-09 (lot `assist-film`, REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-09` (le fil des evenements de la vue A se garde ; aucun bit n est lu autrement).
+// `grammar/signaux` ne change pas et les objectifs ne lisent pas le fil : sortie inchangee par
+// construction. Golden regenere a revision constante.
+//
 // COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
-// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09` (records d image-cle lus sous la
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
 // portee de l etat complet). `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv`
 // est IDENTIQUE sur les 20 films de reference (binaires de `d429dc517` contre ceux du lot). Golden
 // regenere a revision constante.
 //
 // COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
-// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (etat complet du bipede aux
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.3` (etat complet du bipede aux
 // images-cles lu par la grammaire, fenetres de bits derriere la lecture ; la marque de portage, lue
 // par la grammaire sur les records admis, reste la configuration de la fenetre, U-2 (b)).
 // `grammar/signaux` ne change pas ; les etapes `objectives` et `carrierMarks` de `replay-equiv` sont
 // IDENTIQUES sur les 20 films de reference (binaires de `3aa885e37` contre ceux du lot). Golden
-// regenere a revision constante.
+// regenere a revision constante. Les deux rangs (`.2`, `.3`) sont renumerotes a la fusion de `feat/v75`
+// `54b47a2b8` (chronique de `grammar`) ; l etape `objectives` rejouee contre `54b47a2b8` est identique.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

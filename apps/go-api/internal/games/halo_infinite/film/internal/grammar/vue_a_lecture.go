@@ -78,6 +78,9 @@ type FluxVueA struct {
 	PremierPresume int
 	// Kills : les messages de kill (genre 85) lus, dans l ordre ([chargeJoueurTue]).
 	Kills []lecture.MessageDeKill
+	// Fil : les messages `PlayerGameEventSmall` (genre 82) a couple lus, dans l ordre
+	// ([chargeEvenementJoueurCourt]).
+	Fil []lecture.EvenementDeFil
 }
 
 // finDeTete rend le bit qui suit la tete : la continuation et, quand elle annonce un message, son
@@ -120,10 +123,15 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 			br.SetBitPos(finDuGenre)
 			break
 		}
-		if genre == GenreJoueurTue {
+		switch {
+		case genre == GenreJoueurTue:
 			k := br.killLu
 			k.Debut = uint32(debutDuMessage) //nolint:gosec // position dans un payload
 			out.Kills = append(out.Kills, k)
+		case genre == GenreEvenementJoueurCourt && br.filACouple:
+			e := br.filLu
+			e.Debut = uint32(debutDuMessage) //nolint:gosec // position dans un payload
+			out.Fil = append(out.Fil, e)
 		}
 	}
 	out.Fin = br.BitPos()

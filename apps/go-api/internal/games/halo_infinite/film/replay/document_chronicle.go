@@ -3148,7 +3148,7 @@ package replay
 //	                `0a08d2f2` 119 -> 124 lignes, aucune ligne existante modifiee.
 //
 // v91 (2026-10-09, representation intermediaire 2.7.d1, plan
-// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.2`) : L ETAT COMPLET DU
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
 // BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
 //
 //	Aucun champ neuf ; le CONTENU de `loadouts`, `inventory`, `grenadeReads` et `abilities` (`kf`)
@@ -3161,15 +3161,15 @@ package replay
 //	0 ; `d` = emplacement desire en main principale (i42 param[1]), absent quand le film n en
 //	designe aucun ; rang de capacite publie dans 16..23 seulement.
 //
-//	CE QUI MONTE    `SchemaVersion` 90 -> 91 ; `grammar.Rev` `grammar-2026-10-09` ->
-//	AVEC ELLE       `grammar-2026-10-09.2`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
+//	CE QUI MONTE    `SchemaVersion` 90 -> 91 ; `grammar.Rev` `grammar-2026-10-09.2` ->
+//	AVEC ELLE       `grammar-2026-10-09.3`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
 //	                complements a revision constante) et `SchemaDesFaits` (11) ne bougent pas : la
 //	                forme des faits ne change pas, la publication rejouee depuis eux est identique.
 //
 //	LE PARC         un artefact 90 porte `grammar-2026-10-08.13` ou `grammar-2026-10-09` : verdict
 //	                `redecoder`.
 //
-//	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`), 19 temoins : aucun oracle
+//	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`, `54b47a2b8`), 19 temoins : aucun oracle
 //	                ne bouge ; seuls FAUX du banc, les trois replis neufs (R-1, nouveaux par
 //	                construction). Fiches : records d image-cle avec armes identiques sur les 19
 //	                films ; armes retirees = les « Grenade dynamo » des records admis (`111fa685`
@@ -3183,6 +3183,6 @@ package replay
 //	                jauges 0,5001 / 0,25 / 0,75, chargeurs de 1 (331 sur 349), reserves de 1 232 a
 //	                2 000 — la ou le lecteur du jeu lit, au meme instant et pour le meme slot,
 //	                chargeur et reserve plausibles ou une jauge d arme a energie. `replay-equiv`, 20
-//	                films, binaires de `3aa885e37` contre ceux du lot : etapes divergentes `artifact`
+//	                films, binaires de `3aa885e37` (puis `54b47a2b8`) contre ceux du lot : etapes divergentes `artifact`
 //	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
 //	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.

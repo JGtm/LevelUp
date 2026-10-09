@@ -108,9 +108,11 @@ type lectureCoordination struct {
 // lireCoordination lit le journal des morts et les appuis de `ids`.
 func lireCoordination(ctx context.Context, q coordinationQuery, ids []string) *lectureCoordination {
 	l := &lectureCoordination{
-		q:      q,
-		lus:    make(map[string]struct{}, len(ids)),
-		entree: domain.CoordinationEntree{MoiXUID: q.PlayerXUID, Equipes: domain.EquipesParMatch{}},
+		q:   q,
+		lus: make(map[string]struct{}, len(ids)),
+		entree: domain.CoordinationEntree{
+			MoiXUID: q.PlayerXUID, Equipes: domain.EquipesParMatch{}, FragsOfficiels: map[string]int{},
+		},
 	}
 	if q.Tactical == nil || q.PlayerXUID == "" || !games.JournalDesMortsFiable(q.Caps) {
 		l.echec = domain.CoordinationUnsupported
@@ -143,7 +145,8 @@ func (l *lectureCoordination) completer(ctx context.Context, ids []string) {
 		l.echec = domain.CoordinationLoadFailed
 		return
 	}
-	l.ajouter(lecture, l.q.chargerAppuis(ctx, manquants), manquants)
+	appuis, frags := l.q.chargerAppuis(ctx, manquants)
+	l.ajouter(lecture, appuis, frags, manquants)
 }
 
 // manquants rend les matchs de `ids` que la lecture ne couvre pas encore, sans doublon,
@@ -175,7 +178,7 @@ func (l *lectureCoordination) manquants(ids []string) []string {
 // son ORDER BY) : l'entrée complétée se lit dans le même ordre qu'une lecture d'un seul
 // tenant. Les appuis, eux, n'ont pas d'ordre à tenir — l'analyse les range par match.
 func (l *lectureCoordination) ajouter(
-	lecture domain.TacticalKillEvents, appuis []domain.CoordinationAppuiRow, lus []string,
+	lecture domain.TacticalKillEvents, appuis []domain.CoordinationAppuiRow, frags map[string]int, lus []string,
 ) {
 	complement := len(l.entree.Matchs) > 0
 	for _, m := range lecture.Univers.Matchs {
@@ -190,6 +193,9 @@ func (l *lectureCoordination) ajouter(
 		l.entree.Equipes[matchID] = equipes
 	}
 	l.entree.Appuis = append(l.entree.Appuis, appuis...)
+	for matchID, n := range frags {
+		l.entree.FragsOfficiels[matchID] = n
+	}
 	for _, id := range lus {
 		l.lus[id] = struct{}{}
 	}
@@ -227,7 +233,7 @@ func (l *lectureCoordination) bloc(
 	slog.InfoContext(ctx, "coordination_bloc",
 		"player", l.q.PlayerXUID, "matchs", bloc.MatchesTotal, "matchs_mesures", bloc.MatchesMeasured,
 		"appuis_de_camp", bloc.Appui.MaPartDesAppuis.N,
-		"mes_frags_mesures", bloc.Appui.OnMePrepare.N, "soirees", len(bloc.Sessions))
+		"mes_frags", bloc.Appui.OnMePrepare.N, "soirees", len(bloc.Sessions))
 	return &bloc
 }
 
@@ -260,23 +266,30 @@ func avecEffectifs(matchs []domain.CoordinationMatch, teamSize map[string]int) [
 	return out
 }
 
-// chargerAppuis lit les appuis de `ids`. Lecteur absent ou en échec ⇒ aucune ligne, loggé :
-// le versant appui a alors des dénominateurs vides (que la couverture publie), et la
-// couverture reste servie. Dégrader UN sujet vaut mieux que retirer le bloc entier.
-func (q coordinationQuery) chargerAppuis(ctx context.Context, ids []string) []domain.CoordinationAppuiRow {
+// chargerAppuis lit les appuis de `ids` et les frags officiels du joueur sur ces matchs.
+// Lecteur absent ou en échec ⇒ aucune ligne, loggé : sans appui, aucun match n'est mesuré et
+// le bloc se dit indisponible ; sans frags officiels, la base retombe sur les frags lus par
+// le film. Dégrader UN sujet vaut mieux que faire échouer la page.
+func (q coordinationQuery) chargerAppuis(ctx context.Context, ids []string) ([]domain.CoordinationAppuiRow, map[string]int) {
 	defer timing.FromContext(ctx).Section("appuis")()
 	if q.Appuis == nil {
 		slog.DebugContext(ctx, "coordination: aucun lecteur d'appuis cable",
 			"player", q.PlayerXUID)
-		return nil
+		return nil, nil
 	}
 	rows, err := q.Appuis.LoadAppuis(ctx, ids)
 	if err != nil {
 		slog.ErrorContext(ctx, "coordination: appuis en echec", "err", err,
 			"match_count", len(ids))
-		return nil
+		return nil, nil
 	}
-	return rows
+	frags, err := q.Appuis.LoadFragsOfficiels(ctx, q.PlayerXUID, ids)
+	if err != nil {
+		slog.ErrorContext(ctx, "coordination: frags officiels en echec", "err", err,
+			"match_count", len(ids))
+		return rows, nil
+	}
+	return rows, frags
 }
 
 // soireesDuScope rend un point par soirée, dans l'ordre reçu (chronologique).

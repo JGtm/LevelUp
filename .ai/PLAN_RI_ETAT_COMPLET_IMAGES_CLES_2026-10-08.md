@@ -1190,6 +1190,17 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       (U-2 (b) : la marque est la configuration de la fenêtre, le calque des drapeaux ne change pas),
       complément daté, golden régénéré. Golden des formes de types : seule la ligne des révisions
       change (forme intacte, E-8).
+      *RENUMÉROTATION (2026-10-09, consigne du superviseur)* : le lot `feat/aj-assist-film` de levelup-2c,
+      fusionné dans `feat/v75` (`54b47a2b8`) après ma montée, a pris `grammar-2026-10-09` et
+      `killsource-2026-10-09`. Refusion (`54b47a2b8` dans la branche) : leur entrée gardée telle quelle,
+      ma montée de LK.6 renumérotée **`grammar-2026-10-09.2`** (note dans la chronique), celle de D1.4
+      **`grammar-2026-10-09.3`** ; `killsource.Rev` = leur `killsource-2026-10-09`, mes deux compléments
+      réécrits en un seul au-dessus de leur entrée (`cmd/killsource json`, 19 témoins, binaire de
+      `54b47a2b8` contre la tête fusionnée : identiques à l octet) ; `objectives` : complément de
+      renumérotation, étape `objectives` de `replay-equiv` identique contre `54b47a2b8` ; goldens de
+      révision, des formes et fixtures de contrat régénérés par leurs portes ; `SchemaVersion` reste
+      91 (`feat/v75` à 90 au moment de la montée, vérifié). Conflits hors du film (`replaydiff`,
+      `impactHistory`) : `feat/v75` a réparé les mêmes deux rouges que LK.6.7, sa version reprise.
 - [x] D1.4.2 `replay.SchemaVersion` monte (valeurs d'inventaire, dotations, capacités) avec chronique,
       plafonds, goldens, fixtures ; `SchemaDesFaits` selon D1.3.2.
       *Fait (lot D)* : **`SchemaVersion` 90 → 91** (90 sur `feat/v75` et sur la branche) ; entrée v91
@@ -1757,3 +1768,12 @@ refusionner, rejouer l'étape 0).
   prouvée sur la bobine `11de8353` (document identique, trois replis 50/50/50) : `SchemaDesFaits`
   reste 11. Fixtures d'entrées non régénérés (D-29, dérive antérieure au lot) ; découverte D-30 (le
   client lit `d == 2` comme « rien de dégainé »). Gardes de révision rouges jusqu'à la montée de D1.4.
+- 2026-10-09 (lot D) : D1.4.1 à D1.4.3 FAITES (`98909f292`), puis REFUSION de `origin/feat/v75`
+  `54b47a2b8` (lot `assist-film` de levelup-2c : `grammar-2026-10-09`, `killsource-2026-10-09`) et
+  RENUMÉROTATION des rangs de la branche sur consigne du superviseur : LK.6 `grammar-2026-10-09` →
+  `grammar-2026-10-09.2`, D1.4 `grammar-2026-10-09.2` → `grammar-2026-10-09.3` ; `killsource.Rev` =
+  `killsource-2026-10-09` (complément unique, sorties identiques contre `54b47a2b8`) ; `objectives.Rev`
+  constant ; `SchemaVersion` 91 (feat/v75 à 90, vérifié au moment de la montée). Gates rejoués sur la
+  tête fusionnée : killsource 19/19 identiques, `replay-equiv` 20 films contre `54b47a2b8` (étapes de
+  LK et de D1 seules), gate de corpus contre `54b47a2b8` (bilan des fiches identique à la passe contre
+  `fe1f3d954`), G-film 22 paquets et archlint verts.

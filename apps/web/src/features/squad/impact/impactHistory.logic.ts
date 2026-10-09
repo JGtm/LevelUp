@@ -28,7 +28,10 @@ const ROLE_TOKEN: Readonly<Record<string, SemanticToken>> = {
   thief: 'impact-loss-3',
 }
 
-/** La nuance d'un rôle ; un rôle inconnu prend le bout de la rampe de son signe. */
+/**
+ * La nuance d'un rôle d'impact ; un rôle inconnu prend le bout de la rampe de son signe.
+ * Distinct de `roleToken` de `_shared/usage` (rôles d'objectif prendre/défendre/tenir).
+ */
 export function impactRoleToken(role: string, points: number): SemanticToken {
   return ROLE_TOKEN[role] ?? (points >= 0 ? 'impact-gain-4' : 'impact-loss-3')
 }

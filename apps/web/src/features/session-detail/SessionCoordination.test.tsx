@@ -47,7 +47,7 @@ function matchPoint(id: string, over: Partial<Record<string, number>> = {}) {
     match_id: id,
     assists_to_me: 2,
     my_assisted_kills: 4,
-    my_measured_kills: 10,
+    my_kills: 10,
     team_assists: 12,
     parity_pct: 25,
     assist_share_of_team_pct: 25,
@@ -92,6 +92,14 @@ describe('Section Coordination : « Appui reçu » seule (D22-6, V3)', () => {
     expect(cells.map((c) => c.tone)).toEqual(['above', 'unmeasured', 'below'])
     // 1 case au-dessus sur 2 MESURÉES — la case grise sort du dénominateur.
     expect(bandCaption(cells, t)).toBe('1/2')
+    // La case grise dit ce qu'elle est, jamais « non mesuré ».
+    expect(cells[1].tooltip).toBe('Match #2 · aucun appui d’équipe')
+  })
+
+  it('n’écrit « non mesuré » nulle part sur la carte (légende, aide)', () => {
+    const { container } = render(<SessionCoordinationSection coordination={BLOC} />)
+    expect(container.textContent).not.toMatch(/mesur/i)
+    expect(t.infoAppui2).toContain('bots')
   })
 
   it('garde la rangée et nomme la cause quand le bloc est indisponible (D8)', () => {

@@ -284,7 +284,7 @@ function buildColumns(
     },
     {
       id: 'assists',
-      // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+      // Tri sur les assistances échangées (données + reçues) ; sans objet → en bas.
       accessorFn: (r) => assistSortValue(r.assists),
       sortUndefined: 'last',
       sortDescFirst: true,
@@ -294,11 +294,7 @@ function buildColumns(
         </HeaderLabelTooltip>
       ),
       cell: (ctx) => (
-        <AssistExchangeCell
-          assists={ctx.row.original.assists}
-          teammateMatches={ctx.row.original.teammate_matches}
-          locale={locale}
-        />
+        <AssistExchangeCell assists={ctx.row.original.assists} locale={locale} />
       ),
     },
     {

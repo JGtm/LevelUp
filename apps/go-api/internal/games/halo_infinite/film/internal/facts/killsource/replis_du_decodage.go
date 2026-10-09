@@ -64,6 +64,10 @@ type ReplisDuDecodage struct {
 	// decidee par le balayage (retenue ou invariant faute de discrimination), UNE fois par
 	// decodage calibre (`calibrate.go`).
 	MotDePoigneeInfere int
+	// AssistancesAuTypeAppris : `repli_type_d_assistance_appris_par_film` — morts publiees dont
+	// l assistance est lue au fil des evenements sous le type d assistance que le film apprend de ses
+	// kill-events (`assist_fil.go`).
+	AssistancesAuTypeAppris int
 }
 
 // unSi rend 1 quand un repli a decide, 0 sinon — la forme d un verdict par decodage.
@@ -93,6 +97,7 @@ func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, s
 	}
 	for i := range kills {
 		r.LibellesAutres += unSi(!kills[i].Source.Named)
+		r.AssistancesAuTypeAppris += unSi(kills[i].AssistLuAuFil)
 	}
 	for i := range unclaimed {
 		r.LibellesAutres += unSi(!unclaimed[i].Source.Named)
