@@ -1,6 +1,9 @@
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/killscope"
+)
 
 // kill_events_source.go — LE SUBSTRAT DE LECTURE DU KILL-FEED, en un seul endroit.
 //
@@ -48,9 +51,24 @@ import "levelup/go-api/internal/analysis"
 //     bijection nulle) — 366 matchs sont dans ce cas. Il ne qualifie PAS l'existence de la
 //     mort : 99,3 % des lignes de voie film de ces 366 matchs ont leur identité présente dans
 //     la base crédit. Filtrer dessus coûterait **47 037 morts** et viderait 27 % des matchs à
-//     l'écran (arbitrage superviseur du 2026-08-03). La colonne se lira le jour où une surface
-//     affichera l'ARME d'une mort : c'est cet affichage-là qu'elle conditionne.
+//     l'écran (arbitrage superviseur du 2026-08-03). Elle conditionne ce que le FILM ajoute
+//     (arme, assistant, parts de dégâts) et, pour la paire tueur -> victime, les seules lignes
+//     dont une identité vient de la réplication (cf. [KillPairIdentityReadable]).
 const KillEventsCanonicalTable = "match_kill_events_latest"
+
+// KillPairIdentityReadable rend le prédicat SQL « la paire tueur -> victime de cette ligne se
+// lit ligne à ligne », sur l'alias `alias` de [KillEventsCanonicalTable].
+//
+// Le tueur et la victime d'une ligne viennent du kill-feed (fusion crédit + film : le film
+// n'écrase jamais l'identité du crédit, `persist/kill_events_merge.go`), SAUF sur les deux
+// origines de réplication (`killscope.OriginFilmBotVictim` / `OriginFilmBotKiller`) où le bot
+// est nommé par la bijection de la passe. Une passe non publiable garde donc ses lignes de
+// kill-feed et perd celles-là. Les bots d'une passe publiable restent servis (xuid NULL, jamais
+// normalisé : piège 1 ci-dessus).
+func KillPairIdentityReadable(alias string) string {
+	return "(" + alias + ".publishable OR " + alias + ".read_origin NOT IN ('" +
+		killscope.OriginFilmBotVictim + "', '" + killscope.OriginFilmBotKiller + "'))"
+}
 
 // QKillsBetweenPlayers : frags échangés entre DEUX joueurs, tous matchs confondus.
 //

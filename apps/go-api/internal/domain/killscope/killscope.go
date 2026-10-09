@@ -81,6 +81,24 @@ const (
 // détecteur d'enrichissement aveugle pour tout le process.
 func FilmReadPaths() []string { return []string{ReadPathFilmWalk, ReadPathFilmScan} }
 
+// Les deux origines de film dont UNE IDENTITÉ vient du roster de réplication, pas du kill-feed.
+//
+// Partout ailleurs, le tueur et la victime d'une ligne sont lus au kill-feed (les noms que le
+// jeu affiche, résolus en xuid par l'annuaire du match). Ici un des deux côtés est le BOT,
+// absent du kill-feed humain-seul : il est nommé par la bijection indice -> joueur de la passe.
+// Quand la passe n'est pas publiable ligne par ligne (`publishable = FALSE`, bijection ambiguë
+// ou santé en alerte), ce côté-là peut désigner le mauvais occupant ; les autres lignes de la
+// même passe gardent leur identité de kill-feed.
+//
+// Propriétaire typé : `games/halo_infinite/film/internal/facts/killsource` (`Origin`). Verrou
+// d'égalité : `sync/killcollector/origin_replication_test.go`.
+const (
+	// OriginFilmBotVictim : la VICTIME est un bot (nommée par la réplication).
+	OriginFilmBotVictim = "bot"
+	// OriginFilmBotKiller : le TUEUR est un bot (nommé par la réplication).
+	OriginFilmBotKiller = "tueur-bot"
+)
+
 // CategoryHeadshot : LA SEULE valeur de `source_category` qui compte comme tir à la tête à la
 // LECTURE (G.1, 2026-08-30).
 //
