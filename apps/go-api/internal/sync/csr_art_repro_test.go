@@ -42,8 +42,10 @@ const (
 	csrReproIterations  = 5
 )
 
-// openCSRPlayerFileDB ouvre une DuckDB persistante sur fichier avec le
-// schéma `match_skill_rank` réel (cf. steps_player.go:302).
+// openCSRPlayerFileDB ouvre une DuckDB persistante sur fichier avec le schéma
+// `match_skill_rank` d'AVANT l'append-only (PK match_id + idx_msr_*), celui sur lequel ce
+// harnais reproduit le bug ART : les index en font partie. Le schéma courant n'a plus
+// d'index secondaire (drop_msr_secondary_art_indexes_v1).
 func openCSRPlayerFileDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dir := t.TempDir()

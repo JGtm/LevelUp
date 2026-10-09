@@ -165,7 +165,7 @@ func TestRebuildPlayerMatchEnrichmentART_Idempotent(t *testing.T) {
 // TestRebuildPlayerMatchEnrichmentART_EradicatesARTIndexes : append-only #23645 —
 // INVERSION de doctrine (vs le fix 2026-06-19 qui les rejouait). Les 3 ex-index ART
 // mutés (idx_pme_engagement_history/_paces/_session) sont ÉRADIQUÉS par le swap
-// append-only et ne doivent JAMAIS revenir (seul idx_pme_match_lookup est toléré).
+// append-only et ne doivent JAMAIS revenir (la table n'a plus aucun index secondaire).
 func TestRebuildPlayerMatchEnrichmentART_EradicatesARTIndexes(t *testing.T) {
 	db := openMemDB(t)
 	seedPlayerMatchEnrichmentForRebuild(t, db)

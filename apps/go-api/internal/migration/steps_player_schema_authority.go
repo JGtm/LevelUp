@@ -125,7 +125,6 @@ CREATE TABLE IF NOT EXISTS player_csr_snapshots (
     fetched_at                       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     written_at                       TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
-CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at);
 CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
     SELECT * FROM player_csr_snapshots
     QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1;
@@ -156,11 +155,24 @@ DROP INDEX IF EXISTS idx_msr_rating_type;
 DROP INDEX IF EXISTS idx_msr_playlist;
 `
 
-// PlayerRetiredARTIndexesDropSQL — les deux listes, pour le soin d'EnsurePlayerSchema.
-const PlayerRetiredARTIndexesDropSQL = PlayerRetiredPSAIndexesDropSQL + PlayerRetiredMSRIndexesDropSQL
+// PlayerRetiredSecondaryIndexesDropSQL — cf. PlayerRetiredPSAIndexesDropSQL. Les quatre
+// derniers index secondaires des tables append-only joueur : lusr_component_history (2),
+// player_match_enrichment, player_csr_snapshots. Retrait MESURÉ, même critère que MSR
+// (psa_index_repro_player_planprobe_test.go, tag psarepro) : aucune forme de lecture de
+// production ne les emprunte (plan séquentiel avec ou sans eux), aucune ne ralentit sans eux.
+const PlayerRetiredSecondaryIndexesDropSQL = `
+DROP INDEX IF EXISTS idx_lch_component;
+DROP INDEX IF EXISTS idx_lch_match;
+DROP INDEX IF EXISTS idx_pme_match_lookup;
+DROP INDEX IF EXISTS idx_pcs_lookup;
+`
+
+// PlayerRetiredARTIndexesDropSQL — les trois listes, pour le soin d'EnsurePlayerSchema.
+const PlayerRetiredARTIndexesDropSQL = PlayerRetiredPSAIndexesDropSQL + PlayerRetiredMSRIndexesDropSQL +
+	PlayerRetiredSecondaryIndexesDropSQL
 
 // L'ordre de Register() dans cet init() est CONTRAINT : il doit reproduire l'ordre de ces
-// 6 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
+// 7 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
 // Ils y occupent les positions qui suivent immédiatement repair_match_citations_primary_key
 // (fin du bloc player).
 func init() {
@@ -216,6 +228,17 @@ func init() {
 			return execScript(db, PlayerRetiredPSAIndexesDropSQL)
 		},
 	})
+	Register(Migration{
+		Name:     "drop_player_secondary_art_indexes_v1",
+		TargetDB: TargetPlayer,
+		Description: "Retire les 4 derniers index secondaires des tables append-only joueur " +
+			"(idx_lch_component, idx_lch_match, idx_pme_match_lookup, idx_pcs_lookup) : aucune " +
+			"lecture ne les emprunte (plan séquentiel mesuré avec et sans eux) et un index ART " +
+			"se désynchronise sur les insertions courantes (#23645)",
+		ApplySchema: func(db *sql.DB) error {
+			return execScript(db, PlayerRetiredSecondaryIndexesDropSQL)
+		},
+	})
 }
 
 // applyCreatePersonalScoreAwards : réparer — créer — garantir la vue.
@@ -249,8 +272,8 @@ func applyCreatePersonalScoreAwards(db *sql.DB) error {
 // applyCreatePlayerCSRSnapshots répare D'ABORD un éventuel schéma legacy pré-2026-05-24
 // (PK(playlist_id, season_id) SANS id/written_at) puis émet le schéma canonique.
 //
-// L'ORDRE EST CRITIQUE : l'index idx_pcs_lookup et la vue _latest référencent written_at
-// et id ; sur un schéma legacy leur BIND échouerait et la migration casserait le boot.
+// L'ORDRE EST CRITIQUE : la vue _latest référence written_at et id ; sur un schéma legacy
+// son BIND échouerait et la migration casserait le boot.
 // EnsurePlayerCSRSnapshotsAppendOnly est idempotent et no-ope sur DB vierge (table
 // absente) comme sur DB déjà convertie (marqueur id présent).
 func applyCreatePlayerCSRSnapshots(db *sql.DB) error {

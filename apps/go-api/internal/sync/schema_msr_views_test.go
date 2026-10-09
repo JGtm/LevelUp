@@ -101,10 +101,12 @@ func keysOf(m map[string]string) []string {
 const envPlayerDBCopy = "LEVELUP_B3_PLAYER_DB_COPY"
 
 // retiredARTIndexNames : les index secondaires retirés des player DB (MSR 2026-09-27,
-// PSA 2026-09-20) — noms tenus par migration.PlayerRetiredARTIndexesDropSQL.
+// PSA 2026-09-20, tables append-only restantes 2026-10-09) — noms tenus par
+// migration.PlayerRetiredARTIndexesDropSQL.
 var retiredARTIndexNames = []string{
 	"idx_msr_match_lookup", "idx_msr_rating_type", "idx_msr_playlist",
 	"idx_psa_match", "idx_psa_category", "idx_psa_gen",
+	"idx_lch_component", "idx_lch_match", "idx_pme_match_lookup", "idx_pcs_lookup",
 }
 
 // playerDBInventory : ce que la migration et le soin ne doivent PAS changer (lignes par
@@ -253,10 +255,15 @@ func TestRetiredARTIndexes_SyntheticPreRetirementDB(t *testing.T) {
 		`CREATE INDEX IF NOT EXISTS idx_psa_match ON personal_score_awards(match_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category)`,
 		`CREATE INDEX IF NOT EXISTS idx_psa_gen ON personal_score_awards(match_id, xuid, generation_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pme_match_lookup ON player_match_enrichment(match_id, written_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at)`,
 		`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, playlist_group)
 		 VALUES ('m1', 'LUSR', 1200, 'arena_slayer'), ('m1', 'LUSR_V2', 1203, 'arena_slayer'),
 		        ('m2', 'CSR', 1500, NULL)`,
-		`DELETE FROM schema_migrations WHERE name = 'drop_msr_secondary_art_indexes_v1'`,
+		`DELETE FROM schema_migrations WHERE name IN
+		 ('drop_msr_secondary_art_indexes_v1', 'drop_player_secondary_art_indexes_v1')`,
 		`CHECKPOINT`,
 	} {
 		if _, err := db.ExecContext(t.Context(), stmt); err != nil {

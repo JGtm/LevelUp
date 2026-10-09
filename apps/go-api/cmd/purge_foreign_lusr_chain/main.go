@@ -16,7 +16,7 @@
 // bases en FATAL en prod (règle CLAUDE.md n°1, ADR 0026). La purge se fait par
 // RECONSTRUCTION CTAS transactionnelle, modelée sur migration/append_only_rebuild.go
 // (rebuildAppendOnlyTx) : BEGIN, CTAS filtré, garde de cardinalité AVANT le DROP,
-// DROP+RENAME, PK/séquence/défauts/index/vue reposés, COMMIT, CHECKPOINT.
+// DROP+RENAME, PK/séquence/défauts/vues reposés (aucun index secondaire), COMMIT, CHECKPOINT.
 //
 // SERVEUR ARRÊTÉ OBLIGATOIRE (modèle mono-process, ADR 0013) : l'outil ouvre la base en
 // RW exclusif. Sauvegarde préalable de la base à la charge de l'opérateur.

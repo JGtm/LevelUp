@@ -147,6 +147,27 @@ func TestPurgeForeignLUSRChain_CommitRebuildsWithoutForeignRows(t *testing.T) {
 	}
 }
 
+// TestPurgeForeignLUSRChain_NeRejouePasUnIndexRetire : un index secondaire recréé par un
+// binaire plus ancien disparaît avec l'ancienne table ; le swap ne le rejoue pas.
+func TestPurgeForeignLUSRChain_NeRejouePasUnIndexRetire(t *testing.T) {
+	path := newFixturePlayerDB(t)
+	db := reopen(t, path)
+	if _, err := db.Exec(`CREATE INDEX idx_msr_playlist ON match_skill_rank(playlist_group)`); err != nil {
+		t.Fatalf("recréation de l'index (binaire ancien): %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if err := run(context.Background(), path, "h5_arena", false, true); err != nil {
+		t.Fatalf("run commit: %v", err)
+	}
+	db = reopen(t, path)
+	if n := countRows(t, db,
+		`SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_skill_rank'`); n != 0 {
+		t.Errorf("index sur match_skill_rank après purge = %d, want 0 (aucun index rejoué)", n)
+	}
+}
+
 func TestPurgeForeignLUSRChain_RefusesEmptyArguments(t *testing.T) {
 	if err := run(context.Background(), "", "h5_arena", true, false); err == nil {
 		t.Error("-db vide doit être refusé")

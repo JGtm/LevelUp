@@ -53,6 +53,12 @@ var stepDependencies = map[string]string{
 	// qui les posait, lusr_chain_rework_v1 (rebuild CTAS qui reposait les 3 index jusqu'au
 	// 2026-09-27) — même raisonnement que drop_psa_secondary_art_indexes_v1.
 	"drop_msr_secondary_art_indexes_v1": "lusr_chain_rework_v1",
+	// drop_player_secondary_art_indexes_v1 (2026-10-09, plan des recommandations, lot C2) ne
+	// crée aucune de ses tables : il retire idx_lch_*, idx_pme_match_lookup et idx_pcs_lookup.
+	// Il DOIT suivre le dernier step qui en posait un, create_player_csr_snapshots_player_v1
+	// (les créateurs de lusr_component_history et la conversion de player_match_enrichment le
+	// précèdent aussi dans canonicalOrder).
+	"drop_player_secondary_art_indexes_v1": "create_player_csr_snapshots_player_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la
