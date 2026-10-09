@@ -18,20 +18,24 @@ func TestEnrichMatchesWithAssistedFrags_PartialMap(t *testing.T) {
 			"m3": {FragsMeasured: 4},
 		},
 	}
-	items := []domain.RecentMatchItem{{MatchID: "m1"}, {MatchID: "m2"}, {MatchID: "m3"}}
+	kills, killsM3 := 20, 4
+	items := []domain.RecentMatchItem{{MatchID: "m1", Kills: &kills}, {MatchID: "m2"}, {MatchID: "m3", Kills: &killsM3}}
 
 	enrichMatchesWithAssistedFrags(context.Background(), repo, items)
 
 	if items[0].AssistedFrags == nil {
 		t.Fatal("m1 : objet attendu")
 	}
-	if got := *items[0].AssistedFrags; got.FragsMeasured != 12 || got.Received.Total != 7 || got.Received.Mid != 3 {
+	// Base = frags officiels de la tuile (20) ; 8 frags hors du film = sans information.
+	if got := *items[0].AssistedFrags; got.FragsMeasured != 12 || got.Received.Total != 7 || got.Received.Mid != 3 ||
+		got.FragsOfficial != 20 || got.FragsUnknown != 8 {
 		t.Fatalf("m1 = %+v", got)
 	}
 	if items[1].AssistedFrags != nil {
 		t.Fatalf("m2 absent de la map : nil attendu, got %+v", *items[1].AssistedFrags)
 	}
-	if items[2].AssistedFrags == nil || items[2].AssistedFrags.FragsMeasured != 4 || items[2].AssistedFrags.Received.Total != 0 {
+	if items[2].AssistedFrags == nil || items[2].AssistedFrags.FragsMeasured != 4 || items[2].AssistedFrags.Received.Total != 0 ||
+		items[2].AssistedFrags.FragsOfficial != 4 || items[2].AssistedFrags.FragsUnknown != 0 {
 		t.Fatalf("m3 (mesuré, zéro) = %+v", items[2].AssistedFrags)
 	}
 }

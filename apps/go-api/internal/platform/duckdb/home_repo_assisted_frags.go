@@ -22,8 +22,11 @@ const homeAssistedFragsTimeout = 10 * time.Second
 // (lignes `publishable AND assist_known` où il est le tueur) et, parmi eux, ceux qu'un
 // coéquipier a assistés, par tranche de part de dégâts.
 //
-// PORTÉE DES LIGNES : identique à Q28c — les frags servent de DÉNOMINATEUR aux
-// assistances, ils se lisent sur la même population de lignes. Une assistance sans part
+// PORTÉE DES LIGNES : identique à Q28c — les frags mesurés se lisent sur la même
+// population de lignes que les assistances. Ils ne sont PAS la base affichée : la tuile
+// rapporte les assistés aux frags officiels du match, l'écart officiels − mesurés étant
+// la part sans information (domain.MatchAssistedFrags.WithOfficialFrags, posée par le
+// service). Une assistance sans part
 // mesurée (`assist_damage_pct` NULL) compte dans le total et dans aucune tranche : les
 // comparaisons à NULL sont fausses dans les FILTER.
 //
