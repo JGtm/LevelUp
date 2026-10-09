@@ -392,17 +392,13 @@ export function MatchEncountersTable({
         ? ([
             {
               id: 'assists',
-              // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+              // Tri sur les assistances échangées (données + reçues) ; sans objet → en bas.
               accessorFn: (r) => assistSortValue(r.assists),
               ...NUMERIC_SORT,
               header: assistsLabel,
               meta: { headerTooltip: ASSISTS_TEXT[locale].columnTooltip },
               cell: (ctx) => (
-                <AssistExchangeCell
-                  assists={ctx.row.original.assists}
-                  teammateMatches={ctx.row.original.ally_count}
-                  locale={locale}
-                />
+                <AssistExchangeCell assists={ctx.row.original.assists} locale={locale} />
               ),
             },
           ] satisfies ColumnDef<MatchEncounterRow>[])

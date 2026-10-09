@@ -87,9 +87,7 @@ export function CoreRankingList({
           {r.assists ? (
             <AssistButterflyBar assists={r.assists} volumeMax={volumeMax} text={text} locale={locale} variant="row" />
           ) : (
-            <Tooltip className="justify-center" content={text.notMeasured}>
-              <span className="w-full cursor-help text-center font-mono text-xs text-muted-foreground">—</span>
-            </Tooltip>
+            <span className="w-full text-center font-mono text-xs text-muted-foreground">—</span>
           )}
           <Tooltip content={labels.hero.matchesPlayed(r.total_matches.toLocaleString(locale))}>
             <span className="cursor-help text-right font-mono text-xs text-muted-foreground tabular-nums">

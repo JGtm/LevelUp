@@ -20,11 +20,19 @@ package domain
 // quantité par match, dénominateur, drapeau d'échantillon faible). C'est la règle de forme
 // de analysis/coordination, et elle traverse le contrat HTTP telle quelle.
 //
-// ─── UN MATCH SANS FILM EST ABSENT, JAMAIS À ZÉRO ─────────────────────────────────────
+// ─── UN MATCH SANS ASSISTANCE LUE EST ABSENT, JAMAIS À ZÉRO ───────────────────────────
 //
-// « Mesuré » veut dire : au moins une ligne publiable dans `match_kill_events_latest`. Un
-// match non mesuré n'a pas un taux nul, il n'a pas de taux — il ne fournit ni numérateur
-// ni dénominateur, et son absence se lit dans `MatchesMeasured / MatchesTotal`.
+// « Mesuré » veut dire : le journal des morts du match est lisible (au moins une ligne
+// publiable dans `match_kill_events_latest`) ET son film porte l'assistance (au moins une
+// ligne d'appui, `publishable AND assist_known`). Un match non mesuré n'a pas un taux nul,
+// il n'a pas de taux — il ne fournit ni numérateur ni dénominateur.
+//
+// ─── RÈGLE DES BASES (domain/relation_assists.go) ─────────────────────────────────────
+//
+// « Frags appuyés » se rapporte aux frags OFFICIELS du joueur (feuille de match) sur les
+// matchs mesurés, frags sur des bots compris ; un frag dont l'assistance n'est pas lue
+// reste dans la base sans entrer au numérateur. Les appuis impliquant des BOTS (assistant,
+// tueur ou victime) comptent comme les autres.
 // CoordinationUnavailableReason — la raison MACHINE d'un bloc indisponible (même doctrine
 // que SessionUsageUnavailableReason : l'écran traduit, le contrat ne rédige pas).
 const (
@@ -51,17 +59,28 @@ type CoordinationMatch struct {
 }
 
 // CoordinationAppuiRow — les morts MESURÉES pour l'assistance d'un match, groupées par
-// couple (assistant, tueur crédité).
+// (assistant, tueur crédité).
 //
-// `AssistXUID` VIDE est un ÉTAT MESURÉ, pas une absence de ligne : « publiable et
-// assist_known, personne n'a assisté ». C'est ce qui permet au dénominateur « mes frags
-// mesurés » d'exister sans jamais compter un frag dont l'assistance est INCONNUE — la
-// doctrine des trois états de assist_pairs.go, rapportée à un scope de matchs.
+// L'assistant est NOMMÉ quand le film écrit son xuid ou, à défaut, son gamertag (bot,
+// joueur non résolu) : [CoordinationAppuiRow.Assiste]. Ni l'un ni l'autre est un ÉTAT
+// MESURÉ, pas une absence de ligne : « publiable et assist_known, personne n'a assisté ».
+//
+// Un xuid VIDE (assistant, tueur) désigne un acteur sans xuid — un bot le plus souvent. Il
+// n'a pas de camp dans la table des équipes : son camp se déduit de l'autre acteur de la
+// ligne (une assistance est toujours portée par un coéquipier du tueur) ou, quand les deux
+// sont sans xuid, de la victime (`VictimXUID`, renseignée pour ce seul cas).
 type CoordinationAppuiRow struct {
-	MatchID    string
-	AssistXUID string
-	KillerXUID string
-	Nombre     int
+	MatchID        string
+	AssistXUID     string
+	AssistGamertag string
+	KillerXUID     string
+	VictimXUID     string
+	Nombre         int
+}
+
+// Assiste dit que le film nomme un assistant sur ces morts.
+func (a CoordinationAppuiRow) Assiste() bool {
+	return a.AssistXUID != "" || a.AssistGamertag != ""
 }
 
 // CoordinationEntree — tout ce que le calcul du bloc consomme. Une struct plutôt que six
@@ -73,6 +92,9 @@ type CoordinationEntree struct {
 	Matchs  []CoordinationMatch
 	Equipes EquipesParMatch
 	Appuis  []CoordinationAppuiRow
+	// FragsOfficiels : frags du joueur par match, tels que la feuille de match les compte.
+	// Base de « frags appuyés » ; un match absent retombe sur les frags lus par le film.
+	FragsOfficiels map[string]int
 }
 
 // CoordinationAppui — les deux grandeurs d'appui REÇU d'un scope.
@@ -102,8 +124,8 @@ type CoordinationAppui struct {
 // CoordinationMatchPoint — UNE case de la bande de régularité : les comptes bruts d'un
 // match mesuré et les deux parts qui s'en déduisent.
 //
-// Une part NIL est un « non mesuré » : aucun frag mesuré, aucun appui mesuré dans le camp. La
-// case reste GRISE — un zéro s'y lirait comme une contre-performance.
+// Une part NIL a un dénominateur vide : aucun frag, aucun appui dans le camp. La case reste
+// GRISE — un zéro s'y lirait comme une contre-performance.
 type CoordinationMatchPoint struct {
 	MatchID string `json:"match_id"`
 	// TeamSize / ParityPct : l'effectif de mon camp et la parité 100/n de CE match
@@ -111,14 +133,16 @@ type CoordinationMatchPoint struct {
 	TeamSize  *int     `json:"team_size,omitempty"`
 	ParityPct *float64 `json:"parity_pct,omitempty"`
 
-	MyMeasuredKills int `json:"my_measured_kills"`
+	// MyKills : frags OFFICIELS du joueur sur le match (base de AssistedSharePct, jamais sous
+	// les frags lus par le film).
+	MyKills         int `json:"my_kills"`
 	MyAssistedKills int `json:"my_assisted_kills"`
 	TeamAssists     int `json:"team_assists"`
 	AssistsToMe     int `json:"assists_to_me"`
 	// AssistShareOfTeamPct : les appuis qui me sont revenus sur ceux distribués dans mon
 	// camp, en pourcentage — la grandeur que la bande du §6 peint face à la parité.
 	AssistShareOfTeamPct *float64 `json:"assist_share_of_team_pct,omitempty"`
-	// AssistedSharePct : mes frags appuyés sur mes frags mesurés, en pourcentage.
+	// AssistedSharePct : mes frags appuyés sur MyKills, en pourcentage.
 	AssistedSharePct *float64 `json:"assisted_share_pct,omitempty"`
 }
 

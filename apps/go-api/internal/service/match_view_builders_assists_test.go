@@ -30,28 +30,16 @@ func TestBuildAssistPairs_BlocAbsentSansFilm(t *testing.T) {
 	}
 }
 
-// TestBuildAssistPairs_NonMesureVsZero : LES DEUX ÉTATS QUE LE BLOC EXISTE POUR
-// DISTINGUER. Le film est là dans les deux cas ; ce qui change est MeasuredDeaths.
-func TestBuildAssistPairs_NonMesureVsZero(t *testing.T) {
-	// (a) « non mesuré » : des morts, aucune assistance mesurée.
-	nonMesure := buildAssistPairs(context.Background(), nil, domain.MatchAssistScopeRaw{MatchDeaths: 40}, nil)
-	if nonMesure == nil {
-		t.Fatal("bloc attendu (le match a un film), obtenu nil")
+// TestBuildAssistPairs_SansMesureRetireVsZero : le film est là dans les deux cas ; ce qui
+// change est MeasuredDeaths. Sans assistance lue, AUCUN bloc (rien n'annonce « non
+// mesuré » à l'écran) ; avec, un bloc à paires vides dit « aucune assistance ».
+func TestBuildAssistPairs_SansMesureRetireVsZero(t *testing.T) {
+	if got := buildAssistPairs(context.Background(), nil, domain.MatchAssistScopeRaw{MatchDeaths: 40}, nil); got != nil {
+		t.Fatalf("film sans assistance lue : bloc = %+v, attendu nil", got)
 	}
-	if nonMesure.MeasuredDeaths != 0 {
-		t.Errorf("MeasuredDeaths = %d, attendu 0", nonMesure.MeasuredDeaths)
-	}
-	if len(nonMesure.Pairs) != 0 {
-		t.Errorf("Pairs = %+v, attendu vide", nonMesure.Pairs)
-	}
-
-	// (b) « mesuré, zéro assistance » : mêmes paires vides, portée DIFFÉRENTE.
 	mesureZero := buildAssistPairs(context.Background(), nil, domain.MatchAssistScopeRaw{MatchDeaths: 40, MeasuredDeaths: 38}, nil)
 	if mesureZero == nil {
 		t.Fatal("bloc attendu, obtenu nil")
-	}
-	if mesureZero.MeasuredDeaths != 38 {
-		t.Errorf("MeasuredDeaths = %d, attendu 38", mesureZero.MeasuredDeaths)
 	}
 	if len(mesureZero.Pairs) != 0 {
 		t.Errorf("Pairs = %+v, attendu vide", mesureZero.Pairs)
@@ -59,8 +47,9 @@ func TestBuildAssistPairs_NonMesureVsZero(t *testing.T) {
 }
 
 // TestBuildAssistPairs_GamertagTueurDepuisScoreboard : le nom du tueur vient du
-// scoreboard et de lui seul. Un tueur qui n'y figure pas garde son xuid et un gamertag
-// VIDE — jamais un nom inventé, jamais le xuid recopié dans un champ de nom.
+// scoreboard, sinon du film. Un tueur qu'aucune des deux sources ne nomme garde son xuid
+// et un gamertag VIDE — jamais un nom inventé, jamais le xuid recopié dans un champ de nom.
+// Un tueur BOT (sans xuid) garde le nom que le film lui donne.
 func TestBuildAssistPairs_GamertagTueurDepuisScoreboard(t *testing.T) {
 	scoreboard := []domain.ScoreboardRaw{
 		{XUID: "K1", Gamertag: "Kilo"},
@@ -72,10 +61,18 @@ func TestBuildAssistPairs_GamertagTueurDepuisScoreboard(t *testing.T) {
 		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K1", AssistCount: 3, StolenCount: 2, AvgAssistPct: &avg},
 		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K2", AssistCount: 1},
 		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K3", AssistCount: 1},
+		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerGamertag: "343 Ritzy [bot]", AssistCount: 1},
+		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K4", KillerGamertag: "NomDuFilm", AssistCount: 1},
 	}
 	got := buildAssistPairs(context.Background(), raw, domain.MatchAssistScopeRaw{MatchDeaths: 50, MeasuredDeaths: 44}, scoreboard)
-	if got == nil || len(got.Pairs) != 3 {
-		t.Fatalf("bloc = %+v, attendu 3 paires", got)
+	if got == nil || len(got.Pairs) != 5 {
+		t.Fatalf("bloc = %+v, attendu 5 paires", got)
+	}
+	if got.Pairs[3].KillerGamertag != "343 Ritzy [bot]" || got.Pairs[3].KillerXUID != "" {
+		t.Errorf("tueur bot : %+v, attendu le nom du film et un xuid vide", got.Pairs[3])
+	}
+	if got.Pairs[4].KillerGamertag != "NomDuFilm" {
+		t.Errorf("tueur absent du scoreboard : gamertag = %q, attendu le repli du film", got.Pairs[4].KillerGamertag)
 	}
 	if got.Pairs[0].KillerGamertag != "Kilo" {
 		t.Errorf("tueur au scoreboard : gamertag = %q, attendu %q", got.Pairs[0].KillerGamertag, "Kilo")
@@ -167,10 +164,10 @@ func TestBuildAssistPairs_CompteursDesDeuxCauses(t *testing.T) {
 			compteurMatchAssistSansMesure)
 	}
 
-	// Le film est là, mais aucune mort n'est lisible : le bloc SORT, et l'état est compté.
+	// Le film est là, mais aucune mort n'est lisible : le bloc est RETIRÉ, et l'état compté.
 	sansMesure = observability.LoadCounter(compteurMatchAssistSansMesure)
-	if got := buildAssistPairs(context.Background(), nil, domain.MatchAssistScopeRaw{MatchDeaths: 40}, nil); got == nil {
-		t.Fatal("bloc attendu : « non mesuré » est un état publié, pas une absence")
+	if got := buildAssistPairs(context.Background(), nil, domain.MatchAssistScopeRaw{MatchDeaths: 40}, nil); got != nil {
+		t.Fatalf("bloc = %+v, attendu nil (film sans assistance lue)", got)
 	}
 	if v := observability.LoadCounter(compteurMatchAssistSansMesure); v != sansMesure+1 {
 		t.Errorf("%s = %d, attendu %d", compteurMatchAssistSansMesure, v, sansMesure+1)

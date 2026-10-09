@@ -14,25 +14,22 @@ import (
 func assistsFixture() map[string]domain.RelationAssists {
 	return map[string]domain.RelationAssists{
 		"target-x": {
-			MatchesMeasured: 9,
-			MyFrags:         80,
-			PartnerFrags:    70,
-			Received:        domain.AssistTiers{Total: 20, Low: 12, Mid: 5, High: 3},
-			Given:           domain.AssistTiers{Total: 14, Low: 9, Mid: 3, High: 2},
+			MyFrags:      80,
+			PartnerFrags: 70,
+			Received:     domain.AssistTiers{Total: 20, Low: 12, Mid: 5, High: 3},
+			Given:        domain.AssistTiers{Total: 14, Low: 9, Mid: 3, High: 2},
 		},
 		"mate-big": {
-			MatchesMeasured: 40,
-			MyFrags:         300,
-			PartnerFrags:    280,
-			Received:        domain.AssistTiers{Total: 95, Low: 60, Mid: 25, High: 10},
-			Given:           domain.AssistTiers{Total: 120, Low: 70, Mid: 35, High: 15},
+			MyFrags:      300,
+			PartnerFrags: 280,
+			Received:     domain.AssistTiers{Total: 95, Low: 60, Mid: 25, High: 10},
+			Given:        domain.AssistTiers{Total: 120, Low: 70, Mid: 35, High: 15},
 		},
 		"mate-small": {
-			MatchesMeasured: 2,
-			MyFrags:         10,
-			PartnerFrags:    12,
-			Received:        domain.AssistTiers{Total: 3, Low: 3},
-			Given:           domain.AssistTiers{Total: 1, Low: 1},
+			MyFrags:      10,
+			PartnerFrags: 12,
+			Received:     domain.AssistTiers{Total: 3, Low: 3},
+			Given:        domain.AssistTiers{Total: 1, Low: 1},
 		},
 	}
 }
@@ -54,9 +51,8 @@ func TestEnrichEncounterAssists(t *testing.T) {
 	if stats.Assists.Received.Total != 20 || stats.Assists.Given.Total != 14 {
 		t.Errorf("volumes = %d/%d, want 20/14", stats.Assists.Received.Total, stats.Assists.Given.Total)
 	}
-	if stats.Assists.MatchesMeasured != 9 || stats.Assists.MyFrags != 80 || stats.Assists.PartnerFrags != 70 {
-		t.Errorf("dénominateurs = %d/%d/%d, want 9/80/70",
-			stats.Assists.MatchesMeasured, stats.Assists.MyFrags, stats.Assists.PartnerFrags)
+	if stats.Assists.MyFrags != 80 || stats.Assists.PartnerFrags != 70 {
+		t.Errorf("bases = %d/%d, want 80/70", stats.Assists.MyFrags, stats.Assists.PartnerFrags)
 	}
 	if stats.AssistVolumeMax != 120 {
 		t.Errorf("AssistVolumeMax = %d, want 120 (max global, pas celui de la paire)", stats.AssistVolumeMax)

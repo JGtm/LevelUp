@@ -25,7 +25,7 @@ type appuiCase struct {
 	MatchID              string   `json:"match_id"`
 	TeamSize             *int     `json:"team_size,omitempty"`
 	ParityPct            *float64 `json:"parity_pct,omitempty"`
-	MyMeasuredKills      int      `json:"my_measured_kills"`
+	MyKills              int      `json:"my_kills"`
 	MyAssistedKills      int      `json:"my_assisted_kills"`
 	TeamAssists          int      `json:"team_assists"`
 	AssistsToMe          int      `json:"assists_to_me"`
@@ -55,7 +55,7 @@ func projeterAppui(b domain.CoordinationBlock) appuiProjection {
 	for _, p := range b.PerMatch {
 		out.PerMatch = append(out.PerMatch, appuiCase{
 			MatchID: p.MatchID, TeamSize: p.TeamSize, ParityPct: p.ParityPct,
-			MyMeasuredKills: p.MyMeasuredKills, MyAssistedKills: p.MyAssistedKills,
+			MyKills: p.MyKills, MyAssistedKills: p.MyAssistedKills,
 			TeamAssists: p.TeamAssists, AssistsToMe: p.AssistsToMe,
 			AssistShareOfTeamPct: p.AssistShareOfTeamPct, AssistedSharePct: p.AssistedSharePct,
 		})

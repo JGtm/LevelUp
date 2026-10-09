@@ -5992,7 +5992,7 @@ export interface components {
             /** Format: int64 */
             my_assisted_kills: number;
             /** Format: int64 */
-            my_measured_kills: number;
+            my_kills: number;
             /** Format: double */
             parity_pct?: number;
             /** Format: int64 */
@@ -8362,8 +8362,6 @@ export interface components {
             stolen_count: number;
         };
         MatchAssistPairs: {
-            /** Format: int64 */
-            measured_deaths: number;
             pairs: components["schemas"]["MatchAssistPair"][] | null;
         };
         MatchAssociatedMedia: {
@@ -10664,8 +10662,6 @@ export interface components {
         };
         RelationAssists: {
             given: components["schemas"]["AssistTiers"];
-            /** Format: int64 */
-            matches_measured: number;
             /** Format: int64 */
             my_frags: number;
             /** Format: int64 */

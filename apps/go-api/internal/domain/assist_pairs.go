@@ -19,12 +19,14 @@
 //	assist_known = TRUE  + assist_gamertag NULL    MESURÉ : pas d'assistant
 //	assist_known = TRUE  + assist_gamertag nommé   l'assistant
 //
-// Une liste de paires ne sait rendre que le troisième état. Les deux premiers se
-// distinguent donc PAR UN COMPTEUR À CÔTÉ, pas par la longueur de la liste :
-// [MatchAssistPairs.MeasuredDeaths] compte les morts du match dont l'assistance EST
-// mesurée et publiable ligne à ligne. Sans lui, « aucune paire » serait ambigu et
-// l'écran écrirait « aucune assistance » là où la mesure dit « on ne sait pas » — le
-// mensonge exact que la table est construite pour empêcher.
+// Une liste de paires ne sait rendre que le troisième état. Le premier se règle à
+// l'ÉMISSION du bloc, pas par un compteur publié : un match dont aucune mort n'a
+// d'assistance mesurée et publiable ligne à ligne ([MatchAssistScopeRaw.MeasuredDeaths]
+// nul) n'a pas de bloc du tout. Un bloc présent dit donc « mesuré », et « aucune paire »
+// y veut dire « aucune assistance ».
+//
+// Les BOTS comptent comme les autres acteurs (règle des bases, relation_assists.go) : un
+// assistant ou un tueur sans xuid est nommé par le gamertag que le film écrit.
 //
 // ─── ÉLIMINATIONS VOLÉES ──────────────────────────────────────────────────────────────
 //
@@ -39,14 +41,17 @@
 package domain
 
 // MatchAssistPairRaw : une paire (assistant, tueur assisté) telle que Q21d la rend, avant
-// résolution du gamertag du tueur.
+// résolution des gamertags au scoreboard.
 //
-// Le gamertag de l'ASSISTANT vient de la table (le film le nomme) ; celui du TUEUR n'y est
-// pas lu — il se résout depuis le scoreboard, comme dans buildKillerVictimPairs.
+// Les deux gamertags sont ceux que le FILM écrit ; le service leur préfère le scoreboard
+// quand il connaît le xuid. Un xuid VIDE désigne un acteur sans xuid (bot, joueur non
+// résolu) : son nom de film est alors sa seule identité, et deux bots ne se confondent pas
+// (Q21d groupe aussi sur les gamertags).
 type MatchAssistPairRaw struct {
 	AssistXUID     string
 	AssistGamertag string
 	KillerXUID     string
+	KillerGamertag string
 	// AssistCount : nombre de morts sur lesquelles cet assistant a assisté ce tueur.
 	AssistCount int
 	// StolenCount : sous-ensemble de AssistCount où `assist_damage_pct > killer_damage_pct`.
@@ -65,8 +70,8 @@ type MatchAssistPairRaw struct {
 //	                (ou le titre n'a pas de décodeur) : il n'y a rien à dire, et le
 //	                service n'émet alors AUCUN bloc.
 //	MeasuredDeaths  lignes `publishable AND assist_known` : les morts dont l'assistance
-//	                est mesurée ET publiable ligne à ligne. ZÉRO avec MatchDeaths > 0 =
-//	                « non mesuré pour ce match » — un état affiché, pas un vide.
+//	                est mesurée ET publiable ligne à ligne. ZÉRO = le film du match ne porte
+//	                pas l'assistance : le service n'émet AUCUN bloc.
 //	PublishableDeaths lignes `publishable` : le journal des morts du match se lit ligne à ligne
 //	                (la publiabilité vaut pour la passe entière). ZÉRO = frags pendant l'effet d'un
 //	                bonus non mesurés sur la Vue match (MatchEmpriseBlock.KillJournal).
@@ -82,9 +87,10 @@ type MatchAssistScopeRaw struct {
 // tueurs qu'il a servis en sont les segments. C'est l'inverse de MatchKillerVictimPair,
 // dont l'unité est le tueur — les deux graphes se lisent côte à côte sans se confondre.
 //
-// KillerGamertag peut être VIDE : le tueur est résolu depuis le scoreboard, et un tueur
-// qui n'y figure pas garde son xuid sans nom inventé (même règle que buildKillerVictimPairs,
-// sans le repli « afficher le xuid » — le front décide de l'affichage).
+// Les deux gamertags se résolvent au scoreboard, sinon au nom écrit par le film ; un nom
+// reste VIDE quand aucune des deux sources n'en a (jamais de nom inventé, jamais le xuid
+// recopié — le front décide de l'affichage). Un xuid VIDE désigne un acteur sans xuid
+// (bot, joueur non résolu) : son gamertag de film l'identifie.
 type MatchAssistPair struct {
 	AssistXUID     string `json:"assist_xuid"`
 	AssistGamertag string `json:"assist_gamertag"`
@@ -104,25 +110,15 @@ type MatchAssistPair struct {
 	AvgAssistPct *int `json:"avg_assist_pct,omitempty"`
 }
 
-// MatchAssistPairs : le bloc « assistances » de l'onglet Combat, avec la PORTÉE de sa
-// mesure.
+// MatchAssistPairs : le bloc « assistances » de l'onglet Combat.
 //
-// TROIS ÉTATS À L'ÉCRAN, et il faut les trois champs pour les tenir :
+// DEUX ÉTATS À L'ÉCRAN :
 //
-//	bloc ABSENT (nil)                le match n'a aucune ligne de film — ou le titre n'a
-//	                                 pas de décodeur. Rien à dire : l'UI ne rend rien.
-//	MeasuredDeaths == 0              le film est là, l'assistance n'y est pas mesurée (ou
-//	                                 la passe n'est pas publiable ligne à ligne).
-//	                                 « Assistance non mesurée pour ce match ».
-//	MeasuredDeaths > 0, Pairs vide   MESURÉ : personne n'a assisté personne.
-//	                                 « Aucune assistance ».
-//
-// Écrire « aucune assistance » sur le deuxième cas serait fabriquer un fait jamais
-// observé — la faute que la doctrine des trois états existe pour empêcher.
+//	bloc ABSENT (nil)  le match n'a aucune ligne de film, ou son film ne porte pas
+//	                   l'assistance (titre sans décodeur compris). L'UI ne rend rien.
+//	Pairs vide         le film porte l'assistance : personne n'a assisté personne.
+//	                   « Aucune assistance ».
 type MatchAssistPairs struct {
-	// MeasuredDeaths : morts du match dont l'assistance est mesurée ET publiable ligne
-	// à ligne. C'est le DÉNOMINATEUR de la couverture affichée.
-	MeasuredDeaths int `json:"measured_deaths"`
 	// Pairs : les paires nommées, triées par AssistCount décroissant.
 	Pairs []MatchAssistPair `json:"pairs"`
 }

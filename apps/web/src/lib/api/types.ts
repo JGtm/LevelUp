@@ -1048,8 +1048,8 @@ export interface RecentMatchItem {
   has_replay?: boolean
   /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
    *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
-   *  quand le match n'a aucune ligne mesurée pour le joueur : la tuile n'affiche rien —
-   *  jamais un « 0 » fabriqué pour une mesure absente. */
+   *  quand le film du match ne porte pas l'assistance : la tuile n'affiche rien —
+   *  jamais un « 0 » fabriqué. */
   assisted_frags?: MatchAssistedFrags | null
 }
 
@@ -1057,13 +1057,10 @@ export interface RecentMatchItem {
  *  OpenAPI dérivé (TODO Sprint 32 du contrat) : ce DTO est écrit à la main, comme
  *  RecentMatchItem, sur l'AssistTiers généré (route Relations). */
 export interface MatchAssistedFrags {
-  /** Frags du joueur portés par les lignes mesurées du film. */
-  frags_measured: number
-  /** Base de la part : les frags officiels du match (ceux de la tuile), jamais sous la mesure. */
+  /** Base de la part : les frags officiels du match (ceux de la tuile), bots compris,
+   *  jamais sous les frags lus par le film. */
   frags_official: number
-  /** `frags_official - frags_measured` : assistance non lue (victime bot, frag absent du
-   *  film). Dits à part, JAMAIS comptés comme non assistés. */
-  frags_unknown: number
+  /** Frags assistés (assistant nommé par le film, bot compris), par tranche de part. */
   received: AssistTiers
 }
 

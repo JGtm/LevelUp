@@ -9,9 +9,9 @@
  * logarithmique (`_shared/assists/AssistExchangeSummary`) : elle compare des paires
  * entre elles, ce bloc n'en affiche qu'une. `assist_volume_max` n'est donc plus lu ici.
  *
- * L'assistance n'est mesurée que sur les matchs joués dans la même équipe dont le film
- * a été décodé : sans aucun match mesuré, le backend n'envoie pas d'objet et le bloc
- * affiche « — » (jamais « 0 assistance »).
+ * L'assistance se lit sur les matchs joués dans la même équipe dont le film porte
+ * l'assistance : sans aucun de ces matchs, le backend n'envoie pas d'objet et le bloc
+ * affiche « — » seul (jamais « 0 assistance », jamais de mention d'inconnu).
  *
  * Hauteur : colonne d'une rangée `items-stretch` de trois cartes (cf.
  * ExplorerTargetProfileCard) — la carte prend `h-full` et sa zone de contenu `flex-1
@@ -20,7 +20,6 @@
  * en haut, et aucune hauteur minimale n'est ajoutée.
  */
 import { ExplorerAssistExchangeBars } from './ExplorerAssistExchangeBars'
-import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -44,12 +43,9 @@ export function ExplorerTargetAssists({ encounterStats }: Props) {
         {assists ? (
           <ExplorerAssistExchangeBars assists={assists} locale={appLocale} />
         ) : (
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-2xl font-bold text-muted-foreground">
-              {t('explorer.target_profile.value_unavailable')}
-            </span>
-            <span className="text-2xs text-muted-foreground">{ASSISTS_TEXT[appLocale].notMeasured}</span>
-          </div>
+          <span className="font-mono text-2xl font-bold text-muted-foreground">
+            {t('explorer.target_profile.value_unavailable')}
+          </span>
         )}
       </div>
     </div>

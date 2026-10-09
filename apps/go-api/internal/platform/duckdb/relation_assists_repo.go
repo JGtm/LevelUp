@@ -1,5 +1,5 @@
 // Package duckdb — relation_assists_repo.go : les assistances ÉCHANGÉES entre le joueur
-// et chaque coéquipier, sur les matchs dont l'assistance est mesurée (Q28c).
+// et chaque coéquipier, sur les matchs dont le film porte l'assistance (Q28c).
 //
 // Un seul lecteur SQL, deux surfaces : la page Relations (tous les coéquipiers, scope de
 // filtres optionnel) et l'historique des rencontres de la vue match (les seuls joueurs du
@@ -16,31 +16,42 @@ import (
 )
 
 // Q28cRelationAssistsTpl : pour chaque coéquipier, les assistances reçues et données,
-// par tranche de part, et les dénominateurs (matchs mesurés, frags de chacun).
+// par tranche de part, et les bases (frags officiels de chacun).
 //
-// PORTÉE DES LIGNES : `publishable AND assist_known`, pour les compteurs comme pour les
-// frags. Une paire nomme deux joueurs (lecture ligne à ligne, cf. Q32d), et les frags
-// servent de DÉNOMINATEUR aux assistances : ils doivent être lus sur la même population
-// de lignes, sinon le pourcentage mélange deux portées.
+// RÈGLE DES BASES (domain/relation_assists.go) :
+//
+//	porteuses  matchs dont le film porte l'assistance : au moins une ligne
+//	           `publishable AND assist_known` (une paire NOMME deux joueurs : lecture ligne à
+//	           ligne). Les autres matchs n'apportent ni assistances ni frags.
+//	bases      frags OFFICIELS (`match_participants.kills`) du joueur et du coéquipier sur
+//	           les matchs porteurs joués dans la même équipe — frags sur des bots compris,
+//	           que le film en lise l'assistance ou non.
+//	échanges   lignes `publishable AND assist_known` où l'un tue et l'autre est l'assistant.
 //
 // MATCHS COMPTÉS : ceux où le joueur et le coéquipier sont dans la MÊME équipe
-// (`team_id` égal ; un team_id NULL ne s'égale à rien) ET qui portent au moins une ligne
-// mesurée. Un match mesuré sans aucune assistance entre eux compte quand même : c'est
-// « mesuré, zéro », pas « on ne sait pas ».
+// (`team_id` égal ; un team_id NULL ne s'égale à rien) ET porteurs. Un match porteur sans
+// aucune assistance entre eux compte quand même dans les bases.
 //
-// Titres sans décodeur de film : `measured` est vide, donc aucune ligne ne sort — pas de
+// BOTS : un bot ne devient pas une ligne (prédicat analysis.SQLIsNotBotCol sur le
+// coéquipier) ; ses victimes et ses frags restent dans les bases.
+//
+// Titres sans décodeur de film : `porteuses` est vide, donc aucune ligne ne sort — pas de
 // branchement sur le slug. Le masquage Campagne n'est pas nécessaire pour la même raison
 // (aucune ligne de film en Campagne).
 //
 // BORNAGE (ADR 0036 I2) : l'unique lecture de la vue `_latest` du kill-feed (CTE `lues`,
-// matérialisée, d'où dérivent `measured` et les frags) porte la liste des matchs de la
-// lecture, liée en UN paramètre constant sous la fenêtre. La liste est le périmètre (scope) quand il est fourni, sinon tous les matchs du
-// joueur (QMatchsOuJoue) : `mates` ne garde que des matchs du joueur, donc la borne ne retire
-// aucune ligne servie.
+// matérialisée, d'où dérivent `porteuses` et les échanges) porte la liste des matchs de la
+// lecture, liée en UN paramètre constant sous la fenêtre. La liste est le périmètre (scope)
+// quand il est fourni, sinon tous les matchs du joueur (QMatchsOuJoue) : `mates` ne garde
+// que des matchs du joueur, donc la borne ne retire aucune ligne servie.
 //
-// JOINTURE PAR ÉGALITÉ SEULE : `kills` se joint à `mates` sur `match_id` ; chaque compteur
-// nomme son tueur dans son FILTER (le joueur ou le coéquipier), donc les frags des autres
-// tueurs du match rejoignent la ligne sans entrer dans aucun compte. Une disjonction dans la
+// UNE LIGNE PAR (match, coéquipier) DANS `mates` : les frags officiels s'y lisent une fois
+// (MAX sur d'éventuels doublons de participant) avant d'être sommés dans `bases`, et la
+// jointure aux lignes de film se fait à part (`echanges`) — joindre les deux multiplierait
+// les frags par le nombre de morts du match.
+//
+// JOINTURE PAR ÉGALITÉ SEULE : `lues` se joint à `mates` sur `match_id` ; chaque compteur
+// nomme son tueur dans son FILTER (le joueur ou le coéquipier). Une disjonction dans la
 // condition de jointure (`k.killer = me OR k.killer = partner`) fait choisir à DuckDB une
 // jointure par boucles imbriquées, l'essentiel du coût de la lecture.
 //
@@ -62,11 +73,14 @@ lues AS MATERIALIZED (
     FROM ` + KillEventsCanonicalTable + ` kv
     WHERE kv.publishable AND kv.assist_known AND %s
 ),
-measured AS (
+porteuses AS (
     SELECT DISTINCT match_id FROM lues
 ),
 mates AS (
-    SELECT DISTINCT mp.match_id, p.xuid AS partner
+    SELECT mp.match_id,
+           p.xuid                     AS partner,
+           MAX(COALESCE(mp.kills, 0)) AS my_kills,
+           MAX(COALESCE(p.kills, 0))  AS partner_kills
     FROM me
     JOIN match_participants mp ON mp.xuid = me.xuid
     JOIN match_participants p
@@ -74,30 +88,41 @@ mates AS (
        AND p.team_id  = mp.team_id
        AND p.xuid    <> mp.xuid
     WHERE %s
-      AND mp.match_id IN (SELECT match_id FROM measured)%s%s
+      AND mp.match_id IN (SELECT match_id FROM porteuses)%s%s
+    GROUP BY mp.match_id, p.xuid
 ),
-kills AS (
-    SELECT * FROM lues
-    WHERE match_id IN (SELECT match_id FROM mates)
+bases AS (
+    SELECT partner,
+           CAST(SUM(my_kills) AS BIGINT)      AS my_frags,
+           CAST(SUM(partner_kills) AS BIGINT) AS partner_frags
+    FROM mates
+    GROUP BY partner
+),
+echanges AS (
+    SELECT
+        m.partner,
+        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner)  AS received_total,
+        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct < %d)                AS received_low,
+        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct >= %d AND k.pct <= %d) AS received_mid,
+        COUNT(*) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct > %d)                AS received_high,
+        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid)  AS given_total,
+        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct < %d)                AS given_low,
+        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct >= %d AND k.pct <= %d) AS given_mid,
+        COUNT(*) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct > %d)                AS given_high
+    FROM mates m
+    CROSS JOIN me
+    JOIN lues k
+        ON k.match_id = m.match_id
+    GROUP BY m.partner
 )
 SELECT
-    m.partner,
-    COUNT(DISTINCT m.match_id)                                                    AS matches_measured,
-    COUNT(k.killer) FILTER (WHERE k.killer = me.xuid)                             AS my_frags,
-    COUNT(k.killer) FILTER (WHERE k.killer = m.partner)                           AS partner_frags,
-    COUNT(k.killer) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner)  AS received_total,
-    COUNT(k.killer) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct < %d)                AS received_low,
-    COUNT(k.killer) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct >= %d AND k.pct <= %d) AS received_mid,
-    COUNT(k.killer) FILTER (WHERE k.killer = me.xuid AND k.assister = m.partner AND k.pct > %d)                AS received_high,
-    COUNT(k.killer) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid)  AS given_total,
-    COUNT(k.killer) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct < %d)                AS given_low,
-    COUNT(k.killer) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct >= %d AND k.pct <= %d) AS given_mid,
-    COUNT(k.killer) FILTER (WHERE k.killer = m.partner AND k.assister = me.xuid AND k.pct > %d)                AS given_high
-FROM mates m
-CROSS JOIN me
-LEFT JOIN kills k
-    ON k.match_id = m.match_id
-GROUP BY m.partner`
+    b.partner,
+    b.my_frags,
+    b.partner_frags,
+    COALESCE(e.received_total, 0), COALESCE(e.received_low, 0), COALESCE(e.received_mid, 0), COALESCE(e.received_high, 0),
+    COALESCE(e.given_total, 0),    COALESCE(e.given_low, 0),    COALESCE(e.given_mid, 0),    COALESCE(e.given_high, 0)
+FROM bases b
+LEFT JOIN echanges e ON e.partner = b.partner`
 
 // assistExchangeQuery : paramètres de lecture de Q28c.
 type assistExchangeQuery struct {
@@ -164,7 +189,7 @@ func queryRelationAssists(ctx context.Context, db *sql.DB, q assistExchangeQuery
 			partner string
 			a       domain.RelationAssists
 		)
-		if err := rows.Scan(&partner, &a.MatchesMeasured, &a.MyFrags, &a.PartnerFrags,
+		if err := rows.Scan(&partner, &a.MyFrags, &a.PartnerFrags,
 			&a.Received.Total, &a.Received.Low, &a.Received.Mid, &a.Received.High,
 			&a.Given.Total, &a.Given.Low, &a.Given.Mid, &a.Given.High,
 		); err != nil {

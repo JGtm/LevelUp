@@ -185,26 +185,22 @@ describe('MatchCard', () => {
 
   // Frags assistés par un coéquipier (film analysé) : barre à trois tons sous la barre
   // frags / assistances / décès, puis sa légende dessous (sans la part en %). Base = les
-  // frags OFFICIELS de la tuile ; les frags sans information d'assistance sont dits à part.
-  // Sans mesure : l'emplacement reste réservé (même hauteur), vide.
+  // frags OFFICIELS de la tuile, bots compris ; un frag dont l'assistance n'est pas lue reste
+  // dans la base sans aucune mention à part. Sans film porteur : l'emplacement reste réservé
+  // (même hauteur), vide.
   describe('frags assistés', () => {
-    // Forme du match CTF de référence : 15 frags officiels, 12 lus par le film (3 sur des
-    // bots, assistance non lue), 7 assistés.
+    // 15 frags officiels (dont 3 sur des bots dont l'assistance n'est pas lue), 7 assistés.
     const MEASURED: RecentMatchItem = {
       ...WIN_MATCH,
       assisted_frags: {
-        frags_measured: 12,
         frags_official: 15,
-        frags_unknown: 3,
         received: { total: 7, low: 2, mid: 3, high: 1 },
       },
     }
-    const FULLY_MEASURED: RecentMatchItem = {
+    const ONE_ASSISTED: RecentMatchItem = {
       ...WIN_MATCH,
       assisted_frags: {
-        frags_measured: 15,
         frags_official: 15,
-        frags_unknown: 0,
         received: { total: 1, low: 1, mid: 0, high: 0 },
       },
     }
@@ -229,23 +225,21 @@ describe('MatchCard', () => {
       expect(widthOf('match-card-assist-segment-high')).toBeCloseTo((1 / 15) * 100)
     })
 
-    it('dit les frags sans information à part : mention discrète et segment hachuré, jamais dans les non assistés', () => {
-      render(<MatchCard match={MEASURED} locale="fr" />)
-      expect(screen.getByTestId('match-card-assisted-frags-unknown').textContent).toBe('3 non mesurés')
-      expect(widthOf('match-card-assist-segment-not-measured')).toBeCloseTo((3 / 15) * 100)
-      expect(screen.getByTestId('match-card-assisted-frags').textContent).toBe('7 frags assistés sur 15 · 3 non mesurés')
+    it('n’écrit aucune mention « non mesuré », ni hachure : la légende seule', () => {
+      const { container } = render(<MatchCard match={MEASURED} locale="fr" />)
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toBe('7 frags assistés sur 15')
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).not.toMatch(/mesur/)
+      expect(container.innerHTML).not.toContain('repeating-linear-gradient')
     })
 
-    it('n’écrit aucune mention ni hachure quand tous les frags sont lus, et accorde le singulier', () => {
-      render(<MatchCard match={FULLY_MEASURED} locale="fr" />)
+    it('accorde le singulier', () => {
+      render(<MatchCard match={ONE_ASSISTED} locale="fr" />)
       expect(screen.getByTestId('match-card-assisted-frags-legend').textContent).toBe('1 frag assisté sur 15')
-      expect(screen.queryByTestId('match-card-assisted-frags-unknown')).toBeNull()
-      expect(screen.queryByTestId('match-card-assist-segment-not-measured')).toBeNull()
     })
 
-    it('dit « 7 of 15 kills assisted · 3 not measured » sous la locale EN', () => {
+    it('dit « 7 of 15 kills assisted » sous la locale EN', () => {
       render(<MatchCard match={MEASURED} locale="en" />)
-      expect(screen.getByTestId('match-card-assisted-frags').textContent).toBe('7 of 15 kills assisted · 3 not measured')
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toBe('7 of 15 kills assisted')
     })
 
     it('réserve l’emplacement sans mesure (même hauteur, ni texte, ni segment, ni « — »)', () => {

@@ -177,12 +177,14 @@ func lectureAvecReference() domain.TacticalKillEvents {
 	return l
 }
 
-// appuisAvecReference — les appuis de m1 (un de mes frags préparé sur deux) et de m3 (mon
-// frag, sans assistant).
+// appuisAvecReference — les appuis de m1 (un de mes frags préparé sur deux), de m2 (un frag
+// d'un coéquipier, sans assistant : le film porte l'assistance) et de m3 (mon frag, sans
+// assistant).
 func appuisAvecReference() []domain.CoordinationAppuiRow {
 	return []domain.CoordinationAppuiRow{
 		{MatchID: "m1", AssistXUID: "A", KillerXUID: "P", Nombre: 1},
 		{MatchID: "m1", AssistXUID: "", KillerXUID: "P", Nombre: 1},
+		{MatchID: "m2", AssistXUID: "", KillerXUID: "A", Nombre: 1},
 		{MatchID: "m3", AssistXUID: "", KillerXUID: "P", Nombre: 1},
 	}
 }

@@ -1191,21 +1191,13 @@ fr = "Ouvrir le rejeu 2D du match"
 en = "Open the 2D replay of the match"
 
 # Frags assistés par un coéquipier sur le match (film analysé), rapportés aux frags
-# OFFICIELS du match (ceux de la tuile). {assisted}, {frags} et {unknown} sont des nombres
-# bruts (ICU les formate et accorde le pluriel). {unknown} = frags dont l'assistance n'est
-# pas lue (victime bot, frag absent du film) : dits à part, jamais comptés non assistés.
+# OFFICIELS du match (ceux de la tuile), bots compris. {assisted} et {frags} sont des nombres
+# bruts (ICU les formate et accorde le pluriel). Un frag dont l'assistance n'est pas lue
+# reste dans {frags} sans aucune mention à part.
 # Les tranches de part (bornes) ne vivent que dans assistsI18n.ts (infobulles de segment).
 [common.match_card.assisted_frags]
 fr = "{assisted, plural, one {# frag assisté} other {# frags assistés}} sur {frags}"
 en = "{assisted} of {frags, plural, one {# kill} other {# kills}} assisted"
-
-[common.match_card.assisted_frags_unknown]
-fr = "{unknown, plural, one {# non mesuré} other {# non mesurés}}"
-en = "{unknown} not measured"
-
-[common.match_card.assisted_frags_unknown_tooltip]
-fr = "{unknown, plural, one {# frag sans information d'assistance} other {# frags sans information d'assistance}} : frags sur des bots ou absents du film"
-en = "{unknown, plural, one {# kill} other {# kills}} with no assist information: kills on bots or missing from the film"
 
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 

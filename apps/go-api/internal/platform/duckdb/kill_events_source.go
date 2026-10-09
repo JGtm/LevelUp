@@ -87,3 +87,12 @@ SELECT
     COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS deaths_suffered
 FROM ` + KillEventsCanonicalTable + borne
 }
+
+// sqlAssistantNomme : le prédicat « le film NOMME l'assistant de cette mort » sur une ligne
+// de KillEventsCanonicalTable aliasée `alias`. Un assistant sans xuid (bot, joueur non
+// résolu) reste nommé par son gamertag : il compte comme les autres (règle des bases,
+// domain/relation_assists.go). Faux sur une ligne `assist_known = FALSE` (ni xuid ni
+// gamertag d'assistant n'y sont écrits).
+func sqlAssistantNomme(alias string) string {
+	return "(" + alias + ".assist_xuid IS NOT NULL OR " + alias + ".assist_gamertag IS NOT NULL)"
+}

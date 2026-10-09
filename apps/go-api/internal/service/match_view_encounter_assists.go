@@ -26,11 +26,12 @@ func (s *MatchViewService) loadEncounterAssists(gctx context.Context, g *errgrou
 }
 
 // attachEncounterAssists pose le bloc d'assistances sur chaque rencontre présente dans
-// la map. Une entrée à zéro match mesuré n'est pas publiée (absent = non mesuré).
+// la map. Un joueur absent de la map (aucun match commun dont le film porte l'assistance)
+// reste sans bloc : la colonne affiche « — ».
 func attachEncounterAssists(rows []domain.MatchEncounterRow, byXUID map[string]domain.RelationAssists) {
 	for i := range rows {
 		a, ok := byXUID[rows[i].XUID]
-		if !ok || a.MatchesMeasured == 0 {
+		if !ok {
 			continue
 		}
 		rows[i].Assists = &a
