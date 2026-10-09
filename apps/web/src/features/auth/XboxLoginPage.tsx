@@ -27,6 +27,7 @@ import { verificationLinkLabel } from '@/lib/formatters'
 import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 
 // Relances AUTO max sur attempt_not_found avant bascule sur retry manuel.
 const MAX_AUTO_RECOVERY = 3
@@ -188,7 +189,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'demo_mode') {
+          if (isDemoRefusal(apiErr)) {
             setStartError(t('common.xbox_login.err_demo'))
           } else {
             setStartError(apiErr.message ?? t('common.xbox_login.err_start'))

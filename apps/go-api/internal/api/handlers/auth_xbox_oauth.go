@@ -96,7 +96,10 @@ func (h *XboxOAuthHandler) WithInviteStore(inv InviteValidator) *XboxOAuthHandle
 // GET /auth/xbox/login
 func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request) {
 	if h.demoMode {
-		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
+		// Lecture HTTP qui ÉCRIT (session, puis jetons) : la garde démo ne raisonne que sur
+		// le verbe, d'où ce refus explicite, au même contrat (middleware/demo_read_only.go).
+		slog.InfoContext(r.Context(), "demo: connexion Xbox refusée (démo en lecture seule)", "path", r.URL.Path)
+		middleware.WriteDemoForbidden(w)
 		return
 	}
 	if h.redirectURI == "" {
@@ -159,7 +162,10 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 // GET /auth/xbox/callback?code=...&state=...
 func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	if h.demoMode {
-		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
+		// Lecture HTTP qui ÉCRIT (session, puis jetons) : la garde démo ne raisonne que sur
+		// le verbe, d'où ce refus explicite, au même contrat (middleware/demo_read_only.go).
+		slog.InfoContext(r.Context(), "demo: connexion Xbox refusée (démo en lecture seule)", "path", r.URL.Path)
+		middleware.WriteDemoForbidden(w)
 		return
 	}
 

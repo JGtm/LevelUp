@@ -525,6 +525,7 @@ export const commonManifest = {
   "common.setup.syncing_game_progress": { fr: "Jeu {current} sur {total}", en: "Game {current} of {total}" },
   "common.setup.time_remaining_about": { fr: "Temps restant estimé : environ", en: "Estimated time remaining: about" },
   "common.setup.waiting_auth": { fr: "En attente de l'authentification…", en: "Waiting for authentication…" },
+  "common.shell.demo_read_only": { fr: "Action indisponible dans la démo : elle est en lecture seule.", en: "This action is not available in the demo: it is read-only." },
   "common.shell.friends_in_game": { fr: "{n, plural, one {# ami en jeu} other {# amis en jeu}}", en: "{n, plural, one {# friend in game} other {# friends in game}}" },
   "common.shell.halo_session_label": { fr: "Session Halo :", en: "Halo session:" },
   "common.shell.header_subtitle": { fr: "Un shell plus compact, sans sidebar, pour lire vite et plonger plus loin quand c'est utile.", en: "A more compact shell, sidebarless, for fast reading and deeper dives when needed." },

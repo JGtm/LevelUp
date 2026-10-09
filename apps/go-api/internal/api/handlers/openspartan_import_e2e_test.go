@@ -42,7 +42,6 @@ func setupE2E(t *testing.T) *e2eEnv {
 
 	cfg := &config.AppConfig{
 		RepoRoot: tempDir,
-		DemoMode: false,
 	}
 
 	// Shared DuckDB (RW) + schema.
@@ -133,7 +132,6 @@ func setupE2E(t *testing.T) *e2eEnv {
 		JobStore:          jobStore,
 		TempDir:           filepath.Join(tempDir, "tmp"),
 		StashDir:          filepath.Join(tempDir, "players"),
-		DemoMode:          false,
 	})
 
 	return &e2eEnv{

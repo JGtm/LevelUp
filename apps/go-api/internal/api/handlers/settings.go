@@ -200,13 +200,8 @@ func extractPerTitleOverlay(req *domain.UpdateSettingsRequest) map[string]json.R
 }
 
 // handlePatchSettings met à jour partiellement la configuration.
-// PATCH /settings — 422 en mode démo.
+// PATCH /settings — refusé en démo par la garde générale (middleware/demo_read_only.go).
 func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsBodyInput) (*settingsJSONOutput, error) {
-	if h.cfg.DemoMode {
-		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode_unsupported",
-			"La modification des settings n'est pas disponible en mode démo.")
-	}
-
 	var req domain.UpdateSettingsRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
@@ -429,12 +424,9 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 }
 
 // handlePostMediaScan lance une indexation non-destructive des médias pour tous les joueurs.
-// POST /settings/media/scan — retourne un AsyncJobStatus (202). 422 en mode démo.
+// POST /settings/media/scan — retourne un AsyncJobStatus (202). Refusé en démo par la
+// garde générale (middleware/demo_read_only.go).
 func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) (*asyncJobOutput, error) {
-	if h.cfg.DemoMode {
-		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode_unsupported",
-			"Le scan des médias n'est pas disponible en mode démo.")
-	}
 	job := h.jobStore.Create(domain.JobTypeScanMedia, "")
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job

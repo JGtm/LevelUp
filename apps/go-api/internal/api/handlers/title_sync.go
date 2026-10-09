@@ -51,9 +51,6 @@ type PlayerLookup func(titleSlug, playerSlug string) (domain.PlayerSummary, bool
 // TitleSyncHandler gère l'activation/pause et la purge d'un titre par joueur.
 type TitleSyncHandler struct {
 	profiles *service.ProfileService
-	// demoMode : la purge est refusée en démo (403 demo_mode_forbidden, lot B-C1 du
-	// backlog 2026-09-26). Passé au constructeur pour qu'aucun câblage ne l'oublie.
-	demoMode bool
 	// watcher résout le daemon au moment de l'appel (créé après le montage des
 	// routes, cf. daemonGetter du SSO). nil, ou daemon nil/arrêté ⇒ rien à faire :
 	// le daemon reprend les profils au prochain démarrage.
@@ -61,9 +58,10 @@ type TitleSyncHandler struct {
 	lookup  PlayerLookup
 }
 
-// NewTitleSyncHandler crée un TitleSyncHandler. demoMode = cfg.DemoMode.
-func NewTitleSyncHandler(profiles *service.ProfileService, demoMode bool) *TitleSyncHandler {
-	return &TitleSyncHandler{profiles: profiles, demoMode: demoMode}
+// NewTitleSyncHandler crée un TitleSyncHandler. Ses deux écritures (activation/pause et
+// purge) sont refusées en démo par la garde générale (middleware/demo_read_only.go).
+func NewTitleSyncHandler(profiles *service.ProfileService) *TitleSyncHandler {
+	return &TitleSyncHandler{profiles: profiles}
 }
 
 // WithWatcher injecte le résolveur du daemon watcher (lazy).
@@ -189,14 +187,7 @@ func (h *TitleSyncHandler) SetSync(ctx context.Context, in *titleSyncInput) (*ti
 }
 
 // Purge retire le titre du profil et supprime ses données disque.
-//
-// REFUSÉE EN DÉMO (403, lot B-C1 du backlog 2026-09-26) : ProfileService est enraciné sur
-// le dépôt, et RequireAdmin est transparent en démo — sur un vrai checkout, un visiteur
-// effaçait <dépôt>/data/titles/<t>/players/<p>.
 func (h *TitleSyncHandler) Purge(ctx context.Context, in *titlePurgeInput) (*titlePurgeOutput, error) {
-	if err := refuseInDemo(h.demoMode, "title data purge"); err != nil {
-		return nil, err
-	}
 	// Le xuid se résout AVANT le retrait : après, le profil n'existe plus.
 	var xuid string
 	if h.lookup != nil {

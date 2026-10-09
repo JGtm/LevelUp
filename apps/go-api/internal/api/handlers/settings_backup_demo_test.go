@@ -1,15 +1,10 @@
 package handlers_test
 
-// settings_backup_demo_test.go — la sauvegarde restic est REFUSÉE en démo (backlog
-// 2026-09-26, lot B5.6 ; décision D-7).
-//
-// En démo, RequireAdmin est transparent (middleware/require_admin.go) : n'importe quel
-// visiteur atteint POST /settings/backup/run. Le scheduler de sauvegarde est construit sur
-// le PathResolver du dépôt : sans refus, une démo lancée sur un poste de dev (harnais
-// visuel, LEVELUP_REPO_ROOT = le vrai checkout) sauvegardait les bases RÉELLES.
+// settings_backup_demo_test.go — témoin HORS DÉMO de la sauvegarde restic : le cycle est
+// lancé. En démo, la route est refusée avant le handler par la garde générale
+// (middleware/demo_read_only.go, ratchet internal/api/demo_read_only_ratchet_test.go).
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -37,10 +32,10 @@ func ordonnanceurEspion(t *testing.T, appels *atomic.Int32) *duckdbbackup.Schedu
 	})
 }
 
-func routeurSauvegarde(t *testing.T, demo bool, sched *duckdbbackup.Scheduler) *chi.Mux {
+func routeurSauvegarde(t *testing.T, sched *duckdbbackup.Scheduler) *chi.Mux {
 	t.Helper()
 	dir := t.TempDir()
-	cfg := &config.AppConfig{DemoMode: demo, DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
+	cfg := &config.AppConfig{DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
 	h := handlers.NewSettingsHandlerWithIndexer(cfg,
 		settings_platform.NewStore(filepath.Join(dir, "app_settings.json")),
 		jobs.NewStore(filepath.Join(dir, "jobs.json")), &mockMediaIndexer{}).
@@ -50,29 +45,9 @@ func routeurSauvegarde(t *testing.T, demo bool, sched *duckdbbackup.Scheduler) *
 	return r
 }
 
-func TestPostBackupRun_DemoMode_Refuse(t *testing.T) {
-	var appels atomic.Int32
-	r := routeurSauvegarde(t, true, ordonnanceurEspion(t, &appels))
-	req := httptest.NewRequest(http.MethodPost, "/settings/backup/run", strings.NewReader("{}"))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusForbidden {
-		t.Errorf("démo : statut %d, attendu 403 (sauvegarde refusée) — corps %s", w.Code, w.Body.String())
-	}
-	var body map[string]any
-	if err := json.NewDecoder(w.Body).Decode(&body); err == nil && body["code"] != "demo_mode_forbidden" {
-		t.Errorf("démo : code %v, attendu demo_mode_forbidden", body["code"])
-	}
-	if n := appels.Load(); n != 0 {
-		t.Errorf("démo : un cycle de sauvegarde a été lancé (%d énumération(s) de cibles)", n)
-	}
-}
-
 func TestPostBackupRun_HorsDemo_Lance(t *testing.T) {
 	var appels atomic.Int32
-	r := routeurSauvegarde(t, false, ordonnanceurEspion(t, &appels))
+	r := routeurSauvegarde(t, ordonnanceurEspion(t, &appels))
 	req := httptest.NewRequest(http.MethodPost, "/settings/backup/run", strings.NewReader("{}"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

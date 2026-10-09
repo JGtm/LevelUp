@@ -34,6 +34,7 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -124,17 +125,41 @@ func isReadOnlyPost(sub string) bool {
 //
 // Il est recalculé depuis l'URL plutôt que lu dans le RouteContext de chi :
 // au moment où les middlewares du groupe s'exécutent, le motif de la route
-// FINALE n'est pas encore résolu. Retourne "" hors d'un groupe player-scoped —
+// FINALE n'est pas encore résolu. Le chemin est NETTOYÉ (path.Clean) avant la
+// lecture : "/players/x/pages/../sync" se lit "/sync", pas "/pages/…".
+//
+// Dans le groupe, le slug vient du paramètre chi. Hors du groupe (garde démo
+// montée à la racine, où aucun paramètre n'est encore résolu), il est lu dans
+// le chemin sous [playersPathMarker]. Retourne "" hors d'un chemin player-scoped —
 // auquel cas aucun POST n'est réputé en lecture (fail-closed).
 func playerScopedSubPath(r *http.Request) string {
+	cleaned := path.Clean(r.URL.Path)
 	slug := chi.URLParam(r, "player_slug")
 	if slug == "" {
-		return ""
+		return subPathAfterPlayerSegment(cleaned)
 	}
-	marker := "/players/" + slug
-	idx := strings.Index(r.URL.Path, marker)
+	marker := playersPathMarker + slug
+	idx := strings.Index(cleaned, marker)
 	if idx < 0 {
 		return ""
 	}
-	return r.URL.Path[idx+len(marker):]
+	return cleaned[idx+len(marker):]
+}
+
+// playersPathMarker : le segment qui ouvre le groupe joueur (/api/v1/players/{player_slug}).
+const playersPathMarker = "/players/"
+
+// subPathAfterPlayerSegment rend ce qui suit "/players/<slug>" dans un chemin nettoyé,
+// "" si le chemin n'en porte pas ou s'arrête au slug.
+func subPathAfterPlayerSegment(cleaned string) string {
+	idx := strings.Index(cleaned, playersPathMarker)
+	if idx < 0 {
+		return ""
+	}
+	rest := cleaned[idx+len(playersPathMarker):]
+	slash := strings.IndexByte(rest, '/')
+	if slash <= 0 {
+		return ""
+	}
+	return rest[slash:]
 }

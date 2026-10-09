@@ -64,19 +64,6 @@ func TestSettingsHandler_GetSettings_DemoMode(t *testing.T) {
 	}
 }
 
-func TestSettingsHandler_PatchSettings_DemoMode_422(t *testing.T) {
-	r, _ := newSettingsRouter(t, true)
-	body := `{"lang": "en"}`
-	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader([]byte(body)))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
 func TestSettingsHandler_PatchSettings_InvalidBody(t *testing.T) {
 	r, _ := newSettingsRouter(t, false)
 	req := httptest.NewRequest(http.MethodPatch, "/settings", bytes.NewReader([]byte("{bad")))

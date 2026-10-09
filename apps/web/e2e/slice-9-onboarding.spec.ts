@@ -8,7 +8,7 @@
  * 2. L'API /bootstrap retourne un setup_state valide
  * 3. En DEMO_MODE, le joueur DEMO est directement disponible (pas d'auth requise)
  * 4. La page /home est accessible après le bootstrap
- * 5. L'API /auth/device-flow/start retourne HTTP 422 en mode démo (attendu)
+ * 5. L'API /auth/device-flow/start est refusée en mode démo (403 demo_mode_forbidden)
  * 6. Les settings sont accessibles et valides
  * 7. Le flow de navigation settings → home fonctionne sans erreur
  */
@@ -41,14 +41,14 @@ test.describe('Slice 9 — Onboarding flow (DEMO_MODE)', () => {
     ).toHaveLength(0)
   })
 
-  test("l'API auth/device-flow/start est refusée en DEMO_MODE (422)", async ({ request }) => {
-    // En DEMO_MODE, le device flow est désactivé — vérifier la réponse d'erreur
+  test("l'API auth/device-flow/start est refusée en DEMO_MODE (403)", async ({ request }) => {
+    // En DEMO_MODE, toute écriture est refusée par la garde « démo en lecture seule »
+    // (403 demo_mode_forbidden) ; un 403 csrf_rejected reste possible selon l'origine.
     const resp = await request.post(`${API_BASE}/auth/device-flow/start`, {
       data: {},
       headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost:5173' },
     })
-    // 422 = demo_mode, 403 = CSRF → les deux sont attendus en mode démo
-    expect([422, 403]).toContain(resp.status())
+    expect(resp.status()).toBe(403)
   })
 
   test('les settings sont accessibles et contiennent une config valide', async ({ request }) => {

@@ -15,6 +15,7 @@ import { apiErrorCode, type ApiError } from '@/lib/api/client'
 import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 
 // Nombre max de relances AUTOMATIQUES sur attempt_not_found (tentative balayée /
 // backend redémarré). Au-delà, on bascule sur un retry manuel pour éviter une
@@ -67,7 +68,7 @@ export function StepDeviceCode() {
       onError: (err) => {
         const apiErr = err as unknown as ApiError
         setStartError(
-          apiErr.code === 'demo_mode'
+          isDemoRefusal(apiErr)
             ? t('common.xbox_login.err_demo')
             : t('common.setup.device_start_failed'),
         )

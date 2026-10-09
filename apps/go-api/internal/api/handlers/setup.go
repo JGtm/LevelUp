@@ -169,13 +169,8 @@ type setupSmokeTestOutput struct {
 //   - 409 si profile_mode="xbox" mais aucune identité Halo liée en session
 //   - 409 si gamertag/XUID ne correspond pas à l'identité Halo liée
 //
-// REFUSÉE EN DÉMO (403 demo_mode_forbidden, lot B-C1 du backlog 2026-09-26), avant toute
-// autre garde : db_profiles.json vise la fixture, montée en écriture dans le conteneur de
-// production, et le dossier du joueur serait créé sous le dépôt.
+// Refusée en démo par la garde générale (middleware/demo_read_only.go).
 func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePlayerInput) (*setupCreatePlayerOutput, error) {
-	if err := refuseInDemo(h.cfg != nil && h.cfg.DemoMode, "player profile creation"); err != nil {
-		return nil, err
-	}
 	appCfg, err := h.settingsStore.Load()
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")

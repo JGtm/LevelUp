@@ -113,6 +113,10 @@ en = "Log out"
 fr = "Échec de la déconnexion."
 en = "Logout failed."
 
+[common.shell.demo_read_only]
+fr = "Action indisponible dans la démo : elle est en lecture seule."
+en = "This action is not available in the demo: it is read-only."
+
 [common.shell.logo_aria]
 fr = "LevelUp — retour à l'accueil"
 en = "LevelUp — back to home"

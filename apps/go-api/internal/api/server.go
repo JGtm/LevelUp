@@ -602,7 +602,8 @@ func startSessionPurgeLoop(serverCtx context.Context, sessionStore *session_plat
 // applyTransverseMiddlewares monte les middlewares transverses (l'ORDRE importe)
 // sur le routeur racine : recovery, préservation du RemoteAddr, RealIP conditionnel
 // (uniquement derrière un proxy de confiance), en-têtes de sécurité, RequestID,
-// CORS, CSRF, rate-limit, logs slog, compression, session, puis TitleExtractor
+// CORS, CSRF, rate-limit, logs slog, garde démo en lecture seule, compression,
+// session, puis TitleExtractor
 // (injecte title_slug dans le contexte). Extrait de NewRouter (K2a).
 func applyTransverseMiddlewares(
 	r chi.Router,
@@ -638,6 +639,10 @@ func applyTransverseMiddlewares(
 	r.Use(middleware.CSRF(cfg.CORSOrigins, apiV1InternalBasePath))
 	r.Use(middleware.RateLimit(cfg.DemoMode, cfg.RateLimitRPM))
 	r.Use(middleware.SlogLogger)
+	// Démo en LECTURE SEULE : toute écriture d'un visiteur reçoit 403 demo_mode_forbidden
+	// avant d'atteindre un handler (identité hors démo). Le protocole ouvrier, authentifié
+	// par jeton et sans cookie, en est exempté comme du CSRF. Cf. middleware/demo_read_only.go.
+	r.Use(middleware.DemoReadOnly(cfg.DemoMode, apiV1InternalBasePath))
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
 	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte (registre

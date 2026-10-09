@@ -155,7 +155,6 @@ type MediaHandler struct {
 	settingsStore     *settings.Store
 	notifierFor       NotificationsEmitterFactory // optionnel : émission media_added
 	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
-	demoMode          bool                        // true = upload figé (vitrine publique)
 	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
 	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
 }
@@ -173,13 +172,6 @@ func NewMediaHandler(
 // WithSettingsStore injecte le settings store pour lire media_captures_base_dir.
 func (h *MediaHandler) WithSettingsStore(store *settings.Store) *MediaHandler {
 	h.settingsStore = store
-	return h
-}
-
-// WithDemoMode fige l'upload de médias en mode démo (vitrine publique partagée).
-// Sans appel : false (upload autorisé).
-func (h *MediaHandler) WithDemoMode(demo bool) *MediaHandler {
-	h.demoMode = demo
 	return h
 }
 

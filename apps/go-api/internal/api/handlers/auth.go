@@ -44,7 +44,6 @@ const (
 type AuthHandler struct {
 	sessionStore *session.Store
 	attempts     *auth_platform.AttemptStore
-	demoMode     bool
 	linkStrategy auth_platform.LinkStrategy  // logique post-flow (password ou xbox SSO)
 	provider     auth_platform.TokenProvider // abstrait le mécanisme d'acquisition de tokens
 }
@@ -58,13 +57,11 @@ type UserLinker = auth_platform.UserLinker
 func NewAuthHandler(
 	sessionStore *session.Store,
 	attempts *auth_platform.AttemptStore,
-	demoMode bool,
 	provider auth_platform.TokenProvider,
 ) *AuthHandler {
 	return &AuthHandler{
 		sessionStore: sessionStore,
 		attempts:     attempts,
-		demoMode:     demoMode,
 		provider:     provider,
 	}
 }
@@ -105,12 +102,9 @@ type deviceFlowStatusOutput struct {
 }
 
 // handleStartDeviceFlow démarre un Device Code Flow Microsoft pour Halo Infinite.
-// POST /auth/device-flow/start (migré Huma — aucun corps lu, Input vide).
+// POST /auth/device-flow/start (migré Huma — aucun corps lu, Input vide). Refusé en démo
+// par la garde générale (middleware/demo_read_only.go).
 func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*deviceFlowStartOutput, error) {
-	if h.demoMode {
-		return nil, humacore.NewError(http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
-	}
-
 	sess := middleware.GetSession(ctx)
 	if sess == nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "no_session", "session non initialisée")

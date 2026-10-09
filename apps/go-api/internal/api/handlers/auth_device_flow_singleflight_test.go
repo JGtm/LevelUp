@@ -76,7 +76,7 @@ func TestStartDeviceFlow_SingleFlightWaitsForInit(t *testing.T) {
 	}
 	t.Cleanup(func() { close(provider.exchangeRelease) }) // libère la goroutine pollDeviceFlow
 	sessStore := session.NewStore(filepath.Join(t.TempDir(), "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), false, provider)
+	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), provider)
 
 	// Deux SessionData distinctes portant le MÊME SessionID : c'est la réalité
 	// HTTP (chaque requête charge sa propre copie de la session depuis le store).
@@ -149,7 +149,7 @@ func TestStartDeviceFlow_SingleFlightPropagatesFailure(t *testing.T) {
 		release: make(chan struct{}),
 	}
 	sessStore := session.NewStore(filepath.Join(t.TempDir(), "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
-	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), false, provider)
+	h := NewAuthHandler(sessStore, auth_platform.NewAttemptStore(), provider)
 
 	ctxCreator := middleware.InjectSession(context.Background(), &domain.SessionData{SessionID: "sess-fail"})
 	ctxSecond := middleware.InjectSession(context.Background(), &domain.SessionData{SessionID: "sess-fail"})

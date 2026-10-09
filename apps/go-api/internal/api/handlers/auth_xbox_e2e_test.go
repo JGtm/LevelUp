@@ -120,7 +120,7 @@ func newE2ERig(t *testing.T) *e2eRig {
 		WithTokenStore(tokenStore).
 		WithDaemonGetter(daemonGetter)
 
-	authHandler := handlers.NewAuthHandler(sessStore, attempts, false, stubProvider).
+	authHandler := handlers.NewAuthHandler(sessStore, attempts, stubProvider).
 		WithLinkStrategy(xboxStrategy)
 
 	r := chi.NewRouter()
