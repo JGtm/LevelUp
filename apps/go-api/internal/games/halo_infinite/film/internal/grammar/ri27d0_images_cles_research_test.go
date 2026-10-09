@@ -229,6 +229,7 @@ func (c *ri27d0Canal) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
 		c.classes[c.preuve]++
 		c.x.admettre(c, r, &g)
 		c.x.temoinDeHasard(c, p, i, ctx)
+		bit18Variante(c, p, i, ctx) // ligne V, bit18_registre_research_test.go
 		c.comparerLesArmes(p, r, &g, fen[r.Debut])
 		c.x.armesParEmplacement(c, &g, fen[r.Debut])
 		inv, okInv := invs[r.Vie.Slot]
