@@ -28,25 +28,25 @@ import (
 //
 // POURQUOI DEUX, ET PAS UN : les deux causes n'appellent pas la même action. `sans_ligne`
 // se corrige en produisant des kill-events pour ce match ; `sans_mesure` se corrige en
-// DÉCODANT SON FILM. C'est le second qui a explosé le 2026-04-07 sans que rien ne le dise
-// (registre `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) : les confondre rendrait
-// l'alerte inexploitable.
+// DÉCODANT SON FILM (le film est là, il ne porte pas l'assistance). Le bloc est retiré dans
+// les deux cas ; les confondre rendrait l'alerte inexploitable (registre
+// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`).
 const (
 	compteurMatchAssistSansLigne  = "assist_pairs_match_retire_sans_ligne_total"
-	compteurMatchAssistSansMesure = "assist_pairs_match_publie_sans_mesure_total"
+	compteurMatchAssistSansMesure = "assist_pairs_match_retire_sans_mesure_total"
 )
 
 // buildAssistPairs assemble le bloc `combat_tab.assist_pairs`.
 //
 // LA SEULE DÉCISION DE CE BUILDER, ET ELLE EST STRUCTURANTE : émettre ou non le bloc.
 //
-//	scope.MatchDeaths == 0  ->  nil. Le match n'a AUCUNE ligne de film : ni le titre ni la
-//	                            passe n'ont produit quoi que ce soit. Publier un bloc vide
-//	                            forcerait l'écran à choisir un message là où il n'y a rien
-//	                            à dire — et sur un titre sans décodeur, ce message
-//	                            apparaîtrait sur TOUS les matchs.
-//	sinon                   ->  le bloc, avec sa portée. `MeasuredDeaths == 0` y est un
-//	                            ÉTAT PUBLIÉ (« non mesuré »), pas une absence.
+//	scope.MatchDeaths == 0     ->  nil. Le match n'a AUCUNE ligne de film : ni le titre ni
+//	                               la passe n'ont produit quoi que ce soit.
+//	scope.MeasuredDeaths == 0  ->  nil. Le film est là mais ne porte pas l'assistance (ou la
+//	                               passe n'est pas publiable ligne à ligne) : rien à dire,
+//	                               et aucun « non mesuré » à l'écran (règle des bases,
+//	                               domain/relation_assists.go).
+//	sinon                      ->  le bloc ; des paires vides y disent « aucune assistance ».
 //
 // LES DEUX NOMS SE RÉSOLVENT AU MÊME ENDROIT — le scoreboard, par xuid.
 //
@@ -56,11 +56,10 @@ const (
 // gamertag capté à l'enregistrement, le scoreboard sert celui de l'API (alias compris).
 // C'est exactement la raison pour laquelle Q32d, côté escouade, ne rend AUCUN gamertag.
 //
-// Repli : le nom du film quand le xuid est absent du scoreboard (un assistant peut avoir
-// quitté avant la fin et manquer au tableau des scores) — mieux vaut le nom d'hier que
-// pas de nom. Pour le TUEUR le repli reste la chaîne VIDE : c'est le contrat livré, et le
-// front a déjà son masque « Joueur #### ». On ne fabrique aucun nom, et on ne recopie
-// jamais un xuid dans un champ de nom.
+// Repli, pour les DEUX rôles : le nom du film quand le xuid est absent du scoreboard (un
+// joueur parti avant la fin, un BOT — sans xuid, nommé par le film seul). Les bots comptent
+// comme les autres acteurs du match. On ne fabrique aucun nom, et on ne recopie jamais un
+// xuid dans un champ de nom.
 func buildAssistPairs(
 	ctx context.Context,
 	raw []domain.MatchAssistPairRaw,
@@ -73,9 +72,9 @@ func buildAssistPairs(
 		return nil
 	}
 	if scope.MeasuredDeaths == 0 {
-		// Le bloc est bien émis (l'écran dira « non disponibles »), mais l'état est compté :
-		// c'est exactement la population qui s'est mise à croître le 2026-04-07.
+		// Retiré et compté : c'est la population qui s'est mise à croître le 2026-04-07.
 		observability.IncCounterT(titre, compteurMatchAssistSansMesure)
+		return nil
 	}
 	gtByXUID := make(map[string]string, len(scoreboard))
 	for _, s := range scoreboard {
@@ -85,22 +84,27 @@ func buildAssistPairs(
 	}
 	pairs := make([]domain.MatchAssistPair, 0, len(raw))
 	for _, r := range raw {
-		assistGT := gtByXUID[r.AssistXUID]
-		if assistGT == "" {
-			assistGT = r.AssistGamertag
-		}
 		pairs = append(pairs, domain.MatchAssistPair{
 			AssistXUID:     r.AssistXUID,
-			AssistGamertag: assistGT,
+			AssistGamertag: nomDuJoueur(gtByXUID, r.AssistXUID, r.AssistGamertag),
 			KillerXUID:     r.KillerXUID,
-			KillerGamertag: gtByXUID[r.KillerXUID],
+			KillerGamertag: nomDuJoueur(gtByXUID, r.KillerXUID, r.KillerGamertag),
 			AssistCount:    r.AssistCount,
 			StolenCount:    r.StolenCount,
 			AvgAssistPct:   r.AvgAssistPct,
 		})
 	}
-	return &domain.MatchAssistPairs{
-		MeasuredDeaths: scope.MeasuredDeaths,
-		Pairs:          pairs,
+	return &domain.MatchAssistPairs{Pairs: pairs}
+}
+
+// nomDuJoueur : le gamertag du scoreboard pour ce xuid, sinon le nom écrit par le film
+// (`nomFilm`, vide quand le film n'en écrit pas).
+func nomDuJoueur(gtByXUID map[string]string, xuid, nomFilm string) string {
+	if xuid == "" {
+		return nomFilm
 	}
+	if gt := gtByXUID[xuid]; gt != "" {
+		return gt
+	}
+	return nomFilm
 }

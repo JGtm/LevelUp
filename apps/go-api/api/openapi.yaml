@@ -12111,7 +12111,7 @@ components:
         my_assisted_kills:
           format: int64
           type: integer
-        my_measured_kills:
+        my_kills:
           format: int64
           type: integer
         parity_pct:
@@ -12125,7 +12125,7 @@ components:
           type: integer
       required:
         - match_id
-        - my_measured_kills
+        - my_kills
         - my_assisted_kills
         - team_assists
         - assists_to_me
@@ -17561,9 +17561,6 @@ components:
     MatchAssistPairs:
       additionalProperties: false
       properties:
-        measured_deaths:
-          format: int64
-          type: integer
         pairs:
           items:
             $ref: '#/components/schemas/MatchAssistPair'
@@ -17571,7 +17568,6 @@ components:
             - array
             - "null"
       required:
-        - measured_deaths
         - pairs
       type: object
     MatchAssociatedMedia:
@@ -23030,9 +23026,6 @@ components:
       properties:
         given:
           $ref: '#/components/schemas/AssistTiers'
-        matches_measured:
-          format: int64
-          type: integer
         my_frags:
           format: int64
           type: integer
@@ -23042,7 +23035,6 @@ components:
         received:
           $ref: '#/components/schemas/AssistTiers'
       required:
-        - matches_measured
         - my_frags
         - partner_frags
         - received

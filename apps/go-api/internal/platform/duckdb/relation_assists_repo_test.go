@@ -12,32 +12,35 @@ import (
 
 // seedRelationAssists : schéma minimal de Q28c et un jeu couvrant les frontières.
 //
-//	m1  mesuré, publiable : Me, Ally, Bis (équipe 0) contre Foe (équipe 1).
-//	    Me tue Foe 5 fois : assisté par Ally à 10 / 25 / 50 / 60 %, puis sans assistant.
+//	m1  film porteur : Me, Ally, Bis et un BOT (équipe 0) contre Foe (équipe 1).
+//	    Me tue Foe 5 fois : assisté par Ally à 10 / 25 / 50 / 60 %, puis sans assistant ;
+//	    Me tue aussi un bot dont l'assistance n'est pas lue, et la feuille lui compte un
+//	    frag que le film ne lit pas : 7 frags officiels.
 //	    Ally tue Foe 2 fois : assisté par Me à 80 %, puis sans assistant.
-//	m2  mesuré, publiable : Me et Bis (équipe 0). Me et Bis tuent Foe une fois chacun,
-//	    sans assistant → Bis « mesuré, zéro ».
-//	m3  NON publiable : Me assisté par Ally → exclu, m3 non compté.
-//	m4  assistance inconnue (assist_known = FALSE) → exclu, m4 non compté.
+//	m2  film porteur : Me et Bis (équipe 0). Me et Bis tuent Foe une fois chacun,
+//	    sans assistant → Bis « zéro assistance ».
+//	m3  NON publiable : Me assisté par Ally → m3 hors de la mesure.
+//	m4  le film ne porte aucune assistance (assist_known = FALSE) → m4 hors de la mesure.
 func seedRelationAssists(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, stmt := range []string{
-		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER)`,
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER, kills INTEGER)`,
 		`CREATE TABLE match_kill_events_latest (
 			match_id VARCHAR, publishable BOOLEAN, assist_known BOOLEAN,
 			feed_killer_xuid VARCHAR, victim_xuid VARCHAR,
 			assist_xuid VARCHAR, assist_damage_pct UTINYINT, time_ms INTEGER)`,
 		`INSERT INTO match_participants VALUES
-			('m1','Me',0), ('m1','Ally',0), ('m1','Bis',0), ('m1','Foe',1),
-			('m2','Me',0), ('m2','Bis',0), ('m2','Foe',1),
-			('m3','Me',0), ('m3','Ally',0),
-			('m4','Me',0), ('m4','Ally',0)`,
+			('m1','Me',0,7), ('m1','Ally',0,2), ('m1','Bis',0,0), ('m1','bid(1.0)',0,1), ('m1','Foe',1,1),
+			('m2','Me',0,1), ('m2','Bis',0,1), ('m2','Foe',1,0),
+			('m3','Me',0,3), ('m3','Ally',0,3),
+			('m4','Me',0,4), ('m4','Ally',0,4)`,
 		`INSERT INTO match_kill_events_latest VALUES
 			('m1',TRUE,TRUE,'Me','Foe','Ally',10,1),
 			('m1',TRUE,TRUE,'Me','Foe','Ally',25,2),
 			('m1',TRUE,TRUE,'Me','Foe','Ally',50,3),
 			('m1',TRUE,TRUE,'Me','Foe','Ally',60,4),
 			('m1',TRUE,TRUE,'Me','Foe',NULL,NULL,5),
+			('m1',TRUE,FALSE,'Me',NULL,NULL,NULL,9),
 			('m1',TRUE,TRUE,'Ally','Foe','Me',80,6),
 			('m1',TRUE,TRUE,'Ally','Foe',NULL,NULL,7),
 			('m1',TRUE,TRUE,'Foe','Me',NULL,NULL,8),
@@ -69,20 +72,25 @@ func TestQueryRelationAssists_AllHistory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
+	// Bases = frags OFFICIELS des matchs porteurs : 7 pour Me sur m1 (frag sur un bot et
+	// frag absent du film compris), jamais les 5 lignes dont l'assistance est lue.
 	wantAlly := domain.RelationAssists{
-		MatchesMeasured: 1, MyFrags: 5, PartnerFrags: 2,
+		MyFrags: 7, PartnerFrags: 2,
 		Received: domain.AssistTiers{Total: 4, Low: 1, Mid: 2, High: 1},
 		Given:    domain.AssistTiers{Total: 1, High: 1},
 	}
 	if got["Ally"] != wantAlly {
 		t.Fatalf("Ally = %+v, want %+v", got["Ally"], wantAlly)
 	}
-	wantBis := domain.RelationAssists{MatchesMeasured: 2, MyFrags: 6, PartnerFrags: 1}
+	wantBis := domain.RelationAssists{MyFrags: 8, PartnerFrags: 1}
 	if got["Bis"] != wantBis {
-		t.Fatalf("Bis = %+v, want %+v (mesuré, zéro assistance)", got["Bis"], wantBis)
+		t.Fatalf("Bis = %+v, want %+v (zéro assistance)", got["Bis"], wantBis)
 	}
 	if _, ok := got["Foe"]; ok {
 		t.Fatal("un adversaire n'échange pas d'assistances : Foe doit être absent")
+	}
+	if _, ok := got["bid(1.0)"]; ok {
+		t.Fatal("un bot n'est pas une ligne de relation : bid(1.0) doit être absent")
 	}
 	if len(got) != 2 {
 		t.Fatalf("len = %d, want 2 (%+v)", len(got), got)
@@ -97,7 +105,7 @@ func TestQueryRelationAssists_ScopeAndMatchPartners(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scoped: %v", err)
 	}
-	if len(scoped) != 1 || scoped["Bis"].MatchesMeasured != 1 || scoped["Bis"].MyFrags != 1 {
+	if len(scoped) != 1 || scoped["Bis"].MyFrags != 1 || scoped["Bis"].PartnerFrags != 1 {
 		t.Fatalf("scope m2 = %+v", scoped)
 	}
 
@@ -111,7 +119,7 @@ func TestQueryRelationAssists_ScopeAndMatchPartners(t *testing.T) {
 		t.Fatalf("partners of m2: %v", err)
 	}
 	// Bis est dans m2 : tout son historique (m1 + m2). Ally n'y est pas.
-	if len(ofMatch) != 1 || ofMatch["Bis"].MatchesMeasured != 2 {
+	if len(ofMatch) != 1 || ofMatch["Bis"].MyFrags != 8 {
 		t.Fatalf("partners of m2 = %+v", ofMatch)
 	}
 }

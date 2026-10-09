@@ -311,10 +311,9 @@ type RecentMatchItem struct {
 	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
 	HasReplay bool `json:"has_replay,omitempty"`
 	// AssistedFrags : frags du joueur assistés par un coéquipier sur ce match, par tranche
-	// de part de dégâts, rapportés aux frags officiels (Kills) ; les frags sans information
-	// d'assistance sont comptés à part (relation_assists.go). Nil quand le match n'a aucune
-	// ligne mesurée pour ce joueur (film non décodé, titre sans décodeur) : la tuile
-	// n'affiche alors rien — jamais un « 0 » fabriqué pour une mesure absente.
+	// de part de dégâts, rapportés aux frags officiels (Kills), règle des bases de
+	// relation_assists.go. Nil quand le film du match ne porte pas l'assistance (film non
+	// décodé, titre sans décodeur) : la tuile n'affiche alors rien.
 	AssistedFrags *MatchAssistedFrags `json:"assisted_frags,omitempty"`
 }
 

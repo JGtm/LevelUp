@@ -465,9 +465,8 @@ type MatchCombatTab struct {
 	// (match_view.18). Vide si killer_victim_pairs n'est pas peuplé.
 	KillerVictim []MatchKillerVictimPair `json:"killer_victim,omitempty"`
 
-	// AssistPairs : paires (assistant → tueur assisté) + la PORTÉE de leur mesure.
-	// NIL quand le match n'a aucune ligne de film : l'UI ne rend alors rien. Le bloc
-	// présent avec MeasuredDeaths à 0 est un état DIFFÉRENT (« non mesuré »), cf.
+	// AssistPairs : paires (assistant → tueur assisté). NIL quand le film du match ne
+	// porte pas l'assistance (ou qu'il n'y a pas de film) : l'UI ne rend alors rien, cf.
 	// domain.MatchAssistPairs.
 	AssistPairs *MatchAssistPairs `json:"assist_pairs,omitempty"`
 

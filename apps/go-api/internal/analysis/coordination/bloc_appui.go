@@ -16,20 +16,24 @@ package coordination
 // rencontre comme le coéquipier suivi, et ne varie pas avec la composition affichée à
 // l'écran. C'est la mesure la plus stable, et c'est pour cela qu'elle est retenue.
 //
-// # UN FRAG DONT L'ASSISTANCE EST INCONNUE N'ENTRE DANS AUCUN DÉNOMINATEUR
+// # LA BASE DE « FRAGS APPUYÉS » EST LA FEUILLE DE MATCH
 //
-// La porte est celle du lecteur (`publishable AND assist_known`). Un assistant VIDE sur une
-// ligne mesurée est un fait — « personne n'a assisté » — et compte au dénominateur ; une
-// mort dont l'assistance n'est pas mesurée n'a pas de ligne du tout. Confondre les deux
-// écrirait « aucune assistance » là où la mesure dit « on ne sait pas ».
+// Règle des bases (domain/relation_assists.go) : le dénominateur est le nombre de frags
+// OFFICIELS du joueur sur chaque match mesuré, frags sur des bots compris ; il ne descend
+// jamais sous les frags que le film lit pour lui (domain.BaseFragsOfficiels). Une mort dont
+// l'assistance n'est pas lue reste dans la base sans entrer au numérateur. Les appuis
+// impliquant des BOTS comptent comme les autres.
 
 import "levelup/go-api/internal/domain"
 
-// compterAppuis ventile les lignes d'appui du scope sur les quatre compteurs du joueur.
+// compterAppuis ventile les lignes d'appui du scope sur les quatre compteurs du joueur, puis
+// pose la base officielle de chaque match.
 //
-// LES DEUX CÔTÉS DU COUPLE SONT TESTÉS SÉPARÉMENT : « le tueur est de mon camp » décide de
-// l'appartenance de l'appui à mon camp, « l'assistant est de mon camp » évite de compter
-// un appui adverse ou d'un joueur sans camp. Un appui que je porte à mon camp compte au
+// UN APPUI EST DE MON CAMP DÈS QU'UN DE SES ACTEURS L'EST : une assistance est toujours
+// portée par un coéquipier du tueur, donc un assistant de mon camp fait le tueur de mon camp,
+// et inversement — c'est ce qui range un bot (sans xuid, sans ligne dans la table des
+// équipes) du côté de l'acteur nommé de la ligne. Quand ni l'un ni l'autre n'a de xuid, la
+// victime tranche (campDeLaVictimeAdverse). Un appui que je porte à mon camp compte au
 // dénominateur (c'est ce que le camp a distribué) sans compter au numérateur.
 func compterAppuis(in domain.CoordinationEntree, cumuls map[string]*cumulMatch) {
 	for _, a := range in.Appuis {
@@ -38,16 +42,12 @@ func compterAppuis(in domain.CoordinationEntree, cumuls map[string]*cumulMatch) 
 			continue
 		}
 		if a.KillerXUID == in.MoiXUID {
-			c.myKills += a.Nombre
-			if a.AssistXUID != "" {
+			c.myFilmKills += a.Nombre
+			if a.Assiste() {
 				c.myAssisted += a.Nombre
 			}
 		}
-		if a.AssistXUID == "" {
-			continue
-		}
-		if !memeCamp(in.Equipes, a.MatchID, in.MoiXUID, a.AssistXUID) ||
-			!memeCamp(in.Equipes, a.MatchID, in.MoiXUID, a.KillerXUID) {
+		if !a.Assiste() || !appuiDeMonCamp(in, a) {
 			continue
 		}
 		c.teamAssists += a.Nombre
@@ -55,7 +55,46 @@ func compterAppuis(in domain.CoordinationEntree, cumuls map[string]*cumulMatch) 
 			c.assistsToMe += a.Nombre
 		}
 	}
+	for matchID, c := range cumuls {
+		var officiels *int
+		if n, ok := in.FragsOfficiels[matchID]; ok {
+			officiels = &n
+		}
+		c.myKills = domain.BaseFragsOfficiels(officiels, c.myFilmKills)
+	}
 }
+
+// appuiDeMonCamp : l'appui `a` a-t-il été distribué dans mon camp ?
+func appuiDeMonCamp(in domain.CoordinationEntree, a domain.CoordinationAppuiRow) bool {
+	if memeCamp(in.Equipes, a.MatchID, in.MoiXUID, a.AssistXUID) ||
+		memeCamp(in.Equipes, a.MatchID, in.MoiXUID, a.KillerXUID) {
+		return true
+	}
+	if a.AssistXUID != "" || a.KillerXUID != "" {
+		return false
+	}
+	return campDeLaVictimeAdverse(in.Equipes, a.MatchID, in.MoiXUID, a.VictimXUID)
+}
+
+// campDeLaVictimeAdverse : la victime est-elle de l'AUTRE camp d'un match à deux camps ? Le
+// tueur est alors de mon camp. Un match à plus de deux camps, ou une victime sans camp
+// connu, ne permet pas de conclure : l'appui n'est pas compté.
+func campDeLaVictimeAdverse(equipes domain.EquipesParMatch, matchID, moi, victime string) bool {
+	duMatch := equipes[matchID]
+	monEquipe, jeSuisLa := duMatch[moi]
+	saEquipe, elleEstLa := duMatch[victime]
+	if victime == "" || !jeSuisLa || !elleEstLa || saEquipe == monEquipe {
+		return false
+	}
+	camps := make(map[int]struct{}, campsParMatchADeuxCamps)
+	for _, equipe := range duMatch {
+		camps[equipe] = struct{}{}
+	}
+	return len(camps) == campsParMatchADeuxCamps
+}
+
+// campsParMatchADeuxCamps : un match où la victime d'un camp désigne le tueur de l'autre.
+const campsParMatchADeuxCamps = 2
 
 // cumulParite accumule la part ÉQUITABLE d'un scope, PONDÉRÉE par le volume de chaque match.
 //
@@ -94,9 +133,8 @@ func (p *cumulParite) pct() *float64 {
 
 // casesParMatch rend UNE case par match mesuré, dans l'ordre du scope.
 //
-// Les parts sont NIL quand leur dénominateur est vide :
-// aucun frag mesuré, aucun appui dans le camp. La case reste grise — « non mesuré n'est pas
-// zéro », et un zéro peint se lirait comme une contre-performance.
+// Les parts sont NIL quand leur dénominateur est vide : aucun frag, aucun appui dans le camp.
+// La case reste grise — un zéro peint se lirait comme une contre-performance.
 func casesParMatch(cumuls map[string]*cumulMatch, ordre []string) []domain.CoordinationMatchPoint {
 	out := make([]domain.CoordinationMatchPoint, 0, len(ordre))
 	for _, id := range ordre {
@@ -105,7 +143,7 @@ func casesParMatch(cumuls map[string]*cumulMatch, ordre []string) []domain.Coord
 			MatchID:              id,
 			TeamSize:             c.teamSize,
 			ParityPct:            pariteDuMatch(c.teamSize),
-			MyMeasuredKills:      c.myKills,
+			MyKills:              c.myKills,
 			MyAssistedKills:      c.myAssisted,
 			TeamAssists:          c.teamAssists,
 			AssistsToMe:          c.assistsToMe,

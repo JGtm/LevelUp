@@ -108,12 +108,12 @@ func (s *RelationsService) appendAssists(ctx context.Context, insights []domain.
 }
 
 // attachRelationAssists pose le bloc d'assistances de chaque relation présente dans la
-// map. Une entrée à zéro match mesuré n'est pas publiée (le contrat dit « nil = non
-// mesuré »).
+// map. Une relation absente de la map (aucun match commun dont le film porte
+// l'assistance) reste sans bloc : l'écran affiche « — ».
 func attachRelationAssists(insights []domain.RelationInsight, byXUID map[string]domain.RelationAssists) {
 	for i := range insights {
 		a, ok := byXUID[insights[i].XUID]
-		if !ok || a.MatchesMeasured == 0 {
+		if !ok {
 			continue
 		}
 		insights[i].Assists = &a
