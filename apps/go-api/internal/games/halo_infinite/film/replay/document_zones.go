@@ -174,11 +174,15 @@ type ZoneState struct {
 	// zone_states_gauge.go), premier et dernier point de chaque rampe toujours presents. `v`
 	// est arrondi a trois decimales.
 	//
+	// SUR UNE COLLINE (KOTH, schema 92), la serie est la jauge de CAPTURE de l objet de mode
+	// pendant les periodes ou cette colline est active (zone_states_hill_gauge.go) : elle monte
+	// quand un camp seul prend la colline, et elle SE VIDE quand le camp qui la tient la perd —
+	// la colline est la seule zone dont la jauge redescend pas a pas. Ce n est pas la garde vers
+	// le point (`scoreTimeline.holdTicks`). Une variante a prise instantanee n emet aucune jauge.
+	//
 	// ABSENTE quand la zone n'a aucune rampe de jauge sur ce match, ou quand aucun slot de
-	// jauge ne lui est apparie — ET TOUJOURS ABSENTE SUR UNE COLLINE (KOTH) : la, le meme
-	// canal est un compteur de transfert d'environ une seconde, pas la progression de garde
-	// (lot C-ter volet 1) ; `coverage.zones.gaugePoints` y vaut 0. Un artefact de schema <= 17
-	// ne la porte jamais.
+	// jauge ne lui est apparie. Un artefact de schema <= 17 ne la porte jamais, une colline de
+	// schema <= 91 non plus.
 	Gauge []GaugePoint `json:"gauge,omitempty"`
 	// GaugeRamps est LE DECOUPAGE DE `Gauge` EN RAMPES, et surtout LE CAMP QUI POUSSE chacune
 	// (schema 64). Une entree par montee de la jauge, dans l'ordre chronologique.
@@ -210,7 +214,9 @@ type ZoneState struct {
 	// deja en place. Hors ces deux cas, le plus haut sommet sans bascule vaut 0,938 : le seuil
 	// de `zoneGaugeRampComplete` (0,95) tombe dans une marge mesuree de 0,038.
 	//
-	// ABSENT sur une colline (KOTH) comme `Gauge`, et sur tout artefact de schema <= 63.
+	// SUR UNE COLLINE, une entree par segment d activite de la jauge a pousseur constant : la
+	// prise (camp lu), ou la VIDANGE (`Draining`). ABSENT sur tout artefact de schema <= 63, et
+	// sur une colline de schema <= 91.
 	GaugeRamps []ZoneGaugeRamp `json:"gaugeRamps,omitempty"`
 }
 
@@ -232,7 +238,9 @@ type ZoneGaugeRamp struct {
 	// `T0` est le debut de la suite NON DECROISSANTE, donc le RETOUR A ZERO qui ferme la rampe
 	// precedente quand le film en porte un (cf. `appendGaugeReset`). Ces bornes servent a
 	// SITUER la rampe — dire quelle rampe couvre une frame —, pas a dire quand la poussee
-	// commence ; la poussee commence au premier point NON NUL de `Gauge` dans ces bornes.
+	// commence ; la poussee commence au premier point NON NUL de `Gauge` dans ces bornes. SUR UNE
+	// COLLINE les bornes sont celles du SEGMENT : sa premiere emission et sa derniere, le retour a
+	// zero compris.
 	T0 int `json:"t0"`
 	T1 int `json:"t1"`
 	// CapturingTeam est LE CAMP QUI POUSSE LA JAUGE, LU sur le canal pousseur de la zone
@@ -243,6 +251,11 @@ type ZoneGaugeRamp struct {
 	// POINTEUR ET `omitempty` : le camp 0 existe, et l'ABSENCE de la cle est le seul moyen de
 	// dire « non mesure » sans le confondre avec « camp 0 » — le client peint alors au neutre.
 	CapturingTeam *int `json:"capturingTeam,omitempty"`
+	// Draining dit que la jauge SE VIDE sur ce segment : le camp qui tient la colline la perd, et
+	// le pousseur est au neutre (le film ne nomme pas qui la fait perdre). Le client peint la
+	// jauge a l encre du PROPRIETAIRE courant. Seulement sur une colline ; `CapturingTeam` y est
+	// absent.
+	Draining bool `json:"draining,omitempty"`
 }
 
 // GaugePoint est UN point de la jauge en direct : la frame et la valeur lue a cet instant.

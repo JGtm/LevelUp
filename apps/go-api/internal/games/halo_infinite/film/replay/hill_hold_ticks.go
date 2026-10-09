@@ -2,9 +2,10 @@ package replay
 
 // hill_hold_ticks.go — LA GARDE DE LA COLLINE, LUE ET NON RECONSTRUITE.
 //
-// EN KOTH IL N'Y A PAS DE CAPTURE : la colline se prend instantanement quand aucun adversaire n'y
-// est, et c'est la GARDE qui marque. Le film porte le compteur de cette garde, et ce fichier le
-// publie par camp.
+// EN KOTH, C EST LA GARDE QUI MARQUE : une fois la colline prise (une capture d environ une seconde,
+// instantanee en classe — cf. zone_states_hill_gauge.go), chaque seconde passee a la tenir ajoute un
+// tic, et un nombre de tics fixe par variante vaut un point. Le film porte le compteur de cette
+// garde, et ce fichier le publie par camp.
 //
 // LE COMPTEUR EST `comp 23 A`, ET C'EST MESURE (lot E1-bis du 2026-08-30) : il reproduit
 // `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT, joueur par joueur, apres pont

@@ -214,6 +214,22 @@ describe('capture en cours — la jauge dit QUAND, le propriétaire d arrivée d
     ])
   })
 
+  it('la jauge d une COLLINE ne sonne ni capture ni contestation : sa grammaire est la garde', () => {
+    // La colline prise par le camp 1 (montée de 10 à 19), puis vidée (30 à 39) : la sécurisation
+    // de l intervalle possédé sonne, la jauge pas.
+    const d = doc([
+      {
+        spans: [span(5, 19, null, true), span(20, 200, 1, true)],
+        gauge: [
+          { t: 10, v: 0.1 }, { t: 15, v: 0.6 }, { t: 19, v: 0.97 }, { t: 20, v: 0 },
+          { t: 30, v: 0.98 }, { t: 35, v: 0.5 }, { t: 40, v: 0 },
+        ],
+        gaugeRamps: [{ t0: 10, t1: 20, capturingTeam: 1 }, { t0: 30, t1: 40, draining: true }],
+      },
+    ])
+    expect(zoneSoundEvents(d, 1)).toEqual([{ ms: 2000, stem: ZONE_SOUND_STEMS.securing.ally }])
+  })
+
   it('la CONTESTATION garde l instant du sommet : la correction ne déplace que le début', () => {
     const d = doc([
       {

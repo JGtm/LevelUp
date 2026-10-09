@@ -135,6 +135,7 @@ func toZoneGaugeRamp(v replay.ZoneGaugeRamp) replaydoc.ZoneGaugeRamp {
 		T0:            v.T0,
 		T1:            v.T1,
 		CapturingTeam: v.CapturingTeam,
+		Draining:      v.Draining,
 	}
 }
 

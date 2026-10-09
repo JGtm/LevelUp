@@ -116,7 +116,8 @@ type ZoneState struct {
 	Spans      []ZoneSpan   `json:"spans"`
 	Gauge      []GaugePoint `json:"gauge,omitempty"`
 	// GaugeRamps est le decoupage de la jauge en rampes, et LE CAMP QUI POUSSE chacune
-	// (schema 64 pour la forme). Absent sur une colline et sur tout artefact de schema <= 63.
+	// (schema 64 pour la forme). Sur une colline (schema 92) : segments a pousseur constant, prise
+	// ou vidange. Absent sur tout artefact de schema <= 63.
 	GaugeRamps []ZoneGaugeRamp `json:"gaugeRamps,omitempty"`
 }
 
@@ -124,11 +125,14 @@ type ZoneState struct {
 // AVORTEE, le camp etant LU dans le film (lot 5.6) et non plus deduit de l'issue. `T0`/`T1`
 // SITUENT la rampe (T1 = le sommet, inclus) ; ils ne datent pas le debut de la poussee, que le
 // premier point NON NUL de `Gauge` donne. `CapturingTeam` est ABSENT quand le film nomme le
-// neutre, ou quand rien ne le mesure : le document ne devine pas un capteur.
+// neutre, ou quand rien ne le mesure : le document ne devine pas un capteur. `Draining` (colline
+// seulement) dit que la jauge se VIDE : le camp qui tient la colline la perd, et le client peint la
+// jauge a l encre du proprietaire courant.
 type ZoneGaugeRamp struct {
 	T0            int  `json:"t0"`
 	T1            int  `json:"t1"`
 	CapturingTeam *int `json:"capturingTeam,omitempty"`
+	Draining      bool `json:"draining,omitempty"`
 }
 
 // ZoneSpan est UN intervalle d'etat d'une zone.

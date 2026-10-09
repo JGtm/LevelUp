@@ -117057,3 +117057,22 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go). Boot : `shared_purge_composite_vehicle_takes_v1` 4 lignes retirées (7 228 gardées) ; `repair_player_append_only_ids_v1` : Chocoboflor `match_skill_rank` 17 192 ids NULL, `player_csr_snapshots` 19 243 ids NULL sans PK, `player_match_enrichment` 5 doublons ; Madina97294 et XxDaemonGamerxX 147 doublons `player_csr_snapshots`, 5 doublons `player_match_enrichment` ; `purge_sync_meta_legacy_auth_keys_v1` une clé retirée sur 4 bases ; 0 ERROR au boot.
 
 **Conclusion / prochaine étape** : C6 (catégorie de mode) rouvert à la demande du user, confié à un agent Sonnet ; lot D en correctif d'anonymisation puis relecture ; lot E.
+## [2026-10-09] Roi de la colline au rejeu : une seule colline à sa vraie place, sa capture, la barre de garde Doubles/Classé, l'étage — Complété (`feat/koth-colline`, 6 commits, CI verte au niveau job ; plan `.ai/PLAN_KOTH_REJEU_2026-10-09.md`)
+
+**Demande** : signalement du user sur son 2v2 Roi de la colline (`0d9a9af9`) : toutes les collines affichées, capture invisible, barre de garde absente, pas d'étage sur la colline.
+
+**Décision technique principale** : E1 — la colline d'une période se place par la GARDE (présence du camp que le canal de propriété dit propriétaire, en frames, seuil 50 %), plus par la grappe pendant des « rampes » dont le départ est le retour à zéro de la capture précédente (cause de la 3e colline du témoin posée sur la 4e). Repli nommé `repli_colline_votes_sans_garde`.
+
+**Résultats observés** : témoin P3 z4 / P4 z2 (avant : z2 / z2) ; 11 films KOTH recuits un par un en cache isolé, 0 période fusionnée, 0 repli ; séquence de collines identique sur trois films classés de Lattice. La jauge de capture de colline existe dans le film (0 -> 1 en ~1 s, vidange ~1 s) sauf en Classé (prise instantanée, 0 émission). Seuils de garde mesurés : Doubles 35, Classé 40 (Vacancy, Lattice, Solitude), Arène 35 (contrôle). E2 : jauge de capture des collines publiée (schéma 92, champ `draining` des segments) ; témoin recuit : 531 points, 24 prises au camp lu, 20 vidanges. E3 : seuils Doubles 35 et Classé 40, cibles Doubles 3 et Squad 3 déclarés ; Squad sans seuil (aucun film mesurable). E4 : rendu web (une colline visible pendant ses intervalles, sa jauge de prise et de vidange, ses contours d étage ; le son ignore la jauge des collines). E5 : 11 films recuits un par un ; deux défauts de publication trouvés au contrôle et corrigés (retour à zéro d une vidange perdu à l allègement, lecture non chaînée isolée) ; oracle 165/165 prises précédées d une montée du même camp, montée médiane 1 s.
+
+**Conclusion / prochaine étape** : lot livré sur sa branche (CI `b5d20f3cb` verte). Au superviseur : fusion dans `feat/v75` puis, sur accord du user, republication du parc au schéma 92 (assemblage seul ; les collines changent sur les 10 artefacts KOTH du parc local). Restent ouverts (registre des reports) : seuil de garde Squad (aucun film mesurable), courbes de score de deux films classés de Lattice, cartes Harvest et Vacancy - Ranked hors bornes.
+
+## [2026-10-09] Roi de la colline, reprise : la 1re colline apparaît au coup d'envoi — Complété (`feat/koth-colline`)
+
+**Demande** : la 1re colline doit apparaître dès qu'elle apparaît en jeu, pas au premier contact d'un joueur.
+
+**Décision technique principale** : les images-clés bornent la création de l'objet de mode (désignation de la 1re colline) sans la dater ; sur 11 films la fenêtre contient le coup d'envoi (intersection ]-6,6 s ; +2,3 s]). La 1re période commence au coup d'envoi ramené dans cette fenêtre (repli nommé `repli_colline_premiere_au_coup_d_envoi`), à défaut à la 1re image-clé qui porte le bloc, jamais après le premier contact. Schéma 92 conservé (non publié), chronique amendée.
+
+**Résultats observés** : 11/11 films recuits, 1re colline au coup d'envoi (15 à 37 s plus tôt qu'avant selon le film ; témoin : 17 s), collines suivantes au point (0 à 1 image). Découverte : plancher de 5,09 s entre un déplacement et la première prise possible (50 déplacements, 13 au plancher) — non appliqué, question de jeu au user.
+
+**Conclusion / prochaine étape** : réponse du user sur l'affichage de la colline suivante pendant ces 5 s ; fusion et republication du parc (schéma 92) sur accord.

@@ -37,8 +37,8 @@ type RegulationSet struct {
 	// variante absente → on garde les points. Consommateur : analysis.TeamScoreDisplay.
 	roundsDecide map[string]bool
 	// holdTicks : game_variant_name → TICS DE GARDE qui valent un point, sur un mode
-	// où l'on marque en TENANT une zone (KOTH : la colline se prend instantanément, c'est la
-	// garde qui compte). Même doctrine que targets : valeur MESURÉE, variante inconnue → pas
+	// où l'on marque en TENANT une zone (KOTH : une fois la colline prise, c'est la garde qui
+	// compte). Même doctrine que targets : valeur MESURÉE, variante inconnue → pas
 	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
 	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
 	holdTicks map[string]int

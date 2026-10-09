@@ -222,7 +222,7 @@ export function drawObjectivesLayer(
 }
 
 /** Ce qu'une zone doit savoir pour se peindre : projection, encres et étage. */
-interface ZoneDrawing {
+export interface ZoneDrawing {
   px: (p: XY) => XY
   scale: number
   color: string
@@ -265,7 +265,7 @@ function drawZone(
  * pixels chacun, tracés par la MÊME géométrie que la zone (`traceZonePath` et son `padPx`).
  * Trait fin, même couleur, opacité décroissante — le même pâlissement que les anneaux.
  */
-function drawZoneFloorContours(
+export function drawZoneFloorContours(
   ctx: CanvasRenderingContext2D,
   e: ObjectiveElementReady,
   d: ZoneDrawing,

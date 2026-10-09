@@ -3179,3 +3179,34 @@ package replay
 //	                10 sur 2 462 (0,4 %) pour la lecture. Needler de `5c38f581` (Prism) : 2 -> 4 prises
 //	                attribuees ; ses quatre autres occupations sans date sont des apparitions
 //	                remplacees 30,1 s plus tard par une seconde apparition (aucune prise au socle).
+//
+// v92 (2026-10-09, lot `feat/koth-colline`, signalement du user sur son 2v2 Roi de la colline) : LA
+// COLLINE A SA VRAIE PLACE, ET SA CAPTURE SE VOIT.
+//
+//	`zoneStates`    la colline d une periode du designateur se place la ou se tient le camp que le
+//	                canal de propriete nomme (presence en frames, seuil 50 % des frames tenues
+//	                observees ; sous le seuil la periode est ecartee, `unpaired`) ; la grappe des
+//	                positions pendant les montees de la jauge n est plus qu un repli nomme
+//	                (`repli_colline_votes_sans_garde`). Elle partait du retour a zero de la capture
+//	                precedente et posait une colline sur la precedente (zone_states_hill_garde.go).
+//	`zoneStates[].gauge` / `gaugeRamps`   publies sur les collines : la jauge de capture du bloc
+//	                de l objet de mode pendant les periodes actives, et des segments a pousseur
+//	                constant — la prise (camp lu) ou la vidange (`draining`, champ neuf : le camp
+//	                qui tient la colline la perd). Une variante a prise instantanee (classe) n emet
+//	                aucune jauge (zone_states_hill_gauge.go).
+//	1re colline     la 1re periode commence au COUP D ENVOI (`t0FilmMs`) ramene dans la fenetre des
+//	                images-cles qui encadrent la creation de l objet de mode, non plus au premier
+//	                contact d un joueur (repli nomme `repli_colline_premiere_au_coup_d_envoi` : le
+//	                film ne date pas la creation). Sur 11 films la fenetre contient le coup d envoi.
+//
+//	CE QUI MONTE    `SchemaVersion` 91 -> 92. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
+//	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
+//	                quels.
+//
+//	LE PARC         un artefact 91 dont les faits sont sur disque : verdict `republier`.
+//
+//	MESURE          11 films a colline recuits un a un (Arene, Doubles, Classe) : au plus une
+//	                colline active par frame, aucune periode fusionnee avec la suivante (4 films sur
+//	                11 en avaient), 0 repli sans garde ; les trois films classes de Lattice rendent
+//	                la meme sequence de collines. Temoin `0d9a9af9` : 3e periode sur la colline 4
+//	                (avant : 2, celle de la 4e). Detail : `.ai/PLAN_KOTH_REJEU_2026-10-09.md`.

@@ -57,12 +57,14 @@
  * ment. Cette décision survit au changement de forme du 2026-08-25 — c'est la SÉRIE qui
  * autorise à dessiner, pas la géométrie employée pour le faire.
  *
- * ET LA PROGRESSION NE CONCERNE PAS LES COLLINES, PAR CONSTRUCTION. `ZoneState.Gauge` n'est
- * publiée que sur les modes à zones SIMULTANÉES (Bastion) : sur une colline de KOTH le même
- * canal du film est un compteur de transfert d'une seconde, pas une progression de garde, et le
- * producteur n'en pose aucune série (`zone_states_gauge.go`, « EN KOTH, RIEN »). Une colline
- * n'affiche donc que son appartenance et sa surbrillance — le client n'a aucune règle à écrire
- * pour ça, il reçoit une série vide.
+ * LA COLLINE (Roi de la colline, schéma 92) EST UNE ZONE À PART, ET LE CALQUE LA PORTE SEUL.
+ * Une seule colline existe à la fois : celle que couvre un intervalle `active`. Le calque statique
+ * ne dessine donc plus les collines (`staticObjectivesOf`) — six collines grises superposées
+ * disaient le contraire du jeu — et ce calque peint la colline active entière : appartenance,
+ * contours d'étage (`drawZoneFloorContours`, le langage des autres objectifs) et la jauge de
+ * CAPTURE, une seconde environ pour un camp seul. Sa jauge redescend aussi : quand le camp qui
+ * la tient la perd, elle se VIDE (`gaugeRamps[].draining`) à l'encre de ce camp. Hors de ses
+ * intervalles, une colline ne se peint pas, jauge comprise.
  *
  * UN SEUL TEXTE, ET C'EST LA LETTRE DE LA ZONE (2026-08-24). Le calque n'écrivait rien, parce que
  * la lettre A/B/C du HUD n'existe dans aucune donnée décodée. Elle n'y est toujours pas : ce que
@@ -72,7 +74,8 @@
  * conséquence : il autorise LE glyphe d'une lettre A-C, et continue d'interdire tout AUTRE texte.
  * Le verdict « ce sont bien les lettres du jeu » appartient au relevé Theater de l'utilisateur.
  */
-import type { ObjectiveElementReady } from './objectivesLayer'
+import { drawZoneFloorContours, type ObjectiveElementReady } from './objectivesLayer'
+import { floorInRange } from './floorRings'
 import { type XY } from '../../../lib/replay/replayLogic'
 import { paintZoneState, type ZoneStateNow } from './zoneStatesPaint'
 
@@ -206,6 +209,19 @@ export function capturingTeamAt(
   frame: number,
   holdFrames: number,
 ): number | null {
+  return gaugeRampAt(ramps, frame, holdFrames)?.capturingTeam ?? null
+}
+
+/**
+ * gaugeRampAt — LA RAMPE (ou le segment de colline) qui couvre la frame, lue en escalier comme
+ * `capturingTeamAt` : jusqu'à sa dernière frame, puis `holdFrames` de plus. `null` quand aucune
+ * ne la couvre.
+ */
+export function gaugeRampAt(
+  ramps: readonly ReplayZoneGaugeRamp[],
+  frame: number,
+  holdFrames: number,
+): ReplayZoneGaugeRamp | null {
   let lo = 0
   let hi = ramps.length - 1
   let idx = -1
@@ -220,8 +236,7 @@ export function capturingTeamAt(
   }
   if (idx < 0) return null
   const r = ramps[idx]
-  if (frame > r.t1 + holdFrames) return null
-  return r.capturingTeam ?? null
+  return frame > r.t1 + holdFrames ? null : r
 }
 
 /** Style du calque VIVANT : les encres sont RÉSOLUES par l'appelant (règle color-tokens). */
@@ -267,6 +282,8 @@ export interface ZoneStatesLayerInput {
   style: ZoneStateStyle
   /** ZONE_GAUGE_HOLD_MS converti en frames pour ce document (cf. zoneGaugeAt). */
   gaugeHoldFrames: number
+  /** Amplitude verticale du document (`doc.bounds`) : l'étage d'une colline (`floorInRange`). */
+  z: { min: number; max: number }
 }
 
 // LA LETTRE DE LA ZONE. Même technique que les libellés de callouts (`lib/replay/calloutsPaint.ts`) :
@@ -314,37 +331,88 @@ export function drawZoneStates(
   frame: number,
 ): void {
   if (!zones.joinable || states.length === 0) return
-  const { style } = zones
   const px = (p: XY) => projectTo(view, p)
   const scale = scaleOf(view)
   const letters: { at: XY; text: string }[] = []
   zones.zoneElements.forEach((e, ref) => {
     const st = states.find((s) => s.zoneRef === ref)
     if (!st) return
-    const now = spanStateAt(st.spans, frame)
-    // Une jauge à ZÉRO (au repos, ou revenue à zéro) n'a pas de progression : un remplissage de
-    // hauteur nulle ne trace rien, autant ne pas l'émettre.
-    const value = zoneGaugeAt(st.gauge, frame, zones.gaugeHoldFrames)
-    const capture = value !== null && value > 0 ? value : null
-    if (now || capture !== null) {
-      const ownerInk = now && now.owner !== null ? style.colorOfOwner(now.owner) : null
-      const capturer = capturingTeamAt(st.gaugeRamps, frame, zones.gaugeHoldFrames)
-      const capturerInk = capturer !== null ? style.colorOfCapturer(capturer) : null
-      paintZoneState(ctx, e, {
-        px,
-        scale,
-        ink: ownerInk ?? style.neutral,
-        held: ownerInk !== null,
-        now,
-        capture,
-        captureInk: capturerInk ?? style.neutral,
-      })
-    }
+    paintZoneAt(ctx, e, st, { zones, px, scale, frame })
     const text = zoneLetterOf(st.letterRank)
     if (text !== null) letters.push({ at: px(e), text })
   })
   ctx.globalAlpha = 1
   drawZoneLetters(ctx, letters)
+}
+
+/** Ce que la peinture d'une zone lit de l'image courante (règle des 5 paramètres). */
+interface ZoneFrame {
+  zones: ZoneStatesLayerInput
+  px: (p: XY) => XY
+  scale: number
+  frame: number
+}
+
+/**
+ * paintZoneAt peint UNE zone à l'image courante. Une COLLINE (`isHillState`) ne se peint que
+ * pendant ses intervalles — jauge comprise — et porte alors ses contours d'étage ; une jauge qui
+ * SE VIDE (`draining`) prend l'encre du camp qui tient encore la colline.
+ */
+function paintZoneAt(
+  ctx: CanvasRenderingContext2D,
+  e: ObjectiveElementReady,
+  st: ReplayZoneStateReady,
+  f: ZoneFrame,
+): void {
+  const { style, gaugeHoldFrames } = f.zones
+  const hill = isHillState(st)
+  const now = spanStateAt(st.spans, f.frame)
+  if (hill && !now) return
+  // Une jauge à ZÉRO (au repos, ou revenue à zéro) n'a pas de progression : un remplissage de
+  // hauteur nulle ne trace rien, autant ne pas l'émettre.
+  const value = zoneGaugeAt(st.gauge, f.frame, gaugeHoldFrames)
+  const capture = value !== null && value > 0 ? value : null
+  if (!now && capture === null) return
+  const ownerInk = now && now.owner !== null ? style.colorOfOwner(now.owner) : null
+  const ramp = gaugeRampAt(st.gaugeRamps, f.frame, gaugeHoldFrames)
+  const inkTeam = ramp?.draining ? (now?.owner ?? null) : (ramp?.capturingTeam ?? null)
+  const captureInk = inkTeam !== null ? style.colorOfCapturer(inkTeam) : null
+  paintZoneState(ctx, e, {
+    px: f.px,
+    scale: f.scale,
+    ink: ownerInk ?? style.neutral,
+    held: ownerInk !== null,
+    now,
+    capture,
+    captureInk: captureInk ?? style.neutral,
+  })
+  if (hill) {
+    const fl = floorInRange(e.z, f.zones.z)
+    drawZoneFloorContours(ctx, e, { px: f.px, scale: f.scale, color: ownerInk ?? style.neutral, rim: null, fl })
+  }
+}
+
+/**
+ * isHillState dit si l'état est celui d'une COLLINE : la seule zone dont les intervalles sont
+ * marqués `active` (le producteur ne pose `active` que sur la colline du moment).
+ */
+export function isHillState(st: { spans: readonly { active: boolean }[] }): boolean {
+  return st.spans.some((s) => s.active)
+}
+
+/**
+ * staticObjectivesOf rend les objectifs que le calque STATIQUE dessine : tous, sauf les zones d'un
+ * document à COLLINES joignable — une seule colline existe à la fois, et c'est ce calque-ci qui la
+ * peint (pendant ses intervalles). Non joignable, rien ne change : le calque vivant se tait, le
+ * statique reste seul.
+ */
+export function staticObjectivesOf(
+  elements: readonly ObjectiveElementReady[],
+  states: readonly { spans: readonly { active: boolean }[] }[],
+  joinable: boolean,
+): readonly ObjectiveElementReady[] {
+  if (!joinable || !states.some(isHillState)) return elements
+  return elements.filter((e) => e.kind !== 'zone')
 }
 
 /**

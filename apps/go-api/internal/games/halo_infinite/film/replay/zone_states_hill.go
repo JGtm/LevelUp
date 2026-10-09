@@ -19,11 +19,10 @@ package replay
 //	                 voisines qui designent la meme zone se fondent. Elle reste le REPLI d'un
 //	                 film sans designateur lisible (aucun des 4 films du corpus n'y retombe).
 //
-// CE QUE LE FILM NE DIT PAS : l'ACTIVATION DE LA PREMIERE COLLINE. La premiere designation vit
-// dans l'image-cle, que le delta ne re-emet pas ; l'objet de mode est ABSENT des images-cles a 0
-// et 20 s et PRESENT a 40 s sur les 4 films (cree entre les deux). La premiere periode s'ouvre
-// donc au PREMIER CONTACT avec l'objet (premiere emission de sa jauge, de son proprietaire ou de
-// son designateur) — une borne HAUTE de l'activation, jamais une invention.
+// CE QUE LE FILM NE DATE PAS : l'ACTIVATION DE LA PREMIERE COLLINE. La premiere designation vit
+// dans l'image-cle, que le delta ne re-emet pas ; les images-cles ne font que BORNER la creation de
+// l'objet de mode. La premiere periode s'ouvre au coup d'envoi ramene dans cette fenetre (repli
+// nomme), cf. zone_states_hill_activation.go.
 //
 // CE QUE CE VOLET PUBLIE DEPUIS LE 2026-08-26 : le PROPRIETAIRE. Son canal est celui du bloc dont le
 // designateur est la cle de nommage, designe par le NOM de propriete (hillOwnerSlotOf ; le slot
@@ -85,8 +84,12 @@ type hillDesignator struct {
 	// changes : frames ou la designation change — chaque changement de valeur, la premiere
 	// emission comprise (l'etat initial vit dans l'image-cle).
 	changes []int
-	// first : frame du premier contact avec l'objet de mode (borne haute de l'activation).
+	// first : frame du premier contact avec l'objet de mode (borne haute de l'activation ; la 1re
+	// periode commence a `hillFirstActivation`).
 	first int
+	// bloc : les slots de l objet de mode autres que le designateur (proprietaire, pousseur, jauge),
+	// par le nom ou par le voisinage selon la voie.
+	bloc []uint32
 	// parVoisinage dit que le designateur et les canaux de l objet de mode viennent de la regle
 	// de VOISINAGE (repli `repli_colline_designateur_par_voisinage`), faute de nom au vocabulaire.
 	parVoisinage bool
@@ -107,7 +110,8 @@ func hillDesignatorOf(ser zoneSeries) (hillDesignator, bool) {
 		return ok
 	}
 	if d, ok := hillDesignatorWhere(ser, nomme); ok {
-		d.first = hillFirstContact(ser, d, hillModeObjectSlots(ser.noms, d.slot))
+		d.bloc = hillModeObjectSlots(ser.noms, d.slot)
+		d.first = hillFirstContact(ser, d, d.bloc)
 		return d, true
 	}
 	voisin := func(slot uint32) bool { return len(ser.owner[slot+1]) >= hillDesignatorMinOwnerSamples }
@@ -116,7 +120,8 @@ func hillDesignatorOf(ser zoneSeries) (hillDesignator, bool) {
 		return d, false
 	}
 	d.parVoisinage = true
-	d.first = hillFirstContact(ser, d, hillNeighbourSlots(d.slot))
+	d.bloc = hillNeighbourSlots(d.slot)
+	d.first = hillFirstContact(ser, d, d.bloc)
 	return d, true
 }
 
@@ -184,48 +189,80 @@ func hillFirstContact(ser zoneSeries, d hillDesignator, slots []uint32) int {
 	return first
 }
 
-// buildDesignatedHills decoupe le match en periodes bornees par le designateur, apparie chaque
-// periode par la grappe des positions pendant les montees de la jauge qu'elle contient (a defaut,
-// pendant toute la periode), et publie les periodes localisees.
+// buildDesignatedHills decoupe le match en periodes bornees par le designateur, place chaque
+// periode sur la zone ou se tient le camp proprietaire (zone_states_hill_garde.go) — a defaut de
+// garde lisible, par la grappe des positions pendant les montees de la jauge, puis pendant toute la
+// periode — et publie les periodes localisees.
 func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 	cov *ZonesCoverage,
 ) []ZoneState {
 	cov.Method = ZoneMethodDesignator
-	ramps := zoneRampsOf(ser)
-	pts := zonePointsByFrame(c.tracks)
-	periods := hillDesignatedPeriods(h.d, c.frames)
+	debut := hillFirstActivation(h.d, h.d.bloc,
+		hillActivationCtx{cles: ser.cles, kickoff: c.kickoff, hasKickoff: c.hasKickoff, fb: c.fb})
+	periods := hillDesignatedPeriods(h.d, debut, c.frames)
 	cov.HillPeriods = len(periods)
+	// LE CANAL DE PROPRIETE EST CELUI DU BLOC DONT LE DESIGNATEUR EST LA CLE, designe par le nom
+	// (le slot voisin du designateur en repli). Niveau de preuve accepte et reserve : cf.
+	// hillStatesOf.
+	owner := ser.owner[hillOwnerSlotOf(ser, h.d, cov, c.fb)]
+	loc := hillLocator{zones: zones, ramps: zoneRampsOf(ser), pts: zonePointsByFrame(c.tracks),
+		team: hillTeamPointsByFrame(c.tracks), owner: owner, fb: c.fb}
 	kept := make([]hillPeriod, 0, len(periods))
 	for _, p := range periods {
-		votes := hillVotesInRamps(zones, pts, ramps, &p)
-		if len(votes) == 0 {
-			// REPLI NOMME ET COMPTE (D14) : aucune rampe de capture dans la periode, les votes
-			// sont repris sur TOUTE la periode — donc sur des instants ou personne ne capture.
-			c.fb.Declenche(fallback.NomCollineVotesPeriodeEntiere)
-			votes = hillVotes(zones, pts, p.t0, p.t1)
-		}
-		p.ref, p.hasRef = clearModalZone(votes)
-		if !p.hasRef {
-			// UNE COLLINE DESIGNEE QUE LA GRAPPE NE LOCALISE PAS EST ECARTEE ET SE COMPTE :
-			// elle a existe, on ne sait pas ou (cf. ZonesCoverage.Unpaired).
+		if !loc.place(&p) {
+			// UNE COLLINE DESIGNEE QUE NI LA GARDE NI LA GRAPPE NE LOCALISENT EST ECARTEE ET SE
+			// COMPTE : elle a existe, on ne sait pas ou (cf. ZonesCoverage.Unpaired).
 			cov.Unpaired++
 			continue
 		}
 		kept = append(kept, p)
 	}
-	// LE CANAL DE PROPRIETE EST CELUI DU BLOC DONT LE DESIGNATEUR EST LA CLE, designe par le nom
-	// (le slot voisin du designateur en repli). Niveau de preuve accepte et reserve : cf.
-	// hillStatesOf.
-	states := hillStatesOf(kept, ser.owner[hillOwnerSlotOf(ser, h.d, cov, c.fb)], h.teams, cov, c.fb)
+	states := hillStatesOf(kept, owner, h.teams, cov, c.fb)
+	attachHillGauges(states, kept, hillGaugeInputOf(ser, h.d, h.teams, c))
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
 }
 
-// hillDesignatedPeriods rend une periode par colline : [premier contact ; b1-1], [b1 ; b2-1],
+// hillLocator porte ce que le placement d une periode lit (regle des 5 parametres).
+type hillLocator struct {
+	zones []Zone
+	ramps []zoneRamp
+	pts   map[int][]Point
+	team  map[int][]hillTeamPoint
+	owner []zoneSample
+	fb    *fallback.Compteur
+}
+
+// place pose la zone de la periode : par la GARDE d abord ; une garde illisible revient aux votes
+// de la grappe pendant les montees de la jauge, puis pendant toute la periode (deux replis
+// nommes). Faux quand la periode reste sans zone.
+func (l hillLocator) place(p *hillPeriod) bool {
+	ref, issue := hillGardeOf(l.zones, l.team, l.owner, p.t0, p.t1).place()
+	hillPeriodTop(l.ramps, p)
+	switch issue {
+	case hillGardePlacee:
+		p.ref, p.hasRef = ref, true
+		return true
+	case hillGardeEcartee:
+		return false
+	}
+	l.fb.Declenche(fallback.NomCollineVotesSansGarde)
+	votes := hillVotesInRamps(l.zones, l.pts, l.ramps, p)
+	if len(votes) == 0 {
+		// REPLI NOMME ET COMPTE (D14) : aucune rampe de capture dans la periode, les votes
+		// sont repris sur TOUTE la periode — donc sur des instants ou personne ne capture.
+		l.fb.Declenche(fallback.NomCollineVotesPeriodeEntiere)
+		votes = hillVotes(l.zones, l.pts, p.t0, p.t1)
+	}
+	p.ref, p.hasRef = clearModalZone(votes)
+	return p.hasRef
+}
+
+// hillDesignatedPeriods rend une periode par colline : [debut ; b1-1], [b1 ; b2-1],
 // ..., [bn ; derniere frame]. Une periode vide (deux bascules dans la meme frame) est ecartee.
-func hillDesignatedPeriods(d hillDesignator, frames int) []hillPeriod {
-	bounds := append([]int{d.first}, d.changes...)
+func hillDesignatedPeriods(d hillDesignator, debut, frames int) []hillPeriod {
+	bounds := append([]int{debut}, d.changes...)
 	out := make([]hillPeriod, 0, len(bounds))
 	for i, t0 := range bounds {
 		t1 := frames - 1
@@ -310,13 +347,9 @@ func buildRampHills(zones []Zone, ser zoneSeries, c zoneCtx, cov *ZonesCoverage)
 	}
 	periods := mergeHillPeriods(raw, c.frames)
 	cov.HillPeriods = len(periods)
-	// AUCUNE JAUGE EN DIRECT SUR UNE COLLINE (lot C-ter, volets 1 et 3, 2026-08-19) : en KOTH le
-	// tag 3 n'est PAS la progression de garde mais un COMPTEUR DE TRANSFERT d'environ une seconde
-	// (9-10 pas fixes quelle que soit la duree de la garde, mesure du volet 1 sur les 4 films
-	// KOTH) ; la progression de garde vit dans le canal par joueur (mode B tag 7), hors de ce
-	// calque. Publier cette rampe comme jauge montrerait un arc qui se remplit en une seconde a
-	// chaque prise — credible et faux. `ZoneState.Gauge` reste donc nil ici, et
-	// `coverage.zones.gaugePoints` vaut 0 sur un film a colline.
+	// AUCUNE JAUGE SUR CE REPLI : sans designateur il n y a pas de bloc d objet de mode, donc pas
+	// de slot de jauge ni de pousseur rattache a la colline (la jauge des collines :
+	// zone_states_hill_gauge.go, voie du designateur).
 	// AUCUN PROPRIETAIRE SUR CE REPLI : sans designateur, il n'y a pas d'objet de mode, donc pas
 	// de slot voisin ou lire le camp. Une colline localisee par la seule grappe des positions
 	// reste ACTIVE et sans camp — la deduire de la grappe serait une invention.

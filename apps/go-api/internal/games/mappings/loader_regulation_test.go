@@ -41,6 +41,10 @@ func TestLoadRegulationTOMLsFromRepo(t *testing.T) {
 		// le registre porte des collines depuis le backfill du 2026-08-24, cf. le TOML.
 		"KOTH:Arena":              3,
 		"Ranked:King of the Hill": 4,
+		// Doubles et Squad : plateaux du registre (17/22 et 56/57 a 3), et regle enoncee par
+		// l utilisateur pour le 2v2.
+		"Doubles:King of the Hill": 3,
+		"Squad:King of the Hill":   3,
 	} {
 		if target, ok := hi.ScoreTarget(variant); !ok || target != want {
 			t.Errorf("halo_infinite cible %q = (%d, %v), want (%d, true)", variant, target, ok, want)
@@ -55,15 +59,19 @@ func TestLoadRegulationTOMLsFromRepo(t *testing.T) {
 		}
 	}
 
-	// Tics de garde par point : 35, mesure du 2026-08-30 (union des instants, 15 periodes sur 16).
-	if secs, ok := hi.HoldTicksPerPoint("KOTH:Arena"); !ok || secs != 35 {
-		t.Errorf("halo_infinite tics/point %q = (%d, %v), want (35, true)", "KOTH:Arena", secs, ok)
+	// Tics de garde par point, mesures (union des instants du camp au point marque) : 35 en
+	// arene et en Doubles, 40 en classe (cf. le TOML).
+	for variant, want := range map[string]int{
+		"KOTH:Arena": 35, "Doubles:King of the Hill": 35, "Ranked:King of the Hill": 40,
+	} {
+		if ticks, ok := hi.HoldTicksPerPoint(variant); !ok || ticks != want {
+			t.Errorf("halo_infinite tics/point %q = (%d, %v), want (%d, true)", variant, ticks, ok, want)
+		}
 	}
-	// Le KOTH CLASSÉ n'a pas de seuil : ses 3 matchs sont inexploitables (deux sans film en
-	// cache, un sur une carte absente du catalogue de bornes). Lui recopier la valeur du
-	// social serait la devinette que la table interdit — donc aucune jauge côté client.
-	// Strongholds non plus : ses zones simultanées portent leur vraie jauge dans le film.
-	for _, variant := range []string{"Ranked:King of the Hill", "Strongholds:Arena", "CTF:Arena"} {
+	// Le KOTH SQUAD n'a pas de seuil : son seul film en cache est un match au score a la
+	// seconde, qui ne mesure pas le seuil de la variante. Strongholds non plus : ses zones
+	// simultanees portent leur vraie jauge dans le film.
+	for _, variant := range []string{"Squad:King of the Hill", "Strongholds:Arena", "CTF:Arena"} {
 		if _, ok := hi.HoldTicksPerPoint(variant); ok {
 			t.Errorf("halo_infinite : %q ne doit pas avoir de tics de garde par point", variant)
 		}
