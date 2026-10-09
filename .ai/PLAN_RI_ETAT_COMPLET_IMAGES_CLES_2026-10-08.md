@@ -843,18 +843,64 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
 - [x] D1.0.2 Composant de la marque de portage localisé (i11 + i12 + tête d'i13) : G-6, R-11.
 - [x] D1.0.3 « Dynamo Grenade » = faux positif de la fenêtre (identifiant du SPNKr relu un bit plus
       tôt : `0x9d6aaed2 << 1` + bit de tête de variante = `0x3ad55da4`) : mesure 1.
-- [ ] D1.0.4 Relire dans Ghidra le consommateur des drapeaux 0x4 et 0x8 d'i13
+- [x] D1.0.4 Relire dans Ghidra le consommateur des drapeaux 0x4 et 0x8 d'i13
       (`FUN_1407ee054` → `FUN_1407eef08`, écrivain et lecteurs de l'unité) : sont-ils posés par
       l'état de porteur ? Sortie LU / NON LU ; les 43 records en plus listés (film, slot, horodatage)
       pour U-2.
-- [ ] D1.0.5 Crochet i42 de l'instrument : publier les deux `FUN_1406d00ec` ; comparer param[1] au
+      *Fait (2026-10-09, lot C) — sens NON LU, U-2 → (b).* Lu : le lecteur `FUN_1407eef08` et
+      l'écrivain `FUN_143207438` (entrée 3 de la table du composant, thunk 142f075c8 :
+      `objet + 0x388`) ; l'octet de drapeaux est `objet + 0x39f` (R(5)) ; 0x4 commande trois champs
+      12 bits + 1 (+0, +0xa, +0xe) et l'octet +0x16, 0x8 les champs +2, +0xc, +0x10 et l'octet +0x15,
+      0x10 les champs +4, +6, +8. NON LU : qui pose 0x4 et 0x8 — aucune instruction n'adresse
+      `+0x39f`, aucun `OR`/`TEST` d'octet `[R + 0x17], 0x4|0x8` sur la structure (le seul `TEST`
+      trouvé, `FUN_1431b46ec`, est une autre structure), 97 fonctions qui prennent `+0x388` relues
+      sans écrivain de l'octet (`$REF/../d1x/g/`). La mesure contredit en outre la lecture « porteur » :
+      les 120 records que (a) ajoute à la fenêtre (43 fermés, comme attendu, et 77 non fermés)
+      sont TOUS des joueurs MORTS (état de mort i11 sous sa forme lue de 52 à 191 bits, jamais la
+      forme par défaut), dont 64 en KOTH (42) et en Slayer (22), où rien ne se porte. (b) est
+      appliquée : configuration de la fenêtre lue par la grammaire = i11 sous sa forme par défaut de
+      42 bits, `object-scale` (i12) à 1, R(5) d'i13 = 01111 ; égale à la fenêtre sur les 5 401 records fermés (92/92, 0 écart) et
+      sur 10 709 des 10 710 records (1 record B où la fenêtre voit la marque avec i13 = 00011).
+      Liste des porteurs de (a) en plus de la fenêtre, POUR VÉRIFICATION PAR L'UTILISATEUR (aucune
+      publication avant son accord) : `$REF/../d1x/porteurs_en_plus.tsv` (120 lignes : film, instant en
+      secondes depuis la première image-clé, slot, mode, carte, classe, fermé, état du joueur, R(5)).
+- [x] D1.0.5 Crochet i42 de l'instrument : publier les deux `FUN_1406d00ec` ; comparer param[1] au
       `DrawnSlot` de la fenêtre (classes : égal, ambidextrie, changement en cours, −1).
-- [ ] D1.0.6 Témoin T après i43 (U-1) : mesurer dans l'instrument, par classe A/B et par format, deux
+      *Fait (lot C)* : param[1] et param[2] relus à l'étendue de l'occurrence (lecture de test,
+      `degaine`). Classe A (28 films) : égal 4 369, param[1] = −1 919 (913 fenêtre vide, 6 fenêtre
+      lit), ambidextrie 7 (la fenêtre rend param[2] sur 1), fenêtre vide 32, différent 3, i42 absent
+      71 ; classe B : égal 2 714, −1 1 057, ambidextrie 593, différent 201. Aucune hypothèse de U-3 /
+      U-4 ne change ; les réponses du 2026-10-08 valent.
+- [!] D1.0.6 Témoin T après i43 (U-1) : mesurer dans l'instrument, par classe A/B et par format, deux
       candidats : T1 = au moins un emplacement non vide ET chaque famille d'emplacement non vide
       connue au registre ; T2 = masque i47 égal à la bitmap i22 ; et leur taux sur le témoin +1 bit.
-- [ ] D1.0.7 Réserves : écart ~5 % (réserve0 220/4 367 en A, 129/2 608 en B) : 30 records tirés,
+      *Mesuré (lot C), GATE NON PASSÉ : ARRÊT, décision de l'utilisateur (U-1 : (a) ou (c)).* Sorties
+      `$REF/../d1x/d10/` (`taux_t.txt`, `couverture_par_format.tsv`, `couverture_par_film.tsv`). T1 :
+      en f20-21, il admet 50 records B dont UN à armes fausses (`a349fea8`, slot 652, TS 9 475 366 323 :
+      emplacements 0 à 2 vides et MA40 AR en 3, la fenêtre lit BR75 + MA40 AR), pour un taux du témoin
+      de 0 sur 2 028 records en f20-21 (4 sur 10 407 sur le corpus) ; en f24-27 B∧T1 tient A∧T1 à
+      0,5 point sauf la réserve1, où B est MEILLEUR de 0,59 point. T2 : en f20-21 il admet 336
+      records B dont 86 à armes fausses. Témoin décalé (10 407 records où la marche décalée ne
+      rejoint pas la vraie avant i43) : T1 4 (0,038 %), T2 10 (0,096 %). Aucun candidat écrit ne
+      passe. Mesuré en plus (non écrit au plan, présenté à l'utilisateur) : T1 ∧ T2 — f20-21 49
+      records admis, 0 à armes fausses ; témoin 1 / 10 407 ; en f24-27 identique à T1. Couverture
+      (sur 10 710) : T1 6 508 (60,8 %), T2 8 892 (83,0 %), T1 ∧ T2 6 507 (60,8 %), (c) 8 619 (80,5 %).
+      T1 refuse 2 161 records de f24-27 lus justes : 1 585 sans aucune arme (joueurs morts ou sans
+      arme) et 576 dont un emplacement porte un identifiant hors catalogue (l'emplacement 2 pour 532,
+      le 1 pour 44 ; `0x00007ca9` surtout, §7 D-25) — relus record par record sur 16 films
+      (`$REF/../d1x/d10_dump/`) : armes égales à la fenêtre 396 fois sur 398, les 2 autres ne différant que
+      par le faux positif « Dynamo » de la fenêtre.
+- [x] D1.0.7 Réserves : écart ~5 % (réserve0 220/4 367 en A, 129/2 608 en B) : 30 records tirés,
       largeurs du composant relues (Ghidra) et comparées ; conclusion : la grammaire lit comme le jeu
       (l'écart vient de la fenêtre) ou écart nommé (la réserve reste à la fenêtre, repli).
+      *Fait (lot C) — la grammaire lit comme le jeu, l'écart vient de la fenêtre.* Relu : `FUN_140fe4e88`
+      R(11) (unité +0x870), `FUN_142f04c6c` R(7) déquantifié + R(1) + R(1), `FUN_140ea1018` porte R(1)
+      puis R(8), porte R(1) puis R(12) : la grammaire les porte tels quels. Échantillon (lignes RS de
+      l'instrument, deux records par film dont la réserve0 diffère, 56) : sur les 50 records de
+      f24-27, le début d'i30 de la marche est TOUJOURS l'un des débuts candidats de la fenêtre, et la
+      fenêtre retient le plus long, 4, 8, 16 ou 20 bits plus tôt (valeurs de fenêtre 2, 24, 36 contre
+      88, 108, 216) ; les 6 autres sont des films de format 20 (valeurs fausses après i22, D-5). En
+      D1.1, la réserve des records admis vient de la grammaire.
 - Gate D1.0 :
   - T retenu si, sous LK : en f24-27, B∧T aussi juste que A∧T champ par champ (armes, grenades,
     chargeurs, réserves, à 0,5 point près) ; en f20-21, A∧T et B∧T n'admettent aucun record à armes
@@ -862,6 +908,9 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
     records. **Si aucun candidat ne passe : ARRÊT, l'utilisateur choisit entre U-1 (a) et (c).**
   - U-2 et U-3 : présentés à l'utilisateur avec les sorties de D1.0.4 et D1.0.5 s'ils changent les
     hypothèses de §3.1 ; sinon les réponses données avant l'exécution valent.
+  - *Joué le 2026-10-09 (lot C)* : **NON PASSÉ — aucun candidat écrit ne passe (D1.0.6) : ARRÊT,
+    décision de l'utilisateur.** U-2 : (b) appliquée (sens des drapeaux NON LU), liste des 120
+    porteurs de (a) remise pour vérification ; U-3 / U-4 inchangées. D1.1 non commencée.
 
 ### Étape D1.1 — Un seul canal de la phase des images-clés pour l'état complet du bipède
 - [ ] D1.1.1 `grammar/relecture_a_l_etendue.go` : assistant unique de relecture (Lecteur sur le
@@ -1152,6 +1201,23 @@ refusionner, rejouer l'étape 0).
   avant). Commit mesuré `51749d5d4`, retiré par le commit suivant (décision d'exécution E-10). Le
   retenir demande une décision : la lecture du jeu fait monter `ti=3`, mais ses records longs à compte
   variable se « prouvent » aussi décalés d'un bit, et la preuve d'élection en réfute des ancres.
+- D-24 *(D1.0.7, Ghidra)* La fenêtre des munitions (`invParseAmmoBlock`) lit, après la réserve R(11),
+  R(2) « drapeaux » puis R(7) « surchauffe » ; le jeu lit `FUN_142f04c6c` : R(7) déquantifié puis
+  deux R(1). Même largeur totale (la réserve suivante reste alignée), mais `SlotAmmo.Flags` et
+  `SlotAmmo.Overheat` de la fenêtre ne sont pas les champs du jeu. Non traité (les records admis
+  passent à la grammaire en D1.1 ; la fenêtre reste le repli des autres).
+- D-25 *(D1.0.6)* Dans 576 records bipèdes d'image-clé de f24-27 dont les armes sont lues justes, un
+  emplacement (le 2 pour 532) porte un identifiant de 32 bits hors du catalogue des familles,
+  surtout `0x00007ca9` (aussi `0x00000000`, `0xb2a1d52f`, `0xe9e7ff79`, `0x3fee4fcf`, `0x2a392328`) :
+  sa nature n'est pas relue (objet d'objectif, équipement, valeur de remplissage ?). Il fait refuser
+  ces records par le témoin T1 tel qu'écrit. Non instruit.
+- D-26 *(D1.0.4)* Les drapeaux 0x4 et 0x8 du R(5) d'i13 (`object-maximum-vitalities`) sont posés sur
+  des joueurs MORTS (120 records hors de la fenêtre, tous à état de mort lu, 64 en KOTH et Slayer) :
+  ils ne sont pas une marque de portage. Qui les pose n'est pas relu (D1.0.4). Non traité.
+- D-27 *(D1.0.5)* En ambidextrie (param[2] présent), la fenêtre rend un `DrawnSlot` différent de
+  param[2] sur 6 des 7 records A et 424 des 593 records B. Cause non instruite (le début le plus
+  long du bloc de munitions, D1.0.7, est le premier suspect). Sans effet sur les records admis après
+  D1.1 (U-3 : param[1]).
 
 ## 8. Journal
 
@@ -1420,3 +1486,16 @@ refusionner, rejouer l'étape 0).
   reviennent au superviseur ; D1.0 non commencée. Données de travail du worktree : faits mis de côté
   sous `data/cache/film_facts_avant_lk6` et `film_facts_lk6_cuissons` (dossiers non suivis), racine du
   gate de corpus sous `$S/lk6/gate_work` (journaux et caches).
+- 2026-10-09 (lot C) : D1.0 JOUÉE, GATE NON PASSÉ, ARRÊT (point d'arrêt écrit de D1.0.6 et de U-1).
+  Base : tête `5fed3d3fa` (jalon LK clos), `origin/feat/v75` déjà contenue (aucune fusion). Sorties sous
+  `$REF/../d1x/` (`README.txt`). Instrument : `ri27d1_d10_research_test.go` (nouveau) et deux retouches
+  des instruments repris (classes comptées sous chaque étiquette d'admission ; i42 et réserves au lieu
+  de la classe « dégainé non comparable » ; T1, T2 et identifiants d'arme dans le dump R) ; sa sortie
+  hors des lignes nouvelles est identique à celle de LK.6 (`lk6.fusion`), TOTAL `10710 10658 5401 9968
+  332 6955 1566 5326 4 4320`. **D1.0.4** `[x]` : sens des drapeaux 0x4/0x8 NON LU (lecteur et écrivain
+  lus, posage introuvable) ; (a) ajoute 120 records à la fenêtre, tous des joueurs morts → **U-2 (b)** ;
+  liste remise à l'utilisateur (`porteurs_en_plus.tsv`). **D1.0.5** `[x]` : param[1] = fenêtre sur
+  4 369 records A (hors −1, ambidextrie et absence). **D1.0.6** `[!]` : T1 admet un record à armes
+  fausses en f20-21 (taux du témoin 0 en f20-21), T2 en admet 86 ; T1 ∧ T2 (non écrit) passe — décision
+  de l'utilisateur. **D1.0.7** `[x]` : la grammaire lit la réserve comme le jeu ; l'écart vient du début
+  de bloc le plus long que retient la fenêtre. Découvertes D-24 à D-27. D1.1 non commencée.

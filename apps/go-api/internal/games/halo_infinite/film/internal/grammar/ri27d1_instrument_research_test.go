@@ -15,7 +15,7 @@ package grammar
 //	                                         familles que la fenetre trouve EN PLUS de la grammaire
 //	                                         dans un record admis (A ou B), situees dans les composants ;
 //	                                         variante « mot_un_bit_plus_tot » : la famille lue un bit avant
-//	R   film  ts  slot  debut  preuve  desync  bits  adm  n22  temoin  grammaire  fenetre  comps
+//	R   film  ts  slot  debut  preuve  desync  bits  adm  n22  temoin  grammaire  fenetre  comps  T1  T2  ids
 //	                                         dump par record (films de RI27D1_RECORDS)
 //	SF/AF/TF/MF/YF  fNN  ...                 les memes, agreges par version de format
 
@@ -41,12 +41,13 @@ type ri27d1Ext struct {
 	lignes   []string
 	n22      int // n(i22) du record en cours, -1 non lu
 	tem      string
-	mb       int // lignes MB ecrites
+	mb       int        // lignes MB ecrites
+	d        *ri27d1D10 // mesures de D1.0 (ri27d1_d10_research_test.go)
 }
 
 func nouvelleExt(reg *Registry, dump bool) *ri27d1Ext {
 	return &ri27d1Ext{reg: reg, parAdm: map[string]int{}, temoin: map[string]int{}, marquesF: map[string]int{},
-		marquesX: map[string]int{}, enPlus: map[string]int{}, dump: dump}
+		marquesX: map[string]int{}, enPlus: map[string]int{}, dump: dump, d: &ri27d1D10{}}
 }
 
 // admettre pose la classe d admission du record.
@@ -65,12 +66,16 @@ func (x *ri27d1Ext) admettre(c *ri27d0Canal, r *lecture.Record, g *ri27d0Gram) {
 		x.adm = "C"
 	}
 	x.parAdm[x.adm+"\trecords"]++
+	x.poserLesEtiquettes(c, r, g)
 }
 
 // temoinDeHasard rejoue la marche du record avec un en-tete de 109 bits (temoin nomme de
 // `keyframeFullStateTemoin`) et dit si elle ferme sur le record suivant, et ce qu elle lit en i22.
 func (x *ri27d1Ext) temoinDeHasard(c *ri27d0Canal, p *lecture.Paquet, i int, ctx ContexteDeLecture) {
 	r := &p.Records[i]
+	if !x.d.vuOrig {
+		x.d.origine, x.d.vuOrig = p.TS, true
+	}
 	x.tem = "sans_frontiere"
 	if i+1 >= len(p.Records) {
 		x.temoin["sans_frontiere"]++
@@ -101,6 +106,7 @@ func (x *ri27d1Ext) temoinDeHasard(c *ri27d0Canal, p *lecture.Paquet, i int, ctx
 	}
 	x.temoin[fmt.Sprintf("temoin_n_i22_%d", n)]++
 	x.temoin[fmt.Sprintf("temoin_n_i22_%d|vrai_n_i22_%d", n, x.n22)]++
+	x.temoinTDecale(c, p, r, tr, ferme, n, ctx)
 }
 
 // fenetresDe rend les fenetres de 32 bits connues de `vues` dont le PREMIER bit tombe dans
@@ -146,6 +152,7 @@ func (x *ri27d1Ext) situerMarquesEtEnPlus(c *ri27d0Canal, p *lecture.Paquet, r *
 	comps := p.Comps[r.Comps[0]:r.Comps[1]]
 	marques := fenetresDe(p.Payload, int(r.Debut), fin, carrierMarkViews)
 	x.teteDuSuivantDuMort(c, p, r, len(marques) > 0)
+	x.marqueDePortage(c, p, r, len(marques) > 0)
 	for _, f := range marques {
 		o, nom, d := c.situerBit(comps, f[0])
 		if r.Preuve == lecture.PreuveFerme {
@@ -240,10 +247,10 @@ func (x *ri27d1Ext) dumpRecord(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Rec
 	for _, co := range p.Comps[r.Comps[0]:r.Comps[1]] {
 		cs = append(cs, fmt.Sprintf("%d:%d:%d", co.Index, co.Bits, co.Etat))
 	}
-	x.lignes = append(x.lignes, fmt.Sprintf("R\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%s\t%v\t%s", c.court, p.TS,
+	x.lignes = append(x.lignes, fmt.Sprintf("R\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%s\t%v\t%s\tT1=%v\tT2=%v\tids=%08x/%08x/%08x/%08x", c.court, p.TS,
 		r.Vie.Slot, r.Debut, r.Preuve, r.Desync, r.Bits, x.adm, x.n22, x.tem,
 		strings.Join(c.nomsDe(ri27d1FamillesGrammaire(c, g)), "+"), strings.Join(c.nomsDe(fen), "+"), g.gren,
-		strings.Join(cs, ",")))
+		strings.Join(cs, ","), x.d.t1, x.d.t2, g.idHigh[0], g.idHigh[1], g.idHigh[2], g.idHigh[3]))
 }
 
 // ri27d1Lignes rend les lignes du film et ajoute ses comptes aux agregats par format.

@@ -17,8 +17,8 @@ package grammar
 //	D  film  classe  ts  slot  detail       des desaccords (au plus 30 par classe et par film)
 //	F  film  composant  decalage  compte    ou tombent les familles que la fenetre trouve
 //
-// plus les lignes des complements de 2.7.d1 (A, T, M, MX, Y, R, MB et les agregats par format :
-// `ri27d1_instrument_research_test.go`). RI27D1_RECORDS=<id,...> ecrit le dump R de ces films.
+// plus les complements de 2.7.d1 et de D1.0 (A, T, M, MX, Y, R, MB, MP, RS, agregats par format :
+// `ri27d1_instrument_research_test.go`, `ri27d1_d10_research_test.go`). RI27D1_RECORDS : dump R.
 //
 //	RI27C_FILMS=<id,...> RI27C_RACINE=<film_chunks> RI27C_OUT=<dossier> [RI27C_CARTES=<id=Carte;...>] \
 //	  [RI27D1_RECORDS=<id,...>] go test -tags=research -count=1 -run '^TestRI27d0ImagesCles$' -timeout 120m \
@@ -186,7 +186,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 func (c *ri27d0Canal) classer(classe string, p *lecture.Paquet, slot uint32, detail string) {
 	c.classes[classe]++
 	c.classes[classe+"|"+c.preuve]++
-	c.x.parAdm[c.x.adm+"\t"+classe]++
+	c.x.compterAdm(classe)
 	cle := classe + "|" + c.preuve
 	if detail == "" || c.ech[cle] >= 30 {
 		return
@@ -344,9 +344,9 @@ func (c *ri27d0Canal) comparerLInventaire(p *lecture.Paquet, r *lecture.Record, 
 		c.comparer(fmt.Sprintf("chargeur%d", k), p, slot, g.magLu[k], g.mag[k] >= 0, g.mag[k], fm >= 0, fm)
 		c.comparer(fmt.Sprintf("reserve%d", k), p, slot, g.resLu[k], g.res[k] >= 0, g.res[k], fr >= 0, fr)
 	}
-	// degaine : NON COMPARABLE (correction 2.7.d1 (b)) — le crochet d i42 ne publie que le R(3)
-	// de tete (param[0]), la fenetre lit DrawnSlot ; ce ne sont pas les memes champs.
-	c.classer("degaine:non_comparable", p, slot, "")
+	// degaine (D1.0.5) : param[1] et param[2] d i42 relus contre DrawnSlot ; reserves (D1.0.7).
+	c.x.degaine(c, p, r, inv.DrawnSlot)
+	c.x.reservesEchantillon(c, p, r, g, ri27d1Reserve0(inv))
 	// grenade_selectionnee : i47 est code en base 1 (0 = aucune selection, GrenadeSetNoSelection),
 	// le rang de la fenetre en base 0 (correction 2.7.d1 (a)).
 	switch {
