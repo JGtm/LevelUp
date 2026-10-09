@@ -28,8 +28,11 @@ const ROLE_TOKEN: Readonly<Record<string, SemanticToken>> = {
   thief: 'impact-loss-3',
 }
 
-/** La nuance d'un rôle ; un rôle inconnu prend le bout de la rampe de son signe. */
-export function roleToken(role: string, points: number): SemanticToken {
+/**
+ * La nuance d'un rôle d'impact ; un rôle inconnu prend le bout de la rampe de son signe.
+ * Distinct de `roleToken` de `_shared/usage` (rôles d'objectif prendre/défendre/tenir).
+ */
+export function impactRoleToken(role: string, points: number): SemanticToken {
   return ROLE_TOKEN[role] ?? (points >= 0 ? 'impact-gain-4' : 'impact-loss-3')
 }
 
@@ -90,7 +93,7 @@ function stack(roles: { role: string; points: number }[]): ImpactSegment[] {
   const out: ImpactSegment[] = []
   let acc = 0
   for (const r of roles) {
-    const token = roleToken(r.role, r.points)
+    const token = impactRoleToken(r.role, r.points)
     const prev = out[out.length - 1]
     if (prev && prev.token === token) prev.to += r.points
     else out.push({ token, from: acc, to: acc + r.points })
@@ -130,14 +133,14 @@ export function scaleSentence(scale: { role: string; points: number }[], t: Impa
 /** La légende des rôles : une entrée par rôle, sauf les pertes qui partagent une nuance. */
 function legendOf(scale: { role: string; points: number }[], t: ImpactHistoryText) {
   const entry = (s: { role: string; points: number }) => ({
-    token: roleToken(s.role, s.points),
+    token: impactRoleToken(s.role, s.points),
     label: `${t.roles[s.role] ?? s.role} ${t.signed(s.points)}`,
   })
   const gains = scale.filter((s) => s.points > 0).map(entry)
   const lossScale = scale.filter((s) => s.points < 0)
   const byToken = new Map<SemanticToken, { role: string; points: number }[]>()
   for (const s of lossScale) {
-    const token = roleToken(s.role, s.points)
+    const token = impactRoleToken(s.role, s.points)
     byToken.set(token, [...(byToken.get(token) ?? []), s])
   }
   const losses = [...byToken.entries()].map(([token, group]) =>
@@ -197,7 +200,7 @@ export function buildImpactHistoryView(
           evening: names[e],
           matches: t.matchesWins(ev.matches, ev.wins),
           roles: roles.map((r) => ({
-            token: roleToken(r.role, r.points),
+            token: impactRoleToken(r.role, r.points),
             label: t.roles[r.role] ?? r.role,
             count: r.count,
             points: t.signed(r.points),
