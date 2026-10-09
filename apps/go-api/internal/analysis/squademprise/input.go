@@ -122,10 +122,9 @@ type Input struct {
 	// SessionMatchCounts : libellé de session -> matchs de la composition (ADR 0033).
 	SessionMatchCounts map[string]int
 	// Vehicles : la ressource véhicules (lecture de `match_vehicle_takes_latest`, périmètre ET
-	// matchs de l'habitude). Nil = non lue ; VehiclesUnavailable dit alors l'échec (vide quand le
-	// titre ne mesure simplement pas la ressource). Indépendante du film.
-	Vehicles            *VehicleRead
-	VehiclesUnavailable string
+	// matchs de l'habitude). Nil = non lue (titre sans la ressource, ou lecture en échec : le
+	// lecteur l'a journalisée). Indépendante du film.
+	Vehicles *VehicleRead
 	// VehicleLabels : famille de véhicule -> nom du titre dans la langue de la requête, pour les
 	// seules familles que le manifeste du titre qualifie (une tourelle fixe). Les autres sont des
 	// noms propres du jeu, que le client affiche depuis leur clé.

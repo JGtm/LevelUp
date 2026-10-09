@@ -31,8 +31,8 @@ export interface UsagesCardsText {
     winsFmt: (n: number) => string
     lossesFmt: (n: number) => string
     othersFmt: (n: number) => string
-    /** En-tête d'infobulle d'une colonne : « Aquarius (12 matchs, 9 filmés) ». */
-    tipHead: (name: string, matches: number, filmed: number) => string
+    /** En-tête d'infobulle d'une colonne : « Aquarius (12 matchs) ». */
+    tipHead: (name: string, matches: number) => string
   }
   /** Le nom du joueur quand le bloc ne porte pas son gamertag. */
   playerFallback: string
@@ -51,11 +51,8 @@ export interface UsagesCardsText {
   }
   lives: {
     title: string
-    /**
-     * ⓘ : les vies écartées sont comptées (`unlocated` : sans coéquipier situé ; `noRadar` : carte sans
-     * portée connue ; `unpublishable` : match dont le journal des morts n'est pas publiable).
-     */
-    info: (unlocated: number, noRadar: number, unpublishable: number) => string
+    /** ⓘ : ce que la carte range (vies terminées par une mort, par distance au coéquipier le plus proche). */
+    info: string
     near: string
     alone: string
     thinLegend: string
@@ -73,11 +70,7 @@ export interface UsagesCardsText {
     dropped: string
     thinLegend: string
     rest: string
-    /** Libellés des familles hors bilan (grappin, propulseur) ; les autres viennent du bloc d'usage. */
-    unmeasuredNames: Record<string, string>
     sub: (objects: number, taken: number) => string
-    droppedSub: (n: number) => string
-    unmeasured: string
     zeroTip: (player: string, family: string) => string
     /** « JGtm · Mur de protection\n52 servis sur 84 (61,9 %) ». */
     segTip: (who: string, n: number, part: 'used' | 'kept' | 'dropped', total: number, pct: string) => string
@@ -105,7 +98,7 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     winsFmt: (n) => `${n} V`,
     lossesFmt: (n) => `${n} D`,
     othersFmt: (n) => `${n} A`,
-    tipHead: (name, matches, filmed) => `${name} (${matches} ${plural(matches, 'match', 'matchs')}, ${filmed} ${plural(filmed, 'filmé', 'filmés')})`,
+    tipHead: (name, matches) => `${name} (${matches} ${plural(matches, 'match', 'matchs')})`,
   },
   playerFallback: 'Joueur',
   mine: {
@@ -123,13 +116,9 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
   },
   lives: {
     title: 'Isolement',
-    info: (unlocated, noRadar, unpublishable) =>
+    info:
       'Vies terminées par une mort, rangées selon la distance au coéquipier le plus proche à l’instant de la ' +
-      'mort (à portée de radar ou au-delà) ; barre fine : frags obtenus pendant ces vies. ' +
-      (noRadar > 0
-        ? `Écartées : vies sans coéquipier situé (${frInt(unlocated)}), vies d’une carte sans portée de radar connue (${frInt(noRadar)})`
-        : `Écartées : vies sans coéquipier situé (${frInt(unlocated)})`) +
-      (unpublishable > 0 ? `, vies d’un match au journal des morts non publiable (${frInt(unpublishable)}).` : '.'),
+      'mort (à portée de radar ou au-delà) ; barre fine : frags obtenus pendant ces vies.',
     near: 'À portée d’un coéquipier',
     alone: 'Isolée',
     thinLegend: 'Barre fine : frags du joueur pendant ces vies',
@@ -144,16 +133,13 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     info:
       'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge ' +
       'consommée), gardé sans servir, lâché ; barre fine : reste de l’équipe. Seules les familles tenues dans le ' +
-      'lobby sont listées ; le répulseur, sans mesure d’usage, n’a pas de ligne.',
+      'lobby sont listées.',
     used: 'Servi',
     kept: 'Gardé sans servir',
     dropped: 'Lâché',
     thinLegend: 'Barre fine : reste de l’équipe',
     rest: 'Reste de l’équipe',
-    unmeasuredNames: { grapple: 'Grappin', thruster: 'Propulseur' },
     sub: (objects, taken) => (objects > 0 ? `${objects} ${plural(objects, 'objet', 'objets')}, dont ${taken} pris sur la carte` : '0 objet'),
-    droppedSub: (n) => `${n} ${plural(n, 'lâché', 'lâchés')}`,
-    unmeasured: 'Non mesuré : ni prise ni usage publiés pour cette famille',
     zeroTip: (player, family) => `${family} : 0 objet pour ${player}`,
     segTip: (who, n, part, total, pct) => `${who}\n${n} ${PART_FR[part][n > 1 ? 1 : 0]} sur ${total} (${pct})`,
     restLine: (used, kept, dropped) =>
@@ -178,7 +164,7 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     winsFmt: (n) => `${n} W`,
     lossesFmt: (n) => `${n} L`,
     othersFmt: (n) => `${n} O`,
-    tipHead: (name, matches, filmed) => `${name} (${matches} ${plural(matches, 'match', 'matches')}, ${filmed} filmed)`,
+    tipHead: (name, matches) => `${name} (${matches} ${plural(matches, 'match', 'matches')})`,
   },
   playerFallback: 'Player',
   mine: {
@@ -196,13 +182,9 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
   },
   lives: {
     title: 'Isolation',
-    info: (unlocated, noRadar, unpublishable) =>
+    info:
       'Lives ended by a death, sorted by the distance to the nearest teammate at the moment of death (within ' +
-      'radar range or beyond); thin bar: kills made during those lives. ' +
-      (noRadar > 0
-        ? `Left out: lives with no teammate located (${enInt(unlocated)}), lives on a map with no known radar range (${enInt(noRadar)})`
-        : `Left out: lives with no teammate located (${enInt(unlocated)})`) +
-      (unpublishable > 0 ? `, lives from a match whose kill log is not publishable (${enInt(unpublishable)}).` : '.'),
+      'radar range or beyond); thin bar: kills made during those lives.',
     near: 'Within range of a teammate',
     alone: 'Isolated',
     thinLegend: 'Thin bar: the player’s kills during those lives',
@@ -216,17 +198,13 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     title: 'Equipment use',
     info:
       'Equipment held by the player (spawn equipment included), by family: used (wall placed, charge spent), ' +
-      'kept without use, dropped; thin bar: rest of the team. Only families held in the lobby are listed; ' +
-      'the repulsor, with no usage measure, has no row.',
+      'kept without use, dropped; thin bar: rest of the team. Only families held in the lobby are listed.',
     used: 'Used',
     kept: 'Kept without use',
     dropped: 'Dropped',
     thinLegend: 'Thin bar: rest of the team',
     rest: 'Rest of the team',
-    unmeasuredNames: { grapple: 'Grappleshot', thruster: 'Thruster' },
     sub: (objects, taken) => (objects > 0 ? `${objects} ${plural(objects, 'item', 'items')}, ${taken} picked up on the map` : '0 items'),
-    droppedSub: (n) => `${n} dropped`,
-    unmeasured: 'Not measured: neither pickup nor use published for this family',
     zeroTip: (player, family) => `${family}: 0 items for ${player}`,
     segTip: (who, n, part, total, pct) => `${who}\n${n} ${PART_EN[part][0]} of ${total} (${pct})`,
     restLine: (used, kept, dropped) => `rest of the team: ${used} used · ${kept} kept · ${dropped} dropped`,

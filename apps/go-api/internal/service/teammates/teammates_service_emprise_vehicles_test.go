@@ -96,8 +96,8 @@ func TestGetPage_Vehicules_UneLectureBorneeParLePerimetre(t *testing.T) {
 	if r == nil || r.Taken != (domain.SquadEmpriseCount{Us: 2, Them: 1}) {
 		t.Fatalf("ressource véhicules = %+v, attendu 2 / 1", r)
 	}
-	if b.Vehicles == nil || b.Vehicles.MatchesMeasured != 1 || b.Matches[0].Vehicles != domain.EmpriseVehiclesMeasured {
-		t.Errorf("couverture = %+v, match = %q", b.Vehicles, b.Matches[0].Vehicles)
+	if b.Matches[0].Vehicles != domain.EmpriseVehiclesMeasured {
+		t.Errorf("match = %q, attendu véhicules lus", b.Matches[0].Vehicles)
 	}
 }
 
@@ -118,8 +118,8 @@ func TestGetPage_Vehicules_IndependantsDuFilm(t *testing.T) {
 func TestGetPage_Vehicules_CapabilityAbsente(t *testing.T) {
 	var b *domain.SquadEmpriseBlock
 	logs := withCapturedLogs(t, func() { b = pageVehicules(t, true, nil) })
-	if b.Vehicles != nil || ressourceDuBloc(b, domain.EmpriseResourceVehicle) != nil || b.Matches[0].Vehicles != "" {
-		t.Errorf("ressource publiée sans capability : %+v", b.Vehicles)
+	if ressourceDuBloc(b, domain.EmpriseResourceVehicle) != nil || b.Matches[0].Vehicles != "" {
+		t.Errorf("ressource publiée sans capability : %q", b.Matches[0].Vehicles)
 	}
 	l := ligneDeLog(logs, "emprise_vehicules_capability_absente")
 	if !strings.Contains(l, `"level":"DEBUG"`) || !strings.Contains(l, games.ErrCapabilityNotSupported.Error()) {
@@ -136,12 +136,13 @@ func TestGetPage_Vehicules_DepotNonSupporte(t *testing.T) {
 	repo := &fakeVehicules{err: fmt.Errorf("lecture : %w", games.ErrCapabilityNotSupported)}
 	logs := withCapturedLogs(t, func() { b = pageVehicules(t, true, repo) })
 	l := ligneDeLog(logs, "emprise_vehicules_capability_absente")
-	if b.Vehicles != nil || !strings.Contains(l, `"level":"DEBUG"`) {
-		t.Errorf("couverture %+v, journal %q ; attendu absente et Debug", b.Vehicles, l)
+	if ressourceDuBloc(b, domain.EmpriseResourceVehicle) != nil || !strings.Contains(l, `"level":"DEBUG"`) {
+		t.Errorf("journal %q ; attendu ressource absente et Debug", l)
 	}
 }
 
-// Lecture en échec : ressource absente ET dite (jamais un zéro), journalisé en Error, la page reste servie.
+// Lecture en échec : ressource absente (jamais un zéro, jamais une raison écrite), journalisé en
+// Error, la page reste servie.
 func TestGetPage_Vehicules_LectureEnEchec(t *testing.T) {
 	var b *domain.SquadEmpriseBlock
 	logs := withCapturedLogs(t, func() { b = pageVehicules(t, true, &fakeVehicules{err: errors.New("base indisponible")}) })
@@ -149,9 +150,8 @@ func TestGetPage_Vehicules_LectureEnEchec(t *testing.T) {
 	if !strings.Contains(l, `"level":"ERROR"`) || !strings.Contains(l, "base indisponible") || !strings.Contains(l, `"page":"teammates"`) {
 		t.Errorf("journal attendu en Error avec la cause, obtenu : %q", l)
 	}
-	if b.Vehicles == nil || b.Vehicles.Unavailable != domain.EmpriseVehiclesLoadFailed ||
-		ressourceDuBloc(b, domain.EmpriseResourceVehicle) != nil {
-		t.Errorf("couverture = %+v, attendu l'échec dit et aucune ressource", b.Vehicles)
+	if ressourceDuBloc(b, domain.EmpriseResourceVehicle) != nil || b.Matches[0].Vehicles != "" {
+		t.Errorf("véhicules publiés malgré l'échec : %q", b.Matches[0].Vehicles)
 	}
 	if b.MatchesMeasured != 1 {
 		t.Errorf("le reste de l'Emprise doit rester servi : %+v", b)

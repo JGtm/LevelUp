@@ -29,7 +29,6 @@
 import { useMemo } from 'react'
 
 import { ChartCard } from '@/components/charts/ChartCard'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { titleWithInfo } from '@/components/ui/title-with-info'
@@ -131,8 +130,8 @@ export function SessionRangeCard({
     [serie, nuage, couleurs, encreSession, encrePeriode, yDomain, t, numFmt],
   )
 
-  if (block == null) return null
-  const vide = serie == null || serie.points.length === 0
+  // Sans point (aucune distance de frag sur la session), la carte n'est pas rendue : aucun texte ne dit l'absence.
+  if (block == null || serie == null || serie.points.length === 0) return null
 
   return (
     <SectionCard
@@ -145,60 +144,54 @@ export function SessionRangeCard({
       )}
     >
       <div className="space-y-2 px-3 py-2" data-testid="session-portee">
-        {vide ? (
-          <EmptyStateNotice title={t.cardRange} description={t.rangeEmpty} />
-        ) : (
-          <>
-            <ChartCard
-              series={chartSeries}
-              buildOption={buildOption}
-              height={compact ? 300 : 360}
-              frameless
+        <ChartCard
+          series={chartSeries}
+          buildOption={buildOption}
+          height={compact ? 300 : 360}
+          frameless
+        />
+        {/* Les quatre encodages qu'ECharts ne nomme pas : les deux appartenances, la
+            tendance et le point creux. */}
+        <div
+          className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-2xs text-muted-foreground"
+          data-testid="session-portee-legende"
+        >
+          {nuage.periode && (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block rounded-full"
+                style={{
+                  width: TAILLE_POINT_MIN,
+                  height: TAILLE_POINT_MIN,
+                  backgroundColor: tokenCssVar('zone-neutral'),
+                }}
+              />
+              {t.rangeLegendPeriod}
+            </span>
+          )}
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block rounded-full"
+              style={{
+                width: TAILLE_POINT_MIN,
+                height: TAILLE_POINT_MIN,
+                backgroundColor: tokenCssVar('squad-player-1'),
+              }}
             />
-            {/* Les quatre encodages qu'ECharts ne nomme pas : les deux appartenances, la
-                tendance et le point creux. */}
-            <div
-              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-2xs text-muted-foreground"
-              data-testid="session-portee-legende"
-            >
-              {nuage.periode && (
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block rounded-full"
-                    style={{
-                      width: TAILLE_POINT_MIN,
-                      height: TAILLE_POINT_MIN,
-                      backgroundColor: tokenCssVar('zone-neutral'),
-                    }}
-                  />
-                  {t.rangeLegendPeriod}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block rounded-full"
-                  style={{
-                    width: TAILLE_POINT_MIN,
-                    height: TAILLE_POINT_MIN,
-                    backgroundColor: tokenCssVar('squad-player-1'),
-                  }}
-                />
-                {t.rangeLegendSession}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-px w-5 bg-muted-foreground" />
-                {t.rangeLegendTrend(FENETRE_ROLE)}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block rounded-full border border-dashed border-muted-foreground"
-                  style={{ width: TAILLE_POINT_MIN, height: TAILLE_POINT_MIN }}
-                />
-                {t.rangeLowSample(PLANCHER_MESURE)}
-              </span>
-            </div>
-          </>
-        )}
+            {t.rangeLegendSession}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-px w-5 bg-muted-foreground" />
+            {t.rangeLegendTrend(FENETRE_ROLE)}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block rounded-full border border-dashed border-muted-foreground"
+              style={{ width: TAILLE_POINT_MIN, height: TAILLE_POINT_MIN }}
+            />
+            {t.rangeLowSample(PLANCHER_MESURE)}
+          </span>
+        </div>
       </div>
     </SectionCard>
   )

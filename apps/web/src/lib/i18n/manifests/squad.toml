@@ -662,8 +662,8 @@ fr = "Portée des engagements"
 en = "Engagement range"
 
 [squad.portee.help]
-fr = "L'écart est la distance médiane des frags d'un joueur sur un match, moins celle de tous les joueurs du lobby. Rapportée au lobby, elle ne dépend plus ni de la carte ni du mode : +6 m en arène et +6 m en BTB disent la même chose. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance et sans rôle."
-en = "The gap is a player's median kill distance on a match, minus that of every player in the lobby. Measured against the lobby, it no longer depends on the map or the mode: +6 m in an arena and +6 m in BTB say the same thing. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend and without a role."
+fr = "L'écart est la distance médiane des frags d'un joueur sur un match, moins celle de tous les joueurs du lobby. Rapportée au lobby, elle ne dépend plus ni de la carte ni du mode : +6 m en arène et +6 m en BTB disent la même chose. Un match sous {floor, number} frags donne un point creux, exclu de la tendance et sans rôle."
+en = "The gap is a player's median kill distance on a match, minus that of every player in the lobby. Measured against the lobby, it no longer depends on the map or the mode: +6 m in an arena and +6 m in BTB say the same thing. A match under {floor, number} kills gives a hollow dot, excluded from the trend and without a role."
 
 [squad.portee.x_axis]
 fr = "Matchs, du plus ancien au plus récent"
@@ -698,16 +698,16 @@ fr = "écart {delta} m"
 en = "gap {delta} m"
 
 [squad.portee.tooltip_measured]
-fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
-en = "{n, plural, one {# measured kill} other {# measured kills}}"
+fr = "{n, plural, one {# frag} other {# frags}}"
+en = "{n, plural, one {# kill} other {# kills}}"
 
 [squad.portee.empty_title]
-fr = "Aucune portée mesurée"
-en = "No range measured"
+fr = "Aucune distance de frag"
+en = "No kill distance"
 
 [squad.portee.empty_description]
-fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la portée ne se mesure pas."
-en = "No match in the selection has a decoded film: without kill positions, range cannot be measured."
+fr = "La portée des engagements se lit sur les matchs filmés."
+en = "Engagement range is read from filmed matches."
 
 [squad.portee.fold_tape]
 fr = "Bande des rôles"

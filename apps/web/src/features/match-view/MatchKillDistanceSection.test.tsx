@@ -99,7 +99,7 @@ afterEach(() => {
 })
 
 describe('MatchKillDistanceSection', () => {
-  it('rend UNE seule carte et nomme chaque joueur mesuré en légende', async () => {
+  it('rend UNE seule carte et nomme chaque joueur en légende', async () => {
     render(
       <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
     )
@@ -107,11 +107,10 @@ describe('MatchKillDistanceSection', () => {
     // La légende nomme les joueurs : c'est là que le gamertag tronqué sur l'axe se relit.
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
-    // La réserve de couverture est passée dans l'infobulle (i) du titre le 2026-09-21 (lot D) :
-    // elle n'est plus dans le document au repos, elle s'ouvre au survol.
-    expect(screen.queryByText(/couverture partielle/)).toBeNull()
+    // L'infobulle (i) du titre définit la grandeur tracée ; aucune réserve de couverture.
     fireEvent.mouseEnter(screen.getByRole('button', { name: /informations/i }))
-    expect(screen.getByRole('tooltip').textContent).toMatch(/couverture partielle/)
+    expect(screen.getByRole('tooltip').textContent).toBe(MATCH_VIEW_TEXT.fr.killDistanceReserve)
+    expect(screen.getByRole('tooltip').textContent).not.toMatch(/couverture|mesur/)
   })
 
   it('replie sur le xuid quand le joueur est absent du scoreboard', async () => {
@@ -119,14 +118,15 @@ describe('MatchKillDistanceSection', () => {
     await waitFor(() => expect(screen.getByText('xuid(1)')).toBeInTheDocument())
   })
 
-  // PORTE 2 (le MATCH) : le titre mesure les positions, mais pas sur CE match-là.
-  it("SANS frag mesuré, la section DIT pourquoi au lieu de disparaître (retour user 02/09)", async () => {
+  // PORTE 2 (le MATCH) : le titre produit les positions, mais pas sur CE match-là — la section
+  // n'est pas rendue, aucun texte ne dit l'absence (règle du 2026-10-09).
+  it('sans distance sur ce match, la section n’est pas rendue', async () => {
     for (const players of [[] as MatchKillDistancePlayer[], null, undefined]) {
-      const { unmount } = render(
+      const { container, unmount } = render(
         <MatchKillDistanceSection players={players} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
       )
-      await waitFor(() => expect(screen.getByText('Distance par arme')).toBeInTheDocument())
-      expect(screen.getByText(/Distances non mesurées sur ce match/)).toBeInTheDocument()
+      await waitFor(() => expect(apiGet).toHaveBeenCalled())
+      expect(container.firstChild).toBeNull()
       unmount()
     }
   })

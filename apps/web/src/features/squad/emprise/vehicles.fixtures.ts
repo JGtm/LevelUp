@@ -42,7 +42,7 @@ function withVehicles(m: SquadEmpriseMatch): SquadEmpriseMatch {
     case 'm5':
       return { ...m, vehicles: 'measured', resources: [...(m.resources ?? []), matchResource([EVENING_OBJECTS[1], EVENING_OBJECTS[2], EVENING_OBJECTS[3]])] }
     case 'm6':
-      return { ...m, vehicles: 'not_measured', vehicles_reason: 'schema_before_67' }
+      return { ...m, vehicles: 'not_measured' }
     default:
       return { ...m, vehicles: 'measured' }
   }
@@ -81,17 +81,5 @@ export const VEHICLES_2209: SquadEmpriseBlock = {
     ...EMPRISE_2209.habit!,
     current: { ...EMPRISE_2209.habit!.current, shares: [...(EMPRISE_2209.habit!.current.shares ?? []), share(5, 3)] },
     previous: (EMPRISE_2209.habit!.previous ?? []).map((e, i) => ({ ...e, shares: [...(e.shares ?? []), share(2 + i, 3)] })),
-  },
-  vehicles: {
-    matches_measured: 6,
-    matches_not_measured: 1,
-    episodes_read: 20,
-    episodes_unnamed: 2,
-    episodes_no_camp: 0,
-    proximity_episodes: 6,
-    frags_matches: 6,
-    frags_total: 23,
-    frags_paired: 11,
-    paired_share: 11 / 23,
   },
 }

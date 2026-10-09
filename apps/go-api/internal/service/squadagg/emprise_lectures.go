@@ -119,8 +119,8 @@ func (l EmpriseLecteur) Film(
 	ids = append(ids, extras...)
 	tiers, err := repo.LoadPadTiers(ctx, ids)
 	if err != nil {
-		// Les niveaux dégradent SEULS : bonus et feuille restent, armes spéciales et râteliers se
-		// lisent « non mesurés ».
+		// Les niveaux dégradent SEULS : bonus et feuille restent, armes spéciales et râteliers
+		// restent en cases vides.
 		slog.ErrorContext(ctx, "emprise_niveaux_en_echec",
 			"page", l.Page, "player", l.Player, "matchs", len(ids), "err", err)
 		return film, ""
@@ -163,16 +163,16 @@ func (l EmpriseLecteur) raisonFilm(ctx context.Context, err error, n int) string
 }
 
 // Vehicules charge la ressource véhicules des matchs `ids` (périmètre ET habitude) et les noms des
-// familles qualifiées. (nil, "", nil) quand le titre ne la mesure pas (repo nil ou capability non
-// supportée) ; lecture en échec : EmpriseVehiclesLoadFailed, jamais un zéro.
+// familles qualifiées. (nil, nil) quand le titre ne la mesure pas (repo nil ou capability non
+// supportée) ou que la lecture échoue (journalisée) : la ressource est alors absente, jamais un zéro.
 func (l EmpriseLecteur) Vehicules(
 	ctx context.Context, repo port.SquadVehicleRepository, ids []string, playerXUID, locale string,
-) (*squademprise.VehicleRead, string, map[string]string) {
+) (*squademprise.VehicleRead, map[string]string) {
 	if repo == nil {
 		slog.DebugContext(ctx, "emprise_vehicules_capability_absente",
 			"page", l.Page, "player", l.Player, "capability", string(games.CapFilmVehicleUsage),
 			"err", games.ErrCapabilityNotSupported)
-		return nil, "", nil
+		return nil, nil
 	}
 	defer timing.FromContext(ctx).Section("emprise_vehicules")()
 	read, err := repo.LoadVehicleUsage(ctx, ids, playerXUID)
@@ -180,16 +180,16 @@ func (l EmpriseLecteur) Vehicules(
 	case errors.Is(err, games.ErrCapabilityNotSupported):
 		slog.DebugContext(ctx, "emprise_vehicules_capability_absente",
 			"page", l.Page, "player", l.Player, "capability", string(games.CapFilmVehicleUsage), "err", err)
-		return nil, "", nil
+		return nil, nil
 	case err != nil:
 		slog.ErrorContext(ctx, "emprise_vehicules_en_echec",
 			"page", l.Page, "player", l.Player, "matchs", len(ids), "err", err)
-		return nil, domain.EmpriseVehiclesLoadFailed, nil
+		return nil, nil
 	}
 	slog.DebugContext(ctx, "emprise_vehicules",
 		"page", l.Page, "player", l.Player, "matchs", len(ids), "passes", len(read.Passes),
 		"prises", len(read.Rows), "matchs_avec_frags", len(read.EventsRead))
-	return &read, "", VehicleFamilyLabels(ctx, l.RepoRoot, l.TitleSlug, locale)
+	return &read, VehicleFamilyLabels(ctx, l.RepoRoot, l.TitleSlug, locale)
 }
 
 // EmpriseMatchIDs — les identifiants d'une liste de matchs de l'Emprise, dans l'ordre.

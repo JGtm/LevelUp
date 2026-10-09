@@ -82,7 +82,6 @@ function useRangeOption({
         top: names.a,
         bottom: names.b,
         percentiles: text.weaponsPercentiles,
-        noMeasure: text.weaponsNoMeasure,
         // Min et max observés dans l'infobulle SEULEMENT (D5) — jamais tracés.
         observed: text.weaponsObserved,
       },
@@ -93,9 +92,8 @@ function useRangeOption({
 /**
  * RangeChart — UN graphe : un côté de mesure, deux joueurs superposés.
  *
- * Sous le graphe, les DEUX couvertures (« N frags mesurés sur M ») et les rôles écartés par le
- * seuil, NOMMÉS par joueur (D9) : un seuil qui cache en silence ferait croire que le rôle n'a
- * jamais servi.
+ * Le graphe et sa légende ; aucune couverture écrite (aucun inconnu à l'écran). Sans rôle au-dessus
+ * du seuil, une phrase dit qu'il n'y a pas encore assez de frags pour tracer une portée.
  */
 function RangeChart({
   title,

@@ -114,14 +114,6 @@ export interface EmpriseText {
     more: string
     less: string
     nothing: string
-    noFilm: string
-    noFilmCell: string
-    noFilmTip: string
-    noTeamCell: string
-    noTeamTip: string
-    untieredCell: string
-    untieredTip: string
-    unestablishedTip: string
     killsName: string
     killsAbsent: string
     racks: string
@@ -213,7 +205,7 @@ const FR: BaseEmpriseText = {
     title: 'Contrôle des ressources',
     info:
       'Prises de chaque ressource par l’équipe et par l’adversaire, en comptes, sur les matchs filmés de la ' +
-      'soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
+      'soirée ; trait orange : 50 %.',
     ariaLabel: 'Part de l’équipe dans les prises de chaque ressource, face à l’adversaire',
     segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource}${sub ? ` (${sub})` : ''}\n${value} sur ${tot} (${pct})`,
   },
@@ -256,7 +248,7 @@ const FR: BaseEmpriseText = {
     info:
       'Barre épaisse : part de l’équipe dans les frags obtenus avec chaque ressource ; barre fine : part de ' +
       'l’équipe dans l’exposition (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un ' +
-      'véhicule). Périmètre : les matchs de la soirée où l’exposition est mesurée.',
+      'véhicule), sur la soirée.',
     ariaLabel: 'Part de l’équipe dans les frags obtenus avec chaque ressource, et dans l’exposition',
     thinLegend: 'Barre fine : temps d’effet, prises ou temps à bord',
     exposure: {
@@ -294,7 +286,7 @@ const FR: BaseEmpriseText = {
     medianTip: (resource, value) => `${resource}\nMédiane des soirées précédentes : ${value}`,
     notComparable: 'Autres modes que ce soir',
     notComparableTip: (families) => `Autres modes que ce soir${families ? ` (${families})` : ''} : hors médiane`,
-    empty: { title: 'Aucune prise mesurée', description: 'Aucune soirée de la composition n’a de prise lue au film.' },
+    empty: { title: 'Aucune prise', description: 'Aucune prise de ressource sur les matchs filmés des soirées de la composition.' },
   },
   grid: {
     title: 'Contrôle des ressources, par match',
@@ -304,14 +296,6 @@ const FR: BaseEmpriseText = {
     more: 'Plus que l’adversaire',
     less: 'Moins',
     nothing: 'Rien à prendre',
-    noFilm: 'Sans film',
-    noFilmCell: 'sans film',
-    noFilmTip: 'Film non décodé : rien à lire pour cette ligne.',
-    noTeamCell: 'équipe inconnue',
-    noTeamTip: 'Équipe inconnue sur ce match (chacun pour soi, ou équipe absente de la feuille de match) : rien ne se partage entre les deux équipes.',
-    untieredCell: 'non classé',
-    untieredTip: 'Niveaux de socle non mesurés sur ce match : armes spéciales et armes de râtelier ne se séparent pas.',
-    unestablishedTip: 'Carte absente de la référence des socles : armes spéciales et armes de râtelier ne se séparent pas.',
     killsName: 'Frags avec arme spéciale',
     killsAbsent: 'Aucun frag à l’arme spéciale.',
     racks: 'Armes de râtelier',
@@ -376,7 +360,7 @@ const EN: BaseEmpriseText = {
     title: 'Resource control',
     info:
       'Pickups of each resource by the team and by the opponent, in counts, over the session’s filmed ' +
-      'matches; orange line: 50%. Power-ups with no known picker count for neither team.',
+      'matches; orange line: 50%.',
     ariaLabel: 'The team’s share of each resource’s pickups, against the opponent',
     segmentTip: (side, resource, sub, value, tot, pct) => `${side} · ${resource}${sub ? ` (${sub})` : ''}\n${value} of ${tot} (${pct})`,
   },
@@ -417,8 +401,7 @@ const EN: BaseEmpriseText = {
     title: 'Kills by resource',
     info:
       'Thick bar: the team’s share of the kills made with each resource; thin bar: the team’s share of the ' +
-      'exposure (effect time for a power-up, pickups for a power weapon, time aboard a vehicle). Scope: the ' +
-      'session’s matches where the exposure is measured.',
+      'exposure (effect time for a power-up, pickups for a power weapon, time aboard a vehicle), over the session.',
     ariaLabel: 'The team’s share of the kills made with each resource, and of the exposure',
     thinLegend: 'Thin bar: effect time, pickups or time aboard',
     exposure: {
@@ -456,7 +439,7 @@ const EN: BaseEmpriseText = {
     medianTip: (resource, value) => `${resource}\nMedian of the previous sessions: ${value}`,
     notComparable: 'Other modes than tonight',
     notComparableTip: (families) => `Other modes than tonight${families ? ` (${families})` : ''}: left out of the median`,
-    empty: { title: 'No pickup measured', description: 'No session of the line-up has pickups read from the film.' },
+    empty: { title: 'No pickups', description: 'No resource pickup in the filmed matches of the line-up’s sessions.' },
   },
   grid: {
     title: 'Resource control, by match',
@@ -466,14 +449,6 @@ const EN: BaseEmpriseText = {
     more: 'More than the opponent',
     less: 'Less',
     nothing: 'Nothing to pick up',
-    noFilm: 'No film',
-    noFilmCell: 'no film',
-    noFilmTip: 'Film not decoded: nothing to read for this row.',
-    noTeamCell: 'team unknown',
-    noTeamTip: 'Team unknown in this match (free-for-all, or team missing from the match sheet): nothing splits between the two teams.',
-    untieredCell: 'unsorted',
-    untieredTip: 'Pad levels not measured for this match: power weapons and rack weapons can’t be told apart.',
-    unestablishedTip: 'Map missing from the pad reference: power weapons and rack weapons can’t be told apart.',
     killsName: 'Kills with power weapons',
     killsAbsent: 'No power weapon kill.',
     racks: 'Rack weapons',

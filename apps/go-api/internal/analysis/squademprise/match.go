@@ -103,8 +103,6 @@ type matchTally struct {
 	// pwkPrises : les prises du rendement quand pwk vient du journal (familles comptées,
 	// special_frags.go) ; nil = toutes les prises de puissance du match.
 	pwkPrises *domain.SquadEmpriseCount
-	// unclassified : les prises sur un emplacement non identifié ; nil sans ligne `non_classe`.
-	unclassified *domain.SquadEmpriseCount
 	// veh : les véhicules du match (vehicles.go), indépendants du film.
 	veh vehicleTally
 }
@@ -134,7 +132,6 @@ func tallyMatch(id string, ix *index) matchTally {
 	}
 	c := camp{ours: ours, teamOf: ix.tc.TeamOf[id], squad: ix.squad}
 	tallyBonus(&t, c, film, ix.players[id])
-	t.unclassified = unclassifiedOf(c, ix.tiers[id])
 	if t.tiers == domain.EmpriseTiersMeasured {
 		tallyTiers(&t, c, ix.tiers[id])
 		if ix.journalRead[id] && len(ix.weapons) > 0 {
@@ -210,26 +207,6 @@ func tallyTiers(t *matchTally, c camp, rows []sessionusage.PadTierRow) {
 	}
 }
 
-// unclassifiedOf compte les prises sur un emplacement non identifié (niveau `non_classe`), équipe
-// contre adversaire, quel que soit l'état des niveaux du match ; nil sans aucune.
-func unclassifiedOf(c camp, rows []sessionusage.PadTierRow) *domain.SquadEmpriseCount {
-	var n domain.SquadEmpriseCount
-	for _, r := range rows {
-		if r.Tier != domain.PadTierUnclassified || r.Pickups <= 0 {
-			continue
-		}
-		if us, _ := c.side(r.XUID); us {
-			n.Us += r.Pickups
-		} else {
-			n.Them += r.Pickups
-		}
-	}
-	if n.Us+n.Them == 0 {
-		return nil
-	}
-	return &n
-}
-
 // tiersState — l'état des niveaux de socle d'un match. Les valeurs de match (socles vus,
 // socles confirmés) sont identiques sur toutes ses lignes.
 func tiersState(rows []sessionusage.PadTierRow) string {
@@ -278,7 +255,7 @@ func publierMatch(m Match, t matchTally, in *Input) domain.SquadEmpriseMatch {
 	pm := domain.SquadEmpriseMatch{
 		MatchID: m.MatchID, HasFilm: t.hasFilm, TeamKnown: t.teamKnown,
 		PowerWeaponKills: t.pwk, Resources: []domain.SquadEmpriseMatchResource{},
-		Vehicles: t.veh.state, VehiclesReason: t.veh.reason, UnclassifiedPickups: t.unclassified,
+		Vehicles: t.veh.state,
 	}
 	if t.hasFilm {
 		pm.Tiers = t.tiers

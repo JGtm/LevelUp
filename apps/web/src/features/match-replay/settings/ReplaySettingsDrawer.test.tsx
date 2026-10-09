@@ -439,14 +439,12 @@ describe('ReplaySettingsDrawer — effets d événement', () => {
     expect(onToggleShotFx).not.toHaveBeenCalled()
   })
 
-  it('la RÉSERVE de couverture des tirs est à l écran, pas dans un commentaire', () => {
-    // Elle est la raison d'être du (i) demandé le 16/08 : le film n'enregistre un tir que
-    // lorsqu'un dégât est appliqué, donc l'absence d'éclair ne veut pas dire l'absence de tir.
+  it('le (i) des effets de tir dit ce qui est dessiné, jamais une couverture', () => {
+    // Le (i) demandé le 16/08 dit la règle du dessin (un tir qui applique un dégât) ; depuis le
+    // 2026-10-09, il ne parle plus de couverture (aucun inconnu à l'écran).
     renderDrawer()
-    const mark = screen.getByRole('img', {
-      name: /couverture des tirs peut ne pas être totale/i,
-    })
-    expect(mark).toHaveAttribute('title', expect.stringContaining("dégât est appliqué"))
+    const mark = screen.getByRole('img', { name: /tir s'affiche lorsqu'il applique un dégât/i })
+    expect(mark.getAttribute('title') ?? '').not.toMatch(/couverture/i)
   })
 })
 

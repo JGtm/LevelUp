@@ -51,9 +51,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedEmpty: 'Rien à cet instant du match.',
     killFeedUnknownWeapon: 'Arme non identifiée',
     killFeedNoAssistHint:
-      'Mort sans assistant — MESURÉ : la mort porte son événement dans le film, et il ne déclare personne.',
+      'Mort sans assistant : la mort porte son événement dans le film, et il ne déclare personne.',
     killFeedAssistHint:
-      'Assistant lu dans le film, avec sa part de dégâts quand elle est mesurée. Les parts ne sont pas bornées à 100 %.',
+      'Assistant lu dans le film, avec sa part de dégâts. Les parts ne sont pas bornées à 100 %.',
     killFeedKillerShare: (pct) => `tueur ${pct} %`,
     killFeedAssistMark: 'Assistance',
     killFeedAssistShare: (pct) => `${pct} %`,
@@ -132,7 +132,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerShotFxHint:
       'Éclair de bouche sur chaque tir décodé, dans la teinte de la décharge (cinétique, plasma, énergie).',
     layerShotFxCoverage:
-      "La couverture des tirs peut ne pas être totale : le film n'enregistre un tir que lorsqu'un dégât est appliqué.",
+      "Un tir s'affiche lorsqu'il applique un dégât.",
     layerKillFx: 'Effets de mort',
     layerKillFxHint:
       "Trait orienté du tueur vers la victime, à l'instant de l'élimination. Allumé par défaut.",
@@ -155,13 +155,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     placementUnnamedLabel: "Objet d'équipement non identifié",
     placementOwnerFmt: (name) => `Posé par ${name}`,
-    placementOwnerUnknown: 'Poseur non mesuré',
     placementDroppedLabel: 'Objet lâché au sol',
     placementDroppedOwnerFmt: (name) => `Lâché par ${name}`,
     placementDroppedAtFmt: (clock) => `Au sol depuis ${clock}`,
     layerWeaponPads: "Emplacements d'arme",
     layerWeaponPadsHint:
-      "Les endroits où une arme réapparaît au fil du match, mesurés sur ce match : l'arme y est dessinée en grand quand elle change une partie (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, surbouclier, camouflage), en petit sinon. Socle au sol ou râtelier mural : la mesure ne porte qu'une position, elle ne les distingue pas. Le film ne date pas l'instant du ramassage — l'emplacement reste donc INCERTAIN pendant l'intervalle des relevés, environ vingt secondes, plutôt que de s'éteindre à un instant inventé. Un compte à rebours n'apparaît que là où le délai de réapparition a pu être établi ; ailleurs, aucun chiffre. Qui a pris l'arme n'est jamais affiché : la mesure n'atteint pas le niveau de certitude exigé.",
+      "Les endroits où une arme réapparaît au fil du match : l'arme y est dessinée en grand quand elle change une partie (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, surbouclier, camouflage), en petit sinon. Socle au sol et râtelier mural partagent le même dessin. Après un ramassage, l'emplacement s'atténue pendant une vingtaine de secondes. Un compte à rebours accompagne la réapparition de l'arme.",
     padEquipmentFamily: {
       powerup_overshield: 'Surbouclier',
       powerup_camo: 'Camouflage actif',
@@ -171,7 +170,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Zones et points d'objectif du mode joué (collines, bases, zones de capture, socles et points de livraison), aux couleurs des camps. Les anneaux autour d'un point et les contours autour d'une zone indiquent l'étage, comme pour les joueurs : plus il y en a, plus c'est haut.",
     layerFlagCarries: 'Drapeaux',
     layerFlagCarriesHint:
-      "La vie des drapeaux de capture, lue dans le film : porté (le drapeau suit son porteur image par image), au sol à la dernière position mesurée, ou à sa base. La base garde un drapeau atténué tant que le sien est ailleurs. Un portage dont RIEN ne date la fin s'affiche atténué lui aussi : son intervalle court jusqu'à la fin du film, c'est une borne haute et non une mesure.",
+      "La vie des drapeaux de capture, lue dans le film : porté (le drapeau suit son porteur image par image), au sol à sa dernière position, ou à sa base. La base garde un drapeau atténué tant que le sien est ailleurs. Un portage qui court jusqu'à la fin du film s'affiche atténué lui aussi.",
     flagSide: {
       ally: 'Drapeau allié',
       enemy: 'Drapeau adverse',
@@ -187,7 +186,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagSinceFmt: (seconds) => `Depuis ${Math.round(seconds)} s`,
     flagReturnFmt: (progress) => `Retour ${Math.round(progress * 100)} %`,
     flagOpenNote:
-      "Rien ne date la fin de ce portage : l'intervalle court jusqu'à la fin du film — c'est une borne haute, pas une durée mesurée.",
+      "Ce portage court jusqu'à la fin du film.",
     layerVipCrown: 'VIP',
     layerVipCrownHint:
       "La couronne du VIP courant, lue dans le film : chaque désignation ouvre une période de port, fermée par la mort du VIP ou la désignation suivante. La couronne suit son porteur image par image. Un port dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure.",
@@ -222,7 +221,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     vehicleCycleTitle: 'Emplacement de véhicule',
     vehicleCycleFmt: (medianS, p10S, p90S) =>
       `Cycle ≈ ${Math.round(medianS)} s (${Math.round(p10S)} à ${Math.round(p90S)})`,
-    vehicleCycleGapsFmt: (gaps) => `Mesuré sur ${gaps} cycle${gaps > 1 ? 's' : ''}`,
+    vehicleCycleGapsFmt: (gaps) => `Sur ${gaps} cycle${gaps > 1 ? 's' : ''}`,
     vehicleCycleOccupied: 'Véhicule présent',
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
@@ -316,7 +315,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     healthLabel: 'Santé',
     shieldLabel: 'Bouclier',
     abilityLabel: "Capacité d'armure équipée",
-    loadoutUnread: 'armes non lues sur cette vie',
     loadoutAge: 'Armes lues il y a',
     loadoutBirth: 'Dotation de naissance',
     loadoutAhead:
@@ -348,7 +346,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
-    abilityUnread: 'capacité non lue sur cette vie',
     abilityChargesFull: 'plein',
     abilityChargesFullHint:
       'Charges pleines — le film ne transmet une lecture qu’après le premier usage.',
@@ -376,7 +373,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       title: "Usages d'équipement",
       viewByPlayer: "Usage d'équipements, par joueur",
       infoByPlayer:
-        "Objets pris par chaque joueur du match, une pile par issue : servi (activé pour un bonus, posé pour le mur, charge consommée pour le reste), gardé sans servir, lâché en mourant ; le grappin compte ses tractions. Chaque colonne a sa propre échelle, et le répulseur n'en a pas : aucun canal du film ne mesure son usage.",
+        "Objets pris par chaque joueur du match, une pile par issue : servi (activé pour un bonus, posé pour le mur, charge consommée pour le reste), gardé sans servir, lâché en mourant ; le grappin compte ses tractions. Chaque colonne a sa propre échelle.",
       legendUsed: 'Servi',
       legendKept: 'Gardé sans servir',
       legendDropped: 'Lâché',
@@ -387,8 +384,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeKeptFmt: (count) => `Gardé sans servir : ${count}`,
       outcomeDroppedFmt: (count) => `Lâché : ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} objet${count > 1 ? 's' : ''} pris`,
-      coverageReserveFmt: (count) =>
-        `${count} usage${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} ${count > 1 ? 'restent' : 'reste'} hors de la grille : le film n'en nomme ni l'auteur ni l'origine.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
@@ -428,7 +423,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
-    ammoUnread: 'munitions non lues sur cette vie',
     inventoryDeadLabel: 'Mort',
     inventoryDeadHint:
       'Lecture vide, et le fil des éliminations donne le joueur pour mort — lue il y a',
@@ -474,9 +468,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     killFeedEmpty: 'Nothing at this point of the match.',
     killFeedUnknownWeapon: 'Unidentified weapon',
     killFeedNoAssistHint:
-      'Death without an assist — MEASURED: the death carries its event in the film, and it names no one.',
+      'Death without an assist: the death carries its event in the film, and it names no one.',
     killFeedAssistHint:
-      'Assist read from the film, with its damage share when measured. Shares are not capped at 100%.',
+      'Assist read from the film, with its damage share. Shares are not capped at 100%.',
     killFeedKillerShare: (pct) => `killer ${pct}%`,
     killFeedAssistMark: 'Assist',
     killFeedAssistShare: (pct) => `${pct}%`,
@@ -553,7 +547,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerShotFxHint:
       'Muzzle flash on every decoded shot, in the tint of the discharge (kinetic, plasma, energy).',
     layerShotFxCoverage:
-      'Shot coverage may not be complete: the film only records a shot when damage is applied.',
+      'A shot shows when it applies damage.',
     layerKillFx: 'Kill effects',
     layerKillFxHint:
       'Line drawn from killer to victim at the moment of the kill. On by default.',
@@ -576,13 +570,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     placementUnnamedLabel: 'Unidentified equipment object',
     placementOwnerFmt: (name) => `Deployed by ${name}`,
-    placementOwnerUnknown: 'Deployer not measured',
     placementDroppedLabel: 'Object dropped on the ground',
     placementDroppedOwnerFmt: (name) => `Dropped by ${name}`,
     placementDroppedAtFmt: (clock) => `On the ground since ${clock}`,
     layerWeaponPads: 'Weapon spots',
     layerWeaponPadsHint:
-      'The spots where a weapon reappears during the match, measured on this match: the weapon is drawn large when it changes a game (sniper, sword, hammer, rockets, skewer, cindershot, overshield, camo), small otherwise. Floor pad or wall rack: the measurement only carries a position, it does not tell them apart. The film never dates the moment of pickup — the spot therefore stays UNCERTAIN for the sampling interval, about twenty seconds, rather than going dark at an invented instant. A countdown only appears where the respawn delay could be established; nowhere else. Who took the weapon is never shown: the measurement falls short of the required certainty.',
+      'The spots where a weapon reappears during the match: the weapon is drawn large when it changes a game (sniper, sword, hammer, rockets, skewer, cindershot, overshield, camo), small otherwise. Floor pads and wall racks share the same drawing. After a pickup, the spot fades for about twenty seconds. A countdown comes with the weapon’s respawn.',
     padEquipmentFamily: {
       powerup_overshield: 'Overshield',
       powerup_camo: 'Active camouflage',
@@ -592,7 +585,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Zones and objective points of the mode being played (hills, bases, capture zones, stands and delivery points), in the colours of the teams. The rings around a point and the outlines around a zone show the floor, as for players: the more there are, the higher it is.",
     layerFlagCarries: 'Flags',
     layerFlagCarriesHint:
-      'The life of capture flags, read from the film: carried (the flag follows its carrier frame by frame), on the ground at the last measured position, or at its base. A base keeps a faded flag for as long as its own is elsewhere. A carry whose end NOTHING dates is faded too: its interval runs to the end of the film, an upper bound rather than a measurement.',
+      'The life of capture flags, read from the film: carried (the flag follows its carrier frame by frame), on the ground at its last position, or at its base. A base keeps a faded flag for as long as its own is elsewhere. A carry that runs to the end of the film is faded too.',
     flagSide: {
       ally: 'Allied flag',
       enemy: 'Enemy flag',
@@ -608,7 +601,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagSinceFmt: (seconds) => `For ${Math.round(seconds)} s`,
     flagReturnFmt: (progress) => `Return ${Math.round(progress * 100)}%`,
     flagOpenNote:
-      'Nothing dates the end of this carry: the interval runs to the end of the film — an upper bound, not a measured duration.',
+      'This carry runs to the end of the film.',
     layerVipCrown: 'VIP',
     layerVipCrownHint:
       'The crown of the current VIP, read from the film: each selection opens a wearing period, closed by the VIP’s death or the next selection. The crown follows its bearer frame by frame. A wearing whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement.',
@@ -642,7 +635,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     vehicleCycleTitle: 'Vehicle spawn point',
     vehicleCycleFmt: (medianS, p10S, p90S) =>
       `Cycle ≈ ${Math.round(medianS)} s (${Math.round(p10S)} to ${Math.round(p90S)})`,
-    vehicleCycleGapsFmt: (gaps) => `Measured over ${gaps} cycle${gaps > 1 ? 's' : ''}`,
+    vehicleCycleGapsFmt: (gaps) => `Over ${gaps} cycle${gaps > 1 ? 's' : ''}`,
     vehicleCycleOccupied: 'Vehicle present',
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
@@ -735,7 +728,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     healthLabel: 'Health',
     shieldLabel: 'Shield',
     abilityLabel: 'Equipped armor ability',
-    loadoutUnread: 'weapons not read on this life',
     loadoutAge: 'Weapons read',
     loadoutBirth: 'Spawn loadout',
     loadoutAhead: 'Weapons from the first keyframe of this life, read in',
@@ -766,7 +758,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',
-    abilityUnread: 'ability not read on this life',
     abilityChargesFull: 'full',
     abilityChargesFullHint:
       'Charges full — the film only transmits a reading after the first use.',
@@ -794,7 +785,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       title: 'Equipment usage',
       viewByPlayer: 'Equipment use, by player',
       infoByPlayer:
-        'Objects taken by each player of the match, one stack per outcome: used (activated for a power-up, placed for the drop wall, charge spent for the rest), kept without use, dropped on death; the grappleshot counts its pulls. Each column has its own scale, and the repulsor has none: no channel of the film measures its use.',
+        'Objects taken by each player of the match, one stack per outcome: used (activated for a power-up, placed for the drop wall, charge spent for the rest), kept without use, dropped on death; the grappleshot counts its pulls. Each column has its own scale.',
       legendUsed: 'Used',
       legendKept: 'Kept without use',
       legendDropped: 'Dropped',
@@ -805,8 +796,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       outcomeKeptFmt: (count) => `Kept without use: ${count}`,
       outcomeDroppedFmt: (count) => `Dropped: ${count}`,
       outcomeTotalTakenFmt: (count) => `${count} object${count > 1 ? 's' : ''} taken`,
-      coverageReserveFmt: (count) =>
-        `${count} measured usage${count > 1 ? 's' : ''} ${count > 1 ? 'stay' : 'stays'} outside the grid: the film names neither their author nor their origin.`,
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,
@@ -846,7 +835,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',
-    ammoUnread: 'ammo not read on this life',
     inventoryDeadLabel: 'Dead',
     inventoryDeadHint:
       'Empty reading, and the player is dead according to the kill feed — taken',

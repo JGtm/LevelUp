@@ -71,26 +71,24 @@ export function soloEmprise(): SoloEmpriseBlock {
     equipment: {
       matches_measured: 3,
       families: [
-        { family: 'grapple', measured: false, dropped_me: 84, dropped_lobby: 130 },
         {
-          family: 'wall', measured: true, me: { taken: 23, used: 52, kept: 0, dropped: 32 }, rest: { taken: 60, used: 146, kept: 7, dropped: 151 },
+          family: 'wall', me: { taken: 23, used: 52, kept: 0, dropped: 32 }, rest: { taken: 60, used: 146, kept: 7, dropped: 151 },
           lobby: { taken: 120, used: 400, kept: 10, dropped: 300 },
         },
         {
-          family: 'sensor', measured: true, me: { taken: 12, used: 6, kept: 1, dropped: 54 }, rest: { taken: 30, used: 16, kept: 4, dropped: 183 },
+          family: 'sensor', me: { taken: 12, used: 6, kept: 1, dropped: 54 }, rest: { taken: 30, used: 16, kept: 4, dropped: 183 },
           lobby: { taken: 50, used: 30, kept: 6, dropped: 300 },
         },
         // Tenue par le seul adversaire : gardée, mes comptes et ceux de mon camp à zéro.
         {
-          family: 'shroud_screen', measured: true, me: { taken: 0, used: 0, kept: 0, dropped: 0 }, rest: { taken: 0, used: 0, kept: 0, dropped: 0 },
+          family: 'shroud_screen', me: { taken: 0, used: 0, kept: 0, dropped: 0 }, rest: { taken: 0, used: 0, kept: 0, dropped: 0 },
           lobby: { taken: 2, used: 3, kept: 0, dropped: 1 },
         },
         // Tenue par personne dans le lobby : retirée.
         {
-          family: 'repair_field', measured: true, me: { taken: 0, used: 0, kept: 0, dropped: 0 }, rest: { taken: 0, used: 0, kept: 0, dropped: 0 },
+          family: 'repair_field', me: { taken: 0, used: 0, kept: 0, dropped: 0 }, rest: { taken: 0, used: 0, kept: 0, dropped: 0 },
           lobby: { taken: 0, used: 0, kept: 0, dropped: 0 },
         },
-        { family: 'thruster', measured: false, dropped_me: 65, dropped_lobby: 90 },
       ],
     },
   } as SoloEmpriseBlock
@@ -115,9 +113,6 @@ export function lives(): TimeseriesLivesNearTeammate {
   return {
     near: { lives: 1558, kills: 1250 },
     alone: { lives: 301, kills: 262 },
-    excluded_unlocated: 59,
-    excluded_no_radar: 0,
-    excluded_unpublishable: 0,
     matches_read: 4,
     matches_without_radar: 0,
   }

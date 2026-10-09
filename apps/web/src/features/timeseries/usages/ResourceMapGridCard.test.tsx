@@ -42,12 +42,12 @@ describe('ResourceMapGridCard', () => {
     expect(text('usages-map-head-others')).toBe('Autres cartes3 cartes · 1 match0 V · 0 D · 1 A')
   })
 
-  it('cases : valeur, non classé (sans niveaux), sans film', () => {
+  it('cases : valeur, puis case vide sans texte (sans niveaux, sans film)', () => {
     renderCard()
     const cells = Array.from(screen.getByTestId('emprise-grid-table').querySelectorAll('[data-cell]')).map((c) => c.getAttribute('data-cell'))
     // Bonus (3 colonnes), camouflage (3), armes spéciales (3), frags aux armes spéciales (3), râteliers repliés.
-    expect(cells.slice(0, 3)).toEqual(['value', 'value', 'nofilm'])
-    expect(cells).toContain('untiered')
+    expect(cells.slice(0, 3)).toEqual(['value', 'value', 'blank'])
+    expect(cells.filter((c) => c === 'blank').length).toBeGreaterThan(1)
   })
 
   it('infobulle : l’en-tête de la carte, puis « Équipe : … »', () => {
@@ -55,7 +55,8 @@ describe('ResourceMapGridCard', () => {
     const camo = Array.from(screen.getByTestId('emprise-grid-table').querySelectorAll('[data-cell="value"]'))[2]
     fireEvent.mouseEnter(camo.parentElement!)
     const tip = screen.getByRole('tooltip').textContent ?? ''
-    expect(tip).toContain('Carte Alpha (2 matchs, 2 filmés)')
+    expect(tip).toContain('Carte Alpha (2 matchs)')
+    expect(tip).not.toContain('filmé')
     // Le joueur d'abord, puis le reste de l’équipe (maquette), quel que soit le volume.
     expect(tip).toContain('Équipe : JGtm 15, reste de l’équipe 35')
   })

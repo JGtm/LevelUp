@@ -63,7 +63,7 @@ func (s *TeammatesService) loadEmprise(
 	// La ressource véhicules vient de l'artefact, pas du résumé d'usage : sa propre lecture et sa propre
 	// section, sur le périmètre ET les matchs de l'habitude.
 	vehIDs := append(squadagg.EmpriseMatchIDs(current), squademprise.HabitCandidates(current, timeline)...)
-	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, s.vehicleRepo, vehIDs, playerXUID, req.Locale)
+	in.Vehicles, in.VehicleLabels = lecteur.Vehicules(ctx, s.vehicleRepo, vehIDs, playerXUID, req.Locale)
 	if in.Film != nil {
 		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, in.Film.Participants, p.membres)
 	} else {

@@ -28,7 +28,7 @@ export function LivesNearTeammateCard({ model, player, ut, compact }: { model: L
   const hidden = useSegmentLabelFit(ref, model)
   const legend = useMemo(() => <LivesLegend ut={ut} />, [ut])
   return (
-    <ObjectifFrame title={l.title} info={l.info(model.excludedUnlocated, model.excludedNoRadar, model.excludedUnpublishable)} legend={legend} testId="usages-lives">
+    <ObjectifFrame title={l.title} info={l.info} legend={legend} testId="usages-lives">
       <div ref={ref} className="flex flex-col gap-3.5">
         <LivesNearTeammateRow model={model} label={player} hidden={hidden} ut={ut} compact={compact} />
         <LivesAxis ut={ut} />

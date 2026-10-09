@@ -144,7 +144,7 @@ export function TacticalPlanCard({
   const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
-  const messages = lue ? statusMessages(t, lue.matchs_en_attente ?? 0, lue.matchs_non_cuisables ?? 0) : []
+  const messages = lue ? statusMessages(t, lue.matchs_en_attente ?? 0) : []
 
   return (
     <SectionCard

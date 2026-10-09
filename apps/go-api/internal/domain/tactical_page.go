@@ -161,19 +161,20 @@ type TacticalRaster struct {
 	// borne de DEBIT, pas d'eligibilite. Un match eligible au-dela de l'horizon sera repris
 	// a un cycle suivant — il est bien « en attente », simplement pas de ce cycle-ci.
 	//
-	// Decision UI (phase 5) : le bloc du graphe distingue « traitement en cours » de
-	// « donnees non disponibles ».
+	// Decision UI (2026-10-09) : seul « en attente » est publie (« traitement en cours ») ; le
+	// non cuisable est compte pour le journal de la lecture, jamais publie — aucun inconnu a
+	// l'ecran.
 	//
 	// L'INVARIANT EST TESTE, ET IL NE VAUT QUE POUR LES LECTURES D'ARTEFACT :
 	// MatchsFiltres = MatchsRetenus + MatchsEnAttente + MatchsNonCuisables. Une ventilation
 	// qui ne somme pas au total cache un troisieme cas qu'on n'a pas nomme.
 	MatchsEnAttente    int `json:"matchs_en_attente,omitempty"`
-	MatchsNonCuisables int `json:"matchs_non_cuisables,omitempty"`
+	MatchsNonCuisables int `json:"-"`
 
 	// MatchsSansRayon : les matchs ECARTES de la lecture « isole » parce que leur variante
-	// n'a pas de portee de radar mesuree. Publie plutot qu'avale — sans lui, une lecture
-	// amputee ressemblerait a une lecture complete.
-	MatchsSansRayon int `json:"matchs_sans_rayon,omitempty"`
+	// n'a pas de portee de radar mesuree. Compte pour le journal de la lecture
+	// (tactical_service_isolement.go), jamais publie : aucun inconnu a l'ecran.
+	MatchsSansRayon int `json:"-"`
 
 	// RayonsRadarM : les portees de radar DISTINCTES des matchs de la lecture « isole »
 	// (regulation.toml [radar_range_m]), triees croissant — jamais une moyenne, qui ne serait la

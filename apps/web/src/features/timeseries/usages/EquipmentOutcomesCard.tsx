@@ -2,13 +2,12 @@
  * EquipmentOutcomesCard — « Équipement : servi, gardé, lâché » (Séries temporelles › Usages, bloc
  * « Équipement » ; maquette v4, `renderEquip`, décision D4 du plan).
  *
- * Une ligne par famille, dans l'ordre publié par le Go (non mesurées encadrant les mesurées). Famille
- * mesurée : les objets du joueur servis / gardés sans servir / lâchés (`divergent-pos` /
- * `divergent-neutral` / `divergent-neg`), comptes dans les segments quand ils y tiennent (mesure au
- * pixel), sur une ligne de repli au-dessus sinon — seuls ceux qui ne tiennent pas, alignés sur le
- * début du premier de leurs segments (S2) ; sous-libellé « n objets, dont m pris sur la carte » ;
- * dessous, la barre fine du reste du camp et sa ligne de parts. Famille non mesurée (grappin,
- * propulseur) : « Non mesuré » et le compte des lâchers du joueur. Axe 0-100 % sous les lignes.
+ * Une ligne par famille, dans l'ordre publié par le Go : les objets du joueur servis / gardés sans
+ * servir / lâchés (`divergent-pos` / `divergent-neutral` / `divergent-neg`), comptes dans les
+ * segments quand ils y tiennent (mesure au pixel), sur une ligne de repli au-dessus sinon — seuls
+ * ceux qui ne tiennent pas, alignés sur le début du premier de leurs segments (S2) ; sous-libellé
+ * « n objets, dont m pris sur la carte » ;
+ * dessous, la barre fine du reste du camp et sa ligne de parts. Axe 0-100 % sous les lignes.
  */
 import { useMemo, useRef } from 'react'
 
@@ -38,12 +37,11 @@ const PART_TOKENS: Record<Part, SemanticToken> = {
 
 /**
  * Vue compacte du tiroir de comparaison de Sessions (maquette `renderEquip` avec `cp`) : parts
- * entières dans les segments, sous-libellé « n objets » (`sub`), « Non mesuré » court
- * (`unmeasured`), ligne du reste réduite à sa part de servis (`restUsed`).
+ * entières dans les segments, sous-libellé « n objets » (`sub`), ligne du reste réduite à sa part de
+ * servis (`restUsed`).
  */
 interface EquipmentCompact {
   sub: (objects: number) => string
-  unmeasured: string
   restUsed: (pct: string) => string
 }
 
@@ -104,11 +102,11 @@ function EquipmentLine({
   const e = ut.equipment
   const id = row.family
   const meId = `usages-equip-me-${id}`
-  const meTotal = row.measured ? row.me[0] + row.me[1] + row.me[2] : 0
-  const restTotal = row.measured ? row.rest[0] + row.rest[1] + row.rest[2] : 0
+  const meTotal = row.me[0] + row.me[1] + row.me[2]
+  const restTotal = row.rest[0] + row.rest[1] + row.rest[2]
   // Ce qu'écrit un segment : son compte, ou sa part entière en vue compacte.
   const textOf = (s: FragBreakdownSegment) => (compact ? ut.pctIntFmt(s.widthPct) : String(s.kills))
-  const sub = row.measured ? (compact ? compact.sub(meTotal) : e.sub(meTotal, row.takenMe)) : e.droppedSub(row.droppedMe)
+  const sub = compact ? compact.sub(meTotal) : e.sub(meTotal, row.takenMe)
   return (
     <div className="grid items-center gap-3" style={{ gridTemplateColumns: COLUMNS }} data-testid={`usages-equip-row-${id}`}>
       <div className="min-w-0 text-[12.5px] leading-tight">
@@ -117,35 +115,29 @@ function EquipmentLine({
           {sub}
         </small>
       </div>
-      {!row.measured ? (
-        <div className="flex h-[22px] items-center rounded-[3px] border border-dashed border-border px-2 text-[11px] text-muted-foreground">
-          {compact ? compact.unmeasured : e.unmeasured}
-        </div>
-      ) : (
-        <div className="flex min-w-0 flex-col gap-1">
-          {meTotal > 0 && <RepliLine id={meId} family={id} parts={row.me} hidden={hidden} textOf={textOf} />}
-          {meTotal > 0 ? (
-            <ThreeTrack id={meId} parts={row.me} who={`${player} · ${label}`} hidden={hidden} ut={ut} textOf={textOf} />
+      <div className="flex min-w-0 flex-col gap-1">
+        {meTotal > 0 && <RepliLine id={meId} family={id} parts={row.me} hidden={hidden} textOf={textOf} />}
+        {meTotal > 0 ? (
+          <ThreeTrack id={meId} parts={row.me} who={`${player} · ${label}`} hidden={hidden} ut={ut} textOf={textOf} />
+        ) : (
+          <Tooltip content={e.zeroTip(player, label)} className="w-full">
+            <div className="h-[22px] w-full rounded-[3px] bg-muted" />
+          </Tooltip>
+        )}
+        {restTotal > 0 && <ThreeTrack id={`usages-equip-rest-${id}`} parts={row.rest} who={`${e.rest} · ${label}`} ut={ut} />}
+        <div className="flex justify-between gap-2 text-[11px] tabular-nums text-muted-foreground" data-testid={`usages-equip-restline-${id}`}>
+          {restTotal > 0 && compact ? (
+            <span>{compact.restUsed(ut.pctIntFmt((row.rest[0] / restTotal) * 100))}</span>
+          ) : restTotal > 0 ? (
+            <>
+              <span>{e.restLine(row.rest[0], row.rest[1], row.rest[2])}</span>
+              <span>{e.restUsedShare(ut.pctIntFmt((row.rest[0] / restTotal) * 100))}</span>
+            </>
           ) : (
-            <Tooltip content={e.zeroTip(player, label)} className="w-full">
-              <div className="h-[22px] w-full rounded-[3px] bg-muted" />
-            </Tooltip>
+            <span>{e.restNone}</span>
           )}
-          {restTotal > 0 && <ThreeTrack id={`usages-equip-rest-${id}`} parts={row.rest} who={`${e.rest} · ${label}`} ut={ut} />}
-          <div className="flex justify-between gap-2 text-[11px] tabular-nums text-muted-foreground" data-testid={`usages-equip-restline-${id}`}>
-            {restTotal > 0 && compact ? (
-              <span>{compact.restUsed(ut.pctIntFmt((row.rest[0] / restTotal) * 100))}</span>
-            ) : restTotal > 0 ? (
-              <>
-                <span>{e.restLine(row.rest[0], row.rest[1], row.rest[2])}</span>
-                <span>{e.restUsedShare(ut.pctIntFmt((row.rest[0] / restTotal) * 100))}</span>
-              </>
-            ) : (
-              <span>{e.restNone}</span>
-            )}
-          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

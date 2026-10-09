@@ -104,20 +104,8 @@ export function ReplayAbilityCell({
               )}
             </span>
           )
-        ) : doc.abilities.length > 0 ? (
-          /* AUCUNE LECTURE DANS LA VIE EN COURS (correctif P0-2, 2026-09-06) : avant le
-             correctif, `abilityAt` pouvait reporter la capacité d'une vie PRÉCÉDENTE du même
-             slot — parfois celle d'un AUTRE joueur — ou disparaître sur un `spent` qui ne la
-             concernait pas. Même glyphe que le rang lu-mais-non-identifié, mais PAS le même
-             sens : ce n'est pas une identité inconnue (une vie est un humain ou un bot, jamais
-             une entité anonyme — décision produit du 2026-09-06), seulement une lecture pas
-             encore observée depuis le début de cette vie.
-             GARDÉ PAR `doc.abilities.length > 0` (même doctrine que `VitalityPresence`,
-             `playerStateAt` plus haut) : un artefact qui ne porte JAMAIS cet axe ne doit pas
-             afficher une lacune permanente sur chaque fiche — dégradation par ABSENCE DE
-             DONNÉE, jamais un glyphe inventé. */
-          <AbilityUnknownMark label={t.abilityUnread} px={px} />
-        ) : null}
+        ) : null /* AUCUNE LECTURE DANS LA VIE EN COURS : rien n'est rendu, ni glyphe ni texte — jamais
+             la capacité d'une vie précédente du slot (correctif P0-2), jamais une lacune écrite. */}
       </span>
       {ability && abilityRead && charge && gabarit.showInventoryMarks && (
         <AbilityChargeMark charge={charge} doc={doc} readingFull={readingFull} t={t} />

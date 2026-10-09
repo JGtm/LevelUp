@@ -454,7 +454,7 @@ func TestTacticalHandler_GrappeInconnue(t *testing.T) {
 }
 
 // TestTacticalHandler_GrappesEtVentilationTraversent : les reperes de la lecture arrivent
-// au client — sans eux, la page ne peut ni proposer les grappes ni dire ce qu'elle a ecarte.
+// au client — sans eux, la page ne peut ni proposer les grappes ni dire ce qui est en cours.
 func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	svc := &fakeTacticalSvc{raster: domain.TacticalRaster{
 		MapID: "streets", Question: domain.TacticalQuestionRoutes, Qui: domain.TacticalQuiMoi,
@@ -479,11 +479,13 @@ func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	if len(got.Grappes) != 1 || got.Grappes[0].NomFR != "Base rouge" || got.Grappes[0].NomEN != "Red base" {
 		t.Fatalf("grappes = %+v", got.Grappes)
 	}
-	// LES DEUX ABSENCES TRAVERSENT SEPAREMENT : c'est ce qui permet a l'ecran de distinguer
-	// « traitement en cours » de « donnees non disponibles ». Les confondre en un seul
-	// nombre remettrait le meme message aux deux situations.
-	if got.MatchsEnAttente != 1 || got.MatchsNonCuisables != 2 {
-		t.Fatalf("en_attente=%d non_cuisables=%d, attendu 1 et 2",
+	// « En attente » traverse (traitement en cours) ; le non cuisable reste au journal de la
+	// lecture, jamais servi : aucun inconnu a l'ecran.
+	if got.MatchsEnAttente != 1 || got.MatchsNonCuisables != 0 {
+		t.Fatalf("en_attente=%d non_cuisables=%d, attendu 1 et 0 (non servi)",
 			got.MatchsEnAttente, got.MatchsNonCuisables)
+	}
+	if strings.Contains(w.Body.String(), "matchs_non_cuisables") {
+		t.Fatalf("matchs_non_cuisables servi : %s", w.Body.String())
 	}
 }

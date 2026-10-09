@@ -319,7 +319,7 @@ describe('WeaponRangeSection — dégradations', () => {
     expect(screen.queryAllByTestId('chart-card')).toHaveLength(0)
     // LA PORTÉE dit son seuil.
     expect(
-      screen.getByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
+      screen.getByText(/Aucune arme n'atteint 8 frags ou 8 morts sur cette période/),
     ).toBeInTheDocument()
     // Le tableau disparaît aussi : il n'aurait aucune ligne à redire.
     expect(screen.queryByText('Voir en tableau')).not.toBeInTheDocument()

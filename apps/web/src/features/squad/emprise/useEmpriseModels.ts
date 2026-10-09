@@ -17,7 +17,6 @@ import { empriseObjectName } from './objectName'
 import type { PickupIdentity } from './PickupSheetsCard'
 import { buildProductionRows, buildYieldRows } from './production.logic'
 import { EMPRISE_TEXT } from './empriseStrings'
-import { buildVehicleCoverage } from './vehicles.logic'
 
 export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPlayerLabel: string, locale: Locale) {
   const block = pageData?.squad_emprise
@@ -40,7 +39,6 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   const grid = useMemo(() => (block ? buildMatchGrid(block, index) : null), [block, index])
   const production = useMemo(() => (block ? buildProductionRows(block) : []), [block])
   const yieldRows = useMemo(() => (block ? buildYieldRows(block) : []), [block])
-  const vehicleCoverage = useMemo(() => (block ? buildVehicleCoverage(block) : null), [block])
   const habit = useMemo(() => (block ? buildHabitView(block) : ({ kind: 'none' } as const)), [block])
   const placement = block?.placement ?? null
 
@@ -59,5 +57,5 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
     [block],
   )
 
-  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, vehicleCoverage, habit, placement, identities, playerName }
+  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, placement, identities, playerName }
 }

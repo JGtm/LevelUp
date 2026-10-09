@@ -110,9 +110,11 @@ describe('garde-rail : la réserve de `carried_open` est DITE, pas seulement des
     expect(REPLAY_TEXT.en.flagState.carried_open.toLowerCase()).toContain('undated')
   })
 
-  it('la note dit BORNE HAUTE, et non une durée mesurée', () => {
-    expect(REPLAY_TEXT.fr.flagOpenNote.toLowerCase()).toContain('borne haute')
-    expect(REPLAY_TEXT.en.flagOpenNote.toLowerCase()).toContain('upper bound')
+  it('la note dit que le portage court jusqu’à la fin du film, sans parler de mesure', () => {
+    expect(REPLAY_TEXT.fr.flagOpenNote.toLowerCase()).toContain('fin du film')
+    expect(REPLAY_TEXT.en.flagOpenNote.toLowerCase()).toContain('end of the film')
+    expect(REPLAY_TEXT.fr.flagOpenNote.toLowerCase()).not.toContain('mesur')
+    expect(REPLAY_TEXT.en.flagOpenNote.toLowerCase()).not.toContain('measur')
   })
 })
 

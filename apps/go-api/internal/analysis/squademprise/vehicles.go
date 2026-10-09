@@ -1,7 +1,7 @@
 package squademprise
 
 // vehicles.go — LA RESSOURCE « VEHICULES » : lecture (types), index, décompte d'un match, somme
-// d'une soirée, production et couverture (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot
+// d'une soirée et production (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot
 // L7.3 ; type publié : domain/squad_emprise_vehicles.go, décisions D2 à D10).
 //
 // Les prises, le temps à bord et les frags appariés sont ÉCRITS par la dérivation de l'artefact
@@ -27,31 +27,27 @@ import "levelup/go-api/internal/domain"
 // VehicleRow — une ligne de prise de `match_vehicle_takes_latest` : un joueur, une famille, un
 // camp, sur un match.
 type VehicleRow struct {
-	MatchID           string
-	Camp              int
-	XUID, Family      string
-	Takes             int
-	AboardMS          int64
-	Episodes          int
-	ProximityEpisodes int
+	MatchID      string
+	Camp         int
+	XUID, Family string
+	Takes        int
+	AboardMS     int64
+	Episodes     int
 	// Frags : frags de classe véhicule tombés PENDANT un épisode de ce joueur sur cette famille (D9).
 	Frags int
 }
 
-// VehiclePass — la ligne `match` d'une passe : la couverture que la dérivation a écrite.
+// VehiclePass — la ligne `match` d'une passe : ce que la dérivation a lu.
 type VehiclePass struct {
 	MatchID string
-	// Measured faux : véhicules non mesurés (D8), Reason dit pourquoi.
+	// Measured faux : véhicules non lus (D8).
 	Measured  bool
-	Reason    string
 	DocSchema int
-	// EpisodesRead / EpisodesUnnamed / EpisodesNoCamp : D10.
-	EpisodesRead, EpisodesUnnamed, EpisodesNoCamp int
 	// FragsRead faux : les frags d'engin n'ont pas pu être appariés (FragsReason dit pourquoi).
 	FragsRead   bool
 	FragsReason string
-	// FragsTotal : frags d'engin du match ; FragsUnmatched : ceux qu'aucun épisode de leur tueur ne couvre.
-	FragsTotal, FragsUnmatched int
+	// FragsTotal : frags d'engin du match.
+	FragsTotal int
 }
 
 // VehicleFragRow — les frags de classe véhicule d'un match obtenus par les tueurs d'un camp
@@ -107,16 +103,13 @@ func newVehicleIndex(v *VehicleRead) *vehicleIndex {
 // vehicleTally — ce qu'un match apporte de la ressource.
 type vehicleTally struct {
 	// state : "" (la ressource n'est pas lue), EmpriseVehiclesMeasured ou EmpriseVehiclesNotMeasured.
-	state, reason string
+	state string
 	// inYield : le match est dans le périmètre commun des frags, du temps à bord et du rendement.
 	inYield bool
 	// aboard / paired / kills (0 = nous, 1 = eux) : sur les matchs du rendement seulement.
 	aboard [2]int64
 	paired [2]int
 	kills  [2]int
-	// Couverture : lue sur les matchs mesurés.
-	episodesRead, episodesUnnamed, episodesNoCamp, proximity int
-	fragsTotal, fragsUnmatched                               int
 }
 
 // tallyVehicles compte les véhicules d'un match dans t.veh, et ses prises par famille dans t.obj.
@@ -128,22 +121,13 @@ func tallyVehicles(t *matchTally, id string, ix *index) {
 	}
 	pass, hasPass := v.passes[id]
 	ours, known := v.team[id]
-	switch {
-	case !hasPass:
-		t.veh.state, t.veh.reason = domain.EmpriseVehiclesNotMeasured, domain.EmpriseVehiclesNoPass
-		return
-	case !pass.Measured:
-		t.veh.state, t.veh.reason = domain.EmpriseVehiclesNotMeasured, pass.Reason
-		return
-	case !known:
-		t.veh.state, t.veh.reason = domain.EmpriseVehiclesNotMeasured, domain.EmpriseVehiclesTeamUnknown
+	if !hasPass || !pass.Measured || !known {
+		t.veh.state = domain.EmpriseVehiclesNotMeasured
 		return
 	}
 	t.veh.state = domain.EmpriseVehiclesMeasured
-	t.veh.episodesRead, t.veh.episodesUnnamed, t.veh.episodesNoCamp = pass.EpisodesRead, pass.EpisodesUnnamed, pass.EpisodesNoCamp
 	t.veh.inYield = pass.FragsRead && (pass.FragsTotal == 0 || v.read[id])
 	if t.veh.inYield {
-		t.veh.fragsTotal, t.veh.fragsUnmatched = pass.FragsTotal, pass.FragsUnmatched
 		t.veh.kills = killsParCamp(v.frags[id], ours)
 	}
 	for _, r := range v.rows[id] {
@@ -155,7 +139,6 @@ func tallyVehicles(t *matchTally, id string, ix *index) {
 		o := t.obj.get(domain.EmpriseResourceVehicle, r.Family)
 		o.add(us, who, r.Takes, 0, 0)
 		o.addAboard(us, who, r.AboardMS)
-		t.veh.proximity += r.ProximityEpisodes
 		if t.veh.inYield {
 			s := sideIndex(us)
 			t.veh.aboard[s] += r.AboardMS
@@ -180,32 +163,20 @@ func killsParCamp(rows []VehicleFragRow, ours int) [2]int {
 
 // vehicleSum — les sommes d'un ensemble de matchs.
 type vehicleSum struct {
-	measured, notMeasured, yield int
-	aboard                       [2]int64
-	paired, kills                [2]int
-	cov                          vehicleTally // couverture : les compteurs de t, cumulés
+	measured, yield int
+	aboard          [2]int64
+	paired, kills   [2]int
 }
 
 func (s *vehicleSum) add(t vehicleTally) {
-	switch t.state {
-	case domain.EmpriseVehiclesMeasured:
-		s.measured++
-	case domain.EmpriseVehiclesNotMeasured:
-		s.notMeasured++
-		return
-	default:
+	if t.state != domain.EmpriseVehiclesMeasured {
 		return
 	}
-	s.cov.episodesRead += t.episodesRead
-	s.cov.episodesUnnamed += t.episodesUnnamed
-	s.cov.episodesNoCamp += t.episodesNoCamp
-	s.cov.proximity += t.proximity
+	s.measured++
 	if !t.inYield {
 		return
 	}
 	s.yield++
-	s.cov.fragsTotal += t.fragsTotal
-	s.cov.fragsUnmatched += t.fragsUnmatched
 	for i := 0; i < 2; i++ {
 		s.aboard[i] += t.aboard[i]
 		s.paired[i] += t.paired[i]
@@ -236,28 +207,4 @@ func productionVehicules(s *soiree) (domain.SquadEmpriseProduction, bool) {
 	}
 	p.RelativeGap = ecartRelatif(p.YieldUs, p.YieldThem)
 	return p, true
-}
-
-// couvertureVehicules — la couverture publiée. Nil quand la ressource n'est pas lue et n'a pas
-// échoué (titre sans la capability) ; `unavailable` dit l'échec d'une lecture.
-func couvertureVehicules(s *soiree, lue bool, unavailable string) *domain.SquadEmpriseVehicles {
-	if unavailable != "" {
-		return &domain.SquadEmpriseVehicles{Unavailable: unavailable}
-	}
-	if !lue {
-		return nil
-	}
-	v := &s.veh
-	c := &domain.SquadEmpriseVehicles{
-		MatchesMeasured: v.measured, MatchesNotMeasured: v.notMeasured,
-		EpisodesRead: v.cov.episodesRead, EpisodesUnnamed: v.cov.episodesUnnamed,
-		EpisodesNoCamp: v.cov.episodesNoCamp, ProximityEpisodes: v.cov.proximity,
-		FragsMatches: v.yield, FragsTotal: v.cov.fragsTotal,
-		FragsPaired: v.cov.fragsTotal - v.cov.fragsUnmatched,
-	}
-	if c.FragsTotal > 0 {
-		share := float64(c.FragsPaired) / float64(c.FragsTotal)
-		c.PairedShare = &share
-	}
-	return c
 }

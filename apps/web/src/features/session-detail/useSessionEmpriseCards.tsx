@@ -84,8 +84,8 @@ export function useSessionEmpriseCards(
   const familyLabel = useCallback((f: string) => families[f] ?? f, [families])
   const columns = FORMES_TEXT[locale].columns
   const equipmentLabel = useCallback(
-    (family: string) => texts.cards.equipment.unmeasuredNames[family] ?? equipmentFamilyLabel(family, usageText),
-    [texts, usageText],
+    (family: string) => equipmentFamilyLabel(family, usageText),
+    [usageText],
   )
   const sheetName = useMemo(() => {
     const main = models.objective?.main_xuid ?? ''
@@ -154,7 +154,7 @@ function cardRenderers(x: CardsContext): Record<keyof SessionCardsPresence, () =
       ),
     mine: () => m.mine && <MinePickupsCard mine={m.mine} itemName={x.objectName} player={x.player} t={t.emprise} ut={t.cards} compact={cc?.mine} />,
     production: () => <ProductionCard rows={m.production} t={t.emprise} compact={cc?.production} />,
-    yield: () => <YieldCard rows={m.yieldRows} coverage={m.vehicleCoverage} t={t.emprise} />,
+    yield: () => <YieldCard rows={m.yieldRows} t={t.emprise} />,
     lives: () => m.lives && <LivesNearTeammateCard model={m.lives} player={x.player} ut={t.cards} compact={cc?.lives} />,
     objective_balance: () => (
       <ObjectiveBalanceCard families={m.balance} familyLabel={x.familyLabel} columns={x.columns} t={t.objectif} compact={compact} />

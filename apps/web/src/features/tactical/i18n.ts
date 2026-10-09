@@ -84,13 +84,12 @@ export function getTacticalText(locale: Locale) {
     },
 
     // ── Carte du plan : aide ⓘ du titre et réglages en pilules ──────────────
-    planInfo: (retenus: number, filtres: number, source: string, pas: number, plancher: number) =>
-      m('tactical.plan.info', { retenus, filtres, source, pas, plancher }),
+    planInfo: (retenus: number, source: string, pas: number, plancher: number) =>
+      m('tactical.plan.info', { retenus, source, pas, plancher }),
     planInfoSourceJournal: m('tactical.plan.info_source_journal'),
     planInfoSourceReplay: m('tactical.plan.info_source_replay'),
     planInfoGagne: (v: number, d: number, plancher: number) => m('tactical.plan.info_gagne', { v, d, plancher }),
     planInfoIsole: (portee: string) => m('tactical.plan.info_isole', { portee }),
-    planInfoNoRange: (n: number) => m('tactical.plan.info_no_range', { n }),
     planInfoTeamDown: (n: number) => m('tactical.plan.info_team_down', { n }),
     planInfoOffFrame: (hors: number, total: number) => m('tactical.plan.info_off_frame', { hors, total }),
     // La valeur arrive DÉJÀ FORMATÉE (au plus au dixième) : l'arrondi est une règle de présentation
@@ -119,7 +118,6 @@ export function getTacticalText(locale: Locale) {
     analysisUpdating: m('tactical.analysis.updating'),
     planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
     statusPending: (n: number) => m('tactical.status.pending', { n }),
-    statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
 
     // ── Zone sélectionnée ───────────────────────────────────────────────────
     zoneTitle: m('tactical.zone.title'),

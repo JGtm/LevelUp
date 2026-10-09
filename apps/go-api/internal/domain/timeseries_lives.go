@@ -20,10 +20,11 @@ type TimeseriesLivesNearTeammate struct {
 	// visible, équipe à terre, ou mort sans contexte). ExcludedNoRadar : vies d'un match dont la
 	// variante n'a pas de portée de radar connue. ExcludedUnpublishable : vies d'un match dont la
 	// dernière passe du journal des morts n'est pas publiable (juste en agrégat, fausse frag par
-	// frag) — ses frags ne sont pas lus, ses vies ne se rangent donc pas.
-	ExcludedUnlocated     int `json:"excluded_unlocated"`
-	ExcludedNoRadar       int `json:"excluded_no_radar"`
-	ExcludedUnpublishable int `json:"excluded_unpublishable"`
+	// frag) — ses frags ne sont pas lus, ses vies ne se rangent donc pas. Comptées pour le journal
+	// de la lecture (service/solo_lives_block.go), JAMAIS publiées : aucun inconnu à l'écran.
+	ExcludedUnlocated     int `json:"-"`
+	ExcludedNoRadar       int `json:"-"`
+	ExcludedUnpublishable int `json:"-"`
 	// MatchesRead : matchs où le joueur a au moins une vie lue ; MatchesWithoutRadar : parmi eux,
 	// ceux sans portée de radar.
 	MatchesRead         int `json:"matches_read"`

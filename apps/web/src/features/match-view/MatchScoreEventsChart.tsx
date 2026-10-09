@@ -130,14 +130,7 @@ export function MatchScoreEventsChart({
           {/* LA MENTION DE SOURCE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21 (lot D
               du plan d'ajustements supplémentaires) : une carte de match ne porte plus de
               texte sous sa légende. */}
-          <InfoTooltip
-            content={
-              <p>
-                {t.scoreCurveSource}
-                {data?.coverage?.score?.truncated ? ` ${t.scoreCurveTruncated}` : ''}
-              </p>
-            }
-          />
+          <InfoTooltip content={<p>{t.scoreCurveSource}</p>} />
         </span>
       }
       series={[{ key: 'match_view.score_events', datapoints: events.teams }]}

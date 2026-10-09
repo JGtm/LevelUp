@@ -269,26 +269,3 @@ func TestUsageFamiliesWithSpawnedPieceMatchManifest(t *testing.T) {
 		}
 	}
 }
-
-// TestFamillesNonMesureesSontDesCapacitesPortees — les familles que la carte « Équipement » des
-// Séries temporelles montre « non mesurées » (`equipmentusage.EquipmentUnmeasuredLineFamilies`)
-// sont des CAPACITÉS PORTÉES du résumé, hors bilan, et le répulseur n'en est pas (décision P4 :
-// aucune ligne). Une famille ajoutée là-bas qui ne serait pas une capacité portée ici, ou le
-// répulseur ajouté, fait échouer ce test.
-func TestFamillesNonMesureesSontDesCapacitesPortees(t *testing.T) {
-	familles := equipmentusage.EquipmentUnmeasuredLineFamilies()
-	if len(familles) == 0 {
-		t.Fatal("aucune famille « non mesurée » : la carte Équipement perdrait grappin et propulseur")
-	}
-	for _, f := range familles {
-		if !usageCarriedCapacityFamilies[f] {
-			t.Errorf("%q n'est pas une capacité portée du résumé (usageCarriedCapacityFamilies)", f)
-		}
-		if estFamilleDuBilan(f) {
-			t.Errorf("%q porte une ligne d'issue : elle ne peut pas être « non mesurée »", f)
-		}
-		if f == usageFamilyRepulsor {
-			t.Error("le répulseur n'a aucune ligne (décision P4)")
-		}
-	}
-}

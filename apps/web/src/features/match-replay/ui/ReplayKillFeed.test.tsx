@@ -408,14 +408,14 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
     expect(container.querySelector('li')?.getAttribute('style')).toContain('color-mix')
   })
 
-  it('« aucun » MESURÉ : rien d’affiché — l’information vit en infobulle, distincte d’« inconnu »', () => {
+  it('« aucun » : rien d’affiché — l’information vit en infobulle, distincte d’« inconnu »', () => {
     const { container } = renderFeed(
       [kill({ tMs: 1_000, assistState: 'none', killerDamagePct: 100 })],
       20_000,
     )
     expect(screen.queryByText(/assistant inconnu/)).toBeNull()
     const line = container.querySelector('li')
-    expect(line?.getAttribute('title')).toMatch(/MESURÉ/)
+    expect(line?.getAttribute('title')).toMatch(/Mort sans assistant/)
     expect(line?.getAttribute('style') ?? '').not.toContain('color-mix')
   })
 
