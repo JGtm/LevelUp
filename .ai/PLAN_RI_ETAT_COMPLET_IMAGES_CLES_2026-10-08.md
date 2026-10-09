@@ -831,9 +831,9 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       `roleToken` redéfini dans le graphe d'impact de l'escouade (garde du bloc usage, `3bc070dcd`). CI :
       run `37860172783` rouge (job Frontend, rouge hérité), puis run `37864459276` sur `3bc070dcd` VERT,
       tous les jobs (couverture et baseline Linux comprises), gitleaks et Deploy Pre-Check verts.
-- [ ] LK.6.8 Revue adversariale du diff du jalon (skill `adversarial-review`, contexte frais) ;
-      chaque constat statué.
-- [ ] LK.6.9 Point à l'utilisateur en langage clair ; U-5 (a) : pas de demande de fusion à ce jalon.
+- [x] LK.6.8 Revue adversariale du diff du jalon (skill `adversarial-review`, contexte frais) ;
+      chaque constat statué. *Fait le 2026-10-09* (deux relecteurs aveugles, lentilles « jeu et IR » et « règles et tests », diff `origin/feat/v75...3a7df1c70`) : 39 conditions vérifiées qui tiennent, UN constat recevable (P2, doc inversée : `.ai/REGISTRE_REPORTS.md` R7-c et R7-d annonçaient encore les bascules retirées « OFF par défaut ») corrigé par le superviseur dans le commit de clôture.
+- [x] LK.6.9 Point à l'utilisateur en langage clair ; U-5 (a) : pas de demande de fusion à ce jalon. *Fait le 2026-10-09* ; question posée à l utilisateur : rouvrir dans une étape dédiée les quatre lectures rejetées (world-object i0 d abord).
 - Gate LK.6 : tests du film, `archlint`, `replaybuild`, vet (avec `research`), golangci-lint verts ;
   `go test -tags=integration` des paquets touchés ; killsource : aucune mort publiée perdue sur les
   19 témoins ; banc de vérité vert ; CI verte au niveau job.
