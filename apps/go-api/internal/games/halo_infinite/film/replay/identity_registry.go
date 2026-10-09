@@ -432,6 +432,9 @@ func (r IdentityRegistry) PontConcordant() int            { return r.bridge.Conc
 func (r IdentityRegistry) PontDiscordant() int            { return r.bridge.Discordant }
 func (r IdentityRegistry) ViesNommeesParLePont() int      { return r.bridge.NamedByBridge }
 
+// PontSlotsDiscordants : les slots ou le pont par morts contredit la lecture directe (croissants).
+func (r IdentityRegistry) PontSlotsDiscordants() []uint32 { return r.bridge.SlotsDiscordants }
+
 // ViesTotal / LecturesIndex / DesaccordsIndex / CollisionsDeSlot / CalageSecond : les
 // dénominateurs et les témoins que la couverture publie.
 func (r IdentityRegistry) ViesTotal() int        { return r.own.LivesTotal }
