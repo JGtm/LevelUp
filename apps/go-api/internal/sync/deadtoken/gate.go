@@ -1,6 +1,4 @@
-package sync
-
-// achievements_token_gate.go — le chemin des succès Xbox ne réessaie pas un jeton mort.
+// Package deadtoken — un chemin secondaire (succès Xbox) ne réessaie pas un jeton mort.
 //
 // Le refresh token d'un joueur sert d'abord au pool d'auto-sync, qui suspend lui-même un jeton
 // mort (cache négatif par jeton, `platform/auth/pool`). Le chemin secondaire des succès Xbox,
@@ -15,30 +13,29 @@ package sync
 //
 // Une trace par CHANGEMENT d'état (jeton constaté mort, jeton remplacé ou redevenu valide), un
 // Debug par passe sautée. Jamais de re-capture : l'état ne se lève que par un nouveau jeton ou un
-// refresh réussi. La décision vit ici (paquet sync) ; `auth` ne fournit que le store et la
+// refresh réussi. La décision vit ici (sous `sync`) ; `auth` ne fournit que le store et la
 // classification d'erreur (ADR 0023).
+package deadtoken
 
 import (
 	"context"
 	"crypto/sha256"
 	"log/slog"
-	gosync "sync"
+	"sync"
 
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 )
 
-// deadTokenGate retient, par xuid, l'empreinte du refresh token constaté mort.
-type deadTokenGate struct {
-	mu   gosync.Mutex
+// Gate retient, par xuid, l'empreinte du refresh token constaté mort. Une instance par
+// chemin appelant, vivant le temps du processus.
+type Gate struct {
+	mu   sync.Mutex
 	dead map[string][sha256.Size]byte
 }
 
-// achievementsDeadTokens : la mémoire du processus (les SyncEngine sont créés par passe).
-var achievementsDeadTokens = newDeadTokenGate()
-
-func newDeadTokenGate() *deadTokenGate {
-	return &deadTokenGate{dead: map[string][sha256.Size]byte{}}
+// New rend une porte vide.
+func New() *Gate {
+	return &Gate{dead: map[string][sha256.Size]byte{}}
 }
 
 func rtFingerprint(rt string) [sha256.Size]byte { return sha256.Sum256([]byte(rt)) }
@@ -52,7 +49,7 @@ func entryMarkedDead(u *auth.UserTokens) bool {
 }
 
 // skip dit si la passe doit sauter le refresh pour l'entrée `u` (refresh token non vide).
-func (g *deadTokenGate) skip(ctx context.Context, xuid, gamertag string, u *auth.UserTokens) bool {
+func (g *Gate) skip(ctx context.Context, xuid, gamertag string, u *auth.UserTokens) bool {
 	fp := rtFingerprint(u.OAuthRefreshToken)
 	marked := entryMarkedDead(u)
 	g.mu.Lock()
@@ -80,7 +77,7 @@ func (g *deadTokenGate) skip(ctx context.Context, xuid, gamertag string, u *auth
 // recordFailure retient le jeton `rt` comme mort si l'échec est permanent, et le consigne
 // au store (mêmes écritures que le pool : dernier échec, et reconnexion requise pour un jeton
 // révoqué) pour que l'état survive au redémarrage. Échec transitoire : rien.
-func (g *deadTokenGate) recordFailure(ctx context.Context, store *auth.MultiUserTokenStore,
+func (g *Gate) recordFailure(ctx context.Context, store *auth.MultiUserTokenStore,
 	xuid, gamertag, rt string, err error) {
 	class := auth.ClassifyAuthError(err)
 	if class != auth.AuthErrorRevoked && class != auth.AuthErrorConfig {
@@ -105,7 +102,7 @@ func (g *deadTokenGate) recordFailure(ctx context.Context, store *auth.MultiUser
 
 // recordSuccess lève l'état mort après un refresh réussi : le jeton vit, la bannière et le
 // dernier échec sont obsolètes (même effacement que le pool sur un succès).
-func (g *deadTokenGate) recordSuccess(ctx context.Context, store *auth.MultiUserTokenStore,
+func (g *Gate) recordSuccess(ctx context.Context, store *auth.MultiUserTokenStore,
 	xuid, gamertag string, u *auth.UserTokens) {
 	g.mu.Lock()
 	delete(g.dead, xuid)
@@ -122,18 +119,11 @@ func (g *deadTokenGate) recordSuccess(ctx context.Context, store *auth.MultiUser
 	}
 }
 
-// resolveAchievementsAccessToken résout l'access_token Xbox Live (succès) depuis le
-// MultiUserTokenStore (source unique, ADR 0023) via auth.ResolveMSAccessTokenStoreFirst,
-// derrière la porte des jetons morts. Rend skipped=true (sans erreur) quand la porte saute la
-// passe ; ("", false, nil) quand aucun jeton n'est disponible.
-func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context) (token string, skipped bool, err error) {
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(e.repoRoot).WatcherTokensDir())
-	return resolveGatedAccessToken(ctx, achievementsDeadTokens, store, e.provider, e.xuid, e.gamertag)
-}
-
-// resolveGatedAccessToken : le corps de resolveAchievementsAccessToken, porte et store injectés.
-func resolveGatedAccessToken(ctx context.Context, gate *deadTokenGate, store *auth.MultiUserTokenStore,
-	provider auth.TokenProvider, xuid, gamertag string) (string, bool, error) {
+// Resolve résout un access_token Microsoft depuis le MultiUserTokenStore (source unique,
+// ADR 0023) via auth.ResolveMSAccessTokenStoreFirst, derrière la porte. Rend skipped=true (sans
+// erreur) quand la porte saute la passe ; ("", false, nil) quand aucun jeton n'est disponible.
+func (g *Gate) Resolve(ctx context.Context, store *auth.MultiUserTokenStore,
+	provider auth.TokenProvider, xuid, gamertag string) (token string, skipped bool, err error) {
 	var entry *auth.UserTokens
 	if xuid != "" {
 		// Lecture d'aiguillage seulement : un échec de lecture est journalisé et tranché par
@@ -142,7 +132,7 @@ func resolveGatedAccessToken(ctx context.Context, gate *deadTokenGate, store *au
 			entry = u
 		}
 	}
-	if entry != nil && gate.skip(ctx, xuid, gamertag, entry) {
+	if entry != nil && g.skip(ctx, xuid, gamertag, entry) {
 		return "", true, nil
 	}
 	at, err := auth.ResolveMSAccessTokenStoreFirst(ctx, provider, store, xuid, gamertag)
@@ -150,11 +140,11 @@ func resolveGatedAccessToken(ctx context.Context, gate *deadTokenGate, store *au
 		return at, false, err
 	}
 	if err != nil {
-		gate.recordFailure(ctx, store, xuid, gamertag, entry.OAuthRefreshToken, err)
+		g.recordFailure(ctx, store, xuid, gamertag, entry.OAuthRefreshToken, err)
 		return "", false, err
 	}
 	if at != "" {
-		gate.recordSuccess(ctx, store, xuid, gamertag, entry)
+		g.recordSuccess(ctx, store, xuid, gamertag, entry)
 	}
 	return at, false, nil
 }

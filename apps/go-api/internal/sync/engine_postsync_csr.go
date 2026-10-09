@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/deadtoken"
 )
 
 // activeRankedPlaylists retourne les playlists classées à interroger pour compléter
@@ -127,7 +128,7 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	accessToken, gated, err := e.resolveAchievementsAccessToken(ctx)
 	if gated {
 		// Jeton marqué mort, inchangé : la porte a déjà tracé le changement d'état
-		// (achievements_token_gate.go) ; rien de plus par passe.
+		// (paquet deadtoken) ; rien de plus par passe.
 		return achievementsSkipped
 	}
 	if err != nil {
@@ -336,4 +337,16 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 		}
 	}()
 	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
+}
+
+// achievementsDeadTokens : la porte des jetons morts du chemin des succès Xbox, mémoire du
+// processus (les SyncEngine sont créés par passe). Cf. paquet deadtoken.
+var achievementsDeadTokens = deadtoken.New()
+
+// resolveAchievementsAccessToken résout l'access_token Xbox Live (succès) depuis le
+// MultiUserTokenStore (source unique, ADR 0023), derrière la porte des jetons morts.
+// skipped=true : jeton marqué mort et inchangé, passe sautée sans appel à Microsoft.
+func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context) (token string, skipped bool, err error) {
+	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(e.repoRoot).WatcherTokensDir())
+	return achievementsDeadTokens.Resolve(ctx, store, e.provider, e.xuid, e.gamertag)
 }

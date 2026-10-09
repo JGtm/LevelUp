@@ -1,4 +1,4 @@
-package sync
+package deadtoken
 
 import (
 	"context"
@@ -40,12 +40,12 @@ func gateStore(t *testing.T, rt string) *auth.MultiUserTokenStore {
 // lève et le succès efface l'état.
 func TestPorteJetonsMorts_UnSeulEssaiParJeton(t *testing.T) {
 	ctx := context.Background()
-	gate := newDeadTokenGate()
+	gate := New()
 	store := gateStore(t, "rt-mort")
 	prov := &fakeRefreshProvider{morts: map[string]bool{"rt-mort": true}}
 
 	// Passe 1 : essai, refus permanent.
-	if _, sauté, err := resolveGatedAccessToken(ctx, gate, store, prov, gateXUID, "Alice"); err == nil || sauté {
+	if _, sauté, err := gate.Resolve(ctx, store, prov, gateXUID, "Alice"); err == nil || sauté {
 		t.Fatalf("passe 1 : attendu un refus non sauté, obtenu err=%v sauté=%v", err, sauté)
 	}
 	u, _ := store.Load(gateXUID)
@@ -54,7 +54,7 @@ func TestPorteJetonsMorts_UnSeulEssaiParJeton(t *testing.T) {
 	}
 	// Passes 2 à 5 : sautées, aucun appel à Microsoft.
 	for i := 0; i < 4; i++ {
-		if _, sauté, err := resolveGatedAccessToken(ctx, gate, store, prov, gateXUID, "Alice"); !sauté || err != nil {
+		if _, sauté, err := gate.Resolve(ctx, store, prov, gateXUID, "Alice"); !sauté || err != nil {
 			t.Fatalf("passe %d : attendu sautée sans erreur, obtenu sauté=%v err=%v", i+2, sauté, err)
 		}
 	}
@@ -66,7 +66,7 @@ func TestPorteJetonsMorts_UnSeulEssaiParJeton(t *testing.T) {
 	if err := store.UpdateOAuthRefreshToken(gateXUID, "rt-frais"); err != nil {
 		t.Fatal(err)
 	}
-	at, sauté, err := resolveGatedAccessToken(ctx, gate, store, prov, gateXUID, "Alice")
+	at, sauté, err := gate.Resolve(ctx, store, prov, gateXUID, "Alice")
 	if err != nil || sauté || at != "at-rt-frais" {
 		t.Fatalf("jeton importé : attendu un access_token, obtenu at=%q sauté=%v err=%v", at, sauté, err)
 	}
@@ -80,7 +80,7 @@ func TestPorteJetonsMorts_UnSeulEssaiParJeton(t *testing.T) {
 // redémarrage) n'est pas réessayé ; un jeton remplacé ensuite l'est.
 func TestPorteJetonsMorts_EntreeDejaMarquee(t *testing.T) {
 	ctx := context.Background()
-	gate := newDeadTokenGate()
+	gate := New()
 	store := gateStore(t, "rt-mort")
 	if _, err := store.MarkReauthRequired(gateXUID, "Alice"); err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestPorteJetonsMorts_EntreeDejaMarquee(t *testing.T) {
 	prov := &fakeRefreshProvider{morts: map[string]bool{"rt-mort": true}}
 
 	for i := 0; i < 3; i++ {
-		if _, sauté, _ := resolveGatedAccessToken(ctx, gate, store, prov, gateXUID, "Alice"); !sauté {
+		if _, sauté, _ := gate.Resolve(ctx, store, prov, gateXUID, "Alice"); !sauté {
 			t.Fatalf("passe %d : un jeton marqué mort doit être sauté", i+1)
 		}
 	}
@@ -98,7 +98,7 @@ func TestPorteJetonsMorts_EntreeDejaMarquee(t *testing.T) {
 	if err := store.UpdateOAuthRefreshToken(gateXUID, "rt-frais"); err != nil {
 		t.Fatal(err)
 	}
-	if at, sauté, err := resolveGatedAccessToken(ctx, gate, store, prov, gateXUID, "Alice"); sauté || err != nil || at == "" {
+	if at, sauté, err := gate.Resolve(ctx, store, prov, gateXUID, "Alice"); sauté || err != nil || at == "" {
 		t.Fatalf("jeton remplacé : attendu un essai réussi, obtenu at=%q sauté=%v err=%v", at, sauté, err)
 	}
 }
@@ -106,11 +106,11 @@ func TestPorteJetonsMorts_EntreeDejaMarquee(t *testing.T) {
 // Un échec transitoire (réseau) ne suspend rien : le jeton est réessayé à la passe suivante.
 func TestPorteJetonsMorts_EchecTransitoireReessaye(t *testing.T) {
 	ctx := context.Background()
-	gate := newDeadTokenGate()
+	gate := New()
 	store := gateStore(t, "rt")
 	prov := &transientProvider{}
 	for i := 0; i < 2; i++ {
-		if _, sauté, err := resolveGatedAccessToken(ctx, gate, store, prov, gateXUID, "Alice"); sauté || err == nil {
+		if _, sauté, err := gate.Resolve(ctx, store, prov, gateXUID, "Alice"); sauté || err == nil {
 			t.Fatalf("passe %d : attendu un essai en échec, obtenu sauté=%v err=%v", i+1, sauté, err)
 		}
 	}
