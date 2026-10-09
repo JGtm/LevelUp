@@ -117076,3 +117076,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 11/11 films recuits, 1re colline au coup d'envoi (15 à 37 s plus tôt qu'avant selon le film ; témoin : 17 s), collines suivantes au point (0 à 1 image). Découverte : plancher de 5,09 s entre un déplacement et la première prise possible (50 déplacements, 13 au plancher) — non appliqué, question de jeu au user.
 
 **Conclusion / prochaine étape** : réponse du user sur l'affichage de la colline suivante pendant ces 5 s ; fusion et republication du parc (schéma 92) sur accord.
+
+## [2026-10-09] Fusion de feat/koth-colline dans feat/v75 (schéma 92), republication déléguée — Complété
+
+**Statut** : Complété pour le périmètre exécuté ; republication déléguée à la recuisson commune qui suit la fusion du lot images-clés.
+
+**Décision technique principale** : consigne du superviseur : ne pas lancer `backfill-replay` ni arrêter le serveur local, une seule recuisson complète du parc couvrira les deux lots.
+
+**Résultats observés** : après fusion, `generate-types` sans diff, `tsc -b` rc 0, `go test ./internal/games/halo_infinite/film/replay/...` vert, vitest `match-replay` 223 fichiers verts (3 185 tests). `feat/v75` poussée (`d40d7d87e`, hooks pre-push verts). Le dry-run `backfill-replay --only-existing` a annoncé 235 films à construire (et non 172) ; il n'a rien écrit. Le serveur local a été arrêté brièvement pour ce dry-run, puis air relancé (port 8000, 200 sur /healthz).
+
+**Conclusion / prochaine étape** : artefacts du cache local toujours en schéma 91 jusqu'à la recuisson commune ; contrôles de l'étape 5 à faire après elle.
