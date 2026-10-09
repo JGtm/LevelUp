@@ -1226,13 +1226,73 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       l'amendement (règle d'admission T1 ∧ T2, sur tous les formats, mesure), les fenêtres derrière la
       lecture (trois replis, records récupérés marqués, marque non persistée et ce qui en survit) et
       la lecture aux armes seules du sync.
-- [ ] D1.4.4 Mesure finale : instrument d0 (grammaire puis fenêtre derrière) ; `replay-equiv` 20
+- [x] D1.4.4 Mesure finale : instrument d0 (grammaire puis fenêtre derrière) ; `replay-equiv` 20
       films, faits frais ; `cmd/killsource json` 19 témoins ; `replay-corpus-gate` et banc de vérité
       (lecture de la base partagée par `OpenReadForQuery`, §0 : aucun backfill ni cuisson du parc en
       cours) ; Playwright (`npx playwright test`) si l'affichage des fiches change ; G-perf cuisson et
       sync sur les 4 films.
-- [ ] D1.4.5 Plan de l'étape 2 : 2.7.d1 `[x]`, 2.7.d clos ; REGISTRE_REPORTS ; thought_log ;
+      *Fait (lot D, 2026-10-09)*, sorties `$S/../d1y/d14/` et `$S/../d1y/perf/`.
+      (1) **Instrument d0** (28 films) : identique à l'octet à la mesure de D1.1 hors lignes de vidage
+      (6 507 admis, valeurs publiées égales à la relecture sur 100 % des admis, 0 débordement) ;
+      `TestRI27d1Replis` : `replis.tsv` identique à D1.2 (4 203 non admis = replis, film par film).
+      (2) **`replay-equiv`, 20 films, faits mis de côté, `depuis_les_faits=false` sur 40 cuissons** :
+      contre `3aa885e37`, étapes divergentes `artifact` (20), `inventory` et `inventory.stats` (19 : tous
+      sauf `50247b26`, qui n'admet aucun record), `loadouts` (4) ; `carrierMarks`, `objectives`,
+      `killsource` et tout le reste identiques. Contre `feat/v75` `54b47a2b8` (tête fusionnée) : les
+      mêmes, plus `vehicles`, `vehicleDeaths.stats` et `killsource`, les étapes de LK adjugées en
+      LK.6.4. **Mode S8** (`-deux-passes`, survie depuis les faits sur films réels) : 20/20 artefacts
+      IDENTIQUES à l'octet entre décodage et rejeu depuis les faits ; seule l'étape `killsource` diverge,
+      par construction (champ non exporté, documenté).
+      (3) **`cmd/killsource json`, 19 témoins** : identique à l'octet contre `3aa885e37`, puis contre
+      `54b47a2b8` après la refusion.
+      (4) **Gate de corpus et banc de vérité**, lancés seulement parc libre (aucun backfill, :8000 à
+      l'écoute, vérifiés avant chaque tranche ; une racine de parc du scratchpad, jonctions en lecture,
+      pour que le cache de base et le verrou ne s'écrivent pas dans le checkout principal), trois
+      passes : contre `fe1f3d954` (tête `98909f292`), contre `54b47a2b8` (tête `97bff8635`) et, FINALE,
+      contre `919da48b4` (tête `09622154d`) — même résultat aux trois : aucun oracle ne bouge, aucun
+      changement ; seuls bloquants du banc, les trois replis neufs (R-1 « repli nouveau », 3 × 19,
+      nouveaux PAR CONSTRUCTION : avant D1.2 les fenêtres étaient la lecture elle-même, sans repli nommé ;
+      précédent admis au plan de l'étape 2, 2.7.b et 2.7.d) — **à faire admettre à la revue du
+      superviseur**. Bilan des fiches identique aux trois passes (`bilan_fiches_final.tsv`).
+      **Valeurs publiées qui changent, adjugées sur pièces** (artefacts base et lot des 19 témoins) :
+      U-3 « Dynamo » : seules les « Grenade dynamo » quittent les dotations (`111fa685` 38 → 1,
+      `4f77afc1` 52 → 0, `e5adf7b2` 31 → 1 ; restent celles des records non admis), plus un record de
+      `111fa685` où la fenêtre listait 19 familles (2 lues) ; records avec armes identiques sur les
+      19 films. U-3 sélection en base 0 : grenades sélectionnées 264 → 4 207, dont 4 203 désignent un
+      type à compteur non nul ; les 4 autres, records admis de format 20 (`a349fea8`, `a521164d`) à
+      compteurs tous nuls, portent la sélection 0 que le jeu écrit (masque nul = bitmap nulle) —
+      adjugés : valeur du jeu. U-3/U-4 `d` : aucune valeur ne change sur un record publié des deux
+      côtés ; 50 records sans `d` en reçoivent un (0 ou 1) ; −1 reste une absence (`d` absent 1 451 →
+      1 401). U-3 capacité : 464 lectures `kf` dans 16..23 des deux côtés, aucune hors domaine. AUTRES
+      VALEURS, adjugées : jauges et chargeurs en baisse (jauges 23 → 3 sur `fb1a1a72`, 98 → 79 sur
+      `11de8353` ; chargeurs perdus sur quatre films, de valeur 1 dans 331 cas sur 349) — lectures de la
+      fenêtre à plusieurs débuts candidats (22/23 jauges de base à `cand=2`, valeurs 0,5001 = 2048/4095,
+      0,25, 0,75 ; réserves de 584, 1 232 à 2 000), là où le lecteur du jeu lit, au même instant et pour
+      le même slot, chargeur et réserve plausibles (36/216, 12/36) ou une jauge d'arme à énergie : c'est
+      l'écart de début de bloc de D1.0.7 ; inventaires vides en baisse sur 11 films (records désormais
+      lus). Aucune autre valeur ne bouge.
+      (5) **Playwright NON REQUIS** : aucun fichier du client web n'est modifié par ce lot ; seules les
+      fixtures de contrat sont régénérées (numéro de schéma, contenu du fixture d'entrées figé) ; vitest
+      du rejeu vert (3 176 tests) ; l'affichage ne change que par les données.
+      (6) **G-perf** (`perf/perf_d14.txt`), binaires de base de l'étape 0 contre ceux de `cab72982e`,
+      paires alternées par film, mesures perturbées écartées : surcoût > +10 % NON ÉTABLI. Sync :
+      médianes 0,936 (`1c4c63c2`) à 1,003 (`51101d1d`), `9f57c612` 0,974 (D-28 : 1,17 à l'état D1.2),
+      bruit des bases ≤ 5,6 % ; pics 0,99 à 1,04. Cuisson : médianes 0,962 à 0,991, aucun rapport de
+      paire propre au-dessus de 1,011, pics 0,94 à 0,98 ; bruit des bases 11 à 22 % (machine partagée :
+      recuisson et backfills de levelup-2c, tests d'autres sessions) — jugée par les paires, comme en
+      D1.1.7.
+- [x] D1.4.5 Plan de l'étape 2 : 2.7.d1 `[x]`, 2.7.d clos ; REGISTRE_REPORTS ; thought_log ;
       `make gate-push` ; push ; CI.
+      *Fait (lot D)* : plan de l'étape 2 (2.7.d1 `[x]`, 2.7.d `[x]`, journal) et registre des reports
+      (`1735e4e5a` ; ligne LK, D-29, D-30, repris sur le tri de `feat/v75` à la troisième fusion) ;
+      thought_log (entrée en fin de fichier). `make gate-push` joué étape par étape sur `cab72982e` :
+      golangci-lint `--new-from-merge-base=origin/main` 0 problème ; typecheck web (`tsc -b --force`,
+      sans purge de `node_modules`, jonction vers le checkout principal) et lint web 0 erreur (26
+      avertissements préexistants) ; suite `-tags=integration -p 1 -json ./...` par groupes (350
+      paquets), baseline vérifiée par `check_test_baseline.sh tests --from-jsonl` : 19 655 tests, les
+      9 495 de la baseline présents, 0 échec. Branche poussée ; CI : run `37938832842` sur
+      `1735e4e5a` VERT (tous les jobs, couverture et baseline Linux comprises), gitleaks, garde ADR 0021
+      et Deploy Pre-Check verts ; run de la tête finale au journal.
 - [ ] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués.
 - [ ] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
       parc et backfill killsource, après la fin de tout backfill en cours ; pairs prévenus avant la
@@ -1240,6 +1300,12 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
 - Gate D1.4 : fiches au moins aussi pleines qu'avant (records avec armes = grammaire + repli ≥
   fenêtre seule, par film) ; aucune perte non adjugée dans `replay-equiv` ; aucune mort perdue
   (killsource) ; banc de vérité vert ; **coût ≤ +10 % (cuisson et sync, 4 films)** ; CI verte.
+- *Gate D1.4 joué le 2026-10-09 (lot D)* : records avec armes identiques sur les 19 témoins (aucun ne
+  perd ses armes) ; pertes de `replay-equiv` et du gate toutes adjugées (D1.4.4) ; killsource
+  identique, aucune mort perdue ; banc de vérité : aucun oracle ne bouge, **FAUX par les trois seuls
+  replis neufs (R-1, nouveaux par construction)**, verdict à faire admettre à la revue (D1.4.6) ;
+  surcoût > +10 % non établi ; CI verte. D1.4.6 (revue adversariale) et D1.4.7 (fusion, recuisson,
+  backfill) reviennent au superviseur.
 
 ## 5. Contrat d'exécution et gates
 
@@ -1788,3 +1854,11 @@ refusionner, rejouer l'étape 0).
   91 vérifié au moment même) ; chronique v92 avec note de renumérotation ; `grammar.Rev`
   (`grammar-2026-10-09.3`), `killsource.Rev` et `objectives.Rev` inchangés par cette fusion (le lot ne
   touche que l'assemblage). G-film (22 paquets) et archlint verts sur la tête fusionnée.
+- 2026-10-09 (lot D, fin) : TROISIÈME REFUSION, `origin/feat/v75` `919da48b4` (`aj-non-mesure`, tri du
+  registre des reports ; aucune révision, schéma 91) → `09622154d` ; registre : tri de `feat/v75` repris,
+  lignes de la branche reportées. **D1.4.4 et D1.4.5 `[x]`** : instrument d0 et replis identiques à
+  D1.1/D1.2 ; `replay-equiv` (40 cuissons) et mode S8 (20/20 artefacts identiques depuis les faits) ;
+  killsource 19/19 identiques ; gate de corpus final contre `919da48b4`, parc libre vérifié avant chaque
+  tranche (recuisson et backfill killsource de levelup-2c attendus jusqu'à 16 h 52) : aucun oracle ne
+  bouge, FAUX par les trois replis neufs seuls ; valeurs publiées adjugées ; G-perf : surcoût non établi ;
+  gate-push vert ; CI verte. D1.4.6 et D1.4.7 au superviseur ; 2.7.d1 prêt pour la revue et la fusion.
