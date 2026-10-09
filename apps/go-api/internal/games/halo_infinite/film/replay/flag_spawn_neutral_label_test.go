@@ -155,7 +155,10 @@ func TestBuildMapObjectives_SocleCentralNeutreMalgreSonTeamIndex(t *testing.T) {
 // dbb2SoclesNeutresAuLabel : le nombre de socles `flag_spawn` du catalogue versionne qui
 // portent le label `ctf_neutral_include`. C'est le panier neutre APRES correction, et le
 // meme compte qu'AVANT pour les socles reellement neutres (recense le 2026-09-13).
-const dbb2SoclesNeutresAuLabel = 63
+//
+// 63 -> 64 le 2026-10-09 : « Serenity - Ranked » entre au catalogue avec ses trois socles (deux
+// d'equipe, un neutre AU LABEL `ctf_neutral_include`). Aucun socle sans equipe ni label ne s'ajoute.
+const dbb2SoclesNeutresAuLabel = 64
 
 // dbb2SoclesSansEquipeSansLabel : les socles a `team_index = -1` SANS label neutre — les
 // huit sortis du panier. Cliffside, Highpower Heavies, Solitude, Solitude - Ranked, plus

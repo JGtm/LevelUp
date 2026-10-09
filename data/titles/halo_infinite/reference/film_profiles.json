@@ -5,8 +5,8 @@
   "derived": {
     "catalogue": "map_quant_bounds.json",
     "schemaVersion": 1,
-    "maps": 81,
-    "mapsSha256": "c4e9c6e8f21335b8fe438621138258eef5b5c10f7f40309a8975dc75f672761c",
+    "maps": 84,
+    "mapsSha256": "06141643abdb9cf40431b189826991570b775b57ef4499a7578053b94426b2c0",
     "tool": "CGO_ENABLED=1 go run ./cmd/mapquant-build"
   },
   "entries": [
