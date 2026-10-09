@@ -116946,3 +116946,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : killsource json base vs lot sur 7 témoins : 0a08d2f2 119 → 124, ca684191 79 → 80, 760fb768 un bot renommé à l'instant, 4 identiques, aucune ligne existante modifiée. Prism `5c38f581` : Needler relevé de z −242,95 à 18,15, confirmé « puissance » à 0,41 m (8/8 socles). Parc local : 19 socles hors emprise sur 17 matchs. Gates film/archlint/contrat verts ; vet de l'arbre fusionné vert.
 
 **Conclusion / prochaine étape** : sur accord du user, serveur arrêté : recuisson du parc (artefacts 89 → 90, ~5-11 s/film), `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-killsource` (toutes les lignes candidates, ~1-2 h) — couvre aussi le lot de levelup-5c. Découvertes non traitées : prises disputées entre deux occupations non datées ; point de création partagé sur les Forge classées ; recollage sans borne de temps quand le film se tait ; générateur du catalogue des sources de dégât absent du dépôt (`damagetag.go`).
+
+## [2026-10-09] Explorer — onglet « Joueur » de ~9,7 s à < 1 s (point 12 de la liste du user, mesures du 08/10) — Complété (`feat/aj-explorer` fusionnée dans feat/v75)
+
+**Statut** : Complété ; relecture adversariale 1 relecteur : 0 défaut de comportement (équivalence ligne à ligne sur la copie des bases pour Explorer, Relations, vue match, Comparer), 1 commentaire faux corrigé.
+
+**Décision technique principale** : cause principale = un curseur de la lecture d'identité d'un joueur suivi gardait l'unique connexion de sa base joueur ouverte → la lecture suivante attendait la fin du budget réseau de 8 s ; curseur fermé avant les lectures suivantes. Sections `explorer_*` ; nom résolu par alias puis gamertag de participant (vue `v_gamertag_lookup` en dernier recours, ratchet déplacé sans ajout) ; frags échangés, assistances (Q28c en une lecture `lues AS MATERIALIZED`, jointure par égalité) et duels bornés au périmètre (ADR 0036 I2). Web : les deux `matches-query` (allié/ennemi, listes différentes) fusionnées en une, réparties côté client.
+
+**Résultats observés** (copie du 08/10, 2 threads / 512 Mo) : 9,6-9,8 s → 0,43-0,67 s, réponses identiques octet pour octet ; Q28c JGtm 615 → 170 ms. Effets voulus : pics CSR/LUSR d'une cible suivie réapparaissent (le blocage les masquait) ; bannière d'une cible non suivie choisie dans le pool complet. Gates vet/tests/integration duckdb/archlint, golangci-lint 0, vitest explorer 261/261.
+
+**Conclusion / prochaine étape** : appels réseau Halo du premier passage non mesurés (1-2 s attendus). Découvertes : pool de bannières relit 5 identités par requête (~90 ms) ; « Partycz » présent 1 880 fois dans le journal des frags sans être participant.
