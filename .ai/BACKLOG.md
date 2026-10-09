@@ -10,29 +10,19 @@
 
 ---
 
-### [film/décodeur] Observer le jeu ouvrant un ancien film, avec Cheat Engine (optimisation potentielle)
+### [demo] Un rejeu figé par mode de jeu dans la démo, toujours au dernier schéma
 
-Noté le 2026-10-05 à la demande de l'utilisateur (plan RI étape 2, lot 2.7.a, découvertes 12 et
-13). Deux blocs des anciens films portent 3 bits de moins que ce que l'exécutable courant lit en
-dur :
-- le bloc `object-multiplayer-properties` de l'état de création des objets (formats 21, 24 et 25) ;
-- la composante du record de tir (format 24).
+Demandé par l'utilisateur le 2026-10-09. La démo ne synchronise pas et ne construit aucun rejeu :
+aujourd'hui elle n'en montre aucun (le rejeu n'est servi qu'en local). Comme pour les médias, la
+démo doit embarquer **au moins un rejeu par mode de jeu** (Assassin, CTF, Bases, Colline, Oddball,
+Assaut, Total Control, Extraction, Fiesta… selon les films disponibles), sur un **jeu de matchs
+figé**. À chaque montée du schéma d'artefact, ces matchs doivent être **recuits automatiquement**
+pour que la démo serve toujours le dernier schéma.
 
-La lecture statique (Ghidra) n'a trouvé aucune condition qui les commande. Le décodeur lit le bloc
-d'après la taille d'état de création que chaque film déclare (`n1`) : c'est la décision de
-l'utilisateur du 2026-10-05.
-
-**Optimisation potentielle** : observer le jeu pendant qu'il ouvre un film ancien (version majeure
-différente de 41), avec le MCP Cheat Engine, sur autorisation de l'utilisateur. Points d'arrêt :
-- la comparaison de version de `FUN_1428e219c` (`1428e21a6`) ;
-- le mot `n2` relu après `vtable+0x60` dans `FUN_142e2bfd0` ;
-- `FUN_141fd72c0` (R(9) du bloc) ;
-- la boucle des composantes de `FUN_14080c1f8` (R(16) à `14080c74c`).
-
-Gain attendu : savoir comment le jeu traite ces films et, s'il les lit, la règle exacte des deux
-écarts, lue au lieu d'être mesurée.
-
-**Effort : M.** Il faut un film ancien que le jeu accepte d'ouvrir.
+Points à instruire : films sources conservés avec la démo (pas seulement les artefacts) ;
+anonymisation des noms et xuid dans l'artefact cohérente avec celle de la démo ; exception au garde
+« rejeu local seulement » limitée à ces matchs en mode démo ; déclencheur de recuisson (seed-demo,
+boot de la démo ou CI) ; un film par processus (borne mémoire). **Effort : M.**
 
 ---
 
@@ -46,6 +36,7 @@ chaque ouverture, les atteint : c'est par lui que les index ART retirés le 2026
 enlevés. **Impact** : toute évolution de schéma player livrée par une étape de migration (et non
 par l'autorité DDL) n'arrive jamais sur Halo 5. **À instruire** : pourquoi la boucle du boot saute
 ces bases (multi-titre, profils), puis rattraper les 12 étapes. **Effort : S-M.**
+**Cause établie le 2026-10-09** : la boucle « migrations player » du boot (`cmd/server/main.go`) calcule le chemin avec le seul titre par défaut (`pr.PlayerDBPath(titleSlug, …)`) ; elle doit parcourir les titres de chaque profil.
 
 ---
 
@@ -191,7 +182,7 @@ manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 - `InfectionStats` : « Survive The Undead 3.0 » est un Firefight UGC (catégorie 41), pas
   un Infection. Aucun mode Infection en base.
 
-**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser.
+**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser (le user tente le 2026-10-09 si les modes sont disponibles en jeu).
 Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
 explicite d'inventer le schéma par analogie.
 
@@ -241,9 +232,10 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
 
 ---
 
-### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — ⏸️ GARDÉ DE CÔTÉ
+### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — V9 POTENTIELLE
 
 > ⏸️ **Gardé de côté** (2026-06-09) : conservé pour distribution desktop néophyte future. Note : le cutover Go étant fait, le « backend Python local packagé » ci-dessous doit se lire **backend Go local** — à re-cadrer si réactivé.
+> **Décision du user (2026-10-09)** : gardé comme chantier potentiel de la V9 ; rien à faire avant.
 
 **Noté le** : 2026-04-12 | **Priorité** : Moyenne (distribution simplifiée, non bloquante pour les slices MVP)
 
