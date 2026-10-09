@@ -821,7 +821,16 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       *Fait* : ADR 0037 (IR-4 : quatrième état « stopped » ; IR-6 : dernier alinéa de 2.7.d réécrit) ;
       WALK_PORT_NOTES §6.5 F ; plan de l'étape 2 (item 2.7.d1 et journal) ; registre des reports (LK
       engagé, deux lignes) ; thought_log.
-- [ ] LK.6.7 `make gate-push`, push de la branche, CI (`gh run list --branch feat/ri-lk-images-cles --limit 3`).
+- [x] LK.6.7 `make gate-push`, push de la branche, CI (`gh run list --branch feat/ri-lk-images-cles --limit 3`).
+      *Fait* : `gate-push` joué étape par étape (la suite dépasse un appel) — golangci-lint
+      `--new-from-merge-base=origin/main` 0 problème ; typecheck et lint web verts (0 erreur) ; baseline
+      des tests par `check_test_baseline.sh tests --from-jsonl` sur le JSONL de la suite
+      `-tags=integration -p 1 ./...` jouée par groupes : 19 604 tests, les 9 495 de la baseline
+      présents, 0 échec. Deux rouges HÉRITÉS de `feat/v75` réparés en chemin (consigne : tout rouge se
+      répare) : polarité des trois compteurs de socles hors emprise (`replaydiff`, `b9f4ef535`) et nom
+      `roleToken` redéfini dans le graphe d'impact de l'escouade (garde du bloc usage, `3bc070dcd`). CI :
+      run `37860172783` rouge (job Frontend, rouge hérité), puis run `37864459276` sur `3bc070dcd` VERT,
+      tous les jobs (couverture et baseline Linux comprises), gitleaks et Deploy Pre-Check verts.
 - [ ] LK.6.8 Revue adversariale du diff du jalon (skill `adversarial-review`, contexte frais) ;
       chaque constat statué.
 - [ ] LK.6.9 Point à l'utilisateur en langage clair ; U-5 (a) : pas de demande de fusion à ce jalon.
@@ -1405,3 +1414,9 @@ refusionner, rejouer l'étape 0).
   comprises), `archlint`, vet avec et sans `research`, `-tags=integration -p 1` des paquets touchés
   (grammar, lecture, facts, replay, types, revision) : verts. Reste LK.6.7 (gate-push, push, CI) ;
   LK.6.8 et LK.6.9 reviennent au superviseur.
+- 2026-10-09 (lot B) : LK.6.7 FAIT. gate-push par étapes vert ; deux rouges hérités de `feat/v75`
+  réparés (`b9f4ef535`, `3bc070dcd`) ; branche poussée ; CI verte (run `37864459276`). JALON LK PRÊT
+  POUR LA REVUE : LK.6.8 (revue adversariale, contexte frais) et LK.6.9 (point à l'utilisateur)
+  reviennent au superviseur ; D1.0 non commencée. Données de travail du worktree : faits mis de côté
+  sous `data/cache/film_facts_avant_lk6` et `film_facts_lk6_cuissons` (dossiers non suivis), racine du
+  gate de corpus sous `$S/lk6/gate_work` (journaux et caches).
