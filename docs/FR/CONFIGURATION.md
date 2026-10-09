@@ -250,14 +250,17 @@ vraies données (lot B-C10 du backlog) :
 | Auth (`users.json`, `groups.json`, magasin de tokens) | `<démo>/auth/` (vide : la démo ne se connecte à rien) |
 | Sessions, logs, sauvegardes | `<démo>/runtime/sessions`, `<démo>/runtime/logs`, `<démo>/runtime/backups` |
 | Caches et état d'administration (`jobs.json`, cache de l'aide, amis, `admin_state/`) | `<démo>/runtime/data/…` |
-| Rejeux figés (un par mode de jeu) : artefacts, films sources, index | `<démo>/replays/` (écrits par `seed-demo`, lus seulement par le serveur) |
+| Rejeux figés (un par mode de jeu) : artefacts, index | `<démo>/replays/` (écrits par `seed-demo`, lus seulement par le serveur) |
+| Films sources des rejeux figés (recuits quand le schéma d'artefact monte) | `data/demo_films/<titre>/`, HORS de la racine démo : magasin persistant, rempli par `seed-demo` depuis `data/cache`, provisionné une fois là où aucun cache de films n'existe (`rsync -a data/demo_films/ <vps>:/opt/levelup/data/demo_films/`) |
 | Magasin de monitoring | en mémoire (aucun `monitoring.duckdb`) |
 
 Les tâches de fond qui écriraient ou supprimeraient hors de la racine démo (janitor, file
 persist asynchrone et reprise du WAL, santé données, purge des rejeux, surveillance disque,
 crons catalogue, noms d'assets, Spartan et classement mondial, watcher, pool de tokens,
 migrations des amis et du groupe au boot) ne sont pas lancées ; une ligne de log
-`demo_mode: tâches de fond coupées` les liste au boot. La démo est en LECTURE SEULE : toute
+`demo_mode: tâches de fond coupées` les liste au boot. `seed-demo` génère dans
+`<démo>.generation` et ne publie qu'une fois son contrôle d'anonymisation passé : une
+régénération en échec laisse la démo précédente intacte. La démo est en LECTURE SEULE : toute
 requête qui écrit (POST, PUT, PATCH, DELETE) répond 403 `demo_mode_forbidden`, sauf les lectures
 envoyées en POST (pages, filtres, tactique, série d'engagement) et `POST /session/context`. Le
 rejeu 2D est servi à tout visiteur, pour les seuls matchs figés de la démo, les joueurs réels

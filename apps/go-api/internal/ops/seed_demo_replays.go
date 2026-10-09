@@ -2,15 +2,16 @@
 // plan des recommandations du 2026-10-09).
 //
 // CE QUE FAIT CETTE PHASE, pour chaque rejeu du manifeste (`replay_matches`) :
-//  1. elle EMBARQUE le film source dans la disposition démo (`<TitleDir>/replays/films`) quand
-//     le cache du dépôt source le porte ; sinon elle garde la copie déjà embarquée. Le film
-//     voyage avec la démo pour qu'elle puisse être RECUITE là où le cache de films n'existe
-//     pas (le VPS web ne garde pas de films) ;
+//  1. elle range le film source dans le MAGASIN PERSISTANT des films de la démo
+//     (`PathResolver.DemoFilmsCacheRoot`, hors du dossier de la démo, régénéré à chaque seed)
+//     quand le cache du dépôt source le porte ; sinon elle garde celui du magasin. Le magasin
+//     se provisionne une fois là où le cache de films n'existe pas (le VPS web) ;
 //  2. elle installe un artefact AU DERNIER SCHÉMA (`replaybuild.ArtifactUpToDate`) : celui du
-//     dépôt source s'il est à jour, sinon celui déjà embarqué s'il l'est, sinon elle RECUIT le
-//     film embarqué — un film par processus, borne mémoire `internal/filmproc`, en attendant
-//     le verrou de décodage de la machine. C'est ainsi qu'une montée de `replay.SchemaVersion`
-//     est rattrapée à la régénération suivante de la démo, sans rien demander ;
+//     dépôt source s'il est à jour, sinon celui de la démo publiée s'il l'est, sinon elle
+//     RECUIT le film du magasin — un film par processus, plafond mémoire explicite
+//     (demoReplaySoftLimit), en attendant le verrou de décodage de la machine, sans rien
+//     écrire hors de la démo. Une montée de `replay.SchemaVersion` est ainsi rattrapée à la
+//     régénération suivante de la démo, sans rien demander ;
 //  3. elle écrit l'index (`domain.DemoReplayIndex`) : les matchs servis, et la correspondance
 //     des identités réelles vers le roster démo, que le serveur applique au document SERVI
 //     (l'artefact n'est jamais modifié, décision D-1).
@@ -70,11 +71,11 @@ func seedDemoReplays(ctx context.Context, opts SeedDemoOptions, layout titlePkg.
 	}
 	keep := map[string]bool{}
 	var index domain.DemoReplayIndex
+	films := titlePkg.NewPathResolver(opts.RepoRoot).DemoFilmsCacheRoot(slug)
 	for _, p := range picks {
 		short := titlePkg.FilmShortMatchID(p.MatchID)
 		keep[short] = true
-		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).CacheRootDir(),
-			layout.ReplayFilmsCacheRoot(slug), short)
+		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).CacheRootDir(), films, short)
 		if filmOK {
 			rep.Films++
 		}
@@ -88,7 +89,7 @@ func seedDemoReplays(ctx context.Context, opts SeedDemoOptions, layout titlePkg.
 			MatchID: p.MatchID, Mode: p.Mode, Map: p.Map, SchemaVersion: d.SchemaVersion,
 		})
 	}
-	pruneDemoReplays(ctx, layout, slug, keep)
+	pruneDemoReplays(ctx, layout, films, slug, keep)
 	for _, e := range roster {
 		index.Identities = append(index.Identities, domain.DemoReplayIdentity{
 			XUID: e.SourceXUID, DemoXUID: e.DemoXUID, DemoGamertag: e.DemoGamertag,
@@ -102,46 +103,66 @@ func seedDemoReplays(ctx context.Context, opts SeedDemoOptions, layout titlePkg.
 	return rep
 }
 
+// previousArtifactPath : l'artefact de ce match dans la démo PUBLIÉE (la génération en cours
+// s'écrit à part, cf. seed_demo_publish.go) ; la démo en cours d'écriture elle-même quand le
+// seed écrit en place.
+func previousArtifactPath(opts SeedDemoOptions, layout titlePkg.DemoLayout, matchID string) string {
+	if opts.PreviousOutDir != "" {
+		return titlePkg.NewDemoLayout(opts.PreviousOutDir).ReplayArtifactPath(opts.TitleSlug, matchID)
+	}
+	return layout.ReplayArtifactPath(opts.TitleSlug, matchID)
+}
+
+// cookDemoReplayFunc : la recuisson d'un rejeu figé. Une variable pour que les tests
+// remplacent l'enfant de décodage ; la production n'en a qu'une valeur.
+var cookDemoReplayFunc = cookDemoReplay
+
 // installDemoArtifact pose l'artefact démo d'un match au dernier schéma et rend son issue.
 func installDemoArtifact(ctx context.Context, opts SeedDemoOptions, layout titlePkg.DemoLayout,
 	matchID string, filmOK bool) string {
 	slug := opts.TitleSlug
 	dst := layout.ReplayArtifactPath(slug, matchID)
+	prev := previousArtifactPath(opts, layout, matchID)
 	src := titlePkg.NewPathResolver(opts.cacheRepoRoot()).ReplayArtifactPath(slug, matchID)
-	switch {
-	case replaybuild.ArtifactUpToDate(src):
-		if err := copyArtifact(src, dst); err != nil {
-			slog.ErrorContext(ctx, "seed-demo: copie d'artefact de rejeu échouée", "err", err, "match_id", matchID)
-			break
+	for _, c := range []struct{ from, outcome string }{{src, DemoReplayCopied}, {prev, DemoReplayKept}} {
+		if !replaybuild.ArtifactUpToDate(c.from) {
+			continue
 		}
-		return DemoReplayCopied
-	case replaybuild.ArtifactUpToDate(dst):
-		return DemoReplayKept
+		if c.from == dst {
+			return c.outcome
+		}
+		if err := copyArtifact(c.from, dst); err != nil {
+			slog.ErrorContext(ctx, "seed-demo: copie d'artefact de rejeu échouée", "err", err, "match_id", matchID)
+			continue
+		}
+		return c.outcome
 	}
 	if filmOK {
-		err := cookDemoReplay(ctx, opts, layout, matchID)
+		err := cookDemoReplayFunc(ctx, opts, layout, matchID)
 		if err == nil {
 			return DemoReplayCooked
 		}
 		slog.ErrorContext(ctx, "seed-demo: recuisson du rejeu démo échouée", "err", err, "match_id", matchID)
 	}
-	return keepStaleArtifact(ctx, src, dst, matchID)
+	return keepStaleArtifact(ctx, []string{prev, src}, dst, matchID)
 }
 
-// keepStaleArtifact : aucun artefact à jour n'a pu être posé. Le plus récent disponible reste
-// servi (« périmé ») plutôt que rien ; sans artefact du tout, le rejeu n'est pas servi.
-func keepStaleArtifact(ctx context.Context, src, dst, matchID string) string {
-	if fileExists(dst) {
+// keepStaleArtifact : aucun artefact à jour n'a pu être posé. Le plus récent disponible (démo
+// publiée, puis dépôt) reste servi (« périmé ») plutôt que rien ; sans aucun artefact, le
+// rejeu n'est pas servi.
+func keepStaleArtifact(ctx context.Context, candidates []string, dst, matchID string) string {
+	for _, c := range candidates {
+		if !fileExists(c) {
+			continue
+		}
+		if c != dst {
+			if err := copyArtifact(c, dst); err != nil {
+				slog.ErrorContext(ctx, "seed-demo: copie d'artefact périmé échouée", "err", err, "match_id", matchID)
+				continue
+			}
+		}
 		slog.ErrorContext(ctx, "seed-demo: rejeu démo servi au schéma précédent", "match_id", matchID)
 		return DemoReplayStale
-	}
-	if fileExists(src) {
-		err := copyArtifact(src, dst)
-		if err == nil {
-			slog.ErrorContext(ctx, "seed-demo: rejeu démo servi au schéma précédent (copie du dépôt)", "match_id", matchID)
-			return DemoReplayStale
-		}
-		slog.ErrorContext(ctx, "seed-demo: copie d'artefact périmé échouée", "err", err, "match_id", matchID)
 	}
 	slog.ErrorContext(ctx, "seed-demo: aucun artefact pour ce rejeu démo — non servi", "match_id", matchID)
 	return DemoReplayMissing
@@ -159,9 +180,9 @@ func copyArtifact(src, dst string) error {
 	return atomicfile.WriteFile(dst, raw, 0o644)
 }
 
-// embedDemoFilm copie le film `short` du cache source vers le cache embarqué de la démo (les
-// chunks et le manifeste), sans recopier un fichier déjà présent à la même taille. Rend true
-// quand la démo porte le film après l'appel (copié, ou déjà embarqué).
+// embedDemoFilm copie le film `short` du cache source vers le magasin persistant des films de
+// la démo (les chunks et le manifeste), sans recopier un fichier déjà présent à la même
+// taille. Rend true quand le magasin porte le film après l'appel (copié, ou déjà là).
 func embedDemoFilm(ctx context.Context, srcCache, demoCache, short string) bool {
 	srcDir := filmcache.ChunkDir(srcCache, short)
 	if _, err := os.Stat(srcDir); err == nil {
@@ -209,10 +230,10 @@ func sameSize(a, b string) bool {
 	return errA == nil && errB == nil && ia.Size() == ib.Size()
 }
 
-// pruneDemoReplays retire les artefacts et les films embarqués qui ne sont plus au manifeste :
-// la disposition démo reflète la liste figée, et rien d'autre (un artefact orphelin ferait
-// apparaître une icône de rejeu menant à un refus).
-func pruneDemoReplays(ctx context.Context, layout titlePkg.DemoLayout, slug string, keep map[string]bool) {
+// pruneDemoReplays retire les artefacts de la démo et les films du magasin qui ne sont plus
+// au manifeste : la démo et son magasin reflètent la liste figée, et rien d'autre (un
+// artefact orphelin ferait apparaître une icône de rejeu menant à un refus).
+func pruneDemoReplays(ctx context.Context, layout titlePkg.DemoLayout, films, slug string, keep map[string]bool) {
 	entries, err := os.ReadDir(layout.ReplayArtifactsDir(slug))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		slog.ErrorContext(ctx, "seed-demo: dossier des artefacts démo illisible", "err", err)
@@ -224,10 +245,9 @@ func pruneDemoReplays(ctx context.Context, layout titlePkg.DemoLayout, slug stri
 		}
 		removeLogged(ctx, filepath.Join(layout.ReplayArtifactsDir(slug), e.Name()))
 	}
-	films := layout.ReplayFilmsCacheRoot(slug)
-	ids, err := filmcache.ListShortIDs(films) // cache absent : liste vide, pas d'erreur
+	ids, err := filmcache.ListShortIDs(films) // magasin absent : liste vide, pas d'erreur
 	if err != nil {
-		slog.ErrorContext(ctx, "seed-demo: films embarqués illisibles", "err", err)
+		slog.ErrorContext(ctx, "seed-demo: magasin des films démo illisible", "err", err)
 		return
 	}
 	sort.Strings(ids)

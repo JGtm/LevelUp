@@ -63,6 +63,12 @@ type Request struct {
 	// OutPath : ou l'enfant depose les octets de l'artefact. C'est le PARENT qui le choisit et
 	// qui le supprime — l'enfant n'a pas a nettoyer ce qu'il n'a pas cree.
 	OutPath string `json:"outPath"`
+	// SoftLimitBytes : plafond memoire souple de l'enfant en octets ; 0 = le defaut
+	// (`filmproc.DefaultLimitGiB`). La recuisson de la demo le fixe pour son hote.
+	SoftLimitBytes uint64 `json:"softLimitBytes,omitempty"`
+	// SansEcritureDesFaits : l'enfant n'ecrit pas les faits de film sous RepoRoot (cf.
+	// `replaybuild.Builder.SansEcritureDesFaits`).
+	SansEcritureDesFaits bool `json:"sansEcritureDesFaits,omitempty"`
 }
 
 // IsChild dit si cette ligne de commande fait de nous l'enfant de cuisson.
@@ -100,12 +106,18 @@ func RunChild(ctx context.Context, args []string) int {
 		return filmproc.CodePreparation
 	}
 
-	g := filmproc.Arm(outilPostSync, filmproc.DefaultLimitGiB, func(peak uint64) {
+	onExceeded := func(peak uint64) {
 		// LE PIC PART AVANT LA MORT : `os.Exit` ne joue pas les differes.
 		filmproc.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : plafond memoire depasse (%d octets) — film abandonne\n", peak)
 		os.Exit(filmproc.CodeMemory)
-	})
+	}
+	var g *filmproc.Guard
+	if req.SoftLimitBytes > 0 {
+		g = filmproc.ArmBytes(outilPostSync, req.SoftLimitBytes, onExceeded)
+	} else {
+		g = filmproc.Arm(outilPostSync, filmproc.DefaultLimitGiB, onExceeded)
+	}
 	defer func() {
 		g.Disarm()
 		filmproc.EmitPeak(g.Peak())
@@ -115,6 +127,9 @@ func RunChild(ctx context.Context, args []string) int {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : builder indisponible : %v\n", err)
 		return filmproc.CodePreparation
+	}
+	if req.SansEcritureDesFaits {
+		builder = builder.SansEcritureDesFaits()
 	}
 	built, err := builder.BuildBytes(ctx, req.MatchID, req.MapNames, req.FilmDir, req.Facts)
 	if err != nil {

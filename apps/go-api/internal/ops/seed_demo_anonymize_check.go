@@ -18,6 +18,7 @@ package ops
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -26,6 +27,10 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 )
+
+// ErrDemoIdentityLeak : le contrôle des valeurs a trouvé une identité réelle. Rien de la
+// génération en cours ne doit être publié (SeedDemoMulti).
+var ErrDemoIdentityLeak = errors.New("identités réelles dans la démo générée")
 
 // demoIdentityLeak : une valeur réelle trouvée dans une base démo générée.
 type demoIdentityLeak struct {
@@ -259,6 +264,6 @@ func verifyDemoAnonymization(ctx context.Context, opts SeedDemoOptions, layout t
 		lignes = append(lignes, fmt.Sprintf("%s (%d valeur(s))", w, n))
 	}
 	sort.Strings(lignes)
-	return fmt.Errorf("contrôle d'anonymisation : identités réelles dans %d colonne(s) de la démo :\n  %s",
-		len(lignes), strings.Join(lignes, "\n  "))
+	return fmt.Errorf("contrôle d'anonymisation : %w, %d colonne(s) :\n  %s",
+		ErrDemoIdentityLeak, len(lignes), strings.Join(lignes, "\n  "))
 }

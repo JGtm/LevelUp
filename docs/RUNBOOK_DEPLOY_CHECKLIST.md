@@ -84,6 +84,24 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `app_settings.json`) that Docker creates as directories at bind-mount time — remove
       those before the real files are written by `seed-demo` (source: `scripts/deploy.sh`
       step 2a, `deploy.yml` job `deploy-demo`).
+- [ ] **Demo regen publishes only a checked generation**: `seed-demo` writes into
+      `data/demo.generation`, runs the anonymization value check, and only then swaps the
+      generated items into `data/demo` (`runtime/` and `auth/` untouched). A failed regen
+      publishes nothing; the previous demo stays online (source: `ops/seed_demo_publish.go`).
+- [ ] **Demo replay films are provisioned (once)**: the frozen demo replays are re-cooked from
+      their films when the artifact schema moves up, and the web VPS keeps no film cache. The
+      films live in the persistent store `data/demo_films/<title>/` (outside `data/demo`, never
+      regenerated). Provision it once from a workstation that has the films (run `seed-demo`
+      there first: it fills the store from `data/cache`):
+
+      ```bash
+      rsync -a data/demo_films/ deploy@<vps>:/opt/levelup/data/demo_films/
+      ```
+
+      Without it, a demo replay whose production artifact is missing or outdated keeps its
+      previous artifact (or is not served) — never a crash. A re-cook runs one film per child
+      process under an explicit memory cap (`ops/seed_demo_replay_cook.go`,
+      `demoReplaySoftLimit`), while prod and demo are stopped for the seed.
 
 ## Post-deploy
 

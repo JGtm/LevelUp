@@ -246,13 +246,16 @@ defaults whatever `LEVELUP_DEMO_MODE` says, since it works on the real data (bac
 | Auth (`users.json`, `groups.json`, token store) | `<demo>/auth/` (empty: the demo connects to nothing) |
 | Sessions, logs, backups | `<demo>/runtime/sessions`, `<demo>/runtime/logs`, `<demo>/runtime/backups` |
 | Runtime caches and admin state (`jobs.json`, help cache, friends, `admin_state/`) | `<demo>/runtime/data/…` |
-| Frozen replays (one per game mode): artifacts, source films, index | `<demo>/replays/` (written by `seed-demo`, read-only for the server) |
+| Frozen replays (one per game mode): artifacts, index | `<demo>/replays/` (written by `seed-demo`, read-only for the server) |
+| Source films of the frozen replays (re-cooked when the artifact schema moves up) | `data/demo_films/<title>/`, OUTSIDE the demo root: persistent store, filled by `seed-demo` from `data/cache`, provisioned once where no film cache exists (`rsync -a data/demo_films/ <vps>:/opt/levelup/data/demo_films/`) |
 | Monitoring store | in memory (no `monitoring.duckdb`) |
 
 Background tasks that would write or delete outside the demo root (janitor, async persist
 queue and WAL recovery, data health, replay purge, disk watch, catalog/asset/Spartan/world
 leaderboard crons, watcher, token pool, boot friend/group migrations) are not started; one
-`demo_mode: tâches de fond coupées` log line lists them at boot. The demo is READ-ONLY: every
+`demo_mode: tâches de fond coupées` log line lists them at boot. `seed-demo` generates into
+`<demo>.generation` and publishes only after its anonymization value check passes: a failed
+regen leaves the previous demo untouched. The demo is READ-ONLY: every
 write request (POST, PUT, PATCH, DELETE) answers 403 `demo_mode_forbidden`, except read queries
 sent as POST (pages, filters, tactical, engagement series) and `POST /session/context`. The 2D
 replay is served to every visitor, for the frozen demo matches only, with real players replaced

@@ -695,6 +695,15 @@ func (p *PathResolver) DemoManifestPath(gamertag, titleSlug string) string {
 	return filepath.Join(p.repoRoot, "config", "demo", gamertag, titleSlug+".json")
 }
 
+// DemoFilmsCacheRoot rend le MAGASIN PERSISTANT des films des rejeux figés de la démo :
+// `data/demo_films/<slug>`, hors du dossier de la démo (régénéré à chaque seed), avec la
+// disposition d'un cache de films (film_chunks/, film_manifests/) pour que la recuisson les
+// lise comme ceux du cache. Provisionné une fois là où le cache de films n'existe pas (VPS).
+// Ex: data/demo_films/halo_infinite/film_chunks/abcd1234/
+func (p *PathResolver) DemoFilmsCacheRoot(slug string) string {
+	return filepath.Join(p.repoRoot, "data", "demo_films", slug)
+}
+
 // SharedPVEDBPath retourne le chemin de la base PvE partagée d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/shared_pve.duckdb
 func (p *PathResolver) SharedPVEDBPath(titleSlug string) string {

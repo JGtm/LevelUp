@@ -23,9 +23,9 @@ package title
 //   - `<démo>/auth/` : l'authentification de la démo. Le seed ne l'écrit pas : elle est VIDE,
 //     la démo ne se connecte à rien (décision D-7) ;
 //   - `<TitleDir>/replays/` : les rejeux FIGÉS de la démo, écrits par le seed et seulement lus
-//     par le serveur — `artifacts/{short8}.json`, les films sources sous `films/` (même
-//     disposition qu'un cache de films : `film_chunks/`, `film_manifests/`, pour pouvoir les
-//     recuire), et `index.json` (matchs servis, correspondance des identités) ;
+//     par le serveur — `artifacts/{short8}.json` et `index.json` (matchs servis, correspondance
+//     des identités). Leurs FILMS sources ne vivent PAS dans la démo, régénérée à chaque seed :
+//     ils sont dans le magasin persistant du dépôt (PathResolver.DemoFilmsCacheRoot) ;
 //   - `<démo>/runtime/` : TOUT ce que le serveur écrit pendant qu'il tourne (sessions, logs,
 //     caches, état d'administration). Ignoré par git sous `data/demo/` comme sous
 //     `tests/fixtures/demo-root/`.
@@ -122,13 +122,6 @@ func (d DemoLayout) ReplayArtifactsDir(slug string) string {
 // production).
 func (d DemoLayout) ReplayArtifactPath(slug, matchID string) string {
 	return filepath.Join(d.ReplayArtifactsDir(slug), ReplayArtifactFileName(matchID))
-}
-
-// ReplayFilmsCacheRoot rend la racine du cache de films EMBARQUÉ par la démo : la même
-// disposition qu'un cache de films (film_chunks/, film_manifests/), pour que la recuisson
-// lise ces films comme elle lit ceux du dépôt.
-func (d DemoLayout) ReplayFilmsCacheRoot(slug string) string {
-	return filepath.Join(d.ReplaysDir(slug), "films")
 }
 
 // ReplayIndexPath rend l'index des rejeux démo : matchs servis et correspondance des

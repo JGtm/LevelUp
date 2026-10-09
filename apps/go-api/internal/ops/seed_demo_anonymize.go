@@ -201,14 +201,24 @@ func jsonIdentityRemap(c string) string {
 // legacy peut porter une table sans les colonnes techniques attendues) — elle est alors
 // journalisée et comptée à 0.
 func copyAnonymizedTables(ctx context.Context, dst *sql.DB, tables []extractTable, idsLit string,
-	remaps []xuidRemap, tolerant bool) (map[string]int, error) {
+	remaps []xuidRemap, tolerant bool) (counts map[string]int, err error) {
+	// Les tables de correspondance portent les identités RÉELLES : retirées sur TOUS les
+	// chemins de sortie, copie en échec comprise.
+	defer func() {
+		if derr := dropXUIDMap(ctx, dst); derr != nil {
+			slog.ErrorContext(ctx, "seed-demo: tables de correspondance non retirées", "err", derr)
+			if err == nil {
+				err = derr
+			}
+		}
+	}()
 	if err := installXUIDMap(ctx, dst, remaps); err != nil {
 		return nil, err
 	}
 	if err := installGamertagMap(ctx, dst); err != nil {
 		return nil, err
 	}
-	counts := make(map[string]int, len(tables))
+	counts = make(map[string]int, len(tables))
 	for _, t := range tables {
 		cols, err := sourceColumns(ctx, dst, t.name)
 		if err != nil {
@@ -237,5 +247,5 @@ func copyAnonymizedTables(ctx context.Context, dst *sql.DB, tables []extractTabl
 		}
 		counts[t.name] = n
 	}
-	return counts, dropXUIDMap(ctx, dst)
+	return counts, nil
 }

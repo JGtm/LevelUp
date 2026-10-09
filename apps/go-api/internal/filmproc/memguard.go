@@ -149,6 +149,23 @@ func Arm(tool string, giB int, onExceeded func(peakBytes uint64), opts ...ArmOpt
 	return newGuard(hard, samplePeriod, onExceeded)
 }
 
+// ArmBytes est [Arm] avec un plafond souple en OCTETS, pour un appelant qui doit descendre
+// sous le gibioctet (la recuisson de la demo sur un hote de 2 Go). `softBytes == 0` desarme les
+// deux plafonds. Le plafond dur garde la meme marge que [Arm].
+func ArmBytes(tool string, softBytes uint64, onExceeded func(peakBytes uint64), opts ...ArmOption) *Guard {
+	cfg := armConfig{message: messageArmementParDefaut}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	var hard uint64
+	if softBytes > 0 {
+		hard = hardMargin(softBytes)
+		debug.SetMemoryLimit(int64(softBytes))
+		slog.Info(cfg.message, "outil", tool, "souple_octets", softBytes, "dur_octets", hard)
+	}
+	return newGuard(hard, samplePeriod, onExceeded)
+}
+
 // newGuard : le constructeur bas niveau, separe d'Arm pour rester testable SANS dependre de la
 // memoire reelle du processus — les tests posent un plafond et une periode minuscules pour
 // observer un declenchement deterministe en quelques millisecondes.

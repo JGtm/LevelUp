@@ -8,6 +8,7 @@ package ops
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -129,6 +130,8 @@ func TestSeedDemoReplays_InstalleIndexeEtElague(t *testing.T) {
 
 	ecrireTest(t, pr.ReplayArtifactPath(slug, ajour), artefactJSON(t, ajour, replay.SchemaVersion))
 	ecrireTest(t, layout.ReplayArtifactPath(slug, conserve), artefactJSON(t, conserve, replay.SchemaVersion))
+	// La démo s'écrit EN PLACE ici (PreviousOutDir vide) : sa propre copie est la démo
+	// précédente, d'où « conserve ».
 	ecrireTest(t, pr.ReplayArtifactPath(slug, perime), artefactJSON(t, perime, replay.SchemaVersion-1))
 	ecrireTest(t, layout.ReplayArtifactPath(slug, orphelin), artefactJSON(t, orphelin, replay.SchemaVersion))
 	// Le film du rejeu à jour, dans le cache source : il doit être embarqué.
@@ -152,7 +155,7 @@ func TestSeedDemoReplays_InstalleIndexeEtElague(t *testing.T) {
 	if rep.Films != 1 {
 		t.Errorf("films embarqués : %d, attendu 1", rep.Films)
 	}
-	if _, found, err := filmcache.Open(layout.ReplayFilmsCacheRoot(slug), ajour); !found || err != nil {
+	if _, found, err := filmcache.Open(pr.DemoFilmsCacheRoot(slug), ajour); !found || err != nil {
 		t.Errorf("film du rejeu non embarqué (found=%v, err=%v)", found, err)
 	}
 	if fileExists(layout.ReplayArtifactPath(slug, orphelin)) {
@@ -184,3 +187,47 @@ func TestSeedDemoReplays_SansRejeuNiDossierNeCreeRien(t *testing.T) {
 		t.Error("un titre sans rejeu figé ne doit rien créer")
 	}
 }
+
+// TestInstallDemoArtifact_RecuitQuandRienNEstAJour — revue R1 (P2-6) : la branche de recuisson
+// est EXERCÉE (couture cookDemoReplayFunc à la place de l'enfant de décodage) : artefact
+// périmé partout et film présent → recuit ; recuisson en échec → l'artefact périmé reste
+// servi ; pas de film → aucune recuisson tentée.
+func TestInstallDemoArtifact_RecuitQuandRienNEstAJour(t *testing.T) {
+	ctx := context.Background()
+	slug := titlePkg.DefaultSlug
+	const id = "ffff0001"
+	for _, tc := range []struct {
+		nom      string
+		filmOK   bool
+		cookErr  error
+		attendu  string
+		appelles int
+	}{
+		{"film_present_recuit", true, nil, DemoReplayCooked, 1},
+		{"recuisson_en_echec", true, errCuissonTest, DemoReplayStale, 1},
+		{"sans_film", false, nil, DemoReplayStale, 0},
+	} {
+		t.Run(tc.nom, func(t *testing.T) {
+			src, demo := t.TempDir(), t.TempDir()
+			layout := titlePkg.NewDemoLayout(demo)
+			ecrireTest(t, titlePkg.NewPathResolver(src).ReplayArtifactPath(slug, id), artefactJSON(t, id, replay.SchemaVersion-1))
+			appels := 0
+			ancien := cookDemoReplayFunc
+			t.Cleanup(func() { cookDemoReplayFunc = ancien })
+			cookDemoReplayFunc = func(_ context.Context, _ SeedDemoOptions, l titlePkg.DemoLayout, m string) error {
+				appels++
+				if tc.cookErr != nil {
+					return tc.cookErr
+				}
+				ecrireTest(t, l.ReplayArtifactPath(slug, m), artefactJSON(t, m, replay.SchemaVersion))
+				return nil
+			}
+			got := installDemoArtifact(ctx, SeedDemoOptions{RepoRoot: src, TitleSlug: slug}, layout, id, tc.filmOK)
+			if got != tc.attendu || appels != tc.appelles {
+				t.Errorf("issue %q après %d recuisson(s), attendu %q après %d", got, appels, tc.attendu, tc.appelles)
+			}
+		})
+	}
+}
+
+var errCuissonTest = errors.New("cuisson en échec (test)")

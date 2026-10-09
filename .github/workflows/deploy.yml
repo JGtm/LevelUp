@@ -386,9 +386,14 @@ jobs:
 
             # seed-demo seede désormais TOUS les titres où JGtm a des données (dérivés de
             # db_profiles) : halo_infinite (flux HLS) + halo_5 (clips mp4 indexés ci-dessus).
+            # Il GÉNÈRE dans data/demo.generation et ne PUBLIE dans data/demo que si tout a passé,
+            # contrôle d'anonymisation compris (ops/seed_demo_publish.go) : un échec laisse la
+            # démo précédente intacte, et c'est elle que le piège de sortie remet en ligne.
+            # Les films des rejeux figés vivent dans data/demo_films (persistant, hors de
+            # data/demo), provisionné une fois (docs/RUNBOOK_DEPLOY_CHECKLIST.md).
             docker compose run --rm levelup \
               levelup seed-demo --gamertag JGtm --service-tag SPTA --out data/demo --max-media 12 \
-              || echo "[regen] ⚠️ seed-demo a échoué — données démo inchangées (prod redémarrée juste après, conteneur démo recréé à la sortie)"
+              || echo "::warning::[regen] seed-demo a échoué — rien n'a été publié, la démo précédente reste en ligne (cause dans le journal ci-dessus)"
             echo "[regen] Restart prod..."
             docker compose up -d levelup
 

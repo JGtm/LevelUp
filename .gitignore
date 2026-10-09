@@ -130,6 +130,11 @@ data/rag/
 
 # Architecture v4 - DuckDB (données locales volumineuses)
 data/demo/
+# Génération démo en cours / éléments remplacés à la publication (ops/seed_demo_publish.go),
+# et magasin persistant des films des rejeux figés de la démo.
+data/demo.generation/
+data/demo.previous/
+data/demo_films/
 data/logs/
 data/players/
 

@@ -90,6 +90,10 @@ type SeedDemoOptions struct {
 	// artefacts de rejeu sources des rejeux figés. Vide → RepoRoot. Son cache porte aussi le
 	// verrou de décodage de la machine.
 	CacheRepoRoot string
+	// PreviousOutDir : la démo PUBLIÉE quand OutDir est une génération écrite à part
+	// (SeedDemoMulti, seed_demo_publish.go) — ses rejeux à jour y sont repris. Vide : le seed
+	// écrit en place, OutDir est aussi la démo précédente.
+	PreviousOutDir string
 }
 
 // SeedDemoResult résume l'exécution.

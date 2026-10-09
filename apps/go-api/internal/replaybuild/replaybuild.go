@@ -87,6 +87,9 @@ type Builder struct {
 	// sansFaitsPersistes force la branche DECODE : les faits sur disque sont IGNORES (cf.
 	// `SansFaitsPersistes`).
 	sansFaitsPersistes bool
+	// sansEcritureDesFaits : la cuisson n'ECRIT pas ses faits sur disque (cf.
+	// `SansEcritureDesFaits`).
+	sansEcritureDesFaits bool
 	// observer recoit chaque etape de BuildBytes et de BuildFromFilm avec sa sortie (cf.
 	// replay/observe.go et cmd/replay-equiv). Nil = aucun appel, aucun cout.
 	observer replay.Observer
