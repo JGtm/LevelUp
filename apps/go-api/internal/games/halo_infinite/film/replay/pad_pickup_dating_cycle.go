@@ -27,9 +27,10 @@ package replay
 //   - LA PREMIÈRE : parmi les ramassages du cycle faits au socle, le plus tôt. Un ramassage plus
 //     tôt dont le ramasseur n'est pas localisé interdit de conclure : l'occupation s'abstient.
 //
-// Un ramassage qu'une lecture a daté n'est jamais repris, et un ramassage que le repli désigne pour
-// deux occupations n'en date aucune : la règle « un ramassage date au plus une occupation »
-// (pad_pickup_dating.go) tient des deux côtés.
+// Un ramassage qu'une lecture a daté n'est jamais repris — quand c'est lui, le premier au socle du
+// cycle, l'occupation s'abstient au lieu de prendre une reprise au sol plus tardive —, et un
+// ramassage que le repli désigne pour deux occupations n'en date aucune : la règle « un ramassage
+// date au plus une occupation » (pad_pickup_dating.go) tient des deux côtés.
 
 import (
 	"fmt"
@@ -86,7 +87,9 @@ func premieresPrisesDuCycle(in entreesDuCycle, fenetres [][]int, retenu []int) i
 
 // premiereAuSocle rend le premier ramassage du cycle de l'occupation `i` fait au socle, parmi ses
 // candidats triés par instant ; [candidatNonDate] quand le cycle n'est pas borné, qu'aucun n'est
-// au socle, ou qu'un candidat plus tôt n'est pas localisé.
+// au socle, qu'un candidat plus tôt n'est pas localisé, ou que le premier ramassage au socle est
+// déjà daté par une lecture : il est alors la prise du cycle, les suivants sont des reprises au sol,
+// et un ramassage qu'une lecture a daté n'est jamais repris.
 func premiereAuSocle(in entreesDuCycle, i int, candidats []int, pris map[int]bool) int {
 	k := in.picks[i]
 	pad := in.pads[k.Pad]
@@ -99,16 +102,17 @@ func premiereAuSocle(in entreesDuCycle, i int, candidats []int, pris map[int]boo
 		if in.pickups[j].T >= fin {
 			break // ramassage d'une réapparition suivante
 		}
-		if pris[j] {
-			continue // daté par une lecture : jamais repris
-		}
 		pos, ok := in.localiser(in.pickups[j])
 		if !ok {
 			return candidatNonDate
 		}
-		if dist3(pos, socle) < originDropMaxDist {
-			return j
+		if dist3(pos, socle) >= originDropMaxDist {
+			continue // prise d'une autre arme de la famille, ailleurs sur la carte
 		}
+		if pris[j] {
+			return candidatNonDate
+		}
+		return j
 	}
 	return candidatNonDate
 }

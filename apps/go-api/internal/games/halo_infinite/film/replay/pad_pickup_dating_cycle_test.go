@@ -1,6 +1,10 @@
 package replay
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // pad_pickup_dating_cycle_test.go — UNE SEULE PRISE DE SOCLE PAR RÉAPPARITION DE L'ARME (repli
 // `repli_prise_de_socle_premiere_du_cycle`, pad_pickup_dating_cycle.go).
@@ -161,5 +165,75 @@ func TestFinDuCycleRefuseUneFenetrePartagee(t *testing.T) {
 	seule := WeaponPad{Presence: []PadPresence{{T0: 0, TLow: 10, THigh: 30}, {T0: 40, TLow: 40, THigh: 60}}}
 	if fin, ok := finDuCycle(seule, PadPickup{TLow: 10, THigh: 30}); !ok || fin != 40 {
 		t.Errorf("fin = %d, %v ; attendu 40, vrai", fin, ok)
+	}
+}
+
+// LE PREMIER RAMASSAGE AU SOCLE DU CYCLE EST DÉJÀ DATÉ PAR UNE LECTURE (celle d'un autre socle de
+// la même arme) : il est la prise du cycle, le suivant au socle une reprise au sol. L'occupation
+// s'abstient au lieu de prendre ce suivant.
+//
+// MUTATION : sauter un ramassage `pris` au lieu de s'abstenir dans [premiereAuSocle] — ROUGE
+// (l'occupation 1 prend 30).
+func TestPremierePriseDuCycleDejaLueFaitSAbstenir(t *testing.T) {
+	pads := []WeaponPad{
+		{Weapon: padWeaponForm(famCycle), X: 40, Presence: []PadPresence{{T0: 0, TLow: 10, THigh: 25}}},
+		{Weapon: padWeaponForm(famCycle), Presence: []PadPresence{{T0: 0, TLow: 15, THigh: 40}}},
+	}
+	pickups := []Pickup{
+		{T: 20, W: pickupWeaponForm(famCycle), Kind: PickupWeapon, XUID: "p"},
+		{T: 30, W: pickupWeaponForm(famCycle), Kind: PickupWeapon, XUID: "q"},
+	}
+	picks := []PadPickup{
+		{Pad: 0, TLow: 10, THigh: 25}, // lecture : 20, seul dans sa fenetre
+		{Pad: 1, TLow: 15, THigh: 40}, // 20 (au socle, deja lu) puis 30 (au socle)
+	}
+	loc := localiserFixe(map[int][3]float32{20: {1, 0, 0}, 30: {0.5, 0, 0}})
+	st := daterLesOccupations(pads, picks, pickups, loc)
+	if picks[0].T == nil || *picks[0].T != 20 {
+		t.Fatalf("occupation 0 : t = %v, attendu 20 (lecture)", picks[0].T)
+	}
+	if picks[1].T != nil {
+		t.Errorf("occupation 1 : t = %d, attendu aucune date (20, premier au socle, est deja lu)", *picks[1].T)
+	}
+	if st.Dated != 1 || st.FirstOfCycle != 0 || st.Ambiguous != 1 {
+		t.Errorf("stats = %+v, attendu dated=1 firstOfCycle=0 ambiguous=1", st)
+	}
+
+	// Contre-epreuve : le meme ramassage lu, mais LOIN du socle 1 — le suivant au socle est pris.
+	picks = []PadPickup{{Pad: 0, TLow: 10, THigh: 25}, {Pad: 1, TLow: 15, THigh: 40}}
+	loin := localiserFixe(map[int][3]float32{20: {40, 0, 0}, 30: {0.5, 0, 0}})
+	st = daterLesOccupations(pads, picks, pickups, loin)
+	if picks[1].T == nil || *picks[1].T != 30 || st.FirstOfCycle != 1 {
+		t.Errorf("occupation 1 : t = %v, firstOfCycle = %d ; attendu 30 et 1", picks[1].T, st.FirstOfCycle)
+	}
+}
+
+// LES DEUX REFUS DU LOCALISATEUR : deux ramassages bruts sous la même clé (vie, frame, objet), et un
+// ramassage antérieur à l'origine du document. Le cas nominal passe l'horodatage EXACT.
+//
+// MUTATION : retirer le refus des doublons de [localiserParLeCanalNatif] — ROUGE ; retirer la garde
+// de l origine — ROUGE (le ramassage de 50 µs prend la frame -1 et s y localise).
+func TestLocaliserParLeCanalNatifRefuse(t *testing.T) {
+	const fam = 0x11223344
+	clock := replayClock{origin: 1_000, step: 100_000}
+	natifs := []types.BipedPickup{
+		{TimestampUS: 1_000 + 250_000, Slot: 512, CatalogID: fam}, // frame 2, unique
+		{TimestampUS: 1_000 + 510_000, Slot: 513, CatalogID: fam}, // frame 5, doublon
+		{TimestampUS: 1_000 + 590_000, Slot: 513, CatalogID: fam}, // frame 5, doublon
+		{TimestampUS: 50, Slot: 514, CatalogID: fam},              // avant l origine
+	}
+	vus := map[uint64]bool{}
+	loc := localiserParLeCanalNatif(natifs, clock, func(slot uint32, ts uint64) (float32, float32, float32, bool) {
+		vus[ts] = true
+		return float32(slot), 0, 0, true
+	})
+	if pos, ok := loc(Pickup{T: 2, Slot: 512, W: pickupWeaponForm(fam)}); !ok || pos[0] != 512 || !vus[251_000] {
+		t.Errorf("cas nominal : pos = %v, ok = %v, horodatages vus = %v ; attendu 512, vrai, 251000", pos, ok, vus)
+	}
+	if _, ok := loc(Pickup{T: 5, Slot: 513, W: pickupWeaponForm(fam)}); ok {
+		t.Error("doublon de cle : attendu non localise")
+	}
+	if _, ok := loc(Pickup{T: -1, Slot: 514, W: pickupWeaponForm(fam)}); ok {
+		t.Error("ramassage avant l origine : attendu non localise")
 	}
 }
