@@ -51,8 +51,8 @@ type EmpriseMapColumn struct {
 	// Resources : ressource puis chaque objet, comme un match (SquadEmpriseMatchResource), sommés
 	// sur les matchs de la carte où la ressource se lit.
 	Resources []SquadEmpriseMatchResource `json:"resources"`
-	// PowerWeaponKills : frags aux armes spéciales de chaque camp (feuille de match), sur les matchs
-	// qui les portent. Nil quand aucun ne les porte.
+	// PowerWeaponKills : frags aux armes spéciales de chaque camp (même source, match par match, que
+	// SquadEmpriseMatch.PowerWeaponKills), sur les matchs qui les portent. Nil quand aucun ne les porte.
 	PowerWeaponKills *SquadEmpriseCount `json:"power_weapon_kills,omitempty"`
 }
 

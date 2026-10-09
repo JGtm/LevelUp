@@ -6,15 +6,20 @@ import (
 	"levelup/go-api/internal/analysis/squademprise"
 )
 
-// SquadEmpriseRepository — la feuille de match du bloc « Emprise » de l'Escouade : les frags aux
-// armes spéciales de chaque participant (les deux camps), seule grandeur de l'onglet servie sans
-// film (décision D10 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Les grandeurs du film
-// passent par SessionUsageRepository, câblé sous `film.usage_summary`.
+// SquadEmpriseRepository — les frags aux armes spéciales du bloc « Emprise » : la feuille de match
+// de chaque participant (les deux camps), seule grandeur de l'onglet servie sans film (décision D10
+// du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), et les frags par arme du journal des morts
+// du film, qui la remplacent sur un match aux niveaux de socle mesurés
+// (analysis/squademprise/special_frags.go). Les autres grandeurs du film passent par
+// SessionUsageRepository, câblé sous `film.usage_summary`.
 //
 // Implémenté par internal/platform/duckdb.SquadEmpriseRepo, câblé pour tout titre : la colonne
-// `match_participants.power_weapon_kills` est écrite par les deux titres.
+// `match_participants.power_weapon_kills` est écrite par les deux titres ; le journal ne se lit
+// qu'avec le classificateur de `film.kill_source` (sinon : aucun match lu). Vue du journal
+// absente : games.ErrCapabilityNotSupported.
 type SquadEmpriseRepository interface {
 	LoadPowerWeaponKills(ctx context.Context, matchIDs []string) ([]squademprise.PowerKillRow, error)
+	LoadJournalWeaponKills(ctx context.Context, matchIDs []string) (squademprise.JournalRead, error)
 }
 
 // SquadLifePlacementRepository — le placement des vies du bloc « Groupés ou isolés » de l'Emprise

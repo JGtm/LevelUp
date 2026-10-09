@@ -20,7 +20,7 @@ func (r *ServiceRegistry) cablerFilmMatchView(svc *service.MatchViewService, pdb
 	// La feuille de match (frags aux armes speciales) est ecrite par tous les titres : cablage
 	// INCONDITIONNEL, comme l'Escouade et les Series temporelles. La portee du radar aussi (table
 	// vide pour un titre sans mesure : les vies d'un match sans portee sont ecartees et comptees).
-	svc = svc.WithEmpriseSheet(duckdb.NewSquadEmpriseRepo(pdb)).
+	svc = svc.WithEmpriseSheet(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))).
 		WithRadarRange(r.radarRangeFor(pdb))
 	// Les frags par categorie de source du film (objet explosif, chute) : le MEME lecteur d'armes que
 	// Sessions et l'Escouade ; un lecteur qui ne sait pas les lire laisse les deux lignes au reliquat.

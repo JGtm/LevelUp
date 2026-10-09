@@ -91,8 +91,8 @@ func TestTeammatesCtx_CableLeRepoDeLEmprise(t *testing.T) {
 		t.Fatalf("%d appel(s) à WithEmprise dans TeammatesCtx, attendu 1", len(appels))
 	}
 	a := appels[0]
-	if len(a.args) != 1 || a.args[0] != "duckdb.NewSquadEmpriseRepo(pdb)" {
-		t.Errorf("WithEmprise(%s) : attendu WithEmprise(duckdb.NewSquadEmpriseRepo(pdb)) — sans lui, "+
+	if len(a.args) != 1 || a.args[0] != "duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))" {
+		t.Errorf("WithEmprise(%s) : attendu WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))) — sans lui, "+
 			"l'onglet Emprise perd les frags aux armes spéciales en silence", strings.Join(a.args, ", "))
 	}
 	if len(a.portes) != 0 {

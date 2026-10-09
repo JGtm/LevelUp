@@ -4,12 +4,13 @@ package squademprise
 // ressources » et « Rendement face à l'adversaire »).
 //
 //	bonus            frags pendant l'effet, sur le temps d'effet (frags par minute d'effet) ;
-//	armes spéciales  frags obtenus avec (feuille de match), sur les prises (frags par prise).
+//	armes spéciales  frags obtenus avec (special_frags.go), sur les prises (frags par prise).
 //
-// UN RENDEMENT SE LIT SUR UN SEUL PÉRIMÈTRE. Les frags aux armes spéciales viennent de la feuille
-// de match, qui couvre aussi les matchs sans film ; les prises, elles, n'existent que là où les
-// niveaux de socle sont mesurés. Le rendement divise donc les frags de CES matchs-là
-// (Exposure.Kills) par leurs prises ; Kills garde tous les matchs du périmètre. Pour les bonus,
+// UN RENDEMENT SE LIT SUR UN SEUL PÉRIMÈTRE. Les frags aux armes spéciales existent aussi sur les
+// matchs sans film (feuille de match) ; les prises, elles, n'existent que là où les niveaux de
+// socle sont mesurés. Le rendement divise donc les frags de CES matchs-là (Exposure.Kills), qui
+// portent sur les armes des socles de puissance quand le journal du film se lit, par leurs
+// prises ; Kills garde tous les matchs du périmètre. Pour les bonus,
 // un match dont le film n'a pas d'échelle de temps n'apporte ni frags ni temps d'effet
 // (timeScaled) : Kills = Exposure.Kills, un seul périmètre là aussi.
 
@@ -58,7 +59,7 @@ func productionArmes(s *soiree) (domain.SquadEmpriseProduction, bool) {
 	if s.tiersMatches == 0 {
 		return p, true
 	}
-	prises := s.obj.total(domain.EmpriseResourcePowerWeapon)
+	prises := s.prisesRendement
 	p.Exposure = &domain.SquadEmpriseExposure{
 		Kind: domain.EmpriseExposurePickups, Value: prises, Kills: s.pwkOnTiers,
 	}
