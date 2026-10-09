@@ -8,7 +8,7 @@
  *     l'ancien calque et la légende estompés sous « Mise à jour… » ; carte hors du filtre → la
  *     dire, sans lecture ; sans carte encore → cadre au rapport par défaut, sans titre ;
  *   - le bandeau : nom de la carte, aide ⓘ, pilules « Lecture » (ordre des lectures),
- *     « Joueurs » (« Escouade » désactivé sans composition, avec son infobulle), « Réapparition » ;
+ *     « Joueurs » (« Escouade » cliquable sans composition, qui demande le sélecteur), « Réapparition » ;
  *   - le bandeau d'état des lectures d'artefact ; les trois états vides en titre seul ;
  *   - la rampe verticale : une unité par lecture, divergente pour les lectures signées.
  *
@@ -104,6 +104,7 @@ function renderVue(
     perimetreEnEchec?: boolean
     coequipiersInconnus?: string[] | null
     coequipiers?: string[]
+    onDemandeComposition?: (enCours: boolean) => void
   } = {},
 ) {
   const { carte = LUE, mapName = 'Ruelles', coequipiers = [], ...reste } = options
@@ -260,20 +261,62 @@ describe('TacticalAnalysisView — le bandeau', () => {
     expect(options).toEqual(['morts', 'kills', 'solde', 'gagne', 'temps', 'routes', 'isole'])
   })
 
-  it('« Joueurs » : Moi pressé, « Escouade » désactivé sans composition, avec son infobulle', () => {
+  /** Le `qui` de la dernière lecture demandée. */
+  const dernierQui = () => (useTacticalRaster.mock.calls.at(-1)?.[2] as { qui: string }).qui
+
+  it('« Joueurs » : Moi pressé, « Escouade » CLIQUABLE sans composition, aucun texte d’attente', () => {
     mockRaster({ data: RASTER_NOMINAL })
     renderVue()
     const joueurs = screen.getByRole('group', { name: t.pillPlayers })
     expect(within(joueurs).getByRole('button', { name: t.whoMe })).toHaveAttribute('aria-pressed', 'true')
-    const escouade = within(joueurs).getByRole('button', { name: t.whoSquad })
-    expect(escouade).toBeDisabled()
-    expect(escouade).toHaveAttribute('title', t.planSquadDisabled)
+    expect(within(joueurs).getByRole('button', { name: t.whoSquad })).not.toBeDisabled()
+    expect(screen.queryByTestId('tactical-escouade-attente')).toBeNull()
   })
 
-  it('« Escouade » actif avec une composition', () => {
+  it('clic sur « Escouade » SANS composition : demande le sélecteur, texte visible, lecture sur « Moi »', () => {
     mockRaster({ data: RASTER_NOMINAL })
-    renderVue({ coequipiers: ['xuid(42)'] })
-    expect(screen.getByRole('button', { name: t.whoSquad })).not.toBeDisabled()
+    const demande = vi.fn()
+    renderVue({ onDemandeComposition: demande })
+    fireEvent.click(screen.getByRole('button', { name: t.whoSquad }))
+    expect(demande).toHaveBeenLastCalledWith(true)
+    expect(screen.getByTestId('tactical-escouade-attente')).toHaveTextContent('Aucune composition choisie')
+    expect(screen.getByRole('button', { name: t.whoSquad })).toHaveAttribute('aria-pressed', 'false')
+    expect(dernierQui()).toBe('moi')
+    // Quitter l'angle lève la demande et le texte.
+    fireEvent.click(screen.getByRole('button', { name: t.whoOpponents }))
+    expect(demande).toHaveBeenLastCalledWith(false)
+    expect(screen.queryByTestId('tactical-escouade-attente')).toBeNull()
+  })
+
+  it('clic sur « Escouade » AVEC une composition : l’angle s’applique, aucune demande', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const demande = vi.fn()
+    renderVue({ coequipiers: ['xuid(42)'], onDemandeComposition: demande })
+    fireEvent.click(screen.getByRole('button', { name: t.whoSquad }))
+    expect(screen.getByRole('button', { name: t.whoSquad })).toHaveAttribute('aria-pressed', 'true')
+    expect(dernierQui()).toBe('escouade')
+    expect(demande).toHaveBeenLastCalledWith(false)
+    expect(screen.queryByTestId('tactical-escouade-attente')).toBeNull()
+  })
+
+  it('« Escouade » demandé PUIS composition choisie : l’angle s’applique sans second clic', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    const vue = renderVue()
+    fireEvent.click(screen.getByRole('button', { name: t.whoSquad }))
+    expect(dernierQui()).toBe('moi')
+    vue.rerender(
+      <TacticalAnalysisView
+        playerSlug="JGtm"
+        carte={LUE}
+        mapName="Ruelles"
+        locale="fr"
+        t={t}
+        matchIds={['m1', 'm2']}
+        coequipiers={['xuid(42)']}
+      />,
+    )
+    expect(dernierQui()).toBe('escouade')
+    expect(screen.getByRole('button', { name: t.whoSquad })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('« Réapparition » : « Toutes » puis les grappes de la lecture', () => {

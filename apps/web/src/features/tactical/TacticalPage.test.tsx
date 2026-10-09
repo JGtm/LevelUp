@@ -360,6 +360,48 @@ describe('TacticalPage — l’écran unique', () => {
     expect(corpsGrille()).toBeUndefined()
   })
 
+  // ─── L'ANGLE « ESCOUADE » ET LE SELECTEUR DE COMPOSITION ──────────────────────────
+
+  /** Le `qui` posté à la lecture de la carte affichée, au dernier appel. */
+  const dernierQuiPoste = () =>
+    (post.mock.calls.filter((c) => (c[0] as string).endsWith('/raster')).at(-1)?.[1] as { qui?: string })?.qui
+
+  it('« Escouade » SANS composition : le sélecteur s’ouvre, mis en avant, et le texte le dit', async () => {
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    fireEvent.click(await screen.findByRole('button', { name: 'Escouade' }))
+    expect(screen.getByTestId('tactical-escouade-attente')).toHaveTextContent('Aucune composition choisie')
+    expect(screen.getByTestId('tactical-composition')).toHaveAttribute('data-mis-en-avant', 'true')
+    expect(screen.getByPlaceholderText(/Rechercher parmi/)).toHaveFocus()
+    expect(await screen.findByText('Ami')).toBeInTheDocument()
+  })
+
+  it('le sélecteur n’offre AUCUN bot, même parmi les plus croisés', async () => {
+    get.mockResolvedValue({
+      teammates: [
+        { gamertag: '343 Bot', xuid: 'bid(3.0)', match_count: 90, as_teammate: 60, as_enemy: 30, avg_kda: null },
+        { gamertag: 'Ami', xuid: 'xuid(42)', match_count: 30, as_teammate: 30, as_enemy: 0, avg_kda: null },
+      ],
+      enemies: [],
+      total: 2,
+    })
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    fireEvent.focus(screen.getByPlaceholderText(/Rechercher parmi 1 coéquipiers/))
+    expect(await screen.findByText('Ami')).toBeInTheDocument()
+    expect(screen.queryByText('343 Bot')).toBeNull()
+  })
+
+  it('« Escouade » AVEC une composition : l’angle s’applique à la lecture', async () => {
+    searchCourant = { eq: 'Ami' }
+    renderWithProviders(<TacticalPage />)
+    await screen.findByTestId('tactical-map-streets')
+    fireEvent.click(await screen.findByRole('button', { name: 'Escouade' }))
+    await vi.waitFor(() => expect(dernierQuiPoste()).toBe('escouade'))
+    expect(screen.queryByTestId('tactical-escouade-attente')).toBeNull()
+    expect(screen.getByTestId('tactical-composition')).not.toHaveAttribute('data-mis-en-avant')
+  })
+
   // ─── W1 — « AUCUNE CARTE » EST UNE REPONSE, PAS UNE ATTENTE ───────────────────────
   //
   // La grille est SUSPENDUE tant que le perimetre n'est pas resolu. En TanStack v5,

@@ -86,6 +86,8 @@ export interface ReglagesDuPlan {
   qui: TacticalQui
   onQuiChange: (qui: TacticalQui) => void
   escouadeDisponible: boolean
+  /** « Escouade » demandé sans composition : la lecture reste sur « Moi » et le bandeau le dit. */
+  escouadeEnAttente: boolean
   spawn: string
   onSpawnChange: (spawn: string) => void
   grappes: readonly TacticalGrappe[]
@@ -210,8 +212,9 @@ const QUI_VALEURS: readonly TacticalQui[] = ['moi', 'escouade', 'adv']
 
 /**
  * ReglagesEnPilules — « Lecture », « Joueurs » et « Réapparition », chacun en pilule (étiquette
- * atténuée + valeur). « Escouade » est DÉSACTIVÉ sans composition dans la barre, et son infobulle
- * le dit : un bouton actif qui ne changerait rien à la lecture mentirait sur ce qu'il fait.
+ * atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
+ * composition de la barre (`onQuiChange`, cf. `useReglages`), la valeur reste atténuée et un texte
+ * visible dit qu'aucune composition n'est choisie — la lecture, elle, reste sur « Moi ».
  */
 function ReglagesEnPilules({
   t,
@@ -222,6 +225,7 @@ function ReglagesEnPilules({
   qui,
   onQuiChange,
   escouadeDisponible,
+  escouadeEnAttente,
   spawn,
   onSpawnChange,
   grappes,
@@ -247,22 +251,25 @@ function ReglagesEnPilules({
       <span role="group" aria-label={t.pillPlayers} className={PILULE}>
         <span className={ETIQUETTE}>{t.pillPlayers}</span>
         {QUI_VALEURS.map((valeur, i) => {
-          const desactive = valeur === 'escouade' && !escouadeDisponible
+          const sansComposition = valeur === 'escouade' && !escouadeDisponible
           return (
             <button
               key={valeur}
               type="button"
               aria-pressed={qui === valeur}
-              disabled={desactive}
-              title={desactive ? t.planSquadDisabled : undefined}
               onClick={() => onQuiChange(valeur)}
-              className={`px-[7px] text-foreground aria-pressed:bg-primary aria-pressed:font-medium aria-pressed:text-primary-foreground disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-55${i > 0 ? ' border-l border-input' : ''}`}
+              className={`px-[7px] aria-pressed:bg-primary aria-pressed:font-medium aria-pressed:text-primary-foreground ${sansComposition ? 'text-muted-foreground' : 'text-foreground'}${i > 0 ? ' border-l border-input' : ''}`}
             >
               {libelleQui[valeur]}
             </button>
           )
         })}
       </span>
+      {escouadeEnAttente && (
+        <span role="status" className="text-xs text-muted-foreground" data-testid="tactical-escouade-attente">
+          {t.planSquadPending}
+        </span>
+      )}
       <label className={PILULE}>
         <span className={ETIQUETTE}>{t.pillRespawn}</span>
         <select
