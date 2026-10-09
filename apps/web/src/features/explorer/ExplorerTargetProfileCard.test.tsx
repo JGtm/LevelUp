@@ -9,9 +9,27 @@ import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { ExplorerTargetProfile } from '@/lib/api/types'
+import type { ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
 
 import { ExplorerTargetProfileCard } from './ExplorerTargetProfileCard'
+
+/** `b` apparaît-il après `a` dans le document ? (ordre des rangées) */
+function follows(a: Element, b: Element): boolean {
+  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+}
+
+const ENCOUNTER: ExplorerEncounterStats = {
+  count_together: 12,
+  ally_count: 8,
+  enemy_count: 4,
+  winrate_as_ally: 0.62,
+  winrate_vs_enemy: 0.5,
+  player_win_rate: 0.55,
+  frag_gap_series: [
+    { cumulative: 2, outcome: 'win' },
+    { cumulative: -1, outcome: 'loss' },
+  ],
+}
 
 const SAMPLE_FULL: ExplorerTargetProfile['sample_stats'] = {
   sample_size: 12,
@@ -118,7 +136,7 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.getByTestId('explorer-target-season-matches')).toBeInTheDocument()
   })
 
-  it('rend les sections enrichies (time-played, top médailles, CSR saison)', () => {
+  it('rend les sections enrichies (time-played, CSR saison) sans le bloc top médailles', () => {
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
       career_stats: { ...CAREER_FULL, time_played_seconds: 90000 }, // 25h = 1j 1h
@@ -153,9 +171,10 @@ describe('ExplorerTargetProfileCard', () => {
     // Time played : KPI rendu (90000s = 1j 1h)
     expect(screen.getByTestId('explorer-target-time-played')).toBeInTheDocument()
     expect(screen.getByText('1j 1h')).toBeInTheDocument()
-    // Top médailles : section + médaille
-    expect(screen.getByTestId('explorer-target-medals')).toBeInTheDocument()
-    expect(screen.getByText('Double frag')).toBeInTheDocument()
+    // Top médailles : le bloc NE vit PLUS dans l'encart cible (2026-09-21) — il est
+    // rendu dans « Profil de combat », où il suit le switch En direct / Local.
+    expect(screen.queryByTestId('explorer-target-medals')).toBeNull()
+    expect(screen.queryByText('Double frag')).toBeNull()
     // CSR saison : section + playlist + tier (traduit FR, locale défaut = fr)
     expect(screen.getByTestId('explorer-target-season-csr')).toBeInTheDocument()
     expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
@@ -374,5 +393,48 @@ describe('ExplorerTargetProfileCard', () => {
 
     expect(screen.getByTestId('explorer-live-status-badge-local_partial')).toBeInTheDocument()
     expect(screen.getByText('Live partiel')).toBeInTheDocument()
+  })
+
+  // Disposition de la section « matchs joués ensemble » : trois rangées de 3 colonnes.
+  // « Répartition des résultats » a quitté la colonne des frags (2026-09-17) pour la
+  // 3e rangée, qui depuis le 2026-09-19 aligne ses trois blocs — résultats, assistances,
+  // portée — en trois colonnes de MÊME HAUTEUR.
+  it('dispose la section « matchs joués ensemble » en trois rangées', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: CAREER_FULL,
+      sample_stats: SAMPLE_FULL,
+      auth_available: true,
+      live_status: { identity: 'ok', career: 'ok', season_csrs: 'ok', seasons: 'ok', combat_live: 'ok' },
+    }
+    renderWithProviders(
+      <ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" encounterStats={ENCOUNTER} />,
+    )
+
+    const cadence = screen.getByTestId('explorer-target-cadence')
+    const versus = screen.getByTestId('explorer-target-versus')
+    const outcome = screen.getByTestId('explorer-target-outcome')
+    const assists = screen.getByTestId('explorer-target-assists')
+    const fragRange = screen.getByTestId('explorer-target-frag-range')
+
+    // Ordre : rangée 1 (cadence) → rangée 2 (donuts + écart) → rangée 3 (résultats).
+    expect(follows(cadence, versus)).toBe(true)
+    expect(follows(versus, outcome)).toBe(true)
+    expect(follows(outcome, assists)).toBe(true)
+
+    // Rangée 3 : TROIS COLONNES DE MÊME HAUTEUR (2026-09-19) — les trois blocs sont
+    // frères dans la même grille, et chacun remplit sa colonne (`h-full`). Avant, les
+    // deux premiers étaient empilés dans une colonne et la portée s'étirait seule à côté.
+    expect(outcome.parentElement).toBe(assists.parentElement)
+    expect(fragRange.parentElement).toBe(outcome.parentElement)
+    expect(outcome.className).toContain('h-full')
+    expect(assists.className).toContain('h-full')
+    expect(fragRange.className).toContain('h-full')
+    expect(outcome.parentElement?.className).toContain('items-stretch')
+
+    // « Répartition des frags » n'a plus le bilan V/N/D sous lui : sa colonne de la
+    // rangée 1 ne contient que ce bloc.
+    const fragsColumn = screen.getByText('Répartition des frags').closest('div[class*="rounded-lg"]')
+    expect(fragsColumn?.parentElement?.children).toHaveLength(1)
   })
 })

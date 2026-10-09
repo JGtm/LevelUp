@@ -9,7 +9,7 @@
 //	watcher JGtm a sync les 8 matchs → INSERT dans shared.match_registry
 //	+ shared.match_participants (rows pour les 4 joueurs). Mais pour
 //	Madina/Choco/XxDaemon eux-mêmes, leur sync delta voit ces 8 match_ids
-//	comme "déjà connus" (loadKnownMatchIDs source #2 = shared.match_participants
+//	comme "déjà connus" (règle knownset.Load : shared.match_participants au registre
 //	WHERE xuid=?) → arrête le delta → PlayerPersister.Persist jamais appelé
 //	→ aucune row dans player_match_enrichment côté Madina/Choco/XxDaemon.
 //
@@ -53,7 +53,7 @@ import (
 //
 // Retourne le nombre de rows créées + erreur si la query DB échoue.
 //
-// Append-only #23046 : on INSERT une row baseline stage='live' (match_id seul,
+// Append-only #23645 : on INSERT une row baseline stage='live' (match_id seul,
 // autres champs NULL/DEFAULT). Le post-sync (INSERT-pur taggé par stage) peuplera
 // ensuite performance_score/session_id/etc., reconstitués par la vue merge-on-read.
 // Ce réparateur reste nécessaire pour les matchs orphelins cross-watcher (cf. incident
@@ -70,7 +70,7 @@ func ensurePlayerEnrichmentRows(
 
 	// Lire les match_ids du joueur côté shared. Cast défensif xuid || '' :
 	// MÊME prédicat que le déclencheur countSharedMatchesMissingEnrichment et
-	// que loadKnownMatchIDs — un drift de type ferait diverger déclencheur et
+	// que knownset.Load — un drift de type ferait diverger déclencheur et
 	// réparateur (re-trigger infini sans convergence).
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT DISTINCT match_id
@@ -139,7 +139,7 @@ func ensurePlayerEnrichmentRows(
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Append-only #23046 : INSERT pur d'une row baseline stage='live' pour chaque
+	// Append-only #23645 : INSERT pur d'une row baseline stage='live' pour chaque
 	// match orphelin (le delta `missing` exclut déjà les matchs ayant une row PME,
 	// donc aucun conflit — plus d'INSERT OR IGNORE). Le post-sync (INSERT-pur taggé)
 	// override ensuite par stage via la vue merge-on-read.

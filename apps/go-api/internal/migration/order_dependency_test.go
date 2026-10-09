@@ -28,6 +28,10 @@ var stepDependencies = map[string]string{
 	// déjà sans name_fr) ; le garde-fou documente néanmoins l'intention et protège
 	// une future DB legacy où l'inversion romprait la garde tableExists attendue.
 	"purge_weapons_name_fr_column": "add_weapon_registry",
+	// purge_weapon_families_labels_columns (plan libellés en dur, lot M5 L4) rebuild la
+	// table `weapon_families` créée par add_weapon_registry — le créateur DOIT précéder,
+	// même raisonnement que purge_weapons_name_fr_column ci-dessus.
+	"purge_weapon_families_labels_columns": "add_weapon_registry",
 	// drop_arc_titles (V721-09, 2026-07-25) ne crée pas arc_titles : il la SUPPRIME.
 	// Sur une base joueur VIERGE, si le dropper passait avant create_arc_titles_join,
 	// le DROP IF EXISTS serait un no-op et la table survivrait au provisioning —
@@ -38,6 +42,32 @@ var stepDependencies = map[string]string{
 	// no-ope (garde tableExists) et les colonnes survivraient au provisioning, ce que
 	// le passage du like au par-viewer interdit.
 	"drop_media_files_liked_columns_v1": "create_base_shared_social_schema",
+	// drop_psa_secondary_art_indexes_v1 (2026-09-20) ne crée pas personal_score_awards :
+	// il retire ses 3 derniers index. Le créateur DOIT précéder — même raisonnement que
+	// drop_arc_titles : un DROP INDEX IF EXISTS joué avant la création de la table serait
+	// un no-op, et une DB provisionnée dans cet ordre garderait les index si une autorité
+	// venait à les reposer.
+	"drop_psa_secondary_art_indexes_v1": "create_personal_score_awards_player_v1",
+	// drop_msr_secondary_art_indexes_v1 (2026-09-27, plan backlog lot B3) ne crée pas
+	// match_skill_rank : il retire ses 3 index secondaires. Il DOIT suivre le dernier step
+	// qui les posait, lusr_chain_rework_v1 (rebuild CTAS qui reposait les 3 index jusqu'au
+	// 2026-09-27) — même raisonnement que drop_psa_secondary_art_indexes_v1.
+	"drop_msr_secondary_art_indexes_v1": "lusr_chain_rework_v1",
+	// drop_player_secondary_art_indexes_v1 (2026-10-09, plan des recommandations, lot C2) ne
+	// crée aucune de ses tables : il retire idx_lch_*, idx_pme_match_lookup et idx_pcs_lookup.
+	// Il DOIT suivre le dernier step qui en posait un, create_player_csr_snapshots_player_v1
+	// (les créateurs de lusr_component_history et la conversion de player_match_enrichment le
+	// précèdent aussi dans canonicalOrder).
+	"drop_player_secondary_art_indexes_v1": "create_player_csr_snapshots_player_v1",
+	// repair_player_append_only_ids_v1 (2026-10-09, lot C4) reconstruit les cinq tables
+	// append-only joueur sans en créer aucune : il DOIT suivre leur dernier créateur.
+	"repair_player_append_only_ids_v1": "create_player_csr_snapshots_player_v1",
+	// shared_purge_composite_vehicle_takes_v1 (2026-10-09, lot C5) reconstruit
+	// match_vehicle_takes sans la créer : son créateur DOIT précéder.
+	"shared_purge_composite_vehicle_takes_v1": "shared_create_vehicle_takes",
+	// purge_sync_meta_legacy_auth_keys_v1 (2026-10-09, lot C7) reconstruit sync_meta sans la
+	// créer : la baseline joueur, qui la crée, DOIT précéder.
+	"purge_sync_meta_legacy_auth_keys_v1": "create_baseline_player_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

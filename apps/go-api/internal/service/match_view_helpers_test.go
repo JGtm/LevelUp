@@ -44,9 +44,9 @@ func TestIndexBulkMedalsByXUID_EmptyInput(t *testing.T) {
 
 func TestIndexBulkWeaponsByXUID_GroupsByXUID(t *testing.T) {
 	bulk := []domain.BulkWeaponKillRaw{
-		{XUID: "A", WeaponID: 101, NameEN: "BR75 Battle Rifle", WeaponLabel: "BR75", Kills: 5},
-		{XUID: "A", WeaponID: 102, NameEN: "AK-47", WeaponLabel: "AK-47", Kills: 2},
-		{XUID: "B", WeaponID: 101, NameEN: "BR75 Battle Rifle", WeaponLabel: "BR75", Kills: 3},
+		{XUID: "A", WeaponID: 101, WeaponLabel: "BR75", Kills: 5},
+		{XUID: "A", WeaponID: 102, WeaponLabel: "AK-47", Kills: 2},
+		{XUID: "B", WeaponID: 101, WeaponLabel: "BR75", Kills: 3},
 	}
 	got := indexBulkWeaponsByXUID(bulk, nil, len(bulk))
 	if len(got["A"]) != 2 {
@@ -157,7 +157,7 @@ func TestBuildCombatTabFull_MedalsOnlyEvents_UsesKVPairsSynthetic(t *testing.T) 
 		{XUID: me, Kills: 2, Deaths: 1, OutcomeCode: 2, TeamID: intPtr(0)},
 		{XUID: enemy, Kills: 1, Deaths: 2, OutcomeCode: 3, TeamID: intPtr(1)},
 	}
-	tab := buildCombatTabFull("m1", nil, events, nil, kvPairs, scoreboard, me, 60000)
+	tab := buildCombatTabFull("m1", events, nil, kvPairs, scoreboard, me, 60000)
 
 	// KD timeline du joueur : 2 kills + 1 death = 3 points.
 	if len(tab.KDTimeline) == 0 {
@@ -198,7 +198,7 @@ func TestBuildCombatTabFull_RealKillEvents_NoSynthetic(t *testing.T) {
 		{XUID: me, Kills: 1, Deaths: 0, OutcomeCode: 2, TeamID: intPtr(0)},
 		{XUID: enemy, Kills: 0, Deaths: 1, OutcomeCode: 3, TeamID: intPtr(1)},
 	}
-	tab := buildCombatTabFull("m1", nil, events, nil, kvPairs, scoreboard, me, 60000)
+	tab := buildCombatTabFull("m1", events, nil, kvPairs, scoreboard, me, 60000)
 	// Pas de synthèse : exactement les 2 events d'origine dans le kill-feed.
 	if len(tab.HighlightEvents) != 2 {
 		t.Errorf("HighlightEvents attendu 2 (events réels, pas de synthèse), obtenu %d", len(tab.HighlightEvents))

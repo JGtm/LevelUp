@@ -1,0 +1,4 @@
+2c2
+<   "calibration": "LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 523, mediane 461)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6311, mediane 6311]",
+---
+>   "calibration": "LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 524, mediane 461)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 6311, mediane 6311]",

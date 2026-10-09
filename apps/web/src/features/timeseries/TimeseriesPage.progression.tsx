@@ -2,14 +2,20 @@
  * TimeseriesPage — onglet "Progression".
  *
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
- * Contenu : premier frag / première mort, per minute, performance,
- * spree/headshots, rank score, skill rank perf, efficiency, engagement section,
- * profil d'intensité + table.
+ * Contenu : premier frag / première mort, cadences par minute, profil d'intensité,
+ * performance, spree/headshots, rank score, skill rank perf, efficiency,
+ * engagement, puis le tableau historique en pied d'onglet.
+ *
+ * L'INTENSITÉ EST REMONTÉE juste après les cadences par minute : les deux disent COMMENT
+ * le rythme se répartit dans un match, elles se lisent l'une après l'autre. Les usages
+ * d'équipement et les formes retenues ont quitté cet onglet pour « Usages » (tout ce qui
+ * vient du film décodé y est réuni, cf. TimeseriesPage.usages.tsx).
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
+import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatWinProb } from '@/lib/winProbCategory'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
@@ -28,6 +34,7 @@ import {
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
+import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
@@ -49,6 +56,12 @@ export interface TimeseriesProgressionTabProps {
   explorerMatchRows: ExplorerMatchRow[] | undefined
 }
 
+/**
+ * Hauteur du graphe « Stats par minute » — la voisine de rangée de « Premier frag /
+ * première mort ». Les deux cartes de la première rangée la partagent (2026-09-19).
+ */
+const PER_MINUTE_CHART_HEIGHT = 360
+
 export function TimeseriesProgressionTab({
   data,
   playerSlug,
@@ -59,14 +72,13 @@ export function TimeseriesProgressionTab({
   filterContextHash,
   explorerMatchRows,
 }: TimeseriesProgressionTabProps) {
+  const hasExpectedWinProb = useCapability('expected_win_prob')
   // Colonne « Prob. vic. » (expected_win_prob, LUSR v2) injectée après « Résultat »
-  // dans le tableau historique — spécifique à cette vue (pas sur la page Explorer).
+  // dans le tableau historique — gatée par capability expected_win_prob (remisée).
   const winProbColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
-    () => [
+    () => hasExpectedWinProb ? [
       {
         id: 'expected_win_prob',
-        // I16 : colonne triable (tri client, cf. `sortable` sur ExplorerMatchesTable
-        // ci-dessous) — valeur brute nullable, nuls rangés en bas (cf. NUMERIC_SORT).
         accessorFn: (r) => r.expected_win_prob ?? undefined,
         ...NUMERIC_SORT,
         header: t('timeseries.progression.col_win_prob'),
@@ -81,8 +93,8 @@ export function TimeseriesProgressionTab({
           )
         },
       },
-    ],
-    [t],
+    ] : [],
+    [t, hasExpectedWinProb],
   )
   const emptyMsg = t('timeseries.empty.no_data_description')
   // « Premier frag / première mort » : série solo servie par le payload de page —
@@ -103,12 +115,18 @@ export function TimeseriesProgressionTab({
     <div className="space-y-8">
       {/* Premier frag / première mort (gauche, bande solo) | timeseries.14 — Par
           minute (droite). Titre et état vide portés par le manifest partagé
-          first_blood — même vocabulaire que l'Escouade et les Sessions. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          first_blood — même vocabulaire que l'Escouade et les Sessions.
+
+          MÊME HAUTEUR QUE SA VOISINE (2026-09-19) : la bande était dérivée du nombre de
+          pistes — le tiers de la hauteur de « Stats par minute » —, et la rangée se lisait
+          bancale. `items-stretch` + la hauteur de la carte voisine : les pistes se
+          répartissent dans la hauteur donnée, et la légende se pose au ras du bas. */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         <FirstBloodLanes
           data={firstBlood}
           maxSec={firstBloodMaxSec(firstBlood)}
           emptyMessage={emptyMsg}
+          height={PER_MINUTE_CHART_HEIGHT}
         />
 
         <TimeseriesPerMinuteTrend
@@ -121,6 +139,27 @@ export function TimeseriesProgressionTab({
           perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
         />
       </div>
+
+      {/* Intensité — profil médian des parts de frags par phase + enveloppe
+          P25–P75 (panneau solo pleine largeur). */}
+      <TimeseriesIntensityProfile
+        title={
+          <span className="flex items-center gap-1.5">
+            {t('timeseries.progression.intensity_title')}
+            <InfoTooltip content={intensityTooltipText(locale)} />
+          </span>
+        }
+        emptyMessage={emptyMsg}
+        rows={data.intensity_rows ?? []}
+        teamRows={data.intensity_rows_team ?? undefined}
+        lobbyRows={data.intensity_rows_lobby ?? undefined}
+        medianLabel={t('timeseries.progression.intensity_median')}
+        envelopeLabel={t('timeseries.progression.intensity_envelope')}
+        refLabel={t('timeseries.progression.intensity_ref')}
+        playerLabel={t('timeseries.progression.intensity_player')}
+        teamLabel={t('timeseries.progression.intensity_team')}
+        lobbyLabel={t('timeseries.progression.intensity_lobby')}
+      />
 
       {/* timeseries.12 (gauche) | timeseries.16 (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -136,7 +175,7 @@ export function TimeseriesProgressionTab({
           emptyMessage={emptyMsg}
           rows={data.match_rows ?? []}
           spreeLabel={t('timeseries.progression.spree_label')}
-          headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'}
+          headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? t('timeseries.progression.headshot_kills_fallback')}
           perfectLabel={
             fieldMappings?.fields['perfect_kills']?.label ??
             t('timeseries.progression.perfect_kills')
@@ -177,7 +216,7 @@ export function TimeseriesProgressionTab({
           title={t('timeseries.progression.rank_score_title')}
           emptyMessage={emptyMsg}
           rows={data.match_rows ?? []}
-          scoreLabel={fieldMappings?.fields['personal_score']?.label ?? 'Score personnel'}
+          scoreLabel={fieldMappings?.fields['personal_score']?.label ?? t('timeseries.distributions.personal_score_fallback')}
           rankLabel={
             fieldMappings?.fields['rank']?.label ??
             t('timeseries.progression.rank')
@@ -198,63 +237,58 @@ export function TimeseriesProgressionTab({
         )}
       </div>
 
-      {/* Rendement & Résistance — pleine largeur. */}
-      <TimeseriesEfficiency
-        title={
-          <span className="flex items-center gap-1.5">
-            {t('timeseries.progression.efficiency_title')}
-            <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
-          </span>
-        }
-        emptyMessage={emptyMsg}
-        rows={data.match_rows ?? []}
-        rendementLabel={t('timeseries.progression.rate_offensive')}
-        resistanceLabel={t('timeseries.progression.rate_defensive')}
-        refLabel={t('timeseries.progression.ref_one_life')}
-        perFragLabel={t('timeseries.progression.per_effective_frag')}
-        perDeathLabel={t('timeseries.progression.per_death')}
-      />
-
-      {/* Engagement — pleine largeur. EngagementTimeseriesSection
-          rend déjà sa propre ChartCard avec titre interne, donc pas de
-          wrapper supplémentaire (sinon double titre). Gaté sur `engagement`. */}
-      <FeatureGate capability="engagement">
-        <EngagementTimeseriesSection
-          playerSlug={playerSlug}
-          filters={soloFilterContext}
-          filterHash={filterContextHash}
-          limit={30}
-        />
-        {/* Écart d'engagement cumulé (P4) — adjacent, réutilise la même query
-            d'engagement (dédup cache TanStack Query). */}
-        <TimeseriesEngagementGapTrend
-          playerSlug={playerSlug}
-          filters={soloFilterContext}
-          filterHash={filterContextHash}
-          limit={30}
-        />
-      </FeatureGate>
-
-      {/* Intensité — profil médian des parts de frags par phase + enveloppe
-          P25–P75 (panneau solo pleine largeur). */}
-      <TimeseriesIntensityProfile
-        title={
-          <div className="flex flex-col gap-0.5">
+      {/* Rendement & Résistance (gauche) | « Appui reçu » (droite), sur UNE rangée à
+          hauteur égale (retour utilisateur du 2026-10-07). « Appui reçu » : deux séries de
+          bâtons par soirée, aucune requête neuve — le bloc arrive avec cette réponse de page.
+          La carte se retire quand le titre ne sert pas de bloc de coordination (Rendement
+          reprend alors toute la rangée) ; elle est CONSERVÉE, vide et nommée, quand le bloc
+          est servi mais indisponible sur le périmètre (D8). */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+        <TimeseriesEfficiency
+          title={
             <span className="flex items-center gap-1.5">
-              {t('timeseries.progression.intensity_title')}
-              <InfoTooltip content={t('timeseries.progression.intensity_tooltip')} />
+              {t('timeseries.progression.efficiency_title')}
+              <InfoTooltip content={<EfficiencyTooltipText locale={locale} />} />
             </span>
-            <span className="text-xs font-normal text-muted-foreground">
-              {t('timeseries.progression.intensity_subtitle')}
-            </span>
-          </div>
-        }
-        emptyMessage={emptyMsg}
-        rows={data.intensity_rows ?? []}
-        medianLabel={t('timeseries.progression.intensity_median')}
-        envelopeLabel={t('timeseries.progression.intensity_envelope')}
-        refLabel={t('timeseries.progression.intensity_ref')}
-      />
+          }
+          emptyMessage={emptyMsg}
+          rows={data.match_rows ?? []}
+          rendementLabel={t('timeseries.progression.rate_offensive')}
+          resistanceLabel={t('timeseries.progression.rate_defensive')}
+          refLabel={t('timeseries.progression.ref_one_life')}
+          perFragLabel={t('timeseries.progression.per_effective_frag')}
+          perDeathLabel={t('timeseries.progression.per_death')}
+        />
+        <TimeseriesCoordinationSection block={data.coordination} locale={locale} />
+      </div>
+
+      {/* « Balance des dégâts cumulée » N'EST PLUS SUR CET ONGLET (demande utilisateur du
+          2026-09-22) : elle se monte désormais sur le Résumé, sous « Assistances »
+          (cf. TimeseriesPage.summary.tsx). */}
+
+      {/* Engagement. EngagementTimeseriesSection rend déjà sa propre ChartCard avec titre
+          interne, donc pas de wrapper supplémentaire (sinon double titre). Gaté sur
+          `engagement`. */}
+      <FeatureGate capability="engagement">
+        {/* Engagement (gauche) | Écart d'engagement cumulé (droite), sur UNE rangée
+            (2026-09-13) : les deux lisent la même série et se répondent — empilés, il
+            fallait faire défiler pour comparer une pointe d'engagement à son effet cumulé.
+            L'Écart réutilise la même query (dédup cache TanStack Query). */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <EngagementTimeseriesSection
+            playerSlug={playerSlug}
+            filters={soloFilterContext}
+            filterHash={filterContextHash}
+            limit={30}
+          />
+          <TimeseriesEngagementGapTrend
+            playerSlug={playerSlug}
+            filters={soloFilterContext}
+            filterHash={filterContextHash}
+            limit={30}
+          />
+        </div>
+      </FeatureGate>
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)
           en bas de Progression. Reflète le scope solo du filtre global (mêmes

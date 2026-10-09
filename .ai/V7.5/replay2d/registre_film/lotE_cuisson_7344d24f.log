@@ -1,0 +1,16 @@
+2026/08/18 08:22:23 WARN replaybuild: aucun fait de match fourni — pas de compteurs de joueur ni d'actions d'objectif, et l'identite des camps retombe sur les frags match_id=7344d24f-0154-4949-80ad-e2b781c122f1 enregistrements=1199
+2026/08/18 08:23:21 INFO capacites : lectures d i48 recordsDelta=189014 masqueAvecI48=38 lues=38 illisibles=0 sansIdentite=6
+2026/08/18 08:23:32 INFO camouflage : lectures d i28 queue[1] recordsDelta=189014 masqueAvecI28=1504 lues=1504 illisibles=0 sansVoie=706
+2026/08/18 08:23:44 INFO grappin : lectures d i59 tag==3 recordsDelta=189014 masqueAvecI59=1417 lues=1411 illisibles=6 tag3=13 corpsCasses=3
+2026/08/18 08:24:12 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=12 ancres=7210 acceptes=301 confirmes=139 poses=139
+2026/08/18 08:24:24 INFO armes au sol : balayage ti=42 slots=1107 ancres=11216 acceptees=454 imagesCles=31 viesRecensees=215 pistesDelta=690
+2026/08/18 08:26:01 INFO pont slot->joueur slots=117 viesNommees=117 viesTotal=124 lecturesIndex=31 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 08:26:01 WARN rejeu : identite des camps NON RESOLUE — courbes de score publiees sans equipe match_id=7344d24f-0154-4949-80ad-e2b781c122f1 equipes=2 joueurs=0 manches=1
+2026/08/18 08:26:01 INFO rejeu : courbe de score match_id=7344d24f-0154-4949-80ad-e2b781c122f1 identiteEquipes=unresolved manches=1 modePorte=true equipes=2 joueurs=0 points=612
+2026/08/18 08:26:01 INFO rejeu : tractions de grappin tirs=5 accroches=5 tractions=5 vies=4 rates=0 corpsCasses=0
+2026/08/18 08:26:01 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=139 nommees=139 autres=0 avecPoseur=139 avecCap=130 deployees=13 lachees=126 origineInconnue=0
+2026/08/18 08:26:01 INFO rejeu : socles d'arme au sol balaye=true ancres=11216 acceptees=454 retenues=306 ecartees=148 lachees=228 apparues=78 auRepos=45 grappes=11 socles=8 occupations=42 datees=32 sansPassage=3 jamaisVidees=7 cyclesEtablis=5
+2026/08/18 08:26:01 INFO rejeu : episodes d'equipement actif viesPubliees=122 viesCamo=5 episodesCamo=10 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 08:26:01 INFO rejeu : palette de capacites palette=famille_a lectures=32 rangsNommes=4
+2026/08/18 08:26:01 INFO rejeu : couverture par calque tirsRattaches=2836 tirsDisponibles=2917 tirsSansSlot=81 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=186 grenadesDisponibles=186 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/18 08:26:01 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-visee-pub\data\cache\replays\halo_infinite\7344d24f.json tracks=122 module=fo08_wetland bytes=2160362 match=7344d24f-0154-4949-80ad-e2b781c122f1 title=halo_infinite

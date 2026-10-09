@@ -1,0 +1,79 @@
+package grammar
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
+// Sonde jetable (jamais dans le depot) : records ti=35 d image-cle arretes sur i58 / i59, sans et
+// avec la portee de l etat complet ; marche des trames (vue B) a titre de controle.
+func TestZZSondeRegimesI59(t *testing.T) {
+	racine := os.Getenv("SONDE_RACINE")
+	if racine == "" {
+		t.Skip()
+	}
+	cat, err := profile.LoadMapQuantCatalog(os.Getenv("SONDE_CATALOGUE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(os.Getenv("SONDE_CARTES"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		c := strings.SplitN(sc.Text(), "\t", 2)
+		if len(c) != 2 {
+			continue
+		}
+		e, err := cat.Lookup(c[1])
+		if err != nil {
+			fmt.Printf("RG\t%s\tcarte %q absente\n", c[0], c[1])
+			continue
+		}
+		for _, portee := range []bool{false, true} {
+			film, err := source.LoadDir(filepath.Join(racine, c[0]), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fc := NewFilmContext(film)
+			p := fc.ProfilDeBalayage()
+			p.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+			p.Grammaire.PorteeBaseline = portee
+			fc.PoserProfilDeBalayage(p)
+			n := map[string]int{}
+			for pq, err := range fc.ImagesCles() {
+				if err != nil {
+					break
+				}
+				for _, r := range pq.Records {
+					if r.TI != 35 {
+						continue
+					}
+					n["ti35"]++
+					if r.Masque>>59&1 == 1 || r.Masque>>58&1 == 1 {
+						n["masque_i58_i59"]++
+					}
+					if r.Comps[1] > r.Comps[0] {
+						dc := pq.Comps[r.Comps[1]-1]
+						if dc.Etat == lecture.EtatInfranchissable {
+							n[fmt.Sprintf("arret_i%d", dc.Index)]++
+							continue
+						}
+					}
+					n[fmt.Sprintf("desync_%d", r.Desync)]++
+				}
+			}
+			fmt.Printf("RG\t%s\tportee=%v\t%v\n", c[0], portee, n)
+		}
+	}
+}

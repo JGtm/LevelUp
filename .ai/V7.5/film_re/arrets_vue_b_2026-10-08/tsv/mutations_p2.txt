@@ -1,0 +1,1 @@
+W1	ROUGE	porte posee lue aux largeurs de la carte	TestChaqueSiteDePositionLitCeQueLeJeuEcrit/world-object_i0_precHigh=0_idx=-1

@@ -4,7 +4,11 @@
 // 8 badges calculés à partir des événements highlight_events et des stats scoreboard.
 package analysis
 
-import "math"
+import (
+	"math"
+
+	"levelup/go-api/internal/domain/highlightevent"
+)
 
 // ImpactEvent représente un événement horodaté d'un match.
 // Pour un event de type "kill", ActorXUID est le tueur.
@@ -80,9 +84,9 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	var kills, deaths []ImpactEvent
 	for _, ev := range input.Events {
 		switch ev.EventType {
-		case EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kills = append(kills, ev)
-		case EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			deaths = append(deaths, ev)
 		}
 	}

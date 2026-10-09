@@ -77,7 +77,7 @@ func (h *SessionsHandler) handleGetSessions(ctx context.Context, in *sessionsInp
 
 	resp, svcErr := svc.GetSessions(ctx, opts)
 	if svcErr != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "sessions_error", "erreur calcul sessions")
+		return nil, mapServiceError(ctx, svcErr, "sessions_error")
 	}
 
 	return &sessionsOutput{Body: resp}, nil

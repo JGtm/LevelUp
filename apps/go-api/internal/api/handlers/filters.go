@@ -82,7 +82,7 @@ func (h *FiltersHandler) Resolve(ctx context.Context, in *filtersInput) (*filter
 
 	result, err := svc.Resolve(ctx, body)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "filters_error")
 	}
 	return &filtersResolveOutput{Body: result}, nil
 }
@@ -104,7 +104,7 @@ func (h *FiltersHandler) MatchIDs(ctx context.Context, in *filtersInput) (*filte
 
 	ids, err := svc.ResolveMatchIDs(ctx, body)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "filters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "filters_error")
 	}
 	// Slice jamais nil : un slice Go nil sérialise en JSON `null`, ce qui casse
 	// `.length`/`.map` côté front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.

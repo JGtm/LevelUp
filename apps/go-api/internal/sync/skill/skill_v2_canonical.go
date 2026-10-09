@@ -3,7 +3,7 @@ package skill
 // skill_v2_canonical.go — Stratégie C (write-through aliasing) : v2 écrit
 // dans match_skill_rank avec rating_type='LUSR' (slot historique lu par
 // l'UI) + rating_type='LUSR_V2' (audit trail). Cf. ADR 0024 +
-// .ai/LUSR_V2_HANDOFF.md.
+// .ai/archive/V7/LUSR v2/LUSR_V2_HANDOFF.md.
 //
 // Extrait de skill_v2_shadow.go (2026-05-27) — concern unique : convertir
 // un SkillV2State posterior en row(s) match_skill_rank et écrire de façon

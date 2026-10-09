@@ -1,0 +1,6 @@
+vet ./...: rc 0
+vet research (film, -tags=research): rc 0
+archlint: ok levelup/go-api/internal/archlint 55.561s (rejoue sur l arbre final)
+lint: 0 issues.
+lint research: 0 issues.
+G-film (film, replaybuild, killcollector): 21 paquets ok, rc=0

@@ -145,3 +145,47 @@ func TestCurrentUser(t *testing.T) {
 		}
 	})
 }
+
+// TestInstanceLocked — point de décision unique du verrou d'instance (ADR 0035, D5).
+func TestInstanceLocked(t *testing.T) {
+	t.Run("env verrouillé court-circuite le load", func(t *testing.T) {
+		called := false
+		got := InstanceLocked(true, func() (bool, error) {
+			called = true
+			return false, nil
+		})
+		if !got {
+			t.Fatal("env verrouillé devrait verrouiller")
+		}
+		if called {
+			t.Fatal("load ne doit pas être appelé quand l'env verrouille déjà")
+		}
+	})
+
+	t.Run("settings verrouillés", func(t *testing.T) {
+		if !InstanceLocked(false, func() (bool, error) { return true, nil }) {
+			t.Fatal("settings verrouillés devraient verrouiller")
+		}
+	})
+
+	t.Run("settings non verrouillés", func(t *testing.T) {
+		if InstanceLocked(false, func() (bool, error) { return false, nil }) {
+			t.Fatal("aucune source verrouillée ⇒ non verrouillé")
+		}
+	})
+
+	t.Run("erreur de lecture ⇒ repli non verrouillé", func(t *testing.T) {
+		if InstanceLocked(false, func() (bool, error) { return true, errors.New("illisible") }) {
+			t.Fatal("erreur de lecture ⇒ repli sur non verrouillé (comportement historique)")
+		}
+	})
+
+	t.Run("load nil ⇒ seule la source env compte", func(t *testing.T) {
+		if InstanceLocked(false, nil) {
+			t.Fatal("load nil + env libre ⇒ non verrouillé")
+		}
+		if !InstanceLocked(true, nil) {
+			t.Fatal("load nil + env verrouillé ⇒ verrouillé")
+		}
+	})
+}

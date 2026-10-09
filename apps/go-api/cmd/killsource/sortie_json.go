@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // sortieJSON : la racine du document.
@@ -27,7 +27,27 @@ type sortieJSON struct {
 	Couverture  couvertureJSON  `json:"couverture"`
 	Sante       santeJSON       `json:"sante"`
 	Publication publicationJSON `json:"publication"`
+	AuFil       auFilJSON       `json:"assistant_au_fil"`
 	Morts       []mortJSON      `json:"morts"`
+}
+
+// auFilJSON : la lecture de l assistant des morts sans kill-event au fil des evenements, et la
+// confrontation du type d assistance que le film apprend de ses kill-events
+// (`repli_type_d_assistance_appris_par_film`). `lexique_retenu` faux : aucune mort ne se lit au fil.
+type auFilJSON struct {
+	LexiqueRetenu           bool `json:"lexique_retenu"`
+	TypesAppris             int  `json:"types_appris"`
+	Apprentissages          int  `json:"apprentissages"`
+	Accords                 int  `json:"accords"`
+	Desaccords              int  `json:"desaccords"`
+	AssistantsSansEvenement int  `json:"kill_events_a_assistant_sans_evenement"`
+	EvenementsSansAssistant int  `json:"kill_events_sans_assistant_avec_evenement"`
+	MortsAuFil              int  `json:"morts_au_fil"`
+	Nommes                  int  `json:"assistants_nommes"`
+	SansAssistant           int  `json:"sans_assistant_mesure"`
+	Rejetes                 int  `json:"assistants_refuses"`
+	AssistantsMultiples     int  `json:"morts_a_plusieurs_assistants"`
+	TramesArretees          int  `json:"trames_arretees"`
 }
 
 type catalogueJSON struct {
@@ -59,6 +79,7 @@ type couvertureJSON struct {
 type santeJSON struct {
 	Verdict            string              `json:"verdict"`
 	Alertes            []string            `json:"alertes"`
+	Degradations       []string            `json:"degradations"`
 	TauxInexpliques    float64             `json:"taux_inexpliques"`
 	TauxCouverture     float64             `json:"taux_couverture"`
 	Compteurs          []compteurJSON      `json:"compteurs_expvar"`
@@ -146,6 +167,7 @@ type assistJSON struct {
 	IndiceReplication int    `json:"indice_replication"`
 	Refus             string `json:"refus,omitempty"`
 	Surplus           int    `json:"assistants_en_surplus"`
+	LuAuFil           bool   `json:"lu_au_fil,omitempty"`
 	Note              string `json:"note"`
 }
 
@@ -214,17 +236,18 @@ func afficherJSON(r *rapport) error {
 
 func construireJSON(r *rapport) sortieJSON {
 	res := r.result
-	p := killsource.CatalogueProvenance()
+	p := decfilm.CatalogueProvenance()
 	out := sortieJSON{
 		Film:        r.film,
 		Calibration: res.Calibration,
 		Catalogue: catalogueJSON{
-			Identifiants: killsource.CatalogueSize(), GenereLe: p.IDsDate,
+			Identifiants: decfilm.CatalogueSize(), GenereLe: p.IDsDate,
 			EtiquettesDu: p.LabelsDate, FichiersDuJeu: false, NombreLibelles: p.LabelCount,
 		},
 		Couverture:  couvertureDeJSON(res.Coverage),
 		Sante:       santeDeJSON(res),
 		Publication: publicationDeJSON(res),
+		AuFil:       auFilJSON(res.Stats.Assist.Fil),
 		Morts:       make([]mortJSON, 0, len(res.Kills)),
 	}
 	for _, k := range res.Kills {
@@ -235,21 +258,26 @@ func construireJSON(r *rapport) sortieJSON {
 
 // assistDeJSON : les trois etats, explicites. La note DIT lequel, pour qu un lecteur presse ne
 // puisse pas confondre << pas d assistant >> avec << on ne sait pas >>.
-func assistDeJSON(a killsource.Assist) assistJSON {
+func assistDeJSON(a decfilm.Assist, luAuFil bool) assistJSON {
 	j := assistJSON{
 		Connu: a.Known, Joueur: a.Name, IndiceReplication: a.Index,
-		Refus: a.Rejected, Surplus: a.Extra,
+		Refus: a.Rejected, Surplus: a.Extra, LuAuFil: luAuFil,
 	}
 	switch {
 	case !a.Known:
-		j.Note = "ON NE SAIT PAS : aucun kill-event n a ete attache a cette mort. Ce n est PAS " +
-			"<< pas d assistant >>"
+		j.Note = "ON NE SAIT PAS : ni kill-event attache a cette mort, ni fil des evenements lisible. " +
+			"Ce n est PAS << pas d assistant >>"
 	case a.Rejected != "":
 		j.Note = "un assistant etait declare mais il est REFUSE (" + a.Rejected + ") ; la mort " +
 			"est publiee sans assistant"
+	case a.Name == "" && luAuFil:
+		j.Note = "PAS D ASSISTANT, et c est une MESURE : la trame de la mort, lue entiere, porte le " +
+			"fil des evenements de son couple sans evenement d assistance"
 	case a.Name == "":
 		j.Note = "PAS D ASSISTANT, et c est une MESURE : le kill-event est lu et son champ " +
 			"assistant est absent"
+	case luAuFil:
+		j.Note = "assistant lu au fil des evenements de la trame de la mort (aucun kill-event)"
 	default:
 		j.Note = "assistant lu dans le kill-event attache a cette mort"
 	}
@@ -266,7 +294,7 @@ func assistDeJSON(a killsource.Assist) assistJSON {
 // total applicable vaut 100 quand le tueur est seul, mais 99 des qu un assistant est nomme — deux
 // troncatures d entiers y perdent un point. Un consommateur qui recopierait la formule aurait une
 // chance sur deux de se tromper de constante.
-func partsDeJSON(k killsource.Kill) partsJSON {
+func partsDeJSON(k decfilm.Kill) partsJSON {
 	j := partsJSON{Note: "null = NON MESURE, jamais zero. Aucun plafond a 100 n est impose."}
 	if k.KillerDamage.Known {
 		v := k.KillerDamage.Pct
@@ -297,7 +325,7 @@ func partsDeJSON(k killsource.Kill) partsJSON {
 	return j
 }
 
-func couvertureDeJSON(c killsource.Coverage) couvertureJSON {
+func couvertureDeJSON(c decfilm.Coverage) couvertureJSON {
 	return couvertureJSON{
 		Couvertes: c.Covered, CouplesReels: c.RealPairs,
 		CouplesReconstruits: c.ReconstructedPairs, MortsDuKillFeed: c.FeedDeaths,
@@ -318,7 +346,7 @@ func couvertureDeJSON(c killsource.Coverage) couvertureJSON {
 	}
 }
 
-func mortDeJSON(k killsource.Kill) mortJSON {
+func mortDeJSON(k decfilm.Kill) mortJSON {
 	m := mortJSON{
 		TempsMS: k.TimeMS, Temps: mmss(k.TimeMS), Victime: k.Victim,
 		Credit: creditJSON{Joueur: k.Feed.Killer, PresentAuFeed: k.Feed.Present},
@@ -328,7 +356,7 @@ func mortDeJSON(k killsource.Kill) mortJSON {
 			Statut: string(k.Source.Status), Detail: k.Source.Detail,
 			Reserve: k.Source.Reserve, Categorie: k.Source.Category.Name(),
 		},
-		Assistant:     assistDeJSON(k.Assist),
+		Assistant:     assistDeJSON(k.Assist, k.AssistLuAuFil),
 		PartsDeDegats: partsDeJSON(k),
 		Divergence:    k.Diverges,
 		Lecture: lectureJSON{
@@ -342,7 +370,7 @@ func mortDeJSON(k killsource.Kill) mortJSON {
 		m.Credit.NoteAbsenceFeed = "mort absente du kill-feed (victime bot) : la victime vient du " +
 			"roster de replication, le tueur vient bien du kill-feed"
 	}
-	if k.Read.Origin == killsource.OriginBotKiller {
+	if k.Read.Origin == decfilm.OriginBotKiller {
 		m.Credit.NoteAbsenceFeed = "kill absent du kill-feed (TUEUR bot) : la mort y est bien, " +
 			"c est le kill qui manque — le nom du tueur vient du roster de replication"
 	}

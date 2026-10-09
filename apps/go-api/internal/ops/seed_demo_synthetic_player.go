@@ -40,7 +40,7 @@ type synthPlayerSpec struct {
 var synthCitations = []string{"multikill", "assistant", "close_combat", "assassin", "charge", "splatter"}
 
 // writeSyntheticPlayers génère les 3 player DBs. Retourne le nombre de joueurs seedés.
-func writeSyntheticPlayers(ctx context.Context, outDir string, plan []synthMatch) (int, error) {
+func writeSyntheticPlayers(ctx context.Context, layout titlePkg.DemoLayout, plan []synthMatch) (int, error) {
 	specs := []synthPlayerSpec{
 		{demoDirForIndex(0), demoXUIDForIndex(0), DefaultDemoMainGamertag, 200, "Lieutenant", "Gold"},
 		{demoDirForIndex(1), demoXUIDForIndex(1), "DemoPlayer2", 240, "Captain", tierNamePlatinum},
@@ -52,7 +52,7 @@ func writeSyntheticPlayers(ctx context.Context, outDir string, plan []synthMatch
 		if i > 0 {
 			matches = filterSquadMatches(plan)
 		}
-		path := filepath.Join(outDir, "players", spec.dir, "stats.duckdb")
+		path := layout.PlayerDBPath(titlePkg.DefaultSlug, spec.dir)
 		if err := writeOnePlayer(ctx, path, spec, matches); err != nil {
 			return i, fmt.Errorf("player %s: %w", spec.gamertag, err)
 		}

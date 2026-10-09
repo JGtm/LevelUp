@@ -1,0 +1,511 @@
+# Manifest i18n de la page TENDANCES (section Solo) - matrice, barre d'horizon, etats.
+# Chaque cle DOIT porter fr ET en (controle par build_i18n_manifests.mjs).
+#
+# VOCABULAIRE FR ARRETE : « horizon », « periode d'avant », « matchs ». Jamais « trend »,
+# jamais « heatmap » (interdit par lib/i18n/no-anglicisms.guard.test.ts).
+
+# -- Filtre de type de partie -------------------------------------------------
+[tendances.filter.game_type_label]
+fr = "Type de partie"
+en = "Game type"
+
+[tendances.filter.all_game_types]
+fr = "Toutes les parties"
+en = "All games"
+
+[tendances.game_type.ranked_slayer]
+fr = "Classé · Assassin"
+en = "Ranked · Slayer"
+
+[tendances.game_type.ranked_objectif]
+fr = "Classé · Objectif"
+en = "Ranked · Objective"
+
+[tendances.game_type.other]
+fr = "Autres"
+en = "Other"
+
+# Variante d'une ligne CSR : le groupe de file classée.
+[tendances.variant.ranked]
+fr = "Classé"
+en = "Ranked"
+
+# -- Etats de la page ---------------------------------------------------------
+[tendances.state.loading]
+fr = "Chargement des tendances…"
+en = "Loading trends…"
+
+[tendances.state.error]
+fr = "Les tendances n'ont pas pu être chargées."
+en = "Trends could not be loaded."
+
+[tendances.state.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[tendances.state.empty_title]
+fr = "Aucune tendance à afficher"
+en = "No trend to show"
+
+[tendances.state.empty_description]
+fr = "Aucun indicateur n'a pu être calculé pour ce type de partie. Change de type de partie ou joue quelques matchs."
+en = "No indicator could be computed for this game type. Change the game type or play a few matches."
+
+# -- Matrice ------------------------------------------------------------------
+[tendances.matrix.title]
+fr = "Indicateurs par mois et par horizon"
+en = "Indicators by month and by horizon"
+
+[tendances.matrix.info]
+fr = "Chaque ligne suit un indicateur sur les douze derniers mois, puis sur les 365, 90, 30 et 7 derniers jours. La couleur mesure l'écart avec la moyenne des mois (pour un mois) ou avec la période d'avant (pour un horizon), orienté pour qu'une teinte haute soit toujours une amélioration. Le jeu t'oppose à des joueurs de ton niveau, ce qui ramène les résultats vers 50 % : la progression se lit donc dans « Niveau »."
+en = "Each row follows an indicator over the last twelve months, then over the last 365, 90, 30 and 7 days. The colour measures the gap with the monthly average (for a month) or with the previous period (for a horizon), oriented so that a high shade is always an improvement. Matchmaking pulls results back towards 50 %, so progress shows in \"Level\"."
+
+[tendances.group.level]
+fr = "Niveau"
+en = "Level"
+
+[tendances.group.results]
+fr = "Résultats"
+en = "Results"
+
+[tendances.group.combat]
+fr = "Combat"
+en = "Combat"
+
+[tendances.group.style]
+fr = "Façon de jouer"
+en = "Playstyle"
+
+[tendances.group.objectives]
+fr = "Objectifs"
+en = "Objectives"
+
+[tendances.group.activity]
+fr = "Activité"
+en = "Activity"
+
+# -- Barre d'horizon ----------------------------------------------------------
+[tendances.horizon.label]
+fr = "Horizon"
+en = "Horizon"
+
+[tendances.horizon.aria]
+fr = "Horizon d'analyse"
+en = "Analysis horizon"
+
+[tendances.horizon.short]
+fr = "{days} j"
+en = "{days} d"
+
+[tendances.horizon.long]
+fr = "{days} derniers jours"
+en = "last {days} days"
+
+[tendances.horizon.info]
+fr = "Un seul horizon pour tous les blocs sous la matrice : les 7, 30, 90 ou 365 derniers jours, comparés à la période d'avant de même durée."
+en = "A single horizon for every block under the matrix: the last 7, 30, 90 or 365 days, compared with the previous period of the same length."
+
+# -- Infobulle d'une case -----------------------------------------------------
+[tendances.tooltip.header]
+fr = "{label} · {period}"
+en = "{label} · {period}"
+
+[tendances.tooltip.value]
+fr = "Valeur : {value} ({matches})"
+en = "Value: {value} ({matches})"
+
+[tendances.tooltip.previous]
+fr = "Période d'avant : {value} ({matches})"
+en = "Previous period: {value} ({matches})"
+
+[tendances.tooltip.variation]
+fr = "Variation : {delta}"
+en = "Change: {delta}"
+
+[tendances.tooltip.no_comparison]
+fr = "Pas de comparaison ({n, plural, one {# match sur la période d'avant} other {# matchs sur la période d'avant}}, il en faut {min})"
+en = "No comparison ({n, plural, one {# match in the previous period} other {# matches in the previous period}}, {min} needed)"
+
+[tendances.tooltip.no_comparison_current]
+fr = "Pas de comparaison ({n, plural, one {# match sur la période} other {# matchs sur la période}}, il en faut {min})"
+en = "No comparison ({n, plural, one {# match in the period} other {# matches in the period}}, {min} needed)"
+
+[tendances.tooltip.matches]
+fr = "{n, plural, one {# match} other {# matchs}}"
+en = "{n, plural, one {# match} other {# matches}}"
+
+# -- Unites -------------------------------------------------------------------
+[tendances.unit.seconds]
+fr = "s"
+en = "s"
+
+[tendances.unit.hours]
+fr = "h"
+en = "h"
+
+[tendances.unit.points]
+fr = "pts"
+en = "pts"
+
+# -- Libelles d'indicateur sans cle de champ canonique -------------------------
+[tendances.indicator.damage_balance]
+fr = "Balance des dégâts (infligés − subis)"
+en = "Damage balance (dealt − taken)"
+
+[tendances.indicator.assists_per_match]
+fr = "Assistances par match"
+en = "Assists per match"
+
+[tendances.indicator.kills_per_match]
+fr = "Frags par match"
+en = "Kills per match"
+
+[tendances.indicator.deaths_per_match]
+fr = "Morts par match"
+en = "Deaths per match"
+
+[tendances.indicator.headshot_share]
+fr = "Part des frags à la tête"
+en = "Share of kills by headshot"
+
+[tendances.indicator.power_weapon_share]
+fr = "Part des frags à l'arme lourde"
+en = "Share of kills with a power weapon"
+
+[tendances.indicator.equipment_used_share]
+fr = "Part de l'équipement utilisé"
+en = "Share of equipment used"
+
+[tendances.indicator.objective_take_share]
+fr = "Prendre (part de l'équipe)"
+en = "Capture (team share)"
+
+[tendances.indicator.objective_defend_share]
+fr = "Défendre (part de l'équipe)"
+en = "Defend (team share)"
+
+[tendances.indicator.objective_hold_share]
+fr = "Tenir (part de l'équipe)"
+en = "Hold (team share)"
+
+[tendances.indicator.objective_parity]
+fr = "Parité"
+en = "Parity"
+
+[tendances.indicator.hours_played]
+fr = "Heures jouées"
+en = "Hours played"
+
+[tendances.indicator.days_played]
+fr = "Jours joués"
+en = "Days played"
+
+[tendances.indicator.dnf_rate]
+fr = "Taux d'abandon"
+en = "Quit rate"
+
+# -- Section « Evolution » -------------------------------------------------------
+[tendances.evolution.title]
+fr = "Évolution"
+en = "Evolution"
+
+[tendances.evolution.info]
+fr = "Un point par match, par jour, par semaine ou par mois, selon le pas choisi. Le pointillé de la couleur d'une courbe est sa valeur sur la période d'avant."
+en = "One point per match, per day, per week or per month, depending on the chosen step. The dotted line in a curve's colour is its value over the previous period."
+
+[tendances.evolution.step_aria]
+fr = "Pas de temps"
+en = "Time step"
+
+[tendances.evolution.step_match]
+fr = "Par match"
+en = "Per match"
+
+[tendances.evolution.step_day]
+fr = "Par jour"
+en = "Per day"
+
+[tendances.evolution.step_week]
+fr = "Par semaine"
+en = "Per week"
+
+[tendances.evolution.step_month]
+fr = "Par mois"
+en = "Per month"
+
+[tendances.evolution.empty_title]
+fr = "Pas de courbe à tracer"
+en = "No curve to plot"
+
+[tendances.evolution.empty_description]
+fr = "Pas assez de matchs sur cet horizon pour ce pas de temps."
+en = "Not enough matches over this horizon for this time step."
+
+[tendances.evolution.grid_versus_mmr]
+fr = "Face au MMR adverse"
+en = "Against opponent MMR"
+
+[tendances.evolution.grid_results]
+fr = "Résultats et combat"
+en = "Results and combat"
+
+[tendances.evolution.grid_level]
+fr = "Niveau, combat et style"
+en = "Level, combat and style"
+
+[tendances.evolution.chart_versus_mmr]
+fr = "{label} face au MMR adverse"
+en = "{label} against opponent MMR"
+
+[tendances.evolution.chart_yield_resistance]
+fr = "Rendement et résistance"
+en = "Yield and resistance"
+
+[tendances.evolution.chart_csr]
+fr = "CSR par file classée"
+en = "CSR by ranked queue"
+
+[tendances.evolution.chart_lusr]
+fr = "LUSR par type de partie (non classé)"
+en = "LUSR by game type (unranked)"
+
+[tendances.evolution.chart_mmr_pair]
+fr = "MMR des adversaires et de l'équipe"
+en = "Opponents' and team MMR"
+
+[tendances.evolution.chart_damage]
+fr = "Dégâts infligés et subis par match"
+en = "Damage dealt and taken per match"
+
+[tendances.evolution.chart_objectives]
+fr = "Objectifs : prendre, défendre, tenir"
+en = "Objectives: capture, defend, hold"
+
+[tendances.evolution.info_mmr_pair]
+fr = "Le jeu ajuste le niveau des parties au tien : un MMR adverse qui monte, c'est la progression."
+en = "Matchmaking adjusts the level of your games to yours: a rising opponent MMR is progress."
+
+[tendances.evolution.info_csr]
+fr = "Le CSR est ton rang en classé, une courbe par file classée ; hors classé, c'est le LUSR qui joue ce rôle."
+en = "CSR is your rank in ranked play, one curve per ranked queue; outside ranked, LUSR plays that role."
+
+[tendances.evolution.info_objectives]
+fr = "Prendre, c'est s'emparer de l'objectif ou faire marquer son camp ; défendre, c'est protéger celui de son camp ; tenir, c'est le temps passé avec. Chaque courbe est ta part du total de ton équipe. Le pointillé est la part d'un joueur moyen."
+en = "Capture means seizing the objective or scoring for your side; defend means protecting your side's; hold is the time spent with it. Each curve is your share of your team's total. The dashed line is an average player's share."
+
+[tendances.evolution.tooltip_line]
+fr = "{name} : {value} ({matches})"
+en = "{name}: {value} ({matches})"
+
+[tendances.evolution.tooltip_week_of]
+fr = "Semaine du {date}"
+en = "Week of {date}"
+
+# -- Calendrier des resultats --------------------------------------------------
+[tendances.calendar.title]
+fr = "Calendrier des résultats"
+en = "Results calendar"
+
+[tendances.calendar.info]
+fr = "Une case par jour joué sur l'horizon, colorée du taux de victoire du jour."
+en = "One cell per day played over the horizon, coloured by that day's win rate."
+
+[tendances.calendar.empty_title]
+fr = "Aucun jour joué"
+en = "No day played"
+
+[tendances.calendar.empty_description]
+fr = "Aucun match n'a été joué sur cet horizon."
+en = "No match was played over this horizon."
+
+[tendances.calendar.tooltip_wins]
+fr = "Victoires : {n}"
+en = "Wins: {n}"
+
+[tendances.calendar.tooltip_losses]
+fr = "Défaites : {n}"
+en = "Losses: {n}"
+
+[tendances.calendar.tooltip_win_rate]
+fr = "Taux de victoire : {value}"
+en = "Win rate: {value}"
+
+[tendances.calendar.tooltip_performance]
+fr = "Score de performance : {value}"
+en = "Performance score: {value}"
+
+# -- Victoires et defaites -----------------------------------------------------
+[tendances.outcomes.section]
+fr = "Victoires et défaites"
+en = "Wins and losses"
+
+[tendances.winloss.title]
+fr = "Moyenne par match en défaite et en victoire"
+en = "Average per match in losses and in wins"
+
+[tendances.winloss.info]
+fr = "Axe commun : écart à la moyenne du joueur, en écarts-types. Les valeurs réelles sont écrites près des points, et le coefficient r de l'infobulle mesure le lien avec le résultat. Une corrélation n'est pas une cause : en jeu d'équipe elle reflète aussi les coéquipiers."
+en = "Common axis: gap to the player's average, in standard deviations. Actual values are written next to the points, and the r coefficient in the tooltip measures the link with the result. Correlation is not causation: in team play it also reflects teammates."
+
+[tendances.winloss.series_loss]
+fr = "Défaites"
+en = "Losses"
+
+[tendances.winloss.series_win]
+fr = "Victoires"
+en = "Wins"
+
+[tendances.winloss.tooltip_loss]
+fr = "Défaites : {value}"
+en = "Losses: {value}"
+
+[tendances.winloss.tooltip_win]
+fr = "Victoires : {value}"
+en = "Wins: {value}"
+
+[tendances.winloss.tooltip_r]
+fr = "r = {r}"
+en = "r = {r}"
+
+[tendances.winloss.empty_title]
+fr = "Pas assez de matchs"
+en = "Not enough matches"
+
+[tendances.winloss.empty_description]
+fr = "Pas assez de matchs sur cet horizon : {n} victoires et défaites, il en faut {required}."
+en = "Not enough matches over this horizon: {n} wins and losses, {required} needed."
+
+# -- Medailles ----------------------------------------------------------------
+[tendances.medals.title]
+fr = "Médailles par match"
+en = "Medals per match"
+
+[tendances.medals.info]
+fr = "Les dix médailles dont le taux par match varie le plus entre l'horizon et la période d'avant. Sans période d'avant comparable, les dix plus fréquentes."
+en = "The ten medals whose per-match rate changes the most between the horizon and the previous period. Without a comparable previous period, the ten most frequent."
+
+[tendances.medals.series_previous]
+fr = "{days} jours d'avant"
+en = "{days} days before"
+
+[tendances.medals.tooltip_current]
+fr = "{name} : {value} par match"
+en = "{name}: {value} per match"
+
+[tendances.medals.tooltip_new]
+fr = "nouvelle"
+en = "new"
+
+[tendances.medals.empty_title]
+fr = "Aucune médaille"
+en = "No medal"
+
+[tendances.medals.empty_description]
+fr = "Aucune médaille n'a été gagnée sur cet horizon."
+en = "No medal was earned over this horizon."
+
+# -- Matchs par type de partie --------------------------------------------------
+[tendances.mix.title]
+fr = "Matchs par type de partie"
+en = "Matches by game type"
+
+[tendances.mix.info]
+fr = "Un bâton par pas de temps sur l'horizon (par jour au pas « par match »). Un changement de mélange déplace les moyennes : le filtre « Type de partie » isole chaque type."
+en = "One bar per time step over the horizon (per day at the \"per match\" step). A change of mix moves the averages: the \"Game type\" filter isolates each type."
+
+[tendances.mix.empty_message]
+fr = "Aucun match sur cet horizon."
+en = "No match over this horizon."
+
+[tendances.indicator.mmr_gap]
+fr = "Écart de MMR équipe − adversaires"
+en = "MMR gap: team − opponents"
+
+# -- Vue Escouade -----------------------------------------------------------------
+[tendances.view.aria]
+fr = "Vue"
+en = "View"
+
+[tendances.view.solo]
+fr = "Solo"
+en = "Solo"
+
+[tendances.view.squad]
+fr = "Escouade"
+en = "Squad"
+
+[tendances.squad.empty_title]
+fr = "Aucune escouade choisie"
+en = "No squad selected"
+
+[tendances.squad.empty_description]
+fr = "Choisis une escouade pour voir ses tendances."
+en = "Choose a squad to see its trends."
+
+[tendances.group.squad]
+fr = "Escouade"
+en = "Squad"
+
+[tendances.group.members]
+fr = "Membres"
+en = "Members"
+
+[tendances.indicator.win_rate_alone]
+fr = "Taux de victoire sans coéquipier suivi"
+en = "Win rate without a tracked teammate"
+
+[tendances.indicator.squad_share_of_team_kills]
+fr = "Part des frags de l'équipe"
+en = "Share of team kills"
+
+[tendances.indicator.member_share_of_squad_kills]
+fr = "Part des frags de l'escouade"
+en = "Share of squad kills"
+
+[tendances.squad.series_with]
+fr = "Avec l'escouade"
+en = "With the squad"
+
+[tendances.squad.series_alone]
+fr = "Sans coéquipier suivi"
+en = "Without a tracked teammate"
+
+[tendances.squad.chart_win_rate]
+fr = "Taux de victoire avec et sans l'escouade"
+en = "Win rate with and without the squad"
+
+[tendances.squad.info_win_rate]
+fr = "« Sans coéquipier suivi » compte les matchs joués sans aucun de tes amis suivis. La comparaison dit ce que l'escouade apporte au résultat."
+en = "\"Without a tracked teammate\" counts the matches played without any of your tracked friends. The comparison shows what the squad adds to the result."
+
+[tendances.squad.chart_kda]
+fr = "FDA par membre"
+en = "KDA by member"
+
+[tendances.squad.chart_member_share]
+fr = "Part des frags de l'escouade par membre"
+en = "Share of squad kills by member"
+
+[tendances.squad.info_member_share]
+fr = "Un bâton par pas de temps : la part des frags de l'escouade faite par chaque membre, en pourcentage. Le total d'un bâton vaut 100 %."
+en = "One bar per time step: each member's share of the squad's kills, as a percentage. A bar adds up to 100 %."
+
+[tendances.squad.chart_team_share]
+fr = "Part des frags de l'équipe faite par l'escouade"
+en = "Share of team kills made by the squad"
+
+[tendances.squad.info_team_share]
+fr = "Les frags des membres de l'escouade, rapportés à tous les frags de leur équipe sur ces matchs."
+en = "The squad members' kills, compared with all of their team's kills in these matches."
+
+[tendances.squad.chart_mmr_gap]
+fr = "MMR équipe \u2212 adversaires"
+en = "MMR: team \u2212 opponents"
+
+[tendances.squad.info_mmr_gap]
+fr = "Au-dessus de zéro, l'équipe est mieux classée que ses adversaires ; en dessous, elle l'est moins."
+en = "Above zero, the team is rated higher than its opponents; below, it is rated lower."
+
+[tendances.squad.chart_match_count]
+fr = "Matchs joués ensemble"
+en = "Matches played together"

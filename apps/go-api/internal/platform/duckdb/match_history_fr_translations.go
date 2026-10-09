@@ -38,7 +38,7 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 	langs := PreferredLangsForLocale("fr")
 	langsEN := PreferredLangsForLocale("en")
 
-	mapNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
+	mapNames := traductionsDeCartes(ctx, pdb.Metadata, mapIDs)
 	pairNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "pair", pairIDs, langs)
 	playlistNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", playlistIDs, langs)
 	// game_variant : source de MODE pour les titres sans pair_name (Halo 5). Résolu en
@@ -107,16 +107,14 @@ func applyMatchHistoryGameVariant(row *domain.MatchHistoryRawRow, variantNamesFR
 	}
 }
 
-// applyMatchHistoryMapFR enrichit MapNameFR si COALESCE SQL a renvoyé l'EN.
+// applyMatchHistoryMapFR pose le libellé canonique de la carte (libelleDeCarte, map_labels.go) :
+// c'est lui que l'Explorateur affiche, propose dans son filtre et compare à `?maps=`.
 func applyMatchHistoryMapFR(row *domain.MatchHistoryRawRow, mapNames map[string]string) {
 	if row.MapID == nil {
 		return
 	}
-	if !needsHomeAssetTranslation(derefString(row.MapNameFR), derefString(row.MapName)) {
-		return
-	}
-	if name := strings.TrimSpace(mapNames[*row.MapID]); name != "" {
-		row.MapNameFR = &name
+	if libelle := libelleDeCarte(derefString(row.MapNameFR), derefString(row.MapName), mapNames[*row.MapID]); libelle != "" {
+		row.MapNameFR = &libelle
 	}
 }
 
@@ -200,7 +198,8 @@ func loadModeFRBatch(ctx context.Context, pdb *PlayerDB, modeENSet map[string]st
 // loadPairAssetNamesFR charge asset_translations[asset_type='pair', lang='fr'|'fr-FR']
 // pour les pair_id donnés. Helper partagé entre match_history et filters pour
 // le fallback de re-lookup mode_name_tr (cf. analysis.ResolvePairNameFR).
-// Best-effort : retourne nil en cas d'erreur.
+// Best-effort : une erreur est journalisée et consignée (noteDegraded : un
+// chargement mis en cache qui l'appelle n'est pas caché) ; rend nil, ou ce qui a été lu.
 func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[string]string {
 	if meta == nil || len(pairIDs) == 0 {
 		return nil
@@ -220,6 +219,7 @@ func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[s
 	if err != nil {
 		if !isTableNotFoundErr(err) {
 			slog.WarnContext(ctx, "fr_translations: loadPairAssetNamesFR failed", "err", err)
+			noteDegraded(ctx, "pair_asset_names_fr")
 		}
 		return nil
 	}
@@ -232,6 +232,9 @@ func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[s
 				out[id] = strings.TrimSpace(name)
 			}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		bestEffortFailed(ctx, "pair_asset_names_fr", err)
 	}
 	return out
 }

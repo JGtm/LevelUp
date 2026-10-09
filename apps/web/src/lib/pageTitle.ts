@@ -29,7 +29,10 @@ interface RouteTitleRule {
 // canoniques déjà établies ailleurs (`lib/i18n/generated/common.ts` `common.nav.*`,
 // `features/citations/i18n` via `citationsManifest`, `features/compare/i18n.ts`,
 // `features/squad/i18n.ts`) pour rester cohérentes avec la barre d'onglets réellement
-// affichée.
+// affichée. Cette copie est VERROUILLÉE (CLAUDE.md règle n°6 : une copie sans
+// garde-rail re-diverge) par `pageTitle.labels.guard.test.ts` pour les 4 sous-routes
+// Escouade : la table SUIT `features/squad/i18n.ts`, jamais l'inverse. `lib/` ne peut
+// pas importer `features/` (frontière), d'où le verrou par test plutôt que par import.
 const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   // Accueil
   { pattern: '', title: { fr: 'Accueil', en: 'Home' } }, // racine joueur nue
@@ -38,11 +41,14 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/stats/timeseries', title: { fr: 'Séries temporelles', en: 'Time series' } },
   { pattern: '/stats/sessions', title: { fr: 'Sessions', en: 'Sessions' } },
   { pattern: '/stats/synthesis', title: { fr: 'Synthèse', en: 'Summary' } },
+  // EN aligné sur `common.nav.tab_tendances` (garde-rail `pageTitle.labels.guard.test.ts`).
+  { pattern: '/stats/tendances', title: { fr: 'Tendances', en: 'Trends' } },
   { pattern: '/stats', title: { fr: 'Solo', en: 'Solo' } },
   // Escouade
   { pattern: '/squad/synergies', title: { fr: 'Synergies', en: 'Synergies' } },
   { pattern: '/squad/contributions', title: { fr: 'Contributions', en: 'Contributions' } },
   { pattern: '/squad/dynamique', title: { fr: 'Dynamique', en: 'Dynamics' } },
+  { pattern: '/squad/emprise', title: { fr: 'Emprise', en: 'Map control' } },
   { pattern: '/squad', title: { fr: 'Escouade', en: 'Squad' } },
   // Carrière — nuance Citations/Commendations (I18) : la source est fixée par la ROUTE
   // (/career/citations = moteur dérivé Infinite, /career/commendations = totaux natifs
@@ -68,6 +74,10 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
     pattern: '/ascension/realisations',
     title: { fr: 'Ascension — Réalisations', en: 'Ascension — Achievements' },
   },
+  // Onglet « Tactique » : le titre est le libellé de l'onglet SANS le préfixe de rubrique.
+  // Masqué pour un titre sans rejeu mais la route reste réelle : titre non-fallback exigé.
+  // EN aligné sur `common.nav.tab_tactique` (garde-rail `pageTitle.labels.guard.test.ts`).
+  { pattern: '/ascension/tactique', title: { fr: 'Tactique', en: 'Tactical' } },
   { pattern: '/ascension', title: { fr: 'Ascension', en: 'Ascension' } },
   // Route historique /objectifs redirect → /ascension/objectifs (préservée pour bookmarks).
   { pattern: '/objectifs', title: { fr: 'Ascension', en: 'Ascension' } },
@@ -117,14 +127,15 @@ const STATIC_ROUTE_TITLES: RouteTitleRule[] = [
   },
   { pattern: '/admin', title: { fr: 'Administration', en: 'Administration' } },
   { pattern: '/changelog', title: { fr: 'Changelog', en: 'Changelog' } },
-  { pattern: '/groups', title: { fr: 'Mes groupes', en: 'My groups' } },
+  { pattern: '/groups', title: { fr: 'Amis et groupes', en: 'Friends and groups' } },
   { pattern: '/help', title: { fr: 'Aide', en: 'Help' } },
-  { pattern: '/join', title: { fr: 'Rejoindre un groupe', en: 'Join a group' } },
+  { pattern: '/join', title: { fr: 'Rejoindre LevelUp', en: 'Join LevelUp' } },
   // Sandbox dev interne, jamais lié depuis la nav prod (cf. ChartsShowcasePage) —
   // conservé pour que l'onglet ne reste pas nu si on y accède en direct.
   { pattern: '/lab/charts', title: { fr: 'Aperçu graphiques', en: 'Charts gallery' } },
   { pattern: '/login', title: { fr: 'Connexion', en: 'Sign in' } },
   { pattern: '/onboarding/openspartan', title: { fr: 'Bienvenue', en: 'Welcome' } },
+  { pattern: '/privacy', title: { fr: 'Confidentialité', en: 'Privacy' } },
   { pattern: '/register', title: { fr: 'Inscription', en: 'Register' } },
   { pattern: '/settings', title: { fr: 'Paramètres', en: 'Settings' } },
   { pattern: '/setup', title: { fr: 'Configuration', en: 'Setup' } },

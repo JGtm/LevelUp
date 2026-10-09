@@ -275,7 +275,9 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?`
+		  AND mr.start_time >= ? AND mr.start_time <= ?` +
+		// Campagne exclue (D-5, backlog B4) ; titre = celui de la base partagée lue.
+		excludeCampaignClause(pdbTitleSlug(p.pdb), "mr")
 	args := []any{userID, since, until}
 	if playlistGroup != "" && playlistGroup != "all" {
 		q += ` AND mr.playlist_id = ?`

@@ -53,7 +53,9 @@ func (p *providerImpl) notifyAfterSwap(ctx context.Context, direction Direction,
 // dans swapToRW).
 //
 // Contract : les Subscribers de PreSwapToRW NE DOIVENT PAS appeler
-// Get/AcquireWriter dans leur callback (deadlock garanti via p.mu).
+// Get/AcquireWriter dans leur callback (deadlock garanti via p.mu), NI
+// relâcher un lecteur obtenu par Get — depuis le passage du drain à un
+// compteur sous p.mu (reader_drain.go), release() prend lui aussi ce mutex.
 // La doc de DirectionPreSwapToRW dans subscriber.go le précise.
 func (p *providerImpl) notifyAfterSwapLocked(ctx context.Context, direction Direction, from, to State) {
 	if direction != DirectionPreSwapToRW {

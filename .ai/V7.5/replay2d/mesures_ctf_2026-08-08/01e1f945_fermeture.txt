@@ -1,0 +1,24 @@
+film	01e1f945
+carte	Catalyst
+slots_pont_avant	97
+slots_pont_apres	101
+vies_non_nommees_candidates	16
+designees_par_un_tir	9
+attribuees	4	contestees	2	rejetees_recouvrement	3
+tirs_orphelins	292	dont_instant_a_une_seule_vie	102
+
+# couverture des tirs
+avant	rattaches	1862	sur	2154	taux	0.8644	sans_slot	281	ambigus	11
+apres	rattaches	1906	sur	2154	taux	0.8849	sans_slot	237	ambigus	11
+gain_points_A	2.04
+
+# fermeture B — par la reapparition
+calibration_vies	89	p05_ms	10176	mediane_ms	10179	p95_ms	11013
+vies_restantes	12	designees	7	attribuees	3	contestees	1	rejetees_recouvrement	3
+apresB	rattaches	1948	sur	2154	taux	0.9044	sans_slot	195	ambigus	11
+gain_points_total_fenetre_large	3.99
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	12	designees	7	attribuees	2	contestees	2	rejetees_recouvrement	3
+apresT	rattaches	1932	sur	2154	taux	0.8969	sans_slot	211	ambigus	11
+gain_points_total_fenetre_serree	3.25

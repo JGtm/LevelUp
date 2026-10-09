@@ -1,6 +1,6 @@
 // Package timeline construit des domain.MatchTimeline depuis les rows DB.
 //
-// Phase 3 du refactor T0 (cf. .ai/PLAN_MATCH_TIMELINE_T0.md + docs/adr/0024) :
+// Phase 3 du refactor T0 (cf. .ai/archive/V7/PLAN_MATCH_TIMELINE_T0.md + docs/adr/0024) :
 // les builders lisent désormais le vrai T0 (countdown pré-match) propagé depuis
 // match_registry.real_start_time jusqu'au canonical (MatchSummary.T0Ms) et au
 // MatchView (MatchMetaRaw.T0Ms). Quand le T0 est indisponible (real_start_time

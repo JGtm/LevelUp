@@ -186,31 +186,51 @@ FULL OUTER JOIN (
 	GROUP BY xuid
 ) mp ON xa.xuid = mp.xuid
 FULL OUTER JOIN (
-	SELECT xuid, MAX(gamertag) AS gamertag
-	FROM (
-		SELECT feed_killer_xuid AS xuid, feed_killer_gamertag AS gamertag
-		FROM match_kill_events_latest
-		WHERE feed_killer_xuid IS NOT NULL AND feed_killer_xuid != ''
-		  AND feed_killer_gamertag IS NOT NULL AND feed_killer_gamertag != ''
-		UNION ALL
-		SELECT victim_xuid AS xuid, victim_gamertag AS gamertag
-		FROM match_kill_events_latest
-		WHERE victim_xuid IS NOT NULL AND victim_xuid != ''
-		  AND victim_gamertag IS NOT NULL AND victim_gamertag != ''
-		UNION ALL
-		SELECT killer_xuid AS xuid, killer_gamertag AS gamertag
-		FROM killer_victim_pairs
-		WHERE killer_gamertag IS NOT NULL AND killer_gamertag != ''
-		UNION ALL
-		SELECT victim_xuid AS xuid, victim_gamertag AS gamertag
-		FROM killer_victim_pairs
-		WHERE victim_gamertag IS NOT NULL AND victim_gamertag != ''
-	)
-	GROUP BY xuid
+%s
 ) kv ON COALESCE(xa.xuid, mp.xuid) = kv.xuid`,
 		xuidExpr,
 		xuidExpr,
 		BotSQLCase(xuidExpr),
 		MaskedXuidLabelSQL(xuidExpr),
+		gamertagKillFeedSQL(""),
 	)
+}
+
+// gamertagKillFeedLegs : les QUATRE jambes du niveau 4 de v_gamertag_lookup — le gamertag
+// porté par le kill-feed, lu dans le journal canonique (`_latest`, tueur puis victime) et dans
+// la table historique (tueur puis victime). Pourquoi les deux : cf. GamertagLookupViewSQL.
+//
+// UNE SEULE COPIE (lot perf L2, 2026-09-23) : la vue ET l'annuaire des lectures Escouade
+// (AnnuaireKillFeedSQL) les tirent d'ici. Deux copies de la cascade d'identité finissent par
+// nommer différemment le même joueur — c'est l'écart que GamertagLookupViewSQL existe pour
+// empêcher. Le texte est celui de la vue au caractère près : `gamertagKillFeedSQL("")` rend la
+// sous-requête d'origine, le DDL de la vue n'a pas bougé d'un octet.
+var gamertagKillFeedLegs = [...]string{
+	"SELECT feed_killer_xuid AS xuid, feed_killer_gamertag AS gamertag\n" +
+		"\t\tFROM match_kill_events_latest\n" +
+		"\t\tWHERE feed_killer_xuid IS NOT NULL AND feed_killer_xuid != ''\n" +
+		"\t\t  AND feed_killer_gamertag IS NOT NULL AND feed_killer_gamertag != ''",
+	"SELECT victim_xuid AS xuid, victim_gamertag AS gamertag\n" +
+		"\t\tFROM match_kill_events_latest\n" +
+		"\t\tWHERE victim_xuid IS NOT NULL AND victim_xuid != ''\n" +
+		"\t\t  AND victim_gamertag IS NOT NULL AND victim_gamertag != ''",
+	"SELECT killer_xuid AS xuid, killer_gamertag AS gamertag\n" +
+		"\t\tFROM killer_victim_pairs\n" +
+		"\t\tWHERE killer_gamertag IS NOT NULL AND killer_gamertag != ''",
+	"SELECT victim_xuid AS xuid, victim_gamertag AS gamertag\n" +
+		"\t\tFROM killer_victim_pairs\n" +
+		"\t\tWHERE victim_gamertag IS NOT NULL AND victim_gamertag != ''",
+}
+
+// gamertagKillFeedSQL rend la sous-requête `(xuid, MAX(gamertag))` du niveau 4. `scope` est
+// ajouté au WHERE de CHAQUE jambe : vide pour la vue (toute la base), un prédicat sur
+// `match_id` pour l'annuaire d'une lecture (ses seuls matchs).
+func gamertagKillFeedSQL(scope string) string {
+	legs := make([]string, len(gamertagKillFeedLegs))
+	for i, leg := range gamertagKillFeedLegs {
+		legs[i] = leg + scope
+	}
+	return "\tSELECT xuid, MAX(gamertag) AS gamertag\n\tFROM (\n\t\t" +
+		strings.Join(legs, "\n\t\tUNION ALL\n\t\t") +
+		"\n\t)\n\tGROUP BY xuid"
 }

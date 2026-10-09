@@ -7,30 +7,91 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 
 // mockReplayService implémente port.ReplayService.
 type mockReplayService struct {
-	doc replay.ReplayDocument
+	doc replaydoc.ReplayDocument
 	err error
+	// bg / image / bgErr : le fond de carte, indépendant de l'artefact — un rejeu peut
+	// exister sans fond, et le contraire n'a pas de sens.
+	bg    *replaydoc.MapBackground
+	image []byte
+	// imageContentType : type MIME rendu par MapBackgroundImage. Vide == "image/png", le
+	// défaut historique — un mock existant qui ne le fixe pas continue de décrire un PNG.
+	imageContentType string
+	bgErr            error
+	// callouts / calloutsErr : les zones nommées, indépendantes du fond ET de l'artefact.
+	callouts    *replaydoc.MapCalloutsEntry
+	calloutsErr error
+	// bgMap / imageMap / bgMapErr : le fond servi PAR CARTE (grille de l'onglet Tactique).
+	// Champs DISTINCTS de ceux par match, et c'est le point : si les deux entrées
+	// partageaient leur double, rien ne prouverait que le handler appelle la bonne.
+	// `vuMapID` retient ce que le handler a transmis au service.
+	bgMap    *replaydoc.MapBackground
+	imageMap []byte
+	// imageMapContentType : jumeau de imageContentType, pour le fond servi par carte.
+	imageMapContentType string
+	bgMapErr            error
+	vuMapID             string
 }
 
-func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replay.ReplayDocument, error) {
+// contentTypeOuDefaut rend "image/png" quand aucun type n'a été fixé explicitement — le
+// défaut historique du mock, pour ne pas réécrire tous ses appelants existants.
+func contentTypeOuDefaut(ct string) string {
+	if ct == "" {
+		return "image/png"
+	}
+	return ct
+}
+
+func (m *mockReplayService) GetReplay(_ context.Context, _ string) (replaydoc.ReplayDocument, error) {
 	return m.doc, m.err
+}
+
+func (m *mockReplayService) MapBackground(_ context.Context, _ string) (*replaydoc.MapBackground, error) {
+	return m.bg, m.bgErr
+}
+
+func (m *mockReplayService) MapBackgroundImage(_ context.Context, _ string) ([]byte, string, error) {
+	return m.image, contentTypeOuDefaut(m.imageContentType), m.bgErr
+}
+
+func (m *mockReplayService) MapBackgroundForMap(_ context.Context, mapID string) (*replaydoc.MapBackground, error) {
+	m.vuMapID = mapID
+	return m.bgMap, m.bgMapErr
+}
+
+func (m *mockReplayService) MapBackgroundImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
+	m.vuMapID = mapID
+	return m.imageMap, contentTypeOuDefaut(m.imageMapContentType), m.bgMapErr
+}
+
+func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {
+	return m.callouts, m.calloutsErr
 }
 
 // IsAvailable : le mock rend « disponible » exactement quand GetReplay rendrait un
 // document — la présence et la lecture ne peuvent pas diverger dans un test.
 func (m *mockReplayService) IsAvailable(_ context.Context, _ string) bool {
 	return m.err == nil
+}
+
+// AvailableSet : même règle que IsAvailable — le mock ne connaît qu'un match, il
+// rend l'ensemble vide (aucun tableau de matchs n'est servi par ce handler).
+func (m *mockReplayService) AvailableSet(_ context.Context) (port.ReplayAvailability, error) {
+	return port.ReplayAvailability{}, nil
 }
 
 func newReplayRouter(factory handlers.ServiceFactory[port.ReplayService]) *chi.Mux {
@@ -66,10 +127,10 @@ func doReplayGetFrom(r *chi.Mux, slug, matchID, remoteAddr string) *httptest.Res
 }
 
 func TestReplayHandler_OK(t *testing.T) {
-	mock := &mockReplayService{doc: replay.ReplayDocument{
+	mock := &mockReplayService{doc: replaydoc.ReplayDocument{
 		SchemaVersion: replay.SchemaVersion, MatchID: "000d5950", TitleSlug: "halo_infinite",
 		FrameCount: 2,
-		Tracks:     []replay.Track{{Slot: 665, Team: -1, Points: []replay.Point{{T: 0, X: 1, Y: 2}}}},
+		Tracks:     []replaydoc.Track{{Slot: 665, Team: -1, Points: []replaydoc.Point{{T: 0, X: 1, Y: 2}}}},
 	}}
 	factory := func(_ context.Context, slug string) (port.ReplayService, error) {
 		if slug != testPlayerSlug {
@@ -81,12 +142,48 @@ func TestReplayHandler_OK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
 	}
-	var got replay.ReplayDocument
+	var got replaydoc.ReplayDocument
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("réponse illisible: %v", err)
 	}
 	if got.MatchID != "000d5950" || len(got.Tracks) != 1 || got.Tracks[0].Slot != 665 {
 		t.Errorf("document inattendu: %+v", got)
+	}
+}
+
+// TestReplayHandler_LatestSchemaVersionHeader — la réponse porte la version COURANTE du
+// producteur (`games/halo_infinite/film/replay.SchemaVersion`) en en-tête, DISTINCTE du `schemaVersion` du
+// corps (celui de l'ARTEFACT LU). Un artefact cuit sous une version ancienne (42 ici) doit
+// laisser les deux nombres diverger : c'est exactement ce que le badge admin lit pour dire
+// « à jour » ou « à recuire » (lot A, 2026-09-11).
+func TestReplayHandler_LatestSchemaVersionHeader(t *testing.T) {
+	const artefactAncien = 42
+	mock := &mockReplayService{doc: replaydoc.ReplayDocument{
+		SchemaVersion: artefactAncien, MatchID: "000d5950", TitleSlug: "halo_infinite",
+	}}
+	factory := func(_ context.Context, slug string) (port.ReplayService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return mock, nil
+	}
+	w := doReplayGet(newReplayRouter(factory), testPlayerSlug, "000d5950")
+	if w.Code != http.StatusOK {
+		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	got := w.Header().Get(middleware.ReplayLatestSchemaHeader)
+	want := strconv.Itoa(replay.SchemaVersion)
+	if got != want {
+		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (games/halo_infinite/film/replay.SchemaVersion)",
+			got, want)
+	}
+	var body replaydoc.ReplayDocument
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("réponse illisible: %v", err)
+	}
+	if body.SchemaVersion != artefactAncien {
+		t.Errorf("schemaVersion du corps = %d, attendu %d (version de l'ARTEFACT LU, "+
+			"jamais remplacée par la version courante)", body.SchemaVersion, artefactAncien)
 	}
 }
 
@@ -131,7 +228,7 @@ func TestReplayHandler_ServiceError(t *testing.T) {
 // Il répare aussi le défaut qui l'a fait écrire : le garde a été posé sans que les tests du
 // handler soient adaptés, et ceux-ci tombaient dessus en annonçant un handler cassé.
 func TestReplayHandler_RefusesRemoteCaller(t *testing.T) {
-	mock := &mockReplayService{doc: replay.ReplayDocument{MatchID: "000d5950"}}
+	mock := &mockReplayService{doc: replaydoc.ReplayDocument{MatchID: "000d5950"}}
 	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
 	w := doReplayGetFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "203.0.113.7:443")
 	if w.Code != http.StatusNotFound {
@@ -139,5 +236,190 @@ func TestReplayHandler_RefusesRemoteCaller(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "replay_not_available") {
 		t.Errorf("code d'erreur attendu replay_not_available, body=%s", w.Body.String())
+	}
+}
+
+// doReplayPathFrom émet un GET sur un sous-chemin du rejeu, depuis l'adresse donnée.
+func doReplayPathFrom(r *chi.Mux, slug, matchID, suffixe, remoteAddr string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/"+slug+"/matches/"+matchID+"/replay"+suffixe, nil)
+	req.RemoteAddr = remoteAddr
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+// fondMock rend un service dont le fond de carte est celui de Cliffhanger.
+func fondMock() *mockReplayService {
+	return &mockReplayService{
+		bg: &replaydoc.MapBackground{
+			SchemaVersion: replay.MapBackgroundSchemaVersion,
+			Module:        "ridgeline",
+			Image:         "ridgeline.png",
+			Calibration: replaydoc.MapBackgroundCalibration{
+				MetersPerPixel: 0.092, OriginX: -57.3, OriginY: 78.87,
+				WidthPx: 1633, HeightPx: 1627,
+			},
+		},
+		image:            []byte("\x89PNG\r\n\x1a\nfaux"),
+		imageContentType: "image/png",
+	}
+}
+
+// TestReplayBackground_OK — le calage voyage entier : sans lui l'image ne se pose nulle part.
+func TestReplayBackground_OK(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return fondMock(), nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background", "127.0.0.1:5432")
+	if w.Code != http.StatusOK {
+		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var got replaydoc.MapBackground
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("réponse illisible: %v", err)
+	}
+	if got.Module != "ridgeline" || got.Calibration.WidthPx != 1633 || got.Calibration.MetersPerPixel != 0.092 {
+		t.Errorf("calage incomplet: %+v", got)
+	}
+}
+
+// TestReplayBackgroundImage_OK — les octets sortent tels quels, avec le Content-Type
+// RENDU PAR LE SERVICE (étape 2 : le client web ne doit pas avoir à connaître le format,
+// D4, et la route reste `background.png` quel que soit le format réellement servi).
+//
+// PNG et WebP en table : ce test ne suppose plus un format, il lit celui que le service
+// déclare et vérifie que le handler le répercute tel quel, sans jamais le remplacer par
+// une valeur en dur.
+func TestReplayBackgroundImage_OK(t *testing.T) {
+	cas := []struct {
+		nom         string
+		octets      []byte
+		contentType string
+	}{
+		{"PNG", []byte("\x89PNG\r\n\x1a\nfaux"), "image/png"},
+		{"WebP", []byte("RIFF\x00\x00\x00\x00WEBPVP8Lfaux"), "image/webp"},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			mock := fondMock()
+			mock.image = c.octets
+			mock.imageContentType = c.contentType
+			factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
+			w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background.png", "127.0.0.1:5432")
+			if w.Code != http.StatusOK {
+				t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+			}
+			if ct := w.Header().Get("Content-Type"); ct != c.contentType {
+				t.Errorf("Content-Type = %q, attendu %q", ct, c.contentType)
+			}
+			if w.Body.String() != string(c.octets) {
+				t.Errorf("les octets servis ne sont pas ceux du service: %q", w.Body.String())
+			}
+		})
+	}
+}
+
+// TestReplayBackground_NotAvailable — une carte sans fond figé est un cas NORMAL : 404
+// nommé, sur les deux routes, jamais un 500.
+func TestReplayBackground_NotAvailable(t *testing.T) {
+	mock := &mockReplayService{bgErr: port.ErrMapBackgroundNotAvailable}
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
+	for _, suffixe := range []string{"/background", "/background.png"} {
+		w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", suffixe, "127.0.0.1:5432")
+		if w.Code != http.StatusNotFound {
+			t.Errorf("%s: attendu 404, obtenu %d", suffixe, w.Code)
+		}
+		if !strings.Contains(w.Body.String(), "map_background_not_available") {
+			t.Errorf("%s: code attendu map_background_not_available, body=%s", suffixe, w.Body.String())
+		}
+	}
+}
+
+// TestReplayBackground_RefusesRemoteCaller — LE POINT QUI COMPTE POUR LA PROD.
+//
+// Le rejeu n'est servi qu'en local ; ses deux nouvelles routes doivent hériter du MÊME
+// garde, y compris la route chi nue de l'image — c'est précisément celle qui pourrait
+// échapper au montage sans que rien ne le dise.
+func TestReplayBackground_RefusesRemoteCaller(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return fondMock(), nil }
+	for _, suffixe := range []string{"/background", "/background.png"} {
+		w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", suffixe, "203.0.113.7:443")
+		if w.Code != http.StatusNotFound {
+			t.Errorf("%s: un appelant distant doit recevoir 404, obtenu %d", suffixe, w.Code)
+		}
+		if strings.HasPrefix(w.Body.String(), "\x89PNG") {
+			t.Errorf("%s: l'image a été servie à un appelant distant", suffixe)
+		}
+	}
+}
+
+// calloutsMock rend un service dont les zones nommées sont celles de Cliffhanger.
+func calloutsMock() *mockReplayService {
+	return &mockReplayService{
+		callouts: &replaydoc.MapCalloutsEntry{
+			Module:     "ridgeline",
+			Provenance: replay.CalloutsProvenanceDecoupe,
+			Zones: []replaydoc.CalloutZone{{
+				VolumeIndex: 10, Name: "ridgeline horses", EN: "Horseshoe", FR: "Fer à cheval",
+				X: 19, Y: 10, Z: 1, ZBottom: -0.2, ZTop: 11,
+				Polygon: [][2]float64{{14.8, 7.5}, {23.8, 7.5}, {23.8, 15.3}},
+			}},
+		},
+	}
+}
+
+// TestReplayCallouts_OK — l'entrée voyage entière : polygones monde + libellés FR/EN.
+func TestReplayCallouts_OK(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return calloutsMock(), nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "127.0.0.1:5432")
+	if w.Code != http.StatusOK {
+		t.Fatalf("attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var got replaydoc.MapCalloutsEntry
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("réponse illisible: %v", err)
+	}
+	if got.Module != "ridgeline" || len(got.Zones) != 1 || got.Zones[0].FR != "Fer à cheval" ||
+		len(got.Zones[0].Polygon) != 3 {
+		t.Errorf("entrée incomplète: %+v", got)
+	}
+}
+
+// TestReplayCallouts_NotAvailable — une carte sans zones nommées (Forge) est un cas
+// NORMAL : 404 nommé, jamais un 500.
+func TestReplayCallouts_NotAvailable(t *testing.T) {
+	mock := &mockReplayService{calloutsErr: port.ErrMapCalloutsNotAvailable}
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return mock, nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "127.0.0.1:5432")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("attendu 404, obtenu %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "map_callouts_not_available") {
+		t.Errorf("code attendu map_callouts_not_available, body=%s", w.Body.String())
+	}
+}
+
+// TestReplayCallouts_RefusesRemoteCaller — la route hérite du même garde local que le
+// reste du rejeu.
+func TestReplayCallouts_RefusesRemoteCaller(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return calloutsMock(), nil }
+	w := doReplayPathFrom(newReplayRouter(factory), testPlayerSlug, "000d5950", "/callouts", "203.0.113.7:443")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("un appelant distant doit recevoir 404, obtenu %d", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "Horseshoe") {
+		t.Error("les zones ont été servies à un appelant distant")
+	}
+}
+
+// TestReplayBackground_PlayerNotFound — la résolution du joueur précède tout le reste.
+func TestReplayBackground_PlayerNotFound(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) {
+		return nil, errors.New("player_not_found")
+	}
+	for _, suffixe := range []string{"/background", "/background.png"} {
+		w := doReplayPathFrom(newReplayRouter(factory), "inconnu", "000d5950", suffixe, "127.0.0.1:5432")
+		if w.Code != http.StatusNotFound {
+			t.Errorf("%s: attendu 404, obtenu %d", suffixe, w.Code)
+		}
 	}
 }

@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
+  AdminBuildQueueResponse,
   AdminConvergenceReport,
   AdminDetectionsResponse,
   AdminCronsResponse,
@@ -125,6 +126,28 @@ export function useAdminJobs(limit = 20) {
     queryKey: queryKeys.adminMonitoringJobs,
     queryFn: () => api.get<AdminJobsResponse>(`/admin/monitoring/jobs?limit=${limit}`),
     // Cadence pilotée par l'activité : un job actif → 5 s, sinon 30 s.
+    refetchInterval: (query) =>
+      (query.state.data?.jobs ?? []).some(
+        (j) => j.status === 'running' || j.status === 'queued',
+      )
+        ? 5_000
+        : 30_000,
+    staleTime: 4_000,
+    retry: false,
+  })
+}
+
+/**
+ * File durable de construction des rejeux + état des ouvriers (piste F).
+ *
+ * Même cadence pilotée par l'activité que les jobs asynchrones : un travail en
+ * vol se suit à 5 s, une file au repos à 30 s. Un ouvrier distant bat toutes les
+ * 30 s, donc rafraîchir plus vite n'apprendrait rien de plus.
+ */
+export function useBuildQueue(limit = 50) {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringBuildQueue,
+    queryFn: () => api.get<AdminBuildQueueResponse>(`/admin/monitoring/build-queue?limit=${limit}`),
     refetchInterval: (query) =>
       (query.state.data?.jobs ?? []).some(
         (j) => j.status === 'running' || j.status === 'queued',

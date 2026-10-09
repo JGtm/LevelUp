@@ -8,21 +8,37 @@
  *    (le chemin logout — reload plein sur '/' — reste intact).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act } from '@testing-library/react'
+import { render, act, waitFor } from '@testing-library/react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { log } from '@/components/shell/_logger'
 import type { BootstrapResponse } from '@/lib/api/types'
+import { AUTH_RELOAD_STORAGE_KEY } from '@/components/shell/authRequiredGuard'
 
 const navigateMock = vi.fn()
+// /bootstrap relu par le garde du 401 (authRequiredGuard) : piloté par test.
+const apiGetMock = vi.fn()
+
+vi.mock('@/lib/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/client')>()
+  return { ...actual, api: { ...actual.api, get: (...args: unknown[]) => apiGetMock(...args) } }
+})
 
 // Données pilotées par test, lues par le mock useQuery.
 let queryData: BootstrapResponse | undefined
+// État de chargement piloté par test (écran d'attente du /bootstrap).
+let queryLoading = false
+let queryFailureReason: unknown = null
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    useQuery: () => ({ data: queryData, isLoading: false, isError: false, failureCount: 0 }),
+    useQuery: () => ({
+      data: queryData,
+      isLoading: queryLoading,
+      isError: false,
+      failureReason: queryFailureReason,
+    }),
   }
 })
 
@@ -115,6 +131,9 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
 
   beforeEach(() => {
     assignMock.mockReset()
+    apiGetMock.mockReset()
+    navigateMock.mockReset()
+    window.sessionStorage.clear()
     // jsdom : window.location.assign lève « Not implemented ». On remplace
     // window.location par un stub minimal (assign espionné) le temps du test —
     // même pattern que le mock matchMedia du setup Vitest. queryData reste
@@ -139,13 +158,43 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
     queryData = undefined
   })
 
-  it('store authentifié + dispatch levelup:auth-required → reload plein vers /', () => {
+  it('store authentifié + 401 + /bootstrap anonyme → reload plein vers /', async () => {
     useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    apiGetMock.mockResolvedValue(anonBootstrap())
 
     render(<RootLayout />)
     window.dispatchEvent(new CustomEvent('levelup:auth-required'))
 
-    expect(assignMock).toHaveBeenCalledWith('/')
+    await waitFor(() => expect(assignMock).toHaveBeenCalledWith('/'))
+    expect(apiGetMock).toHaveBeenCalledWith('/bootstrap')
+  })
+
+  it('401 d’une route secondaire + /bootstrap connecté → aucune éjection', async () => {
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    apiGetMock.mockResolvedValue({ ...anonBootstrap(), current_username: 'alice' })
+
+    render(<RootLayout />)
+    window.dispatchEvent(new CustomEvent('levelup:auth-required'))
+
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+    await act(async () => {})
+    expect(assignMock).not.toHaveBeenCalled()
+    expect(navigateMock).not.toHaveBeenCalled()
+    expect(useAppShellStore.getState().currentUsername).toBe('alice')
+  })
+
+  it('plafond de rechargements atteint (survit au rechargement) → /login sans recharger', async () => {
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    apiGetMock.mockResolvedValue(anonBootstrap())
+    const now = Date.now()
+    window.sessionStorage.setItem(AUTH_RELOAD_STORAGE_KEY, JSON.stringify([now - 2, now - 1]))
+
+    render(<RootLayout />)
+    window.dispatchEvent(new CustomEvent('levelup:auth-required'))
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/login' }))
+    expect(assignMock).not.toHaveBeenCalled()
+    expect(useAppShellStore.getState().currentUsername).toBeNull()
   })
 
   it('store anonyme + dispatch levelup:auth-required → aucun reload (anti-boucle)', () => {
@@ -188,5 +237,70 @@ describe('RootLayout — titre d’onglet locale-aware (I18)', () => {
     })
 
     expect(document.title).toBe('LevelUp - Home')
+  })
+})
+
+/**
+ * Écran d'attente du /bootstrap : un serveur qui démarre (réseau, 502, 503
+ * server_starting) affiche « Démarrage du serveur… » et l'étape annoncée, sans
+ * compteur de tentatives ; sinon « Chargement LevelUp… ».
+ */
+describe('RootLayout — attente du serveur qui démarre', () => {
+  beforeEach(() => {
+    log._resetForTests()
+    useAppShellStore.setState({ currentUsername: null, isBootstrapped: false, locale: 'fr' })
+    queryLoading = true
+  })
+
+  afterEach(() => {
+    queryLoading = false
+    queryFailureReason = null
+  })
+
+  const serverStarting = (step: string) => ({
+    code: 'server_starting',
+    message: 'server starting',
+    retryable: true,
+    status: 503,
+    details: { step },
+  })
+
+  it('premier chargement, aucun échec → « Chargement LevelUp… »', () => {
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Chargement LevelUp…')
+  })
+
+  it('503 server_starting → « Démarrage du serveur… » + étape, sans compteur', () => {
+    queryFailureReason = serverStarting('accounts')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toContain('Démarrage du serveur…')
+    expect(container.textContent).toContain('Connexion des comptes')
+    expect(container.textContent).not.toMatch(/tentative|\d+\s*\/\s*\d+/)
+  })
+
+  it('erreur réseau (serveur pas encore à l’écoute) → « Démarrage du serveur… » sans étape', () => {
+    queryFailureReason = new TypeError('Failed to fetch')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Démarrage du serveur…')
+  })
+
+  it('étape inconnue → message de démarrage seul', () => {
+    queryFailureReason = serverStarting('etape_future')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Démarrage du serveur…')
+  })
+
+  it('anglais → « Server starting… » + étape en anglais', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    queryFailureReason = serverStarting('migrations')
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toContain('Server starting…')
+    expect(container.textContent).toContain('Updating databases')
+  })
+
+  it('autre erreur en cours de rejeu → « Chargement LevelUp… »', () => {
+    queryFailureReason = { code: 'bootstrap_error', status: 500, retryable: true }
+    const { container } = render(<RootLayout />)
+    expect(container.textContent).toBe('Chargement LevelUp…')
   })
 })

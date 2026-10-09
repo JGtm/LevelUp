@@ -215,12 +215,11 @@ func (r *ServiceRegistry) ConvergenceReport(ctx context.Context, titleSlug strin
 		Horizon:     sync_pkg.ConvergenceHorizon,
 		Players:     []domain.PlayerConvergenceReport{},
 		// Cumuls « rattrapé depuis le boot » (expvar AddInt posés par le
-		// pipeline post-sync — étapes 1.54/1.55/1.56 + alias PSA).
+		// pipeline post-sync — étapes 1.54/1.56 + alias PSA).
 		TotalsSinceBoot: domain.ConvergenceTotalsSinceBoot{
-			EventsProcessed:  observability.LoadCounter("convergence_events_processed_total"),
-			WeaponsProcessed: observability.LoadCounter("convergence_weapons_processed_total"),
-			PSAProcessed:     observability.LoadCounter("convergence_psa_processed_total"),
-			AliasesUpserted:  observability.LoadCounter("convergence_aliases_upserted_total"),
+			EventsProcessed: observability.LoadCounter("convergence_events_processed_total"),
+			PSAProcessed:    observability.LoadCounter("convergence_psa_processed_total"),
+			AliasesUpserted: observability.LoadCounter("convergence_aliases_upserted_total"),
 		},
 	}
 	players, err := r.cfg.LoadPlayers(titleSlug)
@@ -241,7 +240,6 @@ func (r *ServiceRegistry) ConvergenceReport(ctx context.Context, titleSlug strin
 			report.MissingEnrichment = counts.MissingEnrichment
 			report.MissingPSA = counts.MissingPSA
 			report.MissingEvents = counts.MissingEvents
-			report.MissingWeapons = counts.MissingWeapons
 			release()
 		}
 		resp.Players = append(resp.Players, report)
@@ -336,29 +334,6 @@ func loadPerfCallStats(titleSlug, name, metric string) domain.PerfCallStats {
 		Title: observability.EffectiveTitle(titleSlug),
 		Name:  name, Count: count, SumMs: sum, AvgMs: avg, MaxMs: max,
 	}
-}
-
-// ErrorStats retourne les logs WARN/ERROR agrégés depuis le boot (collecteur
-// mémoire). Zéro I/O.
-func (r *ServiceRegistry) ErrorStats(_ context.Context, titleSlug string) (domain.AdminErrorStats, error) {
-	buckets := observability.ErrorBucketsForTitle(titleSlug) // MT-05 : filtré par titre
-	resp := domain.AdminErrorStats{
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Buckets:     make([]domain.AdminErrorBucket, 0, len(buckets)),
-	}
-	for _, b := range buckets {
-		resp.Buckets = append(resp.Buckets, domain.AdminErrorBucket{
-			Title:      b.Title,
-			Level:      b.Level,
-			Module:     b.Module,
-			Message:    b.Message,
-			Count:      b.Count,
-			FirstSeen:  b.FirstSeen.UTC().Format(time.RFC3339),
-			LastSeen:   b.LastSeen.UTC().Format(time.RFC3339),
-			LastDetail: b.LastDetail,
-		})
-	}
-	return resp, nil
 }
 
 // RunDataHealthNow exécute un audit data health immédiat (action admin —

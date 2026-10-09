@@ -1,4 +1,4 @@
-// Package service â€” synthesis_service_test.go : tests pour SynthesisService.
+// Package service — synthesis_service_test.go : tests pour SynthesisService.
 // Sprint 55 D9.
 package service
 
@@ -20,18 +20,12 @@ var errSynthTest = errors.New("synthesis repo error")
 // --- mock SynthesisRepository ---
 
 type mockSynthesisRepo struct {
-	synthRows   []legacymatch.SynthesisMatchRow
-	synthErr    error
-	heatmapRows []domain.SynthesisHeatmapRow
-	heatmapErr  error
+	synthRows []legacymatch.SynthesisMatchRow
+	synthErr  error
 }
 
 func (m *mockSynthesisRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
 	return m.synthRows, m.synthErr
-}
-
-func (m *mockSynthesisRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
-	return m.heatmapRows, m.heatmapErr
 }
 
 func (m *mockSynthesisRepo) EnrichCanonicalAssetTranslations(_ context.Context, _ []canonical.PlayerMatchRow) error {
@@ -41,7 +35,7 @@ func (m *mockSynthesisRepo) EnrichCanonicalAssetTranslations(_ context.Context, 
 // --- mock PlayerMatchesRepository pour tests P4.3 finale ---
 //
 // Convertit []SynthesisMatchRow en []canonical.PlayerMatchRow pour exercer
-// le path canonical (le seul path en service aprÃ¨s P4.3 finale).
+// le path canonical (le seul path en service après P4.3 finale).
 type mockSynthesisPlayerMatches struct {
 	rows []legacymatch.SynthesisMatchRow
 	err  error
@@ -90,7 +84,7 @@ func (m *mockSynthesisPlayerMatches) LoadPlayerMatches(_ context.Context, _ stri
 func (m *mockSynthesisPlayerMatches) InvalidatePlayer(_, _ string) {}
 
 // withSynthMock attache le mock canonical au service pour exercer le path
-// canonical (seul path actif aprÃ¨s P4.3 finale).
+// canonical (seul path actif après P4.3 finale).
 func withSynthMock(svc *SynthesisService, rows []legacymatch.SynthesisMatchRow, err error) *SynthesisService {
 	pm := &mockSynthesisPlayerMatches{rows: rows, err: err}
 	return svc.WithPlayerMatchesRepo(pm, "halo_infinite", "TestPlayer")
@@ -207,42 +201,6 @@ func TestBuildHighlightsPreview_LimitTopN(t *testing.T) {
 	}
 }
 
-// --- buildBreakdowns ---
-
-func TestBuildBreakdowns_Empty(t *testing.T) {
-	b := buildBreakdowns(nil)
-	if len(b.TopMaps) != 0 || len(b.TopModes) != 0 {
-		t.Error("empty heatmap should return empty breakdowns")
-	}
-}
-
-func TestBuildBreakdowns_Aggregates(t *testing.T) {
-	rows := []domain.SynthesisHeatmapRow{
-		{MapName: "Aquarius", ModeName: "Slayer", MatchCount: 5, Wins: 3},
-		{MapName: "Aquarius", ModeName: "Oddball", MatchCount: 2, Wins: 1},
-		{MapName: "Bazaar", ModeName: "Slayer", MatchCount: 3, Wins: 2},
-	}
-	b := buildBreakdowns(rows)
-
-	// Aquarius doit avoir 7 matchs (5+2)
-	var aquarius *domain.SynthesisMapEntry
-	for i := range b.TopMaps {
-		if b.TopMaps[i].MapName == "Aquarius" {
-			aquarius = &b.TopMaps[i]
-			break
-		}
-	}
-	if aquarius == nil {
-		t.Fatal("Aquarius not found in breakdowns")
-	}
-	if aquarius.MatchCount != 7 {
-		t.Errorf("Aquarius match count should be 7, got %d", aquarius.MatchCount)
-	}
-	if aquarius.Wins != 4 {
-		t.Errorf("Aquarius wins should be 4, got %d", aquarius.Wins)
-	}
-}
-
 // --- GetSynthesisPage ---
 
 func TestGetSynthesisPage_Success(t *testing.T) {
@@ -251,9 +209,6 @@ func TestGetSynthesisPage_Success(t *testing.T) {
 		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "m1", StartTime: time.Now().UTC(), Outcome: 2, Kills: 10, Deaths: 3, KDA: &kda},
 			{MatchID: "m2", StartTime: time.Now().UTC().Add(-time.Hour), Outcome: 3, Kills: 4, Deaths: 8, KDA: &kda},
-		},
-		heatmapRows: []domain.SynthesisHeatmapRow{
-			{MapName: "Aquarius", ModeName: "Slayer", MatchCount: 2, Wins: 1},
 		},
 	}
 
@@ -296,10 +251,10 @@ func TestGetSynthesisPage_RepoError(t *testing.T) {
 	}
 }
 
-// --- D9 : scope rÃ©ellement appliquÃ© ---
+// --- D9 : scope réellement appliqué ---
 
-// TestGetSynthesisPage_ScopeApplied_Period vÃ©rifie que GetSynthesisPage filtre
-// les matchs selon la pÃ©riode demandÃ©e et que scope.MatchCount le reflÃ¨te.
+// TestGetSynthesisPage_ScopeApplied_Period vérifie que GetSynthesisPage filtre
+// les matchs selon la période demandée et que scope.MatchCount le reflète.
 func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 	repo := &mockSynthesisRepo{
 		synthRows: []legacymatch.SynthesisMatchRow{
@@ -324,8 +279,8 @@ func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Overview_MatchesScope vÃ©rifie que overview.TotalMatches
-// correspond exactement au nombre de matchs dans le scope (aprÃ¨s filtrage).
+// TestGetSynthesisPage_Overview_MatchesScope vérifie que overview.TotalMatches
+// correspond exactement au nombre de matchs dans le scope (après filtrage).
 func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
 	kda := 1.5
 	repo := &mockSynthesisRepo{
@@ -388,8 +343,8 @@ func TestGetSynthesisPage_Overview_Streaks(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Highlights_WithinScope vÃ©rifie que les MatchIDs dans
-// highlights.TopByKills appartiennent aux matchs du scope filtrÃ©.
+// TestGetSynthesisPage_Highlights_WithinScope vérifie que les MatchIDs dans
+// highlights.TopByKills appartiennent aux matchs du scope filtré.
 func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
 	kda := 2.0
 	repo := &mockSynthesisRepo{

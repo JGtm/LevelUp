@@ -87,7 +87,7 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 			if e.MapModePairAssetID == "" {
 				continue
 			}
-			// ART-safe / PK-less (#23046) : catalog_fetch_queue n'a plus de PK
+			// ART-safe / PK-less (#23645) : catalog_fetch_queue n'a plus de PK
 			// (rebuild_catalog_fetch_queue_drop_art_indexes) → INSERT OR IGNORE
 			// échouait EN DUR ("no UNIQUE/PRIMARY KEY ... specify ON CONFLICT columns")
 			// → expansion playlists morte. SELECT-then-INSERT (NOT EXISTS), comme
@@ -142,7 +142,7 @@ func ensurePlaylistWeightsTable(ctx context.Context, db *sql.DB) error {
 
 // upsertPlaylistWeight : wrapper best-effort de l'upsert ART-safe canonique
 // (duckdb.UpsertRowNoConflict — SELECT-then-write, JAMAIS d'ON CONFLICT sur metadata,
-// bug ART #23046). L'erreur est délibérément ignorée (poids best-effort, recalculé au
+// bug ART #23645). L'erreur est délibérément ignorée (poids best-effort, recalculé au
 // prochain cycle catalog_expand).
 func upsertPlaylistWeight(ctx context.Context, db *sql.DB, titleSlug, playlistID, pairID string, weight float64) {
 	now := time.Now().UTC()

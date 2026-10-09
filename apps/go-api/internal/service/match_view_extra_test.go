@@ -103,6 +103,23 @@ func TestBuildNemesisMap_Empty(t *testing.T) {
 	}
 }
 
+// Un xuid vide = BOT (NULL de la canonique). Les bots n'entrent jamais dans les duels
+// (décision user 2026-09-02) — sans la garde, tous les bots fusionnent sous la clé "".
+func TestBuildNemesisMap_BotsExclus(t *testing.T) {
+	kvPairs := []domain.KVPairRaw{
+		{KillerXUID: "", KillerGT: "343 Oscar [bot]", VictimXUID: "me", VictimGT: "Me", KillCount: 4},
+		{KillerXUID: "me", KillerGT: "Me", VictimXUID: "", VictimGT: "343 Guilty [bot]", KillCount: 5},
+		{KillerXUID: "enemy1", KillerGT: "Enemy1", VictimXUID: "me", VictimGT: "Me", KillCount: 1},
+	}
+	result := buildNemesisMap(kvPairs, "me", nil)
+	if _, ok := result[""]; ok {
+		t.Fatal("les lignes de bot ne doivent créer aucune entrée sous la clé vide")
+	}
+	if len(result) != 1 || result["enemy1"] == nil || result["enemy1"].KilledMe != 1 {
+		t.Errorf("seul enemy1 attendu, obtenu %+v", result)
+	}
+}
+
 func TestBuildNemesisMap_FallbackGT(t *testing.T) {
 	kvPairs := []domain.KVPairRaw{
 		{KillerXUID: "e1", KillerGT: "FallbackGT", VictimXUID: "me", KillCount: 1},

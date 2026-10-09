@@ -192,10 +192,10 @@ func (h *WatcherHandler) handleStartAuth(ctx context.Context, _ *struct{}) (*wat
 	if err != nil {
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "msal_init_error"
+			a.ErrorCode = "device_flow_init_error"
 			a.ErrorDetail = err.Error()
 		})
-		return nil, humacore.NewError(http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
+		return nil, humacore.NewError(http.StatusInternalServerError, "device_flow_init_error", "impossible de démarrer le Device Code Flow")
 	}
 
 	h.attempts.Update(attempt.AttemptID, func(a *auth_platform.WatcherAttempt) {
@@ -237,7 +237,14 @@ func (h *WatcherHandler) handleGetAuthStatus(ctx context.Context, in *watcherAut
 
 // handlePatchSubscriptions met à jour les joueurs surveillés.
 // PATCH /api/v1/watcher/subscriptions
+//
+// REFUSÉE EN DÉMO (403, lot B-C1 du backlog 2026-09-26) : app_settings.json vise la
+// fixture, montée en écriture dans le conteneur de production ; RequireAdmin étant
+// transparent en démo, un visiteur y persistait ses écritures.
 func (h *WatcherHandler) handlePatchSubscriptions(ctx context.Context, in *watcherSubscriptionsInput) (*watcherSubscriptionsOutput, error) {
+	if err := refuseInDemo(h.cfg != nil && h.cfg.DemoMode, "watcher subscriptions update"); err != nil {
+		return nil, err
+	}
 	var req watcherSubscriptionsRequest
 	// Body OPTIONNEL (MarkRequestBodyOptional) : corps absent → req zéro (défaut
 	// ["all"] plus bas). Corps présent mais malformé → 400 invalid_body (parse
@@ -289,7 +296,7 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = errCodeMSALAcquire
+			a.ErrorCode = errCodeDeviceFlowAcquire
 			a.ErrorDetail = err.Error()
 		})
 		slog.Warn("watcher_handler: Device Code Flow échoué", "attempt_id", attemptID, "err", err)

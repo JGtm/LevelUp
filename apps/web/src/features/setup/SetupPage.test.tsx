@@ -5,9 +5,11 @@
  * Les mutations API sont mockées via MSW (setup.ts).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
+import { screen, waitFor, render } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import { renderWithProviders } from '@/test/render-utils'
+import { renderWithProviders, createTestQueryClient } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
@@ -80,6 +82,57 @@ describe('SetupPage', () => {
     })
   })
 
+  it('un seul démarrage du Device Code Flow au montage, même en StrictMode', async () => {
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      setupRequired: true,
+      setupState: 'no_halo_link',
+    })
+    let startCount = 0
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () => {
+        startCount += 1
+        return HttpResponse.json({ attempt_id: 'attempt-1', user_code: 'ABCD-1234', verification_uri: 'https://microsoft.com/link', expires_in: 900, poll_interval_sec: 5 })
+      }),
+    )
+
+    // StrictMode à la racine (comme main.tsx) : l'effet de montage est rejoué.
+    render(
+      <StrictMode>
+        <QueryClientProvider client={createTestQueryClient()}>
+          <SetupPage />
+        </QueryClientProvider>
+      </StrictMode>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/ABCD-1234/i)).toBeInTheDocument()
+    })
+    expect(startCount).toBe(1)
+  })
+
+  it("affiche le message d'accès Halo quand le serveur signale halo_exchange_error", async () => {
+    // Le code est celui qu'écrit le handler device-flow (handlers/auth.go) quand
+    // l'échange en jetons Halo échoue après la saisie du code.
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      setupRequired: true,
+      setupState: 'no_halo_link',
+    })
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({ attempt_id: 'attempt-1', status: 'failed', error_code: 'halo_exchange_error', error_detail: 'détail serveur' }),
+      ),
+    )
+
+    renderWithProviders(<SetupPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Impossible d'obtenir un accès Halo/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Échec de l'authentification/i)).not.toBeInTheDocument()
+  })
+
   // Garde-rail anti-régression du « spinner infini » (Lot A) : quand
   // POST /device-flow/start renvoie 500, l'UI doit basculer sur un message
   // d'erreur + bouton « Réessayer », jamais rester bloquée sur le spinner.
@@ -92,7 +145,7 @@ describe('SetupPage', () => {
     server.use(
       http.post('/api/v1/auth/device-flow/start', () =>
         HttpResponse.json(
-          { code: 'msal_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
+          { code: 'device_flow_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
           { status: 500 },
         ),
       ),

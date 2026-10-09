@@ -2,13 +2,14 @@
 // +build cgo
 
 // Package scheduler_test — auto_sync_e2e_test.go : test end-to-end du pipeline
-// complet AutoSyncScheduler avec vrai Pool/Resolver/Discovery + DuckDB player
-// temp.
+// complet AutoSyncScheduler avec vrai Pool/Resolver/Discovery + un
+// MultiUserTokenStore temp.
 //
 // Couvre :
-//   - Discovery lit sync_meta.oauth_refresh_token depuis une vraie player DB
-//   - Resolver fait MSAL → OAuth (mockés) → Exchange (mocké) avec rotation
-//   - Le callback onRotated persiste le rotated RT dans sync_meta (write réel)
+//   - Discovery lit le refresh_token depuis le MultiUserTokenStore (source
+//     unique ADR 0023 Phase 5 — plus aucune lecture sync_meta)
+//   - Resolver fait OAuth refresh (mocké) → Exchange (mocké) avec rotation
+//   - Le callback onRotated persiste le rotated RT dans le store (write réel)
 //   - Pool.HasPlayer reflète les sources découvertes
 //   - Scheduler.syncPlayer câble PooledHaloClient et compte les outcomes
 //   - L'erreur Microsoft (invalid_grant) propage à PlayerOutcomeDetail
@@ -21,6 +22,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,7 +32,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/scheduler"
 
@@ -39,24 +40,17 @@ import (
 
 // e2eProvider est un TokenProvider stub configurable pour le test E2E.
 type e2eProvider struct {
-	silentAccess  string
-	silentErr     error
 	oauthAccess   string
 	oauthRotated  string
 	oauthErr      error
 	spartanToken  string
 	exchangeErr   error
-	silentCalls   int
 	oauthCalls    int
 	exchangeCalls int
 }
 
 func (p *e2eProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, error) {
 	return nil, nil
-}
-func (p *e2eProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	p.silentCalls++
-	return p.silentAccess, p.silentErr
 }
 func (p *e2eProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
 	p.oauthCalls++
@@ -76,69 +70,90 @@ func (p *e2eProvider) Exchange(_ context.Context, _ string) (*auth.ExchangeResul
 	}, nil
 }
 
-// seedPlayerDB crée une vraie DuckDB player DB avec sync_meta peuplée
-// (oauth_refresh_token = initialRT). Retourne le chemin de la DB.
-func seedPlayerDB(t *testing.T, repoRoot, gamertag, initialRT string) string {
-	t.Helper()
-	dir := filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", gamertag)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", dir, err)
+// xuidForTestGamertag produit un xuid NUMÉRIQUE stable pour un gamertag de test.
+// Le MultiUserTokenStore refuse les xuid non numériques (xuidIsSafe, protection
+// path-traversal) : les fixtures « xuid-Alice » de l'ère sync_meta ne passent plus.
+func xuidForTestGamertag(gamertag string) string {
+	var sum int
+	for _, r := range gamertag {
+		sum = sum*31 + int(r)
+		sum %= 100000
 	}
-	dbPath := filepath.Join(dir, "stats.duckdb")
+	return "25332748" + fmt.Sprintf("%05d", sum)
+}
 
+// seedEmptyPlayerDB crée la stats.duckdb du joueur (le scheduler skippe un
+// joueur sans DB). Depuis ADR 0023 Phase 5 elle ne porte PLUS aucun credential :
+// sync_meta n'existe que pour la sync, pas pour l'auth.
+func seedEmptyPlayerDB(t *testing.T, repoRoot, gamertag string) {
+	t.Helper()
+	dbPath := titlePkg.NewPathResolver(repoRoot).PlayerDBPath(titlePkg.DefaultSlug, gamertag)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		t.Fatalf("mkdir player dir: %v", err)
+	}
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
 		t.Fatalf("open duckdb %s: %v", dbPath, err)
 	}
 	defer db.Close()
-
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`); err != nil {
 		t.Fatalf("create sync_meta: %v", err)
 	}
-	if _, err := db.Exec(`INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('oauth_refresh_token', ?)`, initialRT); err != nil {
-		t.Fatalf("insert sync_meta: %v", err)
-	}
-
-	return dbPath
 }
 
-// readPlayerRT lit la valeur courante de sync_meta.oauth_refresh_token.
-// Retourne "" si la clé est absente.
-func readPlayerRT(t *testing.T, dbPath string) string {
+// seedTokenStore crée le MultiUserTokenStore du repo temp avec un refresh token
+// initial pour le joueur (source unique ADR 0023).
+func seedTokenStore(t *testing.T, repoRoot, xuid, gamertag, initialRT string) *auth.MultiUserTokenStore {
 	t.Helper()
-	db, err := sql.Open("duckdb", dbPath)
-	if err != nil {
-		t.Fatalf("open duckdb pour relecture: %v", err)
+	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(repoRoot).WatcherTokensDir())
+	if err := store.Upsert(&auth.UserTokens{
+		XUID: xuid, Gamertag: gamertag, OAuthRefreshToken: initialRT,
+	}); err != nil {
+		t.Fatalf("seed store: %v", err)
 	}
-	defer db.Close()
-	var v string
-	if err := db.QueryRow(`SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&v); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	return store
+}
+
+// readStoreRT lit la valeur courante du refresh_token dans le store.
+func readStoreRT(t *testing.T, store *auth.MultiUserTokenStore, xuid string) string {
+	t.Helper()
+	u, err := store.Load(xuid)
+	if err != nil {
+		if errors.Is(err, auth.ErrUserTokensNotFound) {
 			return ""
 		}
-		t.Fatalf("select sync_meta: %v", err)
+		t.Fatalf("store.Load: %v", err)
 	}
-	return v
+	return u.OAuthRefreshToken
 }
 
-// buildE2EHarness assemble Discovery + Resolver + Pool + scheduler avec une
-// vraie player DB DuckDB temp et un provider stub.
+// storeRotationCallback reproduit le callback onRotated de production
+// (main.go::buildAutoSyncPool) : écriture dans le MultiUserTokenStore.
+func storeRotationCallback(store *auth.MultiUserTokenStore, xuid string) pool.TokenRotationCallback {
+	return func(_ context.Context, _, newRT string) error {
+		return store.UpdateOAuthRefreshToken(xuid, newRT)
+	}
+}
+
+// buildE2EHarness assemble Discovery + Resolver + Pool + scheduler avec un
+// MultiUserTokenStore temp et un provider stub.
 // Le scheduler reçoit un RunnerFactory mockable (RunDelta est court-circuité).
-func buildE2EHarness(t *testing.T, gamertag, initialRT string, prov *e2eProvider, runnerErr error) (*scheduler.AutoSyncScheduler, string) {
+func buildE2EHarness(t *testing.T, gamertag, initialRT string, prov *e2eProvider, runnerErr error) (*scheduler.AutoSyncScheduler, *auth.MultiUserTokenStore, string) {
 	t.Helper()
 	repoRoot := t.TempDir()
+	xuid := xuidForTestGamertag(gamertag)
 
 	// db_profiles.json minimal avec 1 joueur.
 	dbProfilesPath := filepath.Join(repoRoot, "db_profiles.json")
-	profilesJSON := `{"version":"3.0","admin":"` + gamertag + `","profiles":{"halo_infinite":{"` + gamertag + `":{"db_path":"data/titles/halo_infinite/players/` + gamertag + `/stats.duckdb","xuid":"xuid-` + gamertag + `","waypoint_player":"` + gamertag + `"}}}}`
+	profilesJSON := `{"version":"3.0","admin":"` + gamertag + `","profiles":{"halo_infinite":{"` + gamertag + `":{"db_path":"data/titles/halo_infinite/players/` + gamertag + `/stats.duckdb","xuid":"` + xuid + `","waypoint_player":"` + gamertag + `"}}}}`
 	if err := os.WriteFile(dbProfilesPath, []byte(profilesJSON), 0o644); err != nil {
 		t.Fatalf("write db_profiles: %v", err)
 	}
 	settingsPath := filepath.Join(repoRoot, "app_settings.json")
 	_ = os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_enabled":true,"spnkr_auto_sync_interval_hours":1}`), 0o644)
 
-	// Vraie player DB DuckDB avec sync_meta.oauth_refresh_token initial.
-	dbPath := seedPlayerDB(t, repoRoot, gamertag, initialRT)
+	seedEmptyPlayerDB(t, repoRoot, gamertag)
+	tokenStore := seedTokenStore(t, repoRoot, xuid, gamertag, initialRT)
 
 	cfg := &config.AppConfig{
 		RepoRoot:        repoRoot,
@@ -148,27 +163,16 @@ func buildE2EHarness(t *testing.T, gamertag, initialRT string, prov *e2eProvider
 
 	// Build le pipeline Discovery → Resolver → Pool comme en production.
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	discovery := pool.NewDiscovery(cfg, pr, titlePkg.DefaultSlug)
+	discovery := pool.NewDiscoveryWithStore(cfg, pr, titlePkg.DefaultSlug, tokenStore)
 	sources, err := discovery.Scan(context.Background())
 	if err != nil {
 		t.Fatalf("Discovery.Scan: %v", err)
 	}
 	if len(sources) == 0 {
-		t.Fatal("Discovery n'a trouvé aucune source — sync_meta n'a peut-être pas été lu correctement")
+		t.Fatal("Discovery n'a trouvé aucune source — le MultiUserTokenStore n'a peut-être pas été lu correctement")
 	}
 
-	// Callback onRotated = write sync_meta (même logique que main.go::buildAutoSyncPool).
-	onRotated := func(ctx context.Context, gt, newRT string) error {
-		gtDBPath := pr.PlayerDBPath(titlePkg.DefaultSlug, gt)
-		db, derr := duckdbpkg.OpenReadWriteShared(gtDBPath)
-		if derr != nil {
-			return derr
-		}
-		defer db.Close() //nolint:errcheck
-		return duckdbpkg.WriteOAuthRefreshToken(ctx, db, newRT)
-	}
-
-	resolver := pool.NewResolver(prov, 0, onRotated)
+	resolver := pool.NewResolver(prov, 0, storeRotationCallback(tokenStore, xuid))
 	p, err := pool.NewPool(context.Background(), resolver, sources, pool.PoolOptions{MaxSize: 0, PerTokenRPS: 1})
 	if err != nil {
 		t.Fatalf("NewPool: %v", err)
@@ -187,7 +191,7 @@ func buildE2EHarness(t *testing.T, gamertag, initialRT string, prov *e2eProvider
 		}
 	}
 
-	return s, dbPath
+	return s, tokenStore, xuid
 }
 
 // =============================================================================
@@ -196,16 +200,16 @@ func buildE2EHarness(t *testing.T, gamertag, initialRT string, prov *e2eProvider
 
 // TestE2E_PipelineComplet_RotationPersistedAtBoot vérifie que le pipeline
 // complet (Discovery → Resolver → Pool → scheduler) persiste bien le RT rotaté
-// par Microsoft dans sync_meta.oauth_refresh_token. La rotation se produit
+// par Microsoft dans le MultiUserTokenStore. La rotation se produit
 // au boot du Pool (qui Resolve toutes les sources à NewPool), pas pendant
 // RunOnce car le Resolver cache les tokens TTL ~3h30.
 //
 // Sequence :
-//  1. Seed player DB avec sync_meta.oauth_refresh_token = "rt_v1_initial"
+//  1. Seed le store watcher_tokens avec oauth_refresh_token = "rt_v1_initial"
 //  2. Provider stub configuré : oauthRotated = "rt_v2_rotated_by_MS"
 //  3. buildE2EHarness construit Pool → Resolver.Resolve au boot → callback
-//     onRotated → WriteOAuthRefreshToken
-//  4. Relire sync_meta : doit valoir "rt_v2_rotated_by_MS"
+//     onRotated → UpdateOAuthRefreshToken
+//  4. Relire le store : doit valoir "rt_v2_rotated_by_MS"
 //  5. RunOnce → utilise le token cached, n'invoque pas un nouveau Resolve
 func TestE2E_PipelineComplet_RotationPersistedAtBoot(t *testing.T) {
 	prov := &e2eProvider{
@@ -213,12 +217,12 @@ func TestE2E_PipelineComplet_RotationPersistedAtBoot(t *testing.T) {
 		oauthRotated: "rt_v2_rotated_by_MS",
 		spartanToken: "spartan_v1",
 	}
-	s, dbPath := buildE2EHarness(t, "Alice", "rt_v1_initial", prov, nil)
+	s, tokenStore, xuid := buildE2EHarness(t, "Alice", "rt_v1_initial", prov, nil)
 
 	// Après le boot du Pool (dans buildE2EHarness), le Resolver a déjà été
 	// invoqué et le callback onRotated a déjà persisté le rotated RT.
-	if got := readPlayerRT(t, dbPath); got != "rt_v2_rotated_by_MS" {
-		t.Errorf("sync_meta après boot Pool = %q, want rt_v2_rotated_by_MS (callback onRotated non câblé ?)", got)
+	if got := readStoreRT(t, tokenStore, xuid); got != "rt_v2_rotated_by_MS" {
+		t.Errorf("store après boot Pool = %q, want rt_v2_rotated_by_MS (callback onRotated non câblé ?)", got)
 	}
 
 	// Vérifier que le provider a bien été appelé pendant le boot.
@@ -236,8 +240,8 @@ func TestE2E_PipelineComplet_RotationPersistedAtBoot(t *testing.T) {
 	if res.Synced != 1 {
 		t.Errorf("Synced = %d, want 1 (Alice OK via pipeline complet)", res.Synced)
 	}
-	if got := readPlayerRT(t, dbPath); got != "rt_v2_rotated_by_MS" {
-		t.Errorf("sync_meta après RunOnce = %q, want rt_v2_rotated_by_MS (inchangé)", got)
+	if got := readStoreRT(t, tokenStore, xuid); got != "rt_v2_rotated_by_MS" {
+		t.Errorf("store après RunOnce = %q, want rt_v2_rotated_by_MS (inchangé)", got)
 	}
 	if prov.oauthCalls != oauthCallsBeforeRun {
 		t.Errorf("oauthCalls = %d après RunOnce, want %d (cache TTL devrait éviter un nouvel appel)",
@@ -256,7 +260,7 @@ func TestE2E_PipelineComplet_RotationPersistedAtBoot(t *testing.T) {
 
 // TestE2E_ProviderInvalidGrant_PoolNotCreated vérifie que si Microsoft retourne
 // invalid_grant pour TOUTES les sources au boot, NewPool refuse de démarrer
-// (aucun slot vivant). Le RT initial dans sync_meta reste intact (pas de
+// (aucun slot vivant). Le RT initial dans le store reste intact (pas de
 // rotation réussie). En production, `buildAutoSyncPool` capte cette erreur,
 // retourne nil, et le scheduler skip tous les joueurs avec un reason explicite.
 func TestE2E_ProviderInvalidGrant_PoolNotCreated(t *testing.T) {
@@ -265,36 +269,26 @@ func TestE2E_ProviderInvalidGrant_PoolNotCreated(t *testing.T) {
 	}
 	repoRoot := t.TempDir()
 	dbProfilesPath := filepath.Join(repoRoot, "db_profiles.json")
-	_ = os.WriteFile(dbProfilesPath, []byte(`{"version":"3.0","admin":"Bob","profiles":{"halo_infinite":{"Bob":{"db_path":"data/titles/halo_infinite/players/Bob/stats.duckdb","xuid":"xb","waypoint_player":"Bob"}}}}`), 0o644)
+	_ = os.WriteFile(dbProfilesPath, []byte(`{"version":"3.0","admin":"Bob","profiles":{"halo_infinite":{"Bob":{"db_path":"data/titles/halo_infinite/players/Bob/stats.duckdb","xuid":"2533274800002","waypoint_player":"Bob"}}}}`), 0o644)
 	cfg := &config.AppConfig{RepoRoot: repoRoot, DBProfilesPath: dbProfilesPath}
-	dbPath := seedPlayerDB(t, repoRoot, "Bob", "rt_v1_revoked_by_microsoft")
+	tokenStore := seedTokenStore(t, repoRoot, "2533274800002", "Bob", "rt_v1_revoked_by_microsoft")
 
 	pr := titlePkg.NewPathResolver(repoRoot)
-	discovery := pool.NewDiscovery(cfg, pr, titlePkg.DefaultSlug)
+	discovery := pool.NewDiscoveryWithStore(cfg, pr, titlePkg.DefaultSlug, tokenStore)
 	sources, _ := discovery.Scan(context.Background())
 	if len(sources) != 1 {
 		t.Fatalf("Discovery devrait trouver 1 source, got %d", len(sources))
 	}
 
-	onRotated := func(ctx context.Context, gt, newRT string) error {
-		gtDBPath := pr.PlayerDBPath(titlePkg.DefaultSlug, gt)
-		db, derr := duckdbpkg.OpenReadWriteShared(gtDBPath)
-		if derr != nil {
-			return derr
-		}
-		defer db.Close() //nolint:errcheck
-		return duckdbpkg.WriteOAuthRefreshToken(ctx, db, newRT)
-	}
-
-	resolver := pool.NewResolver(prov, 0, onRotated)
+	resolver := pool.NewResolver(prov, 0, storeRotationCallback(tokenStore, "2533274800002"))
 	_, err := pool.NewPool(context.Background(), resolver, sources, pool.PoolOptions{MaxSize: 0, PerTokenRPS: 1})
 	if err == nil {
 		t.Error("NewPool devrait échouer quand toutes les sources sont invalid_grant")
 	}
 
 	// Le RT initial ne doit PAS être modifié (aucune rotation réussie).
-	if got := readPlayerRT(t, dbPath); got != "rt_v1_revoked_by_microsoft" {
-		t.Errorf("sync_meta modifié alors que tout a échoué : got %q", got)
+	if got := readStoreRT(t, tokenStore, "2533274800002"); got != "rt_v1_revoked_by_microsoft" {
+		t.Errorf("store modifié alors que tout a échoué : got %q", got)
 	}
 }
 
@@ -311,7 +305,7 @@ func TestE2E_PoolNil_SchedulerSkipsAll(t *testing.T) {
 	_ = os.WriteFile(dbProfilesPath, []byte(`{
 		"version":"3.0","admin":"Alice","profiles":{"halo_infinite":{
 			"Alice":{"db_path":"data/titles/halo_infinite/players/Alice/stats.duckdb","xuid":"xa","waypoint_player":"Alice"},
-			"Bob":{"db_path":"data/titles/halo_infinite/players/Bob/stats.duckdb","xuid":"xb","waypoint_player":"Bob"}
+			"Bob":{"db_path":"data/titles/halo_infinite/players/Bob/stats.duckdb","xuid":"2533274800002","waypoint_player":"Bob"}
 		}}}`), 0o644)
 
 	cfg := &config.AppConfig{RepoRoot: repoRoot, DBProfilesPath: dbProfilesPath, AppSettingsPath: settingsPath}

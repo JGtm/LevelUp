@@ -1,6 +1,12 @@
 /**
  * SquadSynergiesPage — onglet Synergies de l'Escouade.
  *
+ * UN SEUL AXE DE LECTURE : ce que la composition PRODUIT ENSEMBLE — l'appui et la portée,
+ * le taux de victoire et les cartes face à l'historique, la suite des résultats,
+ * l'historique, la heatmap des cartes, la frise des sessions. Ce qu'elle UTILISE (frags et
+ * armes, équipement, formes retenues) se lit dans l'onglet Emprise ; l'impact des
+ * coéquipiers et les médailles dans Contributions.
+ *
  * Distingue 2 états vides diagnosticables :
  *  - no_selection : aucun coéquipier confirmé.
  *  - invalid_selection : confirmedGts > 0 mais selectedRows vide.
@@ -8,10 +14,10 @@
 import { useMemo } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
 import { asDominance } from '@/components/charts/outcomeSequence'
@@ -24,27 +30,50 @@ import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from './MapPerfVsHistoryChart'
 import { SquadMapHeatmapChart } from './SquadMapHeatmapChart'
 import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
+import { SquadAppuiCard } from './SquadAppuiCard'
+import { SquadRangeRolesCard } from './SquadRangeRolesCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
-import { SquadImpactScoreboard } from './SquadImpactScoreboard'
-import { MedalDigest } from './MedalDigest'
-import { SquadFragSection } from './SquadFragSection'
-import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
-import { getSquadPlayerColors } from './colors'
+import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 
 export function SquadSynergiesPage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
   const { data: mappings } = useFieldMappings()
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
-  // FDA attendu natif (Infinite déclare `expected_stats`, Halo 5 non) → gate
-  // PARENT du card « Écart cumulé au FDA attendu » : pas de colonne vide dans la
-  // rangée 1 de SquadFragSection (le card conserve son self-gate en profondeur).
-  const hasExpectedStats = useCapability('expected_stats')
   // Libellés des drapeaux de dominance (bande de résultats) — table canonique
   // partagée avec la colonne Dominance de l'Explorateur. Mémoïsé : la bande
   // recalcule son option ECharts quand cette référence change. Déclaré AVANT les
   // retours anticipés (règle des hooks).
   const tapeDominanceLabels = useMemo(() => buildDominanceLabels(locale), [locale])
+
+  // Ordre / couleurs / libellés de résultat — MÉMOÏSÉS et déclarés AVANT les
+  // retours anticipés (règle des hooks). Sans mémo, un simple rendu de la page
+  // (changement de contexte, refetch qui rend la même donnée) fabriquait des
+  // props neuves pour SquadAppuiCard, SquadRangeRolesCard et
+  // OutcomeSequenceTape : les `useMemo` de ces graphes se re-déclenchaient, la
+  // ChartCard rebâtissait son option ECharts (dont les `formatter`, comparés par
+  // référence par echarts-for-react) et l'animation d'entrée REJOUAIT sans
+  // qu'aucune valeur n'ait bougé.
+  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  // playerSlug est l'URL param (souvent lowercase) : on aligne sur main_player.
+  const mainPlayerKey = pageData?.main_player ?? playerSlug
+  // Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers (ordre
+  // des barres de l'appui). Couleurs : la palette de la page, mêmes teintes dans tous les onglets.
+  const roster = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags],
+    [mainPlayerKey, confirmedGamertags],
+  )
+  const { colorByPlayer } = useSquadPlayerPalette()
+  const outcomes = mappings?.outcomes
+  const outcomeLabels = useMemo(
+    () => ({
+      win: outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
+      loss: outcomes?.['loss']?.label ?? t.history.outcomeLabel.loss,
+      tie: outcomes?.['tie']?.label ?? t.history.outcomeLabel.draw,
+      dnf: outcomes?.['dnf']?.label ?? t.history.outcomeLabel.dnf,
+    }),
+    [outcomes, t],
+  )
 
   const hasSelection = confirmedGamertags.length > 0
   const hasRows = selectedRows.length > 0
@@ -75,31 +104,44 @@ export function SquadSynergiesPage() {
     )
   }
 
-  // Section « frags » (relocalisée depuis Contributions) : mêmes couleurs/ordre
-  // que SquadContributionsPage — main_player (casse serveur) puis coéquipiers,
-  // restreint aux joueurs ayant des frag_classes ou une performance_series.
-  const mainPlayerKey = pageData?.main_player ?? playerSlug
-  const playerColors = getSquadPlayerColors(mainPlayerKey, confirmedGamertags)
-  const playerOrder = [mainPlayerKey, ...confirmedGamertags].filter(
-    (p) => pageData?.frag_classes?.[p] || pageData?.performance_series?.[p],
-  )
-
   const mapAssets = mappings?.assets?.['map']
   const mapLabelOf = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
   const mapBreakdown = pageData?.map_breakdown ?? []
   const matchHistory = pageData?.match_history ?? []
   const sessionTimeline = pageData?.session_timeline ?? []
   const mapHeatmap = pageData?.map_heatmap
-
-  const outcomeLabels = {
-    win: mappings?.outcomes?.['win']?.label ?? t.history.outcomeLabel.win,
-    loss: mappings?.outcomes?.['loss']?.label ?? t.history.outcomeLabel.loss,
-    tie: mappings?.outcomes?.['tie']?.label ?? t.history.outcomeLabel.draw,
-    dnf: mappings?.outcomes?.['dnf']?.label ?? t.history.outcomeLabel.dnf,
-  }
+  // assist_pairs n'est PAS comblé par un défaut : son absence est un ÉTAT (aucun match
+  // de la sélection n'a d'assistance mesurée — dont le cas d'un titre sans décodeur de
+  // film). Le bloc n'est alors pas monté du tout, plutôt que d'afficher un cadre vide
+  // qui laisserait croire à une escouade sans entraide.
+  const assistPairs = pageData?.assist_pairs
+  // Les profils de PORTÉE par match : même politique que le bloc ci-dessus — absent =
+  // aucun film décodé sur la sélection, jamais des zéros.
+  const rangeProfiles = pageData?.range_profiles
 
   return (
     <div className="space-y-4">
+      {/* SECTION « APPUI ET PORTÉE » — DEUX CARTES, UNE RANGÉE, MÊME HAUTEUR :
+            « Appui » à gauche — les assistances que les joueurs de l'escouade se donnent ;
+            « Rôles de portée » à droite — la distance à laquelle chaque joueur frague,
+            rapportée au lobby.
+
+          CHAQUE CARTE SE MONTE INDÉPENDAMMENT : l'appui vient du résumé du film, les rôles des
+          films décodés. L'absence d'un bloc est un ÉTAT (rien de mesuré sur la sélection) : sa
+          cellule n'est pas montée (la carte restante garde sa demi-largeur), et sans aucun des
+          deux la section ne l'est pas. */}
+      {(assistPairs || rangeProfiles) && (
+        <section className="space-y-4" aria-label={t.sections.appuiPortee}>
+          <SectionTitle className="flex items-center gap-1.5">
+            {t.sections.appuiPortee}
+            <InfoTooltip content={<TooltipParagraphs items={t.sections.appuiPorteeHelp} />} />
+          </SectionTitle>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-testid="squad-appui-portee-row">
+            {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} colorByPlayer={colorByPlayer} />}
+            {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} colorByPlayer={colorByPlayer} />}
+          </div>
+        </section>
+      )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
           est vide ou sans champs de performance. */}
@@ -129,34 +171,40 @@ export function SquadSynergiesPage() {
           historyLabel={t.charts.mapPerfVsHistoryHistory}
         />
       </div>
-      {/* Séquence des résultats : on garde le libellé + un message court quand
-          il n'y a pas d'historique, au lieu de masquer le bloc. */}
-      <div>
-        <p className="mb-1 flex items-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t.charts.outcomeSequenceTitle}
-          <ReviewBadge reviewKey="squad.outcome_tape" />
-        </p>
-        {matchHistory.length > 0 ? (
-          <OutcomeSequenceTape
-            // matchHistory arrive DESC (récent→ancien) ; on inverse pour afficher
-            // du plus vieux au plus récent (gauche→droite).
-            matches={[...matchHistory].reverse().map<OutcomePoint>((m) => ({
-              outcome: outcomeCodeToTapeValue(m.outcome),
-              matchId: m.match_id,
-              map: m.map_ui || undefined,
-              mode: m.mode_ui || m.pair_name || undefined,
-              // Absent (0/undefined, ex. Halo 5 sans timeline de score) → aucun
-              // marqueur dessiné, aucun suffixe de tooltip.
-              dominance: asDominance(m.dominance_flag),
-            }))}
-            labels={outcomeLabels}
-            dominanceLabels={tapeDominanceLabels}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t.empty.noBlockData}</p>
-        )}
-      </div>
-      <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
+      {/* HISTORIQUE — le titre de section coiffe DEUX blocs : la bande de résultats et
+          le tableau des matchs. L'intitulé de la bande (le `<p>` en capitales) reste en
+          place, comme sous-titre du bloc. */}
+      <section className="space-y-4">
+        <SectionTitle>{t.sections.historique}</SectionTitle>
+        {/* Séquence des résultats : on garde le libellé + un message court quand
+            il n'y a pas d'historique, au lieu de masquer le bloc. */}
+        <div>
+          <p className="mb-1 flex items-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t.charts.outcomeSequenceTitle}
+            <ReviewBadge reviewKey="squad.outcome_tape" />
+          </p>
+          {matchHistory.length > 0 ? (
+            <OutcomeSequenceTape
+              // matchHistory arrive DESC (récent→ancien) ; on inverse pour afficher
+              // du plus vieux au plus récent (gauche→droite).
+              matches={[...matchHistory].reverse().map<OutcomePoint>((m) => ({
+                outcome: outcomeCodeToTapeValue(m.outcome),
+                matchId: m.match_id,
+                map: m.map_ui || undefined,
+                mode: m.mode_ui || m.pair_name || undefined,
+                // Absent (0/undefined, ex. Halo 5 sans timeline de score) → aucun
+                // marqueur dessiné, aucun suffixe de tooltip.
+                dominance: asDominance(m.dominance_flag),
+              }))}
+              labels={outcomeLabels}
+              dominanceLabels={tapeDominanceLabels}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t.empty.noBlockData}</p>
+          )}
+        </div>
+        <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
+      </section>
       <SquadMapHeatmapChart
         title={t.heatmap.title}
         emptyMessage={t.empty.noBlockData}
@@ -170,6 +218,7 @@ export function SquadSynergiesPage() {
           tier5: t.heatmap.pieceTier5,
         }}
         noScoreLabel={t.heatmap.noScore}
+        yAxisName={t.heatmap.yAxis}
       />
       <SquadSessionTimelineChart
         title={t.timeline.title}
@@ -181,48 +230,6 @@ export function SquadSynergiesPage() {
         perfAxisLabel={t.timeline.perfAxis}
         mmrAxisLabel={t.timeline.mmrAxis}
       />
-      {/* Section « frags » (relocalisée depuis Contributions), juste avant « Impact
-          des coéquipiers ». Rangée 1 : sur Infinite « Écart cumulé au FDA attendu »
-          (gate `expected_stats`) à GAUCHE de « Répartition des frags » ; sur Halo 5
-          « Répartition » | « Précision par rôle ». Puis « Outils de destruction ».
-          Le card FDA porte ses propres pastilles KPI « écart moyen / match » et
-          garde son self-gate capability (défense en profondeur). */}
-      <SquadFragSection
-        fragClassesByPlayer={pageData?.frag_classes ?? {}}
-        weaponKills={pageData?.weapon_kills}
-        weaponAccuracy={pageData?.weapon_accuracy}
-        playerColors={playerColors}
-        playerOrder={playerOrder}
-        locale={locale}
-        t={t}
-        leftOfBreakdown={
-          hasExpectedStats ? (
-            <SquadFdaGapCumulativeCard
-              rowsByPlayer={pageData?.performance_series ?? {}}
-              playerOrder={playerOrder}
-              colorByPlayer={playerColors}
-              t={t}
-              emptyMessage={t.empty.noBlockData}
-            />
-          ) : undefined
-        }
-      />
-      {/* Sections non-graphes toujours montées : titre + état vide géré par le
-          composant (cadre bordé / carte), au lieu de disparaître. */}
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.impact.title}</h3>
-        <SquadImpactScoreboard
-          matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
-        />
-      </section>
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.medals.title}</h3>
-        <MedalDigest
-          entries={pageData?.medal_digest ?? []}
-          mainPlayer={pageData?.main_player ?? playerSlug}
-          t={t.medals}
-        />
-      </section>
     </div>
   )
 }

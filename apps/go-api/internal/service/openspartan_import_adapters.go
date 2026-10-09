@@ -3,7 +3,7 @@ package service
 import (
 	"strconv"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/sync"
 )
@@ -152,11 +152,11 @@ func toSyncMedals(medals []mapper.MedalEarnedRow) []sync.MedalRow {
 }
 
 // toAnalysisEvent adapts a mapper.HighlightEventRow into the
-// analysis.HighlightEvent shape that sync.InsertHighlightEvents expects.
+// highlightevent.HighlightEvent shape that sync.InsertHighlightEvents expects.
 // Missing fields default to zero — preserved further via RawJSON storage at
 // the SQL layer.
-func toAnalysisEvent(h mapper.HighlightEventRow) analysis.HighlightEvent {
-	e := analysis.HighlightEvent{EventType: h.EventType}
+func toAnalysisEvent(h mapper.HighlightEventRow) highlightevent.HighlightEvent {
+	e := highlightevent.HighlightEvent{EventType: h.EventType}
 	if h.XUID != nil {
 		if u, err := strconv.ParseUint(*h.XUID, 10, 64); err == nil {
 			e.XUID = u

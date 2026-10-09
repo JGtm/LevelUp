@@ -1,0 +1,200 @@
+/**
+ * useReplayShortcuts — LE CLAVIER DU LECTEUR (demande utilisateur du 2026-08-27).
+ *
+ * LES RACCOURCIS SONT CEUX QUE TOUT LE MONDE CONNAÎT DÉJÀ, et pas un de plus : Espace et K
+ * pour lecture/pause, ←/→ et J/L pour ±10 s, M pour le son, R pour recommencer, « , » et « . »
+ * pour l'image par image, F pour le plein écran ; au cadrage, + / − pour grossir et réduire, 0 pour toute la carte,
+ * Maj + flèche pour se déplacer. Inventer une convention maison ferait apprendre ce que le lecteur
+ * sait déjà.
+ *
+ * IL NE VOLE PAS LA FRAPPE : un raccourci ne part jamais depuis un champ de saisie, un
+ * `contenteditable`, ni avec un modificateur (Ctrl/Cmd/Alt) — sans quoi Espace dans une
+ * recherche mettrait le rejeu en pause, et Cmd+R rechargerait ET rembobinerait.
+ *
+ * ...SAUF DEPUIS LA FRISE DU LECTEUR, ET C'EST UNE DÉCISION UTILISATEUR (gate du 2026-08-28).
+ * Un `input[type=range]` est un champ de saisie pour le navigateur : la garde ci-dessus
+ * l'attrapait, et les raccourcis MOURAIENT dès qu'on avait cliqué sur la frise — c'est-à-dire
+ * exactement au moment où l'on analyse un match. Espace ne répondait plus, ←/→ avançaient d'UNE
+ * image (le pas natif du champ) au lieu de sauter 10 s. L'exemption est portée par un ATTRIBUT
+ * (`data-replay-timeline`) et non par un test de type : elle vise CE champ-là, pas la famille.
+ *
+ * LE VOLUME, LUI, RESTE UN CHAMP DE SAISIE — c'est le même élément HTML, et c'est pourquoi
+ * l'exemption devait être nominative : qui vient de cliquer sur le volume et presse ← attend
+ * que le volume baisse, pas que le film saute de dix secondes.
+ *
+ * `preventDefault` N'EST APPELÉ QUE SUR LES TOUCHES QU'ON TRAITE, et c'est lui qui supprime le
+ * double pas : sur la frise focalisée, ←/→ ferait NOTRE saut PLUS le pas natif du champ.
+ */
+import { useEffect, useRef } from 'react'
+
+/**
+ * L'ATTRIBUT QUI REND SA FRAPPE À LA FRISE. Il est posé par `ReplayTimelineTracks` sur le seul
+ * champ concerné et lu ici — le lien entre les deux est la pièce fragile de ce mécanisme, il a
+ * son garde-fou dans `ReplayTimelineTracks.test.tsx`.
+ */
+export const TIMELINE_SHORTCUT_ATTR = 'data-replay-timeline'
+
+/** Ce que le clavier commande. Chaque entrée est une commande déjà existante du lecteur. */
+export interface ReplayShortcutHandlers {
+  togglePlay: () => void
+  seekBy: (seconds: number) => void
+  stepFrames: (frames: number) => void
+  restart: () => void
+  toggleSound: () => void
+  /** Ouvre ou ferme le mode plein écran (useReplayFullscreen) : la touche F. */
+  toggleFullscreen: () => void
+  /** Le saut des flèches, en secondes (cf. SKIP_SECONDS de la barre). */
+  skipSeconds: number
+  /** `false` quand la page n'a pas de rejeu chargé : rien n'est écouté. */
+  enabled: boolean
+  /**
+   * LE CADRAGE (2026-09-02). Absent = les raccourcis de cadrage ne sont pas écoutés.
+   *
+   * Il passe par CE hook et non par un second écouteur : deux écouteurs clavier concurrents sur
+   * les mêmes touches finissent toujours par se marcher dessus, et il n'y a ici qu'un seul
+   * endroit où l'on sait si la frappe vient d'un champ de saisie.
+   */
+  zoom?: {
+    zoomIn: () => void
+    zoomOut: () => void
+    reset: () => void
+    panStep: (dx: number, dy: number) => void
+  }
+}
+
+/** Ce qu'une touche commande au cadrage. */
+export type ZoomKeyCommand = 'in' | 'out' | 'reset'
+
+/**
+ * LES TOUCHES DU ZOOM, une seule table pour le rejeu et les plans qui reprennent son zoom (Vue
+ * match, Tactique : `useReplayZoomKeys`). `=` et `_` viennent avec `+` et `-`, parce que `+` et `-`
+ * exigent Maj sur beaucoup de dispositions — sans eux, la moitié des claviers n'aurait pas de zoom.
+ * `0` revoit toute la carte, comme le bouton ⌂.
+ */
+export function zoomKeyCommand(key: string): ZoomKeyCommand | null {
+  switch (key) {
+    case '+':
+    case '=':
+      return 'in'
+    case '-':
+    case '_':
+      return 'out'
+    case '0':
+      return 'reset'
+    default:
+      return null
+  }
+}
+
+/** Applique une commande de touche au cadrage. */
+export function applyZoomKey(command: ZoomKeyCommand, zoom: { zoomIn: () => void; zoomOut: () => void; reset: () => void }): void {
+  if (command === 'in') zoom.zoomIn()
+  else if (command === 'out') zoom.zoomOut()
+  else zoom.reset()
+}
+
+/**
+ * Les quatre flèches, en pas de croix. `dy` positif va vers le HAUT de la carte : le monde a son
+ * Y vers le haut, et c'est `worldToCanvas` qui porte l'inversion — pas la commande.
+ */
+const ARROW_PAN: Record<string, [number, number] | undefined> = {
+  ArrowUp: [0, 1],
+  ArrowDown: [0, -1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+}
+
+/** Ce qu'une touche commande au LECTEUR (le cadrage a sa propre table, `zoomKeyCommand`). */
+type PlayerKeyAction =
+  | 'play'
+  | 'back'
+  | 'forward'
+  | 'previousFrame'
+  | 'nextFrame'
+  | 'sound'
+  | 'restart'
+  | 'fullscreen'
+
+/**
+ * LES TOUCHES DU LECTEUR, majuscules comprises : Verr. Maj allumé ne doit éteindre aucun
+ * raccourci. Une `Map` et non un objet : une clé de touche ne doit jamais tomber sur une
+ * propriété héritée d'`Object.prototype`.
+ */
+const PLAYER_KEYS = new Map<string, PlayerKeyAction>([
+  [' ', 'play'], ['k', 'play'], ['K', 'play'],
+  ['ArrowLeft', 'back'], ['j', 'back'], ['J', 'back'],
+  ['ArrowRight', 'forward'], ['l', 'forward'], ['L', 'forward'],
+  [',', 'previousFrame'], ['.', 'nextFrame'],
+  ['m', 'sound'], ['M', 'sound'],
+  ['r', 'restart'], ['R', 'restart'],
+  ['f', 'fullscreen'], ['F', 'fullscreen'],
+])
+
+export function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el) return false
+  // LA FRISE DU LECTEUR EST EXEMPTÉE, ET ELLE SEULE (cf. l'en-tête) : l'exemption est portée par
+  // un attribut, pas par un test de type — `input[type=range]` couvrirait aussi le volume, dont
+  // les flèches doivent rester natives. `hasAttribute` est appelé en optionnel : la cible d'un
+  // événement clavier peut être `window` ou `document`, qui n'ont pas de méthode d'attribut.
+  if (el.hasAttribute?.(TIMELINE_SHORTCUT_ATTR)) return false
+  const tag = el.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  return el.isContentEditable === true
+}
+
+export function useReplayShortcuts(h: ReplayShortcutHandlers): void {
+  const { togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullscreen, skipSeconds, enabled, zoom } = h
+  // LE CADRAGE PAR RÉFÉRENCE, et pas en dépendance de l'effet : son objet est recréé à chaque
+  // rendu, et le cadrage change soixante fois par seconde pendant la lecture. En dépendance,
+  // l'écouteur clavier se réabonnerait à cette cadence. La référence s'écrit dans un effet —
+  // jamais pendant le rendu, que React réserve au calcul.
+  const liveZoom = useRef(zoom)
+  useEffect(() => {
+    liveZoom.current = zoom
+  }, [zoom])
+  useEffect(() => {
+    if (!enabled) return
+    const actions: Record<PlayerKeyAction, () => void> = {
+      play: togglePlay,
+      back: () => seekBy(-skipSeconds),
+      forward: () => seekBy(skipSeconds),
+      previousFrame: () => stepFrames(-1),
+      nextFrame: () => stepFrames(1),
+      sound: toggleSound,
+      restart,
+      fullscreen: toggleFullscreen,
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (isTypingTarget(e.target)) return
+      // MAJ + FLÈCHE DÉPLACE LE CADRAGE, et ce court-circuit vient AVANT les touches du
+      // lecteur : les flèches nues y valent le saut temporel, qui est le geste le plus fréquent
+      // d'un rejeu et qu'on ne déplace pas. Sans le `return`, une même frappe ferait les deux.
+      const z = liveZoom.current
+      if (z && e.shiftKey) {
+        const p = ARROW_PAN[e.key]
+        if (p) {
+          e.preventDefault()
+          z.panStep(p[0], p[1])
+          return
+        }
+      }
+      // LE ZOOM AU CLAVIER : la table partagée (`zoomKeyCommand`), avant les touches du lecteur.
+      const zoomCommand = z ? zoomKeyCommand(e.key) : null
+      if (z && zoomCommand) {
+        e.preventDefault()
+        applyZoomKey(zoomCommand, z)
+        return
+      }
+      // `preventDefault` SUR LES SEULES TOUCHES TRAITÉES (cf. l'en-tête) : une touche hors table
+      // reste au navigateur.
+      const action = PLAYER_KEYS.get(e.key)
+      if (!action) return
+      e.preventDefault()
+      actions[action]()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [enabled, togglePlay, seekBy, stepFrames, restart, toggleSound, toggleFullscreen, skipSeconds])
+}

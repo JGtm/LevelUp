@@ -1,0 +1,250 @@
+/**
+ * shotFx.ts — CE QU'ON SAIT D'UN TIR AVANT DE LE DESSINER : où, quand, quelle forme,
+ * quelle teinte, et dans quelle direction le tireur REGARDAIT.
+ *
+ * TIRS EN VÉHICULE (2026-09-03) : `doc.shots[i].v` marque un tir tiré depuis le véhicule de ce
+ * slot (même clé que `VehicleTrack.slot`) — `x`/`y` valent alors la position INTERPOLÉE DU
+ * VÉHICULE (centre), pas celle d'un tireur (le bipède ne réplique plus une fois embarqué,
+ * `document.go`). Ce module résout ICI, une fois, ce qui NE DÉPEND QUE DU FILM (le véhicule
+ * porteur et son cap à l'instant du tir, `vehicleChassisHeadingAt`) et le montage de l'arme
+ * (`vehicleWeaponMountOf`, registre du titre publié dans le document, schéma 69) ; ce qui dépend
+ * du SPRITE CHARGÉ (sa taille, donc le
+ * décalage écran réel) reste au tracé (`drawShotsLayer`), qui seul connaît `sizeOf` — même
+ * découpage précalcul/canevas que le reste du fichier.
+ *
+ * LA MESURE QUI A DÉBLOQUÉ CE CALQUE (2026-08-15). Le rendu orientait un tir par le champ
+ * `h` de l'ÉVÉNEMENT de tir : présent sur 90 tirs sur 483 du film témoin (18,6 %), 16,1 %
+ * sur les 23 artefacts locaux. D'où l'impression d'absence d'effet. Or le cap de REGARD
+ * vit AUSSI dans les trajectoires — c'est lui qui alimente déjà le calque « Visée » — et il
+ * est connu en continu. En le relisant à l'instant du tir (même `heldReading`, même fenêtre
+ * de maintien que le cône), la couverture passe à **483/483 sur le témoin (100 %)** et
+ * **99,1 % sur le corpus** ; l'âge médian de la lecture est de 0 ms, et 94,4 % des lectures
+ * ont moins de 200 ms.
+ *
+ * POURQUOI LE REGARD SEUL, ET PAS LE `h` DE L'ÉVÉNEMENT QUAND IL EST LÀ. Parce que les deux
+ * disent la même chose : sur les 2 866 tirs qui portent les DEUX, l'écart médian est de
+ * 0,3° et 84,4 % sont sous 5°. Une seule règle vaut donc mieux que deux, et c'est celle qui
+ * couvre tout.
+ *
+ * LA MÊLÉE N'ENTRE PAS : un coup de marteau n'est pas un tir, il n'a pas d'éclair de bouche
+ * (règle établie au lot 3.2, et la référence Csstat exclut la mêlée explicitement). Mesure :
+ * 0 événement de tir de famille `melee` sur les 17 904 du corpus — la règle ne coûte rien,
+ * mais sans elle un film qui en porterait un afficherait un éclair faux.
+ *
+ * Pas de React, pas de canvas : logique pure, testée (shotFx.test.ts).
+ */
+import { fxTintOf, type FxTint } from '../layers/fxInk'
+import { familyOf, type ShotFamily } from '../layers/shotEffects'
+import { heldReading } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
+import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
+import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
+import type { VehicleWeaponMount } from './vehicleWeaponMounts'
+import { vehicleSpriteFamily } from './vehiclesLayer'
+import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
+import { fireBurstShots } from './fireBursts'
+
+/**
+ * VehicleShotSource — CE QU'IL FAUT, EN PLUS DU CENTRE, POUR PLACER L'EFFET AU BON MONTAGE
+ * (`vehicleWeaponMounts.vehicleShotPlacement`, appelé au tracé une fois le sprite chargé).
+ * `null` sur `ShotFxEntry.vehicleShot` = tir à pied, OU tir en véhicule dont l'arme n'a pas de
+ * montage connu (`vehicleWeaponMountOf` rend `null`) : le repli reste alors le centre du
+ * véhicule, exactement le comportement d'avant ce fichier.
+ */
+export interface VehicleShotSource {
+  /**
+   * Le montage de l'arme sur le châssis, ou `null` quand le registre du document ne le porte pas
+   * (arme absente du registre, ou entrée sans montage), OU quand l'arme n'est pas une arme de
+   * véhicule du tout (`arme: 'joueur'`).
+   * `null` ne fait PLUS perdre la source : l'éclair reste au CENTRE du véhicule, mais il garde sa
+   * DIRECTION (cf. `vehicleShotPlacement`).
+   */
+  mount: VehicleWeaponMount | null
+  /**
+   * CE QUI A TIRÉ, ET C'EST LA CLÉ DE LA RÈGLE DE DIRECTION (lot 5.8.5) : une arme DE VÉHICULE est
+   * solidaire du châssis (son cap est donc un repli légitime), une arme DE JOUEUR tirée depuis un
+   * siège ne l'est PAS — le passager vise où il veut, et lui prêter le cap du véhicule serait une
+   * invention (règle du lot 5.2a.5, qui SURVIT). La seule direction qu'elle accepte est la visée
+   * MESURÉE de son tireur.
+   *
+   * LE DISCRIMINATEUR EST LE REGISTRE D'ARMES, comme pour le son : une arme absente de
+   * `weaponLabels` est une arme de véhicule.
+   */
+  arme: 'vehicule' | 'joueur'
+  /** Famille du véhicule porteur (clé de `sizeOf`/`spriteOf`, cf. `VehicleStyle`). */
+  family: string | undefined
+  /**
+   * Cap MONDE du véhicule à l'instant du tir — celui auquel le CHÂSSIS EST DESSINÉ
+   * (`vehicleChassisHeadingAt`), degrés, convention `Point.h`. C'est le même que le sprite, et ce
+   * n'est pas un détail : le montage d'arme est une ancre dans le repère LOCAL du sprite, donc un
+   * éclair posé à un autre cap sortirait du châssis qu'il est censé quitter.
+   */
+  headingDeg: number
+  /**
+   * Visée MESURÉE de CELUI QUI A TIRÉ, degrés monde, ou `null` faute de lecture en vigueur
+   * (`vehicleShooterAimAt`, apparié par SLOT — cf. son en-tête pour le négatif du lot 5.5.1 qui
+   * rend cette valeur nécessaire). Elle n'oriente QUE les montages de classe `tourelle` : le
+   * châssis, lui, garde son propre cap.
+   */
+  shooterHeadingDeg: number | null
+}
+
+/** Un tir prêt à dessiner : coordonnées MONDE, la conversion en pixels dépend du cadrage. */
+export interface ShotFxEntry {
+  /** Frame du tir sur la grille du rejeu. */
+  frame: number
+  x: number
+  y: number
+  /**
+   * Cap de REGARD du tireur à cet instant, en degrés monde. null = aucune lecture dans la
+   * fenêtre de maintien : l'éclair sera une bouffée ronde, jamais une direction inventée.
+   */
+  h: number | null
+  fam: ShotFamily
+  tint: FxTint
+  /** Germe stable : deux lectures du même instant redonnent la même forme. */
+  seed: number
+  /** Tir d'une ARME DE VÉHICULE ; `null` pour un tir à pied ou une arme de joueur. */
+  vehicleShot: VehicleShotSource | null
+}
+
+/**
+ * buildShotFx précalcule les tirs dessinables d'un document — positions, familles, teintes
+ * et regards résolus UNE fois au chargement (patron `buildKillFx`). Pendant la lecture, il
+ * ne reste que le passage monde -> pixels.
+ *
+ * `aimHoldFrames` est la fenêtre de maintien du regard, en frames : la MÊME que celle du
+ * cône de visée, parce que c'est la même lecture. Au-delà, on ne sait plus où le joueur
+ * regardait, et une direction périmée affirmerait ce qu'on ignore.
+ */
+export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): ShotFxEntry[] {
+  // LES COUPS DU TIR CONTINU (schéma 71) entrent comme des tirs : même éclair, même montage, même
+  // regard — ils ne diffèrent que par leur source, simulée à la cadence du tag (`fireBursts.ts`).
+  const tirs = [...doc.shots, ...fireBurstShots(doc)]
+  if (tirs.length === 0) return []
+  // UNE TRACE = UNE VIE, et le slot de biped est réattribué à chaque réapparition : on
+  // groupe donc par slot, puis on retient la vie QUI COUVRE l'instant du tir. Prendre la
+  // première venue lirait le regard d'une autre vie du même joueur.
+  const bySlot = buildLivesBySlot(doc.tracks)
+  const out: ShotFxEntry[] = []
+  for (const s of tirs) {
+    const label = s.w ? doc.weaponLabels?.[s.w] : undefined
+    // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
+    // des armes de JOUEUR d'abord, puis le REGISTRE DES ARMES DE VÉHICULE du document (schéma 69,
+    // qui remplace la table client du lot 5.8.2). Sans la seconde, 68 % des tirs de véhicule de
+    // `4f77afc1` tombaient sur la famille `plain` et la teinte `neutral` — un halo gris pâle
+    // centré sur un sprite, qui ne se lit pas comme un tir.
+    const style = label ? null : vehicleShotStyleOf(doc, s.w)
+    const fam = familyOf(label?.fx ?? style?.fx)
+    if (fam === 'melee') continue
+    const track = lifeOfSlotAt(bySlot, s.slot, s.t)
+    const read = track ? heldReading(track.points, s.t, (p) => p.h, aimHoldFrames) : null
+    out.push({
+      frame: s.t,
+      x: s.x,
+      y: s.y,
+      h: read ? read.value : null,
+      fam,
+      tint: fxTintOf(label?.tint ?? style?.tint),
+      seed: s.t + s.slot,
+      vehicleShot: vehicleShotSourceOf(doc, s, s.t),
+    })
+  }
+  return out
+}
+
+/**
+ * vehicleShotSourceOf — RÉSOUT UNE FOIS ce que le rendu aura besoin de savoir sur un tir en
+ * véhicule : le véhicule porteur (par `v`, MÊME clé que `VehicleTrack.slot`), le montage de
+ * l'arme (par `w`) quand il est documenté, et le cap du véhicule à l'instant `t`.
+ *
+ * # POURQUOI UN MONTAGE INCONNU NE FAIT PLUS PERDRE LA SOURCE (2026-09-20)
+ *
+ * LE DÉFAUT MESURÉ, et il explique à lui seul le constat utilisateur du 2026-09-19 (« toujours
+ * pas d'effets de tir pour les véhicules »). Le cap de REGARD d'un tir vient de la trajectoire
+ * du BIPÈDE (`heldReading` ci-dessous) — or un bipède EMBARQUÉ NE RÉPLIQUE PLUS. Mesure du
+ * 2026-09-20 sur quatre documents cuits : sur les tirs qui portent `v`, le cap de regard est
+ * lisible pour **1 sur 241** (`4f77afc1`), 3 sur 241 (`5676a9ba`), 0 sur 47 (`c259789d`) et
+ * 0 sur 15 (`8a485699`). Sans cap, `drawMuzzleFlash` tombe sur la BOUFFÉE RONDE — sans
+ * direction, centrée sur le châssis, et dans la teinte `neutral` (68 % de ces tirs portent une
+ * arme absente de `weaponLabels`, donc sans famille ni teinte). Un halo gris pâle centré sur le
+ * sprite ne se lit pas comme un tir : c'est ce que l'utilisateur ne voyait pas.
+ *
+ * CE QUE LE FILM DONNE, LUI, POUR 100 % DE CES TIRS : le CAP DU VÉHICULE. Garder la source même
+ * sans montage rend donc une direction à l'éclair, et `vehicleShotPlacement` la traduit.
+ *
+ * LA GARDE EST LE REGISTRE D'ARMES, et c'est le MÊME discriminateur que le son
+ * (`shotSoundStem` : « leurs identifiants sont ABSENTS de `weaponLabels` »).
+ *
+ * # UNE ARME DE JOUEUR TIRÉE D'UN SIÈGE GARDE LA SOURCE DEPUIS LE LOT 5.8.5, ET POUR SA VISÉE
+ *
+ * LE NÉGATIF QUI L'ÉCARTAIT EST TOMBÉ, et c'est le lot 5.5.2 qui l'a fait tomber. 5.2a.5 les
+ * laissait sur leur propre cap de REGARD — la règle était juste (le passager vise où il veut) mais
+ * ce cap vient de la trajectoire du BIPÈDE, qui ne réplique plus une fois embarqué : il est
+ * lisible pour **1 tir sur 241** (`4f77afc1`). Mesure de la population : **76 tirs sur 241**
+ * (D2 du lot 5.5).
+ *
+ * CE QUE 5.5.2 A ÉTABLI : la visée de l'épisode du TIREUR, appariée par SLOT, est SON PROPRE
+ * REGARD — pas celui d'autrui. L'objection qui gelait ce cas (« faire passer une mesure d'autrui
+ * pour une approximation de soi ») ne s'y applique donc pas, et l'utilisateur l'a tranché le
+ * 2026-09-21 : « pour un occupant NON conducteur, l'orientation de son arme passager est sa
+ * VISÉE, son regard classique comme à pied ».
+ *
+ * LA RÈGLE DE 5.2a.5 SURVIT ENTIÈRE : cette arme ne prend JAMAIS le cap du châssis. Sans lecture
+ * de visée en vigueur, la source n'est même pas créée — le tir retombe alors sur son propre
+ * regard, exactement comme avant ce lot (`h`), et sur la bouffée ronde à défaut.
+ */
+function vehicleShotSourceOf(
+  doc: ReplayDocumentReady,
+  shot: { v?: number; w?: string; slot: number },
+  t: number,
+): VehicleShotSource | null {
+  if (shot.v === undefined) return null
+  const track = doc.vehicles.find((v) => v.slot === shot.v)
+  if (!track) return null
+  const mount = vehicleWeaponMountOf(doc, shot.w)
+  // ARME DE VÉHICULE = absente du registre d'armes de joueur (cf. l'en-tête de cette fonction).
+  const armeDeVehicule = shot.w !== undefined && doc.weaponLabels?.[shot.w] === undefined
+  // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
+  // tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur artilleur
+  // du Scorpion — comme pour le passager qui tire sa propre arme.
+  const viseeTireur =
+    vehicleShooterAimAt(track, shot.slot, t) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
+  // UNE ARME DE JOUEUR N'ENTRE QUE SI SA VISÉE EST LUE : sans elle, la source n'apporterait rien
+  // et le tir perdrait son propre regard (`h`), qui est parfois lisible.
+  if (!mount && !armeDeVehicule && viseeTireur === null) return null
+  return {
+    mount,
+    arme: armeDeVehicule ? 'vehicule' : 'joueur',
+    // LE SPRITE DESSINÉ, variante comprise (schéma 69) : c'est sur SES dimensions que l'ancre se lit.
+    family: vehicleSpriteFamily(track),
+    headingDeg: vehicleChassisHeadingAt(track, t),
+    shooterHeadingDeg: viseeTireur,
+  }
+}
+
+/**
+ * viseeSurUnePiecePortee — LA VISÉE DU TIREUR QUAND SON ÉPISODE EST RESTÉ SUR UNE PIÈCE MONTÉE du
+ * véhicule qui porte le tir (schéma 69, revue adverse du lot M4a, F1).
+ *
+ * Le serveur pose un tir de tourelle sur le PORTEUR (`v` = le châssis) dès que la pièce a un
+ * `carrier`, mais il ne reporte l'épisode de l'artilleur sur ce porteur que s'il le peut : un
+ * épisode hors de la fenêtre du porteur, un occupant déjà à bord, ou un épisode de repli dont la
+ * montée à bord ne se voit pas près du porteur (2026-09-24) le laissent sur la pièce. Chercher la visée sur le seul porteur la perdait alors — mesure
+ * du 2026-09-24 : 174 tirs sur 276 perdaient leur visée lue, et le montage `turret` retombait sur
+ * la bouffée ronde. La pièce appartient au porteur par `carrier {slot, gen}` : son épisode EST
+ * l'épisode du tireur, apparié par SLOT comme partout ailleurs.
+ */
+function viseeSurUnePiecePortee(
+  doc: ReplayDocumentReady,
+  porteur: ReplayVehicleTrackReady,
+  slotTireur: number,
+  t: number,
+): number | null {
+  for (const piece of doc.vehicles) {
+    if (piece.carrier?.slot !== porteur.slot || piece.carrier.gen !== porteur.gen) continue
+    const visee = vehicleShooterAimAt(piece, slotTireur, t)
+    if (visee !== null) return visee
+  }
+  return null
+}

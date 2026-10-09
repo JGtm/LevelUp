@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface HintBullets {
@@ -114,6 +115,8 @@ export interface SettingsText {
   watcherAuthReconnect: string
   watcherAuthInstructions: string
   watcherAuthCopyCode: string
+  /** Libellé du MÊME bouton pendant la fenêtre de confirmation (2 s) qui suit la copie. */
+  watcherAuthCodeCopied: string
   watcherAuthOpenLink: string
   watcherAuthPending: string
   watcherAuthSuccess: string
@@ -159,7 +162,6 @@ export interface SettingsText {
   backfillLUSR: string
   backfillCSR: string
   backfillEvents: string
-  backfillWeapons: string
   backfillEngagementScores: string
   backfillEngagementCoefficients: string
   backfillPlayerLabel: string
@@ -209,6 +211,18 @@ export interface SettingsText {
   sessionRecalcConfirmBody: string
   sessionRecalcConfirmOk: string
   sessionRecalcConfirmCancel: string
+
+  // Onglet Analyse — Rejeu 2D
+  replayRetentionTitle: string
+  replayRetentionLabel: string
+  replayRetentionUnit: string
+  replayRetentionHint: string
+  replayLocationLabel: string
+  replayLocationAuto: string
+  replayLocationLocal: string
+  replayLocationWorker: string
+  replayLocationOff: string
+  replayLocationHint: string
 
   // Onglet Analyse — Badges de performance
   badgesTitle: string
@@ -260,6 +274,16 @@ export interface SettingsText {
   enemyColorLabel: string
   teamColorDefault: string
 
+  // Admin · Système — Sons du rejeu 2D (réglages d'instance)
+  replaySoundTitle: string
+  replaySoundDescription: string
+  replaySoundVariationLabel: string
+  replaySoundVariationHint: string
+  replaySoundDistanceLabel: string
+  replaySoundDistanceHint: string
+  replaySoundOff: string
+  replaySoundFull: string
+
   // Onglet Backup
   tabBackup: string
   backupStatusEnabled: string
@@ -310,10 +334,10 @@ const FR_TEXT: SettingsText = {
   tabAccount: 'Compte',
   tabNotifications: 'Notifications',
 
-  groupsCardTitle: 'Groupes et partage',
+  groupsCardTitle: 'Amis et groupes',
   groupsCardDescription:
-    "Gère tes groupes (famille, amis) : les membres d'un même groupe ont un accès mutuel à leurs profils et statistiques. Crée un groupe puis partage son lien d'invitation.",
-  groupsCardOpen: 'Gérer mes groupes',
+    "Gère la liste d'amis de ton profil (elle marque tes parties en escouade) et tes groupes : les membres d'un même groupe ont un accès mutuel à leurs profils et statistiques.",
+  groupsCardOpen: 'Gérer mes amis et groupes',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -386,6 +410,7 @@ const FR_TEXT: SettingsText = {
   watcherAuthReconnect: 'Rafraîchir Xbox',
   watcherAuthInstructions: 'Rendez-vous sur {url} et entrez le code ci-dessous :',
   watcherAuthCopyCode: 'Copier le code',
+  watcherAuthCodeCopied: 'Code copié',
   watcherAuthOpenLink: 'Ouvrir le lien',
   watcherAuthPending: 'En attente de validation…',
   watcherAuthSuccess: 'Connexion réussie ! Token XSTS valide.',
@@ -422,7 +447,6 @@ const FR_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillCSR: 'CSR par match (re-fetch API)',
   backfillEvents: 'Événements',
-  backfillWeapons: 'Armes',
   backfillEngagementScores: "Score d'engagement",
   backfillEngagementCoefficients: "Coefficients d'engagement (recalcul rapide)",
   backfillPlayerLabel: 'Joueur',
@@ -485,6 +509,25 @@ const FR_TEXT: SettingsText = {
     'L\'opération est rapide mais irréversible.',
   sessionRecalcConfirmOk: 'Recalculer',
   sessionRecalcConfirmCancel: 'Annuler',
+
+  // Onglet Analyse — Rejeu 2D
+  replayRetentionTitle: 'Rejeu 2D',
+  replayRetentionLabel: 'Fenêtre de conservation des rejeux',
+  replayRetentionUnit: 'mois',
+  replayRetentionHint:
+    'Les rejeux 2D des matchs plus anciens que cette fenêtre sont purgés, et les nouveaux ' +
+    'matchs hors fenêtre ne sont pas construits. 0 = illimité (tout conserver). ' +
+    'Les films téléchargés ne sont jamais supprimés.',
+  replayLocationLabel: 'Lieu de construction',
+  replayLocationAuto: 'Automatique',
+  replayLocationLocal: 'Ce serveur',
+  replayLocationWorker: 'Ouvrier distant',
+  replayLocationOff: 'Aucune construction',
+  replayLocationHint:
+    'Décoder un film coûte environ une minute de processeur. « Ce serveur » construit sur ' +
+    'place (développement uniquement) ; « Ouvrier distant » met le travail en file, une autre ' +
+    'machine le prend et renvoie le rejeu ; « Aucune construction » se contente des rejeux ' +
+    'déjà présents. Automatique choisit l\'ouvrier distant en production.',
 
   // Onglet Analyse — Badges de performance
   badgesTitle: 'Badges de performance',
@@ -560,6 +603,18 @@ const FR_TEXT: SettingsText = {
   enemyColorLabel: 'Couleur ennemis',
   teamColorDefault: 'Défaut palette',
 
+  replaySoundTitle: 'Sons du rejeu',
+  replaySoundDescription:
+    "Les sons d'armes sont extraits du jeu tels quels. Ces deux réglages rejouent ce que le moteur du jeu applique à chaque coup ; ils valent pour toute l'instance.",
+  replaySoundVariationLabel: 'Variation',
+  replaySoundVariationHint:
+    "À chaque tir, le jeu déplace légèrement le volume et la hauteur du son. 100 % applique les écarts du jeu tels quels, 0 % joue toujours le fichier à l'identique.",
+  replaySoundDistanceLabel: 'Distance',
+  replaySoundDistanceHint:
+    'Un tir lointain est plus faible et plus sourd. À 0 %, le son traverse la lecture sans aucun traitement.',
+  replaySoundOff: 'Aucune',
+  replaySoundFull: 'Maximum',
+
   tabBackup: 'Sauvegarde',
   backupStatusEnabled: 'Activée',
   backupStatusNotConfigured: 'Non configurées',
@@ -610,10 +665,10 @@ const EN_TEXT: SettingsText = {
   tabAccount: 'Account',
   tabNotifications: 'Notifications',
 
-  groupsCardTitle: 'Groups and sharing',
+  groupsCardTitle: 'Friends and groups',
   groupsCardDescription:
-    'Manage your groups (family, friends): members of the same group share mutual access to their profiles and stats. Create a group then share its invite link.',
-  groupsCardOpen: 'Manage my groups',
+    "Manage your profile's friends list (it marks your squad games) and your groups: members of the same group share mutual access to their profiles and stats.",
+  groupsCardOpen: 'Manage my friends and groups',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',
@@ -686,6 +741,7 @@ const EN_TEXT: SettingsText = {
   watcherAuthReconnect: 'Refresh Xbox',
   watcherAuthInstructions: 'Go to {url} and enter the code below:',
   watcherAuthCopyCode: 'Copy code',
+  watcherAuthCodeCopied: 'Code copied',
   watcherAuthOpenLink: 'Open link',
   watcherAuthPending: 'Waiting for validation…',
   watcherAuthSuccess: 'Connected! XSTS token valid.',
@@ -722,7 +778,6 @@ const EN_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillCSR: 'Per-match CSR (API re-fetch)',
   backfillEvents: 'Events',
-  backfillWeapons: 'Weapons',
   backfillEngagementScores: 'Engagement score',
   backfillEngagementCoefficients: 'Engagement coefficients (fast recompute)',
   backfillPlayerLabel: 'Player',
@@ -785,6 +840,25 @@ const EN_TEXT: SettingsText = {
     'The operation is fast but irreversible.',
   sessionRecalcConfirmOk: 'Recalculate',
   sessionRecalcConfirmCancel: 'Cancel',
+
+  // Analyse tab — 2D replay
+  replayRetentionTitle: '2D replay',
+  replayRetentionLabel: 'Replay retention window',
+  replayRetentionUnit: 'months',
+  replayRetentionHint:
+    '2D replays of matches older than this window are purged, and new matches outside the ' +
+    'window are not built. 0 = unlimited (keep everything). ' +
+    'Downloaded films are never deleted.',
+  replayLocationLabel: 'Build location',
+  replayLocationAuto: 'Automatic',
+  replayLocationLocal: 'This server',
+  replayLocationWorker: 'Remote worker',
+  replayLocationOff: 'No building',
+  replayLocationHint:
+    'Decoding a film costs about a minute of CPU. "This server" builds in place (development ' +
+    'only); "Remote worker" queues the work, another machine picks it up and sends the replay ' +
+    'back; "No building" uses only the replays already there. Automatic picks the remote ' +
+    'worker in production.',
 
   // Analyse tab — Performance badges
   badgesTitle: 'Performance badges',
@@ -859,6 +933,18 @@ const EN_TEXT: SettingsText = {
   allyColorLabel: 'Ally colour',
   enemyColorLabel: 'Enemy colour',
   teamColorDefault: 'Palette default',
+
+  replaySoundTitle: 'Replay sounds',
+  replaySoundDescription:
+    'Weapon sounds are extracted from the game as they are. These two settings replay what the game engine applies on every shot; they apply to the whole instance.',
+  replaySoundVariationLabel: 'Variation',
+  replaySoundVariationHint:
+    'On every shot the game shifts the volume and pitch slightly. 100 % applies the game ranges as they are, 0 % always plays the file identically.',
+  replaySoundDistanceLabel: 'Distance',
+  replaySoundDistanceHint:
+    'A distant shot is quieter and duller. At 0 % the sound goes through playback untouched.',
+  replaySoundOff: 'None',
+  replaySoundFull: 'Maximum',
 
   tabBackup: 'Backup',
   backupStatusEnabled: 'Enabled',

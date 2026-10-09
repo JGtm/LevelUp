@@ -4,6 +4,7 @@ package sharedprovider_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -113,5 +114,90 @@ func TestProvider_DrainTimeoutDisambiguated_integration(t *testing.T) {
 	// échec dblease acquire_writer) : delta SwapFailures == delta DrainTimeouts.
 	if got := snap.SwapFailures - base.SwapFailures; got != 1 {
 		t.Errorf("SwapFailures delta = %d, attendu 1 (attribué à drain_timeout)", got)
+	}
+}
+
+// TestProvider_DrainTimeoutIsTyped_integration (lot B1, 2026-09-26) : une vidange
+// expirée sur la borne PROPRE au provider se reconnaît par errors.Is(ErrDrainTimeout)
+// — un appelant peut la retenter sans lire le texte de l'erreur (ratchet DT-5) — et
+// garde sa cause context.DeadlineExceeded.
+func TestProvider_DrainTimeoutIsTyped_integration(t *testing.T) {
+	path := setupSharedDB(t)
+	p, err := sharedprovider.New(path)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer func() { _ = p.Close() }()
+
+	sharedprovider.SetDrainTimeoutForTest(p, 100*time.Millisecond)
+	ctx := context.Background()
+
+	// Reader tenu en vol : la vidange ne peut pas se vider → expiration garantie.
+	_, release, err := p.Get(ctx)
+	if err != nil {
+		t.Fatalf("Get RO: %v", err)
+	}
+	defer release()
+
+	_, err = p.AcquireWriter(ctx)
+	if err == nil {
+		t.Fatal("AcquireWriter aurait dû échouer (vidange expirée, reader tenu)")
+	}
+	if !errors.Is(err, sharedprovider.ErrDrainTimeout) {
+		t.Errorf("errors.Is(err, ErrDrainTimeout) = false, err = %v", err)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("la cause context.DeadlineExceeded est perdue, err = %v", err)
+	}
+}
+
+// TestProvider_DrainCallerContextIsNotDrainTimeout_integration (lot B1) : quand c'est
+// le contexte de l'APPELANT qui expire ou est annulé pendant la vidange, l'erreur n'est
+// PAS ErrDrainTimeout — sinon un appelant retenterait un arrêt qu'on lui a demandé.
+func TestProvider_DrainCallerContextIsNotDrainTimeout_integration(t *testing.T) {
+	cases := []struct {
+		name  string
+		ctx   func() (context.Context, context.CancelFunc)
+		cause error
+	}{
+		{"délai de l'appelant", func() (context.Context, context.CancelFunc) {
+			return context.WithTimeout(context.Background(), 100*time.Millisecond)
+		}, context.DeadlineExceeded},
+		{"annulation de l'appelant", func() (context.Context, context.CancelFunc) {
+			ctx, cancel := context.WithCancel(context.Background())
+			time.AfterFunc(100*time.Millisecond, cancel)
+			return ctx, cancel
+		}, context.Canceled},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := setupSharedDB(t)
+			p, err := sharedprovider.New(path)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			defer func() { _ = p.Close() }()
+			// Borne propre large : seul le contexte de l'appelant peut finir l'attente.
+			sharedprovider.SetDrainTimeoutForTest(p, 30*time.Second)
+
+			_, release, err := p.Get(context.Background())
+			if err != nil {
+				t.Fatalf("Get RO: %v", err)
+			}
+			defer release()
+
+			ctx, cancel := tc.ctx()
+			defer cancel()
+			_, err = p.AcquireWriter(ctx)
+			if err == nil {
+				t.Fatal("AcquireWriter aurait dû échouer (contexte appelant fini, reader tenu)")
+			}
+			if errors.Is(err, sharedprovider.ErrDrainTimeout) {
+				t.Errorf("contexte appelant fini classé ErrDrainTimeout, err = %v", err)
+			}
+			if !errors.Is(err, tc.cause) {
+				t.Errorf("errors.Is(err, %v) = false, err = %v", tc.cause, err)
+			}
+		})
 	}
 }

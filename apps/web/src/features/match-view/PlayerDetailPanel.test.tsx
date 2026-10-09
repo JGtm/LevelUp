@@ -61,7 +61,7 @@ function buildRow(medals: PlayerMedalRow[]): MatchScoreboardRow {
     perfect_kills: null,
     power_weapon_kills: null,
     melee_kills: null,
-    outcome_label: 'Victoire',
+    outcome: 'win',
     medals,
   }
 }

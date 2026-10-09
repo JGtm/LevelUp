@@ -1,7 +1,12 @@
 /**
- * squadFdaGapChart — « Écart cumulé au FDA attendu » par joueur (onglet Synergies).
+ * squadFdaGapChart — « Écart cumulé au FDA attendu » par joueur (onglet Dynamique,
+ * à côté de « Balance des dégâts cumulée », même abscisse `xAxisLabels(n)`).
  *
- * Décisions D3/D5 du plan PLAN_EXPECTED_FDA_2026-07.
+ * Décisions D3/D5 du plan PLAN_EXPECTED_FDA_2026-07 ; forme revue par le lot L1 du
+ * plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : la valeur de fin s'écrit au bout
+ * de chaque courbe (signée, une décimale, couleur du joueur, étiquettes écartées
+ * verticalement quand elles se chevauchent), la légende est en bas et centrée, et
+ * aucun texte de synthèse ne vit sous le graphe.
  *
  * Pour chaque joueur : cumul du différentiel `kda − kda_expected` (FDA réel natif
  * ADR 0006 moins FDA attendu projeté backend) par `match_order` CROISSANT. 1 série
@@ -26,8 +31,9 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { withEndPoint } from '@/components/charts/endPoint'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { cumulativeFdaGap, meanFdaGap, type FdaGapPair } from '@/lib/charts/cumulativeFdaGap'
+import { cumulativeFdaGap, type FdaGapPair } from '@/lib/charts/cumulativeFdaGap'
 
 import {
   maxLength,
@@ -67,24 +73,78 @@ export function cumulativeFdaGapSeries(
   return data
 }
 
-/**
- * Écart MOYEN par match d'un joueur, calculé UNIQUEMENT sur les matchs avec attendu
- * (D3, pastille KPI « +0,7/match »), délégué au helper canonique `meanFdaGap`.
- * `null` si aucun match exploitable.
- */
-export function meanFdaGapPerMatch(points: SquadPerformanceSeriesPoint[]): number | null {
-  return meanFdaGap(points.map(toPair))
-}
-
 export interface FdaGapCumulativeOpts extends CommonOpts {
-  /** Décimales affichées (tooltip + axe Y). Défaut 1. */
+  /** Décimales affichées (infobulle, axe Y, valeur de fin). Défaut 1. */
   decimals?: number
+  /** Locale Intl des nombres (`fr-FR` → « +3,0 »). Défaut : locale de l'environnement. */
+  intlLocale?: string
 }
 
-/** Formate une valeur d'écart signée (`+0.7` / `-0.4` / `+0.0`). */
-function fmtSigned(v: number, decimals: number): string {
-  const fixed = v.toFixed(decimals)
-  return v >= 0 ? `+${fixed}` : fixed
+/**
+ * Marge droite de la grille : la place de la valeur de fin (« +15,4 ») écrite au bout
+ * des courbes. `containLabel` ne compte que les graduations, pas les `endLabel`.
+ */
+const END_LABEL_ROOM = 48
+
+/**
+ * Formateur d'écart signé (« +0,7 » / « -0,4 » / « 0,0 ») : un zéro arrondi ne porte
+ * pas de signe (`exceptZero`), jamais « -0,0 ».
+ */
+function signedGapFormatter(decimals: number, intlLocale?: string): (v: number) => string {
+  const nf = new Intl.NumberFormat(intlLocale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    signDisplay: 'exceptZero',
+  })
+  return (v: number) => nf.format(v)
+}
+
+/**
+ * La série d'un joueur : sa courbe, le point final grossi (`withEndPoint`, source unique), la
+ * valeur de fin au bout ; la ligne 0 posée sur la première série seulement.
+ */
+function fdaGapPlayerSeries(
+  player: string,
+  idx: number,
+  cum: Array<number | null>,
+  s: { color: string; tc: ReturnType<typeof getEChartsThemeColors>; fmtSigned: (v: number) => string },
+) {
+  const { color, tc, fmtSigned } = s
+  return {
+    name: player,
+    type: 'line' as const,
+    data: withEndPoint(cum, tc.card),
+    lineStyle: { color, width: 2 },
+    itemStyle: { color },
+    symbol: 'circle' as const,
+    symbolSize: 4,
+    connectNulls: true,
+    // Valeur de fin au bout de la courbe. ECharts la
+    // pose sur le dernier point NON nul ; `moveOverlap: 'shiftY'` écarte verticalement
+    // les étiquettes de TOUTES les séries qui se chevauchent (vérifié au rendu SVG).
+    endLabel: {
+      show: true,
+      color,
+      fontSize: 11,
+      fontWeight: 600,
+      distance: 6,
+      formatter: (p: { value?: unknown }) => (typeof p.value === 'number' ? fmtSigned(p.value) : ''),
+    },
+    labelLayout: { moveOverlap: 'shiftY' as const },
+    // markLine 0 (parité cumulée : FDA réel = FDA attendu) rendue une seule fois,
+    // attachée au premier joueur.
+    ...(idx === 0
+      ? {
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            lineStyle: { color: tc.axisLabel, type: 'dashed' as const, width: 1 },
+            label: { show: false },
+            data: [{ yAxis: 0 }],
+          },
+        }
+      : {}),
+  }
 }
 
 export function buildFdaGapCumulativeOption(
@@ -100,48 +160,29 @@ export function buildFdaGapCumulativeOption(
   if (n === 0) return { backgroundColor: CHART_BG }
 
   const xLabels = opts.xLabels ?? xAxisLabels(n)
-  const decimals = opts.decimals ?? 1
+  const fmtSigned = signedGapFormatter(opts.decimals ?? 1, opts.intlLocale)
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const emptyData = new Array<number | null>(n).fill(null)
 
-  const series = players.map((player, idx) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const data = hiddenPlayers.has(player) ? emptyData : cumulativeFdaGapSeries(rows[player], n)
-    return {
-      name: player,
-      type: 'line' as const,
-      data,
-      lineStyle: { color, width: 2 },
-      itemStyle: { color },
-      symbol: 'circle' as const,
-      symbolSize: 4,
-      connectNulls: true,
-      // markLine 0 (parité cumulée : FDA réel = FDA attendu) rendue une seule fois,
-      // attachée au premier joueur.
-      ...(idx === 0
-        ? {
-            markLine: {
-              silent: true,
-              symbol: 'none',
-              lineStyle: { color: tc.axisLabel, type: 'dashed' as const, width: 1 },
-              label: { show: false },
-              data: [{ yAxis: 0 }],
-            },
-          }
-        : {}),
-    }
-  })
+  const series = players.map((player, idx) =>
+    fdaGapPlayerSeries(player, idx, hiddenPlayers.has(player) ? emptyData : cumulativeFdaGapSeries(rows[player], n), {
+      color: opts.colorByPlayer[player] ?? '#888', // color-allow: gris structurel pour joueur sans couleur attribuée
+      tc,
+      fmtSigned,
+    }),
+  )
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 28, bottom: 36, left: 8, right: 24, containLabel: true },
+    grid: { top: 20, bottom: 36, left: 8, right: END_LABEL_ROOM, containLabel: true },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'line' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? fmtSigned(v, decimals) : '-'),
+      valueFormatter: (v: unknown) => (typeof v === 'number' ? fmtSigned(v) : '-'),
     },
-    legend: { ...getLegendBase(tc), data: players },
+    // Légende en bas (getLegendBase) et CENTRÉE, explicitement (spec S2 du plan).
+    legend: { ...getLegendBase(tc), left: 'center', data: players },
     xAxis: {
       ...axis,
       type: 'category',
@@ -156,7 +197,7 @@ export function buildFdaGapCumulativeOption(
       type: 'value',
       axisLabel: {
         ...axis.axisLabel,
-        formatter: (v: number) => fmtSigned(v, decimals),
+        formatter: (v: number) => fmtSigned(v),
       },
     },
     series,

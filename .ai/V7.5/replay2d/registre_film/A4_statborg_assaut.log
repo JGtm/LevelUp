@@ -1,0 +1,6 @@
+=== RUN   TestAssautA4Confront
+    assaut_a4_confront_test.go:83: CONFRONTATION (i) : 43 emplacement(s) balayes ; recherche [1c01e34f 35b75a31 69b16f5d c75f33b8] ; verification [34bb3bc8 3d58eb37 9f57c612 df8fcbef]
+    assaut_a4_confront_test.go:83: CANDIDAT comp 0 A : sommes de recherche exactes 4/4 — REPLIQUE ; sommes publiees : 1c01e34f=4/4 35b75a31=3/3 69b16f5d=3/3 c75f33b8=1/1 34bb3bc8=1/1 3d58eb37=3/3 9f57c612=1/1 df8fcbef=1/1
+    assaut_a4_confront_test.go:84: CONTROLE (ii) : comp 2 B contre morts du releve — 37/37 = 100.0 % (seuil 90 %) : LECTURE SAINE
+--- PASS: TestAssautA4Confront (0.00s)
+PASS

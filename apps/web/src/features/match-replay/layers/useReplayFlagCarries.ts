@@ -1,0 +1,279 @@
+/**
+ * useReplayFlagCarries — TOUT LE CÂBLAGE DU CALQUE DES DRAPEAUX, en un seul point.
+ *
+ * POURQUOI UN HOOK ET NON QUATRE MORCEAUX DANS `ReplayCanvas`. Le canvas du rejeu porte une
+ * dette de taille GELÉE par un seuil (`max-lines` eslint, R5) : toute addition s'y
+ * fait par EXTRACTION, jamais par empilement. Ce hook réunit donc les préoccupations du calque —
+ * la relecture de position du porteur, le tracé par image, le survol et l'infobulle — et n'en
+ * rend au canvas que quatre lignes utiles. Même parti que `useReplayWeaponPads`, `useZoneStates`
+ * et `useSlotIdentity` avant lui.
+ *
+ * LE PORTEUR SE RELIT DANS SES TRAJECTOIRES, image par image, et c'est ce qui « colle » le
+ * drapeau à son marqueur : le span publie UNE position pour tout son intervalle, alors que le
+ * porteur court. `useCarrierPosAt` est le même utilitaire que la bombe, le crâne et la couronne —
+ * une position relue, jamais devinée (cf. `flagPlaceAt` pour le repli). PORTEUR EMBARQUÉ : c'est
+ * la position du VÉHICULE qui répond (décision produit du 2026-09-05, cf. l'en-tête de
+ * `carrierPosition.ts`).
+ *
+ * L'ONDE DE CAPTURE ENTRE ICI, ET PAS DANS LE CANVAS (2026-08-27). Elle a besoin des mêmes trois
+ * choses que le glyphe — le document, la relecture de position, le camp vu de la page — et le
+ * canvas est sous cliquet de taille : la brancher ailleurs aurait recopié cette jointure. Elle se
+ * peint dans le MÊME `paint`, après le calque, et partage sa garde d'affichage.
+ *
+ * LE CAMP ALLIÉ EST UN NUMÉRO ICI, PAS UN XUID, exactement comme pour les zones : l'équipe du
+ * drapeau vient du film, et son allégeance aussi (`FilmAllegiance.ofTeam`, comparée à l'équipe du
+ * film du joueur regardé). Quand le film ne situe pas ce joueur, AUCUN camp n'est allié — le
+ * drapeau garde l'encre neutre plutôt qu'une couleur devinée.
+ *
+ * L'IMAGE COURANTE EST LUE DANS UNE RÉFÉRENCE, jamais dans un état React (même règle et même
+ * conséquence assumée que `useReplayWeaponPads`) : si l'état d'un drapeau change SOUS un pointeur
+ * immobile, son infobulle attend le prochain mouvement. À l'arrêt — le cas où l'on inspecte — la
+ * lecture est exacte.
+ */
+import { useCallback, useMemo, useState, type PointerEvent, type RefObject } from 'react'
+
+import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+
+import { useCarrierPosAt } from '../model/carrierPosition'
+import {
+  drawFlagCarries,
+  flagAt,
+  type FlagCarriesInput,
+  type FlagNow,
+} from './flagCarriesLayer'
+import {
+  buildFlagCaptureFx,
+  drawFlagCaptureFx,
+  FLAG_CAPTURE_HOLD_FRAMES,
+  type FlagCaptureStyle,
+} from './flagCaptureFx'
+import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
+import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
+import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+
+/** Le camp d'un drapeau VU DU JOUEUR REGARDÉ — `unknown` quand le film ne le situe pas. */
+export type FlagSide = 'ally' | 'enemy' | 'unknown'
+
+/** Ce qui est survolé : le drapeau, son état LU À CET INSTANT, et de quoi l'écrire. */
+export interface FlagHover {
+  now: FlagNow
+  at: XY
+  side: FlagSide
+  /** Le porteur dans la langue du lecteur, ou `null` quand rien ne le nomme. */
+  carrier: string | null
+  /** Depuis combien de temps cet état dure, en millisecondes du match. */
+  sinceMs: number
+}
+
+export interface FlagCarriesHookInput {
+  doc: ReplayDocumentReady
+  view: CanvasView
+  /** L'image courante, telle que la boucle de lecture la tient. */
+  frameRef: RefObject<number>
+  /** Faux quand le calque est éteint : rien n'est dessiné, rien ne se survole. */
+  enabled: boolean
+  /** La feuille : le NOM du porteur dans l'infobulle. */
+  scoreboard: MatchScoreboardRow[] | null | undefined
+  /**
+   * L'allégeance lue dans le film, vue du point de vue (`model.allegiance`) : le camp d'un
+   * drapeau, celui de l'auteur d'une capture, et les défenseurs d'un drapeau tombé. REQUISE :
+   * elle porte le point de vue (revue F4 du 2026-09-07).
+   */
+  allegiance: FilmAllegiance
+  /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
+  teamColorOf: (ally: boolean) => string
+  /** Encre servie quand le camp est inconnu : ni équipe inventée, ni glyphe invisible. */
+  neutral: string
+  /**
+   * Encre du FOND (tokens déjà résolus par l'appelant) : celle du liseré posé sous le glyphe.
+   * C'est LA MÊME que le canvas sert déjà aux vignettes de socle — une seule résolution pour
+   * les deux calques, sinon les deux contours divergeraient au premier réglage de thème.
+   */
+  outline: string
+  reducedMotion: boolean
+}
+
+export interface ReplayFlagCarries {
+  /** Le film porte-t-il des drapeaux ? Une bascule qui ne commande rien ne s'affiche pas. */
+  available: boolean
+  /**
+   * LE NOM DU CALQUE, porté par le calque et non par la table de liaison du canvas
+   * (2026-09-06, revue R1 constat C2) : c'est ce qui rend impossible de peindre ce geste
+   * sous l'identité d'un autre calque.
+   */
+  id: 'drapeaux'
+  /** Trace le calque à l'image demandée ; ne fait rien quand il est éteint. */
+  paint: (ctx: CanvasRenderingContext2D, frame: number) => void
+  hover: FlagHover | null
+  onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
+  onPointerLeave: () => void
+}
+
+export function useReplayFlagCarries({
+  doc,
+  view,
+  frameRef,
+  enabled,
+  scoreboard,
+  allegiance,
+  teamColorOf,
+  neutral,
+  outline,
+  reducedMotion,
+}: FlagCarriesHookInput): ReplayFlagCarries {
+  const carries = doc.flagCarries
+  const [hover, setHover] = useState<FlagHover | null>(null)
+
+  // La relecture de position partagée (carrierPosition.ts) : embarqué -> position du véhicule,
+  // sinon celle du bipède.
+  const posOf = useCarrierPosAt(doc)
+
+  // UN DRAPEAU SANS ÉQUIPE N'EST PAS « ADVERSE ». Deux cas le produisent : la carte est hors du
+  // catalogue d'objectifs (aucun socle, donc aucun camp), et — depuis le schéma 35 — la variante
+  // À DRAPEAU NEUTRE, où l'unique drapeau n'appartient à personne. `ofTeam` rend `null` pour un
+  // désignateur négatif comme pour un joueur regardé que le film ne situe pas : sans camp, pas
+  // d'encre affirmée.
+  const sideOf = useCallback(
+    (team: number): FlagSide => {
+      const ally = allegiance.ofTeam(team)
+      if (ally === null) return 'unknown'
+      return ally ? 'ally' : 'enemy'
+    },
+    [allegiance],
+  )
+  const nameOfXuid = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const r of scoreboard ?? []) if (r.gamertag) map.set(r.xuid, r.gamertag)
+    return map
+  }, [scoreboard])
+
+  // L'ENCRE SUIT LE CAMP VU DU JOUEUR REGARDÉ, pas l'index d'équipe du film : c'est la couleur
+  // que l'utilisateur a choisie pour « allié » et « adverse » (règle d'accessibilité du rejeu).
+  // Sans allégeance, le neutre du thème — jamais une équipe supposée.
+  const inkOfTeam = useCallback(
+    (team: number) => {
+      const side = sideOf(team)
+      return side === 'unknown' ? neutral : teamColorOf(side === 'ally')
+    },
+    [sideOf, neutral, teamColorOf],
+  )
+
+  const layer = useMemo<FlagCarriesInput>(
+    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion }, posOf }),
+    [inkOfTeam, outline, reducedMotion, posOf],
+  )
+
+  // LES CAPTURES (retour du 2026-08-27) : construites UNE fois par document, comme les autres
+  // effets ponctuels. Elles ne rallument PAS les pulses substituts retirés (`flagPulsesRetired`
+  // reste tel quel) — cet effet n'écoute qu'une stat, `flag_captures`, et la pose au lieu RELU de
+  // son auteur, là où le substitut posait toute la famille `flag_` sur le socle le plus proche.
+  const captures = useMemo(() => buildFlagCaptureFx(doc, posOf), [doc, posOf])
+
+  // LA ZONE DE RETOUR (schéma 35) : le cercle autour d'un drapeau tombé, et la jauge qui s'y
+  // vide. Elle se construit UNE fois par document, comme les ondes de capture — l'occupation se
+  // compte image par image, et la recompter à chaque peinture coûterait le match entier.
+  //
+  // C'EST ICI, ET NON SUR LE SERVEUR, QUE LES DÉFENSEURS SE COMPTENT : les membres du camp du
+  // drapeau, lus dans le FILM (`FilmAllegiance.membersOf`), localisés par les relectures de
+  // position — qui n'indexent que les humains : un bot n'y compte pas. Le serveur publie la
+  // RÈGLE, pas l'occupation. Un drapeau neutre (-1) n'a pas de défenseur.
+  const defendersOf = allegiance.membersOf
+
+  const returnDrops = useMemo(
+    () =>
+      buildFlagReturnDrops(carries, {
+        rule: doc.flagReturnZone ?? null,
+        frameIntervalMs: doc.frameIntervalMs ?? 0,
+        posOf,
+        defendersOf,
+      }),
+    [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf],
+  )
+
+  // LE CAMP DE L'AUTEUR D'UNE CAPTURE : son allégeance du film (l'action ne porte que son xuid,
+  // un bot s'y relie par sa ligne de feuille). Sans allégeance, l'onde prend le neutre du thème
+  // plutôt qu'une équipe devinée, même règle que le glyphe.
+  const captureStyle = useMemo<FlagCaptureStyle>(
+    () => ({
+      inkOf: (xuid: string) => {
+        const ally = allegiance.ofXuid(xuid)
+        return ally === null ? neutral : teamColorOf(ally)
+      },
+      reducedMotion,
+    }),
+    [allegiance, neutral, teamColorOf, reducedMotion],
+  )
+
+  const paint = useCallback(
+    (ctx: CanvasRenderingContext2D, frame: number) => {
+      // LA GARDE « AUCUN DRAPEAU PUBLIÉ » VAUT AUSSI POUR LES ONDES, et ce n'est pas un détail :
+      // les pulses substituts d'`objectivesLayer` ne se taisent QUE quand le document publie des
+      // drapeaux. Sur un film qui n'en publie pas, ils marquent encore les captures — dessiner
+      // l'onde en plus les doublerait, à deux endroits différents.
+      if (!enabled || carries.length === 0) return
+      // LA ZONE PASSE SOUS LE GLYPHE : c'est un décor de lieu, le drapeau est le sujet.
+      drawFlagReturnZones(
+        ctx,
+        returnDrops,
+        (p) => projectTo(view, p),
+        scaleOf(view),
+        frame,
+        { colorOfTeam: inkOfTeam },
+      )
+      drawFlagCarries(ctx, layer, carries, view, frame)
+      // Les ondes APRÈS le calque : l'anneau s'ouvre autour du glyphe, il ne passe pas dessous.
+      drawFlagCaptureFx(ctx, captures, view, { frame, hold: FLAG_CAPTURE_HOLD_FRAMES }, captureStyle)
+    },
+    [enabled, carries, layer, view, captures, captureStyle, returnDrops, inkOfTeam],
+  )
+
+  const onPointerMove = useCallback(
+    (event: PointerEvent<HTMLCanvasElement>) => {
+      if (!enabled || carries.length === 0 || view.width === 0) {
+        setHover((prev) => (prev === null ? prev : null))
+        return
+      }
+      const rect = event.currentTarget.getBoundingClientRect()
+      // Le contexte dessine en pixels CSS ; le rapport ne vaut 1 que si la mise en page ne remet
+      // pas le canevas à l'échelle — on le calcule plutôt que de le supposer (même amorce que le
+      // survol des socles et celui des poses).
+      const kx = rect.width > 0 ? view.width / rect.width : 1
+      const ky = rect.height > 0 ? view.height / rect.height : 1
+      const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
+      const frame = frameRef.current
+      const found = flagAt(carries, layer, view, frame, at)
+      setHover((prev) => {
+        if (!found) return prev === null ? prev : null
+        const next: FlagHover = {
+          now: found.now,
+          at: found.at,
+          side: sideOf(found.now.team),
+          carrier: found.now.xuid ? (nameOfXuid.get(found.now.xuid) ?? null) : null,
+          sinceMs: Math.max(frameToMs(frame - found.now.t0, doc), 0),
+        }
+        if (
+          prev &&
+          prev.now.team === next.now.team &&
+          prev.now.state === next.now.state &&
+          prev.now.t0 === next.now.t0 &&
+          prev.now.returnProgress === next.now.returnProgress &&
+          prev.at.x === next.at.x &&
+          prev.at.y === next.at.y &&
+          prev.sinceMs === next.sinceMs
+        ) {
+          return prev
+        }
+        return next
+      })
+    },
+    [enabled, carries, layer, view, frameRef, sideOf, nameOfXuid, doc],
+  )
+
+  const onPointerLeave = useCallback(() => {
+    setHover((prev) => (prev === null ? prev : null))
+  }, [])
+
+  return { id: 'drapeaux', available: carries.length > 0, paint, hover, onPointerMove, onPointerLeave }
+}

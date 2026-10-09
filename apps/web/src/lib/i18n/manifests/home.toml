@@ -338,6 +338,10 @@ en = "Favorite playlist"
 fr = "Rendement / Résist."
 en = "Off. / Def."
 
+[home.kpi.off_def_help]
+fr = "Rendement : ce qu'une vie de dégâts infligés vous rapporte en frags effectifs (frags + assistances / 3) — 100 % = un frag par vie dépensée. Résistance : les dégâts encaissés avant chaque mort, rapportés à une vie de Spartan — 100 % = une vie exactement. Au-dessus de 100 %, vos dégâts portent et vous tenez plus longtemps ; en dessous, ils se dispersent et vous tombez plus tôt."
+en = "Yield: what one life worth of damage dealt earns you in effective kills (kills + assists / 3) — 100% = one kill per life spent. Resistance: the damage absorbed before each death, measured against one Spartan life — 100% = exactly one life. Above 100%, your damage lands and you hold out longer; below it, it scatters and you go down sooner."
+
 [home.kpi.favorite_weapon]
 fr = "Arme favorite"
 en = "Fav. weapon"

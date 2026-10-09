@@ -1,0 +1,16 @@
+MINI-BOBINE killsource — VERSION 40 — provenance
+
+Film source        : e5adf7b2 (data/cache/film_chunks/e5adf7b2), 2025-07, Big Team Battle
+chunk_00.bin       : le REGISTRE du film — il porte la version (u32 LE en tete)
+chunk_01.bin       : le premier chunk de DONNEES — loadFilm refuse un film
+                     sans paquet de replication (ErrNoPacket)
+chunk_02.bin       : le chunk HIGHLIGHT du film (n30), trouve PAR SON CONTENU
+
+POURQUOI UNE BOBINE DE VERSION 40. Sur les versions 39-40 le gamertag vit a
+l octet 12 du bloc d event, pas a l octet 0 ; sur les versions >= 41 les deux decoupages
+se confondent. La bobine 000d5950 (v41) ne pouvait donc pas prouver que la version lue
+est bien PASSEE au parseur — celle-ci le peut (26 gamertags contre 2).
+
+Les octets sont recompresses en zlib (le cache local les stocke decompresses) ;
+leur contenu DECOMPRESSE est celui du film, inchange. Regeneration : voir
+minibobine_v40_test.go.

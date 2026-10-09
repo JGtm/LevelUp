@@ -1,0 +1,185 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+0797ce72	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	593	593	0	0	3866
+0797ce72	HI_1_13_0	autre non ferme · R2 (DEL lu avant)	173	173	0	0	772
+0797ce72	HI_1_13_0	autre non ferme · R2 (slot <= dernier DELTA)	83	83	0	0	573
+0797ce72	HI_1_13_0	ferme · R1 (aucun DELTA lu)	3	3	0	3	0
+0797ce72	HI_1_13_0	ferme · R1 (slot > dernier DELTA)	12	12	0	12	0
+0797ce72	HI_1_13_0	ferme · R2 (DEL lu avant)	9	9	0	9	0
+0797ce72	HI_1_13_0	ferme · R2 (slot <= dernier DELTA)	1	1	0	1	0
+0797ce72	HI_1_13_0	hors cadre · R1 (aucun DELTA lu)	1	1	1	0	1
+0797ce72	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	4062	4062	4062	0	26023
+0797ce72	HI_1_13_0	hors cadre · R2 (DEL lu avant)	275	275	275	0	1703
+0797ce72	HI_1_13_0	hors cadre · R2 (slot <= dernier DELTA)	206	206	206	0	1473
+084a804d	HI_1_10_0	autre non ferme · R1 (aucun DELTA lu)	30	30	0	0	9
+084a804d	HI_1_10_0	autre non ferme · R1 (slot > dernier DELTA)	16	16	0	0	149
+084a804d	HI_1_10_0	autre non ferme · R2 (DEL lu avant)	4	4	0	0	10
+084a804d	HI_1_10_0	ferme · R1 (aucun DELTA lu)	122	122	0	122	0
+084a804d	HI_1_10_0	ferme · R1 (slot > dernier DELTA)	10	10	0	10	0
+084a804d	HI_1_10_0	ferme · R2 (DEL lu avant)	45	45	0	45	0
+084a804d	HI_1_10_0	hors cadre · R1 (aucun DELTA lu)	49	49	49	0	15
+084a804d	HI_1_10_0	hors cadre · R1 (slot > dernier DELTA)	22864	22864	22864	0	439470
+084a804d	HI_1_10_0	hors cadre · R2 (DEL lu avant)	26	26	26	0	146
+084a804d	HI_1_10_0	hors cadre · R2 (slot <= dernier DELTA)	2	2	2	0	21
+111fa685	HI_1_10_0	autre non ferme · R1 (aucun DELTA lu)	38	38	0	0	24
+111fa685	HI_1_10_0	autre non ferme · R1 (slot > dernier DELTA)	19	19	0	0	194
+111fa685	HI_1_10_0	autre non ferme · R2 (DEL lu avant)	42	42	0	0	485
+111fa685	HI_1_10_0	autre non ferme · R2 (slot <= dernier DELTA)	4	4	0	0	65
+111fa685	HI_1_10_0	ferme · R1 (aucun DELTA lu)	37	37	0	37	0
+111fa685	HI_1_10_0	ferme · R1 (slot > dernier DELTA)	4	4	0	4	0
+111fa685	HI_1_10_0	ferme · R2 (DEL lu avant)	18	18	0	18	0
+111fa685	HI_1_10_0	ferme · R2 (slot <= dernier DELTA)	1	1	0	1	0
+111fa685	HI_1_10_0	hors cadre · R1 (aucun DELTA lu)	94	94	94	0	43
+111fa685	HI_1_10_0	hors cadre · R1 (slot > dernier DELTA)	10322	10322	10322	0	194164
+111fa685	HI_1_10_0	hors cadre · R2 (DEL lu avant)	116	116	116	0	1257
+111fa685	HI_1_10_0	hors cadre · R2 (slot <= dernier DELTA)	11	11	11	0	184
+11de8353	HI_1_9_0	autre non ferme · R1 (aucun DELTA lu)	21	21	0	0	10
+11de8353	HI_1_9_0	autre non ferme · R1 (slot > dernier DELTA)	127	127	0	0	1994
+11de8353	HI_1_9_0	autre non ferme · R2 (DEL lu avant)	11	11	0	0	71
+11de8353	HI_1_9_0	autre non ferme · R2 (slot <= dernier DELTA)	9	9	0	0	147
+11de8353	HI_1_9_0	ferme · R1 (aucun DELTA lu)	44	44	0	44	0
+11de8353	HI_1_9_0	ferme · R1 (slot > dernier DELTA)	3	3	0	3	0
+11de8353	HI_1_9_0	ferme · R2 (DEL lu avant)	6	6	0	6	0
+11de8353	HI_1_9_0	hors cadre · R1 (aucun DELTA lu)	90	90	90	0	40
+11de8353	HI_1_9_0	hors cadre · R1 (slot > dernier DELTA)	9400	9400	9400	0	174460
+11de8353	HI_1_9_0	hors cadre · R2 (DEL lu avant)	14	14	14	0	78
+11de8353	HI_1_9_0	hors cadre · R2 (slot <= dernier DELTA)	63	63	63	0	1042
+1c4c63c2	HI_1_10_0	autre non ferme · R1 (aucun DELTA lu)	40	40	0	0	13
+1c4c63c2	HI_1_10_0	autre non ferme · R1 (slot > dernier DELTA)	43	43	0	0	243
+1c4c63c2	HI_1_10_0	autre non ferme · R2 (DEL lu avant)	6	6	0	0	33
+1c4c63c2	HI_1_10_0	autre non ferme · R2 (slot <= dernier DELTA)	6	6	0	0	70
+1c4c63c2	HI_1_10_0	ferme · R1 (aucun DELTA lu)	3057	3057	0	3057	0
+1c4c63c2	HI_1_10_0	ferme · R1 (slot > dernier DELTA)	107	107	0	107	0
+1c4c63c2	HI_1_10_0	ferme · R2 (DEL lu avant)	322	322	0	322	0
+1c4c63c2	HI_1_10_0	ferme · R2 (slot <= dernier DELTA)	33	33	0	33	0
+1c4c63c2	HI_1_10_0	hors cadre · R1 (aucun DELTA lu)	95	95	95	0	40
+1c4c63c2	HI_1_10_0	hors cadre · R1 (slot > dernier DELTA)	45568	45568	45568	0	595505
+1c4c63c2	HI_1_10_0	hors cadre · R2 (DEL lu avant)	22	22	22	0	106
+1c4c63c2	HI_1_10_0	hors cadre · R2 (slot <= dernier DELTA)	11	11	11	0	106
+396cfc92	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+396cfc92	HI_1_13_0	ferme · R1 (aucun DELTA lu)	3	3	0	3	0
+396cfc92	HI_1_13_0	ferme · R1 (slot > dernier DELTA)	1	1	0	1	0
+396cfc92	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	8345	8345	8345	0	56758
+396cfc92	HI_1_13_0	hors cadre · R2 (DEL lu avant)	3	3	3	0	20
+396cfc92	HI_1_13_0	hors cadre · R2 (slot <= dernier DELTA)	2	2	2	0	13
+4f77afc1	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+4f77afc1	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	6	6	0	0	33
+4f77afc1	HI_1_13_0	autre non ferme · R2 (DEL lu avant)	1	1	0	0	20
+4f77afc1	HI_1_13_0	autre non ferme · R2 (slot <= dernier DELTA)	3	3	0	0	91
+4f77afc1	HI_1_13_0	ferme · R1 (aucun DELTA lu)	336	336	0	336	0
+4f77afc1	HI_1_13_0	ferme · R1 (slot > dernier DELTA)	10	10	0	10	0
+4f77afc1	HI_1_13_0	ferme · R2 (DEL lu avant)	48	48	0	48	0
+4f77afc1	HI_1_13_0	ferme · R2 (slot <= dernier DELTA)	2	2	0	2	0
+4f77afc1	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	9469	9469	9469	0	177967
+4f77afc1	HI_1_13_0	hors cadre · R2 (DEL lu avant)	8	8	8	0	193
+4f77afc1	HI_1_13_0	hors cadre · R2 (slot <= dernier DELTA)	6	6	6	0	134
+50247b26	version-31	autre non ferme · R1 (aucun DELTA lu)	5	5	0	0	0
+50247b26	version-31	autre non ferme · R1 (slot > dernier DELTA)	6	6	0	0	101
+50247b26	version-31	autre non ferme · R2 (DEL lu avant)	3	3	0	0	41
+50247b26	version-31	autre non ferme · R2 (slot <= dernier DELTA)	2	2	0	0	37
+50247b26	version-31	ferme · R1 (aucun DELTA lu)	8	8	0	8	0
+50247b26	version-31	hors cadre · R1 (aucun DELTA lu)	12	12	12	0	1
+50247b26	version-31	hors cadre · R1 (slot > dernier DELTA)	10653	10653	10653	0	235954
+50247b26	version-31	hors cadre · R2 (DEL lu avant)	12	12	12	0	93
+50247b26	version-31	hors cadre · R2 (slot <= dernier DELTA)	7	7	7	0	104
+51ebbc0f	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	48	48	0	0	27
+51ebbc0f	HI_1_13_0	autre non ferme · R2 (DEL lu avant)	3	3	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · R2 (slot <= dernier DELTA)	1	1	0	0	0
+51ebbc0f	HI_1_13_0	ferme · R1 (aucun DELTA lu)	17	17	0	17	0
+51ebbc0f	HI_1_13_0	ferme · R1 (slot > dernier DELTA)	1	1	0	1	0
+51ebbc0f	HI_1_13_0	ferme · R2 (DEL lu avant)	3	3	0	3	0
+51ebbc0f	HI_1_13_0	hors cadre · R1 (aucun DELTA lu)	1417	1417	1417	0	18
+51ebbc0f	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	15138	15138	15138	0	29306
+51ebbc0f	HI_1_13_0	hors cadre · R2 (DEL lu avant)	18	18	18	0	19
+51ebbc0f	HI_1_13_0	hors cadre · R2 (slot <= dernier DELTA)	25	25	25	0	24
+60ae07c4	HI_1_8_0	autre non ferme · R1 (aucun DELTA lu)	17	17	0	0	3
+60ae07c4	HI_1_8_0	autre non ferme · R1 (slot > dernier DELTA)	467	467	0	0	2771
+60ae07c4	HI_1_8_0	autre non ferme · R2 (DEL lu avant)	68	68	0	0	360
+60ae07c4	HI_1_8_0	autre non ferme · R2 (slot <= dernier DELTA)	58	58	0	0	402
+60ae07c4	HI_1_8_0	ferme · R1 (aucun DELTA lu)	45	45	0	45	0
+60ae07c4	HI_1_8_0	ferme · R1 (slot > dernier DELTA)	34	34	0	34	0
+60ae07c4	HI_1_8_0	ferme · R2 (DEL lu avant)	17	17	0	17	0
+60ae07c4	HI_1_8_0	ferme · R2 (slot <= dernier DELTA)	2	2	0	2	0
+60ae07c4	HI_1_8_0	hors cadre · R1 (aucun DELTA lu)	7	7	7	0	4
+60ae07c4	HI_1_8_0	hors cadre · R1 (slot > dernier DELTA)	28975	28975	28975	0	169141
+60ae07c4	HI_1_8_0	hors cadre · R2 (DEL lu avant)	199	199	199	0	1101
+60ae07c4	HI_1_8_0	hors cadre · R2 (slot <= dernier DELTA)	108	108	108	0	694
+a349fea8	version-33	autre non ferme · R1 (aucun DELTA lu)	17	17	0	0	6
+a349fea8	version-33	autre non ferme · R1 (slot > dernier DELTA)	126	126	0	0	38
+a349fea8	version-33	autre non ferme · R2 (DEL lu avant)	15	15	0	0	144
+a349fea8	version-33	autre non ferme · R2 (slot <= dernier DELTA)	2	2	0	0	32
+a349fea8	version-33	ferme · R1 (aucun DELTA lu)	20	20	0	20	0
+a349fea8	version-33	ferme · R1 (slot > dernier DELTA)	1	1	0	1	0
+a349fea8	version-33	ferme · R2 (DEL lu avant)	2	2	0	2	0
+a349fea8	version-33	hors cadre · R1 (aucun DELTA lu)	23	23	23	0	10
+a349fea8	version-33	hors cadre · R1 (slot > dernier DELTA)	19177	19177	19177	0	380058
+a349fea8	version-33	hors cadre · R2 (DEL lu avant)	29	29	29	0	189
+a349fea8	version-33	hors cadre · R2 (slot <= dernier DELTA)	16	16	16	0	85
+a521164d	HI_1_4_1	autre non ferme · R1 (aucun DELTA lu)	13	13	0	0	3
+a521164d	HI_1_4_1	autre non ferme · R1 (slot > dernier DELTA)	130	130	0	0	125
+a521164d	HI_1_4_1	autre non ferme · R2 (DEL lu avant)	13	13	0	0	12
+a521164d	HI_1_4_1	autre non ferme · R2 (slot <= dernier DELTA)	1	1	0	0	0
+a521164d	HI_1_4_1	ferme · R1 (aucun DELTA lu)	2	2	0	2	0
+a521164d	HI_1_4_1	ferme · R1 (slot > dernier DELTA)	5	5	0	5	0
+a521164d	HI_1_4_1	hors cadre · R1 (aucun DELTA lu)	10	10	10	0	4
+a521164d	HI_1_4_1	hors cadre · R1 (slot > dernier DELTA)	6312	6312	6312	0	132408
+a521164d	HI_1_4_1	hors cadre · R2 (DEL lu avant)	36	36	36	0	137
+a521164d	HI_1_4_1	hors cadre · R2 (slot <= dernier DELTA)	4	4	4	0	33
+bcb6d393	HI_1_12_0	autre non ferme · R1 (aucun DELTA lu)	9	9	0	0	0
+bcb6d393	HI_1_12_0	autre non ferme · R1 (slot > dernier DELTA)	59	59	0	0	9
+bcb6d393	HI_1_12_0	ferme · R1 (aucun DELTA lu)	2	2	0	2	0
+bcb6d393	HI_1_12_0	hors cadre · R1 (slot > dernier DELTA)	3195	3195	3195	0	18523
+bcb6d393	HI_1_12_0	hors cadre · R2 (DEL lu avant)	5	5	5	0	5
+bf15f7ab	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+bf15f7ab	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	133	133	0	0	922
+bf15f7ab	HI_1_13_0	autre non ferme · R2 (slot <= dernier DELTA)	2	2	0	0	15
+bf15f7ab	HI_1_13_0	ferme · R1 (aucun DELTA lu)	2	2	0	2	0
+bf15f7ab	HI_1_13_0	ferme · R2 (DEL lu avant)	1	1	0	1	0
+bf15f7ab	HI_1_13_0	hors cadre · R1 (aucun DELTA lu)	2	2	2	0	0
+bf15f7ab	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	1535	1535	1535	0	8993
+bf15f7ab	HI_1_13_0	hors cadre · R2 (slot <= dernier DELTA)	84	84	84	0	588
+bfecd02b	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	1	1	0	0	0
+bfecd02b	HI_1_13_0	ferme · R1 (aucun DELTA lu)	5	5	0	5	0
+bfecd02b	HI_1_13_0	ferme · R2 (DEL lu avant)	2	2	0	2	0
+bfecd02b	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	3143	3143	3143	0	23224
+bfecd02b	HI_1_13_0	hors cadre · R2 (DEL lu avant)	2	2	2	0	15
+c75f33b8	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	10	10	0	0	0
+c75f33b8	HI_1_13_0	ferme · R1 (aucun DELTA lu)	16	16	0	16	0
+c75f33b8	HI_1_13_0	ferme · R1 (slot > dernier DELTA)	4	4	0	4	0
+c75f33b8	HI_1_13_0	ferme · R2 (DEL lu avant)	3	3	0	3	0
+c75f33b8	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	2281	2281	2281	0	10210
+c75f33b8	HI_1_13_0	hors cadre · R2 (DEL lu avant)	2	2	2	0	19
+d9781168	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+d9781168	HI_1_13_0	ferme · R1 (aucun DELTA lu)	84	84	0	84	0
+d9781168	HI_1_13_0	ferme · R1 (slot > dernier DELTA)	3	3	0	3	0
+d9781168	HI_1_13_0	ferme · R2 (DEL lu avant)	7	7	0	7	0
+d9781168	HI_1_13_0	ferme · R2 (slot <= dernier DELTA)	1	1	0	1	0
+d9781168	HI_1_13_0	hors cadre · R1 (aucun DELTA lu)	9	9	9	0	0
+d9781168	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	11050	11050	11050	0	64278
+d9781168	HI_1_13_0	hors cadre · R2 (DEL lu avant)	1	1	1	0	6
+e5adf7b2	HI_1_11_0	autre non ferme · R1 (aucun DELTA lu)	31	31	0	0	3
+e5adf7b2	HI_1_11_0	autre non ferme · R1 (slot > dernier DELTA)	204	204	0	0	1291
+e5adf7b2	HI_1_11_0	autre non ferme · R2 (DEL lu avant)	16	16	0	0	134
+e5adf7b2	HI_1_11_0	autre non ferme · R2 (slot <= dernier DELTA)	7	7	0	0	91
+e5adf7b2	HI_1_11_0	ferme · R1 (aucun DELTA lu)	46	46	0	46	0
+e5adf7b2	HI_1_11_0	ferme · R1 (slot > dernier DELTA)	3	3	0	3	0
+e5adf7b2	HI_1_11_0	ferme · R2 (DEL lu avant)	12	12	0	12	0
+e5adf7b2	HI_1_11_0	hors cadre · R1 (aucun DELTA lu)	61	61	61	0	7
+e5adf7b2	HI_1_11_0	hors cadre · R1 (slot > dernier DELTA)	9775	9775	9775	0	201190
+e5adf7b2	HI_1_11_0	hors cadre · R2 (DEL lu avant)	52	52	52	0	311
+e5adf7b2	HI_1_11_0	hors cadre · R2 (slot <= dernier DELTA)	22	22	22	0	348
+f75e7053	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+f75e7053	HI_1_13_0	ferme · R1 (aucun DELTA lu)	2	2	0	2	0
+f75e7053	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	4287	4287	4287	0	26439
+fb1a1a72	HI_1_13_0	autre non ferme · R1 (aucun DELTA lu)	1	1	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · R1 (slot > dernier DELTA)	70	70	0	0	23
+fb1a1a72	HI_1_13_0	autre non ferme · R2 (DEL lu avant)	6	6	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · R2 (slot <= dernier DELTA)	4	4	0	0	8
+fb1a1a72	HI_1_13_0	ferme · R1 (aucun DELTA lu)	12	12	0	12	0
+fb1a1a72	HI_1_13_0	ferme · R2 (DEL lu avant)	2	2	0	2	0
+fb1a1a72	HI_1_13_0	hors cadre · R1 (slot > dernier DELTA)	23416	23416	23416	0	15513
+fb1a1a72	HI_1_13_0	hors cadre · R2 (DEL lu avant)	25	25	25	0	53
+fb1a1a72	HI_1_13_0	hors cadre · R2 (slot <= dernier DELTA)	13	13	13	0	27

@@ -82,8 +82,8 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `strongholds_victory` | Victoire en bases | custom | `compute_wins_strongholds` | 5,10,15,25,**50** |
 | `flag_captures` | Capture du drapeau | objective_stat | `flag_captures` | 10,25,50,75,**125** |
 | `flag_secures` | Sécurisation du drapeau | objective_stat | `flag_secures` | 50,100,200,350,**600** |
-| `flag_steals` | Vol du drapeau | objective_stat | `flag_steals` | 25,50,100,175,**300** |
-| `returner_takedown` | Chasse au rapatrieur | objective_stat | `flag_returners_killed` | 5,10,20,35,**60** |
+| `flag_steals` | Vol du drapeau | objective_stat | `flag_steals` — **disabled** (user decision 2026-09-10) | 25,50,100,175,**300** |
+| `returner_takedown` | Chasse au rapatrieur | objective_stat | `flag_returners_killed` — **disabled** (user decision 2026-09-19) | 5,10,20,35,**60** |
 | `unstoppable_carrier` | Porteur imparable | objective_stat | `kills_as_flag_carrier` | 1,2,3,5,**10** |
 | `aggressive_return` | Rapatriement agressif | objective_stat | `kills_as_flag_returner` | 5,10,20,30,**50** |
 | `zone_defense` | Défense de zone | objective_stat | `zone_defensive_kills` | 25,50,100,200,**350** |
@@ -91,7 +91,9 @@ Tier columns are the `tier_targets` CSV; **Master** is the last (largest) tier.
 | `skull_carrier_takedown` | Chasse au porteur | objective_stat | `skull_carriers_killed` | 2,5,10,20,**40** |
 | `skull_grabs` | Prise du crâne | objective_stat | `skull_grabs` | 2,5,10,20,**40** |
 
-`flag_captures`…`skull_grabs` (10 rows) were added in v7.2.1 (V721-03). Tiers are calibrated on real v7.2.1 data (304-match reference player), not the generic tier-target families used elsewhere in this document — see the tier-target comment block in `seed.go` before retouching them.
+`flag_captures`…`skull_grabs` (10 rows) were added in v7.2.1 (V721-03); 8 are active since `flag_steals` (2026-09-10) and `returner_takedown` (2026-09-19) were disabled. Tiers are calibrated on real v7.2.1 data (304-match reference player), not the generic tier-target families used elsewhere in this document — see the tier-target comment block in `seed.go` before retouching them.
+
+Both v7.2.1 placeholder SVGs are gone (2026-09-10): `flag_captures` now serves the final user-supplied PNG (`static/commendations/halo_infinite/HI_citation_Capture_du_drapeau.png`, 100x100 like every other commendation visual), and `flag_steals` carries no `image_path` at all now that it is disabled. The "do not ship the SVGs to prod" blocker from V721-03 is therefore lifted. Visual fixes of 2026-09-19: the `flag_captures` PNG had a transparency checkerboard baked into its pixels (it rendered on a white/grey square) — background stripped, real alpha; `untouchable_carrier` pointed at a Halo 5 **weapon** visual (`H5G_citation_Éradicateur.png`) by mistake, and since Halo 5 has no Oddball commendation at all, it now serves a user-supplied skull silhouette, squared to 100x100 with a 2.5 px black outline (`static/commendations/halo_infinite/HI_citation_Crane_intouchable.png`).
 
 ### PvP — Vehicle / Grenade (4)
 
@@ -264,6 +266,8 @@ The seed ships these with `Enabled: false` (listed, not computed):
 | `skimmer_slayer` | Enemy type not present in Halo 5 (no image). |
 | `marine_slayer` | Allies — not a meaningful positive commendation. |
 | `flag_defender` | No unambiguous own-flag-defense ingestion award (`carrier_killed` = enemy-carrier kill = `flag_carrier_hunter`). Future candidate: `carrier_stopped`. |
+| `flag_steals` | User decision 2026-09-10 ("I do not want it any more"). No `image_path` (its only visual was a deleted placeholder SVG). |
+| `returner_takedown` | User decision 2026-09-19: an in-house commendation (name and definition invented on 2026-07-25, only the column is native) judged confusing and not worth tracking. No `image_path` (the H5 "Not so fast" visual is free again). |
 
 ---
 

@@ -10,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { GamertagSearchInput } from './GamertagSearchInput'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
-import { normalizeExplorerTableRows } from './explorerTableRows'
 import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { ExplorerActivityHeatmapChart } from './ExplorerActivityHeatmapChart'
 import { ExplorerTargetProfileCard } from './ExplorerTargetProfileCard'
@@ -22,7 +21,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type {
-  ExplorerMatchesQueryResponse,
+  ExplorerMatchRow,
   ExplorerPlayerQueryResponse,
   MatchEncounterBadge,
 } from '@/lib/api/types'
@@ -62,8 +61,9 @@ export interface ExplorerPlayerModeProps {
   }
   allyMatchIds: string[]
   enemyMatchIds: string[]
-  allyMatchesData: ExplorerMatchesQueryResponse | undefined
-  enemyMatchesData: ExplorerMatchesQueryResponse | undefined
+  /** Lignes des deux tableaux (une seule requête, cf. splitCommonMatchRows) ; undefined pendant le chargement. */
+  allyRows: ExplorerMatchRow[] | undefined
+  enemyRows: ExplorerMatchRow[] | undefined
   onSelectTarget: (gamertag: string) => void
   onOpenHeadToHead: (gamertag: string) => void
 }
@@ -76,8 +76,8 @@ export function ExplorerPlayerMode({
   playerQuery,
   allyMatchIds,
   enemyMatchIds,
-  allyMatchesData,
-  enemyMatchesData,
+  allyRows,
+  enemyRows,
   onSelectTarget,
   onOpenHeadToHead,
 }: ExplorerPlayerModeProps) {
@@ -155,6 +155,7 @@ export function ExplorerPlayerMode({
               profile={playerQuery.data.target_profile}
               gamertag={playerQuery.data.target_gamertag || targetGamertag}
               encounterStats={playerQuery.data.encounter_stats}
+              commonMatches={playerQuery.data.common_matches}
             />
           )}
 
@@ -173,6 +174,7 @@ export function ExplorerPlayerMode({
               locale={locale}
               t={t}
               topMedals={playerQuery.data.target_profile.top_medals ?? []}
+              topMedalsLocal={playerQuery.data.target_profile.top_medals_local ?? []}
               combatLiveStatus={playerQuery.data.target_profile.live_status?.combat_live}
             />
           ) : null}
@@ -197,9 +199,9 @@ export function ExplorerPlayerMode({
               un match commun en tant qu'alliés. Pattern team-banner aligné
               sur MatchScoreboard (token team-ally). 10 lignes par défaut +
               expander pour passer à 20. */}
-          {allyMatchIds.length > 0 && allyMatchesData && (
+          {allyMatchIds.length > 0 && allyRows && (
             <ExplorerMatchesTable
-              rows={normalizeExplorerTableRows(allyMatchesData.table.items)}
+              rows={allyRows}
               playerSlug={playerSlug}
               teamBanner={{
                 variant: 'ally',
@@ -219,9 +221,9 @@ export function ExplorerPlayerMode({
           )}
 
           {/* Tableau "matchs en ennemi" — token team-enemy. */}
-          {enemyMatchIds.length > 0 && enemyMatchesData && (
+          {enemyMatchIds.length > 0 && enemyRows && (
             <ExplorerMatchesTable
-              rows={normalizeExplorerTableRows(enemyMatchesData.table.items)}
+              rows={enemyRows}
               playerSlug={playerSlug}
               teamBanner={{
                 variant: 'enemy',

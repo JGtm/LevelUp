@@ -12,9 +12,11 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 func filterMatchHistoryRowsBySoloSessions(
@@ -256,11 +258,21 @@ func filterByExplorerSquadScope(rows []domain.MatchHistoryRawRow, scope string) 
 
 // filterByExplorerMatchIDSearch garde les rows dont MatchID contient query (insensible à la casse).
 // query vide = pas de filtre.
+//
+// LES BLANCS SONT RETIRÉS AVANT COMPARAISON, TOUS, pas seulement ceux des bords. Un match ID
+// est un GUID : il n'en contient jamais un seul, donc aucun blanc de la requête ne peut être
+// significatif. Un identifiant collé depuis un log, une URL ou un message en ramène pourtant —
+// aux extrémités le plus souvent, à l'intérieur quand la source a replié la ligne — et sans ce
+// nettoyage la recherche ne rendait RIEN alors que l'identifiant saisi était le bon : le pire
+// des échecs, celui qui se lit « ce match n'existe pas ».
+//
+// CONSÉQUENCE ASSUMÉE : une requête qui se réduit à du blanc redevient une requête VIDE, donc
+// pas de filtre — c'est le seul sens qu'on puisse lui donner sans inventer un critère.
 func filterByExplorerMatchIDSearch(rows []domain.MatchHistoryRawRow, query string) []domain.MatchHistoryRawRow {
-	if query == "" {
+	q := strings.ToLower(stripAllSpaces(query))
+	if q == "" {
 		return rows
 	}
-	q := strings.ToLower(query)
 	out := rows[:0:0]
 	for _, r := range rows {
 		if strings.Contains(strings.ToLower(r.MatchID), q) {
@@ -268,6 +280,17 @@ func filterByExplorerMatchIDSearch(rows []domain.MatchHistoryRawRow, query strin
 		}
 	}
 	return out
+}
+
+// stripAllSpaces retire tout caractère d'espacement Unicode (espace, tabulation, saut de
+// ligne, espace insécable — celle que ramènent les collages depuis un navigateur).
+func stripAllSpaces(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // filterByMatchIDsWhitelist garde uniquement les rows dont MatchID ∈ ids.
@@ -290,7 +313,13 @@ func filterByMatchIDsWhitelist(rows []domain.MatchHistoryRawRow, ids []string) [
 }
 
 // applyExplorerMatchFilters applique tous les filtres Explorer additionnels en séquence.
-func applyExplorerMatchFilters(rows []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.MatchHistoryRawRow {
+//
+// replays : ensemble des matchs ayant un artefact de rejeu 2D, résolu UNE FOIS par
+// requête par l'appelant (nil = présence non résolue → le filtre replay_scope « avec
+// rejeu » ne garde rien).
+func applyExplorerMatchFilters(
+	rows []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest, replays port.ReplayAvailability,
+) []domain.MatchHistoryRawRow {
 	rows = filterByMatchIDsWhitelist(rows, req.MatchIDs)
 	rows = filterByExplorerDateRange(rows, req.MatchStartDate, req.MatchEndDate)
 	rows = filterByExplorerExperienceTypes(rows, req.ExperienceTypes)
@@ -298,6 +327,7 @@ func applyExplorerMatchFilters(rows []domain.MatchHistoryRawRow, req domain.Matc
 	rows = filterByExplorerMapNames(rows, req.MapNames)
 	rows = filterByExplorerModeNames(rows, req.ModeNames)
 	rows = filterByExplorerSquadScope(rows, req.SquadScope)
+	rows = filterByExplorerReplayScope(rows, req.ReplayScope, replays)
 	rows = filterByExplorerMatchIDSearch(rows, req.MatchIDSearch)
 	return rows
 }
@@ -376,7 +406,9 @@ func (s *MatchHistoryService) ExportCSV(
 	filtered = filterBySkillTier(filtered, req.SkillTiers, req.RankedContext)
 	filtered = filterByPerfTiers(filtered, req.PerfTiers)
 	mapWinRates := computeMapWinRates(rawRows)
-	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
+	// Rejeu 2D : l'export CSV ne porte pas de colonne « Rejeu » (cf. availableColumns)
+	// — inutile de lister le dossier d'artefacts pour un fichier qui ne l'affiche pas.
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters(nil))
 	sortItems(items, req.SortField, req.SortDir)
 
 	return items, nil

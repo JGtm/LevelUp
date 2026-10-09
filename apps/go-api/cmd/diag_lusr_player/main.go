@@ -24,7 +24,7 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	lusync "levelup/go-api/internal/sync"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
@@ -33,7 +33,12 @@ import (
 const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
 func main() {
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) // MT-15 (fail-loud)
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 
 	nMatches := flag.Int("n", 15, "nombre de matchs communs récents à afficher")
 	verbose := flag.Bool("v", false, "affiche le breakdown des 8 composantes du composite")

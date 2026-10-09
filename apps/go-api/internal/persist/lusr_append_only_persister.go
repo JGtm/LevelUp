@@ -1,5 +1,5 @@
 // Package persist — lusr_append_only_persister.go : Phase 2 du plan
-// d'éradication ART (cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md).
+// d'éradication ART (cf. .ai/archive/V7/PLAN_LUSR_ART_HOME_CRASH.md).
 //
 // **Prototype TDD** : nouvelle version de PostSyncLUSRPersister qui ne fait
 // JAMAIS de DELETE. Toute écriture est un INSERT pur dans une table

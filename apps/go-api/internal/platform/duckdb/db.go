@@ -33,22 +33,23 @@ import (
 //
 //	LEVELUP_DUCKDB_MEMORY_LIMIT (ex. "2GB")   LEVELUP_DUCKDB_THREADS (ex. "4")
 //
+// Lus À L'OUVERTURE de chaque connexion (applyDuckSessionInit), donc APRÈS
+// config.BootstrapEnvLocal() : .env.local est honoré, l'environnement du process
+// restant prioritaire (C.4, 2026-09-23 ; lus à l'init du paquet, ils l'ignoraient).
+// Pas de sync.Once : aucun code ne les modifie en cours de process (et t.Setenv les teste).
 // Knob permanent (pas de date de retrait) ; critère : memory_limit doit rester
 // < (RAM - baseline conteneur - marge démo/OS).
-var (
-	duckMemoryLimit = envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB")
-	duckThreads     = envIntOr("LEVELUP_DUCKDB_THREADS", 2)
-)
+func duckMemoryLimit() string { return envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB") }
+func duckThreads() int        { return envIntOr("LEVELUP_DUCKDB_THREADS", 2) }
 
-// BudgetsSnapshot expose les bornes ressources DuckDB effectives (J2) pour
-// l'observabilité — publiées sous /debug/vars levelup/duckdb_budgets, à côté de
-// duckdb_pool_stats (J1). Valeurs statiques résolues au boot (env ou défauts) :
-// permet de vérifier en un coup d'œil la config mémoire/threads/pool RÉELLEMENT
-// appliquée sur un hôte donné (prérequis de la calibration measure-first).
+// BudgetsSnapshot expose les bornes ressources DuckDB (J2) pour l'observabilité —
+// publiées sous /debug/vars levelup/duckdb_budgets, à côté de duckdb_pool_stats (J1).
+// Relues à chaque appel : ce que reçoit toute NOUVELLE connexion, soit la config
+// mémoire/threads/pool réellement appliquée sur l'hôte (calibration measure-first).
 func BudgetsSnapshot() map[string]any {
 	return map[string]any{
-		"memory_limit":         duckMemoryLimit,
-		"threads":              duckThreads,
+		"memory_limit":         duckMemoryLimit(),
+		"threads":              duckThreads(),
 		"pool_max_open_shared": poolMaxOpenShared,
 		"pool_max_idle_shared": poolMaxIdleShared,
 		"pool_single_conn":     poolSingleConn,
@@ -162,10 +163,10 @@ func PoolStatsSnapshot() map[string]sql.DBStats {
 func LookupCachedDB(path string) (*DB, bool) {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
-	if cached, ok := openDBs["rw:"+path]; ok && cached.db != nil && !cached.db.closed.Load() {
+	if cached, ok := openDBs[rwCacheKeyPrefix+path]; ok && cached.db != nil && !cached.db.closed.Load() {
 		return cached.db, true
 	}
-	if cached, ok := openDBs["ro:"+path]; ok && cached.db != nil && !cached.db.closed.Load() {
+	if cached, ok := openDBs[roCacheKeyPrefix+path]; ok && cached.db != nil && !cached.db.closed.Load() {
 		return cached.db, true
 	}
 	return nil, false
@@ -207,7 +208,7 @@ func EvictAndCloseCached(path string) int {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
 	closed := 0
-	for _, key := range []string{"rw:" + path, "ro:" + path} {
+	for _, key := range []string{rwCacheKeyPrefix + path, roCacheKeyPrefix + path} {
 		cached, ok := openDBs[key]
 		if !ok || cached.db == nil {
 			continue
@@ -254,7 +255,7 @@ func OpenReadOnly(path string, timezone ...string) (*DB, error) {
 		}
 	}
 	return openCachedDB(
-		"ro:"+path,
+		roCacheKeyPrefix+path,
 		path,
 		path+"?access_mode=read_only",
 		poolMaxOpenShared,
@@ -277,7 +278,7 @@ func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, poolMaxOpenShared, poolMaxIdleShared, "OpenReadWriteShared", tz)
+	return openCachedDB(rwCacheKeyPrefix+path, path, path, poolMaxOpenShared, poolMaxIdleShared, "OpenReadWriteShared", tz)
 }
 
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
@@ -292,7 +293,7 @@ func OpenReadWrite(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, poolSingleConn, poolSingleConn, "OpenReadWrite", tz)
+	return openCachedDB(rwCacheKeyPrefix+path, path, path, poolSingleConn, poolSingleConn, "OpenReadWrite", tz)
 }
 
 // Limites de pool DuckDB (J8, 2026-07-05 : ex-magic 4/2/1). Le driver DuckDB est
@@ -333,7 +334,7 @@ func openCachedDB(
 		slog.WarnContext(context.Background(),
 			"duckdb: cache ping fail — swap in-place du sqlDB pour préserver les refs externes",
 			"path", oldDB.path, "op", oldDB.op, "key", key)
-		newSQLDB, err := openSQLDBFor(oldDB.dsn, oldDB.timezone, oldDB.op, oldDB.path)
+		newSQLDB, err := openPhysicalSQLDB(oldDB)
 		if err != nil {
 			// Reopen impossible (fichier inaccessible, lock, etc.) — fallback :
 			// délai standard, Close + delete + signal au caller.
@@ -342,9 +343,8 @@ func openCachedDB(
 			slog.ErrorContext(context.Background(),
 				"duckdb: cache ping fail + reopen échoué — handle perdue, caller doit retry",
 				"path", oldDB.path, "op", oldDB.op, "err", err)
-			return nil, err
+			return nil, marqueBaseTenue(err)
 		}
-		applyConnLimits(newSQLDB, oldDB.maxOpenConns, oldDB.maxIdleConns)
 		// Fermer l'ancien sqlDB en best-effort puis swap atomique.
 		_ = oldDB.loadSQL().Close()
 		oldDB.sqlDB.Store(newSQLDB)
@@ -353,7 +353,16 @@ func openCachedDB(
 		return oldDB, nil
 	}
 
-	sqlDB, err := openSQLDBFor(dsn, timezone, op, path)
+	db := &DB{
+		path:         path,
+		cacheKey:     key,
+		dsn:          dsn,
+		maxOpenConns: maxOpenConns,
+		maxIdleConns: maxIdleConns,
+		timezone:     timezone,
+		op:           op,
+	}
+	sqlDB, err := openPhysicalSQLDB(db)
 	if err != nil {
 		// Phase 2 plan stabilisation 2026-05-22 : démoté de Error à Debug. Cette
 		// branche est principalement déclenchée par les retries au boot
@@ -364,21 +373,10 @@ func openCachedDB(
 		// 11 lignes ERROR pour 1 boot réussi.
 		slog.Debug("duckdb: ouverture DB échouée",
 			"path", path, "op", op, "dsn", dsn, "err", err)
-		return nil, err
+		return nil, marqueBaseTenue(err)
 	}
 	if timezone != "" {
 		slog.Debug("duckdb: timezone appliquée", "timezone", timezone, "path", path)
-	}
-	applyConnLimits(sqlDB, maxOpenConns, maxIdleConns)
-
-	db := &DB{
-		path:         path,
-		cacheKey:     key,
-		dsn:          dsn,
-		maxOpenConns: maxOpenConns,
-		maxIdleConns: maxIdleConns,
-		timezone:     timezone,
-		op:           op,
 	}
 	db.sqlDB.Store(sqlDB)
 	openDBs[key] = &cachedDB{db: db, refCount: 1}
@@ -405,7 +403,7 @@ func openCachedDB(
 // SELECT→INSERT entre goroutines.
 // UpsertRowNoConflict fait un SELECT d'existence puis UPDATE (si présent) ou INSERT
 // (sinon) sur un *sql.DB brut — ART-safe : JAMAIS d'ON CONFLICT sur la PK (qui réécrit
-// via l'index ART DuckDB, bug #23046). existsQuery doit retourner ≥1 ligne si la clé
+// via l'index ART DuckDB, bug #23645). existsQuery doit retourner ≥1 ligne si la clé
 // existe.
 //
 // SOURCE UNIQUE (K1d, dédup #6, 2026-07-05) : ce pattern était copié-collé dans
@@ -445,7 +443,7 @@ func (db *DB) UpsertNoConflict(
 }
 
 // openSQLDBFor construit un *sql.DB depuis un DSN + timezone, avec ping.
-// Extrait de openCachedDB pour réutilisation par Reopen.
+// Seul appelant : openPhysicalSQLDB (physical_open.go), point unique des ouvertures physiques.
 func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
 	// Toutes les connexions passent par le connector pour appliquer les limites
 	// ressources (memory_limit + threads, J2) + la timezone. Auparavant seule la
@@ -467,12 +465,12 @@ func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
 
 // applyDuckSessionInit borne les ressources de CHAQUE connexion (J2) puis applique
 // la timezone si fournie. memory_limit protège le conteneur d'un OOM ; threads borne
-// le parallélisme au nombre de vCPU. Cf. vars duckMemoryLimit / duckThreads.
+// le parallélisme au nombre de vCPU. Cf. duckMemoryLimit() / duckThreads(), relus ici.
 func applyDuckSessionInit(execer driver.ExecerContext, timezone string) error {
 	ctx := context.Background()
 	stmts := []string{
-		"SET memory_limit='" + duckMemoryLimit + "'",
-		"SET threads=" + strconv.Itoa(duckThreads),
+		"SET memory_limit='" + duckMemoryLimit() + "'",
+		"SET threads=" + strconv.Itoa(duckThreads()),
 	}
 	if timezone != "" {
 		stmts = append(stmts, "SET TimeZone='"+timezone+"'")

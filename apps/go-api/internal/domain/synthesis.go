@@ -154,6 +154,12 @@ type SynthesisPageV2Response struct {
 	// Gated (registry SynthesisCtx) + data-driven (front n'affiche que les KPI > 0).
 	// Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	ObjectiveStats *ObjectiveAggregate `json:"objective_stats,omitempty"`
+
+	// Bloc records de distance par arme (le frag mesuré le plus lointain de chaque arme,
+	// identifié pour être revu dans le rejeu). nil pour un titre sans positions par kill
+	// (Halo 5, `games.ErrCapabilityNotSupported` — jamais slug==) ou un scope sans frag
+	// mesuré. Cf. synthesis_weapon_records.go et PLAN_RECORDS_DISTANCE_2026-09-20.md.
+	WeaponRecords *SynthesisWeaponRecords `json:"weapon_records,omitempty"`
 }
 
 // SynthesisWeaponKillEntry est une ligne du classement frags par arme. Class/Role

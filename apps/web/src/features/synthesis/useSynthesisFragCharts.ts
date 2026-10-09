@@ -38,7 +38,7 @@ export function useSynthesisFragCharts(
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
   const detailTitle = formatMessage(fragsManifest, 'frags.charts.detail_title', appLocale)
 
-  const breakdown = buildFragDetailBreakdown(distribution, weapons ?? [], { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(distribution, weapons ?? [], { roleLabel, classLabel, locale: appLocale })
 
   const insight = weaponRoleInsight(distribution)
   const insightText = !insight

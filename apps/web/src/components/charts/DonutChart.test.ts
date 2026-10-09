@@ -100,4 +100,9 @@ describe('buildDonutOption', () => {
     expect(opt.series?.[0].data?.[0].itemStyle?.color).toBeDefined()
     expect(opt.series?.[0].data?.[1].itemStyle?.color).toBeDefined()
   })
+
+  it('étiquette d’arc par défaut : le nom et le pourcentage', () => {
+    const opt = buildDonutOption(makeSeries([{ name: 'a', value: 1 }])) as OptionShape
+    expect(opt.series?.[0].label?.formatter).toBe('{b}\n{d}%')
+  })
 })

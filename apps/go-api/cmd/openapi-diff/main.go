@@ -2,7 +2,7 @@
 // OpenAPI (paths + méthodes + schémas + propriétés/types/enums/defaults/examples/
 // required/descriptions). But : figer une BASELINE « avant » du chantier V72-01
 // (openapi.yaml généré par Huma) pour détecter toute perte sémantique à chaque
-// étape (gate H0/H3/H8 du plan .ai/V7/PLAN_V72_HUMA_OPENAPI.md).
+// étape (gate H0/H3/H8 du plan .ai/archive/V7.2/PLAN_V72_HUMA_OPENAPI.md).
 //
 // Ce n'est PAS un binaire externe en CI : c'est un outil Go du repo, exécuté à la
 // demande, dont la SORTIE (texte trié) est comparée par `diff`. Deux modes :

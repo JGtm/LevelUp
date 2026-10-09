@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "module": "sgh_blueprint",
+  "mapNames": [
+    "Recharge",
+    "Recharge - Ranked",
+    "recharge_-_ranked",
+    "recharge_sgh_blueprint",
+    "recharge_-_ranked_sgh_blueprint"
+  ],
+  "image": "sgh_blueprint.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T18:58:27.9674928Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.029,
+    "originX": -10.011253052711481,
+    "originY": 32.855047019958505,
+    "widthPx": 1605,
+    "heightPx": 1914,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 25,
+    "anchorsInFrame": 25,
+    "anchorsWithGround": 24,
+    "anchorMedianGapM": -0.28999826386898897,
+    "instancesDrawn": 2300,
+    "instancesScenery": 239,
+    "playLevelZ": 1.9100000476837158,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 17478375,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.19890836464917688,
+    "covered": false,
+    "cellsSubstituted": 840952,
+    "cellsClipped": 2382213,
+    "cellsAssumedFloor": 68221
+  }
+}

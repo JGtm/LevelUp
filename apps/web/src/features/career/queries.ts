@@ -19,7 +19,8 @@ export function useCareerPage(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.career(playerSlug, titleSlug),
-    queryFn: () => api.get<CareerPageResponse>(`/players/${playerSlug}/pages/career`),
+    queryFn: ({ signal }) =>
+      api.get<CareerPageResponse>(`/players/${playerSlug}/pages/career`, undefined, { signal }),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })
@@ -29,7 +30,10 @@ export function useCareerEncounters(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.careerEncounters(playerSlug, titleSlug),
-    queryFn: () => api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`),
+    queryFn: ({ signal }) =>
+      api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`, undefined, {
+        signal,
+      }),
     enabled: !!playerSlug,
     staleTime: 10 * 60 * 1000,
   })
@@ -44,10 +48,12 @@ export function useCareerHighlightMatches(playerSlug: string, filters: CareerHig
   const params = buildHighlightFilterParams(filters)
   return useQuery({
     queryKey: queryKeys.careerHighlightMatches(playerSlug, titleSlug, params),
-    queryFn: () => {
+    queryFn: ({ signal }) => {
       const qs = params ? `?${params}` : ''
       return api.get<CareerHighlightMatchesResponse>(
         `/players/${playerSlug}/pages/career/highlight-matches${qs}`,
+        undefined,
+        { signal },
       )
     },
     enabled: !!playerSlug,
@@ -80,8 +86,12 @@ export function useCareerTopEncounters(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.careerTopEncounters(playerSlug, titleSlug),
-    queryFn: () =>
-      api.get<CareerTopEncountersResponse>(`/players/${playerSlug}/pages/career/top-encounters`),
+    queryFn: ({ signal }) =>
+      api.get<CareerTopEncountersResponse>(
+        `/players/${playerSlug}/pages/career/top-encounters`,
+        undefined,
+        { signal },
+      ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })
@@ -92,7 +102,8 @@ export function useCareerRivals(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.careerRivals(playerSlug, titleSlug),
-    queryFn: () => api.get<CareerRivalsResponse>(`/players/${playerSlug}/pages/career/rivals`),
+    queryFn: ({ signal }) =>
+      api.get<CareerRivalsResponse>(`/players/${playerSlug}/pages/career/rivals`, undefined, { signal }),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })
@@ -105,9 +116,11 @@ export function useCareerCSRs(playerSlug: string, season?: string, enabled = tru
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.careerCSRs(playerSlug, titleSlug, season),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.get<CareerCSRResponse>(
         `/players/${playerSlug}/pages/career/csrs${season ? `?season=${encodeURIComponent(season)}` : ''}`,
+        undefined,
+        { signal },
       ),
     enabled: enabled && !!playerSlug,
     staleTime: 10 * 60 * 1000,

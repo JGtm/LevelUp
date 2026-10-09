@@ -77,8 +77,15 @@ type SquadMatchRow struct {
 	EnemyMMR       *float64
 	MyTeamScore    *int
 	EnemyTeamScore *int
-	MapID          string
-	PlaylistID     string
+	// MyRoundsWon / EnemyRoundsWon / RoundsTotal / GameVariantName : les MANCHES du match
+	// et la clé de la table `regulation.toml [rounds_decide]` (ADR 0032). Nil = inconnu →
+	// l'affichage garde les points.
+	MyRoundsWon     *int
+	EnemyRoundsWon  *int
+	RoundsTotal     *int
+	GameVariantName string
+	MapID           string
+	PlaylistID      string
 	// ExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), chargée
 	// depuis player.match_skill_rank. Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64
@@ -116,6 +123,17 @@ type ImpactEventRow struct {
 	TimeMS    int64
 }
 
+// SquadKillLogRow : une mort publiable de `match_kill_events_latest`, lue pour le badge
+// d'impact « Voleur » (analysis.ComputeThiefBadge). Chaîne vide / nil = non mesuré.
+type SquadKillLogRow struct {
+	MatchID         string
+	TimeMS          int64
+	KillerXUID      string
+	VictimXUID      string
+	AssistXUID      string
+	KillerDamagePct *int
+}
+
 // AllyParticipant est une ligne participant côté équipe alliée d'un match.
 // Chargé par SquadRepository.LoadMainTeamParticipants pour alimenter le calcul
 // des badges d'impact (analysis.ComputeMatchImpactFull) en périmètre team-wide
@@ -128,14 +146,6 @@ type AllyParticipant struct {
 	Deaths   int
 	Assists  int
 	Outcome  int
-}
-
-// SynthesisHeatmapRow est une ligne brute chargée depuis Q33 (heatmap map×mode).
-type SynthesisHeatmapRow struct {
-	MapName    string
-	ModeName   string
-	MatchCount int
-	Wins       int
 }
 
 // ---------------------------------------------------------------------------
@@ -231,18 +241,6 @@ type SquadPageResponse struct {
 // ---------------------------------------------------------------------------
 // Types de réponse — Synthèse
 // ---------------------------------------------------------------------------
-
-// HeatmapCell est une cellule de la heatmap carte × mode de jeu.
-//
-// P7.1 (revue 2026-04-29) : champs renommés `RowKey/ColKey` (axes ECharts)
-// → `MapName/ModeName` (sémantique métier — la heatmap est toujours
-// map × mode pour la synthèse Squad).
-type HeatmapCell struct {
-	MapName  string  `json:"map_name"`
-	ModeName string  `json:"mode_name"`
-	Value    float64 `json:"value"`
-	Count    int     `json:"count"`
-}
 
 // TopWeekEntry est une semaine performante dans l'historique du joueur.
 // WeekStart est l'ISO date (YYYY-MM-DD) du lundi 00:00 UTC de la semaine,

@@ -90,7 +90,11 @@ Each item cites its source so it can be re-verified against the code. Structure:
 - [ ] **`GET /health` returns 200** on `127.0.0.1:8000` — the healthcheck opens metadata +
       shared read-only and returns match count + DuckDB version, so 200 confirms both the
       binary is up and the DBs open (source: `scripts/deploy.sh` step 4; deploy fails if it
-      does not respond within 90 s).
+      does not respond within 90 s). While it boots, the server already listens: `/health`
+      and `/api/*` answer **503 `server_starting`** (step in `details.step`) and the web page
+      is served and waits. `deploy.sh` (`curl -sf`) and the Docker healthcheck
+      (`-health-check`, `start_period` 20 s) only accept 200, so both keep waiting for the
+      real "ready" — a 503 during the first seconds is expected, not a failure.
 - [ ] **Boot logs show migrations OK, no FATAL.** Logs are per-category files under
       `/opt/levelup/data/logs/*.log` — grep ALL of them, not just one:
       `grep -riE 'FATAL|panic' /opt/levelup/data/logs/*.log`. Check `migration.log`,
@@ -110,18 +114,16 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside
       the admin group). Confirm an anonymous request is rejected and an admin request
       returns JSON.
-- [ ] **`legacy_source_used_*` telemetry visible in `/debug/vars`** (key `levelup`).
-      Counters: `legacy_source_used_duckdb_msal`, `_duckdb_oauth`, `_env_oauth`,
-      `_watcher_legacy` (source: `internal/observability/legacy_source.go`). This is the
-      machine signal that arms D2 (ADR 0023 Phase 5): while > 0, installs still depend on
-      the legacy auth fallback.
-- [ ] **NOTE THE D1A PRODUCTION DATE.** D1A (legacy-source telemetry) goes live with this
-      merge. Record the exact deploy date in the parent plan §6 — it arms D2 at **≥ 7 days**
-      after. TODO fill-in below:
-
-      > **D1A live in production on: `__________` (YYYY-MM-DD).**
-      > D2 (`refactor/adr0023-phase5`) may start on/after `live_date + 7d`, gated on
-      > `legacy_source_used_*` observed over that window (parent plan step 8).
+- [ ] **No legacy auth reader runs at boot** (ADR 0023 Phase 5, closed 2026-09-13).
+      The legacy auth fallbacks were removed on 2026-08-25, and the one-shot boot
+      migration, their last consumer, on 2026-09-13 (`7fd6d0fcb`), once its criterion
+      held in prod: `auth_migration: scan terminé` with `rt_migrated=0` at every boot
+      since 2026-06-14 (re-checked on 2026-10-02 in `auth.log`: 499 scans, the only two
+      non-zero ones on 2026-06-13). On the first deploy that ships this removal,
+      `auth.log` must show NO new `auth_migration:` line after the boot — one still
+      appearing means the previous binary is running. Refresh tokens come solely from
+      `data/auth/watcher_tokens/{xuid}.json` (source: ADR 0023, Phase 5 closure section;
+      anti-resurrection ratchets in `internal/platform/auth/sentinel_test.go`).
 
 - [ ] **shared_social durability after writes.** Any social write path must `CHECKPOINT`
       shared_social (ADR 0022) — without it the WAL can be lost (incident #7659). If a

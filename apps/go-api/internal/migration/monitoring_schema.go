@@ -131,9 +131,11 @@ var monitoringDDL = []string{
 }
 
 // EnsureMonitoringSchema pose (idempotemment) le schéma de la base monitoring
-// globale. Réentrant : sûr à chaque ouverture du store.
+// globale, observabilité PUIS file durable de construction (build_queue_schema.go
+// — même base, même writer, mêmes invariants append-only). Réentrant : sûr à
+// chaque ouverture du store.
 func EnsureMonitoringSchema(ctx context.Context, db *sql.DB) error {
-	for _, stmt := range monitoringDDL {
+	for _, stmt := range append(append([]string{}, monitoringDDL...), buildQueueDDL...) {
 		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("migration monitoring: %w", err)
 		}

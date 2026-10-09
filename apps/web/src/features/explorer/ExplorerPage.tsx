@@ -27,6 +27,7 @@ import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import {
   EXPLORER_URL_KEYS,
@@ -39,6 +40,7 @@ import {
 
 import { ExplorerMatchesMode } from './ExplorerPage.matchesMode'
 import { ExplorerPlayerMode } from './ExplorerPage.playerMode'
+import { splitCommonMatchRows } from './explorerTableRows'
 import { buildExplorerFilterOptions } from './ExplorerPage.filterOptions'
 
 type SearchMode = 'matches' | 'player'
@@ -97,6 +99,7 @@ export function ExplorerPage() {
     startDate,
     endDate,
     squadScope,
+    replayScope: replayScopeMemorise,
     matchIDSearch,
     expTypes,
     playlists,
@@ -106,6 +109,20 @@ export function ExplorerPage() {
     skillTiers,
     outcomeFilter,
   } = scope
+
+  // LE FILTRE « Avec rejeu / Sans rejeu » EST NEUTRALISE SUR UN TITRE SANS `replay`
+  // (revue C-R1, constat C5). Le masquer ne suffisait pas : la portee est memorisee dans
+  // `levelup-explorer-scope:{playerSlug}`, une cle scopee par JOUEUR et non par titre. Poser
+  // « Avec rejeu » sur halo_infinite puis basculer sur halo_5 reinjectait donc `replay=with`
+  // au chargement — liste filtree a zero match, contröle invisible, et rien pour le corriger
+  // sinon tout effacer. Meme chose pour une URL portant `?replay=with`.
+  //
+  // La neutralisation est ICI, au point de LECTURE, et pas au montage du <select> : c'est le
+  // seul endroit qui couvre a la fois le miroir, l'URL, la charge utile envoyee au backend et
+  // le bandeau « filtres actifs ». La valeur memorisee n'est pas effacee — elle redevient
+  // active telle quelle si le joueur repasse sur un titre qui a le rejeu.
+  const hasReplayCapability = useCapability('replay')
+  const replayScope = hasReplayCapability ? replayScopeMemorise : ''
 
   // saisonOpen reste local : pur état d'ouverture de dropdown (pas du scope).
   const [saisonOpen, setSaisonOpen] = useState(false)
@@ -240,6 +257,7 @@ export function ExplorerPage() {
       map_names: mapNames.size > 0 ? [...mapNames] : undefined,
       mode_names: modeNames.size > 0 ? [...modeNames] : undefined,
       squad_scope: squadScope || undefined,
+      replay_scope: replayScope || undefined,
       match_id_search: debouncedMatchIDSearch || undefined,
     },
     filterContextHash,
@@ -256,41 +274,30 @@ export function ExplorerPage() {
   // Mode Joueur : extraction des match_ids communs séparés par rôle
   // (ally vs enemy) depuis la réponse player-query, pour piloter les 2
   // tableaux scopés ci-dessous.
-  const allyMatchIds = (playerQuery.data?.common_matches ?? [])
-    .filter((m) => m.were_teammates)
-    .map((m) => m.match_id)
-  const enemyMatchIds = (playerQuery.data?.common_matches ?? [])
-    .filter((m) => !m.were_teammates)
-    .map((m) => m.match_id)
+  const commonMatches = playerQuery.data?.common_matches ?? []
+  const allyMatchIds = commonMatches.filter((m) => m.were_teammates).map((m) => m.match_id)
+  const enemyMatchIds = commonMatches.filter((m) => !m.were_teammates).map((m) => m.match_id)
 
-  // Requête tableau "matchs en allié" — réutilise le pipeline matches-query
-  // avec un filtre match_ids (whitelist). Activée uniquement quand on a des
-  // match_ids ET qu'on est en mode Joueur.
-  const allyMatchesQuery = useExplorerMatches(
+  // UNE requête pour les deux tableaux "matchs en allié" / "matchs en ennemi" : le
+  // pipeline matches-query avec tous les matchs communs en liste blanche, réparti
+  // ensuite par rôle (splitCommonMatchRows). Deux requêtes payaient deux fois la
+  // lecture de l'historique complet côté serveur pour des lignes identiques.
+  const commonMatchIds = commonMatches.map((m) => m.match_id)
+  const commonMatchesQuery = useExplorerMatches(
     playerSlug,
     {
       filters: explorerFilterContext,
       pagination: { page: 1, page_size: 10000 },
       sort_field: 'start_time',
       sort_dir: 'desc',
-      match_ids: allyMatchIds,
+      match_ids: commonMatchIds,
     },
     filterContextHash,
-    mode === 'player' && allyMatchIds.length > 0,
+    mode === 'player' && commonMatchIds.length > 0,
   )
-
-  const enemyMatchesQuery = useExplorerMatches(
-    playerSlug,
-    {
-      filters: explorerFilterContext,
-      pagination: { page: 1, page_size: 10000 },
-      sort_field: 'start_time',
-      sort_dir: 'desc',
-      match_ids: enemyMatchIds,
-    },
-    filterContextHash,
-    mode === 'player' && enemyMatchIds.length > 0,
-  )
+  const commonRows = commonMatchesQuery.data
+    ? splitCommonMatchRows(commonMatchesQuery.data.table.items, allyMatchIds, enemyMatchIds)
+    : undefined
 
   const summary = matchesQuery.data?.summary
 
@@ -334,7 +341,11 @@ export function ExplorerPage() {
     !!startDate ||
     !!endDate ||
     !!squadScope ||
-    !!matchIDSearch ||
+    !!replayScope ||
+    // `.trim()` : le backend ignore les blancs d'une recherche par match ID (un GUID n'en
+    // porte aucun), donc une saisie qui s'y réduit ne filtre RIEN — annoncer « filtres actifs »
+    // pour elle proposerait d'effacer un filtre qui n'existe pas.
+    !!matchIDSearch.trim() ||
     expTypes.size > 0 ||
     playlists.size > 0 ||
     mapNames.size > 0 ||
@@ -373,8 +384,8 @@ export function ExplorerPage() {
             playerQuery={playerQuery}
             allyMatchIds={allyMatchIds}
             enemyMatchIds={enemyMatchIds}
-            allyMatchesData={allyMatchesQuery.data}
-            enemyMatchesData={enemyMatchesQuery.data}
+            allyRows={commonRows?.ally}
+            enemyRows={commonRows?.enemy}
             onSelectTarget={selectTarget}
             onOpenHeadToHead={openHeadToHead}
           />
@@ -388,11 +399,13 @@ export function ExplorerPage() {
             endDate={endDate}
             matchIDSearch={matchIDSearch}
             squadScope={squadScope}
+            replayScope={replayScope}
             squadCountByValue={squadCountByValue}
             onStartDateChange={handleStartDate}
             onEndDateChange={(v) => setScope({ endDate: v })}
             onMatchIDSearchChange={(v) => setScope({ matchIDSearch: v })}
             onSquadScopeChange={(v) => setScope({ squadScope: v })}
+            onReplayScopeChange={(v) => setScope({ replayScope: v })}
             seasons={seasons}
             activeSeason={activeSeason}
             saisonOpen={saisonOpen}

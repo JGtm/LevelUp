@@ -1,0 +1,62 @@
+=== RUN   TestHillShapesMeasure
+2026/08/19 00:38:58 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+2026/08/19 00:40:15 INFO pont slot->joueur slots=74 viesNommees=69 viesTotal=87 lecturesIndex=19 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 00:40:15 INFO rejeu : tractions de grappin tirs=0 accroches=0 tractions=0 vies=0 rates=0 corpsCasses=0
+2026/08/19 00:40:15 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/19 00:40:15 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 objetsDObjectif=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/19 00:40:15 WARN rejeu : appariements ECARTES — zones absentes de l'etat publie match_id=8076f97f methode=positions+geometry nonApparies=2 apparies=4 captures=0 attribuees=0
+2026/08/19 00:40:15 INFO rejeu : etat des zones match_id=8076f97f methode=positions+geometry catalogue=5 slots=25 apparies=4 nonApparies=2 sansProprietaire=0 intervalles=7 periodesColline=7 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/19 00:40:15 INFO rejeu : episodes d'equipement actif viesPubliees=77 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/19 00:40:15 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/19 00:40:15 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    hill_shapes_measure_test.go:401: FILM 8076f97f (KOTH, shogun) — 5 formes de colline depuis catalogue (role hill) ; 77 trajectoires, 3398 frames de 100 ms
+    hill_shapes_measure_test.go:405:   forme 0 : boite 2.04 x 2.80 (h +1.96/-0.00) centre (-45.80 ; -0.00 ; 64.85) idx 4220 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 1 : cylindre r=3.55 (h +3.44/-0.00) centre (-37.95 ; 7.75 ; 63.05) idx 4225 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 2 : boite 1.89 x 2.00 (h +1.80/-0.00) centre (-37.95 ; 16.10 ; 63.95) idx 4218 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 3 : cylindre r=1.65 (h +2.00/-0.00) centre (-21.75 ; 14.60 ; 63.45) idx 4223 inst 0 team -1
+    hill_shapes_measure_test.go:405:   forme 4 : boite 1.25 x 1.25 (h +2.00/-0.00) centre (-19.15 ; 1.10 ; 66.75) idx 2787 inst 0 team -1
+    hill_shapes_measure_test.go:415:   POSITIONS : 17337 points bruts, 19537 positions tenues ; ecart entre deux points d'une vie p50 1, p90 1, p99 1, max 235 frames
+    hill_shapes_measure_test.go:419:   RAMPES : 22 (premiere a la frame 400 = 40.0 s ; 6 slots de jauge)
+    hill_shapes_measure_test.go:422:     rampe  0 slot 1543 [  40.0 s ;   40.9 s] -> forme  1 votes   10 · emissions   9 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  1 slot 1543 [  66.6 s ;   67.6 s] -> forme  1 votes   11 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  2 slot 1543 [  77.7 s ;   79.3 s] -> forme  1 votes   19 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte  58.8 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  3 slot 1543 [  83.8 s ;   84.8 s] -> forme  1 votes   11 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  4 slot 1543 [  91.0 s ;   97.0 s] -> forme  0 votes   26 · emissions  10 occupees 100.0 % · frames  42.6 % (stricte  36.1 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  5 slot 1543 [ 101.2 s ;  102.4 s] -> forme -1 votes    0 · emissions   0 occupees   0.0 % · frames   0.0 % (stricte   0.0 %) NON APPARIEE
+    hill_shapes_measure_test.go:422:     rampe  6 slot 1543 [ 117.7 s ;  118.6 s] -> forme  1 votes   19 · emissions   9 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  7 slot 1543 [ 120.9 s ;  125.8 s] -> forme  1 votes   93 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  8 slot 1543 [ 138.8 s ;  138.9 s] -> forme  1 votes    4 · emissions   6 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe  9 slot 1543 [ 155.9 s ;  156.8 s] -> forme  1 votes   10 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 10 slot 1543 [ 156.9 s ;  181.7 s] -> forme  1 votes  371 · emissions  10 occupees 100.0 % · frames  65.5 % (stricte  63.5 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 11 slot 1543 [ 186.6 s ;  187.6 s] -> forme  2 votes   20 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte   9.1 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 12 slot 1543 [ 200.1 s ;  200.4 s] -> forme -1 votes    0 · emissions   0 occupees   0.0 % · frames   0.0 % (stricte   0.0 %) NON APPARIEE
+    hill_shapes_measure_test.go:422:     rampe 13 slot 1543 [ 212.2 s ;  212.4 s] -> forme  2 votes    3 · emissions  12 occupees 100.0 % · frames 100.0 % (stricte   0.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 14 slot 1543 [ 215.4 s ;  216.3 s] -> forme  2 votes   10 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte   0.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 15 slot 1543 [ 227.1 s ;  228.9 s] -> forme  2 votes   12 · emissions  10 occupees 100.0 % · frames  63.2 % (stricte   0.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 16 slot 1543 [ 237.3 s ;  238.3 s] -> forme -1 votes    0 · emissions   0 occupees   0.0 % · frames   0.0 % (stricte   0.0 %) NON APPARIEE
+    hill_shapes_measure_test.go:422:     rampe 17 slot 1543 [ 238.4 s ;  256.4 s] -> forme  2 votes  159 · emissions  10 occupees  70.0 % · frames  83.4 % (stricte   1.1 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 18 slot 1543 [ 286.1 s ;  287.0 s] -> forme  3 votes   20 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 19 slot 1543 [ 289.3 s ;  290.2 s] -> forme  3 votes   10 · emissions  10 occupees 100.0 % · frames 100.0 % (stricte 100.0 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 20 slot 1543 [ 291.7 s ;  293.1 s] -> forme  3 votes   18 · emissions  10 occupees 100.0 % · frames  86.7 % (stricte  66.7 %) dedans
+    hill_shapes_measure_test.go:422:     rampe 21 slot 1543 [ 313.2 s ;  317.2 s] -> forme  3 votes   18 · emissions  10 occupees 100.0 % · frames  31.7 % (stricte  26.8 %) dedans
+    hill_shapes_measure_test.go:422:     forme -1 : 3 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  0 : 1 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  1 : 9 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  2 : 5 rampe(s)
+    hill_shapes_measure_test.go:422:     forme  3 : 4 rampe(s)
+    hill_shapes_measure_test.go:428:   MESURE (D4, seuil 90 %) : appariees 19/22, DEDANS (emissions croissantes) 19/22 = 86.4 %, dedans (frames) 17/22 = 77.3 %
+    hill_shapes_measure_test.go:429:   TEMOIN formes permutees   : appariees 19/22, DEDANS (emissions croissantes) 19/22 = 86.4 %, dedans (frames) 17/22 = 77.3 %
+    hill_shapes_measure_test.go:430:   TEMOIN periodes +20 s     : appariees 20/22, DEDANS (emissions croissantes) 20/22 = 90.9 %, dedans (frames) 19/22 = 86.4 %
+    hill_shapes_measure_test.go:432:   TEMOIN formes deplacees   : appariees 7/22, DEDANS (emissions croissantes) 5/22 = 22.7 %, dedans (frames) 4/22 = 18.2 % (deplacement +6 m ; +6 m)
+    hill_shapes_measure_test.go:433:   HASARD : une colline occupee sur 85.6 % des frames du match (permutees : 84.6 %, deplacees : 18.4 %)
+    hill_shapes_measure_test.go:436:   MANQUES (D3 emissions) : 3 non appariees (duree mediane 1.1 s), 0 appariees a une forme occupee >= 30 % des frames mais VIDE a chaque emission croissante, 0 autres
+    hill_shapes_measure_test.go:438:   PRODUCTION (buildHillStates sur 5 formes) : methode positions+geometry · periodes 7 · zones 4 · non appariees 2 · frames actives 2732/3398 = 80.4 %
+    hill_shapes_measure_test.go:439:   AVANT (Bastion+Extraction, 3 formes) : 1 periodes, 1 zones, 1 rampes non appariees
+    hill_shapes_measure_test.go:439:   APRES (collines, 5 formes)            : 7 periodes, 4 zones, 2 rampes non appariees
+    hill_shapes_measure_test.go:439:     periode  0 [  400 ;  3397] AVANT zone 1 strongholds_zone (-32.4 ; 15.4) -> colline 1 (-38.0 ; 7.7) a 6.6 m de la forme AVANT — DISTINCTE
+    hill_shapes_measure_test.go:439:   AVANT/APRES : 1 periodes AVANT, 1 dont la colline est DISTINCTE de la forme AVANT
+    hill_shapes_measure_test.go:444:   GATE 2 (ce film) : NON TENU
+--- PASS: TestHillShapesMeasure (86.78s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	88.715s
+EXIT=0

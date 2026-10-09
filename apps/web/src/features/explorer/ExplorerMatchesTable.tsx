@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (revue R1 du lot v2 D, constat C8) : 839 lignes de code pour le tableau de matchs de l'Explorer (colonnes, tri client, filtres, rendu). RETRAIT MESURABLE : la table de colonnes sort dans un `_columns.ts` et le fichier repasse sous 500 — hors perimetre du lot v2 D (modele web du rejeu), qui n'y touche que par le merge du lot C. */
 /**
  * ExplorerMatchesTable — tableau historique mode "Matchs" de l'Explorer.
  *
@@ -15,7 +16,7 @@
  *  - Playlist + Mode tronqués à 12 chars (truncateName) avec tooltip natif
  *    sur le label complet via attribut HTML `title`.
  *
- * Colonnes : Ouvrir | Waypoint | Date | Carte | Playlist | Mode | Contexte |
+ * Colonnes : Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode | Contexte |
  *            Résultat | Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  *
@@ -23,6 +24,12 @@
  * Halo Waypoint, gatée par la capability `waypoint_match_url` (déclarée par les
  * DEUX titres depuis le 2026-07-24) ET par la préférence locale
  * `localUiPrefs.showWaypointColumn` (Settings → Apparence, défaut ON).
+ *
+ * Colonne « Rejeu » : lien interne vers la page de rejeu 2D, via le composant partagé
+ * `lib/match-nav/MatchReplayLink`. DEUX PORTES depuis le 2026-09-05 (registre L5) : la
+ * capability `replay` du TITRE masque la colonne entière (un titre sans décodeur de film
+ * n'aura jamais d'artefact — la colonne serait vide à perpétuité), et la donnée
+ * `has_replay` décide LIGNE PAR LIGNE si l'icône est rendue.
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -51,6 +58,7 @@ import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
+import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -346,6 +354,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // ET par préférence LOCALE (Apparence → « Colonne Halo Waypoint sur les listes
   // de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
+  // Colonne « Rejeu » : porte de TITRE (cf. en-tête). La porte de LIGNE (`has_replay`)
+  // vit dans MatchReplayLink.
+  const replayCapability = useCapability('replay')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -405,7 +416,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         id: 'waypoint',
-        header: '',
+        // En-tête « HW » (retour utilisateur 2026-09-09) : abrégé de Halo Waypoint —
+        // la colonne ne fait qu'une icône de large. Même traitement que sa voisine
+        // « Rejeu » : une colonne d'icône se nomme quand même.
+        header: t('explorer.matches.col_waypoint'),
         cell: (ctx) => (
           <a
             href={buildWaypointMatchUrl(playerSlug, ctx.row.original.match_id, currentTitleSlug)}
@@ -437,6 +451,27 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
             />
           </a>
+        ),
+      },
+      {
+        id: 'replay',
+        // En-tête « Rejeu » / « Replay » (retour utilisateur 2026-09-09) : la colonne
+        // était la seule anonyme du tableau — l'icône seule ne se nomme pas.
+        header: t('explorer.matches.col_replay'),
+        // Lien INTERNE vers la page de rejeu 2D — composant partagé avec le tableau
+        // Synergies (lib/match-nav/MatchReplayLink), qui porte la règle d'affichage :
+        // rien n'est rendu sans artefact.
+        //
+        // JAMAIS TRIABLE, comme sa jumelle de SquadSynergyHistoryTable : la colonne n'a
+        // pas de valeur d'accès, donc un tri n'ordonnerait rien.
+        enableSorting: false,
+        cell: (ctx) => (
+          <MatchReplayLink
+            available={!!ctx.row.original.has_replay}
+            matchId={ctx.row.original.match_id}
+            playerSlug={playerSlug}
+            label={t('explorer.matches.col_replay_aria')}
+          />
         ),
       },
       {
@@ -919,8 +954,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // qui garde PRIORITÉ (ex: SessionMatchesTable variant="compact" peut la
   // masquer explicitement via COMPACT_HIDDEN_COLUMNS).
   const internalColumnVisibility = useMemo(
-    () => ({ waypoint: waypointCapability && showWaypointColumnPref }),
-    [waypointCapability, showWaypointColumnPref],
+    () => ({
+      waypoint: waypointCapability && showWaypointColumnPref,
+      replay: replayCapability,
+    }),
+    [waypointCapability, showWaypointColumnPref, replayCapability],
   )
 
   const table = useReactTable<ExplorerMatchRow>({

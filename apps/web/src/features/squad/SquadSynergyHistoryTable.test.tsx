@@ -3,7 +3,7 @@
  * « Ouvrir sur Halo Waypoint » (I19, remplace l'ancien texte « ↗ wp »).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
@@ -16,6 +16,32 @@ const navigateMock = vi.fn()
 vi.mock('@/lib/match-nav/useNavigateToMatch', () => ({
   useNavigateToMatch: () => navigateMock,
 }))
+
+// TanStack Router : <Link> exige un RouterProvider, absent en test unitaire. Le stub
+// INTERPOLE les params dans le template de route — ce que le test vérifie (route
+// ciblée + params). Patron : features/synthesis/SynthesisHighlightsSection.test.tsx.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  type LinkStubProps = {
+    children?: React.ReactNode
+    to: string
+    params?: Record<string, string>
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  return {
+    ...actual,
+    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+      let href = to
+      for (const [key, value] of Object.entries(params ?? {})) {
+        href = href.replace(`$${key}`, value)
+      }
+      return (
+        <a href={href} {...rest}>
+          {children}
+        </a>
+      )
+    },
+  }
+})
 
 function makeRow(overrides: Partial<SquadMatchHistoryRow> = {}): SquadMatchHistoryRow {
   return {
@@ -167,5 +193,61 @@ describe('SquadSynergyHistoryTable — lien « Ouvrir sur Halo Waypoint » (I19)
     )
     fireEvent.click(screen.getByRole('link', { name: WAYPOINT_LABEL }))
     expect(navigateMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
+  const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
+
+  it('rend un lien interne vers la page de rejeu quand has_replay est vrai', () => {
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="Chocoboflor" />,
+    )
+    const link = screen.getByRole('link', { name: REPLAY_LABEL })
+    expect(link.getAttribute('href')).toContain('/matches/match-1/replay')
+  })
+
+  it('ne rend RIEN quand has_replay est faux ou absent', () => {
+    renderWithProviders(
+      <SquadSynergyHistoryTable
+        rows={[makeRow({ has_replay: false }), makeRow({ match_id: 'match-2' })]}
+        playerSlug="me"
+      />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+  })
+
+  // PORTE DE TITRE (2026-09-05, registre L5) : la colonne entiere disparait pour un titre
+  // sans decodeur de film — meme forme conditionnelle que sa voisine Waypoint.
+  // LA COLONNE, PAS SEULEMENT LE LIEN (revue C-R1, constat C2). Asserter l'absence du lien
+  // ne prouve rien : `MatchReplayLink` le masque deja tout seul, donc les deux portes se
+  // couvraient mutuellement et aucune n'etait testee. On compte les colonnes : sans la
+  // capability, le tableau en a UNE de moins — plus d'en-tete fantome ni de cellules vides.
+  it("masquée quand le titre courant ne déclare pas la capability replay", () => {
+    // Les deux rendus ne different QUE par `replay` : sinon `team_mmr` et
+    // `waypoint_match_url` feraient varier le compte pour une autre raison.
+    setTitleCaps(['team_mmr', 'waypoint_match_url', 'replay'])
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
+    )
+    const avecColonne = screen.getAllByRole('columnheader').length
+    const cellulesAvec = document.querySelectorAll('tbody tr:first-child td').length
+    cleanup()
+
+    setTitleCaps(['team_mmr', 'waypoint_match_url'])
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.queryByRole('link', { name: REPLAY_LABEL })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('columnheader')).toHaveLength(avecColonne - 1)
+    expect(document.querySelectorAll('tbody tr:first-child td')).toHaveLength(cellulesAvec - 1)
+  })
+
+  it('rendue quand le titre déclare `replay` ET que la ligne porte un artefact', () => {
+    setTitleCaps(['replay'])
+    renderWithProviders(
+      <SquadSynergyHistoryTable rows={[makeRow({ has_replay: true })]} playerSlug="me" />,
+    )
+    expect(screen.getByRole('link', { name: REPLAY_LABEL })).toBeInTheDocument()
   })
 })

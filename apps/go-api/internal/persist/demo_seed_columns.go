@@ -30,6 +30,7 @@ var MatchRegistryColumns = []string{
 	"duration_seconds", "playable_duration_seconds",
 	"real_start_time", "team_0_score", "team_1_score",
 	"team_0_ps_score", "team_1_ps_score",
+	"team_0_rounds_won", "team_1_rounds_won", "rounds_total",
 	"match_intensity", "backfill_completed", "events_loaded",
 	"first_sync_by", "first_sync_at", "last_updated_at",
 	"player_count",

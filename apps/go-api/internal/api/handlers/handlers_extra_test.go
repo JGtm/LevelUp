@@ -139,8 +139,9 @@ func TestMatchHistoryHandler_Export_OK(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	mock := &mockMatchHistoryService{
 		csvRows: []domain.MatchHistoryRow{
-			{MatchID: "m1", StartTime: now, OutcomeLabel: "WIN", ScoreLabel: "25-10", MatchURL: "/m/m1"},
+			{MatchID: "m1", StartTime: now, Outcome: "win", ScoreLabel: "25-10", MatchURL: "/m/m1"},
 		},
+		outcomeText: "WIN",
 	}
 	factory := func(_ context.Context, slug string) (port.MatchHistoryService, string, string, error) {
 		if slug != testPlayerSlug {
@@ -363,7 +364,7 @@ func TestCitationsHandler_GetCommendations_WithCategoryFilter(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSetupHandler_CreatePlayer_ManualMode_OK(t *testing.T) {
-	svc := &mockProfileService{playerKey: "test-gt"}
+	svc := &mockDirectory{playerKey: "test-gt"}
 	r := newSetupRouter(t, true, svc)
 	body := `{"gamertag":"TestGT","profile_mode":"manual"}`
 	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewBufferString(body))
@@ -375,8 +376,8 @@ func TestSetupHandler_CreatePlayer_ManualMode_OK(t *testing.T) {
 	}
 }
 
-func TestSetupHandler_CreatePlayer_ProfileServiceError(t *testing.T) {
-	svc := &mockProfileService{err: errors.New("disk full")}
+func TestSetupHandler_CreatePlayer_OnboardError(t *testing.T) {
+	svc := &mockDirectory{err: errors.New("disk full")}
 	r := newSetupRouter(t, true, svc)
 	body := `{"gamertag":"TestGT","profile_mode":"manual"}`
 	req := httptest.NewRequest(http.MethodPost, "/setup/players", bytes.NewBufferString(body))

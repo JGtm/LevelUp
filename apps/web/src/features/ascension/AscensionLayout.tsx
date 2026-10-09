@@ -7,20 +7,29 @@
  *   /ascension/objectifs     → tab "Objectifs" (couche Prestige)
  *   /ascension/coaching      → tab "Entraînement"
  *   /ascension/realisations  → tab "Réalisations"
+ *   /ascension/tactique      → tab "Tactique" (2026-09-06)
  *
  * Le layout fournit le header (H1 + sous-titre), le bandeau TipsTicker
  * partagé, et la barre d'onglets. Le contenu de chaque tab est rendu
  * via <Outlet />.
  *
  * Refonte Ascension UX (2026-07) : restructuration 3 → 4 onglets (DEC-3).
+ * Phase 4 du plan Tactique (2026-09-06) : 5e onglet « Tactique », derrière
+ * `FeatureGate capability="replay"` — un titre sans décodage de film ne produit
+ * aucune position mesurée, donc aucune lecture de placement : l'onglet n'apparaît
+ * pas plutôt que de mener à une page morte. C'est la PREMIÈRE des deux portes ; la
+ * seconde est sur la route elle-même (cf. `features/tactical/TacticalTab`), parce
+ * qu'une URL peut être ouverte directement sans passer par cette barre.
  */
 import { useMemo } from 'react'
 import { Link, Outlet, useMatchRoute, useParams } from '@tanstack/react-router'
+import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useTitleSlug } from '@/lib/title-routing'
 import { TipsTicker } from '@/components/ui/tips-ticker'
 import { buildAscensionTips } from './tips'
 import { getAscensionText } from './i18n'
+import { edgeFadeMask, useTabStripScroll } from './useTabStripScroll'
 
 function LightbulbIcon() {
   return (
@@ -56,13 +65,17 @@ export function AscensionLayout() {
   const objectivesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/objectifs' as const
   const coachingRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/coaching' as const
   const realisationsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/realisations' as const
+  const tacticalRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/ascension/tactique' as const
   const isObjectives = !!matchRoute({ to: objectivesRoute })
   const isCoaching = !!matchRoute({ to: coachingRoute })
   const isRealisations = !!matchRoute({ to: realisationsRoute })
-  const isProfile = !isObjectives && !isCoaching && !isRealisations
+  const isTactical = !!matchRoute({ to: tacticalRoute })
+  const isProfile = !isObjectives && !isCoaching && !isRealisations && !isTactical
+  const activeTab = isObjectives ? 'objectives' : isCoaching ? 'coaching' : isRealisations ? 'realisations' : isTactical ? 'tactical' : 'profile'
+  const { ref: stripRef, edges: stripEdges, onScroll: onStripScroll } = useTabStripScroll(activeTab)
 
   return (
-    <main className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
+    <main className="space-y-6 p-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
         <p className="text-sm text-muted-foreground">{t.pageSubtitle}</p>
@@ -74,10 +87,15 @@ export function AscensionLayout() {
         leadingIcon={<LightbulbIcon />}
       />
 
+      {/* Étroite, la barre défile à l'horizontale (barre de défilement masquée, fondu au bord
+          qui cache encore des onglets) et garde l'onglet actif visible. */}
       <nav
+        ref={stripRef}
         role="tablist"
         aria-label={t.tabsAriaLabel}
-        className="flex border-b border-border"
+        className="relative flex overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={edgeFadeMask(stripEdges)}
+        onScroll={onStripScroll}
       >
         <Link
           to={profileRoute}
@@ -115,6 +133,17 @@ export function AscensionLayout() {
         >
           {t.tabRealisations}
         </Link>
+        <FeatureGate capability="replay">
+          <Link
+            to={tacticalRoute}
+            params={{ titleSlug, playerSlug }}
+            role="tab"
+            aria-selected={isTactical}
+            className={tabClass(isTactical)}
+          >
+            {t.tabTactical}
+          </Link>
+        </FeatureGate>
       </nav>
 
       <Outlet />
@@ -124,7 +153,7 @@ export function AscensionLayout() {
 
 function tabClass(active: boolean): string {
   return [
-    'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+    'shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
     active
       ? 'border-primary text-foreground'
       : 'border-transparent text-muted-foreground hover:text-foreground',

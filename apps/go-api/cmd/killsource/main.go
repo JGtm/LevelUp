@@ -1,7 +1,7 @@
 // Commande killsource — exercer le decodeur de la SOURCE DE DEGAT sur un film Theater, seul.
 //
 // A QUOI ELLE SERT. AUCUN CHEMIN D EXECUTION DE L APPLICATION ne passe encore par le paquet
-// `internal/games/halo_infinite/film/killsource` : son unique importeur cote application est le
+// `internal/games/halo_infinite/film/internal/facts/killsource` : son unique importeur cote application est le
 // pont `internal/sync/killsource_bridge.go`, ecrit d avance et lui-meme sans appelant. Le paquet
 // est donc autonome, et il doit pouvoir etre teste a fond avant d etre branche. Cette commande est
 // ce moyen. Elle ne touche ni la base, ni le reseau, ni les fichiers du jeu : elle lit des chunks
@@ -14,10 +14,12 @@
 //
 // USAGE
 //
-//	go run ./cmd/killsource kills    <film>            la table des morts, lisible
-//	go run ./cmd/killsource json     <film>            la meme chose, en JSON
-//	go run ./cmd/killsource sante    <film>            la metrique de sante et son verdict
-//	go run ./cmd/killsource comparer <film> <film>     ce qui change entre deux films
+//	go run ./cmd/killsource kills    <film> -carte <nom>             la table des morts, lisible
+//	go run ./cmd/killsource json     <film> -carte <nom>             la meme chose, en JSON
+//	go run ./cmd/killsource sante    <film> -carte <nom>             la metrique de sante et son verdict
+//	go run ./cmd/killsource comparer <film> <film> -carte <a>,<b>    ce qui change entre deux films
+//
+// `-carte` est OBLIGATOIRE (2026-09-27, cf. carte.go) : sans la carte du match, la commande refuse.
 //
 // `<film>` est soit un identifiant court de 8 caracteres (resolu sous `-cache`), soit un chemin
 // de repertoire contenant `chunk_NN.bin`. Pour lister les films en cache :
@@ -40,7 +42,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // defaultCacheDir : la racine du cache de films, relative a `apps/go-api/`. Meme valeur que
@@ -84,15 +88,22 @@ func analyserArgs(args []string) (options, []string, error) {
 		"Table : ajouter les colonnes techniques (tag brut, voie de lecture, statut)")
 	profil := fs.String("profil", "",
 		"Ecrire un profil CPU pprof dans ce fichier (go tool pprof <binaire> <fichier>)")
+	carte := fs.String("carte", "",
+		"OBLIGATOIRE : la carte du match (nom du catalogue de bornes) ; un nom par film, separes par des virgules")
+	catalogue := fs.String("catalogue", "",
+		"Catalogue de bornes (defaut : celui du depot, PathResolver.MapQuantBoundsPath)")
 	if err := fs.Parse(opts); err != nil {
 		return options{}, nil, err
 	}
-	return options{cache: *cacheDir, limit: *limit, full: *full, profil: *profil}, pos, nil
+	return options{cache: *cacheDir, limit: *limit, full: *full, profil: *profil,
+		carte: *carte, catalogue: *catalogue}, pos, nil
 }
 
 // optionsAvecValeur : les options qui consomment l argument suivant. Une option booleenne n en
 // consomme pas — la confondre avalerait un nom de film.
-var optionsAvecValeur = map[string]bool{"cache": true, "limite": true, "profil": true}
+var optionsAvecValeur = map[string]bool{
+	"cache": true, "limite": true, "profil": true, "carte": true, "catalogue": true,
+}
 
 // separer : partage les arguments entre options et positionnels, dans l ordre d apparition.
 func separer(args []string) (opts, pos []string) {
@@ -115,8 +126,9 @@ func separer(args []string) (opts, pos []string) {
 	return opts, pos
 }
 
-// options : les reglages d AFFICHAGE de la commande. Ils ne touchent JAMAIS au decodage — la
-// configuration du decodeur est gelee dans le paquet et n est pas pilotable d ici, deliberement.
+// options : les reglages d AFFICHAGE de la commande, plus la CARTE du match. Ils ne touchent JAMAIS
+// a la configuration du decodeur, gelee dans le paquet ; la carte n en est pas une — c est une
+// DONNEE d entree, obligatoire (cf. carte.go).
 type options struct {
 	cache string
 	limit int
@@ -125,6 +137,9 @@ type options struct {
 	// est VIOLEMMENT superlineaire (0,20 s par chunk a 8 chunks, 16,6 s a 69 — facteur 83) et
 	// qu une telle pente s instruit par la mesure, jamais au jugement.
 	profil string
+	// carte : les noms de carte, un par film (`-carte`). catalogue : un autre catalogue de bornes.
+	carte     string
+	catalogue string
 }
 
 func run(args []string, o options) error {
@@ -179,7 +194,7 @@ type rapport struct {
 	film   string
 	dir    string
 	duree  time.Duration
-	result *killsource.Result
+	result *decfilm.Result
 }
 
 // withFilm : resout le film, le decode, et passe le resultat au rendu demande.
@@ -187,7 +202,11 @@ func withFilm(args []string, o options, render func(*rapport) error) error {
 	if len(args) != 1 {
 		return errors.New("il faut exactement un film en argument")
 	}
-	r, err := decoder(args[0], o.cache)
+	cartes, err := cartesDesFilms(o, 1)
+	if err != nil {
+		return err
+	}
+	r, err := decoder(args[0], o.cache, cartes[0])
 	if err != nil {
 		return err
 	}
@@ -195,15 +214,25 @@ func withFilm(args []string, o options, render func(*rapport) error) error {
 }
 
 // decoder : LA SEULE FACON DE LIRE UN FILM ICI, et c est exactement le code que le brancheur
-// ecrira — une source de chunks, un appel, un resultat.
-func decoder(film, cache string) (*rapport, error) {
+// ecrira — un film charge, un appel, un resultat.
+//
+// LE CHARGEMENT EST HORS DU CHRONOMETRE depuis le lot 1 de PLAN_CUISSON_PERF (item 1.4) :
+// `decfilm.Decode` ne lit plus le disque et ne decompresse plus rien, donc `duree` mesure
+// le DECODAGE seul — la lecture et l inflate du film, eux, sont le cout de `decfilm.LoadDir`.
+func decoder(film, cache string, carte decfilm.MapQuantEntry) (*rapport, error) {
 	dir, name := resoudre(film, cache)
-	src, err := killsource.DirChunks(dir)
+	src, err := decfilm.LoadDir(dir, nil)
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}
 	t0 := time.Now()
-	res, err := killsource.Decode(context.Background(), name, src, nil)
+	// LA CONFIGURATION GELEE, SOUS LA CARTE DU MATCH (obligatoire : cf. carte.go).
+	opts := decfilm.DefaultOptions()
+	opts.Carte = &carte
+	res, err := decfilm.Decode(context.Background(), name, src, &opts)
+	if res != nil {
+		replay.JournaliserDiagnostics(context.Background(), res.Diagnostics) // lot J12.3, ADR 0034 D-4
+	}
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}
@@ -214,7 +243,7 @@ func decoder(film, cache string) (*rapport, error) {
 // un chemin tel quel. Rend aussi le nom court a afficher.
 func resoudre(film, cache string) (dir, name string) {
 	if len(film) == shortIDLen && !strings.ContainsAny(film, `/\.`) {
-		return filepath.Join(cache, "film_chunks", film), film
+		return filmcache.ChunkDir(cache, film), film
 	}
 	return film, filepath.Base(strings.TrimRight(filepath.Clean(film), `/\`))
 }
@@ -241,15 +270,20 @@ ARGUMENT <film>
 OPTIONS  (elles se placent n importe ou sur la ligne de commande)
   -cache <dir>   racine du cache de films (defaut ../../data/cache depuis apps/go-api)
   -limite N      n afficher que les N premieres morts de la table (0 = toutes)
+  -carte <nom>   OBLIGATOIRE : la carte du match, resolue au catalogue de bornes du depot
+                 (comparer : deux noms separes par une virgule, dans l ordre des films).
+                 Sans elle la commande REFUSE : le film serait decode aux largeurs d une
+                 autre carte, et la marche des morts s y desynchronise.
+  -catalogue <f> un autre catalogue de bornes que celui du depot
   -tout          table : ajouter le tag brut, la voie de lecture et le statut
 `)
 	fmt.Fprint(os.Stderr, `
 EXEMPLES
-  go run ./cmd/killsource kills 000d5950
-  go run ./cmd/killsource kills 9b191a7f -tout -limite 20
-  go run ./cmd/killsource sante 4f77afc1
-  go run ./cmd/killsource comparer 000d5950 fccc61cd
-  go run ./cmd/killsource json fccc61cd > fccc61cd.json
+  go run ./cmd/killsource kills 000d5950 -carte Cliffhanger
+  go run ./cmd/killsource kills 9b191a7f -carte Bazaar -tout -limite 20
+  go run ./cmd/killsource sante 78919882 -carte "High Ground"
+  go run ./cmd/killsource comparer 000d5950 fccc61cd -carte "Cliffhanger,Launch Site"
+  go run ./cmd/killsource json fccc61cd -carte "Launch Site" > fccc61cd.json
 
 CE QU IL FAUT SAVOIR AVANT DE LIRE UNE SORTIE
   - le perimetre valide est le 4v4. En BTB la publication ligne par ligne est refusee

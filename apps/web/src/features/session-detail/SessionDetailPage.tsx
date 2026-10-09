@@ -12,9 +12,11 @@
  * démonter le layout pendant le fetch compare (sinon la transition ne joue pas).
  *
  * Comparaison "côte à côte" : la session active (gauche) et la session comparée
- * (drawer, droite) affichent la MÊME pile de graphes (`SessionChartStack`), alignée.
- * Le profil de participation s'affiche en miroir (axe à droite à gauche / à gauche à
- * droite) pour un effet papillon symétrique.
+ * (drawer, droite) affichent les MEMES sections (`SessionColumnBody`), et depuis le
+ * 2026-09-21 (D16) dans des RANGEES PARTAGEES : les deux colonnes sont des subgrids de
+ * rangees de la grille racine, une rangee par cle de section (union des deux colonnes).
+ * Un cote sans la section rend un placeholder « Sans equivalent dans cette session ».
+ * Le profil de participation reste en miroir (axe a droite a gauche / a gauche a droite).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearch, useRouter } from '@tanstack/react-router'
@@ -37,7 +39,9 @@ import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
-import { computeCompareScale, type CompareScale } from './_compareScale'
+import { sessionRowKeys } from './_sections'
+import { sessionColumnBlocks } from './sessionEmprise.logic'
+import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -124,14 +128,22 @@ export function SessionDetailPage() {
   const hp = useEffectiveHpToKill()
   const compareScale = useMemo<CompareScale | undefined>(() => {
     if (!enableCompare || !data?.compare_session) return undefined
-    return computeCompareScale(
-      data.matches ?? [],
-      data.current_session,
-      data.compare_matches ?? [],
-      data.compare_session ?? null,
-      hp,
-    )
+    return {
+      ...computeCompareScale(
+        data.matches ?? [],
+        data.current_session,
+        data.compare_matches ?? [],
+        data.compare_session ?? null,
+        hp,
+      ),
+      // L'axe Y de la portée se calcule sur les BLOCS, pas sur les matchs : composé ici
+      // plutôt que passé à `computeCompareScale` (cf. son en-tête, seuil de paramètres).
+      rangeDelta: rangeDeltaDomain(data.range_profiles, data.compare_range_profiles),
+    }
   }, [enableCompare, data, hp])
+  // Les blocs de chaque colonne, stables tant que la réponse ne change pas (modèles mémoïsés des cartes).
+  const currentBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'current') : null), [data])
+  const compareBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'compare') : null), [data])
 
   // Bouton « Voir les synergies » (V72-09) — deep-link vers /squad scopé sur la
   // session, MÊME pattern que la card session escouade de l'accueil
@@ -230,7 +242,6 @@ export function SessionDetailPage() {
   // Le contrat OpenAPI déclare ces collections nullable (le Go peut renvoyer null) ;
   // on les normalise en tableaux pour les itérations et les passages aux sous-composants.
   const availableSessions = data.available_sessions ?? []
-  const sessionMatches = data.matches ?? []
   const selectedSessionLabel = sessionLabel || data.current_session?.session_label || ''
   const selectedCompareSessionLabel =
     compareSessionLabel || data.compare_session?.session_label || data.suggested_compare?.session_label || ''
@@ -240,6 +251,16 @@ export function SessionDetailPage() {
   // precedente) : on affiche un spinner dans le panneau pendant qu'il glisse.
   const isCompareLoading = drawerOpen && !data.compare_session && isFetching
 
+  // D16 — RANGEES PARTAGEES. En comparaison, les deux colonnes ne sont plus deux piles
+  // independantes : on calcule l'union ordonnee de leurs sections et chaque colonne rend
+  // cette meme liste (sa section, ou le placeholder « Sans equivalent dans cette
+  // session »). Les colonnes sont alors des `grid-rows: subgrid` de la grille racine :
+  // la i-eme section de gauche et celle de droite partagent LA MEME rangee, donc la
+  // meme hauteur et la meme ligne de titre. Aucune mesure JS — la grille suffit.
+  const rowKeys = drawerOpen ? sessionRowKeys(data) : null
+  // 1 rangee d'en-tete L3 + 1 rangee par section : les deux colonnes s'y accrochent.
+  const gridRowsStyle = rowKeys ? { gridTemplateRows: `repeat(${rowKeys.length + 1}, auto)` } : undefined
+
   return (
     // Layout en grille a deux colonnes anime via `grid-template-columns` : la
     // 2e colonne passe de 0fr a 1fr, ce qui fait glisser le panneau compare ET
@@ -247,14 +268,32 @@ export function SessionDetailPage() {
     // conteneur reste monte en permanence pour que la transition CSS se declenche.
     <div
       ref={rootRef}
+      style={gridRowsStyle}
       className={`xl:grid xl:transition-[grid-template-columns] xl:duration-300 xl:ease-out ${
         drawerOpen
           ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
           : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0fr)]'
       }`}
     >
-      {/* Colonne principale */}
-      <div className={`min-w-0 space-y-6 p-6 ${drawerOpen ? 'xl:border-r' : ''}`}>
+      {/* Colonne principale.
+          `[&>*]:min-w-0` + `overflow-x-clip` QUAND LE DRAWER EST OUVERT, et pas avant : la
+          colonne cesse alors d'être un bloc pour devenir une grille (`xl:grid` +
+          `grid-rows-subgrid`, lot D16). Un enfant de bloc a `min-width: 0` et rétrécit avec
+          son parent ; un ÉLÉMENT DE GRILLE a `min-width: auto` et refuse de descendre sous
+          la largeur intrinsèque de son contenu — un canevas ECharts, qui porte une largeur
+          en pixels. Sans cette remise à zéro, l'ouverture du drawer rétrécissait la piste
+          sans rétrécir les blocs : les graphes restaient à leur largeur et débordaient sous
+          le drawer, et ECharts, ne voyant jamais son conteneur bouger, ne redessinait
+          jamais. `overflow-x: clip` (et NON `hidden`, qui casserait le `position: sticky` du
+          header L3 en créant un conteneur de scroll) est le même filet que la piste du
+          drawer porte déjà : rien ne peut plus s'échapper vers la colonne voisine. */}
+      <div
+        className={`min-w-0 space-y-6 p-6 ${
+          drawerOpen
+            ? 'overflow-x-clip [&>*]:min-w-0 xl:row-span-full xl:grid xl:grid-rows-subgrid xl:gap-6 xl:space-y-0 xl:border-r'
+            : ''
+        }`}
+      >
         {hasSessions ? (
           <>
             {/* En-tete session "L3" : sticky sous la NavL2 (top = hauteur NavL2 mesurée),
@@ -341,10 +380,10 @@ export function SessionDetailPage() {
                 composant en `compact` → "ce qui est sous le L3" est strictement identique
                 des deux côtés (seules les données diffèrent). */}
             <SessionColumnBody
-              entry={data.current_session}
-              matches={sessionMatches}
+              blocks={currentBlocks ?? sessionColumnBlocks(data, 'current')}
               playerSlug={playerSlug}
               compact={drawerOpen}
+              rowKeys={rowKeys ?? undefined}
               scale={compareScale}
               intensityRows={data.intensity_rows ?? []}
               firstBlood={data.first_blood ?? []}
@@ -367,12 +406,16 @@ export function SessionDetailPage() {
           de scroll, et laisse overflow-y visible pour que le sticky resolve bien sur `<main>`.
           Sur mobile (< xl) la colonne se place sous la colonne principale. */}
       <div
-        className={`overflow-x-clip ${drawerOpen ? '' : 'hidden xl:block'}`}
+        className={`overflow-x-clip ${
+          drawerOpen ? 'xl:row-span-full xl:grid xl:grid-rows-subgrid' : 'hidden xl:block'
+        }`}
         aria-hidden={!drawerOpen}
       >
         <div
           className={`flex flex-col space-y-6 border-t p-6 transition-opacity duration-300 xl:border-l xl:border-t-0 ${
-            drawerOpen ? 'opacity-100' : 'opacity-0'
+            drawerOpen
+              ? 'opacity-100 xl:row-span-full xl:grid xl:grid-rows-subgrid xl:gap-6 xl:space-y-0'
+              : 'opacity-0'
           }`}
         >
           {(drawerOpen || data.compare_session) && (
@@ -431,10 +474,10 @@ export function SessionDetailPage() {
                   spécifique au drawer (ni métriques A/B, ni dense, ni miroir). */}
               {data.compare_session ? (
                 <SessionColumnBody
-                  entry={data.compare_session}
-                  matches={data.compare_matches ?? []}
+                  blocks={compareBlocks ?? sessionColumnBlocks(data, 'compare')}
                   playerSlug={playerSlug}
                   compact
+                  rowKeys={rowKeys ?? undefined}
                   participationSide="left"
                   scale={compareScale}
                   intensityRows={data.compare_intensity_rows ?? []}

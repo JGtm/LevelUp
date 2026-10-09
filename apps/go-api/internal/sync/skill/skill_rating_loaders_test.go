@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func openLUSRDB(t *testing.T) *sql.DB {
@@ -58,7 +60,6 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			created_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			updated_at       TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
-		CREATE INDEX idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
 		CREATE OR REPLACE VIEW match_skill_rank_latest AS
 			SELECT * FROM match_skill_rank
 			QUALIFY ROW_NUMBER() OVER (
@@ -69,7 +70,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 					id DESC
 			) = 1;
 	`
-	if err := execScript(t.Context(), db, ddl); err != nil {
+	if err := migration.ExecScriptContext(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

@@ -24,10 +24,12 @@ const (
 
 // Labels mode partagés entre mode_name_tr et playlist_fr.
 const (
-	modeTeamSlayer    = "Team Slayer"
-	modeTeamSnipers   = "Team Snipers"
-	modeTeamSlayerFR  = "Assassin en équipe"
-	modeTeamSnipersFR = "Snipers en équipe"
+	modeTeamSlayer       = "Team Slayer"
+	modeTeamSnipers      = "Team Snipers"
+	modeTeamSlayerFR     = "Assassin en équipe"
+	modeTeamSnipersFR    = "Snipers en équipe"
+	modeTacticalSlayer   = "Tactical Slayer"
+	modeTacticalSlayerFR = "Assassin tactique"
 )
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
@@ -49,6 +51,7 @@ func applyModeNameTr(db *sql.DB) error {
 		{modeAttrition, "en", modeAttrition},
 		{"CTF", "en", "CTF"},
 		{"CTF 3 Captures", "en", "CTF (3 Captures)"},
+		{"Doubles Slayer", "en", "Doubles Slayer"},
 		{"Escalation Slayer", "en", "Escalation Slayer"},
 		{modeExtraction, "en", modeExtraction},
 		{"FFA Slayer", "en", "FFA Slayer"},
@@ -72,6 +75,7 @@ func applyModeNameTr(db *sql.DB) error {
 		{"Slayer", "en", "Slayer"},
 		{"Stockpile", "en", "Stockpile"},
 		{"Strongholds", "en", "Strongholds"},
+		{modeTacticalSlayer, "en", modeTacticalSlayer},
 		{modeTeamSlayer, "en", modeTeamSlayer},
 		{modeTeamSnipers, "en", modeTeamSnipers},
 		{"Total Control", "en", "Total Control"},
@@ -81,6 +85,7 @@ func applyModeNameTr(db *sql.DB) error {
 		{modeAttrition, "fr", modeAttrition},
 		{"CTF", "fr", "Capture du drapeau"},
 		{"CTF 3 Captures", "fr", "CDD 3 captures"},
+		{"Doubles Slayer", "fr", "Assassin en duo"},
 		{"Escalation Slayer", "fr", "Escalade"},
 		{modeExtraction, "fr", modeExtraction},
 		{"FFA Slayer", "fr", "Chacun pour soi"},
@@ -104,6 +109,7 @@ func applyModeNameTr(db *sql.DB) error {
 		{"Slayer", "fr", "Assassin"},
 		{"Stockpile", "fr", "Stockage"},
 		{"Strongholds", "fr", "Bases"},
+		{modeTacticalSlayer, "fr", modeTacticalSlayerFR},
 		{modeTeamSlayer, "fr", modeTeamSlayerFR},
 		{modeTeamSnipers, "fr", modeTeamSnipersFR},
 		{"Total Control", "fr", "Contrôle total"},
@@ -152,7 +158,7 @@ var playlistFRSeeds = []playlistFRMapping{
 	{"Squad Battle", "Combat en escouade"},
 	{"Super Fiesta", "Méga fiesta"},
 	{"Super Husky Raid", "Super Husky Raid"},
-	{"Tactical Slayer", "Assassin tactique"},
+	{modeTacticalSlayer, modeTacticalSlayerFR},
 	{"Tactical Slayer (Snipers)", "Assassin tactique (Snipers)"},
 	{"Team Doubles", "Duo en équipe"},
 	{modeTeamSlayer, modeTeamSlayerFR},

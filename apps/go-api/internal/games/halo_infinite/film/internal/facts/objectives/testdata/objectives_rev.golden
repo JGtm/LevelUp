@@ -1,0 +1,39 @@
+# GOLDEN — LE COUPLE (REVISION DE LA SORTIE DES OBJECTIFS, EMPREINTE DE SON PERIMETRE). Ne PAS
+# editer a la main.
+#
+# Une ligne de donnees par rang : la revision, une TABULATION, l empreinte SHA-256 du perimetre de
+# la couche (la fermeture des imports de production de internal/games/halo_infinite/film/internal/facts/objectives/,
+# flux de jetons, `rev.go` exclu — il DECRIT la couche) et de la valeur de `source.Rev`. Les
+# lignes vides et celles qui commencent par # sont de la prose. LA DERNIERE LIGNE DE DONNEES EST
+# LA COURANTE.
+#
+#   empreinte differente            la couche a change  -> DECIDER, monter la revision si la
+#                                   sortie des objectifs change, puis regenerer.
+#   empreinte egale, revision non   la revision a bouge sans la couche.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#
+#   LEVELUP_UPDATE_OBJECTIVES_REV=1 go test ./internal/games/halo_infinite/film/internal/facts/objectives/ \
+#     -run TestObjectivesRevSuitLaSortie -update-objectives-rev
+#
+# HISTORIQUE DES MOUVEMENTS DE CE COUPLE
+#
+#   2026-09-26  NAISSANCE (lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, DU-2 (c)). La
+#               revision unique de l arbre des faits est remplacee par une revision par
+#               consommateur ; aucune sortie ne change a ce rang.
+#   2026-09-26  EMPREINTE SEULE, REVISION CONSTANTE (correctif J3 du meme plan). Les types
+#               `domain.ObjectiveEvent` / `domain.ObjectiveEventPlayer` deviennent
+#               `objectiveevent.Event` / `objectiveevent.Player` (paquet feuille
+#               internal/domain/objectiveevent) : le perimetre perd internal/domain,
+#               internal/domain/title et internal/games/canonical. Renommage mecanique, aucune
+#               sortie ne change ; serie nee sur cette branche, jamais publiee.
+#   2026-10-02  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (retrait des replis nuls, DU-7).
+#               `repli_instant_sur_la_premiere_manche` et `repli_mort_sans_xuid_ignoree` sortent
+#               de la couche ; leurs conditions comptent zero sur les 1 227 artefacts du parc :
+#               aucun calque ni fait persiste ne change, aucune recuisson (cf. `rev.go`).
+#   2026-10-03  EMPREINTE SEULE, REVISION CONSTANTE (lot L4a de la campagne de grammaire). Aucune
+#               source de la couche ne change : `film/types` renomme un compteur de
+#               `MovementStateStats` (`VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`),
+#               que les objectifs ne lisent pas. La sortie des objectifs ne peut pas changer.
+objectives-2026-09-26	f6cb78cf7aa0e0a20fb5fbbd543449a404d786fd8c049f97c5d2faacbf97912e
+objectives-2026-09-27	9ac0de20b35eabaf3981ce89606adb117a04da390b96f0db9c75d9c5b7ee1cda

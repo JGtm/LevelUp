@@ -166,7 +166,6 @@ const settingsFixture = {
   spnkr_auto_sync_interval_minutes: 360,
   watcher_presence_enabled: false,
   watcher_subscribed_players: [],
-  friend_gamertags: [],
 }
 
 const emptyKPIs = {
@@ -189,7 +188,12 @@ const synthesisKPIs = {
   accuracy: null, kills_per_min: null, avg_life_seconds: null, performance_score: null,
 }
 
-const synthesisFixture = {
+/**
+ * Fixture de la page Synthèse — EXPORTÉE pour que les tests qui vérifient le MONTAGE d'une
+ * section puissent la réémettre enrichie d'un bloc (ex. `weapon_range`, absent par défaut
+ * ici comme dans la plupart des scopes réels) sans redéclarer la réponse entière.
+ */
+export const synthesisFixture = {
   period: 'all',
   total_matches: 5,
   solo_kpis: synthesisKPIs,
@@ -255,6 +259,23 @@ export const handlers = [
 
   // Players list
   http.get(p('/players'), () => HttpResponse.json({ items: [playerFixture], default_player_slug: 'test-player' })),
+
+  // Amis du joueur (liste par profil). Défaut : liste vide et modifiable ; les
+  // tests qui veulent des amis ou un profil en lecture seule surchargent.
+  http.get(p(`/players/${SLUG}/friends`), () =>
+    HttpResponse.json({ xuid: '0000000000000001', gamertags: [], can_edit: true })),
+  http.put(p(`/players/${SLUG}/friends`), async ({ request }) => {
+    const body = (await request.json()) as { gamertags?: string[] }
+    return HttpResponse.json({
+      xuid: '0000000000000001',
+      gamertags: body?.gamertags ?? [],
+      can_edit: true,
+    })
+  }),
+
+  // Présence en jeu (sélecteur de joueur du shell) — défaut « personne en jeu » :
+  // les tests qui veulent une manette ou un compteur surchargent ce handler.
+  http.get(p('/presence'), () => HttpResponse.json({ players: [], friends_in_game: 0 })),
 
   // Setup
   // GET /setup/status supprimé (sprint 29) — artefact mort
@@ -456,6 +477,9 @@ export const handlers = [
 
   // Squad / Teammates
   http.post(p(`/players/${SLUG}/pages/teammates`), () => HttpResponse.json(teammatesFixture)),
+  // Sessions de la composition, sans la page (lot perf L4b) — défaut : aucune session.
+  http.get(p(`/players/${SLUG}/pages/teammates/sessions`), () =>
+    HttpResponse.json({ composition_sessions: [], latest_composition_session: '' })),
 
   // Synthesis
   http.post(p(`/players/${SLUG}/pages/synthesis`), () => HttpResponse.json(synthesisFixture)),

@@ -31,6 +31,8 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -46,7 +48,7 @@ import (
 // shared servi read-only pendant >24h). Avec 48h, une telle panne marquait
 // définitivement absents des films encore disponibles → perte permanente du
 // match dans le retry set. 30 jours couvre toute panne réaliste tout en finissant
-// par sortir les vrais films expirés. Cf. .ai/HANDOFF_sync_combat_completion.md.
+// par sortir les vrais films expirés. Cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md.
 const defaultFilmRetryWindow = 30 * 24 * time.Hour
 
 // filmRetryWindow retourne la fenêtre effective. Override via
@@ -109,7 +111,7 @@ const freshFilmWaitWindow = 10 * time.Minute
 // Défaut : 30s × 3 (re-essais à +30s/+60s/+90s après le 1er fetch raté). Le
 // watcher détecte un match en ~10s mais le film Halo se publie en ~1 min : 30s
 // est une VALEUR DE DÉPART pour laisser le film arriver, à affiner en prod selon
-// le taux de complétude au 1er passage. Cf. .ai/HANDOFF_ENRICHMENT_CONVERGENCE.md.
+// le taux de complétude au 1er passage. Cf. .ai/archive/V7/HANDOFF_ENRICHMENT_CONVERGENCE.md.
 var freshFilmRetryDelays = func() []time.Duration {
 	v := os.Getenv("LEVELUP_FRESH_FILM_RETRY")
 	if v == "0" {
@@ -170,7 +172,7 @@ type collectedHighlightEvents struct {
 	filmVersion int
 	dataLen     int
 	filmFound   bool // réponse brute de l'API (found), avant test de vacuité
-	events      []analysis.HighlightEvent
+	events      []highlightevent.HighlightEvent
 }
 
 // chunkUsable : le chunk est exploitable (film présent ET données non vides).
@@ -200,7 +202,7 @@ func collectHighlightEvents(
 	if !out.chunkUsable() {
 		return out, nil // film absent / chunk vide → décision de marquage au FLUSH
 	}
-	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
+	events, err := decfilm.ParseHighlightEvents(data, filmMajorVersion)
 	if err != nil {
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
 		return out, fmt.Errorf("ParseHighlightEvents: %w", err)
@@ -233,7 +235,7 @@ func flushHighlightEvents(
 		// ou âge inconnu) → MarkEventsLoaded (sort du retry set) ; récent → on
 		// laisse events_loaded=FALSE pour réessayer (le film n'est peut-être pas
 		// encore propagé — éviter la perte définitive d'un film simplement
-		// retardé, cf. .ai/HANDOFF_sync_combat_completion.md).
+		// retardé, cf. .ai/archive/V7/HANDOFF_sync_combat_completion.md).
 		definitive := isNoFilmDefinitive(ctx, sharedDB, c.matchID)
 		slog.DebugContext(ctx, "processHighlightEvents: film absent ou chunk vide",
 			"match_id", c.matchID, "found", c.filmFound, "data_len", c.dataLen,
@@ -336,22 +338,41 @@ func ProcessHighlightEvents(
 // transaction atomique via persist.EventsCompletionPersister (writer RW shared).
 // Retourne le nombre d'events insérés. Centralise la construction du mapping pour
 // ProcessHighlightEvents (unique caller).
-func persistCombatCompletion(ctx context.Context, sharedDB *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+func persistCombatCompletion(ctx context.Context, sharedDB *sql.DB, matchID string, events []highlightevent.HighlightEvent) (int, error) {
+	// L'IDENTITÉ DES MÉDAILLES PART AUSSI PAR ICI. Cette voie est le SECOND
+	// écrivain vivant de highlight_events (film non publié au sync primaire et
+	// repris un cycle plus tard par la convergence ; match déjà en registry via un
+	// coéquipier). Sans `raw_json`, chaque passage rouvrait le trou que le flux
+	// primaire ferme. La résolution réutilise `rawJSONMedaille` (collect.go, même
+	// paquet) — une seconde copie de la règle re-divergerait.
 	hlRows := make([]persist.HLEventCompletion, 0, len(events))
+	medaillesSansNom := 0
 	for _, ev := range events {
-		hlRows = append(hlRows, persist.HLEventCompletion{
+		row := persist.HLEventCompletion{
 			XUID:      strconv.FormatUint(ev.XUID, 10),
 			EventType: ev.EventType,
 			TimeMS:    ev.TimeMS,
 			TypeHint:  ev.TypeHint,
-		})
+		}
+		if ev.EventType == highlightevent.EventTypeMedal {
+			if raw, ok := rawJSONMedaille(ctx, ev); ok {
+				row.RawJSON = &raw
+			} else {
+				medaillesSansNom++
+			}
+		}
+		hlRows = append(hlRows, row)
+	}
+	if medaillesSansNom > 0 {
+		slog.InfoContext(ctx, "completion: medailles du film sans identite (couple inconnu de la table)",
+			"match_id", matchID, "events_medal_sans_nom", medaillesSansNom)
 	}
 
 	// Paires killer→victim (forme par-kill, gamertags + time_ms) — même calcul
 	// que la fonction legacy InsertKillerVictimPairsFromEvents (tolérance 5 ms).
 	raw := make([]analysis.RawEvent, 0, len(events))
 	for _, ev := range events {
-		if ev.EventType != analysis.EventTypeKill && ev.EventType != analysis.EventTypeDeath {
+		if ev.EventType != highlightevent.EventTypeKill && ev.EventType != highlightevent.EventTypeDeath {
 			continue
 		}
 		raw = append(raw, analysis.RawEvent{

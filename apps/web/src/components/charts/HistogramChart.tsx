@@ -16,6 +16,9 @@ import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from './_utils'
@@ -37,7 +40,7 @@ export interface HistogramChartProps {
   colorToken?: SemanticToken
   /** Libellé de l'axe X (ex. "K/D", "Kills / match"). */
   xAxisLabel?: string
-  /** Libellé de l'axe Y (default = nb de matchs en FR). */
+  /** Libellé de l'axe Y (défaut bilingue : common.charts.axis_matches). */
   yAxisLabel?: string
   /**
    * Format des bornes de bucket. Default : "binStart–binEnd" arrondi à 2
@@ -58,10 +61,18 @@ export function HistogramChart({
   yAxisLabel,
   formatBin,
 }: HistogramChartProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const resolvedYAxisLabel =
+    yAxisLabel ?? formatMessage(commonManifest, 'common.charts.axis_matches', locale)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHistogram>[]) =>
-      buildHistogramOption(s, { colorToken, xAxisLabel, yAxisLabel, formatBin }),
-    [colorToken, xAxisLabel, yAxisLabel, formatBin],
+      buildHistogramOption(s, {
+        colorToken,
+        xAxisLabel,
+        yAxisLabel: resolvedYAxisLabel,
+        formatBin,
+      }),
+    [colorToken, xAxisLabel, resolvedYAxisLabel, formatBin],
   )
 
   return (
@@ -98,7 +109,9 @@ export function buildHistogramOption(
   opts: BuildOpts = {},
 ): EChartsCoreOption {
   const { colorToken, xAxisLabel, yAxisLabel: yLabelOpt, formatBin = defaultFormatBin } = opts
-  const yAxisLabel = yLabelOpt ?? 'Matchs'
+  // AUCUN defaut FR ici : ce builder est pur, il n'a pas de locale. Le libelle par defaut
+  // (« Matchs » / « Matches ») est resolu par le composant, qui lit la locale du shell.
+  const yAxisLabel = yLabelOpt ?? ''
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -109,15 +122,13 @@ export function buildHistogramOption(
   }
 
   const categories = dps.map((d) => formatBin(d))
-  const counts = dps.map((d) => d.count)
   const color = colorToken ? resolveToken(colorToken) : seriesColor(0)
-
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 16, bottom: 56, left: 48, right: 12 },
+    grid: { top: 28, bottom: 56, left: 48, right: 12 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -144,7 +155,7 @@ export function buildHistogramOption(
     series: [
       {
         type: 'bar',
-        data: counts,
+        data: dps.map((d) => d.count),
         barCategoryGap: '10%',
         itemStyle: { color, borderRadius: 2 },
       },

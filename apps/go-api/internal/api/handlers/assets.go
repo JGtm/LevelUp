@@ -212,13 +212,12 @@ func serveResolved(w http.ResponseWriter, r *http.Request, res assets.Resolved) 
 	case assets.URLPayload:
 		http.Redirect(w, r, p.URL, http.StatusFound)
 	case assets.BinaryPayload:
-		w.Header().Set("Content-Type", p.ContentType)
-		w.Header().Set("Cache-Control", "public, max-age=86400")
-		if p.ETag != "" {
-			w.Header().Set("ETag", `"`+p.ETag+`"`)
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(p.Bytes)
+		// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9.
+		// L'ETag amont éventuel (p.ETag) n'est plus posé tel quel — il n'était de
+		// toute façon jamais honoré, faute de lecture d'If-None-Match (découverte
+		// du plan) ; le helper recalcule son propre ETag fort depuis les octets
+		// servis, seule source de vérité (D7).
+		servirBlobAvecETag(w, r, p.Bytes, p.ContentType, "public, max-age=86400")
 	default:
 		httpError(r.Context(), w, "payload inattendu", http.StatusInternalServerError)
 	}

@@ -44,9 +44,13 @@ func openCompletionTestDB(t *testing.T) *sql.DB {
 	ctx := context.Background()
 	schema := []string{
 		`CREATE SEQUENCE IF NOT EXISTS highlight_events_id_seq START 1`,
+		// raw_json : colonne de la migration reelle (migration/steps_shared.go), et
+		// donc de la prod. Elle manquait a cette recopie — le persister de complétion
+		// pouvait n avoir jamais ecrit l identite des medailles sans qu un test le voie.
 		`CREATE TABLE highlight_events (
 			id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
-			match_id VARCHAR, event_type VARCHAR, time_ms INTEGER, xuid VARCHAR, type_hint INTEGER
+			match_id VARCHAR, event_type VARCHAR, time_ms INTEGER, xuid VARCHAR,
+			type_hint INTEGER, raw_json VARCHAR
 		)`,
 		`CREATE TABLE killer_victim_pairs (
 			match_id        VARCHAR NOT NULL,
@@ -120,6 +124,66 @@ func sampleCompletionInput(matchID string) EventsCompletionInput {
 		MarkKV:          true,
 		EventsBit:       testBitEvents,
 		KillerVictimBit: testBitKillerVictim,
+	}
+}
+
+// TestEventsCompletionPersister_IdentiteMedaille — LA VOIE COMPLETION ECRIT AUSSI
+// L IDENTITE. Elle est le SECOND ecrivain vivant de highlight_events (film non
+// publie au sync primaire et repris par la convergence, ou match deja en registry
+// via un coequipier). Tant qu elle n ecrivait pas `raw_json`, chaque cycle rouvrait
+// le trou que le flux primaire ferme : le fil des eliminations reperdait ses
+// medailles. Ce test verrouille la 6e colonne.
+func TestEventsCompletionPersister_IdentiteMedaille(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-complete-medaille"
+	seedCompletionRegistry(t, db, matchID)
+
+	raw := `{"medal_name":"Killjoy"}`
+	in := EventsCompletionInput{
+		MatchID: matchID,
+		Events: []HLEventCompletion{
+			{XUID: "111", EventType: "medal", TimeMS: 1000, TypeHint: 50, RawJSON: &raw},
+			{XUID: "111", EventType: "kill", TimeMS: 1000, TypeHint: 50},
+		},
+		EventsBit:       testBitEvents,
+		KillerVictimBit: testBitKillerVictim,
+	}
+	if _, err := NewEventsCompletionPersister(db).Persist(ctx, in); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	rows, err := db.QueryContext(ctx,
+		`SELECT event_type, type_hint, raw_json FROM highlight_events WHERE match_id = ? ORDER BY id`, matchID)
+	if err != nil {
+		t.Fatalf("relecture: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	type ligne struct {
+		eventType string
+		typeHint  sql.NullInt64
+		rawJSON   sql.NullString
+	}
+	var lues []ligne
+	for rows.Next() {
+		var l ligne
+		if err := rows.Scan(&l.eventType, &l.typeHint, &l.rawJSON); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		lues = append(lues, l)
+	}
+	if len(lues) != 2 {
+		t.Fatalf("%d lignes ecrites, 2 attendues", len(lues))
+	}
+	if !lues[0].rawJSON.Valid || lues[0].rawJSON.String != raw {
+		t.Errorf("medal: raw_json = %v, attendu %q — la voie completion doit porter l identite",
+			lues[0].rawJSON, raw)
+	}
+	if !lues[0].typeHint.Valid || lues[0].typeHint.Int64 != 50 {
+		t.Errorf("medal: type_hint = %v, attendu 50", lues[0].typeHint)
+	}
+	if lues[1].rawJSON.Valid {
+		t.Errorf("kill: raw_json = %q, attendu NULL", lues[1].rawJSON.String)
 	}
 }
 

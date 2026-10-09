@@ -1,0 +1,9 @@
+# C.0.2 boundary-visibility : 862 records, 676 valeurs distinctes, 32 bits utiles, 738 transitions
+# C.1b.3a radial-progress : 355 valeurs, 34 slots, 5 rampes, captures couvertes 0/0 (0.0 %), temoin 0.0 %, verdict NON TENU
+rampe	2754	44182	160365	36	194	3
+rampe	2392	302259	420528	142	170	3
+rampe	2103	62354	627422	77	143	3
+rampe	2751	635280	640267	127	254	295
+rampe	1796	382173	763760	107	219	3
+# C.1b.3b boundary-color : 1095 records, 451 quadruplets, 736 changements, captures couvertes 0/0 (0.0 %), verdict NON TENU
+# C.1b.3c rtpc : 7915 records, 718 identifiants, 7912 avec valeur, 182 rampes

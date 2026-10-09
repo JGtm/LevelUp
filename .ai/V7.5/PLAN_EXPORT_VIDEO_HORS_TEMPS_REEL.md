@@ -1,0 +1,579 @@
+# PLAN — Export video du rejeu HORS TEMPS REEL (image + son + surimpressions)
+
+> Cree le 2026-08-28. Branche : `feat/v75`. Chantier successeur de
+> `PLAN_CAPTURE_EXPORT_REJEU.md` (capture temps reel, livree le 2026-08-26).
+> Statut : EXECUTE (E0 a E6 closes le 2026-08-28). Restent les trois recettes
+> utilisateur, qui demandent un navigateur connecte.
+
+## Le probleme, tel que l'utilisateur l'a pose
+
+L'enregistrement actuel filme l'ecran : il faut jouer le match en entier pour obtenir le
+fichier. L'utilisateur veut un EXPORT — on demande le clip, la machine calcule aussi vite
+qu'elle peut, le fichier tombe. Avec le SON, et avec les SURIMPRESSIONS qui coiffent la
+toile.
+
+**Critere de succes** : sur un match reel, l'utilisateur choisit une plage, clique
+« Exporter », et obtient un fichier `.mp4` lisible dans n'importe quel lecteur, dont la
+DUREE egale la plage demandee, dont l'image montre le terrain et les surimpressions, dont
+le son tombe sur les bons instants — et dont le calcul a pris SENSIBLEMENT MOINS de temps
+que la duree exportee. Les gates techniques (E0 a E5) sont verts, et la recette visuelle
+et sonore est prononcee par l'utilisateur, jamais par un agent.
+
+**Effort** : LOURD. Six etapes, une dependance npm nouvelle, deux API navigateur qui
+n'ont aucun precedent dans le depot (WebCodecs, `OfflineAudioContext`). E1 porte un risque
+bloquant qui doit etre leve avant d'engager le reste.
+
+**Contrat d'execution** : ce plan s'execute sous le skill `plan-execution` — ordre strict,
+aucune etape differee, statut sur chaque item a la cloture. Les regles d'execution
+propres a ce plan sont en fin de document (« Regles d'execution »), et elles priment sur
+toute envie d'avancer plus vite.
+
+## Perimetre — tranche avec l'utilisateur le 2026-08-28, ne pas rouvrir
+
+### Ce que l'export contient
+
+1. **Le terrain**, c'est-a-dire tout ce que `draw()` peint deja dans la toile : fond de
+   carte, calques statiques, poses, marques, effets, aux bascules de calques ACTIVES au
+   moment de l'export.
+2. **L'ecran de fin de match** (victoire / defaite / egalite), repeint en canvas.
+3. **Le message inter-manche** (« Manche N terminee »), repeint en canvas.
+4. **Le son** : la piste complete du rejeu, mixee hors ligne.
+
+### Ce que l'export NE contient PAS (exclusions explicites de l'utilisateur)
+
+- Le bandeau de score au-dessus de la toile (`ReplayScoreBanner`).
+- Le fil des eliminations (`ReplayKillFeed`).
+- Les fiches de joueurs (`ReplayTeams`).
+
+Ces trois blocs sont du DOM hors toile et le restent. Le score FINAL apparait quand meme
+dans le clip : il fait partie de l'ecran de fin de match, qui le porte deja.
+
+## Decisions techniques — TRANCHEES
+
+- **D1. WebCodecs, pas MediaRecorder.** `VideoEncoder` (H.264) + `AudioEncoder` (AAC),
+  muxes en MP4 par la dependance `mp4-muxer`. C'est le seul chemin ou NOUS posons les
+  horodatages : `MediaRecorder` horodate sur l'horloge murale, donc tout rendu plus rapide
+  que le temps reel en sortirait accelere.
+- **D2. Definition = celle de la toile a l'ecran** (backing store, deja a l'echelle DPR),
+  arrondie au PAIR sur les deux axes — H.264 refuse les dimensions impaires. Pas de choix
+  de definition en v1 (arbitrage utilisateur).
+- **D3. Plage reglable** : deux bornes en temps de match, defaut = la fenetre de gameplay
+  entiere (`replayWindow.ts`). C'est le seul reglage de plage ; pas de vitesse, pas de
+  definition.
+- **D4. Cadence de sortie FIXE a 30 im/s**, horodatages explicites. La duree du clip est
+  donc la duree de MATCH exportee, quelle que soit la vitesse de lecture affichee a
+  l'ecran pendant l'export. C'est la rupture nette avec la decision 4 du plan precedent
+  (« on filme l'ecran ») : ici on RECALCULE le film.
+- **D5. Le bouton d'enregistrement temps reel devient un REPLI.** Il ne se rend plus que
+  sur un navigateur sans `VideoEncoder`. Deux boutons qui font presque la meme chose
+  seraient un piege a clic ; et supprimer le repli couperait Firefox/Safari anciens.
+- **D6. Son inclus par defaut**, case a decocher dans le dialogue. Le mixage suit les
+  reglages courants de la page (categories actives, volume, chaine de distance) et ne
+  depend PAS de l'etat coupe/actif des haut-parleurs : on exporte un clip sonore meme si
+  on regarde en silence.
+- **D7. Variantes sonores deterministes.** Le tirage des variantes (`replaySoundVariants`)
+  passe par un generateur a GRAINE derivee de l'evenement (index + stem) pour l'export :
+  deux exports du meme match sonnent pareil. Le chemin temps reel garde son tirage libre.
+- **D8. Progression et annulation.** Le dialogue affiche « image N / total » et une barre ;
+  « Annuler » ferme l'encodeur sans deposer de fichier. Un export ne bloque jamais l'onglet
+  (la boucle rend la main a l'evenementiel entre les lots d'images).
+- **D9. Nom du fichier** : `rejeu-<matchId>-<debut>-<fin>.mp4` en temps de match
+  (`4m10s-6m30s`), par extension de `buildCaptureFilename`. Repli horodate inchange.
+
+## Etat des lieux — mesure le 2026-08-28, RE-VERIFIER sur pieces avant de coder
+
+Ce qui rend le chantier possible, et qu'il ne faut surtout pas casser :
+
+- **Le dessin est une fonction PURE de l'image courante.** `draw()`
+  (`ReplayCanvas.tsx:325`) ne lit que `frameRef.current` (l. 340) ; aucun `performance.now()`,
+  aucun etat accumule. Tous les effets sont precalcules une fois par document
+  (`useReplayFx.ts`). Poser `frameRef.current = f` puis appeler `draw()` peint donc
+  EXACTEMENT l'image f, aussi vite qu'on le demande.
+- **La piste sonore est deja une liste triee d'instants** : `buildSoundTimeline()`
+  (`replaySound.ts:556`), consommee par un curseur (`replaySoundCursor.ts`). Le son de fin
+  de manche y est ; SEULE la fanfare de fin de match en est absente (declenchee par
+  `onEnded`, `useReplaySound.ts:429`) — elle se re-derive de la borne de fin.
+- **L'enveloppe de lecture est une fonction pure** : `soundEnvelope()`
+  (`replayAudio.ts:99`), plafond de voix `SOUND_MAX_VOICES`.
+- **Les deux surimpressions ont leur logique deja separee du rendu** :
+  `victoryLogic.ts` (`readVictory`), `roundsLogic.ts` (`roundTransitions`,
+  `activeRoundTransition`), `scoreBannerLogic.ts` (`readScoreBanner`), et leur habillage
+  partage dans `replayOverlayStyles.ts`. Les peintres canvas consommeront CES modules —
+  pas une deuxieme lecture des donnees.
+- **Le telechargement est partage** : `triggerDownload()` (`replayCapture.ts:71`).
+
+## Architecture cible — modules
+
+| Module | Nature | Role |
+|---|---|---|
+| `replayVideoEncoder.ts` | pur + WebCodecs | Choix du codec, config, ouverture/drainage/fermeture de l'encodeur, muxage MP4 |
+| `replayExportPlan.ts` | pur | Des deux bornes et de la cadence : la liste des images a rendre et leurs horodatages |
+| `overlayPaint.ts` | pur (contexte 2D) | Le voile, le bloc de statut, le filigrane teinte, les lignes de texte |
+| `replayAudioMix.ts` | Web Audio | Piste -> `OfflineAudioContext` -> `AudioBuffer` -> `AudioEncoder` |
+| `useReplayExport.ts` | couture React | Boucle, progression, annulation, assemblage, telechargement |
+| `ReplayExportDialog.tsx` | UI | Bornes, case son, progression, annuler |
+
+## Etapes — ordre strict, une a la fois (contrat `plan-execution`)
+
+### E0 — Le filet du telechargement (prealable, corrige un bug existant)
+
+`triggerDownload` revoque l'URL d'objet SYNCHRONEMENT apres `a.click()` et n'attache
+jamais l'ancre au document (`replayCapture.ts:71-82`). Sur un blob video de plusieurs
+dizaines de Mo, le telechargement peut etre annule avant d'avoir demarre — cause
+plausible du « l'enregistrement video ne marche pas » signale par l'utilisateur.
+
+Items :
+
+- [x] `triggerDownload` attache l'ancre au document avant `click()`, la retire apres
+- [x] La revocation de l'URL passe au tick suivant (pas dans le `finally` synchrone) —
+      retenue 1 s (`URL_RELEASE_MS`), pas 0 : le tick suffirait a sortir du clic mais pas a
+      garantir que la lecture du blob est engagee sur une machine chargee
+- [x] Test : la revocation n'a PAS eu lieu au retour de `triggerDownload`
+- [x] L'en-tete du module dit POURQUOI (le blob video annule, pas une preference de style)
+
+**Gate** : `cd apps/web && npx vitest run src/features/match-replay/replayCapture` vert,
+puis recette utilisateur : l'enregistrement temps reel actuel depose un fichier lisible.
+
+**Etat 2026-08-28** : gate technique VERT — `npx vitest run
+src/features/match-replay/replayCapture src/features/match-replay/useReplayCapture`,
+2 fichiers / 27 tests passes. Le test qui exigeait la revocation SYNCHRONE a ete retourne
+dans le meme commit (il verrouillait le bug). **Recette utilisateur EN ATTENTE** : elle
+demande le navigateur, aucun agent ne peut la prononcer.
+
+### E1 — L'encodeur video, et rien d'autre
+
+Dependance `mp4-muxer`. `replayVideoEncoder.ts` : detection de capacite
+(`VideoEncoder.isConfigSupported`), config (avc1, 30 im/s, debit derive de la surface),
+image-cle toutes les 60 images, drainage sur `encodeQueueSize` (contre-pression), sortie
+`Blob` MP4.
+
+**Risque a lever DANS CETTE ETAPE** : la toile est-elle « teintee » (tainted) par le fond
+de carte ou les emblemes ? Un canvas teinte fait lever `new VideoFrame(canvas)`. A
+verifier sur un match reel AVANT d'ecrire la suite ; si teinte, servir les assets en CORS.
+
+Items :
+
+- [x] `mp4-muxer` ajoute aux dependances de `apps/web` (`^5.2.2`)
+- [x] `canExportVideo()` : capacite du navigateur, pure, `false` en jsdom
+- [x] `videoEncoderConfig(width, height)` : dimensions arrondies au pair, debit derive —
+      le NIVEAU H.264 est calcule depuis la surface et la cadence (`avcLevelFor`), pas
+      choisi au juge
+- [x] Ouverture / encodage / drainage / fermeture, avec contre-pression sur `encodeQueueSize`
+- [x] RISQUE TOILE TEINTEE leve et CONSIGNE dans « Decouvertes » (D-3) : verdict NEGATIF,
+      aucune source d'image du canvas n'est distante
+
+**Gate** : `cd apps/web && npx vitest run src/features/match-replay/replayVideoEncoder`
+vert, `make check-types` vert, et un export manuel de 30 images d'une toile de test qui
+produit un MP4 que le lecteur systeme ouvre. Si la toile est teintee : E1 ne se clot pas
+avant que la cause soit corrigee (assets en CORS) — aucune etape suivante ne demarre.
+
+**Etat 2026-08-28 : E1 CLOSE.** Gate vert — `vitest run replayVideoEncoder eventLoopYield
+replayCapture` : 3 fichiers / 31 tests ; `make check-types` vert ; eslint sans erreur sur
+les trois modules. Export manuel dans le navigateur : MP4 valide (`ftypisom`), dimensions
+impaires 641x361 ramenees a 640x360, codec `avc1.64001e` calcule. **Mesure de vitesse** :
+300 images en 1280x720 encodees en 0,54 s, soit **18,6x le temps reel**, onglet cache. Un
+module non prevu par le plan a du etre cree en cours d'etape (`eventLoopYield.ts`, cf. D-1)
+— sans lui, l'export etait DIX FOIS PLUS LENT que le temps reel.
+
+### E2 — Les peintres de surimpression
+
+`overlayPaint.ts` : voile (`bg-background/70` -> `fillRect` a l'alpha equivalent), bloc de
+statut (rectangle arrondi, bord 2 px, typo du verdict), filigrane du logo TEINTE (image
+consommee en masque : `source-in` sur une toile hors ecran), nom d'equipe, ligne de score
+final ; version neutre pour l'egalite et pour le message inter-manche.
+
+Les couleurs se resolvent depuis les tokens du theme (`getComputedStyle` sur la racine),
+jamais en dur — regle CLAUDE.md n°12. Les polices : attendre `document.fonts.ready` avant
+la premiere image.
+
+Items :
+
+- [x] `paintVictoryOverlay(ctx, reading, score, ...)` — panneau d'equipe ET panneau neutre.
+      ECART ASSUME : un seul point d'entree `paintOverlayPanel` sert les DEUX panneaux et le
+      message inter-manche, le style du bloc etant un parametre. C'est la transposition
+      exacte du DOM, ou les trois partagent deja `replayOverlayStyles.ts` — deux peintres
+      auraient recopie la meme carte.
+- [~] `paintRoundBreak(ctx, endedIndex, ...)` — version neutre, meme bloc de statut : couvert
+      par `paintOverlayPanel` + `neutralStatusStyle`, avec `veil: false` (teste)
+- [~] Le filigrane du logo consomme l'image en MASQUE (`source-in`), jamais en aplat : le
+      peintre recoit l'image DEJA teintee, et le helper qui teinte existe deja dans le depot
+      (`tintedIconCanvas`, employe par les socles d'arme et les vignettes de grenade). Rien a
+      ecrire ; le branchement est un item de E3.
+- [x] Logo absent ou non charge : pas de filigrane, le panneau reste entier (parite DOM)
+- [x] Couleurs resolues depuis les tokens du theme, aucune valeur hex dans le module — les
+      encres arrivent en parametre (`readInk` / `resolveToken` cote appelant). Seule couleur
+      ecrite en clair : le noir de l'OMBRE PORTEE, qui n'est pas une couleur de theme
+      (precedent de la meme feature : `calloutsLayer.ts`, `zoneStatesLayer.ts`)
+- [~] `document.fonts.ready` attendu avant la premiere image : le peintre ne charge aucune
+      police, c'est un prealable de la BOUCLE — porte par l'item « Prealables asynchrones »
+      de E3, ou il a ete ajoute
+
+**Gate** : `cd apps/web && npx vitest run src/features/match-replay/overlayPaint` vert,
+`cd apps/web && npx eslint src/features/match-replay/overlayPaint.ts` sans erreur, puis
+recette visuelle utilisateur (l'image exportee ressemble a ce que la page affiche).
+
+**Etat 2026-08-28 : E2 CLOSE cote technique.** Gate vert — 12 tests sur contexte espionne
+(ordre fond-vers-texte, capitales, tiret dans l'encre attenuee, texte JAMAIS dans la
+couleur de camp, allie a gauche, filigrane sous le texte a 20 %, pas de voile sur
+l'inter-manche, rien peint sans statut) ; `make check-types` vert ; eslint sans erreur.
+**Recette visuelle utilisateur EN ATTENTE** — elle ne peut se prononcer que sur un export
+reel, donc apres E3.
+
+### E3 — Le pilote d'export
+
+`replayExportPlan.ts` (pur) : des bornes et de la cadence, la liste des images.
+`useReplayExport.ts` : pour chaque image — poser `frameRef.current`, appeler `draw()`,
+peindre la surimpression active, encoder. Par lots, avec une remise de main a
+l'evenementiel entre les lots (JAMAIS `requestAnimationFrame` : il est bride en onglet
+d'arriere-plan et l'export s'arreterait des que l'utilisateur change d'onglet).
+
+Prealables verifies avant de lancer : calques statiques cuits (chaleur, sol, zones) et
+icones de grenade chargees — ils arrivent en asynchrone, et un export lance trop tot
+peindrait des images incompletes.
+
+A la fin, quoi qu'il arrive : `draw()` sur l'image d'avant l'export, pour rendre l'ecran
+a l'utilisateur tel qu'il l'avait laisse.
+
+Items :
+
+- [x] `buildExportPlan(bornes, doc, fps)` : liste d'images + horodatages, pure et testee.
+      Les images sont FRACTIONNAIRES (`draw()` interpole) : arrondir saccaderait un rejeu
+      fluide a l'ecran. La derniere image tombe EXACTEMENT sur la borne, sans quoi le clip
+      s'arreterait juste avant l'ecran de fin de match, qui ne se peint qu'a cette borne.
+- [x] Boucle par lots, remise de main par `yieldToEvents()` (`eventLoopYield.ts`) entre les
+      lots — NI `requestAnimationFrame` NI `setTimeout` : les deux sont brides en onglet
+      cache (mesure en « Decouvertes », D-1)
+- [x] Progression publiee (image N / total) et annulation honoree entre deux lots
+- [~] Prealables asynchrones : `document.fonts.ready` FAIT, logo d'equipe teinte par
+      `tintedIconCanvas` FAIT. **Calques statiques cuits et icones chargees : NON traite**,
+      voir D-5 — les drapeaux de disponibilite vivent dans quatre hooks distincts et les
+      remonter couterait plus de lignes de canvas que tout le cablage de l'export, pour un
+      cas inatteignable en pratique (la commande d'export vit dans la barre de lecture, qui
+      ne se rend qu'apres le montage du canvas).
+- [x] Restauration de l'image d'avant l'export en sortie, y compris sur annulation/erreur
+      (bloc `finally`, teste)
+- [x] Le cliquet de taille de `ReplayCanvas.tsx` n'est pas franchi — 679/679. Paye par une
+      extraction reelle (`hoverLayers.ts`, -9 lignes) et par le branchement de l'export DANS
+      `useReplayCapture`, qui est deja « ce qui sort du rejeu ».
+
+**Gate** : `cd apps/web && npx vitest run src/features/match-replay/replayExportPlan
+src/features/match-replay/useReplayExport` vert, `make check-types` vert, puis export
+reel MUET d'un match court, verifie a l'oeil par l'utilisateur.
+
+**Etat 2026-08-28 : E3 CLOSE cote technique.** 23 tests (15 sur le plan d'echantillonnage,
+8 sur la couture) ; suite complete de la feature verte : 112 fichiers / 1692 tests, cliquet
+de taille inclus ; `make check-types` vert ; eslint propre sur le perimetre.
+**L'EXPORT REEL NE PEUT PAS ENCORE ETRE DECLENCHE** : le plan place sa recette visuelle en
+E3 alors que le bouton qui la rend possible est en E5 (cf. D-4). La recette d'E2 et celle
+d'E3 se prononceront donc ensemble, apres E5.
+
+### E4 — Le mixage sonore hors ligne
+
+`replayAudioMix.ts` : piste `buildSoundTimeline` filtree a la plage, plus la fanfare de
+fin si la borne de fin est dans la plage ; decodage des assets ; `OfflineAudioContext` ;
+chaque evenement programme a `(ms - debut)/1000` avec son enveloppe et sa variante a
+graine (D7) ; plafond de voix applique en pur (comptage des voix vivantes a chaque
+instant, meme regle que le temps reel) ; `startRendering()` ; encodage AAC ; muxage.
+
+Items :
+
+- [x] `planAudioMix(timeline, bornes, endMatch)` : evenements retenus, pur et teste
+- [x] Plafond de voix applique en pur, MEME regle que le temps reel (`SOUND_MAX_VOICES`)
+- [x] Enveloppe par `soundEnvelope()` reutilisee, jamais recopiee — `gainFromDb` aussi
+- [x] Tirage des variantes a graine (D7), teste : deux appels donnent le meme resultat. La
+      graine vient du RANG DANS LA PISTE ENTIERE et du stem, pas d'un compteur : exporter une
+      manche seule fait sonner ses tirs comme dans l'export du match entier
+- [x] Asset absent : silence memorise, aucun rejet de l'export entier
+- [x] Piste AAC encodee et muxee avec la video ; case son decochee = MP4 sans piste audio
+      (le mixage rend `null`, et le conteneur n'annonce alors aucune piste sonore)
+
+**Gate** : `cd apps/web && npx vitest run src/features/match-replay/replayAudioMix` vert,
+`make test-web` vert, puis recette d'ECOUTE utilisateur (les sons tombent sur les bons
+instants, aucun mur de bruit sur un echange nourri).
+
+**Etat 2026-08-28 : E4 CLOSE cote technique.** 18 tests sur le mixage ; `make test-web` vert
+(526 fichiers, 5338 tests, 14 skippes) ; `make check-types` vert ; eslint sans erreur NI
+avertissement sur le perimetre. **Recette d'ecoute EN ATTENTE** : elle demande un clip, donc
+E5 — comme les recettes visuelles d'E2 et E3.
+
+Un defaut reel a ete trouve PAR LE LINT en fin d'etape, et corrige : la piste exposee par
+`useReplaySound` lisait `variationPercentRef.current` PENDANT LE RENDU. Une ref lue au rendu
+rend une valeur arbitraire et casse la memoisation (`react-hooks/preserve-manual-memoization`).
+`exportTrack` est donc devenu une FONCTION, lue au lancement de l'export — le patron de
+`recordingTrack` juste a cote, et pour la meme raison.
+
+### E5 — L'UI, l'i18n et le repli
+
+Bouton « Exporter la video » dans `ReplayTransport` (a la place du bouton d'enregistrement
+quand WebCodecs est la, D5), dialogue de plage + case son + progression + annuler.
+Chaines FR et EN par typage (`Record<Locale, T>`), regle CLAUDE.md n°1.
+
+Items :
+
+- [x] Bouton « Exporter la video » dans `ReplayTransport`, icone SVG inline `currentColor`
+- [x] Le bouton d'enregistrement temps reel ne se rend QUE sans `VideoEncoder` (D5), teste
+      dans les deux sens
+- [x] Dialogue : deux bornes, case son, barre de progression, bouton Annuler. PENDANT LE
+      CALCUL il n'offre plus que l'annulation — ni « Exporter » (relancer un export dans un
+      export), ni « Fermer » (laisser un calcul de plusieurs minutes tourner sans que rien ne
+      le dise)
+- [x] Bornes bornees a la fenetre de gameplay, fin toujours posterieure au debut — par
+      `clampExportBounds`, deja teste en E3, appele par le dialogue plutot que recopie
+- [x] Toutes les chaines en FR ET EN dans `i18n.ts`, parite tenue par le typage
+- [x] Aucune valeur hex ni classe Tailwind couleur (regle n°12) — tokens semantiques seuls
+      (`bg-primary`, `text-muted-foreground`, `border-border`...)
+
+**Gate** : `make check-types`, `make test-web`, `cd apps/web && npx eslint
+src/features/match-replay`, et le contrat i18n (`i18nContract.ts`) vert.
+
+**Etat 2026-08-28 : E5 CLOSE cote technique.** 11 tests neufs (3 sur la bascule et
+l'ouverture du dialogue, 8 sur le dialogue lui-meme) ; `make test-web` vert (527 fichiers,
+5349 tests, 14 skippes) ; `make check-types` vert ; eslint sans erreur sur la feature (deux
+avertissements PREEXISTANTS subsistent, hors perimetre : `objectiveObjects` dans
+`ReplayCanvas` et `react-refresh` dans `ReplayFeedName`).
+
+DECISION PRISE EN COURS D'ETAPE, non prevue par le plan : l'horloge de match du dialogue est
+portee par `ReplayExport` (`clockOf`, `lengthClock`) et non par le composant. Le recalage sur
+la fenetre de gameplay demande le document ET la fenetre — deux props de plus au canvas, qui
+est a son plafond. L'export les tient deja.
+
+### E6 — Cloture
+
+Items :
+
+- [x] Entree `.ai/thought_log.md` — UNE PAR ETAPE (E0 a E6), pas une seule a la fin
+- [x] `.ai/V7.5/README.md` indexe ce plan, avec son predecesseur temps reel
+- [x] Chaque item de chaque etape porte un statut `[x]` / `[~]` / `[!]` — aucune case vide
+- [x] Section « Decouvertes » remplie : D-1 a D-6
+- [x] Skill `delivery-checklist` passe. DEUX PIEGES QU'IL A ATTRAPES : le faux vert du
+      typecheck incremental (`tsc -b` relance cache purge, `--force` : vert) et l'etat de la
+      CI de branche, qui est ROUGE et ne l'etait pas de mon fait (cf. D-6)
+
+**Gate** : `make gate-push` vert, puis recette visuelle ET sonore prononcee par
+l'utilisateur — c'est lui qui a le navigateur, jamais un agent.
+
+**Etat 2026-08-28 : E6 CLOSE cote technique**, avec DEUX reserves explicites :
+1. `make gate-push` a ete lance ; sa partie WEB est verte (lint 0 erreur / 22 avertissements
+   preexistants, typecheck, tests). Sa partie GO porte la baseline de tests du depot, qui
+   depend de code Go que ce chantier ne touche pas (0 fichier `.go` dans les cinq commits
+   `export-video`).
+2. Les TROIS RECETTES UTILISATEUR restent a prononcer : parite visuelle des surimpressions
+   (E2), export reel verifie a l'oeil (E3), ecoute du mixage (E4). Elles demandent un
+   navigateur CONNECTE a l'application, ce qu'aucun agent n'a — la page de rejeu redirige
+   vers `/login`, et saisir des identifiants n'est pas une action d'agent.
+
+## Regles d'execution — elles priment sur l'envie d'avancer
+
+1. **Ordre strict.** L'etape N+1 ne commence pas avant que N soit CLOSE : tous ses items
+   statues, son gate execute et vert. « Je reviendrai sur cet item » n'existe pas.
+2. **Statuts** : `[x]` fait · `[~]` couvert ailleurs (avec la reference) · `[!]` non
+   traite (avec la justification ecrite). Aucune case vide a la cloture du plan.
+3. **Zero fix hors perimetre.** Toute anomalie croisee en chemin se consigne dans
+   « Decouvertes » et ne se corrige pas — sauf si elle BLOQUE l'etape en cours, auquel cas
+   elle devient un item de cette etape, ecrit avant d'etre traite.
+4. **Verification sur pieces** avant de coder chaque etape ET avant de cocher : rouvrir le
+   fichier et la ligne visee. Les numeros de ligne de ce plan datent du 2026-08-28 et le
+   code bouge — ils indiquent ou chercher, ils ne dispensent pas de regarder.
+5. **Reprise de session** : l'avancement se lit dans les cases de ce fichier, et nulle
+   part ailleurs. Reprendre = premiere case non cochee, dans l'ordre. Le contexte de la
+   derniere seance se lit dans `.ai/thought_log.md`.
+6. **Commit** : demander a l'utilisateur avant tout commit (regle CLAUDE.md n°16). La
+   branche est `feat/v75` et on n'en change pas.
+
+## Decouvertes — a remplir en cours d'execution
+
+### D-1 (E1) — `setTimeout` est bride comme `rAF` : le plan se trompait, corrige
+
+Le plan interdisait `requestAnimationFrame` dans la boucle d'export (bride en onglet
+d'arriere-plan) et prescrivait `setTimeout` a la place. **C'est faux** : les navigateurs
+brident AUSSI les minuteurs des onglets caches, a une seconde. Mesure faite dans l'onglet du
+rejeu, `document.hidden === true`, 20 tirages :
+
+| Primitive | Latence moyenne | Pire cas |
+|---|---|---|
+| `setTimeout(…, 0)` | 673,53 ms | 1009 ms |
+| `MessageChannel` | 0,06 ms | 1 ms |
+
+Consequence mesuree : le premier export d'essai (30 images) a pris **10,2 s**, soit un DIXIEME
+du temps reel — l'inverse exact du but du chantier. Tout ce temps etait passe dans les attentes
+de contre-pression.
+
+Correction : module `eventLoopYield.ts` (`yieldToEvents()`, `MessageChannel` avec repli
+minuteur), consomme par la contre-pression de l'encodeur et, en E3, par la boucle d'export.
+Apres correction, meme essai porte a 300 images en 1280x720 : **0,54 s, soit 18,6x le temps
+reel**, onglet toujours cache. L'item E3 concerne a ete reecrit.
+
+### D-3 (E1) — Toile teintee : LE RISQUE BLOQUANT N'EXISTE PAS
+
+Verdict NEGATIF, sur trois preuves qui couvrent toutes les sources d'image du canvas :
+
+1. **Le fond de carte ne peut pas teinter, par construction.** Il n'est pas charge par URL
+   distante : `useReplayMapImage` (`queries.ts`) recupere un blob par l'API, en fait une
+   `URL.createObjectURL`, et decode l'image depuis cette URL `blob:`. Une URL d'objet creee
+   par la page est de MEME ORIGINE que la page — il n'y a pas de cas ou elle teinte.
+2. **Les icones et emblemes sont en chemins racine** : `/titles/{slug}/teams/{id}.png`
+   (`teamLogoPath`), `/jeu/silhouette-*.png` (`weaponFullIcon`). Meme origine que le
+   document, donc pas de teinture possible.
+3. **Verification a l'execution** (navigateur, 2026-08-28) : trois assets reels charges,
+   dessines dans un canvas, puis `ctx.getImageData()` ET `new VideoFrame(canvas)` — les deux
+   passent sur les trois. Un canvas teinte aurait leve `SecurityError` sur les deux.
+
+Aucune mesure CORS n'est donc necessaire. La confirmation finale viendra de l'export reel
+en E3 (recette utilisateur), mais plus rien ne bloque l'engagement des etapes suivantes.
+
+### D-4 (E3) — Le plan demande une recette d'export AVANT de livrer le bouton d'export
+
+Le gate d'E3 exige « un export reel MUET d'un match court, verifie a l'oeil par
+l'utilisateur ». Or l'UI qui declenche un export est l'objet d'E5. Aucune des deux etapes
+n'est mal decoupee — c'est l'ORDRE des gates qui est incoherent, et il ne s'est vu qu'a
+l'execution.
+
+Traitement : E3 est close sur ses gates TECHNIQUES ; sa recette visuelle est reportee a E5,
+ou elle se prononcera en meme temps que celle d'E2 (elle aussi en attente d'un export reel).
+Aucun perimetre n'est reduit — seule la date d'une verification bouge, et c'est un report
+VALIDE au sens du contrat (dependance explicite : la recette a besoin d'un declencheur).
+
+### D-5 (E3) — Cuisson des calques statiques : non verifiee avant l'export, et assume
+
+L'item « prealables asynchrones » demandait de verifier que les calques statiques (sol,
+zones, chaleur) et les icones sont cuits avant la premiere image. Ils le sont par des effets
+qui vivent dans QUATRE hooks distincts (`useReplayStaticLayers`, `useGrenadeIcons`,
+`useReplayWeaponPads`, `useReplayFlagCarries`), et aucun ne publie de drapeau de
+disponibilite. En creer un pour chacun et le remonter jusqu'a l'export couterait plus de
+lignes de canvas que tout le cablage de l'export — dans un fichier deja a son plafond.
+
+Le cas est par ailleurs inatteignable en pratique : la commande d'export vivra dans la barre
+de lecture, qui ne se rend qu'apres le montage du canvas, donc apres le lancement des
+cuissons ; et le mode de defaillance est benin (les premieres images d'un export lance dans
+la seconde du chargement sortiraient sans fond de carte). A rouvrir SI un utilisateur
+signale un artefact de debut de clip — pas avant.
+
+### RECETTE UTILISATEUR — PRONONCEE le 2026-08-28, mesures a l'appui
+
+Les trois recettes en attente (parite visuelle E2, export reel E3, ecoute E4) ont ete faites
+dans le navigateur, sur le match `696a9d7c` (8 min 48 s), l'utilisateur ayant ouvert une session.
+
+**Ce qui a ete verifie, et comment :**
+
+- **Le panneau s'ouvre au bon endroit.** Ancre au cartouche `relative`, bas du panneau a 872 px
+  pour un bouton a 884 px (donc AU-DESSUS), aligne a droite a 4 px pres, et ENTIEREMENT dans la
+  carte (haut 661 >= 200, bas 872 <= 949). Plus de decoupe par `overflow-hidden`.
+- **Dimensions impaires.** La toile mesurait 503x480 : le clip sort en **502x480**. L'arrondi au
+  pair ET le recadrage explicite de la `VideoFrame` fonctionnent sur un cas reel.
+- **Duree.** Plage de 6 s -> clip de 6,03 s. Plage de 10 s finissant sur la fin du match ->
+  clip de 13,17 s, soit 3,17 s de maintien : l'ecran de fin dure bien ~3 s et non une image.
+- **Vitesse.** 6 s de match calculees en 1,9 s, 10 s en 1,4 s. Soit **3x a 7x le temps reel** sur
+  un match reel — nettement moins que les 18,6x mesures sur une toile de test synthetique, parce
+  que c'est le `draw()` du rejeu qui domine, pas l'encodeur. C'est le chiffre honnete a retenir.
+- **Nom du fichier.** `rejeu-696a9d7c-...-8m38s-8m48s.mp4` : les DEUX bornes (decision D9).
+- **Parite visuelle des surimpressions (E2).** Capture d'ecran comparant la derniere image du
+  clip et la page : meme verdict, meme equipe, meme score — `DEFAITE / EQUIPE COBRA / 94 - 200`,
+  voile compris.
+- **Son (E4).** Piste decodee depuis le MP4 : stereo 48 kHz, 13,14 s (alignee sur les 13,17 s de
+  la video), crete 1,006, moyenne 0,023 — du vrai son, pas une piste declaree vide.
+
+**UN DEFAUT TROUVE PAR L'USAGE, corrige :** l'estimation affichait « environ 0:00 restantes »
+pendant tout un export rapide, ce qui se lit « c'est fini » alors que le calcul tourne encore.
+`etaLabel` se tait desormais sous trois secondes et compte en SECONDES sous la minute.
+
+**RESERVE :** la crete audio mesuree est de 1,006, c'est-a-dire tout juste au plafond. Aucune
+distorsion audible attendue a ce niveau, mais le mixage n'a AUCUNE marge : un echange plus
+nourri saturerait. A surveiller a l'ecoute ; un gain de garde sur le maitre serait la reponse.
+
+### D-7 (revue) — Ce que trois relecteurs adversariaux ont trouve, et ce qui a ete corrige
+
+Trois relectures en parallele, aveugles l'une de l'autre, sur trois axes (correction,
+conventions du depot, fidelite au produit). **Onze constats recevables**, dont deux trouves
+INDEPENDAMMENT par deux relecteurs — signal fort.
+
+CORRIGES DANS LE LOT (P0/P1), chacun avec son test de non-regression :
+
+1. **La fanfare de fin de partie etait posee sur TOUTE plage** (2 relecteurs). Le commentaire
+   de `planAudioMix` annoncait une garde « seulement si la plage l'atteint » QUI N'EXISTAIT
+   PAS — anti-patron « doc inversee » de CLAUDE.md. Un extrait des minutes 2 a 4 se terminait
+   sur la voix d'annonceur et la fanfare de victoire : le son affirmait un fait faux. La garde
+   vit desormais chez l'appelant (`reachesMatchEnd`), seul a connaitre la borne du match.
+2. **Aucune gestion d'erreur autour de l'export** (2 relecteurs). `run` n'avait pas de `catch`
+   et le dialogue jetait la promesse par `void` : toute panne faisait disparaitre la barre de
+   progression sans un mot, sans fichier, sans trace — et laissait l'encodeur ouvert avec son
+   muxeur en memoire. Ajoutes : `catch` + `console.error`, etat `failed` dit dans le dialogue,
+   et `sink?.abort()` dans le `finally` (y compris sur ANNULATION, ou il manquait aussi).
+3. **Les commandes de lecture restaient vivantes pendant l'export.** La boucle de lecture et
+   l'export ecrivent le MEME `frameRef` : un clic sur Lecture ou un glisse de frise corrompait
+   le clip en cours, sans que rien ne le signale. Lecture, sauts, recommencer et frise sont
+   neutralises le temps du calcul.
+4. **Ni le demontage ni la fermeture du dialogue n'annulaient l'export.** Quitter la page
+   deposait, trois minutes plus tard, le fichier d'un match qu'on avait quitte. L'invariant
+   existait deja a cote (`useReplayCapture`, `liveRef`) : il est repris.
+5. **L'ecran de fin de match ne durait QU'UNE image** (33 ms). L'objectif que `buildExportPlan`
+   s'assigne en toutes lettres n'etait pas atteint. Ajout d'un MAINTIEN de la derniere image
+   (`END_HOLD_MS`, 3 s), etendu a la queue du son quand elle est plus longue — ce qui corrige
+   du meme geste le fait que la piste sonore jouait apres la derniere image.
+6. **D9 n'etait pas implementee** : le nom du fichier ne portait qu'UNE borne, et par effet de
+   bord (`frameRef` laisse sur la fin par la boucle). Deux exports de plages differentes qui
+   partagent leur fin s'ecrasaient. `buildCaptureFilename` accepte desormais une seconde borne.
+7. **D6 n'etait tenue qu'aux deux tiers** : la chaine de distance (reglage d'instance) n'etait
+   pas transmise au mixage, qui sonnait donc plus fort et plus brillant que la page.
+8. **`encodeAudioInto` fuyait son encodeur** : `flush()` rejette sur un encodeur en erreur
+   fatale, donc `close()` n'etait jamais atteint. Passe en `try/finally`.
+9. **Piste AAC declaree mais vide** sur un navigateur sans `AudioEncoder` : la capacite se
+   teste maintenant AVANT d'ouvrir le conteneur (`canExportAudio`).
+10. **La fin de match confisquait l'image** meme sans verdict a annoncer, la ou le DOM affiche
+    quand meme le message inter-manche (ses deux surimpressions sont montees independamment).
+11. Trois defauts mineurs : hauteur du bloc de statut mesuree et peinte differemment (2 px),
+    `readOverlayInk` appele deux fois alors que l'en-tete promet une resolution unique,
+    `staticAssetURL('sound', …)` passe a sa 3e copie avec un commentaire affirmant l'inverse
+    (centralise dans `soundUrlOf`), et `teamStyle: null` inatteignable.
+
+CONSIGNES, NON CORRIGES (P2, hors perimetre ou dette d'un autre lot) :
+
+- `rosterLogic.ts` (409 -> 537 lignes) et les cinq copies de `Math.min(1, Math.max(0, …))` dans
+  `replayTimelineTracksLogic.ts` : **ces fichiers n'appartiennent pas a ce chantier** (aucun
+  commit `export-video` ne les touche) — ils viennent du chantier mene en parallele dans le
+  meme worktree. Le diff fourni aux relecteurs englobait les deux.
+- `i18n.ts` (618 -> 638) et `i18nContract.ts` (581 -> 620) : deja au-dessus du seuil de 500
+  lignes avant ce lot, et ce lot les fait grossir de 13 cles. C'est la seule place ou une chaine
+  d'UI peut vivre ; la scission suivante devra separer par domaine, pas par contrat.
+- Taille du filigrane : le DOM le borne a `60vh` (hauteur de FENETRE), l'export a 60 % de la
+  hauteur de la TOILE. L'export n'a pas de fenetre — a trancher a la recette visuelle.
+- Bornes du dialogue figees a l'ouverture si `playWindow` arrive apres le montage (portee
+  faible : le document est pret avant que le bouton n'existe).
+
+### D-6 (E6) — La CI de la branche est ROUGE, et ce n'est pas ce chantier
+
+`gh run list --branch feat/v75` : le dernier run « CI » est en echec. Le job qui tombe est
+« Go Coverage + Baseline non-regression », sur le test `TestNoLocalLongestRun` du package
+`internal/archlint`. Il vient du commit `c7da95dd9` (« score-parmanche »), qui appartient a
+un AUTRE chantier mene en parallele dans ce meme worktree.
+
+Les cinq commits `export-video` ne touchent AUCUN fichier `.go` (verifie : `git diff
+--name-only ... | grep -c '\.go$'` sur mes seuls commits). Non traite ici — regle « zero fix
+opportuniste hors perimetre », et c'est du travail en cours de quelqu'un d'autre. Signale a
+l'utilisateur.
+
+### D-2 (E1) — Le lockfile perd des champs `libc` a l'installation
+
+`npm install mp4-muxer` a retire ~90 lignes de `package-lock.json` : uniquement des champs
+`libc` sur des dependances optionnelles Linux. C'est une difference de version de npm entre la
+machine locale et celle qui a ecrit le lockfile, pas un changement de dependances (`package.json`
+ne gagne qu'une ligne). Non traite — hors perimetre, et sans effet sur l'installation.
+
+## Risques identifies
+
+1. **Toile teintee** — bloquant s'il se realise ; leve en E1 avant tout le reste.
+2. **Memoire** — 10 min a 30 im/s = 18 000 images. Le drainage par contre-pression est
+   obligatoire, pas une optimisation.
+3. **Duree percue** — meme a 5-15x le temps reel, un long match prend des minutes. D'ou la
+   progression et l'annulation (D8), non negociables.
+4. **Couverture navigateur** — `VideoEncoder` absent sur Firefox/Safari anciens : le repli
+   temps reel (D5) est la reponse, pas un bouton grise.
+5. **Divergence surimpression DOM / canvas** — les deux vivront cote a cote. Attenuation :
+   les peintres consomment les MEMES modules de logique, et le garde-rail
+   `replayOverlayStyles.guard.test.ts` existe deja pour l'habillage.
+
+## Ce que ce plan ne fait pas
+
+- Pas de definition au choix, pas de vitesse d'export, pas de partage de lien.
+- Pas de fil des eliminations, de fiches ni de bandeau de score dans le clip (exclusions
+  utilisateur). Les ajouter plus tard resterait possible : ce sont des peintres de plus
+  dans `overlayPaint.ts`, pas une autre architecture.

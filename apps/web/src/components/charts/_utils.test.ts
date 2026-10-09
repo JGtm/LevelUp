@@ -3,8 +3,10 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   formatDateShort,
   formatNumber,
+  legendEntries,
   outcomeColor,
   seriesColor,
+  stackedAxisExtent,
   tickInterval,
 } from './_utils'
 
@@ -67,6 +69,53 @@ describe('_utils', () => {
     })
   })
 
+  describe('stackedAxisExtent — extent sur le JEU COMPLET, jamais sur les séries visibles', () => {
+    it('aucune pile → {min: 0, max: 0}', () => {
+      expect(stackedAxisExtent([])).toEqual({ min: 0, max: 0 })
+      expect(stackedAxisExtent([], [])).toEqual({ min: 0, max: 0 })
+    })
+
+    it('une pile, une série : max = plus grande valeur, arrondi dizaine supérieure', () => {
+      expect(stackedAxisExtent([[[5, 15, 8]]])).toEqual({ min: 0, max: 20 })
+    })
+
+    it('une pile, plusieurs séries EMPILÉES : max = plus grande SOMME par index (pas la plus grande valeur seule)', () => {
+      // idx0 : 10+3=13 ; idx1 : 5+2=7. Max = 13 → dizaine sup. 20.
+      expect(stackedAxisExtent([[[10, 5], [3, 2]]])).toEqual({ min: 0, max: 20 })
+    })
+
+    it('plusieurs piles indépendantes : retient le MAX entre piles, ne les additionne pas', () => {
+      // Pile A (idx0=12), pile B (idx0=30) → max = 30, PAS 42.
+      expect(stackedAxisExtent([[[12]], [[30]]])).toEqual({ min: 0, max: 30 })
+    })
+
+    it('negativeStacks omis → min toujours 0 (axe qui ne descend jamais sous zéro)', () => {
+      expect(stackedAxisExtent([[[100]]])).toEqual({ min: 0, max: 100 })
+    })
+
+    it('negativeStacks : min = la somme la PLUS NÉGATIVE, arrondie à la dizaine inférieure (valeurs déjà signées)', () => {
+      expect(stackedAxisExtent([], [[[-4, -6]]])).toEqual({ min: -10, max: 0 })
+    })
+
+    it('positif ET négatif ensemble (ex. butterfly kills/bonus vs morts)', () => {
+      expect(stackedAxisExtent([[[12], [3]]], [[[-4]]])).toEqual({ min: -10, max: 20 })
+    })
+
+    it('null/undefined comptent pour 0 (comme ECharts)', () => {
+      expect(stackedAxisExtent([[[null, 5, undefined]]])).toEqual({ min: 0, max: 10 })
+    })
+
+    it('valeur pile sur une dizaine → marge nulle (cas limite documenté, cohérent avec oneLifeWindowBoundsForData)', () => {
+      expect(stackedAxisExtent([[[20]]])).toEqual({ min: 0, max: 20 })
+    })
+
+    it('indépendant de l\'ordre des piles/séries : le résultat ne dépend que des valeurs', () => {
+      const a = stackedAxisExtent([[[30]], [[12]]], [[[-2]], [[-4]]])
+      const b = stackedAxisExtent([[[12]], [[30]]], [[[-4]], [[-2]]])
+      expect(a).toEqual(b)
+    })
+  })
+
   describe('formatNumber', () => {
     it('arrondit avec 1 décimale par défaut', () => {
       expect(formatNumber(3.456)).toBe('3.5')
@@ -77,6 +126,35 @@ describe('_utils', () => {
     it('NaN/Infinity → "-"', () => {
       expect(formatNumber(NaN)).toBe('-')
       expect(formatNumber(Infinity)).toBe('-')
+    })
+  })
+
+  describe('legendEntries', () => {
+    it("porte la couleur sur la pastille ET sur le trait de l'icône", () => {
+      expect(legendEntries([{ name: 'Frags', color: '#123456' }])).toEqual([
+        {
+          name: 'Frags',
+          itemStyle: { color: '#123456', borderColor: '#123456' },
+          lineStyle: { color: '#123456' },
+        },
+      ])
+    })
+
+    it('reproduit le pointillé quand la série est tiretée', () => {
+      const [entry] = legendEntries([{ name: 'MMR équipe', color: '#abcdef', dashed: true }])
+      expect(entry.lineStyle).toEqual({ color: '#abcdef', type: 'dashed' })
+    })
+
+    it("conserve l'ordre et les noms — ce sont les clés de sélection ECharts", () => {
+      const entries = legendEntries([
+        { name: 'a', color: '#111111' },
+        { name: 'b', color: '#222222' },
+      ])
+      expect(entries.map((e) => e.name)).toEqual(['a', 'b'])
+    })
+
+    it('liste vide → aucune entrée (une légende sans série ne se fabrique pas)', () => {
+      expect(legendEntries([])).toEqual([])
     })
   })
 })

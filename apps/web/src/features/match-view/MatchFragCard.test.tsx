@@ -1,52 +1,30 @@
 /**
- * MatchFragCard.test.tsx — survol LIÉ entre les deux cartes séparées (FIX 2) : un état
- * `hoveredClass` partagé est remonté au parent. Les composants enfants sont mockés pour
- * exposer les props/callbacks du câblage (le rendu SVG/ECharts est testé chez eux).
- * Couvre aussi la grille auto-consciente : 3 colonnes (spans 2/1) quand le sunburst a
- * des données, breakdown seul PLEINE largeur sinon (jamais de cellule orpheline 1/3).
+ * MatchFragCard.test.tsx — la rangée « Répartition des frags » | « Outils de destruction » (cartes A et
+ * B de la Vue match). L'anneau, sa légende et les outils sont mockés : seule la MISE EN PAGE est testée
+ * ici (deux colonnes égales quand les deux cartes existent, une carte seule pleine largeur, rien sans
+ * aucune ; carte A montée comme sur Sessions : titre et aide, anneau nu, légende en pied, survol lié).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import { MatchFragCard } from './MatchFragCard'
-import type { FragDistribution, MatchWeaponKill } from '@/lib/api/types'
+import type { FragDistribution, SquadWeaponTools } from '@/lib/api/types'
 
-// FragSunburst mocké : bouton pour simuler le survol d'une classe + affiche la classe
-// externe reçue (réciproque : pilotée par le breakdown) + className (span de grille).
+type Survol = { onClassHover?: (c: string | null) => void }
+const recu = vi.hoisted(() => ({ anneau: null as null | Record<string, unknown>, legende: null as null | Record<string, unknown> }))
+
 vi.mock('@/components/charts/FragSunburst', () => ({
-  FragSunburst: ({
-    externalHoveredClass,
-    onClassHover,
-    className,
-  }: {
-    externalHoveredClass?: string | null
-    onClassHover?: (c: string | null) => void
-    className?: string
-  }) => (
-    <div data-testid="sunburst" data-external={externalHoveredClass ?? ''} className={className ?? ''}>
-      <button data-testid="sun-hover" onClick={() => onClassHover?.('melee')} />
-      <button data-testid="sun-leave" onClick={() => onClassHover?.(null)} />
-    </div>
-  ),
+  FragSunburst: (p: Record<string, unknown>) => {
+    recu.anneau = p
+    return <div data-testid="sunburst" />
+  },
+  FragClassLegend: (p: Record<string, unknown> & Survol) => {
+    recu.legende = p
+    return <button type="button" data-testid="legende" onMouseEnter={() => p.onClassHover?.('melee')} />
+  },
 }))
-
-// FragWeaponBreakdown mocké : bouton pour simuler le survol d'une barre + affiche la
-// classe survolée reçue (le breakdown estompe les autres à partir de cette prop)
-// + className (span de grille conditionnel).
-vi.mock('@/components/charts/FragWeaponBreakdown', () => ({
-  FragWeaponBreakdown: ({
-    hoveredClass,
-    onClassHover,
-    className,
-  }: {
-    hoveredClass?: string | null
-    onClassHover?: (c: string | null) => void
-    className?: string
-  }) => (
-    <div data-testid="breakdown" data-hovered={hoveredClass ?? ''} className={className ?? ''}>
-      <button data-testid="brk-hover" onClick={() => onClassHover?.('shoulder')} />
-    </div>
-  ),
+vi.mock('./MatchToolsCard', () => ({
+  MatchToolsCard: () => <div data-testid="outils" />,
 }))
 
 const DIST: FragDistribution = {
@@ -56,60 +34,52 @@ const DIST: FragDistribution = {
     { class: 'melee', kills: 3, authoritative: true },
   ],
 }
-const WEAPONS: MatchWeaponKill[] = [
-  { weapon_label: 'BR75', kill_count: 5, class: 'shoulder' } as MatchWeaponKill,
-]
+const TOOLS: SquadWeaponTools = {
+  players: ['Alpha'],
+  lines: [{ kind: 'weapon', class: 'shoulder', label: 'BR75', kills_by_player: { Alpha: 5 }, total_squad: 5 }],
+}
 
-describe('MatchFragCard (survol lié)', () => {
-  it('monte les deux cartes ; hoveredClass initial vide', () => {
-    render(<MatchFragCard distribution={DIST} weapons={WEAPONS} />)
+describe('MatchFragCard — anneau et outils de destruction', () => {
+  it('les deux cartes : deux colonnes égales', () => {
+    const { container } = render(<MatchFragCard distribution={DIST} tools={TOOLS} locale="fr" />)
     expect(screen.getByTestId('sunburst')).toBeInTheDocument()
-    expect(screen.getByTestId('breakdown')).toHaveAttribute('data-hovered', '')
+    expect(screen.getByTestId('outils')).toBeInTheDocument()
+    expect(container.firstElementChild?.className).toContain('lg:grid-cols-2')
   })
 
-  it('survol sunburst → propage hoveredClass au breakdown (dim des non-matchs)', () => {
-    render(<MatchFragCard distribution={DIST} weapons={WEAPONS} />)
-    fireEvent.click(screen.getByTestId('sun-hover'))
-    expect(screen.getByTestId('breakdown')).toHaveAttribute('data-hovered', 'melee')
-    fireEvent.click(screen.getByTestId('sun-leave'))
-    expect(screen.getByTestId('breakdown')).toHaveAttribute('data-hovered', '')
+  it('carte A comme sur Sessions : titre et aide, anneau nu sans légende interne, légende des classes en pied', () => {
+    render(<MatchFragCard distribution={DIST} tools={TOOLS} locale="fr" />)
+    const carte = screen.getByTestId('match-frag-donut')
+    expect(within(carte).getByText('Répartition des frags')).toBeInTheDocument()
+    fireEvent.click(within(carte).getByRole('button', { name: /informations/ }))
+    expect(screen.getByRole('tooltip').textContent).toContain('Frags du joueur sur le match')
+    expect(recu.anneau).toMatchObject({ bare: true, legendSide: 'none', hideCenterLabel: true })
+    expect(within(within(carte).getByTestId('objectif-legend')).getByTestId('legende')).toBeInTheDocument()
   })
 
-  it('réciproque : survol barre → propage la classe au sunburst', () => {
-    render(<MatchFragCard distribution={DIST} weapons={WEAPONS} />)
-    fireEvent.click(screen.getByTestId('brk-hover'))
-    expect(screen.getByTestId('sunburst')).toHaveAttribute('data-external', 'shoulder')
+  it('survol lié : la classe survolée dans la légende estompe les autres arcs de l’anneau', () => {
+    render(<MatchFragCard distribution={DIST} tools={TOOLS} locale="fr" />)
+    expect(recu.anneau?.externalHoveredClass).toBeNull()
+    fireEvent.mouseEnter(screen.getByTestId('legende'))
+    expect(recu.anneau?.externalHoveredClass).toBe('melee')
+    expect(recu.legende?.hoveredClass).toBe('melee')
   })
 
-  it('aucune donnée → rend null', () => {
-    const { container } = render(
-      <MatchFragCard distribution={{ total_kills: 0, classes: [] }} weapons={[]} />,
-    )
+  it('anneau seul (aucun outil) : pleine largeur, sans grille', () => {
+    const { container } = render(<MatchFragCard distribution={DIST} tools={null} locale="fr" />)
+    expect(screen.queryByTestId('outils')).toBeNull()
+    expect(container.firstElementChild?.className).not.toContain('grid-cols-2')
+  })
+
+  it('outils seuls (anneau vide, miroir de FragSunburst) : pleine largeur, sans grille', () => {
+    const { container } = render(<MatchFragCard distribution={{ total_kills: 5, classes: [] }} tools={TOOLS} locale="fr" />)
+    expect(screen.queryByTestId('sunburst')).toBeNull()
+    expect(screen.getByTestId('outils')).toBeInTheDocument()
+    expect(container.firstElementChild?.className).not.toContain('grid-cols-2')
+  })
+
+  it('aucune des deux : rien', () => {
+    const { container } = render(<MatchFragCard distribution={{ total_kills: 0, classes: [] }} tools={{ players: [], lines: [] }} locale="fr" />)
     expect(container).toBeEmptyDOMElement()
-  })
-})
-
-describe('MatchFragCard (grille auto-consciente)', () => {
-  it('distribution présente → grille 3 colonnes, sunburst span 2, breakdown span 1', () => {
-    const { container } = render(<MatchFragCard distribution={DIST} weapons={WEAPONS} />)
-    expect(container.querySelector('[class*="lg:grid-cols-3"]')).not.toBeNull()
-    expect(screen.getByTestId('sunburst').className).toContain('lg:col-span-2')
-    expect(screen.getByTestId('breakdown').className).toContain('lg:col-span-1')
-  })
-
-  it('distribution absente → breakdown seul, pleine largeur (pas de grille 3 colonnes ni col-span-1)', () => {
-    const { container } = render(<MatchFragCard distribution={null} weapons={WEAPONS} />)
-    expect(screen.queryByTestId('sunburst')).toBeNull()
-    expect(container.querySelector('[class*="lg:grid-cols-3"]')).toBeNull()
-    expect(screen.getByTestId('breakdown').className).not.toContain('lg:col-span-1')
-  })
-
-  it('distribution avec total > 0 mais classes vides (miroir FragSunburst) → breakdown pleine largeur', () => {
-    const { container } = render(
-      <MatchFragCard distribution={{ total_kills: 5, classes: [] }} weapons={WEAPONS} />,
-    )
-    expect(screen.queryByTestId('sunburst')).toBeNull()
-    expect(container.querySelector('[class*="lg:grid-cols-3"]')).toBeNull()
-    expect(screen.getByTestId('breakdown').className).not.toContain('lg:col-span-1')
   })
 })

@@ -15,9 +15,14 @@ import (
 func seedCrossTitleShared(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
-	ddl := `CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)`
-	if _, err := db.Exec(ctx, ddl); err != nil {
-		t.Fatalf("seedCrossTitleShared DDL: %v", err)
+	// match_registry : lu par l'exclusion de la Campagne de q31 (backlog B4) ; tout shared réel le porte.
+	for _, ddl := range []string{
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)`,
+		`CREATE TABLE match_registry (match_id VARCHAR, game_variant_id VARCHAR)`,
+	} {
+		if _, err := db.Exec(ctx, ddl); err != nil {
+			t.Fatalf("seedCrossTitleShared DDL: %v", err)
+		}
 	}
 	ins := `INSERT INTO match_participants VALUES
 		('a1','xuidMe'), ('a1','x1'), ('a1','x2'),

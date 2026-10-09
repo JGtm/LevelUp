@@ -19,7 +19,10 @@ type Row struct {
 	PlaylistName     string
 	PerformanceScore *float64
 	// PerformanceChain est la cle de la chaine de score de performance
-	// (arena_slayer / arena_objectif / btb / chaos / ranked / firefight).
+	// (arena_slayer / arena_objectif / btb / chaos / ranked_slayer /
+	// ranked_objectif / firefight ; "ranked" = valeur historique d'avant la
+	// scission par famille, encore lisible en base tant qu'un batch ne l'a pas
+	// recalculee).
 	// Vide quand inconnu : la row ne contribue alors a aucun bucket de
 	// PerfByChain dans les agregats cross-chaine.
 	PerformanceChain string

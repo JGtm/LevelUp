@@ -1,0 +1,22 @@
+Instrumentation TEMPORAIRE de la mesure L0.8 (2026-10-02), jouee une fois puis retiree ; produit
+`l0_mesures_dels_instrumentation_temporaire.tsv` (tables l0_8_dels_ti et l0_8_dels_sains_detail).
+
+1. Definition neutralisee (ecrivain_invariants.go, verdictDeVueC) :
+       l.Fermee = l.FermeeAuBit
+2. frame_infer.go, decodeInferLoop, branche recDel (la regle de production du DEL existait alors :
+   rec.Ecrivain = lireMotDeDel(br, w, slot), mot non nul sur un slot lie a un archetype != 0x10) :
+       posMotTEMP := br.BitPos()
+       if tiTEMP, okTEMP := w.ArchetypeForSlot(slot); okTEMP {
+           rec.TypeIndex = tiTEMP + 1000          // archetype du slot AVANT le DEL, selon le monde
+       }
+       rec.Ecrivain = lireMotDeDel(br, w, slot)
+       rbTEMP := LecteurSur(buf)
+       rbTEMP.SetBitPos(posMotTEMP)
+       rec.HeaderBit = int(rbTEMP.ReadBits(32))   // le mot de 32 bits
+3. campagne_l0_research_test.go, l0Mesure.records : pour chaque DEL, ventilation
+   (etat du paquet, ti=<archetype du monde> ou « slot non lie », mot nul / non nul), et detail des DEL
+   a mot non nul sur slot lie hors 0x10 dans les paquets fermes au bit pres et sains au juge.
+
+Commande : grammar_A2.test.exe -test.run '^TestCampagneL0Mesures$' (CAMPAGNE_RACINE, CAMPAGNE_FILMS
+= les 20 films, CAMPAGNE_SORTIE). La regle a ete retiree de la production apres la mesure (non
+retenue) ; la sonde versionnee ne garde que le comptage par relecture du mot (`l0MotsDeDel`).

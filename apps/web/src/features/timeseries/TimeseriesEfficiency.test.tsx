@@ -117,13 +117,29 @@ describe('TimeseriesEfficiency — taux « une vie » (%)', () => {
     expect(opt.series[1]?.markArea).toBeUndefined()
   })
 
-  it('fenêtre d\'axe FIXE 50…200 % : deux sessions d\'amplitudes opposées, mêmes bornes', async () => {
+  it('cadre de base 50…200 % : deux sessions d\'amplitudes opposées mais DANS la fenêtre, mêmes bornes', async () => {
+    // "wide" reste À L'INTÉRIEUR de 50…200 % (60 % / 180 %) : cas nominal, pas
+    // de dépassement — cf. le test dédié "hors fenêtre" ci-dessous pour DEC-5.
     const tight = await optionFor([row(0, 900, 4), row(1, 920, 4)])
-    const wide = await optionFor([row(0, 4000, 1), row(1, 900, 12)])
+    const wide = await optionFor([row(0, 750, 2), row(1, 1000, 8)])
     expect(tight.yAxis.min).toBe(ONE_LIFE_RATE_BOUNDS.min)
     expect(tight.yAxis.max).toBe(ONE_LIFE_RATE_BOUNDS.max)
     expect(wide.yAxis.min).toBe(tight.yAxis.min)
     expect(wide.yAxis.max).toBe(tight.yAxis.max)
+  })
+
+  it('DEC-5 : un point hors fenêtre 50…200 % élargit l\'axe (jamais en dessous du plancher), zones alignées', async () => {
+    // 4000 dégâts pour 1 frag = 5,6 % (bien sous 50) ; 900 dégâts pour 12 frags
+    // = 300 % (bien au-dessus de 200). Sans le fix, ces deux points seraient
+    // écrêtés par l'axe fixe.
+    const opt = await optionFor([row(0, 4000, 1), row(1, 900, 12)])
+    expect(opt.yAxis.min).toBeLessThan(ONE_LIFE_RATE_BOUNDS.min)
+    expect(opt.yAxis.max).toBeGreaterThan(ONE_LIFE_RATE_BOUNDS.max)
+    // Les zones de lecture suivent la même borne élargie (pas de bande orpheline
+    // qui s'arrêterait avant le bord réel de l'axe).
+    const zones = opt.series[0].markArea?.data
+    expect(zones![0][1].yAxis).toBe(opt.yAxis.max)
+    expect(zones![1][0].yAxis).toBe(opt.yAxis.min)
   })
 
   it('repère « 1 vie » tracé à 100 %, plus au barème en dégâts bruts', async () => {

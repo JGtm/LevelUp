@@ -1,0 +1,19 @@
+meta	51ebbc0f	Oddball:Arena	skull	Banished Narrows	160	95	500	8	2746	1353	1393	4288	424832	30680	8571
+team	6	80	80	80	99604	249982	oui
+team	8	43	43	43	138945	207746	oui
+a01	ecart	80/43	160/95	2
+player	10	-	-	5	-	3	-	2	-	non	non	0
+player	12	-	-	1	-	4	-	1	-	non	non	0
+player	14	-	-	5	-	5	-	3	-	non	non	0
+player	16	-	-	4	-	5	-	2	-	non	non	0
+player	18	-	-	2	-	5	-	1	-	non	non	0
+player	20	-	-	8	-	0	-	1	-	non	non	0
+player	22	-	2535469889270266	4	15	4	4	2	2	non	non	0
+player	24	-	-	2	-	5	-	2	-	non	non	0
+a03	0	1	0	0	8	8	0
+teamcore	19	12	0	0	0
+a02	c			comp2A equipes 19/12 vs sommes joueurs 0/0
+a01b	ecart	80/43	160/95	1	1
+volume	123	0	0	0	0	2490	25	2515
+probe	total	0
+cost	8571	8701	21	4	68	2746

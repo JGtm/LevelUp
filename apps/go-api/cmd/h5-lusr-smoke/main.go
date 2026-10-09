@@ -19,13 +19,19 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	halo5 "levelup/go-api/internal/games/halo_5"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	lusync "levelup/go-api/internal/sync"
 )
 
 const jgtmXUID = "2533274823110022"
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	src := "c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/titles/halo_5/warehouse/shared_matches_v2.duckdb"
 	if len(os.Args) > 1 {
 		src = os.Args[1]
@@ -36,8 +42,7 @@ func main() {
 
 	// Classifier LUSR title-aware : défaut Infinite (fail-loud) + dédié Halo 5
 	// (chaîne unique h5_arena ; h5 n'a pas de pair_name).
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
 
 	// Copie isolée du shared h5 (lecture seule côté source).
 	tmp, err := os.MkdirTemp("", "h5lusr")

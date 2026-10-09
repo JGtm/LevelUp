@@ -1,0 +1,19 @@
+== A3
+--- FAIL: TestRecordNeufTi40TraverseJusquAuBout (0.00s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	27.668s
+FAIL
+== B3
+--- FAIL: TestLeCompteurPublieCompteLesLecturesDeI34 (0.00s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	27.729s
+FAIL
+== B5
+--- FAIL: TestLeCompteurPublieCompteLesLecturesDeI34 (0.00s)
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	27.588s
+FAIL
+    composants_vehicule_ti40_chemins_test.go:139: traverse.go pose etatComplet (1 fois) : seule la marche d etat complet le pose
+FAIL
+FAIL	levelup/go-api/internal/games/halo_infinite/film/internal/grammar	0.071s
+FAIL

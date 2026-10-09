@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -42,22 +43,23 @@ func CorrectSquadImpactEvents(
 	return corrected
 }
 
-// timelines fournit le T0 par match (§4.A-bis) ; les TimeMS sont ramenés au
+// Q32 est lu par groupes (port.SquadRepository.LoadImpactEventsParGroupes : repli des frags
+// reconstitués décidé groupe par groupe). timelines fournit le T0 par match (§4.A-bis) ; les TimeMS sont ramenés au
 // référentiel gameplay avant conversion en analysis.ImpactEvent. Une map nil ou
 // un match absent → T0=0 (identité).
 func (s *TeammatesService) loadImpactEventsByMatch(
 	ctx context.Context,
-	matchIDs []string,
+	groupes [][]string,
 	timelines map[string]domain.MatchTimeline,
 ) map[string][]analysis.ImpactEvent {
-	out := make(map[string][]analysis.ImpactEvent, len(matchIDs))
-	if s.repo == nil || len(matchIDs) == 0 {
+	out := make(map[string][]analysis.ImpactEvent)
+	if s.repo == nil || len(groupes) == 0 {
 		return out
 	}
-	rows, err := s.repo.LoadImpactEvents(ctx, matchIDs)
+	rows, err := s.repo.LoadImpactEventsParGroupes(ctx, groupes)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_impact_events_load_failed",
-			"err", err, "n_matches", len(matchIDs))
+			"err", err, "n_groupes", len(groupes))
 		return out
 	}
 	rows = CorrectSquadImpactEvents(ctx, "teammates.07", rows, timelines)
@@ -89,6 +91,7 @@ func (s *TeammatesService) buildMedalDigest(
 	teammates []domain.TeammateRow,
 	locale string,
 ) []domain.MedalDigestEntry {
+	defer timing.FromContext(ctx).Section("medal_digest")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		return nil
 	}

@@ -3,11 +3,11 @@
  * (rosters nommés chargeables d'un clic) + un footer de gestion.
  *
  * Deux sources, clairement distinctes (anti-confusion) :
- *  - « Mes escouades » : compositions sauvegardées (entité Squad). Charger =
+ *  - « Escouades enregistrées » : compositions sauvegardées (entité Squad). Charger =
  *    appliquer le roster ; gérer = renommer / supprimer ; enregistrer la compo
  *    courante. Sous-titre = indice dérivé des playlists/modes habituels (si le
  *    backend le fournit ; jamais stocké).
- *  - « Mes groupes » : cercles d'accès familles/amis. Charger leurs membres dans
+ *  - « Groupes » : cercles d'accès familles/amis. Charger leurs membres dans
  *    la sélection (reprend la capacité de l'ancien SquadGroupLoader).
  *
  * Toute la logique métier vit ici pour garder GamertagCombobox (components/ui)
@@ -129,6 +129,9 @@ export function scoreSquadContext(
   )
 }
 
+/** Ce que le hook lit d'une ligne de coéquipier : de quoi enregistrer l'escouade. */
+export type SquadPresetRow = Pick<TeammateRow, 'gamertag' | 'xuid'>
+
 export interface UseSquadPresetsOptions {
   playerSlug: string
   /** XUID absolu du joueur courant — exclut le viewer du roster (player-agnostic).
@@ -137,7 +140,7 @@ export interface UseSquadPresetsOptions {
   hasLinkedIdentity: boolean
   locale: string
   /** Coéquipiers actuellement sélectionnés (pour « enregistrer la compo »). */
-  selectedRows: TeammateRow[]
+  selectedRows: readonly SquadPresetRow[]
   /** Labels (playlists/modes) du filtre courant → trie en tête les escouades
    *  dont les contextes habituels matchent (indice souple, jamais un verrou). */
   activeContextLabels?: string[]

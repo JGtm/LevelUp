@@ -1,0 +1,397 @@
+# Manifest i18n de l'onglet TACTIQUE (Ascension) — écran unique : cartes jouées, carte du plan,
+# zone sélectionnée. Chaque clé porte fr ET en (contrôlé par build_i18n_manifests.mjs).
+#
+# VOCABULAIRE FR ARRÊTÉ : « carte », « matchs », « victoires », « défaites », « frags »,
+# « plancher », « réapparition ». Jamais « map », jamais « heatmap » (garde
+# lib/i18n/no-anglicisms.guard.test.ts). Du factuel et du neutre : aucun conseil adressé au joueur.
+
+# ── Colonne « Cartes jouées » ───────────────────────────────────────────────────────────────────
+[tactical.maps.title]
+fr = "Cartes jouées"
+en = "Maps played"
+
+[tactical.maps.loading]
+fr = "Chargement des cartes…"
+en = "Loading maps…"
+
+[tactical.maps.error]
+fr = "Les cartes n'ont pas pu être chargées."
+en = "Maps could not be loaded."
+
+[tactical.maps.empty_title]
+fr = "Aucune carte jouée"
+en = "No map played"
+
+[tactical.maps.record_label]
+fr = "{wins, plural, one {# victoire} other {# victoires}} et {losses, plural, one {# défaite} other {# défaites}} sur {n, plural, one {# match} other {# matchs}}"
+en = "{wins, plural, one {# win} other {# wins}} and {losses, plural, one {# loss} other {# losses}} out of {n, plural, one {# match} other {# matches}}"
+
+[tactical.maps.select]
+fr = "Sélectionner {map}"
+en = "Select {map}"
+
+[tactical.maps.explorer_link]
+fr = "Voir les matchs de cette carte dans l'Explorateur"
+en = "See this map's matches in the Explorer"
+
+[tactical.maps.selected]
+fr = "Carte sélectionnée"
+en = "Selected map"
+
+[tactical.maps.tile_summary]
+fr = "{n} · {wins} V / {losses} D"
+en = "{n} · {wins} W / {losses} L"
+
+[tactical.maps.search_placeholder]
+fr = "Carte"
+en = "Map"
+
+[tactical.maps.search_label]
+fr = "Rechercher une carte"
+en = "Search a map"
+
+[tactical.maps.no_match]
+fr = "Aucune carte ouvrable ne correspond"
+en = "No map to open matches"
+
+[tactical.maps.none_openable]
+fr = "Aucune carte ouvrable"
+en = "No map to open"
+
+[tactical.maps.floor_fold]
+fr = "{n, plural, one {# carte sous le plancher} other {# cartes sous le plancher}}"
+en = "{n, plural, one {# map below the floor} other {# maps below the floor}}"
+
+[tactical.maps.floor_fold_filtered]
+fr = "{shown} sur {n, plural, one {# carte sous le plancher} other {# cartes sous le plancher}}"
+en = "{shown} of {n, plural, one {# map below the floor} other {# maps below the floor}}"
+
+[tactical.maps.floor_count]
+fr = "{n} sur {floor}"
+en = "{n} of {floor}"
+
+# ── Barre de filtres L2 (inchangée) ─────────────────────────────────────────────────────────────
+[tactical.filter.experience]
+fr = "Expérience"
+en = "Experience"
+
+[tactical.filter.experience_all]
+fr = "Toutes"
+en = "All"
+
+[tactical.filter.experience_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[tactical.filter.experience_unranked]
+fr = "Non classé"
+en = "Unranked"
+
+[tactical.filter.playlists]
+fr = "Playlists"
+en = "Playlists"
+
+[tactical.filter.modes]
+fr = "Modes"
+en = "Modes"
+
+[tactical.filter.reset]
+fr = "Réinitialiser les filtres"
+en = "Reset filters"
+
+[tactical.filter.view]
+fr = "Vue"
+en = "View"
+
+[tactical.filter.view_all]
+fr = "Tous les matchs"
+en = "All matches"
+
+[tactical.filter.view_solo]
+fr = "Solo"
+en = "Solo"
+
+[tactical.filter.view_squad]
+fr = "En escouade"
+en = "With a squad"
+
+[tactical.filter.sessions]
+fr = "Sessions"
+en = "Sessions"
+
+[tactical.filter.sessions_off_list]
+fr = "{n, plural, one {# session épinglée n'est pas dans la liste courante} other {# sessions épinglées ne sont pas dans la liste courante}} : {names}. Le filtre reste appliqué."
+en = "{n, plural, one {# pinned session is not in the current list} other {# pinned sessions are not in the current list}}: {names}. The filter still applies."
+
+[tactical.filter.squad_label]
+fr = "Escouade"
+en = "Squad"
+
+[tactical.filter.unknown_teammate_title]
+fr = "Coéquipier introuvable"
+en = "Teammate not found"
+
+[tactical.filter.unknown_teammate_description]
+fr = "Introuvable parmi les coéquipiers connus : {names}"
+en = "Not found among the known teammates: {names}"
+
+# ── Lectures de la pilule « Lecture », et leurs unités ──────────────────────────────────────────
+[tactical.analysis.questions.morts]
+fr = "Morts"
+en = "Deaths"
+
+[tactical.analysis.questions.kills]
+fr = "Frags"
+en = "Kills"
+
+[tactical.analysis.questions.solde]
+fr = "Solde frags − morts"
+en = "Kills − deaths"
+
+[tactical.analysis.questions.gagne]
+fr = "Victoires − défaites"
+en = "Wins − losses"
+
+[tactical.analysis.questions.temps]
+fr = "Temps de présence"
+en = "Time on map"
+
+[tactical.analysis.questions.routes]
+fr = "Trajets après réapparition"
+en = "Routes after respawn"
+
+[tactical.analysis.questions.isole]
+fr = "Morts seul"
+en = "Deaths alone"
+
+[tactical.unit.morts]
+fr = "morts par match"
+en = "deaths per match"
+
+[tactical.unit.kills]
+fr = "frags par match"
+en = "kills per match"
+
+[tactical.unit.solde]
+fr = "frags − morts par match"
+en = "kills − deaths per match"
+
+[tactical.unit.gagne]
+fr = "engagements par match"
+en = "engagements per match"
+
+[tactical.unit.temps]
+fr = "secondes par match"
+en = "seconds per match"
+
+[tactical.unit.routes]
+fr = "passages par match"
+en = "passages per match"
+
+[tactical.unit.isole]
+fr = "morts seul par match"
+en = "deaths alone per match"
+
+# ── Carte du plan : bandeau, aide ⓘ, réglages en pilules ────────────────────────────────────────
+[tactical.plan.info]
+fr = "{retenus, plural, one {# match} other {# matchs}} · {source} · grille {pas, number} m · {plancher, plural, one {# match distinct} other {# matchs distincts}} par zone"
+en = "{retenus, plural, one {# match} other {# matches}} · {source} · {pas, number} m grid · {plancher, plural, one {# distinct match} other {# distinct matches}} per zone"
+
+[tactical.plan.info_source_journal]
+fr = "journal des morts"
+en = "death log"
+
+[tactical.plan.info_source_replay]
+fr = "artefacts de rejeu"
+en = "replay artifacts"
+
+[tactical.plan.info_gagne]
+fr = "{v, plural, one {# victoire} other {# victoires}} et {d, plural, one {# défaite} other {# défaites}}, {plancher, plural, one {# match distinct} other {# matchs distincts}} de chaque côté"
+en = "{v, plural, one {# win} other {# wins}} and {d, plural, one {# loss} other {# losses}}, {plancher, plural, one {# distinct match} other {# distinct matches}} on each side"
+
+[tactical.plan.info_isole]
+fr = "seul : aucun coéquipier visible, ou le plus proche au-delà de {portee} (portée du radar)"
+en = "alone: no teammate in sight, or the nearest beyond {portee} (radar range)"
+
+[tactical.plan.info_team_down]
+fr = "{n, plural, one {# mort écartée, aucun coéquipier en mesure d'accompagner} other {# morts écartées, aucun coéquipier en mesure d'accompagner}}"
+en = "{n, plural, one {# death set aside, no teammate able to follow} other {# deaths set aside, no teammate able to follow}}"
+
+[tactical.plan.info_off_frame]
+fr = "{hors, plural, one {# zone hors du cadre du fond} other {# zones hors du cadre du fond}} sur {total}"
+en = "{hors, plural, one {# zone outside the background frame} other {# zones outside the background frame}} out of {total}"
+
+[tactical.plan.radius_value]
+fr = "{rayon} m"
+en = "{rayon} m"
+
+[tactical.plan.radius_join]
+fr = " ou "
+en = " or "
+
+[tactical.plan.pill_reading]
+fr = "Lecture"
+en = "Reading"
+
+[tactical.plan.pill_players]
+fr = "Joueurs"
+en = "Players"
+
+[tactical.plan.who_me]
+fr = "Moi"
+en = "Me"
+
+[tactical.plan.who_squad]
+fr = "Escouade"
+en = "Squad"
+
+[tactical.plan.who_opponents]
+fr = "Adversaires"
+en = "Opponents"
+
+[tactical.plan.squad_pending]
+fr = "Aucune composition choisie"
+en = "No lineup chosen"
+
+[tactical.plan.pill_respawn]
+fr = "Réapparition"
+en = "Respawn"
+
+[tactical.plan.pill_respawn_all]
+fr = "Toutes"
+en = "All"
+
+# ── Carte du plan : états posés sur le fond, légende, bandeau d’état ────────────────────────────
+[tactical.plan.empty_no_match_title]
+fr = "Aucun match sur cette carte dans le filtre"
+en = "No match on this map in the filter"
+
+[tactical.plan.title_outside_filter]
+fr = "Carte hors du filtre"
+en = "Map outside the filter"
+
+[tactical.plan.empty_title]
+fr = "Aucun plan à dessiner sur cette carte"
+en = "No plan to draw on this map"
+
+[tactical.plan.empty_density_title]
+fr = "Densité insuffisante pour dessiner un plan"
+en = "Not enough density to draw a plan"
+
+[tactical.analysis.error_title]
+fr = "L'analyse n'a pas pu être chargée."
+en = "The analysis could not be loaded."
+
+[tactical.analysis.updating]
+fr = "Mise à jour…"
+en = "Updating…"
+
+[tactical.plan.legend_label]
+fr = "Échelle de la lecture, de {lo} à {hi}"
+en = "Reading scale, from {lo} to {hi}"
+
+[tactical.status.pending]
+fr = "{n, plural, one {# match en attente de traitement} other {# matchs en attente de traitement}}"
+en = "{n, plural, one {# match awaiting processing} other {# matches awaiting processing}}"
+
+# ── Zone sélectionnée ───────────────────────────────────────────────────────────────────────────
+[tactical.zone.title]
+fr = "Zone sélectionnée"
+en = "Selected zone"
+
+[tactical.zone.none]
+fr = "Aucune zone sélectionnée"
+en = "No zone selected"
+
+[tactical.zone.unnamed]
+fr = "Zone sans nom"
+en = "Unnamed zone"
+
+[tactical.zone.coords]
+fr = "x {x0}…{x1} m · y {y0}…{y1} m"
+en = "x {x0}…{x1} m · y {y0}…{y1} m"
+
+[tactical.zone.matches]
+fr = "{n, plural, one {# match distinct} other {# matchs distincts}}"
+en = "{n, plural, one {# distinct match} other {# distinct matches}}"
+
+[tactical.zone.wins_losses]
+fr = "{v, plural, one {# victoire} other {# victoires}}, {d, plural, one {# défaite} other {# défaites}}"
+en = "{v, plural, one {# win} other {# wins}}, {d, plural, one {# loss} other {# losses}}"
+
+[tactical.zone.kills_deaths]
+fr = "{f, plural, one {# frag} other {# frags}}, {m, plural, one {# mort} other {# morts}}"
+en = "{f, plural, one {# kill} other {# kills}}, {m, plural, one {# death} other {# deaths}}"
+
+[tactical.zone.replay_heading]
+fr = "Rejeu"
+en = "Replay"
+
+[tactical.zone.contributions_loading]
+fr = "Chargement des matchs de la zone…"
+en = "Loading the zone’s matches…"
+
+[tactical.zone.contributions_empty]
+fr = "Aucun match ouvrable dans cette zone"
+en = "No match to open in this zone"
+
+[tactical.zone.error]
+fr = "La zone n'a pas pu être lue"
+en = "The zone could not be read"
+
+# ── Mini-tuile « Rejeu » : fait, catégorie de la source, placement, bouton ──────────────────────
+[tactical.tile.killed_by]
+fr = "Tué par {gt}"
+en = "Killed by {gt}"
+
+[tactical.tile.killed]
+fr = "A tué {gt}"
+en = "Killed {gt}"
+
+[tactical.tile.death]
+fr = "Mort"
+en = "Death"
+
+[tactical.tile.frag]
+fr = "Frag"
+en = "Kill"
+
+[tactical.tile.entry]
+fr = "Entrée dans la zone"
+en = "Entered the zone"
+
+[tactical.tile.respawn]
+fr = "Réapparition"
+en = "Respawn"
+
+[tactical.tile.cat_headshot]
+fr = "tir à la tête"
+en = "headshot"
+
+[tactical.tile.cat_attached]
+fr = "dégât collé"
+en = "stuck damage"
+
+[tactical.tile.cat_silent_melee]
+fr = "assassinat"
+en = "assassination"
+
+[tactical.tile.cat_chained]
+fr = "projectile en chaîne"
+en = "chained projectile"
+
+[tactical.tile.alone]
+fr = "seul"
+en = "alone"
+
+[tactical.tile.alone_at]
+fr = "seul · {d} m"
+en = "alone · {d} m"
+
+[tactical.tile.near_at]
+fr = "près · {d} m"
+en = "near · {d} m"
+
+[tactical.tile.open_replay]
+fr = "Ouvrir le rejeu à {instant}"
+en = "Open the replay at {instant}"

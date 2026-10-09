@@ -12,7 +12,8 @@
  * KpiGrid.tsx (formatRankDeltaValue). Toute nouvelle surface consomme
  * `formatSignedFixed` (@/lib/formatters).
  *
- * NON matchés (formatteurs distincts, volontairement locaux) : `formatSignedPoints`
+ * NON matchés (formatteurs distincts, volontairement séparés) : `formatSignedPoints`
+ * (@/lib/baseline depuis le 2026-09-06)
  * ('±0 pts', points entiers sans toFixed) et le `formatDelta` de delta-card
  * (précision dynamique selon magnitude, aucun sentinel '±0').
  */

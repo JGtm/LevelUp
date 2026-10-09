@@ -1,3 +1,4 @@
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import type { AssetMeta } from '@/lib/api/types'
 import type { ManifestLocale } from '@/lib/i18n/format'
 
@@ -38,6 +39,17 @@ export function AssetCard({ asset, locale, kind }: AssetCardProps) {
               backgroundPosition: `-${asset.sprite_left || 0}px -${asset.sprite_top || 0}px`,
               backgroundRepeat: 'no-repeat',
             }}
+          />
+        ) : asset.image_tinted && asset.image_url ? (
+          // Icône MASQUE (dessin porté par l'alpha) : rendue telle quelle, elle serait
+          // invisible sur fond clair. Le back le déclare, on ne le devine pas.
+          <WeaponIcon
+            imageUrl={asset.image_url}
+            tinted
+            label={label}
+            width="100%"
+            height="100%"
+            className="p-1 text-foreground"
           />
         ) : (
           <img

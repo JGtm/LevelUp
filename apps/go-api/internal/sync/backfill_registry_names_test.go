@@ -29,7 +29,8 @@ func setupBackfillRegistryDBs(t *testing.T) (sharedDB, metadataDB *sql.DB) {
 		playlist_id VARCHAR, playlist_name VARCHAR,
 		map_id VARCHAR, map_name VARCHAR,
 		pair_id VARCHAR, pair_name VARCHAR,
-		game_variant_id VARCHAR, game_variant_name VARCHAR)`); err != nil {
+		game_variant_id VARCHAR, game_variant_name VARCHAR,
+		mode_category VARCHAR)`); err != nil {
 		t.Fatalf("schema shared: %v", err)
 	}
 	if _, err := metadataDB.Exec(`CREATE TABLE asset_translations (
@@ -40,19 +41,30 @@ func setupBackfillRegistryDBs(t *testing.T) (sharedDB, metadataDB *sql.DB) {
 	return sharedDB, metadataDB
 }
 
+func nomDuRegistre(t *testing.T, db *sql.DB, matchID, col string) sql.NullString {
+	t.Helper()
+	var n sql.NullString
+	// col vient des tests eux-mêmes (liste fermée), jamais d'une entrée.
+	if err := db.QueryRow(`SELECT `+col+` FROM match_registry WHERE match_id = ?`, matchID).Scan(&n); err != nil {
+		t.Fatalf("lecture %s.%s: %v", matchID, col, err)
+	}
+	return n
+}
+
+// TestBackfillRegistryNames_FixesUUIDFallback : les noms égaux à l'identifiant sont remplacés
+// par la traduction en-US ; les comptes sont PAR MATCH ; un vrai nom reste en place.
 func TestBackfillRegistryNames_FixesUUIDFallback(t *testing.T) {
 	ctx := context.Background()
 	sharedDB, metaDB := setupBackfillRegistryDBs(t)
 
-	// Match avec UUID brut comme nom (cas du fallback `coalesceStrPtr`).
 	const playlistID = "uuid-quick-play"
 	const mapID = "uuid-aquarius"
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
-		('m1', ?, ?, ?, ?, NULL, NULL, NULL, NULL),
-		('m2', ?, ?, NULL, NULL, NULL, NULL, NULL, NULL),
-		('m3', ?, 'Quick Play', ?, 'Aquarius', NULL, NULL, NULL, NULL)`,
-		playlistID, playlistID, mapID, mapID, // m1: les deux UUID
-		playlistID, playlistID, // m2: playlist UUID
+		('m1', ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL),
+		('m2', ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+		('m3', ?, 'Quick Play', ?, 'Aquarius', NULL, NULL, NULL, NULL, NULL)`,
+		playlistID, playlistID, mapID, mapID, // m1: les deux en identifiant
+		playlistID, playlistID, // m2: playlist en identifiant
 		playlistID, mapID); err != nil { // m3: déjà résolus
 		t.Fatalf("seed shared: %v", err)
 	}
@@ -62,38 +74,88 @@ func TestBackfillRegistryNames_FixesUUIDFallback(t *testing.T) {
 		t.Fatalf("seed meta: %v", err)
 	}
 
-	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
-	// Stats : 1 playlist_id distinct à fixer (uuid-quick-play présent dans m1+m2 mais distinct=1)
-	if stats.PlaylistsScanned != 1 || stats.PlaylistsFixed != 1 {
-		t.Errorf("playlists scanned=%d fixed=%d, want 1/1", stats.PlaylistsScanned, stats.PlaylistsFixed)
+	if stats.PlaylistsScanned != 2 || stats.PlaylistsFixed != 2 {
+		t.Errorf("playlists scanned=%d fixed=%d, want 2/2 (m1, m2)", stats.PlaylistsScanned, stats.PlaylistsFixed)
 	}
 	if stats.MapsScanned != 1 || stats.MapsFixed != 1 {
 		t.Errorf("maps scanned=%d fixed=%d, want 1/1", stats.MapsScanned, stats.MapsFixed)
 	}
+	for _, id := range []string{"m1", "m2", "m3"} {
+		if got := nomDuRegistre(t, sharedDB, id, "playlist_name"); got.String != "Quick Play" {
+			t.Errorf("%s playlist_name = %q, want Quick Play", id, got.String)
+		}
+	}
+}
 
-	// Vérifie que m1 et m2 ont leur playlist_name remplacé par "Quick Play".
-	var name string
-	if err := sharedDB.QueryRow(`SELECT playlist_name FROM match_registry WHERE match_id = 'm1'`).Scan(&name); err != nil {
-		t.Fatal(err)
+// TestBackfillRegistryNames_NullNames : un nom NULL (vidé par un ancien outil de réparation) est
+// réécrit comme un nom égal à l'identifiant ; mode_category n'est jamais touchée.
+func TestBackfillRegistryNames_NullNames(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, metaDB := setupBackfillRegistryDBs(t)
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', NULL, NULL, 'map-x', NULL, 'pair-x', NULL, NULL, NULL, 'other')`); err != nil {
+		t.Fatalf("seed shared: %v", err)
 	}
-	if name != "Quick Play" {
-		t.Errorf("m1 playlist_name = %q, want Quick Play", name)
+	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
+		('map-x', 'map', 'en-US', 'Streets'),
+		('pair-x', 'pair', 'en-US', 'Arena:CTF on Streets')`); err != nil {
+		t.Fatalf("seed meta: %v", err)
 	}
-	if err := sharedDB.QueryRow(`SELECT playlist_name FROM match_registry WHERE match_id = 'm2'`).Scan(&name); err != nil {
-		t.Fatal(err)
+	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
+	if err != nil {
+		t.Fatalf("backfill: %v", err)
 	}
-	if name != "Quick Play" {
-		t.Errorf("m2 playlist_name = %q, want Quick Play", name)
+	if stats.MapsFixed != 1 || stats.PairsFixed != 1 || stats.PairsConstructed != 0 {
+		t.Errorf("stats = %+v, want 1 carte et 1 paire traduites", stats)
 	}
-	// m3 doit rester "Quick Play" (était déjà correct)
-	if err := sharedDB.QueryRow(`SELECT playlist_name FROM match_registry WHERE match_id = 'm3'`).Scan(&name); err != nil {
-		t.Fatal(err)
+	if got := nomDuRegistre(t, sharedDB, "m1", "map_name"); got.String != "Streets" {
+		t.Errorf("map_name = %q, want Streets", got.String)
 	}
-	if name != "Quick Play" {
-		t.Errorf("m3 playlist_name = %q (préservation)", name)
+	if got := nomDuRegistre(t, sharedDB, "m1", "pair_name"); got.String != "Arena:CTF on Streets" {
+		t.Errorf("pair_name = %q", got.String)
+	}
+	if got := nomDuRegistre(t, sharedDB, "m1", "mode_category"); got.String != "other" {
+		t.Errorf("mode_category = %q, want inchangée", got.String)
+	}
+}
+
+// TestBackfillRegistryNames_DryRunCompteSansEcrire : la simulation rend les mêmes comptes que la
+// passe réelle et n'écrit rien.
+func TestBackfillRegistryNames_DryRunCompteSansEcrire(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, metaDB := setupBackfillRegistryDBs(t)
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', NULL, NULL, 'map-x', 'map-x', 'pair-x', 'pair-x', 'gv-x', NULL, NULL),
+		('m2', NULL, NULL, 'map-y', NULL, NULL, NULL, NULL, NULL, NULL)`); err != nil {
+		t.Fatalf("seed shared: %v", err)
+	}
+	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
+		('map-x', 'map', 'en-US', 'Streets'),
+		('gv-x', 'game_variant', 'en-US', 'CTF')`); err != nil {
+		t.Fatalf("seed meta: %v", err)
+	}
+	sim, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{DryRun: true})
+	if err != nil {
+		t.Fatalf("dry-run: %v", err)
+	}
+	if !sim.DryRun || sim.MapsScanned != 2 || sim.MapsFixed != 1 || sim.VariantsFixed != 1 ||
+		sim.PairsFixed != 1 || sim.PairsConstructed != 1 {
+		t.Errorf("simulation = %+v, want 2 cartes candidates dont 1 réparable, 1 variante, 1 paire construite", sim)
+	}
+	if got := nomDuRegistre(t, sharedDB, "m1", "map_name"); got.String != "map-x" {
+		t.Fatalf("la simulation a écrit : map_name = %q", got.String)
+	}
+	reel, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
+	if err != nil {
+		t.Fatalf("réel: %v", err)
+	}
+	reel.DryRun = true
+	if reel != sim {
+		t.Errorf("réel = %+v, want les comptes de la simulation %+v", reel, sim)
 	}
 }
 
@@ -103,25 +165,19 @@ func TestBackfillRegistryNames_NoTranslation_KeepUUID(t *testing.T) {
 
 	const unknownID = "uuid-unknown"
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
-		('m1', ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)`,
+		('m1', ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL)`,
 		unknownID, unknownID); err != nil {
 		t.Fatal(err)
 	}
-	// Pas d'asset_translations pour ce UUID.
-
-	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
 	if stats.PlaylistsScanned != 1 || stats.PlaylistsFixed != 0 {
 		t.Errorf("scanned=%d fixed=%d, want 1/0", stats.PlaylistsScanned, stats.PlaylistsFixed)
 	}
-	var name string
-	if err := sharedDB.QueryRow(`SELECT playlist_name FROM match_registry WHERE match_id = 'm1'`).Scan(&name); err != nil {
-		t.Fatal(err)
-	}
-	if name != unknownID {
-		t.Errorf("UUID inconnu : got %q, want %q (préservation)", name, unknownID)
+	if got := nomDuRegistre(t, sharedDB, "m1", "playlist_name"); got.String != unknownID {
+		t.Errorf("identifiant inconnu : got %q, want %q (préservation)", got.String, unknownID)
 	}
 }
 
@@ -130,7 +186,7 @@ func TestBackfillRegistryNames_Idempotent(t *testing.T) {
 	sharedDB, metaDB := setupBackfillRegistryDBs(t)
 	const playlistID = "uuid-quick-play"
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
-		('m1', ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)`,
+		('m1', ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL)`,
 		playlistID, playlistID); err != nil {
 		t.Fatal(err)
 	}
@@ -139,8 +195,8 @@ func TestBackfillRegistryNames_Idempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stats1, _ := BackfillRegistryNames(ctx, sharedDB, metaDB)
-	stats2, _ := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	stats1, _ := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
+	stats2, _ := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
 	if stats1.PlaylistsFixed != 1 {
 		t.Errorf("run 1 fixed=%d, want 1", stats1.PlaylistsFixed)
 	}
@@ -151,9 +207,8 @@ func TestBackfillRegistryNames_Idempotent(t *testing.T) {
 }
 
 // TestBackfillRegistryNames_ConstructsPairFromParts : la paire est absente
-// d'asset_translations (reste un GUID après la passe colonne) mais map +
-// game_variant y sont → l'étape de construction réécrit pair_name en
-// "{game_variant} on {map}". Cas du nouveau contenu Halo (maps inédites).
+// d'asset_translations mais carte et variante y sont → pair_name est construit
+// "{variante} on {carte}" à partir des noms convergés dans la même passe.
 func TestBackfillRegistryNames_ConstructsPairFromParts(t *testing.T) {
 	ctx := context.Background()
 	sharedDB, metaDB := setupBackfillRegistryDBs(t)
@@ -161,45 +216,34 @@ func TestBackfillRegistryNames_ConstructsPairFromParts(t *testing.T) {
 	const pairGUID = "uuid-pair-absent"
 	const gvID = "uuid-gv-slayer"
 	const mapID = "uuid-map-chasm"
-	// m1 : pair/gv/map tous en GUID. m2 : pair a une vraie traduction → pas de construction.
+	// m1 : pair/gv/map tous en identifiant. m2 : la paire a un vrai nom → pas de construction.
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
-		('m1', NULL, NULL, ?, ?, ?, ?, ?, ?),
-		('m2', NULL, NULL, ?, ?, 'pair-real', 'Arena:Slayer on Chasm', ?, ?)`,
+		('m1', NULL, NULL, ?, ?, ?, ?, ?, ?, NULL),
+		('m2', NULL, NULL, ?, ?, 'pair-real', 'Arena:Slayer on Chasm', ?, ?, NULL)`,
 		mapID, mapID, pairGUID, pairGUID, gvID, gvID,
 		mapID, mapID, gvID, gvID); err != nil {
 		t.Fatalf("seed shared: %v", err)
 	}
-	// asset_translations a map + game_variant, mais PAS la paire.
 	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
 		(?, 'map', 'en-US', 'Chasm'),
 		(?, 'game_variant', 'en-US', 'Slayer')`, mapID, gvID); err != nil {
 		t.Fatalf("seed meta: %v", err)
 	}
 
-	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
-	if stats.PairsFixed != 1 {
-		t.Errorf("PairsFixed = %d, want 1 (construction)", stats.PairsFixed)
+	if stats.PairsFixed != 1 || stats.PairsConstructed != 1 {
+		t.Errorf("PairsFixed=%d PairsConstructed=%d, want 1/1 (construction)", stats.PairsFixed, stats.PairsConstructed)
 	}
-	var name string
-	if err := sharedDB.QueryRow(`SELECT pair_name FROM match_registry WHERE match_id = 'm1'`).Scan(&name); err != nil {
-		t.Fatal(err)
+	if got := nomDuRegistre(t, sharedDB, "m1", "pair_name"); got.String != "Slayer on Chasm" {
+		t.Errorf("m1 pair_name = %q, want %q", got.String, "Slayer on Chasm")
 	}
-	if name != "Slayer on Chasm" {
-		t.Errorf("m1 pair_name = %q, want %q", name, "Slayer on Chasm")
+	if got := nomDuRegistre(t, sharedDB, "m2", "pair_name"); got.String != "Arena:Slayer on Chasm" {
+		t.Errorf("m2 pair_name = %q, want préservé", got.String)
 	}
-	// m2 garde sa vraie traduction (pas de construction).
-	if err := sharedDB.QueryRow(`SELECT pair_name FROM match_registry WHERE match_id = 'm2'`).Scan(&name); err != nil {
-		t.Fatal(err)
-	}
-	if name != "Arena:Slayer on Chasm" {
-		t.Errorf("m2 pair_name = %q, want préservé", name)
-	}
-
-	// Idempotence : un 2e run ne reconstruit rien (pair_name != pair_id désormais).
-	stats2, _ := BackfillRegistryNames(ctx, sharedDB, metaDB)
+	stats2, _ := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{})
 	if stats2.PairsFixed != 0 {
 		t.Errorf("run 2 PairsFixed = %d, want 0 (idempotent)", stats2.PairsFixed)
 	}
@@ -209,14 +253,39 @@ func TestBackfillRegistryNames_NilMetadata_NoOp(t *testing.T) {
 	ctx := context.Background()
 	sharedDB, _ := setupBackfillRegistryDBs(t)
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
-		('m1', 'uuid', 'uuid', NULL, NULL, NULL, NULL, NULL, NULL)`); err != nil {
+		('m1', 'uuid', 'uuid', NULL, NULL, NULL, NULL, NULL, NULL, NULL)`); err != nil {
 		t.Fatal(err)
 	}
-	stats, err := BackfillRegistryNames(ctx, sharedDB, nil)
+	stats, err := BackfillRegistryNames(ctx, sharedDB, nil, RegistryNamesOptions{})
 	if err != nil {
 		t.Fatalf("nil metadata should be no-op: %v", err)
 	}
 	if stats.Total() != 0 {
 		t.Errorf("total = %d, want 0", stats.Total())
+	}
+}
+
+// TestBackfillRegistryNames_SimulationSansMetadonnees_CompteLesCandidats : simulation sans base
+// de métadonnées — chaque colonne NULL ou égale à son identifiant est comptée candidate, aucune
+// n'est réparable (pas de source), un vrai nom n'est pas compté, rien n'est écrit.
+func TestBackfillRegistryNames_SimulationSansMetadonnees_CompteLesCandidats(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, _ := setupBackfillRegistryDBs(t)
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', 'pl', 'pl', 'map', NULL, 'pair', 'pair', 'gv', 'Slayer', 'other'),
+		('m2', 'pl', 'Ranked', 'map', 'map', NULL, NULL, 'gv', 'gv', 'other')`); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := BackfillRegistryNames(ctx, sharedDB, nil, RegistryNamesOptions{DryRun: true})
+	if err != nil {
+		t.Fatalf("simulation sans métadonnées: %v", err)
+	}
+	want := BackfillRegistryStats{DryRun: true, PlaylistsScanned: 1, MapsScanned: 2, PairsScanned: 1, VariantsScanned: 1}
+	if stats != want {
+		t.Errorf("stats = %+v, want %+v", stats, want)
+	}
+	var nom sql.NullString
+	if err := sharedDB.QueryRow(`SELECT map_name FROM match_registry WHERE match_id = 'm1'`).Scan(&nom); err != nil || nom.Valid {
+		t.Errorf("m1 map_name = %v (err %v), want NULL (aucune écriture)", nom, err)
 	}
 }

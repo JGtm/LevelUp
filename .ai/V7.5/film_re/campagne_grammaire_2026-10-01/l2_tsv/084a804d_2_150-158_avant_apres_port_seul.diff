@@ -1,0 +1,141 @@
+1,11c1,12
+< 084a804d 2:150 debut=7047 strict=7047 ferme_au_bit=false regles=0x0 sortie=ouverte fin_vue_b=8339 bits=10616
+<   #0 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=7082 desync=-1
+<   #1 DELTA slot=512 eid=0x40000200 ti=35 n=64 masque=0x2000003 aucun fin=7216 desync=-1
+<   #2 DELTA slot=513 eid=0x40000201 ti=35 n=64 masque=0x6000003 aucun fin=7378 desync=-1
+<   #3 DELTA slot=514 eid=0x40000202 ti=35 n=64 masque=0x6000003 aucun fin=7540 desync=-1
+<   #4 DELTA slot=515 eid=0x40000203 ti=35 n=64 masque=0x100000002000003 aucun fin=7683 desync=-1
+<   #5 DELTA slot=516 eid=0x40000204 ti=35 n=64 masque=0x100000002000003 aucun fin=7826 desync=-1
+<   #6 DELTA slot=774 eid=0x40000306 ti=40 n=48 masque=0x2000003 aucun fin=7960 desync=-1
+<   #7 DELTA slot=775 eid=0x40000307 ti=40 n=48 masque=0x200000f aucun fin=8166 desync=-1
+<   #8 DELTA slot=776 eid=0x40000308 ti=40 n=48 masque=0x2000003 aucun fin=8300 desync=-1
+<   #9 DELTA slot=777 eid=0x40000309 ti=40 n=48 masque=0x4004000000 aucun fin=8339 desync=38
+---
+> 084a804d 2:150 debut=6849 strict=7047 ferme_au_bit=false regles=0x8 sortie=ouverte fin_vue_b=8339 bits=10616
+>   #0 NEW slot=6947 eid=0x1b23 ti=43 n=41 masque=0x800001022010000 ecrivain : masque au-dela de l archetype fin=7047 desync=-1
+>   #1 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=7082 desync=-1
+>   #2 DELTA slot=512 eid=0x40000200 ti=35 n=64 masque=0x2000003 aucun fin=7216 desync=-1
+>   #3 DELTA slot=513 eid=0x40000201 ti=35 n=64 masque=0x6000003 aucun fin=7378 desync=-1
+>   #4 DELTA slot=514 eid=0x40000202 ti=35 n=64 masque=0x6000003 aucun fin=7540 desync=-1
+>   #5 DELTA slot=515 eid=0x40000203 ti=35 n=64 masque=0x100000002000003 aucun fin=7683 desync=-1
+>   #6 DELTA slot=516 eid=0x40000204 ti=35 n=64 masque=0x100000002000003 aucun fin=7826 desync=-1
+>   #7 DELTA slot=774 eid=0x40000306 ti=40 n=48 masque=0x2000003 aucun fin=7960 desync=-1
+>   #8 DELTA slot=775 eid=0x40000307 ti=40 n=48 masque=0x200000f aucun fin=8166 desync=-1
+>   #9 DELTA slot=776 eid=0x40000308 ti=40 n=48 masque=0x2000003 aucun fin=8300 desync=-1
+>   #10 DELTA slot=777 eid=0x40000309 ti=40 n=48 masque=0x4004000000 aucun fin=8339 desync=38
+37,92c38,95
+< 084a804d 2:154 debut=7014 strict=7014 ferme_au_bit=true regles=0x0 sortie=terminateur fin_vue_b=10735 bits=11016
+<   #0 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=7049 desync=-1
+<   #1 DELTA slot=512 eid=0x40000200 ti=35 n=64 masque=0x2000003 aucun fin=7183 desync=-1
+<   #2 DELTA slot=513 eid=0x40000201 ti=35 n=64 masque=0x2000003 aucun fin=7288 desync=-1
+<   #3 DELTA slot=514 eid=0x40000202 ti=35 n=64 masque=0x2000003 aucun fin=7422 desync=-1
+<   #4 DELTA slot=515 eid=0x40000203 ti=35 n=64 masque=0x2000003 aucun fin=7556 desync=-1
+<   #5 DELTA slot=516 eid=0x40000204 ti=35 n=64 masque=0x2000003 aucun fin=7690 desync=-1
+<   #6 DELTA slot=517 eid=0x40000205 ti=35 n=64 masque=0x6000003 aucun fin=7852 desync=-1
+<   #7 DELTA slot=518 eid=0x40000206 ti=35 n=64 masque=0x6000003 aucun fin=8014 desync=-1
+<   #8 DELTA slot=519 eid=0x40000207 ti=35 n=64 masque=0x100000002000003 aucun fin=8157 desync=-1
+<   #9 DELTA slot=520 eid=0x40000208 ti=35 n=64 masque=0x100000002000003 aucun fin=8300 desync=-1
+<   #10 DELTA slot=774 eid=0x40000306 ti=40 n=48 masque=0x2000003 aucun fin=8434 desync=-1
+<   #11 DELTA slot=775 eid=0x40000307 ti=40 n=48 masque=0x200000f aucun fin=8640 desync=-1
+<   #12 DELTA slot=776 eid=0x40000308 ti=40 n=48 masque=0x2000003 aucun fin=8774 desync=-1
+<   #13 DELTA slot=778 eid=0x4000030a ti=40 n=48 masque=0x200000f aucun fin=8980 desync=-1
+<   #14 DELTA slot=779 eid=0x4000030b ti=40 n=48 masque=0x2000003 aucun fin=9114 desync=-1
+<   #15 DELTA slot=781 eid=0x4000030d ti=40 n=48 masque=0x200000f aucun fin=9320 desync=-1
+<   #16 DELTA slot=782 eid=0x4000030e ti=40 n=48 masque=0x2000003 aucun fin=9454 desync=-1
+<   #17 DELTA slot=784 eid=0x40000310 ti=40 n=48 masque=0x2000003 aucun fin=9588 desync=-1
+<   #18 DELTA slot=786 eid=0x40000312 ti=40 n=48 masque=0x2000003 aucun fin=9722 desync=-1
+<   #19 DELTA slot=787 eid=0x40000313 ti=40 n=48 masque=0x2000003 aucun fin=9856 desync=-1
+<   #20 DELTA slot=788 eid=0x40000314 ti=40 n=48 masque=0x2000003 aucun fin=9990 desync=-1
+<   #21 DELTA slot=789 eid=0x40000315 ti=40 n=48 masque=0x200000f aucun fin=10196 desync=-1
+<   #22 DELTA slot=790 eid=0x40000316 ti=40 n=48 masque=0x2000003 aucun fin=10330 desync=-1
+<   #23 DELTA slot=791 eid=0x40000317 ti=40 n=48 masque=0x2000003 aucun fin=10464 desync=-1
+<   #24 DELTA slot=792 eid=0x40000318 ti=40 n=48 masque=0x2000003 aucun fin=10598 desync=-1
+<   #25 DELTA slot=793 eid=0x40000319 ti=40 n=48 masque=0x2000003 aucun fin=10732 desync=-1
+< 084a804d 2:158 debut=7086 strict=7086 ferme_au_bit=true regles=0x0 sortie=terminateur fin_vue_b=10976 bits=11376
+<   #0 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=7121 desync=-1
+<   #1 DELTA slot=512 eid=0x40000200 ti=35 n=64 masque=0x2000003 aucun fin=7226 desync=-1
+<   #2 DELTA slot=514 eid=0x40000202 ti=35 n=64 masque=0x2000003 aucun fin=7331 desync=-1
+<   #3 DELTA slot=515 eid=0x40000203 ti=35 n=64 masque=0x2000002 aucun fin=7376 desync=-1
+<   #4 DELTA slot=517 eid=0x40000205 ti=35 n=64 masque=0x2000003 aucun fin=7481 desync=-1
+<   #5 DELTA slot=518 eid=0x40000206 ti=35 n=64 masque=0x2000003 aucun fin=7586 desync=-1
+<   #6 DELTA slot=519 eid=0x40000207 ti=35 n=64 masque=0x2000003 aucun fin=7720 desync=-1
+<   #7 DELTA slot=520 eid=0x40000208 ti=35 n=64 masque=0x2000003 aucun fin=7854 desync=-1
+<   #8 DELTA slot=521 eid=0x40000209 ti=35 n=64 masque=0x6000003 aucun fin=8016 desync=-1
+<   #9 DELTA slot=522 eid=0x4000020a ti=35 n=64 masque=0x6000003 aucun fin=8178 desync=-1
+<   #10 DELTA slot=523 eid=0x4000020b ti=35 n=64 masque=0x100000002000003 aucun fin=8321 desync=-1
+<   #11 DELTA slot=524 eid=0x4000020c ti=35 n=64 masque=0x100000002000003 aucun fin=8464 desync=-1
+<   #12 DELTA slot=774 eid=0x40000306 ti=40 n=48 masque=0x2000003 aucun fin=8598 desync=-1
+<   #13 DELTA slot=775 eid=0x40000307 ti=40 n=48 masque=0x200000f aucun fin=8775 desync=-1
+<   #14 DELTA slot=776 eid=0x40000308 ti=40 n=48 masque=0x2000003 aucun fin=8909 desync=-1
+<   #15 DELTA slot=778 eid=0x4000030a ti=40 n=48 masque=0x200000f aucun fin=9115 desync=-1
+<   #16 DELTA slot=779 eid=0x4000030b ti=40 n=48 masque=0x2000003 aucun fin=9249 desync=-1
+<   #17 DELTA slot=781 eid=0x4000030d ti=40 n=48 masque=0x200000f aucun fin=9455 desync=-1
+<   #18 DELTA slot=782 eid=0x4000030e ti=40 n=48 masque=0x2000003 aucun fin=9589 desync=-1
+<   #19 DELTA slot=784 eid=0x40000310 ti=40 n=48 masque=0x200000f aucun fin=9776 desync=-1
+<   #20 DELTA slot=786 eid=0x40000312 ti=40 n=48 masque=0x200000f aucun fin=9963 desync=-1
+<   #21 DELTA slot=787 eid=0x40000313 ti=40 n=48 masque=0x2000003 aucun fin=10097 desync=-1
+<   #22 DELTA slot=788 eid=0x40000314 ti=40 n=48 masque=0x2000003 aucun fin=10231 desync=-1
+<   #23 DELTA slot=789 eid=0x40000315 ti=40 n=48 masque=0x200000f aucun fin=10437 desync=-1
+<   #24 DELTA slot=790 eid=0x40000316 ti=40 n=48 masque=0x2000003 aucun fin=10571 desync=-1
+<   #25 DELTA slot=791 eid=0x40000317 ti=40 n=48 masque=0x2000003 aucun fin=10705 desync=-1
+<   #26 DELTA slot=792 eid=0x40000318 ti=40 n=48 masque=0x2000003 aucun fin=10839 desync=-1
+<   #27 DELTA slot=793 eid=0x40000319 ti=40 n=48 masque=0x2000003 aucun fin=10973 desync=-1
+---
+> 084a804d 2:154 debut=6816 strict=7014 ferme_au_bit=true regles=0x8 sortie=terminateur fin_vue_b=10735 bits=11016
+>   #0 NEW slot=6947 eid=0x1b23 ti=43 n=41 masque=0x800001022010000 ecrivain : masque au-dela de l archetype fin=7014 desync=-1
+>   #1 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=7049 desync=-1
+>   #2 DELTA slot=512 eid=0x40000200 ti=35 n=64 masque=0x2000003 aucun fin=7183 desync=-1
+>   #3 DELTA slot=513 eid=0x40000201 ti=35 n=64 masque=0x2000003 aucun fin=7288 desync=-1
+>   #4 DELTA slot=514 eid=0x40000202 ti=35 n=64 masque=0x2000003 aucun fin=7422 desync=-1
+>   #5 DELTA slot=515 eid=0x40000203 ti=35 n=64 masque=0x2000003 aucun fin=7556 desync=-1
+>   #6 DELTA slot=516 eid=0x40000204 ti=35 n=64 masque=0x2000003 aucun fin=7690 desync=-1
+>   #7 DELTA slot=517 eid=0x40000205 ti=35 n=64 masque=0x6000003 aucun fin=7852 desync=-1
+>   #8 DELTA slot=518 eid=0x40000206 ti=35 n=64 masque=0x6000003 aucun fin=8014 desync=-1
+>   #9 DELTA slot=519 eid=0x40000207 ti=35 n=64 masque=0x100000002000003 aucun fin=8157 desync=-1
+>   #10 DELTA slot=520 eid=0x40000208 ti=35 n=64 masque=0x100000002000003 aucun fin=8300 desync=-1
+>   #11 DELTA slot=774 eid=0x40000306 ti=40 n=48 masque=0x2000003 aucun fin=8434 desync=-1
+>   #12 DELTA slot=775 eid=0x40000307 ti=40 n=48 masque=0x200000f aucun fin=8640 desync=-1
+>   #13 DELTA slot=776 eid=0x40000308 ti=40 n=48 masque=0x2000003 aucun fin=8774 desync=-1
+>   #14 DELTA slot=778 eid=0x4000030a ti=40 n=48 masque=0x200000f aucun fin=8980 desync=-1
+>   #15 DELTA slot=779 eid=0x4000030b ti=40 n=48 masque=0x2000003 aucun fin=9114 desync=-1
+>   #16 DELTA slot=781 eid=0x4000030d ti=40 n=48 masque=0x200000f aucun fin=9320 desync=-1
+>   #17 DELTA slot=782 eid=0x4000030e ti=40 n=48 masque=0x2000003 aucun fin=9454 desync=-1
+>   #18 DELTA slot=784 eid=0x40000310 ti=40 n=48 masque=0x2000003 aucun fin=9588 desync=-1
+>   #19 DELTA slot=786 eid=0x40000312 ti=40 n=48 masque=0x2000003 aucun fin=9722 desync=-1
+>   #20 DELTA slot=787 eid=0x40000313 ti=40 n=48 masque=0x2000003 aucun fin=9856 desync=-1
+>   #21 DELTA slot=788 eid=0x40000314 ti=40 n=48 masque=0x2000003 aucun fin=9990 desync=-1
+>   #22 DELTA slot=789 eid=0x40000315 ti=40 n=48 masque=0x200000f aucun fin=10196 desync=-1
+>   #23 DELTA slot=790 eid=0x40000316 ti=40 n=48 masque=0x2000003 aucun fin=10330 desync=-1
+>   #24 DELTA slot=791 eid=0x40000317 ti=40 n=48 masque=0x2000003 aucun fin=10464 desync=-1
+>   #25 DELTA slot=792 eid=0x40000318 ti=40 n=48 masque=0x2000003 aucun fin=10598 desync=-1
+>   #26 DELTA slot=793 eid=0x40000319 ti=40 n=48 masque=0x2000003 aucun fin=10732 desync=-1
+> 084a804d 2:158 debut=6888 strict=7086 ferme_au_bit=true regles=0x8 sortie=terminateur fin_vue_b=10976 bits=11376
+>   #0 NEW slot=6947 eid=0x1b23 ti=43 n=41 masque=0x800001022010000 ecrivain : masque au-dela de l archetype fin=7086 desync=-1
+>   #1 DELTA slot=123 eid=0x4000007b ti=4 n=1 masque=0x1 aucun fin=7121 desync=-1
+>   #2 DELTA slot=512 eid=0x40000200 ti=35 n=64 masque=0x2000003 aucun fin=7226 desync=-1
+>   #3 DELTA slot=514 eid=0x40000202 ti=35 n=64 masque=0x2000003 aucun fin=7331 desync=-1
+>   #4 DELTA slot=515 eid=0x40000203 ti=35 n=64 masque=0x2000002 aucun fin=7376 desync=-1
+>   #5 DELTA slot=517 eid=0x40000205 ti=35 n=64 masque=0x2000003 aucun fin=7481 desync=-1
+>   #6 DELTA slot=518 eid=0x40000206 ti=35 n=64 masque=0x2000003 aucun fin=7586 desync=-1
+>   #7 DELTA slot=519 eid=0x40000207 ti=35 n=64 masque=0x2000003 aucun fin=7720 desync=-1
+>   #8 DELTA slot=520 eid=0x40000208 ti=35 n=64 masque=0x2000003 aucun fin=7854 desync=-1
+>   #9 DELTA slot=521 eid=0x40000209 ti=35 n=64 masque=0x6000003 aucun fin=8016 desync=-1
+>   #10 DELTA slot=522 eid=0x4000020a ti=35 n=64 masque=0x6000003 aucun fin=8178 desync=-1
+>   #11 DELTA slot=523 eid=0x4000020b ti=35 n=64 masque=0x100000002000003 aucun fin=8321 desync=-1
+>   #12 DELTA slot=524 eid=0x4000020c ti=35 n=64 masque=0x100000002000003 aucun fin=8464 desync=-1
+>   #13 DELTA slot=774 eid=0x40000306 ti=40 n=48 masque=0x2000003 aucun fin=8598 desync=-1
+>   #14 DELTA slot=775 eid=0x40000307 ti=40 n=48 masque=0x200000f aucun fin=8775 desync=-1
+>   #15 DELTA slot=776 eid=0x40000308 ti=40 n=48 masque=0x2000003 aucun fin=8909 desync=-1
+>   #16 DELTA slot=778 eid=0x4000030a ti=40 n=48 masque=0x200000f aucun fin=9115 desync=-1
+>   #17 DELTA slot=779 eid=0x4000030b ti=40 n=48 masque=0x2000003 aucun fin=9249 desync=-1
+>   #18 DELTA slot=781 eid=0x4000030d ti=40 n=48 masque=0x200000f aucun fin=9455 desync=-1
+>   #19 DELTA slot=782 eid=0x4000030e ti=40 n=48 masque=0x2000003 aucun fin=9589 desync=-1
+>   #20 DELTA slot=784 eid=0x40000310 ti=40 n=48 masque=0x200000f aucun fin=9776 desync=-1
+>   #21 DELTA slot=786 eid=0x40000312 ti=40 n=48 masque=0x200000f aucun fin=9963 desync=-1
+>   #22 DELTA slot=787 eid=0x40000313 ti=40 n=48 masque=0x2000003 aucun fin=10097 desync=-1
+>   #23 DELTA slot=788 eid=0x40000314 ti=40 n=48 masque=0x2000003 aucun fin=10231 desync=-1
+>   #24 DELTA slot=789 eid=0x40000315 ti=40 n=48 masque=0x200000f aucun fin=10437 desync=-1
+>   #25 DELTA slot=790 eid=0x40000316 ti=40 n=48 masque=0x2000003 aucun fin=10571 desync=-1
+>   #26 DELTA slot=791 eid=0x40000317 ti=40 n=48 masque=0x2000003 aucun fin=10705 desync=-1
+>   #27 DELTA slot=792 eid=0x40000318 ti=40 n=48 masque=0x2000003 aucun fin=10839 desync=-1
+>   #28 DELTA slot=793 eid=0x40000319 ti=40 n=48 masque=0x2000003 aucun fin=10973 desync=-1

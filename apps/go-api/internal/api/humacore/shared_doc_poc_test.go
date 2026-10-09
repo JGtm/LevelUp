@@ -1,4 +1,4 @@
-// Package humacore — POC spike H0.5 (plan .ai/V7/PLAN_V72_HUMA_OPENAPI.md).
+// Package humacore — POC spike H0.5 (plan .ai/archive/V7.2/PLAN_V72_HUMA_OPENAPI.md).
 //
 // TestSharedDocMergedFromSubrouters PROUVE l'hypothèse de dérisquage du chantier
 // V72-01 : plusieurs adaptateurs Huma (un par sous-routeur chi HÉTÉROGÈNE) peuvent

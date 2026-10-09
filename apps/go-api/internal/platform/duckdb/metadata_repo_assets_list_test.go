@@ -205,3 +205,64 @@ func setupAssetDrawerFixtures(t *testing.T, db *DB, ctx context.Context) {
 		}
 	}
 }
+
+// TestListMapsByTitle_DedupeParAssetIDPasParNom fige la correction D15 (2026-09-13).
+//
+// CE QUI ETAIT FAUX : la requete dedupliquait par `DISTINCT ON (m.name_canonical)`. Deux
+// cartes HOMONYMES d'asset_id distincts — une variante Forge republiee, une carte et son
+// portage classe — s'effondraient donc en UNE SEULE entree du drawer, et l'asset_id
+// survivant etait choisi par l'ordre de tri, pas par une regle. Or l'asset_id est
+// precisement la cle sur laquelle le web identifie une carte : le drawer perdait une carte
+// jouable et en designait une autre a sa place.
+//
+// CE QUE LE TEST EXIGE : les deux homonymes sortent, chacune avec SON asset_id ; et une
+// carte dont asset_translations porte des doublons ne sort toujours qu'une fois (c'est
+// l'unique deduplication que la requete doit faire — celle des lignes produites par ses
+// propres jointures).
+func TestListMapsByTitle_DedupeParAssetIDPasParNom(t *testing.T) {
+	db := openAssetMemDB(t)
+	repo := NewMetadataRepoFromDB(db)
+	ctx := context.Background()
+
+	setupAssetDrawerFixtures(t, db, ctx)
+
+	// Deux cartes HOMONYMES de 'Aquarius' (map-001), d'asset_id distincts.
+	extra := []string{
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, name_canonical) VALUES ('halo_infinite','map-004','Aquarius')`,
+		`INSERT INTO asset_translations VALUES ('map-004','map','en-US','Aquarius','',now())`,
+	}
+	for _, q := range extra {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatalf("fixture homonyme: %v", err)
+		}
+	}
+
+	maps, err := repo.ListMapsByTitle(ctx, "halo_infinite", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ids := map[string]int{}
+	for _, m := range maps {
+		ids[m.ID]++
+	}
+	for _, want := range []string{"map-001", "map-002", "map-003", "map-004"} {
+		if ids[want] != 1 {
+			t.Errorf("asset_id %q present %d fois, attendu 1 — les homonymes doivent sortir "+
+				"toutes les deux, chacune avec son asset_id (deduplication par nom = D15)",
+				want, ids[want])
+		}
+	}
+	if len(maps) != 4 {
+		t.Errorf("%d carte(s), attendu 4 : %v", len(maps), ids)
+	}
+
+	// La recherche voit elle aussi les DEUX homonymes.
+	trouvees, err := repo.ListMapsByTitle(ctx, "halo_infinite", "aqu")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(trouvees) != 2 {
+		t.Errorf("recherche 'aqu' : %d resultat(s), attendu 2 (map-001 et map-004)", len(trouvees))
+	}
+}

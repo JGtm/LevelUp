@@ -49,7 +49,7 @@ function makeRow(overrides: Partial<MatchScoreboardRow>): MatchScoreboardRow {
     perfect_kills: null,
     power_weapon_kills: null,
     melee_kills: null,
-    outcome_label: 'Victoire',
+    outcome: 'win',
     ...overrides,
   }
 }
@@ -99,5 +99,39 @@ describe('MatchScoreboard — tri CLIENT par en-têtes (I16)', () => {
     // sbDetailLusr est le libellé par défaut (match non classé dans ce test).
     const badgeHeader = screen.getByText(MATCH_VIEW_TEXT.fr.sbDetailLusr).closest('th')
     expect(badgeHeader).not.toHaveAttribute('aria-sort')
+  })
+})
+
+/**
+ * G.5 — L'EN-TÊTE D'ÉQUIPE SUIT LE RÉGLAGE D'ACCESSIBILITÉ, ET C'EST UNE RÉGRESSION CORRIGÉE.
+ *
+ * Le commit 3f116dfe6 (2026-07-23) avait mis la cascade d'IDENTITÉ (`teamColorResolver` :
+ * `team_color` du backend, puis couleur officielle par `team_id`) DEVANT le jeton
+ * allié/ennemi. Sur Halo Infinite le `team_id` est toujours présent : la cascade n'atteignait
+ * jamais le jeton, et les couleurs d'équipe réglées dans Accessibilité n'avaient plus aucun
+ * effet sur le tableau des scores. Ce test empêche la cascade d'y revenir : la teinte DOIT
+ * citer `--ac-team-ally` / `--ac-team-enemy`, même quand la ligne porte un `team_color`.
+ */
+describe('MatchScoreboard — couleurs d’équipe réglées par l’utilisateur (G.5)', () => {
+  function teamHeaders(): HTMLElement[] {
+    return [...document.querySelectorAll('thead tr:first-child th')] as HTMLElement[]
+  }
+
+  it('teinte l’en-tête avec les jetons d’accessibilité, jamais la couleur officielle du jeu', () => {
+    renderScoreboard(
+      <MatchScoreboard
+        rows={[
+          makeRow({ xuid: 'a', gamertag: 'Moi', team_side: '0', is_me: true, team_color: '#ff00ff' }),
+          makeRow({ xuid: 'b', gamertag: 'Eux', team_side: '1', team_color: '#00ff00' }),
+        ]}
+        t={MATCH_VIEW_TEXT.fr}
+      />,
+    )
+    const [allie, adverse] = teamHeaders()
+    expect(allie.getAttribute('style')).toContain('--ac-team-ally')
+    expect(adverse.getAttribute('style')).toContain('--ac-team-enemy')
+    // La couleur fournie par le backend ne doit plus teinter quoi que ce soit ici.
+    expect(allie.getAttribute('style')).not.toContain('#ff00ff')
+    expect(adverse.getAttribute('style')).not.toContain('#00ff00')
   })
 })

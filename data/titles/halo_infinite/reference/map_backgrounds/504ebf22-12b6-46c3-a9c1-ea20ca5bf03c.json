@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "504ebf22-12b6-46c3-a9c1-ea20ca5bf03c",
+  "mapNames": [
+    "Goliath",
+    "goliath_map"
+  ],
+  "image": "504ebf22-12b6-46c3-a9c1-ea20ca5bf03c.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T08:55:52.8602839Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04322111892700195,
+    "originX": -25.90343892288208,
+    "originY": 26.431957702636716,
+    "widthPx": 1078,
+    "heightPx": 1502,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 13,
+    "anchorMedianGapM": -0.28997580944574963,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 67.7474526977539,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.7527036965739191,
+    "covered": true,
+    "cellsSubstituted": 400586,
+    "forgeObjects": 5495,
+    "forgeObjectsDrawn": 5473,
+    "forgeObjectsWithoutModel": 21,
+    "forgeDeathVolumes": 1
+  }
+}

@@ -15,7 +15,9 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/port"
 )
 
 func resolverTestMeta(t *testing.T, withRegistry bool) *DB {
@@ -121,6 +123,50 @@ func TestResolveWeaponMeta_WeaponKeyNameSourceH5(t *testing.T) {
 	}
 }
 
+// TestResolveWeaponMeta_LabelENBothLocales (V2.1, D2, 2026-08-29) : le resolver fournit
+// LabelEN dans la MÊME passe que Label, EN-first (repli FR), symétrique de Label
+// (FR-first, repli EN) — mêmes 4 sources sous-jacentes, ordre inversé. h5_vehicle_warthog
+// porte en et fr dans weapon_name_labels (comme weapon_names.toml en pratique : chaque
+// clé y est seedée dans les DEUX locales) → les deux champs résolvent au nom natif.
+func TestResolveWeaponMeta_LabelENBothLocales(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	ctx := context.Background()
+	if _, err := meta.Exec(ctx,
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_warthog', 'Warthog', 'Chariot de guerre')"); err != nil {
+		t.Fatalf("seed weapon_name_labels: %v", err)
+	}
+	const warthogID = int64(4028516791)
+	res := resolveWeaponMeta(ctx, meta, "halo_5", []int64{warthogID})[warthogID]
+	if res.label != "Chariot de guerre" {
+		t.Errorf("label = %q, want \"Chariot de guerre\" (FR-first, inchangé)", res.label)
+	}
+	if res.labelEN != "Warthog" {
+		t.Errorf("labelEN = %q, want \"Warthog\" (EN-first)", res.labelEN)
+	}
+}
+
+// TestResolveWeaponMeta_LabelENFallsBackToFRWhenEmpty : si weapon_name_labels ne porte
+// PAS de name_en pour une clé (traduction manquante — cas transitoire, weapon_names.toml
+// pas encore complété pour ce titre), labelEN retombe sur le FR plutôt que de rester vide
+// — même contrat que label (FR-first) mais en EN-first : labelEN n'est vide QUE si aucune
+// des 4 sources (wnl.name_en, wl.name_en, wnl.name_fr, wl.name_fr) n'a de valeur.
+func TestResolveWeaponMeta_LabelENFallsBackToFRWhenEmpty(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	ctx := context.Background()
+	if _, err := meta.Exec(ctx,
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_ghost', '', 'Fantôme')"); err != nil {
+		t.Fatalf("seed weapon_name_labels (name_en vide): %v", err)
+	}
+	const ghostID = int64(3010146366)
+	res := resolveWeaponMeta(ctx, meta, "halo_5", []int64{ghostID})[ghostID]
+	if res.label != "Fantôme" {
+		t.Errorf("label = %q, want \"Fantôme\"", res.label)
+	}
+	if res.labelEN != "Fantôme" {
+		t.Errorf("labelEN = %q, want \"Fantôme\" (repli FR : name_en absent de toutes les sources)", res.labelEN)
+	}
+}
+
 func TestResolveWeaponMeta_FallbackWhenNoRegistry(t *testing.T) {
 	meta := resolverTestMeta(t, false) // registre absent
 	brID := int64(0x2b1824d542c9679f)
@@ -129,8 +175,16 @@ func TestResolveWeaponMeta_FallbackWhenNoRegistry(t *testing.T) {
 	if br := res[brID]; br.label != "BR75" || br.role != "" {
 		t.Errorf("BR75 sans registre = %+v, want label=BR75 role='' (parité, dims vides)", br)
 	}
+	// labelEN aussi servi par le fallback weapon_labels-seul (résolveur cohérent quel que
+	// soit le chemin interne emprunté) — V2.1, 2026-08-29.
+	if br := res[brID]; br.labelEN != "BR75" {
+		t.Errorf("BR75 sans registre : labelEN = %q, want \"BR75\"", br.labelEN)
+	}
 	if s := res[0]; s.label != "Grenade" {
 		t.Errorf("sentinel sans registre = %+v, want label=Grenade", s)
+	}
+	if s := res[0]; s.labelEN != "Grenade" {
+		t.Errorf("sentinel sans registre : labelEN = %q, want \"Grenade\"", s.labelEN)
 	}
 }
 
@@ -177,6 +231,53 @@ func TestResolveWeaponMeta_H5VehiclesDistinctPerEngine(t *testing.T) {
 		if m.role != m.class {
 			t.Errorf("%s : role=%q class=%q — le test suppose role == class (socle de la ventilation par engin)",
 				name, m.role, m.class)
+		}
+	}
+}
+
+// TestMatchViewWeaponLabels_FollowRequestLocale (2026-09-17) : les trois lecteurs d'armes de
+// la Match view qui ne publient qu'UN nom par arme (kills par arme du viewer, arme favorite
+// du scoreboard, sources de dégât du film) choisissent ce nom dans la LOCALE DE REQUÊTE.
+// Avant : label FR-first quelle que soit la locale — « Tourelle LMG du Falcon » et
+// « Apparition » sortaient sur la capture README anglaise de la vue de match.
+func TestMatchViewWeaponLabels_FollowRequestLocale(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	if _, err := meta.Exec(context.Background(),
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_warthog', 'Warthog', 'Chariot de guerre')"); err != nil {
+		t.Fatalf("seed weapon_name_labels: %v", err)
+	}
+	repo := NewMatchViewRepo(&PlayerDB{Metadata: meta, TitleSlug: "halo_5"}, "xuid-test")
+	const warthogID = int64(4028516791)
+
+	cas := []struct {
+		locale string
+		want   string
+	}{
+		{"fr", "Chariot de guerre"},
+		{"en", "Warthog"},
+		{"en-US", "Warthog"},
+		{"", "Chariot de guerre"}, // locale absente = défaut ctxkeys ("fr")
+	}
+	for _, c := range cas {
+		ctx := context.Background()
+		if c.locale != "" {
+			ctx = ctxkeys.WithLocale(ctx, c.locale)
+		}
+		if got := repo.lookupWeaponLabels(ctx, []int64{warthogID})[warthogID]; got != c.want {
+			t.Errorf("locale %q : lookupWeaponLabels = %q, want %q", c.locale, got, c.want)
+		}
+		if got := repo.lookupWeaponMeta(ctx, []int64{warthogID})[warthogID].label; got != c.want {
+			t.Errorf("locale %q : lookupWeaponMeta.label = %q, want %q", c.locale, got, c.want)
+		}
+		// Lecteur keyé par weapon_key (sources de dégât du film) : même contrat.
+		if got := resolveWeaponKeyDimensions(ctx, meta, "halo_5", []string{"h5_vehicle_warthog"})["h5_vehicle_warthog"].displayLabel(ctxkeys.Locale(ctx)); got != c.want {
+			t.Errorf("locale %q : weaponKeyResolved.displayLabel = %q, want %q", c.locale, got, c.want)
+		}
+		// « Précision par arme » (Synthèse / Session / Escouade) : même défaut, même correction.
+		rows := []port.WeaponAccuracyRow{{WeaponID: warthogID, ShotsFired: 10, ShotsLanded: 5}}
+		NewWeaponAccuracyRepo(repo.pdb).attachWeaponLabels(ctx, "halo_5", rows)
+		if rows[0].Label != c.want {
+			t.Errorf("locale %q : attachWeaponLabels = %q, want %q", c.locale, rows[0].Label, c.want)
 		}
 	}
 }

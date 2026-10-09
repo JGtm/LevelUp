@@ -13,6 +13,7 @@
 import { useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { phaseShares } from '@/lib/charts/phaseProfile'
@@ -62,7 +63,7 @@ export function SessionIntensityProfile({ title, rows, height = 300 }: Props) {
         <div className="flex flex-col gap-0.5">
           <span className="flex items-center gap-1.5">
             {title}
-            <InfoTooltip content={t('session.detail.chart_intensity_tooltip')} />
+            <InfoTooltip content={intensityTooltipText(locale)} />
           </span>
           <span className="text-xs font-normal text-muted-foreground">
             {t('session.detail.chart_intensity_subtitle')}

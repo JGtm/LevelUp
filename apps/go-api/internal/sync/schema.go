@@ -28,15 +28,18 @@ import (
 // (schema_drift_healed, cf. internal/sync/schemadrift). Les blocs personal_score_awards et
 // player_csr_snapshots proviennent de la SOURCE UNIQUE côté migrations
 // (migration.PlayerPersonalScoreAwardsDDL / PlayerCSRSnapshotsDDL) — toute évolution s'y
-// fait, jamais ici. L'ordre de concaténation reproduit l'ordre historique du script.
+// fait, jamais ici. L'ordre de concaténation reproduit l'ordre historique du script ; les
+// DROP des index retirés (MSR, PSA, puis lusr_component_history, player_match_enrichment et
+// player_csr_snapshots) viennent en dernier (convergence D-4, plan 2026-09-26).
 var playerSchemaSQL = migration.PlayerPersonalScoreAwardsDDL +
 	playerCoreSchemaSQL +
-	migration.PlayerCSRSnapshotsDDL
+	migration.PlayerCSRSnapshotsDDL +
+	migration.PlayerRetiredARTIndexesDropSQL
 
 // playerCoreSchemaSQL — tables player dont le DDL de soin n'est pas partagé avec un step
 // de migration (leur création vit dans create_baseline_player_v1, title-owned).
 const playerCoreSchemaSQL = `
--- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
+-- player_match_enrichment : APPEND-ONLY (campagne ART #23645, 2026-06-21). La
 -- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
 -- session/friends/bot/exclusion/psa) ne peut plus naître avec PK(match_id) + index
 -- ART mutés. PK technique id (séquence pme_seq) + colonne stage discriminant
@@ -75,10 +78,8 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     updated_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
--- idx_pme_match_lookup(match_id, written_at) est créé par la migration append-only
--- (player_append_only_match_enrichment_v1), PAS ici : sur une DB legacy pré-existante,
--- CREATE TABLE IF NOT EXISTS no-ope et written_at n'existe pas encore → CREATE INDEX
--- échouerait. La migration le pose après le swap (written_at garanti).
+-- AUCUN index secondaire (idx_pme_match_lookup retiré le 2026-10-09, #23645) : cf.
+-- migration.PlayerRetiredSecondaryIndexesDropSQL.
 
 CREATE TABLE IF NOT EXISTS sync_meta (
     key        VARCHAR PRIMARY KEY,
@@ -108,9 +109,7 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
-CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
-CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
-CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group);
+-- AUCUN index secondaire (retirés le 2026-09-27, #23645) : cf. migration.PlayerRetiredMSRIndexesDropSQL.
 CREATE OR REPLACE VIEW match_skill_rank_latest AS
     SELECT * FROM match_skill_rank
     QUALIFY ROW_NUMBER() OVER (
@@ -120,6 +119,19 @@ CREATE OR REPLACE VIEW match_skill_rank_latest AS
             start_time DESC NULLS LAST,
             written_at DESC,
             id DESC
+    ) = 1;
+-- match_skill_rank_latest_by_type : une ligne par (match_id, rating_type), la plus
+-- recente, SANS arbitrage CSR vs LUSR (graphe d'evolution de la page Carriere,
+-- Q8LUSRHistoryPlayer). Posee AUSSI ici (revue finitions R1, 2026-09-13) : une player
+-- DB creee par ce seul chemin (onboarding entre deux boots, Halo 5 hors boucle de
+-- migration du boot) doit porter la vue, sinon la page Carriere tombe en Catalog Error.
+-- A l'identique de games/halo_infinite/migrations/steps_player_match_skill_rank.go
+-- (player_msr_view_latest_by_type_v1).
+CREATE OR REPLACE VIEW match_skill_rank_latest_by_type AS
+    SELECT * FROM match_skill_rank
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY match_id, rating_type
+        ORDER BY written_at DESC, id DESC
     ) = 1;
 
 CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
@@ -146,7 +158,7 @@ CREATE TABLE IF NOT EXISTS career_progression (
 ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS last_fetch_status VARCHAR;
 -- idx_career_xuid : SUPPRIMÉ (décision 2026-08-05, arbitrage doctrinal option 2). Dans
 -- une player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle,
--- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23046
+-- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23645
 -- (ADR 0019/0026), la plus chère de l'histoire du projet. La convergence des DB
 -- EXISTANTES est assurée par le step drop_career_xuid_art_index_v1 (migration player).
 `
@@ -178,10 +190,19 @@ CREATE TABLE IF NOT EXISTS match_registry (
     duration_seconds          INTEGER,
     playable_duration_seconds INTEGER,
     real_start_time           TIMESTAMP,
-    team_0_score              SMALLINT,
-    team_1_score              SMALLINT,
+    -- INTEGER et pas SMALLINT : un score d'equipe depasse 32 767 (Bapteme du feu,
+    -- mesure le 2026-09-16). Les bases anterieures sont converties par l'etape
+    -- widen_match_registry_team_scores.
+    team_0_score              INTEGER,
+    team_1_score              INTEGER,
     team_0_ps_score           INTEGER,
     team_1_ps_score           INTEGER,
+    -- Manches gagnees par camp + nombre de manches jouees (CoreStats.RoundsWon/Lost/Tied).
+    -- NULL = inconnu : le lecteur retombe sur les points, jamais un zero substitue.
+    -- Convergence des DB existantes : step add_team_rounds_to_match_registry.
+    team_0_rounds_won         SMALLINT,
+    team_1_rounds_won         SMALLINT,
+    rounds_total              SMALLINT,
     backfill_completed        INTEGER  DEFAULT 0,
     participants_loaded       BOOLEAN  DEFAULT FALSE,
     events_loaded             BOOLEAN  DEFAULT FALSE,
@@ -304,7 +325,7 @@ CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 // C1 (revue 2026-07-17, findings M2/M3) — RÉPARATION PROACTIVE de player_csr_snapshots
 // AVANT playerSchemaSQL : une player DB legacy (backup pré-2026-05-24) porte l'ANCIEN schéma
 // PK(playlist_id, season_id) SANS colonnes id/written_at. playerSchemaSQL crée ensuite l'index
-// idx_pcs_lookup(... written_at) puis la vue player_csr_snapshots_latest (QUALIFY ... written_at,
+// la vue player_csr_snapshots_latest (QUALIFY ... written_at,
 // id) : sur l'ancien schéma leur BIND échoue → OpenPlayerDB mort définitivement (aucun step de
 // migration restant ne répare, la conversion ayant été squashée). La réparation par
 // introspection des colonnes (jamais de sentinelle ; conversion CTAS transactionnelle
@@ -333,11 +354,16 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	if err := ensurePlayerAppendOnlyTables(db); err != nil {
 		return err
 	}
+	// Séquence créée par le soin (START 1 près d'ids posés) : réalignée ici. Sans création,
+	// l'alignement de l'ouverture physique (platform/duckdb/physical_open.go) suffit.
+	if schemadrift.SequenceCreated(ctx, db, before) {
+		migration.AlignSequencesBestEffort(ctx, db, "sync.EnsurePlayerSchema")
+	}
 	schemadrift.Report(ctx, db, before, "sync.EnsurePlayerSchema")
 	return nil
 }
 
-// playerAppendOnlyCares — conversions append-only (#23046, ADR 0026) garanties à CHAQUE
+// playerAppendOnlyCares — conversions append-only (#23645, ADR 0026) garanties à CHAQUE
 // ouverture d'une player DB, en plus du DDL de soin. playerSchemaSQL crée les TABLES mais
 // jamais les vues `_latest` (leur bind échouerait sur une table legacy non convertie) :
 // sans ces appels, une player DB NEUVE ouverte hors chaîne de migrations aurait la table
@@ -496,52 +522,8 @@ func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 	return handle, nil
 }
 
-// execScript exécute un script SQL multi-instructions séparées par ";".
+// execScript exécute un script SQL multi-instructions : délégué du découpeur unique
+// (migration.ExecScriptContext, backlog B2 2026-09-26). Gardé pour ses appels de test.
 func execScript(ctx context.Context, db *sql.DB, script string) error {
-	for _, stmt := range splitSQL(script) {
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("execScript: %w (stmt=%q)", err, truncate(stmt, 80))
-		}
-	}
-	return nil
-}
-
-// splitSQL découpe un script SQL en instructions individuelles (séparateur ";").
-func splitSQL(script string) []string {
-	var stmts []string
-	var cur []byte
-	for i := 0; i < len(script); i++ {
-		ch := script[i]
-		if ch == ';' {
-			s := trimSpace(string(cur))
-			if s != "" {
-				stmts = append(stmts, s)
-			}
-			cur = cur[:0]
-		} else {
-			cur = append(cur, ch)
-		}
-	}
-	if s := trimSpace(string(cur)); s != "" {
-		stmts = append(stmts, s)
-	}
-	return stmts
-}
-
-func trimSpace(s string) string {
-	start, end := 0, len(s)
-	for start < end && (s[start] == ' ' || s[start] == '\n' || s[start] == '\r' || s[start] == '\t') {
-		start++
-	}
-	for end > start && (s[end-1] == ' ' || s[end-1] == '\n' || s[end-1] == '\r' || s[end-1] == '\t') {
-		end--
-	}
-	return s[start:end]
-}
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "..."
+	return migration.ExecScriptContext(ctx, db, script)
 }

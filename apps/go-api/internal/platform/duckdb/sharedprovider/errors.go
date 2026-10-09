@@ -21,3 +21,14 @@ var ErrSwapTimeout = errors.New("sharedprovider: swap timeout — Get waited too
 //
 // Introduit au commit 3, déclaré ici pour stabilité du contrat d'erreurs.
 var ErrSwapFailed = errors.New("sharedprovider: swap to RO failed — provider in error state")
+
+// ErrDrainTimeout est retourné par AcquireWriter quand la vidange des lecteurs en
+// vol dépasse la borne PROPRE au provider (drainTimeout, 5 s par défaut) : un
+// lecteur tenait encore le handle RO, le provider est revenu en RO et le writer
+// n'a pas été pris. Erreur TRANSITOIRE : un appelant qui tient déjà ses données
+// en mémoire peut retenter plus tard (cron du classement mondial, lot B1 du
+// 2026-09-26). L'erreur enveloppe aussi la cause (context.DeadlineExceeded).
+//
+// Un contexte APPELANT annulé ou expiré pendant la vidange ne donne PAS cette
+// erreur : c'est une fin demandée par l'appelant, pas un encombrement.
+var ErrDrainTimeout = errors.New("sharedprovider: drain timeout — inflight readers still held the RO handle")

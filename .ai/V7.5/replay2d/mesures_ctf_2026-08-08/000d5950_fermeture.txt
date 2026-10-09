@@ -1,0 +1,24 @@
+film	000d5950
+carte	Cliffhanger
+slots_pont_avant	90
+slots_pont_apres	90
+vies_non_nommees_candidates	9
+designees_par_un_tir	1
+attribuees	0	contestees	1	rejetees_recouvrement	0
+tirs_orphelins	44	dont_instant_a_une_seule_vie	2
+
+# couverture des tirs
+avant	rattaches	475	sur	519	taux	0.9152	sans_slot	44	ambigus	0
+apres	rattaches	475	sur	519	taux	0.9152	sans_slot	44	ambigus	0
+gain_points_A	0.00
+
+# fermeture B — par la reapparition
+calibration_vies	82	p05_ms	8090	mediane_ms	8092	p95_ms	9663
+vies_restantes	9	designees	9	attribuees	6	contestees	2	rejetees_recouvrement	1
+apresB	rattaches	484	sur	519	taux	0.9326	sans_slot	35	ambigus	0
+gain_points_total_fenetre_large	1.73
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	9	designees	9	attribuees	5	contestees	3	rejetees_recouvrement	1
+apresT	rattaches	484	sur	519	taux	0.9326	sans_slot	35	ambigus	0
+gain_points_total_fenetre_serree	1.73

@@ -57,13 +57,29 @@ type MonitoringStore struct {
 
 	mu         sync.Mutex       // protège lastCounts
 	lastCounts map[string]int64 // fingerprint -> count cumulatif au dernier flush (mémoire process)
+
+	// queueMu sérialise les sections critiques de la file de construction
+	// (build_queue.go) : « lire le prochain job en file → écrire sa prise » doit
+	// être atomique pour que deux ouvriers ne repartent jamais avec le même job.
+	// Distinct de mu, qui protège l'état mémoire des détections : les deux flux
+	// n'ont aucune raison de s'attendre.
+	queueMu sync.Mutex
 }
+
+// MonitoringStoreInMemory : chemin d'un magasin monitoring EN MÉMOIRE (DSN DuckDB
+// `:memory:`), celui du mode démo (backlog 2026-09-26, lot B5.3, décision D-7) — la démo
+// n'ouvre jamais en écriture la base monitoring réelle. Rien n'est persisté : l'historique
+// des crons et les détections vivent le temps du processus.
+const MonitoringStoreInMemory = ":memory:"
 
 // NewMonitoringStore ouvre (ou crée) la base monitoring globale et pose son
 // schéma idempotemment. À appeler une fois au boot ; Close() au shutdown.
+// path = MonitoringStoreInMemory : base en mémoire, aucun fichier créé.
 func NewMonitoringStore(ctx context.Context, path string) (*MonitoringStore, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, fmt.Errorf("monitoring store: mkdir: %w", err)
+	if path != MonitoringStoreInMemory {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return nil, fmt.Errorf("monitoring store: mkdir: %w", err)
+		}
 	}
 	db, err := duckdb.OpenReadWrite(path)
 	if err != nil {

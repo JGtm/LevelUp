@@ -11,9 +11,11 @@ package duckdb
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 )
 
 // recreateKVPairsWithTimeMS recrée shared.killer_victim_pairs + sa vue root-level
@@ -87,10 +89,10 @@ func TestSquadRepo_LoadImpactEvents_KVFallback_Synthesized(t *testing.T) {
 	deathByTime := map[int64]string{}
 	for _, e := range got {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			kills++
 			killByTime[e.TimeMS] = e.XUID
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			deaths++
 			deathByTime[e.TimeMS] = e.XUID
 		case "medal":
@@ -145,7 +147,7 @@ func TestSquadRepo_LoadImpactEvents_NativeKills_NoFallback(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("NO-OP Infinite attendu (1 event natif), obtenu %d : %#v", len(got), got)
 	}
-	if got[0].EventType != analysis.EventTypeKill {
+	if got[0].EventType != highlightevent.EventTypeKill {
 		t.Errorf("event = %q, want kill", got[0].EventType)
 	}
 }
@@ -189,4 +191,55 @@ func TestSquadRepo_LoadKVPairs_Batch(t *testing.T) {
 	if !byMatch["m1"] || !byMatch["m2"] {
 		t.Errorf("MatchID non peuplé correctement: %#v", got)
 	}
+}
+
+// TestSquadRepo_LoadImpactEventsParGroupes_ReplisParGroupe : une lecture de deux groupes rend à
+// chacun ce que sa lecture dédiée lui rend. m1 (médailles seules) reçoit ses frags reconstitués
+// même lu avec m2, qui porte un frag natif et n'en reçoit aucun. Lus en un seul groupe, le
+// repli ne se déclenche pas (la règle se décide par groupe).
+func TestSquadRepo_LoadImpactEventsParGroupes_ReplisParGroupe(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	recreateKVPairsWithTimeMS(t, pdb, ctx)
+	insertHE := `INSERT INTO shared.highlight_events (match_id, xuid, event_type, time_ms) VALUES (?, ?, ?, ?)`
+	insertKF := `INSERT INTO shared.match_kill_events_latest (match_id, feed_killer_xuid, victim_xuid, time_ms) VALUES (?, ?, ?, ?)`
+	execOnSharedDBs(t, pdb, ctx, insertHE, "m1", pTestXUID, "medal", 5000)
+	execOnSharedDBs(t, pdb, ctx, insertKF, "m1", pTestXUID, "victimA", 3000)
+	execOnSharedDBs(t, pdb, ctx, insertHE, "m2", pTestXUID, "kill", 4000)
+	execOnSharedDBs(t, pdb, ctx, insertKF, "m2", pTestXUID, "victimB", 4000)
+
+	repo := NewSquadRepo(pdb)
+	got, err := repo.LoadImpactEventsParGroupes(ctx, [][]string{{"m1"}, {"m2"}})
+	if err != nil {
+		t.Fatalf("LoadImpactEventsParGroupes: %v", err)
+	}
+	for _, id := range []string{"m1", "m2"} {
+		dedie, err := repo.LoadImpactEvents(ctx, []string{id})
+		if err != nil {
+			t.Fatalf("LoadImpactEvents(%s): %v", id, err)
+		}
+		if part := lignesDuMatch(got, id); !reflect.DeepEqual(part, dedie) {
+			t.Errorf("%s : lecture groupée %#v ≠ lecture dédiée %#v", id, part, dedie)
+		}
+	}
+	if n := len(lignesDuMatch(got, "m1")); n != 3 {
+		t.Errorf("m1 : %d lignes, attendu la médaille + un frag et une mort reconstitués", n)
+	}
+	union, err := repo.LoadImpactEvents(ctx, []string{"m1", "m2"})
+	if err != nil {
+		t.Fatalf("LoadImpactEvents(union): %v", err)
+	}
+	if n := len(lignesDuMatch(union, "m1")); n != 1 {
+		t.Errorf("un seul groupe m1+m2 : m1 garde sa seule médaille, obtenu %d lignes", n)
+	}
+}
+
+func lignesDuMatch(rows []domain.ImpactEventRow, matchID string) []domain.ImpactEventRow {
+	var out []domain.ImpactEventRow
+	for _, r := range rows {
+		if r.MatchID == matchID {
+			out = append(out, r)
+		}
+	}
+	return out
 }

@@ -250,7 +250,7 @@ func TestComputeRelativePerformanceScore_NotEnoughHistory(t *testing.T) {
 	for i := range history {
 		history[i] = historyRow{TimePlayedSeconds: 600, Kills: 8, Deaths: 6}
 	}
-	got := computeRelativePerformanceScore(current, history)
+	got := computeRelativePerformanceScore(current, history, RelativeWeights)
 	if got != nil {
 		t.Errorf("not enough history: got %v, want nil", got)
 	}
@@ -279,7 +279,7 @@ func TestComputeRelativePerformanceScore_AboveAverage(t *testing.T) {
 		PersonalScore:     4000,
 		Accuracy:          55.0,
 	}
-	got := computeRelativePerformanceScore(current, history)
+	got := computeRelativePerformanceScore(current, history, RelativeWeights)
 	if got == nil {
 		t.Fatal("got nil, want non-nil score")
 	}
@@ -311,7 +311,7 @@ func TestComputeRelativePerformanceScore_BelowAverage(t *testing.T) {
 		PersonalScore:     800,
 		Accuracy:          20.0,
 	}
-	got := computeRelativePerformanceScore(current, history)
+	got := computeRelativePerformanceScore(current, history, RelativeWeights)
 	if got == nil {
 		t.Fatal("got nil, want non-nil score")
 	}

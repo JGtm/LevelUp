@@ -1,0 +1,50 @@
+film	01e1f945
+carte	Catalyst
+duree_s	534.2
+slots_distincts	113
+vies	113
+vies_nommees	97
+morts_du_fil	105
+morts_appariees	104
+offset_ms	6592057
+
+# sensibilite a la fenetre d'appariement
+fenetre_ms	150	vies_nommees	97	sur	113
+fenetre_ms	500	vies_nommees	104	sur	113
+fenetre_ms	2000	vies_nommees	105	sur	113
+fenetre_ms	10000	vies_nommees	105	sur	113
+
+# vies non nommees (t relatif au debut du film)
+vie	slot	513	debut_s	21.2	fin_s	62.3	duree_s	41.1	tirs_dans_la_fenetre	140
+vie	slot	531	debut_s	106.1	fin_s	117.3	duree_s	11.1	tirs_dans_la_fenetre	26
+vie	slot	532	debut_s	107.3	fin_s	124.1	duree_s	16.8	tirs_dans_la_fenetre	47
+vie	slot	537	debut_s	134.4	fin_s	147.7	duree_s	13.3	tirs_dans_la_fenetre	83
+vie	slot	540	debut_s	155.3	fin_s	171.6	duree_s	16.3	tirs_dans_la_fenetre	91
+vie	slot	545	debut_s	174.7	fin_s	190.5	duree_s	15.8	tirs_dans_la_fenetre	28
+vie	slot	571	debut_s	282.1	fin_s	302.0	duree_s	19.8	tirs_dans_la_fenetre	77
+vie	slot	602	debut_s	420.5	fin_s	447.9	duree_s	27.3	tirs_dans_la_fenetre	85
+vie	slot	605	debut_s	440.2	fin_s	465.7	duree_s	25.5	tirs_dans_la_fenetre	34
+vie	slot	611	debut_s	475.8	fin_s	509.6	duree_s	33.8	tirs_dans_la_fenetre	94
+vie	slot	612	debut_s	485.3	fin_s	534.1	duree_s	48.8	tirs_dans_la_fenetre	163
+vie	slot	619	debut_s	512.9	fin_s	531.2	duree_s	18.3	tirs_dans_la_fenetre	36
+vie	slot	621	debut_s	517.6	fin_s	534.2	duree_s	16.6	tirs_dans_la_fenetre	64
+vie	slot	622	debut_s	519.7	fin_s	534.2	duree_s	14.5	tirs_dans_la_fenetre	64
+vie	slot	623	debut_s	521.1	fin_s	534.1	duree_s	13.0	tirs_dans_la_fenetre	56
+vie	slot	624	debut_s	521.8	fin_s	531.2	duree_s	9.4	tirs_dans_la_fenetre	25
+
+# sonde de derive d'horloge
+offset_global_ms	6592057
+offset_premiere_moitie_ms	6592147	apparies	48
+offset_seconde_moitie_ms	6830277	apparies	10
+
+# residu median d'appariement par decile (ms)
+decile	1	vies_nommees	5	residu_moyen_ms	117.0
+decile	2	vies_nommees	7	residu_moyen_ms	96.1
+decile	3	vies_nommees	7	residu_moyen_ms	53.3
+decile	4	vies_nommees	13	residu_moyen_ms	92.8
+decile	5	vies_nommees	11	residu_moyen_ms	117.8
+decile	6	vies_nommees	13	residu_moyen_ms	107.9
+decile	7	vies_nommees	13	residu_moyen_ms	117.4
+decile	8	vies_nommees	9	residu_moyen_ms	88.0
+decile	9	vies_nommees	10	residu_moyen_ms	87.5
+decile	10	vies_nommees	9	residu_moyen_ms	117.9

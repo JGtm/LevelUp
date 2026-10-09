@@ -25,6 +25,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { getMediaModalsText, type MatchPickerText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
+import { stripBotSuffix } from '@/lib/players/displayName'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -141,7 +142,9 @@ function LobbyTeams({ lobby, mp }: { lobby: MediaMatchCandidate['lobby']; mp: Ma
                   key={p.gamertag}
                   className={p.is_self ? 'font-semibold text-primary' : 'text-foreground/85'}
                 >
-                  {p.gamertag}
+                  {/* Suffixe « [bot] » = marqueur de donnée killsource : le badge
+                      Bot ci-dessous le dit déjà, l'écran ne le répète pas. */}
+                  {stripBotSuffix(p.gamertag)}
                   {p.is_bot && (
                     <span className="ml-1 rounded bg-muted px-1 py-0 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
                       Bot

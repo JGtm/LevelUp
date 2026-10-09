@@ -25,10 +25,12 @@ export function useSynthesisPage(
   const scopeHash = `${period?.start_date ?? ''}_${period?.end_date ?? ''}_${cascadeHash}`
   return useQuery({
     queryKey: queryKeys.synthesis(playerSlug, titleSlug, scopeHash),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.post<SynthesisPageResponse>(
         `/players/${playerSlug}/pages/synthesis`,
         request,
+        undefined,
+        { signal },
       ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,

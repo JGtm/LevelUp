@@ -1,0 +1,32 @@
+===== FILM 66aa5f0b =====
+=== RUN   TestTotalControlLargeursMPP
+2026/08/27 10:59:04 INFO plafond memoire arme pour ce decodage outil=d3ter-largeurs souple_gib=2 dur_octets=2684354560
+2026/08/27 10:59:09 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=6352105362972388787 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    totalcontrol_largeurs_d3ter_test.go:95: 66aa5f0b : largeurs MPP 9/5   -> slots=528 records=100918 walked=44849 chained=6486 lectures=93915 (chainage 6486/44849 = 14.5 %)
+    totalcontrol_largeurs_d3ter_test.go:95: 66aa5f0b : largeurs MPP 8/3   -> slots=528 records=100918 walked=44849 chained=6486 lectures=93915 (chainage 6486/44849 = 14.5 %)
+    totalcontrol_largeurs_d3ter_test.go:95: 66aa5f0b : largeurs MPP 12/7  -> slots=528 records=100918 walked=44849 chained=6486 lectures=93915 (chainage 6486/44849 = 14.5 %)
+    totalcontrol_largeurs_d3ter_test.go:109: TEST A 66aa5f0b : les TROIS decoupages rendent des releves IDENTIQUES A L'UNITE PRES. Le bouton des largeurs MPP n'a AUCUN effet sur le balayage `ti=13` — l'hypothese du precedent M3 est REFUTEE sur ce film, par la mesure et non par la lecture.
+    totalcontrol_largeurs_d3ter_test.go:120: SIGNAL 66aa5f0b : chainage 6486/44849 = 14.5 % (seuil >= 80 %)
+    totalcontrol_largeurs_d3ter_test.go:125: VERROU 1 66aa5f0b : NON TENU — sous le seuil.
+    totalcontrol_largeurs_d3ter_test.go:129: DIAGNOSTIC 66aa5f0b : 7285 lecture(s) CHAINEE(s) sur 93915, portees par 314 slot(s) ; les 5 slots les plus fournis en portent 3665/7285 = 50.3 % (seuil de concentration 80 %) ; tag 5 chaine : 4 slot(s), 4 valeur(s) distincte(s) au total
+    totalcontrol_largeurs_d3ter_test.go:129: VERROU REEL 66aa5f0b : le sous-ensemble chaine est DISPERSE. Le bruit survit au filtre de chainage — le verrou n'est ni les largeurs ni l'ancrage seul.
+    totalcontrol_largeurs_d3ter_test.go:81: 66aa5f0b : pic memoire observe 0.04 Gio
+--- PASS: TestTotalControlLargeursMPP (14.49s)
+PASS
+EXIT_66aa5f0b=0
+===== FILM bf831a6b =====
+=== RUN   TestTotalControlLargeursMPP
+2026/08/27 10:59:19 INFO plafond memoire arme pour ce decodage outil=d3ter-largeurs souple_gib=2 dur_octets=2684354560
+2026/08/27 10:59:28 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    totalcontrol_largeurs_d3ter_test.go:95: bf831a6b : largeurs MPP 9/5   -> slots=669 records=165518 walked=78529 chained=9771 lectures=158186 (chainage 9771/78529 = 12.4 %)
+    totalcontrol_largeurs_d3ter_test.go:95: bf831a6b : largeurs MPP 8/3   -> slots=669 records=165518 walked=78529 chained=9771 lectures=158186 (chainage 9771/78529 = 12.4 %)
+    totalcontrol_largeurs_d3ter_test.go:95: bf831a6b : largeurs MPP 12/7  -> slots=669 records=165518 walked=78529 chained=9771 lectures=158186 (chainage 9771/78529 = 12.4 %)
+    totalcontrol_largeurs_d3ter_test.go:109: TEST A bf831a6b : les TROIS decoupages rendent des releves IDENTIQUES A L'UNITE PRES. Le bouton des largeurs MPP n'a AUCUN effet sur le balayage `ti=13` — l'hypothese du precedent M3 est REFUTEE sur ce film, par la mesure et non par la lecture.
+    totalcontrol_largeurs_d3ter_test.go:120: SIGNAL bf831a6b : chainage 9771/78529 = 12.4 % (seuil >= 80 %)
+    totalcontrol_largeurs_d3ter_test.go:125: VERROU 1 bf831a6b : NON TENU — sous le seuil.
+    totalcontrol_largeurs_d3ter_test.go:129: DIAGNOSTIC bf831a6b : 11049 lecture(s) CHAINEE(s) sur 158186, portees par 491 slot(s) ; les 5 slots les plus fournis en portent 5152/11049 = 46.6 % (seuil de concentration 80 %) ; tag 5 chaine : 3 slot(s), 3 valeur(s) distincte(s) au total
+    totalcontrol_largeurs_d3ter_test.go:129: VERROU REEL bf831a6b : le sous-ensemble chaine est DISPERSE. Le bruit survit au filtre de chainage — le verrou n'est ni les largeurs ni l'ancrage seul.
+    totalcontrol_largeurs_d3ter_test.go:81: bf831a6b : pic memoire observe 0.06 Gio
+--- PASS: TestTotalControlLargeursMPP (27.87s)
+PASS
+EXIT_bf831a6b=0

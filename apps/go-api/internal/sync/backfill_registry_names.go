@@ -1,15 +1,21 @@
-// Package sync — backfill_registry_names.go : backfill des noms d'assets
-// (playlist, map, pair, game_variant) dans match_registry pour les rows où
-// le nom est égal à l'UUID (cas du fallback UUID dans ExtractRegistry, avant
-// l'introduction de EnrichRegistryFromMetadata 2026-05-09).
+// Package sync — backfill_registry_names.go : CONVERGENCE des noms d'assets (playlist, carte,
+// paire, variante) de match_registry vers les traductions de metadata.asset_translations.
 //
-// Stratégie : pour chaque colonne *_name dont la valeur == *_id, on lookup
-// metadata.asset_translations[lang='en-US'] pour récupérer le nom canonique
-// EN, puis on UPDATE. Si asset_translations n'a pas de ligne pour cet UUID,
-// on conserve la valeur (UUID) — la donnée reste en l'état mais sans dégrader.
+// UNE SEULE MÉCANIQUE pour trois appelants : le balayage périodique des noms d'assets
+// (wire.ResolveUnresolvedAssetNames, juste après la résolution des traductions), l'action admin
+// « backfill registry names » et la sous-commande `levelup backfill-registry-names` (réparation
+// des données existantes, avec `--dry-run`).
 //
-// Utilisation : cmd/backfill_registry_names CLI, ou intégration future à un
-// flag SyncScope si le besoin émerge.
+// CE QUI EST RÉÉCRIT : une colonne de nom NULL ou égale à son identifiant (le nom recopié par la
+// sync quand la traduction manquait, ou vidé par un ancien outil de réparation). Le nom inscrit
+// est la traduction en-US (même source que EnrichRegistryFromMetadata au sync primaire). Pour la
+// paire sans traduction, le nom est CONSTRUIT « {variante} on {carte} » (constructPairName, la
+// même règle qu'au sync) à partir des noms effectifs de la variante et de la carte. Sans source,
+// la colonne reste en l'état et est comptée (Scanned - Fixed).
+//
+// CE QUI N'EST JAMAIS TOUCHÉ : un vrai nom (garde SQL du persister), `mode_category` (indexée).
+//
+// ÉCRITURE : persist.RegistryNamesPersister, un match à la fois, gardé, idempotent.
 package sync
 
 import (
@@ -19,205 +25,247 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/persist"
 )
 
-// BackfillRegistryStats résume les compteurs après un run de backfill.
+// BackfillRegistryStats : compteurs d'une convergence, PAR MATCH (une colonne d'un match = 1).
+// XScanned = matchs dont la colonne est NULL ou égale à l'identifiant ; XFixed = matchs dont la
+// colonne a été réécrite (en simulation : le serait). XScanned - XFixed = sans source de nom.
 type BackfillRegistryStats struct {
+	DryRun           bool
 	PlaylistsScanned int
 	PlaylistsFixed   int
 	MapsScanned      int
 	MapsFixed        int
 	PairsScanned     int
 	PairsFixed       int
+	PairsConstructed int // part de PairsFixed obtenue par construction « {variante} on {carte} »
 	VariantsScanned  int
 	VariantsFixed    int
+	Matches          int // matchs dont au moins une colonne a été réécrite (en simulation : le serait)
+	Errors           int // matchs dont l'écriture a échoué (journalisés)
 }
 
-// Total retourne la somme des fixed pour log/affichage.
+// Total retourne la somme des colonnes réécrites (ou qui le seraient en simulation).
 func (s BackfillRegistryStats) Total() int {
 	return s.PlaylistsFixed + s.MapsFixed + s.PairsFixed + s.VariantsFixed
 }
 
-// BackfillRegistryNames remplace les *_name == *_id dans match_registry par
-// le nom canonique en-US depuis metadata.asset_translations. Idempotent :
-// re-exécuter sur une DB déjà nettoyée est un no-op.
-//
-// metadataDB peut être nil → log warning et retourne stats vides (tests).
-func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB) (BackfillRegistryStats, error) {
-	var stats BackfillRegistryStats
-	if metadataDB == nil {
-		slog.WarnContext(ctx, "BackfillRegistryNames: metadata DB nil — abort")
+// RegistryNamesOptions paramètre une convergence. DryRun : planifier et compter, sans écrire.
+type RegistryNamesOptions struct {
+	DryRun bool
+}
+
+// registryNameRow : un match candidat, ses identifiants et noms bruts.
+type registryNameRow struct {
+	matchID                                  string
+	playlistID, mapID, pairID, variantID     sql.NullString
+	playlistName, mapName, pairName, varName sql.NullString
+}
+
+// qRegistryNameCandidates : les matchs dont au moins une colonne de nom est NULL ou égale à son
+// identifiant (identifiant renseigné). Lecture seule.
+const qRegistryNameCandidates = `
+SELECT match_id, playlist_id, playlist_name, map_id, map_name,
+       pair_id, pair_name, game_variant_id, game_variant_name
+FROM match_registry
+WHERE (playlist_id <> '' AND (playlist_name IS NULL OR playlist_name = playlist_id))
+   OR (map_id <> '' AND (map_name IS NULL OR map_name = map_id))
+   OR (pair_id <> '' AND (pair_name IS NULL OR pair_name = pair_id))
+   OR (game_variant_id <> '' AND (game_variant_name IS NULL OR game_variant_name = game_variant_id))
+ORDER BY match_id`
+
+// BackfillRegistryNames fait converger les noms d'assets de match_registry vers les traductions
+// de metadata (cf. en-tête). sharedDB doit porter le writer de shared_matches_v2 hors
+// simulation. metadataDB nil : aucune source de nom — en écriture, avertissement et stats vides ;
+// en simulation, les candidats sont comptés (XScanned), tous sans source (XFixed = 0).
+func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB,
+	opts RegistryNamesOptions) (BackfillRegistryStats, error) {
+	stats := BackfillRegistryStats{DryRun: opts.DryRun}
+	if metadataDB == nil && !opts.DryRun {
+		slog.WarnContext(ctx, "BackfillRegistryNames: metadata DB nil — aucune source de nom, rien écrit")
 		return stats, nil
 	}
 	if sharedDB == nil {
 		return stats, fmt.Errorf("BackfillRegistryNames: sharedDB nil")
 	}
-
-	type column struct {
-		assetType string
-		idCol     string
-		nameCol   string
-		scanned   *int
-		fixed     *int
-	}
-	cols := []column{
-		{games.AssetKindPlaylist, "playlist_id", "playlist_name", &stats.PlaylistsScanned, &stats.PlaylistsFixed},
-		{games.AssetKindMap, "map_id", "map_name", &stats.MapsScanned, &stats.MapsFixed},
-		{games.AssetKindPair, "pair_id", "pair_name", &stats.PairsScanned, &stats.PairsFixed},
-		{games.AssetKindGameVariant, "game_variant_id", "game_variant_name", &stats.VariantsScanned, &stats.VariantsFixed},
-	}
-
-	for _, c := range cols {
-		fixed, scanned, err := backfillOneColumn(ctx, sharedDB, metadataDB, c.assetType, c.idCol, c.nameCol)
-		if err != nil {
-			return stats, fmt.Errorf("backfill %s: %w", c.assetType, err)
-		}
-		*c.scanned = scanned
-		*c.fixed = fixed
-	}
-
-	// Étape finale : pour les paires dont le nom est resté un GUID (asset
-	//_translations[pair] absent — cas du nouveau contenu Halo), on CONSTRUIT
-	// "{game_variant} on {map}" depuis les colonnes voisines, désormais résolues
-	// par les passes ci-dessus. Miroir du fallback sync-time dans
-	// EnrichRegistryFromMetadata (constructPairName). Idempotent.
-	constructed, err := backfillPairNamesByConstruction(ctx, sharedDB)
+	rows, err := loadRegistryNameCandidates(ctx, sharedDB)
 	if err != nil {
-		return stats, fmt.Errorf("backfill pair construction: %w", err)
+		return stats, err
 	}
-	stats.PairsFixed += constructed
+	if metadataDB == nil {
+		countCandidatesWithoutSource(rows, &stats)
+		slog.WarnContext(ctx, "BackfillRegistryNames: metadata DB nil — simulation : candidats comptés, tous sans source",
+			"candidats", len(rows))
+		return stats, nil
+	}
+	names := newTranslationCache(metadataDB)
+	persister := persist.NewRegistryNamesPersister(sharedDB)
+	for _, row := range rows {
+		writes, construite := planRegistryNames(ctx, row, names, &stats)
+		if len(writes) == 0 {
+			continue
+		}
+		if opts.DryRun {
+			stats.Matches++
+			countRegistryWrites(&stats, kindsOf(writes), construite)
+			continue
+		}
+		ecrits, err := persister.WriteMatchNames(ctx, row.matchID, writes)
+		if err != nil {
+			stats.Errors++
+			slog.ErrorContext(ctx, "BackfillRegistryNames: écriture échouée",
+				"match_id", row.matchID, "err", err)
+			continue
+		}
+		if len(ecrits) > 0 {
+			stats.Matches++
+		}
+		countRegistryWrites(&stats, ecrits, construite)
+	}
+	slog.InfoContext(ctx, "BackfillRegistryNames: convergence terminée",
+		"dry_run", opts.DryRun, "candidats", len(rows), "colonnes", stats.Total(),
+		"paires_construites", stats.PairsConstructed, "errors", stats.Errors)
 	return stats, nil
 }
 
-// backfillPairNamesByConstruction réécrit pair_name = "{game_variant_name} on
-// {map_name}" pour les rows où pair_name est resté un GUID (== pair_id) ALORS
-// que game_variant_name et map_name sont, eux, résolus (≠ leur id). Idempotent.
-// Retourne le nombre de rows mises à jour.
-//
-// Row-by-row par match_id (ADR 0019/0026, anti-ART #23046) : SELECT des match_ids
-// cibles + de leur pair_name construit, puis N UPDATE sérialisés `WHERE match_id = ?`.
-// JAMAIS de bulk UPDATE multi-row nu (set-based) sur match_registry — même sous
-// write-lease, un statement touchant N entrées d'index est le déclencheur ART direct
-// (garde-fou : no_art_patterns_test.go::TestNoBareBulkUpdateOnCriticalTables).
-func backfillPairNamesByConstruction(ctx context.Context, sharedDB *sql.DB) (int, error) {
-	const sel = `
-		SELECT match_id, game_variant_name || ' on ' || map_name AS pair
-		FROM match_registry
-		WHERE pair_id IS NOT NULL
-		  AND pair_name = pair_id
-		  AND game_variant_name IS NOT NULL AND game_variant_name <> game_variant_id
-		  AND map_name IS NOT NULL AND map_name <> map_id`
-	rows, err := sharedDB.QueryContext(ctx, sel)
+// loadRegistryNameCandidates lit les matchs candidats (qRegistryNameCandidates).
+func loadRegistryNameCandidates(ctx context.Context, sharedDB *sql.DB) ([]registryNameRow, error) {
+	rs, err := sharedDB.QueryContext(ctx, qRegistryNameCandidates)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("BackfillRegistryNames: lecture des candidats: %w", err)
 	}
-	type pairUpdate struct{ matchID, pair string }
-	var updates []pairUpdate
-	for rows.Next() {
-		var mid, pair sql.NullString
-		if err := rows.Scan(&mid, &pair); err != nil {
-			rows.Close()
-			return 0, err
+	defer rs.Close()
+	var out []registryNameRow
+	for rs.Next() {
+		var r registryNameRow
+		if err := rs.Scan(&r.matchID, &r.playlistID, &r.playlistName, &r.mapID, &r.mapName,
+			&r.pairID, &r.pairName, &r.variantID, &r.varName); err != nil {
+			return nil, fmt.Errorf("BackfillRegistryNames: scan: %w", err)
 		}
-		if mid.Valid && mid.String != "" && pair.Valid && pair.String != "" {
-			updates = append(updates, pairUpdate{mid.String, pair.String})
-		}
+		out = append(out, r)
 	}
-	rows.Close()
-
-	n := 0
-	for _, u := range updates {
-		res, err := sharedDB.ExecContext(ctx,
-			`UPDATE match_registry SET pair_name = ? WHERE match_id = ?`, u.pair, u.matchID)
-		if err != nil {
-			return n, err
-		}
-		if c, _ := res.RowsAffected(); c > 0 {
-			n++
-		}
+	if err := rs.Err(); err != nil {
+		return nil, fmt.Errorf("BackfillRegistryNames: itération: %w", err)
 	}
-	if n > 0 {
-		slog.InfoContext(ctx, "BackfillRegistryNames: pairs construites depuis game_variant + map",
-			"rows", n)
-	}
-	return n, nil
+	return out, nil
 }
 
-// backfillOneColumn : (1) liste les asset_ids distincts dont *_name == *_id,
-// (2) lookup les noms en-US depuis asset_translations, (3) UPDATE match_registry.
-//
-// Retourne (fixed, scanned, error). scanned = nb d'asset_ids distincts à fixer
-// initialement ; fixed = nb d'UPDATEs effectifs (peut être inférieur si
-// asset_translations n'a pas le nom).
-func backfillOneColumn(
-	ctx context.Context,
-	sharedDB, metadataDB *sql.DB,
-	assetType, idCol, nameCol string,
-) (fixed, scanned int, err error) {
-	// Étape 1 : liste des asset_ids distincts où name == id.
-	q1 := fmt.Sprintf(`
-		SELECT DISTINCT %s
-		FROM match_registry
-		WHERE %s IS NOT NULL
-		  AND %s = %s`, idCol, idCol, nameCol, idCol)
-	rows, err := sharedDB.QueryContext(ctx, q1)
-	if err != nil {
-		return 0, 0, fmt.Errorf("query distinct %s: %w", idCol, err)
-	}
-	var ids []string
-	for rows.Next() {
-		var id sql.NullString
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return 0, 0, err
+// planRegistryNames calcule les écritures d'un match et compte ses colonnes candidates
+// (XScanned). Rend aussi si la paire planifiée est construite (et non traduite).
+func planRegistryNames(ctx context.Context, row registryNameRow, names *translationCache,
+	stats *BackfillRegistryStats) ([]persist.RegistryNameWrite, bool) {
+	var writes []persist.RegistryNameWrite
+	// effectif : le nom après convergence (planifié s'il y en a un, sinon l'existant).
+	effectif := func(kind string, id, name sql.NullString, scanned *int) string {
+		if !nameNeedsConvergence(id, name) {
+			return name.String
 		}
-		if id.Valid && id.String != "" {
-			ids = append(ids, id.String)
+		*scanned++
+		if n := names.lookup(ctx, kind, id.String); n != "" {
+			writes = append(writes, persist.RegistryNameWrite{Kind: kind, Name: n})
+			return n
 		}
+		return name.String
 	}
-	rows.Close()
-	scanned = len(ids)
-	if scanned == 0 {
-		return 0, 0, nil
+	effectif(games.AssetKindPlaylist, row.playlistID, row.playlistName, &stats.PlaylistsScanned)
+	carte := effectif(games.AssetKindMap, row.mapID, row.mapName, &stats.MapsScanned)
+	variante := effectif(games.AssetKindGameVariant, row.variantID, row.varName, &stats.VariantsScanned)
+	if !nameNeedsConvergence(row.pairID, row.pairName) {
+		return writes, false
 	}
+	stats.PairsScanned++
+	if n := names.lookup(ctx, games.AssetKindPair, row.pairID.String); n != "" {
+		return append(writes, persist.RegistryNameWrite{Kind: games.AssetKindPair, Name: n}), false
+	}
+	if construit, ok := constructPairName(&variante, &row.variantID.String, &carte, &row.mapID.String); ok {
+		return append(writes, persist.RegistryNameWrite{Kind: games.AssetKindPair, Name: construit}), true
+	}
+	return writes, false
+}
 
-	// Étape 2 : lookup asset_translations[en-US] pour chaque asset_id.
-	for _, id := range ids {
-		var name sql.NullString
-		err := metadataDB.QueryRowContext(ctx, `
-			SELECT name FROM asset_translations
-			WHERE asset_type = ? AND asset_id = ? AND lang = 'en-US'
-			LIMIT 1`, assetType, id).Scan(&name)
-		if err == sql.ErrNoRows {
-			continue
-		}
-		if err != nil {
-			slog.WarnContext(ctx, "BackfillRegistryNames: lookup en-US failed",
-				"asset_type", assetType, "asset_id", id, "err", err)
-			continue
-		}
-		if !name.Valid {
-			continue
-		}
-		canonical := name.String
-		if canonical == "" || canonical == id {
-			continue
-		}
-		// Étape 3 : UPDATE match_registry pour cet asset_id.
-		q3 := fmt.Sprintf(`UPDATE match_registry SET %s = ? WHERE %s = ? AND %s = ?`,
-			nameCol, idCol, nameCol)
-		res, err := sharedDB.ExecContext(ctx, q3, canonical, id, id)
-		if err != nil {
-			slog.WarnContext(ctx, "BackfillRegistryNames: UPDATE failed",
-				"asset_type", assetType, "asset_id", id, "err", err)
-			continue
-		}
-		n, _ := res.RowsAffected()
-		if n > 0 {
-			fixed++
-			slog.InfoContext(ctx, "BackfillRegistryNames: fixed",
-				"asset_type", assetType, "asset_id", id, "name", canonical, "rows", n)
+// countCandidatesWithoutSource compte, par colonne, les matchs dont le nom est à faire converger
+// (XScanned), sans aucune écriture planifiée : simulation sans base de métadonnées.
+func countCandidatesWithoutSource(rows []registryNameRow, stats *BackfillRegistryStats) {
+	for _, r := range rows {
+		for _, c := range []struct {
+			id, name sql.NullString
+			scanned  *int
+		}{
+			{r.playlistID, r.playlistName, &stats.PlaylistsScanned},
+			{r.mapID, r.mapName, &stats.MapsScanned},
+			{r.pairID, r.pairName, &stats.PairsScanned},
+			{r.variantID, r.varName, &stats.VariantsScanned},
+		} {
+			if nameNeedsConvergence(c.id, c.name) {
+				*c.scanned++
+			}
 		}
 	}
-	return fixed, scanned, nil
+}
+
+// nameNeedsConvergence : identifiant renseigné et nom NULL ou égal à l'identifiant — la même
+// condition que qRegistryNameCandidates et que la garde du persister.
+func nameNeedsConvergence(id, name sql.NullString) bool {
+	if !id.Valid || id.String == "" {
+		return false
+	}
+	return !name.Valid || name.String == id.String
+}
+
+// countRegistryWrites ajoute aux XFixed les genres écrits d'un match.
+func countRegistryWrites(stats *BackfillRegistryStats, kinds []string, paireConstruite bool) {
+	for _, k := range kinds {
+		switch k {
+		case games.AssetKindPlaylist:
+			stats.PlaylistsFixed++
+		case games.AssetKindMap:
+			stats.MapsFixed++
+		case games.AssetKindPair:
+			stats.PairsFixed++
+			if paireConstruite {
+				stats.PairsConstructed++
+			}
+		case games.AssetKindGameVariant:
+			stats.VariantsFixed++
+		}
+	}
+}
+
+func kindsOf(writes []persist.RegistryNameWrite) []string {
+	out := make([]string, len(writes))
+	for i, w := range writes {
+		out[i] = w.Kind
+	}
+	return out
+}
+
+// translationCache mémoïse lookupAssetCanonicalEN par (genre, identifiant) : un même asset
+// revient sur des centaines de matchs. Une lecture en échec est journalisée et vaut « pas de
+// traduction » (l'asset reste compté sans source).
+type translationCache struct {
+	db    *sql.DB
+	names map[string]string
+}
+
+func newTranslationCache(db *sql.DB) *translationCache {
+	return &translationCache{db: db, names: map[string]string{}}
+}
+
+func (c *translationCache) lookup(ctx context.Context, kind, id string) string {
+	key := kind + "|" + id
+	if n, ok := c.names[key]; ok {
+		return n
+	}
+	n, err := lookupAssetCanonicalEN(ctx, c.db, kind, id)
+	if err != nil {
+		slog.WarnContext(ctx, "BackfillRegistryNames: lecture de traduction échouée",
+			"asset_type", kind, "asset_id", id, "err", err)
+		n = ""
+	}
+	if n == id {
+		n = "" // une « traduction » égale à l'identifiant n'est pas un nom
+	}
+	c.names[key] = n
+	return n
 }

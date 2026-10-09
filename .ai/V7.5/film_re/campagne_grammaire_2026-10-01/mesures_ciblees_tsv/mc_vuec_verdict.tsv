@@ -1,0 +1,208 @@
+film	build	cle	n	paquets	hors_cadre	fermes	en_jeu
+0797ce72	HI_1_13_0	autre non ferme · impossible : en-tete cdc04 pose	42	42	0	0	327
+0797ce72	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	914	914	0	0	5382
+0797ce72	HI_1_13_0	autre non ferme · impossible : kind 3	12	12	0	0	67
+0797ce72	HI_1_13_0	autre non ferme · non contredit	163	163	0	0	1126
+0797ce72	HI_1_13_0	ferme · impossible : en-tete cdc04 pose	1	1	0	1	0
+0797ce72	HI_1_13_0	ferme · impossible : index non croissant	3	3	0	3	0
+0797ce72	HI_1_13_0	ferme · impossible : kind 3	1	1	0	1	0
+0797ce72	HI_1_13_0	ferme · non contredit	18881	18881	0	18881	0
+0797ce72	HI_1_13_0	ferme · vide : sans entree jugeable	319	319	0	319	0
+0797ce72	HI_1_13_0	hors cadre · impossible : en-tete cdc04 pose	168	168	168	0	1281
+0797ce72	HI_1_13_0	hors cadre · impossible : index non croissant	78	78	78	0	530
+0797ce72	HI_1_13_0	hors cadre · impossible : kind 3	256	256	256	0	1351
+0797ce72	HI_1_13_0	hors cadre · non contredit	164	164	164	0	932
+0797ce72	HI_1_13_0	hors cadre · vide : sans entree jugeable	4844	4844	4844	0	31014
+084a804d	HI_1_10_0	autre non ferme · impossible : en-tete cdc04 pose	1	1	0	0	20
+084a804d	HI_1_10_0	autre non ferme · impossible : kind 1 ou 2	68	68	0	0	204
+084a804d	HI_1_10_0	autre non ferme · non contredit	14	14	0	0	45
+084a804d	HI_1_10_0	ferme · impossible : index non croissant	7	7	0	7	0
+084a804d	HI_1_10_0	ferme · impossible : kind 3	7	7	0	7	0
+084a804d	HI_1_10_0	ferme · non contredit	4376	4376	0	4376	0
+084a804d	HI_1_10_0	ferme · vide : sans entree jugeable	845	845	0	845	0
+084a804d	HI_1_10_0	hors cadre · impossible : code analogique 63	1	1	1	0	1
+084a804d	HI_1_10_0	hors cadre · impossible : en-tete cdc04 pose	4	4	4	0	18
+084a804d	HI_1_10_0	hors cadre · impossible : kind 3	11	11	11	0	30
+084a804d	HI_1_10_0	hors cadre · non contredit	11	11	11	0	4
+084a804d	HI_1_10_0	hors cadre · vide : sans entree jugeable	23055	23055	23055	0	439775
+111fa685	HI_1_10_0	autre non ferme · impossible : kind 1 ou 2	169	169	0	0	1575
+111fa685	HI_1_10_0	autre non ferme · impossible : kind 3	27	27	0	0	317
+111fa685	HI_1_10_0	autre non ferme · non contredit	19	19	0	0	132
+111fa685	HI_1_10_0	ferme · impossible : index non croissant	3	3	0	3	0
+111fa685	HI_1_10_0	ferme · impossible : kind 3	1	1	0	1	0
+111fa685	HI_1_10_0	ferme · non contredit	2633	2633	0	2633	0
+111fa685	HI_1_10_0	ferme · vide : sans entree jugeable	1515	1515	0	1515	0
+111fa685	HI_1_10_0	hors cadre · impossible : en-tete cdc04 pose	5	5	5	0	55
+111fa685	HI_1_10_0	hors cadre · impossible : index non croissant	4	4	4	0	38
+111fa685	HI_1_10_0	hors cadre · impossible : kind 3	375	375	375	0	4148
+111fa685	HI_1_10_0	hors cadre · non contredit	20	20	20	0	142
+111fa685	HI_1_10_0	hors cadre · vide : sans entree jugeable	10540	10540	10540	0	194692
+11de8353	HI_1_9_0	autre non ferme · impossible : kind 1 ou 2	189	189	0	0	2319
+11de8353	HI_1_9_0	autre non ferme · impossible : kind 3	3	3	0	0	51
+11de8353	HI_1_9_0	autre non ferme · non contredit	16	16	0	0	71
+11de8353	HI_1_9_0	ferme · non contredit	3690	3690	0	3690	0
+11de8353	HI_1_9_0	ferme · vide : sans entree jugeable	2049	2049	0	2049	0
+11de8353	HI_1_9_0	hors cadre · impossible : en-tete cdc04 pose	6	6	6	0	38
+11de8353	HI_1_9_0	hors cadre · impossible : kind 3	77	77	77	0	942
+11de8353	HI_1_9_0	hors cadre · non contredit	19	19	19	0	137
+11de8353	HI_1_9_0	hors cadre · vide : sans entree jugeable	9690	9690	9690	0	176338
+1c4c63c2	HI_1_10_0	autre non ferme · impossible : en-tete cdc04 pose	2	2	0	0	6
+1c4c63c2	HI_1_10_0	autre non ferme · impossible : kind 1 ou 2	119	119	0	0	309
+1c4c63c2	HI_1_10_0	autre non ferme · non contredit	20	20	0	0	139
+1c4c63c2	HI_1_10_0	ferme · impossible : code analogique 63	2	2	0	2	0
+1c4c63c2	HI_1_10_0	ferme · impossible : en-tete cdc04 pose	19	19	0	19	0
+1c4c63c2	HI_1_10_0	ferme · impossible : index non croissant	64	64	0	64	0
+1c4c63c2	HI_1_10_0	ferme · impossible : kind 3	131	131	0	131	0
+1c4c63c2	HI_1_10_0	ferme · non contredit	15544	15544	0	15544	0
+1c4c63c2	HI_1_10_0	ferme · vide : sans entree jugeable	3594	3594	0	3594	0
+1c4c63c2	HI_1_10_0	hors cadre · impossible : en-tete cdc04 pose	7	7	7	0	35
+1c4c63c2	HI_1_10_0	hors cadre · impossible : index non croissant	2	2	2	0	1
+1c4c63c2	HI_1_10_0	hors cadre · impossible : kind 3	60	60	60	0	192
+1c4c63c2	HI_1_10_0	hors cadre · non contredit	18	18	18	0	13
+1c4c63c2	HI_1_10_0	hors cadre · vide : sans entree jugeable	45851	45851	45851	0	596320
+396cfc92	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	1	1	0	0	0
+396cfc92	HI_1_13_0	autre non ferme · non contredit	1	1	0	0	0
+396cfc92	HI_1_13_0	ferme · non contredit	22518	22518	0	22518	0
+396cfc92	HI_1_13_0	ferme · vide : sans entree jugeable	310	310	0	310	0
+396cfc92	HI_1_13_0	hors cadre · impossible : en-tete cdc04 pose	1	1	1	0	7
+396cfc92	HI_1_13_0	hors cadre · non contredit	2	2	2	0	17
+396cfc92	HI_1_13_0	hors cadre · vide : sans entree jugeable	8359	8359	8359	0	56862
+4f77afc1	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	16	16	0	0	252
+4f77afc1	HI_1_13_0	autre non ferme · non contredit	4	4	0	0	31
+4f77afc1	HI_1_13_0	ferme · impossible : index non croissant	9	9	0	9	0
+4f77afc1	HI_1_13_0	ferme · impossible : kind 3	2	2	0	2	0
+4f77afc1	HI_1_13_0	ferme · non contredit	20607	20607	0	20607	0
+4f77afc1	HI_1_13_0	ferme · vide : sans entree jugeable	2292	2292	0	2292	0
+4f77afc1	HI_1_13_0	hors cadre · impossible : kind 3	3	3	3	0	33
+4f77afc1	HI_1_13_0	hors cadre · non contredit	5	5	5	0	121
+4f77afc1	HI_1_13_0	hors cadre · vide : sans entree jugeable	9527	9527	9527	0	179434
+50247b26	version-31	autre non ferme · impossible : kind 1 ou 2	896	896	0	0	23319
+50247b26	version-31	autre non ferme · impossible : kind 3	1	1	0	0	22
+50247b26	version-31	autre non ferme · non contredit	552	552	0	0	13547
+50247b26	version-31	ferme · impossible : en-tete cdc04 pose	1	1	0	1	0
+50247b26	version-31	ferme · impossible : kind 3	1	1	0	1	0
+50247b26	version-31	ferme · non contredit	1	1	0	1	0
+50247b26	version-31	ferme · vide : sans entree jugeable	150	150	0	150	0
+50247b26	version-31	hors cadre · impossible : en-tete cdc04 pose	1	1	1	0	0
+50247b26	version-31	hors cadre · impossible : kind 3	75	75	75	0	1891
+50247b26	version-31	hors cadre · non contredit	2934	2934	2934	0	38659
+50247b26	version-31	hors cadre · vide : sans entree jugeable	10770	10770	10770	0	236387
+51ebbc0f	HI_1_13_0	autre non ferme · impossible : en-tete cdc04 pose	3	3	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	96	96	0	0	35
+51ebbc0f	HI_1_13_0	autre non ferme · impossible : kind 3	2	2	0	0	0
+51ebbc0f	HI_1_13_0	autre non ferme · non contredit	35	35	0	0	2
+51ebbc0f	HI_1_13_0	ferme · impossible : en-tete cdc04 pose	1	1	0	1	0
+51ebbc0f	HI_1_13_0	ferme · impossible : kind 3	1	1	0	1	0
+51ebbc0f	HI_1_13_0	ferme · non contredit	8332	8332	0	8332	0
+51ebbc0f	HI_1_13_0	ferme · vide : sans entree jugeable	1513	1513	0	1513	0
+51ebbc0f	HI_1_13_0	hors cadre · impossible : en-tete cdc04 pose	35	35	35	0	0
+51ebbc0f	HI_1_13_0	hors cadre · impossible : index non croissant	3	3	3	0	0
+51ebbc0f	HI_1_13_0	hors cadre · impossible : kind 3	54	54	54	0	7
+51ebbc0f	HI_1_13_0	hors cadre · non contredit	89	89	89	0	13
+51ebbc0f	HI_1_13_0	hors cadre · vide : sans entree jugeable	16748	16748	16748	0	29379
+60ae07c4	HI_1_8_0	autre non ferme · impossible : en-tete cdc04 pose	24	24	0	0	153
+60ae07c4	HI_1_8_0	autre non ferme · impossible : kind 1 ou 2	729	729	0	0	4083
+60ae07c4	HI_1_8_0	autre non ferme · impossible : kind 3	17	17	0	0	106
+60ae07c4	HI_1_8_0	autre non ferme · non contredit	130	130	0	0	793
+60ae07c4	HI_1_8_0	ferme · impossible : index non croissant	5	5	0	5	0
+60ae07c4	HI_1_8_0	ferme · impossible : kind 3	4	4	0	4	0
+60ae07c4	HI_1_8_0	ferme · non contredit	13131	13131	0	13131	0
+60ae07c4	HI_1_8_0	ferme · vide : sans entree jugeable	829	829	0	829	0
+60ae07c4	HI_1_8_0	hors cadre · impossible : code analogique 63	1	1	1	0	5
+60ae07c4	HI_1_8_0	hors cadre · impossible : en-tete cdc04 pose	176	176	176	0	1307
+60ae07c4	HI_1_8_0	hors cadre · impossible : index non croissant	21	21	21	0	148
+60ae07c4	HI_1_8_0	hors cadre · impossible : kind 3	216	216	216	0	857
+60ae07c4	HI_1_8_0	hors cadre · non contredit	104	104	104	0	610
+60ae07c4	HI_1_8_0	hors cadre · vide : sans entree jugeable	29765	29765	29765	0	173314
+a349fea8	version-33	autre non ferme · impossible : en-tete cdc04 pose	1	1	0	0	0
+a349fea8	version-33	autre non ferme · impossible : kind 1 ou 2	927	927	0	0	21404
+a349fea8	version-33	autre non ferme · impossible : kind 3	1	1	0	0	0
+a349fea8	version-33	autre non ferme · non contredit	158	158	0	0	2087
+a349fea8	version-33	ferme · impossible : en-tete cdc04 pose	3	3	0	3	0
+a349fea8	version-33	ferme · non contredit	2	2	0	2	0
+a349fea8	version-33	ferme · vide : sans entree jugeable	458	458	0	458	0
+a349fea8	version-33	hors cadre · impossible : en-tete cdc04 pose	62	62	62	0	56
+a349fea8	version-33	hors cadre · impossible : index non croissant	19	19	19	0	33
+a349fea8	version-33	hors cadre · impossible : kind 3	67	67	67	0	455
+a349fea8	version-33	hors cadre · non contredit	2781	2781	2781	0	52722
+a349fea8	version-33	hors cadre · vide : sans entree jugeable	19277	19277	19277	0	380210
+a521164d	HI_1_4_1	autre non ferme · impossible : kind 1 ou 2	254	254	0	0	4714
+a521164d	HI_1_4_1	autre non ferme · impossible : kind 3	2	2	0	0	0
+a521164d	HI_1_4_1	autre non ferme · non contredit	176	176	0	0	2322
+a521164d	HI_1_4_1	ferme · impossible : en-tete cdc04 pose	4	4	0	4	0
+a521164d	HI_1_4_1	ferme · impossible : kind 3	1	1	0	1	0
+a521164d	HI_1_4_1	ferme · vide : sans entree jugeable	696	696	0	696	0
+a521164d	HI_1_4_1	hors cadre · impossible : en-tete cdc04 pose	72	72	72	0	3
+a521164d	HI_1_4_1	hors cadre · impossible : index non croissant	7	7	7	0	42
+a521164d	HI_1_4_1	hors cadre · impossible : kind 3	39	39	39	0	154
+a521164d	HI_1_4_1	hors cadre · non contredit	1855	1855	1855	0	37966
+a521164d	HI_1_4_1	hors cadre · vide : sans entree jugeable	6391	6391	6391	0	132862
+bcb6d393	HI_1_12_0	autre non ferme · impossible : kind 1 ou 2	63	63	0	0	8
+bcb6d393	HI_1_12_0	autre non ferme · non contredit	9	9	0	0	1
+bcb6d393	HI_1_12_0	ferme · non contredit	5117	5117	0	5117	0
+bcb6d393	HI_1_12_0	ferme · vide : sans entree jugeable	718	718	0	718	0
+bcb6d393	HI_1_12_0	hors cadre · impossible : en-tete cdc04 pose	8	8	8	0	5
+bcb6d393	HI_1_12_0	hors cadre · impossible : kind 3	39	39	39	0	0
+bcb6d393	HI_1_12_0	hors cadre · non contredit	9	9	9	0	0
+bcb6d393	HI_1_12_0	hors cadre · vide : sans entree jugeable	3193	3193	3193	0	18524
+bf15f7ab	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	145	145	0	0	995
+bf15f7ab	HI_1_13_0	autre non ferme · impossible : kind 3	3	3	0	0	21
+bf15f7ab	HI_1_13_0	autre non ferme · non contredit	104	104	0	0	722
+bf15f7ab	HI_1_13_0	ferme · non contredit	26930	26930	0	26930	0
+bf15f7ab	HI_1_13_0	ferme · vide : sans entree jugeable	1546	1546	0	1546	0
+bf15f7ab	HI_1_13_0	hors cadre · impossible : en-tete cdc04 pose	1	1	1	0	7
+bf15f7ab	HI_1_13_0	hors cadre · impossible : kind 3	96	96	96	0	667
+bf15f7ab	HI_1_13_0	hors cadre · non contredit	22	22	22	0	139
+bf15f7ab	HI_1_13_0	hors cadre · vide : sans entree jugeable	1539	1539	1539	0	9018
+bfecd02b	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	2	2	0	0	0
+bfecd02b	HI_1_13_0	autre non ferme · non contredit	1	1	0	0	0
+bfecd02b	HI_1_13_0	ferme · non contredit	25593	25593	0	25593	0
+bfecd02b	HI_1_13_0	ferme · vide : sans entree jugeable	810	810	0	810	0
+bfecd02b	HI_1_13_0	hors cadre · non contredit	1	1	1	0	10
+bfecd02b	HI_1_13_0	hors cadre · vide : sans entree jugeable	3153	3153	3153	0	23310
+c75f33b8	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	15	15	0	0	0
+c75f33b8	HI_1_13_0	autre non ferme · non contredit	1	1	0	0	0
+c75f33b8	HI_1_13_0	ferme · non contredit	19503	19503	0	19503	0
+c75f33b8	HI_1_13_0	ferme · vide : sans entree jugeable	3441	3441	0	3441	0
+c75f33b8	HI_1_13_0	hors cadre · impossible : en-tete cdc04 pose	1	1	1	0	0
+c75f33b8	HI_1_13_0	hors cadre · impossible : kind 3	1	1	1	0	0
+c75f33b8	HI_1_13_0	hors cadre · non contredit	1	1	1	0	0
+c75f33b8	HI_1_13_0	hors cadre · vide : sans entree jugeable	2293	2293	2293	0	10245
+d9781168	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	1	1	0	0	0
+d9781168	HI_1_13_0	autre non ferme · non contredit	1	1	0	0	0
+d9781168	HI_1_13_0	ferme · impossible : en-tete cdc04 pose	2	2	0	2	0
+d9781168	HI_1_13_0	ferme · impossible : index non croissant	2	2	0	2	0
+d9781168	HI_1_13_0	ferme · impossible : kind 3	1	1	0	1	0
+d9781168	HI_1_13_0	ferme · non contredit	25133	25133	0	25133	0
+d9781168	HI_1_13_0	ferme · vide : sans entree jugeable	1326	1326	0	1326	0
+d9781168	HI_1_13_0	hors cadre · non contredit	10	10	10	0	5
+d9781168	HI_1_13_0	hors cadre · vide : sans entree jugeable	11239	11239	11239	0	64300
+e5adf7b2	HI_1_11_0	autre non ferme · impossible : en-tete cdc04 pose	2	2	0	0	0
+e5adf7b2	HI_1_11_0	autre non ferme · impossible : kind 1 ou 2	222	222	0	0	2112
+e5adf7b2	HI_1_11_0	autre non ferme · impossible : kind 3	9	9	0	0	154
+e5adf7b2	HI_1_11_0	autre non ferme · non contredit	115	115	0	0	117
+e5adf7b2	HI_1_11_0	ferme · impossible : index non croissant	1	1	0	1	0
+e5adf7b2	HI_1_11_0	ferme · impossible : kind 3	2	2	0	2	0
+e5adf7b2	HI_1_11_0	ferme · non contredit	3694	3694	0	3694	0
+e5adf7b2	HI_1_11_0	ferme · vide : sans entree jugeable	588	588	0	588	0
+e5adf7b2	HI_1_11_0	hors cadre · impossible : en-tete cdc04 pose	79	79	79	0	105
+e5adf7b2	HI_1_11_0	hors cadre · impossible : index non croissant	5	5	5	0	0
+e5adf7b2	HI_1_11_0	hors cadre · impossible : kind 3	43	43	43	0	366
+e5adf7b2	HI_1_11_0	hors cadre · non contredit	55	55	55	0	257
+e5adf7b2	HI_1_11_0	hors cadre · vide : sans entree jugeable	10016	10016	10016	0	202170
+f75e7053	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	1	1	0	0	0
+f75e7053	HI_1_13_0	autre non ferme · non contredit	1	1	0	0	0
+f75e7053	HI_1_13_0	ferme · non contredit	22609	22609	0	22609	0
+f75e7053	HI_1_13_0	ferme · vide : sans entree jugeable	814	814	0	814	0
+f75e7053	HI_1_13_0	hors cadre · vide : sans entree jugeable	4287	4287	4287	0	26439
+fb1a1a72	HI_1_13_0	autre non ferme · impossible : en-tete cdc04 pose	2	2	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · impossible : kind 1 ou 2	144	144	0	0	19
+fb1a1a72	HI_1_13_0	autre non ferme · impossible : kind 3	1	1	0	0	0
+fb1a1a72	HI_1_13_0	autre non ferme · non contredit	42	42	0	0	17
+fb1a1a72	HI_1_13_0	ferme · non contredit	20989	20989	0	20989	0
+fb1a1a72	HI_1_13_0	ferme · vide : sans entree jugeable	1329	1329	0	1329	0
+fb1a1a72	HI_1_13_0	hors cadre · impossible : en-tete cdc04 pose	41	41	41	0	0
+fb1a1a72	HI_1_13_0	hors cadre · impossible : index non croissant	6	6	6	0	0
+fb1a1a72	HI_1_13_0	hors cadre · impossible : kind 3	57	57	57	0	1
+fb1a1a72	HI_1_13_0	hors cadre · non contredit	68	68	68	0	28
+fb1a1a72	HI_1_13_0	hors cadre · vide : sans entree jugeable	23769	23769	23769	0	15653

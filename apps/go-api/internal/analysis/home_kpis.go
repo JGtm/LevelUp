@@ -1,5 +1,5 @@
-// Package analysis â€” home_kpis.go : KPIs globaux (ComputeKPIs / ComputeTrend),
-// hero card (BuildHeroCard) et identitÃ© Spartan (BuildSpartanIdentity)
+// Package analysis — home_kpis.go : KPIs globaux (ComputeKPIs / ComputeTrend),
+// hero card (BuildHeroCard) et identité Spartan (BuildSpartanIdentity)
 // pour la page d'accueil legacy.
 package analysis
 
@@ -25,13 +25,13 @@ func dominantKey(counts map[string]int) (string, int) {
 }
 
 // ---------------------------------------------------------------------------
-// ComputeTrend â€” fenÃªtre glissante
+// ComputeTrend — fenêtre glissante
 
 // BuildSpartanIdentity construit le bloc identitaire compact de la home.
 //
-// ranks (peut Ãªtre nil) est consultÃ© pour rÃ©soudre RankTitle + NextRankTitle dans
-// la locale demandÃ©e. Si nil ou si l'entrÃ©e est absente du catalog, fallback sur
-// raw.RankName (libellÃ© prÃ©-construit cÃ´tÃ© player DB) puis sur "Rank N".
+// ranks (peut être nil) est consulté pour résoudre RankTitle + NextRankTitle dans
+// la locale demandée. Si nil ou si l'entrée est absente du catalog, fallback sur
+// raw.RankName (libellé pré-construit côté player DB) puis sur "Rank N".
 func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string, ranks *mappings.RankCatalog) *domain.HomeSpartanIdentity {
 	if raw == nil {
 		return nil
@@ -124,10 +124,10 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 
 	loc := normalizeHomeLocale(locale)
 
-	// PrioritÃ© : RankCatalog (metadata.duckdb / GameCMS) > RankName (libellÃ©
-	// prÃ©-build cÃ´tÃ© player DB) > RankTier > "Rang N". Le fallback player-DB
-	// couvre les cas oÃ¹ le SemanticAdapter n'est pas injectÃ© dans le HomeService
-	// (tests, mode dÃ©gradÃ©).
+	// Priorité : RankCatalog (metadata.duckdb / GameCMS) > RankName (libellé
+	// pré-build côté player DB) > RankTier > "Rang N". Le fallback player-DB
+	// couvre les cas où le SemanticAdapter n'est pas injecté dans le HomeService
+	// (tests, mode dégradé).
 	title := rankSubRoman(lookupRankLabel(ranks, raw.RankNumber, loc))
 	if title == "" {
 		title = rankSubRoman(strings.TrimSpace(optionalStringValue(raw.RankName)))
@@ -198,8 +198,8 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	}
 }
 
-// lookupRankLabel retourne le libellÃ© localisÃ© du rang via le catalog, ou ""
-// si ranks est nil ou si l'entrÃ©e est absente.
+// lookupRankLabel retourne le libellé localisé du rang via le catalog, ou ""
+// si ranks est nil ou si l'entrée est absente.
 // rankSubRoman convertit tout sous-rang arabe isolé (1–6) en chiffre romain.
 // Gère les positions finale ("Or 3") et médiane ("Général 2 Platine").
 func rankSubRoman(label string) string {

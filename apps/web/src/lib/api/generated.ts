@@ -307,6 +307,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/actions/replay-build/enqueue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action admin — met la construction du rejeu 2D d'un match dans la file durable : le manifeste du film est résolu ici (tokens) et les URL CDN pré-signées partent dans le job, qu'un ouvrier distant prendra (auth admin requis) */
+        post: operations["postAdminActionReplayBuildEnqueue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/actions/replay-build/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action admin — construit l'artefact de rejeu 2D d'un match depuis le cache film local (job asynchrone, décodage hors ligne, auth admin requis) */
+        post: operations["postAdminActionReplayBuildRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/actions/translations/asset": {
         parameters: {
             query?: never;
@@ -375,6 +409,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Annuaire des joueurs : comptes, profils, credentials, suivi live et anomalies (auth admin requis) */
+        get: operations["getAdminIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/invariants": {
         parameters: {
             query?: never;
@@ -422,6 +473,23 @@ export interface paths {
         post?: never;
         /** Révoque une invitation */
         delete: operations["deleteAdminInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/build-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — file durable de construction des rejeux (en attente / en cours / faits / échoués, avec l'ouvrier qui traite) et état des ouvriers (dernier battement, en ligne, travail fait) (auth admin requis) */
+        get: operations["getAdminMonitoringBuildQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -527,23 +595,6 @@ export interface paths {
         head?: never;
         /** Dashboard monitoring — statuer une détection (Reconnaître / Sourdine / Résoudre) (auth admin requis) */
         patch: operations["patchAdminMonitoringDetection"];
-        trace?: never;
-    };
-    "/admin/monitoring/errors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon (collecteur mémoire, zéro I/O) (auth admin requis) */
-        get: operations["getAdminMonitoringErrors"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/admin/monitoring/freshness": {
@@ -808,7 +859,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Santé des tokens auth (MSAL / XSTS / Refresh) par joueur (auth admin requis) */
+        /** Santé des tokens auth (Accès / XSTS / Refresh) par joueur (auth admin requis) */
         get: operations["getAdminTokenHealth"];
         put?: never;
         post?: never;
@@ -1050,7 +1101,7 @@ export interface paths {
         put?: never;
         /**
          * Initier un Device Code Flow Microsoft
-         * @description Lance un Device Code Flow pour l'authentification Halo (MSAL).
+         * @description Lance un Device Code Flow pour l'authentification Halo (SISU).
          *     Non disponible en DEMO_MODE.
          */
         post: operations["postAuthDeviceFlowStart"];
@@ -1378,6 +1429,74 @@ export interface paths {
         get: operations["getReleaseNotes"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/artifact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — dépose l'artefact de rejeu construit pour un job pris (corps = l'artefact, taille bornée). Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueArtifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — prend le prochain job de construction et rend son travail résolu (URL CDN pré-signées). Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — rend le résultat d'un job pris (succès ou échec). Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/build-queue/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Protocole ouvrier — signe de vie de l'ouvrier et prolongation du bail du job en cours. Jeton d'ouvrier requis. */
+        post: operations["postBuildQueueHeartbeat"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1830,6 +1949,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Friends list of the player (readable by the owner, a group co-member or an admin) */
+        get: operations["getPlayerFriends"];
+        /** Replaces the player friends list (direct owner or admin only) */
+        put: operations["putPlayerFriends"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/matches/{match_id}": {
         parameters: {
             query?: never;
@@ -1987,6 +2124,64 @@ export interface paths {
         };
         /** Rejeu 2D pré-construit d'un match */
         get: operations["getMatchReplay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/replay/background": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calage du fond de carte du rejeu 2D d'un match */
+        get: operations["getMatchReplayBackground"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/replay/background.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert l'image du fond de carte du rejeu 2D
+         * @description Image vue du dessus de la carte du match (PNG), cuite hors ligne par
+         *     `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
+         *     `GET .../replay/background` : une image dont on ignore où elle se pose ne se
+         *     superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
+         *     (cf. `handlers/replay_local_gate.go`).
+         */
+        get: operations["getMatchReplayBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/replay/callouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Zones nommées (callouts) de la carte du rejeu 2D d'un match */
+        get: operations["getMatchReplayCallouts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2926,6 +3121,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/pages/teammates/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sessions de la composition, sans la page
+         * @description Lecture LÉGÈRE des sessions de la composition (lot perf L4b, 2026-09-23) : les
+         *     champs `composition_sessions` et `latest_composition_session` de
+         *     `POST /pages/teammates`, mêmes valeurs pour la même composition et la même option
+         *     composition exacte, sans calculer la page. La page Escouade s'y ancre sur la
+         *     dernière session de la composition AVANT d'envoyer la requête lourde.
+         *
+         *     Sans coéquipier : les sessions escouade du joueur principal, dernière session vide.
+         *     Les deux champs sont toujours présents (liste vide, chaîne vide). Un titre sans la
+         *     capability requise répond 503 `capability_not_supported`.
+         */
+        get: operations["getTeammatesSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/pages/timeseries": {
         parameters: {
             query?: never;
@@ -2937,6 +3160,23 @@ export interface paths {
         put?: never;
         /** Séries temporelles (filtres en body) */
         post: operations["postTimeseriesPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tendances (vue et type de partie en body) */
+        post: operations["postTrendsPage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3312,6 +3552,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/background": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calage du fond d'une carte de l'onglet Tactique */
+        get: operations["getTacticalMapBackground"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/background.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sert l'image du fond d'une carte de l'onglet Tactique
+         * @description Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+         *     C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+         *     adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+         *     est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+         *     cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+         *     donnée de référence versionnée, pas une trajectoire décodée d'un film.
+         */
+        get: operations["getTacticalMapBackgroundImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/cellule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Detail d'une cellule : les contributions ouvrables par l'appelant, pour ouvrir le rejeu au bon instant */
+        post: operations["getTacticalCellule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/{map_id}/raster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lecture de placement d'une carte (ou je meurs, ou je tue, ou je gagne, ou je passe mon temps) */
+        post: operations["getTacticalRaster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/tactical/maps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cartes jouees, pour la grille d'entree de l'onglet Tactique */
+        post: operations["getTacticalMaps"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/templates/suggest": {
         parameters: {
             query?: never;
@@ -3321,6 +3654,23 @@ export interface paths {
         };
         /** Suggère des templates de défi Prestige */
         get: operations["suggestPrestigeTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Présence en jeu des joueurs suivis et des amis */
+        get: operations["getPresence"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3779,11 +4129,103 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AbilityCharge: {
+            /** Format: int64 */
+            charges: number;
+            family: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        AbilityChargeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            componentAbsent?: boolean;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            noResolver: number;
+            /** Format: int64 */
+            otherFamily: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
+        AbilityCoverage: {
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            scanNoise: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
+        AbilityImpulse: {
+            family: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        AbilityImpulseCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            componentAbsent?: boolean;
+            /** Format: int64 */
+            episodes: number;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            noResolver: number;
+            /** Format: int64 */
+            otherFamily: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            scan?: components["schemas"]["AbilityImpulseScanCoverage"];
+            /** Format: int64 */
+            unpublished: number;
+        };
+        AbilityImpulseScanCoverage: {
+            /** Format: int64 */
+            read: number;
+            /** Format: int64 */
+            records: number;
+            /** Format: int64 */
+            tag1: number;
+            /** Format: int64 */
+            unread: number;
+            /** Format: int64 */
+            withI57: number;
+            /** Format: int64 */
+            withI59: number;
+        };
+        AbilityRead: {
+            /** Format: int64 */
+            r: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t: number;
+        };
         AcceptResponse: {
             arc_id?: string;
             challenge_id?: string;
             challenge_ids?: string[] | null;
             status: string;
+        };
+        AccountRef: {
+            created_at?: string;
+            last_login_at?: string;
+            role: string;
+            username: string;
         };
         AccuracyPoint: {
             /** Format: double */
@@ -3863,6 +4305,13 @@ export interface components {
             actions: components["schemas"]["AdminActionJournalEntry"][] | null;
             generated_at: string;
         };
+        AdminBuildQueueResponse: {
+            counts: components["schemas"]["BuildQueueCounts"];
+            enabled: boolean;
+            generated_at: string;
+            jobs: components["schemas"]["BuildQueueJob"][] | null;
+            workers: components["schemas"]["BuildQueueWorker"][] | null;
+        };
         AdminConvergenceReport: {
             generated_at: string;
             /** Format: int64 */
@@ -3931,27 +4380,19 @@ export interface components {
             /** Format: int64 */
             open_count: number;
         };
-        AdminErrorBucket: {
-            /** Format: int64 */
-            count: number;
-            first_seen: string;
-            last_detail?: string;
-            last_seen: string;
-            level: string;
-            message: string;
-            module?: string;
-            title?: string;
-        };
-        AdminErrorStats: {
-            buckets: components["schemas"]["AdminErrorBucket"][] | null;
-            generated_at: string;
-        };
         AdminFreshnessResponse: {
             backup?: components["schemas"]["FreshnessBackupInfo"];
             /** Format: int64 */
             critical_total: number;
             generated_at: string;
             titles: components["schemas"]["TitleFreshnessReport"][] | null;
+        };
+        AdminIdentitiesResponse: {
+            counts: {
+                [key: string]: number;
+            };
+            generated_at: string;
+            identities: components["schemas"]["IdentityRecord"][] | null;
         };
         AdminInvariantsResponse: {
             generated_at: string;
@@ -4077,6 +4518,9 @@ export interface components {
             /** Format: int64 */
             db_total_bytes: number;
             disk: components["schemas"]["ResourceDisk"];
+            film_facts?: components["schemas"]["ResourceFilmFacts"][] | null;
+            /** Format: int64 */
+            film_facts_total_bytes?: number;
             generated_at: string;
             pool_stats?: {
                 [key: string]: unknown;
@@ -4148,6 +4592,7 @@ export interface components {
             last_login_at?: string;
             role: string;
             username: string;
+            xuid?: string;
         };
         AdminWeaponCoverage: {
             /** Format: double */
@@ -4233,6 +4678,7 @@ export interface components {
             description?: string;
             description_fr?: string;
             id: string;
+            image_tinted?: boolean;
             image_url: string;
             name_en: string;
             name_fr: string;
@@ -4256,18 +4702,15 @@ export interface components {
             };
             VersionID: string;
         };
-        AssociatedMediaItem: {
-            /** Format: date-time */
-            capture_time?: string | null;
-            /** Format: float */
-            duration_seconds?: number | null;
-            file_id: string;
-            file_name: string;
-            file_path: string;
-            kind: string;
-            /** @default false */
-            liked: boolean;
-            thumbnail_url?: string | null;
+        AssistTiers: {
+            /** Format: int64 */
+            high: number;
+            /** Format: int64 */
+            low: number;
+            /** Format: int64 */
+            mid: number;
+            /** Format: int64 */
+            total: number;
         };
         AsyncJobStatus: {
             current_step?: string;
@@ -4363,6 +4806,176 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        BipedLinkCounts: {
+            /** Format: int64 */
+            catalogue: number;
+            /** Format: int64 */
+            deduit: number;
+            /** Format: int64 */
+            direct: number;
+            /** Format: int64 */
+            direct_propage: number;
+            /** Format: int64 */
+            externe: number;
+            /** Format: int64 */
+            non_resolu: number;
+            non_resolu_par_cause: components["schemas"]["UnresolvedCauses"];
+        };
+        BirthLoadoutCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            creations: number;
+            /** Format: int64 */
+            desync: number;
+            /** Format: int64 */
+            noDisplayable: number;
+            /** Format: int64 */
+            noLife: number;
+            /** Format: int64 */
+            noWeaponComponent: number;
+            /** Format: int64 */
+            nonWeapon: number;
+            /** Format: int64 */
+            overflow: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            read: number;
+            /** Format: int64 */
+            snapped: number;
+            /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
+            unconfirmed: number;
+        };
+        BombArming: {
+            /** Format: int64 */
+            fuseMs: number;
+            /** Format: int64 */
+            startMs: number;
+            /** Format: int64 */
+            startT: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: int64 */
+            timeMs: number;
+        };
+        BombArmingsCoverage: {
+            /** Format: int64 */
+            armed: number;
+            /** Format: int64 */
+            belowFull: number;
+            /** Format: int64 */
+            detonations: number;
+            /** Format: int64 */
+            detonationsCovered: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            pairMerged: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            rises: number;
+            scanned: boolean;
+            suppressed?: boolean;
+        };
+        BombCarriesCoverage: {
+            bombFilm: boolean;
+            /** Format: int64 */
+            byDeath: number;
+            /** Format: int64 */
+            carrierAbsent: number;
+            /** Format: int64 */
+            carries: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            events: number;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            periods: number;
+        };
+        BombCarry: {
+            closed: boolean;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid: string;
+        };
+        BombEvent: {
+            actorSource?: string;
+            /** Format: int64 */
+            timeMs: number;
+            type: string;
+            xuid?: string;
+        };
+        BombMatchStats: {
+            coverage: components["schemas"]["BombStatsCoverage"];
+            players?: components["schemas"]["BombPlayerStats"][] | null;
+        };
+        BombPlayerStats: {
+            /** Format: int64 */
+            arms?: number;
+            /** Format: int64 */
+            carriersKilled?: number;
+            /** Format: int64 */
+            detonations?: number;
+            /** Format: int64 */
+            grabs?: number;
+            /** Format: double */
+            timeAsCarrierSeconds?: number;
+            xuid: string;
+        };
+        BombStatsCoverage: {
+            /** Format: int64 */
+            armings: number;
+            /** Format: int64 */
+            armingsAmbiguous: number;
+            /** Format: int64 */
+            armingsAttributed: number;
+            /** Format: int64 */
+            armingsByActiveCarry: number;
+            /** Format: int64 */
+            armingsByDrop: number;
+            /** Format: int64 */
+            armingsNoBridge: number;
+            /** Format: int64 */
+            armingsNoCarrier: number;
+            /** Format: int64 */
+            armingsNoClock?: number;
+            armingsRead: boolean;
+            carryRead: boolean;
+            /** Format: int64 */
+            detonations: number;
+            detonationsRead: boolean;
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            killsOnCarrier: number;
+            killsRead: boolean;
+            /** Format: int64 */
+            periods: number;
+            /** Format: int64 */
+            periodsByDeath: number;
+            /** Format: int64 */
+            periodsNoBridge: number;
+            /** Format: int64 */
+            periodsOpen: number;
+            /** Format: int64 */
+            players: number;
+        };
         BootstrapResponse: {
             active_sync_job_id?: string;
             /** @enum {string} */
@@ -4399,6 +5012,17 @@ export interface components {
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
         };
+        BornesMonde: {
+            /** Format: double */
+            max_x: number;
+            /** Format: double */
+            max_y: number;
+            /** Format: double */
+            min_x: number;
+            /** Format: double */
+            min_y: number;
+            valide: boolean;
+        };
         Bounds: {
             /** Format: float */
             maxX: number;
@@ -4415,6 +5039,33 @@ export interface components {
         };
         BridgeHealth: {
             /** Format: int64 */
+            bodiesWithCreation: number;
+            /** Format: int64 */
+            bridgeNamedLives: number;
+            /** Format: int64 */
+            closedByRespawn: number;
+            /** Format: int64 */
+            closedByShot: number;
+            /** Format: int64 */
+            closedContested: number;
+            /** Format: int64 */
+            closedRefused: number;
+            /** Format: int64 */
+            concordant: number;
+            /** Format: int64 */
+            deathOffsetMatched: number;
+            /** Format: int64 */
+            deathOffsetMs?: number;
+            /** Format: int64 */
+            deathOffsetRunnerUp: number;
+            deathsFeed?: string;
+            /** Format: int64 */
+            directByCreation: number;
+            /** Format: int64 */
+            directByCreationPropagated: number;
+            /** Format: int64 */
+            discordant: number;
+            /** Format: int64 */
             fromReading: number;
             /** Format: int64 */
             indexDisagreements: number;
@@ -4425,13 +5076,124 @@ export interface components {
             /** Format: int64 */
             livesTotal: number;
             /** Format: int64 */
+            namedByNextLife: number;
+            /** Format: int64 */
+            namedByPreviousLife: number;
+            /** Format: int64 */
+            namedBySlotBridge: number;
+            /** Format: int64 */
             slotCollisions: number;
             /** Format: int64 */
             slots: number;
+            /** Format: int64 */
+            unnamedLives: number;
+            /** Format: int64 */
+            unnamedLivesContested: number;
         };
         BucketInfo: {
             label: string;
             type: string;
+        };
+        BuildArtifactReceipt: {
+            /** Format: int64 */
+            bytes: number;
+            job_id: string;
+            match_id: string;
+            /** Format: int64 */
+            schema_version: number;
+        };
+        BuildQueueAckResponse: {
+            ok: boolean;
+        };
+        BuildQueueChunk: {
+            /** Format: int64 */
+            chunk_type: number;
+            /** Format: int64 */
+            duration_ms: number;
+            /** Format: int64 */
+            index: number;
+            /** Format: int64 */
+            start_ms: number;
+            url: string;
+        };
+        BuildQueueClaimRequest: {
+            hostname?: string;
+            version?: string;
+            worker_id: string;
+        };
+        BuildQueueClaimResponse: {
+            job?: components["schemas"]["BuildQueueJob"];
+            /** Format: int64 */
+            lease_seconds: number;
+        };
+        BuildQueueCompleteRequest: {
+            error_code?: string;
+            error_message?: string;
+            job_id: string;
+            result_json?: string;
+            succeeded: boolean;
+            worker_id: string;
+        };
+        BuildQueueCounts: {
+            /** Format: int64 */
+            failed: number;
+            /** Format: int64 */
+            queued: number;
+            /** Format: int64 */
+            running: number;
+            /** Format: int64 */
+            succeeded: number;
+        };
+        BuildQueueHeartbeatRequest: {
+            hostname?: string;
+            job_id?: string;
+            /** Format: int64 */
+            jobs_done?: number;
+            /** Format: int64 */
+            jobs_failed?: number;
+            note?: string;
+            version?: string;
+            worker_id: string;
+        };
+        BuildQueueJob: {
+            /** Format: int64 */
+            attempt: number;
+            enqueued_at?: string;
+            error_code?: string;
+            error_message?: string;
+            job_id: string;
+            job_type: string;
+            lease_expires_at?: string;
+            match_id?: string;
+            payload?: components["schemas"]["BuildQueuePayload"];
+            /** Format: int64 */
+            priority: number;
+            result_json?: string;
+            status: string;
+            title_slug?: string;
+            updated_at?: string;
+            worker_id?: string;
+        };
+        BuildQueuePayload: {
+            chunks?: components["schemas"]["BuildQueueChunk"][] | null;
+            facts?: components["schemas"]["MatchFacts"];
+            map_names?: string[] | null;
+            match_id: string;
+            short_id: string;
+            title_slug: string;
+        };
+        BuildQueueWorker: {
+            current_job_id?: string;
+            hostname?: string;
+            /** Format: int64 */
+            jobs_done: number;
+            /** Format: int64 */
+            jobs_failed: number;
+            last_beat_at?: string;
+            note?: string;
+            online: boolean;
+            version?: string;
+            worker_id: string;
         };
         CSRCoverage: {
             match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
@@ -4467,6 +5229,27 @@ export interface components {
             with_alltime_value: number;
             /** Format: int64 */
             with_placement_remaining: number;
+        };
+        CalloutZone: {
+            big?: boolean;
+            en: string;
+            fr: string;
+            holes?: ((number[] | null)[] | null)[] | null;
+            name: string;
+            parts?: ((number[] | null)[] | null)[] | null;
+            polygon?: (number[] | null)[] | null;
+            /** Format: int64 */
+            volume_index: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+            /** Format: double */
+            z: number;
+            /** Format: double */
+            z_bottom: number;
+            /** Format: double */
+            z_top: number;
         };
         CampaignHistoryItem: {
             axis: string;
@@ -4662,9 +5445,10 @@ export interface components {
             /** Format: uuid */
             match_id: string;
             mode_ui?: string | null;
+            /** @enum {string|null} */
+            outcome?: "win" | "loss" | "tie" | "dnf" | null;
             /** Format: int64 */
             outcome_code?: number | null;
-            outcome_label?: string | null;
             /** Format: float */
             performance_score?: number | null;
             playlist_label?: string | null;
@@ -4742,6 +5526,30 @@ export interface components {
             pairs: number;
             /** Format: int64 */
             playlists: number;
+        };
+        CelluleTactique: {
+            /** Format: double */
+            brut: number;
+            /** Format: double */
+            centre_x: number;
+            /** Format: double */
+            centre_y: number;
+            /** Format: int64 */
+            col: number;
+            /** Format: int64 */
+            frags?: number;
+            /** Format: int64 */
+            lig: number;
+            /** Format: int64 */
+            matchs: number;
+            /** Format: int64 */
+            matchs_defaite: number;
+            /** Format: int64 */
+            matchs_victoire: number;
+            /** Format: int64 */
+            morts?: number;
+            /** Format: double */
+            valeur: number;
         };
         Challenge: {
             /** Format: date-time */
@@ -4947,12 +5755,20 @@ export interface components {
             map_ui: string;
             match_id: string;
             mode_ui: string;
-            outcome_label: string;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             player_outcome: number;
             /** Format: date-time */
             start_time: string;
             were_teammates: boolean;
+        };
+        CompareFragClass: {
+            class: string;
+            /** Format: int64 */
+            kills: number;
+            /** Format: double */
+            share_pct: number;
         };
         CompareMetricRow: {
             /** Format: double */
@@ -4982,6 +5798,30 @@ export interface components {
             player_a: components["schemas"]["NormalizedPlayerStats"];
             player_b: components["schemas"]["NormalizedPlayerStats"];
             title_slug: string;
+            weapons?: components["schemas"]["CompareWeaponProfile"];
+        };
+        CompareTopWeapon: {
+            class?: string;
+            image_tinted?: boolean;
+            image_url?: string;
+            /** Format: int64 */
+            kills: number;
+            label: string;
+            label_en?: string;
+            role?: string;
+        };
+        CompareWeaponProfile: {
+            player_a: components["schemas"]["CompareWeaponSide"];
+            player_b: components["schemas"]["CompareWeaponSide"];
+        };
+        CompareWeaponSide: {
+            frag_classes: components["schemas"]["CompareFragClass"][] | null;
+            /** Format: int64 */
+            matches: number;
+            range?: components["schemas"]["SynthesisWeaponRange"];
+            top_weapons: components["schemas"]["CompareTopWeapon"][] | null;
+            /** Format: int64 */
+            total_kills: number;
         };
         ComparisonMetricItem: {
             label: string;
@@ -4989,6 +5829,31 @@ export interface components {
             solo_value: number;
             /** Format: double */
             squad_value: number;
+        };
+        CompositionExcludedMatch: {
+            extra_gamertags: string[] | null;
+            map_ui: string;
+            match_id: string;
+            /** Format: date-time */
+            start_time: string;
+        };
+        CompositionSessionEntry: {
+            /** Format: date-time */
+            ended_at: string;
+            excluded_by_exact_composition?: components["schemas"]["CompositionExcludedMatch"][] | null;
+            experiences?: string[] | null;
+            label: string;
+            /** Format: int64 */
+            match_count?: number;
+            /** Format: int64 */
+            match_count_roster?: number;
+            playlists?: string[] | null;
+            /** Format: date-time */
+            started_at: string;
+        };
+        CompositionSessionsResponse: {
+            composition_sessions: components["schemas"]["CompositionSessionEntry"][] | null;
+            latest_composition_session: string;
         };
         ConfigFileStatus: {
             name: string;
@@ -5021,6 +5886,74 @@ export interface components {
             /** Format: double */
             win_rate: number;
         };
+        ContinuousFireCoverage: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            burstsRead: number;
+            /** Format: int64 */
+            burstsWithHole: number;
+            /** Format: int64 */
+            byPlace: number;
+            /** Format: int64 */
+            clippedToMount: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            empty: number;
+            /** Format: int64 */
+            entries: number;
+            /** Format: int64 */
+            firing: number;
+            /** Format: int64 */
+            heldHoleMs: number;
+            /** Format: int64 */
+            holeRuns: number;
+            /** Format: int64 */
+            holes: number;
+            /** Format: int64 */
+            holesBlockBC: number;
+            /** Format: int64 */
+            holesCap: number;
+            /** Format: int64 */
+            holesKind: number;
+            /** Format: int64 */
+            holesNotClosing: number;
+            /** Format: int64 */
+            holesOpenViewB: number;
+            /** Format: int64 */
+            holesOverflow: number;
+            /** Format: int64 */
+            holesUnlocated: number;
+            /** Format: int64 */
+            innerHoles: number;
+            /** Format: int64 */
+            noPlayer: number;
+            /** Format: int64 */
+            noTrack: number;
+            /** Format: int64 */
+            notContinuous: number;
+            /** Format: int64 */
+            onFoot: number;
+            /** Format: int64 */
+            onVehicle: number;
+            /** Format: int64 */
+            otherInput: number;
+            /** Format: int64 */
+            packets: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reached: number;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            vehicleNoWeapon: number;
+            /** Format: int64 */
+            weaponUnknown: number;
+            /** Format: int64 */
+            withAction: number;
+        };
         ConvergenceTotalsSinceBoot: {
             /** Format: int64 */
             aliases_upserted: number;
@@ -5028,8 +5961,52 @@ export interface components {
             events_processed: number;
             /** Format: int64 */
             psa_processed: number;
+        };
+        CoordinationAppui: {
+            /** Format: double */
+            habituel_pct?: number;
+            ma_part_des_appuis: components["schemas"]["Couverture"];
+            on_me_prepare: components["schemas"]["Couverture"];
+            /** Format: double */
+            parity_pct?: number;
+        };
+        CoordinationBlock: {
+            appui: components["schemas"]["CoordinationAppui"];
+            available: boolean;
             /** Format: int64 */
-            weapons_processed: number;
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            per_match?: components["schemas"]["CoordinationMatchPoint"][] | null;
+            sessions?: components["schemas"]["CoordinationSessionPoint"][] | null;
+            unavailable_reason?: string;
+        };
+        CoordinationMatchPoint: {
+            /** Format: double */
+            assist_share_of_team_pct?: number;
+            /** Format: double */
+            assisted_share_pct?: number;
+            /** Format: int64 */
+            assists_to_me: number;
+            match_id: string;
+            /** Format: int64 */
+            my_assisted_kills: number;
+            /** Format: int64 */
+            my_kills: number;
+            /** Format: double */
+            parity_pct?: number;
+            /** Format: int64 */
+            team_assists: number;
+            /** Format: int64 */
+            team_size?: number;
+        };
+        CoordinationSessionPoint: {
+            appui: components["schemas"]["CoordinationAppui"];
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            session_label: string;
         };
         CorrelationDataPair: {
             metric_x_key: string;
@@ -5041,14 +6018,64 @@ export interface components {
             /** Format: double */
             y_value: number;
         };
+        Couverture: {
+            /** Format: int64 */
+            brut: number;
+            echantillon_faible: boolean;
+            /** Format: int64 */
+            n: number;
+            /** Format: double */
+            par_match: number;
+            /** Format: double */
+            taux: number;
+        };
         Coverage: {
+            abilities?: components["schemas"]["AbilityCoverage"];
+            abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
+            abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
+            birthLoadouts?: components["schemas"]["BirthLoadoutCoverage"];
+            bombArmings?: components["schemas"]["BombArmingsCoverage"];
+            bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            continuousFire?: components["schemas"]["ContinuousFireCoverage"];
+            deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
+            decoder?: components["schemas"]["DecoderCoverage"];
+            equipment?: components["schemas"]["EquipmentCoverage"];
+            equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
+            fallbacks?: components["schemas"]["FallbackHit"][] | null;
+            /** Format: int64 */
+            filmMajorVersion?: number;
+            flagCarries?: components["schemas"]["FlagCarriesCoverage"];
+            grapple?: components["schemas"]["GrappleCoverage"];
+            grenadeReads?: components["schemas"]["GrenadeReadCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
+            groundWeaponItems?: components["schemas"]["GroundWeaponItemsCoverage"];
+            groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
+            inventory?: components["schemas"]["InventoryCoverage"];
+            keyframes?: components["schemas"]["KeyframeCoverage"];
+            objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
+            originResolved: boolean;
+            padDating?: components["schemas"]["PadDatingStats"];
+            pickups?: components["schemas"]["PickupCoverage"];
+            placements?: components["schemas"]["EquipmentPlacementCoverage"];
+            projectiles?: components["schemas"]["ProjectileCoverage"];
+            score?: components["schemas"]["ScoreCoverage"];
+            seats?: components["schemas"]["SeatCoverage"];
             shots: components["schemas"]["LayerCoverage"];
+            skullCarries?: components["schemas"]["SkullCarriesCoverage"];
+            stances?: components["schemas"]["StanceCoverage"];
+            t0Film?: components["schemas"]["T0FilmCoverage"];
+            teams?: components["schemas"]["TeamCoverage"];
+            tracks?: components["schemas"]["TrackCoverage"];
+            translocations?: components["schemas"]["TranslocationCoverage"];
+            vehicles?: components["schemas"]["VehicleCoverage"];
             verdict?: {
                 [key: string]: string;
             };
+            vipCrown?: components["schemas"]["VipCrownCoverage"];
+            weaponChanges?: components["schemas"]["WeaponChangeCoverage"];
+            zones?: components["schemas"]["ZonesCoverage"];
         };
         CreatePlayerProfileResponse: {
             db_created: boolean;
@@ -5159,6 +6186,27 @@ export interface components {
             name: string;
             tables?: components["schemas"]["TableStatus"][] | null;
         };
+        DeathsPathTally: {
+            /** Format: int64 */
+            matched: number;
+            /** Format: int64 */
+            population: number;
+            /** Format: int64 */
+            published: number;
+        };
+        DeathsPathsCoverage: {
+            directScan: components["schemas"]["DeathsPathTally"];
+            walk: components["schemas"]["DeathsPathTally"];
+        };
+        DecoderCoverage: {
+            build: string;
+            grammarRev: string;
+            killsourceRev: string;
+            objectivesRev: string;
+            profileRev: string;
+            registry?: components["schemas"]["RegistryCoverage"];
+            sourceRev: string;
+        };
         DetectionPatchInputBody: {
             note?: string;
             status: string;
@@ -5200,6 +6248,62 @@ export interface components {
             bucket_upper: number;
             /** Format: int64 */
             count: number;
+        };
+        EchelleTactique: {
+            /** Format: double */
+            borne: number;
+            /** Format: int64 */
+            n_cellules: number;
+            /** Format: double */
+            p50: number;
+            /** Format: double */
+            p95: number;
+            symetrique: boolean;
+        };
+        EmpriseEquipment: {
+            families: components["schemas"]["EmpriseEquipmentFamily"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+        };
+        EmpriseEquipmentFamily: {
+            family: string;
+            lobby: components["schemas"]["EmpriseEquipmentOutcomes"];
+            me: components["schemas"]["EmpriseEquipmentOutcomes"];
+            rest: components["schemas"]["EmpriseEquipmentOutcomes"];
+        };
+        EmpriseEquipmentOutcomes: {
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            taken: number;
+            /** Format: int64 */
+            used: number;
+        };
+        EmpriseMapColumn: {
+            /** Format: int64 */
+            losses: number;
+            map_key?: string;
+            map_label?: string;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            matches_filmed: number;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_tiers: number;
+            /** Format: int64 */
+            other_maps?: number;
+            /** Format: int64 */
+            others: number;
+            power_weapon_kills?: components["schemas"]["SquadEmpriseCount"];
+            resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
+            /** Format: int64 */
+            vehicles_measured: number;
+            /** Format: int64 */
+            wins: number;
         };
         EncounterDTO: {
             /** Format: int64 */
@@ -5336,6 +6440,141 @@ export interface components {
             /** Format: int64 */
             truncated_to_recent?: number;
         };
+        EquipmentChange: {
+            /** Format: int64 */
+            from: number;
+            /** Format: int64 */
+            gap?: number;
+            kind: string;
+            /** Format: int64 */
+            r: number;
+            recovered?: boolean;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        EquipmentChangeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            counterJumps: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            livesFirstOffSpec: number;
+            /** Format: int64 */
+            missedEstimate: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            recovered: number;
+            /** Format: int64 */
+            repeats: number;
+            /** Format: int64 */
+            spawned: number;
+            /** Format: int64 */
+            spent: number;
+            /** Format: int64 */
+            taken: number;
+        };
+        EquipmentCoverage: {
+            /** Format: int64 */
+            camoEpisodes: number;
+            /** Format: int64 */
+            camoLives: number;
+            killsRead: boolean;
+            /** Format: int64 */
+            overshieldEpisodes: number;
+            /** Format: int64 */
+            overshieldLives: number;
+            /** Format: int64 */
+            tracksTotal: number;
+        };
+        EquipmentEpisode: {
+            /** Format: int64 */
+            a?: number;
+            endRead?: boolean;
+            fam: string;
+            /** Format: int64 */
+            k?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        EquipmentPlacement: {
+            end?: string;
+            family: string;
+            /** Format: float */
+            h?: number;
+            id: string;
+            origin?: string;
+            /** Format: int64 */
+            owner: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            until?: number;
+            /** Format: int64 */
+            untilMax?: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        EquipmentPlacementCoverage: {
+            /** Format: int64 */
+            anchors: number;
+            byCause?: {
+                [key: string]: number;
+            };
+            byFamily?: {
+                [key: string]: number;
+            };
+            byFamilyOrigin?: {
+                [key: string]: number;
+            };
+            calibrated: boolean;
+            /** Format: int64 */
+            confirmed: number;
+            /** Format: int64 */
+            deployed: number;
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            endOpen: number;
+            /** Format: int64 */
+            endSeen: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            other: number;
+            /** Format: int64 */
+            placements: number;
+            scanned: boolean;
+            /** Format: int64 */
+            spawnEvents: number;
+            /** Format: int64 */
+            spawnLists: number;
+            /** Format: int64 */
+            unknown: number;
+            widths?: string;
+            /** Format: int64 */
+            withHeading: number;
+            /** Format: int64 */
+            withOwner: number;
+        };
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
             context_split?: components["schemas"]["ExplorerBriefingContextSplit"];
@@ -5349,6 +6588,7 @@ export interface components {
             ranked?: components["schemas"]["ExplorerBriefingRanked"];
             scope?: components["schemas"]["ExplorerBriefingScope"];
             streaks?: components["schemas"]["ExplorerBriefingStreaks"];
+            weapons?: components["schemas"]["ExplorerBriefingWeapons"];
         };
         ExplorerBriefingBaseline: {
             /** Format: double */
@@ -5399,6 +6639,8 @@ export interface components {
         };
         ExplorerBriefingDominance: {
             /** Format: int64 */
+            abnegations?: number;
+            /** Format: int64 */
             contre_remontadas?: number;
             /** Format: int64 */
             debandades?: number;
@@ -5408,6 +6650,8 @@ export interface components {
             humiliations?: number;
             /** Format: int64 */
             remontadas?: number;
+            /** Format: int64 */
+            sabordages?: number;
         };
         ExplorerBriefingPeakRank: {
             rating_type: string;
@@ -5466,6 +6710,13 @@ export interface components {
             /** Format: int64 */
             worst_loss_streak?: number;
         };
+        ExplorerBriefingWeapons: {
+            entries: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: int64 */
+            scope_kills: number;
+        };
         ExplorerEncounterRow: {
             count_matches: number;
             gamertag: string;
@@ -5480,12 +6731,16 @@ export interface components {
             /** Format: int64 */
             ally_count?: number;
             /** Format: int64 */
+            assist_volume_max?: number;
+            assists?: components["schemas"]["RelationAssists"];
+            /** Format: int64 */
             count_together: number;
             /** Format: int64 */
             deaths_suffered?: number;
             /** Format: int64 */
             enemy_count?: number;
             frag_gap_series?: components["schemas"]["ExplorerFragGapPoint"][] | null;
+            frag_range_target?: components["schemas"]["SynthesisWeaponRange"];
             /** Format: int64 */
             kills_dealt?: number;
             /** Format: date-time */
@@ -5564,6 +6819,7 @@ export interface components {
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
             had_bot_teammate?: boolean;
+            has_replay?: boolean;
             is_overtime?: boolean;
             is_with_friends: boolean;
             /** Format: double */
@@ -5574,9 +6830,10 @@ export interface components {
             match_id: string;
             match_url: string;
             mode_ui: string | null;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code: number;
-            outcome_label: string;
             /** Format: int64 */
             overtime_seconds?: number;
             /** Format: int64 */
@@ -5595,6 +6852,7 @@ export interface components {
             placement_total?: number;
             playlist_label: string | null;
             rating_type?: string;
+            score_kind?: string;
             score_label: string;
             skill_rank_image_url?: string;
             skill_tier_label?: string;
@@ -5670,6 +6928,7 @@ export interface components {
             sample_stats?: components["schemas"]["ExplorerTargetSampleStats"];
             season_csrs?: components["schemas"]["CareerPlaylistCSR"][] | null;
             top_medals?: components["schemas"]["MedalDigestItem"][] | null;
+            top_medals_local?: components["schemas"]["MedalDigestItem"][] | null;
         };
         ExplorerTargetRecentMatch: {
             /** Format: int64 */
@@ -5769,6 +7028,11 @@ export interface components {
             file_name: string;
             token: string | null;
         };
+        FallbackHit: {
+            /** Format: int64 */
+            hits: number;
+            name: string;
+        };
         FeatureFlags: {
             demo_mode: boolean;
             discord_configured: boolean;
@@ -5800,6 +7064,24 @@ export interface components {
             file_name: string;
             file_token: string;
         };
+        FilmTableCounts: {
+            /** Format: int64 */
+            accord: number;
+            /** Format: int64 */
+            collisionsIndex?: number;
+            /** Format: int64 */
+            contradiction: number;
+            /** Format: int64 */
+            direct: number;
+            lu: boolean;
+            refus?: string;
+            /** Format: int64 */
+            repli: number;
+            /** Format: int64 */
+            sieges: number;
+            /** Format: int64 */
+            silence: number;
+        };
         FilterContextInput: {
             cascade: components["schemas"]["CascadeFilter"];
             filter_mode: string;
@@ -5824,22 +7106,167 @@ export interface components {
         FilterMatchIDsResponse: {
             match_ids: string[] | null;
         };
+        FireBurst: {
+            b0: string;
+            b1: string;
+            holes?: components["schemas"]["FireBurstHole"][] | null;
+            /** Format: double */
+            ramp?: number;
+            /** Format: double */
+            rate: number;
+            /** Format: double */
+            rate0?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int32 */
+            v?: number;
+            w: string;
+        };
+        FireBurstHole: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
         FirstBloodMatchPoint: {
             /** Format: double */
             first_death_sec: number | null;
             /** Format: double */
             first_kill_sec: number | null;
+            map_ui?: string;
             match_id: string;
+            mode_ui?: string;
+            /** Format: date-time */
+            start_time: string;
         };
         FirstBloodPlayerSeries: {
             matches: components["schemas"]["FirstBloodMatchPoint"][] | null;
             player: string;
         };
-        FormTabResponse: {
-            has_enough_data: boolean;
-            /** Format: double */
-            mean: number | null;
-            points: components["schemas"]["PerformancePoint"][] | null;
+        FlagCarriesCoverage: {
+            /** Format: int64 */
+            ambiguousCarrierKills: number;
+            /** Format: int64 */
+            ambiguousHomecomings: number;
+            /** Format: int64 */
+            ambiguousReturns: number;
+            /** Format: int64 */
+            ambiguousSlot: number;
+            /** Format: int64 */
+            assignedByPlay: number;
+            /** Format: int64 */
+            bursts: number;
+            /** Format: int64 */
+            captures: number;
+            /** Format: int64 */
+            carrierTeamUnknown?: number;
+            /** Format: int64 */
+            carries: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            closedByHandoff?: number;
+            /** Format: int64 */
+            closedByHome?: number;
+            /** Format: int64 */
+            closedByObject: number;
+            /** Format: int64 */
+            closedByReturn?: number;
+            /** Format: int64 */
+            closedOverlaps: number;
+            /** Format: int64 */
+            dropsRepositioned: number;
+            /** Format: int64 */
+            dropsWithheld: number;
+            /** Format: int64 */
+            filmBaseAgree?: number;
+            /** Format: int64 */
+            filmBaseContradict?: number;
+            /** Format: int64 */
+            filmBases?: number;
+            flagFilm: boolean;
+            /** Format: int64 */
+            gaugePaired: number;
+            /** Format: int64 */
+            gaugePoints: number;
+            /** Format: int64 */
+            gaugeReads: number;
+            gaugeScanned: boolean;
+            /** Format: int64 */
+            gaugeSlots: number;
+            /** Format: int64 */
+            gaugeSpans: number;
+            /** Format: int64 */
+            homeByObject: number;
+            /** Format: int64 */
+            markerConfirmed: number;
+            /** Format: int64 */
+            markerObserved: number;
+            /** Format: int64 */
+            neutralBirths: number;
+            neutralFlag: boolean;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            noTrack: number;
+            /** Format: int64 */
+            objectLives: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            openConfirmed: number;
+            /** Format: int64 */
+            openObserved: number;
+            /** Format: int64 */
+            openings: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            overlaps: number;
+            /** Format: int64 */
+            ownFlagRefused: number;
+            /** Format: int64 */
+            spawns: number;
+            /** Format: int64 */
+            spawnsFromFilm?: number;
+            /** Format: int64 */
+            steals: number;
+            /** Format: int64 */
+            teamBirths: number;
+            /** Format: int64 */
+            unjudgedCarrierKills?: number;
+            /** Format: int64 */
+            unresolved: number;
+        };
+        FlagCarry: {
+            spans: components["schemas"]["FlagSpan"][] | null;
+            /** Format: int64 */
+            team: number;
+        };
+        FlagReturnZone: {
+            /** Format: float */
+            radiusM: number;
+            /** Format: float */
+            resetSeconds: number;
+            /** Format: float */
+            soloSeconds: number;
+        };
+        FlagSpan: {
+            returnProgress?: components["schemas"]["GaugePoint"][] | null;
+            state: string;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: float */
+            x: number;
+            xuid: string | null;
+            /** Format: float */
+            y: number;
         };
         FragClassEntry: {
             authoritative: boolean;
@@ -5857,6 +7284,7 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label?: string;
+            label_en?: string;
             role: string;
         };
         FreshnessBackupInfo: {
@@ -5927,9 +7355,45 @@ export interface components {
             /** Format: int64 */
             stale_count: number;
         };
+        GaugePoint: {
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            v: number;
+        };
+        GrappleCoverage: {
+            /** Format: int64 */
+            brokenBodies: number;
+            /** Format: int64 */
+            heavyReads: number;
+            /** Format: int64 */
+            lightReads: number;
+            /** Format: int64 */
+            pullLives: number;
+            /** Format: int64 */
+            pulls: number;
+            /** Format: int64 */
+            unpairedFires: number;
+        };
+        GrappleLine: {
+            /** Format: float */
+            ax: number;
+            /** Format: float */
+            ay: number;
+            /** Format: float */
+            az?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
         Grenade: {
             /** Format: int64 */
             i: number;
+            /** Format: int64 */
+            proj?: number;
             /** Format: int64 */
             rank: number;
             s: string;
@@ -5941,6 +7405,123 @@ export interface components {
             x: number;
             /** Format: float */
             y: number;
+        };
+        GrenadeRead: {
+            g: number[] | null;
+            /** Format: int64 */
+            gs?: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t: number;
+        };
+        GrenadeReadCoverage: {
+            ammoRefused?: boolean;
+            /** Format: int64 */
+            fromDelta: number;
+            /** Format: int64 */
+            fromKeyframe: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
+        GroundWeapon: {
+            ammo?: components["schemas"]["GroundWeaponAmmo"];
+            /** Format: int64 */
+            dropper: number;
+            end: string;
+            origin: string;
+            /** Format: int64 */
+            picker: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            t1max: number;
+            w: string;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        GroundWeaponAmmo: {
+            /** Format: int64 */
+            mag: number;
+            /** Format: int64 */
+            res: number;
+        };
+        GroundWeaponCoverage: {
+            /** Format: int64 */
+            accepted: number;
+            /** Format: int64 */
+            anchors: number;
+            /** Format: int64 */
+            atRest: number;
+            /** Format: int64 */
+            clusters: number;
+            /** Format: int64 */
+            cycles: number;
+            /** Format: int64 */
+            dated: number;
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            horsEmprise: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            never: number;
+            /** Format: int64 */
+            objectives: number;
+            /** Format: int64 */
+            occupancies: number;
+            /** Format: int64 */
+            pads: number;
+            /** Format: int64 */
+            plusieursLieux: number;
+            /** Format: int64 */
+            powerupAccepted: number;
+            /** Format: int64 */
+            powerupKept: number;
+            /** Format: int64 */
+            powerupPads: number;
+            powerupScanned: boolean;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            releves: number;
+            scanned: boolean;
+            /** Format: int64 */
+            slots: number;
+            /** Format: int64 */
+            spawned: number;
+            /** Format: int64 */
+            unknown: number;
+        };
+        GroundWeaponItemsCoverage: {
+            /** Format: int64 */
+            ammoRead?: number;
+            /** Format: int64 */
+            atRest: number;
+            /** Format: int64 */
+            dropperNamed: number;
+            /** Format: int64 */
+            endOpen: number;
+            /** Format: int64 */
+            endPickup: number;
+            /** Format: int64 */
+            endSeen: number;
+            /** Format: int64 */
+            objects: number;
+            /** Format: int64 */
+            pickupLinked: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            takesTotal: number;
         };
         Group: {
             created_at: string;
@@ -6051,6 +7632,58 @@ export interface components {
             highest_lusr?: components["schemas"]["HomeSkillPeakSummary"];
             spartan_id?: string;
         };
+        IdentityAnomaly: {
+            code: string;
+            detail?: string;
+            /** @enum {string} */
+            severity: "warning" | "info";
+        };
+        IdentityBipedSlot: {
+            bid?: string;
+            link: components["schemas"]["Link"];
+            /** Format: int32 */
+            slot: number;
+            xuid?: string;
+        };
+        IdentityCoverage: {
+            bipedSlot: components["schemas"]["BipedLinkCounts"];
+            filmIndex: components["schemas"]["LinkCounts"];
+            filmTable: components["schemas"]["FilmTableCounts"];
+            statborgSlot: components["schemas"]["LinkCounts"];
+        };
+        IdentityPlayer: {
+            bid?: string;
+            /** Format: int64 */
+            filmIndex: number;
+            link: components["schemas"]["Link"];
+            name?: string;
+            xuid?: string;
+        };
+        IdentityRecord: {
+            account?: components["schemas"]["AccountRef"];
+            anomalies: components["schemas"]["IdentityAnomaly"][] | null;
+            duplicate_accounts?: components["schemas"]["AccountRef"][] | null;
+            gamertag?: string;
+            orphan_dirs?: components["schemas"]["OrphanDirRef"][] | null;
+            profiles: components["schemas"]["ProfileRef"][] | null;
+            token?: components["schemas"]["TokenRef"];
+            watched: string[] | null;
+            xuid?: string;
+        };
+        IdentitySection: {
+            bipedSlots?: components["schemas"]["IdentityBipedSlot"][] | null;
+            coverage: components["schemas"]["IdentityCoverage"];
+            players?: components["schemas"]["IdentityPlayer"][] | null;
+            statborgSlots?: components["schemas"]["IdentityStatborgSlot"][] | null;
+        };
+        IdentityStatborgSlot: {
+            link: components["schemas"]["Link"];
+            /** Format: int64 */
+            round: number;
+            /** Format: int64 */
+            slot: number;
+            xuid?: string;
+        };
         ImpactEventSummary: {
             /** Format: int64 */
             me: number;
@@ -6153,18 +7786,29 @@ export interface components {
             severity: string;
         };
         Inventory: {
-            /** Format: int64 */
-            a?: number;
             am?: components["schemas"]["AmmoSlot"][] | null;
             /** Format: int64 */
             cand?: number;
             /** Format: int64 */
             d?: number;
+            empty?: string;
             g?: number[] | null;
+            /** Format: int64 */
+            gs?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
             t: number;
+        };
+        InventoryCoverage: {
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            droppedBeforeOrigin: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            unpublished: number;
         };
         InviteCode: {
             code: string;
@@ -6172,6 +7816,7 @@ export interface components {
             created_by: string;
             expires_at: string;
             group_id?: string;
+            join_url?: string;
             used_at: string | null;
             used_by: string | null;
         };
@@ -6228,6 +7873,30 @@ export interface components {
             ties: number;
             /** Format: int64 */
             wins: number;
+        };
+        KeyframeCoverage: {
+            /** Format: int64 */
+            bipeds: number;
+            /** Format: int64 */
+            contradictoryProofs: number;
+            /** Format: int64 */
+            elections: number;
+            /** Format: int64 */
+            framedAbsentBipeds: number;
+            /** Format: int64 */
+            jumps: number;
+            /** Format: int64 */
+            keyframes: number;
+            /** Format: int64 */
+            neighbors: number;
+            /** Format: int64 */
+            records: number;
+            /** Format: int64 */
+            refutations: number;
+            /** Format: int64 */
+            resyncs: number;
+            /** Format: int64 */
+            slides: number;
         };
         LOWESSTrend: {
             Metric: string;
@@ -6326,7 +7995,10 @@ export interface components {
         };
         Label: {
             en: string;
+            family?: string;
             fr: string;
+            img?: string;
+            tinted?: boolean;
         };
         LabelValue: {
             /** Format: int64 */
@@ -6348,9 +8020,15 @@ export interface components {
             /** Format: int64 */
             available: number;
             /** Format: int64 */
+            byUnit?: number;
+            /** Format: int64 */
             noSlot: number;
             /** Format: int64 */
             outOfWindow: number;
+            /** Format: int64 */
+            refusedByRoster?: number;
+            /** Format: int64 */
+            unitOtherIndex?: number;
             /** Format: int64 */
             unpublished: number;
         };
@@ -6465,14 +8143,46 @@ export interface components {
             /** Format: double */
             target_val: number;
         };
+        Link: {
+            /** Format: int64 */
+            from: number;
+            method?: string;
+            /** Format: double */
+            metric?: number;
+            /** Format: int64 */
+            readings?: number;
+            source: string;
+            /** Format: int64 */
+            to: number;
+        };
+        LinkCounts: {
+            /** Format: int64 */
+            catalogue: number;
+            /** Format: int64 */
+            deduit: number;
+            /** Format: int64 */
+            direct: number;
+            /** Format: int64 */
+            externe: number;
+            /** Format: int64 */
+            non_resolu: number;
+        };
         ListResult: {
             items: components["schemas"]["Notification"][] | null;
             /** Format: int64 */
             next_cursor?: number;
         };
+        LivesSideCount: {
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            lives: number;
+        };
         Loadout: {
+            k?: number[] | null;
             /** Format: int32 */
             slot: number;
+            src?: string;
             /** Format: int64 */
             t: number;
             w: string[] | null;
@@ -6505,6 +8215,75 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        MapBackground: {
+            calibration: components["schemas"]["MapBackgroundCalibration"];
+            degradations?: string[] | null;
+            /** Format: date-time */
+            generatedAt: string;
+            image: string;
+            mapNames?: string[] | null;
+            module: string;
+            /** Format: int64 */
+            schemaVersion: number;
+            source: string;
+            stats: components["schemas"]["MapBackgroundStats"];
+            style: string;
+        };
+        MapBackgroundCalibration: {
+            convention: string;
+            /** Format: int64 */
+            heightPx: number;
+            /** Format: double */
+            metersPerPixel: number;
+            /** Format: double */
+            originX: number;
+            /** Format: double */
+            originY: number;
+            /** Format: int64 */
+            widthPx: number;
+        };
+        MapBackgroundStats: {
+            /** Format: double */
+            anchorMedianGapM?: number;
+            /** Format: int64 */
+            anchors: number;
+            /** Format: int64 */
+            anchorsInFrame: number;
+            /** Format: int64 */
+            anchorsWithGround: number;
+            boundaryApplied: boolean;
+            /** Format: int64 */
+            boundaryCellsCleared: number;
+            /** Format: int64 */
+            boundaryPlanes: number;
+            /** Format: int64 */
+            cellsAssumedFloor?: number;
+            /** Format: int64 */
+            cellsClipped?: number;
+            /** Format: int64 */
+            cellsSubstituted?: number;
+            covered: boolean;
+            /** Format: double */
+            coveredShare: number;
+            /** Format: int64 */
+            forgeDeathVolumes?: number;
+            /** Format: int64 */
+            forgeObjects?: number;
+            /** Format: int64 */
+            forgeObjectsDrawn?: number;
+            /** Format: int64 */
+            forgeObjectsWithoutModel?: number;
+            /** Format: int64 */
+            instancesDrawn: number;
+            /** Format: int64 */
+            instancesScenery: number;
+            /** Format: double */
+            playLevelZ: number;
+            /** Format: int64 */
+            waterCells: number;
+            /** Format: int64 */
+            waterVolumes: number;
+        };
         MapBreakdownRow: {
             /** Format: int64 */
             historical_match_count?: number;
@@ -6519,6 +8298,11 @@ export interface components {
             performance_avg?: number;
             /** Format: double */
             win_rate: number;
+        };
+        MapCalloutsEntry: {
+            module: string;
+            provenance: string;
+            zones: components["schemas"]["CalloutZone"][] | null;
         };
         MapObject: {
             /** Format: float */
@@ -6536,11 +8320,47 @@ export interface components {
             /** Format: float */
             z?: number;
         };
+        MapObjectives: {
+            markers?: components["schemas"]["ObjectiveMarkerDTO"][] | null;
+            zones?: components["schemas"]["ObjectiveZoneDTO"][] | null;
+        };
+        MapWeaponPadDTO: {
+            family: string;
+            /** Format: int64 */
+            pad: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        MapWeaponPads: {
+            /** Format: int64 */
+            catalogN: number;
+            pads: components["schemas"]["MapWeaponPadDTO"][] | null;
+        };
         MarkResult: {
             /** Format: int64 */
             updated: number;
         };
+        MatchAssistPair: {
+            /** Format: int64 */
+            assist_count: number;
+            assist_gamertag: string;
+            assist_xuid: string;
+            /** Format: int64 */
+            avg_assist_pct?: number;
+            killer_gamertag?: string;
+            killer_xuid: string;
+            /** Format: int64 */
+            stolen_count: number;
+        };
+        MatchAssistPairs: {
+            pairs: components["schemas"]["MatchAssistPair"][] | null;
+        };
         MatchAssociatedMedia: {
+            capture_start_time?: string;
             capture_time?: string;
             /** Format: int64 */
             duration_seconds?: number;
@@ -6583,16 +8403,35 @@ export interface components {
             native_commendations?: components["schemas"]["MatchNativeCommendation"][] | null;
         };
         MatchCombatTab: {
+            assist_pairs?: components["schemas"]["MatchAssistPairs"];
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
             impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;
             kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
+            kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
-            weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
+        };
+        MatchEmpriseBlock: {
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            /** @enum {string} */
+            kill_journal: "publishable" | "not_publishable" | "unavailable";
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
         };
         MatchEncounterBadge: {
             color_token: string;
@@ -6605,6 +8444,7 @@ export interface components {
         MatchEncounterRow: {
             /** Format: int64 */
             ally_count?: number;
+            assists?: components["schemas"]["RelationAssists"];
             badges?: components["schemas"]["MatchEncounterBadge"][] | null;
             /** Format: int64 */
             count_together: number;
@@ -6678,6 +8518,12 @@ export interface components {
             hist_mode_category?: string;
             locally_estimated?: boolean;
         };
+        MatchFacts: {
+            gameVariantName?: string;
+            mapId?: string;
+            players?: components["schemas"]["MatchPlayerFact"][] | null;
+            teamScores?: number[];
+        };
         MatchFavoriteResponse: {
             favorited: boolean;
             match_id: string;
@@ -6696,10 +8542,35 @@ export interface components {
         };
         MatchHighlightEvent: {
             actor_gamertag?: string;
+            /** Format: int64 */
+            actor_team_id?: number;
             actor_xuid?: string;
+            /** Format: int64 */
+            assist_damage_pct?: number;
+            assist_gamertag?: string;
+            assist_state?: string;
+            /** Format: int64 */
+            assist_team_id?: number;
             /** Format: int64 */
             event_time_ms?: number;
             event_type: string;
+            headshot?: boolean;
+            /** Format: int64 */
+            killer_damage_pct?: number;
+            medal_description?: string;
+            medal_image_url?: string;
+            medal_label?: string;
+            medal_name?: string;
+            /** Format: int64 */
+            medal_name_id?: number;
+            victim_gamertag?: string;
+            /** Format: int64 */
+            victim_team_id?: number;
+            victim_xuid?: string;
+            weapon_image_tinted?: boolean;
+            weapon_image_url?: string;
+            weapon_key?: string;
+            weapon_label?: string;
         };
         MatchHistoryExportRequest: {
             columns?: string[] | null;
@@ -6760,6 +8631,7 @@ export interface components {
             /** Format: double */
             expected_win_prob?: number;
             experience_type_label?: string;
+            has_replay?: boolean;
             is_excluded: boolean;
             is_overtime?: boolean;
             is_with_friends: boolean;
@@ -6771,9 +8643,10 @@ export interface components {
             match_id: string;
             match_url: string;
             mode_ui: string | null;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code: number;
-            outcome_label: string;
             /** Format: int64 */
             overtime_seconds?: number;
             /** Format: int64 */
@@ -6791,6 +8664,7 @@ export interface components {
             /** Format: int64 */
             placement_total?: number;
             playlist_label: string | null;
+            score_kind?: string;
             score_label: string;
             skill_rank_image_url?: string;
             skill_rating_type?: string;
@@ -6826,6 +8700,23 @@ export interface components {
             /** Format: int64 */
             time_seconds: number;
         };
+        MatchKillDistancePlayer: {
+            weapons: components["schemas"]["MatchKillDistanceWeapon"][] | null;
+            xuid: string;
+        };
+        MatchKillDistanceWeapon: {
+            /** Format: double */
+            avg_distance_m: number;
+            label?: string;
+            label_en?: string;
+            /** Format: double */
+            max_distance_m: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            min_distance_m: number;
+            weapon_key: string;
+        };
         MatchKillerVictimPair: {
             /** Format: int64 */
             kill_count: number;
@@ -6833,6 +8724,18 @@ export interface components {
             killer_xuid: string;
             victim_gamertag: string;
             victim_xuid: string;
+        };
+        MatchLivesNearTeammate: {
+            players: components["schemas"]["MatchLivesPlayer"][] | null;
+        };
+        MatchLivesPlayer: {
+            alone: components["schemas"]["LivesSideCount"];
+            /** Format: int64 */
+            matches_read: number;
+            /** Format: int64 */
+            matches_without_radar: number;
+            near: components["schemas"]["LivesSideCount"];
+            xuid: string;
         };
         MatchMedal: {
             /** Format: int64 */
@@ -6950,13 +8853,31 @@ export interface components {
             TopWeaponID: string | null;
         };
         MatchPersonalResult: {
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             outcome_color: string;
             outcome_color_token?: string;
-            outcome_label: string;
             /** Format: int64 */
             rank_in_team?: number;
             /** Format: int64 */
             score?: number;
+        };
+        MatchPlayerFact: {
+            /** Format: int64 */
+            assists: number;
+            /** Format: int64 */
+            deaths: number;
+            /** Format: int64 */
+            joinMatchMs?: number;
+            joinedInProgress?: boolean;
+            /** Format: int64 */
+            kills: number;
+            /** Format: int64 */
+            leaveMatchMs?: number;
+            leftInProgress?: boolean;
+            /** Format: int64 */
+            teamId: number;
+            xuid: string;
         };
         MatchPositionDTO: {
             /** Format: int64 */
@@ -6979,6 +8900,34 @@ export interface components {
             level: string;
             message?: string;
         };
+        MatchRangeBlock: {
+            /** Format: int64 */
+            kills_measured: number;
+            /** Format: int64 */
+            kills_total: number;
+            profiles: components["schemas"]["MatchRangeProfile"][] | null;
+        };
+        MatchRangePlayer: {
+            gamertag?: string;
+            /** Format: double */
+            lobby_delta_m: number;
+            /** Format: int64 */
+            measured: number;
+            /** Format: double */
+            median_m: number;
+            xuid: string;
+        };
+        MatchRangeProfile: {
+            /** Format: int64 */
+            lobby_measured: number;
+            /** Format: double */
+            lobby_median_m: number;
+            map_name?: string;
+            match_id: string;
+            /** Format: date-time */
+            played_at: string;
+            players: components["schemas"]["MatchRangePlayer"][] | null;
+        };
         MatchRosterRow: {
             /** Format: int64 */
             assists?: number;
@@ -6998,8 +8947,16 @@ export interface components {
             team_side?: string;
             xuid: string;
         };
-        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
+        /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
+            /** Format: int64 */
+            bomb_arms?: number;
+            /** Format: int64 */
+            bomb_carriers_killed?: number;
+            /** Format: int64 */
+            bomb_detonations?: number;
+            /** Format: int64 */
+            bomb_grabs?: number;
             /** Format: int64 */
             extraction_conversions_completed?: number;
             /** Format: int64 */
@@ -7054,6 +9011,8 @@ export interface components {
             skull_scoring_ticks?: number;
             /** Format: int64 */
             successful_extractions?: number;
+            /** Format: double */
+            time_as_bomb_carrier_seconds?: number;
             /** Format: double */
             time_as_flag_carrier_seconds?: number;
             /** Format: double */
@@ -7112,6 +9071,7 @@ export interface components {
             expected_deaths?: number;
             /** Format: double */
             expected_kills?: number;
+            first_joined_time?: string;
             gamertag: string;
             /** Format: int64 */
             grenade_kills?: number;
@@ -7124,12 +9084,15 @@ export interface components {
             is_lvp?: boolean;
             is_me: boolean;
             is_mvp?: boolean;
+            joined_in_progress?: boolean;
             /** Format: double */
             kda?: number;
             /** Format: int64 */
             kills?: number;
             /** Format: double */
             kills_stddev?: number;
+            last_leave_time?: string;
+            left_in_progress?: boolean;
             locally_estimated?: boolean;
             /** Format: int64 */
             max_killing_spree?: number;
@@ -7139,7 +9102,8 @@ export interface components {
             objective?: components["schemas"]["MatchScoreboardObjective"];
             /** Format: double */
             offensive_conversion?: number;
-            outcome_label: string;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             perfect_kills?: number;
             /** Format: double */
@@ -7187,6 +9151,8 @@ export interface components {
             Outcome: string;
             PairMode: components["schemas"]["AssetReference"];
             Playlist: components["schemas"]["AssetReference"];
+            /** Format: int64 */
+            RoundsTotal: number | null;
             /** Format: date-time */
             StartedAtUTC: string;
             /** Format: int64 */
@@ -7265,12 +9231,14 @@ export interface components {
             map_image_url?: string;
             map_ui: string;
             match_id: string;
+            mode_category?: string;
             mode_ui: string;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code?: number;
             outcome_color: string;
             outcome_color_token?: string;
-            outcome_label: string;
             /** Format: int64 */
             overtime_seconds?: number;
             performance_color?: string;
@@ -7280,10 +9248,19 @@ export interface components {
             playable_duration_seconds?: number;
             playlist_label: string;
             replay_available: boolean;
+            score_kind?: string;
             score_label?: string;
+            /** Format: int64 */
+            score_mine?: number;
+            score_points_label?: string;
+            /** Format: int64 */
+            score_theirs?: number;
+            score_timeline_kind?: string;
             /** Format: date-time */
             start_time?: string;
             start_time_label: string;
+            /** Format: int64 */
+            t0_ms?: number;
             waypoint_url?: string;
         };
         MatchViewImpactRole: {
@@ -7307,8 +9284,10 @@ export interface components {
         MatchViewResponse: {
             citations_tab: components["schemas"]["MatchCitationsTab"];
             combat_tab: components["schemas"]["MatchCombatTab"];
+            emprise?: components["schemas"]["MatchEmpriseBlock"];
             header: components["schemas"]["MatchViewHeader"];
             is_partial?: boolean;
+            lives_near_teammate?: components["schemas"]["MatchLivesNearTeammate"];
             media_tab: components["schemas"]["MatchMediaTab"];
             partial_reasons?: string[] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
@@ -7316,14 +9295,6 @@ export interface components {
             rank: components["schemas"]["MatchViewRank"];
             summary_tab: components["schemas"]["MatchSummaryTab"];
             team_tab: components["schemas"]["MatchTeamTab"];
-        };
-        MatchWeaponKill: {
-            class?: string;
-            /** Format: int64 */
-            kill_count: number;
-            /** Format: int64 */
-            weapon_id: number;
-            weapon_label: string;
         };
         MedalCategoryGroup: {
             category: string;
@@ -7724,6 +9695,14 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        NeutralDeath: {
+            /** Format: int64 */
+            feedMs: number;
+            img?: string;
+            kind: string;
+            tinted?: boolean;
+            xuid: string;
+        };
         NormalizedPlayerStats: {
             /** Format: double */
             accuracy: number;
@@ -7753,7 +9732,6 @@ export interface components {
             highest_csr_all_time_label?: string;
             highest_csr_label?: string;
             is_local: boolean;
-            is_local_sample?: boolean;
             /** Format: double */
             kda: number;
             /** Format: double */
@@ -7855,6 +9833,48 @@ export interface components {
             role: string;
             xuid: string;
         };
+        ObjectiveMarkerDTO: {
+            role: string;
+            /** Format: int64 */
+            team: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z: number;
+        };
+        ObjectiveObjectLife: {
+            en: string;
+            family: string;
+            fr: string;
+            pts: components["schemas"]["ObjectiveObjectPoint"][] | null;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        ObjectiveObjectPoint: {
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+        };
+        ObjectiveObjectsCoverage: {
+            /** Format: int64 */
+            declared: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            motionless: number;
+            /** Format: int64 */
+            outOfAxis: number;
+            /** Format: int64 */
+            points: number;
+            scanned: boolean;
+        };
         ObjectivePoint: {
             /** Format: int64 */
             assists: number;
@@ -7871,6 +9891,32 @@ export interface components {
             /** Format: int64 */
             total_score: number;
         };
+        ObjectiveZoneDTO: {
+            family: string;
+            /** Format: float */
+            fwdX: number;
+            /** Format: float */
+            fwdY: number;
+            /** Format: float */
+            halfX?: number;
+            /** Format: float */
+            halfY?: number;
+            /** Format: float */
+            radius?: number;
+            role: string;
+            /** Format: int64 */
+            team: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z: number;
+        };
+        OrphanDirRef: {
+            name: string;
+            title_slug: string;
+        };
         OutcomesPeriodPoint: {
             /** Format: int64 */
             dnf: number;
@@ -7882,6 +9928,53 @@ export interface components {
             ties: number;
             /** Format: int64 */
             wins: number;
+        };
+        PadCycle: {
+            /** Format: int64 */
+            gaps: number;
+            /** Format: float */
+            medianS: number;
+            /** Format: int64 */
+            missing: number;
+            /** Format: float */
+            p10S: number;
+            /** Format: float */
+            p90S: number;
+        };
+        PadDatingStats: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            dated: number;
+            /** Format: int64 */
+            firstOfCycle: number;
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            occupations: number;
+            /** Format: int64 */
+            powerupOccupations: number;
+            /** Format: int64 */
+            uncovered: number;
+        };
+        PadPickup: {
+            /** Format: int64 */
+            pad: number;
+            /** Format: int64 */
+            t?: number;
+            /** Format: int64 */
+            tHigh: number;
+            /** Format: int64 */
+            tLow: number;
+            xuid: string | null;
+        };
+        PadPresence: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            tHigh: number;
+            /** Format: int64 */
+            tLow: number;
         };
         PaginatedMatchHistoryResponse: {
             freshness?: components["schemas"]["FreshnessInfo"] | null;
@@ -7971,13 +10064,6 @@ export interface components {
             player: string;
             title?: string;
         };
-        PerformancePoint: {
-            match_id: string;
-            /** Format: double */
-            score: number | null;
-            /** Format: date-time */
-            start_time: string;
-        };
         PeriodInput: {
             /** Format: date-time */
             end_date: string | null;
@@ -8006,6 +10092,53 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        Pickup: {
+            /** Format: int64 */
+            class: number;
+            family?: string;
+            kind: string;
+            origin?: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            w: string;
+            xuid?: string;
+        };
+        PickupCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            items: number;
+            /** Format: int64 */
+            mapCatalogPoints: number;
+            /** Format: int64 */
+            multiEvent: number;
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            originGround: number;
+            /** Format: int64 */
+            originSpawner: number;
+            /** Format: int64 */
+            originUnknown: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            refused: number;
+            spawnPointsState: string;
+            spawnerByPointKind?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
+            unknownFamilies: number;
+            /** Format: int64 */
+            weapons: number;
+        };
         PilotModeAttribution: {
             daily?: components["schemas"]["Challenge"];
             weekly_choices: components["schemas"]["Template"][] | null;
@@ -8020,8 +10153,6 @@ export interface components {
             missing_events: number;
             /** Format: int64 */
             missing_psa: number;
-            /** Format: int64 */
-            missing_weapons: number;
             player_slug: string;
             xuid: string;
         };
@@ -8036,6 +10167,12 @@ export interface components {
             status: string;
             /** Format: int64 */
             sync_age_seconds?: number;
+            xuid: string;
+        };
+        PlayerFriends: {
+            can_edit: boolean;
+            gamertags: string[];
+            updated_at?: string;
             xuid: string;
         };
         PlayerIdentity: {
@@ -8141,6 +10278,13 @@ export interface components {
             sync_status?: string;
             xuid: string;
         };
+        PlayerPresence: {
+            gamertag: string;
+            in_game: boolean;
+            player_slug: string;
+            title_name?: string;
+            title_slug?: string;
+        };
         PlayerPresenceStatus: {
             cooldown_left?: string;
             gamertag: string;
@@ -8152,6 +10296,8 @@ export interface components {
             state_duration: string;
             state_since: string;
             subscribe_error?: string;
+            title_name?: string;
+            title_slug?: string;
             xuid: string;
         };
         PlayerProfile: {
@@ -8176,6 +10322,13 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
             user_id: string;
+        };
+        PlayerScore: {
+            assists: components["schemas"]["ScoreSeries"];
+            deaths: components["schemas"]["ScoreSeries"];
+            kills: components["schemas"]["ScoreSeries"];
+            score: components["schemas"]["ScoreSeries"];
+            xuid: string;
         };
         PlayerScoreCard: {
             /** Format: double */
@@ -8207,13 +10360,13 @@ export interface components {
             xuid: string;
         };
         PlayerTokenHealth: {
+            access: string;
             credential_source?: string;
             gamertag: string;
             last_auth_error?: string;
             last_auth_error_at?: string;
             last_auth_error_class?: string;
             load_error?: string;
-            msal: string;
             oauth_expires_at?: string;
             player_slug: string;
             refresh: string;
@@ -8223,6 +10376,7 @@ export interface components {
             xuid: string;
         };
         PlayerWeaponKillRow: {
+            image_tinted?: boolean;
             image_url?: string;
             /** Format: int64 */
             kills: number;
@@ -8245,10 +10399,16 @@ export interface components {
             revision_key?: string | null;
         };
         Point: {
+            /** Format: int64 */
+            g?: number;
             /** Format: float */
             h?: number;
             /** Format: float */
             hp?: number;
+            /** Format: float */
+            p?: number;
+            /** Format: int64 */
+            s?: number;
             /** Format: float */
             sh?: number;
             /** Format: int64 */
@@ -8291,10 +10451,6 @@ export interface components {
             step_timings?: components["schemas"]["PostSyncStepTiming"][] | null;
             /** Format: int64 */
             views_refreshed: number;
-            /** Format: int64 */
-            weapon_kills_no_film: number;
-            /** Format: int64 */
-            weapon_kills_processed: number;
         };
         PostSyncStepTiming: {
             /** Format: int64 */
@@ -8307,6 +10463,22 @@ export interface components {
             category: string;
             delivery: string;
             enabled: boolean;
+        };
+        PresenceInterval: {
+            /** Format: int64 */
+            from: number;
+            /** Format: int64 */
+            to: number;
+            /** Format: int64 */
+            toMax?: number;
+        };
+        PresenceSnapshot: {
+            /**
+             * Format: int64
+             * @description Amis en jeu : joueurs visibles du titre courant (même périmètre que players), non possédés par l'utilisateur, en jeu sur l'un des titres suivis.
+             */
+            friends_in_game: number;
+            players: components["schemas"]["PlayerPresence"][] | null;
         };
         PrestigeTelemetryDiag: {
             by_source: components["schemas"]["PrestigeTelemetrySourceStats"][] | null;
@@ -8332,6 +10504,14 @@ export interface components {
             /** Format: int64 */
             rejected: number;
             source: string;
+        };
+        ProfileRef: {
+            auth_only: boolean;
+            db_exists: boolean;
+            dir_exists: boolean;
+            key: string;
+            sync_enabled: boolean;
+            title_slug: string;
         };
         ProgressionDiag: {
             /** Format: int64 */
@@ -8359,6 +10539,14 @@ export interface components {
             rest?: boolean;
             /** Format: int64 */
             t0: number;
+        };
+        ProjectileCoverage: {
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            tracks: number;
+            /** Format: int64 */
+            truncated: number;
         };
         ProposalDTO: {
             /** Format: date-time */
@@ -8390,6 +10578,19 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        RangeReferenceBlock: {
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            /** Format: double */
+            period_median_delta_m?: number;
+            profiles: components["schemas"]["MatchRangeProfile"][] | null;
+            /** Format: double */
+            role_high_m?: number;
+            /** Format: double */
+            role_low_m?: number;
+        };
         RankDelta: {
             /** Format: int64 */
             count: number;
@@ -8420,6 +10621,14 @@ export interface components {
             role: string;
             username: string;
         };
+        RegistryCoverage: {
+            /** Format: int64 */
+            blocks: number;
+            fingerprint: string;
+            /** Format: int64 */
+            namedSlots: number;
+            status: string;
+        };
         RegistryNamesBackfillResult: {
             dry_run: boolean;
             /** Format: int64 */
@@ -8440,6 +10649,14 @@ export interface components {
             variants_fixed: number;
             /** Format: int64 */
             variants_scanned: number;
+        };
+        RelationAssists: {
+            given: components["schemas"]["AssistTiers"];
+            /** Format: int64 */
+            my_frags: number;
+            /** Format: int64 */
+            partner_frags: number;
+            received: components["schemas"]["AssistTiers"];
         };
         RelationBadge: {
             color_token: string;
@@ -8484,6 +10701,7 @@ export interface components {
             xuid: string;
         };
         RelationInsight: {
+            assists?: components["schemas"]["RelationAssists"];
             /** Format: double */
             avg_kda_against: number | null;
             /** Format: double */
@@ -8570,38 +10788,93 @@ export interface components {
             overview: components["schemas"]["RelationsOverview"];
             relations: components["schemas"]["RelationInsight"][] | null;
         };
+        ReplayBuildEnqueueResponse: {
+            created: boolean;
+            job: components["schemas"]["BuildQueueJob"];
+        };
         ReplayDocument: {
+            abilities?: components["schemas"]["AbilityRead"][] | null;
+            abilityCharges?: components["schemas"]["AbilityCharge"][] | null;
+            abilityImpulses?: components["schemas"]["AbilityImpulse"][] | null;
             abilityLabels?: {
                 [key: string]: components["schemas"]["Label"];
             };
+            bombArmings?: components["schemas"]["BombArming"][] | null;
+            bombCarries?: components["schemas"]["BombCarry"][] | null;
+            bombEvents?: components["schemas"]["BombEvent"][] | null;
+            bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
+            bursts?: components["schemas"]["FireBurst"][] | null;
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
+            equipmentChanges?: components["schemas"]["EquipmentChange"][] | null;
+            equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
+            equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
+            flagCarries?: components["schemas"]["FlagCarry"][] | null;
+            flagReturnZone?: components["schemas"]["FlagReturnZone"];
             /** Format: int64 */
             frameCount: number;
             /** Format: int64 */
             frameIntervalMs?: number;
             geometry?: components["schemas"]["MapObject"][] | null;
             geometryBounds?: components["schemas"]["Bounds"];
+            grappleLines?: components["schemas"]["GrappleLine"][] | null;
             grenadeLabels?: components["schemas"]["Label"][] | null;
+            grenadeReads?: components["schemas"]["GrenadeRead"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
+            groundWeapons?: components["schemas"]["GroundWeapon"][] | null;
+            identity?: components["schemas"]["IdentitySection"];
             inventory?: components["schemas"]["Inventory"][] | null;
+            killEffects?: {
+                [key: string]: string;
+            };
+            layers?: {
+                [key: string]: string;
+            };
             loadouts?: components["schemas"]["Loadout"][] | null;
+            mapObjectives?: components["schemas"]["MapObjectives"];
+            mapWeaponPads?: components["schemas"]["MapWeaponPads"];
             matchId: string;
+            neutralDeaths?: components["schemas"]["NeutralDeath"][] | null;
+            objectiveObjects?: components["schemas"]["ObjectiveObjectLife"][] | null;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
+            /** Format: int64 */
+            originMs?: number;
+            padPickups?: components["schemas"]["PadPickup"][] | null;
+            pickups?: components["schemas"]["Pickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */
             schemaVersion: number;
+            scoreTimeline?: components["schemas"]["ScoreTimeline"];
             shots?: components["schemas"]["Shot"][] | null;
+            skullCarries?: components["schemas"]["SkullCarry"][] | null;
+            stances?: components["schemas"]["Stance"][] | null;
             structure?: components["schemas"]["Surface"][] | null;
             structureBounds?: components["schemas"]["Bounds"];
+            /** Format: int64 */
+            t0FilmMs?: number;
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
+            translocations?: components["schemas"]["Translocation"][] | null;
+            vehicleCycles?: components["schemas"]["VehicleCycle"][] | null;
+            vehicleLabels?: {
+                [key: string]: components["schemas"]["VehicleLabel"];
+            };
+            vehicleScenery?: components["schemas"]["VehicleScenery"];
+            vehicleWeapons?: {
+                [key: string]: components["schemas"]["VehicleWeapon"];
+            };
+            vehicles?: components["schemas"]["VehicleTrack"][] | null;
+            vipCrown?: components["schemas"]["VipPeriod"][] | null;
+            weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
+            weaponPads?: components["schemas"]["WeaponPad"][] | null;
+            weaponTiers?: components["schemas"]["WeaponTiersInfo"];
+            zoneStates?: components["schemas"]["ZoneState"][] | null;
         };
         ResolveResult: {
             action: string;
@@ -8625,6 +10898,16 @@ export interface components {
             /** Format: int64 */
             total_bytes: number;
         };
+        ResourceFilmFacts: {
+            /** Format: int64 */
+            files: number;
+            newest_at?: string;
+            oldest_at?: string;
+            path: string;
+            /** Format: int64 */
+            size_bytes: number;
+            title_slug: string;
+        };
         ResourceRuntime: {
             /** Format: int64 */
             goroutines: number;
@@ -8638,9 +10921,17 @@ export interface components {
             sys_bytes: number;
         };
         RosterEntry: {
+            bid?: string;
+            bot?: boolean;
             /** Format: int64 */
             filmIndex: number;
             name?: string;
+            presence?: components["schemas"]["PresenceInterval"][] | null;
+            /** Format: int64 */
+            seat: number;
+            seatSource?: string;
+            /** Format: int64 */
+            team?: number;
             xuid: string;
         };
         RunOnceResult: {
@@ -8666,6 +10957,45 @@ export interface components {
             /** Format: int64 */
             pool_size: number;
             since_boot: boolean;
+        };
+        ScoreCoverage: {
+            modeSupported: boolean;
+            oracle: string;
+            /** Format: int64 */
+            points: number;
+            /** Format: int64 */
+            rounds: number;
+            roundsContradicted?: number[] | null;
+            /** Format: int64 */
+            roundsContradictedRecords?: number;
+            roundsDecreed?: boolean;
+            roundsWritten?: number[] | null;
+            teamIdentity: string;
+            truncated: boolean;
+        };
+        ScoreRound: {
+            points: components["schemas"]["ScoreTick"][] | null;
+            /** Format: int64 */
+            round: number;
+        };
+        ScoreSeries: {
+            rounds?: components["schemas"]["ScoreRound"][] | null;
+            total?: components["schemas"]["ScoreTick"][] | null;
+        };
+        ScoreTick: {
+            /** Format: int64 */
+            t: number;
+            /** Format: int64 */
+            v: number;
+        };
+        ScoreTimeline: {
+            holdTicks?: components["schemas"]["TeamHold"][] | null;
+            /** Format: int64 */
+            holdTicksPerPoint?: number;
+            players?: components["schemas"]["PlayerScore"][] | null;
+            /** Format: int64 */
+            targetScore?: number;
+            teams?: components["schemas"]["TeamScore"][] | null;
         };
         SeasonCalendar: {
             content_hash: string;
@@ -8783,6 +11113,68 @@ export interface components {
             /** Format: date-time */
             start_date: string;
         };
+        SeatCoverage: {
+            /** Format: int64 */
+            apparies: number;
+            /** Format: int64 */
+            arrivants: number;
+            /** Format: int64 */
+            bornesDifferees: number;
+            /** Format: int64 */
+            botsSuccesseurs: number;
+            /** Format: int64 */
+            capacite: number;
+            /** Format: int64 */
+            chevauchements: number;
+            /** Format: int64 */
+            depassements: number;
+            /** Format: int64 */
+            entitesContestees: number;
+            /** Format: int64 */
+            entitesNonLiees: number;
+            /** Format: int64 */
+            entrees: number;
+            /** Format: int64 */
+            identitesHorsRoster: number;
+            /** Format: int64 */
+            imagesClesDouteuses: number;
+            /** Format: int64 */
+            lus: number;
+            /** Format: int64 */
+            occupantsMax: number;
+            /** Format: int64 */
+            placesEnTrop: number;
+            /** Format: int64 */
+            placesOuvertes: number;
+            /** Format: int64 */
+            placesTirs: number;
+            presences: string;
+            /** Format: int64 */
+            presencesCloses: number;
+            /** Format: int64 */
+            presencesParLesVies: number;
+            /** Format: int64 */
+            relaisBornes: number;
+            /** Format: int64 */
+            reprisesEcrites: number;
+            /** Format: int64 */
+            sansEquipe: number;
+            /** Format: int64 */
+            sansPlace: number;
+            /** Format: int64 */
+            sansPresence: number;
+            sansTableDuFilm?: boolean;
+            /** Format: int64 */
+            sieges: number;
+            /** Format: int64 */
+            tirsContestes: number;
+            tirsIndexNonPlace?: boolean;
+            tirsIndexTronque?: boolean;
+            /** Format: int64 */
+            tirsParPlace: number;
+            /** Format: int64 */
+            trousDEntite: number;
+        };
         SelectedTeammateData: {
             gamertag: string;
             /** Format: int64 */
@@ -8856,6 +11248,7 @@ export interface components {
             /** Format: int64 */
             total_perfect_kills?: number;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
             /** Format: double */
             win_rate: number;
             /** Format: int64 */
@@ -8912,6 +11305,8 @@ export interface components {
             defensive_resistance?: number;
             /** Format: double */
             delta_mmr?: number;
+            /** Format: int64 */
+            dominance_flag?: number;
             dominant_category?: string;
             /** Format: int64 */
             duration_seconds?: number;
@@ -8955,6 +11350,7 @@ export interface components {
             /** Format: int64 */
             placement_total?: number;
             playlist_name: string;
+            score_label?: string;
             session_label?: string;
             /** Format: double */
             skill_rating_delta?: number;
@@ -9029,24 +11425,40 @@ export interface components {
         /** @description SessionPageResponse — session courante, matchs détaillés, suggestion et éventuelle comparaison */
         SessionPageResponse: {
             available_sessions: string[] | null;
+            compare_coordination?: components["schemas"]["CoordinationBlock"];
+            compare_emprise?: components["schemas"]["SoloEmpriseBlock"];
             compare_enabled: boolean;
             compare_first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            compare_formes_retenues?: components["schemas"]["SquadFormesBlock"];
             compare_intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
+            compare_lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             compare_matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             compare_metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
+            compare_range_profiles?: components["schemas"]["MatchRangeBlock"];
             compare_session?: components["schemas"]["SessionCompareEntry"];
+            coordination?: components["schemas"]["CoordinationBlock"];
             current_session: components["schemas"]["SessionCompareEntry"];
+            emprise?: components["schemas"]["SoloEmpriseBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            formes_retenues?: components["schemas"]["SquadFormesBlock"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
+            lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             matches: components["schemas"]["SessionDetailMatchRow"][] | null;
             next_session_label?: string;
+            player_emblem_url?: string;
             previous_session_label?: string;
+            range_profiles?: components["schemas"]["MatchRangeBlock"];
+            range_reference?: components["schemas"]["RangeReferenceBlock"];
             suggested_compare?: components["schemas"]["SessionCompareSuggestion"];
         };
         SessionParticipationAxis: {
             name: string;
             /** Format: double */
             value: number;
+        };
+        SessionUsageSquadPlayer: {
+            gamertag: string;
+            xuid: string;
         };
         SessionsFilter: {
             /** Format: int64 */
@@ -9094,7 +11506,6 @@ export interface components {
             discord_notify_new_version?: boolean;
             discord_notify_sync?: boolean;
             discord_webhook_url_present?: boolean;
-            friend_gamertags?: string[];
             /** @enum {string} */
             lang: "fr" | "en";
             media_captures_base_dir?: string;
@@ -9118,7 +11529,6 @@ export interface components {
             spnkr_refresh_backfill_performance_scores?: boolean;
             spnkr_refresh_backfill_personal_scores?: boolean;
             spnkr_refresh_backfill_skill?: boolean;
-            spnkr_refresh_backfill_weapons?: boolean;
             spnkr_refresh_with_backfill?: boolean;
             user_timezone: string;
             watcher_presence_enabled?: boolean;
@@ -9131,6 +11541,8 @@ export interface components {
             slot: number;
             /** Format: int64 */
             t: number;
+            /** Format: int32 */
+            v?: number;
             w?: string;
             /** Format: float */
             x: number;
@@ -9181,6 +11593,50 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        SkullCarriesCoverage: {
+            /** Format: int64 */
+            carrierAbsent: number;
+            /** Format: int64 */
+            carries: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            grabs: number;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            skullFilm: boolean;
+            /** Format: int64 */
+            trains: number;
+        };
+        SkullCarry: {
+            closed: boolean;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid: string;
+        };
+        SoloEmpriseBlock: {
+            equipment?: components["schemas"]["EmpriseEquipment"];
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            maps: components["schemas"]["EmpriseMapColumn"][] | null;
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+        };
         SoloSessionPerfBlock: {
             granularity: string;
             points: components["schemas"]["SoloSessionPerfPoint"][] | null;
@@ -9213,6 +11669,25 @@ export interface components {
             created_by: string;
             id: string;
             name: string;
+        };
+        SquadAssistPair: {
+            /** Format: int64 */
+            assist_count: number;
+            assist_gamertag: string;
+            assist_xuid: string;
+            killer_gamertag: string;
+            killer_xuid: string;
+            /** Format: int64 */
+            stolen_count: number;
+        };
+        SquadAssistPairs: {
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            pairs: components["schemas"]["SquadAssistPair"][] | null;
+            /** Format: int64 */
+            total_assists: number;
         };
         SquadBreakdownStats: {
             /** Format: double */
@@ -9263,6 +11738,167 @@ export interface components {
             radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
+        SquadEmpriseBlock: {
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            placement?: components["schemas"]["SquadEmprisePlacement"];
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+        };
+        SquadEmpriseCampOutcomes: {
+            them: components["schemas"]["SquadEmpriseOutcomeCounts"];
+            us: components["schemas"]["SquadEmpriseOutcomeCounts"];
+        };
+        SquadEmpriseCount: {
+            /** Format: int64 */
+            them: number;
+            /** Format: int64 */
+            us: number;
+        };
+        SquadEmpriseEvening: {
+            comparable: boolean;
+            families: string[] | null;
+            /** Format: int64 */
+            match_count: number;
+            /** Format: int64 */
+            measured_matches: number;
+            session_label: string;
+            shares: components["schemas"]["SquadEmpriseShare"][] | null;
+            start_time: string;
+        };
+        SquadEmpriseExposure: {
+            kills: components["schemas"]["SquadEmpriseCount"];
+            kind: string;
+            paired_kills?: components["schemas"]["SquadEmpriseCount"];
+            value: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseHabit: {
+            current: components["schemas"]["SquadEmpriseEvening"];
+            families: string[] | null;
+            previous: components["schemas"]["SquadEmpriseEvening"][] | null;
+        };
+        SquadEmpriseMatch: {
+            has_film: boolean;
+            match_id: string;
+            power_weapon_kills?: components["schemas"]["SquadEmpriseCount"];
+            resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
+            team_known: boolean;
+            tiers?: string;
+            vehicles?: string;
+        };
+        SquadEmpriseMatchResource: {
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            resource: string;
+            taken: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseObject: {
+            aboard_ms?: components["schemas"]["SquadEmpriseCount"];
+            key: string;
+            label?: string;
+            /** Format: int64 */
+            pads_emptied?: number;
+            resource: string;
+            squad: components["schemas"]["SquadEmpriseObjectShare"][] | null;
+            taken: components["schemas"]["SquadEmpriseCount"];
+            weapon_key?: string;
+        };
+        SquadEmpriseObjectShare: {
+            /** Format: int64 */
+            aboard_ms?: number;
+            /** Format: int64 */
+            dropped?: number;
+            /** Format: int64 */
+            kept?: number;
+            /** Format: int64 */
+            taken: number;
+            xuid?: string;
+        };
+        SquadEmpriseOutcomeCounts: {
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            taken: number;
+            /** Format: int64 */
+            used: number;
+        };
+        SquadEmprisePlacement: {
+            /** Format: double */
+            isolated_from_ratio: number;
+            players: components["schemas"]["SquadEmprisePlacementPlayer"][] | null;
+            /** Format: int64 */
+            productive_from_kills: number;
+        };
+        SquadEmprisePlacementLife: {
+            /** Format: int64 */
+            duration_ms: number;
+            /** Format: int64 */
+            kills: number;
+            match_id: string;
+            /** Format: double */
+            out_of_radar_share: number;
+            /** @enum {string} */
+            quadrant: "in_range_productive" | "isolated_productive" | "in_range_costly" | "isolated_costly";
+            /** Format: double */
+            radar_ratio: number;
+            /** Format: int64 */
+            start_ms: number;
+        };
+        SquadEmprisePlacementPlayer: {
+            gamertag: string;
+            lives: components["schemas"]["SquadEmprisePlacementLife"][] | null;
+            /** Format: int64 */
+            lives_measured: number;
+            /** Format: int64 */
+            lives_total: number;
+            /** Format: double */
+            median_kills?: number;
+            /** Format: double */
+            median_radar_ratio?: number;
+            quadrants: components["schemas"]["SquadEmprisePlacementQuadrant"][] | null;
+            xuid: string;
+        };
+        SquadEmprisePlacementQuadrant: {
+            /** Format: int64 */
+            lives: number;
+            /** @enum {string} */
+            quadrant: "in_range_productive" | "isolated_productive" | "in_range_costly" | "isolated_costly";
+            /** Format: double */
+            share?: number;
+        };
+        SquadEmpriseProduction: {
+            exposure?: components["schemas"]["SquadEmpriseExposure"];
+            kills: components["schemas"]["SquadEmpriseCount"];
+            /** Format: double */
+            relative_gap?: number;
+            resource: string;
+            /** Format: double */
+            yield_them?: number;
+            /** Format: double */
+            yield_us?: number;
+        };
+        SquadEmpriseResource: {
+            /** Format: int64 */
+            matches_measured: number;
+            outcomes?: components["schemas"]["SquadEmpriseCampOutcomes"];
+            resource: string;
+            taken: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseShare: {
+            resource: string;
+            /** Format: double */
+            share: number;
+            taken: components["schemas"]["SquadEmpriseCount"];
+        };
         SquadEngagementSession: {
             durations_seconds: number[] | null;
             labels: string[] | null;
@@ -9272,13 +11908,52 @@ export interface components {
             team_expected: number[] | null;
             team_observed: number[] | null;
         };
+        SquadFormesBlock: {
+            available: boolean;
+            main_xuid?: string;
+            matches?: components["schemas"]["SquadFormesMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            squad?: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            unavailable_reason?: string;
+        };
+        SquadFormesMatch: {
+            map_label?: string;
+            match_id: string;
+            mode_label?: string;
+            objective?: components["schemas"]["SquadFormesObjective"];
+            /** Format: int64 */
+            player_team?: number;
+            start_time?: string;
+        };
+        SquadFormesObjective: {
+            columns?: components["schemas"]["SquadFormesObjectiveColumn"][] | null;
+            excluded_from_balance?: boolean;
+            family: string;
+            /** Format: double */
+            flag_juggle_window_seconds?: number;
+            players?: components["schemas"]["SquadFormesObjectivePlayer"][] | null;
+        };
+        SquadFormesObjectiveColumn: {
+            duration?: boolean;
+            key: string;
+            optional?: boolean;
+            role: string;
+        };
+        SquadFormesObjectivePlayer: {
+            /** Format: int64 */
+            team_id?: number;
+            values?: {
+                [key: string]: number;
+            };
+            xuid: string;
+        };
         SquadHeader: {
             all_time_kpis?: components["schemas"]["KPIStats"];
             kpis_by_xuid?: {
                 [key: string]: components["schemas"]["KPIStats"];
-            };
-            objective_stats_by_xuid?: {
-                [key: string]: components["schemas"]["ObjectiveAggregate"];
             };
             player_cards?: components["schemas"]["PlayerScoreCard"][] | null;
             solo_kpis?: components["schemas"]["KPIStats"];
@@ -9302,6 +11977,26 @@ export interface components {
             match_id: string;
             player: string;
         };
+        SquadImpactEvening: {
+            /** Format: int64 */
+            matches: number;
+            players: components["schemas"]["SquadImpactEveningPlayer"][] | null;
+            session_label: string;
+            start_time: string;
+            /** Format: int64 */
+            wins: number;
+        };
+        SquadImpactEveningPlayer: {
+            player: string;
+            /** Format: double */
+            points: number;
+            roles: components["schemas"]["SquadImpactRoleCount"][] | null;
+        };
+        SquadImpactHistory: {
+            evenings: components["schemas"]["SquadImpactEvening"][] | null;
+            players: string[] | null;
+            scale: components["schemas"]["SquadImpactRoleWeight"][] | null;
+        };
         SquadImpactMatchHeader: {
             match_id: string;
             /** Format: int64 */
@@ -9318,6 +12013,18 @@ export interface components {
             player: string;
             /** Format: double */
             score: number;
+        };
+        SquadImpactRoleCount: {
+            /** Format: int64 */
+            count: number;
+            /** Format: double */
+            points: number;
+            role: string;
+        };
+        SquadImpactRoleWeight: {
+            /** Format: double */
+            points: number;
+            role: string;
         };
         SquadIntensityMatchRow: {
             label: string;
@@ -9378,6 +12085,7 @@ export interface components {
             expected_win_prob?: number;
             /** Format: int64 */
             gameplay_duration_seconds?: number;
+            has_replay?: boolean;
             /** Format: int64 */
             kills: number;
             map_ui: string;
@@ -9389,6 +12097,7 @@ export interface components {
             /** Format: double */
             performance_score?: number;
             playlist_name?: string;
+            score_kind?: string;
             score_label?: string;
             session_label?: string;
             start_time: string;
@@ -9409,6 +12118,36 @@ export interface components {
             start_time: string;
             /** Format: double */
             team_mmr_avg: number;
+        };
+        SquadObjectiveEvening: {
+            /** Format: double */
+            defend?: number;
+            families: components["schemas"]["SquadObjectiveFamilyCount"][] | null;
+            /** Format: double */
+            hold?: number;
+            /** Format: int64 */
+            objective_matches: number;
+            session_label: string;
+            start_time: string;
+            /** Format: double */
+            take?: number;
+            /** Format: int64 */
+            wins: number;
+        };
+        SquadObjectiveFamilyCount: {
+            family: string;
+            /** Format: int64 */
+            matches: number;
+        };
+        SquadObjectiveHistory: {
+            current: components["schemas"]["SquadObjectiveEvening"];
+            /** Format: int64 */
+            evenings_below_minimum: number;
+            /** Format: int64 */
+            evenings_with_objective: number;
+            /** Format: int64 */
+            min_objective_matches: number;
+            previous: components["schemas"]["SquadObjectiveEvening"][] | null;
         };
         SquadPageResponse: {
             selected_teammate?: components["schemas"]["SelectedTeammateData"];
@@ -9607,21 +12346,68 @@ export interface components {
             /** Format: int64 */
             total_shots_squad: number;
         };
-        SquadWeaponBar: {
-            class?: string;
-            is_grenade_melee?: boolean;
+        SquadWeaponToolLine: {
+            class: string;
             kills_by_player: {
                 [key: string]: number;
             };
-            label: string;
+            kind: string;
+            label?: string;
+            label_en?: string;
             /** Format: int64 */
             total_squad: number;
-            /** Format: int64 */
-            weapon_id: number;
+            weapon_key?: string;
         };
-        SquadWeaponKills: {
-            bars: components["schemas"]["SquadWeaponBar"][] | null;
+        SquadWeaponTools: {
+            lines: components["schemas"]["SquadWeaponToolLine"][] | null;
             players: string[] | null;
+        };
+        Stance: {
+            kind: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        StanceCoverage: {
+            absent?: boolean;
+            byKind?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            desyncs: number;
+            /** Format: int64 */
+            dropped?: number;
+            /** Format: int64 */
+            eventPacketsUnlocated?: number;
+            /** Format: int64 */
+            forgottenBindings?: number;
+            /** Format: int64 */
+            intervals: number;
+            /** Format: int64 */
+            jumpEpisodes?: number;
+            /** Format: int64 */
+            jumpsDerived?: number;
+            /** Format: int64 */
+            lives: number;
+            mapWidths?: number[] | null;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            records: number;
+            /** Format: int64 */
+            refusedNewFalseReads?: number;
+            /** Format: int64 */
+            refusedNewLostCreations?: number;
+            /** Format: int64 */
+            refusedNewUndecided?: number;
+            /** Format: int64 */
+            refusedNews?: number;
+            scanned: boolean;
+            /** Format: int64 */
+            tracksTotal: number;
         };
         StartCampaignRequest: {
             axis: string;
@@ -9632,7 +12418,6 @@ export interface components {
             accuracy?: components["schemas"]["AccuracyTabResponse"];
             bucket_info: components["schemas"]["BucketInfo"];
             current_season?: components["schemas"]["CurrentSeasonResult"];
-            form?: components["schemas"]["FormTabResponse"];
             lusr?: components["schemas"]["LUSRTabResponse"];
             objective?: components["schemas"]["ObjectiveTabResponse"];
             /** Format: int64 */
@@ -9831,6 +12616,21 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
+        SynthesisOpening: {
+            delta?: components["schemas"]["SynthesisOpeningDelta"];
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            median_m: number;
+        };
+        SynthesisOpeningDelta: {
+            /** Format: double */
+            closing_share_pct: number;
+            /** Format: double */
+            median_m: number;
+            /** Format: int64 */
+            n: number;
+        };
         SynthesisOverview: {
             /** Format: double */
             avg_deaths?: number;
@@ -9893,6 +12693,7 @@ export interface components {
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_records?: components["schemas"]["SynthesisWeaponRecords"];
         };
         SynthesisScope: {
             /** Format: date-time */
@@ -9920,16 +12721,238 @@ export interface components {
             label: string;
             role?: string;
         };
+        SynthesisWeaponRange: {
+            below_threshold_deaths?: components["schemas"]["WeaponBelowThreshold"][] | null;
+            below_threshold_kills?: components["schemas"]["WeaponBelowThreshold"][] | null;
+            /** Format: int64 */
+            measured_deaths: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            median_deaths_m: number;
+            /** Format: double */
+            median_kills_m: number;
+            opening?: components["schemas"]["SynthesisOpening"];
+            /** Format: int64 */
+            total_deaths: number;
+            /** Format: int64 */
+            total_kills: number;
+            weapons: components["schemas"]["WeaponRangeRow"][] | null;
+        };
+        SynthesisWeaponRecords: {
+            excluded?: components["schemas"]["WeaponExcludedFromRecords"][] | null;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: int64 */
+            total_kills: number;
+            weapons: components["schemas"]["WeaponDistanceRecordRow"][] | null;
+        };
+        T0FilmCoverage: {
+            /** Format: int64 */
+            burst: number;
+            detected: boolean;
+            /** Format: int64 */
+            marginMs: number;
+            /** Format: int64 */
+            moving: number;
+            reason?: string;
+            /** Format: int64 */
+            tracks: number;
+        };
         TableStatus: {
             exists: boolean;
             name: string;
             /** Format: int64 */
             rows: number;
         };
+        TacticalCelluleAdresse: {
+            /**
+             * Format: int64
+             * @description Colonne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.col).
+             */
+            col: number;
+            /**
+             * Format: int64
+             * @description Ligne de la cellule, ancree sur l'origine du monde (comme CelluleTactique.lig).
+             */
+            lig: number;
+            /**
+             * Format: double
+             * @description Pas de la grille sur laquelle (col, lig) est adressee, en metres — celui publie par la lecture agregee (TacticalRaster.pas_m). Absent ou <= 0 : pas par defaut (0,5 m).
+             */
+            pas_m?: number;
+        };
+        TacticalCelluleBody: {
+            /** @description La cellule dont on demande le detail (col, lig). */
+            cellule: components["schemas"]["TacticalCelluleAdresse"];
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+            /** @description Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. */
+            question?: string;
+            /** @description Axe : moi | escouade | adv. Defaut : moi. */
+            qui?: string;
+            /** @description Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part. */
+            spawn?: string;
+        };
+        TacticalCelluleReponse: {
+            contributions: components["schemas"]["TacticalContribution"][] | null;
+            zone?: components["schemas"]["TacticalZoneNom"];
+        };
+        TacticalContribution: {
+            arme_label?: string;
+            arme_label_en?: string;
+            autre_gamertag?: string;
+            categorie_source?: string;
+            clock: string;
+            face?: string;
+            /** Format: int64 */
+            instant_ms: number;
+            match_id: string;
+            /** Format: date-time */
+            match_started_at: string;
+            mode_label?: string;
+            placement?: components["schemas"]["TacticalPlacement"];
+            replay_available: boolean;
+            resultat?: string;
+            score_kind?: string;
+            score_label?: string;
+            xuid: string;
+        };
+        TacticalGrappe: {
+            id: string;
+            /** Format: int64 */
+            matchs: number;
+            nom_en: string;
+            nom_fr: string;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
+        TacticalMapCard: {
+            bornes?: components["schemas"]["BornesMonde"];
+            cellules?: components["schemas"]["CelluleTactique"][] | null;
+            /** Format: int64 */
+            defaites: number;
+            echelle?: components["schemas"]["EchelleTactique"];
+            map_id: string;
+            map_name: string;
+            map_name_fr: string;
+            /** Format: int64 */
+            matchs: number;
+            /** Format: double */
+            pas_m?: number;
+            sous_plancher: boolean;
+            /** Format: int64 */
+            victoires: number;
+        };
+        TacticalMapsBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe. */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+        };
+        TacticalMapsPage: {
+            cartes: components["schemas"]["TacticalMapCard"][] | null;
+            /** Format: int64 */
+            plancher_matchs: number;
+        };
+        TacticalPlacement: {
+            /** Format: double */
+            distance_m?: number;
+            seul: boolean;
+        };
+        TacticalRaster: {
+            bornes: components["schemas"]["BornesMonde"];
+            cellules: components["schemas"]["CelluleTactique"][] | null;
+            echelle: components["schemas"]["EchelleTactique"];
+            grappes?: components["schemas"]["TacticalGrappe"][] | null;
+            map_id: string;
+            /** Format: int64 */
+            matchs_defaite: number;
+            /** Format: int64 */
+            matchs_en_attente?: number;
+            /** Format: int64 */
+            matchs_filtres: number;
+            /** Format: int64 */
+            matchs_retenus: number;
+            /** Format: int64 */
+            matchs_victoire: number;
+            /** Format: int64 */
+            morts_equipe_a_terre?: number;
+            /** Format: double */
+            pas_m: number;
+            /** Format: int64 */
+            points_ignores: number;
+            question: string;
+            qui: string;
+            rayons_radar_m?: number[] | null;
+            voisines?: components["schemas"]["TacticalRaster"][] | null;
+            zones?: components["schemas"]["CalloutZone"][] | null;
+        };
+        TacticalRasterBody: {
+            /** @description XUIDs de la composition choisie (0 a 3). Restreint aux matchs ou TOUS y etaient dans mon equipe, et definit l'axe « escouade ». */
+            coequipiers?: string[] | null;
+            /** @description Perimetre : les match_id retenus par la barre de filtres (resolus via /filters/match-ids). Liste vide ou absente = aucun match. */
+            match_ids?: string[] | null;
+            /** @description Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions. */
+            question?: string;
+            /** @description Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers. */
+            qui?: string;
+            /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
+            spawn?: string;
+        };
+        TacticalZoneNom: {
+            nom_en: string;
+            nom_fr: string;
+        };
+        TeamCoverage: {
+            /** Format: int64 */
+            accord: number;
+            /** Format: int64 */
+            contradiction: number;
+            /** Format: int64 */
+            divergences: number;
+            /** Format: int64 */
+            film: number;
+            /** Format: int64 */
+            noTeam: number;
+            read: boolean;
+            /** Format: int64 */
+            records: number;
+            refusal?: string;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            silence: number;
+            /** Format: int64 */
+            tracks: number;
+            /** Format: int64 */
+            tracksNamed: number;
+            /** Format: int64 */
+            tracksSlotAmbiguous?: number;
+            /** Format: int64 */
+            unread: number;
+        };
+        TeamHold: {
+            /** Format: int64 */
+            teamId?: number;
+            ticks?: components["schemas"]["ScoreTick"][] | null;
+        };
+        TeamScore: {
+            rounds?: components["schemas"]["ScoreRound"][] | null;
+            /** Format: int64 */
+            teamId?: number;
+            total?: components["schemas"]["ScoreTick"][] | null;
+        };
         TeamSnapshot: {
             /** Format: double */
             MMR: number | null;
             ParticipantsXUIDs: string[] | null;
+            /** Format: int64 */
+            RoundsWon: number | null;
             /** Format: int64 */
             Score: number | null;
             /** Format: int64 */
@@ -9974,9 +12997,11 @@ export interface components {
             xuid?: string;
         };
         TeammatesPageResponse: {
-            composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
+            assist_pairs?: components["schemas"]["SquadAssistPairs"];
+            composition_sessions?: components["schemas"]["CompositionSessionEntry"][] | null;
             data_issues?: components["schemas"]["DataIssue"][] | null;
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_classes?: {
                 [key: string]: components["schemas"]["FragClassEntry"][] | null;
             };
@@ -10000,15 +13025,19 @@ export interface components {
             performance_series?: {
                 [key: string]: components["schemas"]["SquadPerformanceSeriesPoint"][] | null;
             };
+            range_profiles?: components["schemas"]["MatchRangeBlock"];
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
+            squad_emprise?: components["schemas"]["SquadEmpriseBlock"];
+            squad_impact_history?: components["schemas"]["SquadImpactHistory"];
+            squad_objective_history?: components["schemas"]["SquadObjectiveHistory"];
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;
             teammates: components["schemas"]["TeammateRow"][] | null;
             timeseries?: components["schemas"]["SquadTimeseriesPoint"][] | null;
             /** Format: int64 */
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SquadWeaponAccuracy"];
-            weapon_kills?: components["schemas"]["SquadWeaponKills"];
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
         /** @description Corps de POST /pages/teammates (handler RawBody : le schéma est documenté ici, cf. domain.TeammatesQueryRequest). */
         TeammatesQueryRequest: {
@@ -10127,6 +13156,14 @@ export interface components {
             /** Format: int64 */
             total_kills: number;
         };
+        TimeseriesLivesNearTeammate: {
+            alone: components["schemas"]["LivesSideCount"];
+            /** Format: int64 */
+            matches_read: number;
+            /** Format: int64 */
+            matches_without_radar: number;
+            near: components["schemas"]["LivesSideCount"];
+        };
         TimeseriesMatchRow: {
             /** Format: double */
             accuracy: number | null;
@@ -10195,23 +13232,32 @@ export interface components {
         };
         TimeseriesPageResponse: {
             briefing_kpis?: components["schemas"]["KPIStats"];
+            coordination?: components["schemas"]["CoordinationBlock"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
+            emprise?: components["schemas"]["SoloEmpriseBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
+            formes_retenues?: components["schemas"]["SquadFormesBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
+            intensity_rows_lobby?: components["schemas"]["IntensityMatchRow"][] | null;
+            intensity_rows_team?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
+            lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;
             objective_stats?: components["schemas"]["ObjectiveAggregate"];
             outcomes_over_time: components["schemas"]["OutcomesPeriodPoint"][] | null;
+            player_emblem_url?: string;
+            range_profiles?: components["schemas"]["MatchRangeBlock"];
             solo_session_perf?: components["schemas"]["SoloSessionPerfBlock"];
             summary_tab: components["schemas"]["TimeseriesSummaryTab"];
             top_weapons: components["schemas"]["TimeseriesWeaponKill"][] | null;
             /** Format: int64 */
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
+            weapon_range?: components["schemas"]["SynthesisWeaponRange"];
         };
         TimeseriesSummaryTab: Record<string, never>;
         TimeseriesWeaponKill: {
@@ -10285,7 +13331,6 @@ export interface components {
         TokenProbeResult: {
             discovered_in_pool: boolean;
             gamertag: string;
-            has_msal_cache: boolean;
             has_refresh_token: boolean;
             /** Format: int64 */
             refresh_token_len?: number;
@@ -10297,6 +13342,12 @@ export interface components {
             /** Format: int64 */
             spartan_token_len?: number;
         };
+        TokenRef: {
+            has_refresh_token: boolean;
+            last_auth_error?: string;
+            reauth_required: boolean;
+            updated_at?: string;
+        };
         TopMatchDTO: {
             /** Format: int64 */
             deaths: number;
@@ -10307,9 +13358,10 @@ export interface components {
             map_ui: string | null;
             match_id: string;
             mode_ui: string | null;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "tie" | "dnf";
             /** Format: int64 */
             outcome_code: number;
-            outcome_label: string;
             /** Format: double */
             performance_score: number;
             start_time: string | null;
@@ -10345,6 +13397,7 @@ export interface components {
             wins: number;
         };
         Track: {
+            bot?: string;
             /** Format: int64 */
             endFrame?: number;
             name?: string;
@@ -10357,6 +13410,209 @@ export interface components {
             team: number;
             xuid?: string;
         };
+        TrackCoverage: {
+            /** Format: int64 */
+            avantCreation: number;
+            /** Format: int64 */
+            gapMs: number;
+            /** Format: int64 */
+            gaps: number;
+            /** Format: int64 */
+            horsEmprise: number;
+            /** Format: int64 */
+            minPoints: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            publishedPoints: number;
+            /** Format: int64 */
+            refusedMinPoints: number;
+            /** Format: int64 */
+            refusedPoints: number;
+            /** Format: int64 */
+            slotsArmes: number;
+            /** Format: int64 */
+            slotsDesarmes: number;
+            /** Format: int64 */
+            viesAvantPremiereCreation: number;
+        };
+        Translocation: {
+            /** Format: float */
+            fx?: number;
+            /** Format: float */
+            fy?: number;
+            /** Format: float */
+            fz?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            tx?: number;
+            /** Format: float */
+            ty?: number;
+            /** Format: float */
+            tz?: number;
+        };
+        TranslocationCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            events: number;
+            /** Format: int64 */
+            positioned: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            unpublished: number;
+        };
+        TrendsCalendarDay: {
+            date: string;
+            /** Format: int64 */
+            losses: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            performance_score?: number;
+            /** Format: double */
+            win_rate?: number;
+            /** Format: int64 */
+            wins: number;
+        };
+        TrendsCapabilities: {
+            csr: boolean;
+            equipment: boolean;
+            lusr: boolean;
+            mmr: boolean;
+            objectives: boolean;
+        };
+        TrendsGameType: {
+            key: string;
+            /** Format: int64 */
+            matches: number;
+        };
+        TrendsHorizonCell: {
+            /** Format: int64 */
+            days: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            prev_matches: number;
+            /** Format: double */
+            prev_value?: number;
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            z?: number;
+        };
+        TrendsIndicator: {
+            /** Format: int64 */
+            better: number;
+            /** Format: int64 */
+            decimals: number;
+            group: string;
+            horizons: components["schemas"]["TrendsHorizonCell"][] | null;
+            in_matrix: boolean;
+            key: string;
+            months: components["schemas"]["TrendsMonthCell"][] | null;
+            series: components["schemas"]["TrendsSeries"];
+            unit: string;
+            variant?: string;
+        };
+        TrendsMedalRow: {
+            /** Format: int64 */
+            medal_id: number;
+            name: string;
+            /** Format: double */
+            prev_rate?: number;
+            /** Format: double */
+            rate: number;
+        };
+        TrendsMedalsBlock: {
+            compared: boolean;
+            /** Format: int64 */
+            days: number;
+            rows: components["schemas"]["TrendsMedalRow"][] | null;
+        };
+        TrendsMember: {
+            gamertag: string;
+            xuid: string;
+        };
+        TrendsMix: {
+            day: components["schemas"]["TrendsMixBucket"][] | null;
+            month: components["schemas"]["TrendsMixBucket"][] | null;
+            week: components["schemas"]["TrendsMixBucket"][] | null;
+        };
+        TrendsMixBucket: {
+            counts: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            t: string;
+        };
+        TrendsMonthCell: {
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            value?: number;
+            /** Format: double */
+            z?: number;
+        };
+        TrendsPageResponse: {
+            /** Format: date-time */
+            as_of: string;
+            calendar: components["schemas"]["TrendsCalendarDay"][] | null;
+            capabilities: components["schemas"]["TrendsCapabilities"];
+            game_type: string;
+            game_types: components["schemas"]["TrendsGameType"][] | null;
+            indicators: components["schemas"]["TrendsIndicator"][] | null;
+            medals: components["schemas"]["TrendsMedalsBlock"][] | null;
+            members: components["schemas"]["TrendsMember"][] | null;
+            mix: components["schemas"]["TrendsMix"];
+            months: string[] | null;
+            timezone: string;
+            view: string;
+            win_loss: components["schemas"]["TrendsWinLossBlock"][] | null;
+        };
+        TrendsPoint: {
+            /** Format: int64 */
+            matches: number;
+            /** Format: date-time */
+            t: string;
+            /** Format: double */
+            value: number;
+        };
+        TrendsSeries: {
+            day: components["schemas"]["TrendsPoint"][] | null;
+            match: components["schemas"]["TrendsPoint"][] | null;
+            month: components["schemas"]["TrendsPoint"][] | null;
+            week: components["schemas"]["TrendsPoint"][] | null;
+        };
+        TrendsWinLossBlock: {
+            /** Format: int64 */
+            days: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            required: number;
+            rows: components["schemas"]["TrendsWinLossRow"][] | null;
+        };
+        TrendsWinLossRow: {
+            group: string;
+            key: string;
+            /** Format: double */
+            loss_mean: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            r: number;
+            /** Format: double */
+            win_mean: number;
+            /** Format: double */
+            z_loss: number;
+            /** Format: double */
+            z_win: number;
+        };
         UnreadCount: {
             /** Format: int64 */
             badge_count: number;
@@ -10365,6 +13621,14 @@ export interface components {
             };
             /** Format: int64 */
             count: number;
+        };
+        UnresolvedCauses: {
+            /** Format: int64 */
+            index_hors_table: number;
+            /** Format: int64 */
+            lectures_divergentes: number;
+            /** Format: int64 */
+            sans_record: number;
         };
         UserPrestige: {
             /** Format: int64 */
@@ -10384,6 +13648,282 @@ export interface components {
             y: number;
             /** Format: double */
             z: number;
+        };
+        VehicleAim: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            p?: number;
+            /** Format: int64 */
+            t: number;
+        };
+        VehicleCoverage: {
+            /** Format: int64 */
+            aimReads: number;
+            /** Format: int64 */
+            aimRideFrames: number;
+            /** Format: int64 */
+            aimSamples: number;
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            cycleGaps: number;
+            /** Format: int64 */
+            cycleLocations: number;
+            /** Format: int64 */
+            cycleMissing: number;
+            /** Format: int64 */
+            cycles: number;
+            /** Format: int64 */
+            deathsMatched: number;
+            /** Format: int64 */
+            deathsRead: number;
+            /** Format: int64 */
+            deathsTailDesync: number;
+            /** Format: int64 */
+            deathsUnmatched: number;
+            /** Format: int64 */
+            echantillonsAuTraversDUnSilence: number;
+            /** Format: int64 */
+            echantillonsHorsEmprise: number;
+            /** Format: int64 */
+            endDestroyed: number;
+            /** Format: int64 */
+            endFilmEnd: number;
+            /** Format: int64 */
+            endUnknown: number;
+            /** Format: int64 */
+            familyResolved: number;
+            /** Format: int64 */
+            familyUnknown: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            merged: number;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            rides: number;
+            /** Format: int64 */
+            ridesNamed: number;
+            /** Format: int64 */
+            ridesProximity: number;
+            /** Format: int64 */
+            ridesRead: number;
+            /** Format: int64 */
+            ridesWithAim: number;
+            /** Format: int64 */
+            ridesWithSeat: number;
+            /** Format: int64 */
+            samples: number;
+            /** Format: int64 */
+            samplesAfterEnd: number;
+            scanned: boolean;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            shotsAmbiguous: number;
+            /** Format: int64 */
+            shotsByUnit: number;
+            /** Format: int64 */
+            shotsByUnitNoRide: number;
+            /** Format: int64 */
+            shotsNoRide: number;
+            /** Format: int64 */
+            shotsOnCarrier: number;
+            /** Format: int64 */
+            shotsUnplaced: number;
+            /** Format: int64 */
+            shotsVehicleWeapon: number;
+            /** Format: int64 */
+            silencesNonTranches: number;
+            /** Format: int64 */
+            spawnsHorsEmprise: number;
+            /** Format: int64 */
+            turretCarrierBirthMismatch: number;
+            /** Format: int64 */
+            turretRides: number;
+            /** Format: int64 */
+            turretRidesAlreadyAboard: number;
+            /** Format: int64 */
+            turretRidesDropped: number;
+            /** Format: int64 */
+            turretRidesOutOfWindow: number;
+            /** Format: int64 */
+            turrets: number;
+            /** Format: int64 */
+            turretsOnCarrier: number;
+            unknownChassis?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            variants: number;
+            /** Format: int64 */
+            vehiclesRidden: number;
+            /** Format: int64 */
+            withChassis: number;
+            /** Format: int64 */
+            withHeading: number;
+            /** Format: int64 */
+            withSpawn: number;
+        };
+        VehicleCycle: {
+            family?: string;
+            /** Format: int64 */
+            gaps: number;
+            /** Format: float */
+            medianS: number;
+            /** Format: int64 */
+            missing: number;
+            /** Format: float */
+            p10S: number;
+            /** Format: float */
+            p90S: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+        };
+        VehicleLabel: {
+            en?: string;
+            fr?: string;
+            img?: string;
+            kind?: string;
+            tinted?: boolean;
+        };
+        VehicleLifeRef: {
+            /** Format: int32 */
+            gen: number;
+            /** Format: int32 */
+            slot: number;
+        };
+        VehicleRide: {
+            aim?: components["schemas"]["VehicleAim"][] | null;
+            /** Format: int64 */
+            seat?: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            turret?: components["schemas"]["VehicleLifeRef"];
+            xuid?: string;
+        };
+        VehicleSample: {
+            /** Format: int64 */
+            g?: number;
+            /** Format: float */
+            h?: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleScenery: {
+            /** Format: int64 */
+            candidates: number;
+            floor: string;
+            hidden?: components["schemas"]["VehicleSceneryLife"][] | null;
+            /** Format: int64 */
+            inPlayArea: number;
+            zone: string;
+            /** Format: int64 */
+            zoneUnknown: number;
+        };
+        VehicleSceneryLife: {
+            /** Format: int32 */
+            gen: number;
+            reason: string;
+            /** Format: int32 */
+            slot: number;
+        };
+        VehicleSpawn: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleTrack: {
+            carrier?: components["schemas"]["VehicleLifeRef"];
+            chassis?: string;
+            end: string;
+            family?: string;
+            /** Format: int32 */
+            gen: number;
+            part?: string;
+            rides?: components["schemas"]["VehicleRide"][] | null;
+            samples?: components["schemas"]["VehicleSample"][] | null;
+            /** Format: int32 */
+            slot: number;
+            spawn?: components["schemas"]["VehicleSpawn"];
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            t1max: number;
+            /** Format: int64 */
+            tEnd?: number;
+            variant?: string;
+        };
+        VehicleWeapon: {
+            en: string;
+            fire: string;
+            fr: string;
+            fx: string;
+            loop?: string;
+            mount?: components["schemas"]["VehicleWeaponMount"];
+            sound?: string;
+            tint: string;
+            vehicle: string;
+        };
+        VehicleWeaponMount: {
+            aim: string;
+            /** Format: double */
+            ax: number;
+            /** Format: double */
+            ay: number;
+            /** Format: double */
+            reach?: number;
+        };
+        VipCrownCoverage: {
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            closedByDeath: number;
+            /** Format: int64 */
+            closedBySelection: number;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            periods: number;
+            /** Format: int64 */
+            selections: number;
+            vipFilm: boolean;
+        };
+        VipPeriod: {
+            closed: boolean;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid: string;
         };
         WatcherAuthStartResponse: {
             attempt_id: string;
@@ -10411,6 +13951,63 @@ export interface components {
         WatcherSubscriptionsOutputBody: {
             subscribed_players: string[] | null;
         };
+        WeaponBelowThreshold: {
+            label?: string;
+            label_en?: string;
+            /** Format: int64 */
+            measured: number;
+            weapon_key: string;
+        };
+        WeaponChange: {
+            from?: string;
+            /** Format: int64 */
+            k?: number;
+            kind: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            w?: string;
+        };
+        WeaponChangeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            restated: number;
+            /** Format: int64 */
+            swapped: number;
+            /** Format: int64 */
+            taken: number;
+            /** Format: int64 */
+            unarmedGrants: number;
+        };
+        WeaponDistanceRecordRow: {
+            class?: string;
+            label?: string;
+            label_en?: string;
+            /** Format: int64 */
+            measured: number;
+            /** Format: double */
+            median_m: number;
+            record: components["schemas"]["WeaponRecordFrag"];
+            /** Format: double */
+            record_m: number;
+            weapon_key: string;
+        };
+        WeaponExcludedFromRecords: {
+            class: string;
+            label?: string;
+            label_en?: string;
+            /** Format: int64 */
+            measured: number;
+            weapon_key: string;
+        };
         WeaponHighlight: {
             /** Format: int64 */
             kills: number;
@@ -10423,6 +14020,62 @@ export interface components {
             en: string;
             fr: string;
             fx?: string;
+            img?: string;
+            key?: string;
+            role?: string;
+            tint?: string;
+            tinted?: boolean;
+        };
+        WeaponPad: {
+            cycle?: components["schemas"]["PadCycle"];
+            presence: components["schemas"]["PadPresence"][] | null;
+            spawns: number[] | null;
+            weapon: string;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        WeaponRangeRow: {
+            deaths?: components["schemas"]["WeaponRangeSide"];
+            kills?: components["schemas"]["WeaponRangeSide"];
+            label?: string;
+            label_en?: string;
+            weapon_key: string;
+        };
+        WeaponRangeSide: {
+            /** Format: double */
+            above_pct: number;
+            /** Format: double */
+            below_pct: number;
+            /** Format: double */
+            level_pct: number;
+            /** Format: double */
+            max_m: number;
+            /** Format: int64 */
+            measured: number;
+            /** Format: double */
+            median: number;
+            /** Format: double */
+            min_m: number;
+            /** Format: double */
+            p10: number;
+            /** Format: double */
+            p90: number;
+        };
+        WeaponRecordFrag: {
+            map_label?: string;
+            map_label_en?: string;
+            match_id: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: int64 */
+            time_ms: number;
+        };
+        WeaponTiersInfo: {
+            randomStarts: boolean;
         };
         WinLossPoint: {
             /** Format: int64 */
@@ -10451,6 +14104,83 @@ export interface components {
             /** Format: int64 */
             xp_total: number;
         };
+        ZoneGaugeRamp: {
+            /** Format: int64 */
+            capturingTeam?: number;
+            draining?: boolean;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        ZoneSpan: {
+            active: boolean;
+            /** Format: int64 */
+            owner: number | null;
+            /** Format: float */
+            progress?: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        ZoneState: {
+            gauge?: components["schemas"]["GaugePoint"][] | null;
+            gaugeRamps?: components["schemas"]["ZoneGaugeRamp"][] | null;
+            /** Format: int32 */
+            key?: number;
+            /** Format: int64 */
+            letterRank?: number;
+            spans: components["schemas"]["ZoneSpan"][] | null;
+            /** Format: int64 */
+            zoneRef: number;
+        };
+        ZonesCoverage: {
+            /** Format: int64 */
+            ambiguousZone: number;
+            /** Format: int64 */
+            attributed: number;
+            /** Format: int64 */
+            capturerElectionDisagreed: number;
+            /** Format: int64 */
+            capturerNamed: number;
+            /** Format: int64 */
+            captures: number;
+            /** Format: int64 */
+            catalog: number;
+            /** Format: int64 */
+            gaugePoints: number;
+            /** Format: int64 */
+            hillPeriods: number;
+            /** Format: int64 */
+            letters: number;
+            method: string;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            outside: number;
+            /** Format: int64 */
+            ownerAgreed: number;
+            /** Format: int64 */
+            ownerChecked: number;
+            /** Format: int64 */
+            ownerNamed: number;
+            /** Format: int64 */
+            ownerUnpaired: number;
+            /** Format: int64 */
+            ownerVoteDisagreed: number;
+            /** Format: int64 */
+            paired: number;
+            roles?: string;
+            /** Format: int64 */
+            slots: number;
+            /** Format: int64 */
+            spans: number;
+            /** Format: int64 */
+            unknownOwner: number;
+            /** Format: int64 */
+            unpaired: number;
+        };
     };
     responses: {
         /** @description Requête invalide */
@@ -10469,6 +14199,26 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
+        /**
+         * @description Requête abandonnée par le client avant la réponse (contexte annulé : onglet fermé,
+         *     requête remplacée). Convention nginx 499 : aucun client ne lit cette réponse, le
+         *     statut sert au journal d'accès et aux compteurs (classe 4xx, jamais 5xx).
+         */
+        ClientClosed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "client_closed",
+                 *       "message": "client closed request",
+                 *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
         /** @description Conflit avec l'état courant de la ressource */
         Conflict: {
             headers: {
@@ -10480,6 +14230,27 @@ export interface components {
                  *       "code": "last_active_title",
                  *       "message": "Au moins un titre doit rester actif pour ce joueur.",
                  *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
+        /**
+         * @description Base momentanément occupée (verrou d'écriture, ou bascule RO/RW du provider
+         *     partagé pendant une synchronisation) : transitoire, réessayer après `Retry-After`.
+         */
+        DbBusy: {
+            headers: {
+                /** @description Délai conseillé avant un nouvel essai, en secondes */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "db_busy",
+                 *       "message": "database is currently busy, please retry",
+                 *       "retryable": true
                  *     }
                  */
                 "application/json": components["schemas"]["ApiError"];
@@ -11179,6 +14950,68 @@ export interface operations {
             };
         };
     };
+    postAdminActionReplayBuildEnqueue: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayBuildEnqueueResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postAdminActionReplayBuildRun: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postAdminActionAssetTranslation: {
         parameters: {
             query?: {
@@ -11330,6 +15163,35 @@ export interface operations {
             };
         };
     };
+    getAdminIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminIdentitiesResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getAdminInvariants: {
         parameters: {
             query?: {
@@ -11436,6 +15298,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringBuildQueue: {
+        parameters: {
+            query?: {
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBuildQueueResponse"];
+                };
             };
             /** @description Error */
             default: {
@@ -11659,37 +15552,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getAdminMonitoringErrors: {
-        parameters: {
-            query?: {
-                title?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Buckets d'erreurs triés par occurrences décroissantes */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminErrorStats"];
-                };
             };
             /** @description Error */
             default: {
@@ -13313,6 +17175,137 @@ export interface operations {
             };
         };
     };
+    postBuildQueueArtifact: {
+        parameters: {
+            query?: {
+                job_id?: string;
+                worker_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildArtifactReceipt"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildQueueClaimRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueClaimResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildQueueCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueAckResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postBuildQueueHeartbeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildQueueHeartbeatRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildQueueAckResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getJob: {
         parameters: {
             query?: never;
@@ -14306,6 +18299,8 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -14344,7 +18339,71 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    putPlayerFriends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerFriends"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {
@@ -14648,10 +18707,103 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    "X-Replay-Latest-Schema-Version"?: number;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ReplayDocument"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchReplayBackground: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackground"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMatchReplayBackgroundImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image PNG du fond de carte */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour la carte de ce match */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMatchReplayCallouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapCalloutsEntry"];
                 };
             };
             /** @description Error */
@@ -15323,7 +19475,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15360,7 +19514,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15394,7 +19550,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15434,13 +19592,22 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
-            /** @description MatchHistoryService factory indisponible (cas test) */
+            /**
+             * @description Base momentanément occupée (`db_busy`, réessayer après `Retry-After`), ou
+             *     MatchHistoryService non câblé (`match_history_unavailable`, cas test, sans
+             *     `Retry-After`).
+             */
             503: {
                 headers: {
+                    /** @description Délai conseillé avant un nouvel essai, en secondes */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Error */
             default: {
@@ -15475,7 +19642,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15509,7 +19678,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15543,7 +19714,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15686,7 +19859,9 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15725,7 +19900,9 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -15765,7 +19942,24 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            /**
+             * @description Page momentanément indisponible, réessayer après `Retry-After` :
+             *     `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+             *     `home_page_db_recovering` (connexion en cours de récupération) ou
+             *     `db_busy` (verrou d'écriture).
+             */
+            503: {
+                headers: {
+                    /** @description Délai conseillé avant un nouvel essai, en secondes */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {
@@ -16133,6 +20327,8 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -16171,6 +20367,8 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -16345,6 +20543,8 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -16382,6 +20582,48 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTeammatesSessions: {
+        parameters: {
+            query?: {
+                /** @description Gamertags des membres de la composition, joints par des virgules. Absent ou vide : sessions escouade du joueur principal. */
+                teammates?: string[] | null;
+                /** @description Option composition exacte (filter_exact_composition de POST /pages/teammates). Absent : false. */
+                exact?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sessions de la composition, de la plus récente à la plus ancienne */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompositionSessionsResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -16415,6 +20657,39 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postTrendsPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendsPageResponse"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {
@@ -17285,6 +21560,173 @@ export interface operations {
             };
         };
     };
+    getTacticalMapBackground: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackground"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMapBackgroundImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image PNG du fond de carte */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTacticalCellule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalCelluleBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalCelluleReponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalRaster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalRasterBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalRaster"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalMaps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalMapsBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalMapsPage"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     suggestPrestigeTemplates: {
         parameters: {
             query?: {
@@ -17307,6 +21749,35 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceSnapshot"];
                 };
             };
             /** @description Error */
@@ -17817,6 +22288,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Aucune session (code auth_required) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /**
+             * @description Sync initiale désactivée sur l'instance (code initial_sync_disabled), ou
+             *     session sans jetons Halo (code halo_tokens_missing) — jamais un 401 :
+             *     la session est valide.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Une sync est déjà en cours */

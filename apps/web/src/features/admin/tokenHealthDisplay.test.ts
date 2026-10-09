@@ -8,29 +8,28 @@ import { credentialSourceParts, hasLegacyCredentialSource, TOKEN_ERROR_KEY } fro
 
 describe('credentialSourceParts', () => {
   it('réduit les labels watcher_* en "store" dédupliqué', () => {
-    expect(credentialSourceParts('watcher_msal+watcher_oauth')).toEqual(['store'])
     expect(credentialSourceParts('watcher_oauth')).toEqual(['store'])
+    expect(credentialSourceParts('watcher_oauth+watcher_oauth')).toEqual(['store'])
   })
 
-  it('mappe les fallbacks legacy en familles courtes', () => {
-    expect(credentialSourceParts('duckdb_msal+env_oauth')).toEqual(['sync_meta', 'env'])
-    expect(credentialSourceParts('watcher_legacy')).toEqual(['legacy'])
-  })
-
-  it('combine store + résidus legacy sans dédupliquer à tort', () => {
-    expect(credentialSourceParts('watcher_oauth+duckdb_msal')).toEqual(['store', 'sync_meta'])
-  })
-
-  it('laisse passer un label inconnu tel quel (forward-compat)', () => {
+  it('laisse passer un label non-store tel quel (garde-rail visuel ADR 0023 Phase 5)', () => {
+    // Ces labels ne sont plus produits par le back : s'ils réapparaissent, ils
+    // doivent rester VISIBLES (et flaggés legacy), pas être maquillés.
+    expect(credentialSourceParts('duckdb_oauth')).toEqual(['duckdb_oauth'])
+    expect(credentialSourceParts('env_oauth')).toEqual(['env_oauth'])
     expect(credentialSourceParts('future_source')).toEqual(['future_source'])
+  })
+
+  it('combine store + résidu inattendu sans dédupliquer à tort', () => {
+    expect(credentialSourceParts('watcher_oauth+duckdb_oauth')).toEqual(['store', 'duckdb_oauth'])
   })
 })
 
 describe('hasLegacyCredentialSource', () => {
-  it('false pour un store pur, true dès qu\'un fallback est présent', () => {
+  it('false pour un store pur, true dès qu\'une autre source apparaît', () => {
     expect(hasLegacyCredentialSource(['store'])).toBe(false)
-    expect(hasLegacyCredentialSource(['store', 'sync_meta'])).toBe(true)
-    expect(hasLegacyCredentialSource(['env'])).toBe(true)
+    expect(hasLegacyCredentialSource(['store', 'duckdb_oauth'])).toBe(true)
+    expect(hasLegacyCredentialSource(['env_oauth'])).toBe(true)
   })
 })
 

@@ -1,0 +1,422 @@
+package replay
+
+// filmfacts_fichier.go — LE FICHIER DE FAITS D UN FILM : CINQ SECTIONS ET UN EN-TETE
+// (lot 4.1.1-b du PLAN_DECODEUR_FILM, 2026-09-17).
+//
+// # CE QUE CE FICHIER EST
+//
+// Tout ce qu une cuisson lit DANS un film, sous une forme qui permet de rejouer l artefact SANS
+// redecoder. Il se range a `data/cache/film_facts/{slug}/{short8}.filmfacts.bin`
+// (`PathResolver.FilmFactsPath`) et il ne remplace RIEN : le film reste la source, les faits sont
+// une projection datee par les revisions sous lesquelles elle a ete prise.
+//
+// # L EN-TETE, ET POURQUOI IL EST A LONGUEUR PREFIXEE
+//
+//	prefixe fixe        magie + version de CODEC + numero de SCHEMA DE FAITS + longueur d en-tete
+//	en-tete             [DecoderCoverage] VERBATIM, puis la CLE DE CUISSON
+//	sections            [id][longueur][octets], cinq fois
+//
+// LA DECISION « DECODER OU RELIRE » SE PREND SUR LES PREMIERS OCTETS, jamais sur le mega-octet de
+// positions : [DecodeFilmFactsEntete] lit le prefixe et l en-tete et s arrete la. Un fichier
+// perime coute donc une lecture d en-tete, pas une decompression.
+//
+// LES REVISIONS NE SONT PAS RECOPIEES : l en-tete porte [DecoderCoverage] tel quel — le MEME type
+// que `coverage.decoder` de l artefact, avec sa regle « chaine vide et bloc present sur un build
+// inconnu » (V15 (15)). Ecrire un second bloc de revisions aurait ete la TROISIEME copie, et
+// l invariant gratuit qui en sort est testable : l en-tete relu == le `coverage.decoder` de
+// l artefact produit, champ pour champ.
+//
+// LA CLE DE CUISSON EST VERIFIEE DANS LES DEUX SENS, par des erreurs TYPEES
+// ([ErrFilmFactsCarte], [ErrFilmFactsDecoupage]) — c est [verifierCleDeCuisson], la MEME fonction
+// que le blob des entrees emploie. Sans elle, une entree de catalogue corrigee rendrait des
+// coordonnees FAUSSES et pas approximatives : les positions sont des quanta.
+//
+// DEUX NUMEROS, ET ILS NE MESURENT PAS LA MEME CHOSE : [VersionCodecFaits] est le CONTENEUR (la
+// forme du prefixe, de l en-tete et du cadre des sections) ; [SchemaDesFaits] est la CHARGE (quelles
+// sections existent et ce qu elles portent). Un conteneur stable qui gagne une section ne monte
+// que le second ; changer le cadre monte le premier.
+//
+// LES SECTIONS SONT A LONGUEUR PREFIXEE pour qu un lecteur SAUTE une section inconnue. La regle de
+// fraicheur du lot 4.1 reste pourtant TOUT OU RIEN (note de preparation de M4, §2.4) : faits
+// utilisables si et seulement si version de codec, schema de faits, LES REVISIONS DE COUCHE et
+// la cle de cuisson sont egaux a ce que le binaire courant resout. La finesse par couche est l objet du
+// lot 4.4 — ne pas l anticiper.
+//
+// # LES CINQ SECTIONS, ET CE QUI MANQUAIT A CHACUNE
+//
+//	1  entrees       [FilmFacts] (le blob delta-code des entrees) PLUS les quatre canaux
+//	                 GARDES PAR L APPELANT que ce blob ne porte pas — `FlagMarks`, `ZoneReads`,
+//	                 `ZoneScanned`, `ZoneKeyReads`, `BombReads`. Cf. `encodeGardesDeMode`.
+//	2  identite      [profile.FilmIdentity], posee par `BuildFromFilm`. SANS ELLE
+//	                 `coverage.decoder.build` sort vide et le bloc `registry` est absent — c est
+//	                 exactement l ambiguite que D-7 interdit.
+//	3  replis        le rapport du compteur de replis AU SORTIR DU BALAYAGE, et de lui seul.
+//	                 MESURE DU 2026-09-17 : sur les 18 sites de `Declenche`/`DeclencheN` de la
+//	                 production, DEUX sont du balayage (`ScanKeyframeInventory`, et la pose
+//	                 des largeurs d axe de la carte de `world_object_precision.go`) et SEIZE
+//	                 de l assemblage, repartis sur 15 fichiers. Les seize se re-declenchent tout seuls quand l assemblage rejoue :
+//	                 persister le rapport d APRES assemblage les compterait DEUX FOIS.
+//	4  statborg      les enregistrements d entite, les instants de rafale de capture, le temoin
+//	                 de troncature, et l horloge des chunks du manifeste.
+//	5  killsource    le resultat du kill-feed, ou nil.
+//
+// # CE QUE L ALLER-RETOUR PERD, ET POURQUOI C EST SANS EFFET SUR LE DOCUMENT
+//
+// `killsource.Kill.paquet` est NON EXPORTE ET DELIBEREMENT (`killsource/kill.go:69-72`) : c est une
+// coordonnee INTERNE au decodeur — ou l octet a ete lu — et aucun consommateur hors de
+// `killsource` ne la lit. Elle se perd donc a l aller-retour. SANS EFFET SUR LE DOCUMENT, mais AVEC
+// effet sur `digest.Of`, qui hache les champs exportes OU NON (`internal/analysis/digest/digest.go:20`) :
+// c est precisement ce qui interdit a l etape `killsource` du TSV d equivalence de servir d oracle
+// a un rejeu depuis les faits. S8 se juge sur la ligne `artifact`, et sur elle seule.
+// [TestFilmFactsFichierNePerdQueLePaquetDeKillsource] est le ratchet de cette phrase : tout AUTRE
+// champ non exporte apparaissant dans le graphe des cinq sections le fait rougir.
+//
+// # POURQUOI LES SECTIONS 2 A 5 SONT EN JSON, ET PAS AU CODEC MAISON
+//
+// DECISION MESUREE, pas un raccourci. Le codec maison existe pour la section 1 et il y gagne son
+// prix : les positions sont des suites longues et redondantes, ou le delta-varint ramene 12 octets
+// a un ou deux. Les sections 2 a 5 n ont AUCUNE redondance de ce genre — une identite, un rapport
+// de quelques lignes, et deux structures profondes et heterogenes (`killsource.Result` porte a lui
+// seul une douzaine de types imbriques).
+//
+// Ce qu un codec ecrit a la main y couterait : quelques centaines de lignes dont LE MODE DE PANNE
+// EST LA PERTE SILENCIEUSE — un champ ajoute a `killsource.Kill` qu on oublie d ecrire rend des
+// faits plausibles et faux. `encoding/json` derive du TYPE : le champ voyage tout seul. Les trois
+// proprietes dont on a besoin sont tenues :
+//
+//	DETERMINISME  `encoding/json` TRIE les cles de map (depuis Go 1.12). C est ce qui repond a
+//	              `StatRecord.Comps map[int]StatValue` — une map Go ne s itere pas deux fois
+//	              pareil, et un ORDRE D ECRITURE EXPLICITE est exige. Il l est par construction
+//	              ici, et [TestFilmFactsFichierEstUnPointFixe] le mesure.
+//	FIDELITE      les entiers passent par leurs chiffres exacts (jamais par un float64), donc
+//	              aucun xuid ne perd de bit ; les flottants par la forme courte qui rejoue.
+//	COMPLETUDE    tenue par reflexion, pas par relecture humaine (les deux tests ci-dessus).
+//
+// `encoding/gob` a ete ESSAYE et REJETE le 2026-09-17, sur mesure : il ignore SILENCIEUSEMENT les
+// champs non exportes des types imbriques, et un aller-retour des huit fixtures d entrees y a perdu
+// 32 % du volume (11 049 200 octets contre 7 498 871 apres transcodage). Un format qui perd sans le
+// dire est exactement ce que ce lot doit interdire.
+
+import (
+	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
+
+// magieFaitsDeFilm ouvre tout fichier de faits. INVARIANTE A JAMAIS : c est ce qui rend le refus
+// d un fichier etranger explicite au lieu de le faire mourir sur un varint illisible.
+const magieFaitsDeFilm = "LEVELUPFILMFACTS\n"
+
+// VersionCodecFaits est la version du CONTENEUR : forme du prefixe, de l en-tete et du cadre des
+// sections. Elle monte quand le CADRE change, jamais quand une section change de contenu.
+//
+// CODEC 2 (2026-09-26, jalon J3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, UNE montee pour le
+// jalon, posee au lot J3.3) : l EN-TETE change de forme. J3.3 y remplace la revision unique des
+// faits par une revision par consommateur (`killsource`, `objectives`) ; J3.4 y inscrit les
+// GARDES DE L APPELANT sous lesquelles les faits ont ete cuits ; J3.5 y inscrit l EMPREINTE DE
+// L ENTREE DE CATALOGUE entiere ; J3.6 porte, dans le complement de la section 1, le temoin de
+// l inventaire (nul ou vide). Un fichier du codec 1 est refuse sur son prefixe, avant toute
+// lecture d en-tete ([TestFaitsDuCodec1SontRefusesSurLePrefixe]) : il est redecode.
+const VersionCodecFaits = 2
+
+// SchemaDesFaits est la version de la CHARGE : quelles sections existent et ce qu elles portent.
+// Elle monte quand une section nait, meurt ou change de contenu.
+//
+// DISTINCTE DE [VersionCodecFaits] parce que les deux ne commandent pas la meme decision : un
+// lecteur qui ne connait pas le CONTENEUR ne sait rien lire ; un lecteur qui connait le conteneur
+// mais pas le SCHEMA sait lire l en-tete, donc sait dire « perime » proprement.
+// SCHEMA 2 (2026-09-18, lot 4.1.3) : la CHARGE de la section 1 a change de forme — le blob des
+// entrees passe en v23 (pistes d objets du monde en float32 exact, record de creation entier,
+// denominateurs entiers). C EST CE NUMERO QUI DOIT PORTER LE CHANGEMENT, et pas la seule magie du
+// blob : la magie vit DANS la section 1, donc un fichier d une version anterieure passerait le
+// verdict de fraicheur (l en-tete est identique, les quatre revisions n ont pas bouge) et ne
+// serait refuse qu au decodage de la section, par le chemin « illisible malgre un en-tete frais ».
+// Un fichier PERIME doit se dire perime SUR SON EN-TETE, en 110 octets, pas apres avoir ete lu
+// jusqu au mega-octet de positions. [TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete] le prouve.
+// SCHEMA 3 (2026-09-19, post-chantier lot 5.1) : la CHARGE de la section 1 change encore — le blob
+// des entrees passe en v24 (la JAUGE DE RETOUR du drapeau et son temoin). Meme raisonnement qu au
+// schema 2 : le refus doit tomber sur l EN-TETE, pas au decodage de la section.
+// SCHEMA 4 (2026-09-24, integration de la vague D de la campagne « retours rejeu » : UNE montee
+// pour les lots M2 et M3, qui avaient chacun pose 4 sur leur branche). Lot M3 : la CHARGE de la
+// section 1 change — le blob passe en v26 (la sante de la marche d image-cle, puis les dotations
+// de naissance lues dans le record NEW du bipede). Lot M2.2 : le complement de la section 1 porte
+// LES OCCUPANTS DU MATCH (`FilmInputs.PlayerEntities`, une entree par entite `ti=9`), et la
+// section 5 les INSTANTS de BOT_METADATA (`BotEntry.Declarations`). Meme raisonnement qu aux
+// schemas 2 et 3 : le refus tombe sur l EN-TETE. Un fichier du schema 3 n a ni les uns ni les
+// autres ; la grammaire monte avec (`grammar.Rev`) : les faits d avant sont PERIMES, il faut
+// redecoder. LOT M8 (2026-09-24), MEME SCHEMA 4 (montee de la vague D, pas encore publiee) : le
+// complement de la section 1 porte en dernier le VERDICT DU FIL DES MORTS et sa cause
+// (`FilmInputs.DeathsFeed`). Un fichier au schema 4 ecrit avant ce lot bute sur ce verdict
+// absent : relu « illisible malgre un en-tete frais », il est redecode, jamais servi sans verdict.
+// LE MEME SCHEMA 4 PORTE LE LOT M4b (2026-09-24, meme vague D, jamais publiee) : le blob passe en
+// v27 (tirs lus par la grammaire du record — indice sur cinq bits, numero de tir, unite tireuse — et
+// le TIR CONTINU de la vue de controle). Un fichier ecrit par le code de la vague D d avant M4b porte
+// le blob v26 : il est refuse a la magie du blob, et redecode.
+// LE MEME SCHEMA 4 AU JALON J3 (2026-09-26) : le complement de la section 1 gagne, avant le verdict
+// du fil des morts, le TEMOIN DE L INVENTAIRE (nul = illisible, lot J3.6) SOUS LA MONTEE DU CODEC 2 (plan, J3.6 :
+// « meme montee que J3.4 ») — le codec 2 n a jamais ete PUBLIE sans lui (les etats intermediaires du lot n ont ecrit aucun fait dans un dossier de donnees), et un fichier du codec 1
+// est refuse sur son prefixe.
+// LE MEME SCHEMA 4 AU JALON J11.0 (2026-09-28) : le blob passe en v28 (cinq compteurs de
+// `MovementStateStats` que le blob ne portait pas, dont les deux publies du saut) SOUS LA MEME
+// MONTEE DU CODEC 2, toujours non publiee. Un fichier ecrit par un binaire de la branche avant
+// J11.0 porte le blob v27 : il est refuse a la magie du blob, et redecode.
+// SCHEMA 5 (2026-10-06, lot VA de la campagne de grammaire, decision du pilote du 2026-10-06) : la
+// section 2, l identite du film (JSON de `profile.FilmIdentity`), change de contenu. L etape V1 y a
+// ajoute la simulation de l enregistreur (`SimulationDeLEnregistreur`, `OptionsDePartieLues`), l etape
+// V3 la variante de partie (`Variante`). Relue par `json.Unmarshal`, une section 2 du schema 4 rendrait
+// ces champs a zero sans erreur : c est le refus SUR L EN-TETE qui doit le dire, comme aux schemas 2 a
+// 4. La montee de `grammar.Rev` et de `profile.Rev` du meme lot refusait deja tout fichier anterieur
+// sur ses revisions de couche, donc aucun fait perime n etait servi ; le schema tient sa propre
+// doctrine (« il monte quand une section change de contenu ») au lieu de s en remettre a elles. Le
+// lot 5.18.1 (`ControleDeCorruption`, 2026-09-22) avait elargi la meme section sans le monter : tout
+// fichier du schema 4 est desormais refuse sur son en-tete, celui-la compris.
+// SCHEMA 6 (2026-10-06, lot « Rejeu : toute entree du roster a l equipe que le film ecrit ») : la
+// section 5 porte L EQUIPE DE CHAQUE BOT lue dans BOT_METADATA (`BotEntry.Team`) et le bilan de sa
+// lecture (`Roster.BotEquipes`) ; la liaison des occupants en fait l equipe des bots qu aucune
+// entite `ti=9` ne porte. Les faits du schema 5 (vue A) ne la portent pas. `killsource.Rev` ne monte
+// pas (aucune ligne de kill ne change, cf. sa chronique) : c est ce numero qui refuse, SUR L EN-TETE,
+// un fichier d avant — sans lui, des faits « frais » sans equipe de bot se rejoueraient, et le
+// correctif n atteindrait aucun artefact.
+// SCHEMA 7 (2026-10-07, branche `feat/zones-etat-initial`) : la section 1 porte, a la suite des
+// lectures delta de l etat des zones, ses lectures d IMAGE-CLE (`FilmInputs.ZoneKeyReads`,
+// `encodeGardesDeMode`). Le blob ne change pas ; ce que la section porte, si.
+// SCHEMA 9 (2026-10-07, branche `feat/zones-proprietaire`) : chaque lecture de `ti=13` de la section 1
+// porte le NOM de sa propriete (`grammar.ManagedPropertyRead.Name` / `Named`, renseigne aux
+// images-cles) ; un fichier d avant se relirait decale. Le rang 8 est reserve par un lot parallele
+// non fusionne.
+// SCHEMA 10 (2026-10-07, lot 2.7.c de la representation intermediaire) : la section 5, le resultat de
+// killsource, change de contenu : ses comptes de replis du decodage (`ReplisDuDecodage`) perdent
+// `HorsBandeBipede` (repli retire avec la bande bipede, 2.7.c2) et gagnent `KillsRattrapes`
+// (rattrapage des kills hors de la vue A lue, 2.7.c4). Le rang 8, reserve a ce lot, reste sans
+// emploi : la serie suit les fusions.
+const SchemaDesFaits = 10
+
+// Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
+// un vieux fichier se relit comme une section qui n est pas la sienne.
+const (
+	sectionEntrees    = 1
+	sectionIdentite   = 2
+	sectionReplis     = 3
+	sectionStatborg   = 4
+	sectionKillsource = 5
+)
+
+// ErrFilmFactsVersion : le fichier n est pas de ce conteneur ou pas de ce schema. Les faits sont
+// alors PERIMES, pas corrompus : la reponse est de redecoder le film, jamais de lire « au mieux ».
+var ErrFilmFactsVersion = errors.New("faits de film : version de codec ou de schema inconnue")
+
+// ErrFilmFactsRevisions : les faits ont ete pris sous d autres revisions de couche que celles du
+// binaire courant. PERIMES, au sens de la regle de fraicheur TOUT OU RIEN du lot 4.1.
+var ErrFilmFactsRevisions = errors.New("faits de film : revisions de couche differentes")
+
+// FilmStatborg porte ce que la porte des ENREGISTREMENTS D ENTITE rend d un film.
+//
+// LES QUATRE VOYAGENT ENSEMBLE parce que les quatre sont consommes ensemble par les calques de
+// score, d objectifs, de drapeau, de couronne, de crane et de bombe.
+type FilmStatborg struct {
+	// Records : les enregistrements d entite decodes des paquets FRAME.
+	Records []types.StatRecord
+	// BurstMS : les instants de rafale de capture, en millisecondes de match.
+	BurstMS []int
+	// Truncated : le temoin de TRONCATURE du balayage. Une liste courte et un balayage
+	// interrompu ne disent pas la meme chose, et la couverture publie la difference.
+	Truncated bool
+	// ChunkStartMS : l horloge du MANIFESTE, `index de chunk -> start_ms`.
+	//
+	// ELLE EST ICI PARCE QU ELLE EST UN FAIT DU FILM, et qu un rejeu depuis les faits n ouvre
+	// pas le manifeste. L anneau d armement de la bombe se date sur elle (`bombInput`) : sans
+	// elle, un film d Assaut rejoue perdrait `chunkStartMS` et le calque d armement avec.
+	ChunkStartMS map[int]int
+	// Replis : les comptes des replis du BALAYAGE du statborg (enregistrements abandonnes,
+	// composants arretes — lot J8.7). Ils voyagent avec les enregistrements parce qu un rejeu depuis
+	// les faits ne rebalaie pas le film : sans eux, une republication les perdrait. La cuisson les
+	// verse au compteur a l assemblage ([Options.ReplisHorsBalayage]).
+	Replis objectives.ComptesDesReplis
+}
+
+// FilmFactsFile est le contenu COMPLET d un fichier de faits : l en-tete et les cinq sections.
+type FilmFactsFile struct {
+	// Coverage : les revisions de couche, le build et le registre — l en-tete, et le MEME type que
+	// `coverage.decoder` de l artefact.
+	Coverage DecoderCoverage
+	// Gardes : les gardes de l appelant sous lesquelles ces faits ont ete cuits — l en-tete, depuis
+	// le codec 2 (lot J3.4, RA1-1). Cf. `gardes_de_cuisson.go`.
+	Gardes GardesDeCuisson
+	// EmpreinteDeCle : l empreinte de TOUTE l entree de catalogue sous laquelle ces faits ont ete
+	// cuits ([EmpreinteDeCle]) — l en-tete, depuis le codec 2 (lot J3.5, RA1-4).
+	EmpreinteDeCle [sha256.Size]byte
+	// Facts : section 1 — les entrees de l assemblage et la cle de cuisson.
+	Facts FilmFacts
+	// Identity : section 2 — la section 2 de `chunk_00`, sans laquelle le build sort vide.
+	//
+	// EN POINTEUR, ET SON ABSENCE A UN SENS : `Options.FilmIdentity` est nil quand le film ne
+	// porte AUCUNE section d identification (5 films du cache, versions majeures 31 et 33), et
+	// `couvertureDuDecodeur` en tire « build vide, bloc registry absent ». Le porter par VALEUR
+	// aurait aplati ce nil sur une identite a zero — c est-a-dire exactement l ambiguite que D-7
+	// interdit, reintroduite par le fichier de faits.
+	Identity *profile.FilmIdentity
+	// Fallbacks : section 3 — le rapport des replis DU BALAYAGE, et de lui seul (cf. l en-tete).
+	Fallbacks []fallback.Declenchement
+	// Statborg : section 4.
+	Statborg FilmStatborg
+	// Kills : section 5 — le resultat du kill-feed, ou nil quand il n a pas ete decode.
+	Kills *killsource.Result
+}
+
+// EncodeFilmFactsFile serialise un fichier de faits.
+//
+// Rend une erreur quand une section JSON ne se serialise pas : un fichier de faits INCOMPLET
+// ecrirait des faits plausibles et faux, ce qui est pire que pas de fichier du tout.
+func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
+	entete := encodeEnteteDuFichier(f)
+
+	w := &gwriter{b: []byte(magieFaitsDeFilm)}
+	w.u(VersionCodecFaits)
+	w.u(SchemaDesFaits)
+	w.u(uint64(len(entete.b)))
+	w.b = append(w.b, entete.b...)
+
+	entrees := &gwriter{}
+	blob, err := EncodeFilmFactsAvecErreur(&f.Facts)
+	if err != nil {
+		return nil, err
+	}
+	entrees.u(uint64(len(blob)))
+	entrees.b = append(entrees.b, blob...)
+	encodeComplementDesEntrees(entrees, &f.Facts)
+	if entrees.echec != nil {
+		return nil, entrees.echec
+	}
+	ecrireSection(w, sectionEntrees, entrees.b)
+
+	for _, s := range []struct {
+		id      int
+		valeur  any
+		libelle string
+	}{
+		{sectionIdentite, f.Identity, "identite du film"},
+		{sectionReplis, f.Fallbacks, "rapport de replis"},
+		{sectionStatborg, f.Statborg, "statborg"},
+		{sectionKillsource, f.Kills, "killsource"},
+	} {
+		charge, err := json.Marshal(s.valeur)
+		if err != nil {
+			return nil, fmt.Errorf("faits de film : section %s : %w", s.libelle, err)
+		}
+		ecrireSection(w, s.id, charge)
+	}
+	return w.b, nil
+}
+
+// ecrireSection ecrit `[id][longueur][octets]` — le cadre qui permet a un lecteur de SAUTER ce
+// qu il ne connait pas.
+func ecrireSection(w *gwriter, id int, charge []byte) {
+	w.u(uint64(id))
+	w.u(uint64(len(charge)))
+	w.b = append(w.b, charge...)
+}
+
+// DecodeFilmFactsFile relit un fichier de faits ENTIER. `entry` est l entree de catalogue de la
+// carte du film : les positions sont des quanta, et les relire avec une autre entree rendrait des
+// coordonnees FAUSSES (cf. [ErrFilmFactsCarte]).
+func DecodeFilmFactsFile(blob []byte, entry profile.MapQuantEntry) (*FilmFactsFile, error) {
+	entete, err := DecodeFilmFactsEntete(blob)
+	if err != nil {
+		return nil, err
+	}
+	if err := verifierCleDeCuisson(entete.MapModule, entete.AxisW, entete.LayoutDetected, entry,
+		entete.EmpreinteDeCle[:]); err != nil {
+		return nil, err
+	}
+	out := &FilmFactsFile{Coverage: entete.Coverage, Gardes: entete.Gardes,
+		EmpreinteDeCle: entete.EmpreinteDeCle}
+	r := &greader{b: blob, off: entete.corps}
+	for r.off < len(r.b) && r.err == nil {
+		id := int(r.u())
+		charge := r.tranche(int(r.u()))
+		if r.err != nil {
+			break
+		}
+		if err := out.lireSection(id, charge, entry); err != nil {
+			return nil, err
+		}
+	}
+	if r.err != nil {
+		return nil, fmt.Errorf("faits de film : cadre de section illisible : %w", r.err)
+	}
+	return out, nil
+}
+
+// lireSection pose UNE section. UN IDENTIFIANT INCONNU EST SAUTE, et c est tout le point du cadre
+// a longueur prefixee : la fraicheur se decide sur l en-tete, pas en butant sur des octets.
+func (f *FilmFactsFile) lireSection(id int, charge []byte, entry profile.MapQuantEntry) error {
+	switch id {
+	case sectionEntrees:
+		r := &greader{b: charge}
+		blob := r.tranche(int(r.u()))
+		if r.err != nil {
+			return fmt.Errorf("faits de film : section entrees : %w", r.err)
+		}
+		g, err := DecodeFilmFacts(blob, entry)
+		if err != nil {
+			return err
+		}
+		f.Facts = *g
+		decodeComplementDesEntrees(r, &f.Facts)
+		if r.err != nil {
+			return fmt.Errorf("faits de film : canaux gardes : %w", r.err)
+		}
+		return nil
+	case sectionIdentite:
+		return lireSectionJSON(charge, &f.Identity, "identite du film")
+	case sectionReplis:
+		return lireSectionJSON(charge, &f.Fallbacks, "rapport de replis")
+	case sectionStatborg:
+		return lireSectionJSON(charge, &f.Statborg, "statborg")
+	case sectionKillsource:
+		return lireSectionJSON(charge, &f.Kills, "killsource")
+	default:
+		return nil
+	}
+}
+
+// lireSectionJSON relit une section, et NOMME la section dans l erreur : « json invalide » sans
+// dire laquelle n aide personne a 3 h du matin.
+func lireSectionJSON(charge []byte, cible any, libelle string) error {
+	if err := json.Unmarshal(charge, cible); err != nil {
+		return fmt.Errorf("faits de film : section %s : %w", libelle, err)
+	}
+	return nil
+}
+
+// encodeComplementDesEntrees / decodeComplementDesEntrees : ce que la section 1 porte APRES le blob
+// des entrees, dans l ORDRE du format — une seule ecriture, une seule lecture (les tests qui
+// fabriquent une section 1 passent par elles).
+//
+//	canaux gardes     `FlagMarks`, `ZoneReads`/`ZoneScanned`/`ZoneKeyReads`, la jauge, `BombReads`
+//	entites           les occupants du match (lot M2.2)
+//	temoin            l inventaire NUL (illisible) ou non (lot J3.6, RA1-2) : le blob relit toute
+//	d inventaire      liste en tranche VIDE, or `Inventory == nil` est une garde de calque
+//	verdict           le verdict du fil des morts (lot M8), EN DERNIER
+func encodeComplementDesEntrees(w *gwriter, g *FilmFacts) {
+	encodeGardesDeMode(w, g.FilmInputs)
+	encodeEntitesDesJoueurs(w, g.PlayerEntities)
+	w.bool8(g.Inventory != nil)
+	encodeVerdictDuFilDesMorts(w, g.DeathsFeed)
+}
+
+func decodeComplementDesEntrees(r *greader, g *FilmFacts) {
+	decodeGardesDeMode(r, &g.FilmInputs)
+	g.PlayerEntities = decodeEntitesDesJoueurs(r)
+	if !r.bool8() {
+		g.Inventory = nil
+	}
+	g.DeathsFeed = decodeVerdictDuFilDesMorts(r)
+}

@@ -1,0 +1,814 @@
+# Plan : Séries temporelles › Usages → l'Emprise du périmètre solo — 2026-10-05
+
+> Sources, à lire avant tout lot, qui FONT FOI pour le rendu :
+> - maquette validée par l'utilisateur le 2026-10-05, position « Après » :
+>   https://claude.ai/artifact/BR8veZfoaQrbhqNKuU8Uk2 (v4), copie
+>   `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` (script lisible : `renderApres` l. 862,
+>   `renderEquip` l. 1124, `renderMine` l. 1149, `renderFil` l. 1187, `gridColumns`/`renderGrid`
+>   l. 1233-1292) ; les lignes « remplace : … » et les encarts « Maquette. » ne se portent pas ;
+> - relevés : `.ai/V7.5/MESURES_TIMESERIES_USAGES_2026-10-05.md` ;
+> - `.ai/thought_log.md`, entrée « [2026-10-05] Sessions, Séries temporelles, Vue match : relevé des
+>   rendus v1… » et ses compléments 1 à 3 ;
+> - plan précédent de la même famille : `.ai/PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.md`
+>   (décisions D2-D12, spécification S1-S13 reprises ici quand elles s'appliquent).
+>
+> Contrat d'exécution : skill `plan-execution` (ordre strict, un lot à la fois, gate passé avant le
+> suivant, aucun item sans statut, zéro fix hors périmètre, découvertes consignées §8). Statuts :
+> `[x]` fait et vérifié, `[~]` couvert ailleurs (référence), `[!]` non fait (justification écrite).
+> Aucune case vide à la clôture d'un lot. « Clos » = les 5 actions de la règle 6 du skill.
+>
+> Statut du plan : **L1-L9 exécutés le 2026-10-06 (GO du superviseur, lot par lot) ; L9 = ronde 1
+> de la revue adversariale (R1-R8) ; reste la ronde 2 de relecture, sur les seules corrections de L9,
+> puis fusion sur accord du superviseur**. Branche : `feat/ts-usages-emprise` (créée sur `origin/feat/v75` = `65c99b669`),
+> worktree `C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ts-usages`.
+
+## 0. Objectif, critère de succès, hors périmètre
+
+**Objectif.** L'onglet « Usages » des Séries temporelles devient l'Emprise appliquée aux matchs
+SOLO du périmètre filtré (même liste de matchs que le reste de la page : `filteredCanon`,
+`match_context` forcé à `solo` par `features/timeseries/TimeseriesPage.tsx:85-89`), dans l'ordre et
+les formes de la maquette « Après ». « Riposte » quitte l'onglet Progression. Tout ce qui perd son
+dernier lecteur est supprimé (règle n° 7), Go et web, contrat compris.
+
+**Critère de succès.** (1) Les 8 blocs du §3 rendus dans l'ordre, conformes à la maquette (S1-S12) ;
+(2) chaque carte se retire seule sans donnée et sur Halo 5 (jamais un 500, jamais un zéro inventé) ;
+(3) tous les gates des lots verts, dernière exécution dans la session ; (4) inventaire §4 supprimé,
+chaque preuve grep à 0 ; (5) docs du lot clôture à jour.
+
+**Hors périmètre** (consigné, non traité) :
+- Page Sessions (`features/session-detail/`) : rien de ce qu'elle lit ne bouge (`_shared/usage/*`
+  qu'elle importe, bloc `coordination` riposte comprise, `SessionUsageBlock`).
+- Escouade › Synergies (retrait de « Rôles de hauteur », « Riposte », « Temps de riposte », « Morts
+  ripostées ») : décision utilisateur du 2026-10-05, lot à part non lancé.
+- Vue match : son bloc d'élévation est `MatchElevationBlock` (`domain/match_view.go:527`), distinct.
+- Le DTO `CoordinationBlock` garde sa riposte : la page Sessions la lit (`SessionDetailPage.tsx:408`).
+  Les Séries temporelles continuent de recevoir le bloc entier (même producteur
+  `buildCoordinationBlock`) ; seule la carte web Riposte disparaît.
+- Escouade › Emprise : comportement INCHANGÉ ; seules ses briques deviennent paramétrables (L4).
+
+## 1. Décisions
+
+### 1.1 Validées par l'utilisateur (2026-10-05, maquette v4) — fermes
+
+- **V1** Ordre et contenu de l'onglet : §3 (8 blocs).
+- **V2** Grille « carte par carte » : une colonne par carte jouée, les 12 plus jouées puis
+  « Autres cartes » qui somme le reste (maquette `gridColumns`, l. 1233-1243 : repli seulement
+  au-delà de 13 cartes) ; en-tête : nom, nombre de matchs, bilan V / D (+ A s'il y en a).
+- **V3** « Mes vies : près d'un coéquipier ou seul » : distance au coéquipier le plus proche À
+  L'INSTANT DE LA MORT, seuil = portée du radar du match ; barre épaisse = mes vies terminées par une
+  mort, barre fine = mes frags pendant ces vies ; frags par vie de chaque côté ; vies sans
+  coéquipier situé ou d'un match sans portée connue : écartées ET comptées (le ⓘ le dit). Source
+  `match_death_context_latest` ⨝ `match_lives_latest` ⨝ `match_kill_events_latest`, jamais
+  `match_life_placement`.
+- **V4** « Ma part à l'objectif » : la SEULE fiche est celle du joueur affiché (gamertag + emblème),
+  pas de « Reste de mon camp » ; la barre d'une action = sa part du total de son camp ; familles
+  côte à côte dans la fiche.
+- **V5** « Hauteur d'engagement » retirée de la page ; « Riposte » retirée de Progression ;
+  « Appui reçu » reste tel quel.
+- **V6** Sur les pages solo on écrit « Mon camp », jamais « Notre camp ».
+
+### 1.2 Tranchées par le planificateur — FERMES (confirmées par le superviseur le 2026-10-06 : D1-D14 confirmées, D7 / L7 maintenu en avant-dernier lot — gate qui résiste = arrêt et compte rendu, jamais forcé —, D15 : ligne d'attribution de la session de l'exécuteur)
+
+- **D1 — Pas de déplacement vers `_shared`, import direct de `features/squad/*`.** Vérifié sur
+  pièces : `tools/lint-cross-feature-imports.mjs:157` déclare la paire `'timeseries=>squad'` dans
+  `ALLOWED_CROSS_IMPORTS` ; les imports timeseries → squad ne comptent donc PAS dans le plafond 7
+  (`RATCHET_THRESHOLD`, l. 386), et la page en importe déjà quatre modules
+  (`TimeseriesPage.summary.tsx:40-41`, `TimeseriesRangeRolesCard.tsx:38,47`,
+  `TimeseriesSquadAdapted.tsx:37`). Déplacer ~35 fichiers de `squad/emprise` ferait du bruit sans
+  gain de gate. Les briques réutilisées prennent leurs textes en paramètre (`t: EmpriseText`,
+  `t: ObjectifText`) : le contexte solo passe ses propres textes (D10). *Contredit le brief §3.*
+- **D2 — Le bloc solo est un type à part qui EMBARQUE l'Emprise.** `domain.SoloEmpriseBlock` =
+  `SquadEmpriseBlock` embarqué (champs aplatis dans le JSON, même mécanisme que
+  `EquipmentUsageFamilyLine` qui embarque `SessionUsageOutcomes`, `domain/equipment_usage.go:70-75`)
+  + `maps` (grille par carte) + `equipment` (carte Équipement) ; champ de réponse
+  `TimeseriesPageResponse.Emprise` (`json:"emprise,omitempty"`). Côté web le type généré est
+  structurellement assignable à `SquadEmpriseBlock` : toutes les briques squad le lisent tel quel.
+  Pas de placement (`Placement` nil), pas d'habitude (`Timeline` vide → `Habit` nil, `build.go:88`).
+- **D3 — La grille par carte se calcule en Go** (`squademprise.BuildMaps`), pas dans le web : elle
+  agrège des états de mesure par match (film, camp, niveaux de socle, véhicules) — règle métier. Le
+  repli « 12 + Autres cartes » est aussi en Go (constante `domain.EmpriseGridMaxMaps = 12`). Chaque
+  colonne est un « soirée » (`soiree`, `build.go:14-58`) sur les matchs de la carte : une seule règle
+  de lisibilité pour la soirée, le match et la carte. V / D / autres par carte : depuis
+  `canonical.MatchSummary.Outcome` (`games/canonical/match.go:31`), résolu par le service et passé
+  dans `squademprise.Match` (nouveaux champs `MapKey`, `MapLabel`, `Outcome`).
+- **D4 — Carte « Équipement » : périmètre et familles.**
+  - Périmètre : les matchs MESURÉS du bloc (filmés à camp connu, `matchTally.bonusMeasured`,
+    `match.go:93`) pour MOI comme pour le reste de mon camp — un seul périmètre des deux côtés.
+  - « Servi / gardé / lâché » et « pris sur la carte » : `sessionusage.PlayerOutcomeCounts`
+    (`usage_outcomes_counts.go:34`), donc la bascule unique `equipmentUsedOf` (mur = posé, autres =
+    charge consommée).
+  - Familles « mesurées » : `equipmentusage.EquipmentOutcomeFamilies()` privé des deux bonus
+    (`sessionusage.PowerupFamilies()`), dans l'ordre de la table (`domain/equipmentusage/families.go:54-63`).
+  - Familles « non mesurées » (ligne « Non mesuré », compte de MES lâchers) : grappin et propulseur,
+    exportés par `domain/equipmentusage` (nouvelles constantes `EquipmentFamilyGrapple`,
+    `EquipmentFamilyThruster`, liste `EquipmentUnmeasuredLineFamilies()`) ; le décodeur
+    (`games/halo_infinite/film/replay/usage_summary_families.go:43-44`) RELIT ces constantes au lieu
+    de ses littéraux — même patron que mur / capteur (l. 45-48) ; valeur identique, aucune révision.
+    Vérifié : `domain/equipmentusage` n'est dans le périmètre d'aucune couche révisée (aucun
+    `*_perimetre.golden` ne le cite ; couches révisées = `film/revision/couches.go:22-30`).
+    Répulseur : aucune ligne (décision P4, maquette).
+  - Ordre d'affichage : celui de la maquette (`equip` des données : grappin, mur, capteur,
+    translocateur, écran, traqueur, champ, propulseur) = non mesurées encadrant les mesurées ; publié
+    par le Go dans cet ordre (`EquipmentUnmeasuredLineFamilies()[0]`, mesurées, puis `[1]`).
+- **D5 — Carte « Mes vies » : unité et règles.**
+  - Unité : une vie de `match_lives_latest` du joueur avec `end_cause = 'death'`
+    (`migration/steps_shared_match_lives.go:69-74` : seule cause qui dise qu'il est mort).
+  - Fenêtre d'une vie : `[start_ms, start_ms de sa vie suivante)` — LA règle de rattachement du
+    décodeur (`replay/placement_des_vies.go:36-41`, `rattacherLesFrags` l. 335-360). La fin du film
+    (`end_ms`) n'est PAS l'instant de la mort au journal (`lives_export.go:66-69` : fin de réplication
+    convertie), d'où la fenêtre et non une égalité de clé.
+  - Mort de la vie : la ligne de `match_death_context_latest` (victime = joueur) dont `time_ms` tombe
+    dans la fenêtre ; « près » si `nearest_teammate_m ≤ portée` (borne INCLUSIVE, même comparaison
+    que `coordination.accompagnee`, `analysis/coordination/isolation.go:72-74`, factorisée).
+  - Écartées et comptées : (a) `ExcludedUnlocated` = pas de ligne de contexte dans la fenêtre, ou
+    `nearest_teammate_m` NULL (aucun coéquipier visible, équipe à terre comprise) ; (b)
+    `ExcludedNoRadar` = vie d'un match dont la variante n'a pas de portée.
+  - Frags d'une vie : lignes de `match_kill_events_latest` `publishable`, `feed_killer_xuid` = le
+    joueur, victime d'un AUTRE camp (camps de `match_participants`) ; trahison ou camp inconnu :
+    écarté, compté au journal (pas au contrat).
+  - Non réutilisé, et pourquoi : `TacticalRepo.MortsAvecContexte`
+    (`platform/duckdb/tactical_repo_isolement.go:87`) exige la position de la victime (INNER JOIN
+    `kill_positions`) et charge un univers par carte (`TacticalQuery`), et ne rend ni vies ni frags.
+    Réutilisés : `mappings.PorteeDuRadar` (via D6), la comparaison de `accompagnee`.
+- **D6 — Portée du radar par match : 3e copie → helper.** Deux boucles « variantes → portée,
+  compte des sans-portée » existent (`service/tactical_service_isolement.go:159-174`
+  `rayonsParMatch` ; `service/teammates/teammates_service_emprise_placement.go:124-136`
+  `rayonParMatchDuScope`) ; les Séries temporelles en feraient une 3e. Règle n° 6 : nouveau
+  `mappings.PorteesDuRadarParMatch(table map[string]int, variantes map[string]string)
+  (map[string]float64, int)` à côté de `PorteeDuRadar` (`games/mappings/portee_du_radar.go:24`), les
+  deux copies migrées, garde-rail étendu (`archlint/no_local_radar_range_lookup_test.go`).
+- **D7 — `formes_retenues` réduit à ce que l'objectif lit.** Les 9 cartes solo de
+  `features/squad/formes/` étaient les DERNIERS lecteurs des champs non-objectif du bloc (grep §4.F).
+  Règle n° 7 : `Lobby`, `PadNamed`, `PadUnnamed`, `WeaponPads`, `DurationSeconds`, `TeamSize`,
+  `LobbySize`, `Measured` de `SquadFormesMatch`, `Weapons` du bloc, leurs types et leur production
+  (`analysis/squadformes/formes.go:56-71,114,121-126,166-180,210-262,389-436`,
+  `port/session_usage.go:47-49` `LoadUsageFilmPads`, sa mise en œuvre DuckDB) sortent du code et du
+  contrat. Les champs que lisent les cartes d'objectif restent : `available`, `unavailable_reason`,
+  `matches_total`, `matches_measured`, `main_xuid`, `squad`, `matches[].{match_id, start_time,
+  mode_label, map_label, player_team, objective}`. *Lot à part (L7), le plus risqué ; si le
+  superviseur préfère le différer, L7 passe `[!]` avec cette justification et le reste du plan tient.*
+- **D8 — Chaîne `equipment_usage` supprimée (Go).** Seul producteur restant :
+  `service/timeseries_service_sections.go:104` ; seul lecteur web : `TimeseriesPage.usages.tsx:57,96`.
+  Sortent : `domain/equipment_usage.go`, `squadagg.BuildEquipmentUsageBlock` et ses aides
+  (`squadagg/equipment_usage.go:44-64,97-196` ; `LireUsage`/`LecturesUsage` l. 66-95 RESTENT : lus par
+  l'Emprise et les formes), l'alias `service/squadagg_reexport.go:19,28`,
+  `sessionusage/usage_overview.go` (+ test) et la comparaison `metricKeys`/`overviewFamilies` de
+  `usage_outcomes_test.go:334-385` (le critère `subjectBilanFamilies` reste, lu par `metricKeys`),
+  le résolveur d'amis du service (`timeseries_service.go:106`, `timeseries_service_sections.go:47-54,297-303`).
+  `squadagg.NommerArmesDesNiveaux` RESTE (lu par `session_page_usage_labels.go:127`).
+- **D9 — Chaîne « nuage d'élévation » supprimée (Go + web).** Lecteurs uniques :
+  `ElevationCard.tsx` / `_elevationCloudChart.ts` côté web, `TimeseriesPageResponse.Elevation`
+  (`domain/timeseries.go:340`) côté Go. Sortent : `domain/elevation_cloud.go`,
+  `analysis/elevation_cloud.go` (+ test), `service/elevation_cloud_section.go` (+ test), le second
+  retour de `buildWeaponRangeSections` (`weapon_range_section.go:55-94,151-172` : `hydrateLabels`
+  ne nomme plus que la portée).
+- **D10 — Textes solo.** Fichier `features/timeseries/usages/usagesText.ts` : `EMPRISE_TEXT_SOLO`
+  et `OBJECTIF_TEXT_SOLO` (`Record<Locale, …>`) construits par surcharge de `EMPRISE_TEXT`
+  (`squad/emprise/empriseStrings.ts:500`) et `OBJECTIF_TEXT` ; textes FR de la maquette mot pour mot
+  (titres, ⓘ, légendes), EN traduits ; « Mon camp » / « My side », « matchs du périmètre » /
+  « matches in scope ». Plus les textes propres aux cartes neuves (Mes prises, Équipement, Mes vies,
+  grille par carte, Ma part).
+- **D11 — Disposition.** « Portée par arme » reste seule dans sa grille à deux colonnes
+  (demi-largeur, maquette `renderRange` l. 444-484 : `grid2` sans voisine) ; « Appui reçu » reste
+  seule dans `TimeseriesCoordinationSection` (`lg:grid-cols-2`, demi-largeur, « tel quel »).
+- **D12 — « Au fil des matchs » sur une période.** Même graphe que l'Escouade
+  (`squad/emprise/empriseCharts.ts:165-212`), nouveau mode d'axe `period` : sous l'axe, la date du
+  premier match de chaque mois (et un trait), légende « n matchs, dont m filmés » à droite ; points
+  plus petits au-delà de 120 matchs (maquette `renderFil` l. 1188, 1204) ; pas d'encoche de
+  dominance (la maquette n'en dessine pas). Résultat, date et carte joints depuis `match_rows`
+  (`TimeseriesMatchRow` : `outcome`, `start_time`, `map_name(_fr)`, `domain/timeseries.go:191-256`).
+- **D13 — Lignes « en attente » de la maquette non portées.** Les lignes « 0 prise… », « Non mesuré
+  sur les N matchs » du solo réel suivent le comportement des briques de l'Emprise : une ressource
+  sans prise n'a pas de ligne (`emprise.logic.ts:65-72`), les véhicules suivent leur couverture
+  (lot L7 de l'Escouade). La phrase conditionnelle du ⓘ de « Frags obtenus » (maquette l. 928) n'est
+  pas portée (elle décrit les données d'illustration).
+- **D14 — Emblème de la fiche « Ma part ».** Publié par le Go sur la réponse
+  (`TimeseriesPageResponse.PlayerEmblemURL`, `json:"player_emblem_url,omitempty"`), lu par le même
+  chargeur que l'Escouade (`SquadV2LoaderAdapter.LoadEmblemURLs`,
+  `platform/duckdb/squad_v2_adapter.go:358`) derrière un port étroit (`port.EmblemURLLoader`) ;
+  absent → l'initiale (repli existant de `SquadSheetAvatar`).
+- **D15 — Attribution des commits** : ligne système de cette session
+  (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`), le brief en citait une autre (signalé
+  au compte rendu de phase 1).
+
+## 2. Spécification de rendu (non négociable)
+
+Reprend S1-S13 du plan du 2026-09-26 (§2) ; en cas de doute, la maquette fait foi, puis ce §2.
+
+- **S1** Titre factuel, ⓘ si besoin (3 phrases au plus, texte de la maquette), graphique, légende
+  centrée en bas — rien d'autre (aucune phrase de lecture, aucun pied de carte).
+- **S2** Valeurs DANS les segments si elles tiennent (mesure au pixel,
+  `components/charts/segmentLabelFit.ts`), repli au-dessus sinon, jamais seulement en infobulle.
+- **S3** `team-ally` / `team-enemy` à la place des mots ; hachure réservée à « sans film ».
+- **S4** Trait 50 % pointillé `warning`, « 50 % : autant que l'adversaire » ; « parité » n'existe plus.
+- **S5** Aucun vert / rouge sur une répartition interne (moi / reste de mon camp : `squad-player-1`
+  / `team-rest`).
+- **S6** Couleurs de ressource `resource-*` ; pastille devant chaque nom de ressource.
+- **S7** FR + EN pour toute chaîne (`Record<Locale, …>`), « FDA » jamais « KDA », aucun anglicisme
+  (garde `lib/i18n/no-anglicisms.guard.test.ts`), aucun emoji.
+- **S8** Aucune couleur en dur ni classe Tailwind de couleur (skill `color-tokens`,
+  `tools/lint-no-hardcoded-colors.mjs`).
+- **S9** « Mon camp » (V6).
+- **S10** Chaque carte se retire seule sans donnée ; onglet sans rien → l'état vide existant
+  (`timeseries.usages.empty_*`, `TimeseriesPage.usages.tsx:61-68`).
+
+## 3. Cartes cibles (ordre à l'écran)
+
+| # | Bloc / carte | Source Go (contrat) | Composant web |
+|---|---|---|---|
+| 1 | « Portée des engagements » : 4 tuiles, « Portée par arme », « Rôles de portée » | INCHANGÉ (`weapon_range`, `range_profiles`) ; `elevation` retiré | `WeaponRangeSection` sans `ElevationCard`, `TimeseriesRangeRolesCard` |
+| 2a | « Bilan du périmètre » › « Contrôle des ressources » | `emprise.resources` | `squad/emprise/ResourceControlCard` + `EMPRISE_TEXT_SOLO` |
+| 2b | « Contrôle des ressources au fil des matchs » | `emprise.matches` + `match_rows` (résultat, date) | `squad/emprise/ResourceFilCard`, axe `period` (D12) |
+| 3 | « Carte par carte » › « Contrôle des ressources, carte par carte » | `emprise.maps` (D3, NEUF) | `timeseries/usages/ResourceMapGridCard` sur `squad/emprise/ResourceGridTable` (extrait) |
+| 4 | « Mes prises » › « Mes prises dans mon camp » | `emprise.objects[].squad` (moi, reste) + `resources[powerup].outcomes` (bonus perdus) | `timeseries/usages/MinePickupsCard` (NEUF), modèle `buildPickupSheets` existant |
+| 5 | « Prendre, et s'en servir » › « Frags obtenus avec les ressources » + « Rendement face à l'adversaire » | `emprise.production` | `squad/emprise/ProductionCard`, `YieldCard` |
+| 6 | « Près d'un coéquipier ou seul » › « Mes vies : près d'un coéquipier ou seul » | `lives_near_teammate` (D5, NEUF) | `timeseries/usages/LivesNearTeammateCard` (NEUF) |
+| 7a | « Objectif » › « Rapport de force par famille de mode » | `formes_retenues` (objectif) | `squad/objectif/ObjectiveBalanceCard` + `OBJECTIF_TEXT_SOLO` |
+| 7b | « Ma part à l'objectif » | `formes_retenues` + `player_emblem_url` (D14) | `squad/objectif/ObjectiveSoloSheetCard` (NEUF) |
+| 8 | « Équipement » › « Équipement pris, et ce que j'en ai fait » | `emprise.equipment` (D4, NEUF) | `timeseries/usages/EquipmentOutcomesCard` (NEUF) |
+| P | Progression : « Appui reçu » seule | `coordination` inchangé | `TimeseriesCoordinationSection` sans `CarteRiposte` |
+
+Contrats neufs (Go, `internal/domain/`, fichier `solo_emprise.go` et `timeseries_lives.go`) :
+
+```go
+// SoloEmpriseBlock — l'Emprise du périmètre solo des Séries temporelles (D2).
+type SoloEmpriseBlock struct {
+    SquadEmpriseBlock
+    Maps      []EmpriseMapColumn `json:"maps"`               // D3, plus jouée à gauche
+    Equipment *EmpriseEquipment  `json:"equipment,omitempty"` // D4 ; nil sans film
+}
+type EmpriseMapColumn struct {
+    MapKey, MapLabel  string                      // vides pour « Autres cartes »
+    OtherMaps         int                         // > 0 : colonne de repli, nb de cartes sommées
+    Matches, MatchesFilmed, MatchesMeasured, MatchesTiers, VehiclesMeasured int
+    Wins, Losses, Others int
+    Resources         []SquadEmpriseMatchResource // mêmes objets (squad = moi, reste) que match par match
+    PowerWeaponKills  *SquadEmpriseCount
+}
+type EmpriseEquipment struct {
+    MatchesMeasured int
+    Families        []EmpriseEquipmentFamily      // ordre D4
+}
+type EmpriseEquipmentFamily struct {
+    Family    string
+    Measured  bool
+    Me, Rest  *EmpriseEquipmentOutcomes           // Measured seulement
+    DroppedMe int                                 // non mesurées seulement
+}
+type EmpriseEquipmentOutcomes struct{ Taken, Used, Kept, Dropped int }
+
+// TimeseriesLivesNearTeammate — « Mes vies : près d'un coéquipier ou seul » (D5).
+type TimeseriesLivesNearTeammate struct {
+    Near, Alone         LivesSideCount // {Lives, Kills int}
+    ExcludedUnlocated   int
+    ExcludedNoRadar     int
+    MatchesRead         int
+    MatchesWithoutRadar int
+}
+```
+(tags JSON en snake_case, `omitempty` sur les pointeurs ; noms définitifs fixés au lot, ce bloc
+fige la FORME.)
+
+## 4. Inventaire des suppressions — preuves par grep (relevées le 2026-10-05, à REJOUER avant de supprimer)
+
+Chaque preuve se rejoue par `Grep` (outil) sur `apps/web/src` (hors `lib/api/generated.ts`) ou
+`apps/go-api`. Attendu APRÈS suppression : 0 occurrence hors fichiers supprimés.
+
+- **A. `EquipmentUsageSection` et ses cinq cartes (web).** `EquipmentUsageSection` n'est importé que
+  par `features/timeseries/TimeseriesPage.usages.tsx:26`. Ses dépendances propres
+  (`_shared/usage/EquipmentUsageSection.tsx:39-52`) : `UsageCountsGrid`, `usageCountsModel`,
+  `UsageEquipmentDonutCard`, `usageEquipmentPartiesModel` — aucun autre lecteur (grep des noms hors
+  `_shared/usage/`) ; `usagePadTiersModel`, `usageAvailability`, `usageCardTitle`,
+  `UsageEmptyNotice`, `usageI18n` RESTENT (lus par `session-detail`). Clés `usageI18n` propres aux
+  cartes retirées : celles que knip / le grep laissent sans lecteur. Gardes à adapter :
+  `_shared/usage/usageEmptyStateCanonical.guard.test.ts`, `noLocalUsageCopies.guard.test.ts`
+  (vérifier qu'ils ne citent pas un fichier supprimé ; les adapter, jamais les désactiver).
+- **B. « Les formes retenues » (web).** Importée par `TimeseriesPage.usages.tsx:29` seulement.
+  Survivants de `features/squad/formes/` (importés hors du dossier, grep `../formes/`) :
+  `cardsI18n.ts` (familles, lu par `SquadObjectiveSection.tsx:28`), `colors.ts` (Emprise),
+  `i18n.ts` (`columns`, lu par les cartes d'objectif), `format.ts`, `model/objectives.ts`. Sortent :
+  `FormesRetenuesSection.tsx` (+ test), `FormesCard.tsx`, `viewModel.ts`, `richText.ts`, `scales.ts`,
+  `cards/*` (4), `forms/*` (8 dont `GrilleForm.test.tsx`), `model/access.ts`, `aggregates.ts`
+  (+ test), `display.ts` (+ test), `pads.ts`, `padsObjectives.test.ts` (la partie objectif migre dans
+  `objectivesOptional.test.ts` si elle teste un survivant), `formes.fixtures.ts` si plus aucun test ne
+  l'importe. Dans les survivants : clés et types sans lecteur (`EquipmentAxis`, `WeaponClass`, textes
+  des cartes de `cardsI18n.ts` hors `families`, encres d'axes de `colors.ts`), et
+  `aggregateColumns` réduit à `{team, lobby}` (seuls champs lus par `objectif.logic.ts:79-81`),
+  `aggregateRole` supprimé s'il n'a plus de lecteur. Juge de paix : knip 0 / 0 / 0.
+- **C. `ElevationCard` (web) et nuage d'élévation (Go).** Web : `ElevationCard.tsx`,
+  `_elevationCloudChart.ts` (+ test), import et rendu dans `WeaponRangeSection.tsx:52,362-369`, props
+  `elevation` / `matchRows` (`WeaponRangeSection.tsx:296-302`, lus seulement par la carte), clés
+  `synthesis.weapon_range.*` propres à la carte (manifest `lib/i18n/manifests/synthesis.toml`,
+  régénéré par `node apps/web/scripts/build_i18n_manifests.mjs`), cas de tests
+  `WeaponRangeSection.test.tsx` / `.options.test.tsx` qui l'exercent. Go : D9.
+- **D. Carte Riposte (web).** `CarteRiposte` (`TimeseriesCoordinationSection.tsx:174-235`),
+  `secFmt` (l. 73-76), `delaiMedianS` (`timeseriesCoordination.logic.ts:115-118`) si plus lu, chaînes
+  de riposte de `timeseriesCoordinationStrings.ts` (`riposteTitle`, `covered`, `iRiposte`, `delay`,
+  `riposteTooltip`, `volMyDeaths`, `volTeamDeaths`), cas de `TimeseriesCoordinationSection.test.tsx`.
+- **E. `equipment_usage` (Go + contrat).** D8 ; web : `EquipmentUsageBlock` et alias de
+  `lib/api/types.ts:2327-2330`, fixture `test/handlers.ts:242`, cas
+  `TimeseriesPage.sections.test.tsx:133-216`.
+- **F. Champs de `formes_retenues` (Go + contrat).** D7 ; lecteurs web après B : `objectif/*` et
+  `formes/model/objectives.ts` seulement (grep `SquadFormes` : 19 fichiers relevés, dont 11 sortent
+  en B).
+- **G. Bouts devenus morts** : `timeseries.usages.equipment_title` (`timeseries.toml:914`) ; types
+  TS retirés du snapshot `lib/api/contract-surface.snapshot.json` par la procédure documentée
+  (`UPDATE_CONTRACT_SURFACE=1`), disparitions listées au journal du lot.
+
+## 5. Organisation et gates communs
+
+- Exécuteur seul, dans le worktree, lots SÉQUENTIELS. Aucun sous-agent, aucun push, aucun merge,
+  aucun `git stash`, aucun `git add -A` (stager fichier par fichier), aucun `--no-verify`, aucun
+  Python, aucune base de `data/` ouverte, aucun serveur arrêté ou relancé, une commande `go` à la fois.
+- Environnement Go, à chaque appel PowerShell :
+  `$env:Path = "C:\msys64\ucrt64\bin;$env:Path"; $env:CGO_ENABLED = "1"; $env:CC = "C:\msys64\ucrt64\bin\gcc.exe"`.
+  Web : `npm ci` dans `apps/web` du worktree (node_modules réel) avant le premier gate web.
+- **Gate Go** (depuis `apps/go-api`) : `go build ./...` ; `go vet` des paquets touchés ;
+  `go test` des paquets touchés puis `go test ./...` ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...`
+  dès que `platform/duckdb` bouge (et `./internal/sync/...`, `./internal/persist/...`,
+  `./internal/migration/...` s'ils bougent — aucun lot ne les prévoit) ; `go test ./internal/archlint/...` ;
+  `make go-api-lint` (Git Bash) ; contrat : `go run ./cmd/openapi-gen`, puis
+  `go run ./cmd/openapi-gen -check`, `npm run generate-types` (dans `apps/web`) et
+  `node tools/check-generated-types-fresh.mjs` (racine).
+- **Gate web** (depuis `apps/web`, vitest hors sandbox) : purge `node_modules\.tmp` ;
+  `npx tsc -b --force` ; `npm run lint` (0 erreur) ; `npx vitest run --pool=forks` ; depuis la
+  racine : `node tools/knip-ratchet.mjs` (0 / 0 / 0), `node tools/lint-no-hardcoded-colors.mjs`
+  (0), `node tools/lint-cross-feature-imports.mjs` (≤ 7, aucune dérogation morte),
+  `npx lefthook run pre-push`.
+- **Seuils** (CLAUDE.md règle 5) : fichier ≤ 500 L, fonction ≤ 80 L, ≤ 5 paramètres, complexité ≤ 12
+  pour tout fichier créé ou modifié ; mesure jointe au journal du lot
+  (`git diff --name-only <base>.. | ForEach-Object { "{0} {1}" -f (Get-Content $_).Count, $_ }`).
+  Attention : `service/timeseries_service.go` est à 424 L, `domain/timeseries.go` à 379 L,
+  `squad/emprise/empriseStrings.ts` à 501 L (ne pas l'agrandir : D10 dans un autre fichier).
+- **TDD** : chaque règle neuve a son test ROUGE écrit et vu rouge AVANT le code ; puis vert ; puis
+  au moins UNE MUTATION par règle (modification volontaire du code qui doit faire rougir le test,
+  annulée ensuite), consignée au journal du lot (« mutation : … → rouge »).
+- **Clôture de lot** = gate vert + items statués + section du lot mise à jour ici + entrée en FIN de
+  `.ai/thought_log.md` + commit local `feat(ts-usages/<lot>): …` (fichiers stagés un par un) + point
+  d'étape au superviseur.
+
+## 6. Lots
+
+### L1 — Go : portée du radar par match et lectures de l'Emprise factorisées · moyen
+
+Refactorisation sans changement de comportement, préalable à L2 et L3.
+
+- [x] L1.1 `games/mappings/portee_du_radar.go` : `PorteesDuRadarParMatch(table, variantes)` (rend
+  la table par match et le nombre de matchs sans portée) ; test pur (`portee_du_radar_test.go` :
+  variante connue, inconnue, blanc de tête, portée nulle) écrit rouge d'abord.
+- [x] L1.2 Migrer `teammates/teammates_service_emprise_placement.go:73,117-136`
+  (`rayonParMatchDuScope` supprimé, son test `teammates_service_emprise_placement_test.go:162-170`
+  déplacé vers L1.1) et `service/tactical_service_isolement.go:61,159-174` (`rayonsParMatch` bâtit
+  la carte des variantes des matchs `Mesure` puis appelle le helper).
+- [x] L1.3 Garde-rail : `archlint/no_local_radar_range_lookup_test.go` — nouvelle empreinte « appel à
+  `PorteeDuRadar(` hors du helper » sur les fichiers NON test, allowlist nommée
+  `sync/killcollector/capture.go` (résolution d'UNE variante à l'écriture, `capture.go:102`) ;
+  auto-test qui prouve que l'empreinte reconnaît les deux anciennes boucles (littéraux copiés de
+  L1.2) ; mutation : réintroduire une boucle dans un fichier de test temporaire hors allowlist →
+  rouge.
+- [x] L1.4 `service/squadagg/emprise_lectures.go` (NEUF) : sortir de `TeammatesService` les trois
+  lectures de l'Emprise en fonctions libres paramétrées (repo, joueur, page pour les journaux) —
+  `LireFeuilleEmprise` (`teammates_service_emprise.go:89-106`), `LireFilmEmprise` + `raisonFilm`
+  (l. 108-172), `LireVehiculesEmprise` (`teammates_service_emprise_vehicles.go:37-63`). Noms
+  d'événements : `emprise_*` avec l'attribut `page` (`teammates` / `timeseries`) ; les tests qui
+  citent `teammates_emprise_*` (5 fichiers, 27 occurrences relevées) sont mis à jour.
+  `TeammatesService` appelle ces fonctions ; comportement inchangé
+  (`teammates_service_emprise_test.go`, `_vehicles_test.go`, `_placement_test.go` verts sans
+  changement d'assertion autre que le nom d'événement).
+- Gate : gate Go (sans contrat : aucun type public ne change) ; preuve
+  `Grep "PorteeDuRadar\(" apps/go-api/internal --glob !*_test.go` → helper + `capture.go` +
+  `PorteesDuRadarParMatch` seulement.
+
+Journal L1 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
+- **L1.1** `mappings.PorteesDuRadarParMatch(table, variantes)` (`games/mappings/portee_du_radar.go`) ; test `TestPorteesDuRadarParMatch` écrit d'abord, vu ROUGE (symbole indéfini), puis vert. En-tête du fichier réécrit au présent (il racontait les deux copies, règle 17).
+- **L1.2** `rayonParMatchDuScope` supprimée (`teammates_service_emprise_placement.go`), son test supprimé (couvert par L1.1) ; `TacticalService.rayonsParMatch` bâtit la carte des variantes des matchs `Mesure` et appelle le helper.
+- **L1.3** Empreinte 3 du garde-rail `archlint/no_local_radar_range_lookup_test.go` : tout appel `PorteeDuRadar(` dans un fichier de production hors du helper est refusé, allowlist nommée `internal/sync/killcollector/capture.go` (une variante à l'écriture) ; auto-test sur les deux anciennes boucles et deux faux positifs (`AvecPorteeDuRadar(`, appel du helper).
+- **L1.4** `service/squadagg/emprise_lectures.go` : `EmpriseLecteur{Page, Player, RepoRoot, TitleSlug}` avec `Feuille`, `Film` (+ `ajouterHabitude`, `raisonFilm`), `Vehicules`, et `EmpriseMatchIDs` ; `TeammatesService` les appelle (`lireFeuilleEmprise`, `lireFilmEmprise`, `raisonFilm`, `lireVehiculesEmprise`, `matchIDsOf` supprimés). Événements renommés `emprise_*` avec l'attribut `page` ; seuls les trois `teammates_emprise_vehicules_*` étaient assertés (`teammates_service_emprise_vehicles_test.go`), mis à jour (+ assertion `"page":"teammates"`) ; les journaux du placement restent `teammates_emprise_placement_*` (non déplacés). Écart au plan, assumé : la lecture du film n'avait AUCUN test de l'habitude (mutation « habitude jamais lue » VERTE sur la suite teammates) — ajouté `squadagg/emprise_lectures_test.go` (habitude lue en plus du périmètre et niveaux sur les deux, échec de l'habitude qui la dégrade seule, sans repo → `film_unsupported`).
+- **Mutations** (script `mutation.ps1` du scratchpad, restauration garantie, diff vérifié après) : `sans++` retiré du helper → ROUGE (`TestPorteesDuRadarParMatch`) ; appel `PorteeDuRadar` réintroduit dans `tactical_service_isolement.go` → ROUGE (`TestNoLocalRadarRangeLookup`) ; capability non supportée de la feuille rendue en `sheet_load_failed` → ROUGE (`TestTeammatesService_GetPage_EmpriseCapabilityNonSupportee`) ; habitude jamais lue → ROUGE (`TestEmpriseLecteurFilm_LHabitudeEstLueEnPlusDuPerimetre`) ; échec de l'habitude ignoré → ROUGE (`TestEmpriseLecteurFilm_LHabitudeEnEchecDegradeSeule`, après avoir rendu le double mordant : l'échec porte sur la lecture des joueurs, les films se lisant).
+- **Gate** (CGO, une commande `go` à la fois, avant-plan) : `go build ./...` sortie 0 ; `go vet` mappings, squadagg, teammates, service, archlint sortie 0 ; `go test -count=1` des paquets touchés : 5 ok ; `go test -count=1` du module en six lots couvrant tout `go list ./...` (cmd + contracttest + analysis + api + domain + port + archlint : 67 ok en 79 s ; games : 39 ok en 62 s ; platform + service : 28 ok en 67 s ; sync + persist + migration : 13 ok en 91 s ; reste de internal : 45 ok en 36 s ; pkg + scripts + tests : 3 ok) — aucun FAIL ; `make go-api-lint` : 0 issues ; `go run ./cmd/openapi-gen -check` : à jour ; `gofmt -l` muet ; preuve grep `PorteeDuRadar\(` hors tests : déclaration et appel dans le helper, `capture.go` seulement. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié).
+- Seuils : plus gros fichier touché `tactical_service_isolement.go` 244 L ; aucune fonction neuve au-delà de 45 L ; `Film` a 5 paramètres (ctx compris).
+
+### L2 — Go : le bloc Emprise du périmètre solo · lourd
+
+Périmètre : `analysis/squademprise/{input.go, maps.go (NEUF), equipment.go (NEUF)}` (+ tests),
+`domain/solo_emprise.go` (NEUF), `domain/equipmentusage/families.go`,
+`games/halo_infinite/film/replay/usage_summary_families.go` (2 constantes), `domain/timeseries.go`,
+`service/timeseries_service*.go`, `port/` (EmblemURLLoader), `api/wire/registry_pages.go`, contrat.
+
+- [x] L2.1 `domain/equipmentusage` : `EquipmentFamilyGrapple`, `EquipmentFamilyThruster`,
+  `EquipmentUnmeasuredLineFamilies()` (copie défensive comme `EquipmentOutcomeFamilies`, l. 89-93) ;
+  `replay/usage_summary_families.go:43-44` relit ces constantes. Garde-rail :
+  `replay/usage_summary_families_guard_test.go` vérifie que chaque famille de
+  `EquipmentUnmeasuredLineFamilies()` est dans `usageCarriedCapacityFamilies` et que le répulseur n'y
+  est pas ; mutation : ajouter `repulsor` à la liste → rouge.
+- [x] L2.2 `squademprise.Match` : `MapKey`, `MapLabel`, `Outcome` (`canonical.Outcome` en chaîne) ;
+  l'Escouade ne les renseigne pas (aucun changement de son bloc : `build_test.go` vert inchangé).
+- [x] L2.3 `squademprise.BuildMaps(in Input) []domain.EmpriseMapColumn` (`maps.go`) : une `soiree` par
+  carte (réutilise `tallyMatch` / `soiree.add` / `objets.publier`), tri matchs décroissants puis
+  libellé ; au-delà de `EmpriseGridMaxMaps + 1` cartes, les 12 premières puis une colonne « Autres
+  cartes » (`OtherMaps` = nombre sommé) ; V / D / autres depuis `Match.Outcome`. Tests ROUGES d'abord
+  (`maps_test.go`) : tri, repli à 13 / 14 cartes (maquette : 13 cartes = pas de repli), sommes de la
+  colonne de repli = somme des cartes repliées, carte sans film (`MatchesFilmed = 0`), carte filmée
+  sans niveaux (`MatchesTiers = 0`), objets « qui chez moi » (moi / reste), frags aux armes spéciales
+  hors film. Mutations : seuil de repli ±1, tri inversé → rouges.
+- [x] L2.4 `squademprise.BuildEquipment(in Input) *domain.EmpriseEquipment` (`equipment.go`), D4.
+  Tests ROUGES d'abord (`equipment_test.go`) : servi = posé pour le mur et consommé pour le capteur
+  (via `PlayerOutcomeCounts`), moi / reste de mon camp séparés, adversaire exclu, match à camp
+  inconnu exclu des deux côtés, grappin / propulseur non mesurés avec MES lâchers, répulseur absent,
+  ordre D4, nil sans film. Témoin chiffré : les comptes de la maquette (illustration, mesures §9 :
+  mur moi 52 · 0 · 32, reste 146 · 7 · 151 ; capteur moi 6 · 1 · 54 ; grappin 84 lâchés) sur une
+  fixture minimale qui les reproduit. Mutation : compter `deployed` pour le capteur → rouge.
+- [x] L2.5 `domain/solo_emprise.go` (types §3) ; `TimeseriesPageResponse.Emprise` et
+  `PlayerEmblemURL` (`domain/timeseries.go`, après `RangeProfiles`, commentaire de contrat court).
+- [x] L2.6 Service : `service/timeseries_service_emprise.go` (NEUF) — `attachEmprise` depuis
+  `filteredCanon` : `Match` par ligne canonique (`MapKey` = `Summary.Map.ID`, `MapLabel` =
+  `labelPourLocale(Summary.Map, locale)`, `timeseries_service_sections.go:308-316`), `Players` = le
+  joueur seul (`squadagg.SquadPlayers(xuid, gamertag, participants, nil)`), `Timeline` vide, lectures
+  par L1.4, `Build` + `BuildMaps` + `BuildEquipment` ; une section de durée `emprise` (ADR 0036 I6) ;
+  journaux `emprise_*` page `timeseries`. Les lectures du résumé d'usage du périmètre sont faites UNE
+  fois (`squadagg.LireUsage`) et partagées avec `BuildSquadFormesBlock` (`SquadFormesQuery.Lectures`,
+  `squadagg/squad_formes.go:61-63`) — ADR 0036 I4. Seuil : les dépendances neuves (feuille,
+  véhicules, emblèmes, vies, portées) vivent dans une struct `usagesDeps` déclarée dans ce fichier
+  et embarquée par UNE ligne dans `TimeseriesService` (`timeseries_service.go:56-123`, fichier à
+  424 L) ; leurs `With*` aussi.
+- [x] L2.7 Emblème (D14) : `port.EmblemURLLoader` ; `WithEmblemLoader` ; lecture best-effort
+  journalisée (Debug si absent).
+- [x] L2.8 Câblage `api/wire/registry_pages.go:392-446` : `WithEmprise(duckdb.NewSquadEmpriseRepo(pdb))`
+  inconditionnel (feuille de match, tous titres) ; repo d'usage sous `CapFilmUsageSummary` (le même
+  `NewSessionUsageRepo`, renommer `WithEquipmentUsage` en `WithUsageSummary(repo, repoRoot)` — la
+  suppression du résolveur d'amis se fait en L6) ; véhicules sous `CapFilmVehicleUsage` ; chargeur
+  d'emblèmes comme `TeammatesCtx` (`registry_pages_home.go`). Garde-rail de câblage
+  `registry_pages_timeseries_wiring_test.go` (NEUF, patron `registry_pages_home_teammates_wiring_test.go:80-170`) :
+  `WithEmprise` inconditionnel, véhicules sous leur seule porte ; mutation : mettre `WithEmprise` sous
+  condition → rouge.
+- [x] L2.9 Tests service (mocks de port, `timeseries_service_emprise_test.go`) : périmètre = les
+  matchs filtrés ; Halo 5 (repo d'usage nil → `film_unavailable = film_unsupported`, seule la feuille) ;
+  `ErrCapabilityNotSupported` d'une source → source absente avec raison ; lecture en échec →
+  `*_load_failed`, jamais d'erreur de page ; scope vide → `emprise` nil ; une seule lecture du résumé
+  d'usage pour l'Emprise et les formes (compteur de mock).
+- [x] L2.10 Contrat régénéré (openapi + `generated.ts`), diff additif ; garde
+  `contract-surface.guard.test.ts` verte (ajouts tolérés).
+- Gate : gate Go + contrat ; `no_title_package_in_analysis_test.go`,
+  `no_analysis_type_in_http_body_test.go`, `no_slug_comparison_test.go` rejoués nommément.
+
+Journal L2 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) :
+- **L2.1** `domain/equipmentusage` : `EquipmentFamilyGrapple`, `EquipmentFamilyThruster`, `EquipmentUnmeasuredLineFamilies()` ; `replay/usage_summary_families.go` relit les deux constantes (valeur identique, aucune révision). Garde-rail `TestFamillesNonMesureesSontDesCapacitesPortees` (`usage_summary_families_guard_test.go`).
+- **L2.2** `squademprise.Match` : `MapKey`, `MapLabel`, `Outcome` (`canonical.Outcome`) ; l'Escouade ne les renseigne pas (`build_test.go` vert inchangé).
+- **L2.3** `squademprise.BuildMaps` (`maps.go`) : une `soiree` par carte, tri matchs décroissants / libellé / clé, repli au-delà de `domain.EmpriseGridMaxMaps + 1` ; tests `maps_test.go` (tri et sommes, repli à 13 / 14 / 20 cartes, carte sans film).
+- **L2.4** `squademprise.BuildEquipment` (`equipment.go`), D4 ; tests `equipment_test.go` avec le témoin chiffré de la maquette (mur moi 23 pris, 52 · 0 · 32, reste 146 · 7 · 151 ; capteur moi 12 pris, 6 · 1 · 54, reste 16 · 4 · 183 ; grappin 84 et propulseur 65 lâchés) et les exclusions (adversaire, camp inconnu, poses de capteur, répulseur).
+- **L2.5** `domain/solo_emprise.go` (`SoloEmpriseBlock` embarquant `SquadEmpriseBlock` — schéma OpenAPI vérifié aplati —, `EmpriseMapColumn`, `EmpriseEquipment*`, `EmpriseGridMaxMaps`) ; `TimeseriesPageResponse.Emprise`, `.PlayerEmblemURL`.
+- **L2.6** `service/timeseries_service_emprise.go` : `usagesDeps` embarqué par une ligne dans `TimeseriesService`, `attachEmprise` (section de durée `emprise`, journaux `emprise*` page `timeseries`), `timeseriesEmpriseMatches` (carte et résultat depuis le canonique). Les trois lectures du résumé d'usage se font UNE fois (`lireUsageDuScope`, section `usage_summary`) et nourrissent le bloc d'usage, les formes et l'Emprise (avant ce lot : le bloc d'usage et les formes lisaient chacun de leur côté).
+- **L2.7** `port.EmblemURLLoader`, `WithEmblemLoader`, `attachEmblem` (Debug sans chargeur).
+- **L2.8** Câblage : `registry_pages.go` (déjà à 620 lignes, au-delà du seuil) n'est PAS agrandi — taille avant / après : 620 / 620 — : la factory appelle `r.cablerUsagesTimeseries(svc, pdb)`, nouveau fichier `api/wire/registry_pages_timeseries.go` (feuille inconditionnelle, emblème inconditionnel, véhicules sous `CapFilmVehicleUsage`). Le lecteur d'appels du test de câblage de l'Escouade est généralisé (`appelsDansFactory`, une seule copie). Nouveau `registry_pages_timeseries_wiring_test.go`. Renommage `WithEquipmentUsage` → `WithUsageSummary` : fait en L6.2, quand le résolveur d'amis disparaît (la signature ne change qu'une fois) — dépendance de plan, pas un report.
+- **L2.9** `timeseries_service_emprise_test.go` : fenêtre, un seul joueur, ni habitude ni placement, grille et équipement ; sans film (film_unsupported, feuille seule) ; dégradations nommées (feuille non supportée / en échec, film en échec) ; fenêtre vide ; une lecture du résumé d'usage pour trois blocs ; emblème.
+- **L2.10** Contrat : `openapi.yaml` +179 lignes, 0 retrait ; `generated.ts` +67, 0 retrait ; `check-generated-types-fresh` OK ; `contract-surface.guard.test.ts` vert SANS régénérer le snapshot (snapshot non modifié).
+- **Rouge avant vert** : pour `BuildMaps`, `BuildEquipment` et `attachEmprise`, le code a été écrit avant les tests ; le rouge a été obtenu en rejouant les tests contre un bouchon (corps remplacé par `return nil` / bloc non posé) — 3, 2 et 3 tests rouges respectivement —, puis vert. Écart de méthode consigné.
+- **Mutations** (toutes ROUGES, restauration vérifiée) : répulseur ajouté aux familles non mesurées ; seuil de repli −1 et +1 ; tri des cartes inversé ; DNF compté en défaite ; capteur lu sur les poses (`equipmentUsedOf`) ; adversaire compté dans le reste du camp ; match à camp inconnu compté ; lecture du résumé d'usage non partagée (2 lectures au lieu d'1) ; résultat non transmis ; coéquipiers sélectionnés sur la page solo ; câblage : `WithEmprise` déplacée sous `CapFilmUsageSummary`, `WithEquipmentUsage` sortie de sa porte (`if true`), `cablerUsagesTimeseries` mise sous condition.
+- **Gate** : `go build ./...` 0 ; `go vet` des 8 paquets touchés 0 ; `gofmt -l` muet (un fichier reformaté, fin de ligne) ; `go test -count=1` du module en lots couvrant tout `go list ./...` : 67 + 39 + 28 + 13 + 48 ok, 0 FAIL ; après le déplacement du câblage : build, vet, `./internal/api/...` 5 ok ; `make go-api-lint` 0 issues (deux fois) ; `openapi-gen -check` à jour ; garde-rails rejoués nommément : `TestAucunTypeAnalysisEnCorpsHuma`, `TestNoNewSlugComparison`, `TestAnalysisImporteAucunPaquetDeTitre`, `TestOpenAPIYAMLIsUpToDate` PASS. Web (premier passage) : `npm ci` (node_modules réel, 508 paquets) ; `npm run generate-types` ; `npx tsc -b --force` 0 ; vitest `src/lib/api` 5 fichiers / 36 tests verts. `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié).
+- Seuils : fichiers neufs ≤ 188 L ; `timeseries_service.go` 458 L (+2) ; `domain/timeseries.go` 385 L ; plus longue fonction neuve `BuildEquipment` (~35 L) ; `attachEmprise` 5 paramètres (ctx compris).
+
+### L3 — Go : « Mes vies : près d'un coéquipier ou seul » · moyen
+
+- [x] L3.1 `analysis/coordination/vies_pres_ou_seul.go` (NEUF) : types de lecture (`ViesLues` :
+  vies, morts situées, frags avec camps, variantes) et `ViesPresOuSeul(lues, rayonParMatch)` → domaine
+  (D5). `accompagnee` (`isolation.go:72-74`) délègue à une comparaison commune `aPortee(d *float64,
+  rayon float64) bool` utilisée par les deux. Tests ROUGES d'abord : fenêtre `[début, début suivant)`
+  (frag posthume rattaché à la vie qui finit), borne inclusive (d = portée → près), d NULL → écartée,
+  pas de contexte dans la fenêtre → écartée, match sans portée → écartée (et compté), vie
+  `film_end` / `cut` ignorée, trahison et camp inconnu exclus, frags par vie. Mutations : `<` au lieu
+  de `≤`, fenêtre bornée par `end_ms` → rouges. Témoin : une fixture qui reproduit 721 / 152 vies et
+  604 / 168 frags n'est PAS exigée (base non lisible ici) ; un témoin à 6 vies chiffrées à la main.
+- [x] L3.2 `port/timeseries_lives.go` : `SoloLivesRepository.LoadLivesNearTeammate(ctx, matchIDs
+  []string, xuid string) (coordination.ViesLues, error)`.
+- [x] L3.3 `platform/duckdb/solo_lives_repo.go` (NEUF) : trois lectures sur `match_lives_latest`,
+  `match_death_context_latest`, `match_kill_events_latest` (+ `match_participants`, `match_registry`
+  tables ordinaires), liste des matchs liée en constante sur le `match_id` de CHAQUE vue
+  (`clauseListeMatchs`, ADR 0036 I2), joueur filtré après la fenêtre, jamais `v_gamertag_lookup` ;
+  table absente → `games.ErrCapabilityNotSupported` (patron `squad_life_placement_repo.go:73-78`).
+  Test `:memory:` migré (patron `squad_life_placement_repo_test.go`) : dernière passe entière par
+  match, matchs et joueur demandés seulement, NULL conservés, `exigerFenetresBornees` sur les trois
+  vues ; mutation : lier la liste par sous-requête → rouge.
+- [x] L3.4 Service `service/timeseries_service_lives.go` (NEUF) : `attachLives` — repo nil →
+  Debug « capability absente » ; lecture ; `mappings.PorteesDuRadarParMatch` (L1.1) ; calcul ;
+  journal Info du bilan (vies, écartées, frags écartés) ; section de durée `lives`. Tests mocks :
+  capability absente, échec de lecture (bloc absent + ErrorContext), table des portées vide (toutes
+  écartées et comptées, bloc publié avec Near/Alone à zéro ET `ExcludedNoRadar` > 0 — le web décide
+  de l'afficher, voir L5.6).
+- [x] L3.5 Câblage sous `CapFilmKillPositions` (même porte que `WithLifePlacement`,
+  `registry_pages_home.go:272-274`) + `WithRadarRange(r.radarRangeFor(pdb))` ; ajout au garde-rail de
+  câblage L2.8.
+- [x] L3.6 `TimeseriesPageResponse.LivesNearTeammate` (`json:"lives_near_teammate,omitempty"`),
+  contrat régénéré ; ADR 0036 (EN) : ajouter le nouveau test à la liste I2
+  (`docs/adr/0036-page-reads-are-scoped.md:155-162` et tableau l. ~421).
+- Gate : gate Go + `go test -tags=integration -p 1 ./internal/platform/duckdb/...` + contrat.
+
+Journal L3 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — TDD strict (test rouge AVANT le code) :
+- **L3.1** `analysis/coordination/vies_pres_ou_seul.go` : `ViesPresOuSeul(domain.ViesLues, rayonParMatch) (domain.TimeseriesLivesNearTeammate, int)` (second retour : frags écartés). Test `vies_pres_ou_seul_test.go` écrit d'abord : rouge de compilation, puis rouge de COMPORTEMENT contre un calcul vide (3 tests), puis vert. Témoin à six vies chiffré à la main (2 près / 3 frags, 1 seule / 3 frags, 1 écartée sans coéquipier situé, 1 écartée sans portée, 3 matchs lus dont 1 sans portée, 2 frags écartés). `accompagnee` délègue à `aPortee` : `isolation_test.go` NON modifié et vert. Écart au plan imposé par un garde-rail du paquet (`no_naked_rate_test.go`, `TestAucunTauxNu` : aucun type struct exporté dans `coordination`, types de retour sur liste blanche) : les types d'entrée (`VieLue`, `MortSituee`, `FragLu`, `ViesLues`) vivent dans `domain/timeseries_lives.go` (patron de `domain.MortAExaminer`), le bilan est un `int`, et `domain.TimeseriesLivesNearTeammate` entre dans la liste blanche avec une justification DATÉE (que des comptes, aucun quotient).
+- **L3.2** `port.SoloLivesRepository` (`port/timeseries_lives.go`).
+- **L3.3** `platform/duckdb/solo_lives_repo.go` : quatre requêtes ; la liste des matchs liée en constante sur le `match_id` de CHACUNE des trois vues `_latest`, le joueur filtré après la fenêtre, variantes par `match_registry`. Test `:memory:` écrit d'abord (rouge : symbole absent) : dernière passe entière, matchs et joueur demandés, NULL conservés (distance, camp d'une victime sans participant), listes vides sans requête, table absente → `ErrCapabilityNotSupported`, `exigerFenetresBornees(…, 11, 3)`. Écart au plan : `TestCampaignExclusionGuard` (archlint) a repéré la lecture (participants + filtre joueur) ; plutôt qu'une dispense, la requête des frags pose le résolveur existant `excludeCampaignByMatchID` (défense en profondeur ; la fenêtre de la page exclut déjà la Campagne) — aucune liste agrandie.
+- **L3.4** `service/timeseries_service_lives.go` : `WithLivesNearTeammate`, `WithRadarRange`, `attachLives` (section `lives`, `mappings.PorteesDuRadarParMatch`, journaux Debug / Error / Info) ; appelé par `attachMigratedSections`. Bloc absent sans aucune vie lue (MatchesRead = 0). Tests écrits d'abord (rouge de compilation) : lecture bornée et portée courante (variante à blanc de tête résolue), sans table des portées (tout écarté et compté), quatre dégradations sans bloc, fenêtre vide sans lecture, bloc posé par la page.
+- **L3.5** Câblage dans `registry_pages_timeseries.go` : `WithRadarRange(r.radarRangeFor(pdb))` inconditionnel, `WithLivesNearTeammate(duckdb.NewSoloLivesRepo(pdb))` sous `CapFilmKillPositions` ; test `TestTimeseries_CableLesViesEtLaPorteeDuRadar`.
+- **L3.6** `TimeseriesPageResponse.LivesNearTeammate` ; contrat régénéré (openapi +42, generated.ts +19, 0 retrait) ; ADR 0036 : nouveau garde-rail I2 cité (liste §I2 et tableau).
+- **Mutations** (toutes ROUGES) : borne stricte `<` (rougit aussi `TestIsolement_LaBorneEstInclusive` — la comparaison est bien commune) ; fenêtre arrêtée avant le début suivant (frag posthume perdu) ; distance absente rangée ; trahison comptée ; vie non terminée par une mort comptée ; liste en semi-jointure sur les trois vues ; liste posée sur `pk.match_id` (autre relation de la jointure) ; frags non publiables lus ; vue brute `match_lives` au lieu de `_latest` ; exclusion de la Campagne retirée (rougit `TestCampaignExclusionGuard`) ; appel retiré de la page ; portée résolue à la main sans nettoyage ; bloc publié sans vie ; lecture bornée au gamertag au lieu du xuid ; vies sorties de leur porte (`if true`).
+- **Gate** : `go build ./...` 0 ; `go vet` des 6 paquets touchés 0 ; `gofmt -l internal` muet ; `go test -count=1` du module en lots couvrant tout `go list ./...` : 67 + 39 + 28 + 13 + 48 ok, 0 FAIL ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` : 4 ok en 288 s ; `make go-api-lint` 0 issues ; `openapi-gen -check` à jour ; archlint rejoué nommément (`TestAucunTypeAnalysisEnCorpsHuma`, `TestNoNewSlugComparison`, `TestAnalysisImporteAucunPaquetDeTitre`, `TestNoLocalRadarRangeLookup`, `TestCampaignExclusionGuard`) et duckdb (`TestNoRawAppendOnlyReads`, `TestLecturesDeLaVueDesNoms_Ratchet`) verts ; web : `generate-types`, `check-generated-types-fresh` OK, vitest `src/lib/api` 5 / 36 verts (snapshot de surface intact), `tsc -b --force` 0.
+- Seuils : fichiers neufs ≤ 162 L ; `LoadLivesNearTeammate` ~40 L ; `ViesPresOuSeul` ~32 L ; `rangerVie` 5 paramètres.
+
+### L4 — Web : briques de l'Emprise paramétrables (Escouade inchangée) · moyen
+
+- [x] L4.1 `squad/emprise/emprise.logic.ts:89-104,149,359` : `buildResourceFil` et `buildMatchGrid`
+  prennent un index `Map<string, EmpriseMatchInfo>` ; `empriseMatchIndexFromHistory(history)` pour
+  l'Escouade ; appelants (`useEmpriseModels.ts:40,42`, `empriseContent.ts:69`) migrés ;
+  `emprise.logic.test.ts` vert inchangé (mêmes valeurs).
+- [x] L4.2 `empriseCharts.ts` : mode d'axe `period` de `buildResourceFilOption` (D12) ;
+  `ResourceFilCard` reçoit `axis` (défaut `match`) ; tests `empriseCharts.test.ts` : labels de mois,
+  légende « n matchs, dont m filmés », pas d'encoche, rayons réduits au-delà de 120 matchs ;
+  mutation : étiquette sur chaque match → rouge.
+- [x] L4.3 Extraire de `ResourceMatchGridCard.tsx:62-390` la table (`SectionRows`, `GridLine`,
+  `Cell`, `cellTip`, `ResourceDot`, `SummaryLabel`) dans `squad/emprise/ResourceGridTable.tsx`,
+  colonnes génériques `{ key, head: ReactNode, tipHead: string }` ; `ResourceMatchGridCard` garde
+  `MatchHead` ; `SquadEmprisePage.test.tsx` vert inchangé.
+- RÈGLE DU LOT : uniquement des refactorisations dont chaque export a un lecteur dans le même lot
+  (knip 0 / 0 / 0 au gate) ; les composants neufs naissent en L5 avec leur lecteur.
+- Gate : gate web (aucun Go) ; `SquadEmprisePage.test.tsx`, `SquadContributionsPage.test.tsx`,
+  `SquadObjectiveSection.test.tsx` rejoués nommément.
+
+Journal L4 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — refactorisations seulement, l'Escouade inchangée à l'écran :
+- **L4.1** `emprise.logic.ts` : `EmpriseMatchIndex` (`ReadonlyMap<string, EmpriseMatchInfo>`) et `empriseMatchIndex(history)` remplacent l'index privé `historyIndex` ; `buildResourceFil(block, index)` et `buildMatchGrid(block, index)`. Appelants migrés : `useEmpriseModels.ts` (index mémoïsé une fois pour le fil et la grille), `empriseContent.ts` (index vide, comme avant). Écart de nom au plan : `empriseMatchIndex` et non `empriseMatchIndexFromHistory` (le paramètre dit déjà la source). Tests : seuls les sites d'appel changent (`empriseMatchIndex(HISTORY_2209)` au lieu de `HISTORY_2209`) dans `emprise.logic.test.ts`, `vehicles.logic.test.ts`, `empriseCharts.test.ts` ; AUCUNE assertion touchée.
+- **L4.2** `empriseCharts.ts` : `FilAxe` (`match` | `period` avec `dateOf` et `caption`) ; `buildResourceFilOption(fil, c, t, axe = match)` ; en mode période : la date du premier match de chaque mois sous l'axe (étiquette riche `d`), la légende de couverture en `graphic` à droite sous la bande, pas d'encoche de dominance (`bandSeries(…, notch)`), points réduits au-delà de 120 matchs (`smallPickupRadius`, 0,8 + 0,45 × √prises, maquette v4). `ResourceFilCard` reçoit `axe` (écart de nom au plan : `axe` et non `axis`, vocabulaire du fichier), défaut `match` ; la pastille d'encoche de sa légende n'apparaît qu'en mode match. Tests écrits d'abord (4 rouges sur 5, le cinquième — le mode match reste le défaut — vert par construction). Le mode période n'a, dans ce lot, que les tests pour lecteur : son appelant de production naît en L5 (L5.2, carte 2b de §3) ; `FilAxe` est importé par `ResourceFilCard`, knip 0 / 0 / 0.
+- **L4.3** `ResourceGridTable.tsx` (neuf, 284 L) : la table (`SectionRows`, `GridLine`, `Cell`, `cellTip`, `ResourceDot`, `SummaryLabel`, état des râteliers repliés, `data-testid="emprise-grid-table"`), colonnes génériques `GridColumn { key, head, tipHead }` ; `ResourceMatchGridCard.tsx` (391 → 134 L) garde la légende, le cadre `emprise-grid`, `MatchHead`, construit les colonnes (en-tête d'infobulle = `t.grid.matchHead(…)`) et « qui chez nous ». La mutation « en-tête d'infobulle de la colonne 0 partout » restait VERTE sur toute la suite de l'Escouade (trou préexistant : aucune infobulle de case testée) : `ResourceGridTable.test.tsx` (neuf, 3 tests) le ferme.
+- **Mutations** : étiquette de mois sur chaque match → ROUGE ; encoche en mode période → ROUGE ; petits points ignorés → ROUGE ; légende de couverture vidée → ROUGE ; index de l'historique ignoré dans `useEmpriseModels` → ROUGE (`SquadEmprisePage.test.tsx`, 2 tests) ; en-tête de colonne non rendu → ROUGE (idem) ; en-tête d'infobulle de la colonne 0 partout → VERTE avant le test neuf, ROUGE après ; « qui chez nous » retiré de l'infobulle → ROUGE.
+- **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 (14 s) ; `npm run lint` 0 erreur (26 avertissements préexistants, `npx eslint src/features/squad/emprise` muet) ; `npx vitest run --pool=forks` complet : 833 fichiers verts / 5 ignorés, 8 856 tests verts / 23 ignorés (131 s) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 ; `node tools/lint-no-hardcoded-colors.mjs` 0 violation ; `node tools/lint-cross-feature-imports.mjs` 7 ≤ 7 ; `SquadEmprisePage.test.tsx`, `SquadContributionsPage.test.tsx`, `objectif/SquadObjectiveSection.test.tsx` rejoués nommément : 3 fichiers / 46 tests verts, fichiers non modifiés (`git diff` vide) ; `npx lefthook run pre-push` : 9 / 9 verts (71 s) — voir §8 pour le premier passage.
+- Fichiers > 400 L touchés : `emprise.logic.ts` 391 → 402, `empriseCharts.ts` 366 → 415 (sous 500).
+
+### L5 — Web : l'onglet Usages reconstruit · lourd
+
+Périmètre : `features/timeseries/TimeseriesPage.usages.tsx`, `features/timeseries/usages/*` (NEUF),
+`squad/objectif/` (fiche solo), `WeaponRangeSection.tsx`, `TimeseriesCoordinationSection.tsx`,
+`TimeseriesPage.progression.tsx` (rien à changer si la section garde sa signature), tests, puis les
+SUPPRESSIONS WEB devenues mortes (knip 0 / 0 / 0 au gate de ce lot l'exige). Aucune requête neuve,
+aucune clé de requête neuve (`lib/query/keys.ts` non touché) : tout arrive avec
+`useTimeseriesPage`. Libellés de résultat et de dominance : `squad/emprise/useOutcomeLabels.ts` et
+`lib/narrative/dominance.ts` (existants).
+
+- [x] L5.0a `ObjectiveSoloSheetCard.tsx` (NEUF, `squad/objectif/`) + `buildSoloObjectiveSheet` dans
+  `objectif.logic.ts` (une fiche : MA valeur, part = ma valeur / somme de la ligne sur les fiches du
+  camp de `buildObjectiveSheets`, familles côte à côte, rôle dominant, pied Prendre / Défendre /
+  Tenir, zéro atténué) ; tests ROUGES d'abord (part, zéro, rôle dominant, emblème / initiale) ;
+  mutation : part sur le max de la ligne (règle de l'Escouade) → rouge.
+- [x] L5.0b `features/timeseries/usages/usagesText.ts` (D10) : `EMPRISE_TEXT_SOLO`,
+  `OBJECTIF_TEXT_SOLO`, textes des cartes neuves ; test : FR = maquette pour chaque titre et ⓘ
+  (chaînes copiées), parité FR / EN par le typage, aucun « Notre camp » / « Our side ».
+- [x] L5.1 `usages/usages.logic.ts` (+ test) : index des matchs depuis `match_rows`
+  (date, carte `map_name_fr || map_name` comme `matchLabels.ts:18`, résultat
+  `outcomeCodeToValue`), prédicat `usagesSections(data, caps)` (un seul prédicat pour la page et
+  l'état vide : portée, bilan, carte, mes prises, prendre, vies, objectif, équipement ; réutilise
+  `gridHasFilmRows` / `sheetsHaveLines` de `empriseContent.ts:20-27`), modèles de « Mes prises »
+  (depuis `buildPickupSheets`), de la grille par carte (depuis `emprise.maps`), de l'équipement et des
+  vies. Tests ROUGES d'abord, une mutation par règle.
+- [x] L5.2 `TimeseriesPage.usages.tsx` : ordre §3, intertitres de la maquette (« Portée des
+  engagements », « Bilan du périmètre », « Carte par carte », « Mes prises », « Prendre, et s'en
+  servir », « Près d'un coéquipier ou seul », « Objectif », « Équipement »), un bloc sans donnée se
+  retire intertitre compris, état vide inchangé ; aucune logique dans le composant.
+- [x] L5.3 `ResourceMapGridCard.tsx` : en-tête nom, « n cartes · » pour la colonne de repli,
+  « n matchs », « x V · y D (· z A) » en couleurs `outcome-*` ; cases « sans film » (hachure),
+  « non classé », « — » ; infobulle « Chez moi : <gamertag> n, reste du camp m » ; râteliers repliés ;
+  ligne des frags aux armes spéciales (feuille).
+- [x] L5.4 `MinePickupsCard.tsx` (maquette `renderMine`) : groupes par ressource, objets pris par mon
+  camp triés par volume, barre à l'échelle du plus gros, segments moi (`squad-player-1`) / reste
+  (`team-rest`) avec comptes dedans (S2), « moi n · camp m » au bout, râteliers repliés, ligne
+  « Bonus perdus » des deux camps en pastilles d'équipe ; sans prise : la carte se retire (D13).
+- [x] L5.5 `EquipmentOutcomesCard.tsx` (maquette `renderEquip`) : une ligne par famille D4,
+  segments servi / gardé / lâché (`divergent-pos` / `divergent-neutral` / `divergent-neg`) avec
+  comptes, sous-libellé « n objets, dont m pris sur la carte », barre fine du reste de mon camp et
+  sa ligne de parts, ligne « Non mesuré : ni prise ni usage publiés pour cette famille » + « n lâchés »
+  pour grappin et propulseur, axe 0-100 %.
+- [x] L5.6 `LivesNearTeammateCard.tsx` (maquette l. 994-1026, encart « Maquette. » non porté) :
+  barre épaisse vies près (`squad-player-1`) / seul (`extreme`), barre fine frags, ligne « frags :
+  n · p % · x par vie … y par vie · m » ; ⓘ avec le compte des vies écartées (les deux causes) ;
+  carte retirée si Near + Alone = 0.
+- [x] L5.7 Objectif : `ObjectiveBalanceCard` (texte solo) puis `ObjectiveSoloSheetCard` (L5.0a)
+  alimentés par `formes_retenues` et `player_emblem_url` ; section retirée sans match à objectif
+  (`objectiveMatches`).
+- [x] L5.8 `WeaponRangeSection.tsx` : `ElevationCard` retirée, props `elevation` / `matchRows`
+  retirées, « Portée par arme » demi-largeur seule (D11) ; tests adaptés.
+- [x] L5.9 `TimeseriesCoordinationSection.tsx` : `CarteRiposte` retirée, « Appui reçu » seule
+  (D11) ; tests adaptés (la carte Riposte n'est plus montée).
+- [x] L5.10 Tests de page : `TimeseriesPage.sections.test.tsx` réécrit (ordre des blocs, intertitres,
+  retrait par bloc, état vide, anglais, Halo 5 sans film : seule la barre épaisse des armes
+  spéciales si la feuille la porte) ; une fixture `usages/usages.fixtures.ts` tirée des chiffres
+  d'illustration de la maquette (bilan 111 / 87 bonus, 229 / 231 armes spéciales ; vies 1 558 / 301).
+- [x] L5.11 Rejouer CHAQUE preuve grep de §4.A-D avant de supprimer ; écart → Découvertes, arrêt
+  propre si un lecteur inattendu existe.
+- [x] L5.12 Web §4.A : `EquipmentUsageSection` et dépendances propres, tests, clés i18n orphelines.
+- [x] L5.13 Web §4.B : cartes et formes, survivants réduits, `aggregateColumns` réduit.
+- [x] L5.14 Web §4.C, §4.D, §4.G (manifests régénérés par `node apps/web/scripts/build_i18n_manifests.mjs`).
+- [x] L5.15 Ratchets : knip 0 / 0 / 0 ; imports croisés ≤ 7 et aucune dérogation morte (la paire
+  `timeseries=>squad` reste servie) ; si un plafond baisse, l'abaisser.
+- Gate : gate web ; preuves §4.A-D rejouées → 0 (côté web).
+
+Journal L5 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — tests écrits et vus rouges AVANT chaque module neuf (logique : symbole absent ; cartes : fichier mis de côté le temps du rouge), puis vert, puis mutations :
+- **L5.0a** `objectif.logic.ts` : `buildSoloObjectiveSheet` (ma valeur, total de mon camp = somme de la ligne sur les fiches de `buildObjectiveSheets`, part nulle si mon camp n'a rien fait, rôle dominant et pied repris de ma fiche ; joueur absent de l'escouade du bloc → null). `ObjectiveSoloSheetCard.tsx` (+ test, 7 cas) : une fiche, familles côte à côte, barre = part du camp, zéro atténué sans barre, emblème ou initiale. Les textes de la carte sont un type local (`SoloSheetText`) que l'onglet remplit : `squad` n'importe pas `timeseries`.
+- **L5.0b** `usages/usagesText.ts` (surcharges solo de `EMPRISE_TEXT` et `OBJECTIF_TEXT` : « Mon camp », ⓘ de la maquette, infobulles « pour mon camp / pour l'adversaire », « Chez moi ») et `usages/usagesCardsText.ts` (cartes propres à l'onglet ; fichier à part pour la taille). Test : titres, ⓘ et légendes FR copiés de la maquette, balayage de toutes les chaînes et sorties de fonction des blocs solo FR et EN sans « Notre camp », « pour nous », « Chez nous », « Our side », « for us ».
+- **L5.1** `usages/usages.logic.ts` : `timeseriesMatchIndex` (carte `map_name_fr || map_name`, liste de jeu, résultat ; ni score ni dominance : pas d'encoche sur une période), `empriseCoverage`, `buildMapGrid` (chaque colonne du Go lue comme un « match » de la grille de l'Emprise — filmée, camp connu, niveaux, véhicules si un de ses matchs l'est — puis `buildMatchGrid` : aucune copie des règles de case), `buildMinePickups` (depuis `buildPickupSheets`), `buildEquipmentRows`, `buildLivesModel`, `buildUsagesModels` et `usagesSections` (LE prédicat, page et état vide). `gridHasFilmRows` (`empriseContent.ts`) généralisé à toute grille à colonnes (signature seule). Fixture `usages/usages.fixtures.ts` tirée des chiffres d'illustration de la maquette (bilan 111 / 87 et 229 / 231, vies 1 558 / 301, mur, capteur, grappin, propulseur). Alias de types ajoutés à `lib/api/types.ts` (+7 lignes).
+- **L5.2** `TimeseriesPage.usages.tsx` réécrit : ordre §3, intertitres de la maquette (le bilan porte sa couverture « n matchs filmés sur N · frags de la feuille de match sur les N »), bloc sans donnée retiré intertitre compris, état vide inchangé, aucune logique (hook `usages/useUsagesModels.ts`). L'infobulle d'un match du fil sur une période porte sa date (`empriseCharts.ts`, test d'abord).
+- **L5.3** `ResourceMapGridCard.tsx` sur `ResourceGridTable` : nom, « n cartes · », « n matchs », « x V · y D (· z A) » en `outcome-*`, infobulle « Carte (n matchs, m filmés) » puis « Chez moi : <gamertag> n, reste du camp m » (moi d'abord, maquette).
+- **L5.4** `MinePickupsCard.tsx` : groupes, barre à l'échelle du plus gros objet, segments moi / reste avec comptes (mesure au pixel), « moi n · camp m », râteliers repliés, bonus perdus des deux camps. Écart : le jeton `team-rest` du plan n'existe pas ; le reste du camp prend `TEAM_REST_INK` (encre de l'Emprise de l'Escouade, `team-ally` à 55 %).
+- **L5.5** `EquipmentOutcomesCard.tsx` : servi / gardé / lâché (`divergent-*`), comptes dans la barre épaisse, barre fine et ligne de parts du reste de mon camp, « Non mesuré » et lâchers pour grappin et propulseur (libellés dans `usagesCardsText`), axe 0-100 %.
+- **L5.6** `LivesNearTeammateCard.tsx` : barre épaisse près (`squad-player-1`) / seul (`extreme`) avec comptes et parts (repli au-dessus s'ils ne tiennent pas), barre fine des frags, ligne « frags … par vie », vies écartées dans l'ⓘ (les deux causes) ; carte retirée sans vie rangée.
+- **L5.7** Objectif : `ObjectiveBalanceCard` (`OBJECTIF_TEXT_SOLO`) puis `ObjectiveSoloSheetCard` (emblème `player_emblem_url`) ; bloc retiré sans match à objectif.
+- **L5.8** `WeaponRangeSection.tsx` : `ElevationCard`, props `elevation` / `matchRows` retirées, « Portée par arme » seule en demi-largeur ; tests adaptés (une carte, une légende, test « demi-largeur »).
+- **L5.9** `TimeseriesCoordinationSection.tsx` : `CarteRiposte` et `secFmt` retirés, « Appui reçu » seule ; `delaiMedianS`, chaînes et clés de manifest de la riposte (7) retirées ; tests adaptés (la Riposte n'est plus montée).
+- **L5.10** `TimeseriesPage.sections.test.tsx` réécrit pour l'onglet (ordre des blocs, intertitres, cartes montées, retrait par bloc, équipement sans film, Halo 5 sans film, anglais, état vide) ; `TimeseriesPage.usages.test.tsx` (neuf) pince le câblage de l'axe période (la carte graphe n'y est pas doublée). Les noms de cartes de la fixture sont neutres (« Carte Alpha »…) : le contrôle `lint-no-hardcoded-fields` refusait « Aquarius », « Recharge », « Streets », « Classé » ; renommer plutôt qu'agrandir sa liste blanche.
+- **L5.11** Preuves §4.A-D rejouées AVANT toute suppression : aucun lecteur hors périmètre (seulement des commentaires). Lecteur interne relevé : `usagePadTiersModel.ts` importait un type de `usageCountsModel.ts` pour `buildPadTierRows`, dont le seul lecteur de production était `EquipmentUsageSection` (voir §8).
+- **L5.12** §4.A : 10 fichiers supprimés (`EquipmentUsageSection`, `UsageCountsGrid`, `usageCountsModel`, `UsageEquipmentDonutCard`, `usageEquipmentPartiesModel` et leurs tests) ; `buildPadTierRows` et `padTiersCoverage` supprimés (leurs règles d'ordre, de niveaux servis et de détail migrent sur `buildPadTierGaugeRows`, survivante) ; 12 clés de `usageI18n` sans lecteur retirées (scan des champs de `UsageText`, les 13 autres « sans lecteur externe » sont lues dans le fichier) ; exports `UsageCollapseToggle` et `buildOutcomeSegments` redevenus privés ; commentaires devenus faux corrigés (`UsageForms`, `usageGaugeModel`, `usageCardTitle`, `SessionPadControlCards`). Les deux garde-rails d'usage ne citaient aucun fichier supprimé (non modifiés).
+- **L5.13** §4.B : 26 fichiers supprimés sous `squad/formes/` ; survivants réduits à ce qu'on lit : `cardsI18n.ts` (familles), `i18n.ts` (colonnes), `colors.ts` (sans `PARITY_INK`, `SPREAD_INK`, `axisInk`), `format.ts`, `model/objectives.ts` (`aggregateColumns` réduit à `{team, lobby}` et sans paramètre joueur, `aggregateRole` supprimé) ; `objectivesOptional.test.ts` réécrit sur la surface survivante (cas objectif de `padsObjectives.test.ts` migrés).
+- **L5.14** §4.C web : `ElevationCard.tsx`, `_elevationCloudChart.ts` (+ test) supprimés, 14 clés `synthesis.weapon_range.*` orphelines et leurs commentaires retirées ; §4.D fait en L5.9 ; §4.G : clé `timeseries.usages.equipment_title` retirée, manifests régénérés (`build_i18n_manifests.mjs`) ; le snapshot de surface du contrat suit en L6.4 (le contrat ne change pas en L5).
+- **L5.15** Ratchets : knip 0 / 0 / 0 ; imports croisés 7 ≤ 7, paire `timeseries=>squad` servie, aucune dérogation morte (paires `timeseries=>engagement/explorer/career` toujours servies) ; aucun plafond ne baisse.
+- **Mutations** (toutes ROUGES au final) : part solo sur le maximum de la ligne ; emblème ignoré ; zéro avec barre ; « Chez nous » ; « Mon camp » non surchargé ; onze sur la logique (carte EN d'abord, colonne toujours filmée, camp toujours connu, niveaux toujours mesurés, repli sans clé dédiée, reste = camp, râteliers dépliés, équipement toujours présent, frags par vie sans garde, portée sans capability, objectif sans match à objectif) ; date absente des infobulles du fil (bande, points) ; grille par carte (« A » toujours écrit, nombre de cartes absent, reste avant moi, en-tête d'infobulle générique) ; Mes prises (échelle propre à chaque barre, segment moi à zéro, râteliers dépliés, pertes adverses = les nôtres) ; Équipement (segment vide dessiné, sous-libellé sans les prises, reste sans barre fine, non mesurée sans lâchers) ; Mes vies (vies écartées tues, barre fine sur les vies, barre fine sans garde) ; page (état vide jamais, objectif sans prédicat, couverture du bilan absente, axe du fil en mode match — VERTE dans le fichier où `ChartCard` est doublé, ROUGE après le test de câblage neuf) ; agrégat d'objectif (match non mesuré gardé).
+- **Gate** : purge `node_modules\.tmp` ; `npx tsc -b --force` 0 (19 s) ; `npm run lint` 0 erreur (26 avertissements préexistants ; une erreur `react-hooks/immutability` de `EquipmentOutcomesCard` corrigée en cours de gate) ; `npx vitest run --pool=forks` complet : 831 fichiers verts / 5 ignorés, 8 857 tests verts / 23 ignorés (135 s, dernier passage) ; `node tools/knip-ratchet.mjs` 0 / 0 / 0 ; `node tools/lint-no-hardcoded-colors.mjs` 0 ; `node tools/lint-cross-feature-imports.mjs` 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet dès le premier passage) : 9 / 9 verts au second passage (55 s) — le premier a rougi sur `lint-no-hardcoded-fields` (noms de cartes de la fixture, corrigés ci-dessus) ; preuves §4.A-D rejouées → 0 hors commentaires historiques et `lib/api/types.ts:2328` (alias `EquipmentUsageBlock`, retiré en L6.4) ; `delaiMedianS` de `squadRiposte.logic.ts` est un champ homonyme de l'Escouade (hors périmètre).
+- Seuils : fichiers neufs ≤ 326 L (`usages.logic.ts`) ; fichiers > 400 L touchés : `lib/api/types.ts` 3 460 → 3 467 (alias, dette existante ; L6.4 en retire), `_shared/usage/usageI18n.ts` 576 → 518, `squad/emprise/empriseCharts.ts` 415 → 418, `_shared/usage/UsageForms.tsx` 409 → 399. 39 fichiers supprimés.
+### L6 — Suppressions Go (D8, D9) et contrat · moyen
+
+Le web ne lit plus `equipment_usage` ni `elevation` depuis L5.
+
+- [x] L6.1 Rejouer les preuves §4.E et la partie Go de §4.C (producteurs et lecteurs Go).
+- [x] L6.2 Go D8 : chaîne `equipment_usage` (+ `WithUsageSummary` sans résolveur d'amis, wire
+  `registry_pages.go:428` sans `friendGamertagsResolver`), tests supprimés avec leur code
+  (`service/equipment_usage_block_test.go`, `sessionusage/usage_overview_test.go`, cas
+  `timeseries_service_test.go` qui les citent).
+- [x] L6.3 Go D9 : chaîne d'élévation ; `weapon_range_section_test.go:494` et
+  `elevation_cloud_section_test.go` suivent.
+- [x] L6.4 Contrat régénéré ; snapshot `contract-surface` régénéré par la procédure, disparitions
+  listées ; fixture `test/handlers.ts:242` retirée ; `types.ts:2327-2330` retiré.
+- Gate : gate Go + contrat + gate web ; preuves §4.A-E rejouées → 0.
+
+Journal L6 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — suppressions Go et contrat :
+- **L6.1** Preuves §4.E et §4.C (Go) rejouées avant suppression : `EquipmentUsageBlock` n'avait qu'un producteur (`timeseries_service_sections.go`) et plus aucun lecteur web depuis L5 ; `ElevationCloudBlock` qu'un producteur (`buildWeaponRangeSections`). Aucun lecteur côté Sessions rencontré : la page Sessions garde son propre résolveur d'amis (`session_page_usage.go`, `usageFriends`, non touché) et la riposte du bloc `coordination` (non touchée, plan §0).
+- **L6.2** D8 : `domain/equipment_usage.go`, `sessionusage/usage_overview.go` (+ test), `service/equipment_usage_block_test.go` supprimés ; `squadagg/equipment_usage.go` renommé `lectures_usage.go` et réduit à `LireUsage` / `LecturesUsage` (lus par l'Emprise et les formes) — `BuildEquipmentUsageBlock`, `EquipmentUsageQuery`, `attacherNiveauxDArmes`, `nommerArmes`, `parseFamilleArme` partis ; alias de `squadagg_reexport.go` retirés ; `WithEquipmentUsage` devient `WithUsageSummary(repo, repoRoot)` sans résolveur d'amis (champ `usageFriends` et `timeseriesFriendGamertags` du service supprimés) ; câblage `registry_pages.go` (taille 620 → 620). Test de câblage écrit d'abord (rouge : `WithUsageSummary` absent, puis arguments exacts). `usage_outcomes_test.go` : la comparaison `metricKeys` / `overviewFamilies` devient `TestBilan_MetricKeysSurLeSeulSujet` (le critère `subjectBilanFamilies` reste, lu par `metricKeys`). `pad_tiers_wiring_test.go` : les deux cas qui pointaient le fichier supprimé retirés (la page Sessions est le seul lecteur des niveaux d'armes). Commentaires devenus faux corrigés (`usage.go`, `usage_outcomes.go`, `families.go`, `squad_formes.go` ×2, `synthesis_service_usage.go`, `teammates_service_usage.go`, `usageAvailability.ts`).
+- **L6.3** D9 : `domain/elevation_cloud.go`, `analysis/elevation_cloud.go` (+ test), `service/elevation_cloud_section.go` (+ test) supprimés ; `buildWeaponRangeSections` devient `buildWeaponRangeSection` (un seul retour, `hydrateLabels` ne nomme plus que la portée, `unionWeaponKeys` supprimée) ; l'aide de test triviale `wrSection` remplacée par l'appel direct ; champ `TimeseriesPageResponse.Elevation` retiré.
+- **L6.4** Contrat régénéré : `openapi.yaml` −262 lignes, `generated.ts` −117, 0 ajout ; `check-generated-types-fresh` OK ; garde de surface : exactement les 9 schémas attendus disparus (`ElevationCloudBlock`, `ElevationPoint`, `ElevationSideSummary`, `ElevationWeaponLabel`, `EquipmentUsageBlock`, `EquipmentUsageFamilyLine`, `EquipmentUsageFriendCount`, `EquipmentUsageParties`, `EquipmentUsagePlayerLine`), snapshot régénéré par la procédure documentée (`UPDATE_CONTRACT_SURFACE=1`), qui enregistre aussi les 8 schémas ajoutés depuis L2 (`EmpriseEquipment`, `EmpriseEquipmentFamily`, `EmpriseEquipmentOutcomes`, `EmpriseMapColumn`, `LivesSideCount`, `SoloEmpriseBlock`, `SquadEmpriseVehicles`, `TimeseriesLivesNearTeammate`) ; garde rejouée sans la variable : verte. Fixture MSW `test/handlers.ts` et alias `lib/api/types.ts` (usage et élévation) retirés.
+- **Mutations** : `WithUsageSummary` sans racine du dépôt → ROUGE ; `WithUsageSummary` sortie de la porte `film.usage_summary` → ROUGE.
+- **Gate** : `go build ./...` 0 ; `go vet ./...` 0 ; `gofmt -l internal` muet ; `go test -count=1` du module en cinq lots couvrant les 348 paquets de `go list ./...` (cœur 58 ok, hors internal 40 ok, games 38 ok, sync / persist / migration 13 ok, reste 46 ok ; 153 sans test) — 0 FAIL ; `make go-api-lint` 0 issues ; `openapi-gen -check` à jour ; `-tags=integration` non requis (aucun paquet `platform/duckdb`, `sync`, `persist`, `migration` modifié). Web : `npm run generate-types`, `check-generated-types-fresh` OK ; purge `node_modules\.tmp`, `npx tsc -b --force` 0 ; `npm run lint` 0 erreur ; vitest complet 831 fichiers / 8 857 tests verts (157 s) ; knip 0 / 0 / 0 ; couleurs 0 ; imports croisés 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (83 s). Preuves §4.A-E rejouées → 0 hors commentaires historiques au passé et le résolveur d'amis propre à la page Sessions.
+- Seuils : fichiers > 400 L touchés, tous en baisse ou stables : `timeseries_service.go` 458 → 455, `registry_pages.go` 620 → 620, `sessionusage/usage.go` 421 → 416, `weapon_range_section_test.go` 496 → 486, `lib/api/types.ts` 3 467 → 3 449, `test/handlers.ts` 549 → 540 ; 10 fichiers supprimés.
+### L7 — Contrat `formes_retenues` réduit à l'objectif (D7) · moyen, le plus risqué
+
+- [x] L7.1 Rejouer §4.F (lecteurs web des champs après L6).
+- [x] L7.2 Go : champs D7 retirés de `domain/squad_formes.go:59-159` ; `squadformes.Build` ne
+  publie plus que les matchs à objectif et les champs gardés (le compte `MatchesMeasured` reste,
+  calculé comme aujourd'hui) ; `FilmPads`, `WeaponPad`, `WeaponInfo.Class/Role` s'ils n'ont plus de
+  lecteur (vérifier `squademprise/input.go:108-109` qui lit `squadformes.WeaponInfo` :
+  `Label`/`WeaponKey` restent), `WeaponClassOf`, `buildWeapons`, `WallFamilyKey`
+  (`squadagg/squad_formes.go:108-111`), `LoadUsageFilmPads` (port + DuckDB + tests).
+- [x] L7.3 Tests Go adaptés : `squadformes/formes_test.go`, `squadagg/squad_formes_prises_nettes_test.go`,
+  `teammates_service_usage_test.go`, `timeseries_service_equipes_test.go` ; l'objectif publié est
+  identique avant / après (test de non-régression sur la fixture existante, écrit AVANT la coupe).
+- [x] L7.4 Contrat régénéré ; web : types TS suivent, fixtures `objectif.fixtures.ts` /
+  `objectivesOptional.test.ts` réduites ; `SquadObjectiveSection` et les cartes d'objectif des deux
+  pages inchangées à l'écran.
+- Gate : gate Go + contrat + gate web.
+
+Journal L7 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — contrat `formes_retenues` réduit à l'objectif :
+- **L7.1** §4.F rejoué sur la base L6 : lecteurs web du bloc = `squad/objectif/*` et `squad/formes/model/objectives.ts` seulement (champs `available`, `matches_*`, `main_xuid`, `squad`, `matches[].{match_id, start_time, mode_label, map_label, player_team, objective}`) ; seule fixture à porter un champ retiré : `objectif.fixtures.ts` (`measured`). Aucun lecteur côté Sessions (`features/session-detail/`, `service/session_page*`) : rien à consigner pour le lot Sessions.
+- **L7.3 (écrit AVANT la coupe)** `squadformes/formes_objectif_golden_test.go` : la projection lue par les cartes d'objectif (disponibilité, comptes, joueur, escouade, et pour chaque match À OBJECTIF son identité, son camp et sa feuille) sur la fixture existante du paquet, plus trois feuilles (match sans film, match filmé avec prises nettes et fenêtre de jonglage, match à objectif seul au mode écarté) ; rouge sans golden, golden figé AVANT la coupe (`testdata/objectif_publie.golden.json`, 163 lignes), vert après la coupe sans régénération — octet pour octet.
+- **L7.2** Go : `domain/squad_formes.go` réduit (`SquadFormesMatch` = identité, `PlayerTeam`, `Objective` ; `Lobby`, `PadNamed`, `PadUnnamed`, `WeaponPads`, `DurationSeconds`, `TeamSize`, `LobbySize`, `Measured`, `Weapons` et leurs types `SquadFormesLobbyPlayer`, `SquadFormesWeaponPad`, `SquadFormesWeapon` + constantes partis) ; `squadformes.Build` ne publie plus que les matchs à objectif (`MatchesMeasured` compté comme avant, sur tout le scope) ; `FilmPads`, `WeaponPad`, `WeaponClassOf`, `buildWeapons`, `fillFromMatchInput`, `Input.{Films, Pads, Gamertags, Weapons, WallFamilyKey}`, `WeaponInfo.{Class, Role}` supprimés (`WeaponInfo.Label` / `WeaponKey` restent, lus par `squademprise`) ; `port.SquadFormesUsageRepository` supprimé (il n'ajoutait que `LoadUsageFilmPads`) au profit de `port.SessionUsageRepository`, `LoadUsageFilmPads` + `weaponPadsFromJSON` (DuckDB) supprimés ; `squadagg.SquadFormesQuery.{RepoRoot, TitleSlug, Locale}` et `formesGamertags` supprimés ; `WeaponCatalog` ne résout plus que nom et clé (les index `weapons.RolesByKey` / `ClassesByKey` gardent leurs autres lecteurs). La signature `teammates.WithSquadFormes(usage, objectives, repoRoot)` reste : sa racine sert l'Emprise de l'Escouade.
+- **L7.3 (suite)** Tests adaptés : `formes_test.go` (lobby, armes, socles, lâchers ventilés et `WeaponClassOf` partis avec le code ; publication des seuls matchs à objectif, camp publié sans film, compte des matchs filmés indépendant de l'objectif) ; doubles de `LoadUsageFilmPads` retirés (`timeseries_service_equipes_test.go`, `timeseries_service_emprise_test.go`, `teammates_service_usage_test.go`, dont le compteur de la lecture « pads »).
+- **L7.4** Contrat régénéré : `openapi.yaml` −114 lignes, `generated.ts` −51, 0 ajout ; garde de surface : exactement les 3 schémas attendus disparus (`SquadFormesLobbyPlayer`, `SquadFormesWeapon`, `SquadFormesWeaponPad`), snapshot régénéré par la procédure (`UPDATE_CONTRACT_SURFACE=1`), garde rejouée sans la variable : verte ; alias TS et propriété de fixture retirés ; `SquadObjectiveSection` et les cartes d'objectif des deux pages inchangées (leurs tests verts sans modification).
+- **Mutations** (contre le golden, toutes ROUGES) : camp du joueur oublié ; mode écarté des parts oublié ; matchs filmés comptés sur les seuls matchs à objectif.
+- **Gate** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` : 4 ok en 362 s ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issues (`make go-api-lint` refusé par le verrou d'un autre `golangci-lint` en cours — autre worktree — : même commande lancée avec un cache isolé et `--allow-parallel-runners`, règles inchangées) ; `openapi-gen -check` à jour. Web : `generate-types`, `check-generated-types-fresh` OK ; purge, `tsc -b --force` 0 ; `npm run lint` 0 erreur ; vitest complet 831 fichiers / 8 857 tests verts (170 s) ; knip 0 / 0 / 0 ; couleurs 0 ; imports croisés 7 ≤ 7 ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (151 s).
+- Seuils : tous les fichiers touchés en baisse ou stables (`squadformes/formes.go` 436 → 255, `domain/squad_formes.go` 218 → 114, `teammates_service.go` 491 → 491, `timeseries_service.go` 455 → 455) ; deux fichiers neufs (test golden 108 L, golden 163 L).
+### L8 — Clôture · rapide
+
+- [x] L8.1 Docs : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md` (bloc `[7.5.0]`, corriger les phrases
+  contredites — EN l. 40, 54, 71 ; FR l. 40, 54, 71 — et ajouter l'entrée) ; `docs/RELEASE_NOTES.md`
+  + `docs/FR/RELEASE_NOTES.md` (bloc 7.5 : corriger EN l. 32, 49, 55 / FR l. 32, 49, 55 — riposte sur
+  les Séries temporelles, « formes retenues » solo, contenu de l'onglet Usages — et ajouter
+  l'entrée) ; lignes re-vérifiées au moment d'écrire.
+- [x] L8.2 `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (l. 256-345, lecteurs des Séries
+  temporelles l. 299-307) : `equipment_usage` supprimé, Emprise solo et carte Équipement (D4) ;
+  ligne du tableau l. 482.
+- [x] L8.3 ADR 0036 (fait en L3.6, vérifié ici) ; `docs/adr/0034` non concerné.
+- [x] L8.4 Statut de chaque item du plan ; §8 Découvertes relues ; entrée finale du journal.
+- [!] L8.5 Revue adversariale du diff cumulé : à demander au SUPERVISEUR (l'exécuteur n'a pas de
+  sous-agent) — lots à risque : L2 (agrégats), L3 (lecture bornée), L7 (contrat). Non faite par
+  l'exécuteur : sur consigne du superviseur (2026-10-06), elle est demandée dans le compte rendu de
+  clôture et lancée par lui sur `65c99b669..HEAD`.
+- Gate : gate Go complet + gate web complet + contrat, rejoués après les docs.
+
+Journal L8 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — clôture :
+- **L8.1** Lignes re-vérifiées au moment d'écrire (les numéros du plan avaient bougé) ; seules les phrases contredites par ce chantier ont été touchées. `CHANGELOG` EN + FR (bloc `[7.5.0]`) : « Equipment used / kept / wasted » (Sessions seules, plus la carte Équipement de l'onglet Usages), « The shapes you keep » (le bloc `formes_retenues` n'est plus que la feuille d'objectif), onglet « Usage » des Séries temporelles (portée, puis l'Emprise solo), « Timeseries and Synthesis » (la portée part sur les Séries temporelles) ; deux entrées ajoutées : « Added » (l'onglet Usages = l'Emprise des matchs solo du périmètre) et « Changed » (Séries temporelles élaguées : 12 schémas retirés, objectif identique octet pour octet sous un test golden). `RELEASE_NOTES` EN + FR (bloc 7.5) : riposte (Escouade, Sessions, fiche du match, et dans le temps sur les Séries temporelles), « On three pages » → Sessions et Séries temporelles (phrase déjà périmée avant ce chantier, corrigée parce que ce lot déplace les issues d'équipement), « formes retenues » → cartes d'objectif, entrée de l'onglet Usages → « devient votre Emprise ».
+- **L8.2** Référence équipement : note de mise à jour datée, entrée Séries temporelles réécrite (bloc `emprise`, `attachEmprise`, lecture unique `squadagg.LireUsage`, carte Équipement `squademprise.BuildEquipment` avec ses lignes et fichiers web), `equipment_usage` déclaré supprimé du code et du contrat ; entrées Synthèse et Escouade débarrassées des renvois vers des fichiers supprimés ; tableau : `usagePadTiersModel.ts` lu par la seule page Sessions.
+- **L8.3** ADR 0036 relue : la ligne qui cite `TestSoloLivesRepo_BorneEtDernierePasse` (ajoutée en L3.6) pointe un test présent ; aucune mention des lectures supprimées ; non modifiée. ADR 0034 non concernée.
+- **L8.4** Aucune case vide dans le plan (L1-L7 `[x]`, L8.1-L8.4 `[x]`, L8.5 `[!]`) ; §8 relue : aucune découverte n'a été traitée hors périmètre, aucune nouvelle en L8.
+- **Gate (après les docs)** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `golangci-lint run --new-from-merge-base=origin/main` (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour. Web : purge `node_modules\.tmp`, `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements préexistants, aucun sous `features/timeseries`) ; vitest complet 831 fichiers / 8 857 tests verts (189 s) ; `generate-types` sans diff ; `npx lefthook run pre-push` (PATH complet) 9 / 9 au premier passage (knip-ratchet, couleurs, imports croisés, contrat, vet CGO, govulncheck, shared-social).
+- Documents touchés en L8 : `docs/CHANGELOG.md`, `docs/FR/CHANGELOG.md`, `docs/RELEASE_NOTES.md`, `docs/FR/RELEASE_NOTES.md`, `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`, ce plan, `.ai/thought_log.md`.
+
+### L9 — Corrections de la revue adversariale, ronde 1 · moyen
+
+Revue adversariale de `65c99b669..262e36b2e` (trois relecteurs à contexte frais, superviseur, 2026-10-06) :
+constats R1-R8 retenus par le superviseur. TDD (test rouge vu avant la correction), une mutation par
+règle, zéro autre changement.
+
+- [x] R1 Vies d'un match dont le journal des morts n'est pas publiable : écartées et comptées dans une
+  troisième cause `ExcludedUnpublishable` (contrat + ⓘ web), publiabilité lue par match (lecture
+  bornée, ADR 0036 I2) ; corpus `:memory:` corrigé (match entier non publiable) ; test du calcul ;
+  mutation.
+- [x] R2 `squad/emprise/empriseCharts.ts` : rayon réduit des points conditionné à l'axe période seul,
+  pas au nombre de matchs ; test rouge d'abord (axe `match` à 150 matchs : rayon inchangé).
+- [x] R3 `EquipmentOutcomesCard.tsx` : mesure au pixel des parts, ligne de repli au-dessus pour les
+  seuls segments qui ne tiennent pas (patron `PisteCampsForm.tsx`).
+- [x] R4 `LivesNearTeammateCard.tsx` : la ligne de repli ne porte que la valeur qui ne tient pas.
+- [x] R5 `squad/formes/format.ts` : exports sans lecteur supprimés (`formatPct`, `formatCount`,
+  `formatSigned`, `niceBound`, `formatNumber`), seul `formatMatchTime` reste, en-tête réécrit ;
+  cause de l'aveuglement de knip instruite (Découvertes si trou du ratchet).
+- [x] R6 `usagesText.ts` : `emprise(locale)` (123 L) découpée sans changer aucune chaîne.
+- [x] R7 Surcharge morte `sections` de `EMPRISE_TEXT_SOLO` supprimée ; en-tête de
+  `timeseriesCoordination.logic.ts` réécrit au présent ; commentaire de `usage_outcomes.go` qui cite
+  un fichier supprimé corrigé.
+- [x] R8 Après R5 : `node tools/knip-ratchet.mjs` rejoué, mouvement du plancher `exports` rapporté.
+- Gate : gate Go complet + contrat + gate web complet.
+
+Journal L9 (2026-10-06, exécuteur, `feat/ts-usages-emprise`) — corrections de la revue adversariale, ronde 1 :
+- **R1** Règle : un match dont la dernière passe du journal des morts n'est pas publiable n'a aucun frag lu ; ses vies terminées par une mort sont écartées et comptées dans `ExcludedUnpublishable` (`excluded_unpublishable` au contrat), AVANT toute autre cause (portée comprise) — même règle que la lecture Tactique et le placement des vies du décodeur. Lecture : cinquième requête bornée du repo (`SELECT DISTINCT e.match_id FROM match_kill_events_latest e WHERE <liste liée> AND NOT e.publishable`, ADR 0036 I2), rendue dans `ViesLues.JournalNonPubliable`. Corpus `:memory:` corrigé : plus de frag non publiable dans une passe publiable ; `m9` a une passe ENTIÈRE non publiable, vies et morts au contexte présentes. Tests écrits d'abord et vus rouges : `TestViesPresOuSeul_JournalNonPubliableEcarte` (assertion : vies rangées près / seul au lieu d'écartées), `TestSoloLivesRepo_JournalNonPubliable` et la borne relevée à quatre lectures fenêtrées dans `TestSoloLivesRepo_BorneEtDernierePasse` (« 3 requêtes avec fenêtre, want ≥ 4 »). Web : `buildLivesModel` porte `excludedUnpublishable`, l'aide ⓘ ajoute une phrase quand la cause est non nulle (FR « Les vies d’un match dont le journal des morts ne se lit pas mort par mort sont écartées aussi (n). », EN par typage), texte de la maquette inchangé sinon ; tests vus rouges (modèle : `undefined`, aide : phrase absente). Journal du service : `ecartees_journal_non_publiable`. Contrat régénéré : +4 lignes `openapi.yaml`, +2 `generated.ts`.
+- **R2** Le rayon réduit des points ne vaut que sur l'axe PÉRIODE au-delà de 120 matchs (`axe.kind === 'period' && matches.length > MANY_MATCHES`) — la maquette des Séries temporelles (`big = n > 120` dans `renderFil`) ; l'axe par match de l'Escouade garde son rayon. `resourceSeries` reçoit le rayon par un objet d'options (≤ 5 paramètres). Test vu rouge : axe `match` à 150 matchs (rayon 3,98 au lieu de 9,42).
+- **R3** Carte Équipement : mesure au pixel (`useSegmentLabelFit`, `data-fit-key` / `data-fit-label`) sur la barre épaisse ; une ligne de repli au-dessus porte, à sa place (servi à gauche, gardé au centre, lâché à droite), le seul compte qui ne tient pas ; l'étiquette masquée reste dans le DOM (`visibility: hidden`). Test vu rouge (ligne de repli absente).
+- **R4** Carte Mes vies : la ligne de repli ne porte que la valeur qui ne tient pas. Test vu rouge (« 1 558 · 83,8 %16,2 % · 301 » au lieu de « 16,2 % · 301 »).
+- Tests R3 / R4 : la mesure au pixel est remplacée par un `vi.mock` du hook qui appelle toujours le vrai hook et rend l'ensemble fixé par le test (jsdom n'a pas de largeur : tout part au repli).
+- **R5** `squad/formes/format.ts` réduit à `formatMatchTime` (seul export lu : trois cartes de l'Emprise / de l'Objectif et un test), en-tête réécrit ; `formatPct`, `formatNumber`, `formatCount`, `formatSigned`, `niceBound` supprimés (grep : zéro lecteur) ; parmi les aides de `_shared/usage/usageFormat.ts` qu'ils appelaient, `formatUsagePct` et `formatUsageCount` gardent d'autres lecteurs, mais `formatUsageDecimal` n'en a plus hors de son fichier (constat de la ronde 2, corrigé en L9.2 / R10 — la version initiale de cette ligne affirmait le contraire). Pourquoi knip ne les a pas vus : knip est AVEUGLE sur ce poste — `npx knip --reporter json` rend `{"issues":[]}` même avec un fichier orphelin posé exprès (sonde temporaire, retirée), et `--trace-file` répond « No exports found » sur n'importe quel fichier ; voir §8.
+- **R6** `emprise(locale)` (123 L) découpée en `empriseFr(base)` / `empriseEn(base)` (≈ 60 L chacune) et un aiguillage de 4 L ; preuve : instantané sérialisé de `EMPRISE_TEXT_SOLO`, `OBJECTIF_TEXT_SOLO`, `USAGES_TEXT` (chaînes et corps de fonctions, blancs normalisés) IDENTIQUE avant / après (sonde de test temporaire, retirée).
+- **R7** Surcharge `sections` de `EMPRISE_TEXT_SOLO` supprimée (lecteurs de `sections` sur un texte d'Emprise : la seule page Escouade, sur `EMPRISE_TEXT`) ; instantané : seules les quatre clés mortes `sections.bilan` / `sections.roles` (FR, EN) reviennent aux valeurs de l'Escouade. Test `une seule source des intertitres` ; en-tête de `usagesText.ts` complété. En-tête de `timeseriesCoordination.logic.ts` réécrit au présent (une carte, « Appui reçu », ses deux grandeurs) ; commentaire de `computeOutcomes` (`usage_outcomes.go`) : seul lecteur, la page Sessions.
+- **R8** `node tools/knip-ratchet.mjs` après R5 : 0 / 0 / 0, plancher `exports` inchangé — mesure sans valeur sur ce poste (knip aveugle, §8).
+- **Mutations** (toutes ROUGES) : calcul, vies d'un journal non publiable rangées quand même ; repo, publiabilité jamais lue (`AND e.publishable AND FALSE`) ; repo, lecture de publiabilité non bornée (`(liste OR TRUE)`) ; web, cause non publiée par le modèle ; web, phrase de l'aide jamais dite ; R2, rayon réduit sur le nombre seul ; R2, rayon réduit jamais ; R3, toutes les parts au repli ; R3, étiquette jamais masquée ; R4, les deux valeurs au repli ; R7, surcharge des intertitres réintroduite. R5 et R6 : suppression et découpage sans règle de comportement — preuves par grep, `tsc` et instantané identique.
+- **Gate** : `go build ./...` 0, `go vet ./...` 0, `gofmt -l internal cmd` muet ; `go test -count=1` en cinq lots couvrant les 348 paquets (cœur 58 ok, hors internal 40, games 38, sync / persist / migration 13, reste 46 ; 0 FAIL) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 4 ok (408 s) ; golangci-lint (cache isolé, `--allow-parallel-runners`) 0 issues ; `openapi-gen -check` à jour. Web : purge, `tsc -b --force` 0 ; `npm run lint` 0 erreur (26 avertissements préexistants) ; vitest complet 831 fichiers / 8 865 tests verts (173 s) ; `generate-types` sans diff ; couleurs 0 ; imports croisés 7 ≤ 7 ; ratchet de contrat propre ; champs en dur 0 ; `npx lefthook run pre-push` rejoué après le commit (voir compte rendu).
+- Seuils : tous les fichiers touchés sous 500 L (`empriseCharts.ts` 394 → 407, `EquipmentOutcomesCard.tsx` 135 → 176, `solo_lives_repo.go` 149 → 176) ; `format.ts` 58 → 15.
+
+#### L9.2 — Retouche finale de la ronde 2 (deux P2, pas de ronde 3)
+
+Ronde 2 de relecture sur `262e36b2e..545f765e8` (superviseur, 2026-10-06) : 15 conditions qui tiennent,
+zéro P0 / P1 ; deux P2 mécaniques à traiter.
+
+- [x] R9 `EquipmentOutcomesCard.tsx` : la ligne de repli s'aligne sur le début du segment du premier
+  compte replié (`repliOffsetPct`, patron de la Répartition des frags), au lieu de trois emplacements
+  fixes (« gardé » au centre) ; test rouge d'abord avec `me = [40, 1, 2]`.
+- [x] R10 `_shared/usage/usageFormat.ts` : `formatUsageDecimal` privée au fichier ; phrase du journal L9
+  corrigée.
+- Gate : typecheck, lint, vitest des fichiers touchés + complet, couleurs, imports croisés, lefthook ;
+  commit `fix(ts-usages/L9.2): …`, push de la branche.
+
+Journal L9.2 (2026-10-06, exécuteur) :
+- **R9** Une ligne de repli unique, `paddingLeft` = `repliOffsetPct(segments, replié)` — le bord gauche du premier segment dont le compte ne tient pas —, les comptes repliés à la suite dans l'ordre des parts (même forme que `FragBreakdownRepli`). Les segments de la barre viennent d'une seule fonction, `partSegments` (type `FragBreakdownSegment`), lue par la ligne de repli ET par la barre (le calcul des bords gauches de `ThreeTrack` en double est retiré). Test vu rouge : `paddingLeft` absent (NaN) au lieu de 93,0 % (40 / 43) ; mutation (repli posé à 50 %) ROUGE.
+- **R10** `formatUsageDecimal` n'est plus exportée (trois appels internes, zéro lecteur extérieur au grep) ; pas de règle de comportement à muter, preuve par grep et `tsc`. Ligne R5 du journal L9 corrigée.
+
+## 7. Reprise de session
+
+Relire le skill `plan-execution`, puis ce fichier (cases, journaux de lot), puis les dernières
+entrées de `.ai/thought_log.md` du worktree et `git -C <worktree> log --oneline -10`. Reprendre à la
+première case non statuée du lot courant. Les décisions du §1 sont fermes une fois le « go » donné.
+
+## 7 bis. Relecture plan-review (2026-10-05, phase 1)
+
+Grille `.claude/skills/plan-review/SKILL.md`, passée sur ce fichier :
+- §1 structure : objectif et critère (§0), lots ordonnés du refactor sans effet (L1) au contrat
+  le plus risqué (L7), effort par lot, branche nommée, bloqueur documenté (D7 différable) — OK.
+- §2 couches Go : calculs dans `analysis/` (squademprise, coordination), types dans `domain/`,
+  orchestration dans `service/`, ports neufs (`SoloLivesRepository`, `EmblemURLLoader`), aucun SQL
+  hors `platform/duckdb`, aucun handler modifié (la réponse de page existante porte les blocs) — OK.
+- §3 multi-titre : capabilities `film.usage_summary`, `film.vehicle_usage`, `film.kill_positions`,
+  feuille de match inconditionnelle ; `ErrCapabilityNotSupported` testé (L2.9, L3.4) ; aucun
+  `slug ==` ; pas de nouveau champ de stats ni d'asset — OK.
+- §4 adapters : lectures par repos de port (patron déjà en place pour ces blocs, pas de
+  `TitleDataAdapter`) ; types de domaine, pas de type de titre — OK, écart assumé et conforme à
+  l'existant (Emprise de l'Escouade).
+- §5 tests : purs (L1.1, L2.3, L2.4, L3.1), service avec mocks (L2.9, L3.4), DuckDB `:memory:` avec
+  fenêtres bornées (L3.3), câblage (L2.8), web (L4, L5) ; mutation par règle — OK. Handlers : aucun
+  changement, aucun test httptest ajouté.
+- §6 logs : `slog.*Context` à chaque dégradation (L1.4, L2.6, L3.4) — OK.
+- §7 front : aucune route, aucune clé de requête ; chaînes FR + EN `Record<Locale>` (D10), libellés
+  de carte venus du Go, de résultat par `useOutcomeLabels` ; jetons seulement — OK.
+- §8 livraison : critères par lot (gates), journal par lot, aucune dépendance externe — OK.
+- §9 exécutabilité : périmètres fermés (listes, preuves grep, knip comme juge des morts), gates à
+  commandes exactes, statuts et règle « aucune case vide », ordre strict, Découvertes, reprise,
+  renvoi au skill — OK.
+Défaut trouvé et CORRIGÉ à la relecture : la première version créait en L4 des exports sans lecteur
+(fiche solo, textes) et laissait des fichiers web morts jusqu'à L6 — le gate knip 0 / 0 / 0 aurait
+rougi en L4 et en L5. Les composants neufs naissent désormais en L5 avec leur lecteur, et les
+suppressions web sont dans L5 (L5.11-L5.15) ; L6 ne garde que le Go.
+
+## 8. Découvertes (à consigner ici, pas à traiter)
+
+- (phase 1) `domain.SquadEmpriseBlock` porte « Squad » dans son nom alors qu'il sert aussi le solo
+  (D2) : renommage non fait (hors périmètre, bruit de contrat).
+- (phase 1) Le bloc `coordination` des Séries temporelles calcule encore la riposte que plus aucune
+  carte de la page n'affiche ; DTO partagé avec Sessions, donc conservé.
+- (phase 1) `match_life_placement` et `match_vehicle_takes` vides dans la copie de base du
+  2026-10-05 18 h 26 alors que le journal note leur rattrapage (complément 2 du journal) : cause non
+  instruite.
+- (L2) Les Séries temporelles lisent les participants de la fenêtre deux fois : `lireEquipesDuScope` (`timeseries_service_sections.go`, section `participants`) et `squadagg.LireUsage` (résumé d'usage partagé depuis L2). Les deux portent sur la même fenêtre ; les fusionner toucherait la courbe d'équipe et la coordination (hors périmètre).
+- (L4) Aucune infobulle de case de la grille « Contrôle des ressources » n'était testée côté Escouade (mutation de l'en-tête d'infobulle verte sur toute la suite) ; fermé dans le lot par `ResourceGridTable.test.tsx`, puisque la table extraite change la provenance de cet en-tête.
+- (L4) `npx lefthook run pre-push` lancé depuis PowerShell sans `C:\msys64\ucrt64\bin` ni `make` au PATH : `go-vet-cgo` et `shared-social-gate` échouent pour l'environnement (gcc introuvable par le vet CGO, `make: not found` — le script du gate ne teste que gcc). Avec `C:\msys64\ucrt64\bin` et `C:\Program Files (x86)\GnuWin32\bin` au PATH : 9 / 9 verts. Non traité (hors périmètre).
+- (L4) Le plan portait deux lignes parasites (`</content>`, `</invoke>`) avant la découverte L2, laissées par une écriture antérieure de l'exécuteur ; retirées.
+- (L5) §4.A sous-listait une dépendance : `usagePadTiersModel.ts` (survivant) importait le type `UsageCountsRowInput` de `usageCountsModel.ts` pour `buildPadTierRows`, dont le seul lecteur de production était `EquipmentUsageSection` ; `padTiersCoverage` idem. Traités dans le lot (dernier lecteur = les Séries temporelles).
+- (L5) `isCollapsedTierRowKey` (`usagePadTiersModel.ts`) accepte encore la clé nue `base` (forme « comptes » supprimée) ; la page Sessions n'utilise que `tier-base`. Comportement laissé tel quel (hors périmètre).
+- (L5) Le jeton `team-rest` cité par la spécification S5 et la maquette n'existe pas dans la palette ; le reste du camp utilise `TEAM_REST_INK` (`team-ally` à 55 %), comme l'Escouade.
+- (L5) L'aide ⓘ de la carte Équipement de la maquette a quatre phrases (S1 en demande trois au plus) ; portée mot pour mot, la maquette faisant foi.
+- (L9) **Trou du ratchet knip, sur ce poste** : knip 6.33 (Windows, worktree `LevelUp-wt-ts-usages`) rend `{"issues":[]}` quoi qu'il arrive — un fichier orphelin posé exprès sous `src/` n'est pas signalé, `--trace-file` / `--trace-export` répondent « No exports found » sur des fichiers qui en ont, et l'indice « Remove from ignore » apparaît pour `generated.ts` et `types.ts` (fichiers bien présents). Les fichiers sont pourtant listés dans la passe de projet de `--debug`. Conséquence : `knip-ratchet` (pre-push local et chaque « knip 0/0/0 » des journaux L5-L9) ne mesure rien ici ; le step CI « Ratchet knip » (Linux) n'a jamais tourné sur cette branche (jamais poussée) — impossible de dire d'ici s'il voit. Les cinq exports morts de `format.ts` (R5) ont ainsi traversé L5-L7. Cause non instruite (outillage hors périmètre), non traité.
+- (L7) `make go-api-lint` échoue sur « parallel golangci-lint is running » quand un autre worktree lance le lint en même temps (verrou global de golangci-lint) ; contournement de mesure sans changer les règles : `GOLANGCI_LINT_CACHE` isolé et `--allow-parallel-runners`. Non traité (outillage hors périmètre).

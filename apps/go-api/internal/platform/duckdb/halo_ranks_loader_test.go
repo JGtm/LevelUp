@@ -10,7 +10,7 @@ import (
 )
 
 // TestLoadRankCatalog_NilDB couvre le early-return : sans DB, on retourne
-// un catalog vide (le caller dÃ©grade gracieusement vers un libellÃ© minimal).
+// un catalog vide (le caller dégrade gracieusement vers un libellé minimal).
 func TestLoadRankCatalog_NilDB(t *testing.T) {
 	t.Parallel()
 	catalog, err := LoadRankCatalog(context.Background(), nil, titlePkg.DefaultSlug)
@@ -18,14 +18,14 @@ func TestLoadRankCatalog_NilDB(t *testing.T) {
 		t.Fatalf("err = %v, want nil pour DB nil", err)
 	}
 	if catalog == nil {
-		t.Fatal("catalog ne doit jamais Ãªtre nil")
+		t.Fatal("catalog ne doit jamais être nil")
 	}
 	if catalog.Len() != 0 {
 		t.Errorf("Len() = %d, want 0 pour catalog vide", catalog.Len())
 	}
 }
 
-// TestLoadRankCatalog_EmptyTable : la table existe mais est vide â†’ catalog vide.
+// TestLoadRankCatalog_EmptyTable : la table existe mais est vide → catalog vide.
 func TestLoadRankCatalog_EmptyTable(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -52,8 +52,8 @@ func TestLoadRankCatalog_EmptyTable(t *testing.T) {
 	}
 }
 
-// TestLoadRankCatalog_PopulatedTable : peuple la table puis vÃ©rifie le scan,
-// les agrÃ©gations par rank_id et la normalisation des codes lang Waypoint.
+// TestLoadRankCatalog_PopulatedTable : peuple la table puis vérifie le scan,
+// les agrégations par rank_id et la normalisation des codes lang Waypoint.
 func TestLoadRankCatalog_PopulatedTable(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

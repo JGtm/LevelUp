@@ -1,0 +1,9 @@
+film	build	variante	paquets	fermes	fermes_sains	utiles_fermes_sains	hors_cadre	gagnes	perdus	gagnes_contredits	perdus_sains	G1 ti=20 i1	G2 DEL ti=0	G3 ti=14 i1	G4 ti=41 i2
+0797ce72	HI_1_13_0	production	26740	19124	19088	159329	5557	0	0	0	0	0	242	0	157
+0797ce72	HI_1_13_0	production + lecture par index	26740	22390	22368	186092	3720	3269	3	3	1	0	43	0	157
+0797ce72	HI_1_13_0	production + world-object au jeu	26740	19125	19088	159329	5556	2	1	2	0	0	243	0	157
+0797ce72	HI_1_13_0	production + world-object au jeu + lecture par index	26740	22884	22863	191997	3349	3764	4	4	1	0	31	0	0
+60ae07c4	HI_1_8_0	production	49696	13965	13828	82888	30282	0	0	0	0	0	173	0	3
+60ae07c4	HI_1_8_0	production + lecture par index	49696	15722	15618	94188	29937	1806	49	4	33	0	26	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu	49696	13935	13798	82848	30287	14	44	14	30	0	175	0	3
+60ae07c4	HI_1_8_0	production + world-object au jeu + lecture par index	49696	15688	15590	94164	29973	1821	98	17	63	0	26	0	0

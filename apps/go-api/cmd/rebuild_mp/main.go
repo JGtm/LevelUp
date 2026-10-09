@@ -1,7 +1,7 @@
 //go:build cgo
 
 // rebuild_mp — reconstruit `match_participants` (shared) pour défaire la corruption
-// d'index ART filter-pushdown (bug DuckDB #23046), en DÉLÉGUANT à la recette testée.
+// d'index ART filter-pushdown (bug DuckDB #23645), en DÉLÉGUANT à la recette testée.
 //
 // ─── CE QUE CETTE RÉÉCRITURE CORRIGE (dette H4, ouverte par J4R-7) ────────────────
 //

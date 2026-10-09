@@ -135,6 +135,11 @@ func (r *CareerRepo) loadTopMatchSharedRows(
 // WIN : dominance ∈ (5,3,1) prioritaires (remontada/contre-remontada/domination), tri DESC.
 // LOSS : dominance ∈ (4,2) prioritaires (débandade/humiliation), tri DESC.
 // Tiebreak : perf_score DESC (WIN) ou ASC (LOSS, les moins bons en premier).
+//
+// SABORDAGE (6) et ABNÉGATION (7) sont ABSENTS DES DEUX LISTES, VOLONTAIREMENT (décision
+// utilisateur du 2026-09-17) : ils racontent un écart entre le score et les frags, ils ne
+// qualifient ni un « meilleur » ni un « pire » match. Les matchs qui les portent restent
+// classables par leur perf_score, sans priorité de badge.
 func splitWinsLossesAndSortTopMatches(enriched []domain.TopMatchRawRow) ([]domain.TopMatchRawRow, []domain.TopMatchRawRow) {
 	var wins, losses []domain.TopMatchRawRow
 	for _, m := range enriched {
@@ -146,6 +151,8 @@ func splitWinsLossesAndSortTopMatches(enriched []domain.TopMatchRawRow) ([]domai
 		}
 	}
 	sort.SliceStable(wins, func(i, j int) bool {
+		// Sans le 7 (ABNÉGATION) : gagner en étant dominé aux frags n'est pas un meilleur
+		// match (2026-09-17, cf. l'en-tête).
 		pi := topMatchDominancePriority(wins[i].DominanceFlag, []int{5, 3, 1})
 		pj := topMatchDominancePriority(wins[j].DominanceFlag, []int{5, 3, 1})
 		if pi != pj {
@@ -154,6 +161,8 @@ func splitWinsLossesAndSortTopMatches(enriched []domain.TopMatchRawRow) ([]domai
 		return wins[i].PerformanceScore > wins[j].PerformanceScore
 	})
 	sort.SliceStable(losses, func(i, j int) bool {
+		// Sans le 6 (SABORDAGE) : perdre en ayant dominé aux frags n'est pas un pire
+		// match (2026-09-17, cf. l'en-tête).
 		pi := topMatchDominancePriority(losses[i].DominanceFlag, []int{4, 2})
 		pj := topMatchDominancePriority(losses[j].DominanceFlag, []int{4, 2})
 		if pi != pj {

@@ -1,0 +1,238 @@
+=== RUN   TestAssautManchesControleHorsEchantillon
+assaut_manches_research_test.go:321: LIBRE	6d07c363	0	193	193	100.00
+assaut_manches_research_test.go:321: LIBRE	6d07c363	6	0	193	0.00
+assaut_manches_research_test.go:321: LIBRE	6d07c363	7	1	193	0.52
+assaut_manches_research_test.go:321: LIBRE	a12f267b	0	211	211	100.00
+assaut_manches_research_test.go:321: LIBRE	a12f267b	4	0	211	0.00
+assaut_manches_research_test.go:321: LIBRE	a12f267b	5	0	211	0.00
+assaut_manches_research_test.go:321: LIBRE	a12f267b	6	1	211	0.47
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	0	388	388	100.00
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	1	1	388	0.26
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	2	1	388	0.26
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	3	0	388	0.00
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	4	1	388	0.26
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	5	3	388	0.77
+assaut_manches_research_test.go:321: LIBRE	5676a9ba	6	1	388	0.26
+assaut_manches_research_test.go:321: LIBRE	0862dce4	0	491	491	100.00
+assaut_manches_research_test.go:321: LIBRE	0862dce4	1	0	491	0.00
+assaut_manches_research_test.go:321: LIBRE	0862dce4	3	3	491	0.61
+assaut_manches_research_test.go:321: LIBRE	0862dce4	5	1	491	0.20
+assaut_manches_research_test.go:321: LIBRE	3efe4592	0	254	254	100.00
+assaut_manches_research_test.go:321: LIBRE	3efe4592	1	1	254	0.39
+assaut_manches_research_test.go:321: LIBRE	3efe4592	2	2	254	0.79
+assaut_manches_research_test.go:321: LIBRE	3efe4592	4	1	254	0.39
+assaut_manches_research_test.go:321: LIBRE	3efe4592	5	2	254	0.79
+assaut_manches_research_test.go:321: LIBRE	cde26226	0	587	587	100.00
+assaut_manches_research_test.go:321: LIBRE	cde26226	1	153	587	26.06
+assaut_manches_research_test.go:321: LIBRE	a0c36016	0	562	562	100.00
+assaut_manches_research_test.go:321: LIBRE	a0c36016	2	1	562	0.18
+assaut_manches_research_test.go:321: LIBRE	a0c36016	4	1	562	0.18
+assaut_manches_research_test.go:321: LIBRE	a0c36016	6	1	562	0.18
+assaut_manches_research_test.go:321: LIBRE	5a47f636	0	465	465	100.00
+assaut_manches_research_test.go:321: LIBRE	5a47f636	4	1	465	0.22
+assaut_manches_research_test.go:321: LIBRE	e8d384c7	0	380	380	100.00
+assaut_manches_research_test.go:321: LIBRE	e8d384c7	4	0	380	0.00
+assaut_manches_research_test.go:321: LIBRE	06a883f7	0	233	233	100.00
+assaut_manches_research_test.go:321: LIBRE	06a883f7	4	0	233	0.00
+assaut_manches_research_test.go:321: LIBRE	1ea71def	0	402	402	100.00
+assaut_manches_research_test.go:321: LIBRE	1ea71def	2	2	402	0.50
+assaut_manches_research_test.go:321: LIBRE	1ea71def	3	1	402	0.25
+assaut_manches_research_test.go:321: LIBRE	1ea71def	4	2	402	0.50
+assaut_manches_research_test.go:321: LIBRE	1ea71def	5	1	402	0.25
+assaut_manches_research_test.go:321: LIBRE	1ea71def	7	1	402	0.25
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	0	468	468	100.00
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	1	0	468	0.00
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	2	2	468	0.43
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	3	1	468	0.21
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	4	3	468	0.64
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	5	1	468	0.21
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	6	3	468	0.64
+assaut_manches_research_test.go:321: LIBRE	9fe88ec4	7	2	468	0.43
+assaut_manches_research_test.go:321: LIBRE	4db2574e	0	216	216	100.00
+assaut_manches_research_test.go:321: LIBRE	4db2574e	1	1	216	0.46
+assaut_manches_research_test.go:321: LIBRE	610363ee	0	300	300	100.00
+assaut_manches_research_test.go:321: LIBRE	610363ee	3	1	300	0.33
+assaut_manches_research_test.go:321: LIBRE	610363ee	4	1	300	0.33
+assaut_manches_research_test.go:321: LIBRE	610363ee	6	0	300	0.00
+assaut_manches_research_test.go:321: LIBRE	19cbbd02	0	286	286	100.00
+assaut_manches_research_test.go:321: LIBRE	19cbbd02	1	0	286	0.00
+assaut_manches_research_test.go:321: LIBRE	19cbbd02	3	1	286	0.35
+assaut_manches_research_test.go:321: LIBRE	19cbbd02	4	1	286	0.35
+assaut_manches_research_test.go:321: LIBRE	f79270ac	0	313	313	100.00
+assaut_manches_research_test.go:321: LIBRE	f79270ac	5	1	313	0.32
+assaut_manches_research_test.go:321: LIBRE	f79270ac	6	0	313	0.00
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	0	1840	1840	100.00
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	1	4	1840	0.22
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	2	7	1840	0.38
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	3	7	1840	0.38
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	4	0	1840	0.00
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	5	1	1840	0.05
+assaut_manches_research_test.go:321: LIBRE	8c12fd58	6	2	1840	0.11
+assaut_manches_research_test.go:321: LIBRE	38e7c328	0	885	885	100.00
+assaut_manches_research_test.go:321: LIBRE	c0a82e88	0	87	87	100.00
+assaut_manches_research_test.go:321: LIBRE	52fc79ef	0	964	964	100.00
+assaut_manches_research_test.go:321: LIBRE	52fc79ef	1	5	964	0.52
+assaut_manches_research_test.go:321: LIBRE	52fc79ef	2	2	964	0.21
+assaut_manches_research_test.go:321: LIBRE	52fc79ef	4	1	964	0.10
+assaut_manches_research_test.go:321: LIBRE	52fc79ef	6	0	964	0.00
+assaut_manches_research_test.go:321: LIBRE	9a8d7d9b	0	268	268	100.00
+assaut_manches_research_test.go:321: LIBRE	7f1bbf06	0	757	757	100.00
+assaut_manches_research_test.go:321: LIBRE	7f1bbf06	1	0	757	0.00
+assaut_manches_research_test.go:321: LIBRE	21ece4d8	0	1366	1366	100.00
+assaut_manches_research_test.go:321: LIBRE	21ece4d8	1	2	1366	0.15
+assaut_manches_research_test.go:321: LIBRE	21ece4d8	2	2	1366	0.15
+assaut_manches_research_test.go:321: LIBRE	21ece4d8	3	1	1366	0.07
+assaut_manches_research_test.go:321: LIBRE	d9781168	0	1507	1786	84.38
+assaut_manches_research_test.go:321: LIBRE	d9781168	1	1338	1786	74.92
+assaut_manches_research_test.go:321: LIBRE	d9781168	2	1786	1786	100.00
+assaut_manches_research_test.go:321: LIBRE	d9781168	4	1	1786	0.06
+assaut_manches_research_test.go:321: LIBRE	d9781168	5	1	1786	0.06
+assaut_manches_research_test.go:321: LIBRE	d9781168	6	1	1786	0.06
+assaut_manches_research_test.go:321: LIBRE	d9781168	7	1	1786	0.06
+assaut_manches_research_test.go:321: LIBRE	0a247154	0	1675	1675	100.00
+assaut_manches_research_test.go:321: LIBRE	24dbb67d	0	2030	2030	100.00
+assaut_manches_research_test.go:321: LIBRE	24dbb67d	1	1650	2030	81.28
+assaut_manches_research_test.go:321: LIBRE	24dbb67d	2	10	2030	0.49
+assaut_manches_research_test.go:321: LIBRE	24dbb67d	3	1	2030	0.05
+assaut_manches_research_test.go:321: LIBRE	24dbb67d	4	1	2030	0.05
+assaut_manches_research_test.go:321: LIBRE	92f18088	0	1938	1938	100.00
+assaut_manches_research_test.go:321: LIBRE	92f18088	1	1763	1938	90.97
+assaut_manches_research_test.go:321: LIBRE	92f18088	2	1	1938	0.05
+assaut_manches_research_test.go:321: LIBRE	92f18088	4	1	1938	0.05
+assaut_manches_research_test.go:321: LIBRE	74a8614e	0	318	318	100.00
+assaut_manches_research_test.go:321: LIBRE	74a8614e	4	0	318	0.00
+assaut_manches_research_test.go:321: LIBRE	74a8614e	7	0	318	0.00
+assaut_manches_research_test.go:321: LIBRE	d4ddf054	0	362	362	100.00
+assaut_manches_research_test.go:321: LIBRE	d4ddf054	2	0	362	0.00
+assaut_manches_research_test.go:321: LIBRE	d4ddf054	6	2	362	0.55
+assaut_manches_research_test.go:321: LIBRE	d4ddf054	7	1	362	0.28
+assaut_manches_research_test.go:321: LIBRE	2ce58582	0	517	517	100.00
+assaut_manches_research_test.go:321: LIBRE	2ce58582	2	1	517	0.19
+assaut_manches_research_test.go:321: LIBRE	2ce58582	3	2	517	0.39
+assaut_manches_research_test.go:321: LIBRE	2ce58582	4	1	517	0.19
+assaut_manches_research_test.go:321: LIBRE	e1259a69	0	296	296	100.00
+assaut_manches_research_test.go:321: LIBRE	e1259a69	2	1	296	0.34
+assaut_manches_research_test.go:321: LIBRE	efe716b4	0	325	325	100.00
+assaut_manches_research_test.go:321: LIBRE	efe716b4	2	0	325	0.00
+assaut_manches_research_test.go:321: LIBRE	84383fc1	0	307	307	100.00
+assaut_manches_research_test.go:321: LIBRE	84383fc1	2	2	307	0.65
+assaut_manches_research_test.go:321: LIBRE	84383fc1	5	2	307	0.65
+assaut_manches_research_test.go:321: LIBRE	88b6090b	0	312	312	100.00
+assaut_manches_research_test.go:321: LIBRE	bfcd1175	0	308	308	100.00
+assaut_manches_research_test.go:321: LIBRE	bfcd1175	1	5	308	1.62
+assaut_manches_research_test.go:321: LIBRE	bfcd1175	4	2	308	0.65
+assaut_manches_research_test.go:321: LIBRE	bfcd1175	6	18	308	5.84
+assaut_manches_research_test.go:321: LIBRE	bfcd1175	7	1	308	0.32
+assaut_manches_research_test.go:321: LIBRE	1cd3848a	0	346	346	100.00
+assaut_manches_research_test.go:321: LIBRE	1cd3848a	3	0	346	0.00
+assaut_manches_research_test.go:321: LIBRE	1cd3848a	6	1	346	0.29
+assaut_manches_research_test.go:321: LIBRE	75df32f4	0	322	322	100.00
+assaut_manches_research_test.go:321: LIBRE	e9f3dfd5	0	314	314	100.00
+assaut_manches_research_test.go:321: LIBRE	e9f3dfd5	3	1	314	0.32
+assaut_manches_research_test.go:321: LIBRE	ac97753c	0	252	252	100.00
+assaut_manches_research_test.go:321: LIBRE	ac97753c	1	1	252	0.40
+assaut_manches_research_test.go:321: LIBRE	ac97753c	2	0	252	0.00
+assaut_manches_research_test.go:321: LIBRE	ac97753c	4	1	252	0.40
+assaut_manches_research_test.go:321: LIBRE	5faa6b74	0	256	256	100.00
+assaut_manches_research_test.go:321: LIBRE	5faa6b74	1	0	256	0.00
+assaut_manches_research_test.go:321: LIBRE	5faa6b74	2	0	256	0.00
+assaut_manches_research_test.go:321: LIBRE	5faa6b74	3	1	256	0.39
+assaut_manches_research_test.go:321: LIBRE	5faa6b74	4	2	256	0.78
+assaut_manches_research_test.go:321: LIBRE	5faa6b74	6	1	256	0.39
+assaut_manches_research_test.go:321: LIBRE	32d9a94f	0	307	307	100.00
+assaut_manches_research_test.go:321: LIBRE	32d9a94f	1	3	307	0.98
+assaut_manches_research_test.go:321: LIBRE	32d9a94f	4	0	307	0.00
+assaut_manches_research_test.go:321: LIBRE	696a9d7c	0	448	448	100.00
+assaut_manches_research_test.go:321: LIBRE	696a9d7c	4	1	448	0.22
+assaut_manches_research_test.go:321: LIBRE	696a9d7c	6	1	448	0.22
+assaut_manches_research_test.go:321: LIBRE	0d76e8f1	0	335	335	100.00
+assaut_manches_research_test.go:321: LIBRE	0d76e8f1	1	0	335	0.00
+assaut_manches_research_test.go:321: LIBRE	0d76e8f1	2	1	335	0.30
+assaut_manches_research_test.go:321: LIBRE	0d76e8f1	4	1	335	0.30
+assaut_manches_research_test.go:321: LIBRE	0d76e8f1	6	3	335	0.90
+assaut_manches_research_test.go:321: LIBRE	c3256313	0	227	227	100.00
+assaut_manches_research_test.go:321: LIBRE	c3256313	4	0	227	0.00
+assaut_manches_research_test.go:321: LIBRE	c3256313	5	0	227	0.00
+assaut_manches_research_test.go:321: LIBRE	30d3c047	0	165	165	100.00
+assaut_manches_research_test.go:321: LIBRE	0014603f	0	263	263	100.00
+assaut_manches_research_test.go:321: LIBRE	0014603f	4	1	263	0.38
+assaut_manches_research_test.go:321: LIBRE	cdd27fd2	0	300	300	100.00
+assaut_manches_research_test.go:321: LIBRE	cdd27fd2	7	1	300	0.33
+assaut_manches_research_test.go:321: LIBRE	94a28b8b	0	330	330	100.00
+assaut_manches_research_test.go:321: LIBRE	94a28b8b	1	1	330	0.30
+assaut_manches_research_test.go:321: LIBRE	94a28b8b	2	1	330	0.30
+assaut_manches_research_test.go:321: LIBRE	94a28b8b	3	0	330	0.00
+assaut_manches_research_test.go:321: LIBRE	faff9935	0	360	360	100.00
+assaut_manches_research_test.go:321: LIBRE	faff9935	2	0	360	0.00
+assaut_manches_research_test.go:321: LIBRE	faff9935	7	1	360	0.28
+assaut_manches_research_test.go:321: LIBRE	69f7fd6a	0	316	316	100.00
+assaut_manches_research_test.go:321: LIBRE	69f7fd6a	2	1	316	0.32
+assaut_manches_research_test.go:321: LIBRE	69f7fd6a	4	1	316	0.32
+assaut_manches_research_test.go:321: LIBRE	bd3b0c08	0	277	277	100.00
+assaut_manches_research_test.go:321: LIBRE	bd3b0c08	1	1	277	0.36
+assaut_manches_research_test.go:321: LIBRE	35f5cdea	0	301	301	100.00
+assaut_manches_research_test.go:321: LIBRE	35f5cdea	1	2	301	0.66
+assaut_manches_research_test.go:321: LIBRE	35f5cdea	2	1	301	0.33
+assaut_manches_research_test.go:321: LIBRE	35f5cdea	5	1	301	0.33
+assaut_manches_research_test.go:321: LIBRE	35f5cdea	7	2	301	0.66
+assaut_manches_research_test.go:321: LIBRE	1d0cebd1	0	348	348	100.00
+assaut_manches_research_test.go:321: LIBRE	1d0cebd1	5	0	348	0.00
+assaut_manches_research_test.go:321: LIBRE	1d0cebd1	6	2	348	0.57
+assaut_manches_research_test.go:321: LIBRE	1d0cebd1	7	1	348	0.29
+assaut_manches_research_test.go:328: CORPUS LIBRE : 53 films, 180 manches brutes
+--- PASS: TestAssautManchesControleHorsEchantillon (44.41s)
+=== RUN   TestAssautDomaineComp0
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 9f57c612 slot 16 manche 0 a 76598 ms — A=3499035576 B=25412, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : ce083875 slot 16 manche 0 a 219075 ms — A=66 B=16635, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : ce083875 slot 18 manche 0 a 947537 ms — A=2 B=1, 3 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 53ce4390 slot 16 manche 0 a 131940 ms — A=-12136 B=118, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 53ce4390 slot 12 manche 0 a 259804 ms — A=2104 B=-10, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 53ce4390 slot 12 manche 0 a 259820 ms — A=2104 B=-12, 7 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 1bc77d2e slot 24 manche 0 a 57536 ms — A=-115 B=57, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 1bc77d2e slot 24 manche 0 a 99178 ms — A=-113 B=17, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : c88ec007 slot 18 manche 2 a 56526 ms — A=9 B=30, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 6d07c363 slot 16 manche 0 a 0 ms — A=0 B=-111, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 5676a9ba slot 16 manche 2 a 131159 ms — A=2283848626 B=114, 2 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 5676a9ba slot 18 manche 1 a 131392 ms — A=2149330576 B=566827921, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 5676a9ba slot 20 manche 5 a 162221 ms — A=1844064803 B=17, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 0862dce4 slot 12 manche 0 a 156313 ms — A=66 B=48, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 0862dce4 slot 20 manche 0 a 814374 ms — A=-28380 B=8262, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 0862dce4 slot 20 manche 0 a 907434 ms — A=0 B=-30475, 2 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 3efe4592 slot 24 manche 4 a 20015 ms — A=108 B=2203249791, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 3efe4592 slot 18 manche 0 a 116232 ms — A=-11504 B=2180259849, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : e8d384c7 slot 24 manche 0 a 106373 ms — A=34 B=27, 3 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : e8d384c7 slot 16 manche 0 a 184251 ms — A=-25084 B=3364, 1 composant(s)
+assaut_manches_research_test.go:551:   HORS DOMAINE B : 06a883f7 slot 12 manche 0 a 195460 ms — A=5462 B=829, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 4db2574e slot 24 manche 0 a 283044 ms — A=43 B=54, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 19cbbd02 slot 12 manche 0 a 231524 ms — A=8 B=58, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 38e7c328 slot 24 manche 0 a 849796 ms — A=-109 B=53, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 52fc79ef slot 24 manche 0 a 242062 ms — A=79 B=55, 2 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 52fc79ef slot 14 manche 0 a 322896 ms — A=21 B=79, 3 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 0a247154 slot 24 manche 0 a 725487 ms — A=99 B=20, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 2ce58582 slot 18 manche 2 a 58541 ms — A=9 B=25, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 84383fc1 slot 24 manche 0 a 360784 ms — A=1113587712 B=81, 2 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : bfcd1175 slot 24 manche 4 a 439232 ms — A=2148052166 B=23, 2 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 30d3c047 slot 22 manche 0 a 127313 ms — A=33 B=4, 7 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 94a28b8b slot 24 manche 0 a 455020 ms — A=77 B=59, 1 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 35f5cdea slot 14 manche 0 a 116333 ms — A=40 B=91, 2 composant(s)
+assaut_manches_research_test.go:545:   B PETIT NON NUL : 35f5cdea slot 24 manche 0 a 122911 ms — A=-110 B=24, 3 composant(s)
+assaut_manches_research_test.go:557: 3986 enregistrements joueur porteurs de comp 0
+assaut_manches_research_test.go:559:   B=0 -> 3917
+assaut_manches_research_test.go:559:   B>250 ou <0 -> 47
+assaut_manches_research_test.go:559:   0<B<=250 -> 22
+assaut_manches_research_test.go:567:   1 composant(s) -> 75 enregistrement(s)
+assaut_manches_research_test.go:567:   2 composant(s) -> 38 enregistrement(s)
+assaut_manches_research_test.go:567:   3 composant(s) -> 1201 enregistrement(s)
+assaut_manches_research_test.go:567:   4 composant(s) -> 250 enregistrement(s)
+assaut_manches_research_test.go:567:   5 composant(s) -> 322 enregistrement(s)
+assaut_manches_research_test.go:567:   6 composant(s) -> 1120 enregistrement(s)
+assaut_manches_research_test.go:567:   7 composant(s) -> 701 enregistrement(s)
+assaut_manches_research_test.go:567:   8 composant(s) -> 140 enregistrement(s)
+assaut_manches_research_test.go:567:   9 composant(s) -> 5 enregistrement(s)
+assaut_manches_research_test.go:567:   10 composant(s) -> 8 enregistrement(s)
+assaut_manches_research_test.go:567:   11 composant(s) -> 4 enregistrement(s)
+assaut_manches_research_test.go:567:   12 composant(s) -> 2 enregistrement(s)
+assaut_manches_research_test.go:567:   28 composant(s) -> 120 enregistrement(s)
+--- PASS: TestAssautDomaineComp0 (47.35s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	92.229s

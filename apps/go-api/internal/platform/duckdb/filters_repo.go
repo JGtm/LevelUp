@@ -19,6 +19,40 @@ func NewFiltersRepo(pdb *PlayerDB) *FiltersRepo {
 	return &FiltersRepo{pdb: pdb}
 }
 
+// filterRowsLoader est la lecture que CachedFiltersRepo met en cache (*FiltersRepo
+// en production, un faux en test).
+type filterRowsLoader interface {
+	LoadMatchesForFilters(ctx context.Context) ([]domain.FilterMatchRow, error)
+}
+
+// CachedFiltersRepo implémente port.FiltersRepository derrière le cache des
+// lectures joueur (plan perf 2026-09-23, D5b.3) : les lignes de
+// LoadMatchesForFilters sont gardées par (xuid, titre, base), TTL 60 s, invalidées
+// par la fin du sync du joueur (cf. player_read_cache.go). Les deux ou trois
+// `/filters/resolve` d'une page (solo, escouade, aperçu) ne lisent plus la base
+// qu'une fois : le contexte est appliqué en Go sur les mêmes lignes. Des lignes dont
+// une traduction best-effort a échoué, ou lues par une requête annulée en cours de
+// route, ne sont jamais gardées (chargement dégradé, player_read_cache.go).
+type CachedFiltersRepo struct {
+	*FiltersRepo // comptes et listes (non cachés), délégués tels quels
+
+	rows  filterRowsLoader // la lecture cachée : le FiltersRepo lui-même en production
+	cache *playerReadCache[[]domain.FilterMatchRow]
+	scope playerCacheScope
+}
+
+// NewCachedFiltersRepo enveloppe le FiltersRepo du joueur dans le cache
+// process-wide des lignes de filtres.
+func NewCachedFiltersRepo(pdb *PlayerDB) *CachedFiltersRepo {
+	repo := NewFiltersRepo(pdb)
+	return &CachedFiltersRepo{FiltersRepo: repo, rows: repo, cache: filterRowsReadCache, scope: scopeOf(pdb)}
+}
+
+// LoadMatchesForFilters rend une copie des lignes cachées du joueur, ou les charge.
+func (r *CachedFiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.FilterMatchRow, error) {
+	return r.cache.load(ctx, r.scope, "", r.rows.LoadMatchesForFilters)
+}
+
 // LoadMatchesForFilters charge tous les matchs du joueur pour la résolution cascade.
 // Utilise mv_player_matches si disponible, sinon fallback sur match_registry.
 //
@@ -233,44 +267,6 @@ func (r *FiltersRepo) GetAvailablePlaylists(ctx context.Context) ([]domain.Label
 	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("GetAvailablePlaylists: %w", err)
-	}
-	defer rows.Close()
-
-	var results []domain.LabelValue
-	for rows.Next() {
-		var lv domain.LabelValue
-		if err := rows.Scan(&lv.Label, &lv.Value); err != nil {
-			return nil, err
-		}
-		results = append(results, lv)
-	}
-	return results, rows.Err()
-}
-
-// GetAvailableMaps retourne les cartes uniques jouées.
-func (r *FiltersRepo) GetAvailableMaps(ctx context.Context) ([]domain.LabelValue, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	q := `
-	SELECT DISTINCT
-	    COALESCE(r.map_name_fr, r.map_name, '') AS label,
-	    COALESCE(r.map_name, '')                AS value
-	FROM match_registry r
-	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + `
-	  AND r.map_name IS NOT NULL
-	ORDER BY label ASC`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("GetAvailableMaps: %w", err)
-	}
-	defer release()
-
-	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
-	if err != nil {
-		return nil, fmt.Errorf("GetAvailableMaps: %w", err)
 	}
 	defer rows.Close()
 

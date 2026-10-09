@@ -49,7 +49,7 @@ func backfillDominanceFlagsBatch(
 		return nil
 	}
 
-	// Append-only #23046 : plus de seed placeholder (INSERT OR IGNORE) — BatchUpdateColumn
+	// Append-only #23645 : plus de seed placeholder (INSERT OR IGNORE) — BatchUpdateColumn
 	// est désormais un INSERT pur taggé stage='dominance' qui n'a pas besoin d'une row
 	// pré-existante. La vue merge-on-read reconstitue l'état par match.
 	persister := persist.NewPostSyncEnrichmentPersister(playerDB)

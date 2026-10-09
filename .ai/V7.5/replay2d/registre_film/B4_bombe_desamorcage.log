@@ -1,0 +1,114 @@
+=== RUN   TestBombeDesamorcage
+2026/09/01 16:14:43 INFO plafond memoire arme pour ce decodage outil=TestBombeDesamorcage souple_gib=2 dur_octets=2684354560
+    bombe_desamorcage_research_test.go:155: 1c01e34f : explosion 150546 — pose complete a 145306 (delai 5.24 s, q 140->254, slot 1423)
+    bombe_desamorcage_research_test.go:155: 1c01e34f : explosion 273787 — pose complete a 268731 (delai 5.06 s, q 140->254, slot 1423)
+    bombe_desamorcage_research_test.go:155: 1c01e34f : explosion 335637 — pose complete a 330599 (delai 5.04 s, q 140->254, slot 1412)
+    bombe_desamorcage_research_test.go:155: 1c01e34f : explosion 400853 — pose complete a 395764 (delai 5.09 s, q 140->254, slot 1423)
+    bombe_desamorcage_research_test.go:155: 1c01e34f : qMax=254, 8 montees completes, D2 4/4 explosions couvertes
+2026/09/01 16:15:10 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    bombe_desamorcage_research_test.go:155: 34bb3bc8 : explosion 427120 — pose complete a 422249 (delai 4.87 s, q 127->254, slot 1452)
+    bombe_desamorcage_research_test.go:155: 34bb3bc8 : qMax=254, 2 montees completes, D2 1/1 explosions couvertes
+2026/09/01 16:15:37 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    bombe_desamorcage_research_test.go:155: 35b75a31 : explosion 304013 — pose complete a 299176 (delai 4.84 s, q 130->254, slot 1535)
+    bombe_desamorcage_research_test.go:155: 35b75a31 : explosion 541270 — pose complete a 536215 (delai 5.05 s, q 233->254, slot 1535)
+    bombe_desamorcage_research_test.go:155: 35b75a31 : explosion 787051 — pose complete a 782064 (delai 4.99 s, q 130->254, slot 1535)
+    bombe_desamorcage_research_test.go:155: 35b75a31 : qMax=254, 6 montees completes, D2 3/3 explosions couvertes
+    bombe_desamorcage_research_test.go:155: 3d58eb37 : explosion 203065 — pose complete a 198071 (delai 4.99 s, q 130->254, slot 1547)
+    bombe_desamorcage_research_test.go:155: 3d58eb37 : explosion 342196 — pose complete a 337199 (delai 5.00 s, q 130->254, slot 1547)
+    bombe_desamorcage_research_test.go:155: 3d58eb37 : explosion 386280 — pose complete a 381175 (delai 5.11 s, q 130->254, slot 1547)
+    bombe_desamorcage_research_test.go:155: 3d58eb37 : qMax=254, 6 montees completes, D2 3/3 explosions couvertes
+    bombe_desamorcage_research_test.go:155: 69b16f5d : explosion 154305 — pose complete a 149416 (delai 4.89 s, q 130->254, slot 1533)
+    bombe_desamorcage_research_test.go:155: 69b16f5d : explosion 278617 — pose complete a 273746 (delai 4.87 s, q 130->254, slot 1533)
+    bombe_desamorcage_research_test.go:155: 69b16f5d : explosion 310215 — pose complete a 305278 (delai 4.94 s, q 130->254, slot 1533)
+    bombe_desamorcage_research_test.go:155: 69b16f5d : qMax=254, 6 montees completes, D2 3/3 explosions couvertes
+    bombe_desamorcage_research_test.go:155: 9f57c612 : explosion 83322 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: 9f57c612 : explosion 298489 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: 9f57c612 : explosion 353160 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: 9f57c612 : explosion 469057 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: 9f57c612 : qMax=254, 10 montees completes, D2 0/4 explosions couvertes
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 65137 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 518
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 65137 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 518
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 279103 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 554
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 279103 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 554
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 335193 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 571
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 335193 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 571
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 388080 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     +18.02 s : PRISE de la bombe par le slot 592
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 388080 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     +18.02 s : PRISE de la bombe par le slot 592
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 445839 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155: 9f57c612 : CANDIDATE DESAMORCAGE — pose complete a 445839 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155: c75f33b8 : explosion 109549 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: c75f33b8 : explosion 395724 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: c75f33b8 : explosion 450833 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: c75f33b8 : qMax=254, 8 montees completes, D2 0/3 explosions couvertes
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 92330 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 516
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 92330 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 516
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 196605 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     +29.25 s : PRISE de la bombe par le slot 547
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 196605 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     +29.25 s : PRISE de la bombe par le slot 547
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 252163 ms (q 165->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 547
+    bombe_desamorcage_research_test.go:155:     +15.52 s : PRISE de la bombe par le slot 556
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 252163 ms (q 165->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 547
+    bombe_desamorcage_research_test.go:155:     +15.52 s : PRISE de la bombe par le slot 556
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 434933 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155: c75f33b8 : CANDIDATE DESAMORCAGE — pose complete a 434933 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155: ce083875 : explosion 512505 — pose complete a 507567 (delai 4.94 s, q 190->254, slot 1534)
+    bombe_desamorcage_research_test.go:155: ce083875 : explosion 686401 — pose complete a 681545 (delai 4.86 s, q 216->254, slot 1535)
+    bombe_desamorcage_research_test.go:155: ce083875 : explosion 947537 — pose complete a 942613 (delai 4.92 s, q 130->254, slot 1534)
+    bombe_desamorcage_research_test.go:155: ce083875 : qMax=254, 6 montees completes, D2 3/3 explosions couvertes
+    bombe_desamorcage_research_test.go:155: df8fcbef : explosion 255767 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: df8fcbef : explosion 309284 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: df8fcbef : explosion 485860 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: df8fcbef : explosion 778033 — AUCUNE pose complete dans les 10 s avant (sensibilite D1)
+    bombe_desamorcage_research_test.go:155: df8fcbef : qMax=254, 14 montees completes, D2 0/4 explosions couvertes
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 51901 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 51901 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 168619 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 532
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 168619 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 532
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 239802 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     +28.59 s : PRISE de la bombe par le slot 558
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 239802 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     +28.59 s : PRISE de la bombe par le slot 558
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 293355 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 558
+    bombe_desamorcage_research_test.go:155:     +29.31 s : PRISE de la bombe par le slot 570
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 293355 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 558
+    bombe_desamorcage_research_test.go:155:     +29.31 s : PRISE de la bombe par le slot 570
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 469075 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 586
+    bombe_desamorcage_research_test.go:155:     +29.45 s : PRISE de la bombe par le slot 610
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 469075 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 586
+    bombe_desamorcage_research_test.go:155:     +29.45 s : PRISE de la bombe par le slot 610
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 527367 ms (q 207->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 610
+    bombe_desamorcage_research_test.go:155:     +25.41 s : PRISE de la bombe par le slot 620
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 527367 ms (q 207->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 610
+    bombe_desamorcage_research_test.go:155:     +25.41 s : PRISE de la bombe par le slot 620
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 745083 ms (q 131->254, slot 1459) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 647
+    bombe_desamorcage_research_test.go:155:     +25.88 s : PRISE de la bombe par le slot 660
+    bombe_desamorcage_research_test.go:155: df8fcbef : CANDIDATE DESAMORCAGE — pose complete a 745083 ms (q 131->254, slot 1471) sans explosion <= 10 s
+    bombe_desamorcage_research_test.go:155:     + 0.25 s : LACHER de la bombe par le slot 647
+    bombe_desamorcage_research_test.go:155:     +25.88 s : PRISE de la bombe par le slot 660
+    bombe_desamorcage_research_test.go:160: VERDICT D3 : 32 candidate(s) desamorcage au corpus
+    bombe_desamorcage_research_test.go:142: pic memoire observe : 0.02 Gio
+--- PASS: TestBombeDesamorcage (170.38s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	170.788s

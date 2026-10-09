@@ -37,7 +37,7 @@ func TestIsMatchSnapshotReady(t *testing.T) {
 
 	t.Run("weapon film perdu → ready [weapons_absent]", func(t *testing.T) {
 		f := fullInfiniteFacts()
-		f.backfillCompleted = matchflags.MBitWeaponKillsNoFilm
+		f.backfillCompleted = matchflags.MBitFilmAbsent
 		ready, reasons := isMatchSnapshotReady(f, infiniteCaps, false)
 		if !ready || !slices.Contains(reasons, snapReasonWeaponsAbsent) {
 			t.Fatalf("ready=%v reasons=%v, attendu ready+weapons_absent", ready, reasons)

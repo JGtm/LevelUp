@@ -15,9 +15,9 @@
 // chi d'origine (montées sous /_diag/auto-sync par server.go).
 //
 // Le probe passe par les abstractions pool.Discovery + pool.Resolver, donc
-// ne lit jamais directement os.Getenv ni sync_meta. Si une source produit un
-// access_token valide avec rotation, le RT rotaté est persisté via le
-// callback onRotated (même mécanisme que le scheduler en production).
+// ne lit jamais directement le store. Si la source produit un access_token
+// valide avec rotation, le RT rotaté est persisté via le callback onRotated
+// (même mécanisme que le scheduler en production).
 //
 // Le POST /run est synchrone et peut prendre plusieurs minutes (1 cycle =
 // N joueurs × appel API Halo + DB writes). Augmenter le timeout client
@@ -28,7 +28,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"log/slog"
+	"fmt"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -39,9 +39,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/scheduler"
-	"levelup/go-api/internal/sync"
 )
 
 // AdminAutoSyncHandler expose les endpoints diagnostic de l'auto-sync.
@@ -119,19 +117,17 @@ func (h *AdminAutoSyncHandler) handleRunOnce(ctx context.Context, _ *struct{}) (
 	return &autoSyncSnapshotOutput{Body: h.scheduler.Snapshot()}, nil
 }
 
-// TokenProbeResult décrit l'état des sources de refresh_token pour un joueur,
-// obtenu via la chaîne Discovery → Resolver (pas d'accès direct à os.Getenv
-// ou sync_meta).
+// TokenProbeResult décrit l'état de la source de refresh_token d'un joueur,
+// obtenu via la chaîne Discovery → Resolver (pas d'accès direct au store).
 type TokenProbeResult struct {
 	Gamertag string `json:"gamertag"`
 
 	// Vrai si Discovery a trouvé une CredentialSource pour ce gamertag.
 	DiscoveredInPool bool `json:"discovered_in_pool"`
-	// Origine de la source : "duckdb_msal", "duckdb_oauth", "env_oauth", etc.
+	// Origine de la source : "watcher_oauth" (source unique ADR 0023).
 	// Voir pool.CredentialSource.Source.
 	Source string `json:"source,omitempty"`
 
-	HasMSALCache    bool `json:"has_msal_cache"`
 	HasRefreshToken bool `json:"has_refresh_token"`
 	RefreshTokenLen int  `json:"refresh_token_len,omitempty"`
 	// S5 (sécurité, lot S) : SEUL le sha256 tronqué identifie le token. head/tail
@@ -139,7 +135,7 @@ type TokenProbeResult struct {
 	// fragment de secret, même sur une route loopback+admin.
 	RefreshTokenSHA256 string `json:"refresh_token_sha256,omitempty"`
 
-	// Résultat du Resolve (pipeline complet : MSAL/OAuth → Exchange Halo).
+	// Résultat du Resolve (pipeline complet : OAuth refresh → Exchange Halo).
 	ResolveOK              bool   `json:"resolve_ok"`
 	ResolveError           string `json:"resolve_error,omitempty"`
 	SpartanTokenLen        int    `json:"spartan_token_len,omitempty"`
@@ -159,8 +155,8 @@ func fingerprintToken(s string) string {
 }
 
 // handleProbeTokens diagnostic complet pour un joueur via Discovery + Resolver.
-// Le RT rotaté par Microsoft (si refresh OAuth réussit) est persisté dans
-// sync_meta.oauth_refresh_token de la player DB, comme en production.
+// Le RT rotaté par Microsoft (si refresh OAuth réussit) est persisté dans le
+// MultiUserTokenStore, comme en production (ADR 0023).
 //
 // GET /api/v1/_diag/auto-sync/probe?gamertag=JGtm
 func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSyncProbeInput) (*autoSyncProbeOutput, error) {
@@ -172,7 +168,8 @@ func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSy
 	res := TokenProbeResult{Gamertag: gamertag}
 
 	pr := titlePkg.NewPathResolver(h.cfg.RepoRoot)
-	discovery := pool.NewDiscovery(h.cfg, pr, titlePkg.DefaultSlug)
+	authStoreForProbe := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
+	discovery := pool.NewDiscoveryWithStore(h.cfg, pr, titlePkg.DefaultSlug, authStoreForProbe)
 	sources, err := discovery.Scan(ctx)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "discovery_scan_failed", err.Error())
@@ -187,36 +184,26 @@ func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSy
 		}
 	}
 	if src == nil {
-		// Joueur non découvert : pas de credential utilisable (ni env var ni sync_meta).
+		// Joueur non découvert : aucun refresh token dans le MultiUserTokenStore.
 		return &autoSyncProbeOutput{Body: res}, nil
 	}
 
 	res.DiscoveredInPool = true
 	res.Source = src.Source
-	res.HasMSALCache = src.MSALCache != ""
 	res.HasRefreshToken = src.RefreshToken != ""
 	res.RefreshTokenLen = len(src.RefreshToken)
 	res.RefreshTokenSHA256 = fingerprintToken(src.RefreshToken)
 
-	// Tenter le Resolve complet (pipeline MSAL→OAuth→Exchange) avec le même
-	// callback onRotated qu'en production (ADR 0023) :
-	//  1. PRIORITÉ — écriture MultiUserTokenStore (source canonique)
-	//  2. Compat — écriture aussi sync_meta DuckDB (legacy, retiré Phase 5)
-	authStoreForProbe := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
+	// Tenter le Resolve complet (OAuth refresh → Exchange) avec le même callback
+	// onRotated qu'en production (ADR 0023) : écriture MultiUserTokenStore, source
+	// unique (le double-write sync_meta a été retiré en Phase 5).
 	var rotated bool
 	onRotated := func(ctx context.Context, gt, newRT string) error {
-		if user, lerr := authStoreForProbe.LoadByGamertag(gt); lerr == nil && user != nil && user.XUID != "" {
-			if werr := authStoreForProbe.UpdateOAuthRefreshToken(user.XUID, newRT); werr != nil {
-				slog.WarnContext(ctx, "probe: store write échoué", "gamertag", gt, "err", werr)
-			}
+		user, lerr := authStoreForProbe.LoadByGamertag(gt)
+		if lerr != nil || user == nil || user.XUID == "" {
+			return fmt.Errorf("probe: xuid introuvable pour %s: %w", gt, lerr)
 		}
-		dbPath := pr.PlayerDBPath(titlePkg.DefaultSlug, gt)
-		db, release, derr := sync.AcquirePlayerWriterStandalone(ctx, dbPath)
-		if derr != nil {
-			return derr
-		}
-		defer release()
-		if werr := duckdb.WriteOAuthRefreshToken(ctx, db, newRT); werr != nil {
+		if werr := authStoreForProbe.UpdateOAuthRefreshToken(user.XUID, newRT); werr != nil {
 			return werr
 		}
 		rotated = true

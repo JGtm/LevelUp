@@ -21,6 +21,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -76,11 +77,18 @@ func ExchangeAccessToken(ctx context.Context, accessToken string) (*ExchangeResu
 // ExchangeAccessTokenWithDescriptor échange un access_token Microsoft contre des
 // tokens d'un titre donné (MT-02). Le descripteur porte l'audience XSTS, l'audience
 // + endpoint spartan, et l'endpoint clearance. ExchangeAccessToken délègue avec le
-// défaut Halo → byte-identique. (Le *http.Client est construit en interne ; les
-// tests de parité ciblent les fonctions de leg, qui prennent le client.)
+// défaut Halo → byte-identique.
 func ExchangeAccessTokenWithDescriptor(ctx context.Context, accessToken string, d title.AuthDescriptor) (*ExchangeResult, error) {
-	client := &http.Client{Timeout: 20 * time.Second}
+	return exchangeAccessTokenWithClient(ctx, &http.Client{Timeout: xblExchangeTimeout}, accessToken, d)
+}
 
+// xblExchangeTimeout borne chaque appel HTTP de la chaîne d'échange.
+const xblExchangeTimeout = 20 * time.Second
+
+// exchangeAccessTokenWithClient exécute la chaîne access_token → XBL user → XSTS
+// du titre → Spartan → Clearance avec le client fourni (injectable en test). Le
+// préfixe RpsTicket suit la provenance posée en ctx (WithTokenClientFamily).
+func exchangeAccessTokenWithClient(ctx context.Context, client *http.Client, accessToken string, d title.AuthDescriptor) (*ExchangeResult, error) {
 	// Étape 1 : User Token XBL (title-agnostic, Xbox platform)
 	userToken, err := requestUserToken(ctx, client, accessToken)
 	if err != nil {
@@ -155,20 +163,103 @@ func ExchangeXSTSForHaloTokensWithDescriptor(ctx context.Context, xstsToken stri
 // XBL user-token la lit pour choisir le préfixe RpsTicket déterministe.
 type tokenClientFamilyCtxKey struct{}
 
-// withTokenClientFamily attache la famille de client OAuth (TokenFamilyAzure /
+// WithTokenClientFamily attache la famille de client OAuth (TokenFamilyAzure /
 // TokenFamilyXboxNative) au contexte. Une famille vide laisse le ctx inchangé.
-func withTokenClientFamily(ctx context.Context, family string) context.Context {
+// Exportée : le pool de tokens (paquet auth/pool) pose la famille persistée du
+// joueur avant l'échange.
+func WithTokenClientFamily(ctx context.Context, family string) context.Context {
 	if family == "" {
 		return ctx
 	}
 	return context.WithValue(ctx, tokenClientFamilyCtxKey{}, family)
 }
 
-// tokenClientFamilyFromCtx lit la famille de client posée par withTokenClientFamily
+// TokenClientFamilyFromContext lit la famille posée par WithTokenClientFamily
 // ("" = provenance inconnue).
-func tokenClientFamilyFromCtx(ctx context.Context) string {
+func TokenClientFamilyFromContext(ctx context.Context) string {
 	f, _ := ctx.Value(tokenClientFamilyCtxKey{}).(string)
 	return f
+}
+
+// tokenFamilyObserverCtxKey porte l'observateur de provenance MESURÉE.
+type tokenFamilyObserverCtxKey struct{}
+
+// TokenFamilyObserver recueille la provenance RÉELLEMENT acceptée par l'endpoint
+// XBL user-token : le préfixe RpsTicket qui a rendu un token.
+//
+// POURQUOI UNE MESURE ET PAS LA FAMILLE DU CLIENT OAUTH (constat du 2026-09-20).
+// La famille déduite du endpoint de refresh (Azure vs MSA natif) NE PRÉDIT PAS le
+// préfixe accepté : sur les 13 comptes du poste, les 13 refresh passent par l'app
+// Azure (zéro repli MSA dans 87 Mo de auth.log) et pourtant 5 d'entre eux se font
+// refuser « d= » en 401 et ne passent qu'en « t= ». Persister la famille du client
+// aurait donc reconduit le mauvais préfixe. La seule donnée fiable est le résultat
+// de l'échange précédent — d'où cet observateur : le chokepoint XBL écrit ce qui a
+// marché, le caller le persiste, l'échange suivant commence par là.
+type TokenFamilyObserver struct {
+	mu     sync.Mutex
+	family string
+}
+
+// Observed rend la famille mesurée au dernier échange XBL user-token
+// ("" si aucun échange n'a eu lieu — cache, échec amont).
+func (o *TokenFamilyObserver) Observed() string {
+	if o == nil {
+		return ""
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.family
+}
+
+func (o *TokenFamilyObserver) record(family string) {
+	if o == nil || family == "" {
+		return
+	}
+	o.mu.Lock()
+	o.family = family
+	o.mu.Unlock()
+}
+
+// WithTokenFamilyObserver attache un observateur de provenance au contexte et le
+// rend. Le caller lit Observed() APRÈS l'échange et persiste la valeur si elle
+// diffère de celle qu'il connaissait.
+func WithTokenFamilyObserver(ctx context.Context) (context.Context, *TokenFamilyObserver) {
+	o := &TokenFamilyObserver{}
+	return context.WithValue(ctx, tokenFamilyObserverCtxKey{}, o), o
+}
+
+// RecordObservedTokenFamily écrit la provenance mesurée dans l'observateur du ctx
+// (no-op si le caller n'en a pas installé). Appelée par le chokepoint XBL
+// user-token ; exportée pour qu'un échangeur substitué (double de test du pool,
+// futur fournisseur) renseigne la même mesure.
+func RecordObservedTokenFamily(ctx context.Context, family string) {
+	o, _ := ctx.Value(tokenFamilyObserverCtxKey{}).(*TokenFamilyObserver)
+	o.record(family)
+}
+
+// Préfixes RpsTicket de l'échange XBL user-token, et leur correspondance avec les
+// familles persistées. Source UNIQUE de cette correspondance (le choix du préfixe
+// et la lecture de la mesure la partagent).
+const (
+	rpsPrefixAzure      = "d="
+	rpsPrefixXboxNative = "t="
+)
+
+// rpsPrefixesForFamily rend (préfixe à essayer d'abord, préfixe de repli) pour une
+// provenance connue. Provenance inconnue → ordre historique « d= » puis « t= ».
+func rpsPrefixesForFamily(family string) (primary, fallback string) {
+	if family == TokenFamilyXboxNative {
+		return rpsPrefixXboxNative, rpsPrefixAzure
+	}
+	return rpsPrefixAzure, rpsPrefixXboxNative
+}
+
+// familyForRpsPrefix rend la provenance correspondant à un préfixe accepté.
+func familyForRpsPrefix(prefix string) string {
+	if prefix == rpsPrefixXboxNative {
+		return TokenFamilyXboxNative
+	}
+	return TokenFamilyAzure
 }
 
 // requestUserToken obtient un User Token XBL depuis un access_token Microsoft.
@@ -183,16 +274,23 @@ func tokenClientFamilyFromCtx(ctx context.Context) string {
 // (401) — désormais logué WarnContext pour rendre visible un 401 qui n'est PAS un
 // simple mauvais préfixe (token révoqué, etc.), là où l'ancien Debug le masquait.
 func requestUserToken(ctx context.Context, client *http.Client, accessToken string) (string, error) {
-	primary, fallback := "d=", "t="
-	if tokenClientFamilyFromCtx(ctx) == TokenFamilyXboxNative {
-		primary, fallback = "t=", "d="
-	}
+	primary, fallback := rpsPrefixesForFamily(TokenClientFamilyFromContext(ctx))
 	token, err := requestUserTokenPrefixed(ctx, client, accessToken, primary)
+	if err == nil {
+		// Provenance MESURÉE : le caller la persiste pour commencer par là au
+		// prochain échange (cf. TokenFamilyObserver).
+		RecordObservedTokenFamily(ctx, familyForRpsPrefix(primary))
+		return token, nil
+	}
 	var herr *xblHTTPError
-	if err != nil && errors.As(err, &herr) && herr.Status == http.StatusUnauthorized {
+	if errors.As(err, &herr) && herr.Status == http.StatusUnauthorized {
 		slog.WarnContext(ctx, "halo_exchange: RpsTicket refusé (401) — retry sur l'autre préfixe (filet provenance)",
-			"primary", primary, "fallback", fallback, "family", tokenClientFamilyFromCtx(ctx))
-		return requestUserTokenPrefixed(ctx, client, accessToken, fallback)
+			"primary", primary, "fallback", fallback, "family", TokenClientFamilyFromContext(ctx))
+		token, err = requestUserTokenPrefixed(ctx, client, accessToken, fallback)
+		if err == nil {
+			RecordObservedTokenFamily(ctx, familyForRpsPrefix(fallback))
+		}
+		return token, err
 	}
 	return token, err
 }
@@ -276,13 +374,6 @@ func extractDisplayClaims(resp map[string]any) (string, string) {
 	return gamertag, xuid
 }
 
-// requestSpartanToken échange un XSTS Token Halo contre un Spartan Token (défaut Halo).
-// Retourne aussi l'expiry RÉEL du token (cf. requestSpartanTokenWith).
-func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken string) (string, time.Time, error) {
-	d := title.DefaultHaloAuthDescriptor()
-	return requestSpartanTokenWith(ctx, client, xstsToken, d.SpartanAudience, d.SpartanTokenURL)
-}
-
 // requestSpartanTokenWith échange un XSTS Token contre un Spartan Token avec une
 // audience + un endpoint paramétrés (MT-02). MinVersion="4" et le proof TokenType
 // "Xbox_XSTSv3" restent en dur : ce sont des constantes du PROTOCOLE spartan, pas
@@ -328,11 +419,6 @@ func parseSpartanExpiry(resp map[string]any) time.Time {
 		return time.Time{}
 	}
 	return t.UTC()
-}
-
-// requestClearanceToken obtient le Clearance Token (FlightConfigurationId) (défaut Halo).
-func requestClearanceToken(ctx context.Context, client *http.Client, spartanToken string) (string, error) {
-	return requestClearanceTokenWith(ctx, client, spartanToken, title.DefaultHaloAuthDescriptor().ClearanceURL)
 }
 
 // requestClearanceTokenWith obtient le Clearance Token via un endpoint paramétré (MT-02).

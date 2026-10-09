@@ -1,0 +1,231 @@
+package grammar
+
+// marche_trames.go — LA PHASE DELTA DE LA REPRESENTATION INTERMEDIAIRE : LA MARCHE DES TRAMES
+// (ADR 0037 IR-2, IR-3).
+//
+// # C EST LA MARCHE DE PRODUCTION, PAS UN SECOND MARCHEUR
+//
+// Le pilotage qui suit — la table anticipee posee une fois, puis chunk par chunk la liaison des
+// images-cles au monde ([lierLesImagesClesDuChunk]), puis paquet par paquet le debut de la vue B des
+// listes d evenements (la fin de la vue A lue quand elle decide, sinon [localiserLaListe] :
+// [debutDeLaVueBDeCuisson]) et la marche par rangs ([lireTrameParRangs]) — est celui
+// des canaux du distributeur ([Distribuer] : les etats de mouvement et le tir continu de
+// [ScanMarcheDesTrames]) et de la carte de fermeture ([FrameClosure], [FrameClosureDetaillee]) : ils
+// le CONSOMMENT, aucun ne le recopie. Garde-rail :
+// `marche_trames_unique_test.go`. La table et la liaison sont lues dans la phase des images-cles
+// (`marche_trames_preliminaires.go`).
+//
+// # CE QU ELLE RANGE, ET CE QU ELLE NE CHANGE PAS
+//
+// Chaque trame delta est rangee dans la structure de lecture ([lecture.Paquet]) : les vues et
+// leurs etendues, la sortie typee de la vue B, les records avec leur etendue, leur liaison et leur
+// preuve, les composants avec leur etat et la provenance de leur largeur, le verdict de fermeture.
+// L INTERPRETATION RESTE AUX CROCHETS de l observation que le consommateur passe : ils publient
+// pendant la marche, exactement comme avant, et aucune valeur publiee ne bouge (ADR 0037 IR-8).
+// La structure ne se persiste pas.
+//
+// # DUREE DE VIE
+//
+// Le paquet rendu est l arene de la marche : il n est valide que pendant le tour qui le rend, et
+// son en-tete (chunk, rang, horodatage) est pose AVANT la marche du paquet — les crochets qui
+// publient pendant la marche le lisent.
+
+import (
+	"iter"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+)
+
+// marcheurDesTrames porte l etat d UNE marche des trames d un film : le monde, ses preliminaires
+// lus dans les images-cles, l arene du paquet en cours et ce que la marche a lu de lui.
+type marcheurDesTrames struct {
+	fc     *FilmContext
+	cfg    FrameConfig
+	chunks []int
+	monde  *World
+	prel   *preliminairesDesTrames
+	// paquet : l arene, reutilisee d un paquet a l autre ; entites : la table d entites du monde,
+	// en lecture seule.
+	paquet  lecture.Paquet
+	entites lecture.Entites
+	// trame : ce que la marche a lu du paquet en cours.
+	trame trameLue
+	// liaisons : ce que la liaison des images-cles a fait au monde, sommee sur les chunks.
+	liaisons LiaisonDUnChunk
+	// interets : les occurrences que les canaux de la marche interpretent ([Distribuer]) ; vide hors
+	// du distributeur.
+	interets interetsResolus
+	// lecteur : le lecteur de la trame en cours pendant sa marche par classes de vue, nil hors d elle.
+	// Sa position date les publications des deserialiseurs ([MarcheDistribuee.positionDeLecture]).
+	lecteur *Lecteur
+}
+
+// trameLue est ce que la marche rend pour UNE trame delta : la structure, et ce que la marche par
+// rangs a lu pour la remplir — que les consommateurs de la grammaire lisent sans relire un bit.
+type trameLue struct {
+	paquet *lecture.Paquet
+	// debut : le bit de depart de la marche, -1 pour une liste d evenements non localisee.
+	debut int
+	// parRangs : la trame a ete marchee par classes de vue ; faux sous un profil de recherche qui
+	// les retire, et alors seuls les records sont ranges.
+	parRangs bool
+	lecture  lectureDeTrame
+}
+
+// Trames rend la PHASE DELTA du film : chaque trame delta (type 0, payload non vide), dans
+// l ordre du flux, rangee dans la structure de lecture (ADR 0037). `obs` porte les crochets qui
+// interpretent pendant la marche (nil : aucun) ; ce sont eux, et eux seuls, qui disent ce que la
+// marche publie.
+//
+// Le paquet rendu n est valide que pendant le tour qui le rend.
+func (c *FilmContext) Trames(obs *Observation) iter.Seq2[*lecture.Paquet, error] {
+	return func(rendre func(*lecture.Paquet, error) bool) {
+		m, err := c.nouveauMarcheurDesTrames(obs)
+		if err != nil {
+			rendre(nil, err)
+			return
+		}
+		m.parcourir(func(t *trameLue) bool { return rendre(t.paquet, nil) })
+	}
+}
+
+// nouveauMarcheurDesTrames prepare la marche des trames du film sous le cadre de balayage du
+// contexte, construit depuis l en-tete de la marche ([FilmContext.EnTete]), et l observation
+// `obs` : ses preliminaires lus dans une phase des images-cles qu elle joue seule, puis le monde.
+func (c *FilmContext) nouveauMarcheurDesTrames(obs *Observation) (*marcheurDesTrames, error) {
+	if len(c.ChunkNumbers()) == 0 {
+		return nil, ErrNoFilmChunk
+	}
+	reg, err := c.Registry()
+	if err != nil {
+		return nil, err
+	}
+	return c.marcheurDesTramesDepuis(reg, obs, c.lireLesPreliminaires())
+}
+
+// marcheurDesTramesDepuis prepare la marche des trames du film depuis ses preliminaires deja lus
+// (les preliminaires bornes de l ADR 0037 IR-3) : le monde, et la table anticipee posee une fois,
+// avant la premiere trame.
+func (c *FilmContext) marcheurDesTramesDepuis(reg *Registry, obs *Observation, prel *preliminairesDesTrames) (
+	*marcheurDesTrames, error,
+) {
+	chunks := c.ChunkNumbers()
+	if len(chunks) == 0 {
+		return nil, ErrNoFilmChunk
+	}
+	cfg := c.CadreDeBalayage()
+	cfg.IDLowBits = c.EnTete().IDLowBits.Valeur
+	cfg.Obs = obs
+	m := &marcheurDesTrames{fc: c, cfg: cfg, chunks: chunks, monde: NewWorld(reg), prel: prel}
+	m.entites = entitesDuMonde{w: m.monde}
+	m.trame.paquet = &m.paquet
+	// LE REPLI DU LOT 5.23 ENTRE EN PRODUCTION ICI. La table anticipee est construite dans la phase
+	// des images-cles de tous les chunks, sans decodage de trame ; au point de rejet, la marche y lit
+	// l archetype qu une image-cle ULTERIEURE donne a un eid que le monde ne connait pas encore. Cf.
+	// `keyframe_anticipe.go` et [World.LierParRepliDAnticipation].
+	m.monde.PoserTableAnticipee(prel.table)
+	return m, nil
+}
+
+// parcourir deroule la marche sur tous les chunks et rend chaque trame delta a `rendre`, apres
+// sa marche ; faux arrete la marche.
+func (m *marcheurDesTrames) parcourir(rendre func(*trameLue) bool) {
+	for _, c := range m.chunks {
+		data, pks, ok := m.fc.ChunkAt(c)
+		if !ok {
+			continue
+		}
+		// La table anticipee ne rend qu une declaration STRICTEMENT POSTERIEURE a ce chunk.
+		m.monde.PoserChunkCourant(c)
+		m.liaisons.ajouter(lierLesImagesClesDuChunk(m.monde, m.prel.liaison.rendre(c), m.cfg.Obs))
+		for _, pk := range pks {
+			if pk.Type != PacketTypeDelta || pk.Size < 1 {
+				continue
+			}
+			m.marcherLePaquet(c, pk, data)
+			if !rendre(&m.trame) {
+				return
+			}
+		}
+	}
+}
+
+// parcourirLesPreliminaires deroule, chunk par chunk, le seul monde des preliminaires — la table
+// anticipee et la liaison des images-cles du chunk — sans marcher une trame, et appelle `chunk` avec
+// le numero de chaque chunk lie, le monde pose : le critere de la calibration de `killsource`
+// ([FilmContext.ScoresDeCalibration]) se compte sous ce monde.
+func (m *marcheurDesTrames) parcourirLesPreliminaires(chunk func(num int)) {
+	for _, c := range m.chunks {
+		if _, _, ok := m.fc.ChunkAt(c); !ok {
+			continue
+		}
+		m.monde.PoserChunkCourant(c)
+		m.liaisons.ajouter(lierLesImagesClesDuChunk(m.monde, m.prel.liaison.rendre(c), m.cfg.Obs))
+		chunk(c)
+	}
+}
+
+// marcherLePaquet marche UNE trame delta et la range dans l arene. Sa vue A est lue et rangee
+// d abord, une fois ([rangerLaTete]), puis passee a la marche par rangs ; les paquets dont la tete
+// annonce une liste d evenements partent de la fin de leur vue A quand elle decide
+// ([debutParLaVueA], [lecture.DebutParVueA] : une lecture), sinon du debut que [localiserLaListe]
+// leur trouve ; une liste non localisee n est pas lue.
+func (m *marcheurDesTrames) marcherLePaquet(c int, pk FilmPacket, data []byte) {
+	t, p := &m.trame, &m.paquet
+	pay := pk.Payload(data)
+	viderLePaquet(p)
+	p.Chunk, p.Index, p.Type, p.TS, p.Payload, p.Entites = c, pk.Index, pk.Type, pk.TimestampUS, pay, m.entites
+	t.debut, p.Debut = movementStateSkipLeadBits, lecture.DebutEnTete
+	t.parRangs = m.cfg.Profil.Grammaire.ClassesDeVue
+	t.lecture = lectureDeTrame{debutVueB: -1, finVueB: -1}
+	g := m.fc.grammaireDeLaVueA()
+	vueA := rangerLaTete(p, m.cfg.Profil, g)
+	if listeAnnoncee(&p.VueA) { // la continuation annonce une liste d evenements
+		t.debut, p.Debut = debutDeLaVueBDeCuisson(pay, &vueA, g.classe, m.monde, m.cfg)
+		if t.debut < 0 {
+			rangerUneListeNonLocalisee(p)
+			return
+		}
+	}
+	m.monde.oublierLesNeufsSuspendus() // les marches d essai du debut ne lient rien
+	defer func() { m.monde.lierLesNeufsProuves(preuveDeLaTrame(p)) }()
+	if t.parRangs {
+		br := LecteurSur(pay)
+		br.poserCadre(m.cfg)
+		m.lecteur = br
+		lireTrameParRangs(br, pay, m.monde, m.cfg, departDeTrame{bit: t.debut, vueA: &vueA}, &t.lecture)
+		m.lecteur = nil
+	} else {
+		t.lecture.recs, t.lecture.rangs, t.lecture.curseur = DecodeFrameViewsCurseur(pay, m.monde, m.cfg,
+			MovementStateViews, t.debut)
+	}
+	rangerLaTrame(p, &t.lecture, t.parRangs, m.interets)
+}
+
+// viderLePaquet remet l arene a zero en gardant la capacite de ses tranches.
+func viderLePaquet(p *lecture.Paquet) {
+	genres, kills, fil, entrees := p.VueA.Genres[:0], p.VueA.Kills[:0], p.VueA.Fil[:0], p.VueC.Entrees[:0]
+	records, comps := p.Records[:0], p.Comps[:0]
+	*p = lecture.Paquet{}
+	p.VueA.Genres, p.VueA.Kills, p.VueA.Fil, p.VueC.Entrees, p.Records, p.Comps = genres, kills, fil, entrees,
+		records, comps
+}
+
+// ajouter cumule `o` dans `l`.
+func (l *LiaisonDUnChunk) ajouter(o LiaisonDUnChunk) {
+	l.Datums += o.Datums
+	l.Ambigus += o.Ambigus
+	l.Oubliees += o.Oubliees
+}
+
+// debutDeLaVueBDeCuisson rend le debut de la vue B d un paquet a evenements de la cuisson, dont la
+// vue A `a` est deja lue et rangee ([rangerLaTete]), et COMMENT il a ete trouve : la fin de la vue A
+// quand elle decide ([debutParLaVueA], [lecture.DebutParVueA]), sinon [localiserLaListe].
+func debutDeLaVueBDeCuisson(pay []byte, a *FluxVueA, classe classeDeLaVueA, w *World, cfg FrameConfig) (
+	int, lecture.DebutDeVueB,
+) {
+	if e := debutParLaVueA(pay, a, classe, w, cfg); e >= 0 {
+		return e, lecture.DebutParVueA
+	}
+	return localiserLaListe(pay, w, cfg)
+}

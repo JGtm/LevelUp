@@ -1,85 +1,12 @@
 /**
- * Tests unitaires — LikersLine et MediaThumbnailCard (MediaViewer.tsx).
+ * Tests unitaires — MediaThumbnailCard et son bouton « J'aime » (MediaViewer.tsx).
  */
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaThumbnailCard } from './MediaViewer'
 import type { MediaItemRow } from '@/lib/api/types'
-
-// LikersLine est une fonction locale non exportée, on la teste via son rendu
-// dans MediaThumbnailCard. On crée un wrapper minimal pour les tests isolés.
-
-// Inline de la logique LikersLine pour éviter d'exposer l'export inutilement.
-function renderLikersLabel(likers: string[], totalLikers: number): string {
-  if (!totalLikers || totalLikers === 0) return ''
-  const names = likers ?? []
-  const rest = totalLikers - names.length
-  if (names.length === 0) return `${totalLikers} ♥`
-  if (rest <= 0) return `${names.join(', ')} ♥`
-  return `${names.join(', ')} et ${rest} autre${rest > 1 ? 's' : ''} ♥`
-}
-
-describe('LikersLine — logique de formatage', () => {
-  it('retourne chaîne vide si totalLikers = 0', () => {
-    expect(renderLikersLabel([], 0)).toBe('')
-  })
-
-  it('retourne totalLikers ♥ si aucun nom', () => {
-    expect(renderLikersLabel([], 5)).toBe('5 ♥')
-  })
-
-  it('affiche uniquement les noms si rest = 0', () => {
-    expect(renderLikersLabel(['Alice', 'Bob'], 2)).toBe('Alice, Bob ♥')
-  })
-
-  it('affiche nom + "et N autre" au singulier', () => {
-    expect(renderLikersLabel(['Alice'], 2)).toBe('Alice et 1 autre ♥')
-  })
-
-  it('affiche nom + "et N autres" au pluriel', () => {
-    expect(renderLikersLabel(['Alice', 'Bob'], 5)).toBe('Alice, Bob et 3 autres ♥')
-  })
-
-  it('gère un seul liker exactement', () => {
-    expect(renderLikersLabel(['Charlie'], 1)).toBe('Charlie ♥')
-  })
-
-  it('gère 3 noms affichés sans reste', () => {
-    expect(renderLikersLabel(['A', 'B', 'C'], 3)).toBe('A, B, C ♥')
-  })
-})
-
-// Composant LikersLine tel que défini dans MediaViewer.tsx (dupliqué pour test isolé)
-function LikersLine({ likers, totalLikers }: { likers?: string[]; totalLikers?: number }) {
-  if (!totalLikers || totalLikers === 0) return null
-  const label = renderLikersLabel(likers ?? [], totalLikers)
-  return <p className="text-3xs text-rose-400 leading-tight">{label}</p>
-}
-
-describe('LikersLine — rendu React', () => {
-  it('ne rend rien si totalLikers absent', () => {
-    const { container } = render(<LikersLine />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('ne rend rien si totalLikers = 0', () => {
-    const { container } = render(<LikersLine totalLikers={0} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('rend le label avec les noms', () => {
-    render(<LikersLine likers={['Alice', 'Bob']} totalLikers={3} />)
-    expect(screen.getByText(/Alice, Bob et 1 autre ♥/)).toBeInTheDocument()
-  })
-
-  it('applique la classe rose-400', () => {
-    const { container } = render(<LikersLine likers={['Alice']} totalLikers={1} />)
-    const p = container.querySelector('p')
-    expect(p?.className).toContain('rose-400')
-  })
-})
 
 // ─── MediaThumbnailCard — fallback "Pas de match associé" ───────────────────
 
@@ -403,5 +330,66 @@ describe('MediaThumbnailCard — lien "+ Associer"', () => {
       />,
     )
     expect(screen.queryByText('+ Associer')).not.toBeInTheDocument()
+  })
+})
+
+// ─── Bouton « J'aime » : compteur + infobulle des personnes ─────────────────
+
+describe("MediaThumbnailCard — infobulle des mentions « J'aime »", () => {
+  afterEach(() => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'fr' })
+    })
+  })
+
+  function renderCard(overrides: Partial<MediaItemRow>) {
+    return renderWithProviders(
+      <MediaThumbnailCard item={makeItem(overrides)} onToggleLike={vi.fn()} onOpen={vi.fn()} />,
+    )
+  }
+
+  it("n'affiche aucune infobulle quand personne n'a aimé", () => {
+    const { container } = renderCard({ like_count: 0, total_likers: 0 })
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Aimer' }).parentElement!)
+    expect(container.ownerDocument.querySelector('[role="tooltip"]')).toBeNull()
+  })
+
+  it('énumère les noms et le reste au survol du cœur (FR)', () => {
+    renderCard({ like_count: 5, liked: true, likers: ['Alice', 'Bob'], total_likers: 5 })
+    const button = screen.getByRole('button', { name: "Retirer la mention J'aime" })
+    fireEvent.mouseOver(button.parentElement!)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Aimé par Alice, Bob et 3 autres')
+  })
+
+  it('énumère les noms en anglais quand la langue est EN', () => {
+    act(() => {
+      useAppShellStore.setState({ locale: 'en' })
+    })
+    renderCard({ like_count: 2, likers: ['Alice', 'Bob'], total_likers: 2 })
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Like' }).parentElement!)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Liked by Alice and Bob')
+  })
+
+  it("accorde le singulier quand une seule autre personne n'est pas nommée", () => {
+    renderCard({ like_count: 2, likers: ['Alice'], total_likers: 2 })
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Aimer' }).parentElement!)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Aimé par Alice et 1 autre')
+  })
+
+  it('se rabat sur un décompte quand les noms sont inconnus', () => {
+    renderCard({ like_count: 3, total_likers: 3 })
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Aimer' }).parentElement!)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Aimé par 3 personnes')
+  })
+
+  it("s'ouvre aussi au focus clavier", () => {
+    renderCard({ like_count: 1, likers: ['Alice'], total_likers: 1 })
+    fireEvent.focus(screen.getByRole('button', { name: 'Aimer' }).parentElement!)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Aimé par Alice')
+  })
+
+  it("n'affiche plus la ligne de noms sous la vignette", () => {
+    renderCard({ like_count: 5, likers: ['Alice', 'Bob'], total_likers: 5 })
+    expect(screen.queryByText(/Alice, Bob/)).not.toBeInTheDocument()
   })
 })

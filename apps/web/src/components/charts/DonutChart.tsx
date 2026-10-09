@@ -75,8 +75,26 @@ export function DonutChart({
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
-      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel }),
-    [sliceColors, innerRadius, outerRadius, showPercent, showLegend, compact, centerValue, centerLabel],
+      buildDonutOption(s, {
+        sliceColors,
+        innerRadius,
+        outerRadius,
+        showPercent,
+        showLegend,
+        compact,
+        centerValue,
+        centerLabel,
+      }),
+    [
+      sliceColors,
+      innerRadius,
+      outerRadius,
+      showPercent,
+      showLegend,
+      compact,
+      centerValue,
+      centerLabel,
+    ],
   )
 
   return (
@@ -205,8 +223,19 @@ export function buildDonutOption(
         // Compact : % DANS le donut, pas d'étiquette externe ni de connecteur (sinon ils
         // débordent et se font clipper en colonne étroite). Sinon : étiquette externe.
         label: compact
-          ? { show: true, position: 'inside', color: tc.text, fontSize: 11, formatter: '{d}%' }
-          : { show: showPercent, color: tc.text, fontSize: 11, formatter: showPercent ? '{b}\n{d}%' : '{b}' },
+          ? {
+              show: true,
+              position: 'inside',
+              color: tc.text,
+              fontSize: 11,
+              formatter: '{d}%',
+            }
+          : {
+              show: showPercent,
+              color: tc.text,
+              fontSize: 11,
+              formatter: showPercent ? '{b}\n{d}%' : '{b}',
+            },
         labelLine: compact ? { show: false } : { length: 8, length2: 6 },
         data,
       },

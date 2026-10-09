@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -190,6 +191,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 	selectedGamertags []string,
 	issues *dataIssues,
 ) *domain.SquadMapHeatmap {
+	defer timing.FromContext(ctx).Section("map_heatmap")()
 	if len(allSquadRows) == 0 {
 		return nil
 	}
@@ -381,49 +383,3 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		Cells:    cells,
 	}
 }
-
-// ---------------------------------------------------------------------------
-// teammates.07 — Impact scoreboard (8 badges)
-// ---------------------------------------------------------------------------
-
-// Badge keys canoniques (parité avec analysis.ComputeMatchImpactFull).
-const (
-	impactBadgeFirstBlood      = "first_blood"
-	impactBadgeClutchFinisher  = "clutch_finisher"
-	impactBadgeLastCasualty    = "last_casualty"
-	impactBadgeLastGroupKill   = "last_group_kill"
-	impactBadgeFirstGroupDeath = "first_group_death"
-	impactBadgeSilentHero      = "silent_hero"
-	impactBadgeFalseBrother    = "false_brother"
-	impactBadgeKamikaze        = "kamikaze"
-	impactBadgeTopKiller       = "top_killer"
-)
-
-// impactBadgeOrd est l'ordre canonique des colonnes agrégat du scoreboard.
-var impactBadgeOrd = []string{
-	impactBadgeFirstBlood, impactBadgeClutchFinisher, impactBadgeLastCasualty, impactBadgeLastGroupKill,
-	impactBadgeFirstGroupDeath, impactBadgeSilentHero, impactBadgeFalseBrother, impactBadgeKamikaze, impactBadgeTopKiller,
-}
-
-// impactScoreWeights mappe chaque badge à son poids dans le score global du
-// joueur (cf. .ai/charts_specs/teammates/07_impact_taquinerie.yaml constants).
-var impactScoreWeights = map[string]float64{
-	impactBadgeClutchFinisher:  2.0,
-	impactBadgeFirstBlood:      2.0,
-	impactBadgeLastCasualty:    -2.0,
-	impactBadgeSilentHero:      1.5,
-	impactBadgeFalseBrother:    -1.5,
-	impactBadgeLastGroupKill:   -1.0,
-	impactBadgeFirstGroupDeath: -1.0,
-	impactBadgeKamikaze:        -1.0,
-	impactBadgeTopKiller:       1.0,
-}
-
-// buildSquadImpactMatrix charge les events highlight + participants des matchs
-// escouade, calcule les 8 badges via analysis.ComputeMatchImpactFull, et
-// construit la matrice scoreboard. Filtre les matchs sans aucun event.
-//
-// Restreint le set de joueurs à : main + coéquipiers sélectionnés. Les badges
-// d'autres joueurs (adversaires) sont ignorés.
-//
-//nolint:funlen // chart-builder cohésif (load events → compute badges → matrix).

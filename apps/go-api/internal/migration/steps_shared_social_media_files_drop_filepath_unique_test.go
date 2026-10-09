@@ -1,7 +1,7 @@
 //go:build integration
 
 // Package migration — tests d'intégration CGO pour applyMediaFilesDropFilePathUnique
-// (rebuild media_files sans UNIQUE(file_path), éradication ART #23046, blast MAX).
+// (rebuild media_files sans UNIQUE(file_path), éradication ART #23645, blast MAX).
 //
 // Couvre les fixes issus de la vérification adversariale (2026-06-20) :
 //   - UNIQUE retiré, PK + idx_mf_player_stem préservés, idx_mf_kind droppé ;

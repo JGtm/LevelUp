@@ -1,0 +1,96 @@
+=== LOT VIP COURONNE — E3 PERIODES — LOG FIGE (VIP_periodes.log) ===
+Protocole: VIP_COURONNE_PROTOCOLE.md §3 + §3-bis (temoin corrige). Instrument:
+internal/analysis/replay/TestVIPPeriodes (un film par processus, filmproc, AUCUNE base).
+Entrees: films en cache (LEVELUP_REPO_ROOT/data/cache) + V_oracle_vipstats.json (TimeAsVipSeconds).
+
+QUESTION 1 — comp 22 A DATE-t-il les selections ? OUI. incrementTimes convertit le compteur
+cumule en un instant par unite ; les selections sont ETALEES sur tout le match (etalements par
+slot jusqu'a 391 s, instants tous distincts par slot). Un slot a 1 selection = span 0 (normal).
+
+QUESTION 2 — les periodes reconstruisent-elles TimeAsVip ? OUI, au SUB-SECONDE.
+Periode = selection -> PREMIER de {mort du VIP (kill feed), selection suivante du meme slot, fin}.
+Named events ET morts sur l'horloge du MATCH (offset s'annule dans la duree). Reconstruction
+par joueur a +0,2-0,3 s de l'API sur 24/24 joueurs (surcote physique: instant de mort vs fin du
+statut VIP). recouv = sum min(recon,oracle)/sum oracle = 100,0 % sur 3/3.
+
+TEMOIN — §3-bis. La couverture (permutation d'identite) NE discrimine PAS (75,3/69,2/76,0 %) :
+meme piege qu'E2, permuter un multiset ~oracle contre lui-meme a un plancher de min-overlap eleve.
+Le discriminant CORRECT d'une attribution DETERMINISTE = EXACTITUDE PAR JOUEUR (|recon-oracle|<=1s) :
+signal 8/8 contre temoin permute 0-1/8, marge 7-8 joueurs. Le temoin s'effondre proprement.
+
+===== FILM 00761d27 =====
+vip_periodes_test.go:113: 00761d27 : 12202 record(s), 15 selection(s) VIP, 8 slot(s) nomme(s), 67 mort(s), oracle sur 8 joueur(s)
+vip_periodes_test.go:116:   DATES slot 10 : 4 selection(s), 4 instant(s) distinct(s), etalement 391217 ms
+vip_periodes_test.go:116:   DATES slot 12 : 3 selection(s), 3 instant(s) distinct(s), etalement 240915 ms
+vip_periodes_test.go:116:   DATES slot 14 : 2 selection(s), 2 instant(s) distinct(s), etalement 196554 ms
+vip_periodes_test.go:116:   DATES slot 16 : 1 selection(s), 1 instant(s) distinct(s), etalement 0 ms
+vip_periodes_test.go:116:   DATES slot 18 : 2 selection(s), 2 instant(s) distinct(s), etalement 101404 ms
+vip_periodes_test.go:116:   DATES slot 20 : 1 selection(s), 1 instant(s) distinct(s), etalement 0 ms
+vip_periodes_test.go:116:   DATES slot 22 : 1 selection(s), 1 instant(s) distinct(s), etalement 0 ms
+vip_periodes_test.go:116:   DATES slot 24 : 1 selection(s), 1 instant(s) distinct(s), etalement 0 ms
+vip_periodes_test.go:122:   5812 : API 205.0 s · reconstruit 205.3 s · temoin 78.0 s
+vip_periodes_test.go:122:   0022 : API 39.6 s · reconstruit 39.7 s · temoin 78.4 s
+vip_periodes_test.go:122:   3007 : API 24.5 s · reconstruit 24.6 s · temoin 72.5 s
+vip_periodes_test.go:122:   0467 : API 109.5 s · reconstruit 109.7 s · temoin 98.0 s
+vip_periodes_test.go:122:   0703 : API 12.1 s · reconstruit 12.2 s · temoin 19.8 s
+vip_periodes_test.go:122:   5077 : API 31.9 s · reconstruit 31.9 s · temoin 96.8 s
+vip_periodes_test.go:122:   3711 : API 105.8 s · reconstruit 106.0 s · temoin 106.0 s
+vip_periodes_test.go:122:   4486 : API 60.7 s · reconstruit 60.8 s · temoin 53.8 s
+vip_periodes_test.go:122: DIAG 00761d27 : recouvrement 100.0 % (gate primaire >= 90 %) ; temoin couverture 75.3 % (inapt, cf. §3-bis)
+vip_periodes_test.go:122: SIGNAL 00761d27 : exactitude signal 8/8 (seuil >= 7/8, tol 1.0 s) ; temoin permute 1/8 (seuil <= 2/8) ; marge 7 joueur(s) (seuil >= 5)
+vip_periodes_test.go:122: VERDICT 00761d27 : GATE TENU — periodes reconstruisent TimeAsVip (recouv 100.0 %), exactitude 8/8 contre temoin 1/8 effondre.
+vip_periodes_test.go:96: 00761d27 : pic memoire observe 0.01 Gio
+===== FILM 9903b1c5 =====
+vip_periodes_test.go:113: 9903b1c5 : 9269 record(s), 17 selection(s) VIP, 8 slot(s) nomme(s), 56 mort(s), oracle sur 8 joueur(s)
+vip_periodes_test.go:116:   DATES slot 10 : 3 selection(s), 3 instant(s) distinct(s), etalement 201002 ms
+vip_periodes_test.go:116:   DATES slot 12 : 2 selection(s), 2 instant(s) distinct(s), etalement 50935 ms
+vip_periodes_test.go:116:   DATES slot 14 : 3 selection(s), 3 instant(s) distinct(s), etalement 130348 ms
+vip_periodes_test.go:116:   DATES slot 16 : 2 selection(s), 2 instant(s) distinct(s), etalement 161829 ms
+vip_periodes_test.go:116:   DATES slot 18 : 2 selection(s), 2 instant(s) distinct(s), etalement 98149 ms
+vip_periodes_test.go:116:   DATES slot 20 : 1 selection(s), 1 instant(s) distinct(s), etalement 0 ms
+vip_periodes_test.go:116:   DATES slot 22 : 2 selection(s), 2 instant(s) distinct(s), etalement 52520 ms
+vip_periodes_test.go:116:   DATES slot 24 : 2 selection(s), 2 instant(s) distinct(s), etalement 104472 ms
+vip_periodes_test.go:122:   0022 : API 81.5 s · reconstruit 81.6 s · temoin 42.1 s
+vip_periodes_test.go:122:   9704 : API 100.6 s · reconstruit 100.8 s · temoin 36.2 s
+vip_periodes_test.go:122:   2700 : API 26.8 s · reconstruit 26.9 s · temoin 148.3 s
+vip_periodes_test.go:122:   5802 : API 47.7 s · reconstruit 47.8 s · temoin 119.1 s
+vip_periodes_test.go:122:   1915 : API 52.6 s · reconstruit 52.7 s · temoin 19.2 s
+vip_periodes_test.go:122:   8123 : API 49.3 s · reconstruit 49.5 s · temoin 86.4 s
+vip_periodes_test.go:122:   9850 : API 18.4 s · reconstruit 18.4 s · temoin 68.3 s
+vip_periodes_test.go:122:   7997 : API 69.3 s · reconstruit 69.4 s · temoin 91.5 s
+vip_periodes_test.go:122: DIAG 9903b1c5 : recouvrement 100.0 % (gate primaire >= 90 %) ; temoin couverture 69.2 % (inapt, cf. §3-bis)
+vip_periodes_test.go:122: SIGNAL 9903b1c5 : exactitude signal 8/8 (seuil >= 7/8, tol 1.0 s) ; temoin permute 0/8 (seuil <= 2/8) ; marge 8 joueur(s) (seuil >= 5)
+vip_periodes_test.go:122: VERDICT 9903b1c5 : GATE TENU — periodes reconstruisent TimeAsVip (recouv 100.0 %), exactitude 8/8 contre temoin 0/8 effondre.
+vip_periodes_test.go:96: 9903b1c5 : pic memoire observe 0.01 Gio
+===== FILM 99553e4a =====
+vip_periodes_test.go:113: 99553e4a : 10018 record(s), 18 selection(s) VIP, 8 slot(s) nomme(s), 66 mort(s), oracle sur 8 joueur(s)
+vip_periodes_test.go:116:   DATES slot 10 : 2 selection(s), 2 instant(s) distinct(s), etalement 90792 ms
+vip_periodes_test.go:116:   DATES slot 12 : 2 selection(s), 2 instant(s) distinct(s), etalement 76827 ms
+vip_periodes_test.go:116:   DATES slot 14 : 2 selection(s), 2 instant(s) distinct(s), etalement 67717 ms
+vip_periodes_test.go:116:   DATES slot 16 : 2 selection(s), 2 instant(s) distinct(s), etalement 25242 ms
+vip_periodes_test.go:116:   DATES slot 18 : 2 selection(s), 2 instant(s) distinct(s), etalement 64265 ms
+vip_periodes_test.go:116:   DATES slot 20 : 3 selection(s), 3 instant(s) distinct(s), etalement 281365 ms
+vip_periodes_test.go:116:   DATES slot 22 : 2 selection(s), 2 instant(s) distinct(s), etalement 106290 ms
+vip_periodes_test.go:116:   DATES slot 24 : 3 selection(s), 3 instant(s) distinct(s), etalement 145830 ms
+vip_periodes_test.go:122:   0022 : API 29.2 s · reconstruit 29.4 s · temoin 12.1 s
+vip_periodes_test.go:122:   0639 : API 97.2 s · reconstruit 97.4 s · temoin 118.1 s
+vip_periodes_test.go:122:   0577 : API 124.4 s · reconstruit 124.7 s · temoin 49.3 s
+vip_periodes_test.go:122:   1234 : API 50.1 s · reconstruit 50.2 s · temoin 43.5 s
+vip_periodes_test.go:122:   9285 : API 73.6 s · reconstruit 73.8 s · temoin 73.8 s
+vip_periodes_test.go:122:   2369 : API 21.6 s · reconstruit 21.7 s · temoin 44.8 s
+vip_periodes_test.go:122:   2486 : API 35.6 s · reconstruit 35.8 s · temoin 59.4 s
+vip_periodes_test.go:122:   9966 : API 48.3 s · reconstruit 48.4 s · temoin 31.7 s
+vip_periodes_test.go:122: DIAG 99553e4a : recouvrement 100.0 % (gate primaire >= 90 %) ; temoin couverture 76.0 % (inapt, cf. §3-bis)
+vip_periodes_test.go:122: SIGNAL 99553e4a : exactitude signal 8/8 (seuil >= 7/8, tol 1.0 s) ; temoin permute 1/8 (seuil <= 2/8) ; marge 7 joueur(s) (seuil >= 5)
+vip_periodes_test.go:122: VERDICT 99553e4a : GATE TENU — periodes reconstruisent TimeAsVip (recouv 100.0 %), exactitude 8/8 contre temoin 1/8 effondre.
+vip_periodes_test.go:96: 99553e4a : pic memoire observe 0.01 Gio
+
+--- VERDICT NOMME (E3) ---
+GATE DES PERIODES TENU sur 3/3 films.
+  - Gate PRIMAIRE (recouv >= 90 %) : 100,0 % / 100,0 % / 100,0 %.
+  - Evenements DATES : confirmes (selections etalees, instants distincts).
+  - TEMOIN CORRIGE (exactitude par joueur, §3-bis) : signal 8/8 / 8/8 / 8/8 contre temoin
+    permute 1/8 / 0/8 / 1/8 ; marge 7 / 8 / 7 joueurs. Effondrement propre.
+  - Cause de fermeture dominante : la MORT du VIP (kill feed) ; secondairement selection suivante.
+La COURONNE peut etre datee et publiee : chaque selection ouvre une periode de port, fermee par
+la mort du VIP. La reconstruction EST TimeAsVip par joueur.

@@ -7,7 +7,7 @@
  * RÉ-INLINE de la primitive : re-déclarer `function MetricWithTrend` ailleurs
  * re-diverge (leçon prédicat bot : 8 → 36 copies).
  *
- * NOTE dette : le vocabulaire `above/below/near` (KPIStrip, PlayerScoreCard)
+ * NOTE dette : le vocabulaire `above/below/near` (PlayerScoreCard)
  * compare une valeur à une RÉFÉRENCE, sémantique distincte — hors périmètre de
  * ce garde-rail (voir handoff C1 — Découvertes).
  */

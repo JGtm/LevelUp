@@ -15,12 +15,24 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
 )
 
 // ExplorerRepo implémente port.ExplorerRepository sur DuckDB.
 type ExplorerRepo struct {
 	pdb  *PlayerDB
 	xuid string
+	// killSourceClassifier : le traducteur « source de degat -> cle du registre » du titre,
+	// injecte au cablage (nil pour un titre qui n en fournit pas). Non nil = le top armes
+	// se lit dans la source de degat du film. Aucun `slug ==`.
+	killSourceClassifier port.KillSourceClassifier
+}
+
+// WithKillSourceClassifier injecte le traducteur de source de degat du titre. nil (ou non
+// appele) : le top armes reste lu dans `v_weapon_kills`.
+func (r *ExplorerRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *ExplorerRepo {
+	r.killSourceClassifier = c
+	return r
 }
 
 // NewExplorerRepo crée un ExplorerRepo.
@@ -73,13 +85,22 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 
 // GetKillerVictimBetween retourne les kills croisés agrégés entre xuid1 et xuid2 (Q19b).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
+//
+// Les deux fenêtres `_latest` du kill-feed sont bornées aux matchs de xuid1 (QMatchsOuJoue,
+// ADR 0036 I2) : un frag de xuid1 ou sur xuid1 n'existe que dans un match où il joue, donc
+// les nombres sont ceux de la requête libre, sans payer la table entière.
 func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 string) (domain.KillerVictimAggregate, error) {
 	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: shared reader: %w", err)
 	}
 	defer release()
-	row := sharedDB.QueryRowContext(ctx, QKillsBetweenPlayers, xuid1, xuid2, xuid2, xuid1)
+	matchs, err := matchsOuJoue(ctx, sharedDB, xuid1)
+	if err != nil {
+		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
+	}
+	liste := argListe(matchs)
+	row := sharedDB.QueryRowContext(ctx, QKillsBetweenPlayersBorne, xuid1, xuid2, xuid2, xuid1, liste)
 	var agg domain.KillerVictimAggregate
 	if err := row.Scan(&agg.KillsDealt, &agg.DeathsSuffered); err != nil {
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
@@ -178,8 +199,8 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	// Frags parfaits = set de médailles « frag parfait » du titre du joueur
-	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953},
-	// même approche que Q12MatchScoreboard / Q30 queries_squad.go).
+	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953}, même clause
+	// perfectKillMedalInClause que le jeton /*__PERFECT_KILL_IN__*/ de Q12 et de Q30 queries_squad.go).
 	perfectClause := perfectKillMedalInClause("medal_name_id", pdbTitleSlug(r.pdb))
 	q := fmt.Sprintf(`
 		SELECT
@@ -517,31 +538,6 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 	return m, nil
 }
 
-// ResolveXUIDByGamertag résout un gamertag en xuid via shared.v_gamertag_lookup (ILIKE).
-//
-// Source : la vue v_gamertag_lookup (cascade xuid_aliases ∪ match_participants
-// avec fallback bots officiels). Plus robuste que la table xuid_aliases seule
-// car elle capture aussi les joueurs qui sont apparus dans match_participants
-// avant d'être synchronisés dans xuid_aliases. Bots filtrés (xuid 'bid(...)').
-func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
-	var q = `
-		SELECT xuid FROM v_gamertag_lookup
-		WHERE gamertag ILIKE ? AND ` + analysis.SQLIsNotBotCol("xuid") + `
-		LIMIT 1
-	`
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
-	}
-	defer release()
-
-	var xuid string
-	if err := db.QueryRowContext(ctx, q, gamertag).Scan(&xuid); err != nil {
-		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
-	}
-	return xuid, nil
-}
-
 // GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur sur
 // les matchs donnés : COUNT(*) par effective_weapon_id dans shared.v_weapon_kills
 // (1 ligne = 1 kill event). Labels résolus
@@ -552,6 +548,10 @@ func (r *ExplorerRepo) GetTopWeaponsForMatches(
 ) ([]domain.WeaponHighlight, error) {
 	if strings.TrimSpace(xuid) == "" || len(matchIDs) == 0 || limit <= 0 {
 		return nil, nil
+	}
+	// Titre a decodeur de film : l arme vient de la SOURCE DU DEGAT (bascule 2026-09-01).
+	if r.killSourceClassifier != nil {
+		return r.topWeaponsFromSource(ctx, xuid, matchIDs, limit), nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	q := fmt.Sprintf(`

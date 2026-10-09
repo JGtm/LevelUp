@@ -1,7 +1,7 @@
 package narrative
 
 // objective_participation.go — index de participation aux objectifs PAR OPPORTUNITÉ
-// (plan .ai/PLAN_AXE_OBJECTIFS_INDEX.md, étape 3).
+// (plan .ai/V7.5/PLAN_AXE_OBJECTIFS_INDEX.md, étape 3).
 //
 // Remplace, pour l'axe « Objectifs » du profil de participation, l'ancienne somme
 // PSA catégorie 'objective' diluée par le nombre TOTAL de matchs (Slayer inclus).

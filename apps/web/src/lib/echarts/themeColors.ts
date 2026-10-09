@@ -25,6 +25,16 @@ export interface EChartsThemeColors {
   tooltipBg: string
   /** Bordure tooltip — var(--border). */
   tooltipBorder: string
+  /**
+   * Fond de la carte qui porte le graphe — var(--card).
+   *
+   * Sert d'ENCRE DE SÉPARATION à l'intérieur du canvas : un contour de la couleur du fond
+   * détache une forme posée SUR une autre (losange de médiane sur son bâton, segment d'une
+   * barre empilée de son voisin) sans introduire de couleur nouvelle. C'est la seule façon
+   * de le faire côté canvas — ECharts n'accepte pas `var(--card)` dans ses options, il faut
+   * la valeur calculée, et cette fonction est le seul endroit du dépôt qui les lit.
+   */
+  card: string
   /** true si le thème actif est sombre (classe `dark` sur <html>). */
   isDark: boolean
 }
@@ -57,6 +67,7 @@ export function getEChartsThemeColors(): EChartsThemeColors {
     text: get('--foreground', '#f3f4f6'),
     tooltipBg: popover,
     tooltipBorder: border,
+    card: get('--card', '#111827'),
     isDark: document.documentElement.getAttribute('data-theme') === 'dark',
   }
 }
@@ -70,5 +81,6 @@ const FALLBACK_COLORS: EChartsThemeColors = {
   text: '#f3f4f6',
   tooltipBg: '#1f2937',
   tooltipBorder: '#374151',
+  card: '#111827',
   isDark: true,
 }

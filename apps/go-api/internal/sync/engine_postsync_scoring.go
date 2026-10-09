@@ -59,7 +59,7 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 
 	// 0. Session assignments — auto-recalc session_id pour les nouveaux matchs.
 	// Best-effort : un échec ne bloque pas le pipeline. Les amis sont
-	// résolus depuis le friendsLoader (settings.FriendGamertags). Sans loader
+	// résolus depuis le friendsLoader (amis du joueur). Sans loader
 	// (legacy), on retombe en TeamChangeMode=teammates.
 	{
 		var friends []string
@@ -107,7 +107,7 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 	// 1.5.b Recompute des engagement coefficients depuis la mediane glissante
 	// des paces persistees ci-dessus. Sans ce recompute, coef_team_share reste
 	// a 1.0 (cold-start) → pace_attendu = pace_team → courbes superposees a
-	// l'ecran (cf. .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4).
+	// l'ecran (cf. .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4).
 	if n, err := batchRecomputeCoefficients(ctx, playerDB, e.xuid); err != nil {
 		slog.WarnContext(ctx, "post-sync: engagement coefs échoué", "gamertag", e.gamertag, "err", err)
 		trackFatalErr(r, "engagement coefs", err)

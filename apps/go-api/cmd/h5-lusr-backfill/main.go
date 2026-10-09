@@ -23,12 +23,19 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	gt := "JGtm"
 	if len(os.Args) > 1 {
 		gt = os.Args[1]
@@ -71,8 +78,7 @@ func main() {
 	titlePkg.SetDefaultRegistry(reg)
 
 	// Classifier LUSR title-aware (défaut Infinite + h5).
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
 
 	// Mode canonical (écrit match_skill_rank).
 	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {
@@ -89,20 +95,20 @@ func main() {
 	// Provisionne la player DB h5 (TargetPlayer) — elle n'existe pas (sync shared-only).
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	halo5migrations.Register() // metadata h5 isolée ; player = fallback HINF (OwnsTarget).
-	playerDB := openDB(playerPath)
-	defer playerDB.Close()
+	playerDB, closePlayer := openDB(playerPath)
+	defer closePlayer()
 	if err := migration.RunForTitleDB(playerDB, halo5.TitleSlug, migration.TargetPlayer); err != nil {
 		fatal("provision player DB h5: %v", err)
 	}
 
-	shared := openDB(sharedPath)
-	defer shared.Close()
+	shared, closeShared := openDB(sharedPath)
+	defer closeShared()
 
 	// ctx porteur du titre h5 → seam classifier h5 + garde capability.
 	runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
 
 	// Reset watermark + replay via le helper canonique : INSERT sentinelle
-	// is_reset=TRUE (append-only #23046), JAMAIS le DELETE WHERE xuid qui est le
+	// is_reset=TRUE (append-only #23645), JAMAIS le DELETE WHERE xuid qui est le
 	// vecteur ART sur idx_pssv2 (cf. ADR 0026 + RecomputeLUSRCanonicalForPlayer).
 	// Owner-only : ne touche que l'état de ce joueur.
 	processed, err := lusync.RecomputeLUSRCanonicalForPlayer(runCtx, playerDB, shared, xuid)
@@ -133,12 +139,19 @@ func verify(ctx context.Context, shared, playerDB *sql.DB, xuid string) {
 	fmt.Printf("match_skill_rank (LUSR, lu par l'UI) : %d lignes écrites\n", rows)
 }
 
-func openDB(path string) *sql.DB {
-	db, err := sql.Open("duckdb", path)
+// openDB ouvre en écriture par la porte unique de platform/duckdb : la base joueur y a ses
+// séquences alignées sur le max de leurs colonnes avant toute écriture (physical_open.go).
+// Le closer rend le handle au cache.
+func openDB(path string) (*sql.DB, func()) {
+	h, err := duckdbpkg.OpenReadWriteShared(path)
 	if err != nil {
 		fatal("open %s: %v", path, err)
 	}
-	return db
+	return h.SQLDb(), func() {
+		if err := h.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "fermeture %s: %v\n", path, err)
+		}
+	}
 }
 
 func fatal(format string, args ...any) {

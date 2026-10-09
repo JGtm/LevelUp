@@ -32,16 +32,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/himap"
 )
 
-// defaultLevelsDir : arborescence des cartes multijoueur d'une installation Steam.
-// deploy/pc/ et non deploy/ds/ (cf. en-tête : le build dédié n'a pas la géométrie de rendu).
-const defaultLevelsDir = `D:/SteamLibrary/steamapps/common/Halo Infinite/deploy/pc/levels/multi`
+// deployVariant : deploy/pc/ et non deploy/ds/ (cf. en-tête — le build dédié n'a pas la
+// géométrie de rendu). La racine de l'installation est résolue par himap.LevelsDir, qui
+// la cherche aux emplacements connus ou la lit dans LEVELUP_HALO_DEPLOY.
+const deployVariant = "pc"
 
 func main() {
-	levels := flag.String("levels", defaultLevelsDir, "racine des dossiers de cartes (.module)")
+	levels := flag.String("levels", "", "racine des dossiers de cartes (.module) ; vide = installation détectée")
 	titleSlug := flag.String("title", title.DefaultSlug, "slug du titre")
 	// Défaut = les cartes dont la structure est MESURÉE exploitable (couverture des bornes
 	// monde = 100 %). Catalyst, Forest et Aquarius plafonnent à 40-49 % : leur structure vit
@@ -57,8 +59,17 @@ func main() {
 		slog.Error("racine repo", "err", err)
 		os.Exit(1)
 	}
+	if *levels == "" {
+		dir, lerr := himap.LevelsDir(deployVariant)
+		if lerr != nil {
+			slog.Error("installation du jeu", "err", lerr)
+			os.Exit(1)
+		}
+		*levels = dir
+		slog.Info("installation détectée", "levels", dir)
+	}
 	res := title.NewPathResolver(root)
-	cat, err := filmdec.LoadMapQuantCatalog(res.MapQuantBoundsPath(*titleSlug))
+	cat, err := decfilm.LoadMapQuantCatalog(res.MapQuantBoundsPath(*titleSlug))
 	if err != nil {
 		slog.Error("catalogue de bornes", "err", err)
 		os.Exit(1)
@@ -115,7 +126,7 @@ type target struct {
 }
 
 // selectModules résout la liste de cartes demandée en modules, via le catalogue de bornes.
-func selectModules(cat *filmdec.MapQuantCatalog, list string) ([]target, error) {
+func selectModules(cat *decfilm.MapQuantCatalog, list string) ([]target, error) {
 	byModule := map[string][]string{}
 	for name, e := range cat.Maps {
 		byModule[e.Module] = append(byModule[e.Module], name)

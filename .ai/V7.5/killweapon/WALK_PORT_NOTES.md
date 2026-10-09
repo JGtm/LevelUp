@@ -1,5 +1,12 @@
 # WALK PORT NOTES — Voie A, finir le walk biped (branches i54/i59/i63) — 2026-06-07
 
+> **LA TABLE DE REFERENCE EST `apps/go-api/internal/analysis/filmdec/testdata/ecs_table.tsv`.**
+> Elle dit, pour chacun des 1 067 couples (archetype, composant) declares par le registre du
+> film : le statut de portage, la source `fichier:ligne`, l’adresse du deser, le niveau, et le
+> champ du document alimente. Ces notes-ci portent les DECOMPILES — elles ne dupliquent pas la
+> table, et un statut lu ici sans etre lu la-bas est perime. Garde-rails G1-G3 :
+> `apps/go-api/internal/analysis/filmdec/ecs_table_guard_test.go`.
+
 > Notes de port bit-exact pour `internal/analysis/filmdec`. Objectif : atteindre 8 bipeds/frame clean
 > (slot 519 ~29% → ~90%+) pour lire l'arme équipée du tueur par kill. Cf `HANDOFF_KILLFEED_VOIE_A.md` §3.
 > **Ghidra MCP : OPÉRATIONNEL** (après redémarrage Ghidra+plugin ; le bug AF_UNIX de reconnexion mid-session
@@ -138,3 +145,1211 @@ Validation décode : grenade ids + weapon ids communautaires == nos valeurs (Dis
 - Events hammer présents près du kill narré 355.7s (356.9/357.9/358.6s marker 0x535 type 0x47). Données mêlée OK, reste le player index.
 - TODO : (1) caler player-index mêlée ; (2) décoder FIRE events (high32 famille + player index + hit/miss + aim vector cubemap) ;
   (3) croiser fire/melee/grenade events (player index → slot tueur chunk_27) par kill → arme ; (4) valider narration.
+
+---
+
+# IMAGE-CLE — la grammaire du CORPS d'un record (lot R5, 2026-08-17)
+
+> Lecture Ghidra STRICTEMENT read-only (instance PID 10104, `HaloInfinite.exe`, GhidraMCP
+> 127.0.0.1:8089 ; `decompile_function` / `get_xrefs_to` / `read_memory` /
+> `get_assembly_context` uniquement — aucun rename, aucun script, aucune analyse relancee).
+> Contexte : `PLAN_R5_GRAMMAIRE_IMAGE_CLE.md`. Deux lots (R3 `ti=37`, R4 `ti=11`) avaient
+> conclu le meme jour que « la grammaire du corps d'un record d'image-cle n'est resolue
+> nulle part ». Ce que la lecture montre est plus precis, et different.
+
+## 1. Les DEUX lecteurs de record NEW du jeu portent la MEME grammaire
+
+| adresse | role | qui l'appelle |
+|---|---|---|
+| `FUN_141f86704` | deser NEW, variante BUFFERISEE | `FUN_1406cd128` a `0x1422f46b8` (unique xref CODE) |
+| `FUN_1408f1aa4` | deser NEW, variante DIRECTE | `FUN_1406cbaa0` a `0x1406cbc?` (`iVar13 = FUN_1408f1aa4(*plVar3, param_2, param_5, param_6, param_7)`) |
+
+Sequence, IDENTIQUE dans les deux (verifiee ligne a ligne) :
+
+```
+R(6) typeIndex
+desc = *(*(param_1 + 0x18) + 8 + ti*8)          (registre d'archetypes, cap 0x32 = 50)
+n     = vtable[0x20](desc)                       0 bit  (taille de l'etat)
+m     = vtable[0x10](desc)                       0 bit  (taille du masque par defaut)
+vtable[0x60](desc, n, dst, READER, 1)            = ETAT PAR DEFAUT  <- le seul appel qui lit
+vtable[0x88](desc, n, dst, m, buf)               0 bit  (remplit le MASQUE PAR DEFAUT)
+vtable[0x30]()                                   0 bit
+si (FUN_1404f2b4c() != 0 ET DAT_144c232e1 != 0)  : porte = R(1)   [mode FILM, lu TOT]
+si (masqueParDefaut != 0 OU porte != 0) :
+    si la porte n'a pas deja ete lue : porte = R(1)
+    si porte != 0 : FUN_14076cb60(desc + 1, ctx)  = MASQUE + COMPOSANTS
+```
+
+`FUN_14076cb60` (boucle de composants) :
+
+```
+FUN_1406d7610(desc, reader, &masque)     = R(1) ; si 0 -> R(3) compte + compte x R(6) index
+                                                  ; si 1 -> R(64)
+pour i de 0 a *(desc + 0x4320) - 1 :
+    si (masque >> (i - sautes)) & 1 :
+        pred = (ctx[4] == 0) ? 0 : vtable[0x48](comp, ...)     0 bit
+        vtable[0x28](comp, reader, ctx, &pred, n)              = LE DESER DU COMPOSANT
+        si mode film : R(1) ; si 1 -> R(32) sentinelle 0xbcddcba
+```
+
+## 2. Reponse a l'hypothese « le corps d'image-cle appelle le deser FEUILLE `+0x28` la ou le delta appelle un wrapper » : REFUTEE PAR LECTURE
+
+Le chemin DELTA (`FUN_141f86b58`) appelle **la meme fonction `FUN_14076cb60`**, avec un
+contexte de meme forme (memset 0x40, puis `ctx+0x00` sortie, `+0x08` taille, `+0x10` etat,
+`+0x28` reader, `+0x30` vtable[0](desc), `+0x34` id, `+0x38` = 1, `+0x39` flag). Dans les
+TROIS lecteurs (NEW bufferise, NEW direct, DELTA) `ctx+0x18` et `ctx+0x20` restent NULS, donc
+`param_2[4] == 0` dans `FUN_14076cb60` et la baseline predite vaut zero partout.
+
+**Il n'existe pas de second site d'appel de composant.** Chaque composant present passe par
+`vtable[0x28]`, en image-cle comme en delta. La difference NEW / DELTA se resume a l'en-tete
+que NEW porte en plus : `R(6) typeIndex` + `vtable[0x60]` (etat par defaut). C'est exactement
+ce que `filmdec.TraverseEntity` fait deja.
+
+## 3. Ce qui DIFFERE entre les chemins, et qui n'est PAS dans le corps du record
+
+- `FUN_1406cd128`, tete de chaque iteration, mode film (`FUN_14076cea8()`) : **`R(32)`**.
+- `FUN_1406cd128`, branches NEW et DEL, mode film : **`R(1)` ; si 1 -> `R(8)`** AVANT le deser.
+- `FUN_1406cbaa0`, avant `FUN_1408f1aa4` (`0x1406cb?46`-`149`) : le MEME prologue
+  **`R(1)` ; si 1 -> `R(8)`**.
+- `FUN_1406cd128` est **DESACTIVEE quand la porte d'image-cle `*(param_1 + 0x12)` est mise** :
+  `uVar14 = -(uint)(cVar3 != 0) & 2` puis `if (uVar14 != 0) break`. Elle NE decode PAS la
+  table d'image-cle. Le chemin d'image-cle passe par `FUN_142f2913c` (baseline-emit), qui
+  draine une file par-entite et redispatche par `FUN_1406cbaa0`.
+
+**Consequence, et c'est le point de methode** : ces trois lectures appartiennent au CADRE
+(la boucle de records du paquet delta), pas au CORPS. La table d'image-cle du film (payload
+type-2) a son propre en-tete, `[id:32][field:26][ti:6]` (etabli empiriquement, 249/250
+entites contre un oracle Cheat Engine, `keyframe_world.go:17-23`) ; le consommateur de ce
+payload n'est PAS identifie statiquement dans cette passe, et il n'a pas besoin de l'etre :
+le CORPS qui suit l'en-tete est celui d'un record NEW, et les deux lecteurs de record NEW du
+jeu sont d'accord sur sa grammaire.
+
+## 4. `ti=42` (arme au sol) — etat par defaut RESOLU
+
+Chaine de resolution (celle de `default_state_arch.go:5-18`, rejouee) :
+
+```
+FUN_140e453b4 (registrar)  ->  FUN_140e45fc4(world, 0x2a, &PTR_PTR_144701780)   @0x140e4578f
+xref [WRITE] sur 0x144701780 -> FUN_1403721d0 : PTR_PTR_144701780 = &PTR_LAB_1436fd790
+vtable 0x1436fd790 , *(vtable + 0x60) = 0x1407f0c68
+```
+
+`FUN_1407f0c68` (lu ligne a ligne, chaque feuille touche `reader+0x2c`) :
+
+| # | lecture | source |
+|---|---|---|
+| 1 | `V` = `R(1)` ; si 1 -> `R(8)` | `FUN_1406cf008` + bloc inline `+8` |
+| 2 | `FUN_1407f2224(desc, 0x60, dst, reader, flag)` = `V` + `FUN_14080cfe8` | `MOV EDX,0x60` @`0x1407f0cd1` ; `FUN_14080cfe8` = le bloc multiplayer-properties DEJA porte bit-exact (`consumeMultiplayerPropertiesBlock`) — donc `FUN_1407f2224` == `consumeDefaultStateTI36` |
+| 3 | `R(12)` -> `dst+0x60` | bloc inline `+0xc` |
+| 4 | `R(7)` -> `dst+0x64` | `FUN_1406d84b4`, largeur figee par `C7 44 24 20 07 00 00 00` (`MOV dword [RSP+0x20],7`) @`0x1407f0d30`, juste avant `CALL 0x1406d84b4` @`0x1407f0d38` |
+| 5 | `FUN_1407f2494(dst+0x68, reader)` — bloc de liste, ci-dessous | `CALL` @`0x1407f0d49` |
+| 6 | `ECS_ReadEntityRefIndex5` = `FUN_1407f2058` = `R(1)` ; si 0 -> `R(5)` | -> `dst+0xa4` apres resolution de handle (0 bit) |
+
+`FUN_1407f2494` :
+
+```
+porte = R(1)                                  (FUN_1406cf008 @0x1407f24c1)
+si porte == 0 : FUN_14080d69c(_, reader, ...) = R(1) ; si 1 -> R(32)
+                (args verifies au desassemblage : MOV RDX,RBP = le reader, CALL @0x1407f24dc)
+sinon         : n = R(4)                      (FUN_1424e1d48, `+4` inline)
+                n fois : R(1) ; si 1 -> R(32) (FUN_1406cf008 + FUN_14080d6f0)
+```
+
+`FUN_14080d69c` verifie : `R(1)` ; si 0 -> valeur par defaut en RAM ; si 1 -> `FUN_14080d6f0`
+= `R(32)`. `FUN_1424e1d48` verifie : `R(4)`.
+
+**Table de la vtable de `ti=42`** (`0x1436fd790`, lue octet a octet) : `+0x40` et `+0x70`
+pointent le stub `0x1408d8220` (`return 1`, 0 bit) ; `+0x60` = `0x1407f0c68` (ci-dessus) ;
+`+0x88` = `0x140ea3ef4` (masque par defaut, 0 bit).
+
+
+**ETAT DU PORT — BRANCHE ET VALIDE (2026-08-17, phase 0 de `PLAN_ARMES_AU_SOL_2E_LECTURE.md`)**.
+Cette grammaire EST desormais dans le decodeur Go : `apps/go-api/internal/analysis/filmdec/
+default_state_ti42.go` (`consumeDefaultStateTI42`) + l'entree `42:` de `defaultStateDeserByTI`.
+Le lot R5 l'avait ecrite puis retiree faute d'oracle ; l'oracle a ete trouve et joue.
+
+- **ORACLE DE POSITION** (`ground_weapon_creation_offset_test.go`, garde `GW_CREATION_FILM`,
+  transpose de `equipment_creation_offset_test.go`) : on localise le corps du record de creation
+  par la POSITION (le premier point de la vie delta, deja decodee par `ScanFilmWorldObjects`),
+  puis on DEROULE le deserialiseur depuis l'en-tete NEW et on exige qu'il tombe AU BIT PRES sur
+  le masque. **282 atterrissages exacts sur 289** records (`000d5950` 118/119, `01e1f945` 97/99,
+  `00162144` 67/71 — 97,6 %), contre **0 sur 289** pour trois deserialiseurs FAUX (ti=37, ti=36,
+  ti=38) passes par le meme code. Controle croise : sur les records `ti=37`, le deser `ti=42`
+  atterrit 0 fois sur 265, le deser `ti=37` 176 fois.
+- **PIEGE DE LECTURE, a ne pas repeter** : la distance en-tete -> masque NE VAUT PAS la largeur
+  du chemin minimal (24 + 80 + 1 = 105). Les records reels ouvrent des portes ; les pics mesures
+  sont a 118, 150 ou 182 selon le film, et ces valeurs se decomposent exactement en portes de la
+  grammaire (+5 reference d'entite, +8 prefixe de version, +13 champ optionnel du bloc MPP,
+  +32 identifiant). Seul l'atterrissage tranche.
+- **CONTRE-EPREUVE INDEPENDANTE — l'identite** : le mot de 32 bits du bloc MPP du record de
+  creation est la meme valeur que la famille high-32 lue aux IMAGES-CLES pour la meme vie
+  (slot, generation) — **937 accords sur 947 paires (98,9 %)** sur 6 films / 5 cartes, deux
+  chaines de decodage sans rien de commun. Le mot de 32 bits de `ti=42` est donc l'identite de
+  l'arme, comme celui de `ti=37` est le GlobalID du tag `eqip`.
+- **DOUBLON `FUN_1407f2494` : TRANCHE PAR REUTILISATION.** La grammaire decompilee est celle de
+  `consumeWeaponMagazineList`, feuille pour feuille et porte pour porte (le fichier a bouge
+  depuis 2026-07-26 : il est aujourd'hui dans `components_object.go`, plus dans
+  `unit_weaponstate.go`). On appelle l'existant ; aucune seconde copie n'est ecrite.
+- **ORACLE DE LARGEUR LIVE : EPUISE, et c'est un negatif publie.** `kf_capture_sample.txt` +
+  `kf_slot0_live.bin` ne portent qu'**UN SEUL** record NEW `ti=42` (largeur de corps 971 bits,
+  porte OUVERTE donc masque + composants aux largeurs d'une carte inconnue) et **AUCUN** `ti=37`.
+  205 des 400 frontieres se reconcilient avec leur en-tete. Cet oracle ne pouvait pas valider la
+  grammaire, et il faut cesser de l'attendre : `default_state_ti42_oracle_test.go` le mesure et
+  garde le negatif rejouable.
+
+## 5. Ce qui reste NON resolu apres cette passe, et il faut le dire
+
+- Le CONSOMMATEUR du payload type-2 du film (celui qui lit l'en-tete `[id:32][field:26][ti:6]`)
+  n'a pas ete identifie statiquement. Consequence : la SEMANTIQUE des 26 bits de `field`
+  reste inconnue. Le balayeur du depot (`keyframe_world.go:70`) n'accepte une ancre QUE si
+  ces 26 bits sont NULS — c'est un filtre, pas une lecture.
+- `vtable[0x88]` (masque par defaut) n'est porte pour aucun archetype. Il ne lit aucun bit,
+  mais il commande la lecture de la porte `R(1)` : un archetype dont le masque par defaut est
+  non nul lit la porte meme quand le flux ne la porte pas.
+
+# IMAGE-CLE — file par entite, et le vrai sort du payload type-2 (lot R6, 2026-08-17)
+
+> Lecture Ghidra STRICTEMENT read-only (instance PID 10104, `HaloInfinite.exe`).
+> **Note d'acces** : le pont `mcp__ghidra__*` refuse de se connecter (l'instance UDS se
+> declare `unknown`, `connect_instance` refuse tout repli TCP). L'API HTTP du plugin
+> (`127.0.0.1:8089`) a ete utilisee a la place — memes endpoints
+> (`/decompile_function`, `/disassemble_function`, `/get_xrefs_to`, `/read_memory`),
+> meme programme, aucun rename, aucun script, aucune analyse relancee.
+> Contexte : `PLAN_R6_FILE_PAR_ENTITE.md`. Ouvre sur la condition de reprise ecrite par R5
+> (« decompiler le CONSOMMATEUR du payload type-2 »).
+
+## 1. La file par entite n'est PAS une transformation — c'est un REPORT
+
+| adresse | ce que la decompile montre |
+|---|---|
+| `FUN_142f29538` | **push d'un tampon circulaire**. Element de 0x38 = 56 octets (`param_1 + idx*0xe + 4`, en ints). Recopie `param_2[0..3]`, un handle refcompte (`FUN_142a777e8`), puis `param_2[8..0xd]`. **Aucune ecriture de bits, aucun reencodage.** |
+| `FUN_142f2913c` | **drain**. Par item : `FUN_14064c350` (init reader), `FUN_1411b149c(reader, *(item+0x10), *(item+0x20))`, `FUN_1406d5cc0(reader,3)`, `FUN_1432fe23c(reader, *(item+0x2c))`, puis `FUN_1406cbaa0(*(item+0x30), *(item+0x28), param_1+0x38, param_1, item, reader, 0)` |
+| `FUN_1411b149c` | `*(r+8)=data ; *(r+0x10)=data+len ; *(r+0x18)=len` -> `item+0x10` = **pointeur de tampon**, `item+0x20` = **longueur du TAMPON** (pas du record) |
+| `FUN_1432fe23c` | `*(r+0x2c) = *(r+0x28) = param_2 ; *(r+0x20) = 2` -> `+0x2c` est la **position en bits** du reader (meme champ que la capture live de juillet). Donc `item+0x2c` = **le bit de depart du record** |
+| `FUN_142f25334` | **`memcpy` du tampon ENTIER du paquet** (`src = *(reader+8)`, `n = *(reader+0x18)`) dans un bloc alloue refcompte. Chemin source revele par l'allocateur : `...\engine\source\blofeld\networking\replication\replication_entity_manager_view.cpp` |
+| `FUN_1406cd128` @`0x1422f44fb` | **UNIQUE xref CODE du push** (l'autre xref, `0x145691d64`, est une DATA). Branche `DAT_14474cd78 != 0` : `uVar23 = *(param_3+0x2c)` (bit courant, capture AVANT decodage), `FUN_1406cbaa0(..., 1)`, construction de l'item, `FUN_142f29538(*(param_1+0x1b320), &local_110)` |
+| `FUN_142f2b5c4` | la garde du push : vrai si l'entite n'est pas encore reliee cote vue (`*(*param_2+0x68)`, `FUN_142f287f0`) |
+
+**Structure d'item, champ par champ** (56 octets, ordre des locales de `FUN_1406cd128`) :
+
+```
++0x00  16 o   *param_2 / param_2[1]   (contexte de paquet)
++0x10   8 o   handle vers la COPIE du tampon de paquet   (FUN_142f25334 = memcpy integral)
++0x20   4 o   longueur du tampon        (= *(reader+0x18))
++0x24   4 o   horodatage                (FUN_1405f50b8)
++0x28   4 o   id d'entite
++0x2c   4 o   BIT DE DEPART du record dans le tampon
++0x30   4 o   type de record (1=NEW, 2=DEL, 3=DELTA)
++0x34   4 o   index de vue
+```
+
+**REPONSE A LA QUESTION DU LOT** : il n'existe **aucune transformation
+« payload type-2 -> file par-entite »**. Un item ne porte pas de bitstream reconstruit : il
+porte une COPIE OCTET POUR OCTET du tampon du paquet, plus la position en bits du record.
+Le drain repose un reader sur cette copie, se replace au meme bit, et appelle le MEME
+`FUN_1406cbaa0` avec la MEME grammaire. **La file DIFFERE des records ; elle ne les
+reecrit pas.** L'objet que la condition de reprise de R5 demandait de decompiler n'existe
+pas.
+
+## 2. Le demultiplexeur de paquets du film — et le sort du type-2
+
+Chaine remontee : `FUN_142f2913c` / `FUN_1406cd128` <- `FUN_142987460` (3 vues x
+[drain + boucle de records], puis `vtable[0x48]` applique) <- `FUN_14298816c` <-
+`FUN_1428e2778` <- **`FUN_1428e22c0`** <- `FUN_1428e27c0` (boucle de paquets).
+
+`FUN_14298816c` porte la chaine source `...\engine\source\blofeld\saved_games\SavedFilmChunks.cpp`.
+
+**`FUN_1428e22c0` = l'aiguillage par TYPE DE PAQUET** (`sVar2 = *param_3`, le `u16` de tete
+de l'en-tete de 16 octets). Verifie au DESASSEMBLAGE (`0x1428e22ca` `MOVSX EDX,word ptr [R8]`,
+puis la chaine `CMP 8 / TEST / SUB 1 / SUB 1 / SUB 4 / CMP 1`) :
+
+| type | handler |
+|---|---|
+| 0 | `FUN_1428e2778` -> `FUN_14298816c` -> `FUN_142987460` (**decodeur de replication**) |
+| 1 | `FUN_142989418` |
+| **2** | **AUCUN** — `JZ 0x1428e2412` = `XOR SIL,SIL` (retourne 0) + telemetrie `FilmBlockReadError` |
+| 3, 4, 5 | AUCUN — meme cible `0x1428e2412` |
+| 6 | `FUN_142988084` · 7 `FUN_142985698` · 8 `FUN_142987bd4` · 9 compteur `+0xf8` · 10 `FUN_142988244` · 11 `FUN_1429882c8` · 12 `FUN_1429875e4` |
+
+**Et pourtant la lecture du film ne casse pas** — parce que le paquet type-2 n'arrive JAMAIS
+a l'aiguillage :
+
+```
+FUN_142989418 (handler du type 1) :
+  *(ctx+0xf8) += *(hdr+4)                     ; saute le payload du type-1 (343 019 o)
+  FUN_142988338(ctx, local_18, 0x10, 0)       ; lit l'en-tete SUIVANT (16 o)
+  si ok : *(ctx+0xf8) += local_14             ; saute AUSSI le payload suivant (= le type-2)
+```
+
+`FUN_142988338(ctx, dst, n, 0)` = `memcpy` de `n` octets depuis le chunk inflate au curseur
+`*(ctx+0xf8)`, borne par `*(ctx+0xe8)`, puis `curseur += n`. `local_14` est le champ `size`
+(`+4`) de l'en-tete relu.
+
+**CONCLUSION, ET C'EST LE RESULTAT DE FOND DU LOT R6** : **le jeu ne decode JAMAIS le payload
+type-2 en lecture de film. Il le SAUTE**, en meme temps que la table de precision type-1, par
+le handler du type-1. Il n'y a donc pas de consommateur a decompiler : il n'y en a pas.
+Le bloc type-2 est ecrit par l'ENREGISTREUR et ignore par le LECTEUR.
+
+Cela explique a posteriori le negatif de R5 (« le corps d'un record d'image-cle n'est pas un
+record NEW », 128 decalages x 16 lectures x 3 films, jamais plus de 1,8 %) : ces records ne
+sont relus par aucun deserialiseur du jeu.
+
+## 3. Ce que le jeu utilise a la place : le PREMIER paquet type-0
+
+Structure d'entree de session, mesuree sur les 3 films oracles (decoupe de paquets, chaine
+independante de toute lecture de bits) :
+
+```
+#0 type=1  343 019 o   (table de precision — SAUTE)
+#1 type=2  138 340 / 140 837 / 142 695 o   (etat monde — SAUTE)
+#2 type=6  4 o   ·  #3 type=8  25 124 o  ·  #4 type=12  4 o  ·  ... 
+#8 type=0  9 297 / 11 312 / 11 066 o      (PREMIER PAQUET DELTA)
+```
+
+Les 16 premiers octets du premier paquet type-0 sont **identiques d'un film a l'autre** :
+`88 00 15 84 00 2c 54 0c 61 c9 00 0b ff ff ff fc`. Ce sont exactement les 16 premiers octets
+de `.ai/V7.5/dumps/keyframe_buffer_live.bin` (11 485 o) ET de `kf_slot0_live.bin` (7 286 o).
+
+**La capture live de juillet, etiquetee « keyframe » depuis, a ete prise sur le PREMIER
+PAQUET DELTA**, pas sur le payload type-2 — ce que sa propre pile d'appel disait deja
+(`FUN_1406cbaa0` <- `FUN_1406cd128`), puisque `FUN_1406cd128` ne s'execute jamais quand la
+porte d'image-cle `*(param_1+0x12)` est mise.
+
+## 4. Ce qui reste NON resolu apres cette passe
+
+- La SEMANTIQUE du payload type-2 reste inconnue, et elle le restera par cette voie : aucun
+  code de lecture ne l'interprete. Le seul levier serait l'ECRIVAIN (cote enregistrement) : voir §5,
+  ou il est cherche et NON trouve.
+- `vtable[0x88]` (masque par defaut) n'est toujours porte pour aucun archetype (report R5).
+- `DAT_144731d20` (`FUN_1428e27c0` @`0x1428e2980`) est un MASQUE DE TYPES « a traiter
+  immediatement dans le meme tick » ; les autres types sont reportes au tick suivant. Non
+  exploite ici.
+
+## 5. L ECRIVAIN du bloc type-2 — recherche BORNEE, negatif
+
+Puisque le LECTEUR saute le bloc type-2 (§2), la question devient « qui l'ECRIT, et selon
+quelle grammaire ». Recherche bornee a trois sondes de chaines/xrefs, toutes negatives :
+
+| sonde | resultat |
+|---|---|
+| xrefs de la chaine d'allocation `...\saved_games\SavedFilmChunks.cpp` (`0x143ddb470`) | **UNE seule** : `0x1429881b6` dans `FUN_14298816c` — le LECTEUR |
+| `search_strings` sur `saved_games` (min 10, tout le binaire) | **1 seule chaine**, celle ci-dessus |
+| `search_strings` sur `FilmBlock` / `RecordFilm` / `film_block` | **1 seule chaine** : `FilmBlockReadError` (`0x143dcb3b0`), cote LECTURE |
+| xrefs de l'encodeur de snapshot `FUN_142f2e174` (vtable `0x1436a87e0` + 0x10) | **aucun appel direct** : uniquement la case de vtable `0x1436a87f0` et une DATA. Ses appels passent par `vtable[0x10]`, non resolus statiquement |
+| cvar `SavedFilmValidateEntityState` (`0x143732020` -> `FUN_141129458`, valeur `DAT_1450fb320`) | aucune lecture directe de la valeur : elle passe par l'objet cvar `DAT_1450fb2f0` |
+
+**Conclusion bornee** : le chemin d'ECRITURE des chunks de film ne laisse dans
+`HaloInfinite.exe` **ni site d'allocation nomme, ni chaine d'erreur**, la ou le chemin de
+LECTURE laisse les deux. La grammaire du bloc type-2 n'est donc pas atteignable par la voie
+chaines/xrefs dans ce binaire. La piste restante, non ouverte ici : le format se deduit du
+CONTENU (la table est deja balayee a 249/250 entites contre un oracle Cheat Engine) ou d'un
+autre binaire (serveur dedie), hors perimetre offline-pur.
+
+---
+# BIPEDE IMAGE-CLE BIT-EXACT — decompiles portes (lot R7-b, 2026-08-17)
+
+> Acces Ghidra : instance PID 10104 (`HaloInfinite.exe`), **API HTTP du plugin**
+> `http://127.0.0.1:8089` (`/decompile_function`, `/disassemble_function`, `/read_memory`),
+> LECTURE SEULE — le pont `mcp__ghidra__*` refuse toujours la connexion (instance UDS
+> `unknown`), contournement deja consigne par R6. Aucun rename, aucun script, aucune analyse.
+
+## 1. `i60 simulation-state-component` — la QUEUE est resolue, le predicat est vrai par construction
+
+`FUN_142ED6D88` (thunk `142f02434`). Grammaire confirmee, decompile + disasm :
+
+```
+cVar1 = FUN_1406cf008(br)                       R(1)   -> dst+0x28
+si cVar1 == 0 : FUN_14058c250(dst)              0 bit, FIN
+sinon :
+  2x ECS_ReadEntityRefIndex5 (= FUN_1407f2058)  R(1)[si 0 -> R(5)]   -> dst+0x00, +0x04
+  4x FUN_142ee2194                              R(16) chacun         -> dst+0x08..+0x14
+  2x R(2) inline                                                     -> dst+0x29, +0x2a
+  4x FUN_142ee2194                              R(16) chacun         -> dst+0x18..+0x24
+  FUN_140c1e79c(br, ?, out=dst+0x2c, dir=dst+0x38)   R(1)[si 0 -> R(19)] + R(8)
+  cVar1 = FUN_140501798(dst+0x2c, dst+0x38)     0 bit
+  si cVar1 != 0 : FUN_14076e494(br, dst+0x44, 0x10, 0,0,0) ; FUN_140492128(dst+0x44)  0 bit
+```
+
+`FUN_142ee2194` = `FUN_1406d84b4(..., DAT_143cd8f84 = -100.0, DAT_143cd84a8 = +100.0, 0x10, 0, 1)`
+-> **R(16)** dequantifie dans [-100, +100].
+
+**POURQUOI LE PREDICAT EST VRAI.** `FUN_140c1e79c` decode une DIRECTION unitaire en `dst+0x38`
+(porte R(1) ; sur 0, packed R(19) -> `FUN_1406d8288`), lit un ANGLE R(8), puis appelle
+`FUN_1406d8678(dir, angle, out)` : produit vectoriel de `dir` avec un vecteur de base, division
+par la norme, rotation de Rodrigues autour de `dir` par l'angle, normalisation finale
+(`FUN_1404fec88`). `out` (= `dst+0x2c`) est donc **unitaire et PERPENDICULAIRE** a `dir`.
+`FUN_140501798(v1, v2)` teste exactement : `|‖v1‖² − DAT_143cd8374| < DAT_143cd84bc`, idem pour
+`v2`, et `|v1·v2 − DAT_143cd8370| < DAT_143cd84bc`. Constantes LUES dans le binaire
+(`/read_memory`) : `DAT_143cd8374 = 0x3f800000 = 1.0`, `DAT_143cd8370 = 0.0`,
+`DAT_143cd8380 = 0x7fffffff` (masque de valeur absolue), `DAT_143cd84bc = 0x3a83126f = 1e-3`.
+Une base orthonormee CONSTRUITE satisfait les trois tests : **la queue est lue**, elle n'est pas
+conditionnelle en pratique. C'est ce qui leve le « NON resoluble offline sans ground-truth CE »
+qui gardait `simStateComplete` a `false` depuis des mois.
+
+## 2. `FUN_14076e494` — la queue handle, partagee par `i60` ET `i57`
+
+```
+cVar1 = FUN_14076f91c()      0 bit — garde RUNTIME (DAT_144e61ea0 / DAT_145121140)
+                             = exactement le global deja modelise `PositionFullPrecision`
+si cVar1 != 0 : FUN_1411b259c -> FUN_1406d676c(br, br, dst, 0x60)      = R(96) brut
+sinon (retail, dominant) : FUN_14076e524(dst, br, idxOut, LEVEL = 0x10) :
+    R(1) porte d'index ; si 0 -> R(DAT_144632be0) index de region
+    FUN_140cc5128 : 3 axes aux largeurs de la ligne LEVEL=16
+        index != -1 -> table DAT_1445ccbe0 + (index*0x20 + LEVEL)*0xc
+        index == -1 -> table DAT_1445cc9e0 + LEVEL*0xc
+```
+
+C'est **le lecteur absolu de `consumeAbsoluteWithGate` MOINS son bit `precHigh`** (ici la garde
+est runtime, pas un bit du flux) **et MOINS son `R(2)` « fini » de queue** — `FUN_14076e494`
+n'appelle pas `FUN_14076e304`. Porte en Go : `consumeSimStateHandleTail` (`traverse.go`).
+
+## 3. `i57 biped-spartan-ability-component`, branche `tag == 3` — PARTIELLEMENT portable
+
+`FUN_142f262d4(dst, br, param_3)` :
+
+```
+FUN_140f03dfc()                          0 bit
+a = FUN_1406cf008(br)   R(1)  -> dst[0]
+si a != 0 :
+    FUN_14297ea84(br)                    R(6)  (decompile 2026-08-17)
+    si (dst[2] & 1) != 0 : b = R(1) ; branche gardee par (dst[2] & 0x10) ;
+                           FUN_142f04664(dst+4, br, b, param_3)
+t = FUN_1406cf008(br)   R(1)  -> dst[1]
+si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)     (la queue du §2)
+```
+
+`dst[2]` est un **octet d'ETAT RUNTIME**, invisible du flux : la branche `a != 0` reste
+irreductible hors ligne. La branche `a == 0` est ENTIEREMENT portable et l'est desormais
+(`consumeSpartanAbilityTag3`, `components_biped_ability.go`) : `R(1)` nul, porte de queue
+`R(1)`, et la queue du §2 quand elle est ouverte.
+
+## 4. `i9 object-multiplayer-properties-component` — la PORTE ETAIT INVERSEE
+
+`FUN_1407d4c94(br, dst)` :
+
+```
+cVar1 = FUN_1406cf008(br)                R(1)
+si cVar1 == 0 : R(5) tag (FUN_1407d54ac) puis le flux TLV (FUN_1407d4e10)   <- PRESENT
+sinon         : *(dst + 0xbc) = 0                                            <- ABSENT, 0 bit
+```
+
+`FUN_1406cf008` rend la **VALEUR** du bit (MSB du registre, `>> 0x3f`) : `cVar1 == 0` veut donc
+dire « bit a 0 ». Le port Go lisait le bloc TLV quand le bit valait **1** — polarite inversee sur
+le composant present dans 100 % des records de bipede, et le suspect n°1 de l'histogramme de
+decrochage de l'image-cle (25 % des franchissements de frontiere, R7-a). La semantique du `else`
+(`dst+0xbc = 0`, effacement d'un champ absent) confirme la lecture independamment.
+Corrige le 2026-08-17 dans `components_batch7.go`.
+
+---
+
+# IMAGE-CLE — LE DRAPEAU D'ENCODAGE (lot R7-c, 2026-08-17)
+
+> Ghidra PID 10104, **LECTURE SEULE**, API HTTP du plugin (`GET
+> http://127.0.0.1:8089/decompile_function?address=0x...` et `/get_xrefs_to?address=...` ;
+> le POST JSON et le parametre `name` sont refuses). 407 fonctions du paquet `filmdec`
+> decompilees et balayees automatiquement.
+
+## 1. La question, et la reponse
+
+R7-b laisse un residu DISPERSE (0,54 % bit-exact, p10 46 bits, p50 ~500, p90 quatre ordres de
+grandeur). La question du lot : les lecteurs de valeurs testent-ils un DRAPEAU DE CONTEXTE
+(pas un bit du flux) qui bascule l'encodage ? **OUI, et il y en a DEUX.**
+
+| drapeau | nature | qui l'ecrit | qui le lit |
+|---|---|---|---|
+| `DAT_144e61ea0` | **portee BASELINE** : leve a 1 juste AVANT l'appel d'etat complet, remis a 0 juste APRES | 8 fonctions du groupe `142e2*` / `142e3*` (`FUN_142e2bfd0`, `142e2c690`, `142e2d08c`, `142e2d6d4`, `142e309b4`, `142e30b9c`, `142e31a0c`, `142e31bf8`) | `FUN_14076f91c` (et le groupe `141dc*`/`141dd*`, cote ECRITURE) |
+| `DAT_145121140` | configuration « replication haute precision » du process | `FUN_140a93ec8`, `FUN_142b5c658` | `FUN_14076f91c`, `FUN_14107166c` (i49), `FUN_140c5f938` (i2), `FUN_14080cfe8` (MPP), `FUN_141dcc4a0` |
+
+Le predicat qui les REUNIT est `FUN_14076f91c` (sans argument, 0 bit) :
+
+```
+FUN_14076f91c() = (DAT_144e61ea0 != 0) || (DAT_145121140 == 1)
+```
+
+Preuve de la portee baseline, `FUN_142e2bfd0` (lecteur d'un payload d'etat complet) :
+
+```
+DAT_144e61ea0 = 1;
+cVar5 = (**(code **)(*plVar2 + 0x60))(plVar2, id, dst, reader, 0);   // vtable[0x60] = ETAT PAR DEFAUT
+if (cVar4 != '\0') { R(32) }                                        // corruption-check du mode film
+DAT_144e61ea0 = 0;
+```
+
+C'est-a-dire : **pendant toute la lecture d'un etat complet, tous les lecteurs de position du
+moteur basculent en PLEINE PRECISION.** Le drapeau n'est pas un reglage : c'est une PORTEE.
+
+## 2. La table des branches par contexte — ce qui change, et de combien
+
+| lecteur (EXE) | composant | condition | encodage FAUX (delta) | encodage VRAI (baseline) |
+|---|---|---|---|---|
+| `FUN_1406cfe44` @ branche ABSOLUE | `i0 object-position-dynamic-precision` | `FUN_14076f91c()` | `FUN_14076e524` = R(1) porte d'index [+R(IndexW)] + 3xR(axisW) | `FUN_1411b259c` = `FUN_1406d676c(...,0x60)` = **R(96) brut** |
+| `FUN_1406cfe44` @ branche DELTA | `i0` | `FUN_14076f91c()` | `FUN_14076f3ec` delta predit | `FUN_1406d676c(...,0x60)` = **R(96) brut** |
+| `FUN_14076e494` | queue de `i60 simulation-state` (partagee avec `i57`) | `FUN_14076f91c()` | `FUN_14076e524` (niveau 0x10) | **R(96) brut** |
+| `FUN_14076e4ec` | epine absolue partagee | `FUN_14076f91c()` | `FUN_14076e524` | **R(96) brut** |
+| `FUN_1408f02c8` | corps de `i54 biped-mobility-action` | `FUN_14076f91c()` | `FUN_14076e524` (niveau 0x10) | **R(96) brut** |
+| `FUN_140ee7270` | `flock-position` (ti21 i16) | `FUN_14076f91c()` | `FUN_14076e524` (niveau 0x10) | **R(96) brut** |
+| `FUN_14107166c` | `i49 biped-control-context` | `DAT_145121140 == 1` **seul** | `R(2)` | `R(4)` (`iVar10 = (DAT_145121140=='\x01')*2+2`) |
+| `FUN_140c5f938` | `i2 object-forward-and-up` | `DAT_145121140 == 1` **seul**, croise avec `param_4` | `FUN_140c5fa84` = R(1)[+R(19)]+R(8) | `FUN_142e29bac` (autre lecteur, non decompile) ; `param_4==2` -> R(96)+R(?) |
+| `FUN_14080cfe8` | bloc MPP de l'etat par defaut | `DAT_145121140 == 1` **seul** | rien | bloc de recherche DST, **0 bit** |
+| `FUN_141dcc4a0` (cote ECRITURE) | — | `DAT_144e61ea0 == 0 && DAT_145121140 != 1` | `FUN_14076e524(..., 0x1e)` | `FUN_1406d676c(..., 0x60)` |
+
+**Lecture de la table.** Sous la portee baseline SEULE (`DAT_144e61ea0 = 1`,
+`DAT_145121140 = 0` — le cas d'un film retail), seules les six premieres lignes basculent :
+toutes les positions passent en 96 bits bruts. `i49`, `i2` et le bloc MPP ne bougent PAS,
+parce qu'ils sont gardes par l'AUTRE drapeau. Le port Go les confondait en une seule variable
+`PositionFullPrecision`.
+
+## 3. Ce que le balayage a EXCLU (un negatif, mais il ferme des portes)
+
+- `FUN_1406cf008` (R(1)) et `FUN_140c18a1c` (int signe a selecteur 2 bits) ne lisent QUE
+  l'etat du lecteur (`+0x10` fin, `+0x28`/`+0x2c` compteurs, `+0x30` registre, `+0x38` bits en
+  cache, `+0x40` curseur octet). **Aucun drapeau de contexte dans les primitives.** L'idee
+  « le varint a continuation de l'image-cle contre le selecteur 2 bits du delta » (RE externe)
+  n'a PAS de trace dans ces deux lecteurs : le selecteur 2 bits est inconditionnel.
+- `FUN_14076e524` lit `DAT_144632be0` (largeur d'index) et les tables `DAT_1445cc9e0` /
+  `DAT_14462cbe0` — ce sont des TABLES de precision, pas une bascule d'encodage.
+- Aucun autre global n'apparait en condition de branche dans les 407 decompiles hors :
+  `DAT_144c232e1` (filtre de composants du mode film), `DAT_144706104` (amorce R(1) du
+  paquet type-0), `DAT_14474cd78` (variante bufferisee / directe de la boucle de records),
+  `DAT_1451d2628`, et les constantes flottantes (`DAT_143cd8*`).
+- Le 5e parametre des deserialiseurs (`param_4`/`param_5` du slot `vtable[0x28]`) est une
+  CONSTANTE PAR COMPOSANT (`paramByComponent`), pas un mode : seuls `FUN_142f268c4` (i57,
+  `param_4 < 2`), `FUN_142f26ce8` (i62, `param_4 != 0`) et `FUN_141f86b58` y branchent.
+
+## 4. L'ECART DE PORT, etabli sur piece — `FUN_1411b259c` n'est PAS « 0 bit »
+
+```
+undefined8 FUN_1411b259c(undefined8 param_1, undefined8 param_2)
+{ FUN_1406d676c(param_2, param_2, param_1, 0x60); return param_1; }
+```
+
+`0x60 = 96` bits, et `FUN_1406d676c` est le MEME lecteur brut que le port Go appelle
+`readRawVec3` sur le chemin keep-baseline d'`i0`. Or **trois** sites du port Go traitent
+`FUN_1411b259c` comme un remplissage a ZERO bit :
+
+| site Go | ce qu'il fait | ce que fait l'EXE |
+|---|---|---|
+| `components_movement.go` `consumeAbsoluteWithGate` | `return` (0 bit) | R(96) |
+| `components_flock.go` `consumeFlockPosition` | `return` (0 bit) | R(96) |
+| `components_biped_ability.go` `consumeE494Position` (corps d'`i54`) | `return` (0 bit) | R(96) |
+| `traverse.go` `consumeSimStateHandleTail` (queue d'`i60`, porte en R7-b) | `br.ReadBits(96)` | R(96) — **le seul juste** |
+
+Le commentaire fautif (« remplissage NaN/keep, 0 bit ») venait d'une lecture du RESULTAT
+(le vecteur ecrit est un NaN de conservation) et non du CURSEUR. Sous la portee baseline,
+chacun de ces trois sites perd 96 bits par occurrence.
+
+## 5. Ce que la MESURE en a fait — le drapeau n'est PAS leve sur le payload du film
+
+Le port du mode baseline (`SetKeyframeBaselineScope`, defaut OFF) a ete mesure en A/B sur les
+591 records `ti=35` bornes des trois films oracles, une seule variable changeant entre les deux
+colonnes. Resultat : **l'atterrissage bit-exact tombe de 3/591 a 0/591** et l'ecart absolu
+median monte de 511/636/448 a 543/660/526 bits.
+
+La piece qui tranche est la largeur MEDIANE consommee par `i0` :
+
+| film (decoupage lu dans le film) | portee ETEINTE | portee ALLUMEE |
+|---|---|---|
+| `000d5950` (13/13/14, i0 = 45 bits) | 102 | 102 |
+| `00502e52` (17/17/16, i0 = 55 bits) | **57** | 99 |
+| `07aa428d` (18/18/17, i0 = 58 bits) | **62** | 99 |
+
+Eteinte, `i0` prend TROIS largeurs differentes, chacune accordee au decoupage de sa carte.
+Allumee, les trois convergent vers 99 (le brut 96 bits plus son en-tete) et la mesure se
+degrade. **Le corps d'image-cle porte donc une position QUANTIFIEE aux largeurs de la carte.**
+Le drapeau est reel et desormais correctement porte ; il n'est simplement pas leve sur le
+payload que le film stocke.
+
+Corollaire, et il AMENDE R7-b : « en image-cle, `i0` prend le chemin BRUT, 117 bits, la meme
+mediane sur les trois cartes » est FAUX (102/57/62). Les bornes de carte SONT necessaires pour
+lire la position a une image-cle sur deux films sur trois.
+
+## 6. Une piste NEUVE, trouvee en cherchant autre chose — le lecteur d'etat complet
+
+`FUN_1428e2a04` -> `FUN_1428e2a9c` -> `FUN_142e2bfd0`. Le dernier construit son BitReader
+(`FUN_1424c7b4c`) sur un paquet obtenu par `FUN_142988338(..., 0x10, 0)`, lit l'amorce
+`DAT_144706104 = R(1)` quand la version depasse 7, puis boucle : deux `R(32)` par entree
+(identifiant, type), et pour chaque entree `DAT_144e61ea0 = 1` ; `vtable[0x60]` (etat par
+defaut) ; le corruption-check `R(32)` du mode film si `FUN_14076cea8()` ; `DAT_144e61ea0 = 0`.
+
+C'est la FORME d'un payload d'etat complet, et R5 avait clos sa phase 2 sur « le CONSOMMATEUR
+du payload type-2 n'est identifie nulle part, et c'est ELLE qu'il faut decompiler ». Reste a
+confronter le `0x10` de `FUN_142988338` au demultiplexeur de paquets du film (section « le
+demultiplexeur de paquets du film — et le sort du type-2 » plus haut dans ce fichier). NON
+TRAITE par ce lot : hors de son perimetre.
+
+---
+# L ECRIVAIN PAR VTABLE — la case `+0x18` du descripteur de composant (lot R7-d, 2026-08-17)
+
+> Acces Ghidra : instance PID 10104 (`HaloInfinite.exe`), **API HTTP** `http://127.0.0.1:8089`
+> (`/decompile_function`, `/disassemble_function`, `/read_memory`, `/get_xrefs_to`,
+> `/list_segments`, `/get_function_by_address`), LECTURE SEULE — aucun rename, aucun script,
+> aucune analyse relancee. Contexte : `PLAN_R7D_ECRIVAIN_VTABLE.md`.
+> **Piege d'outillage** : `/disassemble_function` sur une adresse SANS fonction definie rend
+> 200 Mo (il desassemble jusqu'au bout du segment). Utiliser `/read_memory` sur 32-48 octets.
+
+## 1. Methode — retrouver une vtable de composant sans xref
+
+`DAT_144e61d88` est nul statiquement (la table de descripteurs est batie a l'init), et Ghidra ne
+cree AUCUNE reference vers les cases de vtable (octets non types). La chaine qui marche :
+
+1. dumper `.rdata` (`0x143606000-0x144395200`, 14 217 728 o) par `/read_memory` (55 lectures de
+   256 Kio, champ `hex`) ;
+2. y chercher le pointeur 8 o du deser connu (table `RECETTE_DECODAGE_FILM_CHUNKS.md` section 6) —
+   il est **UNIQUE** pour chacun des 52 desers du bipede ;
+3. la case trouvee est `vtable[0x30]` quand la case precedente vaut le thunk `FUN_14076ce9c`
+   (`jmp [rax+0x30]`), sinon `vtable[0x28]` (cas d `i0`) ;
+4. verifier la base par `vtable[0x08]` = getter de NOM (`lea rax,[rip+X]; ret` puis la chaine) et,
+   quand elle existe, par la xref DATA depuis `.data` (l objet descripteur lui-meme).
+
+Exemple ferme : `0x143d0ce00` (`biped-action`) est reference par `0x144747368` (.data) et son
+`+0x08` = `0x141177560` pointe `0x143c98cf0` = `"biped-action-component"`.
+
+## 2. Le layout d une vtable de descripteur de composant — UNIFORME sur 51/52
+
+```
++0x00  getter d ID     (la boucle de lecture FUN_14076cb60 en prend le retour ; stubs partages)
++0x08  getter de NOM               (per-composant, `lea rax,[rip+X]; ret`)
++0x10  PREDICAT DE FILTRE (FUN_1404ab600 = `return false`) : c est lui qui decale le masque
++0x18  **SERIALISEUR (ECRITURE)**  (per-composant)
++0x20  FUN_1411c8f80 = `int3`      (virtuelle pure ; exceptions : i1, i25)
++0x28  thunk FUN_14076ce9c = `jmp [rax+0x30]`
++0x30  **DESERIALISEUR (LECTURE)** (per-composant)
++0x38  FUN_1408d8220 = `return 1`  /  FUN_1404ab600
++0x40  FUN_141191ab0 = `*p = 0`
++0x48  BASELINE/PREDICAT (FUN_14076ced0 = zero 16 o en `rdx`) : appele par la boucle de lecture, 0 bit
+(+0x50 case supplementaire pour quelques classes : predicat de validation, 0 bit)
+```
+
+**Il n y a QUE DEUX cases qui touchent le flux de bits : `+0x18` ECRIT, `+0x30` LIT.** Toutes les
+autres sont des stubs constants, un nom, un accesseur ou un `int3`. L hypothese « les cases
+voisines portent la serialisation » est donc VRAIE, et elle est fermee : une seule case, `+0x18`.
+
+L archetype porte la MEME paire, decalee : vtable du bipede `0x143737178` (double confirmation —
+`+0x60` = `FUN_140f44c38`, deser d etat par defaut connu ; `+0xa0` = `FUN_14076ca20`, getter de
+masque par defaut connu). **`+0x58` = `FUN_142f14a68` = l ECRIVAIN de l etat par defaut**, et il
+porte les NOMS de ses champs en clair (`"player-representation-name"`,
+`"customization-source-participant"`) : le parametre `nom` des primitives d ecriture est un
+parametre MORT, conserve en retail.
+
+## 3. Les primitives d ECRITURE (miroirs de `FUN_1406cf008` / `FUN_14076e304`)
+
+Etat d ecrivain : `+0x2c` = compteur de bits ecrits, `+0x30` = accumulateur 64 bits,
+`+0x38` = bits tenus, `+0x40` = pointeur de sortie, `+0x10` = fin de tampon, `+0x28` = bits vides.
+Le `+0x2c` est ce qui rend la lecture facile : **chaque `+= N` est la LARGEUR ecrite**.
+
+| fonction | largeur |
+|---|---|
+| `FUN_1406d49c4(w, ., b)` | **W(1)** |
+| `FUN_142f1f71c(w, b)` | **W(2)** |
+| `FUN_1407edaf4(w, "nom", v)` | **W(32)** |
+| `FUN_142f22020(w, ., p)` | **3 x W(32) = vec3 IEEE, 96 bits** |
+| `FUN_1407eb6a8(w, p, idx, ., .)` | `W(1) (idx == -1)` ; si `idx != -1` : `W(DAT_144632be0)` ; puis `FUN_140ffc6b0` = les 3 axes |
+| `FUN_1406d60f4(w, ., p, 0x60)` | vec3 BRUT, 96 bits |
+
+## 4. Ce que l ecrivain dit de chaque composant lu
+
+### `i60 simulation-state` — le port de R7-b est CONFIRME
+
+`vtable[0x18]` = `FUN_142f04e2c` (`sub = etat + 0xa48`) puis `FUN_142edd10c(sub, w)` :
+`W(1) *(sub+0x28)` ; si non nul : 2 x `FUN_14299813c`, 4 x `FUN_142ee5630`, `W(2) *(sub+0x29)`, ...
+C est le MIROIR EXACT du lecteur (`R(1)` vers `dst+0x28` ; si 0, fin). Aucune divergence.
+
+### `i63 biped-action` — le port est CONFIRME, et la limite dure aussi
+
+`vtable[0x18]` = `FUN_142f05144` (`sub = etat + 0xaa8`) puis `FUN_142f27a68(sub, w)` :
+
+```
+FUN_142f22020(w, sub)              vec3 96 bits
+W(4) count1 = *(uint*)(sub+0x18)
+count1 x { W(7) *(item+0x30) ; FUN_142ef5340(item, w) }      item stride 0x38
+count2 = FUN_1409fe718(sub, 0x49)                            POPCOUNT RAM, 0 bit
+count2 x { W(1) (c != -1) ; si oui : FUN_142f1f71c(w, c) = W(2) }
+FUN_142f22020(w, ...)              vec3 96 bits
+```
+
+Identique, largeur pour largeur, a `consumeBipedAction` (96 + R(4) + ... + 96 = 196 au minimum).
+**Et le compte `count2` sort du MEME popcount RAM cote ECRITURE** : la limite « non recuperable
+hors ligne » de R7-b n est pas un defaut de lecture, elle est dans le format. Fil ferme.
+
+### `i9 object-multiplayer-properties` — la correction de R7-b est CONFIRMEE INDEPENDAMMENT
+
+`vtable[0x18]` = `FUN_142f075d8` (`sub = etat + 0x2b4`) puis `FUN_1420ab570(sub, w)` :
+
+```
+c = *(char*)(sub + 0xbc)
+W(1) (c == 0)                      le bit vaut 0 QUAND le bloc est present
+si c != 0 : W(5) c ; puis le bloc TLV (FUN_1407d5768/5714 puis FUN_14346074c(buf, w))
+```
+
+La polarite corrigee par R7-b (bit a 0 = bloc PRESENT) et le `R(5)` de tag sont tous deux
+confirmes par l ecrivain. Aucune divergence.
+
+### `i0 object-position-dynamic-precision` — LA DIVERGENCE (sa CONSEQUENCE DE FORME est corrigee en section 6.3)
+
+`vtable[0x18]` = `FUN_14320678c` — et c est l ecrivain d ETAT COMPLET, pas de delta : il appelle
+son corps avec une reference de base **NULLE** et un drapeau **0**.
+
+```
+FUN_14320678c(desc, w, ?) :
+  sub  = *(desc + 0x30)
+  ref  = {0, 0}                                  AUCUNE baseline
+  FUN_14320696c(w, sub, &ref, desc, 0)           param_5 = 0
+  FUN_142f1f71c(w, *(byte*)(sub + 0x10))         W(2), INCONDITIONNEL, EN DERNIER
+
+FUN_14320696c(w, sub, ref, desc, flagRaw) :      (desassemble, args resolus au registre)
+  W(1) flagRaw                                   (= 0 pour l etat complet)
+  W(1) (ref[1] != 0)                             (= 0 : pas de baseline)
+  h = *FUN_1404d4f04(sub + 0x2a4)                0 bit
+  si flagRaw != 0 : W(1) (h != -1) ; FUN_1406d60f4(w, sub+4, 0x60) = 96 bits BRUTS
+  sinon si ref[1] != 0 : FUN_142e2c9bc(...)      chemin RELATIF
+  sinon                : FUN_142e2d86c(w, sub+4, *(short*)(sub+0x12)) avec 5e arg = (h != -1)
+                          = W(1) (h != -1) ; FUN_1407eb61c(w, ..., 0x10)
+  si h != -1 : FUN_143206854(w, sub, desc)       la QUEUE DE HANDLE, gardee par h
+```
+
+Face au lecteur porte (`consumeObjectPositionDynamicPrecisionD` + `consumeAbsoluteWithGate` +
+`consumePositionHandleTail`), **trois ecarts, tous dans le meme sens** :
+
+1. **Le 3e bit n est pas un « precHigh » qui SUPPRIME la charge utile.** L ecrivain ecrit ce bit
+   (`h != -1`) PUIS la position, toujours. Le lecteur, lui, fait `precHigh := R(1) ; if precHigh
+   { return }` : quand ce bit vaut 1 il saute toute la position. C est une SOUS-LECTURE de
+   `1 + [idxW] + 3 x axisW` bits.
+2. **Ce meme 3e bit est la PORTE DE LA QUEUE DE HANDLE**, lisible dans le flux. Le lecteur la
+   garde sur un booleen RUNTIME (`PositionDeltaHasHandleTail`, faux par defaut) et la force a
+   `false` sur le chemin absolu.
+3. **Le champ de 2 bits est INCONDITIONNEL et il vient EN DERNIER**, apres la queue de handle.
+   Le lecteur ne le lit qu a l interieur du chemin absolu, avant la queue, et pas du tout quand
+   il est sorti tot.
+
+Consequence de forme : dans une image-cle, `i0` **n est PAS un vec3 brut de 96 bits** — l ecrivain
+d etat complet prend le chemin QUANTIFIE (`flagRaw = 0`, `ref = NULL`), donc une largeur
+DEPENDANTE DE LA CARTE : `2 + 1 + 1 + [idxW] + 3 x axisW + [queue] + 2`. Sur un decoupage 13/13/14
+et sans index ni queue : **46 bits**, la ou le lecteur porte en consomme 117 en mediane.
+Ceci CONTREDIT la decouverte n2 de R7-b (« en image-cle i0 prend le chemin brut, 117 bits,
+identiques sur trois cartes ») : ces 117 bits sont ce que le LECTEUR consomme, pas ce que
+l ECRIVAIN pose.
+
+### `i5 object-shield-vitality` — le port est CONFIRME (5e composant lu, hors perimetre initial)
+
+`vtable[0x18]` = `FUN_142f07d68` (`sub = etat + 0x30`) :
+
+```
+FUN_1406d22c0(w, ..., *(uint*)(sub+0x60), 0, DAT_143cd893c, 8, 0, 1)   W(8) quantifie
+FUN_1432073f4(sub + 0x6a, w) :
+    W(1) *(p+4) ; si non nul : 2 x FUN_141e78f88(p, w)   = la paire de regen
+W(16) *(short*)(sub + 100)
+4 x W(1)  (sub+0x66, puis trois autres)
+```
+
+Face a `decodeObjectShieldVitality` (`R(8)` ; `R(1)` regen puis 2 x [`R(1)` + `R(12)`] ; `R(16)` ;
+4 x `R(1)`) : identique, largeur pour largeur, y compris les QUATRE bits de queue. Aucune
+divergence.
+
+
+
+### `i0` — LE LECTEUR DU JEU DIT LA MEME CHOSE QUE L ECRIVAIN : c est le PORT Go qui est faux
+
+La divergence ci-dessus n est pas « l ecrivain contre le lecteur » : c est **l ecrivain ET le
+lecteur du jeu contre le port Go**. La case `+0x30` d `i0` (`FUN_14076e29c`, le lecteur de la
+paire) se lit en trois lignes :
+
+```
+FUN_14076e29c(., reader, desc) :
+  sub = *(desc + 0x10)
+  h = FUN_14076e420(reader, sub+4, 0x10)    <- R(1) puis la CHARGE UTILE, toujours
+  FUN_14076e3e4(reader, sub, ., h)          <- la queue de handle, GARDEE PAR h
+  si FUN_140492128(sub+4) : FUN_14076e304(reader, sub+0x10)   <- R(2), en DERNIER
+
+FUN_14076e420(reader, dst, w, f) :
+  cVar1 = FUN_1406cf008()                   R(1)
+  table = (cVar1 != 0) ? &DAT_143b8c6d0 : NULL      <- il CHOISIT UNE TABLE DE PLAGE
+  FUN_14076e494(reader, dst, w, f, 0, table)        <- la charge utile, INCONDITIONNELLE
+  return cVar1
+```
+
+**Le bit que le port Go appelle `precHigh` ne supprime rien : il selectionne la table de
+dequantification** (`DAT_143b8c6d0` ou aucune), et il est **la porte de la queue de handle**. La table `DAT_143b8c6d0`, lue octet a octet, vaut `{-100.0, +100.0} x 3` puis `60` : une plage LOCALE de plus ou moins 100 unites, pas les bornes de la carte.
+Le port Go (`consumeAbsoluteWithGate`) en fait un `if precHigh { return }` a zero bit de charge,
+et force la queue a `false`. Les deux lectures du jeu — celle qui ecrit et celle qui lit — sont
+d accord contre lui.
+
+Grammaire d `i0` en ETAT COMPLET, etablie des DEUX cotes :
+
+```
+R(1) flagRaw   (0)          en-tete FUN_1406cfe44 / FUN_14320696c
+R(1) hasRef    (0)
+R(1) h                      selecteur de plage ET porte de queue
+R(1) idxSel ; si 0 : R(idxW)
+3 x R(axisW)                les axes de la CARTE
+si h : queue de handle      FUN_14076e3e4 / FUN_143206854
+R(2)                        FUN_14076e304 / FUN_142f1f71c, EN DERNIER
+```
+
+Soit **`6 + axisW[0] + axisW[1] + axisW[2]`** bits dans le cas dominant : 46 sur 13/13/14,
+56 sur 17/17/16, 59 sur 18/18/17.
+### La QUEUE DE HANDLE d `i0`, cote ecriture
+
+`FUN_143206854(w, sub, desc)` — appelee seulement quand `h != -1` :
+
+```
+FUN_1409a5ff0(sub + 0x2a4, w, 0, *(byte*)(desc + 0x8c), ...)   ecriture du handle (largeur variable)
+h2 = *FUN_1404d4f04(sub + 0x2a4)                               0 bit
+W(1) (h2 != -1)
+si h2 != -1 : W(11)                                            le mot de region
+```
+
+Meme forme que la queue du lecteur (`consumePositionHandleTail` : selecteur, mot d index, puis
+`R(1)` presence de region et `R(11)`) — mais **gardee par un bit du FLUX** (`h`), pas par le
+booleen runtime `PositionDeltaHasHandleTail` que le lecteur porte force a `false`.
+
+### L ETAT PAR DEFAUT du bipede — l ecrivain `FUN_142f14a68` CONFIRME le lecteur
+
+Case `+0x58` de la vtable d archetype (`0x143737178`), face au lecteur `FUN_140f44c38`
+(case `+0x60`, porte dans `default_state.go`) :
+
+```
+FUN_1406d49c4(w, ., 1)                          W(1) = 1        <- la porte g0, toujours VRAIE
+W(8) = 0x0d                                     le selecteur (13), donc toujours ecrit
+FUN_1406d49c4(w, ., (rep != 1 && rep != -1))    W(1) gRep
+si gRep : FUN_1407edaf4(w, "player-representation-name", *(sub+100))   W(32)
+FUN_142b549c0(w, *(sub+0x68), "customization-source-participant")
+FUN_142f1bc2c(sub, w)
+FUN_1406d49c4(w, ...)                           W(1)
+si *(sub+0x6c) != -1 : W(6)
+W(1) *(char*)(sub+0x61)
+FUN_1407edb6c(w, sub+0x70)
+si *(sub+0x74) != -1 : FUN_1407eb600(w, sub+0x78, 0x10) ; FUN_14299813c(w)
+FUN_1407eb9bc(w) ; FUN_1406d49c4(w) ; FUN_1407edb6c()
+```
+
+Le lecteur porte lit `g0 = R(1)` puis, si `g0`, `R(8)` de selecteur, puis `gRep = R(1)` et
+`R(32)` de nom : **meme ordre, memes largeurs**. L ecrivain ajoute la seule chose que la lecture
+ne pouvait pas savoir — `g0` vaut TOUJOURS 1 et le selecteur vaut TOUJOURS 13 sur ce chemin.
+Les NOMS de champs (`"player-representation-name"`, `"customization-source-participant"`) sont
+des parametres MORTS des primitives d ecriture, conserves en retail : ils nomment les champs
+sans rien couter au flux.
+
+### Les cases vont par PAIRES : etat complet / delta
+
+`i0` a un DEUXIEME ecrivain, en `vtable[0x20]` : `FUN_143206a88`. Il appelle le meme corps
+`FUN_14320696c` mais avec une reference de base REELLE (`param_4`) et un drapeau brut calcule sur
+un octet d etat runtime, puis le meme `FUN_142f1f71c` = `W(2)` de queue. La lecture des deux
+cases se lit donc ainsi :
+
+```
++0x18  ECRIRE l ETAT COMPLET   (ref NULLE, drapeau 0)        <-> +0x28  LIRE l etat complet
++0x20  ECRIRE le DELTA         (ref reelle)                  <-> +0x30  LIRE le delta
+```
+
+Pour les composants a une seule forme (la grande majorite), `+0x20` est `int3` — pas d ecrivain
+de delta distinct — et `+0x28` est le thunk `FUN_14076ce9c` qui renvoie sur `+0x30` : une seule
+lecture, une seule ecriture. C est ce qui donne le layout apparent de la section 2.
+
+**Consequence directe pour l image-cle** : le format a bien un serialiseur d ETAT COMPLET par
+composant, et pour `i0` c est nommement `FUN_14320678c`. Ce n est plus une inference, c est la
+fonction qui ecrit la position d un record d image-cle.
+## 5. Bilan de lecture — 5 composants + l etat par defaut, UNE seule divergence
+
+| composant | ecrivain `vtable[0x18]` | verdict |
+|---|---|---|
+| `i0 object-position-dynamic-precision` | `FUN_14320678c` | **DIVERGE** (3 ecarts, cf. section 4) |
+| `i5 object-shield-vitality` | `FUN_142f07d68` | conforme |
+| `i9 object-multiplayer-properties` | `FUN_142f075d8` puis `FUN_1420ab570` | conforme (confirme la correction R7-b) |
+| `i60 simulation-state` | `FUN_142f04e2c` puis `FUN_142edd10c` | conforme |
+| `i63 biped-action` | `FUN_142f05144` puis `FUN_142f27a68` | conforme (et confirme la limite dure `count2`) |
+
+Sur les 52 composants du bipede balayes, **seuls TROIS ont un `vtable[0x20]` autre que `int3`**,
+donc seuls trois ont une forme DELTA distincte de leur forme ETAT COMPLET : `i0`
+(`FUN_143206a88`), `i1 object-translational-velocity` (`FUN_14320ca60`) et `i25 unit-command-tick`
+(`FUN_142ee007c`). Les 49 autres ecrivent la meme chose dans les deux cas.
+
+**RESTE OUVERT (non traite par ce lot)** : la BOUCLE d ecriture au niveau du RECORD — le miroir
+de `FUN_14076cb60` qui appelle, composant par composant, la case `+0x18`. Elle n a pas ete
+localisee : `FUN_142f14a68` (ecrivain d etat par defaut) n a AUCUNE xref CODE, seulement sa case
+de vtable `0x1437371d0` ; les voisines de la vtable d archetype (`+0x50` `FUN_142f1dcc0`,
+`+0x68` `FUN_142f156b0`, `+0x78` `FUN_142f09490`, `+0x80` `FUN_142f12a4c`) sont respectivement de
+la telemetrie, un nettoyage, un bloc de pertinence et un wrapper — aucune ne boucle sur les
+composants ; et les fonctions voisines des lecteurs de record (`FUN_1408f1948`, `FUN_141f865d8`)
+non plus. C est elle qui dirait si le record d image-cle porte un CADRE (en-tete, masque, ordre)
+different de celui du record NEW.
+
+## 6. LA BOUCLE D ETAT COMPLET DU JEU — trouvee, et elle n a PAS de masque (piste R7-c, 2026-08-17)
+
+Piste transmise par le lot jumeau R7-c : `FUN_1428e2a04` puis `FUN_1428e2a9c` puis
+`FUN_142e2bfd0` = un lecteur d ETAT COMPLET (paquet obtenu par `FUN_142988338(..., 0x10, 0)`).
+Deroulee jusqu au bout, elle donne la chose que R5, R7-a et R7-b cherchaient.
+
+### 6.1 `FUN_142e2bfd0` — l en-tete par entite d un etat complet
+
+```
+FUN_1406d5cc0()                                     alignement
+si version(&DAT_144c23178) > 7 : DAT_144706104 = R(1)
+corrOn = FUN_14076cea8()                            (le meme drapeau que la boucle delta)
+PAR ENTITE, tant qu il reste des entrees :
+  R(32) -> ent[0]      id
+  R(32) -> ent[1]      TYPE INDEX   (0xffffffff = fin d entite ; sinon indexe DAT_144e61d88+8+ti*8)
+  R(32) -> ent[3]
+  FUN_142e29cf8(reader)                              (2 x 4 bits selon les branches)
+  R(8)  -> ent+9
+  si ent[1] != 0xffffffff :
+      desc = *(DAT_144e61d88 + 8 + ent[1]*8)
+      R(32) n1
+      si n1 > 0 :  DAT_144e61ea0 = 1 ; desc->vtable[0x60](...) = ETAT PAR DEFAUT
+                   si corrOn : R(32)                 <- mot de controle
+                   DAT_144e61ea0 = 0
+      R(32) n2
+      si n2 > 0 :  desc->vtable[0x88](...) = MASQUE PAR DEFAUT (0 bit)
+                   FUN_1428e2b68(...)                <- la boucle de composants
+  entree suivante : + 0x32 dwords (200 octets)
+```
+
+**L en-tete d une entite en etat complet n est donc PAS `[id:32][field:26][ti:6]`** (la forme du
+record NEW, validee par R5 sur le chemin delta) : c est `R(32) id`, `R(32) typeIndex`, `R(32)`,
+`FUN_142e29cf8`, `R(8)`, puis `R(32)` de taille avant l etat par defaut et `R(32)` de taille avant
+les composants.
+
+### 6.2 `FUN_1428e2b68` puis `FUN_142e2c690` — la boucle de composants SANS MASQUE
+
+`FUN_1428e2b68` recupere le descripteur d archetype, prend `vtable[0x10]` comme parametre, puis
+appelle `FUN_142e2c690(desc + 8, reader, ctx, table)` — `desc + 8` est exactement le TABLEAU DES
+DESCRIPTEURS DE COMPOSANT (`RECETTE_DECODAGE_FILM_CHUNKS.md` section 5), et `table` est
+`typeIndex * 0x4100 + 8 + base`, soit **64 entrees de 0x104 octets par archetype**.
+
+```
+FUN_142e2c690(comps, reader, ctx, table) :
+  DAT_144e61ea0 = 1                       <- PORTEE levee pour TOUTE la boucle
+  corrOn = FUN_14076cea8()
+  pour k de 0 a 63 :
+      entree = table + k * 0x104
+      si *entree != 0 :                   <- entree[0..] = le NOM du composant, en clair
+          n = *(uint32*)(entree + 0x100)
+          desc = celui des 64 composants dont vtable[0x08] rend LE MEME NOM  (recherche lineaire)
+          desc->vtable[0x28](desc, reader, ctx, &local, n)      <- LE DESER
+          si corrOn et R(1) : R(32)                             <- mot de controle par composant
+  DAT_144e61ea0 = 0
+```
+
+**TROIS faits, et ils tranchent trois questions ouvertes depuis R5 :**
+
+1. **AUCUN MASQUE DE PRESENCE.** La boucle delta (`FUN_14076cb60`) lit un masque
+   (`FUN_1406d7610`) et ne deserialise que les composants presents. La boucle d ETAT COMPLET
+   n en lit aucun : elle parcourt une table FIXE de 64 entrees et deserialise chaque entree
+   nommee. La variante « 64 leaf nus, ni etat par defaut, ni porte, ni masque » de R7-a/R7-b
+   est donc STRUCTURELLEMENT LA BONNE.
+2. **L ORDRE n est pas celui de l archetype** : la boucle suit l ordre de la TABLE et retrouve
+   le descripteur PAR NOM. Rien ne garantit que cet ordre soit celui de `arch.Components`.
+   C est une source de derive que ni R7-a ni R7-b n avaient envisagee.
+3. **`DAT_144e61ea0` est leve pour TOUTE la boucle** — et `FUN_14076f91c()` rend
+   `(DAT_144e61ea0 != 0) || (DAT_145121140 == 1)`. Or ce predicat est exactement la porte de
+   PLEINE PRECISION cote LECTURE **et** cote ECRITURE (`FUN_1407eb61c` : si
+   `FUN_14076f91c()` est vrai, il ecrit `FUN_1406d60f4(..., 0x60)` = 96 bits BRUTS au lieu du
+   vec3 quantifie).
+
+### 6.3 Ce que le point 3 CORRIGE dans la section 4 de ce document
+
+La consequence de forme que j y tirais — « en image-cle `i0` prend le chemin QUANTIFIE, donc
+`6 + 3 x axisW` bits » — **est FAUSSE, et c est cette lecture-ci qui la refute**. Dans la portee
+d etat complet, `FUN_14076f91c` est VRAI, donc l ecrivain `FUN_1407eb61c` prend la branche BRUTE.
+La grammaire d `i0` en image-cle est :
+
+```
+W/R(1) 0          flagRaw d en-tete
+W/R(1) 0          « a une baseline »
+W/R(1) h          selecteur de plage ET porte de queue
+W/R(96)           vec3 IEEE BRUT           <- parce que DAT_144e61ea0 == 1
+si h : queue de handle
+W/R(2)            en dernier
+```
+
+soit **101 bits + la queue**. Le lecteur porte en consomme 117 en mediane sur les trois films :
+la queue vaut donc 16 bits. **La decouverte n2 de R7-b (« en image-cle, `i0` prend le chemin
+BRUT, 117 bits, identiques sur trois cartes ») est RETABLIE**, et on sait maintenant POURQUOI :
+ce n est pas une propriete d `i0`, c est la portee `DAT_144e61ea0` que la boucle d etat complet
+leve autour de lui.
+
+Ce qui RESTE vrai de la section 4, et qui n est pas affecte par la portee : le 3e bit n est pas un
+`precHigh` qui supprime la charge utile (il choisit une table de plage et garde la queue), et le
+champ de 2 bits est INCONDITIONNEL et vient EN DERNIER.
+
+### 6.4 Reserve — a quelle SOURCE ce lecteur s applique
+
+Le paquet vient de `FUN_142988338(..., 0x10, 0)`, pas du bloc type-2 d un film. R6 a etabli que
+le bloc type-2 du film n a AUCUN consommateur ; ce lecteur-ci est donc celui du RESEAU (snapshot
+de base), pas celui du film. Ce qu il apporte n est pas « voici le lecteur du film » mais
+**« voici la grammaire d un ETAT COMPLET dans ce moteur »** — meme table de descripteurs, memes
+cases de vtable, meme portee. R7-c mesure par ailleurs, sur le payload type-2, une position
+QUANTIFIEE aux largeurs de carte (102/57/62 bits selon la carte) : si cette mesure tient, le
+payload du FILM est ecrit HORS de la portee `DAT_144e61ea0`, contrairement au snapshot reseau.
+**C est la contradiction a trancher au lot suivant**, et elle est nommee : une seule variable,
+`DAT_144e61ea0`, decide entre 96 bits bruts et 3 x axisW quantifies.
+
+# LA BOUCLE D ETAT COMPLET, PORTEE — et le decalage de niveau du registre (lot R7-e, 2026-08-17)
+
+R7-d avait TROUVE `FUN_142e2c690` sans la PORTER. Ce lot la porte, avec son en-tete, et mesure.
+Relectures Ghidra (LECTURE SEULE, PID 10104, `GET /decompile_function`) qui CORRIGENT R7-d :
+
+## 1. `FUN_142e2c690` — la recherche par NOM est un RATTRAPAGE, pas le chemin normal
+
+```
+FUN_142e2c690(comps, reader, ctx, table) :
+  DAT_144e61ea0 = 1
+  corrOn = FUN_14076cea8()
+  pour k de 0 a 63 :
+      entree = table + k * 0x104
+      si *entree != 0 :                       <- entree[0] = le premier octet du NOM
+          n    = *(uint32*)(entree + 0x100)
+          desc = comps[k]                     <- D ABORD LE MEME INDEX k
+          si nom(desc->vtable[0x08]) != entree :
+              recherche LINEAIRE sur 0..0x3f  <- RATTRAPAGE seulement
+          desc->vtable[0x28](desc, reader, ctx, &local, n)
+          si corrOn et R(1) : R(32)
+  DAT_144e61ea0 = 0
+```
+
+R7-d ecrivait « le descripteur est retrouve PAR NOM, l ordre suit la TABLE et rien ne garantit
+que ce soit celui de `arch.Components` ». C est vrai en droit, mais le chemin RAPIDE est
+`comps[k]` au MEME index : la table et le tableau de descripteurs sont censes coincider, et la
+recherche par nom n existe que pour absorber une derive de version. **L ordre n est donc PAS une
+variable libre.** Ce qui l est, c est le champ `n` — voir section 3.
+
+## 2. L en-tete PAR ENTITE de `FUN_142e2bfd0` — 108 bits, et l oracle ne le refute pas
+
+```
+R(32) -> e[0]    id
+R(32) -> e[1]    typeIndex   (0xffffffff = entree vide)
+R(32) -> e[3]
+R(4)             FUN_142e29cf8 (UN seul quartet — R7-d lisait « 2 x 4 bits », c est faux)
+R(8)  -> e+9
+si e[1] != 0xffffffff :
+   R(32) n1 ; si n1 > 0 : DAT_144e61ea0 = 1 ; vtable[0x60] etat par defaut
+                          si corrOn : R(32)   <- INCONDITIONNEL ici (pas de R(1) de garde)
+                          DAT_144e61ea0 = 0
+   R(32) n2 ; si n2 > 0 : vtable[0x88] (0 bit) puis FUN_1428e2b68 -> la boucle
+entree suivante : + 0x32 dwords (200 octets)
+```
+
+Soit **108 bits** d en-tete, puis deux `R(32)` de taille encadrant l etat par defaut.
+
+**LA PIECE QUI OUVRAIT LE LOT.** `kfValidAnchor` (`keyframe_world.go:70`) n accepte une ancre que
+si le mot de 32 bits a `q+32` vaut moins de 50. Sous `[id:32][field:26][ti:6]` cela veut dire
+`field26 == 0` ; sous l en-tete RESEAU ci-dessus cela veut dire `typeIndex < 50`. **Les deux
+lectures sont INDISCERNABLES sur les ancres acceptees**, et les 6 bits de `typeIndex` lus en `+58`
+valent la meme chose dans les deux cas. L oracle valide par R3/R5 sur 249/250 entites ne REFUTE
+donc pas un en-tete de 108 bits — contrairement a ce que R5 supposait. C etait une variable, elle
+est desormais MESUREE (section 5).
+
+## 3. LE DECALAGE DE NIVEAU DU REGISTRE — mesure sur les octets, identique sur 3 films
+
+L entree que la boucle lit fait `0x104` octets : `param_4` EST le nom (`*param_4 != 0`, `strcmp`
+sur `param_4`), et le niveau passe au deser est `*(uint32*)(param_4 + 0x100)`. Le bloc vaut
+`ti * 0x4100 + 8 + base`, soit 64 entrees de `0x104` — **exactement le bloc d archetype de
+`chunk_00`** (`registry.go` : `registrySlotSize = 260`, `archetypeBlockSlots = 64`,
+`archetypeBlockSize = 0x4100`).
+
+Les deux lectures placent les NOMS au MEME octet (le `+8` du jeu est le `+8` de `registry.go`) et
+le NIVEAU a des octets DIFFERENTS :
+
+| champ | `registry.go` | le JEU |
+|---|---|---|
+| nom du composant k | `bloc + k*260 + 8` | `bloc + 8 + k*0x104` — **identique** |
+| niveau du composant k | `bloc + k*260 + 4` (`Flags[k]`) | `bloc + 8 + k*0x104 + 0x100` = `bloc + (k+1)*260 + 4` = **`Flags[k+1]`** |
+
+`TestKF7ETableLayout` sur `000d5950` tranche sur les octets : **les 64 slots ont `kind == 0`** —
+le premier `u32` que `registry.go` lit est TOUJOURS nul, ce qui est la queue de bourrage du nom
+precedent, pas un champ. Et `TestKF7ELevelShift` : **25 des 64 composants du bipede changent de
+niveau**, exactement les memes 25 sur les TROIS films (le registre est bit-a-bit identique d un
+film a l autre). Exemples : `i0` L=0 -> L=1, `i10 object-parent-state` L=1 -> L=3,
+`i20 unit-actor-state` L=2 -> L=4, `i63 biped-action` L=1 -> L=0.
+
+Un niveau de 0 pour le composant de POSITION est implausible ; 1 l est. La lecture du jeu est
+donc la plus vraisemblable — mais elle est **INERTE A LA MESURE** (section 5) : aucun deser du
+bipede porte ne dimensionne quoi que ce soit sur ce parametre. C est un fait de FORME, pas un
+levier.
+
+## 4. `i0` — la grammaire d ECRIVAIN portee, et pourquoi elle ne bouge pas
+
+Portee derriere `keyframeWriterI0Grammar` (defaut OFF, kill-switch date) sur le chemin ABSOLU :
+`h = R(1)` ne supprime plus la charge utile, il garde la QUEUE DE HANDLE, et le champ de 2 bits
+vient EN DERNIER. Mesure : **strictement identique a la reference** sur les trois films (memes
+medianes, memes ecarts). Explication : sur ce corpus `h` vaut 0 dans le cas dominant, et
+`1 + charge + queue(0 bit) + 2` est alors la MEME suite de bits que
+`1 + charge + 2 + queue(0 bit)`. La correction est donc JUSTE et sans effet ici — elle ne
+protegera que les records ou `h` vaut 1.
+
+## 5. LA MESURE — 591 records `ti=35` bornes, 3 films, une variable a la fois
+
+Instrument `keyframe_fullstate_loop{,_test}.go`, `WalkKeyframeFullState`, corpus ferme,
+largeurs de la carte installees, trous neutralises, `simStateComplete` allume.
+
+| lecture | `000d5950` (184) | `00502e52` (209) | `07aa428d` (198) |
+|---|---|---|---|
+| longueur REELLE mediane | 2 765 | 2 777 | 2 781 |
+| REF (en-tete 64, rien) | 0 exact · med 2 350 · ecart 511 | 0 · 2 420 · 636 | 0 · 2 456 · 448 |
+| (a) niveaux decales | 0 · 2 350 · 511 | 0 · 2 420 · 636 | 0 · 2 456 · 448 |
+| (b1) en-tete 108 | 0 · **2 770** · 526 | 0 · 2 456 · 721 | 0 · 2 651 · 575 |
+| (b2) 108 + 2 x R(32) | 0 · 3 096 · 697 | 0 · 2 901 · 695 | **1** · 2 952 · 817 |
+| (b3) 108 + tailles + etat par defaut | 0 · 2 786 · 539 | 0 · 2 804 · 704 | 1 · 2 807 · 648 |
+| (c) controle par composant | 0 · 3 114 · 669 | **1** · 3 196 · 778 | 0 · 3 239 · 811 |
+| (e) i0 ecrivain | 0 · 2 350 · 511 | 0 · 2 420 · 636 | 0 · 2 456 · 448 |
+| (b3+c+e) tout | 0 · 3 491 · 1 007 | 0 · 2 969 · **424** | 0 · 3 175 · 536 |
+
+**2 atterrissages bit-exact sur 591 (0,34 %)**, contre 5/591 pour R7-d et 3/591 pour R7-c.
+
+Ce que les chiffres disent quand meme :
+1. **(b1) est le seul mouvement de FORME qui vise juste sur un film** : la longueur mediane de
+   `000d5950` passe de 2 350 a **2 770** pour une longueur REELLE de 2 765 — cinq bits. Les deux
+   autres films ne suivent pas (2 456 et 2 651 pour 2 777 et 2 781).
+2. **(a) et (e) sont inertes** : medianes et ecarts identiques au bit pres.
+3. **(b2) et (c) SUR-corrigent** : les sous-lectures de `000d5950` tombent de 125/184 a 48/184,
+   mais les depassements au dernier composant (`i63`) montent de 45 a 51 et l ecart median monte.
+4. Le point de decrochage dominant reste le meme partout : **sous-lecture**, puis
+   `i63 biped-action-component` — le DERNIER composant. La derive ne se concentre pas, elle
+   s accumule.
+
+## 6. `DAT_144e61ea0` sur le payload type-2 — TRANCHE, et dans le meme sens que R7-c
+
+Le port de la portee de R7-c (`keyframeBaselineScope`, `fullPrecisionGate`) a ete repris dans ce
+lot et branche AUSSI sur le chemin d'ecrivain d `i0`. Mesure sur les memes 591 records :
+
+| film | portee ETEINTE, ecart median | portee ALLUMEE, ecart median |
+|---|---|---|
+| `000d5950` | **511** | 543 |
+| `00502e52` | **636** | 660 |
+| `07aa428d` | **448** | 526 |
+
+Ces trois valeurs allumees (543 / 660 / 526) sont **exactement celles que R7-c publie** : deux
+instruments independants, deux marches differentes, meme chiffre — la fidelite du temoin est
+verifiee. Et la conclusion ne bouge pas : **le payload type-2 est ecrit HORS de la portee**,
+la position d'image-cle est QUANTIFIEE aux largeurs de la carte. La contradiction que R7-d
+laissait ouverte est fermee, du cote de R7-c.
+
+## 7. Ou la derive se trouve — l'histogramme, sur la lecture de reference
+
+| film | sous-lecture | depassement a `i63` (DERNIER composant) | autres |
+|---|---|---|---|
+| `000d5950` (184) | **125** (68 %) | 45 (24 %) | 14 |
+| `00502e52` (209) | **140** (67 %) | 38 (18 %) | 31 |
+| `07aa428d` (198) | **139** (70 %) | 41 (21 %) | 18 |
+
+Deux tiers des marches finissent TROP TOT, un cinquieme franchit la frontiere pendant le DERNIER
+composant. Aucun composant intermediaire ne concentre le decrochage. C'est le meme diagnostic que
+R7-b phase 4bis — une derive DISPERSEE qui s'accumule — et aucune des cinq variables de cadre
+de ce lot ne l'ecrase : elles deplacent la mediane, elles ne resserrent pas la distribution.
+
+---
+# LE LECTEUR/ECRIVAIN DU JEU — carte exhaustive des serialiseurs d'etat complet (lot G, 2026-08-27)
+
+> Acces Ghidra : instance HaloInfinite.exe (D:/SteamLibrary, 311 103 fonctions analysees,
+> base 140000000), API HTTP du plugin http://127.0.0.1:8089 (/decompile_function,
+> /get_xrefs_to, /read_memory), LECTURE SEULE. Aucun rename, aucun script, aucune analyse.
+> Angle du lot (borne d'arret R7-e LEVEE par l'utilisateur pour cet angle precis, 2026-08-27) :
+> puisque le jeu ne RELIT jamais le payload type-2 (R6), remonter le format par le cote qui le
+> definit — le code de serialisation lui-meme (lecteur ET ecrivain), et non plus mesurer une
+> grammaire portee a l'aveugle contre l'oracle.
+
+## 1. CORRECTION SUR PIECES : FUN_142f2e174 n'est PAS l'encodeur de snapshot
+
+R6 s5 et R7-d s5 le nommaient « l'encodeur de snapshot » sans le decompiler (recherche bornee,
+« aucun appel direct »). Decompile integrale ce jour : c'est le constructeur de la liste de
+REFERENCE/PRIORITE de la vue du gestionnaire d'entites de replication
+(...\engine\source\blofeld\networking\replication\replication_entity_manager_view.cpp).
+
+- Il boucle sur les entites (tableau param_1+0x38..+0x40, stride 0xa0 = 160 octets, bitmap
+  de presence param_1+0x58) et ecrit, PAR entite, une paire de 2 mots dans param_4 :
+  *puVar12 = gen<<0x1e | flags | slot & 0x1fff | ... puis FUN_140bbd808(puVar12, valeur).
+- Le mot 0 est l'id [gen:2 @bit30][flags:2 @bit23-24][slot:13] — exactement l'id:32 de
+  l'en-tete type-2 [id:32][field:26][ti:6] (gen = id>>30, slot = id & 0x3FFFFFFF confirme
+  keyframe_world.go). Les flags a bit 23-24 (0x800000 / 0x1000000 / 0x1800000) distinguent
+  reference / NEW / etat-complet.
+- Le mot 1 (la « valeur ») vient de FUN_142f24dd4 (entite kind==3 avec bloc d'etat 32 o) ou
+  FUN_142f24d1c (autres) -> FUN_142e2b734 -> FUN_143138d30. FUN_143138d30 calcule un
+  FLOAT (table par typeIndex &DAT_14498ab44 stride 0x5c, comparaisons a 0.0, aucun etat de
+  bit-writer) : c'est une PRIORITE/pertinence, pas une serialisation de composants.
+
+Consequence : FUN_142f2e174 produit UNIQUEMENT les en-tetes 64 bits (id + priorite/ref).
+Il n'ecrit AUCUN corps de composant. Ceci explique enfin pourquoi, depuis R5, l'en-tete de 64 bits
+decode toujours mais le corps jamais : le corps que R5/R7 cherchaient a lire N'EST PAS ecrit par
+cet encodeur. Le fait que WalkKeyframeWorld retrouve 249/250 ENTITES contre l'oracle Cheat Engine
+est coherent avec une liste de reference complete (tous les ids vivants), pas avec un magasin de
+positions.
+
+## 2. La vtable de la vue de replication (0x1436a87e0), decodee /read_memory
+
+| slot | fonction | role |
+|---|---|---|
+| +0x08 | FUN_14076c27c | (init) |
+| +0x10 | FUN_142f2e174 | encodeur de la liste de REFERENCE/priorite (ci-dessus) |
+| +0x18 | FUN_142f24a78 -> FUN_142f2cee0 | ecrivain de RECORD du flux type-0 |
+| +0x40 | FUN_1406cd128 | boucle de records LECTURE (R6 : pousse la file par entite) |
+| +0x60 | FUN_142f2913c | drain de la file par entite (R6) |
+
+Instanciee par FUN_1411c7850 et FUN_140b87eec. Le slot +0x18 (FUN_142f24a78) mesure les bits
+ecrits autour de FUN_142f2cee0(vue, item) = le dispatcher d'ecriture de record, selecteur
+item[1] : 1 = NEW (etat complet), 2 = DEL, 0 = DELTA. Ecrivains :
+FUN_142f303bc (NEW), FUN_142f304a8 (DEL), FUN_142f30610 (DELTA). C'est le MIROIR ECRITURE
+exact de la boucle de records FUN_1406cd128 que R5 a portee cote lecture.
+
+## 3. Les TROIS familles de serialiseurs d'ETAT COMPLET (via DAT_144e61ea0, la portee pleine precision)
+
+DAT_144e61ea0 (leve pour toute boucle d'etat complet, lu par FUN_14076f91c) a 8 sites d'ecriture
+en dehors des lecteurs de composant. Ils se regroupent en TROIS familles, chacune une paire
+lecture/ecriture :
+
+| famille | LECTURE | ECRITURE | appelant | nature |
+|---|---|---|---|---|
+| A | FUN_142e2c690 (boucle comp) FUN_142e2bfd0 (en-tete) | FUN_142e2d6d4 (boucle comp) FUN_142e2d08c (en-tete) | FUN_1428e339c | baseline RESEAU : 3 vues, buffer de travail 0x4cad9a8 (~78 Mo), reconstruite tous les 20 s (20000 < FUN_1405f5008). C'est ce que R7-e a porte (cote lecture). |
+| B | FUN_142e309b4 | FUN_142e30b9c | FUN_142e2ed64, FUN_142e2efe8 | LECTEUR en grammaire NEW masquee : vtable[0x60] (etat par defaut) + vtable[0x88] (masque) + FUN_14076cb60 (la boucle masquee de R5) |
+| C | FUN_141f86704 (deser NEW bufferise) | FUN_142e31a0c | FUN_142e2eec0 | reserialise UNE entite en etat complet pendant la reconstruction delta->etat de PLAYBACK ; header FUN_140bbd84c (W(6) ti + ref niveau 7) + etat par defaut vtable[0x58] + composants FUN_141f85ce0. C'est le buffer RECONSTRUIT (keyframe_buffer_live.bin), grammaire NEW |
+
+## 4. LE RESULTAT DE FOND — les deux seules grammaires de composants sont TOUTES DEUX deja refutees
+
+Le corps d'un record type-2 fait ~888 bits (ti=37, R5) : il y a bien un corps. Or, cote composants,
+HaloInfinite.exe ne possede QUE deux boucles :
+
+1. masquee-NEW (FUN_14076cb60 : R(1) masque + composants presents) — grammaire de R5,
+   utilisee par le flux type-0 (familles B/C et l'ecrivain NEW FUN_142f303bc). REFUTEE pour
+   type-2 par R5 (128 decalages x 16 lectures x 3 films, jamais > 1,8 %).
+2. plate-64-sans-masque (FUN_142e2c690 : les 64 composants de la table, aucun masque) —
+   baseline reseau, famille A. REFUTEE pour type-2 par R7-e (0,51 %, borne d'arret).
+
+Le payload type-2 n'est NI l'une NI l'autre. R7-e concluait « la derive est DANS les
+deserialiseurs » ; le lot G en donne la cause plus profonde : R7 a porte la boucle plate-64 de la
+baseline RESEAU (famille A) et l'a appliquee a un payload dont les records 64 bits sont des entrees
+de REFERENCE (FUN_142f2e174), pas des blobs de composants. Il n'y a pas de derive a corriger
+dans les deserialiseurs parce que les records vises ne sont pas des blobs de composants de ce
+format. La suspicion de R6 (« l'ecrivain n'est pas dans ce binaire ») devient une EXHAUSTION
+MAPPEE : les trois familles d'etat complet du binaire sont enumerees et attribuees a leur role
+(A = baseline reseau, B = lecteur NEW masque, C = reconstruction playback), aucune ne produit la
+grammaire de corps du type-2.
+
+Precision d'ecrivain (positive, cote famille A) — le miroir ecriture FUN_142e2d6d4 PROUVE que les
+inquietudes « ordre de table / niveau decale » de R7-e etaient des artefacts du COTE LECTURE :
+l'ecriture parcourt un tableau PLAT de 64 pointeurs param_1[k], appelle directement
+vtable[0x18], sans table 0x104, sans recherche par nom, sans champ niveau ; le controle par
+composant est « si corrOn : W(1)[+W(32)=0xbcddcba] » APRES le corps.
+
+## 5. LE LEVIER POSITIF localise — l'ecrivain NEW du flux type-0
+
+Le flux type-0 est ce que le JEU utilise reellement (R6 : la baseline est le premier paquet type-0 ;
+le type-2 est saute). Sa chaine d'ECRITURE NEW, jamais confrontee jusqu'ici a la lecture portee, est
+maintenant localisee :
+
+- FUN_142f303bc (NEW) : FUN_142f2c754(writer, kind=1, id, refIndex) (en-tete) puis
+  FUN_142e35a58(vue, id, bloc-etat-32o, ..., writer) (corps : etat par defaut + composants).
+- Le bloc d'etat 32 o est entite+0xc et entite+0x1c (deux blocs de 16 o = position + suite).
+
+C'est le miroir ecriture des deserialiseurs NEW de R5 (TraverseEntity, etat par defaut par
+archetype, composants). Le mur reel de R6 (« etat par defaut par archetype, bit-exact ») se
+VALIDE desormais contre son ecrivain FUN_142e35a58, largeur pour largeur — la meme methode que
+R7-d a employee pour 5 composants du cote etat complet, jamais appliquee au chemin type-0 contre
+SON ecrivain, avec l'oracle jamais consomme .ai/V7.5/dumps/kf_capture_sample.txt (400 frontieres
+de records EXACTES, R6 s9).
+
+## 6. Adresses neuves citees (pour le compteur du garde-rail)
+
+FUN_142f2e174 FUN_142f24dd4 FUN_142f24d1c FUN_142f24d60 FUN_142e2b734 FUN_143138d30
+FUN_142f24a78 FUN_142f2cee0 FUN_142f303bc FUN_142f304a8 FUN_142f30610 FUN_142f2c754
+FUN_142e35a58 FUN_142e2d08c FUN_142e2d6d4 FUN_142e2c690 FUN_142e2bfd0 FUN_142e309b4
+FUN_142e30b9c FUN_142e31a0c FUN_142e31bf8 FUN_142e2eec0 FUN_142e2ed64 FUN_142e2efe8
+FUN_1428e339c FUN_140bbd84c FUN_140809d20 FUN_140bbd808 FUN_141f85ce0 FUN_1411c7850
+FUN_140b87eec vtable 0x1436a87e0 (+0x10 encodeur ref, +0x18 ecrivain record).

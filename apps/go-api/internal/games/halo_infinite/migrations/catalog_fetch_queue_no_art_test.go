@@ -1,7 +1,7 @@
 //go:build cgo
 
 // catalog_fetch_queue_no_art_test.go — garde-fou RC-E déplacé depuis
-// internal/migration (campagne append-only ART #23046). catalog_fetch_queue est
+// internal/migration (campagne append-only ART #23645). catalog_fetch_queue est
 // créée par le créateur de schéma metadata TITLE-OWNED (steps.go) ; ce test câble
 // donc le provider title-owned (StepsFor) pour faire tourner RunForDB(TargetMetadata)
 // bout-en-bout (sans le provider, la table n'est pas créée dans le binaire de test
@@ -11,7 +11,7 @@
 // secondaire). Le drain catalogue (CatalogFetcherService) DELETE chaque ligne
 // traitée (deleteFromQueue) et UPDATE attempts sur erreur (markError) ; un
 // DELETE/UPDATE per-row sur une table ART-indexée déclenche le bug DuckDB 1.5.x
-// (#23046) qui FATAL-invalide metadata.duckdb (→ noms d'assets cassés tout le
+// (#23645) qui FATAL-invalide metadata.duckdb (→ noms d'assets cassés tout le
 // reste de la vie du process). Ce test échoue si quelqu'un réintroduit une PK ou
 // un index sur cette table. Voir le rebuild global
 // rebuild_catalog_fetch_queue_drop_art_indexes (internal/migration) + le créateur

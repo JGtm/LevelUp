@@ -6,7 +6,7 @@ package migration
 // **Pourquoi** : PK(match_id) + 3 index ART (idx_pme_session, idx_pme_engagement_history,
 // idx_pme_engagement_paces) sur des colonnes MUTÉES par des UPDATE/ON CONFLICT
 // incrémentaux (perf/engagement/session/friends/bot/exclusion/psa) = vecteur DuckDB
-// #23046 (crash prod sur `engagement-coefs --with-scores`). Cf. .ai/PLAN_PME_ART_HARDENING.md.
+// #23645 (crash prod sur `engagement-coefs --with-scores`). Cf. .ai/archive/V7/PLAN_PME_ART_HARDENING.md.
 //
 // **Stratégie append-only + MERGE-ON-READ PAR GROUPE** : PK technique id BIGINT
 // (séquence pme_seq) + written_at + colonne `stage` discriminant l'étape d'écriture.
@@ -42,7 +42,7 @@ func init() {
 	Register(Migration{
 		Name:        "player_append_only_match_enrichment_v1",
 		TargetDB:    TargetPlayer,
-		Description: "Rebuild player_match_enrichment en append-only (id PK + stage + vue merge-on-read par-groupe) — élimine PK/index ART mutés (#23046, table la plus écrite)",
+		Description: "Rebuild player_match_enrichment en append-only (id PK + stage + vue merge-on-read par-groupe) — élimine PK/index ART mutés (#23645, table la plus écrite)",
 		ApplySchema: applyAppendOnlyMatchEnrichment,
 	})
 }
@@ -153,19 +153,16 @@ func applyAppendOnlyMatchEnrichment(db *sql.DB) error {
 		return fmt.Errorf("append-only pme: check id column: %w", err)
 	}
 	if hasID {
-		// Déjà append-only : (ré)assurer la vue + l'index lookup (idempotent).
+		// Déjà append-only : (ré)assurer la vue (idempotent).
 		if _, err := db.ExecContext(ctx, buildPMELatestViewSQL()); err != nil {
 			return fmt.Errorf("append-only pme: refresh view: %w", err)
 		}
 		return nil
 	}
 
+	// Aucun index secondaire après le swap (PlayerRetiredSecondaryIndexesDropSQL).
 	if err := swapMatchEnrichmentAppendOnlyTx(ctx, db); err != nil {
 		return err
-	}
-	if _, err := db.ExecContext(ctx,
-		`CREATE INDEX IF NOT EXISTS idx_pme_match_lookup ON player_match_enrichment(match_id, written_at)`); err != nil {
-		return fmt.Errorf("append-only pme: create idx_pme_match_lookup: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, buildPMELatestViewSQL()); err != nil {
 		return fmt.Errorf("append-only pme: create view: %w", err)

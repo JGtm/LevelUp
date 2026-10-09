@@ -101,14 +101,12 @@ type FiltersRepository interface {
 	GetMatchCount(ctx context.Context) (int, error)
 	GetPlayerMatchCount(ctx context.Context) (int, error)
 	GetAvailablePlaylists(ctx context.Context) ([]domain.LabelValue, error)
-	GetAvailableMaps(ctx context.Context) ([]domain.LabelValue, error)
 }
 
 // MatchHistoryRepository fournit les données pour l'historique des parties.
 // Implémenté par platform/duckdb.MatchHistoryRepo.
 type MatchHistoryRepository interface {
 	LoadAll(ctx context.Context) ([]domain.MatchHistoryRawRow, error)
-	LoadMapWinRates(ctx context.Context) (map[string][2]int, error)
 }
 
 // CareerRepository fournit les données de progression de carrière.
@@ -192,6 +190,12 @@ type RelationsRepository interface {
 	// d'erreur — si aucune ligne CSR (relation non classée), CSR non significatif
 	// (tier ET rating absents), ou table/colonne absente. xuid vide ⇒ (nil, nil).
 	GetLatestCSR(ctx context.Context, xuid string) (*domain.RelationCSR, error)
+
+	// GetRelationAssists : assistances échangées avec chaque coéquipier sur les matchs
+	// dont l'assistance est mesurée, indexées par xuid (domain/relation_assists.go). Un
+	// joueur jamais coéquipier sur un match mesuré est absent de la map. scope : même
+	// contrat que GetRelations.
+	GetRelationAssists(ctx context.Context, scope []string) (map[string]domain.RelationAssists, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander
@@ -238,6 +242,29 @@ type MatchViewRepository interface {
 	// GetMatchEvents retourne les events highlight du match (Q21).
 	GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error)
 
+	// LookupMedalMetaByName résout l'identité de médailles (medal_name_id, label,
+	// description locale-aware) depuis leur nom ANGLAIS — le pont entre les events
+	// `medal` du feed et medal_definitions. Best-effort : map vide si le référentiel
+	// est indisponible, jamais une erreur bloquante.
+	LookupMedalMetaByName(ctx context.Context, namesEN []string) (map[string]domain.MedalNameMeta, error)
+
+	// GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b),
+	// pour l'arme affichée au kill feed. Tranche vide si le titre n'a pas de décodeur de
+	// film ou si le match n'y est pas passé — jamais une erreur (dégradation gracieuse).
+	GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error)
+
+	// GetMatchKillAssists retourne l'assistance de chaque mort du match (Q21c) : assistant
+	// nommé ou « pas d'assistant » mesuré, avec les parts de dégâts. Une mort ABSENTE de la
+	// tranche est un « on ne sait pas » — même dégradation gracieuse que Q21b.
+	GetMatchKillAssists(ctx context.Context, matchID string) ([]domain.KillAssistRaw, error)
+
+	// GetMatchAssistPairs retourne les paires (assistant → tueur assisté) AGRÉGÉES sur le
+	// match (Q21d), et la PORTÉE de leur lecture. Sœur de Q21c mais d'une autre nature :
+	// un agrégat par match, sans clé temporelle — rien à recaler sur T0. La portée à zéro
+	// (aucune ligne de film) est un résultat, pas une erreur ; un ÉCHEC de lecture remonte en
+	// erreur, sans portée (la Vue match dit alors « lecture indisponible »).
+	GetMatchAssistPairs(ctx context.Context, matchID string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error)
+
 	// GetMatchKVPairs retourne les paires killer→victim du match (Q20).
 	GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error)
 
@@ -269,6 +296,10 @@ type MatchViewRepository interface {
 	// retourner (nil, nil) — le service dégrade gracieusement (badge ordinal
 	// seul attribué).
 	GetMatchEncounterStats(ctx context.Context, matchID, myXUID string) ([]domain.EncounterStatsRaw, error)
+
+	// GetMatchEncounterAssists retourne les assistances échangées (tout l'historique)
+	// avec les joueurs du match, indexées par xuid. Map vide si rien n'est mesuré.
+	GetMatchEncounterAssists(ctx context.Context, matchID, myXUID string) (map[string]domain.RelationAssists, error)
 
 	// GetMatchMedia retourne les médias associés au match (Q24).
 	// Cross-joueur : tous les auteurs sont retournés (un coéquipier peut avoir
@@ -341,6 +372,12 @@ type ExplorerRepository interface {
 	// sur les matchs donnés (shared.v_weapon_kills, COUNT(*) par effective_weapon_id)
 	// + labels metadata.weapon_labels. Retourne nil si entrée vide — best-effort.
 	GetTopWeaponsForMatches(ctx context.Context, xuid string, matchIDs []string, limit int) ([]domain.WeaponHighlight, error)
+
+	// GetTopMedalsForMatches retourne le top `limit` médailles (SUM(count) par
+	// medal_name_id, tri décroissant) du joueur sur les matchs donnés — lecture
+	// shared.medals_earned. Les identifiants bruts sont enrichis (label/image)
+	// plus haut, côté service. Retourne nil si entrée vide — best-effort.
+	GetTopMedalsForMatches(ctx context.Context, xuid string, matchIDs []string, limit int) ([]domain.RemoteMedalCount, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -368,17 +405,11 @@ func (n *noopFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error) { 
 func (n *noopFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.LabelValue, error) {
 	return nil, nil
 }
-func (n *noopFiltersRepo) GetAvailableMaps(_ context.Context) ([]domain.LabelValue, error) {
-	return nil, nil
-}
 
 // noopMatchHistoryRepo — impl nulle pour le check de compilation uniquement.
 type noopMatchHistoryRepo struct{}
 
 func (n *noopMatchHistoryRepo) LoadAll(_ context.Context) ([]domain.MatchHistoryRawRow, error) {
-	return nil, nil
-}
-func (n *noopMatchHistoryRepo) LoadMapWinRates(_ context.Context) (map[string][2]int, error) {
 	return nil, nil
 }
 
@@ -456,6 +487,18 @@ func (n *noopMatchViewRepo) GetMatchMedals(_ context.Context, _, _ string) ([]do
 func (n *noopMatchViewRepo) GetMatchEvents(_ context.Context, _ string) ([]domain.EventRaw, error) {
 	return nil, nil
 }
+func (n *noopMatchViewRepo) LookupMedalMetaByName(_ context.Context, _ []string) (map[string]domain.MedalNameMeta, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchKillSources(_ context.Context, _ string) ([]domain.KillSourceRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchKillAssists(_ context.Context, _ string) ([]domain.KillAssistRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchAssistPairs(_ context.Context, _ string) ([]domain.MatchAssistPairRaw, domain.MatchAssistScopeRaw, error) {
+	return nil, domain.MatchAssistScopeRaw{}, nil
+}
 func (n *noopMatchViewRepo) GetMatchKVPairs(_ context.Context, _ string) ([]domain.KVPairRaw, error) {
 	return nil, nil
 }
@@ -475,6 +518,9 @@ func (n *noopMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) (
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEncounterStats(_ context.Context, _, _ string) ([]domain.EncounterStatsRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchEncounterAssists(_ context.Context, _, _ string) (map[string]domain.RelationAssists, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchMedia(_ context.Context, _ string) ([]domain.MediaAssocRaw, error) {
@@ -526,6 +572,9 @@ func (n *noopExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _
 func (n *noopExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
 }
 func (n *noopExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
+	return nil, nil
+}
+func (n *noopExplorerRepo) GetTopMedalsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.RemoteMedalCount, error) {
 	return nil, nil
 }
 

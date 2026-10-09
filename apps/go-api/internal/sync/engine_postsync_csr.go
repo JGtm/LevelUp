@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -13,6 +12,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/deadtoken"
 )
 
 // activeRankedPlaylists retourne les playlists classées à interroger pour compléter
@@ -123,18 +123,25 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 		return achievementsSkipped
 	}
 
-	// Résoudre l'access_token Xbox Live : store watcher_tokens d'abord (ADR 0023),
-	// puis résidus legacy sync_meta / env var.
-	accessToken, err := e.resolveAchievementsAccessToken(ctx, playerDB)
+	// Résoudre l'access_token Xbox Live depuis le store watcher_tokens (ADR 0023,
+	// source unique).
+	accessToken, gated, err := e.resolveAchievementsAccessToken(ctx)
+	if gated {
+		// Jeton marqué mort, inchangé : la porte a déjà tracé le changement d'état
+		// (paquet deadtoken) ; rien de plus par passe.
+		return achievementsSkipped
+	}
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: échec résolution access_token",
 			"gamertag", e.gamertag, "err", err)
 		return achievementsFailed
 	}
 	if accessToken == "" {
-		// Skip bénin, attendu et récurrent (H5) : Debug uniquement, pas d'erreur
-		// remontée — le token se resynchronisera à un cycle ultérieur.
-		slog.DebugContext(ctx, "achievements: aucun access_token disponible — sync ignorée",
+		// Skip bénin et attendu : un profil suivi sans token propre n'a pas de succès Xbox
+		// Live à lire, tout le reste de sa passe est servi par le pool. UN SEUL journal par
+		// passe, ici, au niveau Info — le helper de résolution ne journalise plus ce cas
+		// (avant : un ERROR par passe côté auth ET un Debug ici, C-E du 2026-09-16).
+		slog.InfoContext(ctx, "post-sync: succès Xbox Live sautés — aucun token propre pour ce profil",
 			"gamertag", e.gamertag)
 		return achievementsSkipped
 	}
@@ -168,14 +175,24 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	}
 	defer metadataLease.Release()
 
-	metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
-	if err != nil {
-		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
-			"gamertag", e.gamertag, "err", err)
-		return achievementsFailed
+	// Réutiliser le handle du run (engine.go, clé "rw:") quand il existe : rouvrir ici
+	// dupliquait l'ouverture pour rien et, avant que le run n'ouvre lui-même en RW,
+	// entrait en conflit de configuration avec lui (C-E, 2026-09-16).
+	metadataDB := e.metaDB
+	if metadataDB == nil {
+		metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
+		if err != nil {
+			slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
+				"gamertag", e.gamertag, "err", err)
+			return achievementsFailed
+		}
+		defer func() {
+			if cerr := metadataHandle.Close(); cerr != nil {
+				slog.WarnContext(ctx, "achievements: fermeture metadata DB échouée", "err", cerr)
+			}
+		}()
+		metadataDB = metadataHandle.SQLDb()
 	}
-	defer metadataHandle.Close()
-	metadataDB := metadataHandle.SQLDb()
 
 	client := NewXboxHTTPClient(xstsResult, titlePkg.XboxTitleIDFor(e.titleSlug))
 	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid, e.titleSlug); err != nil {
@@ -303,63 +320,33 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 	}
 	defer metadataLease.Release()
 
+	// Handle du run s'il existe (clé "rw:" posée par engine.go), sinon ouverture propre.
+	if e.metaDB != nil {
+		seedPlaylistsCatalog(ctx, e.metaDB, csrs, e.titleSlug)
+		return
+	}
 	mh, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: catalog seed désactivé (metadata inaccessible)",
 			"gamertag", e.gamertag, "err", err)
 		return
 	}
-	defer mh.Close()
+	defer func() {
+		if cerr := mh.Close(); cerr != nil {
+			slog.WarnContext(ctx, "post-sync: fermeture metadata DB échouée", "err", cerr)
+		}
+	}()
 	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
 }
 
-// resolveAchievementsAccessToken résout l'access_token Xbox Live (achievements)
-// selon la priorité ADR 0023 : store watcher_tokens d'abord, puis les résidus
-// legacy sync_meta / env var. Délègue à auth.ResolveMSAccessTokenStoreFirst
-// (source UNIQUE de l'ordre de résolution, partagée avec world-enrich).
-//
-// Avant ce câblage, ce chemin lisait EXCLUSIVEMENT sync_meta et n'a jamais
-// consulté le store → il servait toujours un RT legacy et comptait la télémétrie
-// de dépréciation duckdb_oauth à chaque post-sync des 4 joueurs (incident prod
-// 2026-07-12), alors que le store watcher_tokens couvrait ces joueurs. Store-first,
-// la télémétrie ne se déclenche plus qu'en vraie absence de RT store.
-//
-// Retourne ("", nil) si aucun token n'est disponible (non fatal — skip achievements).
-func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context, playerDB *sql.DB) (string, error) {
-	legacy := e.readLegacyAuthInputs(ctx, playerDB)
+// achievementsDeadTokens : la porte des jetons morts du chemin des succès Xbox, mémoire du
+// processus (les SyncEngine sont créés par passe). Cf. paquet deadtoken.
+var achievementsDeadTokens = deadtoken.New()
+
+// resolveAchievementsAccessToken résout l'access_token Xbox Live (succès) depuis le
+// MultiUserTokenStore (source unique, ADR 0023), derrière la porte des jetons morts.
+// skipped=true : jeton marqué mort et inchangé, passe sautée sans appel à Microsoft.
+func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context) (token string, skipped bool, err error) {
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(e.repoRoot).WatcherTokensDir())
-	return auth.ResolveMSAccessTokenStoreFirst(ctx, e.provider, store, e.xuid, e.gamertag, legacy)
-}
-
-// readLegacyAuthInputs lit les résidus legacy depuis sync_meta (DB déjà ouverte)
-// + le fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GT>. Best-effort (champs vides
-// si absents). Ces valeurs ne servent QUE si le store watcher_tokens ne couvre pas
-// le joueur (cf. ResolveMSAccessTokenStoreFirst) → à supprimer en Phase 5 (D2).
-func (e *SyncEngine) readLegacyAuthInputs(ctx context.Context, playerDB *sql.DB) auth.LegacyAuthInputs {
-	var cacheJSON, refreshToken string
-	if err := playerDB.QueryRowContext(ctx,
-		"SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON); err != nil {
-		slog.DebugContext(ctx, "achievements: msal_token_cache absent", "gamertag", e.gamertag)
-	}
-	if err := playerDB.QueryRowContext(ctx,
-		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken); err != nil {
-		slog.DebugContext(ctx, "achievements: oauth_refresh_token absent", "gamertag", e.gamertag)
-	}
-
-	// Fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> (résidu dev/transition).
-	fromEnv := false
-	if refreshToken == "" && e.gamertag != "" {
-		key := strings.ToUpper(strings.NewReplacer(" ", "_", "-", "_", ".", "_").Replace(e.gamertag))
-		if v := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key); v != "" {
-			refreshToken = v
-			fromEnv = true
-		}
-	}
-
-	return auth.LegacyAuthInputs{
-		OAuthRT:        refreshToken,
-		MSALCache:      cacheJSON,
-		Source:         "player_db.sync_meta",
-		OAuthRTFromEnv: fromEnv,
-	}
+	return achievementsDeadTokens.Resolve(ctx, store, e.provider, e.xuid, e.gamertag)
 }

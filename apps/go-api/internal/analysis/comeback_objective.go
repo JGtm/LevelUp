@@ -11,7 +11,7 @@ package analysis
 import "sort"
 
 // ObjectiveScoreEvent est un event de score objectif neutre, découplé de
-// internal/domain : l'appelant (package sync) mappe ses domain.ObjectiveEvent
+// internal/domain : l'appelant (package sync) mappe ses objectiveevent.Event
 // vers ce type avant d'appeler BuildObjectiveScoreSnapshots.
 //
 //   - TimeMS : instant du match en millisecondes.

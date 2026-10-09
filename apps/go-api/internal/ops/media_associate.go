@@ -61,49 +61,74 @@ type mediaMatchAssoc struct {
 // loadMatchTimeWindows lit les fenêtres temporelles des matchs depuis
 // shared_matches_v2.duckdb sans ATTACH cross-DB.
 //
-// Acquiert le handle via OpenReadForQuery : réutilise le handle process-wide
-// (RW ou RO) s'il existe, et ne re-ouvre en RO que si AUCUN handle n'est en
-// cache. C'est crucial — l'ancien fallback `sql.Open(... access_mode=read_only)`
-// forçait une ouverture RO d'un fichier potentiellement tenu en RW dans le même
-// process (sync / reindex concurrent), ce qui échoue avec "file is being used
-// by another process" / "different configuration". Conséquence observée
-// (2026-06-03) : l'association d'un upload concurrent d'un reindex échouait
-// silencieusement → médias sans match. Même classe d'incident que l'OpenReadOnly
-// forcé corrigé par OpenReadForQuery (ADR-0016 / discovery sync V2 2026-06-01).
+// Acquiert le handle via un RecoveringReader (platform/duckdb) : il réutilise le
+// handle process-wide (RW ou RO) s'il existe et ne ré-ouvre en RO que si AUCUN
+// handle n'est en cache. C'est crucial — l'ancien fallback par ouverture directe
+// en `access_mode=read_only` forçait une ouverture RO d'un fichier potentiellement
+// tenu en RW dans le même process (sync / reindex concurrent), ce qui échoue avec
+// "file is being used by another process" / "different configuration".
+// Conséquence observée (2026-06-03) : l'association d'un upload concurrent d'un
+// reindex échouait silencieusement → médias sans match. Même classe d'incident
+// que l'OpenReadOnly forcé corrigé par cette famille d'ouverture (ADR-0016 /
+// discovery sync V2 2026-06-01).
+//
+// RecoveringReader plutôt qu'un instantané nu (2026-08-25) : le handle emprunté
+// au cache est NON POSSÉDÉ, et le B-swap RO→RW déclenché par un writer sync le
+// ferme PENDANT la requête ou l'itération → « sql: database is closed »
+// (~2,7 ERROR/j en prod : `ops.IndexMedia: association média↔match échouée`,
+// err `load match windows: query match_registry`).
+//
+// ReopenCacheOnly, PAS ReopenAllowed (revue R1) : shared_matches_v2 est géré par
+// un sharedprovider, et `swapToRW` ferme le RO puis ouvre le RW — une ré-ouverture
+// RO émise dans cette fenêtre peut faire échouer l'OpenReadWrite et envoyer le
+// provider en StateError (lectures shared en 503, burst d'écriture abandonné).
+// La reprise n'emprunte donc QUE le cache process ; cache miss → on rend l'erreur
+// et l'association retente au run suivant (best-effort, auto-guérissant).
 //
 // Filtre WHERE start_time_utc/end_time_utc IS NOT NULL pour garantir des
 // timestamps valides. Le fallback `start_time AT TIME ZONE 'UTC'` couvre les
 // rares matchs pré-migration add_start_time_utc_to_match_registry.
 func loadMatchTimeWindows(ctx context.Context, sharedMatchesPath string) ([]matchTimeWindow, error) {
-	db, release, err := platform_duckdb.OpenReadForQuery(sharedMatchesPath)
+	reader, err := platform_duckdb.OpenRecoveringReader(sharedMatchesPath, platform_duckdb.ReopenCacheOnly)
 	if err != nil {
 		return nil, fmt.Errorf("ouverture shared_matches pour lecture: %w", err)
 	}
-	defer release()
+	defer reader.Close()
 
-	rows, err := db.QueryContext(ctx, `
+	q := `
 		SELECT
 			match_id,
-			`+analysis.SQLStartTimeCanonical("")+` AS start_utc,
+			` + analysis.SQLStartTimeCanonical("") + ` AS start_utc,
 			COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') AS end_utc
 		FROM match_registry
-		WHERE `+analysis.SQLStartTimeCanonical("")+` IS NOT NULL
+		WHERE ` + analysis.SQLStartTimeCanonical("") + ` IS NOT NULL
 		  AND COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') IS NOT NULL
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("query match_registry: %w", err)
-	}
-	defer rows.Close()
+	`
 
 	var windows []matchTimeWindow
-	for rows.Next() {
-		var w matchTimeWindow
-		if err := rows.Scan(&w.MatchID, &w.StartUTC, &w.EndUTC); err != nil {
-			return nil, fmt.Errorf("scan match_registry row: %w", err)
+	if err := reader.Do(ctx, func(db *sql.DB) error {
+		// Rejouable (contrat de Do) : le retry post-re-résolution repart d'une
+		// liste vide, sinon il dupliquerait les fenêtres déjà scannées.
+		windows = nil
+
+		rows, err := db.QueryContext(ctx, q)
+		if err != nil {
+			return fmt.Errorf("query match_registry: %w", err)
 		}
-		windows = append(windows, w)
+		defer rows.Close()
+
+		for rows.Next() {
+			var w matchTimeWindow
+			if err := rows.Scan(&w.MatchID, &w.StartUTC, &w.EndUTC); err != nil {
+				return fmt.Errorf("scan match_registry row: %w", err)
+			}
+			windows = append(windows, w)
+		}
+		return rows.Err()
+	}); err != nil {
+		return nil, err
 	}
-	return windows, rows.Err()
+	return windows, nil
 }
 
 // loadUnassociatedMedia retourne les media_files dont capture_start_utc est

@@ -1,0 +1,130 @@
+﻿=== RUN   TestZoneEtatPhase2a
+    zone_state_p2a_test.go:92: FILM 7344d24f (Strongholds, vagabond) — 26 slots dans la bande ti=13 · 36082 records ancres, 10841 rejoues entierement, 3702 CHAINES (34.1 %)
+    zone_state_p2a_test.go:95:   VALEURS : i1 scalaire 3828 · i2..i33 par joueur 11549 · film de 608179 ms (0 -> 608179)
+    zone_state_p2a_test.go:97:   CHAINAGE par population : records SCALAIRES (i0/i1 seuls) 3662/3880 = 94.4 % · records PAR JOUEUR 40/6961 = 0.6 % · temoin decale de 3 bits 38/10841 = 0.4 %
+2026/08/18 13:19:30 INFO pont slot->joueur slots=117 viesNommees=117 viesTotal=124 lecturesIndex=31 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 13:19:30 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/18 13:19:30 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/18 13:19:30 INFO rejeu : episodes d'equipement actif viesPubliees=122 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 13:19:30 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/18 13:19:30 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    zone_state_p2a_test.go:108:   REJEU : 122 trajectoires, 5689 frames de 100 ms, origine 33274 ms · CATALOGUE : 3 zones
+    zone_state_p2a_test.go:117: 
+    zone_state_p2a_test.go:117: === STRUCTURE de ti=13 — 24 slots emettent une valeur scalaire
+    zone_state_p2a_test.go:117:     slot 1520  nom i0 0x0003010B x3 · tag dominant 8 (1/1)
+    zone_state_p2a_test.go:117:     slot 1521  nom i0 0x00030081 x6 · tag dominant 8 (1/1)
+    zone_state_p2a_test.go:117:     slot 1522  nom i0 0xB7E80848 x1 · tag dominant 4 (1/1)
+    zone_state_p2a_test.go:117:     slot 1523  nom i0 0xA0022AAC x1 · tag dominant 0 (1/2)
+    zone_state_p2a_test.go:117:     slot 1525  nom i0 0x37E60101 x1 · tag dominant 8 (2/3)
+    zone_state_p2a_test.go:117:     slot 1526  nom i0 0x20262F90 x1 · tag dominant 8 (1/2)
+    zone_state_p2a_test.go:117:     slot 1527  nom i0 0x6002C831 x1 · tag dominant 8 (1/3)
+    zone_state_p2a_test.go:117:     slot 1528  nom i0 0x733100DF x1 · tag dominant 0 (1/2)
+    zone_state_p2a_test.go:117:     slot 1530  nom i0 (jamais emis) · tag dominant 4 (16/20)
+    zone_state_p2a_test.go:117:     slot 1531  nom i0 0x6002C831 x1 · tag dominant 4 (36/36)
+    zone_state_p2a_test.go:117:     slot 1532  nom i0 0xFBE4240B x1 · tag dominant 3 (1138/1146)
+    zone_state_p2a_test.go:117:     slot 1533  nom i0 0x6002C830 x1 · tag dominant 6 (1/1)
+    zone_state_p2a_test.go:117:     slot 1534  nom i0 0x8002AB20 x1 · tag dominant 8 (1/1)
+    zone_state_p2a_test.go:117:     slot 1535  nom i0 0x6AA2EB00 x36 · tag dominant 4 (12/18)
+    zone_state_p2a_test.go:117:     slot 1536  nom i0 0x0000E808 x8 · tag dominant 4 (39/72)
+    zone_state_p2a_test.go:117:     slot 1537  nom i0 0x42B103DA x1 · tag dominant 3 (974/984)
+    zone_state_p2a_test.go:117:     slot 1538  nom i0 0xF44080EF x1 · tag dominant 1 (5/7)
+    zone_state_p2a_test.go:117:     slot 1539  nom i0 0x101DF800 x1 · tag dominant 13 (1/3)
+    zone_state_p2a_test.go:117:     slot 1540  nom i0 0x001F2A50 x1 · tag dominant 4 (11/14)
+    zone_state_p2a_test.go:117:     slot 1541  nom i0 0xFFC4240B x1 · tag dominant 4 (32/34)
+    zone_state_p2a_test.go:117:     slot 1542  nom i0 0x001F2A44 x1 · tag dominant 3 (858/859)
+    zone_state_p2a_test.go:117:     slot 1545  nom i0 0x007E8103 x1 · tag dominant 3 (296/298)
+    zone_state_p2a_test.go:117:     slot 1546  nom i0 0x001F2A44 x1 · tag dominant 4 (6/13)
+    zone_state_p2a_test.go:117:     slot 1547  nom i0 0x4E730814 x1 · tag dominant 3 (305/307)
+    zone_state_p2a_test.go:118: 
+    zone_state_p2a_test.go:118: === CB.2a.1 APPARIEMENT slot ti=13 -> zone — 71 captures identifiees par xuid
+    zone_state_p2a_test.go:118:   71 captures posees sur l'axe du rejeu (0 hors fenetre ou sans origine)
+    zone_state_p2a_test.go:118:   tolerance  0.0 m : attribuees 52/71 =  73.2 % (hors 10, sans position 9, ambigues 0) · TEMOIN zones a 12 m : 11.3 %
+    zone_state_p2a_test.go:118:   tolerance  2.0 m : attribuees 57/71 =  80.3 % (hors 5, sans position 9, ambigues 0) · TEMOIN zones a 12 m : 16.9 %
+    zone_state_p2a_test.go:118:   tolerance  5.0 m : attribuees 59/71 =  83.1 % (hors 3, sans position 9, ambigues 0) · TEMOIN zones a 12 m : 26.8 %
+    zone_state_p2a_test.go:118:   tolerance 10.0 m : attribuees 62/71 =  87.3 % (hors 0, sans position 9, ambigues 0) · TEMOIN zones a 12 m : 40.8 %
+    zone_state_p2a_test.go:118:   TABLE slot -> zone (cle tag 5, rang spatial, InstanceID) :
+    zone_state_p2a_test.go:118:     slot 1532  cle 0x00000000 -> zone rang 1 (InstanceID 0) : 19/22 votes (86 %), 3 zones vues
+    zone_state_p2a_test.go:118:     slot 1537  cle 0x27954600 -> zone rang 2 (InstanceID 0) : 18/18 votes (100 %), 1 zones vues
+    zone_state_p2a_test.go:118:     slot 1542  cle 0x00000000 -> zone rang 0 (InstanceID 0) : 14/15 votes (93 %), 2 zones vues
+    zone_state_p2a_test.go:118:     slot 1545  cle 0x00000000 -> zone rang 0 (InstanceID 0) : 2/2 votes (100 %), 1 zones vues
+    zone_state_p2a_test.go:118:     slot 1547  cle 0x00000000 -> zone rang 1 (InstanceID 0) : 1/1 votes (100 %), 1 zones vues
+    zone_state_p2a_test.go:118:   COHERENCE de la carte slot -> zone : 54/58 = 93.1 % (seuil 90 %, tolerance 5 m)
+    zone_state_p2a_test.go:118:   TEMOINS : permutation cyclique 41.4 % · sommet decale de 20 s 57.1 %
+    zone_state_p2a_test.go:118:   VERDICT CB.2a.1 : TENU
+    zone_state_p2a_test.go:120: 
+    zone_state_p2a_test.go:120: === CB.2a.2 SEMANTIQUE DU TAG 4
+    zone_state_p2a_test.go:120:   slot 1522  : 1 valeurs de tag 4, 1 distinctes, 0 changements · zone du tag 3 : false · valeurs 0x0320CAC3 x1
+    zone_state_p2a_test.go:120:   slot 1530  : 16 valeurs de tag 4, 2 distinctes, 15 changements · zone du tag 3 : false · valeurs 0x00000000 x8 0x00000001 x8
+    zone_state_p2a_test.go:120:   slot 1531  : 36 valeurs de tag 4, 3 distinctes, 35 changements · zone du tag 3 : false · valeurs 0xFFFFFFFF x18 0x00000000 x10 0x00000001 x8
+    zone_state_p2a_test.go:120:   slot 1535  : 12 valeurs de tag 4, 2 distinctes, 11 changements · zone du tag 3 : false · valeurs 0x00000000 x6 0x00000001 x6
+    zone_state_p2a_test.go:120:   slot 1536  : 39 valeurs de tag 4, 7 distinctes, 37 changements · zone du tag 3 : false · valeurs 0xFFFFFFFF x17 0x00000001 x10 0x00000000 x7 ...
+    zone_state_p2a_test.go:120:   slot 1537  : 1 valeurs de tag 4, 1 distinctes, 0 changements · zone du tag 3 : true · valeurs 0x6680CFAA x1
+    zone_state_p2a_test.go:120:   slot 1540  : 11 valeurs de tag 4, 2 distinctes, 10 changements · zone du tag 3 : false · valeurs 0x00000000 x6 0x00000001 x5
+    zone_state_p2a_test.go:120:   slot 1541  : 32 valeurs de tag 4, 3 distinctes, 31 changements · zone du tag 3 : false · valeurs 0xFFFFFFFF x16 0x00000000 x8 0x00000001 x8
+    zone_state_p2a_test.go:120:   slot 1545  : 1 valeurs de tag 4, 1 distinctes, 0 changements · zone du tag 3 : true · valeurs 0x20F243F0 x1
+    zone_state_p2a_test.go:120:   slot 1546  : 6 valeurs de tag 4, 2 distinctes, 5 changements · zone du tag 3 : false · valeurs 0x00000000 x3 0x00000001 x3
+    zone_state_p2a_test.go:120:   10 slots portent le tag 4, 2 portent aussi une zone du tag 3 (carte de CB.2a.1 : 5 slots)
+    zone_state_p2a_test.go:120:   slot 1530  zone 1 (vote) : 15 changements, 21 captures de la zone · precision 14/15 = 93.3 % (hasard 11.2 %) · rappel 17/21 = 81.0 % (hasard 9.9 %) · precision TOUTES captures 14/15 = 93.3 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   slot 1531  zone 1 (vote) : 35 changements, 21 captures de la zone · precision 18/35 = 51.4 % (hasard 11.2 %) · rappel 21/21 = 100.0 % (hasard 21.9 %) · precision TOUTES captures 21/35 = 60.0 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   slot 1535  zone 2 (vote) : 11 changements, 21 captures de la zone · precision 10/11 = 90.9 % (hasard 11.2 %) · rappel 13/21 = 61.9 % (hasard 7.2 %) · precision TOUTES captures 10/11 = 90.9 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   slot 1536  zone 2 (vote) : 37 changements, 21 captures de la zone · precision 20/37 = 54.1 % (hasard 11.2 %) · rappel 21/21 = 100.0 % (hasard 22.2 %) · precision TOUTES captures 24/37 = 64.9 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   slot 1540  zone 0 (vote) : 10 changements, 17 captures de la zone · precision 8/10 = 80.0 % (hasard 9.2 %) · rappel 11/17 = 64.7 % (hasard 6.6 %) · precision TOUTES captures 9/10 = 90.0 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   slot 1541  zone 0 (vote) : 31 changements, 17 captures de la zone · precision 14/31 = 45.2 % (hasard 9.2 %) · rappel 16/17 = 94.1 % (hasard 19.0 %) · precision TOUTES captures 16/31 = 51.6 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   slot 1546  zone 0 (vote) : 5 changements, 17 captures de la zone · precision 1/5 = 20.0 % (hasard 9.2 %) · rappel 2/17 = 11.8 % (hasard 3.3 %) · precision TOUTES captures 2/5 = 40.0 % (hasard 27.9 %)
+    zone_state_p2a_test.go:120:   SANS CIRCULARITE (toutes captures, aucun vote de zone) : precision 96/144 = 66.7 % pour un hasard de 27.9 % (facteur 2.39x)
+    zone_state_p2a_test.go:120:   ENSEMBLE (film de 608179 ms) : precision 85/144 = 59.0 % pour un hasard de 10.5 % (facteur 5.60x, exige 2.0x) · rappel 101/135 = 74.8 % (hasard 13.2 %, seuil 80 %)
+    zone_state_p2a_test.go:120:   VERDICT CB.2a.2 (clause temporelle) : NON TENU
+    zone_state_p2a_test.go:120:     slot 1530  zone 1 · captures de l'equipe 0 : valeur dominante 0x00000000 (9/9) · toutes valeurs 0x00000000 x9
+    zone_state_p2a_test.go:120:     slot 1530  zone 1 · captures de l'equipe 1 : valeur dominante 0x00000001 (10/10) · toutes valeurs 0x00000001 x10
+    zone_state_p2a_test.go:120:     slot 1531  zone 1 · captures de l'equipe 0 : valeur dominante 0xFFFFFFFF (9/9) · toutes valeurs 0xFFFFFFFF x9
+    zone_state_p2a_test.go:120:     slot 1531  zone 1 · captures de l'equipe 1 : valeur dominante 0xFFFFFFFF (12/12) · toutes valeurs 0xFFFFFFFF x12
+    zone_state_p2a_test.go:120:     slot 1535  zone 2 · captures de l'equipe 0 : valeur dominante 0x00000000 (10/10) · toutes valeurs 0x00000000 x10
+    zone_state_p2a_test.go:120:     slot 1535  zone 2 · captures de l'equipe 1 : valeur dominante 0x00000001 (5/5) · toutes valeurs 0x00000001 x5
+    zone_state_p2a_test.go:120:     slot 1536  zone 2 · captures de l'equipe 0 : valeur dominante 0xFFFFFFFF (14/14) · toutes valeurs 0xFFFFFFFF x14
+    zone_state_p2a_test.go:120:     slot 1536  zone 2 · captures de l'equipe 1 : valeur dominante 0xFFFFFFFF (6/6) · toutes valeurs 0xFFFFFFFF x6
+    zone_state_p2a_test.go:120:     slot 1540  zone 0 · captures de l'equipe 0 : valeur dominante 0x00000000 (6/6) · toutes valeurs 0x00000000 x6
+    zone_state_p2a_test.go:120:     slot 1540  zone 0 · captures de l'equipe 1 : valeur dominante 0x00000001 (6/6) · toutes valeurs 0x00000001 x6
+    zone_state_p2a_test.go:120:     slot 1541  zone 0 · captures de l'equipe 0 : valeur dominante 0xFFFFFFFF (8/8) · toutes valeurs 0xFFFFFFFF x8
+    zone_state_p2a_test.go:120:     slot 1541  zone 0 · captures de l'equipe 1 : valeur dominante 0xFFFFFFFF (8/8) · toutes valeurs 0xFFFFFFFF x8
+    zone_state_p2a_test.go:120:     slot 1546  zone 0 · captures de l'equipe 1 : valeur dominante 0x00000001 (2/2) · toutes valeurs 0x00000001 x2
+    zone_state_p2a_test.go:120:   VERDICT CB.2a.2 (valeur = index d'equipe du capteur) : 48/105 = 45.7 % toutes emissions · 48/48 = 100.0 % hors emissions neutres (0xFFFFFFFF) — seuil 90 % : PROPRIETAIRE
+    zone_state_p2a_test.go:120:   CONTESTE : 1 valeurs distinctes apres une rampe ABOUTIE, 1 apres une rampe SECHE (1 vs 1 rampes)
+    zone_state_p2a_test.go:120:     valeur 0x20F243F0 : 1 abouties · 0 seches
+    zone_state_p2a_test.go:120:     valeur 0x6680CFAA : 0 abouties · 1 seches
+    zone_state_p2a_test.go:122: 
+    zone_state_p2a_test.go:122: === CB.2a.3 KOTH — zone active appariee par la grappe des positions
+    zone_state_p2a_test.go:122:   84 rampes -> 84 periodes brutes, attribuees par la grappe puis fusionnees
+    zone_state_p2a_test.go:122:   periode slot 1537  [  37229 ;   75769]  38540 ms -> zone rang 2 (InstanceID 0) · 695/2245 positions dedans (2e zone 548) · temoin translate 523
+    zone_state_p2a_test.go:122:   periode slot 1547  [  53690 ;  103914]  50224 ms -> zone rang 1 (InstanceID 0) · 899/2969 positions dedans (2e zone 736) · temoin translate 820
+    zone_state_p2a_test.go:122:   periode slot 1545  [  54690 ;   75869]  21179 ms -> zone rang 2 (InstanceID 0) · 250/732 positions dedans (2e zone 210) · temoin translate 242
+    zone_state_p2a_test.go:122:   periode slot 1537  [  75869 ;   84977]   9108 ms -> zone rang 0 (InstanceID 0) · 213/571 positions dedans (2e zone 144) · temoin translate 98
+    zone_state_p2a_test.go:122:   periode slot 1537  [  84977 ;  112706]  27729 ms -> zone rang 1 (InstanceID 0) · 1726/3933 positions dedans (2e zone 725) · temoin translate 1557
+    zone_state_p2a_test.go:122:   periode slot 1532  [ 104298 ;  140636]  36338 ms -> zone rang 2 (InstanceID 0) · 665/2268 positions dedans (2e zone 583) · temoin translate 592
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 105132 ;  129925]  24793 ms -> zone rang 0 (InstanceID 0) · 684/2205 positions dedans (2e zone 599) · temoin translate 599
+    zone_state_p2a_test.go:122:   periode slot 1547  [ 112190 ;  145892]  33702 ms -> zone rang 2 (InstanceID 0) · 2778/8163 positions dedans (2e zone 1785) · temoin translate 1950
+    zone_state_p2a_test.go:122:   periode slot 1532  [ 140737 ;  191071]  50334 ms -> zone rang 1 (InstanceID 0) · 3681/15083 positions dedans (2e zone 3165) · temoin translate 4237
+    zone_state_p2a_test.go:122:   periode slot 1532  [ 187083 ;  197994]  10911 ms -> zone rang 0 (InstanceID 0) · 251/762 positions dedans (2e zone 147) · temoin translate 166
+    zone_state_p2a_test.go:122:   periode slot 1547  [ 188068 ;  220101]  32033 ms -> zone rang 1 (InstanceID 0) · 1076/4068 positions dedans (2e zone 1030) · temoin translate 1125
+    zone_state_p2a_test.go:122:   periode slot 1532  [ 198096 ;  235434]  37338 ms -> zone rang 2 (InstanceID 0) · 539/1982 positions dedans (2e zone 537) · temoin translate 531
+    zone_state_p2a_test.go:122:   periode slot 1537  [ 234234 ;  289655]  55421 ms -> zone rang 0 (InstanceID 0) · 1301/4643 positions dedans (2e zone 1220) · temoin translate 949
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 238705 ;  261562]  22857 ms -> zone rang 2 (InstanceID 0) · 2480/6529 positions dedans (2e zone 1246) · temoin translate 949
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 259580 ;  289655]  30075 ms -> zone rang 0 (InstanceID 0) · 605/1717 positions dedans (2e zone 328) · temoin translate 424
+    zone_state_p2a_test.go:122:   periode slot 1537  [ 261662 ;  338573]  76911 ms -> zone rang 1 (InstanceID 0) · 6844/23367 positions dedans (2e zone 4996) · temoin translate 5719
+    zone_state_p2a_test.go:122:   periode slot 1537  [ 328329 ;  342645]  14316 ms -> zone rang 2 (InstanceID 0) · 262/898 positions dedans (2e zone 221) · temoin translate 218
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 342326 ;  371905]  29579 ms -> zone rang 0 (InstanceID 0) · 1585/3906 positions dedans (2e zone 639) · temoin translate 565
+    zone_state_p2a_test.go:122:   periode slot 1542  [ 368368 ;  407413]  39045 ms -> zone rang 1 (InstanceID 0) · 1495/5222 positions dedans (2e zone 1163) · temoin translate 1634
+    zone_state_p2a_test.go:122:   periode slot 1537  [ 392000 ;  438647]  46647 ms -> zone rang 2 (InstanceID 0) · 1034/4748 positions dedans (2e zone 1022) · temoin translate 1122
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 401658 ;  449856]  48198 ms -> zone rang 0 (InstanceID 0) · 950/3844 positions dedans (2e zone 806) · temoin translate 735
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 437363 ;  497487]  60124 ms -> zone rang 1 (InstanceID 0) · 7539/18752 positions dedans (2e zone 3574) · temoin translate 8157
+    zone_state_p2a_test.go:122:   periode slot 1537  [ 497487 ;  501711]   4224 ms -> zone rang 2 (InstanceID 0) · 56/262 positions dedans (2e zone 39) · temoin translate 65
+    zone_state_p2a_test.go:122:   periode slot 1537  [ 501711 ;  543858]  42147 ms -> zone rang 1 (InstanceID 0) · 2942/9405 positions dedans (2e zone 1992) · temoin translate 2840
+    zone_state_p2a_test.go:122:   periode slot 1542  [ 523728 ;  532237]   8509 ms -> zone rang 0 (InstanceID 0) · 183/492 positions dedans (2e zone 117) · temoin translate 57
+    zone_state_p2a_test.go:122:   periode slot 1542  [ 532237 ;  565599]  33362 ms -> zone rang 1 (InstanceID 0) · 662/1813 positions dedans (2e zone 314) · temoin translate 695
+    zone_state_p2a_test.go:122:   periode slot 1532  [ 537844 ;  551084]  13240 ms -> zone rang 2 (InstanceID 0) · 230/645 positions dedans (2e zone 186) · temoin translate 204
+    zone_state_p2a_test.go:122:   periode slot 1545  [ 545079 ;  608179]  63100 ms -> zone rang 1 (InstanceID 0) · 2416/7007 positions dedans (2e zone 1386) · temoin translate 2410
+    zone_state_p2a_test.go:122:   NETTETE : 2/28 periodes ou la zone retenue devance la 2e d'un facteur 2 ET bat le temoin translate — 57308 ms sur 959984 ms attribues (6.0 %)
+    zone_state_p2a_test.go:122:   28 periodes · temps couvert 959984 ms dont 959984 ms ATTRIBUES a une zone = 157.8 % du film (608179 ms) — seuil 80 % : TENU
+    zone_state_p2a_test.go:122:   GRAPPE : 44041/138231 positions dans la zone retenue (31.9 %) · TEMOIN zones a 12 m : 39183 (28.3 %)
+--- PASS: TestZoneEtatPhase2a (169.41s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	170.906s

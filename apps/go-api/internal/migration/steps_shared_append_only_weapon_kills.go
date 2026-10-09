@@ -1,12 +1,12 @@
 package migration
 
 // steps_shared_append_only_weapon_kills.go — éradication ART de weapon_kills
-// (shared DB) — Phase 2 campagne #23046 (2026-06-21).
+// (shared DB) — Phase 2 campagne #23645 (2026-06-21).
 //
 // **Pourquoi** : InsertWeaponKills (sync/writes.go) faisait `DELETE FROM
 // weapon_kills WHERE match_id=? AND xuid=?` puis INSERT batch en TX. Le DELETE
 // per-(match,xuid) retire N lignes de l'index idx_wk_match_xuid = vecteur DuckDB
-// #23046 sur la DB SHARED (multi-writer). La table n'a PAS de PK technique :
+// #23645 sur la DB SHARED (multi-writer). La table n'a PAS de PK technique :
 // dé-indexer ne donnerait pas un DELETE PK-only (full-scan) — la forme correcte
 // est append-only générationnel.
 //
@@ -28,7 +28,7 @@ func init() {
 	Register(Migration{
 		Name:        "shared_append_only_weapon_kills_v1",
 		TargetDB:    TargetShared,
-		Description: "weapon_kills append-only (generation_id + vue v_weapon_kills dernière génération) — élimine DELETE+INSERT sur idx_wk (#23046)",
+		Description: "weapon_kills append-only (generation_id + vue v_weapon_kills dernière génération) — élimine DELETE+INSERT sur idx_wk (#23645)",
 		ApplySchema: applyAppendOnlyWeaponKills,
 	})
 }

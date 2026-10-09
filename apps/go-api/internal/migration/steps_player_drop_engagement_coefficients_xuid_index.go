@@ -5,7 +5,7 @@ package migration
 //
 // idx_engagement_coefficients_xuid(xuid) est REDONDANT avec la PRIMARY KEY
 // (xuid, mode_category) dont xuid est le préfixe → tout filtre sur xuid utilise déjà
-// la PK. L'index secondaire n'apporte rien et constitue une surface ART DuckDB #23046
+// la PK. L'index secondaire n'apporte rien et constitue une surface ART DuckDB #23645
 // superflue, re-touchée à chaque écriture du coefficient (saveCoefficient en
 // SELECT-then-write). Drop = pur gain.
 //

@@ -7,14 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"strings"
+	"maps"
+	"slices"
 	"time"
 
 	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // GetTopMatches retourne les 10 meilleurs et 10 moins bons matchs.
@@ -136,7 +137,7 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 }
 
 // GetTopEncounters retourne les 10 joueurs les plus croisés au niveau carrière
-// globale, hors amis configurés (FriendGamertags). Enrichit chaque encounter avec
+// globale, hors amis configurés du joueur. Enrichit chaque encounter avec
 // le MÊME jeu de badges que la Match View et le hub Relations (4 badges de rencontre
 // + 5 badges « solid »), via le calcul partagé relations.ComputeBadges.
 func (s *CareerService) GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error) {
@@ -178,39 +179,23 @@ func (s *CareerService) GetRivals(ctx context.Context) (domain.CareerRivalsRespo
 	}, nil
 }
 
-// resolveFriendXUIDs résout la liste des amis configurés (gamertags) en XUIDs.
-// Dégrade gracieusement : skip silencieux pour chaque gamertag non résolvable.
-// En cas d'amis non résolus, log Warn pour signaler une dérive de config (un
-// gamertag dans settings n'existe ni dans xuid_aliases ni dans match_participants).
+// resolveFriendXUIDs résout la liste des amis configurés (gamertags) en XUIDs, TOUS à la fois,
+// par la résolution partagée avec la composition stricte de l'Escouade
+// (teammates.ResolveFriendXUIDs) : d'abord le registre des profils suivis — un ami suivi a un
+// xuid connu, sans lecture —, puis une seule lecture pour les autres
+// (CareerRepo.ResolveFriendXUIDs : alias puis participants de l'historique du joueur, sans
+// casse). Dégrade gracieusement : un ami non résolu n'est pas exclu (journalisé). XUIDs triés :
+// la liste d'exclusion ne dépend pas de l'ordre d'itération d'une map.
 func (s *CareerService) resolveFriendXUIDs(ctx context.Context) []string {
-	if s.friendGamertags == nil || s.friendXUIDResolver == nil {
+	if s.friendGamertags == nil || s.friendXUIDs == nil {
 		return nil
 	}
-	gts := s.friendGamertags(ctx)
-	if len(gts) == 0 {
-		return nil
+	var suivis map[string]string
+	if s.friendsSuivis != nil {
+		suivis = s.friendsSuivis(ctx)
 	}
-	out := make([]string, 0, len(gts))
-	var unresolved []string
-	for _, gt := range gts {
-		gt = strings.TrimSpace(gt)
-		if gt == "" {
-			continue
-		}
-		xuid, err := s.friendXUIDResolver(ctx, gt)
-		if err != nil || xuid == "" {
-			unresolved = append(unresolved, gt)
-			continue
-		}
-		out = append(out, xuid)
-	}
-	if len(unresolved) > 0 {
-		slog.WarnContext(ctx, "career.top_encounters.friends_unresolved",
-			"unresolved", unresolved,
-			"resolved", len(out),
-		)
-	}
-	return out
+	resolus := teammates.ResolveFriendXUIDs(ctx, "career", s.friendGamertags(ctx), suivis, s.friendXUIDs)
+	return slices.Sorted(maps.Keys(resolus))
 }
 
 // computeCareerEncounterBadges attribue les badges de rencontre de la page Carrière
@@ -338,7 +323,7 @@ func convertTopMatches(rows []domain.TopMatchRawRow) []domain.TopMatchDTO {
 			MapUI:            mapPtr,
 			ModeUI:           modePtr,
 			OutcomeCode:      r.Outcome,
-			OutcomeLabel:     outcomeLabel(r.Outcome),
+			Outcome:          outcomeKeyFromHaloCode(r.Outcome),
 			Kills:            r.Kills,
 			Deaths:           r.Deaths,
 			KDA:              r.KDA,

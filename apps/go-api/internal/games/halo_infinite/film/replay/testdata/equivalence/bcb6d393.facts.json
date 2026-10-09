@@ -1,0 +1,155 @@
+{
+  "players": [
+    {
+      "xuid": "2533274811363842",
+      "kills": 2,
+      "deaths": 3,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "joinMatchMs": 282262
+    },
+    {
+      "xuid": "2533274823110022",
+      "kills": 4,
+      "deaths": 3,
+      "assists": 1,
+      "teamId": 0,
+      "joinMatchMs": 45134
+    },
+    {
+      "xuid": "2533274858283686",
+      "kills": 11,
+      "deaths": 6,
+      "assists": 4,
+      "teamId": 0,
+      "joinMatchMs": 45134
+    },
+    {
+      "xuid": "2533274876732804",
+      "kills": 4,
+      "deaths": 3,
+      "assists": 1,
+      "teamId": 1,
+      "leftInProgress": true,
+      "joinMatchMs": 45134,
+      "leaveMatchMs": 217310
+    },
+    {
+      "xuid": "2533274895111035",
+      "kills": 2,
+      "deaths": 6,
+      "assists": 0,
+      "teamId": 1,
+      "joinMatchMs": 45121
+    },
+    {
+      "xuid": "2535418713587213",
+      "kills": 0,
+      "deaths": 1,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "leftInProgress": true,
+      "joinMatchMs": 218309,
+      "leaveMatchMs": 279377
+    },
+    {
+      "xuid": "2535429985869093",
+      "kills": 7,
+      "deaths": 4,
+      "assists": 1,
+      "teamId": 0,
+      "joinMatchMs": 45134
+    },
+    {
+      "xuid": "2535460750735339",
+      "kills": 2,
+      "deaths": 5,
+      "assists": 0,
+      "teamId": 1,
+      "leftInProgress": true,
+      "joinMatchMs": 45134,
+      "leaveMatchMs": 238649
+    },
+    {
+      "xuid": "2535468064146356",
+      "kills": 1,
+      "deaths": 5,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "joinMatchMs": 239648
+    },
+    {
+      "xuid": "2535469190789936",
+      "kills": 6,
+      "deaths": 8,
+      "assists": 4,
+      "teamId": 0,
+      "joinMatchMs": 45134
+    },
+    {
+      "xuid": "2791963697577117",
+      "kills": 10,
+      "deaths": 5,
+      "assists": 0,
+      "teamId": 1,
+      "leftInProgress": true,
+      "joinMatchMs": 45134,
+      "leaveMatchMs": 339389
+    },
+    {
+      "xuid": "bid(35.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "leftInProgress": true,
+      "joinMatchMs": 238653,
+      "leaveMatchMs": 239751
+    },
+    {
+      "xuid": "bid(38.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "leftInProgress": true,
+      "joinMatchMs": 217314,
+      "leaveMatchMs": 218414
+    },
+    {
+      "xuid": "bid(41.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "leftInProgress": true,
+      "joinMatchMs": 279381,
+      "leaveMatchMs": 282382
+    },
+    {
+      "xuid": "bid(59.0)",
+      "kills": 0,
+      "deaths": 1,
+      "assists": 0,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "joinMatchMs": 339393
+    }
+  ],
+  "teamScores": [
+    3,
+    0
+  ],
+  "gameVariantName": "CTF:Arena",
+  "mapId": "5324364b-39a8-4f93-96a6-b80a1f18ce8a",
+  "matchId": "bcb6d393-8f5e-40e3-806b-e3cb35bfc9b0",
+  "mapNames": [
+    "Cliffhanger"
+  ]
+}

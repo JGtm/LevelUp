@@ -1,0 +1,13 @@
+m1_genre_vide : ROUGE [TestLaTableDesGenresEstCelleDuJeu]
+m1b_version_native : ROUGE [TestLaTableDuFilmEstUnPrefixeDeLaTableNative]
+m2_terminateur : ROUGE [TestLaVueALueRendLeDebutDeLaVueB]
+m3_corruption : ROUGE [TestLeControleDeCorruptionSuitLaCharge]
+m4_versions : ROUGE [TestLaTableDuFilmEstUnPrefixeDeLaTableNative]
+m5_polarite_degats : ROUGE [TestLesDegatsLisentLaPorteInverseeDuJeu]
+m6_tir_court : ROUGE [TestLeTirCourtSArreteApresSaDirection]
+m7_crochet : ROUGE [TestLaVueADonneLeDebutQueLaSignatureNeTrouvePas]
+m8_cardinal : ROUGE [TestLaVueANeDevineRien]
+m9_polarite_rechargement : ROUGE [TestLaVueALueRendLeDebutDeLaVueB]
+m10_index_de_plage : ROUGE [TestUnIndexDePlageNeSeLitQuAuNiveauDObjet]
+m11_genre_non_porte : ROUGE [TestLaVueANeDevineRien]
+# note : m6_tir_court a SURVECU au premier passage (le test ecrivait la largeur par la constante mutee) : test corrige (immediat 0xa du jeu), puis ROUGE. m1b_version_native a SURVECU au passage sur le code final (le test construisait la table native par versionNative) : versions de DAT_14474cd90 epinglees dans le test, puis ROUGE.

@@ -23,14 +23,16 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 type mapIDList []string
@@ -49,6 +51,15 @@ func main() {
 			"régénérer HORS LIGNE tout le catalogue depuis un dossier de .mvar locaux")
 		rateMS = flag.Int("rate-ms", 1000, "délai entre deux requêtes réseau (politesse)")
 		dryRun = flag.Bool("dry-run", false, "ne pas écrire le catalogue")
+		// Sans ce dépôt, --refresh-from n'a aucune source : le chemin hors ligne exige un
+		// dossier de .mvar que rien ne produisait. Les fichiers y sont nommés comme le
+		// catalogue les enregistre (mvar_file), c'est ce que --refresh-from relit.
+		saveMvar = flag.String("save-mvar", "",
+			"déposer chaque .mvar téléchargé dans ce dossier (source de --refresh-from)")
+		// Sortie de DIAGNOSTIC, jamais le catalogue : le décor d'une carte Forge EST fait
+		// d'objets de variante, et sans eux aucune revue visuelle n'est possible.
+		dumpObjectsTo = flag.String("dump-objects", "",
+			"avec --from-file : écrire TOUS les objets de la variante dans ce fichier JSON (diagnostic)")
 	)
 	flag.Var(&mapIDs, "map-id", "identifiant d'asset de carte (répétable)")
 	flag.Parse()
@@ -83,7 +94,7 @@ func main() {
 		if len(mapIDs) != 1 {
 			fail(ctx, "--from-file", errors.New("exige exactement un --map-id"))
 		}
-		if err := ingestLocal(ctx, cat, mapIDs[0], *fromFile); err != nil {
+		if err := ingestLocal(ctx, cat, mapIDs[0], *fromFile, *dumpObjectsTo); err != nil {
 			fail(ctx, "ingestion locale", err)
 		}
 		finish(ctx, cat, outPath, *dryRun)
@@ -102,14 +113,14 @@ func main() {
 	if err != nil {
 		fail(ctx, "authentification", err)
 	}
-	client := newUGCClient(tokens)
+	client := mapcatalog.NewClient(tokens)
 
 	var failures []string
 	for i, t := range targets {
 		if i > 0 && *rateMS > 0 {
 			time.Sleep(time.Duration(*rateMS) * time.Millisecond)
 		}
-		if err := ingestRemote(ctx, cat, client, t); err != nil {
+		if err := ingestRemote(ctx, cat, client, t, *saveMvar); err != nil {
 			// Échec documenté, jamais contourné : une carte absente du catalogue
 			// vaut mieux qu'un objectif affiché au mauvais endroit.
 			slog.ErrorContext(ctx, "mapobj: carte non traitée",
@@ -177,23 +188,28 @@ func resolveTargets(ctx context.Context, cfg *config.AppConfig, explicit []strin
 }
 
 // ingestRemote télécharge et ingère toutes les variantes .mvar d'une carte.
-func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) error {
-	asset, err := c.fetchAsset(ctx, t.mapID, "")
+func ingestRemote(ctx context.Context, cat *catalog, c *mapcatalog.Client, t target, saveDir string) error {
+	asset, err := c.FetchAsset(ctx, t.mapID, "")
 	if err != nil {
 		return err
 	}
-	files := asset.mvarPaths()
+	files := asset.MvarPaths()
 	if len(files) == 0 {
 		return fmt.Errorf("aucun fichier .mvar dans l'asset (fichiers: %v)",
 			asset.Files.FileRelativePaths)
 	}
 	// Une carte peut exposer plusieurs .mvar (Cliffhanger : map.mvar + ridgeline.mvar).
-	// On retient celle qui porte le plus d'objets d'objectif ; les autres sont loguées.
+	// On retient celle qui porte le plus d'objets d'objectif, APRÈS avoir écarté les
+	// variantes dont les objectifs sont rangés hors terrain (cf. variant.go).
 	var best *mapEntry
 	var bestVariant *mapvar.Variant
+	parked := 0
 	for _, rel := range files {
-		buf, err := c.fetchMvar(ctx, asset, rel)
+		buf, err := c.FetchMvar(ctx, asset, rel)
 		if err != nil {
+			return err
+		}
+		if err := saveVariantFile(ctx, saveDir, t.mapID, rel, buf); err != nil {
 			return err
 		}
 		v, err := mapvar.Parse(buf)
@@ -203,6 +219,12 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) err
 		nObj := len(v.Objectives())
 		slog.InfoContext(ctx, "mapobj: variante parsée",
 			"map_id", t.mapID, "file", rel, "objets", len(v.Objects), "objectifs", nObj)
+		if isParkedPalette(v) {
+			parked++
+			slog.WarnContext(ctx, "mapobj: variante écartée, objectifs rangés hors terrain",
+				"map_id", t.mapID, "file", rel, "objectifs", nObj)
+			continue
+		}
 		if best == nil || nObj > len(best.Objectives) {
 			best = &mapEntry{
 				MapID: t.mapID, VersionID: asset.VersionID, PublicName: asset.PublicName,
@@ -213,13 +235,69 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target) err
 			bestVariant = v
 		}
 	}
+	if best == nil {
+		// Carte absente du catalogue plutôt qu'objectif au mauvais endroit (fetch.go).
+		return fmt.Errorf("aucune variante exploitable : %d fichier(s), %d écarté(s) pour objectifs rangés",
+			len(files), parked)
+	}
+	gardeModuleConnu(cat, best)
 	cat.addVariant(best, bestVariant)
+	return nil
+}
+
+// gardeModuleConnu empêche un tirage RÉSEAU d'effacer le module déjà connu d'une carte.
+//
+// LE DÉFAUT QU'ELLE CORRIGE, et il a coûté huit cartes (mesuré le 2026-08-26). `Module` est
+// dérivé du NOM DU FICHIER `.mvar`. Depuis le dépôt de variantes ce nom est descriptif
+// (`cliffhanger_ridgeline.mvar`) et le module s'y lit ; depuis le réseau, il ne l'est pas —
+// `saveVariantFile` documente déjà que « plusieurs cartes exposent un fichier nommé
+// `map.mvar` ». Le re-tirage du 2026-08-25 (`d50f3b728`) a donc écrasé `module` par `map` sur
+// **58 des 73 entrées** : le catalogue est passé de 71 modules distincts à 12, et
+// `mapfond-build` ne savait plus cuire que 11 des 19 fonds natifs publiés — dont Cliffhanger,
+// Aquarius, Prism, Streets, Recharge, Chasm, Launch Site et Behemoth.
+//
+// Le garde-rail de ce lot-là comptait les collines (« 0 perdue ») et n'a rien vu : il mesurait
+// un autre champ. `TestCatalogueObjectifsModulesDistincts` mesure celui-ci.
+//
+// LA RÈGLE : le réseau ne connaît PAS le module d'une carte, donc il ne peut pas le corriger —
+// il ne peut que le perdre. Un module déjà au catalogue est conservé tel quel.
+func gardeModuleConnu(cat *catalog, e *mapEntry) {
+	prev, ok := cat.Maps[e.MapID]
+	if !ok || prev == nil || prev.Module == "" {
+		return
+	}
+	e.Module = prev.Module
+}
+
+// saveVariantFile dépose un .mvar téléchargé dans un SOUS-DOSSIER par map_id.
+//
+// Pas à plat : plusieurs cartes exposent un fichier nommé `map.mvar` (Vagabond et une
+// variante de Highpower, mesuré le 2026-08-08). À plat, la seconde écrase la première et
+// --refresh-from rendrait ensuite les objectifs d'une carte pour une autre, sans un mot.
+// mvarPath (refresh.go) lit ce sous-dossier en priorité.
+func saveVariantFile(ctx context.Context, dir, mapID, rel string, buf []byte) error {
+	if dir == "" {
+		return nil
+	}
+	dir = filepath.Join(dir, mapID)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	base := rel
+	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
+		base = base[i+1:]
+	}
+	path := filepath.Join(dir, base)
+	if err := os.WriteFile(path, buf, 0o644); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "mapobj: .mvar déposé", "path", path, "octets", len(buf))
 	return nil
 }
 
 // ingestLocal ingère un .mvar déjà présent sur disque (chemin hors ligne, pour
 // rejouer un parse sans re-solliciter le réseau).
-func ingestLocal(ctx context.Context, cat *catalog, mapID, path string) error {
+func ingestLocal(ctx context.Context, cat *catalog, mapID, path, dumpPath string) error {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -228,12 +306,26 @@ func ingestLocal(ctx context.Context, cat *catalog, mapID, path string) error {
 	if err != nil {
 		return err
 	}
+	if dumpPath != "" {
+		if err := dumpObjects(dumpPath, v); err != nil {
+			return fmt.Errorf("dump des objets: %w", err)
+		}
+		slog.InfoContext(ctx, "mapobj: objets de variante ecrits (diagnostic)",
+			"path", dumpPath, "objets", len(v.Objects))
+	}
 	base := path
 	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
 		base = base[i+1:]
 	}
 	e := &mapEntry{MapID: mapID, MvarFile: base,
 		Module: strings.TrimSuffix(base, ".mvar"), FetchedAt: time.Now().UTC()}
+	// Une carte DEJA au catalogue garde ses metadonnees RESEAU (version_id, public_name,
+	// fetched_at) : le re-parse local ne les connait pas, et les ecraser daterait un objet fige
+	// au reseau du jour de sa relecture (meme regle que --refresh-from). Le nom de fichier, lui,
+	// est celui qui vient d'etre parse : c'est la verite de ce que le catalogue porte.
+	if prev, ok := cat.Maps[mapID]; ok && prev != nil {
+		e.VersionID, e.PublicName, e.FetchedAt = prev.VersionID, prev.PublicName, prev.FetchedAt
+	}
 	cat.addVariant(e, v)
 	slog.InfoContext(ctx, "mapobj: variante locale ingérée",
 		"map_id", mapID, "file", base, "objets", len(v.Objects), "objectifs", len(e.Objectives))

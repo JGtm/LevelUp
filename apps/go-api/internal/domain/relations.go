@@ -60,6 +60,10 @@ type RelationInsight struct {
 	DeathsSuffered int      `json:"deaths_suffered"`
 	DuelRatio      *float64 `json:"duel_ratio"`
 
+	// Assists : assistances échangées sur les matchs mesurés joués ensemble (même
+	// équipe). Absent (nil) = aucun match mesuré ensemble — l'écran affiche « — », jamais 0.
+	Assists *RelationAssists `json:"assists,omitempty"`
+
 	FirstSeenAt *string `json:"first_seen_at"`
 	LastSeenAt  *string `json:"last_seen_at"`
 

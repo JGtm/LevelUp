@@ -91,6 +91,13 @@ type MatchHistoryRawRow struct {
 	PerfPlacementTotal *int
 	MyTeamScore        *int // score de l'équipe du joueur (depuis team_id)
 	EnemyTeamScore     *int // score de l'équipe adverse
+	// MyRoundsWon / EnemyRoundsWon / RoundsTotal : les MANCHES du match, du point de vue
+	// du joueur. Sur une variante déclarée dans regulation.toml [rounds_decide], ce sont
+	// elles qui disent le résultat — le score en points y est un cumul qui peut donner la
+	// victoire au perdant. Nil = inconnu → l'affichage garde les points.
+	MyRoundsWon    *int
+	EnemyRoundsWon *int
+	RoundsTotal    *int
 	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
 	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag).
 	// Peuplé par sync.BackfillDominanceFlags via engine.RunBackfillComebackBadges.
@@ -114,28 +121,34 @@ type PaginationMeta struct {
 
 // MatchHistoryRow représente une ligne dans la table historique des parties.
 type MatchHistoryRow struct {
-	MatchID                  string    `json:"match_id"`
-	StartTime                time.Time `json:"start_time"`
-	StartTimeLabel           string    `json:"start_time_label"`
-	OutcomeCode              int       `json:"outcome_code"`
-	OutcomeLabel             string    `json:"outcome_label"`
-	ScoreLabel               string    `json:"score_label"`
-	MapUI                    *string   `json:"map_ui"`
-	ModeUI                   *string   `json:"mode_ui"`
-	PlaylistLabel            *string   `json:"playlist_label"`
-	TeamMMR                  *float64  `json:"team_mmr"`
-	EnemyMMR                 *float64  `json:"enemy_mmr"`
-	DeltaMMR                 *float64  `json:"delta_mmr"`
-	WinRateHist              *float64  `json:"win_rate_hist"`
-	WinRateHistTotal         *int      `json:"win_rate_hist_total"`
-	PerformanceScoreRelative *int      `json:"performance_score_relative"`
-	PerfTier                 int       `json:"perf_tier,omitempty"` // 1-5 ; 0 si score absent
-	KDA                      *float64  `json:"kda,omitempty"`
-	Kills                    int       `json:"kills,omitempty"`
-	Deaths                   int       `json:"deaths,omitempty"`
-	Assists                  int       `json:"assists,omitempty"`
-	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
-	SkillRatingType          *string   `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
+	MatchID        string    `json:"match_id"`
+	StartTime      time.Time `json:"start_time"`
+	StartTimeLabel string    `json:"start_time_label"`
+	OutcomeCode    int       `json:"outcome_code"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome    string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	ScoreLabel string `json:"score_label"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (score du mode rendu par l'API) ou
+	// "rounds" (manches gagnées). Alimente l'infobulle d'en-tête de colonne, qui explique
+	// que la colonne montre les manches quand le mode s'y joue. Vide = pas de score.
+	ScoreKind                string   `json:"score_kind,omitempty"`
+	MapUI                    *string  `json:"map_ui"`
+	ModeUI                   *string  `json:"mode_ui"`
+	PlaylistLabel            *string  `json:"playlist_label"`
+	TeamMMR                  *float64 `json:"team_mmr"`
+	EnemyMMR                 *float64 `json:"enemy_mmr"`
+	DeltaMMR                 *float64 `json:"delta_mmr"`
+	WinRateHist              *float64 `json:"win_rate_hist"`
+	WinRateHistTotal         *int     `json:"win_rate_hist_total"`
+	PerformanceScoreRelative *int     `json:"performance_score_relative"`
+	PerfTier                 int      `json:"perf_tier,omitempty"` // 1-5 ; 0 si score absent
+	KDA                      *float64 `json:"kda,omitempty"`
+	Kills                    int      `json:"kills,omitempty"`
+	Deaths                   int      `json:"deaths,omitempty"`
+	Assists                  int      `json:"assists,omitempty"`
+	SkillTierLabel           *string  `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
+	SkillRatingType          *string  `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
 	// SkillRankImageURL : URL de l'image du badge de palier, résolue par
 	// l'adaptateur d'assets du TITRE (analysis.SkillBadgeURL + résolveur injecté).
 	// Nil quand le titre n'expose pas de badge, que le palier est en placement ou
@@ -167,9 +180,14 @@ type MatchHistoryRow struct {
 	// réel du temps réglementaire en secondes (cf. analysis.ComputeOvertime).
 	// Faux/0 quand le titre n'a pas de table réglementaire, que la variante y est
 	// inconnue ou que la durée n'est pas estimable — dégradation sûre.
-	IsOvertime          bool   `json:"is_overtime,omitempty"`
-	OvertimeSeconds     int    `json:"overtime_seconds,omitempty"`
-	MatchURL            string `json:"match_url"`
+	IsOvertime      bool   `json:"is_overtime,omitempty"`
+	OvertimeSeconds int    `json:"overtime_seconds,omitempty"`
+	MatchURL        string `json:"match_url"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match — la ligne peut donc
+	// porter un lien vers la page de rejeu. Résolu en UN listing de dossier par requête
+	// (port.ReplayAvailability), jamais un accès disque par ligne. Faux/absent quand le
+	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
+	HasReplay           bool   `json:"has_replay,omitempty"`
 	IsExcluded          bool   `json:"is_excluded"`
 	IsWithFriends       bool   `json:"is_with_friends"`
 	ExperienceTypeLabel string `json:"experience_type_label,omitempty"`
@@ -242,7 +260,11 @@ type MatchHistoryQueryRequest struct {
 	MapNames        []string   `json:"map_names,omitempty"`
 	ModeNames       []string   `json:"mode_names,omitempty"`
 	SquadScope      string     `json:"squad_scope,omitempty"`
-	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// ReplayScope : présence d'un rejeu 2D — "" (tous) | "with" | "without".
+	// Même forme à 3 états que SquadScope. Filtré côté Go depuis l'ensemble des
+	// artefacts listé une fois par requête (jamais un accès disque par ligne).
+	ReplayScope   string `json:"replay_scope,omitempty"`
+	MatchIDSearch string `json:"match_id_search,omitempty"`
 	// MatchIDs : whitelist de match_id à conserver. Si non vide, seules les
 	// rows dont match_id ∈ MatchIDs sont gardées (filtre exact). Utilisé par
 	// l'Explorer mode Joueur pour scoper aux matchs en commun avec une cible.

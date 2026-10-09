@@ -8,17 +8,23 @@
 // ("Arena:Slayer" → "Slayer"), tandis que mode_category.go infère la
 // CATÉGORIE PARENTE ("Arena:Slayer" → "Assassin"). Voir l'en-tête de
 // mode_category.go pour le détail des 2 niveaux orthogonaux.
+//
+// LES DEUX GRAMMAIRES D'UN pair_name (depuis le 2026-09-19) : « Conteneur:Mode on Carte »
+// (« Arena:Slayer on Bazaar ») ET la forme INVERSÉE « Mode:Conteneur [qualificatif] on Carte »
+// (« Slayer:Arena on Live Fire », « CTF:Arena Neutral Flag on Cliffhanger »). Les jetons de
+// conteneur vivent dans `analysis/modelabel` (une seule liste, paquet feuille) ; ce fichier
+// est le chokepoint unique — ses appelants ne connaissent pas la grammaire.
 package analysis
 
 import (
 	"regexp"
 	"strings"
+
+	"levelup/go-api/internal/analysis/modelabel"
 )
 
 // Regex partagées pour la normalisation des modes.
 var (
-	// Strip " sur NomCarte" ou " on MapName" (FR + EN) — générique.
-	modeLabelStripMapRe = regexp.MustCompile(`(?i)\s+(?:on|sur)\s+.+$`)
 	// Strip " - Forge" et " - Ranked" (suffixes Halo Infinite).
 	modeLabelForgeRe  = regexp.MustCompile(`(?i)\s*-\s*Forge\b`)
 	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
@@ -56,11 +62,15 @@ var playlistIdentityPrefixes = map[string]string{
 //
 // Logique (alignée sur Python resolve_display_mode + translate_pair_name) :
 //  1. Strip map-label connu : " sur {map}" / " on {map}" → retiré en priorité.
-//  2. Extraction du mode depuis le format pair_name :
+//  2. Extraction du mode depuis le format pair_name (extractModeFromPairName) :
 //     - Format FR avec séparateur espacé " : " → prend la partie avant
 //     ("Assassin : Classé" → "Assassin").
-//     - Format technique "Prefix:Mode" → prend la partie après le dernier ":"
-//     ("Arena:Slayer" → "Slayer", "BTB:CTF" → "CTF").
+//     - Format technique "Conteneur:Mode" → prend la partie après le dernier ":"
+//     ("Arena:Slayer" → "Slayer", "BTB:CTF" → "CTF") ; identité de playlist à gauche
+//     conservée ("Super Fiesta:Slayer" → "Super Fiesta").
+//     - Forme INVERSÉE "Mode:Conteneur [qualificatif]" → le mode est à gauche, recollé
+//     derrière le qualificatif ("Slayer:Arena" → "Slayer", "CTF:Arena Neutral Flag" →
+//     "Neutral Flag CTF", "Slayer:Arena Super Fiesta" → "Super Fiesta").
 //  3. Strip générique " sur .+" / " on .+" (FR + EN) si non retiré à l'étape 1.
 //  4. Strip " - Forge" et " - Ranked".
 //
@@ -85,32 +95,77 @@ func NormalizeModeLabel(raw string, mapLabels ...string) string {
 		}
 	}
 
-	// Étape 2 — extraction du mode depuis le format pair_name
-	// Format FR : "Assassin : Classé" → "Assassin" (prend avant " : ")
-	if idx := strings.Index(normalized, " : "); idx > 0 {
-		normalized = strings.TrimSpace(normalized[:idx])
-	} else if idx := strings.LastIndex(normalized, ":"); idx >= 0 && idx < len(normalized)-1 {
-		// Format technique "Arena:Slayer" ou "BTB:CTF" → prend après ":"
-		// SAUF si le préfixe gauche est lui-même l'identité de la playlist
-		// (Super Fiesta, Husky Raid, Super Husky Raid) — auquel cas on garde
-		// le préfixe pour ne pas afficher "Slayer/Assassin" sur une tuile
-		// Super Fiesta. Cf. thought_log 2026-05-08.
-		left := strings.TrimSpace(normalized[:idx])
-		if canonical, ok := playlistIdentityPrefixes[strings.ToLower(left)]; ok {
-			normalized = canonical
-		} else {
-			normalized = strings.TrimSpace(normalized[idx+1:])
-		}
-	}
+	// Étape 2 — extraction du mode depuis le format pair_name (les deux grammaires)
+	normalized = extractModeFromPairName(normalized)
 
-	// Étape 3 — strip générique " sur/on <carte>" résiduel
-	normalized = modeLabelStripMapRe.ReplaceAllString(normalized, "")
+	// Étape 3 — strip générique " sur/on <carte>" résiduel. La regex vit dans le paquet
+	// feuille `modelabel` : l'appariement du bloc « Score dans le temps » a besoin du MÊME
+	// retrait sans le reste de cette normalisation, et deux expressions du même découpage
+	// finiraient par couper différemment (règle CLAUDE.md n°6).
+	normalized = modelabel.StripMapSuffix(normalized)
 
 	// Étape 4 — strip suffixes Forge / Ranked
 	normalized = modeLabelForgeRe.ReplaceAllString(normalized, "")
 	normalized = modeLabelRankedRe.ReplaceAllString(normalized, "")
 
 	return strings.TrimSpace(normalized)
+}
+
+// extractModeFromPairName — l'étape 2 de NormalizeModeLabel : le MODE d'un pair_name.
+//
+//   - Format FR " : " espacé : « Assassin : Classé » → « Assassin » (partie avant).
+//   - Format technique « left:right » (découpé sur le DERNIER « : ») :
+//     1. left est une identité de playlist (Super Fiesta, Husky Raid, Super Husky Raid) →
+//     l'identité canonique, pour ne pas afficher « Slayer/Assassin » sur une tuile
+//     Super Fiesta (cf. thought_log 2026-05-08). Testé AVANT la règle du conteneur : ces
+//     identités sont aussi des conteneurs de grammaire.
+//     2. left est un conteneur (modelabel.IsContainer) → right : « Arena:Slayer » → « Slayer »,
+//     « Ranked:Doubles Slayer » → « Doubles Slayer ».
+//     3. right COMMENCE par un conteneur → forme INVERSÉE « Mode:Conteneur [qualificatif] » :
+//     cf. invertedModeLabel.
+//     4. sinon → right (défaut) : « Infection:Alpha Zombies » → « Alpha Zombies ».
+//
+// Sans « : » (ou « : » final), le libellé sort intact.
+func extractModeFromPairName(label string) string {
+	if idx := strings.Index(label, " : "); idx > 0 {
+		return strings.TrimSpace(label[:idx])
+	}
+	idx := strings.LastIndex(label, ":")
+	if idx < 0 || idx >= len(label)-1 {
+		return label
+	}
+	left := strings.TrimSpace(label[:idx])
+	right := strings.TrimSpace(label[idx+1:])
+	if canonical, ok := playlistIdentityPrefixes[strings.ToLower(left)]; ok {
+		return canonical
+	}
+	if modelabel.IsContainer(left) {
+		return right
+	}
+	// Forme inversée : le suffixe de carte suit le qualificatif (« Arena Neutral Flag on
+	// Cliffhanger ») — il se retire ICI, avant le recollage, sinon l'étape 3 mangerait le mode
+	// recollé derrière lui (« Neutral Flag on Cliffhanger CTF » → « Neutral Flag »).
+	if _, rest, ok := modelabel.SplitContainer(modelabel.StripMapSuffix(right)); ok {
+		return invertedModeLabel(left, rest)
+	}
+	return right
+}
+
+// invertedModeLabel recolle le mode d'un pair_name en grammaire inversée « left:Conteneur rest » :
+//   - rest vide → left : « Slayer:Arena » → « Slayer », « Gruntpocalypse:Fiesta » → « Gruntpocalypse » ;
+//   - rest est une identité de playlist → l'identité canonique : « Slayer:Arena Super Fiesta »
+//     → « Super Fiesta » (même règle que le préfixe gauche : l'identité prime sur le sous-mode) ;
+//   - sinon → « rest left », l'ordre naturel des libellés de mode_name_tr : « CTF:Arena Neutral
+//     Flag » → « Neutral Flag CTF », « Slayer:Arena Tactical » → « Tactical Slayer »,
+//     « CTF:BTB Fiesta » → « Fiesta CTF ».
+func invertedModeLabel(left, rest string) string {
+	if rest == "" {
+		return left
+	}
+	if canonical, ok := playlistIdentityPrefixes[strings.ToLower(rest)]; ok {
+		return canonical
+	}
+	return rest + " " + left
 }
 
 // ResolveModeUI applique la formule canonique de résolution du libellé de mode
@@ -184,47 +239,11 @@ func resolveModeSource(preferred, fallback *string) *string {
 // knownModesEN = noms EN canoniques (clés mode_en de mode_name_tr), chargés par le
 // caller (repo). Retourne "" si aucun match → le caller garde le label d'origine.
 // Fonction pure (aucun accès DB), à appliquer APRÈS NormalizeModeLabel.
+//
+// LA RÈGLE D'APPARIEMENT ELLE-MÊME VIT DANS `analysis/modelabel` depuis le 2026-09-03 :
+// `games/mappings` en a besoin pour la table `[score_timeline]` de regulation.toml et ne
+// peut pas importer `analysis` (cycle). Ce point d'entrée est conservé — tous ses
+// appelants sont inchangés — mais il n'y a qu'UNE implémentation.
 func ExtractKnownMode(label string, knownModesEN []string) string {
-	label = strings.TrimSpace(label)
-	if label == "" || len(knownModesEN) == 0 {
-		return ""
-	}
-	low := strings.ToLower(label)
-	best := ""
-	for _, m := range knownModesEN {
-		m = strings.TrimSpace(m)
-		if m == "" || len(m) <= len(best) {
-			continue // garde le match le plus long (ex. "Super Fiesta" > "Fiesta")
-		}
-		if wholeWordIndex(low, strings.ToLower(m)) >= 0 {
-			best = m
-		}
-	}
-	return best
-}
-
-// wholeWordIndex retourne l'index de needle dans haystack en exigeant des frontières
-// de mot (lettres/chiffres) de part et d'autre, sinon -1. Évite que "Slayer" matche
-// au milieu d'un autre mot. haystack/needle doivent être déjà en minuscules ASCII.
-func wholeWordIndex(haystack, needle string) int {
-	for from := 0; from <= len(haystack)-len(needle); {
-		i := strings.Index(haystack[from:], needle)
-		if i < 0 {
-			return -1
-		}
-		idx := from + i
-		beforeOK := idx == 0 || !isWordChar(haystack[idx-1])
-		end := idx + len(needle)
-		afterOK := end >= len(haystack) || !isWordChar(haystack[end])
-		if beforeOK && afterOK {
-			return idx
-		}
-		from = idx + 1
-	}
-	return -1
-}
-
-// isWordChar : caractère de mot ASCII (a-z, 0-9, _). haystack est déjà en minuscules.
-func isWordChar(b byte) bool {
-	return b == '_' || (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
+	return modelabel.ExtractKnownMode(label, knownModesEN)
 }

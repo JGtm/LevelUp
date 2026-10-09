@@ -1,0 +1,71 @@
+/**
+ * MatchCardAssistedFrags — sous la barre frags / assistances / décès de la tuile de match :
+ * la barre à trois tons du sens « reçues » (un coéquipier a assisté le joueur), part de
+ * dégâts par segment en infobulle, puis SA légende « N frags assistés sur M » dessous
+ * (comme la barre du dessus porte la sienne — la part en % ne s'écrit pas, la barre la
+ * montre).
+ *
+ * BASE = les frags OFFICIELS du match (`frags_official`, ceux que la tuile affiche juste
+ * au-dessus), frags sur des bots compris : la barre et la légende se lisent sur la même base
+ * que le compte de frags. Un frag dont l'assistance n'est pas lue reste dans la base sans
+ * entrer au numérateur (règle des bases, `domain/relation_assists.go`) : aucune mention
+ * à part.
+ *
+ * L'emplacement est RÉSERVÉ : sans `assisted_frags` (film absent ou sans assistance lue)
+ * le composant occupe la même hauteur, vide — sur la grille de l'accueil, les tuiles
+ * voisines gardent leurs stats alignées. Aucun « — » ni « 0 » fabriqué.
+ */
+import { AssistTierBar, ASSIST_RECEIVED_TOKEN } from '@/features/_shared/assists/AssistTierBar'
+import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
+import { assistShareSegments } from '@/features/_shared/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
+import { tokenCssVar } from '@/lib/accessibility'
+import type { MatchAssistedFrags } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import type { Locale } from '@/lib/i18n/locale'
+
+// Barre (h-2, comme la barre frags / assistances / décès) + interligne 6 px + légende text-2xs
+// (10 px, leading-none) : la hauteur réservée est celle du bloc mesuré. `mt-3` le détache
+// de la légende frags / assistances / morts (demande utilisateur 2026-09-19).
+const SLOT_CLASS = 'mt-3 h-[24px] space-y-1.5'
+const LEGEND_CLASS = 'text-center font-mono text-2xs tabular-nums leading-none whitespace-nowrap'
+
+export function MatchCardAssistedFrags({
+  assisted,
+  locale,
+}: {
+  assisted: MatchAssistedFrags | null | undefined
+  locale: Locale
+}) {
+  if (!assisted) {
+    return <div data-testid="match-card-assisted-frags-slot" className={SLOT_CLASS} aria-hidden="true" />
+  }
+  const base = assisted.frags_official
+  return (
+    <div data-testid="match-card-assisted-frags" className={SLOT_CLASS}>
+      <AssistTierBar
+        segments={assistShareSegments(assisted.received, base)}
+        color={tokenCssVar(ASSIST_RECEIVED_TOKEN)}
+        text={ASSISTS_TEXT[locale]}
+        locale={locale}
+        variant="tile"
+        testId="match-card-assist-segment"
+      />
+      <div className={LEGEND_CLASS}>
+        {/* Ton FORT du sens (même teinte, clarté montée vers le premier plan du thème) : le
+            jeton tel quel, pinné sombre par le contraste clair, est trop terne en texte sur
+            la tuile (retour utilisateur 2026-09-19). */}
+        <span
+          data-testid="match-card-assisted-frags-legend"
+          style={{ color: assistTierTone(tokenCssVar(ASSIST_RECEIVED_TOKEN), 'high') }}
+        >
+          {formatMessage(commonManifest, 'common.match_card.assisted_frags', locale, {
+            assisted: assisted.received.total,
+            frags: base,
+          })}
+        </span>
+      </div>
+    </div>
+  )
+}

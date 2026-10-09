@@ -33,13 +33,15 @@ LIMIT 1`
 //	?4 = myXUID (my_team), ?5 = myXUID (me.xuid=?).
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
+//
+// AUCUN GAMERTAG EN SQL (lot A du plan perf « lectures par périmètre », 2026-09-26, ADR 0036
+// I1) : la jointure sur la vue canonique des noms coûtait 2,2 s par ouverture. GetMatchEncounters
+// nomme les lignes par l'annuaire du match en portée base (squad_repo_annuaire.go).
 var Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
            FALSE AS is_bot
     FROM match_participants p
-    LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
@@ -53,7 +55,6 @@ my_team AS (
 )
 SELECT
     tm.xuid,
-    tm.gamertag,
     tm.is_bot,
     COUNT(DISTINCT hist.match_id) AS count_together,
     (tm.team_id = (SELECT team_id FROM my_team)) AS is_ally
@@ -61,7 +62,7 @@ FROM this_match tm
 LEFT JOIN match_participants me ON me.xuid = ?` + campaignExclusionToken + `
 LEFT JOIN match_participants hist
     ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
-GROUP BY tm.xuid, tm.gamertag, tm.is_bot, tm.team_id
+GROUP BY tm.xuid, tm.is_bot, tm.team_id
 ORDER BY count_together DESC`
 
 // Q23bMatchEncounterStats : stats riches par encounter (chunk MV4.C').
@@ -80,12 +81,16 @@ ORDER BY count_together DESC`
 //	?8 = myXUID  (kv join condition)
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
+//
+// AUCUN NOM (lot A, 2026-09-26, ADR 0036 I1) : this_match joignait la vue canonique des noms pour
+// une colonne gamertag que le SELECT final ne rendait pas — une évaluation entière de la vue pour
+// rien. La colonne et la jointure sont parties ; les lignes rendues sont inchangées (le nom d'une
+// rencontre vient de Q23, nommée par l'annuaire du match). Ce qui reste du coût de Q23b est la
+// fenêtre `_latest` du kill-feed (kv_stats, hors lot A).
 var Q23bMatchEncounterStats = `
 WITH this_match AS (
-    SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag
+    SELECT p.xuid, p.team_id
     FROM match_participants p
-    LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).
@@ -172,6 +177,12 @@ ORDER BY tm.xuid`
 // (item 3.1). Les lignes historiques ont status NULL et restent donc visibles —
 // d'où le COALESCE de MediaVisiblePredicate, qu'un `status <> 'deleted'` nu
 // aurait éliminées en silence.
+//
+// capture_start_utc et duration_seconds servent la piste Médias de la frise du
+// rejeu 2D : capture_end_utc est la FIN de la capture, poser un clip dessus le
+// décalerait de sa propre durée. Le client repositionne à partir du début
+// (start si connu, sinon end − durée). duration_seconds est un DOUBLE en base
+// (ops/media_store.go) et le DTO l'expose en secondes entières.
 var Q24MatchMedia = `
 SELECT
     mf.id               AS file_id,
@@ -179,7 +190,9 @@ SELECT
     mf.file_path,
     mf.kind,
     mf.thumbnail_path,
+    mf.capture_start_utc,
     mf.capture_end_utc,
+    mf.duration_seconds,
     COALESCE(mll.is_liked, FALSE) AS liked
 FROM media_files mf
 JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id
@@ -209,7 +222,7 @@ ORDER BY xuid, count DESC`
 // d'épaule, arme TENUE). Sur Infinite kill_kind est NULL → 0. buildFragDistribution les
 // retire des classes gun (déjà servis par les compteurs natifs) ; le breakdown par arme
 // garde kills complet.
-// Requête sur v_weapon_kills (append-only #23046 Phase 2 : la vue ne retourne
+// Requête sur v_weapon_kills (append-only #23645 Phase 2 : la vue ne retourne
 // que la dernière génération par (match_id,xuid) — sinon COUNT(*) fan-out).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q28BulkWeaponKills = `

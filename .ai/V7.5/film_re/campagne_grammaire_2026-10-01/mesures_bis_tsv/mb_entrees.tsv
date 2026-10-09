@@ -1,0 +1,400 @@
+film	build	mesure	valeur
+0797ce72	HI_1_13_0	D index vus dans le chunk	216727
+0797ce72	HI_1_13_0	D sieges	213920
+0797ce72	HI_1_13_0	D sieges U vus	294140
+0797ce72	HI_1_13_0	D ti9 au debut du chunk	213920
+0797ce72	HI_1_13_0	ecart_sieges +0	2910
+0797ce72	HI_1_13_0	ecart_sieges -1	5249
+0797ce72	HI_1_13_0	ecart_sieges -2	5443
+0797ce72	HI_1_13_0	ecart_sieges < -2	5603
+0797ce72	HI_1_13_0	ecart_ti9 +0	2910
+0797ce72	HI_1_13_0	ecart_ti9 -1	5249
+0797ce72	HI_1_13_0	ecart_ti9 -2	5443
+0797ce72	HI_1_13_0	ecart_ti9 < -2	5603
+0797ce72	HI_1_13_0	entrees fermees	117143
+0797ce72	HI_1_13_0	entrees fermees hors sieges	3
+0797ce72	HI_1_13_0	entrees utiles fermees	117142
+0797ce72	HI_1_13_0	index vus (vues C fermees)	11
+0797ce72	HI_1_13_0	paquets	26740
+0797ce72	HI_1_13_0	paquets fermes	19205
+0797ce72	HI_1_13_0	sieges	8
+0797ce72	HI_1_13_0	sieges U index vus	11
+0797ce72	HI_1_13_0	table du film lue	1
+084a804d	HI_1_10_0	D index vus dans le chunk	748776
+084a804d	HI_1_10_0	D sieges	778968
+084a804d	HI_1_10_0	D sieges U vus	843882
+084a804d	HI_1_10_0	D ti9 au debut du chunk	772276
+084a804d	HI_1_10_0	ecart_sieges +0	1205
+084a804d	HI_1_10_0	ecart_sieges -1	239
+084a804d	HI_1_10_0	ecart_sieges -2	533
+084a804d	HI_1_10_0	ecart_sieges < -2	3258
+084a804d	HI_1_10_0	ecart_ti9 +0	1205
+084a804d	HI_1_10_0	ecart_ti9 -1	246
+084a804d	HI_1_10_0	ecart_ti9 -2	560
+084a804d	HI_1_10_0	ecart_ti9 < -2	3224
+084a804d	HI_1_10_0	entrees fermees	91940
+084a804d	HI_1_10_0	entrees fermees hors sieges	2
+084a804d	HI_1_10_0	entrees utiles fermees	91933
+084a804d	HI_1_10_0	index vus (vues C fermees)	26
+084a804d	HI_1_10_0	paquets	32457
+084a804d	HI_1_10_0	paquets fermes	5235
+084a804d	HI_1_10_0	sieges	24
+084a804d	HI_1_10_0	sieges U index vus	26
+084a804d	HI_1_10_0	table du film lue	1
+111fa685	HI_1_10_0	D index vus dans le chunk	376590
+111fa685	HI_1_10_0	D sieges	416688
+111fa685	HI_1_10_0	D sieges U vus	434050
+111fa685	HI_1_10_0	D ti9 au debut du chunk	417288
+111fa685	HI_1_10_0	ecart_sieges -1	1183
+111fa685	HI_1_10_0	ecart_sieges -2	124
+111fa685	HI_1_10_0	ecart_sieges < -2	2845
+111fa685	HI_1_10_0	ecart_ti9 -1	1183
+111fa685	HI_1_10_0	ecart_ti9 -2	124
+111fa685	HI_1_10_0	ecart_ti9 < -2	2845
+111fa685	HI_1_10_0	entrees fermees	55013
+111fa685	HI_1_10_0	entrees fermees hors sieges	1
+111fa685	HI_1_10_0	entrees utiles fermees	55013
+111fa685	HI_1_10_0	index vus (vues C fermees)	25
+111fa685	HI_1_10_0	paquets	17362
+111fa685	HI_1_10_0	paquets fermes	4152
+111fa685	HI_1_10_0	sieges	24
+111fa685	HI_1_10_0	sieges U index vus	25
+111fa685	HI_1_10_0	table du film lue	1
+11de8353	HI_1_9_0	D index vus dans le chunk	351600
+11de8353	HI_1_9_0	D sieges	423096
+11de8353	HI_1_9_0	D sieges U vus	423096
+11de8353	HI_1_9_0	D ti9 au debut du chunk	429498
+11de8353	HI_1_9_0	ecart_sieges +0	12
+11de8353	HI_1_9_0	ecart_sieges -1	866
+11de8353	HI_1_9_0	ecart_sieges -2	706
+11de8353	HI_1_9_0	ecart_sieges < -2	4155
+11de8353	HI_1_9_0	ecart_ti9 -1	762
+11de8353	HI_1_9_0	ecart_ti9 -2	443
+11de8353	HI_1_9_0	ecart_ti9 < -2	4534
+11de8353	HI_1_9_0	entrees fermees	75327
+11de8353	HI_1_9_0	entrees fermees hors sieges	0
+11de8353	HI_1_9_0	entrees utiles fermees	75327
+11de8353	HI_1_9_0	index vus (vues C fermees)	24
+11de8353	HI_1_9_0	paquets	17629
+11de8353	HI_1_9_0	paquets fermes	5739
+11de8353	HI_1_9_0	sieges	24
+11de8353	HI_1_9_0	sieges U index vus	24
+11de8353	HI_1_9_0	table du film lue	1
+1c4c63c2	HI_1_10_0	D index vus dans le chunk	1915023
+1c4c63c2	HI_1_10_0	D sieges	1909200
+1c4c63c2	HI_1_10_0	D sieges U vus	2545600
+1c4c63c2	HI_1_10_0	D ti9 au debut du chunk	1909200
+1c4c63c2	HI_1_10_0	ecart_sieges +0	4102
+1c4c63c2	HI_1_10_0	ecart_sieges -1	834
+1c4c63c2	HI_1_10_0	ecart_sieges -2	1004
+1c4c63c2	HI_1_10_0	ecart_sieges < -2	13414
+1c4c63c2	HI_1_10_0	ecart_ti9 +0	4102
+1c4c63c2	HI_1_10_0	ecart_ti9 -1	834
+1c4c63c2	HI_1_10_0	ecart_ti9 -2	1004
+1c4c63c2	HI_1_10_0	ecart_ti9 < -2	13414
+1c4c63c2	HI_1_10_0	entrees fermees	273731
+1c4c63c2	HI_1_10_0	entrees fermees hors sieges	41
+1c4c63c2	HI_1_10_0	entrees utiles fermees	273666
+1c4c63c2	HI_1_10_0	index vus (vues C fermees)	32
+1c4c63c2	HI_1_10_0	paquets	79550
+1c4c63c2	HI_1_10_0	paquets fermes	19354
+1c4c63c2	HI_1_10_0	sieges	24
+1c4c63c2	HI_1_10_0	sieges U index vus	32
+1c4c63c2	HI_1_10_0	table du film lue	1
+396cfc92	HI_1_13_0	D index vus dans le chunk	252266
+396cfc92	HI_1_13_0	D sieges	256416
+396cfc92	HI_1_13_0	D sieges U vus	288468
+396cfc92	HI_1_13_0	D ti9 au debut du chunk	256416
+396cfc92	HI_1_13_0	ecart_sieges +0	3946
+396cfc92	HI_1_13_0	ecart_sieges -1	9377
+396cfc92	HI_1_13_0	ecart_sieges -2	6102
+396cfc92	HI_1_13_0	ecart_sieges < -2	3403
+396cfc92	HI_1_13_0	ecart_ti9 +0	3946
+396cfc92	HI_1_13_0	ecart_ti9 -1	9377
+396cfc92	HI_1_13_0	ecart_ti9 -2	6102
+396cfc92	HI_1_13_0	ecart_ti9 < -2	3403
+396cfc92	HI_1_13_0	entrees fermees	148761
+396cfc92	HI_1_13_0	entrees fermees hors sieges	1
+396cfc92	HI_1_13_0	entrees utiles fermees	148761
+396cfc92	HI_1_13_0	index vus (vues C fermees)	9
+396cfc92	HI_1_13_0	paquets	32052
+396cfc92	HI_1_13_0	paquets fermes	22828
+396cfc92	HI_1_13_0	sieges	8
+396cfc92	HI_1_13_0	sieges U index vus	9
+396cfc92	HI_1_13_0	table du film lue	1
+4f77afc1	HI_1_13_0	D index vus dans le chunk	769687
+4f77afc1	HI_1_13_0	D sieges	851976
+4f77afc1	HI_1_13_0	D sieges U vus	922974
+4f77afc1	HI_1_13_0	D ti9 au debut du chunk	883172
+4f77afc1	HI_1_13_0	ecart_sieges +0	51
+4f77afc1	HI_1_13_0	ecart_sieges -1	1323
+4f77afc1	HI_1_13_0	ecart_sieges -2	2332
+4f77afc1	HI_1_13_0	ecart_sieges < -2	19204
+4f77afc1	HI_1_13_0	ecart_ti9 -1	51
+4f77afc1	HI_1_13_0	ecart_ti9 -2	1452
+4f77afc1	HI_1_13_0	ecart_ti9 < -2	21407
+4f77afc1	HI_1_13_0	entrees fermees	408162
+4f77afc1	HI_1_13_0	entrees fermees hors sieges	3
+4f77afc1	HI_1_13_0	entrees utiles fermees	408157
+4f77afc1	HI_1_13_0	index vus (vues C fermees)	26
+4f77afc1	HI_1_13_0	paquets	35499
+4f77afc1	HI_1_13_0	paquets fermes	22910
+4f77afc1	HI_1_13_0	sieges	24
+4f77afc1	HI_1_13_0	sieges U index vus	26
+4f77afc1	HI_1_13_0	table du film lue	1
+50247b26	version-31	D index vus dans le chunk	1800
+50247b26	version-31	D sieges	0
+50247b26	version-31	D sieges U vus	53757
+50247b26	version-31	D ti9 au debut du chunk	421096
+50247b26	version-31	ecart_ti9 < -2	153
+50247b26	version-31	entrees fermees	3
+50247b26	version-31	entrees fermees hors sieges	3
+50247b26	version-31	entrees utiles fermees	2
+50247b26	version-31	index vus (vues C fermees)	3
+50247b26	version-31	paquets	17919
+50247b26	version-31	paquets fermes	153
+50247b26	version-31	sieges	0
+50247b26	version-31	sieges U index vus	3
+50247b26	version-31	table du film sans_section	1
+51ebbc0f	HI_1_13_0	D index vus dans le chunk	235881
+51ebbc0f	HI_1_13_0	D sieges	245328
+51ebbc0f	HI_1_13_0	D sieges U vus	275994
+51ebbc0f	HI_1_13_0	D ti9 au debut du chunk	245328
+51ebbc0f	HI_1_13_0	ecart_sieges +0	2284
+51ebbc0f	HI_1_13_0	ecart_sieges -1	2609
+51ebbc0f	HI_1_13_0	ecart_sieges -2	2042
+51ebbc0f	HI_1_13_0	ecart_sieges < -2	2912
+51ebbc0f	HI_1_13_0	ecart_ti9 +0	2284
+51ebbc0f	HI_1_13_0	ecart_ti9 -1	2609
+51ebbc0f	HI_1_13_0	ecart_ti9 -2	2042
+51ebbc0f	HI_1_13_0	ecart_ti9 < -2	2912
+51ebbc0f	HI_1_13_0	entrees fermees	55558
+51ebbc0f	HI_1_13_0	entrees fermees hors sieges	1
+51ebbc0f	HI_1_13_0	entrees utiles fermees	55558
+51ebbc0f	HI_1_13_0	index vus (vues C fermees)	9
+51ebbc0f	HI_1_13_0	paquets	30666
+51ebbc0f	HI_1_13_0	paquets fermes	9847
+51ebbc0f	HI_1_13_0	sieges	8
+51ebbc0f	HI_1_13_0	sieges U index vus	9
+51ebbc0f	HI_1_13_0	table du film lue	1
+60ae07c4	HI_1_8_0	D index vus dans le chunk	397733
+60ae07c4	HI_1_8_0	D sieges	397568
+60ae07c4	HI_1_8_0	D sieges U vus	596352
+60ae07c4	HI_1_8_0	D ti9 au debut du chunk	397568
+60ae07c4	HI_1_8_0	ecart_sieges +0	1825
+60ae07c4	HI_1_8_0	ecart_sieges +1	2
+60ae07c4	HI_1_8_0	ecart_sieges -1	3030
+60ae07c4	HI_1_8_0	ecart_sieges -2	4012
+60ae07c4	HI_1_8_0	ecart_sieges < -2	5100
+60ae07c4	HI_1_8_0	ecart_ti9 +0	1825
+60ae07c4	HI_1_8_0	ecart_ti9 +1	2
+60ae07c4	HI_1_8_0	ecart_ti9 -1	3030
+60ae07c4	HI_1_8_0	ecart_ti9 -2	4012
+60ae07c4	HI_1_8_0	ecart_ti9 < -2	5100
+60ae07c4	HI_1_8_0	entrees fermees	79294
+60ae07c4	HI_1_8_0	entrees fermees hors sieges	6
+60ae07c4	HI_1_8_0	entrees utiles fermees	79279
+60ae07c4	HI_1_8_0	index vus (vues C fermees)	12
+60ae07c4	HI_1_8_0	paquets	49696
+60ae07c4	HI_1_8_0	paquets fermes	13969
+60ae07c4	HI_1_8_0	sieges	8
+60ae07c4	HI_1_8_0	sieges U index vus	12
+60ae07c4	HI_1_8_0	table du film lue	1
+a349fea8	version-33	D index vus dans le chunk	3476
+a349fea8	version-33	D sieges	0
+a349fea8	version-33	D sieges U vus	172506
+a349fea8	version-33	D ti9 au debut du chunk	690024
+a349fea8	version-33	ecart_ti9 < -2	463
+a349fea8	version-33	entrees fermees	6
+a349fea8	version-33	entrees fermees hors sieges	6
+a349fea8	version-33	entrees utiles fermees	3
+a349fea8	version-33	index vus (vues C fermees)	6
+a349fea8	version-33	paquets	28751
+a349fea8	version-33	paquets fermes	463
+a349fea8	version-33	sieges	0
+a349fea8	version-33	sieges U index vus	6
+a349fea8	version-33	table du film sans_section	1
+a521164d	HI_1_4_1	D index vus dans le chunk	2932
+a521164d	HI_1_4_1	D sieges	267120
+a521164d	HI_1_4_1	D sieges U vus	267120
+a521164d	HI_1_4_1	D ti9 au debut du chunk	263342
+a521164d	HI_1_4_1	ecart_sieges < -2	701
+a521164d	HI_1_4_1	ecart_ti9 < -2	701
+a521164d	HI_1_4_1	entrees fermees	5
+a521164d	HI_1_4_1	entrees fermees hors sieges	0
+a521164d	HI_1_4_1	entrees utiles fermees	0
+a521164d	HI_1_4_1	index vus (vues C fermees)	4
+a521164d	HI_1_4_1	paquets	11130
+a521164d	HI_1_4_1	paquets fermes	701
+a521164d	HI_1_4_1	sieges	24
+a521164d	HI_1_4_1	sieges U index vus	24
+a521164d	HI_1_4_1	table du film lue	1
+bcb6d393	HI_1_12_0	D index vus dans le chunk	114760
+bcb6d393	HI_1_12_0	D sieges	174912
+bcb6d393	HI_1_12_0	D sieges U vus	174912
+bcb6d393	HI_1_12_0	D ti9 au debut du chunk	174912
+bcb6d393	HI_1_12_0	ecart_sieges +0	517
+bcb6d393	HI_1_12_0	ecart_sieges -1	771
+bcb6d393	HI_1_12_0	ecart_sieges -2	2134
+bcb6d393	HI_1_12_0	ecart_sieges < -2	2413
+bcb6d393	HI_1_12_0	ecart_ti9 +0	517
+bcb6d393	HI_1_12_0	ecart_ti9 -1	771
+bcb6d393	HI_1_12_0	ecart_ti9 -2	2134
+bcb6d393	HI_1_12_0	ecart_ti9 < -2	2413
+bcb6d393	HI_1_12_0	entrees fermees	30137
+bcb6d393	HI_1_12_0	entrees fermees hors sieges	0
+bcb6d393	HI_1_12_0	entrees utiles fermees	30136
+bcb6d393	HI_1_12_0	index vus (vues C fermees)	8
+bcb6d393	HI_1_12_0	paquets	21864
+bcb6d393	HI_1_12_0	paquets fermes	5835
+bcb6d393	HI_1_12_0	sieges	8
+bcb6d393	HI_1_12_0	sieges U index vus	8
+bcb6d393	HI_1_12_0	table du film lue	1
+bf15f7ab	HI_1_13_0	D index vus dans le chunk	239360
+bf15f7ab	HI_1_13_0	D sieges	248424
+bf15f7ab	HI_1_13_0	D sieges U vus	248424
+bf15f7ab	HI_1_13_0	D ti9 au debut du chunk	248424
+bf15f7ab	HI_1_13_0	ecart_sieges +0	9369
+bf15f7ab	HI_1_13_0	ecart_sieges -1	6971
+bf15f7ab	HI_1_13_0	ecart_sieges -2	5921
+bf15f7ab	HI_1_13_0	ecart_sieges < -2	6215
+bf15f7ab	HI_1_13_0	ecart_ti9 +0	9369
+bf15f7ab	HI_1_13_0	ecart_ti9 -1	6971
+bf15f7ab	HI_1_13_0	ecart_ti9 -2	5921
+bf15f7ab	HI_1_13_0	ecart_ti9 < -2	6215
+bf15f7ab	HI_1_13_0	entrees fermees	180861
+bf15f7ab	HI_1_13_0	entrees fermees hors sieges	0
+bf15f7ab	HI_1_13_0	entrees utiles fermees	180861
+bf15f7ab	HI_1_13_0	index vus (vues C fermees)	8
+bf15f7ab	HI_1_13_0	paquets	31053
+bf15f7ab	HI_1_13_0	paquets fermes	28476
+bf15f7ab	HI_1_13_0	sieges	8
+bf15f7ab	HI_1_13_0	sieges U index vus	8
+bf15f7ab	HI_1_13_0	table du film lue	1
+bfecd02b	HI_1_13_0	D index vus dans le chunk	249000
+bfecd02b	HI_1_13_0	D sieges	249856
+bfecd02b	HI_1_13_0	D sieges U vus	249856
+bfecd02b	HI_1_13_0	D ti9 au debut du chunk	249856
+bfecd02b	HI_1_13_0	ecart_sieges +0	6873
+bfecd02b	HI_1_13_0	ecart_sieges -1	7697
+bfecd02b	HI_1_13_0	ecart_sieges -2	6696
+bfecd02b	HI_1_13_0	ecart_sieges < -2	5137
+bfecd02b	HI_1_13_0	ecart_ti9 +0	6873
+bfecd02b	HI_1_13_0	ecart_ti9 -1	7697
+bfecd02b	HI_1_13_0	ecart_ti9 -2	6696
+bfecd02b	HI_1_13_0	ecart_ti9 < -2	5137
+bfecd02b	HI_1_13_0	entrees fermees	169159
+bfecd02b	HI_1_13_0	entrees fermees hors sieges	0
+bfecd02b	HI_1_13_0	entrees utiles fermees	169159
+bfecd02b	HI_1_13_0	index vus (vues C fermees)	8
+bfecd02b	HI_1_13_0	paquets	31232
+bfecd02b	HI_1_13_0	paquets fermes	26403
+bfecd02b	HI_1_13_0	sieges	8
+bfecd02b	HI_1_13_0	sieges U index vus	8
+bfecd02b	HI_1_13_0	table du film lue	1
+c75f33b8	HI_1_13_0	D index vus dans le chunk	195421
+c75f33b8	HI_1_13_0	D sieges	222400
+c75f33b8	HI_1_13_0	D sieges U vus	222400
+c75f33b8	HI_1_13_0	D ti9 au debut du chunk	222400
+c75f33b8	HI_1_13_0	ecart_sieges +0	4202
+c75f33b8	HI_1_13_0	ecart_sieges -1	3947
+c75f33b8	HI_1_13_0	ecart_sieges -2	4991
+c75f33b8	HI_1_13_0	ecart_sieges < -2	9804
+c75f33b8	HI_1_13_0	ecart_ti9 +0	4202
+c75f33b8	HI_1_13_0	ecart_ti9 -1	3947
+c75f33b8	HI_1_13_0	ecart_ti9 -2	4991
+c75f33b8	HI_1_13_0	ecart_ti9 < -2	9804
+c75f33b8	HI_1_13_0	entrees fermees	120528
+c75f33b8	HI_1_13_0	entrees fermees hors sieges	0
+c75f33b8	HI_1_13_0	entrees utiles fermees	120526
+c75f33b8	HI_1_13_0	index vus (vues C fermees)	8
+c75f33b8	HI_1_13_0	paquets	27800
+c75f33b8	HI_1_13_0	paquets fermes	22944
+c75f33b8	HI_1_13_0	sieges	8
+c75f33b8	HI_1_13_0	sieges U index vus	8
+c75f33b8	HI_1_13_0	table du film lue	1
+d9781168	HI_1_13_0	D index vus dans le chunk	347784
+d9781168	HI_1_13_0	D sieges	349160
+d9781168	HI_1_13_0	D sieges U vus	480095
+d9781168	HI_1_13_0	D ti9 au debut du chunk	349160
+d9781168	HI_1_13_0	ecart_sieges +0	4871
+d9781168	HI_1_13_0	ecart_sieges -1	4212
+d9781168	HI_1_13_0	ecart_sieges -2	7091
+d9781168	HI_1_13_0	ecart_sieges < -2	10290
+d9781168	HI_1_13_0	ecart_ti9 +0	4871
+d9781168	HI_1_13_0	ecart_ti9 -1	4212
+d9781168	HI_1_13_0	ecart_ti9 -2	7091
+d9781168	HI_1_13_0	ecart_ti9 < -2	10290
+d9781168	HI_1_13_0	entrees fermees	150730
+d9781168	HI_1_13_0	entrees fermees hors sieges	4
+d9781168	HI_1_13_0	entrees utiles fermees	150726
+d9781168	HI_1_13_0	index vus (vues C fermees)	11
+d9781168	HI_1_13_0	paquets	43645
+d9781168	HI_1_13_0	paquets fermes	26464
+d9781168	HI_1_13_0	sieges	8
+d9781168	HI_1_13_0	sieges U index vus	11
+d9781168	HI_1_13_0	table du film lue	1
+e5adf7b2	HI_1_11_0	D index vus dans le chunk	390208
+e5adf7b2	HI_1_11_0	D sieges	386952
+e5adf7b2	HI_1_11_0	D sieges U vus	403776
+e5adf7b2	HI_1_11_0	D ti9 au debut du chunk	399510
+e5adf7b2	HI_1_11_0	ecart_sieges +0	1058
+e5adf7b2	HI_1_11_0	ecart_sieges +1	9
+e5adf7b2	HI_1_11_0	ecart_sieges -1	419
+e5adf7b2	HI_1_11_0	ecart_sieges -2	803
+e5adf7b2	HI_1_11_0	ecart_sieges < -2	1996
+e5adf7b2	HI_1_11_0	ecart_ti9 +0	805
+e5adf7b2	HI_1_11_0	ecart_ti9 -1	436
+e5adf7b2	HI_1_11_0	ecart_ti9 -2	245
+e5adf7b2	HI_1_11_0	ecart_ti9 < -2	2799
+e5adf7b2	HI_1_11_0	entrees fermees	76224
+e5adf7b2	HI_1_11_0	entrees fermees hors sieges	2496
+e5adf7b2	HI_1_11_0	entrees utiles fermees	76222
+e5adf7b2	HI_1_11_0	index vus (vues C fermees)	24
+e5adf7b2	HI_1_11_0	paquets	16824
+e5adf7b2	HI_1_11_0	paquets fermes	4285
+e5adf7b2	HI_1_11_0	sieges	23
+e5adf7b2	HI_1_11_0	sieges U index vus	24
+e5adf7b2	HI_1_11_0	table du film lue	1
+f75e7053	HI_1_13_0	D index vus dans le chunk	227063
+f75e7053	HI_1_13_0	D sieges	228016
+f75e7053	HI_1_13_0	D sieges U vus	228016
+f75e7053	HI_1_13_0	D ti9 au debut du chunk	228016
+f75e7053	HI_1_13_0	ecart_sieges +0	4409
+f75e7053	HI_1_13_0	ecart_sieges -1	4612
+f75e7053	HI_1_13_0	ecart_sieges -2	6630
+f75e7053	HI_1_13_0	ecart_sieges < -2	7772
+f75e7053	HI_1_13_0	ecart_ti9 +0	4409
+f75e7053	HI_1_13_0	ecart_ti9 -1	4612
+f75e7053	HI_1_13_0	ecart_ti9 -2	6630
+f75e7053	HI_1_13_0	ecart_ti9 < -2	7772
+f75e7053	HI_1_13_0	entrees fermees	139891
+f75e7053	HI_1_13_0	entrees fermees hors sieges	0
+f75e7053	HI_1_13_0	entrees utiles fermees	139891
+f75e7053	HI_1_13_0	index vus (vues C fermees)	8
+f75e7053	HI_1_13_0	paquets	28502
+f75e7053	HI_1_13_0	paquets fermes	23423
+f75e7053	HI_1_13_0	sieges	8
+f75e7053	HI_1_13_0	sieges U index vus	8
+f75e7053	HI_1_13_0	table du film lue	1
+fb1a1a72	HI_1_13_0	D index vus dans le chunk	377512
+fb1a1a72	HI_1_13_0	D sieges	390168
+fb1a1a72	HI_1_13_0	D sieges U vus	390168
+fb1a1a72	HI_1_13_0	D ti9 au debut du chunk	390168
+fb1a1a72	HI_1_13_0	ecart_sieges +0	4146
+fb1a1a72	HI_1_13_0	ecart_sieges -1	4397
+fb1a1a72	HI_1_13_0	ecart_sieges -2	5694
+fb1a1a72	HI_1_13_0	ecart_sieges < -2	8081
+fb1a1a72	HI_1_13_0	ecart_ti9 +0	4146
+fb1a1a72	HI_1_13_0	ecart_ti9 -1	4397
+fb1a1a72	HI_1_13_0	ecart_ti9 -2	5694
+fb1a1a72	HI_1_13_0	ecart_ti9 < -2	8081
+fb1a1a72	HI_1_13_0	entrees fermees	128721
+fb1a1a72	HI_1_13_0	entrees fermees hors sieges	0
+fb1a1a72	HI_1_13_0	entrees utiles fermees	128720
+fb1a1a72	HI_1_13_0	index vus (vues C fermees)	8
+fb1a1a72	HI_1_13_0	paquets	48771
+fb1a1a72	HI_1_13_0	paquets fermes	22318
+fb1a1a72	HI_1_13_0	sieges	8
+fb1a1a72	HI_1_13_0	sieges U index vus	8
+fb1a1a72	HI_1_13_0	table du film lue	1

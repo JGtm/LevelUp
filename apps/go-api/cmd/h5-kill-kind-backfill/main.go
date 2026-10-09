@@ -33,12 +33,19 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	authGT := "JGtm"
 	if len(os.Args) > 1 {
 		authGT = os.Args[1]
@@ -77,7 +84,7 @@ func main() {
 	}
 
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens (auth_as=%s): %v", authGT, err)
 	}

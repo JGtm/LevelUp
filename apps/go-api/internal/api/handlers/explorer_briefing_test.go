@@ -28,6 +28,10 @@ func (m *capturingMatchHist) ExportCSV(_ context.Context, _ domain.MatchHistoryQ
 	return nil, nil
 }
 
+func (m *capturingMatchHist) OutcomeText(_ context.Context, _ int) string {
+	return ""
+}
+
 func postMatchesQuery(t *testing.T, mock port.MatchHistoryService, body []byte) *httptest.ResponseRecorder {
 	t.Helper()
 	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {

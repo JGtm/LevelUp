@@ -13,9 +13,8 @@
 //
 // Acquisition du token Spartan :
 //  1. Variable SPARTAN_TOKEN si présente (court-circuit, utile pour debug)
-//  2. Sinon : reproduit le flow runtime — lit msal_token_cache /
-//     oauth_refresh_token depuis sync_meta du player DB, puis Exchange via
-//     auth.MSALProvider.
+//  2. Sinon : reproduit le flow runtime — lit le refresh_token du
+//     MultiUserTokenStore (ADR 0023) puis Exchange via auth.SISUProvider.
 //
 // Variables d'environnement :
 //
@@ -64,7 +63,7 @@ type rankEntry struct {
 func main() {
 	fs := flag.NewFlagSet("refresh-career-ranks", flag.ExitOnError)
 	titleID := fs.String("title-id", titlePkg.DefaultSlug, "Title ID (ex: halo_infinite)")
-	player := fs.String("player", "", "Slug joueur pour résoudre les tokens via sync_meta (ignoré si SPARTAN_TOKEN env est défini)")
+	player := fs.String("player", "", "Slug joueur pour résoudre les tokens via le MultiUserTokenStore (ignoré si SPARTAN_TOKEN env est défini)")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		os.Exit(1)
 	}
@@ -149,8 +148,8 @@ func run(titleID, playerSlug string) error {
 	return nil
 }
 
-// resolveTokens récupère les tokens Halo soit via env SPARTAN_TOKEN, soit en
-// rejouant la chaîne d'auth runtime depuis le player DB.
+// resolveTokens récupère les tokens Halo soit via env SPARTAN_TOKEN, soit depuis
+// le MultiUserTokenStore (chaîne d'auth runtime, ADR 0023).
 func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string) (*domain.HaloTokens, error) {
 	if envToken := os.Getenv("SPARTAN_TOKEN"); envToken != "" {
 		return &domain.HaloTokens{
@@ -169,13 +168,10 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 
 	provider := authpkg.NewSISUProvider()
 
-	// ADR 0023 — pipeline canonique via MultiUserTokenStore puis legacy DuckDB.
+	// ADR 0023 — pipeline canonique via MultiUserTokenStore (source unique).
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := authpkg.LegacyAuthInputs{Source: "duckdb"}
-	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
 
-	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if rerr != nil {
 		return nil, rerr
 	}
@@ -183,7 +179,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 		fmt.Fprintf(os.Stderr, "auth: tokens obtenus pour xuid=%s\n", pdb.XUID)
 		return tokens, nil
 	}
-	return nil, fmt.Errorf("aucun token disponible pour player %q (ni MSAL cache ni OAuth refresh)", playerSlug)
+	return nil, fmt.Errorf("aucun token disponible pour player %q (aucun refresh token dans le store watcher_tokens)", playerSlug)
 }
 
 // upsertTranslations parcourt chaque rang et insère une ligne par langue dans

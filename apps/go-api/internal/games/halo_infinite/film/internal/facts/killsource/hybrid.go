@@ -1,0 +1,417 @@
+package killsource
+
+// hybrid.go — L HYBRIDE : LA MARCHE DECIDE, LE SCAN RATTRAPE.
+//
+// CINQ TEMPS, dans cet ordre, chacun n intervenant que sur les instants que les precedents
+// n ont pas couverts :
+//
+//	1. MARCHE            couple exact au kill-feed, sur les dead-states CREDIBLES.
+//	2. SCAN, RATTRAPAGE  meme critere, sur les candidats du scan que la marche N A PAS produits.
+//	3. SOURCE AUTO-INFLIGEE  `victime == tueur` + les deux discriminants, apparie sur la VICTIME
+//	                     SEULE. LA MARCHE Y A AUSSI LA PRIORITE.
+//	4. MORT DE BOT       population NEUVE. Voie SCAN seule, et ce n est pas un choix : la marche
+//	                     borne ses indices au roster credible et n en produit pas.
+//	5. MORT PAR UN BOT   seconde population NEUVE, SYMETRIQUE de la precedente (RE_LOG 7ter.79).
+//	                     Le feed porte la MORT, pas le kill. Les deux voies y participent, dans
+//	                     l ordre de priorite habituel.
+//
+// LES DEUX POPULATIONS DE BOT NE SE CHEVAUCHENT PAS, ET CE N EST PAS UNE PRECAUTION MAIS UNE
+// PROPRIETE : la 4e part des KILLS du feed que rien ne consomme, la 5e des MORTS du feed que rien
+// ne consomme. Un evenement du feed ne peut pas etre les deux. Elles sont neanmoins publiees sous
+// deux origines DISTINCTES, parce que ce qu elles empruntent au feed n est pas la meme moitie.
+//
+// LA PREFERENCE EST LEGITIME PARCE QUE LES DEUX VOIES NE SE CONTREDISENT JAMAIS : sur les
+// instants ou les deux repondent, ACCORD 334, DESACCORD 0, et zero mort a plus d un candidat en
+// concurrence. L hybride PREFERE, il n arbitre pas — le mecanisme d arbitrage existe, il n a
+// jamais eu a servir.
+//
+// HYPOTHESE MESUREE COMME FAUSSE, a ne pas reposer : << la marche d abord fait remonter le gate
+// (b) GLOBAL >>. Ecart mesure : +0.00 point sur les quatre films, et la raison est structurelle —
+// le gate (b) est une propriete de l ENSEMBLE des enregistrements consultes, pas de l ORDRE dans
+// lequel on les lit ; les 346 enregistrements partages sont les MEMES objets au MEME bit.
+//
+// CE QUE L HYBRIDE APPORTE VRAIMENT, et c est mesure : (1) le cout est LOCALISE ET ETIQUETE —
+// 98.2 % pour la marche, 78.4 % pour le rattrapage, chaque ligne portant sa voie ; (2) une
+// ROBUSTESSE 11.2 fois superieure a un catalogue perime ; (3) un gain de JUSTESSE — sous
+// l hybride la ligne servie par la marche publie le bon tag sans dependre d aucun filtre.
+//
+// AUCUNE FUSION DE VALEURS, aucune moyenne, aucun vote : si les deux voies decodaient un tag
+// different au meme instant, la marche gagnerait et l ecart serait COMPTE, jamais lisse.
+
+import (
+	"cmp"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"slices"
+)
+
+// sourcedCandidate : un candidat, avec la voie qui l a produit.
+type sourcedCandidate struct {
+	candidate
+	path Path
+}
+
+// pass : l etat d une passe hybride.
+type pass struct {
+	ctx      *decodeCtx
+	all      []sourcedCandidate
+	mult     map[multKey]int
+	byTime   map[int]Kill
+	walk     PathStats
+	scan     PathStats
+	selfWalk PathStats
+	selfScan PathStats
+	botStats PathStats
+	// botKillerStats : les morts INFLIGEES PAR un bot (temps 5).
+	botKillerStats PathStats
+	// unclaimedStats : les morts que PERSONNE ne revendique (temps 6). `Population` = morts
+	// orphelines du feed ; `Published` = celles dont un dead-state auto-inflige a ete lu.
+	unclaimedStats PathStats
+	// unclaimed : ces memes morts, avec leur source. Elles ne sont JAMAIS des [Kill].
+	unclaimed []UnclaimedDeath
+	// botUsed : les positions de candidat consommees par les DEUX temps de bot. Elle sert au
+	// seul comptage des inexpliques : un candidat a indice de bot qui a servi n en est pas un.
+	botUsed map[[3]int]bool
+	// appar : D OU VIENT L APPARIEMENT de chaque ligne PUBLIEE (lot 1.9.7).
+	appar types.ApparStats
+	// provenance : le compteur de `appar` qu a monte chaque ligne de `byTime`. Un remplacement au
+	// temps 4 le redescend : une ligne publiee, une provenance (revue ronde 2 du lot J7).
+	provenance map[int]*int
+	redundant  int
+	noBit      int
+	agree      int
+	disagree   int
+	multiCand  int
+
+	unexpPair int
+	unexpSelf int
+	unexpBot  int
+	// nomsDeRemplissage : lignes NON publiees parce que le nom pris au roster est un nom de
+	// remplissage ([estNomDeRemplissage], lot J7.1).
+	nomsDeRemplissage int
+	// collisionsBot : morts de bot (temps 4) NON publiees parce que leur instant porte deja une
+	// ligne publiee (lot J7.4, FK-4). Un instant publie ne se reecrit jamais.
+	collisionsBot int
+	// autoSurFabriqueRemplacees : lignes du temps 3 posees sur un couple FABRIQUE et remplacees par
+	// la mort de bot que le temps 4 constate a leur instant exact (revue du lot J7, FK-4).
+	autoSurFabriqueRemplacees int
+	// fantomes : les instants de couples RECOLLES ou le temps 4 a PUBLIE la mort de bot — les
+	// seuls couples retires du denominateur (`Coverage.GhostPairs`, lot J7.4).
+	fantomes map[int]bool
+}
+
+// population : les deux voies ramenees a une liste unique, DANS L ORDRE DE PRIORITE.
+//
+// Un candidat du scan est REDONDANT s il porte la meme position (chunk, paquet, bit) qu un
+// enregistrement de la marche : c est alors le MEME enregistrement physique, lu deux fois.
+//
+// LE POINT DE METHODE. Les redondants sont retires de la population du SCAN, jamais de celle de
+// la marche — sinon on choisirait le denominateur qui arrange. Et ils sont retires QUELLE QUE
+// SOIT leur issue : retirer les seuls doublons qui echouent serait une manipulation de
+// denominateur.
+func (p *pass) population(walkCands []candidate, scanCands []candidate, noBit int) {
+	p.noBit = noBit
+	at := map[[3]int]bool{}
+	for _, w := range walkCands {
+		if w.bit >= 0 {
+			at[[3]int{w.chunk, w.pidx, w.bit}] = true
+		}
+		p.all = append(p.all, sourcedCandidate{w, PathWalk})
+	}
+	for _, s := range scanCands {
+		if at[[3]int{s.chunk, s.pidx, s.bit}] {
+			p.redundant++
+			continue
+		}
+		p.all = append(p.all, sourcedCandidate{s, PathScan})
+	}
+	cs := make([]candidate, 0, len(p.all))
+	for _, a := range p.all {
+		cs = append(cs, a.candidate)
+	}
+	// La multiplicite se calcule sur l UNION : un champ fixe lu comme un dead-state se repete
+	// au meme bit quelle que soit la voie qui le lit. Elle serait aveugle a la moitie de la
+	// population si elle ne voyait qu une voie.
+	p.mult = multiplicity(cs)
+	p.ctx.mult = p.mult
+}
+
+// runStrong : temps 1 et 2 en une seule boucle — l ordre de `all` SUFFIT a donner la priorite.
+//
+// Le gate (b) est compte pour TOUS les candidats de chaque voie, y compris ceux dont l instant
+// etait deja pris : sinon la seconde voie serait jugee sur une population mutilee par la
+// premiere, et son chiffre ne voudrait plus rien dire.
+func (p *pass) runStrong() {
+	for _, cd := range p.all {
+		if cd.victim == cd.killer || p.ctx.isBotSide(cd.candidate) {
+			continue
+		}
+		st := &p.walk
+		if cd.path == PathScan {
+			st = &p.scan
+		}
+		st.Population++
+		e, parLaFenetre := p.ctx.matchExact(cd.candidate)
+		if e == nil {
+			p.unexpPair++
+			continue
+		}
+		st.Matched++
+		if _, seen := p.byTime[e.timeMS]; seen {
+			continue
+		}
+		st.Published++
+		p.noterLigne(e.timeMS, parLaFenetre, &p.appar.Fenetre)
+		p.byTime[e.timeMS] = p.ctx.buildKill(killDraft{timeMS: e.timeMS, victim: e.victim,
+			killer: e.killer, inFeed: true, origin: OriginCredit}, cd)
+	}
+}
+
+// noterAppariement : une ligne PUBLIEE de plus, rangee sous la voie qui l a appariee (D14 c :
+// l artefact doit dire quelle part de lui vient d un repli).
+//
+// AU NIVEAU PUBLIE, ET PAS AU NIVEAU APPARIE : c est la provenance d une LIGNE qui interesse un
+// lecteur de document. La mesure du lot, elle, compte au niveau apparie (un candidat peut
+// s apparier a un instant deja publie par la voie prioritaire) — les deux denominateurs sont
+// differents, et les confondre est le piege que cette phrase existe pour nommer. Rend le compteur.
+func (p *pass) noterAppariement(parLaFenetre bool, compteurDeLaFenetre *int) *int {
+	c := &p.appar.Identite
+	if parLaFenetre {
+		c = compteurDeLaFenetre
+	}
+	*c++
+	return c
+}
+
+// noterLigne : [pass.noterAppariement] pour une ligne de `byTime`, dont la provenance est retenue
+// par instant — pour que [pass.retirerLigne] la retire si le temps 4 remplace la ligne.
+func (p *pass) noterLigne(instant int, parLaFenetre bool, compteurDeLaFenetre *int) {
+	if p.provenance == nil {
+		p.provenance = map[int]*int{}
+	}
+	p.provenance[instant] = p.noterAppariement(parLaFenetre, compteurDeLaFenetre)
+}
+
+// retirerLigne : la ligne de l instant est remplacee, sa provenance sort du compte avec elle.
+func (p *pass) retirerLigne(instant int) {
+	if c := p.provenance[instant]; c != nil {
+		*c--
+		delete(p.provenance, instant)
+	}
+}
+
+// runSelfSource : temps 3 — les morts dont la SOURCE APPARTIENT A LA VICTIME.
+//
+// LE FILTRE `victime != tueur` REPOSAIT SUR UNE PREMISSE INCOMPLETE. << `victime == tueur` est
+// une signature de dechet >> est VRAI mais ne dit pas << donc tout `victime == tueur` est du
+// dechet >> : c est AUSSI l encodage legitime d une mort dont la source appartient a la victime
+// (roquette tiree trop pres, baril lance trop pres, chute). Deux phenomenes partagent une
+// signature, et le filtre jetait les deux.
+//
+// LES DEUX DISCRIMINANTS SONT STRUCTURELS ET MESURES : la MULTIPLICITE de position (les faux se
+// repetent au meme bit, les vrais sont a des bits varies) et la MAGNITUDE du tag. Verifie 8/8 en
+// Theater.
+func (p *pass) runSelfSource() {
+	if !p.ctx.opts.SelfSource {
+		return
+	}
+	for _, cd := range p.all {
+		// UN INDICE DE BOT SE COMPTE AUX TEMPS DE BOT, jamais ici (lot J7.5, FK-5) : comme au temps 1,
+		// sinon le meme candidat sortirait deux fois au numerateur de sante.
+		if cd.victim != cd.killer || p.ctx.isBotSide(cd.candidate) {
+			continue
+		}
+		st := &p.selfWalk
+		if cd.path == PathScan {
+			st = &p.selfScan
+		}
+		st.Population++
+		e, parLaFenetre := p.ctx.matchVictim(cd.candidate)
+		if e == nil || !p.ctx.selfSourceOK(cd.candidate, p.mult) {
+			p.unexpSelf++
+			continue
+		}
+		st.Matched++
+		if _, seen := p.byTime[e.timeMS]; seen {
+			p.unexpSelf++
+			continue
+		}
+		st.Published++
+		p.noterLigne(e.timeMS, parLaFenetre, &p.appar.Fenetre)
+		// Le feed credite un AUTRE joueur : on publie SON credit tel quel, et on leve le
+		// drapeau de divergence. Masquer l un ou l autre detruirait l information.
+		p.byTime[e.timeMS] = p.ctx.buildKill(killDraft{timeMS: e.timeMS, victim: e.victim,
+			killer: e.killer, inFeed: true, origin: OriginSelfSource, diverges: true}, cd)
+	}
+}
+
+// runUnclaimed : temps 6 — LES MORTS QUE PERSONNE NE REVENDIQUE.
+//
+// IL DOIT TOURNER APRES LE TEMPS 5, et l ordre n est pas cosmetique : une mort orpheline que le
+// temps 5 explique par un TUEUR BOT a un tueur, elle sort en [Kill]. La sauter ici est donc une
+// SOUSTRACTION de population, pas un doublon evite — et elle se fait par le seul temoin qui
+// vaille, la presence d une ligne publiee au meme instant.
+//
+// LA GARDE DE PUBLICATION, ET C EST TOUT L INTERET DE CE TEMPS : le dead-state retenu doit
+// nommer la victime ET porter LE MEME INDICE en tueur. Un dead-state qui designerait un autre
+// joueur decrirait un kill que le kill-feed ne porte pas ; le publier comme une mort de soi
+// serait affirmatif et faux. Le couple reste donc contraint des deux cotes, exactement comme
+// aux temps 1 a 5 — ici les deux cotes sont le meme joueur.
+//
+// LE CANDIDAT RETENU EST CELUI DU PAQUET QUE LE FILM ECRIT, ET A DEFAUT LE PLUS PROCHE EN TEMPS
+// (`repli_mort_non_revendiquee_la_plus_proche`, lot 1.9.7). MESURE DU LOT : sur les 21 films
+// entiers, les 17 morts non revendiquees n ont AUCUNE identite en face — le kill-feed est
+// humain-seul, une mort que personne ne revendique ne porte aucun kill, donc aucun kill-event 85
+// a associer. Le repli est ici la voie NORMALE, et c est un negatif MESURE, pas une lecture qui
+// manque. Zero arbitrage : sur la mesure du 2026-08-14 (cinq morts sur quatre films) chaque mort
+// n en a qu UN, a 0 et 4 ms.
+//
+// ET IL N EST SERVI QU UNE FOIS — c est la meme garde que les temps 4 et 5, et pour la leçon
+// qui les a produits : deux morts orphelines voisines convoiteraient le MEME dead-state et
+// publieraient deux fois la meme source. `Matched` compte ce qui a trouve un dead-state,
+// `Published` ce qui a effectivement ete publie : l ecart entre les deux EST cette garde, et il
+// vaut zero sur le corpus mesure.
+func (p *pass) runUnclaimed() {
+	used := map[[3]int]bool{}
+	for _, e := range p.ctx.feed.orphD {
+		p.unclaimedStats.Population++
+		if _, deja := p.byTime[e.timeMS]; deja {
+			continue // le temps 5 lui a trouve un tueur bot : elle a un tueur, elle n est pas orpheline
+		}
+		best, parLaFenetre, ok := p.choisirNonRevendiquee(e)
+		if !ok {
+			continue
+		}
+		p.unclaimedStats.Matched++
+		k := [3]int{best.chunk, best.pidx, best.bit}
+		if used[k] {
+			continue
+		}
+		used[k] = true
+		p.unclaimedStats.Published++
+		p.noterAppariement(parLaFenetre, &p.appar.NonRevendiqueeFenetre)
+		p.unclaimed = append(p.unclaimed, UnclaimedDeath{
+			TimeMS:     e.timeMS,
+			Victim:     e.victim,
+			VictimXUID: e.victimXUID,
+			Source:     sourceTruthOf(best.tag, best.cat),
+			Read: Provenance{Path: best.path, Origin: OriginUnclaimed,
+				Multiplicity: multOf(p.ctx.mult, best.candidate)},
+		})
+	}
+	// TimeMS unique : un evenement du kill-feed par instant (`byTime` de buildFeed).
+	slices.SortFunc(p.unclaimed, func(a, b UnclaimedDeath) int { return cmp.Compare(a.TimeMS, b.TimeMS) })
+}
+
+// choisirNonRevendiquee : LA LECTURE D ABORD (D14 b) — le candidat auto-inflige du PAQUET que le
+// film ecrit pour cet instant ; a defaut, le REPLI `repli_mort_non_revendiquee_la_plus_proche`,
+// qui prend le plus proche EN TEMPS. Rend le candidat, si le repli a servi, et s il y en a un.
+func (p *pass) choisirNonRevendiquee(e feedEvent) (sourcedCandidate, bool, bool) {
+	couple := func(cd sourcedCandidate) bool {
+		return cd.victim == cd.killer && p.ctx.roster.nameOf(cd.victim) == e.victim
+	}
+	for _, cd := range p.all {
+		if e.paquet.memeQue(cd.chunk, cd.pidx) && couple(cd) {
+			return cd, false, true
+		}
+	}
+	var best sourcedCandidate
+	bestDT, trouve := tolMS+1, false
+	for _, cd := range p.all {
+		dt := e.timeMS - cd.ms
+		if dt < -tolMS || dt > tolMS || !couple(cd) {
+			continue
+		}
+		if d := absMS(dt); d < bestDT {
+			bestDT, best, trouve = d, cd, true
+		}
+	}
+	return best, true, trouve
+}
+
+func absMS(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// countUnexplainedBot : les candidats a indice de BOT que NI le temps 4 NI le temps 5 n ont
+// servis. Il se compte APRES les deux, sinon il compterait comme inexplique ce que le temps
+// suivant explique — exactement le genre de compteur qui reste vrai en apparence tout en
+// mesurant autre chose.
+//
+// IL PARCOURT LA POPULATION, PAS LE SCAN ENTIER (lot J7.5, FK-5) : le numerateur de sante se compte
+// sur `Candidates` (`grammar.KillSourceHealth`). Le scan entier portait les redondants — hors de la
+// population, puisque la marche les lit deja — et ignorait les candidats de la marche.
+func (p *pass) countUnexplainedBot() {
+	for _, cd := range p.all {
+		if !p.ctx.isBotSide(cd.candidate) {
+			continue
+		}
+		if !p.botUsed[[3]int{cd.chunk, cd.pidx, cd.bit}] {
+			p.unexpBot++
+		}
+	}
+}
+
+// stats : ce que la passe a mesure, mis en forme pour le consommateur.
+func (p *pass) stats(w *walkResult) Stats {
+	return Stats{
+		Walk: p.walk, Scan: p.scan,
+		SelfWalk: p.selfWalk, SelfScan: p.selfScan,
+		Bot:               p.botStats,
+		BotKiller:         p.botKillerStats,
+		Unclaimed:         p.unclaimedStats,
+		Appariement:       p.appar,
+		Redundant:         p.redundant,
+		NoBit:             p.noBit,
+		Agree:             p.agree,
+		Disagree:          p.disagree,
+		MultiCandidate:    p.multiCand,
+		PacketsWithEvents: w.withEv,
+		PacketsLocated:    w.located,
+
+		NomsDeRemplissageRefuses: p.nomsDeRemplissage,
+		CollisionsDeMortDeBot:    p.collisionsBot,
+
+		AutoInfligeesSurCoupleFabriqueRemplacees: p.autoSurFabriqueRemplacees,
+	}
+}
+
+// kills : les lignes publiees, triees par instant.
+func (p *pass) kills() []Kill {
+	out := make([]Kill, 0, len(p.byTime))
+	for _, k := range p.byTime {
+		out = append(out, k)
+	}
+	slices.SortFunc(out, func(a, b Kill) int { return cmp.Compare(a.TimeMS, b.TimeMS) }) // TimeMS : cle de `byTime`, unique
+	return out
+}
+
+// run : la passe complete.
+func (c *decodeCtx) run() *pass {
+	walkCands, noBit := c.walkRes.candidates()
+	sortCandidates(walkCands)
+	p := &pass{ctx: c, byTime: map[int]Kill{}, botUsed: map[[3]int]bool{}, fantomes: map[int]bool{}}
+	p.population(walkCands, c.scanCands, noBit)
+	p.runStrong()
+	p.runSelfSource()
+	p.runBots()
+	p.runBotKillers()
+	p.runUnclaimed()
+	p.countUnexplainedBot()
+	p.concordance(walkCands)
+	p.compterCouplesSansIdentite()
+	return p
+}
+
+// compterCouplesSansIdentite : les couples publies du kill-feed auxquels AUCUN kill-event 85 ne
+// s est attache. C est LE DIAGNOSTIC qui ouvre le repli de la fenetre (D14 b) : sans lui, un
+// compte de replis ne designerait aucune correction.
+func (p *pass) compterCouplesSansIdentite() {
+	for i := range p.ctx.feed.pairs {
+		if !p.ctx.feed.pairs[i].paquet.ok {
+			p.appar.CouplesSansIdentite++
+		}
+	}
+}

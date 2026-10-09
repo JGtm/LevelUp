@@ -1,7 +1,7 @@
 // handlers_internal_test.go — tests internes (package handlers) pour les helpers privés.
 //
 // encode/decodeExportToken, formatOptFloat, optStr,
-// filterCitationsByCategory, filterCommendationsByCategory, fileExists,
+// filterCitationsByCategory, filterCommendationsByCategory,
 // resolveCapturesDir, deviceFlowStartResponse, deviceFlowStatusResponse,
 // writeJSONCached.
 package handlers
@@ -9,7 +9,6 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -187,26 +186,6 @@ func TestFilterCommendationsByCategory_NoMatch(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// fileExists
-// ---------------------------------------------------------------------------
-
-func TestFileExists_Exists(t *testing.T) {
-	tmp := filepath.Join(t.TempDir(), "test.txt")
-	if err := os.WriteFile(tmp, []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if !fileExists(tmp) {
-		t.Error("expected true for existing file")
-	}
-}
-
-func TestFileExists_NotExists(t *testing.T) {
-	if fileExists(filepath.Join(t.TempDir(), "no-such-file")) {
-		t.Error("expected false for non-existing file")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // resolveCapturesDir
 // ---------------------------------------------------------------------------
 
@@ -293,14 +272,14 @@ func TestDeviceFlowStatusResponse_Failed(t *testing.T) {
 	a := &auth_platform.Attempt{
 		AttemptID:   "att-3",
 		Status:      "failed",
-		ErrorCode:   "msal_acquire_error",
+		ErrorCode:   "device_flow_acquire_error",
 		ErrorDetail: "timeout",
 	}
 	resp := deviceFlowStatusResponse(a)
 	if resp.Status != "failed" {
 		t.Errorf("Status = %q", resp.Status)
 	}
-	if resp.ErrorCode == nil || *resp.ErrorCode != "msal_acquire_error" {
+	if resp.ErrorCode == nil || *resp.ErrorCode != "device_flow_acquire_error" {
 		t.Errorf("ErrorCode = %v", resp.ErrorCode)
 	}
 	if resp.ErrorDetail == nil || *resp.ErrorDetail != "timeout" {

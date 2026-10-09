@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -75,7 +75,7 @@ func TestInsertHighlightEvents_Empty(t *testing.T) {
 
 func TestInsertHighlightEvents_InsertAndCount(t *testing.T) {
 	db := openEventsDB(t)
-	events := []analysis.HighlightEvent{
+	events := []highlightevent.HighlightEvent{
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "kill", TypeHint: 50, TimeMS: 1000},
 		{XUID: 2_500_000_000_000_002, Gamertag: "PlayerB", EventType: "death", TypeHint: 20, TimeMS: 2000},
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "medal", TypeHint: 50, TimeMS: 3000, IsMedal: true, MedalType: 100},
@@ -97,7 +97,7 @@ func TestInsertHighlightEvents_InsertAndCount(t *testing.T) {
 
 func TestInsertHighlightEvents_IdempotentOnDuplicate(t *testing.T) {
 	db := openEventsDB(t)
-	events := []analysis.HighlightEvent{
+	events := []highlightevent.HighlightEvent{
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "kill", TypeHint: 50, TimeMS: 1000},
 	}
 	n1, err := InsertHighlightEvents(t.Context(), db, "m1", events)

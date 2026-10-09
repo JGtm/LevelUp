@@ -7,10 +7,11 @@
 //	go run ./cmd/refresh_golden_fixture --gamertag JGtm [--match-id <UUID>]
 //
 // Si `--match-id` est omis, le tool prend le match le plus récent du joueur.
-// Le fixture est écrit dans `internal/analysis/testdata/v41_chunk_he.bin`.
+// Le fixture est écrit dans `internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin`.
 //
-// **Pré-requis** : refresh token OAuth dans `.env.local` sous la clé
-// `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` (cf. cmd/get-token).
+// **Pré-requis** : refresh token OAuth du joueur dans le MultiUserTokenStore
+// (data/auth/watcher_tokens, source unique ADR 0023), et SPNKR_AZURE_CLIENT_ID
+// dans `.env.local`.
 package main
 
 import (
@@ -24,17 +25,26 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/titleseams"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	go_sync "levelup/go-api/internal/sync"
 )
 
 const (
-	defaultFixturePath  = "internal/analysis/testdata/v41_chunk_he.bin"
-	manifestFixturePath = "internal/analysis/testdata/v41_film_manifest.json"
+	defaultFixturePath  = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin"
+	manifestFixturePath = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_film_manifest.json"
 )
 
 func main() {
-	gamertag := flag.String("gamertag", "", "Gamertag pour résoudre le refresh token (.env.local)")
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
+	gamertag := flag.String("gamertag", "", "Gamertag pour résoudre le refresh token (MultiUserTokenStore)")
 	matchID := flag.String("match-id", "", "Match ID UUID à capturer (par défaut : dernier match du joueur)")
 	out := flag.String("out", defaultFixturePath, "Chemin de sortie du chunk binaire")
 	manifestOut := flag.String("manifest-out", manifestFixturePath, "Chemin de sortie du manifest JSON (optionnel)")
@@ -54,24 +64,31 @@ func main() {
 func run(gamertag, matchID, outPath, manifestPath string) error {
 	loadEnvLocal()
 
-	envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-	refreshToken := os.Getenv(envKey)
-	if refreshToken == "" {
-		return fmt.Errorf("refresh token absent : %s", envKey)
-	}
-
 	ctx := context.Background()
 
-	provider := auth_platform.NewSISUProvider()
-	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
+	// ADR 0023 Phase 5 : refresh token depuis le MultiUserTokenStore, seule source.
+	// Chemin résolu par le PathResolver depuis la racine repo (jamais un
+	// "data/..." relatif au CWD : l'outil se lance depuis apps/go-api).
+	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("oauth refresh: %w", err)
+		return fmt.Errorf("config.Load: %w", err)
 	}
-	exch, err := auth_platform.ExchangeAccessToken(ctx, tok)
+	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	store := auth_platform.NewMultiUserTokenStore(storeDir)
+	user, err := store.LoadByGamertag(gamertag)
+	if err != nil || user == nil || user.OAuthRefreshToken == "" {
+		return fmt.Errorf("aucun refresh token pour %s dans %s: %w", gamertag, storeDir, err)
+	}
+	res, err := auth_platform.RefreshHaloTokensViaStoreFirst(
+		ctx, store, auth_platform.NewSISUProvider(), user.XUID, gamertag)
 	if err != nil {
-		return fmt.Errorf("exchange: %w", err)
+		return fmt.Errorf("refresh store: %w", err)
 	}
-	spartan, clearance := exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken
+	tokens := auth_platform.HaloTokensFromExchange(res)
+	if tokens == nil {
+		return fmt.Errorf("aucun token Halo obtenu pour %s", gamertag)
+	}
+	spartan, clearance := tokens.SpartanToken, tokens.ClearanceToken
 
 	client := go_sync.NewHaloAPIClient(spartan, clearance, 2)
 

@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -33,6 +34,7 @@ func (s *TeammatesService) buildSquadWeaponAccuracy(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) *domain.SquadWeaponAccuracy {
+	defer timing.FromContext(ctx).Section("weapon_accuracy")()
 	if s.weaponAccuracyRepo == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		return nil
 	}

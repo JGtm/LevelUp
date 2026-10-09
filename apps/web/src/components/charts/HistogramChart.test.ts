@@ -80,10 +80,14 @@ describe('buildHistogramOption', () => {
     expect(opt.yAxis?.name).toBe('Matchs')
   })
 
-  it('par défaut yAxisLabel = "Matchs"', () => {
+  // Le builder est PUR : il n'a pas de locale, donc aucun libellé par défaut (ce serait un
+  // littéral FR, cf. chartEmptyStateCanonical.guard.test.ts). Le défaut bilingue
+  // (« Matchs » / « Matches », common.charts.axis_matches) est résolu par le composant,
+  // qui lit la locale du shell — couvert par HistogramChart.locale.test.tsx.
+  it('sans yAxisLabel le builder ne pose aucun libellé (le composant le fournit)', () => {
     const opt = buildHistogramOption(
       makeSeries([{ binStart: 0, binEnd: 1, count: 1 }]),
     ) as OptionShape
-    expect(opt.yAxis?.name).toBe('Matchs')
+    expect(opt.yAxis?.name).toBe('')
   })
 })

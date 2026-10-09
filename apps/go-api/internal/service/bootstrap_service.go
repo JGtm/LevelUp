@@ -40,6 +40,14 @@ type BootstrapService struct {
 	// au composition root car la résolution per-titre vit dans config (import duckdb),
 	// que le package service ne doit pas importer directement (règle de couches).
 	matchCountForTitle func(ctx context.Context, titleSlug string) (int, error)
+	// instanceLocked résout le verrou « instance fermée » exposé au front. Injecté
+	// depuis le point de décision unique (authz.InstanceLocked, ADR 0035 D5) : ce
+	// service ne recalcule JAMAIS le verrou de son côté (garde-rail archlint).
+	// nil = jamais verrouillé (seam de test, cohérent avec les autres consommateurs).
+	instanceLocked func() bool
+	// privacyLive borne l'appel live de privacy et mémorise ses échecs
+	// (bootstrap_privacy.go, plan perf 2026-09-23 D5b.7).
+	privacyLive *privacyLiveFetch
 }
 
 // setupCountBudget borne le temps d'attente du décompte des matchs servant à
@@ -51,7 +59,7 @@ const setupCountBudget = 2 * time.Second
 
 // NewBootstrapService crée un BootstrapService.
 func NewBootstrapService(cfg *config.AppConfig, bootRepo port.BootstrapRepository) *BootstrapService {
-	return &BootstrapService{cfg: cfg, bootRepo: bootRepo}
+	return &BootstrapService{cfg: cfg, bootRepo: bootRepo, privacyLive: newPrivacyLiveFetch()}
 }
 
 // WithPrivacyProvider injecte le provider de match privacy (optionnel).
@@ -84,6 +92,13 @@ func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *Bootstr
 // (ADR 0029). Sans lui, available_players n'est pas filtré (mono-utilisateur).
 func (s *BootstrapService) WithUserLookup(lookup authz.UserLookup) *BootstrapService {
 	s.userLookup = lookup
+	return s
+}
+
+// WithInstanceLock injecte le résolveur du verrou « instance fermée » (ADR 0035
+// D5). Sans lui, instance_locked est rendu false au front.
+func (s *BootstrapService) WithInstanceLock(fn func() bool) *BootstrapService {
+	s.instanceLocked = fn
 	return s
 }
 
@@ -227,7 +242,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		DemoMode:             s.cfg.DemoMode,
 		AuthMode:             s.cfg.AuthMode,
 		RegistrationMode:     s.cfg.RegistrationMode,
-		InstanceLocked:       s.cfg.InstanceLocked || getBoolSetting(appSettings, "instance_locked", false),
+		InstanceLocked:       s.instanceLocked != nil && s.instanceLocked(),
 		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
 		HasPassword:          s.currentUserHasPassword(sess),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
@@ -317,54 +332,17 @@ func (s *BootstrapService) resolveCoMembers(sess *domain.SessionData) map[string
 	return s.coMembers(user.XUID)
 }
 
-// fetchPrivacyNonBlocking fetche la privacy avec un timeout court (2 s).
-// En cas d'échec, renvoie nil sans bloquer le bootstrap.
-func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid string) *domain.MatchPrivacyInfo {
-	type result struct {
-		info *domain.MatchPrivacyInfo
-	}
-	ch := make(chan result, 1)
-	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	go func() {
-		info, err := s.privacyProvider.GetMatchPrivacy(timeoutCtx, xuid)
-		if err != nil {
-			slog.DebugContext(ctx, "bootstrap: privacy fetch échoué", "xuid", xuid, "err", err)
-			ch <- result{nil}
-			return
-		}
-		ch <- result{info}
-	}()
-
-	select {
-	case r := <-ch:
-		return r.info
-	case <-timeoutCtx.Done():
-		slog.DebugContext(ctx, "bootstrap: privacy fetch timeout", "xuid", xuid)
-		return nil
-	}
-}
-
 // BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.
 // S4 / audit M2 (lot S) : la liste est restreinte aux profils possédés par
 // l'utilisateur courant (les siens + ses co-membres de groupe), comme
 // available_players dans Build. En demo/single-user, filterOwnedPlayers no-ope
 // (liste complète) — l'invariant d'onboarding est préservé.
 func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.SessionData) (*domain.PlayersListResponse, error) {
-	titleSlug := ctxkeys.TitleSlug(ctx)
-	players, err := s.cfg.LoadPlayers(titleSlug)
+	players, err := s.OwnedPlayers(ctx, sess)
 	if err != nil {
 		return nil, fmt.Errorf("BuildPlayersList: %w", err)
 	}
-	// Exclure les profils auth-only : cette liste alimente les mêmes surfaces
-	// front-facing que available_players (favoris gamertag, sélecteur joueur).
-	players = excludeAuthOnly(players)
-	// S4 / Couche A (ADR 0029) : restreindre au parc possédé (xuid + famille) —
-	// un utilisateur ne doit pas énumérer les profils des autres via /players.
 	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
-	familyXUIDs := s.resolveCoMembers(sess)
-	players = s.filterOwnedPlayers(sess, players, familyXUIDs)
 	var defaultSlug *string
 	if len(players) > 0 {
 		slug := players[0].PlayerSlug
@@ -374,6 +352,24 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.Se
 		Items:             players,
 		DefaultPlayerSlug: defaultSlug,
 	}, nil
+}
+
+// OwnedPlayers retourne les joueurs du TITRE COURANT (ctx) visibles côté front
+// (profils auth-only exclus) ET accessibles par la session — les siens plus ses
+// co-membres de groupe (Couche A, ADR 0029). En démo / mono-utilisateur le
+// filtre no-ope et la liste complète est rendue.
+//
+// SOURCE UNIQUE de cette combinaison « joueurs du titre + visibles + possédés » :
+// consommée par GET /players (BuildPlayersList) et par la présence en jeu
+// (PresenceService). Toute nouvelle surface listant des joueurs passe par ici —
+// la ré-écrire ailleurs, c'est risquer d'oublier une des trois étapes.
+func (s *BootstrapService) OwnedPlayers(ctx context.Context, sess *domain.SessionData) ([]domain.PlayerSummary, error) {
+	players, err := s.cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("OwnedPlayers: %w", err)
+	}
+	players = excludeAuthOnly(players)
+	return s.filterOwnedPlayers(sess, players, s.resolveCoMembers(sess)), nil
 }
 
 // --- helpers ---
@@ -397,13 +393,17 @@ func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
 func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)
 	return domain.CapabilityMap{
-		CanReadLocalData:    true,
-		CanRunSync:          !cfg.DemoMode,
-		CanUseLiveHalo:      !cfg.DemoMode,
-		CanManageSettings:   true,
-		CanResetMediaIndex:  true,
-		CanViewMedia:        mediaEnabled,
-		CanSelfProvision:    getBoolSetting(settings, "can_self_provision", true),
+		CanReadLocalData:   true,
+		CanRunSync:         !cfg.DemoMode,
+		CanUseLiveHalo:     !cfg.DemoMode,
+		CanManageSettings:  true,
+		CanResetMediaIndex: true,
+		CanViewMedia:       mediaEnabled,
+		// Défaut de can_self_provision : MÊME règle que settings.Store (ADR 0035 D5)
+		// — permissif hors mode appliqué, fermé quand l'instance applique la
+		// propriété des joueurs. Sans cet alignement, le front proposerait une
+		// création de profil que POST /setup/players refuse en 403.
+		CanSelfProvision:    getBoolSetting(settings, "can_self_provision", !authz.Enforced(cfg.DemoMode, cfg.AuthMode)),
 		CanStartInitialSync: getBoolSetting(settings, "can_start_initial_sync", !cfg.DemoMode),
 		CanManageInstance:   true,
 	}

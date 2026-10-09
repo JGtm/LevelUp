@@ -9,13 +9,25 @@
 import { createRootRouteWithContext, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import type { RouterContext } from '@/app/router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  createBootstrapRetryPolicy,
+  isServerStartingError,
+  serverStartingStepKey,
+} from '@/app/serverStartup'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
 import { log } from '@/components/shell/_logger'
+import { isAnonymousPath } from '@/components/shell/shellNavigation'
+import {
+  decideOnAuthRequired,
+  sessionStorageOrNull,
+  type AuthRequiredVerdict,
+} from '@/components/shell/authRequiredGuard'
+import { needsOwnProfile, SETUP_PATH, setupRedirectPath } from '@/features/setup/setupRouting'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -29,10 +41,14 @@ export function RootLayout() {
   const authMode = useAppShellStore((s) => s.authMode)
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
+  const isAdmin = useAppShellStore((s) => s.isAdmin)
+  const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // Politique de rejeu à état (compteur cumulé de TanStack) : une par instance, stable.
+  const [bootstrapRetry] = useState(() => createBootstrapRetryPolicy())
 
-  const { data, isLoading, isError, failureCount } = useQuery({
+  const { data, isLoading, isError, failureReason } = useQuery({
     queryKey: queryKeys.bootstrap,
     queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
     staleTime: 2 * 60 * 1000,
@@ -49,12 +65,10 @@ export function RootLayout() {
     // est vrai, on ne refetch pas au focus ; applyActiveTitle fait lui-même le
     // re-bootstrap final avec le bon header.
     refetchOnWindowFocus: () => !useAppShellStore.getState().isTitleSwitching,
-    // Le serveur Go peut mettre 5–15 s à démarrer (CGO + DuckDB) en dev
-    // (`air`) ou sur VPS (cold start, redéploiement). On retry en backoff
-    // exponentiel pour absorber la fenêtre de démarrage avant d'afficher
-    // l'écran "API injoignable" : 0.5 → 1 → 2 → 4 → 4 → 4 s ≈ 15 s total.
-    retry: 6,
-    retryDelay: (n) => Math.min(500 * 2 ** n, 4000),
+    // Serveur qui démarre (réseau, 502, 503 server_starting) : réinterrogation chaque
+    // seconde jusqu'au plafond, puis l'écran « API injoignable » (cf. serverStartup.ts).
+    retry: bootstrapRetry.retry,
+    retryDelay: bootstrapRetry.retryDelay,
   })
 
   // Mécanisme UNIQUE de titre d'onglet (I18) : keyé sur [pathname, locale] — un
@@ -72,28 +86,51 @@ export function RootLayout() {
   // hors /bootstrap (cf. lib/api/client.ts). Sans ce listener, le garde
   // anti-éjection ci-dessous — qui préserve l'état authentifié sur un bootstrap
   // anonyme transitoire — piégerait l'utilisateur dans un shell authentifié mort
-  // dont chaque appel API retombe en 401. On recharge la page en plein (même
-  // mécanique que LogoutButton) : le bootstrap frais fait autorité et atterrit
-  // sur /login.
-  const authReloadFiredRef = useRef(false)
+  // dont chaque appel API retombe en 401. La décision (authRequiredGuard.ts) relit
+  // d'abord /bootstrap : connecté → aucune éjection (route secondaire en 401) ;
+  // anonyme → rechargement plein (même mécanique que LogoutButton), plafonné par
+  // fenêtre dans sessionStorage ; plafond atteint → /login sans recharger.
+  const authCheckInFlightRef = useRef(false)
   useEffect(() => {
-    function handleAuthRequired() {
+    async function handleAuthRequired() {
       // Store déjà anonyme (ex. /login, mauvais mot de passe → 401) : ne rien
       // faire. Recharger ici bouclerait sur /login. Seule une session qu'on
-      // CROYAIT authentifiée (currentUsername truthy) justifie le reload.
+      // CROYAIT authentifiée (currentUsername truthy) justifie une vérification.
       if (!useAppShellStore.getState().currentUsername) return
-      // Anti-rafale : une salve de 401 ne déclenche qu'un seul reload.
-      if (authReloadFiredRef.current) return
-      authReloadFiredRef.current = true
-      log.warn(
-        'auth:session_expired',
-        'session expirée (401 auth_required) — rechargement plein vers /login',
-      )
-      window.location.assign('/')
+      // Anti-rafale : une salve de 401 ne déclenche qu'une vérification à la fois.
+      if (authCheckInFlightRef.current) return
+      authCheckInFlightRef.current = true
+      const verdict = await decideOnAuthRequired({
+        fetchBootstrap: () => api.get<BootstrapResponse>('/bootstrap'),
+        storage: sessionStorageOrNull(),
+        now: Date.now,
+      })
+      applyAuthVerdict(verdict)
+      if (verdict.kind !== 'reload') authCheckInFlightRef.current = false
     }
-    window.addEventListener('levelup:auth-required', handleAuthRequired)
-    return () => window.removeEventListener('levelup:auth-required', handleAuthRequired)
-  }, [])
+    function applyAuthVerdict(verdict: AuthRequiredVerdict) {
+      switch (verdict.kind) {
+        case 'still_authenticated':
+          log.warn('session:route_401', 'route secondaire en 401, /bootstrap connecté : aucune éjection')
+          return
+        case 'unknown':
+          log.warn('auth:bootstrap_unreachable', '401 auth_required, /bootstrap injoignable — aucune éjection', verdict.error)
+          return
+        case 'reload':
+          log.warn('auth:session_expired', 'session expirée (401 auth_required) — rechargement plein vers /login')
+          window.location.assign('/')
+          return
+        case 'reload_blocked':
+          log.error('auth:reload_loop_blocked', 'rechargements pour 401 plafonnés — /login sans recharger')
+          hydrateFromBootstrap(verdict.bootstrap)
+          navigate({ to: '/login' })
+          return
+      }
+    }
+    const listener = () => void handleAuthRequired()
+    window.addEventListener('levelup:auth-required', listener)
+    return () => window.removeEventListener('levelup:auth-required', listener)
+  }, [hydrateFromBootstrap, navigate])
 
   useEffect(() => {
     if (!data) return
@@ -128,11 +165,16 @@ export function RootLayout() {
     // initial (firstLaunch=true) — RegisterPage redirige vers /login sinon.
     if (data.auth_mode === 'password' || data.auth_mode === 'xbox') {
       const path = window.location.pathname
-      if (data.first_launch && path !== '/register') {
+      // Pages consultables sans compte (confidentialité) : ne jamais les
+      // éjecter vers /login, le pied de page de l'écran de connexion y renvoie.
+      // Le gate `setup_required` plus bas continue de s'appliquer : une instance
+      // non configurée n'a rien à servir.
+      const anonymous = isAnonymousPath(path)
+      if (data.first_launch && !anonymous && path !== '/register') {
         navigate({ to: '/register' })
         return
       }
-      if (!data.current_username && path !== '/login' && path !== '/register') {
+      if (!data.current_username && !anonymous && path !== '/login' && path !== '/register') {
         navigate({ to: '/login' })
         return
       }
@@ -147,17 +189,39 @@ export function RootLayout() {
 
     if (data.setup_required) {
       navigate({ to: '/setup' })
+      return
+    }
+
+    // ADR 0035 D3 : un compte connecté qui n'a AUCUN profil accessible n'a rien à
+    // consulter, et depuis l'ADR plus rien ne tourne pour lui tant qu'aucun profil
+    // n'existe (ni poller, ni sync). On le conduit au wizard, seule sortie de cet
+    // état. `setup_required` ci-dessus ne couvre que l'instance VIDE : sur une
+    // instance déjà peuplée, ce compte atterrissait sur « on synchronise tes
+    // derniers matchs » et n'en sortait jamais.
+    const setupPath = setupRedirectPath(
+      {
+        authMode: data.auth_mode ?? 'none',
+        currentUsername: data.current_username ?? null,
+        isAdmin: data.is_admin ?? false,
+        availablePlayerCount: data.available_players?.length ?? 0,
+      },
+      window.location.pathname,
+      isAnonymousPath,
+    )
+    if (setupPath) {
+      navigate({ to: setupPath })
     }
   }, [data, hydrateFromBootstrap, navigate])
 
   if (isLoading) {
+    const starting = isServerStartingError(failureReason)
+    const stepKey = starting ? serverStartingStepKey(failureReason) : undefined
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen flex-col items-center justify-center gap-1">
         <span className="text-sm text-muted-foreground animate-pulse">
-          {failureCount > 0
-            ? `Connexion à l'API… (tentative ${failureCount + 1}/7)`
-            : t('common.root.loading_app')}
+          {starting ? t('common.root.server_starting') : t('common.root.loading_app')}
         </span>
+        {stepKey && <span className="text-xs text-muted-foreground">{t(stepKey)}</span>}
       </div>
     )
   }
@@ -185,8 +249,18 @@ export function RootLayout() {
     )
   }
 
-  // Setup en cours → pas de shell
+  // Setup en cours → pas de shell. Idem pour le wizard d'un compte sans profil à
+  // lui (ADR 0035 D3) : le shell n'a ni joueur ni titre à afficher pour lui.
   if (!isBootstrapped || setupRequired) {
+    return <Outlet />
+  }
+  const ownProfileMissing = needsOwnProfile({
+    authMode,
+    currentUsername,
+    isAdmin,
+    availablePlayerCount: availablePlayers.length,
+  })
+  if (pathname === SETUP_PATH && ownProfileMissing) {
     return <Outlet />
   }
 

@@ -7,14 +7,14 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
 ### Four Layers
 
 1. **Discovery** (`discovery.go`)
-   - Scans credential sources without network validation
-   - Mixes MSAL cache + OAuth refresh tokens from env and DuckDB
-   - Returns `[]CredentialSource` (gamertag, xuid, token sources)
+   - Scans the MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json) without network validation
+   - Single source since ADR 0023 Phase 5 (2026-08-25): no env var, no sync_meta, no mono-user store
+   - Returns `[]CredentialSource` (gamertag, xuid, refresh token)
 
 2. **Resolver** (`resolver.go`)
    - Exchanges `CredentialSource → ResolvedTokens` (Spartan + Clearance)
    - Caches tokens for ~3h30 (Spartan token lifetime ~4h)
-   - Pipeline: `TrySilentRefresh(MSALCache)` → `TryOAuthRefresh(RefreshToken)` → `provider.Exchange(accessToken)`
+   - Pipeline: `TryOAuthRefreshWithRotation(RefreshToken)` → `provider.Exchange(accessToken)`
 
 3. **Pool** (`pool.go`)
    - Maintains N tokens alive with round-robin or pinned access
@@ -23,8 +23,10 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
 
 4. **Client Adapter** (`../../../sync/pooled_client.go`)
    - Implements `sync.HaloClient` interface
-   - Uses `PolicyAnyPublic` for public endpoints (round-robin)
-   - Uses `PolicyPinnedPlayer` for privacy-gated endpoints (token owner only)
+   - Uses `PolicyAnyPublic` for EVERY endpoint it serves (round-robin), career rank included
+     since the 2026-09-16 measurement
+   - Pins no player at all: pinning lives where a caller wants the token of one named account
+     (Spartan customization cron, Halo 5 live-sync)
 
 ---
 
@@ -33,15 +35,15 @@ Package `pool` manages a shared pool of Halo API tokens with two acquisition pol
 ### Creating a Pool
 
 ```go
-// Scan for credentials in env + DuckDB
-discovery := auth.NewDiscovery(cfg, resolver, titleSlug)
+// Scan the MultiUserTokenStore for credentials
+discovery := pool.NewDiscoveryWithStore(cfg, resolver, titleSlug, tokenStore)
 sources, err := discovery.Scan(ctx)
 if err != nil {
     return err
 }
 
 // Create resolver with caching
-provider := auth.NewMSALProvider()
+provider := auth.NewSISUProvider()
 resolver := auth.NewResolver(provider, 0) // 0 = default TTL ~3h30
 
 // Build pool
@@ -55,7 +57,7 @@ if err != nil {
 defer pool.Close()
 
 // Use with sync engine
-client := sync.NewPooledHaloClient(pool, gamertag, xuid)
+client := sync.NewPooledHaloClient(pool, 0) // 0 = default fallback RPS
 engine := sync.NewSyncEngine(repoRoot, gamertag, xuid, &domain.HaloTokens{}, provider)
 engine.SetCustomClient(client)
 syncResult, err := engine.RunDelta(ctx, opts)
@@ -67,6 +69,7 @@ syncResult, err := engine.RunDelta(ctx, opts)
 - `GetMatchHistory(gamertag, ...)` — accepts any gamertag in URL
 - `GetMatchStats(matchID)` — public stats
 - `GetMatchFilm(matchID)` — public film
+- `GetCareerRank(xuid)` — public too, measured 2026-09-16 (see below)
 
 ```go
 lease, err := pool.Acquire(ctx, auth.PolicyAnyPublic, "")
@@ -78,20 +81,55 @@ client := halo.NewHaloAPIClient(lease.Tokens)
 stats, err := client.GetMatchStats(ctx, matchID)
 ```
 
-**PolicyPinnedPlayer** — Token of specific player only:
-- `GetCareerRank(xuid)` — privacy-gated to token owner
-- Fails gracefully with `(nil, nil)` if token absent or stale
+**PolicyPinnedPlayer** — Token of one named account. Two callers use it:
+- Spartan customization cron (`internal/scheduler/spartan_customization_bearer.go`) — the
+  player's own token first, because it opens the private view `/customization/appearance`
+  (a third-party token gets 403, measured 2026-09-16). If that token is unusable, the cron
+  pins the instance user only (the account whose xuid is linked to an `admin`-role account of the
+  instance, read through the account store; no other user's token ever carries the read, and
+  without it nothing is read) and the client falls back to the public view
+  `/customization?view=public`, which carries the same appearance block for any player.
+- Halo 5 live-sync (`games/halo_5/livesync`)
 
 ```go
 lease, err := pool.Acquire(ctx, auth.PolicyPinnedPlayer, gamertag)
 if err != nil {
-    // gamertag has no token or token is unhealthy → skip silently
-    return nil, nil
+    // gamertag has no token, or its token is unhealthy or rate-limited:
+    // the caller picks another account (customization cron) or another policy (H5 live-sync)
+    return nil, err
 }
 defer lease.Release()
 client := halo.NewHaloAPIClient(lease.Tokens)
-rank, err := client.GetCareerRank(ctx, xuid)
+appearance, err := client.GetSpartanCustomization(ctx, xuid)
 ```
+
+**The career rank is NOT privacy-gated.** Measured on 2026-09-16: `GET /careerranks` for a
+THIRD-PARTY xuid, with three different lender tokens (JGtm, DankerGlue, Trimbutton), returns
+200 with the SAME rank and XP as the owner own call (JGtm: `rank=202 xp=2555` seen by two
+lenders; Nuzzles: `rank=272 xp=0` — 272 is the maximum rank and the zero XP is its true value).
+`PooledHaloClient.GetCareerRank` therefore acquires in `PolicyAnyPublic`, and
+`sync.ErrNoPinnedToken` no longer exists (D4, sync robustness plan 2026-09-16).
+
+---
+
+## Callers — who takes a token, and under which policy
+
+Updated 2026-09-16 (decision D1: *a followed profile without its own token is synced through
+the pool*).
+
+| Caller | Policy | Requires the player's own token? |
+|---|---|---|
+| `cmd/levelup sync-delta` / `sync-full`, `--gamertag` **and** `--all` | `PolicyAnyPublic` | **No** |
+| `cmd/levelup backfill --csr` / `--shared-csr` | `PolicyAnyPublic` | **No** |
+| `cmd/levelup archive-films`, `backfill-killsource --online`, `replay-events` | `PolicyAnyPublic` | **No** |
+| `internal/scheduler` auto-sync cycle (`checkSyncPreconditions` → `BuildEngine`) | `PolicyAnyPublic` | **No** |
+| `PooledHaloClient.GetCareerRank` | `PolicyAnyPublic` | **No** — `/careerranks` is fully public (measured 2026-09-16, D4 of the sync robustness plan) |
+| `internal/scheduler` Spartan customization cron | `PolicyPinnedPlayer` (own account, else the instance admin account) | **No** — the own token is preferred for the private view; without it the player is read with the instance admin account token through the public view, never with another user's. The only `HasPlayer(` call left outside this package (ratchet: `internal/archlint/no_pool_hasplayer_gate_test.go`) |
+
+Before 2026-09-16 three call sites short-circuited the doctrine with `if !pool.HasPlayer(gt) {
+skip }` — the two `--all` CLI loops and the auto-sync cycle — and the single-player CLI resolved
+the player's own refresh token directly. A followed profile that had never signed in was
+therefore never synced at all, although only its career rank was out of reach.
 
 ---
 

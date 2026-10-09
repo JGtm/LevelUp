@@ -75,9 +75,15 @@ func TestPSAAppendOnly_LegacySwap_NoIdNoCreatedAt(t *testing.T) {
 	}
 	// Décision 2026-08-05 : le PostSwap ne recrée NI idx_psa_xuid (sélectivité nulle,
 	// miroir d'idx_career_xuid) NI idx_psa_match_xuid (pur préfixe d'idx_psa_gen ; ce
-	// PostSwap était sa SEULE autorité — divergence fraîche/convertie refermée). Les DB
-	// qui les portent encore convergent via les steps drop_psa_*_art_index_v1.
-	for _, idx := range []string{"idx_psa_xuid", "idx_psa_match_xuid"} {
+	// PostSwap était sa SEULE autorité — divergence fraîche/convertie refermée).
+	// Décision 2026-09-20 : les TROIS derniers non plus (idx_psa_match, idx_psa_category,
+	// idx_psa_gen) — la désynchronisation #23645 se reformait sur les insertions courantes
+	// et aucun lecteur ne les empruntait (tout passe par la vue _latest, Sequential Scan).
+	// Les DB qui les portent encore convergent via les steps drop_psa_*_v1.
+	for _, idx := range []string{
+		"idx_psa_xuid", "idx_psa_match_xuid",
+		"idx_psa_match", "idx_psa_category", "idx_psa_gen",
+	} {
 		var n int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM duckdb_indexes() WHERE index_name = ?`, idx).Scan(&n); err != nil {
 			t.Fatalf("duckdb_indexes(%s): %v", idx, err)

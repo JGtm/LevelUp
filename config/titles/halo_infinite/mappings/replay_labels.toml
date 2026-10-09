@@ -23,36 +23,198 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 1
+schema_version = 2
 
 # Rangs de grenade, DANS L'ORDRE. L'index de la ligne EST le rang lu dans le film ; il
 # sert aussi bien au compteur porte (Inventory.G) qu'au type d'un lancer (Grenade.rank).
+#
+# `icon` : vignette du HUD DU JEU (blanc/gris + alpha, a teindre), servie sous
+# static/weapons-assets/{slug}/ — extraites du POC de rejeu (2026-08-12), qui les
+# portait en data URI. Optionnel : sans icon, le client garde le libelle.
 [[grenades]]
 en = "Frag"
 fr = "Fragmentation"
+icon = "hud/Frag"
 
 [[grenades]]
 en = "Plasma"
 fr = "Plasma"
+icon = "hud/Plasma"
 
 [[grenades]]
 en = "Dynamo"
 fr = "Dynamo"
+icon = "hud/Dynamo"
 
 [[grenades]]
 en = "Spike"
 fr = "Spike"
+icon = "hud/Spike"
 
-# Capacites d'armure, par index lu dans le record de biped.
+# Capacites d'armure, par PALETTE puis par RANG lu dans le film.
 #
-# TABLE PARTIELLE, ET C'EST PUBLIE COMME TEL : 4 index observes, 11 capacites existent
-# dans le jeu. Un index absent de cette table s'affiche avec son NUMERO — jamais devine,
-# jamais approche par le nom d'une capacite voisine.
-[abilities]
-"3" = { en = "Drop Wall", fr = "mur portatif" }
-"4" = { en = "Grappleshot", fr = "grappin" }
-"5" = { en = "Thruster", fr = "propulseur" }
-"6" = { en = "Threat Sensor", fr = "capteur de menace" }
+# POURQUOI UNE PALETTE, ET PAS UNE TABLE UNIQUE (2026-08-14, plan PLAN_RANG_CAPACITE_I48).
+# Le rang que le film transmet est un index dans le groupe de tags `sofd` du match, et ce
+# groupe est CHOISI A L'EXECUTION (RECETTE_LOADOUT §13, composant a `unite+0x268`). Mesure :
+# sur les 46 equipements presents dans au moins deux des 12 `sofd`, 26 gardent leur rang et
+# 20 en changent — le grappin est au rang 4 dans une famille et au rang 20 dans une autre.
+# Une table unique nommerait donc FAUX un film sur deux.
+#
+# RIEN DANS LE FILM NE DESIGNE LA PALETTE — verifie, pas suppose (item 2.1 du plan) : le
+# registre du chunk_00 est bit-a-bit identique d'un film a l'autre pour les noms et les
+# flags de composants, sa longueur ne suit pas les familles (1 973 120 octets aussi bien
+# sur `00162144`, famille A, que sur les trois films de la famille B), et aucun marqueur de
+# groupe de tags (`sofd`, `eqip`, `vcdd`, `uwfa`, `glpa`) n'apparait dans aucun chunk. La
+# palette se DEDUIT donc de la signature du film — cf. `replay/abilities.go`, qui porte la
+# regle et ses chiffres, et qui REFUSE de nommer quand la signature est ambigue.
+#
+# TABLES PARTIELLES, ET C'EST PUBLIE COMME TEL : un rang absent de la palette retenue
+# s'affiche avec son NUMERO (« capacite inconnue (10) ») — jamais devine, jamais approche
+# par le nom d'une capacite voisine. L'icone suit LE MEME rang que le libelle : nom et
+# vignette bougent ensemble.
+#
+# `family` (OPTIONNEL) — L'IDENTITE STABLE DERRIERE LE RANG, dans le MEME vocabulaire que
+# `[[equipment_objects]].family` : c'est ce qui permet a un calque de dire « propulseur »
+# sans jamais ecrire 5 ni 21 dans du Go (le rang du propulseur vaut 5 en famille A et 21 en
+# famille B — un litteral en dur rendrait le calque muet sur l'autre famille, exactement le
+# piege qui a rendu le translocateur muet hors famille A). Le libelle, lui, reste ce qui
+# s'AFFICHE ; la famille est ce qui se JOINT.
+#
+# LES DEUX POUDRES A CANON (`8` camouflage, `9` surbouclier) N'EN PORTENT PAS : leur objet
+# de manifeste est un power-up ramassable (`powerup_camo` / `powerup_overshield`), pas
+# l'emplacement de capacite, et leur ETAT ACTIF se lit deja par un autre canal
+# (`equipmentEpisodes`, i28 et i5). Leur donner une famille ici ferait joindre deux choses
+# qui ne sont pas la meme.
+
+# --- FAMILLE A ---------------------------------------------------------------------
+# Les trois `sofd` de cette famille (d91958af 27 entrees, 03137359 19, 13c097ed 17) ont un
+# prefixe rigoureusement identique sur les rangs 0 a 9, et c'est la seule famille
+# compatible avec un jeu de capacites de joueur (RECETTE_LOADOUT §13).
+#
+# SOURCE DES NOMS : l'inversion murmur3 des identifiants de chaine du `sofd`, recoupee avec
+# l'enumeration d'equipement de l'executable. C'est la table DU JEU, lue — d'une autre
+# nature qu'une observation d'ecran, et c'est la source qui a fait RETIRER deux noms le
+# 2026-08-14 (elle contredisait deux observations isolees). Une source assez sure pour
+# retirer un nom l'est pour en donner un ; l'inverse serait incoherent.
+#
+# NE SONT PAS NOMMES, et le rang s'affiche seul :
+#   - 0 (`mobility_sprint`, la course) et 7 (`melee_default`) : categorie NULLE, ce ne sont
+#     pas des capacites — les nommer mettrait « course » sur une fiche d'equipement ;
+#   - 3 : categorie nulle egalement, son `eqip` ne reference qu'un systeme de marquage ;
+#   - les rangs 13 a 18, 24 a 26 : identifiants de chaine NON inverses.
+#   Le rang 10 (famille A) et les rangs 19 et 22 (famille B) sont NOMMES depuis le releve
+#   Theater du 2026-09-10 (artefact « Releves Theater », 12 scenes sur 9 matchs) : voir
+#   chaque entree. Ce sont des VARIANTES d objets deja connus (charges ou utilisations
+#   multiples, Super Fiesta) : la famille est celle de l objet de base.
+[[ability_palettes]]
+id = "famille_a"
+# markers : les rangs dont l'observation SIGNE cette palette. Ils sont disjoints de ceux de
+# la famille B, et c'est ce qui rend le classement possible. Le rang 23 en fait partie : il
+# est observe sur les trois films de famille A qui le montrent (35, 35, 15 lectures) et sur
+# AUCUN film de famille B.
+markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
+
+[ability_palettes.ranks]
+"1"  = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor", family = "sensor" }
+"2"  = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall", family = "wall" }
+"4"  = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
+"5"  = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
+"6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor", family = "repulsor" }
+# Rangs 8 et 9 : les DEUX BONUS. Leur `family` est celle des POSES (`powerup_*`), et elle est
+# posee le 2026-09-10 (lot 4.3) parce que le document publie desormais la table rang -> famille
+# et que le resume d usage joint dessus : sans elle, les deux familles les plus lues du bilan
+# d equipement sortaient du perimetre. Elles ne figurent dans AUCUNE liste `families` mesuree
+# ([ability_impulses], [ability_charges]) — la famille NOMME, elle n ouvre aucun canal.
+"8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage", family = "powerup_camo" }
+"9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield", family = "powerup_overshield" }
+# Rang 10 : NOMME LE 2026-09-10 par releve Theater guide (3 matchs, 9 scenes : `cde26226`,
+# `f0220a96`, `4f77afc1`) — l ecran occultant, ramasse au socle ou au sol, a 2 ou 4 charges
+# selon la partie. Coherent avec l objet `0x4396db42` (banque sonore `sb_007_abl_shroud`).
+"10" = { en = "Shroud Screen", fr = "ecran occultant", icon = "hud/ShroudScreen", family = "shroud_screen" }
+"11" = { en = "Quantum Translocator", fr = "translocateur quantique", icon = "hud/QuantumTranslocator", family = "translocator_beacon" }
+"12" = { en = "Threat Seeker", fr = "traqueur de menaces", icon = "hud/ThreatSeeker", family = "threat_seeker" }
+# 23 est le SEUL rang confirme par DEUX chaines : l'inversion murmur3 ET la banque sonore
+# `sb_007_abl_repairfield`, atteinte depuis ce rang a la distance la plus courte.
+"23" = { en = "Repair Field", fr = "champ de reparation", icon = "hud/RepairField", family = "repair_field" }
+
+# --- FAMILLE B ---------------------------------------------------------------------
+# Cette famille n'expose que les rangs 19 a 22, et AUCUN rang inferieur a 13 : mesure sur
+# `000d5950` (82 identites), `00502e52` (65) et `07aa428d` (42), toutes dans cette bande.
+# Ses identifiants de chaine ne sont PAS inverses — les deux noms ci-dessous ne viennent
+# donc pas du binaire mais du terrain.
+#
+# SOURCE DES NOMS, et pourquoi DEUX SEULEMENT. Le releve Theater du 2026-07-27 sur
+# `000d5950` nomme l'equipement des huit joueurs. Trois portaient un grappin et trois un
+# propulseur : ces deux-la ont un CONTROLE DE GROUPE (trois lectures identiques a
+# l'interieur de chaque triplet, et les deux triplets mutuellement distincts), plus un
+# SECOND canal independant — i48 rend 20 sur les slots 513 et 516 (grappins) et 21 sur le
+# slot 518 (propulseur), sans qu'aucune information du releve n'entre dans cette lecture.
+#
+# LE MUR (19) ET LE CAPTEUR (22) SONT NOMMES DEPUIS LE 2026-09-10 : le second releve Theater
+# demande ci-dessous a ete fait, et au-dela — releve guide de l utilisateur (artefact
+# « Releves Theater ») : rang 19 sur 3 matchs / 9 scenes (`0797ce72`, `9ffce8ef`, `4f77afc1`),
+# toujours le mur de protection a UNE utilisation ; rang 22 sur 4 matchs / 12 scenes
+# (`9ffce8ef`, `bf2a9f05`, `a396aa7f`, `d1dfbc02`), toujours le detecteur de menaces a 2, 3 ou
+# 4 utilisations, parfois deploye aussitot. Controle de groupe obtenu (plusieurs joueurs,
+# plusieurs films), la regle « un temoignage isole ne vaut pas » est satisfaite. Ce sont des
+# VARIANTES (Super Fiesta) des objets des rangs 2 et 1 : meme famille, meme icone.
+# Historique : une seule observation chacun avant cette date, non nommes a dessein.
+[[ability_palettes]]
+id = "famille_b"
+markers = [19, 20, 21, 22]
+
+[ability_palettes.ranks]
+"20" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
+"19" = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall", family = "wall" }
+"21" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
+"22" = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor", family = "sensor" }
+
+# Familles de capacite dont l'USAGE est MESURE par le canal d'IMPULSION du bipede : le corps
+# de tag externe `R(2) == 1` des composants `biped-spartan-ability` (i57) et
+# `-non-predicted-state` (i59) — le MEME composant dont le tag 3 porte deja le grappin.
+# Cf. filmdec/ability_impulses.go (lecture) et replay/document_ability_impulses.go (jointure
+# d'identite par le rang i48 de la MEME vie).
+#
+# CETTE LISTE EST UNE MESURE, PAS UN REGLAGE (lot R8 du 2026-09-03,
+# RAPPORT_R8_USAGE_REPULSEUR_PROPULSEUR §8.8 — quatre films de famille A, rang attribue DANS
+# LA MEME VIE et ANTERIEUREMENT) : 0,361 impulsion par vie de PROPULSEUR (22 sur 61) contre
+# 0,011 par vie de repulseur (1 sur 90 — et le repulseur est PLUS porte que lui) et 0,000 sur
+# 132 vies de GRAPPIN, qui a son propre tag. Oracle physique independant : pic de vitesse
+# horizontale 6,2 a 8,8 m/s a ces instants contre 2,9 a 3,6 au hasard dans la meme vie.
+# VERITE TERRAIN utilisateur (Theater, film `1cd3848a`, 2026-09-03) : 5 usages releves,
+# 5 impulsions rendues, ecart <= 1 s.
+#
+# LE REPULSEUR N'Y EST PAS, et c'est un negatif MESURE, pas une lacune : le lot R9 a ferme
+# ses trois portes restantes. L'inscrire ici ferait dessiner un geste que le film
+# n'enregistre pas. UNE FAMILLE ABSENTE DE CETTE LISTE VOIT SES IMPULSIONS ECARTEES ET
+# COMPTEES (`coverage.abilityImpulses.otherFamily`) : le canal ne se tait pas, il dit ce
+# qu'il refuse. Une famille citee ici DOIT etre nommee par au moins un rang ci-dessus, sans
+# quoi le calque serait muet en silence — le loader le refuse.
+[ability_impulses]
+families = ["thruster"]
+
+# Familles de capacite dont les CHARGES RESTANTES sont MESUREES par le canal d'energie du
+# bipede : i56 `biped-spartan-ability-energy`, masque R(3) puis 7 bits par emplacement arme,
+# quartet HAUT = charges entieres (lot R11 du 2026-09-03,
+# RAPPORT_R11_REPULSEUR_CHARGES §1.1 et §2). Cf. filmdec/ability_charges.go (lecture) et
+# replay/document_ability_charges.go (jointure d'identite par le rang i48 de la MEME vie).
+#
+# CETTE LISTE EST UNE MESURE, PAS UN REGLAGE (R11 §2-5) : sur `1cd3848a`, la serie 4, 3, 2,
+# 1, 0 tombe EXACTEMENT sur les cinq usages de propulseur releves au Theater (5/5, ecart
+# <= 1 s) ; 36 accroches de grappin sur 36 (canal `grappleLines`, independant) sont appariees
+# a une baisse, contre 2/36 pour un temoin decale de 5 s. Seules ces DEUX familles arment
+# i56 — ce sont les deux capacites dont le client PREDIT le mouvement du porteur (R11 §8.2).
+#
+# LE REPULSEUR N'Y EST PAS, et c'est un negatif MESURE, pas une lacune : 218 vies de
+# repulseur, 111,7 minutes de port sur onze films, 0 baisse attribuable — dont deux porteurs
+# qui consomment leurs TROIS charges (le film l'annonce par le `spent` d'i48) pendant que le
+# canal compte celles du grappin d'autres joueurs du meme film (R11 §4-5). UNE FAMILLE
+# ABSENTE DE CETTE LISTE VOIT SES LECTURES ECARTEES ET COMPTEES
+# (`coverage.abilityCharges.otherFamily`). Une famille citee ici DOIT etre nommee par au
+# moins un rang de palette ci-dessus, sans quoi le calque serait muet en silence — le loader
+# le refuse (meme validateur que la table precedente).
+[ability_charges]
+families = ["grapple", "thruster"]
 
 # Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
 #
@@ -64,7 +226,9 @@ fr = "Spike"
 # brise.
 #
 # Valeurs admises (elles nomment une GEOMETRIE de rendu, pas un type de degat) :
-#   ballistic | plasma | light | shock | explosive | melee | needles
+#   ballistic | plasma | light | shock | explosive | bomb | melee | needles
+#   (`bomb` depuis le 2026-09-24, retours du rejeu lot M6.2 : la deflagration a l echelle d une
+#   charge larguee — la bombe de la Banshee, « plus grosse », decision de l utilisateur)
 #
 # UNE ARME ABSENTE DE CETTE TABLE tombe sur le rendu neutre, jamais sur un rendu
 # approchant : un effet emprunte affirmerait une arme qu'on ignore.
@@ -99,3 +263,589 @@ hinf_hydra          = "explosive"
 hinf_gravity_hammer = "melee"
 hinf_energy_sword   = "melee"
 hinf_needler        = "needles"
+# Cles vues UNIQUEMENT sur les KILLS du feed (killicon rend un weapon_key par source de
+# degat) : la meme table sert desormais les effets de MORT (ReplayDocument.killEffects),
+# joints par weapon_key. La Dynamo est electrique — elle rejoint la famille `shock`, pas
+# l'explosif generique. La grenade Spike n'a PAS de weapon_key (mesure, killicon GGGL 3) :
+# elle reste sans effet de famille, jamais celui d'une voisine.
+hinf_frag_grenade   = "explosive"
+hinf_plasma_grenade = "explosive"
+hinf_dynamo_grenade = "shock"
+hinf_bandit         = "ballistic"
+hinf_ma5k_avenger   = "ballistic"
+# EFFETS DE MORT DES ARMES DE VEHICULE (retours du rejeu, lot M6.2, decisions de l'utilisateur du
+# 2026-09-23 nuit ; revue adverse du lot, constat R5). La mort se dessine par la CLE du kill, que
+# killicon rend par source de degat : une cle de vehicule ne recoit une famille que si TOUTES ses
+# sources sont la meme arme. C'est le cas de deux vehicules :
+#   - `hinf_scorpion` : ses seules sources resolues sont les degats du CANON (`0bece71e`,
+#     `19bd6810`, regle BANQUE veh_un_scorpion ; les tags partages avec le fusil a lumiere sont
+#     ambigus et ne rendent aucune cle) -> explosion COMME LA GRENADE (`explosive`) ;
+#   - `hinf_rockethog` : ses seules sources sont les roquettes (`5a4450e4`, `798a239d`, vehi
+#     bcfb852f) -> explosion COMME LE SPNKR (`explosive`, la famille de `hinf_m41_spnkr`).
+# LA BOMBE DE LA BANSHEE N'A PAS D'ENTREE, ET C'EST VOULU : la regle BANQUE veh_cv_banshee rend
+# `hinf_banshee` pour les degats de la bombe (projectile 83189ef3 : `53b1e6c5`, `a21bf18a`) ET pour
+# ceux de trois autres projectiles de la Banshee (0001535a : `0001535b`, `0001535c` ; 0001535f :
+# `00015360` ; 79665713 : `fa4fad21`) ; une famille par cle poserait l'explosion de la bombe sur une
+# mort aux canons. La bombe est rouge et
+# plus grosse sur son TIR (registre `vehicle_weapons.toml`, forme `bomb`) ; a la MORT, elle attend
+# une cle par source de degat (limite ecrite du lot M6, consignee).
+hinf_scorpion       = "explosive"
+hinf_rockethog      = "explosive"
+
+# TEINTE d'un tir, par weapon_key — LA NATURE DE LA DECHARGE, pas le camp du tireur.
+#
+# POURQUOI CETTE TABLE EXISTE (2026-08-15, arbitrage ROUVERT par l'utilisateur). Le lot 3.2
+# avait acte « famille = FORME, couleur = TIREUR » et abandonne la palette du POC.
+# L'utilisateur tranche autrement, mot pour mot : « le muzzle flash c'est bien pour les armes
+# CINETIQUES ; pour les autres faut des effets de type PLASMA BLEUTE OU ROUGEATRE pour les
+# armes Banished a energie, voire d'ENERGIE VIOLETTE pour les armes Forerunner », puis
+# « les couleurs des effets de tirs ne prennent pas la couleur du tireur [...] elle prend
+# seulement l'ARME en compte ». La teinte dit donc CE QUI SORT DU CANON, et rien d'autre :
+# l'identite du joueur reste portee par son marqueur et son cone de visee.
+#
+# POURQUOI UNE TABLE SEPAREE DE [shot_effects], ET PAS UNE COLONNE DE PLUS. Les deux ne se
+# recoupent pas : la FORME suit la mecanique du projectile, la TEINTE suit sa nature
+# energetique. Deux armes de la meme forme peuvent diverger (le Ravageur et la carabine a
+# impulsion sont toutes deux `plasma` et n'ont pas la meme couleur dans le jeu), et deux
+# armes de teinte identique peuvent avoir des formes opposees (le Crematier explose, la
+# carabine Vestige file droit). Les fondre obligerait a inventer une famille par croisement.
+#
+# Valeurs admises (elles nomment une NATURE, jamais une couleur — la couleur est un token du
+# theme, cote client) :
+#   kinetic      poudre : la detonation d'une charge, chaude et breve
+#   plasma_cool  decharge d'energie a spectre FROID (plasma Covenant bleu-vert)
+#   plasma_hot   decharge d'energie a spectre CHAUD (armes Brute rouge-orange)
+#   forerunner   energie Forerunner (l'utilisateur la veut VIOLETTE ; le POC disait cyan-or)
+#   electric     arc electrique
+#   needle       cristal des aiguilles
+#   blast        deflagration chimique
+#
+# NE SONT PAS DANS CETTE TABLE, et c'est voulu : les armes de MELEE (elles n'emettent aucun
+# tir — 0 evenement mesure sur les 17 904 tirs du corpus, et la regle du chantier veut qu'un
+# coup de marteau n'ait pas d'eclair de bouche) et les GRENADES (un lancer n'est pas un tir).
+# Une arme absente de cette table garde la teinte neutre du theme — jamais celle d'une voisine.
+[shot_tints]
+# UNSC : toutes cinetiques.
+hinf_ma40_ar        = "kinetic"
+hinf_br75           = "kinetic"
+hinf_bandit         = "kinetic"
+hinf_ma5k_avenger   = "kinetic"
+hinf_vk78_commando  = "kinetic"
+hinf_s7_sniper      = "kinetic"
+hinf_cqs48_bulldog  = "kinetic"
+hinf_sidekick       = "kinetic"
+hinf_hydra          = "blast"
+hinf_m41_spnkr      = "blast"
+# Banished CINETIQUES : le Dechiqueteur crache des pointes, l'Empaleur un harpon. Ni l'un ni
+# l'autre n'est une arme a energie — les ranger avec les plasmas dirait le contraire.
+hinf_mangler        = "kinetic"
+hinf_skewer         = "kinetic"
+# Banished A ENERGIE, spectre FROID.
+hinf_plasma_pistol  = "plasma_cool"
+hinf_pulse_carbine  = "plasma_cool"
+hinf_vestige_carbine = "plasma_cool"
+hinf_cindershot     = "plasma_cool"
+hinf_fuel_rod_spnkr = "plasma_cool"
+# Banished A ENERGIE, spectre CHAUD.
+hinf_ravager        = "plasma_hot"
+hinf_stalker_rifle  = "plasma_hot"
+hinf_heatwave       = "plasma_hot"
+# FORERUNNER : le Rayon de Sentinelle est la seule arme Forerunner du jeu — et le corpus des
+# 23 artefacts locaux n'en porte AUCUN tir. La teinte est declaree quand meme : elle existera
+# le jour ou un film en portera un, et l'absence de mesure est dite plutot que masquee.
+hinf_sentinel_beam  = "forerunner"
+# ELECTRIQUE.
+hinf_disruptor      = "electric"
+hinf_shock_rifle    = "electric"
+# AIGUILLES.
+hinf_needler        = "needle"
+
+# ---------------------------------------------------------------------------------------
+# OBJETS D'EQUIPEMENT POSES sur la carte, par GlobalID du tag `eqip` du jeu.
+#
+# CE QUE LA CLE EST. Le record de CREATION d'une entite d'archetype 37 (`equipment`) porte,
+# dans son bloc `object-multiplayer-properties`, un mot de 32 bits qui est le GlobalID du tag
+# `eqip` de l'objet — sa DEFINITION dans les modules du jeu. Ce n'est ni une enumeration ni
+# un index de palette : c'est la reference que le jeu utilise lui-meme. Les 21 valeurs
+# observees sur le corpus de 11 films se resolvent TOUTES dans le groupe `eqip`
+# (`himap/sonde_ti37_gamefiles_test.go`, 148 097 tags parcourus).
+#
+# LE NOM VIENT DE LA STRUCTURE DU JEU, PAS D'UNE STATISTIQUE — reecriture du 2026-08-18
+# (PLAN_NOMMAGE_EQIP_TRANSLOCATEUR, gate 0). La version precedente de cette table nommait par
+# une DIAGONALE (identifiant x rang de capacite du poseur, seuil 85 %) et n'y parvenait que
+# deux fois sur vingt et une. La chaine que le jeu emploie lui-meme se lit hors ligne :
+#
+#   sofd (palette de capacites du match)  --rang-->  sofa  --+--> string_id (murmur3 du nom)
+#                                                            +--> eqip (l'objet dans le monde)
+#
+# `sofd` est le bloc que `FUN_1407E7648` parcourt pour resoudre un rang de capacite
+# (RECETTE_LOADOUT §9) ; `sofa` est le maillon que le chantier voisin traverse pour l'armement
+# de vehicule (`vcdd -> sofd -> sofa -> uwfa -> weap`). Les modules n'ont plus de table de
+# chaines (`stringsSize` = 0) : un `string_id` se CASSE par dictionnaire murmur3, et un
+# identifiant non casse ne se nomme pas. Instruments : `himap/sonde_sofd_gamefiles_test.go`,
+# `himap/sonde_eqip_gamefiles_test.go`, `himap/sonde_stringid_dico_test.go`.
+#
+# LES QUATRE PROVENANCES, et ce que chacune etablit :
+#
+#   sofa_string_id  le `string_id` du `sofa` est casse — le nom est celui du jeu. Douze noms
+#                   sortent ainsi, dont les CINQ que la RECETTE §13 avait obtenus par un autre
+#                   chemin (`mobility_sprint`, `ability_location_sensor`,
+#                   `ability_deployable_wall`, `ability_grapple_hook`, `ability_evade`) : cinq
+#                   egalites exactes a la meme position de structure.
+#   sofa_modele     le `string_id` resiste, mais l'`eqip` partage son MODELE (`hlmt`) avec un
+#                   `eqip` dont le `sofa` est nomme. Quatre cas, et ils tombent EXACTEMENT sur
+#                   les quatre rangs 19-22 que la verite terrain Theater du 2026-07-27 nommait
+#                   mur / grappin / propulseur / capteur — sans que la structure la consulte.
+#   sofa_parent     l'`eqip` est ENGENDRE par un autre `eqip` (dependance `eqip -> eqip`) qui
+#                   appartient a un `sofa` nomme : ce sont les panneaux deployes d'un mur.
+#   gggl_entree     l'`eqip` est une entree de la liste des grenades du jeu (`gggl` 0x00000057,
+#                   bloc de 832 o = 4 x 0xd0). Les quatre identifiants « plats » du corpus —
+#                   ceux qu'aucun poseur n'accompagne — sont exactement les quatre premieres
+#                   references `eqip` de ce bloc, aux offsets 0x4c, 0x11c, 0x1ec, 0x2bc : la
+#                   PERIODE 0xd0 est celle que le chantier kill feed avait mesuree de son cote
+#                   (ETAT_DE_L_ART_KILLWEAPON 7ter.48). L'ordre des entrees EST le rang de type
+#                   de grenade du depot (`filmdec.GrenadeTypeIDsByRank`), et les banques sonores
+#                   de `damagetag/data/labels.tsv` le confirment entree par entree :
+#                   0 `kineticunsc` = fragmentation, 1 `plasma`, 2 `shock`/`lightning` = dynamo,
+#                   3 `kineticbanished` = a pointes.
+#
+# LA DIAGONALE EST DEVENUE LE CONTROLE, et elle passe 6 sur 6. Les six identifiants dont le
+# corpus mesure un rang de poseur retombent tous sur le rang que la structure leur donne :
+#
+#   0x8e2dc574  structure rang 19  ·  diagonale rang 19  22/25 = 88,0 %  temoin 30 %   ACCORD
+#   0x72199cba  structure rang 22  ·  diagonale rang 22  28/32 = 87,5 %  temoin 22 %   ACCORD
+#   0x528fce46  structure rang 19  ·  diagonale rang 19  22/27 = 81,5 %                ACCORD
+#   0x72b63d69  structure rang  1  ·  diagonale rang  1  41/50 = 82,0 %                ACCORD
+#   0x2974c233  structure rang  2  ·  diagonale rang  2  42/54 = 77,8 %                ACCORD
+#   0x686b40c9  structure rang  2  ·  diagonale rang  2  21/28 = 75,0 %                ACCORD
+#
+# Les quatre qui echouaient le seuil de 85 % avaient donc RAISON : ce n'etait pas leur nature
+# qui manquait, c'etait le denominateur `i48` sur les films Big Team Battle. Les quinze autres
+# identifiants n'ont pas de diagonale mesurable (aucun poseur a rang lu, ou aucun poseur du
+# tout pour les grenades) : c'est « non mesurable », jamais « contredit ».
+#
+# CE QUI RESTE `other` : 0x4396db42 (104 poses, 9 films, 26 deployees — releve du 2026-08-18 sur
+# les 33 artefacts de disque). Il est rattache au `sofa` 0xeb500815 — le rang 10 des palettes
+# 0xd91958af ET 0x03137359 de la famille A, le trou non casse le plus frequent du corpus
+# (67 lectures `i48`).
+#
+# TROIS CHAINES L'ONT CHERCHE, LES TROIS RENDENT UN NEGATIF (2026-08-18,
+# PLAN_EQUIPEMENTS_MANQUANTS_SONS phase 1.5). Chacune avec son denominateur, parce qu'un negatif
+# sans denominateur ne vaut rien :
+#
+#   DICTIONNAIRE   son `string_id` 0xb328c9fa resiste a DEUX enumerations independantes : le
+#                  dictionnaire global a trois jetons (49 954 499 candidats, esperance de
+#                  collision 0,070) et un dictionnaire ELARGI construit pour la question
+#                  (31 prefixes x 176 jetons a deux jetons = 1 898 966 candidats, esperance
+#                  0,0022 sur 5 cibles ; `himap/sonde_eqip_anonyme_test.go`). Ce dernier retrouve
+#                  10 sur 10 des noms etablis par ailleurs — son negatif porte donc.
+#                  ET IL REFUTE UNE HYPOTHESE NOMMEE : `shroud_screen`, `smoke_screen`,
+#                  `stealth_screen`, `cloak_screen`, `camo_screen` sont TOUS enumeres, avec les
+#                  31 prefixes dont `ability_`, `equipment_`, `abl_`, `deployable_`. Aucun ne
+#                  hache vers 0xb328c9fa. L'« ecran de dissimulation » n'est pas ecarte comme
+#                  OBJET — aucun de ses noms plausibles n'est le nom de ce tag, c'est tout.
+#   MODELE         `hlmt:eea39cf4` est UNIQUE dans le jeu. La mesure ne porte plus sur les
+#                  21 identifiants du corpus mais sur les 116 tags `eqip` de l'installation,
+#                  ou 16 modeles sont partages par deux `eqip` ou plus (`c62d74c3` capteur,
+#                  `75070361` grappin, `99953db8` propulseur, `2e76f0a9` mur x4,
+#                  `d8ca727d` panneaux x5, `c4b1aebd` surbouclier + camouflage x6).
+#   BANQUE SONORE  son frere de `sofa`, l'`eqip` 0x4eebcb18, atteint une banque SELECTIVE
+#                  (`sbnk 92c830f5`, 38 `.wem` embarques, aucun autre `eqip` ne l'atteint) — mais
+#                  aucun de ces 38 `.wem` ne vit dans un `.pck` NOMME du jeu. La chaine qui
+#                  nomme (`eqip -> effe -> snd! -> sbnk -> .wem -> pack`) est pourtant CALIBREE :
+#                  elle rend `sb_007_abl_repairfield` pour le champ de reparation,
+#                  `sb_010_grn_cv_plasmagrenade` pour la grenade a plasma et
+#                  `sb_010_grn_un_lightninggrenade` pour la Dynamo.
+#
+# CE QUE LA STRUCTURE DIT QUAND MEME. Le `sofa` 0xeb500815 porte DEUX `eqip` : 0x4eebcb18, qui
+# n'a aucun `hlmt` mais un `proj` (un PROJECTILE), et 0x4396db42, qui porte `gldf` + `lens` (un
+# objet LUMINEUX, comme le surbouclier, le camouflage et le translocateur). Un objet lance qui
+# deploie une source de lumiere : c'est une description, pas un nom.
+#
+# LE RANG 10 N'EST PAS UNE IDENTITE, C'EST UNE POSITION. La TROISIEME palette de la famille A
+# (0x13c097ed) met au rang 10 un AUTRE `sofa` (0x457923a0), dont l'identifiant de chaine se
+# casse en `regen_field`. Deux equipements differents occupent donc le meme rang selon la
+# palette — et `regen_field` n'est PAS le rang 10 anonyme.
+#
+# `regen_field` EST LE SEUL NOM DU JEU QUE CE MANIFESTE NE PORTE PAS, et c'est volontaire : ses
+# deux `eqip` (0x0dc0d5b4, 0x03bad9e7) n'apparaissent dans AUCUN artefact du corpus, et la parite
+# de cette table est BILATERALE (toute ligne doit avoir un identifiant mesure). Le jour ou un
+# film en montre un, la ligne s'ecrit — la chaine du nom est deja faite.
+#
+# PARITE : tout identifiant observe au corpus a une ligne ici, nommee ou `other` explicite.
+# Garde-rail : `replaylabels/catalog_test.go`, TestPariteObjetsEquipementDuCorpus.
+#
+# ------------------------------------------------------------------------------------------
+# `kind` — LA NATURE MESUREE (ajoute le 2026-08-18, PLAN_ORIGINE_POSES_ET_FAMILLES G.3)
+#
+#   carried    PORTE par le joueur : ses poses sont majoritairement des LACHERS. Quand la vie
+#              du porteur s'acheve, ce qu'il portait tombe a ses pieds, et le film cree
+#              l'objet la. 19 des 21 identifiants.
+#   deployed   N'EXISTE QU'UNE FOIS DEPLOYE : la piece qu'un equipement ENGENDRE. Les deux
+#              seuls du corpus sont les panneaux du mur, et ce sont exactement les deux que la
+#              chaine des tags rattachait par `sofa_parent`.
+#
+# CE QUE LA MESURE A TROUVE, ET QUI RENVERSE LA LECTURE DE `equipmentPlacements`. Sur les
+# 11 films calibres (4 250 poses, 3 661 a poseur mesure), la part des poses creees dans les
+# 2 frames ET les 1,5 m du DERNIER POINT de leur poseur vaut 88,6 %. La part creee au DEBUT de
+# sa vie — l'hypothese « dotation au spawn », ecrite avant la mesure — vaut 0,1 % (4 poses, et
+# les 4 sont des vies de 0,13 a 1,49 s ou debut et fin se confondent). L'ecart n'est pas un
+# reglage de seuil : les lachers sont a 20-40 ms de la fin de vie, les deploiements a 14-42 s.
+#
+# LA DIAGONALE DE LA NATURE, par identifiant (part de poses DEPLOYEES) :
+#
+#   0x528fce46  panneaux du mur (rang 19)   47/48 = 97,9 %   0 lacher sur 48   DEPLOYED
+#   0x686b40c9  panneaux du mur (rang  2)   42/43 = 97,7 %   1 lacher sur 43   DEPLOYED
+#   ----------------------------------------------------------------------------------------
+#   0x2974c233  APPAREIL du mur (rang  2)   25/85 = 29,4 %                     carried
+#   0x72b63d69  capteur (rang 1)            27/95 = 28,4 %                     carried
+#   0x32d97758  champ de reparation        26/105 = 24,8 %                     carried
+#   0x7ca85adc  repulseur                  33/163 = 20,2 %                     carried
+#   0x72199cba  capteur (rang 22)            9/60 = 15,0 %                     carried
+#   0x8e2dc574  APPAREIL du mur (rang 19)    6/46 = 13,0 %                     carried
+#   0x273fe0eb  grappin                    22/223 =  9,9 %                     carried
+#   les 4 grenades                                 2,6 a 5,1 %                 carried
+#
+# UN SEUIL A 50 % SEPARERAIT LES DEUX GROUPES SANS AMBIGUITE : 97,7 % d'un cote, 29,4 % de
+# l'autre, et rien entre les deux. C'est le controle INTERNE de la mesure — si les 88,6 % de
+# lachers etaient un artefact de la methode, les panneaux les porteraient aussi ; ils en ont
+# zero et un.
+#
+# CE QUE CELA TRANCHE POUR LE RENDU : l'arc du mur se dessine sur les PANNEAUX
+# (`0x528fce46`, `0x686b40c9`), jamais sur l'appareil — un appareil de mur a la position d'un
+# joueur est, 87 fois sur 100, l'objet qu'il portait en mourant. Meme verdict pour le capteur :
+# `0x72199cba` est PORTE, ses 60 poses sont 50 lachers pour 9 deploiements.
+#
+# CE QUE `kind` NE DIT PAS, et il ne faut pas le lui demander : ce qu'une pose PARTICULIERE
+# est. Cela, c'est `origin` (`deployed` / `dropped` / `unknown`), mesure pose par pose et
+# publie au document (schema 10). Un identifiant `carried` porte quand meme des deploiements
+# reels — 25 murs et 9 capteurs dans ce corpus — et c'est `origin` qui les distingue.
+#
+# TROIS IDENTIFIANTS ONT UN EFFECTIF TROP FAIBLE POUR QUE LA MESURE TRANCHE SEULE, et leur
+# `kind` repose alors sur la structure (aucun n'est `sofa_parent`, donc aucun n'est une piece
+# engendree) : 0x730dc70f balise du translocateur (2 poses, 2 lachers), 0xb781197a surbouclier
+# et 0xe7be9f5c camouflage (1 pose chacun, 1 lacher). Les quatre poses vont dans le meme sens
+# que les 19 autres identifiants (23 a 40 ms, 0,44 a 0,67 m de la fin de vie), mais n = 1 ou 2
+# ne prouve rien : c'est ecrit ici pour que personne ne le lise comme une mesure.
+# ------------------------------------------------------------------------------------------
+
+[[equipment_objects]]
+id         = "0x0f5716ff"
+family     = "grenade_spike"
+provenance = "gggl_entree"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x273fe0eb"
+family     = "grapple"
+name_id    = "0x87b1d7a4"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x2974c233"
+family     = "wall"
+name_id    = "0xedebd7b7"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x32d97758"
+family     = "repair_field"
+name_id    = "0x00bef187"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x430dda48"
+family     = "thruster"
+name_id    = "0xed76a664"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+# Rang 10 de la palette famille A. NOMME LE 2026-08-27, et par une voie neuve : sa banque
+# sonore est `sb_007_abl_shroud`, casse par hachage FNV-1 de l identifiant Wwise (banque
+# `92c830f5`, celle que le lot du 18/08 lui avait deja rattachee sans pouvoir la nommer).
+# C est l ECRAN OCCULTANT.
+[[equipment_objects]]
+id         = "0x4396db42"
+family     = "shroud_screen"
+name_id    = "0xb328c9fa"
+provenance = "banque_nommee"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x4744d742"
+family     = "threat_seeker"
+name_id    = "0xc5bb0ba7"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+# Panneaux deployes du mur de la palette rang 19 : engendres par l'`eqip` 0x37c87a13.
+[[equipment_objects]]
+id         = "0x528fce46"
+family     = "wall"
+provenance = "sofa_parent"
+kind       = "deployed"
+
+# Panneaux deployes du mur `ability_deployable_wall` : engendres par l'`eqip` 0xc12e5469.
+[[equipment_objects]]
+id         = "0x686b40c9"
+family     = "wall"
+provenance = "sofa_parent"
+kind       = "deployed"
+
+# Meme modele `hlmt:c62d74c3` que 0x72b63d69 (`ability_location_sensor`).
+[[equipment_objects]]
+id         = "0x72199cba"
+family     = "sensor"
+name_id    = "0x9bc48d0f"
+provenance = "sofa_modele"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x72b63d69"
+family     = "sensor"
+name_id    = "0x566bb170"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x730dc70f"
+family     = "translocator_beacon"
+name_id    = "0x1f7c6a15"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0x7ca85adc"
+family     = "repulsor"
+name_id    = "0x2b5d5eac"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+# Meme modele `hlmt:75070361` que 0x273fe0eb (`ability_grapple_hook`).
+[[equipment_objects]]
+id         = "0x8c77ffe7"
+family     = "grapple"
+name_id    = "0x828e2a93"
+provenance = "sofa_modele"
+kind       = "carried"
+
+# Meme modele `hlmt:2e76f0a9` que 0x2974c233 (`ability_deployable_wall`).
+[[equipment_objects]]
+id         = "0x8e2dc574"
+family     = "wall"
+name_id    = "0xcb9f3095"
+provenance = "sofa_modele"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0xaada07f3"
+family     = "grenade_dynamo"
+provenance = "gggl_entree"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0xb781197a"
+family     = "powerup_overshield"
+name_id    = "0x3ed01bf0"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0xbcabbe43"
+family     = "grenade_frag"
+provenance = "gggl_entree"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0xcaaadcb0"
+family     = "grenade_plasma"
+provenance = "gggl_entree"
+kind       = "carried"
+
+[[equipment_objects]]
+id         = "0xe7be9f5c"
+family     = "powerup_camo"
+name_id    = "0x2edcb6ef"
+provenance = "sofa_string_id"
+kind       = "carried"
+
+# Meme modele `hlmt:99953db8` que 0x430dda48 (`ability_evade`).
+[[equipment_objects]]
+id         = "0xeef5d48d"
+family     = "thruster"
+name_id    = "0x9de62e2f"
+provenance = "sofa_modele"
+kind       = "carried"
+
+# ------------------------------------------------------------------------------------------
+# OBJETS D'OBJECTIF — les objets du monde QUI FONT LE MODE, et que la chaine des socles doit
+# reconnaitre pour ne PAS les publier comme des armes (2026-08-18,
+# `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, decision 1).
+#
+# CE QUE CETTE TABLE EST, ET CE QU'ELLE N'EST PAS. La cle est le mot de 32 bits du bloc
+# `object-multiplayer-properties` d'un record de CREATION `ti=42` — le MEME champ que celui
+# qui identifie une arme au sol, dans le MEME archetype. Ce n'est donc pas une table
+# d'equipement (`equipment_objects`, archetype 37, chaine `sofd -> sofa -> eqip`) : c'est la
+# liste des identifiants `ti=42` qui ne sont PAS des armes et dont la nature est etablie.
+#
+# COMMENT `0x2a392328` A ETE ETABLI (phase 0 du plan attachement,
+# `attachement_phase0_drapeau_test.go`, 2026-08-18) — trois lectures, aucune supposee :
+#
+#   COMBIEN   110 / 41 / 46 creations `ti=42` sur les trois films de CTF du corpus
+#             (`64e8adfa` et `530820e5` sur Catalyst, `53ce4390` sur Behemoth), toutes
+#             ECARTEES du catalogue d'armes par le croisement d'identite.
+#   OU        41 / 16 / 18 d'entre elles naissent a 0,0 m d'un socle `flag_spawn` du
+#             catalogue de carte — un drapeau nait a son socle.
+#   QUAND     l'une d'elles tombe a 1 ms d'un evenement de l'oracle (prise ou fin de portage).
+#
+# ET LE TEMOIN QUI FAIT LA SELECTIVITE : aucun AUTRE mot ecarte du catalogue d'armes ne
+# reunit les deux (naitre au socle ET coincider avec l'oracle). Le seul candidat est celui-ci.
+#
+# CE QUE LA TABLE CHANGE POUR LA CHAINE DES SOCLES. Jusqu'ici ce mot etait ecarte par
+# ACCIDENT — « identite hors du catalogue d'armes », comme le bruit du balayage. Il est
+# desormais ecarte PARCE QU'ON SAIT CE QUE C'EST, avant meme la question « est-ce une arme ? ».
+# Un drapeau n'est pas un socle d'arme : deux apparitions au meme socle en feraient un, et le
+# rejeu dessinerait un socle de fusil a la base de chaque equipe.
+#
+# `family` : liste FERMEE (`flag`, `ball`). Le crane d'Oddball y est entre le 2026-08-27 ;
+# la phrase precedente disait qu'il n'y etait pas « faute de canal ET d'oracle », et c'est
+# cette phrase que la phase D4 du plan des objectifs vivants a attaquee — avec un succes
+# PARTIEL qu'il faut lire tel quel (voir le bloc du crane ci-dessous).
+#
+# `en` / `fr` : le nom de l'objet, dans les deux langues du produit — jamais en dur en Go ni
+# en TypeScript, meme regle que les grenades et les capacites.
+[[objective_objects]]
+id     = "0x2a392328"
+family = "flag"
+en     = "Flag"
+fr     = "Drapeau"
+
+# LE CRANE D'ODDBALL — identite ETABLIE le 2026-08-27, portage REFUTE le meme jour.
+#
+# CE QUI EST MESURE (phase D4, quatre films Oddball : `24dbb67d` Recharge, `43716616`
+# Smallhalla, `51ebbc0f` Banished Narrows, `d9781168` Dredge ; instrument
+# `oddball_crane_d4_test.go`, sortie figee dans `.ai/V7.5/replay2d/registre_film/`) :
+#
+#   COMBIEN   133 / 137 / 144 / 256 creations `ti=42` ECARTEES du catalogue d'armes, soit
+#             69 / 107 / 82 / 199 mots de 32 bits distincts.
+#   OU        ce mot-ci naissait a 0,0 m du socle `oddball_spawn` UNIQUE de la carte sur les
+#             QUATRE films (3, 4, 4 et 13 creations au socle).
+#   QUAND     a 6, 3, 3 et 5 ms d'un evenement `th=10` de crane.
+#
+# LE TEMOIN DE SELECTIVITE, ecrit comme pour le drapeau : sur `43716616` et `51ebbc0f`, AUCUN
+# autre mot ecarte ne reunit les deux conditions. Sur les deux autres films il en existe UN,
+# mais ce n'est pas le meme des deux cotes (`0xCBA072DC` / `0x042100A6`) et il s'en separe sur
+# les DEUX criteres : 1 creation contre 16 a 47, ne a 1,7 et 2,9 m contre 0,0, coincidant a 157
+# et 177 ms contre 3 a 6. Bruit de singleton, pas identite rivale.
+#
+# CE QUE CETTE ENTREE NE DIT PAS, ET QU'IL FAUT LIRE AVANT DE L'ETENDRE : QUI porte le crane.
+# Le seuil de portage a ete mesure et REFUTE — 40,6 a 66,7 % de trous a porteur unique contre
+# un seuil de 90 %, et un temoin place HORS trou qui rend le meme signal dans 66,7 et 71,4 %
+# des cas. L'oracle du score personnel ne discrimine pas le portage en Oddball. Aucun calque de
+# portage de crane n'existe, et il ne faut pas en deduire un de cette ligne.
+[[objective_objects]]
+id     = "0x0017592c"
+family = "ball"
+en     = "Oddball"
+fr     = "Crane"
+
+# ---------------------------------------------------------------------------
+# LA ZONE DE RETOUR DU DRAPEAU (CTF) — la regle du mode, pas un reglage d'affichage.
+#
+# Un drapeau de CTF tombe ne reste pas au sol : une zone l'entoure, les coequipiers de son camp
+# qui s'y tiennent VIDENT sa jauge de retour plus vite, et sans personne elle se vide seule
+# jusqu'a ce qu'il rentre. Le rejeu 2D en tire le cercle et la jauge (schema 35).
+#
+# D'OU VIENNENT CES TROIS NOMBRES — LES DEUX PROVENANCES NE SE VALENT PAS :
+#
+#   radius_m       LU DANS LE JEU. Pool de constantes du script `parcel_deliver_object.lua`
+#                  (tag `hsc*` de `any/globals/common-rtx-new.module`), table CONFIG, champ
+#                  `innerAreaMonitorRadius` = 1,3. Le meme pool rend `flagCarrierMovespeedScalar
+#                  = 0,715` — la penalite de vitesse du porteur, verifiable en jeu : c'est le
+#                  TEMOIN qui atteste le decodage. CORROBORE independamment par la mesure :
+#                  l'ajustement du modele sur les films CTF a son minimum de dispersion a
+#                  1,3-1,5 m (cv 0,85 / 0,84), et se degrade de part et d'autre (0,5 m -> 1,44 ;
+#                  3 m -> 1,09 ; 5 m -> 1,87).
+#
+#   reset_seconds  MESURE sur les films. Le defaut de la bibliotheque (`flagResetSeconds = 15`)
+#                  est ecrase par instance (`FlagInitArgs.returnTimer`) : c'est la valeur du
+#                  MATCH qui compte pour un rejeu. Episodes retournes sans qu'aucun defenseur
+#                  n'approche : 29,0 / 30,0 / 31,4 / 32,2 s.
+#
+#   solo_seconds   MESURE sur les films. Ajustement du modele du jeu — jauge remplie au taux
+#                  `1/reset + H(n)/solo`, H = serie HARMONIQUE (le jeu nomme sa fonction
+#                  `CalculateReturnRateHarmonic`) — au rayon 1,3 : 3,09 s.
+#
+# Detail, protocole et bornes : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+# NE PAS renseigner ces valeurs « au juge » pour un autre titre : la section absente ne dessine
+# rien, ce qui est le comportement voulu, alors qu'un rayon invente dessine un cercle faux.
+[flag_return_zone]
+radius_m      = 1.3
+reset_seconds = 30
+solo_seconds  = 3.1
+
+# ------------------------------------------------------------------------------------------
+# FAMILLES DE CHASSIS DE VEHICULE QUALIFIEES (lot 1.9.9 du plan decodeur, 2026-09-16).
+#
+# TABLE PARTIELLE, ET ELLE DOIT LE RESTER. Le nom d'une famille de vehicule est un NOM PROPRE
+# du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la cle de la table des sprites
+# EST deja ce nom. Presque toutes les familles n'ont donc aucune ligne ici, et c'est le regime
+# normal — n'y entre QUE ce dont le nom est une DESCRIPTION (il se traduit) et la nature doit
+# traverser jusqu'au client.
+#
+# `kind` (liste fermee) :
+#   `map_element`  = un objet de la CARTE, pas un vehicule de la partie : il ne porte jamais
+#                    d'occupant ;
+#   `fixed_turret` = une TOURELLE FIXE posee par la carte et OCCUPEE par un joueur (depuis le
+#                    2026-09-24, retours du rejeu lot M6.2) : son occupant embarque.
+# Le document le publie sur la famille, et le client le lit pour dessiner un pictogramme dedie
+# au lieu du marqueur neutre des chassis non resolus.
+#
+# `sprite` : un asset est-il servi pour cette famille sous
+# `static/vehicles-assets/{slug}/replay/{family}.png` ? C'est LE POINT D'EXTENSION du jour ou
+# l'utilisateur fournira l'image : passer `sprite` a `true`, deposer le PNG et sa ligne
+# d'`index.json`. Aucune ligne de Go ni de TypeScript ne change.
+# ------------------------------------------------------------------------------------------
+
+# LA TOURELLE AUTOMATIQUE BANNIE — chassis `0x038df01a`.
+#
+# DECISION UTILISATEUR DU 2026-09-14 : « ce sont des elements de la map ». Un objet qui interdit
+# la sortie de la zone de jeu, PAS un vehicule jouable. Le parc d'assets vehicules est COMPLET :
+# un chassis absent de la table des familles est un mismatch a nommer, jamais un vehicule
+# manquant.
+#
+# LES PREUVES, deux sources independantes qui se recoupent.
+#   1. LE NOMMAGE. `damagetag/data/labels.tsv` porte TROIS tags de degat dont le porteur est
+#      `vehi 038df01a`, et deux d'entre eux ne citent qu'UNE banque :
+#      `sb_003_lvl_moments_ge_shared_autoturret_banished` (+ son `_fire`). Le prefixe `sb_003_lvl`
+#      dit la nature : banque de NIVEAU, pas banque de vehicule (`sb_010_veh`).
+#   2. LA FORME DE SES VIES. Instrument `TestInventaireChassisDesArtefacts` sur les 76 artefacts
+#      du parc : 18 vies (films `bfecd02b` et `2cf24f30`, 9 chacun), 17 des 18 SANS aucun
+#      echantillon de trajectoire, et les 18 avec une fenetre qui couvre le match entier.
+#
+# Aucun asset n'existe a ce jour (`sprite = false`) : le client dessine un pictogramme de
+# tourelle dedie, jamais le marqueur neutre.
+[[vehicle_families]]
+family = "tourelle_auto_bannie"
+en     = "Banished auto-turret"
+fr     = "Tourelle automatique bannie"
+kind   = "map_element"
+sprite = false
+
+# LA TOURELLE FIXE — chassis `0x3a8060e2` (retours du rejeu, lot M6.2, 2026-09-24).
+#
+# INFORMATION DE L'UTILISATEUR DU 2026-09-24 : sur Takamanohara, l'objet pose `3a8060e2` est une des
+# deux TOURELLES FIXES (gatling / mortier) symetriques en hauteur — un poste de tir que les joueurs
+# OCCUPENT, pas un element de carte inerte. Recoupe par son tag `vehi` (armes `4d39877f` et
+# `3d30b955`, ce dernier nomme `gatling_mortar` par le script Lua global, sonde CA9) et par la sonde
+# C2 (objet pose par la carte, auquel la publication attribuait deja un occupant). Aucun asset a ce
+# jour (`sprite = false`) : le client dessine le pictogramme de tourelle, occupant compris.
+[[vehicle_families]]
+family = "tourelle_fixe"
+en     = "Fixed turret"
+fr     = "Tourelle fixe"
+kind   = "fixed_turret"
+sprite = false

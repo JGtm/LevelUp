@@ -135,7 +135,7 @@ func (r *EngagementScoreRepo) LoadEngagementCoefficient(
 }
 
 // SaveEngagementScore persiste le score, le residu brut et la confidence dans
-// player_match_enrichment. Append-only #23046 : INSERT pur stage='engagement'
+// player_match_enrichment. Append-only #23645 : INSERT pur stage='engagement'
 // (plus d'UPDATE). mode_category est repris de la vue _latest (scalar subquery)
 // pour ne pas l'écraser à NULL — il est posé par le sync engagement. Ce repo HTTP
 // n'a actuellement aucun caller de prod (port + mock seulement) ; la conversion

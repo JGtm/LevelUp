@@ -24,7 +24,7 @@ function matrix(): SquadImpactMatrix {
     ],
     badge_ord: [
       'first_blood', 'clutch_finisher', 'last_casualty', 'last_group_kill',
-      'first_group_death', 'silent_hero', 'false_brother', 'kamikaze', 'top_killer',
+      'first_group_death', 'silent_hero', 'false_brother', 'kamikaze', 'thief', 'top_killer',
     ],
     players: [
       {
@@ -39,6 +39,7 @@ function matrix(): SquadImpactMatrix {
           { badge_key: 'silent_hero', count: 0 },
           { badge_key: 'false_brother', count: 0 },
           { badge_key: 'kamikaze', count: 0 },
+          { badge_key: 'thief', count: 0 },
           { badge_key: 'top_killer', count: 1 },
         ],
       },
@@ -54,6 +55,7 @@ function matrix(): SquadImpactMatrix {
           { badge_key: 'silent_hero', count: 0 },
           { badge_key: 'false_brother', count: 0 },
           { badge_key: 'kamikaze', count: 0 },
+          { badge_key: 'thief', count: 0 },
           { badge_key: 'top_killer', count: 0 },
         ],
       },
@@ -69,13 +71,14 @@ function matrix(): SquadImpactMatrix {
           { badge_key: 'silent_hero', count: 0 },
           { badge_key: 'false_brother', count: 1 },
           { badge_key: 'kamikaze', count: 1 },
+          { badge_key: 'thief', count: 1 },
           { badge_key: 'top_killer', count: 0 },
         ],
       },
     ],
     cells: [
       { player: 'Champ', match_id: 'm1', badge_keys: ['first_blood', 'clutch_finisher'] },
-      { player: 'WeakLink', match_id: 'm2', badge_keys: ['last_casualty', 'false_brother', 'kamikaze'] },
+      { player: 'WeakLink', match_id: 'm2', badge_keys: ['last_casualty', 'false_brother', 'kamikaze', 'thief'] },
     ],
   }
 }
@@ -106,13 +109,15 @@ describe('SquadImpactScoreboard', () => {
   it('cellule joueur×match contient les pictos des badges (empilés 2/ligne)', () => {
     renderWithProviders(<SquadImpactScoreboard matrix={matrix()} />)
     // Champ a deux badges sur m1 (first_blood + clutch_finisher).
-    // WeakLink a trois badges sur m2 (last_casualty + false_brother + kamikaze).
+    // WeakLink a quatre badges sur m2 (last_casualty + false_brother + kamikaze + thief).
     // Le scoreboard rend 2 cellules badges + headers d'agrégat → comptes ≥2 par picto.
     expect(screen.getAllByAltText('first_blood').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByAltText('clutch_finisher').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByAltText('last_casualty').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByAltText('false_brother').length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByAltText('kamikaze').length).toBeGreaterThanOrEqual(2)
+    // Voleur : picto vendoré (img), pas le repli « · » d'une clé inconnue.
+    expect(screen.getAllByAltText('thief').length).toBeGreaterThanOrEqual(2)
   })
 
   it('cellule agrégat à 0 affiche "—"', () => {

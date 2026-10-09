@@ -13,6 +13,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import * as squadContextModule from './SquadContext'
 import type { TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
+import { block0709, history0709, history0709Evenings } from './objectif/objectif.fixtures'
+import { impactHistory3 } from './impact/impactHistory.fixtures'
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
@@ -70,6 +72,17 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
   })
 
+  // LOT 3 « sections » (2026-09-22) : l'impact des coéquipiers et les médailles ont
+  // quitté Synergies pour Contributions — une contribution par joueur, pas une
+  // production de la composition. Sections non-graphes TOUJOURS montées (titre + état
+  // vide géré par le composant), donc elles répondent présentes même sans données.
+  it('monte « Impact des coéquipiers » et « Médailles » (arrivés de Synergies)', () => {
+    mockSquadContext({})
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByText('Impact des coéquipiers')).toBeInTheDocument()
+    expect(screen.getByText(/^Médailles/)).toBeInTheDocument()
+  })
+
   it('affiche le synergy radar quand synergy_radar est renseigné', () => {
     mockSquadContext({
       confirmedGamertags: ['FriendA'],
@@ -79,5 +92,80 @@ describe('SquadContributionsPage', () => {
     })
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByTestId('synergy-radar-chart')).toBeInTheDocument()
+  })
+
+  // LOT L2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : « Répartition des frags »
+  // puis « Outils de destruction » arrivent d'Usages, entre la rangée Stats par minute /
+  // Radar synergie et la section Performance.
+  it('monte « Répartition des frags » puis « Outils de destruction », avant « Performance »', () => {
+    mockSquadContext({
+      confirmedGamertags: ['FriendA'],
+      pageData: {
+        main_player: 'test',
+        frag_classes: { test: [{ class: 'shoulder', kills: 12, authoritative: false }] },
+        weapon_tools: {
+          players: ['test'],
+          lines: [
+            { kind: 'weapon', weapon_key: 'hinf_br75', label: 'BR75', label_en: 'BR75', class: 'shoulder', kills_by_player: { test: 12 }, total_squad: 12 },
+          ],
+        },
+      } as unknown as TeammatesPageResponse,
+    })
+    const { container } = renderWithProviders(<SquadContributionsPage />)
+    const text = container.textContent ?? ''
+    const section = text.indexOf('Frags et armes')
+    const breakdown = text.indexOf('Répartition des frags')
+    const tools = text.indexOf('Outils de destruction')
+    const perf = text.indexOf('Performance')
+    expect(breakdown).toBeGreaterThan(-1)
+    expect(tools).toBeGreaterThan(-1)
+    expect(section).toBeLessThan(breakdown)
+    expect(breakdown).toBeLessThan(tools)
+    expect(tools).toBeLessThan(perf)
+    expect(screen.getByTestId('squad-frag-breakdown')).toBeInTheDocument()
+  })
+
+  it('monte les deux cartes frags même sans données (état vide de chaque carte)', () => {
+    mockSquadContext({})
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByText('Répartition des frags')).toBeInTheDocument()
+    expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
+  })
+
+  // Points d'impact par soirée : sous la matrice d'impact, monté seulement quand la réponse
+  // porte le bloc (un titre sans événements horodatés ni équipe alliée ne l'a pas).
+  it('monte « Points d’impact par soirée et par rôle » sous la matrice quand le bloc est servi', () => {
+    mockSquadContext({
+      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      pageData: { main_player: 'JGtm', squad_impact_history: impactHistory3 } as unknown as TeammatesPageResponse,
+    })
+    const { container } = renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByTestId('squad-impact-history')).toBeInTheDocument()
+    const text = container.textContent ?? ''
+    expect(text.indexOf('Impact des coéquipiers')).toBeLessThan(text.indexOf('Points d’impact par soirée et par rôle'))
+    expect(text.indexOf('Points d’impact par soirée et par rôle')).toBeLessThan(text.search(/Médailles/))
+  })
+
+  it('ne monte pas les points d’impact par soirée sans le bloc', () => {
+    mockSquadContext({ confirmedGamertags: ['FriendA'], pageData: { main_player: 'test' } as unknown as TeammatesPageResponse })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.queryByTestId('squad-impact-history')).toBeNull()
+  })
+
+  // L'objectif est parti dans l'onglet Emprise : même avec des matchs à objectif, Contributions
+  // n'en monte plus aucune carte.
+  it('ne monte plus la section « Objectif » (partie dans l’onglet Emprise)', () => {
+    mockSquadContext({
+      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      pageData: {
+        main_player: 'JGtm',
+        formes_retenues: block0709(),
+        match_history: history0709(),
+        squad_objective_history: history0709Evenings(),
+      } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.queryByTestId('squad-objective-section')).toBeNull()
+    expect(screen.queryByText('Répartition de l’objectif dans l’escouade')).toBeNull()
   })
 })

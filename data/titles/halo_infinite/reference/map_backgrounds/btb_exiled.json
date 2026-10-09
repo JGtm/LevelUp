@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "module": "btb_exiled",
+  "mapNames": [
+    "Oasis Sentry Defense",
+    "oasis",
+    "Oasis Heavies",
+    "Oasis Firefight",
+    "oasis_sentry_defense_map",
+    "btb_exiled",
+    "oasis_heavies_map",
+    "btb_exiled"
+  ],
+  "image": "btb_exiled.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T21:22:04.6991944Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06756666692097982,
+    "originX": -54.92614322916667,
+    "originY": 68.52743321863811,
+    "widthPx": 1757,
+    "heightPx": 2018,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 53,
+    "anchorsInFrame": 53,
+    "anchorsWithGround": 43,
+    "anchorMedianGapM": -4.259673898258555,
+    "instancesDrawn": 9076,
+    "instancesScenery": 656,
+    "playLevelZ": 24.448630294799806,
+    "boundaryApplied": true,
+    "boundaryPlanes": 12,
+    "boundaryCellsCleared": 3240636,
+    "waterVolumes": 12,
+    "waterCells": 176684,
+    "coveredShare": 0.2354149414941494,
+    "covered": false,
+    "cellsAssumedFloor": 810624
+  }
+}

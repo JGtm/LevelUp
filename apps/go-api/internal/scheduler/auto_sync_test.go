@@ -9,8 +9,8 @@
 //
 // Ce qui reste testable unitairement et qui est couvert ici :
 //   - Helpers d'intervalle (resolveInterval / intervalFromHours).
-//   - syncPlayer chemins de skip (pool nil, pool.HasPlayer=false, watcher actif,
-//     DB joueur absente).
+//   - syncPlayer chemins de skip (pool nil, watcher actif, DB joueur absente). Depuis
+//     le 2026-09-16, « joueur absent du pool » N'EST PLUS un chemin de skip (D1).
 //   - Snapshot — récupération thread-safe du dernier cycle.
 //   - Run() — arrêt propre sur ctx.Done().
 package scheduler_test
@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,9 +76,6 @@ var _ auth.TokenProvider = (*fakeProvider)(nil)
 
 func (f *fakeProvider) InitDeviceFlow(_ context.Context) (auth.DeviceFlow, error) {
 	return nil, nil
-}
-func (f *fakeProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	return "", nil
 }
 func (f *fakeProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
 	return "", nil
@@ -161,17 +159,32 @@ func TestRunOnce_PoolNil_AllSkipped(t *testing.T) {
 	}
 }
 
-func TestRunOnce_PlayerNotInPool_Skipped(t *testing.T) {
-	p := &fakePool{hasPlayerMap: map[string]bool{}, size: 0}
+// TestRunOnce_PlayerNotInPool_PlusDeSkipPool — CE TEST A ÉTÉ RETOURNÉ le 2026-09-16.
+//
+// Il affirmait qu'un joueur absent du pool était sauté (`joueur absent du pool`). C'est
+// précisément le défaut corrigé par la décision D1 : le pool sert les endpoints publics de
+// n'importe quel profil suivi, et seul le rang de carrière se dégrade. Le test n'est pas
+// supprimé mais inversé : le joueur reste sauté ICI, mais pour la SEULE raison qui subsiste
+// dans cette fixture — sa player DB n'existe pas (repoRoot temporaire vide). La raison du
+// pool ne doit plus jamais apparaître.
+//
+// La précondition elle-même est exercée directement (player DB présente, joueur hors pool)
+// par TestPreconditions_JoueurHorsPoolAccepte, dans le test interne du paquet.
+func TestRunOnce_PlayerNotInPool_PlusDeSkipPool(t *testing.T) {
+	p := &fakePool{hasPlayerMap: map[string]bool{}, size: 1}
 	s := newSchedulerForTest(t, t.TempDir(), p)
 	res := s.RunOnce(context.Background())
 	if res.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1 (joueur absent du pool)", res.Skipped)
+		t.Errorf("Skipped = %d, want 1 (player DB absente)", res.Skipped)
 	}
 
 	snap := s.Snapshot()
 	if snap.Players[0].Outcome != "skipped" || snap.Players[0].Reason == "" {
 		t.Errorf("snapshot player = %+v, want skipped+reason non vide", snap.Players[0])
+	}
+	if strings.Contains(snap.Players[0].Reason, "absent du pool") {
+		t.Errorf("raison = %q — un profil suivi sans token propre ne doit plus être sauté "+
+			"pour cette raison (D1, plan 2026-09-16)", snap.Players[0].Reason)
 	}
 }
 

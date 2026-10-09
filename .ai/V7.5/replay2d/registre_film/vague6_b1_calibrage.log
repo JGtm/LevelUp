@@ -1,0 +1,28 @@
+# calibrage 1 : spans `carried` recalcules vs coverage.flagCarries.carries
+film	spans_carried_recalcules	coverage_carries	coverage_openings	accord
+16ea3668	29	29	29	true
+58864b3c	20	20	20	true
+7fce3219	85	85	85	true
+8bc6074f	53	53	54	true
+a0c36016	49	49	49	true
+b8a44fe8	63	63	63	true
+bc60b4d9	31	31	31	true
+bf5ced1b	12	12	12	true
+cde26226	88	88	88	true
+f8efc5ca	35	35	35	true
+4ecdf3e7	25	25	26	true
+# accord 11/11
+
+# calibrage 2 : oracle Oddball (rapport 6.2 §3.3 — 1249,0 s sur 4 films)
+match	joueurs	somme_time_as_skull_carrier_s
+d9781168	8	403.7
+51ebbc0f	6	265.8
+c88ec007	8	361.8
+43716616	6	217.7
+TOTAL		1249.0
+
+# calibrage 3 : les trois porteurs cites au rapport 6.2 §3.3
+match	xuid	oracle_s	attendu_rapport
+d9781168	2533274977810162	51.1	51,1
+43716616	2533274978052136	62.3	62,3
+c88ec007	2535448682342105	40.8	40,8

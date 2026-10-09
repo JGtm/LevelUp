@@ -25,6 +25,12 @@ export function toFirstBloodSeries(
       matchId: m.match_id,
       firstKillSec: m.first_kill_sec ?? null,
       firstDeathSec: m.first_death_sec ?? null,
+      // DEC-4 (retours utilisateur 2026-08-29) : carte/mode/date pour le
+      // tooltip — map_ui/mode_ui optionnels au contrat (dégradation propre
+      // s'ils manquent, cf. FirstBloodLanes), start_time toujours renseigné.
+      mapUI: m.map_ui ?? undefined,
+      modeUI: m.mode_ui ?? undefined,
+      startTime: m.start_time,
     })),
   }))
 }
