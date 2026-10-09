@@ -157,7 +157,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {/* Warnings */}
           {job.warnings.length > 0 && (
             <ul className="text-xs text-warning space-y-0.5">
-              {job.warnings.map((w) => <li key={w}>⚠️ {w}</li>)}
+              {job.warnings.map((w) => <li key={w}>{w}</li>)}
             </ul>
           )}
 
@@ -213,7 +213,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
                     handleStart()
                   }}
                 >
-                  Réessayer
+                  {t('common.initial_sync.retry')}
                 </Button>
               )}
             </div>

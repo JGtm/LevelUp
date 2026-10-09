@@ -44,7 +44,7 @@ describe('StepInitialSync — refus du lancement', () => {
     await userEvent.click(screen.getByRole('button'))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/Aucun compte Xbox n'est relié/)
+      expect(screen.getByRole('alert')).toHaveTextContent(/Aucun compte Xbox relié à cette session/)
     })
     window.removeEventListener('levelup:auth-required', onAuth)
     expect(ejections).toBe(0)
