@@ -24,9 +24,12 @@ package grammar
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
+	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -421,4 +424,44 @@ func ri27d1Configuration(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record) (
 		}
 	}
 	return mort, i12, vit
+}
+
+// TestRI27d1Replis — LE GATE DE D1.2 : sur chaque film, en contexte de cuisson, les trois replis des
+// fenetres derriere la lecture comptent exactement les records bipedes non admis, et le contexte
+// du film porte les memes comptes. Sortie `replis.tsv` (RI27C_OUT) : film, bipedes, admis, non
+// admis, replis armes / inventaire / marque (contexte), recuperes armes / inventaire / marque.
+func TestRI27d1Replis(t *testing.T) {
+	films, racine, sortie := ri27cEnv(t)
+	known := map[uint32]bool{}
+	for f := range weaponv3.KnownWeaponHigh32Copie() {
+		known[f] = true
+	}
+	lignes := []string{"film\tbipedes\tadmis\tnon_admis\trepli_armes\trepli_inventaire\trepli_marque\trec_armes\trec_inventaire\trec_marque"}
+	for _, court := range films {
+		fc := ri27cContexte(t, filepath.Join(racine, court), court, true)
+		e, err := ScanEtatsDesImagesCles(fc, known, 0)
+		if err != nil {
+			t.Fatalf("%s : %v", court, err)
+		}
+		a, r := e.Admission, fc.ComptesDesReplis()
+		var ra, ri, rm int
+		for _, k := range e.Recuperes {
+			ra, ri, rm = ra+bit2i(k.Armes), ri+bit2i(k.Inventaire), rm+bit2i(k.Marque)
+		}
+		nonAdmis := a.Bipedes - a.Admis
+		if r.FenetresArmesImageCle != nonAdmis || r.FenetresInventaireImageCle != nonAdmis || r.FenetresMarqueDePortage != nonAdmis {
+			t.Errorf("%s : replis %+v, attendu %d chacun", court, r, nonAdmis)
+		}
+		lignes = append(lignes, fmt.Sprintf("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d", court, a.Bipedes, a.Admis, nonAdmis,
+			r.FenetresArmesImageCle, r.FenetresInventaireImageCle, r.FenetresMarqueDePortage, ra, ri, rm))
+	}
+	ri27cEcrire(t, filepath.Join(sortie, "replis.tsv"), lignes)
+}
+
+// bit2i rend 1 pour vrai.
+func bit2i(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

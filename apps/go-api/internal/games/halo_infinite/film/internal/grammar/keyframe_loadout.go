@@ -168,9 +168,17 @@ func recordsDIdentite(recs []KeyframeRec) []lecture.Record {
 // familiesByRecordRecs est [familiesByRecord] sur des records DÉJÀ marchés (ils sont triés ici,
 // sur une copie : l'appelant garde son ordre).
 func familiesByRecordRecs(pay []byte, marches []lecture.Record, known map[uint32]bool, wantTI int) []recordFamilies {
+	return motsParRecord(pay, marches, wantTI, known)[0]
+}
+
+// motsParRecord est [familiesByRecordRecs] pour PLUSIEURS jeux de mots cherchés d'UN passage de la
+// fenêtre glissante : la sortie `k` porte les occurrences du jeu `jeux[k]` (lot D1.2 de 2.7.d1 : les
+// familles et la marque de portage derrière la lecture, un seul balayage du payload).
+func motsParRecord(pay []byte, marches []lecture.Record, wantTI int, jeux ...map[uint32]bool) [][]recordFamilies {
+	out := make([][]recordFamilies, len(jeux))
 	recs := append([]lecture.Record(nil), marches...)
 	if len(recs) == 0 {
-		return nil
+		return out
 	}
 	// L'index de recherche binaire ci-dessous exige des débuts de record CROISSANTS. Le
 	// walker les émet déjà dans cet ordre ; on le garantit ici plutôt que de le supposer.
@@ -180,27 +188,37 @@ func familiesByRecordRecs(pay []byte, marches []lecture.Record, known map[uint32
 	for i, r := range recs {
 		starts[i] = int(r.Debut)
 	}
-	byRec := map[int][]uint32{}
-	var order []int
+	byRec := make([]map[int][]uint32, len(jeux))
+	order := make([][]int, len(jeux))
+	for k := range jeux {
+		byRec[k] = map[int][]uint32{}
+	}
 	total := len(pay) * 8
 	var w uint32
 	for b := range total {
 		w = w<<1 | uint32(source.BitAt(pay, b))
-		if b < 31 || !known[w] {
+		if b < 31 {
 			continue
 		}
-		ri := recordContaining(starts, b-31)
-		if ri < 0 || int(recs[ri].TI) != wantTI {
-			continue
+		for k, jeu := range jeux {
+			if !jeu[w] {
+				continue
+			}
+			ri := recordContaining(starts, b-31)
+			if ri < 0 || int(recs[ri].TI) != wantTI {
+				continue
+			}
+			if byRec[k][ri] == nil {
+				order[k] = append(order[k], ri)
+			}
+			byRec[k][ri] = append(byRec[k][ri], w)
 		}
-		if byRec[ri] == nil {
-			order = append(order, ri)
-		}
-		byRec[ri] = append(byRec[ri], w)
 	}
-	out := make([]recordFamilies, 0, len(order))
-	for _, ri := range order {
-		out = append(out, recordFamilies{Rec: recs[ri], Families: byRec[ri]})
+	for k := range jeux {
+		out[k] = make([]recordFamilies, 0, len(order[k]))
+		for _, ri := range order[k] {
+			out[k] = append(out[k], recordFamilies{Rec: recs[ri], Families: byRec[k][ri]})
+		}
 	}
 	return out
 }

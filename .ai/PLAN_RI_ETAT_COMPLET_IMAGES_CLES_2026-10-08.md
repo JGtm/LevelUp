@@ -1039,31 +1039,78 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   `TestMiniFilmDecodesTheKeyframes`, `TestZeroDisqueBalayagesSupportes` (rejeu).
 
 ### Étape D1.2 — Les fenêtres derrière la lecture : replis nommés, ordonnés, comptés
-- [ ] D1.2.1 `keyframe_loadout.go`, `keyframe_carrier_mark.go`, `inventory_decode.go`,
+- [x] D1.2.1 `keyframe_loadout.go`, `keyframe_carrier_mark.go`, `inventory_decode.go`,
       `inventory_ammo_rules.go`, `inventory_grenades_rules.go`, `inventory_grenade_selection.go` :
       appelées seulement sur les records non admis.
-- [ ] D1.2.2 Trois entrées au registre (`facts/fallback`, nouveau `registre_filmdec_images_cles.go`,
+      *Fait (lot C, 2026-10-09)* : `keyframe_etats_fenetre.go`. Les records bipèdes admis sont rendus
+      MUETS à la fenêtre (archétype non résolu sur une copie des records : leurs bornes restent, rien
+      ne leur est attribué) ; familles et marque de portage en UN passage de la fenêtre glissante
+      (`motsParRecord`, généralisation de `familiesByRecordRecs` à plusieurs jeux de mots, que
+      `familiesByRecordRecs` appelle) ; inventaire par `keyframeInventoriesDe` sur la SEULE emprise de
+      chaque record non admis (les règles de `inventory_ammo_rules.go`, `inventory_grenades_rules.go`,
+      `inventory_grenade_selection.go` y passent, inchangées). Un record dont la phase n'a pas
+      parcouru le corps (film sans registre, comme la mini-bobine du rejeu) est un non-admis.
+- [x] D1.2.2 Trois entrées au registre (`facts/fallback`, nouveau `registre_filmdec_images_cles.go`,
       constantes dans `noms.go`) : `repli_fenetre_armes_image_cle`,
       `repli_fenetre_inventaire_image_cle`, `repli_fenetre_marque_de_portage` (la dernière seulement
       si U-2 (a) ou (b)). Chacune : `OrdreApresLecture`, `CondLectureNonPortee`, sites et ancres
       littérales, `DatePose` (date du commit), `CibleRetrait` = 2026-12-31, `CritereRetrait` (D1.2.3),
       `CompteurBranche`.
-- [ ] D1.2.3 `CritereRetrait` (corrigé sur la mesure, plus « 861 arrêts ») : part des records
+      *Fait (lot C)* : famille neuve `filmdec/images-cles` (`registre_filmdec_images_cles.go` ; les
+      trois gestes : `Tranches`, `famillesAttendues`, `plancherTranches` 13 → 14) ; constantes
+      `NomFenetreArmesImageCle`, `NomFenetreInventaireImageCle`, `NomFenetreMarqueDePortage` ;
+      chacune `CondLectureNonPortee`, `OrdreApresLecture`, sites de décision (`keyframe_etats_fenetre.go`),
+      site de compte (`keyframe_etats_scan.go`, `fc.NoterReplis`) et site de versement, `DatePose`
+      2026-10-09, `CibleRetrait` 2026-12-31, `CritereRetrait` (D1.2.3), `CompteurBranche`.
+      `TestToutSiteDuRegistreExiste`, `TestChaqueNomConstantEstAuRegistre` verts.
+- [x] D1.2.3 `CritereRetrait` (corrigé sur la mesure, plus « 861 arrêts ») : part des records
       bipèdes d'image-clé non admis ≤ 5 % sur les 28 films ET sur le parc à la recuisson. Population
       à la pose, nommée : formats 20-21 (2 055 records, valeurs fausses après i22) ; `60ae07c4`
       (+33 bits, 331 records) ; écarts de fin multiples de −108 (2 800, en-têtes non vus, R-VEH-4) ;
       autres écarts non nuls (2 224, dont 2 100 sur 4 films) ; 88 arrêts sur i59/i58 (7 films) ;
       dernier record de paquet sans frontière.
-- [ ] D1.2.4 Records rendus par la fenêtre marqués `PreuveRecupere` avec leur méthode (DT2-4) ;
+      *Fait (lot C)* : critère écrit dans le registre ; population à la pose mesurée sur les 28 films
+      (`$REF/../d1x/d12/replis.tsv`) : 4 203 records non admis sur 10 710 (39,2 %), dont 2 006 en
+      formats 20-21 (`a349fea8` 950, `50247b26` 668 — aucun admis —, `a521164d` 388) et 115 sur
+      `60ae07c4` ; les autres sont les refus T1 (records sans arme, famille hors catalogue, §7 D-25),
+      les écarts de fin et les arrêts.
+- [x] D1.2.4 Records rendus par la fenêtre marqués `PreuveRecupere` avec leur méthode (DT2-4) ;
       `ComptesDesReplis` ; cliquet `NbDevantLaLecture` inchangé ; `repli_plafond_grenade_par_defaut`
       resserré à la fenêtre, doc corrigée ; `replay/versement_des_replis.go`,
       `archlint/keyframe_walk_proof_test.go` (allowlist, dans les deux sens),
       `archlint/fallback_versement_test.go`.
+      *Fait (lot C)* : un record non admis dont une fenêtre a rendu une valeur est MARQUÉ récupéré
+      (`EtatsDesImagesCles.Recuperes`, `RecordRecupere` : image-clé, slot, et les méthodes — armes,
+      inventaire, marque). ÉCART : la marque vit dans le résultat de la grammaire, pas dans
+      `types.*` (E-8 : pas d'élargissement de la forme des faits) ; sa consommation et sa survie
+      depuis les faits sont D1.3. `ComptesDesReplis` porte les trois comptes (`Plus` tenu,
+      `TestPlusSommeChaqueChampDuRapport`) ; `replay/versement_des_replis.go`, trois lignes
+      (`TestChaqueChampDuRapportDeGrammaireEstVerse`) ; cliquet `NbDevantLaLecture` inchangé (les
+      trois replis sont « après la lecture ») ; `repli_plafond_grenade_par_defaut` resserré à la
+      fenêtre (la grammaire lit i22 sans plafond) : compté seulement quand un record non admis a été
+      donné à la fenêtre, doc du registre corrigée. `archlint/keyframe_walk_proof_test.go` et
+      `archlint/fallback_versement_test.go` verts SANS modification : la fenêtre ne marche que les
+      records de la marche du film (avec preuve), et le versement passe par la table.
 - Tests : `TestToutSiteDuRegistreExiste`, `TestChaqueNomConstantEstAuRegistre`,
   `fallback_versement_test` (directions C et E), `keyframe_walk_proof_test` ; unitaire : un record
   admis ne passe jamais par la fenêtre, un non admis y passe et il est compté ; mutation : fenêtre
   appelée avant la lecture → le test d'ordre rougit.
 - Gate D1.2 : compte des replis = records non admis, au record près, sur les 28 films ; archlint vert.
+- *Gate D1.2 joué le 2026-10-09 (lot C)* : **PASSÉ.** `TestRI27d1Replis` (instrument, 28 films, contexte
+  de cuisson, `$REF/../d1x/d12/replis.tsv`) : sur chaque film, les trois replis comptent exactement
+  les records non admis (total 4 203 = 10 710 − 6 507), le contexte du film porte les mêmes comptes ;
+  non-admis par film identiques à ceux de l'instrument d0 (`d11`, `canal_non_admis`). Tests :
+  `TestLaFenetreNeVoitQueLesRecordsNonAdmis` (837 records admis sur les 7 bobines, dont 11 où la
+  fenêtre lirait autre chose : la publication est celle de la grammaire sur les 837),
+  `TestLEtatCompletDesBobines` (comptes des replis = non admis, un inventaire par bipède, dotations =
+  admis + rendues par la fenêtre, comptes du contexte) ; mutations rouges (fenêtre rendue avant la
+  lecture ; compte d'un repli oublié). Golden `golden_minibobine_familles.tsv` régénéré
+  (`keyframeLoadouts` : 30 dotations, les 19 des records admis changent de valeur — familles des
+  emplacements sans alias ; note dans `golden_minibobine_test.go`). Les cinq rouges attendus de D1.1
+  sont verts. G-film (21 paquets, gardes de révision sous `-skip`), `archlint`, vet avec et sans
+  `research`, `golangci-lint --new-from-merge-base=origin/main` sur `grammar`, `replay`, `fallback`
+  (0 problème) : verts. Gardes de révision : `TestGrammarRevSuitLaGrammaire` et
+  `TestChaqueRevisionEgaleSonGolden` rouges, attendu jusqu'à la montée de D1.4 (E-7).
 
 ### Étape D1.3 — Consommateurs du rejeu et survie depuis les faits
 - [ ] D1.3.1 `replay/film_scan.go` (`balayerInventaire`), `porteurs_au_sync.go`

@@ -62,6 +62,7 @@ func Tranches() []Tranche {
 		{"objectifs et construction", registreObjectifsEtConstruction},
 		{"filmdec", registreFilmdec},
 		{"filmdec/marche", registreFilmdecMarche},
+		{"filmdec/images-cles", registreFilmdecImagesCles},
 		{"replay/positions", registreReplayPositions},
 		{"replay/vehicules", registreReplayVehicules},
 		{"replay/objectifs", registreReplayObjectifs},

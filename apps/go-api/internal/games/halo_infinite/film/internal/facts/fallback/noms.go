@@ -199,6 +199,12 @@ const (
 	// NomCreationsDuMondeApresLaMarche : `grammar/creations_du_monde.go`, compte par
 	// `grammar/replis_du_film.go`.
 	NomCreationsDuMondeApresLaMarche Nom = "repli_creations_du_monde_apres_la_marche"
+	// NomFenetreArmesImageCle, NomFenetreInventaireImageCle, NomFenetreMarqueDePortage :
+	// `grammar/keyframe_etats_fenetre.go`, comptes par `grammar/keyframe_etats_scan.go`
+	// (`ScanEtatsDesImagesCles`) et verses par `replay/versement_des_replis.go`.
+	NomFenetreArmesImageCle      Nom = "repli_fenetre_armes_image_cle"
+	NomFenetreInventaireImageCle Nom = "repli_fenetre_inventaire_image_cle"
+	NomFenetreMarqueDePortage    Nom = "repli_fenetre_marque_de_portage"
 
 	// LES REPLIS DE `killsource` (sous-lot killsource du lot J8.7, 2026-09-27) : comptes en DONNEES
 	// dans `killsource.Stats` (`Replis`, et les comptes que le decodeur tenait deja), verses par la

@@ -174,10 +174,11 @@ func (s *filmScan) balayerInventaire() {
 	// LE PLAFOND DE GRENADES N EST PAS FOURNI (0) : la lecture applique `grammar.DefaultGrenadeMax`,
 	// et c est un REPLI NOMME ET COMPTE (D14) — le plafond est une donnee de MODE, pas une
 	// constante. Il se compte ICI depuis le lot J4.2 : la lecture est descendue en `grammar`, qui
-	// nomme ses replis et ne les compte pas (ADR 0034 D-4). Meme condition qu avant : un catalogue
-	// de familles vide ne lit rien, donc ne se replie sur rien.
+	// nomme ses replis et ne les compte pas (ADR 0034 D-4). Depuis le lot D1.2 de 2.7.d1, seule la
+	// FENETRE derriere la lecture l applique (la grammaire lit les compteurs sans plafond) : il ne se
+	// compte que si un record non admis lui a ete donne. Un catalogue de familles vide ne lit rien.
 	familles := loadoutFamilies()
-	if len(familles) > 0 {
+	if len(familles) > 0 && s.etats.Admission.FenetresInventaire > 0 {
 		s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)
 	}
 	// Absence non fatale — un rejeu sans grenades reste un rejeu valide. L'inventaire vient de la

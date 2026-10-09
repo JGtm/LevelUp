@@ -220,9 +220,11 @@ var registreReplayEquipement = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_plafond_grenade_par_defaut",
-		Fait:      "le plafond de grenades porte par un joueur, qui borne la lecture d'inventaire",
-		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte",
+		Nom:  "repli_plafond_grenade_par_defaut",
+		Fait: "le plafond de grenades porte par un joueur, qui borne la lecture d'inventaire PAR LA FENETRE",
+		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte, aux seules " +
+			"regles d'ancrage de la fenetre derriere la lecture (records bipedes non admis, lot D1.2 de 2.7.d1 ; la grammaire " +
+			"lit les compteurs d i22 sans plafond) ; compte une fois par film quand un record non admis a ete donne a la fenetre",
 		Condition: CondInconditionnel,
 		Ordre:     OrdreSansLecture,
 		// DEUX SITES DEPUIS LE LOT J4.2 (2026-09-26) : la lecture d inventaire est descendue en

@@ -140,8 +140,8 @@ var admissionsDesBobines = map[string][2]int{ // bobine -> {bipedes, admis}
 }
 
 // TestLEtatCompletDesBobines : sur chaque bobine du golden, aucune relecture ne deborde, chaque
-// record bipede recoit un verdict, et chaque record admis publie un inventaire a grenades lues et
-// des familles du catalogue.
+// record bipede recoit un verdict, chaque record non admis passe aux fenetres (compte, marque
+// recupere) et les familles publiees sont au catalogue.
 func TestLEtatCompletDesBobines(t *testing.T) {
 	for _, court := range closureMiniFilms() {
 		e := etatsDeLaBobine(t, court)
@@ -152,9 +152,7 @@ func TestLEtatCompletDesBobines(t *testing.T) {
 		if a.Admis+a.RefusNiFermeNiI22+a.RefusT1+a.RefusT2+a.SansCorps != a.Bipedes {
 			t.Errorf("%s : verdicts %+v ne couvrent pas les %d bipedes", court, a, a.Bipedes)
 		}
-		if len(e.Inventaire) != a.Admis || len(e.Loadouts) != a.Admis {
-			t.Errorf("%s : %d inventaires et %d dotations pour %d admis", court, len(e.Inventaire), len(e.Loadouts), a.Admis)
-		}
+		verifierLesRepliesDeLaBobine(t, court, e)
 		for _, l := range e.Loadouts {
 			for _, f := range l.Families {
 				if _, ok := weaponv3.KnownWeaponHigh32Lookup(f); !ok {
@@ -170,8 +168,8 @@ func TestLEtatCompletDesBobines(t *testing.T) {
 	}
 }
 
-// etatsDeLaBobine rend la lecture des images-cles d une bobine du golden, en contexte de cuisson.
-func etatsDeLaBobine(t *testing.T, court string) EtatsDesImagesCles {
+// contexteDeLaBobine rend le contexte d une bobine du golden, en contexte de cuisson.
+func contexteDeLaBobine(t *testing.T, court string) *FilmContext {
 	t.Helper()
 	dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 	film, err := source.LoadDir(dir, nil)
@@ -188,14 +186,32 @@ func etatsDeLaBobine(t *testing.T, court string) EtatsDesImagesCles {
 	}
 	fc := NewFilmContextForMap(film, &entree, nil)
 	fc.PoserLaCarteEtLeDecoupage()
+	return fc
+}
+
+// etatsDeLaBobine rend la lecture des images-cles d une bobine du golden, en contexte de cuisson, et
+// verifie que ses replis sont notes sur le contexte du film.
+func etatsDeLaBobine(t *testing.T, court string) EtatsDesImagesCles {
+	t.Helper()
+	fc := contexteDeLaBobine(t, court)
+	e, err := ScanEtatsDesImagesCles(fc, catalogueDesFamilles(), 0)
+	if err != nil {
+		t.Fatalf("%s : %v", court, err)
+	}
+	if r := fc.ComptesDesReplis(); r.FenetresArmesImageCle != e.Admission.FenetresArmes ||
+		r.FenetresInventaireImageCle != e.Admission.FenetresInventaire ||
+		r.FenetresMarqueDePortage != e.Admission.FenetresMarque {
+		t.Errorf("%s : comptes notes sur le contexte %+v, attendu ceux de l admission %+v", court, r, e.Admission)
+	}
+	t.Logf("%s\t%d bipedes\t%d admis", court, e.Admission.Bipedes, e.Admission.Admis)
+	return e
+}
+
+// catalogueDesFamilles rend le catalogue des familles d arme de la grammaire.
+func catalogueDesFamilles() map[uint32]bool {
 	known := map[uint32]bool{}
 	for f := range weaponv3.KnownWeaponHigh32Copie() {
 		known[f] = true
 	}
-	e, err := ScanEtatsDesImagesCles(fc, known, 0)
-	if err != nil {
-		t.Fatalf("%s : %v", court, err)
-	}
-	t.Logf("%s\t%d bipedes\t%d admis", court, e.Admission.Bipedes, e.Admission.Admis)
-	return e
+	return known
 }
