@@ -408,15 +408,21 @@ LIMIT ?`
 // Retourne 6 colonnes : killer_xuid, killer_gamertag, victim_xuid,
 // victim_gamertag, kill_count, time_ms.
 //
-// Source : la canonique (cf. [KillEventsCanonicalTable]) ; `kill_count` est le littéral 1 (une
-// ligne = une mort). Les morts de BOT y arrivent avec un `xuid` NULL et leur `gamertag`
-// renseigné : ⚠ le xuid NULL est SERVI TEL QUEL, le normaliser en chaîne vide fusionnerait tous
-// les bots en un joueur fantôme.
+// LIT LA TABLE DIRECTEMENT depuis le 2026-08-02. Elle lisait `v_killer_victim_full`, qui
+// projetait `kvp.*` PUIS deux colonnes `killer_gamertag`/`victim_gamertag` re-jointes sur
+// `v_gamertag_lookup` — donc portant déjà ces noms-là. DuckDB renommant silencieusement les
+// homonymes, `kvf.killer_gamertag` désignait la colonne de la table, jamais celle de la
+// jointure : les deux LEFT JOIN étaient du travail mort exécuté à chaque chargement de vue
+// match. Les six colonnes rendues sont identiques, la vue a été supprimée.
 //
-// Ses lecteurs (Dominance, courbe FDA, victime du fil, antagonistes, némésis) lisent la paire
-// LIGNE À LIGNE : filtre [KillPairIdentityReadable] (une passe non publiable perd ses seules
-// lignes dont une identité vient de la réplication).
-var Q20KVPairs = `
+// BASCULE DU 2026-08-03 : la source est la canonique (cf. [KillEventsCanonicalTable]). Les six
+// colonnes de sortie ne bougent pas — `kill_count` devient le littéral 1, ce qu'il valait déjà
+// sur toutes les lignes de l'ancienne table. Deux gains pour ce lecteur-ci, qui est un JOURNAL :
+// les doublons de tug-of-war disparaissent, et les morts de BOT deviennent visibles (elles y
+// arrivent avec un `xuid` NULL et leur `gamertag` renseigné, que l'ancienne table ne savait pas
+// représenter). ⚠ Le xuid NULL est SERVI TEL QUEL : le normaliser en chaîne vide fusionnerait
+// tous les bots en un joueur fantôme.
+const Q20KVPairs = `
 SELECT
     kvf.feed_killer_xuid    AS killer_xuid,
     kvf.feed_killer_gamertag AS killer_gamertag,
@@ -426,7 +432,6 @@ SELECT
     kvf.time_ms
 FROM ` + KillEventsCanonicalTable + ` kvf
 WHERE kvf.match_id = ?
-  AND ` + KillPairIdentityReadable("kvf") + `
 ORDER BY kvf.time_ms ASC`
 
 // Q21 : Événements highlight d'un match complet (xuid ; le nom est posé en Go).

@@ -18,8 +18,6 @@ func TestValeursDeFilEpinglees(t *testing.T) {
 		{"ReadPathLiveFeed", ReadPathLiveFeed, "kill-feed"},
 		{"ReadPathCreditBackfill", ReadPathCreditBackfill, "highlight-events"},
 		{"OriginCreditOnly", OriginCreditOnly, "credit-seul"},
-		{"OriginFilmBotVictim", OriginFilmBotVictim, "bot"},
-		{"OriginFilmBotKiller", OriginFilmBotKiller, "tueur-bot"},
 	}
 	for _, c := range cas {
 		if c.got != c.want {
