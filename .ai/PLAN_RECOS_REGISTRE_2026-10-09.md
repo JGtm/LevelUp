@@ -51,15 +51,15 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot B — Corrections visibles (parallèle à A)
 
-- [ ] B1 Vue match : `Q20KVPairs` (`platform/duckdb/queries_match.go`) lu sans filtre
+- [x] B1 (prédicat de provenance : seules les lignes nommées par réplication d une passe non publiable sont écartées ; `publishable` seul aurait vidé 53 matchs — à confirmer par le user) Vue match : `Q20KVPairs` (`platform/duckdb/queries_match.go`) lu sans filtre
   `publishable` (dominance, cumul FDA, victime du fil, antagonistes, « morts vengées »).
-- [ ] B2 Connexion : la sync initiale rend 401 `auth_required` sans tokens Halo
+- [x] B2 (403 `halo_tokens_missing`, garde 2 rechargements/min en sessionStorage, relecture de `/bootstrap`) Connexion : la sync initiale rend 401 `auth_required` sans tokens Halo
   (`handlers/sync_handler.go:445`) → statut non éjectant ; la coquille (`apps/web/src/routes/__root.tsx`)
   gagne un garde anti-boucle qui survit au rechargement, et un 401 de route secondaire n'éjecte
   pas quand `/bootstrap` dit connecté.
-- [ ] B3 Halo 5 : la boucle « migrations player » du boot (`cmd/server/main.go`) n'emploie que le
+- [x] B3 (`migratePlayerDBs` par titre de profil) Halo 5 : la boucle « migrations player » du boot (`cmd/server/main.go`) n'emploie que le
   titre par défaut → parcourir les titres de chaque profil (PathResolver, sans comparaison de slug).
-- [ ] B4 Succès Xbox : ne plus réessayer un jeton marqué mort à chaque cycle (D-4) ; une trace par
+- [x] B4 (porte `sync/deadtoken`, empreinte du refresh token) Succès Xbox : ne plus réessayer un jeton marqué mort à chaque cycle (D-4) ; une trace par
   changement d'état, pas par cycle.
 - Gate : tests unitaires et d'intégration des chemins touchés, tsc + vitest du web touché.
 
@@ -125,8 +125,15 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-09 : lot A rendu (`feat/recos-a`, 4 commits, CI verte). Les trois cartes sont des cartes Forge sur canevas connus (preuve level_id) : entrées de bornes et d'objectifs ajoutées. Cuisson des 24 films concernés reportée après fusion. Jetons des trois amis vérifiés en local : succès Xbox synchronisés à 17:38.
 
+- 2026-10-09 : lot B rendu (`feat/recos-b`, 5 commits, CI verte) ; correctif demandé avant fusion : texte « connecte-le » à la 2e personne, « Réessayer » en dur, emoji dans l'étape de sync initiale.
+
 ## Découvertes
 
+- (lot B) `SquadRepo.LoadKVPairs` (Q32c) et `sync/engagement.go` lisent les paires sans le prédicat de B1.
+- (lot B) `internal/worldenrich/wiring.go` résout un access token sans la porte des jetons morts.
+- (lot B) Importer un jeton (SSO, token-import, token-capture) ne lève pas `reauth_required` ni `last_auth_error_*` : bannière affichée jusqu'au prochain refresh réussi.
+- (lot B) Import OpenSpartan : 401 `halo_auth_required` pour une session sans compte lié (statut discutable).
+- (lot B) Bases Halo 5 : `schema_migrations` mêle des entrées `halo_5` et `halo_infinite` (chemin CLI du 01/09 sous le titre par défaut).
 - (lot A) « Argyle - Ranked » sans objectifs au catalogue (identifiant absent de `map_objectives.json`) ; variante à récupérer.
 - (lot A) Environ 24 cartes Forge déclarées avec un fond restent absentes du catalogue de bornes (relevé de septembre).
 - (lot A) Après fusion, relancer le calcul de la source des kills des 24 matchs (carte non résolue jusqu'ici).
