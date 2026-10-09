@@ -9959,6 +9959,8 @@ export interface components {
             /** Format: int64 */
             dated: number;
             /** Format: int64 */
+            firstOfCycle: number;
+            /** Format: int64 */
             named: number;
             /** Format: int64 */
             occupations: number;

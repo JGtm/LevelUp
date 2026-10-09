@@ -1418,8 +1418,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   socle d arme hors de l emprise jouee se releve au lieu ou ses armes sont prises, et les morts
 	//   qui touchent un bot se publient (`killsource.Rev` monte). Un v89 se lit « a redecoder ».
 	//   Detail : `document_chronicle.go`.
-	if SchemaVersion != 90 {
-		t.Fatalf("SchemaVersion = %d, attendu 90 : incrémenter exige une raison écrite ci-dessus "+
+	// - 91 (2026-10-09, lot `feat/aj-needler`) : un compteur neuf dans `coverage.padDating`
+	//   (`firstOfCycle`) ; le CONTENU change : une occupation de socle dont la fenetre porte plusieurs
+	//   ramassages natifs se date par la premiere prise faite au socle dans le cycle de l arme
+	//   (`repli_prise_de_socle_premiere_du_cycle`). Assemblage seul : un v90 se lit « a republier ».
+	//   Detail : `document_chronicle.go`.
+	if SchemaVersion != 91 {
+		t.Fatalf("SchemaVersion = %d, attendu 91 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

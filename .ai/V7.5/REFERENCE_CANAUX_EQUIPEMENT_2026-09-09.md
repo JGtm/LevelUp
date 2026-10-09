@@ -187,7 +187,7 @@ les trois canaux existent — mais « utilisé » y a une troisième définition
 
 | Issue | Canal | Réserve |
 |---|---|---|
-| Prise | `padPickups` (ramasseur nommé depuis le schéma 30), `pickups` (événement natif `biped_pickup`, attribué), `weaponChanges` (qualifie prise / lâcher / échange) | Les trois se recoupent : là où deux voient la même prise, ils s'accordent (21/21 et 11/12, à moins de 500 ms) |
+| Prise | `padPickups` (ramasseur nommé depuis le schéma 30), `pickups` (événement natif `biped_pickup`, attribué), `weaponChanges` (qualifie prise / lâcher / échange) | Les trois se recoupent : là où deux voient la même prise, ils s'accordent (21/21 et 11/12, à moins de 500 ms). **Depuis le schéma 91 (2026-10-09)**, une occupation de socle dont la fenêtre porte plusieurs ramassages se date par la règle de jeu « une seule prise de socle par réapparition » : la première prise faite AU socle (1,5 m) dans le cycle de l'arme, repli `repli_prise_de_socle_premiere_du_cycle`, compté `coverage.padDating.firstOfCycle` (`replay/pad_pickup_dating_cycle.go`) |
 | Utilisée | `shots` — l'arme a tiré au moins une fois | Une arme prise et jamais tirée est un gâchis net |
 | Lâchée | `weaponChanges` sur un lâcher — et la frame jusqu'à laquelle l'arme reste montrable au sol | Les ré-annonces d'une arme déjà portée au spawn sont écartées |
 

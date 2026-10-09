@@ -3146,3 +3146,36 @@ package replay
 //	                binaire de la base contre binaire du lot : seuls le socle releve, les comptes, les
 //	                revisions et les replis verses par killsource changent. `cmd/killsource json` :
 //	                `0a08d2f2` 119 -> 124 lignes, aucune ligne existante modifiee.
+//
+// v91 (2026-10-09, lot `feat/aj-needler` des ajustements) : UNE SEULE PRISE DE SOCLE PAR REAPPARITION
+// DE L ARME.
+//
+//	`padPickups`    une occupation de socle d arme dont la fenetre porte PLUSIEURS ramassages natifs
+//	                de la famille, ou un ramassage qu une autre occupation revendique, se date et se
+//	                nomme par la regle de jeu posee par l utilisateur : la premiere prise faite AU
+//	                SOCLE (ramasseur a moins de 1,5 m) apres l apparition de l arme et avant son
+//	                apparition suivante ; les ramassages suivants du cycle sont ceux d une autre arme,
+//	                au sol (`repli_prise_de_socle_premiere_du_cycle`, pad_pickup_dating_cycle.go). Un
+//	                ramassage plus tot non localise, ou designe pour deux occupations, fait
+//	                s abstenir ; une occupation que la lecture datait garde sa date et son joueur.
+//	                Le releve des socles hors de l emprise (v90) s intercale entre la lecture et le
+//	                repli : il ne lit que la lecture, et le repli juge la presence au socle sur la
+//	                position relevee.
+//	`coverage.padDating`  un compteur neuf, `firstOfCycle` (occupations datees par le repli,
+//	                sous-ensemble de `dated`).
+//
+//	CE QUI MONTE    `SchemaVersion` 90 -> 91. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
+//	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
+//	                quels. Le resume d usage (`pad_pickups`) reprend par la cle
+//	                `(UsageSummaryRev, SchemaVersion)`.
+//
+//	LE PARC         un artefact 90 dont les faits sont sur disque : verdict `republier`.
+//
+//	MESURE          regle rejouee en processus sur les 172 artefacts du parc local (schema 90,
+//	                positions des pistes) : 2 462 -> 3 335 occupations datees (+873), 0 date perdue,
+//	                0 date ou joueur change ; contre-epreuve independante (`weaponChanges` de la meme
+//	                vie, meme famille, a 0,5 s) : 778 des 873 prises du repli, 92 des 95 autres sur un
+//	                joueur qui portait deja l arme (prise de munitions), 3 inexpliquees (0,3 %) contre
+//	                10 sur 2 462 (0,4 %) pour la lecture. Needler de `5c38f581` (Prism) : 2 -> 4 prises
+//	                attribuees ; ses quatre autres occupations sans date sont des apparitions
+//	                remplacees 30,1 s plus tard par une seconde apparition (aucune prise au socle).

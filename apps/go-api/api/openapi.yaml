@@ -21320,6 +21320,9 @@ components:
         dated:
           format: int64
           type: integer
+        firstOfCycle:
+          format: int64
+          type: integer
         named:
           format: int64
           type: integer
@@ -21339,6 +21342,7 @@ components:
         - ambiguous
         - uncovered
         - powerupOccupations
+        - firstOfCycle
       type: object
     PadPickup:
       additionalProperties: false
