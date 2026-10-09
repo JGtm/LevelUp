@@ -211,6 +211,7 @@ func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 		kept = append(kept, p)
 	}
 	states := hillStatesOf(kept, owner, h.teams, cov, c.fb)
+	attachHillGauges(states, kept, hillGaugeInputOf(ser, h.d, h.teams, c))
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
@@ -339,13 +340,9 @@ func buildRampHills(zones []Zone, ser zoneSeries, c zoneCtx, cov *ZonesCoverage)
 	}
 	periods := mergeHillPeriods(raw, c.frames)
 	cov.HillPeriods = len(periods)
-	// AUCUNE JAUGE EN DIRECT SUR UNE COLLINE (lot C-ter, volets 1 et 3, 2026-08-19) : en KOTH le
-	// tag 3 n'est PAS la progression de garde mais un COMPTEUR DE TRANSFERT d'environ une seconde
-	// (9-10 pas fixes quelle que soit la duree de la garde, mesure du volet 1 sur les 4 films
-	// KOTH) ; la progression de garde vit dans le canal par joueur (mode B tag 7), hors de ce
-	// calque. Publier cette rampe comme jauge montrerait un arc qui se remplit en une seconde a
-	// chaque prise — credible et faux. `ZoneState.Gauge` reste donc nil ici, et
-	// `coverage.zones.gaugePoints` vaut 0 sur un film a colline.
+	// AUCUNE JAUGE SUR CE REPLI : sans designateur il n y a pas de bloc d objet de mode, donc pas
+	// de slot de jauge ni de pousseur rattache a la colline (la jauge des collines :
+	// zone_states_hill_gauge.go, voie du designateur).
 	// AUCUN PROPRIETAIRE SUR CE REPLI : sans designateur, il n'y a pas d'objet de mode, donc pas
 	// de slot voisin ou lire le camp. Une colline localisee par la seule grappe des positions
 	// reste ACTIVE et sans camp — la deduire de la grappe serait une invention.

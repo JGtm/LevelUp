@@ -81,12 +81,12 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
   rejouée sur les 9 films (0 période placée hors de la colline que la garde désigne).
 
 ### E2 — Producteur : la jauge de capture de la colline publiée (schéma 92)
-- [ ] `hillGaugeOf` : émissions de la jauge du bloc dans les périodes de chaque colline, allégées
+- [x] `hillGaugeInputOf` + `attachHillGauges` + `hillGaugeSegments` (`zone_states_hill_gauge.go`, test `zone_states_hill_gauge_test.go`) : émissions de la jauge du bloc dans les périodes de chaque colline, allégées
   (même allègement que Bastion) ; segments `gaugeRamps` par pousseur LU (camp nommé = capteur ;
   neutre et jauge qui baisse = `draining`, le camp tenant perd la colline).
-- [ ] Champ `draining` (Go, replaydoc, conversion, OpenAPI, types web), `SchemaVersion` 91 -> 92,
+- [x] Champ `draining` (Go, replaydoc, conversion, OpenAPI, types web), `SchemaVersion` 91 -> 92,
   chronique, garde-fous de forme.
-- [ ] Commentaires faux corrigés (« EN KOTH, RIEN », « pas de capture ») : Go, TOML, web.
+- [x] Commentaires faux corrigés côté Go (`zone_states_gauge.go`, `hill_hold_ticks.go`, `zone_states_hill.go`, `document_zones.go`) ; TOML [~] E3 ; web [~] E4.
 - Gate : tests Go replay + replaydoc + replayview, `make openapi-gen`, `make generate-types`.
 
 ### E3 — Régulation : seuils et cibles mesurés
@@ -128,6 +128,8 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 ## Journal
 
 - **E1 close (2026-10-09)**. Placement par la garde, repli `repli_colline_votes_sans_garde` au registre (ancre de `repli_colline_votes_periode_entiere` suivie). Gate : `go test` replay (34,9 s), fallback, archlint (67 s) verts. Recuisson de 11 films KOTH (cache isole) : 0 declenchement du repli sans garde, `unpaired` 0, au plus 1 colline active par frame, et plus AUCUNE periode fusionnee avec la suivante (base : 4 films sur 11 en avaient). Temoin : P3 z4 [2467-3590], P4 z2 [3591-4198] (base : z2 sur les deux). Controle independant : les trois films classes de Lattice (`26602661`, `5acb0e0a`, `7de0b91d`) rendent la MEME sequence de collines z3, z4, z0, z2, z1 ; la base posait la 4e periode de `5acb0e0a` sur z4.
+
+- **E2 close (2026-10-09)**. Jauge des collines publiee (serie allegee par periode active, segments a pousseur constant, champ `draining`), schema 91 -> 92 (chronique v92, plafonds de `document_chronicle.go` 3181 -> 3208 et `structure_test.go` 1430 -> 1434 par l exception ecrite du ratchet de taille), goldens d assemblage et de forme, fixtures de contrat web regenerees (8, schema 92), `openapi.yaml` (+2 lignes) et `generated.ts` (+1). Gate : `go test` replay 37 s, archlint 70 s, replayview, replaybuild, `internal/api -run OpenAPI` verts. Recuisson du temoin : 531 points de jauge, 48 segments (24 prises au camp lu, 20 vidanges, 4 sans camp), `depuis_les_faits=true` (faits inchanges). Premiere prise du temoin : 0,067 -> 0,967 en 10 frames (1 s) puis 0.
 
 ## Découvertes (hors périmètre, non traitées)
 

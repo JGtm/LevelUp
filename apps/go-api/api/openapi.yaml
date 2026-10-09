@@ -31802,6 +31802,8 @@ components:
         capturingTeam:
           format: int64
           type: integer
+        draining:
+          type: boolean
         t0:
           format: int64
           type: integer
