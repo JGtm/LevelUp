@@ -90,9 +90,9 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 - Gate : tests Go replay + replaydoc + replayview, `make openapi-gen`, `make generate-types`.
 
 ### E3 — Régulation : seuils et cibles mesurés
-- [ ] `[hold_ticks_per_point]` : `Doubles:King of the Hill = 35`, `Ranked:King of the Hill = 40`.
-- [ ] `[score_target]` : `Doubles:King of the Hill = 3`, `Squad:King of the Hill = 3`.
-- [ ] Squad sans seuil de garde : statué `[!]` (aucun film mesurable).
+- [x] `[hold_ticks_per_point]` : `Doubles:King of the Hill = 35`, `Ranked:King of the Hill = 40`.
+- [x] `[score_target]` : `Doubles:King of the Hill = 3`, `Squad:King of the Hill = 3`.
+- [!] Squad sans seuil de garde : aucun film Squad mesurable en cache (le seul est au score à la seconde, D3) ; non déclaré, donc pas de barre de garde en Squad. À reprendre sur un film Squad à 3 points.
 - Gate : tests `internal/games/mappings`.
 
 ### E4 — Web : une colline, sa capture, son étage
@@ -130,6 +130,8 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 - **E1 close (2026-10-09)**. Placement par la garde, repli `repli_colline_votes_sans_garde` au registre (ancre de `repli_colline_votes_periode_entiere` suivie). Gate : `go test` replay (34,9 s), fallback, archlint (67 s) verts. Recuisson de 11 films KOTH (cache isole) : 0 declenchement du repli sans garde, `unpaired` 0, au plus 1 colline active par frame, et plus AUCUNE periode fusionnee avec la suivante (base : 4 films sur 11 en avaient). Temoin : P3 z4 [2467-3590], P4 z2 [3591-4198] (base : z2 sur les deux). Controle independant : les trois films classes de Lattice (`26602661`, `5acb0e0a`, `7de0b91d`) rendent la MEME sequence de collines z3, z4, z0, z2, z1 ; la base posait la 4e periode de `5acb0e0a` sur z4.
 
 - **E2 close (2026-10-09)**. Jauge des collines publiee (serie allegee par periode active, segments a pousseur constant, champ `draining`), schema 91 -> 92 (chronique v92, plafonds de `document_chronicle.go` 3181 -> 3208 et `structure_test.go` 1430 -> 1434 par l exception ecrite du ratchet de taille), goldens d assemblage et de forme, fixtures de contrat web regenerees (8, schema 92), `openapi.yaml` (+2 lignes) et `generated.ts` (+1). Gate : `go test` replay 37 s, archlint 70 s, replayview, replaybuild, `internal/api -run OpenAPI` verts. Recuisson du temoin : 531 points de jauge, 48 segments (24 prises au camp lu, 20 vidanges, 4 sans camp), `depuis_les_faits=true` (faits inchanges). Premiere prise du temoin : 0,067 -> 0,967 en 10 frames (1 s) puis 0.
+
+- **E3 close (2026-10-09)**. `[hold_ticks_per_point]` Doubles 35, Classe 40 ; `[score_target]` Doubles 3, Squad 3 (registre + regle enoncee par le user pour le 2v2, deux sources citees). Le garde `TestRadarRangeM_TableLivree` exige que toute variante des autres tables ait sa portee radar : Doubles et Squad entrent a 18 m par la regle d affectation ecrite (hors BTB = 18 m, utilisateur 2026-09-05) — consequence : leurs matchs entrent dans la lecture « ou je meurs isole » de Tactique. Commentaires TOML et `loader_regulation.go` corriges (la prise de colline est une capture courte, instantanee en classe). Gate : `go test ./internal/games/mappings/` vert.
 
 ## Découvertes (hors périmètre, non traitées)
 
