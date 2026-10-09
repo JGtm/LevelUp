@@ -38,12 +38,15 @@ type appendOnlyIDTable struct {
 	table, seq, clock string
 }
 
+// clockWrittenAt — colonne d'horloge des tables append-only joueur (sauf lusr_component_history).
+const clockWrittenAt = "written_at"
+
 var appendOnlyIDTables = []appendOnlyIDTable{
-	{"match_skill_rank", "msr_seq", "written_at"},
-	{"player_match_enrichment", "pme_seq", "written_at"},
-	{"player_csr_snapshots", "pcs_seq", "written_at"},
+	{"match_skill_rank", "msr_seq", clockWrittenAt},
+	{"player_match_enrichment", "pme_seq", clockWrittenAt},
+	{"player_csr_snapshots", "pcs_seq", clockWrittenAt},
 	{"lusr_component_history", "lch_seq", "computed_at"},
-	{"personal_score_awards", "personal_score_awards_id_seq", "written_at"},
+	{"personal_score_awards", "personal_score_awards_id_seq", clockWrittenAt},
 }
 
 // idRepairSuffix — suffixe de la table de construction du swap.
