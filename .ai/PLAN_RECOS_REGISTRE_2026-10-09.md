@@ -38,7 +38,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot A — Rejeu : cartes manquantes et plan Tactique (parallèle à B)
 
-- [x] A1 (catalogue ; cuisson des 24 films [!] reportée après fusion, base tenue par un autre processus) Trois cartes hors catalogue de bornes : « Serenity - Ranked », « Interference »,
+- [x] A1 (catalogue ; 35 films de ces cartes cuits un par un et killsource recalculé après fusion, le 2026-10-09) Trois cartes hors catalogue de bornes : « Serenity - Ranked », « Interference »,
   « Vacancy - Ranked » (absentes de `data/titles/halo_infinite/reference/map_quant_bounds.json`
   et `map_objectives.json` ; avertissement `internal/sync/replayartifacts/cuisson.go:169`).
   Ajouter bornes, objets et fond par la chaîne existante (installation de Halo requise), puis
@@ -126,6 +126,8 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - 2026-10-09 : lot A rendu (`feat/recos-a`, 4 commits, CI verte). Les trois cartes sont des cartes Forge sur canevas connus (preuve level_id) : entrées de bornes et d'objectifs ajoutées. Cuisson des 24 films concernés reportée après fusion. Jetons des trois amis vérifiés en local : succès Xbox synchronisés à 17:38.
 
 - 2026-10-09 : lot B rendu (`feat/recos-b`, 5 commits, CI verte) ; correctif demandé avant fusion : texte « connecte-le » à la 2e personne, « Réessayer » en dur, emoji dans l'étape de sync initiale.
+
+- 2026-10-09 : `feat/recos-a` et `feat/recos-b` fusionnées dans `feat/v75` (accord du user) ; B1 retiré par revert (faux constat). Serveur local arrêté, 35 rejeux cuits (4 Interference, 4 Serenity - Ranked, 27 Vacancy - Ranked, un film par processus, `backfill-replay --one`), `backfill-killsource --match … --force --workers 1` sur ces 35 matchs, serveur relancé : migrations player Halo 5 appliquées au boot (12, 12, 4, 4 étapes).
 
 ## Découvertes
 

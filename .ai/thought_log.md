@@ -117025,3 +117025,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 63 lignes écartées par B1 sur le cliché (contre 5 010 avec `publishable` seul). Bases joueur Halo 5 : 2 à 9 étapes en attente selon la base (copies). Succès Xbox : 188 à 396 avertissements par jour ramenés à un par jeton mort. Gate : `go test` des 350 paquets vert, intégration sync/killcollector/duckdb verte, tsc à froid 0, vitest 366/366 ; CI `37950930526` verte. Revue superviseur : la nouvelle chaîne d'erreur s'adressait au joueur (« connecte-le ») → réécriture factuelle demandée, avec « Réessayer » passé en i18n et l'emoji retiré.
 
 **Conclusion / prochaine étape** : correctif de texte, puis fusion dans `feat/v75` sur accord du user ; prédicat de B1 à confirmer par le user.
+
+## [2026-10-09] Fusion des lots A et B des recommandations, rejeux des trois cartes Forge — Complété
+
+**Décision technique principale** : fusion de `feat/recos-a` et `feat/recos-b` dans `feat/v75` (accord du user) ; B1 (filtre des paires de la Vue match) retiré par revert après mesure : les passes non publiables ne touchent que 53 matchs à l'ancienne révision `killsource-2026-09-27`, dont 63 lignes de bots sur 13 matchs, aucun défaut visible ; la ligne du registre était un faux constat. Cuisson limitée aux seuls films des trois cartes ajoutées, un par processus (`backfill-replay --one --map-name`), serveur local arrêté ; le reste du parc (environ 2 100 artefacts sous le schéma 91) attend l'accord du user pour la recuisson groupée et n'a pas été touché.
+
+**Résultats observés** : 35 rejeux construits sans erreur (Interference 4, Serenity - Ranked 4, Vacancy - Ranked 27 ; 9 à 266 pistes) ; killsource recalculé sur ces 35 matchs (0 déjà à jour, 1 027 chunks) ; au redémarrage, migrations player Halo 5 appliquées (12, 12, 4, 4 étapes), aucune pour Halo Infinite ; succès Xbox des trois amis synchronisés depuis l'import des jetons de prod.
+
+**Conclusion / prochaine étape** : gate visuel du user sur un rejeu par carte ; lots C (données) et D (démo) en cours, puis relectures adversariales, lot E.
