@@ -249,15 +249,20 @@ vraies données (lot B-C10 du backlog) :
 | `db_profiles.json`, `app_settings.json` | `<démo>/db_profiles.json`, `<démo>/app_settings.json` (écrits par `seed-demo`) |
 | Auth (`users.json`, `groups.json`, magasin de tokens) | `<démo>/auth/` (vide : la démo ne se connecte à rien) |
 | Sessions, logs, sauvegardes | `<démo>/runtime/sessions`, `<démo>/runtime/logs`, `<démo>/runtime/backups` |
-| Caches et état d'administration (`jobs.json`, cache de l'aide, amis, `admin_state/`, artefacts de rejeu) | `<démo>/runtime/data/…` |
+| Caches et état d'administration (`jobs.json`, cache de l'aide, amis, `admin_state/`) | `<démo>/runtime/data/…` |
+| Rejeux figés (un par mode de jeu) : artefacts, films sources, index | `<démo>/replays/` (écrits par `seed-demo`, lus seulement par le serveur) |
 | Magasin de monitoring | en mémoire (aucun `monitoring.duckdb`) |
 
 Les tâches de fond qui écriraient ou supprimeraient hors de la racine démo (janitor, file
 persist asynchrone et reprise du WAL, santé données, purge des rejeux, surveillance disque,
 crons catalogue, noms d'assets, Spartan et classement mondial, watcher, pool de tokens,
 migrations des amis et du groupe au boot) ne sont pas lancées ; une ligne de log
-`demo_mode: tâches de fond coupées` les liste au boot. `POST /settings/backup/run` répond 403 en
-démo. `<démo>/runtime/` est ignoré par git sous `data/demo/` et `tests/fixtures/demo-root/`.
+`demo_mode: tâches de fond coupées` les liste au boot. La démo est en LECTURE SEULE : toute
+requête qui écrit (POST, PUT, PATCH, DELETE) répond 403 `demo_mode_forbidden`, sauf les lectures
+envoyées en POST (pages, filtres, tactique, série d'engagement) et `POST /session/context`. Le
+rejeu 2D est servi à tout visiteur, pour les seuls matchs figés de la démo, les joueurs réels
+remplacés par les identités démo. `<démo>/runtime/` est ignoré par git sous `data/demo/` et
+`tests/fixtures/demo-root/`.
 
 ### Sync / feature flags
 

@@ -200,7 +200,24 @@ func Spawn(ctx context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("cuisson non lancee : %w", err)
 	}
 	defer lock.Release()
+	return spawnLocked(ctx, req)
+}
 
+// SpawnWaiting est [Spawn] pour une PASSE qui n'a pas de cycle suivant (le seed de la démo) :
+// elle ATTEND jusqu'a `maxWait` que le verrou solo se libere (`filmproc.AcquireSoloWait`), au
+// lieu de renoncer. `lockCacheRoot` est la racine de cache qui porte le verrou de la machine
+// (celle du depot dont viennent les films) ; `tool` nomme le detenteur pour qui attend.
+func SpawnWaiting(ctx context.Context, req Request, lockCacheRoot, tool string, maxWait time.Duration) (Result, error) {
+	lock, err := filmproc.AcquireSoloWait(ctx, lockCacheRoot, tool, req.MatchID, maxWait)
+	if err != nil {
+		return Result{}, fmt.Errorf("cuisson non lancee : %w", err)
+	}
+	defer lock.Release()
+	return spawnLocked(ctx, req)
+}
+
+// spawnLocked lance l'enfant borne et rend ses octets ; l'appelant TIENT le verrou solo.
+func spawnLocked(ctx context.Context, req Request) (Result, error) {
 	dir, err := os.MkdirTemp("", "levelup-filmchild-")
 	if err != nil {
 		return Result{}, fmt.Errorf("repertoire temporaire: %w", err)

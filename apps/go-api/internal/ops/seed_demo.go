@@ -86,6 +86,10 @@ type SeedDemoOptions struct {
 	// (config/demo/<gamertag>/<slug>.json). Faux (défaut) → manifeste auto-détecté et
 	// utilisé s'il est présent (corpus reproductible).
 	IgnoreManifest bool
+	// CacheRepoRoot : racine du dépôt dont le cache (`data/cache`) fournit les films et les
+	// artefacts de rejeu sources des rejeux figés. Vide → RepoRoot. Son cache porte aussi le
+	// verrou de décodage de la machine.
+	CacheRepoRoot string
 }
 
 // SeedDemoResult résume l'exécution.
@@ -97,8 +101,10 @@ type SeedDemoResult struct {
 	PlayerRows     map[string]int
 	// PrestigeRows : lignes Prestige/Progression générées (player DB + shared_social),
 	// par table. Vide si le corpus démo ne contient aucun match du joueur démo.
-	PrestigeRows   map[string]int
-	MediaCopied    int
+	PrestigeRows map[string]int
+	MediaCopied  int
+	// Replays : bilan des rejeux figés (issue par match, films embarqués).
+	Replays        DemoReplaysReport
 	ConfigsWritten bool
 	Frozen         bool // true si le corpus vient d'un manifeste figé (vs sélection dynamique)
 	Duration       time.Duration
@@ -122,6 +128,12 @@ const matchIDInClause = "match_id IN (%s)"
 
 // Table player principale (extraction et tests).
 const playerEnrichmentTable = "player_match_enrichment"
+
+// Colonnes d'identité les plus courantes des tables extraites (champ `identity`).
+const (
+	colXUID     = "xuid"
+	colGamertag = "gamertag"
+)
 
 // Tables shared/player référencées plus de 3 fois dans seed_demo + tests.
 const (
@@ -156,10 +168,10 @@ type extractTable struct {
 // xuid_aliases : SELECT * WHERE xuid IN (xuids des match_participants).
 var sharedTablesWhere = []extractTable{
 	{name: tableMatchRegistry, where: matchIDInClause},
-	{name: tableMatchParticipants, where: matchIDInClause, identity: [][2]string{{"xuid", "gamertag"}}},
-	{name: "medals_earned", where: matchIDInClause, identity: [][2]string{{"xuid", ""}}},
-	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{"xuid", ""}}},
-	{name: "weapon_kills", where: matchIDInClause, identity: [][2]string{{"xuid", ""}}},
+	{name: tableMatchParticipants, where: matchIDInClause, identity: [][2]string{{colXUID, colGamertag}}},
+	{name: "medals_earned", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	{name: "weapon_kills", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 	{name: "killer_victim_pairs", where: matchIDInClause, identity: [][2]string{
 		{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
 	// match_kill_events : le kill-feed canonique, écrit en parallèle de la table ci-dessus
@@ -179,8 +191,8 @@ var sharedTablesWhere = []extractTable{
 	// La sous-requête vise la table SOURCE (src.) : la copie démo de match_participants,
 	// déjà créée, porte des xuid ANONYMISÉS qui ne filtreraient plus rien.
 	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM src.match_participants WHERE match_id IN (%s))",
-		identity: [][2]string{{"xuid", "gamertag"}}},
-	{name: "match_csrs", where: matchIDInClause, appendOnly: true, identity: [][2]string{{"xuid", ""}}},
+		identity: [][2]string{{colXUID, colGamertag}}},
+	{name: "match_csrs", where: matchIDInClause, appendOnly: true, identity: [][2]string{{colXUID, ""}}},
 	// match_objective_stats : stats objectifs par joueur/match (CTF, Zones, Oddball,
 	// Stockpile, Extraction, VIP). Sans elle, toutes les surfaces « objectifs » de la
 	// démo sont vides (scoreboard MatchView Q12 LEFT JOIN match_objective_stats_latest).
@@ -196,16 +208,16 @@ var sharedTablesWhere = []extractTable{
 	// `written_at DESC, id DESC`, échouerait au binder et ferait échouer tout le seed.
 	// On copie donc la table TELLE QUELLE (id + written_at inclus) : la vue _latest
 	// recréée par applyMigrationsOnPath déduplique alors exactement comme en prod.
-	{name: "match_objective_stats", where: matchIDInClause, identity: [][2]string{{"xuid", ""}}},
+	{name: "match_objective_stats", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 	// Tables présentes selon le titre : table source absente → ignorée par
 	// extractSharedTables. match_commendations et weapon_accuracy sont propres à Halo 5.
-	{name: "match_commendations", where: matchIDInClause, identity: [][2]string{{"xuid", ""}}},
+	{name: "match_commendations", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 	// kill_positions (positions monde du kill) est APPEND-ONLY PAR PASSE (id + decode_pass +
 	// written_at, vue kill_positions_latest), comme match_objective_stats : copiée telle quelle,
 	// colonnes techniques comprises, et son killer_xuid est remappé À LA COPIE — jamais par un
 	// UPDATE après coup (garde-rail TestNoMutationOnAppendOnlyTablesInOps).
 	{name: "kill_positions", where: matchIDInClause, identity: [][2]string{{"killer_xuid", ""}}},
-	{name: "weapon_accuracy", where: matchIDInClause, identity: [][2]string{{"xuid", ""}}},
+	{name: "weapon_accuracy", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 }
 
 // Tables player à extraire. sessions/career_progression/player_csr_snapshots
@@ -214,14 +226,14 @@ var playerTablesWhere = []extractTable{
 	{name: playerEnrichmentTable, where: matchIDInClause},
 	{name: "match_citations", where: matchIDInClause},
 	{name: "sessions", where: "1=1"},
-	{name: "career_progression", where: "1=1", identity: [][2]string{{"xuid", ""}}},
+	{name: "career_progression", where: "1=1", identity: [][2]string{{colXUID, ""}}},
 	// sync_meta : liste d'INCLUSION (défaut-refus) — aucun credential ne peut
 	// traverser, pas même une clé credential future. Politique + justification de
 	// chaque clé retenue : seed_demo_sync_meta.go.
 	{name: "sync_meta", where: demoSyncMetaWhere()},
 	{name: "match_skill_rank", where: matchIDInClause, appendOnly: true},
 	{name: "player_csr_snapshots", where: "1=1", appendOnly: true},
-	{name: "battlepass_snapshots", where: "1=1", identity: [][2]string{{"xuid", ""}}},
+	{name: "battlepass_snapshots", where: "1=1", identity: [][2]string{{colXUID, ""}}},
 }
 
 // extractSelectExpr retourne l'expression SELECT pour une table extraite.
@@ -297,11 +309,12 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	)
 
 	// Phases 0+1+1b : corpus (figé via manifeste ou dynamique) + roster démo.
-	matchIDs, roster, frozen, err := resolveDemoCorpusAndRoster(ctx, opts)
-	res.Frozen = frozen
+	sel, err := resolveDemoCorpusAndRoster(ctx, opts)
+	res.Frozen = sel.frozen
 	if err != nil {
 		return res, err
 	}
+	matchIDs, roster := sel.matchIDs, sel.roster
 	res.MatchIDs = matchIDs
 
 	// Phases 2-4 : warehouse démo (metadata copiée + shared extrait + anonymisé + migré).
@@ -346,6 +359,9 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	}
 	res.PrestigeRows = prestigeRows
 
+	// 6c. Rejeux figés (un par mode, manifeste) : films embarqués, artefacts au dernier schéma.
+	res.Replays = seedDemoReplays(ctx, opts, layout, sel.replays, roster)
+
 	// 7. Configs (db_profiles avec les 3 profils démo + app_settings). SKIP quand
 	// l'orchestrateur multi-titre les écrira une fois (v3) après tous les titres.
 	if !opts.SkipConfigs {
@@ -365,22 +381,30 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	return res, nil
 }
 
+// demoCorpusSelection : le corpus retenu, son roster démo, frozen=true si un manifeste figé
+// a été utilisé, et les rejeux figés de ce manifeste.
+type demoCorpusSelection struct {
+	matchIDs []string
+	roster   []demoRosterEntry
+	frozen   bool
+	replays  []DemoReplayPick
+}
+
 // resolveDemoCorpusAndRoster sélectionne le corpus (figé via manifeste ou dynamique
 // « N récents ») puis construit le roster démo (source + coéquipiers principaux + autres
 // participants → identités démo stables, anti-fuite). Phases 0+1+1b de SeedDemo (K2d).
-// frozen=true si un manifeste figé a été utilisé.
-func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (matchIDs []string, roster []demoRosterEntry, frozen bool, err error) {
+func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (sel demoCorpusSelection, err error) {
 	// 0. Manifeste figé (optionnel) : config/demo/<gamertag>/<slug>.json → corpus reproductible.
 	var manifest *DemoManifest
 	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
 		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
 		m, found, mErr := LoadDemoManifest(mp)
 		if mErr != nil {
-			return nil, nil, false, fmt.Errorf("seed-demo: %w", mErr)
+			return sel, fmt.Errorf("seed-demo: %w", mErr)
 		}
 		if found {
 			manifest = m
-			frozen = true
+			sel.frozen = true
 			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
 		}
 	}
@@ -394,25 +418,29 @@ func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (matc
 			ranked: manifest.Corpus.RankedMatchIDs,
 			media:  manifest.Corpus.MediaMatchIDs,
 		}
+		sel.replays = manifest.Corpus.ReplayMatches
 	} else {
 		dc = selectDynamicCorpus(ctx, opts)
 	}
-	matchIDs = unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
-	if len(matchIDs) == 0 {
-		return nil, nil, frozen, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
+	// Les matchs des rejeux figés entrent dans le corpus : vue match, roster et anonymisation
+	// les couvrent comme les autres.
+	sel.matchIDs = unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media, replayPickMatchIDs(sel.replays))
+	if len(sel.matchIDs) == 0 {
+		return sel, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
 			opts.SourceXUID, opts.SourceSharedDB)
 	}
 	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
-		"frozen", manifest != nil, "total", len(matchIDs),
-		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media))
+		"frozen", manifest != nil, "total", len(sel.matchIDs),
+		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media),
+		"replays", len(sel.replays))
 
 	// 1b. Roster démo (dérivé du corpus : figé ⇒ déterministe + couverture xuids réels).
-	roster, err = buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, matchIDs, opts.SourceXUID, 2)
+	sel.roster, err = buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, sel.matchIDs, opts.SourceXUID, 2)
 	if err != nil {
-		return nil, nil, frozen, fmt.Errorf("seed-demo: build roster: %w", err)
+		return sel, fmt.Errorf("seed-demo: build roster: %w", err)
 	}
-	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(roster))
-	return matchIDs, roster, frozen, nil
+	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(sel.roster))
+	return sel, nil
 }
 
 // buildDemoWarehouse copie la metadata, extrait le shared filtré sur le corpus, anonymise

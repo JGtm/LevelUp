@@ -2,12 +2,13 @@ package wire
 
 // registry_replay_service_demo_test.go — en démo, le service de rejeu lit les DONNÉES
 // VERSIONNÉES (fonds de carte, mappings, libellés, zones, règles de tiers) à la racine du
-// dépôt, et les ARTEFACTS D'EXÉCUTION (rejeux) sous `<démo>/runtime/` (revue adversariale du
-// lot B5, constat R2-1 ; lot B-C7 du backlog 2026-09-26).
+// dépôt, et les ARTEFACTS dans les rejeux FIGÉS de la disposition démo
+// (title.DemoLayout.ReplayArtifactsDir), joueurs réels masqués par l'index (décisions D-1/D-2
+// du plan des recommandations du 2026-10-09).
 //
-// Régression de B5 : le service était enraciné tout entier sur cfg.RuntimePaths(). En démo,
-// l'onglet Tactique répondait 404 sur les fonds de carte, et les catalogues du rejeu étaient
-// introuvables.
+// Régression de B5 (constat R2-1) : le service était enraciné tout entier sur la racine
+// d'exécution de la démo. En démo, l'onglet Tactique répondait 404 sur les fonds de carte, et
+// les catalogues du rejeu étaient introuvables.
 //
 // Le test passe par le VRAI handler HTTP et par la construction de production
 // (replayServiceFrom), sans base : seules les identités de carte sont bouchonnées.
@@ -18,6 +19,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -83,24 +85,58 @@ func get(r *chi.Mux, path string) *httptest.ResponseRecorder {
 	return w
 }
 
-func TestReplayService_Demo_DonneesVersionneesEtArtefactsRuntime(t *testing.T) {
+// artefactDemo : un rejeu minimal dont la piste et la table d'identités nomment un joueur RÉEL.
+const (
+	xuidReel     = "2533274899990001"
+	gamertagReel = "VraiJoueur"
+	artefactDemo = `{"schemaVersion":1,"matchId":"` + matchRejeuDemo + `","tracks":[{"slot":3,"team":0,` +
+		`"xuid":"` + xuidReel + `","name":"` + gamertagReel + `","points":[]}],"identity":{"players":[` +
+		`{"filmIndex":0,"xuid":"` + xuidReel + `","name":"` + gamertagReel + `","link":{}}],"coverage":{}}}`
+	indexDemo = `{"matches":[{"match_id":"` + matchRejeuDemo + `","mode":"ctf","schema_version":1}],` +
+		`"identities":[{"xuid":"` + xuidReel + `","demo_xuid":"0000000000000001","demo_gamertag":"DemoPlayer2"}]}`
+)
+
+func TestReplayService_Demo_DonneesVersionneesEtRejeuxFigesMasques(t *testing.T) {
 	repo, demo := t.TempDir(), t.TempDir()
 	fondVersionne(t, repo)
-	// L'artefact de rejeu vit sous <démo>/runtime/, et là seulement.
-	runtime := title.NewDemoLayout(demo).RuntimePaths()
-	ecrireFichier(t, runtime.ReplayArtifactPath(title.DefaultSlug, matchRejeuDemo), `{"schemaVersion":1}`)
+	layout := title.NewDemoLayout(demo)
+	ecrireFichier(t, layout.ReplayArtifactPath(title.DefaultSlug, matchRejeuDemo), artefactDemo)
+	ecrireFichier(t, layout.ReplayIndexPath(title.DefaultSlug), indexDemo)
 	r := routeurRejeu(&config.AppConfig{DemoMode: true, RepoRoot: repo, DemoFixturesDir: demo})
 
 	if w := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay/background.png"); w.Code != http.StatusOK {
 		t.Errorf("démo : fond de carte versionné, statut %d, attendu 200 — corps %s", w.Code, w.Body.String())
 	}
-	if w := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay"); w.Code != http.StatusOK {
-		t.Errorf("démo : artefact sous runtime, statut %d, attendu 200 — corps %s", w.Code, w.Body.String())
+	w := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay")
+	if w.Code != http.StatusOK {
+		t.Fatalf("démo : rejeu figé, statut %d, attendu 200 — corps %s", w.Code, w.Body.String())
 	}
-	// Leurre : un artefact du DÉPÔT n'est jamais servi en démo.
-	ecrireFichier(t, title.NewPathResolver(repo).ReplayArtifactPath(title.DefaultSlug, "depot002"), `{"schemaVersion":1}`)
-	if w := get(r, "/players/p/matches/depot002/replay"); w.Code != http.StatusNotFound {
-		t.Errorf("démo : artefact du dépôt servi, statut %d, attendu 404", w.Code)
+	corps := w.Body.String()
+	if strings.Contains(corps, xuidReel) || strings.Contains(corps, gamertagReel) {
+		t.Errorf("démo : identité RÉELLE dans la réponse : %s", corps)
+	}
+	if !strings.Contains(corps, `"0000000000000001"`) || !strings.Contains(corps, `"DemoPlayer2"`) {
+		t.Errorf("démo : identité démo absente de la réponse : %s", corps)
+	}
+	// Leurres : un artefact du DÉPÔT, ou de la racine d'exécution de la démo, n'est jamais servi.
+	ecrireFichier(t, title.NewPathResolver(repo).ReplayArtifactPath(title.DefaultSlug, "depot002"), artefactDemo)
+	ecrireFichier(t, layout.RuntimePaths().ReplayArtifactPath(title.DefaultSlug, "runtime3"), artefactDemo)
+	for _, id := range []string{"depot002", "runtime3"} {
+		if w := get(r, "/players/p/matches/"+id+"/replay"); w.Code != http.StatusNotFound {
+			t.Errorf("démo : artefact %s hors rejeux figés servi, statut %d, attendu 404", id, w.Code)
+		}
+	}
+}
+
+func TestReplayService_Demo_IndexAbsentRefuseLeRejeu(t *testing.T) {
+	repo, demo := t.TempDir(), t.TempDir()
+	layout := title.NewDemoLayout(demo)
+	ecrireFichier(t, layout.ReplayArtifactPath(title.DefaultSlug, matchRejeuDemo), artefactDemo)
+	r := routeurRejeu(&config.AppConfig{DemoMode: true, RepoRoot: repo, DemoFixturesDir: demo})
+	// Sans index, pas de masque : servir le document publierait les noms réels.
+	if w := get(r, "/players/p/matches/"+matchRejeuDemo+"/replay"); w.Code == http.StatusOK ||
+		strings.Contains(w.Body.String(), gamertagReel) {
+		t.Errorf("démo sans index : statut %d, attendu un refus sans identité réelle — corps %s", w.Code, w.Body.String())
 	}
 }
 

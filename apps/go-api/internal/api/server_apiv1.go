@@ -785,10 +785,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// La porte de PRODUCTION est sa jumelle data-level `film.replay_artifact`
 		// (capabilities.toml) : pas de clé, pas de cuisson (sync/replayartifacts).
 		// Le garde local reste un middleware de transport (cf. handlers/replay_local_gate.go,
-		// qui porte sa date de retrait).
+		// qui porte sa date de retrait) ; en démo, il cède à la liste des rejeux figés.
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
-			r.Use(handlers.LocalOnlyReplay)
+			r.Use(handlers.ReplayGate(demoReplayGate(reg)))
 			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
 		})
 

@@ -819,7 +819,7 @@ func (p *PathResolver) JobsCachePath() string {
 // sa forme courte donne donc le MÊME chemin — c'est ce qui rend l'artefact atteignable
 // depuis une route de l'application.
 func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
-	return filepath.Join(p.ReplayArtifactsDir(titleSlug), FilmShortMatchID(matchID)+".json")
+	return filepath.Join(p.ReplayArtifactsDir(titleSlug), ReplayArtifactFileName(matchID))
 }
 
 // ReplayArtifactsDir retourne le dossier des artefacts de rejeu 2D d'un titre (un

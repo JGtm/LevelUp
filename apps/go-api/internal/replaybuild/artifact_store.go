@@ -62,10 +62,17 @@ type StoredArtifact struct {
 // Tout refus rend une erreur qui enveloppe domain.ErrBuildArtifactInvalid et
 // n'écrit RIEN.
 func StoreArtifact(ctx context.Context, repoRoot, titleSlug, matchID string, blob []byte) (StoredArtifact, error) {
+	return StoreArtifactAt(ctx, title.NewPathResolver(repoRoot).ReplayArtifactPath(titleSlug, matchID),
+		titleSlug, matchID, blob)
+}
+
+// StoreArtifactAt est [StoreArtifact] vers un chemin EXPLICITE : mêmes validations, même
+// garde anti-régression, même écriture atomique. Il sert les rejeux figés de la démo, rangés
+// dans sa disposition (title.DemoLayout.ReplayArtifactPath) et non à la place canonique.
+func StoreArtifactAt(ctx context.Context, outPath, titleSlug, matchID string, blob []byte) (StoredArtifact, error) {
 	if err := validateArtifact(titleSlug, matchID, blob); err != nil {
 		return StoredArtifact{}, err
 	}
-	outPath := title.NewPathResolver(repoRoot).ReplayArtifactPath(titleSlug, matchID)
 	// Le garde anti-régression n'est PAS ici : il vit au point d'écriture, que ce dépôt
 	// partage avec les trois autres écrivains (cf. writeArtifactBytes). L'accusé décrit ce
 	// que le disque porte APRÈS l'appel — donc l'artefact conservé quand l'écriture est

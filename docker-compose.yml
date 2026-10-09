@@ -103,6 +103,11 @@ services:
       - ./data/demo:/app/data/demo
       - ./data/demo/db_profiles.json:/app/db_profiles.json:ro
       - ./data/demo/app_settings.json:/app/app_settings.json:ro
+      # Données de RÉFÉRENCE du rejeu (fonds de carte, catalogues de cartes et d'objectifs,
+      # profils de film) : versionnées dans le dépôt mais absentes de l'image (.dockerignore
+      # exclut data/). Sans elles, les rejeux figés de la démo s'affichent sans carte.
+      # Lecture seule ; aucune base de production n'est montée.
+      - ./data/titles/halo_infinite/reference:/app/data/titles/halo_infinite/reference:ro
       # Assets visuels cachés (battlepass, rangs carrière, badges défis) servis via
       # /api/v1/assets/*. Génériques Halo (pas de données joueur) → on partage le
       # cache prod en lecture seule, sinon le resolver tombe sur le CDN gamecms et

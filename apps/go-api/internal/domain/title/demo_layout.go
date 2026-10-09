@@ -22,6 +22,10 @@ package title
 //     overlay d'un titre `<TitleDir>/settings.json` ;
 //   - `<démo>/auth/` : l'authentification de la démo. Le seed ne l'écrit pas : elle est VIDE,
 //     la démo ne se connecte à rien (décision D-7) ;
+//   - `<TitleDir>/replays/` : les rejeux FIGÉS de la démo, écrits par le seed et seulement lus
+//     par le serveur — `artifacts/{short8}.json`, les films sources sous `films/` (même
+//     disposition qu'un cache de films : `film_chunks/`, `film_manifests/`, pour pouvoir les
+//     recuire), et `index.json` (matchs servis, correspondance des identités) ;
 //   - `<démo>/runtime/` : TOUT ce que le serveur écrit pendant qu'il tourne (sessions, logs,
 //     caches, état d'administration). Ignoré par git sous `data/demo/` comme sous
 //     `tests/fixtures/demo-root/`.
@@ -102,6 +106,35 @@ func (d DemoLayout) PlayerDBPath(slug, dir string) string {
 // PathResolver.TitleSettingsPath). Fichier optionnel : absent, le titre hérite du global.
 func (d DemoLayout) TitleSettingsPath(slug string) string {
 	return filepath.Join(d.TitleDir(slug), "settings.json")
+}
+
+// ReplaysDir rend le dossier des rejeux figés de la démo pour un titre.
+func (d DemoLayout) ReplaysDir(slug string) string {
+	return filepath.Join(d.TitleDir(slug), "replays")
+}
+
+// ReplayArtifactsDir rend le dossier des artefacts de rejeu servis par la démo.
+func (d DemoLayout) ReplayArtifactsDir(slug string) string {
+	return filepath.Join(d.ReplaysDir(slug), "artifacts")
+}
+
+// ReplayArtifactPath rend l'artefact de rejeu démo d'un match (forme courte, comme en
+// production).
+func (d DemoLayout) ReplayArtifactPath(slug, matchID string) string {
+	return filepath.Join(d.ReplayArtifactsDir(slug), ReplayArtifactFileName(matchID))
+}
+
+// ReplayFilmsCacheRoot rend la racine du cache de films EMBARQUÉ par la démo : la même
+// disposition qu'un cache de films (film_chunks/, film_manifests/), pour que la recuisson
+// lise ces films comme elle lit ceux du dépôt.
+func (d DemoLayout) ReplayFilmsCacheRoot(slug string) string {
+	return filepath.Join(d.ReplaysDir(slug), "films")
+}
+
+// ReplayIndexPath rend l'index des rejeux démo : matchs servis et correspondance des
+// identités réelles vers les identités démo (jamais servi tel quel).
+func (d DemoLayout) ReplayIndexPath(slug string) string {
+	return filepath.Join(d.ReplaysDir(slug), "index.json")
 }
 
 // DBProfilesPath rend le db_profiles.json émis par le seed de la démo.

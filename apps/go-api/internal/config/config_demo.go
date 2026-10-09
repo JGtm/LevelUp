@@ -49,9 +49,10 @@ func (c *AppConfig) DemoLayout() title.DemoLayout {
 }
 
 // RuntimePaths rend le PathResolver des fichiers que le serveur ÉCRIT (ou relit comme
-// état) en tournant : jobs.json, cache de l'aide, amis par joueur, état admin, artefacts de
-// rejeu, faits de film. Hors démo : le PathResolver du dépôt (inchangé). En démo : un
-// PathResolver enraciné sous `<démo>/runtime/`. Jamais pour lire une donnée de référence.
+// état) en tournant : jobs.json, cache de l'aide, amis par joueur, état admin, faits de film.
+// Hors démo : le PathResolver du dépôt (inchangé). En démo : un PathResolver enraciné sous
+// `<démo>/runtime/`. Jamais pour lire une donnée de référence, ni les rejeux figés de la démo
+// (écrits par seed-demo sous title.DemoLayout.ReplaysDir).
 func (c *AppConfig) RuntimePaths() *title.PathResolver {
 	if c.demoState() {
 		return c.DemoLayout().RuntimePaths()

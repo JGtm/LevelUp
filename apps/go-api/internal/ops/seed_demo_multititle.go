@@ -57,6 +57,11 @@ type SeedDemoMultiOptions struct {
 	EmitManifest bool
 	// IgnoreManifest : forcer la sélection dynamique même si un manifeste existe.
 	IgnoreManifest bool
+	// EmitReplayPicks : au lieu de seeder, choisir les rejeux figés (un par famille de mode)
+	// et les écrire dans le manifeste existant de chaque titre qui a un rejeu (CapReplay).
+	EmitReplayPicks bool
+	// CacheRepoRoot : cf. SeedDemoOptions.CacheRepoRoot (vide → RepoRoot).
+	CacheRepoRoot string
 }
 
 // SeedDemoMultiResult résume l'exécution multi-titre.
@@ -120,6 +125,12 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 			RepoRoot:         opts.RepoRoot,
 			SkipConfigs:      true, // configs écrites une fois en fin d'orchestration
 			IgnoreManifest:   opts.IgnoreManifest,
+			CacheRepoRoot:    opts.CacheRepoRoot,
+		}
+
+		if opts.EmitReplayPicks {
+			res.EmittedManifests = append(res.EmittedManifests, emitReplayPicksForTitle(ctx, sopts, pr, ts.Gamertag)...)
+			continue
 		}
 
 		// Mode émission : geler la sélection dynamique du titre en manifeste, sans seeder.
@@ -158,7 +169,7 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 	}
 
 	// Mode émission : pas de seed ni de configs — on a écrit les manifestes, fin.
-	if opts.EmitManifest {
+	if opts.EmitManifest || opts.EmitReplayPicks {
 		res.Duration = time.Since(start)
 		slog.InfoContext(ctx, "seed-demo multi: manifestes émis",
 			"count", len(res.EmittedManifests), "skipped", len(res.Skipped))
@@ -321,4 +332,20 @@ func writeDemoConfigsV3(outDir string, byTitle map[string][]seededDemoPlayer, se
 		return fmt.Errorf("app_settings.json: %w", err)
 	}
 	return nil
+}
+
+// emitReplayPicksForTitle émet les rejeux figés d'un titre qui a un rejeu (CapReplay) ; rend
+// le manifeste écrit, aucun pour un titre sans rejeu ou en échec (journalisé).
+func emitReplayPicksForTitle(ctx context.Context, sopts SeedDemoOptions, pr *titlePkg.PathResolver, gamertag string) []string {
+	desc := titlePkg.DefaultRegistry().Get(sopts.TitleSlug)
+	if desc == nil || !desc.HasCapability(titlePkg.CapReplay) {
+		slog.InfoContext(ctx, "seed-demo: titre sans rejeu, aucun rejeu figé", "title", sopts.TitleSlug)
+		return nil
+	}
+	manPath := pr.DemoManifestPath(gamertag, sopts.TitleSlug)
+	if _, err := EmitDemoReplayPicks(ctx, sopts, manPath); err != nil {
+		slog.ErrorContext(ctx, "seed-demo: rejeux figés non émis", "title", sopts.TitleSlug, "err", err)
+		return nil
+	}
+	return []string{manPath}
 }

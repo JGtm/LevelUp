@@ -30,6 +30,10 @@ func TestDemoLayout_Disposition(t *testing.T) {
 		"SessionDir":                 {l.SessionDir(), filepath.Join(root, "runtime", "sessions")},
 		"LogsDir":                    {l.LogsDir(), filepath.Join(root, "runtime", "logs")},
 		"RuntimePaths.RepoRoot":      {l.RuntimePaths().RepoRoot(), filepath.Join(root, "runtime")},
+		"ReplayArtifactPath(défaut)": {l.ReplayArtifactPath("", "abcd1234-0000-0000-0000-000000000000"),
+			filepath.Join(root, "replays", "artifacts", "abcd1234.json")},
+		"ReplayFilmsCacheRoot(halo_5)": {l.ReplayFilmsCacheRoot("halo_5"), filepath.Join(h5, "replays", "films")},
+		"ReplayIndexPath(défaut)":      {l.ReplayIndexPath(DefaultSlug), filepath.Join(root, "replays", "index.json")},
 	}
 	for nom, v := range cas {
 		if v[0] != v[1] {

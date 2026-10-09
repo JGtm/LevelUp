@@ -3,7 +3,8 @@
 //
 // POURQUOI CE RATCHET EXISTE (revue R1 de la phase 4, constat G2). Le fond de carte de la
 // grille est servi par `/players/{slug}/tactical/{map_id}/background{,.png}`, monte par
-// `NewTacticalHandler` — DELIBEREMENT hors du groupe qui porte `LocalOnlyReplay`. Ce garde
+// `NewTacticalHandler` — DELIBEREMENT hors du groupe qui porte le garde du rejeu
+// (`ReplayGate` : le garde local `LocalOnlyReplay` hors démo, les rejeux figés en démo). Ce garde
 // protege les TRAJECTOIRES decodees du film, dont la couverture n'est pas
 // productionnalisable ; une image de carte est une donnee de reference versionnee, extraite
 // des fichiers de jeu. Deplacer le montage tactique dans ce groupe viderait la grille des
@@ -35,7 +36,9 @@ import (
 
 const (
 	tacticalHandlerCtor = "NewTacticalHandler"
-	gardeLocalRejeu     = "LocalOnlyReplay"
+	// gardeLocalRejeu : la fabrique du garde des routes de rejeu, posee par
+	// `r.Use(handlers.ReplayGate(...))` (garde local hors demo, rejeux figes en demo).
+	gardeLocalRejeu = "ReplayGate"
 )
 
 // TestTacticalBackgroundRoutesHorsGardeLocal — les deux faces de la regle.
@@ -151,10 +154,10 @@ func unAncetreInstalleLeGardeLocal(ancetres []*ast.BlockStmt) bool {
 	return false
 }
 
-// blocInstalleLeGardeLocal dit si CE bloc-ci pose `r.Use(..., LocalOnlyReplay)`.
+// blocInstalleLeGardeLocal dit si CE bloc-ci pose `r.Use(..., ReplayGate(...))`.
 //
-// Le garde est un middleware passe en ARGUMENT (`r.Use(handlers.LocalOnlyReplay)`), pas un
-// appel : on cherche donc l'identifiant parmi les arguments d'un `Use`.
+// Le garde est le RESULTAT d'un appel passe en ARGUMENT (`r.Use(handlers.ReplayGate(x))`) :
+// on cherche donc, parmi les arguments d'un `Use`, un appel a la fabrique.
 func blocInstalleLeGardeLocal(bloc ast.Node) bool {
 	trouve := false
 	ast.Inspect(bloc, func(n ast.Node) bool {
@@ -169,7 +172,7 @@ func blocInstalleLeGardeLocal(bloc ast.Node) bool {
 			return true
 		}
 		for _, arg := range appel.Args {
-			if identNomme(arg, gardeLocalRejeu) {
+			if fabrique, ok := arg.(*ast.CallExpr); ok && appelNomme(fabrique, gardeLocalRejeu) {
 				trouve = true
 				return false
 			}

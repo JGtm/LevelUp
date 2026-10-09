@@ -77,6 +77,58 @@
       "24dbb67d-a7d8-4359-b319-bdf13959178d",
       "92f18088-d0f8-4660-b09b-8246cf956719"
     ],
-    "media_match_ids": []
+    "media_match_ids": [],
+    "replay_matches": [
+      {
+        "match_id": "edc5daf6-0df8-4eb0-b578-b8eb892ce184",
+        "mode": "firefight",
+        "map": "Cole Protocol"
+      },
+      {
+        "match_id": "39910eb1-8c01-4e26-bc60-965cb2dcc789",
+        "mode": "fiesta",
+        "map": "Recharge"
+      },
+      {
+        "match_id": "00761d27-487c-4d7d-ac4c-bf7584de652c",
+        "mode": "vip",
+        "map": "Bazaar"
+      },
+      {
+        "match_id": "5676a9ba-bafa-4fbb-bd3e-b957ae2ee8e0",
+        "mode": "total_control",
+        "map": "Insolence"
+      },
+      {
+        "match_id": "572e236b-8740-4052-a351-33ec0204053d",
+        "mode": "strongholds",
+        "map": "Fortress"
+      },
+      {
+        "match_id": "0d9a9af9-d9b7-41c9-8123-012bfe092c8e",
+        "mode": "koth",
+        "map": "Forest"
+      },
+      {
+        "match_id": "d9781168-5fd6-4b00-a862-56e3a0a1f956",
+        "mode": "oddball",
+        "map": "Dredge"
+      },
+      {
+        "match_id": "69b16f5d-c9af-4ec1-a9ef-4ec788c49441",
+        "mode": "assault",
+        "map": "Origin"
+      },
+      {
+        "match_id": "0a08d2f2-62ff-4bf3-8870-9884a8cba2c5",
+        "mode": "ctf",
+        "map": "Banished Narrows"
+      },
+      {
+        "match_id": "6c55be89-213c-472b-bbbf-0aeb28575469",
+        "mode": "slayer",
+        "map": "Fortress"
+      }
+    ]
   }
 }

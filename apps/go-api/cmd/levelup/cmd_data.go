@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -210,6 +211,10 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	titlesFlag := fs.String("titles", "", "Titres à seeder (CSV de slugs ; vide = tous les titres où le gamertag a des données)")
 	emitManifest := fs.Bool("emit-manifest", false, "Émettre les manifestes figés (config/demo/<gamertag>/<slug>.json) depuis la sélection dynamique, sans seeder — à curer puis committer")
 	ignoreManifest := fs.Bool("ignore-manifest", false, "Forcer la sélection dynamique même si un manifeste figé existe")
+	emitReplayPicks := fs.Bool("emit-replay-picks", false,
+		"Choisir les rejeux figés de la démo (un par famille de mode, parmi les films du cache) "+
+			"et les écrire dans les manifestes existants, sans seeder — à relire puis committer")
+	cacheRepoRoot := fs.String("cache-repo-root", "", "Racine du dépôt dont data/cache fournit les films et artefacts de rejeu sources (vide = racine du dépôt)")
 	synthetic := fs.Bool("synthetic", false, "Générer une fixture SYNTHÉTIQUE déterministe (aucune donnée réelle, aucune DB de prod) — voie CI ; le défaut reste l'extraction d'un joueur réel anonymisé")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -277,18 +282,27 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 
 	ctx := context.Background()
 	res, err := ops.SeedDemoMulti(ctx, ops.SeedDemoMultiOptions{
-		RepoRoot:       cfg.RepoRoot,
-		OutDir:         filepath.Join(cfg.RepoRoot, *outDir),
-		ProfilesPath:   profilesPath,
-		ServiceTag:     *serviceTag,
-		Titles:         titleSpecs,
-		EmitManifest:   *emitManifest,
-		IgnoreManifest: *ignoreManifest,
+		RepoRoot:        cfg.RepoRoot,
+		OutDir:          filepath.Join(cfg.RepoRoot, *outDir),
+		ProfilesPath:    profilesPath,
+		ServiceTag:      *serviceTag,
+		Titles:          titleSpecs,
+		EmitManifest:    *emitManifest,
+		IgnoreManifest:  *ignoreManifest,
+		EmitReplayPicks: *emitReplayPicks,
+		CacheRepoRoot:   *cacheRepoRoot,
 	})
 	if err != nil {
 		return err
 	}
 
+	if *emitReplayPicks {
+		fmt.Printf("Rejeux figés émis dans %d manifeste(s) :\n", len(res.EmittedManifests))
+		for _, p := range res.EmittedManifests {
+			fmt.Printf("   - %s\n", p)
+		}
+		return nil
+	}
 	if *emitManifest {
 		fmt.Printf("✅ Manifestes démo émis (%d) :\n", len(res.EmittedManifests))
 		for _, p := range res.EmittedManifests {
@@ -306,6 +320,7 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	for slug, tr := range res.PerTitle {
 		fmt.Printf("   [%s] %d matchs, %d player DB, %d médias\n",
 			slug, len(tr.MatchIDs), len(tr.SeededPlayers), tr.MediaCopied)
+		printDemoReplays(tr.Replays)
 	}
 	if len(res.Skipped) > 0 {
 		fmt.Printf("   ⚠️  titres ignorés (gamertag non configuré): %s\n", strings.Join(res.Skipped, ", "))
@@ -350,4 +365,20 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 	}
 	fmt.Printf("✅ %s: %s\n", result.Component, result.Message)
 	return nil
+}
+
+// printDemoReplays affiche le bilan des rejeux figés d'un titre (issue par match).
+func printDemoReplays(r ops.DemoReplaysReport) {
+	if len(r.Outcomes) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(r.Outcomes))
+	for id := range r.Outcomes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	fmt.Printf("        rejeux figés : %d film(s) embarqué(s)\n", r.Films)
+	for _, id := range ids {
+		fmt.Printf("          %s  %s\n", id, r.Outcomes[id])
+	}
 }

@@ -245,14 +245,18 @@ defaults whatever `LEVELUP_DEMO_MODE` says, since it works on the real data (bac
 | `db_profiles.json`, `app_settings.json` | `<demo>/db_profiles.json`, `<demo>/app_settings.json` (written by `seed-demo`) |
 | Auth (`users.json`, `groups.json`, token store) | `<demo>/auth/` (empty: the demo connects to nothing) |
 | Sessions, logs, backups | `<demo>/runtime/sessions`, `<demo>/runtime/logs`, `<demo>/runtime/backups` |
-| Runtime caches and admin state (`jobs.json`, help cache, friends, `admin_state/`, replay artifacts) | `<demo>/runtime/data/…` |
+| Runtime caches and admin state (`jobs.json`, help cache, friends, `admin_state/`) | `<demo>/runtime/data/…` |
+| Frozen replays (one per game mode): artifacts, source films, index | `<demo>/replays/` (written by `seed-demo`, read-only for the server) |
 | Monitoring store | in memory (no `monitoring.duckdb`) |
 
 Background tasks that would write or delete outside the demo root (janitor, async persist
 queue and WAL recovery, data health, replay purge, disk watch, catalog/asset/Spartan/world
 leaderboard crons, watcher, token pool, boot friend/group migrations) are not started; one
-`demo_mode: tâches de fond coupées` log line lists them at boot. `POST /settings/backup/run`
-answers 403 in demo mode. `<demo>/runtime/` is git-ignored under `data/demo/` and
+`demo_mode: tâches de fond coupées` log line lists them at boot. The demo is READ-ONLY: every
+write request (POST, PUT, PATCH, DELETE) answers 403 `demo_mode_forbidden`, except read queries
+sent as POST (pages, filters, tactical, engagement series) and `POST /session/context`. The 2D
+replay is served to every visitor, for the frozen demo matches only, with real players replaced
+by the demo identities. `<demo>/runtime/` is git-ignored under `data/demo/` and
 `tests/fixtures/demo-root/`.
 
 ### Sync / feature flags
