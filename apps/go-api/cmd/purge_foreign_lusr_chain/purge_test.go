@@ -10,6 +10,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -144,6 +145,55 @@ func TestPurgeForeignLUSRChain_CommitRebuildsWithoutForeignRows(t *testing.T) {
 	// Idempotence : une seconde passe ne trouve plus rien et ne casse rien.
 	if err := run(context.Background(), path, "h5_arena", false, true); err != nil {
 		t.Errorf("seconde passe: %v", err)
+	}
+}
+
+// TestPurgeForeignLUSRChain_NeRejouePasUnIndexRetire : un index secondaire recréé par un
+// binaire plus ancien disparaît avec l'ancienne table ; le swap ne le rejoue pas.
+func TestPurgeForeignLUSRChain_NeRejouePasUnIndexRetire(t *testing.T) {
+	path := newFixturePlayerDB(t)
+	db := reopen(t, path)
+	if _, err := db.Exec(`CREATE INDEX idx_msr_playlist ON match_skill_rank(playlist_group)`); err != nil {
+		t.Fatalf("recréation de l'index (binaire ancien): %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if err := run(context.Background(), path, "h5_arena", false, true); err != nil {
+		t.Fatalf("run commit: %v", err)
+	}
+	db = reopen(t, path)
+	if n := countRows(t, db,
+		`SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_skill_rank'`); n != 0 {
+		t.Errorf("index sur match_skill_rank après purge = %d, want 0 (aucun index rejoué)", n)
+	}
+}
+
+// TestPurgeForeignLUSRChain_RealigneLaSequence : une séquence msr_seq en retard sur max(id)
+// (ids posés hors séquence, ou séquence renée à 1) ferait échouer en « Duplicate key » la
+// première insertion LUSR qui suit la purge. L'outil réaligne après le swap.
+func TestPurgeForeignLUSRChain_RealigneLaSequence(t *testing.T) {
+	path := newFixturePlayerDB(t)
+	db := reopen(t, path)
+	var maxID int64
+	if err := db.QueryRow(`SELECT MAX(id) FROM match_skill_rank`).Scan(&maxID); err != nil {
+		t.Fatalf("max id: %v", err)
+	}
+	// Les trois prochains ids de la séquence sont pris hors séquence : elle est en retard.
+	for i := int64(1); i <= 3; i++ {
+		if _, err := db.Exec(`INSERT INTO match_skill_rank (id, match_id, rating_type, rating_value, playlist_group)
+			VALUES (?, ?, 'LUSR', 1250, 'btb')`, maxID+i, fmt.Sprintf("x%d", i)); err != nil {
+			t.Fatalf("insert id explicite: %v", err)
+		}
+	}
+	closeDB(t, db)
+	if err := run(context.Background(), path, "h5_arena", false, true); err != nil {
+		t.Fatalf("run commit: %v", err)
+	}
+	db = reopen(t, path)
+	if _, err := db.Exec(`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, playlist_group)
+		VALUES ('m9', 'LUSR', 1300, 'btb')`); err != nil {
+		t.Errorf("INSERT sans id après purge : %v (séquence non réalignée)", err)
 	}
 }
 

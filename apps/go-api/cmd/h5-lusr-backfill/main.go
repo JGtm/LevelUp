@@ -25,6 +25,7 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -94,14 +95,14 @@ func main() {
 	// Provisionne la player DB h5 (TargetPlayer) — elle n'existe pas (sync shared-only).
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	halo5migrations.Register() // metadata h5 isolée ; player = fallback HINF (OwnsTarget).
-	playerDB := openDB(playerPath)
-	defer playerDB.Close()
+	playerDB, closePlayer := openDB(playerPath)
+	defer closePlayer()
 	if err := migration.RunForTitleDB(playerDB, halo5.TitleSlug, migration.TargetPlayer); err != nil {
 		fatal("provision player DB h5: %v", err)
 	}
 
-	shared := openDB(sharedPath)
-	defer shared.Close()
+	shared, closeShared := openDB(sharedPath)
+	defer closeShared()
 
 	// ctx porteur du titre h5 → seam classifier h5 + garde capability.
 	runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
@@ -138,12 +139,19 @@ func verify(ctx context.Context, shared, playerDB *sql.DB, xuid string) {
 	fmt.Printf("match_skill_rank (LUSR, lu par l'UI) : %d lignes écrites\n", rows)
 }
 
-func openDB(path string) *sql.DB {
-	db, err := sql.Open("duckdb", path)
+// openDB ouvre en écriture par la porte unique de platform/duckdb : la base joueur y a ses
+// séquences alignées sur le max de leurs colonnes avant toute écriture (physical_open.go).
+// Le closer rend le handle au cache.
+func openDB(path string) (*sql.DB, func()) {
+	h, err := duckdbpkg.OpenReadWriteShared(path)
 	if err != nil {
 		fatal("open %s: %v", path, err)
 	}
-	return db
+	return h.SQLDb(), func() {
+		if err := h.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "fermeture %s: %v\n", path, err)
+		}
+	}
 }
 
 func fatal(format string, args ...any) {

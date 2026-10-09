@@ -288,7 +288,31 @@ var (
 		"idx_psa_category": `CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category)`,
 		"idx_psa_gen":      `CREATE INDEX IF NOT EXISTS idx_psa_gen ON personal_score_awards(match_id, xuid, generation_id)`,
 	}
+	// retiredAppendOnlyIndexes — les quatre derniers, retirés le 2026-10-09 (plan des
+	// recommandations, lot C2). Clé = nom, valeur = (table, DDL d'avant le retrait).
+	retiredAppendOnlyIndexes = map[string][2]string{
+		"idx_lch_component":    {"lusr_component_history", `CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name)`},
+		"idx_lch_match":        {"lusr_component_history", `CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id)`},
+		"idx_pme_match_lookup": {"player_match_enrichment", `CREATE INDEX IF NOT EXISTS idx_pme_match_lookup ON player_match_enrichment(match_id, written_at)`},
+		"idx_pcs_lookup":       {"player_csr_snapshots", `CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at)`},
+	}
 )
+
+// TestPlayerSchemaAuthority_NoAppendOnlySecondaryIndex — 2026-10-09 : ni la chaîne (step
+// drop_player_secondary_art_indexes_v1) ni le soin ne laissent un index secondaire sur
+// lusr_component_history, player_match_enrichment ou player_csr_snapshots.
+func TestPlayerSchemaAuthority_NoAppendOnlySecondaryIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for name, def := range retiredAppendOnlyIndexes {
+		if keys["index "+name+" ON "+def[0]] {
+			t.Errorf("%s présent après migrations + soin — retiré partout le 2026-10-09", name)
+		}
+	}
+}
 
 // TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex — 2026-09-27 : match_skill_rank
 // n'a plus AUCUN index secondaire. idx_msr_playlist désynchronisé servait 22 lignes pour
@@ -323,6 +347,11 @@ func TestPlayerSchemaAuthority_EnsureDropsRetiredARTIndexes(t *testing.T) {
 			}
 		}
 	}
+	for name, def := range retiredAppendOnlyIndexes {
+		if _, err := db.Exec(def[1]); err != nil {
+			t.Fatalf("recréation de %s (binaire ancien): %v", name, err)
+		}
+	}
 	pre := snapshotSchemaKeys(t, db)
 	for name := range retiredMSRIndexes {
 		if !pre["index "+name+" ON match_skill_rank"] {
@@ -347,6 +376,15 @@ func TestPlayerSchemaAuthority_EnsureDropsRetiredARTIndexes(t *testing.T) {
 				t.Errorf("%s recréé par un binaire ancien et TOUJOURS présent après "+
 					"EnsurePlayerSchema — le soin doit porter son DROP INDEX IF EXISTS", name)
 			}
+		}
+	}
+	for name, def := range retiredAppendOnlyIndexes {
+		if !pre["index "+name+" ON "+def[0]] {
+			t.Errorf("préalable : %s absent après recréation — l'assertion ne mordrait pas", name)
+		}
+		if keys["index "+name+" ON "+def[0]] {
+			t.Errorf("%s recréé par un binaire ancien et TOUJOURS présent après "+
+				"EnsurePlayerSchema — le soin doit porter son DROP INDEX IF EXISTS", name)
 		}
 	}
 }

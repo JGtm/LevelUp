@@ -10,16 +10,20 @@ package main
 // l'identique : transaction unique, garde de cardinalité AVANT le DROP, rollback
 // intégral, table de travail `__purge` déposée dans la même TX.
 //
-// Le DDL reposé n'est PAS recopié : il est CAPTURÉ dans la base elle-même avant le swap
-// (duckdb_indexes / duckdb_views) puis rejoué. Une DDL recopiée dérive en silence dès
-// que la migration du titre évolue ; celle-ci est par construction celle de la base
-// traitée.
+// Les vues reposées ne sont PAS recopiées : elles sont CAPTURÉES dans la base elle-même
+// avant le swap (duckdb_views) puis rejouées. Une DDL recopiée dérive en silence dès que la
+// migration du titre évolue ; celle-ci est par construction celle de la base traitée.
+// Aucun index n'est reposé : match_skill_rank n'a plus d'index secondaire
+// (drop_msr_secondary_art_indexes_v1, ratchet noSecondaryIndexTables), et un index qu'un
+// binaire plus ancien aurait recréé disparaît avec l'ancienne table au lieu d'être rejoué.
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
+
+	"levelup/go-api/internal/migration"
 )
 
 // chainCensus — photographie des lignes d'une chaîne dans une player DB.
@@ -85,10 +89,10 @@ func censusForeignChain(ctx context.Context, db *sql.DB, chain string) (chainCen
 //     étrangères que l'index ne voit pas — la purge serait silencieusement partielle.
 //     Index retiré le 2026-09-27 ; la garde reste (cf. censusForeignChain).
 func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before chainCensus) error {
-	indexDDL, err := captureDDL(ctx, db,
-		`SELECT sql FROM duckdb_indexes() WHERE table_name = 'match_skill_rank' AND sql IS NOT NULL`)
-	if err != nil {
-		return fmt.Errorf("capture des index: %w", err)
+	var staleIndexes int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_skill_rank'`).Scan(&staleIndexes); err != nil {
+		return fmt.Errorf("compte des index secondaires: %w", err)
 	}
 	views, err := captureDependentViews(ctx, db)
 	if err != nil {
@@ -99,7 +103,7 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 			"purge refusée : les lecteurs applicatifs ne seraient pas restaurés")
 	}
 	slog.InfoContext(ctx, "purge_foreign_lusr_chain: DDL capturée avant le swap",
-		"indexes", len(indexDDL), "views", len(views), "view_names", viewNames(views))
+		"stale_indexes_dropped", staleIndexes, "views", len(views), "view_names", viewNames(views))
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -132,7 +136,7 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 			"(rollback, zéro perte)", rebuilt, before.TotalRows, before.ForeignRaw, want)
 	}
 
-	stmts := make([]string, 0, 8+len(indexDDL)+len(views))
+	stmts := make([]string, 0, 8+len(views))
 	for _, v := range views {
 		stmts = append(stmts, `DROP VIEW IF EXISTS `+v.name)
 	}
@@ -144,7 +148,6 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 		`ALTER TABLE match_skill_rank ALTER COLUMN id SET DEFAULT nextval('msr_seq')`,
 		`ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
 	)
-	stmts = append(stmts, indexDDL...)
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("étape du swap (%.60s): %w", stmt, err)
@@ -161,35 +164,21 @@ func purgeForeignChain(ctx context.Context, db *sql.DB, chain string, before cha
 	}
 	committed = true
 
+	// Le swap repose msr_seq par CREATE SEQUENCE IF NOT EXISTS ... START 1 : une séquence
+	// absente renaîtrait à 1 sous des ids déjà pris (« Duplicate key » à chaque insertion LUSR
+	// suivante). Réalignement explicite sur max(id), échec = erreur de l'outil.
+	if _, err := migration.AlignSequencesToColumns(ctx, db); err != nil {
+		return fmt.Errorf("alignement des séquences après swap: %w", err)
+	}
 	// CHECKPOINT : sans lui le WAL peut être perdu à la fermeture (leçon ADR 0022).
 	if _, err := db.ExecContext(ctx, `CHECKPOINT`); err != nil {
 		return fmt.Errorf("CHECKPOINT après swap: %w", err)
 	}
 	slog.InfoContext(ctx, "purge_foreign_lusr_chain: reconstruction commitée",
 		"chain", chain, "rows_before", before.TotalRows, "rows_after", rebuilt,
-		"rows_removed", before.ForeignRaw, "indexes_restored", len(indexDDL),
+		"rows_removed", before.ForeignRaw, "stale_indexes_dropped", staleIndexes,
 		"views_restored", len(views), "view_names", viewNames(views))
 	return nil
-}
-
-// captureDDL lit des instructions DDL depuis les catalogues DuckDB.
-func captureDDL(ctx context.Context, db *sql.DB, query string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var ddl string
-		if err := rows.Scan(&ddl); err != nil {
-			return nil, err
-		}
-		if ddl != "" {
-			out = append(out, ddl)
-		}
-	}
-	return out, rows.Err()
 }
 
 // dependentView — une vue non interne dont le SQL référence match_skill_rank.

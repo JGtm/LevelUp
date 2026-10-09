@@ -36,6 +36,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games/titleseams"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -81,8 +82,8 @@ func main() {
 		}
 	}
 
-	shared := openDB(sharedDBPath(*dataRoot))
-	defer shared.Close()
+	shared, closeShared := openDB(sharedDBPath(*dataRoot))
+	defer closeShared()
 
 	ctx := context.Background()
 	mode := "DRY-RUN (shadow-only, aucune écriture match_skill_rank)"
@@ -109,14 +110,13 @@ func main() {
 		}
 
 		var playerDB *sql.DB
+		closePlayer := func() {}
 		if *commit {
-			playerDB = openDB(playerDBPath(*dataRoot, gt))
+			playerDB, closePlayer = openDB(playerDBPath(*dataRoot, gt))
 		}
 
 		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, lusync.NewPinnedSharedAccess(shared), xuid)
-		if playerDB != nil {
-			playerDB.Close()
-		}
+		closePlayer()
 		if err != nil {
 			slog.Warn("RunLUSRV2ShadowOwnerOnly", "gamertag", gt, "err", err)
 			continue
@@ -134,13 +134,20 @@ func main() {
 	}
 }
 
-func openDB(path string) *sql.DB {
-	db, err := sql.Open("duckdb", path)
+// openDB ouvre en écriture par la porte unique de platform/duckdb : une base joueur y a ses
+// séquences alignées sur le max de leurs colonnes avant toute écriture (physical_open.go).
+// Le closer rend le handle au cache.
+func openDB(path string) (*sql.DB, func()) {
+	h, err := duckdbpkg.OpenReadWriteShared(path)
 	if err != nil {
 		slog.Error("open", "err", err, "path", path)
 		os.Exit(1)
 	}
-	return db
+	return h.SQLDb(), func() {
+		if err := h.Close(); err != nil {
+			slog.Warn("fermeture", "err", err, "path", path)
+		}
+	}
 }
 
 // resolveXUID résout le xuid d'un gamertag via v_gamertag_lookup (shared).

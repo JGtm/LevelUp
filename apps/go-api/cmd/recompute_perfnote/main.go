@@ -38,6 +38,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/titleseams"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	lusync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
 )
@@ -127,23 +128,31 @@ func splitPlayers(csv string) []string {
 	return out
 }
 
-// openDB ouvre une DuckDB locale. readOnly=true pose access_mode=read_only et
-// borne le pool à 1 connexion (l'ATTACH du rapport doit rester visible d'une
-// requête à l'autre). En écriture le pool reste libre : le batch de perf lit des
-// rows tout en écrivant, une connexion unique le bloquerait.
-func openDB(path string, readOnly bool) (*sql.DB, error) {
-	dsn := path
-	if readOnly {
-		dsn += "?access_mode=read_only"
-	}
-	db, err := sql.Open("duckdb", dsn)
+// openReadOnly ouvre une DuckDB locale en lecture, pool borné à 1 connexion (l'ATTACH du
+// rapport doit rester visible d'une requête à l'autre).
+func openReadOnly(path string) (*sql.DB, error) {
+	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	if readOnly {
-		db.SetMaxOpenConns(1)
-	}
+	db.SetMaxOpenConns(1)
 	return db, nil
+}
+
+// openWrite ouvre une DuckDB en écriture par la porte unique de platform/duckdb : une base
+// joueur y a ses séquences alignées sur le max de leurs colonnes avant toute écriture
+// (physical_open.go). Pool partagé : le batch de perf lit des lignes tout en écrivant, une
+// connexion unique le bloquerait. Le closer rend le handle au cache (jamais sql.DB.Close).
+func openWrite(ctx context.Context, path string) (*sql.DB, func(), error) {
+	h, err := duckdbpkg.OpenReadWriteShared(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open rw %s: %w", path, err)
+	}
+	return h.SQLDb(), func() {
+		if err := h.Close(); err != nil {
+			slog.WarnContext(ctx, "recompute_perfnote: fermeture", "db", path, "err", err)
+		}
+	}, nil
 }
 
 // resolveXUID résout le xuid d'un gamertag via v_gamertag_lookup (shared).
@@ -172,7 +181,7 @@ func checkpoint(ctx context.Context, db *sql.DB, what string) {
 // inclut medal_exploit. La shared est ouverte en LECTURE SEULE : le batch de
 // perf n'écrit que la player DB, l'ouvrir en RW n'apporterait qu'un risque.
 func runPerf(ctx context.Context, env runEnv) error {
-	shared, err := openDB(env.paths.SharedDBPath(titleSlug), true)
+	shared, err := openReadOnly(env.paths.SharedDBPath(titleSlug))
 	if err != nil {
 		return err
 	}
@@ -187,18 +196,18 @@ func runPerf(ctx context.Context, env runEnv) error {
 		if err != nil {
 			return err
 		}
-		player, err := openDB(env.paths.PlayerDBPath(titleSlug, gt), false)
+		player, closePlayer, err := openWrite(ctx, env.paths.PlayerDBPath(titleSlug, gt))
 		if err != nil {
 			return err
 		}
 		start := time.Now()
 		n, err := lusync.RecomputePerformanceScoresWithMedals(ctx, player, shared, metadataPath, xuid, true)
 		if err != nil {
-			player.Close()
+			closePlayer()
 			return fmt.Errorf("recompute perf %s: %w", gt, err)
 		}
 		checkpoint(ctx, player, gt)
-		player.Close()
+		closePlayer()
 		fmt.Printf("  %-18s xuid=%s  updated=%d  (%s)\n", gt, xuid, n, time.Since(start).Round(time.Millisecond))
 	}
 	return nil
@@ -231,11 +240,11 @@ func runLUSR(ctx context.Context, env runEnv) error {
 		return fmt.Errorf("LUSR v2 non activé/non canonique : le replay n'écrirait aucune ligne canonique")
 	}
 
-	shared, err := openDB(env.paths.SharedDBPath(titleSlug), false)
+	shared, closeShared, err := openWrite(ctx, env.paths.SharedDBPath(titleSlug))
 	if err != nil {
 		return err
 	}
-	defer shared.Close()
+	defer closeShared()
 
 	fmt.Printf("=== RECOMPUTE LUSR v2 CANONIQUE (replay complet) — %s ===\n",
 		time.Now().Format(time.RFC3339))
@@ -245,18 +254,18 @@ func runLUSR(ctx context.Context, env runEnv) error {
 		if err != nil {
 			return err
 		}
-		player, err := openDB(env.paths.PlayerDBPath(titleSlug, gt), false)
+		player, closePlayer, err := openWrite(ctx, env.paths.PlayerDBPath(titleSlug, gt))
 		if err != nil {
 			return err
 		}
 		start := time.Now()
 		n, err := lusync.RecomputeLUSRCanonicalForPlayer(ctx, player, shared, xuid)
 		if err != nil {
-			player.Close()
+			closePlayer()
 			return fmt.Errorf("recompute lusr %s: %w", gt, err)
 		}
 		checkpoint(ctx, player, gt)
-		player.Close()
+		closePlayer()
 		fmt.Printf("  %-18s xuid=%s  processed=%d  (%s)\n", gt, xuid, n, time.Since(start).Round(time.Millisecond))
 	}
 	checkpoint(ctx, shared, "shared")
