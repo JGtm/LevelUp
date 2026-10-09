@@ -169,8 +169,9 @@ export function ReplayInventoryRow({
               // avant le correctif — dégradation par ABSENCE DE DONNÉE, jamais un tiret inventé.
               //
               // SUR LA TUILE COMPACTE la cellule n'existe pas (`showAmmo: false`) : la lacune
-              // passe par l'infobulle de l'arme, composée par la fiche (`handCellHint`).
-              <span className="opacity-60" title={t.ammoUnread}>
+              // passe par l'infobulle de l'arme, composée par la fiche (`handCellHint`). Le tiret ne
+              // porte aucun texte : aucun inconnu n'est écrit à l'écran.
+              <span className="opacity-60" aria-hidden>
                 —
               </span>
             ) : !read || ammo.length === 0 ? null : equipped.drawn !== null ? (

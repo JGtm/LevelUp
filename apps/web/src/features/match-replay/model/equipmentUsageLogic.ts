@@ -47,8 +47,8 @@
  * le xuid, et l'ÉQUIPE est le désignateur que le FILM écrit pour son entrée (`ReplayPlayer.team`,
  * décision du 2026-10-06) — la feuille ne fait que nommer le camp. Un joueur du film SANS ligne
  * de scoreboard garde sa ligne dans le camp que le film lui donne. Un joueur dont le film TAIT
- * l'équipe n'entre dans aucun camp : ses gestes rejoignent ce que les vues ne comptent pas
- * (`unattributed`), pour que la somme ne mente pas — jamais une section « sans équipe ».
+ * l'équipe n'entre dans aucun camp : ses gestes ne rejoignent aucune ligne (puits local
+ * `unattributed`, jamais publié) — jamais une section « sans équipe ».
  *
  * Tout est PUR : aucun React, aucun canvas, aucune couleur, AUCUNE LANGUE — ce fichier compte,
  * il ne nomme rien. La mise en colonnes et les libellés vivent dans `equipmentUsageColumns.ts`
@@ -83,8 +83,8 @@ export type EquipmentEpisodeFamily = (typeof EPISODE_FAMILIES)[number]
  *
  * `kills` EST UNE SOMME SUR DES EPISODES, PAS UNE MESURE DE MATCH À ELLE SEULE : elle vaut
  * zéro aussi bien quand le porteur n'a rien tué sous l'effet que quand la jointure n'a pas pu
- * être tentée pour ce match — c'est `EquipmentUsageCoverage.killsRead` (document entier) qui
- * distingue les deux, jamais ce champ seul (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2).
+ * être tentée pour ce match (`doc.coverage.equipment.killsRead` distingue les deux) : ce champ
+ * seul ne s'affiche jamais comme un compte.
  */
 export interface EquipmentUsageEpisode {
   count: number
@@ -161,55 +161,17 @@ export interface EquipmentUsageColumns {
   equipment: string[]
 }
 
-/**
- * LES DÉNOMINATEURS, repris de `doc.coverage` — jamais recalculés ici. « 4 tractions » ne se
- * juge pas sans savoir combien de vies le calque a lues, et un artefact dont un calque n'a
- * rien lu se distingue ainsi d'un match où personne n'a rien fait.
- *
- * Tous les blocs de couverture sont OPTIONNELS au contrat (un artefact ancien n'en porte pas) :
- * l'absence se lit zéro, et l'écran ne montre alors aucun dénominateur.
- */
-export interface EquipmentUsageCoverage {
-  /** `equipment.tracksTotal` : vies publiées, les seules où un épisode peut exister. */
-  tracksTotal: number
-  /** `equipment.camoLives` / `overshieldLives` : vies portant au moins un épisode. */
-  episodeLives: Record<string, number>
-  /** `grapple.pulls` / `pullLives` : tractions publiées, et vies en portant au moins une. */
-  grapplePulls: number
-  grapplePullLives: number
-  /** `placements.byFamilyOrigin` : le croisement famille x origine, clé `famille/origine`. */
-  placementsByFamilyOrigin: Record<string, number>
-  /** `groundWeapons.powerupPads` : socles de bonus publiés — le dénominateur des vidages. */
-  powerupPads: number
-  /**
-   * `equipment.killsRead` : les frags/assistances sous effet actif ont-ils pu être MESURÉS
-   * pour ce match ? Faux = jointure non tentée (killsource non décodé, porte de publication
-   * ligne-par-ligne fermée, ou origine d'horloge non établie) — DISTINCT d'un compte à zéro
-   * mesuré. La cellule de colonne « Frags sous <famille> » lit CE champ, jamais
-   * `episodes[fam].kills` seul, pour choisir entre un nombre et « — ».
-   */
-  killsRead: boolean
-}
-
 /** Le résultat complet : par joueur, par équipe, et ce qui reste au niveau du match. */
 export interface EquipmentUsage {
   byPlayer: EquipmentUsageRow[]
   byTeam: EquipmentUsageTeam[]
   columns: EquipmentUsageColumns
-  coverage: EquipmentUsageCoverage
   /**
    * SOCLES DE BONUS VIDÉS, par famille — ANONYME et au niveau du MATCH. Ne jamais descendre sur
    * une ligne de joueur : le ramasseur n'est pas publié (cf. en-tête).
    */
   powerupPickups: Record<string, number>
   powerupPickupsTotal: number
-  /**
-   * CE QUI EST MESURÉ MAIS N'ENTRE DANS AUCUN CAMP : gestes dont le slot n'appartient à aucun
-   * joueur (caméras, spectateurs de fin de partie) ou à un joueur dont le film tait l'équipe,
-   * ou pose sans poseur mesuré (`owner` -1). Compté pour que la somme des lignes ne mente pas
-   * sur le total du film.
-   */
-  unattributed: EquipmentUsageTally
   /**
    * OBJETS PRIS DONT LE RANG N'A PAS DE FAMILLE CONNUE (P13 amendée, décision utilisateur
    * 2026-09-09) : ni caché, ni forcé dans une famille au hasard — au niveau du MATCH, jamais
@@ -299,8 +261,7 @@ export function buildEquipmentUsage(
 ): EquipmentUsage {
   // SEULS LES JOUEURS QUE LE FILM A VUS VIVRE ET RANGÉS DANS UN CAMP ont une ligne (cf.
   // `teamsOf`) : la table des compteurs se borne aux mêmes, sinon un geste attribué à une entrée
-  // sans piste — ou dont le film tait l'équipe — disparaîtrait de l'écran SANS entrer dans les
-  // gestes hors camp (`unattributed`), et la somme mentirait.
+  // sans piste — ou dont le film tait l'équipe — serait compté sur une ligne qui n'existe pas.
   const players = buildPlayers(doc, scoreboard ?? []).filter(
     (p) => p.lives.length > 0 && p.team !== undefined,
   )
@@ -313,6 +274,7 @@ export function buildEquipmentUsage(
   // le couvre est la SEULE bonne clé.
   const ownership = buildSlotOwnership(players)
   const tallies = new Map<string, EquipmentUsageTally>()
+  // Le puits des gestes sans ligne (aucun joueur rangé) : compté hors de toute ligne, jamais publié.
   const unattributed = emptyTally()
 
   /** Le compteur d'un joueur, créé à la demande ; celui des gestes orphelins sans lui. */
@@ -374,10 +336,8 @@ export function buildEquipmentUsage(
     byPlayer,
     byTeam,
     columns: columnsOf(byPlayer),
-    coverage: coverageOf(doc),
     powerupPickups,
     powerupPickupsTotal,
-    unattributed,
     unnamedTaken,
     hasData: powerupPickupsTotal > 0 || byPlayer.some((r) => !tallyIsEmpty(r)),
   }
@@ -420,8 +380,8 @@ function teamsOf(
  * le même ordre, sans quoi les comparer devient un exercice de relecture.
  *
  * LES LANCERS DE GRENADE N'OUVRENT PLUS DE COLONNE (2026-09-13, retrait demandé par
- * l'utilisateur : « je voulais pas des grenades »). Ils restent COMPTÉS (`tally.grenades`,
- * `tallyTotal`) et dessinés par le rejeu — ils ne sont simplement plus une colonne du bilan.
+ * l'utilisateur : « je voulais pas des grenades »). Ils restent COMPTÉS (`tally.grenades`) et
+ * dessinés par le rejeu — ils ne sont simplement plus une colonne du bilan.
  */
 function columnsOf(rows: EquipmentUsageRow[]): EquipmentUsageColumns {
   const used = (pick: (r: EquipmentUsageRow) => Record<string, number> | Record<number, number>) => {
@@ -472,35 +432,6 @@ function countPowerupPickups(doc: ReplayDocumentReady): Record<string, number> {
     if (family) bump(out, family)
   }
   return out
-}
-
-/** tallyTotal — le nombre de gestes d'un compteur, tous canaux confondus. */
-export function tallyTotal(t: EquipmentUsageTally): number {
-  const sum = (m: Record<string, number> | Record<number, number>) =>
-    Object.values(m).reduce((a: number, b: number) => a + b, 0)
-  const episodes = Object.values(t.episodes).reduce((a, e) => a + e.count, 0)
-  return (
-    t.grapplePulls + episodes + sum(t.deployed) + sum(t.dropped) + sum(t.spent) + sum(t.grenades)
-  )
-}
-
-/** coverageOf recopie les dénominateurs du document — aucun n'est recalculé ni deviné. */
-function coverageOf(doc: ReplayDocumentReady): EquipmentUsageCoverage {
-  const cov = doc.coverage
-  const equip = cov?.equipment
-  const grapple = cov?.grapple
-  return {
-    tracksTotal: equip?.tracksTotal ?? 0,
-    episodeLives: {
-      [EQUIP_FAMILY_CAMO]: equip?.camoLives ?? 0,
-      [EQUIP_FAMILY_OVERSHIELD]: equip?.overshieldLives ?? 0,
-    },
-    grapplePulls: grapple?.pulls ?? 0,
-    grapplePullLives: grapple?.pullLives ?? 0,
-    placementsByFamilyOrigin: cov?.placements?.byFamilyOrigin ?? {},
-    powerupPads: cov?.groundWeapons?.powerupPads ?? 0,
-    killsRead: equip?.killsRead ?? false,
-  }
 }
 
 /**

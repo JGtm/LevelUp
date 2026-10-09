@@ -247,11 +247,12 @@ describe('Contrôle des ressources, match par match', () => {
     expect(text('emprise-grid-result-m3')).toBe('Défaite 1–3')
   })
 
-  it('cases « 5–2 », « — » sans objet, « sans film » à Detachment ; frags aux armes spéciales lus sans film', () => {
+  it('cases « 5–2 », « — » sans objet, case vide sans texte à Detachment ; frags aux armes spéciales lus sans film', () => {
     mount()
     const table = screen.getByTestId('emprise-grid-table')
     expect(within(table).getAllByText('5–2').length).toBeGreaterThan(0)
-    expect(within(table).getAllByText('sans film').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/sans film|non mesuré/)).toBeNull()
+    expect(table.querySelectorAll('[data-cell="blank"]').length).toBeGreaterThan(0)
     expect(within(table).getAllByText('—').length).toBeGreaterThan(0)
     expect(within(table).getByText('9–13')).toBeInTheDocument()
     expect(within(table).getByText('Frags avec arme spéciale')).toBeInTheDocument()
@@ -259,17 +260,18 @@ describe('Contrôle des ressources, match par match', () => {
     expect(within(table).queryByText('frags obtenus avec')).toBeNull()
   })
 
-  it('constat R2 (revue L6.1) : un match filmé à équipe inconnue dit « équipe inconnue », pas « — »', () => {
+  it('constat R2 (revue L6.1) : un match filmé à équipe inconnue a des cases vides sans texte, jamais « — »', () => {
     const block: SquadEmpriseBlock = {
       ...EMPRISE_2209,
       matches: EMPRISE_2209.matches!.map((m) => (m.match_id === 'm2' ? { ...m, team_known: false } : m)),
     }
     mount({ pageData: page(block) })
     const table = screen.getByTestId('emprise-grid-table')
-    const cells = table.querySelectorAll('[data-cell="noteam"]')
+    const cells = table.querySelectorAll('[data-cell="blank"]')
     // Synthèse bonus, deux objets bonus, synthèse des armes spéciales et ses armes (râteliers repliés).
     expect(cells.length).toBeGreaterThanOrEqual(3)
-    expect(cells[0].textContent).toBe('équipe inconnue')
+    expect(cells[0].textContent).toBe('')
+    expect(within(table).queryByText('équipe inconnue')).toBeNull()
     expect(within(table).queryByText('4–0')).toBeNull()
   })
 
@@ -285,12 +287,13 @@ describe('Contrôle des ressources, match par match', () => {
     expect(screen.getByText('Déchiqueteur')).toBeInTheDocument()
   })
 
-  it('légende : plus / moins que l’adversaire, rien à prendre, sans film', () => {
+  it('légende : plus / moins que l’adversaire, rien à prendre ; aucune entrée pour une case vide', () => {
     mount()
     const legend = within(screen.getByTestId('emprise-grid')).getByTestId('objectif-legend')
-    for (const label of ['Plus que l’adversaire', 'Moins', 'Rien à prendre', 'Sans film']) {
+    for (const label of ['Plus que l’adversaire', 'Moins', 'Rien à prendre']) {
       expect(legend.textContent).toContain(label)
     }
+    expect(legend.textContent).not.toContain('Sans film')
   })
 })
 

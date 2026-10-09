@@ -5,7 +5,7 @@
  * en `null`, ORDRE DU BACKEND conservé, pseudo-armes sans portée écartées), le libellé de
  * ligne réduit au nom de l'arme, l'inversion de l'axe Y au montage, la géométrie exacte du `renderItem` (deux
  * rectangles décalés de part et d'autre du centre de bande, un losange par médiane), le cas
- * « un seul côté mesuré » (un seul bâton, l'infobulle dit « aucune mesure »), et
+ * « un seul côté » (un seul bâton, l'infobulle n'a pas de ligne pour l'autre), et
  * l'échappement HTML des noms d'armes dans l'infobulle.
  */
 import { describe, expect, it } from 'vitest'
@@ -86,7 +86,6 @@ function optionOf(lines: WeaponRangeLine[]) {
       top: 'Mes frags',
       bottom: 'Mes morts',
       percentiles: 'p10 · médiane · p90',
-      noMeasure: 'aucune mesure',
     },
   }) as {
     xAxis: { max: number }
@@ -244,9 +243,9 @@ describe('infobulle', () => {
     expect(html).toContain('Mes morts — 96 : 0.9 m · <b>1.5 m</b> · 2.8 m')
   })
 
-  it('dit « aucune mesure » pour le côté absent — jamais un zéro', () => {
-    expect(tooltip(1)).toContain('Mes morts — aucune mesure')
-    expect(tooltip(1)).not.toContain('Mes morts — 0')
+  it('le côté absent n’a pas de ligne — ni zéro, ni absence dite', () => {
+    expect(tooltip(1)).toContain('Mes frags — ')
+    expect(tooltip(1)).not.toContain('Mes morts')
   })
 
   it('échappe le nom d’arme (rendu en innerHTML par ECharts)', () => {

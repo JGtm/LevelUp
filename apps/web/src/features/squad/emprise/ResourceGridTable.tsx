@@ -4,16 +4,15 @@
  * par objet ; sous les armes spéciales, la ligne des frags obtenus avec (feuille de match) ; les armes
  * de râtelier REPLIÉES derrière un bouton. Une case « 5–2 » (nous – eux) est colorée plus / moins que
  * l'adversaire, saturée à trente points d'écart (`bandCellInk`) ; « — » si l'objet n'était pas là ;
- * « sans film » hachuré (la hachure est réservée à ce cas, S4) ; « camp inconnu » ; « non classé »
- * quand les niveaux de socle ne séparent pas armes spéciales et râteliers. Qui chez nous a pris
- * l'objet : dans l'infobulle. L'en-tête de chaque colonne et son en-tête d'infobulle viennent de la
+ * une case vide, sans texte ni infobulle, quand le match ne porte pas le compte (aucun inconnu n'est
+ * écrit). Qui chez nous a pris l'objet : dans l'infobulle. L'en-tête de chaque colonne et son en-tête d'infobulle viennent de la
  * carte qui monte la table.
  */
 import { Fragment, useState, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 
-import { UNMEASURED_HATCH, bandCellInk } from '../formes/colors'
+import { bandCellInk } from '../formes/colors'
 import { RESOURCE_RACK, type GridCell, type GridRow, type GridSection, type GridWho } from './emprise.logic'
 import type { EmpriseText } from './empriseStrings'
 import { resourceInk } from './resourceColors'
@@ -37,8 +36,8 @@ interface Props {
   /**
    * Vue compacte du tiroir de comparaison de Sessions (maquette `renderGridCompact`) : les seules
    * lignes de ressource (synthèse, frags aux armes spéciales ; aucune ligne d'objet, râteliers en une
-   * ligne), la part de notre camp dans la case (« 71 % »), « — » hachuré sans film, « ? » sans
-   * niveaux ; colonnes sans largeur minimale, la table tient dans sa demi-largeur.
+   * ligne), la part de notre camp dans la case (« 71 % ») ; colonnes sans largeur minimale, la table
+   * tient dans sa demi-largeur.
    */
   compact?: boolean
 }
@@ -178,7 +177,7 @@ function GridLine({
           key={ci}
           cell={cell}
           role={role}
-          tip={cellTip(cell, ctx.tipHeads[ci], name, absent, ctx.whoText, ctx.t)}
+          tip={cell.kind === 'blank' ? '' : cellTip(cell, ctx.tipHeads[ci], name, absent, ctx.whoText, ctx.t)}
           t={ctx.t}
           compact={ctx.compact}
         />
@@ -209,7 +208,7 @@ function SummaryLabel({ resource, label }: { resource: string; label: string }) 
 }
 
 function cellTip(
-  cell: GridCell,
+  cell: Exclude<GridCell, { kind: 'blank' }>,
   head: string,
   name: string,
   absent: string,
@@ -217,14 +216,6 @@ function cellTip(
   t: EmpriseText,
 ): string {
   switch (cell.kind) {
-    case 'nofilm':
-      return `${head}\n${t.grid.noFilmTip}`
-    case 'noteam':
-      return `${head}\n${t.grid.noTeamTip}`
-    case 'unmeasured':
-      return `${head}\n${t.vehicles.unmeasuredTip}`
-    case 'untiered':
-      return `${head}\n${cell.tiers === 'unestablished' ? t.grid.unestablishedTip : t.grid.untieredTip}`
     case 'none':
       return `${head}\n${absent}`
     case 'value': {
@@ -236,10 +227,6 @@ function cellTip(
     }
   }
 }
-
-/** Le texte court d'une case de la vue compacte (maquette `renderGridCompact`). */
-const COMPACT_ABSENT = '—'
-const COMPACT_UNKNOWN = '?'
 
 function Cell({ cell, role, tip, t, compact }: { cell: GridCell; role: RowRole; tip: string; t: EmpriseText; compact: boolean }) {
   const item = role === 'item'
@@ -255,34 +242,8 @@ function Cell({ cell, role, tip, t, compact }: { cell: GridCell; role: RowRole; 
         </div>
       )
       break
-    case 'nofilm':
-      body = (
-        <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="nofilm">
-          {compact ? COMPACT_ABSENT : t.grid.noFilmCell}
-        </div>
-      )
-      break
-    case 'unmeasured':
-      body = (
-        <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="unmeasured">
-          {compact ? COMPACT_ABSENT : t.vehicles.unmeasuredCell}
-        </div>
-      )
-      break
-    case 'noteam':
-      body = (
-        <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} data-cell="noteam">
-          {compact ? COMPACT_UNKNOWN : t.grid.noTeamCell}
-        </div>
-      )
-      break
-    case 'untiered':
-      body = (
-        <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} data-cell="untiered">
-          {compact ? COMPACT_UNKNOWN : t.grid.untieredCell}
-        </div>
-      )
-      break
+    case 'blank':
+      return <div className={`${base} bg-muted`} data-cell="blank" aria-hidden />
     case 'none':
       body = (
         <div

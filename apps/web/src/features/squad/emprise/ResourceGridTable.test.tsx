@@ -54,10 +54,10 @@ describe('ResourceGridTable', () => {
     expect(tip).not.toContain('Aquarius')
   })
 
-  it('compact (tiroir de Sessions) : lignes de ressource seules, part entière dans la case, « — » sans film, « ? » sans niveaux, colonnes sans largeur minimale', () => {
+  it('compact (tiroir de Sessions) : lignes de ressource seules, part entière dans la case, case vide sans texte quand le match ne porte pas le compte, colonnes sans largeur minimale', () => {
     const racks: GridSection = {
       resource: 'rack',
-      summary: { cells: [{ kind: 'nofilm' }, { kind: 'untiered', tiers: 'unestablished' }] },
+      summary: { cells: [{ kind: 'blank' }, { kind: 'blank' }] },
       items: [{ object: { resource: 'rack', key: 'k1', taken: { us: 1, them: 0 }, squad: [] }, cells: [{ kind: 'none' }, { kind: 'none' }] }],
       kills: null,
     }
@@ -70,8 +70,7 @@ describe('ResourceGridTable', () => {
     )
     const table = screen.getByTestId('emprise-grid-table')
     expect([...table.querySelectorAll('[data-cell="value"]')].map((c) => c.textContent)).toEqual(['71 %', '25 %'])
-    expect(table.querySelector('[data-cell="nofilm"]')!.textContent).toBe('—')
-    expect(table.querySelector('[data-cell="untiered"]')!.textContent).toBe('?')
+    expect([...table.querySelectorAll('[data-cell="blank"]')].map((c) => c.textContent)).toEqual(['', ''])
     expect(screen.queryByText('Arme')).toBeNull()
     expect(screen.queryByTestId('emprise-grid-racks-toggle')).toBeNull()
     expect(table.style.gridTemplateColumns).toContain('minmax(0, 1fr)')

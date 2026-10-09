@@ -240,9 +240,9 @@ describe('LeaderboardBlock', () => {
     expect(within(rivalRow).getByText('-2')).toBeInTheDocument()
   })
 
-  // ─── Seuil de couverture d'enrichissement (décision D2 : 25 %) ──────────────
+  // ─── Seuil des colonnes détaillées (décision D2 : 25 %) ; aucun bandeau de couverture ─────
 
-  it('sous 25 % de lignes enrichies : colonnes détaillées masquées + bandeau « indisponibles »', async () => {
+  it('sous 25 % de lignes enrichies : colonnes détaillées masquées, aucun bandeau', async () => {
     // 1 enrichie sur 5 = 20 % → un seul joueur backfillé ne justifie pas 11 colonnes.
     mockLeaderboard([enrichedRow(1), plainRow(2), plainRow(3), plainRow(4), plainRow(5)] as unknown as typeof ENTRIES)
     renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
@@ -250,19 +250,17 @@ describe('LeaderboardBlock', () => {
     await waitFor(() => expect(screen.getByText('Enrichi1')).toBeInTheDocument())
     expect(screen.queryByText('Victoires')).not.toBeInTheDocument()
     expect(screen.queryByText('Δ rang')).not.toBeInTheDocument()
-    expect(screen.getByText(/Stats détaillées indisponibles pour ce relevé/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Stats détaillées|enrichis/i)).not.toBeInTheDocument()
   })
 
-  it('entre 25 % et 80 % : colonnes détaillées affichées + bandeau « partielles »', async () => {
+  it('au-dessus de 25 % : colonnes détaillées affichées, aucun compte des lignes enrichies', async () => {
     // 2 enrichies sur 4 = 50 %.
     mockLeaderboard([enrichedRow(1), enrichedRow(2), plainRow(3), plainRow(4)] as unknown as typeof ENTRIES)
     renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
 
     await waitFor(() => expect(screen.getByText('Enrichi1')).toBeInTheDocument())
     expect(screen.getByText('Victoires')).toBeInTheDocument()
-    expect(screen.getByText(/Stats détaillées partielles/i)).toBeInTheDocument()
-    // Le bandeau chiffre la couverture (2 sur 4) plutôt que de rester vague.
-    expect(screen.getByText(/2 joueurs enrichis sur 4/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Stats détaillées|enrichis/i)).not.toBeInTheDocument()
   })
 
   it('couverture complète : colonnes affichées et AUCUN bandeau de couverture', async () => {

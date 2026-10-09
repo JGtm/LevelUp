@@ -91,17 +91,12 @@ describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {
       'Les six armes les plus meurtrières du joueur sur la soirée, en part des frags du joueur ; couleur de la barre : classe de l’arme, compte au survol.',
     )
     expect(c.emprise.control.info).toBe(
-      'Prises de chaque ressource par l’équipe et par l’adversaire, en parts (comptes au survol), sur les matchs filmés de la soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
+      'Prises de chaque ressource par l’équipe et par l’adversaire, en parts (comptes au survol), sur les matchs filmés de la soirée ; trait orange : 50 %.',
     )
     expect(c.emprise.grid.info).toBe(
       'Une colonne par match de la soirée ; case : part de l’équipe dans la ressource (vert au-dessus de l’adversaire, rouge en dessous, saturée à trente points d’écart), comptes et preneurs au survol.',
     )
-    expect([c.emprise.grid.more, c.emprise.grid.less, c.emprise.grid.nothing, c.emprise.grid.noFilm]).toEqual([
-      'Plus de 50 %',
-      'Moins de 50 %',
-      'Rien à prendre',
-      'Sans film, non mesuré',
-    ])
+    expect([c.emprise.grid.more, c.emprise.grid.less, c.emprise.grid.nothing]).toEqual(['Plus de 50 %', 'Moins de 50 %', 'Rien à prendre'])
     expect(c.cards.mine.info).toBe(
       'Prises de l’équipe par ressource sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en pourcentage (comptes au survol). Bonus perdus : gardés sans être activés, ou lâchés, en part des bonus pris par chaque équipe.',
     )
@@ -113,7 +108,7 @@ describe('SESSION_CARD_TEXT — comparaison (vue compacte)', () => {
     )
     expect(c.sheet.pctFmt(31.8)).toBe('32 %')
     expect(c.cards.equipment.info).toBe(
-      'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge consommée), gardé sans servir, lâché, en part des objets du joueur (comptes au survol) ; barre fine : reste de l’équipe. Seules les familles tenues dans le lobby sont listées ; le répulseur, sans mesure d’usage, n’a pas de ligne.',
+      'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge consommée), gardé sans servir, lâché, en part des objets du joueur (comptes au survol) ; barre fine : reste de l’équipe. Seules les familles tenues dans le lobby sont listées.',
     )
   })
 

@@ -38,7 +38,7 @@ const (
 
 // MatchLivesNearTeammate — « Isolement, par joueur » : les vies de chaque joueur de l'équipe, dans
 // l'ordre des fiches de l'Emprise. Les vies d'un match au journal non publiable sont écartées et
-// comptées (ExcludedUnpublishable), jamais rangées avec zéro frag.
+// comptées au journal (ExcludedUnpublishable, jamais publié), jamais rangées avec zéro frag.
 type MatchLivesNearTeammate struct {
 	Players []MatchLivesPlayer `json:"players"`
 }

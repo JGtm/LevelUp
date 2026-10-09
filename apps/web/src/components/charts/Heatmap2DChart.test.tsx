@@ -1,17 +1,15 @@
 /**
  * Heatmap2DChart — rendu du composant (pas seulement l'option ECharts pure,
- * couverte par Heatmap2DChart.test.ts) : la légende « Aucune mesure sur cet axe »
- * (décision D3, plan vague C formes 2026-09-08) n'apparaît QUE si la série
- * contient au moins une case `value: null`, et respecte la parité FR/EN.
+ * couverte par Heatmap2DChart.test.ts) : AUCUNE légende ne nomme une case vide
+ * (`value: null`), quel que soit le mode — aucun inconnu n'est écrit à l'écran ; la
+ * légende posée par l'appelant passe telle quelle.
  *
  * echarts-for-react est mocké (comme FirstBloodLanes.test.tsx, OutcomeSequenceTape)
  * pour éviter de payer le rendu canvas réel — seul le pied de card (`ChartCard`
  * prop `legend`) nous intéresse ici.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-
-import { useAppShellStore } from '@/stores/appShellStore'
 
 import { Heatmap2DChart, type ChartPointHeatmap } from './Heatmap2DChart'
 import type { ChartSeries } from './ChartCard'
@@ -24,9 +22,6 @@ vi.mock('@/lib/accessibility', async (importOriginal) => ({
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="heatmap-echarts-stub" />,
 }))
-
-beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
-afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
 const SERIES_AVEC_CASE_VIDE: ChartSeries<ChartPointHeatmap>[] = [
   {
@@ -45,44 +40,24 @@ const SERIES_SANS_CASE_VIDE: ChartSeries<ChartPointHeatmap>[] = [
   },
 ]
 
-describe('Heatmap2DChart — légende de la case vide (D3)', () => {
-  it('affiche la légende FR quand une case est vide', async () => {
-    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} />)
-    await screen.findByTestId('heatmap-echarts-stub')
-    expect(screen.getByTestId('heatmap-empty-cell-legend').textContent).toBe(
-      'Aucune mesure sur cet axe',
-    )
-  })
+describe('Heatmap2DChart — aucune légende de case vide', () => {
+  for (const emptyCells of [undefined, 'hidden', 'blank'] as const) {
+    it(`mode ${emptyCells ?? 'par défaut'} : une case vide ne fait naître aucune légende`, async () => {
+      render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} emptyCells={emptyCells} />)
+      await screen.findByTestId('heatmap-echarts-stub')
+      expect(screen.queryByTestId('chart-card-legend')).toBeNull()
+    })
+  }
 
-  it('affiche la légende EN quand la locale est en', async () => {
-    useAppShellStore.setState({ locale: 'en' })
-    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} />)
-    await screen.findByTestId('heatmap-echarts-stub')
-    expect(screen.getByTestId('heatmap-empty-cell-legend').textContent).toBe(
-      'No measurement on this axis',
-    )
-  })
-
-  it('NE l’affiche PAS quand aucune case n’est vide (les consommateurs sans case vide héritent sans rien voir de nouveau)', async () => {
+  it('sans case vide : aucune légende non plus', async () => {
     render(<Heatmap2DChart series={SERIES_SANS_CASE_VIDE} />)
     await screen.findByTestId('heatmap-echarts-stub')
-    expect(screen.queryByTestId('heatmap-empty-cell-legend')).toBeNull()
     expect(screen.queryByTestId('chart-card-legend')).toBeNull()
   })
-})
 
-describe('Heatmap2DChart — légende muette en mode hidden', () => {
-  // La légende NOMME la forme des cases vides. Sans forme à nommer, elle annoncerait une
-  // absence que rien ne montre — le consommateur en mode `hidden` ne doit pas la voir.
-  it('n’affiche PAS la légende quand les cases vides ne se peignent pas', async () => {
-    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} emptyCells="hidden" />)
+  it('la légende posée par l’appelant passe telle quelle', async () => {
+    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} legend={<p data-testid="legende-appelant">paliers</p>} />)
     await screen.findByTestId('heatmap-echarts-stub')
-    expect(screen.queryByTestId('heatmap-empty-cell-legend')).toBeNull()
-  })
-
-  it('l’affiche toujours en mode par défaut (les autres consommateurs héritent sans changement)', async () => {
-    render(<Heatmap2DChart series={SERIES_AVEC_CASE_VIDE} />)
-    await screen.findByTestId('heatmap-echarts-stub')
-    expect(screen.getByTestId('heatmap-empty-cell-legend')).toBeInTheDocument()
+    expect(screen.getByTestId('legende-appelant').textContent).toBe('paliers')
   })
 })

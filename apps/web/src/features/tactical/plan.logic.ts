@@ -42,14 +42,13 @@ export function infoDuPlan(
   peintes: number,
 ): string {
   const source = lectureDeRejeu(question) ? t.planInfoSourceReplay : t.planInfoSourceJournal
-  const parts = [t.planInfo(lecture.matchs_retenus, lecture.matchs_filtres, source, lecture.pas_m, TACTICAL_CELL_FLOOR)]
+  const parts = [t.planInfo(lecture.matchs_retenus, source, lecture.pas_m, TACTICAL_CELL_FLOOR)]
   if (question === 'gagne') {
     parts.push(t.planInfoGagne(lecture.matchs_victoire, lecture.matchs_defaite, TACTICAL_CELL_FLOOR))
   }
   if (question === 'isole') {
     const rayons = lecture.rayons_radar_m ?? []
     if (rayons.length > 0) parts.push(t.planInfoIsole(libelleRayons(t, rayons, locale)))
-    if ((lecture.matchs_sans_rayon ?? 0) > 0) parts.push(t.planInfoNoRange(lecture.matchs_sans_rayon ?? 0))
     if ((lecture.morts_equipe_a_terre ?? 0) > 0) parts.push(t.planInfoTeamDown(lecture.morts_equipe_a_terre ?? 0))
   }
   const servies = (lecture.cellules ?? []).length

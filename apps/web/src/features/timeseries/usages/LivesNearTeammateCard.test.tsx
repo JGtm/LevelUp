@@ -76,19 +76,12 @@ describe('LivesNearTeammateCard', () => {
     expect(screen.getByTestId('usages-lives-kills-line').textContent).toBe(`frags : ${n(1250)} · 82,7 % · 0,8 par vie0,9 par vie · ${n(262)}`)
   })
 
-  it('l’aide ⓘ compte les vies écartées', () => {
+  it('l’aide ⓘ dit ce que la carte range, sans compte d’écartées', () => {
     renderCard()
     fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
-    expect(screen.getByRole('tooltip').textContent).toContain('Écartées : vies sans coéquipier situé (59).')
-    expect(screen.getByRole('tooltip').textContent).not.toContain('journal des morts')
-  })
-
-  it('l’aide ⓘ compte aussi les vies d’un match au journal des morts non publiable', () => {
-    renderCard({ ...lives(), excluded_unpublishable: 12 })
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
-    const tip = screen.getByRole('tooltip').textContent
-    expect(tip).toContain('Écartées : vies sans coéquipier situé (59)')
-    expect(tip).toContain(', vies d’un match au journal des morts non publiable (12).')
+    const tip = screen.getByRole('tooltip').textContent ?? ''
+    expect(tip).toContain('Vies terminées par une mort')
+    expect(tip).not.toMatch(/Écartées|journal des morts|\(\d+\)/)
   })
 
   it('aucun frag : la barre fine et sa ligne se retirent', () => {

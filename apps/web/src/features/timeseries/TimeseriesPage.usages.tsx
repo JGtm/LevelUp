@@ -100,7 +100,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
           {/* Une carte seule (sans rendement : Halo 5) prend la rangée. */}
           <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
             {m.production.length > 0 && <ProductionCard rows={m.production} t={et} />}
-            {m.yieldRows.length > 0 && <YieldCard rows={m.yieldRows} coverage={m.vehicleCoverage} t={et} />}
+            {m.yieldRows.length > 0 && <YieldCard rows={m.yieldRows} t={et} />}
           </div>
         </Block>
       )}

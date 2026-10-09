@@ -17,10 +17,8 @@
  *
  * # CE QUE LE BLOC NE MONTRE PAS (demande utilisateur du 2026-09-17)
  *
- * Les bandes, et rien d'autre. Le Face-à-face affiche sous son graphe la couverture
- * (« N frags mesurés sur M ») et les rôles écartés par le seuil ; ici la colonne est étroite
- * et le bloc voisine deux autres lectures — ces notes y feraient du bruit sans changer ce que
- * le lecteur comprend.
+ * Les bandes, et rien d'autre : ni couverture ni rôles écartés par le seuil — la colonne est
+ * étroite et le bloc voisine deux autres lectures.
  *
  * # UN SEUL CÔTÉ DE MESURE
  *
@@ -106,7 +104,6 @@ export function ExplorerTargetFragRange({ encounterStats, gamertag }: Props) {
       labels: {
         top: gamertag,
         percentiles: t('explorer.target_profile.frag_range_percentiles'),
-        noMeasure: t('explorer.target_profile.frag_range_no_measure'),
         observed: t('explorer.target_profile.frag_range_observed'),
       },
     })

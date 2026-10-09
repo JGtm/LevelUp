@@ -125,32 +125,19 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(bonus).not.toContain('prises ·')
   })
 
-  it('24/07 : la ligne des prises non identifiées sous les pistes', () => {
+  it('24/07 : aucune ligne sous les pistes pour les prises sur un emplacement non identifié', () => {
     afficher({ emprise: FLOOD_GULCH, lives: null })
-    expect(screen.getByTestId('match-emprise-unclassified').textContent).toBe(
-      '31 prises sur un emplacement non identifié, hors des pistes (équipe 19, adversaire 12)',
-    )
+    expect(document.body.textContent).not.toContain('non identifié')
   })
 
-  it('24/07 : « Frags par ressource » dit pourquoi les frags pendant l’effet manquent', () => {
-    afficher({ emprise: FLOOD_GULCH, lives: null })
-    expect(screen.getByTestId('piste-camps-pending-powerup').textContent).toBe('Frags pendant l’effet non mesurés : journal des morts non publiable')
-    expect(screen.getByTestId('emprise-yield-pending-powerup').textContent).toContain('Non mesuré : frags pendant l’effet non publiés')
-  })
-
-  it('chaque état du journal des morts a son texte (frags et rendement par ressource)', () => {
-    const textes = {
-      publishable: ['Aucun frag pendant l’effet d’un bonus', null],
-      not_publishable: ['Frags pendant l’effet non mesurés : journal des morts non publiable', 'Non mesuré : frags pendant l’effet non publiés'],
-      unavailable: ['Non mesuré : lecture indisponible', 'Non mesuré : lecture indisponible'],
-    } as const
-    for (const [etat, [frags, rendement]] of Object.entries(textes)) {
-      const vue = afficher({ emprise: { ...FLOOD_GULCH, kill_journal: etat as MatchEmpriseBlock['kill_journal'] }, lives: null })
-      expect(within(screen.getByTestId('emprise-production')).getByTestId('piste-camps-pending-powerup').textContent).toBe(frags)
-      const ligne = screen.queryByTestId('emprise-yield-pending-powerup')
-      if (rendement == null) expect(ligne).toBeNull()
-      else expect(ligne?.textContent).toContain(rendement)
-      if (etat === 'unavailable') expect(document.body.textContent).not.toContain('non publiable')
+  it('journal publiable : « Aucun frag pendant l’effet d’un bonus » ; sinon aucune ligne de bonus, rien d’inconnu écrit', () => {
+    for (const etat of ['publishable', 'not_publishable', 'unavailable'] as const) {
+      const vue = afficher({ emprise: { ...FLOOD_GULCH, kill_journal: etat }, lives: null })
+      const ligne = within(screen.getByTestId('emprise-production')).queryByTestId('piste-camps-pending-powerup')
+      if (etat === 'publishable') expect(ligne?.textContent).toBe('Aucun frag pendant l’effet d’un bonus')
+      else expect(ligne).toBeNull()
+      expect(screen.queryByTestId('emprise-yield-pending-powerup')).toBeNull()
+      expect(document.body.textContent).not.toMatch(/non mesur|non publi|indisponible/i)
       vue.unmount()
     }
   })
@@ -183,7 +170,7 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(order(container)).toEqual(['emprise-production'])
     expect(screen.getByTestId('piste-camps-row-power_weapon')).toBeInTheDocument()
     expect(screen.queryByTestId('piste-camps-pending-powerup')).toBeNull()
-    expect(screen.getByTestId('match-emprise-coverage').textContent).toBe('sans film')
+    expect(screen.queryByTestId('match-emprise-coverage')).toBeNull()
   })
 
   it('EN : intertitre, titres des cartes et couverture en anglais', () => {

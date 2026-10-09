@@ -93,7 +93,6 @@ func Build(in Input) domain.SquadEmpriseBlock {
 	block.Resources = bilan(s)
 	block.Objects = s.obj.publier("", players, &in)
 	block.Production = production(s)
-	block.Vehicles = couvertureVehicules(s, in.Vehicles != nil, in.VehiclesUnavailable)
 	if in.Film != nil && len(in.Timeline) > 0 {
 		block.Habit = buildHabit(&in, ix, current)
 	}

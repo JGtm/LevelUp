@@ -16,9 +16,8 @@
  * DOUBLE PORTE : pas d'artefact OU aucune grandeur mesurée -> RIEN. La MÊME clé de cache que la
  * courbe de score (`useMatchReplay`, gaté par `header.replay_available`).
  *
- * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE : l'aide du titre dit ce que la grille compte, puis les
- * gestes que le film mesure sans en nommer l'auteur ou l'origine (réserve, jamais cachée —
- * décision utilisateur du 2026-09-09) ; aucun texte de pied.
+ * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE : l'aide du titre dit ce que la grille compte, rien de ce
+ * qu'elle ne compte pas (aucun inconnu à l'écran) ; aucun texte de pied.
  *
  * COULEURS : les issues prennent `USAGE_OUTCOME_TOKENS`, le grappin son encre de famille ; les
  * équipes, au nom des lignes, `teamTokenCssVar` (allégeance lue dans le film).
@@ -41,7 +40,6 @@ import { usageColumnGroups } from './model/equipmentUsageColumns'
 import {
   buildEquipmentUsage,
   hasEquipmentUsage,
-  tallyTotal,
   type EquipmentUsage,
 } from './model/equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
@@ -75,7 +73,6 @@ export function MatchEquipmentUsageSection({
   // décision que le bloc voisin (« Contrôle des armes spéciales ») avait déjà prise le
   // 2026-09-13 : une carte qui cache sa mesure par défaut ne se lit pas.
   const groups = useUsageGroups(usage, t)
-  const reserve = useMemo(() => usageReserve(usage), [usage])
   const meXUID = useMemo(() => meXUIDOf(board), [board])
   // L'ALLÉGEANCE DU FILM, VUE DU JOUEUR DE LA PAGE (2026-10-06) : son équipe du film dit quel
   // camp est le sien — les camps eux-mêmes sont ceux du film (`equipmentUsageLogic`).
@@ -105,14 +102,9 @@ export function MatchEquipmentUsageSection({
   // celui lu par le parent pour poser (ou non) son titre de section.
   if (!hasEquipmentUsage(usage) || groups.length === 0) return null
 
-  // L'AIDE DE LA CARTE (plan PLAN_MATCHVIEW_EMPRISE_2026-10-06, D15) : ce que la grille mesure, puis la
-  // RÉSERVE quand elle n'est pas nulle — elle ne se cache pas (décision utilisateur 2026-09-09).
-  const info = (
-    <>
-      <p>{u.infoByPlayer}</p>
-      {reserve > 0 && <p>{u.coverageReserveFmt(reserve)}</p>}
-    </>
-  )
+  // L'AIDE DE LA CARTE (plan PLAN_MATCHVIEW_EMPRISE_2026-10-06, D15) : ce que la grille compte. Aucun
+  // texte ne dit ce qu'elle ne compte pas (aucun inconnu à l'écran).
+  const info = <p>{u.infoByPlayer}</p>
   // LA LÉGENDE DIT LES TROIS ISSUES d'une pile (servi, gardé sans servir, lâché), plus les tractions
   // quand la colonne du grappin existe : la couleur d'une pile est celle de l'issue.
   const legend = [
@@ -138,36 +130,4 @@ export function MatchEquipmentUsageSection({
  */
 function useUsageGroups(usage: EquipmentUsage | null, t: ReplayText) {
   return useMemo(() => (usage ? usageColumnGroups(usage, t) : []), [usage, t])
-}
-/**
- * unknownOriginPlacements — LES POSES D'ORIGINE INCONNUE : la somme des poses `famille/unknown`
- * de `coverage.placements.byFamilyOrigin` — ~5 % du parc mesurés par E0 (681/11 438).
- * `origin: 'unknown'` n'est ni un déploiement ni un lâcher (schéma antérieur au 10, ou pose sans
- * poseur mesuré) : elle n'est comptée dans AUCUNE des deux vues, et pourtant elle a eu lieu.
- */
-function unknownOriginPlacements(cov: EquipmentUsage['coverage']): number {
-  let total = 0
-  for (const [key, n] of Object.entries(cov.placementsByFamilyOrigin)) {
-    if (key.endsWith('/unknown')) total += n
-  }
-  return total
-}
-
-/**
- * usageReserve — CE QUE LES DEUX VUES NE COMPTENT PAS, en un seul nombre.
- *
- * Deux mesures, une seule réserve : les gestes sans propriétaire (slot n'appartenant à aucun
- * joueur, ou poseur non mesuré) et les poses d'origine inconnue. Elles ont eu lieu, le film ne
- * les rattache à personne, elles ne peuvent donc entrer ni dans la grille par joueur ni dans la
- * part par équipe. La réserve NE SE CACHE PAS (décision utilisateur 2026-09-09) : depuis le
- * 2026-09-14 elle se dit dans l'INFOBULLE DU TITRE, en une phrase, et non plus en pied de carte
- * (l'utilisateur ne veut aucun texte de pied sous ce bloc).
- *
- * `unnamedTaken` (objets pris dont le rang n'a pas de famille connue) n'y entre PAS : décision
- * utilisateur du 2026-09-09, ces objets ne s'affichent pas dans l'interface — le compteur reste
- * publié par la logique pour l'outillage d'investigation.
- */
-function usageReserve(usage: EquipmentUsage | null): number {
-  if (!usage) return 0
-  return tallyTotal(usage.unattributed) + unknownOriginPlacements(usage.coverage)
 }

@@ -53,13 +53,13 @@ async function option(): Promise<Record<string, unknown>> {
 describe('TimeseriesRangeRolesCard', () => {
   it('rend un ÉTAT VIDE NOMMÉ quand le bloc est absent', () => {
     renderWithProviders(<TimeseriesRangeRolesCard bloc={undefined} />)
-    expect(screen.getByText('Aucune portée mesurée')).toBeInTheDocument()
+    expect(screen.getByText('Aucune distance de frag')).toBeInTheDocument()
     expect(screen.queryByTestId('timeseries-portee-legende')).not.toBeInTheDocument()
   })
 
   it('rend un ÉTAT VIDE NOMMÉ quand aucun profil n’est servi', () => {
     renderWithProviders(<TimeseriesRangeRolesCard bloc={bloc([])} />)
-    expect(screen.getByText(/aucun match de la sélection/i)).toBeInTheDocument()
+    expect(screen.getByText(/se lit sur les matchs filmés/i)).toBeInTheDocument()
   })
 
   it('trace UNE seule série de points et aucune légende de séries', async () => {

@@ -226,7 +226,7 @@ func TestPlacement_AucuneVie(t *testing.T) {
 
 // Contrat JSON : un joueur sans vie mesurée n'a NI médiane NI part (des zéros se liraient « collé au
 // coéquipier » et « aucun quart »), mais garde ses quatre quarts et une liste de vies vide ; les
-// seuils des quarts et les cumuls de la couverture voyagent avec le bloc.
+// seuils des quarts voyagent avec le bloc, la couverture n'en sort jamais (journal seulement).
 func TestPlacement_ContratJSON(t *testing.T) {
 	b, _ := Placement(entree(vieMesuree("m1", "A", 0, 27, 2)))
 	brut, err := json.Marshal(b)
@@ -237,7 +237,6 @@ func TestPlacement_ContratJSON(t *testing.T) {
 		IsolatedFromRatio   *float64 `json:"isolated_from_ratio"`
 		ProductiveFromKills *int     `json:"productive_from_kills"`
 		Players             []map[string]json.RawMessage
-		Coverage            map[string]json.RawMessage `json:"coverage"`
 	}
 	if err := json.Unmarshal(brut, &doc); err != nil {
 		t.Fatal(err)
@@ -261,11 +260,11 @@ func TestPlacement_ContratJSON(t *testing.T) {
 	if _, ok := quarts[0]["share"]; ok {
 		t.Errorf("part publiée sans vie mesurée : %s", bravo["quadrants"])
 	}
-	for _, cle := range []string{"matches_total", "matches_with_placement", "matches_without_range", "stale_lives",
-		"lives_total", "lives_measured", "lives_unmeasured", "measured_ms", "carrier_ms", "team_down_ms",
-		"unplaced_ms", "teammate_unplaced_ms"} {
-		if _, ok := doc.Coverage[cle]; !ok {
-			t.Errorf("couverture sans %s", cle)
-		}
+	var racine map[string]json.RawMessage
+	if err := json.Unmarshal(brut, &racine); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := racine["coverage"]; ok {
+		t.Errorf("couverture publiée (%s) : elle ne sert qu'au journal de la lecture", brut)
 	}
 }

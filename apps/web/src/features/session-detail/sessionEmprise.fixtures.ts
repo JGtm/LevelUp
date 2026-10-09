@@ -91,9 +91,6 @@ export function session2209(): SessionColumnBlocks {
     lives: {
       near: { lives: 56, kills: 37 },
       alone: { lives: 18, kills: 4 },
-      excluded_unlocated: 0,
-      excluded_no_radar: 0,
-      excluded_unpublishable: 0,
       matches_read: 6,
       matches_without_radar: 0,
     },
@@ -169,9 +166,6 @@ export function sessionSolo(): SessionColumnBlocks {
     lives: {
       near: { lives: 53, kills: 46 },
       alone: { lives: 5, kills: 11 },
-      excluded_unlocated: 1,
-      excluded_no_radar: 0,
-      excluded_unpublishable: 0,
       matches_read: 6,
       matches_without_radar: 0,
     },

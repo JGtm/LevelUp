@@ -40,16 +40,16 @@ const LECTURE: TacticalRaster = {
 }
 
 describe('infoDuPlan — l’aide ⓘ du titre', () => {
-  it('les dénominateurs, la source, le pas de la grille et le plancher par zone', () => {
+  it('les matchs lus, la source, le pas de la grille et le plancher par zone', () => {
     expect(infoDuPlan(t, 'fr', 'morts', LECTURE, 2)).toBe(
-      '45 matchs mesurés sur 50 · journal des morts · grille 10 m · 3 matchs distincts par zone',
+      '45 matchs · journal des morts · grille 10 m · 3 matchs distincts par zone',
     )
   })
 
   it('un pas fractionnaire dans la langue de la page ; en anglais, les mots anglais', () => {
     expect(infoDuPlan(t, 'fr', 'morts', { ...LECTURE, pas_m: 0.5 }, 2)).toContain('grille 0,5 m')
     expect(infoDuPlan(tEn, 'en', 'morts', LECTURE, 2)).toBe(
-      '45 measured matches out of 50 · death log · 10 m grid · 3 distinct matches per zone',
+      '45 matches · death log · 10 m grid · 3 distinct matches per zone',
     )
   })
 
@@ -59,22 +59,16 @@ describe('infoDuPlan — l’aide ⓘ du titre', () => {
 
   it('« victoires − défaites » : les deux dénominateurs, de chaque côté', () => {
     expect(infoDuPlan(t, 'fr', 'gagne', LECTURE, 2)).toContain(
-      ' · 20 victoires et 25 défaites mesurées, 3 matchs distincts de chaque côté',
+      ' · 20 victoires et 25 défaites, 3 matchs distincts de chaque côté',
     )
   })
 
-  it('« morts seul » : la règle avec la ou les portées, puis ce qu’elle écarte', () => {
-    const info = infoDuPlan(
-      t,
-      'fr',
-      'isole',
-      { ...LECTURE, rayons_radar_m: [18, 24], matchs_sans_rayon: 2, morts_equipe_a_terre: 3 },
-      2,
-    )
+  it('« morts seul » : la règle avec la ou les portées, puis ce qu’elle écarte par construction', () => {
+    const info = infoDuPlan(t, 'fr', 'isole', { ...LECTURE, rayons_radar_m: [18, 24], morts_equipe_a_terre: 3 }, 2)
     expect(info).toContain(
       ' · seul : aucun coéquipier visible, ou le plus proche au-delà de 18 m ou 24 m (portée du radar)',
     )
-    expect(info).toContain(' · 2 matchs sans portée de radar connue')
+    expect(info).not.toContain('portée de radar connue')
     expect(info).toContain(" · 3 morts écartées, aucun coéquipier en mesure d'accompagner")
   })
 
