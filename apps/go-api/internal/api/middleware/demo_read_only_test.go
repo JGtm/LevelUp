@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"levelup/go-api/internal/api/middleware"
 )
 
@@ -92,5 +94,60 @@ func TestDemoReadOnly_LetsReadsThrough(t *testing.T) {
 func TestDemoReadOnly_IdentityOutsideDemo(t *testing.T) {
 	if _, reached := serveThroughDemoGuard(false, http.MethodPost, "/api/v1/settings/backup/run"); !reached {
 		t.Fatal("hors démo, la garde doit laisser passer toute écriture")
+	}
+}
+
+// TestDemoReadOnly_EncodedTraversalNeverReachesAWrite — revue R1 (P0-1) : chi route sur le
+// chemin BRUT, la garde lisait le chemin décodé puis nettoyé. « coach/proposals/..%2F..%2F
+// pages/dismiss » se lisait « …/pages/dismiss » (lecture) et se routait vers dismiss
+// (écriture). Le test monte les VRAIES formes de route et vérifie que le handler d'écriture
+// n'est jamais atteint, encodage ou « .. » en clair.
+func TestDemoReadOnly_EncodedTraversalNeverReachesAWrite(t *testing.T) {
+	reached := ""
+	r := chi.NewRouter()
+	r.Use(middleware.DemoReadOnly(true, workerPrefixForTest))
+	r.Post("/api/v1/players/{player_slug}/coach/proposals/{id}/dismiss", func(w http.ResponseWriter, _ *http.Request) {
+		reached = "dismiss"
+	})
+	r.Post("/api/v1/admin/monitoring/lusr-gaps/{player}/recompute", func(w http.ResponseWriter, _ *http.Request) {
+		reached = "recompute"
+	})
+	for _, target := range []string{
+		"/api/v1/players/demo-player/coach/proposals/..%2F..%2Fpages/dismiss",
+		"/api/v1/players/demo-player/coach/proposals/..%2f..%2fpages/dismiss",
+		"/api/v1/players/demo-player/coach/proposals/%2E%2E/dismiss",
+		"/api/v1/admin/monitoring/lusr-gaps/..%2F..%2F..%2Fplayers%2Fa%2Fpages/recompute",
+		"/api/v1/admin/monitoring/lusr-gaps/..%5C..%5Cplayers%5Ca%5Cpages/recompute",
+	} {
+		reached = ""
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, target, nil))
+		if reached != "" {
+			t.Errorf("%s : écriture %q ATTEINTE en démo (statut %d)", target, reached, w.Code)
+		}
+		if w.Code != http.StatusForbidden {
+			t.Errorf("%s : statut %d, attendu 403", target, w.Code)
+		}
+	}
+}
+
+// TestAmbiguousPath — ce qui ne se lit pas comme il se route.
+func TestAmbiguousPath(t *testing.T) {
+	cases := map[string]bool{
+		"/api/v1/players/demo-player/pages/media":          false,
+		"/api/v1/players/demo-player/pages/..%2Fsync":      true,
+		"/api/v1/players/demo-player/pages/%2e%2e/sync":    true,
+		"/api/v1/players/demo-player/pages/a%5Cb":          true,
+		"/api/v1/players/demo-player/pages/../sync":        true,
+		"/api/v1/players/demo-player/./pages/media":        true,
+		"/api/v1/players/demo-player//pages/media":         true,
+		"/api/v1/players/demo%20player/pages/media":        false,
+		"/api/v1/players/demo-player/pages/media-query.v2": false,
+	}
+	for target, want := range cases {
+		req := httptest.NewRequest(http.MethodPost, "http://h"+target, nil)
+		if got := middleware.AmbiguousPath(req); got != want {
+			t.Errorf("%s : ambigu=%v, attendu %v", target, got, want)
+		}
 	}
 }

@@ -227,6 +227,11 @@ func TestIsMutatingRequest_ClassifiesPostQueriesAsReads(t *testing.T) {
 		{routeCase{http.MethodPatch, "/media/likes"}, true},
 		{routeCase{http.MethodPut, "/media/audio-config"}, true},
 		{routeCase{http.MethodDelete, "/media"}, true},
+		// Revue R1 (P1-2) : aucun chemin ne devient « lecture » par nettoyage — un « .. » en
+		// clair ou encodé reste une écriture, hors démo comme en démo.
+		{routeCase{http.MethodPost, "/coach/proposals/../../pages/dismiss"}, true},
+		{routeCase{http.MethodPost, "/coach/proposals/..%2F..%2Fpages/dismiss"}, true},
+		{routeCase{http.MethodPost, "/pages/./media"}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.c.method+tc.c.path, func(t *testing.T) {
@@ -242,5 +247,20 @@ func TestIsMutatingRequest_ClassifiesPostQueriesAsReads(t *testing.T) {
 				t.Errorf("IsMutatingRequest = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestRequireAuthForMutations_TraversalStaysAWrite — revue R1 (P1-2) : hors démo, un chemin
+// qui ne se lit pas comme il se route (« .. » en clair, ou encodé) reste une ÉCRITURE et
+// exige une session ; aucun nettoyage ne le transforme en lecture de page.
+func TestRequireAuthForMutations_TraversalStaysAWrite(t *testing.T) {
+	h := playerRouterWithGuard(false, "password", &domain.SessionData{})
+	for _, path := range []string{
+		"/coach/proposals/../../pages/dismiss",
+		"/coach/proposals/..%2F..%2Fpages/dismiss",
+	} {
+		if rr := doRequest(h, routeCase{http.MethodPost, path}); rr.Code != http.StatusUnauthorized {
+			t.Errorf("%s : statut %d, attendu 401 (écriture sans session)", path, rr.Code)
+		}
 	}
 }

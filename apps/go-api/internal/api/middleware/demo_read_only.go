@@ -29,14 +29,13 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"path"
 )
 
 // DemoModeForbiddenCode est le code d'erreur d'une écriture refusée en mode démo.
 const DemoModeForbiddenCode = "demo_mode_forbidden"
 
 // demoExtraReadPosts : POST hors lectures produit que la démo laisse passer, par chemin
-// absolu nettoyé. Chaque entrée porte sa raison dans l'en-tête du fichier.
+// absolu exact. Chaque entrée porte sa raison dans l'en-tête du fichier.
 var demoExtraReadPosts = map[string]bool{
 	"/api/v1/session/context": true,
 }
@@ -51,7 +50,7 @@ func DemoReadOnly(demoMode bool, exemptPrefixes ...string) func(http.Handler) ht
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if DemoAllows(r) || isExemptPath(r.URL.Path, exempt) {
+			if DemoAllows(r) || (!AmbiguousPath(r) && isExemptPath(r.URL.Path, exempt)) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -63,13 +62,14 @@ func DemoReadOnly(demoMode bool, exemptPrefixes ...string) func(http.Handler) ht
 }
 
 // DemoAllows dit si la démo laisse passer la requête : une lecture au sens de
-// [IsMutatingRequest], ou un POST de [demoExtraReadPosts]. Exportée pour que le ratchet
-// des routes raisonne sur la MÊME définition que la garde.
+// [IsMutatingRequest], ou un POST de [demoExtraReadPosts] dont le chemin se lit comme il se
+// route (cf. AmbiguousPath). Exportée pour que le ratchet des routes raisonne sur la MÊME
+// définition que la garde.
 func DemoAllows(r *http.Request) bool {
 	if !IsMutatingRequest(r) {
 		return true
 	}
-	return r.Method == http.MethodPost && demoExtraReadPosts[path.Clean(r.URL.Path)]
+	return r.Method == http.MethodPost && !AmbiguousPath(r) && demoExtraReadPosts[r.URL.Path]
 }
 
 // WriteDemoForbidden écrit le refus 403 `demo_mode_forbidden`, dans la forme ApiError

@@ -81,6 +81,9 @@ var demoRefusedWitnesses = []string{
 	"POST /api/v1/settings/backup/run",
 }
 
+// nl : le saut de ligne des messages d'échec.
+const nl = "\n"
+
 var demoWriteMethods = map[string]bool{
 	http.MethodPost: true, http.MethodPut: true, http.MethodPatch: true, http.MethodDelete: true,
 }
@@ -99,12 +102,43 @@ func concretePath(route string) string {
 
 // demoGuardLetsThrough applique la VRAIE garde à un handler témoin.
 func demoGuardLetsThrough(method, route string) bool {
+	return demoGuardLetsThroughPath(method, concretePath(route))
+}
+
+func demoGuardLetsThroughPath(method, target string) bool {
 	reached := false
 	h := middleware.DemoReadOnly(true, demoWorkerPrefix)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		reached = true
 	}))
-	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(method, concretePath(route), nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(method, target, nil))
 	return reached
+}
+
+// demoEvilParams : des valeurs de paramètre qui, décodées ou nettoyées, feraient lire le
+// chemin comme une lecture (`/pages/…`) alors que chi le route vers la route d'écriture
+// (revue R1, P0-1). Aucune ne doit passer, sur AUCUNE route d'écriture.
+var demoEvilParams = []string{"..%2F..%2Fpages", "..%2f..%2fpages%2fmedia", "%2E%2E", "..", "a%5Cpages"}
+
+// evilPaths rend la route avec chacun de ses paramètres remplacé par chaque valeur piégée.
+func evilPaths(route string) []string {
+	parts := strings.Split(route, "/")
+	var out []string
+	for i, p := range parts {
+		if !strings.HasPrefix(p, "{") {
+			continue
+		}
+		for _, evil := range demoEvilParams {
+			cp := append([]string(nil), parts...)
+			for j := range cp {
+				if strings.HasPrefix(cp[j], "{") || cp[j] == "*" {
+					cp[j] = "x"
+				}
+			}
+			cp[i] = evil
+			out = append(out, strings.Join(cp, "/"))
+		}
+	}
+	return out
 }
 
 func routeHasDemoGuard(mws []func(http.Handler) http.Handler) bool {
@@ -124,7 +158,7 @@ func TestDemoReadOnlyRatchet(t *testing.T) {
 		t.Fatal("le routeur n'est pas un chi.Router")
 	}
 
-	var unguarded, letThrough []string
+	var unguarded, letThrough, evilThrough []string
 	seen := map[string]bool{}
 	writes := 0
 	err := chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
@@ -140,6 +174,11 @@ func TestDemoReadOnlyRatchet(t *testing.T) {
 		if demoGuardLetsThrough(method, route) {
 			letThrough = append(letThrough, key)
 		}
+		for _, evil := range evilPaths(route) {
+			if demoGuardLetsThroughPath(method, evil) {
+				evilThrough = append(evilThrough, method+" "+evil)
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -147,6 +186,10 @@ func TestDemoReadOnlyRatchet(t *testing.T) {
 	}
 	if writes < 50 {
 		t.Fatalf("%d route(s) d'écriture walkées : le routeur assemblé ne ressemble pas à celui de production", writes)
+	}
+	if len(evilThrough) > 0 {
+		t.Errorf("%d écriture(s) à paramètre piégé laissée(s) passer en démo (encodage ou « .. ») :"+nl+"  %s",
+			len(evilThrough), strings.Join(evilThrough, nl+"  "))
 	}
 	if len(unguarded) > 0 {
 		sort.Strings(unguarded)
