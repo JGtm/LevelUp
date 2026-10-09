@@ -18,6 +18,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 
 import { applyZoomKey, isTypingTarget, zoomKeyCommand } from './useReplayShortcuts'
 import type { ReplayZoom } from './useReplayZoom'
+import { useAbonnementALElement } from './useAbonnementALElement'
 
 /** Le plan est-il visé : pointeur dessus, ou focus à l'intérieur ? */
 export function planIsTargeted(frame: Element, hovered: boolean, active: Element | null): boolean {
@@ -31,9 +32,11 @@ export function useReplayZoomKeys(canvasRef: RefObject<HTMLCanvasElement | null>
     live.current = zoom
   }, [zoom])
 
-  useEffect(() => {
-    const frame = canvasRef.current?.parentElement
-    if (!frame) return
+  // LES ÉCOUTEURS SUIVENT LA TOILE (useAbonnementALElement) : un plan qui monte sa toile APRÈS
+  // ses données répond quand même au clavier. Le cadre est le parent de la toile abonnée.
+  useAbonnementALElement(canvasRef, (canvas) => {
+    const frame = canvas.parentElement
+    if (!frame) return () => {}
     let hovered = false
     const enter = () => {
       hovered = true
@@ -42,7 +45,7 @@ export function useReplayZoomKeys(canvasRef: RefObject<HTMLCanvasElement | null>
       hovered = false
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (!frame || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return
       if (!planIsTargeted(frame, hovered, document.activeElement)) return
       const command = zoomKeyCommand(e.key)
       if (!command) return
@@ -57,5 +60,5 @@ export function useReplayZoomKeys(canvasRef: RefObject<HTMLCanvasElement | null>
       frame.removeEventListener('pointerleave', leave)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [canvasRef])
+  })
 }

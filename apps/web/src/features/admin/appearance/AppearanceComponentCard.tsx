@@ -8,6 +8,7 @@
 import { useState } from 'react'
 
 import { Card } from '@/components/ui/card'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { API_BASE_URL } from '@/lib/api/client'
 import type { AppearanceComponentDiagnosis } from '@/lib/api/types'
 import { StatusBadge } from '../components/StatusBadge'
@@ -100,11 +101,17 @@ function ServedValueThumbnail({
   const tA = useAdminT()
   const [imgFailed, setImgFailed] = useState(false)
   const value = diag.served_value.trim()
+  const sansValeur = (
+    <EmptyStateNotice
+      title={tA('admin.appearance.no_served_value')}
+      description={tA('admin.appearance.no_served_value_description')}
+    />
+  )
 
-  if (!value) return <EmptyThumbnail message={tA('admin.appearance.no_served_value')} />
+  if (!value) return sansValeur
 
   if (isImageComponent(diag.component)) {
-    if (imgFailed) return <EmptyThumbnail message={tA('admin.appearance.no_served_value')} />
+    if (imgFailed) return sansValeur
     return (
       <div className="flex items-center justify-center rounded-md border bg-muted/30 p-2">
         <img
@@ -124,14 +131,6 @@ function ServedValueThumbnail({
       <span className="font-mono text-lg font-semibold tracking-widest text-foreground">
         {value}
       </span>
-    </div>
-  )
-}
-
-function EmptyThumbnail({ message }: { message: string }) {
-  return (
-    <div className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-6 text-center text-xs text-muted-foreground">
-      {message}
     </div>
   )
 }

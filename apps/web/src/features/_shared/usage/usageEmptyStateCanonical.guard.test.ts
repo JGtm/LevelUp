@@ -40,6 +40,14 @@ const SCOPE: { dir: string; match: (name: string) => boolean }[] = [
   { dir: join(FEATURES_ROOT, '_shared', 'usage'), match: (n) => /\.tsx$/.test(n) },
   { dir: join(FEATURES_ROOT, 'squad'), match: (n) => /Usages.*\.tsx$/.test(n) },
   { dir: join(FEATURES_ROOT, 'squad', 'formes'), match: (n) => /\.tsx$/.test(n) },
+  // Ajout du 2026-10-09 (lot E « hygiène », item E8) : les états vides de l'Explorateur (profil
+  // de combat, encart et bandeau de la cible) et de la vignette d'apparence admin, qui portaient
+  // chacun leur cadre pointillé maison.
+  {
+    dir: join(FEATURES_ROOT, 'explorer'),
+    match: (n) => /^(ExplorerCombatProfile|ExplorerTargetProfileCard|ExplorerTargetIdentityBanner)\.tsx$/.test(n),
+  },
+  { dir: join(FEATURES_ROOT, 'admin', 'appearance'), match: (n) => n === 'AppearanceComponentCard.tsx' },
 ]
 
 /**

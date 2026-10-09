@@ -116,7 +116,6 @@ export interface EmpriseText {
     nothing: string
     killsName: string
     killsAbsent: string
-    racks: string
     /**
      * Le nombre de TYPES d'armes de râtelier listés sous la ligne repliable (« 16 types d'armes »),
      * jamais un nombre de prises. Source unique : la Vue match le reprend.
@@ -298,7 +297,6 @@ const FR: BaseEmpriseText = {
     nothing: 'Rien à prendre',
     killsName: 'Frags avec arme spéciale',
     killsAbsent: 'Aucun frag à l’arme spéciale.',
-    racks: 'Armes de râtelier',
     rackTypes: (n) => `${n} ${n > 1 ? 'types d’armes' : 'type d’arme'}`,
     matchHead: (time, map, mode, result) =>
       `${[time, map].filter(Boolean).join(' · ')}${mode || result ? ` (${[mode, result].filter(Boolean).join(', ')})` : ''}`,
@@ -451,7 +449,6 @@ const EN: BaseEmpriseText = {
     nothing: 'Nothing to pick up',
     killsName: 'Kills with power weapons',
     killsAbsent: 'No power weapon kill.',
-    racks: 'Rack weapons',
     rackTypes: (n) => `${n} ${n > 1 ? 'weapon types' : 'weapon type'}`,
     matchHead: (time, map, mode, result) =>
       `${[time, map].filter(Boolean).join(' · ')}${mode || result ? ` (${[mode, result].filter(Boolean).join(', ')})` : ''}`,

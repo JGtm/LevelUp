@@ -76,6 +76,7 @@ export const adminManifest = {
   "admin.appearance.initial_title": { fr: "Aucun diagnostic lancé", en: "No diagnosis run yet" },
   "admin.appearance.last_fetch_label": { fr: "Dernier fetch live", en: "Last live fetch" },
   "admin.appearance.no_served_value": { fr: "Aucune valeur servie", en: "No served value" },
+  "admin.appearance.no_served_value_description": { fr: "Le serveur ne rend aucune valeur pour ce composant.", en: "The server returns no value for this component." },
   "admin.appearance.reauth_cta": { fr: "Se connecter via Xbox", en: "Sign in with Xbox" },
   "admin.appearance.select_label": { fr: "Joueur suivi", en: "Tracked player" },
   "admin.appearance.select_placeholder": { fr: "Choisir un joueur", en: "Choose a player" },

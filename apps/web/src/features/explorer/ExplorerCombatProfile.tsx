@@ -11,6 +11,7 @@
 import { useMemo, useState } from 'react'
 
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { BarGroupedChart } from '@/components/charts/BarGroupedChart'
 import { DonutChart } from '@/components/charts/DonutChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
@@ -46,9 +47,9 @@ export interface ExplorerCombatProfileProps {
 const CHART_HEIGHT = 300
 
 // Libellés du toggle de source (inline FR/EN — pas de clé manifest dédiée).
-const SOURCE_LABELS: Record<Locale, { live: string; local: string; empty: string }> = {
-  fr: { live: 'En direct', local: 'Local', empty: 'Aucune donnée pour cette source.' },
-  en: { live: 'Live', local: 'Local', empty: 'No data for this source.' },
+const SOURCE_LABELS: Record<Locale, { live: string; local: string; emptyTitle: string; empty: string }> = {
+  fr: { live: 'En direct', local: 'Local', emptyTitle: 'Source vide', empty: 'Aucun match de ce joueur dans cette source.' },
+  en: { live: 'Live', local: 'Local', emptyTitle: 'Empty source', empty: 'No match of this player in this source.' },
 }
 
 export function ExplorerCombatProfile({
@@ -158,9 +159,10 @@ export function ExplorerCombatProfile({
           </h3>
           <ExplorerLiveStatusBadge status={combatLiveStatus} />
         </header>
-        <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-          {SOURCE_LABELS[locale === 'en' ? 'en' : 'fr'].empty}
-        </p>
+        <EmptyStateNotice
+          title={SOURCE_LABELS[locale === 'en' ? 'en' : 'fr'].emptyTitle}
+          description={SOURCE_LABELS[locale === 'en' ? 'en' : 'fr'].empty}
+        />
       </section>
     )
   }
@@ -219,9 +221,7 @@ export function ExplorerCombatProfile({
       </header>
 
       {matches.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-          {lbl.empty}
-        </p>
+        <EmptyStateNotice title={lbl.emptyTitle} description={lbl.empty} />
       ) : (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* G1 — FDA + Frags/Morts/Assists (titre dans la barre ChartCard) */}

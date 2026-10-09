@@ -244,7 +244,7 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.queryByText(/matchs joués ensemble/i)).not.toBeInTheDocument()
     // Plus de disparition silencieuse : note discrète « aucun match en commun ».
     expect(screen.getByTestId('explorer-target-no-shared-matches')).toBeInTheDocument()
-    expect(screen.getByText(/Aucun match en commun avec ce joueur/i)).toBeInTheDocument()
+    expect(screen.getByText('Aucun match en commun')).toBeInTheDocument()
     // Career et identity restent
     expect(screen.getByText(/Carrière complète/i)).toBeInTheDocument()
     expect(screen.getByText('TargetPlayer')).toBeInTheDocument()

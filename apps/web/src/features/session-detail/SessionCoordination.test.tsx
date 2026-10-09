@@ -265,6 +265,28 @@ describe('Carte Portée des engagements (lot W, D23-4)', () => {
     expect(opt.series[0].markLine!.label.position).toBe('insideEndTop')
   })
 
+  it('les libellés des zones s’écrivent AU-DESSUS des points, sur le fond de la carte', () => {
+    const opt = option(nuagePortee(REFERENCE, BLOC_SESSION, 'moi')) as unknown as {
+      series: Array<{
+        type: string
+        z?: number
+        markArea?: { label: { show: boolean; backgroundColor?: string }; data: Record<string, unknown>[][] }
+      }>
+    }
+    const fonds = opt.series[0]
+    const calque = opt.series[opt.series.length - 1]
+    // Les remplissages restent sous le nuage, sans libellé : un point ne couvre plus « Ligne de front ».
+    expect(fonds.markArea!.label.show).toBe(false)
+    expect(calque.type).toBe('custom')
+    expect(calque.z).toBeGreaterThan(fonds.z ?? 0)
+    expect(calque.markArea!.label.show).toBe(true)
+    expect(calque.markArea!.label.backgroundColor).toBeTruthy()
+    // Les mêmes zones, sans remplissage : trois bandes + la surbrillance.
+    expect(calque.markArea!.data).toHaveLength(4)
+    expect(calque.markArea!.data.every(([debut]) => (debut.itemStyle as { color: string }).color === 'transparent')).toBe(true)
+    expect(calque.markArea!.data[0][0].name).toBe(LIBELLES.bandes.front)
+  })
+
   it('n’assied aucune bande quand le serveur ne sert pas les seuils', () => {
     const sansSeuils: RangeReferenceBlock = {
       ...REFERENCE,

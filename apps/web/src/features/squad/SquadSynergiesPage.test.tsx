@@ -90,7 +90,7 @@ describe('SquadSynergiesPage — empty states', () => {
   it('no_selection : wording analyse, pas de contenu', () => {
     mockSquadContext({ selectedRows: [], confirmedGamertags: [] })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.getByText(/Choisis 1 à 3 coéquipiers/)).toBeInTheDocument()
+    expect(screen.getByText(/sélection de 1 à 3 coéquipiers/)).toBeInTheDocument()
   })
 
   it('invalid_selection : message dédié', () => {
