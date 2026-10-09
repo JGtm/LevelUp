@@ -1203,6 +1203,12 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       `impactHistory`) : `feat/v75` a réparé les mêmes deux rouges que LK.6.7, sa version reprise.
 - [x] D1.4.2 `replay.SchemaVersion` monte (valeurs d'inventaire, dotations, capacités) avec chronique,
       plafonds, goldens, fixtures ; `SchemaDesFaits` selon D1.3.2.
+      *RENUMÉROTÉ (2026-10-09) : **`SchemaVersion` 91 → 92**, entrée v92* — le lot `feat/aj-needler`, fusionné
+      dans `feat/v75` (`f516d4bf4`) avant cette montée, a pris 91 ; refusion faite, entrée de chronique
+      renommée v92 avec sa note, justification de `structure_test.go` en « 92 », plafonds de l exception
+      écrite remesurés (chronique 3 181 → 3 223, `structure_test.go` 1 430 → 1 435), goldens et fixtures
+      de contrat régénérés au schéma 92 (seule la ligne du schéma diffère de `feat/v75`). Ce qui suit
+      décrit la montée telle qu écrite avant cette refusion.
       *Fait (lot D)* : **`SchemaVersion` 90 → 91** (90 sur `feat/v75` et sur la branche) ; entrée v91
       de `document_chronicle.go` (mesures du gate de corpus et de `replay-equiv`, D1.4.4) ;
       justification dans `structure_test.go` ; plafonds de l'exception écrite
@@ -1777,3 +1783,8 @@ refusionner, rejouer l'étape 0).
   tête fusionnée : killsource 19/19 identiques, `replay-equiv` 20 films contre `54b47a2b8` (étapes de
   LK et de D1 seules), gate de corpus contre `54b47a2b8` (bilan des fiches identique à la passe contre
   `fe1f3d954`), G-film 22 paquets et archlint verts.
+- 2026-10-09 (lot D) : SECONDE REFUSION, `origin/feat/v75` `f516d4bf4` (lot `feat/aj-needler` : schéma 91,
+  datation des socles). Ma montée de schéma passe de 91 à **92** (consigne du superviseur, `feat/v75` à
+  91 vérifié au moment même) ; chronique v92 avec note de renumérotation ; `grammar.Rev`
+  (`grammar-2026-10-09.3`), `killsource.Rev` et `objectives.Rev` inchangés par cette fusion (le lot ne
+  touche que l'assemblage). G-film (22 paquets) et archlint verts sur la tête fusionnée.

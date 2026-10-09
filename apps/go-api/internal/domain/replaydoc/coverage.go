@@ -167,6 +167,7 @@ type PadDatingStats struct {
 	Ambiguous          int `json:"ambiguous"`
 	Uncovered          int `json:"uncovered"`
 	PowerupOccupations int `json:"powerupOccupations"`
+	FirstOfCycle       int `json:"firstOfCycle"`
 }
 
 // InventoryCoverage est la couverture du calque INVENTAIRE (munitions, grenades, capacité,

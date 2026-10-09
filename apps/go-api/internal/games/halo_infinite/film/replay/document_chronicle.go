@@ -3147,9 +3147,44 @@ package replay
 //	                revisions et les replis verses par killsource changent. `cmd/killsource json` :
 //	                `0a08d2f2` 119 -> 124 lignes, aucune ligne existante modifiee.
 //
-// v91 (2026-10-09, representation intermediaire 2.7.d1, plan
+// v91 (2026-10-09, lot `feat/aj-needler` des ajustements) : UNE SEULE PRISE DE SOCLE PAR REAPPARITION
+// DE L ARME.
+//
+//	`padPickups`    une occupation de socle d arme dont la fenetre porte PLUSIEURS ramassages natifs
+//	                de la famille, ou un ramassage qu une autre occupation revendique, se date et se
+//	                nomme par la regle de jeu posee par l utilisateur : la premiere prise faite AU
+//	                SOCLE (ramasseur a moins de 1,5 m) apres l apparition de l arme et avant son
+//	                apparition suivante ; les ramassages suivants du cycle sont ceux d une autre arme,
+//	                au sol (`repli_prise_de_socle_premiere_du_cycle`, pad_pickup_dating_cycle.go). Un
+//	                ramassage plus tot non localise, ou designe pour deux occupations, fait
+//	                s abstenir ; une occupation que la lecture datait garde sa date et son joueur.
+//	                Le releve des socles hors de l emprise (v90) s intercale entre la lecture et le
+//	                repli : il ne lit que la lecture, et le repli juge la presence au socle sur la
+//	                position relevee.
+//	`coverage.padDating`  un compteur neuf, `firstOfCycle` (occupations datees par le repli,
+//	                sous-ensemble de `dated`).
+//
+//	CE QUI MONTE    `SchemaVersion` 90 -> 91. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
+//	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
+//	                quels. Le resume d usage (`pad_pickups`) reprend par la cle
+//	                `(UsageSummaryRev, SchemaVersion)`.
+//
+//	LE PARC         un artefact 90 dont les faits sont sur disque : verdict `republier`.
+//
+//	MESURE          regle rejouee en processus sur les 172 artefacts du parc local (schema 90,
+//	                positions des pistes) : 2 462 -> 3 335 occupations datees (+873), 0 date perdue,
+//	                0 date ou joueur change ; contre-epreuve independante (`weaponChanges` de la meme
+//	                vie, meme famille, a 0,5 s) : 778 des 873 prises du repli, 92 des 95 autres sur un
+//	                joueur qui portait deja l arme (prise de munitions), 3 inexpliquees (0,3 %) contre
+//	                10 sur 2 462 (0,4 %) pour la lecture. Needler de `5c38f581` (Prism) : 2 -> 4 prises
+//	                attribuees ; ses quatre autres occupations sans date sont des apparitions
+//	                remplacees 30,1 s plus tard par une seconde apparition (aucune prise au socle).
+//
+// v92 (2026-10-09, representation intermediaire 2.7.d1, plan
 // `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
 // BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
+// ECRITE v91 sur la branche `feat/ri-lk-images-cles`, RENUMEROTEE v92 a la fusion de `feat/v75`
+// `f516d4bf4` : le lot `feat/aj-needler`, fusionne avant elle, a pris le rang 91.
 //
 //	Aucun champ neuf ; le CONTENU de `loadouts`, `inventory`, `grenadeReads` et `abilities` (`kf`)
 //	change. Un record bipede d image-cle que la regle d admission retient (ferme ou i22 a quatre
@@ -3161,12 +3196,12 @@ package replay
 //	0 ; `d` = emplacement desire en main principale (i42 param[1]), absent quand le film n en
 //	designe aucun ; rang de capacite publie dans 16..23 seulement.
 //
-//	CE QUI MONTE    `SchemaVersion` 90 -> 91 ; `grammar.Rev` `grammar-2026-10-09.2` ->
+//	CE QUI MONTE    `SchemaVersion` 91 -> 92 ; `grammar.Rev` `grammar-2026-10-09.2` ->
 //	AVEC ELLE       `grammar-2026-10-09.3`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
 //	                complements a revision constante) et `SchemaDesFaits` (11) ne bougent pas : la
 //	                forme des faits ne change pas, la publication rejouee depuis eux est identique.
 //
-//	LE PARC         un artefact 90 porte `grammar-2026-10-08.13` ou `grammar-2026-10-09` : verdict
+//	LE PARC         un artefact 91 ou d avant porte `grammar-2026-10-09` ou anterieure : verdict
 //	                `redecoder`.
 //
 //	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`, `54b47a2b8`), 19 temoins : aucun oracle
