@@ -48,6 +48,25 @@ func TestPurgeSyncMetaLegacyAuthKeys(t *testing.T) {
 	}
 }
 
+// TestPurgeSyncMetaLegacyAuthKeys_BaseSaineNonTouchee : sans clé héritée, aucun swap.
+func TestPurgeSyncMetaLegacyAuthKeys_BaseSaineNonTouchee(t *testing.T) {
+	db := openRepairIDsDB(t)
+	execRepairIDs(t, db,
+		`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`,
+		`INSERT INTO sync_meta (key, value) VALUES ('xuid', '1'), ('last_sync_at', '2')`,
+	)
+	oid := tableOID(t, db, "sync_meta")
+	if err := applyPurgeSyncMetaLegacyAuthKeys(db); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	if got := tableOID(t, db, "sync_meta"); got != oid {
+		t.Errorf("sync_meta saine reconstruite (oid %d -> %d) : aucun swap attendu", oid, got)
+	}
+	if n := scanInt(t, db, `SELECT COUNT(*) FROM sync_meta`); n != 2 {
+		t.Errorf("lignes = %d, attendu 2", n)
+	}
+}
+
 func TestPurgeSyncMetaLegacyAuthKeys_TableAbsente(t *testing.T) {
 	db := openRepairIDsDB(t)
 	if err := applyPurgeSyncMetaLegacyAuthKeys(db); err != nil {

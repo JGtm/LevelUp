@@ -58,7 +58,7 @@ func TestRestoreCSR_InsertSeul_CSRPrimeEtIdempotent(t *testing.T) {
 
 	// m1 : LUSR conservé + CSR ajouté ; m2 : CSR préexistant, rien d'ajouté ; m3 : une ligne
 	// malgré le doublon du backup ; m4 (LUSR du backup) : ignoré.
-	want := map[string]int{"m1/LUSR": 1, "m1/CSR": 1, "m2/CSR": 1, "m3/CSR": 1}
+	want := map[string]int{"m1/LUSR": 1, "m1/CSR": 1, "m2/CSR": 1, "m3/CSR": 1, "m5/CSR": 1}
 	got := map[string]int{}
 	rows, err := db.QueryContext(ctx,
 		`SELECT match_id || '/' || rating_type, COUNT(*) FROM match_skill_rank GROUP BY 1`)
@@ -93,6 +93,71 @@ func TestRestoreCSR_InsertSeul_CSRPrimeEtIdempotent(t *testing.T) {
 	if latestType != "CSR" || value != 1500 {
 		t.Errorf("m1 lu par _latest = %s %.0f, attendu CSR 1500", latestType, value)
 	}
+	assertRestoredCSR(t, db, "m1", restoredCSR{tier: "Diamond", subTier: 2, group: "ranked_arena",
+		start: "2026-01-01 10:00:00"})
+	// sub_tier absent → 0, playlist_group absent → « ranked », start_time absent → NULL.
+	assertRestoredCSR(t, db, "m5", restoredCSR{tier: "Gold", subTier: 0, group: "ranked", start: ""})
+}
+
+// restoredCSR : colonnes d'une ligne CSR restaurée ; start vide = start_time NULL.
+type restoredCSR struct {
+	tier, group, start string
+	subTier            int
+}
+
+func assertRestoredCSR(t *testing.T, db *sql.DB, matchID string, want restoredCSR) {
+	t.Helper()
+	var got restoredCSR
+	var tier, start sql.NullString
+	var sub sql.NullInt64
+	if err := db.QueryRow(`SELECT tier, sub_tier, playlist_group, strftime(start_time, '%Y-%m-%d %H:%M:%S')
+		FROM match_skill_rank WHERE match_id = ? AND rating_type = 'CSR'`, matchID).
+		Scan(&tier, &sub, &got.group, &start); err != nil {
+		t.Fatalf("lecture CSR %s : %v", matchID, err)
+	}
+	got.tier, got.start = tier.String, start.String
+	if !sub.Valid {
+		got.subTier = -1
+	} else {
+		got.subTier = int(sub.Int64)
+	}
+	if got != want {
+		t.Errorf("CSR %s restauré = %+v, attendu %+v", matchID, got, want)
+	}
+}
+
+// TestRestoreCSR_DryRunNEcritRien : --dry-run inspecte le backup sans aucune écriture.
+func TestRestoreCSR_DryRunNEcritRien(t *testing.T) {
+	repoRoot := t.TempDir()
+	cfg := &config.AppConfig{RepoRoot: repoRoot}
+	wireStartupSeams(cfg)
+	t.Cleanup(func() { titleseams.RegisterAll("") })
+
+	playerPath := titlePkg.NewPathResolver(repoRoot).PlayerDBPath(titlePkg.DefaultSlug, "Joueur")
+	if err := os.MkdirAll(filepath.Dir(playerPath), 0o755); err != nil {
+		t.Fatalf("mkdir : %v", err)
+	}
+	if err := applyMigrationsOnDB(playerPath, migration.TargetPlayer); err != nil {
+		t.Fatalf("migrations player : %v", err)
+	}
+	backup := filepath.Join(t.TempDir(), "legacy.duckdb")
+	writeLegacyBackup(t, backup)
+
+	if err := runRestoreCSR(cfg, []string{"--gamertag", "Joueur", "--backup", backup, "--dry-run"}); err != nil {
+		t.Fatalf("restore-csr --dry-run : %v", err)
+	}
+	handle, err := duckdbpkg.OpenReadWrite(playerPath)
+	if err != nil {
+		t.Fatalf("réouverture : %v", err)
+	}
+	defer func() { _ = handle.Close() }()
+	var n int
+	if err := handle.SQLDb().QueryRow(`SELECT COUNT(*) FROM match_skill_rank`).Scan(&n); err != nil {
+		t.Fatalf("lecture : %v", err)
+	}
+	if n != 0 {
+		t.Errorf("--dry-run a écrit %d ligne(s) dans match_skill_rank, attendu 0", n)
+	}
 }
 
 func execOnPlayer(t *testing.T, path, q string) {
@@ -120,7 +185,8 @@ func writeLegacyBackup(t *testing.T, path string) {
 			tier VARCHAR, sub_tier INTEGER, tier_label VARCHAR, rating_delta DOUBLE,
 			playlist_group VARCHAR, start_time TIMESTAMP);
 		INSERT INTO match_skill_rank VALUES
-			('m1', 'CSR', 1500, 30, 'Diamond', 2, 'Diamond 3', 12, 'ranked', TIMESTAMP '2026-01-01 10:00:00'),
+			('m1', 'CSR', 1500, 30, 'Diamond', 2, 'Diamond 3', 12, 'ranked_arena', TIMESTAMP '2026-01-01 10:00:00'),
+			('m5', 'CSR', 1100, 30, 'Gold', NULL, 'Gold 1', NULL, NULL, NULL),
 			('m2', 'CSR', 1450, 30, 'Diamond', 1, 'Diamond 2', 8, NULL, TIMESTAMP '2026-01-02 10:00:00'),
 			('m3', 'CSR', 1300, 30, 'Platinum', NULL, 'Platinum 6', NULL, 'ranked', TIMESTAMP '2026-01-03 10:00:00'),
 			('m3', 'CSR', 1310, 30, 'Platinum', NULL, 'Platinum 6', NULL, 'ranked', TIMESTAMP '2026-01-03 11:00:00'),

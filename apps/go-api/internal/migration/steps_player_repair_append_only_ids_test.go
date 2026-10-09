@@ -31,6 +31,18 @@ func execRepairIDs(t *testing.T, db *sql.DB, stmts ...string) {
 	}
 }
 
+// tableOID : identité de la table au catalogue. Un swap (DROP + RENAME d'une table neuve)
+// change l'oid ; une table laissée intacte le garde.
+func tableOID(t *testing.T, db *sql.DB, table string) int64 {
+	t.Helper()
+	var oid int64
+	if err := db.QueryRow(`SELECT table_oid FROM duckdb_tables()
+		WHERE schema_name = 'main' AND table_name = ?`, table).Scan(&oid); err != nil {
+		t.Fatalf("oid de %s: %v", table, err)
+	}
+	return oid
+}
+
 func scanInt(t *testing.T, db *sql.DB, q string) int64 {
 	t.Helper()
 	var n int64
@@ -120,8 +132,12 @@ func TestRepairAppendOnlyIDs_TableSaineIntacte(t *testing.T) {
 			match_id VARCHAR NOT NULL, written_at TIMESTAMP)`,
 		`INSERT INTO personal_score_awards (match_id) VALUES ('a'), ('b')`,
 	)
+	oid := tableOID(t, db, "personal_score_awards")
 	if err := applyRepairAppendOnlyIDs(db); err != nil {
 		t.Fatalf("réparation: %v", err)
+	}
+	if got := tableOID(t, db, "personal_score_awards"); got != oid {
+		t.Errorf("table saine reconstruite (oid %d -> %d) : aucun swap attendu", oid, got)
 	}
 	if n := scanInt(t, db, `SELECT SUM(id) FROM personal_score_awards`); n != 3 {
 		t.Errorf("ids modifiés sur une table saine (somme %d, attendu 3)", n)
@@ -133,5 +149,35 @@ func TestRepairAppendOnlyIDs_TableSaineIntacte(t *testing.T) {
 	}
 	if typ != "INTEGER" {
 		t.Errorf("type de l'id = %s, attendu INTEGER (table saine non reconstruite)", typ)
+	}
+}
+
+// TestRepairAppendOnlyIDs_IDsUniquesSansClePrimaire : ids uniques et non NULL mais table
+// SANS clé primaire ni DEFAULT d'id (forme réelle de player_csr_snapshots d'une base) : la
+// réparation repose la clé et le DEFAULT, sans changer aucun id.
+func TestRepairAppendOnlyIDs_IDsUniquesSansClePrimaire(t *testing.T) {
+	db := openRepairIDsDB(t)
+	execRepairIDs(t, db,
+		`CREATE TABLE player_csr_snapshots (id BIGINT, playlist_id VARCHAR, season_id VARCHAR,
+			written_at TIMESTAMP)`,
+		`INSERT INTO player_csr_snapshots (id, playlist_id, season_id) VALUES (1, 'p1', 's1'), (2, 'p2', 's1')`,
+	)
+	if err := applyRepairAppendOnlyIDs(db); err != nil {
+		t.Fatalf("réparation: %v", err)
+	}
+	if n := scanInt(t, db, `SELECT COUNT(*) FROM duckdb_constraints()
+		WHERE table_name = 'player_csr_snapshots' AND constraint_type = 'PRIMARY KEY'`); n != 1 {
+		t.Errorf("clé primaire : %d, attendu 1", n)
+	}
+	if s := scanInt(t, db, `SELECT SUM(id) FROM player_csr_snapshots`); s != 3 {
+		t.Errorf("somme des ids = %d, attendu 3 (ids uniques conservés)", s)
+	}
+	var id int64
+	if err := db.QueryRow(`INSERT INTO player_csr_snapshots (playlist_id, season_id) VALUES ('p3', 's1')
+		RETURNING id`).Scan(&id); err != nil {
+		t.Fatalf("insert sans id (DEFAULT reposé ?): %v", err)
+	}
+	if id <= 2 {
+		t.Errorf("id neuf = %d, attendu > 2 (DEFAULT nextval sur séquence réalignée)", id)
 	}
 }

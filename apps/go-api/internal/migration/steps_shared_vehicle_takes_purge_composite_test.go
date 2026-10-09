@@ -99,8 +99,12 @@ func TestPurgeCompositeVehicleTakes_RetireLesSeulesLignesComposites(t *testing.T
 func TestPurgeCompositeVehicleTakes_BaseSaineNonTouchee(t *testing.T) {
 	db := seedVehicleTakes(t, false)
 	before := scanInt(t, db, `SELECT COUNT(*) FROM match_vehicle_takes`)
+	oid := tableOID(t, db, vehicleTakesTable)
 	if err := applyPurgeCompositeVehicleTakes(db); err != nil {
 		t.Fatalf("purge: %v", err)
+	}
+	if got := tableOID(t, db, vehicleTakesTable); got != oid {
+		t.Errorf("base saine reconstruite (oid %d -> %d) : aucun swap attendu", oid, got)
 	}
 	if after := scanInt(t, db, `SELECT COUNT(*) FROM match_vehicle_takes`); after != before {
 		t.Errorf("base saine : %d lignes avant, %d après", before, after)
