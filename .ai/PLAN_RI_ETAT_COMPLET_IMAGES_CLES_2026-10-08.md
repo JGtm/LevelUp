@@ -1357,6 +1357,14 @@ refusionner, rejouer l'étape 0).
   param[2] sur 6 des 7 records A et 424 des 593 records B. Cause non instruite (le début le plus
   long du bloc de munitions, D1.0.7, est le premier suspect). Sans effet sur les records admis après
   D1.1 (U-3 : param[1]).
+- D-28 *(D1.2, mesure informative du coût, `$REF/../d1x/d12/perf_d12.txt`)* À l'état D1.2, la lecture des
+  porteurs au sync de `9f57c612` (bombe, 0,4 s par tour) coûte +17 % en médiane sur cinq paires propres
+  (rapports 1,08 à 1,27, +60 ms par tour) contre la base de l'étape 0 ; à l'état D1.1 (sans fenêtre) le
+  même banc rendait 0,55. Les autres grandeurs tiennent (cuisson 0,87 à 1,04, sync des trois autres
+  films 0,94 à 1,02, pics 0,97 à 1,08). Causes probables, non mesurées : le second jeu de mots (marque)
+  essayé à chaque bit du payload par `motsParRecord`, et les règles d'inventaire jouées sur les records
+  non admis alors que le sync ne lit que les armes. Non traité (D1.2 close) ; le gate de coût de D1.4 le
+  jugera — à instruire avant lui.
 
 ## 8. Journal
 
@@ -1638,3 +1646,15 @@ refusionner, rejouer l'étape 0).
   fausses en f20-21 (taux du témoin 0 en f20-21), T2 en admet 86 ; T1 ∧ T2 (non écrit) passe — décision
   de l'utilisateur. **D1.0.7** `[x]` : la grammaire lit la réserve comme le jeu ; l'écart vient du début
   de bloc le plus long que retient la fenêtre. Découvertes D-24 à D-27. D1.1 non commencée.
+- 2026-10-09 (lot C, suite) : DÉCISION DE L'UTILISATEUR sur U-1 (« oui en effet la règle des deux
+  contrôles est mieux qu'une », relayée par le superviseur) : T1 ∧ T2, inscrite au §3.1 ; U-2 (b)
+  confirmée, aucune vérification due. D1.0.6 `[x]`, gate de D1.0 rejoué et PASSÉ (`3aa885e37`).
+  **D1.1 CLOSE** (`e84cd78d7`) : canal de l'état complet du bipède par nom, relecture à l'étendue
+  par l'assistant unique, règle d'admission, publication (U-3, U-4), une seule distribution pour la
+  cuisson et le sync ; instrument d0 : 6 507 admis, valeurs égales à 100 %, 0 débordement ; coût :
+  surcoût non établi (paires alternées, intervalles publiés). **D1.2 CLOSE** (`6af91b490`) : fenêtres
+  derrière la lecture pour les seuls non-admis, trois replis au registre (famille
+  `filmdec/images-cles`), records rendus marqués récupérés ; replis = non-admis sur les 28 films (4 203).
+  Mesure informative à l'état D1.2 : sync de `9f57c612` +17 % (§7 D-28), à instruire avant le gate de
+  D1.4. Découvertes D-24 à D-28. D1.3 non commencée (consigne). Gardes de révision rouges jusqu'à la
+  montée de D1.4 (E-7) ; rien de poussé.
