@@ -7,7 +7,12 @@ package domain
 //   - comment MASQUER les identités réelles que l'artefact porte (décision D-1 : l'artefact
 //     n'est jamais modifié, le masque s'applique au document servi).
 //
-// Le fichier porte des xuid RÉELS : il reste sur le disque de la démo, il n'est jamais servi.
+// Le fichier porte des xuid RÉELS, comme les artefacts non masqués à côté de lui : il ne doit
+// JAMAIS sortir du serveur. Aucune route ne le sert tel quel — seuls la garde du rejeu et le
+// service de rejeu le lisent — et la seule route de fichiers statiques sous `data/` refuse
+// toute traversée hors de son dossier (`/static/commendations`, test
+// `commendation_handler_traversal_test.go`). Une nouvelle route qui servirait des fichiers
+// sous la racine de la démo doit tenir la même garde.
 type DemoReplayIndex struct {
 	Matches    []DemoReplayIndexEntry `json:"matches"`
 	Identities []DemoReplayIdentity   `json:"identities"`
