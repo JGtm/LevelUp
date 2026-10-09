@@ -480,39 +480,15 @@ func main() {
 		provisionAdditionalActiveTitles(pr, title.DefaultRegistry())
 	}
 
-	// --- 3b. Migrations player DB (TargetPlayer) ---
-	// RW-EXCLUSIF, AVANT que le provider/scheduler/watcher n'ouvrent les player
-	// DBs. Sans cet appel, les player DBs ne recevaient QUE EnsurePlayerSchema
-	// (CREATE TABLE IF NOT EXISTS) — no-op sur une table legacy préexistante →
-	// la PRIMARY KEY n'était jamais ajoutée et les writes ON CONFLICT /
-	// INSERT OR IGNORE échouaient en Binder Error (citations, enrichment rows).
-	// `RunForDB(TargetPlayer)` n'était jusqu'ici câblé qu'en CLI ; on le câble
-	// au boot par profil. Idempotent (migrations tracées dans schema_migrations).
-	// Non-fatal : une player DB verrouillée/absente ne doit pas bloquer le boot.
-	// Cf. repair_*_primary_key + .ai/archive/thought_log_2026-Q2.md (2026-06-04).
+	// --- 3b. Migrations player DB (TargetPlayer), titre par titre ---
+	// Cf. boot_player_migrations.go. Non-fatal : une player DB verrouillée/absente ne
+	// doit pas bloquer le boot.
 	if !cfg.DemoMode {
 		if players, perr := cfg.LoadPlayers(); perr != nil {
 			slog.Warn("migrations player: chargement profils échoué (non-fatal)", "err", perr)
 		} else {
-			for _, p := range players {
-				if p.Gamertag == "" || p.IsDemo {
-					continue
-				}
-				dbPath := pr.PlayerDBPath(titleSlug, p.Gamertag)
-				// Comptes token-only (watchers, db_path vide dans db_profiles.json) :
-				// pas de player DB → rien à migrer. La création de la DB appartient
-				// au chemin sync/onboarding, pas au boot.
-				if _, statErr := os.Stat(dbPath); statErr != nil {
-					slog.Debug("migrations player ignorées — player DB absente (compte token-only ?)",
-						"gamertag", p.Gamertag, "db", dbPath)
-					continue
-				}
-				if err := RunPlayerMigrations(dbPath); err != nil {
-					slog.Warn("migrations player échouées (non-fatal)",
-						"gamertag", p.Gamertag, "err", err)
-				}
-			}
-			slog.Debug("migrations player appliquées")
+			n := migratePlayerDBs(context.Background(), players, pr, titleSlug, RunPlayerMigrations)
+			slog.Debug("migrations player appliquées", "bases", n)
 		}
 	}
 
@@ -1639,17 +1615,6 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	socialDB.Close()
 
 	return nil
-}
-
-// RunPlayerMigrations applique les migrations player pour une DB individuelle.
-// Appelé lors de l'ouverture d'une player DB.
-func RunPlayerMigrations(playerDBPath string) error {
-	db, err := duckdb.OpenReadWrite(playerDBPath)
-	if err != nil {
-		return fmt.Errorf("open player rw: %w", err)
-	}
-	defer db.Close()
-	return migration.RunForDB(db.SQLDb(), migration.TargetPlayer)
 }
 
 // buildAutoSyncPool construit le pool de tokens utilisé par l'AutoSyncScheduler.

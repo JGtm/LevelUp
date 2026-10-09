@@ -143,3 +143,25 @@ func (h *SyncHandler) newPooledEngine(ctx context.Context, gamertag, xuid string
 		"gamertag", gamertag, "xuid", xuid)
 	return h.newEngineFor(ctxkeys.TitleSlug(ctx), gamertag, xuid, &domain.HaloTokens{})
 }
+
+// errCodeHaloTokensMissing : code d'erreur de la sync initiale quand la session est
+// authentifiée (mot de passe) mais ne porte aucun jeton Halo. Statut 403, jamais 401 : un
+// 401 `auth_required` signifie « session expirée » pour la coquille web, qui recharge alors
+// la page vers la connexion — une session valide sans jetons y bouclerait.
+const errCodeHaloTokensMissing = "halo_tokens_missing"
+
+// initialSyncTokens rend les jetons Halo de la session pour la sync initiale :
+// 401 `auth_required` sans session, 403 [errCodeHaloTokensMissing] avec une session sans
+// jetons Halo.
+func initialSyncTokens(ctx context.Context) (*domain.HaloTokens, error) {
+	sess := middleware.GetSession(ctx)
+	if sess == nil {
+		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required", "Connexion requise.")
+	}
+	if sess.HaloTokens == nil {
+		slog.InfoContext(ctx, "sync_handler: sync initiale refusée, session sans jetons Halo")
+		return nil, humacore.NewError(http.StatusForbidden, errCodeHaloTokensMissing,
+			"Aucun jeton Halo pour cette session : connecte le compte Xbox.")
+	}
+	return sess.HaloTokens, nil
+}

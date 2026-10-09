@@ -1918,6 +1918,10 @@ en = "Authentication failed."
 fr = "La session Halo a expiré. Relance pour renouveler l'authentification."
 en = "The Halo session expired. Restart to renew authentication."
 
+[common.initial_sync.err_halo_tokens_missing]
+fr = "Aucun compte Xbox relié à cette session : synchronisation impossible."
+en = "No Xbox account linked to this session: sync unavailable."
+
 [common.initial_sync.err_halo_api]
 fr = "L'API Halo est temporairement indisponible. Veuillez réessayer."
 en = "The Halo API is temporarily unavailable. Please try again."
@@ -1941,6 +1945,10 @@ en = "Starting…"
 [common.initial_sync.start_action]
 fr = "Lancer la synchronisation"
 en = "Start sync"
+
+[common.initial_sync.retry]
+fr = "Réessayer"
+en = "Retry"
 
 # ─── Inscription (RegisterPage) — I1, 2026-07-05 ─────────────────────────────
 [common.auth.register_instance_closed]

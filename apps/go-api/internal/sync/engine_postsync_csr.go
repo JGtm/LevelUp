@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/deadtoken"
 )
 
 // activeRankedPlaylists retourne les playlists classées à interroger pour compléter
@@ -124,7 +125,12 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 
 	// Résoudre l'access_token Xbox Live depuis le store watcher_tokens (ADR 0023,
 	// source unique).
-	accessToken, err := e.resolveAchievementsAccessToken(ctx)
+	accessToken, gated, err := e.resolveAchievementsAccessToken(ctx)
+	if gated {
+		// Jeton marqué mort, inchangé : la porte a déjà tracé le changement d'état
+		// (paquet deadtoken) ; rien de plus par passe.
+		return achievementsSkipped
+	}
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: échec résolution access_token",
 			"gamertag", e.gamertag, "err", err)
@@ -333,19 +339,14 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
 }
 
-// resolveAchievementsAccessToken résout l'access_token Xbox Live (achievements)
-// depuis le MultiUserTokenStore (source unique ADR 0023). Délègue à
-// auth.ResolveMSAccessTokenStoreFirst (source UNIQUE de la résolution, partagée
-// avec world-enrich).
-//
-// Avant ce câblage, ce chemin lisait EXCLUSIVEMENT sync_meta et n'a jamais
-// consulté le store → il servait toujours un RT legacy et comptait la télémétrie
-// de dépréciation duckdb_oauth à chaque post-sync des 4 joueurs (incident prod
-// 2026-07-12), alors que le store watcher_tokens couvrait ces joueurs. Depuis
-// ADR 0023 Phase 5 (2026-08-25) les résidus legacy n'existent plus du tout.
-//
-// Retourne ("", nil) si aucun token n'est disponible (non fatal — skip achievements).
-func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context) (string, error) {
+// achievementsDeadTokens : la porte des jetons morts du chemin des succès Xbox, mémoire du
+// processus (les SyncEngine sont créés par passe). Cf. paquet deadtoken.
+var achievementsDeadTokens = deadtoken.New()
+
+// resolveAchievementsAccessToken résout l'access_token Xbox Live (succès) depuis le
+// MultiUserTokenStore (source unique, ADR 0023), derrière la porte des jetons morts.
+// skipped=true : jeton marqué mort et inchangé, passe sautée sans appel à Microsoft.
+func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context) (token string, skipped bool, err error) {
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(e.repoRoot).WatcherTokensDir())
-	return auth.ResolveMSAccessTokenStoreFirst(ctx, e.provider, store, e.xuid, e.gamertag)
+	return achievementsDeadTokens.Resolve(ctx, store, e.provider, e.xuid, e.gamertag)
 }

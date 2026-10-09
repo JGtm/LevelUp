@@ -7038,6 +7038,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/AsyncJobStatus'
           description: Sync démarrée
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Aucune session (code auth_required)
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: |
+            Sync initiale désactivée sur l'instance (code initial_sync_disabled), ou
+            session sans jetons Halo (code halo_tokens_missing) — jamais un 401 :
+            la session est valide.
         "409":
           content:
             application/json:
