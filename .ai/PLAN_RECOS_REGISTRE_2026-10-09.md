@@ -51,7 +51,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot B — Corrections visibles (parallèle à A)
 
-- [x] B1 (prédicat de provenance : seules les lignes nommées par réplication d une passe non publiable sont écartées ; `publishable` seul aurait vidé 53 matchs — à confirmer par le user) Vue match : `Q20KVPairs` (`platform/duckdb/queries_match.go`) lu sans filtre
+- [!] B1 (RETIRÉ le 2026-10-09 par le superviseur : aucun défaut constaté ; passes non publiables = 53 matchs à la révision killsource-2026-09-27, dont 63 lignes de bots sur 13 matchs ; les bots comptent partout) Vue match : `Q20KVPairs` (`platform/duckdb/queries_match.go`) lu sans filtre
   `publishable` (dominance, cumul FDA, victime du fil, antagonistes, « morts vengées »).
 - [x] B2 (403 `halo_tokens_missing`, garde 2 rechargements/min en sessionStorage, relecture de `/bootstrap`) Connexion : la sync initiale rend 401 `auth_required` sans tokens Halo
   (`handlers/sync_handler.go:445`) → statut non éjectant ; la coquille (`apps/web/src/routes/__root.tsx`)
