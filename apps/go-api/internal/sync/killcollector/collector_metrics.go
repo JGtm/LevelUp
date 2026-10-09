@@ -130,6 +130,22 @@ const (
 	metricAssistFenetre    = "killsource_assistant_fenetre"
 )
 
+// Compteurs de l assistant lu au fil des evenements (`facts/killsource/assist_fil.go`) : les morts
+// sans kill-event que la lecture publie, celles qu elle laisse inconnues, et la confrontation du type
+// d assistance que chaque film apprend de ses kill-events. `_lexique_ferme` compte les films ou
+// l apprentissage se ferme alors que des morts portaient le fil de leur couple.
+const (
+	metricFilNomme             = "killsource_assistant_fil_nomme"
+	metricFilSansAssistant     = "killsource_assistant_fil_sans_assistant"
+	metricFilRejete            = "killsource_assistant_fil_rejete"
+	metricFilMultiple          = "killsource_assistant_fil_multiple"
+	metricFilTrameArretee      = "killsource_assistant_fil_trame_arretee"
+	metricFilLexiqueFerme      = "killsource_assistant_fil_lexique_ferme"
+	metricFilDesaccord         = "killsource_assistant_fil_desaccord"
+	metricFilAssistantSansEv   = "killsource_assistant_fil_assistant_sans_evenement"
+	metricFilEvenementSansAsst = "killsource_assistant_fil_evenement_sans_assistant"
+)
+
 // publishKillSourceMetrics publie les compteurs de sante (ADR 0009).
 //
 // `killsource_assist_extra_count` est LE declencheur de migration vers une table fille : le jour
@@ -155,8 +171,37 @@ func publishKillSourceMetrics(res *decfilm.Result, batch persist.KillSourceBatch
 	publishBijectionProvenance(res.Roster.FilmTable)
 	publishCoupleProvenance(res.Stats.Couples)
 	publishApparProvenance(res.Stats.Appariement)
+	publishAssistFilProvenance(res)
 	if n := res.Stats.Assist.ParLaFenetre; n > 0 {
 		observability.AddInt(metricAssistFenetre, int64(n))
+	}
+}
+
+// publishAssistFilProvenance : ce que la lecture de l assistant au fil des evenements a fait du film
+// (`repli_type_d_assistance_appris_par_film` au registre).
+func publishAssistFilProvenance(res *decfilm.Result) {
+	f := res.Stats.Assist.Fil
+	ferme := 0
+	if !f.LexiqueRetenu && f.MortsAuFil > 0 {
+		ferme = 1
+	}
+	for _, p := range []struct {
+		nom string
+		val int
+	}{
+		{metricFilNomme, f.Nommes},
+		{metricFilSansAssistant, f.SansAssistant},
+		{metricFilRejete, f.Rejetes},
+		{metricFilMultiple, f.AssistantsMultiples},
+		{metricFilTrameArretee, f.TramesArretees},
+		{metricFilLexiqueFerme, ferme},
+		{metricFilDesaccord, f.Desaccords},
+		{metricFilAssistantSansEv, f.AssistantsSansEvenement},
+		{metricFilEvenementSansAsst, f.EvenementsSansAssistant},
+	} {
+		if p.val > 0 {
+			observability.AddInt(p.nom, int64(p.val))
+		}
 	}
 }
 

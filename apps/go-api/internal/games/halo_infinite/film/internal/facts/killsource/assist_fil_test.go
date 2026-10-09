@@ -25,14 +25,14 @@ func (d destinatairesFixes) Destine(i int) bool {
 }
 
 // rosterAuFil : K (0), V (1) et W (2) epingles par la table du film, les bots A (3) et B (4) par
-// BOT_METADATA.
+// BOT_METADATA, et un nom de remplissage sur l indice 5.
 func rosterAuFil() *roster {
 	return &roster{
-		names:   []string{"K", "V", "W", "343 A" + BotSuffix, "343 B" + BotSuffix},
-		perm:    []int{0, 1, 2, 3, 4},
+		names:   []string{"K", "V", "W", "343 A" + BotSuffix, "343 B" + BotSuffix, "?5"},
+		perm:    []int{0, 1, 2, 3, 4, 5},
 		pin:     map[int]int{0: 0, 1: 1, 2: 2, 3: 3, 4: 4},
 		seatPin: map[int]bool{0: true, 1: true, 2: true},
-		nPlay:   5,
+		nPlay:   6,
 	}
 }
 
@@ -70,7 +70,7 @@ func mortDeBot(victime string, pidx int) Kill {
 //	(1, 2)  assistance adressee a W            W, lu au fil
 //	(1, 3)  fil du couple sans assistance      PAS d assistant, mesure (trame entiere)
 //	(1, 4)  idem, trame arretee                on ne sait pas
-//	(1, 5)  assistance adressee a W et au bot A W nomme, un assistant en surplus
+//	(1, 5)  assistance adressee a W et au bot A W nomme, `Extra` a zero, multiple compte
 //	(1, 6)  assistance adressee au bot B       le bot B
 //	(1, 7)  aucun message au couple            on ne sait pas
 //
@@ -94,7 +94,7 @@ func TestLAssistantDUneMortDeBotSeLitAuFil(t *testing.T) {
 		connu bool
 		nom   string
 		extra int
-	}{{true, "W", 0}, {true, "", 0}, {false, "", 0}, {true, "W", 1}, {true, b, 0}, {false, "", 0}}
+	}{{true, "W", 0}, {true, "", 0}, {false, "", 0}, {true, "W", 0}, {true, b, 0}, {false, "", 0}}
 	for i, w := range attendu {
 		got := kills[i].Assist
 		if got.Known != w.connu || got.Name != w.nom || got.Extra != w.extra || kills[i].AssistLuAuFil != w.connu {
@@ -130,7 +130,7 @@ func TestUneMortAKillEventGardeSonAssistant(t *testing.T) {
 // le message d assistance du couple va a B : le film contredit son type, aucune mort ne se lit au
 // fil. Meme chose quand deux types different s adressent a l assistant.
 //
-// MUTATION QUI DOIT LE FAIRE ROUGIR : publier quand `utilisable` est faux, ou apprendre le premier
+// MUTATION QUI DOIT LE FAIRE ROUGIR : publier quand `LexiqueRetenu` est faux, ou apprendre le premier
 // type venu ([apprendreLeLexique] sans la condition d unicite).
 func TestUnFilQuiContreditSesKillEventsNeSeLitPas(t *testing.T) {
 	desaccord := killEventRec{chunk: 1, pidx: 9, fields: killEventFields{killer: 0, victim: 1, assist: 2}}
@@ -151,5 +151,58 @@ func TestUnFilQuiContreditSesKillEventsNeSeLitPas(t *testing.T) {
 		if st.MortsAuFil != 1 {
 			t.Errorf("%s : MortsAuFil = %d, attendu 1", nom, st.MortsAuFil)
 		}
+	}
+}
+
+// TestUnAssistantSansEvenementFermeLeLexique — un second kill-event a assistant (W) dont la trame,
+// lue entiere, porte le fil du couple sans le type appris : le film contredit son lexique, aucune
+// mort ne se lit au fil. Trame arretee : la contradiction ne compte pas, la mort de bot se lit.
+//
+// MUTATIONS QUI DOIVENT LE FAIRE ROUGIR : retirer `AssistantsSansEvenement == 0` de
+// `LexiqueRetenu` ([apprendreLeLexique]) ; remplacer `tousComplets(auCouple)` par vrai dans
+// [lexiqueDuFil.confronter].
+func TestUnAssistantSansEvenementFermeLeLexique(t *testing.T) {
+	second := killEventRec{chunk: 1, pidx: 8, fields: killEventFields{killer: 0, victim: 1, assist: 2}}
+	for _, complet := range []bool{true, false} {
+		c := contexteAuFil([]killEventRec{killEventAuFil(), second},
+			messageDuFil(1, typeAssistance, 0, 1, true, 2), messageDuFil(8, typeAuTueur, 0, 1, complet, 0),
+			messageDuFil(2, typeAssistance, 0, 3, true, 2))
+		kills := []Kill{mortDeBot("343 A"+BotSuffix, 2)}
+		st := c.attachAssistsDuFil(kills)
+		if lue := kills[0].Assist.Known; lue == complet || st.LexiqueRetenu == complet {
+			t.Errorf("trame du second kill-event entiere %v : mort lue %v, lexique retenu %v ; comptes %+v",
+				complet, lue, st.LexiqueRetenu, st)
+		}
+	}
+}
+
+// TestLesRefusDuFil — l evenement d assistance adresse au tueur, a la victime ou a un nom de
+// remplissage : la mort est connue, l assistant refuse sous le meme motif qu un kill-event.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer l un des trois refus de [decodeCtx.lireLAssistantDuFil].
+func TestLesRefusDuFil(t *testing.T) {
+	for dest, motif := range map[int]string{0: AssistRejectSelf, 3: AssistRejectVictim, 5: AssistRejectRoster} {
+		c := contexteAuFil([]killEventRec{killEventAuFil()},
+			messageDuFil(1, typeAssistance, 0, 1, true, 2), messageDuFil(2, typeAssistance, 0, 3, true, dest))
+		kills := []Kill{mortDeBot("343 A"+BotSuffix, 2)}
+		st := c.attachAssistsDuFil(kills)
+		if a := kills[0].Assist; !a.Known || a.Name != "" || a.Rejected != motif || st.Rejetes != 1 {
+			t.Errorf("destinataire %d : %+v ; comptes %+v — attendu connu, refuse %q", dest, a, st, motif)
+		}
+	}
+}
+
+// TestLeFilDUnAutreTueurNeSeLitPas — la trame porte le fil d un kill du bot A par W, la ligne credite
+// K : le couple ne correspond pas, la mort reste inconnue.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer la comparaison du tueur du predicat de couple de
+// [decodeCtx.attachAssistsDuFil].
+func TestLeFilDUnAutreTueurNeSeLitPas(t *testing.T) {
+	c := contexteAuFil([]killEventRec{killEventAuFil()},
+		messageDuFil(1, typeAssistance, 0, 1, true, 2), messageDuFil(2, typeAssistance, 2, 3, true, 4))
+	kills := []Kill{mortDeBot("343 A"+BotSuffix, 2)}
+	st := c.attachAssistsDuFil(kills)
+	if kills[0].Assist.Known || st.MortsAuFil != 0 {
+		t.Fatalf("la mort lit le fil d un autre tueur : %+v ; comptes %+v", kills[0].Assist, st)
 	}
 }

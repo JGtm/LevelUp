@@ -70,10 +70,9 @@ type Assist struct {
 	// MIGRATION vers une table fille — valait zero PAR CONSTRUCTION, jamais par mesure. Un
 	// garde-fou muet est pire que pas de garde-fou : il rassure.
 	//
-	// PORTEE : voir le commentaire du type. Sur une mort a kill-event, ce compteur ne voit qu un
-	// surplus porte par un SECOND KILL-EVENT ATTACHE ; il y est structurellement aveugle a un second
-	// assistant qui serait declare autrement. Sur une mort lue au fil
-	// (`killsource.Kill.AssistLuAuFil`), il compte les autres destinataires de l evenement d assistance.
+	// PORTEE : voir le commentaire du type. Ce compteur ne voit qu un surplus porte par un SECOND
+	// KILL-EVENT ATTACHE ; il est structurellement aveugle a un second assistant qui serait
+	// declare autrement. Il vaut zero sur une mort lue au fil (`killsource.Kill.AssistLuAuFil`).
 	Extra int
 }
 

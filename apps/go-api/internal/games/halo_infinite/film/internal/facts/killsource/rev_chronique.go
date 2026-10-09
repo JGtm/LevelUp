@@ -241,13 +241,17 @@ package killsource
 //
 // Ce qui change, contre `killsource-2026-10-08.2` :
 //   - le kill-event (genre 85) ne s ecrit pas quand la victime est un bot (recherche bit a bit de
-//     toutes les tetes de genre 85 sur `0a08d2f2` : aucune a victime bot au voisinage des 23 morts de
-//     bot ; vues A lues entieres sans genre 85 a ces instants) ; ces morts restaient `Known = false` ;
+//     toutes les tetes de genre 85 sur `0a08d2f2` : au couple des 23 morts de bot, une coincidence
+//     sans chaine ; la marche n en lit aucun a victime bot, trames de ces morts lues entieres) ; ces
+//     morts restaient `Known = false` ;
 //   - sur une mort sans kill-event attache, l assistant se lit au message `PlayerGameEventSmall` que le
 //     jeu adresse, au couple (tueur, victime), a chaque assistant, dans la trame du dead-state ; le type
-//     de ce message se lit par film contre ses kill-events (unique, sans desaccord) ; plusieurs
-//     destinataires : le premier ecrit est nomme, les autres dans `Extra` ; parts de degats non
-//     mesurees ; `Kill.AssistLuAuFil` le dit.
+//     de ce message s apprend par film contre ses kill-events (unique, sans desaccord), repli
+//     `repli_type_d_assistance_appris_par_film` au registre ; plusieurs destinataires : le premier
+//     ecrit est nomme, les autres comptes a part (`Extra` et `assist_extra_count` gardent leur sens) ;
+//     parts de degats non mesurees ; `Kill.AssistLuAuFil` le dit (non persiste).
+//   - les comptes de la lecture (`AssistStats.Fil`) sortent dans `cmd/killsource json`
+//     (`assistant_au_fil`) et dans les compteurs `killsource_assistant_fil_*` du collecteur.
 // PREUVE (2026-10-09, `cmd/killsource json`, binaire de `fe1f3d954` contre binaire du lot, 8 films a
 // bots de 2024-10 a 2026-10) : lignes, instants, tueurs, victimes, sources et assistances deja
 // connues identiques ; morts de bot `Known` 4 -> 209 sur 285 (79 assistants nommes, dont un bot) ;

@@ -50,7 +50,7 @@ type Kill struct {
 	// cote. `types.Assist.Known = false` veut dire QU ON NE SAIT PAS, jamais << pas d assistant >>.
 	Assist types.Assist
 	// AssistLuAuFil : `Assist` est lu au fil des evenements de la trame, sans kill-event (`assist_fil.go`) :
-	// parts de degats non mesurees, `Assist.Extra` = les autres destinataires de l assistance.
+	// parts de degats non mesurees, `Assist.Extra` a zero. Non persiste : aucun lecteur ne le demande.
 	AssistLuAuFil bool
 
 	// KillerDamage : la part de degats du TUEUR, en pourcentage entier, lue dans le MEME

@@ -35,8 +35,9 @@ package killsource
 //	aucun, trame lue entiere                PAS d assistant, mesure
 //	aucun, trame arretee                    Known reste faux (le message pouvait suivre l arret)
 //	plusieurs destinataires                 tous ont assiste : le premier ecrit est nomme, les
-//	                                        autres se comptent dans `Extra` (aucune part de degats
-//	                                        ne dit lequel un kill-event aurait nomme)
+//	                                        autres ne se comptent que dans [AssistFilStats] (aucune
+//	                                        part de degats ne dit lequel un kill-event aurait nomme ;
+//	                                        `Extra` garde son sens de kill-events attaches)
 //
 // Les parts de degats ne s y lisent pas : elles restent non mesurees.
 
@@ -110,9 +111,8 @@ func destinatairesDuType(rs []filRec, typ uint32) []int {
 
 // lexiqueDuFil : le type de l evenement d assistance d un film, et ce qui le confronte.
 type lexiqueDuFil struct {
-	// typ : le type appris ; utilisable dit que le film l etablit sans le contredire.
-	typ        uint32
-	utilisable bool
+	// typ : le type appris ([AssistFilStats.LexiqueRetenu] dit s il sert).
+	typ uint32
 	// Les comptes de la confrontation sont ceux de [AssistFilStats].
 	stats AssistFilStats
 }
@@ -143,7 +143,7 @@ func apprendreLeLexique(recs []killEventRec, fil *filScan) lexiqueDuFil {
 	for _, r := range recs {
 		lx.confronter(r, fil.auCouple(r.chunk, r.pidx, coupleDe(r.fields)))
 	}
-	lx.utilisable = lx.stats.Desaccords == 0 && lx.stats.AssistantsSansEvenement == 0
+	lx.stats.LexiqueRetenu = lx.stats.Desaccords == 0 && lx.stats.AssistantsSansEvenement == 0
 	return lx
 }
 
@@ -203,7 +203,7 @@ func (c *decodeCtx) attachAssistsDuFil(kills []Kill) AssistFilStats {
 			continue
 		}
 		st.MortsAuFil++
-		if !lx.utilisable {
+		if !lx.stats.LexiqueRetenu {
 			continue
 		}
 		c.lireLAssistantDuFil(k, destinatairesDuType(auCouple, lx.typ), tousComplets(auCouple), &st)
@@ -223,7 +223,9 @@ func (c *decodeCtx) lireLAssistantDuFil(k *Kill, dest []int, complet bool, st *A
 		i := dest[0]
 		k.Assist.Known, k.AssistLuAuFil, k.Assist.Index = true, true, i
 		if len(dest) > 1 {
-			k.Assist.Extra = len(dest) - 1
+			// `Extra` reste a zero : `assist_extra_count` dit « deux kill-events attaches nomment
+			// des assistants differents » et declenche la migration vers une table fille ; les
+			// autres destinataires ne se comptent qu ici.
 			st.AssistantsMultiples++
 		}
 		nom := c.nomA(i, k.TimeMS)
@@ -255,6 +257,9 @@ func (c *decodeCtx) nomA(i, ms int) string {
 
 // AssistFilStats : les comptes de la lecture de l assistant au fil des evenements. AUCUN RATIO.
 type AssistFilStats struct {
+	// LexiqueRetenu : le film etablit son type d assistance sans le contredire ; faux, aucune mort ne
+	// se lit au fil (`repli_type_d_assistance_appris_par_film` ne se declenche pas).
+	LexiqueRetenu bool
 	// TypesAppris : types distincts que le fil adresse, au couple d un kill-event, a l assistant
 	// qu il nomme. Le lexique n existe que s il vaut 1. Apprentissages : les messages qui l etablissent.
 	TypesAppris, Apprentissages int
@@ -271,8 +276,8 @@ type AssistFilStats struct {
 	MortsAuFil int
 	// Nommes, SansAssistant, Rejetes : ce que la lecture a publie (`Known = true`).
 	Nommes, SansAssistant, Rejetes int
-	// AssistantsMultiples : morts publiees avec plusieurs assistants (le premier nomme, les autres dans
-	// `Extra`). TramesArretees : morts au fil laissees `Known = false`, la trame arretee avant son
+	// AssistantsMultiples : morts publiees avec plusieurs assistants, le premier ecrit nomme (`Extra`
+	// reste a zero). TramesArretees : morts au fil laissees `Known = false`, la trame arretee avant son
 	// terminateur ne portant aucun evenement d assistance.
 	AssistantsMultiples, TramesArretees int
 }

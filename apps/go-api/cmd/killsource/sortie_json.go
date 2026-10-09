@@ -27,7 +27,27 @@ type sortieJSON struct {
 	Couverture  couvertureJSON  `json:"couverture"`
 	Sante       santeJSON       `json:"sante"`
 	Publication publicationJSON `json:"publication"`
+	AuFil       auFilJSON       `json:"assistant_au_fil"`
 	Morts       []mortJSON      `json:"morts"`
+}
+
+// auFilJSON : la lecture de l assistant des morts sans kill-event au fil des evenements, et la
+// confrontation du type d assistance que le film apprend de ses kill-events
+// (`repli_type_d_assistance_appris_par_film`). `lexique_retenu` faux : aucune mort ne se lit au fil.
+type auFilJSON struct {
+	LexiqueRetenu           bool `json:"lexique_retenu"`
+	TypesAppris             int  `json:"types_appris"`
+	Apprentissages          int  `json:"apprentissages"`
+	Accords                 int  `json:"accords"`
+	Desaccords              int  `json:"desaccords"`
+	AssistantsSansEvenement int  `json:"kill_events_a_assistant_sans_evenement"`
+	EvenementsSansAssistant int  `json:"kill_events_sans_assistant_avec_evenement"`
+	MortsAuFil              int  `json:"morts_au_fil"`
+	Nommes                  int  `json:"assistants_nommes"`
+	SansAssistant           int  `json:"sans_assistant_mesure"`
+	Rejetes                 int  `json:"assistants_refuses"`
+	AssistantsMultiples     int  `json:"morts_a_plusieurs_assistants"`
+	TramesArretees          int  `json:"trames_arretees"`
 }
 
 type catalogueJSON struct {
@@ -227,6 +247,7 @@ func construireJSON(r *rapport) sortieJSON {
 		Couverture:  couvertureDeJSON(res.Coverage),
 		Sante:       santeDeJSON(res),
 		Publication: publicationDeJSON(res),
+		AuFil:       auFilJSON(res.Stats.Assist.Fil),
 		Morts:       make([]mortJSON, 0, len(res.Kills)),
 	}
 	for _, k := range res.Kills {

@@ -69,3 +69,22 @@ func TestLeFilDesEvenementsSeRangeAvecSesDestinataires(t *testing.T) {
 		t.Errorf("fil range %+v, attendu %+v", p.VueA.Fil, attendu)
 	}
 }
+
+// TestLeCanalDesKillsDitSiLaTrameEstLueEntiere : le canal rend chaque message du fil d une trame avec
+// l etat de sa vue A — `Complet` seulement quand la lecture a atteint son terminateur.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : deriver `Complet` d autre chose que `VueTerminee` dans
+// [canalDesKills.Tete] (constant, ou « liste annoncee »).
+func TestLeCanalDesKillsDitSiLaTrameEstLueEntiere(t *testing.T) {
+	e := lecture.EvenementDeFil{Type: 70, Destinataires: 1 << (ParticipantsDuFil - 1), Tueur: 1, Victime: 2}
+	for etat, complet := range map[lecture.EtatDeVue]bool{lecture.VueTerminee: true, lecture.VueArretee: false} {
+		c := nouveauCanalDesKills(nil)
+		var p lecture.Paquet
+		p.Debut = lecture.DebutParVueA
+		p.VueA.Etat, p.VueA.Genres, p.VueA.Fil = etat, []uint8{GenreEvenementJoueurCourt}, []lecture.EvenementDeFil{e}
+		c.Tete(&p)
+		if len(c.fil) != 1 || c.fil[0].Complet != complet || c.fil[0].Evenement != e || !c.fil[0].Destine(0) {
+			t.Errorf("etat %d : fil %+v, attendu un message complet=%v", etat, c.fil, complet)
+		}
+	}
+}
