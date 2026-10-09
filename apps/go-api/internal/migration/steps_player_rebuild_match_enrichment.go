@@ -34,7 +34,7 @@ import (
 // était invoqué (exposé via cmd/rebuild_pme_art, levelup rebuild-pme-art).
 // On délègue désormais :
 //   - table legacy (id absent)      → swap CTAS vers append-only (id seq + stage),
-//   - table déjà append-only        → refresh vue _latest + idx_pme_match_lookup.
+//   - table déjà append-only        → refresh vue _latest.
 //
 // Plus aucune PK(match_id) ni index muté → aucune corruption ART possible.
 //

@@ -1884,3 +1884,11 @@ refusionner, rejouer l'étape 0).
   contre nouvelle tête) : seuls `a349fea8` et `a521164d` changent (les 4 sélections tues). ADR 0037 :
   nouvelle cause d'arrêt (IR-4), débordement et sélection (2.7.d1). Découverte D-31. D1.4.6 et D1.4.7
   restent au superviseur.
+- 2026-10-09 (lot D, consigne du superviseur) : REFUSION de `origin/feat/v75` `46f203b09` (lot
+  `feat/koth-colline`, schéma 92, aucune révision de grammaire). Conflits : chronique du document (leur v92
+  gardée telle quelle, la mienne renumérotée **v93** avec sa note), justification de `structure_test.go`,
+  plafonds de l'exception écrite (3 212 → 3 255, 1 434 → 1 439), golden de forme, fixtures de contrat et
+  manifeste (repris de `feat/v75` puis régénérés au schéma 93 ; goldens d'assemblage et de forme : seule la
+  ligne du schéma diffère de `feat/v75`). **`SchemaVersion` 93** ; `grammar-2026-10-09.3`,
+  `killsource-2026-10-09`, `objectives-2026-09-27` inchangés (gardes de révision vertes). G-film, archlint,
+  vet avec et sans `research`, golangci-lint, typecheck et lint web, vitest du rejeu : verts.

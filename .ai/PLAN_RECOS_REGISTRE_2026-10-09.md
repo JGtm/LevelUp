@@ -65,30 +65,30 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot C — Fiabilité des données (après A et B ; relecture adversariale)
 
-- [ ] C1 `cmd/levelup/cmd_restore_csr.go:101` : DELETE sur `match_skill_rank` (append-only, ADR 0026).
-- [ ] C2 Index secondaires `idx_lch_*`, `idx_pme_match_lookup`, `idx_pcs_lookup` : réexamen par
+- [x] C1 (insertion des seuls CSR absents par AppendOnlyLUSRPersister ; `--mode` retiré) `cmd/levelup/cmd_restore_csr.go:101` : DELETE sur `match_skill_rank` (append-only, ADR 0026).
+- [x] C2 (mesure 30/30 sans index utile ; `drop_player_secondary_art_indexes_v1` + soin + ratchet) Index secondaires `idx_lch_*`, `idx_pme_match_lookup`, `idx_pcs_lookup` : réexamen par
   `EXPLAIN ANALYZE` (recette MSR) ; retrait par migration + soin convergent s'ils ne servent pas ;
   sept fixtures qui créent encore des `idx_msr_*`.
-- [ ] C3 Écrivains LUSR en ligne de commande sans alignement des séquences
+- [x] C3 (porte `OpenReadWriteShared`, réalignement après swap de la purge) Écrivains LUSR en ligne de commande sans alignement des séquences
   (`cmd/recompute_perfnote`, `cmd/h5-lusr-backfill`, `cmd/lusr_v2_canonical…`) → porte `platform/duckdb`.
-- [ ] C4 Doublons d'ids dans des PK déclarées et ids NULL des bases joueur : mesure sur copies,
+- [x] C4 (`repair_player_append_only_ids_v1`, swap transactionnel ; vues `_latest` identiques sur copies) Doublons d'ids dans des PK déclarées et ids NULL des bases joueur : mesure sur copies,
   remède proposé ; réparation seulement si elle est sûre (sinon `[!]` argumenté).
-- [ ] C5 Quatre lignes parasites de `match_vehicle_takes` (match_id concaténé) : trouver et
+- [x] C5 (écrivain = ancien `--match` de backfill-vehicle-takes, corrigé le 01/10 ; `shared_purge_composite_vehicle_takes_v1`) Quatre lignes parasites de `match_vehicle_takes` (match_id concaténé) : trouver et
   corriger l'écrivain, puis retirer les lignes (sauvegarde avant).
-- [ ] C6 `match_registry.mode_category` possiblement faux : mesurer l'ampleur (copie), décider.
-- [ ] C7 Clé héritée `oauth_refresh_token` dans `sync_meta` de 4 bases joueur : purge par migration
+- [ ] C6 (3 111 lignes sur 9 230 divergent ; correction DEMANDÉE par le user le 2026-10-09, lot F confié à un agent Sonnet à sa demande) `match_registry.mode_category` possiblement faux : mesurer l'ampleur (copie), décider.
+- [x] C7 (`purge_sync_meta_legacy_auth_keys_v1`, swap ; 4 bases) Clé héritée `oauth_refresh_token` dans `sync_meta` de 4 bases joueur : purge par migration
   player (aucun code ne la lit, ADR 0023).
 - Gate : `go test -tags=integration` des paquets persist/migration/ops touchés, garde-rails ART verts.
 
 ## Lot D — Démo (après A et B, parallèle à C ; relecture adversariale)
 
-- [ ] D1 Garde « démo en lecture seule » générale avec liste blanche des POST de lecture ;
+- [x] D1 (middleware `DemoReadOnly` à la racine, 403 unique, ratchet sur le routeur démo, 26 écritures nommées laissées passer) Garde « démo en lecture seule » générale avec liste blanche des POST de lecture ;
   un seul contrat de refus (403 `demo_mode_forbidden`) ; `PATCH /profiles/{p}/titles/{t}/sync`,
   `POST /watcher/auth/start` et les actions admin couvertes.
-- [ ] D2 `internal/ops/seed_demo_corpus.go` : `UPDATE kill_positions` sur table append-only →
+- [x] D2 (anonymisation à la copie par `SELECT * REPLACE`, garde-rail `internal/ops` ; correctif `first_sync_by` en cours) `internal/ops/seed_demo_corpus.go` : `UPDATE kill_positions` sur table append-only →
   anonymiser à la copie ; commentaire faux de `seed_demo.go` sur `kill_positions` ; garde-rail
   d'écriture étendu à `internal/ops`.
-- [ ] D3 Rejeux de la démo (D-1 à D-3) : choix d'un match par mode, films et artefacts embarqués
+- [x] D3 (10 modes figés au manifeste démo, films et artefacts embarqués, recuisson auto prouvée, `ReplayGate`, noms remplacés dans le document servi) Rejeux de la démo (D-1 à D-3) : choix d'un match par mode, films et artefacts embarqués
   par `seed-demo`, service en mode démo, recuisson automatique à la montée de schéma, noms masqués
   par l'interface.
 - Gate : tests du garde démo (chaque mutation refusée, chaque lecture permise), démo lancée en
@@ -129,8 +129,28 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-09 : `feat/recos-a` et `feat/recos-b` fusionnées dans `feat/v75` (accord du user) ; B1 retiré par revert (faux constat). Serveur local arrêté, 35 rejeux cuits (4 Interference, 4 Serenity - Ranked, 27 Vacancy - Ranked, un film par processus, `backfill-replay --one`), `backfill-killsource --match … --force --workers 1` sur ces 35 matchs, serveur relancé : migrations player Halo 5 appliquées au boot (12, 12, 4, 4 étapes).
 
+- 2026-10-09 : lot C rendu (`feat/recos-c`, 7 commits, CI verte) ; deux relectures adversariales lancées (écritures anti-ART, couverture des tests).
+
+- 2026-10-09 : lot D rendu (`feat/recos-d`, 4 commits, CI verte) ; fuite de vrais gamertags par `match_registry.first_sync_by` renvoyée à l'exécutant avec balayage systématique des colonnes d'identité ; Extraction et Escalation Slayer sans rejeu démo (films d'autres joueurs), Castle Wars écarté.
+
+- 2026-10-09 : décisions du user sur la démo : masquage des noms côté serveur validé ; dix rejeux suffisent (Extraction, Escalation Slayer et Castle Wars non ajoutés).
+
+- 2026-10-09 : relectures du lot C (anti-ART, couverture) sans défaut ; 4 trous de tests comblés (9 mutations rouges, `6ab6a40e0`). Fusion de `feat/recos-c` (accord du user), sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go), redémarrage : migrations jouées sans erreur (4 lignes composites retirées, ids réparés chez Chocoboflor, Madina97294, XxDaemonGamerxX, 4 clés héritées retirées).
+
 ## Découvertes
 
+- (lot D) Variante « Castle Wars » reconnue par aucune famille de mode (à vérifier dans la normalisation des modes).
+- (lot D) `POST …/prestige/challenges/{id}/suggest-next` classé écriture alors que c'est une lecture (refusé en démo).
+- (lot D) E2E `media-like-bug.spec.ts` suppose un like possible en démo.
+- (lot D) DB-39 (`dir_exists`/`db_exists` faux dans Identités en démo) et DB-41 (CLI en `LEVELUP_DEMO_MODE=true` qui écrit dans la fixture) restent ouverts.
+- (lot D) `weapon_kills` encore déclarée dans la liste d'extraction de la démo alors que la table n'existe plus.
+- (lot D) Déploiement : provisionner une fois `data/demo/replays/` (~310 Mo) sur le VPS ; recuisson démo sur le VPS à chaque montée de schéma (plafond 3 Gio).
+- (lot C) `cmd/lusr_v2_replay` et `cmd/lusr_v2_canonical_backfill` font un DELETE sur `player_skill_state_v2` (append-only partagée) ; `cmd/` hors du ratchet `TestNoRawDeleteOnAppendOnlyTables` ; chemins construits à la main dans `lusr_v2_canonical_backfill`.
+- (lot C) `cmd/backfill-csr-history` et `cmd/h5-enrich` ouvrent les bases joueur par `sql.Open` (risque de séquence).
+- (lot C) Base Halo Infinite de Chocoboflor : sept tables prestige sans PK ; `written_at` en TIMESTAMPTZ sur `match_skill_rank` et `player_csr_snapshots`.
+- (lot C) `sync/invariants/invariants.go:376` compare `mode_category` à `firefight` en minuscules : le filtre n'exclut rien.
+- (lot C) `idx_match_vehicle_takes_match` : index secondaire sur une table append-only partagée, même question que C2.
+- (lot C) `internal/ops/seed_demo_sync_meta.go` : commentaire sur les valeurs résiduelles de `sync_meta` faux après C7.
 - (lot B) `SquadRepo.LoadKVPairs` (Q32c) et `sync/engagement.go` lisent les paires sans le prédicat de B1.
 - (lot B) `internal/worldenrich/wiring.go` résout un access token sans la porte des jetons morts.
 - (lot B) Importer un jeton (SSO, token-import, token-capture) ne lève pas `reauth_required` ni `last_auth_error_*` : bannière affichée jusqu'au prochain refresh réussi.

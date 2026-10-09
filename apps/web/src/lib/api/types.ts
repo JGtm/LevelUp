@@ -2997,9 +2997,10 @@ export type ReplayObjectiveObjectPoint = components['schemas']['ObjectiveObjectP
 // `gauge` (schéma 18) est LA JAUGE DE CAPTURE EN DIRECT : la série datée `[{t, v}]` de la valeur
 // de la jauge PENDANT ses rampes (allégée : un point par variation >= 0,02 ou par seconde de
 // rampe, rien hors rampe, chaque rampe fermée par son retour à zéro), sur la même échelle que
-// `progress`, sur les modes à zones SIMULTANÉES seulement (jamais sur une colline de KOTH, où le
-// canal est un compteur de transfert). Le rendu la lit en escalier — la dernière valeur tient
-// jusqu'au point suivant, une seconde après le dernier de la série. Absente sur un artefact de schéma
+// `progress`. Sur une colline (schéma 92) c est la capture de la colline active, qui redescend
+// aussi pas à pas quand le camp tenant la perd (`gaugeRamps[].draining`). Le rendu la lit en
+// escalier — la dernière valeur tient jusqu'au point suivant, une seconde après le dernier de la
+// série. Absente sur un artefact de schéma
 // <= 17 — et le rendu ne dessine alors AUCUN arc : le sommet statique se lisait comme une jauge.
 export type ReplayZoneState = components['schemas']['ZoneState']
 export type ReplayZoneSpan = components['schemas']['ZoneSpan']

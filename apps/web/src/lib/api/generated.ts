@@ -14107,6 +14107,7 @@ export interface components {
         ZoneGaugeRamp: {
             /** Format: int64 */
             capturingTeam?: number;
+            draining?: boolean;
             /** Format: int64 */
             t0: number;
             /** Format: int64 */

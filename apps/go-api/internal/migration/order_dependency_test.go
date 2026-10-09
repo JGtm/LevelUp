@@ -53,6 +53,21 @@ var stepDependencies = map[string]string{
 	// qui les posait, lusr_chain_rework_v1 (rebuild CTAS qui reposait les 3 index jusqu'au
 	// 2026-09-27) — même raisonnement que drop_psa_secondary_art_indexes_v1.
 	"drop_msr_secondary_art_indexes_v1": "lusr_chain_rework_v1",
+	// drop_player_secondary_art_indexes_v1 (2026-10-09, plan des recommandations, lot C2) ne
+	// crée aucune de ses tables : il retire idx_lch_*, idx_pme_match_lookup et idx_pcs_lookup.
+	// Il DOIT suivre le dernier step qui en posait un, create_player_csr_snapshots_player_v1
+	// (les créateurs de lusr_component_history et la conversion de player_match_enrichment le
+	// précèdent aussi dans canonicalOrder).
+	"drop_player_secondary_art_indexes_v1": "create_player_csr_snapshots_player_v1",
+	// repair_player_append_only_ids_v1 (2026-10-09, lot C4) reconstruit les cinq tables
+	// append-only joueur sans en créer aucune : il DOIT suivre leur dernier créateur.
+	"repair_player_append_only_ids_v1": "create_player_csr_snapshots_player_v1",
+	// shared_purge_composite_vehicle_takes_v1 (2026-10-09, lot C5) reconstruit
+	// match_vehicle_takes sans la créer : son créateur DOIT précéder.
+	"shared_purge_composite_vehicle_takes_v1": "shared_create_vehicle_takes",
+	// purge_sync_meta_legacy_auth_keys_v1 (2026-10-09, lot C7) reconstruit sync_meta sans la
+	// créer : la baseline joueur, qui la crée, DOIT précéder.
+	"purge_sync_meta_legacy_auth_keys_v1": "create_baseline_player_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

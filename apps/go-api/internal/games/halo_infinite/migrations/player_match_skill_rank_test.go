@@ -18,7 +18,9 @@ import (
 )
 
 // setupLegacyMatchSkillRank crée une DuckDB :memory: avec l'ancien schéma (PK simple
-// sur match_id) + N rows pour simuler une player DB pré-migration.
+// sur match_id) + N rows pour simuler une player DB pré-migration. Les deux idx_msr_* sont
+// ceux de ce schéma d'époque : la conversion doit les faire disparaître (fixture d'état
+// LEGACY, pas du schéma courant, qui n'a plus d'index secondaire).
 func setupLegacyMatchSkillRank(t *testing.T, rowCount int) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")

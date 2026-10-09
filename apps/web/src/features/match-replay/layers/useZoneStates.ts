@@ -36,6 +36,7 @@ import { msToFrames } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   ZONE_GAUGE_HOLD_MS,
+  staticObjectivesOf,
   zoneCatalogMatches,
   zoneElementsOf,
   type ZoneStatesLayerInput,
@@ -51,6 +52,11 @@ export interface ReplayZoneStates extends ZoneStatesLayerInput {
    * `team` est DÉJÀ arbitré côté serveur (Bastion = neutre).
    */
   colorOfTeam: (team: number) => string
+  /**
+   * Les objectifs que le calque STATIQUE dessine (`staticObjectivesOf`) : sans les collines d'un
+   * document à collines, que ce calque-ci peint seul pendant leurs intervalles.
+   */
+  staticElements: readonly ObjectiveElementReady[]
 }
 
 export function useZoneStates(
@@ -79,6 +85,14 @@ export function useZoneStates(
   const zoneElements = useMemo(() => zoneElementsOf(objectives), [objectives])
   const joinable = zoneCatalogMatches(doc.coverage?.zones?.catalog, zoneElements.length)
   const gaugeHoldFrames = useMemo(() => msToFrames(ZONE_GAUGE_HOLD_MS, doc), [doc])
+  const staticElements = useMemo(
+    () => staticObjectivesOf(objectives, doc.zoneStates, joinable),
+    [objectives, doc.zoneStates, joinable],
+  )
+  const z = useMemo(
+    () => ({ min: doc.bounds.minZ ?? 0, max: doc.bounds.maxZ ?? 0 }),
+    [doc.bounds.minZ, doc.bounds.maxZ],
+  )
   /**
    * L'ENCRE D'UN CAMP VIENT DES RÉGLAGES DE L'UTILISATEUR, plus du référentiel du jeu
    * (retour du 2026-08-26 : « le socle de l'équipe est en bleu alors que j'utilise une
@@ -127,7 +141,7 @@ export function useZoneStates(
     [allegiance, teamColorOf, neutral],
   )
   return useMemo(
-    () => ({ zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames }),
-    [zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames],
+    () => ({ zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames, staticElements, z }),
+    [zoneElements, joinable, style, colorOfTeam, gaugeHoldFrames, staticElements, z],
   )
 }

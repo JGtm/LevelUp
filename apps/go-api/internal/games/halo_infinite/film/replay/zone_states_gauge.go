@@ -32,10 +32,8 @@ package replay
 //	                     zone_states.go, et pourquoi ce n'est plus l'excursion du match) — arrondie
 //	                     a trois decimales, et T est STRICTEMENT croissant.
 //
-// EN KOTH, RIEN : la serie n'est publiee que sur les modes a zones SIMULTANEES (Bastion), la ou le
-// tag 3 est la vraie rampe de capture (97 % des captures precedees d'une rampe, lot C-bis). Sur une
-// colline, le meme tag est un compteur de transfert d'environ une seconde (volet 1 du lot C-ter),
-// pas la progression de garde : `buildHillStates` ne pose aucune serie, et le dit.
+// CE FICHIER EST LA JAUGE DES ZONES SIMULTANEES (Bastion). La jauge d une COLLINE, qui redescend
+// aussi pas a pas, a sa propre publication : zone_states_hill_gauge.go.
 
 import (
 	"cmp"

@@ -39,10 +39,10 @@
  * « avant l'apparition d'une NOUVELLE zone », pas l'ouverture du match. Il n'a pas de camp —
  * la colline n'appartient à personne quand elle se déplace.
  *
- * **SÉCURISATION DE LA COLLINE** (2026-08-30). En Roi de la colline il n'y a pas de capture :
- * la colline se prend instantanément et c'est la GARDE qui marque. Le déclencheur est donc
- * l'intervalle `active` POSSÉDÉ, pas une rampe de jauge — laquelle n'existe jamais sur une
- * colline (`ZoneState.Gauge` côté Go). Détail et plancher : `ZONE_SECURING_MIN_MS`.
+ * **SÉCURISATION DE LA COLLINE** (2026-08-30). En Roi de la colline c'est la GARDE qui marque,
+ * une fois la colline prise (capture d'environ une seconde). Le déclencheur est donc l'intervalle
+ * `active` POSSÉDÉ, pas une rampe de jauge : les rampes d'une colline ne sonnent pas.
+ * Détail et plancher : `ZONE_SECURING_MIN_MS`.
  *
  * ## Sans camp allié, trois des quatre se taisent
  *
@@ -99,13 +99,11 @@ export const ZONE_SOUND_STEMS = {
    * médias disjoints, la signature d'un couple `_team`/`_enemy`).
    *
    * POURQUOI CE N'EST PAS `capturing`, ET POURQUOI LES DEUX NE SE MARCHENT PAS DESSUS. En Roi
-   * de la colline il n'y a pas de capture : la colline se prend instantanément et c'est la
-   * GARDE qui marque (`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` § 1.1). Le Go le dit
-   * dans le même sens et c'est ce qui rend les deux règles disjointes SANS garde explicite :
-   * `ZoneState.Gauge` est TOUJOURS ABSENTE sur une colline (`document_zones.go` — le canal y
-   * est un compteur de transfert d'environ une seconde, `coverage.zones.gaugePoints` vaut 0).
-   * `capturing` naît d'une rampe de jauge, elle ne peut donc pas se déclencher en KOTH ; la
-   * sécurisation naît d'un intervalle `active` possédé, qui n'existe QUE là.
+   * de la colline, la prise est une capture d'environ une seconde et c'est la GARDE qui marque
+   * (`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` § 1.1). La jauge d'une colline est publiée
+   * depuis le schéma 92, mais `zoneSoundEvents` ne lit PAS les rampes d'une colline (zone dont
+   * les intervalles sont `active`) : `capturing` reste la capture de Bastion, et la sécurisation
+   * naît d'un intervalle `active` possédé, qui n'existe QUE sur une colline.
    *
    * LE SON EST SERVI LONG (5,5 s) ET JOUÉ UNE SEULE FOIS. C'est une règle de l'utilisateur, et
    * elle vient de ce qu'il entend : « le son est à prolonger le temps que la sécurisation est
@@ -201,6 +199,8 @@ export function zoneSoundEvents(
   }
 
   for (const z of zones) {
+    // UNE COLLINE NE SONNE PAS SA JAUGE : sa grammaire est la sécurisation (ci-dessous).
+    if (z.spans.some((s) => s.active)) continue
     for (const r of rampesDeJauge(z.gauge ?? [])) {
       const arrivee = proprietaireApres(z.spans, r.fin)
       if (arrivee === undefined) {
@@ -244,7 +244,8 @@ export const ZONE_SECURING_MIN_MS = 3000
  * colline ACTIVE.
  *
  * Le déclencheur est `ZoneSpan.active` + `owner` : c'est le seul canal qui parle en Roi de la
- * colline, la jauge y étant toujours absente. Un intervalle neutre (`owner` nul) ne sonne pas —
+ * colline (sa jauge, publiée depuis le schéma 92, ne sonne pas). Un intervalle neutre (`owner`
+ * nul) ne sonne pas —
  * personne ne sécurise. Sans camp allié résolu, tout se tait : même règle que partout ailleurs
  * dans cette chaîne, le rejeu ne devine pas un camp.
  */

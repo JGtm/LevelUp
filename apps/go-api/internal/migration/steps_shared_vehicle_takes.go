@@ -60,6 +60,15 @@ func init() {
 			"(derniere passe ENTIERE par match)",
 		ApplySchema: applyMatchVehicleTakes,
 	})
+	// Enregistré juste après son créateur, dans le même fichier : l'ordre du registre suit
+	// canonicalOrder (steps_shared_vehicle_takes_purge_composite.go).
+	Register(Migration{
+		Name:     "shared_purge_composite_vehicle_takes_v1",
+		TargetDB: TargetShared,
+		Description: "Retire de match_vehicle_takes (swap, sans DELETE) les lignes dont le match_id " +
+			"est une liste de préfixes écrite par l'ancien --match de backfill-vehicle-takes",
+		ApplySchema: applyPurgeCompositeVehicleTakes,
+	})
 }
 
 // applyMatchVehicleTakes cree la sequence, la table, son index et sa vue. Idempotente.

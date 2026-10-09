@@ -3180,11 +3180,43 @@ package replay
 //	                attribuees ; ses quatre autres occupations sans date sont des apparitions
 //	                remplacees 30,1 s plus tard par une seconde apparition (aucune prise au socle).
 //
-// v92 (2026-10-09, representation intermediaire 2.7.d1, plan
+// v92 (2026-10-09, lot `feat/koth-colline`, signalement du user sur son 2v2 Roi de la colline) : LA
+// COLLINE A SA VRAIE PLACE, ET SA CAPTURE SE VOIT.
+//
+//	`zoneStates`    la colline d une periode du designateur se place la ou se tient le camp que le
+//	                canal de propriete nomme (presence en frames, seuil 50 % des frames tenues
+//	                observees ; sous le seuil la periode est ecartee, `unpaired`) ; la grappe des
+//	                positions pendant les montees de la jauge n est plus qu un repli nomme
+//	                (`repli_colline_votes_sans_garde`). Elle partait du retour a zero de la capture
+//	                precedente et posait une colline sur la precedente (zone_states_hill_garde.go).
+//	`zoneStates[].gauge` / `gaugeRamps`   publies sur les collines : la jauge de capture du bloc
+//	                de l objet de mode pendant les periodes actives, et des segments a pousseur
+//	                constant — la prise (camp lu) ou la vidange (`draining`, champ neuf : le camp
+//	                qui tient la colline la perd). Une variante a prise instantanee (classe) n emet
+//	                aucune jauge (zone_states_hill_gauge.go).
+//	1re colline     la 1re periode commence au COUP D ENVOI (`t0FilmMs`) ramene dans la fenetre des
+//	                images-cles qui encadrent la creation de l objet de mode, non plus au premier
+//	                contact d un joueur (repli nomme `repli_colline_premiere_au_coup_d_envoi` : le
+//	                film ne date pas la creation). Sur 11 films la fenetre contient le coup d envoi.
+//
+//	CE QUI MONTE    `SchemaVersion` 91 -> 92. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
+//	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
+//	                quels.
+//
+//	LE PARC         un artefact 91 dont les faits sont sur disque : verdict `republier`.
+//
+//	MESURE          11 films a colline recuits un a un (Arene, Doubles, Classe) : au plus une
+//	                colline active par frame, aucune periode fusionnee avec la suivante (4 films sur
+//	                11 en avaient), 0 repli sans garde ; les trois films classes de Lattice rendent
+//	                la meme sequence de collines. Temoin `0d9a9af9` : 3e periode sur la colline 4
+//	                (avant : 2, celle de la 4e). Detail : `.ai/PLAN_KOTH_REJEU_2026-10-09.md`.
+//
+// v93 (2026-10-09, representation intermediaire 2.7.d1, plan
 // `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
 // BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
 // ECRITE v91 sur la branche `feat/ri-lk-images-cles`, RENUMEROTEE v92 a la fusion de `feat/v75`
-// `f516d4bf4` : le lot `feat/aj-needler`, fusionne avant elle, a pris le rang 91.
+// `f516d4bf4` (le lot `feat/aj-needler` a pris 91), puis v93 a celle de `46f203b09` (le lot
+// `feat/koth-colline` a pris 92).
 //
 //	Aucun champ neuf ; le CONTENU de `loadouts`, `inventory`, `grenadeReads` et `abilities` (`kf`)
 //	change. Un record bipede d image-cle que la regle d admission retient (ferme ou i22 a quatre
@@ -3196,12 +3228,12 @@ package replay
 //	0 ; `d` = emplacement desire en main principale (i42 param[1]), absent quand le film n en
 //	designe aucun ; rang de capacite publie dans 16..23 seulement.
 //
-//	CE QUI MONTE    `SchemaVersion` 91 -> 92 ; `grammar.Rev` `grammar-2026-10-09.2` ->
+//	CE QUI MONTE    `SchemaVersion` 92 -> 93 ; `grammar.Rev` `grammar-2026-10-09.2` ->
 //	AVEC ELLE       `grammar-2026-10-09.3`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
 //	                complements a revision constante) et `SchemaDesFaits` (11) ne bougent pas : la
 //	                forme des faits ne change pas, la publication rejouee depuis eux est identique.
 //
-//	LE PARC         un artefact 91 ou d avant porte `grammar-2026-10-09` ou anterieure : verdict
+//	LE PARC         un artefact 92 ou d avant porte `grammar-2026-10-09` ou anterieure : verdict
 //	                `redecoder`.
 //
 //	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`, `54b47a2b8`), 19 temoins : aucun oracle

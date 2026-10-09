@@ -111,9 +111,9 @@ schema_version = 8
 "Strongholds:Arena"          = 200
 "Arena:Strongholds"          = 200
 "Ranked:Strongholds"         = 250
-# KOTH : il n'y a pas de capture, la colline se marque a la GARDE — et le score EST le
-# compte de collines gagnees. Plateaux mesures le 2026-08-30 sur les 52 matchs KOTH du
-# registre : 3 en social (45 matchs sur 46 finissent a 3 ; le 46e finit a 2 sur 511 s,
+# KOTH : la colline se marque a la GARDE (la prendre est une capture d environ une seconde,
+# instantanee en classe) — et le score EST le compte de collines gagnees. Plateaux mesures le
+# 2026-08-30 sur les 52 matchs KOTH du registre : 3 en social (45 matchs sur 46 finissent a 3 ; le 46e finit a 2 sur 511 s,
 # c'est-a-dire au chrono) et 4 en classe (3 matchs sur 3, duree moyenne 770 s).
 # CETTE ENTREE ETAIT ECARTEE AU MOTIF QUE « l'oracle du film differe de l'API » : le motif
 # est PERIME. Verifie le 2026-08-30, le registre porte desormais des COLLINES (606d9844 a
@@ -121,6 +121,13 @@ schema_version = 8
 # le backfill du 2026-08-24 a homogeneise la colonne.
 "KOTH:Arena"                 = 3
 "Ranked:King of the Hill"    = 4
+# Doubles et Squad (releve du registre local le 2026-10-09) : Doubles 17 matchs sur 22 finissent
+# a 3, aucun au-dela (les 5 autres s arretent avant, au chrono ou par abandon) ; c est aussi la
+# regle que l utilisateur enonce pour le 2v2 (« la partie s arrete au 3e point », 2026-10-09).
+# Squad 56 matchs sur 57 a 3 ; le 57e (`e449a696`, 18/09) finit a 180 — un match au score a la
+# seconde, seul de son espece, qui ne change pas le plateau.
+"Doubles:King of the Hill"   = 3
+"Squad:King of the Hill"     = 3
 # Total Control : 3 series de zones.
 "BTB:Total Control"          = 3
 "BTB Heavies:Total Control"  = 3
@@ -137,9 +144,9 @@ schema_version = 8
 # TICS DE GARDE PAR POINT (schema_version 4, mesure du 2026-08-30) — le DENOMINATEUR de
 # la progression vers le prochain point sur un mode ou l'on marque en TENANT une zone.
 #
-# EN KOTH IL N'Y A PAS DE CAPTURE : la colline se prend instantanement quand aucun adversaire
-# n'y est ; c'est la GARDE qui marque, et la colline tourne a chaque point. Cette table dit
-# combien de TICS de garde valent un point — sans elle, le rejeu sait QUI tient la colline mais
+# EN KOTH C EST LA GARDE QUI MARQUE : prendre la colline est une capture courte (environ une
+# seconde ; instantanee en classe, ou le film n emet aucune jauge), et la colline tourne a chaque
+# point. Cette table dit combien de TICS de garde valent un point — sans elle, le rejeu sait QUI tient la colline mais
 # pas OU EN EST la progression.
 #
 # MEME DOCTRINE QUE LES TROIS TABLES CI-DESSUS : cle = game_variant_name exact, valeur
@@ -161,11 +168,22 @@ schema_version = 8
 # corriger la constante. Detail des trois lots : `.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
 # §E1, §E1-bis et §E1-ter ; instrument `internal/games/halo_infinite/film/replay/colline_statborg_e1bis_test.go`.
 #
+# DOUBLES ET CLASSE, MESURES LE 2026-10-09 par la meme regle (union des tics du camp depuis le
+# point precedent, au point marque ; instrument `colline_seuil_garde_variantes_test.go` du meme
+# paquet, et `backfill-replay --one` pour les films a carte bornee) :
+#   - "Doubles:King of the Hill" = 35 : `0d9a9af9` (Forest) 35, 35, 34, 35 — 3 points sur 4 a 35,
+#     l ecart vaut 1 comme celui de l arene.
+#   - "Ranked:King of the Hill" = 40 : 5 films, 4 cartes — `5acb0e0a` (Lattice) 40 x5,
+#     `f75e7053` (Solitude) 40, 40, 39, 40, 40, `84c2221e` (Vacancy) 40 x4, `7f172b20` (Vacancy)
+#     40 x6 et 39 ; `26602661` et `7de0b91d` (Lattice) 40 sur leurs intervalles sains. Le camp qui
+#     ne marque pas ne rend jamais 40 sur un intervalle sain. Le classe ne partage donc PAS le
+#     seuil du social.
+#
 # VOLONTAIREMENT ABSENTS :
-#   - "Ranked:King of the Hill" : les 3 matchs classes du registre sont INEXPLOITABLES (deux
-#     sans film en cache, un sur « Solitude - Ranked », carte absente de map_quant_bounds.json).
-#     Rien ne dit que le classe partage le seuil du social, et lui recopier la valeur serait
-#     la devinette que cette table interdit. Reprise : un film classe en cache AVEC bornes.
+#   - "Squad:King of the Hill" : le seul film Squad en cache (`e449a696`) est un match au score a
+#     la SECONDE (180 points, chaque tic de garde vaut un point) ; il ne mesure pas le seuil des 56
+#     autres matchs, et lui recopier 35 serait la devinette que cette table interdit. Reprise : un
+#     film Squad a 3 points en cache.
 #   - Strongholds et Total Control : modes a zones SIMULTANEES, dont la progression se lit
 #     directement dans la jauge du film (`ZoneState.gauge`, schema 18). Le tic de `comp 23 A`
 #     y existe aussi (l API le nomme StrongholdScoringTicks pour les deux modes), mais rien ne
@@ -175,6 +193,8 @@ schema_version = 8
 # -> replaybuild -> ScoreTimeline.{HoldTicks, HoldTicksPerPoint} -> lisere de garde du bandeau.
 [hold_ticks_per_point]
 "KOTH:Arena" = 35
+"Doubles:King of the Hill" = 35
+"Ranked:King of the Hill" = 40
 
 # ---------------------------------------------------------------------------------------
 # VARIANTES DONT LE RESULTAT SE LIT EN MANCHES (schema_version 3, mesure du 2026-08-29).
@@ -371,6 +391,7 @@ schema_version = 8
 "CTF:Arena"                       = 18
 "CTF:Arena Neutral Flag"          = 18
 "CTF:BTB"                         = 24
+"Doubles:King of the Hill"        = 18
 "Event:Escalation Slayer"         = 18
 "Fiesta:Slayer"                   = 18
 "Husky Raid:CTF"                  = 18
@@ -387,6 +408,7 @@ schema_version = 8
 "Slayer:Arena Fiesta"             = 18
 "Slayer:Arena Super Fiesta"       = 18
 "Slayer:Arena Tactical"           = 18
+"Squad:King of the Hill"          = 18
 "Strongholds:Arena"               = 18
 "Super Fiesta:Slayer"             = 18
 "Super Husky Raid:CTF"            = 18

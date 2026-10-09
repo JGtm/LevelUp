@@ -117091,3 +117091,55 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 460 records bipèdes arrêtés sur i42, tous en format 20 ; admis inchangés (6 507), valeurs égales à 100 % ; `ti=35` 5 401 → 5 397 ; `replay-equiv` (20 films) : seuls `a349fea8` et `a521164d` changent (4 sélections tues, vérifiées sur leurs artefacts) ; killsource 19/19 identiques ; golden de 116 records réels des bobines, mutations rouges.
 
 **Conclusion / prochaine étape** : revue de clôture et fusion par le superviseur. Découverte D-31 (retour faux d'i42 dans la boucle delta non relu).
+## [2026-10-09] Lot C des recommandations : fiabilité des données (C1-C7) — En cours (`feat/recos-c`, CI verte, relecture adversariale en cours)
+
+**Décision technique principale** : aucune réparation de données par UPDATE ou DELETE ; tout passe par des étapes de migration à swap transactionnel (`swapTableTx`, garde de cardinalité, schéma vérifié avant COMMIT), sans effet sur une base saine. Retrait d'index décidé sur mesure `EXPLAIN ANALYZE` (recette MSR), sur copies réelles.
+
+**Résultats observés** : C1 `restore-csr` n'insère plus que les CSR absents (`--mode` retiré, la vue `_latest` fait primer le CSR). C2 douze formes de lecture en plan séquentiel 30/30 avec et sans index sur trois copies réelles (pire écart +1,35 ms) → `drop_player_secondary_art_indexes_v1` + soin + ratchet `noSecondaryIndexTables`. C3 quatre CLI par la porte `platform/duckdb` (ratchet −4). C4 `repair_player_append_only_ids_v1` : doublons (5 et 147 lignes) et ids NULL (17 192 et 18 318) réparés sur copies du 08/10, vues `_latest` identiques. C5 écrivain des 4 lignes parasites = ancien `--match` de `backfill-vehicle-takes` (déjà corrigé le 01/10) ; `shared_purge_composite_vehicle_takes_v1`. C6 non réparé : 3 111/9 230 lignes divergent, colonne indexée, deux classifieurs ; les filtres de l'interface lisent `pair_name`. C7 `purge_sync_meta_legacy_auth_keys_v1` sur 4 bases, aucune valeur lue. Gate : intégration `-p 1` sur 19 paquets, `go test ./...` vert, golangci 0 ; CI `37961396119` verte.
+
+**Conclusion / prochaine étape** : verdict des deux relectures, correction des constats bloquants, puis fusion (accord du user) ; sauvegarde des bases joueur et partagée avant le redémarrage qui jouera les quatre étapes.
+
+## [2026-10-09] Lot D des recommandations : démo en lecture seule, anonymisation à la copie, rejeux figés — En cours (`feat/recos-d`, CI verte ; correctif d'anonymisation puis relecture adversariale)
+
+**Décision technique principale** : D1 garde générale `middleware.DemoReadOnly` à la racine : toute écriture en démo → 403 `demo_mode_forbidden`, sauf lectures en POST (`IsMutatingRequest`), `POST /session/context` et protocole ouvrier ; refus par handler et contrats 422/503 supprimés ; ratchet `TestDemoReadOnlyRatchet` (câblage + 26 écritures nommées). D2 anonymisation de seed-demo à la copie (`SELECT * REPLACE`), liste unique `identity` par table, `match_csrs.xuid` ajouté ; garde-rail `TestNoMutationOnAppendOnlyTablesInOps`. D3 `replay_matches` figés au manifeste démo (un match par famille de mode), films et artefacts embarqués sous `<démo>/replays/`, recuisson depuis le film embarqué quand l'artefact n'est pas au dernier schéma ; serveur démo : `ReplayGate` (matchs figés seulement), identités réelles remplacées par le roster démo dans le document servi, l'artefact sur disque reste intact.
+
+**Résultats observés** : démo locale : 7 écritures témoins en 403, `db_profiles.json` inchangé, lectures 200 ; 10 rejeux (Firefight, Fiesta, VIP, Total Control, Bases, Colline, Oddball, Assaut, CTF, Assassin) en 200, 0 xuid réel, 0 des 67 gamertags réels dans les réponses ; recuisson après schéma 90 simulé prouvée. `go test ./...` vert, intégration ops/replaybuild/replaychild/wire verte, golangci 0, tsc/eslint/vitest verts ; CI verte. Fuite résiduelle trouvée par l'exécutant : `match_registry.first_sync_by` garde de vrais gamertags dans la base démo → correctif demandé avec balayage de toutes les colonnes d'identité.
+
+**Conclusion / prochaine étape** : correctif d'anonymisation, relecture adversariale (accès + écritures), fusion sur accord du user (régénérer openapi, `generated.ts`, i18n). Au déploiement : provisionner `data/demo/replays/` sur le VPS.
+
+## [2026-10-09] Fusion du lot C (fiabilité des données) et application au boot local — Complété
+
+**Décision technique principale** : deux relectures adversariales (écritures anti-ART : 16 conditions tenues, aucun constat ; couverture : 4 chemins non couverts, P2) ; les tests manquants ajoutés dans le lot (`6ab6a40e0`, 9 mutations rouges : base saine intacte par `table_oid`, clé primaire reposée sans PK d'origine, colonnes CSR restaurées, `--dry-run` sans écriture). Fusion de `feat/recos-c` sur accord du user, serveur arrêté et bases sauvegardées avant le premier boot.
+
+**Résultats observés** : sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go). Boot : `shared_purge_composite_vehicle_takes_v1` 4 lignes retirées (7 228 gardées) ; `repair_player_append_only_ids_v1` : Chocoboflor `match_skill_rank` 17 192 ids NULL, `player_csr_snapshots` 19 243 ids NULL sans PK, `player_match_enrichment` 5 doublons ; Madina97294 et XxDaemonGamerxX 147 doublons `player_csr_snapshots`, 5 doublons `player_match_enrichment` ; `purge_sync_meta_legacy_auth_keys_v1` une clé retirée sur 4 bases ; 0 ERROR au boot.
+
+**Conclusion / prochaine étape** : C6 (catégorie de mode) rouvert à la demande du user, confié à un agent Sonnet ; lot D en correctif d'anonymisation puis relecture ; lot E.
+## [2026-10-09] Roi de la colline au rejeu : une seule colline à sa vraie place, sa capture, la barre de garde Doubles/Classé, l'étage — Complété (`feat/koth-colline`, 6 commits, CI verte au niveau job ; plan `.ai/PLAN_KOTH_REJEU_2026-10-09.md`)
+
+**Demande** : signalement du user sur son 2v2 Roi de la colline (`0d9a9af9`) : toutes les collines affichées, capture invisible, barre de garde absente, pas d'étage sur la colline.
+
+**Décision technique principale** : E1 — la colline d'une période se place par la GARDE (présence du camp que le canal de propriété dit propriétaire, en frames, seuil 50 %), plus par la grappe pendant des « rampes » dont le départ est le retour à zéro de la capture précédente (cause de la 3e colline du témoin posée sur la 4e). Repli nommé `repli_colline_votes_sans_garde`.
+
+**Résultats observés** : témoin P3 z4 / P4 z2 (avant : z2 / z2) ; 11 films KOTH recuits un par un en cache isolé, 0 période fusionnée, 0 repli ; séquence de collines identique sur trois films classés de Lattice. La jauge de capture de colline existe dans le film (0 -> 1 en ~1 s, vidange ~1 s) sauf en Classé (prise instantanée, 0 émission). Seuils de garde mesurés : Doubles 35, Classé 40 (Vacancy, Lattice, Solitude), Arène 35 (contrôle). E2 : jauge de capture des collines publiée (schéma 92, champ `draining` des segments) ; témoin recuit : 531 points, 24 prises au camp lu, 20 vidanges. E3 : seuils Doubles 35 et Classé 40, cibles Doubles 3 et Squad 3 déclarés ; Squad sans seuil (aucun film mesurable). E4 : rendu web (une colline visible pendant ses intervalles, sa jauge de prise et de vidange, ses contours d étage ; le son ignore la jauge des collines). E5 : 11 films recuits un par un ; deux défauts de publication trouvés au contrôle et corrigés (retour à zéro d une vidange perdu à l allègement, lecture non chaînée isolée) ; oracle 165/165 prises précédées d une montée du même camp, montée médiane 1 s.
+
+**Conclusion / prochaine étape** : lot livré sur sa branche (CI `b5d20f3cb` verte). Au superviseur : fusion dans `feat/v75` puis, sur accord du user, republication du parc au schéma 92 (assemblage seul ; les collines changent sur les 10 artefacts KOTH du parc local). Restent ouverts (registre des reports) : seuil de garde Squad (aucun film mesurable), courbes de score de deux films classés de Lattice, cartes Harvest et Vacancy - Ranked hors bornes.
+
+## [2026-10-09] Roi de la colline, reprise : la 1re colline apparaît au coup d'envoi — Complété (`feat/koth-colline`)
+
+**Demande** : la 1re colline doit apparaître dès qu'elle apparaît en jeu, pas au premier contact d'un joueur.
+
+**Décision technique principale** : les images-clés bornent la création de l'objet de mode (désignation de la 1re colline) sans la dater ; sur 11 films la fenêtre contient le coup d'envoi (intersection ]-6,6 s ; +2,3 s]). La 1re période commence au coup d'envoi ramené dans cette fenêtre (repli nommé `repli_colline_premiere_au_coup_d_envoi`), à défaut à la 1re image-clé qui porte le bloc, jamais après le premier contact. Schéma 92 conservé (non publié), chronique amendée.
+
+**Résultats observés** : 11/11 films recuits, 1re colline au coup d'envoi (15 à 37 s plus tôt qu'avant selon le film ; témoin : 17 s), collines suivantes au point (0 à 1 image). Découverte : plancher de 5,09 s entre un déplacement et la première prise possible (50 déplacements, 13 au plancher) — non appliqué, question de jeu au user.
+
+**Conclusion / prochaine étape** : réponse du user sur l'affichage de la colline suivante pendant ces 5 s ; fusion et republication du parc (schéma 92) sur accord.
+
+## [2026-10-09] Fusion de feat/koth-colline dans feat/v75 (schéma 92), republication déléguée — Complété
+
+**Statut** : Complété pour le périmètre exécuté ; republication déléguée à la recuisson commune qui suit la fusion du lot images-clés.
+
+**Décision technique principale** : consigne du superviseur : ne pas lancer `backfill-replay` ni arrêter le serveur local, une seule recuisson complète du parc couvrira les deux lots.
+
+**Résultats observés** : après fusion, `generate-types` sans diff, `tsc -b` rc 0, `go test ./internal/games/halo_infinite/film/replay/...` vert, vitest `match-replay` 223 fichiers verts (3 185 tests). `feat/v75` poussée (`d40d7d87e`, hooks pre-push verts). Le dry-run `backfill-replay --only-existing` a annoncé 235 films à construire (et non 172) ; il n'a rien écrit. Le serveur local a été arrêté brièvement pour ce dry-run, puis air relancé (port 8000, 200 sur /healthz).
+
+**Conclusion / prochaine étape** : artefacts du cache local toujours en schéma 91 jusqu'à la recuisson commune ; contrôles de l'étape 5 à faire après elle.

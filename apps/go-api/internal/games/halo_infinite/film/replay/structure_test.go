@@ -1423,13 +1423,17 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   ramassages natifs se date par la premiere prise faite au socle dans le cycle de l arme
 	//   (`repli_prise_de_socle_premiere_du_cycle`). Assemblage seul : un v90 se lit « a republier ».
 	//   Detail : `document_chronicle.go`.
-	// - 92 (2026-10-09, representation intermediaire 2.7.d1) : Aucun champ neuf ; le CONTENU change :
+	// - 92 (2026-10-09, lot `feat/koth-colline`) : un champ neuf `zoneStates[].gaugeRamps[].draining` ;
+	//   le CONTENU change : la colline d une periode se place par la garde de son camp proprietaire,
+	//   la 1re colline apparait au coup d envoi, et la jauge de capture des collines se publie (prise,
+	//   vidange). Assemblage seul : un v91 se lit « a republier ». Detail : `document_chronicle.go`.
+	// - 93 (2026-10-09, representation intermediaire 2.7.d1) : Aucun champ neuf ; le CONTENU change :
 	//   l etat complet du bipede aux images-cles (armes portees, inventaire, marque de portage) est lu
 	//   par la grammaire sur les records que sa regle d admission retient, les fenetres de bits rendent
-	//   les autres derriere elle. `grammar.Rev` monte avec elle : un v91 se lit « a redecoder ». Detail :
+	//   les autres derriere elle. `grammar.Rev` monte avec elle : un v92 se lit « a redecoder ». Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 92 {
-		t.Fatalf("SchemaVersion = %d, attendu 92 : incrémenter exige une raison écrite ci-dessus "+
+	if SchemaVersion != 93 {
+		t.Fatalf("SchemaVersion = %d, attendu 93 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

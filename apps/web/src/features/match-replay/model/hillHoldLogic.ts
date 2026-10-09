@@ -1,9 +1,11 @@
 /**
  * hillHoldLogic — LA PROGRESSION DE GARDE DE LA COLLINE, au frame lu.
  *
- * EN KOTH IL N'Y A PAS DE CAPTURE. La colline se prend instantanément dès qu'un joueur y entre
- * sans adversaire dedans ; ce qui marque, c'est de la TENIR. Ce module dit où en est chaque camp
- * vers le point suivant.
+ * EN KOTH CE QUI MARQUE, C'EST DE TENIR LA COLLINE. La prendre est une capture courte (environ
+ * une seconde, instantanée en classé — la jauge de la colline, calque des zones) ; ensuite chaque
+ * tic de garde rapproche du point. Ce module dit où en est chaque camp vers le point suivant : la
+ * barre ne redescend pas quand la colline est perdue, elle reprend où elle en était quand le camp
+ * la reprend, et elle repart de zéro au point (la colline tourne).
  *
  * ELLE EST LUE, PAS RECONSTRUITE — et c'est tout ce qui compte ici. La série vient de
  * `scoreTimeline.holdTicks`, que l'artefact publie depuis le compteur du jeu lui-même
@@ -14,9 +16,9 @@
  *                      paliers des courbes d'équipe. La barre repart de zéro à chacun.
  *   le différentiel    `ticks(frame) − ticks(dernier point)`, puisque la série est cumulative
  *                      sur tout le match.
- *   le dénominateur    `scoreTimeline.holdTicksPerPoint` — 35, un COMPTE et non un réglage :
- *                      le camp qui marque rend exactement 35 sur 15 périodes sur 16 (4 films,
- *                      4 cartes), quand le camp qui ne marque pas rend 1 à 25 et jamais 35.
+ *   le dénominateur    `scoreTimeline.holdTicksPerPoint` — un COMPTE par variante et non un
+ *                      réglage (35 en arène et en Doubles, 40 en classé : le camp qui marque
+ *                      rend ce compte au point, cf. `regulation.toml`).
  *
  * UNE VERSION ANTÉRIEURE DE CE MODULE INTÉGRAIT LES INTERVALLES DE PROPRIÉTÉ avec un seuil de
  * 43 s. C'était une reconstruction, et elle était fausse d'environ 20 % — l'écart n'a pas été
