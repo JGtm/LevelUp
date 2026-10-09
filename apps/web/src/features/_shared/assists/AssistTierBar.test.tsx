@@ -51,42 +51,19 @@ describe('AssistTierBar', () => {
     expect(order).toEqual(['seg-high', 'seg-low'])
   })
 
-  it('pose la part non mesurée hachurée au bout extérieur de la piste, après les tranches', () => {
-    // 10 frags assistés sur 20, 6 sans information : la piste nue entre les deux = 4 non assistés connus.
-    const segments = assistShareSegments({ total: 10, low: 4, mid: 4, high: 2 }, 20)
-    const { container, getByTestId } = render(
-      <AssistTierBar
-        segments={segments}
-        color="var(--c)"
-        text={ASSISTS_TEXT.fr}
-        locale="fr"
-        variant="tile"
-        testId="seg"
-        notMeasured={{ widthPct: 30, tooltip: '6 frags sans information' }}
-      />,
+  it('ne pose que les tranches assistées : le reste de la base est la piste nue, sans hachure', () => {
+    // Narrows 0a08d2f2 : 10 frags assistés sur 20 officiels (6 sur des bots).
+    const segments = assistShareSegments({ total: 10, low: 2, mid: 2, high: 6 }, 20)
+    const { container } = render(
+      <AssistTierBar segments={segments} color="var(--c)" text={ASSISTS_TEXT.fr} locale="fr" variant="tile" testId="seg" />,
     )
-    const hatch = getByTestId('seg-not-measured')
-    expect(hatch.style.backgroundImage).toContain('repeating-linear-gradient')
-    const wrapper = hatch.closest('[style*="width"]') as HTMLElement
-    expect(parseFloat(wrapper.style.width)).toBeCloseTo(30)
-    expect(wrapper.className).toContain('ml-auto')
     const order = [...container.querySelectorAll('[data-testid^="seg-"]')].map((el) => el.getAttribute('data-testid'))
-    expect(order).toEqual(['seg-low', 'seg-mid', 'seg-high', 'seg-not-measured'])
-  })
-
-  it('ne dessine aucune hachure sans part non mesurée', () => {
-    const segments = assistShareSegments({ total: 1, low: 1, mid: 0, high: 0 }, 4)
-    const { queryByTestId } = render(
-      <AssistTierBar
-        segments={segments}
-        color="var(--c)"
-        text={ASSISTS_TEXT.fr}
-        locale="fr"
-        variant="tile"
-        testId="seg"
-        notMeasured={{ widthPct: 0, tooltip: '' }}
-      />,
+    expect(order).toEqual(['seg-low', 'seg-mid', 'seg-high'])
+    const total = [...container.querySelectorAll('[style*="width"]')].reduce(
+      (sum, el) => sum + parseFloat((el as HTMLElement).style.width),
+      0,
     )
-    expect(queryByTestId('seg-not-measured')).toBeNull()
+    expect(total).toBeCloseTo(50)
+    expect(container.innerHTML).not.toContain('repeating-linear-gradient')
   })
 })

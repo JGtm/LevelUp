@@ -29,7 +29,8 @@ export interface UsageText {
   bandLegendAbove: string
   bandLegendNear: string
   bandLegendBelow: string
-  bandLegendUnmeasured: string
+  /** Case grise de la bande d'appui : aucun appui d'équipe sur le match. */
+  bandLegendNoTeamAssist: string
   /** Noms des familles d'équipement du bilan (clés du résumé Go). */
   metricCamo: string
   metricOvershield: string
@@ -54,7 +55,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     bandLegendAbove: 'Au-dessus de la parité',
     bandLegendNear: 'Au niveau de la parité',
     bandLegendBelow: 'Sous la parité',
-    bandLegendUnmeasured: 'Non mesuré',
+    bandLegendNoTeamAssist: 'Aucun appui d’équipe',
     metricCamo: 'Camouflage',
     metricOvershield: 'Surbouclier',
     metricWall: 'Mur de protection',
@@ -75,7 +76,7 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     bandLegendAbove: 'Above parity',
     bandLegendNear: 'At parity',
     bandLegendBelow: 'Below parity',
-    bandLegendUnmeasured: 'Not measured',
+    bandLegendNoTeamAssist: 'No team assist',
     metricCamo: 'Camouflage',
     metricOvershield: 'Overshield',
     metricWall: 'Drop wall',

@@ -28,8 +28,8 @@ export interface CoordinationText {
   lowSample: string
   /** Infobulle d'une case de bande : n° de match, part, parité. */
   bandTipFmt: (index: number, part: string, parite: string) => string
-  /** Infobulle d'une case non mesurée. */
-  bandTipUnmeasured: (index: number) => string
+  /** Infobulle d'une case sans appui d'équipe (part sans dénominateur). */
+  bandTipNoTeamAssist: (index: number) => string
   /** Infobulle d'un rail de jauge : valeur puis comptes bruts. */
   gaugeTipFmt: (valeur: string, brut: number, n: number) => string
   /**
@@ -76,12 +76,12 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
       'Frags appuyés : frags du joueur ayant reçu une assistance, sur ses frags ; part des appuis de l’équipe : ' +
       'assistances reçues par le joueur, sur toutes celles de l’équipe.',
     infoAppui2:
-      'Un appui dont l’auteur n’est pas résolu par le film n’entre dans aucun des deux dénominateurs.',
+      'Les frags du joueur sont ceux de la feuille de match ; frags et appuis impliquant des bots comptent comme les autres.',
     infoAppui3: 'Parité : 1/n, n étant l’effectif de l’équipe sur le match.',
 
     lowSample: 'échantillon faible',
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parité ${parite})`,
-    bandTipUnmeasured: (i) => `Match #${i} · non mesuré`,
+    bandTipNoTeamAssist: (i) => `Match #${i} · aucun appui d’équipe`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} sur ${n}`,
     gaugeTipUsualFmt: (tip, habituel) => `${tip} · habituel ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
@@ -117,12 +117,12 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoAppui1:
       'Assisted kills: the player’s kills that received an assist, over the player’s kills; share of the team’s ' +
       'assists: assists received by the player, over all of the team’s.',
-    infoAppui2: 'An assist whose author the film cannot resolve enters neither denominator.',
+    infoAppui2: 'The player’s kills are those of the match sheet; kills and assists involving bots count like any other.',
     infoAppui3: 'Parity: 1/n, n being the team’s headcount on the match.',
 
     lowSample: 'low sample',
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parity ${parite})`,
-    bandTipUnmeasured: (i) => `Match #${i} · not measured`,
+    bandTipNoTeamAssist: (i) => `Match #${i} · no team assist`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} of ${n}`,
     gaugeTipUsualFmt: (tip, habituel) => `${tip} · usual ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,

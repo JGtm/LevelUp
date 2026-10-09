@@ -29,7 +29,6 @@ import { Fragment } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 
-import { NOT_MEASURED_HATCH } from './notMeasuredHatch'
 import type { ValueGridModel, ValueGridSegment } from './valueGridModel'
 
 /** Largeur PAR DÉFAUT de la colonne des noms (px). */
@@ -65,12 +64,6 @@ interface Props {
    */
   axisTitle?: string
   /**
-   * Une cellule NON MESURÉE porte une hachure au lieu d'un rail vide. Ajouté le
-   * 2026-09-13 (bloc « formes retenues » : un match sans film décodé doit se
-   * DISTINGUER d'un match mesuré à zéro). Faux = rendu inchangé.
-   */
-  hatchNotMeasured?: boolean
-  /**
    * Largeur de la colonne des noms (px). Défaut : 152 (ou la largeur dense quand
    * `dense` est posé). À élargir quand les noms portent un sous-libellé (une arme et
    * ses occupations) — sans quoi les deux se coupent. Une largeur EXPLICITE l'emporte
@@ -84,7 +77,6 @@ export function ValueGrid({
   rowHeaderLabel,
   dense = false,
   axisTitle,
-  hatchNotMeasured,
   nameWidth: nameWidthProp,
 }: Props) {
   const { rows, columns, cells, separators } = model
@@ -152,7 +144,6 @@ export function ValueGrid({
                   <Tooltip content={cell.tooltip} className="w-full">
                     <div
                       className="relative h-[11px] w-full min-w-[40px] bg-muted"
-                      style={hatchNotMeasured && cell.value == null ? NOT_MEASURED_HATCH : undefined}
                       tabIndex={0}
                       role="img"
                       aria-label={cell.tooltip}

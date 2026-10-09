@@ -108,6 +108,11 @@ export function antagonistStackedSeries(
  *
  * Un tueur sans gamertag résolu (absent du scoreboard) passe par `displayPlayerName`,
  * qui rend le repli masqué « Joueur #### » — jamais un xuid brut.
+ *
+ * LES BOTS COMPTENT : un assistant ou un tueur sans xuid (bot) arrive nommé par le film.
+ * L'assistant s'identifie alors par son gamertag (`assistKey`), et son camp — absent du
+ * scoreboard — est celui des tueurs qu'il a assistés (une assistance va toujours à un
+ * coéquipier).
  */
 export function assistStackedSeries(
   pairs: MatchAssistPair[],
@@ -116,11 +121,13 @@ export function assistStackedSeries(
 ): ChartSeries<ChartPointStacked>[] {
   if (pairs.length === 0) return []
 
-  const assistTotals = new Map<string, { gamertag: string; total: number }>()
+  const assistTotals = new Map<string, { gamertag: string; xuid: string; total: number; killers: string[] }>()
   for (const p of pairs) {
-    const acc = assistTotals.get(p.assist_xuid) ?? { gamertag: p.assist_gamertag, total: 0 }
+    const key = assistKey(p)
+    const acc = assistTotals.get(key) ?? { gamertag: p.assist_gamertag, xuid: p.assist_xuid, total: 0, killers: [] }
     acc.total += p.assist_count
-    assistTotals.set(p.assist_xuid, acc)
+    if (p.killer_xuid) acc.killers.push(p.killer_xuid)
+    assistTotals.set(key, acc)
   }
 
   const sb = scoreboard ?? []
@@ -128,27 +135,28 @@ export function assistStackedSeries(
   const allyTeam = meRow?.team_side ?? null
   const xuidToTeam = new Map<string, string | null>(sb.map((r) => [r.xuid, r.team_side]))
 
-  const isEnemy = (xuid: string): boolean => {
+  const isEnemy = ({ xuid, killers }: { xuid: string; killers: string[] }): boolean => {
     if (allyTeam == null) return false
-    const t = xuidToTeam.get(xuid)
+    const own = xuid ? xuidToTeam.get(xuid) : undefined
+    const t = own ?? killers.map((k) => xuidToTeam.get(k)).find((team) => team != null)
     return t != null && t !== allyTeam
   }
 
-  const orderedAssistants = Array.from(assistTotals.entries()).sort(([xuidA, a], [xuidB, b]) => {
-    const enemyA = isEnemy(xuidA) ? 0 : 1
-    const enemyB = isEnemy(xuidB) ? 0 : 1
+  const orderedAssistants = Array.from(assistTotals.entries()).sort(([, a], [, b]) => {
+    const enemyA = isEnemy(a) ? 0 : 1
+    const enemyB = isEnemy(b) ? 0 : 1
     if (enemyA !== enemyB) return enemyA - enemyB
     return b.total - a.total
   })
 
-  const datapoints: ChartPointStacked[] = orderedAssistants.map(([assistXUID, { gamertag }]) => {
+  const datapoints: ChartPointStacked[] = orderedAssistants.map(([key, { gamertag, xuid }]) => {
     const components: Record<string, number> = {}
     for (const p of pairs) {
-      if (p.assist_xuid !== assistXUID) continue
-      const key = displayPlayerName(p.killer_gamertag, p.killer_xuid)
-      components[key] = (components[key] ?? 0) + p.assist_count
+      if (assistKey(p) !== key) continue
+      const killer = displayPlayerName(p.killer_gamertag, p.killer_xuid)
+      components[killer] = (components[killer] ?? 0) + p.assist_count
     }
-    return { category: displayPlayerName(gamertag, assistXUID), components }
+    return { category: displayPlayerName(gamertag, xuid), components }
   })
 
   return [
@@ -157,6 +165,11 @@ export function assistStackedSeries(
       datapoints,
     },
   ]
+}
+
+/** Identité d'un assistant : son xuid, ou son gamertag de film quand il n'en a pas (bot). */
+function assistKey(p: MatchAssistPair): string {
+  return p.assist_xuid || `gt:${p.assist_gamertag}`
 }
 
 /** Clé de consultation d'un couple (assistant affiché, tueur affiché).

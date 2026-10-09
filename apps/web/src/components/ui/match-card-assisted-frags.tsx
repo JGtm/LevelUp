@@ -6,22 +6,19 @@
  * montre).
  *
  * BASE = les frags OFFICIELS du match (`frags_official`, ceux que la tuile affiche juste
- * au-dessus) : la barre et la légende se lisent sur la même base que le compte de frags.
- * Les frags dont l'assistance n'est pas lue (`frags_unknown` : victime bot, frag absent du
- * film) sont dits À PART — segment hachuré au bout de la piste, mention discrète
- * « K non mesurés » avec son infobulle — et jamais confondus avec les non assistés (la
- * piste nue entre les deux).
+ * au-dessus), frags sur des bots compris : la barre et la légende se lisent sur la même base
+ * que le compte de frags. Un frag dont l'assistance n'est pas lue reste dans la base sans
+ * entrer au numérateur (règle des bases, `domain/relation_assists.go`) : aucune mention
+ * à part.
  *
- * L'emplacement est RÉSERVÉ : sans `assisted_frags` (match non mesuré : pas de film
- * analysé) le composant occupe la même hauteur, vide — sur la grille de l'accueil, les
- * tuiles voisines gardent leurs stats alignées. Aucun « — » ni « 0 » fabriqué : la tuile
- * n'a pas de place pour l'incertitude, et un « 0 » se lirait comme une mesure.
+ * L'emplacement est RÉSERVÉ : sans `assisted_frags` (film absent ou sans assistance lue)
+ * le composant occupe la même hauteur, vide — sur la grille de l'accueil, les tuiles
+ * voisines gardent leurs stats alignées. Aucun « — » ni « 0 » fabriqué.
  */
 import { AssistTierBar, ASSIST_RECEIVED_TOKEN } from '@/features/_shared/assists/AssistTierBar'
 import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
-import { assistShare, assistShareSegments } from '@/features/_shared/assists/assistExchange'
+import { assistShareSegments } from '@/features/_shared/assists/assistExchange'
 import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
-import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchAssistedFrags } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
@@ -45,9 +42,6 @@ export function MatchCardAssistedFrags({
     return <div data-testid="match-card-assisted-frags-slot" className={SLOT_CLASS} aria-hidden="true" />
   }
   const base = assisted.frags_official
-  const unknown = assisted.frags_unknown
-  const unknownShare = assistShare(unknown, base)
-  const unknownTooltip = formatMessage(commonManifest, 'common.match_card.assisted_frags_unknown_tooltip', locale, { unknown })
   return (
     <div data-testid="match-card-assisted-frags" className={SLOT_CLASS}>
       <AssistTierBar
@@ -57,7 +51,6 @@ export function MatchCardAssistedFrags({
         locale={locale}
         variant="tile"
         testId="match-card-assist-segment"
-        notMeasured={unknown > 0 && unknownShare !== null ? { widthPct: unknownShare * 100, tooltip: unknownTooltip } : null}
       />
       <div className={LEGEND_CLASS}>
         {/* Ton FORT du sens (même teinte, clarté montée vers le premier plan du thème) : le
@@ -72,16 +65,6 @@ export function MatchCardAssistedFrags({
             frags: base,
           })}
         </span>
-        {unknown > 0 && (
-          <>
-            <span className="text-muted-foreground">{' · '}</span>
-            <Tooltip content={unknownTooltip}>
-              <span data-testid="match-card-assisted-frags-unknown" className="cursor-help text-muted-foreground">
-                {formatMessage(commonManifest, 'common.match_card.assisted_frags_unknown', locale, { unknown })}
-              </span>
-            </Tooltip>
-          </>
-        )}
       </div>
     </div>
   )

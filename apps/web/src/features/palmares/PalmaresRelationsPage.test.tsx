@@ -197,7 +197,6 @@ describe('PalmaresRelationsPage', () => {
               xuid: '1',
               gamertag: 'Passeur',
               assists: {
-                matches_measured: 8,
                 my_frags: 100,
                 partner_frags: 80,
                 received: { total: 31, low: 5, mid: 16, high: 10 },
