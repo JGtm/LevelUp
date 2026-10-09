@@ -98,7 +98,7 @@ func TestTacticalEtCoordinationSontPurs(t *testing.T) {
 	if len(violations) > 0 {
 		t.Fatalf("le socle tactique n'est plus PUR — %d import(s) interdit(s) :\n  %s\n"+
 			"Ces paquets ne lisent ni artefact ni base : l'appelant projette ce qu'il a vers "+
-			"domain.PositionSample / domain.KillEvent et le leur passe. Une lecture tactique doit "+
+			"domain.PositionSample et le leur passe. Une lecture tactique doit "+
 			"rester calculable sans artefact de rejeu (cf. l'en-tete de ce fichier).",
 			len(violations), strings.Join(violations, "\n  "))
 	}

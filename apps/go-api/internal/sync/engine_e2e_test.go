@@ -187,12 +187,12 @@ func TestSetSyncMeta_ReadBack(t *testing.T) {
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err := SetSyncMeta(t.Context(), playerDB, "last_delta_sync", now); err != nil {
+	if err := SetSyncMeta(t.Context(), playerDB, "cle_de_test", now); err != nil {
 		t.Fatalf("SetSyncMeta: %v", err)
 	}
 
 	var val string
-	err := playerDB.QueryRow("SELECT value FROM sync_meta WHERE key = 'last_delta_sync'").Scan(&val)
+	err := playerDB.QueryRow("SELECT value FROM sync_meta WHERE key = 'cle_de_test'").Scan(&val)
 	if err != nil {
 		t.Fatalf("QueryRow: %v", err)
 	}

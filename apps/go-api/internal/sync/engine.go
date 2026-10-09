@@ -667,13 +667,6 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		result.AddError("post-sync " + fatalErr)
 	}
 
-	// ─── sync_meta ──────────────────────────────────────────────────────────────
-	if playerDB != nil {
-		if err := SetSyncMeta(ctx, playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
-			result.AddWarning(fmt.Sprintf("SetSyncMeta: %v", err))
-		}
-	}
-
 	// ─── Hook Prestige (post-sync) ──────────────────────────────────────────────
 	// Best-effort : ré-évalue les défis Prestige actifs après ingestion.
 	// No-op si feature flag PRESTIGE_ENABLED off ou si le hook n'est pas câblé.

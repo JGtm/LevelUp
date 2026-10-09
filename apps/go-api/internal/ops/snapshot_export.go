@@ -27,8 +27,8 @@ var sharedSnapshotTables = []string{
 }
 
 // sharedSnapshotMatchKeyedRaw : tables shared append-only exportées RAW (toutes
-// générations des matchs ready) — leurs vues (v_weapon_kills DENSE_RANK,
-// match_csrs_latest / match_objective_stats_latest QUALIFY, match_kill_events_latest)
+// générations des matchs ready) — leurs vues (match_csrs_latest /
+// match_objective_stats_latest QUALIFY, match_kill_events_latest)
 // sont reconstruites à la LECTURE par les DDL canoniques. Exporter le raw (et non le
 // collapsed) permet aussi les lectures directes de ces tables hors vue.
 // match_objective_stats ajoutée le 2026-07-26 : Q12 (scoreboard MatchView) LEFT JOIN
@@ -42,8 +42,16 @@ var sharedSnapshotTables = []string{
 // antérieurs sont refusés (ErrSnapshotIncomplete) → fallback LIVE global, comportement
 // prévu — jusqu'au prochain cut qui ré-exporte complet.
 var sharedSnapshotMatchKeyedRaw = []string{
-	"weapon_kills", "match_csrs", "match_objective_stats", "match_kill_events",
+	"match_csrs", "match_objective_stats", "match_kill_events",
 }
+
+// sharedSnapshotTitleOwnedRaw : tables shared append-only exportées RAW que le schéma d'un
+// titre peut ne pas porter. `weapon_kills` n'existe que dans le fichier des titres sans
+// décodeur de film (migration title-owned games/halo_infinite/migrations/
+// steps_shared_drop_weapon_kills.go) : l'export l'emporte quand la base la porte, la lecture
+// la reconstruit (avec sa vue v_weapon_kills) quand le Parquet est là, et sinon sert le
+// schéma du titre tel quel — comme le live, qui n'a alors ni la table ni la vue.
+var sharedSnapshotTitleOwnedRaw = []string{"weapon_kills"}
 
 // sharedSnapshotGlobalTables : relations shared NON match-keyed (clé xuid) exportées en
 // ENTIER (petites, globales) — requises par v_gamertag_lookup au moment de la lecture.
@@ -160,6 +168,7 @@ func exportSharedFacts(ctx context.Context, opener SharedReadOpener, versionDir 
 	var parts []PartitionInfo
 	// Tables de base + append-only raw : match-keyed, filtrées au set ready.
 	matchKeyed := append(append([]string{}, sharedSnapshotTables...), sharedSnapshotMatchKeyedRaw...)
+	matchKeyed = append(matchKeyed, sharedSnapshotTitleOwnedRaw...)
 	for _, tbl := range matchKeyed {
 		if !relationExists(ctx, conn, tbl) {
 			continue // relation absente (schéma partiel) → la lecture dégradera vers live

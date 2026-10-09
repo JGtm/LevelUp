@@ -25,8 +25,8 @@
 //   - le raster range chaque point sur l'axe « moi / escouade / adversaires »
 //     d'apres l'identite de la victime ou du tueur — une identite permutee peint
 //     le point du mauvais cote ;
-//   - le journal des morts (KillEvents) rend chaque mort avec sa victime et son tueur
-//     credite — une identite permutee attribue la mort au mauvais joueur.
+//   - les morts localisees (MortsAvecContexte, MortsParCarte) rendent chaque mort avec sa
+//     victime — une identite permutee attribue la mort au mauvais joueur.
 //
 // Une passe non publiable est donc ECARTEE ici, comme dans KillDistanceRepo, et
 // contrairement a KillSourceClassRepo (qui, lui, ne produit que des cumuls).
@@ -39,12 +39,12 @@
 // PERIMETRE (liste blanche de match_id, composition) vient de l'appelant et se pose
 // au meme endroit pour les trois lectures — cf. tactical_repo_univers.go.
 //
-// KillEvents, elle, accepte une carte VIDE : son appelant de production, le bloc de
-// coordination des pages Sessions et Series temporelles (service/coordination_block.go),
-// lit une LISTE de matchs (`RestreindreAux`), qui n'a pas de carte. Le SELECT reste le
-// meme, la carte devenant un parametre neutre (`? = ” OR mr.map_id = ?`). La borne
-// reste le joueur, jamais la table entiere. Une lecture SANS liste (zero-value de
-// ListeBlancheMatchs) reste acceptee mais n'a pas d'appelant de production a ce jour.
+// L'univers (Univers) accepte une carte VIDE : le bloc de coordination des pages Sessions et
+// Series temporelles (service/coordination_block.go) le lit pour une LISTE de matchs, qui n'a
+// pas de carte. Le SELECT reste le meme, la carte devenant un parametre neutre
+// (`? = ” OR mr.map_id = ?`). La borne reste le joueur ET la liste blanche : une demande
+// SANS liste (zero-value de ListeBlancheMatchs) est un refus (exigerLaListe), jamais
+// l'historique entier du joueur par oubli.
 package duckdb
 
 import (
@@ -121,6 +121,9 @@ func nomDeCarteRetenuSQL(col string) string {
 func (r *TacticalRepo) MapsPlayed(ctx context.Context, q domain.TacticalQuery) ([]domain.TacticalMapRow, error) {
 	if q.PlayerXUID == "" {
 		return nil, fmt.Errorf("TacticalRepo.MapsPlayed: xuid vide")
+	}
+	if err := exigerLaListe(q, "MapsPlayed"); err != nil {
+		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)
 	defer cancel()
@@ -307,68 +310,17 @@ func tagOuNil(v sql.NullInt64) *uint32 {
 	return &u
 }
 
-// QTacticalEvents : le journal des morts des matchs de l'univers.
-//
-// Aucune jointure sur les positions : le journal porte des INSTANTS et des IDENTITES,
-// pas des coordonnees — exiger une position mesuree ecarterait les morts d'un match non
-// decode.
-//
-// %s = la liste des matchs de l'univers (listeDeLUnivers) : une liste de constantes, que
-// DuckDB pousse sous la fenetre de la vue (0,74 s -> 0,05 s pour 6 matchs, mesure lot L5a).
-const QTacticalEvents = `
-SELECT e.match_id,
-       COALESCE(e.feed_killer_xuid, '') AS killer_xuid,
-       COALESCE(e.victim_xuid, '')      AS victim_xuid,
-       e.time_ms
-FROM match_kill_events_latest e
-WHERE e.match_id IN (%s)
-  AND e.publishable
-ORDER BY e.match_id, e.time_ms, e.victim_xuid, e.feed_killer_xuid`
-
-// KillEvents rend l'univers ET le journal des morts de ses matchs.
-func (r *TacticalRepo) KillEvents(ctx context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
-	var out domain.TacticalKillEvents
-	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)
-	defer cancel()
-	db, release, err := r.ouvrir(ctx, q, "KillEvents")
-	if err != nil {
-		return out, err
-	}
-	defer release()
-
-	univ, err := r.chargerUnivers(ctx, db, q)
-	if err != nil {
-		return out, r.degrader(ctx, "KillEvents", err)
-	}
-	out.Univers = univ
-	if len(univ.Matchs) == 0 {
-		return out, nil
-	}
-
-	liste, args := listeDeLUnivers(univ, 1)
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalEvents, liste), args...)
-	if err != nil {
-		return out, r.degrader(ctx, "KillEvents", err)
-	}
-	err = scanRows(ctx, rows, "TacticalRepo.KillEvents", func(sc rowScanner) error {
-		var e domain.KillEvent
-		if err := sc.Scan(&e.MatchID, &e.KillerXUID, &e.VictimXUID, &e.TimeMs); err != nil {
-			return err
-		}
-		out.Events = append(out.Events, e)
-		return nil
-	})
-	return out, err
-}
-
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 
-// ouvrir valide la demande et prend le lecteur shared. La CARTE n'est pas exigee
-// ici : seule la lecture spatiale en a besoin, et c'est elle qui la reclame
-// (KillPositions) — le journal des morts se lit aussi sur toutes les cartes.
+// ouvrir valide la demande (joueur, liste blanche) et prend le lecteur shared. La CARTE
+// n'est pas exigee ici : seule la lecture spatiale en a besoin, et c'est elle qui la
+// reclame (KillPositions) — l'univers se lit aussi sur toutes les cartes.
 func (r *TacticalRepo) ouvrir(ctx context.Context, q domain.TacticalQuery, op string) (*sql.DB, func(), error) {
 	if q.PlayerXUID == "" {
 		return nil, nil, fmt.Errorf("TacticalRepo.%s: xuid vide", op)
+	}
+	if err := exigerLaListe(q, op); err != nil {
+		return nil, nil, err
 	}
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {

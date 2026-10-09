@@ -76,21 +76,35 @@ func createParquetViewStrict(ctx context.Context, db *sql.DB, viewName, file str
 // shared COMPLET (sinon ErrSnapshotIncomplete → fallback live global). Matérialisées en
 // TABLES :memory: (pas vues) pour que les fonctions canoniques de création de vues
 // (CREATE TABLE IF NOT EXISTS + CREATE VIEW) s'appliquent sans conflit de nom.
+// Les tables d'un titre seulement (sharedSnapshotTitleOwnedRaw) n'en font pas partie.
 func sharedSnapshotRequiredTables() []string {
 	out := append([]string{}, sharedSnapshotTables...)
-	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs, match_objective_stats, match_kill_events (raw)
+	out = append(out, sharedSnapshotMatchKeyedRaw...) // match_csrs, match_objective_stats, match_kill_events (raw)
 	out = append(out, sharedSnapshotGlobalTables...)  // xuid_aliases
 	return out
 }
 
+// vueWeaponKillsSQL : v_weapon_kills (DENSE_RANK sur generation_id), DDL inline aligné sur
+// migration/steps_shared_append_only_weapon_kills.go. Posée seulement quand le snapshot porte
+// `weapon_kills` (cf. sharedSnapshotTitleOwnedRaw).
+const vueWeaponKillsSQL = `CREATE OR REPLACE VIEW v_weapon_kills AS
+			SELECT * EXCLUDE (rk) FROM (
+				SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
+				       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
+				FROM weapon_kills
+			) WHERE rk = 1`
+
+// vuesDesTablesDuTitre : la vue de dernière génération (nom live) de chaque table de sharedSnapshotTitleOwnedRaw.
+var vuesDesTablesDuTitre = map[string]string{"weapon_kills": vueWeaponKillsSQL}
+
 // OpenSnapshotShared ouvre la version courante comme une DuckDB :memory: reconstruisant
 // le SCHÉMA SHARED COMPLET — toutes les tables de base + TOUTES les vues aux noms live
-// (v_gamertag_lookup, v_match_full, v_weapon_kills, match_kill_events_latest,
-// match_csrs_latest, match_objective_stats_latest, mv_player_matches) → un SharedReader
-// peut servir TOUTES les lectures shared de l'app depuis le snapshot, hors fenêtre RW.
-// Retourne ErrNoSnapshot (aucune version) ou ErrSnapshotIncomplete (table requise
-// absente) → le caller dégrade vers live (jamais de schéma partiel servi : soit le
-// schéma complet, soit le live).
+// (v_gamertag_lookup, v_match_full, match_kill_events_latest, match_csrs_latest,
+// match_objective_stats_latest, mv_player_matches, et v_weapon_kills quand le titre porte
+// `weapon_kills`) → un SharedReader peut servir TOUTES les lectures shared de l'app depuis
+// le snapshot, hors fenêtre RW. Retourne ErrNoSnapshot (aucune version) ou
+// ErrSnapshotIncomplete (table requise absente) → le caller dégrade vers live (jamais de
+// schéma partiel servi : soit le schéma complet du titre, soit le live).
 //
 // Zéro divergence : les vues sont créées par les MÊMES fonctions canoniques que le boot/
 // migrations (migration.ApplyResolutionViews + ApplyMvPlayerMatchesView, qui réutilisent
@@ -120,54 +134,65 @@ func OpenSnapshotShared(ctx context.Context, paths *title.PathResolver, titleSlu
 	if err != nil {
 		return nil, fmt.Errorf("snapshot read shared: open :memory:: %w", err)
 	}
+	if err := reconstruireSchemaShared(ctx, db, sharedFile); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return &SnapshotQuerier{DB: db, Version: version, closeFn: func() { _ = db.Close() }}, nil
+}
+
+// reconstruireSchemaShared matérialise les tables du snapshot dans `db` puis y recrée les vues
+// shared aux noms live. `sharedFile` rend le chemin Parquet d'une table de la version.
+func reconstruireSchemaShared(ctx context.Context, db *sql.DB, sharedFile func(string) string) error {
 	// Matérialise les tables de base (REQUISES) depuis les Parquet.
 	for _, tbl := range sharedSnapshotRequiredTables() {
 		if err := materializeParquetTable(ctx, db, tbl, sharedFile(tbl)); err != nil {
-			_ = db.Close()
-			return nil, err
+			return err
 		}
 	}
-	// Recrée TOUTES les vues shared via les fonctions canoniques (zéro divergence).
-	if err := migration.ApplyResolutionViews(db); err != nil { // v_gamertag_lookup, v_match_full, killer_victim_pairs (compat)
-		_ = db.Close()
-		return nil, fmt.Errorf("snapshot read shared: resolution views: %w", err)
-	}
-	if err := migration.ApplyMvPlayerMatchesView(db); err != nil { // mv_player_matches
-		_ = db.Close()
-		return nil, fmt.Errorf("snapshot read shared: mv_player_matches: %w", err)
-	}
-	// v_weapon_kills (DENSE_RANK) + match_csrs_latest (QUALIFY) : DDL inline aligné sur
-	// migration/steps_shared_append_only_weapon_kills.go et sync/schema.go.
-	// match_objective_stats_latest : DDL canonique partagé (Q12 la LEFT JOIN depuis v7.2 —
-	// son absence du schéma snapshot rendait TOUT match du cut scoreboard_empty).
-	for _, ddl := range []string{
-		`CREATE OR REPLACE VIEW v_weapon_kills AS
-			SELECT * EXCLUDE (rk) FROM (
-				SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id,
-				       DENSE_RANK() OVER (PARTITION BY match_id, xuid ORDER BY generation_id DESC) AS rk
-				FROM weapon_kills
-			) WHERE rk = 1`,
+	vues := []string{
+		// match_csrs_latest (QUALIFY) : DDL inline aligné sur sync/schema.go.
 		`CREATE OR REPLACE VIEW match_csrs_latest AS
 			SELECT * FROM match_csrs
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
+		// match_objective_stats_latest : DDL canonique partagé (Q12 la LEFT JOIN — son
+		// absence du schéma snapshot rendait TOUT match du cut scoreboard_empty).
 		migration.MatchObjectiveStatsLatestViewSQL("match_objective_stats"),
-	} {
+	}
+	// Tables d'un titre seulement : présentes au snapshot ssi la base du titre les portait.
+	for _, tbl := range sharedSnapshotTitleOwnedRaw {
+		if _, err := os.Stat(sharedFile(tbl)); errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err := materializeParquetTable(ctx, db, tbl, sharedFile(tbl)); err != nil {
+			return err
+		}
+		if vue, ok := vuesDesTablesDuTitre[tbl]; ok {
+			vues = append(vues, vue)
+		}
+	}
+	// Recrée les vues shared via les fonctions canoniques (zéro divergence).
+	if err := migration.ApplyResolutionViews(db); err != nil { // v_gamertag_lookup, v_match_full, killer_victim_pairs (compat)
+		return fmt.Errorf("snapshot read shared: resolution views: %w", err)
+	}
+	if err := migration.ApplyMvPlayerMatchesView(db); err != nil { // mv_player_matches
+		return fmt.Errorf("snapshot read shared: mv_player_matches: %w", err)
+	}
+	for _, ddl := range vues {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
-			_ = db.Close()
-			return nil, fmt.Errorf("snapshot read shared: vue append-only: %w", err)
+			return fmt.Errorf("snapshot read shared: vue append-only: %w", err)
 		}
 	}
 	// match_kill_events_latest : par la fonction canonique de la migration (zéro
 	// divergence — c'est elle qui porte la sémantique de sélection de passe). Sur le
 	// :memory:, la table matérialisée depuis le Parquet est déjà là : les CREATE ... IF
-	// NOT EXISTS sont des no-ops, seule la vue (OR REPLACE) est posée. Ajoutée le
-	// 2026-08-12 : Q21b/Q21c (arme + assistant du kill feed) la lisent depuis le lot
-	// portage POC — sans elle, MatchView servi du snapshot rendait ces lectures vides.
+	// NOT EXISTS sont des no-ops, seule la vue (OR REPLACE) est posée. Q21b/Q21c (arme +
+	// assistant du kill feed) la lisent : sans elle, MatchView servi du snapshot rendrait
+	// ces lectures vides.
 	if err := migration.EnsureMatchKillEvents(db); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("snapshot read shared: match_kill_events_latest: %w", err)
+		return fmt.Errorf("snapshot read shared: match_kill_events_latest: %w", err)
 	}
-	return &SnapshotQuerier{DB: db, Version: version, closeFn: func() { _ = db.Close() }}, nil
+	return nil
 }
 
 // materializeParquetTable crée une TABLE :memory: `name` matérialisant le Parquet `file`.

@@ -68,7 +68,7 @@ func TestUnivers_EligibiliteALaCuisson_QuatreCas(t *testing.T) {
 	semerMatchEligibilite(t, pdb, "indatable", nil, 0)
 
 	repo := NewTacticalRepo(pdb)
-	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA, RetentionMois: 3}
+	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA, RetentionMois: 3, Matchs: domain.RestreindreAux(tacTousLesMatchs())}
 	univ, err := repo.Univers(context.Background(), q)
 	if err != nil {
 		t.Fatalf("Univers avec RetentionMois=3 : %v — un horodatage NULL ne doit pas faire "+
@@ -115,7 +115,7 @@ func TestUnivers_EligibiliteALaCuisson_FenetreIllimitee(t *testing.T) {
 
 	repo := NewTacticalRepo(pdb)
 	univ, err := repo.Univers(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA, RetentionMois: 0})
+		domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA, RetentionMois: 0, Matchs: domain.RestreindreAux(tacTousLesMatchs())})
 	if err != nil {
 		t.Fatalf("Univers sans fenetre : %v", err)
 	}

@@ -2,34 +2,6 @@
 #
 # Format ICU MessageFormat. Régénérer via :
 #   node apps/web/scripts/build_i18n_manifests.mjs
-#
-# Sections couvertes (S2 = header, S3-S11 ajoutent les sections suivantes) :
-#   S2  squad.header.*
-#   S3  squad.synergies.*  (à venir)
-#   S5  squad.impact.*     (à venir)
-#   ...
-
-# ─── S2 : En-têtes ──────────────────────────────────────────────────────────
-
-[squad.header.solo_section_title]
-fr = "Statistiques de la session"
-en = "Session stats"
-
-[squad.header.squad_section_title]
-fr = "Score d'équipe"
-en = "Team score"
-
-[squad.header.squad_score_base]
-fr = "Base"
-en = "Base"
-
-[squad.header.squad_score_bonus]
-fr = "{base, number} (+{bonus, number})"
-en = "{base, number} (+{bonus, number})"
-
-[squad.header.squad_grade_label]
-fr = "Grade"
-en = "Grade"
 
 # ─── KPI cards (8) ──────────────────────────────────────────────────────────
 

@@ -25,9 +25,6 @@ import (
 var listeLieeAutorisee = map[string]int{
 	// La source unique des deux formes.
 	"internal/analysis/sql_liste.go": 1,
-	// Deux semi-jointures `match_id IN (SELECT UNNEST(?::VARCHAR[]))` antérieures au helper, non
-	// migrées au lot B (hors de son périmètre) : à passer par clauseListeParJointure, puis à retirer.
-	"internal/platform/duckdb/fanout_repo.go": 2,
 }
 
 func TestListeLiee_TexteEnUnSeulEndroit(t *testing.T) {

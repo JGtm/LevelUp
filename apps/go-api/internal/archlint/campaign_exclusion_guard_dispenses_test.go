@@ -39,11 +39,6 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/platform/duckdb/queries_match_detail.go:Q26MatchExpectedStats": {dispenseMonoMatch, "2026-07-18",
 		"requête MONO-MATCH (WHERE match_id = ? AND xuid = ?) — pas d'agrégation d'historique."},
 
-	// ── B4.3 : statué par lecture de l'appelant ──
-	"internal/platform/duckdb/fanout_repo.go:FanoutRepo.CountCommonMatchesForXUID": {dispenseEnsembleFourni, "2026-09-27",
-		"l'ensemble est insertedMatchIDs, les matchs NOUVELLEMENT insérés par la synchro (seul appelant : service/fanout_service.go:73) ; " +
-			"la Campagne n'est plus collectée à la source (games/halo_5/capture.go:263, isExcludedH5GameMode :128-129). Pipeline d'enrichissement, pas un affichage."},
-
 	// ── B4.4 : dispenses prévues par le plan ──
 	"internal/platform/duckdb/engagement_score_repo_queries.go:EngagementScoreRepo.LoadMatchEngagementContext": {dispenseMonoMatch, "2026-09-27",
 		"requête MONO-MATCH (engagement_score_repo_queries.go:53, WHERE mr.match_id = ? AND mp.xuid = ?) : contexte d'UN match, aucun agrégat."},

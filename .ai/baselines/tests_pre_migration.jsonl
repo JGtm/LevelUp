@@ -33051,39 +33051,6 @@
 {"Time":"2026-06-26T23:49:46.398881+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestGamertagRepo_Search_TypoTolerance","Output":"=== RUN   TestGamertagRepo_Search_TypoTolerance\n"}
 {"Time":"2026-06-26T23:49:46.4102107+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestGamertagRepo_Search_TypoTolerance","Output":"--- PASS: TestGamertagRepo_Search_TypoTolerance (0.01s)\n"}
 {"Time":"2026-06-26T23:49:46.4102107+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestGamertagRepo_Search_TypoTolerance","Elapsed":0.01}
-{"Time":"2026-06-26T23:49:46.4102107+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments"}
-{"Time":"2026-06-26T23:49:46.4102107+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments","Output":"=== RUN   TestFanoutRepo_InsertStubEnrichments\n"}
-{"Time":"2026-06-26T23:49:46.4572409+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments","Output":"2026/06/26 23:49:46 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:46.4624355+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments","Output":"--- PASS: TestFanoutRepo_InsertStubEnrichments (0.05s)\n"}
-{"Time":"2026-06-26T23:49:46.4624355+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments","Elapsed":0.05}
-{"Time":"2026-06-26T23:49:46.4624355+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Empty"}
-{"Time":"2026-06-26T23:49:46.4624355+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Empty","Output":"=== RUN   TestFanoutRepo_InsertStubEnrichments_Empty\n"}
-{"Time":"2026-06-26T23:49:46.5117189+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Empty","Output":"2026/06/26 23:49:46 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:46.5192509+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Empty","Output":"--- PASS: TestFanoutRepo_InsertStubEnrichments_Empty (0.06s)\n"}
-{"Time":"2026-06-26T23:49:46.5192509+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Empty","Elapsed":0.06}
-{"Time":"2026-06-26T23:49:46.5192509+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Idempotent"}
-{"Time":"2026-06-26T23:49:46.5192509+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Idempotent","Output":"=== RUN   TestFanoutRepo_InsertStubEnrichments_Idempotent\n"}
-{"Time":"2026-06-26T23:49:46.5732489+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Idempotent","Output":"2026/06/26 23:49:46 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:46.5825058+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Idempotent","Output":"--- PASS: TestFanoutRepo_InsertStubEnrichments_Idempotent (0.06s)\n"}
-{"Time":"2026-06-26T23:49:46.5825058+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_InsertStubEnrichments_Idempotent","Elapsed":0.06}
-{"Time":"2026-06-26T23:49:46.5825058+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Subset"}
-{"Time":"2026-06-26T23:49:46.5825058+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Subset","Output":"=== RUN   TestFanoutRepo_LoadExistingEnrichments_Subset\n"}
-{"Time":"2026-06-26T23:49:46.6330808+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Subset","Output":"2026/06/26 23:49:46 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:46.6413261+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Subset","Output":"--- PASS: TestFanoutRepo_LoadExistingEnrichments_Subset (0.06s)\n"}
-{"Time":"2026-06-26T23:49:46.6413261+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Subset","Elapsed":0.06}
-{"Time":"2026-06-26T23:49:46.6413261+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_EmptyInput"}
-{"Time":"2026-06-26T23:49:46.6413261+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_EmptyInput","Output":"=== RUN   TestFanoutRepo_LoadExistingEnrichments_EmptyInput\n"}
-{"Time":"2026-06-26T23:49:46.6889195+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_EmptyInput","Output":"2026/06/26 23:49:46 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:46.6915199+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_EmptyInput","Output":"--- PASS: TestFanoutRepo_LoadExistingEnrichments_EmptyInput (0.05s)\n"}
-{"Time":"2026-06-26T23:49:46.6920363+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_EmptyInput","Elapsed":0.05}
-{"Time":"2026-06-26T23:49:46.6920363+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID"}
-{"Time":"2026-06-26T23:49:46.6920363+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID","Output":"=== RUN   TestFanoutRepo_CountCommonMatchesForXUID\n"}
-{"Time":"2026-06-26T23:49:46.7002387+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID","Output":"--- PASS: TestFanoutRepo_CountCommonMatchesForXUID (0.01s)\n"}
-{"Time":"2026-06-26T23:49:46.7002387+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID","Elapsed":0.01}
-{"Time":"2026-06-26T23:49:46.7002387+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID_Empty"}
-{"Time":"2026-06-26T23:49:46.7002387+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID_Empty","Output":"=== RUN   TestFanoutRepo_CountCommonMatchesForXUID_Empty\n"}
-{"Time":"2026-06-26T23:49:46.7056019+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID_Empty","Output":"--- PASS: TestFanoutRepo_CountCommonMatchesForXUID_Empty (0.01s)\n"}
-{"Time":"2026-06-26T23:49:46.7056019+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatchesForXUID_Empty","Elapsed":0.01}
 {"Time":"2026-06-26T23:49:46.7056019+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestMatchExclusionRepo_ListExcluded_NoExcluded"}
 {"Time":"2026-06-26T23:49:46.7056019+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestMatchExclusionRepo_ListExcluded_NoExcluded","Output":"=== RUN   TestMatchExclusionRepo_ListExcluded_NoExcluded\n"}
 {"Time":"2026-06-26T23:49:46.7542984+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestMatchExclusionRepo_ListExcluded_NoExcluded","Output":"2026/06/26 23:49:46 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
@@ -33151,24 +33118,6 @@
 {"Time":"2026-06-26T23:49:47.1913752+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetPlayerATHFor_NotInPool","Output":"=== RUN   TestCompareRepo_GetPlayerATHFor_NotInPool\n"}
 {"Time":"2026-06-26T23:49:47.201938+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetPlayerATHFor_NotInPool","Output":"--- PASS: TestCompareRepo_GetPlayerATHFor_NotInPool (0.01s)\n"}
 {"Time":"2026-06-26T23:49:47.201938+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestCompareRepo_GetPlayerATHFor_NotInPool","Elapsed":0.01}
-{"Time":"2026-06-26T23:49:47.201938+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches_Empty"}
-{"Time":"2026-06-26T23:49:47.201938+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches_Empty","Output":"=== RUN   TestFanoutRepo_CountCommonMatches_Empty\n"}
-{"Time":"2026-06-26T23:49:47.2113781+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches_Empty","Output":"--- PASS: TestFanoutRepo_CountCommonMatches_Empty (0.01s)\n"}
-{"Time":"2026-06-26T23:49:47.2113781+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches_Empty","Elapsed":0.01}
-{"Time":"2026-06-26T23:49:47.2113781+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches"}
-{"Time":"2026-06-26T23:49:47.2113781+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches","Output":"=== RUN   TestFanoutRepo_CountCommonMatches\n"}
-{"Time":"2026-06-26T23:49:47.2207537+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches","Output":"--- PASS: TestFanoutRepo_CountCommonMatches (0.01s)\n"}
-{"Time":"2026-06-26T23:49:47.2207537+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_CountCommonMatches","Elapsed":0.01}
-{"Time":"2026-06-26T23:49:47.2207537+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Empty"}
-{"Time":"2026-06-26T23:49:47.2207537+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Empty","Output":"=== RUN   TestFanoutRepo_LoadExistingEnrichments_Empty\n"}
-{"Time":"2026-06-26T23:49:47.274791+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Empty","Output":"2026/06/26 23:49:47 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:47.2832881+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Empty","Output":"--- PASS: TestFanoutRepo_LoadExistingEnrichments_Empty (0.06s)\n"}
-{"Time":"2026-06-26T23:49:47.2832881+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments_Empty","Elapsed":0.06}
-{"Time":"2026-06-26T23:49:47.2832881+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments"}
-{"Time":"2026-06-26T23:49:47.2832881+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments","Output":"=== RUN   TestFanoutRepo_LoadExistingEnrichments\n"}
-{"Time":"2026-06-26T23:49:47.3326066+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments","Output":"2026/06/26 23:49:47 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
-{"Time":"2026-06-26T23:49:47.342879+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments","Output":"--- PASS: TestFanoutRepo_LoadExistingEnrichments (0.06s)\n"}
-{"Time":"2026-06-26T23:49:47.342879+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestFanoutRepo_LoadExistingEnrichments","Elapsed":0.06}
 {"Time":"2026-06-26T23:49:47.342879+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestMatchExclusionRepo_ListExcluded_Empty"}
 {"Time":"2026-06-26T23:49:47.342879+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestMatchExclusionRepo_ListExcluded_Empty","Output":"=== RUN   TestMatchExclusionRepo_ListExcluded_Empty\n"}
 {"Time":"2026-06-26T23:49:47.3901683+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestMatchExclusionRepo_ListExcluded_Empty","Output":"2026/06/26 23:49:47 INFO append-only player_match_enrichment: migration appliquée (ART éradiqué) rows=0 columns_preserved=25\n"}
@@ -44011,26 +43960,6 @@
 {"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR","Output":"2026/06/26 23:51:31 INFO explorer_season_breakdown xuid=target-xuid seasons_total=3 seasons_played=1\n"}
 {"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR","Output":"--- PASS: TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR (0.00s)\n"}
 {"Time":"2026-06-26T23:51:31.814982+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptyMatchIDs"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptyMatchIDs","Output":"=== RUN   TestFanoutBuildPlan_EmptyMatchIDs\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptyMatchIDs","Output":"--- PASS: TestFanoutBuildPlan_EmptyMatchIDs (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptyMatchIDs","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptySlice"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptySlice","Output":"=== RUN   TestFanoutBuildPlan_EmptySlice\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptySlice","Output":"--- PASS: TestFanoutBuildPlan_EmptySlice (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutBuildPlan_EmptySlice","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_NilPlan"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_NilPlan","Output":"=== RUN   TestFanoutExecute_NilPlan\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_NilPlan","Output":"--- PASS: TestFanoutExecute_NilPlan (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_NilPlan","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_EmptyPlan"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_EmptyPlan","Output":"=== RUN   TestFanoutExecute_EmptyPlan\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_EmptyPlan","Output":"--- PASS: TestFanoutExecute_EmptyPlan (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_EmptyPlan","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_TargetWithResolveError"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_TargetWithResolveError","Output":"=== RUN   TestFanoutExecute_TargetWithResolveError\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_TargetWithResolveError","Output":"--- PASS: TestFanoutExecute_TargetWithResolveError (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.814982+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutExecute_TargetWithResolveError","Elapsed":0}
 {"Time":"2026-06-26T23:51:31.814982+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBootstrapService_Build_NilSession"}
 {"Time":"2026-06-26T23:51:31.814982+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBootstrapService_Build_NilSession","Output":"=== RUN   TestBootstrapService_Build_NilSession\n"}
 {"Time":"2026-06-26T23:51:31.8334585+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBootstrapService_Build_NilSession","Output":"--- PASS: TestBootstrapService_Build_NilSession (0.02s)\n"}
@@ -47269,14 +47198,6 @@
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildDistributionsTab_CorrectBuckets","Output":"=== RUN   TestBuildDistributionsTab_CorrectBuckets\n"}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildDistributionsTab_CorrectBuckets","Output":"--- PASS: TestBuildDistributionsTab_CorrectBuckets (0.00s)\n"}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildDistributionsTab_CorrectBuckets","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutPlan_Empty"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutPlan_Empty","Output":"=== RUN   TestFanoutPlan_Empty\n"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutPlan_Empty","Output":"--- PASS: TestFanoutPlan_Empty (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutPlan_Empty","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFanoutResult_NoErrors"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutResult_NoErrors","Output":"=== RUN   TestFanoutResult_NoErrors\n"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFanoutResult_NoErrors","Output":"--- PASS: TestFanoutResult_NoErrors (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestFanoutResult_NoErrors","Elapsed":0}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestNewTimeseriesService"}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewTimeseriesService","Output":"=== RUN   TestNewTimeseriesService\n"}
 {"Time":"2026-06-26T23:51:37.8488542+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewTimeseriesService","Output":"--- PASS: TestNewTimeseriesService (0.00s)\n"}

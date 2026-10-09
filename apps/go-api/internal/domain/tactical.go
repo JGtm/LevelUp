@@ -186,18 +186,13 @@ type EchelleTactique struct {
 // deux choses opposees :
 //
 //	liste vide          AUCUN MATCH (le filtre n'a rien retenu), jamais « tous » ;
-//	absence de liste    tout l'historique du joueur, sans restriction.
+//	absence de liste    tout l'historique du joueur, que le lecteur REFUSE.
 //
 // Avec un `[]string` nu, ces deux etats sont le meme `len() == 0` — et le jour ou un
 // appelant oublie sa liste, il obtient l'historique ENTIER en silence. Le zero-value
-// de ce type-ci est l'absence de restriction (le seul etat qu'on peut construire par
-// accident) et TOUTE liste, vide comprise, vient de RestreindreAux.
-//
-// Les appelants de production posent TOUJOURS une liste : l'onglet Tactique
-// (service/tactical_service_perimetre.go, requeteDuScope ; tactical_service_cellule_enrichir.go)
-// et le bloc de coordination des pages Sessions et Series temporelles
-// (service/coordination_block.go). L'absence de restriction n'a pas d'appelant de
-// production a ce jour.
+// de ce type-ci (le seul etat qu'on peut construire par accident) est REFUSE par le lecteur
+// tactique (platform/duckdb, exigerLaListe), et TOUTE liste, vide comprise, vient de
+// RestreindreAux. Oublier sa liste est donc une erreur visible, jamais l'historique entier.
 type ListeBlancheMatchs struct {
 	restreint bool
 	ids       []string
@@ -229,7 +224,7 @@ type TacticalQuery struct {
 	PlayerXUID string
 
 	// MapID restreint a une carte. Vide = toutes les cartes — c'est le cas de
-	// l'ecran d'entree (MapsPlayed) ET du journal des morts (KillEvents) lu par le
+	// l'ecran d'entree (MapsPlayed) ET de l'univers (Univers) lu par le
 	// bloc de coordination des pages Sessions et Series temporelles, qui porte sur une
 	// liste de matchs et non sur une carte. Seule la lecture SPATIALE (KillPositions)
 	// l'exige : une grille de 0,5 m n'a de sens que carte par carte.
@@ -423,12 +418,6 @@ type TacticalMortsContexte struct {
 type TacticalPositions struct {
 	Univers TacticalUnivers
 	Points  []TacticalKillPosition
-}
-
-// TacticalKillEvents : l'univers ET le journal des morts de ses matchs.
-type TacticalKillEvents struct {
-	Univers TacticalUnivers
-	Events  []KillEvent
 }
 
 // TacticalMapRow est une carte JOUEE, telle que le lecteur la rend : le compte de

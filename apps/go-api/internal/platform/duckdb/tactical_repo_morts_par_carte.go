@@ -25,8 +25,7 @@ package duckdb
 // des positions et du journal se calculaient sur la table ENTIERE (0,23 a 0,39 s sur la copie
 // compactee, quel que soit le perimetre, 30 matchs compris). La liste est desormais liee en UNE
 // constante sur `kp.match_id` ET sur `e.match_id` (clauseListeMatchs) — un filtre ne traverse pas
-// la jointure. Sans liste blanche (aucun appelant de production), la liste liee est celle des
-// matchs du joueur (QMatchsDuJoueurTpl) : la jointure du participant la retenait deja.
+// la jointure. Une demande sans liste blanche est refusee (exigerLaListe).
 //
 // # MEMES GARDES D'ATTRIBUTION QUE `KillPositions`
 //
@@ -41,7 +40,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 
@@ -78,6 +76,15 @@ func (r *TacticalRepo) MortsParCarte(ctx context.Context, q domain.TacticalQuery
 	if q.PlayerXUID == "" {
 		return nil, fmt.Errorf("TacticalRepo.MortsParCarte: xuid vide")
 	}
+	if err := exigerLaListe(q, "MortsParCarte"); err != nil {
+		return nil, err
+	}
+	out := make(map[string][]domain.PositionSample)
+	matchs := q.Matchs.IDs()
+	if len(matchs) == 0 {
+		// Liste blanche vide : aucun match, jamais tous — rien a lire.
+		return out, nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, tacticalReadTimeout)
 	defer cancel()
 
@@ -88,15 +95,6 @@ func (r *TacticalRepo) MortsParCarte(ctx context.Context, q domain.TacticalQuery
 	}
 	defer release()
 
-	out := make(map[string][]domain.PositionSample)
-	matchs, err := r.matchsDesFenetres(ctx, db, q)
-	if err != nil {
-		return nil, r.degrader(ctx, "MortsParCarte", err)
-	}
-	if len(matchs) == 0 {
-		// Liste blanche vide (aucun match, jamais tous) ou joueur sans match : rien a lire.
-		return out, nil
-	}
 	query, args := r.mortsParCarteSQL(q, matchs)
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -114,29 +112,18 @@ func (r *TacticalRepo) MortsParCarte(ctx context.Context, q domain.TacticalQuery
 	return out, err
 }
 
-// matchsDesFenetres : la liste liee sous les deux fenetres — la liste blanche de la page quand
-// elle est posee, sinon les matchs du joueur (QMatchsDuJoueurTpl, exclusion Campagne comprise).
-func (r *TacticalRepo) matchsDesFenetres(ctx context.Context, db *sql.DB, q domain.TacticalQuery) ([]string, error) {
-	if q.Matchs.Restreint() {
-		return q.Matchs.IDs(), nil
-	}
-	return matchsDeLHistorique(ctx, db, historique{xuid: q.PlayerXUID, titre: r.pdb.TitleSlug})
-}
-
 // mortsParCarteSQL assemble la requete et ses arguments, sur une liste `matchs` NON VIDE.
 //
 // LA LISTE EST POSEE SUR LES DEUX VUES (clauseListeMatchs, un parametre chacune) ET NULLE PART
 // AILLEURS : le registre est joint sur `kp.match_id`, qu'elle borne deja ; la reposer sur
 // `mr.match_id` (clausePerimetre) lierait des milliers de parametres de plus pour rien. Du
-// perimetre, seule la composition (coequipiers) s'ajoute donc ici.
+// perimetre, seule la composition (clauseComposition) s'ajoute donc ici.
 //
 // L'ORDRE DES ARGUMENTS SUIT L'ORDRE TEXTUEL DES `?` : le joueur (jointure du participant), la
 // liste deux fois (positions, journal), la composition, puis LA VICTIME — filtree APRES le
 // regroupement.
 func (r *TacticalRepo) mortsParCarteSQL(q domain.TacticalQuery, matchs []string) (string, []any) {
-	sansListe := q
-	sansListe.Matchs = domain.ListeBlancheMatchs{}
-	perim, perimArgs := clausePerimetre(sansListe)
+	perim, perimArgs := clauseComposition(q)
 	listePos, argPos := clauseListeMatchs("kp.match_id", matchs)
 	listeJournal, argJournal := clauseListeMatchs("e.match_id", matchs)
 	args := make([]any, 0, 4+len(perimArgs))

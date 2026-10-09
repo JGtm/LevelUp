@@ -6,12 +6,11 @@
 // god-file au motif que le voisin y vit accroîtrait une dette gelée par la baseline
 // (CLAUDE.md n 5).
 //
-// LE JOURNAL DES MORTS N'A PAS DE PORT ICI, ET C'EST VOLONTAIRE : le bloc lit les morts
-// par [TacticalRepository.KillEvents], qui rend déjà l'univers (matchs retenus, drapeau
-// « mesuré », table des équipes) ET les événements pour une liste blanche de match_id. Un
-// second lecteur d'événements aurait donné deux définitions de « match mesuré » libres de
-// diverger — le défaut exact que la correction R2 du 2026-09-06 a supprimé sur la page
-// Escouade.
+// L'UNIVERS N'A PAS DE PORT ICI, ET C'EST VOLONTAIRE : le bloc le lit par
+// [TacticalRepository.Univers] (matchs retenus, drapeau « mesuré », table des équipes) pour
+// une liste blanche de match_id. Un second lecteur aurait donné deux définitions de « match
+// mesuré » libres de diverger — le défaut exact que la correction R2 du 2026-09-06 a
+// supprimé sur la page Escouade.
 package port
 
 import (

@@ -139,24 +139,3 @@ func TestTacticalService_SansLecteur(t *testing.T) {
 		t.Errorf("Raster sans lecteur: err = %v, want ErrCapabilityNotSupported", err)
 	}
 }
-
-// TestTacticalService_Raster_SansJournalDesMorts : aucune lecture ne lit le journal des morts.
-// Il ne servait qu'au KPI d'echange et a la couverture « N morts, M localisees », retires de
-// l'onglet : une lecture de plus a chaque raster pour une donnee que plus rien n'affiche.
-func TestTacticalService_Raster_SansJournalDesMorts(t *testing.T) {
-	for _, question := range []string{
-		domain.TacticalQuestionMorts, domain.TacticalQuestionKills, domain.TacticalQuestionGagne,
-		domain.TacticalQuestionSolde, domain.TacticalQuestionIsole,
-	} {
-		repo := &mockTacticalRepo{pos: domain.TacticalPositions{Univers: universUnMatch("m1", domain.OutcomeWin)}}
-		repo.univ = repo.pos.Univers
-		repo.morts = domain.TacticalMortsContexte{Univers: repo.pos.Univers}
-		svc := NewTacticalService(repo, capsCompletes(), tsMoi)
-		if _, err := svc.Raster(context.Background(), tsDemande(repo, tsCarte, question, domain.TacticalQuiMoi)); err != nil {
-			t.Fatalf("%s : %v", question, err)
-		}
-		if repo.lecturesJournal != 0 {
-			t.Errorf("%s : %d lecture(s) du journal des morts, attendu 0", question, repo.lecturesJournal)
-		}
-	}
-}
