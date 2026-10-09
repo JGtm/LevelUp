@@ -3,18 +3,21 @@
  * (`SquadCompositionPicker`) hors de la page Escouade, l'annuaire qui traduit une composition en
  * xuids, et le xuid du joueur consulté. Règles de la liste : `compositionOptions.logic.ts`.
  *
+ * Les lectures : joueurs croisés, top des coéquipiers des matchs avec amis (la source de l'Escouade),
+ * amis déclarés, escouades enregistrées et groupes.
+ *
  * MÊMES CLÉS DE CACHE QUE LES PAGES QUI LISENT DÉJÀ CES RÉPONSES (`careerEncounters` de la
  * Carrière, `playerFriends`, escouades et groupes de `useSquadPresets`) : une seule entrée de cache
  * par réponse, jamais deux requêtes pour une seule liste.
  */
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { usePlayerFriends } from '@/features/friends/queries'
 import { useMyGroups } from '@/features/groups/queries'
 import { useMySquads } from '@/features/prestige/hooks/useSquads'
 import { api } from '@/lib/api/client'
-import type { CareerEncountersResponse, TeammateOption } from '@/lib/api/types'
+import type { CareerEncountersResponse, SquadPageResponse, TeammateOption } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -32,7 +35,11 @@ export interface CompositionOptions {
   options: TeammateOption[]
   /** Chaque joueur humain connu avec son xuid : traduit une composition en xuids. */
   annuaire: TeammateOption[]
-  /** Les lectures dont dépend l'annuaire ont répondu (succès ou échec). */
+  /**
+   * TOUTES les lectures dont dépend l'annuaire ont répondu — joueurs croisés, amis, escouades et,
+   * avec une identité liée, groupes. Un échec définitif compte comme une réponse (journalisé) :
+   * l'annuaire s'en passe plutôt que d'attendre sans fin.
+   */
   chargees: boolean
   /** Xuid du joueur consulté ; vide tant que son profil n'est pas connu. */
   joueurXuid: string
@@ -46,6 +53,14 @@ export function useCompositionOptions(playerSlug: string): CompositionOptions {
     queryKey: queryKeys.careerEncounters(playerSlug, titleSlug),
     queryFn: () =>
       api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`),
+    enabled: !!playerSlug,
+    staleTime: FRAICHEUR_RENCONTRES_MS,
+  })
+  // La source de l'Escouade : sans `teammate`, le service ne lit que le top des coéquipiers des
+  // matchs avec amis (`SquadService.GetSquadPage`), rien de plus.
+  const avecAmis = useQuery({
+    queryKey: queryKeys.teammatesTop(playerSlug, titleSlug),
+    queryFn: () => api.get<SquadPageResponse>(`/players/${playerSlug}/pages/squad`),
     enabled: !!playerSlug,
     staleTime: FRAICHEUR_RENCONTRES_MS,
   })
@@ -69,15 +84,50 @@ export function useCompositionOptions(playerSlug: string): CompositionOptions {
     const sources = {
       coequipiers: rencontres.data?.teammates ?? [],
       adversaires: rencontres.data?.enemies ?? [],
+      avecAmis: avecAmis.data?.top_teammates ?? [],
       amis: amis.data?.gamertags ?? [],
       identifies,
       joueur,
     }
     const connus = annuaireDeComposition(sources)
     return { options: coequipiersProposes(sources, connus), annuaire: connus }
-  }, [rencontres.data, amis.data, escouades.data, groupes.data, profils, joueur])
+  }, [rencontres.data, avecAmis.data, amis.data, escouades.data, groupes.data, profils, joueur])
 
-  const reglee = (q: { isSuccess: boolean; isError: boolean }) => q.isSuccess || q.isError
-  const chargees = reglee(rencontres) && reglee(amis) && reglee(escouades)
+  useEchecJournalise('rencontres', rencontres)
+  useEchecJournalise('coequipiers_avec_amis', avecAmis)
+  useEchecJournalise('amis', amis)
+  useEchecJournalise('escouades', escouades)
+  useEchecJournalise('groupes', groupes)
+  // Sans identité liée, la lecture des groupes est désactivée : il n'y a rien à attendre.
+  const chargees =
+    reglee(rencontres) &&
+    reglee(avecAmis) &&
+    reglee(amis) &&
+    reglee(escouades) &&
+    (!avecIdentite || reglee(groupes))
   return { options, annuaire, chargees, joueurXuid: joueur.xuid }
+}
+
+interface EtatDeLecture {
+  isSuccess: boolean
+  isError: boolean
+  error: unknown
+}
+
+/** reglee — la lecture a répondu, par un succès ou par un échec définitif. */
+function reglee(lecture: EtatDeLecture): boolean {
+  return lecture.isSuccess || lecture.isError
+}
+
+/** useEchecJournalise — dit l'échec définitif d'une source de l'annuaire, une fois par erreur. */
+function useEchecJournalise(source: string, lecture: EtatDeLecture): void {
+  const { isError, error } = lecture
+  useEffect(() => {
+    if (isError) {
+      console.warn('[composition] source de l’annuaire en échec — la composition s’en passe', {
+        source,
+        err: error,
+      })
+    }
+  }, [source, isError, error])
 }

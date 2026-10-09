@@ -188,6 +188,10 @@ export const queryKeys = {
   // libellé traduit.
   compositionSessions: (playerSlug: string, titleSlug: string, selectedGts: string[], exactComposition: boolean) =>
     ['teammates', playerSlug, titleSlug, 'composition-sessions', [...selectedGts].sort().join(','), exactComposition] as const,
+  // Top des coéquipiers des matchs avec amis (GET /pages/squad sans coéquipier) : la source de
+  // la liste de l'Escouade, lue par les sélecteurs de composition hors Escouade. Sous le préfixe
+  // 'teammates' : un ami ajouté l'invalide avec le reste.
+  teammatesTop: (playerSlug: string, titleSlug: string) => ['teammates', playerSlug, titleSlug, 'top'] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,

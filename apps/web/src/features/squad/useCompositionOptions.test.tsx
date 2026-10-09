@@ -30,14 +30,25 @@ const RENCONTRES = {
   total: 3,
 }
 
-function repondre(amis: string[]) {
+function repondre(amis: string[], groupes: () => Promise<unknown> = async () => []) {
   get.mockImplementation(async (path: string) => {
     if (path.includes('career/encounters')) return RENCONTRES
+    if (path.endsWith('/pages/squad')) return { top_teammates: AVEC_AMIS }
     if (path.endsWith('/friends')) return { xuid: 'x-jgtm', gamertags: amis, can_edit: true }
     if (path.includes('/squads')) return { squads: [], count: 0 }
+    if (path === '/groups') return groupes()
     throw new Error(`appel inattendu : ${path}`)
   })
 }
+
+/** Le top des coéquipiers des matchs avec amis : un ami hors des joueurs croisés, et un bot. */
+const AVEC_AMIS = [
+  { gamertag: 'Lointain', xuid: 'x-lointain', games_together: 7 },
+  { gamertag: '343 Bot', xuid: 'bid(9.0)', games_together: 70 },
+]
+
+const MEMBRE_DE_GROUPE = { gamertag: 'Membre', xuid: 'x-membre', role: 'member', joined_at: '2026-01-01T00:00:00Z' }
+const GROUPE = { id: 'g1', name: 'Groupe', members: [MEMBRE_DE_GROUPE] }
 
 function monter() {
   const client = createTestQueryClient()
@@ -49,12 +60,12 @@ function monter() {
 
 afterEach(() => {
   get.mockReset()
-  useAppShellStore.setState({ availablePlayers: [] })
+  useAppShellStore.setState({ availablePlayers: [], linkedHaloIdentity: null })
 })
 
 describe('useCompositionOptions', () => {
   it('amis déclarés seuls, bots exclus, profils suivis dans l’annuaire, xuid du joueur', async () => {
-    repondre(['Ami', 'Profil'])
+    repondre(['Ami', 'Profil', 'Lointain'])
     useAppShellStore.setState({
       availablePlayers: [
         { gamertag: 'JGtm', xuid: 'x-jgtm', player_slug: 'JGtm', is_demo: false, sync_enabled: true, waypoint_player: 'JGtm' },
@@ -63,9 +74,42 @@ describe('useCompositionOptions', () => {
     })
     const { result } = monter()
     await waitFor(() => expect(result.current.chargees).toBe(true))
-    expect(result.current.options.map((o) => o.gamertag)).toEqual(['Ami', 'Profil'])
-    expect(result.current.annuaire.map((o) => o.gamertag).sort()).toEqual(['Ami', 'Inconnu', 'Profil'])
+    expect(result.current.options.map((o) => o.gamertag)).toEqual(['Ami', 'Lointain', 'Profil'])
+    expect(result.current.annuaire.map((o) => o.gamertag).sort()).toEqual(['Ami', 'Inconnu', 'Lointain', 'Profil'])
     expect(result.current.joueurXuid).toBe('x-jgtm')
+  })
+
+  it('« chargées » ATTEND les groupes : un membre connu par eux seuls n’est jamais déclaré introuvable trop tôt', async () => {
+    let livrer: (v: unknown) => void = () => {}
+    repondre(['Ami'], () => new Promise((r) => (livrer = r)))
+    useAppShellStore.setState({ linkedHaloIdentity: { gamertag: 'JGtm', xuid: 'x-jgtm' } })
+    const { result } = monter()
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/groups'))
+    await waitFor(() => expect(get).toHaveBeenCalledWith(expect.stringContaining('/squads')))
+    // Les trois autres lectures ont répondu ; les groupes, non.
+    await new Promise((r) => setTimeout(r, 20))
+    expect(result.current.chargees).toBe(false)
+    livrer([GROUPE])
+    await waitFor(() => expect(result.current.chargees).toBe(true))
+    expect(result.current.annuaire.map((o) => o.gamertag)).toContain('Membre')
+  })
+
+  it('une source en ÉCHEC compte comme répondue, et l’échec est journalisé', async () => {
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      repondre(['Ami'], async () => {
+        throw new Error('groupes indisponibles')
+      })
+      useAppShellStore.setState({ linkedHaloIdentity: { gamertag: 'JGtm', xuid: 'x-jgtm' } })
+      const { result } = monter()
+      await waitFor(() => expect(result.current.chargees).toBe(true))
+      expect(avert).toHaveBeenCalledWith(
+        expect.stringContaining('[composition]'),
+        expect.objectContaining({ source: 'groupes' }),
+      )
+    } finally {
+      avert.mockRestore()
+    }
   })
 
   it('rend le MÊME tableau d’un rendu à l’autre sur les mêmes réponses', async () => {

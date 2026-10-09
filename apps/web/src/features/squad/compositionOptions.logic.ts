@@ -3,12 +3,17 @@
  * Escouade, et l'annuaire qui traduit leurs gamertags en xuid.
  *
  * LA LISTE EST CELLE DE L'ESCOUADE : la page Escouade ne propose, en « Coéquipiers fréquents »,
- * que les AMIS DÉCLARÉS du joueur (filtre serveur `filterTopRowsToFriends`), les profils suivis
- * formant le groupe « Joueurs configurés » du `GamertagCombobox`. Les pages qui n'ont pas sa
- * réponse lourde reconstruisent la même liste à partir de lectures légères :
+ * que les AMIS DÉCLARÉS du joueur parmi le top 50 des coéquipiers des matchs avec amis
+ * (`LoadTopTeammates` filtré par `filterTopRowsToFriends`), les profils suivis formant le groupe
+ * « Joueurs configurés » du `GamertagCombobox`. Les pages qui n'ont pas sa réponse lourde lisent
+ * LA MÊME SOURCE par sa lecture légère, et la complètent :
  *   - les amis déclarés (`/players/{slug}/friends`), en gamertags ;
- *   - les joueurs croisés (`/pages/career/encounters`), qui portent xuid et nombre de matchs ;
+ *   - le top des coéquipiers des matchs avec amis (`GET /pages/squad` sans coéquipier : la seule
+ *     lecture `LoadTopTeammates`), xuid et matchs joués ensemble — la source de l'Escouade ;
+ *   - les joueurs croisés (`/pages/career/encounters`), xuid et nombre de matchs ;
  *   - les profils suivis, les escouades enregistrées et les groupes, qui portent un xuid.
+ * Un ami déclaré est donc proposé dès que l'Escouade le propose ; il l'est AUSSI quand il n'est
+ * connu que par un profil, une escouade, un groupe ou les joueurs croisés.
  *
  * AUCUN BOT : les joueurs croisés comptent les bots des parties contre l'IA (xuid `bid(N.0)`),
  * et ils occupent la majorité des cinquante premières places. Un bot ne se choisit pas comme
@@ -35,12 +40,21 @@ export interface JoueurIdentifie {
   xuid: string
 }
 
+/** Un coéquipier des matchs avec amis (`top_teammates` de `GET /pages/squad`). */
+export interface CoequipierAvecAmis {
+  gamertag: string
+  xuid: string
+  games_together: number
+}
+
 /** Les lectures dont la liste est tirée. */
 export interface SourcesDeComposition {
   /** Joueurs croisés surtout comme coéquipiers (`teammates` de la réponse). */
   coequipiers: readonly EncounterDTO[]
   /** Joueurs croisés surtout comme adversaires (`enemies`) : l'annuaire seulement. */
   adversaires: readonly EncounterDTO[]
+  /** Top des coéquipiers des matchs avec amis — la source de l'Escouade. */
+  avecAmis: readonly CoequipierAvecAmis[]
   /** Gamertags des amis déclarés ; vide quand aucun n'est déclaré ou que la liste est illisible. */
   amis: readonly string[]
   /** Profils suivis, membres d'escouades enregistrées et de groupes. */
@@ -65,20 +79,20 @@ function estLeJoueur(sources: SourcesDeComposition, gamertag: string, xuid: stri
 /**
  * annuaireDeComposition — chaque joueur humain connu, avec son xuid : de quoi traduire une
  * composition en xuids. Les identités explicites (profils, escouades, groupes) priment sur les
- * rencontres ; une rencontre apporte son nombre de matchs joués ensemble.
+ * rencontres ; le compte de matchs joués ensemble est celui des matchs avec amis quand il existe
+ * (celui que montre l'Escouade), sinon celui des joueurs croisés.
  */
 export function annuaireDeComposition(sources: SourcesDeComposition): TeammateOption[] {
   const parCle = new Map<string, TeammateOption>()
-  for (const r of [...sources.coequipiers, ...sources.adversaires]) {
-    if (!r.gamertag || !r.xuid || estUnBot(r.xuid) || estLeJoueur(sources, r.gamertag, r.xuid)) continue
-    parCle.set(cle(r.gamertag), { gamertag: r.gamertag, xuid: r.xuid, encounter_count: r.as_teammate })
+  // Un joueur humain, nommé, qui n'est pas le joueur consulté ; `compte` absent = garder le connu.
+  const ranger = (gamertag: string | null | undefined, xuid: string, compte?: number) => {
+    if (!gamertag || !xuid || estUnBot(xuid) || estLeJoueur(sources, gamertag, xuid)) return
+    const encounter_count = compte ?? parCle.get(cle(gamertag))?.encounter_count ?? 0
+    parCle.set(cle(gamertag), { gamertag, xuid, encounter_count })
   }
-  for (const j of sources.identifies) {
-    const gamertag = j.gamertag ?? ''
-    if (!gamertag || !j.xuid || estUnBot(j.xuid) || estLeJoueur(sources, gamertag, j.xuid)) continue
-    const deja = parCle.get(cle(gamertag))
-    parCle.set(cle(gamertag), { gamertag, xuid: j.xuid, encounter_count: deja?.encounter_count ?? 0 })
-  }
+  for (const r of [...sources.coequipiers, ...sources.adversaires]) ranger(r.gamertag, r.xuid, r.as_teammate)
+  for (const c of sources.avecAmis) ranger(c.gamertag, c.xuid, c.games_together)
+  for (const j of sources.identifies) ranger(j.gamertag, j.xuid)
   return [...parCle.values()]
 }
 

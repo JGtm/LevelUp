@@ -40,6 +40,7 @@ function sources(partiel: Partial<SourcesDeComposition> = {}): SourcesDeComposit
   return {
     coequipiers: COEQUIPIERS,
     adversaires: ADVERSAIRES,
+    avecAmis: [],
     amis: [],
     identifies: [],
     joueur: { gamertag: 'JGtm', xuid: 'x-jgtm' },
@@ -71,6 +72,22 @@ describe('coequipiersProposes', () => {
     expect(liste.map((o) => [o.gamertag, o.encounter_count])).toEqual([
       ['Ami Frequent', 40],
       ['Profil', 0],
+    ])
+  })
+
+  it('un ami HORS du top des joueurs croisés, connu par les coéquipiers des matchs avec amis (source de l’Escouade)', () => {
+    const s = sources({
+      amis: ['Ami Lointain', 'Ami Rare'],
+      avecAmis: [
+        { gamertag: 'Ami Lointain', xuid: 'x-lointain', games_together: 12 },
+        { gamertag: 'Ami Rare', xuid: 'x-rare', games_together: 5 },
+        { gamertag: '343 Bot', xuid: 'bid(2.0)', games_together: 40 },
+      ],
+    })
+    const liste = coequipiersProposes(s, annuaireDeComposition(s))
+    expect(liste.map((o) => [o.gamertag, o.xuid, o.encounter_count])).toEqual([
+      ['Ami Lointain', 'x-lointain', 12],
+      ['Ami Rare', 'x-rare', 5],
     ])
   })
 
