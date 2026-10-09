@@ -454,10 +454,6 @@ en = "Player deaths"
 fr = "p10 · médiane · p90"
 en = "p10 · median · p90"
 
-[synthesis.weapon_range.no_measure]
-fr = "aucune mesure"
-en = "no measurement"
-
 [synthesis.weapon_range.table_summary]
 fr = "Voir en tableau"
 en = "View as table"
@@ -467,12 +463,12 @@ fr = "Arme"
 en = "Weapon"
 
 [synthesis.weapon_range.table_measured_kills]
-fr = "Mesurés"
-en = "Measured"
+fr = "Frags"
+en = "Kills"
 
 [synthesis.weapon_range.table_measured_deaths]
-fr = "Mesurées"
-en = "Measured"
+fr = "Morts"
+en = "Deaths"
 
 [synthesis.weapon_range.table_p10]
 fr = "Portée basse (p10)"
@@ -522,8 +518,8 @@ fr = "Aucune arme publiable"
 en = "No weapon to show"
 
 [synthesis.weapon_range.empty_below_threshold]
-fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
-en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."
+fr = "Aucune arme n'atteint {min, number} frags ou {min, number} morts sur cette période : pas encore assez d'engagements pour tracer une portée arme par arme."
+en = "No weapon reaches {min, number} kills or {min, number} deaths over this period: not enough engagements yet to draw a range weapon by weapon."
 
 # ── Records de distance par arme (la règle) — plan PLAN_RECORDS_DISTANCE_2026-09-20.md.
 # Aucune clé ne dit « portée de l'arme » : c'est un usage mesuré du joueur. Ce qui est écarté
@@ -541,8 +537,8 @@ fr = "frag le plus lointain"
 en = "farthest kill"
 
 [synthesis.weapon_records.tooltip_context]
-fr = "médiane {median} · {measured, number} frags mesurés"
-en = "median {median} · {measured, number} measured kills"
+fr = "médiane {median} · {measured, plural, one {# frag} other {# frags}}"
+en = "median {median} · {measured, plural, one {# kill} other {# kills}}"
 
 [synthesis.weapon_records.tooltip_open]
 fr = "Cliquer : ouvrir le rejeu à cet instant"
@@ -561,9 +557,9 @@ fr = "{label} ({measured, number})"
 en = "{label} ({measured, number})"
 
 [synthesis.weapon_records.coverage_note]
-fr = "Ne compte que les frags dont la position du tueur et de la victime est mesurée."
-en = "Only kills where both the killer and the victim positions are measured count."
+fr = "Distance entre le tueur et sa victime au moment du frag."
+en = "Distance between the killer and the victim at the moment of the kill."
 
 [synthesis.weapon_records.empty_all_excluded]
-fr = "Toutes les armes mesurées sont écartées sur cette période : aucun record à tracer."
-en = "Every measured weapon is excluded over this period: no record to draw."
+fr = "Toutes les armes de la période sont écartées : aucun record à tracer."
+en = "Every weapon of the period is excluded: no record to draw."

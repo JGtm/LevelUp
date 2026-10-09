@@ -194,8 +194,8 @@ en = "deaths alone per match"
 
 # ── Carte du plan : bandeau, aide ⓘ, réglages en pilules ────────────────────────────────────────
 [tactical.plan.info]
-fr = "{retenus, plural, one {# match mesuré} other {# matchs mesurés}} sur {filtres} · {source} · grille {pas, number} m · {plancher, plural, one {# match distinct} other {# matchs distincts}} par zone"
-en = "{retenus, plural, one {# measured match} other {# measured matches}} out of {filtres} · {source} · {pas, number} m grid · {plancher, plural, one {# distinct match} other {# distinct matches}} per zone"
+fr = "{retenus, plural, one {# match} other {# matchs}} · {source} · grille {pas, number} m · {plancher, plural, one {# match distinct} other {# matchs distincts}} par zone"
+en = "{retenus, plural, one {# match} other {# matches}} · {source} · {pas, number} m grid · {plancher, plural, one {# distinct match} other {# distinct matches}} per zone"
 
 [tactical.plan.info_source_journal]
 fr = "journal des morts"
@@ -206,16 +206,12 @@ fr = "artefacts de rejeu"
 en = "replay artifacts"
 
 [tactical.plan.info_gagne]
-fr = "{v, plural, one {# victoire} other {# victoires}} et {d, plural, one {# défaite} other {# défaites}} mesurées, {plancher, plural, one {# match distinct} other {# matchs distincts}} de chaque côté"
-en = "{v, plural, one {# win} other {# wins}} and {d, plural, one {# loss} other {# losses}} measured, {plancher, plural, one {# distinct match} other {# distinct matches}} on each side"
+fr = "{v, plural, one {# victoire} other {# victoires}} et {d, plural, one {# défaite} other {# défaites}}, {plancher, plural, one {# match distinct} other {# matchs distincts}} de chaque côté"
+en = "{v, plural, one {# win} other {# wins}} and {d, plural, one {# loss} other {# losses}}, {plancher, plural, one {# distinct match} other {# distinct matches}} on each side"
 
 [tactical.plan.info_isole]
 fr = "seul : aucun coéquipier visible, ou le plus proche au-delà de {portee} (portée du radar)"
 en = "alone: no teammate in sight, or the nearest beyond {portee} (radar range)"
-
-[tactical.plan.info_no_range]
-fr = "{n, plural, one {# match sans portée de radar connue} other {# matchs sans portée de radar connue}}"
-en = "{n, plural, one {# match without a known radar range} other {# matches without a known radar range}}"
 
 [tactical.plan.info_team_down]
 fr = "{n, plural, one {# mort écartée, aucun coéquipier en mesure d'accompagner} other {# morts écartées, aucun coéquipier en mesure d'accompagner}}"
@@ -275,8 +271,8 @@ fr = "Carte hors du filtre"
 en = "Map outside the filter"
 
 [tactical.plan.empty_title]
-fr = "Pas assez de matchs mesurés sur cette carte"
-en = "Not enough measured matches on this map"
+fr = "Aucun plan à dessiner sur cette carte"
+en = "No plan to draw on this map"
 
 [tactical.plan.empty_density_title]
 fr = "Densité insuffisante pour dessiner un plan"
@@ -297,10 +293,6 @@ en = "Reading scale, from {lo} to {hi}"
 [tactical.status.pending]
 fr = "{n, plural, one {# match en attente de traitement} other {# matchs en attente de traitement}}"
 en = "{n, plural, one {# match awaiting processing} other {# matches awaiting processing}}"
-
-[tactical.status.unavailable]
-fr = "{n, plural, one {# match sans film} other {# matchs sans film}}"
-en = "{n, plural, one {# match without a film} other {# matches without a film}}"
 
 # ── Zone sélectionnée ───────────────────────────────────────────────────────────────────────────
 [tactical.zone.title]

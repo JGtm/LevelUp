@@ -112,9 +112,6 @@ export interface MatchViewText {
   killDistanceColAvg: string
   killDistanceMinLabel: string
   killDistanceMaxLabel: string
-  killDistanceEmpty: string
-  /** En-tête d'un groupe joueur : gamertag + kills mesurés / total du match. */
-  killDistancePlayerHeaderFmt: (gamertag: string, measured: number, total: number) => string
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
@@ -141,7 +138,6 @@ export interface MatchViewText {
    */
   scoreCurveTitle: string
   scoreCurveSource: string
-  scoreCurveTruncated: string
   scoreCurveLead: string
   /**
    * LES POINTS MARQUÉS DANS LE TEMPS — la lecture que prennent les modes qui marquent en
@@ -418,24 +414,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelShoulderBash: 'Charge spartane',
     weaponUnknownPrefix: 'Arme inconnue',
     killDistanceTitle: 'Distance par arme',
-    killDistanceColKills: 'Frags mesurés',
+    killDistanceColKills: 'Frags',
     killDistanceColAvg: 'Distance moyenne',
     killDistanceMinLabel: 'Plus proche',
     killDistanceMaxLabel: 'Plus loin',
-    // CE MESSAGE A ÉTÉ CORRIGÉ LE 2026-09-08 PARCE QU'IL ÉTAIT FAUX. Il annonçait un décodage
-    // « pas encore joué » sur des matchs où le film EST décodé : le témoin du diagnostic, Origin
-    // du 7 septembre, porte 65 positions de kill — plus que le match voisin qui, lui, affiche le
-    // bloc. La vraie cause est ailleurs : la passe de décodage n'a pas autorisé la publication
-    // LIGNE PAR LIGNE (`match_kill_events.publishable`, marge de bijection nulle), et le lecteur
-    // de distances l'exige. Le message envoyait donc l'utilisateur relancer un travail déjà fait
-    // — l'anti-pattern « doc inversée » du CLAUDE.md, appliqué à une chaîne d'interface.
-    killDistanceEmpty:
-      'Distances non mesurées sur ce match — le film a bien été décodé, mais la passe n’a pas pu attribuer chaque élimination avec assez de certitude pour publier une distance par frag.',
-    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
-      `${gamertag} — ${measured}/${total} frags mesurés`,
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
-    killDistanceReserve:
-      "Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
+    killDistanceReserve: 'Distance entre le tueur et sa victime au moment du frag, arme par arme.',
     sectionMedia: 'Médias',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
@@ -450,8 +434,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     scoreCurveTitle: 'Score dans le temps',
     scoreCurveSource:
       'Décodé du film du match : le score des deux équipes, tel qu’il s’affichait en jeu.',
-    scoreCurveTruncated:
-      'Lecture du film incomplète — la courbe s’arrête avant la fin du match.',
     scoreCurveLead: 'Retournement',
     scoreEventsTitle: 'Points marqués dans le temps',
     scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
@@ -750,19 +732,12 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelShoulderBash: 'Shoulder Bash',
     weaponUnknownPrefix: 'Unknown weapon',
     killDistanceTitle: 'Distance by weapon',
-    killDistanceColKills: 'Measured kills',
+    killDistanceColKills: 'Kills',
     killDistanceColAvg: 'Average distance',
     killDistanceMinLabel: 'Closest',
     killDistanceMaxLabel: 'Farthest',
-    // Cf. la note attachée à la version FR : ce message annonçait un décodage non joué sur des
-    // matchs où le film EST décodé.
-    killDistanceEmpty:
-      'No measured distances on this match — the film was decoded, but the pass could not attribute each kill confidently enough to publish a per-kill distance.',
-    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
-      `${gamertag} — ${measured}/${total} measured kills`,
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
-    killDistanceReserve:
-      'Only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
+    killDistanceReserve: 'Distance between the killer and the victim at the moment of the kill, weapon by weapon.',
     sectionMedia: 'Media',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
@@ -776,8 +751,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatTugOfWarTitle: 'Dominance',
     scoreCurveTitle: 'Score over time',
     scoreCurveSource: 'Decoded from the match film: both teams’ score, as it showed in game.',
-    scoreCurveTruncated:
-      'Incomplete film reading — the curve stops before the end of the match.',
     scoreCurveLead: 'Lead change',
     scoreEventsTitle: 'Scoring moments',
     scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,

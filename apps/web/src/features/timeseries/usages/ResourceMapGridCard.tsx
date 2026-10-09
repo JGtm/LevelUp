@@ -38,7 +38,6 @@ export function ResourceMapGridCard({ grid, itemName, playerName, t, ut }: Props
           { kind: 'square', label: t.grid.more, color: `color-mix(in oklab, ${PLUS_INK} 80%, var(--muted))` },
           { kind: 'square', label: t.grid.less, color: `color-mix(in oklab, ${MINUS_INK} 80%, var(--muted))` },
           { kind: 'square', label: t.grid.nothing, color: TRACK_INK },
-          { kind: 'hatch', label: t.grid.noFilm },
         ]}
       />
     ),
@@ -46,7 +45,7 @@ export function ResourceMapGridCard({ grid, itemName, playerName, t, ut }: Props
   )
   const columns: GridColumn[] = grid.columns.map((c) => {
     const name = c.name || ut.maps.others
-    return { key: c.key, head: <MapHead c={c} name={name} ut={ut} />, tipHead: ut.maps.tipHead(name, c.matches, c.filmed) }
+    return { key: c.key, head: <MapHead c={c} name={name} ut={ut} />, tipHead: ut.maps.tipHead(name, c.matches) }
   })
   // Moi d'abord, puis le reste du camp (maquette « Chez moi : JGtm 3, reste du camp 2 »).
   const whoText = (who: GridWho[]) =>

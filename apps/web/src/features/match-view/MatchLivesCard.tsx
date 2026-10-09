@@ -4,15 +4,13 @@
  *
  * Une ligne par joueur de l'équipe, dans l'ordre des fiches de « Prises par joueur » : la ligne de la
  * carte des Séries temporelles (`LivesNearTeammateRow`), son nom à la pastille du joueur (palette du
- * match). Un joueur sans vie rangée garde sa ligne, qui le dit. Les vies écartées (aucun coéquipier
- * situé, carte sans portée connue, journal des morts non publiable) sont comptées dans l'aide ⓘ.
+ * match). Seuls les joueurs qui ont une vie rangée ont une ligne (`buildMatchLives`).
  */
 import { useMemo, useRef } from 'react'
 
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { ObjectifFrame } from '@/features/squad/objectif/ObjectifFrame'
 import { LivesAxis, LivesLegend } from '@/features/timeseries/usages/LivesNearTeammateCard'
-import { LIVES_COLUMNS } from '@/features/timeseries/usages/livesLayout'
 import { LivesNearTeammateRow } from '@/features/timeseries/usages/LivesNearTeammateRow'
 import type { UsagesCardsText } from '@/features/timeseries/usages/usagesCardsText'
 
@@ -25,10 +23,9 @@ interface Props {
   /** xuid du joueur de la page : son nom en gras. */
   meXUID: string | null
   ut: UsagesCardsText
-  noRankedLife: string
 }
 
-export function MatchLivesCard({ lives, inkOf, meXUID, ut, noRankedLife }: Props) {
+export function MatchLivesCard({ lives, inkOf, meXUID, ut }: Props) {
   const l = ut.lives
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, lives)
@@ -36,21 +33,14 @@ export function MatchLivesCard({ lives, inkOf, meXUID, ut, noRankedLife }: Props
   return (
     <ObjectifFrame
       title={l.title}
-      info={l.info(lives.excludedUnlocated, lives.excludedNoRadar, lives.excludedUnpublishable)}
+      info={l.info}
       legend={legend}
       testId="match-emprise-lives"
     >
       <div ref={ref} className="flex flex-col gap-3.5">
         {lives.rows.map((row) => {
           const label = <PlayerLabel row={row} ink={inkOf(row.xuid)} me={row.xuid === meXUID} />
-          return row.model ? (
-            <LivesNearTeammateRow key={row.xuid} model={row.model} label={label} hidden={hidden} idPrefix={`${row.xuid}-`} ut={ut} />
-          ) : (
-            <div key={row.xuid} className="grid items-center gap-3" style={{ gridTemplateColumns: LIVES_COLUMNS }} data-testid={`match-emprise-lives-none-${row.xuid}`}>
-              <div className="min-w-0 text-[12.5px] leading-tight">{label}</div>
-              <div className="flex h-[22px] items-center rounded-[3px] bg-muted px-2 text-[11.5px] text-muted-foreground">{noRankedLife}</div>
-            </div>
-          )
+          return <LivesNearTeammateRow key={row.xuid} model={row.model} label={label} hidden={hidden} idPrefix={`${row.xuid}-`} ut={ut} />
         })}
         <LivesAxis ut={ut} />
       </div>

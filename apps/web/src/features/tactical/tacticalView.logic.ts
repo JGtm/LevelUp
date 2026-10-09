@@ -43,20 +43,12 @@ export function lectureDeRejeu(question: TacticalQuestion): boolean {
 }
 
 /**
- * statusMessages — les mentions « en attente de traitement » / « sans film » du bandeau d'état.
- * LES DEUX PEUVENT COEXISTER (des matchs en cours de cuisson ET d'autres jamais
- * cuisables) : ce ne sont pas des échecs de la lecture, ce sont des dénominateurs qui
- * varient. Aucun message quand les deux compteurs sont à zéro.
+ * statusMessages — la mention « en attente de traitement » du bandeau d'état : des matchs en cours
+ * de cuisson, qui rejoindront le plan. Les matchs qui ne le rejoindront pas ne sont pas nommés
+ * (aucun inconnu à l'écran). Aucun message quand le compteur est à zéro.
  */
-export function statusMessages(
-  t: TacticalText,
-  matchsEnAttente: number,
-  matchsNonCuisables: number,
-): string[] {
-  const messages: string[] = []
-  if (matchsEnAttente > 0) messages.push(t.statusPending(matchsEnAttente))
-  if (matchsNonCuisables > 0) messages.push(t.statusUnavailable(matchsNonCuisables))
-  return messages
+export function statusMessages(t: TacticalText, matchsEnAttente: number): string[] {
+  return matchsEnAttente > 0 ? [t.statusPending(matchsEnAttente)] : []
 }
 
 /**

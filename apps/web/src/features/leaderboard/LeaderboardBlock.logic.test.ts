@@ -1,20 +1,18 @@
 /**
  * Tests unitaires — LeaderboardBlock.logic.
  *
- * Les BORNES exactes des seuils (25 % / 80 %) se testent ici plutôt qu'au rendu :
- * une couverture pile à 25 % demande un jeu de lignes précis, et le rendu ne dit
- * pas de quel côté de la borne on est tombé.
+ * La BORNE exacte du seuil (25 %) se teste ici plutôt qu'au rendu : une part pile à
+ * 25 % demande un jeu de lignes précis, et le rendu ne dit pas de quel côté de la
+ * borne on est tombé.
  */
 import { describe, it, expect } from 'vitest'
 import {
-  ENRICHED_COLUMNS_MIN_RATIO,
-  ENRICHED_FULL_RATIO,
   ENRICHED_SORT_KEYS,
-  enrichmentCoverage,
   isEnrichedSortKey,
   pickEffectiveOption,
   playlistsForSeason,
   resolveSort,
+  showEnrichedColumns,
 } from './LeaderboardBlock.logic'
 
 /** Construit `total` lignes dont `enriched` portent des stats détaillées. */
@@ -22,41 +20,18 @@ function rows(enriched: number, total: number) {
   return Array.from({ length: total }, (_, i) => (i < enriched ? { match_count: 12 } : { match_count: null }))
 }
 
-describe('enrichmentCoverage', () => {
-  it('table vide : aucune colonne, aucun bandeau (l’état vide parle déjà)', () => {
-    const c = enrichmentCoverage([])
-    expect(c).toMatchObject({ enriched: 0, total: 0, ratio: 0, showColumns: false })
-    expect(c.showUnavailableNote).toBe(false)
-    expect(c.showPartialNote).toBe(false)
+describe('showEnrichedColumns', () => {
+  it('table vide : aucune colonne', () => {
+    expect(showEnrichedColumns([])).toBe(false)
   })
 
-  it('sous le seuil : colonnes masquées + bandeau « indisponibles »', () => {
-    // 24 / 100 = 24 % — le cas mesuré en prod (34/100) tombe juste au-dessus.
-    const c = enrichmentCoverage(rows(24, 100))
-    expect(c.showColumns).toBe(false)
-    expect(c.showUnavailableNote).toBe(true)
-    expect(c.showPartialNote).toBe(false)
+  it('sous le seuil (24 %) : colonnes masquées', () => {
+    expect(showEnrichedColumns(rows(24, 100))).toBe(false)
   })
 
-  it('pile au seuil (25 %) : colonnes affichées, bandeau « partielles »', () => {
-    const c = enrichmentCoverage(rows(1, 4))
-    expect(c.ratio).toBe(ENRICHED_COLUMNS_MIN_RATIO)
-    expect(c.showColumns).toBe(true)
-    expect(c.showPartialNote).toBe(true)
-    expect(c.showUnavailableNote).toBe(false)
-  })
-
-  it('pile à la couverture complète (80 %) : colonnes affichées, plus aucun bandeau', () => {
-    const c = enrichmentCoverage(rows(8, 10))
-    expect(c.ratio).toBe(ENRICHED_FULL_RATIO)
-    expect(c.showColumns).toBe(true)
-    expect(c.showPartialNote).toBe(false)
-    expect(c.showUnavailableNote).toBe(false)
-  })
-
-  it('juste sous la couverture complète : colonnes + bandeau « partielles » chiffré', () => {
-    const c = enrichmentCoverage(rows(79, 100))
-    expect(c).toMatchObject({ enriched: 79, total: 100, showColumns: true, showPartialNote: true })
+  it('pile au seuil (25 %) et au-delà : colonnes affichées', () => {
+    expect(showEnrichedColumns(rows(1, 4))).toBe(true)
+    expect(showEnrichedColumns(rows(79, 100))).toBe(true)
   })
 })
 

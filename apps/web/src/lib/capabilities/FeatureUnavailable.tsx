@@ -32,8 +32,8 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   objective_stats: { fr: 'les stats objectifs (CTF/Zones/Oddball)', en: 'objective stats (CTF/Zones/Oddball)' },
   replay: { fr: 'le rejeu 2D des matchs', en: '2D match replay' },
   weapon_range: {
-    fr: 'la portée mesurée des engagements',
-    en: 'measured engagement range',
+    fr: 'la portée des engagements',
+    en: 'engagement range',
   },
   expected_win_prob: {
     fr: 'la probabilité de victoire attendue',

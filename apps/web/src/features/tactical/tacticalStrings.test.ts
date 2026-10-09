@@ -41,13 +41,10 @@ describe('les mots de la maquette, en français', () => {
     expect(fr.planSquadPending).toBe('Aucune composition choisie')
     expect([fr.squadLabel, en.squadLabel, en.planSquadPending]).toEqual(['Escouade', 'Squad', 'No lineup chosen'])
     expect(fr.planEmptyNoMatchTitle).toBe('Aucun match sur cette carte dans le filtre')
-    expect(fr.planEmptyTitle).toBe('Pas assez de matchs mesurés sur cette carte')
+    expect(fr.planEmptyTitle).toBe('Aucun plan à dessiner sur cette carte')
     expect(fr.planEmptyDensityTitle).toBe('Densité insuffisante pour dessiner un plan')
     expect(fr.statusPending(3)).toBe('3 matchs en attente de traitement')
-    expect(fr.statusUnavailable(2)).toBe('2 matchs sans film')
-    expect(fr.planInfo(38, 54, fr.planInfoSourceJournal, 2, 3)).toBe(
-      '38 matchs mesurés sur 54 · journal des morts · grille 2 m · 3 matchs distincts par zone',
-    )
+    expect(fr.planInfo(38, fr.planInfoSourceJournal, 2, 3)).toBe('38 matchs · journal des morts · grille 2 m · 3 matchs distincts par zone')
     expect(fr.planLegendLabel('0', '5 morts par match')).toBe('Échelle de la lecture, de 0 à 5 morts par match')
   })
 

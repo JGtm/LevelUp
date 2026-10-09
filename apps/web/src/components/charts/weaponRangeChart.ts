@@ -206,7 +206,6 @@ export interface WeaponRangeOptionInput {
     /** Nom de la seconde mesure. Inutile en mode `singleBand` : il n'y en a pas de seconde. */
     bottom?: string
     percentiles: string
-    noMeasure: string
     observed?: string
   }
   /**
@@ -300,8 +299,8 @@ function makeRangeRenderItem({
 }
 
 /**
- * rangeTooltipSideLine — une ligne d'infobulle pour un côté : « Mes frags — 281 : 7,1 m ·
- * 13,6 m · 24,9 m », ou « Mes frags — aucune mesure ».
+ * rangeTooltipSideLine — une ligne d'infobulle pour un côté : « Frags — 281 : 7,1 m · 13,6 m ·
+ * 24,9 m ». Un côté absent n'a pas de ligne (null) : aucun texte ne dit l'absence.
  *
  * Le nom de l'arme comme les nombres formatés passent par `escapeHtml` : l'infobulle d'ECharts
  * est du HTML, et un libellé de registre n'est pas une source de confiance.
@@ -310,10 +309,9 @@ function rangeTooltipSideLine(
   name: string,
   side: WeaponRangeSide | null,
   fmtDistance: (m: number) => string,
-  noMeasure: string,
   observed?: string,
-): string {
-  if (!side) return `${escapeHtml(name)} — ${escapeHtml(noMeasure)}`
+): string | null {
+  if (!side) return null
   const low = escapeHtml(fmtDistance(side.p10))
   const median = escapeHtml(fmtDistance(side.median))
   const high = escapeHtml(fmtDistance(side.p90))
@@ -333,8 +331,8 @@ function rangeTooltipSideLine(
  *
  * Contrat de rendu, ligne par ligne : deux rectangles arrondis p10 → p90 décalés de part et
  * d'autre du centre de bande (frags AU-DESSUS, morts en dessous — l'ordre de la légende), et
- * un losange par médiane. Un côté absent ne dessine RIEN de son côté ; l'infobulle le dit
- * (« aucune mesure »), elle n'invente pas un zéro.
+ * un losange par médiane. Un côté absent ne dessine RIEN de son côté, ni dans le graphe ni dans
+ * l'infobulle : il n'invente pas un zéro et ne dit pas l'absence.
  */
 export function buildWeaponRangeOption({
   lines,
@@ -361,7 +359,7 @@ export function buildWeaponRangeOption({
     cardColor,
   })
   const sideLine = (name: string, side: WeaponRangeSide | null) =>
-    rangeTooltipSideLine(name, side, fmtDistance, labels.noMeasure, labels.observed)
+    rangeTooltipSideLine(name, side, fmtDistance, labels.observed)
 
   return {
     backgroundColor: CHART_BG,
@@ -376,11 +374,9 @@ export function buildWeaponRangeOption({
         const lignes = [
           `<b>${escapeHtml(line.label)}</b> — ${escapeHtml(labels.percentiles)}`,
           sideLine(labels.top, line.top),
+          singleBand ? null : sideLine(labels.bottom ?? '', line.bottom),
         ]
-        // Le second côté n'est nommé que s'il existe : en mode `singleBand`, annoncer
-        // « aucune mesure » pour un joueur qu'on ne montre pas serait un faux manque.
-        if (!singleBand) lignes.push(sideLine(labels.bottom ?? '', line.bottom))
-        return lignes.join('<br/>')
+        return lignes.filter((l): l is string => l != null).join('<br/>')
       },
     },
     xAxis: {

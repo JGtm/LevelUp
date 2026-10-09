@@ -203,16 +203,9 @@ describe('MatchScoreEventsChart — ce que l’option ECharts contient', () => {
 })
 
 describe('MatchScoreEventsChart — ce que la carte DIT de sa mesure', () => {
-  it('signale une lecture TRONQUÉE, comme la courbe qu’elle remplace', async () => {
+  it('une lecture TRONQUÉE ne fait naître aucune phrase : l’aide dit la seule source', async () => {
     poserArtefact({ coverage: { score: { truncated: true, modeSupported: true } } } as never)
-    expect(await aideDuTitre(afficher())).toMatch(new RegExp(t.scoreCurveTruncated.slice(0, 30)))
-  })
-
-  it('ne dit rien de tel quand la lecture est complète', async () => {
-    poserArtefact({})
-    expect(await aideDuTitre(afficher())).not.toMatch(
-      new RegExp(t.scoreCurveTruncated.slice(0, 30)),
-    )
+    expect(await aideDuTitre(afficher())).toBe(t.scoreCurveSource)
   })
 
   it('EN : le titre passe en anglais', () => {

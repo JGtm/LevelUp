@@ -63,7 +63,6 @@ export interface CoordinationText {
   infoRange1: string
   infoRange2: string
   infoRange3: (seuil: number) => string
-  rangeEmpty: string
 }
 
 export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
@@ -100,14 +99,13 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeLegendTrend: (f) => `Tendance, fenêtre ${f} matchs`,
     rangeTipMedian: (med) => `Médiane ${med} m`,
     rangeTipDelta: (ecart) => `Écart au lobby ${ecart} m`,
-    rangeTipMeasured: (frags) => `${frags} frags mesurés`,
-    rangeLowSample: (s) => `point creux : moins de ${s} frags mesurés`,
+    rangeTipMeasured: (frags) => `${frags} ${frags > 1 ? 'frags' : 'frag'}`,
+    rangeLowSample: (s) => `point creux : moins de ${s} frags`,
     infoRange1:
       'Chaque point est un match de la période : écart entre la médiane de frag du joueur et celle du lobby.',
     infoRange2:
       'Bandes : rôles du joueur sur la période ; fond : matchs de cette session.',
-    infoRange3: (s) => `Sous ${s} frags mesurés le point reste creux : la médiane est du bruit.`,
-    rangeEmpty: 'Aucun frag mesuré sur les matchs de cette session.',
+    infoRange3: (s) => `Sous ${s} frags, le point reste creux : la médiane est du bruit.`,
   },
   en: {
     cardAppui: 'Support received',
@@ -141,12 +139,11 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeLegendTrend: (f) => `Trend, ${f}-match window`,
     rangeTipMedian: (med) => `Median ${med} m`,
     rangeTipDelta: (ecart) => `Gap to lobby ${ecart} m`,
-    rangeTipMeasured: (frags) => `${frags} measured kills`,
-    rangeLowSample: (s) => `hollow dot: fewer than ${s} measured kills`,
+    rangeTipMeasured: (frags) => `${frags} ${frags > 1 ? 'kills' : 'kill'}`,
+    rangeLowSample: (s) => `hollow dot: fewer than ${s} kills`,
     infoRange1:
       'Each dot is one match of the period: the gap between the player’s kill median and the lobby median.',
     infoRange2: 'Bands: the player’s roles over the period; shading: this session’s matches.',
-    infoRange3: (s) => `Below ${s} measured kills the dot stays hollow: the median is noise.`,
-    rangeEmpty: 'No measured kill across the matches of this session.',
+    infoRange3: (s) => `Below ${s} kills the dot stays hollow: the median is noise.`,
   },
 }

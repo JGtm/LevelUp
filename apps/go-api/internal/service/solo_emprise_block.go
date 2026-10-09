@@ -56,7 +56,7 @@ func buildSoloEmpriseBlock(ctx context.Context, q soloEmpriseQuery) *domain.Solo
 	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, q.EmpriseRepo, ids)
 	in.Journal = lecteur.Journal(ctx, q.EmpriseRepo, ids, in.Weapons)
 	in.Film, in.FilmUnavailable = lecteur.Film(ctx, q.UsageRepo, q.Current, nil, q.Lectures)
-	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, q.VehicleRepo, ids, q.PlayerXUID, q.Locale)
+	in.Vehicles, in.VehicleLabels = lecteur.Vehicules(ctx, q.VehicleRepo, ids, q.PlayerXUID, q.Locale)
 	switch {
 	case q.Players != nil:
 		in.Players = q.Players

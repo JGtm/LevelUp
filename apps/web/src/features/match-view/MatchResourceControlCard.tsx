@@ -5,8 +5,7 @@
  * Par ressource du match (bonus, armes spéciales, véhicules, armes de râtelier) : la piste de l'équipe
  * contre l'adversaire (forme `PisteCampsForm` : « compte · part » dans chaque segment, trait 50 %),
  * puis une piste en retrait par objet pris ; les armes de râtelier sont repliées derrière un bouton.
- * Sous les pistes, la ligne des prises sur un emplacement non identifié quand il y en a. Le modèle
- * vient de `buildMatchControl` ; ce composant ne fait que nommer et tracer.
+ * Le modèle vient de `buildMatchControl` ; ce composant ne fait que nommer et tracer.
  */
 import { useMemo, useState } from 'react'
 
@@ -50,16 +49,10 @@ export function MatchResourceControlCard({ control, objectName, t, own }: Props)
         .map((r) => pisteOf(r, { objectName, t, own, racks: control.racks, racksOpen, toggle: () => setRacksOpen((v) => !v) })),
     [control, objectName, t, own, racksOpen],
   )
-  const u = control.unclassified
   return (
     <ObjectifFrame title={t.control.title} info={t.control.info} legend={legend} testId="match-emprise-control">
       <div className="mt-2" aria-label={t.control.ariaLabel} role="group">
         <PisteCampsForm rows={rows} pctFmt={t.pctFmt} axisMaxLabel={t.pctIntFmt(100)} />
-        {u && (
-          <p className="mt-2 text-[11px] text-muted-foreground" data-testid="match-emprise-unclassified">
-            {own.unclassified(u.us + u.them, u.us, u.them)}
-          </p>
-        )}
       </div>
     </ObjectifFrame>
   )
