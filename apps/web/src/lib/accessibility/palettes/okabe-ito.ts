@@ -22,7 +22,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_ROLE_COLORS } from './_impactRoleColors'
+import { IMPACT_BLUE_VERMILLION } from './_impactRoleColors'
 
 export const okabePalette: Palette = {
   // ── Perf tiers — ordinal 5 niveaux, ramp divergent bleu→jaune→vermillion ──
@@ -149,8 +149,8 @@ export const okabePalette: Palette = {
   //  les teintes Okabe claires échouaient le texte blanc ; labels disambiguent)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — rampes invariantes (cf. _impactRoleColors.ts) ─────────
-  ...IMPACT_ROLE_COLORS,
+  // ── Rôles d'impact — bleu / vermillon, rampe claire (cf. _impactRoleColors.ts)
+  ...IMPACT_BLUE_VERMILLION.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // AVANT cette famille, les tokens empruntés collapsaient : lourde ≡ grenade ≡
