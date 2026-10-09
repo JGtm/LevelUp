@@ -127,3 +127,11 @@ package grammar
 // Contre `grammar-2026-10-08.12` : `bf15f7ab` slot 553, le NEW du bipede de 14:1094 (trame fermee)
 // est lie, et les 69 trames de 14:1094 a 14:1230 se ferment (30 avant). Carte v2 : +1 046 paquets
 // sains, aucun perdu, aucun film en baisse.
+//
+// ENTREE `grammar-2026-10-09` (2026-10-09, lot `assist-film`) : LE FIL DES EVENEMENTS DE LA VUE A SE
+// GARDE. La charge `PlayerGameEventSmall` (genre 82, [chargeEvenementJoueurCourt]) rend son `R(32)` de
+// tete et son masque de destinataires (`32 x R(1)`) au lieu de les sauter ; un message dont le sac
+// texte nomme un couple de participants se range dans `lecture.VueA.Fil` ([lecture.EvenementDeFil]),
+// et la marche de killsource les rend (`LectureDeKillsource.Fil`). Contre `grammar-2026-10-08.13` :
+// aucun bit n est lu autrement, aucune vue ne s arrete ailleurs ; seuls les messages a couple sont
+// gardes en plus.

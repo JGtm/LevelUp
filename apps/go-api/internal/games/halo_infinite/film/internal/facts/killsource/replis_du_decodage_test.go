@@ -28,7 +28,7 @@ func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 		killEvents: &assistScan{chainesArretees: 8, rattrapes: 9},
 		calib:      calibration{CarteLue: false, ControleDeCorruptionLu: false, PoigneeDecidee: true},
 	}
-	kills := []Kill{{Victim: "A", Feed: FeedTruth{Killer: "B"}}}
+	kills := []Kill{{Victim: "A", Feed: FeedTruth{Killer: "B"}, AssistLuAuFil: true}}
 	unclaimed := []UnclaimedDeath{{}}
 	r := c.replisDuResultat(kills, unclaimed, false)
 	v := reflect.ValueOf(r)

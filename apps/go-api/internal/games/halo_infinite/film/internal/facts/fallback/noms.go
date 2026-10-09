@@ -237,6 +237,8 @@ const (
 	NomLibelleDeSourceAutres Nom = "repli_libelle_de_source_autres"
 	// NomLargeurMotDePoigneeInferee : `killsource/calibrate.go`.
 	NomLargeurMotDePoigneeInferee Nom = "repli_largeur_mot_de_poignee_inferee"
+	// NomTypeDAssistanceApprisParFilm : `killsource/assist_fil.go`.
+	NomTypeDAssistanceApprisParFilm Nom = "repli_type_d_assistance_appris_par_film"
 
 	// LES REPLIS D `objectives` (sous-lot objectives du lot J8.7, 2026-09-27) : comptes en DONNEES
 	// par le balayage du statborg (lu par `grammar/signaux`, porte par `objectives`) et par le
