@@ -32,9 +32,9 @@ import (
 // branchement sur le slug. Le masquage Campagne n'est pas nécessaire pour la même raison
 // (aucune ligne de film en Campagne).
 //
-// BORNAGE (ADR 0036 I2) : les deux lectures de la vue `_latest` du kill-feed (`measured`,
-// `kills`) portent la liste des matchs de la lecture, liée en UN paramètre constant sous la
-// fenêtre. La liste est le périmètre (scope) quand il est fourni, sinon tous les matchs du
+// BORNAGE (ADR 0036 I2) : l'unique lecture de la vue `_latest` du kill-feed (CTE `lues`,
+// matérialisée, d'où dérivent `measured` et les frags) porte la liste des matchs de la
+// lecture, liée en UN paramètre constant sous la fenêtre. La liste est le périmètre (scope) quand il est fourni, sinon tous les matchs du
 // joueur (QMatchsOuJoue) : `mates` ne garde que des matchs du joueur, donc la borne ne retire
 // aucune ligne servie.
 //
@@ -44,12 +44,12 @@ import (
 // condition de jointure (`k.killer = me OR k.killer = partner`) fait choisir à DuckDB une
 // jointure par boucles imbriquées, l'essentiel du coût de la lecture.
 //
-// Format string, DANS CET ORDRE : borne de `measured`, prédicat d'exclusion des bots
+// Format string, DANS CET ORDRE : borne de `lues`, prédicat d'exclusion des bots
 // (analysis.SQLIsNotBotCol), scopeClause (" AND mp.match_id IN (?,…)" ou ""),
-// partnerClause (" AND p.xuid IN (…)" ou ""), borne de `kills`, puis les bornes de tranche
+// partnerClause (" AND p.xuid IN (…)" ou ""), puis les bornes de tranche
 // (low max, mid min, mid max, high min) × 2 (reçues, données).
-// Placeholders ? : ?1 = xuid du joueur, ?2 = liste de `measured`, puis ceux de scopeClause,
-// puis ceux de partnerClause, puis la liste de `kills`.
+// Placeholders ? : ?1 = xuid du joueur, ?2 = liste de `lues`, puis ceux de scopeClause,
+// puis ceux de partnerClause.
 const Q28cRelationAssistsTpl = `
 WITH me AS (
     SELECT CAST(? AS VARCHAR) AS xuid
