@@ -1173,15 +1173,42 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   valeur de D1 se jugent sur pièces dans `replay-equiv` (U-3, D1.4.4).
 
 ### Étape D1.4 — Gates, révisions, clôture de 2.7.d1
-- [ ] D1.4.1 `grammar.Rev` monte (chronique : couverture, admission, replis ; porte
+- [x] D1.4.1 `grammar.Rev` monte (chronique : couverture, admission, replis ; porte
       `LEVELUP_UPDATE_GRAMMAR_REV=1`, §1.4) ; gate objectives et killsource comme LK.6.2 et LK.6.3, par
       leurs portes (E-7, §1.4) ; `objectives.Rev` monte si le calque des drapeaux change (U-2).
-- [ ] D1.4.2 `replay.SchemaVersion` monte (valeurs d'inventaire, dotations, capacités) avec chronique,
+      *Fait (lot D, 2026-10-09)*, après la fusion de `origin/feat/v75` `fe1f3d954` (`b5c15d218` :
+      23 commits, aucun fichier du film ; un conflit documentaire dans `.ai/REGISTRE_REPORTS.md`,
+      ligne de `feat/v75` reprise pour ses propres lignes, lignes LK de la branche gardées). Rangs pris :
+      `grammar-2026-10-09` → **`grammar-2026-10-09.2`** (la date seule vaut le rang 1 ; `feat/v75` est
+      à `grammar-2026-10-08.13`) ; entrée de chronique (marche unique, règle d'admission U-1, valeurs
+      U-3/U-4, replis, armes seules au sync, mesures de D1.0 à D1.2) ; golden par la porte.
+      `killsource` : `cmd/killsource json` sur les 19 témoins, binaire de `3aa885e37` (production
+      d'avant D1.1, `git archive` sous `$S/../d1y/base_a`) contre binaire du lot fusionné : **19/19
+      identiques à l'octet** (`$S/../d1y/d14/ks_cmp.txt`) → `killsource-2026-10-08.2` reste, complément
+      daté, golden régénéré. `objectives` : étapes `objectives` et `carrierMarks` de `replay-equiv`
+      identiques sur les 20 films (base `3aa885e37` contre lot) → `objectives-2026-09-27` reste
+      (U-2 (b) : la marque est la configuration de la fenêtre, le calque des drapeaux ne change pas),
+      complément daté, golden régénéré. Golden des formes de types : seule la ligne des révisions
+      change (forme intacte, E-8).
+- [x] D1.4.2 `replay.SchemaVersion` monte (valeurs d'inventaire, dotations, capacités) avec chronique,
       plafonds, goldens, fixtures ; `SchemaDesFaits` selon D1.3.2.
-- [ ] D1.4.3 ADR 0037 : AMENDEMENT de la règle de 2.7.b pour les images-clés (texte de U-1 : n(i22) = 4
+      *Fait (lot D)* : **`SchemaVersion` 90 → 91** (90 sur `feat/v75` et sur la branche) ; entrée v91
+      de `document_chronicle.go` (mesures du gate de corpus et de `replay-equiv`, D1.4.4) ;
+      justification dans `structure_test.go` ; plafonds de l'exception écrite
+      (`archlint/film_file_size_test.go` : chronique 3 148 → 3 188, `structure_test.go` 1 425 → 1 430) ;
+      goldens d'assemblage (8, ligne du schéma seule), golden de forme (ligne du schéma seule),
+      fixtures de contrat du web régénérées au schéma 91 (manifeste et huit fichiers). Aucun champ
+      neuf : `openapi.yaml` et les types web générés ne changent pas. **`SchemaDesFaits` reste 11**
+      (D1.3.2).
+- [x] D1.4.3 ADR 0037 : AMENDEMENT de la règle de 2.7.b pour les images-clés (texte de U-1 : n(i22) = 4
       ne valide le curseur que jusqu'à i22 ; le témoin T après i43 ; la fermeture seule ne garantit
       pas les valeurs dans les formats 20-21) ; IR-6 (les fenêtres derrière la lecture) ; dernier
       alinéa de 2.7.d réécrit.
+      *Fait (lot D)* : sous IR-6, le dernier alinéa de 2.7.d ne garde que le nuage de positions des
+      véhicules hors de la règle ; le paragraphe LK en devient un à part ; un paragraphe 2.7.d1 écrit
+      l'amendement (règle d'admission T1 ∧ T2, sur tous les formats, mesure), les fenêtres derrière la
+      lecture (trois replis, records récupérés marqués, marque non persistée et ce qui en survit) et
+      la lecture aux armes seules du sync.
 - [ ] D1.4.4 Mesure finale : instrument d0 (grammaire puis fenêtre derrière) ; `replay-equiv` 20
       films, faits frais ; `cmd/killsource json` 19 témoins ; `replay-corpus-gate` et banc de vérité
       (lecture de la base partagée par `OpenReadForQuery`, §0 : aucun backfill ni cuisson du parc en

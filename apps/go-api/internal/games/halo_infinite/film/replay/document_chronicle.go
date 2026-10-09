@@ -3146,3 +3146,43 @@ package replay
 //	                binaire de la base contre binaire du lot : seuls le socle releve, les comptes, les
 //	                revisions et les replis verses par killsource changent. `cmd/killsource json` :
 //	                `0a08d2f2` 119 -> 124 lignes, aucune ligne existante modifiee.
+//
+// v91 (2026-10-09, representation intermediaire 2.7.d1, plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.2`) : L ETAT COMPLET DU
+// BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
+//
+//	Aucun champ neuf ; le CONTENU de `loadouts`, `inventory`, `grenadeReads` et `abilities` (`kf`)
+//	change. Un record bipede d image-cle que la regle d admission retient (ferme ou i22 a quatre
+//	compteurs, ET armes au catalogue, ET masque d i47 egal aux compteurs) publie ce que le lecteur du
+//	jeu lit a l etendue de chaque composant ; les autres gardent la valeur de la fenetre, comptee
+//	sous trois replis (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,
+//	`repli_fenetre_marque_de_portage`). Valeurs decidees par l utilisateur le 2026-10-08 (U-3, U-4) :
+//	plus de « Grenade dynamo » lue un bit trop tot dans les dotations ; grenade selectionnee en base
+//	0 ; `d` = emplacement desire en main principale (i42 param[1]), absent quand le film n en
+//	designe aucun ; rang de capacite publie dans 16..23 seulement.
+//
+//	CE QUI MONTE    `SchemaVersion` 90 -> 91 ; `grammar.Rev` `grammar-2026-10-09` ->
+//	AVEC ELLE       `grammar-2026-10-09.2`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
+//	                complements a revision constante) et `SchemaDesFaits` (11) ne bougent pas : la
+//	                forme des faits ne change pas, la publication rejouee depuis eux est identique.
+//
+//	LE PARC         un artefact 90 porte `grammar-2026-10-08.13` ou `grammar-2026-10-09` : verdict
+//	                `redecoder`.
+//
+//	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`), 19 temoins : aucun oracle
+//	                ne bouge ; seuls FAUX du banc, les trois replis neufs (R-1, nouveaux par
+//	                construction). Fiches : records d image-cle avec armes identiques sur les 19
+//	                films ; armes retirees = les « Grenade dynamo » des records admis (`111fa685`
+//	                38 -> 1, `4f77afc1` 52 -> 0, `e5adf7b2` 31 -> 1) et un record de `111fa685` ou la
+//	                fenetre listait 19 familles (2 lues) ; grenades selectionnees 264 -> 4 207 (4 203
+//	                designent un type dont le compteur est non nul ; 4 records admis de format 20 a
+//	                compteurs nuls gardent la selection 0 que le jeu ecrit) ; `d` identique sur tout
+//	                record publie des deux cotes, 50 records en gagnent un ; inventaires vides en
+//	                baisse sur 11 films. Jauges et chargeurs en baisse : lectures de la fenetre a
+//	                plusieurs debuts candidats (la plus longue retenue, 4 a 20 bits trop tot, D1.0.7) —
+//	                jauges 0,5001 / 0,25 / 0,75, chargeurs de 1 (331 sur 349), reserves de 1 232 a
+//	                2 000 — la ou le lecteur du jeu lit, au meme instant et pour le meme slot,
+//	                chargeur et reserve plausibles ou une jauge d arme a energie. `replay-equiv`, 20
+//	                films, binaires de `3aa885e37` contre ceux du lot : etapes divergentes `artifact`
+//	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
+//	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.

@@ -151,6 +151,14 @@ package objectives
 // portee de l etat complet). `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv`
 // est IDENTIQUE sur les 20 films de reference (binaires de `d429dc517` contre ceux du lot). Golden
 // regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (etat complet du bipede aux
+// images-cles lu par la grammaire, fenetres de bits derriere la lecture ; la marque de portage, lue
+// par la grammaire sur les records admis, reste la configuration de la fenetre, U-2 (b)).
+// `grammar/signaux` ne change pas ; les etapes `objectives` et `carrierMarks` de `replay-equiv` sont
+// IDENTIQUES sur les 20 films de reference (binaires de `3aa885e37` contre ceux du lot). Golden
+// regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

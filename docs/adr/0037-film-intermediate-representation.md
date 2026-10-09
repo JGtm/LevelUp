@@ -357,17 +357,40 @@ vehicle slots, the first condition of the vehicle layer that is scanned after it
 registry keeps the anchoring and the passes alone, as does a track request that names no archetype
 (the instrument wrappers, which scan arbitrary bands). The sync collector, which opens its own
 context for the identity bridge, now plays the walk for its positions; lot 3.1 gives it one context
-per pass. Two scans stay outside this rule. The keyframe bit windows (held weapons, carrier mark,
-inventory) still decide alone. Since the LK milestone (2026-10-09, `feat/ri-lk-images-cles`), the
-grammar reads the biped's full state at keyframes: the full-state scope `DAT_144e61ea0` is a
-property of the full-state walk (`Lecteur.portee`), set where the game sets it — around the default
-state and its control word when `n1 > 0`, over the whole component loop when `n2 > 0` — and never by
-a delta, a NEW record or view A. Under it the position readers read the raw vector, and the absolute
-branch of i0 reads the game's form. On 28 films, 5 399 of the 10 710 biped keyframe records close on
-the next record, against 410 before (3.8 %), with the anchor election, the teams and the delta frame
-map unchanged. The windows keep deciding until 2.7.d1 branches this reading as a keyframe channel,
-the windows behind it as named, ordered and counted fallbacks (discovery 36). The vehicle position
-cloud still anchors on its own band (discovery 40).
+per pass. One scan stays outside this rule: the vehicle position cloud still anchors on its own band
+(discovery 40). The keyframe bit windows (held weapons, carrier mark, inventory), which decided alone
+until then, run behind the reading since lot 2.7.d1 (below).
+
+Since the LK milestone (2026-10-09, `feat/ri-lk-images-cles`), the grammar reads the biped's full
+state at keyframes: the full-state scope `DAT_144e61ea0` is a property of the full-state walk
+(`Lecteur.portee`), set where the game sets it — around the default state and its control word when
+`n1 > 0`, over the whole component loop when `n2 > 0` — and never by a delta, a NEW record or view A.
+Under it the position readers read the raw vector, and the absolute branch of i0 reads the game's
+form. On 28 films, 5 399 of the 10 710 biped keyframe records close on the next record, against 410
+before (3.8 %), with the anchor election, the teams and the delta frame map unchanged.
+
+Since lot 2.7.d1 (2026-10-09, same branch, plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`),
+one keyframe channel (`grammar.ScanEtatsDesImagesCles`) gives the held weapons, the inventory and the
+carrier mark of every biped keyframe record. Its components are resolved by name in the film's
+registry and re-read at the extent of their occurrence by a single helper that sets the scope and the
+full state as the walk does. **The rule of lot 2.7.b does not carry over to keyframes, and is amended
+for them** (user decision of 2026-10-09): a closed record, or i22 read with four counters, validates
+the cursor only up to i22, and in film formats 20 and 21 even a closed record gives wrong weapons and
+ammunition (0 of 16 closed records right). A keyframe value is published by the grammar only when its
+record is **admitted**: (closed OR i22 read with four counters) AND witness T1 (the walk went past the
+last weapon slot, at least one slot is not empty, and every non-empty slot's family is in the
+catalogue) AND witness T2 (the i47 mask equals the bitmap of the non-zero i22 counters), on every
+format, with no version clause. Measured on 28 films: 6 507 of 10 710 records admitted, none with wrong
+weapons in formats 20-21, one admitted on the 10 407 records of the walk shifted by one bit. The bit
+windows run **behind** the reading (IR-6): a record that the rule does not admit, or whose body the
+phase did not cross (a film without registry), is given to them, each window counting it under its
+named fallback (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,
+`repli_fenetre_marque_de_portage`, ordered after the reading, retirement target 2026-12-31); an
+admitted record is mute to them; what they return is marked recovered, with its methods, in the
+grammar's result. The mark is not persisted (the shape of the facts does not change): what the
+publication carries of it, the fallback counts and the recovered values, is in the facts and survives
+a republication from them. The sync reader of objective carriers reads the weapons only
+(`ScanArmesDesImagesCles`), without the inventory and mark windows it has no use for.
 
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 

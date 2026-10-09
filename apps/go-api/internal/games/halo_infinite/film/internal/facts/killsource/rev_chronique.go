@@ -241,3 +241,10 @@ package killsource
 // portee de l etat complet). `cmd/killsource json` sur les 19 temoins, binaire de `feat/v75`
 // (`d429dc517`) contre binaire du lot fusionne : sorties identiques a l octet. Golden regenere a
 // revision constante.
+//
+// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (etat complet du bipede aux
+// images-cles lu par la grammaire, fenetres de bits derriere la lecture). `cmd/killsource json` sur
+// les 19 temoins, binaire de `3aa885e37` (production d avant 2.7.d1) contre binaire du lot fusionne
+// avec `feat/v75` (`b5c15d218` + montee) : sorties identiques a l octet. Golden regenere a revision
+// constante.

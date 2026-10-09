@@ -162,3 +162,35 @@ package grammar
 // regle du jalon (une baisse, ou l election des ancres changee) et restent hors de la grammaire :
 // unit-actor-state, world-object i0, generic-rigid-body-transforms, low-frequency (plan LK, §7 D-17,
 // D-18, D-21, D-23).
+//
+// ENTREE `grammar-2026-10-09.2` (2026-10-09, lot 2.7.d1 du plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
+// `feat/ri-lk-images-cles`) : L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES
+// FENETRES DE BITS PASSENT DERRIERE LA LECTURE.
+//
+// Ce qui change, contre `grammar-2026-10-09` :
+//   - une seule marche de la phase des images-cles ([ScanEtatsDesImagesCles]) rend les armes
+//     portees, l inventaire et la marque de portage de chaque record bipede ; les composants sont
+//     resolus par NOM dans le registre du film et relus a l etendue de leur occurrence par
+//     l assistant unique ([relireLOccurrence], portee et etat complet poses comme la marche) ;
+//   - regle d admission par record (decision de l utilisateur du 2026-10-09, U-1 amendee) : (ferme
+//     OU n(i22) = 4) ET T1 (au moins une arme, chaque famille non vide au catalogue, marche au-dela
+//     du dernier emplacement) ET T2 (masque d i47 egal a la bitmap des compteurs d i22) ;
+//   - valeurs publiees d un record admis (U-3, U-4) : familles des emplacements non vides dans leur
+//     ordre (plus de « Dynamo Grenade » lue un bit trop tot) ; grenade selectionnee en base 0 ;
+//     `DrawnSlot` = emplacement desire en main principale (param[1] d i42), -1 = absence ; rang de
+//     capacite publie dans 16..23 seulement, compte hors domaine ; marque = la configuration de la
+//     fenetre lue dans i11, i12 et i13 (U-2 (b)) ;
+//   - les records non admis passent aux fenetres DERRIERE la lecture, marques recuperes et comptes
+//     sous trois replis (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,
+//     `repli_fenetre_marque_de_portage`) ; les records admis sont muets pour elles ;
+//     `repli_plafond_grenade_par_defaut` ne se compte plus que si la fenetre a recu un record ;
+//   - [lireJeuDArmes] rend les trois champs d i42 ; [ScanArmesDesImagesCles] lit les seules armes
+//     (le sync des porteurs : ni regles d inventaire ni marque derriere la lecture).
+//
+// MESURE (28 films, contexte de cuisson, plan D1.0 a D1.2) : 6 507 records bipedes admis sur 10 710
+// (f24 2 392 / 3 097, f25 492 / 653, f27 3 574 / 4 905, f20 34 / 1 652, f21 15 / 403) ; valeurs
+// publiees egales a la relecture de l instrument sur 100 % des admis ; 0 record a armes fausses admis
+// en formats 20-21 ; 1 admis sur 10 407 records du temoin decale d un bit ; 0 debordement ; replis =
+// records non admis (4 203), film par film. Bobines du golden : 837 records admis, dont 11 ou la
+// fenetre aurait lu autre chose.

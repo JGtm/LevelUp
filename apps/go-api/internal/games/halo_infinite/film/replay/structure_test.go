@@ -1418,8 +1418,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   socle d arme hors de l emprise jouee se releve au lieu ou ses armes sont prises, et les morts
 	//   qui touchent un bot se publient (`killsource.Rev` monte). Un v89 se lit « a redecoder ».
 	//   Detail : `document_chronicle.go`.
-	if SchemaVersion != 90 {
-		t.Fatalf("SchemaVersion = %d, attendu 90 : incrémenter exige une raison écrite ci-dessus "+
+	// - 91 (2026-10-09, representation intermediaire 2.7.d1) : Aucun champ neuf ; le CONTENU change :
+	//   l etat complet du bipede aux images-cles (armes portees, inventaire, marque de portage) est lu
+	//   par la grammaire sur les records que sa regle d admission retient, les fenetres de bits rendent
+	//   les autres derriere elle. `grammar.Rev` monte avec elle : un v90 se lit « a redecoder ». Detail :
+	//   `document_chronicle.go`.
+	if SchemaVersion != 91 {
+		t.Fatalf("SchemaVersion = %d, attendu 91 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
