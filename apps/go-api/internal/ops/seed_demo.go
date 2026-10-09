@@ -138,6 +138,7 @@ const (
 // Tables shared/player référencées plus de 3 fois dans seed_demo + tests.
 const (
 	tableMatchRegistry     = "match_registry"
+	tableXUIDAliases       = "xuid_aliases"
 	tableMatchParticipants = "match_participants"
 )
 
@@ -150,15 +151,22 @@ const (
 // vue n'est jamais créée dans la DB démo (cf. incident 2026-06-05 : home 500
 // sur match_csrs.written_at / player_csr_snapshots_latest).
 //
-// identity : les colonnes d'IDENTITÉ de la table, remappées vers le roster démo PENDANT la
-// copie (cf. anonymizedSelect, seed_demo_corpus.go) — {colonne xuid, colonne gamertag ou ""}.
-// Toute table extraite qui porte un xuid ou un gamertag réel la déclare ici : c'est la SEULE
-// liste d'anonymisation du seed.
+// Les colonnes d'IDENTITÉ de la table sont remappées vers le roster démo PENDANT la copie
+// (cf. anonymizedSelect, seed_demo_anonymize.go). Toute table extraite qui porte un xuid ou
+// un gamertag réel les déclare ici : c'est la SEULE liste d'anonymisation du seed, et le
+// contrôle des valeurs de fin de seed (verifyDemoAnonymization) en vérifie l'effet.
+//   - identity     : {colonne xuid, colonne gamertag appariée ou ""} ;
+//   - gamertagOnly : un gamertag SANS xuid à côté (remappé par le nom ; inconnu → NULL) ;
+//   - xuidLists    : une liste de xuid séparés par des virgules (inconnus retirés) ;
+//   - jsonIdentity : un document JSON portant `$.xuid` et `$.gamertag`.
 type extractTable struct {
-	name       string
-	where      string
-	appendOnly bool
-	identity   [][2]string
+	name         string
+	where        string
+	appendOnly   bool
+	identity     [][2]string
+	gamertagOnly []string
+	xuidLists    []string
+	jsonIdentity []string
 }
 
 // Tables shared à extraire avec leur clause WHERE (les ? sont les match_ids
@@ -167,10 +175,13 @@ type extractTable struct {
 //
 // xuid_aliases : SELECT * WHERE xuid IN (xuids des match_participants).
 var sharedTablesWhere = []extractTable{
-	{name: tableMatchRegistry, where: matchIDInClause},
+	// first_sync_by : gamertag du joueur suivi qui a synchronisé le match.
+	{name: tableMatchRegistry, where: matchIDInClause, gamertagOnly: []string{"first_sync_by"}},
 	{name: tableMatchParticipants, where: matchIDInClause, identity: [][2]string{{colXUID, colGamertag}}},
 	{name: "medals_earned", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
-	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
+	// raw_json porte AUSSI le xuid et le gamertag du joueur ({"xuid": …, "gamertag": …}).
+	{name: "highlight_events", where: matchIDInClause, identity: [][2]string{{colXUID, ""}},
+		jsonIdentity: []string{"raw_json"}},
 	{name: "weapon_kills", where: matchIDInClause, identity: [][2]string{{colXUID, ""}}},
 	{name: "killer_victim_pairs", where: matchIDInClause, identity: [][2]string{
 		{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
@@ -190,7 +201,7 @@ var sharedTablesWhere = []extractTable{
 		{"assist_xuid", "assist_gamertag"}}},
 	// La sous-requête vise la table SOURCE (src.) : la copie démo de match_participants,
 	// déjà créée, porte des xuid ANONYMISÉS qui ne filtreraient plus rien.
-	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM src.match_participants WHERE match_id IN (%s))",
+	{name: tableXUIDAliases, where: "xuid IN (SELECT DISTINCT xuid FROM src.match_participants WHERE match_id IN (%s))",
 		identity: [][2]string{{colXUID, colGamertag}}},
 	{name: "match_csrs", where: matchIDInClause, appendOnly: true, identity: [][2]string{{colXUID, ""}}},
 	// match_objective_stats : stats objectifs par joueur/match (CTF, Zones, Oddball,
@@ -223,7 +234,9 @@ var sharedTablesWhere = []extractTable{
 // Tables player à extraire. sessions/career_progression/player_csr_snapshots
 // copiés intégralement (pas filtrés par match_id car données globales joueur).
 var playerTablesWhere = []extractTable{
-	{name: playerEnrichmentTable, where: matchIDInClause},
+	// friends_xuids / teammates_signature : listes de xuid séparés par des virgules (amis
+	// présents, signature TRIÉE des coéquipiers — la réécriture garde l'ordre trié).
+	{name: playerEnrichmentTable, where: matchIDInClause, xuidLists: []string{"friends_xuids", "teammates_signature"}},
 	{name: "match_citations", where: matchIDInClause},
 	{name: "sessions", where: "1=1"},
 	{name: "career_progression", where: "1=1", identity: [][2]string{{colXUID, ""}}},
@@ -362,6 +375,12 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// 6c. Rejeux figés (un par mode, manifeste) : films embarqués, artefacts au dernier schéma.
 	res.Replays = seedDemoReplays(ctx, opts, layout, sel.replays, roster)
 
+	// 6d. Contrôle des VALEURS : aucune identité réelle ne doit subsister dans les bases
+	// générées (seed_demo_anonymize_check.go). Une fuite fait échouer le seed.
+	if err := verifyDemoAnonymization(ctx, opts, layout, seeded, roster); err != nil {
+		return res, fmt.Errorf("seed-demo: %w", err)
+	}
+
 	// 7. Configs (db_profiles avec les 3 profils démo + app_settings). SKIP quand
 	// l'orchestrateur multi-titre les écrira une fois (v3) après tous les titres.
 	if !opts.SkipConfigs {
@@ -496,7 +515,7 @@ func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, layout titlePk
 		}
 		demoDir := demoDirForIndex(i)
 		outP := layout.PlayerDBPath(opts.TitleSlug, demoDir)
-		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
+		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, roster)
 		if perr != nil {
 			if i == 0 {
 				return seeded, playerRows, fmt.Errorf("seed-demo: extract player principal: %w", perr)
@@ -905,13 +924,14 @@ func extractSharedTables(
 }
 
 // extractPlayerTables extrait les tables enrichment/citations/sessions/career/sync_meta/skill_rank
-// et anonymise sourceXUID → demoXUID. La table sync_meta est filtrée par la liste
-// d'INCLUSION de seed_demo_sync_meta.go : elle ne porte plus de xuid à réécrire.
+// et les anonymise par le roster démo (le joueur lui-même ET les amis cités par
+// friends_xuids). La table sync_meta est filtrée par la liste d'INCLUSION de
+// seed_demo_sync_meta.go : elle ne porte plus de xuid à réécrire.
 func extractPlayerTables(
 	ctx context.Context,
 	srcPath, dstPath string,
 	matchIDs []string,
-	sourceXUID, demoXUID string,
+	roster []demoRosterEntry,
 ) (map[string]int, error) {
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
@@ -931,11 +951,11 @@ func extractPlayerTables(
 	}
 	defer func() { _, _ = dst.ExecContext(ctx, "DETACH src") }()
 
-	// Player DB mono-joueur : la seule identité à remapper est celle du joueur lui-même
-	// (career_progression, battlepass_snapshots ; les autres tables n'ont pas de xuid).
+	// Identités d'une player DB : le joueur lui-même (career_progression,
+	// battlepass_snapshots) et ses amis (player_match_enrichment.friends_xuids).
 	// Tolérant : une base legacy peut manquer une table ou ses colonnes techniques.
 	counts, err := copyAnonymizedTables(ctx, dst, playerTablesWhere, formatIDsLiteral(matchIDs),
-		[]xuidRemap{{from: sourceXUID, toXUID: demoXUID}}, true)
+		rosterRemaps(roster), true)
 	if err != nil {
 		return counts, err
 	}

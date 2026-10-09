@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,11 +68,17 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 	}
 
 	// 3 matchs : m1 (le plus récent), m2 (milieu), m3 (le plus ancien).
+	// first_sync_by : le gamertag RÉEL du joueur suivi qui a synchronisé — 'Suivi' n'est pas au
+	// corpus (le contrôle des valeurs doit le voir effacé), 'JGtm' l'est (remappé).
 	mustExec(t, sharedDB, `
-		INSERT INTO match_registry (match_id, start_time, map_name, playlist_name, pair_name) VALUES
-		('m1', TIMESTAMP '2026-05-22 18:00:00', 'Aquarius', 'Ranked Slayer', 'Ranked:Slayer'),
-		('m2', TIMESTAMP '2026-05-21 18:00:00', 'Bazaar', 'Open Crossplay', 'Open:CTF'),
-		('m3', TIMESTAMP '2026-05-20 18:00:00', 'Live Fire', 'Open Crossplay', 'Open:Slayer')`)
+		INSERT INTO match_registry (match_id, start_time, map_name, playlist_name, pair_name, first_sync_by) VALUES
+		('m1', TIMESTAMP '2026-05-22 18:00:00', 'Aquarius', 'Ranked Slayer', 'Ranked:Slayer', 'JGtm'),
+		('m2', TIMESTAMP '2026-05-21 18:00:00', 'Bazaar', 'Open Crossplay', 'Open:CTF', 'Suivi'),
+		('m3', TIMESTAMP '2026-05-20 18:00:00', 'Live Fire', 'Open Crossplay', 'Open:Slayer', 'JGtm')`)
+	// highlight_events.raw_json porte le xuid ET le gamertag du joueur.
+	mustExec(t, sharedDB, `
+		INSERT INTO highlight_events (match_id, xuid, event_type, raw_json) VALUES
+		('m1', '2222222222222222', 'kill', '{"xuid": 2222222222222222, "gamertag": "Other", "event_type": "kill"}')`)
 	mustExec(t, sharedDB, `
 		INSERT INTO match_participants (match_id, xuid, gamertag, kills, deaths) VALUES
 		('m1', '`+sourceXUID+`', 'JGtm', 15, 8),
@@ -111,11 +118,15 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 		t.Fatalf("migrations player (fixture): %v", err)
 	}
 
+	// friends_xuids / teammates_signature : listes de xuid RÉELS séparés par des virgules
+	// (colonnes posées hors de RunForDB en production : ajoutées ici à l'identique).
+	mustExec(t, playerDB, `ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS friends_xuids VARCHAR`)
+	mustExec(t, playerDB, `ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS teammates_signature VARCHAR`)
 	mustExec(t, playerDB, `
-		INSERT INTO player_match_enrichment (match_id, session_id, performance_score) VALUES
-		('m1', 'sess1', 78.5),
-		('m2', 'sess1', 65.0),
-		('m3', 'sess2', 82.3)`)
+		INSERT INTO player_match_enrichment (match_id, session_id, performance_score, friends_xuids, teammates_signature) VALUES
+		('m1', 'sess1', 78.5, '2222222222222222', '2222222222222222'),
+		('m2', 'sess1', 65.0, '', NULL),
+		('m3', 'sess2', 82.3, NULL, NULL)`)
 	mustExec(t, playerDB, `INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES ('m1', 'kills', 15), ('m2', 'kills', 8)`)
 	mustExec(t, playerDB, `INSERT INTO sessions (session_id, label) VALUES (1, 'Session 1'), (2, 'Session 2')`)
 	mustExec(t, playerDB, `INSERT INTO career_progression (xuid, rank, recorded_at) VALUES ('`+sourceXUID+`', 10, TIMESTAMP '2026-05-22 18:00:00')`)
@@ -192,8 +203,53 @@ func TestSeedDemo_EndToEnd_HappyPath(t *testing.T) {
 	// ── échantillons Prestige (player DB + shared_social)
 	verifyPrestigeSeeded(t, outDir, res)
 
+	// ── identités sans xuid à côté : nom, listes, JSON (le seed a déjà joué son contrôle
+	// des valeurs ; on vérifie ici la FORME des remplacements)
+	verifyIdentityShapesRemapped(t, outShared, outPlayer)
+
 	// ── configs JSON
 	verifyConfigsWritten(t, outDir, "JGtm", "SPTA", false)
+}
+
+// verifyIdentityShapesRemapped : first_sync_by remappé (ou effacé hors roster), raw_json et
+// listes de xuid réécrits vers les identités démo.
+func verifyIdentityShapesRemapped(t *testing.T, outShared, outPlayer string) {
+	t.Helper()
+	shared, err := sql.Open("duckdb", outShared+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer shared.Close()
+	var m1, m2 sql.NullString
+	if err := shared.QueryRow(`SELECT
+		(SELECT first_sync_by FROM match_registry WHERE match_id = 'm1'),
+		(SELECT first_sync_by FROM match_registry WHERE match_id = 'm2')`).Scan(&m1, &m2); err != nil {
+		t.Fatalf("first_sync_by: %v", err)
+	}
+	if m1.String != DefaultDemoMainGamertag || m2.Valid {
+		t.Errorf("first_sync_by = (%v, %v), attendu (%s, NULL)", m1, m2, DefaultDemoMainGamertag)
+	}
+	var raw string
+	if err := shared.QueryRow(`SELECT raw_json FROM highlight_events WHERE match_id = 'm1'`).Scan(&raw); err != nil {
+		t.Fatalf("raw_json: %v", err)
+	}
+	if strings.Contains(raw, "2222222222222222") || strings.Contains(raw, `"Other"`) || !strings.Contains(raw, `"kill"`) {
+		t.Errorf("raw_json non réécrit ou abîmé : %s", raw)
+	}
+	player, err := sql.Open("duckdb", outPlayer+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer player.Close()
+	var friends, sig sql.NullString
+	// Table physique : la vue _latest de la fixture (RunForDB) n'expose pas ces colonnes.
+	if err := player.QueryRow(`SELECT friends_xuids, teammates_signature FROM player_match_enrichment
+		WHERE match_id = 'm1' LIMIT 1`).Scan(&friends, &sig); err != nil {
+		t.Fatalf("listes de xuid: %v", err)
+	}
+	if !strings.HasPrefix(friends.String, "0000") || friends.String != sig.String {
+		t.Errorf("listes de xuid = (%q, %q), attendu l'identité démo du coéquipier", friends.String, sig.String)
+	}
 }
 
 // verifyPrestigeSeeded : les tables Prestige/Progression de la démo sont PEUPLÉES

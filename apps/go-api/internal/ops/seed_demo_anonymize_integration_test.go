@@ -19,8 +19,12 @@ package ops
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -164,5 +168,69 @@ func verifierAucuneFuite(t *testing.T, ctx context.Context, db *sql.DB) {
 				}
 			}
 		}
+	}
+}
+
+// TestVerifyDemoAnonymization_EchoueSurUneValeurReelle : le contrôle des valeurs de fin de
+// seed MORD — un xuid réel dans une colonne quelconque (même non déclarée, même dans une
+// liste), un gamertag réel en valeur exacte ou dans un JSON, chacun fait échouer ; une base
+// propre passe. La colonne est nommée, la valeur réelle n'est pas répétée.
+func TestVerifyDemoAnonymization_EchoueSurUneValeurReelle(t *testing.T) {
+	ctx := context.Background()
+	src := sourceAnonymisation(t, ctx)
+	demo := t.TempDir()
+	layout := titlePkg.NewDemoLayout(demo)
+	slug := titlePkg.DefaultSlug
+	shared := layout.SharedDBPath(slug)
+	if err := os.MkdirAll(filepath.Dir(shared), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("duckdb", shared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`CREATE TABLE propre (xuid VARCHAR, note VARCHAR)`,
+		`INSERT INTO propre VALUES ('0000000000000001', 'DemoPlayer2')`,
+		`CREATE TABLE inattendue (signature VARCHAR, doc VARCHAR, auteur VARCHAR)`,
+		`INSERT INTO inattendue VALUES ('0000000000000001,` + anonReelA + `', NULL, NULL),
+			(NULL, '{"gamertag": "VraiJoueurB"}', NULL), (NULL, NULL, 'VraiJoueurA')`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatalf("%q : %v", q, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	opts := SeedDemoOptions{SourceSharedDB: src, TitleSlug: slug}
+	roster := []demoRosterEntry{{SourceXUID: anonReelA, DemoXUID: "0000000000000000"},
+		{SourceXUID: anonReelB, DemoXUID: "0000000000000001"}}
+	err = verifyDemoAnonymization(ctx, opts, layout, nil, roster)
+	if err == nil {
+		t.Fatal("trois valeurs réelles en base démo : le contrôle aurait dû échouer")
+	}
+	for _, col := range []string{"inattendue.signature", "inattendue.doc", "inattendue.auteur"} {
+		if !strings.Contains(err.Error(), col) {
+			t.Errorf("colonne %s non signalée : %v", col, err)
+		}
+	}
+	if strings.Contains(err.Error(), "propre.") || strings.Contains(err.Error(), anonReelA) {
+		t.Errorf("faux positif ou valeur réelle répétée dans le message : %v", err)
+	}
+
+	// Une démo propre passe.
+	db, err = sql.Open("duckdb", shared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP TABLE inattendue`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyDemoAnonymization(ctx, opts, layout, nil, roster); err != nil {
+		t.Errorf("démo propre refusée : %v", err)
 	}
 }

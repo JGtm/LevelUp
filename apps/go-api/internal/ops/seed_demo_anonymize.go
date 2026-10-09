@@ -30,6 +30,10 @@ import (
 // demoXUIDMapTable : la table de correspondance posée dans la base démo le temps de la copie.
 const demoXUIDMapTable = "_demo_xuid_map"
 
+// demoGamertagMapTable : la correspondance PAR NOM (gamertag réel → gamertag démo), dérivée de
+// la précédente et des alias de la source, pour les colonnes qui portent un nom sans xuid.
+const demoGamertagMapTable = "_demo_gamertag_map"
+
 // xuidRemap : une identité réelle et son identité démo. toGamertag vide = gamertag conservé.
 type xuidRemap struct {
 	from, toXUID, toGamertag string
@@ -70,11 +74,39 @@ func installXUIDMap(ctx context.Context, dst *sql.DB, remaps []xuidRemap) error 
 	return nil
 }
 
-// dropXUIDMap retire la table de correspondance : elle porte les xuid RÉELS et ne doit pas
-// rester dans une base publiée.
+// installGamertagMap dérive la correspondance par nom : les gamertags que la source associe
+// (xuid_aliases, match_participants) à un xuid du roster. Une table source absente (player
+// DB) ne contribue rien.
+func installGamertagMap(ctx context.Context, dst *sql.DB) error {
+	if _, err := dst.ExecContext(ctx, `CREATE OR REPLACE TABLE `+demoGamertagMapTable+
+		` (old_gamertag VARCHAR, new_gamertag VARCHAR)`); err != nil {
+		return fmt.Errorf("table de correspondance des noms démo: %w", err)
+	}
+	for _, src := range []string{tableXUIDAliases, tableMatchParticipants} {
+		cols, err := sourceColumns(ctx, dst, src)
+		if err != nil {
+			return err
+		}
+		if !cols[colXUID] || !cols[colGamertag] {
+			continue
+		}
+		if _, err := dst.ExecContext(ctx, `INSERT INTO `+demoGamertagMapTable+`
+			SELECT DISTINCT s.gamertag, m.new_gamertag FROM src.`+src+` s
+			JOIN `+demoXUIDMapTable+` m ON m.old_xuid = s.xuid
+			WHERE s.gamertag IS NOT NULL AND s.gamertag <> '' AND m.new_gamertag IS NOT NULL`); err != nil {
+			return fmt.Errorf("correspondance des noms démo (%s): %w", src, err)
+		}
+	}
+	return nil
+}
+
+// dropXUIDMap retire les tables de correspondance : elles portent les identités RÉELLES et ne
+// doivent pas rester dans une base publiée.
 func dropXUIDMap(ctx context.Context, dst *sql.DB) error {
-	if _, err := dst.ExecContext(ctx, `DROP TABLE IF EXISTS `+demoXUIDMapTable); err != nil {
-		return fmt.Errorf("retrait de la table de correspondance démo: %w", err)
+	for _, t := range []string{demoXUIDMapTable, demoGamertagMapTable} {
+		if _, err := dst.ExecContext(ctx, `DROP TABLE IF EXISTS `+t); err != nil {
+			return fmt.Errorf("retrait de la table de correspondance démo %s: %w", t, err)
+		}
 	}
 	return nil
 }
@@ -99,8 +131,8 @@ func sourceColumns(ctx context.Context, dst *sql.DB, table string) (map[string]b
 }
 
 // anonymizedSelect rend le SELECT de copie d'une table : colonnes techniques exclues pour
-// une table append-only reconstruite par migration, colonnes d'identité remappées par la
-// table de correspondance, filtre `where` (déjà instancié) inchangé.
+// une table append-only reconstruite par migration, colonnes d'identité remappées par les
+// tables de correspondance, filtre `where` (déjà instancié) inchangé.
 func anonymizedSelect(t extractTable, cols map[string]bool, where string) string {
 	var replace []string
 	for _, pair := range t.identity {
@@ -108,12 +140,26 @@ func anonymizedSelect(t extractTable, cols map[string]bool, where string) string
 		if !cols[xuidCol] {
 			continue
 		}
-		lookup := func(field string) string {
-			return fmt.Sprintf(`(SELECT m.%s FROM %s m WHERE m.old_xuid = t.%s)`, field, demoXUIDMapTable, xuidCol)
-		}
-		replace = append(replace, fmt.Sprintf(`COALESCE(%s, t.%s) AS %s`, lookup("new_xuid"), xuidCol, xuidCol))
+		replace = append(replace, fmt.Sprintf(`COALESCE(%s, t.%s) AS %s`, xuidLookup("new_xuid", "t."+xuidCol), xuidCol, xuidCol))
 		if gtCol != "" && cols[gtCol] {
-			replace = append(replace, fmt.Sprintf(`COALESCE(%s, t.%s) AS %s`, lookup("new_gamertag"), gtCol, gtCol))
+			replace = append(replace, fmt.Sprintf(`COALESCE(%s, t.%s) AS %s`, xuidLookup("new_gamertag", "t."+xuidCol), gtCol, gtCol))
+		}
+	}
+	for _, c := range t.gamertagOnly {
+		if cols[c] {
+			// Inconnu de la correspondance → NULL : un nom réel hors roster ne traverse pas.
+			replace = append(replace, fmt.Sprintf(`(SELECT any_value(g.new_gamertag) FROM %s g WHERE g.old_gamertag = t.%s) AS %s`,
+				demoGamertagMapTable, c, c))
+		}
+	}
+	for _, c := range t.xuidLists {
+		if cols[c] {
+			replace = append(replace, xuidListRemap(c))
+		}
+	}
+	for _, c := range t.jsonIdentity {
+		if cols[c] {
+			replace = append(replace, jsonIdentityRemap(c))
 		}
 	}
 	proj := extractSelectExpr(t.appendOnly)
@@ -121,6 +167,32 @@ func anonymizedSelect(t extractTable, cols map[string]bool, where string) string
 		proj += " REPLACE (" + strings.Join(replace, ", ") + ")"
 	}
 	return fmt.Sprintf(`SELECT %s FROM src.%s t WHERE %s`, proj, t.name, where)
+}
+
+// xuidLookup : la sous-requête qui rend le champ `field` de la correspondance pour le xuid
+// réel `expr` (NULL quand il n'y figure pas).
+func xuidLookup(field, expr string) string {
+	return fmt.Sprintf(`(SELECT any_value(m.%s) FROM %s m WHERE m.old_xuid = %s)`, field, demoXUIDMapTable, expr)
+}
+
+// xuidListRemap : une liste « xuid,xuid,… » réécrite en xuid démo, TRIÉE (une signature reste
+// comparable d'un match à l'autre) ; un xuid hors roster est retiré. Vide et NULL sont
+// conservés tels quels (ils ne disent pas la même chose).
+func xuidListRemap(c string) string {
+	return fmt.Sprintf(`CASE WHEN t.%[1]s IS NULL OR t.%[1]s = '' THEN t.%[1]s ELSE COALESCE((
+		SELECT string_agg(m.new_xuid, ',' ORDER BY m.new_xuid) FROM (SELECT trim(unnest(string_split(t.%[1]s, ','))) AS x) u
+		JOIN %[2]s m ON m.old_xuid = u.x), '') END AS %[1]s`, c, demoXUIDMapTable)
+}
+
+// jsonIdentityRemap : un document JSON {"xuid": …, "gamertag": …} réécrit avec l'identité démo
+// de son xuid. Un document illisible, ou dont le xuid n'est pas au roster, garde sa forme —
+// le contrôle des valeurs de fin de seed (verifyDemoAnonymization) le signalerait.
+func jsonIdentityRemap(c string) string {
+	return fmt.Sprintf(`CASE WHEN json_valid(t.%[1]s) THEN COALESCE((
+		SELECT any_value(CAST(json_merge_patch(CAST(t.%[1]s AS JSON),
+			json_object('xuid', TRY_CAST(m.new_xuid AS BIGINT), 'gamertag', m.new_gamertag)) AS VARCHAR))
+		FROM %[2]s m WHERE m.old_xuid = json_extract_string(t.%[1]s, '$.xuid')), t.%[1]s)
+		ELSE t.%[1]s END AS %[1]s`, c, demoXUIDMapTable)
 }
 
 // copyAnonymizedTables copie chaque table de `tables` de src vers la base démo, anonymisée,
@@ -131,6 +203,9 @@ func anonymizedSelect(t extractTable, cols map[string]bool, where string) string
 func copyAnonymizedTables(ctx context.Context, dst *sql.DB, tables []extractTable, idsLit string,
 	remaps []xuidRemap, tolerant bool) (map[string]int, error) {
 	if err := installXUIDMap(ctx, dst, remaps); err != nil {
+		return nil, err
+	}
+	if err := installGamertagMap(ctx, dst); err != nil {
 		return nil, err
 	}
 	counts := make(map[string]int, len(tables))
