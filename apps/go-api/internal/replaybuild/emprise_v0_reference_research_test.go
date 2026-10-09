@@ -180,10 +180,7 @@ func v0Document(t *testing.T, b *Builder, id string, ident v0Identite, filmDir s
 	}
 	facts := ident.Faits
 	stats := assemblerFilmStats(ctx, id, src.statborg, facts, src.deaths)
-	if stats.score != nil {
-		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
-		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
-	}
+	b.poserLeReglementDuScore(stats.score, facts.GameVariantName)
 	cat := b.collecterEntreesCatalogue(ctx, id, ident.Noms, facts, &stats, src)
 	opts := b.buildReplayOptions(ctx, entry, facts, cat, &stats)
 	doc, faits, err := replay.BuildFromFilmAvecFaits(ctx, id, b.titleSlug, src.film, opts)

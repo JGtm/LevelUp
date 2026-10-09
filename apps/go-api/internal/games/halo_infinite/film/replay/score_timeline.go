@@ -38,10 +38,15 @@ type ScoreInput struct {
 	// TargetScore est la cible de victoire de la variante (regulation.toml [score_target]).
 	// 0 = inconnue : rien n'est publie, le client retombe sur son repli.
 	TargetScore int
-	// HoldTicksPerPoint est le nombre de TICS de garde qui valent un point sur la variante
-	// (regulation.toml [hold_ticks_per_point]). 0 = inconnu : ni serie ni denominateur ne sont
-	// publies, et le client n'affiche aucune progression de garde.
-	HoldTicksPerPoint int
+	// HillScoring dit que la variante MARQUE EN TENANT UNE COLLINE : la GARDE DE MODE de la barre
+	// de garde. `comp 23 A` existe sur tous les modes, il ne porte des tics de colline que sur un
+	// mode a colline ; faux, ni serie ni seuil ne sont publies (Bases, Total Control, le reste).
+	HillScoring bool
+	// HoldTicksPerPointTable est l'entree de la variante dans la table du titre
+	// (regulation.toml [hold_ticks_per_point]), 0 = absente. CE N'EST QU'UN REPLI : le seuil se
+	// mesure dans le film, aux points du match (hill_hold_threshold.go) ; la table ne sert qu'un
+	// match sans point lisible.
+	HoldTicksPerPointTable int
 	// Truncated propage le plafond de lecture des enregistrements : les courbes s'arretent
 	// alors avant la fin du match, et la couverture le dit.
 	Truncated bool
@@ -170,15 +175,17 @@ func scoreRoundsOf(byRound map[int][]types.ScorePoint, c scoreClock) []ScoreRoun
 	return out
 }
 
-// buildScoreTimeline assemble le calque du score et sa couverture.
+// assembleScoreTimeline assemble le calque du score et sa couverture, et rend en troisieme ce que
+// la resolution du seuil de garde a lu (nil hors mode a colline) : le detail que le document ne
+// publie pas et que l'appelant journalise (cf. hill_hold_threshold.go).
 //
-// Rend (nil, nil) quand l'appelant n'a rien fourni : un artefact construit sans acces aux
+// Rend (nil, nil, nil) quand l'appelant n'a rien fourni : un artefact construit sans acces aux
 // enregistrements du film ne porte AUCUNE couverture de score, ce qui le distingue d'un film
 // dont la lecture n'a rien donne (couverture presente, courbes vides).
-func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
-	fb *fallback.Compteur) (*ScoreTimeline, *ScoreCoverage) {
+func assembleScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
+	fb *fallback.Compteur) (*ScoreTimeline, *ScoreCoverage, *holdThresholdReading) {
 	if in == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	recs := in.Records
 	teamScore := loadScoreSeries(recs, objectives.ModeScoreComponent(), true, c.cons)
@@ -198,11 +205,9 @@ func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
 		Players: buildPlayerScores(recs, identity, in.Lines, deaths, c),
 	}
 	tl.TargetScore = publishableTarget(in.TargetScore, slots, teamScore, len(tl.Teams))
-	if in.HoldTicksPerPoint > 0 {
-		// GARDE DE MODE : la serie n'est construite que sur une variante DECLAREE — `comp 23 A`
-		// existe sur tous les modes, il ne porte des tics de colline que sur un mode a colline.
-		tl.HoldTicks = buildHoldTicks(recs, identity, in.TeamByXUID, c)
-		tl.HoldTicksPerPoint = publishableHold(in.HoldTicksPerPoint, len(tl.HoldTicks))
+	var threshold *holdThresholdReading
+	if in.HillScoring {
+		threshold = attachHillHold(tl, in, recs, identity, c, fb)
 	}
 	cov := &ScoreCoverage{
 		TeamIdentity:  method,
@@ -215,7 +220,7 @@ func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
 	if len(tl.Teams) == 0 && len(tl.Players) == 0 {
 		tl = nil
 	}
-	return tl, cov
+	return tl, cov, threshold
 }
 
 // attachRoundsCoverage porte le verdict de la lecture des designateurs de manche dans la
@@ -258,21 +263,21 @@ func publishableTarget(target int, slots []int, score scoreSeriesSet, teams int)
 	return &target
 }
 
-// publishableHold applique la garde du denominateur de garde (cf.
-// ScoreTimeline.HoldTicksPerPoint) : il n'est publie que s'il est connu (> 0) et si le calque
-// porte au moins une serie de garde.
+// attachHillHold pose la barre de garde d'un match a colline — la serie par camp et son seuil —
+// et rend ce que la resolution du seuil a lu.
 //
-// POURQUOI LA SECONDE CONDITION. Un denominateur sans numerateur ne norme rien : le client
-// aurait de quoi diviser mais rien a diviser, et une jauge a zero se lirait comme une mesure.
-//
-// AUCUNE GARDE « la valeur depasse ce que le film montre », contrairement a publishableTarget :
-// le film ne porte pas de total de reference pour la garde. La mesure qui fonde le 35 est en
-// tete de hill_hold_ticks.go.
-func publishableHold(ticks, series int) *int {
-	if ticks <= 0 || series == 0 {
-		return nil
+// LA SERIE ET LE SEUIL SE PUBLIENT ENSEMBLE OU PAS DU TOUT. Un denominateur sans numerateur ne
+// norme rien ; un numerateur sans denominateur (match sans point ni entree de table, score a la
+// seconde) ne dessine rien chez le client et pese sur l'artefact pour rien.
+func attachHillHold(tl *ScoreTimeline, in *ScoreInput, recs []types.StatRecord,
+	identity map[int]string, c scoreClock, fb *fallback.Compteur,
+) *holdThresholdReading {
+	holds := buildHoldTicks(recs, identity, in.TeamByXUID, c)
+	ticks, lu := resolveHoldThreshold(holds, tl.Teams, in.HoldTicksPerPointTable, fb)
+	if ticks > 0 {
+		tl.HoldTicks, tl.HoldTicksPerPoint = holds, &ticks
 	}
-	return &ticks
+	return &lu
 }
 
 // teamSlotsOf rend les slots d'entite d'equipe vus par le film, dans l'ordre.

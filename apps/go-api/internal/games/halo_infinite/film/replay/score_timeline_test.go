@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
@@ -22,6 +23,15 @@ const (
 // testClock est l'horloge des tests : frame 0 a 1 000 ms de film, pas de 100 ms, 100 frames.
 func testClock() scoreClock {
 	return scoreClock{intervalMS: testInterval, frames: testFrames, originMS: testOrigin}
+}
+
+// buildScoreTimeline est `assembleScoreTimeline` sans la lecture du seuil de garde : la forme a
+// deux sorties que lisent les tests de la courbe de score (le seuil a les siens,
+// hill_hold_threshold_test.go).
+func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
+	fb *fallback.Compteur) (*ScoreTimeline, *ScoreCoverage) {
+	tl, cov, _ := assembleScoreTimeline(in, deaths, c, fb)
+	return tl, cov
 }
 
 // statRec construit un enregistrement d'entite.

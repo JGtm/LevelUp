@@ -4,8 +4,9 @@ package replay
 //
 // EN KOTH, C EST LA GARDE QUI MARQUE : une fois la colline prise (une capture d environ une seconde,
 // instantanee en classe — cf. zone_states_hill_gauge.go), chaque seconde passee a la tenir ajoute un
-// tic, et un nombre de tics fixe par variante vaut un point. Le film porte le compteur de cette
-// garde, et ce fichier le publie par camp.
+// tic, et un nombre de tics fixe sur le match vaut un point (le seuil, lu aux points du match :
+// hill_hold_threshold.go). Le film porte le compteur de cette garde, et ce fichier le publie par
+// camp.
 //
 // LE COMPTEUR EST `comp 23 A`, ET C'EST MESURE (lot E1-bis du 2026-08-30) : il reproduit
 // `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT, joueur par joueur, apres pont
@@ -41,8 +42,9 @@ package replay
 //
 // GARDE DE MODE CHEZ L'APPELANT, comme pour la couronne VIP et le porteur du crane : `comp 23 A`
 // est un emplacement de statistique de TOUT mode, il ne porte des tics de colline que sur un mode
-// a colline. Le calque n'est construit que si la variante est declaree a `[hold_ticks_per_point]`
-// — jamais devine dans le film.
+// a colline. Le calque n'est construit que si la variante est un mode a colline
+// (`ScoreInput.HillScoring`, pose par l'appelant sur le nom de variante) — jamais devine dans le
+// film. Son SEUIL, lui, se lit dans le film : hill_hold_threshold.go.
 
 import (
 	"sort"

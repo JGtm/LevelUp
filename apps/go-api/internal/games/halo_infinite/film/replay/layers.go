@@ -255,7 +255,7 @@ var gardesDeProduction = map[string]func(doc *ReplayDocument, opt Options) bool{
 	"abilityImpulses": func(_ *ReplayDocument, opt Options) bool { return opt.AbilityImpulseStats.Scanned },
 	"abilityCharges":  func(_ *ReplayDocument, opt Options) bool { return opt.AbilityChargeStats.Scanned },
 	// Sans enregistrements d entite, ni courbe ni couverture de score (score_timeline.go,
-	// `buildScoreTimeline` : `in == nil` -> `nil, nil`).
+	// `assembleScoreTimeline` : `in == nil` -> `nil, nil, nil`).
 	"scoreTimeline": func(_ *ReplayDocument, opt Options) bool { return opt.Score != nil },
 	// GARDES DE MODE, posees par l appelant sur `game_variant_name` : hors CTF / VIP / Oddball /
 	// famille bomb, le calque n est pas balaye (flag_carries.go `buildFlagCarries`,

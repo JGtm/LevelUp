@@ -133,10 +133,7 @@ func m1Reconstruire(b *Builder, in m1Entree) string {
 		deaths: filmDeaths{list: f.Facts.Deaths}, kills: f.Kills}
 	facts := port.MatchFacts{}
 	stats := assemblerFilmStats(ctx, matchID, src.statborg, facts, src.deaths)
-	if stats.score != nil {
-		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
-		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
-	}
+	b.poserLeReglementDuScore(stats.score, facts.GameVariantName)
 	cat := b.collecterEntreesCatalogue(context.Background(), matchID, []string{in.carte}, facts, &stats, src)
 	// AUCUN FILM (lot J3.4) : des faits cuits sous d autres gardes de l appelant (un roster de la
 	// base, que cet outil ne fournit pas) ne se rejouent pas — `documentDeLaCuisson` voudrait

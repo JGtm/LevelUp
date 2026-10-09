@@ -177,20 +177,21 @@ type ScoreTimeline struct {
 	// de point sont les paliers de `Teams`. La valeur affichee est donc
 	// `(ticks(frame) - ticks(dernier point)) / HoldTicksPerPoint`.
 	//
-	// ABSENTE quand la variante n'est pas declaree a `[hold_ticks_per_point]` (garde de mode chez
-	// l'appelant : `comp 23 A` existe sur tous les modes, il ne porte des tics de colline que sur
-	// un mode a colline) ou quand aucun joueur n'est situe dans un camp.
+	// ABSENTE hors mode a colline (garde de mode chez l'appelant, `ScoreInput.HillScoring` :
+	// `comp 23 A` existe sur tous les modes, il ne porte des tics de colline que sur un mode a
+	// colline), quand aucun joueur n'est situe dans un camp, et chaque fois que HoldTicksPerPoint
+	// est absent — la serie et son seuil se publient ensemble (cf. attachHillHold).
 	HoldTicks []TeamHold `json:"holdTicks,omitempty"`
 	// HoldTicksPerPoint est le DENOMINATEUR DE LA GARDE : combien de tics valent UN point.
 	//
-	// IL NE VIENT PAS DU FILM, exactement comme TargetScore : c'est la table MESUREE de la
-	// variante (regulation.toml [hold_ticks_per_point]), fournie par l'appelant. ABSENT quand la
-	// variante n'est pas au catalogue ou quand aucune serie de garde n'a pu etre construite — et
-	// le client n'affiche alors AUCUNE progression, jamais une jauge sur un denominateur devine.
-	//
-	// 35, ET C'EST UN COMPTE, PAS UN REGLAGE : sur 4 films et 4 cartes, le camp qui marque rend
-	// exactement 35 tics d'union sur 15 periodes sur 16 (l'unique ecart vaut 33), tandis que le
-	// camp qui NE marque pas rend 1 a 25 et jamais 35. Detail et formule : hill_hold_ticks.go.
+	// IL SE MESURE DANS LE FILM, MATCH PAR MATCH : au point, la garde prise par le camp qui
+	// marque depuis le point precedent EST le seuil (valeur la plus frequente sur les points du
+	// match, cf. hill_hold_threshold.go). Un match sans point lisible retombe sur l'entree de sa
+	// variante dans la table du titre (regulation.toml [hold_ticks_per_point]), et le film prime
+	// sur une table qui le contredit : repli et contradiction se lisent dans `coverage.fallbacks[]`
+	// (sans eux, le seuil est mesure dans le film). ABSENT quand ni le film ni la table
+	// ne le donnent, ou quand un tic vaut un point (score a la seconde) — et le client n'affiche
+	// alors AUCUNE progression, jamais une jauge sur un denominateur devine.
 	//
 	// Champ optionnel : son ajout n'incremente pas SchemaVersion, meme regle et meme raison
 	// que TargetScore ci-dessus — il vit DANS un calque existant, pas a la racine du document

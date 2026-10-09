@@ -12,6 +12,7 @@ package replay
 //	$env:CGO_ENABLED=0
 //	$env:HOLD_FILM="C:/.../data/cache/film_chunks/e449a696"
 //	$env:HOLD_LINES="xuid:camp:frags:morts:assistances;..."   (lignes de match, relevees en base)
+//	$env:HOLD_SCORES="180:79"                                  (facultatif : scores finaux du registre)
 //	go test -count=1 -run TestCollineSeuilGardeVariantes -v ./internal/games/halo_infinite/film/replay/
 
 import (
@@ -42,6 +43,22 @@ func TestCollineSeuilGardeVariantes(t *testing.T) {
 			e1cUnion(identity, team, series, prev, p.TimeMS))
 		prev = p.TimeMS
 	}
+	// LA REGLE DE PRODUCTION SUR CE FILM, SANS CUISSON (E8 du plan KOTH, 2026-10-09) : le calque de
+	// score assemble en mode a colline, horloge du film (origine 0, pas de 100 ms). Ce que la
+	// cuisson publierait comme seuil, et d'ou il viendrait.
+	// `HOLD_SCORES="s0:s1"` (scores finaux du registre) ouvre l'identite des camps par le score final.
+	in := &ScoreInput{Records: recs, Lines: lines, TeamByXUID: team, HillScoring: true}
+	var s0, s1 int
+	if _, err := fmt.Sscanf(os.Getenv("HOLD_SCORES"), "%d:%d", &s0, &s1); err == nil {
+		in.TeamScores = &[2]int{s0, s1}
+	}
+	c := scoreClock{intervalMS: 100, frames: 1 << 20}
+	tl, cov, lu := assembleScoreTimeline(in, nil, c, nil)
+	var seuil any = "absent"
+	if tl != nil && tl.HoldTicksPerPoint != nil {
+		seuil = *tl.HoldTicksPerPoint
+	}
+	t.Logf("regle de production : seuil publie %v, couverture %+v, identite des camps %s", seuil, *lu, cov.TeamIdentity)
 }
 
 // holdLignes decode `HOLD_LINES`.
