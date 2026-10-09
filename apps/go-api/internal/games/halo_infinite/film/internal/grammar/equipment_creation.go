@@ -277,8 +277,8 @@ func (w equipCreationWalk) creationA(pay []byte, p int, h types.LifeKey, lieu li
 // compterLaCreation compte une creation acceptee dans `st`.
 func compterLaCreation(st *types.EquipmentCreationStats, cre types.EquipmentCreation) {
 	st.Accepted++
-	st.MaskSparse, st.MaskFull = st.MaskSparse+b2i(!cre.MaskFull), st.MaskFull+b2i(cre.MaskFull)
-	st.NoI0 += b2i(!cre.MaskHasI0)
+	st.MaskSparse, st.MaskFull = st.MaskSparse+unSi(!cre.MaskFull), st.MaskFull+unSi(cre.MaskFull)
+	st.NoI0 += unSi(!cre.MaskHasI0)
 	if cre.HasRef {
 		st.WithRef++
 	}

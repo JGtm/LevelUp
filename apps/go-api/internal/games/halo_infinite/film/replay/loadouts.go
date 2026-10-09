@@ -48,14 +48,7 @@ import (
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de
 // production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.WeaponIDToName).
 // C'est la SEULE source de vérité sur ce qu'est une arme ici — pas de liste parallèle.
-func loadoutFamilies() map[uint32]bool {
-	connues := weaponv3.KnownWeaponHigh32Copie()
-	m := make(map[uint32]bool, len(connues))
-	for f := range connues {
-		m[f] = true
-	}
-	return m
-}
+func loadoutFamilies() map[uint32]bool { return weaponv3.FamillesConnues() }
 
 // buildLoadouts projette les loadouts de keyframe sur la grille de frames du rejeu.
 //

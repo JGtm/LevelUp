@@ -127,16 +127,9 @@ func BipedMovementI0Bit(buf []byte, stateBit int, ctx ContexteDeLecture) (i0Bit,
 	br.PoserContexte(ctx)
 	br.SetBitPos(stateBit)
 	consumeBipedDefaultState(br) // rep (movement decode left OFF here)
-	hasComp = b2i(br.ReadBit())
+	hasComp = unSi(br.ReadBit())
 	maskBits = consumePresenceMask(br)
 	return br.BitPos(), hasComp, maskBits
-}
-
-func b2i(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 func consumeBipedDefaultState(br *Lecteur) {

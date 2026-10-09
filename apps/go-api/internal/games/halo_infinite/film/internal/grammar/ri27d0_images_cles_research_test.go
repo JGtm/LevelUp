@@ -434,10 +434,7 @@ func (c *ri27d0Canal) situerLesFenetres(p *lecture.Paquet, r *lecture.Record, fi
 func TestRI27d0ImagesCles(t *testing.T) {
 	films, racine, sortie := ri27cEnv(t)
 	noms := weaponv3.KnownWeaponHigh32Copie()
-	known := make(map[uint32]bool, len(noms))
-	for f := range noms {
-		known[f] = true
-	}
+	known := weaponv3.FamillesConnues()
 	var lignes []string
 	agr := map[string]map[string]int{}
 	dumps := map[string]bool{}

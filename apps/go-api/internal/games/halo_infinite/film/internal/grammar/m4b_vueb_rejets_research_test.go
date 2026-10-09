@@ -68,7 +68,7 @@ func TestM4bRejetsDeVueB(t *testing.T) {
 			par[k] = a
 		}
 		a.n++
-		a.fermes += s3B(f.vueC.Fermee)
+		a.fermes += unSi(f.vueC.Fermee)
 		if f.rejet && !f.vueC.Fermee && m4bDans(f.trame, fenetres) {
 			slots[fmt.Sprintf("slot %5d gen %d (dernier ti %d)", f.slot, f.gen, f.dernierTI)]++
 		}

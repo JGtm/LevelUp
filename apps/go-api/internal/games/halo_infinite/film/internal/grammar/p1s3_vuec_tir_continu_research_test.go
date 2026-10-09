@@ -236,7 +236,7 @@ func s3LireVueC(pay []byte, finB int, e0 s3Entree, bilan *s3Paquet, corrige bool
 			continue
 		}
 		if k != kindVueCControle {
-			bilan.kinds1ou2 += s3B(corrige)
+			bilan.kinds1ou2 += unSi(corrige)
 			return out, br.BitPos(), false
 		}
 		e := e0
@@ -245,8 +245,8 @@ func s3LireVueC(pay []byte, finB int, e0 s3Entree, bilan *s3Paquet, corrige bool
 		out = append(out, e)
 		if !ok {
 			if corrige {
-				bilan.blocsB += s3B(e.blocB)
-				bilan.vecteursNonPortes += s3B(e.vecteurNonPorte)
+				bilan.blocsB += unSi(e.blocB)
+				bilan.vecteursNonPortes += unSi(e.vecteurNonPorte)
 			}
 			return out, br.BitPos(), false
 		}
@@ -346,7 +346,7 @@ func s3LirePaquet(pay []byte, m t515Marche, ts uint64, b *s3Paquet) []s3Entree {
 	b.porteMoi, b.fermeMoi, b.nb = porte, porte && s3Ferme(pay, fin), len(es)
 	for i := range es {
 		es[i].valide = b.fermeMoi
-		b.gen += s3B(es[i].genre >= 0)
+		b.gen += unSi(es[i].genre >= 0)
 	}
 	return es
 }
@@ -393,12 +393,12 @@ func s3PublierOracle(t *testing.T, paqs []s3Paquet) {
 	var pP, fP, pB, fB, pM, fM, k12, bB, vNP, gen, gagnes, perdus int
 	for _, b := range paqs {
 		st[b.statut]++
-		pP, fP = pP+s3B(b.porteProd), fP+s3B(b.fermeProd)
-		pB, fB = pB+s3B(b.porteBrut), fB+s3B(b.fermeBrut)
-		pM, fM = pM+s3B(b.porteMoi), fM+s3B(b.fermeMoi)
+		pP, fP = pP+unSi(b.porteProd), fP+unSi(b.fermeProd)
+		pB, fB = pB+unSi(b.porteBrut), fB+unSi(b.fermeBrut)
+		pM, fM = pM+unSi(b.porteMoi), fM+unSi(b.fermeMoi)
 		k12, bB, vNP, gen = k12+b.kinds1ou2, bB+b.blocsB, vNP+b.vecteursNonPortes, gen+b.gen
-		gagnes += s3B(b.fermeMoi && !b.fermeProd)
-		perdus += s3B(b.fermeProd && !b.fermeMoi)
+		gagnes += unSi(b.fermeMoi && !b.fermeProd)
+		perdus += unSi(b.fermeProd && !b.fermeMoi)
 	}
 	t.Logf("== ORACLE : %d paquets delta · liste non localisee %d · vue B ouverte %d · vue B close %d",
 		len(paqs), st[s3NonLocalise], st[s3BOuverte], st[s3BClose])

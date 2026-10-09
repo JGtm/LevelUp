@@ -69,8 +69,8 @@ func writeModalHeader(w *bitWriter, o modalHeaderOpts) {
 			w.bit(0)
 		}
 	}
-	w.bit(b2u(o.court))                 // a : estCourt
-	w.bit(b2u(o.bloc))                  // b : estBloc
+	w.bit(bit2u(o.court))               // a : estCourt
+	w.bit(bit2u(o.bloc))                // b : estBloc
 	w.bits(ouDefaut(o.numero, 0x2B), 8) // c : numéro de tir R(7)+R(1)
 	if o.dExtra {                       // d : polarité Ghidra — gate==0 porte le R(5)
 		w.bit(0)

@@ -432,10 +432,7 @@ func ri27d1Configuration(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record) (
 // admis, replis armes / inventaire / marque (contexte), recuperes armes / inventaire / marque.
 func TestRI27d1Replis(t *testing.T) {
 	films, racine, sortie := ri27cEnv(t)
-	known := map[uint32]bool{}
-	for f := range weaponv3.KnownWeaponHigh32Copie() {
-		known[f] = true
-	}
+	known := weaponv3.FamillesConnues()
 	lignes := []string{"film\tbipedes\tadmis\tnon_admis\trepli_armes\trepli_inventaire\trepli_marque\trec_armes\trec_inventaire\trec_marque"}
 	for _, court := range films {
 		fc := ri27cContexte(t, filepath.Join(racine, court), court, true)
@@ -446,7 +443,7 @@ func TestRI27d1Replis(t *testing.T) {
 		a, r := e.Admission, fc.ComptesDesReplis()
 		var ra, ri, rm int
 		for _, k := range e.Recuperes {
-			ra, ri, rm = ra+bit2i(k.Armes), ri+bit2i(k.Inventaire), rm+bit2i(k.Marque)
+			ra, ri, rm = ra+unSi(k.Armes), ri+unSi(k.Inventaire), rm+unSi(k.Marque)
 		}
 		nonAdmis := a.Bipedes - a.Admis
 		if r.FenetresArmesImageCle != nonAdmis || r.FenetresInventaireImageCle != nonAdmis || r.FenetresMarqueDePortage != nonAdmis {
@@ -456,12 +453,4 @@ func TestRI27d1Replis(t *testing.T) {
 			r.FenetresArmesImageCle, r.FenetresInventaireImageCle, r.FenetresMarqueDePortage, ra, ri, rm))
 	}
 	ri27cEcrire(t, filepath.Join(sortie, "replis.tsv"), lignes)
-}
-
-// bit2i rend 1 pour vrai.
-func bit2i(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }

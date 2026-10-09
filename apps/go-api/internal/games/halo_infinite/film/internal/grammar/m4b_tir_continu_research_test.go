@@ -141,7 +141,7 @@ func m4bPublierGate(t *testing.T, rs []types.ContinuousFireBurst, cad s3Cadre) {
 				nt++
 			}
 		}
-		ok += s3B(n > 0)
+		ok += unSi(n > 0)
 		par = append(par, fmt.Sprintf("%d:%d", f, n))
 		temoin = append(temoin, fmt.Sprintf("%d:%d", f-600, nt))
 	}
@@ -156,7 +156,7 @@ func m4bPublierGate(t *testing.T, rs []types.ContinuousFireBurst, cad s3Cadre) {
 				dedans = true
 			}
 		}
-		hors += s3B(!dedans)
+		hors += unSi(!dedans)
 	}
 	t.Logf("== GATE G1 index %d : frags recouverts %d/%d %v · temoin -60 s %v · rafales hors "+
 		"montures %d", cad.index, ok, len(cad.frags), par, temoin, hors)

@@ -212,13 +212,7 @@ func etatsDeLaBobine(t *testing.T, court string) EtatsDesImagesCles {
 }
 
 // catalogueDesFamilles rend le catalogue des familles d arme de la grammaire.
-func catalogueDesFamilles() map[uint32]bool {
-	known := map[uint32]bool{}
-	for f := range weaponv3.KnownWeaponHigh32Copie() {
-		known[f] = true
-	}
-	return known
-}
+func catalogueDesFamilles() map[uint32]bool { return weaponv3.FamillesConnues() }
 
 // TestLaSelectionHorsDuMasqueNEstPasPubliee : une selection d i47 qui ne designe aucun type de son
 // masque, ou sort du domaine 1..4, est tue et comptee — le contrat du canal delta (revue D1.4.6,

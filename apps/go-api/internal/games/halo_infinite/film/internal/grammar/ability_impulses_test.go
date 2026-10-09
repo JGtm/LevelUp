@@ -64,17 +64,10 @@ func TestAbilityImpulseScannerEpingleLaValeurDuTag(t *testing.T) {
 			t.Fatalf("tag %d : lues=%d, attendu 1 — une lecture aboutie compte quel que soit son tag",
 				c.tag, st.Read)
 		}
-		if st.Tag1 != boolToInt(c.publiee) {
-			t.Fatalf("tag %d : tag1=%d, attendu %d", c.tag, st.Tag1, boolToInt(c.publiee))
+		if st.Tag1 != unSi(c.publiee) {
+			t.Fatalf("tag %d : tag1=%d, attendu %d", c.tag, st.Tag1, unSi(c.publiee))
 		}
 	}
-}
-
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 func TestAbilityImpulsePublieLaLocalisationEtLeTemoinDeComposant(t *testing.T) {

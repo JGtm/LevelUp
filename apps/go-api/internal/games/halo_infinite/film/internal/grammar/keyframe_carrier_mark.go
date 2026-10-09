@@ -83,11 +83,7 @@ func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 // familles d'arme de la grammaire. La cuisson appelle [ScanEtatsDesImagesCles] une fois ; cette
 // forme sert les enveloppes hors production.
 func ScanCarrierMarks(fc *FilmContext) (CarrierMarkScan, error) {
-	known := map[uint32]bool{}
-	for f := range weaponv3.KnownWeaponHigh32Copie() {
-		known[f] = true
-	}
-	e, err := ScanEtatsDesImagesCles(fc, known, 0)
+	e, err := ScanEtatsDesImagesCles(fc, weaponv3.FamillesConnues(), 0)
 	if err != nil {
 		return CarrierMarkScan{}, err
 	}

@@ -189,14 +189,6 @@ func ctOutDir(t *testing.T) string {
 	return out
 }
 
-// ctBit rend 1 ou 0.
-func ctBit(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 // ctMode rend l'etiquette du mode d'une lecture.
 func ctMode(modeA bool) string {
 	if modeA {
@@ -242,7 +234,7 @@ func ctEcritSeries(t *testing.T, out string, e ctEntree) {
 			brute = fmt.Sprintf("%d", l.value)
 		}
 		fmt.Fprintf(&sb, "%d\t%s\t%d\t%d\t%d\t%d\t%s\t%s\t%d\t%d\n", l.slot, ctMode(l.modeA), l.tag,
-			l.film, l.tMS, l.frame, brute, ctValeurLue(l), ctBit(l.chained), ctBit(l.strict))
+			l.film, l.tMS, l.frame, brute, ctValeurLue(l), unSiVrai(l.chained), unSiVrai(l.strict))
 	}
 	p2aWrite(t, out, e.short+"_ti13_series.tsv", sb.String())
 	t.Logf("  ecrit : %s (%d lignes)", filepath.Join(out, e.short+"_ti13_series.tsv"), len(e.lectures))
@@ -376,7 +368,7 @@ func ctEcritResume(t *testing.T, out, short string, res []ctResumeLigne) {
 		"changements\tjoueurs\tt_ms_premiere\tt_ms_derniere\tframe_premiere\tframe_derniere\tvaleurs_top4\n")
 	for _, r := range res {
 		fmt.Fprintf(&sb, "%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", r.cle.slot,
-			ctBit(r.strict), ctMode(r.cle.modeA), r.cle.tag, r.emissions, r.avecValeur,
+			unSiVrai(r.strict), ctMode(r.cle.modeA), r.cle.tag, r.emissions, r.avecValeur,
 			r.nonChainees, r.distinctes, r.changements, r.joueurs, r.tMSPremiere, r.tMSDerniere,
 			r.framePremiere, r.frameDerniere, strings.Join(p2bValeurs(r.valeurs), " "))
 	}

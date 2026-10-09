@@ -83,13 +83,13 @@ func TestDecodeShieldVitalityBitCost(t *testing.T) {
 			}
 		}
 		push(0xA5, 8)
-		push(b2u(c.presence), 1)
+		push(bit2u(c.presence), 1)
 		if c.presence {
-			push(b2u(c.g0), 1)
+			push(bit2u(c.g0), 1)
 			if c.g0 {
 				push(0x123, 12)
 			}
-			push(b2u(c.g1), 1)
+			push(bit2u(c.g1), 1)
 			if c.g1 {
 				push(0x456, 12)
 			}
@@ -114,11 +114,4 @@ func TestDecodeShieldVitalityBitCost(t *testing.T) {
 			t.Fatalf("ordre des drapeaux de queue cassé : %v %v %v %v", got.F66, got.F67, got.F69, got.F68)
 		}
 	}
-}
-
-func b2u(b bool) uint64 {
-	if b {
-		return 1
-	}
-	return 0
 }

@@ -34,6 +34,19 @@ var knownWeaponHigh32 = buildKnownWeaponHigh32()
 // modifiable elle-meme.
 func KnownWeaponHigh32Copie() map[uint32]string { return maps.Clone(knownWeaponHigh32) }
 
+// FamillesConnues rend l ENSEMBLE des familles connues (moitie haute de l identifiant d arme), dans
+// une table neuve : le predicat d appartenance que les balayages d armes et la lecture de l etat
+// complet des images-cles interrogent. C est la SEULE construction de cet ensemble : le garde-rail
+// `archlint/familles_connues_unique_test.go` interdit qu il se reconstruise ailleurs a partir de
+// [KnownWeaponHigh32Copie].
+func FamillesConnues() map[uint32]bool {
+	m := make(map[uint32]bool, len(knownWeaponHigh32))
+	for f := range knownWeaponHigh32 {
+		m[f] = true
+	}
+	return m
+}
+
 // KnownWeaponHigh32Lookup rend le nom canonique d un high-32 et s il est connu.
 func KnownWeaponHigh32Lookup(high uint32) (string, bool) {
 	nom, ok := knownWeaponHigh32[high]
