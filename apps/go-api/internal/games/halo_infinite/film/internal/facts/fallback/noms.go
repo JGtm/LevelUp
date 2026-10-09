@@ -21,8 +21,10 @@ package fallback
 const (
 	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
 	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
-	// NomPlafondGrenadeParDefaut : applique par `grammar/inventory_decode.go` (`ScanKeyframeInventory`),
-	// compte par `replay/film_scan.go` (`balayerInventaire`) depuis le lot J4.2.
+	// NomPlafondGrenadeParDefaut : applique par la fenetre d inventaire DERRIERE la lecture de l etat complet,
+	// sur les seuls records non admis (`grammar/keyframe_etats_fenetre.go`, `rendreParLaFenetre` ->
+	// `keyframeInventoriesDe`, lot D1.2 de 2.7.d1) ; compte par `replay/film_scan.go` (`balayerInventaire`)
+	// quand un record a ete donne a la fenetre.
 	NomPlafondGrenadeParDefaut Nom = "repli_plafond_grenade_par_defaut"
 	// NomLargeursAxeParDefautConservees : `replay/world_object_precision.go`.
 	NomLargeursAxeParDefautConservees Nom = "repli_largeurs_axe_par_defaut_conservees"

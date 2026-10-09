@@ -83,12 +83,12 @@ var feuillesNonTransportees = map[string]string{
 	"grammar.GrenadeThrow.PacketIndex": tracabilite + "grammar/grenade_events.go:ScanGrenadeThrows",
 	"grammar.GrenadeThrow.BitPos":      tracabilite + "grammar/grenade_events.go:scanGrenadeThrows",
 	// Armes, inventaires, capacites.
-	"types.KeyframeLoadout.Chunk":         tracabilite + "grammar/keyframe_loadout.go:ScanKeyframeLoadoutsMarche",
-	"types.KeyframeLoadout.PacketIndex":   tracabilite + "grammar/keyframe_loadout.go:ScanKeyframeLoadoutsMarche",
-	"types.KeyframeInventory.Chunk":       tracabilite + "grammar/inventory_decode.go:ScanKeyframeInventory",
-	"types.KeyframeInventory.PacketIndex": tracabilite + "grammar/inventory_decode.go:ScanKeyframeInventory",
-	"types.KeyframeInventory.GrenadesByPosition": "mode de lecture des grenades : ecrit par " +
-		"grammar/inventory_decode.go:keyframeInventoriesDe, compte par ScanKeyframeInventory ; RETIRE du " +
+	"types.KeyframeLoadout.Chunk":         tracabilite + "grammar/keyframe_etats_fenetre.go:emettre",
+	"types.KeyframeLoadout.PacketIndex":   tracabilite + "grammar/keyframe_etats_fenetre.go:emettre",
+	"types.KeyframeInventory.Chunk":       tracabilite + "grammar/keyframe_etats_fenetre.go:emettre",
+	"types.KeyframeInventory.PacketIndex": tracabilite + "grammar/keyframe_etats_fenetre.go:emettre",
+	"types.KeyframeInventory.GrenadesByPosition": "mode de lecture des grenades par la fenetre : ecrit par " +
+		"grammar/inventory_decode.go:keyframeInventoriesDe, compte par grammar/keyframe_etats_fenetre.go:rendreParLaFenetre ; RETIRE du " +
 		"codec en v18 faute de lecteur (cf. filmfacts.go)",
 	"types.InventoryDelta.Chunk":       tracabilite + "grammar/inventory_delta.go:readRecord",
 	"types.InventoryDelta.PacketIndex": tracabilite + "grammar/inventory_delta.go:readRecord",

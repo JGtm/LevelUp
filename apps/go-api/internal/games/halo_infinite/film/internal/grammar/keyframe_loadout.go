@@ -50,8 +50,9 @@ const keyframeBipedTI = 35
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 //
-// ScanFilmKeyframeLoadouts est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
-// [ScanKeyframeLoadouts].
+// ScanFilmKeyframeLoadouts est l'ENVELOPPE D2, HORS PRODUCTION. La cuisson n'appelle ni elle ni
+// [ScanKeyframeLoadouts] : elle joue la marche unique [ScanEtatsDesImagesCles] une fois et en prend
+// les armes (lot D1.1 de 2.7.d1).
 func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]types.KeyframeLoadout, error) {
 	if len(known) == 0 {
 		return nil, nil // catalogue vide : rien a chercher, et rien a charger

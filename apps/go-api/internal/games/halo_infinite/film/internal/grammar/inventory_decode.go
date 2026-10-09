@@ -115,7 +115,8 @@ const DefaultGrenadeMax uint32 = 2
 // le bloc de munitions (R4 s'appuie sur la position de la première arme). Sans lui, aucune
 // munition n'est lue. HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de
 // requête.
-// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanKeyframeInventory].
+// ENVELOPPE D2, HORS PRODUCTION. La cuisson n'appelle ni elle ni [ScanKeyframeInventory] : elle joue la
+// marche unique [ScanEtatsDesImagesCles] une fois et en prend l'inventaire (lot D1.1 de 2.7.d1).
 func ScanFilmKeyframeInventory(
 	dir string, known map[uint32]bool, grenMax uint32,
 ) ([]types.KeyframeInventory, types.KeyframeInventoryStats, error) {

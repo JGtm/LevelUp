@@ -68,8 +68,9 @@ type CarrierMarkScan struct {
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 //
-// ScanFilmCarrierMarks est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
-// [ScanCarrierMarks].
+// ScanFilmCarrierMarks est l'ENVELOPPE D2, HORS PRODUCTION. La cuisson n'appelle ni elle ni
+// [ScanCarrierMarks] : elle joue la marche unique [ScanEtatsDesImagesCles] une fois et en prend la
+// marque (lot D1.1 de 2.7.d1).
 func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
