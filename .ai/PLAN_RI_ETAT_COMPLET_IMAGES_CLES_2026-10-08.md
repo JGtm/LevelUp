@@ -321,6 +321,19 @@ fondaient restent écrits sous chacune, pour l'exécution de D1.0.
   hors faux positif Dynamo ; grenades 99,8 / 99,9 ; chargeurs 99,6 / 99,6 ; réserves ~95-96 % des
   deux côtés) ; f20-21 faux après i22 en A et en B ; n(i22) = 4 au hasard ≈ 1/8 (témoin : 629/6 600
   base, 737/6 600 LK).
+- **U-1 AMENDÉE (2026-10-09) — règle d'admission : T1 ET T2 combinés**, réponse de l'utilisateur
+  (relayée par le superviseur) aux trois règles présentées après l'arrêt de D1.0.6 : **« oui en
+  effet la règle des deux contrôles est mieux qu'une »**. Une valeur d'image-clé est admise si le
+  record est fermé OU si n(i22) = 4, ET si T1 (au moins un emplacement d'arme non vide, chaque
+  famille d'emplacement non vide au catalogue, marche au-delà du dernier emplacement) ET T2 (masque
+  d'i47 égal à la bitmap des compteurs d'i22) tiennent ; appliquée aux deux classes (A et B), à
+  tous les formats, sans clause de version. Mesure (D1.0.6) : 6 507 records admis sur 10 710
+  (60,8 %), 0 record à armes fausses admis en f20-21 sur 49, témoin décalé 1 / 10 407. Les records
+  non admis vont à la fenêtre, sous un repli nommé et compté (D1.2). Elle remplace l'option (b)
+  ci-dessous ; c'est l'amendement de la règle de 2.7.b que D1.4.3 écrit dans l'ADR 0037.
+- **U-2 CONFIRMÉE (b) (2026-10-09, superviseur)** : les 120 porteurs supplémentaires de (a) sont
+  tous des joueurs morts ; (b) ne publie rien que la fenêtre ne publiait : aucune vérification n'est
+  due par l'utilisateur.
 - **U-2 — Marque de portage : option (a) si la relecture Ghidra de D1.0.4 établit le sens des
   drapeaux 0x4/0x8 du R(5) d'i13, sinon (b)** (2026-10-08, « Je suis ok ») ; les 43 porteurs
   supplémentaires sont listés à l'utilisateur pour vérification AVANT publication.
@@ -871,7 +884,7 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       lit), ambidextrie 7 (la fenêtre rend param[2] sur 1), fenêtre vide 32, différent 3, i42 absent
       71 ; classe B : égal 2 714, −1 1 057, ambidextrie 593, différent 201. Aucune hypothèse de U-3 /
       U-4 ne change ; les réponses du 2026-10-08 valent.
-- [!] D1.0.6 Témoin T après i43 (U-1) : mesurer dans l'instrument, par classe A/B et par format, deux
+- [x] D1.0.6 Témoin T après i43 (U-1) : mesurer dans l'instrument, par classe A/B et par format, deux
       candidats : T1 = au moins un emplacement non vide ET chaque famille d'emplacement non vide
       connue au registre ; T2 = masque i47 égal à la bitmap i22 ; et leur taux sur le témoin +1 bit.
       *Mesuré (lot C), GATE NON PASSÉ : ARRÊT, décision de l'utilisateur (U-1 : (a) ou (c)).* Sorties
@@ -890,6 +903,12 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       le 1 pour 44 ; `0x00007ca9` surtout, §7 D-25) — relus record par record sur 16 films
       (`$REF/../d1x/d10_dump/`) : armes égales à la fenêtre 396 fois sur 398, les 2 autres ne différant que
       par le faux positif « Dynamo » de la fenêtre.
+      *Statué `[x]` le 2026-10-09 sur la décision de l'utilisateur (U-1 amendée, §3.1 : « oui en
+      effet la règle des deux contrôles est mieux qu'une ») : T = T1 ∧ T2.* Gate rejoué
+      (`$REF/../d1x/d10_gate/`, sortie identique à l'octet à `d10/`, `taux_t12.txt`) : f24-27 B∧T
+      contre A∧T, écarts armes 0,22, grenades 0,12, chargeur0 0,03, chargeur1 0,10 (B meilleur),
+      réserve0 0,25 et réserve1 0,59 (B meilleur dans les deux cas) ; f20-21 49 records admis, 0 à
+      armes fausses ; témoin décalé 1 / 10 407 (0,0096 %). Couverture : 6 507 / 10 710.
 - [x] D1.0.7 Réserves : écart ~5 % (réserve0 220/4 367 en A, 129/2 608 en B) : 30 records tirés,
       largeurs du composant relues (Ghidra) et comparées ; conclusion : la grammaire lit comme le jeu
       (l'écart vient de la fenêtre) ou écart nommé (la réserve reste à la fenêtre, repli).
@@ -911,6 +930,9 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   - *Joué le 2026-10-09 (lot C)* : **NON PASSÉ — aucun candidat écrit ne passe (D1.0.6) : ARRÊT,
     décision de l'utilisateur.** U-2 : (b) appliquée (sens des drapeaux NON LU), liste des 120
     porteurs de (a) remise pour vérification ; U-3 / U-4 inchangées. D1.1 non commencée.
+  - *Rejoué le 2026-10-09 (lot C) avec la règle de l'utilisateur (T1 ∧ T2, U-1 amendée)* :
+    **PASSÉ** (chiffres à D1.0.6). U-2 (b) confirmée, aucune vérification due par l'utilisateur
+    (§3.1). D1.0 close.
 
 ### Étape D1.1 — Un seul canal de la phase des images-clés pour l'état complet du bipède
 - [ ] D1.1.1 `grammar/relecture_a_l_etendue.go` : assistant unique de relecture (Lecteur sur le
