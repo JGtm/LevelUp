@@ -1,5 +1,7 @@
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // kill_events_source.go — LE SUBSTRAT DE LECTURE DU KILL-FEED, en un seul endroit.
 //
 // Bascule du 2026-08-03 (phase 2 de `.ai/V7.5/killweapon/PLAN_BRANCHEMENT_KILLSOURCE.md`) : les lecteurs de
@@ -59,15 +61,29 @@ const KillEventsCanonicalTable = "match_kill_events_latest"
 // (`kill_events_source_guard_test.go`) échoue si le littéral
 // réapparaît ailleurs.
 //
-// Pas de `COALESCE` autour des `COUNT(*)` : un `COUNT` sur une sous-requête sans ligne rend 0,
-// jamais NULL. L'ancienne forme en portait un parce qu'elle faisait `SUM(kill_count)`, qui,
-// lui, rend NULL sur l'ensemble vide.
+// UNE LECTURE de la vue, pas deux : les deux sens sont deux `COUNT(*) FILTER` sur le même
+// balayage (la fenêtre `_latest` se paie une fois). Pas de `COALESCE` : un `COUNT` sans ligne
+// rend 0, jamais NULL. L'ancienne forme en portait un parce qu'elle faisait `SUM(kill_count)`,
+// qui, lui, rend NULL sur l'ensemble vide.
 //
 // Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A.
 // Retourne 2 colonnes : kills_dealt, deaths_suffered.
-const QKillsBetweenPlayers = `
+var QKillsBetweenPlayers = killsBetweenPlayersSQL("")
+
+// QKillsBetweenPlayersBorne : la même requête, bornée sous la fenêtre `_latest` du kill-feed
+// par une liste de `match_id` liée en UN paramètre (ADR 0036 I2). Une liste qui contient tous
+// les matchs du joueur A rend exactement les nombres de [QKillsBetweenPlayers] : un frag de A
+// ou sur A n'existe que dans un match de A.
+//
+// Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A, ?5 = liste.
+var QKillsBetweenPlayersBorne = killsBetweenPlayersSQL(" WHERE " + analysis.SQLDansListe("match_id"))
+
+// killsBetweenPlayersSQL rend le texte des frags échangés entre deux joueurs ; `borne` est la
+// clause WHERE du balayage (vide = tous les matchs).
+func killsBetweenPlayersSQL(borne string) string {
+	return `
 SELECT
-    (SELECT COUNT(*) FROM ` + KillEventsCanonicalTable + `
-      WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS kills_dealt,
-    (SELECT COUNT(*) FROM ` + KillEventsCanonicalTable + `
-      WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS deaths_suffered`
+    COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS kills_dealt,
+    COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS deaths_suffered
+FROM ` + KillEventsCanonicalTable + borne
+}

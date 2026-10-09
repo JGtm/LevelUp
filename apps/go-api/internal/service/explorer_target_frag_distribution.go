@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -40,6 +41,7 @@ func (s *ExplorerService) targetFragDistribution(
 	if sample == nil || sample.Kills <= 0 {
 		return nil, nil
 	}
+	defer timing.FromContext(ctx).Section("explorer_frag_distribution")()
 	rows := s.loadTargetWeaponKillRows(ctx, targetXUID, matchIDs)
 	if len(rows) == 0 {
 		return nil, nil
