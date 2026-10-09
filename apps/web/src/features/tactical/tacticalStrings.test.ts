@@ -30,7 +30,7 @@ describe('les mots de la maquette, en français', () => {
     expect(fr.select('Illusion')).toBe('Sélectionner Illusion')
   })
 
-  it('la carte du plan : pilules, infobulle d’« Escouade », états, bandeau d’état', () => {
+  it('la carte du plan : pilules, attente d’« Escouade », états, bandeau d’état', () => {
     expect([fr.pillReading, fr.pillPlayers, fr.pillRespawn, fr.pillRespawnAll]).toEqual([
       'Lecture',
       'Joueurs',
@@ -38,7 +38,8 @@ describe('les mots de la maquette, en français', () => {
       'Toutes',
     ])
     expect([fr.whoMe, fr.whoSquad, fr.whoOpponents]).toEqual(['Moi', 'Escouade', 'Adversaires'])
-    expect(fr.planSquadDisabled).toBe('Aucune composition choisie dans la barre')
+    expect(fr.planSquadPending).toBe('Aucune composition choisie')
+    expect([fr.squadLabel, en.squadLabel, en.planSquadPending]).toEqual(['Escouade', 'Squad', 'No lineup chosen'])
     expect(fr.planEmptyNoMatchTitle).toBe('Aucun match sur cette carte dans le filtre')
     expect(fr.planEmptyTitle).toBe('Pas assez de matchs mesurés sur cette carte')
     expect(fr.planEmptyDensityTitle).toBe('Densité insuffisante pour dessiner un plan')

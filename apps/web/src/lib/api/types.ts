@@ -1229,6 +1229,7 @@ export type RelationsMomentsResponse = components['schemas']['RelationsMomentsRe
 // ---------------------------------------------------------------------------
 
 export type TeammateOption = components['schemas']['TeammateOption']
+export type SquadPageResponse = components['schemas']['SquadPageResponse']
 
 export interface RadarAxes {
   objectives: number

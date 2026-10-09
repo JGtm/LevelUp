@@ -112,7 +112,6 @@ export function SquadLayout() {
   // session squad du joueur principal (composition-agnostique → ajoutait un
   // coéquipier à une session qu'il n'avait pas jouée).
   const locale = useAppShellStore((s) => s.locale)
-  const hasLinkedIdentity = useAppShellStore((s) => !!s.linkedHaloIdentity)
   const t = getSquadText(locale)
   const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
@@ -292,7 +291,6 @@ export function SquadLayout() {
       <SquadFilterBar
         playerSlug={playerSlug}
         locale={locale}
-        hasLinkedIdentity={hasLinkedIdentity}
         selectedGts={selectedGts}
         setSelectedGts={setSelectedGts}
         availableOptions={availableOptions}

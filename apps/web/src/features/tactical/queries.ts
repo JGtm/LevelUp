@@ -29,19 +29,17 @@
  * — la liste de `match_id` de A partait alors sur les lectures de B, et la réponse
  * s'affichait comme celle de B.
  */
-import { useMemo, useRef } from 'react'
+import { useRef } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import type {
-  CareerEncountersResponse,
   FilterContextInput,
   FilterMatchIdsResponse,
   TacticalCelluleReponse,
   TacticalMapsBody,
   TacticalMapsPage,
   TacticalRaster,
-  TeammateOption,
   ReplayMapBackground,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
@@ -144,46 +142,6 @@ export function useTacticalMaps(
     // de la carte dans cette grille, ne retombe plus sur l'identifiant brut.
     placeholderData: precedenteDuMemeJoueur(playerSlug, titleSlug),
   })
-}
-
-/**
- * useCoequipierOptions — les coéquipiers proposés au sélecteur de composition,
- * AVEC LEUR XUID (le serveur ne connaît que celui-là).
- *
- * Source : `/pages/career/encounters`, la liste des joueurs croisés le plus souvent
- * COMME COÉQUIPIERS — amis compris, contrairement à `top-encounters` qui les exclut
- * par construction et qui serait donc la mauvaise liste pour choisir une escouade.
- *
- * MÊME CLÉ DE CACHE QUE LA PAGE CARRIÈRE (`queryKeys.careerEncounters`) : c'est le
- * même endpoint et la même réponse, donc UNE seule entrée de cache et jamais deux
- * requêtes pour une seule liste. Le hook de la carrière n'est pas importé — ce
- * serait une dépendance croisée entre features pour trois lignes de projection.
- */
-export function useCoequipierOptions(playerSlug: string): {
-  options: TeammateOption[]
-  chargees: boolean
-} {
-  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data, isSuccess } = useQuery({
-    queryKey: queryKeys.careerEncounters(playerSlug, titleSlug),
-    queryFn: () =>
-      api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`),
-    enabled: !!playerSlug,
-    staleTime: 5 * 60 * 1000,
-  })
-  // MÉMOÏSÉ sur la réponse : un tableau neuf à chaque rendu recalculait la composition, puis
-  // les paramètres du raster et leur empreinte (`hashFiltre` sur toute la liste de
-  // `match_id`), à chaque rendu de la page.
-  const options = useMemo(
-    () =>
-      (data?.teammates ?? []).map((t) => ({
-        gamertag: t.gamertag,
-        xuid: t.xuid,
-        encounter_count: t.match_count,
-      })),
-    [data],
-  )
-  return { options, chargees: isSuccess }
 }
 
 /**

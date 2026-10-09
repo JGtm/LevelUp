@@ -1,3 +1,5 @@
+// cross-feature-allow: la liste de composition de la page Escouade (`useCompositionOptions`), celle
+// du sélecteur partagé `SquadCompositionPicker` que monte la barre de l'onglet.
 /**
  * TacticalPage — L'ÉCRAN UNIQUE de l'onglet Tactique : sous la barre de filtres, la grille
  * « cockpit » — à gauche les cartes jouées, au centre et à droite la lecture de la carte affichée.
@@ -33,6 +35,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 
+import { useCompositionOptions } from '@/features/squad/useCompositionOptions'
 import type { TacticalMapCard } from '@/lib/api/types'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -40,9 +43,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { carteEffective, titreDeLaCarte, VARIABLES_COCKPIT } from './cockpit.logic'
 import { getTacticalText, type TacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
-import { TacticalFilterBar } from './TacticalFilterBar'
+import { TacticalFilterBar, type DemandeDeComposition } from './TacticalFilterBar'
 import { TacticalMapsColumn } from './TacticalMapsColumn'
-import { useCoequipierOptions, useTacticalMaps, useTacticalMatchIDs } from './queries'
+import { useTacticalMaps, useTacticalMatchIDs } from './queries'
 import { contexteFiltre, resoudreComposition } from './tacticalLogic'
 import {
   decodeTacticalScope,
@@ -71,6 +74,7 @@ export function TacticalPage() {
   const effective = useMemo(() => carteEffective(scope.carte, listeDesCartes), [scope.carte, listeDesCartes])
   const connues = useCartesConnues(p.cartes)
   const nom = titreDeLaCarte(effective, p.cartes, connues, locale, t.planTitleOutsideFilter)
+  const demande = useDemandeDeComposition(effective.mapId)
 
   return (
     <>
@@ -80,7 +84,8 @@ export function TacticalPage() {
         t={t}
         scope={scope}
         setScope={setScope}
-        coequipierOptions={p.coequipierOptions}
+        composition={p.compositionOptions}
+        demandeComposition={demande.etat}
       />
       <div
         className="grid grid-cols-1 items-start gap-3 min-[1400px]:grid-cols-[var(--tac-cartes-l)_minmax(0,1fr)]"
@@ -113,10 +118,36 @@ export function TacticalPage() {
           perimetreEnRelecture={p.perimetreEnRelecture}
           perimetreEnEchec={p.perimetreEnEchec}
           coequipiersInconnus={p.compositionImpossible ? p.composition.inconnus : null}
+          onDemandeComposition={demande.signaler}
         />
       </div>
     </>
   )
+}
+
+/**
+ * useDemandeDeComposition — l'angle « Escouade » cliqué sans composition amène au sélecteur de la
+ * barre. Chaque clic est une nouvelle demande (le compteur rouvre le sélecteur même au second clic) ;
+ * la demande tombe quand un autre angle est choisi, et AU CHANGEMENT DE CARTE : la vue, recréée
+ * (`key` = la carte), revient sur « Moi » sans demande — un seul état, celui de la vue affichée.
+ * Remise à zéro PENDANT LE RENDU (patron React « adjusting state when a prop changes ») : un effet
+ * laisserait un rendu avec l'anneau de l'ancienne carte.
+ */
+function useDemandeDeComposition(carte: string): {
+  etat: DemandeDeComposition
+  signaler: (enCours: boolean) => void
+} {
+  const [demande, setDemande] = useState({ compteur: 0, enCours: false, carte })
+  let etat = demande
+  if (demande.carte !== carte) {
+    etat = { ...demande, enCours: false, carte }
+    setDemande(etat)
+  }
+  return {
+    etat: { compteur: etat.compteur, enCours: etat.enCours },
+    signaler: (enCours) =>
+      setDemande((d) => ({ compteur: enCours ? d.compteur + 1 : d.compteur, enCours, carte: d.carte })),
+  }
 }
 
 /**
@@ -177,10 +208,11 @@ function useCartesDuPerimetre(playerSlug: string, scope: TacticalScope) {
     isPlaceholderData: perimetreEnRelecture,
   } = useTacticalMatchIDs(playerSlug, contexte)
 
-  const { options: coequipierOptions, chargees } = useCoequipierOptions(playerSlug)
+  const compositionOptions = useCompositionOptions(playerSlug)
+  const { annuaire, chargees } = compositionOptions
   const composition = useMemo(
-    () => resoudreComposition(scope.coequipiers, coequipierOptions),
-    [scope.coequipiers, coequipierOptions],
+    () => resoudreComposition(scope.coequipiers, annuaire),
+    [scope.coequipiers, annuaire],
   )
   // Un coéquipier non traduisible ARRÊTE la lecture : l'ignorer élargirait le périmètre sans le
   // dire. Tant que la liste n'est pas chargée, c'est un état d'attente ; une fois chargée, c'est
@@ -193,7 +225,7 @@ function useCartesDuPerimetre(playerSlug: string, scope: TacticalScope) {
   const cartes = useMemo(() => data?.cartes ?? [], [data])
 
   return {
-    coequipierOptions,
+    compositionOptions,
     composition,
     compositionImpossible,
     matchIDs,
