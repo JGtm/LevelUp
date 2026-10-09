@@ -3,7 +3,8 @@
 //
 // Trois sources, qui dégradent chacune seule et le disent :
 //
-//	feuille    les frags aux armes spéciales (port.SquadEmpriseRepository, tous titres) ;
+//	feuille    les frags aux armes spéciales (port.SquadEmpriseRepository, tous titres) : feuille de
+//	           match et, sur les matchs aux niveaux mesurés, journal des morts du film ;
 //	film       le résumé d'usage et les niveaux de socle (port.SessionUsageRepository, câblé sous
 //	           `film.usage_summary`) ;
 //	véhicules  la ressource véhicules (port.SquadVehicleRepository, câblé sous `film.vehicle_usage`).
@@ -56,6 +57,27 @@ func (l EmpriseLecteur) Feuille(
 		return nil, domain.EmpriseSheetLoadFailed
 	}
 	return rows, ""
+}
+
+// Journal lit les frags par arme du journal des morts des matchs `ids` (frags aux armes spéciales
+// des matchs aux niveaux mesurés). Nil quand il ne se lit pas : repo nil, capability non supportée,
+// lecture en échec — les frags aux armes spéciales se lisent alors sur la feuille de match, et
+// l'échec est journalisé (jamais une erreur de page).
+func (l EmpriseLecteur) Journal(ctx context.Context, repo port.SquadEmpriseRepository, ids []string) *squademprise.JournalRead {
+	if repo == nil || len(ids) == 0 {
+		return nil
+	}
+	read, err := repo.LoadJournalWeaponKills(ctx, ids)
+	switch {
+	case errors.Is(err, games.ErrCapabilityNotSupported):
+		slog.DebugContext(ctx, "emprise_journal_non_supporte", "page", l.Page, "player", l.Player, "err", err)
+		return nil
+	case err != nil:
+		slog.ErrorContext(ctx, "emprise_journal_en_echec_repli_feuille",
+			"page", l.Page, "player", l.Player, "matchs", len(ids), "err", err)
+		return nil
+	}
+	return &read
 }
 
 // Film rend le résumé d'usage et les niveaux de socle du périmètre `current` ET des matchs

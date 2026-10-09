@@ -12,8 +12,10 @@
 //	                      match (`powerup_pickups_json`, anonymes).
 //	armes spéciales (D3)  `match_pad_pickups_by_tier_latest`, niveau `puissance` ; les râteliers
 //	                      au niveau `terrain`. Jamais la classe de l'arme.
-//	frags aux armes       `match_participants.power_weapon_kills` (feuille de match, les deux
-//	spéciales             camps) : la seule grandeur servie sans film (D10).
+//	frags aux armes       sur un match aux niveaux mesurés et au journal des morts publiable : le
+//	spéciales             journal du film, frags aux familles des socles de puissance du match ;
+//	                      ailleurs `match_participants.power_weapon_kills` (feuille de match, les
+//	                      deux camps), la seule grandeur servie sans film (D10). special_frags.go.
 //
 // # CAMP
 //
@@ -112,6 +114,9 @@ type Input struct {
 	// PowerKills : la feuille de match du périmètre. Nil = non lue ; SheetUnavailable dit pourquoi.
 	PowerKills       []PowerKillRow
 	SheetUnavailable string
+	// Journal : les frags par arme du journal des morts du film (special_frags.go). Nil = non lu :
+	// les frags aux armes spéciales se lisent alors tous sur la feuille de match.
+	Journal *JournalRead
 	// Weapons : clé de famille d'arme -> nom du titre et clé canonique.
 	Weapons map[string]squadformes.WeaponInfo
 	// SessionMatchCounts : libellé de session -> matchs de la composition (ADR 0033).

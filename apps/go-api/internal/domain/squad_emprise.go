@@ -178,8 +178,10 @@ type SquadEmpriseMatch struct {
 	// Resources : ressource puis chaque objet du match. Une ressource absente de la carte (ou
 	// non mesurée) n'a pas d'entrée.
 	Resources []SquadEmpriseMatchResource `json:"resources"`
-	// PowerWeaponKills : frags aux armes spéciales de chaque camp (feuille de match). Nil quand
-	// la feuille ne le dit pas ou que le camp est inconnu.
+	// PowerWeaponKills : frags aux armes spéciales de chaque camp : journal du film (armes des socles
+	// de puissance du match) quand les niveaux sont mesurés et le journal publiable, feuille de match
+	// sinon (analysis/squademprise/special_frags.go). Nil quand aucune ne le dit ou que le camp est
+	// inconnu.
 	PowerWeaponKills *SquadEmpriseCount `json:"power_weapon_kills,omitempty"`
 	// Vehicles : l'état des véhicules du match (EmpriseVehicles*), qui sépare « non mesuré » (D8)
 	// d'un zéro mesuré ; vide quand le titre ne mesure pas la ressource. VehiclesReason : la raison
@@ -203,7 +205,8 @@ type SquadEmpriseMatchResource struct {
 type SquadEmpriseProduction struct {
 	Resource string `json:"resource"`
 	// Kills : bonus = frags pendant l'effet (film, matchs dont le film a une échelle de temps) ;
-	// armes spéciales = frags obtenus avec (feuille de match, tous les matchs à camp connu).
+	// armes spéciales = frags obtenus avec (tous les matchs à camp connu ; source match par match :
+	// SquadEmpriseMatch.PowerWeaponKills).
 	Kills SquadEmpriseCount `json:"kills"`
 	// Exposure : ce qui a permis ces frags. Nil sans mesure du film.
 	Exposure *SquadEmpriseExposure `json:"exposure,omitempty"`

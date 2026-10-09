@@ -19,14 +19,21 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
-// feuilleFixe — la feuille de match de l'Emprise : des lignes, ou une erreur.
+// feuilleFixe — la feuille de match de l'Emprise : des lignes, ou une erreur ; et le journal des
+// morts : une lecture, ou une erreur.
 type feuilleFixe struct {
-	rows []squademprise.PowerKillRow
-	err  error
+	rows       []squademprise.PowerKillRow
+	err        error
+	journal    squademprise.JournalRead
+	journalErr error
 }
 
 func (f feuilleFixe) LoadPowerWeaponKills(context.Context, []string) ([]squademprise.PowerKillRow, error) {
 	return f.rows, f.err
+}
+
+func (f feuilleFixe) LoadJournalWeaponKills(context.Context, []string) (squademprise.JournalRead, error) {
+	return f.journal, f.journalErr
 }
 
 // usageCompte — le résumé d'usage (et le grain socles des formes) qui compte ses lectures de films.
@@ -179,5 +186,21 @@ func TestAttachEmblem(t *testing.T) {
 	serviceEmprise(nil, feuilleFixe{}).attachEmblem(context.Background(), &sans)
 	if sans.PlayerEmblemURL != "" {
 		t.Errorf("sans chargeur : %q, attendu vide (initiale côté web)", sans.PlayerEmblemURL)
+	}
+}
+
+// Le journal des morts dégrade seul : sa lecture en échec laisse les frags aux armes spéciales à la
+// feuille de match, sans raison de page (la feuille, elle, est lue).
+func TestAttachEmprise_JournalEnEchec_RepliFeuille(t *testing.T) {
+	feuille := feuilleDeTest()
+	feuille.journalErr = errors.New("base indisponible")
+	var resp domain.TimeseriesPageResponse
+	serviceEmprise(usageTestRepoMock(), feuille).attachEmprise(context.Background(), &resp, fenetreDeTest(), "fr", nil)
+	e := resp.Emprise
+	if e == nil || e.SheetUnavailable != "" {
+		t.Fatalf("emprise = %+v, attendu la feuille lue", e)
+	}
+	if e.Maps[0].PowerWeaponKills == nil || *e.Maps[0].PowerWeaponKills != (domain.SquadEmpriseCount{Us: 3, Them: 1}) {
+		t.Errorf("frags aux armes spéciales = %+v, attendu ceux de la feuille 3 / 1", e.Maps[0].PowerWeaponKills)
 	}
 }

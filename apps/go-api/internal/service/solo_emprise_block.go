@@ -54,6 +54,7 @@ func buildSoloEmpriseBlock(ctx context.Context, q soloEmpriseQuery) *domain.Solo
 		Weapons: squadagg.WeaponCatalog(ctx, q.RepoRoot, q.TitleSlug, q.Locale),
 	}
 	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, q.EmpriseRepo, ids)
+	in.Journal = lecteur.Journal(ctx, q.EmpriseRepo, ids)
 	in.Film, in.FilmUnavailable = lecteur.Film(ctx, q.UsageRepo, q.Current, nil, q.Lectures)
 	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, q.VehicleRepo, ids, q.PlayerXUID, q.Locale)
 	switch {

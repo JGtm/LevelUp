@@ -15,7 +15,7 @@ import (
 func (r *ServiceRegistry) cablerBlocsSessions(svc *service.SessionPageService, pdb *duckdb.PlayerDB) *service.SessionPageService {
 	// La feuille de match (frags aux armes spéciales) est écrite par tous les titres, et le joueur
 	// sert aussi la coordination : câblage INCONDITIONNEL. Jamais slug==.
-	svc = svc.WithSessionEmprise(duckdb.NewSquadEmpriseRepo(pdb), pdb.XUID).
+	svc = svc.WithSessionEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID).
 		// Emblème de la fiche « Ma part à l'objectif » : le MÊME chargeur que l'Escouade et les Séries
 		// temporelles ; dégradation silencieuse (initiale) par contrat du chargeur.
 		WithSessionEmblemLoader(duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)).
