@@ -43,8 +43,10 @@ package killcollector
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"runtime"
 	"sort"
 	"strconv"
@@ -353,13 +355,14 @@ func max64(a, b int64) int64 {
 	return b
 }
 
-// facteurAttenduDeLAnnuaire : l ecart MINIMAL exige entre la jointure par match et l annuaire de
-// passe, sur le banc de 180 000 lignes.
+// facteurAttenduDeLAnnuaire : l ecart MINIMAL exige, en LIGNES LUES par les balayages de tables,
+// entre la jointure par match et l annuaire de passe sur le banc (20 matchs, 180 000 lignes).
 //
-// Mesure du 2026-09-22 : 49 a 60 ms par match contre quelques dizaines de microsecondes une fois
-// l annuaire charge. Exiger 10x laisse toute la marge du bruit de machine tout en gardant la
-// reproduction du defaut vraie — et un rouge ici veut dire que DuckDB pousse desormais le filtre
-// dans la vue d identite, donc qu il faut RE-MESURER avant de conclure quoi que ce soit.
+// La mesure est une CARDINALITE (EXPLAIN ANALYZE), pas un chronometre : elle ne depend ni de la
+// machine ni de la charge. La jointure materialise la vue d identite a CHAQUE match, l annuaire
+// une seule fois par passe : sur 20 matchs l ecart attendu est d environ 20. Un rouge veut dire
+// que DuckDB pousse desormais le filtre dans la vue d identite, donc qu il faut RE-MESURER avant
+// de conclure quoi que ce soit.
 const facteurAttenduDeLAnnuaire = 10
 
 // TestRosterDesFilms_AnnuaireContreJointure — le garde-fou de D1 (5.12), enfin ferme (5.24.2).
@@ -368,33 +371,95 @@ const facteurAttenduDeLAnnuaire = 10
 // `v_gamertag_lookup` par match et celle par l annuaire de passe. C est la seule lecture repetee
 // que la decomposition 5.24.1 a trouvee, et depuis que la passe tourne a N ouvriers elle est
 // SERIALISEE derriere la porte de la base : son cout est un plafond, pas une part.
+//
+// Les requetes rejouees sous EXPLAIN ANALYZE sont les constantes que le roster ENVOIE
+// (requeteNomsParJointure, requeteAnnuaireDesNoms, requeteParticipantsNommables) ; le temps mural
+// est journalise a titre indicatif, jamais exige.
 func TestRosterDesFilms_AnnuaireContreJointure(t *testing.T) {
 	db := openSharedTestDB(t)
 	peuplerBancCredit(t, db)
 	ctx := context.Background()
 
-	// Les matchs du banc portent des participants : `peuplerBancCredit` en pose pour les
-	// `credit-%05d`. C est sur eux que la resolution travaille.
-	mesurer := func(nom string, r *SharedRoster) time.Duration {
+	var jointure, annuaire int64
+	annuaire = lignesLues(t, db, requeteAnnuaireDesNoms) // une fois par passe
+	for i := 0; i < nbMatchsCreditMes; i++ {
+		id := fmt.Sprintf("credit-%05d", i)
+		jointure += lignesLues(t, db, requeteNomsParJointure, id)
+		annuaire += lignesLues(t, db, requeteParticipantsNommables, id)
+	}
+	t.Logf("lignes lues sur %d matchs : jointure %d, annuaire %d", nbMatchsCreditMes, jointure, annuaire)
+
+	// Les deux chemins de production tournent et rendent les memes identites (temps indicatif).
+	mesurer := func(nom string, r *SharedRoster) []MatchIdentities {
 		debut := time.Now()
+		out := make([]MatchIdentities, 0, nbMatchsCreditMes)
 		for i := 0; i < nbMatchsCreditMes; i++ {
-			if _, err := r.IdentitiesForMatch(ctx, fmt.Sprintf("credit-%05d", i)); err != nil {
+			ids, err := r.IdentitiesForMatch(ctx, fmt.Sprintf("credit-%05d", i))
+			if err != nil {
 				t.Fatalf("%s: %v", nom, err)
 			}
+			out = append(out, ids)
 		}
-		d := time.Since(debut) / nbMatchsCreditMes
-		t.Logf("%-52s %s par match", nom, d.Round(time.Microsecond))
-		return d
+		t.Logf("%-52s %s par match (indicatif)", nom, (time.Since(debut) / nbMatchsCreditMes).Round(time.Microsecond))
+		return out
+	}
+	parJointure := mesurer("DEFAUT — jointure v_gamertag_lookup par match", NewSharedRoster(db))
+	parAnnuaire := mesurer("production — annuaire de passe (chargement inclus)", NewSharedRoster(db).AvecAnnuaireDePasse())
+	for i := range parJointure {
+		if !reflect.DeepEqual(parJointure[i].ParNom, parAnnuaire[i].ParNom) {
+			t.Fatalf("credit-%05d : identites divergentes, jointure %v / annuaire %v",
+				i, parJointure[i].ParNom, parAnnuaire[i].ParNom)
+		}
 	}
 
-	jointure := mesurer("DEFAUT — jointure v_gamertag_lookup par match", NewSharedRoster(db))
-	annuaire := mesurer("production — annuaire de passe (chargement inclus)",
-		NewSharedRoster(db).AvecAnnuaireDePasse())
-
 	if jointure < facteurAttenduDeLAnnuaire*annuaire {
-		t.Errorf("la jointure par match ne coute que %s contre %s pour l annuaire (facteur "+
+		t.Errorf("la jointure par match ne lit que %d lignes contre %d pour l annuaire (facteur "+
 			"attendu >= %d) : soit le banc ne reproduit plus le defaut (revoir ses dimensions), "+
 			"soit DuckDB pousse desormais le filtre dans la vue d identite — re-mesurer avant de "+
 			"conclure quoi que ce soit", jointure, annuaire, facteurAttenduDeLAnnuaire)
 	}
+}
+
+// lignesLues rejoue `requete` sous EXPLAIN (ANALYZE, FORMAT JSON) et rend la somme des lignes
+// produites par ses balayages de tables (operateurs `TABLE_SCAN`).
+func lignesLues(t *testing.T, db *sql.DB, requete string, args ...any) int64 {
+	t.Helper()
+	rows, err := db.Query("EXPLAIN (ANALYZE, FORMAT JSON) "+requete, args...)
+	if err != nil {
+		t.Fatalf("EXPLAIN ANALYZE : %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var plan string
+	for rows.Next() {
+		var cle, valeur sql.NullString
+		if err := rows.Scan(&cle, &valeur); err != nil {
+			t.Fatalf("scan du plan : %v", err)
+		}
+		plan += valeur.String
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("plan : %v", err)
+	}
+	var racine map[string]any
+	if err := json.Unmarshal([]byte(plan), &racine); err != nil {
+		t.Fatalf("plan JSON illisible : %v", err)
+	}
+	return lignesDesBalayages(racine)
+}
+
+// lignesDesBalayages somme la cardinalite des operateurs TABLE_SCAN de l arbre du profil.
+func lignesDesBalayages(noeud map[string]any) int64 {
+	var n int64
+	if typ, _ := noeud["operator_type"].(string); strings.Contains(typ, "TABLE_SCAN") {
+		if c, ok := noeud["operator_cardinality"].(float64); ok {
+			n += int64(c)
+		}
+	}
+	enfants, _ := noeud["children"].([]any)
+	for _, e := range enfants {
+		if m, ok := e.(map[string]any); ok {
+			n += lignesDesBalayages(m)
+		}
+	}
+	return n
 }

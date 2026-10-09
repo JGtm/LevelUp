@@ -19,7 +19,7 @@ import (
 )
 
 // burstRecordingAccess : roRwSplitAccess qui mesure, pour chaque rafale Write, la durée de
-// détention et le nombre de matchs qu'elle a persistés (lignes d'état du joueur ajoutées
+// détention (sur l'horloge des bornes, defaultLUSRBurstLimits.now) et le nombre de matchs qu'elle a persistés (lignes d'état du joueur ajoutées
 // sous elle, comptées sur son handle avant de le rendre).
 type burstRecordingAccess struct {
 	roRwSplitAccess
@@ -33,9 +33,9 @@ func (a *burstRecordingAccess) Write(ctx context.Context, step string) (*sql.DB,
 	if err != nil {
 		return nil, nil, err
 	}
-	start := time.Now()
+	start := defaultLUSRBurstLimits.now()
 	return db, func() {
-		a.holds = append(a.holds, time.Since(start))
+		a.holds = append(a.holds, defaultLUSRBurstLimits.now().Sub(start))
 		var n int
 		if err := db.QueryRow(`SELECT count(*) FROM player_skill_state_v2 WHERE xuid = 'owner'`).Scan(&n); err == nil {
 			a.matches = append(a.matches, n-a.states)
@@ -65,11 +65,20 @@ func logLinesWith(out, msg string) []string {
 }
 
 // TestLUSRV2Shadow_RafalesBornees_300Candidats : 300 candidats neufs (premier cycle d'un
-// joueur jamais scoré) passent sous plusieurs rafales, chacune d'au plus 50 matchs et de
-// moins de 2 s, toutes dans le même cycle ; une ligne INFO par rafale.
+// joueur jamais scoré) passent sous six rafales de 50 matchs, toutes dans le même cycle ; une
+// ligne INFO par rafale.
+//
+// HORLOGE PILOTÉE (1 ms par lecture) : la borne en matchs est éprouvée seule, sans dépendre du
+// temps réel d'une machine chargée. La borne de détention a son propre test, à horloge pilotée
+// elle aussi (TestLUSRV2Shadow_RafaleRendueApresMaxHold).
 func TestLUSRV2Shadow_RafalesBornees_300Candidats(t *testing.T) {
 	t.Setenv(lusrV2EnvFlag, "1")
 	t.Setenv(lusrCanonicalEnvFlag, "")
+	horloge := time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC)
+	withBurstLimits(t, lusrBurstLimits{maxMatches: 50, maxHold: 2 * time.Second, now: func() time.Time {
+		horloge = horloge.Add(time.Millisecond)
+		return horloge
+	}})
 	path := openShadowTestFileDB(t)
 	seed, err := sql.Open("duckdb", path)
 	if err != nil {
@@ -93,14 +102,14 @@ func TestLUSRV2Shadow_RafalesBornees_300Candidats(t *testing.T) {
 	if processed != 300 {
 		t.Fatalf("processed = %d, want 300 (toute la file dans le même cycle)", processed)
 	}
-	if acc.writeCalls < 6 || len(acc.matches) != acc.writeCalls {
-		t.Fatalf("%d rafales (%d mesurées), want au moins 6 (300 matchs, 50 au plus par rafale)", acc.writeCalls, len(acc.matches))
+	if acc.writeCalls != 6 || len(acc.matches) != acc.writeCalls {
+		t.Fatalf("%d rafales (%d mesurées), want 6 (300 matchs, 50 par rafale)", acc.writeCalls, len(acc.matches))
 	}
 	total := 0
 	for i, n := range acc.matches {
 		total += n
-		if n > defaultLUSRBurstLimits.maxMatches || acc.holds[i] >= defaultLUSRBurstLimits.maxHold {
-			t.Errorf("rafale %d : %d matchs tenus %v, want <= %d et < %v", i+1, n, acc.holds[i],
+		if n != defaultLUSRBurstLimits.maxMatches || acc.holds[i] >= defaultLUSRBurstLimits.maxHold {
+			t.Errorf("rafale %d : %d matchs tenus %v, want %d et < %v", i+1, n, acc.holds[i],
 				defaultLUSRBurstLimits.maxMatches, defaultLUSRBurstLimits.maxHold)
 		}
 	}
