@@ -175,8 +175,9 @@ read by the channel at the occurrence's extent — and stays outside the structu
 without channels interprets nothing. Since step 2 the state no longer depends on the trace's
 capture. Since the LK milestone (2026-10-09), a fourth state, **stopped** (`lecture.EtatArrete`), is
 kept apart from untraversable: the game's reader of the occurrence is ported and FAILS, with a typed
-cause (`lecture.CauseDArret`: a non-finite absolute position, or a handle width the film does not
-establish). The full-state loop of the game stops on it; the traversal stops at its start. It only
+cause (`lecture.CauseDArret`: a non-finite absolute position, a handle width the film does not
+establish, or — since lot 2.7.d1 — a weapon set that `FUN_1406d01fc` refuses, the same slot in both
+hands, read by the biped's i42 or the vehicle's i38). The full-state loop of the game stops on it; the traversal stops at its start. It only
 occurs in keyframe records, under the full-state scope (below). The `status`
 column of `internal/grammar/testdata/ecs_table.tsv` (`porte`, `partiel`, `non_porte`) is a static
 capability; the state belongs to the occurrence.
@@ -381,7 +382,9 @@ record is **admitted**: (closed OR i22 read with four counters) AND witness T1 (
 last weapon slot, at least one slot is not empty, and every non-empty slot's family is in the
 catalogue) AND witness T2 (the i47 mask equals the bitmap of the non-zero i22 counters), on every
 format, with no version clause. Measured on 28 films: 6 507 of 10 710 records admitted, none with wrong
-weapons in formats 20-21, one admitted on the 10 407 records of the walk shifted by one bit. The bit
+weapons in formats 20-21, one admitted on the 10 407 records of the walk shifted by one bit. A record
+with an occurrence that does not re-read at its extent is not admitted. An admitted record publishes
+its grenade selection only when it names a type of its i47 mask, the delta channel's contract. The bit
 windows run **behind** the reading (IR-6): a record that the rule does not admit, or whose body the
 phase did not cross (a film without registry), is given to them, each window counting it under its
 named fallback (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,

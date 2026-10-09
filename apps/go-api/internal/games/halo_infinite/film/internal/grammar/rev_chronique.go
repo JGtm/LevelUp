@@ -207,3 +207,16 @@ package grammar
 // en formats 20-21 ; 1 admis sur 10 407 records du temoin decale d un bit ; 0 debordement ; replis =
 // records non admis (4 203), film par film. Bobines du golden : 837 records admis, dont 11 ou la
 // fenetre aurait lu autre chose.
+//
+// AMENDEE (2026-10-09, revue adversariale D1.4.6, branche non fusionnee : le rang `.3` n a quitte ni la
+// branche ni ses mesures, il est amende au lieu de monter a `.4`, empreinte regeneree) :
+//   - le jeu d armes que `FUN_1406d01fc` refuse (param[1] != -1 et param[1] = param[2]) arrete la
+//     boucle d etat complet sur i42 du bipede et i38 du vehicule, comme le jeu (thunks `14109d298`,
+//     `14116d3cc` ; `TEST AL,AL ; JZ` en `142e2c7ce`) : cause [lecture.ArretJeuDArmesRefuse] ;
+//   - un record dont une occurrence deborde n est pas admis (`refusDebordement`) ;
+//   - une selection d i47 hors du masque ou du domaine n est pas publiee et se compte
+//     (`SelectionHorsMasque`), le contrat du canal delta ([selectionDansLeMasque], partage) ;
+//   - un record n est marque recupere par la fenetre d inventaire que si sa lecture porte une valeur.
+// MESURE de l amendement (28 films) : 460 records bipedes arretes sur i42, tous sur les trois films
+// de format 20 ; admis inchanges (6 507) ; fermetures `ti=35` 5 401 -> 5 397 ; `replay-equiv` (20
+// films) : seuls `a349fea8` et `a521164d` changent (4 selections tues) ; killsource identique.

@@ -1258,10 +1258,12 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       U-3 « Dynamo » : seules les « Grenade dynamo » quittent les dotations (`111fa685` 38 → 1,
       `4f77afc1` 52 → 0, `e5adf7b2` 31 → 1 ; restent celles des records non admis), plus un record de
       `111fa685` où la fenêtre listait 19 familles (2 lues) ; records avec armes identiques sur les
-      19 films. U-3 sélection en base 0 : grenades sélectionnées 264 → 4 207, dont 4 203 désignent un
-      type à compteur non nul ; les 4 autres, records admis de format 20 (`a349fea8`, `a521164d`) à
-      compteurs tous nuls, portent la sélection 0 que le jeu écrit (masque nul = bitmap nulle) —
-      adjugés : valeur du jeu. U-3/U-4 `d` : aucune valeur ne change sur un record publié des deux
+      19 films. U-3 sélection en base 0 : grenades sélectionnées 264 → 4 203, chacune dans le masque
+      d'i47. *Adjudication CORRIGÉE le 2026-10-09 (revue D1.4.6, constat 5, décision du superviseur)* :
+      la première passe en publiait 4 207, dont 4 records admis de format 20 (`a349fea8`, `a521164d`) à
+      compteurs tous nuls avec la sélection 0 — adjugés alors « valeur du jeu » ; la lecture suit
+      désormais le contrat du canal delta et de la fenêtre (sélection hors du masque ou du domaine :
+      rien de publié, compté `SelectionHorsMasque`), ces 4 records n'ont plus de sélection. U-3/U-4 `d` : aucune valeur ne change sur un record publié des deux
       côtés ; 50 records sans `d` en reçoivent un (0 ou 1) ; −1 reste une absence (`d` absent 1 451 →
       1 401). U-3 capacité : 464 lectures `kf` dans 16..23 des deux côtés, aucune hors domaine. AUTRES
       VALEURS, adjugées : jauges et chargeurs en baisse (jauges 23 → 3 sur `fb1a1a72`, 98 → 79 sur
@@ -1539,6 +1541,10 @@ refusionner, rejouer l'étape 0).
   l'emplacement désiré, un index 0..3). Effet à l'écran : la rangée d'armes ne marque aucune arme en
   main et tait l'indice « dégainée ? ». La doc Go est corrigée (U-4) ; le client n'est pas touché par
   ce lot (aucune décision de l'utilisateur sur l'affichage). Non traité.
+- D-31 *(revue D1.4.6, constat 2)* `FUN_1406d01fc` refuse un jeu d armes (param[1] ≠ −1 et param[1] = param[2]) ;
+  sous la portée de l état complet, la boucle `FUN_142e2c690` s arrête sur ce retour (porté :
+  `lecture.ArretJeuDArmesRefuse`). Hors de la portée, ce que la boucle DELTA (`FUN_14076cb60`) fait d un
+  retour faux d i42 ou d i38 n est pas relu : la lecture delta continue, comme avant. Non traité.
 
 ## 8. Journal
 
@@ -1862,3 +1868,19 @@ refusionner, rejouer l'étape 0).
   tranche (recuisson et backfill killsource de levelup-2c attendus jusqu'à 16 h 52) : aucun oracle ne
   bouge, FAUX par les trois replis neufs seuls ; valeurs publiées adjugées ; G-perf : surcoût non établi ;
   gate-push vert ; CI verte. D1.4.6 et D1.4.7 au superviseur ; 2.7.d1 prêt pour la revue et la fusion.
+- 2026-10-09 (lot D, après la revue adversariale D1.4.6 du superviseur) : les HUIT constats recevables
+  corrigés sur la branche, un commit par constat ou groupe : (1) un record dont une occurrence déborde
+  n'est pas admis (`19b6e9cb2`) ; (2) le jeu d'armes que `FUN_1406d01fc` refuse arrête la boucle d'état
+  complet sur i42 et i38, cause `jeu_d_armes_refuse`, relu dans Ghidra (`ce5d9e7ab`) — 460 records
+  arrêtés, tous en format 20, admis inchangés, `ti=35` 5 401 → 5 397 ; (3) et (5) marque d'inventaire
+  récupéré sur valeur rendue, sélection hors du masque tue et comptée, prédicat partagé avec le canal
+  delta (`ecca97772`) ; (4) golden de valeurs sur 116 records réels des bobines (`273f82b1c`) ;
+  (6) `keyframeLoadoutsDe` retirée (`780ec922f`) ; (7) `weaponv3.FamillesConnues` et une conversion
+  booléenne par paquet, deux garde-rails (`1dbdae5dd`) ; (8) documentation inversée (`e765bc6c7`).
+  Refusion de `origin/feat/v75` `646001ff9` sans conflit. Révision : **`grammar-2026-10-09.3` AMENDÉE**
+  (empreinte régénérée, chronique complétée) plutôt que montée à `.4` — le rang n'a quitté ni la branche
+  ni ses mesures ; killsource 19/19 identiques, `killsource-2026-10-09` et `objectives-2026-09-27`
+  constants ; `SchemaVersion` reste 92, chronique v92 corrigée ; `replay-equiv` (20 films, lot précédent
+  contre nouvelle tête) : seuls `a349fea8` et `a521164d` changent (les 4 sélections tues). ADR 0037 :
+  nouvelle cause d'arrêt (IR-4), débordement et sélection (2.7.d1). Découverte D-31. D1.4.6 et D1.4.7
+  restent au superviseur.

@@ -117081,3 +117081,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 35 rejeux construits sans erreur (Interference 4, Serenity - Ranked 4, Vacancy - Ranked 27 ; 9 à 266 pistes) ; killsource recalculé sur ces 35 matchs (0 déjà à jour, 1 027 chunks) ; au redémarrage, migrations player Halo 5 appliquées (12, 12, 4, 4 étapes), aucune pour Halo Infinite ; succès Xbox des trois amis synchronisés depuis l'import des jetons de prod.
 
 **Conclusion / prochaine étape** : gate visuel du user sur un rejeu par carte ; lots C (données) et D (démo) en cours, puis relectures adversariales, lot E.
+
+## [2026-10-09] 2.7.d1 — corrections de la revue adversariale D1.4.6 (8 constats) — En cours, prêt pour la revue de clôture et la fusion (`feat/ri-lk-images-cles`)
+
+**Statut** : En cours — les 8 constats recevables corrigés ; D1.4.6 (statut de la revue) et D1.4.7 (fusion, recuisson, backfill) au superviseur.
+
+**Décision technique principale** : la lecture de l'état complet suit le jeu là où la revue l'a pris en défaut. `FUN_1406d01fc` refuse un jeu d'armes (même emplacement aux deux mains) et la boucle d'état complet s'arrête sur i42 et i38 (cause `jeu_d_armes_refuse`, relue dans Ghidra) ; un débordement de relecture refuse le record ; une sélection de grenade hors du masque d'i47 n'est plus publiée (contrat du canal delta, décision du superviseur) ; la marque « récupéré » d'inventaire exige une valeur. Règle 6 : `weaponv3.FamillesConnues` et une conversion booléenne par paquet, garde-rails ; `keyframeLoadoutsDe` retirée. `grammar-2026-10-09.3` amendée (branche non fusionnée) plutôt que `.4`.
+
+**Résultats observés** : 460 records bipèdes arrêtés sur i42, tous en format 20 ; admis inchangés (6 507), valeurs égales à 100 % ; `ti=35` 5 401 → 5 397 ; `replay-equiv` (20 films) : seuls `a349fea8` et `a521164d` changent (4 sélections tues, vérifiées sur leurs artefacts) ; killsource 19/19 identiques ; golden de 116 records réels des bobines, mutations rouges.
+
+**Conclusion / prochaine étape** : revue de clôture et fusion par le superviseur. Découverte D-31 (retour faux d'i42 dans la boucle delta non relu).

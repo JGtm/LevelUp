@@ -3209,10 +3209,10 @@ package replay
 //	                construction). Fiches : records d image-cle avec armes identiques sur les 19
 //	                films ; armes retirees = les « Grenade dynamo » des records admis (`111fa685`
 //	                38 -> 1, `4f77afc1` 52 -> 0, `e5adf7b2` 31 -> 1) et un record de `111fa685` ou la
-//	                fenetre listait 19 familles (2 lues) ; grenades selectionnees 264 -> 4 207 (4 203
-//	                designent un type dont le compteur est non nul ; 4 records admis de format 20 a
-//	                compteurs nuls gardent la selection 0 que le jeu ecrit) ; `d` identique sur tout
-//	                record publie des deux cotes, 50 records en gagnent un ; inventaires vides en
+//	                fenetre listait 19 familles (2 lues) ; grenades selectionnees 264 -> 4 203, chacune
+//	                dans le masque d i47 (hors du masque, rien n est publie, contrat du canal delta,
+//	                revue D1.4.6 : 4 records de format 20) ; `d` identique sur tout record publie
+//	                des deux cotes, 50 records en gagnent un ; inventaires vides en
 //	                baisse sur 11 films. Jauges et chargeurs en baisse : lectures de la fenetre a
 //	                plusieurs debuts candidats (la plus longue retenue, 4 a 20 bits trop tot, D1.0.7) —
 //	                jauges 0,5001 / 0,25 / 0,75, chargeurs de 1 (331 sur 349), reserves de 1 232 a

@@ -383,8 +383,10 @@ func (x *ri27d1Ext) ecartsAuCanal(c *ri27d0Canal, p *lecture.Paquet, r *lecture.
 		ecart(fmt.Sprintf("chargeur%d", k), mag == g.mag[k])
 		ecart(fmt.Sprintf("reserve%d", k), res == g.res[k])
 	}
+	// La selection de reference suit le contrat du canal delta (revue D1.4.6, constat 5) : hors du
+	// masque d i47 ou de son domaine, aucune selection.
 	sel := -1
-	if g.gsSel != GrenadeSetNoSelection {
+	if g.gsSel != GrenadeSetNoSelection && g.gsSel >= 1 && g.gsSel <= 4 && g.gsMask&(1<<uint(g.gsSel-1)) != 0 { //nolint:gosec // 1..4
 		sel = g.gsSel - 1
 	}
 	ecart("grenade_selectionnee", inv.SelectedGrenadeRank == sel)
