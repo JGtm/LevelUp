@@ -76,6 +76,16 @@ func hillMesureFilm(t *testing.T, dir string) {
 		id, d.slot, len(d.changes), jauge, okJ, len(ser.gauge[jauge]), prop, okP, pous, okU)
 	t.Logf("%s : premier contact a %.2f s ; bascules du designateur : %s", id, ms(d.first)/1000,
 		hillMesureInstants(d.changes))
+	chained, total := 0, 0
+	for _, r := range sc.Reads {
+		if r.Slot == jauge && r.Tag == grammar.ManagedPropertyTagQuant && r.Field == grammar.ManagedPropertyScalar {
+			total++
+			if r.Chained {
+				chained++
+			}
+		}
+	}
+	t.Logf("%s : jauge %d lectures dont %d chainees", id, total, chained)
 	hillMesureRampes(t, id, ser.gauge[jauge], ser.owner[pous])
 	slots := hillMesureSlots{jauge: jauge, prop: prop, pous: pous}
 	hillMesureBascules(t, id, ser, slots, d)

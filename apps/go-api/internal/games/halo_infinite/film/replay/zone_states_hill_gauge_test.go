@@ -17,18 +17,21 @@ import (
 func hillGaugeRise(t0 int) []grammar.ManagedPropertyRead {
 	var out []grammar.ManagedPropertyRead
 	for k := 0; k < 10; k++ {
-		out = append(out, zoneReadAt(43, t0+k, grammar.ManagedPropertyTagQuant, gaugeQ(uint64(80+100*k))))
+		out = append(out, zoneChainedReadAt(43, t0+k, grammar.ManagedPropertyTagQuant, gaugeQ(uint64(80+100*k))))
 	}
+	// Le retour a zero est NON chaine : le dernier record d un paquet ne chaine jamais.
 	return append(out, zoneReadAt(43, t0+10, grammar.ManagedPropertyTagQuant, gaugeQ(0)))
 }
 
-// hillGaugeDrain fabrique une vidange : 0,98 a `t0` puis -0,1 par frame jusqu a zero.
+// hillGaugeDrain fabrique une vidange : 0,98 a `t0` puis -0,1 par frame, un dernier pas de 0,01
+// (sous le seuil d allegement) et le zero.
 func hillGaugeDrain(t0 int) []grammar.ManagedPropertyRead {
 	var out []grammar.ManagedPropertyRead
 	for k := 0; k < 10; k++ {
-		out = append(out, zoneReadAt(43, t0+k, grammar.ManagedPropertyTagQuant, gaugeQ(uint64(980-100*k))))
+		out = append(out, zoneChainedReadAt(43, t0+k, grammar.ManagedPropertyTagQuant, gaugeQ(uint64(980-100*k))))
 	}
-	return append(out, zoneReadAt(43, t0+10, grammar.ManagedPropertyTagQuant, gaugeQ(0)))
+	out = append(out, zoneChainedReadAt(43, t0+10, grammar.ManagedPropertyTagQuant, gaugeQ(10)))
+	return append(out, zoneChainedReadAt(43, t0+11, grammar.ManagedPropertyTagQuant, gaugeQ(0)))
 }
 
 // TestCollineJaugePriseVidangeReprise — la serie monte, se vide et remonte ; les segments nomment
@@ -45,6 +48,8 @@ func TestCollineJaugePriseVidangeReprise(t *testing.T) {
 	reads = append(reads, hillGaugeRise(100)...)
 	reads = append(reads, hillGaugeDrain(200)...)
 	reads = append(reads, hillGaugeRise(220)...)
+	// Une lecture NON chainee pleine, isolee : de la contamination d ancrage, jamais publiee.
+	reads = append(reads, zoneReadAt(43, 300, grammar.ManagedPropertyTagQuant, gaugeQ(1000)))
 	in := zoneTestInput(reads)
 	in.Hill = true
 	gardien := Track{XUID: "2533", Team: 0, Points: pointsIn(60, 399, 20.5)}
@@ -62,6 +67,15 @@ func TestCollineJaugePriseVidangeReprise(t *testing.T) {
 	}
 	if v := gaugeAt(st.Gauge, 205); v <= 0 || v >= 0.98 {
 		t.Errorf("jauge a mi-vidange %.3f, attendu dans ]0 ; 0,98[ (la vidange se publie)", v)
+	}
+	if v := gaugeAt(st.Gauge, 215); v != 0 {
+		t.Errorf("jauge apres la vidange %.3f, attendu 0 (le retour a zero se publie toujours)", v)
+	}
+	if v := gaugeAt(st.Gauge, 300); v != 0 {
+		t.Errorf("jauge a la lecture non chainee %.3f, attendu 0 (contamination ecartee)", v)
+	}
+	if v := gaugeAt(st.Gauge, 112); v != 0 {
+		t.Errorf("jauge apres la prise %.3f, attendu 0 (retour a zero non chaine publie)", v)
 	}
 	veut := []struct {
 		t0       int

@@ -40,7 +40,8 @@ type hillGaugeInput struct {
 
 // hillGaugeInputOf rend la jauge et le pousseur du bloc de l objet de mode : par le NOM (le bloc
 // dont le designateur est la cle), ou par le VOISINAGE quand le designateur l a ete (le bloc tient
-// sur quatre slots consecutifs : designateur, proprietaire, pousseur, jauge).
+// sur quatre slots consecutifs : designateur, proprietaire, pousseur, jauge). La jauge est lue sur ses
+// lectures CHAINEES et ses retours au repos (`zoneSeries.gaugeHill`).
 func hillGaugeInputOf(ser zoneSeries, d hillDesignator, teams map[uint64]bool, c zoneCtx) hillGaugeInput {
 	in := hillGaugeInput{teams: teams, gap: zoneGaugeGapFrames(c.intervalMS)}
 	pous, jauge := d.slot+2, d.slot+3
@@ -52,7 +53,7 @@ func hillGaugeInputOf(ser zoneSeries, d hillDesignator, teams map[uint64]bool, c
 			return in
 		}
 	}
-	in.gauge, in.pusher = ser.gauge[jauge], ser.owner[pous]
+	in.gauge, in.pusher = ser.gaugeHill[jauge], ser.owner[pous]
 	return in
 }
 
@@ -70,7 +71,7 @@ func attachHillGauges(states []ZoneState, periods []hillPeriod, in hillGaugeInpu
 		if !ok {
 			continue
 		}
-		states[i].Gauge, _ = appendGaugeThinned(states[i].Gauge, in.gauge, p.t0, p.t1, in.gap)
+		states[i].Gauge = appendHillGauge(states[i].Gauge, in, p.t0, p.t1)
 		states[i].GaugeRamps = append(states[i].GaugeRamps, hillGaugeSegments(in, p.t0, p.t1)...)
 	}
 	for i := range states {
@@ -161,4 +162,23 @@ func zoneSampleAt(ss []zoneSample, t int) (uint64, bool) {
 		return 0, false
 	}
 	return ss[i-1].v, true
+}
+
+// appendHillGauge pousse la serie allegee de [t0, t1] en publiant TOUT retour a zero : l allegement
+// de Bastion saute un point qui bouge de moins de 0,02, et la fin d une vidange (0,017 -> 0) serait
+// perdue — l escalier tiendrait alors la colline a moitie pleine jusqu au point suivant. Chaque
+// zero ferme donc une fenetre d allegement, dont il est le dernier point (toujours publie).
+func appendHillGauge(out []GaugePoint, in hillGaugeInput, t0, t1 int) []GaugePoint {
+	start := t0
+	for _, s := range in.gauge {
+		if s.t < t0 || s.t > t1 || s.v > zoneGaugeQuantZero {
+			continue
+		}
+		out, _ = appendGaugeThinned(out, in.gauge, start, s.t, in.gap)
+		start = s.t + 1
+	}
+	if start <= t1 {
+		out, _ = appendGaugeThinned(out, in.gauge, start, t1, in.gap)
+	}
+	return out
 }
