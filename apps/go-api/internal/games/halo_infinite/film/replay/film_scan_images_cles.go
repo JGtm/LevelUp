@@ -32,6 +32,7 @@ func (s *filmScan) lireLesImagesCles() {
 	slog.InfoContext(s.ctx, "image-cle : etat complet des bipedes lu par la grammaire",
 		"match_id", s.matchID, "bipedes", a.Bipedes, "admis", a.Admis, "sansCorps", a.SansCorps,
 		"refusNiFermeNiI22", a.RefusNiFermeNiI22, "refusT1", a.RefusT1, "refusT2", a.RefusT2,
+		"refusDebordement", a.RefusDebordement,
 		"debordements", a.Debordements, "capaciteHorsDomaine", a.CapaciteHorsDomaine,
 		"recuperes", len(s.etats.Recuperes), "recuperesArmes", r.armes,
 		"recuperesInventaire", r.inventaire, "recuperesMarque", r.marque)

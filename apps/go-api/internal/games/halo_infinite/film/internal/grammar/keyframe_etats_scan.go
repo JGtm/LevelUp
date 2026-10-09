@@ -44,8 +44,9 @@ type ComptesDeLAdmission struct {
 	Bipedes, SansCorps int
 	// Admis : records dont la valeur est publiee par la grammaire.
 	Admis int
-	// RefusNiFermeNiI22, RefusT1, RefusT2 : les records refuses, par raison ([raisonDeRefus]).
-	RefusNiFermeNiI22, RefusT1, RefusT2 int
+	// RefusNiFermeNiI22, RefusT1, RefusT2, RefusDebordement : les records refuses, par raison
+	// ([raisonDeRefus]) ; un debordement refuse le record avant toute autre raison.
+	RefusNiFermeNiI22, RefusT1, RefusT2, RefusDebordement int
 	// Debordements : occurrences dont la relecture ne tient pas l etendue de la marche (attendu 0).
 	Debordements int
 	// CapaciteHorsDomaine : records admis dont le rang de capacite lu est hors de 16..23 (non publie).
@@ -189,6 +190,8 @@ func (c *canalDeLEtatCompletBipede) compterLeVerdict(v raisonDeRefus) bool {
 		a.RefusT1++
 	case refusT2:
 		a.RefusT2++
+	case refusDebordement:
+		a.RefusDebordement++
 	default:
 		a.Admis++
 		return true

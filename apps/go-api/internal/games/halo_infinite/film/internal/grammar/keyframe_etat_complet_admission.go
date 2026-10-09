@@ -64,11 +64,18 @@ const (
 	refusT1
 	// refusT2 : temoin du jeu de grenades refuse.
 	refusT2
+	// refusDebordement : une occurrence du record ne se relit pas a l etendue que la marche lui a donnee
+	// ([relireLOccurrence] rend faux) ; ses crochets ont pu ecrire des valeurs lues a une autre
+	// largeur, aucune n est publiee.
+	refusDebordement
 )
 
 // admettre juge un record bipede lu ; `dernierEmplacement` est l index du dernier composant
 // d identite d arme de l archetype (-1 : aucun).
 func admettre(r *lecture.Record, l *lectureDEtatComplet, dernierEmplacement int) raisonDeRefus {
+	if l.debordements > 0 {
+		return refusDebordement
+	}
 	quatre := l.grenadesLues && l.compte == 4 && len(l.compteurs) == emplacementsDArme
 	switch {
 	case r.Preuve != lecture.PreuveFerme && !quatre:

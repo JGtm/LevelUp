@@ -77,6 +77,10 @@ func TestLaRegleDAdmission(t *testing.T) {
 		{"masque d i47 different de la bitmap", ferme, func(l *lectureDEtatComplet) { l.masque = 0b0011 }, refusT2},
 		{"i47 non lu", ferme, func(l *lectureDEtatComplet) { l.jeuDeGrenadesLu = false }, refusT2},
 		{"ferme, n(i22) = 3", ferme, func(l *lectureDEtatComplet) { l.compte = 3 }, refusT2},
+		// Un debordement refuse le record meme ferme, T1 et T2 tenus : ses crochets ont pu ecrire des
+		// valeurs lues a une autre largeur (constat 1 de la revue D1.4.6).
+		{"ferme, T1 et T2, une occurrence deborde", ferme, func(l *lectureDEtatComplet) { l.debordements = 1 },
+			refusDebordement},
 	}
 	for _, c := range cas {
 		l := lectureAdmissible(t)
@@ -149,7 +153,7 @@ func TestLEtatCompletDesBobines(t *testing.T) {
 		if a.Debordements != 0 {
 			t.Errorf("%s : %d relecture(s) debordent l etendue de la marche", court, a.Debordements)
 		}
-		if a.Admis+a.RefusNiFermeNiI22+a.RefusT1+a.RefusT2+a.SansCorps != a.Bipedes {
+		if a.Admis+a.RefusNiFermeNiI22+a.RefusT1+a.RefusT2+a.RefusDebordement+a.SansCorps != a.Bipedes {
 			t.Errorf("%s : verdicts %+v ne couvrent pas les %d bipedes", court, a, a.Bipedes)
 		}
 		verifierLesRepliesDeLaBobine(t, court, e)
