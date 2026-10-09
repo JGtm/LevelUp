@@ -145,6 +145,11 @@ package objectives
 // `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv` est IDENTIQUE sur les 20
 // films de reference (binaires de `acfe4851a` contre ceux du lot). Golden regenere a revision
 // constante.
+//
+// COMPLEMENT DU 2026-10-09 (lot `assist-film`, REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-09` (le fil des evenements de la vue A se garde ; aucun bit n est lu autrement).
+// `grammar/signaux` ne change pas et les objectifs ne lisent pas le fil : sortie inchangee par
+// construction. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

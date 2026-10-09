@@ -84,4 +84,7 @@ type AssistStats struct {
 	// Doublons : kill-events RETIRES parce qu ils repetent, dans le meme paquet, un enregistrement
 	// deja lu a un bit anterieur ([assistScan.dedoublonner], lot J7.6, FK-6). Hors de `KillEvents`.
 	Doublons int
+	// Fil : la lecture de l assistant des morts sans kill-event au fil des evenements
+	// ([decodeCtx.attachAssistsDuFil]). Ses publications sont HORS de `Attached` et de `Named`.
+	Fil AssistFilStats
 }
