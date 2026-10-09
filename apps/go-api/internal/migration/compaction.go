@@ -235,19 +235,8 @@ type schemaAvant struct {
 }
 
 func verifierApresEchange(ctx context.Context, tx *sql.Tx, c compactable, avant schemaAvant) error {
-	ddl, err := ddlDeTable(ctx, tx, c.Table)
-	if err != nil {
+	if err := verifierSchemaIdentique(ctx, tx, c.Table, avant.ddl, avant.index); err != nil {
 		return err
-	}
-	if ddl != avant.ddl {
-		return fmt.Errorf("DDL de %s changé :\navant %s\naprès %s", c.Table, avant.ddl, ddl)
-	}
-	index, err := ddlDesIndex(ctx, tx, c.Table)
-	if err != nil {
-		return err
-	}
-	if strings.Join(index, "\n") != strings.Join(avant.index, "\n") {
-		return fmt.Errorf("index de %s changés : avant %v, après %v", c.Table, avant.index, index)
 	}
 	apres, err := empreinteDeVue(ctx, tx, c.View)
 	if err != nil {
@@ -275,12 +264,17 @@ func ddlDeTable(ctx context.Context, q lecteurSQL, table string) (string, error)
 // reste du DDL est repris au caractère près. Refus si le préfixe n'est pas celui attendu (une
 // forme de DDL inconnue ne se devine pas).
 func ddlDeConstruction(ddl, table string) (string, error) {
+	return ddlDeConstructionSuffixe(ddl, table, compactSuffix)
+}
+
+// ddlDeConstructionSuffixe : ddlDeConstruction pour une table de construction `<table><suffixe>`.
+func ddlDeConstructionSuffixe(ddl, table, suffixe string) (string, error) {
 	prefixe := "CREATE TABLE " + table + "("
 	if !strings.HasPrefix(ddl, prefixe) {
-		return "", fmt.Errorf("compaction %s: DDL de forme inattendue (préfixe %q absent) : %s",
+		return "", fmt.Errorf("swap %s: DDL de forme inattendue (préfixe %q absent) : %s",
 			table, prefixe, ddl)
 	}
-	return "CREATE TABLE " + table + compactSuffix + "(" + ddl[len(prefixe):], nil
+	return "CREATE TABLE " + table + suffixe + "(" + ddl[len(prefixe):], nil
 }
 
 // ddlDesIndex rend les `CREATE INDEX` de la table, triés par nom d'index.

@@ -62,6 +62,9 @@ var stepDependencies = map[string]string{
 	// repair_player_append_only_ids_v1 (2026-10-09, lot C4) reconstruit les cinq tables
 	// append-only joueur sans en créer aucune : il DOIT suivre leur dernier créateur.
 	"repair_player_append_only_ids_v1": "create_player_csr_snapshots_player_v1",
+	// shared_purge_composite_vehicle_takes_v1 (2026-10-09, lot C5) reconstruit
+	// match_vehicle_takes sans la créer : son créateur DOIT précéder.
+	"shared_purge_composite_vehicle_takes_v1": "shared_create_vehicle_takes",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

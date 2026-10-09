@@ -311,6 +311,8 @@ var canonicalOrder = []string{
 	// d init (steps_shared_vehicle_takes.go trie apres steps_shared_usage_summary.go et avant
 	// steps_shared_weapon_*.go) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_create_vehicle_takes", // shared (match_vehicle_takes, append-only + vue _latest par passe)
+	// Doit SUIVRE le créateur de la table (2026-10-09, lot C5) ; enregistré juste après lui.
+	"shared_purge_composite_vehicle_takes_v1", // shared (lignes à match_id composite, swap sans DELETE)
 	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
 	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
