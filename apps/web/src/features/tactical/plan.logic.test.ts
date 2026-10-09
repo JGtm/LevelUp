@@ -14,9 +14,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { TacticalRaster } from '@/lib/api/types'
+import { mapFrame } from '@/lib/replay/heatPaint'
 
 import { getTacticalText } from './i18n'
 import { boiteDuPlan, cadrageDuFond, etatDuPlan, infoDuPlan, legendeDuPlan, rampeVerticale } from './plan.logic'
+import { aspectDuPlan } from './tacticalLecture.logic'
+import { repereDuPlan } from './tacticalView.logic'
 
 const t = getTacticalText('fr')
 const tEn = getTacticalText('en')
@@ -118,6 +121,24 @@ describe('boiteDuPlan — le cadre du fond', () => {
   it('au rapport du fond, jamais plus haut que la hauteur que la fenêtre lui laisse', () => {
     expect(boiteDuPlan(2, 800)).toEqual({ aspectRatio: 2, width: '100%', maxWidth: '1600px' })
     expect(boiteDuPlan(0.5, 560)).toEqual({ aspectRatio: 0.5, width: '100%', maxWidth: '280px' })
+  })
+
+  // Constat du 2026-09-09 : sur Illusion, un canvas de 1 070 x 13 375 px (rapport 0,08) tiré des
+  // bornes servies. Le repère d'une carte à fond est son CALAGE, et le canvas remplit la boîte :
+  // avec le calage publié d'Illusion (`ctf_illusion.json`), le cadre garde le rapport du fond et
+  // tient dans la hauteur laissée, quelles que soient les bornes.
+  it('Illusion : le cadre suit le calage du fond, jamais les bornes servies', () => {
+    const fond = mapFrame({ metersPerPixel: 0.031, originX: -25.751434532165526, originY: 35.164999237060556, widthPx: 1711, heightPx: 2224 })
+    const bornesEtirees = { min_x: -25, max_x: 8.17, min_y: -380, max_y: 35, valide: true }
+    const repere = repereDuPlan(fond, bornesEtirees, 2)
+    expect(repere).not.toBeNull()
+    const aspect = aspectDuPlan(fond, repere)
+    expect(aspect).toBeCloseTo(1711 / 2224, 6)
+    const hauteurMax = 800
+    const boite = boiteDuPlan(aspect, hauteurMax)
+    // La boîte prend toute la largeur disponible (1 070 px au constat) sous `maxWidth`, au rapport du fond.
+    const largeur = Math.min(1070, Number.parseInt(boite.maxWidth, 10))
+    expect(largeur / aspect).toBeLessThanOrEqual(hauteurMax + 1)
   })
 })
 

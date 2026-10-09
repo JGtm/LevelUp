@@ -116,6 +116,22 @@ func TestResolveMapEntry_SurLeCatalogueLivre(t *testing.T) {
 	if _, err := b.ResolveMapEntry(nil); !errors.Is(err, ErrMapNotInCatalog) {
 		t.Errorf("aucun candidat : attendu ErrMapNotInCatalog, obtenu %v", err)
 	}
+	// Les candidats que la cuisson journalisait « hors catalogue de bornes » du 05 au 09/10/2026
+	// (`[Serenity - Ranked]`, `[Interference]`, `[Vacancy - Ranked]`) résolvent sur leur canevas.
+	for nom, module := range map[string]string{
+		"Serenity - Ranked": "fo08_wetland",
+		"Interference":      "fo13_frost",
+		"Vacancy - Ranked":  "fo09_academy",
+	} {
+		entry, err := b.ResolveMapEntry([]string{nom, nom})
+		if err != nil {
+			t.Errorf("ResolveMapEntry(%s) : %v", nom, err)
+			continue
+		}
+		if entry.Module != module {
+			t.Errorf("module de %s = %q, attendu %q", nom, entry.Module, module)
+		}
+	}
 }
 
 // artefactCourantAvecCouches rend un artefact AU SCHEMA COURANT qui DECLARE les revisions de
