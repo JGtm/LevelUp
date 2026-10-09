@@ -783,7 +783,8 @@ func TestExtractSharedTables_OrphanWALFromPreviousGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	counts, err := extractSharedTables(ctx, srcShared, dst, []string{"m1", "m2"}, sourceXUID, demoXUIDForIndex(0))
+	counts, err := extractSharedTables(ctx, srcShared, dst, []string{"m1", "m2"},
+		[]demoRosterEntry{{SourceXUID: sourceXUID, DemoXUID: demoXUIDForIndex(0), DemoGamertag: DefaultDemoMainGamertag}})
 	if err != nil {
 		t.Fatalf("extractSharedTables avec WAL orphelin préexistant: %v", err)
 	}
