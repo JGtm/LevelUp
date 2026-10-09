@@ -65,6 +65,9 @@ var stepDependencies = map[string]string{
 	// shared_purge_composite_vehicle_takes_v1 (2026-10-09, lot C5) reconstruit
 	// match_vehicle_takes sans la créer : son créateur DOIT précéder.
 	"shared_purge_composite_vehicle_takes_v1": "shared_create_vehicle_takes",
+	// purge_sync_meta_legacy_auth_keys_v1 (2026-10-09, lot C7) reconstruit sync_meta sans la
+	// créer : la baseline joueur, qui la crée, DOIT précéder.
+	"purge_sync_meta_legacy_auth_keys_v1": "create_baseline_player_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

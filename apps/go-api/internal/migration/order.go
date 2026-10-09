@@ -130,6 +130,7 @@ var canonicalOrder = []string{
 	"drop_psa_secondary_art_indexes_v1",                // player (2026-09-20 : les 3 derniers index de personal_score_awards — récidive #23645 sur les insertions courantes, aucun lecteur ne les emprunte)
 	"drop_player_secondary_art_indexes_v1",             // player (2026-10-09 : idx_lch_*, idx_pme_match_lookup, idx_pcs_lookup — suit tous leurs créateurs, dont create_player_csr_snapshots_player_v1)
 	"repair_player_append_only_ids_v1",                 // player (2026-10-09 : ids NULL / en double / hors clé des tables append-only — suit leurs créateurs)
+	"purge_sync_meta_legacy_auth_keys_v1",              // player (2026-10-09 : clés oauth_refresh_token / msal_token_cache de sync_meta, sans lecteur — ADR 0023)
 	"create_base_shared_schema",                        // shared
 	"add_film_match_start",                             // shared
 	"add_highlight_events_autoincrement",               // shared

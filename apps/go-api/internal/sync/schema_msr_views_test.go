@@ -109,6 +109,14 @@ var retiredARTIndexNames = []string{
 	"idx_lch_component", "idx_lch_match", "idx_pme_match_lookup", "idx_pcs_lookup",
 }
 
+// inventoryCountQuery : requêtes de compte qui remplacent le COUNT(*) brut d'une table.
+// sync_meta est comptée SANS les clés de credential héritées, que
+// purge_sync_meta_legacy_auth_keys_v1 retire (ADR 0023) : les autres lignes doivent survivre.
+var inventoryCountQuery = map[string]string{
+	"sync_meta": `SELECT COUNT(*) FROM sync_meta
+		WHERE key IS NULL OR key NOT IN ('oauth_refresh_token', 'msal_token_cache')`,
+}
+
 // playerDBInventory : ce que la migration et le soin ne doivent PAS changer (lignes par
 // table hors journal schema_migrations, vues et leurs lignes), plus les index secondaires
 // retirés encore présents.
@@ -124,7 +132,11 @@ func inventoryPlayerDB(t *testing.T, db *sql.DB) playerDBInventory {
 	count := func(kind, query string, dst map[string]int) {
 		for _, n := range queryNames(t, db, query) {
 			var c int
-			if err := db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM "`+n+`"`).Scan(&c); err != nil {
+			q, special := inventoryCountQuery[n]
+			if !special || kind != "table" {
+				q = `SELECT COUNT(*) FROM "` + n + `"`
+			}
+			if err := db.QueryRowContext(t.Context(), q).Scan(&c); err != nil {
 				t.Fatalf("lecture de la %s %s : %v", kind, n, err)
 			}
 			dst[n] = c

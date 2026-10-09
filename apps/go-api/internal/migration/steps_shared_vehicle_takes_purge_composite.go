@@ -16,25 +16,23 @@ package migration
 // transaction (swapTableTx) ; avant le COMMIT, DDL et index identiques au caractère près et
 // vue identique à ce qu'elle rendait hors des lignes retirées. Les id gardés et la séquence
 // ne bougent pas. No-op (sans écriture) sur une base qui n'a pas de telles lignes.
+// Mécanique : swapKeepingRows (table_purge_swap.go).
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 )
 
 const (
 	vehicleTakesTable      = "match_vehicle_takes"
 	vehicleTakesView       = "match_vehicle_takes_latest"
-	vehicleTakesPurgeSufx  = "__purge"
 	vehicleTakesKeepClause = "WHERE strpos(match_id, ',') = 0"
 )
 
 func applyPurgeCompositeVehicleTakes(db *sql.DB) error {
 	ctx := bootCtx()
-	if err := recoverOrphanTable(ctx, db, vehicleTakesTable, vehicleTakesPurgeSufx); err != nil {
+	if err := recoverOrphanTable(ctx, db, vehicleTakesTable, purgeSuffix); err != nil {
 		return err
 	}
 	if ok, err := tableExists(db, vehicleTakesTable); err != nil || !ok {
@@ -54,84 +52,5 @@ func applyPurgeCompositeVehicleTakes(db *sql.DB) error {
 	}
 	slog.WarnContext(ctx, "migration: lignes à match_id composite retirées (swap, sans DELETE)",
 		"table", vehicleTakesTable, "removed", composite, "kept", n.Rebuilt)
-	return nil
-}
-
-// swapKeepingRows reconstruit `table` avec son DDL exact, réduite aux lignes de `keep`, et
-// l'échange. La vue doit rendre après l'échange exactement ce qu'elle rendait, avant, sur les
-// lignes gardées.
-func swapKeepingRows(ctx context.Context, db *sql.DB, table, view, keep string) (swapCounts, error) {
-	ddl, err := ddlDeTable(ctx, db, table)
-	if err != nil {
-		return swapCounts{}, err
-	}
-	creer, err := ddlDeConstructionSuffixe(ddl, table, vehicleTakesPurgeSufx)
-	if err != nil {
-		return swapCounts{}, err
-	}
-	index, err := ddlDesIndex(ctx, db, table)
-	if err != nil {
-		return swapCounts{}, err
-	}
-	attendue, err := empreinteRestreinte(ctx, db, view, keep)
-	if err != nil {
-		return swapCounts{}, err
-	}
-	n, err := swapTableTx(ctx, db, tableSwap{
-		Table:    table,
-		Suffix:   vehicleTakesPurgeSufx,
-		Expected: fmt.Sprintf(`SELECT COUNT(*) FROM %s %s`, table, keep),
-		Build: []string{creer, fmt.Sprintf(`INSERT INTO %s%s SELECT * FROM %s %s`,
-			table, vehicleTakesPurgeSufx, table, keep)},
-		PostRename: index,
-		Verify: func(ctx context.Context, tx *sql.Tx) error {
-			if err := verifierSchemaIdentique(ctx, tx, table, ddl, index); err != nil {
-				return err
-			}
-			apres, err := empreinteDeVue(ctx, tx, view)
-			if err != nil {
-				return err
-			}
-			if apres != attendue {
-				return fmt.Errorf("la vue %s ne rend plus les lignes gardées : attendu %+v, après %+v",
-					view, attendue, apres)
-			}
-			return nil
-		},
-	})
-	if err != nil {
-		return n, fmt.Errorf("purge de %s: %w", table, err)
-	}
-	return n, nil
-}
-
-// empreinteRestreinte : empreinte de la vue restreinte à `keep` (même calcul qu'empreinteDeVue).
-func empreinteRestreinte(ctx context.Context, q lecteurSQL, view, keep string) (EmpreinteVue, error) {
-	var e EmpreinteVue
-	err := q.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*),
-		CAST(COALESCE(SUM(CAST(hash(v) AS HUGEINT)), 0) AS VARCHAR) FROM (SELECT * FROM %s %s) v`, view, keep)).
-		Scan(&e.Lignes, &e.Somme)
-	if err != nil {
-		return e, fmt.Errorf("empreinte de %s: %w", view, err)
-	}
-	return e, nil
-}
-
-// verifierSchemaIdentique : DDL de la table et DDL de ses index identiques au caractère près.
-func verifierSchemaIdentique(ctx context.Context, q lecteurSQL, table, ddl string, index []string) error {
-	apres, err := ddlDeTable(ctx, q, table)
-	if err != nil {
-		return err
-	}
-	if apres != ddl {
-		return fmt.Errorf("DDL de %s changé :\navant %s\naprès %s", table, ddl, apres)
-	}
-	idx, err := ddlDesIndex(ctx, q, table)
-	if err != nil {
-		return err
-	}
-	if strings.Join(idx, "\n") != strings.Join(index, "\n") {
-		return fmt.Errorf("index de %s changés : avant %v, après %v", table, index, idx)
-	}
 	return nil
 }

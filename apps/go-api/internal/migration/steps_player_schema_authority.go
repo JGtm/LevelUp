@@ -172,7 +172,7 @@ const PlayerRetiredARTIndexesDropSQL = PlayerRetiredPSAIndexesDropSQL + PlayerRe
 	PlayerRetiredSecondaryIndexesDropSQL
 
 // L'ordre de Register() dans cet init() est CONTRAINT : il doit reproduire l'ordre de ces
-// 8 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
+// 9 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
 // Ils y occupent les positions qui suivent immédiatement repair_match_citations_primary_key
 // (fin du bloc player).
 func init() {
@@ -248,6 +248,14 @@ func init() {
 			"l'id est NULL, en double ou hors clé primaire : ids neufs de la séquence réalignée, " +
 			"clé primaire et DEFAULT reposés",
 		ApplySchema: applyRepairAppendOnlyIDs,
+	})
+	// Même contrainte d'ordre (steps_player_purge_legacy_auth_keys.go).
+	Register(Migration{
+		Name:     "purge_sync_meta_legacy_auth_keys_v1",
+		TargetDB: TargetPlayer,
+		Description: "Retire de sync_meta (swap, sans DELETE) les clés de l'ancien credential store " +
+			"(oauth_refresh_token, msal_token_cache) : sans lecteur depuis l'ADR 0023 phase 5",
+		ApplySchema: applyPurgeSyncMetaLegacyAuthKeys,
 	})
 }
 
