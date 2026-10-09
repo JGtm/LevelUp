@@ -117033,3 +117033,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 35 rejeux construits sans erreur (Interference 4, Serenity - Ranked 4, Vacancy - Ranked 27 ; 9 à 266 pistes) ; killsource recalculé sur ces 35 matchs (0 déjà à jour, 1 027 chunks) ; au redémarrage, migrations player Halo 5 appliquées (12, 12, 4, 4 étapes), aucune pour Halo Infinite ; succès Xbox des trois amis synchronisés depuis l'import des jetons de prod.
 
 **Conclusion / prochaine étape** : gate visuel du user sur un rejeu par carte ; lots C (données) et D (démo) en cours, puis relectures adversariales, lot E.
+
+## [2026-10-09] Lot C des recommandations : fiabilité des données (C1-C7) — En cours (`feat/recos-c`, CI verte, relecture adversariale en cours)
+
+**Décision technique principale** : aucune réparation de données par UPDATE ou DELETE ; tout passe par des étapes de migration à swap transactionnel (`swapTableTx`, garde de cardinalité, schéma vérifié avant COMMIT), sans effet sur une base saine. Retrait d'index décidé sur mesure `EXPLAIN ANALYZE` (recette MSR), sur copies réelles.
+
+**Résultats observés** : C1 `restore-csr` n'insère plus que les CSR absents (`--mode` retiré, la vue `_latest` fait primer le CSR). C2 douze formes de lecture en plan séquentiel 30/30 avec et sans index sur trois copies réelles (pire écart +1,35 ms) → `drop_player_secondary_art_indexes_v1` + soin + ratchet `noSecondaryIndexTables`. C3 quatre CLI par la porte `platform/duckdb` (ratchet −4). C4 `repair_player_append_only_ids_v1` : doublons (5 et 147 lignes) et ids NULL (17 192 et 18 318) réparés sur copies du 08/10, vues `_latest` identiques. C5 écrivain des 4 lignes parasites = ancien `--match` de `backfill-vehicle-takes` (déjà corrigé le 01/10) ; `shared_purge_composite_vehicle_takes_v1`. C6 non réparé : 3 111/9 230 lignes divergent, colonne indexée, deux classifieurs ; les filtres de l'interface lisent `pair_name`. C7 `purge_sync_meta_legacy_auth_keys_v1` sur 4 bases, aucune valeur lue. Gate : intégration `-p 1` sur 19 paquets, `go test ./...` vert, golangci 0 ; CI `37961396119` verte.
+
+**Conclusion / prochaine étape** : verdict des deux relectures, correction des constats bloquants, puis fusion (accord du user) ; sauvegarde des bases joueur et partagée avant le redémarrage qui jouera les quatre étapes.
