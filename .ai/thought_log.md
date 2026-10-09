@@ -117001,3 +117001,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : attendre les choix du user ; proposition d'un nettoyage du registre (clore les soldés, sortir les négatifs acquis et les attentes de planche vers une archive).
 **Suite (même jour, décisions du user)** : registre Halo 5 ignoré ; registre des reports purgé de tout ce qui date d'avant septembre, des recherches du film closes sur un négatif ou épuisées, des attentes de planche, d'écoute ou de relevé Theater (validés de fait) et des lignes soldées : 627 → 187 lignes, 127 lignes de tableau. Ajouts : trois cartes sans rejeu ; AADSTS70000 étendu au troisième joueur ; « Argyle - Ranked » réduit au fond manquant. Backlog : Tauri marqué « V9 potentielle ». La release (désormais v8) est suivie dans Notion par le user.
+
+## [2026-10-09] Recalcul groupé au schéma 91 (socles par réapparition, assistances des bots) et retrait des « non mesuré » — Complété (accord du user « ok » du 09/10)
+
+**Statut** : Complété ; serveur arrêté pendant la passe, air relancé à 16:52 ; binaire CLI de feat/v75 `31ca53fdb`. `feat/aj-non-mesure` fusionnée (plus aucune mention d'inconnu à l'écran, garde-fou `lib/i18n/noUnknownMentions.guard.test.ts`).
+
+**Résultats observés** : `backfill-replay --only-existing` 172 artefacts, 0 erreur (20 min) ; usage-summary, pad-tiers --force (172), vehicle-takes, bomb-stats, flag-grabs-net : rc 0 ; `backfill-killsource` 88 min, rc 0 : 2 178 matchs, 233 508 morts, 0 erreur de décodage ni d'écriture, 44 passes non publiables. Narrows `0a08d2f2` : 23/23 morts de bot à assistance connue, JGtm 11 frags assistés sur 20 (10 avant).
+
+**Conclusion / prochaine étape** : gate visuel du user. Questions ouvertes : apparitions « remplacées » à 30 s sur 934 cycles (le user ne sait pas : réapparition du jeu ou artefact de lecture — comptes de vidages de socle possiblement surestimés, prises attribuées non affectées) ; libellés d'identité inconnue (« Joueur inconnu », « Arme non identifiée »…) à corriger à la source ; bandeau « match partiel » gardé (signale un échec de sync). Découvertes : `killBadgeFmt` sans lecteur ; `VehiclePass.DocSchema`, `FragsReason`, `VehicleRow.Episodes` lus par les seuls tests ; `matches_read` / `matches_without_radar` servis sans lecteur.
