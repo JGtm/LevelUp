@@ -91,7 +91,7 @@ func (c *ri27d0Canal) Interets() []Interet {
 			out = append(out, Interet{Phase: PhaseImagesCles, TI: keyframeBipedTI, Composant: n})
 		}
 	}
-	return out
+	return append(out, interetsDeLEtatComplet()...) // et ceux du canal de production (confrontation D1.1)
 }
 
 func (*ri27d0Canal) Clore(BilanDeMarche) {}
@@ -156,7 +156,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 			g.resLu[k] = true
 			obs.WeaponRoundsHook = func(v uint32) { g.res[k] = int(v) }
 		case role == "i42":
-			obs.DesiredWeaponSetHook = func(s uint32) { g.sel = int(s) }
+			obs.DesiredWeaponSetHook = func(j JeuDArmes) { g.sel = int(j.Demande) }
 		case strings.HasPrefix(role, "ti"):
 			fmt.Sscanf(role, "ti%d", &k) //nolint:errcheck // role construit ici
 			g.armeLue[k] = true
@@ -168,14 +168,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 			g.rangLu = true
 			obs.AbilitySetHook = func(_ uint64, rk int, _ int) { g.rang = rk }
 		}
-		br := sousLaPortee(LecteurSur(p.Payload)) // la marche d etat complet l a lu sous la portee
-		br.PoserContexte(ctx)
-		br.etatComplet = true
-		br.obs = obs
-		br.SetBitPos(int(co.Debut))
-		_, _, _, porte := consumeByNameCapturing(br, c.arch.component(int(co.Index)), uint32(keyframeBipedTI), //nolint:gosec // archetype constant
-			c.arch.Level(int(co.Index)))
-		if !porte || br.BitPos()-int(co.Debut) > int(co.Bits) {
+		if !relireLOccurrence(p.Payload, ctx, c.arch, keyframeBipedTI, co, obs) { // la relecture de production
 			g.debord++
 		}
 	}
@@ -228,6 +221,7 @@ func (c *ri27d0Canal) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
 		c.preuve = fmt.Sprintf("preuve_%d", r.Preuve)
 		c.classes[c.preuve]++
 		c.x.admettre(c, r, &g)
+		c.x.confronterAuCanal(c, p, r, &g, ctx) // D1.1 : le canal de production contre l instrument
 		c.x.temoinDeHasard(c, p, i, ctx)
 		c.comparerLesArmes(p, r, &g, fen[r.Debut])
 		c.x.armesParEmplacement(c, &g, fen[r.Debut])

@@ -75,8 +75,9 @@ func (s *filmScan) balayerPositions() error {
 	// LA MARCHE D'IMAGE-CLÉ SE COMPTE ICI (lot M3.1) : ce balayage marche chaque payload
 	// d'image-clé du film exactement une fois. L'élection de l'ancre suivante est un REPLI nommé,
 	// et son compte voyage dans `coverage.fallbacks` ; la santé complète de la marche est
-	// portée par les faits (`KeyframeWalk`).
-	loadouts, marche, err := grammar.ScanKeyframeLoadoutsMarche(s.fc, loadoutFamilies())
+	// portée par les faits (`KeyframeWalk`). La marche est UNIQUE ([filmScan.lireLesImagesCles]).
+	s.lireLesImagesCles()
+	loadouts, marche, err := s.etats.Loadouts, s.etats.Marche, s.errEtats
 	if err != nil {
 		slog.WarnContext(s.ctx, "keyframes illisibles — rejeu sans armes portées", "err", err, "match_id", s.matchID)
 		loadouts = nil
@@ -179,8 +180,12 @@ func (s *filmScan) balayerInventaire() {
 	if len(familles) > 0 {
 		s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)
 	}
-	// Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, invStats, err := grammar.ScanKeyframeInventory(s.fc, familles, 0)
+	// Absence non fatale — un rejeu sans grenades reste un rejeu valide. L'inventaire vient de la
+	// marche unique des images-clés (`balayerPositions`).
+	inventory, invStats, err := s.etats.Inventaire, s.etats.StatsInventaire, s.errEtats
+	if len(familles) == 0 {
+		inventory, invStats, err = nil, types.KeyframeInventoryStats{}, nil
+	}
 	if err != nil {
 		slog.WarnContext(s.ctx, "inventaire illisible — rejeu sans grenades ni munitions", "err", err, "match_id", s.matchID)
 		inventory = nil
@@ -371,7 +376,8 @@ func (s *filmScan) balayerMonde() {
 func (s *filmScan) balayerCalquesGardes() {
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
-	s.in.FlagMarks = decodeFilmCarrierMarks(s.ctx, s.fc, s.matchID, s.opt.Flag, s.opt.consultations())
+	s.in.FlagMarks = decodeFilmCarrierMarks(s.ctx, s.etats.Marques, s.errEtats, s.matchID, s.opt.Flag,
+		s.opt.consultations())
 	s.opt.observe(s.ctx, "carrierMarks", s.in.FlagMarks)
 	// PROPRIETES RESEAU ti=13 : UN SEUL BALAYAGE, DEUX CONSOMMATEURS ET DEUX GARDES. L'etat des
 	// zones (jauge de capture, proprietaire) le veut sur les matchs dont l'appelant a fourni le

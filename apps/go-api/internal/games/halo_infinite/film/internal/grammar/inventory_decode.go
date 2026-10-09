@@ -129,11 +129,9 @@ func ScanFilmKeyframeInventory(
 	return ScanKeyframeInventory(NewFilmContext(film), known, grenMax)
 }
 
-// ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE, dans la phase
-// des images-clés ([canalDInventaire]).
-//
-// Les records viennent de la marche d'image-clé DU FILM ([FilmContext.MarcheDImageCle],
-// lot D-fix) : celle des autres balayages de la cuisson.
+// ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE : la projection de
+// [ScanEtatsDesImagesCles] sur l'inventaire (lot D1.1 de 2.7.d1). La cuisson appelle
+// [ScanEtatsDesImagesCles] une fois ; cette forme sert les enveloppes hors production.
 //
 // `grenMax` NUL : [DefaultGrenadeMax] s applique. C est le REPLI NOMME
 // `repli_plafond_grenade_par_defaut` (le plafond est une donnee de MODE, pas une constante) ; il
@@ -145,49 +143,12 @@ func ScanKeyframeInventory(
 	if len(known) == 0 {
 		return nil, types.KeyframeInventoryStats{}, nil
 	}
-	if grenMax == 0 {
-		grenMax = DefaultGrenadeMax
+	e, err := ScanEtatsDesImagesCles(fc, known, grenMax)
+	if err != nil {
+		return nil, e.StatsInventaire, err
 	}
-	c := &canalDInventaire{known: known, grenMax: grenMax}
-	distribuerLesImagesClesSeules(fc, []Canal{c})
-	c.st.Chunks = len(fc.ChunkNumbers())
-	c.st.ChunksUnread = c.st.Chunks - c.lus
-	if c.st.ChunksUnread == c.st.Chunks {
-		return nil, c.st, ErrNoReadableFilmChunk
-	}
-	return c.out, c.st, nil
+	return e.Inventaire, e.StatsInventaire, nil
 }
-
-// canalDInventaire lit, dans la phase des images-clés, l'inventaire de chaque record bipède.
-type canalDInventaire struct {
-	known   map[uint32]bool
-	grenMax uint32
-	out     []types.KeyframeInventory
-	st      types.KeyframeInventoryStats
-	// lus : les chunks que la phase a pu lire.
-	lus int
-}
-
-func (*canalDInventaire) Interets() []Interet { return nil }
-
-func (c *canalDInventaire) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
-	c.st.Keyframes++
-	invs := keyframeInventoriesDe(p.Payload, invRecordSpansDe(p.Payload, p.Records), c.known, c.grenMax)
-	c.st.Records += len(invs)
-	for _, inv := range invs {
-		inv.TimestampUS, inv.Chunk, inv.PacketIndex = p.TS, p.Chunk, p.Index
-		switch {
-		case !inv.GrenadesRead:
-		case inv.GrenadesByPosition:
-			c.st.GrenadesByPosition++
-		default:
-			c.st.GrenadesByAnchor++
-		}
-		c.out = append(c.out, inv)
-	}
-}
-
-func (c *canalDInventaire) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
 
 // keyframeInventories décode un payload de keyframe, un inventaire par record de biped.
 // PUR (aucune I/O) — c'est le cœur testable. Sans preuve (marche des instruments) ; la cuisson passe

@@ -213,6 +213,10 @@ type filmScan struct {
 	// ([filmScan.lireLaMarcheDesTrames]) et prise par les etats de mouvement ; errMarche, son echec.
 	marche    grammar.MarcheDesTrames
 	errMarche error
+	// etats porte ce que la marche UNIQUE des images-cles dit des bipedes (armes, inventaire, marques,
+	// lot D1.1 de 2.7.d1), jouee une fois par [filmScan.balayerPositions] ; errEtats, son echec.
+	etats    grammar.EtatsDesImagesCles
+	errEtats error
 	// opt porte ce que l'APPELANT a fourni : l'observateur, son horloge, et les gardes de mode
 	// des trois calques qui ne se balaient que sur demande (drapeau, zones, bombe). Les
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.

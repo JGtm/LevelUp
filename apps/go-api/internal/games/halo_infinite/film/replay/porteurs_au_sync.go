@@ -197,7 +197,8 @@ func (e EntreePorteursAuSync) lireLesPorteurs(ctx context.Context, g GardesDesPo
 // d'armes, dotations de naissance, puis changements qualifiés par elles (`spawnSetFrom`).
 // Absence non fatale, journalisée : la bombe sort alors sans portage.
 func (e EntreePorteursAuSync) lireLesArmesTenues(ctx context.Context) []types.HeldWeaponChange {
-	loadouts, _, err := grammar.ScanKeyframeLoadoutsMarche(e.Contexte, loadoutFamilies())
+	etats, err := grammar.ScanEtatsDesImagesCles(e.Contexte, loadoutFamilies(), 0)
+	loadouts := etats.Loadouts
 	if err != nil {
 		slog.WarnContext(ctx, "porteurs au sync : images-cles d'armes illisibles", "match_id", e.MatchID, "err", err)
 		loadouts = nil

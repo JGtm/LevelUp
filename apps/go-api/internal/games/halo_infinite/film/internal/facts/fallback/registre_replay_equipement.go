@@ -229,7 +229,7 @@ var registreReplayEquipement = []Repli{
 		// `grammar`, qui APPLIQUE le defaut et ne compte pas (ADR 0034 D-4) ; l appelant de
 		// production, `replay`, le COMPTE sur la meme condition (plafond non fourni).
 		Sites: []Site{
-			{Fichier: pkgFilmdec + "inventory_decode.go", Ancre: "grenMax = DefaultGrenadeMax"},
+			{Fichier: pkgFilmdec + "keyframe_etats_scan.go", Ancre: "grenMax = DefaultGrenadeMax"},
 			{Fichier: pkgReplay + "film_scan.go", Ancre: "s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)"},
 		},
 		DatePose:        dateAudit0E,

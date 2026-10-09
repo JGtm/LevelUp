@@ -37,6 +37,9 @@ type ri27d1D10 struct {
 	origine uint64   // horodatage de la premiere image-cle du film
 	vuOrig  bool
 	rs      int // lignes RS ecrites
+	// roles, dernier : les roles du canal de production et son dernier emplacement (confrontation D1.1).
+	roles   map[int]roleDOccurrence
+	dernier int
 }
 
 // ri27d1MortParDefaut est la forme par defaut de 42 bits de l etat de mort (i11), celle que la
@@ -185,21 +188,7 @@ func (x *ri27d1Ext) temoinTDecale(c *ri27d0Canal, p *lecture.Paquet, r *lecture.
 
 // degaine compare le jeu d armes i42 relu (param[1], param[2]) au `DrawnSlot` de la fenetre.
 func (x *ri27d1Ext) degaine(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record, fenetre int) {
-	i42 := archIndexOf(c.arch, "biped-desired-weapon-set")
-	for _, co := range p.Comps[r.Comps[0]:r.Comps[1]] {
-		if int(co.Index) != i42 || co.Etat != lecture.EtatInterprete {
-			continue
-		}
-		br := LecteurSur(p.Payload)
-		br.SetBitPos(int(co.Debut))
-		br.ReadBits(3)      // FUN_1406d0f20, param[0]
-		lit := func() int { // FUN_1406d00ec : R(1) ; si 0, R(2) ; sinon -1
-			if br.ReadBit() {
-				return -1
-			}
-			return int(br.ReadBits(2)) //nolint:gosec // deux bits
-		}
-		p1, p2 := lit(), lit()
+	if p1, p2, ok := ri27d1JeuDArmes(c, p, r); ok {
 		switch {
 		case p1 == -1:
 			x.compterAdm(fmt.Sprintf("degaine:p1_moins_un_fenetre_%v", fenetre >= 0))
@@ -217,6 +206,29 @@ func (x *ri27d1Ext) degaine(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record
 	x.compterAdm("degaine:non_atteint")
 }
 
+// ri27d1JeuDArmes relit param[1] et param[2] de l occurrence i42 du record, a la main (lecture de
+// test, hors du lecteur de production) ; faux quand i42 n est pas traverse.
+func ri27d1JeuDArmes(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record) (p1, p2 int, ok bool) {
+	i42 := archIndexOf(c.arch, "biped-desired-weapon-set")
+	for _, co := range p.Comps[r.Comps[0]:r.Comps[1]] {
+		if int(co.Index) != i42 || co.Etat != lecture.EtatInterprete {
+			continue
+		}
+		br := LecteurSur(p.Payload)
+		br.SetBitPos(int(co.Debut))
+		br.ReadBits(3)      // FUN_1406d0f20, param[0]
+		lit := func() int { // FUN_1406d00ec : R(1) ; si 0, R(2) ; sinon -1
+			if br.ReadBit() {
+				return -1
+			}
+			return int(br.ReadBits(2)) //nolint:gosec // deux bits
+		}
+		p1 := lit()
+		return p1, lit(), true
+	}
+	return -1, -1, false
+}
+
 // ri27d1Bits rend les bits [a, a+n) du payload, en texte.
 func ri27d1Bits(pay []byte, a, n int) string {
 	br := LecteurSur(pay)
@@ -231,27 +243,7 @@ func ri27d1Bits(pay []byte, a, n int) string {
 // marqueDePortage compte les deux predicats de la marque (U-2) contre la fenetre et ecrit les
 // porteurs de (a) que la fenetre ne voit pas.
 func (x *ri27d1Ext) marqueDePortage(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record, fenetre bool) {
-	i11 := archIndexOf(c.arch, deadStateComponentName)
-	i13 := archIndexOf(c.arch, compObjectMaximumVitalities)
-	var mort, i12 string
-	vit := -1
-	for _, co := range p.Comps[r.Comps[0]:r.Comps[1]] {
-		if co.Etat != lecture.EtatInterprete && co.Etat != lecture.EtatDelimite { // traverse, interprete ou non
-			continue
-		}
-		switch int(co.Index) {
-		case i11:
-			mort = ri27d1Bits(p.Payload, int(co.Debut), int(co.Bits))
-		case i11 + 1:
-			i12 = ri27d1Bits(p.Payload, int(co.Debut), int(co.Bits))
-		case i13:
-			if co.Bits >= 5 {
-				br := LecteurSur(p.Payload)
-				br.SetBitPos(int(co.Debut))
-				vit = int(br.ReadBits(5)) //nolint:gosec // cinq bits
-			}
-		}
-	}
+	mort, i12, vit := ri27d1Configuration(c, p, r)
 	predA := vit >= 0 && vit&0xC == 0xC
 	predB := mort == ri27d1MortParDefaut && i12 == "1" && vit == ri27d1VitalitesMarque
 	ferme := r.Preuve == lecture.PreuveFerme
@@ -325,4 +317,108 @@ func ri27d1Ecart(sols []int, am0 int) int {
 		return 0
 	}
 	return sols[0] - am0
+}
+
+// confronterAuCanal rejoue, sur le record, la lecture et la regle d admission du canal de
+// production (`keyframe_etat_complet_*.go`, D1.1) et compte, sous `canal_*`, son accord avec la
+// relecture de l instrument : meme verdict d admission (A ou B, T1 et T2), et, sur un record admis,
+// memes armes, compteurs de grenades, chargeurs, reserves, emplacement desire, grenade selectionnee,
+// rang de capacite et marque de portage.
+func (x *ri27d1Ext) confronterAuCanal(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record, g *ri27d0Gram,
+	ctx ContexteDeLecture) {
+	if x.d.roles == nil {
+		x.d.roles = rolesDuBipede(c.arch)
+		x.d.dernier = -1
+		for id := range weaponEmplacements(c.arch) {
+			x.d.dernier = max(x.d.dernier, id)
+		}
+	}
+	l := lireLEtatComplet(p, r, c.arch, x.d.roles, ctx)
+	x.temoin[fmt.Sprintf("canal_debordements_%d", l.debordements)]++
+	admis := admettre(r, &l, x.d.dernier) == refusAucun
+	attendu := (x.adm == "A" || x.adm == "B") && x.d.t1 && x.d.t2
+	if admis != attendu {
+		x.temoin[fmt.Sprintf("canal_admission_differente|canal_%v|instrument_%v", admis, attendu)]++
+		return
+	}
+	if !admis {
+		x.temoin["canal_non_admis"]++
+		return
+	}
+	x.temoin["canal_admis"]++
+	for _, d := range x.ecartsAuCanal(c, p, r, g, &l) {
+		x.temoin["canal_valeur_differente:"+d]++
+	}
+}
+
+// ecartsAuCanal rend les champs publies par le canal qui different de la relecture de l instrument.
+func (x *ri27d1Ext) ecartsAuCanal(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record, g *ri27d0Gram,
+	l *lectureDEtatComplet) []string {
+	var out []string
+	ecart := func(nom string, egal bool) {
+		if !egal {
+			out = append(out, nom)
+		}
+	}
+	var fams []uint32
+	for k := range 4 {
+		if g.armeLue[k] && g.idHigh[k] != noVariant {
+			fams = append(fams, g.idHigh[k])
+		}
+	}
+	ecart("armes", slices.Equal(fams, l.armesDe(r.Vie.Slot).Families))
+	inv, _ := l.inventaireDe(r.Vie.Slot)
+	for k := range 4 {
+		ecart(fmt.Sprintf("grenades%d", k), int(inv.Grenades[k]) == int(g.gren[k])) //nolint:gosec // R(8)
+		mag, res := -1, -1
+		if inv.Ammo[k].Mag != nil {
+			mag = int(*inv.Ammo[k].Mag)
+		}
+		if inv.Ammo[k].Res != nil {
+			res = int(*inv.Ammo[k].Res)
+		}
+		ecart(fmt.Sprintf("chargeur%d", k), mag == g.mag[k])
+		ecart(fmt.Sprintf("reserve%d", k), res == g.res[k])
+	}
+	sel := -1
+	if g.gsSel != GrenadeSetNoSelection {
+		sel = g.gsSel - 1
+	}
+	ecart("grenade_selectionnee", inv.SelectedGrenadeRank == sel)
+	rang := -1
+	if g.rang >= rangDeCapaciteMin && g.rang <= rangDeCapaciteMax {
+		rang = g.rang
+	}
+	ecart("capacite", inv.AbilityRank == rang)
+	p1, _, _ := ri27d1JeuDArmes(c, p, r)
+	ecart("degaine", inv.DrawnSlot == p1)
+	mort, i12, vit := ri27d1Configuration(c, p, r)
+	ecart("marque", l.porteLaMarque() == (mort == ri27d1MortParDefaut && i12 == "1" && vit == ri27d1VitalitesMarque))
+	return out
+}
+
+// ri27d1Configuration relit, dans leurs bits, l etat de mort i11, le bit d i12 et le R(5) de tete
+// d i13 du record (-1 sans i13).
+func ri27d1Configuration(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Record) (mort, i12 string, vit int) {
+	i11 := archIndexOf(c.arch, deadStateComponentName)
+	i13 := archIndexOf(c.arch, compObjectMaximumVitalities)
+	vit = -1
+	for _, co := range p.Comps[r.Comps[0]:r.Comps[1]] {
+		if co.Etat != lecture.EtatInterprete && co.Etat != lecture.EtatDelimite { // traverse, interprete ou non
+			continue
+		}
+		switch int(co.Index) {
+		case i11:
+			mort = ri27d1Bits(p.Payload, int(co.Debut), int(co.Bits))
+		case i11 + 1:
+			i12 = ri27d1Bits(p.Payload, int(co.Debut), int(co.Bits))
+		case i13:
+			if co.Bits >= 5 {
+				br := LecteurSur(p.Payload)
+				br.SetBitPos(int(co.Debut))
+				vit = int(br.ReadBits(5)) //nolint:gosec // cinq bits
+			}
+		}
+	}
+	return mort, i12, vit
 }

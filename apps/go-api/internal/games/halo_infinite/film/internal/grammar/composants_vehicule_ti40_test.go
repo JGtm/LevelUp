@@ -25,7 +25,7 @@ func tamponDeBits(s string) []byte {
 func lireTi40(t *testing.T, bits, nom string, etatComplet bool) (int, bool) {
 	t.Helper()
 	br := LecteurSur(tamponDeBits(bits))
-	br.etatComplet = etatComplet
+	enEtatComplet(br, etatComplet)
 	_, _, porte := consumeByName(br, nom, 40, 1)
 	return br.BitPos(), porte
 }

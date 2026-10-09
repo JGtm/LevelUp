@@ -85,46 +85,15 @@ type KeyframeWalkCoverage struct {
 }
 
 // ScanKeyframeLoadoutsMarche est [ScanKeyframeLoadouts] qui rend AUSSI la couverture de la
-// marche d'image-clé du film. C'est la forme de la cuisson : ce balayage voit chaque paquet
-// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter. Il lit la phase
-// des images-clés ([canalDesArmesPortees]), marchée par la marche DU FILM
-// ([FilmContext.MarcheDImageCle], lot D-fix) : ses réfutations s'y comptent.
+// marche d'image-clé du film : la projection de [ScanEtatsDesImagesCles] sur les armes portées
+// (lot D1.1 de 2.7.d1). La cuisson appelle [ScanEtatsDesImagesCles] une fois ; cette forme sert les
+// enveloppes hors production et les instruments.
 func ScanKeyframeLoadoutsMarche(fc *FilmContext, known map[uint32]bool) (
 	[]types.KeyframeLoadout, KeyframeWalkCoverage, error,
 ) {
-	c := &canalDesArmesPortees{known: known}
-	distribuerLesImagesClesSeules(fc, []Canal{c})
-	if c.lus == 0 {
-		return nil, c.cov, ErrNoReadableFilmChunk
-	}
-	c.cov.BipedesAbsentsEncadres = bipedesAbsentsEncadres(c.bipedes)
-	return c.out, c.cov, nil
+	e, err := ScanEtatsDesImagesCles(fc, known, 0)
+	return e.Loadouts, e.Marche, err
 }
-
-// canalDesArmesPortees lit, dans la phase des images-clés, les armes portées par chaque bipède et
-// la couverture de la marche d'ancres.
-type canalDesArmesPortees struct {
-	known map[uint32]bool
-	out   []types.KeyframeLoadout
-	cov   KeyframeWalkCoverage
-	// bipedes : les bipèdes ancrés, par image-clé, dans l'ordre du film.
-	bipedes []map[uint32]bool
-	// lus : les chunks que la phase a pu lire.
-	lus int
-}
-
-func (*canalDesArmesPortees) Interets() []Interet { return nil }
-
-func (c *canalDesArmesPortees) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
-	c.cov.Ajouter(m.Ancres.Stats)
-	c.bipedes = append(c.bipedes, bipedesAncres(p.Records))
-	for _, l := range keyframeLoadoutsDe(p.Payload, p.Records, c.known) {
-		l.TimestampUS, l.Chunk, l.PacketIndex = p.TS, p.Chunk, p.Index
-		c.out = append(c.out, l)
-	}
-}
-
-func (c *canalDesArmesPortees) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
 
 // bipedesAncres rend l'ensemble des identifiants (`génération<<30|slot`) des bipèdes ancrés.
 func bipedesAncres(recs []lecture.Record) map[uint32]bool {

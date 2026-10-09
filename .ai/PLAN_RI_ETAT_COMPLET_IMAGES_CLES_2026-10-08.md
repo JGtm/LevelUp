@@ -935,29 +935,81 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
     (§3.1). D1.0 close.
 
 ### Étape D1.1 — Un seul canal de la phase des images-clés pour l'état complet du bipède
-- [ ] D1.1.1 `grammar/relecture_a_l_etendue.go` : assistant unique de relecture (Lecteur sur le
+- [x] D1.1.1 `grammar/relecture_a_l_etendue.go` : assistant unique de relecture (Lecteur sur le
       payload, `PoserContexte`, `etatComplet` + `portee`, observation locale, `SetBitPos(co.Debut)`,
       `consumeByNameCapturing`, contrôle de débordement compté).
-- [ ] D1.1.2 `grammar/keyframe_etat_complet_bipede.go` : canal `Interet{PhaseImagesCles, TI 35, nom}`
+      *Fait (lot C, 2026-10-09)* : `relecteurSur` (cadre d'un relecteur d'état par défaut),
+      `relecteurDEtatComplet` (contexte, état complet, portée, observation) et `relireLOccurrence`
+      (dispatch de production `consumeByNameCapturing` au premier bit de l'occurrence ; FAUX quand la
+      relecture ne tient pas l'étendue de la marche — lecteur non porté ou autre longueur —, compté
+      par l'appelant). Le contrôle est plus strict que celui de l'instrument (longueur égale, et non
+      seulement « pas au-delà ») : 0 débordement sur les 10 710 records du corpus.
+- [x] D1.1.2 `grammar/keyframe_etat_complet_bipede.go` : canal `Interet{PhaseImagesCles, TI 35, nom}`
       résolu PAR NOM pour i11, i12, i13, i22, `weapon-state-ammo`, `rounds-inventory`, `overheated`
       (rangs 0..3), i42, `weapon-state-type-info` (emplacements 0..3), i47 et son Alt, i48 et son Alt.
       Sorties en `types.*` : familles par emplacement (sentinelle d'emplacement vide), `Grenades[4]`
       (n ≠ 4 → refusé et compté), munitions, `DrawnSlot` = param[1] (U-3, U-4),
       `SelectedGrenadeRank` = sel − 1 (0 = aucune), rang de capacité (hors domaine compté), marque de
       portage selon U-2.
-- [ ] D1.1.3 Règle d'admission PAR RECORD selon U-1, écrite dans le code (doc = contrat) ; un record
+      *Fait (lot C)* : rôles résolus par nom dans le registre du film (`rolesDuBipede`, treize noms
+      dont les deux orthographes d'i47 et d'i48) ; relecture des occurrences sous les crochets d'une
+      observation locale ; i11, i12 et i13 lus dans leurs bits (configuration de la marque).
+      Publication (`keyframe_etat_complet_admission.go`) : dotation = famille de chaque emplacement
+      non vide, dans l'ordre des emplacements (ÉCART : la forme indexée par emplacement, avec sa
+      sentinelle, reste interne — E-8 interdit d'élargir la forme des faits, `types.KeyframeLoadout`
+      garde sa liste) ; `Grenades[4]` (un compte ≠ 4 n'est jamais admis : il tombe sous le refus
+      « ni fermé ni n(i22) = 4 » ou sous T2, comptés) ; munitions des quatre emplacements (chargeur,
+      jauge, réserve, et `Overheat`/`Flags` lus par `FUN_142f04c6c` : quantum R(7) et les deux bits,
+      §7 D-24) ; `DrawnSlot` = param[1] ; `SelectedGrenadeRank` = sélection − 1, −1 sans sélection ;
+      rang de capacité publié dans 16..23 seulement, hors domaine compté
+      (`ComptesDeLAdmission.CapaciteHorsDomaine`) ; marque = configuration U-2 (b) ;
+      `AmmoCandidates` = 1 (une lecture). Nouveau crochet `WeaponOverheatHook`.
+- [x] D1.1.3 Règle d'admission PAR RECORD selon U-1, écrite dans le code (doc = contrat) ; un record
       non admis ne rend rien (la fenêtre le prendra en D1.2).
-- [ ] D1.1.4 `lireJeuDArmes` (`unit_weaponstate.go`) : crochet publiant param[1] et param[2], seule
+      *Fait (lot C)* : `admettre` — (fermé OU n(i22) = 4) ET T1 ET T2, raison de refus comptée
+      (`RefusNiFermeNiI22`, `RefusT1`, `RefusT2`) ; doc = contrat, avec la mesure qui la fonde. Un
+      record non admis ne rend rien à ce pas.
+- [x] D1.1.4 `lireJeuDArmes` (`unit_weaponstate.go`) : crochet publiant param[1] et param[2], seule
       copie sous `lecteur_jeu_darmes_guard_test.go`.
-- [ ] D1.1.5 `player_teams.go` (`lireEquipeA`) et l'instrument d0 passent par l'assistant ; garde-rail
+      *Fait (lot C)* : `lireJeuDArmes` rend `JeuDArmes{Demande, Principal, Second}` (param[0..2]),
+      par `lireID2` (porte `FUN_1406d00ec` avec sa valeur, −1 à porte levée ; `consumeID2` l'appelle) ;
+      `DesiredWeaponSetHook` reçoit les trois champs. Doc corrigée (règle 17) : param[0] est
+      l'identifiant de demande, pas un emplacement. `TestLecteurDeJeuDArmesUnique` vert.
+- [x] D1.1.5 `player_teams.go` (`lireEquipeA`) et l'instrument d0 passent par l'assistant ; garde-rail
       (règle 6, 3e copie du motif) : aucune écriture de `etatComplet` ni de `portee` hors de
       `keyframe_fullstate_loop.go` et de l'assistant.
-- [ ] D1.1.6 Une seule distribution remplace les trois balayages actuels des fenêtres pour les
+      *Fait (lot C)* : `lireEquipeA` par `relecteurSur` ; l'instrument d0 par `relireLOccurrence`,
+      son témoin décalé par `relecteurDEtatComplet`. Garde-rail : `portee_ecriture_guard_test.go`
+      tient désormais les DEUX champs (AST de tous les fichiers du paquet, comptes exacts : marche
+      d'état complet 4 et 1, assistant 1 et 1, assistant de test 1 et 1) et remplace la garde par
+      expression de production `TestEtatCompletPoseParLaSeuleMarcheDEtatComplet` (retirée) ; les deux
+      tests unitaires qui posaient l'état complet passent par `enEtatComplet`. Mutation : écriture de
+      l'état complet dans `decodeDelta` → ROUGE.
+- [x] D1.1.6 Une seule distribution remplace les trois balayages actuels des fenêtres pour les
       records admis ; `KeyframeWalkCoverage` conservé ; aucun import de lecture côté `replay`.
-- [ ] D1.1.7 Coût : G-perf cuisson (4 films) et `BenchmarkPorteursAuSync` (4 films), en PAIRES
+      *Fait (lot C)* : `grammar.ScanEtatsDesImagesCles` (`keyframe_etats_scan.go`) — une
+      distribution, un canal : couverture de la marche d'ancres (`KeyframeWalkCoverage`, conservée),
+      armes, inventaire, marques, comptes d'admission. `ScanKeyframeLoadoutsMarche`,
+      `ScanKeyframeInventory`, `ScanCarrierMarks` en sont des projections (enveloppes D2, tests) ; les
+      trois anciens canaux de fenêtre sont retirés. `replay` : la cuisson l'appelle UNE fois
+      (`film_scan_images_cles.go`), l'inventaire et la marque la reprennent ; la lecture des porteurs
+      au sync aussi. Aucun import de `grammar/lecture` côté `replay`. DÉCISION D'EXÉCUTION : D1.1.6
+      bascule les SITES d'appel (la source des données) ; D1.3.1 reste la sémantique des
+      consommateurs (`Src`, records récupérés, `DrawnSlot`). La marque se lit désormais sur tous les
+      films (elle sort de la même marche) et ne se publie toujours que sur les films de CTF.
+- [x] D1.1.7 Coût : G-perf cuisson (4 films) et `BenchmarkPorteursAuSync` (4 films), en PAIRES
       alternées des binaires de base de l'étape 0 (`$S/e0/bench_base.test`,
       `$S/e0/replay-equiv_base.exe`) et de ceux du lot, sur machine calme → `$S/d11/perf.txt`
       (la mesure de base seule de 0.6 est non concluante, machine chargée).
+      *Fait (lot C)* : `$REF/../d1x/d11/perf.txt` (brut `perf/paires_d11.txt`). Trois paires alternées
+      de cuisson, trois du banc (cinq sur `1c4c63c2`), chaque tour sur machine sans processus `go`
+      étranger. **Surcoût > +10 % NON ÉTABLI** : le lot est plus rapide que la base dans chaque paire
+      propre (cuisson 0,73 à 0,96 ; sync 0,54 à 1,01 — la base est le code d'avant LK, ses trois
+      fenêtres marchaient chacune la phase) ; pics : médianes 0,95 à 1,07. Bruit des bases au-delà de
+      5 % sur les durées de cuisson (première paire, machine froide) et sur le pic du sync de
+      `1c4c63c2` (base bimodale 1 926 à 2 297 Mio, lot 2 229 à 2 252 Mio, à l'intérieur) : intervalle
+      publié (0,98 à 1,16). À ce pas, aucune fenêtre ne tourne derrière la lecture ; elle revient en
+      D1.2, et le coût final se juge en D1.4.
 - Tests : unitaires sur records fermés tirés de fixtures (i22, i42, i43..i46, i47 base 0, capacité hors
   domaine, débordement compté) ; mutations : retirer `portee` dans l'assistant (la grammaire relit
   quantifié, rouge) ; inverser la base d'i47 ; admettre un record sans T ; garde-rails
@@ -967,6 +1019,24 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   records admis ; couverture publiée (admis / 10 710, par format et par film) ; aucun débordement ;
   **coût ≤ +10 % de durée et de pic, cuisson et sync, sur chacun des 4 films (sinon ARRÊT : mesure
   publiée, l'utilisateur décide)**.
+- *Gate D1.1 joué le 2026-10-09 (lot C)* : **PASSÉ.** (1) Instrument d0 confronté au canal de
+  production (`ri27d1_d10_research_test.go`, `confronterAuCanal`, `$REF/../d1x/d11/images_cles.tsv`) :
+  même verdict d'admission sur les 10 710 records (6 507 admis, 4 203 non admis, 0 désaccord), valeurs
+  publiées égales à la relecture de l'instrument sur 6 507 / 6 507 records admis (armes, grenades,
+  chargeurs, réserves, emplacement désiré, grenade sélectionnée, capacité, marque) ; sortie de
+  l'instrument hors lignes `canal_*` identique à l'octet à `d10/`. (2) Couverture admise : 6 507 /
+  10 710 (60,8 %) — f20 34 / 1 652, f21 15 / 403, f24 2 392 / 3 097, f25 492 / 653, f27 3 574 / 4 905 ;
+  par film `$REF/../d1x/d10/couverture_par_film.tsv` (colonnes AT12 + BT12). (3) 0 débordement
+  (`canal_debordements_0` 10 710). (4) Coût : D1.1.7. Tests : `TestLeRelecteurPoseLeCadreDeLaMarche`,
+  `TestLaRegleDAdmission`, `TestLaPublicationDUnRecordAdmis`, `TestLaMarqueDePortageEstLaConfigurationDeLaFenetre`,
+  `TestLEtatCompletDesBobines` (7 bobines en contexte de cuisson, 0 débordement, comptes fixés),
+  `TestEtatCompletEtPorteeNeSontEcritsQueParLaMarche`, `TestLecteurDeJeuDArmesUnique` verts ; mutations
+  rouges (portée retirée du relecteur ; sélection d'i47 en base 1 ; T1 retiré ; T2 retiré ; état
+  complet écrit dans `decodeDelta`). `archlint` vert (dont `film_file_size`, état global gelé, sites du
+  registre : l'ancre du plafond de grenades suit `keyframe_etats_scan.go`). ROUGES ATTENDUS À CE PAS,
+  levés en D1.2 (les records non admis ne rendent rien, et la mini-bobine n'en admet aucun) :
+  `TestGoldenMiniBobineFamilles` (grammaire), `TestEquivalenceMiniFilm`, `TestInventoryRulesOnRealBinary`,
+  `TestMiniFilmDecodesTheKeyframes`, `TestZeroDisqueBalayagesSupportes` (rejeu).
 
 ### Étape D1.2 — Les fenêtres derrière la lecture : replis nommés, ordonnés, comptés
 - [ ] D1.2.1 `keyframe_loadout.go`, `keyframe_carrier_mark.go`, `inventory_decode.go`,

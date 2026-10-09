@@ -97,10 +97,8 @@ func (x *ri27d1Ext) temoinDeHasard(c *ri27d0Canal, p *lecture.Paquet, i int, ctx
 		if cr.Index != i22 {
 			continue
 		}
-		br := LecteurSur(p.Payload)
-		br.PoserContexte(ctx)
-		br.etatComplet = true
-		br.obs = &Observation{GrenadeCountsHook: func(v uint64, _ []uint64) { n = int(v) }} //nolint:gosec // R(3)
+		br := relecteurDEtatComplet(p.Payload, ctx,
+			&Observation{GrenadeCountsHook: func(v uint64, _ []uint64) { n = int(v) }}) //nolint:gosec // R(3)
 		br.SetBitPos(cr.StartBit)
 		consumeByNameCapturing(br, cr.Name, uint32(keyframeBipedTI), c.arch.Level(i22)) //nolint:gosec // archetype constant
 	}

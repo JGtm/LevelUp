@@ -54,9 +54,16 @@ func consumeOpt32(br *Lecteur) {
 
 // consumeID2 mirrors FUN_1406d00ec: R(1); if bit==0 R(2); else nothing.
 func consumeID2(br *Lecteur) {
-	if !br.ReadBit() {
-		br.ReadBits(2)
+	lireID2(br)
+}
+
+// lireID2 porte `FUN_1406d00ec` et rend sa valeur : R(1) ; a 0, R(2) est la valeur ; a 1, rien
+// n est lu et le jeu rend -1 (`0xffffffff`, l absence).
+func lireID2(br *Lecteur) int {
+	if br.ReadBit() {
+		return -1
 	}
+	return int(br.ReadBits(2)) //nolint:gosec // deux bits
 }
 
 // readVarWidthInt porte FUN_1406d3140 : l entier a largeur variable du flux.

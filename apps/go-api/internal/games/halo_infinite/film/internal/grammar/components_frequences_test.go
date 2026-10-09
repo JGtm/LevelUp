@@ -143,7 +143,7 @@ func TestBasseFrequenceNonPorteeDansUnEtatComplet(t *testing.T) {
 		w := &bitWriter{}
 		ecrireBasseFrequence(w, true, []entreeBasseFrequence{{drapeaux: 3, mot: 0x8001, code: 16}})
 		br, fin := lireAuTemoin(w)
-		br.etatComplet = etatComplet
+		enEtatComplet(br, etatComplet)
 		_, _, porte := consumeByName(br, compLowFrequency, archetypeFrequences, 0)
 		if etatComplet {
 			if porte || br.BitPos() != 0 {
