@@ -117025,3 +117025,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 63 lignes écartées par B1 sur le cliché (contre 5 010 avec `publishable` seul). Bases joueur Halo 5 : 2 à 9 étapes en attente selon la base (copies). Succès Xbox : 188 à 396 avertissements par jour ramenés à un par jeton mort. Gate : `go test` des 350 paquets vert, intégration sync/killcollector/duckdb verte, tsc à froid 0, vitest 366/366 ; CI `37950930526` verte. Revue superviseur : la nouvelle chaîne d'erreur s'adressait au joueur (« connecte-le ») → réécriture factuelle demandée, avec « Réessayer » passé en i18n et l'emoji retiré.
 
 **Conclusion / prochaine étape** : correctif de texte, puis fusion dans `feat/v75` sur accord du user ; prédicat de B1 à confirmer par le user.
+
+## [2026-10-09] Roi de la colline au rejeu : une seule colline à sa vraie place, sa capture, la barre de garde Doubles/Classé, l'étage — En cours (`feat/koth-colline`, plan `.ai/PLAN_KOTH_REJEU_2026-10-09.md`)
+
+**Demande** : signalement du user sur son 2v2 Roi de la colline (`0d9a9af9`) : toutes les collines affichées, capture invisible, barre de garde absente, pas d'étage sur la colline.
+
+**Décision technique principale** : E1 — la colline d'une période se place par la GARDE (présence du camp que le canal de propriété dit propriétaire, en frames, seuil 50 %), plus par la grappe pendant des « rampes » dont le départ est le retour à zéro de la capture précédente (cause de la 3e colline du témoin posée sur la 4e). Repli nommé `repli_colline_votes_sans_garde`.
+
+**Résultats observés** : témoin P3 z4 / P4 z2 (avant : z2 / z2) ; 11 films KOTH recuits un par un en cache isolé, 0 période fusionnée, 0 repli ; séquence de collines identique sur trois films classés de Lattice. La jauge de capture de colline existe dans le film (0 -> 1 en ~1 s, vidange ~1 s) sauf en Classé (prise instantanée, 0 émission). Seuils de garde mesurés : Doubles 35, Classé 40 (Vacancy, Lattice, Solitude), Arène 35 (contrôle).
+
+**Conclusion / prochaine étape** : E2 (publication de la jauge des collines, schéma 92), E3 (régulation), E4 (rendu), E5 (recuisson témoin), E6 (livraison).

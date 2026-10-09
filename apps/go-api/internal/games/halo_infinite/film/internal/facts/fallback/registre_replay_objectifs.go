@@ -8,6 +8,9 @@ package fallback
 // inscrit un repli (plan `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J5.5,
 // 2026-09-27). Déplacement pur : les entrées sont recopiées à l'octet, dans leur ordre.
 
+// dateLotColline : le jour du lot qui place une colline par la garde de son camp proprietaire.
+const dateLotColline = "2026-10-09"
+
 var registreReplayObjectifs = []Repli{
 	{
 		Nom:       "repli_drapeau_seul_en_jeu",
@@ -247,6 +250,21 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:       "repli_colline_votes_sans_garde",
+		Fait:      "ou se trouve la colline designee d'une periode",
+		Mecanisme: "aucune frame tenue ou le camp proprietaire a une position publiee : la periode se place par la grappe des positions pendant les montees de la jauge",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill.go",
+			Ancre:   "l.fb.Declenche(fallback.NomCollineVotesSansGarde)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    retraitRegle4,
+		CritereRetrait:  "0 periode sans garde lisible sur les films a colline du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_periode_entiere",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",
@@ -254,7 +272,7 @@ var registreReplayObjectifs = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgReplay + "zone_states_hill.go",
-			Ancre:   "votes = hillVotes(zones, pts, p.t0, p.t1)",
+			Ancre:   "votes = hillVotes(l.zones, l.pts, p.t0, p.t1)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la conversion du calque des collines ; a defaut, " + retraitRegle4,

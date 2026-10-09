@@ -184,42 +184,71 @@ func hillFirstContact(ser zoneSeries, d hillDesignator, slots []uint32) int {
 	return first
 }
 
-// buildDesignatedHills decoupe le match en periodes bornees par le designateur, apparie chaque
-// periode par la grappe des positions pendant les montees de la jauge qu'elle contient (a defaut,
-// pendant toute la periode), et publie les periodes localisees.
+// buildDesignatedHills decoupe le match en periodes bornees par le designateur, place chaque
+// periode sur la zone ou se tient le camp proprietaire (zone_states_hill_garde.go) — a defaut de
+// garde lisible, par la grappe des positions pendant les montees de la jauge, puis pendant toute la
+// periode — et publie les periodes localisees.
 func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 	cov *ZonesCoverage,
 ) []ZoneState {
 	cov.Method = ZoneMethodDesignator
-	ramps := zoneRampsOf(ser)
-	pts := zonePointsByFrame(c.tracks)
 	periods := hillDesignatedPeriods(h.d, c.frames)
 	cov.HillPeriods = len(periods)
+	// LE CANAL DE PROPRIETE EST CELUI DU BLOC DONT LE DESIGNATEUR EST LA CLE, designe par le nom
+	// (le slot voisin du designateur en repli). Niveau de preuve accepte et reserve : cf.
+	// hillStatesOf.
+	owner := ser.owner[hillOwnerSlotOf(ser, h.d, cov, c.fb)]
+	loc := hillLocator{zones: zones, ramps: zoneRampsOf(ser), pts: zonePointsByFrame(c.tracks),
+		team: hillTeamPointsByFrame(c.tracks), owner: owner, fb: c.fb}
 	kept := make([]hillPeriod, 0, len(periods))
 	for _, p := range periods {
-		votes := hillVotesInRamps(zones, pts, ramps, &p)
-		if len(votes) == 0 {
-			// REPLI NOMME ET COMPTE (D14) : aucune rampe de capture dans la periode, les votes
-			// sont repris sur TOUTE la periode — donc sur des instants ou personne ne capture.
-			c.fb.Declenche(fallback.NomCollineVotesPeriodeEntiere)
-			votes = hillVotes(zones, pts, p.t0, p.t1)
-		}
-		p.ref, p.hasRef = clearModalZone(votes)
-		if !p.hasRef {
-			// UNE COLLINE DESIGNEE QUE LA GRAPPE NE LOCALISE PAS EST ECARTEE ET SE COMPTE :
-			// elle a existe, on ne sait pas ou (cf. ZonesCoverage.Unpaired).
+		if !loc.place(&p) {
+			// UNE COLLINE DESIGNEE QUE NI LA GARDE NI LA GRAPPE NE LOCALISENT EST ECARTEE ET SE
+			// COMPTE : elle a existe, on ne sait pas ou (cf. ZonesCoverage.Unpaired).
 			cov.Unpaired++
 			continue
 		}
 		kept = append(kept, p)
 	}
-	// LE CANAL DE PROPRIETE EST CELUI DU BLOC DONT LE DESIGNATEUR EST LA CLE, designe par le nom
-	// (le slot voisin du designateur en repli). Niveau de preuve accepte et reserve : cf.
-	// hillStatesOf.
-	states := hillStatesOf(kept, ser.owner[hillOwnerSlotOf(ser, h.d, cov, c.fb)], h.teams, cov, c.fb)
+	states := hillStatesOf(kept, owner, h.teams, cov, c.fb)
 	cov.Paired = len(states)
 	tallyZoneStates(states, cov)
 	return states
+}
+
+// hillLocator porte ce que le placement d une periode lit (regle des 5 parametres).
+type hillLocator struct {
+	zones []Zone
+	ramps []zoneRamp
+	pts   map[int][]Point
+	team  map[int][]hillTeamPoint
+	owner []zoneSample
+	fb    *fallback.Compteur
+}
+
+// place pose la zone de la periode : par la GARDE d abord ; une garde illisible revient aux votes
+// de la grappe pendant les montees de la jauge, puis pendant toute la periode (deux replis
+// nommes). Faux quand la periode reste sans zone.
+func (l hillLocator) place(p *hillPeriod) bool {
+	ref, issue := hillGardeOf(l.zones, l.team, l.owner, p.t0, p.t1).place()
+	hillPeriodTop(l.ramps, p)
+	switch issue {
+	case hillGardePlacee:
+		p.ref, p.hasRef = ref, true
+		return true
+	case hillGardeEcartee:
+		return false
+	}
+	l.fb.Declenche(fallback.NomCollineVotesSansGarde)
+	votes := hillVotesInRamps(l.zones, l.pts, l.ramps, p)
+	if len(votes) == 0 {
+		// REPLI NOMME ET COMPTE (D14) : aucune rampe de capture dans la periode, les votes
+		// sont repris sur TOUTE la periode — donc sur des instants ou personne ne capture.
+		l.fb.Declenche(fallback.NomCollineVotesPeriodeEntiere)
+		votes = hillVotes(l.zones, l.pts, p.t0, p.t1)
+	}
+	p.ref, p.hasRef = clearModalZone(votes)
+	return p.hasRef
 }
 
 // hillDesignatedPeriods rend une periode par colline : [premier contact ; b1-1], [b1 ; b2-1],
