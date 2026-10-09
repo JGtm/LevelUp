@@ -219,19 +219,6 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
 
 ---
 
-### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
-
-> Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
-> Reste 1 micro-tâche optionnelle, non bloquante :
-- [x] Documenter le default async ON — fait : `LEVELUP_PERSIST_BATCH_ASYNC` (défaut on,
-      kill-switch `0`, retrait cible >= 2026-Q4) est documenté dans `docs/CONFIGURATION.md`
-      et `docs/FR/CONFIGURATION.md` (constaté le 2026-09-19).
-- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod — le janitor
-      tourne toujours 1×/24h (`cmd/server/main.go`, section « Phase 4.7 closure ») ; aucun
-      signal prod ne l'a justifié à ce jour.
-
----
-
 ### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — V9 POTENTIELLE
 
 > ⏸️ **Gardé de côté** (2026-06-09) : conservé pour distribution desktop néophyte future. Note : le cutover Go étant fait, le « backend Python local packagé » ci-dessous doit se lire **backend Go local** — à re-cadrer si réactivé.
