@@ -82,13 +82,13 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot D — Démo (après A et B, parallèle à C ; relecture adversariale)
 
-- [ ] D1 Garde « démo en lecture seule » générale avec liste blanche des POST de lecture ;
+- [x] D1 (middleware `DemoReadOnly` à la racine, 403 unique, ratchet sur le routeur démo, 26 écritures nommées laissées passer) Garde « démo en lecture seule » générale avec liste blanche des POST de lecture ;
   un seul contrat de refus (403 `demo_mode_forbidden`) ; `PATCH /profiles/{p}/titles/{t}/sync`,
   `POST /watcher/auth/start` et les actions admin couvertes.
-- [ ] D2 `internal/ops/seed_demo_corpus.go` : `UPDATE kill_positions` sur table append-only →
+- [x] D2 (anonymisation à la copie par `SELECT * REPLACE`, garde-rail `internal/ops` ; correctif `first_sync_by` en cours) `internal/ops/seed_demo_corpus.go` : `UPDATE kill_positions` sur table append-only →
   anonymiser à la copie ; commentaire faux de `seed_demo.go` sur `kill_positions` ; garde-rail
   d'écriture étendu à `internal/ops`.
-- [ ] D3 Rejeux de la démo (D-1 à D-3) : choix d'un match par mode, films et artefacts embarqués
+- [x] D3 (10 modes figés au manifeste démo, films et artefacts embarqués, recuisson auto prouvée, `ReplayGate`, noms remplacés dans le document servi) Rejeux de la démo (D-1 à D-3) : choix d'un match par mode, films et artefacts embarqués
   par `seed-demo`, service en mode démo, recuisson automatique à la montée de schéma, noms masqués
   par l'interface.
 - Gate : tests du garde démo (chaque mutation refusée, chaque lecture permise), démo lancée en
@@ -131,8 +131,15 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-09 : lot C rendu (`feat/recos-c`, 7 commits, CI verte) ; deux relectures adversariales lancées (écritures anti-ART, couverture des tests).
 
+- 2026-10-09 : lot D rendu (`feat/recos-d`, 4 commits, CI verte) ; fuite de vrais gamertags par `match_registry.first_sync_by` renvoyée à l'exécutant avec balayage systématique des colonnes d'identité ; Extraction et Escalation Slayer sans rejeu démo (films d'autres joueurs), Castle Wars écarté.
+
 ## Découvertes
 
+- (lot D) `POST …/prestige/challenges/{id}/suggest-next` classé écriture alors que c'est une lecture (refusé en démo).
+- (lot D) E2E `media-like-bug.spec.ts` suppose un like possible en démo.
+- (lot D) DB-39 (`dir_exists`/`db_exists` faux dans Identités en démo) et DB-41 (CLI en `LEVELUP_DEMO_MODE=true` qui écrit dans la fixture) restent ouverts.
+- (lot D) `weapon_kills` encore déclarée dans la liste d'extraction de la démo alors que la table n'existe plus.
+- (lot D) Déploiement : provisionner une fois `data/demo/replays/` (~310 Mo) sur le VPS ; recuisson démo sur le VPS à chaque montée de schéma (plafond 3 Gio).
 - (lot C) `cmd/lusr_v2_replay` et `cmd/lusr_v2_canonical_backfill` font un DELETE sur `player_skill_state_v2` (append-only partagée) ; `cmd/` hors du ratchet `TestNoRawDeleteOnAppendOnlyTables` ; chemins construits à la main dans `lusr_v2_canonical_backfill`.
 - (lot C) `cmd/backfill-csr-history` et `cmd/h5-enrich` ouvrent les bases joueur par `sql.Open` (risque de séquence).
 - (lot C) Base Halo Infinite de Chocoboflor : sept tables prestige sans PK ; `written_at` en TIMESTAMPTZ sur `match_skill_rank` et `player_csr_snapshots`.
