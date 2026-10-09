@@ -54,7 +54,6 @@ var bareDuckDBRWOpenAllowlist = map[string]int{
 	"cmd/diag_bot_resolution/main.go":         1,
 	"cmd/diag_citation_counters/main.go":      1,
 	"cmd/diag_composite/main.go":              1,
-	"cmd/diag_exec/main.go":                   1,
 	"cmd/duckdb_7659_repro/main.go":           2,
 	"cmd/h5-enrich/main.go":                   1,
 	"cmd/h5-events-backfill/main.go":          1,

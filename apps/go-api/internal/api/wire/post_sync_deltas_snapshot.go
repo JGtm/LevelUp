@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
@@ -234,9 +235,9 @@ func SnapshotPlayerState(
 			err := sharedDB.QueryRowContext(ctx, `
 				SELECT
 					CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)        AS kd_ratio,
-					AVG(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END)            AS winrate
+					AVG(CASE WHEN outcome = ? THEN 1.0 ELSE 0.0 END)            AS winrate
 				FROM match_participants
-				WHERE xuid = ?`+campagneExclue, pdb.XUID).Scan(&kd, &winrate)
+				WHERE xuid = ?`+campagneExclue, domain.OutcomeWin, pdb.XUID).Scan(&kd, &winrate)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				slog.DebugContext(ctx, "snapshot: kd/winrate", "err", err)
 			}
