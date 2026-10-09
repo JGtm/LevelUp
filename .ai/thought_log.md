@@ -116956,3 +116956,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** (copie du 08/10, 2 threads / 512 Mo) : 9,6-9,8 s → 0,43-0,67 s, réponses identiques octet pour octet ; Q28c JGtm 615 → 170 ms. Effets voulus : pics CSR/LUSR d'une cible suivie réapparaissent (le blocage les masquait) ; bannière d'une cible non suivie choisie dans le pool complet. Gates vet/tests/integration duckdb/archlint, golangci-lint 0, vitest explorer 261/261.
 
 **Conclusion / prochaine étape** : appels réseau Halo du premier passage non mesurés (1-2 s attendus). Découvertes : pool de bannières relit 5 identités par requête (~90 ms) ; « Partycz » présent 1 880 fois dans le journal des frags sans être participant.
+
+## [2026-10-09] Recuisson du parc au schéma 90 et rattrapages (lots film de levelup-2c et arrêts vue B suite de levelup-5c) — Complété (accord du user « oui » du 09/10)
+
+**Statut** : Complété, serveur arrêté pendant la passe, air relancé à 10:48. Binaire CLI de feat/v75 `d429dc517`.
+
+**Résultats observés** : `backfill-replay --only-existing` 172 artefacts, 0 erreur de décodage / préparation / mémoire (18 min) ; `backfill-usage-summary` 172 (121 prises sans famille, replis projection 243+9) ; `backfill-pad-tiers --force` 172 écrits (2 404 lignes, 16 matchs sans carte de référence) ; `backfill-vehicle-takes --force` 172 ; `backfill-bomb-stats --force`, `backfill-flag-grabs-net --force` ok ; `backfill-killsource` 70 min, code 0 : 1 901 matchs, 200 254 morts écrites, 0 erreur de décodage ni d'écriture, 41 passes non publiables, 31 sans fil des frags. Témoins en base : `0a08d2f2` 124 lignes (119 avant), JGtm 20 frags = 20 officiels ; Prism `5c38f581` : 6 prises « puissance » (Needler compris), plus de « non classé ».
+
+**Conclusion / prochaine étape** : gate visuel du user (Narrows : frag de JGtm sur bot ; Prism : Needler en puissance, socle au milieu au rejeu). Restent les points 14 et 15 (mis de côté par le user) et la commande `backfill-map-callouts` (liste pré-release Notion).
