@@ -166,6 +166,8 @@ peut alors partir, en commençant par la recherche hors ligne de la table dans l
 installé (A5.0). Les 16 répliques sont déjà extraites et converties sous
 `Desktop/Halo Infinite - Sons armes/_fin_partie/annonceur_{fr,en}_wav/` (non normalisées ; les
 copies de `livraison/` y sont restées en 4 canaux). **Effort : M.**
+**Constat du user le 2026-10-09 : aucun mode à plus de deux équipes (hors FFA) n'est disponible en
+jeu actuellement.** Le lot reste en attente d'un tel mode.
 
 ---
 
@@ -182,7 +184,7 @@ manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 - `InfectionStats` : « Survive The Undead 3.0 » est un Firefight UGC (catégorie 41), pas
   un Infection. Aucun mode Infection en base.
 
-**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser (le user tente le 2026-10-09 si les modes sont disponibles en jeu).
+**Déblocage** : jouer une partie matchmaking de chacun de ces modes, puis la synchroniser. **Constat du user le 2026-10-09 : ni Élimination ni Infection ne sont disponibles en jeu actuellement.**
 Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
 explicite d'inventer le schéma par analogie.
 
