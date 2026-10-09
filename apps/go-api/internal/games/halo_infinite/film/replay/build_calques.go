@@ -92,18 +92,26 @@ func (a *assemblage) poserPrisesEtSocles() {
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks}, a.opt.Labels)
 	// DATATION DES OCCUPATIONS DE SOCLE par l'evenement natif : l'intervalle de vingt secondes
 	// devient un instant, et `xuid` cesse d'etre `null`, QUAND un ramassage natif de la meme
-	// famille tombe dans la fenetre. Rien n'est efface : une occupation non couverte garde son
-	// intervalle intact (pad_pickup_dating.go).
-	padDating := datePadPickups(a.doc.WeaponPads, a.doc.PadPickups, a.doc.Pickups)
+	// famille tombe seul dans la fenetre (la lecture) — ou, quand plusieurs y tombent, quand la
+	// regle de la premiere prise du cycle designe le sien (repli compte). Le releve des socles hors
+	// de l emprise s intercale : il ne lit que la lecture, et le repli juge la presence AU SOCLE sur
+	// la position relevee. Rien n'est efface : une occupation non couverte garde son intervalle
+	// intact (pad_pickup_dating.go).
+	datation := lireLesOccupations(a.doc.WeaponPads, a.doc.PadPickups, a.doc.Pickups)
+	a.releverLesSocles(judge)
+	clockSocles := replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount}
+	padDating := datation.trancherParLeCycle(localiserParLeCanalNatif(a.opt.Pickups, clockSocles, judge.positionDe))
+	a.opt.Fallbacks.DeclencheN(fallback.NomPriseDeSoclePremiereDuCycle, padDating.FirstOfCycle)
 	a.doc.Coverage.PadDating = &padDating
 	slog.InfoContext(a.ctx, "rejeu : datation des occupations de socle",
 		"occupations", padDating.Occupations, "datees", padDating.Dated, "nommees", padDating.Named,
+		"premieresDuCycle", padDating.FirstOfCycle,
 		"ambigues", padDating.Ambiguous, "nonCouvertes", padDating.Uncovered)
-	a.releverLesSocles(judge)
 }
 
 // releverLesSocles releve les socles d arme hors de l emprise jouee au lieu ou leurs armes sont prises
-// (ground_weapon_pads_releve.go). APRES la datation : ce sont les occupations datees qui localisent.
+// (ground_weapon_pads_releve.go). APRES la LECTURE de la datation : ce sont les occupations qu elle
+// date qui localisent ; le repli de la premiere prise du cycle vient apres, sur la position relevee.
 func (a *assemblage) releverLesSocles(judge *pickupOriginJudge) {
 	cov := a.doc.Coverage.GroundWeapons
 	if cov == nil {

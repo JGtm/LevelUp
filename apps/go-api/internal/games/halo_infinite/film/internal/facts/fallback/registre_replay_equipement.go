@@ -5,6 +5,9 @@ package fallback
 
 const pkgReplay = "internal/games/halo_infinite/film/replay/"
 
+// dateLotNeedler : le jour du lot qui pose la regle de la premiere prise de socle du cycle.
+const dateLotNeedler = "2026-10-09"
+
 var registreReplayEquipement = []Repli{
 	{
 		Nom:       "repli_piece_engendree_sans_evenement",
@@ -278,6 +281,31 @@ var registreReplayEquipement = []Repli{
 		DatePose:        date0927,
 		CibleRetrait:    "conversion le jour ou une lecture du lacher est trouvee (evenement natif ou composant de l objet) ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
 		CritereRetrait:  "origine lue dans le film pour chaque objet au sol publie `dropped`, ET 0 declenchement sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
+	{
+		// LOT NEEDLER DES AJUSTEMENTS (2026-10-09) : la regle de jeu posee par l utilisateur (une
+		// seule prise de socle par reapparition de l arme) tranche les fenetres que la lecture du
+		// canal natif laisse ambigues.
+		Nom:  "repli_prise_de_socle_premiere_du_cycle",
+		Fait: "quel ramassage natif date et nomme une occupation de socle d arme quand sa fenetre en porte plusieurs, ou un que d autres occupations revendiquent",
+		Mecanisme: "le premier ramassage de la famille du socle fait apres l apparition de l occupation et avant l apparition suivante du socle, " +
+			"ramasseur a moins de 1,5 m (originDropMaxDist) du socle ; un ramassage plus tot non localise, ou designe pour deux occupations, " +
+			"fait s abstenir ; un ramassage date par la lecture n est jamais repris ; compte = occupations ainsi datees (coverage.padDating.firstOfCycle)",
+		// LE NEGATIF QUI L OUVRE : l evenement natif `biped_pickup` ne porte pas l instance de l objet
+		// ramasse (hypothese mesuree et refutee, en-tete de `replay/pad_pickup_dating.go`).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "pad_pickup_dating_cycle.go",
+			Ancre:   "func premieresPrisesDuCycle(in entreesDuCycle, fenetres [][]int, retenu []int) int {",
+		}, {
+			Fichier: pkgReplay + "build_calques.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomPriseDeSoclePremiereDuCycle, padDating.FirstOfCycle)",
+		}},
+		DatePose:        dateLotNeedler,
+		CibleRetrait:    "conversion le jour ou le film designe l objet ramasse (instance dans l evenement natif, ou suppression d entite isolable a l instant de la prise)",
+		CritereRetrait:  "chaque occupation datee par une lecture de l objet ramasse, ET coverage.padDating.firstOfCycle a 0 sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
 }

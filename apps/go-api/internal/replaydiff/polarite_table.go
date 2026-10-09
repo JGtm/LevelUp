@@ -145,10 +145,12 @@ var tablePolarites = []blocPolarites{
 		Echecs:  "outOfAxis",
 		Succes:  "lives points",
 		Neutres: "declared motionless"},
+	// `firstOfCycle` est la VOIE du repli `repli_prise_de_socle_premiere_du_cycle` parmi les
+	// occupations `dated` (comme `groundWeapons.releves`) : neutre ; le gain se lit sur `dated`.
 	{Blocs: []string{"coverage.padDating."},
 		Echecs:  "ambiguous uncovered",
 		Succes:  "dated named",
-		Neutres: "occupations powerupOccupations"},
+		Neutres: "firstOfCycle occupations powerupOccupations"},
 	{Blocs: []string{"coverage.pickups."},
 		Echecs: "multiEvent originUnknown refused unknownFamilies spawnerByPointKind.unknown",
 		Succes: "decoded named originGround originSpawner published",
