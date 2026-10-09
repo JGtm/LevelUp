@@ -38,8 +38,7 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 		}
 		return nil, err
 	}
-	defer rows.Close()
-	if err := rows.Scan(
+	scanErr := rows.Scan(
 		&row.RankNumber,
 		&row.CurrentXP,
 		&row.XPForNextRank,
@@ -51,8 +50,15 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 		&emblemImageURL,
 		&backdropImageURL,
 		&adornmentImagePath,
-	); err != nil {
-		return nil, err
+	)
+	// Curseur FERMÉ avant les lectures suivantes (pics CSR/LUSR) : la base joueur n'a qu'UNE
+	// connexion (poolSingleConn) ; un curseur encore ouvert la garde, et la lecture suivante
+	// attend alors une connexion jusqu'à l'échéance du contexte.
+	if closeErr := rows.Close(); scanErr == nil && closeErr != nil {
+		scanErr = closeErr
+	}
+	if scanErr != nil {
+		return nil, scanErr
 	}
 
 	if spartanID.Valid {
