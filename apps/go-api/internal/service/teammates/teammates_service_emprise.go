@@ -58,7 +58,7 @@ func (s *TeammatesService) loadEmprise(
 	lecteur := squadagg.EmpriseLecteur{Page: "teammates", Player: s.gamertag, RepoRoot: s.repoRoot, TitleSlug: s.titleSlug}
 	scopeIDs := teammatesMatchIDs(scope)
 	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, s.empriseRepo, scopeIDs)
-	in.Journal = lecteur.Journal(ctx, s.empriseRepo, scopeIDs)
+	in.Journal = lecteur.Journal(ctx, s.empriseRepo, scopeIDs, in.Weapons)
 	in.Film, in.FilmUnavailable = lecteur.Film(ctx, s.sessionUsageRepo, current, timeline, lu.lectures)
 	// La ressource véhicules vient de l'artefact, pas du résumé d'usage : sa propre lecture et sa propre
 	// section, sur le périmètre ET les matchs de l'habitude.

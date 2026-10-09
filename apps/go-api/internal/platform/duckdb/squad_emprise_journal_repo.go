@@ -8,7 +8,9 @@
 //	porte      `publishable` : la passe de décodage est fiable ligne à ligne. Un frag compté par
 //	           ARME et par TUEUR est une lecture ligne à ligne ; un match dont la passe ne l'est pas
 //	           n'est pas « lu » et l'Emprise retombe sur la feuille de match.
-//	tueur      `feed_killer_xuid`, le tueur du kill-feed. Les bots (xuid NULL) ne sont pas comptés.
+//	tueur      `feed_killer_xuid`, le tueur du kill-feed, et `victim_xuid` : le calcul en tire le camp
+//	           du tueur, écarte suicides et trahisons, et range un tueur bot (xuid NULL) d'après sa
+//	           victime (analysis/squademprise/special_frags.go).
 //	arme       `source_tag` traduit en clé de registre par le classificateur du titre ; une source
 //	           sans clé (mêlée, grenade, environnement) n'est la frappe d'aucune arme de socle.
 //
@@ -27,17 +29,17 @@ import (
 )
 
 // qSquadEmpriseJournal : les lignes publiables des matchs demandés (%s : le prédicat de liste), par
-// (match, tueur, source). Les lignes sans tueur nommé ou sans source restent dans le groupe NULL :
-// elles disent que la passe est lue sans être comptées.
+// (match, tueur, victime, source). Une ligne sans source dit que la passe est lue sans être comptée.
 const qSquadEmpriseJournal = `
-SELECT k.match_id, k.feed_killer_xuid, k.source_tag, COUNT(*)::INTEGER AS frags
+SELECT k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag, COUNT(*)::INTEGER AS frags
 FROM ` + KillEventsCanonicalTable + ` k
 WHERE %s AND k.publishable
-GROUP BY k.match_id, k.feed_killer_xuid, k.source_tag
-ORDER BY k.match_id, k.feed_killer_xuid, k.source_tag`
+GROUP BY k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag
+ORDER BY k.match_id, k.feed_killer_xuid, k.victim_xuid, k.source_tag`
 
-// LoadJournalWeaponKills rend les frags par (match, tueur, clé d'arme) du journal des morts, et les
-// matchs dont le journal est publiable. Liste vide ou sans classificateur : lecture vide.
+// LoadJournalWeaponKills rend les frags par (match, tueur, victime, clé d'arme) du journal des
+// morts, et les matchs dont le journal est publiable. Liste vide ou sans classificateur : lecture
+// vide.
 func (r *SquadEmpriseRepo) LoadJournalWeaponKills(ctx context.Context, matchIDs []string) (squademprise.JournalRead, error) {
 	out := squademprise.JournalRead{Read: map[string]bool{}}
 	if len(matchIDs) == 0 {
@@ -72,14 +74,16 @@ func (r *SquadEmpriseRepo) LoadJournalWeaponKills(ctx context.Context, matchIDs 
 		var (
 			match  string
 			killer sql.NullString
+			victim sql.NullString
 			tag    sql.NullInt64
 			n      int
 		)
-		if err := rows.Scan(&match, &killer, &tag, &n); err != nil {
+		if err := rows.Scan(&match, &killer, &victim, &tag, &n); err != nil {
 			return out, fmt.Errorf("SquadEmpriseRepo: journal scan: %w", err)
 		}
 		out.Read[match] = true
-		if !killer.Valid || !tag.Valid {
+		// Sans source, ou tueur et victime tous deux bots : ni arme ni camp à lire.
+		if !tag.Valid || (!killer.Valid && !victim.Valid) {
 			continue
 		}
 		key, ok := r.classifier.KillSourceRegistryKey(uint32(tag.Int64))
@@ -87,7 +91,9 @@ func (r *SquadEmpriseRepo) LoadJournalWeaponKills(ctx context.Context, matchIDs 
 			sansCle += n
 			continue
 		}
-		out.Rows = append(out.Rows, squademprise.JournalKillRow{MatchID: match, XUID: killer.String, WeaponKey: key, Kills: n})
+		out.Rows = append(out.Rows, squademprise.JournalKillRow{
+			MatchID: match, XUID: killer.String, VictimXUID: victim.String, WeaponKey: key, Kills: n,
+		})
 	}
 	if err := rows.Err(); err != nil {
 		return out, fmt.Errorf("SquadEmpriseRepo: journal rows: %w", err)

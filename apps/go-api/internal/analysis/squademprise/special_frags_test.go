@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 )
@@ -83,5 +84,89 @@ func TestBuild_FragsAuxArmesSpeciales_FamillePartagee(t *testing.T) {
 	in.Film.PadTiers = append(in.Film.PadTiers, tier("m1", "E1", domain.PadTierGround, lr, 1))
 	if pwk := Build(in).Matches[0].PowerWeaponKills; pwk == nil || *pwk != (domain.SquadEmpriseCount{}) {
 		t.Errorf("frags aux armes spéciales = %+v, attendu 0 / 0 (famille aussi au râtelier)", pwk)
+	}
+}
+
+// armesDuRendement rend les frags et l'exposition (prises) du rendement des armes spéciales.
+func armesDuRendement(t *testing.T, b domain.SquadEmpriseBlock) (frags, prises domain.SquadEmpriseCount) {
+	t.Helper()
+	for _, p := range b.Production {
+		if p.Resource == domain.EmpriseResourcePowerWeapon && p.Exposure != nil {
+			return p.Exposure.Kills, p.Exposure.Value
+		}
+	}
+	t.Fatalf("production sans rendement des armes spéciales : %+v", b.Production)
+	return
+}
+
+// TestBuild_FragsAuxArmesSpeciales_FamilleHorsPuissanceEcartee — une famille du socle de puissance
+// qu'un autre emplacement du match porte aussi (râtelier, départ, emplacement non identifié), ou
+// sans clé de registre, sort du rendement DES DEUX CÔTÉS : ni ses frags ni ses prises. Une ligne à
+// zéro prise ne qualifie ni n'écarte une famille.
+func TestBuild_FragsAuxArmesSpeciales_FamilleHorsPuissanceEcartee(t *testing.T) {
+	cas := map[string]func(*Input){
+		"râtelier": func(in *Input) {
+			in.Film.PadTiers = append(in.Film.PadTiers, tier("m1", "E1", domain.PadTierGround, lr, 1))
+		},
+		"départ": func(in *Input) {
+			in.Film.PadTiers = append(in.Film.PadTiers, tier("m1", "E1", domain.PadTierBase, lr, 1))
+		},
+		"non identifié": func(in *Input) {
+			in.Film.PadTiers = append(in.Film.PadTiers, tier("m1", "E1", domain.PadTierUnclassified, lr, 1))
+		},
+		"sans clé registre": func(in *Input) { in.Weapons[lr] = squadformes.WeaponInfo{Label: "M41 SPNKr"} },
+	}
+	for nom, muter := range cas {
+		in := entreeAvecJournal()
+		muter(&in)
+		frags, prises := armesDuRendement(t, Build(in))
+		if frags != (domain.SquadEmpriseCount{}) || prises != (domain.SquadEmpriseCount{}) {
+			t.Errorf("%s : rendement frags %+v / prises %+v, attendu 0 / 0 des deux côtés", nom, frags, prises)
+		}
+	}
+	// Zéro prise : une ligne de râtelier vide n'écarte pas la famille, une ligne de puissance vide
+	// ne qualifie pas une autre famille.
+	in := entreeAvecJournal()
+	in.Weapons["0a000009"] = squadformes.WeaponInfo{WeaponKey: "hammer"}
+	in.Film.PadTiers = append(in.Film.PadTiers,
+		tier("m1", "E1", domain.PadTierGround, lr, 0), tier("m1", "E1", domain.PadTierPower, "0a000009", 0))
+	in.Journal.Rows = append(in.Journal.Rows, JournalKillRow{MatchID: "m1", XUID: "P", WeaponKey: "hammer", Kills: 9})
+	frags, prises := armesDuRendement(t, Build(in))
+	if frags != (domain.SquadEmpriseCount{Us: 5, Them: 2}) || prises != (domain.SquadEmpriseCount{Us: 2, Them: 1}) {
+		t.Errorf("lignes à zéro prise : rendement frags %+v / prises %+v, attendu 5 / 2 et 2 / 1", frags, prises)
+	}
+}
+
+// TestBuild_FragsAuxArmesSpeciales_SuicideTrahisonBot — un suicide et une trahison ne sont pas des
+// frags ; un tueur bot se range d'après sa victime : adversaire d'une victime de notre camp, nôtre
+// pour une victime de l'autre camp dans un match à deux camps, non compté au-delà.
+func TestBuild_FragsAuxArmesSpeciales_SuicideTrahisonBot(t *testing.T) {
+	in := entreeAvecJournal()
+	in.Journal.Rows = []JournalKillRow{
+		{MatchID: "m1", XUID: "A", VictimXUID: "A", WeaponKey: keyLance, Kills: 1},  // suicide
+		{MatchID: "m1", XUID: "X", VictimXUID: "X", WeaponKey: keyLance, Kills: 1},  // suicide, camp inconnu
+		{MatchID: "m1", XUID: "A", VictimXUID: "P", WeaponKey: keyLance, Kills: 1},  // trahison
+		{MatchID: "m1", XUID: "A", VictimXUID: "E1", WeaponKey: keyLance, Kills: 1}, // frag
+		{MatchID: "m1", VictimXUID: "P", WeaponKey: keyLance, Kills: 2},             // bot adverse
+		{MatchID: "m1", VictimXUID: "E2", WeaponKey: keyLance, Kills: 3},            // bot de notre camp
+		{MatchID: "m1", VictimXUID: "inconnu", WeaponKey: keyLance, Kills: 4},       // camp indéductible
+	}
+	if pwk := Build(in).Matches[0].PowerWeaponKills; pwk == nil || *pwk != (domain.SquadEmpriseCount{Us: 4, Them: 2}) {
+		t.Errorf("frags aux armes spéciales = %+v, attendu 4 / 2", pwk)
+	}
+	// Trois camps : le bot qui tue un adversaire n'est plus forcément des nôtres.
+	in.Film.Participants = append(in.Film.Participants, sessionusage.ParticipantRow{MatchID: "m1", XUID: "T", TeamID: equipe(2)})
+	if pwk := Build(in).Matches[0].PowerWeaponKills; pwk == nil || *pwk != (domain.SquadEmpriseCount{Us: 1, Them: 2}) {
+		t.Errorf("trois camps : frags aux armes spéciales = %+v, attendu 1 / 2", pwk)
+	}
+}
+
+// TestBuild_FragsAuxArmesSpeciales_CatalogueVide — sans catalogue d'armes, aucune famille ne se
+// traduit : la feuille de match, jamais un 0 / 0.
+func TestBuild_FragsAuxArmesSpeciales_CatalogueVide(t *testing.T) {
+	in := entreeAvecJournal()
+	in.Weapons = map[string]squadformes.WeaponInfo{}
+	if pwk := Build(in).Matches[0].PowerWeaponKills; pwk == nil || *pwk != (domain.SquadEmpriseCount{Us: 3, Them: 2}) {
+		t.Errorf("catalogue vide : frags aux armes spéciales = %+v, attendu la feuille 3 / 2", pwk)
 	}
 }

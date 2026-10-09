@@ -59,7 +59,7 @@ func productionArmes(s *soiree) (domain.SquadEmpriseProduction, bool) {
 	if s.tiersMatches == 0 {
 		return p, true
 	}
-	prises := s.obj.total(domain.EmpriseResourcePowerWeapon)
+	prises := s.prisesRendement
 	p.Exposure = &domain.SquadEmpriseExposure{
 		Kind: domain.EmpriseExposurePickups, Value: prises, Kills: s.pwkOnTiers,
 	}

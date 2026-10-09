@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squademprise"
+	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability/timing"
@@ -60,11 +61,19 @@ func (l EmpriseLecteur) Feuille(
 }
 
 // Journal lit les frags par arme du journal des morts des matchs `ids` (frags aux armes spéciales
-// des matchs aux niveaux mesurés). Nil quand il ne se lit pas : repo nil, capability non supportée,
-// lecture en échec — les frags aux armes spéciales se lisent alors sur la feuille de match, et
-// l'échec est journalisé (jamais une erreur de page).
-func (l EmpriseLecteur) Journal(ctx context.Context, repo port.SquadEmpriseRepository, ids []string) *squademprise.JournalRead {
+// des matchs aux niveaux mesurés). Nil quand il ne se lit pas : repo nil, catalogue d'armes vide
+// (aucune famille de socle ne se traduit en clé de registre), capability non supportée, lecture en
+// échec — les frags aux armes spéciales se lisent alors sur la feuille de match, et le repli est
+// journalisé (jamais une erreur de page).
+func (l EmpriseLecteur) Journal(
+	ctx context.Context, repo port.SquadEmpriseRepository, ids []string, weapons map[string]squadformes.WeaponInfo,
+) *squademprise.JournalRead {
 	if repo == nil || len(ids) == 0 {
+		return nil
+	}
+	if len(weapons) == 0 {
+		slog.WarnContext(ctx, "emprise_journal_sans_catalogue_repli_feuille",
+			"page", l.Page, "player", l.Player, "matchs", len(ids))
 		return nil
 	}
 	read, err := repo.LoadJournalWeaponKills(ctx, ids)

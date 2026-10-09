@@ -10,8 +10,9 @@ import (
 )
 
 // TestSquadEmpriseRepo_Journal_DernierePassePubliableParTueurEtArme — la vue `_latest` seule (la
-// passe supplantée ne compte pas), par (tueur, clé d'arme) ; un bot (tueur NULL) et une source sans
-// clé de registre marquent la passe lue sans être comptés.
+// passe supplantée ne compte pas), par (tueur, victime, clé d'arme) ; un bot qui tue un bot et une
+// source sans clé de registre marquent la passe lue sans être comptés ; un bot qui tue un joueur
+// nommé garde sa victime (le calcul en déduit son camp).
 func TestSquadEmpriseRepo_Journal_DernierePassePubliableParTueurEtArme(t *testing.T) {
 	pdb := newKillSourceTestPlayerDB(t)
 	insertKill(t, pdb, kscDecodeV1, true, "A", kscTagRifle, 1_000) // passe supplantée
@@ -19,7 +20,8 @@ func TestSquadEmpriseRepo_Journal_DernierePassePubliableParTueurEtArme(t *testin
 		{pass: kscDecodeV2, publishable: true, killerXUID: "A", tag: kscTagRifle, timeMS: 2_000},
 		{pass: kscDecodeV2, publishable: true, killerXUID: "A", tag: kscTagRifle, timeMS: 3_000},
 		{pass: kscDecodeV2, publishable: true, killerXUID: "B", tag: kscTagSidearm, timeMS: 4_000},
-		{pass: kscDecodeV2, publishable: true, tag: kscTagRifle, timeMS: 5_000},                    // bot
+		{pass: kscDecodeV2, publishable: true, tag: kscTagRifle, timeMS: 5_000},                    // bot sur bot
+		{pass: kscDecodeV2, publishable: true, victimXUID: "V", tag: kscTagRifle, timeMS: 5_500},   // bot sur V
 		{pass: kscDecodeV2, publishable: true, killerXUID: "B", tag: kscTagInconnu, timeMS: 6_000}, // sans clé
 	} {
 		insertKillEvent(t, pdb, k)
@@ -32,8 +34,9 @@ func TestSquadEmpriseRepo_Journal_DernierePassePubliableParTueurEtArme(t *testin
 		t.Errorf("matchs lus = %v, attendu le seul %s", got.Read, kscMatchID)
 	}
 	want := map[squademprise.JournalKillRow]bool{
-		{MatchID: kscMatchID, XUID: "A", WeaponKey: "hinf_br75", Kills: 2}:     true,
-		{MatchID: kscMatchID, XUID: "B", WeaponKey: "hinf_sidekick", Kills: 1}: true,
+		{MatchID: kscMatchID, XUID: "A", WeaponKey: "hinf_br75", Kills: 2}:       true,
+		{MatchID: kscMatchID, XUID: "B", WeaponKey: "hinf_sidekick", Kills: 1}:   true,
+		{MatchID: kscMatchID, VictimXUID: "V", WeaponKey: "hinf_br75", Kills: 1}: true,
 	}
 	if len(got.Rows) != len(want) {
 		t.Fatalf("lignes = %+v, attendu %v", got.Rows, want)

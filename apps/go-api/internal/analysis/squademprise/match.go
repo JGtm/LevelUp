@@ -100,6 +100,9 @@ type matchTally struct {
 	// pwk : les frags aux armes spéciales de chaque camp (special_frags.go : journal du film ou
 	// feuille de match).
 	pwk *domain.SquadEmpriseCount
+	// pwkPrises : les prises du rendement quand pwk vient du journal (familles comptées,
+	// special_frags.go) ; nil = toutes les prises de puissance du match.
+	pwkPrises *domain.SquadEmpriseCount
 	// unclassified : les prises sur un emplacement non identifié ; nil sans ligne `non_classe`.
 	unclassified *domain.SquadEmpriseCount
 	// veh : les véhicules du match (vehicles.go), indépendants du film.
@@ -134,8 +137,10 @@ func tallyMatch(id string, ix *index) matchTally {
 	t.unclassified = unclassifiedOf(c, ix.tiers[id])
 	if t.tiers == domain.EmpriseTiersMeasured {
 		tallyTiers(&t, c, ix.tiers[id])
-		if ix.journalRead[id] {
-			t.pwk = journalSpecialFrags(c, specialWeaponKeys(ix.tiers[id], ix.weapons), ix.journal[id])
+		if ix.journalRead[id] && len(ix.weapons) > 0 {
+			a := countedWeapons(ix.tiers[id], ix.weapons)
+			t.pwk = journalSpecialFrags(c, a, ix.journal[id])
+			t.pwkPrises = countedPrises(c, ix.tiers[id], a)
 		}
 	}
 	return t
