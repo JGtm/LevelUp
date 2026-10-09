@@ -117049,3 +117049,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : démo locale : 7 écritures témoins en 403, `db_profiles.json` inchangé, lectures 200 ; 10 rejeux (Firefight, Fiesta, VIP, Total Control, Bases, Colline, Oddball, Assaut, CTF, Assassin) en 200, 0 xuid réel, 0 des 67 gamertags réels dans les réponses ; recuisson après schéma 90 simulé prouvée. `go test ./...` vert, intégration ops/replaybuild/replaychild/wire verte, golangci 0, tsc/eslint/vitest verts ; CI verte. Fuite résiduelle trouvée par l'exécutant : `match_registry.first_sync_by` garde de vrais gamertags dans la base démo → correctif demandé avec balayage de toutes les colonnes d'identité.
 
 **Conclusion / prochaine étape** : correctif d'anonymisation, relecture adversariale (accès + écritures), fusion sur accord du user (régénérer openapi, `generated.ts`, i18n). Au déploiement : provisionner `data/demo/replays/` sur le VPS.
+
+## [2026-10-09] Fusion du lot C (fiabilité des données) et application au boot local — Complété
+
+**Décision technique principale** : deux relectures adversariales (écritures anti-ART : 16 conditions tenues, aucun constat ; couverture : 4 chemins non couverts, P2) ; les tests manquants ajoutés dans le lot (`6ab6a40e0`, 9 mutations rouges : base saine intacte par `table_oid`, clé primaire reposée sans PK d'origine, colonnes CSR restaurées, `--dry-run` sans écriture). Fusion de `feat/recos-c` sur accord du user, serveur arrêté et bases sauvegardées avant le premier boot.
+
+**Résultats observés** : sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go). Boot : `shared_purge_composite_vehicle_takes_v1` 4 lignes retirées (7 228 gardées) ; `repair_player_append_only_ids_v1` : Chocoboflor `match_skill_rank` 17 192 ids NULL, `player_csr_snapshots` 19 243 ids NULL sans PK, `player_match_enrichment` 5 doublons ; Madina97294 et XxDaemonGamerxX 147 doublons `player_csr_snapshots`, 5 doublons `player_match_enrichment` ; `purge_sync_meta_legacy_auth_keys_v1` une clé retirée sur 4 bases ; 0 ERROR au boot.
+
+**Conclusion / prochaine étape** : C6 (catégorie de mode) rouvert à la demande du user, confié à un agent Sonnet ; lot D en correctif d'anonymisation puis relecture ; lot E.

@@ -75,7 +75,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
   remède proposé ; réparation seulement si elle est sûre (sinon `[!]` argumenté).
 - [x] C5 (écrivain = ancien `--match` de backfill-vehicle-takes, corrigé le 01/10 ; `shared_purge_composite_vehicle_takes_v1`) Quatre lignes parasites de `match_vehicle_takes` (match_id concaténé) : trouver et
   corriger l'écrivain, puis retirer les lignes (sauvegarde avant).
-- [!] C6 (3 111 lignes sur 9 230 divergent ; colonne indexée, deux classifieurs ; les filtres de l interface lisent `pair_name`, pas cette colonne ; décision user) `match_registry.mode_category` possiblement faux : mesurer l'ampleur (copie), décider.
+- [ ] C6 (3 111 lignes sur 9 230 divergent ; correction DEMANDÉE par le user le 2026-10-09, lot F confié à un agent Sonnet à sa demande) `match_registry.mode_category` possiblement faux : mesurer l'ampleur (copie), décider.
 - [x] C7 (`purge_sync_meta_legacy_auth_keys_v1`, swap ; 4 bases) Clé héritée `oauth_refresh_token` dans `sync_meta` de 4 bases joueur : purge par migration
   player (aucun code ne la lit, ADR 0023).
 - Gate : `go test -tags=integration` des paquets persist/migration/ops touchés, garde-rails ART verts.
@@ -134,6 +134,8 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - 2026-10-09 : lot D rendu (`feat/recos-d`, 4 commits, CI verte) ; fuite de vrais gamertags par `match_registry.first_sync_by` renvoyée à l'exécutant avec balayage systématique des colonnes d'identité ; Extraction et Escalation Slayer sans rejeu démo (films d'autres joueurs), Castle Wars écarté.
 
 - 2026-10-09 : décisions du user sur la démo : masquage des noms côté serveur validé ; dix rejeux suffisent (Extraction, Escalation Slayer et Castle Wars non ajoutés).
+
+- 2026-10-09 : relectures du lot C (anti-ART, couverture) sans défaut ; 4 trous de tests comblés (9 mutations rouges, `6ab6a40e0`). Fusion de `feat/recos-c` (accord du user), sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go), redémarrage : migrations jouées sans erreur (4 lignes composites retirées, ids réparés chez Chocoboflor, Madina97294, XxDaemonGamerxX, 4 clés héritées retirées).
 
 ## Découvertes
 
