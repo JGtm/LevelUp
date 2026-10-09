@@ -88,6 +88,12 @@ func (r *ReplayMapRepo) MapKeysForMatch(ctx context.Context, matchID string) (po
 	})
 }
 
+// qmapKeysForMapNom : le nom brut retenu pour un map_id (cf. MapKeysForMap).
+var qmapKeysForMapNom = `SELECT mr.map_name FROM match_registry mr
+WHERE mr.map_id = ? AND mr.map_name IS NOT NULL AND mr.map_name <> ''
+ORDER BY (mr.map_name = mr.map_id), ` + StartTimeCanonicalSQL("mr") + ` DESC NULLS LAST, mr.map_name
+LIMIT 1`
+
 // MapKeysForMap retourne les identités de carte à partir du SEUL map_id — la surface qui
 // raisonne par CARTE (grille de l'onglet Tactique) n'a aucun match sous la main.
 //
@@ -95,6 +101,11 @@ func (r *ReplayMapRepo) MapKeysForMatch(ctx context.Context, matchID string) (po
 // venir de la ligne du match, il est cherché sur n'importe quel match du registre portant
 // ce map_id. `map_name` est NULL sur une partie du registre — d'où le filtre : une ligne
 // muette ne vaut pas moins qu'une autre, elle n'apporte simplement rien.
+//
+// LE CHOIX EST DÉTERMINISTE (qmapKeysForMapNom) : un VRAI nom (différent du map_id recopié
+// quand la sync n'avait pas la traduction) passe devant, puis le match le plus récent (début
+// canonique), puis l'ordre du nom. Un `LIMIT 1` sans tri rendait l'un ou l'autre libellé d'une
+// même carte selon le plan d'exécution.
 //
 // PAS DE PairName : il qualifie un MATCH (le mode joué), jamais une carte.
 //
@@ -113,7 +124,7 @@ func (r *ReplayMapRepo) MapKeysForMap(ctx context.Context, mapID string) (port.M
 
 	var rawName sql.NullString
 	err = db.QueryRowContext(ctx,
-		`SELECT map_name FROM match_registry WHERE map_id = ? AND map_name IS NOT NULL LIMIT 1`, mapID,
+		qmapKeysForMapNom, mapID,
 	).Scan(&rawName)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return port.MatchMapKeys{}, fmt.Errorf("replay map: lecture match_registry par carte: %w", err)

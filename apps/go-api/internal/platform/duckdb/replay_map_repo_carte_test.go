@@ -121,3 +121,33 @@ func TestMapKeysForMap_Vide(t *testing.T) {
 		t.Fatalf("err = %v, attendu ErrMatchMapUnknown", err)
 	}
 }
+
+// TestMapKeysForMap_NomRetenuDeterministe : plusieurs libelles pour un meme map_id. Le nom
+// retenu est un VRAI nom (jamais le map_id recopie quand un autre existe), celui du match le
+// plus recent — quel que soit l'ordre d'insertion ou le plan d'execution.
+func TestMapKeysForMap_NomRetenuDeterministe(t *testing.T) {
+	repo, shared, _ := newCarteRepo(t)
+	semer := func(matchID, nom, debut string) {
+		t.Helper()
+		if _, err := shared.Exec(context.Background(),
+			`INSERT INTO match_registry (match_id, map_name, map_id, start_time_utc)
+			 VALUES (?, ?, 'asset-rue', CAST(? AS TIMESTAMPTZ))`,
+			matchID, nom, debut,
+		); err != nil {
+			t.Fatalf("insert registry %s: %v", matchID, err)
+		}
+	}
+	semer("m3", "asset-rue", "2026-09-03 12:00:00+00") // map_id recopie, le plus recent
+	semer("m1", "Ancien nom", "2026-09-01 12:00:00+00")
+	semer("m2", "Streets", "2026-09-02 12:00:00+00")
+
+	for i := 0; i < 5; i++ {
+		got, err := repo.MapKeysForMap(context.Background(), "asset-rue")
+		if err != nil {
+			t.Fatalf("MapKeysForMap: %v", err)
+		}
+		if len(got.Names) != 1 || got.Names[0] != "Streets" {
+			t.Fatalf("candidats = %v, attendu [Streets] (vrai nom du match le plus recent)", got.Names)
+		}
+	}
+}
