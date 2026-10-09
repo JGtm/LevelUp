@@ -22,6 +22,9 @@ type soiree struct {
 	// dont les niveaux de socle sont mesurés (le périmètre de l'exposition).
 	pwk, pwkOnTiers domain.SquadEmpriseCount
 	pwkMatches      int
+	// prisesRendement : les prises du rendement des armes spéciales, sur les mêmes matchs et les
+	// mêmes familles que pwkOnTiers (matchTally.pwkPrises).
+	prisesRendement domain.SquadEmpriseCount
 	// veh : les véhicules, indépendants du film (vehicles.go).
 	veh vehicleSum
 }
@@ -48,6 +51,12 @@ func (s *soiree) add(t matchTally) {
 	s.bonusMatches++
 	if t.tiersMeasured() {
 		s.tiersMatches++
+		p := t.obj.total(domain.EmpriseResourcePowerWeapon)
+		if t.pwkPrises != nil {
+			p = *t.pwkPrises
+		}
+		s.prisesRendement.Us += p.Us
+		s.prisesRendement.Them += p.Them
 	}
 	s.obj.merge(t.obj, func(res string) bool { return !estVehicule(res) })
 	for i := 0; i < 2; i++ {

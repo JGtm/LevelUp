@@ -77,4 +77,12 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"lien vers la page de rejeu des matchs dont le film vient d'être cuit (api/wire/registry_replay_notify.go:208, b.MatchIDs) ; aucun agrégat."},
 	"internal/platform/duckdb/tactical_repo_univers.go:clauseCoequipier": {dispenseCallSite, "2026-09-27",
 		"fragment ajouté par clausePerimetre à QTacticalUnivers / QTacticalMaps, dont le jeton est résolu (tactical_repo_univers.go:215, tactical_repo.go:118)."},
+
+	// ── Explorer, onglet « Joueur » (ADR 0036, 2026-10-09) ──
+	"internal/platform/duckdb/perimetre_liste.go:QMatchsOuJoue": {dispenseSemantique, "2026-10-09",
+		"liste de BORNAGE sous les fenêtres `_latest` du kill-feed, pas un agrégat d'affichage : elle garde la population exacte des lectures " +
+			"qu'elle borne (QKillsBetweenPlayersBorne, kill_events_source.go ; Q28c, relation_assists_repo.go), qui ne filtrent pas la Campagne."},
+	"internal/platform/duckdb/explorer_repo_resolve.go:qResolveParParticipant": {dispenseSemantique, "2026-10-09",
+		"résolution d'un NOM en xuid (ExplorerRepo.ResolveXUIDByGamertag) : même population que la vue des noms v_gamertag_lookup, " +
+			"qui lit tous les participants (analysis/identity.go, GamertagLookupViewSQL) ; aucun agrégat de matchs."},
 }

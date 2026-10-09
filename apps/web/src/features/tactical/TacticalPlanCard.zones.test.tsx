@@ -57,6 +57,7 @@ const REGLAGES: ReglagesDuPlan = {
   qui: 'moi',
   onQuiChange: () => {},
   escouadeDisponible: false,
+  escouadeEnAttente: false,
   spawn: '',
   onSpawnChange: () => {},
   grappes: [],

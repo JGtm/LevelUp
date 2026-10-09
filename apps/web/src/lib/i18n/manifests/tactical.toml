@@ -123,9 +123,9 @@ en = "Sessions"
 fr = "{n, plural, one {# session épinglée n'est pas dans la liste courante} other {# sessions épinglées ne sont pas dans la liste courante}} : {names}. Le filtre reste appliqué."
 en = "{n, plural, one {# pinned session is not in the current list} other {# pinned sessions are not in the current list}}: {names}. The filter still applies."
 
-[tactical.filter.squad_placeholder]
-fr = "Coéquipiers ({n})"
-en = "Teammates ({n})"
+[tactical.filter.squad_label]
+fr = "Escouade"
+en = "Squad"
 
 [tactical.filter.unknown_teammate_title]
 fr = "Coéquipier introuvable"
@@ -253,9 +253,9 @@ en = "Squad"
 fr = "Adversaires"
 en = "Opponents"
 
-[tactical.plan.squad_disabled]
-fr = "Aucune composition choisie dans la barre"
-en = "No squad chosen in the filter bar"
+[tactical.plan.squad_pending]
+fr = "Aucune composition choisie"
+en = "No lineup chosen"
 
 [tactical.plan.pill_respawn]
 fr = "Réapparition"

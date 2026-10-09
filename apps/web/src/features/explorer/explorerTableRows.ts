@@ -17,3 +17,30 @@ export function normalizeExplorerTableRows(
     playlist_label: r.playlist_label ?? '',
   }))
 }
+
+/**
+ * Lignes des matchs communs, réparties entre les deux tableaux du mode Joueur.
+ *
+ * UNE SEULE requête matches-query porte tous les matchs communs : chaque ligne est calculée
+ * match par match côté serveur (le contenu d'une ligne ne dépend pas des autres matchs de la
+ * liste blanche), donc la répartition côté client rend les mêmes lignes que deux requêtes
+ * séparées, dans le même ordre (le filtre conserve l'ordre serveur).
+ */
+export interface CommonMatchRowsSplit {
+  ally: ExplorerMatchRow[]
+  enemy: ExplorerMatchRow[]
+}
+
+export function splitCommonMatchRows(
+  items: ExplorerMatchesQueryResponse['table']['items'],
+  allyMatchIds: readonly string[],
+  enemyMatchIds: readonly string[],
+): CommonMatchRowsSplit {
+  const ally = new Set(allyMatchIds)
+  const enemy = new Set(enemyMatchIds)
+  const rows = normalizeExplorerTableRows(items)
+  return {
+    ally: rows.filter((r) => ally.has(r.match_id)),
+    enemy: rows.filter((r) => enemy.has(r.match_id)),
+  }
+}

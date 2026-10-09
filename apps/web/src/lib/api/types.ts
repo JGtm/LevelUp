@@ -1057,7 +1057,13 @@ export interface RecentMatchItem {
  *  OpenAPI dérivé (TODO Sprint 32 du contrat) : ce DTO est écrit à la main, comme
  *  RecentMatchItem, sur l'AssistTiers généré (route Relations). */
 export interface MatchAssistedFrags {
+  /** Frags du joueur portés par les lignes mesurées du film. */
   frags_measured: number
+  /** Base de la part : les frags officiels du match (ceux de la tuile), jamais sous la mesure. */
+  frags_official: number
+  /** `frags_official - frags_measured` : assistance non lue (victime bot, frag absent du
+   *  film). Dits à part, JAMAIS comptés comme non assistés. */
+  frags_unknown: number
   received: AssistTiers
 }
 
@@ -1223,6 +1229,7 @@ export type RelationsMomentsResponse = components['schemas']['RelationsMomentsRe
 // ---------------------------------------------------------------------------
 
 export type TeammateOption = components['schemas']['TeammateOption']
+export type SquadPageResponse = components['schemas']['SquadPageResponse']
 
 export interface RadarAxes {
   objectives: number

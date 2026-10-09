@@ -39,8 +39,8 @@ func TestTimeseries_CableLaFeuilleDeLEmpriseSansCondition(t *testing.T) {
 		t.Fatalf("%d appel(s) à WithEmprise dans le câblage des Usages, attendu 1", len(appels))
 	}
 	a := appels[0]
-	if strings.Join(a.args, ", ") != "duckdb.NewSquadEmpriseRepo(pdb)" {
-		t.Errorf("WithEmprise(%s) : attendu WithEmprise(duckdb.NewSquadEmpriseRepo(pdb))", strings.Join(a.args, ", "))
+	if strings.Join(a.args, ", ") != "duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))" {
+		t.Errorf("WithEmprise(%s) : attendu WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb)))", strings.Join(a.args, ", "))
 	}
 	if len(a.portes) != 0 {
 		t.Errorf("WithEmprise est sous condition (%v) : la feuille de match est écrite par tous les titres", a.portes)

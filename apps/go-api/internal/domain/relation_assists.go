@@ -58,17 +58,39 @@ type RelationAssists struct {
 	Given AssistTiers `json:"given"`
 }
 
-// MatchAssistedFrags : sur UN match, la part des frags du joueur qui ont été assistés
-// par un coéquipier — le sens « reçues » de RelationAssists, ramené à un seul match
-// (tuile de match de l'Accueil). Mêmes lignes (`publishable AND assist_known`), mêmes
-// tranches, mêmes bornes.
+// MatchAssistedFrags : sur UN match, les frags du joueur qu'un coéquipier a assistés —
+// le sens « reçues » de RelationAssists, ramené à un seul match (tuile de match de
+// l'Accueil). Mêmes lignes (`publishable AND assist_known`), mêmes tranches, mêmes bornes.
 //
-// FragsMeasured : frags du joueur portés par ces lignes sur le match (DÉNOMINATEUR de la
-// part « N / M frags assistés »). Received : ceux dont `assist_xuid` est renseigné, par
-// tranche de part ; une assistance sans part mesurée compte dans Total et dans aucune
-// tranche. Zéro frag mesuré = pas d'objet (nil), même quand le joueur a 0 frag au match :
-// « on ne sait pas » n'est pas « 0 ».
+// TROIS POPULATIONS sur la base des frags OFFICIELS du match (ceux que la tuile affiche) :
+//   - assistés : Received.Total, frags mesurés dont `assist_xuid` est renseigné, par
+//     tranche de part ; une assistance sans part mesurée compte dans Total et dans aucune
+//     tranche ;
+//   - non assistés connus : FragsMeasured − Received.Total ;
+//   - sans information : FragsUnknown = FragsOfficial − FragsMeasured, frags dont
+//     l'assistance n'est pas lue (victime bot, frag absent du film). JAMAIS comptés comme
+//     non assistés : « on ne sait pas » n'est pas « non ».
+//
+// FragsMeasured : frags du joueur portés par les lignes mesurées. FragsOfficial : base de
+// la part, posée par WithOfficialFrags. Zéro frag mesuré = pas d'objet (nil), même quand
+// le joueur a 0 frag au match.
 type MatchAssistedFrags struct {
 	FragsMeasured int         `json:"frags_measured"`
+	FragsOfficial int         `json:"frags_official"`
+	FragsUnknown  int         `json:"frags_unknown"`
 	Received      AssistTiers `json:"received"`
+}
+
+// WithOfficialFrags pose la base officielle (`kills`, frags du match tels que la tuile les
+// affiche) et en déduit FragsUnknown. La base ne descend jamais sous FragsMeasured : un
+// compte officiel absent (nil) ou inférieur au film ne fabrique pas de frags inconnus
+// négatifs, la mesure du film fait alors la base (FragsUnknown = 0).
+func (a MatchAssistedFrags) WithOfficialFrags(kills *int) MatchAssistedFrags {
+	official := a.FragsMeasured
+	if kills != nil && *kills > official {
+		official = *kills
+	}
+	a.FragsOfficial = official
+	a.FragsUnknown = official - a.FragsMeasured
+	return a
 }

@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // enrichEncounterFragRange remplit FragRangeTarget sur les stats de rencontre. no-op si le
@@ -50,7 +51,9 @@ func (s *ExplorerService) enrichEncounterFragRange(
 	if targetSample != nil {
 		targetScope.totalKills, targetScope.totalDeaths = targetSample.Kills, targetSample.Deaths
 	}
+	stopRange := timing.FromContext(ctx).Section("explorer_frag_range")
 	stats.FragRangeTarget = buildWeaponRangeByRole(ctx, s.weaponRangeRepo, "explorer", slug, targetXUID, targetScope)
+	stopRange()
 
 	slog.DebugContext(ctx, "explorer portee des frags",
 		"title", slug, "other_xuid", targetXUID, "match_count", len(matchIDs),

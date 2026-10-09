@@ -40,6 +40,7 @@ import {
 
 import { ExplorerMatchesMode } from './ExplorerPage.matchesMode'
 import { ExplorerPlayerMode } from './ExplorerPage.playerMode'
+import { splitCommonMatchRows } from './explorerTableRows'
 import { buildExplorerFilterOptions } from './ExplorerPage.filterOptions'
 
 type SearchMode = 'matches' | 'player'
@@ -273,41 +274,30 @@ export function ExplorerPage() {
   // Mode Joueur : extraction des match_ids communs séparés par rôle
   // (ally vs enemy) depuis la réponse player-query, pour piloter les 2
   // tableaux scopés ci-dessous.
-  const allyMatchIds = (playerQuery.data?.common_matches ?? [])
-    .filter((m) => m.were_teammates)
-    .map((m) => m.match_id)
-  const enemyMatchIds = (playerQuery.data?.common_matches ?? [])
-    .filter((m) => !m.were_teammates)
-    .map((m) => m.match_id)
+  const commonMatches = playerQuery.data?.common_matches ?? []
+  const allyMatchIds = commonMatches.filter((m) => m.were_teammates).map((m) => m.match_id)
+  const enemyMatchIds = commonMatches.filter((m) => !m.were_teammates).map((m) => m.match_id)
 
-  // Requête tableau "matchs en allié" — réutilise le pipeline matches-query
-  // avec un filtre match_ids (whitelist). Activée uniquement quand on a des
-  // match_ids ET qu'on est en mode Joueur.
-  const allyMatchesQuery = useExplorerMatches(
+  // UNE requête pour les deux tableaux "matchs en allié" / "matchs en ennemi" : le
+  // pipeline matches-query avec tous les matchs communs en liste blanche, réparti
+  // ensuite par rôle (splitCommonMatchRows). Deux requêtes payaient deux fois la
+  // lecture de l'historique complet côté serveur pour des lignes identiques.
+  const commonMatchIds = commonMatches.map((m) => m.match_id)
+  const commonMatchesQuery = useExplorerMatches(
     playerSlug,
     {
       filters: explorerFilterContext,
       pagination: { page: 1, page_size: 10000 },
       sort_field: 'start_time',
       sort_dir: 'desc',
-      match_ids: allyMatchIds,
+      match_ids: commonMatchIds,
     },
     filterContextHash,
-    mode === 'player' && allyMatchIds.length > 0,
+    mode === 'player' && commonMatchIds.length > 0,
   )
-
-  const enemyMatchesQuery = useExplorerMatches(
-    playerSlug,
-    {
-      filters: explorerFilterContext,
-      pagination: { page: 1, page_size: 10000 },
-      sort_field: 'start_time',
-      sort_dir: 'desc',
-      match_ids: enemyMatchIds,
-    },
-    filterContextHash,
-    mode === 'player' && enemyMatchIds.length > 0,
-  )
+  const commonRows = commonMatchesQuery.data
+    ? splitCommonMatchRows(commonMatchesQuery.data.table.items, allyMatchIds, enemyMatchIds)
+    : undefined
 
   const summary = matchesQuery.data?.summary
 
@@ -394,8 +384,8 @@ export function ExplorerPage() {
             playerQuery={playerQuery}
             allyMatchIds={allyMatchIds}
             enemyMatchIds={enemyMatchIds}
-            allyMatchesData={allyMatchesQuery.data}
-            enemyMatchesData={enemyMatchesQuery.data}
+            allyRows={commonRows?.ally}
+            enemyRows={commonRows?.enemy}
             onSelectTarget={selectTarget}
             onOpenHeadToHead={openHeadToHead}
           />

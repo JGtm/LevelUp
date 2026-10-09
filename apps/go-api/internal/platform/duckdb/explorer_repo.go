@@ -85,13 +85,22 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 
 // GetKillerVictimBetween retourne les kills croisés agrégés entre xuid1 et xuid2 (Q19b).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
+//
+// Les deux fenêtres `_latest` du kill-feed sont bornées aux matchs de xuid1 (QMatchsOuJoue,
+// ADR 0036 I2) : un frag de xuid1 ou sur xuid1 n'existe que dans un match où il joue, donc
+// les nombres sont ceux de la requête libre, sans payer la table entière.
 func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 string) (domain.KillerVictimAggregate, error) {
 	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: shared reader: %w", err)
 	}
 	defer release()
-	row := sharedDB.QueryRowContext(ctx, QKillsBetweenPlayers, xuid1, xuid2, xuid2, xuid1)
+	matchs, err := matchsOuJoue(ctx, sharedDB, xuid1)
+	if err != nil {
+		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
+	}
+	liste := argListe(matchs)
+	row := sharedDB.QueryRowContext(ctx, QKillsBetweenPlayersBorne, xuid1, xuid2, xuid2, xuid1, liste)
 	var agg domain.KillerVictimAggregate
 	if err := row.Scan(&agg.KillsDealt, &agg.DeathsSuffered); err != nil {
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
@@ -527,31 +536,6 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 	m.DamageDealt = int(damageDealt)
 	m.DamageTaken = int(damageTaken)
 	return m, nil
-}
-
-// ResolveXUIDByGamertag résout un gamertag en xuid via shared.v_gamertag_lookup (ILIKE).
-//
-// Source : la vue v_gamertag_lookup (cascade xuid_aliases ∪ match_participants
-// avec fallback bots officiels). Plus robuste que la table xuid_aliases seule
-// car elle capture aussi les joueurs qui sont apparus dans match_participants
-// avant d'être synchronisés dans xuid_aliases. Bots filtrés (xuid 'bid(...)').
-func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
-	var q = `
-		SELECT xuid FROM v_gamertag_lookup
-		WHERE gamertag ILIKE ? AND ` + analysis.SQLIsNotBotCol("xuid") + `
-		LIMIT 1
-	`
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
-	}
-	defer release()
-
-	var xuid string
-	if err := db.QueryRowContext(ctx, q, gamertag).Scan(&xuid); err != nil {
-		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
-	}
-	return xuid, nil
 }
 
 // GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur sur

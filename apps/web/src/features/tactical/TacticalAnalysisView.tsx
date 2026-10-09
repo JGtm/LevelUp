@@ -52,6 +52,11 @@ export interface TacticalAnalysisViewProps {
   perimetreEnEchec?: boolean
   /** Les coéquipiers INTROUVABLES quand la composition est impossible, `null` sinon. */
   coequipiersInconnus?: string[] | null
+  /**
+   * L'angle « Escouade » est demandé sans composition (`true`) ou quitté pour un autre angle
+   * (`false`) : la page amène au sélecteur de composition de la barre.
+   */
+  onDemandeComposition?: (enCours: boolean) => void
 }
 
 export function TacticalAnalysisView({
@@ -65,8 +70,9 @@ export function TacticalAnalysisView({
   perimetreEnRelecture = false,
   perimetreEnEchec = false,
   coequipiersInconnus = null,
+  onDemandeComposition,
 }: TacticalAnalysisViewProps) {
-  const reglages = useReglages(coequipiers)
+  const reglages = useReglages(coequipiers, onDemandeComposition)
   const { question, qui, spawn } = reglages
 
   const params = useMemo(
@@ -146,21 +152,33 @@ export function TacticalAnalysisView({
 }
 
 /**
- * useReglages — l'état des trois réglages du bandeau. « Escouade » choisi puis la composition se
- * vide (barre L2) : la lecture retombe sur « Moi » plutôt que d'envoyer un axe que le serveur
- * refuserait en silence.
+ * useReglages — l'état des trois réglages du bandeau.
+ *
+ * « Escouade » SANS COMPOSITION (rien de choisi, ou composition vidée dans la barre) : la lecture
+ * reste sur « Moi » plutôt que d'envoyer un axe que le serveur refuse (arbitrage du 2026-09-06 :
+ * l'angle Escouade est la composition choisie, jamais les coéquipiers de chaque match). Le clic est
+ * retenu et signalé (`onDemandeComposition`) : la page ouvre le sélecteur, et l'angle s'applique dès
+ * qu'une composition est choisie.
  */
-function useReglages(coequipiers: readonly string[]): Omit<ReglagesDuPlan, 'grappes'> {
+function useReglages(
+  coequipiers: readonly string[],
+  onDemandeComposition: ((enCours: boolean) => void) | undefined,
+): Omit<ReglagesDuPlan, 'grappes'> {
   const [question, setQuestion] = useState<TacticalQuestion>('morts')
   const [qui, setQui] = useState<TacticalQui>('moi')
   const [spawn, setSpawn] = useState('')
   const escouadeDisponible = coequipiers.length > 0
+  const escouadeEnAttente = qui === 'escouade' && !escouadeDisponible
   return {
     question,
     onQuestionChange: setQuestion,
-    qui: qui === 'escouade' && !escouadeDisponible ? 'moi' : qui,
-    onQuiChange: setQui,
+    qui: escouadeEnAttente ? 'moi' : qui,
+    onQuiChange: (valeur) => {
+      setQui(valeur)
+      onDemandeComposition?.(valeur === 'escouade' && !escouadeDisponible)
+    },
     escouadeDisponible,
+    escouadeEnAttente,
     spawn,
     onSpawnChange: setSpawn,
   }
