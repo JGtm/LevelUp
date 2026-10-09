@@ -257,6 +257,7 @@ export const commonManifest = {
   "common.initial_sync.err_auth_expired": { fr: "La session Halo a expiré. Relance pour renouveler l'authentification.", en: "The Halo session expired. Restart to renew authentication." },
   "common.initial_sync.err_db": { fr: "Erreur interne lors de l'enregistrement des données. Contactez le support.", en: "Internal error while saving data. Contact support." },
   "common.initial_sync.err_halo_api": { fr: "L'API Halo est temporairement indisponible. Veuillez réessayer.", en: "The Halo API is temporarily unavailable. Please try again." },
+  "common.initial_sync.err_halo_tokens_missing": { fr: "Aucun compte Xbox n'est relié à cette session : connecte-le pour lancer la synchronisation.", en: "No Xbox account is linked to this session: connect it to start the sync." },
   "common.initial_sync.err_internal": { fr: "Erreur inattendue. Veuillez réessayer.", en: "Unexpected error. Please try again." },
   "common.initial_sync.start_action": { fr: "Lancer la synchronisation", en: "Start sync" },
   "common.initial_sync.starting": { fr: "Démarrage…", en: "Starting…" },

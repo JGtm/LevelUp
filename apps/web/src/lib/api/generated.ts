@@ -22289,6 +22289,28 @@ export interface operations {
                     "application/json": components["schemas"]["AsyncJobStatus"];
                 };
             };
+            /** @description Aucune session (code auth_required) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /**
+             * @description Sync initiale désactivée sur l'instance (code initial_sync_disabled), ou
+             *     session sans jetons Halo (code halo_tokens_missing) — jamais un 401 :
+             *     la session est valide.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Une sync est déjà en cours */
             409: {
                 headers: {
