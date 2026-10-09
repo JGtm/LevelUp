@@ -128,21 +128,25 @@ export function TacticalPage() {
 /**
  * useDemandeDeComposition — l'angle « Escouade » cliqué sans composition amène au sélecteur de la
  * barre. Chaque clic est une nouvelle demande (le compteur rouvre le sélecteur même au second clic) ;
- * la demande vaut pour la CARTE où elle a été faite — la vue se remet à zéro au changement de carte,
- * et la mise en avant du sélecteur avec elle — et tombe quand un autre angle est choisi.
+ * la demande tombe quand un autre angle est choisi, et AU CHANGEMENT DE CARTE : la vue, recréée
+ * (`key` = la carte), revient sur « Moi » sans demande — un seul état, celui de la vue affichée.
+ * Remise à zéro PENDANT LE RENDU (patron React « adjusting state when a prop changes ») : un effet
+ * laisserait un rendu avec l'anneau de l'ancienne carte.
  */
 function useDemandeDeComposition(carte: string): {
   etat: DemandeDeComposition
   signaler: (enCours: boolean) => void
 } {
-  const [demande, setDemande] = useState<{ compteur: number; carte: string | null }>({
-    compteur: 0,
-    carte: null,
-  })
+  const [demande, setDemande] = useState({ compteur: 0, enCours: false, carte })
+  let etat = demande
+  if (demande.carte !== carte) {
+    etat = { ...demande, enCours: false, carte }
+    setDemande(etat)
+  }
   return {
-    etat: { compteur: demande.compteur, enCours: demande.carte === carte },
+    etat: { compteur: etat.compteur, enCours: etat.enCours },
     signaler: (enCours) =>
-      setDemande((d) => (enCours ? { compteur: d.compteur + 1, carte } : { ...d, carte: null })),
+      setDemande((d) => ({ compteur: enCours ? d.compteur + 1 : d.compteur, enCours, carte: d.carte })),
   }
 }
 

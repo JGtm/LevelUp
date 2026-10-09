@@ -392,6 +392,40 @@ describe('TacticalPage — l’écran unique', () => {
     expect(screen.queryByText('343 Bot')).toBeNull()
   })
 
+  it('la demande tombe AVEC la vue au changement de carte : au retour, ni anneau ni attente', async () => {
+    searchCourant = { carte: 'streets' }
+    const rendu = renderWithProviders(<TacticalPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Escouade' }))
+    expect(screen.getByTestId('tactical-composition')).toHaveAttribute('data-mis-en-avant', 'true')
+    searchCourant = { carte: 'aquarius' }
+    rendu.rerender(<TacticalPage />)
+    await screen.findByTestId('tactical-carte-hors-filtre')
+    expect(screen.getByTestId('tactical-composition')).not.toHaveAttribute('data-mis-en-avant')
+    searchCourant = { carte: 'streets' }
+    rendu.rerender(<TacticalPage />)
+    await screen.findByRole('region', { name: 'Ruelles' })
+    expect(screen.getByTestId('tactical-composition')).not.toHaveAttribute('data-mis-en-avant')
+    expect(screen.queryByTestId('tactical-escouade-attente')).toBeNull()
+  })
+
+  it('composition choisie, aller-retour de carte, composition vidée : aucun anneau sans demande', async () => {
+    searchCourant = { carte: 'streets' }
+    const rendu = renderWithProviders(<TacticalPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Escouade' }))
+    searchCourant = { carte: 'streets', eq: 'Ami' }
+    rendu.rerender(<TacticalPage />)
+    searchCourant = { carte: 'aquarius', eq: 'Ami' }
+    rendu.rerender(<TacticalPage />)
+    await screen.findByTestId('tactical-carte-hors-filtre')
+    searchCourant = { carte: 'streets', eq: 'Ami' }
+    rendu.rerender(<TacticalPage />)
+    await screen.findByRole('region', { name: 'Ruelles' })
+    searchCourant = { carte: 'streets' }
+    rendu.rerender(<TacticalPage />)
+    expect(screen.getByTestId('tactical-composition')).not.toHaveAttribute('data-mis-en-avant')
+    expect(screen.queryByTestId('tactical-escouade-attente')).toBeNull()
+  })
+
   it('« Escouade » AVEC une composition : l’angle s’applique à la lecture', async () => {
     searchCourant = { eq: 'Ami' }
     renderWithProviders(<TacticalPage />)
