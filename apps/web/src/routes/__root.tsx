@@ -22,6 +22,11 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
 import { log } from '@/components/shell/_logger'
 import { isAnonymousPath } from '@/components/shell/shellNavigation'
+import {
+  decideOnAuthRequired,
+  sessionStorageOrNull,
+  type AuthRequiredVerdict,
+} from '@/components/shell/authRequiredGuard'
 import { needsOwnProfile, SETUP_PATH, setupRedirectPath } from '@/features/setup/setupRouting'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
@@ -81,28 +86,51 @@ export function RootLayout() {
   // hors /bootstrap (cf. lib/api/client.ts). Sans ce listener, le garde
   // anti-éjection ci-dessous — qui préserve l'état authentifié sur un bootstrap
   // anonyme transitoire — piégerait l'utilisateur dans un shell authentifié mort
-  // dont chaque appel API retombe en 401. On recharge la page en plein (même
-  // mécanique que LogoutButton) : le bootstrap frais fait autorité et atterrit
-  // sur /login.
-  const authReloadFiredRef = useRef(false)
+  // dont chaque appel API retombe en 401. La décision (authRequiredGuard.ts) relit
+  // d'abord /bootstrap : connecté → aucune éjection (route secondaire en 401) ;
+  // anonyme → rechargement plein (même mécanique que LogoutButton), plafonné par
+  // fenêtre dans sessionStorage ; plafond atteint → /login sans recharger.
+  const authCheckInFlightRef = useRef(false)
   useEffect(() => {
-    function handleAuthRequired() {
+    async function handleAuthRequired() {
       // Store déjà anonyme (ex. /login, mauvais mot de passe → 401) : ne rien
       // faire. Recharger ici bouclerait sur /login. Seule une session qu'on
-      // CROYAIT authentifiée (currentUsername truthy) justifie le reload.
+      // CROYAIT authentifiée (currentUsername truthy) justifie une vérification.
       if (!useAppShellStore.getState().currentUsername) return
-      // Anti-rafale : une salve de 401 ne déclenche qu'un seul reload.
-      if (authReloadFiredRef.current) return
-      authReloadFiredRef.current = true
-      log.warn(
-        'auth:session_expired',
-        'session expirée (401 auth_required) — rechargement plein vers /login',
-      )
-      window.location.assign('/')
+      // Anti-rafale : une salve de 401 ne déclenche qu'une vérification à la fois.
+      if (authCheckInFlightRef.current) return
+      authCheckInFlightRef.current = true
+      const verdict = await decideOnAuthRequired({
+        fetchBootstrap: () => api.get<BootstrapResponse>('/bootstrap'),
+        storage: sessionStorageOrNull(),
+        now: Date.now,
+      })
+      applyAuthVerdict(verdict)
+      if (verdict.kind !== 'reload') authCheckInFlightRef.current = false
     }
-    window.addEventListener('levelup:auth-required', handleAuthRequired)
-    return () => window.removeEventListener('levelup:auth-required', handleAuthRequired)
-  }, [])
+    function applyAuthVerdict(verdict: AuthRequiredVerdict) {
+      switch (verdict.kind) {
+        case 'still_authenticated':
+          log.warn('session:route_401', 'route secondaire en 401, /bootstrap connecté : aucune éjection')
+          return
+        case 'unknown':
+          log.warn('auth:bootstrap_unreachable', '401 auth_required, /bootstrap injoignable — aucune éjection', verdict.error)
+          return
+        case 'reload':
+          log.warn('auth:session_expired', 'session expirée (401 auth_required) — rechargement plein vers /login')
+          window.location.assign('/')
+          return
+        case 'reload_blocked':
+          log.error('auth:reload_loop_blocked', 'rechargements pour 401 plafonnés — /login sans recharger')
+          hydrateFromBootstrap(verdict.bootstrap)
+          navigate({ to: '/login' })
+          return
+      }
+    }
+    const listener = () => void handleAuthRequired()
+    window.addEventListener('levelup:auth-required', listener)
+    return () => window.removeEventListener('levelup:auth-required', listener)
+  }, [hydrateFromBootstrap, navigate])
 
   useEffect(() => {
     if (!data) return
