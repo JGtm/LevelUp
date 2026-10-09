@@ -29,7 +29,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
@@ -44,18 +46,58 @@ const (
 	rarsParBobine          = 8
 )
 
-// canalDesValeurs enveloppe le canal de production et rend, pour l echantillon de records admis, la
-// ligne de leurs valeurs.
+// bilanDeBobine est ce que la marche de controle d une bobine releve : l echantillon des valeurs
+// ([TestLesValeursDeLEtatCompletDesBobines]), les invariants violes, et le controle des dotations des
+// records admis contre la grammaire et contre la fenetre ([TestLaFenetreNeVoitQueLesRecordsNonAdmis]).
+type bilanDeBobine struct {
+	lignes, ecarts                        []string
+	admis, ecartsFenetre, publieDifferent int
+}
+
+// LA MARCHE DE CONTROLE EST MEMORISEE PAR BOBINE et partagee par les deux tests : sous la couverture
+// de la CI, chaque rebalayage des sept bobines coute 70 a 80 s (`.github/workflows/ci.yml`).
+var (
+	memoBilansMu sync.Mutex
+	memoBilans   = map[string]bilanDeBobine{}
+)
+
+// bilanDeLaBobine rend le bilan de la marche de controle de la bobine `court`, calcule une fois.
+func bilanDeLaBobine(t *testing.T, court string) bilanDeBobine {
+	t.Helper()
+	memoBilansMu.Lock()
+	defer memoBilansMu.Unlock()
+	if b, ok := memoBilans[court]; ok {
+		return b
+	}
+	fc := contexteDeLaBobine(t, court)
+	c := &canalDesValeurs{canalDeLEtatCompletBipede: nouveauCanalDeLEtatComplet(fc, catalogueDesFamilles(),
+		DefaultGrenadeMax), court: court}
+	distribuerLesImagesClesSeules(fc, []Canal{c})
+	memoBilans[court] = c.b
+	return c.b
+}
+
+// canalDesValeurs enveloppe le canal de production : pour chaque record ADMIS, il compare la dotation
+// publiee a la lecture de la grammaire et a ce que la fenetre lirait, et il rend la ligne de valeurs
+// de l echantillon.
 type canalDesValeurs struct {
 	*canalDeLEtatCompletBipede
 	court          string
 	premiers, rars int
-	lignes         []string
-	t              *testing.T
+	b              bilanDeBobine
 }
 
 func (c *canalDesValeurs) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
+	avant := len(c.out.Loadouts)
 	c.canalDeLEtatCompletBipede.ImageCle(p, m)
+	publies := map[uint32][]uint32{}
+	for _, l := range c.out.Loadouts[avant:] {
+		publies[l.Slot] = l.Families
+	}
+	fenetre := map[uint32][]uint32{}
+	for _, rf := range familiesByRecordRecs(p.Payload, p.Records, c.known, keyframeBipedTI) {
+		fenetre[rf.Rec.Debut] = rf.Families
+	}
 	ctx := c.fc.ContexteDeLecture()
 	for i := range p.Records {
 		r := &p.Records[i]
@@ -65,6 +107,14 @@ func (c *canalDesValeurs) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
 		l := lireLEtatComplet(p, r, c.arch, c.roles, ctx)
 		if admettre(r, &l, c.dernierEmplacement) != refusAucun {
 			continue
+		}
+		c.b.admis++
+		lu := l.armesDe(r.Vie.Slot).Families
+		if !slices.Equal(publies[r.Vie.Slot], lu) {
+			c.b.publieDifferent++
+		}
+		if !slices.Equal(fenetre[r.Debut], lu) {
+			c.b.ecartsFenetre++
 		}
 		inv, tu := l.inventaireDe(r.Vie.Slot)
 		rare := l.porteLaMarque() || l.jeu.Second >= 0 || inv.AbilityRank >= 0 || l.porteUneSurchauffeOuUneJauge()
@@ -77,17 +127,19 @@ func (c *canalDesValeurs) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
 			continue
 		}
 		c.verifierLesInvariants(p, r, &l, inv.SelectedGrenadeRank)
-		c.lignes = append(c.lignes, ligneDesValeurs(c.court, p.TS, r.Vie.Slot, &l, inv, tu))
+		c.b.lignes = append(c.b.lignes, ligneDesValeurs(c.court, p.TS, r.Vie.Slot, &l, inv, tu))
 	}
 }
 
 // verifierLesInvariants tient les deux regles independantes du golden.
 func (c *canalDesValeurs) verifierLesInvariants(p *lecture.Paquet, r *lecture.Record, l *lectureDEtatComplet, sel int) {
 	if l.masque != bitmapDesCompteurs(l.compteurs) {
-		c.t.Errorf("%s %d/%d : masque %04b, compteurs %v", c.court, p.TS, r.Vie.Slot, l.masque, l.compteurs)
+		c.b.ecarts = append(c.b.ecarts, fmt.Sprintf("%s %d/%d : masque %04b, compteurs %v", c.court, p.TS, r.Vie.Slot,
+			l.masque, l.compteurs))
 	}
 	if sel >= 0 && l.masque&(1<<uint(sel)) == 0 { //nolint:gosec // 0..3
-		c.t.Errorf("%s %d/%d : selection publiee %d hors du masque %04b", c.court, p.TS, r.Vie.Slot, sel, l.masque)
+		c.b.ecarts = append(c.b.ecarts, fmt.Sprintf("%s %d/%d : selection publiee %d hors du masque %04b", c.court,
+			p.TS, r.Vie.Slot, sel, l.masque))
 	}
 }
 
@@ -120,14 +172,14 @@ func ligneDesValeurs(court string, ts uint64, slot uint32, l *lectureDEtatComple
 func TestLesValeursDeLEtatCompletDesBobines(t *testing.T) {
 	var lignes []string
 	for _, court := range closureMiniFilms() {
-		fc := contexteDeLaBobine(t, court)
-		c := &canalDesValeurs{canalDeLEtatCompletBipede: nouveauCanalDeLEtatComplet(fc, catalogueDesFamilles(),
-			DefaultGrenadeMax), court: court, t: t}
-		distribuerLesImagesClesSeules(fc, []Canal{c})
-		if c.premiers == 0 {
+		b := bilanDeLaBobine(t, court)
+		for _, e := range b.ecarts {
+			t.Error(e)
+		}
+		if len(b.lignes) == 0 {
 			t.Fatalf("%s : aucun record admis dans l echantillon", court)
 		}
-		lignes = append(lignes, c.lignes...)
+		lignes = append(lignes, b.lignes...)
 	}
 	got := strings.Join(lignes, "\n") + "\n"
 	chemin := filepath.Join("testdata", "etat_complet_bobines.golden")

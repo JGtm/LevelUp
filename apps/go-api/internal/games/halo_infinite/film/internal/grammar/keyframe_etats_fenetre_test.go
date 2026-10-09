@@ -12,7 +12,6 @@ import (
 	"slices"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -43,61 +42,18 @@ func verifierLesRepliesDeLaBobine(t *testing.T, court string, e EtatsDesImagesCl
 	}
 }
 
-// canalDeControle enveloppe le canal de production et compare, paquet par paquet, la dotation
-// publiee d un record ADMIS a la lecture de la grammaire ; il compte les records admis dont la
-// fenetre aurait rendu autre chose (le test ne mord que s il y en a).
-type canalDeControle struct {
-	*canalDeLEtatCompletBipede
-	admis, ecartsFenetre, publieDifferent int
-}
-
-func (c *canalDeControle) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
-	avant := len(c.out.Loadouts)
-	c.canalDeLEtatCompletBipede.ImageCle(p, m)
-	publies := map[uint32][]uint32{}
-	for _, l := range c.out.Loadouts[avant:] {
-		publies[l.Slot] = l.Families
-	}
-	fenetre := map[uint32][]uint32{}
-	for _, rf := range familiesByRecordRecs(p.Payload, p.Records, c.known, keyframeBipedTI) {
-		fenetre[rf.Rec.Debut] = rf.Families
-	}
-	ctx := c.fc.ContexteDeLecture()
-	for i := range p.Records {
-		r := &p.Records[i]
-		if int(r.TI) != keyframeBipedTI || r.Desync == lecture.CorpsNonParcouru {
-			continue
-		}
-		l := lireLEtatComplet(p, r, c.arch, c.roles, ctx)
-		if admettre(r, &l, c.dernierEmplacement) != refusAucun {
-			continue
-		}
-		c.admis++
-		lu := l.armesDe(r.Vie.Slot).Families
-		if !slices.Equal(publies[r.Vie.Slot], lu) {
-			c.publieDifferent++
-		}
-		if !slices.Equal(fenetre[r.Debut], lu) {
-			c.ecartsFenetre++
-		}
-	}
-}
-
 // TestLaFenetreNeVoitQueLesRecordsNonAdmis : sur les bobines du golden, la dotation d un record
 // admis est TOUJOURS celle de la grammaire, y compris la ou la fenetre lirait autre chose.
 func TestLaFenetreNeVoitQueLesRecordsNonAdmis(t *testing.T) {
 	total, mordants := 0, 0
 	for _, court := range closureMiniFilms() {
-		fc := contexteDeLaBobine(t, court)
-		c := &canalDeControle{canalDeLEtatCompletBipede: nouveauCanalDeLEtatComplet(fc, catalogueDesFamilles(),
-			DefaultGrenadeMax)}
-		distribuerLesImagesClesSeules(fc, []Canal{c})
-		if c.publieDifferent != 0 {
+		b := bilanDeLaBobine(t, court) // marche de controle partagee (keyframe_etat_complet_valeurs_test.go)
+		if b.publieDifferent != 0 {
 			t.Errorf("%s : %d record(s) admis publient autre chose que la lecture de la grammaire", court,
-				c.publieDifferent)
+				b.publieDifferent)
 		}
-		total += c.admis
-		mordants += c.ecartsFenetre
+		total += b.admis
+		mordants += b.ecartsFenetre
 	}
 	if total == 0 || mordants == 0 {
 		t.Fatalf("%d records admis dont %d ou la fenetre lirait autre chose : le test ne mord plus", total, mordants)

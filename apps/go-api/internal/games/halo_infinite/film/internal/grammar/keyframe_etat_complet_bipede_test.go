@@ -10,6 +10,7 @@ package grammar
 
 import (
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
@@ -195,14 +196,26 @@ func contexteDeLaBobine(t *testing.T, court string) *FilmContext {
 
 // etatsDeLaBobine rend la lecture des images-cles d une bobine du golden, en contexte de cuisson, et
 // verifie que ses replis sont notes sur le contexte du film.
+//
+// LA MARCHE EST MEMORISEE PAR BOBINE pour tout le paquet (les tests ne font que lire son resultat) :
+// sous la couverture de la CI, chaque rebalayage des sept bobines coute 70 a 80 s (budget du job,
+// `.github/workflows/ci.yml`, critere de retour a 600 s).
 func etatsDeLaBobine(t *testing.T, court string) EtatsDesImagesCles {
 	t.Helper()
-	fc := contexteDeLaBobine(t, court)
-	e, err := ScanEtatsDesImagesCles(fc, catalogueDesFamilles(), 0)
-	if err != nil {
-		t.Fatalf("%s : %v", court, err)
+	memoEtatsMu.Lock()
+	defer memoEtatsMu.Unlock()
+	m, ok := memoEtats[court]
+	if !ok {
+		fc := contexteDeLaBobine(t, court)
+		e, err := ScanEtatsDesImagesCles(fc, catalogueDesFamilles(), 0)
+		if err != nil {
+			t.Fatalf("%s : %v", court, err)
+		}
+		m = etatsMemorises{e: e, replis: fc.ComptesDesReplis()}
+		memoEtats[court] = m
 	}
-	if r := fc.ComptesDesReplis(); r.FenetresArmesImageCle != e.Admission.FenetresArmes ||
+	e := m.e
+	if r := m.replis; r.FenetresArmesImageCle != e.Admission.FenetresArmes ||
 		r.FenetresInventaireImageCle != e.Admission.FenetresInventaire ||
 		r.FenetresMarqueDePortage != e.Admission.FenetresMarque {
 		t.Errorf("%s : comptes notes sur le contexte %+v, attendu ceux de l admission %+v", court, r, e.Admission)
@@ -210,6 +223,17 @@ func etatsDeLaBobine(t *testing.T, court string) EtatsDesImagesCles {
 	t.Logf("%s\t%d bipedes\t%d admis", court, e.Admission.Bipedes, e.Admission.Admis)
 	return e
 }
+
+// etatsMemorises : la marche complete d une bobine et les comptes de replis notes sur son contexte.
+type etatsMemorises struct {
+	e      EtatsDesImagesCles
+	replis ComptesDesReplis
+}
+
+var (
+	memoEtatsMu sync.Mutex
+	memoEtats   = map[string]etatsMemorises{}
+)
 
 // catalogueDesFamilles rend le catalogue des familles d arme de la grammaire.
 func catalogueDesFamilles() map[uint32]bool { return weaponv3.FamillesConnues() }
