@@ -55,17 +55,17 @@ func TestKeyframeGroundWeapons_AttributionParArchetype(t *testing.T) {
 	}
 }
 
-// TestKeyframeGroundWeapons_LoadoutInchange : le MÊME payload rend toujours l'arme PORTÉE au
-// biped — la levée du filtre pour les armes au sol ne doit rien changer aux loadouts (c'est le
-// témoin de non-régression de la factorisation familiesByRecord).
+// TestKeyframeGroundWeapons_LoadoutInchange : le MÊME payload rend toujours l arme PORTÉE au
+// biped par la fenetre de production ([motsParRecord], celle que la lecture de l etat complet donne
+// aux records non admis) — la levée du filtre pour les armes au sol ne doit rien y changer.
 func TestKeyframeGroundWeapons_LoadoutInchange(t *testing.T) {
 	pay := twoRecordPayload()
-	got := keyframeLoadoutsDe(pay, recordsDIdentite(WalkKeyframeWorld(pay)), knownFamilies())
+	got := motsParRecord(pay, recordsDIdentite(WalkKeyframeWorld(pay)), keyframeBipedTI, knownFamilies())[0]
 	if len(got) != 1 {
-		t.Fatalf("1 loadout attendu, obtenu %d : %+v", len(got), got)
+		t.Fatalf("1 record porteur attendu, obtenu %d : %+v", len(got), got)
 	}
-	if got[0].Slot != 10 {
-		t.Fatalf("slot 10 attendu, obtenu %d", got[0].Slot)
+	if got[0].Rec.Vie.Slot != 10 {
+		t.Fatalf("slot 10 attendu, obtenu %d", got[0].Rec.Vie.Slot)
 	}
 	if len(got[0].Families) != 1 || got[0].Families[0] != famPorte {
 		t.Fatalf("famille portée attendue %#x, obtenu %#x", famPorte, got[0].Families)

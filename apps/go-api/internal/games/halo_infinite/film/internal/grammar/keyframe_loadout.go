@@ -120,20 +120,6 @@ func bipedesAbsentsEncadres(parImageCle []map[uint32]bool) int {
 	return n
 }
 
-// keyframeLoadoutsDe balaye un payload de keyframe, sur ses records DÉJÀ marchés, et rend un
-// loadout par record biped porteur d'au moins une famille connue. PUR (aucune I/O).
-func keyframeLoadoutsDe(pay []byte, recs []lecture.Record, known map[uint32]bool) []types.KeyframeLoadout {
-	rf := familiesByRecordRecs(pay, recs, known, keyframeBipedTI)
-	if len(rf) == 0 {
-		return nil
-	}
-	out := make([]types.KeyframeLoadout, 0, len(rf))
-	for _, r := range rf {
-		out = append(out, types.KeyframeLoadout{Slot: r.Rec.Vie.Slot, Families: r.Families})
-	}
-	return out
-}
-
 // recordFamilies porte les familles d'arme trouvées DANS un record de keyframe, avec le record
 // qui les contient (son archétype, son identité, sa position en bits).
 type recordFamilies struct {
