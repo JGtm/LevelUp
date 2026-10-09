@@ -36,16 +36,16 @@ var containerTokens = []string{
 	ContainerSuperFiesta,
 	"BTB Heavies",
 	"Castle Wars",
-	"Husky Raid",
-	"Community",
-	"Tactical",
-	"Assault",
+	PrefixHuskyRaid,
+	PrefixCommunity,
+	PrefixTactical,
+	PrefixAssault,
 	ContainerDoubles,
-	"Ranked",
-	"Fiesta",
+	PrefixRanked,
+	PrefixFiesta,
 	ContainerArena,
 	"Event",
-	"BTB",
+	PrefixBTB,
 }
 
 // IsContainer dit si le libellé ENTIER (trimé, insensible à la casse) est un jeton de

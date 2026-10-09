@@ -38,18 +38,27 @@ import (
 // valeurs stockées dans match_registry.mode_category.
 const (
 	CategoryAssassin    = "Assassin"
-	CategoryFiesta      = "Fiesta"
+	CategoryFiesta      = PrefixFiesta
 	CategorySuperFiesta = "Super Fiesta"
-	CategoryHuskyRaid   = "Husky Raid"
-	CategoryBTB         = "BTB"
-	CategoryRanked      = "Ranked"
-	CategoryFirefight   = "Firefight"
+	CategoryHuskyRaid   = PrefixHuskyRaid
+	CategoryBTB         = PrefixBTB
+	CategoryRanked      = PrefixRanked
+	CategoryFirefight   = PrefixFirefight
 	CategoryOther       = "Other"
 )
 
 // Préfixes de playlist qui apparaissent à plusieurs endroits (clés de prefixToCategory et de
 // prefixCaseMap).
 const (
+	PrefixTactical       = "Tactical"
+	PrefixAssault        = "Assault"
+	PrefixCommunity      = "Community"
+	PrefixFiesta         = "Fiesta"
+	PrefixHuskyRaid      = "Husky Raid"
+	PrefixBTB            = "BTB"
+	PrefixRanked         = "Ranked"
+	PrefixFirefight      = "Firefight"
+	PrefixGruntpocalypse = "Gruntpocalypse"
 	PrefixCastleWars     = "Castle Wars"
 	PrefixBTBHeavies     = "BTB Heavies"
 	PrefixSuperHuskyRaid = "Super Husky Raid"
@@ -60,27 +69,27 @@ const (
 // (« Gruntpocalypse:Fiesta » a Gruntpocalypse pour mode) : la liste des conteneurs de
 // container.go est une autre notion, ne pas en ajouter une troisième.
 var prefixToCategory = map[string]string{
-	"Arena":              CategoryAssassin,
-	"Tactical":           CategoryAssassin,
-	"Assault":            CategoryAssassin,
-	"Community":          CategoryAssassin,
-	"Fiesta":             CategoryFiesta,
+	ContainerArena:       CategoryAssassin,
+	PrefixTactical:       CategoryAssassin,
+	PrefixAssault:        CategoryAssassin,
+	PrefixCommunity:      CategoryAssassin,
+	PrefixFiesta:         CategoryFiesta,
 	CategorySuperFiesta:  CategorySuperFiesta,
 	CategoryHuskyRaid:    CategoryHuskyRaid,
 	PrefixSuperHuskyRaid: CategoryHuskyRaid,
 	PrefixCastleWars:     CategoryFiesta,
-	"BTB":                CategoryBTB,
+	PrefixBTB:            CategoryBTB,
 	PrefixBTBHeavies:     CategoryBTB,
-	"Ranked":             CategoryRanked,
-	"Firefight":          CategoryFirefight,
-	"Gruntpocalypse":     CategoryFirefight,
+	PrefixRanked:         CategoryRanked,
+	PrefixFirefight:      CategoryFirefight,
+	PrefixGruntpocalypse: CategoryFirefight,
 	"Event":              CategoryOther,
 }
 
 // prefixCaseMap : préfixes dont la casse canonique n'est pas la capitalisation par mot.
 var prefixCaseMap = map[string]string{
 	"btb heavies":      PrefixBTBHeavies,
-	"btb":              "BTB",
+	"btb":              PrefixBTB,
 	"super fiesta":     CategorySuperFiesta,
 	"super husky raid": PrefixSuperHuskyRaid,
 	"husky raid":       CategoryHuskyRaid,
