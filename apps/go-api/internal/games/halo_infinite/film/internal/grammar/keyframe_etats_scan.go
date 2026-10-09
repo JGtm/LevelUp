@@ -51,6 +51,9 @@ type ComptesDeLAdmission struct {
 	Debordements int
 	// CapaciteHorsDomaine : records admis dont le rang de capacite lu est hors de 16..23 (non publie).
 	CapaciteHorsDomaine int
+	// SelectionHorsMasque : records admis dont la selection de grenade d i47 ne designe aucun type de
+	// son masque (ou sort du domaine 1..4) : publies sans selection, comme au canal delta.
+	SelectionHorsMasque int
 	// FenetresArmes, FenetresInventaire, FenetresMarque : records bipedes non admis donnes a chaque
 	// fenetre derriere la lecture — les comptes des trois replis (`keyframe_etats_fenetre.go`).
 	FenetresArmes, FenetresInventaire, FenetresMarque int
@@ -205,9 +208,12 @@ func (c *canalDeLEtatCompletBipede) lu(slot uint32, l *lectureDEtatComplet) rend
 	if c.armesSeules {
 		return renduDuRecord{bipede: true, admis: true, armes: &armes}
 	}
-	inv, horsDomaine := l.inventaireDe(slot)
-	if horsDomaine {
+	inv, tu := l.inventaireDe(slot)
+	if tu.capaciteHorsDomaine {
 		c.out.Admission.CapaciteHorsDomaine++
+	}
+	if tu.selectionHorsMasque {
+		c.out.Admission.SelectionHorsMasque++
 	}
 	return renduDuRecord{bipede: true, admis: true, armes: &armes, inventaire: &inv, marque: l.porteLaMarque()}
 }

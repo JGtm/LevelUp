@@ -107,7 +107,7 @@ func (c *canalDeLEtatCompletBipede) rendreParLaFenetre(p *lecture.Paquet, r *lec
 	}
 	if invs := keyframeInventoriesDe(p.Payload, []invRecordSpan{emprise}, c.known, c.grenMax); len(invs) == 1 {
 		rendu.inventaire = &invs[0]
-		rendu.recupere.Inventaire = true
+		rendu.recupere.Inventaire = porteUneValeur(invs[0])
 		switch {
 		case !invs[0].GrenadesRead:
 		case invs[0].GrenadesByPosition:
@@ -118,6 +118,13 @@ func (c *canalDeLEtatCompletBipede) rendreParLaFenetre(p *lecture.Paquet, r *lec
 	}
 	rendu.marque = marques[r.Debut]
 	rendu.recupere.Marque = rendu.marque
+}
+
+// porteUneValeur dit si une lecture d inventaire de la fenetre porte au moins une valeur (compteurs,
+// munitions, capacite, emplacement desire ou selection) : les regles d ancrage rendent une lecture
+// pour chaque record qu on leur donne, meme vide, et une lecture vide n est pas une recuperation.
+func porteUneValeur(inv types.KeyframeInventory) bool {
+	return inv.GrenadesRead || inv.AmmoRead || inv.AbilityRank >= 0 || inv.DrawnSlot >= 0 || inv.SelectedGrenadeRank >= 0
 }
 
 // emettre publie, dans l ordre des records du paquet, ce que chacun rend, et marque les records

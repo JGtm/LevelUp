@@ -34,6 +34,7 @@ func (s *filmScan) lireLesImagesCles() {
 		"refusNiFermeNiI22", a.RefusNiFermeNiI22, "refusT1", a.RefusT1, "refusT2", a.RefusT2,
 		"refusDebordement", a.RefusDebordement,
 		"debordements", a.Debordements, "capaciteHorsDomaine", a.CapaciteHorsDomaine,
+		"selectionHorsMasque", a.SelectionHorsMasque,
 		"recuperes", len(s.etats.Recuperes), "recuperesArmes", r.armes,
 		"recuperesInventaire", r.inventaire, "recuperesMarque", r.marque)
 }

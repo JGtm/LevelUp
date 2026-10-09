@@ -102,17 +102,17 @@ func TestLaPublicationDUnRecordAdmis(t *testing.T) {
 		l.chargeurLu[k], l.reserveLue[k], l.reserve[k] = true, true, uint32(10*k) //nolint:gosec // petit
 	}
 	l.aChargeur[0], l.chargeur[0] = true, 31
-	inv, hors := l.inventaireDe(7)
-	if hors || inv.AbilityRank != 20 || inv.SelectedGrenadeRank != 0 || inv.DrawnSlot != 1 || !inv.GrenadesRead ||
+	inv, tu := l.inventaireDe(7)
+	if tu.capaciteHorsDomaine || tu.selectionHorsMasque || inv.AbilityRank != 20 || inv.SelectedGrenadeRank != 0 || inv.DrawnSlot != 1 || !inv.GrenadesRead ||
 		inv.Grenades[0] != 2 || !inv.AmmoRead || inv.Ammo[0].Mag == nil || *inv.Ammo[0].Mag != 31 ||
 		inv.Ammo[1].Mag != nil || *inv.Ammo[3].Res != 30 {
-		t.Fatalf("inventaire publie inattendu : %+v (hors domaine %v)", inv, hors)
+		t.Fatalf("inventaire publie inattendu : %+v (tu %+v)", inv, tu)
 	}
 	l.selection, l.rang, l.jeu.Principal = GrenadeSetNoSelection, 3, -1
 	l.reserveLue[2] = false
-	inv, hors = l.inventaireDe(7)
-	if !hors || inv.AbilityRank != -1 || inv.SelectedGrenadeRank != -1 || inv.DrawnSlot != -1 || inv.AmmoRead {
-		t.Fatalf("selection nulle, rang 3, aucun emplacement desire, reserve manquante : %+v (hors domaine %v)", inv, hors)
+	inv, tu = l.inventaireDe(7)
+	if !tu.capaciteHorsDomaine || inv.AbilityRank != -1 || inv.SelectedGrenadeRank != -1 || inv.DrawnSlot != -1 || inv.AmmoRead {
+		t.Fatalf("selection nulle, rang 3, aucun emplacement desire, reserve manquante : %+v (tu %+v)", inv, tu)
 	}
 	if got := l.armesDe(7).Families; len(got) != 1 || got[0] != l.armeHaute[0] {
 		t.Fatalf("armes publiees %08x, attendu la seule famille de l emplacement 0", got)
@@ -218,4 +218,32 @@ func catalogueDesFamilles() map[uint32]bool {
 		known[f] = true
 	}
 	return known
+}
+
+// TestLaSelectionHorsDuMasqueNEstPasPubliee : une selection d i47 qui ne designe aucun type de son
+// masque, ou sort du domaine 1..4, est tue et comptee — le contrat du canal delta (revue D1.4.6,
+// constat 5). Mutation jouee le 2026-10-09, rouge puis retiree : la selection publiee sans le test du
+// masque.
+func TestLaSelectionHorsDuMasqueNEstPasPubliee(t *testing.T) {
+	cas := []struct {
+		nom             string
+		masque          uint32
+		selection, rang int
+		tue             bool
+	}{
+		{"selection dans le masque", 0b0101, 3, 2, false},
+		{"selection hors du masque", 0b0001, 3, -1, true},
+		{"masque nul, selection 1 (compteurs tous nuls)", 0, 1, -1, true},
+		{"selection hors domaine", 0b1111, 5, -1, true},
+		{"aucune selection", 0b0001, GrenadeSetNoSelection, -1, false},
+	}
+	for _, c := range cas {
+		l := lectureAdmissible(t)
+		l.masque, l.selection = c.masque, c.selection
+		inv, tu := l.inventaireDe(7)
+		if inv.SelectedGrenadeRank != c.rang || tu.selectionHorsMasque != c.tue {
+			t.Errorf("%s : selection publiee %d (attendu %d), tue %v (attendu %v)", c.nom,
+				inv.SelectedGrenadeRank, c.rang, tu.selectionHorsMasque, c.tue)
+		}
+	}
 }

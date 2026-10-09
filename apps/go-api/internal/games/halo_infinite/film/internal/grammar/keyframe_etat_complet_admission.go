@@ -139,24 +139,34 @@ func (l *lectureDEtatComplet) armesDe(slot uint32) types.KeyframeLoadout {
 	return out
 }
 
-// inventaireDe rend l inventaire lu d un record admis, et dit si son rang de capacite tombait hors
-// du domaine publie.
-func (l *lectureDEtatComplet) inventaireDe(slot uint32) (types.KeyframeInventory, bool) {
+// refusDInventaire dit ce que la publication d un inventaire admis a tu : un rang de capacite hors du
+// domaine publie, une selection de grenade hors du masque d i47 ou de son domaine.
+type refusDInventaire struct{ capaciteHorsDomaine, selectionHorsMasque bool }
+
+// inventaireDe rend l inventaire lu d un record admis, et ce que sa publication a tu.
+func (l *lectureDEtatComplet) inventaireDe(slot uint32) (types.KeyframeInventory, refusDInventaire) {
 	inv := types.KeyframeInventory{Slot: slot, AbilityRank: -1, DrawnSlot: -1, SelectedGrenadeRank: -1}
 	for k := range emplacementsDArme {
 		inv.Grenades[k] = uint32(l.compteurs[k]) //nolint:gosec // R(8)
 	}
 	inv.GrenadesRead = true
-	horsDomaine := false
+	var tu refusDInventaire
 	if l.capaciteLue && l.rang != AbilitySetNoRank {
 		if l.rang >= rangDeCapaciteMin && l.rang <= rangDeCapaciteMax {
 			inv.AbilityRank = l.rang
 		} else {
-			horsDomaine = true
+			tu.capaciteHorsDomaine = true
 		}
 	}
+	// LA SELECTION SUIT LE CONTRAT DU CANAL DELTA (decision du superviseur, revue D1.4.6, constat 5) :
+	// une selection non nulle n est publiee que si elle designe un type du masque d i47 ; sinon la
+	// lecture est publiee SANS selection, et le refus se compte.
 	if l.jeuDeGrenadesLu && l.selection != GrenadeSetNoSelection {
-		inv.SelectedGrenadeRank = l.selection - 1
+		if selectionDansLeMasque(l.masque, l.selection) {
+			inv.SelectedGrenadeRank = l.selection - 1
+		} else {
+			tu.selectionHorsMasque = true
+		}
 	}
 	if l.jeuLu {
 		inv.DrawnSlot = l.jeu.Principal
@@ -165,7 +175,7 @@ func (l *lectureDEtatComplet) inventaireDe(slot uint32) (types.KeyframeInventory
 	if inv.AmmoRead {
 		inv.AmmoCandidates = 1
 	}
-	return inv, horsDomaine
+	return inv, tu
 }
 
 // munitions rend l etat des quatre emplacements lus, et vrai quand les quatre chargeurs et les

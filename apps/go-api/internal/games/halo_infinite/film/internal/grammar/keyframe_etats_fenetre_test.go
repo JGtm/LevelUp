@@ -136,3 +136,41 @@ func TestLesArmesSeulesSontCellesDeLaMarcheComplete(t *testing.T) {
 		}
 	}
 }
+
+// TestUnRecordRecupereParLInventairePorteUneValeur : un record n est marque recupere par la fenetre
+// d inventaire que si sa lecture porte une valeur ; une lecture vide (les regles d ancrage en rendent
+// une pour chaque record donne) reste publiee, sans marque (revue D1.4.6, constat 3).
+//
+// Mutation jouee le 2026-10-09, rouge puis retiree : la marque posee pour toute lecture rendue.
+func TestUnRecordRecupereParLInventairePorteUneValeur(t *testing.T) {
+	vides := 0
+	for _, court := range closureMiniFilms() {
+		e := etatsDeLaBobine(t, court)
+		lectures := map[string]types.KeyframeInventory{}
+		for _, inv := range e.Inventaire {
+			lectures[fmt.Sprintf("%d/%d", inv.TimestampUS, inv.Slot)] = inv
+		}
+		marques := map[string]bool{}
+		for _, k := range e.Recuperes {
+			cle := fmt.Sprintf("%d/%d", k.TimestampUS, k.Slot)
+			if k.Inventaire {
+				marques[cle] = true
+				if !porteUneValeur(lectures[cle]) {
+					t.Errorf("%s : record %s marque recupere par l inventaire, lecture sans valeur", court, cle)
+				}
+			}
+		}
+		for cle, inv := range lectures {
+			if !porteUneValeur(inv) {
+				vides++
+				if marques[cle] {
+					t.Errorf("%s : lecture vide %s marquee recuperee", court, cle)
+				}
+			}
+		}
+	}
+	if vides == 0 {
+		t.Fatal("aucune lecture d inventaire vide sur les bobines : le test ne mord plus")
+	}
+	t.Logf("%d lecture(s) vide(s) sur les bobines, aucune marquee", vides)
+}
