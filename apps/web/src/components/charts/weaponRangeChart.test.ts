@@ -15,6 +15,7 @@ import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
 
 import {
   WEAPON_RANGE_ROW_PX,
+  WEAPON_RANGE_X_LABEL_GAP_PX,
   buildWeaponRangeOption,
   weaponRangeAxisMax,
   weaponRangeCategoryLabel,
@@ -88,7 +89,7 @@ function optionOf(lines: WeaponRangeLine[]) {
       percentiles: 'p10 · médiane · p90',
     },
   }) as {
-    xAxis: { max: number }
+    xAxis: { max: number; axisLabel: { margin: number } }
     yAxis: { data: string[]; axisLabel: { width: number; overflow: string; ellipsis: string } }
     tooltip: { formatter: (p: unknown) => string }
     series: {
@@ -171,6 +172,8 @@ describe('buildWeaponRangeOption — l’axe et la série', () => {
       'Mêlée',
     ])
     expect(o.xAxis.max).toBe(55)
+    // Les graduations de distance ne collent pas au dernier bâton.
+    expect(o.xAxis.axisLabel.margin).toBe(WEAPON_RANGE_X_LABEL_GAP_PX)
     expect(o.series[0].type).toBe('custom')
     // Une donnée par ligne, porteuse de la borne d'axe (dimensions encodées en x).
     expect(o.series[0].data).toEqual([

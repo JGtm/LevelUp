@@ -45,7 +45,7 @@ export function useReplayZoomKeys(canvasRef: RefObject<HTMLCanvasElement | null>
       hovered = false
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return
+      if (!frame || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return
       if (!planIsTargeted(frame, hovered, document.activeElement)) return
       const command = zoomKeyCommand(e.key)
       if (!command) return

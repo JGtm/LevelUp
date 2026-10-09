@@ -33,5 +33,7 @@ export const Route = createFileRoute(
     vue: z.string().optional(),
     eq: z.string().optional(),
   }),
+  // Le cockpit tient dans l'écran : la coquille ne pose pas le pied de page global sous lui.
+  staticData: { piedDePage: false },
   component: TacticalTab,
 })
