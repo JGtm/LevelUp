@@ -96,7 +96,11 @@ type zoneCtx struct {
 	origin, step uint64
 	frames       int
 	intervalMS   int
-	tracks       []Track
+	// kickoff est la frame du COUP D ENVOI du match (`T0FilmMs`), et hasKickoff dit qu elle est
+	// mesuree : c est l instant d apparition de la 1re colline (zone_states_hill_activation.go).
+	kickoff    int
+	hasKickoff bool
+	tracks     []Track
 	// actions sont les actions d'objectif DEJA posees sur la grille de frames (doc.Objectives) :
 	// un seul decodage du statborg pour tout le document.
 	actions []ObjectiveAction
@@ -153,7 +157,9 @@ type zoneSeries struct {
 	// noms : le NOM de chaque slot lu aux images-cles et l index inverse ([zoneNomsDesSlots]). C est
 	// par lui que le proprietaire et le pousseur d une zone, et le proprietaire d une colline, se
 	// rattachent a leur bloc (zone_states_owner_nom.go).
-	noms  zoneNoms
+	noms zoneNoms
+	// cles : ce que les images-cles disent des slots (zone_states_hill_activation.go).
+	cles  zoneCles
 	slots int
 }
 
@@ -173,6 +179,7 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 	ser := zoneSeriesOf(in.Reads, c)
 	ser.ownerKey = zoneKeyOwnerOf(in.KeyReads, in.Reads, c)
 	ser.noms = zoneNomsDesSlots(in.KeyReads)
+	ser.cles = zoneClesDesSlots(in.KeyReads, c)
 	cov.Slots = ser.slots
 	caps := zoneCapturesOf(c.actions)
 	cov.Captures = len(caps)

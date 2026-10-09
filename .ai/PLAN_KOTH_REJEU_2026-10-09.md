@@ -116,6 +116,20 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 ### E6 — Livraison
 - [x] Gates complets (Go concernés, lint, check-types, vitest), journal, commit(s), push, CI.
 
+
+### E7 — Reprise (2026-10-09) : la 1re colline apparaît au coup d'envoi
+- [x] Mesure de l'instant d'activation sur 14 films (`zone_colline_activation_mesure_test.go`) :
+  (a) images-clés, (b) émissions delta, (c) coup d'envoi.
+- [x] Règle `hillFirstActivation` (`zone_states_hill_activation.go`) : coup d'envoi ramené dans la
+  fenêtre des images-clés (repli nommé `repli_colline_premiere_au_coup_d_envoi`), sinon 1re
+  image-clé qui porte le bloc, sinon premier contact ; jamais après le premier contact.
+- [x] Tests (`zone_states_hill_activation_test.go`, 3 cas, mutation : 3 échecs sans la règle).
+- [x] Collines suivantes vérifiées (début = image du point, écart 0 à 1 image).
+- [!] Délai de prise de 5,1 s après chaque déplacement : mesuré, NON appliqué — question de jeu
+  posée au user (cf. Journal).
+- [x] Chronique v92 amendée (schéma inchangé : 92 n'est publié nulle part), recuisson des 11 films,
+  gates, push, CI.
+
 ## Critères de succès mesurables
 
 | Point | Critère |
@@ -140,6 +154,27 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 - **E6 close (2026-10-09)**. `go test ./...` local (CGO) : seul echec `internal/mapdecoupe` `TestOraclePositionsJouees`, qui lit les artefacts du cache LOCAL du worktree (les 11 KOTH recuits ici, 3 cartes reconnues pour 5 exigees) — vert une fois ces artefacts mis de cote, et sans objet en CI (aucun artefact). golangci-lint des paquets touches : 3 constats pre-existants hors fichiers du lot (`mappings` : `loader_outcomes.go`, `loader_endpoints.go`, `registry.go`). Web : typecheck a froid (`node_modules/.tmp` purge), `npm run lint` 0 erreur (26 avertissements pre-existants, aucun dans un fichier du lot), vitest complet 890 fichiers / 9 371 tests verts. Push `feat/koth-colline` : CI `b5d20f3cb` verte au niveau job (Go Linux et Windows, couverture + baseline, lint, contrat OpenAPI, Frontend), gitleaks et Deploy Pre-Check verts. Registre des reports : seuil Squad, courbes de score de Lattice, cartes hors bornes.
 
 **A FAIRE PAR LE SUPERVISEUR (accord du user requis)** : republication du parc au schema 92 (`backfill-replay --only-existing`, verdict `republier`, assemblage seul) — elle concerne TOUS les artefacts (un v91 se lit « a republier ») ; les collines ne changent que sur les 10 artefacts KOTH du parc local (`0d9a9af9`, `26602661`, `f75e7053`, `21ece4d8`, `7f1bbf06`, `a36c8bed`, `5ed17fe3`, `606d9844`, `01e1f945`, `8076f97f`). Fusion dans `feat/v75` non faite (consigne).
+
+- **E7 close (2026-10-09, reprise)**. Activation de la 1re colline, 14 films (instants rapportés au coup d'envoi `t0FilmMs`, frames de 100 ms ; cuisson pour les 11 à carte bornée) :
+
+  | film | variante | image-clé sans le bloc | image-clé avec le bloc (désignation 1re colline) | 1er contact |
+  |---|---|---|---|---|
+  | 0d9a9af9 | Doubles | -11,2 s | +8,8 s | +17,0 s |
+  | 01e1f945 | Arène | -14,1 s | +5,9 s | +15,3 s |
+  | 21ece4d8 | Arène | -15,3 s | +4,7 s | +16,8 s |
+  | 606d9844 | Arène | -9,7 s | +10,3 s | +15,1 s |
+  | 7f1bbf06 | Arène | -6,6 s | +13,4 s | +21,5 s |
+  | 8076f97f | Arène | -17,8 s | +2,3 s | +17,3 s |
+  | a36c8bed | Arène | -17,6 s | +2,4 s | +15,7 s |
+  | 26602661 | Classé | -13,4 s | +6,6 s | +27,6 s |
+  | 5acb0e0a | Classé | -11,1 s | +8,9 s | +15,6 s |
+  | 7de0b91d | Classé | -13,2 s | +6,8 s | +19,7 s |
+  | f75e7053 | Classé | -14,0 s | +6,0 s | +37,2 s |
+  | e449a696, 7f172b20, 84c2221e | Squad, Classé x2 | même motif (absent à +20 s, présent à +40 s du 1er paquet ti=13) ; pas de coup d'envoi sans cuisson | | |
+
+  (a) les images-clés (toutes les 20 s) BORNENT la création de l'objet de mode, avec la désignation de la 1re colline (`0xc4c98230`) dès la 1re image-clé qui le porte ; l'intersection des 11 fenêtres est ]-6,6 s ; +2,3 s] autour du coup d'envoi — elles le contiennent toutes. (b) aucune lecture CHAÎNÉE du bloc avant le premier contact (les lectures antérieures sont de la contamination d'ancrage : tags et modes par joueur incohérents) ; la création est un record que l'ancrage ne reconnaît pas. (c) retenu : coup d'envoi ramené dans la fenêtre, repli nommé et compté. Délai d'activation au départ : nul à la précision des images-clés (compatible avec 0 sur les 11 films, au plus +2,3 s), non mesurable plus finement. Recuisson : 11/11 films, 1re période au coup d'envoi (écart 0), repli déclenché 1 fois par film, collines suivantes au point (écart 0 à 1 image) ; placement, jauge et oracle inchangés (165/165). Deux écarts « ? » et « 1932 » sur `26602661` et `7de0b91d` viennent des courbes de score anormales déjà reportées (D1), pas des périodes.
+
+  **Découverte — délai de prise après chaque déplacement** : sur 50 déplacements (14 films), la première émission du bloc (prise, ou montée de jauge) n'arrive JAMAIS avant 5,09 s après la bascule du désignateur, et 13 fois entre 5,09 et 5,19 s (5 fois à 5,09 s exactement en Classé : un joueur posté sur la colline suivante la prend à cet instant). Le film ne porte aucune émission propre à cet instant (balayage de toutes les lectures chaînées de +3 à +5,6 s : rien de récurrent). Ce délai n'est PAS appliqué : il ne se lit que comme un plancher, et ce que le jeu affiche pendant ces 5 s (colline suivante visible avec compte à rebours, ou absente) appartient au user. Question posée.
 
 ## Découvertes (hors périmètre, non traitées)
 

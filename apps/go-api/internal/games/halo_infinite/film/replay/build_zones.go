@@ -112,12 +112,14 @@ func decodeFilmFlagReturnGauge(ctx context.Context, p *ti13Partage, garde bool) 
 // sur la grille de frames (origine du film retranchee) et filtrees aux joueurs dont une piste est
 // publiee. Les re-decoder ici en ferait un second lecteur du meme fait.
 func attachZoneStates(ctx context.Context, doc *ReplayDocument, opt Options, reg IdentityRegistry, c replayClock) {
-	states, cov := buildZoneStates(ctx, opt.Zone, zoneCtx{
+	zc := zoneCtx{
 		origin: c.origin, step: c.step, frames: doc.FrameCount,
 		intervalMS: doc.FrameIntervalMS, tracks: doc.Tracks,
 		actions: doc.Objectives, slotXUID: reg.PontEpure(), matchID: doc.MatchID,
 		fb: c.fb,
-	})
+	}
+	zc.kickoff, zc.hasKickoff = kickoffFrameOf(doc)
+	states, cov := buildZoneStates(ctx, opt.Zone, zc)
 	doc.ZoneStates = states
 	if doc.Coverage != nil {
 		doc.Coverage.Zones = cov
@@ -162,4 +164,13 @@ func logZoneStatesCoverage(ctx context.Context, matchID string, cov *ZonesCovera
 		"proprietaireConcordant", cov.OwnerAgreed,
 		"capturesAttribuees", cov.Attributed, "capturesSansPosition", cov.NoPosition,
 		"capturesDehors", cov.Outside, "capturesAmbigues", cov.AmbiguousZone)
+}
+
+// kickoffFrameOf rend la frame du COUP D ENVOI (`T0FilmMs`, sur l horloge d `OriginMs`), et faux
+// quand le document n en porte pas (detecteur refuse, ou origine non etablie).
+func kickoffFrameOf(doc *ReplayDocument) (int, bool) {
+	if doc.T0FilmMs == nil || doc.OriginMs == nil || doc.FrameIntervalMS <= 0 {
+		return 0, false
+	}
+	return int((*doc.T0FilmMs - *doc.OriginMs) / int64(doc.FrameIntervalMS)), true
 }

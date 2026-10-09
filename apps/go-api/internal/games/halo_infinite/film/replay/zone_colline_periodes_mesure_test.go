@@ -65,7 +65,7 @@ func TestCollinePeriodesMesure(t *testing.T) {
 	pts := zonePointsByFrame(doc.Tracks)
 	owner := ser.owner[hillOwnerSlotOf(ser, d, &ZonesCoverage{}, nil)]
 	jauge := ser.gauge[hillModeObjectSlotsGauge(ser.noms, d.slot)]
-	for i, p := range hillDesignatedPeriods(d, c.frames) {
+	for i, p := range hillDesignatedPeriods(d, d.first, c.frames) {
 		hillPeriodeMesure(t, fmt.Sprintf("%s P%d [%d-%d]", short, i+1, p.t0, p.t1),
 			hillMesureEntree{cat: cat, pts: pts, tracks: doc.Tracks, owner: owner, jauge: jauge}, p)
 	}

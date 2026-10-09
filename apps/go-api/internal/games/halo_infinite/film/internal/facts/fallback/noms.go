@@ -35,6 +35,8 @@ const (
 	NomPisteDrapeauSansPontEcartee Nom = "repli_piste_drapeau_sans_pont_ecartee"
 	// NomCollineVotesPeriodeEntiere : `replay/zone_states_hill.go`, `buildDesignatedHills`.
 	NomCollineVotesPeriodeEntiere Nom = "repli_colline_votes_periode_entiere"
+	// NomCollinePremiereAuCoupDEnvoi : `replay/zone_states_hill_activation.go`, `hillFirstActivation`.
+	NomCollinePremiereAuCoupDEnvoi Nom = "repli_colline_premiere_au_coup_d_envoi"
 	// NomCollineVotesSansGarde : `replay/zone_states_hill.go`, `hillLocator.place`.
 	NomCollineVotesSansGarde Nom = "repli_colline_votes_sans_garde"
 	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill_owners.go`, `hillOwnerRuns`.

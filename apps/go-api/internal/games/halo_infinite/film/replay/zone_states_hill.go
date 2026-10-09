@@ -19,11 +19,10 @@ package replay
 //	                 voisines qui designent la meme zone se fondent. Elle reste le REPLI d'un
 //	                 film sans designateur lisible (aucun des 4 films du corpus n'y retombe).
 //
-// CE QUE LE FILM NE DIT PAS : l'ACTIVATION DE LA PREMIERE COLLINE. La premiere designation vit
-// dans l'image-cle, que le delta ne re-emet pas ; l'objet de mode est ABSENT des images-cles a 0
-// et 20 s et PRESENT a 40 s sur les 4 films (cree entre les deux). La premiere periode s'ouvre
-// donc au PREMIER CONTACT avec l'objet (premiere emission de sa jauge, de son proprietaire ou de
-// son designateur) — une borne HAUTE de l'activation, jamais une invention.
+// CE QUE LE FILM NE DATE PAS : l'ACTIVATION DE LA PREMIERE COLLINE. La premiere designation vit
+// dans l'image-cle, que le delta ne re-emet pas ; les images-cles ne font que BORNER la creation de
+// l'objet de mode. La premiere periode s'ouvre au coup d'envoi ramene dans cette fenetre (repli
+// nomme), cf. zone_states_hill_activation.go.
 //
 // CE QUE CE VOLET PUBLIE DEPUIS LE 2026-08-26 : le PROPRIETAIRE. Son canal est celui du bloc dont le
 // designateur est la cle de nommage, designe par le NOM de propriete (hillOwnerSlotOf ; le slot
@@ -85,8 +84,12 @@ type hillDesignator struct {
 	// changes : frames ou la designation change — chaque changement de valeur, la premiere
 	// emission comprise (l'etat initial vit dans l'image-cle).
 	changes []int
-	// first : frame du premier contact avec l'objet de mode (borne haute de l'activation).
+	// first : frame du premier contact avec l'objet de mode (borne haute de l'activation ; la 1re
+	// periode commence a `hillFirstActivation`).
 	first int
+	// bloc : les slots de l objet de mode autres que le designateur (proprietaire, pousseur, jauge),
+	// par le nom ou par le voisinage selon la voie.
+	bloc []uint32
 	// parVoisinage dit que le designateur et les canaux de l objet de mode viennent de la regle
 	// de VOISINAGE (repli `repli_colline_designateur_par_voisinage`), faute de nom au vocabulaire.
 	parVoisinage bool
@@ -107,7 +110,8 @@ func hillDesignatorOf(ser zoneSeries) (hillDesignator, bool) {
 		return ok
 	}
 	if d, ok := hillDesignatorWhere(ser, nomme); ok {
-		d.first = hillFirstContact(ser, d, hillModeObjectSlots(ser.noms, d.slot))
+		d.bloc = hillModeObjectSlots(ser.noms, d.slot)
+		d.first = hillFirstContact(ser, d, d.bloc)
 		return d, true
 	}
 	voisin := func(slot uint32) bool { return len(ser.owner[slot+1]) >= hillDesignatorMinOwnerSamples }
@@ -116,7 +120,8 @@ func hillDesignatorOf(ser zoneSeries) (hillDesignator, bool) {
 		return d, false
 	}
 	d.parVoisinage = true
-	d.first = hillFirstContact(ser, d, hillNeighbourSlots(d.slot))
+	d.bloc = hillNeighbourSlots(d.slot)
+	d.first = hillFirstContact(ser, d, d.bloc)
 	return d, true
 }
 
@@ -192,7 +197,9 @@ func buildDesignatedHills(zones []Zone, ser zoneSeries, h hillCtx, c zoneCtx,
 	cov *ZonesCoverage,
 ) []ZoneState {
 	cov.Method = ZoneMethodDesignator
-	periods := hillDesignatedPeriods(h.d, c.frames)
+	debut := hillFirstActivation(h.d, h.d.bloc,
+		hillActivationCtx{cles: ser.cles, kickoff: c.kickoff, hasKickoff: c.hasKickoff, fb: c.fb})
+	periods := hillDesignatedPeriods(h.d, debut, c.frames)
 	cov.HillPeriods = len(periods)
 	// LE CANAL DE PROPRIETE EST CELUI DU BLOC DONT LE DESIGNATEUR EST LA CLE, designe par le nom
 	// (le slot voisin du designateur en repli). Niveau de preuve accepte et reserve : cf.
@@ -252,10 +259,10 @@ func (l hillLocator) place(p *hillPeriod) bool {
 	return p.hasRef
 }
 
-// hillDesignatedPeriods rend une periode par colline : [premier contact ; b1-1], [b1 ; b2-1],
+// hillDesignatedPeriods rend une periode par colline : [debut ; b1-1], [b1 ; b2-1],
 // ..., [bn ; derniere frame]. Une periode vide (deux bascules dans la meme frame) est ecartee.
-func hillDesignatedPeriods(d hillDesignator, frames int) []hillPeriod {
-	bounds := append([]int{d.first}, d.changes...)
+func hillDesignatedPeriods(d hillDesignator, debut, frames int) []hillPeriod {
+	bounds := append([]int{debut}, d.changes...)
 	out := make([]hillPeriod, 0, len(bounds))
 	for i, t0 := range bounds {
 		t1 := frames - 1

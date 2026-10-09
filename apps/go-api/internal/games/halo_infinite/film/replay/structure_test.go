@@ -1425,8 +1425,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Detail : `document_chronicle.go`.
 	// - 92 (2026-10-09, lot `feat/koth-colline`) : un champ neuf `zoneStates[].gaugeRamps[].draining` ;
 	//   le CONTENU change : la colline d une periode se place par la garde de son camp proprietaire,
-	//   et la jauge de capture des collines se publie (prise, vidange). Assemblage seul : un v91 se
-	//   lit « a republier ». Detail : `document_chronicle.go`.
+	//   la 1re colline apparait au coup d envoi, et la jauge de capture des collines se publie (prise,
+	//   vidange). Assemblage seul : un v91 se lit « a republier ». Detail : `document_chronicle.go`.
 	if SchemaVersion != 92 {
 		t.Fatalf("SchemaVersion = %d, attendu 92 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

@@ -273,7 +273,7 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 90 -> 91 (2026-10-09, lot `feat/aj-needler`), +33 : l entree v91 (la premiere prise de
 	// socle du cycle, son compteur, le releve intercale, la mesure au parc et sa contre-epreuve).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3208,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3212,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du

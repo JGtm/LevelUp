@@ -250,6 +250,21 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:       "repli_colline_premiere_au_coup_d_envoi",
+		Fait:      "a quel instant la premiere colline apparait",
+		Mecanisme: "la creation de l objet de mode n est pas datee par le film (images-cles a 20 s d intervalle) : la 1re periode commence au coup d envoi du match, ramene dans la fenetre des images-cles",
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill_activation.go",
+			Ancre:   "a.fb.Declenche(fallback.NomCollinePremiereAuCoupDEnvoi)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    "un lecteur du record de creation de l objet de mode dans les trames delta ; a defaut, le repli reste (film muet)",
+		CritereRetrait:  "la creation de l objet de mode datee par une lecture sur les films a colline du parc",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_sans_garde",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune frame tenue ou le camp proprietaire a une position publiee : la periode se place par la grappe des positions pendant les montees de la jauge",

@@ -3194,6 +3194,10 @@ package replay
 //	                constant — la prise (camp lu) ou la vidange (`draining`, champ neuf : le camp
 //	                qui tient la colline la perd). Une variante a prise instantanee (classe) n emet
 //	                aucune jauge (zone_states_hill_gauge.go).
+//	1re colline     la 1re periode commence au COUP D ENVOI (`t0FilmMs`) ramene dans la fenetre des
+//	                images-cles qui encadrent la creation de l objet de mode, non plus au premier
+//	                contact d un joueur (repli nomme `repli_colline_premiere_au_coup_d_envoi` : le
+//	                film ne date pas la creation). Sur 11 films la fenetre contient le coup d envoi.
 //
 //	CE QUI MONTE    `SchemaVersion` 91 -> 92. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
 //	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
