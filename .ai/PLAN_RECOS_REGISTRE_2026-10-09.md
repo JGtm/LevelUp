@@ -38,13 +38,13 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot A — Rejeu : cartes manquantes et plan Tactique (parallèle à B)
 
-- [ ] A1 Trois cartes hors catalogue de bornes : « Serenity - Ranked », « Interference »,
+- [x] A1 (catalogue ; cuisson des 24 films [!] reportée après fusion, base tenue par un autre processus) Trois cartes hors catalogue de bornes : « Serenity - Ranked », « Interference »,
   « Vacancy - Ranked » (absentes de `data/titles/halo_infinite/reference/map_quant_bounds.json`
   et `map_objectives.json` ; avertissement `internal/sync/replayartifacts/cuisson.go:169`).
   Ajouter bornes, objets et fond par la chaîne existante (installation de Halo requise), puis
   cuire les seuls matchs de ces cartes présents au cache (un film par processus).
-- [ ] A2 « Argyle - Ranked » sans fond sous son propre map_id : rattacher le fond d'Argyle.
-- [ ] A3 Tactique, plan d'Illusion : canvas de 1 070 x 13 375 px qui ne peint rien (constat du
+- [~] A2 (déjà servi par héritage variante -> base depuis le 2026-09-03 ; garde-rail ajouté) « Argyle - Ranked » sans fond sous son propre map_id : rattacher le fond d'Argyle.
+- [x] A3 (non reproductible depuis la Tactique v2 ; test sur le calage réel) Tactique, plan d'Illusion : canvas de 1 070 x 13 375 px qui ne peint rien (constat du
   2026-09-09) ; reproduire d'abord, corriger si toujours présent.
 - Gate : tests des paquets touchés, un rejeu par carte ouvert au navigateur local ;
   gate visuel du user à la fusion.
@@ -123,6 +123,10 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - 2026-10-09 : plan écrit ; jetons de Chocoboflor, Madina97294 et XxDaemonGamerxX importés de la
   prod en local (sauvegarde des anciens sous `data/backups/watcher_tokens_avant_import_prod_2026-10-09/`).
 
+- 2026-10-09 : lot A rendu (`feat/recos-a`, 4 commits, CI verte). Les trois cartes sont des cartes Forge sur canevas connus (preuve level_id) : entrées de bornes et d'objectifs ajoutées. Cuisson des 24 films concernés reportée après fusion. Jetons des trois amis vérifiés en local : succès Xbox synchronisés à 17:38.
+
 ## Découvertes
 
-(à remplir par les exécutants)
+- (lot A) « Argyle - Ranked » sans objectifs au catalogue (identifiant absent de `map_objectives.json`) ; variante à récupérer.
+- (lot A) Environ 24 cartes Forge déclarées avec un fond restent absentes du catalogue de bornes (relevé de septembre).
+- (lot A) Après fusion, relancer le calcul de la source des kills des 24 matchs (carte non résolue jusqu'ici).
