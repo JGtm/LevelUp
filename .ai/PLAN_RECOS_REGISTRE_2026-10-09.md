@@ -133,8 +133,11 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-09 : lot D rendu (`feat/recos-d`, 4 commits, CI verte) ; fuite de vrais gamertags par `match_registry.first_sync_by` renvoyée à l'exécutant avec balayage systématique des colonnes d'identité ; Extraction et Escalation Slayer sans rejeu démo (films d'autres joueurs), Castle Wars écarté.
 
+- 2026-10-09 : décisions du user sur la démo : masquage des noms côté serveur validé ; dix rejeux suffisent (Extraction, Escalation Slayer et Castle Wars non ajoutés).
+
 ## Découvertes
 
+- (lot D) Variante « Castle Wars » reconnue par aucune famille de mode (à vérifier dans la normalisation des modes).
 - (lot D) `POST …/prestige/challenges/{id}/suggest-next` classé écriture alors que c'est une lecture (refusé en démo).
 - (lot D) E2E `media-like-bug.spec.ts` suppose un like possible en démo.
 - (lot D) DB-39 (`dir_exists`/`db_exists` faux dans Identités en démo) et DB-41 (CLI en `LEVELUP_DEMO_MODE=true` qui écrit dans la fixture) restent ouverts.
