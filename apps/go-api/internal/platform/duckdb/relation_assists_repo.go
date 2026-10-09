@@ -32,20 +32,38 @@ import (
 // branchement sur le slug. Le masquage Campagne n'est pas nécessaire pour la même raison
 // (aucune ligne de film en Campagne).
 //
-// Format string, DANS CET ORDRE : prédicat d'exclusion des bots (analysis.SQLIsNotBotCol),
-// scopeClause (" AND mp.match_id IN (?,…)" ou ""),
+// BORNAGE (ADR 0036 I2) : l'unique lecture de la vue `_latest` du kill-feed (CTE `lues`,
+// matérialisée, d'où dérivent `measured` et les frags) porte la liste des matchs de la
+// lecture, liée en UN paramètre constant sous la fenêtre. La liste est le périmètre (scope) quand il est fourni, sinon tous les matchs du
+// joueur (QMatchsOuJoue) : `mates` ne garde que des matchs du joueur, donc la borne ne retire
+// aucune ligne servie.
+//
+// JOINTURE PAR ÉGALITÉ SEULE : `kills` se joint à `mates` sur `match_id` ; chaque compteur
+// nomme son tueur dans son FILTER (le joueur ou le coéquipier), donc les frags des autres
+// tueurs du match rejoignent la ligne sans entrer dans aucun compte. Une disjonction dans la
+// condition de jointure (`k.killer = me OR k.killer = partner`) fait choisir à DuckDB une
+// jointure par boucles imbriquées, l'essentiel du coût de la lecture.
+//
+// Format string, DANS CET ORDRE : borne de `lues`, prédicat d'exclusion des bots
+// (analysis.SQLIsNotBotCol), scopeClause (" AND mp.match_id IN (?,…)" ou ""),
 // partnerClause (" AND p.xuid IN (…)" ou ""), puis les bornes de tranche
 // (low max, mid min, mid max, high min) × 2 (reçues, données).
-// Placeholders ? : ?1 = xuid du joueur, puis ceux de scopeClause, puis ceux de
-// partnerClause.
+// Placeholders ? : ?1 = xuid du joueur, ?2 = liste de `lues`, puis ceux de scopeClause,
+// puis ceux de partnerClause.
 const Q28cRelationAssistsTpl = `
 WITH me AS (
     SELECT CAST(? AS VARCHAR) AS xuid
 ),
+lues AS MATERIALIZED (
+    SELECT kv.match_id,
+           kv.feed_killer_xuid  AS killer,
+           kv.assist_xuid       AS assister,
+           kv.assist_damage_pct AS pct
+    FROM ` + KillEventsCanonicalTable + ` kv
+    WHERE kv.publishable AND kv.assist_known AND %s
+),
 measured AS (
-    SELECT DISTINCT match_id
-    FROM ` + KillEventsCanonicalTable + `
-    WHERE publishable AND assist_known
+    SELECT DISTINCT match_id FROM lues
 ),
 mates AS (
     SELECT DISTINCT mp.match_id, p.xuid AS partner
@@ -59,13 +77,8 @@ mates AS (
       AND mp.match_id IN (SELECT match_id FROM measured)%s%s
 ),
 kills AS (
-    SELECT kv.match_id,
-           kv.feed_killer_xuid  AS killer,
-           kv.assist_xuid       AS assister,
-           kv.assist_damage_pct AS pct
-    FROM ` + KillEventsCanonicalTable + ` kv
-    WHERE kv.publishable AND kv.assist_known
-      AND kv.match_id IN (SELECT match_id FROM mates)
+    SELECT * FROM lues
+    WHERE match_id IN (SELECT match_id FROM mates)
 )
 SELECT
     m.partner,
@@ -84,7 +97,6 @@ FROM mates m
 CROSS JOIN me
 LEFT JOIN kills k
     ON k.match_id = m.match_id
-   AND (k.killer = me.xuid OR k.killer = m.partner)
 GROUP BY m.partner`
 
 // assistExchangeQuery : paramètres de lecture de Q28c.
@@ -92,6 +104,9 @@ type assistExchangeQuery struct {
 	me string
 	// scope : nil = tous les matchs ; non-nil = restreint à ces match_id (vide = rien).
 	scope []string
+	// borne : la liste liée sous les fenêtres `_latest` (cf. Q28cRelationAssistsTpl). Posée
+	// par queryRelationAssists : le scope s'il est fourni, sinon les matchs du joueur.
+	borne []string
 	// partnersOfMatch : non vide = ne garder que les joueurs de ce match.
 	partnersOfMatch string
 }
@@ -102,7 +117,8 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 	if q.scope != nil && len(q.scope) == 0 {
 		return "", nil
 	}
-	args := []any{q.me}
+	borneClause, borneArg := clauseListeMatchs("kv.match_id", q.borne)
+	args := []any{q.me, borneArg}
 	scopeClause, partnerClause := "", ""
 	if q.scope != nil {
 		scopeClause = " AND mp.match_id IN (" + Placeholders(len(q.scope)) + ")"
@@ -113,7 +129,8 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 		args = append(args, q.partnersOfMatch)
 	}
 	low, mid := domain.AssistTierLowMaxPct, domain.AssistTierMidMaxPct
-	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, analysis.SQLIsNotBotCol("p.xuid"), scopeClause, partnerClause,
+	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, borneClause, analysis.SQLIsNotBotCol("p.xuid"),
+		scopeClause, partnerClause,
 		low, low, mid, mid,
 		low, low, mid, mid)
 	return sqlText, args
@@ -121,8 +138,19 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 
 // queryRelationAssists exécute Q28c et indexe le résultat par xuid du coéquipier.
 func queryRelationAssists(ctx context.Context, db *sql.DB, q assistExchangeQuery) (map[string]domain.RelationAssists, error) {
-	sqlText, args := buildRelationAssistsQuery(q)
 	out := map[string]domain.RelationAssists{}
+	if q.scope != nil && len(q.scope) == 0 {
+		return out, nil
+	}
+	q.borne = q.scope
+	if q.borne == nil {
+		matchs, err := matchsOuJoue(ctx, db, q.me)
+		if err != nil {
+			return nil, fmt.Errorf("relation assists (Q28c): %w", err)
+		}
+		q.borne = matchs
+	}
+	sqlText, args := buildRelationAssistsQuery(q)
 	if sqlText == "" {
 		return out, nil
 	}
