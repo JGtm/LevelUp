@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { axisFootProblems } from '@/components/charts/axisFoot.check'
+import { axisFootProblems } from '@/test/axisFootProblems'
 
 import { buildResourceFilOption, pickupRadius, type EmpriseFilColors, type EmpriseFilText } from './empriseCharts'
 import { buildResourceFil, empriseMatchIndex } from './emprise.logic'

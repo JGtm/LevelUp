@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { footLabelStyle, labelsHeight, layoutAxisFoot, lineHeightFor, type AxisFootSpec } from './axisFoot'
-import { axisFootProblems } from './axisFoot.check'
+import { axisFootProblems } from '@/test/axisFootProblems'
 
 const DATES = { lines: 1, lineHeight: 14, margin: 4 }
 const MIX = { lines: 2, lineHeight: 12, margin: 6 }

@@ -31,6 +31,8 @@ export interface SerieDeSoirees {
   hollow: boolean[]
   /** Dénominateur de la soirée — rendu en infobulle, jamais dans le taux. */
   volumes: number[]
+  /** Numérateur et dénominateur de la soirée (« 51/137 »), `null` = soirée sans mesure. */
+  decomptes: ({ brut: number; n: number } | null)[]
 }
 
 /** Vrai quand le bloc porte de quoi dessiner : disponible ET au moins une soirée. */
@@ -63,7 +65,27 @@ export function serieDeSoirees(
     valuesPct: mesures.map((c) => (c.n > 0 ? c.taux * 100 : null)),
     hollow: mesures.map((c) => c.echantillon_faible),
     volumes: mesures.map((c) => c.n),
+    decomptes: mesures.map((c) => (c.n > 0 ? { brut: c.brut, n: c.n } : null)),
   }
+}
+
+/**
+ * valeursLues — la valeur lue de chaque soirée, écrite sur le bâton et dans l'infobulle :
+ * « 37 % » (le taux, arrondi au point) et son décompte « 51/137 ».
+ *
+ * Le bâton dessine un ÉCART à un repère : une soirée à l'habituel a un bâton quasi nul, et se lisait
+ * « aucun appui ». La valeur lue dit ce qui s'est passé ; l'écart dit seulement par rapport à quoi.
+ * Une soirée sans dénominateur n'a pas de valeur (`null`), jamais « 0 % ».
+ */
+export function valeursLues(
+  serie: SerieDeSoirees,
+  formatPct: (taux: number) => string,
+): ({ main: string; detail: string } | null)[] {
+  return serie.valuesPct.map((pct, i) => {
+    const d = serie.decomptes[i]
+    if (pct == null || d == null) return null
+    return { main: formatPct(pct / 100), detail: `${d.brut}/${d.n}` }
+  })
 }
 
 /**

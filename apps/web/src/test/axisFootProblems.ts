@@ -1,5 +1,5 @@
 /**
- * axisFoot.check — vérifie, sur une OPTION ECharts déjà construite, que les étiquettes de l'axe X
+ * axisFootProblems — vérifie, sur une OPTION ECharts déjà construite, que les étiquettes de l'axe X
  * et la bande tiennent dans le pied réservé (`grid[0].bottom`). Lit l'option telle qu'ECharts la
  * recevra (formatters appelés, marges et hauteurs de ligne lues), donc indépendant de
  * `layoutAxisFoot` : un nombre réécrit à la main qui ne tient plus est attrapé ici. Pour les tests.

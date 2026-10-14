@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildEveningsOption } from './eveningsChart'
-import { axisFootProblems } from '@/components/charts/axisFoot.check'
+import { axisFootProblems } from '@/test/axisFootProblems'
 
 import { buildFilOption, shortMap, type ObjectifChartColors } from './objectifCharts'
 import { buildEveningsView, buildSessionFil } from './objectif.logic'

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { axisFootProblems } from '@/components/charts/axisFoot.check'
+import { axisFootProblems } from '@/test/axisFootProblems'
 
 import { EMPRISE_2209, HABIT_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'

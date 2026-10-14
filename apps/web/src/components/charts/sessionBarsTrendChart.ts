@@ -24,6 +24,11 @@
  *   3. LE DÉNOMINATEUR VOYAGE AVEC LE TAUX, en lignes d'infobulle (`tooltipLines`). Une
  *      frise qui n'en montre aucun laisse lire une soirée à 3 appuis comme une soirée à 80.
  *
+ * LA VALEUR LUE S'ÉCRIT SUR LE BÂTON (`absolute`, 2026-10-14) : en mode écart la hauteur d'un bâton est
+ * un écart, et un écart nul se lisait « rien » (une soirée à 37 % pour un habituel de 38 % : un bâton
+ * quasi absent). L'appelant passe, par soirée, la valeur et son décompte (« 37 % » / « 51/137 ») ;
+ * ils sont écrits au bout du bâton et repris dans l'infobulle, l'écart à côté.
+ *
  * UN BÂTON CREUX (`hollow`) dit « échantillon faible » : il est rendu en contour, jamais
  * absent — la trame du temps ne doit pas mentir — et l'appelant l'exclut de sa tendance.
  */
@@ -52,6 +57,12 @@ export interface SessionBarsTrend {
   color: string
 }
 
+/** La valeur lue d'une soirée, en deux textes déjà localisés : « 37 % » et « 51/137 ». */
+export interface SessionBarsAbsolute {
+  main: string
+  detail: string
+}
+
 /** Une série de bâtons : une grandeur, une couleur, son repère et sa tendance. */
 export interface SessionBarsSeriesSpec {
   name: string
@@ -62,6 +73,8 @@ export interface SessionBarsSeriesSpec {
   hollow?: boolean[]
   usual?: SessionBarsUsual
   trend?: SessionBarsTrend
+  /** Par soirée : la valeur lue et son décompte, écrits sur le bâton et dans l'infobulle. */
+  absolute?: (SessionBarsAbsolute | null)[]
 }
 
 /**
@@ -77,6 +90,8 @@ export interface SessionBarsBaseline {
   label: string
   /** Unité de l'écart en infobulle (« pts »), servie par l'appelant (FR/EN). */
   deltaUnit: string
+  /** Mot qui nomme l'écart quand la valeur lue est écrite à côté (« écart » / « gap »). */
+  gapLabel?: string
 }
 
 export interface SessionBarsTrendOpts {
@@ -119,14 +134,32 @@ function decalageDe(spec: SessionBarsSeriesSpec, ecart: boolean): number {
   return ecart && spec.usual ? spec.usual.valuePct : 0
 }
 
+/** L'étiquette d'un bâton : la valeur lue puis son décompte, au bout du bâton (sous lui s'il est négatif). */
+function etiquetteDe(abs: SessionBarsAbsolute, value: number, color: string): Record<string, unknown> {
+  return {
+    show: true,
+    position: value >= 0 ? 'top' : 'bottom',
+    formatter: `${abs.main}\n${abs.detail}`,
+    color,
+    fontSize: 10,
+    lineHeight: 12,
+  }
+}
+
 function barData(spec: SessionBarsSeriesSpec, decalage: number): unknown[] {
   return spec.valuesPct.map((v, i) => {
     if (v == null) return null
     const value = round1(v - decalage)
-    if (spec.hollow?.[i] !== true) return value
-    // Bâton CREUX : contour de la couleur de la série sur un fond transparent. Le bâton
-    // reste à sa place et à sa hauteur — c'est sa FIABILITÉ qui est dite, pas sa valeur.
-    return { value, itemStyle: { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 } }
+    const abs = spec.absolute?.[i]
+    const hollow = spec.hollow?.[i] === true
+    if (!hollow && !abs) return value
+    return {
+      value,
+      // Bâton CREUX : contour de la couleur de la série sur un fond transparent. Le bâton
+      // reste à sa place et à sa hauteur — c'est sa FIABILITÉ qui est dite, pas sa valeur.
+      ...(hollow ? { itemStyle: { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 } } : {}),
+      ...(abs ? { label: etiquetteDe(abs, value, spec.color) } : {}),
+    }
   })
 }
 
@@ -171,14 +204,21 @@ interface LigneInfobulle {
  * doit pas quitter le graphe — ET l'écart au repère, qui est ce que le bâton dessine.
  */
 function ligneInfobulle(
-  r: LigneInfobulle,
+  r: LigneInfobulle & { dataIndex: number },
   decalages: Map<string, number>,
   baseline: SessionBarsBaseline | undefined,
+  absolute: SessionBarsAbsolute | null | undefined,
 ): string {
   const v = r.value as number
   if (!baseline) return `${r.marker}${r.seriesName} : ${v} %`
+  const ecart = `${signe(v)} ${baseline.deltaUnit}`
+  // La valeur lue telle qu'écrite sur le bâton (« 37 % (51/137) »), l'écart à côté.
+  if (absolute) {
+    const gap = baseline.gapLabel ? `${baseline.gapLabel} ${ecart}` : ecart
+    return `${r.marker}${r.seriesName} : ${absolute.main} (${absolute.detail}) · ${gap}`
+  }
   const absolu = round1(v + (decalages.get(r.seriesName) ?? 0))
-  return `${r.marker}${r.seriesName} : ${absolu} % (${signe(v)} ${baseline.deltaUnit})`
+  return `${r.marker}${r.seriesName} : ${absolu} % (${ecart})`
 }
 
 /** Les bâtons d'une série, avec le repère qui lui revient selon le mode. */
@@ -201,6 +241,8 @@ function barreDe(
     itemStyle: { borderRadius: [3, 3, 0, 0] },
     color: s.color,
     data: barData(s, ctx.decalage),
+    // Les étiquettes de bâtons voisins se recouvrent sur une frise longue : les premières restent.
+    ...(s.absolute ? { labelLayout: { hideOverlap: true } } : {}),
     ...repere,
   }
 }
@@ -239,6 +281,7 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const ecart = opts.baseline != null
+  const specParNom = new Map(opts.series.map((s) => [s.name, s]))
   const decalages = new Map(opts.series.map((s) => [s.name, decalageDe(s, ecart)]))
 
   const barres = opts.series.map((s, i) =>
@@ -286,7 +329,9 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
         if (rows.length === 0) return ''
         const lignes = rows
           .filter((r) => r.value != null)
-          .map((r) => ligneInfobulle(r, decalages, opts.baseline))
+          .map((r) =>
+            ligneInfobulle(r, decalages, opts.baseline, specParNom.get(r.seriesName)?.absolute?.[r.dataIndex]),
+          )
         lignes.push(...(opts.tooltipLines?.(rows[0].dataIndex) ?? []))
         return [rows[0].axisValue, ...lignes].join('<br/>')
       },
