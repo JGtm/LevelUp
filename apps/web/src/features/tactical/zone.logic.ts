@@ -130,6 +130,8 @@ interface ModeleDeTuile {
   /** L'instant sur l'horloge AFFICHÉE du rejeu (« 7:20 ») ; absent quand le serveur ne le publie pas. */
   instant?: string
   fait: string
+  /** Le fait découpé autour du gamertag (« Tué par » · « Rival » · «  »), pour que seul le gamertag tronque. */
+  faitDecoupe: { avant: string; gamertag?: string; apres: string }
   /** L'arme, ou la catégorie de la source traduite ; absente sinon. Seule partie qui se tronque. */
   arme?: string
   badge?: string
@@ -155,15 +157,27 @@ function faitDe(t: TacticalText, c: TacticalContribution): string {
   }
 }
 
+/** Marque posée à la place du gamertag pour découper la phrase du fait sans la dupliquer. */
+const MARQUE_GAMERTAG = '\u0001'
+
+/** faitDecoupeDe — le fait de la face autour du gamertag de l'autre joueur ; sans gamertag, tout en `avant`. */
+function faitDecoupeDe(t: TacticalText, c: TacticalContribution): { avant: string; gamertag?: string; apres: string } {
+  const phrase = c.face === 'mort' ? t.tileKilledBy : c.face === 'frag' ? t.tileKilled : null
+  if (!phrase || !c.autre_gamertag) return { avant: faitDe(t, c), apres: '' }
+  const [avant = '', apres = ''] = phrase(MARQUE_GAMERTAG).split(MARQUE_GAMERTAG)
+  return { avant, gamertag: c.autre_gamertag, apres }
+}
+
 function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
   const arme = locale === 'en' ? c.arme_label_en || c.arme_label : c.arme_label || c.arme_label_en
   if (arme) return arme
   return c.categorie_source ? t.tileCategories[c.categorie_source] : undefined
 }
 
-/** distanceDe — « à 23 m » : la distance entre l'événement et l'autre joueur, au mètre. */
+/** distanceDe — « à 23 m » (« < 1 m » sous le mètre) : la distance entre l'événement et l'autre joueur. */
 function distanceDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
   const d = distanceEnMetres(c)
+  if (d === 0) return t.tileDistanceLt1
   return d === null ? undefined : t.tileDistance(new Intl.NumberFormat(intlLocale(locale)).format(d))
 }
 
@@ -202,6 +216,7 @@ export function modeleDeTuile(
     date,
     instant,
     fait,
+    faitDecoupe: faitDecoupeDe(t, c),
     arme,
     badge,
     distance,

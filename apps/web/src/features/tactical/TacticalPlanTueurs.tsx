@@ -12,16 +12,21 @@
  * glisser, molette — ne sont pas touchés, sauf le clic sur un point, qui choisit sa tuile au lieu de
  * changer de zone).
  *
- * COULEURS : aucune teinte de la rampe de chaleur. Marqueurs et traits sont à l'encre de premier
- * plan du thème (`text-foreground`), cernés de la couleur du fond (`bg-background`), lues sur
- * deux éléments du DOM : elles suivent donc le thème clair ou sombre. Le tueur est un losange, la
- * victime un rond (`formeDuRole`) ; la légende dit les deux formes.
+ * COULEURS : tueurs et victimes sont des adversaires — jeton `team-enemy`, que la préférence du joueur
+ * (`localUiPrefs.enemyTeamColor`, réglages d'accessibilité) remplace comme dans `ThemeProvider`
+ * (`findOutlineColor`). Liseré à l'encre de premier plan (`text-foreground`), sous-trait à la couleur
+ * du fond (`bg-background`), lues sur le DOM : elles suivent le thème. Le tueur est un losange, la
+ * victime un rond (`formeDuRole`) ; la légende dit les deux formes. Le jeton allié reste aux coéquipiers.
  */
 import { useEffect, useRef, useState } from 'react'
 
+import { resolveToken } from '@/lib/accessibility/resolveToken'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { TacticalContribution } from '@/lib/api/types'
+import { findOutlineColor } from '@/lib/halo/outline-colors'
 import type { Locale } from '@/lib/i18n/locale'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import type { TacticalText } from './i18n'
 import { projectionDuPlan, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
@@ -77,6 +82,7 @@ export function CoucheDesTueurs({
   const fondRef = useRef<HTMLSpanElement>(null)
   const taille = useTailleDuCanvas(canvasRef)
   const paletteVersion = useColorPaletteVersion()
+  const enemyTeamColor = useSettingsDraftStore((s) => s.localUiPrefs.enemyTeamColor)
   // Où est le curseur sur le plan : l'infobulle ne suit que le survol d'un POINT, pas celui d'une tuile.
   const [curseur, setCurseur] = useState<{ x: number; y: number } | null>(null)
   const enAvant = misEnAvant(survol, choisie)
@@ -102,8 +108,10 @@ export function CoucheDesTueurs({
     void paletteVersion
     const dim = dimensionsDeLaCouche(width / (fenetre.maxX - fenetre.minX))
     const fond = fondRef.current ? getComputedStyle(fondRef.current).backgroundColor : ''
-    peindreLaCouche(ctx, points, projection, { encre: getComputedStyle(canvas).color, fond }, dim, enAvant)
-  }, [points, enAvant, repere, fenetre, taille, paletteVersion])
+    // Même règle que `ThemeProvider` : le choix du joueur prime sur le jeton de la palette.
+    const adverse = findOutlineColor(enemyTeamColor)?.hex ?? resolveToken('team-enemy')
+    peindreLaCouche(ctx, points, projection, { adverse, encre: getComputedStyle(canvas).color, fond }, dim, enAvant)
+  }, [points, enAvant, repere, fenetre, taille, paletteVersion, enemyTeamColor])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -192,7 +200,8 @@ export function LegendeDesTueurs({ t, points }: { t: TacticalText; points: reado
         <li key={r} className="flex items-center gap-1.5">
           <span
             aria-hidden
-            className={`inline-block size-2 bg-foreground ${formeDuRole(r) === 'rond' ? 'rounded-full' : 'rotate-45'}`}
+            className={`inline-block size-2 border border-foreground ${formeDuRole(r) === 'rond' ? 'rounded-full' : 'rotate-45'}`}
+            style={{ backgroundColor: tokenCssVar('team-enemy') }}
             data-forme={formeDuRole(r)}
           />
           {libelle[r]}

@@ -415,3 +415,7 @@ en = "Open the replay {secondes} s before the event"
 [tactical.zone.events_label]
 fr = "Événements de la zone, à sélectionner"
 en = "Zone events, select one"
+
+[tactical.tile.distance_lt1]
+fr = "< 1 m"
+en = "< 1 m away"

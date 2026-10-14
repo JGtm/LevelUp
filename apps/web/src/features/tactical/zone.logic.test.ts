@@ -108,6 +108,23 @@ describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
     expect(modeleDeTuile(t, contribution({ categorie_source: 'Bullet' }), 'fr', 'UTC', null).arme).toBeUndefined()
   })
 
+  it('le fait se découpe autour du gamertag (seul lui tronque)', () => {
+    const m = modeleDeTuile(t, contribution(), 'fr', 'UTC', null)
+    expect(m.faitDecoupe.avant.trim()).toBe('Tué par')
+    expect(m.faitDecoupe.gamertag).toBe('Rival')
+    expect(m.faitDecoupe.apres).toBe('')
+    const sans = modeleDeTuile(t, contribution({ face: 'entree', autre_gamertag: undefined }), 'fr', 'UTC', null)
+    expect(sans.faitDecoupe).toEqual({ avant: 'Entrée dans la zone', apres: '' })
+  })
+
+  it('la distance sous le mètre s’écrit « < 1 m » (FR et EN), jamais « à 0 m »', () => {
+    const proche = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 0.3, y: 0 } })
+    expect(modeleDeTuile(t, proche, 'fr', 'UTC', null).distance).toBe('< 1 m')
+    expect(modeleDeTuile(getTacticalText('en'), proche, 'en', 'UTC', null).distance).toBe('< 1 m away')
+    const loin = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 4, y: 0 } })
+    expect(modeleDeTuile(t, loin, 'fr', 'UTC', null).distance).toBe('à 4 m')
+  })
+
   it('un frag, une entrée, une réapparition : leur fait', () => {
     expect(modeleDeTuile(t, contribution({ face: 'frag', autre_gamertag: 'Cible' }), 'fr', 'UTC', null).fait).toBe('A tué Cible')
     expect(modeleDeTuile(t, contribution({ face: 'entree', autre_gamertag: undefined }), 'fr', 'UTC', null).fait).toBe('Entrée dans la zone')

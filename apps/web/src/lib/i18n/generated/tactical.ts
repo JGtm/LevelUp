@@ -76,6 +76,7 @@ export const tacticalManifest = {
   "tactical.tile.cat_silent_melee": { fr: "assassinat", en: "assassination" },
   "tactical.tile.death": { fr: "Mort", en: "Death" },
   "tactical.tile.distance": { fr: "à {d} m", en: "{d} m away" },
+  "tactical.tile.distance_lt1": { fr: "< 1 m", en: "< 1 m away" },
   "tactical.tile.entry": { fr: "Entrée dans la zone", en: "Entered the zone" },
   "tactical.tile.frag": { fr: "Frag", en: "Kill" },
   "tactical.tile.killed": { fr: "A tué {gt}", en: "Killed {gt}" },
