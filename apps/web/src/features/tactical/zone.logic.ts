@@ -10,7 +10,7 @@
 import type { CelluleTactique, TacticalCelluleReponse, TacticalContribution } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
-import { formatClock } from '@/lib/replay/replayLogic'
+import { formatClock, OUVERTURE_AVANT_EVENEMENT_MS } from '@/lib/replay/replayLogic'
 
 import type { TacticalText } from './i18n'
 import {
@@ -127,7 +127,8 @@ interface ModeleDeTuile {
   mode?: string
   score?: string
   date: string
-  instant: string
+  /** L'instant sur l'horloge AFFICHÉE du rejeu (« 7:20 ») ; absent quand le serveur ne le publie pas. */
+  instant?: string
   fait: string
   /** L'arme, ou la catégorie de la source traduite ; absente sinon. Seule partie qui se tronque. */
   arme?: string
@@ -186,7 +187,9 @@ export function modeleDeTuile(
   timezone: string,
   issue: string | null,
 ): ModeleDeTuile {
-  const instant = formatClock(c.instant_ms)
+  // L'instant écrit est celui que l'horloge du rejeu affichera à l'événement (`instant_affiche_ms`,
+  // calculé par le serveur depuis le coup d'envoi) : jamais `instant_ms`, qui compte le countdown.
+  const instant = c.instant_affiche_ms == null ? undefined : formatClock(c.instant_affiche_ms)
   const fait = faitDe(t, c)
   const arme = armeDe(t, c, locale)
   const badge = badgeDe(t, c, locale)
@@ -206,7 +209,9 @@ export function modeleDeTuile(
     rejeu: {
       disponible: c.replay_available,
       search: { t: String(c.instant_ms), clock: c.clock === 'film' ? 'film' : 'match' },
-      libelle: t.tileOpenReplay(instant),
+      libelle: instant
+        ? t.tileOpenReplay(instant, OUVERTURE_AVANT_EVENEMENT_MS / 1000)
+        : t.tileOpenReplayNoInstant(OUVERTURE_AVANT_EVENEMENT_MS / 1000),
     },
   }
 }

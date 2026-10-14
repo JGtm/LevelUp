@@ -80,10 +80,6 @@ func (s *MatchEventsSource) GetMatchTimeline(
 var matchTimelineQuery = `
 SELECT
     CAST(r.duration_seconds AS BIGINT) AS duration_seconds,
-    CASE
-        WHEN r.real_start_time IS NOT NULL THEN
-            epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
-    END AS t0_ms
+    ` + T0MsSQL("r") + ` AS t0_ms
 FROM match_registry r
 WHERE r.match_id = ?`

@@ -314,6 +314,12 @@ type TacticalMatch struct {
 	// au denominateur « par match » et dans aucun des deux cotes de la lecture
 	// signee (cf. analysis/tactical.RasteriseAvecResultats).
 	Outcome int
+
+	// T0Ms est le coup d'envoi du match sur l'axe du MATCH, en ms depuis son debut (countdown
+	// compris) : `real_start_time − start_time` du registre. Le registre y porte le coup d'envoi
+	// MESURE dans le film des qu'il a ete reporte, l'estimation de l'API sinon. nil = inconnu
+	// (jamais 0 de repli : un match inconnu ne se date pas sur l'horloge affichee).
+	T0Ms *int64
 }
 
 // TacticalUnivers est L'ENSEMBLE DES MATCHS RETENUS par le filtre, avec la

@@ -87,6 +87,7 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	nonOuvrables := matchsNonOuvrables(scope.MatchIDs, ouvrables)
 	retenues := s.garderLesOuvrables(ctx, req.MapID, lues, ouvrables, resultatsDeLUnivers(univers))
 	out.Zone = s.nommerLaCellule(ctx, req, retenues)
+	poserInstantAffiche(retenues, univers)
 	out.Contributions = s.enrichir(ctx, req, univers, retenues)
 
 	s.logger.InfoContext(ctx, "tactique: detail de cellule",

@@ -72,7 +72,9 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
           className="flex min-w-0 items-center gap-[5px] whitespace-nowrap text-[11.5px] leading-4 text-muted-foreground"
           data-testid="tactical-rejeu-l2"
         >
-          <span className="flex-none rounded bg-muted px-[5px] font-mono text-[11px] leading-4 text-foreground">{m.instant}</span>
+          {m.instant && (
+            <span className="flex-none rounded bg-muted px-[5px] font-mono text-[11px] leading-4 text-foreground">{m.instant}</span>
+          )}
           {m.fait && <span className="flex-none">{m.fait}</span>}
           {m.distance && <span className="flex-none" data-testid="tactical-rejeu-distance">{m.distance}</span>}
           {m.arme && <span className="min-w-0 truncate">{m.arme}</span>}

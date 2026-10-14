@@ -126,3 +126,31 @@ func TestTacticalRepo_MortsAvecContexte_HauteurNomEtSource(t *testing.T) {
 		}
 	}
 }
+
+// TestTacticalRepo_Univers_T0DuRegistre : le coup d'envoi de l'univers est `real_start_time −
+// début canonique` du registre, en ms ; nil quand le registre n'a pas de coup d'envoi.
+func TestTacticalRepo_Univers_T0DuRegistre(t *testing.T) {
+	pdb := newTacticalTestPlayerDB(t)
+	base := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	for _, id := range []string{"t1", "t2"} {
+		tacMatch(t, pdb, id, tacCarteA, base)
+		tacParticipant(t, pdb, id, tacXUIDMoi, 0, domain.OutcomeWin)
+	}
+	tacExec(t, pdb, `UPDATE match_registry SET real_start_time = ? WHERE match_id = 't1'`, base.Add(22*time.Second))
+	q := tacQuery(tacCarteA)
+	q.Matchs = domain.RestreindreAux([]string{"t1", "t2"})
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), q)
+	if err != nil {
+		t.Fatalf("Univers: %v", err)
+	}
+	t0 := map[string]*int64{}
+	for _, m := range got.Matchs {
+		t0[m.MatchID] = m.T0Ms
+	}
+	if t0["t1"] == nil || *t0["t1"] != 22_000 {
+		t.Errorf("t1 : T0 = %v, want 22000", t0["t1"])
+	}
+	if t0["t2"] != nil {
+		t.Errorf("t2 : T0 = %d, want nil (registre sans coup d'envoi)", *t0["t2"])
+	}
+}

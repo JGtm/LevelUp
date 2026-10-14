@@ -393,8 +393,8 @@ fr = "près · {d} m"
 en = "near · {d} m"
 
 [tactical.tile.open_replay]
-fr = "Ouvrir le rejeu à {instant}"
-en = "Open the replay at {instant}"
+fr = "Ouvrir le rejeu {secondes} s avant {instant}"
+en = "Open the replay {secondes} s before {instant}"
 
 [tactical.tile.distance]
 fr = "à {d} m"
@@ -407,3 +407,7 @@ en = "Killers"
 [tactical.layer.victims]
 fr = "Victimes"
 en = "Victims"
+
+[tactical.tile.open_replay_no_instant]
+fr = "Ouvrir le rejeu {secondes} s avant l’événement"
+en = "Open the replay {secondes} s before the event"

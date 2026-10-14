@@ -37,9 +37,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     contractMalformed: 'document non conforme au contrat',
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
-    openAtUncalibratedTitle: 'Instant non calé sur cet artefact',
-    openAtUncalibratedDescription:
-      'Le lien demandait un instant précis, mais ce rejeu n’a pas encore le calage nécessaire pour l’atteindre exactement. Recuisson nécessaire — le rejeu s’ouvre au début.',
+    openAtNoOriginTitle: 'Instant non calé sur cet artefact',
+    openAtNoOriginDescription:
+      'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Recuisson nécessaire — le rejeu s’ouvre au début.',
     speed: 'Vitesse',
     time: 'Temps de match',
     skipBackFmt: (seconds) => `Reculer de ${seconds} s`,
@@ -454,9 +454,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     contractMalformed: 'document does not match the contract',
     offscreenMarkerFmt: (name, meters) => `${name} · ${Math.round(meters)} m`,
     offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
-    openAtUncalibratedTitle: 'Instant not calibrated on this artifact',
-    openAtUncalibratedDescription:
-      'The link asked for a precise instant, but this replay doesn’t yet have the calibration needed to reach it exactly. Recook needed — the replay opens from the start.',
+    openAtNoOriginTitle: 'Instant not calibrated on this artifact',
+    openAtNoOriginDescription:
+      'The link asked for a precise instant, but the film origin is not established for this replay: the instant cannot be reached exactly. Recook needed — the replay opens from the start.',
     speed: 'Speed',
     time: 'Match time',
     skipBackFmt: (seconds) => `Back ${seconds} s`,

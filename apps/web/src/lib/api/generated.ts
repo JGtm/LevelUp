@@ -12809,6 +12809,8 @@ export interface components {
             clock: string;
             face?: string;
             /** Format: int64 */
+            instant_affiche_ms?: number;
+            /** Format: int64 */
             instant_ms: number;
             match_id: string;
             /** Format: date-time */
