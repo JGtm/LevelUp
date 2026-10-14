@@ -117104,3 +117104,14 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : journaux nginx depuis le 2026-09-25 : aucun autre accès à ce chemin que les sondes de vérification. Premier déploiement en échec : `scripts/deploy.sh` (`git clean -fd` hors `data/`) a effacé l'essentiel du staging `/opt/levelup/data.incoming/` du 23/09 puis bloqué sur des fichiers root ; restes déplacés hors du dépôt (`/opt/levelup-data.incoming-restes-2026-09-23`), relance réussie ; après déploiement, les trois formes de traversée rendent 404 sur le site et la démo, pages 200. Quota hebdomadaire atteint le 09/10 au soir : agents D, E, F arrêtés après leurs commits (CI verte). Le 14/10 : `feat/recos-e` fusionnée (931c40a61) sans conflit ; relectures en Sonnet (consigne mémoire du 09/10) : F en deux lentilles, D en ronde 2 sur ses corrections.
 
 **Conclusion / prochaine étape** : fusion de F et D après relectures vertes et relance d'air par levelup-10 ; staging v8 à refaire hors de la racine du dépôt sur le VPS ; décision du user sur la rotation des secrets (exposition possible avant le 25/09).
+
+
+## [2026-10-14] KOTH au rejeu : la barre de garde du camp qui marque s'affiche pleine une seconde — Complete
+
+**Statut** : Complete (branche `feat/koth-colline`).
+
+**Decision technique principale** : dans `hillHoldLogic.ts`, fenetre `HOLD_FULL_WINDOW_MS` (1 s, convertie en images par `msToFrames` avec `frameIntervalMs`, comme `ZONE_GAUGE_HOLD_MS`) a partir de l'image du point : le camp dont la courbe de score monte vaut 1, l'autre garde sa valeur d'avant le point ; apres, remise a zero. La fenetre l'emporte sur un tic qui y tombe ; un nouveau point ouvre sa fenetre et remplace la precedente. `lastResetFrame` devient `lastReset` (image + camps qui marquent). `msToFrames` accepte `Pick<ReplayDocumentReady, frameIntervalMs>`.
+
+**Resultats observes** : tsc, eslint, vitest match-replay et lib/replay verts ; test de remise a zero a l'image du point adapte, 6 tests ajoutes.
+
+**Conclusion / prochaine etape** : decouverte D4 du plan KOTH close (E9) ; fusion dans feat/v75 par le superviseur.
