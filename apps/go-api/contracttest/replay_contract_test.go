@@ -743,9 +743,13 @@ var replaySchemas = []struct {
 //	                      .continuousFire` et les compteurs neufs de `coverage.shots` / `.seats` /
 //	                      `.vehicles` naissent au meme commit SANS faire monter ce compte.
 //
-// Les vingt-sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	65 (2026-10-14) : `knockbacks` — LES POUSSEES DU REPULSEUR (lot F des ajustements, schema 94) :
+//	                      la paire de messages 105 -> 104 de la vue A, joueur pousse, auteur et
+//	                      vitesse imposee ; `coverage.knockbacks` nait au meme commit.
+//
+// Les vingt-huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 64
+const wantReplayDocumentFields = 65
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

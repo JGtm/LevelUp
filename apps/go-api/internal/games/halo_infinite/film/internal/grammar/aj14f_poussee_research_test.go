@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 var aj14fGenresSuivis = map[int]string{
@@ -76,7 +77,7 @@ func TestAj14fMessagesDEquipement(t *testing.T) {
 			t.Fatalf("%s : origine : %v", id, err)
 		}
 		aj14fEntree = &entree
-		aj14fUnFilm(t, id, NewFilmContextForMap(film, &entree, nil), origine)
+		aj14fUnFilm(t, id, aj14fContexte(film, &entree), origine)
 	}
 }
 
@@ -343,10 +344,18 @@ func TestAj14fScanKnockbacks(t *testing.T) {
 		t.Fatalf("film : %v", err)
 	}
 	origine, _ := ScanClockOrigin(film)
-	ks, st := ScanKnockbacks(NewFilmContextForMap(film, &entree, nil))
+	ks, st := ScanKnockbacks(aj14fContexte(film, &entree))
 	t.Logf("%s : %+v", id, st)
 	for _, k := range ks {
 		t.Logf("%s %9.1f ms pousse %+v auteur %+v (%v) impulsion %.2f (%v)", id, float64(k.TimestampUS-origine)/1000,
 			k.Pushed, k.Author, k.HasAuthor, k.Impulse, k.HasImpulse)
 	}
+}
+
+// aj14fContexte ouvre le contexte d un film comme la cuisson : entree de catalogue de la carte, puis
+// carte et decoupage poses (`replay/build_from_film.go`). Les lectures en dependent.
+func aj14fContexte(film *source.Film, entree *profile.MapQuantEntry) *FilmContext {
+	fc := NewFilmContextForMap(film, entree, nil)
+	fc.PoserLaCarteEtLeDecoupage()
+	return fc
 }
