@@ -27,8 +27,7 @@ Constats déjà établis (2026-10-09 → 2026-10-14) :
   par la garde démo du lot recos-d) + test avec chemins encodés.
 - **Faille de lecture de fichiers arbitraires** sous `/static/commendations/` (depuis le 2026-04-23) :
   CORRIGÉE et déployée le 2026-10-09 (PR #89). Exposition possible avant le 2026-09-25 (début des
-  journaux nginx conservés) : **décision du user** sur la rotation des secrets (secret client Azure,
-  secret de session, jetons de rafraîchissement des joueurs).
+  journaux nginx conservés) : **décision du user du 2026-10-14 : pas de rotation des secrets**.
 - **Vulnérabilités de la bibliothèque standard Go** atteintes (govulncheck au pre-push : http2,
   `http.Error`, `csv.Writer.Flush`) : monter la version de Go.
 
