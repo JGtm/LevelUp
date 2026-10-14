@@ -149,6 +149,10 @@ export function getTacticalText(locale: Locale) {
     tileAlone: m('tactical.tile.alone'),
     tileAloneAt: (d: string) => m('tactical.tile.alone_at', { d }),
     tileNearAt: (d: string) => m('tactical.tile.near_at', { d }),
+    tileDistance: (d: string) => m('tactical.tile.distance', { d }),
+    // ── Couche « autre joueur » du plan : légende ────────────────────────────
+    layerKillers: m('tactical.layer.killers'),
+    layerVictims: m('tactical.layer.victims'),
     tileOpenReplay: (instant: string) => m('tactical.tile.open_replay', { instant }),
   }
 }

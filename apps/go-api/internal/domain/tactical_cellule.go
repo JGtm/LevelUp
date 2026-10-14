@@ -123,6 +123,13 @@ type TacticalContribution struct {
 	Face string `json:"face,omitempty"`
 	// AutreGamertag : l'autre joueur de l'événement — le tueur d'une mort, la victime d'un frag.
 	AutreGamertag string `json:"autre_gamertag,omitempty"`
+	// Point : la position de l'événement lui-même sur le plan, en mètres monde — la victime d'une
+	// mort, le tueur d'un frag. AutrePoint : la position de l'autre joueur au même instant (le
+	// tueur d'une mort, la victime d'un frag). Le web relie les deux par un trait.
+	// Chacun est nil quand la source ne le mesure pas (lectures d'artefact : jamais posés) :
+	// jamais (0, 0) de repli.
+	Point      *TacticalPoint `json:"point,omitempty"`
+	AutrePoint *TacticalPoint `json:"autre_point,omitempty"`
 	// ArmeLabel / ArmeLabelEN : le nom de l'arme de l'événement dans les deux langues, par le
 	// registre d'armes du titre ; CategorieSource : la catégorie brute de la source de dégât du
 	// film, publiée quand l'arme n'est pas nommée (le web la traduit, ou ne l'écrit pas).
@@ -140,6 +147,12 @@ type TacticalContribution struct {
 	// ReplayAvailable : l'artefact de rejeu 2D du match existe — le web ne pose le bouton de
 	// rejeu que là, jamais un lien vers une page vide.
 	ReplayAvailable bool `json:"replay_available"`
+}
+
+// TacticalPoint est une position sur le plan d'une carte, en mètres monde.
+type TacticalPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // Valeurs de TacticalContribution.Face.

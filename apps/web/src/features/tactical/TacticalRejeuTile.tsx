@@ -8,6 +8,8 @@
  * Ce que la tuile dit vient de `modeleDeTuile` (`zone.logic.ts`) ; le mot et la couleur de l'issue
  * viennent des correspondances du titre (`useOutcomeMapping`, jeton `outcome-*`).
  */
+import { useEffect, useRef } from 'react'
+
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { TacticalContribution } from '@/lib/api/types'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
@@ -24,17 +26,30 @@ interface TacticalRejeuTileProps {
   locale: Locale
   playerSlug: string
   contribution: TacticalContribution
+  /** La tuile est celle du point survolé sur le plan : elle ressort. */
+  actif?: boolean
+  /** Le pointeur entre dans la tuile (`true`) ou la quitte (`false`) : le plan met son point en avant. */
+  onSurvol?: (survole: boolean) => void
 }
 
-export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c }: TacticalRejeuTileProps) {
+export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, actif = false, onSurvol }: TacticalRejeuTileProps) {
   const timezone = useAppShellStore((s) => s.userTimezone)
   const issue = useOutcomeMapping(c.resultat ?? '')
   const jeton = outcomeTokenFromCanonical(c.resultat ?? '')
   const m = modeleDeTuile(t, c, locale, timezone, issue?.label ?? null)
+  const ligne = useRef<HTMLLIElement>(null)
+  // Le point du plan survolé amène sa tuile dans la liste à défilement interne.
+  useEffect(() => {
+    if (actif) ligne.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [actif])
   return (
     <li
-      className="relative flex min-h-14 items-center gap-1.5 border-b border-border py-1.5 pl-2.5 pr-1.5 text-[12.5px] tabular-nums transition-colors last:border-b-0 hover:bg-accent"
+      ref={ligne}
+      className={`relative flex min-h-14 items-center gap-1.5 border-b border-border py-1.5 pl-2.5 pr-1.5 text-[12.5px] tabular-nums transition-colors last:border-b-0 hover:bg-accent${actif ? ' bg-accent' : ''}`}
       title={m.titre}
+      data-actif={actif || undefined}
+      onPointerEnter={() => onSurvol?.(true)}
+      onPointerLeave={() => onSurvol?.(false)}
       data-testid="tactical-rejeu-tile"
     >
       <span
@@ -59,6 +74,7 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c }: Ta
         >
           <span className="flex-none rounded bg-muted px-[5px] font-mono text-[11px] leading-4 text-foreground">{m.instant}</span>
           {m.fait && <span className="flex-none">{m.fait}</span>}
+          {m.distance && <span className="flex-none" data-testid="tactical-rejeu-distance">{m.distance}</span>}
           {m.arme && <span className="min-w-0 truncate">{m.arme}</span>}
           {m.badge && <span className="ml-auto flex-none rounded-full bg-muted px-1.5 text-[10.5px] leading-4">{m.badge}</span>}
         </div>

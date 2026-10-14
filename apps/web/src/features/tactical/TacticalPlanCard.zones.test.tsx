@@ -78,6 +78,9 @@ function rendre(lecture: TacticalRaster) {
       reglages={REGLAGES}
       selected={null}
       onPointSelect={() => {}}
+      contributions={[]}
+      survol={null}
+      onSurvol={() => {}}
     />,
   )
 }

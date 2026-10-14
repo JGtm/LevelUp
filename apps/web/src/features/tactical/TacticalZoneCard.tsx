@@ -40,9 +40,23 @@ interface TacticalZoneCardProps {
   /** La cellule choisie, `null` sans sélection. */
   cellule: CelluleTactique | null
   detail: DetailDeZone
+  /** L'index de la contribution mise en avant (tuile ou point du plan survolé), `null` sinon. */
+  survol?: number | null
+  onSurvol?: (index: number | null) => void
 }
 
-export function TacticalZoneCard({ t, locale, playerSlug, question, signee, pasM, cellule, detail }: TacticalZoneCardProps) {
+export function TacticalZoneCard({
+  t,
+  locale,
+  playerSlug,
+  question,
+  signee,
+  pasM,
+  cellule,
+  detail,
+  survol = null,
+  onSurvol,
+}: TacticalZoneCardProps) {
   const titre = titreDeZone(t, locale, cellule !== null, detail.data)
   return (
     <div className="h-full min-h-0" data-testid="tactical-zone-card">
@@ -76,7 +90,7 @@ export function TacticalZoneCard({ t, locale, playerSlug, question, signee, pasM
               <h4 className="mt-2 flex-none border-t border-border pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t.zoneReplayHeading}
               </h4>
-              <ListeDuRejeu t={t} locale={locale} playerSlug={playerSlug} detail={detail} />
+              <ListeDuRejeu t={t} locale={locale} playerSlug={playerSlug} detail={detail} survol={survol} onSurvol={onSurvol} />
             </>
           ) : (
             <p className="m-0 text-[13px] text-muted-foreground">{t.zoneNone}</p>
@@ -93,11 +107,15 @@ function ListeDuRejeu({
   locale,
   playerSlug,
   detail,
+  survol,
+  onSurvol,
 }: {
   t: TacticalText
   locale: Locale
   playerSlug: string
   detail: DetailDeZone
+  survol: number | null
+  onSurvol?: (index: number | null) => void
 }) {
   if (detail.isError) {
     return (
@@ -118,6 +136,8 @@ function ListeDuRejeu({
           locale={locale}
           playerSlug={playerSlug}
           contribution={c}
+          actif={survol === i}
+          onSurvol={(survole) => onSurvol?.(survole ? i : null)}
         />
       ))}
     </ul>

@@ -21,7 +21,7 @@
  */
 import { useMemo, useState } from 'react'
 
-import type { TacticalRaster } from '@/lib/api/types'
+import type { TacticalContribution, TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { carteLue, type CarteEffective } from './cockpit.logic'
@@ -107,6 +107,13 @@ export function TacticalAnalysisView({
     pret: etatPlan === 'pret',
     params,
   })
+  // La contribution mise en avant, partagée par la tuile et le plan ; remise à zéro avec la zone.
+  const [survol, setSurvol] = useState<number | null>(null)
+  const [zoneDuSurvol, setZoneDuSurvol] = useState(zone.cle)
+  if (zone.cle !== zoneDuSurvol) {
+    setZoneDuSurvol(zone.cle)
+    if (survol !== null) setSurvol(null)
+  }
 
   return (
     <div
@@ -132,6 +139,9 @@ export function TacticalAnalysisView({
         }}
         selected={zone.selected}
         onPointSelect={zone.choisir}
+        contributions={zone.contributions}
+        survol={survol}
+        onSurvol={setSurvol}
       />
       {/* LA COLONNE PREND LA HAUTEUR DE LA CARTE DU PLAN (trois colonnes) : `contain: size` l'empêche
           de peser sur la rangée, l'étirement lui donne la hauteur du plan, et sa liste défile. */}
@@ -145,6 +155,8 @@ export function TacticalAnalysisView({
           pasM={lectureAffichee?.pas_m ?? 0}
           cellule={zone.cellule}
           detail={zone.detail}
+          survol={survol}
+          onSurvol={setSurvol}
         />
       </div>
     </div>
@@ -198,6 +210,9 @@ function useZoneChoisie(cle: string) {
   }
   return [selected, setSelected] as const
 }
+
+/** Aucune contribution : une référence stable, pour que les mémos de la couche ne se recalculent pas. */
+const AUCUNE_CONTRIBUTION: TacticalContribution[] = []
 
 type ParamsLecture = Parameters<typeof useTacticalRaster>[2]
 
@@ -265,6 +280,9 @@ function useZone({
   )
   return {
     selected,
+    // L'identité de la zone et de ses contributions : le survol qui en dépend ne survit pas à un changement.
+    cle: `${cle}:${selected?.col}:${selected?.row}`,
+    contributions: selected ? (requete.data?.contributions ?? AUCUNE_CONTRIBUTION) : AUCUNE_CONTRIBUTION,
     // Un clic loin de toute cellule servie ne change rien (choixDuClic).
     choisir: (point: { x: number; y: number }) => {
       const choisi = lecture ? choixDuClic(lecture.cellules ?? [], point, lecture.pas_m) : null

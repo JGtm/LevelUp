@@ -395,3 +395,15 @@ en = "near · {d} m"
 [tactical.tile.open_replay]
 fr = "Ouvrir le rejeu à {instant}"
 en = "Open the replay at {instant}"
+
+[tactical.tile.distance]
+fr = "à {d} m"
+en = "{d} m away"
+
+[tactical.layer.killers]
+fr = "Tueurs"
+en = "Killers"
+
+[tactical.layer.victims]
+fr = "Victimes"
+en = "Victims"

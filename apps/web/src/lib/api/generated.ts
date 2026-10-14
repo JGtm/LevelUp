@@ -12804,6 +12804,7 @@ export interface components {
             arme_label?: string;
             arme_label_en?: string;
             autre_gamertag?: string;
+            autre_point?: components["schemas"]["TacticalPoint"];
             categorie_source?: string;
             clock: string;
             face?: string;
@@ -12814,6 +12815,7 @@ export interface components {
             match_started_at: string;
             mode_label?: string;
             placement?: components["schemas"]["TacticalPlacement"];
+            point?: components["schemas"]["TacticalPoint"];
             replay_available: boolean;
             resultat?: string;
             score_kind?: string;
@@ -12863,6 +12865,12 @@ export interface components {
             /** Format: double */
             distance_m?: number;
             seul: boolean;
+        };
+        TacticalPoint: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
         };
         TacticalRaster: {
             bornes: components["schemas"]["BornesMonde"];

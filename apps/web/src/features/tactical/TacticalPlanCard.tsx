@@ -41,7 +41,7 @@ import { titleWithInfo } from '@/components/ui/title-with-info'
 import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { TacticalGrappe, TacticalRaster } from '@/lib/api/types'
+import type { TacticalContribution, TacticalGrappe, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
@@ -63,6 +63,7 @@ import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
+import { CoucheDesTueurs, LegendeDesTueurs } from './TacticalPlanTueurs'
 import {
   grilleDuPlan,
   planEmptyReason,
@@ -74,6 +75,7 @@ import {
   type TacticalQuestion,
   type TacticalQui,
 } from './tacticalView.logic'
+import { pointsDeLaCouche } from './tueurs.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
 
@@ -115,6 +117,11 @@ export interface TacticalPlanCardProps {
   selected: { col: number; row: number } | null
   /** Le point MONDE d'un clic sur le plan ; la vue retient la cellule servie qu'il vise. */
   onPointSelect: (point: { x: number; y: number }) => void
+  /** Les contributions de la zone choisie ([] sans zone) : la couche « autre joueur » en tire ses traits et points. */
+  contributions: readonly TacticalContribution[]
+  /** L'index de la contribution mise en avant (tuile ou point survolé), `null` sinon. */
+  survol: number | null
+  onSurvol: (index: number | null) => void
 }
 
 export function TacticalPlanCard({
@@ -131,6 +138,9 @@ export function TacticalPlanCard({
   reglages,
   selected,
   onPointSelect,
+  contributions,
+  survol,
+  onSurvol,
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
@@ -145,6 +155,11 @@ export function TacticalPlanCard({
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
   const messages = lue ? statusMessages(t, lue.matchs_en_attente ?? 0) : []
+  // La couche n'existe que tant qu'une zone est choisie et que le plan est peint.
+  const pointsTueurs = useMemo(
+    () => (selected && lue && raisonVide === null ? pointsDeLaCouche(contributions) : []),
+    [selected, lue, raisonVide, contributions],
+  )
 
   return (
     <SectionCard
@@ -184,6 +199,19 @@ export function TacticalPlanCard({
               estompe={estompe}
             />
           )}
+          {repere && pointsTueurs.length > 0 && (
+            <CoucheDesTueurs
+              t={t}
+              locale={locale}
+              repere={repere}
+              fenetre={fenetre}
+              contributions={contributions}
+              points={pointsTueurs}
+              survol={survol}
+              onSurvol={onSurvol}
+              estompe={estompe}
+            />
+          )}
           {repere && selected && etiquette && (
             <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
           )}
@@ -201,6 +229,7 @@ export function TacticalPlanCard({
           estompe={estompe}
         />
       </div>
+      <LegendeDesTueurs t={t} points={pointsTueurs} />
     </SectionCard>
   )
 }

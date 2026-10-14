@@ -406,6 +406,10 @@ type MortContexte struct {
 	KillerGamertag string
 	SourceTag      *uint32
 	SourceCategory string
+
+	// KillerX, KillerY : la position du tueur au coup fatal, depuis `kill_positions_latest` ;
+	// nil = non mesuree (la jointure n'exige que la position de la victime), jamais 0.
+	KillerX, KillerY *float64
 }
 
 // TacticalMortsContexte : l'univers ET ses morts localisees avec leur voisinage.

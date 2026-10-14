@@ -18,7 +18,7 @@
  * LA CHALEUR SE PEINT LISSÉE (`chaleurLissee.ts`) : des zones de chaleur, plus des carrés. Le repère
  * de la zone choisie est un anneau autour de sa cellule (la cellule reste l'adresse du détail).
  */
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, type PointerEvent } from 'react'
 
 import { useReplayDrag } from '@/features/match-replay/hooks/useReplayDrag'
 import { useReplayWheelZoom } from '@/features/match-replay/hooks/useReplayWheelZoom'
@@ -31,6 +31,7 @@ import type { TacticalGrid } from '@/lib/replay/heatPaint'
 
 import { lisserLaGrille } from './chaleurLissee'
 import { peindreLePlan } from './planPaint'
+import { useTailleDuCanvas } from './useTailleDuCanvas'
 import { positionEtiquette } from './zone.logic'
 import { pointDuClic, rectSelection, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
 
@@ -38,23 +39,6 @@ import { pointDuClic, rectSelection, type FenetreDuPlan, type RepereTactique } f
 const SEUIL_GLISSER_PX = 4
 /** Rayon de l'anneau de la zone choisie, en côtés de cellule : il entoure la cellule entière. */
 const ANNEAU_RAYON_CELLULE = 0.75
-
-/** useTailleDuCanvas — la taille affichée du canvas, suivie : le glisser et la molette convertissent des pixels en mètres. */
-function useTailleDuCanvas(ref: RefObject<HTMLCanvasElement | null>) {
-  const [taille, setTaille] = useState({ width: 0, height: 0 })
-  useEffect(() => {
-    const canvas = ref.current
-    if (!canvas) return
-    const lire = () => setTaille({ width: canvas.clientWidth, height: canvas.clientHeight })
-    lire()
-    // Le patron du dépôt : l'observateur est optionnel (jsdom ne le fournit pas).
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(lire)
-    ro.observe(canvas)
-    return () => ro.disconnect()
-  }, [ref])
-  return taille
-}
 
 export interface CalqueDuPlanProps {
   /** La grille servie, réindexée sur le repère ; `null` = rien à peindre. */

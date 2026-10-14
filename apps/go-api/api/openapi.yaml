@@ -28552,6 +28552,8 @@ components:
           type: string
         autre_gamertag:
           type: string
+        autre_point:
+          $ref: '#/components/schemas/TacticalPoint'
         categorie_source:
           type: string
         clock:
@@ -28570,6 +28572,8 @@ components:
           type: string
         placement:
           $ref: '#/components/schemas/TacticalPlacement'
+        point:
+          $ref: '#/components/schemas/TacticalPoint'
         replay_available:
           type: boolean
         resultat:
@@ -28700,6 +28704,19 @@ components:
           type: boolean
       required:
         - seul
+      type: object
+    TacticalPoint:
+      additionalProperties: false
+      properties:
+        x:
+          format: double
+          type: number
+        "y":
+          format: double
+          type: number
+      required:
+        - x
+        - "y"
       type: object
     TacticalRaster:
       additionalProperties: false

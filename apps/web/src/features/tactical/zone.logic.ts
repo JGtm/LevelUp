@@ -20,6 +20,7 @@ import {
   type RepereTactique,
   type TacticalQuestion,
 } from './tacticalView.logic'
+import { distanceEnMetres } from './tueurs.logic'
 
 /** Au-delà de ce point de la largeur, l'étiquette du nom de zone passe à GAUCHE de la cellule. */
 const ETIQUETTE_BASCULE = 0.55
@@ -131,6 +132,8 @@ interface ModeleDeTuile {
   /** L'arme, ou la catégorie de la source traduite ; absente sinon. Seule partie qui se tronque. */
   arme?: string
   badge?: string
+  /** La distance à l'autre joueur (« à 23 m ») ; absente quand un des deux points manque. */
+  distance?: string
   /** Le texte complet de la tuile, pour l'infobulle. */
   titre: string
   rejeu: { disponible: boolean; search: { t: string; clock: 'match' | 'film' }; libelle: string }
@@ -157,6 +160,12 @@ function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): strin
   return c.categorie_source ? t.tileCategories[c.categorie_source] : undefined
 }
 
+/** distanceDe — « à 23 m » : la distance entre l'événement et l'autre joueur, au mètre. */
+function distanceDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
+  const d = distanceEnMetres(c)
+  return d === null ? undefined : t.tileDistance(new Intl.NumberFormat(intlLocale(locale)).format(d))
+}
+
 function badgeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
   if (c.face !== 'mort' || !c.placement) return undefined
   const d = c.placement.distance_m
@@ -181,8 +190,9 @@ export function modeleDeTuile(
   const fait = faitDe(t, c)
   const arme = armeDe(t, c, locale)
   const badge = badgeDe(t, c, locale)
+  const distance = distanceDe(t, c, locale)
   const date = dateEtHeure(c.match_started_at, timezone, locale)
-  const titre = [c.mode_label, c.score_label, issue, date, instant, fait, arme, badge].filter(Boolean).join(' · ')
+  const titre = [c.mode_label, c.score_label, issue, date, instant, fait, distance, arme, badge].filter(Boolean).join(' · ')
   return {
     mode: c.mode_label || undefined,
     score: c.score_label || undefined,
@@ -191,6 +201,7 @@ export function modeleDeTuile(
     fait,
     arme,
     badge,
+    distance,
     titre,
     rejeu: {
       disponible: c.replay_available,
@@ -198,6 +209,14 @@ export function modeleDeTuile(
       libelle: t.tileOpenReplay(instant),
     },
   }
+}
+
+/**
+ * infobulleDuPoint — le texte court du point survolé sur le plan : le gamertag de l'autre joueur,
+ * l'arme si elle est connue, la distance si les deux points le sont.
+ */
+export function infobulleDuPoint(t: TacticalText, c: TacticalContribution, locale: Locale): string {
+  return [c.autre_gamertag, armeDe(t, c, locale), distanceDe(t, c, locale)].filter(Boolean).join(' · ')
 }
 
 /**

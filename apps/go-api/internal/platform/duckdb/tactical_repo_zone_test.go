@@ -121,5 +121,8 @@ func TestTacticalRepo_MortsAvecContexte_HauteurNomEtSource(t *testing.T) {
 		default:
 			t.Errorf("mort inattendue : %+v", m)
 		}
+		if m.KillerX == nil || m.KillerY == nil || *m.KillerX != 1 || *m.KillerY != 1 {
+			t.Errorf("t=%d : tueur en (%v ; %v), want (1 ; 1)", m.TimeMs, m.KillerX, m.KillerY)
+		}
 	}
 }
