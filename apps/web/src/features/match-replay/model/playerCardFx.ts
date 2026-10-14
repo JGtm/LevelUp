@@ -48,7 +48,12 @@ import type { ReplayText } from '../i18n/i18nContract'
  */
 const DEATH_FLASH_TOTAL_S = 1.86
 const RESPAWN_FLASH_S = 1.2
-const TRANSLOCATION_FLASH_S = 1.2
+/**
+ * Durée de l'éclat d'une translocation, en secondes : la fiche (fourreau) et la carte (deux
+ * failles, `placementRift.ts`) la partagent, pour que les deux signes d'un même saut s'éteignent
+ * ensemble.
+ */
+export const TRANSLOCATION_FLASH_S = 1.2
 
 /**
  * L'ENCRE SOMBRE-DES-DEUX-THÈMES : `--replay-label-stroke`, définie pour le contour des noms

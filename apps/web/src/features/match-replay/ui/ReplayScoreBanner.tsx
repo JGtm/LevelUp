@@ -41,7 +41,7 @@ import { formatClock } from '../../../lib/replay/replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { readHillHold, type HillHoldDocument } from '../model/hillHoldLogic'
 import { readScoreBanner, type ScoreBannerFilm, type ScoreBannerSide } from '../model/scoreBannerLogic'
-import { roundsTally, type RoundDot } from '../model/roundsLogic'
+import type { RoundDot } from '../model/roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayText } from '../i18n/i18nContract'
 
@@ -82,7 +82,6 @@ export function ReplayScoreBanner({
     () => readScoreBanner(scoreTimelineOf(doc), allegiance, frame),
     [doc, allegiance, frame],
   )
-  const tally = useMemo(() => roundsTally(reading?.dots ?? []), [reading])
   // LA GARDE DE LA COLLINE, sous les barres. Elle se lit APRÈS les camps, parce qu'elle a besoin
   // d'eux : la série de garde est indexée par camp du registre, et c'est le bandeau qui sait
   // lequel est allié. `null` = rien à dessiner (mode sans colline, artefact sans série,
@@ -121,26 +120,15 @@ export function ReplayScoreBanner({
             {formatClock(displayClockMs(nowMs, playWindow))}
           </span>
           {/* LA MANCHE, seulement quand le mode en a plusieurs : sur un mode à manche unique
-              elle ne dirait rien que le total ne dise déjà. Discrète — c'est un repère. */}
+              elle ne dirait rien que le total ne dise déjà. En gras, à l'encre du thème : c'est
+              le repère de lecture, pas une légende. Les manches gagnées se lisent aux pastilles,
+              jamais en chiffres. */}
           {reading.round && (
             <span
-              className="mt-0.5 text-[9px] font-normal leading-none tabular-nums text-muted-foreground"
+              className="mt-0.5 text-[11px] font-bold leading-none tabular-nums text-foreground"
               title={t.roundOfCountFmt(reading.round.index, reading.round.count)}
             >
               {t.roundNumberFmt(reading.round.index)}
-            </span>
-          )}
-          {/* LE COMPTE DE MANCHES EN CLAIR (arbitrage utilisateur du 2026-08-29) : les
-              pastilles au-dessus le disent à l'œil, ce nombre le dit à qui lit. Il suit la
-              lecture — c'est un compte EN COURS, pas le verdict du match, lequel s'affiche
-              sur l'écran de fin depuis l'API. Absent sur un mode à manche unique, où
-              `dots` est vide. */}
-          {reading.dots.length > 0 && (
-            <span
-              className="mt-0.5 font-mono text-[10px] font-bold leading-none tabular-nums text-muted-foreground"
-              aria-label={t.roundsTallyLabel}
-            >
-              {t.roundsTallyFmt(tally.ally, tally.enemy)}
             </span>
           )}
         </div>

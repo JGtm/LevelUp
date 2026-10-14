@@ -53,6 +53,7 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   objectivesCooked: true,
   projectiles: true,
   placements: true,
+  rifts: true,
   fireMarks: true,
   shotFx: true,
   zoneStates: true,
@@ -103,6 +104,7 @@ const ORDRE_ATTENDU = [
   'poses-equipement',
   'vehicules',
   'trajectoires',
+  'failles',
   'marques-de-tir',
   'gestes-capacite',
   'tirs',
@@ -119,7 +121,7 @@ const ORDRE_ATTENDU = [
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-quatre calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les vingt-cinq calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -173,7 +175,8 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
     ['zones', ['zones-nommees']],
     // Un seul geste éteint l'éclair de bouche ET le « ! » du tireur : c'est le même événement.
     ['shotFx', ['marques-de-tir', 'tirs']],
-    ['placements', ['poses-equipement']],
+    // Les failles du translocateur suivent la bascule des poses : un seul geste les éteint.
+    ['placements', ['poses-equipement', 'failles']],
     ['killFx', ['morts']],
     // Trois calques pour UN objet (2026-09-18) : la géométrie cuite, l'état vivant des zones
     // et les pulses d'action. Les objets PORTÉS (drapeaux, couronne, crâne, bombe) ne sont
@@ -204,6 +207,7 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
     ['objectivesCooked', ['objectifs-cuits']],
     ['projectiles', ['projectiles']],
     ['placements', ['poses-equipement']],
+    ['rifts', ['failles']],
     ['fireMarks', ['marques-de-tir']],
     ['shotFx', ['tirs']],
     ['zoneStates', ['etat-zones']],

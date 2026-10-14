@@ -20,6 +20,7 @@ import type {
   ReplayObjectiveObjectLife,
   ReplayInventory,
   ReplayLoadout,
+  ReplayPoint,
   ReplayProjectile,
   ReplayRosterEntry,
   ReplaySurface,
@@ -41,7 +42,18 @@ export type ReplayStep = [number, number, number]
 /** Rend NON NULLABLES (et présents) les champs `K` de `T` — les tableaux du contrat. */
 type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 
-export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
+/**
+ * Un échantillon de piste tel que le RENDU le lit : le point du contrat, plus la COUPURE
+ * (`cut`) que la frontière pose sur le premier échantillon d'ARRIVÉE d'une translocation
+ * (`translocationCuts.ts`). Une coupure dit « rien entre le point précédent et celui-ci » : ni
+ * glissade du pion, ni segment de traînée. Elle diffère de la lacune (`g`) en ce que le joueur
+ * y est PRÉSENT et vu — le pion n'est donc pas pâli.
+ */
+export type ReplayCutPoint = ReplayPoint & { cut?: true }
+
+export type ReplayTrackReady = Omit<Filled<ReplayTrack, 'points'>, 'points'> & {
+  points: ReplayCutPoint[]
+}
 /** La couverture dont la liste des replis déclenchés (schéma 58) est comblée. */
 export type ReplayCoverageReady = Filled<NonNullable<ReplayDocument['coverage']>, 'fallbacks'>
 type ReplayLoadoutReady = Filled<ReplayLoadout, 'w' | 'k'>

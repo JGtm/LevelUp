@@ -12,8 +12,7 @@
  *  - L1.1 : la colonne des fiches (`ReplayTeams`, rendue en jsdom) à des instants échantillonnés
  *    — nombre de libellés d'état de mouvement affichés, et HTML identique au reste près ;
  *  - L1.2 : `scoreTimelineOf` -> `leaderStates` -> `buildScoreDominance` (la composition de
- *    `scoreTrack`, privée du hook ; la garde « sosie de la dominance » demande le fil de la page
- *    et n'est pas rejouée) et `readScoreBanner` sur un tableau de score SYNTHÉTIQUE tiré du
+ *    `buildScoreTrack`, hors règle déclarée du titre) et `readScoreBanner` sur un tableau de score SYNTHÉTIQUE tiré du
  *    roster (le vrai vient de la base, qu'on n'ouvre pas) ;
  *  - L1.3 : le prédicat de dessin des véhicules (`vehicleIsHidden`, `vehicleIsDecor` à la base) ;
  *  - L1.4 : `positionAt` / `altitudeAt` / `trailAt` sur une grille d'instants, rangés par

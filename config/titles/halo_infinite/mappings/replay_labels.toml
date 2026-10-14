@@ -344,16 +344,17 @@ hinf_skewer         = "kinetic"
 hinf_plasma_pistol  = "plasma_cool"
 hinf_pulse_carbine  = "plasma_cool"
 hinf_vestige_carbine = "plasma_cool"
-hinf_cindershot     = "plasma_cool"
 hinf_fuel_rod_spnkr = "plasma_cool"
 # Banished A ENERGIE, spectre CHAUD.
 hinf_ravager        = "plasma_hot"
 hinf_stalker_rifle  = "plasma_hot"
-hinf_heatwave       = "plasma_hot"
-# FORERUNNER : le Rayon de Sentinelle est la seule arme Forerunner du jeu — et le corpus des
-# 23 artefacts locaux n'en porte AUCUN tir. La teinte est declaree quand meme : elle existera
-# le jour ou un film en portera un, et l'absence de mesure est dite plutot que masquee.
+# FORERUNNER : TOUTE arme de faction `forerunner` du registre (`games/weapons/registry.go`) porte
+# cette teinte, et aucune autre (garde-rail `forerunner_tint_test.go`). Le Rayon de Sentinelle, le
+# Cindershot et la Heatwave sont les trois armes Forerunner de Halo Infinite (decision du
+# 2026-10-14).
 hinf_sentinel_beam  = "forerunner"
+hinf_cindershot     = "forerunner"
+hinf_heatwave       = "forerunner"
 # ELECTRIQUE.
 hinf_disruptor      = "electric"
 hinf_shock_rifle    = "electric"
