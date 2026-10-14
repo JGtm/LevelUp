@@ -1,5 +1,6 @@
-// Package persist — lives_persister.go : ecriture INSERT-ONLY des DEUX tables des faits
-// d'isolement, `match_lives` et `match_death_context` (plan Tactique, phase 7C).
+// Package persist — lives_persister.go : ecriture INSERT-ONLY des TROIS tables des faits
+// d isolement, `match_lives`, `match_death_context` et `match_death_mates` (lives_mates_persister.go ;
+// plan Tactique, phase 7C puis lot coequipiers).
 //
 // POURQUOI UN PERSISTER DEDIE, ET LE MEME PATRON QUE [KillSourcePersister] : ces deux tables
 // naissent d'une PASSE DE DECODAGE d'un film, sur un match DEJA insere au registre. Le chemin
@@ -11,7 +12,7 @@
 // les vues `_latest` qui ne rendent que la DERNIERE PASSE PAR MATCH. Ce fichier n'a donc rien a
 // faire figurer dans l'allowlist de `internal/sync/no_art_patterns_test.go`.
 //
-// LES DEUX TABLES PARTAGENT LA MEME PASSE, ET C'EST LA RAISON D'UN SEUL PERSISTER : elles
+// LES TROIS TABLES PARTAGENT LA MEME PASSE, ET C EST LA RAISON D UN SEUL PERSISTER : elles
 // decrivent le meme decodage du meme film. Deux `decode_pass` differents rendraient les vues
 // `_latest` incoherentes entre elles — le contexte d'une mort pourrait citer des vies que la vue
 // des vies ne sert plus. Une transaction, un identifiant de passe, un instant.
@@ -39,6 +40,9 @@ type LivesBatch struct {
 	DecoderRev string
 	Lives      []LifeInsert
 	Contexts   []DeathContextInsert
+	// Mates : un coequipier de la victime par ligne et par mort (`match_death_mates`). Meme passe
+	// que les contextes ; `validateMates` exige qu un contexte de total non nul ait ses lignes.
+	Mates []DeathMateInsert
 }
 
 // LifeInsert — une vie nommee, sur l'horloge du MATCH.
@@ -121,6 +125,9 @@ func (p *LivesPersister) insertLivesPass(ctx context.Context, in LivesBatch, pas
 	if err := insertDeathContextRows(ctx, tx, in, pass, now); err != nil {
 		return err
 	}
+	if err := insertDeathMateRows(ctx, tx, in, pass, now); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("persist: Commit match_lives %s: %w", in.MatchID, err)
 	}
@@ -197,7 +204,7 @@ func validateLivesBatch(in LivesBatch) error {
 			return err
 		}
 	}
-	return nil
+	return validateMates(in)
 }
 
 func validateLife(l *LifeInsert, matchID string, i int) error {

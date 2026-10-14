@@ -51,7 +51,7 @@ func TestLesFaitsDIsolementComptentLaConstanteNulle(t *testing.T) {
 	fb := decfilm.NouveauCompteur()
 	mat := materiauDIsolement{registre: registreDeTest(positionsDUneVie(), 0), positions: positionsDUneVie()}
 	ids := MatchIdentities{Equipes: map[string]int{"111": 0}, replis: fb}
-	rows, _ := toDeathContextRows(mat, ids, []persist.KillEventInsert{{TimeMS: 1000, VictimXUID: "111"}})
+	rows, _, _ := toDeathContextRows(mat, ids, []persist.KillEventInsert{{TimeMS: 1000, VictimXUID: "111"}})
 	if len(rows) == 0 {
 		t.Fatal("aucune ligne de contexte : le temoin ne mesure rien")
 	}

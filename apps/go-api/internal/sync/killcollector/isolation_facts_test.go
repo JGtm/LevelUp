@@ -123,7 +123,7 @@ func TestToDeathContextRows_PontNonPublicable_CompteDedie(t *testing.T) {
 	ids := MatchIdentities{Equipes: map[string]int{"111": 0}}
 	deaths := []persist.KillEventInsert{{TimeMS: 1000, VictimXUID: "111"}}
 
-	rows, ecarts := toDeathContextRows(mat, ids, deaths)
+	rows, _, ecarts := toDeathContextRows(mat, ids, deaths)
 
 	if rows != nil {
 		t.Fatalf("contextes = %+v, attendu aucun : le pont est refuse pour tout le match", rows)
@@ -285,5 +285,30 @@ func TestRegistreDuCollecteurSeTaitADeuxCandidats(t *testing.T) {
 	})
 	if n := len(reg.ViesNommees()); n != 1 {
 		t.Fatalf("%d vie(s) nommee(s), attendu 1 : deux candidats libres ne se departagent pas", n)
+	}
+}
+
+// TestToDeathContextRows_LesCoequipiersRetombentSurLesComptes — la mort de 111 a un coequipier
+// (222) que le film ne montre pas : une ligne `out_of_sight`, sans lieu, et la somme des lignes de
+// la mort egale `teammates_total` du contexte qui la porte.
+func TestToDeathContextRows_LesCoequipiersRetombentSurLesComptes(t *testing.T) {
+	mat := materiauAvecUneVie()
+	ids := MatchIdentities{Equipes: map[string]int{"111": 0, "222": 0, "333": 1}}
+	deaths := []persist.KillEventInsert{{TimeMS: 5000, VictimXUID: "111"}}
+
+	ctxs, mates, _ := toDeathContextRows(mat, ids, deaths)
+
+	if len(ctxs) != 1 {
+		t.Fatalf("contextes = %d, attendu 1", len(ctxs))
+	}
+	if len(mates) != ctxs[0].TeammatesTotal || len(mates) != 1 {
+		t.Fatalf("lignes de coequipiers = %d, total du contexte = %d, attendu 1 et 1", len(mates), ctxs[0].TeammatesTotal)
+	}
+	m := mates[0]
+	if m.VictimXUID != "111" || m.TimeMS != 5000 || m.MateXUID != "222" || m.State != persist.EtatCoequipierHorsDeVue {
+		t.Fatalf("ligne = %+v, attendu 111 / 5000 / 222 / out_of_sight (l'adversaire 333 n'entre pas)", m)
+	}
+	if m.X != nil || m.Y != nil || m.DistanceM != nil {
+		t.Fatalf("ligne = %+v : un coequipier hors de vue n'a ni lieu ni distance", m)
 	}
 }

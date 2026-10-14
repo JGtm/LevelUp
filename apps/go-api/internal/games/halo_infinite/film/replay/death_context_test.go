@@ -307,3 +307,37 @@ func contexteDe(t *testing.T, out []ContexteMort, xuid uint64, tMS int64) Contex
 	t.Fatalf("aucun contexte pour la mort de %d a %d ms — rendus : %+v", xuid, tMS, out)
 	return ContexteMort{}
 }
+
+// TestContextesDesMorts_LaListeDesCoequipiers — la liste publiee est triee par xuid, porte un
+// etat par coequipier, et ne donne position et distance qu'a l'etat visible.
+func TestContextesDesMorts_LaListeDesCoequipiers(t *testing.T) {
+	pos, mortsFilm, journal := corpusDeReference()
+	for range 20 { // l'ordre d'une map varie : vingt appels ne doivent produire qu'un ordre
+		c := contexteDe(t, ContextesDesMorts(dcEntree(pos, mortsFilm, journal)), 111, 10_000)
+		if len(c.Coequipiers) != c.Total {
+			t.Fatalf("liste de %d coequipiers, total %d", len(c.Coequipiers), c.Total)
+		}
+		attendu := []struct {
+			xuid uint64
+			etat string
+		}{{222, EtatVisible}, {333, EtatEnAttente}, {444, EtatHorsDeVue}}
+		for i, a := range attendu {
+			l := c.Coequipiers[i]
+			if l.XUID != a.xuid || l.Etat != a.etat {
+				t.Fatalf("coequipier #%d = %d/%s, attendu %d/%s", i, l.XUID, l.Etat, a.xuid, a.etat)
+			}
+			avecPosition := l.X != nil && l.Y != nil && l.DistanceM != nil
+			sansPosition := l.X == nil && l.Y == nil && l.DistanceM == nil
+			if (l.Etat == EtatVisible && !avecPosition) || (l.Etat != EtatVisible && !sansPosition) {
+				t.Fatalf("coequipier %d (%s) : position et distance doivent suivre l'etat visible, %+v", l.XUID, l.Etat, l)
+			}
+		}
+		v := c.Coequipiers[0]
+		if *v.X != 3 || *v.Y != 0 || *v.DistanceM != 3 {
+			t.Fatalf("visible = (%v, %v) a %v m, attendu (3, 0) a 3 m", *v.X, *v.Y, *v.DistanceM)
+		}
+		if c.PlusProcheM == nil || *c.PlusProcheM != *v.DistanceM {
+			t.Fatalf("PlusProcheM %v doit etre derive de la liste (%v)", c.PlusProcheM, *v.DistanceM)
+		}
+	}
+}

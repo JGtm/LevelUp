@@ -38,9 +38,10 @@ const (
 // clé (match_id, xuid).
 var colonneDePasse = map[string]string{
 	"match_kill_events": passeDeDecodage, "match_lives": passeDeDecodage,
-	"match_death_context": passeDeDecodage, "match_life_placement": passeDeDecodage,
-	"kill_openings":    passeDeDecodage,
-	tableKillPositions: passeDeDecodage, "match_weapon_shots": passeDeDecodage,
+	"match_death_context": passeDeDecodage, "match_death_mates": passeDeDecodage,
+	"match_life_placement": passeDeDecodage,
+	"kill_openings":        passeDeDecodage,
+	tableKillPositions:     passeDeDecodage, "match_weapon_shots": passeDeDecodage,
 	"match_player_positions": "positions_pass", "match_usage_films": "summary_pass",
 	"match_usage_players": "summary_pass", "match_pad_pickups_by_tier": passeDeDecodage,
 	"match_flag_grabs_net": passeDeDecodage, "match_vehicle_takes": passeDeDecodage,

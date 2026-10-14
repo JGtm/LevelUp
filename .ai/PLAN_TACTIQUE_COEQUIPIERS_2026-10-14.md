@@ -44,19 +44,19 @@ Décisions user du 14/10 : délai d'échange 3 s ; terme « tueur abattu » ; re
 12. REMPLACÉE par A1.
 
 ### L0 Prérequis (bloquant)
-- [ ] L0.1 `feat/tactique-tueurs` fusionnée dans `feat/v75` (grep `AutrePoint` / `instant_affiche_ms` dans `domain/tactical_cellule.go`) ; sinon `[!]` et arrêt.
-- [ ] L0.2 Branche `feat/tactique-coequipiers` depuis `feat/v75`, worktree dédié.
-- [ ] L0.3 Rouvrir : `death_context.go` (l.175-215), `isolation_facts.go`, `lives_persister.go`, `tactical_service_cellule_enrichir.go` (`enrichir`, `poserPlacements`), conversion `instant_affiche_ms`, ADR 0026 / 0034 / 0036 (I2, I4, I6).
-- [ ] L0.4 Plan dans `.ai/`, entrée thought_log « En cours ».
+- [x] L0.1 (réduit par A6) `AutrePoint` présent dans `domain/tactical_cellule.go` l.132 (vérifié le 2026-10-14) ; `instant_affiche_ms` et le correctif du lien restent à refusionner avant L2.5. Texte d origine : fusionnée dans `feat/v75` (grep `AutrePoint` / `instant_affiche_ms` dans `domain/tactical_cellule.go`) ; sinon `[!]` et arrêt.
+- [x] L0.2 Branche `feat/tactique-coequipiers` depuis `feat/v75`, worktree dédié. — fait par le superviseur (HEAD 95dee81c4).
+- [x] L0.3 Rouvrir : `death_context.go` (l.175-215), `isolation_facts.go`, `lives_persister.go`, `tactical_service_cellule_enrichir.go` (`enrichir`, `poserPlacements`), conversion `instant_affiche_ms`, ADR 0026 / 0034 / 0036 (I2, I4, I6). — relu le 2026-10-14 : death_context.go, isolation_facts.go, lives_persister.go, order.go, compaction_registry.go, garde-rails ; `tactical_service_cellule_enrichir.go` et la conversion `instant_affiche_ms` relèvent de L2.5, non touchés par L0-L1.
+- [x] L0.4 Plan dans `.ai/`, entrée thought_log « En cours ». — entrée thought_log « En cours » ajoutée (L0-L1).
 
 ### L1 Stockage, collecteur, migration (Go)
-- [ ] L1.1 `film/replay/death_context.go` : `ContexteMort.Coequipiers []CoequipierDeMort{XUID uint64; Etat string; X, Y, DistanceM *float64}`, tri par xuid, arrondis existants (`arrondiMetres`, `distanceHorizontale`), `PlusProcheM` dérivé de la même liste.
-- [ ] L1.2 `migration/steps_shared_match_lives_mates.go` : step `shared_match_death_mates_v1` (id PK séquence, match_id, decode_pass, decoder_rev, written_at, victim_xuid, time_ms, mate_xuid, state, x, y, distance_m NULL ; index `(match_id, victim_xuid, time_ms, written_at)`) ; vue `match_death_mates_latest` (QUALIFY dernière passe entière) ; entrée dans `migration/order.go` entre `..._lives` et `..._lives_placement`.
-- [ ] L1.3 `migration/compaction_registry.go` `dernierePasse("match_death_mates","decode_pass")` + tests de compaction.
-- [ ] L1.4 `persist/lives_persister.go` (extraire `lives_mates_persister.go` si besoin) : `DeathMateInsert`, `LivesBatch.Mates` ; constantes d'état + extension `archlint/no_life_cause_divergence_test.go` ; `validateLivesBatch` : somme des lignes = `teammates_total`, comptes par état = colonnes, état visible ⇔ x/y/distance, `nearest_teammate_m` = min des distances visibles.
-- [ ] L1.5 `sync/killcollector/isolation_facts.go` : lignes de coéquipiers (`matesDe`), compteur `killsource_isolement_coequipiers_ecrits`, bump `IsolationDecoderRev` → `isolement-2026-10-14-coequipiers`.
-- [ ] L1.6 Garde-rails : `sync/no_art_patterns_test.go`, `sync/append_only_state_guard_test.go`, `platform/duckdb/no_raw_rating_reads_test.go`.
-- [ ] L1.7 En-têtes `cmd_backfill_killsource.go`.
+- [x] L1.1 `film/replay/death_context.go` : `ContexteMort.Coequipiers []CoequipierDeMort{XUID uint64; Etat string; X, Y, DistanceM *float64}`, tri par xuid, arrondis existants (`arrondiMetres`, `distanceHorizontale`), `PlusProcheM` dérivé de la même liste. — `ContexteMort.Coequipiers`, `CoequipierDeMort` (X, Y, DistanceM nil hors visible), tri par xuid, `PlusProcheM` dérivé de la liste (`plusProcheDesVisibles`).
+- [x] L1.2 `migration/steps_shared_match_lives_mates.go` : step `shared_match_death_mates_v1` (id PK séquence, match_id, decode_pass, decoder_rev, written_at, victim_xuid, time_ms, mate_xuid, state, x, y, distance_m NULL ; index `(match_id, victim_xuid, time_ms, written_at)`) ; vue `match_death_mates_latest` (QUALIFY dernière passe entière) ; entrée dans `migration/order.go` entre `..._lives` et `..._lives_placement`. — step `shared_match_death_mates_v1`, vue `match_death_mates_latest`, entrée dans `order.go` après `shared_match_lives_v1`.
+- [x] L1.3 `migration/compaction_registry.go` `dernierePasse("match_death_mates","decode_pass")` + tests de compaction. — registre + oracle de `compaction_e2e_test.go` ; tests de compaction verts.
+- [x] L1.4 `persist/lives_persister.go` (extraire `lives_mates_persister.go` si besoin) : `DeathMateInsert`, `LivesBatch.Mates` ; constantes d'état + extension `archlint/no_life_cause_divergence_test.go` ; `validateLivesBatch` : somme des lignes = `teammates_total`, comptes par état = colonnes, état visible ⇔ x/y/distance, `nearest_teammate_m` = min des distances visibles. — extraction faite : `persist/lives_mates_persister.go` (`DeathMateInsert`, `EtatCoequipier*`, `validateMates`) ; `LivesBatch.Mates` ; ratchet d états dans `archlint/no_life_cause_divergence_test.go` (`sourcesDesEtats`).
+- [x] L1.5 `sync/killcollector/isolation_facts.go` : lignes de coéquipiers (`matesDe`), compteur `killsource_isolement_coequipiers_ecrits`, bump `IsolationDecoderRev` → `isolement-2026-10-14-coequipiers`. — `toDeathContextRows` rend aussi les lignes ; traduction inline (pas de fonction `matesDe` : citer `replay.ContexteMort` / `CoequipierDeMort` hors de `film/` aurait fait monter le plafond de `film_facade_surface_test.go`, 299).
+- [x] L1.6 Garde-rails : `sync/no_art_patterns_test.go`, `sync/append_only_state_guard_test.go`, `platform/duckdb/no_raw_rating_reads_test.go`. — `match_death_mates` ajoutée aux trois listes (sans allowlist de motif risqué).
+- [x] L1.7 En-têtes `cmd_backfill_killsource.go`.
 - Tests : death_context (états, ordre, sommes), persister `integration`, isolation_facts, sélection backfill.
 - Gate : `go test` des paquets touchés + `go test -tags=integration ./internal/persist/... ./internal/sync/... ./internal/migration/... ./internal/games/halo_infinite/migrations/...` + `make go-api-lint`.
 

@@ -47,7 +47,19 @@ var sourcesDesNommages = []struct {
 	{"internal/persist/lives_persister.go", "NommePar"},
 }
 
-// TestValeursDeFinDeVieNeDivergentPas — le ratchet, deux volets (les causes, les nommages).
+// sourcesDesEtats : les trois etats d'un coequipier a la mort (`match_death_mates.state`), produits
+// par `replay` (Etat*) et valides par `persist` (EtatCoequipier*, lives_mates_persister.go). Une
+// divergence ferait refuser toute la passe a l'ecriture.
+var sourcesDesEtats = []struct {
+	fichier string
+	prefixe string
+}{
+	{"internal/games/halo_infinite/film/replay/death_context.go", "Etat"},
+	{"internal/persist/lives_mates_persister.go", "EtatCoequipier"},
+}
+
+// TestValeursDeFinDeVieNeDivergentPas — le ratchet, trois volets (les causes, les nommages, les
+// etats de coequipier).
 //
 // SELF-CHECK POSITIF : chaque source doit declarer AU MOINS une valeur, sinon le garde ne garde
 // plus rien — c'est ce qui arriverait si les constantes etaient renommees ou deplacees.
@@ -60,6 +72,7 @@ func TestValeursDeFinDeVieNeDivergentPas(t *testing.T) {
 
 	comparer(t, apiRoot, "end_cause", sourcesDesCauses)
 	comparer(t, apiRoot, "named_by", sourcesDesNommages)
+	comparer(t, apiRoot, "state (match_death_mates)", sourcesDesEtats)
 }
 
 // comparer lit les valeurs litterales declarees par chaque source et exige qu'elles coincident.
