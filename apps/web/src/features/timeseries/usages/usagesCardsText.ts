@@ -54,7 +54,6 @@ export interface UsagesCardsText {
     near: string
     alone: string
     thinLegend: string
-    rowSub: (lives: number) => string
     tip: (side: string, value: number, total: number, pct: string, what: 'lives' | 'kills') => string
     killsLine: (kills: number, pct: string, perLife: string) => string
     killsLineAlone: (perLife: string, kills: number) => string
@@ -118,7 +117,6 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
     near: 'À portée d’un coéquipier',
     alone: 'Isolée',
     thinLegend: 'Barre fine : frags du joueur pendant ces vies',
-    rowSub: (lives) => `${frInt(lives)} ${plural(lives, 'vie terminée', 'vies terminées')} par une mort`,
     tip: (side, value, total, pct, what) => `${side}\n${frInt(value)} ${what === 'lives' ? 'vies' : 'frags'} sur ${frInt(total)} (${pct})`,
     killsLine: (kills, pct, perLife) => `frags : ${frInt(kills)} · ${pct} · ${perLife} par vie`,
     killsLineAlone: (perLife, kills) => `${perLife} par vie · ${frInt(kills)}`,
@@ -182,7 +180,6 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
     near: 'Within range of a teammate',
     alone: 'Isolated',
     thinLegend: 'Thin bar: the player’s kills during those lives',
-    rowSub: (lives) => `${enInt(lives)} ${plural(lives, 'life', 'lives')} ended by a death`,
     tip: (side, value, total, pct, what) => `${side}\n${enInt(value)} ${what === 'lives' ? 'lives' : 'kills'} of ${enInt(total)} (${pct})`,
     killsLine: (kills, pct, perLife) => `kills: ${enInt(kills)} · ${pct} · ${perLife} per life`,
     killsLineAlone: (perLife, kills) => `${perLife} per life · ${enInt(kills)}`,
