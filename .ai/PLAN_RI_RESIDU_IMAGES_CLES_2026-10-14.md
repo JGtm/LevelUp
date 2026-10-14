@@ -517,10 +517,11 @@ Une étape commence quand la précédente est close : items statués, gate pass�
       - `ti=37` `084a804d` 40 → 38 et `1c4c63c2` 65 → 64 : trois records qui fermaient au bit près en base
         (slots 6503 → 6505 et 6687 → 6692 sur `084a804d`, entrées intercalées lues ; 6003 → 6004, slots
         contigus, sur `1c4c63c2`) et que la lecture du jeu allonge de 24, 24 et 1 bits ; le témoin décalé
-        d'un bit n'y ferme jamais `ti=37` en base : rien ne désigne ces fermetures comme du hasard —
+        d'un bit fermait en base 0 record `ti=37` sur `084a804d` et 3 par hasard sur `1c4c63c2`, sur 3 441 et
+        2 720 bornés : rien ne désigne ces trois fermetures comme du hasard —
         NON ADJUGEABLES ;
       - `ti=37` `a349fea8` (format 20) 33 → 15 : 18 records perdus, le témoin ne fermait pas `ti=37` en
-        base ; sous la lecture du jeu, 10 de ses 15 fermetures sont aussi celles du témoin — NON
+        base ; sous la lecture du jeu, le témoin y ferme 10 records par hasard pour 15 fermetures réelles — NON
         ADJUGEABLES par la preuve, film déjà faux après i22 (D-4/D-5 du plan clos) ;
       - `50247b26` (format 20, sans section d'identification) `ti=38` 452 → 159 : en base le témoin
         décalé d'un bit fermait 605 records dont 528 par hasard, davantage que la lecture elle-même —
