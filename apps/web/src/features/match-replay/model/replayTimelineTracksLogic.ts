@@ -477,6 +477,8 @@ export function roundSeparators(
  *     réaffichaient le doublon sur la moitié des parties de Slayer. Un mode dont la règle
  *     manque se lit comme « courbe » (le défaut du serveur) : le contrôle de qualité de cette
  *     règle est un test du dépôt (`regulation_score_timeline_test.go`).
+ *     RÈGLE INCONNUE (`undefined` : en-tête en chargement) : pas de piste non plus ; l'en-tête
+ *     chargé sans règle déclarée donne `''` (courbe, le défaut) et la piste existe.
  *  2. AUCUN CALQUE DE SCORE exploitable : artefact antérieur au schéma 12, ou horloge du film
  *     non recalée (`scoreTimelineOf` porte cette garde et rend `undefined`).
  *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
@@ -493,7 +495,9 @@ export function buildScoreTrack(
   scale: TrackScale,
   scoreTimelineKind: string | undefined,
 ): ReplayScoreTrack | null {
-  if (scoreTimelineKind === SCORE_TIMELINE_HIDDEN) return null
+  // RÈGLE INCONNUE (en-tête de la Vue match en chargement) : on ne construit rien. Construire la
+  // piste puis la retirer à l'arrivée de l'en-tête la ferait apparaître puis disparaître en Slayer.
+  if (scoreTimelineKind === undefined || scoreTimelineKind === SCORE_TIMELINE_HIDDEN) return null
   const timeline = scoreTimelineOf(doc)
   if (!timeline) return null
   const segments = buildScoreDominance(leaderStates(timeline, campCountOf(doc.roster)), scale)

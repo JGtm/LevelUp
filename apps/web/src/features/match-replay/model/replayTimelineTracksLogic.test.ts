@@ -509,13 +509,17 @@ describe('buildScoreTrack — la règle déclarée décide seule', () => {
     expect(buildScoreTrack(slayer(), SCALE, 'hidden')).toBeNull()
   })
 
-  it('règle absente ou `events` : la piste existe (aucune comparaison de rendu ne la retire)', () => {
-    expect(buildScoreTrack(slayer(), SCALE, undefined)).not.toBeNull()
+  it('en-tête en chargement (règle inconnue) : pas de piste, elle ne clignote pas en Slayer', () => {
+    expect(buildScoreTrack(slayer(), SCALE, undefined)).toBeNull()
+  })
+
+  it('en-tête chargé sans règle, ou `events` : la piste existe', () => {
+    expect(buildScoreTrack(slayer(), SCALE, '')).not.toBeNull()
     expect(buildScoreTrack(slayer(), SCALE, 'events')).not.toBeNull()
   })
 
   it('sans calque de score exploitable : rien, quelle que soit la règle', () => {
-    expect(buildScoreTrack(testReplayDoc(), SCALE, undefined)).toBeNull()
+    expect(buildScoreTrack(testReplayDoc(), SCALE, '')).toBeNull()
   })
 
   it('une horloge du film non recalée coupe la piste (le score serait faux)', () => {
@@ -523,7 +527,7 @@ describe('buildScoreTrack — la règle déclarée décide seule', () => {
       coverage: { originResolved: false } as never,
       scoreTimeline: { players: [], teams: [{ teamId: 0, rounds: [{ round: 0, points: [{ t: 200, v: 1 }] }], total: [{ t: 200, v: 1 }] }] },
     })
-    expect(buildScoreTrack(doc, SCALE, undefined)).toBeNull()
+    expect(buildScoreTrack(doc, SCALE, '')).toBeNull()
   })
 })
 

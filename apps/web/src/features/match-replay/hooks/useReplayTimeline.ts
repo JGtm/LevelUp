@@ -98,7 +98,8 @@ export interface ReplayTimelineOptions {
   zoom?: ReplayShortcutHandlers['zoom']
   /**
    * LA RÈGLE DÉCLARÉE de la piste Score (`header.score_timeline_kind` de la Vue match, lue une
-   * fois par la page) : `hidden` = le mode marque au frag, pas de piste Score. Absent = courbe.
+   * fois par la page) : `hidden` = le mode marque au frag, pas de piste Score. `undefined` = en-tête
+   * pas encore chargé, pas de piste ; chaîne vide = chargé sans règle déclarée, la piste existe.
    */
   scoreTimelineKind?: string
   locale: ReplayLocale

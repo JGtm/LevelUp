@@ -194,7 +194,7 @@ interface ReplayCanvasProps {
    */
   feedEntries?: readonly ReplayFeedEntry[]
   media?: readonly ReplayMediaItem[]
-  /** La règle déclarée de la piste Score (`header.score_timeline_kind`) : `hidden` = pas de piste. */
+  /** La règle déclarée de la piste Score (`header.score_timeline_kind`) : `hidden` = pas de piste, `undefined` = en-tête en chargement. */
   scoreTimelineKind?: string
   /**
    * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois

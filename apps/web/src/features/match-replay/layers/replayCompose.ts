@@ -1,7 +1,7 @@
 /**
  * replayCompose — L'ORDRE DE LA SCÈNE, EN DONNÉE.
  *
- * POURQUOI CE MODULE EXISTE (registre 2026-09-05, M3). La composition du rejeu — vingt-cinq
+ * POURQUOI CE MODULE EXISTE (registre 2026-09-05, M3). La composition du rejeu — ses
  * calques, du sol vers le sujet, chacun avec sa condition d'ouverture — vivait dans une
  * fonction `draw` de deux cents lignes au milieu de `ReplayCanvas.tsx`, et le SEUL test qui
  * nommait ce fichier comptait ses lignes. L'ordre des calques et les bascules du tiroir
@@ -23,17 +23,17 @@
  * son propre état ; ici on ne connaît que leur ORDRE et leur CONDITION. C'est ce qui permet de
  * les remplacer par des témoins dans un test, sans canvas ni React.
  *
- * UNE SEULE CONVENTION, ET C'EST CELLE QUI EXISTAIT DÉJÀ. Onze calques du rejeu sont servis
- * par des hooks qui exposent `paint(ctx, frame, dpr)` — cinq lisent la densité de pixels, six
- * l'ignorent, et TypeScript accepte les seconds là où le premier est attendu. `LayerPaint`
- * n'invente donc rien : c'est la signature la plus large des onze. Les dix calques restants
+ * UNE SEULE CONVENTION, ET C'EST CELLE QUI EXISTAIT DÉJÀ. Une partie des calques du rejeu est servie
+ * par des hooks qui exposent `paint(ctx, frame, dpr)` — les uns lisent la densité de pixels, les
+ * autres l'ignorent, et TypeScript accepte les seconds là où le premier est attendu. `LayerPaint`
+ * n'invente donc rien : c'est la signature la plus large de ces hooks. Les calques restants
  * sont des FONCTIONS LIBRES (`drawTracksLayer`, `drawShotsLayer`, `drawKillFxLayer`…), chacune
  * avec ses propres données, ses options et son encre : le canvas les LIE à cette convention au
  * lieu de les réécrire — leur signature riche est ce qui les rend testables une par une, et la
  * détruire pour uniformiser aurait coûté leurs tests sans rien apporter à la composition.
  */
 
-/** Le contrat de calque, celui que portent déjà les onze `paint` des hooks du rejeu. */
+/** Le contrat de calque, celui que portent déjà les `paint` des hooks du rejeu. */
 export type LayerPaint = (ctx: CanvasRenderingContext2D, frame: number, dpr: number) => void
 
 /**
@@ -142,7 +142,7 @@ export interface ReplayScene {
  * 25 peintres, à la main. Les 25 valeurs ont le même type (`LayerPaint`) : intervertir
  * `'couronne-vip': skullCarrier.paint` et `'crane-porte': vipCrown.paint` compilait, passait
  * les 2 350 tests du rejeu, et remplaçait la couronne du VIP par le crâne d'Oddball à l'écran.
- * Un hook qui porte son `id` rend cette faute INÉCRIVABLE pour les onze calques câblés par
+ * Un hook qui porte son `id` rend cette faute INÉCRIVABLE pour les calques câblés par
  * hook : l'id ne vient plus de la table, il vient du calque.
  */
 export interface NamedLayerPainter<Id extends ReplayLayerId = ReplayLayerId> {
