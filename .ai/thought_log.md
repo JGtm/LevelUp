@@ -117193,3 +117193,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : OpenAPI et `generated.ts` à jour, manifestes i18n régénérés sans écart ; tests archlint, migration, api, middleware, modelabel, ops, replaychild, invariants verts sur l'arbre fusionné. Boot local : `shared_recompute_mode_category_v1` corrige 4 254 lignes (762 paires) et retire `idx_registry_mode_category` ; Halo 5 sans effet ; 0 ERROR ; `/health` ok.
 
 **Conclusion / prochaine étape** : CI de `feat/v75` à relever ; mesure du pic mémoire de la recuisson des dix films de la démo (accord du user du 2026-10-14) ; nettoyage des worktrees, branches et caches du chantier ; registre et backlog à purger des lignes traitées.
+
+## [2026-10-14] Clôture du plan des recommandations du registre — Complété
+
+**Décision technique principale** : plafond mémoire de la recuisson des rejeux de la démo fixé sur mesure (1 Gio souple, 1,25 Gio dur) au lieu des 768 Mio non mesurés du lot D ; mesure faite après la recuisson commune, un film à la fois, artefacts et faits de film sauvegardés puis restaurés à l'identique.
+
+**Résultats observés** : pics de 0,19 à 0,71 Gio sur neuf films, 0,97 Gio sur le Firefight de 58 morceaux (qu'un plafond de 768 Mio aurait abandonné sur le VPS de 1,8 Go). Registre des reports : 25 lignes traitées et deux sections vides retirées ; backlog : rejeu démo, migrations Halo 5, index secondaires retirés, restes de la démo et petites dettes réduits. Worktrees `LevelUp-wt-recos-{a..f}` et `LevelUp-wt-hotfix-static`, branches locales et distantes `feat/recos-*` et `fix/static-traversal`, caches Go dédiés et scratchpad (3 Go) supprimés. Sauvegardes de bases conservées sous `data/backups/` (avant lot C, avant lot F, jetons d'avant l'import de prod).
+
+**Conclusion / prochaine étape** : plan clos. Ouverts côté user : rotation des secrets après la faille corrigée, staging v8 à refaire hors de la racine du dépôt VPS, chantier « sécurité » du backlog avant partage plus large.
