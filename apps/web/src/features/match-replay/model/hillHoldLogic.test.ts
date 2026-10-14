@@ -18,6 +18,7 @@ function doc(over: {
   const points = over.points ?? { 0: [], 1: [] }
   const hold = over.hold ?? { 0: [], 1: [] }
   return {
+    frameIntervalMs: FRAME_MS,
     scoreTimeline: {
       players: [],
       teams: Object.entries(points).map(([id, total]) => ({ teamId: Number(id), rounds: [], total })),
@@ -26,6 +27,9 @@ function doc(over: {
     } as ReplayScoreTimelineReady,
   }
 }
+
+/** 100 ms par image : la fenêtre d'une seconde fait 10 images. */
+const FRAME_MS = 100
 
 /** 35 tics = un point : la valeur mesurée de la variante. */
 const PER_POINT = 35
@@ -168,8 +172,53 @@ describe('readHillHold — la mécanique de garde énoncée par l utilisateur (2
   it('reprend où elle en était quand le camp reprend la colline', () => {
     expect(readHillHold(d, 0, 1, 350)!.ally).toBeCloseTo(20 / 35)
   })
-  it('se vide pour les deux camps au point marqué', () => {
-    expect(readHillHold(d, 0, 1, 400)).toEqual({ ally: 0, enemy: 0 })
+  it('se vide pour les deux camps une seconde après le point', () => {
+    expect(readHillHold(d, 0, 1, 410)).toEqual({ ally: 0, enemy: 0 })
     expect(readHillHold(d, 0, 1, 450)).toEqual({ ally: 0, enemy: 0 })
+  })
+})
+
+describe('readHillHold — la fenêtre pleine du camp qui marque (2026-10-14)', () => {
+  const point = (over: Parameters<typeof doc>[0] = {}) =>
+    doc({
+      points: { 0: [{ t: 400, v: 1 }], 1: [] },
+      hold: { 0: [{ t: 100, v: 20 }, { t: 400, v: 35 }], 1: [{ t: 200, v: 7 }] },
+      perPoint: PER_POINT,
+      ...over,
+    })
+
+  it("la barre du camp qui marque est PLEINE à l'image du point, alors que l'image d'avant ne l'est pas", () => {
+    expect(readHillHold(point(), 0, 1, 399)!.ally).toBeCloseTo(20 / 35)
+    expect(readHillHold(point(), 0, 1, 400)!.ally).toBe(1)
+  })
+  it('elle le reste à +0,9 s et se vide à +1 s', () => {
+    expect(readHillHold(point(), 0, 1, 409)!.ally).toBe(1)
+    expect(readHillHold(point(), 0, 1, 410)).toEqual({ ally: 0, enemy: 0 })
+  })
+  it("l'autre camp garde sa valeur d'avant le point pendant la fenêtre", () => {
+    expect(readHillHold(point(), 0, 1, 400)!.enemy).toBeCloseTo(7 / 35)
+    expect(readHillHold(point(), 0, 1, 409)!.enemy).toBeCloseTo(7 / 35)
+  })
+  it("lit le camp qui marque quel que soit son côté", () => {
+    const r = readHillHold(point(), 1, 0, 405)!
+    expect(r.enemy).toBe(1)
+    expect(r.ally).toBeCloseTo(7 / 35)
+  })
+  it("un tic tombé dans la fenêtre ne la change pas : la fenêtre l'emporte", () => {
+    const d = point({ hold: { 0: [{ t: 100, v: 20 }, { t: 400, v: 35 }], 1: [{ t: 200, v: 7 }, { t: 405, v: 8 }] } })
+    expect(readHillHold(d, 0, 1, 407)!.enemy).toBeCloseTo(7 / 35)
+    expect(readHillHold(d, 0, 1, 410)!.enemy).toBeCloseTo(1 / 35)
+  })
+  it("deux points rapprochés : le second ouvre sa fenêtre et remplace la première", () => {
+    const d = doc({
+      points: { 0: [{ t: 400, v: 1 }], 1: [{ t: 405, v: 1 }] },
+      hold: { 0: [{ t: 100, v: 20 }, { t: 400, v: 35 }], 1: [{ t: 200, v: 7 }, { t: 405, v: 35 }] },
+      perPoint: PER_POINT,
+    })
+    const r = readHillHold(d, 0, 1, 406)!
+    expect(r.enemy).toBe(1)
+    expect(r.ally).toBeCloseTo(0) // gardé 35 − 35 depuis le point 400
+    expect(readHillHold(d, 0, 1, 414)!.enemy).toBe(1)
+    expect(readHillHold(d, 0, 1, 415)).toEqual({ ally: 0, enemy: 0 })
   })
 })

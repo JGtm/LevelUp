@@ -117162,6 +117162,26 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : fusion de F et D après relectures vertes et relance d'air par levelup-10 ; staging v8 à refaire hors de la racine du dépôt sur le VPS ; décision du user sur la rotation des secrets (exposition possible avant le 25/09).
 
+## [2026-10-14] Ajustements (liste du user `Ajustements.txt`, 26 points) : diagnostic en lecture seule et plan — En cours
+
+**Statut** : diagnostic Complété (six enquêteurs en lecture seule, deux Opus pour le film, quatre Sonnet ; copies des bases du 14/10 dans le scratchpad) ; plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md` proposé, go et décisions D-1 à D-9 attendus.
+
+**Décision technique principale** : huit lots par surface disjointe (CSR, rejeu web, Vue match, Tactique, Escouade + Séries temporelles, film, étiquettes de barres, opérations) ; les lots film partent après la fusion du lot images-clés (schéma 93) pour une seule recuisson.
+
+**Résultats observés** : (1) aucun CSR par match écrit depuis le 16/09 14:52 UTC pour aucun joueur : `is_ranked` déduit du nom de playlist, faux sur 876 des 877 matchs « Ranked » de 2026, et l'extraction CSR en dépend. (2) Translocateur : les téléportations sont dans l'artefact ; le web interpole le saut, peint la faille sous les trajectoires, et le seul son de pose attend un état `deployed` absent des 235 artefacts. (3) Répulseur : le harnais R12 rejoué sur 0d9a9af9 lit trois 104 et quatre 105 (palette non classée), aucun aux deux poussées de JGtm détectées par trajectoire (0:55, 1:04) : canal non établi sur ce build, instruction par la grammaire de production avant toute publication. (4) Forerunner : seul Sentinel Beam teinté ; registre = + Cindershot, Heatwave. (5) Slayer : `score_timeline_kind = hidden` existe et n'est pas lu par le rejeu. (6) `seasons_catalog` : l'appel en direct n'a jamais réussi (tables vides, 403 au 23/09). (7) « Appui reçu » du 22/09 : 51/137 frags appuyés, affichés en écart à l'habituel (≈ 0). (8) Médias : régression `54d06bb7b` (22/09).
+
+**Conclusion / prochaine étape** : réponses du user sur D-1 à D-9 et go sur le coût, puis lots A à E en parallèle.
+
+**Mise à jour du 2026-10-14 (retours du user sur le plan)** : historique relu sur pièces. Translocateur : rien supprimé ; le son de pose extrait par le user (27/08) est branché sur une pose `deployed` qui n'existe plus depuis début septembre (0/16 au 03/09, règle du 103 du 15/09), masqué par un test à données fabriquées ; le son de téléportation n'a jamais été commité (23 gestes rendus dans le dossier « Sons v75 ») ; éclat, lien et faille (03/09) toujours dans le code, gate visuel jamais tracé → constat à l'écran avant correction. Répulseur : `spent` et kill toujours publiés ; son d'activation (11 rendus) jamais branché ; 104/105 lus puis jetés. `seasons_catalog` : diagnostic de l'enquêteur FAUX (il lisait les tables vides du référentiel) — `season_catalog` partagé rafraîchi le 13/10 ; échecs 401/403 intermittents, celui du 11/10 dans la même seconde qu'un rafraîchissement de jeton. Slayer : comparaison de rendu supprimée, règle déclarée seule. Décisions D-4 à D-9 reçues.
 **Complément (2026-10-14, superviseur)** : 2.7.d1 — revue adversariale D1.4.6 close : ronde 1 (huit constats, tous corrigés dans le lot), ronde 2 sur les corrections (aucun P0/P1, sept P2 consignés D-32 à D-38). Refusion de `origin/feat/v75` `057ccc7e4` sans conflit ; tests du film (gardes de révision comprises), archlint, vet avec et sans research : verts. Suite : CI, fusion dans feat/v75 (accord d'avance), recuisson commune de 235 artefacts au schéma 93, projections, backfill killsource, contrôles KOTH des pairs. Statut : En cours.
 
 **Complément (2026-10-14, superviseur) — Complété** : 2.7.d1 et le plan dédié (LK puis 2.7.d1) CLOS. Fusion dans feat/v75 (`1fea2baf4`, schéma 93, `grammar-2026-10-09.3`), recuisson commune de 235 artefacts sans erreur, projections et backfill killsource faits, contrôles KOTH des pairs conformes, air relancé. Découverte D-39 (fusion killsource refusée sur un match à deux morts simultanées). Prochaine étape : étape dédiée validée par l'utilisateur (entrées de slot libéré R-VEH-4, bit des films 1.8 option A, world-object i0, valeur 2 de l'emplacement désiré).
+## [2026-10-14] KOTH au rejeu : la barre de garde du camp qui marque s'affiche pleine une seconde — Complete
+
+**Statut** : Complete (branche `feat/koth-colline`).
+
+**Decision technique principale** : dans `hillHoldLogic.ts`, fenetre `HOLD_FULL_WINDOW_MS` (1 s, convertie en images par `msToFrames` avec `frameIntervalMs`, comme `ZONE_GAUGE_HOLD_MS`) a partir de l'image du point : le camp dont la courbe de score monte vaut 1, l'autre garde sa valeur d'avant le point ; apres, remise a zero. La fenetre l'emporte sur un tic qui y tombe ; un nouveau point ouvre sa fenetre et remplace la precedente. `lastResetFrame` devient `lastReset` (image + camps qui marquent). `msToFrames` accepte `Pick<ReplayDocumentReady, frameIntervalMs>`.
+
+**Resultats observes** : tsc, eslint, vitest match-replay et lib/replay verts ; test de remise a zero a l'image du point adapte, 6 tests ajoutes.
+
+**Conclusion / prochaine etape** : decouverte D4 du plan KOTH close (E9) ; fusion dans feat/v75 par le superviseur.
