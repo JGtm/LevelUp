@@ -117174,3 +117174,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Mise à jour du 2026-10-14 (retours du user sur le plan)** : historique relu sur pièces. Translocateur : rien supprimé ; le son de pose extrait par le user (27/08) est branché sur une pose `deployed` qui n'existe plus depuis début septembre (0/16 au 03/09, règle du 103 du 15/09), masqué par un test à données fabriquées ; le son de téléportation n'a jamais été commité (23 gestes rendus dans le dossier « Sons v75 ») ; éclat, lien et faille (03/09) toujours dans le code, gate visuel jamais tracé → constat à l'écran avant correction. Répulseur : `spent` et kill toujours publiés ; son d'activation (11 rendus) jamais branché ; 104/105 lus puis jetés. `seasons_catalog` : diagnostic de l'enquêteur FAUX (il lisait les tables vides du référentiel) — `season_catalog` partagé rafraîchi le 13/10 ; échecs 401/403 intermittents, celui du 11/10 dans la même seconde qu'un rafraîchissement de jeton. Slayer : comparaison de rendu supprimée, règle déclarée seule. Décisions D-4 à D-9 reçues.
 **Complément (2026-10-14, superviseur)** : 2.7.d1 — revue adversariale D1.4.6 close : ronde 1 (huit constats, tous corrigés dans le lot), ronde 2 sur les corrections (aucun P0/P1, sept P2 consignés D-32 à D-38). Refusion de `origin/feat/v75` `057ccc7e4` sans conflit ; tests du film (gardes de révision comprises), archlint, vet avec et sans research : verts. Suite : CI, fusion dans feat/v75 (accord d'avance), recuisson commune de 235 artefacts au schéma 93, projections, backfill killsource, contrôles KOTH des pairs. Statut : En cours.
+
+## [2026-10-14] KOTH au rejeu : la barre de garde du camp qui marque s'affiche pleine une seconde — Complete
+
+**Statut** : Complete (branche `feat/koth-colline`).
+
+**Decision technique principale** : dans `hillHoldLogic.ts`, fenetre `HOLD_FULL_WINDOW_MS` (1 s, convertie en images par `msToFrames` avec `frameIntervalMs`, comme `ZONE_GAUGE_HOLD_MS`) a partir de l'image du point : le camp dont la courbe de score monte vaut 1, l'autre garde sa valeur d'avant le point ; apres, remise a zero. La fenetre l'emporte sur un tic qui y tombe ; un nouveau point ouvre sa fenetre et remplace la precedente. `lastResetFrame` devient `lastReset` (image + camps qui marquent). `msToFrames` accepte `Pick<ReplayDocumentReady, frameIntervalMs>`.
+
+**Resultats observes** : tsc, eslint, vitest match-replay et lib/replay verts ; test de remise a zero a l'image du point adapte, 6 tests ajoutes.
+
+**Conclusion / prochaine etape** : decouverte D4 du plan KOTH close (E9) ; fusion dans feat/v75 par le superviseur.
