@@ -9,6 +9,8 @@ package replay
 import (
 	"context"
 	"log/slog"
+
+	"levelup/go-api/internal/observability"
 )
 
 // SanteDuPont rend la sante du pont slot -> joueur : sur quoi il repose, et ce qu'il refuse.
@@ -79,12 +81,7 @@ func (r IdentityRegistry) logRegistry(ctx context.Context, matchID string) {
 		"liensDirects", total.Direct, "liensDeduits", total.Inferred,
 		"liensNonResolus", total.Unresolved)
 	r.creation.alarmerSurLesRefus(ctx, matchID, r.Section.Coverage.BipedSlot.UnresolvedByCause)
-	if r.PontDiscordant() > 0 {
-		slog.WarnContext(ctx, "rejeu : le pont par morts contredit le lien direct sur des vies — le film "+
-			"fait foi, les noms du pont sont ecartes",
-			"match_id", matchID, "discordances", r.PontDiscordant(),
-			"concordances", r.PontConcordant())
-	}
+	r.publierDiscordancesDuPont(ctx, matchID)
 	if r.ViesNommeesParLePont() > 0 {
 		slog.WarnContext(ctx, "rejeu : AUCUNE lecture directe corps -> joueur — le pont par morts a nomme en "+
 			"degradation complete (cf. identity_registry_bridge.go)",
@@ -98,4 +95,25 @@ func (r IdentityRegistry) logRegistry(ctx context.Context, matchID string) {
 		slog.WarnContext(ctx, "rejeu : liens d'identite NON RESOLUS — publies et comptes, jamais inventes",
 			"match_id", matchID, "liens", total.Unresolved)
 	}
+}
+
+// compteurDiscordancesDuPont : expvar (ADR 0009) des vies ou le pont par morts contredit la
+// lecture directe, cumule sur les films traites par le processus.
+const compteurDiscordancesDuPont = "replay_pont_discordances"
+
+// publierDiscordancesDuPont publie, UNE fois par film, les vies ou le pont par morts contredit
+// la lecture directe : le compteur et une trace agregee (compte, concordances, slots). Niveau
+// Info, pas Warn : le film fait foi et le nom du pont est ecarte par construction — c'est un
+// fait mesure, pas une anomalie a traiter. Le detail par vie est au niveau Debug
+// (verifierParLesMorts).
+func (r IdentityRegistry) publierDiscordancesDuPont(ctx context.Context, matchID string) {
+	n := r.PontDiscordant()
+	if n == 0 {
+		return
+	}
+	observability.AddInt(compteurDiscordancesDuPont, int64(n))
+	slog.InfoContext(ctx, "rejeu : le pont par morts contredit le lien direct sur des vies — le film "+
+		"fait foi, les noms du pont sont ecartes",
+		"match_id", matchID, "discordances", n,
+		"concordances", r.PontConcordant(), "slots", r.PontSlotsDiscordants())
 }

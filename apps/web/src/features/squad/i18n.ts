@@ -463,7 +463,7 @@ const FR_TEXT: SquadText = {
   },
   empty: {
     noSelectionTitle: 'Analyse de synergies',
-    noSelectionDescription: 'Choisis 1 à 3 coéquipiers pour analyser les synergies de l\'escouade.',
+    noSelectionDescription: 'Analyse ouverte par la sélection de 1 à 3 coéquipiers.',
     invalidSelectionTitle: 'Aucune donnée commune',
     invalidSelectionDescription:
       'Les coéquipiers sélectionnés n\'ont pas de match commun sur la période filtrée.',
@@ -823,7 +823,7 @@ const EN_TEXT: SquadText = {
   },
   empty: {
     noSelectionTitle: 'Synergy analysis',
-    noSelectionDescription: 'Pick 1 to 3 teammates to analyze the synergies of the squad.',
+    noSelectionDescription: 'Analysis opens once 1 to 3 teammates are selected.',
     invalidSelectionTitle: 'No shared data',
     invalidSelectionDescription:
       'The selected teammates have no shared matches in the filtered period.',

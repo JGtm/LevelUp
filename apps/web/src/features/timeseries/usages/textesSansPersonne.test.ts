@@ -1,6 +1,6 @@
 /**
  * textesSansPersonne.test.ts — GARDE : aucun possessif, pronom de personne ni impératif de la 2e
- * personne (« reviens », « vérifie », « connecte » ; « connect it » en anglais) dans les textes des Séries temporelles › Usages, de toute la
+ * personne (« reviens », « vérifie », « connecte », « choisis » ; « connect it », « pick » en anglais) dans les textes des Séries temporelles › Usages, de toute la
  * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le sélecteur
  * `squadPresets.i18n.ts`, les jeux des cartes d'objectif `formes/i18n.ts` et `formes/cardsI18n.ts`,
  * le manifeste `squad.toml`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
@@ -41,8 +41,8 @@ import { EMPRISE_TEXT_SOLO, OBJECTIF_TEXT_SOLO, USAGES_TEXT } from './usagesText
 const NOT_LETTER_BEFORE = '(?<![\\p{L}\\p{N}])'
 const NOT_LETTER_AFTER = '(?![\\p{L}\\p{N}])'
 const BANNED: Record<'fr' | 'en', RegExp> = {
-  fr: new RegExp(`${NOT_LETTER_BEFORE}(ma|mes|mon|moi|me|je|j(?=['’])|m(?=['’])|t(?=['’])|notre|nos|nous|ta|tes|ton|toi|tu|te|vous|votre|vos|reviens|vérifie|connecte|camp|camps)${NOT_LETTER_AFTER}`, 'iu'),
-  en: new RegExp(`${NOT_LETTER_BEFORE}(my|our|we|us|me|your|you|connect[ ]+it)${NOT_LETTER_AFTER}`, 'iu'),
+  fr: new RegExp(`${NOT_LETTER_BEFORE}(ma|mes|mon|moi|me|je|j(?=['’])|m(?=['’])|t(?=['’])|notre|nos|nous|ta|tes|ton|toi|tu|te|vous|votre|vos|reviens|vérifie|connecte|choisis|camp|camps)${NOT_LETTER_AFTER}`, 'iu'),
+  en: new RegExp(`${NOT_LETTER_BEFORE}(my|our|we|us|me|your|you|connect[ ]+it|pick(?![ ]+up))${NOT_LETTER_AFTER}`, 'iu'),
 }
 
 /** Un code de locale (`en-US`, champ `intlLocale` du jeu de l'Escouade) n'est pas un texte affiché. */

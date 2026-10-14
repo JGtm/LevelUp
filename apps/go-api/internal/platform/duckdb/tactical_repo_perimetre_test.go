@@ -101,13 +101,12 @@ func TestTacticalRepo_ListeBlancheVide_AucunMatch(t *testing.T) {
 			len(pos.Univers.Matchs), len(pos.Points))
 	}
 
-	ev, err := repo.KillEvents(ctx, q)
+	ev, err := repo.Univers(ctx, q)
 	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
+		t.Fatalf("Univers: %v", err)
 	}
-	if len(ev.Univers.Matchs) != 0 || len(ev.Events) != 0 {
-		t.Errorf("KillEvents = %d matchs / %d evenements, want 0/0",
-			len(ev.Univers.Matchs), len(ev.Events))
+	if len(ev.Matchs) != 0 {
+		t.Errorf("Univers = %d matchs, want 0", len(ev.Matchs))
 	}
 
 	cartes, err := repo.MapsPlayed(ctx, domain.TacticalQuery{
@@ -118,24 +117,6 @@ func TestTacticalRepo_ListeBlancheVide_AucunMatch(t *testing.T) {
 	}
 	if len(cartes) != 0 {
 		t.Errorf("MapsPlayed = %+v, want aucune carte", cartes)
-	}
-}
-
-// TestTacticalRepo_SansListeBlanche_ToutLHistorique : le zero-value du perimetre ne
-// restreint RIEN — c'est ce dont la page Escouade depend (elle lit le journal des
-// morts sur tout l'historique, puis resserre en Go). Le pendant exact du test
-// precedent : les deux etats doivent rester distincts.
-func TestTacticalRepo_SansListeBlanche_ToutLHistorique(t *testing.T) {
-	pdb := newTacticalTestPlayerDB(t)
-	seedTacticalCorpus(t, pdb)
-
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
-	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
-	}
-	if want := []string{"m1", "m2", "m3"}; !egales(matchIDs(got.Univers.Matchs), want) {
-		t.Fatalf("univers = %v, want %v (aucune liste blanche posee)", matchIDs(got.Univers.Matchs), want)
 	}
 }
 
@@ -182,7 +163,7 @@ func TestTacticalRepo_Composition_TousExiges(t *testing.T) {
 }
 
 // TestTacticalRepo_SansCarte_ListeBlancheEtCompositionAppliquees : le predicat de
-// carte neutralise (page Escouade, journal des morts) ne desactive PAS le reste du
+// carte neutralise (bloc de coordination, univers) ne desactive PAS le reste du
 // perimetre. Les deux cartes sont dans la liste blanche ; la composition ne laisse
 // passer que m1.
 func TestTacticalRepo_SansCarte_ListeBlancheEtCompositionAppliquees(t *testing.T) {
@@ -193,23 +174,23 @@ func TestTacticalRepo_SansCarte_ListeBlancheEtCompositionAppliquees(t *testing.T
 	q.Matchs = domain.RestreindreAux([]string{"m1", "m2", "m3"})
 
 	repo := NewTacticalRepo(pdb)
-	got, err := repo.KillEvents(context.Background(), q)
+	got, err := repo.Univers(context.Background(), q)
 	if err != nil {
-		t.Fatalf("KillEvents sans carte: %v", err)
+		t.Fatalf("Univers sans carte: %v", err)
 	}
-	if want := []string{"m1", "m2", "m3"}; !egales(matchIDs(got.Univers.Matchs), want) {
+	if want := []string{"m1", "m2", "m3"}; !egales(matchIDs(got.Matchs), want) {
 		t.Fatalf("univers = %v, want %v (la carte est neutre, la liste blanche non)",
-			matchIDs(got.Univers.Matchs), want)
+			matchIDs(got.Matchs), want)
 	}
 
 	q.Coequipiers = []string{tacXUIDAmi}
-	got, err = repo.KillEvents(context.Background(), q)
+	got, err = repo.Univers(context.Background(), q)
 	if err != nil {
-		t.Fatalf("KillEvents sans carte, avec composition: %v", err)
+		t.Fatalf("Univers sans carte, avec composition: %v", err)
 	}
-	if want := []string{"m1"}; !egales(matchIDs(got.Univers.Matchs), want) {
+	if want := []string{"m1"}; !egales(matchIDs(got.Matchs), want) {
 		t.Fatalf("univers = %v, want %v (seul m1 porte l'ami dans mon equipe)",
-			matchIDs(got.Univers.Matchs), want)
+			matchIDs(got.Matchs), want)
 	}
 }
 
@@ -246,6 +227,7 @@ func TestTacticalRepo_MapsPlayed_Composition(t *testing.T) {
 
 	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(), domain.TacticalQuery{
 		PlayerXUID:  tacXUIDMoi,
+		Matchs:      domain.RestreindreAux(tacTousLesMatchs()),
 		Coequipiers: []string{tacXUIDAmi},
 	})
 	if err != nil {

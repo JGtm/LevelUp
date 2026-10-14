@@ -8,8 +8,8 @@ package service
 //     autrement (publier un bloc que rien ne rend serait du code mort à chaque requête) ;
 //   - les deux blocs sont CALCULÉS SÉPARÉMENT (jamais le même pointeur) ;
 //   - le repère d'habituel vient de la PÉRIODE DE RÉFÉRENCE, et il est OMIS quand cette
-//     référence est tautologique — sans même ouvrir le journal des morts une fois de plus ;
-//   - les trois scopes lisent le journal et les appuis UNE fois par match (lot L5a,
+//     référence est tautologique — sans même lire l'univers une fois de plus ;
+//   - les trois scopes lisent l'univers et les appuis UNE fois par match (lot L5a,
 //     2026-09-23), et la lecture partagée rend les MÊMES blocs que trois lectures séparées.
 
 import (
@@ -24,19 +24,18 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// tacticalRepoParScope — un journal des morts qui RÉPOND AU SCOPE DEMANDÉ, et garde la
-// trace de chaque appel. Le stub du producteur (`tacticalRepoStub`) rend toujours le même
-// univers : ici c'est justement la différence entre les scopes qui est en cause. `source`
-// nil = `lectureDeTest`.
+// tacticalRepoParScope — un univers qui RÉPOND AU SCOPE DEMANDÉ, et garde la trace de chaque
+// appel. Le stub du producteur (`tacticalRepoStub`) rend toujours le même univers : ici c'est
+// justement la différence entre les scopes qui est en cause. `source` nil = `lectureDeTest`.
 type tacticalRepoParScope struct {
 	port.TacticalRepository
 	appels [][]string
-	source func() domain.TacticalKillEvents
+	source func() domain.TacticalUnivers
 }
 
-func (s *tacticalRepoParScope) KillEvents(
+func (s *tacticalRepoParScope) Univers(
 	_ context.Context, q domain.TacticalQuery,
-) (domain.TacticalKillEvents, error) {
+) (domain.TacticalUnivers, error) {
 	ids := q.Matchs.IDs()
 	s.appels = append(s.appels, ids)
 	source := s.source
@@ -46,24 +45,17 @@ func (s *tacticalRepoParScope) KillEvents(
 	return restreindreLectureDeTest(source(), ids), nil
 }
 
-// restreindreLectureDeTest projette une lecture sur les matchs demandés.
-func restreindreLectureDeTest(src domain.TacticalKillEvents, ids []string) domain.TacticalKillEvents {
+// restreindreLectureDeTest projette un univers sur les matchs demandés.
+func restreindreLectureDeTest(src domain.TacticalUnivers, ids []string) domain.TacticalUnivers {
 	garde := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
 		garde[id] = struct{}{}
 	}
-	out := domain.TacticalKillEvents{
-		Univers: domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}},
-	}
-	for _, m := range src.Univers.Matchs {
+	out := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
+	for _, m := range src.Matchs {
 		if _, ok := garde[m.MatchID]; ok {
-			out.Univers.Matchs = append(out.Univers.Matchs, m)
-			out.Univers.Equipes[m.MatchID] = src.Univers.Equipes[m.MatchID]
-		}
-	}
-	for _, e := range src.Events {
-		if _, ok := garde[e.MatchID]; ok {
-			out.Events = append(out.Events, e)
+			out.Matchs = append(out.Matchs, m)
+			out.Equipes[m.MatchID] = src.Equipes[m.MatchID]
 		}
 	}
 	return out
@@ -163,17 +155,17 @@ func TestAttachSessionCoordination_PasDHabituelQuandLaReferenceEstTautologique(t
 			*resp.Coordination.Appui.HabituelPct)
 	}
 	if len(tactical.appels) != 1 {
-		t.Errorf("%d lectures du journal des morts, attendu 1 : une référence tautologique ne se lit pas",
+		t.Errorf("%d lectures de l'univers, attendu 1 : une référence tautologique ne se lit pas",
 			len(tactical.appels))
 	}
 }
 
 // lectureAvecReference — lectureDeTest plus m3, un match MESURÉ de la période de référence hors
 // des deux sessions.
-func lectureAvecReference() domain.TacticalKillEvents {
+func lectureAvecReference() domain.TacticalUnivers {
 	l := lectureDeTest()
-	l.Univers.Matchs = append(l.Univers.Matchs, domain.TacticalMatch{MatchID: "m3", Mesure: true})
-	l.Univers.Equipes["m3"] = map[string]int{"P": 0, "A": 0, "E1": 1}
+	l.Matchs = append(l.Matchs, domain.TacticalMatch{MatchID: "m3", Mesure: true})
+	l.Equipes["m3"] = map[string]int{"P": 0, "A": 0, "E1": 1}
 	return l
 }
 
@@ -205,7 +197,7 @@ func scopeAvecReference() sessionBlocksScope {
 }
 
 // TestAttachSessionCoordination_UneLectureParMatch — D5a.3 (lot L5a du plan perf,
-// 2026-09-23) : le journal des morts et les appuis des TROIS scopes sont lus une fois par
+// 2026-09-23) : l'univers et les appuis des TROIS scopes sont lus une fois par
 // match. Deux lectures au plus : les deux sessions ensemble, puis le SEUL complément de la
 // référence — jamais m1 ni m2 une seconde fois.
 func TestAttachSessionCoordination_UneLectureParMatch(t *testing.T) {
@@ -217,7 +209,7 @@ func TestAttachSessionCoordination_UneLectureParMatch(t *testing.T) {
 
 	want := fmt.Sprint([][]string{{"m1", "m2"}, {"m3"}})
 	if got := fmt.Sprint(tactical.appels); got != want {
-		t.Errorf("lectures du journal = %s, attendu %s : chaque match lu une fois", got, want)
+		t.Errorf("lectures de l'univers = %s, attendu %s : chaque match lu une fois", got, want)
 	}
 	if got := fmt.Sprint(appuis.appels); got != want {
 		t.Errorf("lectures des appuis = %s, attendu %s : chaque match lu une fois", got, want)

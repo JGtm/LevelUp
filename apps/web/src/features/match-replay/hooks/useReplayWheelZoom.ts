@@ -34,6 +34,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { canvasToWorld } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
 import type { ReplayZoom } from './useReplayZoom'
+import { useAbonnementALElement } from './useAbonnementALElement'
 
 /** Le delta cumulé qui vaut un palier. Calé sur un cran de molette classique (~100). */
 export const WHEEL_STEP = 60
@@ -52,13 +53,12 @@ export function useReplayWheelZoom(
     live.current = { zoom, view }
   }, [zoom, view])
 
-  useEffect(() => {
-    const el = canvasRef.current
-    if (!el) return
+  // L'ÉCOUTEUR SUIT LA TOILE (useAbonnementALElement) : un plan qui monte sa toile APRÈS ses
+  // données reçoit quand même la molette.
+  useAbonnementALElement(canvasRef, (el) => {
     let acc = 0
 
     function onWheel(e: WheelEvent) {
-      if (!el) return
       // La page ne défile pas sous la carte pendant qu'on zoome (cf. piège 1).
       e.preventDefault()
       acc += e.deltaY
@@ -82,5 +82,5 @@ export function useReplayWheelZoom(
 
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [canvasRef])
+  })
 }

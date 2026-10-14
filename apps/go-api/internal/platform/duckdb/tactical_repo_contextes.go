@@ -32,8 +32,8 @@ ORDER BY c.match_id, c.time_ms`
 // ContextesDeMort rend le contexte de chaque mort des matchs de `q.Matchs` (liste blanche
 // obligatoire ; vide = aucune ligne, aucune requête). Table absente → ErrCapabilityNotSupported.
 func (r *TacticalRepo) ContextesDeMort(ctx context.Context, q domain.TacticalQuery) ([]domain.ContexteDeMort, error) {
-	if !q.Matchs.Restreint() {
-		return nil, fmt.Errorf("TacticalRepo.ContextesDeMort: liste blanche de matchs exigee")
+	if err := exigerLaListe(q, "ContextesDeMort"); err != nil {
+		return nil, err
 	}
 	ids := q.Matchs.IDs()
 	if len(ids) == 0 {

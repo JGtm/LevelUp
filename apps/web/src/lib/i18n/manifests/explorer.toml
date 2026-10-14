@@ -687,13 +687,21 @@ en = "10th percentile · median · 90th percentile"
 fr = "observé"
 en = "observed"
 
+[explorer.target_profile.section_sample_empty_title]
+fr = "Aucun match en commun"
+en = "No matches in common"
+
 [explorer.target_profile.section_sample_empty]
-fr = "Aucun match en commun avec ce joueur — les comparaisons directes apparaîtront après des parties partagées."
-en = "No matches in common with this player yet — direct comparisons will appear after you play shared games."
+fr = "Les comparaisons directes apparaissent après des parties partagées."
+en = "Direct comparisons appear after shared games."
+
+[explorer.target_profile.no_auth_title]
+fr = "Carrière complète indisponible"
+en = "Full career unavailable"
 
 [explorer.target_profile.no_auth_hint]
-fr = "Connecte un compte Halo pour voir la carrière complète et le profil live de ce joueur."
-en = "Connect a Halo account to see this player's full career and live profile."
+fr = "Un compte Halo connecté ouvre la carrière complète et le profil en direct de ce joueur."
+en = "A connected Halo account opens the full career and live profile of this player."
 
 # Badges par section live (Lot A3 — fin de la dégradation muette). Wording FR
 # sobre demandé par le plan : "Données live indisponibles (authentification)" /

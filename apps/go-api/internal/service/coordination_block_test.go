@@ -22,21 +22,21 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// tacticalRepoStub — mock du port du journal des morts.
+// tacticalRepoStub — mock du port tactique, réduit à l'univers.
 //
-// L'INTERFACE EST EMBARQUÉE, NON RECOPIÉE : le bloc n'appelle que `KillEvents`, et
-// réécrire les huit autres méthodes aurait fait du test un miroir du port — miroir qu'il
+// L'INTERFACE EST EMBARQUÉE, NON RECOPIÉE : le bloc n'appelle que `Univers`, et
+// réécrire les autres méthodes aurait fait du test un miroir du port — miroir qu'il
 // aurait fallu suivre à chaque ajout, sans qu'aucune assertion n'en dépende. Une méthode
 // non surchargée appelée par erreur panique sur le nil embarqué : c'est le comportement
 // voulu, pas un silence.
 type tacticalRepoStub struct {
 	port.TacticalRepository
-	lecture domain.TacticalKillEvents
+	lecture domain.TacticalUnivers
 	err     error
 	vus     []string
 }
 
-func (s *tacticalRepoStub) KillEvents(_ context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
+func (s *tacticalRepoStub) Univers(_ context.Context, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	s.vus = q.Matchs.IDs()
 	return s.lecture, s.err
 }
@@ -85,25 +85,14 @@ func (s *appuisRepoStub) LoadAppuis(_ context.Context, ids []string) ([]domain.C
 	return out, nil
 }
 
-// lectureDeTest — deux matchs mesurés, deux soirées, un camp à quatre.
-//
-//	m1  E1 tue A a 1 s, MOI tue E1 a 3 s  -> une mort de camp, ripostee par moi ;
-//	m2  E1 tue MOI a 1 s, A tue E1 a 2 s  -> ma mort, ripostee par un coequipier.
-func lectureDeTest() domain.TacticalKillEvents {
+// lectureDeTest — l'univers de deux matchs mesurés, un camp à quatre (P, A contre E1).
+func lectureDeTest() domain.TacticalUnivers {
 	equipe := map[string]int{"P": 0, "A": 0, "E1": 1}
-	return domain.TacticalKillEvents{
-		Univers: domain.TacticalUnivers{
-			Matchs: []domain.TacticalMatch{
-				{MatchID: "m1", Mesure: true}, {MatchID: "m2", Mesure: true},
-			},
-			Equipes: domain.EquipesParMatch{"m1": equipe, "m2": equipe},
+	return domain.TacticalUnivers{
+		Matchs: []domain.TacticalMatch{
+			{MatchID: "m1", Mesure: true}, {MatchID: "m2", Mesure: true},
 		},
-		Events: []domain.KillEvent{
-			{MatchID: "m1", KillerXUID: "E1", VictimXUID: "A", TimeMs: 1000},
-			{MatchID: "m1", KillerXUID: "P", VictimXUID: "E1", TimeMs: 3000},
-			{MatchID: "m2", KillerXUID: "E1", VictimXUID: "P", TimeMs: 1000},
-			{MatchID: "m2", KillerXUID: "A", VictimXUID: "E1", TimeMs: 2000},
-		},
+		Equipes: domain.EquipesParMatch{"m1": equipe, "m2": equipe},
 	}
 }
 

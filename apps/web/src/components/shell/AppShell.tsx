@@ -5,13 +5,14 @@
  * La NavL2 (bandeau contextuel Stats/Escouade) et la KPIBar sont gérées
  * au niveau du layout joueur ($playerSlug.tsx).
  */
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useMatches } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { NavL1 } from './NavL1'
 import { ReauthBanner } from './ReauthBanner'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
 import { AppFooter } from './AppFooter'
+import { piedDePageAffiche } from './piedDePage'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
 import { AssetDrawer } from '@/features/asset-drawer'
 import { FeedbackDrawer } from '@/features/feedback-drawer'
@@ -20,6 +21,8 @@ import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 export function AppShell() {
   // Lie le thème Sonner au thème app pour que les toasts respectent dark/light.
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
+  // Une vue « cockpit » (onglet Tactique) tient dans l'écran : pas de pied de page sous elle.
+  const avecPiedDePage = useMatches({ select: (matches) => piedDePageAffiche(matches) })
   return (
     <div className="flex h-screen flex-col gap-3 overflow-hidden bg-background text-foreground sm:gap-4">
       {/* Barre de navigation L1 (fixe en haut) */}
@@ -73,7 +76,7 @@ export function AppShell() {
             </div>
             {/* Pied de page — dans le flux scrollable, jamais fixé : la hauteur
                 verticale est comptée pour les tableaux denses. */}
-            <AppFooter />
+            {avecPiedDePage && <AppFooter />}
           </div>
         </main>
       </ErrorBoundary>

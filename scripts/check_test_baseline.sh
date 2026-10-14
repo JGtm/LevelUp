@@ -180,6 +180,18 @@
 # complétion est couverte par TestSISUDeviceFlow_ExchangeFlow_{ClassicChain,PropagatesXboxError}.
 # 89 lignes JSONL, exactement 20 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-09 (lot E « hygiène » des recommandations du registre, item E1 : code mort
+# supprimé avec ses tests, règle 7 de CLAUDE.md) : 18 tests retirés. `service.FanoutService` n'avait
+# aucun appelant de production ; il est supprimé avec toute sa chaîne (port.FanoutRepository,
+# config.FanoutFactory, duckdb.FanoutRepo, domain.Fanout*). `internal/service` ::
+# TestFanoutBuildPlan_{EmptyMatchIDs,EmptySlice}, TestFanoutExecute_{NilPlan,EmptyPlan,
+# TargetWithResolveError}, TestFanoutPlan_Empty, TestFanoutResult_NoErrors ;
+# `internal/platform/duckdb` :: TestFanoutRepo_{InsertStubEnrichments,InsertStubEnrichments_Empty,
+# InsertStubEnrichments_Idempotent,LoadExistingEnrichments,LoadExistingEnrichments_Empty,
+# LoadExistingEnrichments_EmptyInput,LoadExistingEnrichments_Subset,CountCommonMatches,
+# CountCommonMatches_Empty,CountCommonMatchesForXUID,CountCommonMatchesForXUID_Empty}. 79 lignes
+# JSONL, exactement 18 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

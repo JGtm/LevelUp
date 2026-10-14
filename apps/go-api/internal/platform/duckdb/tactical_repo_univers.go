@@ -100,7 +100,7 @@ JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + clausePvEExclu + campaignExclusionToken
 
 // journalPerimetre : le jeton que `universSQL` remplace par la liste blanche recopiee dans
-// le EXISTS (cf. QTacticalUnivers), ou par rien quand le perimetre n'est pas restreint.
+// le EXISTS (cf. QTacticalUnivers) — `AND FALSE` quand la liste est vide.
 // Un jeton et non un assemblage, pour la meme raison que `colonneEligible`.
 const journalPerimetre = "%PERIMETRE_JOURNAL%"
 
@@ -148,24 +148,39 @@ const clauseCoequipier = `
   AND EXISTS (SELECT 1 FROM match_participants c
               WHERE c.match_id = mr.match_id AND c.xuid = ? AND c.team_id = mp.team_id)`
 
+// exigerLaListe refuse une demande SANS liste blanche (zero-value de ListeBlancheMatchs) :
+// chaque lecture de ce lecteur porte sur le perimetre que la page a resolu, jamais sur
+// l'historique entier du joueur par oubli. Une liste VIDE, elle, est acceptee (aucun match).
+func exigerLaListe(q domain.TacticalQuery, op string) error {
+	if !q.Matchs.Restreint() {
+		return fmt.Errorf("TacticalRepo.%s: liste blanche de matchs exigee", op)
+	}
+	return nil
+}
+
 // clausePerimetre assemble le predicat de perimetre — liste blanche de match_id et
-// composition — avec ses arguments LIES, dans l'ordre.
+// composition — avec ses arguments LIES, dans l'ordre. La liste a ete exigee a l'entree
+// de la lecture (exigerLaListe).
 //
 // Le fragment s'ajoute a la fin du WHERE : tous ses predicats sont des AND, l'ordre
 // vis-a-vis de l'exclusion Campagne est donc indifferent.
 func clausePerimetre(q domain.TacticalQuery) (string, []any) {
-	var sb strings.Builder
-	args := make([]any, 0, len(q.Matchs.IDs())+len(q.Coequipiers))
-
-	if q.Matchs.Restreint() {
-		ids := q.Matchs.IDs()
-		if len(ids) == 0 {
-			sb.WriteString(clauseAucunMatch)
-		} else {
-			sb.WriteString("\n  AND mr.match_id IN (" + Placeholders(len(ids)) + ")")
-			args = append(args, ToAnySlice(ids)...)
-		}
+	ids := q.Matchs.IDs()
+	if len(ids) == 0 {
+		return clauseAucunMatch, nil
 	}
+	composition, compoArgs := clauseComposition(q)
+	args := make([]any, 0, len(ids)+len(compoArgs))
+	args = append(args, ToAnySlice(ids)...)
+	args = append(args, compoArgs...)
+	return "\n  AND mr.match_id IN (" + Placeholders(len(ids)) + ")" + composition, args
+}
+
+// clauseComposition rend le seul predicat de composition (un EXISTS par coequipier), avec
+// ses arguments : la part du perimetre qu'une lecture deja bornee par sa liste ajoute encore.
+func clauseComposition(q domain.TacticalQuery) (string, []any) {
+	var sb strings.Builder
+	args := make([]any, 0, len(q.Coequipiers))
 	for _, xuid := range q.Coequipiers {
 		sb.WriteString(clauseCoequipier)
 		args = append(args, xuid)
@@ -174,13 +189,9 @@ func clausePerimetre(q domain.TacticalQuery) (string, []any) {
 }
 
 // clauseJournalPerimetre rend la liste blanche recopiee DANS le EXISTS de QTacticalUnivers
-// (cf. sa doc), avec ses arguments. Vide quand le perimetre n'est pas restreint : l'univers
-// est alors tout l'historique du joueur, et aucune liste n'existe encore a pousser. Une
-// liste restreinte VIDE rend le meme `AND FALSE` que la clause externe (clauseAucunMatch).
+// (cf. sa doc), avec ses arguments. Une liste VIDE rend le meme `AND FALSE` que la clause
+// externe (clauseAucunMatch).
 func clauseJournalPerimetre(q domain.TacticalQuery) (string, []any) {
-	if !q.Matchs.Restreint() {
-		return "", nil
-	}
 	ids := q.Matchs.IDs()
 	if len(ids) == 0 {
 		return clauseAucunMatch, nil

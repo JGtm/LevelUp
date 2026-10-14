@@ -20,8 +20,12 @@ package replay
 //
 // # LE DIRECT L'EMPORTE, TOUJOURS, ET LE DESACCORD SE COMPTE
 //
-// Une discordance n'ecrase JAMAIS le nom direct : elle s'inscrit (`Discordant`) et elle alarme.
-// Un compteur muet ferait disparaitre exactement ce que ce declassement corrige.
+// Une discordance n'ecrase JAMAIS le nom direct : elle s'inscrit (`Discordant`, slots en
+// `SlotsDiscordants`), et le film la publie UNE fois (logRegistry : une trace agregee au niveau
+// Info et le compteur `replay_pont_discordances`). Le detail par vie (slot, bornes, les deux
+// xuids) reste au niveau Debug : une ligne Warn par vie inonderait les journaux pour un
+// desaccord ou le film fait foi par construction. Un compteur muet ferait
+// disparaitre exactement ce que ce declassement corrige : le compte et les slots restent publies.
 //
 // # LA SEULE SITUATION OU IL NOMME ENCORE
 //
@@ -41,6 +45,7 @@ package replay
 import (
 	"context"
 	"log/slog"
+	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -53,6 +58,9 @@ type bridgeVerification struct {
 	// Concordant / Discordant : parmi les vies appariees ET nommees par la lecture directe,
 	// celles dont la victime EST le joueur lu, et celles dont elle ne l'est pas.
 	Concordant, Discordant int
+	// SlotsDiscordants : les slots des vies discordantes, distincts et croissants — la trace
+	// agregee par film les nomme.
+	SlotsDiscordants []uint32
 	// NamedByBridge : les vies que le pont a NOMMEES. Non nul = le registre n'a recu aucune
 	// lecture directe (cf. l'en-tete de ce fichier).
 	NamedByBridge int
@@ -84,7 +92,8 @@ func verifierParLesMorts(ctx context.Context, lives []lifeSpan, deaths []types.D
 			continue
 		}
 		v.Discordant++
-		slog.WarnContext(ctx, "rejeu : le pont par morts CONTREDIT le lien direct — le film fait foi",
+		v.SlotsDiscordants = ajouterSlot(v.SlotsDiscordants, l.slot)
+		slog.DebugContext(ctx, "rejeu : le pont par morts CONTREDIT le lien direct — le film fait foi",
 			"match_id", matchID, "slot", l.slot, "de", l.from, "a", l.to,
 			"xuidDirect", l.xuid, "xuidDuPont", deaths[p.di].XUID, "voie", l.nomPar)
 	}
@@ -111,4 +120,13 @@ func nommerParLesMorts(lives []lifeSpan, deaths []types.Death, pairs []deathPair
 		n++
 	}
 	return n
+}
+
+// ajouterSlot insere `slot` dans `slots` (croissants, distincts) s'il n'y est pas.
+func ajouterSlot(slots []uint32, slot uint32) []uint32 {
+	i, trouve := slices.BinarySearch(slots, slot)
+	if trouve {
+		return slots
+	}
+	return slices.Insert(slots, i, slot)
 }

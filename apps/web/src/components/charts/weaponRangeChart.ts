@@ -72,6 +72,12 @@ const BAR_GAP = 4
 const DIAMOND_RADIUS = 5
 /** Largeur maximale d'un nom d'arme sur l'axe (px) : au-delà, « … » à droite. */
 const WEAPON_RANGE_AXIS_LABEL_MAX_PX = 120
+/**
+ * Écart (px) entre le bas de la zone tracée et les graduations de distance. Le défaut d'ECharts
+ * (8 px) collait « 0 m », « 10 m »… au bâton de la dernière arme ; `containLabel` réserve la
+ * place, la hauteur du graphe n'a pas à changer.
+ */
+export const WEAPON_RANGE_X_LABEL_GAP_PX = 14
 
 /**
  * Une ligne du graphe — DEUX MESURES SUPERPOSÉES, et rien de plus.
@@ -383,7 +389,7 @@ export function buildWeaponRangeOption({
       type: 'value',
       max: xMax,
       ...axis,
-      axisLabel: { ...axis.axisLabel, formatter: (v: number) => fmtDistance(v) },
+      axisLabel: { ...axis.axisLabel, margin: WEAPON_RANGE_X_LABEL_GAP_PX, formatter: (v: number) => fmtDistance(v) },
     },
     yAxis: {
       type: 'category',

@@ -162,7 +162,37 @@ function zonesDeFond(
     ])
   }
   if (data.length === 0) return undefined
-  return { silent: true, label: { show: true, fontSize: 10, position: 'insideEndTop' }, data }
+  // Les LIBELLÉS ne s'écrivent pas ici : sous le nuage, un point les couvrait (« Ligne de front »
+  // masquée par le premier match). Ils sont portés par `libellesDesZones`, au-dessus des points.
+  return { silent: true, label: { show: false }, data }
+}
+
+/** Z du calque des libellés de zone : au-dessus des points (z 3) et des tendances (z 2). */
+const Z_LIBELLES_DE_ZONE = 5
+
+/**
+ * Le calque des LIBELLÉS des zones de fond : les mêmes zones, sans remplissage, sur une série
+ * vide posée au-dessus du nuage. Le libellé porte le fond de la carte : un point qui passe
+ * dessous ne le rend jamais illisible. Série `custom` sans donnée : elle n'entre ni dans les
+ * comptes de nuages ni dans ceux de tendances, et ne répond à aucun survol.
+ */
+function libellesDesZones(zones: Record<string, unknown>, fondCarte: string): Record<string, unknown> {
+  const data = (zones.data as Record<string, unknown>[][]).map(([debut, fin]) => [
+    { ...debut, itemStyle: { color: 'transparent' } },
+    fin,
+  ])
+  return {
+    type: 'custom',
+    renderItem: () => null,
+    data: [],
+    silent: true,
+    z: Z_LIBELLES_DE_ZONE,
+    markArea: {
+      silent: true,
+      label: { show: true, fontSize: 10, position: 'insideEndTop', backgroundColor: fondCarte, padding: [1, 3], borderRadius: 2 },
+      data,
+    },
+  }
 }
 
 /** La série ligne d'un joueur : la moyenne glissante de ses points PLEINS. */
@@ -213,6 +243,7 @@ export function buildSquadRangeRolesOption(
   const n = opts.categories.length
   const couleurDefaut = opts.couleurDefaut ?? resolveToken('info')
 
+  const zones = zonesDeFond(opts.seuils, bornes, opts, tc.axisLine)
   const nuage = series.map((serie, idx) => {
     const couleur = opts.couleurs[serie.gamertag] ?? couleurDefaut
     const data: EchartPointDatum[] = serie.points.map((p) => {
@@ -256,7 +287,6 @@ export function buildSquadRangeRolesOption(
         },
         data: [{ yAxis: 0 }],
       }
-      const zones = zonesDeFond(opts.seuils, bornes, opts, tc.axisLine)
       if (zones) s.markArea = zones
     }
     return s
@@ -315,7 +345,7 @@ export function buildSquadRangeRolesOption(
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
       axisLabel: { ...axis.axisLabel, formatter: '{value} m' },
     },
-    series: [...nuage, ...tendances],
+    series: [...nuage, ...tendances, ...(zones ? [libellesDesZones(zones, tc.card)] : [])],
   }
 }
 

@@ -57,7 +57,7 @@ type TacticalService interface {
 // shared.match_kill_events_latest pour les positions et le journal des morts —
 // vues `_latest` UNIQUEMENT (règle ART n°2, jamais la table brute).
 //
-// L'UNIVERS VOYAGE AVEC LES POINTS. KillPositions et KillEvents rendent l'un ET
+// L'UNIVERS VOYAGE AVEC LES POINTS. KillPositions et MortsAvecContexte rendent l'un ET
 // l'autre, parce qu'un match retenu SANS point (aucune mort mesurée) doit compter
 // au dénominateur « par match » de la lecture. Le déduire des points l'effacerait
 // — défaut mesuré et corrigé en phase 1 du plan.
@@ -79,6 +79,10 @@ type TacticalRepository interface {
 	// exactement de l'univers — quels matchs, qui etait dans quelle equipe — et rien
 	// d'autre. Passer par `KillPositions` pour l'obtenir aurait scanne
 	// `kill_positions` sur toute la carte pour jeter le resultat.
+	//
+	// `filtre.MapID` est OPTIONNEL ici (vide = toutes les cartes) : le bloc de coordination
+	// des pages Sessions et Series temporelles lit l'univers d'une liste de matchs, pas
+	// d'une carte.
 	Univers(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalUnivers, error)
 
 	// MapsPlayed liste les cartes jouées par le joueur dans le périmètre, avec le
@@ -93,15 +97,6 @@ type TacticalRepository interface {
 	// service, à partir des équipes de l'univers — une requête par axe multiplierait
 	// les scans de la même fenêtre.
 	KillPositions(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalPositions, error)
-
-	// KillEvents rend l'univers des matchs retenus ET le journal de leurs morts
-	// (victime, tueur crédité, instant). Même portée que KillPositions : tous les
-	// joueurs. Le bloc de coordination des pages Sessions et Séries temporelles en lit
-	// l'univers.
-	//
-	// `filtre.MapID` est OPTIONNEL ici (vide = toutes les cartes) : ces pages lisent
-	// une liste de matchs, pas une carte.
-	KillEvents(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalKillEvents, error)
 
 	// MortsAvecContexte rend l'univers ET les morts LOCALISEES de ses matchs, avec ce que le
 	// collecteur a mesure de leur voisinage AU SYNC (`match_death_context`) : combien de

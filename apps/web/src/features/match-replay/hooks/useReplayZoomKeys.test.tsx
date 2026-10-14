@@ -44,6 +44,18 @@ function Plan({ zoom }: { zoom: ReplayZoom }) {
   )
 }
 
+// PlanDiffere : la toile n'existe qu'une fois les données prêtes, comme la Vue match et la Tactique.
+function PlanDiffere({ zoom, pret }: { zoom: ReplayZoom; pret: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useReplayZoomKeys(canvasRef, zoom)
+  if (!pret) return <p>chargement</p>
+  return (
+    <div data-testid="cadre-differe">
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
 function press(key: string, init: KeyboardEventInit = {}, target: EventTarget = window) {
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
   act(() => {
@@ -115,5 +127,23 @@ describe('useReplayZoomKeys', () => {
     press('0', { metaKey: true })
     expect(zoom.zoomIn).not.toHaveBeenCalled()
     expect(zoom.reset).not.toHaveBeenCalled()
+  })
+
+  it('toile montée APRÈS le premier rendu (plan qui attend ses données) : le clavier la suit', () => {
+    const zoom = spies()
+    const { getByTestId, rerender } = render(<PlanDiffere zoom={zoom} pret={false} />)
+    rerender(<PlanDiffere zoom={zoom} pret />)
+    survoler(getByTestId('cadre-differe'))
+    expect(press('+').defaultPrevented).toBe(true)
+    expect(zoom.zoomIn).toHaveBeenCalledTimes(1)
+  })
+
+  it('toile retirée : plus aucun écouteur', () => {
+    const zoom = spies()
+    const { getByTestId, rerender } = render(<PlanDiffere zoom={zoom} pret />)
+    survoler(getByTestId('cadre-differe'))
+    rerender(<PlanDiffere zoom={zoom} pret={false} />)
+    press('+')
+    expect(zoom.zoomIn).not.toHaveBeenCalled()
   })
 })

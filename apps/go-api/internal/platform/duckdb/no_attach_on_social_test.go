@@ -272,6 +272,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/api/wire/post_sync_progression.go":                                            "post-sync prestige/records (path Persister) (wire, ex-internal/api, K3)",
 	"internal/api/wire/prestige_setup.go":                                                   "init prestige (path Persister) (wire, ex-internal/api, K3)",
 	"internal/api/wire/prestige_lazy_service.go":                                            "lazy init prestige (wire, ex-internal/api, K3)",
+	"internal/api/wire/prestige_lazy_service_squad.go":                                      "méthodes escouade du service prestige paresseux, scindées de prestige_lazy_service.go (2026-10-09, seuil des 500 lignes) : la mention 'shared_social' est le commentaire du writer pris par AbandonSquadChallenge (acquireSharedSocialWriter, LeasedWriter) — aucun ATTACH ni écriture directe",
 	"internal/api/server_apiv1.go":                                                          "montage routes /api/v1 : commentaires shared_social (match favoris, init coach/prestige) — ex-server.go, split K2a",
 	"internal/games/halo_infinite/migrations/steps_shared_social.go":                        "migrations shared_social CONSOMMATRICES title-owned (Phase 1.5 b19, voie B)",
 	"internal/games/halo_infinite/migrations/steps_shared_social_media_files_drop_liked.go": "migration retrait media_files.liked/liked_at (booléen de like GLOBAL remplacé par media_likes_history par liker, 2026-08-04)",

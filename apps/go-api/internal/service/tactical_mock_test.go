@@ -40,8 +40,6 @@ type mockTacticalRepo struct {
 	vuOuvrMatch     []string
 	vuContextes     []domain.TacticalQuery
 
-	// lecturesJournal compte les appels a KillEvents : le service tactique n'en fait aucun.
-	lecturesJournal int
 	// lecturesPositions compte les lectures des positions de kill (une par requete, ADR 0036 I4).
 	lecturesPositions int
 }
@@ -80,11 +78,6 @@ func (m *mockTacticalRepo) KillPositions(_ context.Context, q domain.TacticalQue
 		}
 	}
 	return out, nil
-}
-
-func (m *mockTacticalRepo) KillEvents(context.Context, domain.TacticalQuery) (domain.TacticalKillEvents, error) {
-	m.lecturesJournal++
-	return domain.TacticalKillEvents{}, nil
 }
 
 // MortsAvecContexte : la lecture d'isolement (lot 7C). Comme les trois autres, ELLE HONORE LA
