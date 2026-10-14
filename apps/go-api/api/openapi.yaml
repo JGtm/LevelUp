@@ -28560,6 +28560,9 @@ components:
           type: string
         face:
           type: string
+        instant_affiche_ms:
+          format: int64
+          type: integer
         instant_ms:
           format: int64
           type: integer

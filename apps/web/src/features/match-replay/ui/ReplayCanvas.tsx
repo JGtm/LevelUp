@@ -125,7 +125,7 @@ interface ReplayCanvasProps {
   playbackStore: PlaybackStore
   /**
    * OUVRIR LE REJEU À UNE FRAME PRÉCISE (lot M1b, 2026-09-08) : posé par la route depuis un
-   * lien tactique déjà converti (`resolveTacticalReplayInstant` + `msToFrames`, jamais ici —
+   * lien tactique déjà converti (`resolveTacticalOpenAtFrame`, jamais ici —
    * ce composant ne fait QUE positionner). Appliqué UNE SEULE FOIS au chargement, borné à la
    * fenêtre de gameplay comme tout autre saut (cf. `useReplayPlayback`). `null`/`undefined` =
    * comportement d'avant ce lot (cadrage au coup d'envoi, `playWindow.leadInFrame`).

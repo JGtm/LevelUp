@@ -155,7 +155,7 @@ describe('échelle temporelle', () => {
   })
 })
 
-// resolveTacticalReplayInstant / resolveTacticalOpenAtFrame (lot M1b, lien tactique
+// resolveTacticalOpenAtFrame (lien tactique
 // `?t=&clock=`) sont testées à part : `tacticalReplayInstant.test.ts`, dans ce même dossier
 // (seuil des 500 lignes de ce fichier-ci).
 

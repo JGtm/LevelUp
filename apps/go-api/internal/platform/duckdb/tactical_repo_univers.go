@@ -94,7 +94,8 @@ const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
        COALESCE(mr.game_variant_name, '') AS game_variant_name,
        EXISTS (SELECT 1 FROM match_kill_events_latest e
-               WHERE e.match_id = mr.match_id AND e.publishable` + journalPerimetre + `) AS mesure
+               WHERE e.match_id = mr.match_id AND e.publishable` + journalPerimetre + `) AS mesure,
+       ` + colonneT0 + ` AS t0_ms
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + clausePvEExclu + campaignExclusionToken
@@ -112,6 +113,10 @@ const journalPerimetre = "%PERIMETRE_JOURNAL%"
 // entiere pour rester sous son radar (meme raison que le token
 // campagne juste au-dessus).
 const colonneEligible = "%ELIGIBLE_CUISSON%"
+
+// colonneT0 : le jeton que `universSQL` remplace par le T0 du match en ms (`T0MsSQL`). Un jeton pour la même raison
+// que `colonneEligible` : `QTacticalUnivers` reste une constante entière.
+const colonneT0 = "%T0_MS%"
 
 // clausePvEExclu : LE FIREFIGHT N'EST PAS DE LA PORTEE TACTIQUE.
 //
@@ -225,6 +230,7 @@ func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	args = append(args, perimArgs...)
 	sql := strings.Replace(QTacticalUnivers, colonneEligible, "("+predicat+") AS eligible_cuisson", 1)
 	sql = strings.Replace(sql, journalPerimetre, journal, 1)
+	sql = strings.Replace(sql, colonneT0, T0MsSQL("mr"), 1)
 	return resolveCampaignExclusion(sql, r.pdb.TitleSlug, "mr") + perim, args
 }
 
@@ -275,9 +281,13 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 	}
 	if err := scanRows(ctx, rows, "univers", func(sc rowScanner) error {
 		var m domain.TacticalMatch
+		var t0 sql.NullInt64
 		if err := sc.Scan(&m.MatchID, &m.Outcome, &m.EligibleALaCuisson,
-			&m.GameVariantName, &m.Mesure); err != nil {
+			&m.GameVariantName, &m.Mesure, &t0); err != nil {
 			return err
+		}
+		if t0.Valid {
+			m.T0Ms = &t0.Int64
 		}
 		univ.Matchs = append(univ.Matchs, m)
 		return nil

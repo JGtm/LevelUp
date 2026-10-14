@@ -153,7 +153,8 @@ export function getTacticalText(locale: Locale) {
     // ── Couche « autre joueur » du plan : légende ────────────────────────────
     layerKillers: m('tactical.layer.killers'),
     layerVictims: m('tactical.layer.victims'),
-    tileOpenReplay: (instant: string) => m('tactical.tile.open_replay', { instant }),
+    tileOpenReplayNoInstant: (secondes: number) => m('tactical.tile.open_replay_no_instant', { secondes }),
+    tileOpenReplay: (instant: string, secondes: number) => m('tactical.tile.open_replay', { instant, secondes }),
   }
 }
 

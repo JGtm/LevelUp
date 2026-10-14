@@ -79,6 +79,7 @@ function contribution(extra: Partial<TacticalContribution> = {}): TacticalContri
   return {
     match_id: 'm1',
     instant_ms: 83_400,
+    instant_affiche_ms: 83_400,
     clock: 'match',
     xuid: '2533274000000001',
     match_started_at: '2026-09-01T22:30:00Z',
@@ -97,7 +98,7 @@ function contribution(extra: Partial<TacticalContribution> = {}): TacticalContri
 const DETAIL: TacticalCelluleReponse = {
   contributions: [
     contribution(),
-    contribution({ match_id: 'm2', instant_ms: 5_000, resultat: 'loss', replay_available: false, match_started_at: '2026-08-30T20:00:00Z' }),
+    contribution({ match_id: 'm2', instant_ms: 5_000, instant_affiche_ms: 5_000, resultat: 'loss', replay_available: false, match_started_at: '2026-08-30T20:00:00Z' }),
   ],
   zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' },
 }
@@ -227,7 +228,7 @@ describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
   it('le bouton de rejeu : à l’instant, seulement si l’artefact existe', () => {
     rendre()
     const [avec, sans] = screen.getAllByTestId('tactical-rejeu-tile')
-    const lien = within(avec).getByRole('link', { name: 'Ouvrir le rejeu à 1:23' })
+    const lien = within(avec).getByRole('link', { name: 'Ouvrir le rejeu 5 s avant 1:23' })
     expect(lien.getAttribute('href')).toBe('/halo_infinite/players/JGtm/matches/m1/replay?t=83400&clock=match')
     expect(within(sans).queryByRole('link')).toBeNull()
   })

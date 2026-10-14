@@ -427,8 +427,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		       -- vraie durée gameplay en ms (countdown retranché via real_start_time)
 		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
 		           WHEN mr.real_start_time IS NOT NULL THEN
-		               epoch_ms(mr.real_start_time AT TIME ZONE 'UTC')
-		               - epoch_ms(`+analysis.SQLStartTimeCanonical("mr")+`)
+		               `+analysis.SQLRealStartOffsetMs("mr")+`
 		           ELSE 0 END) AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
