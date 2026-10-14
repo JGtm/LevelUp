@@ -104,6 +104,14 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 > (schéma 95). Témoins à la frame : `1b2d9e08` 164,06 s, `6acce632` 53,3 / 158,5 / 304,2 s. Le son
 > de pose (`translocator_deploy`) part 1,045 s avant la pose (`riftPoseSound.ts`).
 
+> **SONS D'UTILISATION (2026-10-15, décision utilisateur).** Le capteur, le traqueur, le champ de
+> réparation et l'écran occultant n'ont plus de pose `deployed` depuis la règle du 15/09 (ligne
+> `equipmentPlacements` ci-dessus) : ils sonnent à leur utilisation datée, `carriedEquipment[].uses`
+> (`carriedUseSound.ts`), avec leurs stems d'avant. Chaque utilisation est suivie, une ou deux images
+> plus tard, de la baisse d'énergie d'un coût (30 sur 30 sur `5676a9ba` et `1f8e8849`). Le mur garde
+> sa pose `deployed`, deux ou trois images après son utilisation. La FIN du champ de réparation
+> (`repair_field_end`) reste attachée à une pose `deployed` du champ : elle ne part donc jamais.
+
 **B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
 consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.
 

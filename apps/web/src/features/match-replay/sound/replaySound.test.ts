@@ -287,20 +287,16 @@ describe('buildSoundTimeline', () => {
     expect(tl).toEqual([])
   })
 
-  it('une POSE sonne SA famille au geste (t0), et rien à la disparition de l objet', () => {
+  it('une POSE du mur sonne au geste (t0), et rien à la disparition de l objet', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentPlacements: [
           { t0: 10, t1: 90, x: 0, y: 0, family: 'wall', id: '0x528fce46', owner: 1, origin: 'deployed' },
-          { t0: 40, t1: 95, x: 1, y: 1, family: 'sensor', id: '0x72199cba', owner: 1, origin: 'deployed' },
         ],
       }),
       [],
     )
-    expect(tl).toEqual([
-      { ms: 1_000, stem: 'wall_activate' },
-      { ms: 4_000, stem: 'sensor_activate' },
-    ])
+    expect(tl).toEqual([{ ms: 1_000, stem: 'wall_activate' }])
   })
 
   /**
@@ -322,9 +318,20 @@ describe('buildSoundTimeline', () => {
    * et masquait ainsi un son mort depuis début septembre. Sa pose est désormais lue dans le film
    * (`riftPoses`) : le test sur données réelles est `riftPoseSound.test.ts`.
    */
-  it('le TRAQUEUR sonne comme le capteur, le CHAMP a le sien', () => {
+  it('le TRAQUEUR et le CHAMP sonnent par leur UTILISATION, jamais en plus par une pose', () => {
+    // Le capteur, le traqueur, le champ et l'écran sonnent à leur utilisation datée
+    // (`carriedUseSound.ts`, données réelles : `carriedUseSound.test.ts`). Une pose `deployed` de
+    // ces familles, si le film en produisait encore, ne sonnerait pas son geste une seconde fois.
     const tl = buildSoundTimeline(
       docWithCouple({
+        abilityLabels: {
+          '12': { en: 'Threat Seeker', fr: 'traqueur de menaces', family: 'threat_seeker' },
+          '23': { en: 'Repair Field', fr: 'champ de reparation', family: 'repair_field' },
+        },
+        carriedEquipment: [
+          { slot: 1, r: 12, t0: 5, t1: 30, energy: [], uses: [10] },
+          { slot: 1, r: 23, t0: 60, t1: 100, energy: [], uses: [70] },
+        ],
         equipmentPlacements: [
           { t0: 10, t1: 90, x: 0, y: 0, family: 'threat_seeker', id: '0x0001', owner: 1, origin: 'deployed' },
           { t0: 70, t1: 95, x: 2, y: 2, family: 'repair_field', id: '0x0003', owner: 1, origin: 'deployed' },
@@ -337,8 +344,8 @@ describe('buildSoundTimeline', () => {
       // Le champ de réparation TIRE une variante (lot du 2026-08-26) : l'événement porte les
       // trois fichiers, le choix se fait à la lecture.
       { ms: 7_000, stem: 'repair_field_activate', variants: SOUND_VARIANTS.repair_field_activate },
-      // ET IL SONNE SA FIN, à `t1` — décision produit de l'utilisateur du 2026-08-26. C'est la
-      // SEULE famille dans ce cas : le mur et le capteur n'ont pas de son d'extinction propre.
+      // SA FIN reste attachée à la pose `deployed` (décision produit du 2026-08-26) : c'est la
+      // SEULE famille dans ce cas, le mur et le capteur n'ont pas de son d'extinction propre.
       { ms: 9_500, stem: 'repair_field_end', variants: SOUND_VARIANTS.repair_field_end },
     ])
   })

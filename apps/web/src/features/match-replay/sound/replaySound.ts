@@ -62,11 +62,13 @@
  *  - un kill À LA MÊLÉE sonne le coup qui a tué, et un kill À LA grenade l'explosion DE SON
  *    TYPE (c'est elle qui a tué, pas le geste du lancer) — les deux passent par la VIGNETTE
  *    de la source de dégât, pas par le weapon_key (cf. ci-dessous) ;
- *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 10 — mur, capteur) : le GESTE de
+ *  - les POSES D'ÉQUIPEMENT (doc.equipmentPlacements, schéma 10 — le mur seul) : le GESTE de
  *    pose sonne, à `t0`, ET SEULEMENT SI LA POSE EST UN DÉPLOIEMENT MESURÉ
  *    (`placementIsDeployedObject`, la MÊME règle que le calque). Rien ne sonne à la fin : la
  *    disparition d'un mur n'est pas un acte, c'est la fin d'une durée. Une famille sans fichier
- *    (les objets non identifiés, et toutes celles que le nommage ajoutera) reste muette ;
+ *    (les objets non identifiés, et toutes celles que le nommage ajoutera) reste muette. Le
+ *    capteur, le traqueur, le champ de réparation et l'écran occultant sonnent par leur
+ *    UTILISATION datée (`carriedEquipment[].uses`, `carriedUseSound.ts`) ;
  *  - les ÉPISODES D'ÉQUIPEMENT ACTIF (doc.equipmentEpisodes, schéma 7 — camo et
  *    surbouclier, les deux familles MESURÉES) : le début d'épisode sonne l'activation,
  *    la fin sonne la désactivation SEULEMENT quand elle est MESURÉE (`endRead`) — un
@@ -178,6 +180,7 @@ import { abilityImpulseSoundEvents } from './abilityImpulseSound'
 import { KNOCKBACK_SOUND_STEM, knockbackSoundEvents, type RepulsorKillSound } from './knockbackSound'
 import { translocationSoundEvents } from './translocationSound'
 import { riftPoseSoundEvents } from './riftPoseSound'
+import { carriedUseSoundEvents } from './carriedUseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
@@ -199,6 +202,7 @@ export { ABILITY_IMPULSE_SOUND_STEMS, abilityImpulseSoundEvents } from './abilit
 export { KNOCKBACK_SOUND_STEM, knockbackSoundEvents } from './knockbackSound'
 export { TRANSLOCATION_SOUND_STEM, translocationSoundEvents } from './translocationSound'
 export { RIFT_POSE_SOUND_STEM, RIFT_POSE_HIT_OFFSET_MS, riftPoseSoundEvents } from './riftPoseSound'
+export { CARRIED_USE_SOUND_STEMS, carriedUseSoundEvents } from './carriedUseSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
@@ -340,6 +344,12 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * Son d'une POSE d'équipement par FAMILLE (`family` du document, schéma 10) -> stem du fichier
  * joué à `t0`, l'instant du geste.
  *
+ * CETTE TABLE NE PORTE PLUS QUE LE MUR (2026-10-15). Le film ne produit plus de pose `deployed` pour
+ * le capteur, le traqueur, le champ de réparation et l'écran occultant depuis la règle du 15/09 : ils
+ * sonnent désormais par leur UTILISATION datée (`carriedEquipment[].uses`, `carriedUseSound.ts`),
+ * avec les stems dont la provenance est écrite ci-dessous. Une famille n'est que dans l'une des deux
+ * tables : le mur, dont la pose suit l'utilisation de deux ou trois images, sonnerait deux fois.
+ *
  * UNE TABLE DISTINCTE DE `EQUIPMENT_SOUND_STEMS`, et ce n'est pas une duplication : les deux
  * parlent d'équipement, mais pas du même OBJET. L'une porte des ÉPISODES D'ÉTAT sur le
  * porteur (camouflage, surbouclier : un début ET une fin mesurés) ; celle-ci porte des OBJETS
@@ -427,16 +437,6 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS_END: Readonly<Record<string, string
 
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
-  sensor: 'sensor_activate',
-  // Même appareil que le capteur, un mode près : même geste de pose, donc même son.
-  threat_seeker: 'sensor_activate',
-  // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
-  repair_field: 'repair_field_activate',
-  // L ECRAN OCCULTANT, nomme le 2026-08-27. Il etait la DERNIERE famille dessinee sans son, et
-  // ce qui le tenait muet n etait pas le son — `play_007_abl_shroud_deploy_player` est casse
-  // depuis le 2026-08-26 — mais la FAMILLE : l objet s appelait `other` au manifeste, faute
-  // d une voie de nommage. Sa banque sonore l a donnee (`sb_007_abl_shroud`).
-  shroud_screen: 'shroud_deploy',
 }
 
 /**
@@ -697,6 +697,9 @@ export function buildSoundTimeline(
     out.push(...translocationSoundEvents(doc))
     // LA POSE DE LA FAILLE (schéma 95) : son COUP à l'instant de la pose. Doctrine : `riftPoseSound.ts`.
     out.push(...riftPoseSoundEvents(doc))
+    // L'UTILISATION du capteur, du traqueur, du champ et de l'écran (schéma 95), à l'image où le film
+    // la date. Doctrine : `carriedUseSound.ts`.
+    out.push(...carriedUseSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas l'allégeance du film), les seules actions qui

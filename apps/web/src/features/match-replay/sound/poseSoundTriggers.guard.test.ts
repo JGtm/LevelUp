@@ -1,44 +1,73 @@
 /**
- * Garde-rail — CHAQUE SON DE POSE A UN DÉCLENCHEUR RÉEL DANS LES FIXTURES.
+ * Garde-rail — CHAQUE SON DE POSE OU D'UTILISATION D'ÉQUIPEMENT A UN DÉCLENCHEUR RÉEL.
  *
- * Un son de pose qui ne part jamais est un son MORT, et un test qui lui fabrique une pose le cache :
- * c'est ce qui a tenu la dépose de la faille muette de début septembre au 14/10 (une pose `deployed`
- * de la balise, que le film ne produit plus depuis la règle du 15/09, fabriquée par
- * `replaySound.test.ts`). Ici, chaque famille de `EQUIPMENT_PLACEMENT_SOUND_STEMS` doit avoir au
- * moins une pose montrable (`placementIsDeployedObject`) dans les documents que Go produit
- * (`test/fixtures/go`).
+ * Un son qui ne part jamais est un son MORT, et un test qui lui fabrique une pose le cache : c'est ce
+ * qui a tenu la dépose de la faille muette de début septembre au 14/10 (une pose `deployed` de la
+ * balise, que le film ne produit plus depuis la règle du 15/09, fabriquée par `replaySound.test.ts`),
+ * et le capteur, le traqueur, le champ de réparation et l'écran occultant muets du 15/09 au 15/10.
  *
- * LES FAMILLES CI-DESSOUS SONT MORTES AU MÊME TITRE, ET CE N'EST PAS RÉGLÉ ICI (découverte du lot
- * « équipement porté », 2026-10-14) : au parc local (238 artefacts), seule la famille `wall` porte une
- * pose `deployed`. Le capteur, le traqueur, le champ de réparation et l'écran occultant ne sonnent
- * donc plus depuis le 15/09. Leur geste est désormais daté par le film (`carriedEquipment[].uses`) ;
- * leur rebranchement est une décision produit à prendre. Retrait de cette liste : dans le commit qui
- * rebranche chaque famille. Critère : la liste est vide.
+ * Chaque stem de ces trois tables doit avoir au moins un déclencheur dans des documents RÉELS :
+ *  - `EQUIPMENT_PLACEMENT_SOUND_STEMS` : une pose montrable (`placementIsDeployedObject`) ;
+ *  - `CARRIED_USE_SOUND_STEMS` : une utilisation (`carriedEquipment[].uses`) d'un objet de la famille ;
+ *  - `RIFT_POSE_SOUND_STEM` : une pose de faille (`riftPoses`).
+ * Les documents sont ceux que Go produit (`test/fixtures/go`), et, pour une famille qu'aucun des huit
+ * builds ne porte (le traqueur), les relevés réels figés de `test/carriedUseWitnesses.ts`. AUCUNE
+ * EXCEPTION : une famille sans déclencheur fait rougir ce test.
+ *
+ * Une famille n'est sonnée que par UNE des deux tables (pose ou utilisation) : le mur, dont la pose
+ * suit l'utilisation de deux ou trois images, sonnerait deux fois.
  */
 import { describe, expect, it } from 'vitest'
 
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
+import { documentsTemoinsDeLEquipementPorte } from '../test/carriedUseWitnesses'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
+import { testReplayDoc } from '../test/testDoc'
+import { CARRIED_USE_SOUND_STEMS } from './carriedUseSound'
 import { EQUIPMENT_PLACEMENT_SOUND_STEMS } from './replaySound'
+import { RIFT_POSE_SOUND_STEM } from './riftPoseSound'
 
-const DECLENCHEURS_MORTS_CONNUS: ReadonlySet<string> = new Set([
-  'sensor',
-  'threat_seeker',
-  'repair_field',
-  'shroud_screen',
-])
+function documentsGo(): ReplayDocumentReady[] {
+  return goFixtureEntries().map((entry) => testReplayDoc(loadGoFixture(entry).doc))
+}
 
-describe('sons de pose — un déclencheur réel', () => {
-  it('chaque famille sonore a au moins une pose montrable dans les fixtures Go', () => {
-    const vues = new Set<string>()
-    for (const entry of goFixtureEntries()) {
-      for (const p of loadGoFixture(entry).doc.equipmentPlacements ?? []) {
-        if (placementIsDeployedObject(p)) vues.add(p.family)
-      }
+function famillesPosees(docs: ReplayDocumentReady[]): Set<string> {
+  const vues = new Set<string>()
+  for (const doc of docs) {
+    for (const p of doc.equipmentPlacements) if (placementIsDeployedObject(p)) vues.add(p.family)
+  }
+  return vues
+}
+
+function famillesUtilisees(docs: ReplayDocumentReady[]): Set<string> {
+  const vues = new Set<string>()
+  for (const doc of docs) {
+    for (const c of doc.carriedEquipment) {
+      const family = doc.abilityLabels?.[String(c.r)]?.family
+      if (family && c.uses.length > 0) vues.add(family)
     }
-    const muettes = Object.keys(EQUIPMENT_PLACEMENT_SOUND_STEMS).filter((f) => !vues.has(f))
-    expect(muettes.filter((f) => !DECLENCHEURS_MORTS_CONNUS.has(f))).toEqual([])
-    // Une famille de la liste qui retrouve un déclencheur en sort : la liste ne cache rien.
-    expect([...DECLENCHEURS_MORTS_CONNUS].filter((f) => vues.has(f))).toEqual([])
+  }
+  return vues
+}
+
+describe('sons d équipement — un déclencheur réel, sans exception', () => {
+  it('chaque famille de pose a une pose montrable dans les fixtures Go', () => {
+    const vues = famillesPosees(documentsGo())
+    expect(Object.keys(EQUIPMENT_PLACEMENT_SOUND_STEMS).filter((f) => !vues.has(f))).toEqual([])
+  })
+
+  it('chaque famille d utilisation a une utilisation dans les fixtures Go ou les relevés figés', () => {
+    const vues = famillesUtilisees([...documentsGo(), ...documentsTemoinsDeLEquipementPorte()])
+    expect(Object.keys(CARRIED_USE_SOUND_STEMS).filter((f) => !vues.has(f))).toEqual([])
+  })
+
+  it(`la pose de la faille (${RIFT_POSE_SOUND_STEM}) a un déclencheur dans les fixtures Go`, () => {
+    expect(documentsGo().some((doc) => doc.riftPoses.length > 0)).toBe(true)
+  })
+
+  it('aucune famille n est sonnée à la fois par sa pose et par son utilisation', () => {
+    const pose = new Set(Object.keys(EQUIPMENT_PLACEMENT_SOUND_STEMS))
+    expect(Object.keys(CARRIED_USE_SOUND_STEMS).filter((f) => pose.has(f))).toEqual([])
   })
 })
