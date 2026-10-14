@@ -24,11 +24,11 @@ func entreeDeBase() EntreeSequence {
 	t0 := int64(2000)
 	return EntreeSequence{
 		Victime: ActeurSequence{Role: domain.TacticalRoleVictime, XUID: "111",
-			Points: piste(0, 100, func(t int) float32 { return float32(t) }, 0)},
+			Vies: vie(piste(0, 100, func(t int) float32 { return float32(t) }, 0))},
 		Tueur: &ActeurSequence{Role: domain.TacticalRoleTueur, XUID: "900",
-			Points: piste(0, 200, func(int) float32 { return 140 }, 0)},
+			Vies: vie(piste(0, 200, func(int) float32 { return 140 }, 0))},
 		Coequipiers: []ActeurSequence{{Role: domain.TacticalRoleCoequipier, XUID: "222",
-			Points: piste(0, 200, func(int) float32 { return 118 }, 0)}},
+			Vies: vie(piste(0, 200, func(int) float32 { return 118 }, 0))}},
 		FrameIntervalMs: pasImage, MortFilmMs: 10_000, MortMatchMs: 12_000, T0Ms: &t0, RayonM: 18,
 	}
 }
@@ -110,7 +110,7 @@ func TestSequence_PasDInterpolationAUneLacune(t *testing.T) {
 		}
 		pts = append(pts, p)
 	}
-	in.Coequipiers[0].Points = pts
+	in.Coequipiers[0].Vies = vie(pts)
 	seq, _ := Sequence(in)
 	var trace domain.TacticalSequenceActeur
 	for _, a := range seq.Acteurs {
@@ -134,7 +134,7 @@ func TestSequence_PasDInterpolationAUneLacune(t *testing.T) {
 
 func TestSequence_VictimeSansPositionAlaMort(t *testing.T) {
 	in := entreeDeBase()
-	in.Victime.Points = piste(0, 40, func(t int) float32 { return float32(t) }, 0) // fin du film bien avant
+	in.Victime.Vies = vie(piste(0, 40, func(t int) float32 { return float32(t) }, 0)) // fin du film bien avant
 	if _, err := Sequence(in); !errors.Is(err, ErrSequenceSansMort) {
 		t.Fatalf("err = %v, attendu ErrSequenceSansMort", err)
 	}
@@ -185,5 +185,88 @@ func TestKillDeLaMort_ExactPuisTolerance(t *testing.T) {
 	}
 	if KillDeLaMort(j, "111", 12_500) != nil {
 		t.Error("hors tolerance : nil")
+	}
+}
+
+// vie enveloppe une piste en une seule vie.
+func vie(p []domain.TacticalPistePoint) [][]domain.TacticalPistePoint {
+	return [][]domain.TacticalPistePoint{p}
+}
+
+// positionsDe rend les decalages ou l'acteur d'une sequence a un echantillon.
+func positionsDe(seq domain.TacticalSequence, xuid string) map[int]domain.TacticalSequencePoint {
+	out := map[int]domain.TacticalSequencePoint{}
+	for _, a := range seq.Acteurs {
+		if a.XUID == xuid {
+			for _, p := range a.Points {
+				out[p.OffsetMs] = p
+			}
+		}
+	}
+	return out
+}
+
+// TestSequence_LaVictimeQuiReapparaitNeContinuePas — victime : une vie jusqu'a l'image 100 (la mort),
+// la suivante des +5 s. Entre les deux, aucune position (pas d'interpolation d'une vie a l'autre).
+func TestSequence_LaVictimeQuiReapparaitNeContinuePas(t *testing.T) {
+	in := entreeDeBase()
+	in.Victime.Vies = [][]domain.TacticalPistePoint{
+		piste(0, 100, func(t int) float32 { return float32(t) }, 0),
+		piste(150, 250, func(int) float32 { return 300 }, 0), // reapparait a 15 000 ms = +5 s
+	}
+	seq, err := Sequence(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for off, p := range positionsDe(seq, "111") {
+		if off > 0 {
+			t.Fatalf("la victime a une position a %+d ms (%+v) : elle est morte, la vie suivante ne commence qu'a +5 s", off, p)
+		}
+	}
+	if seq.Mort.X != 100 {
+		t.Errorf("point de mort = %+v", seq.Mort)
+	}
+}
+
+// TestSequence_LeCoequipierMortAbsentEntreSesVies — coequipier : meurt a −6 s (image 40), reapparait a
+// +2 s (image 120). Absent de −5,8 s a +1,8 s, et jamais compte dans le rayon sur la periode.
+func TestSequence_LeCoequipierMortAbsentEntreSesVies(t *testing.T) {
+	in := entreeDeBase()
+	in.Coequipiers[0].Vies = [][]domain.TacticalPistePoint{
+		piste(0, 40, func(int) float32 { return 105 }, 0),
+		piste(120, 200, func(int) float32 { return 105 }, 0),
+	}
+	seq, _ := Sequence(in)
+	pos := positionsDe(seq, "222")
+	for off := -5800; off <= 1800; off += 200 {
+		if _, ok := pos[off]; ok {
+			t.Fatalf("le coequipier mort a un echantillon a %+d ms", off)
+		}
+	}
+	if _, ok := pos[2000]; !ok || !pos[2000].Coupure {
+		t.Errorf("a la reapparition (+2 s) l'echantillon existe et marque une coupure : %+v", pos[2000])
+	}
+	for _, e := range seq.Etapes {
+		if e.OffsetMs < 2000 && (e.DansLeRayon != 0 || e.Positionnes != 0 || len(e.DansLeRayonXUIDs) != 0) {
+			t.Errorf("etape %d ms : le coequipier mort est compte (%+v)", e.OffsetMs, e)
+		}
+	}
+}
+
+// TestSequence_DeuxViesDansLeDesordre — l'ordre de la liste n'est pas le temps (sieges differents) :
+// la position se lit dans la vie qui contient l'instant.
+func TestSequence_DeuxViesDansLeDesordre(t *testing.T) {
+	in := entreeDeBase()
+	in.Coequipiers[0].Vies = [][]domain.TacticalPistePoint{
+		piste(100, 200, func(int) float32 { return 130 }, 0), // la plus tardive d'abord
+		piste(0, 99, func(int) float32 { return 110 }, 0),
+	}
+	seq, _ := Sequence(in)
+	pos := positionsDe(seq, "222")
+	if p := pos[-2000]; p.X != 110 { // image 80 : premiere vie
+		t.Errorf("-2 s : %+v, attendu x = 110 (vie de l'image 0 a 99)", p)
+	}
+	if p := pos[1000]; p.X != 130 { // image 110 : seconde vie
+		t.Errorf("+1 s : %+v, attendu x = 130", p)
 	}
 }

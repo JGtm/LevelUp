@@ -93,6 +93,9 @@ func NewLivesPersister(db txBeginner) *LivesPersister {
 // UNE PASSE SANS VIE N'ECRIT RIEN, PAS MEME SES CONTEXTES. Sans vies, le pont slot->xuid du film
 // n'a pas ete construit, et un contexte calcule sans lui ne reposerait sur rien. La passe est
 // ignoree et LOGGUEE : ecrire zero ligne en silence serait indistinguable d'un match sans mort.
+//
+// UN LOT REFUSE PAR LA VALIDATION N'ECRIT RIEN, NI LES VIES NI LES CONTEXTES NI LES COEQUIPIERS (une
+// passe = une generation entiere, jamais un melange) : choix assume, voir `validateMates`.
 func (p *LivesPersister) PersistPass(ctx context.Context, in LivesBatch) error {
 	if err := validateLivesBatch(in); err != nil {
 		return err

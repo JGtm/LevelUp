@@ -74,7 +74,7 @@ describe('fiche d’une mort', () => {
   it('échange : tueur abattu (délai, auteur, distance au tueur) et abattu en retour', () => {
     expect(echangeDeLaMort(t, MORT_COMPLETE, 'fr')).toEqual({
       titre: 'Tueur abattu 1,8 s après la mort',
-      detail: 'par Kestrel 77, à 27 m du tueur',
+      detail: 'par Kestrel 77',
     })
     expect(echangeDeLaMort(t, FRAG_ABATTU_EN_RETOUR, 'fr')).toEqual({
       titre: 'Abattu en retour 1,5 s après le frag',
@@ -93,19 +93,21 @@ describe('scènes du plan', () => {
   })
 
   it('instantané : cercle du rayon au lieu de la mort, mort, coéquipiers pleins dans le rayon et creux au-delà, trait du frag', () => {
-    const s = sceneDeMort(MORT_COMPLETE)
+    const s = sceneDeMort(MORT_COMPLETE, 'fr')
     expect(s.cercle).toEqual({ centre: { x: 10, y: 10 }, rayonM: 18 })
     expect(s.marques.map((m) => [m.role, m.plein])).toEqual([
       ['mort', true],
       ['coequipier', true],
       ['coequipier', false],
+      ['fantome', false],
     ])
     // Le coéquipier hors de vue / en attente n'a pas de point : il n'est pas peint.
     expect(s.traits).toEqual([{ de: { x: -2, y: 12 }, vers: { x: 25, y: 10 } }])
+    expect(s.marques.find((m) => m.role === 'fantome')).toMatchObject({ pt: { x: -2, y: 12 }, etiquette: '+1,8 s' })
   })
 
   it('un frag n’a pas de scène d’équipe', () => {
-    expect(sceneDeMort(FRAG_ABATTU_EN_RETOUR).marques).toEqual([])
+    expect(sceneDeMort(FRAG_ABATTU_EN_RETOUR, 'fr').marques).toEqual([])
   })
 
   it('séquence : le cercle suit la victime avant la mort puis reste au lieu de la mort', () => {
@@ -135,9 +137,9 @@ describe('scènes du plan', () => {
 
   it('la scène de la vue : étape > instantané > nuage', () => {
     const vue = { index: 0, contribution: MORT_COMPLETE, sequence: SEQUENCE, etape: 4, onEtape: () => {} }
-    expect(sceneDeLaVue([MORT_COMPLETE], vue).traines.length).toBeGreaterThan(0)
-    expect(sceneDeLaVue([MORT_COMPLETE], { ...vue, etape: null }).traines).toEqual([])
-    expect(sceneDeLaVue([MORT_COMPLETE], null).marques.every((m) => m.role === 'nuage')).toBe(true)
+    expect(sceneDeLaVue([MORT_COMPLETE], vue, 'fr').traines.length).toBeGreaterThan(0)
+    expect(sceneDeLaVue([MORT_COMPLETE], { ...vue, etape: null }, 'fr').traines).toEqual([])
+    expect(sceneDeLaVue([MORT_COMPLETE], null, 'fr').marques.every((m) => m.role === 'nuage')).toBe(true)
   })
 
   it('distances d’étape : au centre du cercle, « — » sans position', () => {

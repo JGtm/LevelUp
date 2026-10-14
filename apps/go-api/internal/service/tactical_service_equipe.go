@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -61,7 +62,10 @@ func (s *TacticalService) poserEquipeEtRiposte(ctx context.Context, mapID string
 		case domain.TacticalFaceMort:
 			rayon, aUnRayon := rayons[out[i].MatchID]
 			if c := apparies[i]; c != nil {
-				poserLEquipe(&out[i], *c, mates, rayon, aUnRayon)
+				if lignes, ok := s.lignesCompletes(ctx, mapID, c, mates); ok {
+					eq := tactical.EquipeDeLaMort(*c, lignes, rayon, aUnRayon, out[i].AutrePoint)
+					out[i].Equipe = &eq
+				}
 			}
 			lec.tueurConnu[i] = poserTueurAbattu(&out[i], journal[out[i].MatchID], univers.Equipes[out[i].MatchID])
 		case domain.TacticalFaceFrag:
@@ -136,23 +140,47 @@ func (s *TacticalService) lireLesMates(ctx context.Context, mapID string,
 		s.sourceDegradee(ctx, sourceCoequipiers, mapID, err)
 		return nil
 	}
+	// Une ligne par coequipier et par mort : un doublon de cle du journal (deux morts de meme victime au
+	// meme instant) a ecrit les coequipiers deux fois, la lecture les dedoublonne par `mate_xuid`.
 	par := make(map[domain.CleDeMort][]domain.MateDeMort, len(cles))
+	vus := make(map[domain.CleDeMort]map[string]bool, len(cles))
 	for _, l := range lignes {
 		k := domain.CleDeMort{MatchID: l.MatchID, VictimXUID: l.VictimXUID, TimeMs: l.TimeMs}
+		if vus[k] == nil {
+			vus[k] = map[string]bool{}
+		}
+		if vus[k][l.MateXUID] {
+			continue
+		}
+		vus[k][l.MateXUID] = true
 		par[k] = append(par[k], l)
 	}
 	return par
 }
 
-// poserLEquipe pose l'equipe d'une mort quand ses lignes retombent sur le total de son contexte.
-func poserLEquipe(c *domain.TacticalContribution, ctx domain.ContexteDeMort,
-	mates map[domain.CleDeMort][]domain.MateDeMort, rayon float64, aUnRayon bool) {
-	lignes := mates[cleDuContexte(&ctx)]
-	if len(lignes) != ctx.Total {
-		return
+// metricEquipeLignesIncoherentes compte (expvar, ADR 0009) les morts dont les lignes de coequipiers ne
+// retombent pas sur `teammates_total` alors qu'elles existent : un producteur ou une relecture a laisse
+// un etat incoherent. Le cas « aucune ligne » (match pas encore relu) n'est pas une incoherence.
+const metricEquipeLignesIncoherentes = "tactique_equipe_lignes_incoherentes"
+
+// lignesCompletes rend les coequipiers d'une mort quand leurs lignes retombent sur le total de son
+// contexte. Sinon faux, ET JAMAIS EN SILENCE : « aucune ligne » = match pas encore relu (DEBUG) ; un
+// autre ecart (plus ou moins de lignes que de coequipiers) est journalise et compte.
+func (s *TacticalService) lignesCompletes(ctx context.Context, mapID string, c *domain.ContexteDeMort,
+	mates map[domain.CleDeMort][]domain.MateDeMort) ([]domain.MateDeMort, bool) {
+	lignes := mates[cleDuContexte(c)]
+	if len(lignes) == c.Total {
+		return lignes, true
 	}
-	eq := tactical.EquipeDeLaMort(ctx, lignes, rayon, aUnRayon, c.AutrePoint)
-	c.Equipe = &eq
+	if len(lignes) == 0 {
+		s.logger.DebugContext(ctx, "tactique: coequipiers de la mort pas encore lus (match a relire)",
+			"player", s.xuid, "map_id", mapID, "match_id", c.MatchID, "total", c.Total)
+		return nil, false
+	}
+	observability.AddInt(metricEquipeLignesIncoherentes, 1)
+	s.logger.DebugContext(ctx, "tactique: lignes de coequipiers incoherentes avec le contexte, equipe ecartee",
+		"player", s.xuid, "map_id", mapID, "match_id", c.MatchID, "time_ms", c.TimeMs, "lignes", len(lignes), "total", c.Total)
+	return nil, false
 }
 
 // lireLeJournal lit, en une requete bornee aux matchs des contributions, les kills publiables,

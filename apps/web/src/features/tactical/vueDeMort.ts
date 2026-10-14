@@ -25,10 +25,14 @@ export interface VueDeMort {
  * sceneDeLaVue — ce que le plan peint : l'étape de la séquence si elle est choisie, sinon l'instantané
  * de la mort choisie, sinon (aucune tuile choisie) le nuage des coéquipiers de la zone.
  */
-export function sceneDeLaVue(contributions: readonly TacticalContribution[], vue: VueDeMort | null): SceneDuPlan {
+export function sceneDeLaVue(
+  contributions: readonly TacticalContribution[],
+  vue: VueDeMort | null,
+  locale: Locale,
+): SceneDuPlan {
   if (!vue) return sceneDeZone(contributions)
   if (vue.sequence && vue.etape !== null) return sceneDeSequence(vue.sequence, vue.etape)
-  return sceneDeMort(vue.contribution)
+  return sceneDeMort(vue.contribution, locale)
 }
 
 /** Le mode de la légende : le nuage de la zone, l'instantané d'une mort, ou une étape de la séquence. */
@@ -61,7 +65,7 @@ export function contributionDeLaVue(
 }
 
 /** Une entrée de légende : sa forme, par le mot. */
-export type FormeDeLegende = 'mort' | 'tueur' | 'victime' | 'plein' | 'creux' | 'nuage' | 'cercle' | 'trait'
+export type FormeDeLegende = 'mort' | 'tueur' | 'victime' | 'plein' | 'creux' | 'fantome' | 'nuage' | 'cercle' | 'trait'
 
 /**
  * entreesDeLegende — LA légende du plan, une seule : une forme = une entrée, dans l'ordre Mort · Tueurs /
@@ -87,6 +91,7 @@ export function entreesDeLegende(
   if (sceneMort) {
     if (scene.marques.some((m) => m.role === 'coequipier' && m.plein)) sorties.push({ forme: 'plein', texte: L.allyIn })
     if (scene.marques.some((m) => m.role === 'coequipier' && !m.plein)) sorties.push({ forme: 'creux', texte: L.allyOut })
+    if (scene.marques.some((m) => m.role === 'fantome')) sorties.push({ forme: 'fantome', texte: L.ghost })
     if (scene.traits.length > 0) sorties.push({ forme: 'trait', texte: L.riposte })
     if (scene.cercle) sorties.push({ forme: 'cercle', texte: L.radius(metresEntiers(scene.cercle.rayonM, locale)) })
   }

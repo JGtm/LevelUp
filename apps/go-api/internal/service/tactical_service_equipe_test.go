@@ -191,3 +191,35 @@ func TestEquipe_EquipeATerre_EtMatchSansRayon(t *testing.T) {
 		t.Errorf("m1 sans rayon : ni statut ni rayon, la liste reste : %+v", eq)
 	}
 }
+
+func TestEquipe_DoublonDeLigne_DedoublonneParCoequipier(t *testing.T) {
+	repo := corpusEquipe()
+	// la cle de la mort a ete ecrite deux fois (doublon du journal) : chaque coequipier a deux lignes.
+	repo.mates = append(repo.mates, repo.mates...)
+	c := detailEquipe(t, repo).Contributions
+	if c[0].Equipe == nil || len(c[0].Equipe.Coequipiers) != 2 || c[2].Equipe == nil || len(c[2].Equipe.Coequipiers) != 1 {
+		t.Fatalf("des lignes en double ne doivent pas faire perdre l'equipe : %+v / %+v", c[0].Equipe, c[2].Equipe)
+	}
+}
+
+func TestEquipe_LigneEnTrop_EquipeEcarteeEtJournalisee(t *testing.T) {
+	repo := corpusEquipe()
+	repo.mates = append(repo.mates, domain.MateDeMort{MatchID: "m2", VictimXUID: tsMoi, TimeMs: 3000, MateXUID: "999", Etat: domain.TacticalMateHorsDeVue})
+	_, matchs := corpusDetail()
+	src := sourcesCompletes(matchs)
+	got := celluleLue(t, src.service(repo, capsCompletes()), celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, 4, 4))
+	if got.Contributions[2].Equipe != nil {
+		t.Errorf("une ligne en trop (2 pour Total=1) : pas d'equipe partielle, %+v", got.Contributions[2].Equipe)
+	}
+	if !strings.Contains(src.trace.String(), "lignes de coequipiers incoherentes") {
+		t.Errorf("l'ecart doit etre journalise :\n%s", src.trace.String())
+	}
+	// une mort SANS ligne est « a relire », pas une incoherence.
+	repo = corpusEquipe()
+	repo.mates = nil
+	src = sourcesCompletes(matchs)
+	celluleLue(t, src.service(repo, capsCompletes()), celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, 4, 4))
+	if strings.Contains(src.trace.String(), "incoherentes") || !strings.Contains(src.trace.String(), "pas encore lus") {
+		t.Errorf("aucune ligne : journal « pas encore lus », jamais « incoherentes » :\n%s", src.trace.String())
+	}
+}

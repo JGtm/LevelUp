@@ -176,7 +176,7 @@ export function resumeDeLEquipe(t: TacticalText, c: TacticalContribution, locale
 export interface EchangeDeLaMort {
   /** Première ligne (« Tueur abattu 1,8 s après la mort »). */
   titre: string
-  /** Seconde ligne (« par Kestrel 77, à 26 m du tueur »), absente pour un frag sans auteur nommé. */
+  /** Seconde ligne (« par Kestrel 77 »), absente pour un frag sans auteur nommé. */
   detail: string | null
 }
 
@@ -187,22 +187,23 @@ export function echangeDeLaMort(t: TacticalText, c: TacticalContribution, locale
   const s = decimale(r.delai_ms / 1000, locale)
   const qui = r.par_gamertag || t.mortDetailUnnamed
   if (r.type === 'abattu_en_retour') {
-    return { titre: t.mortReturned(s), detail: r.par_gamertag ? t.mortAvengedBy(qui, undefined) : null }
+    return { titre: t.mortReturned(s), detail: r.par_gamertag ? t.mortAvengedBy(qui) : null }
   }
-  const d = r.point && c.autre_point ? metresEntiers(Math.hypot(r.point.x - c.autre_point.x, r.point.y - c.autre_point.y), locale) : undefined
-  return { titre: t.mortAvenged(s), detail: t.mortAvengedBy(qui, d) }
+  return { titre: t.mortAvenged(s), detail: t.mortAvengedBy(qui) }
 }
 
 // ─── Les scènes du plan ───────────────────────────────────────────────────────────────────────
 
 /** Le rôle d'une marque : fixe sa forme et son jeton de couleur. */
-export type RoleDeMarque = 'mort' | 'tueur' | 'coequipier' | 'nuage'
+export type RoleDeMarque = 'mort' | 'tueur' | 'coequipier' | 'nuage' | 'fantome'
 
 export interface MarqueDeScene {
   role: RoleDeMarque
   pt: Pt
   /** Coéquipier plein (dans le rayon) ou creux (au-delà). Sans objet pour les autres rôles. */
   plein: boolean
+  /** Une courte étiquette posée à côté de la marque (le fantôme du frag : « +1,8 s »). */
+  etiquette?: string
 }
 
 /** Une traîne : des segments continus (une lacune du film coupe la traîne), du plus ancien au plus récent. */
@@ -238,9 +239,10 @@ export function sceneDeZone(contributions: readonly TacticalContribution[]): Sce
 /**
  * sceneDeMort — l'instantané d'UNE mort (vues A et B) : le cercle du rayon autour du lieu de la mort,
  * le mort, ses coéquipiers visibles (pleins dans le rayon, creux au-delà) et, après un tueur abattu,
- * le trait du coup du coéquipier sur le tueur. Le tueur est peint par la couche des tueurs.
+ * le trait du coup du coéquipier sur le tueur, parti d'un marqueur fantôme du coéquipier à l'instant de son
+ * frag. Le tueur est peint par la couche des tueurs.
  */
-export function sceneDeMort(c: TacticalContribution): SceneDuPlan {
+export function sceneDeMort(c: TacticalContribution, locale: Locale): SceneDuPlan {
   if (c.face !== 'mort' || !c.point) return SCENE_VIDE
   const marques: MarqueDeScene[] = [{ role: 'mort', pt: c.point, plein: true }]
   for (const m of c.equipe?.coequipiers ?? []) {
@@ -252,6 +254,9 @@ export function sceneDeMort(c: TacticalContribution): SceneDuPlan {
     const mate = (c.equipe?.coequipiers ?? []).find((m) => m.xuid === r.par_xuid)
     const de = r.point ?? mate?.point
     if (de) traits.push({ de, vers: c.autre_point })
+    // Le trait part de la position du coéquipier AU MOMENT DE SON FRAG, où il n'a aucun marqueur : un
+    // fantôme (plus petit, contour pointillé) l'y pose, avec le délai du frag.
+    if (r.point) marques.push({ role: 'fantome', pt: r.point, plein: false, etiquette: `+${decimale(r.delai_ms / 1000, locale)} s` })
   }
   const rayon = c.equipe?.rayon_m
   return { cercle: rayon == null ? null : { centre: c.point, rayonM: rayon }, traines: [], traits, marques }

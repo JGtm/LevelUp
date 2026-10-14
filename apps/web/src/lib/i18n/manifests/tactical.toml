@@ -579,10 +579,6 @@ en = "Killer downed {s} s after the death"
 fr = "par {who}"
 en = "by {who}"
 
-[tactical.mort.avenged_by_at]
-fr = "par {who}, à {d} m du tueur"
-en = "by {who}, {d} m from the killer"
-
 [tactical.mort.returned]
 fr = "Abattu en retour {s} s après le frag"
 en = "Downed in return {s} s after the frag"
@@ -658,3 +654,7 @@ en = "downed {s} s"
 [tactical.mort.tile_riposte_return]
 fr = "abattu en retour"
 en = "downed in return"
+
+[tactical.mort.legend_ghost]
+fr = "Coéquipier au moment du frag"
+en = "Teammate at the moment of the frag"

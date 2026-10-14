@@ -257,6 +257,7 @@ describe('vues A et B — la mort choisie', () => {
       ['mort', true],
       ['coequipier', true],
       ['coequipier', false],
+      ['fantome', false],
     ])
     expect(scene?.traits).toHaveLength(1)
     const legende = screen.getByTestId('tactical-plan-formes')
@@ -272,7 +273,7 @@ describe('vues A et B — la mort choisie', () => {
     rendrePlan(vue())
     const bulle = screen.getByTestId('tactical-echange')
     expect(bulle).toHaveTextContent('Tueur abattu 1,8 s après la mort')
-    expect(bulle).toHaveTextContent('par Kestrel 77, à 27 m du tueur')
+    expect(bulle).toHaveTextContent('par Kestrel 77')
   })
 
   it('sans séquence servie (rejeu absent ou 404) : pas de barre d’étapes', () => {
@@ -343,7 +344,7 @@ describe('UNE seule légende sous le plan', () => {
     const legendes = screen.getAllByTestId('tactical-plan-formes')
     expect(legendes).toHaveLength(1)
     const formes = [...legendes[0].querySelectorAll('[data-forme]')].map((n) => n.getAttribute('data-forme'))
-    expect(formes).toEqual(['mort', 'losange', 'rond', 'plein', 'creux', 'trait', 'cercle'])
+    expect(formes).toEqual(['mort', 'losange', 'rond', 'plein', 'creux', 'fantome', 'trait', 'cercle'])
     expect(new Set(formes).size).toBe(formes.length)
     expect(screen.queryByTestId('tactical-tueurs-legend')).toBeNull()
   })

@@ -22,6 +22,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -102,54 +103,83 @@ func (s *TacticalService) matchDeLaSequence(ctx context.Context, req domain.Tact
 	return univers.Matchs[0], rayon, ok
 }
 
-// acteursDeLaSequence compose les acteurs d'une mort depuis la BASE (journal, coequipiers de la
-// mort) et leur associe leur piste dans le film.
-func (s *TacticalService) acteursDeLaSequence(ctx context.Context, req domain.TacticalSequenceRequest,
-	pistes *domain.TacticalPistes) tactical.EntreeSequence {
-	parXUID := make(map[string][]domain.TacticalPistePoint, len(pistes.Tracks))
-	parBot := make(map[string][]domain.TacticalPistePoint)
+// viesDuFilm : les pistes de l'artefact rangees par porteur (xuid, ou nom de bot en minuscules), UNE
+// ENTREE PAR VIE et triees par premier instant. Les vies d'un porteur ne se concatenent JAMAIS : entre
+// deux vies il n'a pas de position (cf. `tactical.positionA`).
+type viesDuFilm struct {
+	parXUID map[string][][]domain.TacticalPistePoint
+	parBot  map[string][][]domain.TacticalPistePoint
+}
+
+func viesDesPistes(pistes *domain.TacticalPistes) viesDuFilm {
+	v := viesDuFilm{
+		parXUID: make(map[string][][]domain.TacticalPistePoint, len(pistes.Tracks)),
+		parBot:  make(map[string][][]domain.TacticalPistePoint),
+	}
 	for _, p := range pistes.Tracks {
-		// Un porteur peut avoir plusieurs vies : leurs points s'ajoutent, dans l'ordre du fichier.
+		if len(p.Points) == 0 {
+			continue
+		}
 		if p.XUID != "" {
-			parXUID[p.XUID] = append(parXUID[p.XUID], p.Points...)
+			v.parXUID[p.XUID] = append(v.parXUID[p.XUID], p.Points)
 		} else if p.Bot != "" {
-			parBot[strings.ToLower(p.Bot)] = append(parBot[strings.ToLower(p.Bot)], p.Points...)
+			cle := strings.ToLower(p.Bot)
+			v.parBot[cle] = append(v.parBot[cle], p.Points)
 		}
 	}
+	for _, vies := range v.parXUID {
+		trierLesVies(vies)
+	}
+	for _, vies := range v.parBot {
+		trierLesVies(vies)
+	}
+	return v
+}
+
+// trierLesVies range les vies par premier instant : l'ordre du fichier suit les sieges, pas le temps.
+func trierLesVies(vies [][]domain.TacticalPistePoint) {
+	sort.SliceStable(vies, func(i, j int) bool { return vies[i][0].T < vies[j][0].T })
+}
+
+// acteursDeLaSequence compose les acteurs d'une mort depuis la BASE (journal, coequipiers de la
+// mort) et leur associe leurs vies dans le film.
+func (s *TacticalService) acteursDeLaSequence(ctx context.Context, req domain.TacticalSequenceRequest,
+	pistes *domain.TacticalPistes) tactical.EntreeSequence {
+	vies := viesDesPistes(pistes)
 	in := tactical.EntreeSequence{
 		Victime: tactical.ActeurSequence{Role: domain.TacticalRoleVictime, XUID: req.VictimXUID,
-			Points: parXUID[req.VictimXUID]},
+			Vies: vies.parXUID[req.VictimXUID]},
 	}
 	journal, _ := s.lireLeJournal(ctx, req.MapID, []domain.TacticalContribution{
 		{MatchID: req.MatchID, Face: domain.TacticalFaceMort},
 	})
 	if mort := tactical.KillDeLaMort(journal[req.MatchID], req.VictimXUID, req.TimeMs); mort != nil {
 		in.Victime.Gamertag = mort.VictimGamertag
-		in.Tueur = tueurDeLaSequence(*mort, parXUID, parBot)
+		in.Tueur = tueurDeLaSequence(*mort, vies)
 	}
-	in.Coequipiers = s.coequipiersDeLaSequence(ctx, req, parXUID)
+	in.Coequipiers = s.coequipiersDeLaSequence(ctx, req, vies)
 	return in
 }
 
-// tueurDeLaSequence rend le tueur du journal avec sa piste : par xuid, a defaut par le nom du bot.
+// tueurDeLaSequence rend le tueur du journal avec ses vies : par xuid, a defaut par le nom du bot.
 // nil sans identite.
-func tueurDeLaSequence(mort domain.KillDuJournal, parXUID, parBot map[string][]domain.TacticalPistePoint) *tactical.ActeurSequence {
+func tueurDeLaSequence(mort domain.KillDuJournal, vies viesDuFilm) *tactical.ActeurSequence {
 	if mort.KillerXUID == "" && mort.KillerGamertag == "" {
 		return nil
 	}
 	a := &tactical.ActeurSequence{Role: domain.TacticalRoleTueur, XUID: mort.KillerXUID, Gamertag: mort.KillerGamertag}
 	if mort.KillerXUID != "" {
-		a.Points = parXUID[mort.KillerXUID]
+		a.Vies = vies.parXUID[mort.KillerXUID]
 	} else {
-		a.Points = parBot[strings.ToLower(mort.KillerGamertag)]
+		a.Vies = vies.parBot[strings.ToLower(mort.KillerGamertag)]
 	}
 	return a
 }
 
 // coequipiersDeLaSequence rend les coequipiers de la mort (lignes de `match_death_mates` de la ligne
-// de contexte appariee), chacun avec sa piste. Source absente : aucun coequipier.
+// de contexte appariee), chacun avec ses vies. Source absente ou lignes incoherentes : aucun coequipier.
 func (s *TacticalService) coequipiersDeLaSequence(ctx context.Context, req domain.TacticalSequenceRequest,
-	parXUID map[string][]domain.TacticalPistePoint) []tactical.ActeurSequence {
+	vies viesDuFilm) []tactical.ActeurSequence {
 	contextes, lus := s.lireLesContextes(ctx, req.MapID, []string{req.MatchID})
 	if !lus {
 		return nil
@@ -159,14 +189,14 @@ func (s *TacticalService) coequipiersDeLaSequence(ctx context.Context, req domai
 		return nil
 	}
 	mates := s.lireLesMates(ctx, req.MapID, []*domain.ContexteDeMort{c})
-	lignes := mates[cleDuContexte(c)]
-	if len(lignes) != c.Total {
+	lignes, ok := s.lignesCompletes(ctx, req.MapID, c, mates)
+	if !ok {
 		return nil
 	}
 	out := make([]tactical.ActeurSequence, 0, len(lignes))
 	for _, l := range lignes {
 		out = append(out, tactical.ActeurSequence{Role: domain.TacticalRoleCoequipier, XUID: l.MateXUID,
-			Gamertag: l.Gamertag, Points: parXUID[l.MateXUID]})
+			Gamertag: l.Gamertag, Vies: vies.parXUID[l.MateXUID]})
 	}
 	return out
 }

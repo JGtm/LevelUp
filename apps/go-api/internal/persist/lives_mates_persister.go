@@ -86,6 +86,10 @@ type bilanDesCoequipiers struct {
 // donnee inventee. Pour chaque mort : somme des lignes = `teammates_total`, comptes par etat =
 // colonnes, distance du plus proche visible = `nearest_teammate_m`. Une mort a `teammates_total`
 // > 0 sans aucune ligne est refusee (somme nulle contre total non nul).
+//
+// CONTRAT ASSUME : UN REFUS FAIT PERDRE LA PASSE ENTIERE (`PersistPass` valide tout AVANT d'ecrire) —
+// donc aussi `match_lives` et `match_death_context` du match pour cette passe, pas seulement les
+// coequipiers. Un producteur incoherent ne publie rien : la vue `_latest` garde la passe precedente.
 func validateMates(in LivesBatch) error {
 	lignes := make(map[cleDeMort]*bilanDesCoequipiers, len(in.Contexts))
 	for i := range in.Mates {

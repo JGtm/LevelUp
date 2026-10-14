@@ -29,7 +29,7 @@ export interface CouleursDesCoequipiers {
 }
 
 /** Opacités : le nuage se lit en masse, les marques d'une mort sont pleines. */
-const OPACITE = { nuage: 0.55, traine: 0.65, trait: 0.95, cercle: 0.55, remplissageCercle: 0.07 } as const
+const OPACITE = { nuage: 0.55, traine: 0.65, trait: 0.95, cercle: 0.55, remplissageCercle: 0.07, fantome: 0.25 } as const
 const LISERE_PX = 1.5
 const TRAIT_CERCLE_PX = 1.5
 const TIRETS_PX: readonly [number, number] = [5, 4]
@@ -38,6 +38,9 @@ const ANNEAU_MORT_PX = 2.5
 const FACTEUR_NUAGE = 0.6
 const FACTEUR_LOSANGE = 1.3
 const ANNEAU_CREUX_PX = 2
+const FACTEUR_FANTOME = 0.75
+const TIRETS_FANTOME_PX: readonly [number, number] = [2.5, 2]
+const TAILLE_ETIQUETTE_PX = 11
 
 type Projeter = (p: { x: number; y: number }) => { x: number; y: number }
 
@@ -71,6 +74,9 @@ function peindreUneMarque(
       ctx.fillStyle = c.allie
       disque(ctx, s.x, s.y, dim.rayonPoint * FACTEUR_NUAGE)
       ctx.fill()
+      return
+    case 'fantome':
+      peindreLeFantome(ctx, m, s, c, dim)
       return
     case 'mort':
       ctx.globalAlpha = 1
@@ -161,4 +167,34 @@ export function peindreLaScene(
   const ordre = [...scene.marques].sort((a, b) => Number(a.role === 'mort') - Number(b.role === 'mort'))
   for (const m of ordre) peindreUneMarque(ctx, m, projeter(m.pt), couleurs, dim)
   ctx.restore()
+}
+
+/** Le fantôme du frag : le coéquipier à l'instant de son coup, plus petit, contour pointillé, étiqueté. */
+function peindreLeFantome(
+  ctx: CanvasRenderingContext2D,
+  m: MarqueDeScene,
+  s: { x: number; y: number },
+  c: CouleursDesCoequipiers,
+  dim: DimensionsDeLaCouche,
+): void {
+  const r = dim.rayonPoint * FACTEUR_FANTOME
+  ctx.globalAlpha = 0.95
+  ctx.fillStyle = c.allie
+  disque(ctx, s.x, s.y, r)
+  ctx.globalAlpha = OPACITE.fantome
+  ctx.fill()
+  ctx.globalAlpha = 1
+  ctx.setLineDash([...TIRETS_FANTOME_PX])
+  ctx.strokeStyle = c.allie
+  ctx.lineWidth = ANNEAU_CREUX_PX
+  ctx.stroke()
+  ctx.setLineDash([])
+  if (!m.etiquette) return
+  ctx.font = `600 ${TAILLE_ETIQUETTE_PX}px sans-serif`
+  ctx.textBaseline = 'middle'
+  ctx.lineWidth = 3
+  ctx.strokeStyle = c.fond
+  ctx.strokeText(m.etiquette, s.x + r + 4, s.y)
+  ctx.fillStyle = c.allie
+  ctx.fillText(m.etiquette, s.x + r + 4, s.y)
 }

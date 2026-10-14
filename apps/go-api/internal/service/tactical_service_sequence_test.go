@@ -198,3 +198,28 @@ func TestSequence_SourcesDeLaBaseAbsentes_LaSequenceReste(t *testing.T) {
 		t.Errorf("acteurs = %+v, attendu la seule victime", seq.Acteurs)
 	}
 }
+
+// Les vies d'un meme porteur restent separees et se lisent dans le temps, quel que soit l'ordre du fichier :
+// la victime qui meurt a l'image 20 et reapparait plus tard n'a aucune position entre les deux.
+func TestSequence_LesViesNeSeConcatenentPas(t *testing.T) {
+	repo, store := corpusSequence()
+	retour := ligneDePiste(tsMoi, "", 60, 80, fixe(300)) // reapparait a 6 000 ms de film = +5 s apres sa mort
+	store.pistes.Tracks = append([]domain.TacticalPiste{retour}, store.pistes.Tracks...)
+	seq, err := serviceSequence(repo, store).Sequence(context.Background(), demandeSequence())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range seq.Acteurs {
+		if a.XUID != tsMoi {
+			continue
+		}
+		for _, p := range a.Points {
+			if p.OffsetMs > 0 {
+				t.Fatalf("la victime a une position a %+d ms : la vie suivante ne la fait pas continuer", p.OffsetMs)
+			}
+		}
+	}
+	if seq.Mort.X != 20 {
+		t.Errorf("point de mort = %+v, attendu x = 20 (la vie qui contient l'instant)", seq.Mort)
+	}
+}

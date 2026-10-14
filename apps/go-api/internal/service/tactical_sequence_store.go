@@ -34,6 +34,11 @@ func NewTacticalSequenceStore(runtimeRoot, titleSlug string) port.TacticalSequen
 }
 
 // Pistes lit les pistes de l'artefact d'un match, ou (nil, nil) s'il n'y en a pas.
+//
+// LE FICHIER ENTIER EST LU ET DECODE A CHAQUE SEQUENCE, SANS CACHE : decision 9 du plan
+// `.ai/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md` (une sequence est un geste de l'utilisateur, pas une
+// page). Mesure du lot L2.9 : 123 a 139 ms sur le plus gros artefact du parc (13,4 Mo), sous le seuil de
+// 500 ms ; un cache n'est justifie que si cette mesure change.
 func (s *tacticalSequenceStore) Pistes(ctx context.Context, matchID string) (*domain.TacticalPistes, error) {
 	path := title.NewPathResolver(s.runtimeRoot).ReplayArtifactPath(s.titleSlug, matchID)
 	stop := timing.FromContext(ctx).Section("tactical_sequence_artefact")

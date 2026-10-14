@@ -175,8 +175,8 @@ export function TacticalPlanCard({
     [selected, lue, raisonVide, contributions, sequenceAffichee],
   )
   const sceneMort = useMemo(
-    () => (selected && lue && raisonVide === null ? sceneDeLaVue(contributions, vue) : SCENE_VIDE),
-    [selected, lue, raisonVide, contributions, vue],
+    () => (selected && lue && raisonVide === null ? sceneDeLaVue(contributions, vue, locale) : SCENE_VIDE),
+    [selected, lue, raisonVide, contributions, vue, locale],
   )
 
   return (

@@ -114,6 +114,8 @@ function Glyphe({ forme }: { forme: FormeDeLegende }) {
       return <span aria-hidden className="inline-block size-2 rotate-45" style={{ backgroundColor: tokenCssVar('team-enemy') }} data-forme="losange" />
     case 'victime':
       return <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: tokenCssVar('team-enemy') }} data-forme="rond" />
+    case 'fantome':
+      return <span aria-hidden className="inline-block size-2 rounded-full border border-dashed bg-transparent" style={{ borderColor: tokenCssVar('team-ally') }} data-forme="fantome" />
     case 'plein':
       return <span aria-hidden className="inline-block size-2.5 rounded-full" style={allie} data-forme="plein" />
     case 'creux':

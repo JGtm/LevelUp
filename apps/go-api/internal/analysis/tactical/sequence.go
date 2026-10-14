@@ -48,7 +48,9 @@ type ActeurSequence struct {
 	Role     string
 	XUID     string
 	Gamertag string
-	Points   []domain.TacticalPistePoint
+	// Vies : les pistes de l'acteur dans le film, UNE PAR VIE (un acteur qui meurt et reapparait en a
+	// plusieurs, eventuellement sur des sieges differents). Vide si le film ne le porte pas.
+	Vies [][]domain.TacticalPistePoint
 }
 
 // EntreeSequence porte tout ce que la sequence lit.
@@ -70,31 +72,18 @@ type EntreeSequence struct {
 // pos est une position du plan, en metres monde.
 type pos struct{ x, y float64 }
 
-// positionA rend la position interpolee de la piste a `filmMs`, ou faux : avant le premier point ou
-// apres le dernier (a une image de tolerance), ou dans une lacune (`G > 0` sur le point suivant).
-func positionA(points []domain.TacticalPistePoint, intervalMs int, filmMs int64) (pos, bool) {
-	n := len(points)
-	if n == 0 || intervalMs <= 0 {
-		return pos{}, false
-	}
+// dansLaVie rend la position interpolee d'UNE vie a `filmMs`, qui doit tomber entre son premier et son
+// dernier point ; faux dans une lacune (`G > 0` sur le point suivant : le film n'a rien replique).
+func dansLaVie(points []domain.TacticalPistePoint, intervalMs int, filmMs int64) (pos, bool) {
 	ms := func(i int) int64 { return int64(points[i].T) * int64(intervalMs) }
-	tolerance := int64(toleranceDeBordImages * intervalMs)
-	i := sort.Search(n, func(k int) bool { return ms(k) >= filmMs })
-	switch {
-	case i == n: // apres le dernier point
-		if filmMs-ms(n-1) <= tolerance {
-			return pos{float64(points[n-1].X), float64(points[n-1].Y)}, true
-		}
-		return pos{}, false
-	case ms(i) == filmMs:
-		return pos{float64(points[i].X), float64(points[i].Y)}, true
-	case i == 0: // avant le premier point
-		if ms(0)-filmMs <= tolerance {
-			return pos{float64(points[0].X), float64(points[0].Y)}, true
-		}
+	i := sort.Search(len(points), func(k int) bool { return ms(k) >= filmMs })
+	if i == len(points) {
 		return pos{}, false
 	}
-	p0, p1 := points[i-1], points[i]
+	if ms(i) == filmMs {
+		return pos{float64(points[i].X), float64(points[i].Y)}, true
+	}
+	p0, p1 := points[i-1], points[i] // i > 0 : l'appelant a verifie filmMs >= premier point
 	if p1.G > 0 {
 		return pos{}, false
 	}
@@ -105,42 +94,77 @@ func positionA(points []domain.TacticalPistePoint, intervalMs int, filmMs int64)
 	}, true
 }
 
-// lacuneEntre dit qu'un point a lacune tombe dans ]t0, t1] : la trace ne se relie pas.
-func lacuneEntre(points []domain.TacticalPistePoint, intervalMs int, t0, t1 int64) bool {
-	for _, p := range points {
-		t := int64(p.T) * int64(intervalMs)
-		if t > t0 && t <= t1 && p.G > 0 {
-			return true
+// positionA rend la position de l'acteur a `filmMs` et l'indice de la VIE qui la porte, ou faux.
+//
+// CHAQUE VIE EST UNE PISTE A PART, et la position se cherche dans la seule vie qui CONTIENT l'instant :
+// entre la derniere image d'une vie et la premiere de la suivante, l'acteur n'a pas de position (il est
+// mort, ou pas encore reapparu) — interpoler de l'une a l'autre le ferait « continuer » apres sa mort.
+// La tolerance d'une image ne vaut qu'aux BORNES d'une vie (la replication s'arrete ~34 ms apres la mort).
+func positionA(vies [][]domain.TacticalPistePoint, intervalMs int, filmMs int64) (pos, int, bool) {
+	if intervalMs <= 0 {
+		return pos{}, 0, false
+	}
+	tolerance := int64(toleranceDeBordImages * intervalMs)
+	bord, bordPos := -1, pos{}
+	for v, points := range vies {
+		n := len(points)
+		if n == 0 {
+			continue
+		}
+		debut, fin := int64(points[0].T)*int64(intervalMs), int64(points[n-1].T)*int64(intervalMs)
+		switch {
+		case filmMs >= debut && filmMs <= fin:
+			p, ok := dansLaVie(points, intervalMs, filmMs)
+			return p, v, ok
+		case bord < 0 && filmMs < debut && debut-filmMs <= tolerance:
+			bord, bordPos = v, pos{float64(points[0].X), float64(points[0].Y)}
+		case bord < 0 && filmMs > fin && filmMs-fin <= tolerance:
+			bord, bordPos = v, pos{float64(points[n-1].X), float64(points[n-1].Y)}
+		}
+	}
+	return bordPos, bord, bord >= 0
+}
+
+// lacuneEntre dit qu'un point a lacune d'une vie tombe dans ]t0, t1] : la trace ne se relie pas.
+func lacuneEntre(vies [][]domain.TacticalPistePoint, intervalMs int, t0, t1 int64) bool {
+	for _, points := range vies {
+		for _, p := range points {
+			t := int64(p.T) * int64(intervalMs)
+			if t > t0 && t <= t1 && p.G > 0 {
+				return true
+			}
 		}
 	}
 	return false
 }
 
-// traceDe echantillonne un acteur toutes les SequencePasMs de −8 s a +3 s autour de la mort.
+// traceDe echantillonne un acteur toutes les SequencePasMs de −8 s a +3 s autour de la mort. Un
+// echantillon est marque `Coupure` quand l'acteur etait absent juste avant, que le film a une lacune
+// entre les deux, ou que la vie a change.
 func traceDe(a ActeurSequence, in EntreeSequence) domain.TacticalSequenceActeur {
 	out := domain.TacticalSequenceActeur{Role: a.Role, XUID: a.XUID, Gamertag: a.Gamertag,
 		Points: []domain.TacticalSequencePoint{}}
-	precedentPresent := false
+	precedentPresent, precedentVie := false, 0
 	for off := -SequenceAvantMs; off <= SequenceApresMs; off += SequencePasMs {
 		t := in.MortFilmMs + int64(off)
-		p, ok := positionA(a.Points, in.FrameIntervalMs, t)
+		p, vie, ok := positionA(a.Vies, in.FrameIntervalMs, t)
 		if !ok {
 			precedentPresent = false
 			continue
 		}
 		coupure := (!precedentPresent && len(out.Points) > 0) ||
-			(precedentPresent && lacuneEntre(a.Points, in.FrameIntervalMs, t-SequencePasMs, t))
+			(precedentPresent && (vie != precedentVie || lacuneEntre(a.Vies, in.FrameIntervalMs, t-SequencePasMs, t)))
 		out.Points = append(out.Points, domain.TacticalSequencePoint{
 			OffsetMs: off, X: Arrondi2(p.x), Y: Arrondi2(p.y), Coupure: coupure,
 		})
-		precedentPresent = true
+		precedentPresent, precedentVie = true, vie
 	}
 	return out
 }
 
 // Sequence assemble la sequence d'une mort, ou ErrSequenceSansMort.
 func Sequence(in EntreeSequence) (domain.TacticalSequence, error) {
-	mort, ok := positionA(in.Victime.Points, in.FrameIntervalMs, in.MortFilmMs)
+	mort, _, ok := positionA(in.Victime.Vies, in.FrameIntervalMs, in.MortFilmMs)
 	if !ok {
 		return domain.TacticalSequence{}, ErrSequenceSansMort
 	}
@@ -169,7 +193,7 @@ func etapeA(off int, in EntreeSequence, pointMort domain.TacticalPoint) domain.T
 	t := in.MortFilmMs + int64(off)
 	centre := pointMort
 	if off < 0 {
-		if p, ok := positionA(in.Victime.Points, in.FrameIntervalMs, t); ok {
+		if p, _, ok := positionA(in.Victime.Vies, in.FrameIntervalMs, t); ok {
 			centre = domain.TacticalPoint{X: Arrondi2(p.x), Y: Arrondi2(p.y)}
 		}
 	}
@@ -179,7 +203,7 @@ func etapeA(off int, in EntreeSequence, pointMort domain.TacticalPoint) domain.T
 		e.InstantAfficheMs = &v
 	}
 	for _, c := range in.Coequipiers {
-		p, ok := positionA(c.Points, in.FrameIntervalMs, t)
+		p, _, ok := positionA(c.Vies, in.FrameIntervalMs, t)
 		if !ok {
 			continue
 		}

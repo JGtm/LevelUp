@@ -47,8 +47,7 @@ export function getMortText(m: Formateur) {
       m('tactical.mort.detail_summary', { inside, beyond, out, r }),
     mortDetailSummaryNoRadius: (n: number) => m('tactical.mort.detail_summary_no_radius', { n }),
     mortAvenged: (s: string) => m('tactical.mort.avenged', { s }),
-    mortAvengedBy: (who: string, d: string | undefined) =>
-      d === undefined ? m('tactical.mort.avenged_by', { who }) : m('tactical.mort.avenged_by_at', { who, d }),
+    mortAvengedBy: (who: string) => m('tactical.mort.avenged_by', { who }),
     mortReturned: (s: string) => m('tactical.mort.returned', { s }),
     mortLegend: {
       death: m('tactical.mort.legend_death') as string,
@@ -56,6 +55,7 @@ export function getMortText(m: Formateur) {
       allyOut: m('tactical.mort.legend_ally_out') as string,
       cloud: m('tactical.mort.legend_cloud') as string,
       riposte: m('tactical.mort.legend_riposte') as string,
+      ghost: m('tactical.mort.legend_ghost') as string,
       killer: m('tactical.mort.legend_killer') as string,
       radius: (r: string) => m('tactical.mort.legend_radius', { r }),
     },
