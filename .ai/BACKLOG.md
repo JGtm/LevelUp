@@ -27,8 +27,7 @@ Constats déjà établis (2026-10-09 → 2026-10-14) :
   par la garde démo du lot recos-d) + test avec chemins encodés.
 - **Faille de lecture de fichiers arbitraires** sous `/static/commendations/` (depuis le 2026-04-23) :
   CORRIGÉE et déployée le 2026-10-09 (PR #89). Exposition possible avant le 2026-09-25 (début des
-  journaux nginx conservés) : **décision du user** sur la rotation des secrets (secret client Azure,
-  secret de session, jetons de rafraîchissement des joueurs).
+  journaux nginx conservés) : **décision du user du 2026-10-14 : pas de rotation des secrets**.
 - **Vulnérabilités de la bibliothèque standard Go** atteintes (govulncheck au pre-push : http2,
   `http.Error`, `csv.Writer.Flush`) : monter la version de Go.
 
@@ -37,22 +36,6 @@ routes publiques et démo, service de fichiers, classification lecture/écriture
 d'accès par joueur (ownership), limites de débit, tailles de requêtes et d'envois, en-têtes de
 sécurité, messages d'erreur qui divulguent — puis correction des constats recevables, avec un
 garde-rail par classe de défaut (comme le ratchet de la garde démo). **Effort : M.**
-
----
-
-### [demo] Un rejeu figé par mode de jeu dans la démo, toujours au dernier schéma
-
-Demandé par l'utilisateur le 2026-10-09. La démo ne synchronise pas et ne construit aucun rejeu :
-aujourd'hui elle n'en montre aucun (le rejeu n'est servi qu'en local). Comme pour les médias, la
-démo doit embarquer **au moins un rejeu par mode de jeu** (Assassin, CTF, Bases, Colline, Oddball,
-Assaut, Total Control, Extraction, Fiesta… selon les films disponibles), sur un **jeu de matchs
-figé**. À chaque montée du schéma d'artefact, ces matchs doivent être **recuits automatiquement**
-pour que la démo serve toujours le dernier schéma.
-
-Points à instruire : films sources conservés avec la démo (pas seulement les artefacts) ;
-anonymisation des noms et xuid dans l'artefact cohérente avec celle de la démo ; exception au garde
-« rejeu local seulement » limitée à ces matchs en mode démo ; déclencheur de recuisson (seed-demo,
-boot de la démo ou CI) ; un film par processus (borne mémoire). **Effort : M.**
 
 ---
 
@@ -84,38 +67,18 @@ d'objectifs (même recette que recos-a), puis cuire le témoin. **Effort : S.**
 
 ---
 
-### [data/h5] Les player DB Halo 5 sont hors de la boucle de migration du boot
+### [demo] Restes de la démo publique après le lot recos-d
 
-Noté le 2026-09-27 (plan backlog du 2026-09-26, lot B3.9, DB-20). Une copie de
-`data/titles/halo_5/players/JGtm/stats.duckdb` avait **12 étapes de migration de retard**
-(`player_dominance_flag_reset_none_v1`, `drop_arc_titles`, etc.). Les player DB Halo 5 ne passent
-donc par aucune migration au démarrage du serveur. Seul le soin d'`EnsurePlayerSchema`, rejoué à
-chaque ouverture, les atteint : c'est par lui que les index ART retirés le 2026-09-27 y sont
-enlevés. **Impact** : toute évolution de schéma player livrée par une étape de migration (et non
-par l'autorité DDL) n'arrive jamais sur Halo 5. **À instruire** : pourquoi la boucle du boot saute
-ces bases (multi-titre, profils), puis rattraper les 12 étapes. **Effort : S-M.**
-**Cause établie le 2026-10-09** : la boucle « migrations player » du boot (`cmd/server/main.go`) calcule le chemin avec le seul titre par défaut (`pr.PlayerDBPath(titleSlug, …)`) ; elle doit parcourir les titres de chaque profil.
-
----
-
-### [demo] Routes de mutation encore ouvertes en démo, et deux contrats de refus
-
-Noté le 2026-09-27 (plan backlog, lots B5 et B-C, DB-28/34/35/36/38/39/41). Le mode démo est
-désormais hermétique côté fichiers : la preuve de bout en bout du 2026-09-27 donne 0 écriture dans
-le vrai checkout. Quatre mutations y répondent 403 `demo_mode_forbidden` : création de profil,
-purge d'un titre, abonnements du watcher, sauvegarde. Restent :
-- **ouvertes en démo** : `PATCH /profiles/{p}/titles/{t}/sync` (écrit le `db_profiles.json` de la
-  fixture), `POST /watcher/auth/start` (magasin de tokens enraciné sur le dépôt ; sortie réseau non
-  vérifiée) et, plus largement, les actions admin (`RequireAdmin` est transparent en démo) ;
-- **deux contrats de refus** qui coexistent : 403 `demo_mode_forbidden` et 422
-  `demo_mode_unsupported` (`handlers/settings.go`) ;
-- **fuites de lecture et affichage** : overlay des socles lu au dépôt ; section Identités avec
-  `dir_exists`/`db_exists` à false en démo ; une CLI lancée avec `LEVELUP_DEMO_MODE=true` écrit
-  dans les bases de la fixture.
-
-**Décision à prendre (contrat d'API)** : une garde « démo en lecture seule » générale, avec une
-liste des POST de lecture autorisés (compare, filters/resolve…), plutôt que des refus route par
-route. **Effort : M.**
+Le lot recos-d (fusionné le 2026-10-14) rend la démo strictement en lecture seule (garde générale,
+un seul refus 403 `demo_mode_forbidden`), anonymise à la copie avec contrôle à chaque seed, publie
+seulement une démo contrôlée et sert dix rejeux figés masqués. Restent :
+- DB-39 : section Identités avec `dir_exists`/`db_exists` à false en démo ;
+- DB-41 : une CLI lancée avec `LEVELUP_DEMO_MODE=true` écrit dans les bases de la fixture ;
+- `POST …/prestige/challenges/{id}/suggest-next` est une lecture classée écriture (refusée en démo) ;
+- le test E2E `media-like-bug.spec.ts` suppose un like possible en démo ;
+- `weapon_kills` encore déclarée dans la liste d'extraction de la démo (table disparue) ;
+- déploiement : provisionner une fois `data/demo_films/` sur le VPS (commande au runbook).
+**Effort : S.**
 
 ---
 
@@ -137,23 +100,6 @@ puis trier chaque entrant, comme pour B4. **Effort : M.**
 
 ---
 
-### [data/ART] Autres index secondaires des player DB à réexaminer avec la recette MSR
-
-Noté le 2026-09-27 (plan backlog, lot B3, DB-13/14/15/16).
-- `steps_player_lusr_components_append_only.go:17-20` justifie `idx_lch_*` par « le même
-  raisonnement que les idx_msr_* », raisonnement désormais réfuté. Même question pour
-  `idx_pme_match_lookup` et `idx_pcs_lookup`.
-- `cmd/purge_foreign_lusr_chain` rejoue tous les index présents au moment de son swap, y compris
-  des `idx_msr_*` qu'un binaire plus ancien aurait recréés (le soin d'`EnsurePlayerSchema` les
-  retire ensuite).
-- Sept fixtures de test créent encore des `idx_msr_*` dans leur DDL locale.
-- **Méthode** : en DuckDB 1.5.5, `EXPLAIN` seul ne montre JAMAIS l'index. Seul `EXPLAIN ANALYZE`
-  fait foi ; le banc `psa_index_repro_msr_planprobe_test.go` (tag `psarepro`) est le modèle.
-
-**Effort : S par table.**
-
----
-
 ### [rejeu/données] Vues match sans tableau des scores : ni écran ni son de fin
 
 Noté le 2026-09-27 (plan backlog, lot A1.5, DA-5). Sur ce poste, plusieurs matchs du cache
@@ -169,12 +115,9 @@ la production est touchée. Même lot : la fixture démo lève une ERROR au boot
 
 ### [go/hygiène] Petites dettes relevées par le lot backlog du 2026-09-26
 
-Noté le 2026-09-27 (DB-1/2/8/9/18/22/23/24, limite B2, revue ronde 2). Chaque point est à
-traiter à la prochaine retouche du fichier :
-- `cmd/levelup/cmd_restore_csr.go:101` fait un DELETE sur une table append-only (ADR 0026) ;
-- `api/wire/post_sync_deltas_snapshot.go:238` : nombre magique `outcome = 2` ;
-- `cmd/diag_exec` ouvre la base en écriture par un `sql.Open` direct, hors du modèle mono-écrivain ;
-- `service.FanoutService` n'a aucun appelant de production (code mort) ;
+Noté le 2026-09-27 (DB-1/2/8/9/18/22/23/24, limite B2, revue ronde 2) ; réduit le 2026-10-14 (lots C et E
+des recommandations du registre : restore-csr, `outcome = 2`, `diag_exec`, `FanoutService`, fichier prestige
+de 525 L et test LUSR au temps réel traités). Reste, à la prochaine retouche du fichier :
 - `LoadAxisSamples` et `ListRecentPvPMatchIDs` lisent `start_time` brut (règle n°8) et avalent des
   erreurs de `Scan` ;
 - aucune CLI ne migre une player DB désignée ;
@@ -182,10 +125,6 @@ traiter à la prochaine retouche du fichier :
   son godoc) ;
 - le paramètre `title_slug` de `GET /squads` n'a plus d'effet (le titre vient du `PlayerDB`) : le
   retirer change le contrat OpenAPI ;
-- `api/wire/prestige_lazy_service.go` est passé de 519 à 525 lignes (commentaire), au-dessus du
-  seuil de 500 ;
-- `TestLUSRV2Shadow_RafalesBornees_300Candidats` mesure du temps réel et échoue quand le poste est
-  chargé.
 
 **Effort : XS à S chacun.**
 

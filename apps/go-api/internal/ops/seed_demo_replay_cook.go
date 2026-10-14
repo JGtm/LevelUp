@@ -33,13 +33,13 @@ import (
 // déploiement de la démo derrière une passe de cuisson.
 const demoReplayLockWait = 10 * time.Minute
 
-// demoReplaySoftLimit : le plafond mémoire SOUPLE d'un enfant de recuisson démo — 768 Mio, le
-// dur étant 25 % au-dessus (960 Mio). Il est fixé pour l'hôte de la démo (VPS de 2 Go, prod et
-// démo arrêtées pendant le seed), et non au défaut des passes (3 Gio) qui le dépasse. Les
-// rejeux figés y tiennent tous, le plus lourd (Firefight, 58 morceaux) en travaillant au plafond
-// souple ; un film qui franchirait le dur est abandonné et son artefact précédent reste servi.
-// Mesure par film au journal du lot recos-d (revue R1, P2-7).
-const demoReplaySoftLimit uint64 = 768 << 20
+// demoReplaySoftLimit : le plafond mémoire SOUPLE d'un enfant de recuisson démo — 1 Gio, le dur
+// étant 25 % au-dessus (1,25 Gio). Il est fixé pour l'hôte de la démo (VPS de 1,8 Go de RAM et
+// 2 Go d'échange, prod et démo arrêtées pendant le seed), et non au défaut des passes (3 Gio)
+// qui le dépasse. Pic mesuré le 2026-10-14 sur les dix rejeux figés (schéma 93, sans plafond) :
+// 0,19 à 0,71 Gio, sauf le Firefight de 58 morceaux à 0,97 Gio — d'où 1 Gio (768 Mio l'aurait
+// abandonné). Un film qui franchirait le dur est abandonné et son artefact précédent reste servi.
+const demoReplaySoftLimit uint64 = 1 << 30
 
 // demoReplayTool nomme le détenteur du verrou de décodage pendant la recuisson.
 const demoReplayTool = "seed-demo"

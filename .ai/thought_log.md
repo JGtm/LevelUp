@@ -117242,3 +117242,10 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : corpus — seul `60ae07c4` change (bipèdes fermés 1 → 328/332, dotations de naissance 5 → 171, morts identiques) ; parc — 12 films HI_1_8_0 de 1 263 à 7 042 fermés tous films confondus, 0 perte ; formats 20-21 et versions ≥ 0x26 identiques (documents publiés).
 
 **Conclusion / prochaine étape** : R3, world-object i0 sous la portée puis rigid-body i18.
+## [2026-10-14] Clôture du plan des recommandations du registre — Complété
+
+**Décision technique principale** : plafond mémoire de la recuisson des rejeux de la démo fixé sur mesure (1 Gio souple, 1,25 Gio dur) au lieu des 768 Mio non mesurés du lot D ; mesure faite après la recuisson commune, un film à la fois, artefacts et faits de film sauvegardés puis restaurés à l'identique.
+
+**Résultats observés** : pics de 0,19 à 0,71 Gio sur neuf films, 0,97 Gio sur le Firefight de 58 morceaux (qu'un plafond de 768 Mio aurait abandonné sur le VPS de 1,8 Go). Registre des reports : 25 lignes traitées et deux sections vides retirées ; backlog : rejeu démo, migrations Halo 5, index secondaires retirés, restes de la démo et petites dettes réduits. Worktrees `LevelUp-wt-recos-{a..f}` et `LevelUp-wt-hotfix-static`, branches locales et distantes `feat/recos-*` et `fix/static-traversal`, caches Go dédiés et scratchpad (3 Go) supprimés. Sauvegardes de bases conservées sous `data/backups/` (avant lot C, avant lot F, jetons d'avant l'import de prod).
+
+**Conclusion / prochaine étape** : plan clos. Ouverts côté user : rotation des secrets après la faille corrigée, staging v8 à refaire hors de la racine du dépôt VPS, chantier « sécurité » du backlog avant partage plus large.

@@ -114,8 +114,8 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 ## Clôture
 
 - [x] Fusions dans `feat/v75` (accord du user) : A, B, C, E, F, D ; CI à relever sur 75617a513.
-- [ ] Registre et backlog : lignes traitées retirées.
-- [ ] Nettoyage : worktrees et branches locales et distantes `feat/recos-*`, caches dédiés,
+- [x] Registre et backlog : lignes traitées retirées (2026-10-14 : 25 lignes et 2 sections vides du registre ; backlog : rejeu démo, migrations Halo 5, index secondaires retirés, routes démo et petites dettes réduites aux restes).
+- [x] Nettoyage (2026-10-14) : worktrees et branches locales et distantes `feat/recos-*` et `fix/static-traversal`, caches dédiés,
   fichiers temporaires.
 
 ## Journal
@@ -146,6 +146,8 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - 2026-10-14 : le user valide la mesure du plafond mémoire de la recuisson démo (après la recuisson commune) et demande d'inscrire au backlog le durcissement de sécurité du site (« sûr et solide, pas le Pentagone ») avant son partage plus large.
 
 - 2026-10-14 : tests complémentaires F (`7f1917908`) et D (`d190f85d7`) verts. Après la recuisson commune de levelup-57 (schéma 93) : air arrêté, sauvegarde `data/backups/avant_recos_f_2026-10-14/` (bases partagées Halo Infinite et Halo 5), fusion de `feat/recos-f` puis `feat/recos-d` (seul conflit : les blocs datés de `scripts/check_test_baseline.sh`, les deux gardés), OpenAPI et types générés à jour, tests archlint/migration/api/middleware/modelabel/ops/replaychild/invariants verts ; boot : `shared_recompute_mode_category_v1` 762 paires, 4 254 lignes corrigées, `idx_registry_mode_category` retiré, Halo 5 sans effet, 0 ERROR, /health ok.
+
+- 2026-10-14 : pic mémoire mesuré sur les dix rejeux figés de la démo (schéma 93) : 0,19 à 0,71 Gio, Firefight (58 morceaux) 0,97 Gio → plafond de recuisson démo porté de 768 Mio à 1 Gio (`7517ceafa`) ; artefacts et faits remis à l'identique après la mesure. Registre et backlog purgés, worktrees, branches et caches du chantier supprimés. PLAN CLOS.
 
 ## Découvertes
 
