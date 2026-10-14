@@ -53,6 +53,11 @@ Tranchées le 14/10 (second message du user) :
   -1 dBTP comme les autres, stem `translocator_teleport`). Répulseur : « déjà bon » — le son
   existant du répulseur est retenu, aucun nouveau son ; il sera rejoué sur la poussée lue dans le
   film (F4) en plus du kill.
+- **D-3 ter** (user, 14/10, second message) : le choix `152544be` est SUSPENDU. Le user veut les
+  sons NATIFS du jeu (pose et téléportation), pas un rendu isolé d'une banque : un agent Sonnet
+  explore (lot S) — fichier natif, ou recombinaison du geste tel que le moteur le joue (blend
+  piloté par paramètre, cf. HANDOFF_SONS_RECONSTITUTION H4) ; Ghidra ouvert par le user.
+  B3 et B4 passent au lot F (ils dépendent de S et de la pose publiée).
 - **D-10** CSR : classé ⟺ `RankRecap.PostMatchCsr.InitialMeasurementMatches > 0`, la règle
   d'OpenSpartan Workshop (`MatchTableEntity.IsRanked`, champ extrait par
   `Queries/Select/PlayerMatches.sql:52`). Validé par le user.
@@ -115,11 +120,11 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   `positionAt`/`trailAt` (ou l'appelant `replayMarkers.ts`) ne relient jamais départ et arrivée.
 - [ ] B2 Calque dédié aux failles APRÈS les trajectoires dans `LAYER_ORDER` ; éclat daté aux deux
   bouts (~1,2 s, `TRANSLOCATION_FLASH_S`), faille lisible (taille, animation) ; tokens.
-- [ ] B3 Son de téléportation déclenché par `translocations[]` (geste choisi par le user, D-3) ;
+- [~] B3 (déplacé en F4 bis, D-3 ter) Son de téléportation déclenché par `translocations[]` (geste choisi par le user, D-3) ;
   le déclencheur `translocator_beacon → translocator_deploy` (mort depuis début septembre) est
   rebranché sur la pose dès qu'elle est publiée (F2), son test fabriqué est remplacé par un test
   sur données réelles.
-- [ ] B4 Garde-rail : aucun son de pose sur une famille `kind = "carried"` du manifeste ; chaque son
+- [~] B4 (déplacé en F4 bis) Garde-rail : aucun son de pose sur une famille `kind = "carried"` du manifeste ; chaque son
   de pose a au moins un déclencheur réel dans les fixtures.
 - [ ] B5 Bandeau à manches : retrait du texte `a - b` et de son code mort (`roundsTally`, clés
   i18n, tests) ; « Manche X » en gras, couleur premier plan, 11 px.
@@ -159,6 +164,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   icône d'arme (`arme_image_url`/`arme_image_tinted` publiés via l'adapter d'assets,
   `WeaponIcon` du fil du rejeu, repli texte) ; score coloré par l'issue, mot d'issue retiré
   (gardé en infobulle). `openapi.yaml` + `make generate-types`.
+- [ ] D5 = H3 (`seasons_catalog`, Go court).
 - Gate : Go des paquets touchés + vitest/tsc/eslint ; clic de zone sans barre au navigateur.
 
 ### Lot E — Escouade et Séries temporelles (Sonnet)
@@ -182,6 +188,13 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   l'habituel → valeur lisible ».
 - Gate : vitest/tsc/eslint (+ Go si E1) ; Escouade et Séries temporelles au navigateur.
 
+### Lot S — Sons natifs du translocateur (Sonnet, lecture seule du dépôt, en parallèle)
+- [ ] S1 Retrouver la pose et la téléportation telles que le jeu les joue : événements de la
+  banque de l'appareil et de la balise, chaîne équipement → effet → son, blend et paramètre
+  qui le pilote ; Ghidra (HTTP 127.0.0.1:8089, lecture seule) pour nommer les événements.
+- [ ] S2 Rendus candidats (pose, téléportation) dans le scratchpad + rapport ; le superviseur
+  les ajoute à la planche d'écoute, le user choisit.
+
 ### Lot F — Film : poussée du répulseur et pose de faille (Opus ; après fusion images-clés)
 - [ ] F1 Instruction répulseur, seuil écrit d'avance : lire les 104/105/119 par la grammaire de
   PRODUCTION (vue A), pas le harnais R12 (palette non classée sur ce build), sur 215e7022 et
@@ -199,6 +212,9 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - [ ] F4 Web : schéma, normalisation, son de poussée (source du jeu identifiée, choix à l'oreille
   du user), onde visuelle (modèle `thrusterDashFx.ts`), pose de faille datée et sonore
   (`translocator_deploy` rebranché sur la vraie pose).
+- [ ] F4 bis (ex-B3/B4) Son de téléportation (choix S2) sur `translocations[]` ; son de pose
+  rebranché sur la pose publiée ; test fabriqué remplacé par un test sur données réelles ;
+  garde-rail : chaque son de pose a un déclencheur réel dans les fixtures.
 - [ ] F5 `REFERENCE_CANAUX_EQUIPEMENT` corrigé (geste vs effet).
 - Gate : tests grammaire/replay, `TestCodecCouvreFilmInputs`, archlint (surface `decfilm`),
   rejeu de 0d9a9af9 et 1b2d9e08 cuit À L'UNITÉ et lu à 1× ; recuisson du parc en H2.
@@ -219,7 +235,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   recuisson commune du lot images-clés ; relever couronne, score et porteur ; consigner les
   défauts VIP (pont d'identité de la couronne, registre l.40) sans les traiter.
 - [ ] H2 (accord explicite requis) Recuisson du parc au schéma du lot F + passes aval.
-- [ ] H3 `seasons_catalog` (l'appel en direct est fiable, D-9) : confirmer la cause des 401/403
+- [~] H3 (exécuté par le lot D, item D5) `seasons_catalog` (l'appel en direct est fiable, D-9) : confirmer la cause des 401/403
   intermittents (jeton de la requête expiré au moment de l'appel, cf. G7) ; sur 401/403, un seul
   nouvel essai après rafraîchissement du jeton (helper existant, jamais de recapture) ; l'échec
   d'un lecteur ne bloque plus le titre entier 30 min ; niveau WARN au changement d'état ; test.
