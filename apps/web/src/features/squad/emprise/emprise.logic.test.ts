@@ -98,11 +98,10 @@ describe('squadPickupSheets — les fiches de l’escouade seule (Escouade › E
   const all = buildPickupSheets(EMPRISE_2209, nameOf)
   const only = squadPickupSheets(all)
 
-  it('pas de fiche du reste du camp ; totaux, dominantes et pertes alignés sur les fiches restantes', () => {
+  it('pas de fiche du reste du camp ; totaux et dominantes alignés sur les fiches restantes', () => {
     expect(only.owners.map((o) => o.xuid)).toEqual([XUID.jgtm, XUID.choco, XUID.madina])
     expect(only.sections[0].totals).toEqual([3, 3, 5])
     expect(only.dominant).toEqual(['power_weapon', 'powerup', 'powerup'])
-    expect(only.losses).toEqual(all.losses)
   })
 
   it('un objet que seul le reste du camp a pris se retire ; le compte du camp reste celui de l’équipe', () => {
@@ -149,10 +148,6 @@ describe('buildPickupSheets — Répartition des prises dans l’escouade', () =
 
   it('ressource dominante : la part du camp la plus forte (JGtm armes spéciales, Madina97294 bonus)', () => {
     expect(sheets.dominant).toEqual(['power_weapon', 'powerup', 'powerup', 'power_weapon'])
-  })
-
-  it('bonus perdus : 2 sur 12 pour nous, 2 sur 8 pour eux', () => {
-    expect(sheets.losses).toEqual({ us: { lost: 2, taken: 12 }, them: { lost: 2, taken: 8 } })
   })
 
   it('`resources` (Vue match) : les sections dans cet ordre, râteliers compris', () => {

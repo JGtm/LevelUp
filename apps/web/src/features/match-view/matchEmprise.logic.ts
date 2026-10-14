@@ -115,7 +115,6 @@ export function buildMatchSheets(block: MatchEmpriseBlock | null | undefined, na
       lines: s.lines.map((l) => ({ ...l, taken: cut(l.taken), kept: cut(l.kept), dropped: cut(l.dropped) })),
     })),
     dominant: all.dominant.slice(0, n),
-    losses: all.losses,
   }
 }
 
