@@ -130,6 +130,41 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 - [x] Chronique v92 amendée (schéma inchangé : 92 n'est publié nulle part), recuisson des 11 films,
   gates, push, CI.
 
+### E8 — Reprise (2026-10-09, demande du user) : le seuil de garde se lit dans le film, match par match
+Le seuil (`holdTicksPerPoint`) ne dépend plus d'une table par variante : au point, la garde
+accumulée par le camp qui marque depuis le point précédent EST le seuil. L'artefact s'assemble
+une fois le film lu : dès qu'un point est marqué, le seuil vaut pour tout le match.
+- [x] Règle `resolveHoldThreshold` (`hill_hold_threshold.go`, producteur `film/replay`) : au point, garde
+  prise par le camp qui marque depuis le point précédent (intervalle `]point précédent, point]`) ;
+  point écarté si un autre camp a gardé autant ou plus (point absent de la courbe) ; statistique =
+  valeur la plus fréquente, à égalité la plus haute (un tic se perd sur une garde interrompue,
+  jamais un de trop ; le maximum prendrait les intervalles fusionnés, 73 sur `26602661`). Source
+  « mesuré dans le film » ; mode à colline SEUL (`ScoreInput.HillScoring`, posé par l'appelant sur
+  la variante, même prédicat que la méthode des collines) — Bases et Total Control inchangés (test).
+- [x] Match sans point : repli NOMMÉ `repli_seuil_garde_table_de_variante` (registre, compté dans
+  `coverage.fallbacks[]`) ; sans entrée, pas de barre. Désaccord film / table : le film prime,
+  contradiction comptée `repli_seuil_garde_table_contredite` (CondContradiction, même canal).
+- [x] Mode à score en secondes : seuil mesuré 1 → ni série ni seuil publiés (`e449a696` : 199 points
+  à 1 tic, 60 écartés, mesuré sans cuisson par la règle de production).
+- [x] Appelant : `poserLeReglementDuScore` (`replaybuild/reglement_du_score.go`) seul site (cuisson +
+  deux outils de recherche), garde-rail `TestReglementDuScoreUnSeulSite`.
+- [x] Commentaires inversés corrigés : `regulation.toml` (dont la ligne fausse sur `7de0b91d`),
+  `loader_regulation.go`, `hill_hold_ticks.go`, `document_score.go`, `score_timeline.go`,
+  `hillHoldLogic.ts`.
+- [x] Contrat : AUCUN champ neuf. Un bloc `coverage.score.holdThreshold` a été écrit puis retiré :
+  `TestDocumentShapeMatchesGolden` exige une montée de `SchemaVersion` pour tout changement de forme,
+  champ optionnel compris (le 93 est à levelup-57). Repli et contradiction passent par
+  `coverage.fallbacks[]` (format existant) ; le détail (points, écartés, table) va au journal de
+  cuisson (`logHoldThreshold`). Schéma 92 inchangé, aucune révision de couche touchée.
+- [x] Tests Go (`hill_hold_threshold_test.go`, 8 cas ; `reglement_du_score_test.go`, 2 cas) ; mutations :
+  règle du film retirée → 6 échecs ; mode remplacé par le maximum → `PointFusionneNeGagnePas` rouge.
+- [x] Vérification film par film (cache isolé, binaire du lot) : 13 films cuits (les 11 + `7f172b20`
+  et `84c2221e`, Vacancy cuit désormais), `e449a696` mesuré sans cuisson (Harvest hors bornes),
+  `8c12fd58` (Gruntpocalypse KOTH) mesuré sans cuisson : aucun tic de garde, pas de barre.
+- Gate : `go test` replay / fallback / replaybuild / replayview / mappings / archlint,
+  typecheck + vitest + eslint du fichier web touché (commentaires), golangci-lint des paquets
+  touchés, push et CI. (`make openapi-gen` / `generate-types` : sans objet, contrat inchangé.)
+
 ## Critères de succès mesurables
 
 | Point | Critère |
@@ -176,6 +211,29 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
 
   **Découverte — délai de prise après chaque déplacement** : sur 50 déplacements (14 films), la première émission du bloc (prise, ou montée de jauge) n'arrive JAMAIS avant 5,09 s après la bascule du désignateur, et 13 fois entre 5,09 et 5,19 s (5 fois à 5,09 s exactement en Classé : un joueur posté sur la colline suivante la prend à cet instant). Le film ne porte aucune émission propre à cet instant (balayage de toutes les lectures chaînées de +3 à +5,6 s : rien de récurrent). Ce délai n'est PAS appliqué : il ne se lit que comme un plancher, et ce que le jeu affiche pendant ces 5 s (colline suivante visible avec compte à rebours, ou absente) appartient au user. Question posée.
 
+- **E8 close (2026-10-09, reprise)**. Seuil de garde mesuré dans le film, match par match (règle `resolveHoldThreshold`). Mesure sur pièces avant la règle (gains au point sur les 11 artefacts E7) : le dernier tic du camp qui marque tombe TOUJOURS sur l'image du point, y compris quand le gain vaut 35 ou 40 ; les 34 / 33 / 39 sont des intervalles à garde interrompue (écarts de 2 à 39 s entre deux tics), donc un tic PERDU, jamais un de trop. Au-dessus : intervalles fusionnés par un point absent de la courbe (73 sur `26602661`, 66 contre 77 sur `7de0b91d`). D'où : point écarté si l'autre camp a gardé autant ou plus, puis valeur la plus fréquente, à égalité la plus haute. Résultat par film (binaire du lot, cache isolé, 13 cuissons de 0 à 11 s) :
+
+  | film | variante | seuil du film | table | points retenus / écartés | accord |
+  |---|---|---|---|---|---|
+  | 0d9a9af9 | Doubles | 35 | 35 | 4 / 0 | oui |
+  | 01e1f945 | Arène | 35 | 35 | 5 / 0 | oui |
+  | 21ece4d8 | Arène | 35 | 35 | 4 / 0 | oui |
+  | 606d9844 | Arène | 35 | 35 | 3 / 0 | oui |
+  | 7f1bbf06 | Arène | 35 | 35 | 3 / 0 | oui |
+  | 8076f97f | Arène | 35 | 35 | 3 / 0 | oui |
+  | a36c8bed | Arène | 35 | 35 | 4 / 0 | oui |
+  | 26602661 | Classé | 40 | 40 | 3 / 0 | oui |
+  | 5acb0e0a | Classé | 40 | 40 | 5 / 0 | oui |
+  | f75e7053 | Classé | 40 | 40 | 5 / 0 | oui |
+  | 7f172b20 | Classé (Vacancy) | 40 | 40 | 7 / 0 | oui |
+  | 84c2221e | Classé (Vacancy) | 40 | 40 | 4 / 0 | oui |
+  | 7de0b91d | Classé | 39 | 40 | 1 / 1 | NON : contradiction comptée, le film prime |
+  | e449a696 | Squad (Harvest, sans cuisson) | 1 | absente | 199 / 60 | pas de barre (un tic = un point) |
+  | 8c12fd58 | Gruntpocalypse KOTH (sans cuisson) | aucun tic de garde | absente | 0 | pas de barre |
+
+  Barre du camp qui marque au point (garde de l'intervalle / seuil) : 1,00 partout, sauf les intervalles à tic perdu (0,97 sur `0d9a9af9`, `f75e7053`, `7f172b20` ; 0,94 sur `a36c8bed`) ; les intervalles fusionnés de `26602661` et `7de0b91d` dépassent 1 et le client plafonne à 1. Artefacts recuits comparés à ceux d'E7 : identiques sur 10 films ; sur `7de0b91d` seuls `holdTicksPerPoint` (40 -> 39) et l'entrée `repli_seuil_garde_table_contredite` de `coverage.fallbacks` changent. Format : un bloc `coverage.score.holdThreshold` a d'abord été écrit (replaydoc, conversion, OpenAPI, types web), puis retiré : la garde de forme (`TestDocumentShapeMatchesGolden`) exige une montée de schéma pour tout champ, optionnel compris ; repli et contradiction passent par `coverage.fallbacks[]`, le détail par le journal de cuisson. Schéma 92 inchangé, aucune révision de couche touchée. Gates : `go test` replay (35,5 s), fallback, replayview, replaybuild, mappings, archlint (53,8 s) verts ; `go vet -tags research` replay + replaybuild ; golangci-lint des 4 paquets : 3 constats préexistants de `mappings` seulement ; web : `tsc -b` vert, eslint et vitest de `hillHoldLogic` (12 tests) verts.
+
+  **Republication** : rien ne marque les artefacts déjà cuits comme périmés (ni schéma ni révision). Si ce lot est fusionné AVANT la recuisson commune du parc (au 93), celle-ci le couvre sans coût. Sinon : `levelup backfill-replay --one <match_id>` par match KOTH (la CLI n'a pas de filtre par variante ; `--one` cuit sans sauter, et rejoue depuis les faits s'ils sont frais, 0 à 1 s par match) — 23 artefacts KOTH dans le parc local (15 Classé, 7 Arène, 1 Doubles). Les 23 ont été cuits ici par le binaire du lot (les 13 du tableau + `5ed17fe3` Argyle et neuf classés de Vacancy) : 21 rendent la valeur de leur table (35 ou 40), `cef67c66` (film tronqué, 10 pistes) n a aucun tic de garde, comme avant, et `7de0b91d` est le SEUL artefact du parc local dont l affichage change (40 -> 39 et une contradiction comptée).
 ## Découvertes (hors périmètre, non traitées)
 
 - D1 — Courbe de score de deux films classés de Lattice : `26602661` publie un point « camp 1 -> 0 »
@@ -186,3 +244,12 @@ contrat `plan-execution`. Signalement de l'utilisateur du 2026-10-09 sur son 2v2
   (Classé, `7f172b20`, `84c2221e`) — cuisson « carte hors catalogue ».
 - D3 — Le seul film Squad en cache (`e449a696`, 18/09) est un match au score à la SECONDE (180
   points, le seul des 57 Squad du registre) : il ne mesure pas le seuil de garde de la variante.
+- D4 (E8) — Au client, la barre du camp qui marque ne s'affiche jamais PLEINE : le dernier tic
+  tombe sur l'image du point, et `readHillHold` remet les deux barres à zéro à cette image même
+  (mécanique énoncée par le user et tenue par `hillHoldLogic.test.ts`). L'image d'avant montre
+  34/35 (39/40), ou 33/35 sur un intervalle à tic perdu. Afficher la barre pleine à l'image du
+  point puis la vider à l'image suivante est une décision d'affichage du user, non prise ici.
+- D5 (E8) — La garde de mode suit `isHillVariant`, qui classe aussi les variantes Firefight et
+  Gruntpocalypse « King of the Hill / KOTH » (15 matchs au registre). Le seul film en cache
+  (`8c12fd58`, Gruntpocalypse, Vallaheim) ne porte aucun tic de garde : pas de barre. Les
+  Firefight à colline restent sans film mesuré.

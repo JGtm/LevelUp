@@ -146,12 +146,21 @@ schema_version = 8
 #
 # EN KOTH C EST LA GARDE QUI MARQUE : prendre la colline est une capture courte (environ une
 # seconde ; instantanee en classe, ou le film n emet aucune jauge), et la colline tourne a chaque
-# point. Cette table dit combien de TICS de garde valent un point — sans elle, le rejeu sait QUI tient la colline mais
-# pas OU EN EST la progression.
+# point.
 #
-# MEME DOCTRINE QUE LES TROIS TABLES CI-DESSUS : cle = game_variant_name exact, valeur
-# MESUREE, variante absente = pas de denominateur, donc AUCUNE jauge affichee (jamais une
-# jauge remplie au juge).
+# CETTE TABLE N EST PLUS QU UN REPLI (2026-10-09, demande du user). Le seuil se MESURE DANS LE
+# FILM, match par match : au point, la garde prise par le camp qui marque depuis le point
+# precedent EST le seuil (valeur la plus frequente sur les points du match, a egalite la plus
+# haute — `film/replay/hill_hold_threshold.go`). Des qu un point est marque, le seuil du film
+# vaut pour tout le match, et il PRIME sur cette table quand ils divergent (contradiction comptee :
+# `repli_seuil_garde_table_contredite`). La table ne sert qu un match SANS point lisible :
+# son entree est alors publiee et le repli compte (`repli_seuil_garde_table_de_variante`).
+# Variante absente ET match sans point = pas de denominateur, donc AUCUNE jauge affichee (jamais
+# une jauge remplie au juge). Une variante absente d ici a donc sa barre des qu un point est
+# marque — Squad compris.
+#
+# MEME DOCTRINE QUE LES TROIS TABLES CI-DESSUS pour les valeurs qui restent : cle =
+# game_variant_name exact, valeur MESUREE.
 #
 # 35 EST UN COMPTE, PAS UN REGLAGE. Le compteur est `comp 23 A` du statborg, qui reproduit
 # `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT joueur par joueur (31 joueurs sur 31,
@@ -175,22 +184,26 @@ schema_version = 8
 #     l ecart vaut 1 comme celui de l arene.
 #   - "Ranked:King of the Hill" = 40 : 5 films, 4 cartes — `5acb0e0a` (Lattice) 40 x5,
 #     `f75e7053` (Solitude) 40, 40, 39, 40, 40, `84c2221e` (Vacancy) 40 x4, `7f172b20` (Vacancy)
-#     40 x6 et 39 ; `26602661` et `7de0b91d` (Lattice) 40 sur leurs intervalles sains. Le camp qui
-#     ne marque pas ne rend jamais 40 sur un intervalle sain. Le classe ne partage donc PAS le
-#     seuil du social.
+#     40 x6 et 39 ; `26602661` (Lattice) 40 sur ses intervalles sains. Le camp qui ne marque pas
+#     ne rend jamais 40 sur un intervalle sain. Le classe ne partage donc PAS le seuil du social.
+#     CORRIGE LE 2026-10-09 (E8) : `7de0b91d` (Lattice) n'a qu UN intervalle sain, et il rend 39
+#     (un tic perdu sur une garde interrompue) ; son second point fusionne deux intervalles. Le
+#     seuil lu dans son film vaut donc 39 et le desaccord avec cette table est compte.
 #
 # VOLONTAIREMENT ABSENTS :
-#   - "Squad:King of the Hill" : le seul film Squad en cache (`e449a696`) est un match au score a
-#     la SECONDE (180 points, chaque tic de garde vaut un point) ; il ne mesure pas le seuil des 56
-#     autres matchs, et lui recopier 35 serait la devinette que cette table interdit. Reprise : un
-#     film Squad a 3 points en cache.
+#   - "Squad:King of the Hill" : aucun film Squad a 3 points en cache, donc aucune valeur a
+#     declarer ; son seuil se lit dans son film des le premier point. Le seul film Squad en cache
+#     (`e449a696`) est un match au score a la SECONDE (180 points) : le film y mesure un tic par
+#     point, et aucune barre n est publiee (ni serie ni seuil).
 #   - Strongholds et Total Control : modes a zones SIMULTANEES, dont la progression se lit
 #     directement dans la jauge du film (`ZoneState.gauge`, schema 18). Le tic de `comp 23 A`
-#     y existe aussi (l API le nomme StrongholdScoringTicks pour les deux modes), mais rien ne
-#     dit qu il s y accumule de la meme facon : non mesure, donc non declare.
+#     y existe aussi (l API le nomme StrongholdScoringTicks pour les deux modes), mais la barre de
+#     garde ne s ouvre que sur un mode a COLLINE (garde de mode de l appelant, sur le nom de
+#     variante) : ni le film ni cette table n y donnent de seuil.
 #
 # Consommation : mappings.LoadRegulation -> RegulationSet.HoldTicksPerPoint(variante)
-# -> replaybuild -> ScoreTimeline.{HoldTicks, HoldTicksPerPoint} -> lisere de garde du bandeau.
+# -> replaybuild (`poserLeReglementDuScore`, entree de repli) -> ScoreTimeline.{HoldTicks,
+# HoldTicksPerPoint} -> lisere de garde du bandeau.
 [hold_ticks_per_point]
 "KOTH:Arena" = 35
 "Doubles:King of the Hill" = 35

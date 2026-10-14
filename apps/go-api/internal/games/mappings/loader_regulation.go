@@ -38,9 +38,10 @@ type RegulationSet struct {
 	roundsDecide map[string]bool
 	// holdTicks : game_variant_name → TICS DE GARDE qui valent un point, sur un mode
 	// où l'on marque en TENANT une zone (KOTH : une fois la colline prise, c'est la garde qui
-	// compte). Même doctrine que targets : valeur MESURÉE, variante inconnue → pas
-	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
-	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
+	// compte). Valeur MESURÉE, et simple REPLI : le constructeur d'artefact mesure le seuil
+	// dans le film, aux points du match, et ne publie cette entrée que sur un match sans point
+	// lisible (variante inconnue ET aucun point → pas de dénominateur, aucune jauge).
+	// Consommateur : le constructeur d'artefact (ScoreInput.HoldTicksPerPointTable).
 	holdTicks map[string]int
 	// radarRange : game_variant_name → PORTEE DU RADAR en metres, c'est-a-dire la distance
 	// a laquelle deux joueurs se voient sur le radar du jeu. Meme doctrine que les quatre
@@ -178,9 +179,10 @@ func (s *RegulationSet) RadarRangeMap() map[string]int {
 // HoldTicksPerPoint retourne le nombre de secondes de GARDE qui valent un point sur la
 // variante, et true s'il est connu.
 //
-// nil-safe et variante inconnue → (0, false) : l'appelant ne publie aucun dénominateur, donc
-// le client n'affiche AUCUNE jauge de progression. Une jauge absente ne ment pas ; une jauge
-// remplie sur un dénominateur inventé, si.
+// nil-safe et variante inconnue → (0, false). L'entrée n'est qu'un REPLI : le seuil se mesure
+// dans le film, aux points du match (replay/hill_hold_threshold.go) ; elle n'est publiée que sur
+// un match sans point lisible, et sans elle ce match n'a AUCUNE jauge de progression. Une jauge
+// absente ne ment pas ; une jauge remplie sur un dénominateur inventé, si.
 func (s *RegulationSet) HoldTicksPerPoint(gameVariantName string) (int, bool) {
 	if s == nil {
 		return 0, false

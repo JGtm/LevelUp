@@ -280,6 +280,38 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:       "repli_seuil_garde_table_de_variante",
+		Fait:      "combien de tics de garde valent un point sur un match a colline",
+		Mecanisme: "aucun point lisible dans le match (aucun point marque, ou aucun intervalle sain) : le seuil est l entree de la variante dans regulation.toml [hold_ticks_per_point] ; sans entree, aucune barre de garde",
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "hill_hold_threshold.go",
+			Ancre:   "fb.Declenche(fallback.NomSeuilGardeTableDeVariante)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    "aucune tant qu un match sans point ne porte pas son seuil (film muet) ; la table reste son seul repli",
+		CritereRetrait:  "un emplacement du film qui porte le seuil de la variante hors de tout point, lu sur les films a colline du parc",
+		CompteurBranche: true,
+	},
+	{
+		Nom:       "repli_seuil_garde_table_contredite",
+		Fait:      "combien de tics de garde valent un point sur un match a colline dont la variante a une entree de table",
+		Mecanisme: "le seuil mesure aux points du match differe de l entree regulation.toml [hold_ticks_per_point] : le film prime, la table est ecartee pour ce match",
+		// CONTRADICTION (D14 b) : deux sources du meme fait divergent ; elle se compte, et la lecture
+		// du film reste.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "hill_hold_threshold.go",
+			Ancre:   "fb.Declenche(fallback.NomSeuilGardeTableContredite)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    "l entree de table corrigee ou retiree pour la variante en desaccord ; une contradiction se compte, pas de retrait sec",
+		CritereRetrait:  "0 declenchement sur les films a colline du parc republie, hors films a courbe de score anormale (un seul intervalle sain)",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_periode_entiere",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",

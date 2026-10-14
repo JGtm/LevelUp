@@ -39,6 +39,10 @@ const (
 	NomCollinePremiereAuCoupDEnvoi Nom = "repli_colline_premiere_au_coup_d_envoi"
 	// NomCollineVotesSansGarde : `replay/zone_states_hill.go`, `hillLocator.place`.
 	NomCollineVotesSansGarde Nom = "repli_colline_votes_sans_garde"
+	// NomSeuilGardeTableDeVariante : `replay/hill_hold_threshold.go`, `resolveHoldThreshold`.
+	NomSeuilGardeTableDeVariante Nom = "repli_seuil_garde_table_de_variante"
+	// NomSeuilGardeTableContredite : `replay/hill_hold_threshold.go`, `resolveHoldThreshold`.
+	NomSeuilGardeTableContredite Nom = "repli_seuil_garde_table_contredite"
 	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill_owners.go`, `hillOwnerRuns`.
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
 	// NomVieCoupeeAuTrouDeReplication : DEUX sites — `replay/lives_decoupe.go`,
