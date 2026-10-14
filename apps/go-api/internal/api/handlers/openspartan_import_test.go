@@ -126,7 +126,7 @@ func sessionWithXUID(xuid string) *domain.SessionData {
 	}
 }
 
-func newHandlerForTest(t *testing.T, demoMode bool) *OpenSpartanImportHandler {
+func newHandlerForTest(t *testing.T) *OpenSpartanImportHandler {
 	t.Helper()
 	sharedDB := newSharedDuckDBForTest(t)
 	svc := service.NewOpenSpartanImportServiceForTest(sharedDB)
@@ -135,27 +135,11 @@ func newHandlerForTest(t *testing.T, demoMode bool) *OpenSpartanImportHandler {
 		JobStore:      newJobStoreForTest(t),
 		TempDir:       t.TempDir(),
 		StashDir:      filepath.Join(t.TempDir(), "players"),
-		DemoMode:      demoMode,
 	})
 }
 
-func TestStartImport_DemoModeReturns503(t *testing.T) {
-	h := newHandlerForTest(t, true)
-	req := buildMultipartRequest(t, "db", []byte("ignored"), sessionWithXUID(testHandlerXUID))
-	rr := httptest.NewRecorder()
-
-	h.StartImport(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status: want 503, got %d (body=%s)", rr.Code, rr.Body.String())
-	}
-	if !strings.Contains(rr.Body.String(), "demo_mode") {
-		t.Errorf("body should mention demo_mode, got %s", rr.Body.String())
-	}
-}
-
 func TestStartImport_NoSessionReturns401(t *testing.T) {
-	h := newHandlerForTest(t, false)
+	h := newHandlerForTest(t)
 	req := buildMultipartRequest(t, "db", []byte("data"), nil)
 	rr := httptest.NewRecorder()
 
@@ -170,7 +154,7 @@ func TestStartImport_NoSessionReturns401(t *testing.T) {
 }
 
 func TestStartImport_SessionWithoutLinkedIdentityReturns401(t *testing.T) {
-	h := newHandlerForTest(t, false)
+	h := newHandlerForTest(t)
 	sess := &domain.SessionData{} // no LinkedHaloIdentity
 	req := buildMultipartRequest(t, "db", []byte("data"), sess)
 	rr := httptest.NewRecorder()
@@ -183,7 +167,7 @@ func TestStartImport_SessionWithoutLinkedIdentityReturns401(t *testing.T) {
 }
 
 func TestStartImport_MissingDBFieldReturns400(t *testing.T) {
-	h := newHandlerForTest(t, false)
+	h := newHandlerForTest(t)
 	req := buildMultipartRequest(t, "", nil, sessionWithXUID(testHandlerXUID))
 	rr := httptest.NewRecorder()
 
@@ -198,7 +182,7 @@ func TestStartImport_MissingDBFieldReturns400(t *testing.T) {
 }
 
 func TestStartImport_EmptyFileReturns400(t *testing.T) {
-	h := newHandlerForTest(t, false)
+	h := newHandlerForTest(t)
 	req := buildMultipartRequest(t, "db", []byte{}, sessionWithXUID(testHandlerXUID))
 	rr := httptest.NewRecorder()
 
@@ -217,7 +201,7 @@ func TestStartImport_HappyPathReturns202WithJobID(t *testing.T) {
 		t.Fatalf("read fixture: %v", err)
 	}
 
-	h := newHandlerForTest(t, false)
+	h := newHandlerForTest(t)
 	req := buildMultipartRequest(t, "db", fileBytes, sessionWithXUID(testHandlerXUID))
 	rr := httptest.NewRecorder()
 

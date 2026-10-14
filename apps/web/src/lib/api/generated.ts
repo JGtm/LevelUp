@@ -1102,7 +1102,7 @@ export interface paths {
         /**
          * Initier un Device Code Flow Microsoft
          * @description Lance un Device Code Flow pour l'authentification Halo (SISU).
-         *     Non disponible en DEMO_MODE.
+         *     Refusé en mode démo (403 `demo_mode_forbidden`).
          */
         post: operations["postAuthDeviceFlowStart"];
         delete?: never;
@@ -16485,7 +16485,6 @@ export interface operations {
                     "application/json": components["schemas"]["DeviceFlowStartResponse"];
                 };
             };
-            422: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
             /** @description Error */
             default: {

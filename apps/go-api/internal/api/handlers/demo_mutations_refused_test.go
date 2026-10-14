@@ -1,20 +1,15 @@
 package handlers_test
 
-// demo_mutations_refused_test.go — les trois routes de mutation relevées par la revue
-// adversariale du lot B5 (backlog 2026-09-26, constats C1 et C2, lot B-C1) sont REFUSÉES
-// en démo, sur le modèle de POST /settings/backup/run (B5.6) : 403 demo_mode_forbidden.
+// demo_mutations_refused_test.go — TÉMOINS HORS DÉMO de trois écritures que la démo refuse :
+// création de profil, purge des données d'un titre, abonnements du watcher.
 //
-// Pourquoi : RequireAdmin est transparent en démo, donc un visiteur les atteint.
-//   - DELETE /profiles/{p}/titles/{t}/data : ProfileService est enraciné sur le dépôt ; sur
-//     un vrai checkout, la purge effaçait <dépôt>/data/titles/<t>/players/<p>.
-//   - POST /setup/players et PATCH /watcher/subscriptions : db_profiles.json et
-//     app_settings.json visent la fixture, montée en écriture dans le conteneur de
-//     production ; un visiteur anonyme y persistait ses écritures.
-// Hors démo, le comportement est inchangé (chaque refus a son témoin « hors démo »).
+// Le REFUS lui-même n'est plus porté par ces handlers : la garde générale « démo en lecture
+// seule » (middleware/demo_read_only.go) refuse toute écriture avant le handler, et
+// internal/api/demo_read_only_ratchet_test.go la vérifie sur le routeur assemblé. Ces témoins
+// gardent la preuve que, hors démo, chaque écriture a toujours lieu.
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -34,26 +29,12 @@ import (
 	"levelup/go-api/internal/service"
 )
 
-// exigerRefusDemo vérifie le contrat du refus : 403 et code demo_mode_forbidden.
-func exigerRefusDemo(t *testing.T, w *httptest.ResponseRecorder) {
-	t.Helper()
-	if w.Code != http.StatusForbidden {
-		t.Errorf("démo : statut %d, attendu 403 — corps %s", w.Code, w.Body.String())
-		return
-	}
-	var body map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body["code"] != "demo_mode_forbidden" {
-		t.Errorf("démo : code %v (err %v), attendu demo_mode_forbidden", body["code"], err)
-	}
-}
-
 // ─── POST /setup/players ─────────────────────────────────────────────────────
 
-func routeurCreationProfil(t *testing.T, demo bool, directory *mockDirectory) (*chi.Mux, string) {
+func routeurCreationProfil(t *testing.T, directory *mockDirectory) (*chi.Mux, string) {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{
-		DemoMode:        demo,
 		RepoRoot:        dir,
 		DBProfilesPath:  filepath.Join(dir, "db_profiles.json"),
 		SessionDir:      filepath.Join(dir, "sessions"),
@@ -82,18 +63,9 @@ func postCreationProfil(r *chi.Mux) *httptest.ResponseRecorder {
 	return w
 }
 
-func TestSetupPlayers_DemoMode_Refuse(t *testing.T) {
-	dir := &mockDirectory{playerKey: "Visiteur"}
-	r, _ := routeurCreationProfil(t, true, dir)
-	exigerRefusDemo(t, postCreationProfil(r))
-	if dir.lastReq.Gamertag != "" {
-		t.Errorf("démo : l'annuaire a reçu une création de profil (%+v)", dir.lastReq)
-	}
-}
-
 func TestSetupPlayers_HorsDemo_Cree(t *testing.T) {
 	dir := &mockDirectory{playerKey: "Visiteur"}
-	r, _ := routeurCreationProfil(t, false, dir)
+	r, _ := routeurCreationProfil(t, dir)
 	w := postCreationProfil(r)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("hors démo : statut %d, attendu 201 — corps %s", w.Code, w.Body.String())
@@ -107,7 +79,7 @@ func TestSetupPlayers_HorsDemo_Cree(t *testing.T) {
 
 // fixturePurge : un joueur suivi sur deux titres (le store refuse de purger le dernier
 // titre actif) et un dossier de joueur RÉEL sous la racine, avec un fichier sentinelle.
-func fixturePurge(t *testing.T, demo bool) (*chi.Mux, string, string) {
+func fixturePurge(t *testing.T) (*chi.Mux, string, string) {
 	t.Helper()
 	root := t.TempDir()
 	profilesPath := filepath.Join(root, "db_profiles.json")
@@ -127,7 +99,7 @@ func fixturePurge(t *testing.T, demo bool) (*chi.Mux, string, string) {
 	if err := os.WriteFile(filepath.Join(playerDir, "stats.duckdb"), []byte("sentinelle"), 0o644); err != nil {
 		t.Fatalf("sentinelle : %v", err)
 	}
-	h := handlers.NewTitleSyncHandler(service.NewProfileService(profilesPath, root), demo)
+	h := handlers.NewTitleSyncHandler(service.NewProfileService(profilesPath, root))
 	r := chi.NewRouter()
 	r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) { h.Mount(r) })
 	return r, playerDir, profilesPath
@@ -140,20 +112,8 @@ func deletePurge(r *chi.Mux) *httptest.ResponseRecorder {
 	return w
 }
 
-func TestPurgeTitleData_DemoMode_Refuse(t *testing.T) {
-	r, playerDir, profilesPath := fixturePurge(t, true)
-	exigerRefusDemo(t, deletePurge(r))
-	if _, err := os.Stat(filepath.Join(playerDir, "stats.duckdb")); err != nil {
-		t.Errorf("démo : le dossier du joueur a été effacé (%v)", err)
-	}
-	data, _ := os.ReadFile(profilesPath)
-	if !bytes.Contains(data, []byte(`"halo_5"`)) || !bytes.Contains(data, []byte(`"y"`)) {
-		t.Errorf("démo : l'entrée de profil halo_5 a été retirée : %s", data)
-	}
-}
-
 func TestPurgeTitleData_HorsDemo_Purge(t *testing.T) {
-	r, playerDir, _ := fixturePurge(t, false)
+	r, playerDir, _ := fixturePurge(t)
 	w := deletePurge(r)
 	if w.Code != http.StatusOK {
 		t.Fatalf("hors démo : statut %d, attendu 200 — corps %s", w.Code, w.Body.String())
@@ -165,10 +125,10 @@ func TestPurgeTitleData_HorsDemo_Purge(t *testing.T) {
 
 // ─── PATCH /watcher/subscriptions ────────────────────────────────────────────
 
-func routeurAbonnements(t *testing.T, demo bool) (*chi.Mux, *mockDaemon, string) {
+func routeurAbonnements(t *testing.T) (*chi.Mux, *mockDaemon, string) {
 	t.Helper()
 	dir := t.TempDir()
-	cfg := &config.AppConfig{DemoMode: demo, RepoRoot: dir}
+	cfg := &config.AppConfig{RepoRoot: dir}
 	settingsPath := filepath.Join(dir, "app_settings.json")
 	daemon := &mockDaemon{running: true}
 	h := handlers.NewWatcherHandler(cfg, settings_platform.NewStore(settingsPath), daemon,
@@ -187,19 +147,8 @@ func patchAbonnements(r *chi.Mux) *httptest.ResponseRecorder {
 	return w
 }
 
-func TestWatcherSubscriptions_DemoMode_Refuse(t *testing.T) {
-	r, daemon, settingsPath := routeurAbonnements(t, true)
-	exigerRefusDemo(t, patchAbonnements(r))
-	if _, err := os.Stat(settingsPath); !os.IsNotExist(err) {
-		t.Errorf("démo : app_settings.json a été écrit (stat err = %v)", err)
-	}
-	if len(daemon.subscriptions) != 0 {
-		t.Errorf("démo : les abonnements du watcher ont été modifiés (%v)", daemon.subscriptions)
-	}
-}
-
 func TestWatcherSubscriptions_HorsDemo_Enregistre(t *testing.T) {
-	r, daemon, settingsPath := routeurAbonnements(t, false)
+	r, daemon, settingsPath := routeurAbonnements(t)
 	w := patchAbonnements(r)
 	if w.Code != http.StatusOK {
 		t.Fatalf("hors démo : statut %d, attendu 200 — corps %s", w.Code, w.Body.String())

@@ -92,12 +92,12 @@ func TestBackfillRegistryNames_FixesUUIDFallback(t *testing.T) {
 }
 
 // TestBackfillRegistryNames_NullNames : un nom NULL (vidé par un ancien outil de réparation) est
-// réécrit comme un nom égal à l'identifiant ; mode_category n'est jamais touchée.
+// réécrit comme un nom égal à l'identifiant ; la catégorie suit le nom de la paire.
 func TestBackfillRegistryNames_NullNames(t *testing.T) {
 	ctx := context.Background()
 	sharedDB, metaDB := setupBackfillRegistryDBs(t)
 	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
-		('m1', NULL, NULL, 'map-x', NULL, 'pair-x', NULL, NULL, NULL, 'other')`); err != nil {
+		('m1', NULL, NULL, 'map-x', NULL, 'pair-x', NULL, NULL, NULL, 'Other')`); err != nil {
 		t.Fatalf("seed shared: %v", err)
 	}
 	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
@@ -118,8 +118,62 @@ func TestBackfillRegistryNames_NullNames(t *testing.T) {
 	if got := nomDuRegistre(t, sharedDB, "m1", "pair_name"); got.String != "Arena:CTF on Streets" {
 		t.Errorf("pair_name = %q", got.String)
 	}
-	if got := nomDuRegistre(t, sharedDB, "m1", "mode_category"); got.String != "other" {
-		t.Errorf("mode_category = %q, want inchangée", got.String)
+	if got := nomDuRegistre(t, sharedDB, "m1", "mode_category"); got.String != "Assassin" {
+		t.Errorf("mode_category = %q, want Assassin (catégorie de Arena:CTF on Streets)", got.String)
+	}
+}
+
+// TestBackfillRegistryNames_CategorieNullOuIndexeeNonReecrite : une catégorie NULL (titre qui ne
+// la renseigne pas) reste NULL ; et tant qu'un index couvre la colonne (base pas encore migrée),
+// aucune catégorie n'est réécrite (UPDATE d'une colonne indexée = vecteur ART).
+func TestBackfillRegistryNames_CategorieNullOuIndexeeNonReecrite(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, metaDB := setupBackfillRegistryDBs(t)
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', NULL, NULL, NULL, NULL, 'pair-x', NULL, NULL, NULL, NULL),
+		('m2', NULL, NULL, NULL, NULL, 'pair-x', NULL, NULL, NULL, 'Other')`); err != nil {
+		t.Fatalf("seed shared: %v", err)
+	}
+	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
+		('pair-x', 'pair', 'en-US', 'Ranked:CTF on Streets')`); err != nil {
+		t.Fatalf("seed meta: %v", err)
+	}
+	if _, err := sharedDB.Exec(`CREATE INDEX idx_registry_mode_category ON match_registry(mode_category)`); err != nil {
+		t.Fatalf("index: %v", err)
+	}
+	if _, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{}); err != nil {
+		t.Fatalf("backfill indexée: %v", err)
+	}
+	if got := nomDuRegistre(t, sharedDB, "m2", "mode_category"); got.String != "Other" {
+		t.Errorf("colonne indexée : mode_category = %q, doit rester Other", got.String)
+	}
+	if got := nomDuRegistre(t, sharedDB, "m2", "pair_name"); got.String != "Ranked:CTF on Streets" {
+		t.Errorf("le nom doit être écrit malgré tout, pair_name = %q", got.String)
+	}
+}
+
+// TestBackfillRegistryNames_CategorieSuitLeNomSansIndex : sans index sur la colonne, la
+// catégorie est réécrite avec le nom (NULL conservée pour un titre qui ne la renseigne pas).
+func TestBackfillRegistryNames_CategorieSuitLeNomSansIndex(t *testing.T) {
+	ctx := context.Background()
+	sharedDB, metaDB := setupBackfillRegistryDBs(t)
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry VALUES
+		('m1', NULL, NULL, NULL, NULL, 'pair-x', NULL, NULL, NULL, NULL),
+		('m2', NULL, NULL, NULL, NULL, 'pair-x', NULL, NULL, NULL, 'Other')`); err != nil {
+		t.Fatalf("seed shared: %v", err)
+	}
+	if _, err := metaDB.Exec(`INSERT INTO asset_translations VALUES
+		('pair-x', 'pair', 'en-US', 'Ranked:CTF on Streets')`); err != nil {
+		t.Fatalf("seed meta: %v", err)
+	}
+	if _, err := BackfillRegistryNames(ctx, sharedDB, metaDB, RegistryNamesOptions{}); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if got := nomDuRegistre(t, sharedDB, "m2", "mode_category"); got.String != "Ranked" {
+		t.Errorf("m2 mode_category = %q, want Ranked", got.String)
+	}
+	if got := nomDuRegistre(t, sharedDB, "m1", "mode_category"); got.Valid {
+		t.Errorf("m1 mode_category = %q, une catégorie NULL ne se remplit pas", got.String)
 	}
 }
 

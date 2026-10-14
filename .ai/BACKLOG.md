@@ -56,6 +56,34 @@ boot de la démo ou CI) ; un film par processus (borne mémoire). **Effort : M.*
 
 ---
 
+### [rejeu/score] Courbe de score anormale sur deux matchs classés de Lattice (KOTH)
+
+Relevé par le lot Roi de la colline (2026-10-09, D1 de `.ai/PLAN_KOTH_REJEU_2026-10-09.md`),
+noté au backlog à la demande de l'utilisateur le 2026-10-14. La courbe de score publiée dans le rejeu
+est fausse sur deux films de `Ranked:King of the Hill` (carte Lattice - Ranked) :
+- `26602661` publie une DESCENTE du score (« camp 1 -> 0 » à l'image 2268) ;
+- `7de0b91d` SAUTE un point (camp 1 de 1 à 2 à l'image 5346, avec 66 tics de garde dans
+  l'intervalle, puis « camp 0 -> 0 » à 5414).
+
+Conséquence visible : sur `7de0b91d`, le seuil de garde lu dans le film vaut 39 au lieu de 40 (un
+seul intervalle sain) et la contradiction avec la table est comptée
+(`repli_seuil_garde_table_contredite`). La barre et les collines restent justes sur les autres
+intervalles. Travail : instruire le pont du score de mode sur ces deux films. Critère de succès :
+`7de0b91d` rend 40 sans contradiction comptée, `26602661` ne publie plus de descente. Registre des
+reports, ligne « Courbe de score de films classés de Lattice ». **Effort : S à M.**
+
+---
+
+### [rejeu/cartes] Carte Harvest absente des bornes de quantification
+
+Relevé par le lot Roi de la colline (2026-10-09, D2 du plan), noté au backlog le 2026-10-14. Les
+matchs sur Harvest ne se rejouent pas (cuisson refusée : « carte hors catalogue ») faute de bornes
+dans `map_quant_bounds.json`. Témoin : `e449a696` (Squad:King of the Hill, 18/09). Vacancy - Ranked
+est entrée au catalogue avec le lot recos-a. Travail : ajouter Harvest au catalogue de bornes et
+d'objectifs (même recette que recos-a), puis cuire le témoin. **Effort : S.**
+
+---
+
 ### [data/h5] Les player DB Halo 5 sont hors de la boucle de migration du boot
 
 Noté le 2026-09-27 (plan backlog du 2026-09-26, lot B3.9, DB-20). Une copie de

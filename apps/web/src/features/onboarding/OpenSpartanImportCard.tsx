@@ -366,7 +366,7 @@ export function failureMessageFromCode(
       return t('common.onboarding.import_err_not_openspartan')
     case 'upload_too_large':
       return t('common.onboarding.import_too_large', { max: 1 })
-    case 'demo_mode':
+    case 'demo_mode_forbidden':
       return t('common.onboarding.import_err_demo')
     case 'halo_auth_required':
       return t('common.onboarding.import_err_auth_required')
