@@ -61,7 +61,7 @@ Décisions user du 14/10 : délai d'échange 3 s ; terme « tueur abattu » ; re
 - Gate : `go test` des paquets touchés + `go test -tags=integration ./internal/persist/... ./internal/sync/... ./internal/migration/... ./internal/games/halo_infinite/migrations/...` + `make go-api-lint`.
 
 ### L2 Lectures, API, contrat
-- [!] L2.0 Sondes (`*_research_test.go` skippé sans parc) : bots dans `match_participants`, unicité gamertag bot, doublons `(match_id, victim, time_ms)`, part des morts par bot. Fixe l'attribution d'un vengeur bot. — PARC OCCUPE (backfill killsource en cours sur les bases reelles, consigne du superviseur du 14/10) : sondes ECRITES (`platform/duckdb/tactical_repo_coequipiers_research_test.go`, tag `research`, `SONDE_SHARED=<copie>`), NON JOUEES ; a lancer par le superviseur sur une copie. Decision provisoire, a confirmer par les sondes : un vengeur doit avoir un xuid de l equipe de la victime (un bot vengeur n est pas attribue) ; un tueur ou un auteur de frag bot se designe par son gamertag.
+- [!] L2.0 Sondes (`*_research_test.go` skippé sans parc) : bots dans `match_participants`, unicité gamertag bot, doublons `(match_id, victim, time_ms)`, part des morts par bot. Fixe l'attribution d'un vengeur bot. — PARC OCCUPE (backfill killsource en cours sur les bases reelles, consigne du superviseur du 14/10) : sondes ECRITES (`platform/duckdb/tactical_repo_coequipiers_research_test.go`, tag `research`, `SONDE_SHARED=<copie>`), NON JOUEES ; a lancer par le superviseur sur une copie. Decision provisoire, a confirmer par les sondes : un vengeur doit avoir un xuid de l equipe de la victime (un bot vengeur n est pas attribue) ; un tueur ou un auteur de frag bot se designe par son gamertag. Repris le 2026-10-14 sur copies du parc par `tactical_reel_research_test.go` (tag `research`) : bots absents des mates confirmé, noms par `xuid_aliases` ; attribution d un vengeur bot reste par le journal (D1 A).
 - [x] L2.1 `domain/tactical_equipe.go` : `TacticalCoequipier`, `TacticalEquipeALaMort`, `TacticalRiposte`, `TacticalBilanZone`, `TacticalSequence*` ; `TacticalContribution.equipe` / `.riposte` ; `TacticalCelluleReponse.bilan` {morts : 4 statuts, examinées, rose[8], médiane tueur, médiane plus proche, tueur abattu N/M ; frags : abattu en retour N/M}. Aucun champ « non mesuré ». — `domain/tactical_equipe.go` ; `ContexteDeMort` / `MortContexte` gagnent `EnAttente` et `Total` ; quatre statuts de mort : accompagnee, visible_hors_rayon, aucun_visible, equipe_a_terre.
 - [x] L2.2 `analysis/coordination/` : `riposte.go` (`TueurAbattu`, `AbattuEnRetour`, `FenetreRiposteMs`), `rose.go` (`Rose8`), `statut_plus_proche.go` (via `APortee`) ; garde-rail contre un second littéral 3000. — `riposte.go`, `rose.go` (secteur k = [45k, 45(k+1)) degres depuis le haut, sans trigonometrie), `statut_plus_proche.go` ; distances et medianes dans `analysis/tactical/mesures_equipe.go` (le ratchet `no_naked_rate_test` interdit un float64 exporte dans `coordination`) ; `domain.TacticalRiposte` ajoute a sa liste blanche (justification datee) ; garde-rail `archlint/no_second_riposte_window_test.go`.
 - [x] L2.3 `platform/duckdb/tactical_repo_coequipiers.go` `MatesDesMorts` (`_latest`, `IN` bornés, liste blanche `exigerLaListe`). — `tactical_repo_coequipiers.go` (LEFT JOIN participants pour le nom, cle exacte filtree cote Go).
@@ -81,26 +81,26 @@ Décisions user du 14/10 : délai d'échange 3 s ; terme « tueur abattu » ; re
 - [x] L3.4 Parcours : clic sur une mort → `TacticalMortDetail.tsx` + retour à la zone ; encadré « Instant de la mort · date · horloge » (`instant_affiche_ms`) ; bouton `MatchReplayLink`. — `TacticalMortDetail.tsx` (en bas de la colonne), ouverte par la sélection de tuile ; horloge du rejeu (`instant_affiche_ms`).
 - [x] L3.5 Vue A+B (sur le plan principal, cf. A1) : mort, tueur + trait, coéquipiers pleins/creux, cercle, hors de vue / en attente listés sans point ; « Tueur abattu N,N s après la mort, par X », trait coéquipier→tueur pour ce frag seulement ; distances à la mort et au tueur. — scène `sceneDeMort`, bulle d échange sur le plan, trait du frag du coéquipier ; tueur peint par la couche des tueurs (non modifiée).
 - [x] L3.6 Vue D : `TacticalSequence.tsx`, étapes −4..+3 s, traînes 4 s, compte dans le rayon ; rendue seulement si la requête réussit. — barre `Instantané` + 8 étapes, `sceneDeSequence`, fiche d étape ; rendue seulement si la requête réussit.
-- [~] L3.7 Miroir frags : « abattu en retour en 3 s » et par qui ; `solde` = deux faces. — carte « Abattu en retour en N s : X sur Y » en vue de zone (kills, solde) et échange dans la fiche d un frag fait ; le BADGE sur la tuile est reporté après la refusion de `feat/tactique-tueurs` (`TacticalRejeuTile.tsx` appartient à l autre exécuteur).
+- [x] L3.7 Miroir frags, carte « abattu en retour » et échange ; le badge de riposte sur la tuile est posé (visible sur les captures réelles du 14/10).
 - [x] L3.8 Non-régression : nouveaux boutons de rejeu par le même chemin (−5 s, calage). — le bouton de rejeu de l encadré passe par `modeleDeTuile` (mêmes `search`, même libellé, même recul de 5 s).
 - [~] L3.9 `[~]` cf. A4. — couvert par le lot tueurs (A4).
 - [x] L3.10 Garde-rails : couleurs, TanStack Table, seuils (ne pas grossir `TacticalPlanCard.tsx`). — `lint:colors`, `lint:fields`, eslint, knip verts ; `TacticalPlanCard.tsx` +17 lignes.
 - Gate : `make check-types`, vitest features/tactical lib/replay lib/match-nav, lint couleurs et champs ; test discriminant d'horloge (countdown non nul).
 
 ### L4 Backfill (BLOQUANT, accord user, superviseur seul)
-- [ ] L4.1 L1-L3 verts et fusionnés ; serveur local ARRÊTÉ ; sauvegarde à jour.
-- [ ] L4.2 Accord écrit du user (≈ 1 600 films, 3 ouvriers, ≈ 54 min de référence du 22/09, reprise par `decoder_rev`).
-- [ ] L4.3 `go run ./cmd/levelup backfill-killsource --dry-run` puis `--workers 3` (+ `--status`) ; pas de `--force` ; pas de cuisson d'artefacts.
-- [ ] L4.4 Vérifications : somme des lignes = `teammates_total`, une `decode_pass` par match dans `_latest`, compteurs cohérents.
-- [ ] L4.5 Production : prévenir avant toute opération VPS ; push `main` = déploiement.
+- [~] L4.1 Partiel : Streets fait le 2026-10-14 avec l accord du user (copies et base réelle, 50 matchs relus sur 52) ; le parc entier après fusion dans `feat/v75` (REGISTRE_REPORTS).
+- [~] L4.2 Accord obtenu pour Streets seulement ; accord pour le parc entier à redemander après fusion.
+- [~] L4.3 Lancé sur Streets ; `--workers 3` sur le parc entier reporté (registre).
+- [~] L4.4 Vérifié sur Streets (1 244 morts cohérentes au premier passage) ; le reste avec le backfill complet.
+- [~] L4.5 Aucune opération VPS faite ; reste conditionné à la fusion et au déploiement par le user (push `main` = déploiement).
 
 ### L5 Clôture
-- [ ] L5.1 `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (tables écrites par la passe), CHANGELOG EN+FR.
-- [ ] L5.2 Skill `db-schema` (`match_death_mates`), `.ai/project_map.md` si besoin.
-- [ ] L5.3 thought_log (une entrée par lot, mesures L2.0 / L2.9).
-- [ ] L5.4 `.ai/REGISTRE_REPORTS.md` : bots dans les positions (D1), garde local de D (D2), écart artefact / persisté.
-- [ ] L5.5 Revue adversariale L1 (persist/sync) et L2 (algo), P0/P1 traités.
-- [ ] L5.6 `delivery-checklist`, `make gate-push`, `disk-hygiene -Lot coequipiers -Apply`.
+- [x] L5.1 `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (tables de la passe d isolement, `match_death_mates`, atomicité par match), CHANGELOG EN+FR 7.5.0 (entrée produit + phrase Ops sur le bump de révision). Aucun ADR ne liste les tables de la passe (0019, 0026, 0034, 0036 vérifiés) : le choix P2-3 est consigné ici et dans COMMANDS.
+- [x] L5.2 Skill `db-schema` : section `match_death_mates` + liste des tables append-only. `.ai/project_map.md` est GELÉ (en-tête : ne fait plus foi) : non modifié.
+- [x] L5.3 Entrée de clôture « Complété » dans `.ai/thought_log.md` (mesures L2.9, preuve réelle, revue, suite).
+- [x] L5.4 `.ai/REGISTRE_REPORTS.md` : bots dans les positions (D1), backfill du parc entier, écart de 0,05-0,28 m, champ `total`. Garde local de D (D2) NON inscrit : le user a décidé d activer le rejeu en production à la prochaine release, la séquence suit le même interrupteur. Instant sur les tuiles Temps/Trajets : option B retenue le 14/10, pas un report.
+- [x] L5.5 Revue adversariale faite par le superviseur (L1+L2) : P0-1, P2-1 à P2-3 traités (commit 33601589c).
+- [~] L5.6 `delivery-checklist` invoquée : complétude (items statués), tests Go/web verts, couleurs/i18n/thought_log faits. `make gate-push` et l état des runs CI de la branche NON joués ici (~25 min, relève du superviseur au push) ; `disk-hygiene -Lot coequipiers` rejoué en SIMULATION le 2026-10-14 (REFUS : go-build-coequipiers écrit il y a moins de 10 min ; golangci-coequipiers 0,00 Go ; libre 369 Go ; rien à libérer), `-Apply` non lancé sur consigne.
 
 ### Découvertes (non traitées)
 - `match_death_context.teammates_left` est une constante morte.

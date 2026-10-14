@@ -166,6 +166,16 @@ inconnu. La règle de fraîcheur ne change pas : un match nommé déjà à jour 
 avec `--online` (cette passe choisit ses films dans l'historique du joueur, pas dans le registre)
 et avec `--credit-only` (la passe SQL → SQL ne lit pas cette sélection).
 
+**Tables écrites par la passe d'isolement.** Outre la source des frags, la passe des films écrit,
+par match et en UNE transaction partageant une seule `decode_pass` : `match_lives`,
+`match_death_context` et `match_death_mates` (l'état et la position de chaque coéquipier de la
+victime à l'instant de chaque mort ; INSERT-only, lue par `match_death_mates_latest`). Un match
+est périmé tant que son `IsolationDecoderRev` n'a pas atteint `isolement-2026-10-14-coequipiers` :
+le premier passage après ce bump redécode tout le parc (environ 1 600 films, reprise par
+`decoder_rev`). La passe est atomique par match : si les lignes de coéquipiers d'un match
+échouent à la validation, rien de ce match n'est publié pour la passe (`match_lives` et
+`match_death_context` compris).
+
 **`--workers` (défaut 3) — N films décodés en parallèle, UN SEUL qui touche la base.** La
 décomposition du coût (lot 5.24.1) mesure **93 à 99 % du temps d'un film en CPU hors base** :
 c'est la seule raison d'être du parallélisme ici. Les écritures et les deux lectures par match
@@ -654,7 +664,7 @@ go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coeff
 #### Compaction des passes de décodage supersédées (`compact-passes`)
 
 Chaque redécodage d'un film AJOUTE une passe entière aux tables du film de la base partagée des
-matchs (`match_kill_events`, `match_lives`, `match_death_context`, `kill_openings`,
+matchs (`match_kill_events`, `match_lives`, `match_death_context`, `match_death_mates`, `kill_openings`,
 `kill_positions`, `match_weapon_shots`, `match_player_positions`, le résumé d'usage, les niveaux
 de socle, les prises de drapeau, les statistiques d'Assaut — INSERT-only, ADR 0019 / 0026). Les
 vues `_latest` ne servent que la dernière passe, mais toute lecture qui les évalue parcourt
