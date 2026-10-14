@@ -295,10 +295,15 @@ jobs:
 
             # Regen données démo — NON DESTRUCTIF (incident 2026-06-05).
             # On NE supprime PAS data/demo/warehouse|players AVANT le seed : seed-demo
-            # est idempotent (os.Remove par fichier puis recrée). Supprimer d'abord =
-            # si le seed échoue (ex: binaire levelup absent), la démo reste vidée.
-            # On nettoie uniquement les répertoires fantômes que Docker crée à la place
-            # d'un JSON absent au bind-mount ; les fichiers valides sont écrasés par seed-demo.
+            # génère dans data/demo.generation (même parent), exécute tous ses contrôles
+            # (dont l anonymisation) puis PUBLIE par renommage, élément par élément
+            # (warehouse, players, titles, replays, configurations). Un échec avant la
+            # publication laisse la démo publiée intacte ; un échec pendant remet en place
+            # les éléments déjà remplacés ; runtime/ et auth/ ne sont jamais touchés.
+            # Supprimer d abord = si le seed échoue (ex: binaire levelup absent), la démo
+            # reste vidée. On nettoie uniquement les répertoires fantômes que Docker crée à
+            # la place d un JSON absent au bind-mount ; les JSON valides sont remplacés à la
+            # publication.
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
               if [[ -d "$f" ]]; then
                 rm -rf "$f"
