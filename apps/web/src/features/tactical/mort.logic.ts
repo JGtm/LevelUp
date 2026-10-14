@@ -19,7 +19,7 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
 import { distanceEnMetres } from './tueurs.logic'
-import { armeDe } from './zone.logic'
+import { armeDe, decimale } from './zone.logic'
 
 /** Un point du plan, en mètres monde. */
 export interface Pt {
@@ -75,32 +75,19 @@ export function batonsDeLaRose(rose: readonly number[]): BatonDeRose[] {
 }
 
 /**
- * directionsDominantes — le secteur le plus fourni et, s'il porte des tueurs, son voisin le plus
- * fourni : « 9 sur 14 depuis la droite et le haut-droite ». `null` sans tueur rangé. À égalité, le
- * plus petit index (l'ordre de la rose) : le résultat ne dépend pas de l'ordre de parcours.
+ * directionDominante — le secteur le plus fourni de la rose et son compte : « 9 sur 14 par la droite ».
+ * `null` sans tueur rangé. À égalité, le plus petit index (l'ordre de la rose) : le résultat ne dépend
+ * pas de l'ordre de parcours.
  */
-export function directionsDominantes(rose: readonly number[]): { n: number; secteurs: number[] } | null {
+export function directionDominante(rose: readonly number[]): { n: number; secteur: number } | null {
   const max = Math.max(0, ...rose)
   if (max === 0) return null
-  const k = rose.indexOf(max)
-  const suivant = (k + 1) % rose.length
-  const precedent = (k + rose.length - 1) % rose.length
-  const voisin = rose[suivant] >= rose[precedent] ? suivant : precedent
-  if (rose[voisin] === 0) return { n: max, secteurs: [k] }
-  const secteurs = [k, voisin].sort((a, b) => a - b)
-  // Le tour se referme : 7 et 0 sont voisins, on garde l'ordre horaire du plus grand vers le plus petit.
-  const ordre = secteurs[0] === 0 && secteurs[1] === rose.length - 1 ? [secteurs[1], secteurs[0]] : secteurs
-  return { n: max + rose[voisin], secteurs: ordre }
+  return { n: max, secteur: rose.indexOf(max) }
 }
 
 /** Le total des tueurs rangés dans la rose. */
 export function totalDeLaRose(rose: readonly number[]): number {
   return rose.reduce((s, n) => s + n, 0)
-}
-
-/** decimale — un nombre à une décimale, séparateur de la langue (« 1,8 »). */
-export function decimale(v: number, locale: Locale): string {
-  return new Intl.NumberFormat(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v)
 }
 
 /** metresEntiers — un nombre de mètres au mètre. */
@@ -113,13 +100,12 @@ export function secondesDeFenetre(ms: number, locale: Locale): string {
   return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(ms / 1000)
 }
 
-/** phraseDeLaRose — « 9 sur 14 depuis la droite et le haut-droite », ou `null` sans tueur rangé. */
+/** phraseDeLaRose — « 9 sur 14 par la droite » (le secteur dominant), ou `null` sans tueur rangé. */
 export function phraseDeLaRose(t: TacticalText, b: TacticalBilanMorts): string | null {
   const rose = b.rose ?? []
-  const d = directionsDominantes(rose)
+  const d = directionDominante(rose)
   if (!d) return null
-  const noms = d.secteurs.map((k) => t.mortDirections[k]).join(t.mortRoseJoin)
-  return t.mortRoseFrom(d.n, totalDeLaRose(rose), noms)
+  return t.mortRoseFrom(d.n, totalDeLaRose(rose), t.mortDirections[d.secteur])
 }
 
 // ─── La fiche d'une mort (vues A et B) ────────────────────────────────────────────────────────
@@ -309,7 +295,7 @@ export function sceneDeSequence(seq: TacticalSequence, etape: number): SceneDuPl
   for (const a of seq.acteurs ?? []) {
     const role = a.role === 'victime' ? 'mort' : a.role === 'tueur' ? 'tueur' : 'coequipier'
     const pos = a.role === 'victime' && e.offset_ms >= 0 ? seq.mort : positionDe(a, e.offset_ms)
-    if (pos) marques.push({ role, pt: pos, plein: true })
+    if (pos) marques.push({ role, pt: pos, plein: a.role !== 'coequipier' || (e.dans_le_rayon_xuids ?? []).includes(a.xuid ?? '') })
     const segments = traineDe(a, e.offset_ms, seq.traine_ms)
     if (segments.length > 0) traines.push({ role, segments })
   }
@@ -322,6 +308,8 @@ export interface DistanceDEtape {
   role: 'tueur' | 'coequipier'
   nom: string
   distance: string | null
+  /** Coéquipier : plein dans le rayon à l'étape, creux au-delà (règle du serveur) ; `aucune` sans position. */
+  marque: 'plein' | 'creux' | 'aucune'
 }
 
 /** distancesDEtape — la distance de chaque acteur (hors victime) au centre du cercle à l'étape. */
@@ -337,6 +325,7 @@ export function distancesDEtape(t: TacticalText, seq: TacticalSequence, etape: n
       role: a.role === 'tueur' ? 'tueur' : 'coequipier',
       nom: a.gamertag || t.mortDetailUnnamed,
       distance: p ? metresEntiers(Math.hypot(p.x - e.centre.x, p.y - e.centre.y), locale) : null,
+      marque: a.role !== 'coequipier' || !p ? 'aucune' : (e.dans_le_rayon_xuids ?? []).includes(a.xuid ?? '') ? 'plein' : 'creux',
     })
   }
   return out

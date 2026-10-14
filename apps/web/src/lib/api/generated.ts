@@ -13028,6 +13028,7 @@ export interface components {
             centre: components["schemas"]["TacticalPoint"];
             /** Format: int64 */
             dans_le_rayon: number;
+            dans_le_rayon_xuids: string[] | null;
             /** Format: int64 */
             instant_affiche_ms?: number;
             /** Format: int64 */

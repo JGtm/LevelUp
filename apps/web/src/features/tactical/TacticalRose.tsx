@@ -13,7 +13,7 @@ const CENTRE = TAILLE / 2
 const RAYON_MAX = 50
 const RAYON_ANNEAU = 52
 const RAYON_ANNEAU_INTERIEUR = 26
-const EPAISSEUR_BATON = 9
+const EPAISSEUR_BATON = 8
 
 interface TacticalRoseProps {
   rose: readonly number[]
@@ -27,7 +27,7 @@ export function TacticalRose({ rose, label }: TacticalRoseProps) {
       viewBox={`0 0 ${TAILLE} ${TAILLE}`}
       role="img"
       aria-label={label}
-      className="size-[120px] flex-none"
+      className="size-24 flex-none"
       data-testid="tactical-rose"
     >
       <circle cx={CENTRE} cy={CENTRE} r={RAYON_ANNEAU} fill="none" className="stroke-border" strokeWidth={1} />

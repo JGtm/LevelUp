@@ -134,13 +134,13 @@ describe('TacticalPlanCard — la couche des tueurs et des victimes', () => {
   it('sans zone choisie : ni couche ni légende', () => {
     rendre({ selected: null })
     expect(screen.queryByTestId('tactical-plan-tueurs')).toBeNull()
-    expect(screen.queryByTestId('tactical-tueurs-legend')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-formes')).toBeNull()
   })
 
   it('avec une zone : la couche, et une entrée de légende par rôle présent', () => {
     rendre()
     expect(screen.getByTestId('tactical-plan-tueurs')).toBeInTheDocument()
-    const legende = screen.getByTestId('tactical-tueurs-legend')
+    const legende = screen.getByTestId('tactical-plan-formes')
     expect(legende).toHaveTextContent('Tueurs')
     expect(legende).toHaveTextContent('Victimes')
     // La légende dit les formes : losange pour les tueurs, rond pour les victimes.
@@ -155,7 +155,7 @@ describe('TacticalPlanCard — la couche des tueurs et des victimes', () => {
 
   it('une seule face : une seule entrée de légende', () => {
     rendre({ contributions: [MORT] })
-    const legende = screen.getByTestId('tactical-tueurs-legend')
+    const legende = screen.getByTestId('tactical-plan-formes')
     expect(legende).toHaveTextContent('Tueurs')
     expect(legende).not.toHaveTextContent('Victimes')
   })
@@ -163,7 +163,7 @@ describe('TacticalPlanCard — la couche des tueurs et des victimes', () => {
   it('lecture sans autre joueur (temps, routes) : aucune couche', () => {
     rendre({ contributions: [ENTREE] })
     expect(screen.queryByTestId('tactical-plan-tueurs')).toBeNull()
-    expect(screen.queryByTestId('tactical-tueurs-legend')).toBeNull()
+    expect(screen.queryByTestId('tactical-plan-formes')).toBeNull()
   })
 
   it('survol d’une tuile : la couche reçoit l’index mis en avant', () => {

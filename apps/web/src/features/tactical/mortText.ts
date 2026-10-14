@@ -23,7 +23,6 @@ export function getMortText(m: Formateur) {
     mortRoseTitle: m('tactical.mort.rose_title'),
     mortRoseLabel: m('tactical.mort.rose_label'),
     mortRoseFrom: (n: number, total: number, dirs: string) => m('tactical.mort.rose_from', { n, m: total, dirs }),
-    mortRoseJoin: m('tactical.mort.rose_join') as string,
     mortRoseMedian: (d: string) => m('tactical.mort.rose_median', { d }),
     mortDirections: SECTEURS.map((k) => m(`tactical.mort.dir_${k}` as TacticalManifestKey) as string),
     mortCardAvenged: (s: string) => m('tactical.mort.card_avenged', { s }),
@@ -68,5 +67,7 @@ export function getMortText(m: Formateur) {
     seqDistanceNote: m('tactical.mort.seq_distance_note'),
     seqStage: (offset: string) => m('tactical.mort.seq_stage', { offset }),
     mortZoneSection: m('tactical.mort.zone_section'),
+    tileRiposteKiller: (s: string) => m('tactical.mort.tile_riposte_killer', { s }),
+    tileRiposteReturn: m('tactical.mort.tile_riposte_return') as string,
   }
 }

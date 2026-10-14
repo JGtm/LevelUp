@@ -211,7 +211,10 @@ type TacticalSequenceEtape struct {
 	// DansLeRayon : coequipiers positionnes a la portee du centre ; Positionnes : coequipiers dont
 	// la position est connue a cet instant (le denominateur).
 	DansLeRayon int `json:"dans_le_rayon"`
-	Positionnes int `json:"positionnes"`
+	// DansLeRayonXUIDs : QUI est dans le rayon a cette etape (la regle de portee reste en Go) ; le web
+	// peint ces coequipiers pleins et les autres positionnes creux.
+	DansLeRayonXUIDs []string `json:"dans_le_rayon_xuids"`
+	Positionnes      int      `json:"positionnes"`
 }
 
 // TacticalSequence est la sequence d'une mort.

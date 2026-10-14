@@ -452,12 +452,8 @@ fr = "Rose des directions des tueurs, huit secteurs"
 en = "Killer direction rose, eight sectors"
 
 [tactical.mort.rose_from]
-fr = "{n} sur {m} depuis {dirs}"
+fr = "{n} sur {m} par {dirs}"
 en = "{n} of {m} from {dirs}"
-
-[tactical.mort.rose_join]
-fr = " et "
-en = " and "
 
 [tactical.mort.rose_median]
 fr = "distance médiane {d} m"
@@ -468,32 +464,32 @@ fr = "le haut"
 en = "the top"
 
 [tactical.mort.dir_1]
-fr = "le haut-droite"
-en = "the top-right"
+fr = "le haut droit"
+en = "the top right"
 
 [tactical.mort.dir_2]
 fr = "la droite"
 en = "the right"
 
 [tactical.mort.dir_3]
-fr = "le bas-droite"
-en = "the bottom-right"
+fr = "le bas droit"
+en = "the bottom right"
 
 [tactical.mort.dir_4]
 fr = "le bas"
 en = "the bottom"
 
 [tactical.mort.dir_5]
-fr = "le bas-gauche"
-en = "the bottom-left"
+fr = "le bas gauche"
+en = "the bottom left"
 
 [tactical.mort.dir_6]
 fr = "la gauche"
 en = "the left"
 
 [tactical.mort.dir_7]
-fr = "le haut-gauche"
-en = "the top-left"
+fr = "le haut gauche"
+en = "the top left"
 
 [tactical.mort.card_avenged]
 fr = "Tueur abattu en {s} s"
@@ -654,3 +650,11 @@ en = "Zone reading"
 [tactical.tile.distance_lt1]
 fr = "< 1 m"
 en = "< 1 m away"
+
+[tactical.mort.tile_riposte_killer]
+fr = "abattu {s} s"
+en = "downed {s} s"
+
+[tactical.mort.tile_riposte_return]
+fr = "abattu en retour"
+en = "downed in return"

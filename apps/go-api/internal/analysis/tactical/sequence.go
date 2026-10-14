@@ -173,7 +173,7 @@ func etapeA(off int, in EntreeSequence, pointMort domain.TacticalPoint) domain.T
 			centre = domain.TacticalPoint{X: Arrondi2(p.x), Y: Arrondi2(p.y)}
 		}
 	}
-	e := domain.TacticalSequenceEtape{OffsetMs: off, Centre: centre}
+	e := domain.TacticalSequenceEtape{OffsetMs: off, Centre: centre, DansLeRayonXUIDs: []string{}}
 	if in.T0Ms != nil {
 		v := max(in.MortMatchMs+int64(off)-*in.T0Ms, 0)
 		e.InstantAfficheMs = &v
@@ -187,6 +187,7 @@ func etapeA(off int, in EntreeSequence, pointMort domain.TacticalPoint) domain.T
 		d := DistanceM(centre, domain.TacticalPoint{X: p.x, Y: p.y})
 		if coordination.APortee(&d, in.RayonM) {
 			e.DansLeRayon++
+			e.DansLeRayonXUIDs = append(e.DansLeRayonXUIDs, c.XUID)
 		}
 	}
 	return e

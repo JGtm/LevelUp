@@ -91,16 +91,11 @@ function LigneDeLaFiche({ l }: { l: LigneDeFiche }) {
   const sansDistance = l.marque === 'aucune' && l.role === 'coequipier'
   return (
     <>
-      <span className={`min-w-0 truncate ${sansDistance ? 'text-muted-foreground' : ''}`} title={l.texte}>
+      <span className={sansDistance ? 'col-span-3 text-muted-foreground' : 'min-w-0 truncate'} title={l.texte}>
         <Marque marque={l.marque} role={l.role} />
         {l.texte}
       </span>
-      {sansDistance ? (
-        <>
-          <span />
-          <span />
-        </>
-      ) : (
+      {!sansDistance && (
         <>
           <Distance valeur={l.distanceMort} />
           <Distance valeur={l.distanceTueur} />
@@ -130,7 +125,7 @@ function FicheDEtape({ t, locale, vue }: { t: TacticalText; locale: Locale; vue:
         {lignes.map((l) => (
           <li key={l.cle} className="flex justify-between gap-2">
             <span className="min-w-0 truncate">
-              <Marque marque={l.role === 'coequipier' ? 'plein' : 'aucune'} role={l.role} />
+              <Marque marque={l.marque} role={l.role} />
               {l.nom}
             </span>
             <Distance valeur={l.distance} />

@@ -97,6 +97,7 @@ export const SEQUENCE: TacticalSequence = {
     instant_affiche_ms: 440_000 + offset_ms,
     centre: offset_ms < 0 ? { x: 10 + offset_ms / 400, y: 10 } : { x: 10, y: 10 },
     dans_le_rayon: offset_ms < 0 ? 0 : 1,
+    dans_le_rayon_xuids: offset_ms < 0 ? [] : ['222'],
     positionnes: 1,
   })),
 }

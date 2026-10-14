@@ -63,8 +63,8 @@ import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
-import { CoucheDesCoequipiers, PiedDeLaMort } from './TacticalPlanCoequipiers'
-import { CoucheDesTueurs, LegendeDesTueurs } from './TacticalPlanTueurs'
+import { CoucheDesCoequipiers, PiedDuPlan } from './TacticalPlanCoequipiers'
+import { CoucheDesTueurs } from './TacticalPlanTueurs'
 import {
   grilleDuPlan,
   planEmptyReason,
@@ -76,7 +76,7 @@ import {
   type TacticalQuestion,
   type TacticalQui,
 } from './tacticalView.logic'
-import { pointsDeLaCouche } from './tueurs.logic'
+import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
 import { SCENE_VIDE } from './mort.logic'
@@ -252,8 +252,7 @@ export function TacticalPlanCard({
           estompe={estompe}
         />
       </div>
-      <LegendeDesTueurs t={t} points={pointsTueurs} />
-      <PiedDeLaMort t={t} locale={locale} scene={sceneMort} vue={vue} />
+      <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} />
     </SectionCard>
   )
 }

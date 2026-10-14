@@ -61,40 +61,34 @@ export function contributionDeLaVue(
 }
 
 /** Une entrée de légende : sa forme, par le mot. */
-export type FormeDeLegende = 'mort' | 'tueur' | 'plein' | 'creux' | 'nuage' | 'cercle' | 'trait'
+export type FormeDeLegende = 'mort' | 'tueur' | 'victime' | 'plein' | 'creux' | 'nuage' | 'cercle' | 'trait'
 
-/** La légende d'un mode : une entrée par forme présente dans la scène. */
+/**
+ * entreesDeLegende — LA légende du plan, une seule : une forme = une entrée, dans l'ordre Mort · Tueurs /
+ * Victimes · Coéquipiers (dans le rayon, hors du rayon, ou le nuage de la zone) · Frag du coéquipier sur
+ * le tueur · Rayon du radar. `roles` sont les rôles que la couche des tueurs et victimes peint ; pendant
+ * une étape de la séquence cette couche se retire et le tueur est celui de la scène.
+ */
 export function entreesDeLegende(
   t: TacticalText,
-  mode: ReturnType<typeof modeDeLaScene>,
+  mode: ModeDeLaScene,
   scene: SceneDuPlan,
-  avecTrait: boolean,
   locale: Locale,
+  roles: readonly ('tueur' | 'victime')[],
 ): { forme: FormeDeLegende; texte: string }[] {
   const L = t.mortLegend
-  const rayon = scene.cercle ? L.radius(metresEntiers(scene.cercle.rayonM, locale)) : null
-  const aDesCreux = scene.marques.some((m) => m.role === 'coequipier' && !m.plein)
-  const aDesPleins = scene.marques.some((m) => m.role === 'coequipier' && m.plein)
-  switch (mode) {
-    case 'zone':
-      return [{ forme: 'nuage', texte: L.cloud }]
-    case 'instantane':
-      return [
-        { forme: 'mort', texte: L.death },
-        ...(aDesPleins ? [{ forme: 'plein' as const, texte: L.allyIn }] : []),
-        ...(aDesCreux ? [{ forme: 'creux' as const, texte: L.allyOut }] : []),
-        ...(avecTrait ? [{ forme: 'trait' as const, texte: L.riposte }] : []),
-        ...(rayon ? [{ forme: 'cercle' as const, texte: rayon }] : []),
-      ]
-    case 'sequence':
-      return [
-        { forme: 'mort', texte: L.death },
-        { forme: 'tueur', texte: L.killer },
-        { forme: 'plein', texte: t.mortDetailUnnamed },
-        ...(rayon ? [{ forme: 'cercle' as const, texte: rayon }] : []),
-      ]
-    default:
-      return []
+  const sceneMort = mode === 'instantane' || mode === 'sequence'
+  const sorties: { forme: FormeDeLegende; texte: string }[] = []
+  if (sceneMort) sorties.push({ forme: 'mort', texte: L.death })
+  if (roles.includes('tueur')) sorties.push({ forme: 'tueur', texte: t.layerKillers })
+  else if (mode === 'sequence') sorties.push({ forme: 'tueur', texte: L.killer })
+  if (roles.includes('victime')) sorties.push({ forme: 'victime', texte: t.layerVictims })
+  if (mode === 'zone') sorties.push({ forme: 'nuage', texte: L.cloud })
+  if (sceneMort) {
+    if (scene.marques.some((m) => m.role === 'coequipier' && m.plein)) sorties.push({ forme: 'plein', texte: L.allyIn })
+    if (scene.marques.some((m) => m.role === 'coequipier' && !m.plein)) sorties.push({ forme: 'creux', texte: L.allyOut })
+    if (scene.traits.length > 0) sorties.push({ forme: 'trait', texte: L.riposte })
+    if (scene.cercle) sorties.push({ forme: 'cercle', texte: L.radius(metresEntiers(scene.cercle.rayonM, locale)) })
   }
+  return sorties
 }
-

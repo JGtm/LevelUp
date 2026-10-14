@@ -68,9 +68,9 @@ function BarreDesStatuts({ t, parts }: { t: TacticalText; parts: readonly PartDe
 
 function Chiffre({ titre, valeur, suite }: { titre: string; valeur: string; suite: string }) {
   return (
-    <div className="flex flex-col gap-0.5 rounded-md bg-muted px-2.5 py-2" data-testid="tactical-bilan-chiffre">
+    <div className="flex flex-col rounded-md bg-muted px-2.5 py-1.5" data-testid="tactical-bilan-chiffre">
       <span className="text-[11px] text-muted-foreground">{titre}</span>
-      <span className="font-mono text-lg font-semibold leading-6 tabular-nums">
+      <span className="font-mono text-base font-semibold leading-5 tabular-nums">
         {valeur} <span className="text-xs font-normal text-muted-foreground">{suite}</span>
       </span>
     </div>

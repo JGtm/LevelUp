@@ -21,7 +21,6 @@ import type { Locale } from '@/lib/i18n/locale'
 import { peindreLaScene } from './coequipiersPaint'
 import type { TacticalText } from './i18n'
 import {
-  decimale,
   echangeDeLaMort,
   libelleDeDecalage,
   secondesDeFenetre,
@@ -31,6 +30,7 @@ import { projectionDuPlan, type FenetreDuPlan, type RepereTactique } from './tac
 import { dimensionsDeLaCouche } from './tueurs.logic'
 import { useTailleDuCanvas } from './useTailleDuCanvas'
 import { entreesDeLegende, modeDeLaScene, type FormeDeLegende, type VueDeMort } from './vueDeMort'
+import { decimale } from './zone.logic'
 
 interface CoucheDesCoequipiersProps {
   t: TacticalText
@@ -112,6 +112,8 @@ function Glyphe({ forme }: { forme: FormeDeLegende }) {
       return <span aria-hidden className="inline-block size-3 rounded-full border-2 border-foreground bg-background" data-forme="mort" />
     case 'tueur':
       return <span aria-hidden className="inline-block size-2 rotate-45" style={{ backgroundColor: tokenCssVar('team-enemy') }} data-forme="losange" />
+    case 'victime':
+      return <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: tokenCssVar('team-enemy') }} data-forme="rond" />
     case 'plein':
       return <span aria-hidden className="inline-block size-2.5 rounded-full" style={allie} data-forme="plein" />
     case 'creux':
@@ -125,30 +127,32 @@ function Glyphe({ forme }: { forme: FormeDeLegende }) {
   }
 }
 
-interface PiedDeLaMortProps {
+interface PiedDuPlanProps {
+  /** Les rôles que la couche des tueurs et victimes peint (une entrée de légende chacun). */
+  roles: readonly ('tueur' | 'victime')[]
   t: TacticalText
   locale: Locale
   scene: SceneDuPlan
   vue: VueDeMort | null
 }
 
-/** PiedDeLaMort — légende par forme de la scène, puis la barre des étapes quand la séquence est servie. */
-export function PiedDeLaMort({ t, locale, scene, vue }: PiedDeLaMortProps) {
+/** PiedDuPlan — LA légende du plan (une forme = une entrée, les deux couches ensemble), puis la barre des étapes quand la séquence est servie. */
+export function PiedDuPlan({ t, locale, scene, vue, roles }: PiedDuPlanProps) {
   const mode = modeDeLaScene(scene, vue)
-  const avecTrait = scene.traits.length > 0
-  const entrees = entreesDeLegende(t, mode, scene, avecTrait, locale)
+  const entrees = entreesDeLegende(t, mode, scene, locale, roles)
   const seq = vue?.sequence ?? null
   if (entrees.length === 0 && !seq) return null
   return (
-    <div className="mx-3 mb-3 -mt-1 flex flex-col gap-2" data-testid="tactical-mort-pied">
+    <div className="mx-3 mb-3 -mt-1 flex flex-col gap-2" data-testid="tactical-plan-pied">
       {entrees.length > 0 && (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground" data-testid="tactical-mort-legend">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground" data-testid="tactical-plan-formes">
           {entrees.map((e) => (
             <li key={e.forme} className="flex items-center gap-1.5">
               <Glyphe forme={e.forme} />
               {e.texte}
             </li>
           ))}
+          {mode === 'sequence' && seq && <li className="ml-auto">{t.seqTrail(secondesDeFenetre(seq.traine_ms, locale))}</li>}
         </ul>
       )}
       {vue && seq && <BarreDEtapes t={t} locale={locale} vue={vue} />}
@@ -157,13 +161,13 @@ export function PiedDeLaMort({ t, locale, scene, vue }: PiedDeLaMortProps) {
 }
 
 const BOUTON =
-  'min-h-9 rounded-md border px-3 py-1.5 font-mono text-xs tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
+  'min-h-8 rounded-md border px-1.5 py-1 font-mono text-[11px] tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
 
 /** BarreDEtapes — « Instantané » puis une étape par seconde, de −4 s à +3 s ; la traîne en note. */
 function BarreDEtapes({ t, locale, vue }: { t: TacticalText; locale: Locale; vue: VueDeMort }) {
   const etapes = vue.sequence?.etapes ?? []
   return (
-    <div role="group" aria-label={t.seqGroup} className="flex flex-wrap items-center gap-2" data-testid="tactical-sequence-etapes">
+    <div role="group" aria-label={t.seqGroup} className="flex flex-wrap items-center gap-1" data-testid="tactical-sequence-etapes">
       <button
         type="button"
         aria-pressed={vue.etape === null}
@@ -185,9 +189,6 @@ function BarreDEtapes({ t, locale, vue }: { t: TacticalText; locale: Locale; vue
           {libelleDeDecalage(e.offset_ms, locale)}
         </button>
       ))}
-      <span className="ml-1 text-[11px] text-muted-foreground">
-        {t.seqTrail(secondesDeFenetre(vue.sequence?.traine_ms ?? 0, locale))}
-      </span>
     </div>
   )
 }

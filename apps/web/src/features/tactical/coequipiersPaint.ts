@@ -29,7 +29,7 @@ export interface CouleursDesCoequipiers {
 }
 
 /** Opacités : le nuage se lit en masse, les marques d'une mort sont pleines. */
-const OPACITE = { nuage: 0.55, traine: 0.45, trait: 0.95, cercle: 0.55, remplissageCercle: 0.07 } as const
+const OPACITE = { nuage: 0.55, traine: 0.65, trait: 0.95, cercle: 0.55, remplissageCercle: 0.07 } as const
 const LISERE_PX = 1.5
 const TRAIT_CERCLE_PX = 1.5
 const TIRETS_PX: readonly [number, number] = [5, 4]

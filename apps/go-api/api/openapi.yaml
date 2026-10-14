@@ -29093,6 +29093,12 @@ components:
         dans_le_rayon:
           format: int64
           type: integer
+        dans_le_rayon_xuids:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
         instant_affiche_ms:
           format: int64
           type: integer
@@ -29106,6 +29112,7 @@ components:
         - offset_ms
         - centre
         - dans_le_rayon
+        - dans_le_rayon_xuids
         - positionnes
       type: object
     TacticalSequencePoint:

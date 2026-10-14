@@ -103,7 +103,7 @@ func TestSequence_Nominal(t *testing.T) {
 	}
 	// a l'instant 0 : centre x = 20, Ami a x = 25 : 5 m, dans le rayon de 24 m.
 	for _, e := range seq.Etapes {
-		if e.OffsetMs == 0 && (e.DansLeRayon != 1 || e.Positionnes != 1) {
+		if e.OffsetMs == 0 && (e.DansLeRayon != 1 || e.Positionnes != 1 || len(e.DansLeRayonXUIDs) != 1 || e.DansLeRayonXUIDs[0] != tsAmi) {
 			t.Errorf("etape 0 : %+v", e)
 		}
 	}

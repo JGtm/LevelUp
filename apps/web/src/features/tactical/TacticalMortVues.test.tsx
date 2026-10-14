@@ -171,7 +171,7 @@ describe('vue C — la zone, au-dessus de la liste', () => {
     expect(statuts).toHaveTextContent('aucun en jeu · 3')
     expect(within(bilan).getByTestId('tactical-bilan-barre').children).toHaveLength(4)
     expect(within(bilan).getByTestId('tactical-rose').querySelectorAll('line')).toHaveLength(6)
-    expect(bilan).toHaveTextContent('9 sur 14 depuis le haut-droite et la droite')
+    expect(bilan).toHaveTextContent('5 sur 14 par la droite')
     expect(bilan).toHaveTextContent('distance médiane 16 m')
     const chiffres = within(bilan).getAllByTestId('tactical-bilan-chiffre').map((n) => n.textContent)
     expect(chiffres[0]).toMatch(/Tueur abattu en 3 s.*5\s*sur 14/)
@@ -202,7 +202,7 @@ describe('vue C — la zone, au-dessus de la liste', () => {
     const scene = derniereScene()
     expect(scene?.marques.every((m) => m.role === 'nuage')).toBe(true)
     expect(scene?.marques).toHaveLength(2)
-    expect(screen.getByTestId('tactical-mort-legend')).toHaveTextContent('Coéquipiers en jeu à chaque mort')
+    expect(screen.getByTestId('tactical-plan-formes')).toHaveTextContent('Coéquipiers en jeu à chaque mort')
     expect(screen.queryByTestId('tactical-sequence-etapes')).toBeNull()
   })
 })
@@ -259,7 +259,7 @@ describe('vues A et B — la mort choisie', () => {
       ['coequipier', false],
     ])
     expect(scene?.traits).toHaveLength(1)
-    const legende = screen.getByTestId('tactical-mort-legend')
+    const legende = screen.getByTestId('tactical-plan-formes')
     expect(legende).toHaveTextContent('Mort')
     expect(legende).toHaveTextContent('Coéquipier dans le rayon')
     expect(legende).toHaveTextContent('Coéquipier hors du rayon')
@@ -293,7 +293,6 @@ describe('vue D — la séquence', () => {
     expect(onEtape).toHaveBeenCalledWith(2)
     fireEvent.click(within(barre).getByRole('button', { name: 'Instantané' }))
     expect(onEtape).toHaveBeenCalledWith(null)
-    expect(barre).toHaveTextContent('traîne : 4 s précédentes')
   })
 
   it('une étape choisie : la scène de l’étape, la couche des tueurs se retire, légende de la séquence', () => {
@@ -304,7 +303,8 @@ describe('vue D — la séquence', () => {
     expect(scene?.marques.map((m) => m.role).sort()).toEqual(['coequipier', 'mort', 'tueur'])
     expect(screen.queryByTestId('tactical-plan-tueurs')).toBeNull()
     expect(screen.queryByTestId('tactical-echange')).toBeNull()
-    expect(screen.getByTestId('tactical-mort-legend')).toHaveTextContent('Tueur')
+    expect(screen.getByTestId('tactical-plan-formes')).toHaveTextContent('traîne : 4 s précédentes')
+    expect(screen.getByTestId('tactical-plan-formes')).toHaveTextContent('Tueur')
     const choisie = within(screen.getByTestId('tactical-sequence-etapes')).getAllByTestId('tactical-sequence-etape')[4]
     expect(choisie).toHaveAttribute('aria-pressed', 'true')
   })
@@ -325,5 +325,32 @@ describe('vue D — la séquence', () => {
     const seq = { ...SEQUENCE, etapes: SEQUENCE.etapes!.map((e, i) => (i === 0 ? { ...e, instant_affiche_ms: 0 } : e)) }
     rendreZone({ vue: vue({ sequence: seq, etape: 0 }) })
     expect(screen.getByTestId('tactical-etape-fiche')).toHaveTextContent('À 0:00')
+  })
+})
+
+describe('la tuile porte le badge de riposte, court, sur la ligne 3', () => {
+  it('« abattu 1,8 s » sur une mort dont le tueur a été abattu, « abattu en retour » sur un frag', () => {
+    rendreZone()
+    const badges = screen.getAllByTestId('tactical-rejeu-riposte')
+    expect(badges.map((b) => b.textContent)).toEqual(['abattu 1,8 s', 'abattu en retour'])
+    for (const b of badges) expect(b.closest('[data-testid="tactical-rejeu-l3"]')).not.toBeNull()
+  })
+})
+
+describe('UNE seule légende sous le plan', () => {
+  it('une forme = une entrée, les deux couches ensemble, dans l’ordre Mort · Tueurs · coéquipiers · frag · rayon', () => {
+    rendrePlan(vue())
+    const legendes = screen.getAllByTestId('tactical-plan-formes')
+    expect(legendes).toHaveLength(1)
+    const formes = [...legendes[0].querySelectorAll('[data-forme]')].map((n) => n.getAttribute('data-forme'))
+    expect(formes).toEqual(['mort', 'losange', 'rond', 'plein', 'creux', 'trait', 'cercle'])
+    expect(new Set(formes).size).toBe(formes.length)
+    expect(screen.queryByTestId('tactical-tueurs-legend')).toBeNull()
+  })
+
+  it('les lectures de frags : victimes seules', () => {
+    rendrePlan(null, [FRAG_ABATTU_EN_RETOUR])
+    const formes = [...screen.getByTestId('tactical-plan-formes').querySelectorAll('[data-forme]')].map((n) => n.getAttribute('data-forme'))
+    expect(formes).toEqual(['rond'])
   })
 })

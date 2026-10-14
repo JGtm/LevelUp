@@ -63,11 +63,11 @@ func TestSequence_CompteDansLeRayon_BorneInclusive(t *testing.T) {
 		par[e.OffsetMs] = e
 	}
 	// a -4000 : centre x = 60, coequipier a 118 -> 58 m : hors rayon, mais positionne.
-	if e := par[-4000]; e.DansLeRayon != 0 || e.Positionnes != 1 {
+	if e := par[-4000]; e.DansLeRayon != 0 || e.Positionnes != 1 || len(e.DansLeRayonXUIDs) != 0 {
 		t.Errorf("-4000 : %+v", e)
 	}
 	// a 0 : centre x = 100, coequipier a 118 -> 18 m pile : dans le rayon (borne inclusive).
-	if e := par[0]; e.DansLeRayon != 1 {
+	if e := par[0]; e.DansLeRayon != 1 || len(e.DansLeRayonXUIDs) != 1 || e.DansLeRayonXUIDs[0] != "222" {
 		t.Errorf("0 : %+v, 18 m pour un rayon de 18 m est dans le rayon", e)
 	}
 }

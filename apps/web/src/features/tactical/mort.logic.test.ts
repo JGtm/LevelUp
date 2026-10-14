@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { getTacticalText } from './i18n'
 import {
   batonsDeLaRose,
-  directionsDominantes,
+  directionDominante,
   distancesDEtape,
   echangeDeLaMort,
   libelleDeDecalage,
@@ -45,16 +45,14 @@ describe('rose', () => {
     expect(batonsDeLaRose([0, 0, 0, 0, 0, 0, 0, 0])).toEqual([])
   })
 
-  it('direction dominante : le secteur le plus fourni et son voisin le plus fourni', () => {
-    expect(directionsDominantes([1, 4, 5, 2, 0, 0, 1, 1])).toEqual({ n: 9, secteurs: [1, 2] })
-    // 7 et 0 sont voisins : le tour se referme, dans l'ordre horaire.
-    expect(directionsDominantes([6, 0, 0, 0, 0, 0, 0, 3])).toEqual({ n: 9, secteurs: [7, 0] })
-    expect(directionsDominantes([0, 0, 4, 0, 0, 0, 0, 0])).toEqual({ n: 4, secteurs: [2] })
-    expect(directionsDominantes([0, 0, 0, 0, 0, 0, 0, 0])).toBeNull()
+  it('direction dominante : le secteur le plus fourni (à égalité, le premier de la rose)', () => {
+    expect(directionDominante([1, 4, 5, 2, 0, 0, 1, 1])).toEqual({ n: 5, secteur: 2 })
+    expect(directionDominante([3, 0, 0, 0, 0, 0, 0, 3])).toEqual({ n: 3, secteur: 0 })
+    expect(directionDominante([0, 0, 0, 0, 0, 0, 0, 0])).toBeNull()
   })
 
-  it('la phrase dit les directions du plan, sans « non mesuré »', () => {
-    expect(phraseDeLaRose(t, BILAN.morts!)).toBe('9 sur 14 depuis le haut-droite et la droite')
+  it('la phrase dit le secteur dominant du plan, sans « non mesuré »', () => {
+    expect(phraseDeLaRose(t, BILAN.morts!)).toBe('5 sur 14 par la droite')
   })
 })
 
@@ -174,5 +172,16 @@ describe('les mots de la lecture des coéquipiers', () => {
     for (const texte of textes) {
       expect(texte).not.toMatch(/non mesur|\bheure\b|\b(ma|mes|mon|moi|notre)\b/i)
     }
+  })
+})
+
+describe('séquence : plein / creux selon le rayon, publié par le serveur', () => {
+  it('un coéquipier est plein quand il figure parmi ceux du rayon à l’étape, creux sinon', () => {
+    const avant = sceneDeSequence(SEQUENCE, 0) // −4 s : personne dans le rayon
+    expect(avant.marques.find((m) => m.role === 'coequipier')?.plein).toBe(false)
+    const pendant = sceneDeSequence(SEQUENCE, 4) // 0 s : 222 dans le rayon
+    expect(pendant.marques.find((m) => m.role === 'coequipier')?.plein).toBe(true)
+    expect(distancesDEtape(t, SEQUENCE, 0, 'fr').find((d) => d.role === 'coequipier')?.marque).toBe('creux')
+    expect(distancesDEtape(t, SEQUENCE, 4, 'fr').find((d) => d.role === 'coequipier')?.marque).toBe('plein')
   })
 })

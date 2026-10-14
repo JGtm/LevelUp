@@ -21,7 +21,6 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { resolveToken } from '@/lib/accessibility/resolveToken'
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { TacticalContribution } from '@/lib/api/types'
 import { findOutlineColor } from '@/lib/halo/outline-colors'
@@ -32,13 +31,10 @@ import type { TacticalText } from './i18n'
 import { projectionDuPlan, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
 import {
   dimensionsDeLaCouche,
-  formeDuRole,
   misEnAvant,
   pointLePlusProche,
-  rolesPresents,
   SEUIL_CLIC_PX,
   type PointDeLaCouche,
-  type RoleDuPoint,
 } from './tueurs.logic'
 import { peindreLaCouche } from './tueursPaint'
 import { useTailleDuCanvas } from './useTailleDuCanvas'
@@ -186,27 +182,5 @@ export function CoucheDesTueurs({
         </span>
       )}
     </>
-  )
-}
-
-/** LegendeDesTueurs — une entrée par rôle présent, sous le plan (pastille de la couleur du rôle + mot). */
-export function LegendeDesTueurs({ t, points }: { t: TacticalText; points: readonly PointDeLaCouche[] }) {
-  const roles = rolesPresents(points)
-  if (roles.length === 0) return null
-  const libelle: Record<RoleDuPoint, string> = { tueur: t.layerKillers, victime: t.layerVictims }
-  return (
-    <ul className="mx-3 mb-3 -mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-muted-foreground" data-testid="tactical-tueurs-legend">
-      {roles.map((r) => (
-        <li key={r} className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className={`inline-block size-2 border border-foreground ${formeDuRole(r) === 'rond' ? 'rounded-full' : 'rotate-45'}`}
-            style={{ backgroundColor: tokenCssVar('team-enemy') }}
-            data-forme={formeDuRole(r)}
-          />
-          {libelle[r]}
-        </li>
-      ))}
-    </ul>
   )
 }
