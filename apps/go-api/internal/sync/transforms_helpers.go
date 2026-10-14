@@ -135,26 +135,6 @@ func isFirefightMatch(matchInfo map[string]any) bool {
 	return false
 }
 
-// determineModeCategory déduit la catégorie custom depuis pair_name.
-// Portage simplifié de infer_custom_category_from_pair_name() Python.
-func determineModeCategory(pairName string) string {
-	lower := strings.ToLower(pairName)
-	switch {
-	case strings.Contains(lower, PerfChainRanked):
-		return modeCategoryRanked
-	case strings.Contains(lower, PerfChainFirefight):
-		return modeCategoryFirefight
-	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team") || strings.Contains(lower, "big-team"):
-		return modeCategoryBTB
-	case strings.Contains(lower, "fiesta"):
-		return modeCategoryFiesta
-	case strings.Contains(lower, "assassin"):
-		return modeCategoryAssassin
-	default:
-		return modeCategoryOther
-	}
-}
-
 // ExtractTeamScoresByID extrait les scores de team_0 et team_1 depuis le payload
 // GetMatchStats, en les indexant par `Teams[].TeamId` (jamais par position dans le
 // tableau : l'ordre y suit le rang, pas l'identifiant de camp).

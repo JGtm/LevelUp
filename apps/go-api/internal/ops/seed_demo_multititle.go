@@ -16,6 +16,7 @@ package ops
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -57,6 +58,11 @@ type SeedDemoMultiOptions struct {
 	EmitManifest bool
 	// IgnoreManifest : forcer la sélection dynamique même si un manifeste existe.
 	IgnoreManifest bool
+	// EmitReplayPicks : au lieu de seeder, choisir les rejeux figés (un par famille de mode)
+	// et les écrire dans le manifeste existant de chaque titre qui a un rejeu (CapReplay).
+	EmitReplayPicks bool
+	// CacheRepoRoot : cf. SeedDemoOptions.CacheRepoRoot (vide → RepoRoot).
+	CacheRepoRoot string
 }
 
 // SeedDemoMultiResult résume l'exécution multi-titre.
@@ -79,6 +85,24 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 		return res, fmt.Errorf("seed-demo multi: aucun titre")
 	}
 
+	// Génération À PART, publiée seulement si tout a passé (seed_demo_publish.go). Les modes
+	// d'émission n'écrivent que des manifestes.
+	emitting := opts.EmitManifest || opts.EmitReplayPicks
+	genDir := opts.OutDir
+	if !emitting {
+		g, err := prepareDemoGeneration(opts.OutDir)
+		if err != nil {
+			return res, fmt.Errorf("seed-demo multi: %w", err)
+		}
+		genDir = g
+	}
+	abort := func(err error) (SeedDemoMultiResult, error) {
+		if !emitting {
+			discardDemoGeneration(ctx, genDir)
+		}
+		return res, err
+	}
+
 	pr := titlePkg.NewPathResolver(opts.RepoRoot)
 	byTitle := map[string][]seededDemoPlayer{}
 	mediaEnabled := false
@@ -93,7 +117,7 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 		xuid, playerRel, rerr := ResolveSourceXUIDForTitle(opts.ProfilesPath, slug, ts.Gamertag)
 		if rerr != nil {
 			if isDefault {
-				return res, fmt.Errorf("seed-demo multi: résolution titre défaut %q: %w", slug, rerr)
+				return abort(fmt.Errorf("seed-demo multi: résolution titre défaut %q: %w", slug, rerr))
 			}
 			slog.WarnContext(ctx, "seed-demo multi: titre ignoré (gamertag non configuré)",
 				"title", slug, "gamertag", ts.Gamertag, "err", rerr)
@@ -107,7 +131,8 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 			SourceSharedDB: pr.SharedDBPath(slug),
 			SourceMetaDB:   pr.MetadataDBPath(slug),
 			SourceXUID:     xuid,
-			OutDir:         opts.OutDir,
+			OutDir:         genDir,
+			PreviousOutDir: opts.OutDir,
 			TitleSlug:      slug,
 			MaxMatches:     ts.MaxMatches,
 			SourceLabel:    ts.Gamertag,
@@ -120,6 +145,12 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 			RepoRoot:         opts.RepoRoot,
 			SkipConfigs:      true, // configs écrites une fois en fin d'orchestration
 			IgnoreManifest:   opts.IgnoreManifest,
+			CacheRepoRoot:    opts.CacheRepoRoot,
+		}
+
+		if opts.EmitReplayPicks {
+			res.EmittedManifests = append(res.EmittedManifests, emitReplayPicksForTitle(ctx, sopts, pr, ts.Gamertag)...)
+			continue
 		}
 
 		// Mode émission : geler la sélection dynamique du titre en manifeste, sans seeder.
@@ -140,12 +171,18 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 
 		tres, terr := SeedDemo(ctx, sopts)
 		if terr != nil {
-			if isDefault {
-				return res, fmt.Errorf("seed-demo multi: titre défaut %q: %w", slug, terr)
+			// Le titre par défaut, ou une fuite d'identité sur N'IMPORTE QUEL titre : rien
+			// n'est publié, la démo en ligne reste celle d'avant.
+			if isDefault || errors.Is(terr, ErrDemoIdentityLeak) {
+				return abort(fmt.Errorf("seed-demo multi: titre %q, aucune publication: %w", slug, terr))
 			}
 			slog.WarnContext(ctx, "seed-demo multi: titre additionnel en échec, ignoré",
 				"title", slug, "err", terr)
 			res.Skipped = append(res.Skipped, slug)
+			// Ses bases à moitié écrites ne partent pas avec la génération.
+			if err := os.RemoveAll(titlePkg.NewDemoLayout(genDir).TitleDir(slug)); err != nil {
+				return abort(fmt.Errorf("seed-demo multi: titre %q en échec non retiré de la génération: %w", slug, err))
+			}
 			continue
 		}
 		res.PerTitle[slug] = tres
@@ -158,7 +195,7 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 	}
 
 	// Mode émission : pas de seed ni de configs — on a écrit les manifestes, fin.
-	if opts.EmitManifest {
+	if emitting {
 		res.Duration = time.Since(start)
 		slog.InfoContext(ctx, "seed-demo multi: manifestes émis",
 			"count", len(res.EmittedManifests), "skipped", len(res.Skipped))
@@ -166,11 +203,14 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 	}
 
 	if len(byTitle) == 0 {
-		return res, fmt.Errorf("seed-demo multi: aucun titre seedé")
+		return abort(fmt.Errorf("seed-demo multi: aucun titre seedé"))
 	}
 
-	if err := writeDemoConfigsV3(opts.OutDir, byTitle, opts.ServiceTag, mediaEnabled); err != nil {
-		return res, fmt.Errorf("seed-demo multi: write configs v3: %w", err)
+	if err := writeDemoConfigsV3(genDir, byTitle, opts.ServiceTag, mediaEnabled); err != nil {
+		return abort(fmt.Errorf("seed-demo multi: write configs v3: %w", err))
+	}
+	if err := publishDemoGeneration(ctx, genDir, opts.OutDir); err != nil {
+		return abort(fmt.Errorf("seed-demo multi: %w", err))
 	}
 	res.ConfigsOK = true
 	res.Duration = time.Since(start)
@@ -321,4 +361,20 @@ func writeDemoConfigsV3(outDir string, byTitle map[string][]seededDemoPlayer, se
 		return fmt.Errorf("app_settings.json: %w", err)
 	}
 	return nil
+}
+
+// emitReplayPicksForTitle émet les rejeux figés d'un titre qui a un rejeu (CapReplay) ; rend
+// le manifeste écrit, aucun pour un titre sans rejeu ou en échec (journalisé).
+func emitReplayPicksForTitle(ctx context.Context, sopts SeedDemoOptions, pr *titlePkg.PathResolver, gamertag string) []string {
+	desc := titlePkg.DefaultRegistry().Get(sopts.TitleSlug)
+	if desc == nil || !desc.HasCapability(titlePkg.CapReplay) {
+		slog.InfoContext(ctx, "seed-demo: titre sans rejeu, aucun rejeu figé", "title", sopts.TitleSlug)
+		return nil
+	}
+	manPath := pr.DemoManifestPath(gamertag, sopts.TitleSlug)
+	if _, err := EmitDemoReplayPicks(ctx, sopts, manPath); err != nil {
+		slog.ErrorContext(ctx, "seed-demo: rejeux figés non émis", "title", sopts.TitleSlug, "err", err)
+		return nil
+	}
+	return []string{manPath}
 }

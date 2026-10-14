@@ -29,6 +29,11 @@ import (
 func (b *Builder) rangerLesFaits(ctx context.Context, matchID string, blob []byte,
 	f *replay.FilmFactsFile,
 ) {
+	if b.sansEcritureDesFaits {
+		slog.DebugContext(ctx, "cuisson: faits de film non ecrits (cuisson sans ecriture des faits)",
+			"match_id", matchID)
+		return
+	}
 	outPath := title.NewPathResolver(b.repoRoot).ReplayArtifactPath(b.titleSlug, matchID)
 	if err := refusParLePuits(outPath, b.titleSlug, matchID, blob); err != nil {
 		slog.WarnContext(ctx, "cuisson: faits de film NON ecrits — le puits refuserait l artefact "+
@@ -64,4 +69,13 @@ func (b *Builder) ecrireLesFaits(ctx context.Context, matchID string, f *replay.
 	}
 	slog.InfoContext(ctx, "cuisson: faits de film ecrits", "match_id", matchID, "path", chemin,
 		"bytes", len(blob))
+}
+
+// SansEcritureDesFaits : la cuisson n'ECRIT pas ses faits dans le cache du depot. Pour un
+// appelant qui cuit hors du cycle du depot et ne doit rien ecrire sous sa racine — la
+// recuisson des rejeux figes de la demo, dont la seule sortie est la demo elle-meme. La
+// prochaine cuisson de ce match redecode : c est le cout, assume, d une passe rare.
+func (b *Builder) SansEcritureDesFaits() *Builder {
+	b.sansEcritureDesFaits = true
+	return b
 }

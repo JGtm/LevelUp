@@ -207,3 +207,25 @@ func derefSyncStr(s *string) string {
 	}
 	return *s
 }
+
+// TestEnrichRegistryFromMetadata_CategorieSuitLeNomResolu : ExtractRegistry calcule la catégorie
+// sur le nom brut de l'API (l'identifiant) ; quand la traduction donne le vrai nom, la catégorie
+// qui part en base est celle de ce nom, pas "Other".
+func TestEnrichRegistryFromMetadata_CategorieSuitLeNomResolu(t *testing.T) {
+	ctx := context.Background()
+	meta := setupMetaWithTranslations(t)
+	row := &MatchRegistryRow{
+		PairID:       strPtrNonEmpty("pair-known-uuid"),
+		PairName:     strPtrNonEmpty("pair-known-uuid"),
+		ModeCategory: "Other",
+	}
+	if err := EnrichRegistryFromMetadata(ctx, meta, row); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if got := derefSyncStr(row.PairName); got != "Arena:Slayer on Aquarius" {
+		t.Fatalf("PairName = %q", got)
+	}
+	if row.ModeCategory != "Assassin" {
+		t.Errorf("ModeCategory = %q, want Assassin (Arena:Slayer on Aquarius)", row.ModeCategory)
+	}
+}

@@ -17,6 +17,12 @@ info:
     `api/openapi_manual_fragment.yaml`. Le code Go fait foi — pour faire évoluer le
     contrat, modifier le handler ou son DTO, puis régénérer.
 
+    Mode démo (`demo_mode` dans /bootstrap) : l'instance est en LECTURE SEULE. Toute
+    requête qui écrit (POST, PUT, PATCH, DELETE) reçoit `403` avec le code
+    `demo_mode_forbidden` (forme `ApiError`), sauf les lectures en POST (pages, filtres,
+    tactique, série d'engagement) et `POST /session/context`. La connexion Xbox
+    (`GET /auth/xbox/login`, `/auth/xbox/callback`) répond le même refus.
+
     Priorités d'endpoints :
     - **P0** : bootstrap, players, session/context, filters/resolve
     - **P1** : career, match-history, explorer, match-view
@@ -1841,7 +1847,7 @@ paths:
     post:
       description: |
         Lance un Device Code Flow pour l'authentification Halo (SISU).
-        Non disponible en DEMO_MODE.
+        Refusé en mode démo (403 `demo_mode_forbidden`).
       operationId: postAuthDeviceFlowStart
       responses:
         "200":
@@ -1850,8 +1856,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeviceFlowStartResponse'
           description: Flow initié (user_code + verification_uri)
-        "422":
-          $ref: '#/components/responses/BadRequest'
         "500":
           $ref: '#/components/responses/InternalError'
         default:

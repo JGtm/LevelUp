@@ -23,6 +23,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"levelup/go-api/internal/analysis/modelabel"
 )
 
 // Severity d'une violation.
@@ -343,7 +345,8 @@ func checkLUSRV2Orphan(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Vio
 //
 // Contrat souple : tout match PvP du joueur devrait porter une row
 // match_skill_rank (LUSR pour le social, CSR pour le ranked). Les matchs
-// Firefight/PvE (mode_category='firefight') sont EXCLUS du périmètre — pas de
+// Firefight/PvE (mode_category = modelabel.CategoryFirefight, la valeur stockée
+// « Firefight », casse comprise) sont EXCLUS du périmètre — pas de
 // rating sur le PvE. WARN car des cas légitimes subsistent (matchs non
 // 2-équipes, déséquilibres skippés par EP) ; une CROISSANCE du count signale
 // en revanche la classe « désync watermark v2 » (watermark shared avancé sans
@@ -373,7 +376,7 @@ func checkSkillRankMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid
 		JOIN match_registry r ON r.match_id = p.match_id
 		WHERE p.xuid || '' = ?
 		  AND p.match_id IS NOT NULL
-		  AND COALESCE(r.mode_category, '') <> 'firefight'`, xuid)
+		  AND COALESCE(r.mode_category, '') <> ?`, xuid, modelabel.CategoryFirefight)
 	if err != nil {
 		return nil, fmt.Errorf("invariants/skill_rank_missing: shared query: %w", err)
 	}

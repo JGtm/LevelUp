@@ -45,12 +45,34 @@ type DemoManifestCorpus struct {
 	SquadMatchIDs  []string `json:"squad_match_ids"`
 	RankedMatchIDs []string `json:"ranked_match_ids"`
 	MediaMatchIDs  []string `json:"media_match_ids"`
+	// ReplayMatches : les rejeux FIGÉS de la démo, un par mode de jeu (décision D-3 du plan
+	// des recommandations du 2026-10-09). Émis par `seed-demo --emit-replay-picks`
+	// (seed_demo_replay_picks.go), committés ; leurs matchs entrent dans le corpus.
+	ReplayMatches []DemoReplayPick `json:"replay_matches,omitempty"`
 }
 
-// CorpusMatchIDs rejoue unionMatchIDs sur les 4 sous-listes (même ordre/dedup que la
-// sélection dynamique).
+// DemoReplayPick : un rejeu figé de la démo — le match, la famille de mode qu'il
+// représente (clé, jamais un libellé) et sa carte (lisibilité du manifeste).
+type DemoReplayPick struct {
+	MatchID string `json:"match_id"`
+	Mode    string `json:"mode"`
+	Map     string `json:"map,omitempty"`
+}
+
+// replayPickMatchIDs rend les match_id des rejeux figés, dans l'ordre du manifeste.
+func replayPickMatchIDs(picks []DemoReplayPick) []string {
+	out := make([]string, 0, len(picks))
+	for _, p := range picks {
+		out = append(out, p.MatchID)
+	}
+	return out
+}
+
+// CorpusMatchIDs rejoue unionMatchIDs sur les sous-listes (même ordre/dedup que la
+// sélection dynamique), rejeux figés en dernier.
 func (m *DemoManifest) CorpusMatchIDs() []string {
-	return unionMatchIDs(m.Corpus.SoloMatchIDs, m.Corpus.SquadMatchIDs, m.Corpus.RankedMatchIDs, m.Corpus.MediaMatchIDs)
+	return unionMatchIDs(m.Corpus.SoloMatchIDs, m.Corpus.SquadMatchIDs, m.Corpus.RankedMatchIDs,
+		m.Corpus.MediaMatchIDs, replayPickMatchIDs(m.Corpus.ReplayMatches))
 }
 
 // LoadDemoManifest lit le manifeste à path. found=false (err nil) si le fichier est
@@ -85,6 +107,16 @@ func validateDemoManifest(m *DemoManifest) error {
 	}
 	if len(m.CorpusMatchIDs()) == 0 {
 		return fmt.Errorf("corpus vide (aucun match_id)")
+	}
+	modes := map[string]bool{}
+	for _, p := range m.Corpus.ReplayMatches {
+		if p.MatchID == "" || p.Mode == "" {
+			return fmt.Errorf("rejeu figé incomplet (match_id et mode requis) : %+v", p)
+		}
+		if modes[p.Mode] {
+			return fmt.Errorf("rejeu figé : mode %q listé deux fois", p.Mode)
+		}
+		modes[p.Mode] = true
 	}
 	return nil
 }

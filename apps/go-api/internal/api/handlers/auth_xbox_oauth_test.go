@@ -1,6 +1,6 @@
 // Package handlers_test — auth_xbox_oauth_test.go : tests XboxOAuthHandler.
 //
-// Couvre les cas non-exchange : demo_mode, redirect_uri absent, state CSRF
+// Couvre les cas non-exchange : refus en démo (demo_mode_forbidden), redirect_uri absent, state CSRF
 // (manquant, mismatch), error param Microsoft. Le success path complet
 // nécessiterait un mock de l'endpoint Microsoft /oauth2/v2.0/token (non testé
 // ici — exercé via les tests d'intégration manuels avec Azure).
@@ -45,8 +45,20 @@ func TestXboxOAuth_LoginRedirect_DemoMode(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Errorf("status = %d, want 422 (demo_mode)", w.Code)
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), middleware.DemoModeForbiddenCode) {
+		t.Errorf("status = %d body = %s, want 403 %s", w.Code, w.Body.String(), middleware.DemoModeForbiddenCode)
+	}
+}
+
+func TestXboxOAuth_Callback_DemoMode(t *testing.T) {
+	r, _ := newXboxOAuthRouter(t, true, "http://localhost:8000/api/v1/auth/xbox/callback")
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/xbox/callback?code=c&state=s", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), middleware.DemoModeForbiddenCode) {
+		t.Errorf("status = %d body = %s, want 403 %s", w.Code, w.Body.String(), middleware.DemoModeForbiddenCode)
 	}
 }
 

@@ -57,7 +57,6 @@ type OpenSpartanImportHandler struct {
 	jobStore      *jobs.Store
 	tempDir       string
 	stashDir      string
-	demoMode      bool
 }
 
 // OpenSpartanImportConfig collects the dependencies needed by the handler.
@@ -77,8 +76,6 @@ type OpenSpartanImportConfig struct {
 	// StashDir is the parent directory under which the Friends JSON stash
 	// is written by the service. Defaults to "./data/players" when empty.
 	StashDir string
-	// DemoMode short-circuits the endpoint with 503 when true.
-	DemoMode bool
 }
 
 // NewOpenSpartanImportHandler constructs an OpenSpartanImportHandler.
@@ -98,7 +95,6 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 		jobStore:      cfg.JobStore,
 		tempDir:       tempDir,
 		stashDir:      stashDir,
-		demoMode:      cfg.DemoMode,
 	}
 }
 
@@ -114,13 +110,10 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 //   - 401 if no SSO session XUID
 //   - 413 if upload exceeds the size limit
 //   - 400 if multipart parsing or the `db` field is malformed
-//   - 503 in demo mode
+//
+// Not mounted in demo mode (server_apiv1.go), and refused there anyway by the demo
+// read-only guard (middleware/demo_read_only.go).
 func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Request) {
-	if h.demoMode {
-		writeError(r.Context(), w, http.StatusServiceUnavailable, "demo_mode",
-			"import OpenSpartan désactivé en mode démo")
-		return
-	}
 	if h.importSvc == nil || h.jobStore == nil {
 		writeError(r.Context(), w, http.StatusServiceUnavailable, "import_not_configured",
 			"service d'import non configuré côté serveur")

@@ -21,16 +21,16 @@ import (
 )
 
 // newAuthRouter crée un routeur de test avec le stub provider (pas de MSAL réel).
-func newAuthRouter(t *testing.T, demoMode bool) (*chi.Mux, *session.Store) {
-	return newAuthRouterWithProvider(t, demoMode, &stubTokenProvider{})
+func newAuthRouter(t *testing.T) (*chi.Mux, *session.Store) {
+	return newAuthRouterWithProvider(t, &stubTokenProvider{})
 }
 
-func newAuthRouterWithProvider(t *testing.T, demoMode bool, provider auth_platform.TokenProvider) (*chi.Mux, *session.Store) {
+func newAuthRouterWithProvider(t *testing.T, provider auth_platform.TokenProvider) (*chi.Mux, *session.Store) {
 	t.Helper()
 	dir := t.TempDir()
 	sessStore := session.NewStore(filepath.Join(dir, "sessions"), time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	attempts := auth_platform.NewAttemptStore()
-	h := handlers.NewAuthHandler(sessStore, attempts, demoMode, provider)
+	h := handlers.NewAuthHandler(sessStore, attempts, provider)
 
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(sessStore, middleware.SecureCookiePolicy{}))
@@ -38,20 +38,8 @@ func newAuthRouterWithProvider(t *testing.T, demoMode bool, provider auth_platfo
 	return r, sessStore
 }
 
-func TestAuthHandler_StartDeviceFlow_DemoMode(t *testing.T) {
-	r, _ := newAuthRouter(t, true)
-	req := httptest.NewRequest(http.MethodPost, "/auth/device-flow/start", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	// Mode démo → 422
-	if w.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422 in demo mode, got %d: %s", w.Code, w.Body.String())
-	}
-}
-
 func TestAuthHandler_GetDeviceFlowStatus_NotFound(t *testing.T) {
-	r, _ := newAuthRouter(t, false)
+	r, _ := newAuthRouter(t)
 	req := httptest.NewRequest(http.MethodGet, "/auth/device-flow/nonexistent-attempt", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -62,7 +50,7 @@ func TestAuthHandler_GetDeviceFlowStatus_NotFound(t *testing.T) {
 }
 
 func TestAuthHandler_GetDeviceFlowStatus_Expired(t *testing.T) {
-	r, _ := newAuthRouter(t, false)
+	r, _ := newAuthRouter(t)
 	// Appeler avec un attempt_id qui n'existe pas → 404 aussi
 	req := httptest.NewRequest(http.MethodGet, "/auth/device-flow/expired-attempt-id-12345", nil)
 	w := httptest.NewRecorder()
@@ -77,7 +65,7 @@ func TestAuthHandler_GetDeviceFlowStatus_Expired(t *testing.T) {
 // est propagé comme HTTP 500.
 func TestAuthHandler_StartDeviceFlow_ProviderError(t *testing.T) {
 	provider := &stubTokenProvider{initFlowErr: errors.New("msal network error")}
-	r, _ := newAuthRouterWithProvider(t, false, provider)
+	r, _ := newAuthRouterWithProvider(t, provider)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/device-flow/start", nil)
 	w := httptest.NewRecorder()
@@ -94,7 +82,7 @@ func TestAuthHandler_StartDeviceFlow_Success(t *testing.T) {
 	// ExpiresIn=1 : le contexte du polling expirera après 1s (pas de vrai MSAL).
 	flow := auth_platform.NewStubDeviceFlow("TEST42", "https://microsoft.com/devicelogin", "Entrez TEST42", 1, "msal")
 	provider := &stubTokenProvider{initFlowFlow: flow}
-	r, _ := newAuthRouterWithProvider(t, false, provider)
+	r, _ := newAuthRouterWithProvider(t, provider)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/device-flow/start", nil)
 	w := httptest.NewRecorder()

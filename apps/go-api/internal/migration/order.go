@@ -228,6 +228,7 @@ var canonicalOrder = []string{
 	"shared_match_player_positions_appendonly_v1",      // shared
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
+	"shared_recompute_mode_category_v1",                // shared (2026-10-09, lot F : catégorie de mode recalculée depuis pair_name, swap sans UPDATE, index retiré)
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
 	// AVANT le seed tier_boundaries (qui INSERT dedans). Corrige l'inversion 148/149
 	// historique. Sûr : les 2 sont title-owned → n'affecte pas l'ordre du registre global
