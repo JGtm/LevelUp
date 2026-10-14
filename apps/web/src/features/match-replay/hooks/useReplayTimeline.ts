@@ -22,7 +22,6 @@
 import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefObject } from 'react'
 
 import { useCapability } from '@/lib/capabilities'
-import { campCountOf, leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -34,22 +33,16 @@ import type { ReplayTimelineTracks } from '../ui/ReplayTimelineTracks'
 import {
   buildEventTracks,
   buildFragDominance,
-  buildScoreDominance,
+  buildScoreTrack,
   placeMedia,
-  roundSeparators,
-  sameLeadSegments,
   trackScale,
-  type DominanceSegment,
   type ReplayMediaItem,
-  type ReplayScoreTrack,
   type TrackDeath,
   type TrackFrag,
   type TrackKill,
   type TrackMedal,
-  type TrackScale,
 } from '../model/replayTimelineTracksLogic'
 import { presenceShades, teammatesAbsence } from '../model/presenceTrackLogic'
-import { roundTransitions } from '../model/roundsLogic'
 import { buildViewpointOptions, type ViewpointOptionLabels } from '../model/viewpointOptions'
 import { campLabel } from '../../../lib/replay/replayCamps'
 import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
@@ -103,6 +96,11 @@ export interface ReplayTimelineOptions {
   renderWidth: number
   /** Le cadrage, relaye tel quel aux raccourcis clavier (cf. useReplayShortcuts). */
   zoom?: ReplayShortcutHandlers['zoom']
+  /**
+   * LA RÈGLE DÉCLARÉE de la piste Score (`header.score_timeline_kind` de la Vue match, lue une
+   * fois par la page) : `hidden` = le mode marque au frag, pas de piste Score. Absent = courbe.
+   */
+  scoreTimelineKind?: string
   locale: ReplayLocale
 }
 
@@ -132,7 +130,7 @@ export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, '
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, toggleFullscreen, renderWidth, locale, zoom } = o
-  const { media: mediaItems = EMPTY_MEDIA, viewpoint, allegiance, players, onSelectViewpoint } = o
+  const { media: mediaItems = EMPTY_MEDIA, viewpoint, allegiance, players, onSelectViewpoint, scoreTimelineKind } = o
   const t = REPLAY_TEXT[locale]
   const { frameIntervalMs, frameCount } = doc
   // LE REPLI EST UNE PRÉFÉRENCE DU LECTEUR, pas un calque : il ne passe pas par le tiroir mais
@@ -203,7 +201,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     () => buildFragDominance(reduit.frags, frameIntervalMs ?? 0, scale),
     [reduit, frameIntervalMs, scale],
   )
-  const score = useMemo(() => scoreTrack(doc, dominance, scale), [doc, dominance, scale])
+  const score = useMemo(
+    () => buildScoreTrack(doc, scale, scoreTimelineKind),
+    [doc, scale, scoreTimelineKind],
+  )
   // LES MÉDIAS ARRIVENT DE LA PAGE, déjà sur l'axe du rejeu (phase 2, 2026-08-28) : ce hook ne
   // fait que les POSER sur l'échelle de la frise, comme il pose les marques du fil. Le recalage,
   // lui, a eu lieu une seule fois dans `buildReplayMedia`.
@@ -279,39 +280,6 @@ function viewpointLabels(t: ReplayText): ViewpointOptionLabels {
     campLabelOf: (camp) => campLabel(camp, camp.players.map((p) => p.board), t),
     noData: t.viewpointNoData,
   }
-}
-
-/**
- * scoreTrack assemble la piste SCORE, ou rend `null` quand elle n'a rien à dire.
- *
- * TROIS RAISONS DE NE PAS L'AFFICHER, et elles disent toutes la même chose — « cette piste
- * répéterait ce qui est déjà à l'écran, ou n'est pas mesurée » :
- *  1. AUCUN CALQUE DE SCORE exploitable : artefact antérieur au schéma 12, ou horloge du film
- *     non recalée (`scoreTimelineOf` porte cette garde et rend `undefined`).
- *  2. LA PISTE SERAIT LE SOSIE DE LA DOMINANCE (Slayer : le score EST le compte des frags) —
- *     mêmes meneurs, mêmes frontières au pixel près (`sameLeadSegments`, décision user D1
- *     2026-09-02). L'ancienne garde comparait les totaux à l'égalité stricte et un seul kill
- *     non attribué réaffichait le doublon.
- *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
- *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ». Un camp SANS
- *     SÉRIE compte pourtant, à zéro, quand toutes les séries publiées ont un camp : c'est le
- *     match à sens unique (3-0), lu « égalité, puis le marqueur en tête » (lot L1.2 du
- *     2026-09-23) — le nombre de camps vient du roster du document (`campCountOf`).
- *
- * LES SÉPARATEURS DE MANCHE viennent de `roundTransitions` — le foyer des pastilles du bandeau
- * et de l'écran inter-manche. Aucun sur un mode à manche unique, par construction.
- */
-function scoreTrack(
-  doc: ReplayDocumentReady,
-  dominance: readonly DominanceSegment[],
-  scale: TrackScale,
-): ReplayScoreTrack | null {
-  const timeline = scoreTimelineOf(doc)
-  if (!timeline) return null
-  const segments = buildScoreDominance(leaderStates(timeline, campCountOf(doc.roster)), scale)
-  if (segments.length === 0) return null
-  if (sameLeadSegments(segments, dominance)) return null
-  return { segments, rounds: roundSeparators(roundTransitions(timeline), scale) }
 }
 
 /**

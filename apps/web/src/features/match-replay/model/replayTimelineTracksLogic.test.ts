@@ -19,16 +19,17 @@
 import { describe, expect, it } from 'vitest'
 
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
+import { testReplayDoc } from '../test/testDoc'
 import type { MedalEvent } from './killFeedLogic'
 import {
   buildEventTracks,
   buildFragDominance,
   buildScoreDominance,
+  buildScoreTrack,
   clipFrameCount,
   placeMedia,
   ratioOfMs,
   roundSeparators,
-  sameLeadSegments,
   THUMB_PX,
   trackLeft,
   trackLeftVar,
@@ -485,46 +486,44 @@ describe('roundSeparators — où les manches se touchent', () => {
 })
 
 /**
- * LE TRI DE LA PISTE SCORE (décision user D1, 2026-09-02). Il se fait sur LE RENDU et non sur
- * le nom du mode ni sur les totaux : deux pistes qui dessinent les mêmes bandes sont un
- * doublon, on n'en montre qu'une. L'ancienne garde (`scoreMirrorsFrags`, totaux à l'égalité
- * stricte) laissait le doublon réapparaître au premier kill non attribué — le cas nominal en
- * Assassin, pas l'exception.
+ * LA PISTE SCORE OBÉIT À LA RÈGLE DÉCLARÉE DU TITRE, et à elle seule. Le « sosie de la
+ * dominance » se décidait par une comparaison de rendu : deux frags tombés dans la même image
+ * la faisaient échouer, et la piste se réaffichait en Slayer.
  */
-describe('sameLeadSegments — les deux pistes dessineraient-elles la même chose ?', () => {
-  const seg = (teamId: number | null, from: number, to: number, i = 0) => ({
-    key: `s${i}`,
-    from,
-    to,
-    teamId,
+describe('buildScoreTrack — la règle déclarée décide seule', () => {
+  /** Un Slayer minuscule : l'équipe 0 marque aux images 200 et 200 (DEUX frags, même image). */
+  const slayer = () =>
+    testReplayDoc({
+      originMs: 0,
+      frameIntervalMs: FRAME_MS,
+      scoreTimeline: {
+        players: [],
+        teams: [
+          { teamId: 0, rounds: [{ round: 0, points: [{ t: 200, v: 1 }, { t: 200, v: 2 }] }], total: [{ t: 200, v: 2 }] },
+          { teamId: 1, rounds: [{ round: 0, points: [{ t: 300, v: 1 }] }], total: [{ t: 300, v: 1 }] },
+        ],
+      },
+    })
+
+  it('`hidden` : pas de piste Score — même si deux frags tombent dans la même image', () => {
+    expect(buildScoreTrack(slayer(), SCALE, 'hidden')).toBeNull()
   })
 
-  it('SLAYER : mêmes meneurs, mêmes frontières — la piste score serait un doublon', () => {
-    const dominance = [seg(null, 0, 0.2, 0), seg(0, 0.2, 0.7, 1), seg(1, 0.7, 1, 2)]
-    const score = [seg(null, 0, 0.201, 3), seg(0, 0.201, 0.699, 4), seg(1, 0.699, 1, 5)]
-    expect(sameLeadSegments(score, dominance)).toBe(true)
+  it('règle absente ou `events` : la piste existe (aucune comparaison de rendu ne la retire)', () => {
+    expect(buildScoreTrack(slayer(), SCALE, undefined)).not.toBeNull()
+    expect(buildScoreTrack(slayer(), SCALE, 'events')).not.toBeNull()
   })
 
-  it('MODE À OBJECTIF : un meneur diverge — la piste a sa place', () => {
-    const dominance = [seg(null, 0, 0.2), seg(0, 0.2, 1)]
-    const score = [seg(null, 0, 0.2), seg(1, 0.2, 1)]
-    expect(sameLeadSegments(score, dominance)).toBe(false)
+  it('sans calque de score exploitable : rien, quelle que soit la règle', () => {
+    expect(buildScoreTrack(testReplayDoc(), SCALE, undefined)).toBeNull()
   })
 
-  it('une frontière au-delà du pixel de tolérance rend les pistes DIFFÉRENTES', () => {
-    const dominance = [seg(0, 0, 0.5), seg(1, 0.5, 1)]
-    const score = [seg(0, 0, 0.55), seg(1, 0.55, 1)]
-    expect(sameLeadSegments(score, dominance)).toBe(false)
-  })
-
-  it('des suites de longueurs différentes ne sont jamais le même dessin', () => {
-    const dominance = [seg(0, 0, 1)]
-    const score = [seg(0, 0, 0.5), seg(1, 0.5, 1)]
-    expect(sameLeadSegments(score, dominance)).toBe(false)
-  })
-
-  it('deux listes vides ne masquent rien : rien n’est comparé', () => {
-    expect(sameLeadSegments([], [])).toBe(false)
+  it('une horloge du film non recalée coupe la piste (le score serait faux)', () => {
+    const doc = testReplayDoc({
+      coverage: { originResolved: false } as never,
+      scoreTimeline: { players: [], teams: [{ teamId: 0, rounds: [{ round: 0, points: [{ t: 200, v: 1 }] }], total: [{ t: 200, v: 1 }] }] },
+    })
+    expect(buildScoreTrack(doc, SCALE, undefined)).toBeNull()
   })
 })
 

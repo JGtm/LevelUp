@@ -194,6 +194,8 @@ interface ReplayCanvasProps {
    */
   feedEntries?: readonly ReplayFeedEntry[]
   media?: readonly ReplayMediaItem[]
+  /** La règle déclarée de la piste Score (`header.score_timeline_kind`) : `hidden` = pas de piste. */
+  scoreTimelineKind?: string
   /**
    * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois
    * par la page — la même lecture que l'écran de fin (`endMatchSound.ts`). Le canvas ne fait
@@ -211,7 +213,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, marks,
-  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
@@ -658,7 +660,7 @@ export function ReplayCanvas({
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
-    doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
+    doc, playWindow, feedEntries, media, scoreTimelineKind, marks: marks ?? NO_MARKS, renderWidth, locale,
     lead: teamCascades, playback, toggleSound: sound.toggle, toggleFullscreen: fullscreen.toggle, zoom,
     // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. L'allégeance
     // est celle des calques (`model.allegiance`, lue dans le film et vue du point de vue) —

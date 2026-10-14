@@ -21,6 +21,10 @@
  * même programme (TS1149). C'est aussi le patron du dépôt (killFeedLogic, victoryLogic).
  */
 import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
+import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { campCountOf, leaderStates, scoreTimelineOf } from '../../../lib/replay/scoreTimeline'
+import { SCORE_TIMELINE_HIDDEN } from '../../match-view/scoreTimelineKind'
+import { roundTransitions } from './roundsLogic'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { MedalEvent } from './killFeedLogic'
 import type { ReplayWindowBounds } from './replayWindow'
@@ -392,10 +396,11 @@ function clampFrameRatio(frame: number, scale: TrackScale): number {
  * d'œil, ce que ni le bandeau (une seule image) ni la courbe de la vue match (un autre écran)
  * ne permettent.
  *
- * ELLE NE S'AFFICHE PAS EN SLAYER, et c'est mesuré, pas supposé : « le score du Slayer EST le
- * compte de frags » (état de l'art des modes, témoin `000d5950` : score API 43-50 = somme des
- * frags par équipe). La piste y répéterait celle du dessus. Le tri se fait sur le RENDU, pas
- * sur un libellé de mode — cf. `sameLeadSegments`.
+ * ELLE NE S'AFFICHE PAS EN SLAYER : « le score du Slayer EST le compte de frags » (témoin
+ * `000d5950` : score API 43-50 = somme des frags par équipe), la piste y répéterait celle du
+ * dessus. Le tri est la RÈGLE DÉCLARÉE du titre (`header.score_timeline_kind`,
+ * `regulation.toml [score_timeline]`), jamais une comparaison de rendu ni un libellé de mode —
+ * cf. `buildScoreTrack`.
  *
  * `states` vient de `leaderStates` (lib/replay/scoreTimeline) : un état par changement,
  * ÉGALITÉS COMPRISES, daté en IMAGES du document. Le reste est la règle de la dominance —
@@ -462,39 +467,38 @@ export function roundSeparators(
 }
 
 /**
- * sameLeadSegments — LES DEUX PISTES DESSINERAIENT-ELLES LA MÊME CHOSE ?
+ * buildScoreTrack assemble la piste SCORE, ou rend `null` quand elle n'a rien à dire.
  *
- * C'est le tri qui décide de montrer la piste SCORE, et il se fait sur LE RENDU plutôt que
- * sur le nom du mode : comparer un libellé (« Slayer ») serait faux au premier mode dérivé
- * (Super Fiesta est un Slayer, Attrition ne l'est pas) et illisible sur un second titre.
+ * TROIS RAISONS DE NE PAS L'AFFICHER :
+ *  1. LA RÈGLE DÉCLARÉE DU TITRE dit « `hidden` » (`header.score_timeline_kind`, servi par
+ *     l'en-tête de la Vue match depuis `regulation.toml [score_timeline]`) : le mode marque au
+ *     frag, la piste répéterait la dominance. C'est la SEULE règle — aucune comparaison de
+ *     rendu : deux frags tombés dans la même image faisaient échouer l'ancienne garde et
+ *     réaffichaient le doublon sur la moitié des parties de Slayer. Un mode dont la règle
+ *     manque se lit comme « courbe » (le défaut du serveur) : le contrôle de qualité de cette
+ *     règle est un test du dépôt (`regulation_score_timeline_test.go`).
+ *  2. AUCUN CALQUE DE SCORE exploitable : artefact antérieur au schéma 12, ou horloge du film
+ *     non recalée (`scoreTimelineOf` porte cette garde et rend `undefined`).
+ *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
+ *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ». Un camp SANS
+ *     SÉRIE compte pourtant, à zéro, quand toutes les séries publiées ont un camp : c'est le
+ *     match à sens unique (3-0), lu « égalité, puis le marqueur en tête » — le nombre de camps
+ *     vient du roster du document (`campCountOf`).
  *
- * HISTOIRE DE LA GARDE (2026-09-02, décision user D1). La première version
- * (`scoreMirrorsFrags`) comparait les TOTAUX finaux score/frags à l'égalité stricte : un seul
- * kill au camp non résolu (suicide, environnemental, acteur hors scoreboard) suffisait à
- * réafficher le doublon — c'était le cas nominal en Assassin, pas l'exception. La garde
- * compare désormais ce que l'utilisateur voit : la SUITE DES MENEURS et les FRONTIÈRES des
- * bandes. Deux pistes identiques à l'écran = un doublon, on n'en montre qu'une.
- *
- * LA TOLÉRANCE DE FRONTIÈRE est une affaire de PIXEL, pas de donnée : les deux pistes datent
- * la même bascule sur deux horloges (le fil des éliminations en ms, le calque de score en
- * frames), et ces horloges se recalent à mieux qu'une frame. En ratio de frise,
- * SAME_TRACK_EPS couvre cet écart de quantification — en dessous d'un demi-pour-cent de la
- * largeur, aucune différence n'est lisible. Deux suites de meneurs DIFFÉRENTES, elles, ne
- * passent jamais : le premier segment divergent rend `false`.
+ * LES SÉPARATEURS DE MANCHE viennent de `roundTransitions` — le foyer des pastilles du bandeau
+ * et de l'écran inter-manche. Aucun sur un mode à manche unique, par construction.
  */
-export const SAME_TRACK_EPS = 0.005
-
-export function sameLeadSegments(
-  a: readonly DominanceSegment[],
-  b: readonly DominanceSegment[],
-): boolean {
-  if (a.length === 0 || a.length !== b.length) return false
-  for (let i = 0; i < a.length; i++) {
-    if (a[i].teamId !== b[i].teamId) return false
-    if (Math.abs(a[i].from - b[i].from) > SAME_TRACK_EPS) return false
-    if (Math.abs(a[i].to - b[i].to) > SAME_TRACK_EPS) return false
-  }
-  return true
+export function buildScoreTrack(
+  doc: ReplayDocumentReady,
+  scale: TrackScale,
+  scoreTimelineKind: string | undefined,
+): ReplayScoreTrack | null {
+  if (scoreTimelineKind === SCORE_TIMELINE_HIDDEN) return null
+  const timeline = scoreTimelineOf(doc)
+  if (!timeline) return null
+  const segments = buildScoreDominance(leaderStates(timeline, campCountOf(doc.roster)), scale)
+  if (segments.length === 0) return null
+  return { segments, rounds: roundSeparators(roundTransitions(timeline), scale) }
 }
 
 /** Le camp SEUL en tête au compte donné, ou `null` (égalité) — même règle que `leaderAt`. */
