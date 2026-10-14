@@ -315,12 +315,10 @@ export interface MatchViewText {
   /** Section « Objectifs » du scoreboard (CTF/Zones/Oddball) — V72-03. `cols` :
    *  libellé + tooltip d'en-tête par clé de colonne objectif. */
   objectives: {
-    title: string
     /**
-     * LES DEUX VUES EMPILEES (2026-09-03). Le tableau a ete remplace par un graphe :
+     * LES DEUX CARTES EMPILEES (2026-10-14, deux vues dans une carte « Objectifs » avant).
      * `viewByPlayer` classe les joueurs grandeur par grandeur, `viewTeamTotals` oppose les
-     * deux camps sur chacune. Les deux titres sont necessaires — sans eux, deux blocs de
-     * barres dans la meme carte se lisent comme deux lectures de la meme chose.
+     * deux camps sur chacune : le titre de chaque carte est son seul intitule.
      */
     viewByPlayer: string
     viewTeamTotals: string
@@ -570,7 +568,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxModeFmt: (category) => `en ${category}`,
     matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
     objectives: {
-      title: 'Objectifs',
       viewByPlayer: "Actions d'objectif par joueur",
       viewTeamTotals: "Total d'objectif par équipe",
       gridTipFmt: (player, metric, value) => `${player} — ${metric} : ${value}`,
@@ -889,7 +886,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxModeFmt: (category) => `in ${category}`,
     matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
     objectives: {
-      title: 'Objectives',
       viewByPlayer: 'Objective actions by player',
       viewTeamTotals: 'Objective totals by team',
       gridTipFmt: (player, metric, value) => `${player} — ${metric}: ${value}`,

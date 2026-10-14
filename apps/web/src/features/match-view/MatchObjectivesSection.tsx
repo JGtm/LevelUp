@@ -2,9 +2,9 @@
  * MatchObjectivesSection — section « Objectifs » de la page match (V72-03).
  *
  * CE QU'ELLE MONTRE, ET SOUS QUELLE FORME. Les statistiques d'objectif du mode joué (drapeau /
- * zones — Bastion et King of the Hill / crâne / réserve / extraction / VIP / Assaut), en DEUX VUES
- * empilées depuis le 2026-09-03 (retours utilisateur : le tableau était hors style et illisible
- * d'un coup d'œil) :
+ * zones — Bastion et King of the Hill / crâne / réserve / extraction / VIP / Assaut), en DEUX CARTES
+ * empilées, chacune sous son propre titre (deux vues depuis le 2026-09-03, deux cartes depuis le
+ * 2026-10-14 : l'intitulé commun « Objectifs » ne disait rien de plus que ces deux titres) :
  *   1. « Actions d'objectif par joueur » — la grille partagée `components/charts/ValueGrid` :
  *      lignes = joueurs camp par camp, colonnes = grandeurs du mode, chacune avec SON échelle ;
  *   2. « Total d'objectif par équipe » — un face-à-face, zéro au centre, une échelle par ligne :
@@ -114,18 +114,18 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
   })
 
   return (
-    <SectionCard title={t.objectives.title} label={t.objectives.title}>
-      <div className="space-y-5 px-3 pb-3 pt-3">
-        <section aria-label={t.objectives.viewByPlayer}>
-          <ViewTitle>{t.objectives.viewByPlayer}</ViewTitle>
+    <>
+      <SectionCard title={t.objectives.viewByPlayer} label={t.objectives.viewByPlayer}>
+        <div className="px-3 pb-3 pt-3">
           <ValueGrid model={grid} />
-        </section>
-        {/* LE FACE-À-FACE N'A DE SENS QU'À DEUX CAMPS. Un lobby qui n'en présente pas exactement
-            deux (donnée partielle, mode à plus de deux camps) garde la vue par joueur seule :
-            mieux vaut une vue de moins qu'un « face-à-face » qui en tairait un troisième. */}
-        {sides.length === 2 && (
-          <section aria-label={t.objectives.viewTeamTotals}>
-            <ViewTitle>{t.objectives.viewTeamTotals}</ViewTitle>
+        </div>
+      </SectionCard>
+      {/* LE FACE-À-FACE N'A DE SENS QU'À DEUX CAMPS. Un lobby qui n'en présente pas exactement
+          deux (donnée partielle, mode à plus de deux camps) garde la carte par joueur seule :
+          mieux vaut une carte de moins qu'un « face-à-face » qui en tairait un troisième. */}
+      {sides.length === 2 && (
+        <SectionCard title={t.objectives.viewTeamTotals} label={t.objectives.viewTeamTotals}>
+          <div className="px-3 pb-3 pt-3">
             <ObjectiveDuel
               duel={buildObjectiveDuel({
                 rows: withObjective,
@@ -147,19 +147,10 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
                 color: teamColor(side),
               }))}
             />
-          </section>
-        )}
-      </div>
-    </SectionCard>
-  )
-}
-
-/** Le titre d'une vue à l'intérieur de la carte : les deux vues répondent à deux questions. */
-function ViewTitle({ children }: { children: string }) {
-  return (
-    <h4 className="mb-2 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h4>
+          </div>
+        </SectionCard>
+      )}
+    </>
   )
 }
 
