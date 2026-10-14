@@ -143,6 +143,8 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-14 : relectures F (anti-ART : 9 conditions tenues, 0 constat ; couverture : 36 mutations tuées, 2 P2) et D ronde 2 (5 défauts FERMÉS, 3 protections non verrouillées par un test) ; tests complémentaires confiés à deux agents Sonnet.
 
+- 2026-10-14 : le user valide la mesure du plafond mémoire de la recuisson démo (après la recuisson commune) et demande d'inscrire au backlog le durcissement de sécurité du site (« sûr et solide, pas le Pentagone ») avant son partage plus large.
+
 ## Découvertes
 
 - (relecture D ronde 2) `internal/api/middleware/csrf.go:121` `isExemptPath` compare le préfixe ouvrier sur le chemin NETTOYÉ : une écriture dont le chemin brut porte `..%2F` (ex. `…/proposals/..%2F..%2F..%2F..%2Finternal%2Fx/dismiss`) échappe au contrôle d'Origin. Pré-existant (feat/v75 et main) ; portée limitée par la session SameSite=Lax ; à corriger avec `AmbiguousPath`.
