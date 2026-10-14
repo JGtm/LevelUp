@@ -46,7 +46,7 @@ import {
   vehicleEdgeFallbackPx,
   vehicleTurretHalfPx,
   vehicleUnknownHalfPx,
-} from '../model/screenSizes'
+} from '@/lib/replay/screenSizes'
 import { traceDiamond } from './weaponPadsLayer'
 
 export type { PlacementView as VehicleView } from './placementShapes'
@@ -500,7 +500,7 @@ export function drawVehiclesLayer(
 ): void {
   if (tracks.length === 0 || view.width === 0) return
   // L'ÉCHELLE DU CADRAGE, LUE UNE FOIS PAR IMAGE : c'est elle qui donne aux véhicules leur
-  // taille RÉELLE quand elle le permet (cf. `model/screenSizes.ts`). Elle ne dépend que de la
+  // taille RÉELLE quand elle le permet (cf. `lib/replay/screenSizes.ts`). Elle ne dépend que de la
   // vue, jamais du véhicule — la relire par véhicule serait un doublon de travail.
   const echelle = viewScale(view)
   ctx.save()

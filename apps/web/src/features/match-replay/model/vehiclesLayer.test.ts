@@ -40,17 +40,17 @@ import {
   VEHICLE_PART_TURRET,
   VEHICLE_PLASMA_FAMILIES,
 } from './vehiclesLayer'
-import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
 import { viewScale } from '../layers/placementShapes'
 import {
-  PION_SCREEN_PX,
+  CORE_RADIUS, PION_SCREEN_PX,
+  PION_VISIBLE_DIAMETER_PX,
   PX_PAR_MM_MINIMUM_ECRAN,
   screenScalePxPerMm,
   vehicleTurretHalfPx,
   vehicleUnknownHalfPx,
   VEHICLE_SCREEN_BUMP,
   VEHICLE_SOFT_CEIL_PX,
-} from './screenSizes'
+} from '@/lib/replay/screenSizes'
 
 /** Une vie de véhicule minimale, complétée par le test. */
 function track(over: Partial<ReplayVehicleTrackReady> = {}): ReplayVehicleTrackReady {
