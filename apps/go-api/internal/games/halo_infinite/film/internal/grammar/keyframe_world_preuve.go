@@ -55,7 +55,8 @@ package grammar
 // # POURQUOI LE PROFIL INVARIANT DU FILM
 //
 // La preuve se joue au profil PAR DÉFAUT, complété de ce que le FILM déclare (le contrôle de
-// corruption par composant, le découpage MPP de sa version de format) — jamais des largeurs de la
+// corruption par composant, la possibilité du type de moteur 1, le découpage MPP de sa version de
+// format) — jamais des largeurs de la
 // carte ni d'une calibration. Toutes les marches d'un même payload, quelle que soit l'étape qui
 // marche (cuisson, kill-feed, instrument), rendent donc les MÊMES records : une largeur de carte
 // manquante ne peut que faire échouer une fermeture (moins de preuves), jamais en fabriquer une.
@@ -83,7 +84,7 @@ func (c *FilmContext) PreuveDImageCle() *PreuveDImageCle {
 		return nil
 	}
 	bal := ProfilDeBalayageParDefaut()
-	bal.Grammaire.ControleDeCorruption = c.controleDeCorruptionDuFilm()
+	c.poserLaGrammaireDuFilm(&bal.Grammaire)
 	if mpp := c.EnTete().MPP; mpp.Provenance != lecture.ProvenanceNonRenseignee {
 		bal.MPP = mpp.Valeur
 	}

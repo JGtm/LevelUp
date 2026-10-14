@@ -18,10 +18,12 @@ import (
 //	     COMPLET dans la palette du match (R(6) après une porte). Rare — 0,03 à 0,09 % des
 //	     records, à peu près une fois par vie — mais lu à 100 % : 748 lectures sur 8 films,
 //	     zéro illisible. Cf. filmdec/ability_rank.go.
-//	kf   le champ de 3 bits ancré dans les IMAGES-CLÉS (inventory_decode.go, règle R1).
-//	     Dense (une lecture par joueur et par image-clé) mais BORGNE : son motif d'ancrage
-//	     se termine par `010`, qui sont les bits de POIDS FORT du rang. Il ne voit donc que
-//	     la fenêtre 16..23 de la palette, et rien d'autre.
+//	kf   la capacité lue dans les IMAGES-CLÉS (types.KeyframeInventory.AbilityRank). Dense (une
+//	     lecture par joueur et par image-clé) mais BORNÉE à la fenêtre 16..23 de la palette : la
+//	     fenêtre de bits (inventory_decode.go, règle R1) ne voit qu'elle — son motif d'ancrage
+//	     se termine par `010`, les bits de POIDS FORT du rang —, et la grammaire, qui lit i48 dans
+//	     les records qu'elle admet, ne publie pas un rang hors d'elle (décision U-3 du 2026-10-08 :
+//	     compté, non publié). Une lecture `kf` reste donc dans 16..23.
 //
 // POURQUOI LES DEUX, ET POURQUOI DANS LE MÊME CHAMP. Jusqu'au 2026-08-14, le canal
 // d'image-clé publiait `rang − 16` sous le nom d'« index de capacité » : une grandeur

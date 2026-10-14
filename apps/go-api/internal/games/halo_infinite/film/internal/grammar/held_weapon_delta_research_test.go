@@ -32,8 +32,6 @@ import (
 
 const (
 	hwFilmEnv = "HW_FILM"
-	// compBipedDesiredWeaponSet est l'etiquette de registre d'i42.
-	compBipedDesiredWeaponSet = "biped-desired-weapon-set"
 	// hwKindIdentity / hwKindSelect distinguent les deux canaux dans un meme flux d'evenements.
 	hwKindIdentity = "identite"
 	hwKindSelect   = "selection"
@@ -122,7 +120,7 @@ type hwCapture struct {
 func hwInstall(c *hwCapture) func() {
 	prevW, prevS := observateur.HeldWeaponHook, observateur.DesiredWeaponSetHook
 	SetHeldWeaponHook(func(h, l uint32) { c.high, c.low, c.gotWeapon = h, l, true })
-	SetDesiredWeaponSetHook(func(s uint32) { c.sel, c.gotSel = s, true })
+	SetDesiredWeaponSetHook(func(j JeuDArmes) { c.sel, c.gotSel = j.Demande, true })
 	return func() {
 		SetHeldWeaponHook(prevW)
 		SetDesiredWeaponSetHook(prevS)

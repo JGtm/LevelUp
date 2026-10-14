@@ -269,7 +269,7 @@ func lireEquipeALEtendue(p *lecture.Paquet, r *lecture.Record, arch Archetype, c
 	}
 	c0 := p.Comps[r.Comps[0]]
 	if int(c0.Index) >= len(arch.Components) || arch.Components[c0.Index] != teamDesignatorComponent ||
-		c0.Etat == lecture.EtatInfranchissable {
+		c0.Etat == lecture.EtatInfranchissable || c0.Etat == lecture.EtatArrete {
 		return 0, 0, false
 	}
 	return lireEquipeA(p.Payload, int(r.Debut), int(c0.Debut), ctx)
@@ -278,8 +278,7 @@ func lireEquipeALEtendue(p *lecture.Paquet, r *lecture.Record, arch Archetype, c
 // lireEquipeA relit l'etat par defaut du record ti=9 de premier bit `recBit` pour son index de
 // joueur, verifie que son composant i0 commence bien en `i0`, et y lit le designateur BRUT.
 func lireEquipeA(pay []byte, recBit, i0 int, ctx ContexteDeLecture) (idx, brut int, ok bool) {
-	br := LecteurSur(pay)
-	br.PoserContexte(ctx)
+	br := relecteurSur(pay, ctx)
 	// LE CADRE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c) : cette lecture REJOUE le cadre
 	// d'`walkKeyframeFullState` pour retrouver le premier composant, et les deux doivent donc
 	// tenir leur en-tete et leur mot de taille du MEME endroit — sinon la garde ci-dessous

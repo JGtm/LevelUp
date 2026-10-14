@@ -63,7 +63,7 @@ type rvF4 struct {
 // profil) en relevant l index de plage et les largeurs lues.
 func rvFeuille4(br *Lecteur) rvF4 {
 	var f rvF4
-	if rvPortee || fullPrecisionGate(br) {
+	if fullPrecisionGate(br) {
 		br.ReadBits(rawVec3Bits)
 		f.brute, f.idx = true, -2
 	} else {
@@ -75,9 +75,10 @@ func rvFeuille4(br *Lecteur) rvF4 {
 }
 
 // rvPrefixe rejoue l en-tete, n1, l etat par defaut `ti=40` feuille par feuille (meme suite que
-// [consumeDefaultStateTI40]) et n2, en relevant les portes.
+// [consumeDefaultStateTI40]) et n2, en relevant les portes. Sous la portee de `FUN_142e2bfd0`
+// (`n1 > 0`), comme la marche de production : seule la feuille 4 la consulte.
 func rvPrefixe(pay []byte, bit int, ctx ContexteDeLecture) rvPre {
-	br := LecteurSur(pay)
+	br := sousLaPortee(LecteurSur(pay))
 	br.PoserContexte(ctx)
 	br.SetBitPos(bit + br.cadre().EnTeteBits)
 	mot := uint(br.cadre().MotDeTailleBits) //nolint:gosec // largeur de profil
@@ -148,7 +149,7 @@ func sourceBits32(pay []byte, q int) uint64 {
 
 // rvReprendre reprend la boucle de composants a `pos`, a partir de l index `from`.
 func rvReprendre(pay []byte, pos, from int, arch Archetype, ctx ContexteDeLecture) EntityTrace {
-	br := LecteurSur(pay)
+	br := sousLaPortee(LecteurSur(pay)) // la boucle d etat complet, sous la portee
 	br.PoserContexte(ctx)
 	br.SetBitPos(pos)
 	t := EntityTrace{DesyncAt: -1, TypeIndex: 40, Mask: ^uint64(0)}
@@ -159,7 +160,7 @@ func rvReprendre(pay []byte, pos, from int, arch Archetype, ctx ContexteDeLectur
 
 // rvReprendreApresEtat reprend apres l etat par defaut decale : controle, n2, puis la boucle.
 func rvReprendreApresEtat(pay []byte, pos int, p rvPre, arch Archetype, ctx ContexteDeLecture) EntityTrace {
-	br := LecteurSur(pay)
+	br := sousLaPortee(LecteurSur(pay)) // controle et boucle sous la portee ; n2 n en depend pas
 	br.PoserContexte(ctx)
 	br.SetBitPos(pos)
 	mot := uint(br.cadre().MotDeTailleBits) //nolint:gosec // largeur de profil
@@ -192,12 +193,10 @@ func rvEnv(t *testing.T) (racine, sortie string, films []string, physique map[ui
 	racine, sortie, films = b2Env(t)
 	physique = b2vPhysique()
 	dmax = 32
-	rvV = rvVariante{nom: "env", crochet: true, porte: "chassis", i0: os.Getenv("CAMPAGNE_I0_ECRIVAIN") == "1"}
-	rvV.portee, _ = strconv.Atoi(os.Getenv("CAMPAGNE_PORTEE"))
+	rvV = rvVariante{nom: "env", crochet: true, porte: "chassis"}
 	if os.Getenv("CAMPAGNE_MPP83") == "1" {
 		rvV.mpp = profile.MPPWidths{Lead: 8, Index: 3}
 	}
-	rvPortee = rvV.portee >= 1
 	if v, err := strconv.Atoi(os.Getenv("CAMPAGNE_DECALAGE")); err == nil && v > 0 {
 		dmax = v
 	}
@@ -400,12 +399,12 @@ func TestRVehTi40Balayage(t *testing.T) {
 	b2Ecrire(t, sortie, "r_veh_ti40_balayage.tsv", lignes)
 }
 
-// rvVariante : une maniere de lire les records `ti=40` d image-cle.
+// rvVariante : une maniere de lire les records `ti=40` d image-cle. La portee `DAT_144e61ea0` et
+// le chemin absolu d i0 de l ecrivain sont ceux de la production (plan LK, 2026-10-08) : les
+// variantes qui les posaient ont disparu.
 type rvVariante struct {
 	nom     string
 	crochet bool   // les 16 composants non portes lus par le crochet (T6 §4)
-	portee  int    // 0 : production ; 1 : portee sur l etat par defaut ; 2 : sur tout le record
-	i0      bool   // GrammaireEcrivainI0 (chemin absolu d i0 = grammaire de l ecrivain)
 	porte   string // `+0x818` : chassis (inconnu -> levee), posee, levee
 	// etatSansListe : etat par defaut SANS la porte cVar3 ni la liste (feuilles 6-7b), un seul
 	// opt32 apres le R(19) — hypothese des builds anciens, ou n1 vaut 172 (0xac) et non 176.
@@ -419,16 +418,11 @@ type rvVariante struct {
 // rvV : la variante courante (une mesure a la fois, aucun parallelisme).
 var rvV rvVariante
 
-// rvPortee : la variante « portee de l etat par defaut ». FUN_142e2bfd0 pose DAT_144e61ea0 = 1
-// (@142e2c46f) avant l appel de vtable[0x60] (@142e2c47b) et le remet a 0 (@142e2c530) ; sous
-// cette portee, FUN_14076f91c rend vrai et FUN_14076e494 lit R(96) (FUN_1411b259c). Faux = la
-// lecture de production (quantifiee, [consumeVehicleMediaFrame]).
-var rvPortee bool
-
-// rvMarcher : [WalkKeyframeFullState] pour `ti=40`, l etat par defaut lu par [rvPrefixe] (donc
-// sous la variante [rvPortee]) ; sans la variante, la marche de production.
+// rvMarcher : [WalkKeyframeFullState] pour `ti=40` ; les variantes qui changent l etat par defaut
+// ([rvVariante.etatSansListe]) ou decalent la boucle ([rvVariante.decale]) le relisent par
+// [rvPrefixe], puis jouent la boucle sous la portee, comme la marche de production.
 func rvMarcher(pay []byte, bit int, reg *Registry, ctx ContexteDeLecture) EntityTrace {
-	if !rvPortee {
+	if !rvV.etatSansListe && rvV.decale == 0 {
 		return WalkKeyframeFullState(pay, bit, reg, ctx)
 	}
 	p := rvPrefixe(pay, bit, ctx)
@@ -438,7 +432,7 @@ func rvMarcher(pay []byte, bit int, reg *Registry, ctx ContexteDeLecture) Entity
 		t.EndBit = p.boucle
 		return t
 	}
-	br := LecteurSur(pay)
+	br := sousLaPortee(LecteurSur(pay))
 	br.PoserContexte(ctx)
 	br.SetBitPos(p.boucle + rvV.decale)
 	t.Mask = ^uint64(0)
@@ -447,16 +441,5 @@ func rvMarcher(pay []byte, bit int, reg *Registry, ctx ContexteDeLecture) Entity
 	return t
 }
 
-// rvContexte : le contexte du film, avec les variantes de lecture des positions demandees par
-// l environnement (CAMPAGNE_PORTEE=2 : portee sur TOUT le record, = PorteeBaseline ;
-// CAMPAGNE_I0_ECRIVAIN=1 : GrammaireEcrivainI0).
-func rvContexte(f *cmFilm) ContexteDeLecture {
-	ctx := f.fc.ContexteDeLecture()
-	if rvV.portee == 2 {
-		ctx.Profil.Grammaire.PorteeBaseline = true
-	}
-	if rvV.i0 {
-		ctx.Profil.Grammaire.GrammaireEcrivainI0 = true
-	}
-	return ctx
-}
+// rvContexte : le contexte du film.
+func rvContexte(f *cmFilm) ContexteDeLecture { return f.fc.ContexteDeLecture() }

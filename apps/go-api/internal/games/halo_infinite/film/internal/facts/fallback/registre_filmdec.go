@@ -157,8 +157,9 @@ var registreFilmdec = []Repli{
 			Fichier: pkgFilmdec + "film_context.go",
 			Ancre:   "c.NoterReplis(c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l))",
 		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/world_object_precision.go",
-			Ancre:   "fc.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout()))",
+			// La pose du contexte de carte de la cuisson et du sync, geste unique de la grammaire.
+			Fichier: pkgFilmdec + "contexte_de_carte.go",
+			Ancre:   "c.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout()))",
 		}, siteDeVersement("NomLargeursMondeParDefautConservees")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "les largeurs, donnee de la carte et du build ; a defaut, " + retraitRegle4,

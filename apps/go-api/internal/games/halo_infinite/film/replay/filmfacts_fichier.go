@@ -196,7 +196,15 @@ const VersionCodecFaits = 2
 // `HorsBandeBipede` (repli retire avec la bande bipede, 2.7.c2) et gagnent `KillsRattrapes`
 // (rattrapage des kills hors de la vue A lue, 2.7.c4). Le rang 8, reserve a ce lot, reste sans
 // emploi : la serie suit les fusions.
-const SchemaDesFaits = 10
+// SCHEMA 11 (2026-10-09, jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : la
+// section 5 change de contenu. Le profil calibre qu elle porte (`killsource.Result.ProfilCalibre`,
+// `grammar.GrammaireBalayage`) perd les bascules `PorteeBaseline` et `GrammaireEcrivainI0`, retirees
+// quand la portee de l etat complet est devenue un champ du lecteur, et gagne `MoteurUnPossible`
+// (le type de moteur que le film n exclut pas). Mesure : `replay-equiv` sur les 20 films, binaires de
+// `d429dc517` contre ceux du lot, etape `killsource` differente sur les 20 films, document publie
+// identique hors les valeurs de revision. La montee de `grammar.Rev` refusait deja tout fichier
+// anterieur sur ses revisions de couche ; le schema tient sa doctrine.
+const SchemaDesFaits = 11
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

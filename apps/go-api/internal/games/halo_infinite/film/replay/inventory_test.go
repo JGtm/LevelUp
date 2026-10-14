@@ -37,10 +37,10 @@ func TestBuildInventoryProjectsAndDropsPreOrigin(t *testing.T) {
 		t.Errorf("projection ou tri incorrects : %+v", got)
 	}
 	if got[0].D == nil || *got[0].D != 2 {
-		t.Error("le selecteur 2 (AUCUNE arme degainee) est une VALEUR, il doit etre publie")
+		t.Error("l emplacement desire 2 est un INDEX d emplacement, il doit etre publie tel quel")
 	}
 	if got[1].D != nil {
-		t.Error("un selecteur non lu doit rester absent")
+		t.Error("un emplacement desire absent (-1, decision U-4) doit rester absent")
 	}
 	if len(got[1].G) != 4 || got[1].G[1] != 2 {
 		t.Errorf("compteurs de grenade mal portes : %+v", got[1].G)
@@ -135,5 +135,23 @@ func TestInventoryCoverageAbsentWhenNothingToRead(t *testing.T) {
 	}
 	if got := *vide.Coverage.Inventory; got != (InventoryCoverage{}) {
 		t.Errorf("couverture d'une lecture vide = %+v, attendu quatre zeros", got)
+	}
+}
+
+// TestBuildInventoryPublieLaSelectionEnBaseZero : la grenade selectionnee d une image-cle est un rang
+// EN BASE 0 (decision U-3 du 2026-10-08) — le rang 0 est une valeur publiee, -1 une absence.
+func TestBuildInventoryPublieLaSelectionEnBaseZero(t *testing.T) {
+	raw := []types.KeyframeInventory{
+		{TimestampUS: 0, Slot: 1, AbilityRank: -1, DrawnSlot: -1, SelectedGrenadeRank: 0,
+			Grenades: [4]uint32{2, 0, 0, 0}, GrenadesRead: true},
+		{TimestampUS: 0, Slot: 2, AbilityRank: -1, DrawnSlot: -1, SelectedGrenadeRank: -1,
+			Grenades: [4]uint32{0, 0, 0, 0}, GrenadesRead: true},
+	}
+	got, _ := buildInventory(raw, 0, 100_000)
+	if len(got) != 2 || got[0].Gs == nil || *got[0].Gs != 0 {
+		t.Fatalf("le rang selectionne 0 doit etre publie : %+v", got)
+	}
+	if got[1].Gs != nil {
+		t.Errorf("une selection absente (-1) doit rester absente, obtenu %d", *got[1].Gs)
 	}
 }

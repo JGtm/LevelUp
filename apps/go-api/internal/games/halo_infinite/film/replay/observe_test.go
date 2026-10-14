@@ -53,7 +53,7 @@ import (
 // `film_scan_ti13.go` Y EST ENTRE LE 2026-09-24 (integration de la vague D des retours du rejeu) :
 // `film_scan.go` atteignait 512 lignes et `balayerProprietesTi13` en est sortie par DEPLACEMENT PUR.
 var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_pont.go", "film_scan_mouvement.go",
-	"film_scan_naissances.go", "film_scan_ti13.go"}
+	"film_scan_naissances.go", "film_scan_ti13.go", "film_scan_images_cles.go"}
 
 // racineDuBalayage : la fonction par laquelle l'etage commence.
 const racineDuBalayage = "scanFilmInputs"
@@ -99,10 +99,14 @@ func declarationsDuBalayage(t *testing.T) map[string]*ast.FuncDecl {
 // observes — `translocations`, `positions`, `bipedCreations`, `deaths`, `playerIndices`,
 // `clockOrigin` — d un seul appel, partage avec le collecteur killsource.
 //
+// LA MARCHE UNIQUE DES IMAGES-CLES (`grammar.ScanEtatsDesImagesCles`, lot D1.1 de 2.7.d1) rend deux
+// canaux observes, `loadouts` et `inventory` ; la marque de portage qu elle porte aussi est publiee
+// par le decodeur du calque du drapeau (`decodeFilmCarrierMarks`, etape `carrierMarks`).
+//
 // LE DECODEUR DES LECTURES DE ZONE (`decodeFilmZoneReads`) rend DEUX canaux observes — `zoneReads`
 // (trames delta) et `zoneKeyReads` (images-cles) — d un seul balayage de `ti=13`.
 var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTramesAvec": 3, "ScanPontDIdentite": 6,
-	"decodeFilmZoneReads": 2}
+	"decodeFilmZoneReads": 2, "ScanEtatsDesImagesCles": 2}
 
 // canauxDuBalayage rend le nombre d etapes observees qu un balayage alimente (1 par defaut).
 func canauxDuBalayage(nom string) int {

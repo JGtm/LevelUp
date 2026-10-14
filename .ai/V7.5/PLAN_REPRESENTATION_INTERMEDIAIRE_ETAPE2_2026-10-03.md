@@ -1315,7 +1315,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
               (convenu entre les deux sessions), cinq entrées la portent ; vet du film et
               d'`archlint`, tests du registre, d'`archlint`, du rejeu et des armes verts ; CI de la
               tête fusionnée verte.
-- [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
+- [x] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
       lecture de l'état complet du bipède par la grammaire (intérêts de la phase des images-clés) ;
@@ -1387,15 +1387,28 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             3. *Ce qui reste de la passe des pistes et de celle des créations s'inscrit au registre
                « après la lecture »*, compté par film, ses échantillons et créations marqués
                récupérés.
-      - [!] 2.7.d1 *Images-clés : armes portées, marque de portage, inventaire.* Non exécutable tel
+      - [x] 2.7.d1 *Images-clés : armes portées, marque de portage, inventaire.* Non exécutable tel
             qu'écrit : la grammaire ne lit pas l'état complet du bipède aux images-clés (mesure 1 de
             2.7.d0, découverte 36) ; retirer les fenêtres viderait les armes et les grenades des
             fiches. Décision de l'utilisateur demandée le 2026-10-07 (recommandation : un lot de
             grammaire d'abord, la lecture de l'état complet du bipède aux images-clés ; 2.7.d1 en
             dépend). Décision de l'utilisateur du 2026-10-08 (« Pour le point 2 met un workflow
             ultracode dessus ») : traité maintenant, lot de grammaire d'abord (lecture des
-            images-clés sous la portée de l'état complet, lot LK de la campagne), puis 2.7.d1 ; plan
-            dédié en préparation (journal du 2026-10-08, après-midi). Reste `[!]` jusqu'à sa clôture.
+            images-clés sous la portée de l'état complet, lot LK de la campagne), puis 2.7.d1.
+            **Plan dédié : `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`** (jalons LK puis
+            D1.0 à D1.4 ; décisions de l'utilisateur du 2026-10-08, « Je suis ok », à son §3.1 ;
+            branche `feat/ri-lk-images-cles`). Son avancement fait foi ; cet item reste `[!]`
+            jusqu'à sa clôture (D1.4.5). Jalon LK clos le 2026-10-09, prêt pour sa revue
+            (`grammar-2026-10-09`, `SchemaDesFaits` 11) : records bipèdes d'image-clé fermés 410 ->
+            5 399 / 10 710 ; quatre lectures du jeu sous la garde rejetées, à décider (plan dédié, §7).
+            *Clos le 2026-10-09 (D1.4.5 du plan dédié, lot D ; revue adversariale et fusion par le
+            superviseur)* : une marche unique des images-clés lit l état complet du bipède par la
+            grammaire ; règle d admission de l utilisateur (fermé ou i22 à quatre, ET T1 ET T2) :
+            6 507 records admis sur 10 710 (28 films) ; les fenêtres rendent les autres derrière la
+            lecture, sous trois replis nommés et comptés (4 203 records) ; le sync lit les armes seules.
+            Rangs renumérotés à deux fusions de `feat/v75` : `grammar-2026-10-09.2` (LK) puis
+            `grammar-2026-10-09.3` (2.7.d1), `killsource-2026-10-09` et `objectives-2026-09-27`
+            constants, `SchemaVersion` 92, `SchemaDesFaits` 11. **2.7.d clos.**
       - [x] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
             *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
             les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
@@ -2433,3 +2446,34 @@ plan y sont reprises comme items (3.1.2).
   coût, la règle d'admission à écrire comme un amendement de 2.7.b, le résidu sous la portée (88
   arrêts, pas 861). Seconde passe lancée (cinq agents : Ghidra, deux mesures, plan réécrit, une
   contre-vérification), aucun code de production ; plan dédié à suivre.
+- 2026-10-08 (fin d'après-midi) : seconde passe de 2.7.d1 finie (cinq agents, 74 min, aucun code de
+  production). Ghidra : largeur du handle de la queue d'`i0` LUE (13 bits, déjà dans le Go, non
+  câblée : le chemin actuel la lit sur 1 bit) ; `i42` porte l'emplacement DÉSIRÉ des deux mains et
+  l'identifiant de la demande, pas l'emplacement dégainé ; la marque de portage est une configuration
+  des champs de fin d'`i11`, pas un identifiant ; l'état par défaut de `ti=9` n'a aucun lecteur de
+  position sous la portée. Mesures : sous la portée, ancres, élections, preuves et équipes
+  identiques, carte des trames delta identique à l'octet, seule la fermeture des records bouge (+4 999,
+  −10 : fermetures de hasard de la base, adjugées) ; critère écrit de la bascule : la portée seule
+  8/599, la portée avec la forme d'`i0` du jeu 369/599 (61,6 %) avec et sans bouchons, l'instrument
+  que la doc nomme aveugle depuis le lot 2.3 (0/599 dans tous les cas) ; forme de l'écrivain en delta :
+  0 trame saine perdue, +2 au mieux ; ratchet de fermeture en contexte de cuisson sur les sept bobines
+  53 -> 666 / 1 368 ; admission : dans les formats 24 à 27, les records non fermés à `n(i22) = 4` sont
+  aussi justes que les fermés, les formats 20 et 21 sont faux après `i22` ; la « Dynamo » de la
+  fenêtre est le M41 SPNKr lu un bit trop tôt (100 %). Plan dédié réécrit (700 lignes), contre-vérifié
+  « partiel » (commandes de gate à corriger, décisions à rendre à l'utilisateur). Demandé à
+  l'utilisateur : amendement du critère écrit, une ou deux fusions, règle d'admission, marque de
+  portage, valeurs publiées qui changent, coût de la mise en œuvre.
+- 2026-10-09 (lot B du plan LK, `feat/ri-lk-images-cles`) : jalon LK du plan dédié
+  (`.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) prêt pour sa revue. La grammaire lit les
+  records d'image-clé sous la portée de l'état complet : records bipèdes d'image-clé fermés 410 ->
+  5 399 / 10 710 (28 films), `ti=21` 0 -> 1 315 / 1 750 ; ancres, équipes, carte delta identiques ;
+  l'arrêt d'un lecteur est un état de la structure de lecture (ADR 0037 IR-4). Révisions :
+  `grammar-2026-10-09`, `SchemaDesFaits` 11 (profil calibré de la section 5), `killsource.Rev`,
+  `objectives.Rev` et `SchemaVersion` constants (sorties et document identiques hors révision).
+  2.7.d1 reste `[!]` jusqu'à D1.4 ; quatre lectures du jeu sous la garde rejetées attendent une
+  décision (plan LK, §7 D-17, D-18, D-21, D-23).
+- 2026-10-09 (lot D du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : **2.7.d1 `[x]`, 2.7.d
+  clos.** D1.3 (consommateurs, sync aux armes seules, survie depuis les faits) et D1.4 (montées, ADR 0037,
+  mesures) faits ; deux refusions de `feat/v75` (`assist-film`, `aj-needler`) ont renuméroté les rangs :
+  `grammar-2026-10-09.2` (LK), `grammar-2026-10-09.3` (2.7.d1), `SchemaVersion` 92. Revue adversariale
+  et fusion (puis recuisson et backfill killsource) reviennent au superviseur.

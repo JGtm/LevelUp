@@ -2,11 +2,15 @@ package replay
 
 // Rattachement des ARMES PORTÉES (loadout de keyframe) aux trajectoires du rejeu.
 //
-// SOURCE : grammar.ScanFilmKeyframeLoadouts — les familles d'arme trouvées dans le record
-// biped de chaque slot, à chaque keyframe type-2 (~un toutes les 18-20 s). Le slot vient des
-// bornes de record de WalkKeyframeWorld : la jointure loadout -> trajectoire est donc DIRECTE
-// (même numérotation de slot que Track.Slot), sans passer par un champ « joueur » du record —
-// c'est ce champ-là, cherché à un offset inconnu, qui bloquait les tentatives précédentes.
+// SOURCE : la marche unique des images-clés (`grammar.ScanEtatsDesImagesCles`, 2.7.d1) — les
+// familles d'arme du record biped de chaque slot, à chaque keyframe type-2 (~un toutes les
+// 18-20 s) : lues par la grammaire dans les quatre occurrences de `weapon-state-type-info` (une
+// famille par emplacement non vide, dans l'ordre des emplacements) sur les records que sa règle d'admission
+// retient ; trouvées par la fenêtre glissante de 32 bits, DERRIÈRE elle, sur les autres (repli
+// `repli_fenetre_armes_image_cle`, alias non repliés). Le slot vient des bornes de record de la
+// marche : la jointure loadout -> trajectoire est donc DIRECTE (même numérotation de slot que
+// Track.Slot), sans passer par un champ « joueur » du record — c'est ce champ-là, cherché à un
+// offset inconnu, qui bloquait les tentatives précédentes.
 //
 // TÉMOIN CROISÉ, sur une grandeur INDÉPENDANTE du loadout (l'arme des events de tir, record
 // type 105, autre paquet, autre décodeur) — film 000d5950 Cliffhanger, Fiesta :
@@ -44,14 +48,7 @@ import (
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de
 // production dérivée de l'enum d'armes (weaponv3, elle-même dérivée de filmshell.WeaponIDToName).
 // C'est la SEULE source de vérité sur ce qu'est une arme ici — pas de liste parallèle.
-func loadoutFamilies() map[uint32]bool {
-	connues := weaponv3.KnownWeaponHigh32Copie()
-	m := make(map[uint32]bool, len(connues))
-	for f := range connues {
-		m[f] = true
-	}
-	return m
-}
+func loadoutFamilies() map[uint32]bool { return weaponv3.FamillesConnues() }
 
 // buildLoadouts projette les loadouts de keyframe sur la grille de frames du rejeu.
 //

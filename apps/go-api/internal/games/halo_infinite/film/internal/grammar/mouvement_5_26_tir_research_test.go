@@ -239,7 +239,7 @@ func t526TableauC(t *testing.T, p *t525Passe, pls map[h526Cle][]byte, rejetes ma
 		}
 		paquets++
 		refs := t526LireRefs(pls[h526Cle{tr.chunk, tr.paquet}])
-		r0, r0Sonde, r1 = r0+t526Un(refs.r0.Present), r0Sonde+refs.r0.Sonde, r1+t526Un(refs.r1.Present)
+		r0, r0Sonde, r1 = r0+unSi(refs.r0.Present), r0Sonde+refs.r0.Sonde, r1+unSi(refs.r1.Present)
 		g := refs.r2
 		if !g.Present {
 			continue
@@ -269,14 +269,6 @@ func t526TableauC(t *testing.T, p *t525Passe, pls map[h526Cle][]byte, rejetes ma
 	for _, ti := range tis {
 		t.Logf("      archetype declare ti=%-3d %6d", ti, parTI[uint32(ti)]) //nolint:gosec // archetype
 	}
-}
-
-// t526Un rend 1 pour vrai, 0 pour faux.
-func t526Un(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 // m526PostComptes rend la position post-comptes d un record de tir modal, par la grammaire de

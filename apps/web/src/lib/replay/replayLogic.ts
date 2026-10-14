@@ -344,7 +344,7 @@ export function frameToMs(frame: number, doc: ReplayDocumentReady): number {
 }
 
 /** msToFrames convertit une durée réelle (ms) en nombre de frames. */
-export function msToFrames(ms: number, doc: ReplayDocumentReady): number {
+export function msToFrames(ms: number, doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? ms / interval : (ms / 1000) * FALLBACK_FPS
 }

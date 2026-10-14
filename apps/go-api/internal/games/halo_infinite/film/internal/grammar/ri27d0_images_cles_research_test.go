@@ -9,21 +9,24 @@ package grammar
 // l etendue de leur occurrence — contre ce que les fenetres de bits de la production lisent dans
 // l emprise du meme record : armes portees (`familiesByRecordRecs`), inventaire
 // (`keyframeInventoriesDe`), marque de portage (`carrierMarkViews`). Aucun fichier de production
-// n est touche.
+// n est touche. La marche mesuree est celle de la production a la tete : l instrument n a qu un mode.
 //
-// Sortie (RI27C_OUT) : `images_cles_d0.tsv`
+// Sortie (RI27C_OUT) : `images_cles.tsv`
 //
 //	S  film  classe  compte                 une ligne par classe et par film
 //	D  film  classe  ts  slot  detail       des desaccords (au plus 30 par classe et par film)
-//	M  film  composant  compte              le composant qui porte chaque marque de portage
 //	F  film  composant  decalage  compte    ou tombent les familles que la fenetre trouve
 //
+// plus les complements de 2.7.d1 et de D1.0 (A, T, M, MX, Y, R, MB, MP, RS, agregats par format :
+// `ri27d1_instrument_research_test.go`, `ri27d1_d10_research_test.go`). RI27D1_RECORDS : dump R.
+//
 //	RI27C_FILMS=<id,...> RI27C_RACINE=<film_chunks> RI27C_OUT=<dossier> [RI27C_CARTES=<id=Carte;...>] \
-//	  go test -tags=research -count=1 -run '^TestRI27d0ImagesCles$' -timeout 120m \
+//	  [RI27D1_RECORDS=<id,...>] go test -tags=research -count=1 -run '^TestRI27d0ImagesCles$' -timeout 120m \
 //	  ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -71,10 +74,11 @@ type ri27d0Canal struct {
 	classes map[string]int
 	ech     map[string]int
 	lignes  []string
-	marques map[string]int
 	fams    map[string]int
 	// preuve : la preuve du record en cours, pour ventiler les classes.
 	preuve string
+	// x : les complements de 2.7.d1 (ri27d1_instrument_research_test.go).
+	x *ri27d1Ext
 }
 
 func (c *ri27d0Canal) Interets() []Interet {
@@ -87,7 +91,7 @@ func (c *ri27d0Canal) Interets() []Interet {
 			out = append(out, Interet{Phase: PhaseImagesCles, TI: keyframeBipedTI, Composant: n})
 		}
 	}
-	return out
+	return append(out, interetsDeLEtatComplet()...) // et ceux du canal de production (confrontation D1.1)
 }
 
 func (*ri27d0Canal) Clore(BilanDeMarche) {}
@@ -152,7 +156,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 			g.resLu[k] = true
 			obs.WeaponRoundsHook = func(v uint32) { g.res[k] = int(v) }
 		case role == "i42":
-			obs.DesiredWeaponSetHook = func(s uint32) { g.sel = int(s) }
+			obs.DesiredWeaponSetHook = func(j JeuDArmes) { g.sel = int(j.Demande) }
 		case strings.HasPrefix(role, "ti"):
 			fmt.Sscanf(role, "ti%d", &k) //nolint:errcheck // role construit ici
 			g.armeLue[k] = true
@@ -164,14 +168,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 			g.rangLu = true
 			obs.AbilitySetHook = func(_ uint64, rk int, _ int) { g.rang = rk }
 		}
-		br := LecteurSur(p.Payload)
-		br.PoserContexte(ctx)
-		br.etatComplet = true
-		br.obs = obs
-		br.SetBitPos(int(co.Debut))
-		_, _, _, porte := consumeByNameCapturing(br, c.arch.component(int(co.Index)), uint32(keyframeBipedTI), //nolint:gosec // archetype constant
-			c.arch.Level(int(co.Index)))
-		if !porte || br.BitPos()-int(co.Debut) > int(co.Bits) {
+		if !relireLOccurrence(p.Payload, ctx, c.arch, keyframeBipedTI, co, obs) { // la relecture de production
 			g.debord++
 		}
 	}
@@ -182,6 +179,7 @@ func (c *ri27d0Canal) lire(p *lecture.Paquet, r *lecture.Record, ctx ContexteDeL
 func (c *ri27d0Canal) classer(classe string, p *lecture.Paquet, slot uint32, detail string) {
 	c.classes[classe]++
 	c.classes[classe+"|"+c.preuve]++
+	c.x.compterAdm(classe)
 	cle := classe + "|" + c.preuve
 	if detail == "" || c.ech[cle] >= 30 {
 		return
@@ -222,10 +220,16 @@ func (c *ri27d0Canal) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
 		c.classes[fmt.Sprintf("desync_%d", r.Desync)]++
 		c.preuve = fmt.Sprintf("preuve_%d", r.Preuve)
 		c.classes[c.preuve]++
+		c.x.admettre(c, r, &g)
+		c.x.confronterAuCanal(c, p, r, &g, ctx) // D1.1 : le canal de production contre l instrument
+		c.x.temoinDeHasard(c, p, i, ctx)
 		c.comparerLesArmes(p, r, &g, fen[r.Debut])
+		c.x.armesParEmplacement(c, &g, fen[r.Debut])
 		inv, okInv := invs[r.Vie.Slot]
 		c.comparerLInventaire(p, r, &g, inv, okInv)
 		c.situerLesFenetres(p, r, fin)
+		c.x.situerMarquesEtEnPlus(c, p, r, &g, fen[r.Debut], fin)
+		c.x.dumpRecord(c, p, r, &g, fen[r.Debut])
 	}
 }
 
@@ -303,8 +307,13 @@ func (c *ri27d0Canal) comparerLInventaire(p *lecture.Paquet, r *lecture.Record, 
 	if !okInv {
 		inv = types.KeyframeInventory{AbilityRank: -1, DrawnSlot: -1, SelectedGrenadeRank: -1}
 	}
-	// capacite : la fenetre ne voit que les rangs 16 a 23.
-	c.comparer("capacite", p, slot, g.rangLu, g.rang >= 0, g.rang, inv.AbilityRank >= 0, inv.AbilityRank)
+	// capacite : la fenetre ne voit que les rangs 16 a 23 ; un rang de la grammaire hors de ce
+	// domaine n est pas comparable et se compte a part (correction 2.7.d1 (c)).
+	if g.rangLu && g.rang >= 0 && (g.rang < 16 || g.rang > 23) {
+		c.classer("capacite:hors_domaine_16_23", p, slot, "")
+	} else {
+		c.comparer("capacite", p, slot, g.rangLu, g.rang >= 0, g.rang, inv.AbilityRank >= 0, inv.AbilityRank)
+	}
 	// grenades
 	gv := -1
 	if g.compte == 4 && len(g.gren) == 4 {
@@ -329,8 +338,21 @@ func (c *ri27d0Canal) comparerLInventaire(p *lecture.Paquet, r *lecture.Record, 
 		c.comparer(fmt.Sprintf("chargeur%d", k), p, slot, g.magLu[k], g.mag[k] >= 0, g.mag[k], fm >= 0, fm)
 		c.comparer(fmt.Sprintf("reserve%d", k), p, slot, g.resLu[k], g.res[k] >= 0, g.res[k], fr >= 0, fr)
 	}
-	c.comparer("degaine", p, slot, g.sel >= 0, g.sel >= 0, g.sel, inv.DrawnSlot >= 0, inv.DrawnSlot)
-	c.comparer("grenade_selectionnee", p, slot, g.gsLu, g.gsLu, g.gsSel, inv.SelectedGrenadeRank >= 0, inv.SelectedGrenadeRank)
+	// degaine (D1.0.5) : param[1] et param[2] d i42 relus contre DrawnSlot ; reserves (D1.0.7).
+	c.x.degaine(c, p, r, inv.DrawnSlot)
+	c.x.reservesEchantillon(c, p, r, g, ri27d1Reserve0(inv))
+	// grenade_selectionnee : i47 est code en base 1 (0 = aucune selection, GrenadeSetNoSelection),
+	// le rang de la fenetre en base 0 (correction 2.7.d1 (a)).
+	switch {
+	case g.gsLu && g.gsSel == GrenadeSetNoSelection && inv.SelectedGrenadeRank >= 0:
+		c.classer("grenade_selectionnee:grammaire_sans_selection_fenetre_lit", p, slot,
+			fmt.Sprintf("fenetre=%d", inv.SelectedGrenadeRank))
+	case g.gsLu && g.gsSel == GrenadeSetNoSelection:
+		c.classer("grenade_selectionnee:grammaire_sans_selection_fenetre_vide", p, slot, "")
+	default:
+		c.comparer("grenade_selectionnee", p, slot, g.gsLu, g.gsLu, g.gsSel-1, inv.SelectedGrenadeRank >= 0,
+			inv.SelectedGrenadeRank)
+	}
 }
 
 // comparer classe une grandeur : `atteinte` = l occurrence est traversee, `lue`/`gv` = sa valeur,
@@ -361,7 +383,7 @@ func (c *ri27d0Canal) situerLesFenetres(p *lecture.Paquet, r *lecture.Record, fi
 	comps := p.Comps[r.Comps[0]:r.Comps[1]]
 	situer := func(b int) (string, int) {
 		for _, co := range comps {
-			if co.Etat == lecture.EtatInfranchissable {
+			if co.Etat == lecture.EtatInfranchissable || co.Etat == lecture.EtatArrete {
 				return fmt.Sprintf("au_dela_de_i%d_infranchissable", co.Index), 0
 			}
 			if b >= int(co.Debut) && b < int(co.Debut+co.Bits) {
@@ -381,10 +403,6 @@ func (c *ri27d0Canal) situerLesFenetres(p *lecture.Paquet, r *lecture.Record, fi
 			continue
 		}
 		at := b - 31
-		if carrierMarkViews[w] {
-			o, _ := situer(at)
-			c.marques[o]++
-		}
 		if c.known[w] {
 			o, d := situer(at)
 			c.fams[fmt.Sprintf("%s\t%d", o, d)]++
@@ -416,31 +434,46 @@ func (c *ri27d0Canal) situerLesFenetres(p *lecture.Paquet, r *lecture.Record, fi
 func TestRI27d0ImagesCles(t *testing.T) {
 	films, racine, sortie := ri27cEnv(t)
 	noms := weaponv3.KnownWeaponHigh32Copie()
-	known := make(map[uint32]bool, len(noms))
-	for f := range noms {
-		known[f] = true
-	}
+	known := weaponv3.FamillesConnues()
 	var lignes []string
+	agr := map[string]map[string]int{}
+	dumps := map[string]bool{}
+	for _, f := range strings.Split(os.Getenv("RI27D1_RECORDS"), ",") {
+		dumps[f] = true
+	}
 	for _, court := range films {
 		fc := ri27cContexte(t, filepath.Join(racine, court), court, true)
 		arch, err := fc.bipedArchetype()
 		if err != nil {
 			t.Fatalf("%s : archetype : %v", court, err)
 		}
+		reg, err := fc.Registry()
+		if err != nil {
+			t.Fatalf("%s : registre : %v", court, err)
+		}
+		vf, okf := FilmFormatVersion(fc.film)
+		fm := fmt.Sprintf("f%d", vf)
+		if !okf {
+			fm = "f_inconnu"
+		}
 		c := &ri27d0Canal{fc: fc, arch: arch, court: court, known: known, noms: noms, roles: ri27d0Roles(arch),
-			classes: map[string]int{}, ech: map[string]int{}, marques: map[string]int{}, fams: map[string]int{}}
+			classes: map[string]int{}, ech: map[string]int{}, fams: map[string]int{}, x: nouvelleExt(reg, dumps[court])}
 		if err := Distribuer(fc, c); err != nil {
 			t.Fatalf("%s : distribution : %v", court, err)
 		}
 		lignes = append(lignes, ri27d0Trier(court, "S", c.classes)...)
-		lignes = append(lignes, ri27d0Trier(court, "M", c.marques)...)
+		lignes = append(lignes, c.x.ri27d1Lignes(court, fm, c.classes, agr)...)
+		t.Logf("FORMAT %s %s", court, fm)
 		lignes = append(lignes, ri27d0Trier(court, "F", c.fams)...)
 		lignes = append(lignes, c.lignes...)
 		t.Logf("%s : %d records bipedes, armes egales %d, non atteintes %d+%d", court, c.classes["records_bipedes"],
 			c.classes["armes:egales"], c.classes["armes:non_atteintes_fenetre_vide"], c.classes["armes:non_atteintes_fenetre_lit"])
 		runtime.GC()
 	}
-	ri27cEcrire(t, filepath.Join(sortie, "images_cles_d0.tsv"), lignes)
+	for _, genre := range []string{"SF", "AF", "TF", "MF", "YF"} {
+		lignes = append(lignes, ri27d0Trier("*", genre, agr[genre])...)
+	}
+	ri27cEcrire(t, filepath.Join(sortie, "images_cles.tsv"), lignes)
 }
 
 // ri27d0Trier rend les comptes d une table, une ligne par cle, dans l ordre des cles.

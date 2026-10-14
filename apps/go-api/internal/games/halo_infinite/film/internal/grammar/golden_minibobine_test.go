@@ -148,6 +148,12 @@ package grammar
 // Slot, generation, horodatage, `MPPVal`, masque, `DefaultStateBits`, position et `AfterBit`
 // sont donc au bit pres les memes : seul le champ `Ammo`, qui etait vide, se remplit.
 //
+// # REGENERATION DU 2026-10-09 (lot D1.2 de 2.7.d1) — `keyframeLoadouts`, LA GRAMMAIRE DEVANT LA FENETRE
+//
+// Un record bipede ADMIS (regle de l utilisateur du 2026-10-09) publie la famille de chaque
+// emplacement lue par la grammaire, sans alias ni mots trouves ailleurs par la fenetre. Bobine :
+// 32 bipedes, 19 admis ; 30 dotations, 19 changent de valeur (les admis). Rien d autre ne bouge.
+//
 // # PAS DE SKIP
 //
 // La bobine est VERSIONNEE : son absence est une panne du depot, pas une condition d'execution.

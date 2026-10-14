@@ -21,8 +21,10 @@ package fallback
 const (
 	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
 	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
-	// NomPlafondGrenadeParDefaut : applique par `grammar/inventory_decode.go` (`ScanKeyframeInventory`),
-	// compte par `replay/film_scan.go` (`balayerInventaire`) depuis le lot J4.2.
+	// NomPlafondGrenadeParDefaut : applique par la fenetre d inventaire DERRIERE la lecture de l etat complet,
+	// sur les seuls records non admis (`grammar/keyframe_etats_fenetre.go`, `rendreParLaFenetre` ->
+	// `keyframeInventoriesDe`, lot D1.2 de 2.7.d1) ; compte par `replay/film_scan.go` (`balayerInventaire`)
+	// quand un record a ete donne a la fenetre.
 	NomPlafondGrenadeParDefaut Nom = "repli_plafond_grenade_par_defaut"
 	// NomLargeursAxeParDefautConservees : `replay/world_object_precision.go`.
 	NomLargeursAxeParDefautConservees Nom = "repli_largeurs_axe_par_defaut_conservees"
@@ -210,6 +212,12 @@ const (
 	// NomCreationsDuMondeApresLaMarche : `grammar/creations_du_monde.go`, compte par
 	// `grammar/replis_du_film.go`.
 	NomCreationsDuMondeApresLaMarche Nom = "repli_creations_du_monde_apres_la_marche"
+	// NomFenetreArmesImageCle, NomFenetreInventaireImageCle, NomFenetreMarqueDePortage :
+	// `grammar/keyframe_etats_fenetre.go`, comptes par `grammar/keyframe_etats_scan.go`
+	// (`ScanEtatsDesImagesCles`) et verses par `replay/versement_des_replis.go`.
+	NomFenetreArmesImageCle      Nom = "repli_fenetre_armes_image_cle"
+	NomFenetreInventaireImageCle Nom = "repli_fenetre_inventaire_image_cle"
+	NomFenetreMarqueDePortage    Nom = "repli_fenetre_marque_de_portage"
 
 	// LES REPLIS DE `killsource` (sous-lot killsource du lot J8.7, 2026-09-27) : comptes en DONNEES
 	// dans `killsource.Stats` (`Replis`, et les comptes que le decodeur tenait deja), verses par la

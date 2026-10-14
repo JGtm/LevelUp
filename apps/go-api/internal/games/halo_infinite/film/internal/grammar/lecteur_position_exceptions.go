@@ -18,6 +18,13 @@ package grammar
 //	la lecture du jeu fait monter la fermeture sans aucune baisse sur les bobines, ou la
 //	grammaire dependante du build est etablie.
 //
+// SOUS LA GARDE DE PLEINE PRECISION (`FUN_14076f91c`, [fullPrecisionGate] : la portee de l etat
+// complet, plan LK, LK.5.4), un site dont la lecture sous la garde est relue chez le jeu lit comme le
+// jeu, sans noter d exception ; l exception ne vaut que hors de la garde. Le site le decide par un seul
+// geste, [Lecteur.sousLaGardeSinonException], en tete de sa fonction ; la lecture du jeu y est un bloc
+// de tete quand la position ouvre le composant, et prend la place du vecteur sinon. Ses cas :
+// `lecteur_position_sites_portee_test.go`.
+//
 // Le test de chaque site (`lecteur_position_sites_test.go`) est marque « ecart attendu » par
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
@@ -122,10 +129,18 @@ func consumeGenericRigidBodyTransforms(br *Lecteur) {
 // 494 (16 entrees de controle) et chunk 9 paquet 1146 (22 entrees) — l ancien lit ce composant sur
 // 29 et 4 bits, la lecture du jeu sur 52 et 70. Elle en ferme une autre, `000d5950` (HI_1_13_0) chunk 20
 // paquet 1322 (8 entrees) : le format depend du build ou du contenu, ce que ce lot n etablit pas.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.10, relu le 2026-10-08 ; `FUN_1424e268c` = R(2), lu en LK.1.6) :
+// `FUN_140fb8af0` lit R(1), la garde `FUN_14076f91c` -> `FUN_1411b259c` R(96), puis R(2) quand le
+// niveau du registre depasse 1.
 func consumeFlockDestination(br *Lecteur, level uint32) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBit()
-	lireVecteurAncienAuNiveauDuRegistre(br, level)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireVecteurAncienAuNiveauDuRegistre(br, level)
+	}
 	if level > 1 {
 		br.ReadBits(2) // FUN_1424e268c
 	}
@@ -139,8 +154,11 @@ func consumeFlockDestination(br *Lecteur, level uint32) {
 // ainsi, la liste d evenements du chunk 21 paquet 1032 de `11de8353` (HI_1_9_0), que l ancien
 // lecteur fermait au bit pres (0 entree de controle), ne se localise plus : le composant passe de
 // 239 a 264 bits ; aucune fermeture ne monte sur les huit builds.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.4, relu le 2026-10-08) : `FUN_142ed8418` lit le meme bloc, puis le
+// thunk `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde, sans precHigh —, puis la queue.
 func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(32) // icon-id
 	br.ReadBits(32) // icon-missionid
 	br.ReadBit()
@@ -149,7 +167,11 @@ func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
 	br.ReadBits(32) // icon-bitmapbg
 	br.ReadBits(9)
 	br.ReadBits(9)
-	lireVecteurAncienAuNiveauDuRegistre(br, level)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireVecteurAncienAuNiveauDuRegistre(br, level)
+	}
 	br.ReadBits(32) // string-id
 	br.ReadBit()
 	br.ReadBits(8)
@@ -170,9 +192,17 @@ func consumeTacmapPoiIcon(br *Lecteur, level uint32) {
 // pres, ne se localise plus (le composant passe de 44 a 71 bits) ; elle en ferme deux autres
 // (`e5adf7b2` chunk 6 paquet 50, 4 entrees ; `111fa685` chunk 14 paquet 552, 2 entrees).
 func consumePlayerDesiredRespawnLocation(br *Lecteur, level uint32) {
-	br.noterExceptionDatee()
+	// SOUS LA GARDE (plan LK, LK.5.4.2, relu le 2026-10-08) : `FUN_142f03ec8` lit la porte, puis
+	// `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde — et `FUN_14076dc04` R(19). Les 96 bits
+	// ne sont pas des quanta : l identifiant seul est publie, `present` faux.
+	sousLaGarde := br.sousLaGardeSinonException()
 	if !br.ReadBit() {
 		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false)
+		return
+	}
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+		br.obs.publishPlayerState(PlayerDesiredRespawnLocation, false, br.ReadBits(19))
 		return
 	}
 	q, ok := lireVecteurAncienAuNiveauDuRegistre(br, level)
@@ -220,12 +250,20 @@ func lireVecteurAncienAuNiveauDuRegistre(br *Lecteur, level uint32) (q [3]uint64
 // (20), `11de8353` 29:208 (16), `fb1a1a72` 7:2380 (0), `60ae07c4` 32:2062 (7). Scindee par la porte,
 // aucune forme ne ferme les deux familles : l ancien lecteur sur la seule porte posee ferme les dix
 // et perd 14:42, 7:2380 et 32:2062 ; sur la seule porte a 0, il perd 46:10 et 29:208 sans rien fermer.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.6, relu le 2026-10-08) : `FUN_142ed7d38` lit R(32) (`asset-id`), R(32),
+// R(2), le thunk `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde —, deux
+// `FUN_1406d676c` (R(96) chacun), puis R(1).
 func consumeTacmapDisplayAsset(br *Lecteur) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(32)
 	br.ReadBits(32)
 	br.ReadBits(2)
-	lireCorpsDeTraverseeAncien(br)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireCorpsDeTraverseeAncien(br)
+	}
 	br.ReadBits(64)
 	br.ReadBits(32)
 	br.ReadBits(64)
@@ -241,11 +279,18 @@ func consumeTacmapDisplayAsset(br *Lecteur) {
 // au bit pres, ne ferme plus (le composant passe de 67 a 96 bits). Elle en ferme trois autres :
 // `11de8353` 19:394 (liste, 13 entrees), `fb1a1a72` 38:8 (6), `60ae07c4` 3:1790 (0) ; scindee par la
 // porte, aucune forme ne ferme les deux familles.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.5, relu le 2026-10-08) : `FUN_142ed7764` lit R(32) (`aoi-id`), R(3),
+// le thunk `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde —, puis `FUN_1406d84b4` R(12).
 func consumeTacmapAreaOfInterest(br *Lecteur) {
-	br.noterExceptionDatee()
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(32)
 	br.ReadBits(3)
-	lireCorpsDeTraverseeAncien(br)
+	if sousLaGarde {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireCorpsDeTraverseeAncien(br)
+	}
 	br.ReadBits(12)
 }
 
@@ -256,9 +301,15 @@ func consumeTacmapAreaOfInterest(br *Lecteur) {
 // ainsi, la liste d evenements du chunk 21 paquet 1012 de `c75f33b8` (HI_1_13_0), que l ancien lecteur
 // fermait au bit pres, ne se localise plus (+48 bits, porte posee) ; aucune fermeture ne monte sur
 // les douze films.
+//
+// SOUS LA GARDE (plan LK, LK.5.4.7, relu le 2026-10-08) : `FUN_142ed4198` lit le thunk
+// `FUN_1424e0e38(0x10)` -> `FUN_14076e494` — R(96) sous la garde —, puis deux `FUN_1406d84b4` R(12).
 func consumeTacmapCoopTetherArea(br *Lecteur) {
-	br.noterExceptionDatee()
-	lireCorpsDeTraverseeAncien(br)
+	if br.sousLaGardeSinonException() {
+		br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	} else {
+		lireCorpsDeTraverseeAncien(br)
+	}
 	br.ReadBits(12)
 	br.ReadBits(12)
 }
@@ -273,10 +324,16 @@ func consumeTacmapCoopTetherArea(br *Lecteur) {
 // `084a804d` (HI_1_10_0, 14 entrees), que l ancien lecteur fermait au bit pres, ne se localise plus
 // (+26 bits) ; elle en ferme une autre, `e5adf7b2` chunk 4 paquet 900 (liste, 12 entrees).
 func consumeCrewOrder(br *Lecteur, level uint32) {
-	br.noterExceptionDatee()
+	// SOUS LA GARDE (plan LK, LK.5.4.3, relu le 2026-10-08) : `FUN_142ed9120` lit `FUN_142b1cf3c`
+	// R(3), la porte, puis `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde, sans precHigh.
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBits(3)    // FUN_142b1cf3c
 	if br.ReadBit() { // presence du vecteur
-		lireVecteurAncienAuNiveauDuRegistre(br, level)
+		if sousLaGarde {
+			br.ReadBits(rawVec3Bits) // FUN_1411b259c
+		} else {
+			lireVecteurAncienAuNiveauDuRegistre(br, level)
+		}
 	}
 }
 
@@ -291,6 +348,10 @@ func consumeCrewOrder(br *Lecteur, level uint32) {
 // paquet 356 (21 entrees ; delta du slot 685, dont la lecture d accroupi) et chunk 37 paquet 22 (10
 // entrees ; NEW ti=35 slot 527) ; aucune fermeture ne monte sur les douze films. Les deux autres
 // sites a precHigh (grammaire d ecrivain d i0, delta predit a cVar1 = 1) gardent la lecture du jeu.
+//
+// JAMAIS ATTEINT SOUS LA PORTEE DE L ETAT COMPLET (plan LK, LK.5.3) : la branche absolue d i0 y lit
+// [consumeAbsoluSousLaPortee], et son seul appelant, [consumeAbsoluteWithGate], consulte la garde de
+// pleine precision avant precHigh (test : `TestLaBranchePrecHautDuBipedeNEstPasAtteinteSousLaPortee`).
 func consumePrecHautDuBipede(br *Lecteur) {
 	br.noterExceptionDatee()
 }
@@ -330,11 +391,22 @@ func lireViseeDActeurAncienne(br *Lecteur) {
 // liste d evenements du chunk 34 paquet 336 de `d9781168` (HI_1_13_0, 4 entrees), que l ancien
 // lecteur fermait au bit pres, ne se localise plus (+30 bits) ; il faut les deux ecarts (position et
 // R(1)) pour la rendre. Aucune fermeture ne monte sur les vingt films.
-func consumeTacmapWaypointState(br *Lecteur) {
-	br.noterExceptionDatee()
+//
+// SOUS LA GARDE (plan LK, LK.5.4.8, relu le 2026-10-08) : `FUN_140f04d88` lit R(1), R(32), la garde
+// `FUN_14076f91c` -> `FUN_1411b259c` R(96), puis R(1) quand le niveau du registre depasse 1
+// (`param_4`, `level` ici).
+func consumeTacmapWaypointState(br *Lecteur, level uint32) {
+	sousLaGarde := br.sousLaGardeSinonException()
 	br.ReadBit()
 	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
-	lireCorpsDeTraverseeAncien(br)
+	if !sousLaGarde {
+		lireCorpsDeTraverseeAncien(br)
+		return
+	}
+	br.ReadBits(rawVec3Bits) // FUN_1411b259c
+	if level > 1 {
+		br.ReadBit() // if (1 < param_4)
+	}
 }
 
 // lireCorpsDeTraverseeAncien est la position que les sites tacmap lisaient avant le lot J6.3

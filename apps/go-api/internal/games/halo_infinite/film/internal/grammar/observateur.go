@@ -265,11 +265,17 @@ type Observation struct {
 	//	FUN_1406d00ec = R(1)+optR(2).
 	//	FUN_1406d00ec = R(1)+optR(2).
 	//
-	// DesiredWeaponSetHook, si non nil, reçoit CHAQUE lecture d'i42 avec la valeur du R(3) de
-	// tête (l'emplacement d'arme désiré). Même règle que les autres sondes : l'observateur est
-	// PORTÉ par le lecteur, et deux films se décodent donc en parallèle
-	// (`TestDeuxFilmsEnParallele`).
-	DesiredWeaponSetHook func(sel uint32)
+	// DesiredWeaponSetHook, si non nil, reçoit CHAQUE lecture d'i42 du bipède avec ses trois
+	// champs ([JeuDArmes] : la demande, l'emplacement désiré en main principale, en seconde
+	// main). Même règle que les autres sondes : l'observateur est PORTÉ par le lecteur, et deux
+	// films se décodent donc en parallèle (`TestDeuxFilmsEnParallele`).
+	DesiredWeaponSetHook func(j JeuDArmes)
+
+	// (depuis `unit_weaponstate.go`)
+	// WeaponOverheatHook, si non nil, reçoit chaque lecture de `weapon-state-overheated`
+	// (`FUN_142f04c6c`) : le quantum R(7) de la surchauffe, puis les deux bits de l'unité +0x872
+	// (masques 0x2 et 0x4), dans l'ordre du flux. Le déser reste inchangé bit pour bit.
+	WeaponOverheatHook func(quantum uint32, b1, b2 bool)
 
 	// (depuis `unit_weaponstate.go`)
 	// GroundWeaponAmmoHook, si non nil, reçoit chaque lecture d'i20 sur l'archétype ARME AU SOL.
