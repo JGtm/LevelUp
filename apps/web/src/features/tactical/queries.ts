@@ -43,6 +43,7 @@ import type {
   ReplayMapBackground,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -327,6 +328,7 @@ export function usePrechargementDesLectures(
             queryKey,
             queryFn: () => lireLeRaster(queryClient, playerSlug, titleSlug, mapId, corps),
             staleTime: RASTER_FRAIS_MS,
+            meta: SANS_BARRE_META,
           })
         } catch (err) {
           console.error('[tactique] préchargement d’une lecture en échec', { question, err })
@@ -376,5 +378,6 @@ export function useTacticalCellule(
       ),
     enabled: !!playerSlug && !!mapId && !!corps && params.match_ids !== null,
     staleTime: 2 * 60 * 1000,
+    meta: SANS_BARRE_META,
   })
 }

@@ -21,7 +21,6 @@ import {
   type ControlRow,
   type EmpriseMatchIndex,
   type GridSection,
-  type PickupLosses,
   type ResourceFil,
 } from '@/features/squad/emprise/emprise.logic'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from '@/features/squad/emprise/production.logic'
@@ -156,7 +155,6 @@ export interface MinePickups {
   groups: MineGroup[]
   /** L'échelle commune des barres : les prises de mon camp sur l'objet le plus pris. */
   max: number
-  losses: PickupLosses | null
 }
 
 /**
@@ -174,7 +172,7 @@ export function buildMinePickups(block: SoloEmpriseBlock, nameOf: (o: SquadEmpri
     .filter((g) => g.rows.length > 0)
   if (groups.length === 0) return null
   const max = Math.max(...groups.flatMap((g) => g.rows.map((r) => r.camp)))
-  return { groups, max, losses: sheets.losses }
+  return { groups, max }
 }
 
 /** Mes prises et celles de mon camp sur une ressource (vue compacte de « Mes prises »). */

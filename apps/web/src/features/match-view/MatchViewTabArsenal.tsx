@@ -117,14 +117,7 @@ export function MatchViewTabArsenal({
       )}
 
       {showEquipmentTerrain && (
-        <DetailSection
-          title={
-            <>
-              {t.sectionEquipmentTerrain}
-              {e.coverage && <small className="ml-2 text-xs font-normal text-muted-foreground" data-testid="match-emprise-coverage">{e.coverage}</small>}
-            </>
-          }
-        >
+        <DetailSection title={t.sectionEquipmentTerrain}>
           {e.control}
           {e.sheets}
           <MatchEquipmentUsageSection playerSlug={playerSlug} matchId={matchId} replayAvailable={replayAvailable} scoreboard={scoreboard} locale={locale} />

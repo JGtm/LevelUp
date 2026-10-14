@@ -6,7 +6,7 @@ Escouade, Général). Diagnostic en lecture seule le 2026-10-14 (six enquêteurs
 `plan-execution`. Superviseur : session principale. Exécutants : Sonnet par défaut, Opus pour les
 lots film (rétro-ingénierie) et pour la relecture du lot CSR (sync/persist).
 
-**Statut : PROPOSÉ — aucune exécution avant le go du user et les décisions D-1 à D-9.**
+**Statut (15/10) : lots A, B, C, D, E, F intégrés dans feat/v75 (feat/aj14-integ b49e6d29e, CI verte) ; lot équipement porté en correction de relecture ; restent G (étiquettes), A5/A6 (rattrapage CSR), H1/H2 (cuisson VIP, recuisson schéma 95).**
 
 ## 0. Constats sur pièces (résumé ; le détail est dans les rapports d'enquête du 14/10)
 
@@ -58,6 +58,7 @@ Tranchées le 14/10 (second message du user) :
   explore (lot S) — fichier natif, ou recombinaison du geste tel que le moteur le joue (blend
   piloté par paramètre, cf. HANDOFF_SONS_RECONSTITUTION H4) ; Ghidra ouvert par le user.
   B3 et B4 passent au lot F (ils dépendent de S et de la pose publiée).
+- **D-3 quater** (user, 14/10, validé à l oreille) : POSE = `pose_1_enregistrement_fidele` (cinq couches natives de la banque, remplace le contenu de `translocator_deploy.wav`) ; TÉLÉPORTATION = `teleport_5_video_depart_puis_effet` (départ `10f62776` puis effet `efe84c70` à +0,20 s, relevé sur une vidéo de jeu du user aux deux téléportations ; le coup `0431c88f` appartient à la pose seule). Branchement : lot F (F4 bis).
 - **D-10** CSR : classé ⟺ `RankRecap.PostMatchCsr.InitialMeasurementMatches > 0`, la règle
   d'OpenSpartan Workshop (`MatchTableEntity.IsRanked`, champ extrait par
   `Queries/Select/PlayerMatches.sql:52`). Validé par le user.
@@ -86,7 +87,7 @@ Ordre : A (P0 données) et B, C, D, E en parallèle tout de suite ; F après la 
 images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H (opérations) en dernier.
 
 ### Lot A — CSR par match (P0, Go sync + backfill ; exécutant Sonnet, relecteur Opus)
-- [ ] A1 (D-10, validé) **Un match est classé ssi `RankRecap.PostMatchCsr.InitialMeasurementMatches > 0`**
+- [x] A1 (824fa6e72) (D-10, validé) **Un match est classé ssi `RankRecap.PostMatchCsr.InitialMeasurementMatches > 0`**
   (règle d'OpenSpartan Workshop ; nos tests le vérifient sur une charge classée ET une charge
   sociale réelles) — même esprit que
   règle que l'import OpenSpartan (`openspartan_import_service.go:313-319`, déjà « sa présence ⟹
@@ -94,16 +95,16 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   (code mort) ; la référence des playlists classées (`rankedplaylists.IsRanked`) ne décide pas
   non plus, elle sert de CONTRÔLE (alerte A3 si playlist de référence sans CSR, ou CSR sur une
   playlist hors référence).
-- [ ] A2 L'extraction CSR (joueur et partagée) ne dépend plus de `reg.IsRanked` ; `is_ranked` du
+- [x] A2 (824fa6e72, sync V1 et V2 + import) L'extraction CSR (joueur et partagée) ne dépend plus de `reg.IsRanked` ; `is_ranked` du
   registre est posé depuis la présence du CSR (un seul point de décision, réutilisé par le sync,
   l'import et les rattrapages) ; garde « payload tronqué » conservé ; écritures par
   `BatchBuilder.Submit()` (règle ART n°1), lectures `_latest` inchangées.
-- [ ] A3 Tests : charge de match classé réelle (fixture) → CSR écrit ; garde-rail grep interdisant
+- [x] A3 (6526d6f98, fixture réelle Nuzzles, 5 garde-rails, alerte `reference_control`) Tests : charge de match classé réelle (fixture) → CSR écrit ; garde-rail grep interdisant
   `!reg.IsRanked` comme seul garde de l'extraction CSR ; alerte de qualité (CSR manquants sur
   matchs classés) branchée sur `csr_coverage_repo.go`.
-- [ ] A4 Réparer `match_registry.is_ranked` depuis la présence du CSR (même point de décision
+- [x] A4 (6526d6f98, `levelup backfill-is-ranked`) Réparer `match_registry.is_ranked` depuis la présence du CSR (même point de décision
   qu'A2 ; commande de backfill idempotente, persister selon ADR 0019/0026).
-- [ ] A5 (écriture accordée au go du plan, serveur arrêté, sauvegarde préalable) `backfill-csr`
+- [ ] A5 (séquence : backfill --all --shared-csr, backfill --all --csr, backfill-is-ranked, recalcul LUSR v2 canonique, engagement --force ; relecture adversariale du 14/10 corrigée (bb8ee5267, CI verte) ; séquence documentée FR/EN : backfill --all --shared-csr, backfill --all --csr, backfill-is-ranked, backfill --all --lusr, backfill --all --engagement-scores --force) (écriture accordée au go du plan, serveur arrêté, sauvegarde préalable) `backfill-csr`
   joueur puis partagé pour tous les profils, local ; mesure avant/après (matchs classés sans CSR
   depuis le 16/09 → 0 attendu hors matchs dont l'API ne rend rien).
 - [ ] A6 Prod : lecture seule de l'état (prévenir le user avant toute commande VPS) ; backfill prod
@@ -112,13 +113,13 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   golangci nouveau = 0 ; tuile d'un match classé de Nuzzles du 07/10 avec CSR au navigateur.
 
 ### Lot B — Rejeu, web seul (Sonnet)
-- [ ] B0 CONSTAT À L ÉCRAN avant tout code : rejeu d'un match à translocations cuit au schéma courant,
+- [x] B0 (constat 1× : éclat, lien et faille rendus ; faille discrète ; défauts réels = glissade du pion et trait de traînée) CONSTAT À L ÉCRAN avant tout code : rejeu d'un match à translocations cuit au schéma courant,
   lu à 1× autour de chaque téléportation (éclat de fiche, lien, faille, son) ; captures jointes au
   rapport. Ce qui se voit et ce qui ne se voit pas décide de B1-B2 (rien n'est « corrigé » à
   l'aveugle).
-- [ ] B1 Translocation = coupure : modèle des images coupées par slot depuis `translocations[]` ;
+- [x] B1 (a21fc751d) Translocation = coupure : modèle des images coupées par slot depuis `translocations[]` ;
   `positionAt`/`trailAt` (ou l'appelant `replayMarkers.ts`) ne relient jamais départ et arrivée.
-- [ ] B2 Calque dédié aux failles APRÈS les trajectoires dans `LAYER_ORDER` ; éclat daté aux deux
+- [x] B2 (a21fc751d, calque `failles` après `trajectoires`) Calque dédié aux failles APRÈS les trajectoires dans `LAYER_ORDER` ; éclat daté aux deux
   bouts (~1,2 s, `TRANSLOCATION_FLASH_S`), faille lisible (taille, animation) ; tokens.
 - [~] B3 (déplacé en F4 bis, D-3 ter) Son de téléportation déclenché par `translocations[]` (geste choisi par le user, D-3) ;
   le déclencheur `translocator_beacon → translocator_deploy` (mort depuis début septembre) est
@@ -126,98 +127,110 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   sur données réelles.
 - [~] B4 (déplacé en F4 bis) Garde-rail : aucun son de pose sur une famille `kind = "carried"` du manifeste ; chaque son
   de pose a au moins un déclencheur réel dans les fixtures.
-- [ ] B5 Bandeau à manches : retrait du texte `a - b` et de son code mort (`roundsTally`, clés
+- [x] B5 (9fbc0e511) Bandeau à manches : retrait du texte `a - b` et de son code mort (`roundsTally`, clés
   i18n, tests) ; « Manche X » en gras, couleur premier plan, 11 px.
-- [ ] B6 Frises : `score_timeline_kind` du header passé à `scoreTrack` (`hidden` → pas de frise
+- [x] B6 (1e41c66cb ; reprise faite 1e2f69eb0 : pas de piste Score tant que l en-tête est inconnu ; feat/v75 fusionné 82f830cae) Frises : `score_timeline_kind` du header passé à `scoreTrack` (`hidden` → pas de frise
   Score) ; la comparaison de rendu `sameLeadSegments` est SUPPRIMÉE avec ses tests (règle déclarée
   seule) ; contrôle de qualité : liste des variantes jouées sans règle déclarée (test sur le
   registre local, rouge si une variante marquant au frag n'est pas déclarée).
-- [ ] B7 Forerunner : teinte `forerunner` sur les armes de D-4 au TOML, commentaire corrigé ;
+- [x] B7 (93e2f4cce, garde-rail registre ⇔ teinte) Forerunner : teinte `forerunner` sur les armes de D-4 au TOML, commentaire corrigé ;
   garde-rail Go : toute arme de faction `forerunner` du registre a la teinte `forerunner`.
 - Tests : pion à mi-image d'une translocation jamais entre départ et arrivée ; aucune traînée
   n'enjambe une translocation ; ordre des calques ; bandeau ; frise `hidden` et deux frags même image.
+- Constat Chrome du superviseur (14/10, Vite aj14-b + serveur réel, lecture 1×, 1b2d9e08 au
+  schéma 93, 3 téléportations) : saut net sans traînée, faille violette aux deux bouts, onde à
+  l'arrivée, lien pointillé, éclat sur la fiche ; son de téléportation non branché (F4 bis).
+  Captures : `~/Downloads/verif_translocateur_rejeu.png`.
 - Gate : vitest + tsc + eslint + Playwright ; lecture à 1× d'un match à translocations, d'un
   Oddball à manches, d'un Slayer ; gate visuel du user.
 
 ### Lot C — Vue match (Sonnet)
-- [ ] C1 Bloc Médias toujours affiché (sous la capacité `media`), état vide restauré FR/EN ;
+- [x] C1 (943669b60) Bloc Médias toujours affiché (sous la capacité `media`), état vide restauré FR/EN ;
   `hasMediaItems` supprimé ; test « liste vide → titre + message ».
-- [ ] C2 Occupation du terrain : chaleur lissée de la Tactique (`lisserLaGrille` + flou de
+- [x] C2 (f4a0a4ad6 ; rendu à voir au gate visuel) Occupation du terrain : chaleur lissée de la Tactique (`lisserLaGrille` + flou de
   `peindreLaChaleur` déplacés dans `lib/replay/`, pas d'import entre features).
-- [ ] C3 Retrait : « film décodé · N joueurs présents à la fin », « N socles vidés »,
+- [x] C3 (4daad5eba) Retrait : « film décodé · N joueurs présents à la fin », « N socles vidés »,
   « (N types d'armes, repliés) » (chevron conservé), avec clés et champs morts.
-- [ ] C4 « Prises par joueur » : ligne « Bonus perdus » retirée (composant partagé avec
+- [x] C4 (0e31550de ; ramassages compris, pastilles vides par prise conservées) « Prises par joueur » : ligne « Bonus perdus » retirée (composant partagé avec
   l'Escouade) + modèle `losses` mort ; selon D-6, aussi la ligne de « Ramassages ».
-- [ ] C5 « N vies terminées par une mort » retiré selon D-5.
-- [ ] C6 « Objectifs » en deux blocs : « Actions d'objectif par joueur », « Total d'objectif par
+- [x] C5 (5a4f1d5c6 ; infobulle explicative de la carte conservée, à confirmer) « N vies terminées par une mort » retiré selon D-5.
+- [x] C6 (7811cb59d ; sans infobulle, aucun texte d'aide n'existait) « Objectifs » en deux blocs : « Actions d'objectif par joueur », « Total d'objectif par
   équipe » (garde « exactement deux camps » conservé).
 - Gate : vitest/tsc/eslint ; Vue match d'un CTF, d'un Oddball, d'un Slayer au navigateur.
 
 ### Lot D — Tactique (Sonnet)
-- [ ] D1 Barre de chargement : drapeau `meta` « sans barre » (clé en constante `lib/query/`) sur la
+- [x] D1 (10f2f332e) Barre de chargement : drapeau `meta` « sans barre » (clé en constante `lib/query/`) sur la
   requête de cellule et son préchargement ; prédicat de `TopProgressBar` ; test avec vrai `QueryClient`.
-- [ ] D2 Champ coéquipier (composant partagé Tactique/Escouade/Tendances) : `text-xs` en compact ;
+- [x] D2 (372b33088) Champ coéquipier (composant partagé Tactique/Escouade/Tendances) : `text-xs` en compact ;
   libellé « Ajouter un coéquipier… » / « Add a teammate… » (le champ ajoute à la composition,
   3 max, cherche au-delà des coéquipiers fréquents).
-- [ ] D3 Pilule « Réapparition » masquée sans amas ni filtre actif ; gardée si un filtre est posé.
-- [ ] D4 Colonne de droite : mode normalisé côté Go (`analysis.NormalizeModeLabel` avec la carte) ;
+- [x] D3 (c374637a0) Pilule « Réapparition » masquée sans amas ni filtre actif ; gardée si un filtre est posé.
+- [x] D4 (3cf328e0f) Colonne de droite : mode normalisé côté Go (`analysis.NormalizeModeLabel` avec la carte) ;
   icône d'arme (`arme_image_url`/`arme_image_tinted` publiés via l'adapter d'assets,
   `WeaponIcon` du fil du rejeu, repli texte) ; score coloré par l'issue, mot d'issue retiré
   (gardé en infobulle). `openapi.yaml` + `make generate-types`.
-- [ ] D5 = H3 (`seasons_catalog`, Go court).
+- [x] D5 (0257e0b42 ; cause : seul fetch à jeton sans `retryOnAuth` ; échec mémorisé par lecteur ; WARN au changement d'état) = H3 (`seasons_catalog`, Go court).
 - Gate : Go des paquets touchés + vitest/tsc/eslint ; clic de zone sans barre au navigateur.
 
 ### Lot E — Escouade et Séries temporelles (Sonnet)
-- [ ] E1 Historique des matchs de l'escouade (Synergies) : colonnes dominance, soirée,
+- [x] E1 (cumuls d escouade + FDA ADR 0006 côté Go, `attachSquadTotals`) Historique des matchs de l'escouade (Synergies) : colonnes dominance, soirée,
   frags/morts/assistances cumulés de l'escouade, FDA d'escouade (formule ADR 0006, jamais le
   quotient), calculées côté Go.
 - [~] E2 (D-8 : la section reste en Contributions, rien à faire)
-- [ ] E3 « Contrôle des ressources, par match » : heure retirée du titre de ligne (prop, la carte
+- [x] E3 (prop `showTime`) « Contrôle des ressources, par match » : heure retirée du titre de ligne (prop, la carte
   est partagée avec Sessions).
-- [ ] E4 « Contrôle des ressources, par soirée » en bâtons groupés (médiane et 50 % conservés,
+- [x] E4 (section « Soirées précédentes », barres groupées) « Contrôle des ressources, par soirée » en bâtons groupés (médiane et 50 % conservés,
   soirée non comparable = barre grisée), placée à gauche de « Rapport de force, soirée après
   soirée » dans une même rangée (hauteurs alignées ; seule carte → pleine largeur).
-- [ ] E5 Frises sous l'axe X : helper partagé qui CALCULE `grid.bottom` et la position de la bande
+- [x] E5 (helper `components/charts/axisFoot.ts` + test sur options réelles + garde-rail) Frises sous l'axe X : helper partagé qui CALCULE `grid.bottom` et la position de la bande
   depuis la police, la hauteur de ligne et la marge des étiquettes (plus aucun nombre ajusté à la
   main) ; appliqué à `eveningsChart.ts`, `objectifCharts.ts`, `empriseCharts.ts` ; test
   « bande + étiquettes ≤ bas de grille ».
-- [ ] E6 « Rapport de force au fil de la session » en bâtons par match et par rôle, cumul en
+- [x] E6 (barres par match et par rôle) « Rapport de force au fil de la session » en bâtons par match et par rôle, cumul en
   infobulle.
-- [ ] E7 « Appui reçu » : valeur absolue lisible (« 37 % (51/137) ») en étiquette et infobulle,
+- [x] E7 (« 37 % (51/137) » sur le bâton) « Appui reçu » : valeur absolue lisible (« 37 % (51/137) ») en étiquette et infobulle,
   écart à côté ; titre clarifié FR/EN (« Frags appuyés par un coéquipier ») ; test « soirée à
   l'habituel → valeur lisible ».
 - Gate : vitest/tsc/eslint (+ Go si E1) ; Escouade et Séries temporelles au navigateur.
 
 ### Lot S — Sons natifs du translocateur (Sonnet, lecture seule du dépôt, en parallèle)
-- [ ] S1 Retrouver la pose et la téléportation telles que le jeu les joue : événements de la
+- [x] S1 (pose : 5 couches natives prouvées, 96,1 % de l énergie de l enregistrement ; téléportation : seul `10f62776` = play_007_abl_quantum_teleport_player_start nommé, geste entier non prouvé ; `152544be` = version monde du coup de POSE) Retrouver la pose et la téléportation telles que le jeu les joue : événements de la
   banque de l'appareil et de la balise, chaîne équipement → effet → son, blend et paramètre
   qui le pilote ; Ghidra (HTTP 127.0.0.1:8089, lecture seule) pour nommer les événements.
-- [ ] S2 Rendus candidats (pose, téléportation) dans le scratchpad + rapport ; le superviseur
+- [x] S2 (8 rendus, planche v2 publiée le 14/10 ; trou : quel effet est la téléportation — enregistrement en jeu du user ou clés d événement via Ghidra) Rendus candidats (pose, téléportation) dans le scratchpad + rapport ; le superviseur
   les ajoute à la planche d'écoute, le user choisit.
 
 ### Lot F — Film : poussée du répulseur et pose de faille (Opus ; après fusion images-clés)
-- [ ] F1 Instruction répulseur, seuil écrit d'avance : lire les 104/105/119 par la grammaire de
+- [x] F1 (canal ÉTABLI le 14/10 : 104 ref0 = slot poussé, impulsion portée depuis l exe, 105 ref1 = auteur ; 0d9a9af9 : JGtm à 0:54,8 et 1:04,4 par WolfzyLIVE, Sterio23 à 3:59,0 par Clearshields ; ancre 215e7022 à la ms du kill ; contrôle trajectoire 14/14 contre 1/14 au témoin ; rappel 7/9 dont 2 faux positifs du détecteur (fentes de corps-à-corps), 7/7 sur les vraies poussées ; 104 jamais en tête de liste) Instruction répulseur, seuil écrit d'avance : lire les 104/105/119 par la grammaire de
   PRODUCTION (vue A), pas le harnais R12 (palette non classée sur ce build), sur 215e7022 et
   a6ae19fb (ancres Theater) puis 0d9a9af9 ; critère de validité : la poussée tombe sur le slot
   qui accélère dans 0-300 ms (contrôle trajectoire), ≥ 80 % des poussées détectées près d'un
   porteur retrouvées, les deux poussées de JGtm (0:55, 1:04) retrouvées. Le critère ne passe
   pas → on cherche ailleurs (autres événements, composants de l'objet `0x7ca85adc`, Ghidra),
   jamais de repli déduit (D-1) ; blocage remonté au user avec les lectures faites.
-- [ ] F2 Instruction pose de faille : liste COMPLÈTE des 103, composants i18/i20/i21 des objets
+- [x] F1 bis (consigne du user, 14/10 ; charges : négatif DÉCRIT — i56 jamais armé par le répulseur, delta des objets portés NON LU par la marche, images-clés brutes non interprétables ; Ghidra : `Equipment_GetRemainingCharges` lit objet+0x50b, composant i27 `equipment-charges-remaining` écrit +0x5a7, lien non établi) Validation par l équipement et les charges : auteur porteur du répulseur 130/130 paires ; publication des seules paires 105 → 104 (normes 6,00 / 5,50 m/s), 998 104 isolées = lectures fausses (genre 36), non publiées, comptées ; charges : aucun canal décroissant aux images-clés, delta des objets portés non lu → instruction bornée (Ghidra : source des utilisations restantes du HUD).
+- [~] F2 (RÉSOLU par le lot équipement porté, levelup-80, 14/10 : pose = énergie i24 → 0 puis i28 +1 entrée, ~1,63 s après l activation i21, 123/123 au parc ; ancres 1b2d9e08 164,11 s, 6acce632, a0c36016 ; cause commune = i28 lisait n+1 entrées) (ex-BLOQUÉ 14/10, rien de déduit publié : aucun 103 ni événement de vue A aux poses ; la pose est très probablement dans le DELTA de l objet porté, que la marche de vue B ne lit pas — elle s arrête sur un composant non porté avant ces records ; charge du genre 117 non portée non plus) Instruction pose de faille : liste COMPLÈTE des 103, composants i18/i20/i21 des objets
   ti=37 de la balise (`0x730dc70f`), lecture complète des images-clés (lot images-clés fusionné),
   Ghidra pour l'effet de pose ; sur 1b2d9e08 et 2 autres films. Pas de déduction (D-2).
-- [ ] F3 Faits : nouvelle section + révision du codec ; document :
+- [x] F3 (a99688494, poussé ; grammar-2026-10-14, schéma 94, calque `knockbacks[]`, paire 105 → 104 seule) Faits : nouvelle section + révision du codec ; document :
   `knockbacks[]` et/ou pose de faille + couverture (lus, publiés, sans identité) ; schéma 93 → 94 ;
   goldens.
-- [ ] F4 Web : schéma, normalisation, son de poussée (source du jeu identifiée, choix à l'oreille
+- [x] F4 (e67fa8236 ; onde + sillage, son du répulseur par souffle dédoublonné avec le kill ; lecture 1× au navigateur à faire après recuisson) Web : schéma, normalisation, son de poussée (source du jeu identifiée, choix à l'oreille
   du user), onde visuelle (modèle `thrusterDashFx.ts`), pose de faille datée et sonore
   (`translocator_deploy` rebranché sur la vraie pose).
-- [ ] F4 bis (ex-B3/B4) Son de téléportation (choix S2) sur `translocations[]` ; son de pose
+- [~] F4 bis (e67fa8236 : son de téléportation branché, contenu de translocator_deploy.wav remplacé ; déclencheur de pose + test réel + garde-rail → lot équipement porté) (ex-B3/B4) Son de téléportation (choix S2) sur `translocations[]` ; son de pose
   rebranché sur la pose publiée ; test fabriqué remplacé par un test sur données réelles ;
   garde-rail : chaque son de pose a un déclencheur réel dans les fixtures.
-- [ ] F5 `REFERENCE_CANAUX_EQUIPEMENT` corrigé (geste vs effet).
+- [x] F6 (b1009e8e9 ; killsource json identique à l octet sur 20 films ; golden de forme du schéma 94 régénéré sans relever le schéma — ACCEPTÉ par le superviseur : le schéma 94 n a jamais été publié ni cuit au parc) Relecture adversariale (14/10) : P1 compléments datés killsource/objectives à révision constante + preuve ; P2 test du dédoublonnage son/kill ; P3 auteur dans le dédoublonnage, test de génération, `WithoutImpulse` publié, chiffres alignés — correction en cours.
+- [x] F5 (e67fa8236) `REFERENCE_CANAUX_EQUIPEMENT` corrigé (geste vs effet).
 - Gate : tests grammaire/replay, `TestCodecCouvreFilmInputs`, archlint (surface `decfilm`),
   rejeu de 0d9a9af9 et 1b2d9e08 cuit À L'UNITÉ et lu à 1× ; recuisson du parc en H2.
+
+### Lot EP — Équipement porté (session levelup-80, prompt du superviseur)
+- [x] G1-G5 livrés sur feat/equip-porte @ 17a14ea69 (CI verte) : correctif i28 (n et non n+1, FUN_140f72dec) ; objet porté lu au delta (i24/i21/i22/i28) ; pose de faille = i24 → 0 puis i28 +1, 1,63 s après i21 (123/123) ; catalogue `equipment_energy.json` lu dans les tags (voie A) ; schéma 95 (`carriedEquipment[]`, `riftPoses[]`) ; faille à la pose, son de pose calé, usages restants sur la fiche ; rendu vérifié en lecture (harnais du lot B).
+- [ ] EP6 (décision user 15/10) Rebrancher les sons de pose du capteur, du traqueur, du champ de réparation et de l écran occultant sur `carriedEquipment[].uses` ; liste datée de `poseSoundTriggers.guard.test.ts` vidée.
+- [x] Relecture adversariale (15/10) : 0 P1, 3 P2 (calques absents des tests figés, mur rang 19 jamais compté, journal), 5 P3 ; i28 et règle du HUD confirmés contre l exe → corrections transmises à levelup-80.
+- [ ] Fusion après l intégration aj14, puis recuisson du parc au schéma 95 (accord user).
 
 ### Lot G — Étiquettes de barres (Sonnet ; après C, D, E)
 - [ ] G1 Constat au navigateur du décalage vertical (cause non prouvée par lecture) avant correction.
@@ -235,13 +248,43 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   recuisson commune du lot images-clés ; relever couronne, score et porteur ; consigner les
   défauts VIP (pont d'identité de la couronne, registre l.40) sans les traiter.
 - [ ] H2 (accord explicite requis) Recuisson du parc au schéma du lot F + passes aval.
-- [~] H3 (exécuté par le lot D, item D5) `seasons_catalog` (l'appel en direct est fiable, D-9) : confirmer la cause des 401/403
+- [x] H3 (exécuté par le lot D, item D5, 0257e0b42) `seasons_catalog` (l'appel en direct est fiable, D-9) : confirmer la cause des 401/403
   intermittents (jeton de la requête expiré au moment de l'appel, cf. G7) ; sur 401/403, un seul
   nouvel essai après rafraîchissement du jeton (helper existant, jamais de recapture) ; l'échec
   d'un lecteur ne bloque plus le titre entier 30 min ; niveau WARN au changement d'état ; test.
   (Lot Go court, Sonnet.)
 
 ## 4. Découvertes (hors périmètre, non traitées)
+- (intégration) 22 tests E2E (legacy-redirect, slice-0b, 2b, 3b, 4, 4b, 4c, 7, 8, 9) appellent l API en dur sur `localhost:8000` au lieu de l URL de base configurée : inexécutables hors du dispositif CI ; échecs identiques sur feat/v75. Le reste : 57 passées, 28 ignorées.
+- (intégration) golangci signale des directives `//nolint` mal formées ; `npm audit` signale des vulnérabilités.
+- (relecture EP) `TestGoldenInputsFidelite` (gate local) rouge à l identique sur b1009e8e9 : dette antérieure.
+- (équipement porté) Sons de pose MORTS depuis le 15/09 pour capteur, traqueur, champ de réparation et écran occultant (seul le mur porte une pose `deployed`) ; listés dans `poseSoundTriggers.guard.test.ts` ; rebranchement sur `carriedEquipment[].uses` = décision produit.
+- (équipement porté) Mur : deux fiches de coût (0,33 et 1) → `ambiguousCost` ; identifiant atypique 0x0000d5ff recopié tel quel.
+- (équipement porté) Live Fire - Ranked : ~16 % des trames ne ferment pas (rejet hors datum + vue C), autre défaut que i28.
+- (équipement porté) Charges : HUD = floor((énergie + 1e-4) / coût par usage) ; coût et énergie initiale = constantes du tag eqip (non transmises par le film) ; baisses mesurées par famille : répulseur 0,2 (énergie 0,6 au ramassage = 3 charges), capteur et écran 0,25, mur 0,33, champ 0,5, translocateur 1. DÉCISION USER 14/10 : VOIE A (constantes lues dans les tags eqip du jeu, référence générée et versionnée par GlobalID, formule du HUD), sur la base B (énergie + consommations datées).
+- (lot F) `ScanKnockbacks` relit toutes les vues A dans une passe à part au lieu du pont d identité (coût seulement).
+- (lot F) a6ae19fb slot 526 : fausse alerte de régression i48 — rang 6 confirmé par le lot images-clés ; le 10 venait d une lecture sans contexte de carte (`NewFilmContext` nu) ; contrôle porteur F remis au critère strict via `NewFilmContextForMap`.
+- (lot A) Après réparation d is_ranked, ~3 900 matchs sortent du LUSR (qui exclut les classés) : recalcul LUSR ajouté à A5.
+- (lot A) Migration historique `shared_backfill_is_ranked_and_season`, `classifyPeakType`, `countRankedMatchesInRegistry` ne passent pas par la règle.
+- (lot A) `needs_backfill` ne tient pas compte du contrôle de référence.
+- (lot F) CAUSE COMMUNE de la pose de faille et des charges illisibles : la vue B s arrête sur un composant non porté avant les records des objets d équipement portés (delta jamais lu pendant le port, seul le NEW l est) ; la charge du genre 117 n est pas portée. Proposition : lot de grammaire dédié (lire le delta des objets portés, i20/i10/i27), puis recuisson.
+- (lot E) La carte « Appui reçu » de Sessions garde l ancien titre et l écart seul (même défaut de lecture que E7).
+- (lot E) Étiquette d axe « Écart (points) » rognée à gauche (grille `left: 8` + `containLabel`).
+- (lot E) Plafond d imports croisés entre features à 7/7.
+- (lot B) Harnais Playwright jetable du rejeu (API simulée, document réel) dans le scratchpad : à versionner si utile (aucun harnais de rendu du rejeu au dépôt).
+- (lot B) Le contrôle de qualité B6 porte une liste d exceptions en dur (VIP, Total Control : objectifs sans entrée de catalogue).
+- (lot B) Armes Halo 5 classées `forerunner` au registre sans `[shot_tints]` H5 : non contrôlées.
+- (lot F) RETIRÉ : la « sous-lecture du genre 36 » (998 faux 104, 9 % de listes arrêtées) était un artefact des instruments sans contexte de carte ; dans le contexte de la cuisson : 135 104 = 135 paires, 0,42 % de listes arrêtées. RÈGLE pour tout instrument de recherche : lire sous `NewFilmContextForMap` + `PoserLaCarteEtLeDecoupage` (comme `replay/build_from_film.go:97`).
+- (lot D) `FetchCSRSeasonCalendar` n'est pas enrobé de `retryOnAuth` (même défaut que D5).
+- (lot D) Sans xuid dans le contexte, `RetryWithFreshTokens` ne relance pas.
+- (lot D) Code mort `errEmpty` en pied de `seasons_catalog.go` ; `registry_pages.go:46` cite l'ancien message.
+- (lot D) `TestAddOverlayEntryConcurrentNePerdPasDEntree` (mapcatalog) rouge une fois sur deux passages : instable.
+- (lot D) L'exécutant a utilisé des scripts Python pour éditer (CRLF corrigés) : règle « pas de Python » rappelée aux exécutants suivants.
+- (lot C) Le champ `outcomes` (kept/dropped) du bloc Emprise, servi par Go et déclaré dans
+  `openapi.yaml`, n'a plus de lecteur web depuis D-6.
+- (lot C) `lib/replay/crossFeatureBoundary.guard.test.ts` ne couvre que match-view ↔ match-replay ;
+  aucun garde n'interdit un import features/tactical → features/match-view.
+- (lot C) Playwright de la Vue match exige le serveur :8000 : à rejouer avant la fusion web.
 - `MinePickupsCard` porte une ligne « Bonus perdus » (voir D-6).
 - Démo (`feat/recos-d`, non fusionné) choisit déjà le VIP recommandé.
 - Harnais R12 : palette « non classée » sur 0d9a9af9 (build non reconnu par la recherche).

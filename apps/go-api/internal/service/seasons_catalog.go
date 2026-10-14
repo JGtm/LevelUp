@@ -23,9 +23,11 @@
 //
 // Cache (plan perf 2026-09-23, lot L5b, décision D5b.1) : le catalogue résolu est
 // gardé en mémoire PAR TITRE (seasonsCatalogTTL) et l'échec du fetch live est
-// mémorisé par titre (seasonsLiveFetchBackoff). Avant, chaque /filters/resolve,
-// field-mappings et highlight-matches relisait la base puis retentait le GET Waypoint
-// (403, environ 100 ms, 38 échecs sur une matinée — état des lieux C6).
+// mémorisé PAR LECTEUR (titre + xuid porteur du jeton, seasonsLiveFetchBackoff).
+// Avant, chaque /filters/resolve, field-mappings et highlight-matches relisait la
+// base puis retentait le GET Waypoint (403, environ 100 ms, 38 échecs sur une
+// matinée — état des lieux C6). L'attente n'est plus celle du titre entier
+// (lot aj14-d, 2026-10-14) : le jeton d'UN lecteur périmé ne prive pas les autres.
 package service
 
 import (
@@ -52,8 +54,8 @@ const (
 	// bougent à l'échelle de la semaine ; une heure borne l'écart avec la base.
 	seasonsCatalogTTL = time.Hour
 	// seasonsLiveFetchBackoff : après un échec du fetch live, plus aucun appel réseau
-	// pour ce titre pendant cette durée. Le catalogue de repli (TOML + base) est gardé
-	// jusqu'au terme de l'attente, puis la requête suivante retente le fetch.
+	// de CE lecteur pour ce titre pendant cette durée. Son catalogue de repli (TOML +
+	// base) est gardé jusqu'au terme de l'attente, puis sa requête suivante retente.
 	seasonsLiveFetchBackoff = 30 * time.Minute
 )
 
@@ -101,12 +103,19 @@ type SeasonsCatalog struct {
 
 	now     func() time.Time   // horloge (time.Now hors tests)
 	flights singleflight.Group // une seule résolution en vol par titre
-	mu      sync.Mutex         // protège byTitle
+	mu      sync.Mutex         // protège byTitle, waits et failing
 	byTitle map[string]*seasonsTitleState
+	// waits : le repli gardé après un échec live, par lecteur (readerKey). Un catalogue
+	// sain (byTitle) le prime : il vaut pour tous les lecteurs.
+	waits map[string]*seasonsTitleState
+	// failing : les lecteurs dont le dernier fetch live a échoué. Sert à ne journaliser
+	// en WARN que le CHANGEMENT d'état (sain -> en échec), et le retour (INFO).
+	failing map[string]bool
 }
 
-// seasonsTitleState est l'état du cache pour un titre. Après un échec du fetch
-// live, expiresAt porte le terme de l'attente (seasonsLiveFetchBackoff).
+// seasonsTitleState est l'état du cache pour un titre (ou, dans waits, pour un
+// lecteur). Après un échec du fetch live, expiresAt porte le terme de l'attente
+// (seasonsLiveFetchBackoff).
 type seasonsTitleState struct {
 	entries   []SeasonCatalogEntry // catalogue résolu (jamais rendu tel quel : copie à la lecture)
 	expiresAt time.Time            // fin de validité du catalogue caché
@@ -132,7 +141,15 @@ func NewSeasonsCatalog(
 		logger:   logger,
 		now:      time.Now,
 		byTitle:  make(map[string]*seasonsTitleState),
+		waits:    make(map[string]*seasonsTitleState),
+		failing:  make(map[string]bool),
 	}
+}
+
+// readerKey identifie le lecteur d'un titre : le xuid porteur du jeton de la requête
+// (vide sans jeton). Les échecs live se mémorisent à cette clé, jamais pour le titre.
+func readerKey(ctx context.Context, titleID string) string {
+	return titleID + "|" + ctxkeys.HaloXUID(ctx)
 }
 
 // projectTOMLSeasons est l'équivalent de SeasonsFromAssets mais en SeasonCatalogEntry
@@ -190,17 +207,18 @@ type seasonsCatalogLoader interface {
 // c'est une copie. Aucune erreur fatale — les échecs de I/O sont loggués et
 // l'appelant reçoit ce qu'on a pu collecter.
 func (c *SeasonsCatalog) Load(ctx context.Context, titleID string) []SeasonCatalogEntry {
-	if entries, ok := c.cachedEntries(titleID); ok {
+	reader := readerKey(ctx, titleID)
+	if entries, ok := c.cachedEntries(titleID, reader); ok {
 		timing.FromContext(ctx).Section("seasons_catalog_hit")()
 		return cloneSeasonCatalog(entries)
 	}
 	timing.FromContext(ctx).Section("seasons_catalog_miss")()
-	// Une seule résolution en vol par titre : les requêtes concurrentes attendent
+	// Une seule résolution en vol par lecteur : les requêtes concurrentes attendent
 	// son résultat au lieu de relire la base et de retenter le réseau chacune. Le
 	// cache est relu dans le vol : une requête arrivée juste après la fin d'un vol
 	// précédent ne relance pas la résolution.
-	v, _, _ := c.flights.Do(titleID, func() (any, error) {
-		if entries, ok := c.cachedEntries(titleID); ok {
+	v, _, _ := c.flights.Do(reader, func() (any, error) {
+		if entries, ok := c.cachedEntries(titleID, reader); ok {
 			return entries, nil
 		}
 		return c.resolve(ctx, titleID), nil
@@ -210,34 +228,45 @@ func (c *SeasonsCatalog) Load(ctx context.Context, titleID string) []SeasonCatal
 }
 
 // resolve lit les sources, fusionne et met le résultat en cache pour la durée
-// que la lecture autorise (0 = pas de cache).
+// que la lecture autorise (0 = pas de cache). Un repli posé par un échec live
+// n'est gardé que pour son lecteur ; un catalogue sain l'est pour le titre.
 func (c *SeasonsCatalog) resolve(ctx context.Context, titleID string) []SeasonCatalogEntry {
-	dbSeasons, cacheFor := c.loadDBWithFallback(ctx, titleID)
+	dbSeasons, cacheFor, fetchFailed := c.loadDBWithFallback(ctx, titleID)
 	merged := mergeSeasonSources(c.static, dbSeasons)
 	if cacheFor > 0 {
+		st := &seasonsTitleState{entries: merged, expiresAt: c.now().Add(cacheFor)}
 		c.mu.Lock()
-		c.byTitle[titleID] = &seasonsTitleState{entries: merged, expiresAt: c.now().Add(cacheFor)}
+		if fetchFailed {
+			c.waits[readerKey(ctx, titleID)] = st
+		} else {
+			c.byTitle[titleID] = st
+		}
 		c.mu.Unlock()
 	}
 	return merged
 }
 
-// cachedEntries rend le catalogue caché du titre s'il est encore frais.
-func (c *SeasonsCatalog) cachedEntries(titleID string) ([]SeasonCatalogEntry, bool) {
+// cachedEntries rend le catalogue caché s'il est encore frais : celui du titre, sinon
+// le repli en attente de ce lecteur.
+func (c *SeasonsCatalog) cachedEntries(titleID, reader string) ([]SeasonCatalogEntry, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	st, ok := c.byTitle[titleID]
-	if !ok || !c.now().Before(st.expiresAt) {
-		return nil, false
+	now := c.now()
+	if st, ok := c.byTitle[titleID]; ok && now.Before(st.expiresAt) {
+		return st.entries, true
 	}
-	return st.entries, true
+	if st, ok := c.waits[reader]; ok && now.Before(st.expiresAt) {
+		return st.entries, true
+	}
+	return nil, false
 }
 
 // loadDBWithFallback lit la DB, et si vide tente le fetch live + persist. Rend
-// aussi la durée pendant laquelle le résultat peut être caché (0 = ne pas cacher).
-func (c *SeasonsCatalog) loadDBWithFallback(ctx context.Context, titleID string) ([]domain.SeasonCalendar, time.Duration) {
+// aussi la durée pendant laquelle le résultat peut être caché (0 = ne pas cacher)
+// et si ce résultat est un repli posé par un échec du fetch live.
+func (c *SeasonsCatalog) loadDBWithFallback(ctx context.Context, titleID string) (rows []domain.SeasonCalendar, cacheFor time.Duration, fetchFailed bool) {
 	if c.repo == nil {
-		return nil, seasonsCatalogTTL
+		return nil, seasonsCatalogTTL, false
 	}
 	rows, err := c.repo.ListSeasons(ctx, titleID)
 	if err != nil {
@@ -245,27 +274,31 @@ func (c *SeasonsCatalog) loadDBWithFallback(ctx context.Context, titleID string)
 		// repli TOML pour une heure — la requête suivante relit.
 		c.logger.WarnContext(ctx, "seasons_catalog: ListSeasons échec — fallback static TOML",
 			"titleSlug", titleID, "err", err)
-		return nil, 0
+		return nil, 0, false
 	}
 	if len(rows) > 0 {
-		return rows, seasonsCatalogTTL
+		return rows, seasonsCatalogTTL, false
 	}
 	if c.provider == nil {
-		return nil, seasonsCatalogTTL
+		return nil, seasonsCatalogTTL, false
 	}
 	return c.fetchLive(ctx, titleID)
 }
 
 // fetchLive tente le fetch Waypoint pour une base vide et rend la durée de cache
-// du résultat. Un succès persiste les saisons (catalogue caché seasonsCatalogTTL) ;
-// un échec est mémorisé par recordFetchFailure.
-func (c *SeasonsCatalog) fetchLive(ctx context.Context, titleID string) ([]domain.SeasonCalendar, time.Duration) {
+// du résultat, avec vrai quand c'est un repli posé par un échec. Un succès persiste
+// les saisons (catalogue caché seasonsCatalogTTL) ; un échec est mémorisé, pour ce
+// lecteur seul, par recordFetchFailure. Le provider a déjà tenté UNE relance après
+// rafraîchissement du jeton sur 401/403 : l'échec qui remonte ici est un verdict.
+func (c *SeasonsCatalog) fetchLive(ctx context.Context, titleID string) ([]domain.SeasonCalendar, time.Duration, bool) {
 	c.logger.DebugContext(ctx, "seasons_catalog: DB vide → tentative fetch live",
 		"titleSlug", titleID)
 	fetched, _, err := c.provider.FetchSeasonCalendar(ctx, titleID)
 	if err != nil {
-		return nil, c.recordFetchFailure(ctx, titleID, err)
+		cacheFor := c.recordFetchFailure(ctx, titleID, err)
+		return nil, cacheFor, cacheFor > 0
 	}
+	c.markFetchRecovered(ctx, titleID)
 	for _, s := range fetched {
 		if uerr := c.repo.UpsertSeason(ctx, s); uerr != nil {
 			c.logger.WarnContext(ctx, "seasons_catalog: UpsertSeason échec",
@@ -279,15 +312,19 @@ func (c *SeasonsCatalog) fetchLive(ctx context.Context, titleID string) ([]domai
 	if err != nil {
 		c.logger.WarnContext(ctx, "seasons_catalog: relecture après fetch échec",
 			"titleSlug", titleID, "err", err)
-		return fetched, seasonsCatalogTTL // best effort : retourne ce qu'on a fetché
+		return fetched, seasonsCatalogTTL, false // best effort : retourne ce qu'on a fetché
 	}
-	return rows, seasonsCatalogTTL
+	return rows, seasonsCatalogTTL, false
 }
 
 // recordFetchFailure journalise l'échec du fetch live et rend la durée de cache du
-// repli (TOML + base vide). La MÉMOIRE DE L'ÉCHEC EST CE CACHE : tant que le repli
-// est frais, Load le sert sans relire la base ni rappeler le réseau ; à son terme,
-// la requête suivante retente le fetch (et un succès remplace le repli).
+// repli (TOML + base vide) DE CE LECTEUR. La MÉMOIRE DE L'ÉCHEC EST CE CACHE : tant
+// que le repli est frais, Load le sert à ce lecteur sans relire la base ni rappeler
+// le réseau ; à son terme, sa requête suivante retente le fetch. Les autres lecteurs
+// (autre xuid porteur) ne sont pas touchés : leur jeton peut être sain.
+//
+// Journal : WARN au CHANGEMENT d'état (le lecteur passe de sain à en échec), DEBUG
+// tant qu'il y reste ; le retour à la normale est dit par markFetchRecovered.
 //
 // Un échec SANS jeton dans le contexte n'a fait aucun appel réseau (le provider
 // refuse avant) : il n'est pas mémorisé — sinon une requête anonyme bloquerait
@@ -309,9 +346,33 @@ func (c *SeasonsCatalog) recordFetchFailure(ctx context.Context, titleID string,
 			"titleSlug", titleID, "err", err)
 		return 0
 	}
-	c.logger.ErrorContext(ctx, "seasons_catalog: fetch live échec — fallback static TOML, aucun nouvel essai avant retry_at",
-		"titleSlug", titleID, "retry_at", c.now().Add(seasonsLiveFetchBackoff), "err", err)
+	key := readerKey(ctx, titleID)
+	c.mu.Lock()
+	dejaEnEchec := c.failing[key]
+	c.failing[key] = true
+	c.mu.Unlock()
+	attrs := []any{"titleSlug", titleID, "xuid", ctxkeys.HaloXUID(ctx),
+		"retry_at", c.now().Add(seasonsLiveFetchBackoff), "err", err}
+	if dejaEnEchec {
+		c.logger.DebugContext(ctx, "seasons_catalog: fetch live toujours en echec pour ce lecteur, fallback static TOML", attrs...)
+	} else {
+		c.logger.WarnContext(ctx, "seasons_catalog: fetch live en echec pour ce lecteur, fallback static TOML, aucun nouvel essai de ce lecteur avant retry_at", attrs...)
+	}
 	return seasonsLiveFetchBackoff
+}
+
+// markFetchRecovered consigne le retour à la normale d'un lecteur en échec (INFO, une
+// seule fois) : l'échec suivant sera de nouveau un changement d'état, donc un WARN.
+func (c *SeasonsCatalog) markFetchRecovered(ctx context.Context, titleID string) {
+	key := readerKey(ctx, titleID)
+	c.mu.Lock()
+	etaitEnEchec := c.failing[key]
+	delete(c.failing, key)
+	c.mu.Unlock()
+	if etaitEnEchec {
+		c.logger.InfoContext(ctx, "seasons_catalog: fetch live retabli pour ce lecteur",
+			"titleSlug", titleID, "xuid", ctxkeys.HaloXUID(ctx))
+	}
 }
 
 // cloneSeasonCatalog copie un catalogue (Extra et End compris) : le catalogue caché

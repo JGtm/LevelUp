@@ -40,11 +40,6 @@ describe('MATCH_EMPRISE_TEXT — titres des cartes partagées', () => {
 })
 
 describe('MATCH_EMPRISE_TEXT — textes propres à la page', () => {
-  it('sous-titre de l’intertitre d’un match filmé', () => {
-    expect(MATCH_EMPRISE_TEXT.fr.own.coverage(8)).toBe('film décodé · 8 joueurs présents à la fin')
-    expect(MATCH_EMPRISE_TEXT.en.own.coverage(1)).toBe('film decoded · 1 player present at the end')
-  })
-
   it('constats de H, nommant l’équipe ou l’adversaire, sans jamais dire un inconnu', () => {
     const y = MATCH_EMPRISE_TEXT.fr.own.yield
     expect(y.noEffect(false, '1:12', 2)).toBe('Aucun temps d’effet pour l’adversaire (équipe : 1:12, 2 frags)')

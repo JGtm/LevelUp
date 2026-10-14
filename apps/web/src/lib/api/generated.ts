@@ -5199,8 +5199,16 @@ export interface components {
             match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
             needs_backfill: boolean;
             player_slug: string;
+            reference_control: components["schemas"]["CSRReferenceControl"];
             snapshots: components["schemas"]["CSRSnapshotsCoverage"];
             xuid: string;
+        };
+        CSRReferenceControl: {
+            alert: boolean;
+            /** Format: int64 */
+            csr_matches_off_reference: number;
+            /** Format: int64 */
+            reference_matches_without_csr: number;
         };
         CSRSeasonCalendar: {
             content_hash: string;
@@ -12208,6 +12216,14 @@ export interface components {
             score_kind?: string;
             score_label?: string;
             session_label?: string;
+            /** Format: int64 */
+            squad_assists?: number;
+            /** Format: int64 */
+            squad_deaths?: number;
+            /** Format: double */
+            squad_fda?: number;
+            /** Format: int64 */
+            squad_kills?: number;
             start_time: string;
             /** Format: double */
             team_mmr_avg?: number;
@@ -12909,6 +12925,8 @@ export interface components {
             zone?: components["schemas"]["TacticalZoneNom"];
         };
         TacticalContribution: {
+            arme_image_tinted?: boolean;
+            arme_image_url?: string;
             arme_label?: string;
             arme_label_en?: string;
             autre_gamertag?: string;

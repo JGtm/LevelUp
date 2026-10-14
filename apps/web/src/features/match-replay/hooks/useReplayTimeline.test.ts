@@ -285,6 +285,7 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
         toggleSound: () => {},
         toggleFullscreen: () => {},
         renderWidth: 480,
+        scoreTimelineKind: '',
         locale: 'fr',
       }),
     )
@@ -398,6 +399,7 @@ describe('useReplayTimeline — la piste Score d’un match à sens unique', () 
         toggleSound: () => {},
         toggleFullscreen: () => {},
         renderWidth: 480,
+        scoreTimelineKind: '',
         locale: 'fr',
       }),
     )

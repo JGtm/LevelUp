@@ -89,7 +89,7 @@ const FR: LocaleOverrides = {
       'Frags du joueur sur la soirée, arme par arme ; couleur de la barre : classe de l’arme, celle de la Répartition des frags.',
     mineInfo:
       'Objets pris par l’équipe sur les matchs filmés de la soirée : part du joueur et du reste de l’équipe, en ' +
-      'comptes, par volume décroissant. Bonus perdus : gardés sans être activés, ou lâchés.',
+      'comptes, par volume décroissant.',
   },
   compact: {
     toolsInfo:
@@ -111,8 +111,7 @@ const FR: LocaleOverrides = {
       'plus forte.',
     mineInfo:
       'Prises de l’équipe par ressource sur les matchs filmés de la soirée : part du joueur et du reste de ' +
-      'l’équipe, en pourcentage (comptes au survol). Bonus perdus : gardés sans être activés, ou lâchés, en part ' +
-      'des bonus pris par chaque équipe.',
+      'l’équipe, en pourcentage (comptes au survol).',
     equipmentInfo:
       'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge consommée), ' +
       'gardé sans servir, lâché, en part des objets du joueur (comptes au survol) ; barre fine : reste de ' +
@@ -141,7 +140,7 @@ const EN: LocaleOverrides = {
       'The player’s kills over the evening, weapon by weapon; bar colour: the weapon’s class, as in the Kill type distribution.',
     mineInfo:
       'Items the team picked up over the session’s filmed matches: the player’s share and the rest of the ' +
-      'team’s, in counts, by decreasing volume. Lost power-ups: held without being activated, or dropped.',
+      'team’s, in counts, by decreasing volume.',
   },
   compact: {
     toolsInfo:
@@ -162,8 +161,7 @@ const EN: LocaleOverrides = {
       'a zero stays, dimmed. Dominant role: the one where the player’s share of the team is highest.',
     mineInfo:
       'The team’s pickups by resource over the session’s filmed matches: the player’s share and the rest of the ' +
-      'team’s, as a percentage (counts on hover). Lost power-ups: held without being activated, or dropped, as a ' +
-      'share of the power-ups each team picked up.',
+      'team’s, as a percentage (counts on hover).',
     equipmentInfo:
       'Equipment held by the player (spawn equipment included), by family: used (wall placed, charge spent), ' +
       'kept without use, dropped, as a share of the player’s items (counts on hover); thin bar: rest of the team. ' +

@@ -101,10 +101,6 @@ describe('buildMinePickups — Mes prises dans mon camp', () => {
     expect(mine.max).toBe(129)
   })
 
-  it('bonus perdus des deux camps (gardés + lâchés)', () => {
-    expect(mine.losses).toEqual({ us: { lost: 12, taken: 111 }, them: { lost: 7, taken: 87 } })
-  })
-
   it('sans prise : pas de modèle (la carte se retire)', () => {
     expect(buildMinePickups(soloEmpriseSansFilm(), nameOf)).toBeNull()
   })

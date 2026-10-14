@@ -218,18 +218,11 @@ export interface PickupSection {
   camp: number
 }
 
-/** Bonus perdus (gardés + lâchés) sur bonus pris, pour chaque camp. */
-export interface PickupLosses {
-  us: { lost: number; taken: number }
-  them: { lost: number; taken: number }
-}
-
 export interface PickupSheets {
   owners: PickupOwner[]
   sections: PickupSection[]
   /** Par fiche : la ressource où elle pèse le plus dans les prises de notre camp (null : aucune). */
   dominant: (string | null)[]
-  losses: PickupLosses | null
 }
 
 /**
@@ -271,7 +264,7 @@ export function buildPickupSheets(
     return { resource, lines, totals, camp: totals.reduce((a, v) => a + v, 0) }
   })
   const dominant = owners.map((_, i) => dominantResource(sections, i))
-  return { owners, sections, dominant, losses: bonusLosses(block) }
+  return { owners, sections, dominant }
 }
 
 /**
@@ -296,7 +289,6 @@ export function squadPickupSheets(sheets: PickupSheets): PickupSheets {
     owners: sheets.owners.filter((_, i) => keep[i]),
     sections,
     dominant: sheets.dominant.filter((_, i) => keep[i]),
-    losses: sheets.losses,
   }
 }
 
@@ -312,15 +304,6 @@ function dominantResource(sections: PickupSection[], owner: number): string | nu
     }
   }
   return best
-}
-
-function bonusLosses(block: SquadEmpriseBlock): PickupLosses | null {
-  const outcomes = (block.resources ?? []).find((r) => r.resource === RESOURCE_POWERUP)?.outcomes
-  if (!outcomes) return null
-  return {
-    us: { lost: outcomes.us.kept + outcomes.us.dropped, taken: outcomes.us.taken },
-    them: { lost: outcomes.them.kept + outcomes.them.dropped, taken: outcomes.them.taken },
-  }
 }
 
 // ---------------------------------------------------------------------------

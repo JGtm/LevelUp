@@ -36,6 +36,7 @@ func mkSkill(tier string, value float64, subTier, remaining int, preValue float6
 			Tier:                        tier,
 			SubTier:                     subTier,
 			MeasurementMatchesRemaining: remaining,
+			InitialMeasurementMatches:   5, // match classé (règle D-10)
 		},
 	}
 	if preValue >= 0 {
@@ -92,8 +93,10 @@ func TestExtractAllSharedCSRRows_RankedMatch_AllParticipants(t *testing.T) {
 }
 
 func TestExtractAllSharedCSRRows_NonRankedMatch_ReturnsEmpty(t *testing.T) {
-	reg := mkReg("m1", "CsrSeason13-1", false)
-	skill := map[string]*MatchSkillData{"x": mkSkill("Gold", 1100, 4, 0, -1)}
+	reg := mkReg("m1", "CsrSeason13-1", true) // is_ranked du registre ne décide pas
+	social := mkSkill("Gold", 1100, 4, 0, -1)
+	social.PostMatchCSR.InitialMeasurementMatches = 0 // RankRecap de match social
+	skill := map[string]*MatchSkillData{"x": social}
 	if rows := ExtractAllSharedCSRRows(reg, skill); len(rows) != 0 {
 		t.Errorf("non-ranked match should return 0 rows, got %d", len(rows))
 	}

@@ -80,10 +80,11 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(order(container)).toEqual(CARDS)
   })
 
-  it('l’intertitre porte sa couverture : film décodé, joueurs présents à la fin', () => {
+  it('l’intertitre est nu : ni sous-titre de couverture film', () => {
     afficher()
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.sectionEquipmentTerrain)).toBeInTheDocument()
-    expect(screen.getByTestId('match-emprise-coverage').textContent).toBe('film décodé · 8 joueurs présents à la fin')
+    expect(document.body.textContent).not.toContain('film décodé')
+    expect(document.body.textContent).not.toContain('présents à la fin')
   })
 
   it('« Prises par joueur » : un intertitre avec son aide, les fiches posées à même la section, sans cadre', () => {
@@ -109,19 +110,20 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     afficher()
     expect(screen.queryByTestId('piste-camps-row-rack|vk78')).toBeNull()
     const bouton = screen.getByTestId('match-emprise-racks-toggle')
-    expect(bouton.textContent).toContain('(3 types d’armes, repliés)')
+    expect(bouton.textContent).not.toContain('types d’armes')
+    expect(bouton.textContent).not.toContain('repliés')
     fireEvent.click(bouton)
     expect(screen.getByTestId('piste-camps-row-rack|vk78')).toBeInTheDocument()
     expect(bouton.getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('contrôle : les objets pris en retrait sous leur ressource, les bonus avec leurs socles vidés', () => {
+  it('contrôle : les objets pris en retrait sous leur ressource, sans compte de socles vidés', () => {
     afficher()
     const control = within(screen.getByTestId('match-emprise-control'))
     expect((control.getByTestId('piste-camps-row-powerup|overshield').firstElementChild as HTMLElement).dataset.indent).toBe('true')
     const bonus = control.getByTestId('piste-camps-row-powerup').textContent
     expect(bonus).toContain('Prises de bonus')
-    expect(bonus).toContain('10 socles vidés')
+    expect(bonus).not.toContain('socles vidés')
     expect(bonus).not.toContain('prises ·')
   })
 
@@ -170,16 +172,14 @@ describe('MatchViewTabArsenal — « Équipement et terrain »', () => {
     expect(order(container)).toEqual(['emprise-production'])
     expect(screen.getByTestId('piste-camps-row-power_weapon')).toBeInTheDocument()
     expect(screen.queryByTestId('piste-camps-pending-powerup')).toBeNull()
-    expect(screen.queryByTestId('match-emprise-coverage')).toBeNull()
   })
 
-  it('EN : intertitre, titres des cartes et couverture en anglais', () => {
+  it('EN : intertitre et titres des cartes en anglais', () => {
     afficher({ locale: 'en' })
     expect(screen.getByText(MATCH_VIEW_TEXT.en.sectionEquipmentTerrain)).toBeInTheDocument()
     expect(screen.getByText('Resource control, by match')).toBeInTheDocument()
     expect(screen.getByText('Isolation, by player')).toBeInTheDocument()
     expect(within(screen.getByTestId('match-emprise-sheets-section')).getByText('Pickups by player').tagName).toBe('H3')
-    expect(screen.getByTestId('match-emprise-coverage').textContent).toBe('film decoded · 8 players present at the end')
   })
 
   it('rien à montrer : l’état vide nommé de l’onglet, aucun intertitre', () => {

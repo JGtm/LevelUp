@@ -211,6 +211,13 @@
 # TestDemoReadOnly_* (middleware) et TestDemoReadOnlyRatchet (internal/api). 13 lignes JSONL,
 # exactement 3 paires (Package, Test), vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-14 (lot aj14-a, règle unique de classement d'un match, décision D-10) : 6 tests
+# retirés de `internal/sync`. `isRankedPlaylist` (décision de classement par nom de playlist) est
+# supprimé avec ses tests, règle 7 de CLAUDE.md : TestIsRankedPlaylist_{ByName,ByTag,NoPlaylist,
+# CaseInsensitive,UnrankedPlaylist}. TestExtractRegistry_RankedMatch est RENOMMÉ
+# TestExtractRegistry_PlaylistNameDoesNotDecideRanked (le nom de playlist ne pose plus is_ranked).
+# 24 lignes JSONL, exactement 6 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

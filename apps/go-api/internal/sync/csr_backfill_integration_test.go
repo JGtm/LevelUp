@@ -76,6 +76,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			start_time    TIMESTAMPTZ,
 			is_ranked     BOOLEAN DEFAULT FALSE,
 			is_firefight  BOOLEAN DEFAULT FALSE,
+			playlist_id VARCHAR,
 			playlist_name VARCHAR,
 			pair_name     VARCHAR
 		);
@@ -104,7 +105,7 @@ func makeRankRecapSkill(xuid string, pre, post float64, tier string, subTier, me
 		xuid: {
 			XUID:         xuid,
 			PreMatchCSR:  &CSRRankSnapshot{Value: pre, Tier: tier, SubTier: subTier},
-			PostMatchCSR: &CSRRankSnapshot{Value: post, Tier: tier, SubTier: subTier, MeasurementMatchesRemaining: measurementRem},
+			PostMatchCSR: &CSRRankSnapshot{Value: post, Tier: tier, SubTier: subTier, MeasurementMatchesRemaining: measurementRem, InitialMeasurementMatches: 5},
 		},
 	}
 }

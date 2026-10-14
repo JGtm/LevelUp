@@ -18,7 +18,6 @@ import {
 import { MatchViewTabChronology } from './MatchViewTabChronology'
 import { MatchViewTabArsenal } from './MatchViewTabArsenal'
 import { MatchViewTabPlayers } from './MatchViewTabPlayers'
-import { hasMediaItems } from './blockPredicates'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
 import type { MatchViewTab } from './tabs'
@@ -375,20 +374,18 @@ export function MatchViewPage() {
                 (règle produit : aucun bloc seul à largeur partielle). Son bandeau de carte
                 inline a laissé place au gabarit de titre commun le 2026-09-22 — même
                 hiérarchie visuelle que « Combat » et « Récompenses » juste au-dessus.
-                DEUX PORTES : la capability `media` (le TITRE n'a ni captures ni clips) et
-                `hasMediaItems` (CE match n'en a aucun) — le prédicat du bloc lui-même, pour
-                qu'un titre « Médias » ne se pose jamais au-dessus de rien. */}
-            {hasMediaItems(media_tab.media_items) && (
-              <FeatureGate capability="media">
-                <DetailSection title={t.sectionMedia}>
-                  <MatchMediaTab
-                    items={media_tab.media_items ?? []}
-                    playerSlug={playerSlug}
-                    matchId={matchId}
-                  />
-                </DetailSection>
-              </FeatureGate>
-            )}
+                Une seule porte : la capability `media` (le TITRE mesure des captures et des
+                clips). Sans média associé au match, le bloc écrit son état vide. */}
+            <FeatureGate capability="media">
+              <DetailSection title={t.sectionMedia}>
+                <MatchMediaTab
+                  items={media_tab.media_items ?? []}
+                  playerSlug={playerSlug}
+                  matchId={matchId}
+                  t={t}
+                />
+              </DetailSection>
+            </FeatureGate>
           </div>
         )}
 

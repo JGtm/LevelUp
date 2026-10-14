@@ -199,14 +199,14 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
 })
 
 describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
-  it('deux lignes : mode, score, issue, date ; instant, fait, arme, badge', () => {
+  it('deux lignes : mode, score, date ; instant, fait, arme, badge — le mot d’issue reste en infobulle', () => {
     rendre()
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
     const l1 = within(tuile).getByTestId('tactical-rejeu-l1')
     const l2 = within(tuile).getByTestId('tactical-rejeu-l2')
     expect(l1).toHaveTextContent('Assassin')
     expect(l1).toHaveTextContent('50 - 42')
-    expect(l1).toHaveTextContent('Victoire')
+    expect(l1).not.toHaveTextContent('Victoire')
     expect(l1).toHaveTextContent('01/09/2026 · 22:30')
     expect(l2).toHaveTextContent('1:23')
     expect(l2).toHaveTextContent('Tué par Rival')
@@ -222,6 +222,26 @@ describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
     expect(tuile.getAttribute('title')).toBe(
       'Assassin · 50 - 42 · Victoire · 01/09/2026 · 22:30 · 1:23 · Tué par Rival · Fusil de combat à longue portée · seul · 30 m',
     )
+  })
+
+  it('le score porte la couleur de l’issue', () => {
+    rendre()
+    const [victoire, defaite] = screen.getAllByTestId('tactical-rejeu-tile')
+    const score = (tuile: HTMLElement) => within(tuile).getByText('50 - 42').getAttribute('style') ?? ''
+    expect(score(victoire)).toContain('outcome-win')
+    expect(score(defaite)).toContain('outcome-loss')
+  })
+
+  it('l’icône d’arme remplace le nom, qui reste dans l’infobulle ; sans icône, le nom s’écrit', () => {
+    const avecIcone = { ...DETAIL, contributions: [contribution({ arme_image_url: '/static/weapons/br75.png', arme_image_tinted: true })] }
+    const { unmount } = rendre({ detail: { data: avecIcone, isPending: false, isError: false } })
+    const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
+    expect(within(tuile).getByRole('img', { name: 'Fusil de combat à longue portée' })).toBeInTheDocument()
+    expect(within(tuile).queryByText('Fusil de combat à longue portée')).toBeNull()
+    expect(tuile.getAttribute('title')).toContain('Fusil de combat à longue portée')
+    unmount()
+    rendre()
+    expect(screen.getAllByText('Fusil de combat à longue portée').length).toBeGreaterThan(0)
   })
 
   it('le bouton de rejeu : à l’instant, seulement si l’artefact existe', () => {

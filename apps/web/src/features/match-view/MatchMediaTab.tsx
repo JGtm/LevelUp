@@ -5,15 +5,17 @@ import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { useToggleMediaLike } from '@/features/media/queries'
 import { toMediaItemRow } from './_mediaItemRow'
-import { hasMediaItems } from './blockPredicates'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
+import type { MatchViewText } from './i18n'
 
 interface MatchMediaTabProps {
   items: MatchAssociatedMedia[]
   playerSlug: string
   matchId: string
+  t: MatchViewText
 }
 
-export function MatchMediaTab({ items, playerSlug, matchId }: MatchMediaTabProps) {
+export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabProps) {
   const initialRows = useMemo(
     () => items.map((item) => toMediaItemRow(item, matchId)),
     [items, matchId],
@@ -37,8 +39,9 @@ export function MatchMediaTab({ items, playerSlug, matchId }: MatchMediaTabProps
     toggleLike.mutate({ file_path: item.file_path, liked: nextLiked })
   }
 
-  // MÊME prédicat que celui lu par la page pour poser (ou non) son titre de section.
-  if (!hasMediaItems(items)) return null
+  if (mediaRows.length === 0) {
+    return <EmptyStateNotice title={t.mediaNoCaptures} description={t.mediaNoCapturesDesc} />
+  }
 
   return (
     <>

@@ -2,10 +2,10 @@
  * objectifCharts.ts — les deux graphes de la section « Objectif » (lot L3 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), en options ECharts, d'après la maquette C3EW :
  *
- *   - « Rapport de force au fil de la session » : trois courbes cumulées (une par rôle), les
- *     parts par match en petits points pâles (taille = volume du lobby), le point final grossi
- *     et la valeur au bout de chaque courbe, le trait 50 %, puis SOUS L'AXE l'heure, la bande
- *     de résultats (victoire / défaite, encoche de dominance), la carte et le mode ;
+ *   - « Rapport de force au fil de la session » : un groupe de trois barres par match (une par
+ *     rôle, la part de l'équipe dans CE match), le trait 50 %, le cumul de la soirée dans
+ *     l'infobulle, puis SOUS L'AXE l'heure, la bande de résultats (victoire / défaite, encoche
+ *     de dominance), la carte et le mode ;
  *   - « Rapport de force, soirée après soirée » : dans `eveningsChart.ts` (sorti à la revue L6.1,
  *     seuil de 500 lignes), sur les briques exportées ici.
  *
@@ -22,7 +22,13 @@
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
-import { withEndPoint } from '@/components/charts/endPoint'
+import {
+  footLabelStyle,
+  layoutAxisFoot,
+  lineHeightFor,
+  type AxisFootSpec,
+  type FootLabels,
+} from '@/components/charts/axisFoot'
 import type { DominanceValue } from '@/components/charts/outcomeSequence'
 import { roleToken } from '@/features/_shared/usage/usageMetricKinds'
 import { resolveToken } from '@/lib/accessibility'
@@ -43,12 +49,21 @@ export interface ObjectifChartColors {
   theme: EChartsThemeColors
 }
 
-/** Marges fixes des grilles (maquette : 36 px à gauche, place de la valeur de fin à droite). */
+/** Marges fixes des grilles (maquette : 36 px à gauche) : les deux grilles tombent l’une sous l’autre. */
 const GRID_LEFT = 36
-const GRID_RIGHT = 46
-/** Hauteur réservée sous le graphe (heure, bande, carte, mode). */
-const FOOT = 62
+const GRID_RIGHT = 14
 const BAND_H = 8
+const TIME_FONT = 9.5
+const MAP_FONT = 9.5
+
+/**
+ * Le pied du « Rapport de force au fil de la session » : l'heure (1 ligne), la bande de résultats,
+ * puis la carte et le mode (2 lignes). Réserve (`layoutAxisFoot`) et dessin (`footLabelStyle`)
+ * partent des mêmes marges et hauteurs de ligne.
+ */
+const TIME_LABELS: FootLabels = { lines: 1, lineHeight: lineHeightFor(TIME_FONT), margin: 4 }
+const MAP_LABELS: FootLabels = { lines: 2, lineHeight: lineHeightFor(MAP_FONT), margin: 6 }
+const FIL_FOOT_SPEC: AxisFootSpec = { above: TIME_LABELS, band: { height: BAND_H, gap: 4 }, below: MAP_LABELS, pad: 4 }
 
 /** Une infobulle multiligne, échappée. */
 export function tip(text: string): string {
@@ -145,15 +160,15 @@ export function shortMap(map: string): string {
   return map.length > 11 ? `${map.slice(0, 10)}.` : map
 }
 
-/** Rayon du point d'un match : 2 px + jusqu'à 5 px selon son volume (maquette). */
-export function volumeRadius(lobby: number, maxLobby: number): number {
-  return maxLobby > 0 ? 2 + Math.sqrt(lobby / maxLobby) * 5 : 2
-}
-
 /** Le nom d'un match dans les infobulles : « 21:40 · Aquarius ». */
 type MatchNamer = (m: FilMatch) => string
 
-/** Les deux séries d'un rôle : la courbe cumulée (point final grossi) et les parts par match. */
+/**
+ * La série d'un rôle : une barre par match, la part de l'équipe dans CE match. Un match sans part
+ * pour le rôle n'a pas de barre ; une part nulle garde un filet de 2 px (zéro ≠ absent). Le trait
+ * 50 % est posé sur la première série. Le cumul de la soirée, que les courbes dessinaient, se lit
+ * dans l'infobulle.
+ */
 function roleFilSeries(
   matches: FilMatch[],
   role: ObjectiveRole,
@@ -161,24 +176,24 @@ function roleFilSeries(
   ctx: { c: ObjectifChartColors; t: FilChartText; matchName: MatchNamer },
 ) {
   const { c, t, matchName } = ctx
-  const tc = c.theme
   const color = c.roles[role]
-  const maxLobby = Math.max(0, ...matches.map((m) => m.roles[role].lobby))
-  const cum = matches.map((m) => (m.roles[role].cumulative == null ? null : m.roles[role].cumulative! * 100))
-  const data = withEndPoint(cum, tc.card, { color })
-  const line = lineSeries(t.roles[role], data, color, t.pctFmt, first ? { markLine: parityLine(c.parity) } : {})
-  const dots = {
+  return {
     name: t.roles[role],
-    type: 'scatter' as const,
+    type: 'bar' as const,
     xAxisIndex: 0,
     yAxisIndex: 0,
-    z: 2,
-    data: matches.map((m, i) => {
+    z: 3,
+    barMaxWidth: 16,
+    barMinHeight: 2,
+    barGap: '8%',
+    barCategoryGap: '28%',
+    itemStyle: { color, borderRadius: [2, 2, 0, 0] },
+    ...(first ? { markLine: parityLine(c.parity) } : {}),
+    data: matches.map((m) => {
       const r = m.roles[role]
       if (r.share == null) return null
       return {
-        value: [i, r.share * 100],
-        symbolSize: 2 * volumeRadius(r.lobby, maxLobby),
+        value: r.share * 100,
         tip: t.pointTip({
           match: matchName(m),
           context: t.contextOf(m),
@@ -190,9 +205,7 @@ function roleFilSeries(
         }),
       }
     }),
-    itemStyle: { color, opacity: 0.45, borderColor: tc.card, borderWidth: 1 },
   }
-  return [line, dots]
 }
 
 /** La bande de résultats sous l'axe : une case par match, l'encoche du drapeau de dominance. */
@@ -237,10 +250,9 @@ function filXAxes(matches: FilMatch[], categories: string[], tc: EChartsThemeCol
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
+        ...footLabelStyle(TIME_LABELS),
         color: tc.axisLabel,
-        fontSize: 9.5,
-        margin: 4,
-        interval: 0,
+        fontSize: TIME_FONT,
         formatter: (_v: string, i: number) => t.timeOf(matches[i]?.startTime ?? ''),
       },
     },
@@ -251,14 +263,12 @@ function filXAxes(matches: FilMatch[], categories: string[], tc: EChartsThemeCol
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
-        interval: 0,
-        margin: 6,
-        lineHeight: 12,
+        ...footLabelStyle(MAP_LABELS),
         formatter: (_v: string, i: number) =>
           `{map|${shortMap(matches[i]?.map ?? '')}}\n{mode|${t.familyLabel(matches[i]?.family ?? '')}}`,
         rich: {
-          map: { color: tc.text, fontSize: 9.5 },
-          mode: { color: tc.axisLabel, fontSize: 9.5 },
+          map: { color: tc.text, fontSize: MAP_FONT },
+          mode: { color: tc.axisLabel, fontSize: MAP_FONT },
         },
       },
     },
@@ -267,10 +277,11 @@ function filXAxes(matches: FilMatch[], categories: string[], tc: EChartsThemeCol
 
 export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: FilChartText): EChartsCoreOption {
   const tc = c.theme
+  const foot = layoutAxisFoot(FIL_FOOT_SPEC)
   const categories = matches.map((m) => m.matchId)
   const matchName = (m: FilMatch) => `${t.timeOf(m.startTime)} · ${m.map}`
   const series: unknown[] = [
-    ...OBJECTIVE_ROLES.flatMap((role, ri) => roleFilSeries(matches, role, ri === 0, { c, t, matchName })),
+    ...OBJECTIVE_ROLES.map((role, ri) => roleFilSeries(matches, role, ri === 0, { c, t, matchName })),
     filBandSeries(matches, c, t, matchName),
   ]
 
@@ -278,22 +289,18 @@ export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: F
     backgroundColor: CHART_BG,
     animation: false,
     grid: [
-      { left: GRID_LEFT, right: GRID_RIGHT, top: 10, bottom: FOOT },
-      { left: GRID_LEFT, right: GRID_RIGHT, bottom: FOOT - 8 - BAND_H, height: BAND_H },
+      { left: GRID_LEFT, right: GRID_RIGHT, top: 10, bottom: foot.gridBottom },
+      { left: GRID_LEFT, right: GRID_RIGHT, bottom: foot.bandBottom, height: foot.bandHeight },
     ],
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
-      formatter: (p: { data?: { tip?: string }; seriesType?: string; seriesName?: string; value?: unknown }) => {
-        if (p.data?.tip) return tip(p.data.tip)
-        if (p.seriesType === 'line' && typeof p.value === 'number') return tip(`${p.seriesName} : ${t.pctFmt(p.value)}`)
-        return ''
-      },
+      formatter: (p: { data?: { tip?: string } }) => (p.data?.tip ? tip(p.data.tip) : ''),
     },
     xAxis: filXAxes(matches, categories, tc, t),
     yAxis: [yAxisPct(t.pctFmt, tc), { gridIndex: 1, type: 'value', min: -1, max: 1, show: false }],
     series,
-    // Jamais plus de trois courbes : la légende est rendue HORS canvas (pied de carte).
+    // Jamais plus de trois séries : la légende est rendue HORS canvas (pied de carte).
     legend: { show: false },
     aria: { enabled: true },
   }

@@ -59,16 +59,16 @@ describe('getSquadText', () => {
     expect(getSquadText(undefined)).toBe(FR_TEXT)
   })
 
-  it('compose correctement les fonctions paramétrées (FR)', () => {
+  it('compose correctement les fonctions paramétrées (FR) et le champ coéquipier', () => {
     const t = getSquadText('fr')
-    expect(t.selection.placeholder(5)).toBe('Rechercher parmi 5 coéquipiers…')
+    expect(t.selection.placeholder).toBe('Ajouter un coéquipier…')
     expect(t.table.withTeammate('Foo')).toBe('Avec Foo')
     expect(t.errors.loadError('boom')).toBe('Erreur : boom')
   })
 
   it('compose correctement les fonctions paramétrées (EN)', () => {
     const t = getSquadText('en')
-    expect(t.selection.placeholder(5)).toBe('Search among 5 teammates…')
+    expect(t.selection.placeholder).toBe('Add a teammate…')
     expect(t.table.withTeammate('Foo')).toBe('With Foo')
     expect(t.errors.loadError('boom')).toBe('Error: boom')
   })

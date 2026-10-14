@@ -153,7 +153,6 @@ vi.mock('./useMatchEmprise', () => ({
     const on = hoisted.blocks.emprise
     return {
       present: { control: on, sheets: on, production: on, yield: on, lives: on },
-      coverage: on ? 'film décodé · 8 joueurs présents à la fin' : null,
       control: on && <div data-testid="emprise-control" />,
       sheets: on && <div data-testid="emprise-sheets" />,
       production: on && <div data-testid="emprise-production" />,
@@ -390,15 +389,14 @@ describe('un titre de section ne se pose jamais au-dessus de rien', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('Général sans média : ni titre « Médias » ni bloc', () => {
+  it('Général sans média : le titre « Médias » et le bloc restent (le bloc écrit son état vide)', () => {
     ;(hoisted.matchView.data as { media_tab: { media_items: unknown[] } }).media_tab = {
       media_items: [],
     }
     renderWithProviders(<MatchViewPage />)
 
-    expect(screen.queryByText(SECTION_MEDIA)).not.toBeInTheDocument()
-    expect(screen.queryByTestId('media-tab')).not.toBeInTheDocument()
-    // Les deux autres titres de Général, eux, restent en place.
+    expect(screen.getByText(SECTION_MEDIA)).toBeInTheDocument()
+    expect(screen.getByTestId('media-tab')).toBeInTheDocument()
     expect(screen.getByText(SECTION_COMBAT)).toBeInTheDocument()
     expect(screen.getByText(SECTION_REWARDS)).toBeInTheDocument()
   })

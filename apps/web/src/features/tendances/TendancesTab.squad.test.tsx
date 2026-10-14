@@ -86,7 +86,7 @@ async function ouvrirEscouade() {
 }
 
 async function choisir(gamertag: string) {
-  const champ = await screen.findByPlaceholderText(/coéquipiers/i)
+  const champ = await screen.findByPlaceholderText(/ajouter un coéquipier/i)
   fireEvent.focus(champ)
   fireEvent.click(await screen.findByText(gamertag))
 }

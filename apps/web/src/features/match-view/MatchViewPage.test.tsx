@@ -80,8 +80,7 @@ vi.mock('./MatchSummaryMedalsAndCitations', () => ({
   MatchCitationsSection: () => <div data-testid="citations" />,
   MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
 }))
-// `hasMediaItems` (module `blockPredicates`, non mocké) reste LE vrai prédicat : c'est lui
-// que la page lit pour poser, ou non, le titre « Médias » (2026-09-22).
+// Le bloc Médias est monté sous la seule capability `media` (état vide inclus, 2026-10-14).
 vi.mock('./MatchMediaTab', () => ({
   MatchMediaTab: () => <div data-testid="media-tab" />,
 }))
@@ -128,7 +127,7 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
       summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
       combat_tab: {},
       team_tab: {},
-      // Au moins une capture : sans média, la page ne pose plus ni titre ni bloc (2026-09-22).
+      // Le bloc Médias est monté même sans capture (état vide dans le bloc).
       media_tab: { media_items: [{ file_path: 'c1.png' }] },
       citations_tab: { native_commendations: [] },
       radar: null,

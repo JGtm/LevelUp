@@ -22,7 +22,6 @@ import type { Locale } from '@/lib/i18n/locale'
 import { buildMatchPlayerColors } from './colors'
 import {
   buildMatchEmpriseModels,
-  matchCoverage,
   matchEmpriseCards,
   type MatchEmpriseCards,
   type MatchProductionPending,
@@ -44,8 +43,6 @@ interface Input {
 
 interface MatchEmprise {
   present: MatchEmpriseCards
-  /** « film décodé · 8 joueurs présents à la fin » ; null sans film. */
-  coverage: string | null
   control: ReactNode
   sheets: ReactNode
   production: ReactNode
@@ -69,12 +66,10 @@ export function useMatchEmprise(x: Input): MatchEmprise {
     () => (models.sheets?.owners ?? []).map((o) => ({ label: o.gamertag, color: inkOf(o.xuid ?? '') })),
     [models.sheets, inkOf],
   )
-  const cov = matchCoverage(x.emprise, x.scoreboard)
   const own = texts.own
   return {
     present,
-    coverage: cov ? own.coverage(cov.present) : null,
-    control: present.control && <MatchResourceControlCard control={models.control} objectName={objectName} t={texts.emprise} own={own} />,
+    control: present.control && <MatchResourceControlCard control={models.control} objectName={objectName} t={texts.emprise} />,
     sheets: present.sheets && models.sheets && (
       <section className="space-y-2" data-testid="match-emprise-sheets-section">
         <SectionTitle className="flex items-center gap-1.5">

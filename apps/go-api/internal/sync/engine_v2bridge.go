@@ -118,6 +118,7 @@ func BuildBatchFromRawForV2WithMeta(
 
 	if len(skillData) > 0 {
 		fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
+		ApplyRankedRule(fm.Registry, skillData) // is_ranked : règle unique D-10 (csr_writes.go)
 		fm.CSRRow = ExtractCSRRowIfRanked(fm.Registry, skillData[xuid])
 		fm.SharedCSRs = ExtractAllSharedCSRRows(fm.Registry, skillData)
 	}

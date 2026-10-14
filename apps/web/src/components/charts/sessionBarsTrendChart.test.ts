@@ -217,3 +217,68 @@ describe('shortSessionLabel', () => {
     expect(shortSessionLabel('2026-S18')).toBe('2026-S18')
   })
 })
+
+/**
+ * La VALEUR LUE écrite sur le bâton (2026-10-14) : en mode écart, une soirée à l'habituel a un
+ * bâton quasi nul. La valeur et son décompte sont écrits au bout du bâton et repris dans
+ * l'infobulle, l'écart à côté.
+ */
+describe('buildSessionBarsTrendOption — valeur lue sur le bâton', () => {
+  const NL = String.fromCharCode(10)
+  function avecValeurs() {
+    return buildSessionBarsTrendOption({
+      labels: ['a', 'b', 'c'],
+      yAxisLabel: 'Écart (points)',
+      baseline: { label: 'habituel 38 %', deltaUnit: 'pts', gapLabel: 'écart' },
+      series: [
+        {
+          name: 'Frags appuyés',
+          color: '#111111',
+          valuesPct: [37.2, 30, null],
+          hollow: [false, true, false],
+          usual: { valuePct: 37.8, label: 'habituel 38 %' },
+          absolute: [{ main: '37 %', detail: '51/137' }, { main: '30 %', detail: '3/10' }, null],
+        },
+      ],
+    }) as {
+      series: { type: string; data: unknown[]; labelLayout?: unknown }[]
+      tooltip: { formatter: (rows: unknown) => string }
+    }
+  }
+
+  it('écrit la valeur et son décompte au bout du bâton, dessus s’il est positif, dessous s’il est négatif', () => {
+    const [barre] = avecValeurs().series
+    type Barre = { value: number; label?: { formatter: string; position: string }; itemStyle?: unknown }
+    const aLHabituel = barre.data[0] as Barre
+    const creux = barre.data[1] as Barre
+    const vide = barre.data[2]
+    expect(aLHabituel.value).toBe(-0.6)
+    expect(aLHabituel.label).toMatchObject({ formatter: `37 %${NL}51/137`, position: 'bottom' })
+    // Un bâton creux garde son contour ET porte sa valeur.
+    expect(creux.itemStyle).toMatchObject({ color: 'transparent' })
+    expect(creux.label?.formatter).toBe(`30 %${NL}3/10`)
+    expect(vide).toBeNull()
+    expect(barre.labelLayout).toEqual({ hideOverlap: true })
+  })
+
+  it('reprend la valeur lue dans l’infobulle, l’écart à côté', () => {
+    const html = avecValeurs().tooltip.formatter([
+      { marker: '', seriesName: 'Frags appuyés', value: -0.6, axisValue: 'a', dataIndex: 0 },
+    ])
+    expect(html).toBe('a<br/>Frags appuyés : 37 % (51/137) · écart -0.6 pts')
+  })
+
+  it('sans valeur lue : le comportement d’avant (valeur absolue recalculée, écart entre parenthèses)', () => {
+    const o = buildSessionBarsTrendOption({
+      labels: ['a'],
+      yAxisLabel: 'y',
+      baseline: { label: 'l', deltaUnit: 'pts' },
+      series: [{ name: 'S', color: '#111111', valuesPct: [37.2], usual: { valuePct: 37.8, label: 'u' } }],
+    }) as { series: { data: unknown[]; labelLayout?: unknown }[]; tooltip: { formatter: (r: unknown) => string } }
+    expect(o.series[0].data).toEqual([-0.6])
+    expect(o.series[0].labelLayout).toBeUndefined()
+    expect(o.tooltip.formatter([{ marker: '', seriesName: 'S', value: -0.6, axisValue: 'a', dataIndex: 0 }])).toBe(
+      'a<br/>S : 37.2 % (-0.6 pts)',
+    )
+  })
+})
