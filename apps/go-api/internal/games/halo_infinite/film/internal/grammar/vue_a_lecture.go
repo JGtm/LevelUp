@@ -81,6 +81,17 @@ type FluxVueA struct {
 	// Fil : les messages `PlayerGameEventSmall` (genre 82) a couple lus, dans l ordre
 	// ([chargeEvenementJoueurCourt]).
 	Fil []lecture.EvenementDeFil
+	// Poussees : les messages de poussee d equipement (genres 104 et 105) lus, dans l ordre
+	// ([messageDePoussee]).
+	Poussees []lecture.MessageDePoussee
+}
+
+// refDeMessage est une reference d entite d un message de vue A : sa porte, son index et sa
+// generation (`FUN_1406d3140`).
+type refDeMessage struct {
+	presente bool
+	index    uint64
+	gen      uint64
 }
 
 // finDeTete rend le bit qui suit la tete : la continuation et, quand elle annonce un message, son
@@ -132,6 +143,8 @@ func lireLaVueA(pay []byte, debut int, bal ProfilDeBalayage, g grammaireDeLaVueA
 			e := br.filLu
 			e.Debut = uint32(debutDuMessage) //nolint:gosec // position dans un payload
 			out.Fil = append(out.Fil, e)
+		case genre == GenreObjetRepousse || genre == GenrePousseeDuJoueur:
+			out.Poussees = append(out.Poussees, messageDePoussee(br, genre, debutDuMessage))
 		}
 	}
 	out.Fin = br.BitPos()
@@ -146,9 +159,11 @@ func lireUnMessage(br *Lecteur, genre int) bool {
 		return false
 	}
 	domaines, vide := descripteurDuGenre(genre)
-	for _, dom := range domaines {
+	for i, dom := range domaines {
+		br.refsDuMessage[i] = refDeMessage{}
 		if br.ReadBit() { // FUN_1406cf008 : garde de la reference
-			readVarWidthInt(br, dom) // FUN_1406d3140
+			v, gen := readVarWidthInt(br, dom) // FUN_1406d3140
+			br.refsDuMessage[i] = refDeMessage{presente: true, index: v, gen: gen}
 		}
 	}
 	if vide {

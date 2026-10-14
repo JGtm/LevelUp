@@ -160,6 +160,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // au schéma 38, ou film sans translocateur — `layers[translocations]` /
     // `coverage.translocations` distinguent les deux.
     translocations: raw.translocations ?? [],
+    // LES POUSSÉES DU RÉPULSEUR (schéma 94) : absent = artefact antérieur, ou film sans poussée —
+    // `layers[knockbacks]` / `coverage.knockbacks` distinguent les deux.
+    knockbacks: raw.knockbacks ?? [],
     // LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée plate par geste (t, slot, family),
     // l'usage MESURÉ du propulseur. Absent = artefact antérieur au schéma 38, film sans
     // propulseur, ou palette non classée — `layers[abilityImpulses]` /

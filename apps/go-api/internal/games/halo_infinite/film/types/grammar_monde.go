@@ -204,3 +204,36 @@ type VehicleEvent struct {
 	Seat      uint32
 	SeatValid bool
 }
+
+// Knockback est UNE poussee d equipement lue dans la vue A : la paire `EquipmentObjectKnockedBack`
+// (genre 105) puis `EquipmentKnockbackPlayer` (genre 104) de meme reference 0, dans la meme liste
+// (grammar/vue_a_poussees.go). Le genre 105 nomme l unite qui pousse, le 104 porte l impulsion
+// appliquee au joueur pousse.
+type Knockback struct {
+	// TimestampUS : l horodatage du paquet porteur, MEME horloge que BipedPosition.TimestampUS.
+	TimestampUS uint64
+	// Pushed : la vie du joueur pousse (slot comparable a BipedPosition.Slot, generation).
+	Pushed LifeKey
+	// Author : la vie de l unite qui pousse ; valide seulement si HasAuthor (reference 1 du 105
+	// transmise).
+	Author    LifeKey
+	HasAuthor bool
+	// Impulse : la vitesse imposee au joueur pousse, en m/s, repere monde ; valide seulement si
+	// HasImpulse (porte de la charge du 104 a 0).
+	Impulse    [3]float32
+	HasImpulse bool
+}
+
+// KnockbackStats sont les denominateurs de la lecture des poussees.
+type KnockbackStats struct {
+	// Read104 et Read105 : messages des deux genres lus dans les vues A du film.
+	Read104, Read105 int
+	// Paired : 104 precedes, dans leur liste, d un 105 de meme reference 0 — les poussees rendues.
+	Paired int
+	// Unpaired : 104 sans ce 105. Ils ne sont pas rendus : l ecrivain ecrit le 104 d un joueur a la
+	// suite du 105 qui le nomme, et un 104 isole n est pas l ecriture d une poussee.
+	Unpaired int
+	// WithoutAuthor et WithoutImpulse : parmi les paires, celles sans reference 1 au 105, et
+	// celles sans impulsion au 104.
+	WithoutAuthor, WithoutImpulse int
+}

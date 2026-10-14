@@ -185,6 +185,9 @@ const NULLABLE_ARRAYS = [
   // retard mesuré), jamais une discontinuité de piste. La consommation P2 (éclat, va-et-vient,
   // faille) viendra la lire ici ; la frontière la comble dès le schéma.
   'translocations',
+  // `knockbacks` : LES POUSSÉES DU RÉPULSEUR (schéma 94) — la paire de messages du film, joueur
+  // poussé, auteur et vitesse imposée.
+  'knockbacks',
   // `abilityImpulses` : LES IMPULSIONS DE CAPACITÉ (schéma 38, 2026-09-03) — une entrée PLATE
   // par geste (t, slot, family) : l'usage MESURÉ du propulseur, daté par le corps `tag == 1`
   // des composants i57/i59 du film (le même dont le tag 3 porte le grappin) et ATTRIBUÉ par le
@@ -301,6 +304,7 @@ const NULLABLE_ARRAY_PATHS = [
   // `translocations` (schéma 38) : téléportation PLATE — (t, slot) et six coordonnées
   // optionnelles, que des nombres : un seul chemin, la racine.
   'translocations',
+  'knockbacks',
   // `abilityImpulses` (schéma 38) : impulsion PLATE — (t, slot, family), deux nombres et une
   // chaîne : un seul chemin, la racine.
   'abilityImpulses',

@@ -212,7 +212,52 @@ type VueA struct {
 	// Fil sont les messages `PlayerGameEventSmall` (genre 82) lus dont le sac texte nomme un couple
 	// de participants ([EvenementDeFil]), dans l'ordre.
 	Fil []EvenementDeFil
+	// Poussees sont les messages de poussée d'équipement lus (genres 104 et 105,
+	// [MessageDePoussee]), dans l'ordre.
+	Poussees []MessageDePoussee
 }
+
+// MessageDePoussee est un message de poussée d'équipement de la vue A, avec ses deux premières
+// références et sa charge :
+//
+//   - `EquipmentObjectKnockedBack` (genre 105, lecteur `FUN_141118a00`) : réf. 0 l'objet poussé, réf. 1
+//     l'unité qui pousse (le gestionnaire `FUN_1410c20bc`, `vtable + 0x78`, la résout en unité) ;
+//     charge `R(1)` puis, porte à 1, un `R(32)` ([MessageDePoussee.Mot]).
+//   - `EquipmentKnockbackPlayer` (genre 104, lecteur `FUN_14116c344` -> `FUN_14076d528`) : réf. 0 le
+//     joueur poussé (le gestionnaire `FUN_140bc8170` applique la charge à cette unité) ; charge `R(1)`
+//     puis, porte à 0, la direction `R(19)` et la norme `R(10)` de l'impulsion.
+//
+// Les références sont les index bruts du domaine 0 (`FUN_1406d3140`), sans base.
+//
+// Vingt-quatre octets : sa taille est gelée par `tailles_test.go`.
+type MessageDePoussee struct {
+	// Debut est le premier bit du message : le bit de continuation qui l'annonce.
+	Debut uint32
+	// Mot est le `R(32)` du genre 105 quand sa porte est ouverte ([MessageDePoussee.MotLu]).
+	Mot uint32
+	// Direction et Norme sont les deux champs de l'impulsion du genre 104
+	// ([MessageDePoussee.ImpulsionLue]).
+	Direction uint32
+	Norme     uint16
+	// Ref sont les index des références 0 et 1 ; Gen leurs générations (2 bits).
+	Ref [2]uint16
+	Gen [2]uint8
+	// Genre est 104 ou 105.
+	Genre uint8
+	// Drapeaux : [PousseeRef0], [PousseeRef1], [PousseeMotLu], [PousseeImpulsionLue].
+	Drapeaux uint8
+}
+
+// Les drapeaux d'un [MessageDePoussee].
+const (
+	// PousseeRef0 et PousseeRef1 : la porte de la référence est ouverte.
+	PousseeRef0 uint8 = 1 << iota
+	PousseeRef1
+	// PousseeMotLu : le `R(32)` du genre 105 est lu.
+	PousseeMotLu
+	// PousseeImpulsionLue : la direction et la norme du genre 104 sont lues.
+	PousseeImpulsionLue
+)
 
 // RefAbsente est la valeur d'une référence d'entité qu'un message ne porte pas (garde à 1).
 const RefAbsente int8 = -1

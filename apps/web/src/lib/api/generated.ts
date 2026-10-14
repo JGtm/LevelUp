@@ -6053,6 +6053,7 @@ export interface components {
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
             keyframes?: components["schemas"]["KeyframeCoverage"];
+            knockbacks?: components["schemas"]["KnockbackCoverage"];
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
@@ -7897,6 +7898,38 @@ export interface components {
             resyncs: number;
             /** Format: int64 */
             slides: number;
+        };
+        Knockback: {
+            /** Format: int32 */
+            by?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            vx?: number;
+            /** Format: float */
+            vy?: number;
+            /** Format: float */
+            vz?: number;
+        };
+        KnockbackCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            paired: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            read104: number;
+            /** Format: int64 */
+            read105: number;
+            /** Format: int64 */
+            unpaired: number;
+            /** Format: int64 */
+            withoutAuthor: number;
         };
         LOWESSTrend: {
             Metric: string;
@@ -10829,6 +10862,7 @@ export interface components {
             killEffects?: {
                 [key: string]: string;
             };
+            knockbacks?: components["schemas"]["Knockback"][] | null;
             layers?: {
                 [key: string]: string;
             };

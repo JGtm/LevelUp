@@ -147,6 +147,10 @@ func toTranslocation(v replay.Translocation) replaydoc.Translocation {
 	}
 }
 
+func toKnockback(v replay.Knockback) replaydoc.Knockback {
+	return replaydoc.Knockback{T: v.T, Slot: v.Slot, By: v.By, VX: v.VX, VY: v.VY, VZ: v.VZ}
+}
+
 func toPickup(v replay.Pickup) replaydoc.Pickup {
 	return replaydoc.Pickup{
 		T:      v.T,

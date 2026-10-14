@@ -50,6 +50,8 @@ func (s *filmScan) balayerPositions() error {
 	}
 	s.lirePontDIdentite()
 	s.opt.observe(s.ctx, "translocations", s.in.Translocations)
+	s.in.Knockbacks, s.in.KnockbackStats = grammar.ScanKnockbacks(s.fc)
+	s.opt.observe(s.ctx, "knockbacks", s.in.Knockbacks)
 	if s.pont.ErrPositions != nil {
 		return s.pont.ErrPositions
 	}

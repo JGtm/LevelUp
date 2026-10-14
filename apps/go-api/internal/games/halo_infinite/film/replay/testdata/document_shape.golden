@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 93
-empreinte-stockee c8e253677bb0e701
-empreinte-servie c8e253677bb0e701
-empreinte-cuite d837287324550b54
+schema 94
+empreinte-stockee 4f3a22752e5530e5
+empreinte-servie 4f3a22752e5530e5
+empreinte-cuite 66b1442be3ff1a8a
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -236,6 +236,7 @@ Coverage
   GroundWeapons json:"groundWeapons,omitempty" *GroundWeaponCoverage
   Inventory json:"inventory,omitempty" *InventoryCoverage
   Keyframes json:"keyframes,omitempty" *KeyframeCoverage
+  Knockbacks json:"knockbacks,omitempty" *KnockbackCoverage
   ObjectiveObjects json:"objectiveObjects,omitempty" *ObjectiveObjectsCoverage
   Objectives json:"objectives" LayerCoverage
   OriginResolved json:"originResolved" bool
@@ -577,6 +578,22 @@ KeyframeCoverage
   Refutations json:"refutations" int
   Resyncs json:"resyncs" int
   Slides json:"slides" int
+Knockback
+  By json:"by,omitempty" *uint32
+  Slot json:"slot" uint32
+  T json:"t" int
+  VX json:"vx,omitempty" *float32
+  VY json:"vy,omitempty" *float32
+  VZ json:"vz,omitempty" *float32
+KnockbackCoverage
+  BeforeOrigin json:"beforeOrigin" int
+  NoIdentity json:"noIdentity" int
+  Paired json:"paired" int
+  Published json:"published" int
+  Read104 json:"read104" int
+  Read105 json:"read105" int
+  Unpaired json:"unpaired" int
+  WithoutAuthor json:"withoutAuthor" int
 Label
   En json:"en" string
   Family json:"family,omitempty" string
@@ -793,6 +810,7 @@ ReplayDocument
   Identity json:"identity,omitempty" *IdentitySection
   Inventory json:"inventory,omitempty" []Inventory
   KillEffects json:"killEffects,omitempty" map[string]string
+  Knockbacks json:"knockbacks,omitempty" []Knockback
   Layers json:"layers,omitempty" map[string]string
   Loadouts json:"loadouts,omitempty" []Loadout
   MapObjectives json:"mapObjectives,omitempty" *MapObjectives
