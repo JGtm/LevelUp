@@ -95,6 +95,7 @@ var readPlayerRoutes = []routeCase{
 	// obtenir — l'ownership, lui, filtre toujours les profils.
 	{http.MethodPost, "/tactical/maps"},
 	{http.MethodPost, "/tactical/streets/raster"},
+	{http.MethodPost, "/tactical/streets/sequence"},
 }
 
 const testPlayerSlug = "JGtm"
@@ -221,6 +222,7 @@ func TestIsMutatingRequest_ClassifiesPostQueriesAsReads(t *testing.T) {
 		{routeCase{http.MethodPost, "/filters/resolve"}, false},
 		{routeCase{http.MethodPost, "/tactical/maps"}, false},
 		{routeCase{http.MethodPost, "/tactical/streets/raster"}, false},
+		{routeCase{http.MethodPost, "/tactical/streets/sequence"}, false},
 		{routeCase{http.MethodPost, "/engagement/timeseries"}, false},
 		{routeCase{http.MethodPost, "/engagement/recompute_coefficients"}, true},
 		{routeCase{http.MethodPost, "/sync"}, true},

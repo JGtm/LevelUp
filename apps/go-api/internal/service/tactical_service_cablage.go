@@ -86,3 +86,10 @@ func (s *TacticalService) WithReplay(r port.ReplayService) *TacticalService {
 	s.detail.rejeu = r
 	return s
 }
+
+// WithSequenceStore injecte le lecteur de pistes de l'artefact de rejeu (sequence d'une mort, vue D).
+// Chainable. Sans lui, `Sequence` rend ErrCapabilityNotSupported en le disant.
+func (s *TacticalService) WithSequenceStore(store port.TacticalSequenceStore) *TacticalService {
+	s.sequences = store
+	return s
+}

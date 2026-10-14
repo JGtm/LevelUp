@@ -88,7 +88,7 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	retenues := s.garderLesOuvrables(ctx, req.MapID, lues, ouvrables, resultatsDeLUnivers(univers))
 	out.Zone = s.nommerLaCellule(ctx, req, retenues)
 	poserInstantAffiche(retenues, univers)
-	out.Contributions = s.enrichir(ctx, req, univers, retenues)
+	out.Contributions, out.Bilan = s.enrichir(ctx, req, univers, retenues)
 
 	s.logger.InfoContext(ctx, "tactique: detail de cellule",
 		"player", s.xuid, "map_id", req.MapID, "question", req.Question, "qui", req.Qui,
@@ -271,6 +271,7 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 			contexte: &domain.ContexteDeMort{
 				MatchID: m.MatchID, VictimXUID: m.VictimXUID, TimeMs: m.TimeMs,
 				PlusProcheM: m.PlusProcheM, Visibles: m.Visibles, HorsDeVue: m.HorsDeVue,
+				EnAttente: m.EnAttente, Total: m.Total,
 			},
 		})
 	}

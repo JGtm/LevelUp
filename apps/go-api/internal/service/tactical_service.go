@@ -58,6 +58,8 @@ type TacticalService struct {
 	rasters port.TacticalRasterStore
 	// callouts nomme les grappes de reapparition. Nil = grappes MUETTES, jamais d'erreur.
 	callouts port.TacticalCalloutsStore
+	// sequences lit les pistes de l artefact de rejeu (sequence d une mort). Nil = Sequence indisponible.
+	sequences port.TacticalSequenceStore
 	// radar : game_variant_name -> portee du radar en metres (`regulation.toml`). Une
 	// variante absente n'a PAS de rayon : ses matchs sortent de la lecture « isole » et se
 	// comptent a part (jamais un rayon de repli, qui rendrait une mesure d'apparence normale

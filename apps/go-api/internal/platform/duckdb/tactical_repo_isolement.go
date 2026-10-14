@@ -62,6 +62,7 @@ SELECT e.match_id, min(e.victim_xuid) AS victim_xuid,
        min(c.nearest_teammate_m) AS nearest_teammate_m,
        min(c.teammates_visible) AS teammates_visible,
        min(c.teammates_out_of_sight) AS teammates_out_of_sight,
+       min(c.teammates_waiting) AS teammates_waiting, min(c.teammates_total) AS teammates_total,
        e.time_ms AS time_ms,
        min(p.victim_z) AS victim_z,
        COALESCE(min(e.feed_killer_gamertag), '') AS killer_gamertag,
@@ -134,7 +135,7 @@ func scanMortContexte(sc rowScanner) (domain.MortContexte, error) {
 	var proche, z, kx, ky sql.NullFloat64
 	var tag sql.NullInt64
 	if err := sc.Scan(&m.MatchID, &m.VictimXUID, &m.X, &m.Y,
-		&proche, &m.Visibles, &m.HorsDeVue, &m.TimeMs,
+		&proche, &m.Visibles, &m.HorsDeVue, &m.EnAttente, &m.Total, &m.TimeMs,
 		&z, &m.KillerGamertag, &tag, &m.SourceCategory, &kx, &ky); err != nil {
 		return m, err
 	}

@@ -401,6 +401,9 @@ type MortContexte struct {
 	// PlusProcheM : distance au coequipier VISIBLE le plus proche. nil = aucun visible.
 	PlusProcheM         *float64
 	Visibles, HorsDeVue int
+	// EnAttente, Total : les coequipiers en attente de reapparition et tous les coequipiers de la
+	// victime (`teammates_total`) — le nombre de lignes de `match_death_mates` de cette mort.
+	EnAttente, Total int
 
 	// TimeMs est l'instant de la mort (memes raisons que TacticalKillPosition.TimeMs) —
 	// ajoute pour le detail d'une cellule de la lecture « isole » (lot M1).

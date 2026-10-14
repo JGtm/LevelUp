@@ -791,6 +791,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
 			r.Use(handlers.LocalOnlyReplay)
 			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
+			// La SEQUENCE D UNE MORT (onglet Tactique, vue D) lit les memes trajectoires : elle vit sous
+			// les MEMES gardes que le rejeu, pour qu activer le rejeu en production l active aussi.
+			handlers.NewTacticalSequenceHandler(reg.Tactical).Mount(r, playerOpt)
 		})
 
 		// Canonical MatchEvents (Phase 3) : GET .../matches/{match_id}/events —

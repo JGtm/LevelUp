@@ -56,5 +56,7 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
 		WithWeaponLabels(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
-		WithReplay(r.replayServiceFor(pdb)), nil
+		WithReplay(r.replayServiceFor(pdb)).
+		// LES PISTES DE L ARTEFACT (sequence d une mort) : meme racine d artefacts que le service de rejeu.
+		WithSequenceStore(service.NewTacticalSequenceStore(r.cfg.RuntimePaths().RepoRoot(), pdb.TitleSlug)), nil
 }
