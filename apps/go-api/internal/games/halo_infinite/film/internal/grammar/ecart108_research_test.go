@@ -390,10 +390,7 @@ func e108Preuve(x map[string]int, pv *PreuveDImageCle, p *lecture.Paquet, i int)
 func TestEcart108(t *testing.T) {
 	films, racine, sortie := ri27cEnv(t)
 	noms := weaponv3.KnownWeaponHigh32Copie()
-	known := make(map[uint32]bool, len(noms))
-	for f := range noms {
-		known[f] = true
-	}
+	known := weaponv3.FamillesConnues()
 	var lignes []string
 	for _, court := range films {
 		fc := ri27cContexte(t, filepath.Join(racine, court), court, true)
