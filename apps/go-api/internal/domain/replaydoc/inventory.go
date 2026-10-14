@@ -148,6 +148,16 @@ type Translocation struct {
 	TZ   *float32 `json:"tz,omitempty"`
 }
 
+// Knockback est UNE poussée d'équipement (schéma 94) : le joueur poussé, l'auteur, la vitesse imposée.
+type Knockback struct {
+	T    int      `json:"t"`
+	Slot uint32   `json:"slot"`
+	By   *uint32  `json:"by,omitempty"`
+	VX   *float32 `json:"vx,omitempty"`
+	VY   *float32 `json:"vy,omitempty"`
+	VZ   *float32 `json:"vz,omitempty"`
+}
+
 // Pickup est UN ramassage : quand, qui, quoi.
 type Pickup struct {
 	T      int        `json:"t"`

@@ -380,7 +380,12 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           de film (la table de versement vit dans `replay`,
 //	                                           sous ADR 0034 DU-2 (c) ; la recopier serait une
 //	                                           seconde table). Aucun retrait.
-const plafondSurfaceReplay = 299 // 2026-10-02 — revue finale D2 sur 06afd4566 : 298 + 1 (replay.VerserLesReplisDuContexte) ; cf. l historique ci-dessus
+//	301  lot F des ajustements (2026-10-14)     base `origin/feat/v75` (`d33f21227`) re-mesuree a 299.
+//	                                           +2 : `replay.Knockback` et `replay.KnockbackCoverage`,
+//	                                           le calque des poussees et sa couverture, que le jumeau
+//	                                           servi (`service/replayview`) convertit comme chaque
+//	                                           calque (ADR 0034 D-7). Aucun retrait.
+const plafondSurfaceReplay = 301 // 2026-10-14 — lot F des ajustements : 299 + 2 (replay.Knockback, replay.KnockbackCoverage) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

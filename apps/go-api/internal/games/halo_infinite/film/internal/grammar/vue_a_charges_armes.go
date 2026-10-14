@@ -154,8 +154,9 @@ func chargeBonusApplique(br *Lecteur) bool {
 }
 
 // chargePorte32 porte les lecteurs qui ne lisent que `FUN_14080d69c` : `FUN_142ef9074`
-// (`repair_complete`), `FUN_142f17480` (`projectile_supercombine_request`, suivi d appels sans
-// lecture), et `FUN_141118a00` (`EquipmentObjectKnockedBack` : R(1) puis `FUN_14080d6f0`).
+// (`repair_complete`) et `FUN_142f17480` (`projectile_supercombine_request`, suivi d appels sans
+// lecture). `EquipmentObjectKnockedBack` lit la meme forme et garde sa valeur
+// ([chargeObjetRepousse], `vue_a_poussees.go`).
 func chargePorte32(br *Lecteur) bool {
 	consumeGateR(br, 32)
 	return true
@@ -184,13 +185,6 @@ func chargeTeleportationDEquipement(br *Lecteur) bool {
 func chargeFigureDeVehicule(br *Lecteur) bool {
 	br.Skip(3)
 	consumeGate0R(br, 5) // FUN_1407f2034
-	return true
-}
-
-// chargePousseeDuJoueur porte `FUN_14116c344` (`EquipmentKnockbackPlayer`) -> `FUN_14076d528` :
-// R(1) ; si 0 : R(0x13), R(10).
-func chargePousseeDuJoueur(br *Lecteur) bool {
-	consumeGate0R(br, largeurDirection+largeurMagnitudePoussee)
 	return true
 }
 
@@ -256,8 +250,10 @@ func chargeDArme(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case pa
 		return chargeLancerDArme
 	case 48:
 		return chargeAttache
-	case 58, 105, 118:
+	case 58, 118:
 		return chargePorte32
+	case GenreObjetRepousse:
+		return chargeObjetRepousse
 	case 63:
 		return chargeUnBit
 	case 86:
@@ -266,7 +262,7 @@ func chargeDArme(genre int) func(*Lecteur) bool { //nolint:gocyclo // un case pa
 		return chargeEquipement
 	case 100:
 		return chargeBonusApplique
-	case 104:
+	case GenrePousseeDuJoueur:
 		return chargePousseeDuJoueur
 	case 108:
 		return chargeBalise

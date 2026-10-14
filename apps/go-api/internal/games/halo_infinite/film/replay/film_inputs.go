@@ -48,6 +48,9 @@ type FilmInputs struct {
 	// servent DEUX fois : le calque du document, et l'exemption du filtre de vitesse des
 	// positions (decision D2) — d'ou leur lecture AVANT les positions.
 	Translocations []types.TranslocatorTeleport
+	// Knockbacks / KnockbackStats sont les POUSSEES d equipement de la vue A et leurs denominateurs.
+	Knockbacks     []types.Knockback
+	KnockbackStats types.KnockbackStats
 	// Positions est le nuage NON decime des positions de bipede : le premier parametre de
 	// `BuildFromPositions`.
 	Positions []grammar.BipedPosition
@@ -205,6 +208,7 @@ type FilmInputs struct {
 func (in FilmInputs) applyTo(opt *Options) {
 	opt.FilmMajorVersion = in.FilmMajorVersion
 	opt.Translocations = in.Translocations
+	opt.Knockbacks, opt.KnockbackStats = in.Knockbacks, in.KnockbackStats
 	opt.BipedCreations = in.BipedCreations
 	opt.Loadouts = in.Loadouts
 	opt.KeyframeWalk = in.KeyframeWalk

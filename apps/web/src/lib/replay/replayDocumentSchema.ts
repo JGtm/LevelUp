@@ -129,6 +129,7 @@ export const replayDocumentSchema = z.strictObject({
   identity: bloc<NonNullable<ReplayDocument['identity']>>(),
   inventory: calque<Elem<'inventory'>>(),
   killEffects: z.record(z.string(), z.string()).optional(),
+  knockbacks: calque<Elem<'knockbacks'>>(),
   // `layers` : nom de calque -> révision de la couche qui l'a produit (schéma 62). MÊME FORME
   // que `killEffects` — une table plate de chaînes — et MÊME RÉGIME que `coverage` : l'objet
   // garde le droit d'être ABSENT (artefact antérieur à 62), et une entrée absente dans un objet

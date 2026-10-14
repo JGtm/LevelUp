@@ -209,6 +209,7 @@ export type ReplayDocumentReady = Omit<
   | 'grenades'
   | 'identity'
   | 'inventory'
+  | 'knockbacks'
   | 'loadouts'
   | 'neutralDeaths'
   | 'objectiveObjects'
@@ -407,6 +408,13 @@ export type ReplayDocumentReady = Omit<
    * translocateur — `coverage.translocations` distingue les deux.
    */
   translocations: NonNullable<ReplayDocument['translocations']>
+  /**
+   * LES POUSSÉES DU RÉPULSEUR (schéma 94) : une entrée plate par joueur poussé — (t, slot), l'auteur
+   * `by` et la vitesse imposée (`vx/vy/vz`, solidaires), lus dans la paire de messages du film.
+   * Vide = artefact antérieur au schéma 94, ou film sans poussée — `coverage.knockbacks` distingue
+   * les deux.
+   */
+  knockbacks: NonNullable<ReplayDocument['knockbacks']>
   /**
    * LA VIE DE CHAQUE VÉHICULE du match (schéma 39) : où il naît, sa trajectoire, ses épisodes
    * d'occupation, jusqu'à quelle frame l'afficher. `end` vaut toujours `unknown` — jamais une

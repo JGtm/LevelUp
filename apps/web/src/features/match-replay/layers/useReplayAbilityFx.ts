@@ -1,6 +1,9 @@
 /**
  * useReplayAbilityFx — LE CÂBLAGE DES GESTES DE CAPACITÉ SUR LEUR PORTEUR, en un point.
  *
+ * TROISIÈME GESTE (schéma 94) : la POUSSÉE DU RÉPULSEUR (`doc.knockbacks`, `knockbackFx.ts`) —
+ * elle aussi agit sur des joueurs et ne pose rien au sol.
+ *
  * DEUX GESTES, UNE MÊME NATURE : la LIGNE DE GRAPPIN (schéma 8, `doc.grappleLines`) et la
  * POUSSÉE DU PROPULSEUR (schéma 38, `doc.abilityImpulses`). Ni l'une ni l'autre ne pose quoi
  * que ce soit sur le terrain — ce sont des capacités qui agissent SUR LE JOUEUR, elles se
@@ -30,6 +33,7 @@ import {
   THRUSTER_DASH_HEADING_MS,
 } from './thrusterDashFx'
 import { type CanvasView } from '../model/replayView'
+import { buildKnockbackFx, drawKnockbackLayer } from './knockbackFx'
 
 export interface AbilityFxHookInput {
   doc: ReplayDocumentReady
@@ -75,6 +79,8 @@ export function useReplayAbilityFx({
     () => buildThrusterDashFx(doc, msToFrames(THRUSTER_DASH_HEADING_MS, doc)),
     [doc],
   )
+  // Les poussées du répulseur (schéma 94) : l'onde de l'auteur et le sillage du poussé.
+  const knockbackFx = useMemo(() => buildKnockbackFx(doc), [doc])
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
 
   const paint = useCallback(
@@ -91,8 +97,14 @@ export function useReplayAbilityFx({
           colorOfSlot,
         })
       }
+      // LA POUSSÉE DU RÉPULSEUR : un geste sur des joueurs, pas un objet posé — même calque.
+      if (knockbackFx.length > 0) {
+        drawKnockbackLayer(ctx, knockbackFx, view, { frame, frameMs, k, reducedMotion }, {
+          colorOfSlot,
+        })
+      }
     },
-    [grappleFx, dashFx, view, grappleInk, frameMs, reducedMotion, colorOfSlot],
+    [grappleFx, dashFx, knockbackFx, view, grappleInk, frameMs, reducedMotion, colorOfSlot],
   )
 
   return { id: 'gestes-capacite', paint }

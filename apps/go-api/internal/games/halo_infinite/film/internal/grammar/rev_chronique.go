@@ -220,3 +220,17 @@ package grammar
 // MESURE de l amendement (28 films) : 460 records bipedes arretes sur i42, tous sur les trois films
 // de format 20 ; admis inchanges (6 507) ; fermetures `ti=35` 5 401 -> 5 397 ; `replay-equiv` (20
 // films) : seuls `a349fea8` et `a521164d` changent (4 selections tues) ; killsource identique.
+//
+// ENTREE `grammar-2026-10-14` (2026-10-14, lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche
+// `feat/aj14-f`) : LA LECTURE DE LA VUE A RANGE SES MESSAGES DE POUSSEE. Aucun bit n est lu autrement :
+// [lireUnMessage] garde les references qu il lisait et jetait, les charges des genres 104 et 105
+// ([chargePousseeDuJoueur], [chargeObjetRepousse], `vue_a_poussees.go`) gardent leurs valeurs, et
+// `lecture.VueA.Poussees` les porte ([lecture.MessageDePoussee]). Le balayage [ScanKnockbacks]
+// (`poussees.go`) rend la paire 105 -> 104 de meme reference 0 dans une liste : joueur pousse, unite
+// qui pousse, impulsion (direction `FUN_1406d8288`, norme `FUN_14076d6dc`).
+//
+// MESURE (2026-10-14) : 235 films du parc, contexte de la cuisson (carte et decoupage poses) : 135
+// messages 104 lus, 135 paires, aucun isole ; normes 6,00 / 5,50 / 5,72 m/s seulement ; temoins
+// 0d9a9af9, 215e7022 et a6ae19fb : 15 paires (3, 2, 10), dont les 14 rattachees a une piste
+// accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; auteur porteur du
+// repulseur sur 130 paires sur 130.

@@ -161,6 +161,10 @@ type Options struct {
 	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
 	// scan se fait UNE fois, avant les positions.
 	Translocations []types.TranslocatorTeleport
+	// Knockbacks / KnockbackStats : les POUSSÉES d'équipement lues dans la vue A (paires 105 -> 104,
+	// cf. grammar/poussees.go) et les dénominateurs de leur lecture. Entrée de DONNÉES.
+	Knockbacks     []types.Knockback
+	KnockbackStats types.KnockbackStats
 	Placements     []types.EquipmentPlacement
 	PlacementStats grammar.EquipmentPlacementStats
 	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la
