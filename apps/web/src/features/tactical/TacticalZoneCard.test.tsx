@@ -200,26 +200,30 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
 })
 
 describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
-  it('deux lignes : mode, score, issue, date ; instant, fait, arme, badge', () => {
+  it('trois lignes : mode, score, issue, date ; instant, fait ; arme, badge', () => {
     rendre()
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
     const l1 = within(tuile).getByTestId('tactical-rejeu-l1')
     const l2 = within(tuile).getByTestId('tactical-rejeu-l2')
+    const l3 = within(tuile).getByTestId('tactical-rejeu-l3')
     expect(l1).toHaveTextContent('Assassin')
     expect(l1).toHaveTextContent('50 - 42')
     expect(l1).toHaveTextContent('Victoire')
     expect(l1).toHaveTextContent('01/09/2026 · 22:30')
     expect(l2).toHaveTextContent('1:23')
     expect(l2).toHaveTextContent('Tué par Rival')
-    expect(l2).toHaveTextContent('Fusil de combat à longue portée')
-    expect(l2).toHaveTextContent('seul · 30 m')
+    expect(l3).toHaveTextContent('Fusil de combat à longue portée')
+    expect(l3).toHaveTextContent('seul · 30 m')
   })
 
-  it('l’arme seule se tronque ; le texte complet est en infobulle', () => {
+  it('l’arme et le gamertag tronquent, le badge jamais ; le texte complet est en infobulle', () => {
     rendre()
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
     expect(within(tuile).getByText('Fusil de combat à longue portée').className).toContain('truncate')
-    expect(within(tuile).getByText('Tué par Rival').className).toContain('flex-none')
+    // Seul le gamertag tronque : le début du fait et le badge gardent leur largeur.
+    expect(within(tuile).getByText('Rival').className).toContain('truncate')
+    expect(within(tuile).getByText('Tué par').className).toContain('flex-none')
+    expect(within(tuile).getByText('seul · 30 m').className).toContain('flex-none')
     expect(tuile.getAttribute('title')).toBe(
       'Assassin · 50 - 42 · Victoire · 01/09/2026 · 22:30 · 1:23 · Tué par Rival · Fusil de combat à longue portée · seul · 30 m',
     )

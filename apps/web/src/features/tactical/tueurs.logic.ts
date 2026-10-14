@@ -46,13 +46,13 @@ export const SEUIL_CLIC_PX = 4
  * un plancher et un plafond en px pour rester lisibles. L'échelle est celle du plan à l'instant :
  * px par mètre de la fenêtre visible, donc le zoom y est compris.
  */
-const RAYON_POINT_M = 0.75
-const EPAISSEUR_TRAIT_M = 0.15
+const RAYON_POINT_M = 0.42
+const EPAISSEUR_TRAIT_M = 0.105
 const RAYON_SURVOL_M = 1.5
 /** Mise en avant (survol ou sélection) : facteur sur le rayon du point et l'épaisseur du trait. */
 const FACTEUR_AVANT = 1.6
-const RAYON_POINT_PX = { min: 3, max: 13.5 } as const
-const EPAISSEUR_TRAIT_PX = { min: 1, max: 3 } as const
+const RAYON_POINT_PX = { min: 1.7, max: 7.6 } as const
+const EPAISSEUR_TRAIT_PX = { min: 1, max: 2.2 } as const
 const RAYON_SURVOL_PX = { min: 9, max: 24 } as const
 
 /** Les dimensions de la couche, en px, pour une échelle de plan donnée. */

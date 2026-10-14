@@ -650,3 +650,7 @@ en = "Stage {offset} s from the death"
 [tactical.mort.zone_section]
 fr = "Lecture de la zone"
 en = "Zone reading"
+
+[tactical.tile.distance_lt1]
+fr = "< 1 m"
+en = "< 1 m away"

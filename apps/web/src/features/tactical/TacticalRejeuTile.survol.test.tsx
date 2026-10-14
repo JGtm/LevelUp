@@ -5,7 +5,7 @@
  */
 import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 import type { CelluleTactique, TacticalContribution } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -127,6 +127,24 @@ describe('TacticalRejeuTile — la sélection', () => {
     expect(tuiles[0]?.className).toContain('bg-card')
     expect(tuiles[0]?.className).toContain('rounded-md')
     expect(tuiles[0]?.className).toContain('cursor-pointer')
+  })
+
+  it('le texte et les actions sont deux colonnes distinctes : aucun chevauchement possible', () => {
+    rendre('fr', null)
+    const tuile = screen.getAllByRole('option')[0]!
+    const texte = within(tuile).getByTestId('tactical-rejeu-texte')
+    const actions = within(tuile).getByTestId('tactical-rejeu-actions')
+    expect(texte.parentElement).toBe(tuile)
+    expect(actions.parentElement).toBe(tuile)
+    expect(texte.contains(actions)).toBe(false)
+    expect(actions.contains(texte)).toBe(false)
+    // Le texte coupe ce qui déborde ; les actions gardent leur largeur.
+    expect(tuile.className).toContain('grid-cols-[minmax(0,1fr)_auto]')
+    expect(texte.className).toContain('min-w-0')
+    // Largeur réservée, identique avec ou sans rejeu.
+    expect(actions.className).toContain('w-[50px]')
+    // Le chevron vit dans la colonne des actions, pas dans celle du texte.
+    expect(within(actions).getByTestId('tactical-rejeu-chevron')).toBeInTheDocument()
   })
 
   it('la tuile choisie est marquée aria-selected et reste en relief sans survol', () => {

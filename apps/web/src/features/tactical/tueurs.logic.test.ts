@@ -105,12 +105,12 @@ describe('dimensionsDeLaCouche — la taille suit l’échelle du plan (modèle 
     // Sous le plancher d'échelle du rejeu, la taille ne descend plus : un palier, pas un zéro.
     const mini = dimensionsDeLaCouche(0.001)
     expect(mini).toEqual(dimensionsDeLaCouche(1))
-    expect(mini.rayonPoint).toBeGreaterThanOrEqual(3)
+    expect(mini.rayonPoint).toBeGreaterThanOrEqual(1.7)
     expect(mini.epaisseurTrait).toBeGreaterThanOrEqual(1)
     expect(mini.rayonSurvol).toBeGreaterThanOrEqual(9)
     const maxi = dimensionsDeLaCouche(10_000)
-    expect(maxi.rayonPoint).toBe(13.5)
-    expect(maxi.epaisseurTrait).toBe(3)
+    expect(maxi.rayonPoint).toBe(7.6)
+    expect(maxi.epaisseurTrait).toBe(2.2)
     expect(maxi.rayonSurvol).toBe(24)
   })
   it('la mise en avant grossit le point et le trait', () => {

@@ -3,9 +3,10 @@
  * chaleur : les traits d'abord (sous les marqueurs), puis les marqueurs. Elle partage la projection
  * du plan (`projectionDuPlan`) : mêmes mètres, même cadrage, même zoom que la chaleur et les zones.
  *
- * AUCUNE TEINTE DE LA RAMPE DE CHALEUR : les marqueurs et les traits sont à l'encre de premier plan
- * du thème, cernés d'un liseré à la couleur du fond pour se détacher de la carte comme de la
- * chaleur. Le tueur et la victime se distinguent par la FORME — losange, rond — et non par la couleur.
+ * COULEUR : tueurs et victimes sont des ADVERSAIRES, donc à la couleur d'équipe adverse de l'app (celle
+ * que le joueur a choisie dans ses réglages d'accessibilité), cernés d'un liseré à l'encre de premier
+ * plan du thème qui détache la forme de la carte comme de la chaleur. Le tueur et la victime se
+ * distinguent par la FORME — losange, rond — et non par la couleur.
  *
  * Les tailles arrivent en px, déjà calculées pour l'échelle du plan (`dimensionsDeLaCouche`). Le
  * SURVOL ou la SÉLECTION met une contribution en avant (trait plus épais, marqueur plus grand,
@@ -16,16 +17,18 @@ import { formeDuRole, type DimensionsDeLaCouche, type PointDeLaCouche, type Role
 /** Opacités du trait et du marqueur : au repos, estompés par une mise en avant ailleurs, mis en avant. */
 const OPACITE_TRAIT = { repos: 0.4, estompe: 0.12, avant: 0.9 } as const
 const OPACITE_POINT = { repos: 0.95, estompe: 0.3, avant: 1 } as const
-/** Épaisseur du liseré (couleur du fond) autour des marqueurs, et de part et d'autre des traits. */
+/** Épaisseur du liseré (encre) autour des marqueurs, et de part et d'autre des traits. */
 const LISERE_MARQUEUR_PX = 1.5
 const LISERE_TRAIT_PX = 2
 /** Le losange a la même emprise visuelle que le rond : sa demi-diagonale est un peu plus longue. */
 const FACTEUR_LOSANGE = 1.3
 
 export interface CouleursDeLaCouche {
-  /** L'encre de premier plan du thème (marqueurs et traits). */
+  /** La couleur d'équipe adverse (marqueurs et traits). */
+  adverse: string
+  /** L'encre de premier plan du thème : liseré des marqueurs. */
   encre: string
-  /** La couleur du fond du thème (liseré de contraste). */
+  /** La couleur du fond du thème : liseré sous les traits. */
   fond: string
 }
 
@@ -71,7 +74,7 @@ export function peindreLaCouche(
     ctx.moveTo(a.x, a.y)
     ctx.lineTo(b.x, b.y)
     ctx.stroke()
-    ctx.strokeStyle = couleurs.encre
+    ctx.strokeStyle = couleurs.adverse
     ctx.lineWidth = largeur
     ctx.beginPath()
     ctx.moveTo(a.x, a.y)
@@ -82,8 +85,8 @@ export function peindreLaCouche(
     const e = etat(p)
     const b = projeter(p.vers)
     ctx.globalAlpha = OPACITE_POINT[e]
-    ctx.fillStyle = couleurs.encre
-    ctx.strokeStyle = couleurs.fond
+    ctx.fillStyle = couleurs.adverse
+    ctx.strokeStyle = couleurs.encre
     ctx.lineWidth = LISERE_MARQUEUR_PX
     tracerForme(ctx, p.role, b.x, b.y, e === 'avant' ? dim.rayonPointAvant : dim.rayonPoint)
     ctx.fill()
