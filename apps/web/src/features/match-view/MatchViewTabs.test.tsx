@@ -153,7 +153,6 @@ vi.mock('./useMatchEmprise', () => ({
     const on = hoisted.blocks.emprise
     return {
       present: { control: on, sheets: on, production: on, yield: on, lives: on },
-      coverage: on ? 'film décodé · 8 joueurs présents à la fin' : null,
       control: on && <div data-testid="emprise-control" />,
       sheets: on && <div data-testid="emprise-sheets" />,
       production: on && <div data-testid="emprise-production" />,
