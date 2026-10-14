@@ -325,6 +325,23 @@ describe('TacticalAnalysisView — le bandeau', () => {
     expect(within(reapparition).getAllByRole('option').map((o) => o.textContent)).toEqual([t.pillRespawnAll, 'Base Rouge'])
   })
 
+  it('« Réapparition » : absente sans amas ni filtre, gardée quand un filtre est posé', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, grappes: [] } })
+    const { unmount } = renderVue()
+    expect(screen.queryByRole('combobox', { name: t.pillRespawn })).toBeNull()
+    unmount()
+
+    // Filtre posé : la lecture filtrée peut ne plus montrer d'amas, la pilule reste pour l'ôter.
+    useTacticalRaster.mockImplementation(((_slug: string, _map: string, params: { spawn?: string }) => ({
+      data: { ...RASTER_NOMINAL, grappes: params.spawn ? [] : RASTER_NOMINAL.grappes },
+      isPending: false,
+      isError: false,
+    })) as never)
+    renderVue()
+    fireEvent.change(screen.getByRole('combobox', { name: t.pillRespawn }), { target: { value: 'g1' } })
+    expect(screen.getByRole('combobox', { name: t.pillRespawn })).toBeInTheDocument()
+  })
+
   it('bandeau d’état des lectures d’artefact : les matchs en attente se disent', () => {
     mockRaster({ data: { ...RASTER_NOMINAL, question: 'temps', matchs_en_attente: 2 } })
     renderVue()
