@@ -59,6 +59,10 @@ export const LAYER_ORDER = [
   'vehicules',
   // LES JOUEURS, puis ce qui se lit SUR eux.
   'trajectoires',
+  // LES FAILLES DU TRANSLOCATEUR, AU-DESSUS DES PISTES : une faille est un événement, pas un
+  // décor. Peinte sous les trajectoires (avec les poses), elle disparaissait sous un pion ou une
+  // traînée, sur les sauts courts surtout.
+  'failles',
   'marques-de-tir',
   'gestes-capacite',
   // LES ÉVÉNEMENTS, qui se lisent sur les trajectoires.
@@ -113,6 +117,8 @@ export interface SceneMatter {
   objectivesCooked: boolean
   projectiles: boolean
   placements: boolean
+  /** Le translocateur a une faille ou un passage à montrer (cf. `RiftScene`). */
+  rifts: boolean
   fireMarks: boolean
   shotFx: boolean
   zoneStates: boolean
@@ -194,6 +200,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'poses-equipement': t.placements && h.placements,
     vehicules: true,
     trajectoires: true,
+    failles: t.placements && h.rifts,
     'marques-de-tir': t.shotFx && h.fireMarks,
     'gestes-capacite': true,
     tirs: t.shotFx && h.shotFx,

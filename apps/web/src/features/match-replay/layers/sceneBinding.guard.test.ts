@@ -3,8 +3,8 @@
 /**
  * Garde-rail : CHAQUE ID DE CALQUE EST LIÉ AU PEINTRE DE MÊME NOM.
  *
- * POURQUOI (2026-09-06, revue R1 du lot v2 D, constat C2). `buildScene` associe 24 ids à
- * 24 peintres. Les 24 valeurs ont le même type (`LayerPaint`) : le compilateur ne peut pas
+ * POURQUOI (2026-09-06, revue R1 du lot v2 D, constat C2). `buildScene` associe 25 ids à
+ * 25 peintres. Les 25 valeurs ont le même type (`LayerPaint`) : le compilateur ne peut pas
  * départager. La revue a interverti `'couronne-vip': skullCarrier.paint` et
  * `'crane-porte': vipCrown.paint` — 2 350 tests verts, `tsc` exit 0, et à l'écran la couronne
  * du VIP remplacée par le crâne d'Oddball. C'est la seule faute que la refonte D.7 pouvait
@@ -40,7 +40,7 @@ const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
 ]
 
 /**
- * Les treize fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
+ * Les quatorze fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
  * main : chaque id est suivi du symbole que son peintre doit nommer.
  */
 const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
@@ -52,6 +52,7 @@ const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
   ['projectiles', 'drawProjectilesLayer('],
   ['poses-equipement', 'drawEquipmentPlacementsLayer('],
   ['trajectoires', 'drawTracksLayer('],
+  ['failles', 'drawRiftLayer('],
   ['marques-de-tir', 'drawFireMarks('],
   ['tirs', 'drawShotsLayer('],
   ['etat-zones', 'drawZoneStates('],
@@ -82,7 +83,7 @@ function entreeDeTable(table: string, id: ReplayLayerId): string {
   return fin > 0 ? suite.slice(0, fin) : suite.slice(0, 600)
 }
 describe('garde-rail : la liaison id -> peintre', () => {
-  it('les 24 ids de LAYER_ORDER sont couverts, une fois chacun', () => {
+  it('les 25 ids de LAYER_ORDER sont couverts, une fois chacun', () => {
     const couverts = [...CABLES_PAR_HOOK.map(([id]) => id), ...FERMETURES.map(([id]) => id)]
     expect(couverts).toHaveLength(LAYER_ORDER.length)
     expect([...couverts].sort()).toEqual([...LAYER_ORDER].sort())
@@ -121,7 +122,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     expect(table).toContain('...bindPainters(')
   })
 
-  it('chacune des treize fermetures peint bien ce que son id annonce', () => {
+  it('chacune des quatorze fermetures peint bien ce que son id annonce', () => {
     const table = tableDeLiaison()
     for (const [id, attendu] of FERMETURES) {
       expect(entreeDeTable(table, id), `l'entrée ${id} ne peint pas ${attendu}`).toContain(attendu)

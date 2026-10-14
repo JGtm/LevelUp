@@ -39,6 +39,7 @@ import { drawZoneStates } from '../layers/zoneStatesLayer'
 import { drawFireMarks } from '../layers/fireMark'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
 import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer'
+import { drawRiftLayer } from '../layers/placementRift'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
 import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
@@ -455,6 +456,7 @@ export function ReplayCanvas({
           objectivesCooked: !!objectivesRef.current,
           projectiles: !!doc.projectiles?.length,
           placements: placements.counts.drawable > 0,
+          rifts: placements.rift.rifts.length > 0 || placements.rift.teleports.length > 0,
           fireMarks: fireMarks.length > 0,
           shotFx: shotFx.length > 0,
           zoneStates: doc.zoneStates.length > 0,
@@ -501,7 +503,7 @@ export function ReplayCanvas({
               // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
               // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
               // camp est l'equipe du FILM de chacune, jamais le drapeau « allie » de la page.
-              { placements: doc.equipmentPlacements, lives: doc.tracks, campOfSlot, rift: placements.rift },
+              { placements: doc.equipmentPlacements, lives: doc.tracks, campOfSlot },
               view,
               { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
@@ -527,6 +529,15 @@ export function ReplayCanvas({
               // connait aucune locale.
               offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
             }),
+          // LES FAILLES, AU-DESSUS DES PISTES : la station et le passage du translocateur.
+          failles: (_c, fr, k) =>
+            drawRiftLayer(
+              ctx,
+              placements.rift,
+              view,
+              { frame: fr, ...placements.windowTime, k, reducedMotion },
+              riftInk,
+            ),
           'marques-de-tir': (_c, fr, k) =>
             drawFireMarks(ctx, fireMarks, view, {
               frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k, embarkedAtSlot: vehicles.isEmbarkedAt,
