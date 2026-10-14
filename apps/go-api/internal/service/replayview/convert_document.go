@@ -42,6 +42,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Pickups:             sliceOf(v.Pickups, toPickup),
 		EquipmentChanges:    sliceOf(v.EquipmentChanges, toEquipmentChange),
 		Translocations:      sliceOf(v.Translocations, toTranslocation),
+		Knockbacks:          sliceOf(v.Knockbacks, toKnockback),
 		AbilityImpulses:     sliceOf(v.AbilityImpulses, toAbilityImpulse),
 		AbilityCharges:      sliceOf(v.AbilityCharges, toAbilityCharge),
 		GroundWeapons:       sliceOf(v.GroundWeapons, toGroundWeapon),

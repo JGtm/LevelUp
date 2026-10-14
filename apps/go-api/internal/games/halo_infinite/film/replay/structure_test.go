@@ -1432,8 +1432,11 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   par la grammaire sur les records que sa regle d admission retient, les fenetres de bits rendent
 	//   les autres derriere elle. `grammar.Rev` monte avec elle : un v92 se lit « a redecoder ». Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 93 {
-		t.Fatalf("SchemaVersion = %d, attendu 93 : incrémenter exige une raison écrite ci-dessus "+
+	// - 94 (2026-10-14, lot F des ajustements) : un calque neuf `knockbacks[]` et sa couverture
+	//   `coverage.knockbacks` — les poussees du repulseur lues dans la vue A (paire 105 -> 104).
+	//   `grammar.Rev` monte avec elle : un v93 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 94 {
+		t.Fatalf("SchemaVersion = %d, attendu 94 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

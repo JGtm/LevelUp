@@ -31,6 +31,7 @@ type Coverage struct {
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
 	Translocations    *TranslocationCoverage      `json:"translocations,omitempty"`
+	Knockbacks        *KnockbackCoverage          `json:"knockbacks,omitempty"`
 	AbilityImpulses   *AbilityImpulseCoverage     `json:"abilityImpulses,omitempty"`
 	AbilityCharges    *AbilityChargeCoverage      `json:"abilityCharges,omitempty"`
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
@@ -346,6 +347,18 @@ type TranslocationCoverage struct {
 	BeforeOrigin int `json:"beforeOrigin"`
 	Unpublished  int `json:"unpublished"`
 	Positioned   int `json:"positioned"`
+}
+
+// KnockbackCoverage dit ce que le calque des poussées a lu et ce qu'il a écarté (schéma 94).
+type KnockbackCoverage struct {
+	Read104       int `json:"read104"`
+	Read105       int `json:"read105"`
+	Paired        int `json:"paired"`
+	Unpaired      int `json:"unpaired"`
+	Published     int `json:"published"`
+	BeforeOrigin  int `json:"beforeOrigin"`
+	NoIdentity    int `json:"noIdentity"`
+	WithoutAuthor int `json:"withoutAuthor"`
 }
 
 // AbilityImpulseCoverage dit ce que le calque a lu et ce qu'il a écarté — l'entonnoir

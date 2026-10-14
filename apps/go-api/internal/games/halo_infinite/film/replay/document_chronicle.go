@@ -3253,3 +3253,28 @@ package replay
 //	                films, binaires de `3aa885e37` (puis `54b47a2b8`) contre ceux du lot : etapes divergentes `artifact`
 //	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
 //	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.
+//
+// v94 (2026-10-14, lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, `grammar-2026-10-14`) : LES
+// POUSSEES DU REPULSEUR SONT LUES DANS LE FILM.
+//
+//	`knockbacks[]`  neuf : {t, slot, by, vx, vy, vz} — le joueur pousse, l unite qui pousse, la
+//	                vitesse imposee (m/s). Une poussee est la PAIRE de la vue A
+//	                `EquipmentObjectKnockedBack` (105 : objet, auteur) puis
+//	                `EquipmentKnockbackPlayer` (104 : joueur, impulsion) de meme reference 0
+//	                (grammar/vue_a_poussees.go, grammar/poussees.go). `by` absent quand l auteur
+//	                n est pas nomme ou n a pas de piste publiee.
+//	`coverage.knockbacks`   neuf : lus (104, 105), paires, 104 non apparies (non publies),
+//	                publiees, avant l origine, sans identite (pousse sans piste publiee), sans auteur.
+//
+//	CE QUI MONTE    `SchemaVersion` 93 -> 94 ; `grammar.Rev` `grammar-2026-10-09.3` ->
+//	AVEC ELLE       `grammar-2026-10-14` ; `SchemaDesFaits` 11 -> 12 (le complement de la section 1
+//	                porte les poussees). `killsource.Rev` et `objectives.Rev` ne bougent pas.
+//
+//	LE PARC         un artefact 93 ou d avant : verdict `redecoder` (revision de grammaire).
+//
+//	MESURE          235 films du parc : 1 133 messages 104 lus, 135 paires (normes 6,00 / 5,50 /
+//	                5,72 m/s seulement), 998 isoles (suivent une charge de tir sous-lue, normes hors
+//	                des constantes du jeu). Temoins 0d9a9af9, 215e7022, a6ae19fb : les 14 paires
+//	                rattachees accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1
+//	                sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
+//	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.

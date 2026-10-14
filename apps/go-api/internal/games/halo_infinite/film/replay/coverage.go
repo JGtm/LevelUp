@@ -193,6 +193,10 @@ type Coverage struct {
 	// `weaponChanges` : un film sans translocateur et un film qu'on n'a pas su balayer
 	// rendent tous deux zéro téléportation — seuls ces compteurs les distinguent.
 	Translocations *TranslocationCoverage `json:"translocations,omitempty"`
+	// Knockbacks est la couverture des POUSSÉES d'équipement (schéma 94, cf. document_knockbacks.go) :
+	// messages lus, paires, 104 non appariés, publiées, écartées. Publiée même quand aucune ne l'est,
+	// pour la même raison que `translocations`.
+	Knockbacks *KnockbackCoverage `json:"knockbacks,omitempty"`
 	// AbilityImpulses est la couverture des IMPULSIONS DE CAPACITÉ (schéma 38, cf.
 	// document_ability_impulses.go) : lectures `tag == 1`, gestes après repliement, publiées,
 	// et les CINQ façons d'être écartée — avant l'origine, sans piste, SANS IDENTITÉ (aucun

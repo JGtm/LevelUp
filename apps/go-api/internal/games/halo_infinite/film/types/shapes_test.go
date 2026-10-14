@@ -116,6 +116,8 @@ var formesFigees = []typeDeContrat{
 	{"grammar", types.KeyframeInventory{}},
 	{"grammar", types.KeyframeInventoryStats{}},
 	{"grammar", types.KeyframeLoadout{}},
+	{"grammar", types.Knockback{}},
+	{"grammar", types.KnockbackStats{}},
 	{"grammar", types.MovementStateRead{}},
 	{"grammar", types.MovementStateStats{}},
 	{"grammar", types.NavpointRadialRead{}},

@@ -97,6 +97,10 @@ func (a *assemblage) poserCapacitesEtTranslocations() {
 	a.doc.Translocations, trCov = buildTranslocations(a.opt.Translocations, a.doc.Tracks, a.origin, a.step)
 	a.doc.Coverage.Translocations = &trCov
 	logTranslocationCoverage(a.ctx, trCov)
+	var kbCov KnockbackCoverage
+	a.doc.Knockbacks, kbCov = buildKnockbacks(a.opt.Knockbacks, a.opt.KnockbackStats, a.doc.Tracks, a.origin, a.step)
+	a.doc.Coverage.Knockbacks = &kbCov
+	logKnockbackCoverage(a.ctx, kbCov)
 	a.palette = classifyAbilityPalette(a.doc.Abilities, a.opt.Labels.Abilities)
 	a.doc.AbilityLabels = abilityLabelsUsed(a.doc.Abilities, a.palette)
 	slog.InfoContext(a.ctx, "rejeu : a.palette de capacites",

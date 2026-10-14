@@ -12265,6 +12265,8 @@ components:
           $ref: '#/components/schemas/InventoryCoverage'
         keyframes:
           $ref: '#/components/schemas/KeyframeCoverage'
+        knockbacks:
+          $ref: '#/components/schemas/KnockbackCoverage'
         objectiveObjects:
           $ref: '#/components/schemas/ObjectiveObjectsCoverage'
         objectives:
@@ -16507,6 +16509,70 @@ components:
         - contradictoryProofs
         - slides
         - framedAbsentBipeds
+      type: object
+    Knockback:
+      additionalProperties: false
+      properties:
+        by:
+          format: int32
+          minimum: 0
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        vx:
+          format: float
+          type: number
+        vy:
+          format: float
+          type: number
+        vz:
+          format: float
+          type: number
+      required:
+        - t
+        - slot
+      type: object
+    KnockbackCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        noIdentity:
+          format: int64
+          type: integer
+        paired:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        read104:
+          format: int64
+          type: integer
+        read105:
+          format: int64
+          type: integer
+        unpaired:
+          format: int64
+          type: integer
+        withoutAuthor:
+          format: int64
+          type: integer
+      required:
+        - read104
+        - read105
+        - paired
+        - unpaired
+        - published
+        - beforeOrigin
+        - noIdentity
+        - withoutAuthor
       type: object
     LOWESSTrend:
       additionalProperties: false
@@ -23566,6 +23632,12 @@ components:
           additionalProperties:
             type: string
           type: object
+        knockbacks:
+          items:
+            $ref: '#/components/schemas/Knockback'
+          type:
+            - array
+            - "null"
         layers:
           additionalProperties:
             type: string
