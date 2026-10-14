@@ -64,7 +64,7 @@ interface ViewInfos {
 interface CompactInfos extends ViewInfos {
   controlInfo: string
   gridInfo: string
-  gridLegend: { more: string; less: string; noFilm: string }
+  gridLegend: { more: string; less: string }
   balanceInfo: string
   sheetInfo: string
   equipmentInfo: string
@@ -97,11 +97,11 @@ const FR: LocaleOverrides = {
       'barre : classe de l’arme, compte au survol.',
     controlInfo:
       'Prises de chaque ressource par l’équipe et par l’adversaire, en parts (comptes au survol), sur les matchs ' +
-      'filmés de la soirée ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
+      'filmés de la soirée ; trait orange : 50 %.',
     gridInfo:
       'Une colonne par match de la soirée ; case : part de l’équipe dans la ressource (vert au-dessus de ' +
       'l’adversaire, rouge en dessous, saturée à trente points d’écart), comptes et preneurs au survol.',
-    gridLegend: { more: 'Plus de 50 %', less: 'Moins de 50 %', noFilm: 'Sans film, non mesuré' },
+    gridLegend: { more: 'Plus de 50 %', less: 'Moins de 50 %' },
     balanceInfo:
       'Part de l’équipe face à l’adversaire pour chaque rôle de l’objectif (somme de ses actions ; Tenir en ' +
       'durée), par famille de mode, comptes au survol ; trait orange : 50 %.',
@@ -116,15 +116,13 @@ const FR: LocaleOverrides = {
     equipmentInfo:
       'Équipement tenu par le joueur (réapparition comprise), par famille : servi (mur posé, charge consommée), ' +
       'gardé sans servir, lâché, en part des objets du joueur (comptes au survol) ; barre fine : reste de ' +
-      'l’équipe. Seules les familles tenues dans le lobby sont listées ; le répulseur, sans mesure d’usage, n’a ' +
-      'pas de ligne.',
+      'l’équipe. Seules les familles tenues dans le lobby sont listées.',
   },
   compactCards: {
     production: { exposureLine: (name, pct) => `${name} : ${pct}` },
     mine: { resourceSub: 'prises de l’équipe' },
     equipment: {
       sub: (n) => (n > 0 ? `${n} ${plural(n, 'objet', 'objets')}` : '0 objet'),
-      unmeasured: 'Non mesuré',
       restUsed: (pct) => `reste de l’équipe : ${pct} servis`,
     },
     lives: {
@@ -151,11 +149,11 @@ const EN: LocaleOverrides = {
       'the weapon’s class, count on hover.',
     controlInfo:
       'Pickups of each resource by the team and by the opponent, as shares (counts on hover), over the session’s ' +
-      'filmed matches; orange line: 50%. Power-ups with no known picker count for neither team.',
+      'filmed matches; orange line: 50%.',
     gridInfo:
       'One column per match of the session; cell: the team’s share of the resource (green above the opponent, ' +
       'red below, saturated at a thirty-point gap), counts and pickers on hover.',
-    gridLegend: { more: 'Over 50%', less: 'Under 50%', noFilm: 'No film, not measured' },
+    gridLegend: { more: 'Over 50%', less: 'Under 50%' },
     balanceInfo:
       'The team’s share against the opponent for each objective role (sum of its actions; Hold as a duration), ' +
       'by mode family, counts on hover; orange line: 50%.',
@@ -169,14 +167,13 @@ const EN: LocaleOverrides = {
     equipmentInfo:
       'Equipment held by the player (spawn equipment included), by family: used (wall placed, charge spent), ' +
       'kept without use, dropped, as a share of the player’s items (counts on hover); thin bar: rest of the team. ' +
-      'Only families held in the lobby are listed; the repulsor, with no usage measure, has no row.',
+      'Only families held in the lobby are listed.',
   },
   compactCards: {
     production: { exposureLine: (name, pct) => `${name}: ${pct}` },
     mine: { resourceSub: 'team pickups' },
     equipment: {
       sub: (n) => (n > 0 ? `${n} ${plural(n, 'item', 'items')}` : '0 items'),
-      unmeasured: 'Not measured',
       restUsed: (pct) => `rest of the team: ${pct} used`,
     },
     lives: {

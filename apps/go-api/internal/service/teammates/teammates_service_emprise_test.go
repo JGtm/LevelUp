@@ -29,6 +29,10 @@ func (f *fakeFeuilleEmprise) LoadPowerWeaponKills(_ context.Context, _ []string)
 	return f.rows, f.err
 }
 
+func (f *fakeFeuilleEmprise) LoadJournalWeaponKills(_ context.Context, _ []string) (squademprise.JournalRead, error) {
+	return squademprise.JournalRead{}, nil
+}
+
 var _ port.SquadEmpriseRepository = (*fakeFeuilleEmprise)(nil)
 
 // filmEnErreur — un résumé d'usage dont la lecture des films échoue.

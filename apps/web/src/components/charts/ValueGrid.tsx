@@ -25,21 +25,11 @@
  * dessine dans l'ORDRE DU TABLEAU, l'un après l'autre sur la même largeur de rail, et porte
  * SON PROPRE `aria-label` — le conteneur externe garde le sien (le total), comme avant.
  */
-import { Fragment, type CSSProperties } from 'react'
+import { Fragment } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 
 import type { ValueGridModel, ValueGridSegment } from './valueGridModel'
-
-/**
- * La hachure d'une cellule NON MESURÉE (option `hatchNotMeasured`) : un motif
- * neutre du thème, jamais un jeton de donnée — une absence n'est pas une valeur.
- */
-const NOT_MEASURED_HATCH: CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(45deg, transparent 0px, transparent 3px, var(--muted-foreground) 3px, var(--muted-foreground) 4px)',
-  opacity: 0.3,
-}
 
 /** Largeur PAR DÉFAUT de la colonne des noms (px). */
 const NAME_WIDTH = 152
@@ -74,12 +64,6 @@ interface Props {
    */
   axisTitle?: string
   /**
-   * Une cellule NON MESURÉE porte une hachure au lieu d'un rail vide. Ajouté le
-   * 2026-09-13 (bloc « formes retenues » : un match sans film décodé doit se
-   * DISTINGUER d'un match mesuré à zéro). Faux = rendu inchangé.
-   */
-  hatchNotMeasured?: boolean
-  /**
    * Largeur de la colonne des noms (px). Défaut : 152 (ou la largeur dense quand
    * `dense` est posé). À élargir quand les noms portent un sous-libellé (une arme et
    * ses occupations) — sans quoi les deux se coupent. Une largeur EXPLICITE l'emporte
@@ -93,7 +77,6 @@ export function ValueGrid({
   rowHeaderLabel,
   dense = false,
   axisTitle,
-  hatchNotMeasured,
   nameWidth: nameWidthProp,
 }: Props) {
   const { rows, columns, cells, separators } = model
@@ -161,7 +144,6 @@ export function ValueGrid({
                   <Tooltip content={cell.tooltip} className="w-full">
                     <div
                       className="relative h-[11px] w-full min-w-[40px] bg-muted"
-                      style={hatchNotMeasured && cell.value == null ? NOT_MEASURED_HATCH : undefined}
                       tabIndex={0}
                       role="img"
                       aria-label={cell.tooltip}

@@ -108,7 +108,6 @@ export const FLOOD_GULCH: MatchEmpriseBlock = {
       has_film: true,
       team_known: true,
       tiers: 'measured',
-      unclassified_pickups: c(19, 12),
       resources: ['power_weapon', 'rack'].map((r) => resourceOf(FLOOD_OBJECTS, r)),
     },
   ],

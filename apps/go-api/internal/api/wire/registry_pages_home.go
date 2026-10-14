@@ -235,7 +235,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// Onglet « Emprise » (lot L4) : la feuille de match (frags aux armes spéciales) est
 		// écrite par tous les titres — câblage INCONDITIONNEL ; ses grandeurs du film passent par
 		// le résumé d'usage ci-dessous, gated par film.usage_summary (D10). Jamais slug==.
-		WithEmprise(duckdb.NewSquadEmpriseRepo(pdb))
+		WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb)))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.

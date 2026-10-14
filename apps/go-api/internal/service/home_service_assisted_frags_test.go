@@ -9,30 +9,32 @@ import (
 )
 
 // TestEnrichMatchesWithAssistedFrags_PartialMap : seuls les matchs présents dans la map
-// du repo portent l'objet ; un match non mesuré reste nil (« on ne sait pas »), y compris
-// « mesuré, zéro » qui, lui, porte un objet à Total 0.
+// du repo portent l'objet ; un match hors de la mesure reste nil, et « zéro assisté »
+// porte un objet à Total 0. La base est le compte officiel de la tuile.
 func TestEnrichMatchesWithAssistedFrags_PartialMap(t *testing.T) {
 	repo := &mockHomeRepo{
 		assistedFrags: map[string]domain.MatchAssistedFrags{
-			"m1": {FragsMeasured: 12, Received: domain.AssistTiers{Total: 7, Low: 2, Mid: 3, High: 1}},
-			"m3": {FragsMeasured: 4},
+			"m1": {FragsFilm: 12, Received: domain.AssistTiers{Total: 7, Low: 2, Mid: 3, High: 1}},
+			"m3": {FragsFilm: 4},
 		},
 	}
-	items := []domain.RecentMatchItem{{MatchID: "m1"}, {MatchID: "m2"}, {MatchID: "m3"}}
+	kills, killsM3 := 20, 4
+	items := []domain.RecentMatchItem{{MatchID: "m1", Kills: &kills}, {MatchID: "m2"}, {MatchID: "m3", Kills: &killsM3}}
 
 	enrichMatchesWithAssistedFrags(context.Background(), repo, items)
 
 	if items[0].AssistedFrags == nil {
 		t.Fatal("m1 : objet attendu")
 	}
-	if got := *items[0].AssistedFrags; got.FragsMeasured != 12 || got.Received.Total != 7 || got.Received.Mid != 3 {
+	// Base = frags officiels de la tuile (20), même quand le film n'en lit que 12.
+	if got := *items[0].AssistedFrags; got.Received.Total != 7 || got.Received.Mid != 3 || got.FragsOfficial != 20 {
 		t.Fatalf("m1 = %+v", got)
 	}
 	if items[1].AssistedFrags != nil {
 		t.Fatalf("m2 absent de la map : nil attendu, got %+v", *items[1].AssistedFrags)
 	}
-	if items[2].AssistedFrags == nil || items[2].AssistedFrags.FragsMeasured != 4 || items[2].AssistedFrags.Received.Total != 0 {
-		t.Fatalf("m3 (mesuré, zéro) = %+v", items[2].AssistedFrags)
+	if items[2].AssistedFrags == nil || items[2].AssistedFrags.Received.Total != 0 || items[2].AssistedFrags.FragsOfficial != 4 {
+		t.Fatalf("m3 (zéro assisté) = %+v", items[2].AssistedFrags)
 	}
 }
 

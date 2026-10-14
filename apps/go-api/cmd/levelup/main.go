@@ -260,7 +260,7 @@ Commandes:
                   change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
   replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence (--out, --title, --oracle : + <short8>.oracle.json)
   migrate         Migrer les donnees vers le namespace multi-titres
-  restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
+  restore-csr     Ajouter les CSR historiques absents depuis un backup DuckDB legacy (INSERT seul, le CSR prime sur le LUSR à la lecture) (--gamertag X --backup PATH [--dry-run])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
   populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
   backfill-registry-names  Fait converger les noms de carte, paire, playlist et variante du registre restés NULL ou égaux

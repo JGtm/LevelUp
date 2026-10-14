@@ -14,9 +14,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { TacticalRaster } from '@/lib/api/types'
+import { mapFrame } from '@/lib/replay/heatPaint'
 
 import { getTacticalText } from './i18n'
 import { boiteDuPlan, cadrageDuFond, etatDuPlan, infoDuPlan, legendeDuPlan, rampeVerticale } from './plan.logic'
+import { aspectDuPlan } from './tacticalLecture.logic'
+import { repereDuPlan } from './tacticalView.logic'
 
 const t = getTacticalText('fr')
 const tEn = getTacticalText('en')
@@ -40,16 +43,16 @@ const LECTURE: TacticalRaster = {
 }
 
 describe('infoDuPlan — l’aide ⓘ du titre', () => {
-  it('les dénominateurs, la source, le pas de la grille et le plancher par zone', () => {
+  it('les matchs lus, la source, le pas de la grille et le plancher par zone', () => {
     expect(infoDuPlan(t, 'fr', 'morts', LECTURE, 2)).toBe(
-      '45 matchs mesurés sur 50 · journal des morts · grille 10 m · 3 matchs distincts par zone',
+      '45 matchs · journal des morts · grille 10 m · 3 matchs distincts par zone',
     )
   })
 
   it('un pas fractionnaire dans la langue de la page ; en anglais, les mots anglais', () => {
     expect(infoDuPlan(t, 'fr', 'morts', { ...LECTURE, pas_m: 0.5 }, 2)).toContain('grille 0,5 m')
     expect(infoDuPlan(tEn, 'en', 'morts', LECTURE, 2)).toBe(
-      '45 measured matches out of 50 · death log · 10 m grid · 3 distinct matches per zone',
+      '45 matches · death log · 10 m grid · 3 distinct matches per zone',
     )
   })
 
@@ -59,22 +62,16 @@ describe('infoDuPlan — l’aide ⓘ du titre', () => {
 
   it('« victoires − défaites » : les deux dénominateurs, de chaque côté', () => {
     expect(infoDuPlan(t, 'fr', 'gagne', LECTURE, 2)).toContain(
-      ' · 20 victoires et 25 défaites mesurées, 3 matchs distincts de chaque côté',
+      ' · 20 victoires et 25 défaites, 3 matchs distincts de chaque côté',
     )
   })
 
-  it('« morts seul » : la règle avec la ou les portées, puis ce qu’elle écarte', () => {
-    const info = infoDuPlan(
-      t,
-      'fr',
-      'isole',
-      { ...LECTURE, rayons_radar_m: [18, 24], matchs_sans_rayon: 2, morts_equipe_a_terre: 3 },
-      2,
-    )
+  it('« morts seul » : la règle avec la ou les portées, puis ce qu’elle écarte par construction', () => {
+    const info = infoDuPlan(t, 'fr', 'isole', { ...LECTURE, rayons_radar_m: [18, 24], morts_equipe_a_terre: 3 }, 2)
     expect(info).toContain(
       ' · seul : aucun coéquipier visible, ou le plus proche au-delà de 18 m ou 24 m (portée du radar)',
     )
-    expect(info).toContain(' · 2 matchs sans portée de radar connue')
+    expect(info).not.toContain('portée de radar connue')
     expect(info).toContain(" · 3 morts écartées, aucun coéquipier en mesure d'accompagner")
   })
 
@@ -124,6 +121,24 @@ describe('boiteDuPlan — le cadre du fond', () => {
   it('au rapport du fond, jamais plus haut que la hauteur que la fenêtre lui laisse', () => {
     expect(boiteDuPlan(2, 800)).toEqual({ aspectRatio: 2, width: '100%', maxWidth: '1600px' })
     expect(boiteDuPlan(0.5, 560)).toEqual({ aspectRatio: 0.5, width: '100%', maxWidth: '280px' })
+  })
+
+  // Constat du 2026-09-09 : sur Illusion, un canvas de 1 070 x 13 375 px (rapport 0,08) tiré des
+  // bornes servies. Le repère d'une carte à fond est son CALAGE, et le canvas remplit la boîte :
+  // avec le calage publié d'Illusion (`ctf_illusion.json`), le cadre garde le rapport du fond et
+  // tient dans la hauteur laissée, quelles que soient les bornes.
+  it('Illusion : le cadre suit le calage du fond, jamais les bornes servies', () => {
+    const fond = mapFrame({ metersPerPixel: 0.031, originX: -25.751434532165526, originY: 35.164999237060556, widthPx: 1711, heightPx: 2224 })
+    const bornesEtirees = { min_x: -25, max_x: 8.17, min_y: -380, max_y: 35, valide: true }
+    const repere = repereDuPlan(fond, bornesEtirees, 2)
+    expect(repere).not.toBeNull()
+    const aspect = aspectDuPlan(fond, repere)
+    expect(aspect).toBeCloseTo(1711 / 2224, 6)
+    const hauteurMax = 800
+    const boite = boiteDuPlan(aspect, hauteurMax)
+    // La boîte prend toute la largeur disponible (1 070 px au constat) sous `maxWidth`, au rapport du fond.
+    const largeur = Math.min(1070, Number.parseInt(boite.maxWidth, 10))
+    expect(largeur / aspect).toBeLessThanOrEqual(hauteurMax + 1)
   })
 })
 

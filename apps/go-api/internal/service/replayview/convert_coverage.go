@@ -220,6 +220,7 @@ func toPadDatingStats(v replay.PadDatingStats) replaydoc.PadDatingStats {
 		Ambiguous:          v.Ambiguous,
 		Uncovered:          v.Uncovered,
 		PowerupOccupations: v.PowerupOccupations,
+		FirstOfCycle:       v.FirstOfCycle,
 	}
 }
 

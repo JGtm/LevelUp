@@ -43,7 +43,7 @@ func SetGrenadeSetHook(h func(mask uint32, sel int))     { observateur.GrenadeSe
 func SetEmpTimerHook(h func(quant uint32))               { observateur.EmpTimerHook = h }
 func SetUnitRefHook(h func(UnitRefRead))                 { observateur.UnitRefHook = h }
 func SetWeaponRoundsHook(h func(rounds uint32))          { observateur.WeaponRoundsHook = h }
-func SetDesiredWeaponSetHook(h func(sel uint32))         { observateur.DesiredWeaponSetHook = h }
+func SetDesiredWeaponSetHook(h func(j JeuDArmes))        { observateur.DesiredWeaponSetHook = h }
 func SetGroundWeaponAmmoHook(h func(a, b, c uint32))     { observateur.GroundWeaponAmmoHook = h }
 func SetHeldWeaponHook(h func(idHigh, idLow uint32))     { observateur.HeldWeaponHook = h }
 func SetObjectParentStateHook(h func(ObjectParentState)) { observateur.ObjectParentStateHook = h }

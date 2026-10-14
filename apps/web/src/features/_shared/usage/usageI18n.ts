@@ -29,7 +29,8 @@ export interface UsageText {
   bandLegendAbove: string
   bandLegendNear: string
   bandLegendBelow: string
-  bandLegendUnmeasured: string
+  /** Case grise de la bande d'appui : aucun appui d'équipe sur le match. */
+  bandLegendNoTeamAssist: string
   /** Noms des familles d'équipement du bilan (clés du résumé Go). */
   metricCamo: string
   metricOvershield: string
@@ -46,15 +47,15 @@ export interface UsageText {
 export const USAGE_TEXT: Record<Locale, UsageText> = {
   fr: {
     unavailableLoadFailed: "La lecture du résumé d'usage a échoué.",
-    emptyNoFilm: 'Aucun film décodé sur cette sélection.',
+    emptyNoFilm: 'Cette sélection ne compte aucun match filmé.',
     emptyNoObjectives: 'Aucun objectif dans les modes de cette sélection.',
-    emptyTitleNoFilm: 'Aucune mesure',
-    emptyTitleNoObjectives: "Aucune mesure d'objectif",
+    emptyTitleNoFilm: 'Aucun match filmé',
+    emptyTitleNoObjectives: 'Aucun objectif',
     emptyTitleLoadFailed: 'Lecture impossible',
     bandLegendAbove: 'Au-dessus de la parité',
     bandLegendNear: 'Au niveau de la parité',
     bandLegendBelow: 'Sous la parité',
-    bandLegendUnmeasured: 'Non mesuré',
+    bandLegendNoTeamAssist: 'Aucun appui d’équipe',
     metricCamo: 'Camouflage',
     metricOvershield: 'Surbouclier',
     metricWall: 'Mur de protection',
@@ -67,15 +68,15 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
   },
   en: {
     unavailableLoadFailed: 'Loading the usage summary failed.',
-    emptyNoFilm: 'No decoded film in this selection.',
+    emptyNoFilm: 'This selection has no filmed match.',
     emptyNoObjectives: 'No objective in the modes of this selection.',
-    emptyTitleNoFilm: 'Nothing measured',
-    emptyTitleNoObjectives: 'No objective measured',
+    emptyTitleNoFilm: 'No filmed match',
+    emptyTitleNoObjectives: 'No objective',
     emptyTitleLoadFailed: 'Could not load',
     bandLegendAbove: 'Above parity',
     bandLegendNear: 'At parity',
     bandLegendBelow: 'Below parity',
-    bandLegendUnmeasured: 'Not measured',
+    bandLegendNoTeamAssist: 'No team assist',
     metricCamo: 'Camouflage',
     metricOvershield: 'Overshield',
     metricWall: 'Drop wall',

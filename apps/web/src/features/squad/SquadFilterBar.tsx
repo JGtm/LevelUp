@@ -18,29 +18,23 @@
  */
 import type { ReactNode } from 'react'
 
-import { GamertagCombobox } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { FiltresPill, PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { PeriodSessionRail } from '@/components/shell/PeriodSessionRail'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-import { tokenCssVar } from '@/lib/accessibility'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import type { Locale } from '@/lib/i18n/locale'
 import type { SessionLabelEntry, TeammateOption, TeammateRow } from '@/lib/api/types'
 
 import { getSquadText } from './i18n'
-import { getSquadTeammateColors, MAX_SELECTION, SQUAD_MAIN_PLAYER_TOKEN } from './colors'
 import { seasonToPeriod } from './useActiveSeason'
 import { useSquadFilterBarState } from './useSquadFilterBarState'
-import { useSquadPresets } from './useSquadPresets'
-
-const CHART_COLORS = getSquadTeammateColors(MAX_SELECTION)
+import { SquadCompositionPicker } from './SquadCompositionPicker'
 
 export interface SquadFilterBarProps {
   playerSlug: string
   locale: Locale
-  hasLinkedIdentity: boolean
   /** Composition sélectionnée (appliquée en direct). */
   selectedGts: string[]
   setSelectedGts: (next: string[] | ((prev: string[]) => string[])) => void
@@ -68,7 +62,6 @@ export interface SquadFilterBarProps {
 export function SquadFilterBar({
   playerSlug,
   locale,
-  hasLinkedIdentity,
   selectedGts,
   setSelectedGts,
   availableOptions,
@@ -111,21 +104,6 @@ export function SquadFilterBar({
     getSessionShownCount,
   } = useSquadFilterBarState({ playerSlug, locale, pickedSquadSessionLabels, compositionSessions })
 
-  // Presets du combobox : escouades sauvegardées + groupes d'accès (charger un
-  // roster), + footer de gestion (enregistrer / renommer / supprimer).
-  const {
-    presetGroups: squadPresetGroups,
-    footer: squadPresetFooter,
-    onClose: squadPresetOnClose,
-  } = useSquadPresets({
-    playerSlug,
-    currentPlayerXuid,
-    hasLinkedIdentity,
-    locale,
-    selectedRows,
-    activeContextLabels,
-  })
-
   return (
     <div className="sticky top-0 z-30 px-6" style={{ background: 'var(--background)' }}>
       <div className="flex min-h-10 items-center gap-1.5 overflow-visible border-b border-border py-1.5">
@@ -135,27 +113,16 @@ export function SquadFilterBar({
             combobox (leadingPill) → même ligne flex que les pills coéquipiers, donc
             alignement vertical garanti. Le popover intègre les presets « Escouades
             enregistrées » (charger/gérer une compo) et « Groupes ». */}
-        <GamertagCombobox
-          compact
-          leadingPill={{ label: playerSlug, color: tokenCssVar(SQUAD_MAIN_PLAYER_TOKEN) }}
+        <SquadCompositionPicker
+          playerSlug={playerSlug}
+          locale={locale}
           selected={selectedGts}
           onChange={setSelectedGts}
-          max={MAX_SELECTION}
-          frequentOptions={availableOptions}
-          colors={CHART_COLORS}
-          excludeGamertag={playerSlug}
-          placeholder={t.selection.placeholder(availableOptions.length)}
+          options={availableOptions}
+          selectedRows={selectedRows}
+          currentPlayerXuid={currentPlayerXuid}
+          activeContextLabels={activeContextLabels}
           onAddAsFriend={onAddFriendGamertag}
-          presetGroups={squadPresetGroups}
-          onLoadPreset={(gts) =>
-            // Dédup vs la pill de tête (leadingPill = joueur courant) : un roster
-            // legacy peut encore contenir le viewer → on le retire avant sélection.
-            setSelectedGts(
-              gts.filter((g) => g.toLowerCase() !== playerSlug.toLowerCase()).slice(0, MAX_SELECTION),
-            )
-          }
-          footer={squadPresetFooter}
-          onClose={squadPresetOnClose}
         />
 
         {/* Séparateur */}

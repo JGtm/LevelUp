@@ -27,12 +27,9 @@ export type AmmoHint =
  * « Usage d'équipements, par joueur » (Vue match, onglet « Armes et terrain ») : la grille compte,
  * sur tout le match, ce que le rejeu ne montre qu'image par image.
  *
- * DEUX RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
- *  1. `coverageReserveFmt` — les gestes que le film mesure sans en nommer l'auteur ni l'origine,
- *     ou dont l'auteur n'a pas d'équipe écrite par le film, n'entrent pas dans la grille. La
- *     réserve ne se cache pas : elle tient en UNE phrase dans l'aide du TITRE, sans pied de carte.
- *  2. `infoByPlayer` — le RÉPULSEUR n'a aucun canal d'activation dans le film : pas de colonne
- *     vide (elle se lirait « zéro usage »), une phrase qui le dit.
+ * `infoByPlayer` dit ce que la grille compte ; le RÉPULSEUR n'a pas de colonne (une colonne vide
+ * se lirait « zéro usage »), et aucun texte ne dit ce que la grille ne compte pas (aucun inconnu à
+ * l'écran, garde `lib/i18n/noUnknownMentions.guard.test.ts`).
  *
  * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
  * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
@@ -62,16 +59,6 @@ export interface EquipmentUsageText {
   outcomeKeptFmt: (count: number) => string
   outcomeDroppedFmt: (count: number) => string
   outcomeTotalTakenFmt: (count: number) => string
-  /**
-   * LA RÉSERVE DE COUVERTURE, EN UNE PHRASE ET DANS L'INFOBULLE DU TITRE (2026-09-14) : les
-   * gestes mesurés sans propriétaire ou d'un joueur rangé dans aucune équipe (le film tait son
-   * équipe), et les poses d'origine inconnue, additionnés. La phrase affichée ne nomme que l'auteur
-   * et l'origine : le cas d'un auteur sans équipe (0 geste au parc du 2026-10-06) attend une décision
-   * de libellé. Ils ont eu lieu, la grille ne peut pas les compter — la réserve ne se cache pas (décision
-   * utilisateur 2026-09-09), elle ne s'écrit simplement plus en pied de carte (décision
-   * utilisateur 2026-09-14 : AUCUN texte de pied sous ce bloc).
-   */
-  coverageReserveFmt: (count: number) => string
   /**
    * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
@@ -329,9 +316,8 @@ export interface ReplayText {
   layerTrailHint: string
   /**
    * EFFETS D'ÉVÉNEMENT, réglables séparément (décision utilisateur du 16/08) : les éclairs
-   * de bouche de TOUS les tirs, et le trait tueur -> victime des éliminations. Le premier
-   * porte une RÉSERVE DE MESURE affichée en clair (le film n'enregistre un tir que
-   * lorsqu'un dégât est appliqué) : elle ne vit pas dans un commentaire, elle est à l'écran.
+   * de bouche de TOUS les tirs, et le trait tueur -> victime des éliminations. Le premier dit
+   * ce qu'il dessine (un tir qui applique un dégât), jamais ce qu'il ne dessine pas.
    */
   effects: string
   layerShotFx: string
@@ -372,8 +358,6 @@ export interface ReplayText {
   placementUnnamedLabel: string
   /** Ligne « posé par <joueur> » de l'infobulle ; le poseur est une MESURE (proximité). */
   placementOwnerFmt: (name: string) => string
-  /** Poseur non mesuré (aucun bipède contemporain à moins de 3 m) : le dire, pas le taire. */
-  placementOwnerUnknown: string
   /**
    * L'INFOBULLE D'UN OBJET LÂCHÉ : ce qu'il est, qui l'a lâché, et à quel instant du rejeu.
    *
@@ -821,7 +805,6 @@ export interface ReplayText {
   healthLabel: string
   shieldLabel: string
   abilityLabel: string
-  loadoutUnread: string
   loadoutAge: string
   /**
    * PROVENANCE d'un relevé d'armes lu à la CRÉATION du corps (`loadouts[].src === 'birth'`,
@@ -870,20 +853,6 @@ export interface ReplayText {
   abilityUnidentified: (rank: number) => string
   abilityAge: string
   abilityAhead: string
-  /**
-   * AUCUNE LECTURE DE CAPACITÉ DANS LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
-   * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`). Avant le correctif, `abilityAt`
-   * cherchait « la dernière lecture du slot » sans borne de vie : sur un slot recyclé ou un
-   * film multi-manche, la vignette pouvait montrer la capacité de la vie PRÉCÉDENTE — parfois
-   * celle d'un AUTRE joueur — ou disparaître si cette vie s'était terminée en `spent`. Même
-   * glyphe que `abilityUnidentified` (vignette vide en pointillés), infobulle dédiée.
-   *
-   * CE N'EST PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie est un humain ou
-   * un bot, jamais une entité anonyme — le nommage se corrige à la source côté Go, hors de ce
-   * lot) : le libellé dit uniquement qu'aucune lecture n'a encore été observée depuis le début
-   * de CETTE vie, jamais qu'elle serait « inconnue », et jamais la lecture empruntée à une autre.
-   */
-  abilityUnread: string
   /**
    * LES CHARGES DE LA CAPACITÉ PORTÉE (schéma 38 enrichi, lot P6) : le compte de la lecture
    * la plus récente de la même vie et du même équipement — et « PLEIN » QUALITATIF avant la
@@ -937,18 +906,6 @@ export interface ReplayText {
   ammoFullLabel: string
   ammoDrawnHint: string
   drawnUnknown: string
-  /**
-   * AUCUNE LECTURE D'INVENTAIRE DANS LA VIE EN COURS DU SLOT (correctif P0-2, 2026-09-06,
-   * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) : le loadout peut être lu (`equipped`
-   * existe) alors que les munitions de CETTE vie ne le sont pas encore — avant le correctif,
-   * `inventoryAt` pouvait reporter celles d'une vie précédente sur ce slot.
-   *
-   * PAS UN ÉTAT D'IDENTITÉ (décision produit du 2026-09-06 : une vie est un humain ou un bot,
-   * jamais une entité anonyme) : le repli affiche un tiret neutre, et CE libellé n'est que
-   * l'infobulle qui dit pourquoi — « pas encore de lecture », jamais « inconnu ». Un silence
-   * total se lirait comme « chargeur vide », qui est une mesure, pas une lacune.
-   */
-  ammoUnread: string
   /**
    * Lecture d'inventaire VIDE (schéma 19, `inventory[].empty`). Le LIBELLÉ se lit à l'écran,
    * l'INDICE porte l'explication et se termine par l'âge de la lecture VIDE — la sienne, pas

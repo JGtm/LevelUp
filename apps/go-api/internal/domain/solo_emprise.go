@@ -51,8 +51,8 @@ type EmpriseMapColumn struct {
 	// Resources : ressource puis chaque objet, comme un match (SquadEmpriseMatchResource), sommés
 	// sur les matchs de la carte où la ressource se lit.
 	Resources []SquadEmpriseMatchResource `json:"resources"`
-	// PowerWeaponKills : frags aux armes spéciales de chaque camp (feuille de match), sur les matchs
-	// qui les portent. Nil quand aucun ne les porte.
+	// PowerWeaponKills : frags aux armes spéciales de chaque camp (même source, match par match, que
+	// SquadEmpriseMatch.PowerWeaponKills), sur les matchs qui les portent. Nil quand aucun ne les porte.
 	PowerWeaponKills *SquadEmpriseCount `json:"power_weapon_kills,omitempty"`
 }
 
@@ -61,7 +61,7 @@ type EmpriseEquipment struct {
 	// MatchesMeasured : les matchs dont les comptes sont lus (filmés à camp connu) — le même
 	// périmètre pour moi et pour le reste de mon camp.
 	MatchesMeasured int `json:"matches_measured"`
-	// Families : grappin (non mesuré), les familles du bilan hors bonus, propulseur (non mesuré).
+	// Families : les familles du bilan hors bonus, dans l'ordre du bilan.
 	Families []EmpriseEquipmentFamily `json:"families"`
 }
 
@@ -69,19 +69,12 @@ type EmpriseEquipment struct {
 type EmpriseEquipmentFamily struct {
 	// Family : la clé de famille du résumé (« wall », « sensor », « grapple »…), nommée côté web.
 	Family string `json:"family"`
-	// Measured : la famille porte une ligne d'issue (servi / gardé / lâché). Faux : seuls mes
-	// lâchers sont connus (DroppedMe), ni prise ni usage ne sont publiés.
-	Measured bool `json:"measured"`
-	// Me / Rest : mes comptes et ceux du reste de mon camp (mesurées seulement).
-	Me   *EmpriseEquipmentOutcomes `json:"me,omitempty"`
-	Rest *EmpriseEquipmentOutcomes `json:"rest,omitempty"`
+	// Me / Rest : mes comptes et ceux du reste de mon camp.
+	Me   EmpriseEquipmentOutcomes `json:"me"`
+	Rest EmpriseEquipmentOutcomes `json:"rest"`
 	// Lobby : les comptes de TOUS les joueurs des matchs mesurés — mon camp, l'adversaire et les
-	// joueurs sans camp connu (mesurées seulement). Dit si la famille a été tenue par quelqu'un.
-	Lobby *EmpriseEquipmentOutcomes `json:"lobby,omitempty"`
-	// DroppedMe : mes lâchers (non mesurées seulement).
-	DroppedMe int `json:"dropped_me,omitempty"`
-	// DroppedLobby : les lâchers de tous les joueurs des matchs mesurés (non mesurées seulement).
-	DroppedLobby int `json:"dropped_lobby,omitempty"`
+	// joueurs sans camp connu. Dit si la famille a été tenue par quelqu'un.
+	Lobby EmpriseEquipmentOutcomes `json:"lobby"`
 }
 
 // EmpriseEquipmentOutcomes — pris sur la carte, servi (posé pour le mur, charge consommée pour les

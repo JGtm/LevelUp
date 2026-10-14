@@ -78,9 +78,9 @@ describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
     expect(u.byPlayer).toHaveLength(4)
   })
 
-  it('un joueur dont le film TAIT l’équipe n’a AUCUNE ligne : ses gestes sont comptés hors camp', () => {
+  it('un joueur dont le film TAIT l’équipe n’a AUCUNE ligne : ses gestes ne vont à personne', () => {
     // Le bot bouche-trou du témoin 43716616 : vivant, une traction — et aucune équipe écrite par
-    // le film. Ni ligne, ni groupe à part : la somme des lignes plus `unattributed` reste juste.
+    // le film. Ni ligne, ni groupe à part : sa traction n'est comptée sur aucune ligne.
     const doc = temoin({
       roster: [
         { filmIndex: 0, xuid: 'a1', name: 'Alpha', team: 0 },
@@ -97,7 +97,7 @@ describe('buildEquipmentUsage — le pont slot -> joueur -> équipe', () => {
     const u = buildEquipmentUsage(doc, feuille)
     expect(u.byPlayer.map((r) => r.name)).toEqual(['Alpha'])
     expect(u.byTeam.map((g) => g.team)).toEqual([0])
-    expect(u.unattributed.grapplePulls).toBe(1)
+    expect(u.byPlayer.reduce((n, r) => n + r.grapplePulls, 0)).toBe(1)
   })
 
   it('n’ouvre aucune ligne pour une entrée de roster que le film n’a jamais vue vivre', () => {
@@ -284,7 +284,6 @@ describe('buildEquipmentUsage — poses déployées et objets lâchés', () => {
       equipmentPlacements: [pose('sensor', 'deployed', -1), pose('sensor', 'deployed', 1)],
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
-    expect(u.unattributed.deployed).toEqual({ sensor: 1 })
     expect(u.byPlayer.reduce((n, r) => n + (r.deployed.sensor ?? 0), 0)).toBe(1)
   })
 })
@@ -327,7 +326,7 @@ describe('buildEquipmentUsage — grenades lancées', () => {
       grenades: [{ slot: 0, rank: 0, t: 5, i: 77, s: 'x', x: 0, y: 0 }],
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
-    expect(u.unattributed.grenades).toEqual({ 0: 1 })
+    expect(u.byPlayer.every((r) => tallyIsEmpty(r))).toBe(true)
     expect(u.hasData).toBe(false)
   })
 
@@ -342,7 +341,7 @@ describe('buildEquipmentUsage — grenades lancées', () => {
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
     expect(u.byPlayer.map((r) => r.name)).toEqual(['Alpha'])
-    expect(u.unattributed.grenades).toEqual({ 0: 1 })
+    expect(u.byPlayer[0].grenades).toEqual({})
   })
 
   /**
@@ -369,7 +368,6 @@ describe('buildEquipmentUsage — grenades lancées', () => {
     const u = buildEquipmentUsage(doc, SB)
     const bot = u.byPlayer.find((r) => r.xuid === 'bot:B1 [bot]')
     expect(bot?.grenades).toEqual({ 2: 1 })
-    expect(u.unattributed.grenades).toEqual({})
   })
 })
 
@@ -413,69 +411,9 @@ describe('buildEquipmentUsage — le canal ANONYME et les gestes sans propriéta
       equipmentEpisodes: [{ slot: 9, fam: 'camo', t0: 0, t1: 10 }],
     } as Partial<ReplayDocument>)
     const u = buildEquipmentUsage(doc, SB)
-    expect(u.unattributed.grapplePulls).toBe(1)
-    expect(u.unattributed.grenades).toEqual({ 2: 1 })
-    expect(u.unattributed.episodes.camo).toEqual({ count: 1, ms: 1000, kills: 0 })
     expect(u.byPlayer.every((r) => tallyIsEmpty(r))).toBe(true)
     // Rien d'ATTRIBUÉ : la section reste fermée, il n'y a aucune ligne à écrire.
     expect(u.hasData).toBe(false)
-  })
-})
-
-describe('buildEquipmentUsage — les dénominateurs de couverture', () => {
-  it('recopie les dénominateurs du document, sans en recalculer aucun', () => {
-    const doc = temoin({
-      coverage: {
-        equipment: {
-          tracksTotal: 90,
-          camoLives: 3,
-          camoEpisodes: 4,
-          overshieldLives: 2,
-          overshieldEpisodes: 2,
-          killsRead: true,
-        },
-        grapple: { pulls: 12, pullLives: 7, lightReads: 20, heavyReads: 14, unpairedFires: 2, brokenBodies: 0 },
-        placements: { byFamilyOrigin: { 'sensor/deployed': 5 } },
-        groundWeapons: { powerupPads: 2 },
-      },
-    } as unknown as Partial<ReplayDocument>)
-    const cov = buildEquipmentUsage(doc, SB).coverage
-    expect(cov.tracksTotal).toBe(90)
-    expect(cov.episodeLives).toEqual({ camo: 3, overshield: 2 })
-    expect(cov.grapplePulls).toBe(12)
-    expect(cov.grapplePullLives).toBe(7)
-    expect(cov.placementsByFamilyOrigin).toEqual({ 'sensor/deployed': 5 })
-    expect(cov.powerupPads).toBe(2)
-    expect(cov.killsRead).toBe(true)
-  })
-
-  it('killsRead faux (jointure non tentée) se distingue d’une jointure lue à zéro', () => {
-    const doc = temoin({
-      coverage: {
-        equipment: {
-          tracksTotal: 10,
-          camoLives: 0,
-          camoEpisodes: 0,
-          overshieldLives: 0,
-          overshieldEpisodes: 0,
-          killsRead: false,
-        },
-      },
-    } as unknown as Partial<ReplayDocument>)
-    expect(buildEquipmentUsage(doc, SB).coverage.killsRead).toBe(false)
-  })
-
-  it('un artefact sans bloc de couverture ne rend AUCUN dénominateur inventé', () => {
-    const cov = buildEquipmentUsage(temoin(), SB).coverage
-    expect(cov).toEqual({
-      tracksTotal: 0,
-      episodeLives: { camo: 0, overshield: 0 },
-      grapplePulls: 0,
-      grapplePullLives: 0,
-      placementsByFamilyOrigin: {},
-      powerupPads: 0,
-      killsRead: false,
-    })
   })
 })
 

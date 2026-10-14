@@ -3146,3 +3146,110 @@ package replay
 //	                binaire de la base contre binaire du lot : seuls le socle releve, les comptes, les
 //	                revisions et les replis verses par killsource changent. `cmd/killsource json` :
 //	                `0a08d2f2` 119 -> 124 lignes, aucune ligne existante modifiee.
+//
+// v91 (2026-10-09, lot `feat/aj-needler` des ajustements) : UNE SEULE PRISE DE SOCLE PAR REAPPARITION
+// DE L ARME.
+//
+//	`padPickups`    une occupation de socle d arme dont la fenetre porte PLUSIEURS ramassages natifs
+//	                de la famille, ou un ramassage qu une autre occupation revendique, se date et se
+//	                nomme par la regle de jeu posee par l utilisateur : la premiere prise faite AU
+//	                SOCLE (ramasseur a moins de 1,5 m) apres l apparition de l arme et avant son
+//	                apparition suivante ; les ramassages suivants du cycle sont ceux d une autre arme,
+//	                au sol (`repli_prise_de_socle_premiere_du_cycle`, pad_pickup_dating_cycle.go). Un
+//	                ramassage plus tot non localise, ou designe pour deux occupations, fait
+//	                s abstenir ; une occupation que la lecture datait garde sa date et son joueur.
+//	                Le releve des socles hors de l emprise (v90) s intercale entre la lecture et le
+//	                repli : il ne lit que la lecture, et le repli juge la presence au socle sur la
+//	                position relevee.
+//	`coverage.padDating`  un compteur neuf, `firstOfCycle` (occupations datees par le repli,
+//	                sous-ensemble de `dated`).
+//
+//	CE QUI MONTE    `SchemaVersion` 90 -> 91. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
+//	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
+//	                quels. Le resume d usage (`pad_pickups`) reprend par la cle
+//	                `(UsageSummaryRev, SchemaVersion)`.
+//
+//	LE PARC         un artefact 90 dont les faits sont sur disque : verdict `republier`.
+//
+//	MESURE          regle rejouee en processus sur les 172 artefacts du parc local (schema 90,
+//	                positions des pistes) : 2 462 -> 3 335 occupations datees (+873), 0 date perdue,
+//	                0 date ou joueur change ; contre-epreuve independante (`weaponChanges` de la meme
+//	                vie, meme famille, a 0,5 s) : 778 des 873 prises du repli, 92 des 95 autres sur un
+//	                joueur qui portait deja l arme (prise de munitions), 3 inexpliquees (0,3 %) contre
+//	                10 sur 2 462 (0,4 %) pour la lecture. Needler de `5c38f581` (Prism) : 2 -> 4 prises
+//	                attribuees ; ses quatre autres occupations sans date sont des apparitions
+//	                remplacees 30,1 s plus tard par une seconde apparition (aucune prise au socle).
+//
+// v92 (2026-10-09, lot `feat/koth-colline`, signalement du user sur son 2v2 Roi de la colline) : LA
+// COLLINE A SA VRAIE PLACE, ET SA CAPTURE SE VOIT.
+//
+//	`zoneStates`    la colline d une periode du designateur se place la ou se tient le camp que le
+//	                canal de propriete nomme (presence en frames, seuil 50 % des frames tenues
+//	                observees ; sous le seuil la periode est ecartee, `unpaired`) ; la grappe des
+//	                positions pendant les montees de la jauge n est plus qu un repli nomme
+//	                (`repli_colline_votes_sans_garde`). Elle partait du retour a zero de la capture
+//	                precedente et posait une colline sur la precedente (zone_states_hill_garde.go).
+//	`zoneStates[].gauge` / `gaugeRamps`   publies sur les collines : la jauge de capture du bloc
+//	                de l objet de mode pendant les periodes actives, et des segments a pousseur
+//	                constant — la prise (camp lu) ou la vidange (`draining`, champ neuf : le camp
+//	                qui tient la colline la perd). Une variante a prise instantanee (classe) n emet
+//	                aucune jauge (zone_states_hill_gauge.go).
+//	1re colline     la 1re periode commence au COUP D ENVOI (`t0FilmMs`) ramene dans la fenetre des
+//	                images-cles qui encadrent la creation de l objet de mode, non plus au premier
+//	                contact d un joueur (repli nomme `repli_colline_premiere_au_coup_d_envoi` : le
+//	                film ne date pas la creation). Sur 11 films la fenetre contient le coup d envoi.
+//
+//	CE QUI MONTE    `SchemaVersion` 91 -> 92. `grammar.Rev`, `killsource.Rev`, `objectives.Rev` et
+//	AVEC ELLE       `SchemaDesFaits` ne bougent pas : l assemblage rejoue les faits persistes tels
+//	                quels.
+//
+//	LE PARC         un artefact 91 dont les faits sont sur disque : verdict `republier`.
+//
+//	MESURE          11 films a colline recuits un a un (Arene, Doubles, Classe) : au plus une
+//	                colline active par frame, aucune periode fusionnee avec la suivante (4 films sur
+//	                11 en avaient), 0 repli sans garde ; les trois films classes de Lattice rendent
+//	                la meme sequence de collines. Temoin `0d9a9af9` : 3e periode sur la colline 4
+//	                (avant : 2, celle de la 4e). Detail : `.ai/PLAN_KOTH_REJEU_2026-10-09.md`.
+//
+// v93 (2026-10-09, representation intermediaire 2.7.d1, plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
+// BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
+// ECRITE v91 sur la branche `feat/ri-lk-images-cles`, RENUMEROTEE v92 a la fusion de `feat/v75`
+// `f516d4bf4` (le lot `feat/aj-needler` a pris 91), puis v93 a celle de `46f203b09` (le lot
+// `feat/koth-colline` a pris 92).
+//
+//	Aucun champ neuf ; le CONTENU de `loadouts`, `inventory`, `grenadeReads` et `abilities` (`kf`)
+//	change. Un record bipede d image-cle que la regle d admission retient (ferme ou i22 a quatre
+//	compteurs, ET armes au catalogue, ET masque d i47 egal aux compteurs) publie ce que le lecteur du
+//	jeu lit a l etendue de chaque composant ; les autres gardent la valeur de la fenetre, comptee
+//	sous trois replis (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,
+//	`repli_fenetre_marque_de_portage`). Valeurs decidees par l utilisateur le 2026-10-08 (U-3, U-4) :
+//	plus de « Grenade dynamo » lue un bit trop tot dans les dotations ; grenade selectionnee en base
+//	0 ; `d` = emplacement desire en main principale (i42 param[1]), absent quand le film n en
+//	designe aucun ; rang de capacite publie dans 16..23 seulement.
+//
+//	CE QUI MONTE    `SchemaVersion` 92 -> 93 ; `grammar.Rev` `grammar-2026-10-09.2` ->
+//	AVEC ELLE       `grammar-2026-10-09.3`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
+//	                complements a revision constante) et `SchemaDesFaits` (11) ne bougent pas : la
+//	                forme des faits ne change pas, la publication rejouee depuis eux est identique.
+//
+//	LE PARC         un artefact 92 ou d avant porte `grammar-2026-10-09` ou anterieure : verdict
+//	                `redecoder`.
+//
+//	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`, `54b47a2b8`), 19 temoins : aucun oracle
+//	                ne bouge ; seuls FAUX du banc, les trois replis neufs (R-1, nouveaux par
+//	                construction). Fiches : records d image-cle avec armes identiques sur les 19
+//	                films ; armes retirees = les « Grenade dynamo » des records admis (`111fa685`
+//	                38 -> 1, `4f77afc1` 52 -> 0, `e5adf7b2` 31 -> 1) et un record de `111fa685` ou la
+//	                fenetre listait 19 familles (2 lues) ; grenades selectionnees 264 -> 4 203, chacune
+//	                dans le masque d i47 (hors du masque, rien n est publie, contrat du canal delta,
+//	                revue D1.4.6 : 4 records de format 20) ; `d` identique sur tout record publie
+//	                des deux cotes, 50 records en gagnent un ; inventaires vides en
+//	                baisse sur 11 films. Jauges et chargeurs en baisse : lectures de la fenetre a
+//	                plusieurs debuts candidats (la plus longue retenue, 4 a 20 bits trop tot, D1.0.7) —
+//	                jauges 0,5001 / 0,25 / 0,75, chargeurs de 1 (331 sur 349), reserves de 1 232 a
+//	                2 000 — la ou le lecteur du jeu lit, au meme instant et pour le meme slot,
+//	                chargeur et reserve plausibles ou une jauge d arme a energie. `replay-equiv`, 20
+//	                films, binaires de `3aa885e37` (puis `54b47a2b8`) contre ceux du lot : etapes divergentes `artifact`
+//	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
+//	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.

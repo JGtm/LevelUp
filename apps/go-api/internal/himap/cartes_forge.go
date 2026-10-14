@@ -658,7 +658,7 @@ func EstCanevasForge(module string) bool {
 // Ce dossier n'est pas versionne (`.gitignore`), au meme titre que l'installation du jeu :
 // c'est une entree d'outillage hors ligne, pas une donnee de reference. Sa constitution est
 // decrite dans `.ai/V7.5/` — un `.mvar` absent fait echouer la cuisson de sa carte, jamais des
-// autres.
+// autres, et le depot absent fait echouer les preuves du tag `gamefiles` qui le lisent.
 const DepotVariantesCarte = ".ai/re_dump/mapvar"
 
 // DepotNavmesh : ou sont les navmesh.blob publies avec les cartes Forge, RELATIVEMENT A LA

@@ -97,6 +97,12 @@ export interface GamertagComboboxProps {
    * Compare, Settings, Admin sont inchangés).
    */
   sources?: readonly GamertagSuggestionSource[]
+  /**
+   * Demande d'ouverture venue de l'extérieur : chaque NOUVELLE valeur non nulle donne le focus
+   * au champ, ce qui ouvre le popover (même chemin qu'un clic dans le champ). Sert à un appelant
+   * qui doit amener l'utilisateur au sélecteur depuis un autre contrôle de la page.
+   */
+  openRequest?: number
 }
 
 /** Les quatre sources du popover, dans leur ordre d'affichage. */
@@ -128,6 +134,7 @@ export function GamertagCombobox({
   footer,
   onClose,
   leadingPill,
+  openRequest = 0,
 }: GamertagComboboxProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -159,6 +166,12 @@ export function GamertagCombobox({
     if (prevOpenRef.current && !isOpen) onCloseRef.current?.()
     prevOpenRef.current = isOpen
   }, [isOpen])
+
+  // Le focus ouvre le popover par `onFocus` : aucun état écrit ici, l'effet ne fait que
+  // déplacer le focus quand la demande change.
+  useEffect(() => {
+    if (openRequest > 0) inputRef.current?.focus()
+  }, [openRequest])
 
   // ─── Suggestions via hook partagé ───────────────────────────────────────────
 

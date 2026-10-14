@@ -1,10 +1,9 @@
 /**
- * MatchAssistChart — le graphe des assistances et, surtout, SES TROIS ÉTATS VIDES.
+ * MatchAssistChart — le graphe des assistances, ses deux états vides et ses bots.
  *
- * Ce que ces tests cadenassent tient en une phrase : « on ne sait pas » ne doit jamais
- * s'écrire « aucune ». Les deux messages sont distincts, ils dépendent d'un DÉNOMINATEUR
- * (measured_deaths) et pas de la longueur de la liste, et l'absence totale de bloc ne
- * rend rien du tout.
+ * Ce que ces tests cadenassent : un bloc absent (pas de film porteur de l'assistance) ne
+ * rend rien du tout — aucune mention « non mesuré » ; un bloc à liste vide dit « aucune
+ * assistance » ; un bot assistant ou tueur compte comme un joueur.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -36,7 +35,6 @@ const pair = (over: Partial<MatchAssistPair> = {}): MatchAssistPair => ({
 })
 
 const block = (over: Partial<MatchAssistPairs> = {}): MatchAssistPairs => ({
-  measured_deaths: 40,
   pairs: [pair()],
   ...over,
 })
@@ -51,36 +49,23 @@ describe('MatchAssistChart — états vides', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('dit « non disponibles » quand measured_deaths vaut 0 — jamais « aucune »', () => {
-    render(
+  it('dit « aucune assistance » quand le bloc est là et que la liste est vide, sans mention « non mesuré »', () => {
+    const { container } = render(
       <MatchAssistChart
-        block={block({ measured_deaths: 0, pairs: [] })}
-        scoreboard={emptyScoreboard}
-        meXUID={null}
-        t={MATCH_VIEW_TEXT.fr}
-      />,
-    )
-    expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistNotUsable)).toBeTruthy()
-    expect(screen.queryByText(MATCH_VIEW_TEXT.fr.assistNoData)).toBeNull()
-  })
-
-  it('dit « aucune assistance » quand c\'est MESURÉ et que la liste est vide', () => {
-    render(
-      <MatchAssistChart
-        block={block({ measured_deaths: 38, pairs: [] })}
+        block={block({ pairs: [] })}
         scoreboard={emptyScoreboard}
         meXUID={null}
         t={MATCH_VIEW_TEXT.fr}
       />,
     )
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistNoData)).toBeTruthy()
-    expect(screen.queryByText(MATCH_VIEW_TEXT.fr.assistNotUsable)).toBeNull()
+    expect(container.textContent).not.toMatch(/mesur/i)
   })
 
   it('traite `pairs: null` (tableau nullable du contrat) comme une liste vide', () => {
     render(
       <MatchAssistChart
-        block={{ measured_deaths: 12, pairs: null } as unknown as MatchAssistPairs}
+        block={{ pairs: null } as unknown as MatchAssistPairs}
         scoreboard={emptyScoreboard}
         meXUID={null}
         t={MATCH_VIEW_TEXT.fr}
@@ -147,6 +132,26 @@ describe('assistStackedSeries', () => {
       'X_ME',
     )
     expect(series[0].datapoints.map((d) => d.category)).toEqual(['Foe', 'Ally'])
+  })
+
+  it('compte les BOTS : assistant sans xuid nommé par le film, rangé au camp des tueurs qu’il assiste', () => {
+    const scoreboard = [
+      { xuid: 'X_ME', team_side: 'ally' },
+      { xuid: 'X_FOE', team_side: 'enemy' },
+    ] as unknown as MatchScoreboardRow[]
+    const series = assistStackedSeries(
+      [
+        pair({ assist_xuid: '', assist_gamertag: '343 Oscar [bot]', killer_xuid: 'X_ME', killer_gamertag: 'Moi', assist_count: 5 }),
+        pair({ assist_xuid: '', assist_gamertag: '343 Ritzy [bot]', killer_xuid: 'X_FOE', killer_gamertag: 'Foe', assist_count: 1 }),
+        pair({ assist_xuid: 'X_ME', assist_gamertag: 'Moi', killer_xuid: '', killer_gamertag: '343 Cosmo [bot]', assist_count: 2 }),
+      ],
+      scoreboard,
+      'X_ME',
+    )
+    const dps = series[0].datapoints
+    // Ritzy assiste un ennemi : en tête ; puis les alliés, total décroissant.
+    expect(dps.map((d) => d.category)).toEqual(['343 Ritzy', '343 Oscar', 'Moi'])
+    expect(dps[2].components).toEqual({ '343 Cosmo': 2 })
   })
 
   it('replie un tueur sans gamertag sur le nom masqué, jamais sur le xuid brut', () => {

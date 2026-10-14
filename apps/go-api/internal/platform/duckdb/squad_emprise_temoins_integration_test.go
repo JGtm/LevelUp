@@ -184,7 +184,7 @@ func lireEmprise(t *testing.T, pdb *ddb.PlayerDB, soiree []matchTemoin) domain.S
 	must(t, err)
 	tiers, err := usage.LoadPadTiers(ctx, ids)
 	must(t, err)
-	pwk, err := ddb.NewSquadEmpriseRepo(pdb).LoadPowerWeaponKills(ctx, ids)
+	pwk, err := ddb.NewSquadEmpriseRepo(pdb, nil).LoadPowerWeaponKills(ctx, ids)
 	must(t, err)
 	return squademprise.Build(squademprise.Input{
 		PlayerXUID: tJ,
@@ -346,7 +346,7 @@ func TestSquadEmpriseRepo_FeuilleMuetteResteNil(t *testing.T) {
 		VALUES ('muet', 'J', 'J', 0, TRUE, NULL), ('muet', 'O1', 'O1', 1, TRUE, NULL)`); err != nil {
 		t.Fatalf("participants: %v", err)
 	}
-	rows, err := ddb.NewSquadEmpriseRepo(pdb).LoadPowerWeaponKills(context.Background(), []string{"muet"})
+	rows, err := ddb.NewSquadEmpriseRepo(pdb, nil).LoadPowerWeaponKills(context.Background(), []string{"muet"})
 	must(t, err)
 	if len(rows) != 2 || rows[0].Kills != nil || rows[0].TeamID == nil {
 		t.Fatalf("lignes = %+v, attendu deux lignes à camp connu, sans frags", rows)

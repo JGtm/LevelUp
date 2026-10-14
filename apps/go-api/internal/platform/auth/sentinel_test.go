@@ -174,8 +174,8 @@ var duckdbAuthReadPattern = regexp.MustCompile(`\b\w+\.ReadOAuthRefreshToken\b`)
 // allowedDuckDBAuthReaders : VIDE depuis le 2026-09-13. `queries_auth.go` et sa
 // fonction ReadOAuthRefreshToken ont été supprimés avec la migration one-shot du
 // boot : plus AUCUN code du projet ne lit sync_meta.oauth_refresh_token. Les
-// valeurs résiduelles restent dans les player DB jusqu'au drop physique de la
-// colonne (recette ADR 0026, prochain rebuild), mais elles n'ont plus de lecteur.
+// valeurs résiduelles sont retirées des player DB par le step de migration
+// purge_sync_meta_legacy_auth_keys_v1 (swap de sync_meta, sans DELETE).
 // Le guard survit en RATCHET : réécrire un lecteur le fait échouer.
 var allowedDuckDBAuthReaders = map[string]string{}
 

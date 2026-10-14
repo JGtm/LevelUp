@@ -54,7 +54,7 @@ export function getTacticalText(locale: Locale) {
     sessions: m('tactical.filter.sessions'),
     sessionsHorsListe: (n: number, names: string) =>
       m('tactical.filter.sessions_off_list', { n, names }),
-    squadPlaceholder: (n: number) => m('tactical.filter.squad_placeholder', { n }),
+    squadLabel: m('tactical.filter.squad_label'),
     unknownTeammateTitle: m('tactical.filter.unknown_teammate_title'),
     unknownTeammateDescription: (names: string) =>
       m('tactical.filter.unknown_teammate_description', { names }),
@@ -84,13 +84,12 @@ export function getTacticalText(locale: Locale) {
     },
 
     // ── Carte du plan : aide ⓘ du titre et réglages en pilules ──────────────
-    planInfo: (retenus: number, filtres: number, source: string, pas: number, plancher: number) =>
-      m('tactical.plan.info', { retenus, filtres, source, pas, plancher }),
+    planInfo: (retenus: number, source: string, pas: number, plancher: number) =>
+      m('tactical.plan.info', { retenus, source, pas, plancher }),
     planInfoSourceJournal: m('tactical.plan.info_source_journal'),
     planInfoSourceReplay: m('tactical.plan.info_source_replay'),
     planInfoGagne: (v: number, d: number, plancher: number) => m('tactical.plan.info_gagne', { v, d, plancher }),
     planInfoIsole: (portee: string) => m('tactical.plan.info_isole', { portee }),
-    planInfoNoRange: (n: number) => m('tactical.plan.info_no_range', { n }),
     planInfoTeamDown: (n: number) => m('tactical.plan.info_team_down', { n }),
     planInfoOffFrame: (hors: number, total: number) => m('tactical.plan.info_off_frame', { hors, total }),
     // La valeur arrive DÉJÀ FORMATÉE (au plus au dixième) : l'arrondi est une règle de présentation
@@ -102,7 +101,7 @@ export function getTacticalText(locale: Locale) {
     whoMe: m('tactical.plan.who_me'),
     whoSquad: m('tactical.plan.who_squad'),
     whoOpponents: m('tactical.plan.who_opponents'),
-    planSquadDisabled: m('tactical.plan.squad_disabled'),
+    planSquadPending: m('tactical.plan.squad_pending'),
     pillRespawn: m('tactical.plan.pill_respawn'),
     pillRespawnAll: m('tactical.plan.pill_respawn_all'),
 
@@ -119,7 +118,6 @@ export function getTacticalText(locale: Locale) {
     analysisUpdating: m('tactical.analysis.updating'),
     planLegendLabel: (lo: string, hi: string) => m('tactical.plan.legend_label', { lo, hi }),
     statusPending: (n: number) => m('tactical.status.pending', { n }),
-    statusUnavailable: (n: number) => m('tactical.status.unavailable', { n }),
 
     // ── Zone sélectionnée ───────────────────────────────────────────────────
     zoneTitle: m('tactical.zone.title'),

@@ -9,9 +9,9 @@ package squademprise
 //	            si une famille a été tenue par quelqu'un (le web ne liste que celles-là) ;
 //	issues      sessionusage.PlayerOutcomeCounts, donc la bascule unique « utilisé » (mur = posé,
 //	            autres déployables = charge consommée) ;
-//	familles    le périmètre du bilan privé des deux bonus (ressource à part), encadré par les
-//	            familles « non mesurées » (grappin, propulseur : mes lâchers seulement). Le répulseur
-//	            n'a pas de ligne.
+//	familles    le périmètre du bilan privé des deux bonus (ressource à part). Une capacité portée
+//	            hors bilan (grappin, propulseur, répulseur) n'a pas de ligne : aucune famille dont
+//	            l'usage n'est pas lu n'est publiée.
 
 import (
 	"slices"
@@ -21,26 +21,22 @@ import (
 	"levelup/go-api/internal/domain/equipmentusage"
 )
 
-// equipmentLineFamilies — l'ordre des lignes : la première famille non mesurée (grappin), les
-// familles mesurées dans l'ordre du bilan, puis les autres non mesurées (propulseur).
-func equipmentLineFamilies() (ordre []string, mesuree map[string]bool) {
+// equipmentLineFamilies — l'ordre des lignes : les familles du bilan, hors bonus, dans l'ordre du
+// bilan.
+func equipmentLineFamilies() []string {
 	bonus := sessionusage.PowerupFamilies()
-	nonMesurees := equipmentusage.EquipmentUnmeasuredLineFamilies()
-	mesuree = map[string]bool{}
-	ordre = append(ordre, nonMesurees[:1]...)
+	var ordre []string
 	for _, f := range equipmentusage.EquipmentOutcomeFamilies() {
 		if !slices.Contains(bonus, f) {
-			mesuree[f] = true
 			ordre = append(ordre, f)
 		}
 	}
-	return append(ordre, nonMesurees[1:]...), mesuree
+	return ordre
 }
 
 // equipementCumul — les comptes d'une famille : moi, le reste de mon camp, le lobby entier.
 type equipementCumul struct {
-	me, rest, lobby         sessionusage.OutcomeCounts
-	droppedMe, droppedLobby int
+	me, rest, lobby sessionusage.OutcomeCounts
 }
 
 // BuildEquipment rend la carte « Équipement ». Nil sans film.
@@ -49,7 +45,7 @@ func BuildEquipment(in Input) *domain.EmpriseEquipment {
 		return nil
 	}
 	ix := newIndex(&in)
-	ordre, mesuree := equipmentLineFamilies()
+	ordre := equipmentLineFamilies()
 	cumul := make(map[string]*equipementCumul, len(ordre))
 	for _, f := range ordre {
 		cumul[f] = &equipementCumul{}
@@ -68,11 +64,11 @@ func BuildEquipment(in Input) *domain.EmpriseEquipment {
 			moi := p.XUID == in.PlayerXUID
 			team, ok := teamOf[p.XUID]
 			// Le lobby : tout joueur du match mesuré, l'adversaire et les joueurs sans camp compris.
-			cumulerJoueur(cumul, mesuree, p, cible{moi: moi, monCamp: moi || (ok && team == ours)})
+			cumulerJoueur(cumul, p, cible{moi: moi, monCamp: moi || (ok && team == ours)})
 		}
 	}
 	for _, f := range ordre {
-		out.Families = append(out.Families, publierFamille(f, mesuree[f], cumul[f]))
+		out.Families = append(out.Families, publierFamille(f, cumul[f]))
 	}
 	return out
 }
@@ -81,15 +77,8 @@ func BuildEquipment(in Input) *domain.EmpriseEquipment {
 type cible struct{ moi, monCamp bool }
 
 // cumulerJoueur verse une ligne (match, joueur) d'un match mesuré dans les cumuls.
-func cumulerJoueur(cumul map[string]*equipementCumul, mesuree map[string]bool, p *sessionusage.PlayerRow, c cible) {
+func cumulerJoueur(cumul map[string]*equipementCumul, p *sessionusage.PlayerRow, c cible) {
 	for f, cu := range cumul {
-		if !mesuree[f] {
-			cu.droppedLobby += p.DroppedByFamily[f]
-			if c.moi {
-				cu.droppedMe += p.DroppedByFamily[f]
-			}
-			continue
-		}
 		oc := sessionusage.PlayerOutcomeCounts(p, []string{f})
 		cu.lobby.Add(oc)
 		switch {
@@ -102,16 +91,12 @@ func cumulerJoueur(cumul map[string]*equipementCumul, mesuree map[string]bool, p
 }
 
 // publierFamille projette une famille au contrat.
-func publierFamille(family string, mesuree bool, c *equipementCumul) domain.EmpriseEquipmentFamily {
-	if !mesuree {
-		return domain.EmpriseEquipmentFamily{Family: family, DroppedMe: c.droppedMe, DroppedLobby: c.droppedLobby}
-	}
+func publierFamille(family string, c *equipementCumul) domain.EmpriseEquipmentFamily {
 	return domain.EmpriseEquipmentFamily{
-		Family: family, Measured: true, Me: issuesPubliees(c.me), Rest: issuesPubliees(c.rest),
-		Lobby: issuesPubliees(c.lobby),
+		Family: family, Me: issuesPubliees(c.me), Rest: issuesPubliees(c.rest), Lobby: issuesPubliees(c.lobby),
 	}
 }
 
-func issuesPubliees(o sessionusage.OutcomeCounts) *domain.EmpriseEquipmentOutcomes {
-	return &domain.EmpriseEquipmentOutcomes{Taken: o.Taken, Used: o.Used, Kept: o.Kept, Dropped: o.Dropped}
+func issuesPubliees(o sessionusage.OutcomeCounts) domain.EmpriseEquipmentOutcomes {
+	return domain.EmpriseEquipmentOutcomes{Taken: o.Taken, Used: o.Used, Kept: o.Kept, Dropped: o.Dropped}
 }

@@ -87,6 +87,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
   compositionSessions: () => queryKeys.compositionSessions(P, T, [], true),
+  teammatesTop: () => queryKeys.teammatesTop(P, T),
   synthesis: () => queryKeys.synthesis(P, T, 'h'),
   sessionDetail: () => queryKeys.sessionDetail(P, T, 'h', 's', 'c', false, 'fr'),
   comparePlayer: () => queryKeys.comparePlayer(P, T, 'gt'),

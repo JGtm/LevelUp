@@ -35,7 +35,9 @@ type ApparStats struct {
 	CouplesSansIdentite int
 }
 
-// Assist : ce que le kill-event declare a cote du tueur.
+// Assist : ce que le kill-event declare a cote du tueur — ou, pour une mort qu aucun kill-event ne
+// decrit (toute mort de bot), ce que le fil des evenements de la partie adresse a l assistant
+// (`killsource.Kill.AssistLuAuFil`, `facts/killsource/assist_fil.go`).
 //
 // UN SEUL ASSISTANT — ET LA PORTEE DE CE CONSTAT EST PLUS ETROITE QU IL N Y PARAIT. La grammaire
 // n expose qu un emplacement d assistant PAR KILL-EVENT ; le seul surplus qu on sache observer est
@@ -54,9 +56,9 @@ type Assist struct {
 	// Rejected : le motif de refus, vide quand il n y en a pas. `AssistRejectSelf` ou
 	// `AssistRejectRoster`.
 	Rejected string
-	// Known : un kill-event a-t-il ete attache a cette mort ? FAUX ne veut pas dire << pas
-	// d assistant >> : cela veut dire QU ON NE SAIT PAS. La distinction est la raison d etre de
-	// ce champ, et elle doit survivre jusqu en base.
+	// Known : l assistance de cette mort a-t-elle ete lue — un kill-event attache, ou le fil des
+	// evenements de sa trame ? FAUX ne veut pas dire << pas d assistant >> : cela veut dire QU ON NE
+	// SAIT PAS. La distinction est la raison d etre de ce champ, et elle doit survivre jusqu en base.
 	Known bool
 	// Extra : nombre d assistants DISTINCTS EN SURPLUS observes sur cette mort, au-dela de celui
 	// qui est publie dans `Name`.
@@ -70,7 +72,7 @@ type Assist struct {
 	//
 	// PORTEE : voir le commentaire du type. Ce compteur ne voit qu un surplus porte par un SECOND
 	// KILL-EVENT ATTACHE ; il est structurellement aveugle a un second assistant qui serait
-	// declare autrement.
+	// declare autrement. Il vaut zero sur une mort lue au fil (`killsource.Kill.AssistLuAuFil`).
 	Extra int
 }
 

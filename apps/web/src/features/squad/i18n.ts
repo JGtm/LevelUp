@@ -408,7 +408,7 @@ const FR_TEXT: SquadText = {
     fragsArmes: 'Frags et armes',
     appuiPortee: 'Appui et portée',
     appuiPorteeHelp: [
-      "Appui : assistances entre joueurs de l'escouade, du larbin qui prépare le frag au patron qui l'encaisse, sur les matchs mesurés de la sélection.",
+      "Appui : assistances entre joueurs de l'escouade, du larbin qui prépare le frag au patron qui l'encaisse, sur les matchs de la sélection.",
       'Portée : écart de la distance médiane des frags de chaque joueur à celle du lobby, match par match, sur les films décodés.',
     ],
   },
@@ -463,7 +463,7 @@ const FR_TEXT: SquadText = {
   },
   empty: {
     noSelectionTitle: 'Analyse de synergies',
-    noSelectionDescription: 'Choisis 1 à 3 coéquipiers pour analyser les synergies de l\'escouade.',
+    noSelectionDescription: 'Analyse ouverte par la sélection de 1 à 3 coéquipiers.',
     invalidSelectionTitle: 'Aucune donnée commune',
     invalidSelectionDescription:
       'Les coéquipiers sélectionnés n\'ont pas de match commun sur la période filtrée.',
@@ -552,7 +552,7 @@ const FR_TEXT: SquadText = {
     roleAssistant: 'Larbin',
     roleBeneficiary: 'Patron',
     valueAxis: 'Assistances par patron',
-    noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs mesurés.',
+    noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs de la sélection.',
     tooltipShare: (share) => `part ${share}`,
     tooltipAssistantOutdamaged: (n) => `dont ${n} où le larbin a fait plus de dégâts que le patron`,
   },
@@ -769,7 +769,7 @@ const EN_TEXT: SquadText = {
     fragsArmes: 'Kills and weapons',
     appuiPortee: 'Support and range',
     appuiPorteeHelp: [
-      'Support: assists between squad players, from the minion who sets up the kill to the boss who gets the credit, on the measured matches of the selection.',
+      'Support: assists between squad players, from the minion who sets up the kill to the boss who gets the credit, on the matches of the selection.',
       "Range: gap between each player's median kill distance and the lobby's, match by match, on decoded films.",
     ],
   },
@@ -823,7 +823,7 @@ const EN_TEXT: SquadText = {
   },
   empty: {
     noSelectionTitle: 'Synergy analysis',
-    noSelectionDescription: 'Pick 1 to 3 teammates to analyze the synergies of the squad.',
+    noSelectionDescription: 'Analysis opens once 1 to 3 teammates are selected.',
     invalidSelectionTitle: 'No shared data',
     invalidSelectionDescription:
       'The selected teammates have no shared matches in the filtered period.',
@@ -912,7 +912,7 @@ const EN_TEXT: SquadText = {
     roleAssistant: 'Minion',
     roleBeneficiary: 'Boss',
     valueAxis: 'Assists per boss',
-    noPairs: 'No assists between squad members across the measured matches.',
+    noPairs: 'No assists between squad members across the matches of the selection.',
     tooltipShare: (share) => `share ${share}`,
     tooltipAssistantOutdamaged: (n) => `${n} where the minion dealt more damage than the boss`,
   },

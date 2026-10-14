@@ -39,11 +39,6 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/platform/duckdb/queries_match_detail.go:Q26MatchExpectedStats": {dispenseMonoMatch, "2026-07-18",
 		"requête MONO-MATCH (WHERE match_id = ? AND xuid = ?) — pas d'agrégation d'historique."},
 
-	// ── B4.3 : statué par lecture de l'appelant ──
-	"internal/platform/duckdb/fanout_repo.go:FanoutRepo.CountCommonMatchesForXUID": {dispenseEnsembleFourni, "2026-09-27",
-		"l'ensemble est insertedMatchIDs, les matchs NOUVELLEMENT insérés par la synchro (seul appelant : service/fanout_service.go:73) ; " +
-			"la Campagne n'est plus collectée à la source (games/halo_5/capture.go:263, isExcludedH5GameMode :128-129). Pipeline d'enrichissement, pas un affichage."},
-
 	// ── B4.4 : dispenses prévues par le plan ──
 	"internal/platform/duckdb/engagement_score_repo_queries.go:EngagementScoreRepo.LoadMatchEngagementContext": {dispenseMonoMatch, "2026-09-27",
 		"requête MONO-MATCH (engagement_score_repo_queries.go:53, WHERE mr.match_id = ? AND mp.xuid = ?) : contexte d'UN match, aucun agrégat."},
@@ -70,11 +65,23 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/platform/duckdb/queries_squad.go:Q42MapStatsSquadExtraExclusionFrag": {dispenseCallSite, "2026-09-27",
 		"anti-jointure ajoutée à Q42MapStatsForSquadSharedTpl (squad_repo_mapstats.go:105), dont le jeton est résolu (squad_repo_mapstats.go:95)."},
 	"internal/platform/duckdb/relation_assists_repo.go:buildRelationAssistsQuery": {dispenseSemantique, "2026-09-27",
-		"Q28c ne lit que les matchs mesurés au film (relation_assists_repo.go:59, assist_known) ; hors film, assist_known vaut FAUX " +
+		"Q28c ne lit que les matchs mesurés au film (relation_assists_repo.go:74, assist_known) ; hors film, assist_known vaut FAUX " +
 			"(migration/steps_shared_kill_events_credit_base.go:253) et Halo 5 n'a pas de film (config/titles/halo_5/mappings/capabilities.toml:65) : " +
-			"aucune ligne de Campagne. partnerClause (:112) = joueurs d'UN match."},
+			"aucune ligne de Campagne. partnerClause (:153) = joueurs d'UN match."},
 	"internal/platform/duckdb/replay_facts_repo.go:ReplayFactsRepo.LinkTargetsForMatches": {dispenseEnsembleFourni, "2026-09-27",
 		"lien vers la page de rejeu des matchs dont le film vient d'être cuit (api/wire/registry_replay_notify.go:208, b.MatchIDs) ; aucun agrégat."},
 	"internal/platform/duckdb/tactical_repo_univers.go:clauseCoequipier": {dispenseCallSite, "2026-09-27",
 		"fragment ajouté par clausePerimetre à QTacticalUnivers / QTacticalMaps, dont le jeton est résolu (tactical_repo_univers.go:215, tactical_repo.go:118)."},
+
+	// ── Explorer, onglet « Joueur » (ADR 0036, 2026-10-09) ──
+	"internal/platform/duckdb/perimetre_liste.go:QMatchsOuJoue": {dispenseSemantique, "2026-10-09",
+		"liste de BORNAGE sous les fenêtres `_latest` du kill-feed, pas un agrégat d'affichage : elle garde la population exacte des lectures " +
+			"qu'elle borne (QKillsBetweenPlayersBorne, kill_events_source.go ; Q28c, relation_assists_repo.go), qui ne filtrent pas la Campagne."},
+	"internal/platform/duckdb/coordination_repo.go:QCoordinationFragsOfficiels": {dispenseEnsembleFourni, "2026-10-09",
+		"base de « frags appuyés » : WHERE match_id IN (%s) sur les matchs du scope de la page (service/coordination_block.go:286), " +
+			"ceux de Sessions et des Séries temporelles (timeseries_service_sections.go:189), et seuls comptent ceux qui portent une " +
+			"ligne d'appui (analysis/coordination, aucun film en Campagne)."},
+	"internal/platform/duckdb/explorer_repo_resolve.go:qResolveParParticipant": {dispenseSemantique, "2026-10-09",
+		"résolution d'un NOM en xuid (ExplorerRepo.ResolveXUIDByGamertag) : même population que la vue des noms v_gamertag_lookup, " +
+			"qui lit tous les participants (analysis/identity.go, GamertagLookupViewSQL) ; aucun agrégat de matchs."},
 }

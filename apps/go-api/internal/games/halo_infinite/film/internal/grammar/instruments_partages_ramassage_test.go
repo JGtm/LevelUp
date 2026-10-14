@@ -63,14 +63,7 @@ func bpkOpen(t *testing.T) (bpkFilm, bool) {
 }
 
 // hwCatalogue rend le predicat d'appartenance au catalogue de production.
-func hwCatalogue() map[uint32]bool {
-	connues := weaponv3.KnownWeaponHigh32Copie()
-	m := make(map[uint32]bool, len(connues))
-	for f := range connues {
-		m[f] = true
-	}
-	return m
-}
+func hwCatalogue() map[uint32]bool { return weaponv3.FamillesConnues() }
 
 // bpkEvent est un evenement biped_pickup decode.
 type bpkEvent struct {

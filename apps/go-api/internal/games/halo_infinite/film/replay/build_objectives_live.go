@@ -103,15 +103,13 @@ type FlagInput struct {
 	Identity objectives.RoundIdentity
 }
 
-// decodeFilmCarrierMarks balaye le marqueur de portage et JOURNALISE ce qu'il en est.
+// decodeFilmCarrierMarks rend le marqueur de portage lu par la marche unique des images-cles, et
+// JOURNALISE ce qu'il en est.
 //
-// IL NE BALAYE QUE LES FILMS DE CTF, et c'est une mesure de cout, pas une optimisation de
-// principe. Le balayage est une marche COMPLETE des images-cles avec une fenetre glissante de
-// 32 bits sur l'emprise de chaque record de bipede : sur les films mesures il pese des dizaines
-// de secondes, a comparer aux ~60 s de tout le reste du decodage. Or ce qu'il produit n'est
-// qu'un CONTROLE — il alimente `markerObserved` / `markerConfirmed`, jamais le calque lui-meme —
-// et sur un film d'un autre mode le calque est vide de toute facon. Le payer partout serait
-// payer pour rien sur la quasi-totalite des artefacts.
+// ELLE NE PUBLIE QUE SUR LES FILMS DE CTF. Les marques viennent de la marche unique des images-cles
+// (`grammar.ScanEtatsDesImagesCles`, lot D1.1 de 2.7.d1), faite pour tous les films ; ce qu elles
+// produisent n est qu un CONTROLE — elles alimentent `markerObserved` / `markerConfirmed`, jamais le
+// calque lui-meme —, et sur un film d un autre mode le calque est vide de toute facon.
 //
 // LE VERDICT DE MODE EST DEJA LA : il se lit dans ce que l'appelant a fourni (enregistrements
 // d'entite + bursts de capture), sans toucher au film. Un film non reconnu rend donc un balayage
@@ -122,12 +120,11 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm.
-func decodeFilmCarrierMarks(ctx context.Context, fc *grammar.FilmContext, matchID string, in FlagInput,
-	cons *objectives.ReplisALaConsultation) grammar.CarrierMarkScan {
+func decodeFilmCarrierMarks(ctx context.Context, marks grammar.CarrierMarkScan, err error, matchID string,
+	in FlagInput, cons *objectives.ReplisALaConsultation) grammar.CarrierMarkScan {
 	if !drapeauBalayable(in, cons) {
 		return grammar.CarrierMarkScan{}
 	}
-	marks, err := grammar.ScanCarrierMarks(fc)
 	if err != nil {
 		slog.WarnContext(ctx, "drapeau : marqueur de portage illisible — calque publie sans son controle",
 			"err", err, "match_id", matchID)

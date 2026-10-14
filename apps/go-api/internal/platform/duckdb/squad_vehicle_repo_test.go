@@ -192,20 +192,20 @@ func TestSquadVehicleRepo_BorneDernierePasseEtFragsParCamp(t *testing.T) {
 
 	var passes []string
 	for _, p := range got.Passes {
-		passes = append(passes, fmt.Sprintf("%s:%v:%v:%s:%d/%d", p.MatchID, p.Measured, p.FragsRead, p.Reason, p.FragsTotal, p.FragsUnmatched))
+		passes = append(passes, fmt.Sprintf("%s:%v:%v:%d", p.MatchID, p.Measured, p.FragsRead, p.FragsTotal))
 	}
-	if fmt.Sprint(passes) != "[m1:true:true::3/1 m2:true:true::0/0 m3:false:false:schema_before_67:0/0 m4:true:false::0/0]" {
+	if fmt.Sprint(passes) != "[m1:true:true:3 m2:true:true:0 m3:false:false:0 m4:true:false:0]" {
 		t.Fatalf("passes = %v : la passe ancienne de m1 a survécu, ou m9 est lu", passes)
 	}
-	if p := got.Passes[0]; p.EpisodesRead != 5 || p.EpisodesUnnamed != 1 || p.EpisodesNoCamp != 0 || p.DocSchema != 71 {
-		t.Errorf("couverture de la passe m1 mal relue : %+v", p)
+	if p := got.Passes[0]; p.DocSchema != 71 {
+		t.Errorf("passe m1 mal relue : %+v", p)
 	}
 	if len(got.Rows) != 2 {
 		t.Fatalf("prises = %+v, attendu les deux lignes de la passe courante de m1", got.Rows)
 	}
 	r := got.Rows[0]
 	if r.MatchID != "m1" || r.Camp != 0 || r.XUID != "P" || r.Family != "ghost" || r.Takes != 2 ||
-		r.AboardMS != 5000 || r.Frags != 2 || r.ProximityEpisodes != 1 || r.Episodes != 2 {
+		r.AboardMS != 5000 || r.Frags != 2 || r.Episodes != 2 {
 		t.Errorf("prise mal relue : %+v", r)
 	}
 	// Frags d'engin de m1 par camp du tueur : 2 (camp 0), 1 (camp 1), 1 (tueur sans camp) ; rien

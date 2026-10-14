@@ -13,20 +13,14 @@
  * Source : `combat_tab.assist_pairs` (paires agrégées et comptées par le backend Go
  * depuis `match_kill_events_latest`).
  *
- * LES DEUX ÉTATS VIDES NE SE CONFONDENT PAS, et c'est la raison d'être de ce
- * composant plutôt qu'un simple clone :
+ * DEUX ÉTATS :
  *
- *   bloc ABSENT              le match n'a aucune ligne de film — on ne rend RIEN.
- *   measured_deaths === 0    le film est là, mais aucune mort n'est LISIBLE ligne à
- *                            ligne : soit l'assistance n'y est pas mesurée, soit elle
- *                            l'est sans être publiable (cas BTB — nommer deux joueurs
- *                            sur une mort n'y est pas permis). Le contrat ne sépare pas
- *                            les deux causes, le libellé les couvre donc toutes deux.
- *   pairs vide, mesuré > 0   MESURÉ : personne n'a assisté personne.
- *                            « Aucune assistance sur ce match ».
+ *   bloc ABSENT   le match n'a pas de film, ou son film ne porte pas l'assistance : on ne
+ *                 rend RIEN (aucune mention « non mesuré », règle des bases).
+ *   pairs vide    le film porte l'assistance : personne n'a assisté personne.
+ *                 « Aucune assistance sur ce match ».
  *
- * Écrire « aucune assistance » sur le deuxième cas fabriquerait un fait jamais
- * observé (doctrine des trois états de `match_kill_events`).
+ * Les bots y sont des acteurs comme les autres (nommés par le film, `assistStackedSeries`).
  */
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
@@ -60,7 +54,7 @@ interface Props {
 }
 
 export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
-  // Porte 1 — le bloc est absent : aucune ligne de film pour ce match (ou titre sans
+  // Le bloc est absent : pas de film porteur de l'assistance pour ce match (ou titre sans
   // décodeur). Rien à dire, donc rien de rendu : pas de cadre vide, pas de message.
   if (!block) return null
 
@@ -70,10 +64,6 @@ export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
   const series = assistStackedSeries(pairs, scoreboard, meXUID)
   const stolen = assistStolenLookup(pairs)
   const avgPct = assistAvgPctLookup(pairs)
-
-  // Porte 2 — lisible ou non. Les deux libellés sont distincts et le choix se fait sur le
-  // DÉNOMINATEUR, jamais sur la longueur de la liste.
-  const emptyMessage = block.measured_deaths === 0 ? t.assistNotUsable : t.assistNoData
 
   // Couleurs par tueur assisté — cycle ASSIST_TOKENS (11 teintes distinctes).
   const killerSet = new Set<string>()
@@ -95,7 +85,7 @@ export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
       height={height}
       orientation="horizontal"
       series={series}
-      emptyMessage={emptyMessage}
+      emptyMessage={t.assistNoData}
       componentHexColors={componentHexColors}
       categoryAxisName={t.assistRoleAssistant}
       valueAxisName={t.assistValueAxis}

@@ -40,20 +40,16 @@ describe('buildMatchControl — D, contrôle des ressources, par match', () => {
     ])
     expect(c.rows[0].padsEmptied).toBe(10)
     expect(c.racks).toBe(3)
-    expect(c.unclassified).toBeNull()
   })
 
-  it('témoin du 24/07 : les prises sur emplacement non identifié (19 / 12), aucune piste de bonus', () => {
+  it('témoin du 24/07 : aucune piste de bonus', () => {
     const c = buildMatchControl(FLOOD_GULCH)
-    expect(c.unclassified).toEqual({ us: 19, them: 12 })
     expect(c.rows.filter((r) => !r.object).map((r) => `${r.resource} ${r.us}–${r.them}`)).toEqual(['power_weapon 19–11', 'rack 29–40'])
   })
 
-  it('sans film ou sans équipe connue : aucune ligne, et pas de ligne non identifiée', () => {
+  it('sans film ou sans équipe connue : aucune ligne', () => {
     for (const over of [{ has_film: false }, { team_known: false }]) {
-      const c = buildMatchControl(withMatch(FLOOD_GULCH, over))
-      expect(c.rows).toEqual([])
-      expect(c.unclassified).toBeNull()
+      expect(buildMatchControl(withMatch(FLOOD_GULCH, over)).rows).toEqual([])
     }
   })
 
@@ -93,32 +89,31 @@ describe('buildMatchProduction — G, raisons fermées', () => {
     expect(p.pending).toEqual([])
   })
 
-  it('24/07 : temps d’effet mais journal non publiable → frags non mesurés, barre fine gardée', () => {
+  it('24/07 : temps d’effet mais journal non publiable → aucune ligne de bonus (frags inconnus, jamais dits)', () => {
     const p = buildMatchProduction(FLOOD_GULCH)
-    expect(p.pending).toEqual([
-      { resource: 'powerup', reason: 'powerupKillsUnpublished', exposure: { kind: 'effect_ms', value: { us: 166700, them: 216900 } } },
-    ])
+    expect(p.pending).toEqual([])
     expect(p.rows.map((r) => r.resource)).toEqual(['power_weapon'])
   })
 
-  it('journal publiable, temps d’effet, aucun frag → « aucun frag pendant l’effet »', () => {
+  it('journal publiable, temps d’effet, aucun frag → « aucun frag pendant l’effet », barre fine gardée', () => {
     const p = buildMatchProduction({ ...FLOOD_GULCH, kill_journal: 'publishable' })
-    expect(p.pending[0].reason).toBe('powerupNoKills')
+    expect(p.pending).toEqual([
+      { resource: 'powerup', reason: 'powerupNoKills', exposure: { kind: 'effect_ms', value: { us: 166700, them: 216900 } } },
+    ])
   })
 
-  it('lecture du journal indisponible → « lecture indisponible », jamais « non publiable »', () => {
-    const p = buildMatchProduction({ ...FLOOD_GULCH, kill_journal: 'unavailable' })
-    expect(p.pending[0]).toMatchObject({ resource: 'powerup', reason: 'powerupKillsUnavailable' })
+  it('lecture du journal indisponible → aucune ligne de bonus', () => {
+    expect(buildMatchProduction({ ...FLOOD_GULCH, kill_journal: 'unavailable' }).pending).toEqual([])
   })
 
-  it('ni temps d’effet ni frag → « aucun temps d’effet mesuré »', () => {
+  it('ni temps d’effet ni frag → « aucun bonus actif »', () => {
     const p = buildMatchProduction({ ...FLOOD_GULCH, production: FLOOD_GULCH.production!.filter((x) => x.resource !== 'powerup') })
     expect(p.pending[0]).toEqual({ resource: 'powerup', reason: 'powerupNoEffect' })
   })
 
-  it('armes spéciales : feuille illisible → non mesuré ; feuille lue sans frag → 0 frag', () => {
+  it('armes spéciales : feuille illisible → aucune ligne ; feuille lue sans frag → 0 frag', () => {
     const sansArmes = { ...STARBOARD, production: STARBOARD.production!.filter((x) => x.resource !== 'power_weapon') }
-    expect(buildMatchProduction({ ...sansArmes, sheet_unavailable: 'sheet_load_failed' }).pending).toEqual([{ resource: 'power_weapon', reason: 'sheetFailed' }])
+    expect(buildMatchProduction({ ...sansArmes, sheet_unavailable: 'sheet_load_failed' }).pending).toEqual([])
     const zero = { ...STARBOARD, production: [STARBOARD.production![0], { resource: 'power_weapon', kills: { us: 0, them: 0 } }] }
     expect(buildMatchProduction(zero).pending).toEqual([{ resource: 'power_weapon', reason: 'powerZero', exposure: undefined }])
   })
@@ -133,9 +128,7 @@ describe('buildMatchProduction — G, raisons fermées', () => {
     expect(p.noPickupNote).toEqual(['power_weapon'])
   })
 
-  it('véhicules mesurés par le titre mais pas sur ce match → non mesuré', () => {
-    const veh = { ...STARBOARD, vehicles: {} as NonNullable<MatchEmpriseBlock['vehicles']> }
-    expect(buildMatchProduction(veh).pending).toContainEqual({ resource: 'vehicle', reason: 'vehicleUnmeasured' })
+  it('véhicules non lus sur ce match → aucune ligne', () => {
     expect(buildMatchProduction(STARBOARD).pending.some((x) => x.resource === 'vehicle')).toBe(false)
   })
 })
@@ -148,14 +141,14 @@ describe('buildMatchYield — H, raisons fermées', () => {
     ])
   })
 
-  it('24/07 : journal non publiable → bonus non mesuré ; armes spéciales calculées', () => {
+  it('24/07 : journal non publiable → aucune ligne de bonus ; armes spéciales calculées', () => {
     const y = buildMatchYield(FLOOD_GULCH)
-    expect(y.pending).toEqual([{ resource: 'powerup', reason: { kind: 'powerupUnpublished' } }])
+    expect(y.pending).toEqual([])
     expect(y.rows.map((r) => r.resource)).toEqual(['power_weapon'])
   })
 
-  it('lecture du journal indisponible → bonus « lecture indisponible »', () => {
-    expect(buildMatchYield({ ...FLOOD_GULCH, kill_journal: 'unavailable' }).pending).toEqual([{ resource: 'powerup', reason: { kind: 'powerupUnavailable' } }])
+  it('lecture du journal indisponible → aucune ligne de bonus', () => {
+    expect(buildMatchYield({ ...FLOOD_GULCH, kill_journal: 'unavailable' }).pending).toEqual([])
   })
 
   it('match non mesuré : aucune raison', () => {
@@ -170,23 +163,18 @@ describe('buildMatchLives — I, une ligne par joueur dans l’ordre des fiches'
     expect(l.rows[0].model).toMatchObject({ near: { lives: 11, kills: 8 }, alone: { lives: 2, kills: 0 } })
   })
 
-  it('un joueur sans vie rangée garde sa ligne (modèle nul) ; aucun joueur rangé → null', () => {
+  it('un joueur sans vie rangée n’a pas de ligne ; aucun joueur rangé → null', () => {
     const l = buildMatchLives({ players: STARBOARD_LIVES.players!.filter((p) => p.xuid !== XUID.jacob) }, STARBOARD.players!)!
-    expect(l.rows[1]).toEqual({ xuid: XUID.jacob, gamertag: 'XL JACOB', model: null })
+    expect(l.rows.map((r) => r.gamertag)).toEqual(['JGtm', 'Madina97294', 'Chocoboflor'])
     expect(buildMatchLives({ players: [] }, STARBOARD.players!)).toBeNull()
-  })
-
-  it('additionne les vies écartées des trois causes', () => {
-    const players = STARBOARD_LIVES.players!.map((p, i) => ({ ...p, excluded_unlocated: i, excluded_no_radar: 1, excluded_unpublishable: 2 }))
-    const l = buildMatchLives({ players }, STARBOARD.players!)!
-    expect([l.excludedUnlocated, l.excludedNoRadar, l.excludedUnpublishable]).toEqual([6, 4, 8])
   })
 })
 
 describe('couverture et présence des cartes', () => {
-  it('couverture : film décodé et joueurs présents à la fin (partis exclus)', () => {
+  it('sous-titre : joueurs présents à la fin d’un match filmé (partis exclus) ; rien sans film', () => {
     const board = [...STARBOARD_SCOREBOARD, { xuid: 'x-p', gamertag: 'Parti', team_side: 't1', left_in_progress: true }] as typeof STARBOARD_SCOREBOARD
-    expect(matchCoverage(STARBOARD, board)).toEqual({ filmed: true, present: 8 })
+    expect(matchCoverage(STARBOARD, board)).toEqual({ present: 8 })
+    expect(matchCoverage(withMatch(STARBOARD, { has_film: false }), board)).toBeNull()
     expect(matchCoverage(null, board)).toBeNull()
   })
 

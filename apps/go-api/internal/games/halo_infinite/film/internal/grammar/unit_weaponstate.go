@@ -1,5 +1,7 @@
 package grammar
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+
 // Per-component bit-consume decoders for the BIPED archetype (#35) component
 // range i18..i46, reverse-engineered statically from HaloInfinite.exe (Ghidra).
 //
@@ -352,34 +354,75 @@ func consumeWeaponStateRoundsInventory(br *Lecteur) {
 
 // consumeWeaponStateOverheated mirrors FUN_142f04c6c: dequant R(7) + R(1) + R(1).
 func consumeWeaponStateOverheated(br *Lecteur) {
-	br.ReadBits(7) // FUN_1406d84b4 dequant (7)
-	br.ReadBit()   // comp+0x872 bit1
-	br.ReadBit()   // comp+0x872 bit2
+	q := br.ReadBits(7) // FUN_1406d84b4 dequant (7)
+	b1 := br.ReadBit()  // comp+0x872 bit1
+	b2 := br.ReadBit()  // comp+0x872 bit2
+	if br.obs != nil && br.obs.WeaponOverheatHook != nil {
+		br.obs.WeaponOverheatHook(uint32(q), b1, b2) //nolint:gosec // sept bits
+	}
 }
 
 // ---------------------------------------------------------------------------
 // i42 biped-desired-weapon-set  (thunk -> FUN_1406d01fc)
 // ---------------------------------------------------------------------------
 
-// consumeBipedDesiredWeaponSet lit `i42` du bipede ([lireJeuDArmes]) et publie l emplacement
-// desire au crochet du bipede.
+// consumeBipedDesiredWeaponSet lit `i42` du bipede ([lireJeuDArmes]) et publie ses trois champs
+// au crochet du bipede.
 func consumeBipedDesiredWeaponSet(br *Lecteur) {
-	sel := lireJeuDArmes(br)
+	j := lireJeuDArmes(br)
+	if arreterSiJeuDArmesRefuse(br, j) {
+		return
+	}
 	if br.obs != nil && br.obs.DesiredWeaponSetHook != nil {
-		br.obs.DesiredWeaponSetHook(sel)
+		br.obs.DesiredWeaponSetHook(j)
 	}
 }
 
-// lireJeuDArmes porte `FUN_1406d01fc`, le jeu d armes d une unite : `FUN_1406d0f20` R(3)
-// (l emplacement desire, rendu), puis deux `FUN_1406d00ec` (R(1) ; si 0, R(2)). Lu par le bipede
-// (`i42`, thunk), par le vehicule (`ti=40 i38`, `14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`) et
-// par la queue de l arme tenue ([consumeWeaponStateTail], `FUN_1407f06bc`). Seule copie de la
-// sequence : `lecteur_jeu_darmes_guard_test.go` interdit qu elle revienne en ligne.
-func lireJeuDArmes(br *Lecteur) uint32 {
-	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
-	consumeID2(br)                // FUN_1406d00ec
-	consumeID2(br)                // FUN_1406d00ec
-	return sel
+// JeuDArmes est le jeu d armes d une unite tel que `FUN_1406d01fc` le lit (relu le 2026-10-08,
+// plan LK G-5 : largeurs et correspondance des champs LUES, le nom « desire » DEDUIT de ses
+// consommateurs `FUN_1409725b8`, `FUN_142c83228`, `FUN_1407f2dc0`).
+type JeuDArmes struct {
+	// Demande : param[0], `FUN_1406d0f20` R(3) — l identifiant de la demande de jeu d armes
+	// (modulo 7), pas un emplacement.
+	Demande uint32
+	// Principal : param[1], l emplacement DESIRE en main principale (unite +0x389) ; -1 quand le
+	// film n en ecrit aucun. Egal a l emplacement degaine (unite +0x38c, absent du flux) hors d un
+	// changement d arme en cours.
+	Principal int
+	// Second : param[2], l emplacement desire en seconde main (unite +0x38a) ; -1 hors ambidextrie.
+	Second int
+}
+
+// lireJeuDArmes porte `FUN_1406d01fc`, le jeu d armes d une unite : `FUN_1406d0f20` R(3), puis
+// deux `FUN_1406d00ec` (R(1) ; si 0, R(2)) — [JeuDArmes]. Lu par le bipede (`i42`, thunk), par le
+// vehicule (`ti=40 i38`, `14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`) et par la queue de l arme
+// tenue ([consumeWeaponStateTail], `FUN_1407f06bc`). Seule copie de la sequence :
+// `lecteur_jeu_darmes_guard_test.go` interdit qu elle revienne en ligne.
+func lireJeuDArmes(br *Lecteur) JeuDArmes {
+	demande := uint32(br.ReadBits(3)) // FUN_1406d0f20
+	principal := lireID2(br)          // FUN_1406d00ec
+	second := lireID2(br)             // FUN_1406d00ec
+	return JeuDArmes{Demande: demande, Principal: principal, Second: second}
+}
+
+// refuse dit si `FUN_1406d01fc` rend FAUX sur ce jeu d armes : il rend vrai, sauf quand param[1] vaut
+// autre chose que -1 et egale param[2] (relu le 2026-10-09, revue D1.4.6, constat 2).
+func (j JeuDArmes) refuse() bool { return j.Principal != -1 && j.Principal == j.Second }
+
+// arreterSiJeuDArmesRefuse porte le retour de `FUN_1406d01fc` la ou un thunk le rend comme celui du
+// deserialiseur : i42 du bipede (`14109d298` : `MOV RCX,[R8+0x10] ; ADD RCX,0x13d8 ; JMP 1406d01fc`)
+// et i38 du vehicule (`14116d3cc` : `ADD RCX,0x84c ; JMP 1406d01fc`) ; la queue de l arme tenue
+// (`FUN_1407f06bc`) l appelle et ignore son retour. Sous la portee de l etat complet, la boucle de
+// composants `FUN_142e2c690` s arrete sur un retour faux (`142e2c7cc` : `TEST AL,AL ; JZ 142e2c762`) :
+// un jeu refuse arrete la marche sur ce composant ([lecture.ArretJeuDArmesRefuse]), et rien n est lu
+// au-dela. Hors de la portee (records NEW et DELTA), le traitement d un retour faux par la boucle
+// delta n est pas relu : la lecture continue. Rend vrai quand la marche s arrete.
+func arreterSiJeuDArmesRefuse(br *Lecteur, j JeuDArmes) bool {
+	if !br.portee || !j.refuse() {
+		return false
+	}
+	br.arreter(lecture.ArretJeuDArmesRefuse)
+	return true
 }
 
 // ---------------------------------------------------------------------------

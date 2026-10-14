@@ -11,13 +11,16 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // computeTargetCombatProfileLocal retourne les N derniers matchs PvP de la cible
 // présents en base locale (shared.match_participants — surtout les matchs communs).
 // Alimente le toggle "local" de la section. nil si erreur / aucun match.
 func (s *ExplorerService) computeTargetCombatProfileLocal(ctx context.Context, targetXUID string) []domain.ExplorerTargetRecentMatch {
+	stop := timing.FromContext(ctx).Section("explorer_recent_local")
 	rows, err := s.loadTargetRecentRows(ctx, targetXUID, explorerCombatProfileLimit)
+	stop()
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_combat_profile_local_failed", "xuid", targetXUID, "err", err)
 		return nil
@@ -173,7 +176,10 @@ func (s *ExplorerService) fetchTargetIdentityRaw(
 	ctx context.Context, targetXUID, targetGamertag string, hasAuth bool,
 ) (*domain.HomeSpartanIdentityRow, domain.ExplorerLiveSectionStatus) {
 	if s.deps.LocalIdentity != nil {
-		if id := s.deps.LocalIdentity.LocalSpartanIdentity(ctx, targetGamertag); id != nil {
+		stopLocal := timing.FromContext(ctx).Section("explorer_local_identity")
+		id := s.deps.LocalIdentity.LocalSpartanIdentity(ctx, targetGamertag)
+		stopLocal()
+		if id != nil {
 			// Joueur suivi : on garde sa vraie bannière (preferPool=false).
 			s.applyBannerFallbacks(ctx, id, targetXUID, false)
 			return id, domain.ExplorerLiveOK
@@ -181,7 +187,9 @@ func (s *ExplorerService) fetchTargetIdentityRaw(
 	}
 	liveFailed := false
 	if hasAuth && s.deps.LiveIdentity != nil && targetXUID != "" {
+		stopLive := timing.FromContext(ctx).Section("explorer_live_identity")
 		id, err := s.deps.LiveIdentity.FetchLiveIdentity(ctx, targetXUID)
+		stopLive()
 		if err != nil {
 			slog.WarnContext(ctx, "explorer_target_identity_live_failed", "xuid", targetXUID, "err", err)
 			liveFailed = true
@@ -219,7 +227,7 @@ func (s *ExplorerService) fallbackBannerOnlyIdentity(ctx context.Context, target
 	if s.deps.LocalBannerPool == nil || targetXUID == "" {
 		return nil
 	}
-	b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx))
+	b := pickDeterministicBanner(targetXUID, s.localBannerPool(ctx))
 	if b == "" {
 		return nil
 	}
@@ -239,7 +247,7 @@ func (s *ExplorerService) applyBannerFallbacks(ctx context.Context, id *domain.H
 		return
 	}
 	if preferPool && s.deps.LocalBannerPool != nil && targetXUID != "" {
-		if b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx)); b != "" {
+		if b := pickDeterministicBanner(targetXUID, s.localBannerPool(ctx)); b != "" {
 			id.BannerImageURL = &b
 			slog.DebugContext(ctx, "explorer_target_banner_pool_preferred", "xuid", targetXUID)
 			return
@@ -249,10 +257,16 @@ func (s *ExplorerService) applyBannerFallbacks(ctx context.Context, id *domain.H
 	if hasBanner(id) || s.deps.LocalBannerPool == nil || targetXUID == "" {
 		return
 	}
-	if b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx)); b != "" {
+	if b := pickDeterministicBanner(targetXUID, s.localBannerPool(ctx)); b != "" {
 		id.BannerImageURL = &b
 		slog.DebugContext(ctx, "explorer_target_banner_pool_fallback", "xuid", targetXUID)
 	}
+}
+
+// localBannerPool lit le pool de bannières locales sous sa propre section de durée.
+func (s *ExplorerService) localBannerPool(ctx context.Context) []string {
+	defer timing.FromContext(ctx).Section("explorer_banner_pool")()
+	return s.deps.LocalBannerPool(ctx)
 }
 
 // hasBanner indique si l'identité porte déjà une bannière non vide.
@@ -343,12 +357,16 @@ func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXU
 	if len(matchIDs) == 0 {
 		return nil
 	}
+	stopAgg := timing.FromContext(ctx).Section("explorer_sample_stats")
 	agg, err := s.loadParticipantStats(ctx, targetXUID, matchIDs)
+	stopAgg()
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_sample_stats_failed", "xuid", targetXUID, "err", err)
 		return nil
 	}
+	stopMedals := timing.FromContext(ctx).Section("explorer_sample_medals")
 	medals, mErr := s.repo.GetMedalCountsForMatches(ctx, targetXUID, matchIDs)
+	stopMedals()
 	if mErr != nil {
 		slog.WarnContext(ctx, "explorer_target_medals_failed", "xuid", targetXUID, "err", mErr)
 		// medals est nil → BuildSampleStats l'ignorera, ce n'est pas bloquant.
@@ -357,7 +375,9 @@ func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXU
 	sample := analysis.BuildSampleStats(agg, medals, len(matchIDs), games.EffectiveHpToKill(slug))
 	if sample != nil {
 		// Top 3 armes (par kills) sur les matchs communs — best-effort.
+		stopWeapons := timing.FromContext(ctx).Section("explorer_sample_top_weapons")
 		weapons, wErr := s.repo.GetTopWeaponsForMatches(ctx, targetXUID, matchIDs, 3)
+		stopWeapons()
 		if wErr != nil {
 			slog.WarnContext(ctx, "explorer_target_top_weapons_failed", "xuid", targetXUID, "err", wErr)
 		}

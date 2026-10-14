@@ -30,10 +30,9 @@ import (
 //	                 jamais passé au décodeur de film (ou le titre n'en a pas). Le service
 //	                 n'émet alors aucun bloc : il n'y a rien à dire.
 //	measured_deaths  les lignes `publishable AND assist_known` — les morts dont
-//	                 l'assistance est MESURÉE et publiable ligne à ligne. Zéro alors que
-//	                 match_deaths > 0 = « non mesuré pour ce match » (le film est là,
-//	                 l'assistance non — ou la passe n'est pas publiable ligne à ligne,
-//	                 cas BTB). C'est un état à AFFICHER, jamais « aucune assistance ».
+//	                 l'assistance est MESURÉE et publiable ligne à ligne. Zéro = le film du
+//	                 match ne porte pas l'assistance (ou la passe n'est pas publiable ligne
+//	                 à ligne, cas BTB) : le service n'émet pas de bloc.
 //	publishable_deaths les lignes `publishable`, assistance connue ou non : le journal des
 //	                 morts se lit ligne à ligne. Lu par la Vue match (frags pendant l'effet
 //	                 d'un bonus), pas par les paires.
@@ -52,8 +51,14 @@ import (
 //	                             ligne, pas un cumul anonyme. La portée l'exige.
 //	assist_known                 sans lui on compterait des « pas d'assistant » jamais
 //	                             observés.
-//	assist_gamertag/xuid NOT NULL l'assistant nommé — le seul des trois états qu'une paire
-//	                             sait représenter.
+//	assistant nommé              sqlAssistantNomme : xuid OU gamertag d'assistant — le seul
+//	                             des trois états qu'une paire sait représenter. Un BOT
+//	                             assistant (gamertag seul) en est.
+//	tueur nommé                  xuid OU gamertag de tueur : un BOT tueur (gamertag seul)
+//	                             reçoit sa paire comme les autres.
+//
+// Un acteur sans xuid sort avec un xuid NULL (chaîne vide côté Go) ET son gamertag de
+// film : le groupement porte sur les deux, donc deux bots ne fusionnent jamais.
 //
 // `stolen_count` compte les morts où la part de dégâts de l'assistant DÉPASSE celle du
 // tueur crédité. Les deux parts sont NULLABLES : `>` sur un NULL rend NULL, donc FALSE au
@@ -68,10 +73,10 @@ import (
 // de plafonner que `stolen_count` (mesures jusqu'à 228) : c'est une moyenne de parts
 // mesurées, pas un dégât chiffré.
 //
-// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 9 colonnes :
+// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 10 colonnes :
 // match_deaths, measured_deaths, publishable_deaths, assist_xuid, assist_gamertag,
-// feed_killer_xuid, assist_count, stolen_count, avg_assist_pct — les six dernières NULL quand
-// aucune paire ne sort.
+// feed_killer_xuid, feed_killer_gamertag, assist_count, stolen_count, avg_assist_pct — les
+// sept dernières NULL quand aucune paire ne sort.
 const Q21dAssistPairs = `
 WITH scope AS (
     SELECT
@@ -83,20 +88,20 @@ WITH scope AS (
 ),
 pairs AS (
     SELECT
-        assist_xuid,
-        assist_gamertag,
-        feed_killer_xuid,
-        COUNT(*)                                                          AS assist_count,
-        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)     AS stolen_count,
-        CAST(ROUND(AVG(assist_damage_pct)) AS INTEGER)                    AS avg_assist_pct
-    FROM ` + KillEventsCanonicalTable + `
-    WHERE match_id = ?
-      AND publishable
-      AND assist_known
-      AND assist_gamertag  IS NOT NULL
-      AND assist_xuid      IS NOT NULL
-      AND feed_killer_xuid IS NOT NULL
-    GROUP BY assist_xuid, assist_gamertag, feed_killer_xuid
+        kv.assist_xuid,
+        kv.assist_gamertag,
+        kv.feed_killer_xuid,
+        kv.feed_killer_gamertag,
+        COUNT(*)                                                             AS assist_count,
+        COUNT(*) FILTER (WHERE kv.assist_damage_pct > kv.killer_damage_pct)  AS stolen_count,
+        CAST(ROUND(AVG(kv.assist_damage_pct)) AS INTEGER)                    AS avg_assist_pct
+    FROM ` + KillEventsCanonicalTable + ` kv
+    WHERE kv.match_id = ?
+      AND kv.publishable
+      AND kv.assist_known
+      AND (kv.assist_xuid IS NOT NULL OR kv.assist_gamertag IS NOT NULL)
+      AND (kv.feed_killer_xuid IS NOT NULL OR kv.feed_killer_gamertag IS NOT NULL)
+    GROUP BY kv.assist_xuid, kv.assist_gamertag, kv.feed_killer_xuid, kv.feed_killer_gamertag
 )
 SELECT
     s.match_deaths,
@@ -105,12 +110,13 @@ SELECT
     p.assist_xuid,
     p.assist_gamertag,
     p.feed_killer_xuid,
+    p.feed_killer_gamertag,
     p.assist_count,
     p.stolen_count,
     p.avg_assist_pct
 FROM scope s
 LEFT JOIN pairs p ON TRUE
-ORDER BY p.assist_count DESC, p.assist_gamertag, p.feed_killer_xuid`
+ORDER BY p.assist_count DESC, p.assist_gamertag, p.feed_killer_xuid, p.feed_killer_gamertag`
 
 // GetMatchAssistPairs retourne les paires (assistant, tueur assisté) du match et la portée
 // de leur lecture (Q21d). Exécutée sur SharedReader (ADR 0016, shared-only).
@@ -156,25 +162,28 @@ func scanAssistPairs(rows *sql.Rows) ([]domain.MatchAssistPairRaw, domain.MatchA
 		var (
 			matchDeaths, measured    int
 			publishable              int
-			ax, agt, kx              sql.NullString
+			ax, agt, kx, kgt         sql.NullString
 			assistN, stolenN, avgPct sql.NullInt64
 		)
-		if err := rows.Scan(&matchDeaths, &measured, &publishable, &ax, &agt, &kx, &assistN, &stolenN, &avgPct); err != nil {
+		if err := rows.Scan(&matchDeaths, &measured, &publishable, &ax, &agt, &kx, &kgt, &assistN, &stolenN, &avgPct); err != nil {
 			return nil, domain.MatchAssistScopeRaw{}, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs scan: %w", err)
 		}
 		scope.MatchDeaths = matchDeaths
 		scope.MeasuredDeaths = measured
 		scope.PublishableDeaths = publishable
-		// Ligne de portée SEULE (aucune paire) : le LEFT JOIN ON TRUE laisse les cinq
-		// colonnes de paire à NULL. C'est l'état « mesuré, zéro assistant nommé » —
-		// on garde la portée et on n'invente pas de paire.
-		if !ax.Valid || !agt.Valid || !kx.Valid {
+		// Ligne de portée SEULE (aucune paire) : le LEFT JOIN ON TRUE laisse les colonnes
+		// de paire à NULL, compte compris (une paire sortie a un compte, jamais NULL).
+		// C'est l'état « mesuré, zéro assistant nommé » : on garde la portée et on
+		// n'invente pas de paire. Les xuids d'une paire, eux, peuvent être NULL un à un
+		// (acteur sans xuid, nommé par son gamertag) : chaîne vide côté Go.
+		if !assistN.Valid {
 			continue
 		}
 		pair := domain.MatchAssistPairRaw{
 			AssistXUID:     ax.String,
 			AssistGamertag: agt.String,
 			KillerXUID:     kx.String,
+			KillerGamertag: kgt.String,
 			AssistCount:    int(assistN.Int64),
 			StolenCount:    int(stolenN.Int64),
 		}

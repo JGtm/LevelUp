@@ -25,7 +25,6 @@ import {
   type ResourceFil,
 } from '@/features/squad/emprise/emprise.logic'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from '@/features/squad/emprise/production.logic'
-import { buildVehicleCoverage, type VehicleCoverage } from '@/features/squad/emprise/vehicles.logic'
 import { objectiveMatches } from '@/features/squad/formes/model/objectives'
 import type {
   EmpriseEquipmentFamily,
@@ -82,7 +81,6 @@ export interface MapColumnInfo {
   name: string
   otherMaps: number
   matches: number
-  filmed: number
   wins: number
   losses: number
   others: number
@@ -128,7 +126,6 @@ export function buildMapGrid(block: SoloEmpriseBlock): MapGrid {
     name: c.map_label ?? '',
     otherMaps: c.other_maps ?? 0,
     matches: c.matches,
-    filmed: c.matches_filmed,
     wins: c.wins,
     losses: c.losses,
     others: c.others,
@@ -203,24 +200,22 @@ export function mineByResource(mine: MinePickups): MineResource[] {
 /** [servi, gardé, lâché]. */
 export type EquipmentParts = [number, number, number]
 
-export type EquipmentRow =
-  | { family: string; measured: true; me: EquipmentParts; rest: EquipmentParts; takenMe: number }
-  | { family: string; measured: false; droppedMe: number }
+export interface EquipmentRow {
+  family: string
+  me: EquipmentParts
+  rest: EquipmentParts
+  takenMe: number
+}
 
-/**
- * La famille a-t-elle été tenue par au moins un joueur du lobby (mon camp, l'adversaire, les joueurs
- * sans camp connu) ? Mesurée : servi + gardé + lâché du lobby ; non mesurée : lâchers du lobby.
- */
+/** La famille a-t-elle été tenue par au moins un joueur du lobby (servi + gardé + lâché du lobby) ? */
 function heldInLobby(f: EmpriseEquipmentFamily): boolean {
-  if (!f.measured) return (f.dropped_lobby ?? 0) > 0
   const l = f.lobby
-  return (l?.used ?? 0) + (l?.kept ?? 0) + (l?.dropped ?? 0) > 0
+  return l.used + l.kept + l.dropped > 0
 }
 
 function equipmentRow(f: EmpriseEquipmentFamily): EquipmentRow {
-  if (!f.measured) return { family: f.family, measured: false, droppedMe: f.dropped_me ?? 0 }
-  const parts = (o: EmpriseEquipmentFamily['me']): EquipmentParts => [o?.used ?? 0, o?.kept ?? 0, o?.dropped ?? 0]
-  return { family: f.family, measured: true, me: parts(f.me), rest: parts(f.rest), takenMe: f.me?.taken ?? 0 }
+  const parts = (o: EmpriseEquipmentFamily['me']): EquipmentParts => [o.used, o.kept, o.dropped]
+  return { family: f.family, me: parts(f.me), rest: parts(f.rest), takenMe: f.me.taken }
 }
 
 /**
@@ -247,10 +242,6 @@ export interface LivesModel {
   /** Frags par vie de chaque côté ; null quand le côté n'a aucune vie. */
   perLifeNear: number | null
   perLifeAlone: number | null
-  excludedUnlocated: number
-  excludedNoRadar: number
-  /** Vies d'un match dont le journal des morts n'est pas publiable (aucun frag lu). */
-  excludedUnpublishable: number
 }
 
 /** buildLivesModel — la carte « Mes vies » ; null sans vie rangée (bloc absent, ou toutes écartées). */
@@ -268,9 +259,6 @@ export function buildLivesModel(b: TimeseriesLivesNearTeammate | null | undefine
     killsNearShare: kills > 0 ? b.near.kills / kills : null,
     perLifeNear: b.near.lives > 0 ? b.near.kills / b.near.lives : null,
     perLifeAlone: b.alone.lives > 0 ? b.alone.kills / b.alone.lives : null,
-    excludedUnlocated: b.excluded_unlocated,
-    excludedNoRadar: b.excluded_no_radar,
-    excludedUnpublishable: b.excluded_unpublishable,
   }
 }
 
@@ -286,7 +274,6 @@ export interface UsagesModels {
   mine: MinePickups | null
   production: ProductionRow[]
   yieldRows: YieldRow[]
-  vehicleCoverage: VehicleCoverage | null
   lives: LivesModel | null
   equipment: EquipmentRow[]
   /** Le bloc d'objectif, seulement quand le périmètre a au moins un match à objectif. */
@@ -305,7 +292,6 @@ export function buildUsagesModels(data: TimeseriesPageResponse, nameOf: (o: Squa
     mine: block ? buildMinePickups(block, nameOf) : null,
     production: block ? buildProductionRows(block) : [],
     yieldRows: block ? buildYieldRows(block) : [],
-    vehicleCoverage: block ? buildVehicleCoverage(block) : null,
     lives: buildLivesModel(data.lives_near_teammate),
     equipment: block ? buildEquipmentRows(block) : [],
     objective: formes && objectiveMatches(formes).length > 0 ? formes : null,

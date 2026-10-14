@@ -73,7 +73,6 @@ export function ResourceMatchGridCard({
           { kind: 'square', label: t.grid.more, color: `color-mix(in oklab, ${PLUS_INK} 80%, var(--muted))` },
           { kind: 'square', label: t.grid.less, color: `color-mix(in oklab, ${MINUS_INK} 80%, var(--muted))` },
           { kind: 'square', label: t.grid.nothing, color: TRACK_INK },
-          { kind: 'hatch', label: t.grid.noFilm },
         ]}
       />
     ),

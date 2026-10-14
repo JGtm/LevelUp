@@ -44,7 +44,7 @@ interface Input {
 
 interface MatchEmprise {
   present: MatchEmpriseCards
-  /** « film décodé · 8 joueurs présents à la fin » ; null sans Emprise. */
+  /** « film décodé · 8 joueurs présents à la fin » ; null sans film. */
   coverage: string | null
   control: ReactNode
   sheets: ReactNode
@@ -73,7 +73,7 @@ export function useMatchEmprise(x: Input): MatchEmprise {
   const own = texts.own
   return {
     present,
-    coverage: cov ? own.coverage(cov.filmed, cov.present) : null,
+    coverage: cov ? own.coverage(cov.present) : null,
     control: present.control && <MatchResourceControlCard control={models.control} objectName={objectName} t={texts.emprise} own={own} />,
     sheets: present.sheets && models.sheets && (
       <section className="space-y-2" data-testid="match-emprise-sheets-section">
@@ -96,7 +96,7 @@ export function useMatchEmprise(x: Input): MatchEmprise {
       <YieldCard rows={models.yield.rows} pending={models.yield.pending.map((p) => yieldPending(p, own, texts.emprise.production.exposure.effect_ms.fmt))} t={texts.emprise} />
     ),
     lives: present.lives && models.lives && (
-      <MatchLivesCard lives={models.lives} inkOf={inkOf} meXUID={x.meXUID} ut={texts.cards} noRankedLife={own.noRankedLife} />
+      <MatchLivesCard lives={models.lives} inkOf={inkOf} meXUID={x.meXUID} ut={texts.cards} />
     ),
   }
 }
@@ -107,11 +107,6 @@ function productionPending(p: MatchProductionPending, own: MatchOwnText) {
 
 function yieldPending(p: MatchYieldPending, own: MatchOwnText, effect: (ms: number) => string) {
   const r = p.reason
-  const text =
-    r.kind === 'noEffect'
-      ? own.yield.noEffect(r.team, effect(r.teamEffectMs), r.teamKills)
-      : r.kind === 'noPickup'
-        ? own.yield.noPickup(r.team, r.us, r.them)
-        : own.yield[r.kind]
+  const text = r.kind === 'noEffect' ? own.yield.noEffect(r.team, effect(r.teamEffectMs), r.teamKills) : own.yield.noPickup(r.team, r.us, r.them)
   return { resource: p.resource, text }
 }

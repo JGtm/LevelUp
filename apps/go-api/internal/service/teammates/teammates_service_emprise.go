@@ -56,12 +56,14 @@ func (s *TeammatesService) loadEmprise(
 		SessionMatchCounts: compositionCounts(p.compositionSessions),
 	}
 	lecteur := squadagg.EmpriseLecteur{Page: "teammates", Player: s.gamertag, RepoRoot: s.repoRoot, TitleSlug: s.titleSlug}
-	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, s.empriseRepo, teammatesMatchIDs(scope))
+	scopeIDs := teammatesMatchIDs(scope)
+	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, s.empriseRepo, scopeIDs)
+	in.Journal = lecteur.Journal(ctx, s.empriseRepo, scopeIDs, in.Weapons)
 	in.Film, in.FilmUnavailable = lecteur.Film(ctx, s.sessionUsageRepo, current, timeline, lu.lectures)
 	// La ressource véhicules vient de l'artefact, pas du résumé d'usage : sa propre lecture et sa propre
 	// section, sur le périmètre ET les matchs de l'habitude.
 	vehIDs := append(squadagg.EmpriseMatchIDs(current), squademprise.HabitCandidates(current, timeline)...)
-	in.Vehicles, in.VehiclesUnavailable, in.VehicleLabels = lecteur.Vehicules(ctx, s.vehicleRepo, vehIDs, playerXUID, req.Locale)
+	in.Vehicles, in.VehicleLabels = lecteur.Vehicules(ctx, s.vehicleRepo, vehIDs, playerXUID, req.Locale)
 	if in.Film != nil {
 		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, in.Film.Participants, p.membres)
 	} else {

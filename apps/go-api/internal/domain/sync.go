@@ -100,12 +100,14 @@ func (r *SyncResult) Status() string {
 	return "failure"
 }
 
-// AddError ajoute une erreur au résultat.
+// AddError ajoute une erreur au résultat. Pas sûr en concurrence (comme AddWarning) : un
+// producteur parallèle collecte ses messages et les verse après sa barrière.
 func (r *SyncResult) AddError(msg string) {
 	r.Errors = append(r.Errors, msg)
 }
 
-// AddWarning ajoute un avertissement au résultat.
+// AddWarning ajoute un avertissement au résultat. Pas sûr en concurrence : un producteur
+// parallèle (fetch du sync) collecte ses messages et les verse après sa barrière.
 func (r *SyncResult) AddWarning(msg string) {
 	r.Warnings = append(r.Warnings, msg)
 }

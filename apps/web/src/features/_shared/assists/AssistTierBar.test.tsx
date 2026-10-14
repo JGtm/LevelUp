@@ -50,4 +50,20 @@ describe('AssistTierBar', () => {
     const order = [...container.querySelectorAll('[data-testid^="seg-"]')].map((el) => el.getAttribute('data-testid'))
     expect(order).toEqual(['seg-high', 'seg-low'])
   })
+
+  it('ne pose que les tranches assistées : le reste de la base est la piste nue, sans hachure', () => {
+    // Narrows 0a08d2f2 : 10 frags assistés sur 20 officiels (6 sur des bots).
+    const segments = assistShareSegments({ total: 10, low: 2, mid: 2, high: 6 }, 20)
+    const { container } = render(
+      <AssistTierBar segments={segments} color="var(--c)" text={ASSISTS_TEXT.fr} locale="fr" variant="tile" testId="seg" />,
+    )
+    const order = [...container.querySelectorAll('[data-testid^="seg-"]')].map((el) => el.getAttribute('data-testid'))
+    expect(order).toEqual(['seg-low', 'seg-mid', 'seg-high'])
+    const total = [...container.querySelectorAll('[style*="width"]')].reduce(
+      (sum, el) => sum + parseFloat((el as HTMLElement).style.width),
+      0,
+    )
+    expect(total).toBeCloseTo(50)
+    expect(container.innerHTML).not.toContain('repeating-linear-gradient')
+  })
 })

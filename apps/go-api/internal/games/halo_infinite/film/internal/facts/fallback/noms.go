@@ -21,8 +21,10 @@ package fallback
 const (
 	// NomPieceEngendreeSansEvenement : `replay/equipment_origin.go`, `origineDeLaPose`.
 	NomPieceEngendreeSansEvenement Nom = "repli_piece_engendree_sans_evenement"
-	// NomPlafondGrenadeParDefaut : applique par `grammar/inventory_decode.go` (`ScanKeyframeInventory`),
-	// compte par `replay/film_scan.go` (`balayerInventaire`) depuis le lot J4.2.
+	// NomPlafondGrenadeParDefaut : applique par la fenetre d inventaire DERRIERE la lecture de l etat complet,
+	// sur les seuls records non admis (`grammar/keyframe_etats_fenetre.go`, `rendreParLaFenetre` ->
+	// `keyframeInventoriesDe`, lot D1.2 de 2.7.d1) ; compte par `replay/film_scan.go` (`balayerInventaire`)
+	// quand un record a ete donne a la fenetre.
 	NomPlafondGrenadeParDefaut Nom = "repli_plafond_grenade_par_defaut"
 	// NomLargeursAxeParDefautConservees : `replay/world_object_precision.go`.
 	NomLargeursAxeParDefautConservees Nom = "repli_largeurs_axe_par_defaut_conservees"
@@ -35,6 +37,14 @@ const (
 	NomPisteDrapeauSansPontEcartee Nom = "repli_piste_drapeau_sans_pont_ecartee"
 	// NomCollineVotesPeriodeEntiere : `replay/zone_states_hill.go`, `buildDesignatedHills`.
 	NomCollineVotesPeriodeEntiere Nom = "repli_colline_votes_periode_entiere"
+	// NomCollinePremiereAuCoupDEnvoi : `replay/zone_states_hill_activation.go`, `hillFirstActivation`.
+	NomCollinePremiereAuCoupDEnvoi Nom = "repli_colline_premiere_au_coup_d_envoi"
+	// NomCollineVotesSansGarde : `replay/zone_states_hill.go`, `hillLocator.place`.
+	NomCollineVotesSansGarde Nom = "repli_colline_votes_sans_garde"
+	// NomSeuilGardeTableDeVariante : `replay/hill_hold_threshold.go`, `resolveHoldThreshold`.
+	NomSeuilGardeTableDeVariante Nom = "repli_seuil_garde_table_de_variante"
+	// NomSeuilGardeTableContredite : `replay/hill_hold_threshold.go`, `resolveHoldThreshold`.
+	NomSeuilGardeTableContredite Nom = "repli_seuil_garde_table_contredite"
 	// NomCollineDernierIntervalleOuvert : `replay/zone_states_hill_owners.go`, `hillOwnerRuns`.
 	NomCollineDernierIntervalleOuvert Nom = "repli_colline_dernier_intervalle_ouvert"
 	// NomVieCoupeeAuTrouDeReplication : DEUX sites — `replay/lives_decoupe.go`,
@@ -122,6 +132,9 @@ const (
 	// NomOrigineAuSolLacheeParFenetre : `replay/ground_weapon_rules.go`, `gwPadsClass` ; compte par
 	// `replay/ground_weapon_pads.go`, `buildWeaponPads` (lot J8.3, constat RB2-8).
 	NomOrigineAuSolLacheeParFenetre Nom = "repli_origine_au_sol_lachee_par_fenetre"
+	// NomPriseDeSoclePremiereDuCycle : `replay/pad_pickup_dating_cycle.go`, `premieresPrisesDuCycle` ;
+	// compte par `replay/build_calques.go` (lot needler des ajustements, 2026-10-09).
+	NomPriseDeSoclePremiereDuCycle Nom = "repli_prise_de_socle_premiere_du_cycle"
 	// NomIdentiteDeSlotParResiduDeManche : `objectives/slotidentity_residue.go`,
 	// `CompletedByRoundResidue` ; compte par `replay/identity_registry_section.go`,
 	// `compterLesSlotsParResidu` (lot J8.4, constats FO-1 / RA2-4).
@@ -199,6 +212,12 @@ const (
 	// NomCreationsDuMondeApresLaMarche : `grammar/creations_du_monde.go`, compte par
 	// `grammar/replis_du_film.go`.
 	NomCreationsDuMondeApresLaMarche Nom = "repli_creations_du_monde_apres_la_marche"
+	// NomFenetreArmesImageCle, NomFenetreInventaireImageCle, NomFenetreMarqueDePortage :
+	// `grammar/keyframe_etats_fenetre.go`, comptes par `grammar/keyframe_etats_scan.go`
+	// (`ScanEtatsDesImagesCles`) et verses par `replay/versement_des_replis.go`.
+	NomFenetreArmesImageCle      Nom = "repli_fenetre_armes_image_cle"
+	NomFenetreInventaireImageCle Nom = "repli_fenetre_inventaire_image_cle"
+	NomFenetreMarqueDePortage    Nom = "repli_fenetre_marque_de_portage"
 
 	// LES REPLIS DE `killsource` (sous-lot killsource du lot J8.7, 2026-09-27) : comptes en DONNEES
 	// dans `killsource.Stats` (`Replis`, et les comptes que le decodeur tenait deja), verses par la
@@ -237,6 +256,8 @@ const (
 	NomLibelleDeSourceAutres Nom = "repli_libelle_de_source_autres"
 	// NomLargeurMotDePoigneeInferee : `killsource/calibrate.go`.
 	NomLargeurMotDePoigneeInferee Nom = "repli_largeur_mot_de_poignee_inferee"
+	// NomTypeDAssistanceApprisParFilm : `killsource/assist_fil.go`.
+	NomTypeDAssistanceApprisParFilm Nom = "repli_type_d_assistance_appris_par_film"
 
 	// LES REPLIS D `objectives` (sous-lot objectives du lot J8.7, 2026-09-27) : comptes en DONNEES
 	// par le balayage du statborg (lu par `grammar/signaux`, porte par `objectives`) et par le

@@ -27,7 +27,7 @@ func TestTacticalRepo_MortsParCarte(t *testing.T) {
 	seedTacticalCorpus(t, pdb)
 
 	got, err := NewTacticalRepo(pdb).MortsParCarte(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+		tacQuery(""))
 	if err != nil {
 		t.Fatalf("MortsParCarte: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestTacticalRepo_MortsParCarte_PerimetreEtGardes(t *testing.T) {
 
 	repo := NewTacticalRepo(pdb)
 
-	got, err := repo.MortsParCarte(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	got, err := repo.MortsParCarte(context.Background(), tacQuery(""))
 	if err != nil {
 		t.Fatalf("MortsParCarte: %v", err)
 	}

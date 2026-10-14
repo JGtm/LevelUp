@@ -60,7 +60,7 @@ describe('SquadRangeRolesCard', () => {
   it('rend un ÉTAT VIDE NOMMÉ quand aucun profil n’est servi', () => {
     renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster}
         colorByPlayer={COULEURS} />)
-    expect(screen.getByText('Aucune portée mesurée')).toBeTruthy()
+    expect(screen.getByText('Aucune distance de frag')).toBeTruthy()
     expect(screen.queryByTestId('portee-nuage-stub')).toBeNull()
     expect(screen.queryByTestId('squad-portee-fold-bande')).toBeNull()
   })
@@ -139,12 +139,12 @@ describe('SquadRangeRolesCard', () => {
       <SquadRangeRolesCard bloc={bloc([])} roster={roster}
         colorByPlayer={COULEURS} />,
     )
-    expect(screen.getByText('Aucune portée mesurée')).toBeTruthy()
+    expect(screen.getByText('Aucune distance de frag')).toBeTruthy()
     unmount()
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster}
         colorByPlayer={COULEURS} />)
-    expect(screen.getByText('No range measured')).toBeTruthy()
+    expect(screen.getByText('No kill distance')).toBeTruthy()
   })
 })
 

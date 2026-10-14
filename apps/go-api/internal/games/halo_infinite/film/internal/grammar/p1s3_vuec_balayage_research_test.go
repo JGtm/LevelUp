@@ -162,7 +162,7 @@ func TestP1S3VueCBalayage(t *testing.T) {
 	for _, e := range ents {
 		if e.index == cad.index {
 			lues++
-			tir += s3B(e.tir())
+			tir += unSi(e.tir())
 		}
 	}
 	t.Logf("== ENTREES RENDUES PAR LA REGLE : %d · index %d : %d dont %d qui tirent", len(ents), cad.index,

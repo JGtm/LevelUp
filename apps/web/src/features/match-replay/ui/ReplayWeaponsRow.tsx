@@ -117,10 +117,10 @@ export function ReplayWeaponsRow({
     <GrenadeThrowBadge doc={doc} rank={activeThrow.rank} throwFrame={frame - activeThrow.age} locale={locale} />
   ) : null
   if (!read) {
-    // Loadout non lu : les cellules restent, vides en pointillés — la grille des fiches ne
-    // bouge pas, la lacune est dite en infobulle (avec ce que la main sait encore dire).
+    // Loadout sans lecture : les cellules restent, vides en pointillés — la grille des fiches ne
+    // bouge pas ; l'infobulle ne dit que ce que la main sait dire, jamais la lacune.
     return (
-      <span className="inline-flex items-center gap-[5px]" title={[t.loadoutUnread, handHint].filter(Boolean).join(' · ')}>
+      <span className="inline-flex items-center gap-[5px]" title={handHint || undefined}>
         <span className="relative inline-flex">
           <EmptyWeaponCell width={cellW} />
           {gic}

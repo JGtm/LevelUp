@@ -42,7 +42,6 @@ const LECTURE: TacticalRaster = {
   matchs_victoire: 20,
   matchs_defaite: 25,
   matchs_en_attente: 0,
-  matchs_non_cuisables: 0,
   points_ignores: 0,
 }
 
@@ -57,6 +56,7 @@ const REGLAGES: ReglagesDuPlan = {
   qui: 'moi',
   onQuiChange: () => {},
   escouadeDisponible: false,
+  escouadeEnAttente: false,
   spawn: '',
   onSpawnChange: () => {},
   grappes: [],

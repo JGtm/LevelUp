@@ -221,3 +221,15 @@ export function resoudreComposition(
   }
   return { xuids, inconnus }
 }
+
+/**
+ * lignesDeLaComposition — les coéquipiers choisis que l'annuaire connaît, avec leur xuid, dans
+ * l'ordre de la composition : de quoi « Enregistrer la compo » depuis le sélecteur.
+ */
+export function lignesDeLaComposition(
+  gamertags: readonly string[],
+  annuaire: readonly TeammateOption[],
+): TeammateOption[] {
+  const parGamertag = new Map(annuaire.map((o) => [o.gamertag.toLowerCase(), o]))
+  return gamertags.flatMap((gt) => parGamertag.get(gt.trim().toLowerCase()) ?? [])
+}

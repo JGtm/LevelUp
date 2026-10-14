@@ -208,32 +208,6 @@ func TestBuildLifeBuckets_FallbackWhenRealMissing(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// FanoutPlan / FanoutResult (domain types)
-// ---------------------------------------------------------------------------
-
-func TestFanoutPlan_Empty(t *testing.T) {
-	plan := domain.FanoutPlan{
-		SourceGamertag: "TestPlayer",
-	}
-	if len(plan.Targets) != 0 {
-		t.Errorf("expected empty targets")
-	}
-}
-
-func TestFanoutResult_NoErrors(t *testing.T) {
-	result := domain.FanoutResult{
-		TargetsProcessed: 3,
-		MatchesEnriched:  15,
-	}
-	if len(result.Errors) != 0 {
-		t.Errorf("expected no errors")
-	}
-	if result.TargetsProcessed != 3 {
-		t.Errorf("expected 3 targets processed, got %d", result.TargetsProcessed)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // TimeseriesService (GetPage + NewTimeseriesService)
 // ---------------------------------------------------------------------------
 

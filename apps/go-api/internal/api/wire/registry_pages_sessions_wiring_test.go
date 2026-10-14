@@ -36,8 +36,8 @@ func TestSessionPage_CableLaFeuilleEtLeJoueurSansCondition(t *testing.T) {
 	if len(appels) != 1 {
 		t.Fatalf("%d appel(s) à WithSessionEmprise, attendu 1", len(appels))
 	}
-	if got := strings.Join(appels[0].args, ", "); got != "duckdb.NewSquadEmpriseRepo(pdb), pdb.XUID" {
-		t.Errorf("WithSessionEmprise(%s) : attendu WithSessionEmprise(duckdb.NewSquadEmpriseRepo(pdb), pdb.XUID)", got)
+	if got := strings.Join(appels[0].args, ", "); got != "duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID" {
+		t.Errorf("WithSessionEmprise(%s) : attendu WithSessionEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)", got)
 	}
 	if len(appels[0].portes) != 0 {
 		t.Errorf("WithSessionEmprise est sous condition (%v) : la feuille est écrite par tous les titres", appels[0].portes)

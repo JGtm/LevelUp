@@ -154,7 +154,9 @@ describe('drawZoneStates', () => {
   }
   const zones = () => zoneElementsOf(normalizeMapObjectives(MO))
   /** L'entrée du calque telle que `useZoneStates` la rend : jointure ACCORDÉE sauf dit autrement. */
-  const layer = (zoneElements = zones(), joinable = true) => ({ zoneElements, joinable, style, gaugeHoldFrames: HOLD })
+  const layer = (zoneElements = zones(), joinable = true) => ({
+    zoneElements, joinable, style, gaugeHoldFrames: HOLD, z: { min: 0, max: 0 },
+  })
   /** Combien de remplissages de PROGRESSION ce rendu a émis (un `fillRect` = une capture). */
   const progressions = (ops: CanvasOp[]) => count(ops, 'fillRect')
 

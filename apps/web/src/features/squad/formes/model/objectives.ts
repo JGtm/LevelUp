@@ -66,7 +66,7 @@ export function columnsOfFamily(
  * AUCUNE clé. Les afficher à zéro dirait « il n'a rien pris » là où la vérité
  * est « on n'a pas regardé ».
  *
- * `null` = non mesuré, et la grille le rend en hachure.
+ * `null` = grandeur absente du match : elle reste hors de toute somme, jamais un zéro.
  */
 export function objectiveCell(
   match: SquadFormesMatch,

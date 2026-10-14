@@ -7,6 +7,8 @@ package grammar
 // etiquetee (`FUN_14080ef08` : etiquette `R(3)`, puis `FUN_14080eff0`). Le sous-sac est
 // `FUN_14080b034`, porte une seule fois dans le depot ([consumeSacTexte]).
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+
 // largeurEtiquetteDePropriete est le `R(3)` de `FUN_14080ef08` et le compte `R(3)` de
 // `FUN_14080b1b8`.
 const largeurEtiquetteDePropriete = 3
@@ -16,13 +18,55 @@ const longueurChaineDePropriete = 16
 
 // chargeEvenementJoueurCourt porte `FUN_14080add8` (`PlayerGameEventSmall`) : `FUN_14080b30c`
 // (initialisation, aucun bit), `FUN_14080ae70` (R(32), R(8), le sac, le sous-sac), puis
-// `FUN_14080ae28` (32 x R(1)).
+// `FUN_14080ae28` (32 x R(1), le masque des destinataires). Un message dont le sous-sac nomme un
+// couple ([coupleDuSacTexte]) est range sur le lecteur ([Lecteur.filLu]), que la lecture de la vue A
+// recueille.
 func chargeEvenementJoueurCourt(br *Lecteur) bool {
-	if !lireEnTeteDEvenementDeJeu(br, largeurCompteSacCourt) {
+	br.filACouple = false
+	e, ok := lireEnTeteDEvenementDeJeu(br, largeurCompteSacCourt)
+	if !ok {
 		return false
 	}
-	br.Skip(32)
+	masque := uint32(br.ReadBits(ParticipantsDuFil)) //nolint:gosec // R(32)
+	if tueur, victime, couple := coupleDuSacTexte(e.texte); couple {
+		br.filLu = lecture.EvenementDeFil{Type: e.typ, Destinataires: masque, Tueur: tueur, Victime: victime}
+		br.filACouple = true
+	}
 	return true
+}
+
+// GenreEvenementJoueurCourt est le genre du message `PlayerGameEventSmall` de la vue A.
+const GenreEvenementJoueurCourt = 82
+
+// ParticipantsDuFil est le nombre de `R(1)` de `FUN_14080ae28` : un par participant que le masque des
+// destinataires peut designer.
+const ParticipantsDuFil = 32
+
+// DestineA dit que le participant `i` (0 <= i < 32) est un destinataire du message `e` : le premier
+// `R(1)` du masque, le bit le plus fort de [lecture.EvenementDeFil.Destinataires], designe le
+// participant 0.
+func DestineA(e lecture.EvenementDeFil, i int) bool {
+	return i >= 0 && i < ParticipantsDuFil &&
+		e.Destinataires&(1<<uint(ParticipantsDuFil-1-i)) != 0
+}
+
+// emplacementsDUnCouple : un sac texte qui nomme un couple porte deux emplacements participant.
+const emplacementsDUnCouple = 2
+
+// coupleDuSacTexte rend les deux participants d un sac texte qui en porte exactement deux, tous deux
+// presents (sous-type 1, porte a 0) : le couple (tueur, victime) dans l ordre de l ecriture. Faux
+// pour tout autre sac.
+func coupleDuSacTexte(sac sacTexte) (tueur, victime int8, ok bool) {
+	en := sac.Entrees
+	if !sac.Present || len(en) != emplacementsDUnCouple {
+		return 0, 0, false
+	}
+	for _, e := range en {
+		if e.SousType != sacTexteParticipant || !e.AValeur {
+			return 0, 0, false
+		}
+	}
+	return int8(en[0].Valeur), int8(en[1].Valeur), true //nolint:gosec // indice R(5)
 }
 
 // lireSacDeProprietes porte `FUN_14080b1b8` (compte sur `largeurCompte` = 3 bits) et `FUN_142efb634`
@@ -73,15 +117,24 @@ const (
 	largeurCompteSacLong  uint = 4
 )
 
+// enTeteDEvenementDeJeu est ce que [lireEnTeteDEvenementDeJeu] rend : le `R(32)` de tete et le
+// sous-sac.
+type enTeteDEvenementDeJeu struct {
+	typ   uint32
+	texte sacTexte
+}
+
 // lireEnTeteDEvenementDeJeu porte `FUN_14080ae70` (sac court) et `FUN_142efb480` (sac long) :
 // R(32), R(8), le sac principal, puis le sous-sac `FUN_14080b034`.
-func lireEnTeteDEvenementDeJeu(br *Lecteur, largeurCompte uint) bool {
-	br.Skip(32 + 8)
+func lireEnTeteDEvenementDeJeu(br *Lecteur, largeurCompte uint) (enTeteDEvenementDeJeu, bool) {
+	var e enTeteDEvenementDeJeu
+	e.typ = uint32(br.ReadBits(32)) //nolint:gosec // R(32)
+	br.Skip(8)
 	if !lireSacDeProprietes(br, largeurCompte) {
-		return false
+		return e, false
 	}
-	consumeSacTexte(br)
-	return true
+	e.texte = consumeSacTexte(br)
+	return e, true
 }
 
 // largeurQueueDEquipe est le R(9) de `FUN_140f58324`, la queue des evenements d equipe.
@@ -90,7 +143,7 @@ const largeurQueueDEquipe = 9
 // chargeEvenementJoueur porte `FUN_142f164f4` (`PlayerGameEvent`) : `FUN_142efe2c4`
 // (initialisation, aucun bit), `FUN_142efb480`, puis `FUN_14080ae28` (32 x R(1)).
 func chargeEvenementJoueur(br *Lecteur) bool {
-	if !lireEnTeteDEvenementDeJeu(br, largeurCompteSacLong) {
+	if _, ok := lireEnTeteDEvenementDeJeu(br, largeurCompteSacLong); !ok {
 		return false
 	}
 	br.Skip(32)
@@ -100,7 +153,7 @@ func chargeEvenementJoueur(br *Lecteur) bool {
 // chargeEvenementDEquipe porte `FUN_142f1686c` (`TeamGameEvent`) : `FUN_142efb480` puis
 // `FUN_140f58324`.
 func chargeEvenementDEquipe(br *Lecteur) bool {
-	if !lireEnTeteDEvenementDeJeu(br, largeurCompteSacLong) {
+	if _, ok := lireEnTeteDEvenementDeJeu(br, largeurCompteSacLong); !ok {
 		return false
 	}
 	br.Skip(largeurQueueDEquipe)
@@ -110,7 +163,7 @@ func chargeEvenementDEquipe(br *Lecteur) bool {
 // chargeEvenementDEquipeCourt porte `FUN_142f16818` (`TeamGameEventSmall`) : `FUN_14080ae70` puis
 // `FUN_140f58324`.
 func chargeEvenementDEquipeCourt(br *Lecteur) bool {
-	if !lireEnTeteDEvenementDeJeu(br, largeurCompteSacCourt) {
+	if _, ok := lireEnTeteDEvenementDeJeu(br, largeurCompteSacCourt); !ok {
 		return false
 	}
 	br.Skip(largeurQueueDEquipe)
@@ -138,7 +191,7 @@ func chargeDEvenementDeJeu(genre int) func(*Lecteur) bool {
 		return chargeTexteDeDebogage
 	case 81:
 		return chargeEvenementJoueur
-	case 82:
+	case GenreEvenementJoueurCourt:
 		return chargeEvenementJoueurCourt
 	case 83:
 		return chargeEvenementDEquipe

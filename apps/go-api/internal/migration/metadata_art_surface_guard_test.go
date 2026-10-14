@@ -64,6 +64,14 @@ var noSecondaryIndexTables = []string{
 	// (rating_type = 'CSR') est ~10x plus rapide sans. Trois index retirés :
 	// idx_msr_match_lookup, idx_msr_rating_type, idx_msr_playlist.
 	"match_skill_rank",
+	// Les trois autres tables append-only joueur (plan des recommandations du 2026-10-09, lot
+	// C2), même raison mesurée : psa_index_repro_player_planprobe_test.go (tag psarepro), sur
+	// copies réelles, montre qu'aucune forme de lecture de production n'emprunte leurs index
+	// (plan séquentiel avec ou sans eux) et qu'aucune ne ralentit sans eux. Quatre index
+	// retirés : idx_lch_component, idx_lch_match, idx_pme_match_lookup, idx_pcs_lookup.
+	"lusr_component_history",
+	"player_match_enrichment",
+	"player_csr_snapshots",
 }
 
 // noSecondaryIndexExemptions — dispenses DATÉES de la règle 1, par (fichier, table). Une
@@ -92,10 +100,6 @@ var forbiddenIndexedColumns = map[string][]string{
 	"preset_arc":           {"title_slug"},                           // PrestigePresetArcRepo.Replace
 	"citation_mappings":    {"medal_id", "mapping_type"},             // SeedCitationMappings UPDATE
 	"media_files":          {"kind", "file_path"},                    // insertMediaFile mute kind + file_path (conversion/HLS/reconcile)
-	// player_match_enrichment (append-only #23645) : les 3 ex-index ART sur colonnes
-	// taggées par stage ne doivent JAMAIS revenir. Seul idx_pme_match_lookup(match_id,
-	// written_at) est toléré (d'où PAS de noSecondaryIndexTables ici).
-	"player_match_enrichment": {"session_id", "mode_category", "engagement_score_brut"},
 }
 
 var (

@@ -121,7 +121,7 @@ func forEachPlayerRO(ctx context.Context, env runEnv, fn func(gt, xuid string, d
 	}
 
 	for _, gt := range env.players {
-		db, err := openDB(env.paths.PlayerDBPath(titleSlug, gt), true)
+		db, err := openReadOnly(env.paths.PlayerDBPath(titleSlug, gt))
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func forEachPlayerRO(ctx context.Context, env runEnv, fn func(gt, xuid string, d
 // ATTACHée par chaque player DB, et deux handles concurrents sur le même fichier
 // n'apportent rien qu'un risque de configuration divergente.
 func resolveAllXUIDs(ctx context.Context, sharedPath string, players []string) (map[string]string, error) {
-	shared, err := openDB(sharedPath, true)
+	shared, err := openReadOnly(sharedPath)
 	if err != nil {
 		return nil, err
 	}

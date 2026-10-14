@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 90
-empreinte-stockee 9f1503a5a54afd19
-empreinte-servie 9f1503a5a54afd19
-empreinte-cuite 0e66ef45bd9c9c1f
+schema 93
+empreinte-stockee c8e253677bb0e701
+empreinte-servie c8e253677bb0e701
+empreinte-cuite d837287324550b54
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -688,6 +688,7 @@ PadCycle
 PadDatingStats
   Ambiguous json:"ambiguous" int
   Dated json:"dated" int
+  FirstOfCycle json:"firstOfCycle" int
   Named json:"named" int
   Occupations json:"occupations" int
   PowerupOccupations json:"powerupOccupations" int
@@ -1215,6 +1216,7 @@ WeaponTiersInfo
   RandomStarts json:"randomStarts" bool
 ZoneGaugeRamp
   CapturingTeam json:"capturingTeam,omitempty" *int
+  Draining json:"draining,omitempty" bool
   T0 json:"t0" int
   T1 json:"t1" int
 ZoneSpan

@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -344,7 +345,9 @@ func (s *ExplorerService) GetCommonMatches(
 	// locales. Le profil live (buildTargetProfile) reste servi pour tout xuid ;
 	// l'intersection « matchs communs » sera simplement vide pour un inconnu.
 	if otherXUID == "" {
+		stopResolve := timing.FromContext(ctx).Section("explorer_resolve_gamertag")
 		resolved, err := s.repo.ResolveXUIDByGamertag(ctx, otherGamertag)
+		stopResolve()
 		switch {
 		case err == nil:
 			otherXUID = resolved
@@ -366,7 +369,9 @@ func (s *ExplorerService) GetCommonMatches(
 		}
 	}
 
+	stopCommon := timing.FromContext(ctx).Section("explorer_common_matches")
 	rawMatches, kv, err := s.loadPlayerIntersection(ctx, otherXUID)
+	stopCommon()
 	if err != nil {
 		return domain.ExplorerPlayerQueryResponse{}, err
 	}
@@ -396,7 +401,8 @@ func (s *ExplorerService) GetCommonMatches(
 	// Enrichissement best-effort de la section « matchs joués ensemble » : repère
 	// « moyenne perso » des donuts + courbe d'écart de frags cumulé (duels). Réutilise
 	// les requêtes du hub Relations (WR historique + timeline de duels), déjà testées.
-	s.enrichEncounterRelations(ctx, encounterStats, otherXUID)
+	commonIDs := extractCommonMatchIDs(rawMatches)
+	s.enrichEncounterRelations(ctx, encounterStats, otherXUID, commonIDs)
 	activityHeatmap := analysis.ComputeActivityHeatmapFromCommonMatches(rawMatches)
 
 	// Encart "Profil joueur cible" : 4 sources fetch en parallèle (best-effort).
@@ -407,7 +413,7 @@ func (s *ExplorerService) GetCommonMatches(
 	if targetProfile != nil {
 		targetSample = targetProfile.SampleStats
 	}
-	s.enrichEncounterFragRange(ctx, encounterStats, otherXUID, extractCommonMatchIDs(rawMatches), targetSample)
+	s.enrichEncounterFragRange(ctx, encounterStats, otherXUID, commonIDs, targetSample)
 
 	slog.DebugContext(ctx, "explorer_common_matches",
 		"xuid", s.xuid, "other_xuid", otherXUID,
@@ -488,11 +494,16 @@ func (s *ExplorerService) buildTargetProfile(
 		// (Subqueries.SeasonIds) + playlists engagées (PlaylistAssetIds), puis
 		// breakdown par saison (séquentiel car dépendant). Un seul appel lifetime.
 		var seasonIDs, engagedPlaylists []string
+		stopRecord := timing.FromContext(ctx).Section("explorer_live_service_record")
 		careerStats, topMedals, seasonIDs, engagedPlaylists, careerStatus = s.fetchTargetServiceRecord(liveCtx, targetGamertag, hasAuth)
+		stopRecord()
+		stopSeasons := timing.FromContext(ctx).Section("explorer_season_breakdown")
 		matchsPerSea, seasonsStatus = s.computeSeasonBreakdown(liveCtx, targetXUID, targetGamertag, hasAuth, seasonIDs, engagedPlaylists)
+		stopSeasons()
 		return nil
 	})
 	g.Go(func() error {
+		defer timing.FromContext(ctx).Section("explorer_live_csr")()
 		seasonCSRs, seasonCSRsStatus = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth)
 		return nil
 	})
@@ -501,6 +512,7 @@ func (s *ExplorerService) buildTargetProfile(
 	// LIVE (défaut) = ~20 derniers matchs via l'API (liveCtx borné) ; LOCAL = matchs
 	// de la cible en base (gctx, non borné, gratuit).
 	g.Go(func() error {
+		defer timing.FromContext(ctx).Section("explorer_live_recent")()
 		combatProfileLive, combatStatus = s.computeTargetCombatProfileLive(liveCtx, targetXUID, hasAuth)
 		return nil
 	})
@@ -545,43 +557,6 @@ func (s *ExplorerService) buildTargetProfile(
 			CombatLive: combatStatus,
 		},
 	}
-}
-
-// explorerFragGapTimelineLimit : nombre de duels (matchs en ennemi) conservés
-// pour la courbe « écart de frags cumulé » de la section « matchs joués ensemble »
-// — aligné sur momentsTimelineLimit du hub Relations (mêmes N derniers duels).
-const explorerFragGapTimelineLimit = 20
-
-// enrichEncounterRelations complète best-effort la section « matchs joués
-// ensemble » : PlayerWinRate (repère « moyenne perso » des donuts, WR historique
-// du joueur) + FragGapSeries (écart de frags cumulé duel par duel contre la cible)
-// + Assists (« Part des assistances », cf. explorer_service_assists.go).
-// no-op si stats nil (aucun match commun) ou provider non injecté. Chaque source
-// est indépendante : un échec est loggé puis ignoré (dégradation gracieuse), la
-// réponse reste servie sans le repère / le graphe.
-func (s *ExplorerService) enrichEncounterRelations(ctx context.Context, stats *domain.ExplorerEncounterStats, otherXUID string) {
-	if stats == nil || s.deps.Relations == nil {
-		return
-	}
-	// WR historique perso (tout-temps) — repère des donuts. GetCoreEngagement avec
-	// noyau vide ne calcule QUE le WR (la forme récente court-circuite).
-	if eng, err := s.deps.Relations.GetCoreEngagement(ctx, nil, nil, 0); err != nil {
-		slog.WarnContext(ctx, "explorer_player_win_rate_failed", "xuid", s.xuid, "err", err)
-	} else {
-		stats.PlayerWinRate = eng.PlayerWinRate
-	}
-	// Écart de frags cumulé — timeline des duels (matchs en ennemi contre la cible).
-	if otherXUID != "" {
-		duels, err := s.deps.Relations.GetRivalTimeline(ctx, otherXUID, nil, explorerFragGapTimelineLimit)
-		if err != nil {
-			slog.WarnContext(ctx, "explorer_frag_gap_timeline_failed", "other_xuid", otherXUID, "err", err)
-		} else {
-			stats.FragGapSeries = buildExplorerFragGapSeries(duels)
-		}
-	}
-	// Assistances échangées avec la cible + borne d'échelle des barres papillon
-	// (bloc « Part des assistances »). Même best-effort que ci-dessus.
-	s.enrichEncounterAssists(ctx, stats, otherXUID)
 }
 
 // explorerCombatProfileLimit : nombre de matchs PvP récents de la cible exposés

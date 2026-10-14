@@ -51,16 +51,16 @@ func querySquadAssistPairs(
 func TestQ32dSquadAssistPairs_InternesSeules(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
 		// interne × 2, dont une volée
-		{"m1", true, 1000, "v1", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69)},
-		{"m1", true, 2000, "v2", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(80), intPtr(19)},
+		{"m1", true, 1000, "v1", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69), nil},
+		{"m1", true, 2000, "v2", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(80), intPtr(19), nil},
 		// assistant DANS l'escouade, tueur DEHORS -> écartée
-		{"m1", true, 3000, "v3", strPtr("X9"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69)},
+		{"m1", true, 3000, "v3", strPtr("X9"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69), nil},
 		// assistant DEHORS, tueur dans l'escouade -> écartée
-		{"m2", true, 4000, "v4", strPtr("S1"), true, strPtr("Etr"), strPtr("X9"), intPtr(30), intPtr(69)},
+		{"m2", true, 4000, "v4", strPtr("S1"), true, strPtr("Etr"), strPtr("X9"), intPtr(30), intPtr(69), nil},
 		// interne sur un autre match de la sélection
-		{"m2", true, 5000, "v5", strPtr("S1"), true, strPtr("Deux"), strPtr("S2"), intPtr(10), intPtr(89)},
+		{"m2", true, 5000, "v5", strPtr("S1"), true, strPtr("Deux"), strPtr("S2"), intPtr(10), intPtr(89), nil},
 		// match HORS sélection -> jamais lu
-		{"m3", true, 6000, "v6", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(10), intPtr(89)},
+		{"m3", true, 6000, "v6", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(10), intPtr(89), nil},
 	})
 	pairs, measured := querySquadAssistPairs(t, db, []string{"m1", "m2"}, []string{"S1", "S2"})
 
@@ -83,8 +83,8 @@ func TestQ32dSquadAssistPairs_InternesSeules(t *testing.T) {
 // assistance » et « rien mesuré » rendraient tous deux zéro ligne.
 func TestQ32dSquadAssistPairs_CouvertureSansPaire(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", strPtr("S1"), true, nil, nil, intPtr(100), nil},
-		{"m2", true, 2000, "v2", strPtr("S2"), true, strPtr("Etr"), strPtr("X9"), intPtr(30), intPtr(69)},
+		{"m1", true, 1000, "v1", strPtr("S1"), true, nil, nil, intPtr(100), nil, nil},
+		{"m2", true, 2000, "v2", strPtr("S2"), true, strPtr("Etr"), strPtr("X9"), intPtr(30), intPtr(69), nil},
 	})
 	pairs, measured := querySquadAssistPairs(t, db, []string{"m1", "m2"}, []string{"S1", "S2"})
 	if len(pairs) != 0 {
@@ -99,11 +99,11 @@ func TestQ32dSquadAssistPairs_CouvertureSansPaire(t *testing.T) {
 // Un match sans film et un match non publiable ligne à ligne ne comptent PAS comme mesurés.
 func TestQ32dSquadAssistPairs_CouverturePartielle(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69)},
+		{"m1", true, 1000, "v1", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69), nil},
 		// m2 : film présent mais assistance non mesurée
-		{"m2", true, 2000, "v2", strPtr("S2"), false, nil, nil, nil, nil},
+		{"m2", true, 2000, "v2", strPtr("S2"), false, nil, nil, nil, nil, nil},
 		// m3 : mesuré mais NON publiable ligne à ligne (BTB)
-		{"m3", false, 3000, "v3", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69)},
+		{"m3", false, 3000, "v3", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69), nil},
 		// m4 : aucune ligne du tout (absent de la table)
 	})
 	pairs, measured := querySquadAssistPairs(t, db,
@@ -120,7 +120,7 @@ func TestQ32dSquadAssistPairs_CouverturePartielle(t *testing.T) {
 // zéro et pas une paire. Le builder n'émet alors aucun bloc.
 func TestQ32dSquadAssistPairs_SelectionVide(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"autre", true, 1000, "v1", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69)},
+		{"autre", true, 1000, "v1", strPtr("S2"), true, strPtr("Un"), strPtr("S1"), intPtr(30), intPtr(69), nil},
 	})
 	pairs, measured := querySquadAssistPairs(t, db, []string{"m1"}, []string{"S1", "S2"})
 	if len(pairs) != 0 || measured != 0 {

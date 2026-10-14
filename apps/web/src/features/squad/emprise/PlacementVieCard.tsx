@@ -38,14 +38,13 @@ export function PlacementVieCard({ placement, locale, t }: { placement: Placemen
     () => buildPlacementLifeOption(placement, resolvePlacementColors(tokenOf), { t, formats }),
     [placement, tokenOf, t, formats],
   )
-  const { coverage } = placement
   return (
     <div className="min-w-0" data-testid="emprise-placement-vie">
       <ChartCard
         title={
           <span className="flex items-center gap-1.5">
             {t.life.title}
-            <InfoTooltip content={t.life.info(coverage.lives_measured, coverage.lives_total, coverage.matches_without_range)} />
+            <InfoTooltip content={t.life.info} />
           </span>
         }
         series={series}

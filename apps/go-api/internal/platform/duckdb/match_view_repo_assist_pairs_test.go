@@ -41,6 +41,8 @@ type killEventRow struct {
 	assistXUID  *string
 	killerPct   *int
 	assistPct   *int
+	// killerGT : gamertag du tueur écrit par le film (seule identité d'un tueur BOT).
+	killerGT *string
 }
 
 // strPtr / intPtr existent déjà dans le package (home_repo_cache_challenges_roundtrip_test.go,
@@ -60,9 +62,9 @@ func newAssistPairsDB(t *testing.T, rows []killEventRow) *sql.DB {
 	}
 	const ins = `INSERT INTO match_kill_events
 		(match_id, decode_pass, decoder_rev, publishable, time_ms, victim_gamertag,
-		 feed_killer_xuid, feed_present, assist_known, assist_gamertag, assist_xuid,
+		 feed_killer_xuid, feed_killer_gamertag, feed_present, assist_known, assist_gamertag, assist_xuid,
 		 killer_damage_pct, assist_damage_pct, read_path, read_origin)
-		VALUES (?, 'pass-1', 'rev-1', ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?)`
+		VALUES (?, 'pass-1', 'rev-1', ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?)`
 	// La PORTÉE des lignes passe par les constantes de `domain/killscope` et jamais par un
 	// littéral : c'est sur `read_path` que se décide la préséance entre producteurs, et une
 	// copie qui dérive d'un caractère la rend aveugle sans erreur (ratchet J4R-3,
@@ -71,7 +73,7 @@ func newAssistPairsDB(t *testing.T, rows []killEventRow) *sql.DB {
 	// écrivent `OriginCreditOnly`, « le crédit et rien que le crédit ».
 	for i, r := range rows {
 		if _, err := db.Exec(ins, r.matchID, r.publishable, r.timeMS, r.victim,
-			r.killerXUID, r.assistKnown, r.assistGT, r.assistXUID,
+			r.killerXUID, r.killerGT, r.assistKnown, r.assistGT, r.assistXUID,
 			r.killerPct, r.assistPct, killscope.ReadPathFilmWalk, filmCreditOrigin); err != nil {
 			t.Fatalf("insert ligne %d: %v", i, err)
 		}
@@ -99,14 +101,14 @@ func queryAssistPairs(t *testing.T, db *sql.DB, matchID string) ([]domain.MatchA
 func TestQ21dAssistPairs_Nominal(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
 		// A assiste K1 deux fois — dont une volée (60 > 39).
-		{"m1", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(39), intPtr(60)},
-		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(70), intPtr(29)},
+		{"m1", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(39), intPtr(60), nil},
+		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(70), intPtr(29), nil},
 		// A assiste K2 une fois — pas volée (égalité stricte : 49 == 49 n'est PAS un vol).
-		{"m1", true, 3000, "v3", strPtr("K2"), true, strPtr("Alpha"), strPtr("A"), intPtr(49), intPtr(49)},
+		{"m1", true, 3000, "v3", strPtr("K2"), true, strPtr("Alpha"), strPtr("A"), intPtr(49), intPtr(49), nil},
 		// B assiste K1 une fois — volée.
-		{"m1", true, 4000, "v4", strPtr("K1"), true, strPtr("Bravo"), strPtr("B"), intPtr(20), intPtr(79)},
+		{"m1", true, 4000, "v4", strPtr("K1"), true, strPtr("Bravo"), strPtr("B"), intPtr(20), intPtr(79), nil},
 		// Mort mesurée SANS assistant : compte dans la portée, pas dans les paires.
-		{"m1", true, 5000, "v5", strPtr("K3"), true, nil, nil, intPtr(100), nil},
+		{"m1", true, 5000, "v5", strPtr("K3"), true, nil, nil, intPtr(100), nil, nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
 
@@ -137,8 +139,8 @@ func TestQ21dAssistPairs_Nominal(t *testing.T) {
 // l'état « mesuré, zéro assistance », qui ne se confond pas avec « non mesuré ».
 func TestQ21dAssistPairs_MesureSansAssistant(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", strPtr("K1"), true, nil, nil, intPtr(100), nil},
-		{"m1", true, 2000, "v2", strPtr("K2"), true, nil, nil, intPtr(100), nil},
+		{"m1", true, 1000, "v1", strPtr("K1"), true, nil, nil, intPtr(100), nil, nil},
+		{"m1", true, 2000, "v2", strPtr("K2"), true, nil, nil, intPtr(100), nil, nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
 	if len(pairs) != 0 {
@@ -151,11 +153,11 @@ func TestQ21dAssistPairs_MesureSansAssistant(t *testing.T) {
 
 // TestQ21dAssistPairs_NonMesure : le match a un film décodé mais AUCUNE ligne
 // `assist_known`. MeasuredDeaths tombe à 0 alors que MatchDeaths reste positif — c'est
-// exactement le couple qui permet à l'écran d'écrire « non mesuré » plutôt que « aucune ».
+// exactement le couple qui fait retirer le bloc au service plutôt que d'écrire « aucune ».
 func TestQ21dAssistPairs_NonMesure(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", strPtr("K1"), false, nil, nil, nil, nil},
-		{"m1", true, 2000, "v2", strPtr("K2"), false, nil, nil, nil, nil},
+		{"m1", true, 1000, "v1", strPtr("K1"), false, nil, nil, nil, nil, nil},
+		{"m1", true, 2000, "v2", strPtr("K2"), false, nil, nil, nil, nil, nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
 	if len(pairs) != 0 {
@@ -171,7 +173,7 @@ func TestQ21dAssistPairs_NonMesure(t *testing.T) {
 // publier, et l'écran ne rend rien.
 func TestQ21dAssistPairs_MatchAbsent(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"autre", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69)},
+		{"autre", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
 	if len(pairs) != 0 {
@@ -187,8 +189,8 @@ func TestQ21dAssistPairs_MatchAbsent(t *testing.T) {
 // même portée que le kill feed.
 func TestQ21dAssistPairs_NonPubliableEcarte(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", false, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69)},
-		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69)},
+		{"m1", false, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
+		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
 	if scope.MatchDeaths != 2 || scope.MeasuredDeaths != 1 {
@@ -204,9 +206,9 @@ func TestQ21dAssistPairs_NonPubliableEcarte(t *testing.T) {
 // d'un bonus). Un match sans ligne : zéro.
 func TestQ21dAssistPairs_MortsPubliables(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", strPtr("K1"), false, nil, nil, nil, nil},
-		{"m2", false, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69)},
-		{"m2", false, 2000, "v2", strPtr("K2"), false, nil, nil, nil, nil},
+		{"m1", true, 1000, "v1", strPtr("K1"), false, nil, nil, nil, nil, nil},
+		{"m2", false, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), nil},
+		{"m2", false, 2000, "v2", strPtr("K2"), false, nil, nil, nil, nil, nil},
 	})
 	if _, scope := queryAssistPairs(t, db, "m1"); scope.MatchDeaths != 1 || scope.MeasuredDeaths != 0 || scope.PublishableDeaths != 1 {
 		t.Errorf("m1 portée = %+v, attendu {1 0 1}", scope)
@@ -228,12 +230,12 @@ func TestQ21dAssistPairs_MortsPubliables(t *testing.T) {
 //     comparaison porte sur l'ordre des deux parts, pas sur leur échelle.
 func TestQ21dAssistPairs_PartsNonMesureesEtNonBornees(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), nil, nil},
-		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(50), nil},
-		{"m1", true, 3000, "v3", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(100), intPtr(228)},
+		{"m1", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), nil, nil, nil},
+		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(50), nil, nil},
+		{"m1", true, 3000, "v3", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(100), intPtr(228), nil},
 		// B n'a AUCUNE part mesurée sur sa paire : la moyenne doit rester ABSENTE
 		// (nil), jamais un « 0 % » fabriqué.
-		{"m1", true, 4000, "v4", strPtr("K1"), true, strPtr("Bravo"), strPtr("B"), intPtr(80), nil},
+		{"m1", true, 4000, "v4", strPtr("K1"), true, strPtr("Bravo"), strPtr("B"), intPtr(80), nil, nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
 	if scope.MeasuredDeaths != 4 {
@@ -257,19 +259,26 @@ func TestQ21dAssistPairs_PartsNonMesureesEtNonBornees(t *testing.T) {
 	}
 }
 
-// TestQ21dAssistPairs_TueurBotEcarte : un tueur BOT n'a pas de xuid (`feed_killer_xuid`
-// NULL). La paire n'aurait pas de destinataire nommable — elle est écartée au SQL, jamais
-// normalisée en chaîne vide (qui fusionnerait tous les bots en un acteur unique).
-func TestQ21dAssistPairs_TueurBotEcarte(t *testing.T) {
+// TestQ21dAssistPairs_BotsComptes : les BOTS comptent comme les autres acteurs. Un tueur
+// bot (xuid NULL, gamertag de film) reçoit sa paire ; un assistant bot (xuid NULL, gamertag
+// de film) a la sienne. Deux bots distincts ne fusionnent pas : le groupement porte aussi
+// sur les gamertags, et aucun xuid n'est normalisé en chaîne vide au SQL.
+func TestQ21dAssistPairs_BotsComptes(t *testing.T) {
 	db := newAssistPairsDB(t, []killEventRow{
-		{"m1", true, 1000, "v1", nil, true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69)},
+		{"m1", true, 1000, "v1", nil, true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(69), strPtr("343 Ritzy [bot]")},
+		{"m1", true, 2000, "v2", nil, true, strPtr("Alpha"), strPtr("A"), intPtr(30), intPtr(20), strPtr("343 Cosmo [bot]")},
+		{"m1", true, 3000, "v3", strPtr("K1"), true, strPtr("343 Oscar [bot]"), nil, intPtr(60), intPtr(40), nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
-	if len(pairs) != 0 {
-		t.Fatalf("paires = %+v, attendu aucune", pairs)
+	if scope.MatchDeaths != 3 || scope.MeasuredDeaths != 3 {
+		t.Fatalf("portée = %+v, attendu {3 3}", scope)
 	}
-	// La mort reste MESURÉE : la portée ne ment pas parce que la paire est inutilisable.
-	if scope.MatchDeaths != 1 || scope.MeasuredDeaths != 1 {
-		t.Fatalf("portée = %+v, attendu {1 1}", scope)
+	want := []domain.MatchAssistPairRaw{
+		{AssistGamertag: "343 Oscar [bot]", KillerXUID: "K1", AssistCount: 1, AvgAssistPct: intPtr(40)},
+		{AssistXUID: "A", AssistGamertag: "Alpha", KillerGamertag: "343 Cosmo [bot]", AssistCount: 1, AvgAssistPct: intPtr(20)},
+		{AssistXUID: "A", AssistGamertag: "Alpha", KillerGamertag: "343 Ritzy [bot]", AssistCount: 1, StolenCount: 1, AvgAssistPct: intPtr(69)},
+	}
+	if !reflect.DeepEqual(pairs, want) {
+		t.Fatalf("paires = %+v\nattendu %+v", pairs, want)
 	}
 }

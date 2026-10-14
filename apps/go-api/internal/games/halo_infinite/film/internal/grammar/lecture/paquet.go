@@ -209,6 +209,9 @@ type VueA struct {
 	Genres []uint8
 	// Kills sont les messages `PlayerKilledEvent` (genre 85) lus, dans l'ordre.
 	Kills []MessageDeKill
+	// Fil sont les messages `PlayerGameEventSmall` (genre 82) lus dont le sac texte nomme un couple
+	// de participants ([EvenementDeFil]), dans l'ordre.
+	Fil []EvenementDeFil
 }
 
 // RefAbsente est la valeur d'une référence d'entité qu'un message ne porte pas (garde à 1).
@@ -228,6 +231,28 @@ type MessageDeKill struct {
 	Victime, Tueur, Assistant int8
 	// Drapeau est le `R(1)` qui suit la part du tueur (`[+0xc]`).
 	Drapeau uint8
+}
+
+// EvenementDeFil est un message `PlayerGameEventSmall` (genre 82) de la vue A dont le sac texte
+// (`FUN_14080b034`) porte exactement deux emplacements participant (`FUN_1407f0ebc`, sous-type 1) :
+// le couple (tueur, victime) d'un kill, dans cet ordre. Pour chaque kill, le jeu écrit un tel message
+// par rôle — au tueur, à la victime, à leurs alliés, à chaque assistant —, que le masque de ses
+// destinataires désigne. Les morts de bot en portent comme les autres : c'est le seul message de la
+// vue A qui nomme le couple d'un kill dont la victime est un bot, le `PlayerKilledEvent` ne s'écrivant
+// pas pour elle.
+//
+// Seize octets : sa taille est gelée par `tailles_test.go`.
+type EvenementDeFil struct {
+	// Debut est le premier bit du message : le bit de continuation qui l'annonce.
+	Debut uint32
+	// Type est le `R(32)` de tête (`FUN_14080ae70`, `out[0]`) : le rang de l'événement dans la table
+	// des événements de la partie. Le rang d'un même événement change d'un build à l'autre.
+	Type uint32
+	// Destinataires est le masque `32 x R(1)` qui clôt la charge (`FUN_14080ae28`), tel que lu : le
+	// premier bit lu, le plus fort, désigne le participant 0 (`grammar.DestineA`).
+	Destinataires uint32
+	// Tueur et Victime sont les deux participants du sac texte, dans l'ordre de la lecture.
+	Tueur, Victime int8
 }
 
 // VueB est la vue des entités (rang 1) d'une trame delta : son étendue et sa sortie. Ses records

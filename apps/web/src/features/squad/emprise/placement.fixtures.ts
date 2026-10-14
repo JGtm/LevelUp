@@ -94,18 +94,4 @@ export const PLACEMENT_2209: SquadEmprisePlacement = {
       [0.7, 0, 25, 0],
     ]),
   ],
-  coverage: {
-    matches_total: 7,
-    matches_with_placement: 7,
-    matches_without_range: 1,
-    stale_lives: 0,
-    lives_total: 15,
-    lives_measured: 14,
-    lives_unmeasured: 1,
-    measured_ms: 2_400_000,
-    carrier_ms: 12_000,
-    team_down_ms: 30_000,
-    unplaced_ms: 90_000,
-    teammate_unplaced_ms: 45_000,
-  },
 }

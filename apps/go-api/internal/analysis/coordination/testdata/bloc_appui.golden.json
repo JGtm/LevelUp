@@ -2,7 +2,7 @@
   "sans_sujet": {
     "available": false,
     "unavailable_reason": "no_measured_match",
-    "matches_measured": 1,
+    "matches_measured": 0,
     "matches_total": 1,
     "appui": {
       "on_me_prepare": {
@@ -48,7 +48,7 @@
         "match_id": "m1",
         "team_size": 4,
         "parity_pct": 25,
-        "my_measured_kills": 3,
+        "my_kills": 3,
         "my_assisted_kills": 1,
         "team_assists": 2,
         "assists_to_me": 1,
@@ -83,7 +83,7 @@
         "match_id": "m1",
         "team_size": 4,
         "parity_pct": 25,
-        "my_measured_kills": 3,
+        "my_kills": 3,
         "my_assisted_kills": 1,
         "team_assists": 2,
         "assists_to_me": 1,
@@ -94,7 +94,7 @@
         "match_id": "m2",
         "team_size": 8,
         "parity_pct": 12.5,
-        "my_measured_kills": 6,
+        "my_kills": 6,
         "my_assisted_kills": 2,
         "team_assists": 5,
         "assists_to_me": 2,
@@ -103,7 +103,7 @@
       },
       {
         "match_id": "m3",
-        "my_measured_kills": 5,
+        "my_kills": 5,
         "my_assisted_kills": 0,
         "team_assists": 0,
         "assists_to_me": 0,

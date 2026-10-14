@@ -221,9 +221,9 @@ const TacticalQuestionRoutes = "routes"
 // plus proche de ceux qu'on voyait. La lecture ne fait que comparer cette distance au rayon de
 // la variante du match.
 //
-// Elle publie en plus `Isolement` (la part des morts isolees, sous la forme canonique),
-// `MatchsSansRayon` (les matchs dont la variante n'a pas de portee mesuree) et
-// `MortsEquipeATerre` (les morts ecartees parce que personne ne pouvait accompagner).
+// Elle publie en plus `Isolement` (la part des morts isolees, sous la forme canonique) et
+// `MortsEquipeATerre` (les morts ecartees parce que personne ne pouvait accompagner) ; elle
+// compte pour son journal `MatchsSansRayon` (les matchs dont la variante n'a pas de portee).
 const TacticalQuestionIsole = "isole"
 
 // SidecarRasterCourant dit si un sidecar est exploitable EN L'ETAT : bon format, bonne

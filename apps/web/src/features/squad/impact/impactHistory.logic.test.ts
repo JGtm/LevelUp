@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { impactHistory3 } from './impactHistory.fixtures'
-import { buildImpactHistoryView, pointKey, impactRoleToken, scaleSentence, showAxisLabel } from './impactHistory.logic'
+import { buildImpactHistoryView, impactRoleToken, pointKey, scaleSentence, showAxisLabel } from './impactHistory.logic'
 import { IMPACT_HISTORY_TEXT } from './impactHistoryStrings'
 
 const fr = IMPACT_HISTORY_TEXT.fr

@@ -19,7 +19,8 @@ package replay
 //
 // Un socle d ARME dont la position tombe hors de l emprise jouee du film (emprise_jouee.go, la meme
 // que celle des positions et des vehicules) est releve au centroide des positions de ses ramasseurs,
-// pris aux occupations que l evenement natif date, quand :
+// pris aux occupations que la LECTURE de l evenement natif date (jamais celles du repli de la premiere
+// prise du cycle, qui vient apres le releve et juge sur sa position — pad_pickup_dating_cycle.go), quand :
 //   - au moins [gwPadMinHits] occupations datees le localisent — la recurrence qui fait un socle ;
 //   - toutes tombent a moins de [originDropMaxDist] de ce centroide — le rayon ou un joueur prend
 //     un objet, celui qui date deja la disparition d une arme au sol.

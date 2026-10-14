@@ -11,8 +11,8 @@
  * Relations les prend au VOLUME (échelle log), la tuile de match à la PART
  * (`assistShareSegments`). Ce composant ne connaît que des largeurs.
  *
- * Extrait de AssistButterflyBar.tsx le 2026-09-18 (lot 3, tuile de match) : le
- * papillon en compose deux (gauche renversée, droite), la tuile en pose une seule.
+ * Le papillon en compose deux (gauche renversée, droite), la tuile en pose une seule. La
+ * piste nue est le reste de la base : les frags qu'aucune assistance lue ne prépare.
  */
 import { Tooltip } from '@/components/ui/tooltip'
 import type { Locale } from '@/lib/i18n/locale'

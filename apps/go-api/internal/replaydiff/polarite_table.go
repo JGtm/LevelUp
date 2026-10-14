@@ -125,11 +125,14 @@ var tablePolarites = []blocPolarites{
 		Echecs:  "endOpen",
 		Succes:  "ammoRead dropperNamed endPickup endSeen objects pickupLinked published",
 		Neutres: "atRest takesTotal"},
+	// `releves` est la VOIE du repli `repli_socle_hors_emprise_au_lieu_des_prises` parmi les
+	// socles `horsEmprise` (comme `seats.apparies`) : neutre ; l'abstention (`plusieursLieux`) et
+	// la pose non lue (`horsEmprise`, comme `tracks.horsEmprise`) sont des echecs.
 	{Blocs: []string{"coverage.groundWeapons."},
-		Echecs: "horsEmprise plusieursLieux releves unknown",
+		Echecs: "horsEmprise plusieursLieux unknown",
 		Succes: "accepted cycles dated kept pads powerupAccepted powerupKept powerupPads",
-		Neutres: "anchors atRest clusters dropped never objectives occupancies rejected slots " +
-			"spawned"},
+		Neutres: "anchors atRest clusters dropped never objectives occupancies rejected releves " +
+			"slots spawned"},
 	{Blocs: []string{"coverage.inventory."},
 		Echecs:  "unpublished",
 		Succes:  "decoded published",
@@ -142,10 +145,12 @@ var tablePolarites = []blocPolarites{
 		Echecs:  "outOfAxis",
 		Succes:  "lives points",
 		Neutres: "declared motionless"},
+	// `firstOfCycle` est la VOIE du repli `repli_prise_de_socle_premiere_du_cycle` parmi les
+	// occupations `dated` (comme `groundWeapons.releves`) : neutre ; le gain se lit sur `dated`.
 	{Blocs: []string{"coverage.padDating."},
 		Echecs:  "ambiguous uncovered",
 		Succes:  "dated named",
-		Neutres: "occupations powerupOccupations"},
+		Neutres: "firstOfCycle occupations powerupOccupations"},
 	{Blocs: []string{"coverage.pickups."},
 		Echecs: "multiEvent originUnknown refused unknownFamilies spawnerByPointKind.unknown",
 		Succes: "decoded named originGround originSpawner published",

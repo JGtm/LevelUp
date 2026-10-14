@@ -38,7 +38,7 @@ vi.mock('@/components/charts/BarStackedChart', () => ({
   ),
 }))
 
-const BLOC_ASSISTANCES = { pairs: [], measured_deaths: 12 } as unknown as MatchAssistPairs
+const BLOC_ASSISTANCES = { pairs: [] } as unknown as MatchAssistPairs
 
 function afficher(assistPairs: MatchAssistPairs | undefined, locale: 'fr' | 'en' = 'fr') {
   return render(

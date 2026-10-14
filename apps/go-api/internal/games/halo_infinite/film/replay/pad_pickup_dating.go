@@ -19,11 +19,15 @@ package replay
 // pas. Le rappel du canal natif est une borne inférieure (il ne voit que les événements en
 // tête de liste) : substituer serait échanger une donnée sûre contre une donnée partielle.
 //
-// AMBIGUÏTÉ : si PLUSIEURS ramassages natifs de la même famille tombent dans la même fenêtre,
-// on ne date PAS. Deux joueurs ont pu prendre la même arme ailleurs sur la carte pendant ces
-// vingt secondes, et rien dans l'événement ne dit de quel socle il vient (l'instance de
-// l'objet n'est pas dans l'événement — hypothèse mesurée et réfutée). Choisir au hasard
-// nommerait un ramasseur faux ; on s'abstient et on le compte.
+// LECTURE, PUIS REPLI. La lecture date une occupation quand UN SEUL ramassage natif de la même
+// famille tombe dans sa fenêtre et qu'aucune autre occupation ne le revendique. Quand plusieurs
+// tombent dans la fenêtre, rien dans l'événement ne dit de quel socle il vient (l'instance de
+// l'objet n'est pas dans l'événement — hypothèse mesurée et réfutée) : deux joueurs ont pu
+// prendre la même arme ailleurs sur la carte, ou reprendre au sol l'arme qu'un preneur a lâchée
+// en mourant. La règle de jeu tranche alors, en repli nommé et compté
+// (`repli_prise_de_socle_premiere_du_cycle`, pad_pickup_dating_cycle.go) : UNE seule prise de
+// socle par réapparition de l'arme, la première faite AU SOCLE dans le cycle. Sans elle, on
+// s'abstient et on le compte : choisir au hasard nommerait un ramasseur faux.
 //
 // ## LES DEUX CÔTÉS N'ÉCRIVENT PAS LA FAMILLE PAREIL, ET LA JOINTURE DOIT LE SAVOIR
 //
@@ -47,6 +51,11 @@ package replay
 // (`PowerupOccupations`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que le canal
 // natif a cherché et n'a pas trouvé.
 
+import (
+	"cmp"
+	"slices"
+)
+
 // PadDatingStats dit ce que la datation a pu faire, et ce qu'elle n'a pas pu.
 type PadDatingStats struct {
 	// Occupations est le nombre d'occupations achevées examinées.
@@ -57,9 +66,10 @@ type PadDatingStats struct {
 	// ramassage natif peut être daté sans que le pont slot -> joueur nomme sa vie).
 	Named int `json:"named"`
 	// Ambiguous compte les fenêtres où PLUSIEURS ramassages natifs de la même famille
-	// tombaient, ET (lot J8.2, 2026-09-27) celles dont l'unique ramassage était aussi le
-	// candidat unique d'une autre occupation : on s'abstient plutôt que de nommer un ramasseur
-	// au hasard, ou de créditer deux prises pour un seul ramassage.
+	// tombaient, ET celles dont l'unique ramassage était aussi le candidat unique d'une autre
+	// occupation, quand le repli de la première prise du cycle ne les a pas tranchées : on
+	// s'abstient plutôt que de nommer un ramasseur au hasard, ou de créditer deux prises pour
+	// un seul ramassage.
 	Ambiguous int `json:"ambiguous"`
 	// Uncovered compte les fenêtres qu'aucun ramassage natif ne couvre — elles gardent leur
 	// intervalle, intact.
@@ -74,6 +84,10 @@ type PadDatingStats struct {
 	// homonymes à dénominateurs différents dans le même document se liraient l'une pour
 	// l'autre. Ici on compte des OCCUPATIONS écartées de la jointure — le nom le dit.
 	PowerupOccupations int `json:"powerupOccupations"`
+	// FirstOfCycle est le nombre d'occupations datées par le repli de la première prise du
+	// cycle (sous-ensemble de Dated) : leur fenêtre portait plusieurs ramassages natifs, ou un
+	// ramassage qu'une autre occupation revendiquait, et la règle de jeu a désigné le leur.
+	FirstOfCycle int `json:"firstOfCycle"`
 }
 
 // PadWeaponFamilyKey rend la clé de comparaison d'une famille d'arme, quelle que soit la
@@ -86,7 +100,7 @@ type PadDatingStats struct {
 // d'arme, sans avoir à connaître la liste des noms.
 //
 // EXPORTÉE LE 2026-09-04 (résumé d'usage de session) : c'est LA frontière socle d'ARME /
-// socle de BONUS du dépôt, celle que `datePadPickups` emploie pour sortir les bonus de la
+// socle de BONUS du dépôt, celle que `candidatsDeDatation` emploie pour sortir les bonus de la
 // jointure (`PadDatingStats.PowerupOccupations`) et que le client rejoue côté web
 // (`padControlLogic.ts`, note de pied `gapFmt.powerup`). Le résumé sidecar en avait besoin
 // depuis `replaybuild` : en RÉ-ÉCRIRE le test hexadécimal là-bas aurait fait une troisième
@@ -114,8 +128,22 @@ func PadWeaponFamilyKey(s string) (string, bool) {
 	return string(buf), true
 }
 
-// datePadPickups pose l'instant exact et le ramasseur sur les occupations que l'événement
-// natif couvre. Modifie `picks` en place et rend les compteurs.
+// datationDesSocles porte la datation des occupations de socle entre ses deux phases : la LECTURE
+// ([lireLesOccupations]) puis le REPLI de la première prise du cycle
+// ([datationDesSocles.trancherParLeCycle]). Entre les deux, l'assemblage relève les socles hors de
+// l'emprise jouée (ground_weapon_pads_releve.go) : le relevé ne lit que les occupations datées par
+// la lecture, et le repli, qui juge si un ramasseur se tient AU SOCLE, lit la position relevée.
+type datationDesSocles struct {
+	pads     []WeaponPad
+	picks    []PadPickup
+	pickups  []Pickup
+	fenetres [][]int
+	retenu   []int
+	st       PadDatingStats
+}
+
+// lireLesOccupations pose l'instant exact et le ramasseur sur les occupations que l'événement
+// natif date sans ambiguïté. Modifie `picks` en place.
 //
 // `pads` sert à retrouver la FAMILLE d'arme du socle : `PadPickup.Pad` est un index dans
 // `pads`, et c'est la famille qui apparie une occupation à un ramassage natif.
@@ -124,53 +152,85 @@ func PadWeaponFamilyKey(s string) (string, bool) {
 // RB2-5, 2026-09-27). Deux socles de la même arme dont les fenêtres se chevauchent peuvent
 // voir le MÊME ramassage comme leur candidat unique ; rien dans l'événement ne dit de quel
 // socle il vient, et le poser sur les deux créditait le joueur de deux prises pour une seule
-// (`BuildUsageSummary`). Un ramassage revendiqué par plusieurs occupations est donc CONSOMMÉ
-// par aucune : elles s'abstiennent et se comptent dans `Ambiguous`, comme la fenêtre qui voit
-// plusieurs ramassages — c'est la même ambiguïté vue de l'autre côté de la jointure.
-func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDatingStats {
-	st := PadDatingStats{Occupations: len(picks)}
-	if len(picks) == 0 {
-		return st
-	}
-	candidat := candidatsDeDatation(pads, picks, pickups, &st)
-	revendications := map[int]int{}
-	for _, c := range candidat {
+// (`BuildUsageSummary`). Un ramassage revendiqué par plusieurs lectures n'est donc CONSOMMÉ par
+// aucune d'elles : ces occupations restent au repli, qui ne retient jamais un ramassage qu'une
+// lecture a daté.
+func lireLesOccupations(pads []WeaponPad, picks []PadPickup, pickups []Pickup) *datationDesSocles {
+	d := &datationDesSocles{pads: pads, picks: picks, pickups: pickups, st: PadDatingStats{Occupations: len(picks)}}
+	d.fenetres = candidatsDeDatation(pads, picks, pickups, &d.st)
+	d.retenu = lectureDesFenetres(d.fenetres)
+	for i, c := range d.retenu {
 		if c >= 0 {
-			revendications[c]++
+			d.poser(i, c)
 		}
 	}
-	for i := range picks {
-		c := candidat[i]
-		switch {
-		case c < 0:
-			continue // déjà classée par candidatsDeDatation
-		case revendications[c] > 1:
-			// Ramassage DISPUTÉ entre plusieurs occupations : on s'abstient (RB2-5).
-			st.Ambiguous++
-			continue
-		}
-		k := &picks[i]
-		t := pickups[c].T
-		k.T = &t
-		st.Dated++
-		if pickups[c].XUID != "" {
-			x := pickups[c].XUID
-			k.XUID = &x
-			st.Named++
-		}
-	}
-	return st
+	return d
 }
 
-// candidatNonDate : la valeur de [candidatsDeDatation] pour une occupation déjà classée
-// (hors bornes, power-up, non couverte, ambiguë) — elle ne sera pas datée.
+// trancherParLeCycle applique le repli de la première prise du cycle aux occupations que la
+// lecture a laissées ambiguës, pose leurs dates et rend les compteurs de la datation. `localiser`
+// rend la position du ramasseur d'un ramassage natif ; nil, le repli ne localise rien et ne date
+// donc rien.
+func (d *datationDesSocles) trancherParLeCycle(localiser localiserRamasseur) PadDatingStats {
+	lues := slices.Clone(d.retenu)
+	d.st.FirstOfCycle = premieresPrisesDuCycle(entreesDuCycle{
+		pads: d.pads, picks: d.picks, pickups: d.pickups, localiser: localiser,
+	}, d.fenetres, d.retenu)
+	for i, c := range d.retenu {
+		switch {
+		case len(d.fenetres[i]) == 0:
+			// déjà classée par candidatsDeDatation
+		case c < 0:
+			d.st.Ambiguous++
+		case lues[i] < 0:
+			d.poser(i, c)
+		}
+	}
+	return d.st
+}
+
+// poser date l'occupation `i` par le ramassage natif `c`, et la nomme quand le pont slot ->
+// joueur nomme sa vie.
+func (d *datationDesSocles) poser(i, c int) {
+	k := &d.picks[i]
+	t := d.pickups[c].T
+	k.T = &t
+	d.st.Dated++
+	if d.pickups[c].XUID != "" {
+		x := d.pickups[c].XUID
+		k.XUID = &x
+		d.st.Named++
+	}
+}
+
+// candidatNonDate : la valeur retenue pour une occupation qui ne sera pas datée.
 const candidatNonDate = -1
 
-// candidatsDeDatation rend, pour chaque occupation, l'INDEX dans `pickups` de son ramassage natif
-// candidat quand il est UNIQUE dans sa fenêtre, [candidatNonDate] sinon ; il compte dans `st` les
-// occupations qu'il classe lui-même (hors bornes et non couvertes dans `Uncovered`, power-ups
-// dans `PowerupOccupations`, fenêtres à plusieurs ramassages dans `Ambiguous`).
-func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, st *PadDatingStats) []int {
+// lectureDesFenetres rend, pour chaque occupation, l'index dans `pickups` du ramassage natif que
+// la LECTURE retient — l'unique de sa fenêtre, qu'aucune autre fenêtre ne voit comme son unique —,
+// [candidatNonDate] sinon.
+func lectureDesFenetres(fenetres [][]int) []int {
+	revendications := map[int]int{}
+	for _, f := range fenetres {
+		if len(f) == 1 {
+			revendications[f[0]]++
+		}
+	}
+	out := make([]int, len(fenetres))
+	for i, f := range fenetres {
+		out[i] = candidatNonDate
+		if len(f) == 1 && revendications[f[0]] == 1 {
+			out[i] = f[0]
+		}
+	}
+	return out
+}
+
+// candidatsDeDatation rend, pour chaque occupation, les INDEX dans `pickups` des ramassages
+// natifs d'arme de la même famille tombés dans sa fenêtre, par instant croissant ; il compte
+// dans `st` les occupations qui n'en ont aucun (hors bornes et non couvertes dans `Uncovered`,
+// power-ups dans `PowerupOccupations`) — leur liste est vide.
+func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, st *PadDatingStats) [][]int {
 	// PAS DE RETOUR ANTICIPÉ QUAND LE CANAL NATIF EST VIDE, et c'est un correctif de revue
 	// (ronde 2) : la première version versait alors TOUTES les occupations dans `Uncovered`,
 	// power-ups compris — c'est-à-dire exactement la lecture mensongère (« le canal a cherché
@@ -191,9 +251,8 @@ func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, 
 		}
 		byFamily[key] = append(byFamily[key], j)
 	}
-	out := make([]int, len(picks))
+	out := make([][]int, len(picks))
 	for i := range picks {
-		out[i] = candidatNonDate
 		k := &picks[i]
 		if k.Pad < 0 || k.Pad >= len(pads) {
 			st.Uncovered++
@@ -206,21 +265,18 @@ func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, 
 			st.PowerupOccupations++
 			continue
 		}
-		var hits []int
 		for _, j := range byFamily[key] {
 			if pickups[j].T >= k.TLow && pickups[j].T <= k.THigh {
-				hits = append(hits, j)
+				out[i] = append(out[i], j)
 			}
 		}
-		switch len(hits) {
-		case 0:
+		if len(out[i]) == 0 {
 			st.Uncovered++
-		case 1:
-			out[i] = hits[0]
-		default:
-			// Plusieurs candidats : on s'abstient. Voir l'en-tête de ce fichier.
-			st.Ambiguous++
+			continue
 		}
+		// L'ORDRE DES CANDIDATS EST CELUI DU TEMPS, ex aequo par index : le repli prend le
+		// premier, et l'ordre du canal publié n'est pas un contrat.
+		slices.SortStableFunc(out[i], func(a, b int) int { return cmp.Compare(pickups[a].T, pickups[b].T) })
 	}
 	return out
 }

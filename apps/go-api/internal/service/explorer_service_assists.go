@@ -20,6 +20,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // enrichEncounterAssists remplit Assists (paire joueur↔cible) et AssistVolumeMax
@@ -29,7 +30,9 @@ func (s *ExplorerService) enrichEncounterAssists(ctx context.Context, stats *dom
 	if stats == nil || s.deps.Relations == nil || otherXUID == "" {
 		return
 	}
+	stop := timing.FromContext(ctx).Section("explorer_relation_assists")
 	byXUID, err := s.deps.Relations.GetRelationAssists(ctx, nil)
+	stop()
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_relation_assists_failed",
 			"xuid", s.xuid, "other_xuid", otherXUID, "err", err)

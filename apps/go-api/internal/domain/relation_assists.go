@@ -1,18 +1,24 @@
 // Package domain — relation_assists.go : les assistances ÉCHANGÉES entre le joueur et
-// un autre joueur, sur leur historique commun.
+// un autre joueur, sur leur historique commun, et les frags assistés d'un seul match.
 //
-// Deux surfaces lisent ce type : la page Relations (tableau, carte Binôme, carte Noyau
-// dur) et l'historique des rencontres de la vue match. Même agrégat, même doctrine que
-// assist_pairs.go (trois états de l'assistance, parts de dégâts non plafonnées), mais
-// vu DEPUIS le joueur : ce que l'autre lui a donné, ce qu'il a donné à l'autre.
+// Deux surfaces lisent RelationAssists : la page Relations (tableau, carte Binôme, carte
+// Noyau dur, encart de l'Explorer) et l'historique des rencontres de la vue match. La
+// tuile de match de l'Accueil lit MatchAssistedFrags, le sens « reçues » ramené à un match.
 //
-// ─── COUVERTURE ───────────────────────────────────────────────────────────────────────
+// ─── LA RÈGLE DES BASES (une seule, pour toutes les surfaces d'assistance) ────────────
 //
-// L'assistance n'est mesurée que sur les matchs dont le film a été décodé, et seulement
-// sur les lignes `publishable AND assist_known` (une paire NOMME deux joueurs : lecture
-// ligne à ligne). `MatchesMeasured` compte les matchs joués DANS LA MÊME ÉQUIPE portant
-// au moins une telle ligne. Zéro match mesuré = pas d'objet `RelationAssists` du tout
-// (champ nil) : l'écran affiche « — », jamais « 0 assistance ».
+//   - PORTÉE : les matchs dont le film PORTE l'assistance — au moins une ligne
+//     `publishable AND assist_known` dans le match. Un match sans film, ou dont le film ne
+//     lit aucune assistance, n'apporte ni numérateur ni base : il est hors de la mesure,
+//     et rien ne l'annonce à l'écran.
+//   - BASE : les frags OFFICIELS du joueur (feuille de match, `match_participants.kills`)
+//     sur ces matchs. Frags sur des bots compris.
+//   - NUMÉRATEUR : les frags dont l'assistant est NOMMÉ par le film, bot compris. Un frag
+//     de la base dont l'assistance n'est pas lue n'est simplement pas compté au numérateur :
+//     aucun compte « sans information » n'est publié.
+//
+// Un bot ne devient jamais une LIGNE de relation (ce n'est pas un coéquipier nommé), mais
+// ses victimes et ses frags restent dans les bases.
 //
 // ─── TRANCHES DE PART ─────────────────────────────────────────────────────────────────
 //
@@ -42,14 +48,12 @@ type AssistTiers struct {
 	High  int `json:"high"`
 }
 
-// RelationAssists : les assistances échangées avec un joueur, sur les matchs mesurés
-// joués dans la même équipe.
+// RelationAssists : les assistances échangées avec un joueur, sur les matchs joués dans la
+// même équipe dont le film porte l'assistance (règle des bases, en-tête). Absent (nil)
+// quand aucun de ces matchs n'existe : l'écran affiche « — », jamais « 0 assistance ».
 type RelationAssists struct {
-	// MatchesMeasured : matchs en même équipe dont l'assistance est mesurée. > 0 toujours
-	// (un objet n'est publié que s'il y a au moins un match mesuré).
-	MatchesMeasured int `json:"matches_measured"`
-	// MyFrags / PartnerFrags : frags du joueur / de l'autre sur ces mêmes matchs mesurés.
-	// Dénominateurs des parts « % de tes frags assistés par lui » et inverse.
+	// MyFrags / PartnerFrags : frags OFFICIELS du joueur / de l'autre sur ces matchs.
+	// Bases des parts « frags du joueur assistés par lui » et inverse.
 	MyFrags      int `json:"my_frags"`
 	PartnerFrags int `json:"partner_frags"`
 	// Received : assistances de l'autre sur les frags du joueur.
@@ -58,17 +62,36 @@ type RelationAssists struct {
 	Given AssistTiers `json:"given"`
 }
 
-// MatchAssistedFrags : sur UN match, la part des frags du joueur qui ont été assistés
-// par un coéquipier — le sens « reçues » de RelationAssists, ramené à un seul match
-// (tuile de match de l'Accueil). Mêmes lignes (`publishable AND assist_known`), mêmes
-// tranches, mêmes bornes.
+// MatchAssistedFrags : sur UN match, les frags du joueur qu'un coéquipier a assistés —
+// le sens « reçues » de RelationAssists ramené à un seul match (tuile de match de
+// l'Accueil). Même règle des bases, mêmes tranches, mêmes bornes.
 //
-// FragsMeasured : frags du joueur portés par ces lignes sur le match (DÉNOMINATEUR de la
-// part « N / M frags assistés »). Received : ceux dont `assist_xuid` est renseigné, par
-// tranche de part ; une assistance sans part mesurée compte dans Total et dans aucune
-// tranche. Zéro frag mesuré = pas d'objet (nil), même quand le joueur a 0 frag au match :
-// « on ne sait pas » n'est pas « 0 ».
+// Received : frags du joueur dont l'assistant est nommé, par tranche. FragsOfficial : la
+// base, posée par WithOfficialFrags. Nil (pas d'objet) quand le film du match ne porte pas
+// l'assistance ou que le joueur n'y a aucun frag lu.
 type MatchAssistedFrags struct {
-	FragsMeasured int         `json:"frags_measured"`
+	// FragsFilm : frags du joueur lus par le film sur ce match. Plancher de la base
+	// (WithOfficialFrags), pas publié.
+	FragsFilm     int         `json:"-"`
+	FragsOfficial int         `json:"frags_official"`
 	Received      AssistTiers `json:"received"`
+}
+
+// WithOfficialFrags pose la base officielle (`kills`, frags du match tels que la tuile les
+// affiche). La base ne descend jamais sous FragsFilm : un compte officiel absent (nil) ou
+// inférieur au film ne rapporterait pas les assistés à une base plus petite que les frags
+// qui les portent.
+func (a MatchAssistedFrags) WithOfficialFrags(kills *int) MatchAssistedFrags {
+	a.FragsOfficial = BaseFragsOfficiels(kills, a.FragsFilm)
+	return a
+}
+
+// BaseFragsOfficiels : la base d'une part de frags assistés sur un match — les frags
+// officiels, jamais sous les frags lus par le film (`lusAuFilm`). Partagée par la tuile de
+// match et le bloc Coordination (Sessions, Séries temporelles).
+func BaseFragsOfficiels(officiels *int, lusAuFilm int) int {
+	if officiels != nil && *officiels > lusAuFilm {
+		return *officiels
+	}
+	return lusAuFilm
 }

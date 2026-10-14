@@ -22,7 +22,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -440,12 +439,10 @@ func (h *SyncHandler) StartInitialSync(ctx context.Context, in *syncInitialInput
 			"Une sync initiale est deja en cours pour ce joueur.")
 	}
 
-	sess := middleware.GetSession(ctx)
-	if sess == nil || sess.HaloTokens == nil {
-		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required",
-			"Tokens Halo absents.")
+	tokens, err := initialSyncTokens(ctx)
+	if err != nil {
+		return nil, err
 	}
-	tokens := sess.HaloTokens
 
 	// Résoudre le couple (gamertag, xuid) + nb de matchs initiaux du profil POUR CE
 	// TITRE — lève l'ambiguïté quand un gamertag existe sous plusieurs titres.

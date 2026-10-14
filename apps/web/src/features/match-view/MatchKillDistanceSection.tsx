@@ -16,16 +16,13 @@
  * tient sur deux rangs, et c'est le seul endroit où un gamertag tronqué sur l'axe se relit en
  * entier sans survol.
  *
- * DEUX PORTES, ET ELLES DISENT DEUX CHOSES DIFFÉRENTES (règle du 2026-09-05, registre L3) :
- *   1. LE TITRE — `film.kill_positions` : un titre sans décodeur de film n'aura JAMAIS ces
- *      positions. La section n'est alors pas rendue du tout.
- *   2. LE MATCH — l'état vide ci-dessous : le titre sait les produire, mais pas pour CE
- *      match-là (2026-09-02, retour user « je ne vois rien du tout »). La section affiche
- *      alors POURQUOI, au lieu de disparaître : une section qui rend null n'est pas
- *      découvrable, et son absence se lit « bug ».
+ * DEUX PORTES, UNE SEULE ISSUE : la section n'est rendue que si elle a un bâton à tracer.
+ *   1. LE TITRE — `film.kill_positions` : un titre sans décodeur de film n'a pas ces positions.
+ *   2. LE MATCH — aucune distance publiée pour CE match : la section n'est pas rendue non plus.
+ *      Aucun texte ne dit l'absence ni sa cause (règle : aucun inconnu à l'écran, garde
+ *      `lib/i18n/noUnknownMentions.guard.test.ts`).
  *
- * Le DÉNOMINATEUR D'HONNÊTETÉ reste : la réserve de couverture en pied — un bâton de portée
- * sans lui laisserait croire à l'exhaustivité (couverture plancher mesurée : 75,8 %).
+ * L'infobulle du titre définit la grandeur tracée (distance tueur-victime au moment du frag).
  */
 import { useCallback, useMemo } from 'react'
 
@@ -124,35 +121,26 @@ export function MatchKillDistanceSection({
     })
   }, [rows, colorByPlayer, t])
 
-  // PORTE 1 — le titre ne produit pas de positions par kill : rien à afficher, jamais.
-  if (!titreMesureLesPositions) return null
+  // PORTE 1 — le titre ne produit pas de positions par kill ; PORTE 2 — aucune distance sur ce match.
+  if (!titreMesureLesPositions || rows.length === 0) return null
 
   return (
     <SectionCard
       title={t.killDistanceTitle}
       label={t.killDistanceTitle}
-      /* LA RÉSERVE EST PASSÉE DANS L'INFOBULLE DU TITRE le 2026-09-21 (lot D) : elle dit
-         ce que la mesure ne couvre pas, pas ce que le match a produit. Sans ligne à
-         mesurer, il n'y a rien à réserver — l'icône disparaît avec le graphe. */
-      titleAdornment={titleWithInfo(rows.length > 0 ? <p>{t.killDistanceReserve}</p> : null)}
+      titleAdornment={titleWithInfo(<p>{t.killDistanceReserve}</p>)}
     >
-      {rows.length === 0 ? (
-        <p className="px-3 pb-3 pt-2 text-xs text-muted-foreground">{t.killDistanceEmpty}</p>
-      ) : (
-        <>
-          <ChartCard
-            series={[{ key: 'distance', datapoints: rows }]}
-            buildOption={buildOption}
-            height={killDistanceHeight(rows.length)}
-            frameless
-          />
-          <ChartLegend
-            className="px-3 pb-1"
-            ariaLabel={t.killDistanceTitle}
-            items={inputs.map((p) => ({ key: p.xuid, label: p.gamertag, color: p.color }))}
-          />
-        </>
-      )}
+      <ChartCard
+        series={[{ key: 'distance', datapoints: rows }]}
+        buildOption={buildOption}
+        height={killDistanceHeight(rows.length)}
+        frameless
+      />
+      <ChartLegend
+        className="px-3 pb-1"
+        ariaLabel={t.killDistanceTitle}
+        items={inputs.map((p) => ({ key: p.xuid, label: p.gamertag, color: p.color }))}
+      />
     </SectionCard>
   )
 }

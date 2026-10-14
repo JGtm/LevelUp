@@ -27,6 +27,7 @@
  *  - SampleStats reste affiché (calcul local)
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -140,11 +141,11 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats, c
 
 
       {showNoAuthHint && (
-        <div
-          className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
-          data-testid="explorer-target-no-auth-hint"
-        >
-          {t('explorer.target_profile.no_auth_hint')}
+        <div data-testid="explorer-target-no-auth-hint">
+          <EmptyStateNotice
+            title={t('explorer.target_profile.no_auth_title')}
+            description={t('explorer.target_profile.no_auth_hint')}
+          />
         </div>
       )}
 
@@ -153,12 +154,12 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats, c
           croit à un bug), on rend une note discrète expliquant que les comparaisons
           directes viendront avec des parties partagées (V72-21). */}
       {!showSample && (identity != null || careerStats != null) && (
-        <p
-          className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground"
-          data-testid="explorer-target-no-shared-matches"
-        >
-          {t('explorer.target_profile.section_sample_empty')}
-        </p>
+        <div data-testid="explorer-target-no-shared-matches">
+          <EmptyStateNotice
+            title={t('explorer.target_profile.section_sample_empty_title')}
+            description={t('explorer.target_profile.section_sample_empty')}
+          />
+        </div>
       )}
 
       {/* "Sur N matchs joués ensemble" : titre en en-tête de section hors bloc

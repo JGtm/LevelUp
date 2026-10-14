@@ -15,7 +15,7 @@ import (
 func (r *ServiceRegistry) cablerUsagesTimeseries(svc *service.TimeseriesService, pdb *duckdb.PlayerDB) *service.TimeseriesService {
 	// La feuille de match (frags aux armes speciales) est ecrite par tous les titres : cablage
 	// INCONDITIONNEL, comme l'Escouade. Jamais slug==.
-	svc = svc.WithEmprise(duckdb.NewSquadEmpriseRepo(pdb)).
+	svc = svc.WithEmprise(duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))).
 		// Emblème de la fiche « Ma part à l'objectif » : le MEME chargeur que les fiches de
 		// medailles de l'Escouade ; degradation silencieuse (initiale) par contrat du chargeur.
 		WithEmblemLoader(duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)).

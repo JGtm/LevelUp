@@ -21,7 +21,6 @@ export interface AssistsText {
   /** Infobulle d'une cellule de tableau. */
   cellGiven: (count: string) => string
   cellReceived: (count: string) => string
-  cellCoverage: (measured: string, together: string) => string
   /** Carte Binôme : têtes de la barre papillon. */
   receivedHead: string
   givenHead: string
@@ -30,8 +29,6 @@ export interface AssistsText {
   legendGiven: string
   /** Infobulle d'un segment de barre. */
   segment: (count: string, tier: AssistTier) => string
-  /** Infobulle d'un fidèle sans match mesuré. */
-  notMeasured: string
 }
 
 const TIER_FR: Record<AssistTier, string> = {
@@ -52,25 +49,21 @@ export const ASSISTS_TEXT: Record<Locale, AssistsText> = {
       "Assistances données (à gauche) et reçues (à droite), sur les matchs joués dans la même équipe dont le film a été analysé.",
     cellGiven: (count) => `Tu l'as assisté ${count} fois`,
     cellReceived: (count) => `Il t'a assisté ${count} fois`,
-    cellCoverage: (measured, together) => `Mesuré sur ${measured} de vos ${together} matchs ensemble`,
     receivedHead: "Il t'a assisté",
     givenHead: "Tu l'as assisté",
     legendReceived: '◀ t’appuie',
     legendGiven: 'tu l’appuies ▶',
     segment: (count, tier) => `${count} frags assistés · ${TIER_FR[tier]}`,
-    notMeasured: 'Aucun match ensemble avec film analysé',
   },
   en: {
     columnTooltip:
       'Assists given (left) and received (right), over matches played on the same team whose film was analyzed.',
     cellGiven: (count) => `You assisted them ${count} times`,
     cellReceived: (count) => `They assisted you ${count} times`,
-    cellCoverage: (measured, together) => `Measured over ${measured} of your ${together} matches together`,
     receivedHead: 'They assisted you',
     givenHead: 'You assisted them',
     legendReceived: '◀ supports you',
     legendGiven: 'you support them ▶',
     segment: (count, tier) => `${count} kills assisted · ${TIER_EN[tier]}`,
-    notMeasured: 'No match together with an analyzed film',
   },
 }

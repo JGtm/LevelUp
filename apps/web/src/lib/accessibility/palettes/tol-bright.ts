@@ -26,7 +26,7 @@
  */
 import type { Palette } from '../semantic-tokens'
 import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
-import { IMPACT_ROLE_COLORS } from './_impactRoleColors'
+import { IMPACT_TOL_BLUE_RED } from './_impactRoleColors'
 
 // Tol Bright — catégorielles
 const TOL_BLUE   = '#4477AA'
@@ -164,8 +164,8 @@ export const tolBrightPalette: Palette = {
   //  labels disambiguent pour les daltoniens)
   ...ENCOUNTER_BADGE_COLORS,
 
-  // ── Rôles d'impact — rampes invariantes (cf. _impactRoleColors.ts) ─────────
-  ...IMPACT_ROLE_COLORS,
+  // ── Rôles d'impact — bleu / rouge Tol, rampe claire (cf. _impactRoleColors.ts)
+  ...IMPACT_TOL_BLUE_RED.light,
 
   // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
   // Même motif que sur les autres palettes : 11 classes > 7 teintes Bright, on

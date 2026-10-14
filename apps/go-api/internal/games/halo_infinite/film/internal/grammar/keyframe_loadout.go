@@ -50,8 +50,9 @@ const keyframeBipedTI = 35
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 //
-// ScanFilmKeyframeLoadouts est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
-// [ScanKeyframeLoadouts].
+// ScanFilmKeyframeLoadouts est l'ENVELOPPE D2, HORS PRODUCTION. La cuisson n'appelle ni elle ni
+// [ScanKeyframeLoadouts] : elle joue la marche unique [ScanEtatsDesImagesCles] une fois et en prend
+// les armes (lot D1.1 de 2.7.d1).
 func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]types.KeyframeLoadout, error) {
 	if len(known) == 0 {
 		return nil, nil // catalogue vide : rien a chercher, et rien a charger
@@ -85,46 +86,15 @@ type KeyframeWalkCoverage struct {
 }
 
 // ScanKeyframeLoadoutsMarche est [ScanKeyframeLoadouts] qui rend AUSSI la couverture de la
-// marche d'image-clé du film. C'est la forme de la cuisson : ce balayage voit chaque paquet
-// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter. Il lit la phase
-// des images-clés ([canalDesArmesPortees]), marchée par la marche DU FILM
-// ([FilmContext.MarcheDImageCle], lot D-fix) : ses réfutations s'y comptent.
+// marche d'image-clé du film : la projection de [ScanEtatsDesImagesCles] sur les armes portées
+// (lot D1.1 de 2.7.d1). La cuisson appelle [ScanEtatsDesImagesCles] une fois ; cette forme sert les
+// enveloppes hors production et les instruments.
 func ScanKeyframeLoadoutsMarche(fc *FilmContext, known map[uint32]bool) (
 	[]types.KeyframeLoadout, KeyframeWalkCoverage, error,
 ) {
-	c := &canalDesArmesPortees{known: known}
-	distribuerLesImagesClesSeules(fc, []Canal{c})
-	if c.lus == 0 {
-		return nil, c.cov, ErrNoReadableFilmChunk
-	}
-	c.cov.BipedesAbsentsEncadres = bipedesAbsentsEncadres(c.bipedes)
-	return c.out, c.cov, nil
+	e, err := ScanEtatsDesImagesCles(fc, known, 0)
+	return e.Loadouts, e.Marche, err
 }
-
-// canalDesArmesPortees lit, dans la phase des images-clés, les armes portées par chaque bipède et
-// la couverture de la marche d'ancres.
-type canalDesArmesPortees struct {
-	known map[uint32]bool
-	out   []types.KeyframeLoadout
-	cov   KeyframeWalkCoverage
-	// bipedes : les bipèdes ancrés, par image-clé, dans l'ordre du film.
-	bipedes []map[uint32]bool
-	// lus : les chunks que la phase a pu lire.
-	lus int
-}
-
-func (*canalDesArmesPortees) Interets() []Interet { return nil }
-
-func (c *canalDesArmesPortees) ImageCle(p *lecture.Paquet, m *MarcheDistribuee) {
-	c.cov.Ajouter(m.Ancres.Stats)
-	c.bipedes = append(c.bipedes, bipedesAncres(p.Records))
-	for _, l := range keyframeLoadoutsDe(p.Payload, p.Records, c.known) {
-		l.TimestampUS, l.Chunk, l.PacketIndex = p.TS, p.Chunk, p.Index
-		c.out = append(c.out, l)
-	}
-}
-
-func (c *canalDesArmesPortees) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
 
 // bipedesAncres rend l'ensemble des identifiants (`génération<<30|slot`) des bipèdes ancrés.
 func bipedesAncres(recs []lecture.Record) map[uint32]bool {
@@ -149,20 +119,6 @@ func bipedesAbsentsEncadres(parImageCle []map[uint32]bool) int {
 		}
 	}
 	return n
-}
-
-// keyframeLoadoutsDe balaye un payload de keyframe, sur ses records DÉJÀ marchés, et rend un
-// loadout par record biped porteur d'au moins une famille connue. PUR (aucune I/O).
-func keyframeLoadoutsDe(pay []byte, recs []lecture.Record, known map[uint32]bool) []types.KeyframeLoadout {
-	rf := familiesByRecordRecs(pay, recs, known, keyframeBipedTI)
-	if len(rf) == 0 {
-		return nil
-	}
-	out := make([]types.KeyframeLoadout, 0, len(rf))
-	for _, r := range rf {
-		out = append(out, types.KeyframeLoadout{Slot: r.Rec.Vie.Slot, Families: r.Families})
-	}
-	return out
 }
 
 // recordFamilies porte les familles d'arme trouvées DANS un record de keyframe, avec le record
@@ -199,9 +155,17 @@ func recordsDIdentite(recs []KeyframeRec) []lecture.Record {
 // familiesByRecordRecs est [familiesByRecord] sur des records DÉJÀ marchés (ils sont triés ici,
 // sur une copie : l'appelant garde son ordre).
 func familiesByRecordRecs(pay []byte, marches []lecture.Record, known map[uint32]bool, wantTI int) []recordFamilies {
+	return motsParRecord(pay, marches, wantTI, known)[0]
+}
+
+// motsParRecord est [familiesByRecordRecs] pour PLUSIEURS jeux de mots cherchés d'UN passage de la
+// fenêtre glissante : la sortie `k` porte les occurrences du jeu `jeux[k]` (lot D1.2 de 2.7.d1 : les
+// familles et la marque de portage derrière la lecture, un seul balayage du payload).
+func motsParRecord(pay []byte, marches []lecture.Record, wantTI int, jeux ...map[uint32]bool) [][]recordFamilies {
+	out := make([][]recordFamilies, len(jeux))
 	recs := append([]lecture.Record(nil), marches...)
 	if len(recs) == 0 {
-		return nil
+		return out
 	}
 	// L'index de recherche binaire ci-dessous exige des débuts de record CROISSANTS. Le
 	// walker les émet déjà dans cet ordre ; on le garantit ici plutôt que de le supposer.
@@ -211,27 +175,37 @@ func familiesByRecordRecs(pay []byte, marches []lecture.Record, known map[uint32
 	for i, r := range recs {
 		starts[i] = int(r.Debut)
 	}
-	byRec := map[int][]uint32{}
-	var order []int
+	byRec := make([]map[int][]uint32, len(jeux))
+	order := make([][]int, len(jeux))
+	for k := range jeux {
+		byRec[k] = map[int][]uint32{}
+	}
 	total := len(pay) * 8
 	var w uint32
 	for b := range total {
 		w = w<<1 | uint32(source.BitAt(pay, b))
-		if b < 31 || !known[w] {
+		if b < 31 {
 			continue
 		}
-		ri := recordContaining(starts, b-31)
-		if ri < 0 || int(recs[ri].TI) != wantTI {
-			continue
+		for k, jeu := range jeux {
+			if !jeu[w] {
+				continue
+			}
+			ri := recordContaining(starts, b-31)
+			if ri < 0 || int(recs[ri].TI) != wantTI {
+				continue
+			}
+			if byRec[k][ri] == nil {
+				order[k] = append(order[k], ri)
+			}
+			byRec[k][ri] = append(byRec[k][ri], w)
 		}
-		if byRec[ri] == nil {
-			order = append(order, ri)
-		}
-		byRec[ri] = append(byRec[ri], w)
 	}
-	out := make([]recordFamilies, 0, len(order))
-	for _, ri := range order {
-		out = append(out, recordFamilies{Rec: recs[ri], Families: byRec[ri]})
+	for k := range jeux {
+		out[k] = make([]recordFamilies, 0, len(order[k]))
+		for _, ri := range order[k] {
+			out[k] = append(out[k], recordFamilies{Rec: recs[ri], Families: byRec[k][ri]})
+		}
 	}
 	return out
 }

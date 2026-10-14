@@ -183,36 +183,63 @@ describe('MatchCard', () => {
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
   })
 
-  // Part des frags assistés par un coéquipier (film analysé) : barre à trois tons sous la
-  // barre frags / assistances / décès, puis sa légende dessous (sans la part en %).
-  // Sans mesure : l'emplacement reste réservé (même hauteur), vide.
+  // Frags assistés par un coéquipier (film analysé) : barre à trois tons sous la barre
+  // frags / assistances / décès, puis sa légende dessous (sans la part en %). Base = les
+  // frags OFFICIELS de la tuile, bots compris ; un frag dont l'assistance n'est pas lue reste
+  // dans la base sans aucune mention à part. Sans film porteur : l'emplacement reste réservé
+  // (même hauteur), vide.
   describe('frags assistés', () => {
+    // 15 frags officiels (dont 3 sur des bots dont l'assistance n'est pas lue), 7 assistés.
     const MEASURED: RecentMatchItem = {
       ...WIN_MATCH,
-      assisted_frags: { frags_measured: 12, received: { total: 7, low: 2, mid: 3, high: 1 } },
+      assisted_frags: {
+        frags_official: 15,
+        received: { total: 7, low: 2, mid: 3, high: 1 },
+      },
     }
+    const ONE_ASSISTED: RecentMatchItem = {
+      ...WIN_MATCH,
+      assisted_frags: {
+        frags_official: 15,
+        received: { total: 1, low: 1, mid: 0, high: 0 },
+      },
+    }
+    const widthOf = (testId: string) =>
+      parseFloat((screen.getByTestId(testId).closest('[style*="width"]') as HTMLElement).style.width)
 
-    it('affiche « 7 / 12 frags assistés » sous la barre, sans la part en %, segments aux largeurs = parts', () => {
+    it('rapporte les assistés aux frags officiels : « 7 frags assistés sur 15 », segments aux parts de 15', () => {
       render(<MatchCard match={MEASURED} locale="fr" />)
       const block = screen.getByTestId('match-card-assisted-frags')
-      expect(block.textContent).toContain('7 / 12 frags assistés')
+      const legend = screen.getByTestId('match-card-assisted-frags-legend')
+      expect(legend.textContent).toBe('7 frags assistés sur 15')
       expect(block.textContent).not.toContain('%')
+      // Même base que le compte de frags affiché au-dessus.
+      expect(screen.getByTestId('match-card-kda-bar').textContent).toContain('15')
       // La légende vient APRÈS la barre (bar-then-legend, comme la barre du dessus).
       const bar = screen.getByTestId('match-card-assist-segment-low').closest('.h-2') as HTMLElement
-      const legend = screen.getByText('7 / 12 frags assistés')
       expect(bar.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       // Légende dans le ton fort du sens (pas le jeton brut, trop terne en texte).
       expect(legend.style.color).toBe(assistTierTone(tokenCssVar('assist-received'), 'high'))
-      const widthOf = (tier: string) =>
-        parseFloat((screen.getByTestId(`match-card-assist-segment-${tier}`).closest('[style*="width"]') as HTMLElement).style.width)
-      expect(widthOf('low')).toBeCloseTo((2 / 12) * 100)
-      expect(widthOf('mid')).toBeCloseTo((3 / 12) * 100)
-      expect(widthOf('high')).toBeCloseTo((1 / 12) * 100)
+      expect(widthOf('match-card-assist-segment-low')).toBeCloseTo((2 / 15) * 100)
+      expect(widthOf('match-card-assist-segment-mid')).toBeCloseTo((3 / 15) * 100)
+      expect(widthOf('match-card-assist-segment-high')).toBeCloseTo((1 / 15) * 100)
     })
 
-    it('dit « assisted kills » sous la locale EN', () => {
+    it('n’écrit aucune mention « non mesuré », ni hachure : la légende seule', () => {
+      const { container } = render(<MatchCard match={MEASURED} locale="fr" />)
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toBe('7 frags assistés sur 15')
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).not.toMatch(/mesur/)
+      expect(container.innerHTML).not.toContain('repeating-linear-gradient')
+    })
+
+    it('accorde le singulier', () => {
+      render(<MatchCard match={ONE_ASSISTED} locale="fr" />)
+      expect(screen.getByTestId('match-card-assisted-frags-legend').textContent).toBe('1 frag assisté sur 15')
+    })
+
+    it('dit « 7 of 15 kills assisted » sous la locale EN', () => {
       render(<MatchCard match={MEASURED} locale="en" />)
-      expect(screen.getByTestId('match-card-assisted-frags').textContent).toContain('7 / 12 assisted kills')
+      expect(screen.getByTestId('match-card-assisted-frags').textContent).toBe('7 of 15 kills assisted')
     })
 
     it('réserve l’emplacement sans mesure (même hauteur, ni texte, ni segment, ni « — »)', () => {

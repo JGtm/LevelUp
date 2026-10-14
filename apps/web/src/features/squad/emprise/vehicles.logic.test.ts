@@ -1,8 +1,8 @@
 /**
  * vehicles.logic.test.ts — la ressource « véhicules » dans les modèles purs de l'onglet Emprise
  * (lot L7.4 du plan PLAN_EMPRISE_VEHICULES_2026-09-28) : une entrée de liste de plus (ordre, bilan,
- * fil, fiches, grille), indépendante du film, « non mesuré » distinct d'un zéro mesuré (D8), la
- * barre épaisse sur tous les frags et le rendement lu du Go (D9), nom des familles, couverture.
+ * fil, fiches, grille), indépendante du film, case vide distincte d'un zéro (D8), la barre épaisse
+ * sur tous les frags et le rendement lu du Go (D9), nom des familles.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -11,7 +11,7 @@ import { EMPRISE_2209, HISTORY_2209 } from './emprise.fixtures'
 import { buildHabitView } from './habit.logic'
 import { buildProductionRows, buildYieldRows } from './production.logic'
 import { VEHICLES_2209 } from './vehicles.fixtures'
-import { buildVehicleCoverage, vehicleFamilyName } from './vehicles.logic'
+import { vehicleFamilyName } from './vehicles.logic'
 
 const name = (o: { key: string; label?: string }) => vehicleFamilyName(o.key, o.label, 'Véhicule inconnu')
 
@@ -24,7 +24,6 @@ describe('RESOURCE_ORDER — une entrée de plus', () => {
     expect(buildControlRows(EMPRISE_2209).map((r) => r.resource)).not.toContain(RESOURCE_VEHICLE)
     expect(buildResourceFil(EMPRISE_2209, empriseMatchIndex(HISTORY_2209)).resources).not.toContain(RESOURCE_VEHICLE)
     expect(buildProductionRows(EMPRISE_2209).map((r) => r.resource)).not.toContain(RESOURCE_VEHICLE)
-    expect(buildVehicleCoverage(EMPRISE_2209)).toBeNull()
   })
 })
 
@@ -73,14 +72,14 @@ describe('grille match par match', () => {
     expect(section.items.map((r) => r.object!.key)).toEqual(['warthog', 'tourelle_fixe', 'unknown', 'banshee'])
   })
 
-  it('« non mesuré » (Shogun) ≠ zéro mesuré (Curfew, « rien ») ; sans film mais mesuré (Detachment) = une valeur', () => {
-    expect(section.summary!.cells[col('Shogun')]).toEqual({ kind: 'unmeasured', reason: 'schema_before_67' })
+  it('case vide (Shogun, non lu) ≠ zéro (Curfew, « rien ») ; sans film mais lu (Detachment) = une valeur', () => {
+    expect(section.summary!.cells[col('Shogun')]).toEqual({ kind: 'blank' })
     expect(section.summary!.cells[col('Curfew')]).toEqual({ kind: 'none' })
     expect(section.summary!.cells[col('Starboard')]).toMatchObject({ kind: 'value', us: 3, them: 1 })
     expect(section.summary!.cells[col('Detachment')]).toMatchObject({ kind: 'value', us: 2, them: 2 })
     // Les lignes qui viennent du film, elles, restent « sans film » à Detachment.
     const bonus = grid.sections.find((s) => s.resource === 'powerup')!
-    expect(bonus.summary!.cells[col('Detachment')].kind).toBe('nofilm')
+    expect(bonus.summary!.cells[col('Detachment')].kind).toBe('blank')
   })
 
   it('une case d’objet dit qui chez nous a pris', () => {
@@ -117,7 +116,7 @@ describe('frags et rendement (D5, D9)', () => {
   })
 })
 
-describe('nom des familles et couverture', () => {
+describe('nom des familles', () => {
   it('libellé du titre, sinon le nom propre tiré de la clé, sinon « Véhicule inconnu »', () => {
     expect(vehicleFamilyName('tourelle_fixe', 'Tourelle fixe', 'Inconnu')).toBe('Tourelle fixe')
     expect(vehicleFamilyName('warthog', undefined, 'Inconnu')).toBe('Warthog')
@@ -126,15 +125,4 @@ describe('nom des familles et couverture', () => {
     expect(vehicleFamilyName('', undefined, 'Inconnu')).toBe('Inconnu')
   })
 
-  it('couverture : 11 frags appariés sur 23, 2 passages sans nom ; rien sans rendement, en échec ou sans frag', () => {
-    expect(buildVehicleCoverage(VEHICLES_2209)).toEqual({
-      fragsTotal: 23,
-      fragsPaired: 11,
-      pairedShare: 11 / 23,
-      episodesUnnamed: 2,
-    })
-    expect(buildVehicleCoverage({ ...VEHICLES_2209, vehicles: { ...VEHICLES_2209.vehicles!, unavailable: 'load_failed' } })).toBeNull()
-    expect(buildVehicleCoverage({ ...VEHICLES_2209, vehicles: { ...VEHICLES_2209.vehicles!, frags_total: 0, paired_share: undefined } })).toBeNull()
-    expect(buildVehicleCoverage({ ...VEHICLES_2209, production: EMPRISE_2209.production })).toBeNull()
-  })
 })

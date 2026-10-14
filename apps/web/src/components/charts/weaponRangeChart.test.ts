@@ -5,7 +5,7 @@
  * en `null`, ORDRE DU BACKEND conservé, pseudo-armes sans portée écartées), le libellé de
  * ligne réduit au nom de l'arme, l'inversion de l'axe Y au montage, la géométrie exacte du `renderItem` (deux
  * rectangles décalés de part et d'autre du centre de bande, un losange par médiane), le cas
- * « un seul côté mesuré » (un seul bâton, l'infobulle dit « aucune mesure »), et
+ * « un seul côté » (un seul bâton, l'infobulle n'a pas de ligne pour l'autre), et
  * l'échappement HTML des noms d'armes dans l'infobulle.
  */
 import { describe, expect, it } from 'vitest'
@@ -15,6 +15,7 @@ import type { WeaponRangeRow, WeaponRangeSide } from '@/lib/api/types'
 
 import {
   WEAPON_RANGE_ROW_PX,
+  WEAPON_RANGE_X_LABEL_GAP_PX,
   buildWeaponRangeOption,
   weaponRangeAxisMax,
   weaponRangeCategoryLabel,
@@ -86,10 +87,9 @@ function optionOf(lines: WeaponRangeLine[]) {
       top: 'Mes frags',
       bottom: 'Mes morts',
       percentiles: 'p10 · médiane · p90',
-      noMeasure: 'aucune mesure',
     },
   }) as {
-    xAxis: { max: number }
+    xAxis: { max: number; axisLabel: { margin: number } }
     yAxis: { data: string[]; axisLabel: { width: number; overflow: string; ellipsis: string } }
     tooltip: { formatter: (p: unknown) => string }
     series: {
@@ -172,6 +172,8 @@ describe('buildWeaponRangeOption — l’axe et la série', () => {
       'Mêlée',
     ])
     expect(o.xAxis.max).toBe(55)
+    // Les graduations de distance ne collent pas au dernier bâton.
+    expect(o.xAxis.axisLabel.margin).toBe(WEAPON_RANGE_X_LABEL_GAP_PX)
     expect(o.series[0].type).toBe('custom')
     // Une donnée par ligne, porteuse de la borne d'axe (dimensions encodées en x).
     expect(o.series[0].data).toEqual([
@@ -244,9 +246,9 @@ describe('infobulle', () => {
     expect(html).toContain('Mes morts — 96 : 0.9 m · <b>1.5 m</b> · 2.8 m')
   })
 
-  it('dit « aucune mesure » pour le côté absent — jamais un zéro', () => {
-    expect(tooltip(1)).toContain('Mes morts — aucune mesure')
-    expect(tooltip(1)).not.toContain('Mes morts — 0')
+  it('le côté absent n’a pas de ligne — ni zéro, ni absence dite', () => {
+    expect(tooltip(1)).toContain('Mes frags — ')
+    expect(tooltip(1)).not.toContain('Mes morts')
   })
 
   it('échappe le nom d’arme (rendu en innerHTML par ECharts)', () => {

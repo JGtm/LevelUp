@@ -29,7 +29,8 @@ import (
 // player_csr_snapshots proviennent de la SOURCE UNIQUE côté migrations
 // (migration.PlayerPersonalScoreAwardsDDL / PlayerCSRSnapshotsDDL) — toute évolution s'y
 // fait, jamais ici. L'ordre de concaténation reproduit l'ordre historique du script ; les
-// DROP des index retirés (MSR, PSA) viennent en dernier (convergence D-4, plan 2026-09-26).
+// DROP des index retirés (MSR, PSA, puis lusr_component_history, player_match_enrichment et
+// player_csr_snapshots) viennent en dernier (convergence D-4, plan 2026-09-26).
 var playerSchemaSQL = migration.PlayerPersonalScoreAwardsDDL +
 	playerCoreSchemaSQL +
 	migration.PlayerCSRSnapshotsDDL +
@@ -77,10 +78,8 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     created_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     updated_at                  TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
--- idx_pme_match_lookup(match_id, written_at) est créé par la migration append-only
--- (player_append_only_match_enrichment_v1), PAS ici : sur une DB legacy pré-existante,
--- CREATE TABLE IF NOT EXISTS no-ope et written_at n'existe pas encore → CREATE INDEX
--- échouerait. La migration le pose après le swap (written_at garanti).
+-- AUCUN index secondaire (idx_pme_match_lookup retiré le 2026-10-09, #23645) : cf.
+-- migration.PlayerRetiredSecondaryIndexesDropSQL.
 
 CREATE TABLE IF NOT EXISTS sync_meta (
     key        VARCHAR PRIMARY KEY,
@@ -326,7 +325,7 @@ CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 // C1 (revue 2026-07-17, findings M2/M3) — RÉPARATION PROACTIVE de player_csr_snapshots
 // AVANT playerSchemaSQL : une player DB legacy (backup pré-2026-05-24) porte l'ANCIEN schéma
 // PK(playlist_id, season_id) SANS colonnes id/written_at. playerSchemaSQL crée ensuite l'index
-// idx_pcs_lookup(... written_at) puis la vue player_csr_snapshots_latest (QUALIFY ... written_at,
+// la vue player_csr_snapshots_latest (QUALIFY ... written_at,
 // id) : sur l'ancien schéma leur BIND échoue → OpenPlayerDB mort définitivement (aucun step de
 // migration restant ne répare, la conversion ayant été squashée). La réparation par
 // introspection des colonnes (jamais de sentinelle ; conversion CTAS transactionnelle

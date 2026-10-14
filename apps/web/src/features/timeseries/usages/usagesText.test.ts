@@ -70,17 +70,15 @@ describe('textes FR', () => {
   })
 
   it('carte par carte', () => {
-    expect([E.grid.more, E.grid.less, E.grid.nothing, E.grid.noFilm]).toEqual(['Plus que l’adversaire', 'Moins', 'Rien à prendre', 'Sans film'])
-    expect(E.grid.untieredTip).toBe('Niveaux de socle non mesurés sur ces matchs : armes spéciales et armes de râtelier ne se séparent pas.')
-    expect(U.cards.maps.tipHead('Carte Alpha', 12, 1)).toBe('Carte Alpha (12 matchs, 1 filmé)')
+    expect([E.grid.more, E.grid.less, E.grid.nothing]).toEqual(['Plus que l’adversaire', 'Moins', 'Rien à prendre'])
+    expect(U.cards.maps.tipHead('Carte Alpha', 12)).toBe('Carte Alpha (12 matchs)')
     expect(U.cards.maps.others).toBe('Autres cartes')
   })
 
-  it('vies : causes d’écart comptées dans l’aide', () => {
-    expect(U.cards.lives.info(22, 0, 0)).toBe(
-      'Vies terminées par une mort, rangées selon la distance au coéquipier le plus proche à l’instant de la mort (à portée de radar ou au-delà) ; barre fine : frags obtenus pendant ces vies. Écartées : vies sans coéquipier situé (22).',
+  it('vies : l’aide dit ce que la carte range, sans compte d’écartées', () => {
+    expect(U.cards.lives.info).toBe(
+      'Vies terminées par une mort, rangées selon la distance au coéquipier le plus proche à l’instant de la mort (à portée de radar ou au-delà) ; barre fine : frags obtenus pendant ces vies.',
     )
-    expect(U.cards.lives.info(22, 5, 0)).toContain('vies d’une carte sans portée de radar connue (5)')
     expect([U.cards.lives.near, U.cards.lives.alone, U.cards.lives.thinLegend]).toEqual([
       'À portée d’un coéquipier',
       'Isolée',
@@ -97,7 +95,6 @@ describe('textes FR', () => {
       'Lâché',
       'Barre fine : reste de l’équipe',
     ])
-    expect(U.cards.equipment.unmeasured).toBe('Non mesuré : ni prise ni usage publiés pour cette famille')
     expect(U.cards.equipment.restLine(146, 7, 151)).toBe('reste de l’équipe : 146 servis · 7 gardés · 151 lâchés')
     expect(U.cards.equipment.zeroTip('JGtm', 'Mur')).toBe('Mur : 0 objet pour JGtm')
   })

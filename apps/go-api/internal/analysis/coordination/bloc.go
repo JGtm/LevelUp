@@ -5,29 +5,32 @@ package coordination
 //
 // # UN MATCH NON MESURÉ NE FOURNIT NI NUMÉRATEUR NI DÉNOMINATEUR
 //
-// Le drapeau `Mesure` vient du lecteur (au moins une ligne publiable dans
-// `match_kill_events_latest`) — la MÊME définition que l'onglet Tactique. Compter ses
-// matchs au dénominateur « par match » ferait varier la grandeur avec
-// la COUVERTURE DE FILM au lieu du jeu (correction G2).
+// Un match est mesuré quand son journal des morts est lisible (drapeau `Mesure` du lecteur,
+// la MÊME définition que l'onglet Tactique) ET que son film porte l'assistance (au moins une
+// ligne d'appui). Compter les autres au dénominateur ferait varier la grandeur avec la
+// COUVERTURE DE FILM au lieu du jeu (correction G2) — et y verser les frags officiels d'un
+// match dont aucune assistance n'est lue ferait baisser « frags appuyés » sans raison de jeu.
 
 import "levelup/go-api/internal/domain"
 
-// cumulMatch — les comptes bruts d'UN match mesuré, avant mise en forme.
+// cumulMatch — les comptes bruts d'UN match mesuré, avant mise en forme. `myKills` est la
+// base officielle (compterAppuis), `myFilmKills` les frags du joueur lus par le film.
 type cumulMatch struct {
 	teamSize *int
 
-	myKills, myAssisted      int
-	teamAssists, assistsToMe int
+	myKills, myFilmKills, myAssisted int
+	teamAssists, assistsToMe         int
 }
 
 // Bloc rend le bloc de coordination d'un scope de matchs.
 //
 // Available=false avec une RAISON MACHINE dans deux cas, et aucun des deux n'est une panne :
-// pas de sujet (xuid vide) et aucun match mesuré (films expirés, titre sans décodeur).
+// pas de sujet (xuid vide) et aucun match mesuré (films expirés ou sans assistance lue,
+// titre sans décodeur).
 // Jamais un bloc de zéros : « aucune donnée » n'est pas « zéro pour cent ».
 func Bloc(in domain.CoordinationEntree) domain.CoordinationBlock {
 	out := domain.CoordinationBlock{MatchesTotal: len(in.Matchs)}
-	cumuls, ordre := cumulsMesures(in.Matchs)
+	cumuls, ordre := cumulsMesures(in.Matchs, matchsPorteurs(in.Appuis))
 	out.MatchesMeasured = len(ordre)
 	if in.MoiXUID == "" || out.MatchesMeasured == 0 {
 		out.UnavailableReason = domain.CoordinationNoMeasuredMatch
@@ -54,10 +57,17 @@ func Restreindre(in domain.CoordinationEntree, matchIDs []string) domain.Coordin
 	for _, id := range matchIDs {
 		garde[id] = struct{}{}
 	}
-	out := domain.CoordinationEntree{MoiXUID: in.MoiXUID, Equipes: domain.EquipesParMatch{}}
+	out := domain.CoordinationEntree{
+		MoiXUID: in.MoiXUID, Equipes: domain.EquipesParMatch{}, FragsOfficiels: map[string]int{},
+	}
 	for _, m := range in.Matchs {
 		if _, ok := garde[m.MatchID]; ok {
 			out.Matchs = append(out.Matchs, m)
+		}
+	}
+	for matchID, n := range in.FragsOfficiels {
+		if _, ok := garde[matchID]; ok {
+			out.FragsOfficiels[matchID] = n
 		}
 	}
 	for matchID, equipes := range in.Equipes {
@@ -73,14 +83,23 @@ func Restreindre(in domain.CoordinationEntree, matchIDs []string) domain.Coordin
 	return out
 }
 
-// cumulsMesures ouvre un cumul par match MESURÉ et fige l'ordre d'affichage (celui du
-// scope). Le parcours d'une map n'est pas un ordre : la bande de régularité doit rendre
-// les mêmes cases dans le même sens à chaque appel.
-func cumulsMesures(matchs []domain.CoordinationMatch) (map[string]*cumulMatch, []string) {
+// matchsPorteurs : les matchs dont le film porte l'assistance — au moins une ligne d'appui.
+func matchsPorteurs(appuis []domain.CoordinationAppuiRow) map[string]struct{} {
+	out := make(map[string]struct{}, len(appuis))
+	for _, a := range appuis {
+		out[a.MatchID] = struct{}{}
+	}
+	return out
+}
+
+// cumulsMesures ouvre un cumul par match MESURÉ (journal lisible, film porteur) et fige
+// l'ordre d'affichage (celui du scope). Le parcours d'une map n'est pas un ordre : la bande
+// de régularité doit rendre les mêmes cases dans le même sens à chaque appel.
+func cumulsMesures(matchs []domain.CoordinationMatch, porteurs map[string]struct{}) (map[string]*cumulMatch, []string) {
 	cumuls := make(map[string]*cumulMatch, len(matchs))
 	ordre := make([]string, 0, len(matchs))
 	for _, m := range matchs {
-		if !m.Mesure {
+		if _, porte := porteurs[m.MatchID]; !m.Mesure || !porte {
 			continue
 		}
 		if _, deja := cumuls[m.MatchID]; deja {

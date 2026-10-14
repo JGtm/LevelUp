@@ -1,3 +1,5 @@
+// cross-feature-allow: le sélecteur de composition de la page Escouade (`SquadCompositionPicker`)
+// et le type de sa liste (`useCompositionOptions`) — le même sélecteur sur toutes les pages.
 /**
  * TacticalFilterBar — la barre L2 de l'onglet Tactique.
  *
@@ -6,7 +8,7 @@
  *   période / saison / expérience / playlists / modes  `useLocalFilterBar`
  *   segmentation solo / escouade / mixte                `viewLabels` du même hook
  *   sessions épinglées                                  `SessionMultiSelect`
- *   composition (0 à 3 coéquipiers)                     `GamertagCombobox`
+ *   composition (0 à 3 coéquipiers)                     `SquadCompositionPicker` (Escouade)
  *
  * Les deux derniers sont rendus DANS la barre du hook (`extras`), pas en dessous :
  * une seconde ligne de filtres donnerait deux zones pour un seul scope.
@@ -23,22 +25,21 @@
  */
 import { useEffect, useMemo } from 'react'
 
-import {
-  GamertagCombobox,
-  type GamertagSuggestionSource,
-} from '@/components/ui/GamertagCombobox'
+import type { GamertagSuggestionSource } from '@/components/ui/GamertagCombobox'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { useLocalFilterBar, type LocalFilterBarState } from '@/features/_shared/useLocalFilterBar'
-import type { SessionOption, TeammateOption } from '@/lib/api/types'
+import { SquadCompositionPicker } from '@/features/squad/SquadCompositionPicker'
+import type { CompositionOptions } from '@/features/squad/useCompositionOptions'
+import type { SessionOption } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { reconcileSquadSessionLabels } from '@/lib/sessions/sessionLabels'
 
 import type { TacticalText } from './i18n'
-import { sessionsHorsListe, sessionsProposees } from './tacticalLogic'
+import { lignesDeLaComposition, sessionsHorsListe, sessionsProposees } from './tacticalLogic'
 import { MAX_COEQUIPIERS, type TacticalScope } from './tacticalScope'
 
-/** La SEULE source de composition que cette page sait traduire en XUID. */
-const SOURCES_COEQUIPIERS: readonly GamertagSuggestionSource[] = ['frequent']
+/** Les sources que cette page sait traduire en XUID : les profils suivis et la liste proposée. */
+const SOURCES_COEQUIPIERS: readonly GamertagSuggestionSource[] = ['configured', 'frequent']
 
 export interface TacticalFilterBarProps {
   playerSlug: string
@@ -46,8 +47,20 @@ export interface TacticalFilterBarProps {
   t: TacticalText
   scope: TacticalScope
   setScope: (patch: Partial<TacticalScope>) => void
-  /** Coéquipiers proposés au sélecteur de composition (avec leur xuid). */
-  coequipierOptions: TeammateOption[]
+  /** Liste du sélecteur de composition, annuaire des xuids et xuid du joueur consulté. */
+  composition: Pick<CompositionOptions, 'options' | 'annuaire' | 'joueurXuid'>
+  /** L'angle « Escouade » demandé sans composition (`DemandeDeComposition`). */
+  demandeComposition: DemandeDeComposition
+}
+
+/**
+ * DemandeDeComposition — l'angle « Escouade » cliqué sans composition. `compteur` : chaque clic est
+ * une nouvelle demande d'ouverture du sélecteur ; `enCours` : la demande vaut pour la carte
+ * affichée et l'angle n'a pas été quitté.
+ */
+export interface DemandeDeComposition {
+  compteur: number
+  enCours: boolean
 }
 
 export function TacticalFilterBar({
@@ -56,7 +69,8 @@ export function TacticalFilterBar({
   t,
   scope,
   setScope,
-  coequipierOptions,
+  composition,
+  demandeComposition,
 }: TacticalFilterBarProps) {
   // L'état committed du hook EST le scope d'URL : une seule vérité, donc le retour
   // navigateur remet les pills ET les requêtes dans le même mouvement.
@@ -107,7 +121,8 @@ export function TacticalFilterBar({
         setScope={setScope}
         sessions={dispo}
         avecComposition={avecComposition}
-        coequipierOptions={coequipierOptions}
+        composition={composition}
+        demandeComposition={demandeComposition}
         playerSlug={playerSlug}
       />
     ),
@@ -156,7 +171,8 @@ function BarreExtras({
   setScope,
   avecComposition,
   sessions,
-  coequipierOptions,
+  composition,
+  demandeComposition,
 }: {
   playerSlug: string
   locale: Locale
@@ -165,7 +181,8 @@ function BarreExtras({
   setScope: (patch: Partial<TacticalScope>) => void
   avecComposition: boolean
   sessions: readonly SessionOption[]
-  coequipierOptions: TeammateOption[]
+  composition: TacticalFilterBarProps['composition']
+  demandeComposition: DemandeDeComposition
 }) {
   // Les sessions proposées SUIVENT la composition : escouade dès qu'un coéquipier
   // est choisi, solo sinon (même mécanique que la barre de l'Escouade).
@@ -230,22 +247,72 @@ function BarreExtras({
         getMatchCount={(label) => comptes.get(label)}
         triggerClassName="flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted whitespace-nowrap transition-colors"
       />
-      {/* LE SÉLECTEUR NE PROPOSE QUE CE QUE LA PAGE SAIT RÉSOUDRE : la composition
-          part au serveur en XUIDS, et le seul endroit où cette page les connaît est
-          la liste des coéquipiers fréquents. Laisser le popover offrir l'annuaire, le
-          repli Xbox ou la saisie libre revenait à accepter un nom pour le refuser une
-          seconde plus tard, la grille bloquée sur « Coéquipier introuvable ». */}
-      <GamertagCombobox
-        compact
-        selected={scope.coequipiers}
-        onChange={(gts) => setScope({ coequipiers: gts.slice(0, MAX_COEQUIPIERS) })}
-        max={MAX_COEQUIPIERS}
-        frequentOptions={coequipierOptions}
-        sources={SOURCES_COEQUIPIERS}
-        allowFreeInput={false}
-        excludeGamertag={playerSlug}
-        placeholder={t.squadPlaceholder(coequipierOptions.length)}
+      <SelecteurDeComposition
+        playerSlug={playerSlug}
+        locale={locale}
+        t={t}
+        scope={scope}
+        setScope={setScope}
+        composition={composition}
+        demandeComposition={demandeComposition}
       />
     </>
+  )
+}
+
+/**
+ * SelecteurDeComposition — le sélecteur de composition de l'Escouade, précédé de son étiquette.
+ *
+ * LE SÉLECTEUR NE PROPOSE QUE CE QUE LA PAGE SAIT RÉSOUDRE : la composition part au serveur en
+ * XUIDS, connus par l'annuaire (`useCompositionOptions`) pour les profils suivis, la liste proposée
+ * et les escouades enregistrées. Laisser le popover offrir l'annuaire distant, le repli Xbox ou la
+ * saisie libre revenait à accepter un nom pour le refuser une seconde plus tard, la grille bloquée
+ * sur « Coéquipier introuvable ».
+ *
+ * MIS EN AVANT tant qu'une demande (angle « Escouade » cliqué) attend une composition : l'anneau
+ * et l'ouverture du popover désignent le contrôle à régler.
+ */
+function SelecteurDeComposition({
+  playerSlug,
+  locale,
+  t,
+  scope,
+  setScope,
+  composition,
+  demandeComposition,
+}: {
+  playerSlug: string
+  locale: Locale
+  t: TacticalText
+  scope: TacticalScope
+  setScope: (patch: Partial<TacticalScope>) => void
+  composition: TacticalFilterBarProps['composition']
+  demandeComposition: DemandeDeComposition
+}) {
+  const lignes = useMemo(() => lignesDeLaComposition(scope.coequipiers, composition.annuaire), [
+    scope.coequipiers,
+    composition.annuaire,
+  ])
+  const misEnAvant = demandeComposition.enCours && scope.coequipiers.length === 0
+  return (
+    <div
+      className={`flex items-center gap-1.5 rounded-md ${misEnAvant ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}`}
+      data-testid="tactical-composition"
+      data-mis-en-avant={misEnAvant || undefined}
+    >
+      <span className="shrink-0 text-xs font-medium text-muted-foreground">{t.squadLabel}</span>
+      <SquadCompositionPicker
+        playerSlug={playerSlug}
+        locale={locale}
+        selected={scope.coequipiers}
+        onChange={(gts) => setScope({ coequipiers: gts.slice(0, MAX_COEQUIPIERS) })}
+        options={composition.options}
+        selectedRows={lignes}
+        currentPlayerXuid={composition.joueurXuid}
+        sources={SOURCES_COEQUIPIERS}
+        allowFreeInput={false}
+        openRequest={demandeComposition.compteur}
+      />
+    </div>
   )
 }

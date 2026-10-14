@@ -1,8 +1,7 @@
 /**
  * LeaderboardNotes — bandeaux d'honnêteté affichés sous l'en-tête du classement.
  *
- * Ils disent ce que le relevé NE contient pas : saison archivée (classement CSR
- * seul), stats détaillées indisponibles ou partielles sur les lignes affichées.
+ * Ils disent ce que le relevé contient : saison archivée (classement CSR seul).
  * Un seul endroit pour ces messages : même style (note discrète, tokens
  * sémantiques), même placement, quel que soit le motif.
  *

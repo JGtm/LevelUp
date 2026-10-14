@@ -53,9 +53,7 @@ const squadVehicleQueryTimeout = 15 * time.Second
 // la ligne `match` d'abord (`match` < `take`), puis camp, joueur, famille.
 const qSquadVehicleTakes = `
 SELECT v.match_id, v.row_kind, v.camp, v.xuid, v.family, v.takes, v.aboard_ms, v.episodes,
-       v.proximity_episodes, v.frags, v.measured, v.unmeasured_reason, v.doc_schema,
-       v.episodes_read, v.episodes_unnamed, v.episodes_no_camp, v.frags_read, v.frags_reason,
-       v.frags_total, v.frags_unmatched
+       v.frags, v.measured, v.doc_schema, v.frags_read, v.frags_reason, v.frags_total
 FROM match_vehicle_takes_latest v
 WHERE %s
 ORDER BY v.match_id, v.row_kind, v.camp, v.xuid, v.family`
@@ -120,29 +118,26 @@ func (r *SquadVehicleRepo) lirePrises(ctx context.Context, db *sql.DB, ids []str
 // scanVehicleLine range une ligne lue : `match` -> passe, `take` -> prise.
 func scanVehicleLine(rows *sql.Rows, out *squademprise.VehicleRead) error {
 	var (
-		kind                         string
-		row                          squademprise.VehicleRow
-		pass                         squademprise.VehiclePass
-		measured, fragsRead          bool
-		aboard                       int64
-		episodes, proximity, frags   int
-		takes                        int
-		docSchema, read, unnamed, nc int
-		total, unmatched             int
+		kind                string
+		row                 squademprise.VehicleRow
+		pass                squademprise.VehiclePass
+		measured, fragsRead bool
+		aboard              int64
+		episodes, frags     int
+		takes, docSchema    int
+		total               int
 	)
 	if err := rows.Scan(&row.MatchID, &kind, &row.Camp, &row.XUID, &row.Family, &takes, &aboard,
-		&episodes, &proximity, &frags, &measured, &pass.Reason, &docSchema, &read, &unnamed, &nc,
-		&fragsRead, &pass.FragsReason, &total, &unmatched); err != nil {
+		&episodes, &frags, &measured, &docSchema, &fragsRead, &pass.FragsReason, &total); err != nil {
 		return fmt.Errorf("SquadVehicleRepo: scan: %w", err)
 	}
 	if kind == "match" {
 		pass.MatchID, pass.Measured, pass.DocSchema = row.MatchID, measured, docSchema
-		pass.EpisodesRead, pass.EpisodesUnnamed, pass.EpisodesNoCamp = read, unnamed, nc
-		pass.FragsRead, pass.FragsTotal, pass.FragsUnmatched = fragsRead, total, unmatched
+		pass.FragsRead, pass.FragsTotal = fragsRead, total
 		out.Passes = append(out.Passes, pass)
 		return nil
 	}
-	row.Takes, row.AboardMS, row.Episodes, row.ProximityEpisodes, row.Frags = takes, aboard, episodes, proximity, frags
+	row.Takes, row.AboardMS, row.Episodes, row.Frags = takes, aboard, episodes, frags
 	out.Rows = append(out.Rows, row)
 	return nil
 }

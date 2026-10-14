@@ -90,17 +90,17 @@ describe('ExplorerTargetFragRange', () => {
     expect(screen.queryByText('Aucun frag mesuré sur vos matchs communs')).not.toBeInTheDocument()
   })
 
-  it('aucune mesure chez la cible : état vide titré, pas de graphe', () => {
+  it('aucune distance chez la cible : état vide titré, pas de graphe', () => {
     renderWithProviders(<ExplorerTargetFragRange encounterStats={BASE} gamertag="Adversaire7" />)
     expect(screen.getByText('Portée des frags')).toBeInTheDocument()
-    expect(screen.getByText('Aucun frag mesuré sur vos matchs communs')).toBeInTheDocument()
+    expect(screen.getByText('Aucune distance de frag sur les matchs communs')).toBeInTheDocument()
     expect(screen.queryByTestId('echarts-mock')).not.toBeInTheDocument()
   })
 
   it('sans stats de rencontre du tout : le bloc reste rendu en état vide', () => {
     renderWithProviders(<ExplorerTargetFragRange encounterStats={null} gamertag="Adversaire7" />)
     expect(screen.getByTestId('explorer-target-frag-range')).toHaveTextContent(
-      'Aucun frag mesuré sur vos matchs communs',
+      'Aucune distance de frag sur les matchs communs',
     )
   })
 })

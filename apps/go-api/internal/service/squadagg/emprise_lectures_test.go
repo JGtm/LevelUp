@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squademprise"
+	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 )
 
@@ -87,5 +88,31 @@ func TestEmpriseLecteurFilm_SansRepoLeTitreNAPasDeFilm(t *testing.T) {
 	film, raison := EmpriseLecteur{Page: "test"}.Film(context.Background(), nil, nil, nil, nil)
 	if film != nil || raison != domain.EmpriseFilmUnsupported {
 		t.Errorf("(%v, %q), attendu (nil, %q)", film, raison, domain.EmpriseFilmUnsupported)
+	}
+}
+
+// journalEspion — le journal des morts, qui note s'il a été lu.
+type journalEspion struct{ lu bool }
+
+func (*journalEspion) LoadPowerWeaponKills(context.Context, []string) ([]squademprise.PowerKillRow, error) {
+	return nil, nil
+}
+
+func (j *journalEspion) LoadJournalWeaponKills(context.Context, []string) (squademprise.JournalRead, error) {
+	j.lu = true
+	return squademprise.JournalRead{Read: map[string]bool{"m": true}}, nil
+}
+
+// Catalogue d'armes vide : le journal n'est pas lu, les frags aux armes spéciales restent à la
+// feuille de match (jamais un 0 / 0 faute de clé de registre).
+func TestEmpriseLecteurJournal_CatalogueVide_RepliFeuille(t *testing.T) {
+	repo := &journalEspion{}
+	l := EmpriseLecteur{Page: "test", Player: "J"}
+	if got := l.Journal(context.Background(), repo, []string{"m"}, nil); got != nil || repo.lu {
+		t.Errorf("catalogue vide : journal = %+v, lu = %v ; attendu nil, non lu", got, repo.lu)
+	}
+	weapons := map[string]squadformes.WeaponInfo{"0a000001": {WeaponKey: "k"}}
+	if got := l.Journal(context.Background(), repo, []string{"m"}, weapons); got == nil || !got.Read["m"] {
+		t.Errorf("catalogue lu : journal = %+v, attendu la lecture du repo", got)
 	}
 }

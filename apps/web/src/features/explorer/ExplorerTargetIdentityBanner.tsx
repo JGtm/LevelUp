@@ -110,8 +110,10 @@ export function ExplorerTargetIdentityBanner({
         </div>
       )
     }
+    // Bandeau sans visuel synthetise : le cadre PLEIN des autres bandeaux, jamais le cadre pointille
+    // d'un etat vide — le joueur est connu, seule son identite visuelle manque.
     return (
-      <div className="overflow-hidden rounded-lg border border-dashed border-border bg-muted/30 px-5 py-6">
+      <div className="overflow-hidden rounded-lg border border-border bg-card px-5 py-6 shadow-sm">
         <div className="flex items-center gap-4">
           <div
             className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-background text-2xl font-bold text-muted-foreground"

@@ -108,6 +108,9 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomAncrageBipedeApresLaMarche, func(s sourcesDeReplis) int { return s.grammaire.AncragesBipedesApresLaMarche }},
 	{fallback.NomPistesDuMondeApresLaMarche, func(s sourcesDeReplis) int { return s.grammaire.PistesDuMondeApresLaMarche }},
 	{fallback.NomCreationsDuMondeApresLaMarche, func(s sourcesDeReplis) int { return s.grammaire.CreationsDuMondeApresLaMarche }},
+	{fallback.NomFenetreArmesImageCle, func(s sourcesDeReplis) int { return s.grammaire.FenetresArmesImageCle }},
+	{fallback.NomFenetreInventaireImageCle, func(s sourcesDeReplis) int { return s.grammaire.FenetresInventaireImageCle }},
+	{fallback.NomFenetreMarqueDePortage, func(s sourcesDeReplis) int { return s.grammaire.FenetresMarqueDePortage }},
 
 	// `killsource` : ses statistiques (lot J8.7, sous-lot killsource). Une entree que le decodeur
 	// comptait DEJA sous un autre nom est lue a sa source d origine, sans recopie.
@@ -131,6 +134,7 @@ var versementsDesReplis = []ligneDeVersement{
 	{fallback.NomLibelleDeSourceAutres, func(s sourcesDeReplis) int { return s.killsource.Replis.LibellesAutres }},
 	{fallback.NomControleCorruptionSectionAbsente, func(s sourcesDeReplis) int { return s.killsource.Replis.ControleDeCorruptionNonDeclare }},
 	{fallback.NomLargeurMotDePoigneeInferee, func(s sourcesDeReplis) int { return s.killsource.Replis.MotDePoigneeInfere }},
+	{fallback.NomTypeDAssistanceApprisParFilm, func(s sourcesDeReplis) int { return s.killsource.Replis.AssistancesAuTypeAppris }},
 
 	// `objectives` : le balayage du statborg et la construction du pont d identite par manche (lot
 	// J8.7, sous-lot objectives).

@@ -189,10 +189,10 @@ export type SemanticToken =
   // ── Rôles d'impact (7) — « Points d'impact par soirée et par rôle » (Escouade) ──
   // Deux RAMPES ORDINALES : `impact-gain-1..4` pour les rôles qui ajoutent des points (1 = le
   // plus fort barème, posé contre l'axe zéro, le plus contrasté sur la carte), `impact-loss-1..3`
-  // pour ceux qui en retirent (3 = les quatre rôles à −1, qui partagent une nuance : six rouges
+  // pour ceux qui en retirent (3 = les quatre rôles à −1, qui partagent une nuance : six nuances
   // ne tiennent pas l'écart minimal entre voisins). Le rôle se lit à la clarté et au côté de
-  // l'axe, pas à la teinte : rampes INVARIANTES par palette (`_impactRoleColors.ts`), et les
-  // seuls jetons qui changent avec le THÈME (`paletteForTheme`) — en sombre, la clarté s'inverse
+  // l'axe ; chaque palette prend les rampes dans ses teintes positif / négatif
+  // (`_impactRoleColors.ts`). Ce sont les seuls jetons qui changent avec le THÈME (`paletteForTheme`) — en sombre, la clarté s'inverse
   // pour que le pas le plus fort reste le plus contrasté. Garde-fou : impactRoleTokens.test.ts.
   | 'impact-gain-1'
   | 'impact-gain-2'

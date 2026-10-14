@@ -8,12 +8,20 @@
  *    (le chemin logout — reload plein sur '/' — reste intact).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act } from '@testing-library/react'
+import { render, act, waitFor } from '@testing-library/react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { log } from '@/components/shell/_logger'
 import type { BootstrapResponse } from '@/lib/api/types'
+import { AUTH_RELOAD_STORAGE_KEY } from '@/components/shell/authRequiredGuard'
 
 const navigateMock = vi.fn()
+// /bootstrap relu par le garde du 401 (authRequiredGuard) : piloté par test.
+const apiGetMock = vi.fn()
+
+vi.mock('@/lib/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/client')>()
+  return { ...actual, api: { ...actual.api, get: (...args: unknown[]) => apiGetMock(...args) } }
+})
 
 // Données pilotées par test, lues par le mock useQuery.
 let queryData: BootstrapResponse | undefined
@@ -123,6 +131,9 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
 
   beforeEach(() => {
     assignMock.mockReset()
+    apiGetMock.mockReset()
+    navigateMock.mockReset()
+    window.sessionStorage.clear()
     // jsdom : window.location.assign lève « Not implemented ». On remplace
     // window.location par un stub minimal (assign espionné) le temps du test —
     // même pattern que le mock matchMedia du setup Vitest. queryData reste
@@ -147,13 +158,43 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
     queryData = undefined
   })
 
-  it('store authentifié + dispatch levelup:auth-required → reload plein vers /', () => {
+  it('store authentifié + 401 + /bootstrap anonyme → reload plein vers /', async () => {
     useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    apiGetMock.mockResolvedValue(anonBootstrap())
 
     render(<RootLayout />)
     window.dispatchEvent(new CustomEvent('levelup:auth-required'))
 
-    expect(assignMock).toHaveBeenCalledWith('/')
+    await waitFor(() => expect(assignMock).toHaveBeenCalledWith('/'))
+    expect(apiGetMock).toHaveBeenCalledWith('/bootstrap')
+  })
+
+  it('401 d’une route secondaire + /bootstrap connecté → aucune éjection', async () => {
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    apiGetMock.mockResolvedValue({ ...anonBootstrap(), current_username: 'alice' })
+
+    render(<RootLayout />)
+    window.dispatchEvent(new CustomEvent('levelup:auth-required'))
+
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+    await act(async () => {})
+    expect(assignMock).not.toHaveBeenCalled()
+    expect(navigateMock).not.toHaveBeenCalled()
+    expect(useAppShellStore.getState().currentUsername).toBe('alice')
+  })
+
+  it('plafond de rechargements atteint (survit au rechargement) → /login sans recharger', async () => {
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    apiGetMock.mockResolvedValue(anonBootstrap())
+    const now = Date.now()
+    window.sessionStorage.setItem(AUTH_RELOAD_STORAGE_KEY, JSON.stringify([now - 2, now - 1]))
+
+    render(<RootLayout />)
+    window.dispatchEvent(new CustomEvent('levelup:auth-required'))
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/login' }))
+    expect(assignMock).not.toHaveBeenCalled()
+    expect(useAppShellStore.getState().currentUsername).toBeNull()
   })
 
   it('store anonyme + dispatch levelup:auth-required → aucun reload (anti-boucle)', () => {

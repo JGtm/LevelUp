@@ -1,13 +1,15 @@
 /**
  * matchEmprise.logic.ts — LES MODÈLES PURS des cartes de l'Emprise de la Vue match (plan
  * PLAN_MATCHVIEW_EMPRISE_2026-10-06, M3.2) : contrôle des ressources objet par objet (D), prises par
- * joueur de l'équipe (E), lignes « non mesuré » de « Frags par ressource » (G) et « non mesurable » de
- * « Rendement par ressource » (H), une ligne d'« Isolement » par joueur (I), couverture de
- * l'intertitre, et LE prédicat de présence de chaque carte, lu par l'onglet et par chaque carte.
+ * joueur de l'équipe (E), lignes sans barre de « Frags par ressource » (G) et de « Rendement par
+ * ressource » (H), une ligne d'« Isolement » par joueur (I), sous-titre de l'intertitre, et LE
+ * prédicat de présence de chaque carte, lu par l'onglet et par chaque carte.
  *
- * Tout vient des blocs du Go (`emprise`, `lives_near_teammate`) : ce module
- * range, choisit la raison d'une absence dans une liste fermée, et ne calcule aucune mesure. Pur :
- * aucun React, aucune couleur, aucune chaîne de langue (les raisons sont des clés).
+ * Tout vient des blocs du Go (`emprise`, `lives_near_teammate`) : ce module range, choisit le
+ * constat d'une ligne sans barre dans une liste fermée, et ne calcule aucune mesure. Une grandeur
+ * que le match ne porte pas n'a pas de ligne : aucun inconnu n'est rendu (garde des textes :
+ * `lib/i18n/noUnknownMentions.guard.test.ts`). Pur : aucun React, aucune couleur, aucune chaîne de
+ * langue (les constats sont des clés).
  */
 import {
   buildPickupSheets,
@@ -30,19 +32,11 @@ import type {
 } from '@/lib/api/types'
 
 const VEHICLES_MEASURED = 'measured'
-/** États du journal des morts (contrat Go `MatchKillJournal*`). */
-const KILL_JOURNAL_PUBLISHABLE = 'publishable'
-const KILL_JOURNAL_UNAVAILABLE = 'unavailable'
-
 /**
- * La raison d'un temps d'effet sans frag, selon l'état du journal : aucun frag (journal publiable),
- * frags non mesurés (non publiable), lecture indisponible (la lecture a échoué — jamais « non publiable »).
+ * L'état du journal des morts qui rend lisibles les frags pendant l'effet d'un bonus (contrat Go
+ * `MatchKillJournal*`). Sous tout autre état, ces frags ne sont pas connus : pas de ligne.
  */
-const EFFECT_KILLS_REASON: Record<MatchEmpriseBlock['kill_journal'], ProductionReason> = {
-  publishable: 'powerupNoKills',
-  not_publishable: 'powerupKillsUnpublished',
-  unavailable: 'powerupKillsUnavailable',
-}
+const KILL_JOURNAL_PUBLISHABLE = 'publishable'
 const SHEET_LOAD_FAILED = 'sheet_load_failed'
 
 const total = (c: SquadEmpriseCount | null | undefined) => (c ? c.us + c.them : 0)
@@ -76,8 +70,6 @@ export interface MatchControl {
   rows: MatchControlRow[]
   /** Le nombre d'objets de râtelier (bouton de repli) ; 0 sans râtelier. */
   racks: number
-  /** Prises sur un emplacement non identifié ; null sans aucune. */
-  unclassified: SquadEmpriseCount | null
 }
 
 /**
@@ -99,8 +91,7 @@ export function buildMatchControl(block: MatchEmpriseBlock | null | undefined): 
     for (const o of objects) rows.push({ key: `${resource}|${o.key}`, resource, object: o, us: o.taken.us, them: o.taken.them })
     if (resource === RESOURCE_RACK) racks = objects.length
   }
-  const unclassified = measured(m) && m?.unclassified_pickups && total(m.unclassified_pickups) > 0 ? m.unclassified_pickups : null
-  return { rows, racks, unclassified }
+  return { rows, racks }
 }
 
 // ---------------------------------------------------------------------------
@@ -136,15 +127,8 @@ export function buildMatchSheets(block: MatchEmpriseBlock | null | undefined, na
 // G / H — Frags par ressource, Rendement par ressource
 // ---------------------------------------------------------------------------
 
-/** Les raisons d'une ligne sans mesure (liste fermée du plan, §3) ; les textes sont dans `MatchOwnText`. */
-export type ProductionReason =
-  | 'powerupKillsUnpublished'
-  | 'powerupKillsUnavailable'
-  | 'powerupNoEffect'
-  | 'powerupNoKills'
-  | 'powerZero'
-  | 'sheetFailed'
-  | 'vehicleUnmeasured'
+/** Les constats d'une ligne sans barre épaisse (liste fermée) ; les textes sont dans `MatchOwnText`. */
+export type ProductionReason = 'powerupNoEffect' | 'powerupNoKills' | 'powerZero'
 
 export interface MatchProductionPending {
   resource: string
@@ -155,7 +139,7 @@ export interface MatchProductionPending {
 export interface MatchProduction {
   rows: ProductionRow[]
   pending: MatchProductionPending[]
-  /** Ressources dont la barre épaisse n'a pas de barre fine faute de prise mesurée (« aucune prise… »). */
+  /** Ressources dont la barre épaisse n'a pas de barre fine, aucune prise n'ayant eu lieu (« aucune prise… »). */
   noPickupNote: string[]
 }
 
@@ -168,18 +152,14 @@ function exposureOf(block: MatchEmpriseBlock, resource: string): ProductionRow['
   return e && total(e.value) > 0 ? { kind: e.kind, value: e.value } : null
 }
 
-function vehicleUnmeasured(block: MatchEmpriseBlock, m: SquadEmpriseMatch | null): boolean {
-  return !!block.vehicles && !!m && m.vehicles !== VEHICLES_MEASURED
-}
-
 /**
  * buildMatchProduction — les lignes de « Frags par ressource » (le modèle des pages sœurs) et, pour
- * une ressource sans ligne, la raison :
- *   - bonus (match mesuré) : temps d'effet mais journal non publiable → frags non mesurés (barre
- *     fine gardée) ; temps d'effet, journal publiable, aucun frag → aucun frag ; ni l'un ni l'autre →
- *     aucun temps d'effet ;
- *   - armes spéciales : feuille illisible → non mesuré ; feuille lue sans frag → 0 frag ;
- *   - véhicules : titre qui les mesure et match non mesuré → non mesuré.
+ * une ressource sans barre épaisse, le constat qui la remplace :
+ *   - bonus (match lu camp contre camp) : aucun temps d'effet → aucun bonus actif ; temps d'effet,
+ *     journal publiable, aucun frag → aucun frag (barre fine gardée) ; journal non publiable → pas
+ *     de ligne, les frags pendant l'effet n'étant pas connus ;
+ *   - armes spéciales : feuille lue sans frag → 0 frag ; feuille illisible → pas de ligne ;
+ *   - véhicules : sans ligne de production, pas de ligne.
  */
 export function buildMatchProduction(block: MatchEmpriseBlock | null | undefined): MatchProduction {
   if (!block) return { rows: [], pending: [], noPickupNote: [] }
@@ -189,26 +169,19 @@ export function buildMatchProduction(block: MatchEmpriseBlock | null | undefined
   const pending: MatchProductionPending[] = []
   if (!has(RESOURCE_POWERUP) && measured(m)) {
     const exposure = exposureOf(block, RESOURCE_POWERUP)
-    if (exposure) pending.push({ resource: RESOURCE_POWERUP, reason: EFFECT_KILLS_REASON[block.kill_journal], exposure })
-    else pending.push({ resource: RESOURCE_POWERUP, reason: 'powerupNoEffect' })
+    if (!exposure) pending.push({ resource: RESOURCE_POWERUP, reason: 'powerupNoEffect' })
+    else if (block.kill_journal === KILL_JOURNAL_PUBLISHABLE) pending.push({ resource: RESOURCE_POWERUP, reason: 'powerupNoKills', exposure })
   }
-  if (!has(RESOURCE_POWER_WEAPON)) {
-    if (block.sheet_unavailable === SHEET_LOAD_FAILED) pending.push({ resource: RESOURCE_POWER_WEAPON, reason: 'sheetFailed' })
-    else if (production(block, RESOURCE_POWER_WEAPON)) {
-      pending.push({ resource: RESOURCE_POWER_WEAPON, reason: 'powerZero', exposure: exposureOf(block, RESOURCE_POWER_WEAPON) ?? undefined })
-    }
+  if (!has(RESOURCE_POWER_WEAPON) && block.sheet_unavailable !== SHEET_LOAD_FAILED && production(block, RESOURCE_POWER_WEAPON)) {
+    pending.push({ resource: RESOURCE_POWER_WEAPON, reason: 'powerZero', exposure: exposureOf(block, RESOURCE_POWER_WEAPON) ?? undefined })
   }
-  if (!has(RESOURCE_VEHICLE) && vehicleUnmeasured(block, m)) pending.push({ resource: RESOURCE_VEHICLE, reason: 'vehicleUnmeasured' })
   const noPickupNote = rows.filter((r) => r.resource === RESOURCE_POWER_WEAPON && !r.exposure && measured(m)).map((r) => r.resource)
   return { rows, pending, noPickupNote }
 }
 
 export type YieldPendingReason =
-  | { kind: 'powerupUnpublished' }
-  | { kind: 'powerupUnavailable' }
   | { kind: 'noEffect'; team: boolean; teamEffectMs: number; teamKills: number }
   | { kind: 'noPickup'; team: boolean; us: number; them: number }
-  | { kind: 'vehicleUnmeasured' }
 
 export interface MatchYieldPending {
   resource: string
@@ -221,10 +194,10 @@ export interface MatchYield {
 }
 
 /**
- * buildMatchYield — les rendements calculés (le modèle des pages sœurs) et, sur un match mesuré, la
- * raison de chaque rendement qui ne se calcule pas : journal non publiable (bonus), un camp sans
- * temps d'effet (bonus) ou sans prise (armes spéciales) — dite au lieu d'un ratio —, véhicules non
- * mesurés.
+ * buildMatchYield — les rendements calculés (le modèle des pages sœurs) et, sur un match lu camp
+ * contre camp, le constat qui remplace un rapport sans dénominateur : un camp sans temps d'effet
+ * (bonus, journal publiable) ou sans prise (armes spéciales). Un rendement dont les frags ne sont
+ * pas connus (journal non publiable, véhicules non lus) n'a pas de ligne.
  */
 export function buildMatchYield(block: MatchEmpriseBlock | null | undefined): MatchYield {
   if (!block) return { rows: [], pending: [] }
@@ -234,21 +207,17 @@ export function buildMatchYield(block: MatchEmpriseBlock | null | undefined): Ma
   const has = (r: string) => rows.some((x) => x.resource === r)
   const pending: MatchYieldPending[] = []
   const bonus = production(block, RESOURCE_POWERUP)?.exposure
-  if (!has(RESOURCE_POWERUP) && bonus && total(bonus.value) > 0) {
-    if (block.kill_journal === KILL_JOURNAL_UNAVAILABLE) pending.push({ resource: RESOURCE_POWERUP, reason: { kind: 'powerupUnavailable' } })
-    else if (block.kill_journal !== KILL_JOURNAL_PUBLISHABLE) pending.push({ resource: RESOURCE_POWERUP, reason: { kind: 'powerupUnpublished' } })
-    else if (bonus.value.us === 0 || bonus.value.them === 0) {
-      pending.push({
-        resource: RESOURCE_POWERUP,
-        reason: { kind: 'noEffect', team: bonus.value.us === 0, teamEffectMs: bonus.value.us, teamKills: bonus.kills.us },
-      })
-    }
+  const bonusLacksSide = bonus && total(bonus.value) > 0 && (bonus.value.us === 0 || bonus.value.them === 0)
+  if (!has(RESOURCE_POWERUP) && bonus && bonusLacksSide && block.kill_journal === KILL_JOURNAL_PUBLISHABLE) {
+    pending.push({
+      resource: RESOURCE_POWERUP,
+      reason: { kind: 'noEffect', team: bonus.value.us === 0, teamEffectMs: bonus.value.us, teamKills: bonus.kills.us },
+    })
   }
   const armes = production(block, RESOURCE_POWER_WEAPON)?.exposure
   if (!has(RESOURCE_POWER_WEAPON) && armes && (armes.value.us === 0 || armes.value.them === 0)) {
     pending.push({ resource: RESOURCE_POWER_WEAPON, reason: { kind: 'noPickup', team: armes.value.us === 0, us: armes.value.us, them: armes.value.them } })
   }
-  if (!has(RESOURCE_VEHICLE) && vehicleUnmeasured(block, m)) pending.push({ resource: RESOURCE_VEHICLE, reason: { kind: 'vehicleUnmeasured' } })
   return { rows, pending }
 }
 
@@ -259,43 +228,41 @@ export function buildMatchYield(block: MatchEmpriseBlock | null | undefined): Ma
 export interface MatchLivesRow {
   xuid: string
   gamertag: string
-  /** null : aucune vie rangée (toutes écartées, ou aucune vie terminée par une mort). */
-  model: LivesModel | null
+  model: LivesModel
 }
 
 export interface MatchLives {
   rows: MatchLivesRow[]
-  excludedUnlocated: number
-  excludedNoRadar: number
-  excludedUnpublishable: number
 }
 
-/** buildMatchLives — une ligne par joueur de l'équipe, dans l'ordre des fiches ; null sans aucune vie rangée. */
+/**
+ * buildMatchLives — une ligne par joueur de l'équipe qui a au moins une vie rangée, dans l'ordre des
+ * fiches ; un joueur sans vie rangée n'a pas de ligne. null sans aucune ligne.
+ */
 export function buildMatchLives(
   lives: MatchLivesNearTeammate | null | undefined,
   players: readonly { xuid: string; gamertag: string }[],
 ): MatchLives | null {
   const byXuid = new Map((lives?.players ?? []).map((p) => [p.xuid, p]))
-  const rows = players.map((p) => ({ xuid: p.xuid, gamertag: p.gamertag, model: buildLivesModel(byXuid.get(p.xuid)) }))
-  if (!rows.some((r) => r.model)) return null
-  const sum = (k: 'excluded_unlocated' | 'excluded_no_radar' | 'excluded_unpublishable') =>
-    (lives?.players ?? []).reduce((a, p) => a + (p[k] ?? 0), 0)
-  return {
-    rows,
-    excludedUnlocated: sum('excluded_unlocated'),
-    excludedNoRadar: sum('excluded_no_radar'),
-    excludedUnpublishable: sum('excluded_unpublishable'),
+  const rows: MatchLivesRow[] = []
+  for (const p of players) {
+    const model = buildLivesModel(byXuid.get(p.xuid))
+    if (model) rows.push({ xuid: p.xuid, gamertag: p.gamertag, model })
   }
+  return rows.length > 0 ? { rows } : null
 }
 
 // ---------------------------------------------------------------------------
-// Couverture et présence
+// Sous-titre et présence
 // ---------------------------------------------------------------------------
 
-/** L'intertitre « Équipement et terrain » : film décodé ou non, joueurs présents à la fin (bots compris). */
-export function matchCoverage(block: MatchEmpriseBlock | null | undefined, scoreboard: readonly MatchScoreboardRow[]): { filmed: boolean; present: number } | null {
-  if (!block) return null
-  return { filmed: !!theMatch(block)?.has_film, present: scoreboard.filter((r) => r.left_in_progress !== true).length }
+/**
+ * Le sous-titre de l'intertitre « Équipement et terrain » d'un match filmé : les joueurs présents à
+ * la fin (bots compris). null sans film : rien n'est écrit.
+ */
+export function matchCoverage(block: MatchEmpriseBlock | null | undefined, scoreboard: readonly MatchScoreboardRow[]): { present: number } | null {
+  if (!theMatch(block)?.has_film) return null
+  return { present: scoreboard.filter((r) => r.left_in_progress !== true).length }
 }
 
 export interface MatchEmpriseModels {

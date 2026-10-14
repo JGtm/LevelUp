@@ -1,6 +1,6 @@
-// Package duckdb — squad_emprise_repo.go : la feuille de match du bloc « Emprise » de l'Escouade
-// (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) — les frags aux armes spéciales
-// de chaque participant, les deux camps.
+// Package duckdb — squad_emprise_repo.go : les frags aux armes spéciales du bloc « Emprise » (lot L4
+// du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) — la feuille de match de chaque participant,
+// les deux camps, et (squad_emprise_journal_repo.go) les frags par arme du journal des morts.
 //
 // UNE LECTURE SUR UN SCOPE FERMÉ de match_id (aucun filtre temporel : le fragment timezone
 // canonique ne s'applique pas). `match_participants` n'est pas une table append-only : pas de vue
@@ -14,16 +14,21 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/squademprise"
+	"levelup/go-api/internal/port"
 )
 
-// SquadEmpriseRepo lit la feuille de match sur le SharedReader du joueur.
+// SquadEmpriseRepo lit la feuille de match et le journal des morts sur le SharedReader du joueur.
 type SquadEmpriseRepo struct {
 	pdb *PlayerDB
+	// classifier traduit une source de dégât en clé de registre ; nil (titre sans
+	// `film.kill_source`) : le journal n'est pas lu.
+	classifier port.KillSourceClassifier
 }
 
-// NewSquadEmpriseRepo construit le repo à partir de la player DB (SharedReader).
-func NewSquadEmpriseRepo(pdb *PlayerDB) *SquadEmpriseRepo {
-	return &SquadEmpriseRepo{pdb: pdb}
+// NewSquadEmpriseRepo construit le repo à partir de la player DB (SharedReader). classifier peut
+// être nil.
+func NewSquadEmpriseRepo(pdb *PlayerDB, classifier port.KillSourceClassifier) *SquadEmpriseRepo {
+	return &SquadEmpriseRepo{pdb: pdb, classifier: classifier}
 }
 
 const squadEmpriseQueryTimeout = 15 * time.Second

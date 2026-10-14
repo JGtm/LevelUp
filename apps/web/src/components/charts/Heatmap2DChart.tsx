@@ -16,8 +16,6 @@
  */
 import { useCallback, type ReactNode } from 'react'
 
-import type { Locale } from '@/lib/i18n/locale'
-import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
@@ -44,18 +42,6 @@ export type {
   HeatmapPiece,
 } from './heatmap2DOption'
 /* eslint-enable react-refresh/only-export-components */
-
-/**
- * Libellé de la légende affichée quand la série contient au moins une case
- * `value: null` (décision D3, plan vague C formes 2026-09-08). Dictionnaire local
- * plutôt qu'un manifeste TOML : une seule chaîne, propre à ce wrapper — parité
- * FR/EN garantie par le typage `Record<Locale, T>` (même patron que
- * `lib/review/i18n.ts`).
- */
-const HEATMAP_EMPTY_CELL_TEXT: Record<Locale, string> = {
-  fr: 'Aucune mesure sur cet axe',
-  en: 'No measurement on this axis',
-}
 
 export interface Heatmap2DChartProps {
   title?: string
@@ -135,7 +121,7 @@ export interface Heatmap2DChartProps {
    * Traitement d'une case SANS MESURE (`value: null`).
    *
    * `'hatched'` (defaut) applique la decision D3 : la case est peinte en neutre, hachuree,
-   * porte un tiret et la legende la nomme — « l'absence a sa propre forme, jamais un vide ».
+   * porte un tiret ; aucune legende ne la nomme (aucun inconnu ecrit a l'ecran).
    *
    * `'hidden'` ne peint RIEN — ni la case, ni le BANDEAU D'AXE derriere elle
    * (`splitArea`, qui compose en damier et se voit la ou aucune case n'est peinte), ni le
@@ -173,9 +159,8 @@ export interface Heatmap2DChartProps {
   /** Marges de trace imposées, fusionnées par-dessus celles du wrapper. */
   gridOverride?: HeatmapGridOverride
   /**
-   * Légende POSÉE EN DOM sous le graphe, à la place de celle que le wrapper écrit pour
-   * les cases vides. Un appelant dont l'échelle est discrète nomme ses paliers lui-même :
-   * deux légendes sous le même graphe, c'en est une de trop.
+   * Légende POSÉE EN DOM sous le graphe. Un appelant dont l'échelle est discrète nomme ses
+   * paliers lui-même.
    */
   legend?: ReactNode
 }
@@ -209,7 +194,6 @@ export function Heatmap2DChart({
   // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
   // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
   const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
-  const locale = useAppShellStore((s) => s.locale)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
       buildHeatmap2DOption(s, {
@@ -252,19 +236,6 @@ export function Heatmap2DChart({
     ],
   )
 
-  // Décision D3 : une case sans mesure se nomme, sans que l'appelant ait à le
-  // demander — c'est ce qui permet aux quatre consommateurs existants d'hériter
-  // sans modification. Pas de légende quand aucune case n'est vide (comportement
-  // historique inchangé pour ces séries-là).
-  // La légende NOMME la forme des cases vides : sans forme à nommer (`emptyCells: 'hidden'`),
-  // elle annoncerait une absence que rien ne montre.
-  // `emptyCells` est ici la PROP BRUTE : son defaut (`'hatched'`) n'est applique que dans le
-  // builder. Comparer sans le rappeler aurait prive de legende tous les appelants qui ne
-  // passent pas l'option — c'est-a-dire les quatre consommateurs historiques.
-  const hasEmptyCell =
-    (emptyCells ?? 'hatched') === 'hatched' &&
-    series.some((s) => s.datapoints.some((d) => d.value == null))
-
   return (
     <ChartCard
       title={title}
@@ -275,13 +246,7 @@ export function Heatmap2DChart({
       height={height}
       frameless={frameless}
       buildOption={buildOption}
-      legend={
-        legend ?? (hasEmptyCell ? (
-          <p className="text-xs text-muted-foreground" data-testid="heatmap-empty-cell-legend">
-            {HEATMAP_EMPTY_CELL_TEXT[locale]}
-          </p>
-        ) : undefined)
-      }
+      legend={legend}
     />
   )
 }

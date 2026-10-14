@@ -34,27 +34,20 @@ describe('MATCH_EMPRISE_TEXT — titres des cartes partagées', () => {
 
     it(`${locale} : « Isolement » une ligne par joueur, aide de la carte des Séries temporelles précédée de la portée`, () => {
       expect(t.cards.lives.title).toBe(locale === 'fr' ? 'Isolement, par joueur' : 'Isolation, by player')
-      expect(t.cards.lives.info(1, 2, 3).endsWith(USAGES_TEXT[locale].cards.lives.info(1, 2, 3))).toBe(true)
+      expect(t.cards.lives.info.endsWith(USAGES_TEXT[locale].cards.lives.info)).toBe(true)
     })
   }
 })
 
 describe('MATCH_EMPRISE_TEXT — textes propres à la page', () => {
-  it('couverture de l’intertitre', () => {
-    expect(MATCH_EMPRISE_TEXT.fr.own.coverage(true, 8)).toBe('film décodé · 8 joueurs présents à la fin')
-    expect(MATCH_EMPRISE_TEXT.fr.own.coverage(false, 8)).toBe('sans film')
-    expect(MATCH_EMPRISE_TEXT.en.own.coverage(true, 1)).toBe('film decoded · 1 player present at the end')
+  it('sous-titre de l’intertitre d’un match filmé', () => {
+    expect(MATCH_EMPRISE_TEXT.fr.own.coverage(8)).toBe('film décodé · 8 joueurs présents à la fin')
+    expect(MATCH_EMPRISE_TEXT.en.own.coverage(1)).toBe('film decoded · 1 player present at the end')
   })
 
-  it('prises non identifiées : total, équipe, adversaire', () => {
-    expect(MATCH_EMPRISE_TEXT.fr.own.unclassified(31, 19, 12)).toBe(
-      '31 prises sur un emplacement non identifié, hors des pistes (équipe 19, adversaire 12)',
-    )
-  })
-
-  it('raisons « non mesurable » de H, nommant l’équipe ou l’adversaire', () => {
+  it('constats de H, nommant l’équipe ou l’adversaire, sans jamais dire un inconnu', () => {
     const y = MATCH_EMPRISE_TEXT.fr.own.yield
-    expect(y.noEffect(false, '1:12', 2)).toBe('Non mesurable : aucun temps d’effet pour l’adversaire (équipe : 1:12, 2 frags)')
-    expect(y.noPickup(true, 0, 2)).toBe('Non mesurable : aucune arme spéciale prise par l’équipe (0 contre 2)')
+    expect(y.noEffect(false, '1:12', 2)).toBe('Aucun temps d’effet pour l’adversaire (équipe : 1:12, 2 frags)')
+    expect(y.noPickup(true, 0, 2)).toBe('Aucune arme spéciale prise par l’équipe (0 contre 2)')
   })
 })

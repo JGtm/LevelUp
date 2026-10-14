@@ -114,10 +114,10 @@ type HomeRepository interface {
 	// de la MatchCard pour les titres sans moteur de citations dérivé.
 	LoadMatchCommendations(ctx context.Context, matchIDs []string) (map[string][]domain.HomeMatchCommendationRaw, error)
 
-	// LoadMatchAssistedFrags charge, pour un lot de matchs, la part des frags du joueur
-	// assistés par un coéquipier (lignes `publishable AND assist_known` de
-	// match_kill_events_latest, tranches de relation_assists.go). Un match sans ligne
-	// mesurée pour le joueur est ABSENT de la map (« on ne sait pas », jamais « 0 »).
+	// LoadMatchAssistedFrags charge, pour un lot de matchs, les frags du joueur assistés
+	// par un coéquipier (match_kill_events_latest, règle des bases et tranches de
+	// relation_assists.go). Un match dont le film ne porte pas l'assistance, ou sans frag
+	// lu pour le joueur, est ABSENT de la map (jamais « 0 »).
 	// Erreur propagée : c'est l'appelant qui journalise et dégrade.
 	LoadMatchAssistedFrags(ctx context.Context, matchIDs []string) (map[string]domain.MatchAssistedFrags, error)
 

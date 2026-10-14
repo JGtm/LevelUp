@@ -11,7 +11,7 @@ import "testing"
 // Rien dans l evenement ne dit de quel socle il vient (en-tete de `pad_pickup_dating.go`) : les
 // deux occupations s abstiennent, et l abstention se compte.
 //
-// MUTATION : retirer le filtre des ramassages disputes dans [datePadPickups] — ROUGE.
+// MUTATION : retirer le filtre des ramassages disputes dans [lectureDesFenetres] — ROUGE.
 func TestUnRamassageNatifNeDateQuUneOccupation(t *testing.T) {
 	const fam, autre = 0x11223344, 0x55667788
 	pads := []WeaponPad{
@@ -26,7 +26,7 @@ func TestUnRamassageNatifNeDateQuUneOccupation(t *testing.T) {
 		{Pad: 1, TLow: 15, THigh: 40},
 		{Pad: 2, TLow: 40, THigh: 60}, // un ramassage a lui seul : date et nomme
 	}
-	st := datePadPickups(pads, picks, pickups)
+	st := daterLesOccupations(pads, picks, pickups, nil)
 
 	for i := range 2 {
 		if picks[i].T != nil || picks[i].XUID != nil {

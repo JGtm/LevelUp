@@ -110,7 +110,7 @@ describe('Soirées précédentes', () => {
     const sansPart = { ...EMPRISE_2209.habit!, previous: [], current: { ...EMPRISE_2209.habit!.current, shares: [] } }
     mount({ pageData: page({ ...EMPRISE_2209, habit: sansPart }) })
     const note = screen.getByTestId('emprise-habit-note')
-    expect(note.textContent).toContain('Aucune prise mesurée')
+    expect(note.textContent).toContain('Aucune prise')
     expect(note.querySelector('.border-dashed')).not.toBeNull()
   })
 

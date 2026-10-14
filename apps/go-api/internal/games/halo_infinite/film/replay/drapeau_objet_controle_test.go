@@ -118,8 +118,8 @@ func objDrapeauControleFilm(t *testing.T, root, id string, src *objDiskFilm,
 	for i, l := range vies {
 		x, y := l.First()
 		s, p := objDrapeauPres(refs, x, y, l.T0US, step, d.originUS)
-		socle, porteur = socle+objBool(s), porteur+objBool(p)
-		m.viesOK += objBool(s || p)
+		socle, porteur = socle+unSiVrai(s), porteur+unSiVrai(p)
+		m.viesOK += unSiVrai(s || p)
 		if !s && !p && objDrapeauResidu(vies, i) {
 			residu++
 		}
@@ -269,17 +269,9 @@ func objDrapeauTemoin(refs []objDrapeauRef, d objDoc, step uint64) (ok, n int) {
 		}
 		n++
 		s, p := objDrapeauPres(refs, c.X, c.Y, c.TimestampUS, step, d.originUS)
-		ok += objBool(s || p)
+		ok += unSiVrai(s || p)
 	}
 	return ok, n
-}
-
-// objBool rend 1 pour vrai, 0 pour faux — un compteur se lit mieux qu'un `if`.
-func objBool(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 // objDrapeauSocles rend TOUS les points `flag_spawn` de la carte, LE SOCLE NEUTRE COMPRIS.

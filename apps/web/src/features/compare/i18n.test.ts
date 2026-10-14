@@ -91,7 +91,7 @@ describe('compare — parité FR/EN du dictionnaire entier', () => {
     }
   })
 
-  it('les neuf clés du profil d’armes existent dans les deux langues', () => {
+  it('les huit clés du profil d’armes existent dans les deux langues', () => {
     const attendues = [
       'catWeapons',
       'weaponsRangeKills',
@@ -100,7 +100,6 @@ describe('compare — parité FR/EN du dictionnaire entier', () => {
       'weaponsObserved',
       'weaponsNoRange',
       'weaponsPercentiles',
-      'weaponsNoMeasure',
       'weaponsMatches',
     ]
     for (const locale of ['fr', 'en'] as const) {
@@ -126,7 +125,6 @@ describe('compare — parité FR/EN du dictionnaire entier', () => {
       fr.weaponsObserved,
       fr.weaponsNoRange,
       fr.weaponsPercentiles,
-      fr.weaponsNoMeasure,
       (fr.weaponsMatches as (n: number) => string)(3),
     ] as string[]
     for (const v of valeurs) expect(v, `« ${v} »`).not.toMatch(interdits)

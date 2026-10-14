@@ -29,4 +29,12 @@ declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
+  // Données statiques d'une route lues par la coquille (`AppShell`).
+  interface StaticDataRouteOption {
+    /**
+     * `false` : la route est une vue « cockpit » qui tient dans l'écran — la coquille ne pose pas
+     * le pied de page global sous elle (il obligerait à défiler pour rien). Absent : pied de page.
+     */
+    piedDePage?: boolean
+  }
 }

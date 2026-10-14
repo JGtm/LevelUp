@@ -1315,7 +1315,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
               (convenu entre les deux sessions), cinq entrées la portent ; vet du film et
               d'`archlint`, tests du registre, d'`archlint`, du rejeu et des armes verts ; CI de la
               tête fusionnée verte.
-- [ ] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
+- [x] 2.7.d Les lectures heuristiques qui décident devant la lecture de la grammaire passent derrière
       elle (décision de l'utilisateur du 2026-10-04, option A ; découvertes 8 et 10) : les fenêtres de
       bits des images-clés (armes portées, marque de portage, inventaire) cèdent la place à la
       lecture de l'état complet du bipède par la grammaire (intérêts de la phase des images-clés) ;
@@ -1387,7 +1387,7 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             3. *Ce qui reste de la passe des pistes et de celle des créations s'inscrit au registre
                « après la lecture »*, compté par film, ses échantillons et créations marqués
                récupérés.
-      - [!] 2.7.d1 *Images-clés : armes portées, marque de portage, inventaire.* Non exécutable tel
+      - [x] 2.7.d1 *Images-clés : armes portées, marque de portage, inventaire.* Non exécutable tel
             qu'écrit : la grammaire ne lit pas l'état complet du bipède aux images-clés (mesure 1 de
             2.7.d0, découverte 36) ; retirer les fenêtres viderait les armes et les grenades des
             fiches. Décision de l'utilisateur demandée le 2026-10-07 (recommandation : un lot de
@@ -1401,6 +1401,14 @@ films à véhicules du parc local (faits de cuisson), jamais le cadre par défau
             jusqu'à sa clôture (D1.4.5). Jalon LK clos le 2026-10-09, prêt pour sa revue
             (`grammar-2026-10-09`, `SchemaDesFaits` 11) : records bipèdes d'image-clé fermés 410 ->
             5 399 / 10 710 ; quatre lectures du jeu sous la garde rejetées, à décider (plan dédié, §7).
+            *Clos le 2026-10-09 (D1.4.5 du plan dédié, lot D ; revue adversariale et fusion par le
+            superviseur)* : une marche unique des images-clés lit l état complet du bipède par la
+            grammaire ; règle d admission de l utilisateur (fermé ou i22 à quatre, ET T1 ET T2) :
+            6 507 records admis sur 10 710 (28 films) ; les fenêtres rendent les autres derrière la
+            lecture, sous trois replis nommés et comptés (4 203 records) ; le sync lit les armes seules.
+            Rangs renumérotés à deux fusions de `feat/v75` : `grammar-2026-10-09.2` (LK) puis
+            `grammar-2026-10-09.3` (2.7.d1), `killsource-2026-10-09` et `objectives-2026-09-27`
+            constants, `SchemaVersion` 92, `SchemaDesFaits` 11. **2.7.d clos.**
       - [x] 2.7.d2 *Positions derrière la marche* (décisions 1 et 2).
             *Décision d'exécution 4 (2026-10-07, relue sur pièces à l'écriture)* : la cuisson lisait
             les positions (étage du pont d'identité) AVANT la marche des trames, jouée par les états
@@ -2464,3 +2472,8 @@ plan y sont reprises comme items (3.1.2).
   `objectives.Rev` et `SchemaVersion` constants (sorties et document identiques hors révision).
   2.7.d1 reste `[!]` jusqu'à D1.4 ; quatre lectures du jeu sous la garde rejetées attendent une
   décision (plan LK, §7 D-17, D-18, D-21, D-23).
+- 2026-10-09 (lot D du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : **2.7.d1 `[x]`, 2.7.d
+  clos.** D1.3 (consommateurs, sync aux armes seules, survie depuis les faits) et D1.4 (montées, ADR 0037,
+  mesures) faits ; deux refusions de `feat/v75` (`assist-film`, `aj-needler`) ont renuméroté les rangs :
+  `grammar-2026-10-09.2` (LK), `grammar-2026-10-09.3` (2.7.d1), `SchemaVersion` 92. Revue adversariale
+  et fusion (puis recuisson et backfill killsource) reviennent au superviseur.

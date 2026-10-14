@@ -290,7 +290,7 @@ the artifact schema has moved.
 ```bash
 go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 9]
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
-go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
+go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run]
 ```
 
 ### Player identities (directory and purge — ADR 0035)

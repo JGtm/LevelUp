@@ -298,15 +298,16 @@
 }
 
 /* Rôles d'impact en thème sombre : seuls jetons --ac-* qui changent avec le fond (la rampe
-   s'inverse en clarté). Repli sans JS ; applyPalette() les écrit sinon (paletteForTheme). */
+   s'inverse en clarté). Repli sans JS (palette par défaut) ; applyPalette() écrit sinon les
+   valeurs de la palette active (paletteForTheme). */
 :root[data-theme='dark'] {
   --ac-impact-gain-1: #7DF861;
-  --ac-impact-gain-2: #1FC447;
+  --ac-impact-gain-2: #21C546;
   --ac-impact-gain-3: #14904C;
   --ac-impact-gain-4: #095E3A;
   --ac-impact-loss-1: #FC8F84;
   --ac-impact-loss-2: #E82D34;
-  --ac-impact-loss-3: #970C1E;
+  --ac-impact-loss-3: #97091E;
 }
 
 /* ─── Teintes d'EFFET DE TIR du rejeu 2D (--replay-fx-*) ────────────────────── */

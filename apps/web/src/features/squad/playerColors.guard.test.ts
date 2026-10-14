@@ -24,10 +24,10 @@ const CANONIQUES = new Set(['colors.ts', 'useSquadPlayerPalette.ts'])
 
 /** Fichier → identifiants permis, avec la date et la raison. */
 const PERMIS: Readonly<Record<string, { motifs: readonly string[]; raison: string }>> = {
-  'SquadFilterBar.tsx': {
+  'SquadCompositionPicker.tsx': {
     motifs: ['getSquadTeammateColors'],
     raison:
-      '2026-10-07 — les slots du combobox de sélection SONT l’ordre de la sélection : leurs couleurs définissent l’attribution, elles ne la recopient pas',
+      '2026-10-07 — les slots du combobox de sélection SONT l’ordre de la sélection : leurs couleurs définissent l’attribution, elles ne la recopient pas (déplacé de SquadFilterBar.tsx le 2026-10-09 avec le sélecteur partagé)',
   },
 }
 

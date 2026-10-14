@@ -118,15 +118,14 @@ function afficher(locale: 'fr' | 'en' = 'fr', scoreboard: MatchScoreboardRow[] =
   )
 }
 
-/** survolerTitre — ouvre l'infobulle (i) du TITRE de la carte : l'aide, puis la réserve. */
+/** survolerTitre — ouvre l'infobulle (i) du TITRE de la carte : l'aide. */
 function survolerTitre(vue: ReturnType<typeof afficher>) {
   fireEvent.mouseEnter(vue.getByRole('button', { name: /informations|more info/i }))
 }
 
-/** Le texte attendu de l'aide du titre : la mesure, puis la réserve quand elle n'est pas nulle. */
-function aide(reserve = 0): string {
-  const u = t.equipmentUsage
-  return u.infoByPlayer + (reserve > 0 ? u.coverageReserveFmt(reserve) : '')
+/** Le texte attendu de l'aide du titre : ce que la grille compte, jamais ce qu'elle ne compte pas. */
+function aide(): string {
+  return t.equipmentUsage.infoByPlayer
 }
 
 describe('MatchEquipmentUsageSection — la double porte', () => {
@@ -244,7 +243,7 @@ describe('MatchEquipmentUsageSection — la carte', () => {
     expect(vue.queryByText('Sandwolf')).toBeNull()
     expect(vue.queryByText(/Sans équipe|inconnue/)).toBeNull()
     survolerTitre(vue)
-    expect(screen.getByRole('tooltip').textContent).toBe(aide(1))
+    expect(screen.getByRole('tooltip').textContent).toBe(aide())
   })
 })
 
@@ -286,7 +285,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.queryByText(/hors de la grille|origine inconnue/)).toBeNull()
   })
 
-  it('dit la RÉSERVE au survol du TITRE, en une phrase', () => {
+  it('des poses d’origine inconnue ne font naître AUCUNE phrase dans l’aide du titre', () => {
     poserArtefact({
       ...TEMOIN,
       coverage: {
@@ -296,10 +295,10 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
     survolerTitre(vue)
-    expect(screen.getByRole('tooltip').textContent).toBe(aide(3))
+    expect(screen.getByRole('tooltip').textContent).toBe(aide())
   })
 
-  it('sans réserve, l’aide du titre dit seulement ce que la grille compte', () => {
+  it('l’aide du titre dit seulement ce que la grille compte', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     survolerTitre(vue)
@@ -333,7 +332,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.queryByText('thruster')).toBeNull()
   })
 
-  it('compte à part les gestes mesurés sans propriétaire, hors de la grille', () => {
+  it('un geste sans propriétaire n’entre pas dans la grille, et l’aide ne le dit pas', () => {
     poserArtefact({
       ...TEMOIN,
       equipmentPlacements: [
@@ -343,7 +342,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     } as unknown as Partial<ReplayDocument>)
     const vue = afficher()
     survolerTitre(vue)
-    expect(screen.getByRole('tooltip').textContent).toBe(aide(1))
+    expect(screen.getByRole('tooltip').textContent).toBe(aide())
   })
 })
 

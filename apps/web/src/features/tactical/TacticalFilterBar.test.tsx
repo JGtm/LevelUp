@@ -19,7 +19,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getTacticalText } from './i18n'
-import { TacticalFilterBar } from './TacticalFilterBar'
+import { TacticalFilterBar, type DemandeDeComposition } from './TacticalFilterBar'
 import { TACTICAL_SCOPE_DEFAUT, type TacticalScope } from './tacticalScope'
 
 const sessions = [
@@ -69,7 +69,11 @@ vi.mock('@/features/squad/useActiveSeason', () => ({
 
 const setScope = vi.fn()
 
-function monter(scope: Partial<TacticalScope> = {}) {
+const AMI = { gamertag: 'Ami', xuid: 'xuid(42)', encounter_count: 12 }
+const COMPOSITION = { options: [AMI], annuaire: [AMI], joueurXuid: 'xuid(1)' }
+const SANS_DEMANDE: DemandeDeComposition = { compteur: 0, enCours: false }
+
+function monter(scope: Partial<TacticalScope> = {}, demande: DemandeDeComposition = SANS_DEMANDE) {
   return renderWithProviders(
     <TacticalFilterBar
       playerSlug="JGtm"
@@ -77,13 +81,16 @@ function monter(scope: Partial<TacticalScope> = {}) {
       t={getTacticalText('fr')}
       scope={{ ...TACTICAL_SCOPE_DEFAUT, ...scope }}
       setScope={setScope}
-      coequipierOptions={[{ gamertag: 'Ami', xuid: 'xuid(42)', encounter_count: 12 }]}
+      composition={COMPOSITION}
+      demandeComposition={demande}
     />,
   )
 }
 
+const champComposition = () => screen.getByPlaceholderText(/Rechercher parmi 1 coéquipiers/)
+
 beforeEach(() => {
-  useAppShellStore.setState({ locale: 'fr' })
+  useAppShellStore.setState({ locale: 'fr', availablePlayers: [] })
   setScope.mockReset()
 })
 
@@ -127,13 +134,35 @@ describe('TacticalFilterBar', () => {
 
   // ─── W2 — LE SELECTEUR NE PROPOSE QUE CE QU'ON SAIT RESOUDRE ─────────────────────
   //
-  // La composition part au serveur en XUIDS, connus seulement pour les coequipiers
-  // frequents. Proposer l'annuaire, le repli Xbox ou la saisie libre revenait a accepter
+  // La composition part au serveur en XUIDS, connus pour les profils suivis et la liste
+  // proposee. Proposer l'annuaire distant, le repli Xbox ou la saisie libre revenait a accepter
   // un nom pour le refuser une seconde plus tard, grille bloquee sur « introuvable ».
+
+  it('le selecteur de l’Escouade, ETIQUETE : « Escouade », pastille du joueur en tete', () => {
+    monter()
+    const bloc = screen.getByTestId('tactical-composition')
+    expect(bloc).toHaveTextContent(/^Escouade/)
+    expect(bloc).toHaveTextContent('JGtm')
+    expect(champComposition()).toBeInTheDocument()
+  })
+
+  it('propose les profils suivis PUIS la liste proposee, et rien d’autre', async () => {
+    useAppShellStore.setState({
+      availablePlayers: [
+        { gamertag: 'Profil', xuid: 'xuid(7)', player_slug: 'Profil', is_demo: false, sync_enabled: true, waypoint_player: 'Profil' },
+      ],
+    })
+    monter()
+    fireEvent.focus(champComposition())
+    const profil = await screen.findByText('Profil')
+    const ami = screen.getByText('Ami')
+    expect(profil.compareDocumentPosition(ami) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Joueurs configurés')).toBeInTheDocument()
+  })
 
   it('propose les coequipiers frequents, et EUX SEULS', async () => {
     monter()
-    const champ = screen.getByPlaceholderText(/Coéquipiers/)
+    const champ = champComposition()
     fireEvent.change(champ, { target: { value: 'Ami' } })
     expect(await screen.findByText('Ami')).toBeInTheDocument()
     // Aucun groupe « Autres joueurs », aucun repli Xbox, aucune option de saisie libre.
@@ -143,13 +172,33 @@ describe('TacticalFilterBar', () => {
 
   it('un gamertag hors des options traduisibles n’est PAS proposable', async () => {
     monter()
-    const champ = screen.getByPlaceholderText(/Coéquipiers/)
+    const champ = champComposition()
     fireEvent.change(champ, { target: { value: 'Inconnu42' } })
     // Ni option de saisie libre (« Ajouter … »), ni suggestion : rien a cliquer.
     expect(screen.queryByText(/Ajouter/)).toBeNull()
     expect(screen.queryByText('Inconnu42')).toBeNull()
     // …et la composition reste vide : rien n'a pu etre choisi.
     expect(setScope).not.toHaveBeenCalledWith(expect.objectContaining({ coequipiers: ['Inconnu42'] }))
+  })
+
+  // ─── L'ANGLE « ESCOUADE » DEMANDE SANS COMPOSITION ─────────────────────────────────
+
+  it('une demande en cours MET EN AVANT le selecteur et OUVRE son popover', async () => {
+    monter({}, { compteur: 1, enCours: true })
+    expect(screen.getByTestId('tactical-composition')).toHaveAttribute('data-mis-en-avant', 'true')
+    expect(champComposition()).toHaveFocus()
+    expect(await screen.findByText('Ami')).toBeInTheDocument()
+  })
+
+  it('sans demande, ni mise en avant ni popover ouvert', () => {
+    monter()
+    expect(screen.getByTestId('tactical-composition')).not.toHaveAttribute('data-mis-en-avant')
+    expect(screen.queryByText('Ami')).toBeNull()
+  })
+
+  it('une composition choisie leve la mise en avant', () => {
+    monter({ coequipiers: ['Ami'] }, { compteur: 1, enCours: true })
+    expect(screen.getByTestId('tactical-composition')).not.toHaveAttribute('data-mis-en-avant')
   })
 
   // ─── W3 — LE LABEL DE SESSION ZOMBIE ────────────────────────────────────────────

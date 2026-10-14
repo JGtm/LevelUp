@@ -75,7 +75,7 @@ describe('WeaponRecordsRuler', () => {
     expect(within(legend).getAllByRole('listitem')).toHaveLength(2)
   })
 
-  it("nomme ce qui est écarté, avec son effectif, et la réserve de couverture — dans le (i) du titre, pas sous le graphe", () => {
+  it("nomme ce qui est écarté, avec son effectif, et la grandeur tracée — dans le (i) du titre, pas sous le graphe", () => {
     renderWithProviders(<WeaponRecordsRuler records={records} playerSlug="JGtm" />)
     // Aucune note sous le graphe (retrait demandé le 2026-09-20)…
     expect(screen.queryByTestId('weapon-records-help')).not.toBeInTheDocument()
@@ -84,7 +84,7 @@ describe('WeaponRecordsRuler', () => {
     fireEvent.mouseEnter(info)
     const help = flat(screen.getByTestId('weapon-records-help').textContent)
     expect(help).toContain('Chute et environnement (11)')
-    expect(help).toContain('position du tueur et de la victime')
+    expect(help).toContain('Distance entre le tueur et sa victime au moment du frag')
   })
 
   it("ouvre le rejeu du match du record à l'instant du frag, sur l'horloge du match", () => {
@@ -113,7 +113,7 @@ describe('WeaponRecordsRuler', () => {
     const tip = flat(screen.getByTestId('weapon-records-tooltip').textContent)
     expect(tip).toContain('BR75')
     expect(tip).toContain('52,7 m')
-    expect(tip).toContain('médiane 13,6 m · 281 frags mesurés')
+    expect(tip).toContain('médiane 13,6 m · 281 frags')
     expect(tip).toContain('Fragmentation')
     expect(tip).toContain('28 août 2026')
   })

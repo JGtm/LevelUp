@@ -35,6 +35,9 @@ const plancherEntrees = 60
 
 // plancherTranches : le nombre de FAMILLES du registre. Il ne descend que délibérément.
 //
+// Mesuré le 2026-10-09 (lot D1.2 de 2.7.d1) : QUATORZE familles (la quatorzième,
+// `filmdec/images-cles`, reçoit les trois replis des fenêtres des images-clés passées derrière la
+// lecture de l état complet du bipède).
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
 // Mesuré le 2026-09-27 (sous-lot `killsource` du lot J8.7) : TREIZE familles (la treizième,
@@ -59,7 +62,7 @@ const plancherEntrees = 60
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
 // `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
-const plancherTranches = 13
+const plancherTranches = 14
 
 // famillesAttendues : LES FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
 //
@@ -88,6 +91,7 @@ var famillesAttendues = []string{
 	"objectifs et construction",
 	"filmdec",
 	"filmdec/marche",
+	"filmdec/images-cles",
 	"replay/positions",
 	"replay/vehicules",
 	"replay/objectifs",

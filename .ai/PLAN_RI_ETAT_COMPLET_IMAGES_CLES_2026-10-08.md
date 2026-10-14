@@ -935,29 +935,81 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
     (§3.1). D1.0 close.
 
 ### Étape D1.1 — Un seul canal de la phase des images-clés pour l'état complet du bipède
-- [ ] D1.1.1 `grammar/relecture_a_l_etendue.go` : assistant unique de relecture (Lecteur sur le
+- [x] D1.1.1 `grammar/relecture_a_l_etendue.go` : assistant unique de relecture (Lecteur sur le
       payload, `PoserContexte`, `etatComplet` + `portee`, observation locale, `SetBitPos(co.Debut)`,
       `consumeByNameCapturing`, contrôle de débordement compté).
-- [ ] D1.1.2 `grammar/keyframe_etat_complet_bipede.go` : canal `Interet{PhaseImagesCles, TI 35, nom}`
+      *Fait (lot C, 2026-10-09)* : `relecteurSur` (cadre d'un relecteur d'état par défaut),
+      `relecteurDEtatComplet` (contexte, état complet, portée, observation) et `relireLOccurrence`
+      (dispatch de production `consumeByNameCapturing` au premier bit de l'occurrence ; FAUX quand la
+      relecture ne tient pas l'étendue de la marche — lecteur non porté ou autre longueur —, compté
+      par l'appelant). Le contrôle est plus strict que celui de l'instrument (longueur égale, et non
+      seulement « pas au-delà ») : 0 débordement sur les 10 710 records du corpus.
+- [x] D1.1.2 `grammar/keyframe_etat_complet_bipede.go` : canal `Interet{PhaseImagesCles, TI 35, nom}`
       résolu PAR NOM pour i11, i12, i13, i22, `weapon-state-ammo`, `rounds-inventory`, `overheated`
       (rangs 0..3), i42, `weapon-state-type-info` (emplacements 0..3), i47 et son Alt, i48 et son Alt.
       Sorties en `types.*` : familles par emplacement (sentinelle d'emplacement vide), `Grenades[4]`
       (n ≠ 4 → refusé et compté), munitions, `DrawnSlot` = param[1] (U-3, U-4),
       `SelectedGrenadeRank` = sel − 1 (0 = aucune), rang de capacité (hors domaine compté), marque de
       portage selon U-2.
-- [ ] D1.1.3 Règle d'admission PAR RECORD selon U-1, écrite dans le code (doc = contrat) ; un record
+      *Fait (lot C)* : rôles résolus par nom dans le registre du film (`rolesDuBipede`, treize noms
+      dont les deux orthographes d'i47 et d'i48) ; relecture des occurrences sous les crochets d'une
+      observation locale ; i11, i12 et i13 lus dans leurs bits (configuration de la marque).
+      Publication (`keyframe_etat_complet_admission.go`) : dotation = famille de chaque emplacement
+      non vide, dans l'ordre des emplacements (ÉCART : la forme indexée par emplacement, avec sa
+      sentinelle, reste interne — E-8 interdit d'élargir la forme des faits, `types.KeyframeLoadout`
+      garde sa liste) ; `Grenades[4]` (un compte ≠ 4 n'est jamais admis : il tombe sous le refus
+      « ni fermé ni n(i22) = 4 » ou sous T2, comptés) ; munitions des quatre emplacements (chargeur,
+      jauge, réserve, et `Overheat`/`Flags` lus par `FUN_142f04c6c` : quantum R(7) et les deux bits,
+      §7 D-24) ; `DrawnSlot` = param[1] ; `SelectedGrenadeRank` = sélection − 1, −1 sans sélection ;
+      rang de capacité publié dans 16..23 seulement, hors domaine compté
+      (`ComptesDeLAdmission.CapaciteHorsDomaine`) ; marque = configuration U-2 (b) ;
+      `AmmoCandidates` = 1 (une lecture). Nouveau crochet `WeaponOverheatHook`.
+- [x] D1.1.3 Règle d'admission PAR RECORD selon U-1, écrite dans le code (doc = contrat) ; un record
       non admis ne rend rien (la fenêtre le prendra en D1.2).
-- [ ] D1.1.4 `lireJeuDArmes` (`unit_weaponstate.go`) : crochet publiant param[1] et param[2], seule
+      *Fait (lot C)* : `admettre` — (fermé OU n(i22) = 4) ET T1 ET T2, raison de refus comptée
+      (`RefusNiFermeNiI22`, `RefusT1`, `RefusT2`) ; doc = contrat, avec la mesure qui la fonde. Un
+      record non admis ne rend rien à ce pas.
+- [x] D1.1.4 `lireJeuDArmes` (`unit_weaponstate.go`) : crochet publiant param[1] et param[2], seule
       copie sous `lecteur_jeu_darmes_guard_test.go`.
-- [ ] D1.1.5 `player_teams.go` (`lireEquipeA`) et l'instrument d0 passent par l'assistant ; garde-rail
+      *Fait (lot C)* : `lireJeuDArmes` rend `JeuDArmes{Demande, Principal, Second}` (param[0..2]),
+      par `lireID2` (porte `FUN_1406d00ec` avec sa valeur, −1 à porte levée ; `consumeID2` l'appelle) ;
+      `DesiredWeaponSetHook` reçoit les trois champs. Doc corrigée (règle 17) : param[0] est
+      l'identifiant de demande, pas un emplacement. `TestLecteurDeJeuDArmesUnique` vert.
+- [x] D1.1.5 `player_teams.go` (`lireEquipeA`) et l'instrument d0 passent par l'assistant ; garde-rail
       (règle 6, 3e copie du motif) : aucune écriture de `etatComplet` ni de `portee` hors de
       `keyframe_fullstate_loop.go` et de l'assistant.
-- [ ] D1.1.6 Une seule distribution remplace les trois balayages actuels des fenêtres pour les
+      *Fait (lot C)* : `lireEquipeA` par `relecteurSur` ; l'instrument d0 par `relireLOccurrence`,
+      son témoin décalé par `relecteurDEtatComplet`. Garde-rail : `portee_ecriture_guard_test.go`
+      tient désormais les DEUX champs (AST de tous les fichiers du paquet, comptes exacts : marche
+      d'état complet 4 et 1, assistant 1 et 1, assistant de test 1 et 1) et remplace la garde par
+      expression de production `TestEtatCompletPoseParLaSeuleMarcheDEtatComplet` (retirée) ; les deux
+      tests unitaires qui posaient l'état complet passent par `enEtatComplet`. Mutation : écriture de
+      l'état complet dans `decodeDelta` → ROUGE.
+- [x] D1.1.6 Une seule distribution remplace les trois balayages actuels des fenêtres pour les
       records admis ; `KeyframeWalkCoverage` conservé ; aucun import de lecture côté `replay`.
-- [ ] D1.1.7 Coût : G-perf cuisson (4 films) et `BenchmarkPorteursAuSync` (4 films), en PAIRES
+      *Fait (lot C)* : `grammar.ScanEtatsDesImagesCles` (`keyframe_etats_scan.go`) — une
+      distribution, un canal : couverture de la marche d'ancres (`KeyframeWalkCoverage`, conservée),
+      armes, inventaire, marques, comptes d'admission. `ScanKeyframeLoadoutsMarche`,
+      `ScanKeyframeInventory`, `ScanCarrierMarks` en sont des projections (enveloppes D2, tests) ; les
+      trois anciens canaux de fenêtre sont retirés. `replay` : la cuisson l'appelle UNE fois
+      (`film_scan_images_cles.go`), l'inventaire et la marque la reprennent ; la lecture des porteurs
+      au sync aussi. Aucun import de `grammar/lecture` côté `replay`. DÉCISION D'EXÉCUTION : D1.1.6
+      bascule les SITES d'appel (la source des données) ; D1.3.1 reste la sémantique des
+      consommateurs (`Src`, records récupérés, `DrawnSlot`). La marque se lit désormais sur tous les
+      films (elle sort de la même marche) et ne se publie toujours que sur les films de CTF.
+- [x] D1.1.7 Coût : G-perf cuisson (4 films) et `BenchmarkPorteursAuSync` (4 films), en PAIRES
       alternées des binaires de base de l'étape 0 (`$S/e0/bench_base.test`,
       `$S/e0/replay-equiv_base.exe`) et de ceux du lot, sur machine calme → `$S/d11/perf.txt`
       (la mesure de base seule de 0.6 est non concluante, machine chargée).
+      *Fait (lot C)* : `$REF/../d1x/d11/perf.txt` (brut `perf/paires_d11.txt`). Trois paires alternées
+      de cuisson, trois du banc (cinq sur `1c4c63c2`), chaque tour sur machine sans processus `go`
+      étranger. **Surcoût > +10 % NON ÉTABLI** : le lot est plus rapide que la base dans chaque paire
+      propre (cuisson 0,73 à 0,96 ; sync 0,54 à 1,01 — la base est le code d'avant LK, ses trois
+      fenêtres marchaient chacune la phase) ; pics : médianes 0,95 à 1,07. Bruit des bases au-delà de
+      5 % sur les durées de cuisson (première paire, machine froide) et sur le pic du sync de
+      `1c4c63c2` (base bimodale 1 926 à 2 297 Mio, lot 2 229 à 2 252 Mio, à l'intérieur) : intervalle
+      publié (0,98 à 1,16). À ce pas, aucune fenêtre ne tourne derrière la lecture ; elle revient en
+      D1.2, et le coût final se juge en D1.4.
 - Tests : unitaires sur records fermés tirés de fixtures (i22, i42, i43..i46, i47 base 0, capacité hors
   domaine, débordement compté) ; mutations : retirer `portee` dans l'assistant (la grammaire relit
   quantifié, rouge) ; inverser la base d'i47 ; admettre un record sans T ; garde-rails
@@ -967,74 +1019,295 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
   records admis ; couverture publiée (admis / 10 710, par format et par film) ; aucun débordement ;
   **coût ≤ +10 % de durée et de pic, cuisson et sync, sur chacun des 4 films (sinon ARRÊT : mesure
   publiée, l'utilisateur décide)**.
+- *Gate D1.1 joué le 2026-10-09 (lot C)* : **PASSÉ.** (1) Instrument d0 confronté au canal de
+  production (`ri27d1_d10_research_test.go`, `confronterAuCanal`, `$REF/../d1x/d11/images_cles.tsv`) :
+  même verdict d'admission sur les 10 710 records (6 507 admis, 4 203 non admis, 0 désaccord), valeurs
+  publiées égales à la relecture de l'instrument sur 6 507 / 6 507 records admis (armes, grenades,
+  chargeurs, réserves, emplacement désiré, grenade sélectionnée, capacité, marque) ; sortie de
+  l'instrument hors lignes `canal_*` identique à l'octet à `d10/`. (2) Couverture admise : 6 507 /
+  10 710 (60,8 %) — f20 34 / 1 652, f21 15 / 403, f24 2 392 / 3 097, f25 492 / 653, f27 3 574 / 4 905 ;
+  par film `$REF/../d1x/d10/couverture_par_film.tsv` (colonnes AT12 + BT12). (3) 0 débordement
+  (`canal_debordements_0` 10 710). (4) Coût : D1.1.7. Tests : `TestLeRelecteurPoseLeCadreDeLaMarche`,
+  `TestLaRegleDAdmission`, `TestLaPublicationDUnRecordAdmis`, `TestLaMarqueDePortageEstLaConfigurationDeLaFenetre`,
+  `TestLEtatCompletDesBobines` (7 bobines en contexte de cuisson, 0 débordement, comptes fixés),
+  `TestEtatCompletEtPorteeNeSontEcritsQueParLaMarche`, `TestLecteurDeJeuDArmesUnique` verts ; mutations
+  rouges (portée retirée du relecteur ; sélection d'i47 en base 1 ; T1 retiré ; T2 retiré ; état
+  complet écrit dans `decodeDelta`). `archlint` vert (dont `film_file_size`, état global gelé, sites du
+  registre : l'ancre du plafond de grenades suit `keyframe_etats_scan.go`). ROUGES ATTENDUS À CE PAS,
+  levés en D1.2 (les records non admis ne rendent rien, et la mini-bobine n'en admet aucun) :
+  `TestGoldenMiniBobineFamilles` (grammaire), `TestEquivalenceMiniFilm`, `TestInventoryRulesOnRealBinary`,
+  `TestMiniFilmDecodesTheKeyframes`, `TestZeroDisqueBalayagesSupportes` (rejeu).
 
 ### Étape D1.2 — Les fenêtres derrière la lecture : replis nommés, ordonnés, comptés
-- [ ] D1.2.1 `keyframe_loadout.go`, `keyframe_carrier_mark.go`, `inventory_decode.go`,
+- [x] D1.2.1 `keyframe_loadout.go`, `keyframe_carrier_mark.go`, `inventory_decode.go`,
       `inventory_ammo_rules.go`, `inventory_grenades_rules.go`, `inventory_grenade_selection.go` :
       appelées seulement sur les records non admis.
-- [ ] D1.2.2 Trois entrées au registre (`facts/fallback`, nouveau `registre_filmdec_images_cles.go`,
+      *Fait (lot C, 2026-10-09)* : `keyframe_etats_fenetre.go`. Les records bipèdes admis sont rendus
+      MUETS à la fenêtre (archétype non résolu sur une copie des records : leurs bornes restent, rien
+      ne leur est attribué) ; familles et marque de portage en UN passage de la fenêtre glissante
+      (`motsParRecord`, généralisation de `familiesByRecordRecs` à plusieurs jeux de mots, que
+      `familiesByRecordRecs` appelle) ; inventaire par `keyframeInventoriesDe` sur la SEULE emprise de
+      chaque record non admis (les règles de `inventory_ammo_rules.go`, `inventory_grenades_rules.go`,
+      `inventory_grenade_selection.go` y passent, inchangées). Un record dont la phase n'a pas
+      parcouru le corps (film sans registre, comme la mini-bobine du rejeu) est un non-admis.
+- [x] D1.2.2 Trois entrées au registre (`facts/fallback`, nouveau `registre_filmdec_images_cles.go`,
       constantes dans `noms.go`) : `repli_fenetre_armes_image_cle`,
       `repli_fenetre_inventaire_image_cle`, `repli_fenetre_marque_de_portage` (la dernière seulement
       si U-2 (a) ou (b)). Chacune : `OrdreApresLecture`, `CondLectureNonPortee`, sites et ancres
       littérales, `DatePose` (date du commit), `CibleRetrait` = 2026-12-31, `CritereRetrait` (D1.2.3),
       `CompteurBranche`.
-- [ ] D1.2.3 `CritereRetrait` (corrigé sur la mesure, plus « 861 arrêts ») : part des records
+      *Fait (lot C)* : famille neuve `filmdec/images-cles` (`registre_filmdec_images_cles.go` ; les
+      trois gestes : `Tranches`, `famillesAttendues`, `plancherTranches` 13 → 14) ; constantes
+      `NomFenetreArmesImageCle`, `NomFenetreInventaireImageCle`, `NomFenetreMarqueDePortage` ;
+      chacune `CondLectureNonPortee`, `OrdreApresLecture`, sites de décision (`keyframe_etats_fenetre.go`),
+      site de compte (`keyframe_etats_scan.go`, `fc.NoterReplis`) et site de versement, `DatePose`
+      2026-10-09, `CibleRetrait` 2026-12-31, `CritereRetrait` (D1.2.3), `CompteurBranche`.
+      `TestToutSiteDuRegistreExiste`, `TestChaqueNomConstantEstAuRegistre` verts.
+- [x] D1.2.3 `CritereRetrait` (corrigé sur la mesure, plus « 861 arrêts ») : part des records
       bipèdes d'image-clé non admis ≤ 5 % sur les 28 films ET sur le parc à la recuisson. Population
       à la pose, nommée : formats 20-21 (2 055 records, valeurs fausses après i22) ; `60ae07c4`
       (+33 bits, 331 records) ; écarts de fin multiples de −108 (2 800, en-têtes non vus, R-VEH-4) ;
       autres écarts non nuls (2 224, dont 2 100 sur 4 films) ; 88 arrêts sur i59/i58 (7 films) ;
       dernier record de paquet sans frontière.
-- [ ] D1.2.4 Records rendus par la fenêtre marqués `PreuveRecupere` avec leur méthode (DT2-4) ;
+      *Fait (lot C)* : critère écrit dans le registre ; population à la pose mesurée sur les 28 films
+      (`$REF/../d1x/d12/replis.tsv`) : 4 203 records non admis sur 10 710 (39,2 %), dont 2 006 en
+      formats 20-21 (`a349fea8` 950, `50247b26` 668 — aucun admis —, `a521164d` 388) et 115 sur
+      `60ae07c4` ; les autres sont les refus T1 (records sans arme, famille hors catalogue, §7 D-25),
+      les écarts de fin et les arrêts.
+- [x] D1.2.4 Records rendus par la fenêtre marqués `PreuveRecupere` avec leur méthode (DT2-4) ;
       `ComptesDesReplis` ; cliquet `NbDevantLaLecture` inchangé ; `repli_plafond_grenade_par_defaut`
       resserré à la fenêtre, doc corrigée ; `replay/versement_des_replis.go`,
       `archlint/keyframe_walk_proof_test.go` (allowlist, dans les deux sens),
       `archlint/fallback_versement_test.go`.
+      *Fait (lot C)* : un record non admis dont une fenêtre a rendu une valeur est MARQUÉ récupéré
+      (`EtatsDesImagesCles.Recuperes`, `RecordRecupere` : image-clé, slot, et les méthodes — armes,
+      inventaire, marque). ÉCART : la marque vit dans le résultat de la grammaire, pas dans
+      `types.*` (E-8 : pas d'élargissement de la forme des faits) ; sa consommation et sa survie
+      depuis les faits sont D1.3. `ComptesDesReplis` porte les trois comptes (`Plus` tenu,
+      `TestPlusSommeChaqueChampDuRapport`) ; `replay/versement_des_replis.go`, trois lignes
+      (`TestChaqueChampDuRapportDeGrammaireEstVerse`) ; cliquet `NbDevantLaLecture` inchangé (les
+      trois replis sont « après la lecture ») ; `repli_plafond_grenade_par_defaut` resserré à la
+      fenêtre (la grammaire lit i22 sans plafond) : compté seulement quand un record non admis a été
+      donné à la fenêtre, doc du registre corrigée. `archlint/keyframe_walk_proof_test.go` et
+      `archlint/fallback_versement_test.go` verts SANS modification : la fenêtre ne marche que les
+      records de la marche du film (avec preuve), et le versement passe par la table.
 - Tests : `TestToutSiteDuRegistreExiste`, `TestChaqueNomConstantEstAuRegistre`,
   `fallback_versement_test` (directions C et E), `keyframe_walk_proof_test` ; unitaire : un record
   admis ne passe jamais par la fenêtre, un non admis y passe et il est compté ; mutation : fenêtre
   appelée avant la lecture → le test d'ordre rougit.
 - Gate D1.2 : compte des replis = records non admis, au record près, sur les 28 films ; archlint vert.
+- *Gate D1.2 joué le 2026-10-09 (lot C)* : **PASSÉ.** `TestRI27d1Replis` (instrument, 28 films, contexte
+  de cuisson, `$REF/../d1x/d12/replis.tsv`) : sur chaque film, les trois replis comptent exactement
+  les records non admis (total 4 203 = 10 710 − 6 507), le contexte du film porte les mêmes comptes ;
+  non-admis par film identiques à ceux de l'instrument d0 (`d11`, `canal_non_admis`). Tests :
+  `TestLaFenetreNeVoitQueLesRecordsNonAdmis` (837 records admis sur les 7 bobines, dont 11 où la
+  fenêtre lirait autre chose : la publication est celle de la grammaire sur les 837),
+  `TestLEtatCompletDesBobines` (comptes des replis = non admis, un inventaire par bipède, dotations =
+  admis + rendues par la fenêtre, comptes du contexte) ; mutations rouges (fenêtre rendue avant la
+  lecture ; compte d'un repli oublié). Golden `golden_minibobine_familles.tsv` régénéré
+  (`keyframeLoadouts` : 30 dotations, les 19 des records admis changent de valeur — familles des
+  emplacements sans alias ; note dans `golden_minibobine_test.go`). Les cinq rouges attendus de D1.1
+  sont verts. G-film (21 paquets, gardes de révision sous `-skip`), `archlint`, vet avec et sans
+  `research`, `golangci-lint --new-from-merge-base=origin/main` sur `grammar`, `replay`, `fallback`
+  (0 problème) : verts. Gardes de révision : `TestGrammarRevSuitLaGrammaire` et
+  `TestChaqueRevisionEgaleSonGolden` rouges, attendu jusqu'à la montée de D1.4 (E-7).
 
 ### Étape D1.3 — Consommateurs du rejeu et survie depuis les faits
-- [ ] D1.3.1 `replay/film_scan.go` (`balayerInventaire`), `porteurs_au_sync.go`
+- [x] D1.3.1 `replay/film_scan.go` (`balayerInventaire`), `porteurs_au_sync.go`
       (`lireLesArmesTenues`, l.199), `build_objectives_live.go` (marques), `loadouts.go`,
       `inventory.go`, `grenade_reads.go`, `abilities.go`, `document_weapon_changes.go` lisent le canal,
       puis la fenêtre sur les seuls records récupérés. L'ordre de `Loadout.W` ne bouge pas
       (`inventory[].am`) ; aucun ajout à `decfilm` (`film_facade_surface_test`).
-- [ ] D1.3.2 Survie depuis les faits (ADR 0034) : test du paquet `replay` qui cuit une bobine
+      *Fait (lot D, 2026-10-09)*. Vérifié sur pièces : la cuisson (`film_scan.go`, inventaire,
+      armes, marques de `build_objectives_live.go`) lisait déjà la marche unique depuis D1.1.6 ;
+      `document_weapon_changes.go` ne prend que `s.in.Loadouts` (ensemble de naissance) ; l'ordre de
+      `Loadout.W` reste celui des emplacements (grammaire) ou des bits (fenêtre), `am` par index
+      d'emplacement, comme avant. Changements : (1) **D-28 TRAITÉE** — la lecture des porteurs au
+      sync passe par `grammar.ScanArmesDesImagesCles` (même marche, même admission, armes seules :
+      ni règles d'inventaire ni jeu de mots de la marque derrière la lecture, seul
+      `repli_fenetre_armes_image_cle` compté) ; `TestLesArmesSeulesSontCellesDeLaMarcheComplete`
+      (7 bobines, dotations identiques record pour record à la marche complète, replis 199/0/0 …),
+      mutation rouge (fenêtres d'inventaire et de marque jouées sous les armes seules). Banc
+      `BenchmarkPorteursAuSync` de `9f57c612` (`$S/../d1y/perf/`) : contre l'état D1.2, rapports
+      0,80 à 0,86 sur quatre paires (−60 ms par tour) ; contre la base de l'étape 0, 0,86 à 0,96
+      sur cinq paires, médiane 0,92 (bruit de la base 6 %, mesure indicative : le gate de coût est
+      D1.4.4). (2) La marque « récupéré » est consommée par la cuisson : `lireLesImagesCles`
+      journalise les records récupérés par méthode (`recuperesArmes`, `recuperesInventaire`,
+      `recuperesMarque`). DÉCISION D'EXÉCUTION : elle n'est pas publiée par record (E-8, forme des
+      faits inchangée ; précédents 2.7.b et 2.7.d3) ; ce qui est publié d'elle, les comptes des trois
+      replis et les valeurs des records récupérés, survit (D1.3.2). (3) Doc = contrat (règle 17) :
+      `types.KeyframeInventory` (deux producteurs ; `DrawnSlot` = emplacement désiré, −1 absence,
+      aucun sens « aucune arme dégainée » — U-4 ; `SelectedGrenadeRank` en base 0 — U-3 ;
+      `AbilityRank` borné à 16..23 sur les deux producteurs ; `AmmoCandidates`), `Inventory.D` et
+      `Inventory.Cand`, en-têtes de `inventory.go`, `loadouts.go`, `grenade_reads.go`, `abilities.go`.
+      Aucun ajout à `decfilm`.
+- [x] D1.3.2 Survie depuis les faits (ADR 0034) : test du paquet `replay` qui cuit une bobine
       fraîche puis publie depuis ses faits, et compare les comptes des trois replis, les marques
       `PreuveRecupere` et les valeurs d'inventaire publiées. Identiques → `SchemaDesFaits` 10 reste ;
       sinon les faits portent ce qui manque (section `rapport de replis`, `filmfacts_fichier.go:206`)
       et `SchemaDesFaits` 10 → 11, avec sa chronique.
+      *Fait (lot D)* : `replay/images_cles_faits_test.go`,
+      `TestLesImagesClesSurviventALaPublicationDepuisLesFaits` — bobine `minifilm_11de8353`
+      (registre et 16 images-clés réelles) en contexte de cuisson, lue par les phases de production
+      (`lireLesImagesCles`, `balayerInventaire`), versement et capture des faits de la cuisson
+      (`versementDuBalayage`, `faitsDuBalayage`), positions du fixture du même film ; document de la
+      cuisson et document rejoué depuis les faits (encodés puis relus) IDENTIQUES à l'octet ; comptes
+      des trois replis 50 / 50 / 50 = records non admis donnés, publiés à l'identique par les deux
+      chemins ; records récupérés publiés dans l'inventaire avec la même lecture. Mutation rouge
+      (trois lignes de versement retirées). **`SchemaDesFaits` reste 11** (valeur de la branche,
+      montée en LK.6.4 pour une autre raison) : rien de ce que la publication porte de la lecture des
+      images-clés ne manque aux faits.
 - Tests : goldens d'assemblage et de forme ; unitaires `buildInventory`, `buildGrenadeReads`,
   `buildAbilityReads` avec Src « kf » ; `markInventoryDeadReadings` conservé (règles 6 et 8 de 2.7.b).
 - Gate D1.3 : tests du paquet `replay` verts ; diffs de goldens tous expliqués par une valeur de la
   grammaire (U-3) ; test de survie vert.
+- *Gate D1.3 joué le 2026-10-09 (lot D)* : **PASSÉ.** G-film (21 paquets, gardes de révision sous
+  `-skip`, `$S/../d1y/d13/gfilm.log`), `archlint`, vet avec et sans `research` (film et
+  `killcollector`), `golangci-lint --new-from-merge-base=origin/main` sur `grammar`, `replay`, `types`
+  (0 problème) : verts. Unitaires : `TestBuildInventoryPublieLaSelectionEnBaseZero` (nouveau), le
+  message de `TestBuildInventoryProjectsAndDropsPreOrigin` corrigé (U-4) ; `markInventoryDeadReadings`
+  inchangé. Test de survie vert (D1.3.2). **Aucun golden ne bouge** : les goldens d'assemblage se
+  bâtissent sur les fixtures d'entrées figés, que ce lot ne régénère pas — DÉCISION D'EXÉCUTION,
+  §7 D-29 (les fixtures sont périmés par des lots antérieurs, et leur régénération sur le code de
+  `3aa885e37`, d'avant D1.1, fait rougir cinq tests de mesure étrangers à D1) ; les changements de
+  valeur de D1 se jugent sur pièces dans `replay-equiv` (U-3, D1.4.4).
 
 ### Étape D1.4 — Gates, révisions, clôture de 2.7.d1
-- [ ] D1.4.1 `grammar.Rev` monte (chronique : couverture, admission, replis ; porte
+- [x] D1.4.1 `grammar.Rev` monte (chronique : couverture, admission, replis ; porte
       `LEVELUP_UPDATE_GRAMMAR_REV=1`, §1.4) ; gate objectives et killsource comme LK.6.2 et LK.6.3, par
       leurs portes (E-7, §1.4) ; `objectives.Rev` monte si le calque des drapeaux change (U-2).
-- [ ] D1.4.2 `replay.SchemaVersion` monte (valeurs d'inventaire, dotations, capacités) avec chronique,
+      *Fait (lot D, 2026-10-09)*, après la fusion de `origin/feat/v75` `fe1f3d954` (`b5c15d218` :
+      23 commits, aucun fichier du film ; un conflit documentaire dans `.ai/REGISTRE_REPORTS.md`,
+      ligne de `feat/v75` reprise pour ses propres lignes, lignes LK de la branche gardées). Rangs pris :
+      `grammar-2026-10-09` → **`grammar-2026-10-09.2`** (la date seule vaut le rang 1 ; `feat/v75` est
+      à `grammar-2026-10-08.13`) ; entrée de chronique (marche unique, règle d'admission U-1, valeurs
+      U-3/U-4, replis, armes seules au sync, mesures de D1.0 à D1.2) ; golden par la porte.
+      `killsource` : `cmd/killsource json` sur les 19 témoins, binaire de `3aa885e37` (production
+      d'avant D1.1, `git archive` sous `$S/../d1y/base_a`) contre binaire du lot fusionné : **19/19
+      identiques à l'octet** (`$S/../d1y/d14/ks_cmp.txt`) → `killsource-2026-10-08.2` reste, complément
+      daté, golden régénéré. `objectives` : étapes `objectives` et `carrierMarks` de `replay-equiv`
+      identiques sur les 20 films (base `3aa885e37` contre lot) → `objectives-2026-09-27` reste
+      (U-2 (b) : la marque est la configuration de la fenêtre, le calque des drapeaux ne change pas),
+      complément daté, golden régénéré. Golden des formes de types : seule la ligne des révisions
+      change (forme intacte, E-8).
+      *RENUMÉROTATION (2026-10-09, consigne du superviseur)* : le lot `feat/aj-assist-film` de levelup-2c,
+      fusionné dans `feat/v75` (`54b47a2b8`) après ma montée, a pris `grammar-2026-10-09` et
+      `killsource-2026-10-09`. Refusion (`54b47a2b8` dans la branche) : leur entrée gardée telle quelle,
+      ma montée de LK.6 renumérotée **`grammar-2026-10-09.2`** (note dans la chronique), celle de D1.4
+      **`grammar-2026-10-09.3`** ; `killsource.Rev` = leur `killsource-2026-10-09`, mes deux compléments
+      réécrits en un seul au-dessus de leur entrée (`cmd/killsource json`, 19 témoins, binaire de
+      `54b47a2b8` contre la tête fusionnée : identiques à l octet) ; `objectives` : complément de
+      renumérotation, étape `objectives` de `replay-equiv` identique contre `54b47a2b8` ; goldens de
+      révision, des formes et fixtures de contrat régénérés par leurs portes ; `SchemaVersion` reste
+      91 (`feat/v75` à 90 au moment de la montée, vérifié). Conflits hors du film (`replaydiff`,
+      `impactHistory`) : `feat/v75` a réparé les mêmes deux rouges que LK.6.7, sa version reprise.
+- [x] D1.4.2 `replay.SchemaVersion` monte (valeurs d'inventaire, dotations, capacités) avec chronique,
       plafonds, goldens, fixtures ; `SchemaDesFaits` selon D1.3.2.
-- [ ] D1.4.3 ADR 0037 : AMENDEMENT de la règle de 2.7.b pour les images-clés (texte de U-1 : n(i22) = 4
+      *RENUMÉROTÉ (2026-10-09) : **`SchemaVersion` 91 → 92**, entrée v92* — le lot `feat/aj-needler`, fusionné
+      dans `feat/v75` (`f516d4bf4`) avant cette montée, a pris 91 ; refusion faite, entrée de chronique
+      renommée v92 avec sa note, justification de `structure_test.go` en « 92 », plafonds de l exception
+      écrite remesurés (chronique 3 181 → 3 223, `structure_test.go` 1 430 → 1 435), goldens et fixtures
+      de contrat régénérés au schéma 92 (seule la ligne du schéma diffère de `feat/v75`). Ce qui suit
+      décrit la montée telle qu écrite avant cette refusion.
+      *Fait (lot D)* : **`SchemaVersion` 90 → 91** (90 sur `feat/v75` et sur la branche) ; entrée v91
+      de `document_chronicle.go` (mesures du gate de corpus et de `replay-equiv`, D1.4.4) ;
+      justification dans `structure_test.go` ; plafonds de l'exception écrite
+      (`archlint/film_file_size_test.go` : chronique 3 148 → 3 188, `structure_test.go` 1 425 → 1 430) ;
+      goldens d'assemblage (8, ligne du schéma seule), golden de forme (ligne du schéma seule),
+      fixtures de contrat du web régénérées au schéma 91 (manifeste et huit fichiers). Aucun champ
+      neuf : `openapi.yaml` et les types web générés ne changent pas. **`SchemaDesFaits` reste 11**
+      (D1.3.2).
+- [x] D1.4.3 ADR 0037 : AMENDEMENT de la règle de 2.7.b pour les images-clés (texte de U-1 : n(i22) = 4
       ne valide le curseur que jusqu'à i22 ; le témoin T après i43 ; la fermeture seule ne garantit
       pas les valeurs dans les formats 20-21) ; IR-6 (les fenêtres derrière la lecture) ; dernier
       alinéa de 2.7.d réécrit.
-- [ ] D1.4.4 Mesure finale : instrument d0 (grammaire puis fenêtre derrière) ; `replay-equiv` 20
+      *Fait (lot D)* : sous IR-6, le dernier alinéa de 2.7.d ne garde que le nuage de positions des
+      véhicules hors de la règle ; le paragraphe LK en devient un à part ; un paragraphe 2.7.d1 écrit
+      l'amendement (règle d'admission T1 ∧ T2, sur tous les formats, mesure), les fenêtres derrière la
+      lecture (trois replis, records récupérés marqués, marque non persistée et ce qui en survit) et
+      la lecture aux armes seules du sync.
+- [x] D1.4.4 Mesure finale : instrument d0 (grammaire puis fenêtre derrière) ; `replay-equiv` 20
       films, faits frais ; `cmd/killsource json` 19 témoins ; `replay-corpus-gate` et banc de vérité
       (lecture de la base partagée par `OpenReadForQuery`, §0 : aucun backfill ni cuisson du parc en
       cours) ; Playwright (`npx playwright test`) si l'affichage des fiches change ; G-perf cuisson et
       sync sur les 4 films.
-- [ ] D1.4.5 Plan de l'étape 2 : 2.7.d1 `[x]`, 2.7.d clos ; REGISTRE_REPORTS ; thought_log ;
+      *Fait (lot D, 2026-10-09)*, sorties `$S/../d1y/d14/` et `$S/../d1y/perf/`.
+      (1) **Instrument d0** (28 films) : identique à l'octet à la mesure de D1.1 hors lignes de vidage
+      (6 507 admis, valeurs publiées égales à la relecture sur 100 % des admis, 0 débordement) ;
+      `TestRI27d1Replis` : `replis.tsv` identique à D1.2 (4 203 non admis = replis, film par film).
+      (2) **`replay-equiv`, 20 films, faits mis de côté, `depuis_les_faits=false` sur 40 cuissons** :
+      contre `3aa885e37`, étapes divergentes `artifact` (20), `inventory` et `inventory.stats` (19 : tous
+      sauf `50247b26`, qui n'admet aucun record), `loadouts` (4) ; `carrierMarks`, `objectives`,
+      `killsource` et tout le reste identiques. Contre `feat/v75` `54b47a2b8` (tête fusionnée) : les
+      mêmes, plus `vehicles`, `vehicleDeaths.stats` et `killsource`, les étapes de LK adjugées en
+      LK.6.4. **Mode S8** (`-deux-passes`, survie depuis les faits sur films réels) : 20/20 artefacts
+      IDENTIQUES à l'octet entre décodage et rejeu depuis les faits ; seule l'étape `killsource` diverge,
+      par construction (champ non exporté, documenté).
+      (3) **`cmd/killsource json`, 19 témoins** : identique à l'octet contre `3aa885e37`, puis contre
+      `54b47a2b8` après la refusion.
+      (4) **Gate de corpus et banc de vérité**, lancés seulement parc libre (aucun backfill, :8000 à
+      l'écoute, vérifiés avant chaque tranche ; une racine de parc du scratchpad, jonctions en lecture,
+      pour que le cache de base et le verrou ne s'écrivent pas dans le checkout principal), trois
+      passes : contre `fe1f3d954` (tête `98909f292`), contre `54b47a2b8` (tête `97bff8635`) et, FINALE,
+      contre `919da48b4` (tête `09622154d`) — même résultat aux trois : aucun oracle ne bouge, aucun
+      changement ; seuls bloquants du banc, les trois replis neufs (R-1 « repli nouveau », 3 × 19,
+      nouveaux PAR CONSTRUCTION : avant D1.2 les fenêtres étaient la lecture elle-même, sans repli nommé ;
+      précédent admis au plan de l'étape 2, 2.7.b et 2.7.d) — **à faire admettre à la revue du
+      superviseur**. Bilan des fiches identique aux trois passes (`bilan_fiches_final.tsv`).
+      **Valeurs publiées qui changent, adjugées sur pièces** (artefacts base et lot des 19 témoins) :
+      U-3 « Dynamo » : seules les « Grenade dynamo » quittent les dotations (`111fa685` 38 → 1,
+      `4f77afc1` 52 → 0, `e5adf7b2` 31 → 1 ; restent celles des records non admis), plus un record de
+      `111fa685` où la fenêtre listait 19 familles (2 lues) ; records avec armes identiques sur les
+      19 films. U-3 sélection en base 0 : grenades sélectionnées 264 → 4 203, chacune dans le masque
+      d'i47. *Adjudication CORRIGÉE le 2026-10-09 (revue D1.4.6, constat 5, décision du superviseur)* :
+      la première passe en publiait 4 207, dont 4 records admis de format 20 (`a349fea8`, `a521164d`) à
+      compteurs tous nuls avec la sélection 0 — adjugés alors « valeur du jeu » ; la lecture suit
+      désormais le contrat du canal delta et de la fenêtre (sélection hors du masque ou du domaine :
+      rien de publié, compté `SelectionHorsMasque`), ces 4 records n'ont plus de sélection. U-3/U-4 `d` : aucune valeur ne change sur un record publié des deux
+      côtés ; 50 records sans `d` en reçoivent un (0 ou 1) ; −1 reste une absence (`d` absent 1 451 →
+      1 401). U-3 capacité : 464 lectures `kf` dans 16..23 des deux côtés, aucune hors domaine. AUTRES
+      VALEURS, adjugées : jauges et chargeurs en baisse (jauges 23 → 3 sur `fb1a1a72`, 98 → 79 sur
+      `11de8353` ; chargeurs perdus sur quatre films, de valeur 1 dans 331 cas sur 349) — lectures de la
+      fenêtre à plusieurs débuts candidats (22/23 jauges de base à `cand=2`, valeurs 0,5001 = 2048/4095,
+      0,25, 0,75 ; réserves de 584, 1 232 à 2 000), là où le lecteur du jeu lit, au même instant et pour
+      le même slot, chargeur et réserve plausibles (36/216, 12/36) ou une jauge d'arme à énergie : c'est
+      l'écart de début de bloc de D1.0.7 ; inventaires vides en baisse sur 11 films (records désormais
+      lus). Aucune autre valeur ne bouge.
+      (5) **Playwright NON REQUIS** : aucun fichier du client web n'est modifié par ce lot ; seules les
+      fixtures de contrat sont régénérées (numéro de schéma, contenu du fixture d'entrées figé) ; vitest
+      du rejeu vert (3 176 tests) ; l'affichage ne change que par les données.
+      (6) **G-perf** (`perf/perf_d14.txt`), binaires de base de l'étape 0 contre ceux de `cab72982e`,
+      paires alternées par film, mesures perturbées écartées : surcoût > +10 % NON ÉTABLI. Sync :
+      médianes 0,936 (`1c4c63c2`) à 1,003 (`51101d1d`), `9f57c612` 0,974 (D-28 : 1,17 à l'état D1.2),
+      bruit des bases ≤ 5,6 % ; pics 0,99 à 1,04. Cuisson : médianes 0,962 à 0,991, aucun rapport de
+      paire propre au-dessus de 1,011, pics 0,94 à 0,98 ; bruit des bases 11 à 22 % (machine partagée :
+      recuisson et backfills de levelup-2c, tests d'autres sessions) — jugée par les paires, comme en
+      D1.1.7.
+- [x] D1.4.5 Plan de l'étape 2 : 2.7.d1 `[x]`, 2.7.d clos ; REGISTRE_REPORTS ; thought_log ;
       `make gate-push` ; push ; CI.
-- [ ] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués.
-- [ ] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
+      *Fait (lot D)* : plan de l'étape 2 (2.7.d1 `[x]`, 2.7.d `[x]`, journal) et registre des reports
+      (`1735e4e5a` ; ligne LK, D-29, D-30, repris sur le tri de `feat/v75` à la troisième fusion) ;
+      thought_log (entrée en fin de fichier). `make gate-push` joué étape par étape sur `cab72982e` :
+      golangci-lint `--new-from-merge-base=origin/main` 0 problème ; typecheck web (`tsc -b --force`,
+      sans purge de `node_modules`, jonction vers le checkout principal) et lint web 0 erreur (26
+      avertissements préexistants) ; suite `-tags=integration -p 1 -json ./...` par groupes (350
+      paquets), baseline vérifiée par `check_test_baseline.sh tests --from-jsonl` : 19 655 tests, les
+      9 495 de la baseline présents, 0 échec. Branche poussée ; CI : run `37938832842` sur
+      `1735e4e5a` VERT (tous les jobs, couverture et baseline Linux comprises), gitleaks, garde ADR 0021
+      et Deploy Pre-Check verts ; run de la tête finale au journal.
+- [x] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués. *Fait* : ronde 1 (2026-10-09, deux relecteurs aveugles, 39 conditions tiennent) : HUIT constats recevables, tous corrigés dans le lot (commits 19b6e9cb2 à 59240092f) ; ronde 2 (2026-10-14, un relecteur frais, corrections seulement) : les huit corrigés, 37 conditions tiennent, aucun P0 ni P1, SEPT P2 consignés en D-32 à D-38, non traités (borne de deux rondes du skill adversarial-review).
+- [x] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
       parc et backfill killsource, après la fin de tout backfill en cours ; pairs prévenus avant la
       coupure du serveur local et à la fusion ; compte rendu à l'utilisateur.
 - Gate D1.4 : fiches au moins aussi pleines qu'avant (records avec armes = grammaire + repli ≥
   fenêtre seule, par film) ; aucune perte non adjugée dans `replay-equiv` ; aucune mort perdue
   (killsource) ; banc de vérité vert ; **coût ≤ +10 % (cuisson et sync, 4 films)** ; CI verte.
+- *Gate D1.4 joué le 2026-10-09 (lot D)* : records avec armes identiques sur les 19 témoins (aucun ne
+  perd ses armes) ; pertes de `replay-equiv` et du gate toutes adjugées (D1.4.4) ; killsource
+  identique, aucune mort perdue ; banc de vérité : aucun oracle ne bouge, **FAUX par les trois seuls
+  replis neufs (R-1, nouveaux par construction)**, verdict à faire admettre à la revue (D1.4.6) ;
+  surcoût > +10 % non établi ; CI verte. D1.4.6 (revue adversariale) et D1.4.7 (fusion, recuisson,
+  backfill) reviennent au superviseur.
 
 ## 5. Contrat d'exécution et gates
 
@@ -1240,7 +1513,47 @@ refusionner, rejouer l'étape 0).
   param[2] sur 6 des 7 records A et 424 des 593 records B. Cause non instruite (le début le plus
   long du bloc de munitions, D1.0.7, est le premier suspect). Sans effet sur les records admis après
   D1.1 (U-3 : param[1]).
+- D-28 *(D1.2, mesure informative du coût, `$REF/../d1x/d12/perf_d12.txt`)* À l'état D1.2, la lecture des
+  porteurs au sync de `9f57c612` (bombe, 0,4 s par tour) coûte +17 % en médiane sur cinq paires propres
+  (rapports 1,08 à 1,27, +60 ms par tour) contre la base de l'étape 0 ; à l'état D1.1 (sans fenêtre) le
+  même banc rendait 0,55. Les autres grandeurs tiennent (cuisson 0,87 à 1,04, sync des trois autres
+  films 0,94 à 1,02, pics 0,97 à 1,08). Causes probables, non mesurées : le second jeu de mots (marque)
+  essayé à chaque bit du payload par `motsParRecord`, et les règles d'inventaire jouées sur les records
+  non admis alors que le sync ne lit que les armes. Non traité (D1.2 close) ; le gate de coût de D1.4 le
+  jugera — à instruire avant lui.
+  *TRAITÉE en D1.3.1 (2026-10-09, lot D)* : cause établie par la mesure — à l'état D1.2, le sync
+  jouait la marche complète (`ScanEtatsDesImagesCles`), donc les règles d'inventaire et le jeu de mots
+  de la marque sur les records non admis. `grammar.ScanArmesDesImagesCles` (armes seules) : contre
+  l'état D1.2, 0,80 à 0,86 (−60 ms par tour) ; contre la base, médiane 0,92.
+- D-29 *(D1.3)* Les fixtures d'entrées du paquet `replay` (`testdata/inputs_*.bin.gz`, huit builds) ne
+  décrivent plus la production, et cela PRÉCÈDE ce lot : `TestGoldenInputsFidelite` (local, cache de
+  films ; sauté en CI) est rouge sur les huit builds à la tête de D1.2 (`$S/../d1y/d13/fidelite_avant.log`,
+  577 lignes sur 671 pour `000d5950` : trajectoires, pistes de projectile, lectures delta, i48), et la
+  régénération faite sur le code de `3aa885e37` (production d'avant D1.1, extrait par `git archive`
+  sous `$S/../d1y/base_a`) les remet d'accord avec la production de ce commit mais fait rougir cinq
+  tests de mesure qui figent des chiffres d'autres lots (`TestProjectilesAndInventoryCounts` 436 → 433
+  trajectoires, `TestGoldenAssemblyFigeLesChiffresDuChantier`, `TestCoupuresDeVieOntLeurCause`,
+  `TestViesDUnEchantillonOntLeurOracle`, fixtures de contrat). Non traité (hors périmètre : ces écarts
+  ne sont pas de D1) ; à régénérer et adjuger dans un lot dédié.
+- D-30 *(D1.3)* Le client web lit `inventory[].d == 2` comme « rien de dégainé »
+  (`apps/web/src/features/match-replay/model/equippedLogic.ts`, `holstered: d === 2`, et son test
+  « D=2 : RIEN de dégainé — une mesure »), sens qu'aucun lecteur relu du jeu n'appuie (U-4 : `d` est
+  l'emplacement désiré, un index 0..3). Effet à l'écran : la rangée d'armes ne marque aucune arme en
+  main et tait l'indice « dégainée ? ». La doc Go est corrigée (U-4) ; le client n'est pas touché par
+  ce lot (aucune décision de l'utilisateur sur l'affichage). Non traité.
+- D-31 *(revue D1.4.6, constat 2)* `FUN_1406d01fc` refuse un jeu d armes (param[1] ≠ −1 et param[1] = param[2]) ;
+  sous la portée de l état complet, la boucle `FUN_142e2c690` s arrête sur ce retour (porté :
+  `lecture.ArretJeuDArmesRefuse`). Hors de la portée, ce que la boucle DELTA (`FUN_14076cb60`) fait d un
+  retour faux d i42 ou d i38 n est pas relu : la lecture delta continue, comme avant. Non traité.
 
+- D-32 *(revue D1.4.6 ronde 2)* `weaponv3/canon.go:40` renvoie à `archlint/familles_connues_unique_test.go`, qui n existe pas (le garde-rail réel : `aides_uniques_film_test.go`). Doc fausse, non traitée.
+- D-33 *(ronde 2)* `grammar/components_probe.go:67-69` : la doc de `bit2u` cite un `b2u` de `capture_test.go` retiré par 1dbdae5dd. Doc fausse, non traitée.
+- D-34 *(ronde 2)* la règle « sélection de grenade dans le masque et dans 1..4 » existe en trois écritures (`inventory_grenade_selection.go:84`, le prédicat partagé, `ri27d1_d10_research_test.go:389`) sans garde-rail (règle 6). Non traitée.
+- D-35 *(ronde 2)* le garde-rail des conversions booléen vers entier compte par répertoire et par type : trois conversions `bool` vers `int` subsistent (`killsource/replis_du_decodage.go:74`, `grammar/replis_du_film.go:161`, `replay/film_scan_images_cles.go:58`) ; la doc de `unSi` est trop étroite pour son usage générique. Non traitée.
+- D-36 *(ronde 2)* l arrêt `ArretJeuDArmesRefuse` côté véhicule (`composants_vehicule_ti40.go:145`, i38) n a pas de test unitaire ; seule l équivalence de rejeu le verrait. Non traitée.
+- D-37 *(ronde 2)* retirer `l.debordements++` (`keyframe_etat_complet_bipede.go:156`) ne fait rougir aucun test (le test synthétique pose le débordement à la main). Non traitée.
+- D-38 *(ronde 2)* le golden des valeurs des bobines (116 lignes) n a jamais `Second` ≠ −1 : la lecture de la seconde main n est pas protégée. Non traitée.
+- D-39 *(recuisson du 2026-10-14)* `backfill-killsource` refuse la fusion de `34db6b33` à 40 500 ms : la clef (match, instant) apparie deux morts différentes (tueur du crédit et du film divergents). La garde fait son office ; l appariement de deux morts au même instant reste à instruire. Non traité.
 ## 8. Journal
 
 - 2026-10-08 : rédaction (seconde passe du workflow 2.7.d1, aucune ligne de production modifiée,
@@ -1521,3 +1834,86 @@ refusionner, rejouer l'étape 0).
   fausses en f20-21 (taux du témoin 0 en f20-21), T2 en admet 86 ; T1 ∧ T2 (non écrit) passe — décision
   de l'utilisateur. **D1.0.7** `[x]` : la grammaire lit la réserve comme le jeu ; l'écart vient du début
   de bloc le plus long que retient la fenêtre. Découvertes D-24 à D-27. D1.1 non commencée.
+- 2026-10-09 (lot C, suite) : DÉCISION DE L'UTILISATEUR sur U-1 (« oui en effet la règle des deux
+  contrôles est mieux qu'une », relayée par le superviseur) : T1 ∧ T2, inscrite au §3.1 ; U-2 (b)
+  confirmée, aucune vérification due. D1.0.6 `[x]`, gate de D1.0 rejoué et PASSÉ (`3aa885e37`).
+  **D1.1 CLOSE** (`e84cd78d7`) : canal de l'état complet du bipède par nom, relecture à l'étendue
+  par l'assistant unique, règle d'admission, publication (U-3, U-4), une seule distribution pour la
+  cuisson et le sync ; instrument d0 : 6 507 admis, valeurs égales à 100 %, 0 débordement ; coût :
+  surcoût non établi (paires alternées, intervalles publiés). **D1.2 CLOSE** (`6af91b490`) : fenêtres
+  derrière la lecture pour les seuls non-admis, trois replis au registre (famille
+  `filmdec/images-cles`), records rendus marqués récupérés ; replis = non-admis sur les 28 films (4 203).
+  Mesure informative à l'état D1.2 : sync de `9f57c612` +17 % (§7 D-28), à instruire avant le gate de
+  D1.4. Découvertes D-24 à D-28. D1.3 non commencée (consigne). Gardes de révision rouges jusqu'à la
+  montée de D1.4 (E-7) ; rien de poussé.
+- 2026-10-09 (lot D) : **D1.3 CLOSE** (D1.3.1, D1.3.2 `[x]`), tête de départ `c68913160`. Sorties sous
+  `$REF/../d1y/` (`d13/`, `perf/`). D-28 instruite et traitée d'abord (mode « armes seules » de la
+  marche unique pour le sync, mesure en paires sur `9f57c612`) ; consommateurs de la cuisson vérifiés
+  sur pièces (ils lisaient déjà la marche unique) ; marque « récupéré » journalisée par méthode, non
+  publiée par record (E-8) ; doc des champs d'inventaire corrigée (U-3, U-4). Survie depuis les faits
+  prouvée sur la bobine `11de8353` (document identique, trois replis 50/50/50) : `SchemaDesFaits`
+  reste 11. Fixtures d'entrées non régénérés (D-29, dérive antérieure au lot) ; découverte D-30 (le
+  client lit `d == 2` comme « rien de dégainé »). Gardes de révision rouges jusqu'à la montée de D1.4.
+- 2026-10-09 (lot D) : D1.4.1 à D1.4.3 FAITES (`98909f292`), puis REFUSION de `origin/feat/v75`
+  `54b47a2b8` (lot `assist-film` de levelup-2c : `grammar-2026-10-09`, `killsource-2026-10-09`) et
+  RENUMÉROTATION des rangs de la branche sur consigne du superviseur : LK.6 `grammar-2026-10-09` →
+  `grammar-2026-10-09.2`, D1.4 `grammar-2026-10-09.2` → `grammar-2026-10-09.3` ; `killsource.Rev` =
+  `killsource-2026-10-09` (complément unique, sorties identiques contre `54b47a2b8`) ; `objectives.Rev`
+  constant ; `SchemaVersion` 91 (feat/v75 à 90, vérifié au moment de la montée). Gates rejoués sur la
+  tête fusionnée : killsource 19/19 identiques, `replay-equiv` 20 films contre `54b47a2b8` (étapes de
+  LK et de D1 seules), gate de corpus contre `54b47a2b8` (bilan des fiches identique à la passe contre
+  `fe1f3d954`), G-film 22 paquets et archlint verts.
+- 2026-10-09 (lot D) : SECONDE REFUSION, `origin/feat/v75` `f516d4bf4` (lot `feat/aj-needler` : schéma 91,
+  datation des socles). Ma montée de schéma passe de 91 à **92** (consigne du superviseur, `feat/v75` à
+  91 vérifié au moment même) ; chronique v92 avec note de renumérotation ; `grammar.Rev`
+  (`grammar-2026-10-09.3`), `killsource.Rev` et `objectives.Rev` inchangés par cette fusion (le lot ne
+  touche que l'assemblage). G-film (22 paquets) et archlint verts sur la tête fusionnée.
+- 2026-10-09 (lot D, fin) : TROISIÈME REFUSION, `origin/feat/v75` `919da48b4` (`aj-non-mesure`, tri du
+  registre des reports ; aucune révision, schéma 91) → `09622154d` ; registre : tri de `feat/v75` repris,
+  lignes de la branche reportées. **D1.4.4 et D1.4.5 `[x]`** : instrument d0 et replis identiques à
+  D1.1/D1.2 ; `replay-equiv` (40 cuissons) et mode S8 (20/20 artefacts identiques depuis les faits) ;
+  killsource 19/19 identiques ; gate de corpus final contre `919da48b4`, parc libre vérifié avant chaque
+  tranche (recuisson et backfill killsource de levelup-2c attendus jusqu'à 16 h 52) : aucun oracle ne
+  bouge, FAUX par les trois replis neufs seuls ; valeurs publiées adjugées ; G-perf : surcoût non établi ;
+  gate-push vert ; CI verte. D1.4.6 et D1.4.7 au superviseur ; 2.7.d1 prêt pour la revue et la fusion.
+- 2026-10-09 (lot D, après la revue adversariale D1.4.6 du superviseur) : les HUIT constats recevables
+  corrigés sur la branche, un commit par constat ou groupe : (1) un record dont une occurrence déborde
+  n'est pas admis (`19b6e9cb2`) ; (2) le jeu d'armes que `FUN_1406d01fc` refuse arrête la boucle d'état
+  complet sur i42 et i38, cause `jeu_d_armes_refuse`, relu dans Ghidra (`ce5d9e7ab`) — 460 records
+  arrêtés, tous en format 20, admis inchangés, `ti=35` 5 401 → 5 397 ; (3) et (5) marque d'inventaire
+  récupéré sur valeur rendue, sélection hors du masque tue et comptée, prédicat partagé avec le canal
+  delta (`ecca97772`) ; (4) golden de valeurs sur 116 records réels des bobines (`273f82b1c`) ;
+  (6) `keyframeLoadoutsDe` retirée (`780ec922f`) ; (7) `weaponv3.FamillesConnues` et une conversion
+  booléenne par paquet, deux garde-rails (`1dbdae5dd`) ; (8) documentation inversée (`e765bc6c7`).
+  Refusion de `origin/feat/v75` `646001ff9` sans conflit. Révision : **`grammar-2026-10-09.3` AMENDÉE**
+  (empreinte régénérée, chronique complétée) plutôt que montée à `.4` — le rang n'a quitté ni la branche
+  ni ses mesures ; killsource 19/19 identiques, `killsource-2026-10-09` et `objectives-2026-09-27`
+  constants ; `SchemaVersion` reste 92, chronique v92 corrigée ; `replay-equiv` (20 films, lot précédent
+  contre nouvelle tête) : seuls `a349fea8` et `a521164d` changent (les 4 sélections tues). ADR 0037 :
+  nouvelle cause d'arrêt (IR-4), débordement et sélection (2.7.d1). Découverte D-31. D1.4.6 et D1.4.7
+  restent au superviseur.
+- 2026-10-09 (lot D, consigne du superviseur) : REFUSION de `origin/feat/v75` `46f203b09` (lot
+  `feat/koth-colline`, schéma 92, aucune révision de grammaire). Conflits : chronique du document (leur v92
+  gardée telle quelle, la mienne renumérotée **v93** avec sa note), justification de `structure_test.go`,
+  plafonds de l'exception écrite (3 212 → 3 255, 1 434 → 1 439), golden de forme, fixtures de contrat et
+  manifeste (repris de `feat/v75` puis régénérés au schéma 93 ; goldens d'assemblage et de forme : seule la
+  ligne du schéma diffère de `feat/v75`). **`SchemaVersion` 93** ; `grammar-2026-10-09.3`,
+  `killsource-2026-10-09`, `objectives-2026-09-27` inchangés (gardes de révision vertes). G-film, archlint,
+  vet avec et sans `research`, golangci-lint, typecheck et lint web, vitest du rejeu : verts.
+- 2026-10-14 (superviseur) : reprise après l'arrêt du lot D sur le quota hebdomadaire (son travail était
+  fini : `c0543c3c4`, schéma 93, CI verte). Revue ronde 2 des corrections (un relecteur frais, modèle Sonnet)
+  : les huit constats corrigés, 37 conditions tiennent, aucun P0/P1, sept P2 consignés (D-32 à D-38).
+  D1.4.6 `[x]`. Refusion de `origin/feat/v75` `057ccc7e4` (seuil de garde KOTH lu dans le film,
+  recos-e, journaux) sans conflit. Suite : gates, CI, puis D1.4.7 (fusion, recuisson commune de 235
+  artefacts, projections, backfill killsource ; accord donné d'avance), contrôles KOTH demandés par les
+  sessions pairs.
+- 2026-10-14 (superviseur) : D1.4.7 FAIT. CI verte sur la tête refusionnée (run 38601350228, `0e2ba970f`),
+  refusion des seuls documents de `97d71b206`, avance rapide de `origin/feat/v75` à `1fea2baf4` (pairs
+  prévenus avant). Recuisson commune avec le binaire de la branche : 235 artefacts au schéma 93, 0 erreur de
+  décodage, 59 min ; projections (usage-summary, pad-tiers, vehicle-takes, bomb-stats, flag-grabs-net) code 0 ;
+  backfill-killsource code 0 (8 matchs périmés, 524 morts, une fusion refusée sur `34db6b33` : deux morts au
+  même instant, tueur du crédit et du film divergents, garde de la fusion ; découverte D-39, non traitée).
+  Contrôles KOTH demandés par les pairs, conformes (0d9a9af9 : 35, cible 3, quatre collines successives sans
+  chevauchement ; 7de0b91d : 39, contradiction comptée ; classés : 40). Air relancé sur `109c252ca`, /health 200.
+  PLAN CLOS. Suite : étape dédiée (entrées de slot libéré, bit des films 1.8 option A, world-object i0 sous la
+  portée, valeur 2 de l emplacement désiré).

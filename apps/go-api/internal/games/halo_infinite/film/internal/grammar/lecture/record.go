@@ -67,6 +67,11 @@ const (
 	// handle dans un film qui n'exclut pas le type de moteur 1 : la largeur de l'index du handle n'est
 	// pas établie.
 	ArretLargeurHandleMoteurUn
+	// ArretJeuDArmesRefuse : le jeu d armes lu par un thunk qui rend le retour de `FUN_1406d01fc`
+	// comme celui du désérialiseur (i42 du bipède, i38 du véhicule) désigne le même emplacement en
+	// main principale et en seconde main (param[1] ≠ −1 et param[1] = param[2]) : le lecteur du jeu rend
+	// faux.
+	ArretJeuDArmesRefuse
 )
 
 // ProvenanceLargeur dit d'où vient la largeur avec laquelle une occurrence a été traversée. Elle

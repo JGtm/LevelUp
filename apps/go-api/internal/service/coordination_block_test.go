@@ -7,7 +7,9 @@ package service
 //     soirée (Timeseries), jamais les deux ;
 //   - une capability de journal des morts fermée rend un bloc INDISPONIBLE avec sa raison
 //     machine, jamais un bloc de zéros ;
-//   - une lecture d'appuis en échec dégrade LE VERSANT APPUI, pas le bloc entier ;
+//   - une lecture d'appuis en échec rend un bloc indisponible avec sa raison, jamais une
+//     erreur de page ; une lecture des frags officiels en échec retombe sur les frags lus ;
+//   - « on me prépare » se rapporte aux frags OFFICIELS du joueur (règle des bases) ;
 //   - l'effectif de camp reçu de l'appelant alimente la parité (réserve R1).
 
 import (
@@ -20,21 +22,21 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// tacticalRepoStub — mock du port du journal des morts.
+// tacticalRepoStub — mock du port tactique, réduit à l'univers.
 //
-// L'INTERFACE EST EMBARQUÉE, NON RECOPIÉE : le bloc n'appelle que `KillEvents`, et
-// réécrire les huit autres méthodes aurait fait du test un miroir du port — miroir qu'il
+// L'INTERFACE EST EMBARQUÉE, NON RECOPIÉE : le bloc n'appelle que `Univers`, et
+// réécrire les autres méthodes aurait fait du test un miroir du port — miroir qu'il
 // aurait fallu suivre à chaque ajout, sans qu'aucune assertion n'en dépende. Une méthode
 // non surchargée appelée par erreur panique sur le nil embarqué : c'est le comportement
 // voulu, pas un silence.
 type tacticalRepoStub struct {
 	port.TacticalRepository
-	lecture domain.TacticalKillEvents
+	lecture domain.TacticalUnivers
 	err     error
 	vus     []string
 }
 
-func (s *tacticalRepoStub) KillEvents(_ context.Context, q domain.TacticalQuery) (domain.TacticalKillEvents, error) {
+func (s *tacticalRepoStub) Univers(_ context.Context, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	s.vus = q.Matchs.IDs()
 	return s.lecture, s.err
 }
@@ -45,9 +47,24 @@ func (s *tacticalRepoStub) KillEvents(_ context.Context, q domain.TacticalQuery)
 // chaque appel ferait compter deux fois les appuis d'un match. Il garde la trace de chaque
 // appel.
 type appuisRepoStub struct {
-	rows   []domain.CoordinationAppuiRow
-	err    error
-	appels [][]string
+	rows     []domain.CoordinationAppuiRow
+	err      error
+	frags    map[string]int
+	fragsErr error
+	appels   [][]string
+}
+
+func (s *appuisRepoStub) LoadFragsOfficiels(_ context.Context, _ string, ids []string) (map[string]int, error) {
+	if s.fragsErr != nil {
+		return nil, s.fragsErr
+	}
+	out := make(map[string]int, len(ids))
+	for _, id := range ids {
+		if n, ok := s.frags[id]; ok {
+			out[id] = n
+		}
+	}
+	return out, nil
 }
 
 func (s *appuisRepoStub) LoadAppuis(_ context.Context, ids []string) ([]domain.CoordinationAppuiRow, error) {
@@ -68,35 +85,31 @@ func (s *appuisRepoStub) LoadAppuis(_ context.Context, ids []string) ([]domain.C
 	return out, nil
 }
 
-// lectureDeTest — deux matchs mesurés, deux soirées, un camp à quatre.
-//
-//	m1  E1 tue A a 1 s, MOI tue E1 a 3 s  -> une mort de camp, ripostee par moi ;
-//	m2  E1 tue MOI a 1 s, A tue E1 a 2 s  -> ma mort, ripostee par un coequipier.
-func lectureDeTest() domain.TacticalKillEvents {
+// lectureDeTest — l'univers de deux matchs mesurés, un camp à quatre (P, A contre E1).
+func lectureDeTest() domain.TacticalUnivers {
 	equipe := map[string]int{"P": 0, "A": 0, "E1": 1}
-	return domain.TacticalKillEvents{
-		Univers: domain.TacticalUnivers{
-			Matchs: []domain.TacticalMatch{
-				{MatchID: "m1", Mesure: true}, {MatchID: "m2", Mesure: true},
-			},
-			Equipes: domain.EquipesParMatch{"m1": equipe, "m2": equipe},
+	return domain.TacticalUnivers{
+		Matchs: []domain.TacticalMatch{
+			{MatchID: "m1", Mesure: true}, {MatchID: "m2", Mesure: true},
 		},
-		Events: []domain.KillEvent{
-			{MatchID: "m1", KillerXUID: "E1", VictimXUID: "A", TimeMs: 1000},
-			{MatchID: "m1", KillerXUID: "P", VictimXUID: "E1", TimeMs: 3000},
-			{MatchID: "m2", KillerXUID: "E1", VictimXUID: "P", TimeMs: 1000},
-			{MatchID: "m2", KillerXUID: "A", VictimXUID: "E1", TimeMs: 2000},
-		},
+		Equipes: domain.EquipesParMatch{"m1": equipe, "m2": equipe},
 	}
 }
 
 func requeteDeTest() coordinationQuery {
 	return coordinationQuery{
 		Tactical: &tacticalRepoStub{lecture: lectureDeTest()},
-		Appuis: &appuisRepoStub{rows: []domain.CoordinationAppuiRow{
-			{MatchID: "m1", AssistXUID: "A", KillerXUID: "P", Nombre: 1},
-			{MatchID: "m1", AssistXUID: "", KillerXUID: "P", Nombre: 1},
-		}},
+		// m1 : deux frags de P lus au film (un préparé), trois sur la feuille de match ;
+		// m2 : le film porte l'assistance (frag non assisté de A), un frag de P sur la
+		// feuille que le film ne lit pas.
+		Appuis: &appuisRepoStub{
+			rows: []domain.CoordinationAppuiRow{
+				{MatchID: "m1", AssistXUID: "A", KillerXUID: "P", Nombre: 1},
+				{MatchID: "m1", AssistXUID: "", KillerXUID: "P", Nombre: 1},
+				{MatchID: "m2", AssistXUID: "", KillerXUID: "A", Nombre: 1},
+			},
+			frags: map[string]int{"m1": 3, "m2": 1},
+		},
 		Caps:       games.CapabilityMap{games.CapFilmKillSource: games.CapSupported},
 		PlayerXUID: "P",
 		MatchIDs:   []string{"m1", "m2"},
@@ -121,9 +134,25 @@ func TestBuildCoordinationBlock_MailleMatch(t *testing.T) {
 		t.Errorf("parité = %v, attendu 25 — l'effectif vient de l'appelant (réserve R1)",
 			got.Appui.ParityPct)
 	}
-	if got.Appui.OnMePrepare.Brut != 1 || got.Appui.OnMePrepare.N != 2 {
-		t.Errorf("on me prépare = %d/%d, attendu 1/2",
+	if got.Appui.OnMePrepare.Brut != 1 || got.Appui.OnMePrepare.N != 4 {
+		t.Errorf("on me prépare = %d/%d, attendu 1/4 : la base est la feuille de match (3 + 1)",
 			got.Appui.OnMePrepare.Brut, got.Appui.OnMePrepare.N)
+	}
+	if got.PerMatch[0].MyKills != 3 || got.PerMatch[1].MyKills != 1 {
+		t.Errorf("frags par case = %d/%d, attendu 3/1", got.PerMatch[0].MyKills, got.PerMatch[1].MyKills)
+	}
+}
+
+// TestBuildCoordinationBlock_FragsOfficielsEnEchec — la base retombe sur les frags lus par
+// le film, jamais sur zéro.
+func TestBuildCoordinationBlock_FragsOfficielsEnEchec(t *testing.T) {
+	q := requeteDeTest()
+	q.Appuis.(*appuisRepoStub).fragsErr = errors.New("lecteur indisponible")
+
+	got := buildCoordinationBlock(context.Background(), q)
+
+	if !got.Available || got.Appui.OnMePrepare.Brut != 1 || got.Appui.OnMePrepare.N != 2 {
+		t.Fatalf("bloc = %+v, attendu 1/2 sur les frags lus par le film", got.Appui)
 	}
 }
 
@@ -156,13 +185,13 @@ func TestBuildCoordinationBlock_MailleSoiree(t *testing.T) {
 	if got.Sessions[0].SessionLabel != "2026-09-20" {
 		t.Errorf("première soirée = %q, attendu l'ordre reçu", got.Sessions[0].SessionLabel)
 	}
-	// Soirée 1 : mes deux frags mesurés, dont un préparé. Soirée 2 : aucun appui lu.
-	if a := got.Sessions[0].Appui.OnMePrepare; a.Brut != 1 || a.N != 2 {
-		t.Errorf("soirée 1 : on me prépare = %+v, attendu 1/2", a)
+	// Soirée 1 : trois frags officiels, dont un préparé. Soirée 2 : un frag officiel, aucun
+	// préparé (le film ne le lit pas : il reste dans la base).
+	if a := got.Sessions[0].Appui.OnMePrepare; a.Brut != 1 || a.N != 3 {
+		t.Errorf("soirée 1 : on me prépare = %+v, attendu 1/3", a)
 	}
-	if got.Sessions[1].Appui.OnMePrepare.N != 0 {
-		t.Errorf("soirée 2 : on me prépare = %+v, attendu aucun frag mesuré",
-			got.Sessions[1].Appui.OnMePrepare)
+	if a := got.Sessions[1].Appui.OnMePrepare; a.Brut != 0 || a.N != 1 {
+		t.Errorf("soirée 2 : on me prépare = %+v, attendu 0/1", a)
 	}
 }
 
@@ -185,21 +214,17 @@ func TestBuildCoordinationBlock_CapabilityFermee(t *testing.T) {
 	}
 }
 
-// TestBuildCoordinationBlock_AppuisEnEchec_DegradeUnSujet — dégrader UN sujet vaut mieux
-// que retirer le bloc entier : la couverture reste servie, l'appui a des dénominateurs vides
-// et la couverture le dit.
-func TestBuildCoordinationBlock_AppuisEnEchec_DegradeUnSujet(t *testing.T) {
+// TestBuildCoordinationBlock_AppuisEnEchec — sans ligne d'appui, aucun match n'est mesuré :
+// le bloc se dit indisponible avec sa raison machine, jamais un bloc de zéros ni une erreur
+// de page.
+func TestBuildCoordinationBlock_AppuisEnEchec(t *testing.T) {
 	q := requeteDeTest()
 	q.Appuis = &appuisRepoStub{err: errors.New("lecteur indisponible")}
 
 	got := buildCoordinationBlock(context.Background(), q)
 
-	if !got.Available || got.MatchesMeasured != 2 {
-		t.Fatalf("bloc = %+v, attendu servi sur ses 2 matchs mesurés", got)
-	}
-	if got.Appui.OnMePrepare.N != 0 || !got.Appui.OnMePrepare.EchantillonFaible {
-		t.Errorf("appui = %+v, attendu un dénominateur vide et l'échantillon faible posé",
-			got.Appui.OnMePrepare)
+	if got == nil || got.Available || got.UnavailableReason != domain.CoordinationNoMeasuredMatch {
+		t.Fatalf("bloc = %+v, attendu indisponible (%q)", got, domain.CoordinationNoMeasuredMatch)
 	}
 }
 

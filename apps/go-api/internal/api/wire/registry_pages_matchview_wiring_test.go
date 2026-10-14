@@ -26,7 +26,7 @@ func TestMatchView_AppelleLeCablageDuFilmSansCondition(t *testing.T) {
 // Feuille de match et portée du radar : sans condition, sur le PlayerDB du joueur.
 func TestMatchView_CableFeuilleEtPorteeSansCondition(t *testing.T) {
 	for methode, arg := range map[string]string{
-		"WithEmpriseSheet": "duckdb.NewSquadEmpriseRepo(pdb)",
+		"WithEmpriseSheet": "duckdb.NewSquadEmpriseRepo(pdb, r.killSourceClassifierFor(pdb))",
 		"WithRadarRange":   "r.radarRangeFor(pdb)",
 	} {
 		appels := appelsDansFilmMatchView(t, methode)

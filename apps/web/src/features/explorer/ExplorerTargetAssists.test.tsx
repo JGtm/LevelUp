@@ -27,7 +27,6 @@ const WITH_ASSISTS: ExplorerEncounterStats = {
   ...BASE,
   assist_volume_max: 120,
   assists: {
-    matches_measured: 9,
     my_frags: 80,
     partner_frags: 70,
     received: { total: 20, low: 12, mid: 5, high: 3 },
@@ -99,11 +98,11 @@ describe('ExplorerTargetAssists', () => {
     expect(given.style.left).toBe('85%')
   })
 
-  it('aucun match mesuré : « — » et la raison, pas de piste', () => {
+  it('aucun match ensemble dont le film porte l’assistance : « — » seul, sans mention d’inconnu ni piste', () => {
     renderWithProviders(<ExplorerTargetAssists encounterStats={BASE} />)
     const block = screen.getByTestId('explorer-target-assists')
     expect(block).toHaveTextContent('—')
-    expect(block).toHaveTextContent('Aucun match ensemble avec film analysé')
+    expect(block.textContent).not.toMatch(/mesur|film/i)
     expect(screen.queryByTestId('explorer-assist-bars')).not.toBeInTheDocument()
   })
 

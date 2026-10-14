@@ -1,7 +1,7 @@
 /**
  * EquipmentOutcomesCard.test.tsx — « Équipement pris, et ce que j'en ai fait » : une ligne par famille
- * dans l'ordre du Go ; mesurées : servi / gardé / lâché pour moi (comptes dans les segments), barre
- * fine et ligne de parts pour le reste de l’équipe ; non mesurées : « Non mesuré » et les lâchers du joueur.
+ * dans l'ordre du Go : servi / gardé / lâché pour moi (comptes dans les segments), barre fine et ligne
+ * de parts pour le reste de l’équipe ; aucune famille dont l'usage n'est pas lu.
  */
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -44,7 +44,7 @@ describe('EquipmentOutcomesCard', () => {
   it('une ligne par famille, dans l’ordre du Go', () => {
     renderCard()
     const rows = screen.getAllByTestId(/^usages-equip-row-/).map((n) => n.getAttribute('data-testid'))
-    expect(rows).toEqual(['usages-equip-row-grapple', 'usages-equip-row-wall', 'usages-equip-row-sensor', 'usages-equip-row-shroud_screen', 'usages-equip-row-thruster'])
+    expect(rows).toEqual(['usages-equip-row-wall', 'usages-equip-row-sensor', 'usages-equip-row-shroud_screen'])
   })
 
   it('mur : 84 objets dont 23 pris sur la carte ; servi 52 et lâché 32 dans leurs segments, aucun gardé', () => {
@@ -68,7 +68,7 @@ describe('EquipmentOutcomesCard', () => {
 
   it('repli : aligné sur le début de SON segment (40 servis · 1 gardé · 2 lâchés : « gardé » à ~93 %)', () => {
     fit.hidden = new Set(['usages-equip-me-wall-kept'])
-    const rows = buildEquipmentRows(soloEmprise()).map((r) => (r.family === 'wall' && r.measured ? { ...r, me: [40, 1, 2] as typeof r.me } : r))
+    const rows = buildEquipmentRows(soloEmprise()).map((r) => (r.family === 'wall' ? { ...r, me: [40, 1, 2] as typeof r.me } : r))
     render(<EquipmentOutcomesCard rows={rows} familyLabel={(f) => NAMES[f] ?? f} player="JGtm" ut={USAGES_TEXT.fr.cards} />)
     const repli = screen.getByTestId('usages-equip-repli-wall')
     expect(repli.textContent).toBe('1')
@@ -87,12 +87,6 @@ describe('EquipmentOutcomesCard', () => {
     expect(screen.getByTestId('usages-equip-restline-wall').textContent).toBe('reste de l’équipe : 146 servis · 7 gardés · 151 lâchés48 % servis')
   })
 
-  it('non mesurées : le libellé, les lâchers du joueur, « Non mesuré »', () => {
-    renderCard()
-    expect(screen.getByTestId('usages-equip-sub-grapple').textContent).toBe('84 lâchés')
-    expect(screen.getByTestId('usages-equip-row-grapple').textContent).toContain('Non mesuré : ni prise ni usage publiés pour cette famille')
-    expect(screen.getByTestId('usages-equip-sub-thruster').textContent).toBe('65 lâchés')
-  })
 
   it('famille sans objet : « 0 objet », piste vide, reste à zéro dit', () => {
     renderCard()

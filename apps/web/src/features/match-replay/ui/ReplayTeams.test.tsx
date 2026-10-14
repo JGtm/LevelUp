@@ -525,14 +525,14 @@ describe('ReplayTeams — dégradation par ABSENCE DE DONNÉE (multi-titre)', ()
     expect(screen.queryByText(/capacité inconnue/)).toBeNull()
   })
 
-  it('document réduit aux traces (ni inventaire, ni loadout, ni vitalité) : la fiche dit ses lacunes sans erreur', () => {
+  it('document réduit aux traces (ni inventaire, ni loadout, ni vitalité) : la fiche se rend sans erreur, sans dire ses lacunes', () => {
     renderTeams({})
     expect(screen.getByText('Alpha')).toBeTruthy()
     expect(screen.queryByLabelText('Bouclier')).toBeNull()
     expect(screen.queryByLabelText('Santé')).toBeNull()
-    // La lacune vit en INFOBULLE depuis la grille à cellules fixes (2026-08-24) : les
-    // cellules restent, vides en pointillés, et la phrase les explique au survol.
-    expect(screen.getByTitle('armes non lues sur cette vie')).toBeTruthy()
+    // Les cellules restent, vides en pointillés (grille à cellules fixes, 2026-08-24) ; aucune
+    // phrase ne dit la lacune (règle du 2026-10-09).
+    expect(screen.queryByTitle(/non lue/)).toBeNull()
   })
 })
 

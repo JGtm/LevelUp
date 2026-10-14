@@ -332,9 +332,13 @@ func TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue(t *testing.T)
 	// 126 cartes, dont les variantes CTF et Stockpile de 52 cartes Forge. L assertion qui compte
 	// — un (role, camp) sert ses ponctuels OU les centres de ses formes, jamais les deux — passe
 	// sur les 126 cartes ; seul le compte de reference a bouge, et c est lui qu on met a jour.
-	for mode, attendu := range map[string]int{"CTF": 35, "Stockpile": 22, "Assault": 2} {
+	//
+	// RELEVÉ DU 2026-10-09 : CTF 35 -> 36. Le catalogue gagne « Serenity - Ranked » et « Vacancy -
+	// Ranked » (cartes Forge jouées hors catalogue), dont une pose ses socles de drapeau en formes ;
+	// l assertion par (role, camp) passe sur les 130 cartes.
+	for mode, attendu := range map[string]int{"CTF": 36, "Stockpile": 22, "Assault": 2} {
 		if avecForme[mode] != attendu {
-			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-08-30 — "+
+			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-10-09 — "+
 				"le catalogue a bougé, revérifier le correctif avant d ajuster ce compte",
 				mode, avecForme[mode], attendu)
 		}

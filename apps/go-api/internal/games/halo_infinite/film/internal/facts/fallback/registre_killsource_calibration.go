@@ -30,6 +30,10 @@ package fallback
 // n a aucune source lue. `replay-equiv` l a vu sur `a521164d` (une impulsion publiee perdue),
 // et elle revient ici sous son propre nom — pas sous celui de l index de plage, avec lequel
 // elle avait ete confondue (D5 (3.4.1), fermee).
+//
+// LA TROISIEME (lot `assist-film`, 2026-10-09) decide un SENS et non une largeur, et elle est au meme
+// titre une calibration par film (ADR 0034 D-10) : le type du fil des evenements qui s adresse aux
+// assistants, appris contre les kill-events du film faute d une table des types lue.
 
 var registreKillsourceCalibration = []Repli{
 	{
@@ -63,6 +67,22 @@ var registreKillsourceCalibration = []Repli{
 		// `consumePositionHandleTail` lit derriere le bit de poignee (`FUN_1406d3140`).
 		CibleRetrait:    "lot qui RELEVERA la largeur du mot de poignee CHEZ L ECRIVAIN — le bitlen du compte de poignees de `FUN_1406d3140` — et la fera entrer au profil par une cle que le film ecrit, comme la loi des largeurs d axe y est entree",
 		CritereRetrait:  "`calibration.PoigneeDiscriminee` cesse d etre le juge : la valeur vient d une lecture sur les 8 builds du corpus, le balayage devient ORACLE (il compte ses desaccords avec elle, il n ecrit plus), et `replay-equiv` ne bouge sur AUCUNE des trois etapes derriere i0 (`abilityImpulses`, `grappleReads.stats`, `pads`) sur les 20 films",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_type_d_assistance_appris_par_film",
+		Fait: "lequel des types du fil des evenements (`PlayerGameEventSmall` a couple) s adresse aux assistants d un kill, pour les morts sans kill-event (toute mort de bot)",
+		Mecanisme: "aucune table des types lue : le type que le fil adresse, au couple d un kill-event, a l assistant que ce kill-event nomme ; retenu s il est unique sur le film, " +
+			"sans desaccord ni assistant sans evenement sur une trame lue entiere ; sinon aucune mort ne se lit au fil",
+		Condition: CondNonResolu,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{Fichier: pkgKillsource + "assist_fil.go", Ancre: "lx.typ, lx.stats.Apprentissages = t, n"}, {
+			Fichier: pkgKillsource + "replis_du_decodage.go",
+			Ancre:   "r.AssistancesAuTypeAppris += unSi(kills[i].AssistLuAuFil)",
+		}, siteDeVersement("NomTypeDAssistanceApprisParFilm")},
+		DatePose:        "2026-10-09",
+		CibleRetrait:    "la table des evenements de la partie lue (le nom de chaque type, chez l ecrivain du `R(32)` de tete de `FUN_14080ae70`) : le type d assistance se nomme au lieu de s apprendre",
+		CritereRetrait:  "le type d assistance lu par build sur les 8 builds du corpus, en accord avec le type appris sur chaque film ; l apprentissage devient oracle (il compte ses desaccords)",
 		CompteurBranche: true,
 	},
 }

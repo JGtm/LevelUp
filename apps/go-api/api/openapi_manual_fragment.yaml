@@ -794,6 +794,21 @@ paths:
       responses:
         '202':
           description: Sync démarrée
+        '401':
+          description: Aucune session (code auth_required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: |
+            Sync initiale désactivée sur l'instance (code initial_sync_disabled), ou
+            session sans jetons Halo (code halo_tokens_missing) — jamais un 401 :
+            la session est valide.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '409':
           description: Une sync est déjà en cours
           content:

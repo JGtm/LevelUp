@@ -1048,8 +1048,8 @@ export interface RecentMatchItem {
   has_replay?: boolean
   /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
    *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
-   *  quand le match n'a aucune ligne mesurée pour le joueur : la tuile n'affiche rien —
-   *  jamais un « 0 » fabriqué pour une mesure absente. */
+   *  quand le film du match ne porte pas l'assistance : la tuile n'affiche rien —
+   *  jamais un « 0 » fabriqué. */
   assisted_frags?: MatchAssistedFrags | null
 }
 
@@ -1057,7 +1057,10 @@ export interface RecentMatchItem {
  *  OpenAPI dérivé (TODO Sprint 32 du contrat) : ce DTO est écrit à la main, comme
  *  RecentMatchItem, sur l'AssistTiers généré (route Relations). */
 export interface MatchAssistedFrags {
-  frags_measured: number
+  /** Base de la part : les frags officiels du match (ceux de la tuile), bots compris,
+   *  jamais sous les frags lus par le film. */
+  frags_official: number
+  /** Frags assistés (assistant nommé par le film, bot compris), par tranche de part. */
   received: AssistTiers
 }
 
@@ -1223,6 +1226,7 @@ export type RelationsMomentsResponse = components['schemas']['RelationsMomentsRe
 // ---------------------------------------------------------------------------
 
 export type TeammateOption = components['schemas']['TeammateOption']
+export type SquadPageResponse = components['schemas']['SquadPageResponse']
 
 export interface RadarAxes {
   objectives: number
@@ -2993,9 +2997,10 @@ export type ReplayObjectiveObjectPoint = components['schemas']['ObjectiveObjectP
 // `gauge` (schéma 18) est LA JAUGE DE CAPTURE EN DIRECT : la série datée `[{t, v}]` de la valeur
 // de la jauge PENDANT ses rampes (allégée : un point par variation >= 0,02 ou par seconde de
 // rampe, rien hors rampe, chaque rampe fermée par son retour à zéro), sur la même échelle que
-// `progress`, sur les modes à zones SIMULTANÉES seulement (jamais sur une colline de KOTH, où le
-// canal est un compteur de transfert). Le rendu la lit en escalier — la dernière valeur tient
-// jusqu'au point suivant, une seconde après le dernier de la série. Absente sur un artefact de schéma
+// `progress`. Sur une colline (schéma 92) c est la capture de la colline active, qui redescend
+// aussi pas à pas quand le camp tenant la perd (`gaugeRamps[].draining`). Le rendu la lit en
+// escalier — la dernière valeur tient jusqu'au point suivant, une seconde après le dernier de la
+// série. Absente sur un artefact de schéma
 // <= 17 — et le rendu ne dessine alors AUCUN arc : le sommet statique se lisait comme une jauge.
 export type ReplayZoneState = components['schemas']['ZoneState']
 export type ReplayZoneSpan = components['schemas']['ZoneSpan']

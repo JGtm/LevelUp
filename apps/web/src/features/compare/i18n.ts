@@ -39,8 +39,6 @@ export interface CompareText {
   weaponsNoRange: string
   /** En-tête d'infobulle : la grammaire du bâton. */
   weaponsPercentiles: string
-  /** Un côté sans aucune mesure — jamais un zéro. */
-  weaponsNoMeasure: string
   /** « sur N matchs » — affiché pour CHAQUE joueur de la section. */
   weaponsMatches: (n: number) => string
   metrics: Record<string, string>
@@ -72,9 +70,8 @@ const FR_TEXT: CompareText = {
   weaponsRangeDeaths: 'Où ils meurent',
   weaponsTopTitle: 'Armes les plus utilisées',
   weaponsObserved: 'observé',
-  weaponsNoRange: 'Les portées mesurées restent trop rares pour être publiées.',
+  weaponsNoRange: 'Pas encore assez de frags pour tracer une portée.',
   weaponsPercentiles: '10e centile · médiane · 90e centile',
-  weaponsNoMeasure: 'aucune mesure',
   weaponsMatches: (n) => `sur ${n} matchs`,
   // N'entrent ici que les métriques SANS FieldKey canonique équivalent (cf.
   // METRIC_TO_FIELD_KEY plus bas) : toutes les autres viennent du registre.
@@ -116,9 +113,8 @@ const EN_TEXT: CompareText = {
   weaponsRangeDeaths: 'Where they die',
   weaponsTopTitle: 'Most used weapons',
   weaponsObserved: 'observed',
-  weaponsNoRange: 'Measured ranges are still too sparse to publish.',
+  weaponsNoRange: 'Not enough kills yet to draw a range.',
   weaponsPercentiles: '10th percentile · median · 90th percentile',
-  weaponsNoMeasure: 'no measurement',
   weaponsMatches: (n) => `over ${n} matches`,
   // Voir la note du dictionnaire FR : parité stricte des clés.
   metrics: {

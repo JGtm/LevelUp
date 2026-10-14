@@ -64,6 +64,8 @@ type decodeCtx struct {
 	// lectures qui ne se ressemblent pas : le COUPLE (tueur, victime) d un kill sans mort en
 	// face (lot 1.9.3, `feed_couples.go`) et l ASSISTANT (`assist.go`).
 	killEvents *assistScan
+	// fil : les messages du fil des evenements de la marche, par trame (`assist_fil.go`).
+	fil *filScan
 	// couples : d ou vient le couple de chaque instant du kill-feed.
 	couples  types.CoupleStats
 	mult     map[multKey]int
@@ -277,6 +279,9 @@ func (c *decodeCtx) finish() *Result {
 	// liste d evenements pour l assistant, la boucle de records pour la source. Un echec de l un
 	// ne doit rien retirer a l autre.
 	stats.Assist = c.attachAssists(kills, c.killEvents)
+	// Les morts qu aucun kill-event ne decrit — toutes les morts de bot — se lisent au fil des
+	// evenements de leur trame (`assist_fil.go`).
+	stats.Assist.Fil = c.attachAssistsDuFil(kills)
 	stats.Couples = c.couples
 	res := &Result{
 		Kills:           kills,
@@ -373,6 +378,7 @@ func (c *decodeCtx) marcher(ctx context.Context, src *source.Film) error {
 	}
 	c.walkRes = mortsDeLaMarche(lecture, c.film, c.roster)
 	c.killEvents = killEventsDeLaMarche(lecture, c.film)
+	c.fil = filDeLaMarche(lecture)
 	fc.Diagnostics().Verser(&c.diag)
 	return nil
 }

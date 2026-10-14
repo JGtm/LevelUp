@@ -757,12 +757,12 @@ fr = "appuis de l'équipe : {n}"
 en = "team assists: {n}"
 
 [timeseries.progression.coord_empty_title]
-fr = "Aucun appui mesuré"
-en = "No support measured"
+fr = "Aucun appui"
+en = "No support"
 
 [timeseries.progression.coord_empty]
-fr = "Aucune soirée mesurée sur ce périmètre."
-en = "No session measured on this scope."
+fr = "Les appuis se lisent sur les matchs filmés."
+en = "Support is read from filmed matches."
 
 [timeseries.progression.coord_unavailable]
 fr = "Coordination indisponible sur ce périmètre."
@@ -815,8 +815,8 @@ fr = "Portée"
 en = "Range"
 
 [timeseries.portee.help]
-fr = "Écart, par match, entre la distance médiane des frags du joueur et celle de tous les joueurs du lobby ; bandes : tiers de la fenêtre affichée. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance."
-en = "Per match, the gap between the player's median kill distance and that of every player in the lobby; bands: thirds of the displayed window. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend."
+fr = "Écart, par match, entre la distance médiane des frags du joueur et celle de tous les joueurs du lobby ; bandes : tiers de la fenêtre affichée. Un match sous {floor, number} frags donne un point creux, exclu de la tendance."
+en = "Per match, the gap between the player's median kill distance and that of every player in the lobby; bands: thirds of the displayed window. A match under {floor, number} kills gives a hollow dot, excluded from the trend."
 
 [timeseries.portee.y_axis]
 fr = "Écart à la médiane du lobby"
@@ -843,8 +843,8 @@ fr = "un match"
 en = "one match"
 
 [timeseries.portee.legend_low_sample]
-fr = "moins de {floor, number} frags mesurés"
-en = "fewer than {floor, number} measured kills"
+fr = "moins de {floor, number} frags"
+en = "fewer than {floor, number} kills"
 
 [timeseries.portee.legend_trend]
 fr = "tendance ({n, number} matchs)"
@@ -859,16 +859,16 @@ fr = "écart {delta} m"
 en = "gap {delta} m"
 
 [timeseries.portee.tooltip_measured]
-fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
-en = "{n, plural, one {# measured kill} other {# measured kills}}"
+fr = "{n, plural, one {# frag} other {# frags}}"
+en = "{n, plural, one {# kill} other {# kills}}"
 
 [timeseries.portee.empty_title]
-fr = "Aucune portée mesurée"
-en = "No range measured"
+fr = "Aucune distance de frag"
+en = "No kill distance"
 
 [timeseries.portee.empty_description]
-fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la portée ne se mesure pas."
-en = "No match in the selection has a decoded film: without kill positions, range cannot be measured."
+fr = "La portée des engagements se lit sur les matchs filmés."
+en = "Engagement range is read from filmed matches."
 # ─── Onglet Usages ─────────────────────────────────────────────────────────
 # L'Emprise des matchs solo du périmètre : portée, ressources, vies,
 # objectif, équipement. Sans rien à montrer, l'onglet porte son état vide plutôt que de

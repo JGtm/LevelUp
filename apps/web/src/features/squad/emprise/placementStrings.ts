@@ -2,8 +2,8 @@
  * placementStrings.ts — les textes du bloc « Isolement » de l'onglet Emprise (lot V4 du
  * plan PLAN_EMPRISE_VIES_2026-09-28, spécification §2 : « Placement et rendement de chaque vie »
  * et « Part des vies par placement »). Fichier à part : `empriseStrings.ts` frôle le seuil de
- * taille. Aides ⓘ : deux phrases au plus, ce qui est mesuré et sur quel périmètre, sans personne. Parité FR / EN garantie par le typage
- * `Record<Locale, …>`. Les nombres arrivent déjà formatés (séparateur de la langue).
+ * taille. Aides ⓘ : deux phrases au plus, ce qui est tracé et sur quel périmètre, sans personne.
+ * Parité FR / EN garantie par le typage `Record<Locale, …>`. Les nombres arrivent déjà formatés (séparateur de la langue).
  */
 import type { SquadEmprisePlacementQuadrant } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -19,8 +19,8 @@ export interface PlacementText {
   section: string
   life: {
     title: string
-    /** Vies mesurées, vies au total, matchs sans portée de radar connue. */
-    info: (measured: number, total: number, noRange: number) => string
+    /** ⓘ : ce que dit l'abscisse et ce qu'elle laisse de côté par construction. */
+    info: string
     xAxis: string
     yAxis: string
     radarLine: string
@@ -53,10 +53,9 @@ const FR: PlacementText = {
   section: 'Isolement',
   life: {
     title: 'Placement et rendement de chaque vie',
-    info: (measured, total, noRange) =>
+    info:
       'Abscisse : médiane, sur la vie (de l’apparition à la mort), de la distance au coéquipier vivant le plus ' +
-      'proche, en portées de radar du match, hors port d’objectif, équipe à terre et positions non situées. ' +
-      `${measured} ${measured > 1 ? 'vies mesurées' : 'vie mesurée'} sur ${total} ; matchs sans portée de radar connue : ${noRange}.`,
+      'proche, en portées de radar du match, hors port d’objectif et équipe à terre.',
     xAxis: 'distance médiane au coéquipier le plus proche pendant la vie, en portées de radar',
     yAxis: 'frags dans la vie',
     radarLine: 'portée du radar',
@@ -76,7 +75,7 @@ const FR: PlacementText = {
   quarts: {
     title: 'Part des vies par placement',
     info: (isolatedFrom, isolatedFromN, productiveFrom) =>
-      'Part des vies mesurées de chaque joueur dans les quatre quarts du nuage ci-dessus. ' +
+      'Part des vies de chaque joueur dans les quatre quarts du nuage ci-dessus. ' +
       `Isolé : distance médiane d’au moins ${isolatedFrom} ${isolatedFromN >= 2 ? 'portées' : 'portée'} de radar ; ` +
       `rentable : au moins ${productiveFrom} ${productiveFrom > 1 ? 'frags' : 'frag'} dans la vie.`,
     names: {
@@ -95,10 +94,9 @@ const EN: PlacementText = {
   section: 'Isolation',
   life: {
     title: 'Placement and yield of each life',
-    info: (measured, total, noRange) =>
+    info:
       'Horizontal position: median, over the life (spawn to death), of the distance to the nearest living ' +
-      'teammate, in radar ranges of the match, excluding objective carrying, team down and unlocated positions. ' +
-      `${measured} ${measured > 1 ? 'lives' : 'life'} measured out of ${total}; matches without a known radar range: ${noRange}.`,
+      'teammate, in radar ranges of the match, excluding objective carrying and team down.',
     xAxis: 'median distance to the nearest teammate during the life, in radar ranges',
     yAxis: 'kills in the life',
     radarLine: 'radar range',
@@ -118,7 +116,7 @@ const EN: PlacementText = {
   quarts: {
     title: 'Share of lives by placement',
     info: (isolatedFrom, isolatedFromN, productiveFrom) =>
-      'Share of each player’s measured lives in the four quadrants of the scatter above. ' +
+      'Share of each player’s lives in the four quadrants of the scatter above. ' +
       `Isolated: median distance of at least ${isolatedFrom} radar ${isolatedFromN > 1 ? 'ranges' : 'range'}; ` +
       `productive: at least ${productiveFrom} ${productiveFrom > 1 ? 'kills' : 'kill'} in the life.`,
     names: {

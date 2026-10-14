@@ -28,8 +28,8 @@ export interface CoordinationText {
   lowSample: string
   /** Infobulle d'une case de bande : n° de match, part, parité. */
   bandTipFmt: (index: number, part: string, parite: string) => string
-  /** Infobulle d'une case non mesurée. */
-  bandTipUnmeasured: (index: number) => string
+  /** Infobulle d'une case sans appui d'équipe (part sans dénominateur). */
+  bandTipNoTeamAssist: (index: number) => string
   /** Infobulle d'un rail de jauge : valeur puis comptes bruts. */
   gaugeTipFmt: (valeur: string, brut: number, n: number) => string
   /**
@@ -63,7 +63,6 @@ export interface CoordinationText {
   infoRange1: string
   infoRange2: string
   infoRange3: (seuil: number) => string
-  rangeEmpty: string
 }
 
 export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
@@ -76,12 +75,12 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
       'Frags appuyés : frags du joueur ayant reçu une assistance, sur ses frags ; part des appuis de l’équipe : ' +
       'assistances reçues par le joueur, sur toutes celles de l’équipe.',
     infoAppui2:
-      'Un appui dont l’auteur n’est pas résolu par le film n’entre dans aucun des deux dénominateurs.',
+      'Les frags du joueur sont ceux de la feuille de match ; frags et appuis impliquant des bots comptent comme les autres.',
     infoAppui3: 'Parité : 1/n, n étant l’effectif de l’équipe sur le match.',
 
     lowSample: 'échantillon faible',
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parité ${parite})`,
-    bandTipUnmeasured: (i) => `Match #${i} · non mesuré`,
+    bandTipNoTeamAssist: (i) => `Match #${i} · aucun appui d’équipe`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} sur ${n}`,
     gaugeTipUsualFmt: (tip, habituel) => `${tip} · habituel ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
@@ -100,14 +99,13 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeLegendTrend: (f) => `Tendance, fenêtre ${f} matchs`,
     rangeTipMedian: (med) => `Médiane ${med} m`,
     rangeTipDelta: (ecart) => `Écart au lobby ${ecart} m`,
-    rangeTipMeasured: (frags) => `${frags} frags mesurés`,
-    rangeLowSample: (s) => `point creux : moins de ${s} frags mesurés`,
+    rangeTipMeasured: (frags) => `${frags} ${frags > 1 ? 'frags' : 'frag'}`,
+    rangeLowSample: (s) => `point creux : moins de ${s} frags`,
     infoRange1:
       'Chaque point est un match de la période : écart entre la médiane de frag du joueur et celle du lobby.',
     infoRange2:
       'Bandes : rôles du joueur sur la période ; fond : matchs de cette session.',
-    infoRange3: (s) => `Sous ${s} frags mesurés le point reste creux : la médiane est du bruit.`,
-    rangeEmpty: 'Aucun frag mesuré sur les matchs de cette session.',
+    infoRange3: (s) => `Sous ${s} frags, le point reste creux : la médiane est du bruit.`,
   },
   en: {
     cardAppui: 'Support received',
@@ -117,12 +115,12 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoAppui1:
       'Assisted kills: the player’s kills that received an assist, over the player’s kills; share of the team’s ' +
       'assists: assists received by the player, over all of the team’s.',
-    infoAppui2: 'An assist whose author the film cannot resolve enters neither denominator.',
+    infoAppui2: 'The player’s kills are those of the match sheet; kills and assists involving bots count like any other.',
     infoAppui3: 'Parity: 1/n, n being the team’s headcount on the match.',
 
     lowSample: 'low sample',
     bandTipFmt: (i, part, parite) => `Match #${i} · ${part} (parity ${parite})`,
-    bandTipUnmeasured: (i) => `Match #${i} · not measured`,
+    bandTipNoTeamAssist: (i) => `Match #${i} · no team assist`,
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} of ${n}`,
     gaugeTipUsualFmt: (tip, habituel) => `${tip} · usual ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
@@ -141,12 +139,11 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     rangeLegendTrend: (f) => `Trend, ${f}-match window`,
     rangeTipMedian: (med) => `Median ${med} m`,
     rangeTipDelta: (ecart) => `Gap to lobby ${ecart} m`,
-    rangeTipMeasured: (frags) => `${frags} measured kills`,
-    rangeLowSample: (s) => `hollow dot: fewer than ${s} measured kills`,
+    rangeTipMeasured: (frags) => `${frags} ${frags > 1 ? 'kills' : 'kill'}`,
+    rangeLowSample: (s) => `hollow dot: fewer than ${s} kills`,
     infoRange1:
       'Each dot is one match of the period: the gap between the player’s kill median and the lobby median.',
     infoRange2: 'Bands: the player’s roles over the period; shading: this session’s matches.',
-    infoRange3: (s) => `Below ${s} measured kills the dot stays hollow: the median is noise.`,
-    rangeEmpty: 'No measured kill across the matches of this session.',
+    infoRange3: (s) => `Below ${s} kills the dot stays hollow: the median is noise.`,
   },
 }

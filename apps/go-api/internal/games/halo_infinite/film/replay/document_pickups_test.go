@@ -7,7 +7,7 @@ package replay
 // une lacune ANTÉRIEURE à ce lot (les deux premiers canaux vivent déjà en production sans
 // couverture de golden) et ce lot ne la corrige pas — ce serait un fix hors périmètre. Mais
 // laisser un calque de production SANS filet ne se fait pas : `buildPickups` et
-// `datePadPickups` sont PURS, ils se testent donc directement, sur des entrées écrites à la
+// `daterLesOccupations` sont PURS, ils se testent donc directement, sur des entrées écrites à la
 // main où chaque cas limite est visible.
 
 import (
@@ -122,7 +122,7 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 		{Pad: 2, TLow: 85, THigh: 95}, // socle de power-up -> hors jointure, pas « non couvert »
 		{Pad: 9, TLow: 10, THigh: 30}, // index de socle hors bornes
 	}
-	st := datePadPickups(pads, picks, pickups)
+	st := daterLesOccupations(pads, picks, pickups, nil)
 
 	if picks[0].T == nil || *picks[0].T != 12 {
 		t.Fatalf("occupation 0 : t = %v, attendu 12 — LA JOINTURE EST MORTE", picks[0].T)
@@ -161,7 +161,7 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 // TestDatePadPickupsFailsOnBrokenJoinKey — L'INVERSION, ET ELLE APPELLE VRAIMENT LA JOINTURE.
 //
 // La première version de ce test (ronde 1) comparait deux chaînes et n'appelait JAMAIS
-// `datePadPickups` : elle ne prouvait rien sur la fonction, et portait en prime une branche
+// `daterLesOccupations` : elle ne prouvait rien sur la fonction, et portait en prime une branche
 // morte (la même condition que son `t.Skip`, trois lignes plus haut). Correctif de ronde 2 :
 // on exerce la fonction DEUX FOIS sur les mêmes données — une fois avec la forme de production
 // du socle, une fois avec une clé volontairement cassée — et on exige que la seconde ne date
@@ -172,7 +172,7 @@ func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
 
 	// (1) Forme de PRODUCTION des deux côtés : la jointure trouve.
 	bon := []PadPickup{{Pad: 0, TLow: 10, THigh: 30}}
-	stBon := datePadPickups([]WeaponPad{{Weapon: padWeaponForm(fam)}}, bon, pickups)
+	stBon := daterLesOccupations([]WeaponPad{{Weapon: padWeaponForm(fam)}}, bon, pickups, nil)
 	if stBon.Dated != 1 || bon[0].T == nil {
 		t.Fatalf("forme de production : datées=%d t=%v, attendu 1 et 12 — la jointure ne marche pas",
 			stBon.Dated, bon[0].T)
@@ -181,7 +181,7 @@ func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
 	// (2) MÊME famille, mais écrite dans une convention que la normalisation ne rapproche pas
 	// (un nom canonique, comme un socle de power-up) : rien ne doit être daté.
 	casse := []PadPickup{{Pad: 0, TLow: 10, THigh: 30}}
-	stCasse := datePadPickups([]WeaponPad{{Weapon: "famille-11223344"}}, casse, pickups)
+	stCasse := daterLesOccupations([]WeaponPad{{Weapon: "famille-11223344"}}, casse, pickups, nil)
 	if stCasse.Dated != 0 || casse[0].T != nil || casse[0].XUID != nil {
 		t.Errorf("clé non joignable : datées=%d t=%v xuid=%v, attendu 0/nil/nil",
 			stCasse.Dated, casse[0].T, casse[0].XUID)
@@ -206,7 +206,7 @@ func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
 func TestDatePadPickupsWithoutNativeChannelIsInert(t *testing.T) {
 	pads := []WeaponPad{{Weapon: "11223344"}}
 	picks := []PadPickup{{Pad: 0, TLow: 10, THigh: 30}}
-	st := datePadPickups(pads, picks, nil)
+	st := daterLesOccupations(pads, picks, nil, nil)
 	if picks[0].T != nil || picks[0].XUID != nil {
 		t.Errorf("sans canal natif, l occupation a ete modifiee : t = %v, xuid = %v", picks[0].T, picks[0].XUID)
 	}

@@ -17,7 +17,13 @@ package duckdb
 // UN APPEL PAR VUE : un filtre posé sur une vue ne traverse pas la jointure vers une autre vue
 // `_latest` (ADR 0036 I2). Chaque vue lue reçoit son propre prédicat, avec la même liste.
 
-import "levelup/go-api/internal/analysis"
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	"levelup/go-api/internal/analysis"
+)
 
 // LE TEXTE DU PRÉDICAT VIT DANS `analysis` (sql_liste.go, source unique partagée avec les gabarits
 // de l'annuaire des noms, item B.7) ; ce fichier n'y ajoute que l'argument. Deux formes : la
@@ -45,4 +51,29 @@ func argListe(ids []string) any {
 		return []string{}
 	}
 	return ids
+}
+
+// QMatchsOuJoue : TOUS les matchs où le joueur figure parmi les participants, Campagne
+// comprise. C'est une liste de BORNAGE, pas un agrégat d'affichage : elle borne sous la
+// fenêtre `_latest` une lecture qui, sans elle, lisait la table entière. Elle garde donc
+// exactement la population de cette lecture, Campagne comprise ; la règle Campagne reste
+// celle de la lecture bornée.
+const QMatchsOuJoue = `SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?`
+
+// matchsOuJoue rend les matchs de [QMatchsOuJoue] pour `xuid` (liste vide si aucun).
+func matchsOuJoue(ctx context.Context, db *sql.DB, xuid string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, QMatchsOuJoue, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("matchs où le joueur a joué: %w", err)
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("matchs où le joueur a joué, scan: %w", err)
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }

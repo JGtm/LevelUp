@@ -664,8 +664,8 @@ en = "Cumulative frag gap"
 
 # ─── 3e rangée de la section « matchs joués ensemble » : répartition des résultats +
 # part des assistances (colonne gauche), portée des frags (colonne droite).
-# Le texte de l'état « aucun match mesuré » vient de ASSISTS_TEXT.notMeasured
-# (_shared/assists/assistsI18n.ts), partagé avec Relations — pas de doublon ici.
+# Les textes des assistances viennent de ASSISTS_TEXT (_shared/assists/assistsI18n.ts),
+# partagé avec Relations — pas de doublon ici.
 [explorer.target_profile.assists_title]
 fr = "Part des assistances"
 en = "Assist share"
@@ -675,29 +675,33 @@ fr = "Portée des frags"
 en = "Frag range"
 
 [explorer.target_profile.frag_range_empty]
-fr = "Aucun frag mesuré sur vos matchs communs"
-en = "No measured frag over your shared matches"
+fr = "Aucune distance de frag sur les matchs communs"
+en = "No kill distance over the shared matches"
 
 # Infobulle du graphe — mêmes phrases que le Face-à-face, qui rend la même figure.
 [explorer.target_profile.frag_range_percentiles]
 fr = "10e centile · médiane · 90e centile"
 en = "10th percentile · median · 90th percentile"
 
-[explorer.target_profile.frag_range_no_measure]
-fr = "aucune mesure"
-en = "no measurement"
-
 [explorer.target_profile.frag_range_observed]
 fr = "observé"
 en = "observed"
 
+[explorer.target_profile.section_sample_empty_title]
+fr = "Aucun match en commun"
+en = "No matches in common"
+
 [explorer.target_profile.section_sample_empty]
-fr = "Aucun match en commun avec ce joueur — les comparaisons directes apparaîtront après des parties partagées."
-en = "No matches in common with this player yet — direct comparisons will appear after you play shared games."
+fr = "Les comparaisons directes apparaissent après des parties partagées."
+en = "Direct comparisons appear after shared games."
+
+[explorer.target_profile.no_auth_title]
+fr = "Carrière complète indisponible"
+en = "Full career unavailable"
 
 [explorer.target_profile.no_auth_hint]
-fr = "Connecte un compte Halo pour voir la carrière complète et le profil live de ce joueur."
-en = "Connect a Halo account to see this player's full career and live profile."
+fr = "Un compte Halo connecté ouvre la carrière complète et le profil en direct de ce joueur."
+en = "A connected Halo account opens the full career and live profile of this player."
 
 # Badges par section live (Lot A3 — fin de la dégradation muette). Wording FR
 # sobre demandé par le plan : "Données live indisponibles (authentification)" /

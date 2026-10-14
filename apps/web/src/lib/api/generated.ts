@@ -5992,7 +5992,7 @@ export interface components {
             /** Format: int64 */
             my_assisted_kills: number;
             /** Format: int64 */
-            my_measured_kills: number;
+            my_kills: number;
             /** Format: double */
             parity_pct?: number;
             /** Format: int64 */
@@ -6266,15 +6266,10 @@ export interface components {
             matches_measured: number;
         };
         EmpriseEquipmentFamily: {
-            /** Format: int64 */
-            dropped_lobby?: number;
-            /** Format: int64 */
-            dropped_me?: number;
             family: string;
-            lobby?: components["schemas"]["EmpriseEquipmentOutcomes"];
-            me?: components["schemas"]["EmpriseEquipmentOutcomes"];
-            measured: boolean;
-            rest?: components["schemas"]["EmpriseEquipmentOutcomes"];
+            lobby: components["schemas"]["EmpriseEquipmentOutcomes"];
+            me: components["schemas"]["EmpriseEquipmentOutcomes"];
+            rest: components["schemas"]["EmpriseEquipmentOutcomes"];
         };
         EmpriseEquipmentOutcomes: {
             /** Format: int64 */
@@ -8362,8 +8357,6 @@ export interface components {
             stolen_count: number;
         };
         MatchAssistPairs: {
-            /** Format: int64 */
-            measured_deaths: number;
             pairs: components["schemas"]["MatchAssistPair"][] | null;
         };
         MatchAssociatedMedia: {
@@ -8439,7 +8432,6 @@ export interface components {
             production: components["schemas"]["SquadEmpriseProduction"][] | null;
             resources: components["schemas"]["SquadEmpriseResource"][] | null;
             sheet_unavailable?: string;
-            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
         };
         MatchEncounterBadge: {
             color_token: string;
@@ -8738,12 +8730,6 @@ export interface components {
         };
         MatchLivesPlayer: {
             alone: components["schemas"]["LivesSideCount"];
-            /** Format: int64 */
-            excluded_no_radar: number;
-            /** Format: int64 */
-            excluded_unlocated: number;
-            /** Format: int64 */
-            excluded_unpublishable: number;
             /** Format: int64 */
             matches_read: number;
             /** Format: int64 */
@@ -9961,6 +9947,8 @@ export interface components {
             /** Format: int64 */
             dated: number;
             /** Format: int64 */
+            firstOfCycle: number;
+            /** Format: int64 */
             named: number;
             /** Format: int64 */
             occupations: number;
@@ -10664,8 +10652,6 @@ export interface components {
         };
         RelationAssists: {
             given: components["schemas"]["AssistTiers"];
-            /** Format: int64 */
-            matches_measured: number;
             /** Format: int64 */
             my_frags: number;
             /** Format: int64 */
@@ -11650,7 +11636,6 @@ export interface components {
             production: components["schemas"]["SquadEmpriseProduction"][] | null;
             resources: components["schemas"]["SquadEmpriseResource"][] | null;
             sheet_unavailable?: string;
-            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
         };
         SoloSessionPerfBlock: {
             granularity: string;
@@ -11767,7 +11752,6 @@ export interface components {
             production: components["schemas"]["SquadEmpriseProduction"][] | null;
             resources: components["schemas"]["SquadEmpriseResource"][] | null;
             sheet_unavailable?: string;
-            vehicles?: components["schemas"]["SquadEmpriseVehicles"];
         };
         SquadEmpriseCampOutcomes: {
             them: components["schemas"]["SquadEmpriseOutcomeCounts"];
@@ -11808,9 +11792,7 @@ export interface components {
             resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
             team_known: boolean;
             tiers?: string;
-            unclassified_pickups?: components["schemas"]["SquadEmpriseCount"];
             vehicles?: string;
-            vehicles_reason?: string;
         };
         SquadEmpriseMatchResource: {
             objects: components["schemas"]["SquadEmpriseObject"][] | null;
@@ -11850,38 +11832,11 @@ export interface components {
             used: number;
         };
         SquadEmprisePlacement: {
-            coverage: components["schemas"]["SquadEmprisePlacementCoverage"];
             /** Format: double */
             isolated_from_ratio: number;
             players: components["schemas"]["SquadEmprisePlacementPlayer"][] | null;
             /** Format: int64 */
             productive_from_kills: number;
-        };
-        SquadEmprisePlacementCoverage: {
-            /** Format: int64 */
-            carrier_ms: number;
-            /** Format: int64 */
-            lives_measured: number;
-            /** Format: int64 */
-            lives_total: number;
-            /** Format: int64 */
-            lives_unmeasured: number;
-            /** Format: int64 */
-            matches_total: number;
-            /** Format: int64 */
-            matches_with_placement: number;
-            /** Format: int64 */
-            matches_without_range: number;
-            /** Format: int64 */
-            measured_ms: number;
-            /** Format: int64 */
-            stale_lives: number;
-            /** Format: int64 */
-            team_down_ms: number;
-            /** Format: int64 */
-            teammate_unplaced_ms: number;
-            /** Format: int64 */
-            unplaced_ms: number;
         };
         SquadEmprisePlacementLife: {
             /** Format: int64 */
@@ -11943,29 +11898,6 @@ export interface components {
             /** Format: double */
             share: number;
             taken: components["schemas"]["SquadEmpriseCount"];
-        };
-        SquadEmpriseVehicles: {
-            /** Format: int64 */
-            episodes_no_camp: number;
-            /** Format: int64 */
-            episodes_read: number;
-            /** Format: int64 */
-            episodes_unnamed: number;
-            /** Format: int64 */
-            frags_matches: number;
-            /** Format: int64 */
-            frags_paired: number;
-            /** Format: int64 */
-            frags_total: number;
-            /** Format: int64 */
-            matches_measured: number;
-            /** Format: int64 */
-            matches_not_measured: number;
-            /** Format: double */
-            paired_share?: number;
-            /** Format: int64 */
-            proximity_episodes: number;
-            unavailable?: string;
         };
         SquadEngagementSession: {
             durations_seconds: number[] | null;
@@ -12945,11 +12877,7 @@ export interface components {
             /** Format: int64 */
             matchs_filtres: number;
             /** Format: int64 */
-            matchs_non_cuisables?: number;
-            /** Format: int64 */
             matchs_retenus: number;
-            /** Format: int64 */
-            matchs_sans_rayon?: number;
             /** Format: int64 */
             matchs_victoire: number;
             /** Format: int64 */
@@ -13230,12 +13158,6 @@ export interface components {
         };
         TimeseriesLivesNearTeammate: {
             alone: components["schemas"]["LivesSideCount"];
-            /** Format: int64 */
-            excluded_no_radar: number;
-            /** Format: int64 */
-            excluded_unlocated: number;
-            /** Format: int64 */
-            excluded_unpublishable: number;
             /** Format: int64 */
             matches_read: number;
             /** Format: int64 */
@@ -14185,6 +14107,7 @@ export interface components {
         ZoneGaugeRamp: {
             /** Format: int64 */
             capturingTeam?: number;
+            draining?: boolean;
             /** Format: int64 */
             t0: number;
             /** Format: int64 */
@@ -22365,6 +22288,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Aucune session (code auth_required) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /**
+             * @description Sync initiale désactivée sur l'instance (code initial_sync_disabled), ou
+             *     session sans jetons Halo (code halo_tokens_missing) — jamais un 401 :
+             *     la session est valide.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Une sync est déjà en cours */

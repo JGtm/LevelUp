@@ -43,8 +43,10 @@ type SquadEmprisePlacement struct {
 	ProductiveFromKills int     `json:"productive_from_kills"`
 	// Players : un par joueur de la composition, dans l'ordre des fiches de l'Emprise
 	// (SquadEmpriseBlock.Players), même sans vie mesurée.
-	Players  []SquadEmprisePlacementPlayer `json:"players"`
-	Coverage SquadEmprisePlacementCoverage `json:"coverage"`
+	Players []SquadEmprisePlacementPlayer `json:"players"`
+	// Coverage : la couverture de la lecture, pour son journal (journaliserPlacement) — jamais
+	// publiée : aucun inconnu à l'écran.
+	Coverage SquadEmprisePlacementCoverage `json:"-"`
 }
 
 // SquadEmprisePlacementPlayer — un joueur : ses vies tracées, son gros point, ses quarts.

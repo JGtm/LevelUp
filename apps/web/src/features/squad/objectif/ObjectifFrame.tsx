@@ -68,11 +68,10 @@ export type ObjectifLegendItem =
   | { kind: 'parity'; label: string; color: string }
   | { kind: 'median'; label: string }
   // Onglet Emprise (lot L5) : pastille de prise, pastille vide (bonus perdu), encoche de
-  // dominance, hachure « sans film » — les marques de la maquette de l'onglet.
+  // dominance — les marques de la maquette de l'onglet.
   | { kind: 'dot'; label: string; color: string }
   | { kind: 'ring'; label: string; color: string }
   | { kind: 'notch'; label: string; color: string }
-  | { kind: 'hatch'; label: string }
   // « Frags obtenus avec les ressources » : la barre fine (4 px de haut, maquette).
   | { kind: 'thin'; label: string; color: string }
   // Une entrée sans marque : la clé d'une abréviation écrite sous le graphe (« B : Bases »).
@@ -136,17 +135,6 @@ function LegendMark({ item }: { item: ObjectifLegendItem }) {
       return <span className="inline-block h-1 w-[11px] rounded-[2px]" style={{ backgroundColor: item.color }} aria-hidden />
     case 'notch':
       return <span className="inline-block h-[11px] w-[3px] rounded-[1px]" style={{ backgroundColor: item.color }} aria-hidden />
-    case 'hatch':
-      return (
-        <span
-          className="inline-block h-[11px] w-[11px] rounded-[2px] bg-muted"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in oklab, var(--muted-foreground) 70%, transparent) 4px 6px)', // color-allow: hachure « sans film » de la légende (maquette de l'onglet Emprise)
-          }}
-          aria-hidden
-        />
-      )
   }
 }
 

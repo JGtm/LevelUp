@@ -159,6 +159,19 @@ const deployVariant = "ds"
 //	Detachment  1437677928 (0x55B13968) -> fo09_academy
 //	Argyle      426470249  (0x196B6B69) -> fo11_blank   (couvre aussi « Argyle - Ranked »,
 //	            même level_id, clé normalisée `argyle`)
+//
+// Serenity - Ranked, Interference et Vacancy - Ranked (2026-10-09) : cartes Forge dont la seule
+// variante disponible est celle que la chaîne des films dépose au cache de données
+// (`<cache>/mvar/<map_id>/map.mvar`). Même méthode level_id, unicité 1/1 chacune, rejouée par
+// `himap.TestPreuveLevelIDCartesDuCache` :
+//
+//	Serenity - Ranked  88891201    (0x054C5F41) -> fo08_wetland
+//	Interference       -992358985  (0xC4D9CDB7) -> fo13_frost
+//	Vacancy - Ranked   1437677928  (0x55B13968) -> fo09_academy
+//
+// Ce sont les canevas que `himap.CartesForge` déclare pour les fonds de Serenity, Interference et
+// Vacancy. Les clés normalisées (`serenity`, `interference`, `vacancy`) couvrent la base et sa
+// variante « - Ranked ».
 var mapModule = map[string]string{
 	"Absolution":          "fo09_academy",
 	"Aquarius":            "ctf_aquarius",
@@ -199,6 +212,7 @@ var mapModule = map[string]string{
 	"Houseki":             "fo09_academy",
 	"Illusion":            "ctf_illusion",
 	"Insolence":           "fo09_academy",
+	"Interference":        "fo13_frost",
 	"Isolation":           "fo08_wetland",
 	"Kaiketsu":            "fo05_desert",
 	"Kiken'na":            "fo08_wetland",
@@ -223,6 +237,7 @@ var mapModule = map[string]string{
 	"Salvation":           "fo11_blank",
 	"Scarlett's Landing":  "fo08_wetland",
 	"Scarr":               "btb_engine",
+	"Serenity - Ranked":   "fo08_wetland",
 	"Shiro":               "fo05_desert",
 	"Shogun":              "fo11_blank",
 	"Smallhalla":          "fo08_wetland",
@@ -237,6 +252,7 @@ var mapModule = map[string]string{
 	"Threshold":           "fo11_blank",
 	"Thunderhead":         "fo08_wetland",
 	"Urban Raid":          "fo09_academy",
+	"Vacancy - Ranked":    "fo09_academy",
 	"Vagabond":            "fo08_wetland",
 	"Vallaheim Firefight": "fo05_desert",
 	"Warehouse":           "fo11_blank",

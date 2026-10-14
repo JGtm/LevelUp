@@ -18,7 +18,6 @@ import type { EmpriseMatchIndex, ControlRow, MatchGrid, ResourceFil } from '@/fe
 import { buildControlRows, buildMatchGrid, buildResourceFil } from '@/features/squad/emprise/emprise.logic'
 import { gridHasFilmRows } from '@/features/squad/emprise/empriseContent'
 import { buildProductionRows, buildYieldRows, type ProductionRow, type YieldRow } from '@/features/squad/emprise/production.logic'
-import { buildVehicleCoverage, type VehicleCoverage } from '@/features/squad/emprise/vehicles.logic'
 import { buildSquadToolRows, type SquadToolKindLabels } from '@/features/squad/charts/squadFragTools'
 import { objectiveMatches } from '@/features/squad/formes/model/objectives'
 import {
@@ -124,7 +123,6 @@ export interface SessionEmpriseModels {
   mine: MinePickups | null
   production: ProductionRow[]
   yieldRows: YieldRow[]
-  vehicleCoverage: VehicleCoverage | null
   lives: LivesModel | null
   equipment: EquipmentRow[]
   /** Le bloc d'objectif, seulement quand la session a au moins un match à objectif. */
@@ -149,7 +147,6 @@ export function buildSessionEmpriseModels(
     mine: block ? buildMinePickups(block, nameOf) : null,
     production: block ? buildProductionRows(block) : [],
     yieldRows: block ? buildYieldRows(block) : [],
-    vehicleCoverage: block ? buildVehicleCoverage(block) : null,
     lives: buildLivesModel(col.lives),
     equipment: block ? buildEquipmentRows(block) : [],
     objective,

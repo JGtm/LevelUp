@@ -48,7 +48,7 @@ var occurrencesDeLaVueRestantes = map[string]int{
 	"validation/gate.go":                                  2, // le gate vérifie que la vue existe (libellé + nom)
 	// ── Lectures consignées (lot L7, plan perf §9 ter, journal (a) à (f)) : coût mesuré, non
 	// mécaniques ou hors pages, chacune à retirer avec sa lecture.
-	"platform/duckdb/explorer_repo.go":          1, // Explorer : ResolveXUIDByGamertag, un joueur cherché par NOM — plus lue par la Carrière (amis : career_repo_friends.go, lot L9-go)
+	"platform/duckdb/explorer_repo_resolve.go":  1, // Explorer : ResolveXUIDByGamertag, un joueur cherché par NOM, dernier recours après l'alias et le participant (2026-10-09) — plus lue par la Carrière (amis : career_repo_friends.go, lot L9-go)
 	"platform/duckdb/leaderboard_world_repo.go": 1, // classement mondial
 	"platform/duckdb/media_repo_filters.go":     1, // Médias : lobbies des matchs
 	// Lot A du plan perf « lectures par périmètre » (2026-09-26, ADR 0036) : vue match (Q12,

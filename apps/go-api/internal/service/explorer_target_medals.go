@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -103,7 +104,9 @@ func (s *ExplorerService) computeTargetTopMedalsLocal(
 	if len(matchIDs) == 0 {
 		return nil
 	}
+	stop := timing.FromContext(ctx).Section("explorer_top_medals_local")
 	counts, err := s.repo.GetTopMedalsForMatches(ctx, targetXUID, matchIDs, explorerTopMedalsCap)
+	stop()
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_top_medals_local_failed",
 			"xuid", targetXUID, "matches", len(matchIDs), "err", err)

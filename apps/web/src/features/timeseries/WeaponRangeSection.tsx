@@ -209,7 +209,6 @@ function useWeaponRangeOption(lines: WeaponRangeLine[], f: RangeFormats, t: Tran
         top: t('synthesis.weapon_range.side_kills'),
         bottom: t('synthesis.weapon_range.side_deaths'),
         percentiles: t('synthesis.weapon_range.percentiles'),
-        noMeasure: t('synthesis.weapon_range.no_measure'),
       },
     })
   }, [lines, f, t])

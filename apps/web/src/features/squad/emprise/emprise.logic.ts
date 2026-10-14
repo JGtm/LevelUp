@@ -337,14 +337,11 @@ export type GridCell =
   | { kind: 'value'; us: number; them: number; share: number; who: GridWho[]; padsEmptied?: number }
   /** Rien à prendre : l'objet (ou la ressource) n'était pas sur cette carte, ou personne ne l'a pris. */
   | { kind: 'none' }
-  /** Film non décodé : rien à lire pour une ligne qui vient du film. */
-  | { kind: 'nofilm' }
-  /** Film décodé, mais notre camp inconnu (chacun pour soi, camp absent) : rien ne se partage. */
-  | { kind: 'noteam' }
-  /** Film décodé, mais niveaux de socle non établis : armes spéciales et râteliers ne se séparent pas. */
-  | { kind: 'untiered'; tiers: string }
-  /** Véhicules non mesurés sur ce match (D8) : l'occupation n'a pas été lue ; `reason` = la raison machine du Go. */
-  | { kind: 'unmeasured'; reason: string }
+  /**
+   * Case vide, sans texte ni infobulle : le match ne porte pas ce compte (sans film, camp inconnu,
+   * niveaux de socle non établis, véhicules non lus). Jamais un zéro, jamais une raison écrite.
+   */
+  | { kind: 'blank' }
 
 export interface GridRow {
   /** Objet de la soirée (lignes d'objet) ; absent pour les lignes de synthèse et de frags. */
@@ -376,19 +373,16 @@ function valueCell(taken: SquadEmpriseCount | undefined, who: GridWho[], padsEmp
   return { kind: 'value', us: taken.us, them: taken.them, share: taken.us / n, who, padsEmptied }
 }
 
+const BLANK: GridCell = { kind: 'blank' }
+
 /**
- * La case d'une ligne qui vient du film, avant toute valeur : sans film, camp inconnu, niveaux
- * non établis. Filmé au camp inconnu, un match n'a aucun compte camp contre camp : « camp
- * inconnu », jamais « rien à prendre ».
+ * La case d'une ligne qui vient du film, avant toute valeur : vide quand le match ne porte pas le
+ * compte camp contre camp (sans film, camp inconnu, niveaux de socle non établis, véhicules non
+ * lus) — jamais « rien à prendre », qui serait un zéro.
  */
 function filmGate(m: SquadEmpriseMatch, resource: string): GridCell | null {
-  // Les véhicules viennent de l'artefact, pas du résumé d'usage : leur état est celui du match (D8).
-  if (resource === RESOURCE_VEHICLE) {
-    return readable(m, resource) ? null : { kind: 'unmeasured', reason: m.vehicles_reason ?? '' }
-  }
-  if (!m.has_film) return { kind: 'nofilm' }
-  if (!m.team_known) return { kind: 'noteam' }
-  if (resource !== RESOURCE_POWERUP && m.tiers !== TIERS_MEASURED) return { kind: 'untiered', tiers: m.tiers ?? '' }
+  if (!readable(m, resource)) return BLANK
+  if (resource !== RESOURCE_VEHICLE && resource !== RESOURCE_POWERUP && m.tiers !== TIERS_MEASURED) return BLANK
   return null
 }
 

@@ -153,19 +153,16 @@ func applyAppendOnlyMatchEnrichment(db *sql.DB) error {
 		return fmt.Errorf("append-only pme: check id column: %w", err)
 	}
 	if hasID {
-		// Déjà append-only : (ré)assurer la vue + l'index lookup (idempotent).
+		// Déjà append-only : (ré)assurer la vue (idempotent).
 		if _, err := db.ExecContext(ctx, buildPMELatestViewSQL()); err != nil {
 			return fmt.Errorf("append-only pme: refresh view: %w", err)
 		}
 		return nil
 	}
 
+	// Aucun index secondaire après le swap (PlayerRetiredSecondaryIndexesDropSQL).
 	if err := swapMatchEnrichmentAppendOnlyTx(ctx, db); err != nil {
 		return err
-	}
-	if _, err := db.ExecContext(ctx,
-		`CREATE INDEX IF NOT EXISTS idx_pme_match_lookup ON player_match_enrichment(match_id, written_at)`); err != nil {
-		return fmt.Errorf("append-only pme: create idx_pme_match_lookup: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, buildPMELatestViewSQL()); err != nil {
 		return fmt.Errorf("append-only pme: create view: %w", err)

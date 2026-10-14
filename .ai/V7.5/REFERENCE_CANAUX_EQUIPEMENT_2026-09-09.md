@@ -187,7 +187,7 @@ les trois canaux existent — mais « utilisé » y a une troisième définition
 
 | Issue | Canal | Réserve |
 |---|---|---|
-| Prise | `padPickups` (ramasseur nommé depuis le schéma 30), `pickups` (événement natif `biped_pickup`, attribué), `weaponChanges` (qualifie prise / lâcher / échange) | Les trois se recoupent : là où deux voient la même prise, ils s'accordent (21/21 et 11/12, à moins de 500 ms) |
+| Prise | `padPickups` (ramasseur nommé depuis le schéma 30), `pickups` (événement natif `biped_pickup`, attribué), `weaponChanges` (qualifie prise / lâcher / échange) | Les trois se recoupent : là où deux voient la même prise, ils s'accordent (21/21 et 11/12, à moins de 500 ms). **Depuis le schéma 91 (2026-10-09)**, une occupation de socle dont la fenêtre porte plusieurs ramassages se date par la règle de jeu « une seule prise de socle par réapparition » : la première prise faite AU socle (1,5 m) dans le cycle de l'arme, repli `repli_prise_de_socle_premiere_du_cycle`, compté `coverage.padDating.firstOfCycle` (`replay/pad_pickup_dating_cycle.go`) |
 | Utilisée | `shots` — l'arme a tiré au moins une fois | Une arme prise et jamais tirée est un gâchis net |
 | Lâchée | `weaponChanges` sur un lâcher — et la frame jusqu'à laquelle l'arme reste montrable au sol | Les ré-annonces d'une arme déjà portée au spawn sont écartées |
 
@@ -326,8 +326,12 @@ Tous passent par `platform/duckdb/session_usage_repo.go`, sur les vues `_latest`
   `squad_emprise` de `/pages/teammates` (`domain/teammates.go:608`). Service
   `service/teammates/teammates_service_emprise.go` : résumé d'usage par `squadagg.LireUsage`
   (lecture partagée avec `formes_retenues`, `teammates_service_usage.go:77`), niveaux de socle
-  (l. 144), et frags aux armes spéciales de la FEUILLE DE MATCH, hors film
-  (`match_participants.power_weapon_kills`, `platform/duckdb/squad_emprise_repo.go:45-47`).
+  (l. 144), et frags aux armes spéciales (`analysis/squademprise/special_frags.go`, 2026-10-09) :
+  sur un match aux niveaux de socle mesurés et au journal des morts publiable, les frags du JOURNAL
+  DU FILM aux armes des socles de puissance de CE match (`match_kill_events_latest`,
+  `platform/duckdb/squad_emprise_journal_repo.go`) ; ailleurs la FEUILLE DE MATCH
+  (`match_participants.power_weapon_kills`), dont la liste d'armes de puissance est celle du jeu,
+  pas celle des socles (le Needler d'un socle de puissance n'y compte pas).
   Calcul pur `analysis/squademprise/` : les BONUS (camouflage, surbouclier :
   `sessionusage.PowerupFamilies`) y lisent prises, gardés et lâchés
   (`sessionusage.PlayerOutcomeCounts`), temps d'effet et frags pendant l'effet

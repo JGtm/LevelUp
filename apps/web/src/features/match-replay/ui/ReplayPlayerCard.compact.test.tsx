@@ -277,22 +277,16 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     expect(mike.style.background).toContain('var(--ac-destructive)')
   })
 
-  it('(d) cellules rendues VIDES quand la donnée manque — un seul `role=img`, la lacune de capacité', () => {
+  it('(d) cellules rendues VIDES quand la donnée manque — aucun `role=img`, aucune lacune écrite', () => {
     const { vue } = renderBTB(12)
     const bravo = tuile(vue, 'Bravo')
-    // FUSION feat/v75 (correctif P0-2 du lot « vies anonymes », 2026-09-06) : le SEUL `role=img`
-    // de la tuile est la LACUNE de capacité. La fixation avait été prise avant ce correctif,
-    // quand la cellule de capacité ne rendait rien du tout sur une vie sans lecture. Elle rend
-    // désormais le même glyphe neutre que les armes non lues (`ReplayAbilityCell`, gardé par
-    // `doc.abilities.length > 0`) : une lacune DÉCLARÉE, jamais une donnée d'une vie précédente.
-    const glyphes = [...bravo.querySelectorAll('[role="img"]')] as HTMLElement[]
-    expect(glyphes.map((g) => g.getAttribute('aria-label'))).toEqual([
-      'capacité non lue sur cette vie',
-    ])
+    // Une vie sans lecture de capacité ne rend RIEN dans sa cellule (règle du 2026-10-09 : aucune
+    // lacune écrite), jamais la capacité d'une vie précédente du slot (correctif P0-2).
+    expect(bravo.querySelectorAll('[role="img"]')).toHaveLength(0)
     // La cellule d'arme, vide, à 48 px : la grille des tuiles ne bouge pas.
     const cellulesVides = [...bravo.querySelectorAll('span[aria-hidden]')] as HTMLElement[]
     expect(cellulesVides.map((c) => c.style.width)).toContain('48px')
-    expect(within(bravo).getByTitle('armes non lues sur cette vie')).toBeTruthy()
+    expect(within(bravo).queryByTitle(/non lue/)).toBeNull()
   })
 
   it('(e) grenades non lues → rien : ni compte, ni vignette, ni infobulle de stock', () => {
@@ -439,11 +433,11 @@ describe('ReplayPlayerCard — la tuile compacte : gate 3 (ce qui quitte la tuil
     expect(cellule.hasAttribute('title')).toBe(false)
     expect(within(alpha).getByRole('img', { name: 'Fusil' })).toBeTruthy()
     expect(within(alpha).queryByRole('img', { name: 'Pistolet' })).toBeNull()
-    // La cellule vide du loadout non lu : une seule, à 48 px, sous « armes non lues ».
+    // La cellule vide du loadout sans lecture : une seule, à 48 px, sans texte de lacune.
     const bravo = tuile(vue, 'Bravo')
-    const nonLu = within(bravo).getByTitle('armes non lues sur cette vie')
-    expect(nonLu.querySelectorAll('span[aria-hidden]')).toHaveLength(1)
-    expect((nonLu.querySelector('span[aria-hidden]') as HTMLElement).style.width).toBe('48px')
+    const vides = ([...bravo.querySelectorAll('span[aria-hidden]')] as HTMLElement[]).filter((e) => e.style.width === '48px')
+    expect(vides).toHaveLength(1)
+    expect(within(bravo).queryByTitle(/non lue/)).toBeNull()
     // Ligne 3 : arme 48 · grenade 14 · capacité 16, et rien d'autre à largeur fixe dans le
     // CORPS (l'incrustation d'effets, `aria-hidden`, a ses propres largeurs d'éclairs).
     const largeurs = [...rangees(bravo)[1].querySelectorAll('[style*="width"]')]

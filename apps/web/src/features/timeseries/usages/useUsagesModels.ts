@@ -40,8 +40,8 @@ export function useUsagesModels(data: TimeseriesPageResponse, locale: Locale, ha
   // infobulles — jamais « moi ».
   const player = models.block?.players?.[0]?.gamertag || ut.cards.playerFallback
   const equipmentLabel = useCallback(
-    (family: string) => ut.cards.equipment.unmeasuredNames[family] ?? equipmentFamilyLabel(family, usageText),
-    [ut, usageText],
+    (family: string) => equipmentFamilyLabel(family, usageText),
+    [usageText],
   )
 
   const families = FORMES_CARDS_TEXT[locale].families

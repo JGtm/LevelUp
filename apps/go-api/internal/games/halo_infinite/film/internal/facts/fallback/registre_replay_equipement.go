@@ -5,6 +5,9 @@ package fallback
 
 const pkgReplay = "internal/games/halo_infinite/film/replay/"
 
+// dateLotNeedler : le jour du lot qui pose la regle de la premiere prise de socle du cycle.
+const dateLotNeedler = "2026-10-09"
+
 var registreReplayEquipement = []Repli{
 	{
 		Nom:       "repli_piece_engendree_sans_evenement",
@@ -220,16 +223,18 @@ var registreReplayEquipement = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_plafond_grenade_par_defaut",
-		Fait:      "le plafond de grenades porte par un joueur, qui borne la lecture d'inventaire",
-		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte",
+		Nom:  "repli_plafond_grenade_par_defaut",
+		Fait: "le plafond de grenades porte par un joueur, qui borne la lecture d'inventaire PAR LA FENETRE",
+		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte, aux seules " +
+			"regles d'ancrage de la fenetre derriere la lecture (records bipedes non admis, lot D1.2 de 2.7.d1 ; la grammaire " +
+			"lit les compteurs d i22 sans plafond) ; compte une fois par film quand un record non admis a ete donne a la fenetre",
 		Condition: CondInconditionnel,
 		Ordre:     OrdreSansLecture,
 		// DEUX SITES DEPUIS LE LOT J4.2 (2026-09-26) : la lecture d inventaire est descendue en
 		// `grammar`, qui APPLIQUE le defaut et ne compte pas (ADR 0034 D-4) ; l appelant de
 		// production, `replay`, le COMPTE sur la meme condition (plafond non fourni).
 		Sites: []Site{
-			{Fichier: pkgFilmdec + "inventory_decode.go", Ancre: "grenMax = DefaultGrenadeMax"},
+			{Fichier: pkgFilmdec + "keyframe_etats_scan.go", Ancre: "grenMax = DefaultGrenadeMax"},
 			{Fichier: pkgReplay + "film_scan.go", Ancre: "s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)"},
 		},
 		DatePose:        dateAudit0E,
@@ -284,6 +289,31 @@ var registreReplayEquipement = []Repli{
 		DatePose:        date0927,
 		CibleRetrait:    "conversion le jour ou une lecture du lacher est trouvee (evenement natif ou composant de l objet) ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
 		CritereRetrait:  "origine lue dans le film pour chaque objet au sol publie `dropped`, ET 0 declenchement sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
+	{
+		// LOT NEEDLER DES AJUSTEMENTS (2026-10-09) : la regle de jeu posee par l utilisateur (une
+		// seule prise de socle par reapparition de l arme) tranche les fenetres que la lecture du
+		// canal natif laisse ambigues.
+		Nom:  "repli_prise_de_socle_premiere_du_cycle",
+		Fait: "quel ramassage natif date et nomme une occupation de socle d arme quand sa fenetre en porte plusieurs, ou un que d autres occupations revendiquent",
+		Mecanisme: "le premier ramassage de la famille du socle fait apres l apparition de l occupation et avant l apparition suivante du socle, " +
+			"ramasseur a moins de 1,5 m (originDropMaxDist) du socle ; un ramassage plus tot non localise, ou designe pour deux occupations, " +
+			"fait s abstenir ; un ramassage date par la lecture n est jamais repris ; compte = occupations ainsi datees (coverage.padDating.firstOfCycle)",
+		// LE NEGATIF QUI L OUVRE : l evenement natif `biped_pickup` ne porte pas l instance de l objet
+		// ramasse (hypothese mesuree et refutee, en-tete de `replay/pad_pickup_dating.go`).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "pad_pickup_dating_cycle.go",
+			Ancre:   "func premieresPrisesDuCycle(in entreesDuCycle, fenetres [][]int, retenu []int) int {",
+		}, {
+			Fichier: pkgReplay + "build_calques.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomPriseDeSoclePremiereDuCycle, padDating.FirstOfCycle)",
+		}},
+		DatePose:        dateLotNeedler,
+		CibleRetrait:    "conversion le jour ou le film designe l objet ramasse (instance dans l evenement natif, ou suppression d entite isolable a l instant de la prise)",
+		CritereRetrait:  "chaque occupation datee par une lecture de l objet ramasse, ET coverage.padDating.firstOfCycle a 0 sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
 }

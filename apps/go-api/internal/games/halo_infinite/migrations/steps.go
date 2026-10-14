@@ -1464,8 +1464,6 @@ func Steps() []migration.Migration {
 						computed_at     TIMESTAMP NOT NULL DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 						PRIMARY KEY (match_id, component_name)
 					);
-					CREATE INDEX IF NOT EXISTS idx_lch_component ON lusr_component_history(component_name);
-					CREATE INDEX IF NOT EXISTS idx_lch_match ON lusr_component_history(match_id);
 				`)
 			},
 		},

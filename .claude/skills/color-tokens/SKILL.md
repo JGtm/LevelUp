@@ -79,11 +79,15 @@ passe par ces cinq jetons, dans toutes les pages :
 
 `impact-gain-1..4` et `impact-loss-1..3` : rampes ordinales des rôles d'impact (graphe « Points
 d'impact par soirée et par rôle », Escouade › Contributions). Pas 1 = plus fort barème, contre
-l'axe, le plus contrasté sur la carte. Valeurs dans `palettes/_impactRoleColors.ts`, INVARIANTES
-par palette (le rôle se lit à la clarté et au côté de l'axe) ; la valeur sombre est posée par
-`paletteForTheme` (ThemeProvider), c'est le seul mécanisme de jeton thème-dépendant : un nouveau
-jeton qui en a besoin s'y ajoute, jamais par un `isDark` dans un graphe. Garde-fou :
-`lib/accessibility/impactRoleTokens.test.ts`.
+l'axe, le plus contrasté sur la carte. Valeurs dans `palettes/_impactRoleColors.ts`, une paire
+de rampes (claire + jumelle sombre) PAR PALETTE, dans les teintes de ses `divergent-pos` /
+`divergent-neg` : vert / rouge (défaut), bleu / vermillon (Okabe-Ito, Cividis), bleu / rouge Tol
+(Tol Bright). La palette porte la rampe claire ; `paletteForTheme` (ThemeProvider) pose la jumelle
+sombre, c'est le seul mécanisme de jeton thème-dépendant : un nouveau jeton qui en a besoin s'y
+ajoute, jamais par un `isDark` dans un graphe. Garde-fous : `lib/accessibility/impactRoleTokens.test.ts`
+(par palette et par thème : ordre des contrastes, pas pâle ≥ 2:1, voisins ΔE ≥ 15 en vision normale
+et sous daltonisme, teinte) et `app/providers/theme-provider-impact.test.tsx` (valeurs écrites sur
+`:root` au basculement).
 
 ## Exceptions tolérées (avec commentaire justificatif)
 

@@ -28,9 +28,8 @@ func ligne(match string, camp int, xuid, famille string, prises int, ms int64, f
 }
 
 // passeMesuree — la passe d'un match mesuré dont les frags d'engin sont appariés.
-func passeMesuree(match string, total, sansEpisode int) VehiclePass {
-	return VehiclePass{MatchID: match, Measured: true, DocSchema: 71, FragsRead: true,
-		FragsTotal: total, FragsUnmatched: sansEpisode}
+func passeMesuree(match string, total int) VehiclePass {
+	return VehiclePass{MatchID: match, Measured: true, DocSchema: 71, FragsRead: true, FragsTotal: total}
 }
 
 func fragsDuCamp(match string, camp *int, n int) VehicleFragRow {
@@ -41,14 +40,10 @@ func fragsDuCamp(match string, camp *int, n int) VehicleFragRow {
 // Ghost) ; camp 1 : E1 (2 Warthog), E2 (1 Banshee). 10 frags d'engin dont 4 tombent pendant un
 // épisode (tous chez nous) ; les événements donnent 6 au camp 0, 3 au camp 1 et 1 à un tueur sans camp.
 func vehiculesUnMatch() *VehicleRead {
-	pass := passeMesuree("m1", 10, 6)
-	pass.EpisodesRead, pass.EpisodesUnnamed, pass.EpisodesNoCamp = 9, 2, 1
-	proche := ligne("m1", 0, "P", warthog, 2, 120_000, 3)
-	proche.ProximityEpisodes = 1
 	return &VehicleRead{
-		Passes: []VehiclePass{pass},
+		Passes: []VehiclePass{passeMesuree("m1", 10)},
 		Rows: []VehicleRow{
-			proche,
+			ligne("m1", 0, "P", warthog, 2, 120_000, 3),
 			ligne("m1", 0, "A", warthog, 1, 60_000, 1),
 			ligne("m1", 0, "R", ghost, 1, 30_000, 0),
 			ligne("m1", 1, "E1", warthog, 2, 90_000, 0),
@@ -162,11 +157,6 @@ func TestVehicules_FragsEtRendementSurLesFragsApparies(t *testing.T) {
 		t.Errorf("rendement chez eux = %v, écart = %v ; attendu 0 mesuré et pas d'écart relatif (diviseur nul)",
 			p.YieldThem, p.RelativeGap)
 	}
-	cov := b.Vehicles
-	if cov == nil || cov.FragsMatches != 1 || cov.FragsTotal != 10 || cov.FragsPaired != 4 ||
-		cov.PairedShare == nil || math.Abs(*cov.PairedShare-0.4) > 1e-9 {
-		t.Errorf("couverture des frags = %+v, attendu 4 appariés sur 10 (0,4)", cov)
-	}
 }
 
 // TestVehicules_PerimetreCommunDuRendement — D9 : un match dont les frags n'ont pas été appariés, ou
@@ -188,9 +178,9 @@ func TestVehicules_PerimetreCommunDuRendement(t *testing.T) {
 	// c : aucun frag d'engin ; d : 3 frags dont 1 sans épisode.
 	sansFrags := VehiclePass{Measured: true, FragsRead: false, FragsReason: "no_kill_source"}
 	ajouter("a", sansFrags, false, ligne("a", 0, "P", warthog, 1, 100_000, 0))
-	ajouter("b", passeMesuree("b", 4, 0), false, ligne("b", 0, "P", warthog, 1, 100_000, 0))
-	ajouter("c", passeMesuree("c", 0, 0), false, ligne("c", 0, "P", ghost, 1, 60_000, 0))
-	ajouter("d", passeMesuree("d", 3, 1), true, ligne("d", 0, "P", warthog, 1, 120_000, 2))
+	ajouter("b", passeMesuree("b", 4), false, ligne("b", 0, "P", warthog, 1, 100_000, 0))
+	ajouter("c", passeMesuree("c", 0), false, ligne("c", 0, "P", ghost, 1, 60_000, 0))
+	ajouter("d", passeMesuree("d", 3), true, ligne("d", 0, "P", warthog, 1, 120_000, 2))
 	read.Frags = []VehicleFragRow{fragsDuCamp("d", equipe(0), 2), fragsDuCamp("d", equipe(1), 1)}
 
 	b := Build(in)
@@ -202,9 +192,6 @@ func TestVehicules_PerimetreCommunDuRendement(t *testing.T) {
 	}
 	if p.YieldUs == nil || math.Abs(*p.YieldUs-2/3.0) > 1e-9 {
 		t.Errorf("rendement = %v, attendu 2 frags par 3 min", p.YieldUs)
-	}
-	if cov := b.Vehicles; cov.MatchesMeasured != 4 || cov.FragsMatches != 2 || cov.FragsTotal != 3 || cov.FragsPaired != 2 {
-		t.Errorf("couverture = %+v, attendu 4 matchs mesurés dont 2 au périmètre du rendement, 2 frags appariés sur 3", cov)
 	}
 	// Les prises de a et b restent comptées : seul le rendement les écarte.
 	if r := ressource(b, domain.EmpriseResourceVehicle); r == nil || r.Taken.Us != 4 {
@@ -222,24 +209,20 @@ func TestVehicules_NonMesureEtZeroMesure(t *testing.T) {
 	}
 	in.Vehicles = &VehicleRead{
 		Passes: []VehiclePass{
-			passeMesuree("m1", 0, 0), // zéro mesuré
-			{MatchID: "m3", Measured: false, Reason: "schema_before_67"},
-			passeMesuree("m4", 0, 0), // camp du joueur inconnu
+			passeMesuree("m1", 0), // zéro mesuré
+			{MatchID: "m3", Measured: false},
+			passeMesuree("m4", 0), // camp du joueur inconnu
 		},
 		Rows:       []VehicleRow{ligne("m4", 0, "P", warthog, 5, 50_000, 0)},
 		EventsRead: map[string]bool{},
 		PlayerTeam: map[string]int{"m1": 0, "m3": 0},
 	}
 	b := Build(in)
-	want := []struct{ etat, raison string }{
-		{domain.EmpriseVehiclesMeasured, ""},
-		{domain.EmpriseVehiclesNotMeasured, domain.EmpriseVehiclesNoPass},
-		{domain.EmpriseVehiclesNotMeasured, "schema_before_67"},
-		{domain.EmpriseVehiclesNotMeasured, domain.EmpriseVehiclesTeamUnknown},
-	}
+	want := []string{domain.EmpriseVehiclesMeasured, domain.EmpriseVehiclesNotMeasured, domain.EmpriseVehiclesNotMeasured,
+		domain.EmpriseVehiclesNotMeasured}
 	for i, w := range want {
-		if m := b.Matches[i]; m.Vehicles != w.etat || m.VehiclesReason != w.raison {
-			t.Errorf("match %s : état %q raison %q, attendu %q %q", m.MatchID, m.Vehicles, m.VehiclesReason, w.etat, w.raison)
+		if m := b.Matches[i]; m.Vehicles != w {
+			t.Errorf("match %s : état %q, attendu %q", m.MatchID, m.Vehicles, w)
 		}
 	}
 	if ressource(b, domain.EmpriseResourceVehicle) != nil || len(objetsDe(b.Objects, domain.EmpriseResourceVehicle)) != 0 {
@@ -247,19 +230,6 @@ func TestVehicules_NonMesureEtZeroMesure(t *testing.T) {
 	}
 	if productionDe(b, domain.EmpriseResourceVehicle) != nil {
 		t.Errorf("production véhicules publiée sans frag ni temps à bord : %+v", b.Production)
-	}
-	if cov := b.Vehicles; cov == nil || cov.MatchesMeasured != 1 || cov.MatchesNotMeasured != 3 {
-		t.Errorf("couverture = %+v, attendu 1 mesuré, 3 non mesurés", cov)
-	}
-}
-
-// TestVehicules_CouvertureDesEpisodes — D10 : les épisodes sans joueur nommé, sans camp et datés par
-// proximité sont comptés en couverture, jamais en prise.
-func TestVehicules_CouvertureDesEpisodes(t *testing.T) {
-	cov := Build(avecVehicules(vehiculesUnMatch())).Vehicles
-	if cov == nil || cov.EpisodesRead != 9 || cov.EpisodesUnnamed != 2 || cov.EpisodesNoCamp != 1 ||
-		cov.ProximityEpisodes != 1 || cov.MatchesMeasured != 1 || cov.MatchesNotMeasured != 0 {
-		t.Errorf("couverture = %+v, attendu 9 lus dont 2 sans nom, 1 sans camp, 1 par proximité", cov)
 	}
 }
 
@@ -285,19 +255,12 @@ func TestVehicules_IndependantDuFilm(t *testing.T) {
 	}
 }
 
-// TestVehicules_NonLueOuEnEchec — ressource non lue (titre sans la capability) : rien, ni état de
-// match ni couverture ; lecture en échec : la couverture le dit, aucune donnée.
-func TestVehicules_NonLueOuEnEchec(t *testing.T) {
+// TestVehicules_NonLue — ressource non lue (titre sans la capability, ou lecture en échec) : rien,
+// ni état de match ni ressource.
+func TestVehicules_NonLue(t *testing.T) {
 	b := Build(entreeUnMatch())
-	if b.Vehicles != nil || b.Matches[0].Vehicles != "" || ressource(b, domain.EmpriseResourceVehicle) != nil {
-		t.Errorf("ressource non lue publiée : %+v / %q", b.Vehicles, b.Matches[0].Vehicles)
-	}
-	in := entreeUnMatch()
-	in.VehiclesUnavailable = domain.EmpriseVehiclesLoadFailed
-	b = Build(in)
-	if b.Vehicles == nil || b.Vehicles.Unavailable != domain.EmpriseVehiclesLoadFailed || b.Vehicles.MatchesMeasured != 0 ||
-		b.Matches[0].Vehicles != "" {
-		t.Errorf("échec de lecture = %+v, attendu la raison et rien d'autre", b.Vehicles)
+	if b.Matches[0].Vehicles != "" || ressource(b, domain.EmpriseResourceVehicle) != nil {
+		t.Errorf("ressource non lue publiée : %q", b.Matches[0].Vehicles)
 	}
 }
 
@@ -326,7 +289,7 @@ func TestVehicules_Habitude(t *testing.T) {
 	in.Timeline = append(in.Timeline, in.Current...)
 	soireeFilmee(&in, "a", t0.Add(-72*time.Hour), "Assassin", 3, 1)
 	in.Vehicles = &VehicleRead{
-		Passes:     []VehiclePass{passeMesuree("a-Assassin", 0, 0)},
+		Passes:     []VehiclePass{passeMesuree("a-Assassin", 0)},
 		Rows:       []VehicleRow{ligne("a-Assassin", 0, "P", warthog, 3, 1000, 0), ligne("a-Assassin", 1, "E1", warthog, 1, 1000, 0)},
 		EventsRead: map[string]bool{},
 		PlayerTeam: map[string]int{"a-Assassin": 0},
@@ -384,21 +347,13 @@ func TestVehicules_TempsABordSansPrise(t *testing.T) {
 	}
 }
 
-// TestVehicules_ZeroFragSansPartApparie — revue L7.5, RV4 : sur un périmètre mesuré où AUCUN frag
-// d'engin n'est compté, la part appariée reste ABSENTE (0 / 0 n'est pas un nombre) ; sinon elle
-// vaudrait NaN et la page ne se sérialiserait plus.
-func TestVehicules_ZeroFragSansPartApparie(t *testing.T) {
+// TestVehicules_ZeroFragSerialisable — revue L7.5, RV4 : sur un périmètre mesuré où AUCUN frag
+// d'engin n'est compté, aucun rapport 0 / 0 ne se publie : le bloc reste sérialisable.
+func TestVehicules_ZeroFragSerialisable(t *testing.T) {
 	read := vehiculesUnMatch()
-	read.Passes = []VehiclePass{passeMesuree("m1", 0, 0)}
+	read.Passes = []VehiclePass{passeMesuree("m1", 0)}
 	read.Frags = nil
 	b := Build(avecVehicules(read))
-	cov := b.Vehicles
-	if cov == nil || cov.MatchesMeasured != 1 || cov.FragsTotal != 0 {
-		t.Fatalf("couverture = %+v, attendu un match mesuré sans frag d'engin", cov)
-	}
-	if cov.PairedShare != nil {
-		t.Errorf("part appariée = %v à zéro frag, attendu absente", *cov.PairedShare)
-	}
 	if _, err := json.Marshal(b); err != nil {
 		t.Errorf("le bloc ne se sérialise plus : %v", err)
 	}

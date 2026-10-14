@@ -128,6 +128,9 @@ var canonicalOrder = []string{
 	"drop_psa_xuid_art_index_v1",                       // player (idem — miroir d'idx_career_xuid ; suit create_personal_score_awards_player_v1)
 	"drop_psa_match_xuid_art_index_v1",                 // player (idem — préfixe redondant d'idx_psa_gen, posé par le seul PostSwap legacy)
 	"drop_psa_secondary_art_indexes_v1",                // player (2026-09-20 : les 3 derniers index de personal_score_awards — récidive #23645 sur les insertions courantes, aucun lecteur ne les emprunte)
+	"drop_player_secondary_art_indexes_v1",             // player (2026-10-09 : idx_lch_*, idx_pme_match_lookup, idx_pcs_lookup — suit tous leurs créateurs, dont create_player_csr_snapshots_player_v1)
+	"repair_player_append_only_ids_v1",                 // player (2026-10-09 : ids NULL / en double / hors clé des tables append-only — suit leurs créateurs)
+	"purge_sync_meta_legacy_auth_keys_v1",              // player (2026-10-09 : clés oauth_refresh_token / msal_token_cache de sync_meta, sans lecteur — ADR 0023)
 	"create_base_shared_schema",                        // shared
 	"add_film_match_start",                             // shared
 	"add_highlight_events_autoincrement",               // shared
@@ -309,6 +312,8 @@ var canonicalOrder = []string{
 	// d init (steps_shared_vehicle_takes.go trie apres steps_shared_usage_summary.go et avant
 	// steps_shared_weapon_*.go) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_create_vehicle_takes", // shared (match_vehicle_takes, append-only + vue _latest par passe)
+	// Doit SUIVRE le créateur de la table (2026-10-09, lot C5) ; enregistré juste après lui.
+	"shared_purge_composite_vehicle_takes_v1", // shared (lignes à match_id composite, swap sans DELETE)
 	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
 	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.

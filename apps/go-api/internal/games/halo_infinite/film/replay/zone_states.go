@@ -96,7 +96,11 @@ type zoneCtx struct {
 	origin, step uint64
 	frames       int
 	intervalMS   int
-	tracks       []Track
+	// kickoff est la frame du COUP D ENVOI du match (`T0FilmMs`), et hasKickoff dit qu elle est
+	// mesuree : c est l instant d apparition de la 1re colline (zone_states_hill_activation.go).
+	kickoff    int
+	hasKickoff bool
+	tracks     []Track
 	// actions sont les actions d'objectif DEJA posees sur la grille de frames (doc.Objectives) :
 	// un seul decodage du statborg pour tout le document.
 	actions []ObjectiveAction
@@ -140,6 +144,12 @@ type zoneSeries struct {
 	// serie COMPLETE (mesure du lot C-ter : le filtre coute ~3 % de lectures reelles), et les
 	// deux consommateurs n ont donc pas le meme besoin.
 	ownerChained map[uint32][]zoneSample
+	// gaugeHill : la MEME serie que `gauge` (tag 3), reduite aux lectures dont le record CHAINE et aux
+	// retours au REPOS (valeur nulle), chaines ou non. C est la jauge d une colline
+	// (zone_states_hill_gauge.go) : ses lectures non nulles chainent a plus de 99 %, et une non
+	// chainee y publierait une jauge pleine d une seule emission ; le retour a zero, lui, est souvent
+	// le DERNIER record de son paquet (donc non chaine), et le perdre figerait la jauge.
+	gaugeHill map[uint32][]zoneSample
 	// ownerKey : les ETATS D'IMAGE-CLE du canal de propriete (tag 4), par slot
 	// ([zoneKeyOwnerOf]). Seuls les intervalles de propriete les lisent ; aucune election, aucune
 	// jauge, aucune colline.
@@ -147,7 +157,9 @@ type zoneSeries struct {
 	// noms : le NOM de chaque slot lu aux images-cles et l index inverse ([zoneNomsDesSlots]). C est
 	// par lui que le proprietaire et le pousseur d une zone, et le proprietaire d une colline, se
 	// rattachent a leur bloc (zone_states_owner_nom.go).
-	noms  zoneNoms
+	noms zoneNoms
+	// cles : ce que les images-cles disent des slots (zone_states_hill_activation.go).
+	cles  zoneCles
 	slots int
 }
 
@@ -167,6 +179,7 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 	ser := zoneSeriesOf(in.Reads, c)
 	ser.ownerKey = zoneKeyOwnerOf(in.KeyReads, in.Reads, c)
 	ser.noms = zoneNomsDesSlots(in.KeyReads)
+	ser.cles = zoneClesDesSlots(in.KeyReads, c)
 	cov.Slots = ser.slots
 	caps := zoneCapturesOf(c.actions)
 	cov.Captures = len(caps)
@@ -241,7 +254,7 @@ func logZoneKeyTally(ctx context.Context, matchID string, lectures int, key zone
 func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 	out := zoneSeries{gauge: map[uint32][]zoneSample{}, owner: map[uint32][]zoneSample{},
 		keys: map[uint32]uint32{}, desig: map[uint32][]zoneSample{},
-		ownerChained: map[uint32][]zoneSample{}}
+		ownerChained: map[uint32][]zoneSample{}, gaugeHill: map[uint32][]zoneSample{}}
 	// L'ensemble des slots QUI PARLENT. Ce sont les slots de l'archetype 13, PAS les slots de
 	// vie publies du rejeu : deux espaces distincts, qui n'ont ni la meme origine ni le meme
 	// sens — d'ou l'ensemble local plutot qu'un appel au helper des pistes publiees.
@@ -258,6 +271,9 @@ func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 		switch r.Tag {
 		case grammar.ManagedPropertyTagQuant:
 			out.gauge[r.Slot] = append(out.gauge[r.Slot], zoneSample{t: t, v: r.Value})
+			if r.Chained || r.Value <= zoneGaugeQuantZero {
+				out.gaugeHill[r.Slot] = append(out.gaugeHill[r.Slot], zoneSample{t: t, v: r.Value})
+			}
 		case grammar.ManagedPropertyTagU32:
 			out.owner[r.Slot] = append(out.owner[r.Slot], zoneSample{t: t, v: r.Value})
 			if r.Chained {
@@ -272,7 +288,7 @@ func zoneSeriesOf(reads []grammar.ManagedPropertyRead, c zoneCtx) zoneSeries {
 		}
 	}
 	out.slots = len(seen)
-	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig, out.ownerChained} {
+	for _, m := range []map[uint32][]zoneSample{out.gauge, out.owner, out.desig, out.ownerChained, out.gaugeHill} {
 		for s := range m {
 			ss := m[s]
 			slices.SortStableFunc(ss, func(a, b zoneSample) int { return cmp.Compare(a.t, b.t) })

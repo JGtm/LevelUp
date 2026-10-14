@@ -778,16 +778,8 @@ fr = "archivée"
 en = "archived"
 
 [common.leaderboard.archived_season_note]
-fr = "Saison archivée : classement CSR uniquement (stats détaillées indisponibles pour cette saison)."
-en = "Archived season: CSR ranking only (detailed stats unavailable for this season)."
-
-[common.leaderboard.enrichment_unavailable]
-fr = "Stats détaillées indisponibles pour ce relevé : classement CSR seul ({enriched} joueur(s) enrichi(s) sur {total} affichés)."
-en = "Detailed stats unavailable for this snapshot: CSR ranking only ({enriched} of {total} listed players enriched)."
-
-[common.leaderboard.enrichment_partial]
-fr = "Stats détaillées partielles : {enriched} joueurs enrichis sur {total} affichés — les autres lignes restent vides."
-en = "Partial detailed stats: {enriched} of {total} listed players enriched — the other rows stay empty."
+fr = "Saison archivée : classement CSR."
+en = "Archived season: CSR ranking."
 
 [common.leaderboard.col_player]
 fr = "Joueur"
@@ -1190,12 +1182,14 @@ en = "Date:"
 fr = "Ouvrir le rejeu 2D du match"
 en = "Open the 2D replay of the match"
 
-# Part des frags assistés par un coéquipier sur le match (film analysé). {assisted} et
-# {frags} sont des comptes déjà formatés, {share} un pourcentage déjà formaté (« 58 % »).
+# Frags assistés par un coéquipier sur le match (film analysé), rapportés aux frags
+# OFFICIELS du match (ceux de la tuile), bots compris. {assisted} et {frags} sont des nombres
+# bruts (ICU les formate et accorde le pluriel). Un frag dont l'assistance n'est pas lue
+# reste dans {frags} sans aucune mention à part.
 # Les tranches de part (bornes) ne vivent que dans assistsI18n.ts (infobulles de segment).
 [common.match_card.assisted_frags]
-fr = "{assisted} / {frags} frags assistés"
-en = "{assisted} / {frags} assisted kills"
+fr = "{assisted, plural, one {# frag assisté} other {# frags assistés}} sur {frags}"
+en = "{assisted} of {frags, plural, one {# kill} other {# kills}} assisted"
 
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 
@@ -1924,6 +1918,10 @@ en = "Authentication failed."
 fr = "La session Halo a expiré. Relance pour renouveler l'authentification."
 en = "The Halo session expired. Restart to renew authentication."
 
+[common.initial_sync.err_halo_tokens_missing]
+fr = "Aucun compte Xbox relié à cette session : synchronisation impossible."
+en = "No Xbox account linked to this session: sync unavailable."
+
 [common.initial_sync.err_halo_api]
 fr = "L'API Halo est temporairement indisponible. Veuillez réessayer."
 en = "The Halo API is temporarily unavailable. Please try again."
@@ -1947,6 +1945,10 @@ en = "Starting…"
 [common.initial_sync.start_action]
 fr = "Lancer la synchronisation"
 en = "Start sync"
+
+[common.initial_sync.retry]
+fr = "Réessayer"
+en = "Retry"
 
 # ─── Inscription (RegisterPage) — I1, 2026-07-05 ─────────────────────────────
 [common.auth.register_instance_closed]

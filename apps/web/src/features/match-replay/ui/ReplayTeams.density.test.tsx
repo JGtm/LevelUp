@@ -190,7 +190,7 @@ describe('ReplayTeams — la densité de la colonne : cas limites (étape 4)', (
     // Les TROIS cellules fixes de la ligne 3 (arme 48, grenade 14, capacité 16) sont rendues
     // VIDES sur chacun des 24 sièges — donnée absente = cellule vide, jamais un décalage — et
     // aucune autre largeur fixe n'apparaît.
-    expect(vue.getAllByTitle('armes non lues sur cette vie')).toHaveLength(24)
+    expect(vue.queryByTitle(/non lue/)).toBeNull()
     const cellules = [...vue.container.querySelectorAll('[style*="width"]')]
       .map((e) => e as HTMLElement)
       .filter((e) => e.style.width !== '' && e.style.width !== '100%')

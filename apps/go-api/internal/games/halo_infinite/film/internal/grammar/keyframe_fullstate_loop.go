@@ -163,7 +163,8 @@ func consumeFullStateDefaultBlock(br *Lecteur, ti uint32, sansEtatParDefaut bool
 
 // L ECHEC D UN LECTEUR DE COMPOSANT DU JEU est nomme par [lecture.CauseDArret] (`position_non_finie`,
 // `largeur_handle_moteur_un`, nees de la branche absolue d i0 sous la portee,
-// [consumeAbsoluSousLaPortee]) : son deserialiseur rend faux, et la boucle de composants s arrete
+// [consumeAbsoluSousLaPortee] ; `jeu_d_armes_refuse`, le jeu d armes i42 ou i38,
+// [arreterSiJeuDArmesRefuse]) : son deserialiseur rend faux, et la boucle de composants s arrete
 // sur lui ([EntityTrace.Arret]). La structure de lecture porte la cause sur l occurrence
 // ([lecture.EtatArrete]) : ce n est pas un composant non porte (plan LK, D-12).
 
@@ -176,6 +177,8 @@ func nomDeLArret(a lecture.CauseDArret) string {
 		return "position_non_finie"
 	case lecture.ArretLargeurHandleMoteurUn:
 		return "largeur_handle_moteur_un"
+	case lecture.ArretJeuDArmesRefuse:
+		return "jeu_d_armes_refuse"
 	}
 	return "arret_inconnu"
 }

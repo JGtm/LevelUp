@@ -28,7 +28,7 @@ export function UsageBandLegend({ t }: { t: UsageText }) {
       <Cell ink={BAND_TONE_INKS.above} label={t.bandLegendAbove} />
       <Cell ink={BAND_TONE_INKS.near} label={t.bandLegendNear} />
       <Cell ink={BAND_TONE_INKS.below} label={t.bandLegendBelow} />
-      <Cell ink={BAND_TONE_INKS.unmeasured} label={t.bandLegendUnmeasured} />
+      <Cell ink={BAND_TONE_INKS.unmeasured} label={t.bandLegendNoTeamAssist} />
     </div>
   )
 }

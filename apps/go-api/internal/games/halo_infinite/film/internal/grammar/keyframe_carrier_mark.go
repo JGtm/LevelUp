@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -68,8 +68,9 @@ type CarrierMarkScan struct {
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 //
-// ScanFilmCarrierMarks est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
-// [ScanCarrierMarks].
+// ScanFilmCarrierMarks est l'ENVELOPPE D2, HORS PRODUCTION. La cuisson n'appelle ni elle ni
+// [ScanCarrierMarks] : elle joue la marche unique [ScanEtatsDesImagesCles] une fois et en prend la
+// marque (lot D1.1 de 2.7.d1).
 func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -78,46 +79,14 @@ func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 	return ScanCarrierMarks(NewFilmContext(film))
 }
 
-// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE dans la phase des images-cles
-// ([canalDesMarquesDePortage]), marchee par la marche d'image-cle DU FILM
-// ([FilmContext.MarcheDImageCle], lot D-fix).
+// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE : la projection de
+// [ScanEtatsDesImagesCles] sur la marque de portage (lot D1.1 de 2.7.d1), sous le catalogue des
+// familles d'arme de la grammaire. La cuisson appelle [ScanEtatsDesImagesCles] une fois ; cette
+// forme sert les enveloppes hors production.
 func ScanCarrierMarks(fc *FilmContext) (CarrierMarkScan, error) {
-	c := &canalDesMarquesDePortage{}
-	distribuerLesImagesClesSeules(fc, []Canal{c})
-	if c.lus == 0 {
-		return CarrierMarkScan{}, ErrNoReadableFilmChunk
+	e, err := ScanEtatsDesImagesCles(fc, weaponv3.FamillesConnues(), 0)
+	if err != nil {
+		return CarrierMarkScan{}, err
 	}
-	return c.out, nil
-}
-
-// canalDesMarquesDePortage releve les marques de portage de chaque image-cle de la phase.
-type canalDesMarquesDePortage struct {
-	out CarrierMarkScan
-	// lus : les chunks que la phase a pu lire.
-	lus int
-}
-
-func (*canalDesMarquesDePortage) Interets() []Interet { return nil }
-
-func (c *canalDesMarquesDePortage) ImageCle(p *lecture.Paquet, _ *MarcheDistribuee) {
-	c.out.KeyframeUS = append(c.out.KeyframeUS, p.TS)
-	c.out.appendMarksOf(p)
-}
-
-func (c *canalDesMarquesDePortage) Clore(b BilanDeMarche) { c.lus = b.ChunksLus }
-
-// appendMarksOf balaye UN paquet d'image-cle. Le balayage est celui des armes portees
-// (`familiesByRecordRecs`) : meme fenetre glissante de 32 bits, meme attribution au record qui
-// contient le PREMIER bit de la fenetre. Seul le jeu de valeurs cherchees change — c'est
-// pourquoi ce fichier n'a pas son propre lecteur de bits.
-func (s *CarrierMarkScan) appendMarksOf(p *lecture.Paquet) {
-	s.Records += len(p.Records)
-	for _, r := range p.Records {
-		if int(r.TI) == keyframeBipedTI {
-			s.BipedRecords++
-		}
-	}
-	for _, r := range familiesByRecordRecs(p.Payload, p.Records, carrierMarkViews, keyframeBipedTI) {
-		s.Marks = append(s.Marks, CarrierMark{TimestampUS: p.TS, Slot: r.Rec.Vie.Slot})
-	}
+	return e.Marques, nil
 }

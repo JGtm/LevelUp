@@ -5,7 +5,10 @@ package coordination
 // Ce que ces tests cadenassent, et pourquoi chacun compte :
 //   - un appui reçu d'un coéquipier NON SUIVI compte (réserve R2), un appui adverse non ;
 //   - « on me prépare » se normalise par MES frags, « ma part des appuis » par les appuis DU CAMP ;
-//   - un match NON MESURÉ ne fournit ni numérateur ni dénominateur ;
+//   - un match NON MESURÉ (journal illisible, ou film sans assistance lue) ne fournit ni
+//     numérateur ni dénominateur ;
+//   - la base de « on me prépare » est la feuille de match, jamais sous les frags lus ;
+//   - les appuis impliquant des BOTS (sans xuid) comptent comme les autres ;
 //   - un scope sans effectif de camp (FFA) n'a pas de parité — jamais 100 % sur un 1 inventé ;
 //   - la parité d'un scope mixte est pondérée par les appuis de camp de chaque match.
 
@@ -145,8 +148,8 @@ func TestBloc_PariteMixtePonderee(t *testing.T) {
 
 // TestRestreindre_DecoupeLUniversAvecLesAppuis — la maille SOIRÉE de la frise.
 //
-// Un match retenu qui ne porte aucun appui doit rester dans l'univers : il compte au
-// dénominateur « par match », et le déduire des appuis l'effacerait.
+// Un match retenu qui ne porte aucun appui reste dans l'univers (il compte au total du scope),
+// mais n'est pas mesuré : son film ne porte pas l'assistance.
 func TestRestreindre_DecoupeLUniversAvecLesAppuis(t *testing.T) {
 	in := scenario()
 	in.Matchs = append(in.Matchs,
@@ -169,7 +172,48 @@ func TestRestreindre_DecoupeLUniversAvecLesAppuis(t *testing.T) {
 			t.Fatalf("appui hors périmètre : %+v", a)
 		}
 	}
-	if b := Bloc(got); b.MatchesMeasured != 2 || b.MatchesTotal != 2 {
-		t.Errorf("couverture = %d/%d, attendu 2/2", b.MatchesMeasured, b.MatchesTotal)
+	if b := Bloc(got); b.MatchesMeasured != 1 || b.MatchesTotal != 2 {
+		t.Errorf("couverture = %d/%d, attendu 1/2 : le match muet n'est pas mesuré", b.MatchesMeasured, b.MatchesTotal)
+	}
+}
+
+// TestBloc_BaseOfficielle — « on me prépare » se rapporte aux frags de la feuille de match :
+// un frag sur un bot dont l'assistance n'est pas lue reste dans la base sans entrer au
+// numérateur ; une feuille sous les frags lus ne fait pas descendre la base.
+func TestBloc_BaseOfficielle(t *testing.T) {
+	in := scenario()
+	in.FragsOfficiels = map[string]int{"m1": 5}
+	if a := Bloc(in).Appui.OnMePrepare; a.Brut != 1 || a.N != 5 {
+		t.Errorf("on me prépare = %d/%d, attendu 1/5 (base : la feuille de match)", a.Brut, a.N)
+	}
+	in.FragsOfficiels = map[string]int{"m1": 1}
+	if a := Bloc(in).Appui.OnMePrepare; a.N != 3 {
+		t.Errorf("base = %d, attendu 3 : jamais sous les frags lus par le film", a.N)
+	}
+}
+
+// TestBloc_BotsComptes — un appui impliquant un BOT compte comme les autres. Le bot n'a ni
+// xuid ni camp : il se range du côté de l'autre acteur de la ligne, ou de la victime quand les
+// deux acteurs sont sans xuid.
+func TestBloc_BotsComptes(t *testing.T) {
+	in := scenario()
+	in.Appuis = []domain.CoordinationAppuiRow{
+		// Un bot coéquipier m'assiste : frag appuyé, appui reçu de mon camp.
+		{MatchID: "m1", AssistGamertag: "343 Oscar [bot]", KillerXUID: "P", Nombre: 2},
+		// J'assiste un bot coéquipier : appui distribué dans mon camp.
+		{MatchID: "m1", AssistXUID: "P", Nombre: 1},
+		// Un bot assiste un bot sur un adversaire : appui de mon camp (match à deux camps).
+		{MatchID: "m1", AssistGamertag: "343 Cosmo [bot]", VictimXUID: "E1", Nombre: 1},
+		// Un bot assiste un bot sur un coéquipier : appui adverse, hors de mon camp.
+		{MatchID: "m1", AssistGamertag: "343 Ritzy [bot]", VictimXUID: "A", Nombre: 4},
+		// Un adversaire assisté par un bot : hors de mon camp.
+		{MatchID: "m1", AssistGamertag: "343 Hollis [bot]", KillerXUID: "E1", Nombre: 3},
+	}
+	a := Bloc(in).Appui
+	if a.OnMePrepare.Brut != 2 || a.OnMePrepare.N != 2 {
+		t.Errorf("on me prépare = %d/%d, attendu 2/2", a.OnMePrepare.Brut, a.OnMePrepare.N)
+	}
+	if a.MaPartDesAppuis.Brut != 2 || a.MaPartDesAppuis.N != 4 {
+		t.Errorf("ma part des appuis = %d/%d, attendu 2/4", a.MaPartDesAppuis.Brut, a.MaPartDesAppuis.N)
 	}
 }

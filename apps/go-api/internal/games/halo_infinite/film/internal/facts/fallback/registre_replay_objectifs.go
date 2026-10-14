@@ -8,6 +8,9 @@ package fallback
 // inscrit un repli (plan `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, lot J5.5,
 // 2026-09-27). Déplacement pur : les entrées sont recopiées à l'octet, dans leur ordre.
 
+// dateLotColline : le jour du lot qui place une colline par la garde de son camp proprietaire.
+const dateLotColline = "2026-10-09"
+
 var registreReplayObjectifs = []Repli{
 	{
 		Nom:       "repli_drapeau_seul_en_jeu",
@@ -247,6 +250,68 @@ var registreReplayObjectifs = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom:       "repli_colline_premiere_au_coup_d_envoi",
+		Fait:      "a quel instant la premiere colline apparait",
+		Mecanisme: "la creation de l objet de mode n est pas datee par le film (images-cles a 20 s d intervalle) : la 1re periode commence au coup d envoi du match, ramene dans la fenetre des images-cles",
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill_activation.go",
+			Ancre:   "a.fb.Declenche(fallback.NomCollinePremiereAuCoupDEnvoi)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    "un lecteur du record de creation de l objet de mode dans les trames delta ; a defaut, le repli reste (film muet)",
+		CritereRetrait:  "la creation de l objet de mode datee par une lecture sur les films a colline du parc",
+		CompteurBranche: true,
+	},
+	{
+		Nom:       "repli_colline_votes_sans_garde",
+		Fait:      "ou se trouve la colline designee d'une periode",
+		Mecanisme: "aucune frame tenue ou le camp proprietaire a une position publiee : la periode se place par la grappe des positions pendant les montees de la jauge",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_hill.go",
+			Ancre:   "l.fb.Declenche(fallback.NomCollineVotesSansGarde)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    retraitRegle4,
+		CritereRetrait:  "0 periode sans garde lisible sur les films a colline du parc et du corpus par build",
+		CompteurBranche: true,
+	},
+	{
+		Nom:       "repli_seuil_garde_table_de_variante",
+		Fait:      "combien de tics de garde valent un point sur un match a colline",
+		Mecanisme: "aucun point lisible dans le match (aucun point marque, ou aucun intervalle sain) : le seuil est l entree de la variante dans regulation.toml [hold_ticks_per_point] ; sans entree, aucune barre de garde",
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "hill_hold_threshold.go",
+			Ancre:   "fb.Declenche(fallback.NomSeuilGardeTableDeVariante)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    "aucune tant qu un match sans point ne porte pas son seuil (film muet) ; la table reste son seul repli",
+		CritereRetrait:  "un emplacement du film qui porte le seuil de la variante hors de tout point, lu sur les films a colline du parc",
+		CompteurBranche: true,
+	},
+	{
+		Nom:       "repli_seuil_garde_table_contredite",
+		Fait:      "combien de tics de garde valent un point sur un match a colline dont la variante a une entree de table",
+		Mecanisme: "le seuil mesure aux points du match differe de l entree regulation.toml [hold_ticks_per_point] : le film prime, la table est ecartee pour ce match",
+		// CONTRADICTION (D14 b) : deux sources du meme fait divergent ; elle se compte, et la lecture
+		// du film reste.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "hill_hold_threshold.go",
+			Ancre:   "fb.Declenche(fallback.NomSeuilGardeTableContredite)",
+		}},
+		DatePose:        dateLotColline,
+		CibleRetrait:    "l entree de table corrigee ou retiree pour la variante en desaccord ; une contradiction se compte, pas de retrait sec",
+		CritereRetrait:  "0 declenchement sur les films a colline du parc republie, hors films a courbe de score anormale (un seul intervalle sain)",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_colline_votes_periode_entiere",
 		Fait:      "ou se trouve la colline designee d'une periode",
 		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",
@@ -254,7 +319,7 @@ var registreReplayObjectifs = []Repli{
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgReplay + "zone_states_hill.go",
-			Ancre:   "votes = hillVotes(zones, pts, p.t0, p.t1)",
+			Ancre:   "votes = hillVotes(l.zones, l.pts, p.t0, p.t1)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "la conversion du calque des collines ; a defaut, " + retraitRegle4,

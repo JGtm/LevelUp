@@ -88,8 +88,8 @@ export function ReplayPlacementTip({
       ? t.placementFamily[named]
       : t.placementUnnamedLabel
   const ownerFmt = dropped ? t.placementDroppedOwnerFmt : t.placementOwnerFmt
-  const owner =
-    placement.owner >= 0 && ownerName ? ownerFmt(ownerName) : t.placementOwnerUnknown
+  // Sans poseur nommé, la ligne n'est pas rendue : aucun inconnu n'est écrit.
+  const owner = placement.owner >= 0 && ownerName ? ownerFmt(ownerName) : null
   const flip = at.x + TIP_OFFSET + TIP_WIDTH > width
   return (
     <div
@@ -102,7 +102,7 @@ export function ReplayPlacementTip({
       }}
     >
       <span className="block font-medium">{title}</span>
-      <span className="block text-muted-foreground">{owner}</span>
+      {owner && <span className="block text-muted-foreground">{owner}</span>}
       {dropped && (
         <span className="block text-muted-foreground">
           {t.placementDroppedAtFmt(formatClock(displayClockMs(atMs, playWindow)))}

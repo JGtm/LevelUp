@@ -93,9 +93,6 @@ type SquadEmpriseBlock struct {
 	// composition (squad_emprise_placement.go). Nil sans `film.kill_positions`, lecture en échec
 	// ou aucune vie écrite pour la composition sur le périmètre.
 	Placement *SquadEmprisePlacement `json:"placement,omitempty"`
-	// Vehicles : la couverture de la ressource véhicules (squad_emprise_vehicles.go). Nil quand
-	// le titre ne la mesure pas (capability `film.vehicle_usage`), jamais un zéro.
-	Vehicles *SquadEmpriseVehicles `json:"vehicles,omitempty"`
 }
 
 // SquadEmpriseCount — un compte camp contre camp.
@@ -167,7 +164,7 @@ type SquadEmpriseObjectShare struct {
 // SquadEmpriseMatch — un match du périmètre.
 type SquadEmpriseMatch struct {
 	MatchID string `json:"match_id"`
-	// HasFilm : le résumé d'usage du film existe (sinon la case dit « sans film »).
+	// HasFilm : le résumé d'usage du film existe (sinon les cases lues au film restent vides).
 	HasFilm bool `json:"has_film"`
 	// TeamKnown : le camp du joueur de la page est connu — sans lui, aucun compte camp contre
 	// camp ne se publie pour ce match.
@@ -178,18 +175,14 @@ type SquadEmpriseMatch struct {
 	// Resources : ressource puis chaque objet du match. Une ressource absente de la carte (ou
 	// non mesurée) n'a pas d'entrée.
 	Resources []SquadEmpriseMatchResource `json:"resources"`
-	// PowerWeaponKills : frags aux armes spéciales de chaque camp (feuille de match). Nil quand
-	// la feuille ne le dit pas ou que le camp est inconnu.
+	// PowerWeaponKills : frags aux armes spéciales de chaque camp : journal du film (armes des socles
+	// de puissance du match) quand les niveaux sont mesurés et le journal publiable, feuille de match
+	// sinon (analysis/squademprise/special_frags.go). Nil quand aucune ne le dit ou que le camp est
+	// inconnu.
 	PowerWeaponKills *SquadEmpriseCount `json:"power_weapon_kills,omitempty"`
-	// Vehicles : l'état des véhicules du match (EmpriseVehicles*), qui sépare « non mesuré » (D8)
-	// d'un zéro mesuré ; vide quand le titre ne mesure pas la ressource. VehiclesReason : la raison
-	// machine d'un match non mesuré.
-	Vehicles       string `json:"vehicles,omitempty"`
-	VehiclesReason string `json:"vehicles_reason,omitempty"`
-	// UnclassifiedPickups : les prises sur un emplacement de socle NON IDENTIFIÉ (niveau
-	// `non_classe`), équipe contre adversaire, sur un match filmé au camp connu — hors des pistes des
-	// ressources. Nil sans prise non classée.
-	UnclassifiedPickups *SquadEmpriseCount `json:"unclassified_pickups,omitempty"`
+	// Vehicles : l'état des véhicules du match (EmpriseVehicles*), qui sépare un match non lu (D8)
+	// d'un zéro ; vide quand le titre ne mesure pas la ressource.
+	Vehicles string `json:"vehicles,omitempty"`
 }
 
 // SquadEmpriseMatchResource — une ressource d'un match et ses objets.
@@ -203,7 +196,8 @@ type SquadEmpriseMatchResource struct {
 type SquadEmpriseProduction struct {
 	Resource string `json:"resource"`
 	// Kills : bonus = frags pendant l'effet (film, matchs dont le film a une échelle de temps) ;
-	// armes spéciales = frags obtenus avec (feuille de match, tous les matchs à camp connu).
+	// armes spéciales = frags obtenus avec (tous les matchs à camp connu ; source match par match :
+	// SquadEmpriseMatch.PowerWeaponKills).
 	Kills SquadEmpriseCount `json:"kills"`
 	// Exposure : ce qui a permis ces frags. Nil sans mesure du film.
 	Exposure *SquadEmpriseExposure `json:"exposure,omitempty"`

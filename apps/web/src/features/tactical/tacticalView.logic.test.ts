@@ -56,26 +56,13 @@ describe('lectureDeRejeu — artefact de rejeu vs journal des morts', () => {
 
 // ─── Messages de statut ────────────────────────────────────────────────────────
 
-describe('statusMessages — bandeaux « en attente » / « non disponible »', () => {
-  it('aucun message quand les deux compteurs sont à zéro', () => {
-    expect(statusMessages(tFr, 0, 0)).toEqual([])
+describe('statusMessages — le bandeau « en attente »', () => {
+  it('aucun message quand le compteur est à zéro', () => {
+    expect(statusMessages(tFr, 0)).toEqual([])
   })
 
-  it('seulement « en attente » quand matchsNonCuisables est nul', () => {
-    const messages = statusMessages(tFr, 3, 0)
-    expect(messages).toHaveLength(1)
-    expect(messages[0]).toBe(tFr.statusPending(3))
-  })
-
-  it('seulement « non disponible » quand matchsEnAttente est nul', () => {
-    const messages = statusMessages(tFr, 0, 2)
-    expect(messages).toHaveLength(1)
-    expect(messages[0]).toBe(tFr.statusUnavailable(2))
-  })
-
-  it('LES DEUX coexistent : cuisson en cours ET matchs jamais cuisables', () => {
-    const messages = statusMessages(tFr, 5, 1)
-    expect(messages).toEqual([tFr.statusPending(5), tFr.statusUnavailable(1)])
+  it('« en attente » seul : les matchs qui ne seront jamais cuits ne sont jamais nommés', () => {
+    expect(statusMessages(tFr, 3)).toEqual([tFr.statusPending(3)])
   })
 })
 
@@ -107,7 +94,7 @@ describe('planEmptyReason — trois causes de plan vide, trois messages', () => 
 describe('titreDuPlanVide — un titre par cause, aucun conseil', () => {
   it('chaque cause dit la sienne', () => {
     expect(titreDuPlanVide(tFr, 'aucun-match')).toBe('Aucun match sur cette carte dans le filtre')
-    expect(titreDuPlanVide(tFr, 'aucune-mesure')).toBe('Pas assez de matchs mesurés sur cette carte')
+    expect(titreDuPlanVide(tFr, 'aucune-mesure')).toBe('Aucun plan à dessiner sur cette carte')
     expect(titreDuPlanVide(tFr, 'densite')).toBe('Densité insuffisante pour dessiner un plan')
     expect(titreDuPlanVide(tEn, 'densite')).toBe(tEn.planEmptyDensityTitle)
   })

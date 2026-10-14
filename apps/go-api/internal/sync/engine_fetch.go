@@ -208,6 +208,10 @@ func (e *SyncEngine) fetchAndPersistMatches(ctx context.Context, in historyPagin
 		return 0
 	}
 	fetchedMatches := make([]*fetchedMatch, len(ids))
+	// echecs : l'avertissement de fetch de chaque match, par indice. SyncResult n'est pas sûr en
+	// concurrence : les goroutines n'y écrivent pas, les avertissements y sont versés après la
+	// barrière, dans l'ordre de `ids`.
+	echecs := make([]string, len(ids))
 	eg, egCtx := errgroup.WithContext(ctx)
 	// Borne la concurrence du fan-out : sans SetLimit, une page delta initiale lançait une
 	// goroutine PAR match inconnu. Le pool cappe déjà l'API concurrente à sa taille ; la borne
@@ -219,7 +223,7 @@ func (e *SyncEngine) fetchAndPersistMatches(ctx context.Context, in historyPagin
 			if err != nil {
 				slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
 					"gamertag", e.gamertag, "match_id", matchID, "err", err)
-				result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
+				echecs[i] = fmt.Sprintf("fetchMatchData(%s): %v", matchID, err)
 				return nil // non fatal : les autres fetches continuent
 			}
 			fetchedMatches[i] = fm // indice propre à la goroutine : aucune écriture partagée
@@ -227,6 +231,11 @@ func (e *SyncEngine) fetchAndPersistMatches(ctx context.Context, in historyPagin
 		})
 	}
 	_ = eg.Wait() // les goroutines ne rendent jamais d'erreur
+	for _, msg := range echecs {
+		if msg != "" {
+			result.AddWarning(msg)
+		}
+	}
 
 	e.resolveCycleAssets(ctx, fetchedMatches)
 

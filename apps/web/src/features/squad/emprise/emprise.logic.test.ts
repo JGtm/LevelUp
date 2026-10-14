@@ -177,8 +177,8 @@ describe('buildMatchGrid — match par match', () => {
     expect(grid.sections[2].items).toHaveLength(13)
   })
 
-  it('synthèse bonus : « 5–2 » à Starboard, « — » sans bonus sur la carte, « sans film » à Detachment', () => {
-    expect(grid.sections[0].summary!.cells.map(cellText)).toEqual(['5–2', '4–0', 'none', 'none', 'nofilm', '2–3', '1–3'])
+  it('synthèse bonus : « 5–2 » à Starboard, « — » sans bonus sur la carte, case vide à Detachment (sans film)', () => {
+    expect(grid.sections[0].summary!.cells.map(cellText)).toEqual(['5–2', '4–0', 'none', 'none', 'blank', '2–3', '1–3'])
   })
 
   it('frags aux armes spéciales : la feuille de match, lue même sans film', () => {
@@ -198,29 +198,29 @@ describe('buildMatchGrid — match par match', () => {
     ])
   })
 
-  it('niveaux de socle non mesurés : armes spéciales et râteliers « non classé », bonus lisibles', () => {
+  it('niveaux de socle non établis : armes spéciales et râteliers en case vide, bonus lisibles', () => {
     const block: SquadEmpriseBlock = {
       ...EMPRISE_2209,
       matches: EMPRISE_2209.matches!.map((m) => (m.match_id === 'm2' ? { ...m, tiers: 'not_measured' } : m)),
     }
     const g = buildMatchGrid(block, empriseMatchIndex(HISTORY_2209))
     expect(g.sections[0].summary!.cells[1]).toMatchObject({ kind: 'value', us: 4, them: 0 })
-    expect(g.sections[1].summary!.cells[1]).toEqual({ kind: 'untiered', tiers: 'not_measured' })
-    expect(g.sections[2].items[0].cells[1]).toEqual({ kind: 'untiered', tiers: 'not_measured' })
+    expect(g.sections[1].summary!.cells[1]).toEqual({ kind: 'blank' })
+    expect(g.sections[2].items[0].cells[1]).toEqual({ kind: 'blank' })
   })
 })
 
 describe('buildMatchGrid — camp inconnu (constat R2 de la revue L6.1)', () => {
   const g = buildMatchGrid(campInconnu('m2'), empriseMatchIndex(HISTORY_2209))
 
-  it('filmé au camp inconnu : « camp inconnu » sur toutes les lignes lues au film, jamais « rien à prendre »', () => {
-    expect(g.sections[0].summary!.cells[1]).toEqual({ kind: 'noteam' })
-    expect(g.sections[1].summary!.cells[1]).toEqual({ kind: 'noteam' })
-    for (const s of g.sections) for (const row of s.items) expect(row.cells[1]).toEqual({ kind: 'noteam' })
+  it('filmé au camp inconnu : case vide sur toutes les lignes lues au film, jamais « rien à prendre »', () => {
+    expect(g.sections[0].summary!.cells[1]).toEqual({ kind: 'blank' })
+    expect(g.sections[1].summary!.cells[1]).toEqual({ kind: 'blank' })
+    for (const s of g.sections) for (const row of s.items) expect(row.cells[1]).toEqual({ kind: 'blank' })
   })
 
-  it('« sans film » garde la priorité : Detachment reste « sans film »', () => {
+  it('sans film et camp inconnu : la même case vide (Detachment)', () => {
     const g2 = buildMatchGrid(campInconnu('m5'), empriseMatchIndex(HISTORY_2209))
-    expect(g2.sections[0].summary!.cells[4]).toEqual({ kind: 'nofilm' })
+    expect(g2.sections[0].summary!.cells[4]).toEqual({ kind: 'blank' })
   })
 })

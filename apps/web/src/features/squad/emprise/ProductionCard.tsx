@@ -33,8 +33,8 @@ interface ProductionCompact {
 }
 
 /**
- * Une ressource sans mesure d'un côté (Vue match) : la raison à la place de la barre épaisse, et la
- * barre fine de l'exposition quand elle existe.
+ * Une ressource sans barre épaisse (Vue match) : le constat à sa place (« aucun frag pendant
+ * l'effet d'un bonus », « aucun bonus actif »), et la barre fine de l'exposition quand elle existe.
  */
 export interface ProductionPending {
   resource: string
@@ -46,9 +46,9 @@ interface Props {
   rows: ProductionRow[]
   t: EmpriseText
   compact?: ProductionCompact
-  /** Lignes « non mesuré » (Vue match), rangées avec les autres dans l'ordre des ressources. */
+  /** Lignes de constat (Vue match), rangées avec les autres dans l'ordre des ressources. */
   pending?: ProductionPending[]
-  /** Une ligne atténuée sous la barre d'une ressource (Vue match : « aucune prise d'arme spéciale mesurée »). */
+  /** Une ligne atténuée sous la barre d'une ressource (Vue match : « aucune prise d'arme spéciale »). */
   notes?: Partial<Record<string, string>>
 }
 

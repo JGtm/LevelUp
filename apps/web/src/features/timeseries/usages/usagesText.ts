@@ -45,13 +45,13 @@ function empriseFr(base: EmpriseText): EmpriseText {
       ...base.control,
       info:
         'Prises de chaque ressource par l’équipe et par l’adversaire, en comptes, sur les matchs filmés du ' +
-        'périmètre ; trait orange : 50 %. Les bonus sans ramasseur connu ne comptent dans aucune équipe.',
+        'périmètre ; trait orange : 50 %.',
     },
     fil: {
       ...base.fil,
       info:
         'Part de l’équipe dans les prises de chaque ressource, cumulée match après match sur le périmètre. Points : ' +
-        'part de chaque match, taille selon le volume ; un match sans la ressource ou sans film n’a pas de point.',
+        'part de chaque match, taille selon le volume ; un match sans la ressource n’a pas de point.',
       endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nCumul du périmètre : ${cumUs} sur ${cumTotal} (${pct})`,
     },
     production: {
@@ -59,7 +59,7 @@ function empriseFr(base: EmpriseText): EmpriseText {
       info:
         'Barre épaisse : part de l’équipe dans les frags obtenus avec chaque ressource ; barre fine : part de ' +
         'l’équipe dans l’exposition (temps d’effet d’un bonus, prises d’une arme spéciale, temps à bord d’un ' +
-        'véhicule). Périmètre : les matchs où l’exposition est mesurée.',
+        'véhicule).',
     },
     yield: {
       ...base.yield,
@@ -74,12 +74,7 @@ function empriseFr(base: EmpriseText): EmpriseText {
       info:
         'Une colonne par carte jouée, la plus jouée à gauche, avec ses matchs et ses résultats ; couleur : ' +
         'écart entre les prises de l’équipe et celles de l’adversaire, saturée à trente points.',
-      noTeamTip:
-        'Équipe inconnue sur ces matchs (chacun pour soi, ou équipe absente de la feuille de match) : rien ne se ' +
-        'partage entre les deux équipes.',
-      untieredTip: 'Niveaux de socle non mesurés sur ces matchs : armes spéciales et armes de râtelier ne se séparent pas.',
     },
-    vehicles: { ...base.vehicles, unmeasuredTip: 'Véhicules non mesurés : l’occupation n’a pas été lue.' },
   }
 }
 
@@ -91,21 +86,20 @@ function empriseEn(base: EmpriseText): EmpriseText {
       ...base.control,
       info:
         'Pickups of each resource by the team and by the opponent, in counts, over the filmed matches in ' +
-        'scope; orange line: 50%. Power-ups with no known picker count for neither team.',
+        'scope; orange line: 50%.',
     },
     fil: {
       ...base.fil,
       info:
         'The team’s share of each resource’s pickups, cumulated match after match over the scope. Dots: each ' +
-        'match’s share, sized by volume; a match without the resource or without a film has no dot.',
+        'match’s share, sized by volume; a match without the resource has no dot.',
       endTip: (resource, cumUs, cumTotal, pct) => `${resource}\nScope total: ${cumUs} of ${cumTotal} (${pct})`,
     },
     production: {
       ...base.production,
       info:
         'Thick bar: the team’s share of the kills made with each resource; thin bar: the team’s share of the ' +
-        'exposure (effect time for a power-up, pickups for a power weapon, time aboard a vehicle). Scope: the ' +
-        'matches where the exposure is measured.',
+        'exposure (effect time for a power-up, pickups for a power weapon, time aboard a vehicle).',
     },
     yield: {
       ...base.yield,
@@ -120,12 +114,7 @@ function empriseEn(base: EmpriseText): EmpriseText {
       info:
         'One column per map played, the most played on the left, with its matches and results; colour: gap ' +
         'between the team’s pickups and the opponent’s, saturated at thirty points.',
-      noTeamTip:
-        'Team unknown in these matches (free-for-all, or team missing from the match sheet): nothing splits ' +
-        'between the two teams.',
-      untieredTip: 'Pad levels not measured for these matches: power weapons and rack weapons can’t be told apart.',
     },
-    vehicles: { ...base.vehicles, unmeasuredTip: 'Vehicles not measured: occupancy was not read.' },
   }
 }
 
