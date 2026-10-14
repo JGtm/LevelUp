@@ -228,9 +228,10 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 
 ### Lot EP — Équipement porté (session levelup-80, prompt du superviseur)
 - [x] G1-G5 livrés sur feat/equip-porte @ 17a14ea69 (CI verte) : correctif i28 (n et non n+1, FUN_140f72dec) ; objet porté lu au delta (i24/i21/i22/i28) ; pose de faille = i24 → 0 puis i28 +1, 1,63 s après i21 (123/123) ; catalogue `equipment_energy.json` lu dans les tags (voie A) ; schéma 95 (`carriedEquipment[]`, `riftPoses[]`) ; faille à la pose, son de pose calé, usages restants sur la fiche ; rendu vérifié en lecture (harnais du lot B).
-- [ ] EP6 (décision user 15/10) Rebrancher les sons de pose du capteur, du traqueur, du champ de réparation et de l écran occultant sur `carriedEquipment[].uses` ; liste datée de `poseSoundTriggers.guard.test.ts` vidée.
+- [x] EP6 (783fbc6f0 ; capteur, traqueur, champ, écran sonnent à chaque utilisation lue ; mur garde sa pose ; témoins 5676a9ba et 1f8e8849, 30/30) (décision user 15/10) Rebrancher les sons de pose du capteur, du traqueur, du champ de réparation et de l écran occultant sur `carriedEquipment[].uses` ; liste datée de `poseSoundTriggers.guard.test.ts` vidée.
 - [x] Relecture adversariale (15/10) : 0 P1, 3 P2 (calques absents des tests figés, mur rang 19 jamais compté, journal), 5 P3 ; i28 et règle du HUD confirmés contre l exe → corrections transmises à levelup-80.
-- [ ] Fusion après l intégration aj14, puis recuisson du parc au schéma 95 (accord user).
+- [x] Fusion : avance rapide de feat/v75 sur feat/equip-porte @ 027a5bcaf (CI verte, relecture traitée : P2-1 fait, P2-2 réfuté par mesure — énergie absente = énergie de l objet porté, les deux fiches du mur portent 1 —, P3 faits).
+- [ ] Recuisson du parc au schéma 95 + backfill killsource (killsource-2026-10-14 : chemin de lecture de 23 morts sur deux films) — accord user.
 
 ### Lot G — Étiquettes de barres (Sonnet ; après C, D, E)
 - [ ] G1 Constat au navigateur du décalage vertical (cause non prouvée par lecture) avant correction.
@@ -255,6 +256,9 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   (Lot Go court, Sonnet.)
 
 ## 4. Découvertes (hors périmètre, non traitées)
+- (équipement porté) `repair_field_end` reste attaché à une pose `deployed` du champ : ne part jamais (rebranchement à décider).
+- (équipement porté) 5676a9ba : une utilisation de mur sans pose `deployed` (slot 557, image 1406) reste muette ; 8 murs pris à 0,99 sans fiche → comptés ambigus.
+- (équipement porté) `TestBatchQueue_Drain_PartialFailure_OnlySomeACKed` (persist) rouge une fois sous charge, vert 3/3 seul.
 - (intégration) 22 tests E2E (legacy-redirect, slice-0b, 2b, 3b, 4, 4b, 4c, 7, 8, 9) appellent l API en dur sur `localhost:8000` au lieu de l URL de base configurée : inexécutables hors du dispositif CI ; échecs identiques sur feat/v75. Le reste : 57 passées, 28 ignorées.
 - (intégration) golangci signale des directives `//nolint` mal formées ; `npm audit` signale des vulnérabilités.
 - (relecture EP) `TestGoldenInputsFidelite` (gate local) rouge à l identique sur b1009e8e9 : dette antérieure.
