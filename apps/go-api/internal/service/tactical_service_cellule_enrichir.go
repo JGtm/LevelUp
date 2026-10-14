@@ -50,7 +50,9 @@ type sourcesDuDetail struct {
 	// classificateur, qui ne publie ni arme ni catégorie.
 	classifieur port.KillSourceClassifier
 	armes       port.WeaponLabelResolver
-	rejeu       port.ReplayService
+	// assetURL : icône de la source de dégât (KillSourceIcon) ; nil = pas d'icône.
+	assetURL games.TitleAssetURLAdapter
+	rejeu    port.ReplayService
 }
 
 // nommerLaCellule rend le nom en jeu de la zone de la cellule (règle V6, tactical.NommerZone) : au
@@ -104,6 +106,7 @@ func (s *TacticalService) enrichir(ctx context.Context, req domain.TacticalCellu
 	}
 	s.poserModeEtScore(ctx, req.MapID, out)
 	s.poserArmes(ctx, req.MapID, retenues, out)
+	s.poserIcones(retenues, out)
 	s.poserPlacements(ctx, req.MapID, univers, retenues, out)
 	s.poserRejeu(ctx, req.MapID, out)
 	return out
@@ -150,7 +153,8 @@ func (s *TacticalService) poserModeEtScore(ctx context.Context, mapID string, ou
 		if !ok {
 			continue
 		}
-		out[i].ModeLabel = labelPourLocale(r.Summary.PairMode, locale)
+		out[i].ModeLabel = analysis.NormalizeModeLabel(
+			labelPourLocale(r.Summary.PairMode, locale), labelPourLocale(r.Summary.Map, locale))
 		out[i].ScoreLabel, out[i].ScoreKind = scoreDuMatch(r, s.detail.roundsDecide)
 	}
 }
@@ -201,6 +205,23 @@ func (s *TacticalService) poserArmes(ctx context.Context, mapID string, retenues
 			continue
 		}
 		out[i].CategorieSource = c.categorie
+	}
+}
+
+// poserIcones pose l'icône de la source de dégât de chaque engagement dont le titre en a une. Pure
+// table embarquée (aucune lecture), donc rien à journaliser : pas d'adapter ou pas d'icône = champ
+// absent, et le web retombe sur le texte.
+func (s *TacticalService) poserIcones(retenues []contributionLue, out []domain.TacticalContribution) {
+	if s.detail.assetURL == nil {
+		return
+	}
+	for i, c := range retenues {
+		if c.sourceTag == nil {
+			continue
+		}
+		if ic, ok := s.detail.assetURL.KillSourceIcon(*c.sourceTag); ok && ic.ImageURL != "" {
+			out[i].ArmeImageURL, out[i].ArmeImageTinted = ic.ImageURL, ic.Tinted
+		}
 	}
 }
 

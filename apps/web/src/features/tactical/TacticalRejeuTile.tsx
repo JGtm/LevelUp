@@ -1,13 +1,14 @@
 /**
  * TacticalRejeuTile — la mini-tuile « Rejeu » d'une contribution de la zone sélectionnée, sur la
- * grammaire de la tuile de match de l'app : bande d'issue de 3 px ; ligne 1 mode, score, issue en mot,
- * date · heure à droite ; ligne 2 l'instant, le fait, l'arme (seule à se tronquer), le badge de
- * placement à droite ; le bouton de rejeu de 36 px à droite, seulement si l'artefact existe et que
+ * grammaire de la tuile de match de l'app : bande d'issue de 3 px ; ligne 1 mode, score (coloré par
+ * l'issue, dont le mot ne figure que dans l'infobulle), date · heure à droite ; ligne 2 l'instant, le
+ * fait, l'arme (icône du titre, à défaut son nom, seul à se tronquer), le badge de placement à droite ; le bouton de rejeu de 36 px à droite, seulement si l'artefact existe et que
  * le titre sert le rejeu (`MatchReplayLink`). L'infobulle porte le texte complet.
  *
  * Ce que la tuile dit vient de `modeleDeTuile` (`zone.logic.ts`) ; le mot et la couleur de l'issue
  * viennent des correspondances du titre (`useOutcomeMapping`, jeton `outcome-*`).
  */
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { TacticalContribution } from '@/lib/api/types'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
@@ -18,6 +19,10 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import type { TacticalText } from './i18n'
 import { modeleDeTuile } from './zone.logic'
+
+/** Taille du slot de l'icône d'arme, sur la ligne 2 de 16 px. */
+const ICONE_L = 30
+const ICONE_H = 14
 
 interface TacticalRejeuTileProps {
   t: TacticalText
@@ -45,10 +50,9 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c }: Ta
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-baseline gap-1 whitespace-nowrap leading-4 text-foreground" data-testid="tactical-rejeu-l1">
           {m.mode && <span className="min-w-0 truncate font-medium">{m.mode}</span>}
-          {m.score && <span className="flex-none font-bold">{m.score}</span>}
-          {issue && (
-            <span className="flex-none font-medium" style={jeton ? { color: tokenCssVar(jeton) } : undefined}>
-              {issue.label}
+          {m.score && (
+            <span className="flex-none font-bold" style={jeton ? { color: tokenCssVar(jeton) } : undefined}>
+              {m.score}
             </span>
           )}
           {m.date && <span className="ml-auto flex-none text-[10.5px] text-muted-foreground">{m.date}</span>}
@@ -59,7 +63,18 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c }: Ta
         >
           <span className="flex-none rounded bg-muted px-[5px] font-mono text-[11px] leading-4 text-foreground">{m.instant}</span>
           {m.fait && <span className="flex-none">{m.fait}</span>}
-          {m.arme && <span className="min-w-0 truncate">{m.arme}</span>}
+          {c.arme_image_url ? (
+            <WeaponIcon
+              imageUrl={c.arme_image_url}
+              tinted={c.arme_image_tinted}
+              label={m.arme ?? ''}
+              width={ICONE_L}
+              height={ICONE_H}
+              className="flex-none"
+            />
+          ) : (
+            m.arme && <span className="min-w-0 truncate">{m.arme}</span>
+          )}
           {m.badge && <span className="ml-auto flex-none rounded-full bg-muted px-1.5 text-[10.5px] leading-4">{m.badge}</span>}
         </div>
       </div>
