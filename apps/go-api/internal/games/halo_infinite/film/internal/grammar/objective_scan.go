@@ -154,8 +154,9 @@ type ObjectiveScan struct {
 	// IMAGE-CLE, ou l'ancrage est structurel (en-tete de record) et non par bande de slots.
 	KeyRecords, KeyWalked, KeyBroken, KeyChained int
 	// KeyClosed / KeyBounded : la definition FORTE de la sante de la voie image-cle (lot 1.4),
-	// la meme que `NavpointRadialScan` — la marche atterrit-elle EXACTEMENT sur le premier bit
-	// du record suivant, sur les records qui ont un suivant.
+	// la meme que `NavpointRadialScan` — la marche, puis les entrees intercalees, atterrissent-elles
+	// EXACTEMENT sur le premier bit du record suivant ([fermeSurLAncreSuivante]), sur les records qui
+	// ont un suivant.
 	KeyClosed, KeyBounded int
 }
 
@@ -393,14 +394,15 @@ func (w *objectiveWalk) scanKeyframe(pay []byte, ts uint64, sc *ObjectiveScan) {
 		}
 		first := len(sc.Reads)
 		w.cur.Slot, w.cur.TimestampUS = uint32(b.Slot), ts //nolint:gosec // Slot : id de 30 bits
-		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.contexte())
+		ctx := w.contexte()
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, ctx)
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Reads = sc.Reads[:first] // une marche cassee ne laisse aucune lecture
 			continue
 		}
 		sc.KeyWalked++
-		if tr.EndBit == b.Want {
+		if fermeSurLAncreSuivante(pay, tr, b, w.reg, ctx) {
 			sc.KeyClosed++
 		}
 		if _, ok := readKeyframeHeader(pay, tr.EndBit, total); ok {

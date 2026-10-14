@@ -235,38 +235,55 @@ Une étape commence quand la précédente est close : items statués, gate pass�
 
 ### Étape R1 — Entrées de slot libéré (Rslot)
 
-- [ ] R1.0 Base : `git fetch` ; fusion de `origin/feat/v75` si elle a bougé (§1.2) ; références à la
+- [x] R1.0 Base : `git fetch` ; fusion de `origin/feat/v75` si elle a bougé (§1.2) ; références à la
       tête (code de production inchangé) → `$RES/r0` : I-d0 (TOTAL et admissions), I-ferm, I-ancres,
       I-equipes, I-e108, I-carte (20, 8, MPP 28) ; binaires de base `replay-equiv-r0.exe` et
       `killsource-r0.exe` ; G-equiv et killsource de base → `$RES/r0/equiv`, `$RES/r0/ks`.
       Contrôle : I-e108 à la tête reproduit S-3 à la correction « jeu d'armes refusé » près (records
       bipèdes arrêtés sur i42, journal du plan clos, `ti=35` 5 401 → 5 397) ; tout autre écart est
       expliqué avant R1.2.
-- [ ] R1.1 Lectures Ghidra relues sur pièces (§2.2) : `FUN_142e2bfd0` (en-tête 108 bits, condition du
+      *Fait (2026-10-14)* : fusion de `origin/feat/v75` `76c0dce35` sans conflit (`da3da6727`, aucun
+      fichier sous `film/`). Références `$RES/r0` : I-d0 TOTAL `10710 10198 5397 9968 332 6954 1180 5323 3
+      4320`, admis 6 507 ; I-ferm 837 lignes ; I-ancres 477 636 lignes ; I-e108 : bipèdes 5 397 → 8 237
+      sous Rslot (S-3 : 5 401 → 8 242 ; écart = les quatre fermetures et le record perdus par la
+      correction « jeu d'armes refusé » de la revue D1.4.6) ; I-carte (20, 8, MPP) ; G-equiv 20 films
+      (`depuis_les_faits=false` sur les 20) et killsource 19 témoins avec les binaires `r0`.
+- [x] R1.1 Lectures Ghidra relues sur pièces (§2.2) : `FUN_142e2bfd0` (en-tête 108 bits, condition du
       corps, pas de 200 octets, borne), `FUN_142e29cf8` (R(4)), `FUN_1408be074` (0x1fff),
       `FUN_1408f1948` (forme libérée) → `$RES/g/`. Aucune largeur codée sans adresse.
-- [ ] R1.2 **Fermeture sous Rslot.**
-  - [ ] R1.2.1 `keyframe_entrees.go` : la forme de l'entrée (E-1) — `lireEntreeDImageCle` (libérée /
+      *Fait* : décompilés (`dec_142e2bfd0.c`, `dec_142e29cf8.c`, `dec_1408be074.c`, `dec_1408f1948.c`) ;
+      conformes au §2.2.
+- [x] R1.2 **Fermeture sous Rslot.**
+  - [x] R1.2.1 `keyframe_entrees.go` : la forme de l'entrée (E-1) — `lireEntreeDImageCle` (libérée /
         record / illisible) et `lireLesEntrees(pay, pos, n, reg, ctx)` (n entrées comme le jeu :
         108 bits pour une libérée, état complet par `WalkKeyframeFullState` sans observation pour un
         record, faux sur une entrée illisible ou un record désynchronisé). Tests unitaires synthétiques
         (entrées libérées seules, record intercalé, archétype hors table, débordement du payload).
-  - [ ] R1.2.2 `keyframeBorne` porte le slot de l'ancre suivante ; la fermeture d'un record devient
+  - [x] R1.2.2 `keyframeBorne` porte le slot de l'ancre suivante ; la fermeture d'un record devient
         « la traversée de son état complet, puis la lecture des `slotSuivant − slot − 1` entrées
         intercalées, atterrissent exactement sur l'ancre suivante » ; UNE fonction
         (`fermeSurLAncreSuivante`) pour `preuveDeLEtatComplet` et les compteurs `KeyClosed` des deux
         balayages (`navpoint_radial_scan.go`, `objective_scan.go`) — trois copies de
         `tr.EndBit == b.Want` aujourd'hui, règle 6 : helper ET garde-rail qui interdit l'ancien
         littéral hors du helper.
-  - [ ] R1.2.3 Mesure → `$RES/r1.2` : I-ferm, I-d0, I-ancres, I-equipes, I-carte, I-e108 ; goldens de
+  - [x] R1.2.3 Mesure → `$RES/r1.2` : I-ferm, I-d0, I-ancres, I-equipes, I-carte, I-e108 ; goldens de
         fermeture (`-run KeyframeClosure`). Pertes adjugées par E-5, liste écrite au journal.
-  - [ ] R1.2.4 Ratchets régénérés (`keyframe_closure.golden`, `keyframe_closure_cuisson.golden`) avec
+  - [x] R1.2.4 Ratchets régénérés (`keyframe_closure.golden`, `keyframe_closure_cuisson.golden`) avec
         leur ligne d'historique (hausses, pertes adjugées).
   - Gate R1.2 : I-ancres colonnes 1-9 et `m2_stats_tete.tsv` identiques à `$RES/r0` hors la colonne
     `fermes` ; I-equipes identique ; I-carte identique ; I-ferm : aucune ligne (archétype × film) en
     baisse hors pertes adjugées E-5 ; bipèdes fermés à la simulation S-3 près (écart expliqué) ;
     admissions `canal_admis` ≥ r0 ; témoin décalé d'un bit publié par archétype et comparé à S-4 (un
     écart à la simulation est expliqué) ; G-unit (`-skip "$SKIPREV"`) du paquet `grammar`, archlint.
+  - *Gate R1.2 PASSÉ (2026-10-14, `$RES/r1.2`)* : I-ancres colonnes 1-9 identiques (`cmp`), stats
+    identiques hors `fermes` ; équipes identiques ; carte identique (20, 8, MPP, `cmp`) ; I-ferm
+    (`cmp_ferm.txt`) : 283 lignes en hausse, DEUX en baisse, `ti=37` `396cfc92` 16 → 1 et `696a9d7c`
+    3 → 2, soit 44 records perdus sur 10 films (`fermes_perdus.txt`), TOUS `ti=37`, TOUS fermés en
+    base avec un écart de slots > 0 — ADJUGÉS par E-5 (le témoin décalé d'un bit en fermait 24, dont 18
+    par hasard, en base) ; par archétype exactement la simulation S-3/S-5 (bipèdes 5 397 → 8 237, tous
+    240 466 → 267 806) ; admissions 6 507 inchangées ; témoin sous Rslot : bipèdes 316 dont 3 par
+    hasard (S-4) ; goldens de fermeture régénérés, aucune baisse sur les sept bobines ; G-unit et
+    archlint verts.
 - [ ] R1.3 **Preuve d'image-clé (élection des ancres) sous Rslot.**
   - [ ] R1.3.1 `PreuveDImageCle.prouve` : après la traversée, lire les entrées libérées qui suivent
         (k ≥ 0), puis exiger un en-tête de record de slot ÉGAL à `slot + 1 + k` (un écart de slots
@@ -423,3 +440,17 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   commencées pendant la rédaction (`FUN_142e2bfd0`, `FUN_142e29cf8`, `FUN_1408be074`, `FUN_1408f1948`
   décompilés, `$RES/g/`) : conformes au rapport R-VEH-4. `origin/feat/v75` a avancé à `76c0dce35`
   (lots recos-d et recos-f, documents ; aucun fichier sous `film/`) : fusion à R1.0.
+- 2026-10-14 : R1.0, R1.1 et R1.2 CLOSES. Fermeture sous Rslot : `keyframe_entrees.go` (lecteur
+  d'entrée unique, `lireLesEntrees`, `fermeSurLAncreSuivante`), `keyframeBorne.SlotSuivant`, la preuve
+  d'état complet et les deux `KeyClosed` par le helper, garde-rail `keyframe_fermeture_unique_test.go`
+  (mutation : rouge). Effets mesurés : voir le gate R1.2. Trois rouges rencontrés au gate et réglés :
+  (1) dérive PRÉEXISTANTE du golden de fermeture en cuisson (bloquant de `a521164d` `ti=35`, arrêt
+  `jeu_d_armes_refuse` de la revue D1.4.6) figée dans un commit séparé (`0120bb446`), mesurée sur le
+  code de base ; (2) l'invariant « un record fermé finit sur le suivant » de
+  `TestLaPhaseDesImagesClesTientSesInvariants` devient « finit sur le suivant, ou avant lui de la place
+  des entrées intercalées » ; (3) golden des familles de la mini-bobine : `managedProperties`, records
+  `ti=13` d'image-clé fermés 31 → 32 (non prouvés 1 → 0), lectures d'image-clé 31 → 32, les 141 lectures
+  delta identiques ligne à ligne (mesuré des deux côtés) — régénéré par sa porte ; le paragraphe
+  d'historique n'entre pas dans le fichier (plafond de taille 553, règle 17 : l'histoire va au
+  journal). Rouge hérité réparé (bloque archlint) : `ecart108_research_test.go` reconstruisait l'ensemble
+  des familles connues, il appelle `weaponv3.FamillesConnues`.

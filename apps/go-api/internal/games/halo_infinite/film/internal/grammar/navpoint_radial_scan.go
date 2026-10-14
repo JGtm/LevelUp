@@ -80,7 +80,8 @@ type NavpointRadialScan struct {
 	// KeyRecords / KeyWalked / KeyBroken / KeyChained : voie IMAGE-CLE.
 	KeyRecords, KeyWalked, KeyBroken, KeyChained int
 	// KeyClosed / KeyBounded : la definition FORTE de la sante de la voie image-cle (lot 1.4).
-	// `KeyClosed` = la marche atterrit EXACTEMENT sur le premier bit du record suivant ;
+	// `KeyClosed` = la marche, puis les entrees intercalees, atterrissent EXACTEMENT sur le premier bit
+	// du record suivant ([fermeSurLAncreSuivante]) ;
 	// `KeyBounded` = les records qui ont un suivant, donc une frontiere a atteindre. Le dernier
 	// record d'un payload est lu (il porte des donnees) mais n'entre pas dans `KeyBounded` :
 	// sans frontiere, la question ne se pose pas pour lui. `KeyChained` reste la definition
@@ -351,7 +352,8 @@ func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 		}
 		first := len(sc.Reads)
 		w.cur.Slot, w.cur.TMS = uint32(b.Slot), ms //nolint:gosec // Slot vient d'un id de 30 bits
-		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, w.contexte())
+		ctx := w.contexte()
+		tr := WalkKeyframeFullState(pay, b.Bit, w.reg, ctx)
 		if tr.DesyncAt >= 0 || tr.EndBit > total {
 			sc.KeyBroken++
 			sc.Blocked[tr.DesyncAt]++
@@ -359,7 +361,7 @@ func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 			continue
 		}
 		sc.KeyWalked++
-		if tr.EndBit == b.Want {
+		if fermeSurLAncreSuivante(pay, tr, b, w.reg, ctx) {
 			sc.KeyClosed++
 		}
 		if _, ok := readKeyframeHeader(pay, tr.EndBit, total); ok {

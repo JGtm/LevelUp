@@ -401,6 +401,13 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("#     0 -> 126, 60ae07c4 0 -> 66, e5adf7b2 0 -> 40, a521164d 0 -> 40, 11de8353 0 -> 13 ; 0 baisse.\n")
 	b.WriteString("#   2026-10-08 plan LK, fusion de feat/v75 (2761162de, lot des arrets de la vue B suite) : golden\n")
 	b.WriteString("#     regenere sur la base fusionnee ; les deux baisses ti=37 ci-dessus sont celles du lot fusionne.\n")
+	b.WriteString("#   2026-10-14 plan residu (R1.2) : FERMETURE SOUS RSLOT — la table d image-cle compte une\n")
+	b.WriteString("#     entree par slot (FUN_1408be074, 0x1fff) ; entre deux ancres de slots s et t, la fermeture\n")
+	b.WriteString("#     lit les t - s - 1 entrees intercalees comme FUN_142e2bfd0 (108 bits sans archetype, l etat\n")
+	b.WriteString("#     complet sinon). MONTENT : ti=35 6 -> 7, ti=10 1 506 -> 2 296, ti=42 337 -> 599, ti=4 72 -> 103,\n")
+	b.WriteString("#     ti=38 3 441 -> 3 510, ti=21 285 -> 357, ti=43 1 104 -> 1 147, ti=47 1 450 -> 1 516, ti=11\n")
+	b.WriteString("#     278 -> 322, ti=37 13 -> 38, ti=45 97 -> 113, ti=41 34 -> 45, ti=29 105 -> 113, ti=13\n")
+	b.WriteString("#     1 501 -> 1 510 ; aucune baisse sur les sept bobines.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)
