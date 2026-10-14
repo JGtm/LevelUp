@@ -6,6 +6,7 @@ package service
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"testing"
 
@@ -136,10 +137,10 @@ func TestEquipe_BilanEnNSurM(t *testing.T) {
 func TestEquipe_UneLectureParSource(t *testing.T) {
 	repo := corpusEquipe()
 	detailEquipe(t, repo)
-	if len(repo.vuMates) != 1 || strings.Join(repo.vuMates[0].Matchs.IDs(), ",") != "m1,m2" {
+	if len(repo.vuMates) != 1 || idsTries(repo.vuMates[0].Matchs.IDs()) != "m1,m2" {
 		t.Errorf("coequipiers : %+v, want 1 lecture bornee a [m1 m2]", repo.vuMates)
 	}
-	if len(repo.vuJournal) != 1 || strings.Join(repo.vuJournal[0].Matchs.IDs(), ",") != "m1,m2" {
+	if len(repo.vuJournal) != 1 || idsTries(repo.vuJournal[0].Matchs.IDs()) != "m1,m2" {
 		t.Errorf("journal : %+v, want 1 lecture bornee a [m1 m2]", repo.vuJournal)
 	}
 }
@@ -222,4 +223,11 @@ func TestEquipe_LigneEnTrop_EquipeEcarteeEtJournalisee(t *testing.T) {
 	if strings.Contains(src.trace.String(), "incoherentes") || !strings.Contains(src.trace.String(), "pas encore lus") {
 		t.Errorf("aucune ligne : journal « pas encore lus », jamais « incoherentes » :\n%s", src.trace.String())
 	}
+}
+
+// idsTries rend les identifiants triés : l'ordre d'une liste blanche n'est pas un contrat.
+func idsTries(ids []string) string {
+	c := append([]string(nil), ids...)
+	sort.Strings(c)
+	return strings.Join(c, ",")
 }

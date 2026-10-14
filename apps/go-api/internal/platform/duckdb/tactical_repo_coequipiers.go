@@ -11,7 +11,11 @@ package duckdb
 // la ligne de contexte que l'appelant a deja appariee a la mort (a ± 1,5 s) : la base rend les
 // lignes de cette cle-la, elle ne rapproche aucune horloge.
 //
-// LE LEFT JOIN SUR LES PARTICIPANTS EST DELIBERE : il ne sert qu'a nommer le coequipier. Un
+// LE NOM D'UN COEQUIPIER VIENT DES PARTICIPANTS, A DEFAUT DES ALIAS (xuid_aliases) : sur le parc reel,
+// 92 % des lignes de participants n'ont pas de gamertag et les coequipiers n'y ont souvent aucune ligne,
+// alors que les alias les connaissent.
+//
+// LES LEFT JOIN SONT DELIBERES : ils ne servent qu'a nommer le coequipier. Un
 // coequipier que le registre du match ne nomme pas garde sa ligne (nom vide) — l'INNER JOIN le
 // ferait disparaitre et la somme des lignes ne retomberait plus sur `teammates_total`.
 
@@ -25,10 +29,12 @@ import (
 
 // QTacticalMates : %s = la liste des matchs, puis celle des victimes, en constantes liees.
 const QTacticalMates = `
-SELECT m.match_id, m.victim_xuid, m.time_ms, m.mate_xuid, COALESCE(p.gamertag, '') AS gamertag,
+SELECT m.match_id, m.victim_xuid, m.time_ms, m.mate_xuid,
+       COALESCE(NULLIF(p.gamertag, ''), a.gamertag, '') AS gamertag,
        m.state, m.x, m.y, m.distance_m
 FROM match_death_mates_latest m
 LEFT JOIN match_participants p ON p.match_id = m.match_id AND p.xuid = m.mate_xuid
+LEFT JOIN xuid_aliases a ON a.xuid = m.mate_xuid
 WHERE m.match_id IN (%s)
   AND m.victim_xuid IN (%s)
 ORDER BY m.match_id, m.victim_xuid, m.time_ms, m.mate_xuid`

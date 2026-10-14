@@ -53,7 +53,7 @@ func TestMesureLectureDesPistes(t *testing.T) {
 		mort := int64(tr.Points[len(tr.Points)/2].T) * int64(pistes.FrameIntervalMS)
 		debut := time.Now()
 		seq, err := tactical.Sequence(tactical.EntreeSequence{
-			Victime:         tactical.ActeurSequence{Role: domain.TacticalRoleVictime, XUID: tr.XUID, Points: tr.Points},
+			Victime:         tactical.ActeurSequence{Role: domain.TacticalRoleVictime, XUID: tr.XUID, Vies: [][]domain.TacticalPistePoint{tr.Points}},
 			FrameIntervalMs: pistes.FrameIntervalMS, MortFilmMs: mort, RayonM: 18,
 		})
 		if err != nil {

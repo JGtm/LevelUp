@@ -205,3 +205,26 @@ func TestTacticalRepo_JournalDesKills_ListeExigeeEtTableAbsente(t *testing.T) {
 		t.Errorf("err = %v, want ErrCapabilityNotSupported", err)
 	}
 }
+
+// Le nom d'un coequipier vient des participants, a defaut des alias : sur le parc reel, la plupart des
+// lignes de participants n'ont pas de gamertag et les coequipiers n'y figurent souvent pas.
+func TestTacticalRepo_MatesDesMorts_NomParLesAlias(t *testing.T) {
+	b := newBaseNotee(t)
+	ids := seedFenetresTactiques(t, b.pdb, 1)
+	tacMate(t, b.pdb, "p", "2026-08-02 10:00:00", ids[0], tacXUIDMoi, 2000, "alias-seul", "visible")
+	tacMate(t, b.pdb, "p", "2026-08-02 10:00:00", ids[0], tacXUIDMoi, 2000, "inconnu", "waiting")
+	tacExec(t, b.pdb, `INSERT INTO xuid_aliases (xuid, gamertag) VALUES ('alias-seul', 'Kestrel 77')`)
+	got, err := NewTacticalRepo(b.pdb).MatesDesMorts(context.Background(),
+		domain.TacticalQuery{PlayerXUID: tacXUIDMoi, Matchs: domain.RestreindreAux(ids)},
+		[]domain.CleDeMort{{MatchID: ids[0], VictimXUID: tacXUIDMoi, TimeMs: 2000}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noms := map[string]string{}
+	for _, m := range got {
+		noms[m.MateXUID] = m.Gamertag
+	}
+	if noms["alias-seul"] != "Kestrel 77" || noms["inconnu"] != "" || len(got) != 2 {
+		t.Fatalf("noms = %v : l'alias nomme le coequipier, un inconnu garde sa ligne sans nom", noms)
+	}
+}

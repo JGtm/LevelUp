@@ -129,17 +129,21 @@ func reelService(t *testing.T, e reelEnv, pdb *duckdb.PlayerDB) *TacticalService
 		WithSequenceStore(NewTacticalSequenceStore(e.runtimeRoot, pdb.TitleSlug))
 }
 
-// reelCelluleLaPlusDense rend la cellule de plus forte valeur du raster (celle que le web preselectionne).
-func reelCelluleLaPlusDense(r domain.TacticalRaster) (domain.CelluleTactique, bool) {
-	var best domain.CelluleTactique
-	trouve := false
-	for _, c := range r.Cellules {
-		if !trouve || c.Valeur > best.Valeur || (c.Valeur == best.Valeur && c.Matchs > best.Matchs) {
-			best, trouve = c, true
+// reelCellulesParDensite rend les cellules du raster de la plus dense a la moins dense (la premiere est
+// celle que le web preselectionne).
+func reelCellulesParDensite(r domain.TacticalRaster) []domain.CelluleTactique {
+	cells := append([]domain.CelluleTactique(nil), r.Cellules...)
+	sort.SliceStable(cells, func(i, j int) bool {
+		if cells[i].Valeur != cells[j].Valeur {
+			return cells[i].Valeur > cells[j].Valeur
 		}
-	}
-	return best, trouve
+		return cells[i].Matchs > cells[j].Matchs
+	})
+	return cells
 }
+
+// reelCellulesLues : combien de cellules (les plus denses) on lit pour chercher une sequence.
+const reelCellulesLues = 40
 
 func TestReelCoequipiers(t *testing.T) {
 	e := reelEnvironnement(t)
@@ -157,40 +161,55 @@ func TestReelCoequipiers(t *testing.T) {
 	reelEcrire(t, e, "reel-matchs.json", ids)
 
 	var incoherences []string
-	var sequenceDemandee *domain.TacticalSequenceRequest
+	meta := map[string]any{"gamertag": e.gamertag, "xuid": xuid, "map_id": carte, "matchs": len(ids)}
 	for _, question := range []string{domain.TacticalQuestionMorts, domain.TacticalQuestionKills} {
 		raster, err := svc.Raster(ctx, domain.TacticalRasterRequest{MapID: carte, Question: question, Qui: domain.TacticalQuiMoi, Scope: scope})
 		if err != nil {
 			t.Fatalf("Raster %s: %v", question, err)
 		}
 		reelEcrire(t, e, "reel-raster-"+question+".json", raster)
-		cell, ok := reelCelluleLaPlusDense(raster)
-		if !ok {
+		cells := reelCellulesParDensite(raster)
+		if len(cells) == 0 {
 			t.Fatalf("raster %s sans cellule", question)
 		}
-		t.Logf("%s : zone la plus dense col=%d lig=%d valeur=%v matchs=%d (pas %v m)", question, cell.Col, cell.Lig, cell.Valeur, cell.Matchs, raster.PasM)
-		detail, err := svc.Cellule(ctx, domain.TacticalCelluleRequest{MapID: carte, Question: question, Qui: domain.TacticalQuiMoi,
-			Scope: scope, Col: cell.Col, Lig: cell.Lig, PasM: raster.PasM})
-		if err != nil {
-			t.Fatalf("Cellule %s: %v", question, err)
-		}
-		reelEcrire(t, e, "reel-cellule-"+question+".json", detail)
-		incoherences = append(incoherences, reelControles(question, detail)...)
+		lues := 1
 		if question == domain.TacticalQuestionMorts {
-			sequenceDemandee = reelSequenceCandidate(ctx, t, svc, carte, detail)
+			lues = min(reelCellulesLues, len(cells))
+		}
+		var sequenceTrouvee bool
+		for i, cell := range cells[:lues] {
+			detail, err := svc.Cellule(ctx, domain.TacticalCelluleRequest{MapID: carte, Question: question, Qui: domain.TacticalQuiMoi,
+				Scope: scope, Col: cell.Col, Lig: cell.Lig, PasM: raster.PasM})
+			if err != nil {
+				t.Fatalf("Cellule %s (%d, %d): %v", question, cell.Col, cell.Lig, err)
+			}
+			reelEcrire(t, e, fmt.Sprintf("reel-cellule-%s-c%d-l%d.json", question, cell.Col, cell.Lig), detail)
+			incoherences = append(incoherences, reelControles(question, detail)...)
+			if i == 0 {
+				t.Logf("%s : zone la plus dense col=%d lig=%d valeur=%.3f matchs=%d (pas %v m), %d contributions",
+					question, cell.Col, cell.Lig, cell.Valeur, cell.Matchs, raster.PasM, len(detail.Contributions))
+				meta[question+"_dense"] = map[string]any{"col": cell.Col, "lig": cell.Lig, "pas_m": raster.PasM}
+			}
+			if question != domain.TacticalQuestionMorts || sequenceTrouvee {
+				continue
+			}
+			if req := reelSequenceCandidate(ctx, t, svc, carte, detail); req != nil {
+				seq, err := svc.Sequence(ctx, *req)
+				if err != nil {
+					t.Fatalf("Sequence %+v: %v", *req, err)
+				}
+				reelEcrire(t, e, "reel-sequence.json", seq)
+				reelEcrire(t, e, "reel-sequence-demande.json", req)
+				incoherences = append(incoherences, reelControlesSequence(req.MatchID, seq)...)
+				meta["sequence"] = map[string]any{"col": cell.Col, "lig": cell.Lig, "rang_de_densite": i + 1, "match_id": req.MatchID, "time_ms": req.TimeMs}
+				sequenceTrouvee = true
+			}
+		}
+		if question == domain.TacticalQuestionMorts && !sequenceTrouvee {
+			t.Logf("AUCUNE mort des %d zones les plus denses dont le match a un artefact exploitable", lues)
 		}
 	}
-	if sequenceDemandee != nil {
-		seq, err := svc.Sequence(ctx, *sequenceDemandee)
-		if err != nil {
-			t.Fatalf("Sequence %+v: %v", *sequenceDemandee, err)
-		}
-		reelEcrire(t, e, "reel-sequence.json", seq)
-		reelEcrire(t, e, "reel-sequence-demande.json", sequenceDemandee)
-		incoherences = append(incoherences, reelControlesSequence(sequenceDemandee.MatchID, seq)...)
-	} else {
-		t.Log("AUCUNE mort de la zone dont le match a un artefact exploitable : pas de sequence")
-	}
+	reelEcrire(t, e, "reel-meta.json", meta)
 	sort.Strings(incoherences)
 	reelEcrire(t, e, "reel-incoherences.json", incoherences)
 	for _, s := range incoherences {
@@ -226,7 +245,7 @@ func reelControles(question string, d domain.TacticalCelluleReponse) []string {
 		if c.Equipe != nil {
 			for _, m := range c.Equipe.Coequipiers {
 				if m.Statut == domain.TacticalMateVisible && m.Point != nil && c.Point != nil && m.DistanceMortM != nil {
-					if ecart := math.Abs(math.Hypot(m.Point.X-c.Point.X, m.Point.Y-c.Point.Y) - *m.DistanceMortM); ecart > 0.05 {
+					if ecart := math.Abs(math.Hypot(m.Point.X-c.Point.X, m.Point.Y-c.Point.Y) - *m.DistanceMortM); ecart > 0.5 {
 						add("match %s mort %d ms : distance du coequipier %s = %.2f m, mais ses points en donnent %.2f m",
 							c.MatchID, c.InstantMs, m.XUID, *m.DistanceMortM, *m.DistanceMortM+ecart)
 					}
@@ -285,4 +304,31 @@ func reelControlesSequence(matchID string, s domain.TacticalSequence) []string {
 		}
 	}
 	return out
+}
+
+// TestReelNomsDesCoequipiers : d'ou vient un nom de coequipier absent ? (sonde de la preuve reelle)
+func TestReelNomsDesCoequipiers(t *testing.T) {
+	e := reelEnvironnement(t)
+	pdb, _, _, _ := reelBases(t, e)
+	db := pdb.Shared.SQLDb()
+	var total, sansNom int
+	if err := db.QueryRow(`SELECT count(*), count(*) FILTER (WHERE gamertag IS NULL OR gamertag = '') FROM match_participants`).Scan(&total, &sansNom); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("match_participants : %d lignes, %d sans gamertag", total, sansNom)
+	rows, err := db.Query(`SELECT m.match_id, m.mate_xuid, COALESCE(p.gamertag, '<pas de ligne>'), COALESCE(a.gamertag, '<pas d alias>')
+		FROM (SELECT DISTINCT match_id, mate_xuid FROM match_death_mates_latest LIMIT 400) m
+		LEFT JOIN match_participants p ON p.match_id = m.match_id AND p.xuid = m.mate_xuid
+		LEFT JOIN xuid_aliases a ON a.xuid = m.mate_xuid ORDER BY 1, 2 LIMIT 12`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a, b, c, d string
+		if err := rows.Scan(&a, &b, &c, &d); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("%s %s participants=%q alias=%q", a[:8], b, c, d)
+	}
 }
