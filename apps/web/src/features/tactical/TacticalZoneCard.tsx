@@ -16,6 +16,7 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
 import { TacticalRejeuTile } from './TacticalRejeuTile'
+import { misEnAvant } from './tueurs.logic'
 import { unitForQuestion, type TacticalQuestion } from './tacticalView.logic'
 import { coordonneesDeZone, sousLigneDeZone, titreDeZone, valeurAffichee } from './zone.logic'
 
@@ -43,6 +44,9 @@ interface TacticalZoneCardProps {
   /** L'index de la contribution mise en avant (tuile ou point du plan survolé), `null` sinon. */
   survol?: number | null
   onSurvol?: (index: number | null) => void
+  /** L'index de la contribution choisie (tuile bordée), `null` sinon. */
+  choisie?: number | null
+  onChoisir?: (index: number) => void
 }
 
 export function TacticalZoneCard({
@@ -56,6 +60,8 @@ export function TacticalZoneCard({
   detail,
   survol = null,
   onSurvol,
+  choisie = null,
+  onChoisir,
 }: TacticalZoneCardProps) {
   const titre = titreDeZone(t, locale, cellule !== null, detail.data)
   return (
@@ -90,7 +96,11 @@ export function TacticalZoneCard({
               <h4 className="mt-2 flex-none border-t border-border pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t.zoneReplayHeading}
               </h4>
-              <ListeDuRejeu t={t} locale={locale} playerSlug={playerSlug} detail={detail} survol={survol} onSurvol={onSurvol} />
+              <ListeDuRejeu t={t} locale={locale} playerSlug={playerSlug} detail={detail} survol={survol}
+                onSurvol={onSurvol}
+                choisie={choisie}
+                onChoisir={onChoisir}
+              />
             </>
           ) : (
             <p className="m-0 text-[13px] text-muted-foreground">{t.zoneNone}</p>
@@ -109,6 +119,8 @@ function ListeDuRejeu({
   detail,
   survol,
   onSurvol,
+  choisie,
+  onChoisir,
 }: {
   t: TacticalText
   locale: Locale
@@ -116,6 +128,8 @@ function ListeDuRejeu({
   detail: DetailDeZone
   survol: number | null
   onSurvol?: (index: number | null) => void
+  choisie: number | null
+  onChoisir?: (index: number) => void
 }) {
   if (detail.isError) {
     return (
@@ -128,7 +142,12 @@ function ListeDuRejeu({
   const contributions = detail.data?.contributions ?? []
   if (contributions.length === 0) return <p className="text-xs text-muted-foreground">{t.zoneContributionsEmpty}</p>
   return (
-    <ul className="-mx-3 min-h-0 flex-1 overflow-y-auto" data-testid="tactical-rejeu-list">
+    <ul
+      role="listbox"
+      aria-label={t.zoneEventsLabel}
+      className="-mx-3 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-0.5"
+      data-testid="tactical-rejeu-list"
+    >
       {contributions.map((c, i) => (
         <TacticalRejeuTile
           key={`${c.match_id}-${c.instant_ms}-${i}`}
@@ -136,7 +155,9 @@ function ListeDuRejeu({
           locale={locale}
           playerSlug={playerSlug}
           contribution={c}
-          actif={survol === i}
+          actif={misEnAvant(survol, choisie) === i}
+          choisi={choisie === i}
+          onChoisir={() => onChoisir?.(i)}
           onSurvol={(survole) => onSurvol?.(survole ? i : null)}
         />
       ))}

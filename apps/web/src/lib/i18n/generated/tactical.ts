@@ -95,6 +95,7 @@ export const tacticalManifest = {
   "tactical.zone.contributions_loading": { fr: "Chargement des matchs de la zone…", en: "Loading the zone’s matches…" },
   "tactical.zone.coords": { fr: "x {x0}…{x1} m · y {y0}…{y1} m", en: "x {x0}…{x1} m · y {y0}…{y1} m" },
   "tactical.zone.error": { fr: "La zone n'a pas pu être lue", en: "The zone could not be read" },
+  "tactical.zone.events_label": { fr: "Événements de la zone, à sélectionner", en: "Zone events, select one" },
   "tactical.zone.kills_deaths": { fr: "{f, plural, one {# frag} other {# frags}}, {m, plural, one {# mort} other {# morts}}", en: "{f, plural, one {# kill} other {# kills}}, {m, plural, one {# death} other {# deaths}}" },
   "tactical.zone.matches": { fr: "{n, plural, one {# match distinct} other {# matchs distincts}}", en: "{n, plural, one {# distinct match} other {# distinct matches}}" },
   "tactical.zone.none": { fr: "Aucune zone sélectionnée", en: "No zone selected" },

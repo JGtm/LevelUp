@@ -130,6 +130,7 @@ export function getTacticalText(locale: Locale) {
     zoneReplayHeading: m('tactical.zone.replay_heading'),
     zoneContributionsLoading: m('tactical.zone.contributions_loading'),
     zoneContributionsEmpty: m('tactical.zone.contributions_empty'),
+    zoneEventsLabel: m('tactical.zone.events_label'),
     zoneError: m('tactical.zone.error'),
 
     // ── Mini-tuile « Rejeu » ────────────────────────────────────────────────
