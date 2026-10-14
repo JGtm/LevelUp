@@ -240,8 +240,9 @@ package grammar
 // equipment-tracked-object-handles-stack-component` LIT n ENTREES, PLUS n+1. Le lecteur du jeu
 // `FUN_140f72dec` lit R(4) n (`FUN_1424e1d48`), le range en `+0x544`, puis avance le pointeur de
 // 8 octets AVANT de le comparer a `+0x544 + (n+1)*8` : n appels de `FUN_1408f0ac4(…,0)`. Le port
-// (`consumeEquipmentTrackedStack2`) en faisait un de plus, soit 16 bits de trop des que l entree
-// fantome etait presente : la marche se decalait et sortait par un rejet hors datum.
+// (`consumeEquipmentTrackedStack2`) en faisait un de plus : le bit de presence d une entree fantome
+// etait lu a CHAQUE lecture du composant (et 15 bits de plus quand il valait 1) : la marche se
+// decalait et sortait par un rejet hors datum.
 //
 // MESURE (238 films du parc, contexte de la cuisson : entree de catalogue puis
 // `PoserLaCarteEtLeDecoupage`) : trames portant un i28 d objet du monde fermees 0 sur 4 839 -> 4 726

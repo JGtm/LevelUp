@@ -1,7 +1,10 @@
 package equipenergy
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -78,6 +81,13 @@ func TestCatalogueCommisSuitLeParc(t *testing.T) {
 }
 
 func TestLoadRefuseUneVersionInconnue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "equipment_energy.json")
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(`{"schema_version": %d, "entries": []}`, SchemaVersion+1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "attendue") {
+		t.Fatalf("une version inconnue doit etre refusee : %v", err)
+	}
 	if _, err := Load(filepath.Join(t.TempDir(), "absent.json")); err == nil {
 		t.Fatal("un catalogue absent doit echouer")
 	}

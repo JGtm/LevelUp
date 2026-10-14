@@ -15,11 +15,14 @@ package replay
 // catalogue ne s'accordent pas sur le coût — ou absente du catalogue — ne reçoit aucun compte : elle
 // se compte dans la couverture, jamais devinée.
 //
-// LA POSE DE LA FAILLE est l'instant où l'énergie de l'objet porté du translocateur tombe à zéro : le
-// jeu consomme son unique charge (coût 1). Elle suit toujours une activation (~1,63 s plus tôt, mesure
-// du parc), et elle précède le premier échange (`translocations[]`). Sa position n'est lue que par ce
-// premier échange : la faille est là où le joueur arrive. Une pose jamais suivie d'un échange est
-// publiée sans position.
+// LA POSE DE LA FAILLE est l'instant où une lecture de l'objet porté du TRANSLOCATEUR, postérieure à
+// sa création, écrit une énergie nulle : le jeu consomme son unique charge (coût 1). La règle ne vaut
+// que pour cette famille (une autre famille épuisée ne pose rien). Quand l'activation est lue, elle
+// la précède de ~1,63 s (123 sur 123 au parc) et `a` la publie ; elle n'est pas exigée, parce qu'une
+// trame que la marche ne ferme pas la perd (Live Fire). La pose précède le premier échange
+// (`translocations[]`), et sa position n'est lue que par lui, borné par la fin de l'objet ou, à
+// défaut, par celle de la vie du porteur : la faille est là où le joueur arrive. Une pose jamais
+// suivie d'un échange est publiée sans position.
 
 import (
 	"cmp"
@@ -141,6 +144,11 @@ const pasDEnergie = 1.0 / 16382
 
 // choisirLeCout rend la fiche d'une famille : la seule, ou, quand la famille en a plusieurs, celle
 // dont l'énergie de l'objet ramassable est l'énergie écrite à la prise (au pas de quantification près).
+//
+// UNE CRÉATION SANS ÉNERGIE ÉCRITE NE CHOISIT RIEN. Elle garde l'énergie par défaut de l'objet PORTÉ,
+// pas celle du ramassable : sur `5676a9ba`, les répulseurs (ramassable 0,6) et les champs de
+// réparation (ramassable 0,5) créés sans énergie lisent 0,8 et 0,5 à leur premier usage, soit 1 au
+// départ. Les deux fiches du mur ont la même énergie portée (1) : rien ne les sépare.
 func choisirLeCout(cands []coutDeFamille, creation types.CarriedEquipmentRead) (coutDeFamille, bool) {
 	if len(cands) == 1 {
 		return cands[0], true
@@ -292,10 +300,31 @@ func (o *objetLu) projeter(in entreeDEquipementPorte, cov *CarriedEquipmentCover
 			cov.TeleportsWithoutPose++
 		}
 	}
-	for k := range poses {
-		positionnerLaPose(&poses[k], o.pub.T1, in.translocations)
-	}
+	o.positionnerLesPoses(poses, in)
 	return poses
+}
+
+// positionnerLesPoses positionne les poses de l'objet, la recherche bornée par la fin de l'objet ou, à
+// défaut, par celle de la vie du porteur.
+func (o *objetLu) positionnerLesPoses(poses []RiftPose, in entreeDEquipementPorte) {
+	for k := range poses {
+		fin := o.pub.T1
+		if fin == nil {
+			fin = finDeLaVieDuPorteur(in.tracks, poses[k])
+		}
+		positionnerLaPose(&poses[k], fin, in.translocations)
+	}
+}
+
+// finDeLaVieDuPorteur rend la fin de la vie du porteur qui contient la pose, ou nil quand aucune vie
+// publiée ne la contient. C'est la borne de la recherche de position quand la suppression de l'objet
+// n'est pas lue : un échange d'une vie suivante du même slot n'est pas celui de cette faille.
+func finDeLaVieDuPorteur(tracks []Track, p RiftPose) *int {
+	w, ok := windowFor(trackFrameWindows(tracks, nil)[p.Slot], p.T, p.T)
+	if !ok {
+		return nil
+	}
+	return &w.to
 }
 
 // ajouterEnergie publie une lecture d'énergie, avec les usages restants quand le coût est établi.

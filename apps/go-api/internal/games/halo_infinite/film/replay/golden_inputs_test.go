@@ -88,6 +88,8 @@ func loadGoldenInputs(t *testing.T) *FilmFacts {
 	}
 	// LES ENTITES `ti=9` NE SONT PAS DANS LE BLOB : elles ont leur fichier (golden_entites_test.go).
 	g.PlayerEntities = chargerEntitesDuBuild(t, goldenFilm)
+	// LES POUSSEES ET L EQUIPEMENT PORTE non plus : golden_equipement_test.go.
+	chargerEquipementDuBuild(t, goldenFilm, g)
 	return g
 }
 
