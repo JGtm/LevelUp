@@ -25,7 +25,7 @@
  * (présence d'artefact résolue côté API en un listing de dossier par requête). La
  * donnée EST la gate : pas de capability à brancher.
  */
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   type ColumnDef,
   type SortingState,

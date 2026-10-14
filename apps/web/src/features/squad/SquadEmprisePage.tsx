@@ -16,9 +16,9 @@
  *   5. « Groupés ou isolés » : « Placement et rendement de chaque vie » (nuage, pleine largeur)
  *      puis « Part des vies par placement » (barres), sous le nuage (lot V4 du plan
  *      PLAN_EMPRISE_VIES_2026-09-28) ; absent sans vie mesurée (Halo 5, portée du radar inconnue) ;
- *   6. « Par rapport à d'habitude » : « Contrôle des ressources, soirée après soirée », dans la
- *      colonne de gauche comme dans la maquette (la carte d'isolement de droite est hors
- *      périmètre : rien n'est rendu à sa place) ;
+ *   6. « Soirées précédentes » (`SquadPreviousSessionsSection`) : « Contrôle des ressources, par
+ *      soirée » (barres groupées) | « Rapport de force, soirée après soirée », dans la même rangée,
+ *      mêmes hauteurs ; une carte seule prend la rangée ;
  *   7. « Objectif » puis « Répartition de l'objectif dans l'escouade » (arrivés de Contributions le
  *      2026-10-07, `SquadObjectiveSection`) : lus sur la feuille de match, présents aussi sans film.
  *
@@ -45,8 +45,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { empriseSections, type EmpriseSections } from './emprise/empriseContent'
 import { EMPRISE_TEXT, type EmpriseText } from './emprise/empriseStrings'
-import { HabitCard } from './emprise/HabitCard'
-import type { HabitView } from './emprise/habit.logic'
 import { PickupSheetsCard } from './emprise/PickupSheetsCard'
 import type { PlacementBlock } from './emprise/placementCharts'
 import { PLACEMENT_TEXT } from './emprise/placementStrings'
@@ -63,6 +61,7 @@ import { YieldCard } from './emprise/YieldCard'
 import { getSquadText } from './i18n'
 import { hasSquadObjective } from './objectif/objectif.logic'
 import { SquadObjectiveSection } from './objectif/SquadObjectiveSection'
+import { SquadPreviousSessionsSection } from './SquadPreviousSessionsSection'
 import { useSquadContext } from './SquadContext'
 
 export function SquadEmprisePage() {
@@ -132,15 +131,20 @@ export function SquadEmprisePage() {
         show={show}
         production={production}
         yieldRows={yieldRows}
-        habit={habit}
         placement={placement}
+        locale={locale}
+        et={et}
+      />
+      <SquadPreviousSessionsSection
+        habit={habit}
+        objective={pageData?.formes_retenues}
+        objectiveHistory={pageData?.squad_objective_history}
         locale={locale}
         et={et}
       />
       <SquadObjectiveSection
         block={pageData?.formes_retenues}
         matchHistory={matchHistory}
-        objectiveHistory={pageData?.squad_objective_history}
         medalDigest={medalDigest}
         mainPlayerLabel={mainPlayer}
         locale={locale}
@@ -160,12 +164,11 @@ function EmptyCard({ title, description }: { title: string; description: string 
   )
 }
 
-/** Blocs 4 à 6 : « Prendre, et s'en servir », « Groupés ou isolés », puis « Par rapport à d'habitude ». */
+/** Blocs 4 et 5 : « Prendre, et s'en servir », puis « Groupés ou isolés ». */
 function UsageSections({
   show,
   production,
   yieldRows,
-  habit,
   placement,
   locale,
   et,
@@ -173,7 +176,6 @@ function UsageSections({
   show: EmpriseSections
   production: ProductionRow[]
   yieldRows: YieldRow[]
-  habit: HabitView
   placement: PlacementBlock | null
   locale: Locale
   et: EmpriseText
@@ -197,15 +199,6 @@ function UsageSections({
           <div className="space-y-4">
             <PlacementVieCard placement={placement} locale={locale} t={pt} />
             <PlacementQuartsCard placement={placement} locale={locale} t={pt} />
-          </div>
-        </section>
-      )}
-      {show.habitude && habit.kind !== 'none' && (
-        <section className="space-y-2" data-testid="emprise-section-habitude">
-          <SectionTitle>{et.sections.habitude}</SectionTitle>
-          {/* Demi-largeur à gauche, comme la maquette : la carte d'isolement de droite est hors périmètre. */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            <HabitCard view={habit} locale={locale} t={et} />
           </div>
         </section>
       )}

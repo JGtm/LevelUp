@@ -11,6 +11,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { CHART_BG, getTooltipBase } from '@/components/charts/_utils'
+import { footLabelStyle, layoutAxisFoot, lineHeightFor, type AxisFootSpec, type FootLabels } from '@/components/charts/axisFoot'
 import { withEndPoint } from '@/components/charts/endPoint'
 import type { EChartsThemeColors } from '@/lib/echarts/themeColors'
 
@@ -31,7 +32,24 @@ export interface EveningsChartText {
   medianTip: (role: string, value: string) => string
 }
 
-const EVENING_FOOT = 64
+/** Corps des étiquettes sous l'axe : la date au-dessus de la bande, « x sur y » et les modes dessous. */
+const DATE_FONT = 10.5
+const MIX_FONT = 9.5
+const EVENING_BAND_H = 10
+
+/**
+ * Le pied du graphe : la date (1 ligne), la bande victoires / défaites, puis « x sur y » et le
+ * mélange de modes (2 lignes). Ses marges et hauteurs de ligne servent à la fois à réserver la
+ * place (`layoutAxisFoot`) et à dessiner les étiquettes (`footLabelStyle`).
+ */
+const DATE_LABELS: FootLabels = { lines: 1, lineHeight: lineHeightFor(DATE_FONT), margin: 4 }
+const MIX_LABELS: FootLabels = { lines: 2, lineHeight: lineHeightFor(MIX_FONT), margin: 6 }
+const EVENING_FOOT_SPEC: AxisFootSpec = {
+  above: DATE_LABELS,
+  band: { height: EVENING_BAND_H, gap: 4 },
+  below: MIX_LABELS,
+  pad: 4,
+}
 
 /** Le nom d'une soirée dans les infobulles : « ce soir », « Soirée du 28/07 ». */
 type EveningNamer = (p: EveningPoint) => string
@@ -94,7 +112,7 @@ function eveningsBandSeries(points: EveningPoint[], c: ObjectifChartColors, t: E
       const bw = (api.size([1, 0]) as number[])[0] - 6
       const wv = p.matches > 0 ? (p.wins / p.matches) * bw : 0
       const x0 = cx - bw / 2
-      const h = 10
+      const h = EVENING_BAND_H
       const children: unknown[] = []
       if (p.wins > 0) children.push({ type: 'rect', shape: { x: x0, y: cy - h / 2, width: wv, height: h, r: 2 }, style: { fill: c.win } })
       if (p.wins < p.matches) {
@@ -115,13 +133,12 @@ function eveningsXAxes(points: EveningPoint[], categories: string[], tc: ECharts
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
-        interval: 0,
-        margin: 4,
+        ...footLabelStyle(DATE_LABELS),
         formatter: (_v: string, i: number) =>
           points[i]?.current ? `{cur|${t.tonight}}` : `{d|${t.dateOf(points[i]?.startTime ?? '')}}`,
         rich: {
-          d: { color: tc.axisLabel, fontSize: 10.5 },
-          cur: { color: tc.text, fontSize: 10.5, fontWeight: 600 },
+          d: { color: tc.axisLabel, fontSize: DATE_FONT },
+          cur: { color: tc.text, fontSize: DATE_FONT, fontWeight: 600 },
         },
       },
     },
@@ -153,6 +170,7 @@ export function buildEveningsOption(
   t: EveningsChartText,
 ): EChartsCoreOption {
   const tc = c.theme
+  const foot = layoutAxisFoot(EVENING_FOOT_SPEC)
   const categories = points.map((_, i) => String(i))
   const eveningName = (p: EveningPoint) => (p.current ? t.tonight : t.eveningOf(t.dateOf(p.startTime)))
   const series: unknown[] = [
@@ -165,8 +183,8 @@ export function buildEveningsOption(
     backgroundColor: CHART_BG,
     animation: false,
     grid: [
-      { left: 40, right: 52, top: 12, bottom: EVENING_FOOT },
-      { left: 40, right: 52, bottom: EVENING_FOOT - 8 - 10, height: 10 },
+      { left: 40, right: 52, top: 12, bottom: foot.gridBottom },
+      { left: 40, right: 52, bottom: foot.bandBottom, height: foot.bandHeight },
     ],
     tooltip: {
       ...getTooltipBase(tc),

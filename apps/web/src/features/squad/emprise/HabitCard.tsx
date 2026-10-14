@@ -3,13 +3,14 @@
  * rapport à d'habitude », à gauche ; lot L5.2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26,
  * décision D5 ; maquette de l'onglet, `renderHabChart('habPrises', …)`).
  *
- * Un graphe (S6 : mêmes mesure et échelle) : notre part des prises des bonus et des armes
- * spéciales, une soirée de la composition par point, ce soir à droite dans une colonne grisée ;
- * une soirée sans aucun des modes de ce soir reste un point, gris, que la courbe enjambe, raison
- * au survol, hors médiane ; la médiane des soirées précédentes comparables en pointillé fin de la
- * couleur de chaque courbe (trois au moins), le trait 50 %, la valeur au bout ; les dates sous
- * l'axe, « ce soir » en gras (`buildHabitOption`). Sans aucune part sur aucune soirée : le bloc
- * placeholder. Légende en pied de carte, centrée.
+ * Un graphe (S6 : mêmes mesure et échelle) : la part de l'équipe dans les prises des bonus et des
+ * armes spéciales, des barres GROUPÉES (une soirée de la composition par groupe, une barre par
+ * ressource), ce soir à droite dans une colonne grisée avec ses valeurs ; une soirée sans aucun des
+ * modes de ce soir garde ses barres, grises, raison au survol, hors médiane ; la médiane des soirées
+ * précédentes comparables en pointillé fin de la couleur de chaque ressource (trois au moins), le
+ * trait 50 % ; les dates sous l'axe, « ce soir » en gras (`buildHabitOption`). Posée à gauche de
+ * « Rapport de force, soirée après soirée », dans la même rangée (`SquadPreviousSessionsSection`).
+ * Sans aucune part sur aucune soirée : le bloc placeholder. Légende en pied de carte, centrée.
  */
 import { useCallback, useMemo } from 'react'
 
@@ -19,14 +20,12 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { eveningDate } from '../objectif/objectif.logic'
+import { EVENINGS_HEIGHT } from '../objectif/ObjectiveEveningsCard'
 import { ObjectifFrame, ObjectifLegend, ObjectifPlaceholder } from '../objectif/ObjectifFrame'
-import { buildHabitOption, resolveHabitColors } from './empriseCharts'
+import { buildHabitOption, resolveHabitColors } from './habitChart'
 import type { EmpriseText } from './empriseStrings'
 import type { HabitPoint, HabitView } from './habit.logic'
 import { resourceInk } from './resourceColors'
-
-/** Hauteur du graphe (maquette : 520 × 220). */
-const HABIT_HEIGHT = 220
 
 /** Le gris des soirées hors comparaison : l'encre atténuée du thème (celle que lit le graphe). */
 const MUTED_INK = 'var(--muted-foreground)' // color-allow: encre atténuée du thème, même valeur que resolveHabitColors().muted
@@ -47,7 +46,7 @@ export function HabitCard({ view, locale, t }: Props) {
           ariaLabel={t.habit.title}
           items={[
             ...resources.map((r) => ({ kind: 'square' as const, label: t.resources[r].label, color: resourceInk(r) })),
-            ...(points.some((p) => !p.comparable) ? [{ kind: 'dot' as const, label: t.habit.notComparable, color: MUTED_INK }] : []),
+            ...(points.some((p) => !p.comparable) ? [{ kind: 'square' as const, label: t.habit.notComparable, color: MUTED_INK }] : []),
             { kind: 'parity', label: t.parity, color: tokenCssVar('warning') },
           ]}
         />
@@ -95,7 +94,9 @@ export function HabitCard({ view, locale, t }: Props) {
           </span>
         }
         series={series}
-        height={HABIT_HEIGHT}
+        height={EVENINGS_HEIGHT}
+        // fluid : la carte prend la hauteur de sa voisine (« Rapport de force, soirée après soirée »).
+        fluid
         renderer="svg"
         buildOption={buildOption}
         legend={legend}

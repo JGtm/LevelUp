@@ -1,7 +1,8 @@
 /**
  * SquadObjectiveSection.test.tsx — l'objectif de l'onglet Emprise : ordre et disposition des
  * blocs (rapport de force à même la section, fiches dans leur propre section), masquage sans
- * objectif, blocs placeholder sous le minimum, fiches du 22/09 sans reste du camp.
+ * objectif, bloc placeholder sous le minimum, fiches du 22/09 sans reste du camp. Le rapport de
+ * force par soirée est dans « Soirées précédentes » (SquadEmprisePage.soirees.test.tsx).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
@@ -9,7 +10,7 @@ import { render, screen, within } from '@testing-library/react'
 import type { SquadFormesBlock } from '@/lib/api/types'
 
 import { SquadObjectiveSection } from './SquadObjectiveSection'
-import { block0709, block2209, history0709, history0709Evenings, history2209Evenings } from './objectif.fixtures'
+import { block0709, block2209, history0709 } from './objectif.fixtures'
 
 const options: unknown[] = []
 vi.mock('echarts-for-react', () => ({
@@ -19,14 +20,11 @@ vi.mock('echarts-for-react', () => ({
   },
 }))
 
-function renderSection(block: SquadFormesBlock | undefined, withHistory: 'soir0709' | 'soir2209' | 'none') {
+function renderSection(block: SquadFormesBlock | undefined) {
   return render(
     <SquadObjectiveSection
       block={block}
       matchHistory={history0709()}
-      objectiveHistory={
-        withHistory === 'soir0709' ? history0709Evenings() : withHistory === 'soir2209' ? history2209Evenings() : undefined
-      }
       medalDigest={[]}
       mainPlayerLabel="JGtm"
       locale="fr"
@@ -36,10 +34,10 @@ function renderSection(block: SquadFormesBlock | undefined, withHistory: 'soir07
 
 describe('SquadObjectiveSection', () => {
   it('07/09 : les blocs dans l’ordre du débrief, les deux premiers côte à côte, les fiches dans leur section', async () => {
-    renderSection(block0709(), 'soir0709')
+    renderSection(block0709())
     const section = screen.getByTestId('squad-objective-section')
     expect(within(section).getByText('Objectif')).toBeInTheDocument()
-    const ids = ['objective-balance', 'objective-fil', 'objective-evenings', 'objective-sheets']
+    const ids = ['objective-balance', 'objective-fil', 'objective-sheets']
     const nodes = ids.map((id) => screen.getByTestId(id))
     for (let i = 1; i < nodes.length; i++) {
       expect(nodes[i - 1].compareDocumentPosition(nodes[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -53,18 +51,15 @@ describe('SquadObjectiveSection', () => {
     // Les fiches ont leur propre section, titrée, sans carte englobante.
     const sheets = screen.getByTestId('squad-objective-sheets-section')
     expect(within(sheets).getByText('Répartition de l’objectif dans l’escouade')).toBeInTheDocument()
-    expect(nodes[3].className).not.toContain('border')
-    // Les deux graphes sont tracés (sept matchs, onze soirées) ; aucune phrase sous le graphe,
-    // les abréviations de modes sont dans la légende.
-    expect(await screen.findAllByTestId('echarts-mock')).toHaveLength(2)
-    expect(screen.queryByTestId('objective-evenings-note')).toBeNull()
-    const legend = within(nodes[2]).getByTestId('chart-card-legend')
-    expect(legend.textContent).toContain('B : Bases')
-    expect(legend.textContent).toContain('D : Drapeau')
+    expect(nodes[2].className).not.toContain('border')
+    // Le graphe au fil de la session est tracé (sept matchs) ; le rapport de force par soirée n'est
+    // plus dans cette section.
+    expect(await screen.findAllByTestId('echarts-mock')).toHaveLength(1)
+    expect(screen.queryByTestId('objective-evenings')).toBeNull()
   })
 
   it('rapport de force : un cadre par famille, « Bases · 4 matchs », actions sous Prendre / Défendre / Tenir', () => {
-    renderSection(block0709(), 'none')
+    renderSection(block0709())
     const bases = screen.getByTestId('objective-balance-family-zones_strongholds')
     expect(bases.textContent).toContain('Bases')
     expect(bases.textContent).toContain('4 matchs')
@@ -76,7 +71,7 @@ describe('SquadObjectiveSection', () => {
   })
 
   it('22/09 : fiches JGtm (4 drapeaux capturés, 3 volés), zéro atténué, rôle dominant, pied de fiche', () => {
-    renderSection(block2209(), 'soir2209')
+    renderSection(block2209())
     const jg = screen.getByTestId('objective-sheet-xj')
     expect(within(jg).getByText('JGtm')).toBeInTheDocument()
     expect(screen.getByTestId('objective-sheet-line-xj-flag_captures').textContent).toContain('4')
@@ -89,30 +84,21 @@ describe('SquadObjectiveSection', () => {
     expect(screen.queryByTestId('objective-sheet-null')).toBeNull()
     expect(screen.queryByText('Reste de l’équipe')).toBeNull()
     expect(screen.getAllByText('Rôle dominant')).toHaveLength(3)
-    // Deux matchs à objectif : ni courbe au fil de la session, ni point ce soir — les blocs
-    // placeholder (EmptyStateNotice tiretée), titre en gras puis la cause.
+    // Deux matchs à objectif : pas de barres au fil de la session — le bloc placeholder
+    // (EmptyStateNotice tiretée), titre en gras puis la cause.
     const fil = screen.getByTestId('objective-fil-note')
     expect(fil.textContent).toContain('2 matchs à objectif ce soir')
     expect(fil.textContent).toContain('Sous le minimum de trois, la carte se masque.')
     expect(fil.querySelector('.border-dashed')).not.toBeNull()
-    const evenings = screen.getByTestId('objective-evenings-note')
-    expect(evenings.textContent).toContain('24 soirées de la composition sur 49')
-    expect(evenings.querySelector('.border-dashed')).not.toBeNull()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
   })
 
   it('aucun match à objectif dans le périmètre : la section se retire, intertitre compris', () => {
     const b = block0709()
     b.matches = b.matches!.map((m) => ({ ...m, objective: undefined }))
-    const { container } = renderSection(b, 'soir0709')
+    const { container } = renderSection(b)
     expect(container).toBeEmptyDOMElement()
-    const { container: c2 } = renderSection(undefined, 'none')
+    const { container: c2 } = renderSection(undefined)
     expect(c2).toBeEmptyDOMElement()
-  })
-
-  it('sans historique de la composition (aucun coéquipier sélectionné) : pas de carte soirée après soirée', () => {
-    renderSection(block0709(), 'none')
-    expect(screen.queryByTestId('objective-evenings')).toBeNull()
-    expect(screen.getByTestId('objective-sheets')).toBeInTheDocument()
   })
 })

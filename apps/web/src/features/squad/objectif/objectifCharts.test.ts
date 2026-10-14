@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildEveningsOption } from './eveningsChart'
-import { buildFilOption, shortMap, volumeRadius, type ObjectifChartColors } from './objectifCharts'
+import { axisFootProblems } from '@/components/charts/axisFoot.check'
+
+import { buildFilOption, shortMap, type ObjectifChartColors } from './objectifCharts'
 import { buildEveningsView, buildSessionFil } from './objectif.logic'
 import { block0709, history0709, history0709Evenings } from './objectif.fixtures'
 import { OBJECTIF_TEXT } from './objectifStrings'
@@ -44,32 +46,37 @@ describe('buildFilOption — au fil de la session (07/09)', () => {
     bandTip: T.fil.bandTip,
   }) as { series: Series[]; xAxis: Axis[] }
 
-  it('trois courbes de rôle, leurs parts par match, puis la bande de résultats', () => {
-    expect(opt.series.map((s) => s.type)).toEqual(['line', 'scatter', 'line', 'scatter', 'line', 'scatter', 'custom'])
+  it('trois séries de barres (une par rôle), puis la bande de résultats', () => {
+    expect(opt.series.map((s) => s.type)).toEqual(['bar', 'bar', 'bar', 'custom'])
     expect(opt.series[0].markLine?.data).toEqual([{ yAxis: 50 }])
+    expect(opt.series[1].markLine).toBeUndefined()
   })
 
-  it('valeur au bout de la courbe (arrondie) et point final grossi', () => {
+  it('une barre par match = la part de CE match ; le cumul se lit dans l’infobulle', () => {
     const take = opt.series[0]
-    const last = take.data[take.data.length - 1] as { value: number; symbolSize: number }
-    expect(Math.round(last.value * 10) / 10).toBe(39.0)
-    expect(last.symbolSize).toBe(9)
-    expect(take.endLabel?.formatter({ value: last.value })).toBe('39 %')
+    expect(take.data).toHaveLength(fil.length)
+    const last = take.data[take.data.length - 1] as { value: number; tip: string }
+    const share = fil[fil.length - 1].roles.take.share! * 100
+    expect(last.value).toBeCloseTo(share, 6)
+    const cumulative = fil[fil.length - 1].roles.take.cumulative! * 100
+    expect(Math.round(cumulative * 10) / 10).toBe(39.0)
+    expect(last.tip).toContain(T.pctFmt(cumulative))
+    // Plus de courbe ni de point : aucune série ne trace de cumul.
+    expect(opt.series.some((s) => s.type === 'line' || s.type === 'scatter')).toBe(false)
   })
 
-  it('taille des points = volume du lobby ; heure sous l’axe, carte et mode sous la bande', () => {
-    const pts = opt.series[1].data as { symbolSize: number }[]
-    // b3 (64 actions) est le plus gros volume de Prendre.
-    expect(pts[2].symbolSize).toBeCloseTo(14, 6)
+  it('heure sous l’axe, carte et mode sous la bande', () => {
     expect(opt.xAxis[0].axisLabel.formatter('', 0)).toBe('19:26')
     expect(opt.xAxis[1].axisLabel.formatter('', 0)).toBe('{map|Banished N.}\n{mode|Bases}')
+  })
+
+  it('le pied (étiquettes + bande) tient dans le bas de la grille', () => {
+    expect(axisFootProblems(opt as never)).toEqual([])
   })
 
   it('utilitaires de forme', () => {
     expect(shortMap('Banished Narrows')).toBe('Banished N.')
     expect(shortMap('Origin')).toBe('Origin')
-    expect(volumeRadius(64, 64)).toBe(7)
-    expect(volumeRadius(0, 0)).toBe(2)
   })
 })
 
@@ -101,6 +108,10 @@ describe('buildEveningsOption — soirée après soirée (07/09)', () => {
     expect(opt.xAxis[0].axisLabel.formatter('', 0)).toBe('{d|06/04}')
     expect(opt.xAxis[1].axisLabel.formatter('', 10)).toBe('{n|1 sur 7}\n{m|4 B · 3 D}')
     expect(opt.series.filter((s) => s.type === 'custom')).toHaveLength(2)
+  })
+
+  it('le pied (dates, bande, « x sur y » et modes) tient dans le bas de la grille', () => {
+    expect(axisFootProblems(opt as never)).toEqual([])
   })
 })
 
