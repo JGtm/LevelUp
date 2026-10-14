@@ -104,3 +104,16 @@ func TestLaNormeDeLaPousseeSuitLaLoiDuJeu(t *testing.T) {
 		}
 	}
 }
+
+// TestUneAutreGenerationNeSAppariePas : le 105 qui precede porte le meme index mais une autre
+// generation — un autre objet du meme slot ; le 104 n est pas apparie. MUTATION : la comparaison de
+// generation retiree de [apparierLaPoussee] -> ROUGE.
+func TestUneAutreGenerationNeSAppariePas(t *testing.T) {
+	o := lecture.MessageDePoussee{Genre: GenreObjetRepousse, Ref: [2]uint16{7, 1}, Gen: [2]uint8{2, 1},
+		Drapeaux: lecture.PousseeRef0 | lecture.PousseeRef1}
+	p := lecture.MessageDePoussee{Genre: GenrePousseeDuJoueur, Ref: [2]uint16{7}, Gen: [2]uint8{1},
+		Direction: 156974, Norme: 652, Drapeaux: lecture.PousseeRef0 | lecture.PousseeImpulsionLue}
+	if k, ok := apparierLaPoussee([]lecture.MessageDePoussee{o}, p); ok {
+		t.Fatalf("apparie a un 105 d une autre generation : %+v", k)
+	}
+}

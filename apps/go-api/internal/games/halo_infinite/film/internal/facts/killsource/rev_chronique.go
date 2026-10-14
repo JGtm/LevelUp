@@ -272,3 +272,11 @@ package killsource
 // a la fusion de `feat/v75` `54b47a2b8`. `cmd/killsource json` sur les 19 temoins, binaire de
 // `54b47a2b8` contre binaire de la tete fusionnee : sorties identiques a l octet. Golden regenere a
 // revision constante.
+//
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans
+// l amont de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et
+// 105) et `film/types` gagne `Knockback` et `KnockbackStats`. Aucun bit n est lu autrement et
+// killsource ne lit pas les poussees. PREUVE : `cmd/killsource json` sur les 20 films du corpus
+// d equivalence, binaire de `feat/v75` `d33f21227` contre binaire du lot : sorties identiques a
+// l octet sur les 20. Golden regenere a revision constante.

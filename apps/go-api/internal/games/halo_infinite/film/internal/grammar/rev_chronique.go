@@ -230,6 +230,7 @@ package grammar
 // qui pousse, impulsion (direction `FUN_1406d8288`, norme `FUN_14076d6dc`).
 //
 // MESURE (2026-10-14) : 235 films du parc, contexte de la cuisson (carte et decoupage poses) : 135
-// messages 104 lus, 135 paires, aucun isole ; normes 6,00 / 5,50 / 5,72 m/s seulement ; 14 sur 14 des paires des temoins 0d9a9af9, 215e7022 et a6ae19fb
+// messages 104 lus, 135 paires, aucun isole ; normes 6,00 / 5,50 / 5,72 m/s seulement ; temoins
+// 0d9a9af9, 215e7022 et a6ae19fb : 15 paires (3, 2, 10), dont les 14 rattachees a une piste
 // accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; auteur porteur du
 // repulseur sur 130 paires sur 130.

@@ -347,7 +347,7 @@ func toTranslocationCoverage(v replay.TranslocationCoverage) replaydoc.Transloca
 func toKnockbackCoverage(v replay.KnockbackCoverage) replaydoc.KnockbackCoverage {
 	return replaydoc.KnockbackCoverage{Read104: v.Read104, Read105: v.Read105, Paired: v.Paired,
 		Unpaired: v.Unpaired, Published: v.Published, BeforeOrigin: v.BeforeOrigin, NoIdentity: v.NoIdentity,
-		WithoutAuthor: v.WithoutAuthor}
+		WithoutImpulse: v.WithoutImpulse, WithoutAuthor: v.WithoutAuthor}
 }
 
 func toAbilityImpulseCoverage(v replay.AbilityImpulseCoverage) replaydoc.AbilityImpulseCoverage {

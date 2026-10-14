@@ -197,7 +197,7 @@ var tablePolarites = []blocPolarites{
 		Neutres:    "avantCreation slotsArmes viesAvantPremiereCreation",
 		Telemetrie: "minPoints"},
 	{Blocs: []string{"coverage.knockbacks."},
-		Echecs:  "noIdentity unpaired withoutAuthor",
+		Echecs:  "noIdentity unpaired withoutAuthor withoutImpulse",
 		Succes:  "paired published read104 read105",
 		Neutres: "beforeOrigin"},
 	{Blocs: []string{"coverage.translocations."},

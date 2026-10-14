@@ -175,7 +175,7 @@ import { padSpawnSoundEvents } from './padSpawnSound'
 import { weaponChangeSoundEvents } from './weaponChangeSound'
 import { equipmentChangeSoundEvents } from './equipmentChangeSound'
 import { abilityImpulseSoundEvents } from './abilityImpulseSound'
-import { KNOCKBACK_SOUND_STEM, knockbackSoundEvents } from './knockbackSound'
+import { KNOCKBACK_SOUND_STEM, knockbackSoundEvents, type RepulsorKillSound } from './knockbackSound'
 import { translocationSoundEvents } from './translocationSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
@@ -636,7 +636,7 @@ export function buildSoundTimeline(
   // dédoublonnent les fins de vol, et elles doivent donc être connues avant.
   const killExplosions: ReplaySoundEvent[] = []
   // Les kills au répulseur programmés : la poussée du même instant ne se rejoue pas (knockbackSound.ts).
-  const repulsorKills: ReplaySoundEvent[] = []
+  const repulsorKills: RepulsorKillSound[] = []
   if (kills.length > 0 && doc.tracks.length > 0) {
     for (const k of kills) {
       const snd = killSound(k)
@@ -644,7 +644,7 @@ export function buildSoundTimeline(
       const ev = soundEvent(k.replayMs, snd.stem)
       out.push(ev)
       if (snd.category === 'grenade') killExplosions.push(ev)
-      if (snd.stem === KNOCKBACK_SOUND_STEM) repulsorKills.push(ev)
+      if (snd.stem === KNOCKBACK_SOUND_STEM) repulsorKills.push({ ms: ev.ms, xuid: k.xuid })
     }
   }
   // Le filtre « grenades » couvre les DEUX formes de l'objet, comme depuis le 16/08 : couper

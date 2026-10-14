@@ -13,10 +13,13 @@
  *    ne rejouent pas le son.
  *  - LE KILL SONNE DÉJÀ. Une poussée qui tue fait entendre le son du kill au répulseur
  *    (`KILL_SPRITE_SOUND_STEMS`, vignette `killfeed-56`) au même instant : la poussée se tait quand
- *    un tel kill est programmé à moins de `KNOCKBACK_KILL_DEDUP_MS`.
+ *    un kill au répulseur DU MÊME AUTEUR (le tueur est l'auteur de la poussée, par son xuid) est
+ *    programmé à moins de `KNOCKBACK_KILL_DEDUP_MS`. Une poussée dont l'auteur n'est pas nommé ne
+ *    se tait pas : on ne la rattache pas au kill d'un autre.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
+import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /** Le stem de la poussée : celui du kill au répulseur, déjà livré. */
@@ -28,17 +31,24 @@ export const KNOCKBACK_SAME_BLAST_MS = 300
 /** Écart sous lequel un kill au répulseur programmé couvre déjà la poussée. Une image et demie. */
 export const KNOCKBACK_KILL_DEDUP_MS = 150
 
+/** Un kill au répulseur déjà programmé sur la piste : son instant et son tueur. */
+export interface RepulsorKillSound {
+  ms: number
+  xuid: string
+}
+
 /**
- * knockbackSoundEvents — un son par souffle publié, sauf quand le kill au répulseur du même instant
- * le fait déjà entendre. `repulsorKills` sont les sons de kill au répulseur DÉJÀ programmés (la
- * catégorie des armes coupée, il n'y en a aucun, et la poussée sonne seule).
+ * knockbackSoundEvents — un son par souffle publié, sauf quand le kill au répulseur du même auteur et
+ * du même instant le fait déjà entendre. `repulsorKills` sont les kills au répulseur DÉJÀ programmés
+ * (la catégorie des armes coupée, il n'y en a aucun, et la poussée sonne seule).
  */
 export function knockbackSoundEvents(
   doc: ReplayDocumentReady,
-  repulsorKills: readonly ReplaySoundEvent[],
+  repulsorKills: readonly RepulsorKillSound[],
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   const lastByAuthor = new Map<string, number>()
+  const lives = buildLivesBySlot(doc.tracks)
   const ordered = [...doc.knockbacks].sort((a, b) => a.t - b.t)
   for (const k of ordered) {
     const ms = frameToMs(k.t, doc)
@@ -46,8 +56,11 @@ export function knockbackSoundEvents(
     const last = lastByAuthor.get(author)
     if (last !== undefined && ms - last < KNOCKBACK_SAME_BLAST_MS) continue
     lastByAuthor.set(author, ms)
-    if (repulsorKills.some((e) => Math.abs(e.ms - ms) <= KNOCKBACK_KILL_DEDUP_MS)) continue
-    out.push(soundEvent(ms, KNOCKBACK_SOUND_STEM))
+    const xuid = k.by != null ? lifeOfSlotAt(lives, k.by, k.t)?.xuid : undefined
+    const couverte =
+      !!xuid &&
+      repulsorKills.some((e) => e.xuid === xuid && Math.abs(e.ms - ms) <= KNOCKBACK_KILL_DEDUP_MS)
+    if (!couverte) out.push(soundEvent(ms, KNOCKBACK_SOUND_STEM))
   }
   return out
 }
