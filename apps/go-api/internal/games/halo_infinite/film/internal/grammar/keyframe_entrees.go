@@ -119,3 +119,14 @@ func fermeSurLAncreSuivante(pay []byte, tr EntityTrace, b keyframeBorne, reg *Re
 	pos, ok := lireLesEntrees(pay, tr.EndBit, n, reg, ctx)
 	return ok && pos == b.Want
 }
+
+// sauterLesEntreesSansCorps avance, depuis le bit `pos`, sur les entrees sans archetype qui s y
+// suivent (108 bits chacune, [entreeSansCorps]) et rend la position atteinte et leur nombre.
+func sauterLesEntreesSansCorps(pay []byte, pos, total, enTete int) (int, int) {
+	k := 0
+	for lireEntreeDImageCle(pay, pos, total, enTete) == entreeSansCorps {
+		pos += enTete
+		k++
+	}
+	return pos, k
+}

@@ -284,20 +284,34 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     240 466 → 267 806) ; admissions 6 507 inchangées ; témoin sous Rslot : bipèdes 316 dont 3 par
     hasard (S-4) ; goldens de fermeture régénérés, aucune baisse sur les sept bobines ; G-unit et
     archlint verts.
-- [ ] R1.3 **Preuve d'image-clé (élection des ancres) sous Rslot.**
-  - [ ] R1.3.1 `PreuveDImageCle.prouve` : après la traversée, lire les entrées libérées qui suivent
+- [x] R1.3 **Preuve d'image-clé (élection des ancres) sous Rslot.**
+  - [x] R1.3.1 `PreuveDImageCle.prouve` : après la traversée, lire les entrées libérées qui suivent
         (k ≥ 0), puis exiger un en-tête de record de slot ÉGAL à `slot + 1 + k` (un écart de slots
         sans entrée intercalée est impossible dans une table indexée par slot). Tests unitaires.
-  - [ ] R1.3.2 Instrument I-adj (`res_r1_ancres_research_test.go`, tag `research`) : à partir des
+  - [x] R1.3.2 Instrument I-adj (`res_r1_ancres_research_test.go`, tag `research`) : à partir des
         sorties I-ancres de la base et du sous-pas, par paquet, les régions changées, et pour chacune
         le nombre de paires d'ancres consécutives qui ferment sous Rslot dans la suite ancienne et
         dans la nouvelle, et les records prouvés qui contredisent une ancre de chaque suite (E-4).
-  - [ ] R1.3.3 Mesure → `$RES/r1.3` : I-ancres, I-equipes, I-carte, I-ferm, I-d0, I-e108, I-adj.
+  - [x] R1.3.3 Mesure → `$RES/r1.3` : I-ancres, I-equipes, I-carte, I-ferm, I-d0, I-e108, I-adj.
         Chaque ancre changée adjugée par E-4 (tableau par film au journal) ; chaque ligne d'I-ferm, de
         la carte ou des équipes en baisse rattachée à une région adjugée, sinon ARRÊT.
-  - [ ] R1.3.4 Ratchets régénérés si la fermeture bouge par l'élection (ligne d'historique).
+  - [x] R1.3.4 Ratchets régénérés si la fermeture bouge par l'élection (ligne d'historique).
   - Gate R1.3 : toutes les ancres changées adjugées (E-4) ; aucune baisse non adjugée (I-ferm,
     carte, équipes, admissions) ; G-unit, archlint.
+  - *Gate R1.3 PASSÉ (2026-10-14, `$RES/r1.3`)* : un seul film change d'élection, `64e8adfa`, en DEUX
+    régions (`adj.txt`) : morceau 29 paquet 1, l'ancre élue slot 1536 `ti=0` (bit 431 590) cède à 1547,
+    1584, 1587 (`ti=10`), fermées avant 0 → après 4 ; morceau 36 paquet 1, la même fausse ancre 1536
+    `ti=0` (bit 444 557) cède à sept records (1547 … 1648, `ti=10/12/42`), fermées 0 → 7 ; aucune ancre
+    nouvelle contredite par un record prouvé : les deux ADJUGÉES (E-4) — c'est la fausse ancre de slot
+    1536 `ti=0` que le lot D-fix décrivait déjà sur `bcb6d393`, désormais réfutée (réfutations 1 → 3,
+    élections 1 507 → 1 515, ancres +8). Preuves jouées sur toutes les ancres : en hausse sur les 28
+    films (par ex. `084a804d` 13 905 → 16 852). I-ferm : seule la ligne `64e8adfa` `ti=0` (0/2)
+    disparaît, `ti=10` 871 → 879/879 et `ti=42` 264 → 267 ; aucune baisse. Équipes, carte (20, 8, MPP),
+    I-d0 (admis 6 507) identiques à r1.2 ; goldens de fermeture inchangés (régénérés à l'identique) ;
+    G-unit, archlint verts. Test `TestLaPreuveLitLesSlotsLiberesQuiSuivent` (1 133 records prouvés
+    par-dessus des slots libérés sur les bobines ; deux mutations rouges). Écart au plan (décision
+    d'exécution) : I-adj est un script sur les sorties d'I-ancres (`$RES/adj.sh`), qui portent déjà la
+    fermeture et la preuve de chaque ancre, au lieu d'un fichier `research` qui les recalculerait.
 - [ ] R1.4 **Marches déterministes et fin de table.**
   - [ ] R1.4.1 `WalkKeyframeRecords` lit la table entrée par entrée (E-1) : une entrée libérée avance
         de 108 bits et n'est pas rendue comme record ; l'index de l'entrée est son slot (un record
