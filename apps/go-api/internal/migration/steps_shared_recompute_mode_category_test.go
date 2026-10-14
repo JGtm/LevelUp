@@ -203,8 +203,48 @@ func TestRecomputeModeCategory_BaseJusteIndexeeSeulementDesindexee(t *testing.T)
 	if got := tableOID(t, db, registryTable); got != oid {
 		t.Errorf("table reconstruite (oid %d -> %d) alors que seule l'index devait partir", oid, got)
 	}
-	if names, _ := coveringIndexNames(t.Context(), db); len(names) != 0 {
-		t.Errorf("index restants %v", names)
+	if n := indexesCouvrantModeCategory(t, db); n != 0 {
+		t.Errorf("%d index couvrent encore mode_category", n)
+	}
+	if n := scanInt(t, db, `SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_registry'`); n != 1 {
+		t.Errorf("index conservés = %d, attendu 1 (idx_registry_map)", n)
+	}
+}
+
+// indexesCouvrantModeCategory interroge duckdb_indexes() sans passer par coveringIndexNames : le
+// test ne doit pas contrôler le code qu'il vérifie.
+func indexesCouvrantModeCategory(t *testing.T, db *sql.DB) int64 {
+	t.Helper()
+	return scanInt(t, db, `SELECT COUNT(*) FROM duckdb_indexes() WHERE table_name = 'match_registry'
+		AND (index_name LIKE '%mode_category%' OR expressions LIKE '%mode_category%' OR sql LIKE '%mode_category%')`)
+}
+
+func TestRecomputeModeCategory_AlterationHorsCategorieAnnuleLEchange(t *testing.T) {
+	db := openFixtureModeCategory(t)
+	buildSupplementaire = func() []string {
+		return []string{`UPDATE match_registry__modecat SET player_count = 99 WHERE match_id = 'm5'`}
+	}
+	t.Cleanup(func() { buildSupplementaire = func() []string { return nil } })
+	oid := tableOID(t, db, registryTable)
+	avant := categoriesParMatch(t, db)
+
+	err := applyRecomputeModeCategory(db)
+	if err == nil || !strings.Contains(err.Error(), "changé hors mode_category") {
+		t.Fatalf("erreur %v, attendu un refus d'empreinte hors mode_category", err)
+	}
+	if got := tableOID(t, db, registryTable); got != oid {
+		t.Errorf("table d'origine remplacée malgré l'échec (oid %d -> %d)", oid, got)
+	}
+	for id, c := range categoriesParMatch(t, db) {
+		if avant[id] != c {
+			t.Errorf("%s: %q -> %q, la transaction devait être annulée", id, avant[id], c)
+		}
+	}
+	if n := scanInt(t, db, `SELECT player_count FROM match_registry WHERE match_id = 'm5'`); n != 0 {
+		t.Errorf("player_count = %d, ligne altérée malgré l'annulation", n)
+	}
+	if n := indexesCouvrantModeCategory(t, db); n != 1 {
+		t.Errorf("index de mode_category = %d, l'index d'origine doit rester", n)
 	}
 }
 

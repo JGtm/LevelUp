@@ -188,6 +188,11 @@ func keptIndexDDL(index []string) []string {
 	return kept
 }
 
+// buildSupplementaire : couture d'injection des tests, statements joués après le remplissage de la
+// table de construction. Vide en production ; un test y glisse une altération hors mode_category
+// pour prouver que la vérification d'empreintes annule l'échange.
+var buildSupplementaire = func() []string { return nil }
+
 func swapRecomputedCategories(ctx context.Context, db *sql.DB, wrong map[string]string) (swapCounts, error) {
 	ddl, err := ddlDeTable(ctx, db, registryTable)
 	if err != nil {
@@ -210,8 +215,9 @@ func swapRecomputedCategories(ctx context.Context, db *sql.DB, wrong map[string]
 		Table:    registryTable,
 		Suffix:   modeCategorySuffix,
 		Expected: `SELECT COUNT(*) FROM match_registry`,
-		Build: []string{creer, fmt.Sprintf(`INSERT INTO %s%s SELECT * REPLACE (%s AS mode_category) FROM %s`,
+		Build: append([]string{creer, fmt.Sprintf(`INSERT INTO %s%s SELECT * REPLACE (%s AS mode_category) FROM %s`,
 			registryTable, modeCategorySuffix, categoryCaseExpr(wrong), registryTable)},
+			buildSupplementaire()...),
 		PostRename: kept,
 		Verify: func(ctx context.Context, tx *sql.Tx) error {
 			return verifierRecalcul(ctx, tx, ddl, kept, avant)
