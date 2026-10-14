@@ -70,7 +70,8 @@ func TestLaPhaseDesImagesClesTientSesInvariants(t *testing.T) {
 // complet tries par bit, lies par l image-cle (de proche en proche ou par election), leur rang de
 // vue egal a la tete de leur identite ; un record ferme finit sur le record suivant, ou avant lui de
 // la place des entrees que la table porte entre les deux (une par slot intermediaire, au moins un
-// en-tete chacune : [fermeSurLAncreSuivante]) ; ses
+// en-tete chacune : [fermeSurLAncreSuivante]) ; un dernier record ferme laisse la place des entrees
+// de queue de table ([fermeSurLaFinDeTable]) ; ses
 // composants sont dans son etendue, contigus, et un composant infranchissable est le dernier et en
 // porte la desynchronisation ; aucun verdict de paquet.
 func verifierLeRecordDEtatComplet(t *testing.T, nom string, p *lecture.Paquet) {
@@ -90,8 +91,9 @@ func verifierLeRecordDEtatComplet(t *testing.T, nom string, p *lecture.Paquet) {
 			if suivant <= r.Debut || (r.Preuve == lecture.PreuveFerme && !fermeAvantLeSuivant(r, p.Records[i+1])) {
 				t.Errorf("%s : record %d [%d, %d) %d, suivant au bit %d", ou, i, r.Debut, r.Debut+r.Bits, r.Preuve, suivant)
 			}
-		} else if r.Preuve != lecture.PreuveNonProuve {
-			t.Errorf("%s : dernier record prouve (%d) sans frontiere", ou, r.Preuve)
+		} else if r.Preuve == lecture.PreuveFerme && !fermeAvantLaFinDeTable(r, len(p.Payload)*8) {
+			t.Errorf("%s : dernier record [%d, %d) ferme sans la place des entrees de queue de table", ou,
+				r.Debut, r.Debut+r.Bits)
 		}
 		if r.Comps[0] != arene || r.Comps[1] < r.Comps[0] {
 			t.Fatalf("%s : record %d, composants %v hors de l ordre de l arene (%d)", ou, i, r.Comps, arene)
@@ -149,4 +151,12 @@ func fermeAvantLeSuivant(r, suivant lecture.Record) bool {
 		return fin == int64(suivant.Debut)
 	}
 	return n > 0 && fin+n*int64(profile.KeyframeEnTeteBits) <= int64(suivant.Debut)
+}
+
+// fermeAvantLaFinDeTable dit si l etendue du dernier record d un paquet laisse, avant la fin du payload
+// de `total` bits, la place des entrees de queue de table (une par slot jusqu au dernier, au moins un
+// en-tete chacune).
+func fermeAvantLaFinDeTable(r lecture.Record, total int) bool {
+	n := int64(keyframeEntreesDeTable) - 1 - int64(r.Vie.Slot)
+	return n >= 0 && int64(r.Debut+r.Bits)+n*int64(profile.KeyframeEnTeteBits) <= int64(total)
 }

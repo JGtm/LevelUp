@@ -206,3 +206,40 @@ func TestLeChainageFaibleReconnaitUnSlotLibere(t *testing.T) {
 		}
 	}
 }
+
+// queueDeTable ecrit, apres le prefixe d un bit, le record du slot 0x1ffe - 3, les trois slots liberes de la fin de table, puis
+// `bourrage` bits nuls. Rend le payload.
+func queueDeTable(bourrage int) []byte {
+	var w bitWriter
+	w.bit(0)
+	w.recordVide(keyframeEntreesDeTable-4, 0)
+	w.entreeLiberee()
+	w.entreeLiberee()
+	w.entreeLiberee()
+	w.bits(0, bourrage)
+	return w.buf
+}
+
+// TestLeDernierRecordFermeSurLaFinDeTable : le dernier record d un paquet ferme quand les entrees qui
+// le suivent jusqu a la derniere de la table finissent dans le dernier octet du payload ; un octet de
+// plus, ou une entree de moins, et il ne ferme pas. MUTATION — accepter une fin a plus d un octet du
+// payload : ROUGE.
+func TestLeDernierRecordFermeSurLaFinDeTable(t *testing.T) {
+	reg, ctx := twoEmptyArchReg(), ContexteParDefaut()
+	b := keyframeBorne{Bit: 1, Want: -1, Slot: keyframeEntreesDeTable - 4, SlotSuivant: -1}
+	for _, c := range []struct {
+		bourrage int
+		ferme    bool
+	}{{0, true}, {7, true}, {8, false}} {
+		pay := queueDeTable(c.bourrage)
+		tr := WalkKeyframeFullState(pay, 1, reg, ctx)
+		if got := fermeSurLaFinDeTable(pay, tr, b, reg, ctx); got != c.ferme {
+			t.Errorf("bourrage de %d bit(s) (payload de %d bits) : ferme %v, attendu %v", c.bourrage, len(pay)*8, got, c.ferme)
+		}
+	}
+	b.Slot--
+	pay := queueDeTable(0)
+	if fermeSurLaFinDeTable(pay, WalkKeyframeFullState(pay, 1, reg, ctx), b, reg, ctx) {
+		t.Error("slot 0x1ffe - 5 : quatre entrees attendues, trois lues, la queue ne doit pas fermer")
+	}
+}

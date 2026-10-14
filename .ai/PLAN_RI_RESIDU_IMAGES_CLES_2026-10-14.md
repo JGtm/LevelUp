@@ -312,32 +312,55 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     par-dessus des slots libérés sur les bobines ; deux mutations rouges). Écart au plan (décision
     d'exécution) : I-adj est un script sur les sorties d'I-ancres (`$RES/adj.sh`), qui portent déjà la
     fermeture et la preuve de chaque ancre, au lieu d'un fichier `research` qui les recalculerait.
-- [ ] R1.4 **Marches déterministes et fin de table.**
-  - [ ] R1.4.1 `WalkKeyframeRecords` lit la table entrée par entrée (E-1) : une entrée libérée avance
+- [x] R1.4 **Marches déterministes et fin de table.**
+  - [x] R1.4.1 `WalkKeyframeRecords` lit la table entrée par entrée (E-1) : une entrée libérée avance
         de 108 bits et n'est pas rendue comme record ; l'index de l'entrée est son slot (un record
         dont le slot diffère de son index arrête la marche, `KeyframeStopSlot`) ; la fin de table est
         l'entrée 0x1ffe (constante lue, `FUN_1408be074`), puis la fin du payload. Plus d'arrêt « fin de
         table » sur un identifiant `0xffffffff`.
-  - [ ] R1.4.2 `ChainKeyframeRecords` traverse les entrées libérées sans les compter dans le budget
+  - [x] R1.4.2 `ChainKeyframeRecords` traverse les entrées libérées sans les compter dans le budget
         de records intercalés, et les compte à part (`SkippedLiberees`).
-  - [ ] R1.4.3 Témoin de chaînage des deux balayages (`KeyChained`, `Reads[].Chained`) : la position
+  - [x] R1.4.3 Témoin de chaînage des deux balayages (`KeyChained`, `Reads[].Chained`) : la position
         d'arrivée porte une entrée lisible (record ou entrée libérée) ; mesuré par G-equiv.
-  - [ ] R1.4.4 Fin de table de `kfRecherche` (traînée de 2 048 positions de sentinelle) : MESURER sur
+  - [x] R1.4.4 Fin de table de `kfRecherche` (traînée de 2 048 positions de sentinelle) : MESURER sur
         les 28 films combien de recherches s'arrêtent sur elle (instrument temporaire) ; la doc dit
         ce que le jeu fait (fin de table = entrée 0x1ffe ; une suite d'entrées libérées ne forme
         jamais cette traînée, 12 bits nuls par entrée) et ce que la traînée reste (garde de coût du
         balayeur) ; si elle n'est jamais atteinte sur les films, décision écrite au journal (garder
         comme garde de coût couverte par ses tests synthétiques, ou retirer si plus rien ne
         l'exerce — règle 7).
-  - [ ] R1.4.5 Dernier record d'un paquet : sa fermeture par la queue de table (lire les
+  - [x] R1.4.5 Dernier record d'un paquet : sa fermeture par la queue de table (lire les
         `0x1ffe − slot` entrées qui le suivent ; fermé si la lecture finit dans le dernier octet du
         payload, S-7). Mesuré à part (I-d0, I-ferm inchangé car il ne compte que les bornés,
         admissions, G-equiv) ; retenu seulement sans baisse.
-  - [ ] R1.4.6 Tests unitaires et mutations (chacune rougit un test) : entrée libérée prise pour une
+  - [x] R1.4.6 Tests unitaires et mutations (chacune rougit un test) : entrée libérée prise pour une
         fin ; index ≠ slot accepté ; budget de chaînage compté sur les libérées ; queue de table
         acceptée à plus d'un octet de la fin.
   - Gate R1.4 : I-ancres, I-equipes, I-carte identiques à `$RES/r1.3` ; I-ferm identique à
     `$RES/r1.3` ; I-d0 : seules les preuves des derniers records changent (R1.4.5) ; G-unit, archlint.
+  - *Gate R1.4 PASSÉ (2026-10-14, `$RES/r1.4a` puis `$RES/r1.4b`)*. R1.4.1 à R1.4.4 (`381539cf7`) :
+    I-ancres, statistiques, équipes, I-ferm, I-d0 et carte (20, 8, MPP) IDENTIQUES à `$RES/r1.3`.
+    R1.4.4 mesuré (`$RES/r1.4/fin_de_table.tsv`, instrument temporaire non commité) : sur les 28 films,
+    aucun paquet d'image-clé n'atteint la traînée de 2 048 positions (plus longue suite de 1 : 1 152
+    bits) ; DÉCISION : retrait (règle 7) de la fin de table par sentinelles de `kfRecherche` (`fin`,
+    `traine`, `kfFinDeTable`, `sentinelles`), de la tête du motif d'ancre, et, sans autre appelant, de
+    `source.Motif64.Tete/AvecTete` et `source.SuiteDeUns` ; deux tests de fin de table retirés, un test
+    « les mots 0xffffffff n'arrêtent pas la recherche » ajouté (rouge sur l'ancien code) ; `source.Rev`
+    constant (`source-2026-09-16.2` : la lecture des octets ne change pas), empreinte régénérée par sa
+    porte. R1.4.3 : le témoin faible de chaînage reconnaît un slot libéré sous la forme EXACTE de
+    l'écrivain (trois mots `0xffffffff`), pas sur le seul archétype : une position décalée de −32 à +32
+    bits dans un slot libéré porte un archétype `0xffffffff` (mesuré par le test, rouge sous la règle
+    du seul archétype) — précision de E-1 pour les témoins ; la lecture entre deux ancres reste celle du
+    jeu (archétype seul, l'atterrissage exact fait la preuve). R1.4.2 : le champ existant
+    `SkippedSansArchetype` compte les entrées sans archétype (le nom du plan, `SkippedLiberees`, n'est
+    pas créé). R1.4.5 (`$RES/r1.4b`) : 164 derniers records de paquet fermés par la queue de table sur
+    918 (S-7 : 162 paquets), `ti=10` 113, `ti=42` 21, `ti=43` 13, `ti=38` 7, `ti=37` 4, `ti=11` 4, `ti=47`
+    1, `ti=13` 1, aucun bipède ; témoin décalé d'un bit : 9 sur 918 (`queue_temoin.tsv`) ; I-ferm (bornés
+    seuls), ancres colonnes 1-9, équipes et I-d0 (admis 6 507) identiques ; aucune perte. Tests :
+    `keyframe_entrees_test.go` (marche, chaînage, chaînage faible, queue de table), mutations rouges
+    (libérée prise pour une fin, index ≠ slot accepté, budget compté sur les libérées, queue acceptée à
+    plus d'un octet, chaînage faible sur le seul en-tête de record) ; G-unit (`grammar`, `source`),
+    archlint, vet `research` verts.
 - [ ] R1.5 **Gate de R1 (cumulé, contre `$RES/r0`)** → `$RES/r1` :
   - I-ferm (`ti=35` et tous archétypes), I-ancres, I-equipes, I-carte, I-d0 (admissions T1 ∧ T2),
     I-e108 : chaque écart avec r0 rattaché à R1.2, R1.3 ou R1.4 et adjugé ;

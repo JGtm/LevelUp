@@ -161,3 +161,20 @@ func estUnSlotLibere(pay []byte, pos, total, enTete int) bool {
 	}
 	return true
 }
+
+// fermeSurLaFinDeTable dit si le DERNIER record d un paquet (`b.Want < 0` : aucune ancre ne le suit)
+// FERME sur la fin de la table : la traversee de son etat complet (`tr`), puis la lecture des
+// `0x1ffe - slot` entrees qui le suivent jusqu a la derniere de la table, finissent dans le dernier
+// octet du payload — la table remplit le payload, a l octet de bourrage pres. C est la meme preuve que
+// [fermeSurLAncreSuivante], la fin de la table tenant lieu d ancre suivante.
+func fermeSurLaFinDeTable(pay []byte, tr EntityTrace, b keyframeBorne, reg *Registry, ctx ContexteDeLecture) bool {
+	if b.Want >= 0 || tr.DesyncAt >= 0 || b.Slot < 0 || b.Slot >= keyframeEntreesDeTable {
+		return false
+	}
+	total, n := len(pay)*8, keyframeEntreesDeTable-1-b.Slot
+	if tr.EndBit+n*ctx.Profil.Cadre.EnTeteBits > total {
+		return false
+	}
+	pos, ok := lireLesEntrees(pay, tr.EndBit, n, reg, ctx)
+	return ok && pos <= total && total-pos < 8
+}

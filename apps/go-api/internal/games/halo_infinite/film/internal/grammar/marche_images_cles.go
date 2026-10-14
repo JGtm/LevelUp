@@ -23,9 +23,10 @@ package grammar
 //
 // Un record est FERME quand la traversee de son etat complet, puis les entrees que la table porte
 // entre lui et l ancre suivante, finissent exactement sur cette ancre ([fermeSurLAncreSuivante]) : la
-// seule preuve qu on ait que toutes ses largeurs sont justes (`keyframe_closure.go`).
-// Sinon il est NON PROUVE — un composant sans lecteur l arrete, la traversee manque la frontiere,
-// ou c est le dernier record du paquet, qui n a pas de frontiere. Un paquet d image-cle ne porte
+// seule preuve qu on ait que toutes ses largeurs sont justes (`keyframe_closure.go`). Le dernier record
+// du paquet n a pas d ancre suivante : la fin de la table en tient lieu ([fermeSurLaFinDeTable]).
+// Sinon il est NON PROUVE — un composant sans lecteur l arrete, ou la traversee manque la
+// frontiere. Un paquet d image-cle ne porte
 // pas de verdict ([lecture.VerdictNonRendu]) : chacun de ses records porte sa preuve.
 //
 // # UN CORPS N EST PARCOURU QUE S IL EST LU
@@ -199,9 +200,10 @@ func liaisonDeLAncre(r KeyframeRec) lecture.Liaison {
 
 // preuveDeLEtatComplet rend la preuve d un record d image-cle : ferme quand la traversee de son
 // etat complet, puis les entrees que la table porte entre lui et l ancre suivante, finissent
-// exactement sur cette ancre ([fermeSurLAncreSuivante]), non prouve sinon.
+// exactement sur cette ancre ([fermeSurLAncreSuivante]) — ou, pour le dernier record du paquet, sur
+// la fin de la table ([fermeSurLaFinDeTable]) —, non prouve sinon.
 func preuveDeLEtatComplet(pay []byte, tr EntityTrace, b keyframeBorne, reg *Registry, ctx ContexteDeLecture) lecture.Preuve {
-	if fermeSurLAncreSuivante(pay, tr, b, reg, ctx) {
+	if fermeSurLAncreSuivante(pay, tr, b, reg, ctx) || fermeSurLaFinDeTable(pay, tr, b, reg, ctx) {
 		return lecture.PreuveFerme
 	}
 	return lecture.PreuveNonProuve
