@@ -124,6 +124,7 @@ export function SquadEmprisePage() {
             locale={locale}
             t={et}
             namedOnly
+            showTime={false}
           />
         </section>
       )}

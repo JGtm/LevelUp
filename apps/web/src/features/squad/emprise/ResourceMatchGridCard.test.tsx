@@ -35,3 +35,19 @@ describe('ResourceMatchGridCard — compact', () => {
     expect(screen.getByTestId('emprise-grid-result-m1').textContent).toBe('Victoire 3–0')
   })
 })
+
+describe('ResourceMatchGridCard — heure du match', () => {
+  const heure = /\d{1,2}[:h]\d{2}/
+
+  it('par défaut (Sessions) : l’heure de début figure dans l’en-tête', () => {
+    render(<ResourceMatchGridCard {...props} />)
+    expect(screen.getByTestId('emprise-grid-head-m1').textContent).toMatch(heure)
+  })
+
+  it('showTime faux (Escouade) : ni heure dans l’en-tête, ni dans l’infobulle d’en-tête', () => {
+    render(<ResourceMatchGridCard {...props} showTime={false} />)
+    const head = screen.getByTestId('emprise-grid-head-m1')
+    expect(head.textContent).not.toMatch(heure)
+    expect(head.textContent).toContain('Starboard')
+  })
+})

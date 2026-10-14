@@ -236,10 +236,10 @@ describe('Répartition des prises dans l’escouade', () => {
 })
 
 describe('Contrôle des ressources, match par match', () => {
-  it('colonnes : heure, carte, mode, « Victoire 3–0 », sans badge de dominance', () => {
+  it('colonnes : carte, mode, « Victoire 3–0 », sans heure ni badge de dominance', () => {
     mount()
     const head = text('emprise-grid-head-m1')
-    expect(head).toContain(formatMatchTime(HISTORY_2209[0].start_time, 'fr'))
+    expect(head).not.toContain(formatMatchTime(HISTORY_2209[0].start_time, 'fr'))
     expect(head).toContain('Starboard')
     expect(head).toContain('Drapeau')
     expect(text('emprise-grid-result-m1')).toBe('Victoire 3–0')
