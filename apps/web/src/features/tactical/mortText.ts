@@ -19,7 +19,6 @@ export function getMortText(m: Formateur) {
       aucun_visible: m('tactical.mort.status_out_of_sight'),
       equipe_a_terre: m('tactical.mort.status_none'),
     },
-    mortBilanRead: (n: number, total: number) => m('tactical.mort.bilan_read', { n, m: total }),
     mortRoseTitle: m('tactical.mort.rose_title'),
     mortRoseLabel: m('tactical.mort.rose_label'),
     mortRoseFrom: (n: number, total: number, dirs: string) => m('tactical.mort.rose_from', { n, m: total, dirs }),

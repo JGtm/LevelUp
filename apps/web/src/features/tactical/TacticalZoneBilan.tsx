@@ -84,9 +84,6 @@ function BilanDesMorts({ t, locale, b }: { t: TacticalText; locale: Locale; b: T
     <section className="flex flex-col gap-2.5" aria-label={t.mortZoneSection} data-testid="tactical-zone-bilan">
       <h4 className="text-xs font-semibold">{t.mortBilanTitle}</h4>
       {b.examinees > 0 && <BarreDesStatuts t={t} parts={partsDeBarre(b)} />}
-      {b.examinees > 0 && b.examinees < b.total && (
-        <p className="text-[11px] text-muted-foreground">{t.mortBilanRead(b.examinees, b.total)}</p>
-      )}
       {phrase && (
         <div className="flex items-center gap-3">
           <TacticalRose rose={b.rose ?? []} label={t.mortRoseLabel} />

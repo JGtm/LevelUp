@@ -56,7 +56,7 @@ vi.mock('@/lib/title-routing', () => ({ useTitleSlug: () => 'halo_infinite' }))
 
 const RASTER: TacticalRaster = {
   map_id: 'streets', question: 'morts', qui: 'moi',
-  bornes: { min_x: -20, max_x: 80, min_y: -20, max_y: 30, valide: true },
+  bornes: { min_x: 0, max_x: 100, min_y: 0, max_y: 50, valide: true },
   pas_m: 10, echelle: { p50: 1, p95: 5, borne: 5, n_cellules: 1, symetrique: false },
   cellules: [{ col: 2, lig: 1, valeur: 14, brut: 14, matchs: 9, matchs_victoire: 5, matchs_defaite: 4, centre_x: 25, centre_y: 15 }],
   grappes: [], matchs_filtres: 50, matchs_retenus: 45, matchs_victoire: 20, matchs_defaite: 25, matchs_en_attente: 0, points_ignores: 0,
@@ -104,6 +104,11 @@ describe('le parcours : zone, mort choisie, étapes, retour', () => {
     expect(screen.getByTestId('tactical-zone-bilan')).toBeInTheDocument()
     expect(screen.queryByTestId('tactical-mort-detail')).toBeNull()
     expect(derniereDemande()).toBeNull()
+  })
+
+  it('le bilan ne dit jamais sur combien de morts l’équipe a été lue', () => {
+    rendre()
+    expect(screen.getByTestId('tactical-zone-bilan').textContent).not.toMatch(/lue sur|read on/i)
   })
 
   it('clic sur une tuile : l’encadré de la mort, le bilan se retire, la séquence est demandée pour cette mort', () => {

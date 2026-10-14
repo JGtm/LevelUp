@@ -439,10 +439,6 @@ en = "out of sight"
 fr = "aucun en jeu"
 en = "none in play"
 
-[tactical.mort.bilan_read]
-fr = "Équipe lue sur {n} des {m} morts"
-en = "Team read on {n} of {m} deaths"
-
 [tactical.mort.rose_title]
 fr = "Direction des tueurs"
 en = "Killer direction"

@@ -47,7 +47,6 @@ export const tacticalManifest = {
   "tactical.maps.title": { fr: "Cartes jouées", en: "Maps played" },
   "tactical.mort.avenged": { fr: "Tueur abattu {s} s après la mort", en: "Killer downed {s} s after the death" },
   "tactical.mort.avenged_by": { fr: "par {who}", en: "by {who}" },
-  "tactical.mort.bilan_read": { fr: "Équipe lue sur {n} des {m} morts", en: "Team read on {n} of {m} deaths" },
   "tactical.mort.bilan_title": { fr: "Coéquipier le plus proche", en: "Closest teammate" },
   "tactical.mort.card_avenged": { fr: "Tueur abattu en {s} s", en: "Killer downed within {s} s" },
   "tactical.mort.card_median": { fr: "{d} m", en: "{d} m" },
