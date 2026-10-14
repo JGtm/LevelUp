@@ -5,7 +5,7 @@
  * Extraites de SquadSynergyHistoryTable pour tenir le seuil de taille de fichier.
  */
 import type { ReactNode } from 'react'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef, SortingFnOption } from '@tanstack/react-table'
 
 import { tokenCssVar } from '@/lib/accessibility'
 import { asDominance } from '@/components/charts/outcomeSequence'
@@ -13,10 +13,20 @@ import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { dominanceLabels, DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
-import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { SQUAD_HISTORY_COLUMNS } from './squadHistoryColumns.i18n'
+
+/**
+ * Les tris que le tableau injecte (ceux de l'Explorateur, importés par lui seul : pas d'import
+ * d'une feature à l'autre depuis ce fichier).
+ */
+export interface HistorySorts {
+  /** Tri numérique, valeurs absentes en bas. */
+  numeric: { readonly sortingFn: 'basic'; readonly sortUndefined: 'last' }
+  /** Tri alphabétique selon la langue. */
+  text: SortingFnOption<SquadMatchHistoryRow>
+}
 
 /** FDA signé à une décimale (« +10,0 », « −6,0 ») dans la langue du client. */
 export function formatSquadFda(v: number, intlLocale: string): string {
@@ -33,14 +43,14 @@ function countCell(v: number | null | undefined) {
 }
 
 /** Soirée du match (`session_label`), colonne placée après la date. */
-export function eveningColumn(locale: Locale): ColumnDef<SquadMatchHistoryRow> {
+export function eveningColumn(locale: Locale, sorts: HistorySorts): ColumnDef<SquadMatchHistoryRow> {
   const c = SQUAD_HISTORY_COLUMNS[locale]
   return {
     id: 'evening',
     accessorFn: (r) => r.session_label ?? undefined,
     header: c.evening,
     meta: { headerTooltip: c.eveningTooltip },
-    sortingFn: localeTextSortingFn,
+    sortingFn: sorts.text,
     sortDescFirst: false,
     cell: (ctx) => (
       <span className="text-muted-foreground">{ctx.getValue<string | undefined>() || '-'}</span>
@@ -49,7 +59,11 @@ export function eveningColumn(locale: Locale): ColumnDef<SquadMatchHistoryRow> {
 }
 
 /** Dominance puis cumuls de l'escouade et son FDA, colonnes placées après le résultat. */
-export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDef<SquadMatchHistoryRow>[] {
+export function squadTotalsColumns(
+  locale: Locale,
+  intlLocale: string,
+  sorts: HistorySorts,
+): ColumnDef<SquadMatchHistoryRow>[] {
   const c = SQUAD_HISTORY_COLUMNS[locale]
   const head = (key: ExplorerManifestKey) => formatMessage(explorerManifest, key, locale)
   const labels = dominanceLabels(locale)
@@ -62,7 +76,7 @@ export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDe
     accessorFn: (r) => r[id] ?? undefined,
     header,
     meta: { headerTooltip: tip },
-    ...NUMERIC_SORT,
+    ...sorts.numeric,
     cell: (ctx) => countCell(ctx.getValue<number | undefined>()),
   })
   return [
@@ -72,7 +86,7 @@ export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDe
       accessorFn: (r) => r.dominance_flag || undefined,
       header: head('explorer.matches.col_dominance'),
       meta: { headerTooltip: c.dominanceTooltip },
-      ...NUMERIC_SORT,
+      ...sorts.numeric,
       cell: (ctx) => {
         const flag = asDominance(ctx.getValue<number | undefined>())
         if (!flag) return <span className="text-muted-foreground">-</span>
@@ -93,7 +107,7 @@ export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDe
       accessorFn: (r) => r.squad_fda ?? undefined,
       header: head('explorer.matches.col_fda'),
       meta: { headerTooltip: c.fdaTooltip },
-      ...NUMERIC_SORT,
+      ...sorts.numeric,
       cell: (ctx) => {
         const v = ctx.getValue<number | undefined>()
         if (v == null) return <span className="text-muted-foreground">-</span>

@@ -50,6 +50,7 @@ import {
   fmtDeltaMMR,
   fmtMmr,
   squadTotalsColumns,
+  type HistorySorts,
 } from './squadHistoryExtraColumns'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
@@ -61,6 +62,9 @@ import {
 } from '@/features/explorer/explorerMatchesClientSort'
 
 const PAGE_SIZE = 20
+
+/** Les tris de l'Explorateur, injectés dans les colonnes d'escouade de `squadHistoryExtraColumns`. */
+const HISTORY_SORTS: HistorySorts = { numeric: NUMERIC_SORT, text: localeTextSortingFn }
 
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
   day: '2-digit',
@@ -225,7 +229,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           </span>
         ),
       },
-      eveningColumn(locale),
+      eveningColumn(locale, HISTORY_SORTS),
       {
         accessorKey: 'map_ui',
         header: labels.map,
@@ -271,7 +275,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           )
         },
       },
-      ...squadTotalsColumns(locale, intlLocale),
+      ...squadTotalsColumns(locale, intlLocale, HISTORY_SORTS),
       {
         accessorKey: 'win_rate_hist',
         header: labels.winRateHist,
