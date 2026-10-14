@@ -25,7 +25,6 @@ import { buildLivesModel, type LivesModel } from '@/features/timeseries/usages/u
 import type {
   MatchEmpriseBlock,
   MatchLivesNearTeammate,
-  MatchScoreboardRow,
   SquadEmpriseCount,
   SquadEmpriseMatch,
   SquadEmpriseObject,
@@ -62,8 +61,6 @@ export interface MatchControlRow {
   object?: SquadEmpriseObject
   us: number
   them: number
-  /** Bonus seulement : les socles vidés du match (somme des objets). */
-  padsEmptied?: number
 }
 
 export interface MatchControl {
@@ -86,8 +83,7 @@ export function buildMatchControl(block: MatchEmpriseBlock | null | undefined): 
     if (!m || !r || total(r.taken) <= 0) continue
     if (resource === RESOURCE_VEHICLE ? m.vehicles !== VEHICLES_MEASURED : !measured(m)) continue
     const objects = (r.objects ?? []).filter((o) => total(o.taken) > 0)
-    const padsEmptied = resource === RESOURCE_POWERUP ? (r.objects ?? []).reduce((a, o) => a + (o.pads_emptied ?? 0), 0) : undefined
-    rows.push({ key: resource, resource, us: r.taken.us, them: r.taken.them, padsEmptied })
+    rows.push({ key: resource, resource, us: r.taken.us, them: r.taken.them })
     for (const o of objects) rows.push({ key: `${resource}|${o.key}`, resource, object: o, us: o.taken.us, them: o.taken.them })
     if (resource === RESOURCE_RACK) racks = objects.length
   }
@@ -119,7 +115,6 @@ export function buildMatchSheets(block: MatchEmpriseBlock | null | undefined, na
       lines: s.lines.map((l) => ({ ...l, taken: cut(l.taken), kept: cut(l.kept), dropped: cut(l.dropped) })),
     })),
     dominant: all.dominant.slice(0, n),
-    losses: all.losses,
   }
 }
 
@@ -253,17 +248,8 @@ export function buildMatchLives(
 }
 
 // ---------------------------------------------------------------------------
-// Sous-titre et présence
+// Présence
 // ---------------------------------------------------------------------------
-
-/**
- * Le sous-titre de l'intertitre « Équipement et terrain » d'un match filmé : les joueurs présents à
- * la fin (bots compris). null sans film : rien n'est écrit.
- */
-export function matchCoverage(block: MatchEmpriseBlock | null | undefined, scoreboard: readonly MatchScoreboardRow[]): { present: number } | null {
-  if (!theMatch(block)?.has_film) return null
-  return { present: scoreboard.filter((r) => r.left_in_progress !== true).length }
-}
 
 export interface MatchEmpriseModels {
   control: MatchControl

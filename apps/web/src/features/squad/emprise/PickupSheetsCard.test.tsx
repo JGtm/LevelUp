@@ -10,7 +10,7 @@ import { EMPRISE_TEXT } from './empriseStrings'
 import { PickupSheetsCard } from './PickupSheetsCard'
 
 const T = EMPRISE_TEXT.fr
-const SHEETS: PickupSheets = { owners: [{ xuid: 'x1', gamertag: 'JGtm' }], sections: [], dominant: [null], losses: null }
+const SHEETS: PickupSheets = { owners: [{ xuid: 'x1', gamertag: 'JGtm' }], sections: [], dominant: [null] }
 const IDS = [{ label: 'JGtm', color: 'var(--ac-squad-player-1)' }]
 
 describe('PickupSheetsCard', () => {

@@ -1,7 +1,7 @@
 /**
  * MinePickupsCard.compact.test.tsx — « Mes prises dans mon camp » en vue compacte (tiroir de
  * comparaison de Sessions, maquette `renderMineCompact`) : une barre par RESSOURCE, ma part et celle
- * du reste de mon camp en pourcentage (comptes au survol), bonus perdus des deux camps en pourcentage ;
+ * du reste de mon camp en pourcentage (comptes au survol) ;
  * une part qui ne tient pas dans son segment monte sur une ligne de repli alignée sur lui (règle S2).
  */
 import { render, screen } from '@testing-library/react'
@@ -95,8 +95,8 @@ describe('MinePickupsCard — compact', () => {
     expect(screen.queryAllByTestId(/^usages-mine-repli-/)).toEqual([])
   })
 
-  it('bonus perdus des deux camps en pourcentage', () => {
+  it('aucune ligne « Bonus perdus » en vue compacte', () => {
     renderCompact()
-    expect(screen.getByTestId('usages-mine-losses').textContent).toBe('Bonus perdus11 %8 %')
+    expect(screen.queryByTestId('usages-mine-losses')).toBeNull()
   })
 })

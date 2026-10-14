@@ -42,11 +42,12 @@ function renderCard(b = lives()) {
 const width = (id: string) => parseFloat((screen.getByTestId(id) as HTMLElement).style.width)
 
 describe('LivesNearTeammateCard', () => {
-  it('titre, ligne au gamertag du joueur et nombre de vies', () => {
+  it('titre et ligne au gamertag du joueur, sans compte de vies sous le nom', () => {
     renderCard()
     expect(screen.getByText('Isolement')).toBeTruthy()
     expect(screen.getByText('JGtm')).toBeTruthy()
-    expect(screen.getByTestId('usages-lives-sub').textContent).toBe(`${n(1859)} vies terminées par une mort`)
+    expect(screen.queryByTestId('usages-lives-sub')).toBeNull()
+    expect(document.body.textContent).not.toContain('terminées par une mort')
   })
 
   it('barre épaisse : vies à portée / isolées, compte et part dans chaque segment', () => {

@@ -4,9 +4,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildTacticalGrid, type TacticalCell, type TacticalGrid } from '@/lib/replay/heatPaint'
+import { buildTacticalGrid, type TacticalCell, type TacticalGrid } from './heatPaint'
 
-import { lisserLaGrille, sousDivision } from './chaleurLissee'
+import { flouDeLaChaleur, lisserLaGrille, peindreLaChaleurLissee, sousDivision } from './chaleurLissee'
 
 function grille(cells: TacticalCell[], opts: { signee?: boolean } = {}): TacticalGrid {
   return buildTacticalGrid(
@@ -81,5 +81,31 @@ describe('sousDivision', () => {
     expect(sousDivision(10, 10)).toBe(6)
     expect(sousDivision(400, 400)).toBe(1)
     expect(sousDivision(150, 150)).toBe(3)
+  })
+})
+
+describe('peindreLaChaleurLissee', () => {
+  it('sans filtre de canvas : peint directement sur le contexte, bords nets', () => {
+    const appels: string[] = []
+    const ctx = {
+      canvas: { width: 100, height: 100 },
+      fillRect: () => appels.push('fillRect'),
+      fillStyle: '',
+      globalAlpha: 1,
+      save: () => {},
+      restore: () => {},
+      beginPath: () => {},
+      rect: () => {},
+      clip: () => {},
+    } as unknown as CanvasRenderingContext2D
+    const lissee = lisserLaGrille(grille([{ col: 4, row: 4, value: 3 }]))!
+    expect(() =>
+      peindreLaChaleurLissee(ctx, lissee, { topLeftWorld: { x: 0, y: 0 }, scale: 5 }, ['#000', '#fff'], 0),
+    ).not.toThrow()
+  })
+
+  it('le flou est proportionnel au pas servi et à l’échelle', () => {
+    expect(flouDeLaChaleur(2, 10)).toBeCloseTo(3)
+    expect(flouDeLaChaleur(0, 10)).toBe(0)
   })
 })

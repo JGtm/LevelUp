@@ -18,16 +18,6 @@ import type { Locale } from '@/lib/i18n/locale'
 
 /** Les textes propres à la page. */
 export interface MatchOwnText {
-  /** Sous l'intertitre « Équipement et terrain » d'un match filmé : « film décodé · 8 joueurs présents à la fin ». */
-  coverage: (present: number) => string
-  /** Sous-libellé de la piste « Prises de bonus » : « 10 socles vidés ». */
-  powerupSub: (emptied: number) => string
-  /**
-   * Bouton des armes de râtelier : « Armes de râtelier (3 types d’armes, repliés) » / « (3 types
-   * d’armes) » — un nombre de TYPES d'armes (`grid.rackTypes` de l'Escouade), pas de prises.
-   */
-  racksFolded: (n: number) => string
-  racksUnfolded: (n: number) => string
   /** Constats d'une ligne sans barre épaisse de « Frags par ressource ». */
   production: {
     powerupNoEffect: string
@@ -113,10 +103,6 @@ const INFOS: Record<Locale, Infos> = {
 
 const OWN: Record<Locale, MatchOwnText> = {
   fr: {
-    coverage: (present) => `film décodé · ${present} ${plural(present, 'joueur présent', 'joueurs présents')} à la fin`,
-    powerupSub: (emptied) => `${emptied} ${plural(emptied, 'socle vidé', 'socles vidés')}`,
-    racksFolded: (n) => `(${EMPRISE_TEXT.fr.grid.rackTypes(n)}, repliés)`,
-    racksUnfolded: (n) => `(${EMPRISE_TEXT.fr.grid.rackTypes(n)})`,
     production: {
       powerupNoEffect: 'Aucun bonus actif sur le match',
       powerupNoKills: 'Aucun frag pendant l’effet d’un bonus',
@@ -130,10 +116,6 @@ const OWN: Record<Locale, MatchOwnText> = {
     },
   },
   en: {
-    coverage: (present) => `film decoded · ${present} ${plural(present, 'player', 'players')} present at the end`,
-    powerupSub: (emptied) => `${emptied} ${plural(emptied, 'pad emptied', 'pads emptied')}`,
-    racksFolded: (n) => `(${EMPRISE_TEXT.en.grid.rackTypes(n)}, folded)`,
-    racksUnfolded: (n) => `(${EMPRISE_TEXT.en.grid.rackTypes(n)})`,
     production: {
       powerupNoEffect: 'No power-up active in the match',
       powerupNoKills: 'No kill during a power-up effect',

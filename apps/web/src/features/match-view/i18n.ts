@@ -115,9 +115,10 @@ export interface MatchViewText {
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
-  // Section médias (dans onglet Général) — le bloc et son titre ne s'affichent que si le
-  // match a au moins une capture (2026-09-22) : plus d'état vide « Aucune capture ».
+  // Section médias (onglet Général) : toujours affichée sous la capability `media`, état vide inclus.
   sectionMedia: string
+  mediaNoCaptures: string
+  mediaNoCapturesDesc: string
   // Résumé — médailles & citations
   sectionMedals: string
   sectionCitations: string
@@ -314,12 +315,10 @@ export interface MatchViewText {
   /** Section « Objectifs » du scoreboard (CTF/Zones/Oddball) — V72-03. `cols` :
    *  libellé + tooltip d'en-tête par clé de colonne objectif. */
   objectives: {
-    title: string
     /**
-     * LES DEUX VUES EMPILEES (2026-09-03). Le tableau a ete remplace par un graphe :
+     * LES DEUX CARTES EMPILEES (2026-10-14, deux vues dans une carte « Objectifs » avant).
      * `viewByPlayer` classe les joueurs grandeur par grandeur, `viewTeamTotals` oppose les
-     * deux camps sur chacune. Les deux titres sont necessaires — sans eux, deux blocs de
-     * barres dans la meme carte se lisent comme deux lectures de la meme chose.
+     * deux camps sur chacune : le titre de chaque carte est son seul intitule.
      */
     viewByPlayer: string
     viewTeamTotals: string
@@ -421,6 +420,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve: 'Distance entre le tueur et sa victime au moment du frag, arme par arme.',
     sectionMedia: 'Médias',
+    mediaNoCaptures: 'Aucune capture',
+    mediaNoCapturesDesc: 'Les captures et clips associés à ce match apparaîtront ici.',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
     newlyMastered: 'Maîtrisé !',
@@ -567,7 +568,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxModeFmt: (category) => `en ${category}`,
     matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
     objectives: {
-      title: 'Objectifs',
       viewByPlayer: "Actions d'objectif par joueur",
       viewTeamTotals: "Total d'objectif par équipe",
       gridTipFmt: (player, metric, value) => `${player} — ${metric} : ${value}`,
@@ -739,6 +739,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve: 'Distance between the killer and the victim at the moment of the kill, weapon by weapon.',
     sectionMedia: 'Media',
+    mediaNoCaptures: 'No capture',
+    mediaNoCapturesDesc: 'Screenshots and clips linked to this match will appear here.',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
     newlyMastered: 'Mastered!',
@@ -884,7 +886,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     ctxModeFmt: (category) => `in ${category}`,
     matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
     objectives: {
-      title: 'Objectives',
       viewByPlayer: 'Objective actions by player',
       viewTeamTotals: 'Objective totals by team',
       gridTipFmt: (player, metric, value) => `${player} — ${metric}: ${value}`,

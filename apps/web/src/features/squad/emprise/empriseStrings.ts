@@ -67,8 +67,6 @@ export interface EmpriseText {
     dominant: string
     legendTaken: string
     legendLost: string
-    lossesTitle: string
-    lossesFmt: (lost: number, taken: number) => string
     lineTip: (player: string, item: string, n: number, camp: number, lost: string | null) => string
     /** « 1 perdue : gardé sans l’activer ». */
     lostFmt: (kept: number, dropped: number) => string | null
@@ -229,8 +227,6 @@ const FR: BaseEmpriseText = {
     dominant: 'Ressource dominante',
     legendTaken: 'Prise',
     legendLost: 'Bonus pris puis perdu',
-    lossesTitle: 'Bonus perdus',
-    lossesFmt: (lost, taken) => `${lost} sur ${taken}`,
     lineTip: (player, item, n, camp, lost) =>
       `${player} · ${item}\n${n} des ${camp} prises de l’équipe${lost ? `\n${lost}` : ''}`,
     lostFmt: (kept, dropped) => {
@@ -383,8 +379,6 @@ const EN: BaseEmpriseText = {
     dominant: 'Main resource',
     legendTaken: 'Pickup',
     legendLost: 'Power-up picked up, then lost',
-    lossesTitle: 'Lost power-ups',
-    lossesFmt: (lost, taken) => `${lost} of ${taken}`,
     lineTip: (player, item, n, camp, lost) =>
       `${player} · ${item}\n${n} of the team’s ${camp} pickups${lost ? `\n${lost}` : ''}`,
     lostFmt: (kept, dropped) => {
