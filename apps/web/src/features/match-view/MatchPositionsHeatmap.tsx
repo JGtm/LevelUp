@@ -16,7 +16,8 @@
  *
  * CE QU'IL RESTE : le même calque que l'onglet Tactique et que le rejeu 2D — le FOND DE CARTE
  * du match (`…/replay/background`, calé au centimètre) et le noyau de tracé partagé
- * (`lib/replay/heatPaint.ts`, `drawTacticalHeatmap`). La grille suit le pas du rejeu (0,5 m) et
+ * (`lib/replay/heatPaint.ts`, `drawTacticalHeatmap`), la chaleur étant LISSÉE comme à la Tactique
+ * (`lib/replay/chaleurLissee.ts` : zones de chaleur, bords adoucis). La grille suit le pas du rejeu (0,5 m) et
  * l'échelle quantile p50→p95 ; une cellule jamais atteinte reste vide.
  *
  * TROIS PORTES, ET ELLES DISENT TROIS CHOSES :
@@ -48,7 +49,8 @@ import { useReplayZoom } from '@/features/match-replay/hooks/useReplayZoom'
 import { useReplayZoomKeys } from '@/features/match-replay/hooks/useReplayZoomKeys'
 import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
 import type { ReplayBounds } from '@/lib/api/types'
-import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
+import { flouDeLaChaleur, lisserLaGrille, peindreLaChaleurLissee } from '@/lib/replay/chaleurLissee'
+import { heatRamp } from '@/lib/replay/heatPaint'
 import { visibleBounds } from '@/lib/replay/replayLogic'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 import { useTitleSlug } from '@/lib/title-routing'
@@ -133,6 +135,8 @@ export function MatchPositionsHeatmap({
     () => (frame ? buildPositionsGrid(filtered, frame) : null),
     [filtered, frame],
   )
+  // La MÊME chaleur lisse que la Tactique (`lib/replay/chaleurLissee.ts`) : des zones, pas des carrés.
+  const lissee = useMemo(() => (grid ? lisserLaGrille(grid) : null), [grid])
 
   // Rampe précalculée PAR THÈME, résolue une fois par changement de palette (même patron que
   // `TacticalPlanCard` et `useReplayHeatmap`) — jamais recalculée par cellule.
@@ -223,9 +227,10 @@ export function MatchPositionsHeatmap({
       width,
       height,
     )
-    drawTacticalHeatmap(
+    if (!lissee) return
+    peindreLaChaleurLissee(
       ctx,
-      grid,
+      lissee,
       {
         topLeftWorld: {
           x: (frame.originX - bounds.minX) * k,
@@ -233,9 +238,10 @@ export function MatchPositionsHeatmap({
         },
         scale: k,
       },
-      { ramp, k: 1 },
+      ramp,
+      flouDeLaChaleur(grid.cell, k),
     )
-  }, [grid, frame, image, ramp, bounds])
+  }, [grid, lissee, frame, image, ramp, bounds])
 
   // Portes 1 à 3 : rien à montrer, et rien à promettre. La première est le prédicat que le
   // parent lit aussi pour poser (ou non) son titre de section.
