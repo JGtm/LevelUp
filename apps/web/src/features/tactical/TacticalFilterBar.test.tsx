@@ -87,7 +87,7 @@ function monter(scope: Partial<TacticalScope> = {}, demande: DemandeDeCompositio
   )
 }
 
-const champComposition = () => screen.getByPlaceholderText(/Rechercher parmi 1 coéquipiers/)
+const champComposition = () => screen.getByPlaceholderText(/Ajouter un coéquipier/)
 
 beforeEach(() => {
   useAppShellStore.setState({ locale: 'fr', availablePlayers: [] })

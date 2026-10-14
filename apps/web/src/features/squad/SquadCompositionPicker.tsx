@@ -88,7 +88,7 @@ export function SquadCompositionPicker({
       frequentOptions={options}
       colors={COULEURS}
       excludeGamertag={playerSlug}
-      placeholder={t.selection.placeholder(options.length)}
+      placeholder={t.selection.placeholder}
       onAddAsFriend={onAddAsFriend}
       sources={sources}
       allowFreeInput={allowFreeInput}
