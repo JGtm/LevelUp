@@ -115,9 +115,10 @@ export interface MatchViewText {
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
-  // Section médias (dans onglet Général) — le bloc et son titre ne s'affichent que si le
-  // match a au moins une capture (2026-09-22) : plus d'état vide « Aucune capture ».
+  // Section médias (onglet Général) : toujours affichée sous la capability `media`, état vide inclus.
   sectionMedia: string
+  mediaNoCaptures: string
+  mediaNoCapturesDesc: string
   // Résumé — médailles & citations
   sectionMedals: string
   sectionCitations: string
@@ -421,6 +422,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve: 'Distance entre le tueur et sa victime au moment du frag, arme par arme.',
     sectionMedia: 'Médias',
+    mediaNoCaptures: 'Aucune capture',
+    mediaNoCapturesDesc: 'Les captures et clips associés à ce match apparaîtront ici.',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
     newlyMastered: 'Maîtrisé !',
@@ -739,6 +742,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve: 'Distance between the killer and the victim at the moment of the kill, weapon by weapon.',
     sectionMedia: 'Media',
+    mediaNoCaptures: 'No capture',
+    mediaNoCapturesDesc: 'Screenshots and clips linked to this match will appear here.',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
     newlyMastered: 'Mastered!',

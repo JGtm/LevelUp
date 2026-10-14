@@ -19,7 +19,7 @@
  * ceux des cartes de l'Emprise avec leurs modèles (`matchEmprise.logic.ts`).
  */
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
-import type { FragDistribution, MatchAssociatedMedia, MatchPlayerPosition, SquadWeaponTools } from '@/lib/api/types'
+import type { FragDistribution, MatchPlayerPosition, SquadWeaponTools } from '@/lib/api/types'
 
 /**
  * hasFragSunburst — miroir EXACT du prédicat de rendu de `FragSunburst` (total > 0 ET
@@ -48,16 +48,6 @@ export function hasMatchFragData(distribution?: FragDistribution | null, tools?:
  */
 export function hasPositions(positions: MatchPlayerPosition[] | null | undefined): boolean {
   return (positions?.length ?? 0) > 0
-}
-
-/**
- * hasMediaItems — le prédicat de rendu du bloc Médias : aucune capture ni clip associé au
- * match -> ni titre ni bloc. L'état vide « Aucune capture » qu'il peignait jusqu'au
- * 2026-09-22 est mort avec la règle : il ne pouvait s'afficher que sous un titre que la
- * page ne pose plus.
- */
-export function hasMediaItems(items: MatchAssociatedMedia[] | null | undefined): boolean {
-  return (items?.length ?? 0) > 0
 }
 
 /**
