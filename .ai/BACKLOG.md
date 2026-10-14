@@ -10,6 +10,36 @@
 
 ---
 
+### [sécurité] Durcir le site avant de le partager plus largement — « sûr et solide, pas le Pentagone »
+
+Demandé par l'utilisateur le 2026-10-14 : le site va être partagé plus largement, il faut éviter
+que des visiteurs malintentionnés « cassent tout ». Niveau visé : **sûr et solide**, sans viser un
+niveau militaire (pas de chantier disproportionné, pas de dépendance lourde ; on ferme les portes
+réellement ouvertes et on pose les garde-fous qui empêchent leur retour).
+
+Constats déjà établis (2026-10-09 → 2026-10-14) :
+- **Contournement du contrôle d'Origin (CSRF) par chemin encodé** : `internal/api/middleware/csrf.go:121`,
+  `isExemptPath` compare le préfixe exempté du protocole ouvrier (`/api/v1/internal/...`) sur le
+  chemin NETTOYÉ (`path.Clean`) alors que chi route sur le chemin brut. Une écriture comme
+  `POST …/coach/proposals/..%2F..%2F..%2F..%2Finternal%2Fx/dismiss` passe sans contrôle d'Origin.
+  Présent sur feat/v75 (pas sur main au 2026-10-14). Portée limitée aujourd'hui par la session
+  SameSite=Lax. Remède : refuser l'exemption à toute requête ambiguë (`AmbiguousPath`, déjà utilisé
+  par la garde démo du lot recos-d) + test avec chemins encodés.
+- **Faille de lecture de fichiers arbitraires** sous `/static/commendations/` (depuis le 2026-04-23) :
+  CORRIGÉE et déployée le 2026-10-09 (PR #89). Exposition possible avant le 2026-09-25 (début des
+  journaux nginx conservés) : **décision du user** sur la rotation des secrets (secret client Azure,
+  secret de session, jetons de rafraîchissement des joueurs).
+- **Vulnérabilités de la bibliothèque standard Go** atteintes (govulncheck au pre-push : http2,
+  `http.Error`, `csv.Writer.Flush`) : monter la version de Go.
+
+Travail proposé : un **audit adversarial** (skill `adversarial-audit`) de la surface exposée —
+routes publiques et démo, service de fichiers, classification lecture/écriture, CSRF, contrôle
+d'accès par joueur (ownership), limites de débit, tailles de requêtes et d'envois, en-têtes de
+sécurité, messages d'erreur qui divulguent — puis correction des constats recevables, avec un
+garde-rail par classe de défaut (comme le ratchet de la garde démo). **Effort : M.**
+
+---
+
 ### [demo] Un rejeu figé par mode de jeu dans la démo, toujours au dernier schéma
 
 Demandé par l'utilisateur le 2026-10-09. La démo ne synchronise pas et ne construit aucun rejeu :
