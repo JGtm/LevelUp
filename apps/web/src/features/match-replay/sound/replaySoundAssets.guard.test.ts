@@ -56,6 +56,7 @@ import {
   WEAPON_CHANGE_SOUND_STEMS,
   EQUIPMENT_PICKUP_SOUND_STEM,
   ABILITY_IMPULSE_SOUND_STEMS,
+  TRANSLOCATION_SOUND_STEM,
 } from './replaySound'
 import {
   allVehicleBoomStems,
@@ -140,6 +141,8 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // FAMILLE — le propulseur aujourd'hui, et lui seul. Ses variantes entrent par
     // SOUND_VARIANTS ci-dessous, comme celles du grappin.
     ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
+    // LA TÉLÉPORTATION DU TRANSLOCATEUR (schéma 38) : un stem, déclenché par `translocations[]`.
+    TRANSLOCATION_SOUND_STEM,
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : un ou deux stems par statistique, selon
     // que le jeu distingue les camps.
     ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
@@ -281,6 +284,8 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // courte (0,83 à 1,00 s — le dash EST une impulsion), d'où ses trois entrées dans
     // `SOURCES_COURTES` : la coupe des armes ne l'a pas tronqué, le geste fait cette durée-là.
     ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
+    // La TÉLÉPORTATION : catégorie Équipement, la durée de sa source (4,73 s), jamais retronquée.
+    TRANSLOCATION_SOUND_STEM,
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : catégorie Objectifs, même règle de durée que
     // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
     // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.

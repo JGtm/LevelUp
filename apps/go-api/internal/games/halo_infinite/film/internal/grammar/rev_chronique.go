@@ -229,10 +229,10 @@ package grammar
 // (`poussees.go`) rend la paire 105 -> 104 de meme reference 0 dans une liste : joueur pousse, unite
 // qui pousse, impulsion (direction `FUN_1406d8288`, norme `FUN_14076d6dc`).
 //
-// MESURE (2026-10-14) : 235 films du parc, 1 133 messages 104 lus, 135 paires ; normes des paires
-// 6,00 / 5,50 / 5,72 m/s seulement ; 14 sur 14 des paires des temoins 0d9a9af9, 215e7022 et a6ae19fb
+// MESURE (2026-10-14) : 235 films du parc, contexte de la cuisson (carte et decoupage poses) : 135
+// messages 104 lus, 135 paires, aucun isole ; normes 6,00 / 5,50 / 5,72 m/s seulement ; 14 sur 14 des paires des temoins 0d9a9af9, 215e7022 et a6ae19fb
 // accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; auteur porteur du
-// repulseur sur 130 paires sur 130. Les 998 104 isoles suivent une charge de tir (genre 36) sous-lue.
+// repulseur sur 130 paires sur 130.
 //
 // ENTREE `grammar-2026-10-14.2` (2026-10-14, lot « equipement porte » du plan
 // `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `ti=37 i28
@@ -242,7 +242,8 @@ package grammar
 // (`consumeEquipmentTrackedStack2`) en faisait un de plus, soit 16 bits de trop des que l entree
 // fantome etait presente : la marche se decalait et sortait par un rejet hors datum.
 //
-// MESURE (235 films du parc, marche de production) : trames portant un i28 d objet du monde fermees
-// 0 sur 4 794 -> 4 690 sur 4 823 ; trames fermees 7 390 813 -> 7 395 919 sur 7 557 051, aucun film
-// en baisse ; deltas ti=37 lus 9 638 420 -> 9 642 063. Ce sont les trames ou l objet PORTE change
-// d etat (pose de la faille du translocateur, 1b2d9e08 a 164,13 s) : elles etaient toutes perdues.
+// MESURE (238 films du parc, contexte de la cuisson : entree de catalogue puis
+// `PoserLaCarteEtLeDecoupage`) : trames portant un i28 d objet du monde fermees 0 sur 4 839 -> 4 726
+// sur 4 841 ; trames fermees 7 538 932 -> 7 543 734 sur 7 668 648, aucun film en baisse ; deltas ti=37
+// lus +2 832. Ce sont les trames ou l objet PORTE change d etat (pose de la faille du translocateur,
+// 1b2d9e08 a 164,13 s) : elles etaient toutes perdues.

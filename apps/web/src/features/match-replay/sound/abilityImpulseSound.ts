@@ -18,8 +18,8 @@
  * voisine, même règle que `EQUIPMENT_PLACEMENT_SOUND_STEMS`.
  *
  * LE RÉPULSEUR N'Y ENTRERA PAS PAR CE CANAL : il n'est pas dans les impulsions de capacité
- * (négatif mesuré sur neuf canaux, lots R8/R9 du 2026-09-03). Il sonne déjà par SON KILL
- * (`repulsor_kill`), et c'est tout ce que le film en date.
+ * (négatif mesuré sur neuf canaux, lots R8/R9 du 2026-09-03). Le film date ses POUSSÉES par une
+ * paire de messages (schéma 94, `doc.knockbacks`) : elles sonnent par `knockbackSound.ts`.
  *
  * CATÉGORIE ÉQUIPEMENT — le propulseur est une capacité d'équipement du joueur, au même titre
  * que le grappin, le camouflage et le surbouclier (cf. `buildSoundTimeline`).

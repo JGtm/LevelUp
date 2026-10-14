@@ -188,7 +188,7 @@ func TestAj14fRecordsTi37(t *testing.T) {
 		}
 		aj14fEntree = &entree
 		c := &aj14fCanalTi37{t: t, id: id, origine: origine, lo: lo, hi: hi, slots: slots}
-		if err := Distribuer(NewFilmContextForMap(film, &entree, nil), c); err != nil {
+		if err := Distribuer(aj14fContexte(film, &entree), c); err != nil {
 			t.Fatalf("%s : marche : %v", id, err)
 		}
 		t.Logf("%s : %d records ti=37 dans la fenetre ; %d trames non lues", id, c.lignes, c.nonLues)
@@ -218,7 +218,7 @@ func TestAj14fPosesTi37(t *testing.T) {
 			t.Fatalf("film %s : %v (present %v)", id, err, ok)
 		}
 		origine, _ := ScanClockOrigin(film)
-		fc := NewFilmContextForMap(film, &entree, nil)
+		fc := aj14fContexte(film, &entree)
 		wr := entree.Range()
 		pl, st, err := ScanEquipmentPlacements(fc, &wr)
 		t.Logf("%s : poses %d (err %v) stats %+v", id, len(pl), err, st.Lives)
@@ -229,7 +229,7 @@ func TestAj14fPosesTi37(t *testing.T) {
 					float64(p.T1US-origine)/1000, p.Life.Slot, p.Life.Gen, p.GlobalID, p.X, p.Y, p.Z, p.Points)
 			}
 		}
-		cr, _, err := ScanEquipmentCreations(NewFilmContextForMap(film, &entree, nil), &wr)
+		cr, _, err := ScanEquipmentCreations(aj14fContexte(film, &entree), &wr)
 		t.Logf("%s : creations %d (err %v)", id, len(cr), err)
 		for _, c := range cr {
 			ms := float64(c.TimestampUS-origine) / 1000
@@ -292,7 +292,7 @@ func TestAj14fEquipementDUnite(t *testing.T) {
 		t.Fatalf("film %s : %v", id, err)
 	}
 	origine, _ := ScanClockOrigin(film)
-	em, err := ScanUnitEquipment(NewFilmContextForMap(film, &entree, nil))
+	em, err := ScanUnitEquipment(aj14fContexte(film, &entree))
 	if err != nil {
 		t.Fatalf("i26 : %v", err)
 	}
@@ -332,7 +332,7 @@ func TestAj14fEtatEquipement(t *testing.T) {
 		t.Fatalf("film %s : %v", id, err)
 	}
 	origine, _ := ScanClockOrigin(film)
-	ech, st, err := ScanEquipmentState(NewFilmContextForMap(film, &entree, nil))
+	ech, st, err := ScanEquipmentState(aj14fContexte(film, &entree))
 	if err != nil {
 		t.Fatalf("etat : %v", err)
 	}
@@ -427,7 +427,7 @@ func TestAj14fStructure(t *testing.T) {
 			c.tis[v] = true
 		}
 	}
-	if err := Distribuer(NewFilmContextForMap(film, &entree, nil), c); err != nil {
+	if err := Distribuer(aj14fContexte(film, &entree), c); err != nil {
 		t.Fatalf("marche : %v", err)
 	}
 }

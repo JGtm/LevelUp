@@ -8,10 +8,10 @@ package grammar
 //
 // Chaque poussee attendue est (instant en ms de film, slot pousse, slot de l auteur). Les instants
 // sont controles a la trajectoire (le slot pousse accelere dans les 300 ms) ; 215e7022 porte le kill
-// au repulseur releve au Theater a 325 526 ms. CONTROLE DU PORTEUR : la vie de l auteur a lu le rang du
-// repulseur de la palette du film (6 sur les trois) avant la poussee, et aucune consommation (`spent`)
-// ne l a videe depuis. Ce n est pas « la derniere lecture » : la prise d un bonus (surbouclier) change
-// le rang lu sans vider l equipement porte.
+// au repulseur releve au Theater a 325 526 ms. CONTROLE DU PORTEUR : la derniere lecture i48 de la vie de
+// l auteur avant la poussee est le rang du repulseur de la palette du film (6 sur les trois). Le contexte
+// est celui de la cuisson : entree de catalogue de la carte, puis carte et decoupage poses
+// ([FilmContext.PoserLaCarteEtLeDecoupage], `replay/build_from_film.go`) — les rangs lus en dependent.
 
 import (
 	"os"
@@ -20,7 +20,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -67,7 +66,9 @@ func TestPousseesDesTemoins(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : %v", tm.film, err)
 		}
-		verifierLesPoussees(t, tm, NewFilmContextForMap(film, &entree, nil))
+		fc := NewFilmContextForMap(film, &entree, nil)
+		fc.PoserLaCarteEtLeDecoupage()
+		verifierLesPoussees(t, tm, fc)
 	}
 }
 
@@ -85,10 +86,6 @@ func verifierLesPoussees(t *testing.T, tm temoinDePoussees, fc *FilmContext) {
 	if err != nil {
 		t.Fatalf("%s : rangs : %v", tm.film, err)
 	}
-	changements, _, err := ScanEquipmentChanges(fc, func(uint32) (uint64, bool) { return 0, false })
-	if err != nil {
-		t.Fatalf("%s : changements : %v", tm.film, err)
-	}
 	for i, k := range ks {
 		a := tm.attendues[i]
 		ms := (k.TimestampUS - origine) / 1000
@@ -97,21 +94,15 @@ func verifierLesPoussees(t *testing.T, tm temoinDePoussees, fc *FilmContext) {
 				k.Pushed.Slot, k.Author.Slot, k.HasAuthor, a)
 			continue
 		}
-		var pris uint64
+		dernier := -1
 		for _, r := range rangs {
-			if r.Slot == k.Author.Slot && r.TimestampUS <= k.TimestampUS && r.Rank == tm.rangRepulseur {
-				pris = r.TimestampUS
+			if r.Slot == k.Author.Slot && r.TimestampUS <= k.TimestampUS {
+				dernier = r.Rank
 			}
 		}
-		vide := false
-		for _, c := range changements {
-			if c.Slot == k.Author.Slot && c.Kind == types.EquipmentSpent && c.TimestampUS > pris && c.TimestampUS <= k.TimestampUS {
-				vide = true
-			}
-		}
-		if pris == 0 || vide {
-			t.Errorf("%s : poussee a %d ms, auteur %d : porteur du repulseur %v, vide depuis %v", tm.film, ms,
-				k.Author.Slot, pris != 0, vide)
+		if dernier != tm.rangRepulseur {
+			t.Errorf("%s : poussee a %d ms, auteur %d : dernier rang %d, attendu le repulseur (%d)", tm.film,
+				ms, k.Author.Slot, dernier, tm.rangRepulseur)
 		}
 	}
 }

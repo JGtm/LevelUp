@@ -3272,9 +3272,8 @@ package replay
 //
 //	LE PARC         un artefact 93 ou d avant : verdict `redecoder` (revision de grammaire).
 //
-//	MESURE          235 films du parc : 1 133 messages 104 lus, 135 paires (normes 6,00 / 5,50 /
-//	                5,72 m/s seulement), 998 isoles (suivent une charge de tir sous-lue, normes hors
-//	                des constantes du jeu). Temoins 0d9a9af9, 215e7022, a6ae19fb : les 14 paires
+//	MESURE          235 films du parc, contexte de la cuisson (carte posee) : 135 messages 104 lus,
+//	                135 paires, aucun 104 isole ; normes 6,00 / 5,50 / 5,72 m/s seulement. Temoins 0d9a9af9, 215e7022, a6ae19fb : les 14 paires
 //	                rattachees accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1
 //	                sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
 //	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.

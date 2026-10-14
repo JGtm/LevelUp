@@ -47,7 +47,8 @@ import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
  * que `activeEquipmentAt` et que `PLACEMENT_RENDER`).
  *
  * Le propulseur y est seul, et le répulseur n'y entrera pas par ce canal : il n'est PAS dans
- * les impulsions de capacité (négatif mesuré sur neuf canaux, lots R8/R9 du 2026-09-03).
+ * les impulsions de capacité (négatif mesuré sur neuf canaux, lots R8/R9 du 2026-09-03). Ses
+ * POUSSÉES se dessinent par `knockbackFx.ts` (schéma 94).
  */
 const DASH_FAMILIES: ReadonlySet<string> = new Set(['thruster'])
 
@@ -154,7 +155,7 @@ export function buildThrusterDashFx(
 }
 
 /** L'état du dash à un âge donné : jusqu'où il s'étire, et avec quelle présence. */
-interface DashProgress {
+export interface DashProgress {
   /** Part de la longueur pleine, dans [0, 1]. */
   reach: number
   alpha: number
@@ -269,8 +270,12 @@ function screenDirection(f: ThrusterDashFx, view: CanvasView): XY | null {
   return { x: dx / len, y: dy / len }
 }
 
-/** drawDash : le sillage derrière le pion, puis les chevrons qui disent le sens. */
-function drawDash(
+/**
+ * drawDash : le sillage derrière le pion, puis les chevrons qui disent le sens. `c` est le centre
+ * du pion en pixels, `u` la direction unitaire EN PIXELS. Exporté pour la poussée du répulseur
+ * (`knockbackFx.ts`), qui dessine le même sillage sur le joueur poussé.
+ */
+export function drawDash(
   ctx: CanvasRenderingContext2D,
   c: XY,
   u: XY,

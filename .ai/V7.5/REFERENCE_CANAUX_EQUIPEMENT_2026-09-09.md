@@ -21,7 +21,8 @@ MATCH. Ce qui remonte au grain session est une autre affaire — §3.
 | `equipmentPlacements` `origin: dropped` | Ce qui TOMBE d'un porteur — déployables **et bonus** — quelle qu'en soit la cause | Par pose | **LU, PLUS MESURÉ, DEPUIS LE 2026-09-15 (lot 1.9.1)** : une pose est `dropped` quand le film ÉCRIT une MORT du poseur (tolérance 200 ms, mesurée : max 171,7 ms d'un côté, min 205,3 ms de l'autre, intervalle VIDE de 33,6 ms) OU une PRISE du poseur (`equipmentChanges.taken`, 50 ms — 103 des 108 prises retenues sont à moins d'une ms). **L'étiquette ne distingue pas les deux lâchers** (décision utilisateur) : la CAUSE se lit dans `coverage.placements.byCause`. La fenêtre temporelle de 200 ms qui classait ces poses A ÉTÉ RETIRÉE — elle ne décide plus rien |
 | `equipmentChanges` | Les RAMASSAGES (`taken`) et les CONSOMMATIONS (`spent`), datés à la ms | Par VIE (`Slot`) | Les annonces de RÉAPPARITION en sont écartées. Témoin de complétude : ~16 émissions manquées sur 319 sur trois films ; **71 sur 1 954 = 3,63 % sur les 64 artefacts du parc** (mesure E0 du 2026-09-09, §2) |
 | `grappleLines` | Les TRACTIONS de grappin — la seule activation de capacité mesurée et attribuée | Par VIE | — |
-| `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11) |
+| `abilityCharges` | Les CHARGES RESTANTES, lues au changement | Par VIE | **Grappin et propulseur SEULEMENT.** Rien n'est transmis au ramassage, donc le maximum n'est pas établissable. Le répulseur n'arme jamais ce canal (négatif mesuré, rapport R11 ; revérifié le 2026-10-14 sur l'état complet des images-clés : masque d'i56 à 000 pendant tout le port, avant et après les poussées) |
+| `knockbacks` | Les POUSSÉES du répulseur : le joueur poussé, l'auteur (`by`), la vitesse imposée (`vx/vy/vz`) | Par poussée (schéma 94) | C'est l'EFFET, pas le geste : la paire de messages de la vue A `EquipmentObjectKnockedBack` (105 : objet poussé, auteur) puis `EquipmentKnockbackPlayer` (104 : joueur poussé, impulsion), même référence 0, même liste (`grammar/vue_a_poussees.go`, `grammar/poussees.go`). Un souffle qui ne pousse AUCUN joueur n'écrit pas de 104 : il n'est pas publié. Un 104 sans son 105 n'est pas publié (`coverage.knockbacks.unpaired`) |
 | `abilityLabels` | Nomme les RANGS de capacité, palette propre au match | Match | Une capacité non classée ne reçoit aucun nom. **25,21 % des rangs lus par `equipmentChanges` ne sont pas nommés** — dont 8 artefacts sur 64 SANS table du tout (mesure E0, §2) |
 | `padPickups` × `weaponPads` | Les socles d'ARME (famille en 8 hexa) et les socles de BONUS vidés (`powerup_*`) | Match, ramasseur nommé depuis le schéma 30 | Un socle de bonus n'est jamais rattachable à un joueur |
 
@@ -53,6 +54,14 @@ Détail, méthode, témoins et commandes rejouables :
 
 ### Négatifs MESURÉS — ne pas les rechercher à nouveau
 
+- **CORRIGÉ LE 2026-10-14 (lot F du plan d'ajustements) — GESTE CONTRE EFFET.** Le GESTE du
+  répulseur (l'activation, avec ou sans cible) n'est dans aucun canal lu ; son EFFET l'est : chaque
+  joueur poussé est écrit dans la vue A par la paire 105 -> 104 (`knockbacks`, schéma 94). Mesure :
+  135 paires sur 235 films, normes de l'impulsion 6,00 / 5,50 m/s seulement ; 14 paires sur 14 des
+  témoins `0d9a9af9`, `215e7022` et `a6ae19fb` accélèrent le joueur poussé dans les 300 ms ; auteur
+  porteur du répulseur 130 sur 130. Les UTILISATIONS RESTANTES ne sont toujours pas lues (i56 jamais
+  armé, revérifié aux images-clés ; seule la consommation finale `spent` est datée, 0,6 à 0,8 s
+  après la dernière poussée dans 19 ports sur 24). Le paragraphe qui suit reste vrai pour le geste.
 - **Le répulseur n'est dans AUCUN des neuf canaux jugés.** Cas décisif : un joueur le porte
   68 s, le film annonce lui-même la consommation de sa dernière charge, et le compteur reste
   muet — pendant qu'il compte le grappin de trois autres joueurs du même match.
@@ -74,7 +83,15 @@ C'est la clé de tout le sujet, et c'est ce que j'avais raté (décision utilisa
 | Grappin | `grappleLines` (tractions, fenêtre datée + point d'accroche) | mesuré |
 | Translocateur | `translocations` (événement du film type 117, jamais déduit d'un seuil) | mesuré |
 | Propulseur | `abilityImpulses` (schéma 38, validé 5/5 contre relevé Theater) | mesuré |
-| **Répulseur** | **AUCUN** | **NÉGATIF MESURÉ** — 9 canaux fouillés (événements, i57/i59, tag 3, poses, i48, i54, i56, masque bipède, entité ti=37). Une colonne dirait « 0 utilisation » là où la vérité est « non mesuré » |
+| **Répulseur** | **Effet seulement** : `knockbacks` (schéma 94) | **L'ACTIVATION N'EST PAS MESURÉE** — 9 canaux fouillés (événements, i57/i59, tag 3, poses, i48, i54, i56, masque bipède, entité ti=37). Ce que le film écrit, depuis la lecture complète de la vue A (2026-10-14), c'est la POUSSÉE d'un joueur (paire 105 -> 104) : un usage qui ne pousse personne ne laisse rien. Une colonne « utilisé » compterait les poussées, pas les usages — elle dirait toujours moins que la vérité |
+
+> **TRANSLOCATEUR, GESTE CONTRE EFFET (2026-10-14).** La TÉLÉPORTATION est un effet écrit
+> (`translocations`, type 117). La POSE de la faille n'est publiée par AUCUN canal : ni 103 (liste
+> complète de la vue A relue sur `1b2d9e08` et `6acce632`, aucun 103 aux poses), ni création ti=37
+> à la pose. Ce qui la porte probablement est l'état de l'objet porté (`ti=37`, rattaché au porteur
+> par i26 : sur `6acce632`, l'image-clé qui suit une pose lit `equipment-deployed` i20 à 1 et
+> l'objet détaché, i10 ; valeurs brutes, sens non prouvé) ; sa lecture datée, dans les deltas, attend
+> le lot qui corrige la lecture d'i28 de ce même objet. Le son de pose (`translocator_deploy`) n'a donc aucun déclencheur.
 
 **B — Les équipements DÉPLOYABLES.** On les pose sur le terrain. « Utilisé » = **la charge
 consommée** (`equipmentChanges` `spent`) — SAUF pour le mur, « utilisé » = **posé**.
@@ -410,6 +427,8 @@ Trois affirmations fausses à ne pas répéter :
   poseur, sa PRISE écrite. **La fenêtre de 200 ms a été retirée du décodeur**, et ses deux
   entrées sont sorties du registre des replis le même jour : une pose dont le film ne dit rien
   sort `unknown`. `coverage.placements.byCause` dit, film par film, ce qui a décidé.
+- ~~« Le film ne porte rien du répulseur. »~~ (2026-10-14) → il porte ses POUSSÉES (`knockbacks`,
+  paire 105 -> 104 de la vue A), pas ses activations : distinguer le GESTE et l'EFFET.
 - ~~« Un déployable posé à mi-vie est déployé. »~~ (2026-09-15, décision utilisateur) → non : un
   appareil PORTÉ qui tombe est **lâché** (`dropped`), que son porteur meure ou qu'il ramasse
   autre chose. `deployed` ne désigne plus que ce qu'un événement 103 nomme — les panneaux de mur.
