@@ -14,6 +14,8 @@ import { dominanceLabels, DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominan
 import type { SquadMatchHistoryRow } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
+import { formatMessage } from '@/lib/i18n/format'
+import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { SQUAD_HISTORY_COLUMNS } from './squadHistoryColumns.i18n'
 
 /** FDA signé à une décimale (« +10,0 », « −6,0 ») dans la langue du client. */
@@ -49,6 +51,7 @@ export function eveningColumn(locale: Locale): ColumnDef<SquadMatchHistoryRow> {
 /** Dominance puis cumuls de l'escouade et son FDA, colonnes placées après le résultat. */
 export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDef<SquadMatchHistoryRow>[] {
   const c = SQUAD_HISTORY_COLUMNS[locale]
+  const head = (key: ExplorerManifestKey) => formatMessage(explorerManifest, key, locale)
   const labels = dominanceLabels(locale)
   const counter = (
     id: 'squad_kills' | 'squad_deaths' | 'squad_assists',
@@ -67,7 +70,7 @@ export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDe
       id: 'dominance_flag',
       // Sans badge (0 ou absent) : rangé en bas du tri, comme l'Explorateur.
       accessorFn: (r) => r.dominance_flag || undefined,
-      header: c.dominance,
+      header: head('explorer.matches.col_dominance'),
       meta: { headerTooltip: c.dominanceTooltip },
       ...NUMERIC_SORT,
       cell: (ctx) => {
@@ -82,13 +85,13 @@ export function squadTotalsColumns(locale: Locale, intlLocale: string): ColumnDe
         )
       },
     },
-    counter('squad_kills', c.kills, c.killsTooltip),
-    counter('squad_deaths', c.deaths, c.deathsTooltip),
-    counter('squad_assists', c.assists, c.assistsTooltip),
+    counter('squad_kills', head('explorer.matches.col_kills_long'), c.killsTooltip),
+    counter('squad_deaths', head('explorer.matches.col_deaths_long'), c.deathsTooltip),
+    counter('squad_assists', head('explorer.matches.col_assists_long'), c.assistsTooltip),
     {
       id: 'squad_fda',
       accessorFn: (r) => r.squad_fda ?? undefined,
-      header: c.fda,
+      header: head('explorer.matches.col_fda'),
       meta: { headerTooltip: c.fdaTooltip },
       ...NUMERIC_SORT,
       cell: (ctx) => {

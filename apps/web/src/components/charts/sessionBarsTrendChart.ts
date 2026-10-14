@@ -34,6 +34,8 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 
+import type { EChartsThemeColors } from '@/lib/echarts/themeColors'
+
 import {
   CHART_BG,
   getAxisBase,
@@ -134,19 +136,27 @@ function decalageDe(spec: SessionBarsSeriesSpec, ecart: boolean): number {
   return ecart && spec.usual ? spec.usual.valuePct : 0
 }
 
-/** L'étiquette d'un bâton : la valeur lue puis son décompte, au bout du bâton (sous lui s'il est négatif). */
-function etiquetteDe(abs: SessionBarsAbsolute, value: number, color: string): Record<string, unknown> {
+/**
+ * L'étiquette d'un bâton : la valeur lue puis son décompte, au bout du bâton (sous lui s'il est
+ * négatif). Encre du thème sur fond de carte : la couleur de la série, lisible comme bâton, ne
+ * l'est pas toujours comme texte (le brun de l'assistance reçue s'éteint sur le fond sombre), et le
+ * fond détache l'étiquette d'un bâton voisin qu'elle croise.
+ */
+function etiquetteDe(abs: SessionBarsAbsolute, value: number, tc: EChartsThemeColors): Record<string, unknown> {
   return {
     show: true,
     position: value >= 0 ? 'top' : 'bottom',
+    backgroundColor: tc.card,
+    padding: [1, 3],
+    borderRadius: 3,
     formatter: `${abs.main}\n${abs.detail}`,
-    color,
+    color: tc.text,
     fontSize: 10,
     lineHeight: 12,
   }
 }
 
-function barData(spec: SessionBarsSeriesSpec, decalage: number): unknown[] {
+function barData(spec: SessionBarsSeriesSpec, decalage: number, tc: EChartsThemeColors): unknown[] {
   return spec.valuesPct.map((v, i) => {
     if (v == null) return null
     const value = round1(v - decalage)
@@ -158,7 +168,7 @@ function barData(spec: SessionBarsSeriesSpec, decalage: number): unknown[] {
       // Bâton CREUX : contour de la couleur de la série sur un fond transparent. Le bâton
       // reste à sa place et à sa hauteur — c'est sa FIABILITÉ qui est dite, pas sa valeur.
       ...(hollow ? { itemStyle: { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 } } : {}),
-      ...(abs ? { label: etiquetteDe(abs, value, spec.color) } : {}),
+      ...(abs ? { label: etiquetteDe(abs, value, tc) } : {}),
     }
   })
 }
@@ -225,7 +235,7 @@ function ligneInfobulle(
 function barreDe(
   s: SessionBarsSeriesSpec,
   index: number,
-  ctx: { baseline: SessionBarsBaseline | undefined; decalage: number; axisColor: string },
+  ctx: { baseline: SessionBarsBaseline | undefined; decalage: number; axisColor: string; theme: EChartsThemeColors },
 ): Record<string, unknown> {
   const repere = ctx.baseline
     ? index === 0
@@ -240,7 +250,7 @@ function barreDe(
     barMaxWidth: 18,
     itemStyle: { borderRadius: [3, 3, 0, 0] },
     color: s.color,
-    data: barData(s, ctx.decalage),
+    data: barData(s, ctx.decalage, ctx.theme),
     // Les étiquettes de bâtons voisins se recouvrent sur une frise longue : les premières restent.
     ...(s.absolute ? { labelLayout: { hideOverlap: true } } : {}),
     ...repere,
@@ -289,6 +299,7 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
       baseline: opts.baseline,
       decalage: decalages.get(s.name) ?? 0,
       axisColor: tc.axisLabel,
+      theme: tc,
     }),
   )
   const tendances = opts.series
@@ -351,6 +362,9 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
       // En mode écart, l'axe DOIT descendre sous zéro : l'ancrer à 0 amputerait la moitié
       // du propos — « la soirée a fait MOINS bien que son repère ».
       ...(ecart ? {} : { min: 0 }),
+      // Des étiquettes au bout des bâtons : de la place au-delà du plus grand écart, sinon le
+      // dernier chiffre d'un bâton long retombe sur les graduations de l'axe X.
+      ...(opts.series.some((s) => s.absolute) ? { boundaryGap: ['14%', '14%'] } : {}),
       name: opts.yAxisLabel,
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
       axisLabel: {
