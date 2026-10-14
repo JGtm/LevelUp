@@ -34,3 +34,10 @@ func FilmShortMatchID(matchID string) string {
 	}
 	return matchID
 }
+
+// ReplayArtifactFileName rend le nom de fichier de l'artefact de rejeu d'un match :
+// `{short8}.json`, la forme COURTE du match (cf. FilmShortMatchID). Source unique du nom,
+// partagée par PathResolver et DemoLayout.
+func ReplayArtifactFileName(matchID string) string {
+	return FilmShortMatchID(matchID) + ".json"
+}

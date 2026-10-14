@@ -8612,11 +8612,6 @@
 {"Time":"2026-06-26T23:45:40.1815905+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestE2E_FullPipeline_IdempotentOnReimport","Output":"2026/06/26 23:45:40 INFO openspartan_import_succeeded job_id=job_1782510339984573400 inserted_matches=1 sessions_touched=0 perf_scores_touched=0 citations_backfilled=true import_errors=0 post_import_errors=1\n"}
 {"Time":"2026-06-26T23:45:40.2030748+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestE2E_FullPipeline_IdempotentOnReimport","Output":"--- PASS: TestE2E_FullPipeline_IdempotentOnReimport (0.59s)\n"}
 {"Time":"2026-06-26T23:45:40.2030748+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestE2E_FullPipeline_IdempotentOnReimport","Elapsed":0.59}
-{"Time":"2026-06-26T23:45:40.2030748+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_DemoModeReturns503"}
-{"Time":"2026-06-26T23:45:40.2030748+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_DemoModeReturns503","Output":"=== RUN   TestStartImport_DemoModeReturns503\n"}
-{"Time":"2026-06-26T23:45:40.2301745+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_DemoModeReturns503","Output":"2026/06/26 23:45:40 ERROR http: erreur réponse status=503 code=demo_mode message=\"import OpenSpartan désactivé en mode démo\"\n"}
-{"Time":"2026-06-26T23:45:40.2384491+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_DemoModeReturns503","Output":"--- PASS: TestStartImport_DemoModeReturns503 (0.04s)\n"}
-{"Time":"2026-06-26T23:45:40.2384491+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_DemoModeReturns503","Elapsed":0.04}
 {"Time":"2026-06-26T23:45:40.2384491+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_NoSessionReturns401"}
 {"Time":"2026-06-26T23:45:40.2384491+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_NoSessionReturns401","Output":"=== RUN   TestStartImport_NoSessionReturns401\n"}
 {"Time":"2026-06-26T23:45:40.2655113+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestStartImport_NoSessionReturns401","Output":"2026/06/26 23:45:40 WARN http: refus status=401 code=halo_auth_required message=\"connexion Xbox/Halo requise pour l'import OpenSpartan\"\n"}
@@ -9133,10 +9128,6 @@
 {"Time":"2026-06-26T23:45:40.5136524+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSpartanImageHandler_InvalidType","Output":"=== RUN   TestSpartanImageHandler_InvalidType\n"}
 {"Time":"2026-06-26T23:45:40.5136524+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSpartanImageHandler_InvalidType","Output":"--- PASS: TestSpartanImageHandler_InvalidType (0.00s)\n"}
 {"Time":"2026-06-26T23:45:40.5136524+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSpartanImageHandler_InvalidType","Elapsed":0}
-{"Time":"2026-06-26T23:45:40.5136524+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_StartDeviceFlow_DemoMode"}
-{"Time":"2026-06-26T23:45:40.5136524+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_StartDeviceFlow_DemoMode","Output":"=== RUN   TestAuthHandler_StartDeviceFlow_DemoMode\n"}
-{"Time":"2026-06-26T23:45:40.5152054+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_StartDeviceFlow_DemoMode","Output":"--- PASS: TestAuthHandler_StartDeviceFlow_DemoMode (0.00s)\n"}
-{"Time":"2026-06-26T23:45:40.5152054+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_StartDeviceFlow_DemoMode","Elapsed":0}
 {"Time":"2026-06-26T23:45:40.5152054+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_GetDeviceFlowStatus_NotFound"}
 {"Time":"2026-06-26T23:45:40.5152054+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_GetDeviceFlowStatus_NotFound","Output":"=== RUN   TestAuthHandler_GetDeviceFlowStatus_NotFound\n"}
 {"Time":"2026-06-26T23:45:40.5162437+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestAuthHandler_GetDeviceFlowStatus_NotFound","Output":"--- PASS: TestAuthHandler_GetDeviceFlowStatus_NotFound (0.00s)\n"}
@@ -11248,10 +11239,6 @@
 {"Time":"2026-06-26T23:45:53.9157174+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_GetSettings_DemoMode","Output":"=== RUN   TestSettingsHandler_GetSettings_DemoMode\n"}
 {"Time":"2026-06-26T23:45:53.9167532+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_GetSettings_DemoMode","Output":"--- PASS: TestSettingsHandler_GetSettings_DemoMode (0.00s)\n"}
 {"Time":"2026-06-26T23:45:53.9167532+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_GetSettings_DemoMode","Elapsed":0}
-{"Time":"2026-06-26T23:45:53.9167532+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_DemoMode_422"}
-{"Time":"2026-06-26T23:45:53.9167532+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_DemoMode_422","Output":"=== RUN   TestSettingsHandler_PatchSettings_DemoMode_422\n"}
-{"Time":"2026-06-26T23:45:53.9177933+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_DemoMode_422","Output":"--- PASS: TestSettingsHandler_PatchSettings_DemoMode_422 (0.00s)\n"}
-{"Time":"2026-06-26T23:45:53.9177933+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_DemoMode_422","Elapsed":0}
 {"Time":"2026-06-26T23:45:53.9177933+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_InvalidBody"}
 {"Time":"2026-06-26T23:45:53.9177933+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_InvalidBody","Output":"=== RUN   TestSettingsHandler_PatchSettings_InvalidBody\n"}
 {"Time":"2026-06-26T23:45:53.9188279+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestSettingsHandler_PatchSettings_InvalidBody","Output":"--- PASS: TestSettingsHandler_PatchSettings_InvalidBody (0.00s)\n"}

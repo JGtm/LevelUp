@@ -202,6 +202,15 @@
 # TestModeCategoryRuleIsSingle). 320 lignes JSONL, exactement 67 paires (Package, Test) dont les
 # sous-tests, vérifié par différence avant/après.
 #
+# RETRAIT DU 2026-10-09 (lot recos-d, D1 : garde générale « démo en lecture seule »,
+# middleware/demo_read_only.go) : 3 tests retirés de `internal/api/handlers` —
+# TestStartImport_DemoModeReturns503, TestAuthHandler_StartDeviceFlow_DemoMode et
+# TestSettingsHandler_PatchSettings_DemoMode_422. Les refus démo PAR HANDLER (503 `demo_mode`,
+# 422 `demo_mode`, 422 `demo_mode_unsupported`) sont supprimés : la garde refuse toute écriture
+# avant le handler, en un seul contrat 403 `demo_mode_forbidden`, couvert par
+# TestDemoReadOnly_* (middleware) et TestDemoReadOnlyRatchet (internal/api). 13 lignes JSONL,
+# exactement 3 paires (Package, Test), vérifié par différence avant/après.
+#
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
 #     filet local `make gate-push`.

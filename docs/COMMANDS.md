@@ -327,7 +327,8 @@ go run ./cmd/levelup identity purge <xuid> --yes            # executes
 
 ```bash
 go run ./cmd/levelup seed career-ranks | citation-mappings | medals | rank-translations
-go run ./cmd/levelup seed-demo            # generate anonymized demo data (data/demo/)
+go run ./cmd/levelup seed-demo            # generate anonymized demo data (data/demo/), frozen replays included
+go run ./cmd/levelup seed-demo --emit-replay-picks   # pick one replay per game mode into config/demo/<gt>/<slug>.json (review, then commit)
 go run ./cmd/levelup migrate              # migrate data into the multi-title namespace
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```

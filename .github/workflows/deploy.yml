@@ -295,10 +295,15 @@ jobs:
 
             # Regen données démo — NON DESTRUCTIF (incident 2026-06-05).
             # On NE supprime PAS data/demo/warehouse|players AVANT le seed : seed-demo
-            # est idempotent (os.Remove par fichier puis recrée). Supprimer d'abord =
-            # si le seed échoue (ex: binaire levelup absent), la démo reste vidée.
-            # On nettoie uniquement les répertoires fantômes que Docker crée à la place
-            # d'un JSON absent au bind-mount ; les fichiers valides sont écrasés par seed-demo.
+            # génère dans data/demo.generation (même parent), exécute tous ses contrôles
+            # (dont l anonymisation) puis PUBLIE par renommage, élément par élément
+            # (warehouse, players, titles, replays, configurations). Un échec avant la
+            # publication laisse la démo publiée intacte ; un échec pendant remet en place
+            # les éléments déjà remplacés ; runtime/ et auth/ ne sont jamais touchés.
+            # Supprimer d abord = si le seed échoue (ex: binaire levelup absent), la démo
+            # reste vidée. On nettoie uniquement les répertoires fantômes que Docker crée à
+            # la place d un JSON absent au bind-mount ; les JSON valides sont remplacés à la
+            # publication.
             for f in data/demo/db_profiles.json data/demo/app_settings.json; do
               if [[ -d "$f" ]]; then
                 rm -rf "$f"
@@ -386,9 +391,14 @@ jobs:
 
             # seed-demo seede désormais TOUS les titres où JGtm a des données (dérivés de
             # db_profiles) : halo_infinite (flux HLS) + halo_5 (clips mp4 indexés ci-dessus).
+            # Il GÉNÈRE dans data/demo.generation et ne PUBLIE dans data/demo que si tout a passé,
+            # contrôle d'anonymisation compris (ops/seed_demo_publish.go) : un échec laisse la
+            # démo précédente intacte, et c'est elle que le piège de sortie remet en ligne.
+            # Les films des rejeux figés vivent dans data/demo_films (persistant, hors de
+            # data/demo), provisionné une fois (docs/RUNBOOK_DEPLOY_CHECKLIST.md).
             docker compose run --rm levelup \
               levelup seed-demo --gamertag JGtm --service-tag SPTA --out data/demo --max-media 12 \
-              || echo "[regen] ⚠️ seed-demo a échoué — données démo inchangées (prod redémarrée juste après, conteneur démo recréé à la sortie)"
+              || echo "::warning::[regen] seed-demo a échoué — rien n'a été publié, la démo précédente reste en ligne (cause dans le journal ci-dessus)"
             echo "[regen] Restart prod..."
             docker compose up -d levelup
 

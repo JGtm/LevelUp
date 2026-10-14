@@ -36,11 +36,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/games/titleseams"
+	"levelup/go-api/internal/replaychild"
 )
 
 // wireStartupSeams pose les seams title-owned de la CLI — MÊME câblage que le
@@ -58,6 +60,11 @@ func wireStartupSeams(cfg *config.AppConfig) {
 }
 
 func main() {
+	// Enfant de cuisson d'un film (protocole replaychild) : `seed-demo` recuit les rejeux
+	// figés de la démo en relançant CE binaire avec ce drapeau, un film par processus.
+	if replaychild.IsChild(os.Args) {
+		os.Exit(replaychild.RunChild(context.Background(), os.Args))
+	}
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)

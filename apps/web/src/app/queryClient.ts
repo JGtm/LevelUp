@@ -7,7 +7,9 @@
  *   - app/router    : injecté dans `context: { queryClient }` du routeur
  *   - lib/query/prefetch : utilisé via useQueryClient() (hooks React)
  */
-import { QueryClient } from '@tanstack/react-query'
+import { MutationCache, QueryClient } from '@tanstack/react-query'
+import { handleDemoRefusal } from '@/lib/api/demoReadOnly'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 /**
  * Statuts de passerelle jamais rejoués (plan perf 2026-09-23, D3.3) : 502 (réponse
@@ -18,6 +20,13 @@ import { QueryClient } from '@tanstack/react-query'
 const GATEWAY_STATUSES_NOT_RETRIED = new Set([502, 504])
 
 export const queryClient = new QueryClient({
+  // Refus « démo en lecture seule » (403 demo_mode_forbidden) : message dans la langue de
+  // l'interface, et un toast quand la mutation ne gère pas son erreur (cf. demoReadOnly.ts).
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      handleDemoRefusal(error, mutation.options.onError != null, useAppShellStore.getState().locale)
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {

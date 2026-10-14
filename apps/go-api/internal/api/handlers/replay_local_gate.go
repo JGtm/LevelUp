@@ -1,10 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // replay_local_gate.go — LE REJEU 2D N'EST SERVI QU'EN LOCAL, POUR L'INSTANT.
@@ -116,4 +121,34 @@ func LocalOnlyReplay(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// DemoReplayAllowlist dit, en DÉMO, si un match a un rejeu figé servi (index des rejeux de la
+// démo, cf. service.DemoReplayAllowlist).
+type DemoReplayAllowlist interface {
+	Allows(ctx context.Context, titleSlug, matchID string) bool
+}
+
+// ReplayGate rend la garde des routes de rejeu.
+//
+//   - Hors démo (`demo` nil) : le garde local ci-dessus, inchangé.
+//   - En DÉMO (décision D-2 du plan des recommandations du 2026-10-09) : le rejeu est servi
+//     à tout visiteur, mais SEULEMENT pour les matchs figés de la démo ; tout autre match
+//     reçoit le même 404 que le garde local. Le garde local ne s'applique pas : la démo
+//     publique est derrière un proxy, aucun visiteur n'y est « local ».
+func ReplayGate(demo DemoReplayAllowlist) func(http.Handler) http.Handler {
+	if demo == nil {
+		return LocalOnlyReplay
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			matchID := chi.URLParam(r, "match_id")
+			if matchID == "" || !demo.Allows(r.Context(), ctxkeys.TitleSlug(r.Context()), matchID) {
+				writeError(r.Context(), w, http.StatusNotFound, "replay_not_available",
+					"the 2D replay is served in the demo for its frozen matches only")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
