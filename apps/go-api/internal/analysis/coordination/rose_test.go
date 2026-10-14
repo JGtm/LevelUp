@@ -7,35 +7,47 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// TestRose8_LesHuitFrontieres : chaque frontiere k * 45 degres ouvre le secteur k (borne basse
-// incluse), et un cheveu avant tombe dans le secteur precedent.
+// versAngle rend le vecteur unitaire (dx, dy) d'un angle en degres depuis le haut, sens horaire.
+func versAngle(deg float64) (dx, dy float64) {
+	rad := deg * math.Pi / 180
+	return math.Sin(rad), math.Cos(rad)
+}
+
+// TestRose8_LesHuitFrontieres : les secteurs sont centres sur les axes et les diagonales ; chaque
+// frontiere 45 k + 22,5 degres ouvre le secteur k + 1 (borne basse incluse). Un cheveu avant : le
+// secteur k. Un cheveu apres : k + 1.
 func TestRose8_LesHuitFrontieres(t *testing.T) {
-	// (dx, dy) pile sur les huit frontieres, dans l'ordre horaire depuis le haut.
-	frontieres := [][2]float64{{0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}}
-	for k, f := range frontieres {
-		got, ok := Rose8(f[0], f[1])
-		if !ok || got != k {
-			t.Errorf("frontiere %d (%v) -> secteur %d ok=%v, attendu %d", k, f, got, ok, k)
-		}
-		// un cheveu AVANT la frontiere (angle - epsilon) : secteur precedent.
-		a := float64(k)*45 - 0.001
-		rad := a * math.Pi / 180
-		avant, _ := Rose8(math.Sin(rad), math.Cos(rad))
-		if want := (k + 7) % 8; avant != want {
-			t.Errorf("juste avant la frontiere %d : secteur %d, attendu %d", k, avant, want)
+	for k := 0; k < 8; k++ {
+		frontiere := float64(k)*45 + 22.5
+		avant, _ := Rose8(versAngle(frontiere - 0.001))
+		apres, _ := Rose8(versAngle(frontiere + 0.001))
+		if avant != k || apres != (k+1)%8 {
+			t.Errorf("frontiere a %v deg : avant %d (attendu %d), apres %d (attendu %d)",
+				frontiere, avant, k, apres, (k+1)%8)
 		}
 	}
 }
 
-func TestRose8_MilieuxEtDeplacementNul(t *testing.T) {
-	for k := 0; k < 8; k++ {
-		a := (float64(k)*45 + 22.5) * math.Pi / 180
-		if got, ok := Rose8(math.Sin(a), math.Cos(a)); !ok || got != k {
-			t.Errorf("milieu du secteur %d -> %d", k, got)
+// TestRose8_LesAxesEtLesDiagonalesSontAuCentre : un tueur pile au nord / est / sud / ouest, ou sur
+// une diagonale, est au centre de son secteur — exactement, sans trigonometrie.
+func TestRose8_LesAxesEtLesDiagonalesSontAuCentre(t *testing.T) {
+	centres := [][2]float64{{0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}}
+	for k, c := range centres {
+		if got, ok := Rose8(c[0], c[1]); !ok || got != k {
+			t.Errorf("centre %d (%v) -> secteur %d ok=%v", k, c, got, ok)
 		}
 	}
 	if _, ok := Rose8(0, 0); ok {
 		t.Fatal("deplacement nul : pas de direction")
+	}
+}
+
+func TestRose8_NordEtOuestDeChaqueCoteDuHaut(t *testing.T) {
+	// 10 degres a gauche et a droite du haut : tous deux dans le secteur 0 (qui chevauche le haut).
+	for _, a := range []float64{-10, 10, -22.4, 22.4} {
+		if got, _ := Rose8(versAngle(a)); got != 0 {
+			t.Errorf("%v deg -> secteur %d, attendu 0", a, got)
+		}
 	}
 }
 

@@ -75,16 +75,16 @@ Décisions user du 14/10 : délai d'échange 3 s ; terme « tueur abattu » ; re
 - Gate : `go test` analysis/service/platform/duckdb/api/archlint/contracttest + `make openapi-check` + `make go-api-lint`.
 
 ### L3 Web
-- [ ] L3.1 `lib/query/keys.ts`, `queries.ts` `useTacticalSequence` (404 silencieux, sans retry).
-- [ ] L3.2 i18n FR+EN (`tactical.toml`, générateur), titres factuels sans possessif, test « aucune chaîne non mesuré ».
-- [ ] L3.3 Vue C : `TacticalZoneBilan.tsx`, `TacticalRose.tsx`, `TacticalPlanCoequipiers.tsx`, `bilan.logic.ts` (barre 4 statuts, rose + médiane tueur, tueur abattu N sur M, médiane coéquipier, nuage `team-ally`) pour `morts` et `isole`.
-- [ ] L3.4 Parcours : clic sur une mort → `TacticalMortDetail.tsx` + retour à la zone ; encadré « Instant de la mort · date · horloge » (`instant_affiche_ms`) ; bouton `MatchReplayLink`.
-- [ ] L3.5 Vue A+B (sur le plan principal, cf. A1) : mort, tueur + trait, coéquipiers pleins/creux, cercle, hors de vue / en attente listés sans point ; « Tueur abattu N,N s après la mort, par X », trait coéquipier→tueur pour ce frag seulement ; distances à la mort et au tueur.
-- [ ] L3.6 Vue D : `TacticalSequence.tsx`, étapes −4..+3 s, traînes 4 s, compte dans le rayon ; rendue seulement si la requête réussit.
-- [ ] L3.7 Miroir frags : « abattu en retour en 3 s » et par qui ; `solde` = deux faces.
-- [ ] L3.8 Non-régression : nouveaux boutons de rejeu par le même chemin (−5 s, calage).
-- [ ] L3.9 `[~]` cf. A4.
-- [ ] L3.10 Garde-rails : couleurs, TanStack Table, seuils (ne pas grossir `TacticalPlanCard.tsx`).
+- [x] L3.1 `lib/query/keys.ts`, `queries.ts` `useTacticalSequence` (404 silencieux, sans retry). — `queryKeys.tacticalSequence`, `useTacticalSequence` (retry: false, 404 sans bruit ; entree datee dans la liste du garde `queriesPlaceholder`).
+- [x] L3.2 i18n FR+EN (`tactical.toml`, générateur), titres factuels sans possessif, test « aucune chaîne non mesuré ». — `tactical.mort.*` (FR+EN, générateur rejoué), `mortText.ts` ; test « instant, jamais heure, aucun non mesuré ».
+- [x] L3.3 Vue C : `TacticalZoneBilan.tsx`, `TacticalRose.tsx`, `TacticalPlanCoequipiers.tsx`, `bilan.logic.ts` (barre 4 statuts, rose + médiane tueur, tueur abattu N sur M, médiane coéquipier, nuage `team-ally`) pour `morts` et `isole`. — `TacticalZoneBilan.tsx`, `TacticalRose.tsx`, `mort.logic.ts` ; le nuage est peint par `TacticalPlanCoequipiers.tsx` (pas de fichier `TacticalPlanCoequipiers` séparé du reste de la couche) ; vue C pour `morts` et `isole`, miroir des frags pour `kills` et `solde`.
+- [x] L3.4 Parcours : clic sur une mort → `TacticalMortDetail.tsx` + retour à la zone ; encadré « Instant de la mort · date · horloge » (`instant_affiche_ms`) ; bouton `MatchReplayLink`. — `TacticalMortDetail.tsx` (en bas de la colonne), ouverte par la sélection de tuile ; horloge du rejeu (`instant_affiche_ms`).
+- [x] L3.5 Vue A+B (sur le plan principal, cf. A1) : mort, tueur + trait, coéquipiers pleins/creux, cercle, hors de vue / en attente listés sans point ; « Tueur abattu N,N s après la mort, par X », trait coéquipier→tueur pour ce frag seulement ; distances à la mort et au tueur. — scène `sceneDeMort`, bulle d échange sur le plan, trait du frag du coéquipier ; tueur peint par la couche des tueurs (non modifiée).
+- [x] L3.6 Vue D : `TacticalSequence.tsx`, étapes −4..+3 s, traînes 4 s, compte dans le rayon ; rendue seulement si la requête réussit. — barre `Instantané` + 8 étapes, `sceneDeSequence`, fiche d étape ; rendue seulement si la requête réussit.
+- [~] L3.7 Miroir frags : « abattu en retour en 3 s » et par qui ; `solde` = deux faces. — carte « Abattu en retour en N s : X sur Y » en vue de zone (kills, solde) et échange dans la fiche d un frag fait ; le BADGE sur la tuile est reporté après la refusion de `feat/tactique-tueurs` (`TacticalRejeuTile.tsx` appartient à l autre exécuteur).
+- [x] L3.8 Non-régression : nouveaux boutons de rejeu par le même chemin (−5 s, calage). — le bouton de rejeu de l encadré passe par `modeleDeTuile` (mêmes `search`, même libellé, même recul de 5 s).
+- [~] L3.9 `[~]` cf. A4. — couvert par le lot tueurs (A4).
+- [x] L3.10 Garde-rails : couleurs, TanStack Table, seuils (ne pas grossir `TacticalPlanCard.tsx`). — `lint:colors`, `lint:fields`, eslint, knip verts ; `TacticalPlanCard.tsx` +17 lignes.
 - Gate : `make check-types`, vitest features/tactical lib/replay lib/match-nav, lint couleurs et champs ; test discriminant d'horloge (countdown non nul).
 
 ### L4 Backfill (BLOQUANT, accord user, superviseur seul)

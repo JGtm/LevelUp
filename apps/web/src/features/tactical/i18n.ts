@@ -10,6 +10,8 @@ import { formatMessage } from '@/lib/i18n/format'
 import { tacticalManifest, type TacticalManifestKey } from '@/lib/i18n/generated/tactical'
 import type { Locale } from '@/lib/i18n/locale'
 
+import { getMortText } from './mortText'
+
 export function getTacticalText(locale: Locale) {
   const m = (key: TacticalManifestKey, values?: Record<string, unknown>) =>
     formatMessage(tacticalManifest, key, locale, values)
@@ -156,6 +158,7 @@ export function getTacticalText(locale: Locale) {
     layerVictims: m('tactical.layer.victims'),
     tileOpenReplayNoInstant: (secondes: number) => m('tactical.tile.open_replay_no_instant', { secondes }),
     tileOpenReplay: (instant: string, secondes: number) => m('tactical.tile.open_replay', { instant, secondes }),
+    ...getMortText(m),
   }
 }
 

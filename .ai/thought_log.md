@@ -117147,3 +117147,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : lecture des pistes 123-139 ms sur le plus gros artefact (13,4 Mo, 157 000 points), 81-100 ms sur 8 Mo. Zone de 100 morts : 99 Ko (Arène, 3 coéquipiers) et 231 Ko (BTB, 11) contre 30 Ko sans équipe. Ratchets rencontrés : `no_naked_rate_test` (distances et médianes déplacées dans `analysis/tactical`), `no_local_xuid_pattern_test` (`domain.XUIDValide`), `film_facade_surface_test` (aucun nouveau `replay.X` hors de `film/`).
 
 **Conclusion / prochaine étape** : sondes L2.0 à jouer sur une copie quand le backfill est fini (bot vengeur : provisoirement non attribué) ; `tools/check-generated-types-fresh.mjs` à rejouer (pas de `node_modules` dans le worktree). Choix à confirmer : secteur 0 de la rose = [0°, 45°) depuis le haut du plan (bornes exactes, sans trigonométrie), pas centré sur le nord. Découvertes non traitées : `domain/tactical.go` à 496 lignes (seuil 500).
+
+## [2026-10-14] Tactique : coéquipiers à la mort — lot L3 (web) et correctif de la rose — En cours
+
+**Statut** : En cours (L3 exécuté dans `LevelUp-wt-tactique-coequipiers`, gates vitest/tsc/lint/knip verts ; revue du superviseur et gate visuel du user à venir ; L4 backfill réservé).
+
+**Décision technique principale** : la rose Go est CENTRÉE sur les axes (secteur k = [45k − 22,5 ; 45k + 22,5) degrés depuis le haut du plan, sans trigonométrie : pente tan 22,5° = √2 − 1, frontières testées). Le bilan publie `fenetre_riposte_ms` (la fenêtre n'est jamais recopiée côté web). Côté web : vue C (bilan au-dessus de la liste, sans tuile choisie, lectures morts et isole ; miroir des frags pour kills et solde), vue A+B (encadré « Instant de la mort » en bas de la colonne, cercle du rayon, coéquipiers pleins / creux, bulle de l'échange) et vue D (barre d'étapes −4 s à +3 s, rendue seulement si la séquence est servie) sur le PLAN PRINCIPAL ; tailles en mètres monde (`dimensionsDeLaCouche`), jetons `team-ally` / `team-enemy`, formes distinctes ; la couche des tueurs et la tuile ne sont pas modifiées.
+
+**Résultats observés** : vitest complet 900 fichiers / 9 466 tests verts, `tsc -b`, eslint, `lint:colors`, `lint:fields`, knip, `check-generated-types-fresh` verts ; quatre vues rendues en tests (dont le discriminant d'horloge : 7:20 affiché, jamais 7:42 du décompte).
+
+**Conclusion / prochaine étape** : après refusion de `feat/tactique-tueurs` (marqueurs plus petits, jetons d'équipe), reprendre le badge de riposte sur la tuile et vérifier l'aspect avec le user (gate visuel : aucun navigateur ouvert ici). Découverte non traitée : aucune chronologie textuelle en vue D (la barre d'étapes et la fiche d'étape la remplacent).

@@ -11,13 +11,16 @@
  * qui ne sont pas au joueur ne sont jamais listés (le serveur les compte, la carte ne les dit pas).
  */
 import { SectionCard } from '@/components/ui/section-card'
-import type { CelluleTactique, TacticalCelluleReponse } from '@/lib/api/types'
+import type { CelluleTactique, TacticalBilanZone, TacticalCelluleReponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { TacticalText } from './i18n'
+import { TacticalMortDetail } from './TacticalMortDetail'
 import { TacticalRejeuTile } from './TacticalRejeuTile'
+import { TacticalZoneBilan } from './TacticalZoneBilan'
 import { misEnAvant } from './tueurs.logic'
 import { unitForQuestion, type TacticalQuestion } from './tacticalView.logic'
+import type { VueDeMort } from './vueDeMort'
 import { coordonneesDeZone, sousLigneDeZone, titreDeZone, valeurAffichee } from './zone.logic'
 
 interface DetailDeZone {
@@ -47,6 +50,10 @@ interface TacticalZoneCardProps {
   /** L'index de la contribution choisie (tuile bordée), `null` sinon. */
   choisie?: number | null
   onChoisir?: (index: number) => void
+  /** Le bilan de la zone (équipe à la mort, rose, riposte), servi avec le détail ; absent sans mesure. */
+  bilan?: TacticalBilanZone
+  /** La vue de la mort choisie ; `null` = vue de la zone (bilan au-dessus de la liste). */
+  vue?: VueDeMort | null
 }
 
 export function TacticalZoneCard({
@@ -62,6 +69,8 @@ export function TacticalZoneCard({
   onSurvol,
   choisie = null,
   onChoisir,
+  bilan,
+  vue = null,
 }: TacticalZoneCardProps) {
   const titre = titreDeZone(t, locale, cellule !== null, detail.data)
   return (
@@ -93,6 +102,14 @@ export function TacticalZoneCard({
                 <span className="text-[13px] text-muted-foreground">{unitForQuestion(t, question)}</span>
               </div>
               <div className="text-xs text-muted-foreground">{sousLigneDeZone(t, question, cellule)}</div>
+              {!vue && bilan && (
+                <TacticalZoneBilan
+                  t={t}
+                  locale={locale}
+                  morts={question === 'morts' || question === 'isole' ? bilan.morts : undefined}
+                  frags={question === 'kills' || question === 'solde' ? bilan.frags : undefined}
+                />
+              )}
               <h4 className="mt-2 flex-none border-t border-border pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t.zoneReplayHeading}
               </h4>
@@ -101,6 +118,7 @@ export function TacticalZoneCard({
                 choisie={choisie}
                 onChoisir={onChoisir}
               />
+              {vue && <TacticalMortDetail t={t} locale={locale} playerSlug={playerSlug} vue={vue} />}
             </>
           ) : (
             <p className="m-0 text-[13px] text-muted-foreground">{t.zoneNone}</p>
@@ -145,7 +163,7 @@ function ListeDuRejeu({
     <ul
       role="listbox"
       aria-label={t.zoneEventsLabel}
-      className="-mx-3 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-0.5"
+      className="-mx-3 flex min-h-28 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-0.5"
       data-testid="tactical-rejeu-list"
     >
       {contributions.map((c, i) => (

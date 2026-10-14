@@ -108,12 +108,17 @@ type TacticalBilanMorts struct {
 	// TueurAbattu : N morts dont le tueur a ete abattu par un coequipier, sur M morts au tueur
 	// identifie au journal.
 	TueurAbattu TacticalNSurM `json:"tueur_abattu"`
+	// FenetreRiposteMs : la fenetre de la riposte (`coordination.FenetreRiposteMs`), pour que le web
+	// ecrive « en N s » sans la recopier.
+	FenetreRiposteMs int64 `json:"fenetre_riposte_ms"`
 }
 
 // TacticalBilanFrags est le bilan des FRAGS d'une zone.
 type TacticalBilanFrags struct {
 	// AbattuEnRetour : N frags dont l'auteur a ete abattu dans la foulee, sur M frags lus au journal.
 	AbattuEnRetour TacticalNSurM `json:"abattu_en_retour"`
+	// FenetreRiposteMs : meme sens que sur TacticalBilanMorts.
+	FenetreRiposteMs int64 `json:"fenetre_riposte_ms"`
 }
 
 // TacticalBilanZone est le bilan de la zone selectionnee : `Morts` pour les lectures qui comptent

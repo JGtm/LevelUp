@@ -3346,6 +3346,17 @@ export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
 export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
 export type TacticalContribution = components['schemas']['TacticalContribution']
 
+// La LECTURE DES COÉQUIPIERS À LA MORT (lot « coéquipiers ») : équipe de la victime, riposte, bilan de
+// la zone et séquence d'une mort (vue D, route sous les gardes du rejeu).
+export type TacticalBilanZone = components['schemas']['TacticalBilanZone']
+export type TacticalBilanMorts = components['schemas']['TacticalBilanMorts']
+export type TacticalBilanFrags = components['schemas']['TacticalBilanFrags']
+export type TacticalCoequipier = components['schemas']['TacticalCoequipier']
+export type TacticalEquipeALaMort = components['schemas']['TacticalEquipeALaMort']
+export type TacticalRiposte = components['schemas']['TacticalRiposte']
+export type TacticalSequence = components['schemas']['TacticalSequence']
+export type TacticalSequenceBody = components['schemas']['TacticalSequenceBody']
+
 // Le bloc COORDINATION du lot N1 (appui reçu), servi tel quel par Sessions et
 // les Séries temporelles. Alias stricts du contrat généré : un renommage
 // côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution.

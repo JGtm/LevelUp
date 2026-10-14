@@ -155,7 +155,7 @@ function faitDe(t: TacticalText, c: TacticalContribution): string {
   }
 }
 
-function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
+export function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
   const arme = locale === 'en' ? c.arme_label_en || c.arme_label : c.arme_label || c.arme_label_en
   if (arme) return arme
   return c.categorie_source ? t.tileCategories[c.categorie_source] : undefined

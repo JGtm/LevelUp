@@ -84,6 +84,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Le détail d'une cellule (lien « voir dans le rejeu », lot M1) : même raison que
   // `tacticalRaster`.
   tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h'),
+  tacticalSequence: () => queryKeys.tacticalSequence(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
   compositionSessions: () => queryKeys.compositionSessions(P, T, [], true),

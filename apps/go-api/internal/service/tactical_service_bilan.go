@@ -29,7 +29,7 @@ func bilanDeZone(out []domain.TacticalContribution, lec lectureDeLEquipe) *domai
 
 // bilanDesMorts compte les statuts, range les tueurs dans la rose et mesure les distances.
 func bilanDesMorts(out []domain.TacticalContribution, lec lectureDeLEquipe) *domain.TacticalBilanMorts {
-	b := &domain.TacticalBilanMorts{Rose: make([]int, coordination.SecteursDeLaRose)}
+	b := &domain.TacticalBilanMorts{Rose: make([]int, coordination.SecteursDeLaRose), FenetreRiposteMs: coordination.FenetreRiposteMs}
 	var tueurM, procheM []float64
 	for i := range out {
 		c := &out[i]
@@ -111,7 +111,7 @@ func bilanDesFrags(out []domain.TacticalContribution, lec lectureDeLEquipe) *dom
 	if !lec.journalLu {
 		return nil
 	}
-	var b domain.TacticalBilanFrags
+	b := domain.TacticalBilanFrags{FenetreRiposteMs: coordination.FenetreRiposteMs}
 	for i := range out {
 		if out[i].Face != domain.TacticalFaceFrag {
 			continue

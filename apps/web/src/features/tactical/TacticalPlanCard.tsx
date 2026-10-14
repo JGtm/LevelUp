@@ -63,6 +63,7 @@ import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
+import { CoucheDesCoequipiers, PiedDeLaMort } from './TacticalPlanCoequipiers'
 import { CoucheDesTueurs, LegendeDesTueurs } from './TacticalPlanTueurs'
 import {
   grilleDuPlan,
@@ -78,6 +79,8 @@ import {
 import { pointsDeLaCouche } from './tueurs.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
+import { SCENE_VIDE } from './mort.logic'
+import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
 
 /** Les trois réglages du bandeau (état local de la vue). */
 export interface ReglagesDuPlan {
@@ -125,6 +128,8 @@ export interface TacticalPlanCardProps {
   /** L'index de la contribution choisie (clic sur une tuile ou un point), `null` sinon. */
   choisie: number | null
   onChoisir: (index: number) => void
+  /** La vue de la mort choisie (instantané, séquence) ; `null` = vue de la zone. */
+  vue?: VueDeMort | null
 }
 
 export function TacticalPlanCard({
@@ -146,6 +151,7 @@ export function TacticalPlanCard({
   onSurvol,
   choisie,
   onChoisir,
+  vue = null,
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
@@ -160,10 +166,17 @@ export function TacticalPlanCard({
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
   const messages = lue ? statusMessages(t, lue.matchs_en_attente ?? 0) : []
-  // La couche n'existe que tant qu'une zone est choisie et que le plan est peint.
+  // La couche n'existe que tant qu'une zone est choisie et que le plan est peint. Pendant une étape de la
+  // séquence, le tueur est peint à sa position de l'instant par la couche des coéquipiers : celle des
+  // tueurs se retire.
+  const sequenceAffichee = vue?.sequence != null && vue.etape !== null
   const pointsTueurs = useMemo(
-    () => (selected && lue && raisonVide === null ? pointsDeLaCouche(contributions) : []),
-    [selected, lue, raisonVide, contributions],
+    () => (selected && lue && raisonVide === null && !sequenceAffichee ? pointsDeLaCouche(contributions) : []),
+    [selected, lue, raisonVide, contributions, sequenceAffichee],
+  )
+  const sceneMort = useMemo(
+    () => (selected && lue && raisonVide === null ? sceneDeLaVue(contributions, vue) : SCENE_VIDE),
+    [selected, lue, raisonVide, contributions, vue],
   )
 
   return (
@@ -219,6 +232,9 @@ export function TacticalPlanCard({
               estompe={estompe}
             />
           )}
+          {repere && (sceneMort.marques.length > 0 || sceneMort.cercle !== null) && (
+            <CoucheDesCoequipiers t={t} locale={locale} repere={repere} fenetre={fenetre} scene={sceneMort} vue={vue} estompe={estompe} />
+          )}
           {repere && selected && etiquette && (
             <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
           )}
@@ -237,6 +253,7 @@ export function TacticalPlanCard({
         />
       </div>
       <LegendeDesTueurs t={t} points={pointsTueurs} />
+      <PiedDeLaMort t={t} locale={locale} scene={sceneMort} vue={vue} />
     </SectionCard>
   )
 }

@@ -125,6 +125,9 @@ func TestEquipe_BilanEnNSurM(t *testing.T) {
 	if m.MedianeTueurM == nil || m.MedianePlusProcheM == nil || *m.MedianePlusProcheM != 20 {
 		t.Errorf("medianes = %v / %v (plus proche : 10 et 30 -> 20)", m.MedianeTueurM, m.MedianePlusProcheM)
 	}
+	if m.FenetreRiposteMs != 3000 || b.Frags.FenetreRiposteMs != 3000 {
+		t.Errorf("fenetre de riposte = %d / %d, want 3000 (publiee pour le web)", m.FenetreRiposteMs, b.Frags.FenetreRiposteMs)
+	}
 	if b.Frags.AbattuEnRetour != (domain.TacticalNSurM{N: 1, M: 1}) {
 		t.Errorf("abattu en retour = %+v, want 1 sur 1", b.Frags.AbattuEnRetour)
 	}

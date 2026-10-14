@@ -27,12 +27,13 @@ import type { Locale } from '@/lib/i18n/locale'
 import { carteLue, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import { etatDuPlan } from './plan.logic'
-import { usePrechargementDesLectures, useTacticalCellule, useTacticalRaster } from './queries'
+import { usePrechargementDesLectures, useTacticalCellule, useTacticalRaster, useTacticalSequence } from './queries'
 import { TacticalZoneCard } from './TacticalZoneCard'
 import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { basculerChoix } from './tueurs.logic'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
+import { contributionDeLaVue, sequenceDemandee, type VueDeMort } from './vueDeMort'
 import { choixDuClic, titreDeZone, zoneLaPlusChaude } from './zone.logic'
 
 export interface TacticalAnalysisViewProps {
@@ -109,7 +110,8 @@ export function TacticalAnalysisView({
     params,
   })
   // La contribution mise en avant, partagée par la tuile et le plan ; remise à zéro avec la zone.
-  const { survol, setSurvol, choisie, choisir } = useContributionChoisie(zone.cle)
+  const { survol, setSurvol, choisie, choisir, etape, setEtape } = useContributionChoisie(zone.cle)
+  const vue = useVueDeMort(playerSlug, carte.mapId, zone.contributions, choisie, etape, setEtape)
 
   return (
     <div
@@ -140,6 +142,7 @@ export function TacticalAnalysisView({
         onSurvol={setSurvol}
         choisie={choisie}
         onChoisir={choisir}
+        vue={vue}
       />
       {/* LA COLONNE PREND LA HAUTEUR DE LA CARTE DU PLAN (trois colonnes) : `contain: size` l'empêche
           de peser sur la rangée, l'étirement lui donne la hauteur du plan, et sa liste défile. */}
@@ -157,6 +160,8 @@ export function TacticalAnalysisView({
           onSurvol={setSurvol}
           choisie={choisie}
           onChoisir={choisir}
+          bilan={zone.detail.data?.bilan}
+          vue={vue}
         />
       </div>
     </div>
@@ -218,16 +223,19 @@ const AUCUNE_CONTRIBUTION: TacticalContribution[] = []
  * useContributionChoisie — la contribution survolée et la contribution CHOISIE (clic sur sa tuile ou
  * son point), partagées par la liste et le plan. Le choix tient jusqu'à un re-clic ou Échap, et se
  * remet à zéro avec la zone, la lecture, les joueurs et la réapparition (`cle`) — ajusté pendant le
- * rendu, comme `useZoneChoisie`. C'est l'état que portera le détail d'une mort.
+ * rendu, comme `useZoneChoisie`. C'est l'état qui ouvre la vue d'une mort ; `etape` est l'étape de la
+ * séquence affichée (`null` = l'instantané), remise à zéro à chaque nouveau choix.
  */
 function useContributionChoisie(cle: string) {
   const [survol, setSurvol] = useState<number | null>(null)
   const [choisie, setChoisie] = useState<number | null>(null)
+  const [etape, setEtape] = useState<number | null>(null)
   const [cleAnterieure, setCleAnterieure] = useState(cle)
   if (cle !== cleAnterieure) {
     setCleAnterieure(cle)
     if (survol !== null) setSurvol(null)
     if (choisie !== null) setChoisie(null)
+    if (etape !== null) setEtape(null)
   }
   useEffect(() => {
     if (choisie === null) return
@@ -237,7 +245,46 @@ function useContributionChoisie(cle: string) {
     window.addEventListener('keydown', surTouche)
     return () => window.removeEventListener('keydown', surTouche)
   }, [choisie])
-  return { survol, setSurvol, choisie, choisir: (index: number) => setChoisie((courante) => basculerChoix(courante, index)) }
+  return {
+    survol,
+    setSurvol,
+    choisie,
+    etape,
+    setEtape,
+    choisir: (index: number) => {
+      setChoisie((courante) => basculerChoix(courante, index))
+      setEtape(null)
+    },
+  }
+}
+
+/**
+ * useVueDeMort — la vue d'une mort ouverte par la sélection : la contribution choisie (mort ou frag),
+ * sa séquence quand le rejeu est servi (404 = pas de vue D, sans bruit) et l'étape affichée. `null`
+ * sans sélection : la colonne de droite et le plan montrent alors la vue de la zone.
+ */
+function useVueDeMort(
+  playerSlug: string,
+  mapId: string,
+  contributions: readonly TacticalContribution[],
+  choisie: number | null,
+  etape: number | null,
+  setEtape: (etape: number | null) => void,
+): VueDeMort | null {
+  const contribution = contributionDeLaVue(contributions, choisie)
+  const sequence = useTacticalSequence(playerSlug, mapId, sequenceDemandee(contribution))
+  const donnees = sequence.data ?? null
+  // Une référence stable tant que rien ne change : la scène du plan ne se repeint pas à chaque rendu.
+  return useMemo(() => {
+    if (choisie === null || !contribution) return null
+    return {
+      index: choisie,
+      contribution,
+      sequence: donnees,
+      etape: donnees && etape !== null && etape < (donnees.etapes?.length ?? 0) ? etape : null,
+      onEtape: setEtape,
+    }
+  }, [choisie, contribution, donnees, etape, setEtape])
 }
 
 type ParamsLecture = Parameters<typeof useTacticalRaster>[2]

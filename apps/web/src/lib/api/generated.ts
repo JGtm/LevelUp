@@ -12784,6 +12784,8 @@ export interface components {
         };
         TacticalBilanFrags: {
             abattu_en_retour: components["schemas"]["TacticalNSurM"];
+            /** Format: int64 */
+            fenetre_riposte_ms: number;
         };
         TacticalBilanMorts: {
             /** Format: int64 */
@@ -12794,6 +12796,8 @@ export interface components {
             equipe_a_terre: number;
             /** Format: int64 */
             examinees: number;
+            /** Format: int64 */
+            fenetre_riposte_ms: number;
             /** Format: double */
             mediane_plus_proche_m?: number;
             /** Format: double */
