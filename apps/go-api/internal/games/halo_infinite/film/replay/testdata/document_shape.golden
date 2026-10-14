@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 95
-empreinte-stockee c75793aa31a879bc
-empreinte-servie c75793aa31a879bc
-empreinte-cuite 6cc818144ed2d626
+empreinte-stockee 45874ab0c45580ce
+empreinte-servie 45874ab0c45580ce
+empreinte-cuite 366349005beeb50a
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -624,6 +624,7 @@ KnockbackCoverage
   Read105 json:"read105" int
   Unpaired json:"unpaired" int
   WithoutAuthor json:"withoutAuthor" int
+  WithoutImpulse json:"withoutImpulse" int
 Label
   En json:"en" string
   Family json:"family,omitempty" string

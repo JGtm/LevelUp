@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
 
 import { knockbackSoundEvents, KNOCKBACK_SOUND_STEM } from './knockbackSound'
 import { buildSoundTimeline } from './replaySound'
-import { soundEvent } from './replaySoundVariants'
+import type { ReplayKill } from '../model/killFeedLogic'
 import { TRANSLOCATION_SOUND_STEM, translocationSoundEvents } from './translocationSound'
 import { testReplayDoc } from '../test/testDoc'
 
@@ -29,6 +29,60 @@ const POUSSEES_215E7022 = [
   { t: 2957, slot: 563, by: 560, vx: 2.34, vy: 5.12, vz: 2.06 },
   { t: 2958, slot: 564, by: 560, vx: 2.23, vy: 5.18, vz: 2.05 },
 ]
+/** Elmo910 (slot 560) et ses deux poussés, vivants autour de l'image 2957 ; l'auteur porte son xuid. */
+const ELMO = '2533274938952097'
+const PISTES_215E7022 = [
+  {
+    slot: 560,
+    team: 0,
+    xuid: ELMO,
+    points: [
+      { t: 2900, x: 0, y: 0 },
+      { t: 3000, x: 1, y: 0 },
+    ],
+  },
+  {
+    slot: 563,
+    team: 1,
+    xuid: 'V1',
+    points: [
+      { t: 2900, x: 2, y: 0 },
+      { t: 2956, x: 2, y: 0 },
+    ],
+  },
+  {
+    slot: 564,
+    team: 1,
+    xuid: 'V2',
+    points: [
+      { t: 2900, x: 3, y: 0 },
+      { t: 3000, x: 3, y: 0 },
+    ],
+  },
+]
+
+/** Le kill au répulseur d'Elmo910 à 295 702 ms, tel que le fil le pose (vignette `killfeed-56`). */
+function killAuRepulseur(xuid: string): ReplayKill {
+  return {
+    replayMs: 295_702,
+    medals: [],
+    tMs: 295_702,
+    xuid,
+    teamID: 0,
+    weaponKey: '',
+    weaponLabel: '',
+    weaponImageUrl: '/static/weapons-assets/halo_infinite/jeu/killfeed-56.png',
+    weaponTinted: false,
+    assistState: '',
+    assistGamertag: '',
+    assistTeamID: null,
+    killerDamagePct: null,
+    assistDamagePct: null,
+    victimXuid: 'V1',
+    victimGamertag: 'aK2fResHv3',
+  }
+}
+
 const TELEPORTATIONS_1B2D9E08 = [
   { t: 1761, slot: 535 },
   { t: 3261, slot: 560 },
@@ -54,13 +108,30 @@ describe('knockbackSoundEvents', () => {
     expect(knockbackSoundEvents(doc, []).map((e) => e.ms)).toEqual([295_700])
   })
 
-  it('215e7022 : le kill au répulseur du même instant sonne déjà — la poussée se tait', () => {
+  it('215e7022 : le kill au répulseur DU MÊME AUTEUR et du même instant sonne déjà — la poussée se tait', () => {
     const doc = testReplayDoc({
       frameIntervalMs: 100,
+      tracks: PISTES_215E7022,
       knockbacks: POUSSEES_215E7022,
     })
-    const kill = soundEvent(295_702, KNOCKBACK_SOUND_STEM)
-    expect(knockbackSoundEvents(doc, [kill])).toEqual([])
+    expect(knockbackSoundEvents(doc, [{ ms: 295_702, xuid: ELMO }])).toEqual([])
+    // Le kill d'un AUTRE joueur au même instant ne couvre pas cette poussée.
+    expect(knockbackSoundEvents(doc, [{ ms: 295_702, xuid: 'autre' }]).map((e) => e.ms)).toEqual([
+      295_700,
+    ])
+  })
+
+  it('215e7022, piste entière : armes et équipement activés, le kill et la poussée font UN son', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: PISTES_215E7022,
+      knockbacks: POUSSEES_215E7022,
+    })
+    const tout = { weapon: true, grenade: false, melee: false, equipment: true, objective: false }
+    const sons = buildSoundTimeline(doc, [killAuRepulseur(ELMO)], tout).filter(
+      (e) => e.stem === KNOCKBACK_SOUND_STEM,
+    )
+    expect(sons.map((e) => e.ms)).toEqual([295_702])
   })
 
   it('la piste entière porte la poussée sous la catégorie Équipement', () => {

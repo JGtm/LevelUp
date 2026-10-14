@@ -31,8 +31,8 @@ type Knockback struct {
 	// By désigne la Track de l'unité qui pousse ; absent quand le 105 ne la nomme pas ou que sa
 	// piste n'est pas publiée (`coverage.knockbacks.withoutAuthor`).
 	By *uint32 `json:"by,omitempty"`
-	// VX/VY/VZ est la vitesse imposée au joueur poussé, en m/s, mêmes axes que Point.X/Y/Z.
-	// SOLIDAIRES : absents ensemble quand le 104 ne porte pas d'impulsion.
+	// VX/VY/VZ est la vitesse imposée au joueur poussé, en m/s, mêmes axes que Point.X/Y/Z. Présents
+	// sur toute poussée publiée : un 104 sans impulsion n'est pas publié (`withoutImpulse`).
 	VX *float32 `json:"vx,omitempty"`
 	VY *float32 `json:"vy,omitempty"`
 	VZ *float32 `json:"vz,omitempty"`
@@ -52,12 +52,17 @@ type KnockbackCoverage struct {
 	BeforeOrigin int `json:"beforeOrigin"`
 	// NoIdentity : poussées dont le joueur poussé n'a pas de piste publiée — écartées.
 	NoIdentity int `json:"noIdentity"`
+	// WithoutImpulse : poussées dont le 104 ne porte pas d'impulsion — écartées.
+	WithoutImpulse int `json:"withoutImpulse"`
 	// WithoutAuthor : poussées publiées sans `by` (auteur non nommé, ou sans piste publiée).
 	WithoutAuthor int `json:"withoutAuthor"`
 }
 
+// L IDENTITE DE LA COUVERTURE : read104 = published + unpaired + noIdentity + withoutImpulse +
+// beforeOrigin. withoutAuthor est une PARTIE de published.
+
 // buildKnockbacks projette les poussées lues sur l'axe de frames : rien avant l'origine, rien dont
-// le joueur poussé n'a pas de piste publiée.
+// le joueur poussé n'a pas de piste publiée, rien sans impulsion.
 func buildKnockbacks(evts []types.Knockback, st types.KnockbackStats, tracks []Track, origin, step uint64,
 ) ([]Knockback, KnockbackCoverage) {
 	cov := KnockbackCoverage{Read104: st.Read104, Read105: st.Read105, Paired: st.Paired, Unpaired: st.Unpaired}
@@ -75,6 +80,10 @@ func buildKnockbacks(evts []types.Knockback, st types.KnockbackStats, tracks []T
 			cov.NoIdentity++
 			continue
 		}
+		if !e.HasImpulse {
+			cov.WithoutImpulse++
+			continue
+		}
 		k := Knockback{T: int((e.TimestampUS - origin) / step), Slot: e.Pushed.Slot}
 		if e.HasAuthor && published[e.Author.Slot] {
 			by := e.Author.Slot
@@ -82,9 +91,7 @@ func buildKnockbacks(evts []types.Knockback, st types.KnockbackStats, tracks []T
 		} else {
 			cov.WithoutAuthor++
 		}
-		if e.HasImpulse {
-			k.VX, k.VY, k.VZ = coordPtr(e.Impulse[0]), coordPtr(e.Impulse[1]), coordPtr(e.Impulse[2])
-		}
+		k.VX, k.VY, k.VZ = coordPtr(e.Impulse[0]), coordPtr(e.Impulse[1]), coordPtr(e.Impulse[2])
 		out = append(out, k)
 		cov.Published++
 	}
@@ -96,5 +103,5 @@ func logKnockbackCoverage(ctx context.Context, cov KnockbackCoverage) {
 	slog.InfoContext(ctx, "rejeu : poussees d equipement",
 		"lus104", cov.Read104, "lus105", cov.Read105, "appariees", cov.Paired, "nonAppariees", cov.Unpaired,
 		"publiees", cov.Published, "avantOrigine", cov.BeforeOrigin, "sansIdentite", cov.NoIdentity,
-		"sansAuteur", cov.WithoutAuthor)
+		"sansImpulsion", cov.WithoutImpulse, "sansAuteur", cov.WithoutAuthor)
 }

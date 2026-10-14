@@ -16687,6 +16687,9 @@ components:
         withoutAuthor:
           format: int64
           type: integer
+        withoutImpulse:
+          format: int64
+          type: integer
       required:
         - read104
         - read105
@@ -16695,6 +16698,7 @@ components:
         - published
         - beforeOrigin
         - noIdentity
+        - withoutImpulse
         - withoutAuthor
       type: object
     LOWESSTrend:

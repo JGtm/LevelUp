@@ -57,8 +57,9 @@ Détail, méthode, témoins et commandes rejouables :
 - **CORRIGÉ LE 2026-10-14 (lot F du plan d'ajustements) — GESTE CONTRE EFFET.** Le GESTE du
   répulseur (l'activation, avec ou sans cible) n'est dans aucun canal lu ; son EFFET l'est : chaque
   joueur poussé est écrit dans la vue A par la paire 105 -> 104 (`knockbacks`, schéma 94). Mesure :
-  135 paires sur 235 films, normes de l'impulsion 6,00 / 5,50 m/s seulement ; 14 paires sur 14 des
-  témoins `0d9a9af9`, `215e7022` et `a6ae19fb` accélèrent le joueur poussé dans les 300 ms ; auteur
+  135 paires sur 235 films (contexte de la cuisson), aucun 104 isolé, normes de l'impulsion 6,00 /
+  5,50 / 5,72 m/s seulement ; les témoins `0d9a9af9`, `215e7022` et `a6ae19fb` portent 15 paires
+  (3, 2, 10), et les 14 rattachées à une piste accélèrent le joueur poussé dans les 300 ms ; auteur
   porteur du répulseur 130 sur 130. Les UTILISATIONS RESTANTES ne sont toujours pas lues (i56 jamais
   armé, revérifié aux images-clés ; seule la consommation finale `spent` est datée, 0,6 à 0,8 s
   après la dernière poussée dans 19 ports sur 24). Le paragraphe qui suit reste vrai pour le geste.

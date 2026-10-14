@@ -201,7 +201,7 @@ var tablePolarites = []blocPolarites{
 		Succes:  "attached energyReads positioned published riftPoses uses withCost",
 		Neutres: "beforeOrigin created"},
 	{Blocs: []string{"coverage.knockbacks."},
-		Echecs:  "noIdentity unpaired withoutAuthor",
+		Echecs:  "noIdentity unpaired withoutAuthor withoutImpulse",
 		Succes:  "paired published read104 read105",
 		Neutres: "beforeOrigin"},
 	{Blocs: []string{"coverage.translocations."},

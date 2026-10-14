@@ -7986,6 +7986,8 @@ export interface components {
             unpaired: number;
             /** Format: int64 */
             withoutAuthor: number;
+            /** Format: int64 */
+            withoutImpulse: number;
         };
         LOWESSTrend: {
             Metric: string;

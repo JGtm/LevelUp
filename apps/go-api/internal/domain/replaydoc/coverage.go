@@ -352,14 +352,15 @@ type TranslocationCoverage struct {
 
 // KnockbackCoverage dit ce que le calque des poussées a lu et ce qu'il a écarté (schéma 94).
 type KnockbackCoverage struct {
-	Read104       int `json:"read104"`
-	Read105       int `json:"read105"`
-	Paired        int `json:"paired"`
-	Unpaired      int `json:"unpaired"`
-	Published     int `json:"published"`
-	BeforeOrigin  int `json:"beforeOrigin"`
-	NoIdentity    int `json:"noIdentity"`
-	WithoutAuthor int `json:"withoutAuthor"`
+	Read104        int `json:"read104"`
+	Read105        int `json:"read105"`
+	Paired         int `json:"paired"`
+	Unpaired       int `json:"unpaired"`
+	Published      int `json:"published"`
+	BeforeOrigin   int `json:"beforeOrigin"`
+	NoIdentity     int `json:"noIdentity"`
+	WithoutImpulse int `json:"withoutImpulse"`
+	WithoutAuthor  int `json:"withoutAuthor"`
 }
 
 // AbilityImpulseCoverage dit ce que le calque a lu et ce qu'il a écarté — l'entonnoir

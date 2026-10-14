@@ -3263,8 +3263,10 @@ package replay
 //	                `EquipmentKnockbackPlayer` (104 : joueur, impulsion) de meme reference 0
 //	                (grammar/vue_a_poussees.go, grammar/poussees.go). `by` absent quand l auteur
 //	                n est pas nomme ou n a pas de piste publiee.
-//	`coverage.knockbacks`   neuf : lus (104, 105), paires, 104 non apparies (non publies),
-//	                publiees, avant l origine, sans identite (pousse sans piste publiee), sans auteur.
+//	`coverage.knockbacks`   neuf : lus (104, 105), paires, 104 non apparies, publiees, avant
+//	                l origine, sans identite (pousse sans piste publiee), sans impulsion, sans auteur.
+//	                Identite : read104 = published + unpaired + noIdentity + withoutImpulse +
+//	                beforeOrigin ; withoutAuthor est une partie de published.
 //
 //	CE QUI MONTE    `SchemaVersion` 93 -> 94 ; `grammar.Rev` `grammar-2026-10-09.3` ->
 //	AVEC ELLE       `grammar-2026-10-14` ; `SchemaDesFaits` 11 -> 12 (le complement de la section 1
@@ -3273,9 +3275,9 @@ package replay
 //	LE PARC         un artefact 93 ou d avant : verdict `redecoder` (revision de grammaire).
 //
 //	MESURE          235 films du parc, contexte de la cuisson (carte posee) : 135 messages 104 lus,
-//	                135 paires, aucun 104 isole ; normes 6,00 / 5,50 / 5,72 m/s seulement. Temoins 0d9a9af9, 215e7022, a6ae19fb : les 14 paires
-//	                rattachees accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1
-//	                sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
+//	                135 paires, aucun 104 isole ; normes 6,00 / 5,50 / 5,72 m/s seulement. Temoins
+//	                0d9a9af9, 215e7022, a6ae19fb : 15 paires (3, 2, 10) ; les 14 rattachees a une
+//	                piste accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
 //	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.
 //
 // v95 (2026-10-14, lot « équipement porté » du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`,
