@@ -7,7 +7,6 @@ import {
   buildFragBreakdownRows,
   fragBreakdownClasses,
   repliOffsetPct,
-  segmentTextTone,
 } from './squadFragBreakdownChart'
 import type { FragClassEntry } from '@/lib/api/types'
 
@@ -95,16 +94,5 @@ describe('repliOffsetPct (S3)', () => {
   })
   it('tout tient → pas de ligne de repli', () => {
     expect(repliOffsetPct(segments, () => false)).toBeNull()
-  })
-})
-
-describe('segmentTextTone', () => {
-  it('écriture sombre sur un aplat clair, claire sur un aplat sombre', () => {
-    // Couleurs de test (pas de charte) : un jaune très clair et un bleu nuit.
-    expect(segmentTextTone('#fde68a')).toBe('dark') // color-allow: valeur de test
-    expect(segmentTextTone('#1e3a8a')).toBe('light') // color-allow: valeur de test
-  })
-  it('valeur non hex (variable CSS) → clair', () => {
-    expect(segmentTextTone('var(--x)')).toBe('light')
   })
 })

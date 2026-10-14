@@ -29,6 +29,7 @@ import {
   hexToRgba,
   legendEntries,
 } from '@/components/charts/_utils'
+import { barLabel } from '@/components/charts/barLabel'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type {
   SquadEmprisePlacement,
@@ -103,8 +104,6 @@ export interface PlacementColors {
   quadrant: Record<SquadEmprisePlacementQuadrant, string>
   /** Repère de la portée du radar (« accent »). */
   radar: string
-  /** Encre sombre des valeurs écrites DANS les segments. */
-  ink: string
   theme: EChartsThemeColors
 }
 
@@ -132,7 +131,6 @@ export function placementFormats(locale: Locale): PlacementFormats {
  * Les couleurs du graphe, résolues au rendu (thème, palette). Joueurs : le jeton de la palette
  * de la page (`useSquadPlayerPalette`, ordre de la sélection), jamais l'ordre du bloc. Repère du radar : le violet d'accent de la maquette n'a pas de jeton
  * homonyme ; `extreme` est la teinte violette du thème, sans usage dans ces deux graphes.
- * Encre sombre : `--warning-foreground`, sombre dans les deux thèmes.
  */
 export function resolvePlacementColors(tokenOf: (gamertag: string) => SemanticToken | null): PlacementColors {
   const theme = getEChartsThemeColors()
@@ -148,15 +146,8 @@ export function resolvePlacementColors(tokenOf: (gamertag: string) => SemanticTo
       isolated_costly: resolveToken(QUADRANT_TOKENS.isolated_costly),
     },
     radar: resolveToken('extreme'),
-    ink: darkInk(theme),
     theme,
   }
-}
-
-function darkInk(theme: EChartsThemeColors): string {
-  if (typeof document === 'undefined') return theme.text
-  const v = getComputedStyle(document.documentElement).getPropertyValue('--warning-foreground').trim()
-  return v || theme.text
 }
 
 /**
@@ -361,6 +352,7 @@ function quadrantsMarker(block: PlacementBlock, c: PlacementColors, t: Placement
     markArea: {
       silent: true,
       itemStyle: { color: 'transparent' },
+      // barLabel-allow: titre de zone posé sur la carte (aplat transparent), pas sur un segment.
       label: { color: c.theme.axisLabel, fontSize: 12, lineHeight: 16, position: 'inside' },
       data: [
         quadrantArea(name('in_range_productive'), [0, Y_MAX], [iso, front]),
@@ -484,17 +476,14 @@ export function buildPlacementQuartsOption(block: PlacementBlock, c: PlacementCo
       barWidth: BAR_WIDTH,
       data: rows.map((p) => quadrantPct(p, q)),
       itemStyle: { color: c.quadrant[q], borderColor: tc.card, borderWidth: 1 },
-      label: {
-        show: true,
-        position: 'inside',
-        color: c.ink,
+      label: barLabel(c.quadrant[q], {
         fontSize: 11,
         fontWeight: 600,
         formatter: (p: { value: number }) => {
           const v = Math.round(p.value)
           return v >= SEGMENT_LABEL_MIN_PCT ? t.quarts.value(v) : ''
         },
-      },
+      }),
     })),
   }
 }

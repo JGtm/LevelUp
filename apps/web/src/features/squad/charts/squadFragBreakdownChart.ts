@@ -16,7 +16,6 @@
  * fragdist.Build). Couleurs = `fragClassColor` / `fragClassCssVar` côté rendu.
  */
 import type { FragClassEntry } from '@/lib/api/types'
-import { relLuminance } from '@/lib/accessibility'
 import { FRAG_CLASS_ORDER } from '@/lib/accessibility/scales'
 
 /** Un segment de la barre d'un joueur. */
@@ -118,20 +117,4 @@ export function repliOffsetPct(
 ): number | null {
   const first = segments.find((s) => isHidden(s.cls))
   return first ? first.leftPct : null
-}
-
-/** Luminance au-delà de laquelle un texte sombre contraste mieux qu'un texte clair (WCAG). */
-const DARK_TEXT_LUMINANCE = 0.179
-
-/**
- * Ton de l'écriture posée SUR l'aplat d'un segment : sombre sur une classe claire (ambre,
- * émeraude), clair sinon — le seuil qui maximise le contraste WCAG. Couleur illisible (valeur
- * non hex) → clair.
- */
-export function segmentTextTone(fillHex: string): 'dark' | 'light' {
-  try {
-    return relLuminance(fillHex) > DARK_TEXT_LUMINANCE ? 'dark' : 'light'
-  } catch {
-    return 'light'
-  }
 }

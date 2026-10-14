@@ -18,6 +18,7 @@
  */
 import { useRef, type ReactNode } from 'react'
 
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -365,24 +366,9 @@ function Segment({
       }}
       data-fit-key={key}
     >
-      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
-        <div
-          className={`flex h-full w-full cursor-help items-center overflow-hidden ${
-            align === 'start' ? 'justify-start pl-[7px]' : 'justify-end pr-[7px]'
-          }`}
-        >
-          {/* `text-white` : écriture posée SUR l'aplat d'équipe, question de contraste dans le
-              segment et non couleur sémantique (même usage que « Rapport de force par famille
-              de mode » et la Répartition des frags). */}
-          <span
-            data-fit-label
-            className="whitespace-nowrap text-xs font-medium tabular-nums leading-none text-white"
-            style={{ visibility: hidden ? 'hidden' : 'visible' }}
-          >
-            {children}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel fill={color} tip={<TipText text={tip} />} align={align} hidden={hidden}>
+        {children}
+      </SegmentLabel>
     </div>
   )
 }

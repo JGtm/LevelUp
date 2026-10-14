@@ -10,8 +10,8 @@
  */
 import { Fragment, useMemo, useRef, useState } from 'react'
 
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
-import { Tooltip } from '@/components/ui/tooltip'
 import type { SquadEmpriseObject } from '@/lib/api/types'
 
 import { repliOffsetPct } from '@/features/squad/charts/squadFragBreakdownChart'
@@ -138,7 +138,7 @@ function MineLine({
           data-testid={`usages-mine-track-${key}`}
         >
           {row.me > 0 && (
-            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={row.rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, name, row.me, row.camp)} value={row.me} light />
+            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={row.rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, name, row.me, row.camp)} value={row.me} />
           )}
           {row.rest > 0 && (
             <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(name, row.rest, row.camp)} value={row.rest} />
@@ -178,7 +178,7 @@ function MineResourceLine({ row, label, sub, hidden, player, ut }: { row: MineRe
         />
         <div className="relative h-4 rounded-[3px] bg-muted">
           {row.me > 0 && (
-            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} light />
+            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} />
           )}
           {rest > 0 && (
             <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(label, rest, row.camp)} value={restLabel} />
@@ -236,7 +236,6 @@ function Segment({
   hidden,
   tip,
   value,
-  light,
 }: {
   id: string
   left: number
@@ -247,23 +246,12 @@ function Segment({
   tip: string
   /** Le compte (pleine page) ou la part écrite (vue compacte). */
   value: number | string
-  /** Écriture claire sur l'aplat du joueur ; foncée sur celui, pâle, du reste du camp. */
-  light?: boolean
 }) {
   return (
     <div className={`absolute inset-y-0 ${rounded}`} style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }} data-fit-key={id} data-testid={id}>
-      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
-        <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-          {/* `text-white` sur l'aplat du joueur : contraste dans le segment, pas une couleur sémantique. */}
-          <span
-            data-fit-label
-            className={`whitespace-nowrap text-[11px] font-semibold tabular-nums leading-none ${light ? 'text-white' : 'text-foreground'}`}
-            style={{ visibility: hidden.has(id) ? 'hidden' : 'visible' }}
-          >
-            {value}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel fill={color} tip={<TipText text={tip} />} hidden={hidden.has(id)} textClassName="text-[11px] font-semibold">
+        {value}
+      </SegmentLabel>
     </div>
   )
 }

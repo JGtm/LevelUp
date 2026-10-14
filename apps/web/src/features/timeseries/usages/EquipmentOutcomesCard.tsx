@@ -11,6 +11,7 @@
  */
 import { useMemo, useRef } from 'react'
 
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
@@ -228,25 +229,20 @@ function ThreeTrack({
         return (
           <div
             key={part}
-            className="absolute inset-y-0"
+            className="absolute inset-y-0 flex"
             style={{ left: `${left}%`, width: `${w}%`, backgroundColor: tokenCssVar(PART_TOKENS[part]) }}
             data-testid={`${id}-${part}`}
             data-fit-key={labels ? `${id}-${part}` : undefined}
           >
-            <Tooltip content={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} className="h-full w-full">
-              <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-                {/* Écriture posée sur l'aplat : contraste dans le segment, pas une couleur sémantique. */}
-                {labels && (
-                  <span
-                    data-fit-label
-                    className={`whitespace-nowrap text-[11px] font-semibold tabular-nums leading-none ${part === 'kept' ? 'text-foreground' : 'text-white'}`}
-                    style={{ visibility: hidden?.has(`${id}-${part}`) ? 'hidden' : 'visible' }}
-                  >
-                    {textOf ? textOf(s) : n}
-                  </span>
-                )}
-              </div>
-            </Tooltip>
+            {labels ? (
+              <SegmentLabel fill={tokenCssVar(PART_TOKENS[part])} tip={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} hidden={hidden?.has(`${id}-${part}`)} textClassName="text-[11px] font-semibold">
+                {textOf ? textOf(s) : n}
+              </SegmentLabel>
+            ) : (
+              <Tooltip content={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} className="h-full w-full">
+                <div className="h-full w-full cursor-help" />
+              </Tooltip>
+            )}
           </div>
         )
       })}

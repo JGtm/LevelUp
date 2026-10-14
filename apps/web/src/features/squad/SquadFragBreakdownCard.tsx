@@ -14,9 +14,9 @@
  */
 import { useMemo, useRef } from 'react'
 import { ChartLegend } from '@/components/charts/ChartLegend'
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { Tooltip } from '@/components/ui/tooltip'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useColorPaletteVersion } from '@/lib/accessibility'
 import { fragClassColor, fragClassCssVar } from '@/lib/accessibility/scales'
@@ -26,7 +26,6 @@ import {
   buildFragBreakdownRows,
   fragBreakdownClasses,
   repliOffsetPct,
-  segmentTextTone,
   type FragBreakdownRow,
   type FragBreakdownSegment,
 } from './charts/squadFragBreakdownChart'
@@ -69,17 +68,12 @@ export function SquadFragBreakdownCard({
     () => buildFragBreakdownRows(fragClassesByPlayer, playerOrder),
     [fragClassesByPlayer, playerOrder],
   )
-  // Couleurs résolues (légende, ton de l'écriture) : suivent palette et thème.
+  // Couleurs résolues (légende) : suivent palette et thème.
   const paletteVersion = useColorPaletteVersion()
   const themeVersion = useThemeVersion()
   const classes = useMemo(
     () => fragBreakdownClasses(fragClassesByPlayer, playerOrder),
     [fragClassesByPlayer, playerOrder],
-  )
-  const tones = useMemo(
-    () => new Map(classes.map((c) => [c, segmentTextTone(fragClassColor(c))])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [classes, paletteVersion, themeVersion],
   )
   const legendItems = useMemo(
     () => classes.map((c) => ({ key: c, label: classLabel(c), color: fragClassColor(c) })),
@@ -110,7 +104,6 @@ export function SquadFragBreakdownCard({
                 row={row}
                 color={playerColors[row.player]}
                 hidden={hidden}
-                tones={tones}
                 classLabel={classLabel}
                 t={t}
                 compact={compact}
@@ -132,13 +125,12 @@ interface FragBreakdownBarProps {
   row: FragBreakdownRow
   color: string | undefined
   hidden: ReadonlySet<string>
-  tones: Map<string, 'dark' | 'light'>
   classLabel: (cls: string) => string
   t: SquadText
   compact?: FragBreakdownCompact
 }
 
-function FragBreakdownBar({ row, color, hidden, tones, classLabel, t, compact }: FragBreakdownBarProps) {
+function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBreakdownBarProps) {
   const isHidden = (cls: string) => hidden.has(fitKey(row.player, cls))
   const offset = repliOffsetPct(row.segments, isHidden)
   // Ce qu'écrit un segment : son compte, ou sa part entière du total du joueur en vue compacte.
@@ -177,7 +169,6 @@ function FragBreakdownBar({ row, color, hidden, tones, classLabel, t, compact }:
               seg={s}
               first={i === 0}
               hidden={isHidden(s.cls)}
-              tone={tones.get(s.cls)}
               classLabel={classLabel}
               t={t}
               text={textOf(s)}
@@ -234,7 +225,6 @@ function FragBreakdownSeg({
   seg: s,
   first,
   hidden,
-  tone,
   classLabel,
   t,
   text,
@@ -243,7 +233,6 @@ function FragBreakdownSeg({
   seg: FragBreakdownSegment
   first: boolean
   hidden: boolean
-  tone: 'dark' | 'light' | undefined
   classLabel: (cls: string) => string
   t: SquadText
   /** Ce qui s'écrit dans le segment (compte, ou part en vue compacte). */
@@ -256,25 +245,14 @@ function FragBreakdownSeg({
       data-fit-key={fitKey(row.player, s.cls)}
       data-testid={`frag-breakdown-seg-${row.player}-${s.cls}`}
     >
-      <Tooltip
-        content={t.performanceCharts.fragBreakdownSegment(row.player, classLabel(s.cls), s.kills, row.total)}
-        className="h-full w-full"
+      <SegmentLabel
+        fill={fragClassCssVar(s.cls)}
+        tip={t.performanceCharts.fragBreakdownSegment(row.player, classLabel(s.cls), s.kills, row.total)}
+        hidden={hidden}
+        textClassName="text-2xs font-semibold"
       >
-        <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-          {/* `text-white` / `text-black` : une écriture posée SUR un aplat, question de
-              contraste dans le segment et non couleur sémantique (même usage que
-              StackedTrack). */}
-          <span
-            data-fit-label
-            className={`whitespace-nowrap text-2xs font-semibold tabular-nums ${
-              tone === 'dark' ? 'text-black' : 'text-white'
-            }`}
-            style={{ visibility: hidden ? 'hidden' : 'visible' }}
-          >
-            {text}
-          </span>
-        </div>
-      </Tooltip>
+        {text}
+      </SegmentLabel>
     </div>
   )
 }

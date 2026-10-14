@@ -344,6 +344,15 @@ describe('buildBarStackedOption — groupes, étiquettes de valeur, opacité', (
     expect(opt.series[0].label?.formatter({ value: 0 })).toBe('')
   })
 
+  it('valueLabels.segments : l’encre du compte est celle qui contraste avec SON segment, centrée', () => {
+    const opt = buildBarStackedOption(series, { valueLabels: { segments: true }, componentHexColors: { Alpha: '#fde68a', Charlie: '#1e3a8a' } }) as {
+      series: { name: string; label?: { color: string; verticalAlign: string } }[]
+    }
+    const label = (name: string) => opt.series.find((x) => x.name === name)?.label
+    expect(label('Alpha')).toMatchObject({ color: '#000000', verticalAlign: 'middle' })
+    expect(label('Charlie')).toMatchObject({ color: '#ffffff', verticalAlign: 'middle' })
+  })
+
   it('valueLabels.totals : une série muette de hauteur nulle écrit le total au sommet', () => {
     const opt = buildBarStackedOption(series, { valueLabels: { totals: [8, 2, 1] } }) as {
       series: {

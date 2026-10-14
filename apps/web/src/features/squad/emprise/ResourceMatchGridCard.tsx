@@ -7,11 +7,12 @@
  * drapeau de dominance quand il existe et que l'appelant le demande (pas sur l'Escouade). La table elle-même (lignes, cases, râteliers repliés,
  * infobulles) est `ResourceGridTable`, partagée avec la grille par carte des Séries temporelles.
  */
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
 import type { DominanceValue, OutcomeValue } from '@/components/charts/outcomeSequence'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useSegmentInk } from '@/lib/accessibility/segmentInk'
 import type { Locale } from '@/lib/i18n/locale'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 
@@ -165,13 +166,9 @@ function MatchHead({
       {m.mode}
       {result && m.outcome && (
         <div>
-          <span
-            className="mt-[3px] inline-block rounded-full px-[7px] text-[10.5px] font-bold text-white"
-            style={{ backgroundColor: tokenCssVar(OUTCOME_TOKENS[m.outcome]) }}
-            data-testid={`emprise-grid-result-${m.matchId}`}
-          >
+          <ResultPill color={tokenCssVar(OUTCOME_TOKENS[m.outcome])} testId={`emprise-grid-result-${m.matchId}`}>
             {result}
-          </span>
+          </ResultPill>
         </div>
       )}
       {dom && (
@@ -191,5 +188,19 @@ function MatchHead({
         </div>
       )}
     </div>
+  )
+}
+
+/** La pastille d'issue d'un match : aplat de l'issue, écriture à l'encre qui y contraste. */
+function ResultPill({ color, testId, children }: { color: string; testId: string; children: ReactNode }) {
+  const ink = useSegmentInk(color)
+  return (
+    <span
+      className="mt-[3px] inline-block rounded-full px-[7px] text-[10.5px] font-bold"
+      style={{ backgroundColor: color, color: ink }}
+      data-testid={testId}
+    >
+      {children}
+    </span>
   )
 }

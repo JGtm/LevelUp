@@ -4,6 +4,7 @@
  */
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
+import { barLabel } from '@/components/charts/barLabel'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
@@ -39,8 +40,14 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
 
   const categories = entries.map((e) => e.name)
 
-  const labelAll = { show: true, position: 'inside' as const, formatter: (p: { value: number }) => String(p.value) }
-  const labelIfNonzero = { show: true, position: 'inside' as const, formatter: (p: { value: number }) => p.value > 0 ? String(p.value) : '' }
+  const labelAll = (fill: string, opacity: number) =>
+    barLabel(fill, { formatter: (p: { value: number }) => String(p.value) }, { color: tc.card, opacity })
+  const labelIfNonzero = (fill: string, opacity: number) =>
+    barLabel(fill, { formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') }, { color: tc.card, opacity })
+  const winColor = resolveToken('outcome-win')
+  const lossColor = resolveToken('outcome-loss')
+  const tieColor = resolveToken('outcome-draw')
+  const dnfColor = resolveToken('outcome-dnf')
 
   return {
     backgroundColor: CHART_BG,
@@ -66,8 +73,8 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         type: 'bar',
         stack: 'total',
         data: entries.map((e) => ({ value: e.wins, win_rate: e.win_rate })),
-        itemStyle: { color: resolveToken('outcome-win'), opacity: 0.85 },
-        label: labelAll,
+        itemStyle: { color: winColor, opacity: 0.85 },
+        label: labelAll(winColor, 0.85),
         barCategoryGap: '15%',
       },
       {
@@ -75,8 +82,8 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         type: 'bar',
         stack: 'total',
         data: entries.map((e) => ({ value: e.losses })),
-        itemStyle: { color: resolveToken('outcome-loss'), opacity: 0.75 },
-        label: labelAll,
+        itemStyle: { color: lossColor, opacity: 0.75 },
+        label: labelAll(lossColor, 0.75),
         barCategoryGap: '15%',
       },
       {
@@ -84,8 +91,8 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         type: 'bar',
         stack: 'total',
         data: entries.map((e) => ({ value: e.ties })),
-        itemStyle: { color: resolveToken('outcome-draw'), opacity: 0.7 },
-        label: labelIfNonzero,
+        itemStyle: { color: tieColor, opacity: 0.7 },
+        label: labelIfNonzero(tieColor, 0.7),
         barCategoryGap: '15%',
       },
       {
@@ -93,8 +100,8 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         type: 'bar',
         stack: 'total',
         data: entries.map((e) => ({ value: e.unfinished })),
-        itemStyle: { color: resolveToken('outcome-dnf'), opacity: 0.6 },
-        label: labelIfNonzero,
+        itemStyle: { color: dnfColor, opacity: 0.6 },
+        label: labelIfNonzero(dnfColor, 0.6),
         barCategoryGap: '15%',
       },
     ],

@@ -12,8 +12,8 @@
  */
 import { useMemo, useRef } from 'react'
 
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
-import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 
 import type { FormesText } from '../formes/i18n'
@@ -213,19 +213,9 @@ function Segment({
       style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }}
       data-fit-key={key}
     >
-      <Tooltip content={tip} className="h-full w-full">
-        <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-          {/* `text-white` : une écriture posée SUR l'aplat d'équipe, question de contraste dans
-              le segment et non couleur sémantique (même usage que la Répartition des frags). */}
-          <span
-            data-fit-label
-            className="whitespace-nowrap text-[11.5px] font-semibold tabular-nums text-white"
-            style={{ visibility: hidden ? 'hidden' : 'visible' }}
-          >
-            {text}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel fill={color} tip={tip} hidden={hidden} textClassName="text-[11.5px] font-semibold">
+        {text}
+      </SegmentLabel>
     </div>
   )
 }

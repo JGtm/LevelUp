@@ -9,6 +9,7 @@
  */
 import type { ReactNode } from 'react'
 
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { Tooltip } from '@/components/ui/tooltip'
 
 import { TipText } from '@/features/squad/emprise/TipText'
@@ -116,14 +117,9 @@ function Part({
   if (width <= 0) return null
   return (
     <div className="absolute inset-y-0" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }} data-fit-key={id} data-testid={`usages-lives-${id}`}>
-      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
-        <div className={`flex h-full w-full cursor-help items-center overflow-hidden ${align === 'start' ? 'justify-start pl-[7px]' : 'justify-end pr-[7px]'}`}>
-          {/* `text-white` : écriture posée sur l'aplat, contraste dans le segment et non couleur sémantique. */}
-          <span data-fit-label className="whitespace-nowrap text-xs font-medium tabular-nums leading-none text-white" style={{ visibility: hidden ? 'hidden' : 'visible' }}>
-            {text}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel fill={color} tip={<TipText text={tip} />} align={align} hidden={hidden}>
+        {text}
+      </SegmentLabel>
     </div>
   )
 }
