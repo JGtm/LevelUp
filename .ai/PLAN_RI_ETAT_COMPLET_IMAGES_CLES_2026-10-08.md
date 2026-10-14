@@ -1296,7 +1296,7 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       `1735e4e5a` VERT (tous les jobs, couverture et baseline Linux comprises), gitleaks, garde ADR 0021
       et Deploy Pre-Check verts ; run de la tête finale au journal.
 - [x] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués. *Fait* : ronde 1 (2026-10-09, deux relecteurs aveugles, 39 conditions tiennent) : HUIT constats recevables, tous corrigés dans le lot (commits 19b6e9cb2 à 59240092f) ; ronde 2 (2026-10-14, un relecteur frais, corrections seulement) : les huit corrigés, 37 conditions tiennent, aucun P0 ni P1, SEPT P2 consignés en D-32 à D-38, non traités (borne de deux rondes du skill adversarial-review).
-- [ ] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
+- [x] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
       parc et backfill killsource, après la fin de tout backfill en cours ; pairs prévenus avant la
       coupure du serveur local et à la fusion ; compte rendu à l'utilisateur.
 - Gate D1.4 : fiches au moins aussi pleines qu'avant (records avec armes = grammaire + repli ≥
@@ -1553,6 +1553,7 @@ refusionner, rejouer l'étape 0).
 - D-36 *(ronde 2)* l arrêt `ArretJeuDArmesRefuse` côté véhicule (`composants_vehicule_ti40.go:145`, i38) n a pas de test unitaire ; seule l équivalence de rejeu le verrait. Non traitée.
 - D-37 *(ronde 2)* retirer `l.debordements++` (`keyframe_etat_complet_bipede.go:156`) ne fait rougir aucun test (le test synthétique pose le débordement à la main). Non traitée.
 - D-38 *(ronde 2)* le golden des valeurs des bobines (116 lignes) n a jamais `Second` ≠ −1 : la lecture de la seconde main n est pas protégée. Non traitée.
+- D-39 *(recuisson du 2026-10-14)* `backfill-killsource` refuse la fusion de `34db6b33` à 40 500 ms : la clef (match, instant) apparie deux morts différentes (tueur du crédit et du film divergents). La garde fait son office ; l appariement de deux morts au même instant reste à instruire. Non traité.
 ## 8. Journal
 
 - 2026-10-08 : rédaction (seconde passe du workflow 2.7.d1, aucune ligne de production modifiée,
@@ -1906,3 +1907,13 @@ refusionner, rejouer l'étape 0).
   recos-e, journaux) sans conflit. Suite : gates, CI, puis D1.4.7 (fusion, recuisson commune de 235
   artefacts, projections, backfill killsource ; accord donné d'avance), contrôles KOTH demandés par les
   sessions pairs.
+- 2026-10-14 (superviseur) : D1.4.7 FAIT. CI verte sur la tête refusionnée (run 38601350228, `0e2ba970f`),
+  refusion des seuls documents de `97d71b206`, avance rapide de `origin/feat/v75` à `1fea2baf4` (pairs
+  prévenus avant). Recuisson commune avec le binaire de la branche : 235 artefacts au schéma 93, 0 erreur de
+  décodage, 59 min ; projections (usage-summary, pad-tiers, vehicle-takes, bomb-stats, flag-grabs-net) code 0 ;
+  backfill-killsource code 0 (8 matchs périmés, 524 morts, une fusion refusée sur `34db6b33` : deux morts au
+  même instant, tueur du crédit et du film divergents, garde de la fusion ; découverte D-39, non traitée).
+  Contrôles KOTH demandés par les pairs, conformes (0d9a9af9 : 35, cible 3, quatre collines successives sans
+  chevauchement ; 7de0b91d : 39, contradiction comptée ; classés : 40). Air relancé sur `109c252ca`, /health 200.
+  PLAN CLOS. Suite : étape dédiée (entrées de slot libéré, bit des films 1.8 option A, world-object i0 sous la
+  portée, valeur 2 de l emplacement désiré).
