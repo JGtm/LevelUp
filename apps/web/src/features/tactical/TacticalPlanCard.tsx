@@ -122,6 +122,9 @@ export interface TacticalPlanCardProps {
   /** L'index de la contribution mise en avant (tuile ou point survolé), `null` sinon. */
   survol: number | null
   onSurvol: (index: number | null) => void
+  /** L'index de la contribution choisie (clic sur une tuile ou un point), `null` sinon. */
+  choisie: number | null
+  onChoisir: (index: number) => void
 }
 
 export function TacticalPlanCard({
@@ -141,6 +144,8 @@ export function TacticalPlanCard({
   contributions,
   survol,
   onSurvol,
+  choisie,
+  onChoisir,
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
@@ -209,6 +214,8 @@ export function TacticalPlanCard({
               points={pointsTueurs}
               survol={survol}
               onSurvol={onSurvol}
+              choisie={choisie}
+              onChoisir={onChoisir}
               estompe={estompe}
             />
           )}

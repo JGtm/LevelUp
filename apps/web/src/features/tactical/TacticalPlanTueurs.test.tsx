@@ -75,9 +75,11 @@ interface Reglage {
   selected?: { col: number; row: number } | null
   contributions?: TacticalContribution[]
   survol?: number | null
+  choisie?: number | null
+  onZone?: (point: { x: number; y: number }) => void
 }
 
-function carte(props: Reglage, onSurvol: (i: number | null) => void) {
+function carte(props: Reglage, onSurvol: (i: number | null) => void, onChoisir: (i: number) => void = () => {}) {
   return (
     <TacticalPlanCard
       t={t}
@@ -92,16 +94,22 @@ function carte(props: Reglage, onSurvol: (i: number | null) => void) {
       etiquette={null}
       reglages={REGLAGES}
       selected={props.selected === undefined ? { col: 2, row: 1 } : props.selected}
-      onPointSelect={() => {}}
+      onPointSelect={props.onZone ?? (() => {})}
       contributions={props.contributions ?? [MORT, FRAG, ENTREE]}
       survol={props.survol ?? null}
       onSurvol={onSurvol}
+      choisie={props.choisie ?? null}
+      onChoisir={onChoisir}
     />
   )
 }
 
-function rendre(props: Reglage = {}, onSurvol: (i: number | null) => void = () => {}) {
-  return renderWithProviders(carte(props, onSurvol))
+function rendre(
+  props: Reglage = {},
+  onSurvol: (i: number | null) => void = () => {},
+  onChoisir: (i: number) => void = () => {},
+) {
+  return renderWithProviders(carte(props, onSurvol, onChoisir))
 }
 
 beforeEach(() => {
@@ -135,6 +143,9 @@ describe('TacticalPlanCard — la couche des tueurs et des victimes', () => {
     const legende = screen.getByTestId('tactical-tueurs-legend')
     expect(legende).toHaveTextContent('Tueurs')
     expect(legende).toHaveTextContent('Victimes')
+    // La légende dit les formes : losange pour les tueurs, rond pour les victimes.
+    expect(legende.querySelector('[data-forme="losange"]')).not.toBeNull()
+    expect(legende.querySelector('[data-forme="rond"]')).not.toBeNull()
     const points = vi.mocked(peindreLaCouche).mock.calls.at(-1)?.[1]
     expect(points?.map((p) => [p.index, p.role])).toEqual([
       [0, 'tueur'],
@@ -157,7 +168,43 @@ describe('TacticalPlanCard — la couche des tueurs et des victimes', () => {
 
   it('survol d’une tuile : la couche reçoit l’index mis en avant', () => {
     rendre({ survol: 1 })
-    expect(vi.mocked(peindreLaCouche).mock.calls.at(-1)?.[4]).toBe(1)
+    expect(vi.mocked(peindreLaCouche).mock.calls.at(-1)?.[5]).toBe(1)
+  })
+
+  it('la contribution choisie reste en relief sans survol, et le survol d’une autre prime', () => {
+    rendre({ choisie: 0 })
+    expect(vi.mocked(peindreLaCouche).mock.calls.at(-1)?.[5]).toBe(0)
+    vi.mocked(peindreLaCouche).mockClear()
+    rendre({ choisie: 0, survol: 1 })
+    expect(vi.mocked(peindreLaCouche).mock.calls.at(-1)?.[5]).toBe(1)
+  })
+
+  it('les tailles passées au peintre suivent l’échelle du plan', () => {
+    rendre()
+    const dim = vi.mocked(peindreLaCouche).mock.calls.at(-1)?.[4]
+    expect(dim?.rayonPoint).toBeGreaterThanOrEqual(4)
+    expect(dim?.rayonPointAvant).toBeGreaterThan(dim?.rayonPoint ?? 0)
+  })
+
+  it('clic sur un point du plan : la vue choisit sa tuile, sans changer de zone', () => {
+    const onChoisir = vi.fn()
+    const onChoisir_ = onChoisir
+    const surZone = vi.fn()
+    rendre({ onZone: surZone }, () => {}, onChoisir_)
+    const canvas = screen.getByTestId('tactical-plan-canvas')
+    act(() => {
+      canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 102, clientY: 51 }))
+    })
+    expect(onChoisir_).toHaveBeenCalledWith(0)
+    // Le clic n'a pas atteint la toile de la chaleur (il aurait changé de zone).
+    expect(surZone).not.toHaveBeenCalled()
+    // Loin de tout point : le clic passe à la toile (changement de zone), aucun choix.
+    onChoisir_.mockClear()
+    act(() => {
+      canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 90 }))
+    })
+    expect(onChoisir_).not.toHaveBeenCalled()
+    expect(surZone).toHaveBeenCalledTimes(1)
   })
 
   it('survol d’un point du plan : la vue est prévenue, l’infobulle nomme l’autre joueur et la distance', () => {

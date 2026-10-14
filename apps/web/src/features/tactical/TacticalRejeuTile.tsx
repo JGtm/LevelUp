@@ -30,9 +30,13 @@ interface TacticalRejeuTileProps {
   actif?: boolean
   /** Le pointeur entre dans la tuile (`true`) ou la quitte (`false`) : le plan met son point en avant. */
   onSurvol?: (survole: boolean) => void
+  /** La tuile est la contribution CHOISIE : bordée de l'accent, sur fond teinté. */
+  choisi?: boolean
+  /** Clic (ou Entrée / Espace) sur la tuile : la vue bascule le choix. Le bouton de rejeu garde son propre clic. */
+  onChoisir?: () => void
 }
 
-export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, actif = false, onSurvol }: TacticalRejeuTileProps) {
+export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, actif = false, onSurvol, choisi = false, onChoisir }: TacticalRejeuTileProps) {
   const timezone = useAppShellStore((s) => s.userTimezone)
   const issue = useOutcomeMapping(c.resultat ?? '')
   const jeton = outcomeTokenFromCanonical(c.resultat ?? '')
@@ -45,8 +49,21 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
   return (
     <li
       ref={ligne}
-      className={`relative flex min-h-14 items-center gap-1.5 border-b border-border py-1.5 pl-2.5 pr-1.5 text-[12.5px] tabular-nums transition-colors last:border-b-0 hover:bg-accent${actif ? ' bg-accent' : ''}`}
+      className={`group relative flex min-h-14 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border py-1.5 pl-2.5 pr-1.5 text-[12.5px] tabular-nums transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring${choisi ? ' border-primary bg-primary/10' : ` border-border${actif ? ' bg-accent' : ' bg-card'}`}`}
       title={m.titre}
+      role="option"
+      tabIndex={0}
+      aria-selected={choisi}
+      onClick={(event) => {
+        // Le lien de rejeu de la tuile garde son propre clic : il n'est pas un choix.
+        if (!(event.target as HTMLElement).closest('a,button')) onChoisir?.()
+      }}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault()
+          onChoisir?.()
+        }
+      }}
       data-actif={actif || undefined}
       onPointerEnter={() => onSurvol?.(true)}
       onPointerLeave={() => onSurvol?.(false)}
@@ -89,6 +106,18 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
         variant="large"
         search={m.rejeu.search}
       />
+      {/* Le chevron dit, au repos, que la tuile se choisit (le bouton de rejeu a sa propre icône). */}
+      <svg
+        viewBox="0 0 16 16"
+        aria-hidden
+        className={`size-4 flex-none transition-colors ${choisi ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        data-testid="tactical-rejeu-chevron"
+      >
+        <path d="M6 3.5 10.5 8 6 12.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </li>
   )
 }

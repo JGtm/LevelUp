@@ -8,6 +8,7 @@
  * n'ont pas d'autre joueur et ne posent rien ; une contribution dont un des deux points manque non
  * plus (jamais de position de repli).
  */
+import { screenLengthPx } from '@/features/match-replay/model/screenSizes'
 import type { TacticalContribution } from '@/lib/api/types'
 
 /** Le rôle de l'autre joueur : le tueur d'une mort, la victime d'un frag. */
@@ -35,8 +36,67 @@ export interface PointDeLaCouche {
 /** Ordre fixe des rôles, pour la légende. */
 const ORDRE_DES_ROLES: readonly RoleDuPoint[] = ['tueur', 'victime']
 
-/** Au-delà de cette distance (px écran) du curseur, aucun point n'est survolé. */
-export const RAYON_DE_SURVOL_PX = 9
+/** Au-delà de ce déplacement (px) entre l'appui et le relâcher, le geste est un glisser, pas un clic. */
+export const SEUIL_CLIC_PX = 4
+
+/**
+ * LA TAILLE DE LA COUCHE SUIT LA CARTE ET LE ZOOM. Rayon du point, épaisseur du trait et rayon de
+ * survol sont des longueurs MONDE (mètres), converties en px par le modèle de taille du rejeu 2D
+ * (`screenLengthPx` : longueur × max(échelle de la carte, plancher d'échelle), plafond doux), avec
+ * un plancher et un plafond en px pour rester lisibles. L'échelle est celle du plan à l'instant :
+ * px par mètre de la fenêtre visible, donc le zoom y est compris.
+ */
+const RAYON_POINT_M = 0.75
+const EPAISSEUR_TRAIT_M = 0.15
+const RAYON_SURVOL_M = 1.5
+/** Mise en avant (survol ou sélection) : facteur sur le rayon du point et l'épaisseur du trait. */
+const FACTEUR_AVANT = 1.6
+const RAYON_POINT_PX = { min: 3, max: 13.5 } as const
+const EPAISSEUR_TRAIT_PX = { min: 1, max: 3 } as const
+const RAYON_SURVOL_PX = { min: 9, max: 24 } as const
+
+/** Les dimensions de la couche, en px, pour une échelle de plan donnée. */
+export interface DimensionsDeLaCouche {
+  rayonPoint: number
+  rayonPointAvant: number
+  epaisseurTrait: number
+  epaisseurTraitAvant: number
+  /** Distance maximale entre le curseur et un point pour le survoler. */
+  rayonSurvol: number
+}
+
+function borne(valeur: number, { min, max }: { min: number; max: number }): number {
+  return Math.min(Math.max(valeur, min), max)
+}
+
+/** dimensionsDeLaCouche — les tailles de la couche pour `scalePxPerM` px par mètre sur le plan. */
+export function dimensionsDeLaCouche(scalePxPerM: number): DimensionsDeLaCouche {
+  const px = (metres: number) => screenLengthPx(metres * 1000, scalePxPerM)
+  const rayonPoint = borne(px(RAYON_POINT_M), RAYON_POINT_PX)
+  const epaisseurTrait = borne(px(EPAISSEUR_TRAIT_M), EPAISSEUR_TRAIT_PX)
+  return {
+    rayonPoint,
+    rayonPointAvant: rayonPoint * FACTEUR_AVANT,
+    epaisseurTrait,
+    epaisseurTraitAvant: epaisseurTrait * FACTEUR_AVANT,
+    rayonSurvol: borne(px(RAYON_SURVOL_M), RAYON_SURVOL_PX),
+  }
+}
+
+/** misEnAvant — la contribution en relief : celle qu'on survole, à défaut celle qui est choisie. */
+export function misEnAvant(survol: number | null, choisie: number | null): number | null {
+  return survol ?? choisie
+}
+
+/** basculerChoix — re-clic sur la contribution choisie = désélection, sinon elle devient la choisie. */
+export function basculerChoix(choisie: number | null, index: number): number | null {
+  return choisie === index ? null : index
+}
+
+/** formeDuRole — la forme qui distingue le rôle (jamais la couleur) : un tueur est un losange, une victime un rond. */
+export function formeDuRole(role: RoleDuPoint): 'losange' | 'rond' {
+  return role === 'tueur' ? 'losange' : 'rond'
+}
 
 /** roleDeLaFace — le rôle de l'autre joueur d'une face, `null` pour une face sans autre joueur. */
 export function roleDeLaFace(face: string | undefined): RoleDuPoint | null {
@@ -85,7 +145,7 @@ export function pointLePlusProche(
   points: readonly PointDeLaCouche[],
   curseur: { x: number; y: number },
   projeter: (p: PointMonde) => { x: number; y: number },
-  rayonPx: number = RAYON_DE_SURVOL_PX,
+  rayonPx: number,
 ): number | null {
   let meilleur: number | null = null
   let ecart = rayonPx

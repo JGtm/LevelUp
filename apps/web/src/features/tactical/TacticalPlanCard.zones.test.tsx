@@ -81,6 +81,8 @@ function rendre(lecture: TacticalRaster) {
       contributions={[]}
       survol={null}
       onSurvol={() => {}}
+      choisie={null}
+      onChoisir={() => {}}
     />,
   )
 }

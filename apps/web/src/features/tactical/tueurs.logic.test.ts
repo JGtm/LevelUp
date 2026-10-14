@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest'
 
 import type { TacticalContribution } from '@/lib/api/types'
 
-import { distanceEnMetres, pointLePlusProche, pointsDeLaCouche, rolesPresents, roleDeLaFace } from './tueurs.logic'
+import {
+  basculerChoix,
+  dimensionsDeLaCouche,
+  distanceEnMetres,
+  formeDuRole,
+  misEnAvant,
+  pointLePlusProche,
+  pointsDeLaCouche,
+  rolesPresents,
+  roleDeLaFace,
+} from './tueurs.logic'
 
 function contribution(extra: Partial<TacticalContribution> = {}): TacticalContribution {
   return {
@@ -79,6 +89,53 @@ describe('pointLePlusProche — test de survol en px écran', () => {
   })
   it('aucun hors du rayon', () => {
     expect(pointLePlusProche(pts, { x: 140, y: 100 }, projeter, 9)).toBeNull()
-    expect(pointLePlusProche([], { x: 0, y: 0 }, projeter)).toBeNull()
+    expect(pointLePlusProche([], { x: 0, y: 0 }, projeter, 9)).toBeNull()
+  })
+})
+
+describe('dimensionsDeLaCouche — la taille suit l’échelle du plan (modèle de taille du rejeu 2D)', () => {
+  it('croît avec l’échelle : un plan zoomé ou une petite carte grossit les points', () => {
+    const grande = dimensionsDeLaCouche(4) // grande carte, plan entier
+    const zoome = dimensionsDeLaCouche(16) // même carte zoomée x4
+    expect(zoome.rayonPoint).toBeGreaterThan(grande.rayonPoint)
+    expect(zoome.epaisseurTrait).toBeGreaterThanOrEqual(grande.epaisseurTrait)
+    expect(zoome.rayonSurvol).toBeGreaterThanOrEqual(grande.rayonSurvol)
+  })
+  it('plancher et plafond en px', () => {
+    // Sous le plancher d'échelle du rejeu, la taille ne descend plus : un palier, pas un zéro.
+    const mini = dimensionsDeLaCouche(0.001)
+    expect(mini).toEqual(dimensionsDeLaCouche(1))
+    expect(mini.rayonPoint).toBeGreaterThanOrEqual(3)
+    expect(mini.epaisseurTrait).toBeGreaterThanOrEqual(1)
+    expect(mini.rayonSurvol).toBeGreaterThanOrEqual(9)
+    const maxi = dimensionsDeLaCouche(10_000)
+    expect(maxi.rayonPoint).toBe(13.5)
+    expect(maxi.epaisseurTrait).toBe(3)
+    expect(maxi.rayonSurvol).toBe(24)
+  })
+  it('la mise en avant grossit le point et le trait', () => {
+    const d = dimensionsDeLaCouche(8)
+    expect(d.rayonPointAvant).toBeGreaterThan(d.rayonPoint)
+    expect(d.epaisseurTraitAvant).toBeGreaterThan(d.epaisseurTrait)
+  })
+})
+
+describe('choix d’une contribution', () => {
+  it('le survol prime sur le choix, à défaut le choix tient', () => {
+    expect(misEnAvant(2, 5)).toBe(2)
+    expect(misEnAvant(null, 5)).toBe(5)
+    expect(misEnAvant(null, null)).toBeNull()
+  })
+  it('re-clic = désélection', () => {
+    expect(basculerChoix(null, 3)).toBe(3)
+    expect(basculerChoix(3, 3)).toBeNull()
+    expect(basculerChoix(3, 4)).toBe(4)
+  })
+})
+
+describe('formeDuRole — la forme porte la distinction, pas la couleur', () => {
+  it('tueur = losange, victime = rond', () => {
+    expect(formeDuRole('tueur')).toBe('losange')
+    expect(formeDuRole('victime')).toBe('rond')
   })
 })

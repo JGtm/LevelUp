@@ -411,3 +411,7 @@ en = "Victims"
 [tactical.tile.open_replay_no_instant]
 fr = "Ouvrir le rejeu {secondes} s avant l’événement"
 en = "Open the replay {secondes} s before the event"
+
+[tactical.zone.events_label]
+fr = "Événements de la zone, à sélectionner"
+en = "Zone events, select one"

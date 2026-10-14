@@ -55,7 +55,7 @@ function contribution(extra: Partial<TacticalContribution>): TacticalContributio
 const AVEC_POINTS = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 23.4, y: 0 } })
 const SANS_POINT = contribution({ match_id: 'm2', point: { x: 0, y: 0 } })
 
-function rendre(locale: 'fr' | 'en', survol: number | null, onSurvol = vi.fn()) {
+function rendre(locale: 'fr' | 'en', survol: number | null, onSurvol = vi.fn(), choisie: number | null = null, onChoisir = vi.fn()) {
   renderWithProviders(
     <TacticalZoneCard
       t={getTacticalText(locale)}
@@ -68,6 +68,8 @@ function rendre(locale: 'fr' | 'en', survol: number | null, onSurvol = vi.fn()) 
       detail={{ data: { contributions: [AVEC_POINTS, SANS_POINT] }, isPending: false, isError: false }}
       survol={survol}
       onSurvol={onSurvol}
+      choisie={choisie}
+      onChoisir={onChoisir}
     />,
   )
   return onSurvol
@@ -104,5 +106,68 @@ describe('TacticalRejeuTile — la couche « autre joueur »', () => {
     expect(onSurvol).toHaveBeenLastCalledWith(1)
     fireEvent.pointerLeave(tuiles[1]!)
     expect(onSurvol).toHaveBeenLastCalledWith(null)
+  })
+})
+
+describe('TacticalRejeuTile — la sélection', () => {
+  it('une tuile est une option focalisable, non choisie par défaut', () => {
+    rendre('fr', null)
+    expect(screen.getByRole('listbox')).toHaveAccessibleName('Événements de la zone, à sélectionner')
+    const tuiles = screen.getAllByRole('option')
+    expect(tuiles).toHaveLength(2)
+    expect(tuiles[0]).toHaveAttribute('tabindex', '0')
+    expect(tuiles[0]).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('chaque tuile porte au repos un chevron et l’apparence d’une carte (bordure, fond)', () => {
+    rendre('fr', null)
+    const tuiles = screen.getAllByRole('option')
+    expect(screen.getAllByTestId('tactical-rejeu-chevron')).toHaveLength(2)
+    expect(tuiles[0]?.className).toContain('border-border')
+    expect(tuiles[0]?.className).toContain('bg-card')
+    expect(tuiles[0]?.className).toContain('rounded-md')
+    expect(tuiles[0]?.className).toContain('cursor-pointer')
+  })
+
+  it('la tuile choisie est marquée aria-selected et reste en relief sans survol', () => {
+    rendre('fr', null, vi.fn(), 1)
+    const tuiles = screen.getAllByRole('option')
+    expect(tuiles[1]).toHaveAttribute('aria-selected', 'true')
+    expect(tuiles[1]).toHaveAttribute('data-actif', 'true')
+    expect(tuiles[0]).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('clic, puis Entrée et Espace : la vue est prévenue de l’index', () => {
+    const onChoisir = vi.fn()
+    rendre('fr', null, vi.fn(), null, onChoisir)
+    const tuiles = screen.getAllByRole('option')
+    fireEvent.click(tuiles[1]!)
+    expect(onChoisir).toHaveBeenLastCalledWith(1)
+    expect(onChoisir).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(tuiles[0]!, { key: 'Enter' })
+    fireEvent.keyDown(tuiles[0]!, { key: ' ' })
+    expect(onChoisir).toHaveBeenCalledTimes(3)
+    fireEvent.keyDown(tuiles[0]!, { key: 'a' })
+    expect(onChoisir).toHaveBeenCalledTimes(3)
+  })
+
+  it('le lien de rejeu garde son propre clic : il ne choisit pas la tuile', () => {
+    const onChoisir = vi.fn()
+    useAppShellStore.setState({ locale: 'fr', userTimezone: 'UTC', currentTitleSlug: 'halo_infinite' } as never)
+    renderWithProviders(
+      <TacticalZoneCard
+        t={getTacticalText('fr')}
+        locale="fr"
+        playerSlug="JGtm"
+        question="morts"
+        signee={false}
+        pasM={2}
+        cellule={CELLULE}
+        detail={{ data: { contributions: [{ ...AVEC_POINTS, replay_available: true }] }, isPending: false, isError: false }}
+        onChoisir={onChoisir}
+      />,
+    )
+    fireEvent.click(screen.getByRole('link'))
+    expect(onChoisir).not.toHaveBeenCalled()
   })
 })

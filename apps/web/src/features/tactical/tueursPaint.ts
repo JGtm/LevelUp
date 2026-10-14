@@ -1,47 +1,78 @@
 /**
  * tueursPaint.ts — la couche « autre joueur » du plan, peinte sur sa propre toile, par-dessus la
- * chaleur : les traits d'abord (sous les points), puis les points. Elle partage la projection du
- * plan (`projectionDuPlan`) : mêmes mètres, même cadrage, même zoom que la chaleur et les zones.
+ * chaleur : les traits d'abord (sous les marqueurs), puis les marqueurs. Elle partage la projection
+ * du plan (`projectionDuPlan`) : mêmes mètres, même cadrage, même zoom que la chaleur et les zones.
  *
- * Le SURVOL met une contribution en avant (trait plus épais, point plus grand, opacité pleine) et
- * estompe les autres. Les couleurs arrivent résolues (jetons sémantiques, lus par l'appelant).
+ * AUCUNE TEINTE DE LA RAMPE DE CHALEUR : les marqueurs et les traits sont à l'encre de premier plan
+ * du thème, cernés d'un liseré à la couleur du fond pour se détacher de la carte comme de la
+ * chaleur. Le tueur et la victime se distinguent par la FORME — losange, rond — et non par la couleur.
+ *
+ * Les tailles arrivent en px, déjà calculées pour l'échelle du plan (`dimensionsDeLaCouche`). Le
+ * SURVOL ou la SÉLECTION met une contribution en avant (trait plus épais, marqueur plus grand,
+ * opacité pleine) et estompe les autres.
  */
-import type { PointDeLaCouche, RoleDuPoint } from './tueurs.logic'
+import { formeDuRole, type DimensionsDeLaCouche, type PointDeLaCouche, type RoleDuPoint } from './tueurs.logic'
 
-/** Opacités du trait et du point : au repos, estompés par un survol ailleurs, mis en avant. */
-const OPACITE_TRAIT = { repos: 0.4, estompe: 0.12, avant: 1 } as const
-const OPACITE_POINT = { repos: 0.9, estompe: 0.3, avant: 1 } as const
-/** Épaisseurs du trait et rayons du point, en px. */
-const EPAISSEUR = { repos: 1, avant: 2.5 } as const
-const RAYON = { repos: 4, avant: 6.5 } as const
+/** Opacités du trait et du marqueur : au repos, estompés par une mise en avant ailleurs, mis en avant. */
+const OPACITE_TRAIT = { repos: 0.4, estompe: 0.12, avant: 0.9 } as const
+const OPACITE_POINT = { repos: 0.95, estompe: 0.3, avant: 1 } as const
+/** Épaisseur du liseré (couleur du fond) autour des marqueurs, et de part et d'autre des traits. */
+const LISERE_MARQUEUR_PX = 1.5
+const LISERE_TRAIT_PX = 2
+/** Le losange a la même emprise visuelle que le rond : sa demi-diagonale est un peu plus longue. */
+const FACTEUR_LOSANGE = 1.3
 
 export interface CouleursDeLaCouche {
-  /** La couleur de chaque rôle (jeton sémantique résolu). */
-  roles: Readonly<Record<RoleDuPoint, string>>
-  /** L'encre du contour des points (jeton `foreground`, lu sur la toile). */
+  /** L'encre de premier plan du thème (marqueurs et traits). */
   encre: string
+  /** La couleur du fond du thème (liseré de contraste). */
+  fond: string
 }
 
-/** peindreLaCouche peint les traits puis les points ; `survol` = l'index de contribution mis en avant. */
+function tracerForme(ctx: CanvasRenderingContext2D, role: RoleDuPoint, x: number, y: number, r: number): void {
+  ctx.beginPath()
+  if (formeDuRole(role) === 'rond') {
+    ctx.arc(x, y, r, 0, 2 * Math.PI)
+    return
+  }
+  const d = r * FACTEUR_LOSANGE
+  ctx.moveTo(x, y - d)
+  ctx.lineTo(x + d, y)
+  ctx.lineTo(x, y + d)
+  ctx.lineTo(x - d, y)
+  ctx.closePath()
+}
+
+/** peindreLaCouche peint les traits puis les marqueurs ; `enAvant` = l'index de contribution en relief. */
 export function peindreLaCouche(
   ctx: CanvasRenderingContext2D,
   points: readonly PointDeLaCouche[],
   projeter: (p: { x: number; y: number }) => { x: number; y: number },
   couleurs: CouleursDeLaCouche,
-  survol: number | null,
+  dim: DimensionsDeLaCouche,
+  enAvant: number | null,
 ): void {
-  const etat = (p: PointDeLaCouche) => (survol === null ? 'repos' : p.index === survol ? 'avant' : 'estompe')
+  const etat = (p: PointDeLaCouche) => (enAvant === null ? 'repos' : p.index === enAvant ? 'avant' : 'estompe')
   // La contribution mise en avant se peint en dernier : au-dessus des autres.
-  const ordre = [...points].sort((a, b) => Number(a.index === survol) - Number(b.index === survol))
+  const ordre = [...points].sort((a, b) => Number(a.index === enAvant) - Number(b.index === enAvant))
   ctx.save()
   ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
   for (const p of ordre) {
     const e = etat(p)
     const a = projeter(p.de)
     const b = projeter(p.vers)
+    const largeur = e === 'avant' ? dim.epaisseurTraitAvant : dim.epaisseurTrait
     ctx.globalAlpha = OPACITE_TRAIT[e]
-    ctx.strokeStyle = couleurs.roles[p.role]
-    ctx.lineWidth = EPAISSEUR[e === 'avant' ? 'avant' : 'repos']
+    // Le liseré du fond sous le trait le détache de la chaleur et d'un fond clair comme sombre.
+    ctx.strokeStyle = couleurs.fond
+    ctx.lineWidth = largeur + LISERE_TRAIT_PX
+    ctx.beginPath()
+    ctx.moveTo(a.x, a.y)
+    ctx.lineTo(b.x, b.y)
+    ctx.stroke()
+    ctx.strokeStyle = couleurs.encre
+    ctx.lineWidth = largeur
     ctx.beginPath()
     ctx.moveTo(a.x, a.y)
     ctx.lineTo(b.x, b.y)
@@ -51,11 +82,10 @@ export function peindreLaCouche(
     const e = etat(p)
     const b = projeter(p.vers)
     ctx.globalAlpha = OPACITE_POINT[e]
-    ctx.fillStyle = couleurs.roles[p.role]
-    ctx.strokeStyle = couleurs.encre
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.arc(b.x, b.y, RAYON[e === 'avant' ? 'avant' : 'repos'], 0, 2 * Math.PI)
+    ctx.fillStyle = couleurs.encre
+    ctx.strokeStyle = couleurs.fond
+    ctx.lineWidth = LISERE_MARQUEUR_PX
+    tracerForme(ctx, p.role, b.x, b.y, e === 'avant' ? dim.rayonPointAvant : dim.rayonPoint)
     ctx.fill()
     ctx.stroke()
   }

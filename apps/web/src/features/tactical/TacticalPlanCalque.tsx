@@ -13,7 +13,7 @@
  * projette — la chaleur, les zones, la sélection, l'étiquette, et l'image du fond (`cadrageDuFond`).
  *
  * UN GLISSER N'EST PAS UN CLIC : le relâcher d'un glisser déclenche aussi `click` ; un clic dont le
- * pointeur a bougé de plus de `SEUIL_GLISSER_PX` depuis l'appui ne choisit donc aucune zone.
+ * pointeur a bougé de plus de `SEUIL_CLIC_PX` depuis l'appui ne choisit donc aucune zone.
  *
  * LA CHALEUR SE PEINT LISSÉE (`chaleurLissee.ts`) : des zones de chaleur, plus des carrés. Le repère
  * de la zone choisie est un anneau autour de sa cellule (la cellule reste l'adresse du détail).
@@ -31,12 +31,11 @@ import type { TacticalGrid } from '@/lib/replay/heatPaint'
 
 import { lisserLaGrille } from './chaleurLissee'
 import { peindreLePlan } from './planPaint'
+import { SEUIL_CLIC_PX } from './tueurs.logic'
 import { useTailleDuCanvas } from './useTailleDuCanvas'
 import { positionEtiquette } from './zone.logic'
 import { pointDuClic, rectSelection, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
 
-/** Au-delà de ce déplacement du pointeur entre l'appui et le relâcher, le geste est un glisser. */
-const SEUIL_GLISSER_PX = 4
 /** Rayon de l'anneau de la zone choisie, en côtés de cellule : il entoure la cellule entière. */
 const ANNEAU_RAYON_CELLULE = 0.75
 
@@ -111,7 +110,7 @@ export function CalqueDuPlan({
   function handleClick(event: React.MouseEvent<HTMLCanvasElement>) {
     const depart = appui.current
     appui.current = null
-    if (depart && Math.hypot(event.clientX - depart.x, event.clientY - depart.y) > SEUIL_GLISSER_PX) return
+    if (depart && Math.hypot(event.clientX - depart.x, event.clientY - depart.y) > SEUIL_CLIC_PX) return
     const canvas = canvasRef.current
     if (!canvas || !repere) return
     const rect = canvas.getBoundingClientRect()

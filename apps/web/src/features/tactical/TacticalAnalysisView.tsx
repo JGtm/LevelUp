@@ -19,7 +19,7 @@
  * LA ZONE LA PLUS CHAUDE EST PRÉSÉLECTIONNÉE (`useZone`) tant que l'utilisateur n'a rien choisi ; son
  * détail (`useTacticalCellule`) part quand la lecture est prête, et nomme la zone sur le plan.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import type { TacticalContribution, TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -31,6 +31,7 @@ import { usePrechargementDesLectures, useTacticalCellule, useTacticalRaster } fr
 import { TacticalZoneCard } from './TacticalZoneCard'
 import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
+import { basculerChoix } from './tueurs.logic'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
 import { choixDuClic, titreDeZone, zoneLaPlusChaude } from './zone.logic'
 
@@ -108,12 +109,7 @@ export function TacticalAnalysisView({
     params,
   })
   // La contribution mise en avant, partagée par la tuile et le plan ; remise à zéro avec la zone.
-  const [survol, setSurvol] = useState<number | null>(null)
-  const [zoneDuSurvol, setZoneDuSurvol] = useState(zone.cle)
-  if (zone.cle !== zoneDuSurvol) {
-    setZoneDuSurvol(zone.cle)
-    if (survol !== null) setSurvol(null)
-  }
+  const { survol, setSurvol, choisie, choisir } = useContributionChoisie(zone.cle)
 
   return (
     <div
@@ -142,6 +138,8 @@ export function TacticalAnalysisView({
         contributions={zone.contributions}
         survol={survol}
         onSurvol={setSurvol}
+        choisie={choisie}
+        onChoisir={choisir}
       />
       {/* LA COLONNE PREND LA HAUTEUR DE LA CARTE DU PLAN (trois colonnes) : `contain: size` l'empêche
           de peser sur la rangée, l'étirement lui donne la hauteur du plan, et sa liste défile. */}
@@ -157,6 +155,8 @@ export function TacticalAnalysisView({
           detail={zone.detail}
           survol={survol}
           onSurvol={setSurvol}
+          choisie={choisie}
+          onChoisir={choisir}
         />
       </div>
     </div>
@@ -213,6 +213,32 @@ function useZoneChoisie(cle: string) {
 
 /** Aucune contribution : une référence stable, pour que les mémos de la couche ne se recalculent pas. */
 const AUCUNE_CONTRIBUTION: TacticalContribution[] = []
+
+/**
+ * useContributionChoisie — la contribution survolée et la contribution CHOISIE (clic sur sa tuile ou
+ * son point), partagées par la liste et le plan. Le choix tient jusqu'à un re-clic ou Échap, et se
+ * remet à zéro avec la zone, la lecture, les joueurs et la réapparition (`cle`) — ajusté pendant le
+ * rendu, comme `useZoneChoisie`. C'est l'état que portera le détail d'une mort.
+ */
+function useContributionChoisie(cle: string) {
+  const [survol, setSurvol] = useState<number | null>(null)
+  const [choisie, setChoisie] = useState<number | null>(null)
+  const [cleAnterieure, setCleAnterieure] = useState(cle)
+  if (cle !== cleAnterieure) {
+    setCleAnterieure(cle)
+    if (survol !== null) setSurvol(null)
+    if (choisie !== null) setChoisie(null)
+  }
+  useEffect(() => {
+    if (choisie === null) return
+    const surTouche = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setChoisie(null)
+    }
+    window.addEventListener('keydown', surTouche)
+    return () => window.removeEventListener('keydown', surTouche)
+  }, [choisie])
+  return { survol, setSurvol, choisie, choisir: (index: number) => setChoisie((courante) => basculerChoix(courante, index)) }
+}
 
 type ParamsLecture = Parameters<typeof useTacticalRaster>[2]
 
