@@ -117212,3 +117212,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : OpenAPI et `generated.ts` à jour, manifestes i18n régénérés sans écart ; tests archlint, migration, api, middleware, modelabel, ops, replaychild, invariants verts sur l'arbre fusionné. Boot local : `shared_recompute_mode_category_v1` corrige 4 254 lignes (762 paires) et retire `idx_registry_mode_category` ; Halo 5 sans effet ; 0 ERROR ; `/health` ok.
 
 **Conclusion / prochaine étape** : CI de `feat/v75` à relever ; mesure du pic mémoire de la recuisson des dix films de la démo (accord du user du 2026-10-14) ; nettoyage des worktrees, branches et caches du chantier ; registre et backlog à purger des lignes traitées.
+
+## [2026-10-14] Résidu de lecture des images-clés, étape R1 : entrées de slot libéré (Rslot) — En cours (`feat/ri-ecart-108`, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`)
+
+**Statut** : En cours — plan écrit et commité ; R1 close (gate passé, commits locaux, aucun push : la montée des révisions est en R5) ; R2 à R5 restent.
+
+**Décision technique principale** : la table d'image-clé est lue comme le jeu la lit (`FUN_142e2bfd0`, `FUN_1408be074`, `FUN_1408f1948`, relus) : une entrée par slot, 0x1fff entrées, un slot libéré = 108 bits d'archétype `0xffffffff`. Un seul lecteur d'entrée (`keyframe_entrees.go`) sert la fermeture (entre deux ancres de slots s et t, lire t − s − 1 entrées ; le dernier record ferme sur la fin de table), la preuve d'image-clé qui arbitre l'élection (slots libérés sautés, record suivant au slot slot + 1 + k), les marches déterministes (slot = index de l'entrée) et le témoin faible de chaînage (forme exacte de l'écrivain). La « fin de table » à 2 048 sentinelles du balayeur, qui n'existe pas chez le jeu et ne s'atteint sur aucun film, est retirée avec les options du motif qu'elle seule utilisait.
+
+**Résultats observés** (28 films, contexte de cuisson) : bipèdes fermés 5 397 → 8 237 sur 10 710, tous archétypes bornés 240 466 → 267 817 ; admissions T1 ∧ T2 inchangées (6 507) ; 44 fermetures `ti=37` perdues, toutes fermées en base avec un écart de slots positif (impossible dans une table indexée par slot), adjugées ; élection changée sur un seul film (`64e8adfa`, deux régions : la fausse ancre slot 1536 `ti=0` réfutée, dix records rendus, fermetures 0 → 11) ; équipes et carte delta identiques ; killsource identique sur les 19 témoins ; `replay-equiv` : seul le document de `64e8adfa` change (une arme au sol retrouvée et les compteurs de marche). 164 derniers records de paquet fermés par la queue de table.
+
+**Conclusion / prochaine étape** : R2, le bit des films 1.8 — lire d'abord `FUN_142988e98` (aiguillage des anciens formats), puis l'option A de l'utilisateur.

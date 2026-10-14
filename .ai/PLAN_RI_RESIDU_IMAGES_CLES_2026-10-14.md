@@ -361,7 +361,7 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     (libérée prise pour une fin, index ≠ slot accepté, budget compté sur les libérées, queue acceptée à
     plus d'un octet, chaînage faible sur le seul en-tête de record) ; G-unit (`grammar`, `source`),
     archlint, vet `research` verts.
-- [ ] R1.5 **Gate de R1 (cumulé, contre `$RES/r0`)** → `$RES/r1` :
+- [x] R1.5 **Gate de R1 (cumulé, contre `$RES/r0`)** → `$RES/r1` :
   - I-ferm (`ti=35` et tous archétypes), I-ancres, I-equipes, I-carte, I-d0 (admissions T1 ∧ T2),
     I-e108 : chaque écart avec r0 rattaché à R1.2, R1.3 ou R1.4 et adjugé ;
   - G-equiv, 20 films, faits mis de côté (`depuis_les_faits=false` vérifié), binaire r0 contre
@@ -372,6 +372,30 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     `go vet -tags=research ./internal/games/halo_infinite/film/...` ; golangci-lint sur les paquets
     touchés (`--new-from-merge-base=origin/feat/v75`) ;
   - plan (cases, journal), entrée `.ai/thought_log.md` (statut En cours), commit. Pas de push (E-3).
+  - *Gate R1 PASSÉ (2026-10-14, `$RES/r1`, tête `faf0cd345`)* :
+    - I-ferm contre r0 (`cmp_ferm.txt`) : 283 lignes en hausse ; baisses = les 44 records `ti=37` de
+      R1.2 (E-5 : `396cfc92` 16 → 1, `696a9d7c` 3 → 2) et la ligne `64e8adfa` `ti=0` (0/2) disparue
+      avec la fausse ancre 1536 de R1.3 (E-4) ; rien d'autre. Bipèdes fermés 5 397 → 8 237 sur 10 710 ;
+      tous archétypes bornés 240 466 → 267 817 (460 730 bornés, +8 par l'élection de `64e8adfa`) ; preuve
+      d'image-clé jouée sur toutes les ancres 215 161 → 235 993.
+    - I-ancres : seules les deux régions de `64e8adfa` changent (`adj.sh r0 r1`, ADJUGÉES) ; I-equipes
+      et I-carte (20, 8, MPP) identiques à r0 ; I-d0 : admis T1 ∧ T2 6 507 = r0, TOTAL
+      `10710 10198 8237 9968 332 6954 1180 8120 3 6533` ; témoin décalé d'un bit, bipèdes 316 dont 3 par
+      hasard.
+    - killsource, 19 témoins : sorties IDENTIQUES à l'octet à r0 (`cmp`).
+    - G-equiv, 20 films, 40 cuissons à `depuis_les_faits=false` (`etapes_divergentes.tsv`) :
+      `zoneKeyReads` de `01e1f945` (509 → 530), `696a9d7c` (709 → 710), `7344d24f` (761 → 762) — des
+      records `ti=13` désormais fermés, document publié inchangé sur ces trois films ; `64e8adfa` :
+      `artifact` (3 243 461 → 3 243 635 octets), `carrierMarks`, `movementStates.stats`, `pads`.
+      Adjugé sur pièces (artefacts r0 et r1 de `replay-build --facts`, `$RES/r1/art/`) : UNE arme au sol
+      de plus (`groundWeapons`, famille `3e070217`, lâchée par l'entité 516 à 684, vue jusqu'à 694,
+      chargeur 13 / réserve 40 — le record `ti=42` du slot 1611 que la fausse ancre effaçait) et les
+      compteurs de la marche (élections 1 507 → 1 515, réfutations 1 → 3, records 13 749 → 13 757,
+      liaisons oubliées 250 → 248) ; rien d'autre ne bouge. Le document publié change :
+      `SchemaVersion` montera en R5 (E-3).
+    - Tests : `grammar/...`, `source`, les autres paquets de `film/...`, `replaybuild`, `killcollector`
+      (`-skip "$SKIPREV"`) verts ; archlint vert ; vet avec et sans `research` sur `film/...` verts ;
+      golangci-lint (`--new-from-merge-base=origin/feat/v75`, `grammar/...` et `source/...`) 0 problème.
 
 ### Étape R2 — Le bit des films 1.8 (option A, U-2)
 - [ ] R2.1 Lire dans Ghidra `FUN_142988e98`, cible de `FUN_1428e219c` (`CMP dword ptr [RDX],0x29` à
@@ -491,3 +515,9 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   d'historique n'entre pas dans le fichier (plafond de taille 553, règle 17 : l'histoire va au
   journal). Rouge hérité réparé (bloque archlint) : `ecart108_research_test.go` reconstruisait l'ensemble
   des familles connues, il appelle `weaponv3.FamillesConnues`.
+- 2026-10-14 : R1.3, R1.4 et R1.5 CLOSES — ÉTAPE R1 CLOSE (tête `faf0cd345` + ce commit). Gates au
+  plan. Décisions d'exécution : I-adj en script sur les sorties d'I-ancres (R1.3) ; témoin faible de
+  chaînage sur la forme exacte de l'écrivain (R1.4.3, précision de E-1) ; retrait de la fin de table par
+  sentinelles et des options du motif qu'elle seule utilisait, `source.Rev` constant (R1.4.4) ; nom
+  `SkippedSansArchetype` gardé (R1.4.2). Aucun push (E-3 : montée des révisions en R5). Prochaine
+  étape : R2 (lire `FUN_142988e98` d'abord).
