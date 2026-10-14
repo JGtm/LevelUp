@@ -28569,6 +28569,10 @@ components:
     TacticalContribution:
       additionalProperties: false
       properties:
+        arme_image_tinted:
+          type: boolean
+        arme_image_url:
+          type: string
         arme_label:
           type: string
         arme_label_en:

@@ -12809,6 +12809,8 @@ export interface components {
             zone?: components["schemas"]["TacticalZoneNom"];
         };
         TacticalContribution: {
+            arme_image_tinted?: boolean;
+            arme_image_url?: string;
             arme_label?: string;
             arme_label_en?: string;
             autre_gamertag?: string;

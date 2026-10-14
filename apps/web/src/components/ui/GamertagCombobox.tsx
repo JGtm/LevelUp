@@ -312,6 +312,9 @@ export function GamertagCombobox({
     }
   }
 
+  // Mode compact : pastilles et champ de saisie à la même taille de texte, pour tenir sur une ligne.
+  const tailleTexte = compact ? 'text-xs' : 'text-sm'
+
   // ─── Rendu ──────────────────────────────────────────────────────────────────
 
   return (
@@ -328,7 +331,7 @@ export function GamertagCombobox({
           <span
             title={leadingPill.label}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-sm font-medium"
+            className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 ${tailleTexte} font-medium`}
             style={{ backgroundColor: leadingPill.color, color: '#fff', border: 'none' }} // color-allow: blanc structurel pour contraste sur fond coloré du pill
           >
             <span className="max-w-[7rem] truncate">{leadingPill.label}</span>
@@ -340,7 +343,7 @@ export function GamertagCombobox({
             <span
               key={gt}
               title={gt}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium"
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 ${tailleTexte} font-medium`}
               style={
                 color
                   ? { backgroundColor: color, color: '#fff', border: 'none' } // color-allow: blanc structurel pour contraste sur fond coloré du pill
@@ -349,7 +352,7 @@ export function GamertagCombobox({
               data-pill={!color ? 'neutral' : undefined}
             >
               {!color && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 text-sm text-foreground">
+                <span className={`inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-0.5 ${tailleTexte} text-foreground`}>
                   <span className="max-w-[7rem] truncate">{gt}</span>
                   <button
                     type="button"
@@ -387,7 +390,7 @@ export function GamertagCombobox({
           onKeyDown={handleKeyDown}
           placeholder={selected.length === 0 ? placeholder : ''}
           disabled={isAtMax}
-          className={`flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'} ${max != null && !compact ? 'pr-8' : ''}`}
+          className={`flex-1 bg-transparent ${tailleTexte} outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 ${compact ? 'min-w-[80px]' : 'min-w-[120px]'} ${max != null && !compact ? 'pr-8' : ''}`}
         />
 
         {max != null && !compact && (

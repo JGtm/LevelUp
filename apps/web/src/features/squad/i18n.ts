@@ -38,7 +38,7 @@ export interface SquadText {
     appuiPorteeHelp: string[]
   }
   selection: {
-    placeholder: (count: number) => string
+    placeholder: string
     prompt: string
   }
   filter: {
@@ -413,7 +413,7 @@ const FR_TEXT: SquadText = {
     ],
   },
   selection: {
-    placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
+    placeholder: 'Ajouter un coéquipier…',
     prompt: "Jusqu'à 3 coéquipiers pour l'analyse des synergies de l'escouade.",
   },
   filter: {
@@ -774,7 +774,7 @@ const EN_TEXT: SquadText = {
     ],
   },
   selection: {
-    placeholder: (count) => `Search among ${count} teammates…`,
+    placeholder: 'Add a teammate…',
     prompt: 'Up to 3 teammates for the squad synergy analysis.',
   },
   filter: {
