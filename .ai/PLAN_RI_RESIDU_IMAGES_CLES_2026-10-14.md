@@ -491,15 +491,47 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     archlint, vet avec et sans `research`, golangci-lint : verts.
 
 ### Étape R3 — world-object i0 sous la portée, puis rigid-body i18
-- [ ] R3.1 Réappliquer la lecture du jeu de world-object i0 sous la garde (`git revert 72785f870`,
+- [x] R3.1 Réappliquer la lecture du jeu de world-object i0 sous la garde (`git revert 72785f870`,
       qui annule le retrait de `64ef3baa7` ; forme de `FUN_14076e29c`, D-18), sur la tête de R2.
-- [ ] R3.2 Mesure → `$RES/r3.1` contre `$RES/r2` : I-ferm (baisses `ti=37` et `50247b26` chiffrées
+- [!] R3.2 Mesure → `$RES/r3.1` contre `$RES/r2` : I-ferm (baisses `ti=37` et `50247b26` chiffrées
       film par film), goldens, I-ancres (E-4), I-carte, I-equipes, I-d0. Chaque baisse adjugée sur
       pièces ; une baisse non adjugeable : ARRÊT, décision de l'utilisateur (retenir ou non).
-- [ ] R3.3 Si R3.1 est retenue : réappliquer `consumeGenericRigidBodyTransforms` sous la garde
+- [!] R3.3 Si R3.1 est retenue : réappliquer `consumeGenericRigidBodyTransforms` sous la garde
       (`git revert 421f7c1cb`, D-21), mesurer → `$RES/r3.3` contre `$RES/r3.1`, même règle. Le contrôle
       d'orientation de `FUN_140501798` (D-21) reste hors périmètre sauf s'il explique une baisse.
 - Gate R3 : comme R1.5 contre `$RES/r2`.
+- *ÉTAT DE R3 (2026-10-15) : ARRÊT EN R3.2, DÉCISION DE L'UTILISATEUR DUE.* R3.1 `[x]`, R3.2 `[!]`, R3.3 `[!]`
+  (dépend de R3.1 retenue). Mesures sous `$RES/r3.1` (base : `$RES/r2b`, la tête de R2 close).
+  - R3.1 `[x]` — `FUN_14076e29c` relu (`$RES/g/r3/`) : precHigh et R(96) (`FUN_14076e420`), queue
+    `FUN_14076e3e4(precHigh)` (`MOV R9B,AL` en 14076e2c5), R(2) si finis (`FUN_140492128`), faux sinon.
+    Porté par le geste unique `sousLaGardeSinonException` (le bloc de tête de `64ef3baa7` ne passerait
+    plus le garde-rail de LK.5.4.4) ; cas de site sous la portée et test « flottant non fini ».
+    Commit mesuré `ebc3a1651`, retiré par `25b7df4f4` (la branche reste à l'état de R2 close).
+  - R3.2 `[!]` — mesure contre R2 (28 films, contexte de cuisson) :
+    - hausses (82 lignes) : `ti=38` 31 324 → 113 049 / 119 148, `ti=42` 6 813 → 21 449 / 23 445,
+      `ti=43` 11 324 → 37 959 / 40 716 ; `ti=37` gagne des records sur 26 films ;
+    - INCHANGÉS, à la différence de LK.5.4.1 : élection des ancres (colonnes 1-9 identiques, aucune
+      région changée), équipes, carte delta (20, 8 et MPP : aucun paquet ne change de fermeture), I-d0
+      (bipèdes, admissions 6 507), goldens de fermeture des sept bobines (aucune baisse) ;
+    - CINQ lignes en baisse :
+      - `ti=37` `084a804d` 40 → 38 et `1c4c63c2` 65 → 64 : trois records qui fermaient au bit près en base
+        (slots 6503 → 6505 et 6687 → 6692 sur `084a804d`, entrées intercalées lues ; 6003 → 6004, slots
+        contigus, sur `1c4c63c2`) et que la lecture du jeu allonge de 24, 24 et 1 bits ; le témoin décalé
+        d'un bit n'y ferme jamais `ti=37` en base : rien ne désigne ces fermetures comme du hasard —
+        NON ADJUGEABLES ;
+      - `ti=37` `a349fea8` (format 20) 33 → 15 : 18 records perdus, le témoin ne fermait pas `ti=37` en
+        base ; sous la lecture du jeu, 10 de ses 15 fermetures sont aussi celles du témoin — NON
+        ADJUGEABLES par la preuve, film déjà faux après i22 (D-4/D-5 du plan clos) ;
+      - `50247b26` (format 20, sans section d'identification) `ti=38` 452 → 159 : en base le témoin
+        décalé d'un bit fermait 605 records dont 528 par hasard, davantage que la lecture elle-même —
+        ADJUGEABLE comme fermetures de hasard ; `ti=42` 134 → 16 : le témoin n'en fermait que 14 —
+        NON ADJUGEABLE par la preuve (arrêts `largeur_handle_moteur_un` et `position_non_finie` d'un film
+        dont le type de moteur n'est pas déclaré).
+  - **Décision demandée à l'utilisateur** : (a) retenir la lecture du jeu (gain massif sur les objets du
+    monde, ancres et carte inchangées) en acceptant ces baisses, dont quatre records `ti=37` sur des films
+    récents ; (b) la laisser rejetée ; (c) la retenir hors des formats 20-21 (même logique que U-6) et
+    instruire les quatre records `ti=37` récents avant de conclure. R3.3 (i18) attend cette décision :
+    D-21 du plan clos le place derrière i0.
 
 ### Étape R4 — La valeur 2 de l'emplacement désiré (D-30)
 - [ ] R4.1 Mesure sur les 28 films (instrument `research`) : pour chaque record bipède admis,
@@ -616,3 +648,7 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   déclarée 0x25. Gate R2 rejoué et PASSÉ : seul `60ae07c4` bouge dans le corpus (gain sans perte), les
   12 films HI_1_8_0 du parc gagnent, tout film ≠ 0x25 est identique ; goldens à jour. R2 CLOSE.
   Découvertes R-1 et R-2. Suite : R3.
+- 2026-10-15 : R3.1 appliquée (geste unique de la garde) et mesurée contre R2 close ; R3.2 ARRÊTÉE :
+  gains massifs `ti=38/42/43`, ancres, équipes et carte delta inchangées, mais cinq lignes en baisse dont
+  quatre records `ti=37` de films récents sans preuve de hasard ; sous-pas retiré (`25b7df4f4`), décision
+  de l'utilisateur due (R3.2). R3.3 en attente.

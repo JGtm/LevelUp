@@ -117249,3 +117249,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : pics de 0,19 à 0,71 Gio sur neuf films, 0,97 Gio sur le Firefight de 58 morceaux (qu'un plafond de 768 Mio aurait abandonné sur le VPS de 1,8 Go). Registre des reports : 25 lignes traitées et deux sections vides retirées ; backlog : rejeu démo, migrations Halo 5, index secondaires retirés, restes de la démo et petites dettes réduits. Worktrees `LevelUp-wt-recos-{a..f}` et `LevelUp-wt-hotfix-static`, branches locales et distantes `feat/recos-*` et `fix/static-traversal`, caches Go dédiés et scratchpad (3 Go) supprimés. Sauvegardes de bases conservées sous `data/backups/` (avant lot C, avant lot F, jetons d'avant l'import de prod).
 
 **Conclusion / prochaine étape** : plan clos. Ouverts côté user : rotation des secrets après la faille corrigée, staging v8 à refaire hors de la racine du dépôt VPS, chantier « sécurité » du backlog avant partage plus large.
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R3 : world-object i0 sous la portée — En cours, ARRÊT en R3.2 (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R3.1 appliquée et mesurée, puis retirée ; R3.2 `[!]`, décision de l'utilisateur due ; R3.3 (rigid-body i18) en attente ; rien poussé.
+
+**Décision technique principale** : world-object i0 sous la garde lu comme le jeu (`FUN_14076e29c` relu : precHigh, R(96), queue, R(2) si finis), par le geste unique `sousLaGardeSinonException`, rejoué derrière R1 et R2.
+
+**Résultats observés** : contre R2 close, `ti=38` 31 324 → 113 049, `ti=42` 6 813 → 21 449, `ti=43` 11 324 → 37 959 fermés ; ancres, équipes, carte delta et bipèdes inchangés (LK.5.4.1 les changeait) ; cinq lignes en baisse : `ti=37` sur `084a804d` (−2), `1c4c63c2` (−1), `a349fea8` (−18), `50247b26` `ti=38` (452 → 159, fermetures de hasard selon le témoin) et `ti=42` (134 → 16).
+
+**Conclusion / prochaine étape** : l'utilisateur choisit entre retenir la lecture du jeu malgré les baisses, la laisser rejetée, ou la retenir hors des formats 20-21 après instruction des quatre records `ti=37` récents.
