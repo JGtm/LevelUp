@@ -30,6 +30,7 @@ func makeSkillWithRankRecap(preValue, postValue float64, tier string, subTier, m
 			Tier:                        tier,
 			SubTier:                     subTier,
 			MeasurementMatchesRemaining: measurementRemaining,
+			InitialMeasurementMatches:   5, // match classé (règle D-10)
 		},
 	}
 }
@@ -138,8 +139,9 @@ func TestExtractCSRRowIfRanked_OnyxNoSubTier(t *testing.T) {
 }
 
 func TestExtractCSRRowIfRanked_NotRanked(t *testing.T) {
-	reg := &MatchRegistryRow{MatchID: "m_social", IsRanked: false}
+	reg := &MatchRegistryRow{MatchID: "m_social", IsRanked: true} // is_ranked du registre ne décide pas
 	skill := makeSkillWithRankRecap(1200, 1210, "Silver", 3, 0)
+	skill.PostMatchCSR.InitialMeasurementMatches = 0 // RankRecap de match social
 
 	row := ExtractCSRRowIfRanked(reg, skill)
 	if row != nil {
@@ -175,6 +177,7 @@ func TestExtractCSRRowIfRanked_TruncatedPayloadIsRejected(t *testing.T) {
 			Tier:                        "",
 			SubTier:                     0,
 			MeasurementMatchesRemaining: 0,
+			InitialMeasurementMatches:   5, // classé, mais payload sans tier ni placement
 		},
 	}
 	row := ExtractCSRRowIfRanked(reg, skill)
@@ -254,7 +257,7 @@ func TestExtractCSRRowIfRanked_DeltaNilWhenNoPreMatchCSR(t *testing.T) {
 	skill := &MatchSkillData{
 		XUID:         "xuid_test",
 		PreMatchCSR:  nil,
-		PostMatchCSR: &CSRRankSnapshot{Value: 1500, Tier: "Platinum", SubTier: 1},
+		PostMatchCSR: &CSRRankSnapshot{Value: 1500, Tier: "Platinum", SubTier: 1, InitialMeasurementMatches: 5},
 	}
 	row := ExtractCSRRowIfRanked(reg, skill)
 	if row == nil {

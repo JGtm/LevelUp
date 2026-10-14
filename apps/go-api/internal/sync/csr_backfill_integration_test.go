@@ -104,7 +104,7 @@ func makeRankRecapSkill(xuid string, pre, post float64, tier string, subTier, me
 		xuid: {
 			XUID:         xuid,
 			PreMatchCSR:  &CSRRankSnapshot{Value: pre, Tier: tier, SubTier: subTier},
-			PostMatchCSR: &CSRRankSnapshot{Value: post, Tier: tier, SubTier: subTier, MeasurementMatchesRemaining: measurementRem},
+			PostMatchCSR: &CSRRankSnapshot{Value: post, Tier: tier, SubTier: subTier, MeasurementMatchesRemaining: measurementRem, InitialMeasurementMatches: 5},
 		},
 	}
 }
