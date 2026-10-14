@@ -379,6 +379,15 @@ type SquadMatchHistoryRow struct {
 	// ne dessine aucun marqueur sur la bande de résultats — dégradation propre pour
 	// les titres sans timeline de score (Halo 5).
 	DominanceFlag int `json:"dominance_flag,omitempty"`
+	// SquadKills, SquadDeaths, SquadAssists : frags, morts et assistances CUMULES de
+	// l'escouade sur ce match (joueur principal + coéquipiers sélectionnés présents dans
+	// son équipe). Nil = équipe alliée non lue : le client affiche un tiret, jamais un zéro.
+	SquadKills   *int `json:"squad_kills,omitempty"`
+	SquadDeaths  *int `json:"squad_deaths,omitempty"`
+	SquadAssists *int `json:"squad_assists,omitempty"`
+	// SquadFDA : FDA de l'escouade sur ce match — formule agrégat de l'ADR 0006 appliquée
+	// à 1 match, ((frags + assistances/3) − morts) sur les cumuls. Jamais un quotient.
+	SquadFDA *float64 `json:"squad_fda,omitempty"`
 }
 
 // TeammateRow est une ligne de résultat (stats avec vs sans un coéquipier).

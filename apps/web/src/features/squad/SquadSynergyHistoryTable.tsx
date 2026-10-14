@@ -3,7 +3,8 @@
  *
  * Colonnes contextuelles (pas de stats personnelles) :
  *   Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode |
- *   Résultat | Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
+ *   Soirée | Résultat | Dominance | F | M | A | FDA d'escouade (cumuls, calculés côté Go) |
+ *   Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
  * Halo Waypoint (logo thème clair/sombre, remplace l'ancien lien texte « ↗ wp »),
@@ -44,6 +45,12 @@ import { formatDate, formatDurationMinSec } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
+import {
+  eveningColumn,
+  fmtDeltaMMR,
+  fmtMmr,
+  squadTotalsColumns,
+} from './squadHistoryExtraColumns'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
@@ -81,22 +88,6 @@ function sortAriaValue(dir: false | 'asc' | 'desc'): 'ascending' | 'descending' 
 interface SquadSynergyHistoryTableProps {
   rows: SquadMatchHistoryRow[]
   playerSlug: string
-}
-
-function fmtMmr(v: number | undefined): string {
-  if (v === undefined || v === null) return '-'
-  return Math.round(v).toLocaleString()
-}
-
-function fmtDeltaMMR(v: number | undefined): ReactNode {
-  if (v === undefined || v === null) return '-'
-  const sign = v >= 0 ? '+' : ''
-  const color = v > 0 ? tokenCssVar('outcome-win') : v < 0 ? tokenCssVar('outcome-loss') : undefined
-  return (
-    <span className="font-mono tabular-nums" style={color ? { color } : undefined}>
-      {sign}{Math.round(v)}
-    </span>
-  )
 }
 
 export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHistoryTableProps) {
@@ -234,6 +225,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           </span>
         ),
       },
+      eveningColumn(locale),
       {
         accessorKey: 'map_ui',
         header: labels.map,
@@ -279,6 +271,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           )
         },
       },
+      ...squadTotalsColumns(locale, intlLocale),
       {
         accessorKey: 'win_rate_hist',
         header: labels.winRateHist,
@@ -379,7 +372,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           ]
         : []),
     ],
-    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, replayCapability, hasExpectedWinProb, theme, currentTitleSlug],
+    [labels, locale, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, replayCapability, hasExpectedWinProb, theme, currentTitleSlug],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes. Pas d'état de tri initial : l'ordre
