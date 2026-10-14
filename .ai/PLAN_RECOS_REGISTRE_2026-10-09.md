@@ -141,8 +141,12 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - 2026-10-09 soir : quota hebdomadaire atteint, agents D, E, F interrompus après leurs commits (CI verte sur les trois branches).
 - 2026-10-14 : `feat/recos-e` fusionnée (931c40a61) ; relectures lancées en Sonnet : F (anti-ART, couverture) et D ronde 2 (corrections seules).
 
+- 2026-10-14 : relectures F (anti-ART : 9 conditions tenues, 0 constat ; couverture : 36 mutations tuées, 2 P2) et D ronde 2 (5 défauts FERMÉS, 3 protections non verrouillées par un test) ; tests complémentaires confiés à deux agents Sonnet.
+
 ## Découvertes
 
+- (relecture D ronde 2) `internal/api/middleware/csrf.go:121` `isExemptPath` compare le préfixe ouvrier sur le chemin NETTOYÉ : une écriture dont le chemin brut porte `..%2F` (ex. `…/proposals/..%2F..%2F..%2F..%2Finternal%2Fx/dismiss`) échappe au contrôle d'Origin. Pré-existant (feat/v75 et main) ; portée limitée par la session SameSite=Lax ; à corriger avec `AmbiguousPath`.
+- (relecture D ronde 2) Plafond mémoire de la recuisson démo (768 Mio souple / 960 Mio dur) : la mesure citée n'est consignée nulle part ; à mesurer sur les 10 films hors recuisson commune.
 - (supervision) `scripts/deploy.sh` nettoie tout fichier non suivi hors `data/` : tout staging posé à la racine du dépôt sur le VPS est effacé au déploiement suivant.
 - (supervision) govulncheck signale des vulnérabilités de la bibliothèque standard Go atteintes (http2, http.Error) : montée de version de Go à instruire.
 - (lot D) Variante « Castle Wars » reconnue par aucune famille de mode (à vérifier dans la normalisation des modes).
