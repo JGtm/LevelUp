@@ -267,8 +267,8 @@ type GrammaireBalayage struct {
 	// pour une variante sans type (`m_gameEngineType` 0, `FUN_14051a4b8(0) = 0`).
 	MoteurUnPossible bool
 	// MalleableSansDrapeauFinal : le bloc de propriete malleable du bipede (i53, `FUN_1407efc5c`) ne
-	// porte pas son drapeau final (lu a 1407efeba) — le film declare une version majeure qui le
-	// precede ([malleableSansDrapeauFinal]). IL VIENT DU FILM, comme les deux champs ci-dessus.
+	// porte pas son drapeau final (lu a 1407efeba) — le film declare la version majeure 0x25
+	// ([malleableSansDrapeauFinal]). IL VIENT DU FILM, comme les deux champs ci-dessus.
 	MalleableSansDrapeauFinal bool
 	// CorpsActionMobilite : le corps de FUN_1408f02c8 (i54) est-il decode ? Defaut TRUE.
 	CorpsActionMobilite bool

@@ -121,8 +121,8 @@ func mesurerFermetureCuisson(t *testing.T) string {
 	b.WriteString("#     278 -> 322, ti=37 16 -> 38, ti=45 97 -> 113, ti=41 34 -> 45, ti=29 105 -> 113, ti=13\n")
 	b.WriteString("#     1 501 -> 1 510 ; aucune baisse sur les sept bobines.\n")
 	b.WriteString("#   2026-10-14 plan residu (R2) : le bloc malleable du bipede (i53, FUN_1407efc5c) sans son\n")
-	b.WriteString("#     drapeau final quand le film declare une version majeure <= 0x25 (decision de l utilisateur du\n")
-	b.WriteString("#     2026-10-09, option A). MONTENT : 60ae07c4 ti=35 1 -> 232 / 236, a521164d ti=35 2 -> 18 / 209 ;\n")
+	b.WriteString("#     drapeau final quand le film declare la version majeure 0x25 (decision de l utilisateur du\n")
+	b.WriteString("#     2026-10-15, option b). MONTE : 60ae07c4 ti=35 1 -> 232 / 236 ;\n")
 	b.WriteString("#     aucune baisse, aucune autre ligne ne bouge.\n")
 	for _, court := range closureMiniFilms() {
 		stats := fermetureDeCuisson(t, court)

@@ -117232,3 +117232,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : films de majeure ≥ 0x26 sans aucune régression publiée ; HI_1_8_0 (0x25) : `60ae07c4` bipèdes fermés 1 → 328/332, dotations de naissance 5 → 171, 12 films du parc 1 263 → 7 054 fermés tous films confondus, aucune perte ; formats 20-21 (0x1f-0x21) : gains et pertes mêlés (13 pertes de fermeture non adjugeables, 6 dotations de naissance perdues sur `a349fea8`).
 
 **Conclusion / prochaine étape** : l'utilisateur choisit entre garder ≤ 0x25, borner à 0x25, ou sortir les formats 20-21 de la règle ; puis clôture de R2 (révisions en R5).
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R2 close : le bit des films 1.8, borné à la version majeure 0x25 — En cours (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R2 close (gate passé), commits locaux, rien poussé ; R3 suit.
+
+**Décision technique principale** : décision de l'utilisateur du 2026-10-15 (« Ok avec toi, option b ») : le bloc malléable d'i53 perd son drapeau final pour les seuls films qui déclarent la version majeure 0x25 ; toute autre version garde la grammaire de l'exécutable. `FUN_142988e98` relu : remise à zéro du lecteur de film, pas un chemin des anciens formats.
+
+**Résultats observés** : corpus — seul `60ae07c4` change (bipèdes fermés 1 → 328/332, dotations de naissance 5 → 171, morts identiques) ; parc — 12 films HI_1_8_0 de 1 263 à 7 042 fermés tous films confondus, 0 perte ; formats 20-21 et versions ≥ 0x26 identiques (documents publiés).
+
+**Conclusion / prochaine étape** : R3, world-object i0 sous la portée puis rigid-body i18.

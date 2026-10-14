@@ -195,6 +195,12 @@ neuf par passe) :
   des largeurs lues (toute largeur affirmée est lue dans le jeu, adresse citée) ; corrections
   générales, jamais par film ; une seule fusion à la fin, sur accord explicite.
 
+- **U-6 (2026-10-15)** — bit des films 1.8, après l'arrêt de R2.3 et les trois options présentées
+  (a : garder ≤ 0x25 ; b : la seule valeur déclarée 0x25 ; c : sortir les formats 20-21) : **« Ok avec
+  toi, option b »** (relayée par le superviseur). La règle du drapeau final malléable ne vaut que pour
+  les films qui DÉCLARENT exactement la version majeure 0x25 ; toutes les autres versions gardent la
+  grammaire de l'exécutable, et les formats 20-21 restent intacts. Elle amende U-2 sur le seuil.
+
 ### 3.2 Décisions d'exécution (à l'exécutant, justifiées ; une objection de l'utilisateur les rouvre)
 - **E-1 — Un seul lecteur d'entrée.** La forme de l'entrée (108 bits, corps si l'archétype n'est pas
   `0xffffffff`) est écrite UNE fois (`keyframe_entrees.go`) ; la fermeture, la preuve d'image-clé,
@@ -408,12 +414,12 @@ Une étape commence quand la précédente est close : items statués, gate pass�
       du jeu, adresses citées ; sinon : le seuil mesuré ≤ 0x25 (U-2), documenté comme mesure (rapport
       BIT_BUILDS §2), position du bit = le drapeau final de `FUN_1407efc5c` (lu à `1407efeba`) — la
       variante « R(5) de n sur 4 bits », indiscernable sur les données, est nommée au commentaire.
-- [!] R2.3 Mesure → `$RES/r2` : I-ferm, I-d0, I-ancres, I-equipes, I-carte, I-e108 ; zéro différence
+- [x] R2.3 Mesure → `$RES/r2` : I-ferm, I-d0, I-ancres, I-equipes, I-carte, I-e108 ; zéro différence
       sur les films de majeure ≥ 0x26 ; `60ae07c4`, `a349fea8`, `a521164d`, `50247b26` chiffrés ;
       ancres changées adjugées par E-4.
 - [x] R2.4 Tests unitaires (seuil, film sans `chunk_00`, majeure absente) ; mutations ; ratchets.
 - Gate R2 : comme R1.5 (instruments, G-equiv, killsource, tests, archlint, vet, lint) contre `$RES/r1`.
-- *ÉTAT DE R2 (2026-10-14) : ARRÊT AU GATE, DÉCISION DE L'UTILISATEUR DUE.* R2.1, R2.2 et R2.4 `[x]`,
+- *PREMIÈRE PASSE DE R2 (2026-10-14, règle « ≤ 0x25 ») : ARRÊT AU GATE, DÉCISION DE L'UTILISATEUR DUE ; suite au 2026-10-15 ci-dessous (U-6).* R2.1, R2.2 et R2.4 `[x]`,
   R2.3 `[!]` ; code commité, non poussé ; mesures sous `$RES/r2`, `$RES/r1p`, `$RES/r2p`, `$RES/r2/art`.
   - R2.1 `[x]` — LU, et ce n'est PAS un aiguillage : `FUN_1428e219c` appelle `FUN_142988e98` quand la
     majeure diffère de 0x29 (1428e21a6 `CMP dword ptr [RDX],0x29`, 1428e21b1 `MOV RCX,[RCX+0x130]`, 1428e22b0
@@ -463,6 +469,26 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     règle et les instruire à part (le bloc malleable n'y est pas établi au-delà de ce bit, découverte
     R-1). Révisions (`grammar`, `killsource` qui change de sortie, `SchemaDesFaits`) : en R5, quelle que
     soit l'option.
+
+- *GATE R2 PASSÉ (2026-10-15, règle « majeure déclarée = 0x25 », U-6 ; `$RES/r2b`, `$RES/r2bp`)* — R2 CLOSE.
+  - Code : `malleableSansDrapeauFinal` rend vrai pour la seule majeure déclarée 0x25 ; test par bobine
+    (seule `60ae07c4` ; `a521164d` 0x21 et les builds ≥ 0x26 non), mutations `<= 0x25` et `0x26` rouges.
+  - Corpus contre `$RES/r1` : UNE ligne bouge, `60ae07c4` `ti=35` 1 → 328/332 (327 records gagnés, 0
+    perdu) ; bipèdes 8 237 → 8 564 ; ancres (colonnes 1-9) et équipes identiques ; admissions 6 507 ;
+    formats 20-21 IDENTIQUES à r1. Carte delta : seuls 49 paquets de `60ae07c4` passent fermés (MPP
+    1 596), tout le reste identique. killsource : morts publiées identiques sur 19 témoins, seul
+    `60ae07c4` change de santé et de calibration (5 morts lues par la marche séquentielle au lieu du
+    balayage). `replay-equiv` (20 films, `depuis_les_faits=false`) : seul `60ae07c4` change de document,
+    à l'identique de la première passe (adjugé : dotations de naissance 5 → 171, postures +10, deux
+    impulsions de capacité fausses retirées) ; sur les 19 autres, seuls les digests internes
+    `killsource`, `vehicles`, `vehicleDeaths.stats` changent (profil porté par les faits,
+    `SchemaDesFaits` en R5), artefacts identiques.
+  - Parc contre `$RES/r1p` : les 12 films HI_1_8_0 gagnent tous, bipèdes fermés 1 263 → 7 042 sur 7 820
+    tous films confondus, 0 perte ; `58e6f72a` (0x22) et les deux HI_1_9_0 identiques ; ancres
+    identiques ; admissions 5 461.
+  - Golden de fermeture en cuisson : `60ae07c4` 1 → 232/236 seul (ligne d'historique réécrite) ; golden
+    sans carte inchangé. Tests de `film/...`, `replaybuild`, `killcollector` (sous `-skip "$SKIPREV"`),
+    archlint, vet avec et sans `research`, golangci-lint : verts.
 
 ### Étape R3 — world-object i0 sous la portée, puis rigid-body i18
 - [ ] R3.1 Réappliquer la lecture du jeu de world-object i0 sous la garde (`git revert 72785f870`,
@@ -547,7 +573,12 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   ni la grammaire de l'exécutable ni celle des films 1.8 pour tous les records : sans drapeau final,
   des records sans porte ouverte ferment (signature +33 ramenée à 0), mais des records à portes ouvertes
   qui fermaient avec les largeurs modales ne ferment plus. Grammaire non établie ; seul un exécutable
-  de ces builds la lirait. Non traitée (voir la décision due de R2).
+  de ces builds la lirait. Non traitée : ces versions gardent la grammaire de l'exécutable (U-6).
+- R-2 *(R2.1)* `FUN_142988e98`, que `FUN_1428e219c` appelle pour une version majeure différente de 0x29,
+  n'est pas un aiguillage vers un chemin des anciens formats : il remet à zéro l'état du lecteur de
+  film (`+0x1488`) sans lire le film. L'exécutable courant ne relit donc aucun film de majeure ≠ 0x29 ;
+  la grammaire des anciens formats n'y est lisible nulle part (contraire à l'hypothèse d'aiguillage de
+  U-2). Consignée, non traitée.
 
 ## 8. Journal
 
@@ -581,3 +612,7 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   0x25 : gain net sans perte (corpus et 12 films du parc) ; formats 20-21 : gains et pertes mêlés, dont
   une valeur publiée en régression (`a349fea8`, dotations de naissance). Code et tests commités, rien
   poussé.
+- 2026-10-15 : DÉCISION U-6 de l'utilisateur (« Ok avec toi, option b ») : règle bornée à la majeure
+  déclarée 0x25. Gate R2 rejoué et PASSÉ : seul `60ae07c4` bouge dans le corpus (gain sans perte), les
+  12 films HI_1_8_0 du parc gagnent, tout film ≠ 0x25 est identique ; goldens à jour. R2 CLOSE.
+  Découvertes R-1 et R-2. Suite : R3.

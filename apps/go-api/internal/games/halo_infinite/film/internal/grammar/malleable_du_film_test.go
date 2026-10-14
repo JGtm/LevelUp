@@ -5,11 +5,11 @@ package grammar
 
 import "testing"
 
-// TestLaVersionMajeureDecideDuDrapeauFinal : sur les bobines par build, la regle vaut pour la bobine
-// HI_1_8_0 (majeure 0x25) et la bobine HI_1_4_1 (0x21), pas pour les builds suivants (>= 0x26) ; une
-// bobine sans `chunk_00` garde la grammaire de l executable. MUTATION — seuil a 0x26 : ROUGE.
+// TestLaVersionMajeureDecideDuDrapeauFinal : sur les bobines par build, la regle vaut pour la seule bobine
+// HI_1_8_0 (majeure 0x25), ni pour la bobine HI_1_4_1 (0x21) ni pour les builds suivants (>= 0x26) ;
+// une bobine sans `chunk_00` garde la grammaire de l executable. MUTATIONS — `<= 0x25`, ou 0x26 : ROUGE.
 func TestLaVersionMajeureDecideDuDrapeauFinal(t *testing.T) {
-	attendu := map[string]bool{"a521164d": true, "60ae07c4": true}
+	attendu := map[string]bool{"60ae07c4": true}
 	for _, court := range closureMiniFilms() {
 		f := bobineParBuild(t, court)
 		v, _ := FilmMajorVersion(f)

@@ -45,8 +45,8 @@
 #     278 -> 322, ti=37 16 -> 38, ti=45 97 -> 113, ti=41 34 -> 45, ti=29 105 -> 113, ti=13
 #     1 501 -> 1 510 ; aucune baisse sur les sept bobines.
 #   2026-10-14 plan residu (R2) : le bloc malleable du bipede (i53, FUN_1407efc5c) sans son
-#     drapeau final quand le film declare une version majeure <= 0x25 (decision de l utilisateur du
-#     2026-10-09, option A). MONTENT : 60ae07c4 ti=35 1 -> 232 / 236, a521164d ti=35 2 -> 18 / 209 ;
+#     drapeau final quand le film declare la version majeure 0x25 (decision de l utilisateur du
+#     2026-10-15, option b). MONTE : 60ae07c4 ti=35 1 -> 232 / 236 ;
 #     aucune baisse, aucune autre ligne ne bouge.
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
@@ -69,7 +69,7 @@ a521164d	ti=26	0	11	i0 supply-lines-blocked-status-component
 a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
 a521164d	ti=29	11	11	
 a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
-a521164d	ti=35	18	209	i42 biped-desired-weapon-set (arret jeu_d_armes_refuse)
+a521164d	ti=35	2	209	i42 biped-desired-weapon-set (arret jeu_d_armes_refuse)
 a521164d	ti=37	4	762	
 a521164d	ti=38	443	1303	
 a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
