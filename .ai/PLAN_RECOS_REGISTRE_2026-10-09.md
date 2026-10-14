@@ -75,7 +75,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
   remède proposé ; réparation seulement si elle est sûre (sinon `[!]` argumenté).
 - [x] C5 (écrivain = ancien `--match` de backfill-vehicle-takes, corrigé le 01/10 ; `shared_purge_composite_vehicle_takes_v1`) Quatre lignes parasites de `match_vehicle_takes` (match_id concaténé) : trouver et
   corriger l'écrivain, puis retirer les lignes (sauvegarde avant).
-- [ ] C6 (3 111 lignes sur 9 230 divergent ; correction DEMANDÉE par le user le 2026-10-09, lot F confié à un agent Sonnet à sa demande) `match_registry.mode_category` possiblement faux : mesurer l'ampleur (copie), décider.
+- [x] C6 (lot F, `feat/recos-f` fusionnée le 2026-10-14 : une seule règle, migration par swap, 4 254 lignes corrigées au boot local) `match_registry.mode_category` possiblement faux : mesurer l'ampleur (copie), décider.
 - [x] C7 (`purge_sync_meta_legacy_auth_keys_v1`, swap ; 4 bases) Clé héritée `oauth_refresh_token` dans `sync_meta` de 4 bases joueur : purge par migration
   player (aucun code ne la lit, ADR 0023).
 - Gate : `go test -tags=integration` des paquets persist/migration/ops touchés, garde-rails ART verts.
@@ -113,7 +113,7 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Clôture
 
-- [ ] Fusions dans `feat/v75` (accord du user), CI verte.
+- [x] Fusions dans `feat/v75` (accord du user) : A, B, C, E, F, D ; CI à relever sur 75617a513.
 - [ ] Registre et backlog : lignes traitées retirées.
 - [ ] Nettoyage : worktrees et branches locales et distantes `feat/recos-*`, caches dédiés,
   fichiers temporaires.
@@ -144,6 +144,8 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 - 2026-10-14 : relectures F (anti-ART : 9 conditions tenues, 0 constat ; couverture : 36 mutations tuées, 2 P2) et D ronde 2 (5 défauts FERMÉS, 3 protections non verrouillées par un test) ; tests complémentaires confiés à deux agents Sonnet.
 
 - 2026-10-14 : le user valide la mesure du plafond mémoire de la recuisson démo (après la recuisson commune) et demande d'inscrire au backlog le durcissement de sécurité du site (« sûr et solide, pas le Pentagone ») avant son partage plus large.
+
+- 2026-10-14 : tests complémentaires F (`7f1917908`) et D (`d190f85d7`) verts. Après la recuisson commune de levelup-57 (schéma 93) : air arrêté, sauvegarde `data/backups/avant_recos_f_2026-10-14/` (bases partagées Halo Infinite et Halo 5), fusion de `feat/recos-f` puis `feat/recos-d` (seul conflit : les blocs datés de `scripts/check_test_baseline.sh`, les deux gardés), OpenAPI et types générés à jour, tests archlint/migration/api/middleware/modelabel/ops/replaychild/invariants verts ; boot : `shared_recompute_mode_category_v1` 762 paires, 4 254 lignes corrigées, `idx_registry_mode_category` retiré, Halo 5 sans effet, 0 ERROR, /health ok.
 
 ## Découvertes
 

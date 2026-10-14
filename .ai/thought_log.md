@@ -117185,3 +117185,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Resultats observes** : tsc, eslint, vitest match-replay et lib/replay verts ; test de remise a zero a l'image du point adapte, 6 tests ajoutes.
 
 **Conclusion / prochaine etape** : decouverte D4 du plan KOTH close (E9) ; fusion dans feat/v75 par le superviseur.
+
+## [2026-10-14] Fusion des lots F (catégorie de mode) et D (démo) des recommandations — Complété
+
+**Décision technique principale** : relectures F en deux lentilles (anti-ART : 9 conditions tenues, 0 constat ; couverture : 36 mutations tuées, 2 P2 comblés par `7f1917908`) et D en ronde 2 (5 défauts fermés vérifiés par requêtes réelles, 3 protections verrouillées ensuite par `d190f85d7`). Fusions dans `feat/v75` après la recuisson commune de levelup-57 (schéma 93), serveur arrêté et bases partagées sauvegardées ; seul conflit : les blocs datés de `scripts/check_test_baseline.sh` (les deux conservés).
+
+**Résultats observés** : OpenAPI et `generated.ts` à jour, manifestes i18n régénérés sans écart ; tests archlint, migration, api, middleware, modelabel, ops, replaychild, invariants verts sur l'arbre fusionné. Boot local : `shared_recompute_mode_category_v1` corrige 4 254 lignes (762 paires) et retire `idx_registry_mode_category` ; Halo 5 sans effet ; 0 ERROR ; `/health` ok.
+
+**Conclusion / prochaine étape** : CI de `feat/v75` à relever ; mesure du pic mémoire de la recuisson des dix films de la démo (accord du user du 2026-10-14) ; nettoyage des worktrees, branches et caches du chantier ; registre et backlog à purger des lignes traitées.
