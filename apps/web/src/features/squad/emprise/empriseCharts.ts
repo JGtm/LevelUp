@@ -19,6 +19,13 @@
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
+import {
+  footLabelStyle,
+  layoutAxisFoot,
+  lineHeightFor,
+  type AxisFootSpec,
+  type FootLabels,
+} from '@/components/charts/axisFoot'
 import { withEndPoint } from '@/components/charts/endPoint'
 import type { DominanceValue } from '@/components/charts/outcomeSequence'
 import { resolveToken } from '@/lib/accessibility'
@@ -29,12 +36,10 @@ import {
   lineSeries,
   parityLine,
   shortMap,
-  tonightColumn,
   yAxisPct,
   type CustomApi,
 } from '../objectif/objectifCharts'
 import type { ResourceFil, ResourceFilMatch } from './emprise.logic'
-import type { HabitPoint } from './habit.logic'
 import { resolveResourceColor } from './resourceColors'
 
 export interface EmpriseFilColors {
@@ -68,10 +73,10 @@ export interface EmpriseFilText {
 /** Marges fixes (maquette : 36 px à gauche, 44 px à droite pour la valeur de fin). */
 const GRID_LEFT = 36
 const GRID_RIGHT = 44
-/** Réservé sous le graphe : heure (+14), carte (+27), bande (+33 à +43) — maquette, B = 50. */
-const FOOT = 50
 const BAND_H = 10
-const BAND_BOTTOM = FOOT - 33 - BAND_H
+/** Corps des étiquettes sous l'axe (heure, carte, date de mois). */
+const LABEL_FONT = 10.5
+const LABEL_LINE = lineHeightFor(LABEL_FONT)
 /** Encoche de dominance : 4 × 16 px, liseré de la couleur de la carte (maquette). */
 const NOTCH_W = 4
 const NOTCH_H = 16
@@ -106,10 +111,25 @@ export type FilAxe =
  * Le mode match COMPACT (tiroir de comparaison de Sessions, maquette Sessions `renderFil` avec `cp`) :
  * pied réduit à la seule bande (rien sous l'axe), graduations 0 / 50 / 100, points 1,6 + √n.
  */
-const COMPACT_FOOT = 30
-const COMPACT_BAND_BOTTOM = COMPACT_FOOT - 8 - BAND_H
 const compactPickupRadius = (pickups: number) => 1.6 + Math.sqrt(Math.max(0, pickups))
 const isCompact = (axe: FilAxe) => axe.kind === 'match' && axe.compact === true
+
+/**
+ * Le pied du graphe selon l'axe — calculé (`layoutAxisFoot`) depuis les étiquettes qu'il porte,
+ * jamais écrit à la main : match = l'heure puis la carte (2 lignes) au-dessus de la bande ;
+ * période = la date du mois (1 ligne) ; compact = la bande seule, rien sous l'axe.
+ */
+const MATCH_LABELS: FootLabels = { lines: 2, lineHeight: LABEL_LINE, margin: 4 }
+const PERIOD_LABELS: FootLabels = { lines: 1, lineHeight: LABEL_LINE, margin: 4 }
+const FIL_BAND = { height: BAND_H, gap: 4 }
+const MATCH_FOOT: AxisFootSpec = { above: MATCH_LABELS, band: FIL_BAND, below: null, pad: 4 }
+const PERIOD_FOOT: AxisFootSpec = { above: PERIOD_LABELS, band: FIL_BAND, below: null, pad: 4 }
+const COMPACT_FOOT: AxisFootSpec = { above: null, band: { height: BAND_H, gap: 8 }, below: null, pad: 12 }
+
+function footSpecFor(axe: FilAxe): AxisFootSpec {
+  if (isCompact(axe)) return COMPACT_FOOT
+  return axe.kind === 'period' ? PERIOD_FOOT : MATCH_FOOT
+}
 
 /** Le rayon des points selon l'axe : compact, période chargée, ou celui de la maquette. */
 function radiusFor(axe: FilAxe, matches: number): (pickups: number) => number {
@@ -135,7 +155,7 @@ function periodLabels(matches: ResourceFilMatch[], dateOf: (iso: string) => stri
 }
 
 /** Une infobulle multiligne, échappée, la première ligne en gras (maquette). */
-function tipHtml(text: string): string {
+export function tipHtml(text: string): string {
   const [head, ...rest] = text.split('\n')
   return [`<b>${escapeHtml(head)}</b>`, ...rest.map(escapeHtml)].join('<br>')
 }
@@ -239,6 +259,8 @@ export function buildResourceFilOption(
     axe.kind === 'period' ? { ...t, timeOf: (iso) => [axe.dateOf(iso), t.timeOf(iso)].filter(Boolean).join(' ') } : t
   const radius = radiusFor(axe, matches.length)
   const compact = isCompact(axe)
+  const spec = footSpecFor(axe)
+  const foot = layoutAxisFoot(spec)
   const series = [
     ...fil.resources.flatMap((resource, ri) => resourceSeries(matches, resource, c, tipText, { first: ri === 0, radius })),
     bandSeries(matches, c, tipText, axe.kind === 'match'),
@@ -253,8 +275,8 @@ export function buildResourceFilOption(
     backgroundColor: CHART_BG,
     animation: false,
     grid: [
-      { left: GRID_LEFT, right: GRID_RIGHT, top: 10, bottom: compact ? COMPACT_FOOT : FOOT },
-      { left: GRID_LEFT, right: GRID_RIGHT, bottom: compact ? COMPACT_BAND_BOTTOM : BAND_BOTTOM, height: BAND_H },
+      { left: GRID_LEFT, right: GRID_RIGHT, top: 10, bottom: foot.gridBottom },
+      { left: GRID_LEFT, right: GRID_RIGHT, bottom: foot.bandBottom, height: foot.bandHeight },
     ],
     tooltip: {
       ...getTooltipBase(tc),
@@ -269,14 +291,12 @@ export function buildResourceFilOption(
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: {
-          interval: 0,
-          margin: 4,
-          lineHeight: 13,
+          ...footLabelStyle(spec.above ?? MATCH_LABELS),
           formatter: label,
           rich: {
-            t: { color: tc.axisLabel, fontSize: 10.5 },
-            m: { color: tc.text, fontSize: 10.5 },
-            d: { color: tc.axisLabel, fontSize: 10.5 },
+            t: { color: tc.axisLabel, fontSize: LABEL_FONT },
+            m: { color: tc.text, fontSize: LABEL_FONT },
+            d: { color: tc.axisLabel, fontSize: LABEL_FONT },
           },
         },
       },
@@ -309,159 +329,4 @@ export function resolveEmpriseFilColors(): EmpriseFilColors {
     dominance: (d) => resolveToken(DOMINANCE_COLOR_TOKENS[d]),
     theme,
   }
-}
-
-// ---------------------------------------------------------------------------
-// Contrôle des ressources, soirée après soirée (bloc « Par rapport à d'habitude »)
-// ---------------------------------------------------------------------------
-
-export interface HabitChartColors {
-  resource: (resource: string) => string
-  parity: string
-  /** Le gris des soirées hors comparaison (encre atténuée du thème). */
-  muted: string
-  theme: EChartsThemeColors
-}
-
-export interface HabitChartText {
-  resourceLabel: (resource: string) => string
-  /** Part avec une décimale au plus (infobulles). */
-  pctFmt: (v: number) => string
-  /** Part entière (valeur au bout des courbes, graduation 100 %). */
-  pctIntFmt: (v: number) => string
-  /** « 28/07 ». */
-  dateOf: (iso: string) => string
-  tonight: string
-  eveningOf: (date: string) => string
-  pointTip: (resource: string, evening: string, value: string, median: string | null) => string
-  medianTip: (resource: string, value: string) => string
-  /** La raison d'une soirée hors comparaison, ses familles de mode jointes (« Bases, Drapeau »). */
-  notComparableTip: (families: string) => string
-}
-
-/** Géométrie de la maquette (`renderHabChart` : 520 × 220, marges 36 / 58, haut 12, pied 30). */
-const HABIT_LEFT = 36
-const HABIT_RIGHT = 58
-const HABIT_TOP = 12
-const HABIT_FOOT = 30
-
-/**
- * Une courbe par ressource : une soirée COMPARABLE par point, médiane des précédentes en pointillé
- * fin ; la courbe enjambe les soirées hors comparaison, posées à part en points gris (liseré de la
- * ressource) dont l'infobulle dit la raison. Le point grossi et la valeur au bout sont posés sur
- * CE SOIR (la soirée affichée), jamais sur la dernière soirée passée qui a une part : sans part ce
- * soir, ni l'un ni l'autre (constat R4 de la revue L6.1).
- */
-function habitSeries(
-  points: HabitPoint[],
-  resource: string,
-  median: number | null,
-  first: boolean,
-  c: HabitChartColors,
-  t: HabitChartText,
-) {
-  const color = c.resource(resource)
-  const label = t.resourceLabel(resource)
-  const med = median == null ? null : t.pctFmt(median)
-  const eveningName = (p: HabitPoint) =>
-    p.current ? t.tonight.charAt(0).toUpperCase() + t.tonight.slice(1) : t.eveningOf(t.dateOf(p.startTime))
-  const data = points.map((p) => {
-    const v = p.shares[resource]
-    if (v == null || !p.comparable) return null
-    return {
-      value: v,
-      symbol: 'circle',
-      symbolSize: 6,
-      itemStyle: { color, borderColor: c.theme.card, borderWidth: 1 },
-      tip: t.pointTip(label, eveningName(p), t.pctFmt(v), med),
-    }
-  })
-  const apart = points.map((p) => {
-    const v = p.shares[resource]
-    if (v == null || p.comparable) return null
-    return {
-      value: v,
-      itemStyle: { color: c.muted, borderColor: color, borderWidth: 1.5 },
-      tip: `${t.pointTip(label, eveningName(p), t.pctFmt(v), null)}\n${t.notComparableTip(p.families.join(', '))}`,
-    }
-  })
-  const tonight = points.findIndex((p) => p.current)
-  const base = lineSeries(label, withEndPoint(data, c.theme.card, { at: tonight, size: 11 }), color, t.pctIntFmt)
-  const line = {
-    ...base,
-    symbol: 'circle',
-    // ECharts écrit la valeur au bout sur le dernier point NON nul : sans part ce soir, elle
-    // tomberait sur une soirée passée — elle se tait.
-    endLabel: { ...base.endLabel, show: tonight >= 0 && data[tonight] != null, distance: 8 },
-    markLine: {
-      symbol: 'none',
-      label: { show: false },
-      data: [
-        ...(median == null
-          ? []
-          : [{ yAxis: median, tip: t.medianTip(label, med ?? ''), lineStyle: { color, type: [2, 3], width: 1, opacity: 0.9 } }]),
-        ...(first ? [{ yAxis: 50, silent: true, lineStyle: { color: c.parity, type: [4, 3], width: 1.5 } }] : []),
-      ],
-    },
-  }
-  if (apart.every((d) => d == null)) return [line]
-  return [line, { name: label, type: 'scatter' as const, data: apart, symbol: 'circle', symbolSize: 7, z: 4 }]
-}
-
-/**
- * buildHabitOption — « Contrôle des ressources, soirée après soirée » (maquette,
- * `renderHabChart('habPrises', …)`) : une courbe par ressource (couleurs `resource-*`), une
- * soirée par point (gris hors comparaison), ce soir à droite dans une colonne grisée, la médiane
- * des soirées précédentes comparables en pointillé fin de la couleur de chaque courbe (quand elle
- * existe), le trait 50 %, la valeur entière au bout ; sous l'axe, la date de chaque soirée, « ce
- * soir » en gras.
- */
-export function buildHabitOption(
-  resources: string[],
-  points: HabitPoint[],
-  medians: Record<string, number | null>,
-  c: HabitChartColors,
-  t: HabitChartText,
-): EChartsCoreOption {
-  const tc = c.theme
-  const categories = points.map((_, i) => String(i))
-  return {
-    backgroundColor: CHART_BG,
-    animation: false,
-    grid: { left: HABIT_LEFT, right: HABIT_RIGHT, top: HABIT_TOP, bottom: HABIT_FOOT },
-    tooltip: {
-      ...getTooltipBase(tc),
-      trigger: 'item',
-      formatter: (p: { data?: { tip?: string } }) => (p.data?.tip ? tipHtml(p.data.tip) : ''),
-    },
-    xAxis: {
-      type: 'category',
-      data: categories,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: {
-        interval: 0,
-        margin: 8,
-        formatter: (_v: string, i: number) =>
-          points[i]?.current ? `{cur|${t.tonight}}` : `{d|${t.dateOf(points[i]?.startTime ?? '')}}`,
-        rich: {
-          d: { color: tc.axisLabel, fontSize: 10.5 },
-          cur: { color: tc.text, fontSize: 10.5, fontWeight: 700 },
-        },
-      },
-    },
-    yAxis: yAxisPct(t.pctIntFmt, tc),
-    series: [
-      ...resources.flatMap((r, i) => habitSeries(points, r, medians[r] ?? null, i === 0, c, t)),
-      tonightColumn(points.length, tc.splitAreaB),
-    ],
-    legend: { show: false },
-    aria: { enabled: true },
-  }
-}
-
-/** Les couleurs du graphe d'habitude, résolues au rendu (thème, palette). */
-export function resolveHabitColors(): HabitChartColors {
-  const theme = getEChartsThemeColors()
-  return { resource: resolveResourceColor, parity: resolveToken('warning'), muted: theme.axisLabel, theme }
 }

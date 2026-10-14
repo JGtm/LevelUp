@@ -26921,6 +26921,18 @@ components:
           type: string
         session_label:
           type: string
+        squad_assists:
+          format: int64
+          type: integer
+        squad_deaths:
+          format: int64
+          type: integer
+        squad_fda:
+          format: double
+          type: number
+        squad_kills:
+          format: int64
+          type: integer
         start_time:
           type: string
         team_mmr_avg:

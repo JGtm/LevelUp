@@ -12108,6 +12108,14 @@ export interface components {
             score_kind?: string;
             score_label?: string;
             session_label?: string;
+            /** Format: int64 */
+            squad_assists?: number;
+            /** Format: int64 */
+            squad_deaths?: number;
+            /** Format: double */
+            squad_fda?: number;
+            /** Format: int64 */
+            squad_kills?: number;
             start_time: string;
             /** Format: double */
             team_mmr_avg?: number;

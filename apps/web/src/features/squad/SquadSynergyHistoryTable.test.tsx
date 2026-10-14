@@ -251,3 +251,38 @@ describe('SquadSynergyHistoryTable — colonne « Rejeu »', () => {
     expect(screen.getByRole('link', { name: REPLAY_LABEL })).toBeInTheDocument()
   })
 })
+
+describe('SquadSynergyHistoryTable — colonnes d\'escouade (D-7)', () => {
+  it('rend soirée, dominance, cumuls et FDA d\'escouade', () => {
+    renderWithProviders(
+      <SquadSynergyHistoryTable
+        rows={[
+          makeRow({
+            session_label: '22/09/2026 20:00–23:10 (13)',
+            dominance_flag: 1,
+            squad_kills: 31,
+            squad_deaths: 19,
+            squad_assists: 9,
+            squad_fda: 15,
+          }),
+        ]}
+        playerSlug="me"
+      />,
+    )
+    expect(screen.getByRole('columnheader', { name: 'Soirée' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Dominance' })).toBeInTheDocument()
+    expect(screen.getByText('22/09/2026 20:00–23:10 (13)')).toBeInTheDocument()
+    expect(screen.getByTestId('narrative-badge')).toBeInTheDocument()
+    expect(screen.getByText('31')).toBeInTheDocument()
+    expect(screen.getByText('19')).toBeInTheDocument()
+    expect(screen.getByText('9')).toBeInTheDocument()
+    // FDA = (31 + 9/3) - 19 = 15, affiché signé : jamais un quotient.
+    expect(screen.getByText(/^\+15[.,]0$/)).toBeInTheDocument()
+  })
+
+  it('équipe alliée non lue : tirets, jamais un zéro', () => {
+    renderWithProviders(<SquadSynergyHistoryTable rows={[makeRow()]} playerSlug="me" />)
+    const cells = Array.from(document.querySelectorAll('tbody tr:first-child td'))
+    expect(cells.some((c) => c.textContent === '0')).toBe(false)
+  })
+})

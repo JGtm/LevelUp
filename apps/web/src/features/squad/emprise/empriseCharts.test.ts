@@ -5,11 +5,12 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors, type EmpriseFilText } from './empriseCharts'
+import { axisFootProblems } from '@/test/axisFootProblems'
+
+import { buildResourceFilOption, pickupRadius, type EmpriseFilColors, type EmpriseFilText } from './empriseCharts'
 import { buildResourceFil, empriseMatchIndex } from './emprise.logic'
-import { EMPRISE_2209, HABIT_2209, HISTORY_2209 } from './emprise.fixtures'
+import { EMPRISE_2209, HISTORY_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'
-import { buildHabitView } from './habit.logic'
 import { inSentence } from './useOutcomeLabels'
 
 const T = EMPRISE_TEXT.fr
@@ -67,6 +68,10 @@ const lines = opt.series.filter((s) => s.type === 'line')
 const dots = opt.series.filter((s) => s.type === 'scatter')
 
 describe('buildResourceFilOption — 22/09', () => {
+  it('le pied en mode match (heure + carte, bande) tient dans le bas de la grille', () => {
+    expect(axisFootProblems(opt as never)).toEqual([])
+  })
+
   it('une courbe par ressource du bilan, à sa couleur, dans l’ordre (bonus, armes spéciales)', () => {
     expect(lines.map((s) => s.name)).toEqual(['Bonus', 'Armes spéciales'])
     expect(lines.map((s) => s.lineStyle?.color)).toEqual(['res-powerup', 'res-power_weapon'])
@@ -172,6 +177,10 @@ describe('buildResourceFilOption — mode période', () => {
     const band = p.series.find((s) => s.type === 'custom')!
     expect((band.data[0] as Item).tip).toMatch(/^03\/07 12:00 · Starboard/)
   })
+  it('le pied de la période (date du mois + bande) tient dans le bas de la grille', () => {
+    expect(axisFootProblems(p as never)).toEqual([])
+  })
+
   it('le mode « match » (Escouade) reste le défaut : heure et carte, encoche', () => {
     expect(opt.xAxis[0].axisLabel!.formatter('m1', 0)).toBe('{t|19:23}\n{m|Starboard}')
     expect((opt as Opt).graphic).toBeUndefined()
@@ -191,6 +200,10 @@ describe('buildResourceFilOption — mode match compact', () => {
     expect(c.xAxis[0].axisLabel!.formatter('m1', 0)).toBe('')
   })
 
+  it('le pied compact (la bande seule) tient dans le bas de la grille', () => {
+    expect(axisFootProblems(c as never)).toEqual([])
+  })
+
   it('graduations tous les 50 %, pied réduit', () => {
     expect(c.yAxis[0].interval).toBe(50)
     expect(c.grid[0].bottom).toBeLessThan((opt as unknown as Opt).grid[0].bottom)
@@ -205,116 +218,5 @@ describe('buildResourceFilOption — mode match compact', () => {
     const band = c.series.find((s) => s.type === 'custom')!
     const api = { value: () => 0, coord: () => [100, 50], size: () => [60, 0] }
     expect(band.renderItem!(null, api).children.map((ch) => ch.style.fill)).toEqual(['win', 'dom1'])
-  })
-})
-
-type HabitSeries = Omit<Series, 'markLine'> & { markLine?: { data: { yAxis: number; lineStyle?: { color?: string; type?: number[] } }[] } }
-
-describe('buildHabitOption — soirée après soirée (22/09)', () => {
-  const view = buildHabitView(EMPRISE_2209)
-  if (view.kind !== 'chart') throw new Error(view.kind)
-  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', muted: 'muted', theme: COLORS.theme }, {
-    resourceLabel: (r) => T.resources[r].label,
-    pctFmt: T.pctFmt,
-    pctIntFmt: T.pctIntFmt,
-    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
-    tonight: T.habit.tonight,
-    eveningOf: T.habit.eveningOf,
-    pointTip: T.habit.pointTip,
-    medianTip: T.habit.medianTip,
-    notComparableTip: T.habit.notComparableTip,
-  }) as { series: HabitSeries[]; xAxis: Axis }
-  const hl = habit.series.filter((s) => s.type === 'line')
-
-  it('une courbe par ressource, à sa couleur ; ce soir grossi, valeur au bout 60 % et 44 %', () => {
-    expect(hl.map((s) => s.name)).toEqual(['Bonus', 'Armes spéciales'])
-    expect(hl.map((s) => s.lineStyle?.color)).toEqual(['res-powerup', 'res-power_weapon'])
-    const tonight = hl[0].data[5] as Item
-    expect(tonight.symbolSize).toBe(11)
-    expect((hl[0].data[0] as Item).symbolSize).toBe(6)
-    expect(hl[0].endLabel!.formatter({ value: tonight.value })).toBe('60 %')
-    expect(hl[1].endLabel!.formatter({ value: (hl[1].data[5] as Item).value })).toBe('44 %')
-    expect(tonight.tip).toBe('Bonus\nCe soir : 60 %\nMédiane des soirées précédentes : 60 %')
-    expect((hl[1].data[0] as Item).tip).toBe('Armes spéciales\nSoirée du 28/07 : 50 %\nMédiane des soirées précédentes : 50 %')
-  })
-
-  it('médiane en pointillé fin de la couleur de chaque courbe ; trait 50 % sur la première seulement', () => {
-    expect(hl[0].markLine!.data.map((d) => [Math.round(d.yAxis), d.lineStyle?.color, d.lineStyle?.type])).toEqual([
-      [60, 'res-powerup', [2, 3]],
-      [50, 'parity', [4, 3]],
-    ])
-    expect(hl[1].markLine!.data.map((d) => [Math.round(d.yAxis), d.lineStyle?.color])).toEqual([[50, 'res-power_weapon']])
-  })
-
-  it('dates sous l’axe, « ce soir » en gras ; colonne de ce soir grisée', () => {
-    expect(habit.xAxis.axisLabel!.formatter('0', 0)).toBe('{d|28/07}')
-    expect(habit.xAxis.axisLabel!.formatter('5', 5)).toBe('{cur|ce soir}')
-    const column = habit.series.find((s) => s.type === 'custom')!
-    expect(column.data).toEqual([[5, 0]])
-  })
-})
-
-describe('buildHabitOption — ce soir sans part pour une ressource (constat R4 de la revue L6.1)', () => {
-  // Ce soir : des bonus, aucune arme spéciale prise ; les soirées précédentes en ont.
-  const block = {
-    ...EMPRISE_2209,
-    habit: {
-      ...HABIT_2209,
-      current: { ...HABIT_2209.current, shares: HABIT_2209.current.shares!.filter((s) => s.resource === 'powerup') },
-    },
-  }
-  const view = buildHabitView(block)
-  if (view.kind !== 'chart') throw new Error(view.kind)
-  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', muted: 'muted', theme: COLORS.theme }, {
-    resourceLabel: (r) => T.resources[r].label,
-    pctFmt: T.pctFmt,
-    pctIntFmt: T.pctIntFmt,
-    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
-    tonight: T.habit.tonight,
-    eveningOf: T.habit.eveningOf,
-    pointTip: T.habit.pointTip,
-    medianTip: T.habit.medianTip,
-    notComparableTip: T.habit.notComparableTip,
-  }) as { series: (HabitSeries & { endLabel: { show: boolean } })[] }
-  const [bonus, armes] = habit.series.filter((s) => s.type === 'line')
-
-  it('armes spéciales : ni point grossi ni valeur au bout — jamais sur la dernière soirée passée', () => {
-    expect(view.points[5].current).toBe(true)
-    expect(armes.data[5]).toBeNull()
-    expect(armes.data.some((d) => d != null && typeof d === 'object' && d.symbolSize === 11)).toBe(false)
-    expect(armes.endLabel.show).toBe(false)
-  })
-
-  it('bonus : ce soir grossi et valeur au bout, comme d’habitude', () => {
-    expect((bonus.data[5] as Item).symbolSize).toBe(11)
-    expect(bonus.endLabel.show).toBe(true)
-  })
-})
-
-describe('buildHabitOption — une soirée d’autres modes que ce soir', () => {
-  const previous = HABIT_2209.previous!.map((e, i) => (i === 2 ? { ...e, comparable: false, families: ['Bases', 'Roi de la colline'] } : e))
-  const view = buildHabitView({ ...EMPRISE_2209, habit: { ...HABIT_2209, previous } })
-  if (view.kind !== 'chart') throw new Error(view.kind)
-  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', muted: 'muted', theme: COLORS.theme }, {
-    resourceLabel: (r) => T.resources[r].label,
-    pctFmt: T.pctFmt,
-    pctIntFmt: T.pctIntFmt,
-    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
-    tonight: T.habit.tonight,
-    eveningOf: T.habit.eveningOf,
-    pointTip: T.habit.pointTip,
-    medianTip: T.habit.medianTip,
-    notComparableTip: T.habit.notComparableTip,
-  }) as { series: HabitSeries[] }
-
-  it('la courbe l’enjambe ; un point gris liseré de la ressource, la raison au survol', () => {
-    const [bonusLine] = habit.series.filter((s) => s.type === 'line')
-    expect(bonusLine.data[2]).toBeNull()
-    const apart = habit.series.filter((s) => s.type === 'scatter')
-    expect(apart.map((s) => s.name)).toEqual(['Bonus', 'Armes spéciales'])
-    const point = apart[0].data[2] as Item & { itemStyle: { color: string; borderColor: string } }
-    expect(point.itemStyle).toMatchObject({ color: 'muted', borderColor: 'res-powerup' })
-    expect(point.tip).toBe('Bonus\nSoirée du 27/08 : 75 %\nAutres modes que ce soir (Bases, Roi de la colline) : hors médiane')
-    expect(apart[0].data.filter((d) => d != null)).toHaveLength(1)
   })
 })

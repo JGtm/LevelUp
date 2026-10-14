@@ -271,9 +271,9 @@ const FR: BaseEmpriseText = {
   habit: {
     title: 'Contrôle des ressources, par soirée',
     info:
-      'Part de l’équipe dans les prises de chaque ressource, par soirée de la composition, la plus récente à ' +
-      'droite. Point gris : soirée sans aucun des modes de ce soir, hors médiane ; pointillé fin : médiane ' +
-      'des soirées précédentes jouées dans les modes de ce soir.',
+      'Part de l’équipe dans les prises de chaque ressource : un groupe de barres par soirée de la composition, ' +
+      'la plus récente à droite. Barre grise : soirée sans aucun des modes de ce soir, hors médiane ; pointillé ' +
+      'fin : médiane des soirées précédentes jouées dans les modes de ce soir.',
     tonight: 'ce soir',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening} : ${value}${med ? `\nMédiane des soirées précédentes : ${med}` : ''}`,
@@ -421,9 +421,9 @@ const EN: BaseEmpriseText = {
   habit: {
     title: 'Resource control, by session',
     info:
-      'The team’s share of each resource’s pickups, per session of the line-up, the latest on the right. ' +
-      'Grey dot: a session with none of tonight’s modes, left out of the median; thin dotted line: median of ' +
-      'the previous sessions played in tonight’s modes.',
+      'The team’s share of each resource’s pickups: one group of bars per session of the line-up, the latest ' +
+      'on the right. Grey bar: a session with none of tonight’s modes, left out of the median; thin dotted ' +
+      'line: median of the previous sessions played in tonight’s modes.',
     tonight: 'tonight',
     pointTip: (resource, evening, value, med) =>
       `${resource}\n${evening}: ${value}${med ? `\nMedian of the previous sessions: ${med}` : ''}`,

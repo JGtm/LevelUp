@@ -111,10 +111,10 @@ const FR: ObjectifText = {
   fil: {
     title: 'Rapport de force au fil de la session',
     info:
-      'Part de l’équipe dans les actions de l’objectif du lobby, par rôle, cumulée depuis le premier match à ' +
-      'objectif de la soirée, chaque match pesant pareil. Points : part de chaque match, taille selon le volume.',
+      'Part de l’équipe dans les actions de l’objectif du lobby, par rôle : un groupe de barres par match. ' +
+      'L’infobulle donne le cumul depuis le premier match à objectif de la soirée, chaque match pesant pareil.',
     winLoss: 'Victoire, défaite',
-    ariaLabel: 'Part de l’équipe dans l’objectif, cumulée au fil de la soirée, par rôle',
+    ariaLabel: 'Part de l’équipe dans l’objectif, match par match, par rôle',
     belowMinimum: (n) => ({
       title: `${n > 1 ? `${n} matchs` : `${n} match`} à objectif ce soir`,
       description: 'Sous le minimum de trois, la carte se masque.',
@@ -196,10 +196,10 @@ const EN: ObjectifText = {
   fil: {
     title: 'Balance of power over the session',
     info:
-      'The team’s share of the lobby’s objective actions, by role, accumulated since the evening’s first ' +
-      'objective match, each match weighing the same. Dots: each match’s share, sized by volume.',
+      'The team’s share of the lobby’s objective actions, by role: one group of bars per match. The tooltip ' +
+      'gives the running total since the evening’s first objective match, each match weighing the same.',
     winLoss: 'Win, loss',
-    ariaLabel: 'The team’s share of the objective, accumulated over the evening, by role',
+    ariaLabel: 'The team’s share of the objective, match by match, by role',
     belowMinimum: (n) => ({
       title: `${n > 1 ? `${n} objective matches` : `${n} objective match`} tonight`,
       description: 'Below the minimum of three, the card is hidden.',
