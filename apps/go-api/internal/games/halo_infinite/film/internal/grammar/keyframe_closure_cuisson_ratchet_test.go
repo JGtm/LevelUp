@@ -110,6 +110,9 @@ func mesurerFermetureCuisson(t *testing.T) string {
 	b.WriteString("#   2026-10-08 plan LK, fusion de feat/v75 (2761162de, lot des arrets de la vue B suite : composants\n")
 	b.WriteString("#     ti=10, 11, 12, 43, 45 lus ; world-object i0 hors portee, porte posee, a la table DEFAUT) :\n")
 	b.WriteString("#     42 lignes MONTENT (ti=10, 11, 38, 42, 43, 45 sur les sept bobines) ; aucune baisse.\n")
+	b.WriteString("#   2026-10-14 plan residu (R1.2, avant Rslot) : DERIVE DU BLOQUANT figee, aucun compte ne bouge.\n")
+	b.WriteString("#     a521164d ti=35 nomme l arret jeu_d_armes_refuse (correction 2 de la revue D1.4.6 du\n")
+	b.WriteString("#     2026-10-09, qui n avait pas regenere ce golden : le comparateur ne rougit que sur une baisse).\n")
 	for _, court := range closureMiniFilms() {
 		stats := fermetureDeCuisson(t, court)
 		tis := make([]int, 0, len(stats))

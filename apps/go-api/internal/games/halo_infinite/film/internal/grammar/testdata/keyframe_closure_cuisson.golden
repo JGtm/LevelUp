@@ -34,6 +34,9 @@
 #   2026-10-08 plan LK, fusion de feat/v75 (2761162de, lot des arrets de la vue B suite : composants
 #     ti=10, 11, 12, 43, 45 lus ; world-object i0 hors portee, porte posee, a la table DEFAUT) :
 #     42 lignes MONTENT (ti=10, 11, 38, 42, 43, 45 sur les sept bobines) ; aucune baisse.
+#   2026-10-14 plan residu (R1.2, avant Rslot) : DERIVE DU BLOQUANT figee, aucun compte ne bouge.
+#     a521164d ti=35 nomme l arret jeu_d_armes_refuse (correction 2 de la revue D1.4.6 du
+#     2026-10-09, qui n avait pas regenere ce golden : le comparateur ne rougit que sur une baisse).
 a521164d	ti=2	0	11	
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	
@@ -55,7 +58,7 @@ a521164d	ti=26	0	11	i0 supply-lines-blocked-status-component
 a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
 a521164d	ti=29	11	11	
 a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
-a521164d	ti=35	1	209	
+a521164d	ti=35	1	209	i42 biped-desired-weapon-set (arret jeu_d_armes_refuse)
 a521164d	ti=37	3	762	
 a521164d	ti=38	433	1303	
 a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
