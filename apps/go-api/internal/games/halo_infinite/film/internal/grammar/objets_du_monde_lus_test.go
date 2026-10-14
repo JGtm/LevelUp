@@ -76,7 +76,7 @@ func pisteDuSlot(pistes []types.ProjectileTrack, slot uint32) bool {
 // TestUnePisteNEstRendueQuASonArchetype : les bandes des armes au sol et de l equipement se recouvrent ;
 // la passe seule rend le slot 1596 aux deux. La marche le lit comme un equipement : dans une trame que
 // sa fermeture prouve, la passe ne le rend plus aux armes au sol ; dans une trame qu elle ne prouve
-// pas, l archetype que la marche donne au slot n y est pas prouve, et la passe le rend encore.
+// pas, l archetype que la marche donne au slot n y est pas prouve, et la passe peut le rendre encore.
 // MUTATION — rendre tous les echantillons de la passe : ROUGE.
 func TestUnePisteNEstRendueQuASonArchetype(t *testing.T) {
 	const temoin = 1596
@@ -105,9 +105,21 @@ func TestUnePisteNEstRendueQuASonArchetype(t *testing.T) {
 			}
 		}
 	}
-	if n, m := echantillonsDuSlot(pistesArmes, temoin), echantillonsDuSlot(seule, temoin); n == 0 || n >= m {
-		t.Fatalf("slot %d aux armes au sol : %d echantillons derriere la marche contre %d par la passe seule ; "+
-			"ceux des trames non prouvees doivent rester", temoin, n, m)
+	nonProuves := 0
+	for _, p := range seule {
+		for _, s := range p.Pts {
+			if p.Slot == temoin && !prouveeA[s.TimestampUS] {
+				nonProuves++
+			}
+		}
+	}
+	// Les echantillons des trames non prouvees restent candidats ; ceux qui survivent au decoupage en
+	// pistes (trois echantillons au moins par segment, [splitLives]) sont rendus. Depuis la lecture
+	// juste d i28 (`grammar-2026-10-14.2`), les trames non prouvees du temoin ne portent plus que des
+	// echantillons isoles, que le decoupage ecarte : n peut valoir zero.
+	if n, m := echantillonsDuSlot(pistesArmes, temoin), echantillonsDuSlot(seule, temoin); n > nonProuves || n >= m {
+		t.Fatalf("slot %d aux armes au sol : %d echantillons derriere la marche contre %d par la passe seule, dont "+
+			"%d dans des trames non prouvees : seuls ceux-la peuvent rester", temoin, n, m, nonProuves)
 	}
 	pistesEquipement, err := ScanWorldObjectsForBand(fc, &wr, EquipmentTypeIndex, equipement)
 	if err != nil || !pisteDuSlot(pistesEquipement, temoin) {
