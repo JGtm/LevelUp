@@ -44,17 +44,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 // trames a message de degats (genre 0) s arretaient apres un record `ti=38` lu ainsi. Le releve du
 // 2026-09-27 (fermeture d image-cle en baisse sur les anciens builds, ti=38 11de8353 99 -> 83,
 // a521164d 122 -> 119) portait sur la lecture entiere du portage, garde comprise.
-//
-// SOUS LA GARDE (plan du residu, R3.1 ; relu au plan LK, LK.5.4.1, le 2026-10-08) : `FUN_14076e29c`
-// lit precHigh et R(96) (`FUN_14076e420` -> `FUN_14076e494`, garde vraie), la queue
-// `FUN_14076e3e4(precHigh)` (MOV R9B,AL en 14076e2c5), puis R(2) si les trois flottants sont finis, et
-// rend faux sinon (14076e2fe) : la forme de la branche absolue d i0 du bipede
-// ([consumeAbsoluSousLaPortee]).
 func consumeObjectPositionMonde(br *Lecteur) {
-	if br.sousLaGardeSinonException() {
-		consumeAbsoluSousLaPortee(br)
-		return
-	}
+	br.noterExceptionDatee()
 	if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
 		br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
 		return
