@@ -8,7 +8,7 @@
  * n'ont pas d'autre joueur et ne posent rien ; une contribution dont un des deux points manque non
  * plus (jamais de position de repli).
  */
-import { screenLengthPx } from '@/features/match-replay/model/screenSizes'
+import { screenLengthPx } from '@/lib/replay/screenSizes'
 import type { TacticalContribution } from '@/lib/api/types'
 
 /** Le rôle de l'autre joueur : le tueur d'une mort, la victime d'un frag. */
