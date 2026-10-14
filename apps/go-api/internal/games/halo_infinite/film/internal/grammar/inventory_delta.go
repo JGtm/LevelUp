@@ -71,6 +71,13 @@ const invDeltaMaxPerType = 2
 // chantier de la capacité d'armure (cf. replay/abilities.go).
 const InventoryDeltaNoSel = -1
 
+// selectionDansLeMasque dit si la selection R(3) d i47, en base 1, designe un type de grenade du masque
+// R(6) du meme record : 1..[invDeltaGrenadeSlots] et son bit pose. C est la regle que le canal delta et la
+// lecture de l etat complet aux images-cles appliquent avant de publier une selection.
+func selectionDansLeMasque(masque uint32, selection int) bool {
+	return selection >= 1 && selection <= invDeltaGrenadeSlots && masque&(1<<uint(selection-1)) != 0 //nolint:gosec // 1..4
+}
+
 // ScanFilmInventoryDeltas décode les transmissions d'inventaire de grenades (i22 compteurs,
 // i47 masque et sélection) dans les paquets delta du film de dir.
 //
@@ -363,7 +370,7 @@ func (sc *invDeltaScanner) collectI47(rec *types.InventoryDelta) bool {
 		sc.st.MaskEmpty++
 	case sc.last47sel == GrenadeSetNoSelection:
 		sc.st.NoSelection++
-	case sc.last47sel > invDeltaGrenadeSlots || sc.last47mask&(1<<uint(sc.last47sel-1)) == 0:
+	case !selectionDansLeMasque(sc.last47mask, sc.last47sel):
 		// LE TEST RÉFUTABLE du handoff : une sélection non nulle appartient au masque NON VIDE
 		// du même record. Quand elle n'y est pas, la lecture est publiée SANS sélection —
 		// désigner un type que le porteur ne porte pas serait un faux, la taire n'en est pas un.

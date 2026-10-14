@@ -261,3 +261,14 @@ package killsource
 // 43 sur `3abf0258` (trois kill-events sans assistant dont le fil en nomme un), zero desaccord. Les
 // lignes de `match_kill_events` deviennent candidates au redecodage : backlog sur signal de
 // l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-09 (jalon LK et lot 2.7.d1 du plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, fusionnes apres le lot `assist-film`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
+// portee de l etat complet) puis a `grammar-2026-10-09.3` (etat complet du bipede aux images-cles lu
+// par la grammaire, fenetres de bits derriere la lecture). Sur la branche, ces deux montees etaient
+// ecrites `grammar-2026-10-09` et `grammar-2026-10-09.2`, en complements de `killsource-2026-10-08.2`
+// (sorties identiques a l octet contre `d429dc517`, puis contre `3aa885e37`) ; elles sont renumerotees
+// a la fusion de `feat/v75` `54b47a2b8`. `cmd/killsource json` sur les 19 temoins, binaire de
+// `54b47a2b8` contre binaire de la tete fusionnee : sorties identiques a l octet. Golden regenere a
+// revision constante.

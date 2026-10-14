@@ -234,7 +234,7 @@ func objLancerTableau(t *testing.T, titre string, vies, temoins []objLancerItem)
 func objLancerCompte(items []objLancerItem, r float64) int {
 	n := 0
 	for _, it := range items {
-		n += objBool(it.explique(r))
+		n += unSiVrai(it.explique(r))
 	}
 	return n
 }

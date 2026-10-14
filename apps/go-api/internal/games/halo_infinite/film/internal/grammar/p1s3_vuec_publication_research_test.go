@@ -13,13 +13,6 @@ import (
 	"testing"
 )
 
-func s3B(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 // s3PublierIndex publie, par index de controle, les entrees et le bloc d action.
 func s3PublierIndex(t *testing.T, ents []s3Entree, cad s3Cadre) {
 	t.Helper()
@@ -32,10 +25,10 @@ func s3PublierIndex(t *testing.T, ents []s3Entree, cad s3Cadre) {
 			a = &agg{}
 			par[e.index] = a
 		}
-		a.n, a.val, a.act = a.n+1, a.val+s3B(e.valide), a.act+s3B(e.actions)
-		a.drap += s3B(e.drapeaux != 0)
+		a.n, a.val, a.act = a.n+1, a.val+unSi(e.valide), a.act+unSi(e.actions)
+		a.drap += unSi(e.drapeaux != 0)
 		if e.tir() {
-			a.tir, a.tirVal = a.tir+1, a.tirVal+s3B(e.valide)
+			a.tir, a.tirVal = a.tir+1, a.tirVal+unSi(e.valide)
 			if cad.dansEpisode(e.trame) {
 				a.tirDans++
 			} else {
@@ -72,7 +65,7 @@ func s3Compte(ents []s3Entree, idx, f int) (tir, lues int) {
 	for _, e := range ents {
 		if e.index == idx && e.trame >= f-20 && e.trame <= f {
 			lues++
-			tir += s3B(e.tir())
+			tir += unSi(e.tir())
 		}
 	}
 	return tir, lues
@@ -85,7 +78,7 @@ func s3Couverture(paqs []s3Paquet, f int) string {
 	for _, b := range paqs {
 		if b.trame >= f-20 && b.trame <= f {
 			st[b.statut]++
-			clos += s3B(b.fermeMoi)
+			clos += unSi(b.fermeMoi)
 		}
 	}
 	return fmt.Sprintf("%d/%d/%d clos %d", st[0], st[1], st[2], clos)
@@ -100,7 +93,7 @@ func s3PublierGate(t *testing.T, ents []s3Entree, paqs []s3Paquet, cad s3Cadre, 
 		a, la := s3Compte(ents, cad.index, f)
 		m, lm := s3Compte(ents, cad.index, f-600)
 		p, lp := s3Compte(ents, cad.index, f+600)
-		nFrag += s3B(a > 0)
+		nFrag += unSi(a > 0)
 		par = append(par, fmt.Sprintf("%d/%d", a, la))
 		moins = append(moins, fmt.Sprintf("%d/%d(%v)", m, lm, cad.dansEpisode(f-600)))
 		plus = append(plus, fmt.Sprintf("%d/%d(%v)", p, lp, cad.dansEpisode(f+600)))
@@ -110,7 +103,7 @@ func s3PublierGate(t *testing.T, ents []s3Entree, paqs []s3Paquet, cad s3Cadre, 
 	for _, e := range ents {
 		if e.index == cad.index && !cad.dansEpisode(e.trame) {
 			horsLues++
-			hors += s3B(e.tir())
+			hors += unSi(e.tir())
 		}
 	}
 	t.Logf("== GATE index %d, entrees %s (qui tirent / lues dans [f-2 s, f]) :", cad.index,
@@ -200,8 +193,8 @@ func s3PublierCouverture(t *testing.T, ents []s3Entree, cad s3Cadre) {
 	for _, ep := range cad.episodes {
 		var nl, nt int
 		for tr := ep[0]; tr <= ep[1]; tr++ {
-			nl += s3B(lues[tr])
-			nt += s3B(tir[tr])
+			nl += unSi(lues[tr])
+			nt += unSi(tir[tr])
 		}
 		t.Logf("   episode %d-%d : trames lues %d/%d (%.0f %%) · trames qui tirent %d (%.0f %% des lues)",
 			ep[0], ep[1], nl, ep[1]-ep[0]+1, 100*float64(nl)/float64(ep[1]-ep[0]+1), nt,

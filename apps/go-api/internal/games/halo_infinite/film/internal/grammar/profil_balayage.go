@@ -147,7 +147,7 @@ func grammaireSousCarte(g GrammaireBalayage, carte bool) GrammaireBalayage {
 // grammaireSousFilm rend la grammaire d un profil selon CE QUE LE FILM DECLARE. C EST LA REGLE,
 // ECRITE UNE FOIS, et son second rendu dit si le film a parle.
 //
-// # UNE SEULE BASCULE VIENT DU FILM, ET ELLE EST LUE CHEZ L ECRIVAIN
+// # DEUX CHAMPS VIENNENT DU FILM, ET ILS SONT LUS CHEZ L ECRIVAIN
 //
 // [GrammaireBalayage.ControleDeCorruption] n est pas un reglage : c est le bit de
 // `chunk_00 + 0x0CB45C`, que `FUN_14299b198` @14299b25b ecrit et que `FUN_14299ab50` @14299ac28
@@ -156,26 +156,47 @@ func grammaireSousCarte(g GrammaireBalayage, carte bool) GrammaireBalayage {
 // ADR 0034 : le film est autoportant, jamais un profil par build (cf.
 // [profile.FilmIdentity.ControleDeCorruption]).
 //
-// # POURQUOI ELLE NE SE POSE PLUS A LA MAIN SUR UN CONTEXTE DE FILM
+// [GrammaireBalayage.MoteurUnPossible] suit le type de moteur que la variante de partie du film
+// declare ([profile.VarianteDePartie]) : le jeu pose `DAT_145121140 = FUN_14051a4b8(type)`
+// (`FUN_140a938b4`), qui ne vaut 1 que pour le type 1, et une variante que l enregistreur n a pas
+// ecrite (`Presente` faux) n a pas de type ([moteurUnPossible]).
 //
-// Avant le lot 5.18.2 ce champ etait de defaut FAUX et n avait d ecrivain qu un instrument. Le
-// defaut se trouvait JUSTE — le bit vaut zero sur les 1 605 films du cache, 8 builds, 5 formats
-// — mais il l etait par hasard, et un film qui le leverait aurait desynchronise sans un mot.
-// [FilmContext.ProfilDeBalayage] le DERIVE desormais a chaque rendu : rien d autre qu un film
-// n a le droit de le poser, et un profil pose par-dessus ne peut donc pas l effacer.
+// # POURQUOI ILS NE SE POSENT PAS A LA MAIN SUR UN CONTEXTE DE FILM
+//
+// Avant le lot 5.18.2 le controle de corruption etait de defaut FAUX et n avait d ecrivain qu un
+// instrument. Le defaut se trouvait JUSTE — le bit vaut zero sur les 1 605 films du cache, 8
+// builds, 5 formats — mais il l etait par hasard, et un film qui le leverait aurait desynchronise
+// sans un mot. [FilmContext.ProfilDeBalayage] les DERIVE desormais a chaque rendu : rien d autre
+// qu un film n a le droit de les poser, et un profil pose par-dessus ne peut donc pas les effacer.
 //
 // # LE REPLI, NOMME ET COMPTE
 //
 // `lue` faux = le film ne porte PAS de section d identification (5 films du cache, format 20,
-// deja mis de cote par [profile.ErrUnknownBuild]). La grammaire garde alors son invariant : c est
-// le repli `repli_controle_corruption_section_absente` du registre, et il est COMPTE par
-// [FilmContext.ControleDeCorruptionRepli] et par la calibration de `killsource`.
+// deja mis de cote par [profile.ErrUnknownBuild]). Le controle de corruption garde alors son
+// invariant : c est le repli `repli_controle_corruption_section_absente` du registre, et il est
+// COMPTE par [FilmContext.ControleDeCorruptionRepli] et par la calibration de `killsource`. Le type
+// de moteur n y est pas exclu.
 func grammaireSousFilm(g GrammaireBalayage, p profile.Profile) (GrammaireBalayage, bool) {
+	g.MoteurUnPossible = moteurUnPossible(p)
 	if !p.IdentityRead() {
 		return g, false
 	}
 	g.ControleDeCorruption = p.Identity().ControleDeCorruption
 	return g, true
+}
+
+// moteurUnPossible dit si le film n EXCLUT PAS le type de moteur 1 : son identite ou sa variante
+// de partie n est pas lue, ou sa variante le declare. Une variante absente du film vaut le type 0
+// (`FUN_14051a4b8(0) = 0`), qui l exclut.
+func moteurUnPossible(p profile.Profile) bool {
+	if !p.IdentityRead() {
+		return true
+	}
+	v := p.Identity().Variante
+	if !v.Lue {
+		return true
+	}
+	return v.Presente && v.TypeDeMoteur == typeDeMoteurUn
 }
 
 // GrammaireSousFilm applique [grammaireSousFilm] a un PROFIL DE BALAYAGE complet, pour les
@@ -193,10 +214,11 @@ func GrammaireSousFilm(bal ProfilDeBalayage, f *source.Film) (ProfilDeBalayage, 
 // # CE QU ELLES SONT, ET POURQUOI ELLES VIVENT ICI
 //
 // Ce ne sont ni des largeurs mesurees (le profil du film) ni des observations (l observateur) :
-// ce sont des A/B de RETRO-INGENIERIE — « le corps de ce composant est-il porte ? », « la
-// portee baseline est-elle levee ? », « ce composant est-il saute a une largeur de bouchon ? ».
-// Chacune a son defaut de PRODUCTION, et chacune n a d autre ecrivain qu un instrument de
-// mesure ou un harnais de calibration.
+// ce sont des A/B de RETRO-INGENIERIE — « le corps de ce composant est-il porte ? », « la vue B
+// s arrete-t-elle sur la table de vue ? », « ce composant est-il saute a une largeur de
+// bouchon ? ». Chacune a son defaut de PRODUCTION, et chacune n a d autre ecrivain qu un
+// instrument de mesure ou un harnais de calibration — sauf les champs que le film ou la carte
+// decident (`ControleDeCorruption`, `MoteurUnPossible`, `SimStateComplet`).
 //
 // ELLES ETAIENT DOUZE VARIABLES DE PAQUET jusqu au lot 2.3, avec leurs douze reglages publics :
 // tout instrument qui en posait une la posait pour le PROCESSUS, et c est l une des deux
@@ -234,19 +256,15 @@ type GrammaireBalayage struct {
 	// Le defaut global reste faux, et c est le critere lui-meme qui l exige (cf. la doc de
 	// [grammaireSousCarte]).
 	SimStateComplet bool
-	// PorteeBaseline mirroite `DAT_144e61ea0` : une PORTEE, pas un reglage. Les lecteurs d etat
-	// complet du groupe `142e2*`/`142e3*` la levent juste AVANT l appel vtable[0x60] et la
-	// rabaissent juste apres ; pendant cette portee, tous les lecteurs de position passent du
-	// quantifie au BRUT 96 bits. Defaut false depuis le 2026-08-17 ; critere de bascule :
-	// l atterrissage bit-exact des 591 records `ti=35` bornes au-dessus de 50 %.
-	PorteeBaseline bool
-	// GrammaireEcrivainI0 route le chemin ABSOLU d i0 sur la grammaire que l ECRIVAIN d etat
-	// complet du jeu pose (lot R7-d) : le 3e bit ne supprime pas la charge utile, il choisit la
-	// table de plage et ouvre la queue de handle ; le champ de 2 bits vient EN DERNIER. Defaut
-	// false depuis le 2026-08-17 (R7-e) : la correction n est pas prouvee bit-exacte sur
-	// l oracle de frontiere, et ce chemin sert la trajectoire de PRODUCTION du rejeu 2D.
-	// Retrait de la bascule vise a la cloture du chantier image-cle, au plus tard le 2026-10-31.
-	GrammaireEcrivainI0 bool
+	// MoteurUnPossible : le film n EXCLUT PAS le type de moteur 1 (`DAT_145121140 == 1`) — il le
+	// declare, ou ne declare pas son type (identite ou variante de partie non lue). Sous ce type
+	// seulement la table d objets du jeu grandit, et la largeur d un index de handle n est plus
+	// celle de l image statique ([consumeAbsoluSousLaPortee]).
+	//
+	// IL VIENT DU FILM, comme [GrammaireBalayage.ControleDeCorruption] ([grammaireSousFilm]) : un
+	// contexte de film le derive a chaque rendu. Le defaut de structure, faux, est la valeur du jeu
+	// pour une variante sans type (`m_gameEngineType` 0, `FUN_14051a4b8(0) = 0`).
+	MoteurUnPossible bool
 	// CorpsActionMobilite : le corps de FUN_1408f02c8 (i54) est-il decode ? Defaut TRUE.
 	CorpsActionMobilite bool
 	// CorpsAncrageCapacite : le corps tag==3 d i59 est-il decode ? Defaut TRUE.

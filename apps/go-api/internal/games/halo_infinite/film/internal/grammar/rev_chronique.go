@@ -135,3 +135,88 @@ package grammar
 // et la marche de killsource les rend (`LectureDeKillsource.Fil`). Contre `grammar-2026-10-08.13` :
 // aucun bit n est lu autrement, aucune vue ne s arrete ailleurs ; seuls les messages a couple sont
 // gardes en plus.
+//
+// ENTREE `grammar-2026-10-09.2` (2026-10-09, jalon LK du plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
+// RECORDS D IMAGE-CLE SE LISENT SOUS LA PORTEE `DAT_144e61ea0` DE L ETAT COMPLET.
+//
+// RENUMEROTEE (2026-10-09, fusion de `feat/v75` `54b47a2b8` dans `feat/ri-lk-images-cles`) : cette
+// entree etait `grammar-2026-10-09` sur la branche ; le lot `assist-film`, fusionne avant elle dans
+// `feat/v75`, a pris ce rang. Elle passe au rang libre suivant ; ce qu elle decrit est mesure contre
+// `grammar-2026-10-08.13` et s ajoute a `grammar-2026-10-09`, qui ne touche pas la marche d etat complet.
+//
+// Ce qui change, contre `grammar-2026-10-08.13` :
+//   - la portee est un champ du lecteur ([Lecteur.portee]), posee par la seule marche d etat complet
+//     la ou le jeu la pose (autour de l etat par defaut et de son mot de controle quand `n1 > 0`,
+//     sur toute la boucle de composants quand `n2 > 0`) ; la garde de pleine precision
+//     ([fullPrecisionGate]) en depend : les lecteurs de position y lisent le vecteur brut, R(96) ;
+//   - la branche absolue d i0 sous la portee lit la forme de `FUN_1406cfe44` : h, R(96), la queue
+//     fidele de `FUN_14076e3e4` ([consumeQueueDePoignee] : handle par `FUN_1408f0ac4(.., 0)`, 13 bits,
+//     puis le mot de region), R(2) si les trois flottants sont finis ; deux arrets nommes,
+//     `position_non_finie` et `largeur_handle_moteur_un` (handle annonce dans un film qui n exclut pas
+//     le type de moteur 1, [GrammaireBalayage.MoteurUnPossible], derive du film) ;
+//   - la structure de lecture porte l arret d un lecteur ([lecture.EtatArrete], cause
+//     [lecture.CauseDArret]) au lieu de le confondre avec un composant non porte (ADR 0037 IR-4) ;
+//   - sous la garde, sept exceptions datees du portage lisent comme le jeu
+//     (player-desired-respawn-location, crew-order, tacmap-poiicon, -areaofinterest, -displayasset,
+//     -cooptetherarea, -waypointstate, qui recoit le niveau du registre) et flock-destination ; le
+//     geste [Lecteur.sousLaGardeSinonException] decide, l exception ne vaut que hors de la garde ;
+//   - les bascules de profil `PorteeBaseline` et `GrammaireEcrivainI0` sont retirees. Leur critere
+//     ecrit (atterrissage des records `ti=35` bornes au-dessus de 50 %) n etait pas tenu par la portee
+//     seule (8/599) ; il l est par la portee et la forme d i0 du jeu ensemble, 369/599 = 61,6 %, avec
+//     et sans bouchons (`TestKF7EFullStateLoop`) — amendement du critere decide par l utilisateur
+//     (U-0, 2026-10-08) ; l instrument qu il nommait, `TestKF35CBaselineScope`, aveugle, est retire.
+//
+// MESURE (contexte de cuisson, plan LK) : records bipedes d image-cle fermes 410 -> 5 399 sur 10 710
+// (28 films) ; ratchet de cuisson `ti=35` 53 -> 666 sur 1 368 (sept bobines) ; `ti=21` 0 -> 1 315 sur
+// 1 750 (flock-destination) ; election des ancres, equipes et carte des trames delta identiques. Les
+// baisses sont adjugees au plan (§2) : des fermetures de hasard de la base (`60ae07c4` slot 539 ;
+// `50247b26`, film illisible des i22). Quatre lectures du jeu sous la garde sont REJETEES par la
+// regle du jalon (une baisse, ou l election des ancres changee) et restent hors de la grammaire :
+// unit-actor-state, world-object i0, generic-rigid-body-transforms, low-frequency (plan LK, §7 D-17,
+// D-18, D-21, D-23).
+//
+// ENTREE `grammar-2026-10-09.3` (2026-10-09, lot 2.7.d1 du plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
+// `feat/ri-lk-images-cles`) : L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES
+// FENETRES DE BITS PASSENT DERRIERE LA LECTURE.
+//
+// Ce qui change, contre `grammar-2026-10-09.2` :
+//   - une seule marche de la phase des images-cles ([ScanEtatsDesImagesCles]) rend les armes
+//     portees, l inventaire et la marque de portage de chaque record bipede ; les composants sont
+//     resolus par NOM dans le registre du film et relus a l etendue de leur occurrence par
+//     l assistant unique ([relireLOccurrence], portee et etat complet poses comme la marche) ;
+//   - regle d admission par record (decision de l utilisateur du 2026-10-09, U-1 amendee) : (ferme
+//     OU n(i22) = 4) ET T1 (au moins une arme, chaque famille non vide au catalogue, marche au-dela
+//     du dernier emplacement) ET T2 (masque d i47 egal a la bitmap des compteurs d i22) ;
+//   - valeurs publiees d un record admis (U-3, U-4) : familles des emplacements non vides dans leur
+//     ordre (plus de « Dynamo Grenade » lue un bit trop tot) ; grenade selectionnee en base 0 ;
+//     `DrawnSlot` = emplacement desire en main principale (param[1] d i42), -1 = absence ; rang de
+//     capacite publie dans 16..23 seulement, compte hors domaine ; marque = la configuration de la
+//     fenetre lue dans i11, i12 et i13 (U-2 (b)) ;
+//   - les records non admis passent aux fenetres DERRIERE la lecture, marques recuperes et comptes
+//     sous trois replis (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,
+//     `repli_fenetre_marque_de_portage`) ; les records admis sont muets pour elles ;
+//     `repli_plafond_grenade_par_defaut` ne se compte plus que si la fenetre a recu un record ;
+//   - [lireJeuDArmes] rend les trois champs d i42 ; [ScanArmesDesImagesCles] lit les seules armes
+//     (le sync des porteurs : ni regles d inventaire ni marque derriere la lecture).
+//
+// MESURE (28 films, contexte de cuisson, plan D1.0 a D1.2) : 6 507 records bipedes admis sur 10 710
+// (f24 2 392 / 3 097, f25 492 / 653, f27 3 574 / 4 905, f20 34 / 1 652, f21 15 / 403) ; valeurs
+// publiees egales a la relecture de l instrument sur 100 % des admis ; 0 record a armes fausses admis
+// en formats 20-21 ; 1 admis sur 10 407 records du temoin decale d un bit ; 0 debordement ; replis =
+// records non admis (4 203), film par film. Bobines du golden : 837 records admis, dont 11 ou la
+// fenetre aurait lu autre chose.
+//
+// AMENDEE (2026-10-09, revue adversariale D1.4.6, branche non fusionnee : le rang `.3` n a quitte ni la
+// branche ni ses mesures, il est amende au lieu de monter a `.4`, empreinte regeneree) :
+//   - le jeu d armes que `FUN_1406d01fc` refuse (param[1] != -1 et param[1] = param[2]) arrete la
+//     boucle d etat complet sur i42 du bipede et i38 du vehicule, comme le jeu (thunks `14109d298`,
+//     `14116d3cc` ; `TEST AL,AL ; JZ` en `142e2c7ce`) : cause [lecture.ArretJeuDArmesRefuse] ;
+//   - un record dont une occurrence deborde n est pas admis (`refusDebordement`) ;
+//   - une selection d i47 hors du masque ou du domaine n est pas publiee et se compte
+//     (`SelectionHorsMasque`), le contrat du canal delta ([selectionDansLeMasque], partage) ;
+//   - un record n est marque recupere par la fenetre d inventaire que si sa lecture porte une valeur.
+// MESURE de l amendement (28 films) : 460 records bipedes arretes sur i42, tous sur les trois films
+// de format 20 ; admis inchanges (6 507) ; fermetures `ti=35` 5 401 -> 5 397 ; `replay-equiv` (20
+// films) : seuls `a349fea8` et `a521164d` changent (4 selections tues) ; killsource identique.

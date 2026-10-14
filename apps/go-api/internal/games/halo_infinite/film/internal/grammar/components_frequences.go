@@ -30,9 +30,9 @@ package grammar
 // cette portee, ou `FUN_14076f91c` rend vrai et `FUN_14076e494` lit la position BRUTE
 // (`FUN_1411b259c` = `FUN_1406d676c(..., 0x60)`, R(96)) : la tete et chaque entree de
 // FUN_142ed4aec y ont une autre largeur. La boucle delta (`FUN_14076cb60`) ne pose pas la portee.
-// La marche d etat complet du depot ne la pose pas ([GrammaireBalayage.PorteeBaseline] reste
-// faux) : dans un etat complet ([Lecteur.etatComplet]), le composant n est pas porte (la
-// traversee s arrete) plutot que lu a une largeur que le jeu n emploie pas dans cette boucle.
+// La marche d etat complet du depot pose cette portee ([Lecteur.portee]), sous laquelle
+// [lireE494] lit comme le jeu ; dans un etat complet ([Lecteur.etatComplet]), le composant reste
+// pourtant non porte (la traversee s arrete) : sa lecture n y a pas ete mesuree.
 
 // Les archetypes qui enregistrent `high-frequency`, lus dans leurs fonctions d enregistrement.
 const (

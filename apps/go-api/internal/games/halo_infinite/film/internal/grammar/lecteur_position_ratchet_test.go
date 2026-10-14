@@ -56,7 +56,6 @@ func tableDesSitesDePosition() []siteDePosition {
 		{"consumeAbsoluteWithGate", "", "lireE524", n10, 1, "FUN_1406cfe44 branche absolue, precHigh = 0, CALL 1406d009d (MOV R9D,0x10 en 1406d008a)"},
 		{"consumePredictedDelta", "", "lireE524", n10, 1, "FUN_14076f3ec repli, CALL 14226a6c7 (14226a6b8)"},
 		{"consumePredictedAbsolute", "", "lireE420", n10, 1, "FUN_140f7ea14 -> FUN_14076e4ec, CALL 140f7ea5c"},
-		{"consumeObjectPositionDynamicPrecisionD", "", "lireE420", n10, 1, "grammaire d ecrivain d i0 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0"},
 		{"consumeMobilityActionBody", "", "lireE494", n10, 2, "i54 : FUN_1408f02c8, CALLs 1408f03c7 et 1408f0758 (EBP = 0x10)"},
 		{"consumeManagedAndObjectiveComponent", "asset-transform-component", "lireE494", n1e, 1, "ti=44 i0 : FUN_142ed9530, CALL 142ed9556 (x5 par FUN_142ed3c64)"},
 		{"consumeBipedDefaultStateMediaFrame", "", "lireE494", n10, 1, "trame media : FUN_140f44c38, CALL 142451b5d"},

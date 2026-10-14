@@ -87,6 +87,16 @@ type ComptesDesReplis struct {
 	// du monde que la passe des creations rend DERRIERE la marche des trames
 	// ([FilmContext.creationsDerriereLaMarche]).
 	CreationsDuMondeApresLaMarche int
+	// FenetresArmesImageCle : `repli_fenetre_armes_image_cle` — records bipedes d image-cle non admis
+	// donnes a la fenetre des familles d arme DERRIERE la lecture de l etat complet
+	// ([ScanEtatsDesImagesCles], `keyframe_etats_fenetre.go`).
+	FenetresArmesImageCle int
+	// FenetresInventaireImageCle : `repli_fenetre_inventaire_image_cle` — les memes, donnes aux regles
+	// d ancrage de l inventaire.
+	FenetresInventaireImageCle int
+	// FenetresMarqueDePortage : `repli_fenetre_marque_de_portage` — les memes, donnes a la fenetre de
+	// la marque de portage.
+	FenetresMarqueDePortage int
 }
 
 // Plus rend la somme champ a champ des deux rapports.
@@ -112,6 +122,9 @@ func (r ComptesDesReplis) Plus(d ComptesDesReplis) ComptesDesReplis {
 		AncragesBipedesApresLaMarche:   r.AncragesBipedesApresLaMarche + d.AncragesBipedesApresLaMarche,
 		PistesDuMondeApresLaMarche:     r.PistesDuMondeApresLaMarche + d.PistesDuMondeApresLaMarche,
 		CreationsDuMondeApresLaMarche:  r.CreationsDuMondeApresLaMarche + d.CreationsDuMondeApresLaMarche,
+		FenetresArmesImageCle:          r.FenetresArmesImageCle + d.FenetresArmesImageCle,
+		FenetresInventaireImageCle:     r.FenetresInventaireImageCle + d.FenetresInventaireImageCle,
+		FenetresMarqueDePortage:        r.FenetresMarqueDePortage + d.FenetresMarqueDePortage,
 	}
 }
 
