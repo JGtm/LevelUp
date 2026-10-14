@@ -38,22 +38,6 @@ type Couverture struct {
 	EchantillonFaible bool `json:"echantillon_faible"`
 }
 
-// KillEvent est une ligne du journal des morts : une mort, son tueur quand il est connu, et
-// son instant. Projection de `match_kill_events_latest` (`victim_xuid`,
-// `feed_killer_xuid`, `time_ms`, `match_id`) rendue par `TacticalRepo.KillEvents`.
-type KillEvent struct {
-	MatchID string
-
-	// KillerXUID est VIDE quand personne ne revendique la mort : chute, hors-limites,
-	// grenade perdue, degat de l'environnement.
-	KillerXUID string
-
-	VictimXUID string
-
-	// TimeMs est l'instant de la mort sur l'horloge du match, en millisecondes.
-	TimeMs int64
-}
-
 // EquipesParMatch donne le numero d'equipe de chaque joueur, PAR MATCH : matchID -> xuid ->
 // equipe. La composition change d'un match a l'autre, et une table globale melangerait deux
 // compositions au premier joueur ayant change de camp. Un xuid absent a une equipe INCONNUE :

@@ -254,16 +254,7 @@ func (b *Builder) BuildBytes(ctx context.Context, matchID string, mapNames []str
 	b.observe("vip", stats.vip)
 	b.observe("skull", stats.skull)
 	b.observe("bomb", stats.bomb)
-	// La CIBLE DE VICTOIRE vient de la table de règlement du titre, jamais du film : elle
-	// s'ajoute à l'entrée du calque de score, et la garde de publication vit chez lui
-	// (`publishableTarget` — une table périmée se tait au lieu de publier une cible fausse).
-	// Le DÉNOMINATEUR DE LA GARDE vient de la même table, pour la même raison : le film porte le
-	// compteur de tics, pas combien de tics valent un point. Sa garde de
-	// publication vit elle aussi chez le calque (`publishableHold`).
-	if stats.score != nil {
-		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
-		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
-	}
+	b.poserLeReglementDuScore(stats.score, facts.GameVariantName)
 	cat := b.collecterEntreesCatalogue(ctx, matchID, mapNames, facts, &stats, src)
 	replay.JournaliserDiagnostics(ctx, cat.replis.Diagnostics().Relever()) // replis hors registre (J12.3)
 	opts := b.buildReplayOptions(ctx, entry, facts, cat, &stats)

@@ -486,14 +486,7 @@ func carteForgeParNom(nom string) (CarteForge, bool) {
 
 func objetsDeLaVariante(t *testing.T, carte CarteForge) []mapvar.Object {
 	t.Helper()
-	depot, err := cheminDepuisDepot(DepotVariantesCarte)
-	if err != nil {
-		t.Skip(err)
-	}
-	brut, err := os.ReadFile(filepath.Join(depot, carte.FichierMvar))
-	if err != nil {
-		t.Skipf("variante absente : %v", err)
-	}
+	brut := lireVarianteDuDepot(t, carte.FichierMvar)
 	v, err := mapvar.Parse(brut)
 	if err != nil {
 		t.Skipf("variante illisible : %v", err)

@@ -9,9 +9,9 @@
 //
 // ─── DEUX LECTURES, JAMAIS UNE PAR MATCH ──────────────────────────────────────────────
 //
-//	le JOURNAL DES MORTS   port.TacticalRepository.KillEvents, UNE fois, sur la liste
-//	                       blanche du scope : le bloc en lit l'univers (matchs retenus, drapeau
-//	                       « mesuré », table des équipes) ;
+//	l'UNIVERS             port.TacticalRepository.Univers, UNE fois, sur la liste blanche du
+//	                       scope : matchs retenus, drapeau « mesuré » (journal des morts
+//	                       lisible), table des équipes ;
 //	les APPUIS             port.CoordinationRepository.LoadAppuis, UNE fois, sur la même
 //	                       liste.
 //
@@ -91,21 +91,21 @@ func buildCoordinationBlock(ctx context.Context, q coordinationQuery) *domain.Co
 	return lecture.bloc(ctx, q.MatchIDs, q.TeamSize, q.Soirees)
 }
 
-// lectureCoordination — le journal des morts et les appuis d'un ENSEMBLE de matchs, lus une
+// lectureCoordination — l'univers et les appuis d'un ENSEMBLE de matchs, lus une
 // fois et découpés pour chaque scope qui en a besoin (cf. l'en-tête du fichier).
 type lectureCoordination struct {
 	q coordinationQuery
 	// echec : vide quand la lecture a eu lieu, sinon la raison machine que portera tout bloc
-	// découpé dedans (lecteur absent ou capability fermée, journal en échec).
+	// découpé dedans (lecteur absent ou capability fermée, univers en échec).
 	echec string
 	// lus : les matchs DEMANDÉS déjà couverts — un complément ne relit que ce qui manque.
 	lus map[string]struct{}
-	// entree : l'univers (matchs, mesure, équipes), le journal et les appuis, SANS effectif de
+	// entree : l'univers (matchs, mesure, équipes) et les appuis, SANS effectif de
 	// camp : celui-ci dépend du scope découpé (cf. bloc).
 	entree domain.CoordinationEntree
 }
 
-// lireCoordination lit le journal des morts et les appuis de `ids`.
+// lireCoordination lit l'univers et les appuis de `ids`.
 func lireCoordination(ctx context.Context, q coordinationQuery, ids []string) *lectureCoordination {
 	l := &lectureCoordination{
 		q:   q,
@@ -133,20 +133,20 @@ func (l *lectureCoordination) completer(ctx context.Context, ids []string) {
 	if len(manquants) == 0 {
 		return
 	}
-	stop := timing.FromContext(ctx).Section("kill_events")
-	lecture, err := l.q.Tactical.KillEvents(ctx, domain.TacticalQuery{
+	stop := timing.FromContext(ctx).Section("univers")
+	univers, err := l.q.Tactical.Univers(ctx, domain.TacticalQuery{
 		PlayerXUID: l.q.PlayerXUID,
 		Matchs:     domain.RestreindreAux(manquants),
 	})
 	stop()
 	if err != nil {
-		slog.ErrorContext(ctx, "coordination: journal des morts en echec", "err", err,
+		slog.ErrorContext(ctx, "coordination: univers en echec", "err", err,
 			"match_count", len(manquants))
 		l.echec = domain.CoordinationLoadFailed
 		return
 	}
 	appuis, frags := l.q.chargerAppuis(ctx, manquants)
-	l.ajouter(lecture, appuis, frags, manquants)
+	l.ajouter(univers, appuis, frags, manquants)
 }
 
 // manquants rend les matchs de `ids` que la lecture ne couvre pas encore, sans doublon,
@@ -178,10 +178,10 @@ func (l *lectureCoordination) manquants(ids []string) []string {
 // son ORDER BY) : l'entrée complétée se lit dans le même ordre qu'une lecture d'un seul
 // tenant. Les appuis, eux, n'ont pas d'ordre à tenir — l'analyse les range par match.
 func (l *lectureCoordination) ajouter(
-	lecture domain.TacticalKillEvents, appuis []domain.CoordinationAppuiRow, frags map[string]int, lus []string,
+	univers domain.TacticalUnivers, appuis []domain.CoordinationAppuiRow, frags map[string]int, lus []string,
 ) {
 	complement := len(l.entree.Matchs) > 0
-	for _, m := range lecture.Univers.Matchs {
+	for _, m := range univers.Matchs {
 		l.entree.Matchs = append(l.entree.Matchs, domain.CoordinationMatch{MatchID: m.MatchID, Mesure: m.Mesure})
 	}
 	if complement {
@@ -189,7 +189,7 @@ func (l *lectureCoordination) ajouter(
 			return l.entree.Matchs[i].MatchID < l.entree.Matchs[j].MatchID
 		})
 	}
-	for matchID, equipes := range lecture.Univers.Equipes {
+	for matchID, equipes := range univers.Equipes {
 		l.entree.Equipes[matchID] = equipes
 	}
 	l.entree.Appuis = append(l.entree.Appuis, appuis...)

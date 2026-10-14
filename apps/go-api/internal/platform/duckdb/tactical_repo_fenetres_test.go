@@ -5,8 +5,8 @@ package duckdb
 //
 // Ce que ces tests verrouillent, et pourquoi chacun peut echouer :
 //
-//  1. aucune fenetre `_latest` ne voit plus que les lignes du perimetre, pour les cinq
-//     lectures (univers, journal des morts, positions, morts en contexte, morts par carte). Le defaut que
+//  1. aucune fenetre `_latest` ne voit plus que les lignes du perimetre, pour les quatre
+//     lectures (univers, positions, morts en contexte, morts par carte). Le defaut que
 //     le lot corrige ne changeait AUCUN chiffre : l'univers re-selectionne en sous-requete
 //     et le EXISTS sans liste laissaient la fenetre du journal se calculer sur toute la
 //     table. Seul le nombre de lignes vues par la fenetre le montre (cf.
@@ -66,7 +66,7 @@ func seedFenetresTactiques(t *testing.T, pdb *PlayerDB, n int) []string {
 }
 
 // TestTacticalRepo_PerimetreRestreint_FenetresBornees : DEUX matchs demandes sur DIX ; chaque
-// fenetre de chaque requete des cinq lectures (morts par carte comprise, lot B) ne doit voir que
+// fenetre de chaque requete des quatre lectures (morts par carte comprise, lot B) ne doit voir que
 // les lignes de ces deux-la.
 func TestTacticalRepo_PerimetreRestreint_FenetresBornees(t *testing.T) {
 	b := newBaseNotee(t)
@@ -79,16 +79,6 @@ func TestTacticalRepo_PerimetreRestreint_FenetresBornees(t *testing.T) {
 	// Les lignes des deux matchs du perimetre, dans chacune des vues lues.
 	borne := 2 * mortsParMatchFenetres
 	b.carnet.vider()
-
-	ev, err := repo.KillEvents(ctx, q)
-	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
-	}
-	if len(ev.Univers.Matchs) != 2 || len(ev.Events) != borne {
-		t.Fatalf("KillEvents = %d matchs / %d morts, want 2 / %d", len(ev.Univers.Matchs), len(ev.Events), borne)
-	}
-	// Univers (EXISTS sur le journal) + journal des morts.
-	exigerFenetresBornees(t, b, "KillEvents", borne, 2)
 
 	morts, err := repo.MortsAvecContexte(ctx, qCarte)
 	if err != nil {
@@ -136,21 +126,18 @@ func TestTacticalRepo_ListeBlanche_MesureInchangee(t *testing.T) {
 	seedTacticalCorpus(t, pdb)
 
 	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, Matchs: domain.RestreindreAux([]string{"m1", "m2", "m3"})}
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), q)
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), q)
 	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
+		t.Fatalf("Univers: %v", err)
 	}
 	want := map[string]bool{"m1": true, "m2": false, "m3": true}
-	if len(got.Univers.Matchs) != len(want) {
-		t.Fatalf("univers = %v, want m1, m2, m3", matchIDs(got.Univers.Matchs))
+	if len(got.Matchs) != len(want) {
+		t.Fatalf("univers = %v, want m1, m2, m3", matchIDs(got.Matchs))
 	}
-	for _, m := range got.Univers.Matchs {
+	for _, m := range got.Matchs {
 		if m.Mesure != want[m.MatchID] {
 			t.Errorf("%s : mesure = %v, want %v", m.MatchID, m.Mesure, want[m.MatchID])
 		}
-	}
-	if len(got.Events) != 3 {
-		t.Errorf("evenements = %d, want 3 (deux de m1, un de m3) : %+v", len(got.Events), got.Events)
 	}
 }
 

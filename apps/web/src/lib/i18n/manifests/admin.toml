@@ -1976,6 +1976,10 @@ en = "Served value"
 fr = "Aucune valeur servie"
 en = "No served value"
 
+[admin.appearance.no_served_value_description]
+fr = "Le serveur ne rend aucune valeur pour ce composant."
+en = "The server returns no value for this component."
+
 [admin.appearance.why_toggle]
 fr = "Détails"
 en = "Details"

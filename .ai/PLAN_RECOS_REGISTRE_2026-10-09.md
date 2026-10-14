@@ -96,18 +96,18 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 ## Lot E — Hygiène (en dernier)
 
-- [ ] E1 Code mort : `service.FanoutService`, `sync_meta.last_delta_sync`, lecteur de snapshots
+- [x] E1 (commit `recos-e(E1)`, CI verte ; rapport de l exécutant perdu au quota) Code mort : `service.FanoutService`, `sync_meta.last_delta_sync`, lecteur de snapshots
   qui exige `weapon_kills`, `TacticalKillEvents.Events` / `KillEvents`, zero-value de
   `ListeBlancheMatchs`, clés `squad.header.*`.
-- [ ] E2 `himap.DepotVariantesCarte` pointe sur un dossier absent : échouer bruyamment ou repointer.
-- [ ] E3 `MapKeysForMap` : `LIMIT 1` sans tri.
-- [ ] E4 Course sur `SyncResult.AddWarning` (goroutines de fetch).
-- [ ] E5 `prestige_lazy_service.go` > 500 L ; `outcome = 2` magique ; `cmd/diag_exec` en `sql.Open` direct.
-- [ ] E6 Avertissement « pont par morts contredit le lien direct » (~3 400 lignes/jour) → compteur
+- [x] E2 (commit `recos-e(E2)`, CI verte ; rapport de l exécutant perdu au quota) `himap.DepotVariantesCarte` pointe sur un dossier absent : échouer bruyamment ou repointer.
+- [x] E3 (commit `recos-e(E3)`, CI verte ; rapport de l exécutant perdu au quota) `MapKeysForMap` : `LIMIT 1` sans tri.
+- [x] E4 (commit `recos-e(E4)`, CI verte ; rapport de l exécutant perdu au quota) Course sur `SyncResult.AddWarning` (goroutines de fetch).
+- [x] E5 (commit `recos-e(E5)`, CI verte ; rapport de l exécutant perdu au quota) `prestige_lazy_service.go` > 500 L ; `outcome = 2` magique ; `cmd/diag_exec` en `sql.Open` direct.
+- [x] E6 (commit `recos-e(E6)`, CI verte ; rapport de l exécutant perdu au quota) Avertissement « pont par morts contredit le lien direct » (~3 400 lignes/jour) → compteur
   et une trace par film.
-- [ ] E7 Tests instables : `PalmaresRelationsPage`, assertion de temps de
+- [x] E7 (commit `recos-e(E7)`, CI verte ; rapport de l exécutant perdu au quota) Tests instables : `PalmaresRelationsPage`, assertion de temps de
   `TestRosterDesFilms_AnnuaireContreJointure`, `TestLUSRV2Shadow_RafalesBornees_300Candidats`.
-- [ ] E8 Textes et finitions web : « Choisis 1 à 3 coéquipiers… » ; tirets faits main hors
+- [x] E8 (commit `recos-e(E8)`, CI verte ; rapport de l exécutant perdu au quota) Textes et finitions web : « Choisis 1 à 3 coéquipiers… » ; tirets faits main hors
   `EmptyStateNotice` ; abonnements de zoom du rejeu au premier montage ; graduations de « Portée
   par arme » ; pied de page sous le cockpit Tactique.
 
@@ -137,8 +137,14 @@ un par lot, chacun dans son worktree et sa branche `feat/recos-<lot>`.
 
 - 2026-10-09 : relectures du lot C (anti-ART, couverture) sans défaut ; 4 trous de tests comblés (9 mutations rouges, `6ab6a40e0`). Fusion de `feat/recos-c` (accord du user), sauvegarde `data/backups/avant_recos_c_2026-10-09/` (12 bases, 1,2 Go), redémarrage : migrations jouées sans erreur (4 lignes composites retirées, ids réparés chez Chocoboflor, Madina97294, XxDaemonGamerxX, 4 clés héritées retirées).
 
+- 2026-10-09 : faille de lecture de fichiers arbitraires sous `/static/commendations/` (pré-existante depuis le 2026-04-23) découverte par la relecture D, confirmée en prod ; correctif `fix/static-traversal` (PR #89) fusionné dans main et déployé, vérifié 404 sur le site et la démo. Incident de déploiement : `scripts/deploy.sh` (`git clean -fd`) a effacé l'essentiel du staging `/opt/levelup/data.incoming/` du 23/09 ; restes déplacés vers `/opt/levelup-data.incoming-restes-2026-09-23`, déploiement relancé avec succès.
+- 2026-10-09 soir : quota hebdomadaire atteint, agents D, E, F interrompus après leurs commits (CI verte sur les trois branches).
+- 2026-10-14 : `feat/recos-e` fusionnée (931c40a61) ; relectures lancées en Sonnet : F (anti-ART, couverture) et D ronde 2 (corrections seules).
+
 ## Découvertes
 
+- (supervision) `scripts/deploy.sh` nettoie tout fichier non suivi hors `data/` : tout staging posé à la racine du dépôt sur le VPS est effacé au déploiement suivant.
+- (supervision) govulncheck signale des vulnérabilités de la bibliothèque standard Go atteintes (http2, http.Error) : montée de version de Go à instruire.
 - (lot D) Variante « Castle Wars » reconnue par aucune famille de mode (à vérifier dans la normalisation des modes).
 - (lot D) `POST …/prestige/challenges/{id}/suggest-next` classé écriture alors que c'est une lecture (refusé en démo).
 - (lot D) E2E `media-like-bug.spec.ts` suppose un like possible en démo.

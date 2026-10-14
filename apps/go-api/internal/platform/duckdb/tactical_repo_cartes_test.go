@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,7 +31,7 @@ func TestTacticalRepo_MapsPlayed(t *testing.T) {
 	seedTacticalCorpus(t, pdb)
 
 	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+		tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed: %v", err)
 	}
@@ -67,7 +68,7 @@ func TestTacticalRepo_SansMetadata_LibelleDuRegistre(t *testing.T) {
 	pdb.Metadata = nil
 
 	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+		tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed sans metadata: %v", err)
 	}
@@ -114,7 +115,7 @@ func TestTacticalRepo_Campagne_Masquee(t *testing.T) {
 
 	repo := NewTacticalRepo(pdb)
 
-	rows, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	rows, err := repo.MapsPlayed(context.Background(), tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed: %v", err)
 	}
@@ -139,7 +140,7 @@ func TestTacticalRepo_Campagne_Masquee(t *testing.T) {
 	// aucun match Campagne au registre), ne masque rien — la clause est un no-op, pas
 	// un filtre en dur.
 	pdb.TitleSlug = titlepkg.DefaultSlug
-	rows, err = NewTacticalRepo(pdb).MapsPlayed(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	rows, err = NewTacticalRepo(pdb).MapsPlayed(context.Background(), tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed (infinite): %v", err)
 	}
@@ -154,7 +155,7 @@ func TestTacticalRepo_AucuneDonnee_ZeroLigneZeroErreur(t *testing.T) {
 	pdb := newTacticalTestPlayerDB(t)
 	repo := NewTacticalRepo(pdb)
 
-	rows, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+	rows, err := repo.MapsPlayed(context.Background(), tacQuery(""))
 	if err != nil || len(rows) != 0 {
 		t.Errorf("MapsPlayed = %+v / %v, want 0 ligne, nil", rows, err)
 	}
@@ -165,25 +166,43 @@ func TestTacticalRepo_AucuneDonnee_ZeroLigneZeroErreur(t *testing.T) {
 }
 
 // TestTacticalRepo_EntreesVides_Refus : jamais de scan complet — un XUID vide est
-// un refus sur les TROIS lectures, et une carte vide en est un sur la lecture
-// SPATIALE, pas un balayage de shared.kill_positions.
+// un refus sur toutes les lectures, une carte vide en est un sur la lecture
+// SPATIALE (pas un balayage de shared.kill_positions), et une demande SANS liste
+// blanche (zero-value de ListeBlancheMatchs) en est un sur toutes : jamais
+// l'historique entier du joueur par oubli.
 //
-// La carte vide n'est PLUS un refus sur KillEvents depuis le 2026-09-06 : la page
-// Escouade lit le journal des morts d'une composition, qui n'a pas de carte. La
-// borne qui reste est le joueur — cf. TestTacticalRepo_KillEvents_SansCarte.
+// La carte vide n'est PAS un refus sur l'univers : le bloc de coordination lit
+// l'univers d'une liste de matchs, qui n'a pas de carte — cf.
+// TestTacticalRepo_Univers_SansCarte.
 func TestTacticalRepo_EntreesVides_Refus(t *testing.T) {
+	ctx := context.Background()
 	repo := NewTacticalRepo(newTacticalTestPlayerDB(t))
-	if _, err := repo.MapsPlayed(context.Background(), domain.TacticalQuery{}); err == nil {
+	if _, err := repo.MapsPlayed(ctx, domain.TacticalQuery{}); err == nil {
 		t.Error("MapsPlayed sans xuid : attendu un refus")
 	}
-	if _, err := repo.KillPositions(context.Background(), domain.TacticalQuery{MapID: tacCarteA}); err == nil {
+	if _, err := repo.KillPositions(ctx, domain.TacticalQuery{MapID: tacCarteA}); err == nil {
 		t.Error("KillPositions sans xuid : attendu un refus")
 	}
-	if _, err := repo.KillPositions(context.Background(), domain.TacticalQuery{PlayerXUID: tacXUIDMoi}); err == nil {
+	if _, err := repo.KillPositions(ctx, tacQuery("")); err == nil {
 		t.Error("KillPositions sans carte : attendu un refus")
 	}
-	if _, err := repo.KillEvents(context.Background(), domain.TacticalQuery{}); err == nil {
-		t.Error("KillEvents sans xuid : attendu un refus")
+	if _, err := repo.Univers(ctx, domain.TacticalQuery{}); err == nil {
+		t.Error("Univers sans xuid : attendu un refus")
+	}
+
+	sansListe := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA}
+	lectures := map[string]func() error{
+		"Univers":           func() error { _, err := repo.Univers(ctx, sansListe); return err },
+		"MapsPlayed":        func() error { _, err := repo.MapsPlayed(ctx, sansListe); return err },
+		"KillPositions":     func() error { _, err := repo.KillPositions(ctx, sansListe); return err },
+		"MortsAvecContexte": func() error { _, err := repo.MortsAvecContexte(ctx, sansListe); return err },
+		"MortsParCarte":     func() error { _, err := repo.MortsParCarte(ctx, sansListe); return err },
+		"ContextesDeMort":   func() error { _, err := repo.ContextesDeMort(ctx, sansListe); return err },
+	}
+	for nom, lire := range lectures {
+		if err := lire(); err == nil || !strings.Contains(err.Error(), "liste blanche") {
+			t.Errorf("%s sans liste blanche : err = %v, attendu un refus nomme", nom, err)
+		}
 	}
 }
 
@@ -227,38 +246,29 @@ func TestTacticalRepo_TablesAbsentes_Capability(t *testing.T) {
 	if _, err := repo.KillPositions(context.Background(), tacQuery(tacCarteA)); !errors.Is(err, games.ErrCapabilityNotSupported) {
 		t.Errorf("KillPositions sur schema sans film: err = %v, want ErrCapabilityNotSupported", err)
 	}
-	if _, err := repo.KillEvents(context.Background(), tacQuery(tacCarteA)); !errors.Is(err, games.ErrCapabilityNotSupported) {
-		t.Errorf("KillEvents sur schema sans film: err = %v, want ErrCapabilityNotSupported", err)
+	if _, err := repo.Univers(context.Background(), tacQuery(tacCarteA)); !errors.Is(err, games.ErrCapabilityNotSupported) {
+		t.Errorf("Univers sur schema sans film: err = %v, want ErrCapabilityNotSupported", err)
 	}
 }
 
-// TestTacticalRepo_KillEvents_SansCarte : la carte est OPTIONNELLE pour le journal
-// des morts (ajout 2026-09-06, phase 3 du plan tactique). La page Escouade mesure
-// l'echange d'une COMPOSITION, qui n'a pas de carte : elle demande tout
-// l'historique du joueur et resserre son perimetre en Go.
+// TestTacticalRepo_Univers_SansCarte : la carte est OPTIONNELLE pour l'univers. Le bloc de
+// coordination des pages Sessions et Series temporelles le lit pour une LISTE de matchs,
+// qui n'a pas de carte.
 //
-// L'univers doit alors porter les matchs des DEUX cartes (m1, m2, m3) — et
-// TOUJOURS PAS le match tiers m4, ou le joueur n'est pas participant : la borne
+// L'univers doit alors porter les matchs des DEUX cartes (m1, m2, m3) — et TOUJOURS PAS le
+// match tiers m4, ou le joueur n'est pas participant, meme demande dans la liste : la borne
 // qui saute est la carte, jamais le joueur.
-func TestTacticalRepo_KillEvents_SansCarte(t *testing.T) {
+func TestTacticalRepo_Univers_SansCarte(t *testing.T) {
 	pdb := newTacticalTestPlayerDB(t)
 	seedTacticalCorpus(t, pdb)
 
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(""))
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), tacQuery(""))
 	if err != nil {
-		t.Fatalf("KillEvents sans carte: %v", err)
+		t.Fatalf("Univers sans carte: %v", err)
 	}
-	if want := []string{"m1", "m2", "m3"}; !egales(matchIDs(got.Univers.Matchs), want) {
+	if want := []string{"m1", "m2", "m3"}; !egales(matchIDs(got.Matchs), want) {
 		t.Fatalf("univers = %v, want %v (les deux cartes, jamais le match tiers)",
-			matchIDs(got.Univers.Matchs), want)
-	}
-	if len(got.Events) != 3 {
-		t.Fatalf("evenements = %d, want 3 (2 sur m1, 1 sur m3) : %+v", len(got.Events), got.Events)
-	}
-	for _, e := range got.Events {
-		if e.MatchID == "m4" {
-			t.Errorf("evenement d'un match ou le joueur n'a pas joue : %+v", e)
-		}
+			matchIDs(got.Matchs), want)
 	}
 }
 
@@ -287,12 +297,12 @@ func TestTacticalRepo_UniversDrapeauMesure(t *testing.T) {
 	pdb := newTacticalTestPlayerDB(t)
 	seedTacticalCorpus(t, pdb)
 
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), tacQuery(tacCarteA))
 	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
+		t.Fatalf("Univers: %v", err)
 	}
 	mesure := map[string]bool{}
-	for _, m := range got.Univers.Matchs {
+	for _, m := range got.Matchs {
 		mesure[m.MatchID] = m.Mesure
 	}
 	if want := map[string]bool{"m1": true, "m2": false}; len(mesure) != 2 ||
@@ -316,14 +326,14 @@ func TestTacticalRepo_MesureExigePublishable(t *testing.T) {
 	tacParticipant(t, pdb, "np", tacXUIDAdv, 1, domain.OutcomeLoss)
 	tacKill(t, pdb, "np", tacXUIDMoi, tacXUIDAdv, 1000, false) // passe non publiable
 
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), tacQuery(tacCarteA))
 	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
+		t.Fatalf("Univers: %v", err)
 	}
-	if len(got.Univers.Matchs) != 1 {
-		t.Fatalf("univers = %v, want [np]", matchIDs(got.Univers.Matchs))
+	if len(got.Matchs) != 1 {
+		t.Fatalf("univers = %v, want [np]", matchIDs(got.Matchs))
 	}
-	if got.Univers.Matchs[0].Mesure {
+	if got.Matchs[0].Mesure {
 		t.Error("un match dont la seule passe est non publiable ne doit pas compter comme mesure")
 	}
 }
@@ -411,7 +421,7 @@ func TestTacticalRepo_MapsPlayed_ExclutFirefight(t *testing.T) {
 	}
 
 	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+		tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed: %v", err)
 	}
@@ -438,13 +448,13 @@ func TestTacticalRepo_Univers_ExclutFirefight(t *testing.T) {
 		tacCarteA, tacCarteA+"_en", base, base)
 	tacParticipant(t, pdb, "mff1", tacXUIDMoi, 0, 2)
 
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
+	got, err := NewTacticalRepo(pdb).Univers(context.Background(), tacQuery(tacCarteA))
 	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
+		t.Fatalf("Univers: %v", err)
 	}
-	for _, m := range got.Univers.Matchs {
+	for _, m := range got.Matchs {
 		if m.MatchID == "mff1" {
-			t.Fatalf("le match Firefight est dans l'univers : %+v", got.Univers.Matchs)
+			t.Fatalf("le match Firefight est dans l'univers : %+v", got.Matchs)
 		}
 	}
 }

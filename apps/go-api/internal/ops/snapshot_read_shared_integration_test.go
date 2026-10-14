@@ -272,3 +272,55 @@ func TestOpenSnapshotShared_SchemaContract_integration(t *testing.T) {
 		}
 	}
 }
+
+// TestOpenSnapshotShared_TitreSansWeaponKills_integration : un titre dont la base partagée ne
+// porte pas `weapon_kills` (titre à décodeur de film, table retirée par sa migration
+// title-owned) a un snapshot LISIBLE — sans la table ni sa vue, comme son live. L'exiger
+// rendait toutes les versions de ce titre ErrSnapshotIncomplete (repli live permanent).
+func TestOpenSnapshotShared_TitreSansWeaponKills_integration(t *testing.T) {
+	ctx := context.Background()
+	paths := title.NewPathResolver(t.TempDir(), nil)
+	slug := title.DefaultSlug
+
+	shared := seedFidelityShared(t)
+	snapExecT(t, shared, `DROP TABLE weapon_kills`)
+	player := seedPlayerDB(t, []string{"m1"}, nil)
+
+	res, err := ProduceSnapshot(ctx, SnapshotOptions{
+		TitleSlug:    slug,
+		Paths:        paths,
+		Shared:       fakeSharedOpener{db: shared},
+		PlayerOpener: fakePlayerOpener{byGT: map[string]*sql.DB{"Solo": player}},
+		Players:      []string{"Solo"},
+		Now:          time.Date(2026, 6, 25, 9, 0, 0, 0, time.UTC),
+	})
+	if err != nil || !res.Produced {
+		t.Fatalf("produce: res=%+v err=%v", res, err)
+	}
+
+	q, err := OpenSnapshotShared(ctx, paths, slug)
+	if err != nil {
+		t.Fatalf("OpenSnapshotShared sans weapon_kills: %v (attendu un schéma lisible)", err)
+	}
+	defer q.Close()
+
+	compter := func(rel string) int {
+		t.Helper()
+		var n int
+		if err := q.DB.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, rel).Scan(&n); err != nil {
+			t.Fatalf("information_schema %s: %v", rel, err)
+		}
+		return n
+	}
+	for _, absente := range []string{"weapon_kills", "v_weapon_kills"} {
+		if compter(absente) != 0 {
+			t.Errorf("relation %q présente alors que la base du titre ne la porte pas", absente)
+		}
+	}
+	for _, requise := range []string{"match_kill_events_latest", "match_csrs_latest", "mv_player_matches"} {
+		if compter(requise) == 0 {
+			t.Errorf("relation %q absente du schéma reconstruit", requise)
+		}
+	}
+}

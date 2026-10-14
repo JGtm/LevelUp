@@ -11,6 +11,14 @@ import { PalmaresRelationsPage } from './PalmaresRelationsPage'
 
 const EMPTY_RELATIONS = { overview: { distinct_players: 0, allies_count: 0, rivals_count: 0, core_count: 0, top_ally: null, top_nemesis: null }, relations: [] }
 
+// ECharts est charge PARESSEUSEMENT (React.lazy) par les graphes de la page : sans ce stub, l'import
+// reel (plusieurs centaines de Ko a transformer) se resout pendant un test ulterieur et bloque la
+// boucle d'evenements — sous charge, les waitFor (1 s) de ce test-la expirent. Le stub rend
+// l'import immediat ; aucun test de ce fichier n'eprouve le rendu d'un graphe.
+vi.mock('echarts-for-react', () => ({
+  default: () => <div data-testid="echarts-stub" />,
+}))
+
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {

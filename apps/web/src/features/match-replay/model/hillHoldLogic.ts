@@ -16,9 +16,11 @@
  *                      paliers des courbes d'équipe. La barre repart de zéro à chacun.
  *   le différentiel    `ticks(frame) − ticks(dernier point)`, puisque la série est cumulative
  *                      sur tout le match.
- *   le dénominateur    `scoreTimeline.holdTicksPerPoint` — un COMPTE par variante et non un
- *                      réglage (35 en arène et en Doubles, 40 en classé : le camp qui marque
- *                      rend ce compte au point, cf. `regulation.toml`).
+ *   le dénominateur    `scoreTimeline.holdTicksPerPoint` — un COMPTE et non un réglage, que
+ *                      l'artefact MESURE DANS LE FILM, match par match : au point, la garde
+ *                      prise par le camp qui marque est le seuil (35 en arène et en Doubles,
+ *                      40 en classé). La table de la variante (`regulation.toml`) n'est qu'un
+ *                      repli pour un match sans point, compté dans `coverage.fallbacks`.
  *
  * UNE VERSION ANTÉRIEURE DE CE MODULE INTÉGRAIT LES INTERVALLES DE PROPRIÉTÉ avec un seuil de
  * 43 s. C'était une reconstruction, et elle était fausse d'environ 20 % — l'écart n'a pas été
@@ -51,10 +53,10 @@ export interface HillHoldReading {
  * jauge ne doit PAS se dessiner.
  *
  * LES CAS `null` SONT LA MOITIÉ DU CONTRAT, et ils suivent la doctrine du bandeau (une jauge
- * absente ne ment pas, une jauge à zéro si) : artefact sans série de garde (mode sans colline —
- * le producteur ne la construit que sur une variante déclarée —, ou artefact antérieur au
- * champ), variante sans dénominateur mesuré (le KOTH CLASSÉ est dans ce cas), ou camps que le
- * calque ne situe pas.
+ * absente ne ment pas, une jauge à zéro si) : artefact sans série de garde (mode sans colline,
+ * ou artefact antérieur au champ), match sans dénominateur (aucun point lisible et variante
+ * absente de la table, ou score à la seconde où chaque tic est un point — le producteur ne publie
+ * alors ni la série ni le seuil), ou camps que le calque ne situe pas.
  */
 export function readHillHold(
   doc: HillHoldDocument,

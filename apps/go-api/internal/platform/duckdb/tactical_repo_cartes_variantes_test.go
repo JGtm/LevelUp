@@ -41,7 +41,7 @@ func TestTacticalRepo_MapsPlayed_VariantesDeNomFusionnees(t *testing.T) {
 	}
 
 	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+		tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestTacticalRepo_MapsPlayed_SansVraiNom_LibelleDeLaTraduction(t *testing.T)
 	tacParticipant(t, pdb, "w2", tacXUIDMoi, 0, domain.OutcomeWin)
 
 	rows, err := NewTacticalRepo(pdb).MapsPlayed(context.Background(),
-		domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
+		tacQuery(""))
 	if err != nil {
 		t.Fatalf("MapsPlayed: %v", err)
 	}

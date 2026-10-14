@@ -111,12 +111,7 @@ func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (m
 	if r.chargeur != nil {
 		return r.gamertagsParLAnnuaire(ctx, matchID)
 	}
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT mp.xuid, g.gamertag
-		FROM match_participants mp
-		JOIN v_gamertag_lookup g ON g.xuid = mp.xuid
-		WHERE mp.match_id = ? AND mp.xuid IS NOT NULL AND mp.xuid <> ''
-	`, matchID)
+	rows, err := r.db.QueryContext(ctx, requeteNomsParJointure, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("SharedRoster(%s): %w", matchID, err)
 	}
@@ -363,6 +358,15 @@ func (r *SharedRoster) AvecAnnuaireDePasse() *SharedRoster {
 	}
 	return r
 }
+
+// requeteNomsParJointure : les noms des participants d'UN match par la jointure de la vue
+// canonique d'identite — le chemin sans annuaire de passe. Le filtre `mp.match_id = ?` ne se
+// pousse pas dans la vue (cf. AvecAnnuaireDePasse) : elle est materialisee a chaque appel.
+const requeteNomsParJointure = `
+	SELECT mp.xuid, g.gamertag
+	FROM match_participants mp
+	JOIN v_gamertag_lookup g ON g.xuid = mp.xuid
+	WHERE mp.match_id = ? AND mp.xuid IS NOT NULL AND mp.xuid <> ''`
 
 // requeteParticipantsNommables : les xuids du match, et eux seuls. Le predicat porte sur une
 // TABLE (pas une vue agregee), donc DuckDB le pousse.

@@ -15,8 +15,6 @@ package himap
 // 2026-08-26 : le nombre d'objectifs du `.mvar`. Sans ancre, pas de cadre, donc pas de
 // fond — un canevas prouve ne suffit pas.
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
@@ -36,14 +34,7 @@ func TestSondeCanevasCartesOrphelines(t *testing.T) {
 
 	for _, base := range cartesOrphelines {
 		t.Run(base, func(t *testing.T) {
-			chemin, cerr := cheminDepuisDepot(filepath.Join(DepotVariantesCarte, base+"_map.mvar"))
-			if cerr != nil {
-				t.Skip(cerr)
-			}
-			brut, rerr := os.ReadFile(chemin) //nolint:gosec // chemin de test, lecture seule
-			if rerr != nil {
-				t.Fatal(rerr)
-			}
+			brut := lireVarianteDuDepot(t, base+"_map.mvar")
 			v, perr := mapvar.Parse(brut)
 			if perr != nil {
 				t.Fatalf("%s : %v", base, perr)

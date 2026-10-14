@@ -1295,7 +1295,7 @@ archétype, ratchet régénéré avec une ligne d'historique par sous-pas retenu
       9 495 de la baseline présents, 0 échec. Branche poussée ; CI : run `37938832842` sur
       `1735e4e5a` VERT (tous les jobs, couverture et baseline Linux comprises), gitleaks, garde ADR 0021
       et Deploy Pre-Check verts ; run de la tête finale au journal.
-- [ ] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués.
+- [x] D1.4.6 Revue adversariale du diff de 2.7.d1 (contexte frais) ; constats statués. *Fait* : ronde 1 (2026-10-09, deux relecteurs aveugles, 39 conditions tiennent) : HUIT constats recevables, tous corrigés dans le lot (commits 19b6e9cb2 à 59240092f) ; ronde 2 (2026-10-14, un relecteur frais, corrections seulement) : les huit corrigés, 37 conditions tiennent, aucun P0 ni P1, SEPT P2 consignés en D-32 à D-38, non traités (borne de deux rondes du skill adversarial-review).
 - [ ] D1.4.7 Fusion dans `feat/v75` (U-5, accord donné d'avance le 2026-10-08), puis recuisson du
       parc et backfill killsource, après la fin de tout backfill en cours ; pairs prévenus avant la
       coupure du serveur local et à la fusion ; compte rendu à l'utilisateur.
@@ -1546,6 +1546,13 @@ refusionner, rejouer l'étape 0).
   `lecture.ArretJeuDArmesRefuse`). Hors de la portée, ce que la boucle DELTA (`FUN_14076cb60`) fait d un
   retour faux d i42 ou d i38 n est pas relu : la lecture delta continue, comme avant. Non traité.
 
+- D-32 *(revue D1.4.6 ronde 2)* `weaponv3/canon.go:40` renvoie à `archlint/familles_connues_unique_test.go`, qui n existe pas (le garde-rail réel : `aides_uniques_film_test.go`). Doc fausse, non traitée.
+- D-33 *(ronde 2)* `grammar/components_probe.go:67-69` : la doc de `bit2u` cite un `b2u` de `capture_test.go` retiré par 1dbdae5dd. Doc fausse, non traitée.
+- D-34 *(ronde 2)* la règle « sélection de grenade dans le masque et dans 1..4 » existe en trois écritures (`inventory_grenade_selection.go:84`, le prédicat partagé, `ri27d1_d10_research_test.go:389`) sans garde-rail (règle 6). Non traitée.
+- D-35 *(ronde 2)* le garde-rail des conversions booléen vers entier compte par répertoire et par type : trois conversions `bool` vers `int` subsistent (`killsource/replis_du_decodage.go:74`, `grammar/replis_du_film.go:161`, `replay/film_scan_images_cles.go:58`) ; la doc de `unSi` est trop étroite pour son usage générique. Non traitée.
+- D-36 *(ronde 2)* l arrêt `ArretJeuDArmesRefuse` côté véhicule (`composants_vehicule_ti40.go:145`, i38) n a pas de test unitaire ; seule l équivalence de rejeu le verrait. Non traitée.
+- D-37 *(ronde 2)* retirer `l.debordements++` (`keyframe_etat_complet_bipede.go:156`) ne fait rougir aucun test (le test synthétique pose le débordement à la main). Non traitée.
+- D-38 *(ronde 2)* le golden des valeurs des bobines (116 lignes) n a jamais `Second` ≠ −1 : la lecture de la seconde main n est pas protégée. Non traitée.
 ## 8. Journal
 
 - 2026-10-08 : rédaction (seconde passe du workflow 2.7.d1, aucune ligne de production modifiée,
@@ -1892,3 +1899,10 @@ refusionner, rejouer l'étape 0).
   ligne du schéma diffère de `feat/v75`). **`SchemaVersion` 93** ; `grammar-2026-10-09.3`,
   `killsource-2026-10-09`, `objectives-2026-09-27` inchangés (gardes de révision vertes). G-film, archlint,
   vet avec et sans `research`, golangci-lint, typecheck et lint web, vitest du rejeu : verts.
+- 2026-10-14 (superviseur) : reprise après l'arrêt du lot D sur le quota hebdomadaire (son travail était
+  fini : `c0543c3c4`, schéma 93, CI verte). Revue ronde 2 des corrections (un relecteur frais, modèle Sonnet)
+  : les huit constats corrigés, 37 conditions tiennent, aucun P0/P1, sept P2 consignés (D-32 à D-38).
+  D1.4.6 `[x]`. Refusion de `origin/feat/v75` `057ccc7e4` (seuil de garde KOTH lu dans le film,
+  recos-e, journaux) sans conflit. Suite : gates, CI, puis D1.4.7 (fusion, recuisson commune de 235
+  artefacts, projections, backfill killsource ; accord donné d'avance), contrôles KOTH demandés par les
+  sessions pairs.

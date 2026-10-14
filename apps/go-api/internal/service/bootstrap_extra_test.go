@@ -1,5 +1,5 @@
-// Package service — fanout_bootstrap_extra_test.go : tests des branches pures
-// de FanoutService et BootstrapService (sans accès DuckDB).
+// Package service — bootstrap_extra_test.go : tests des branches pures de BootstrapService
+// (sans accès DuckDB).
 package service
 
 import (
@@ -11,92 +11,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 )
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FanoutService — branches sans DB
-// ─────────────────────────────────────────────────────────────────────────────
-
-func TestFanoutBuildPlan_EmptyMatchIDs(t *testing.T) {
-	cfg := &config.AppConfig{DBProfilesPath: "/nonexistent/db_profiles.json"}
-	svc := NewFanoutService(cfg)
-
-	plan, err := svc.BuildPlan(context.Background(), "PlayerA", nil)
-	if err != nil {
-		t.Fatalf("inattendu: %v", err)
-	}
-	if plan == nil {
-		t.Fatal("plan nil")
-	}
-	if plan.SourceGamertag != "PlayerA" {
-		t.Errorf("SourceGamertag = %q, want %q", plan.SourceGamertag, "PlayerA")
-	}
-	if len(plan.Targets) != 0 {
-		t.Errorf("expected 0 targets, got %d", len(plan.Targets))
-	}
-}
-
-func TestFanoutBuildPlan_EmptySlice(t *testing.T) {
-	cfg := &config.AppConfig{DBProfilesPath: "/nonexistent/db_profiles.json"}
-	svc := NewFanoutService(cfg)
-
-	plan, err := svc.BuildPlan(context.Background(), "PlayerB", []string{})
-	if err != nil {
-		t.Fatalf("inattendu: %v", err)
-	}
-	if len(plan.Targets) != 0 {
-		t.Errorf("expected 0 targets, got %d", len(plan.Targets))
-	}
-}
-
-func TestFanoutExecute_NilPlan(t *testing.T) {
-	cfg := &config.AppConfig{}
-	svc := NewFanoutService(cfg)
-
-	result := svc.Execute(context.Background(), nil)
-	if result.TargetsProcessed != 0 {
-		t.Errorf("expected 0 processed, got %d", result.TargetsProcessed)
-	}
-	if result.MatchesEnriched != 0 {
-		t.Errorf("expected 0 enriched, got %d", result.MatchesEnriched)
-	}
-}
-
-func TestFanoutExecute_EmptyPlan(t *testing.T) {
-	cfg := &config.AppConfig{}
-	svc := NewFanoutService(cfg)
-
-	plan := &domain.FanoutPlan{SourceGamertag: "P1"}
-	result := svc.Execute(context.Background(), plan)
-	if result.TargetsProcessed != 0 {
-		t.Errorf("expected 0 processed, got %d", result.TargetsProcessed)
-	}
-}
-
-func TestFanoutExecute_TargetWithResolveError(t *testing.T) {
-	// Le chemin db_profiles.json n'existe pas → ResolvePlayer échoue → Errors
-	cfg := &config.AppConfig{
-		DBProfilesPath: "/nonexistent/path/db_profiles.json",
-		RepoRoot:       "/nonexistent",
-	}
-	svc := NewFanoutService(cfg)
-
-	plan := &domain.FanoutPlan{
-		SourceGamertag: "P1",
-		MatchIDs:       []string{"match-001"},
-		Targets: []domain.FanoutTarget{
-			{Gamertag: "P2", XUID: "xuid-p2", CommonCount: 1, MissingCount: 1},
-		},
-	}
-
-	result := svc.Execute(context.Background(), plan)
-	// enrichTarget échoue → result.Errors non vide, TargetsProcessed = 0
-	if result.TargetsProcessed != 0 {
-		t.Errorf("expected 0 targets processed (all fail), got %d", result.TargetsProcessed)
-	}
-	if len(result.Errors) == 0 {
-		t.Error("expected errors, got none")
-	}
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BootstrapService — Build + BuildPlayersList

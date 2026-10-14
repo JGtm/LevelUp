@@ -28,6 +28,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -215,8 +216,22 @@ func seedTacticalCorpus(t *testing.T, pdb *PlayerDB) {
 	tacPos(t, pdb, "m4", tacXUIDTier, 1000, 9.0, 9.0, 9.5, 9.5)
 }
 
+// tacQuery : la demande du joueur temoin sur `mapID`, avec une liste blanche qui couvre tous les
+// matchs des fixtures de ces tests (le lecteur refuse une demande sans liste). Un test qui
+// eprouve le perimetre pose sa propre liste.
 func tacQuery(mapID string) domain.TacticalQuery {
-	return domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: mapID}
+	return domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: mapID, Matchs: domain.RestreindreAux(tacTousLesMatchs())}
+}
+
+// tacTousLesMatchs : les match_id des fixtures tactiques, ceux ecrits en clair et ceux generes
+// par seedFenetresTactiques (f01..f99).
+func tacTousLesMatchs() []string {
+	ids := []string{"m1", "m2", "m3", "m4", "m5", "m6", "np", "z1", "v1", "v2", "v3", "v4",
+		"w1", "w2", "mc", "mc2", "i1", "i2", "mff1", "recent", "vieux", "film_perdu", "indatable"}
+	for i := 1; i <= 99; i++ {
+		ids = append(ids, fmt.Sprintf("f%02d", i))
+	}
+	return ids
 }
 
 func matchIDs(matchs []domain.TacticalMatch) []string {
@@ -393,42 +408,5 @@ func TestTacticalRepo_NonPublishable_Ecartee(t *testing.T) {
 	}
 	if len(pos.Points) != 0 {
 		t.Errorf("passe non publiable comptee a tort : %+v", pos.Points)
-	}
-	ev, err := repo.KillEvents(context.Background(), tacQuery(tacCarteA))
-	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
-	}
-	if len(ev.Events) != 0 {
-		t.Errorf("evenement non publiable compte a tort : %+v", ev.Events)
-	}
-}
-
-// TestTacticalRepo_KillEvents_TiersHorsFiltreExclu : l'evenement de m4 (deux tiers
-// entre eux, sur la meme carte) ne doit apparaitre nulle part — je n'ai pas joue
-// ce match, il n'est pas dans mon univers.
-func TestTacticalRepo_KillEvents_TiersHorsFiltreExclu(t *testing.T) {
-	pdb := newTacticalTestPlayerDB(t)
-	seedTacticalCorpus(t, pdb)
-
-	got, err := NewTacticalRepo(pdb).KillEvents(context.Background(), tacQuery(tacCarteA))
-	if err != nil {
-		t.Fatalf("KillEvents: %v", err)
-	}
-	if want := []string{"m1", "m2"}; !egales(matchIDs(got.Univers.Matchs), want) {
-		t.Fatalf("univers = %v, want %v", matchIDs(got.Univers.Matchs), want)
-	}
-	if len(got.Events) != 2 {
-		t.Fatalf("evenements = %d, want 2 (les deux morts de m1) : %+v", len(got.Events), got.Events)
-	}
-	for _, e := range got.Events {
-		if e.MatchID != "m1" {
-			t.Errorf("evenement hors univers servi : %+v", e)
-		}
-		if e.KillerXUID == tacXUIDTier || e.VictimXUID == tacXUIDTier {
-			t.Errorf("evenement d'un match tiers servi : %+v", e)
-		}
-	}
-	if got.Events[0].TimeMs != 1000 || got.Events[1].TimeMs != 3000 {
-		t.Errorf("evenements non ordonnes par instant : %+v", got.Events)
 	}
 }

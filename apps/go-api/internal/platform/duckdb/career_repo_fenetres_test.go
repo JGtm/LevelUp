@@ -5,9 +5,8 @@ package duckdb
 //
 // Ce que ces tests verrouillent, et pourquoi chacun peut échouer :
 //
-//  1. Carrière rencontres (Q26), rivaux (Q27), Relations (Q28 sur l'historique) et Tactique
-//     « morts par carte » sans liste blanche lisent la liste des matchs du joueur
-//     (QMatchsDuJoueurTpl) et la lient sous CHAQUE fenêtre `_latest` : rouge si une fenêtre
+//  1. Carrière rencontres (Q26), rivaux (Q27) et Relations (Q28 sur l'historique) lisent la
+//     liste des matchs du joueur (QMatchsDuJoueurTpl) et la lient sous CHAQUE fenêtre `_latest` : rouge si une fenêtre
 //     voit une ligne d'un match où le joueur n'a pas joué (cf. fenetres_perimetre_helpers_test.go
 //     — le défaut ne change aucun chiffre, seul le nombre de lignes vues par la fenêtre le montre) ;
 //  2. les rivaux sont lus UNE fois pour les deux classements (rouge si la page relit l'agrégat) ;
@@ -53,7 +52,7 @@ func seedMatchsDesAutres(t *testing.T, pdb *PlayerDB, n int) {
 }
 
 // TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur : quatre matchs à moi sur dix ; chaque
-// fenêtre de chaque requête des quatre lectures ne voit que les lignes de ces quatre-là.
+// fenêtre de chaque requête des trois lectures ne voit que les lignes de ces quatre-là.
 func TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur(t *testing.T) {
 	b := newBaseNotee(t)
 	seedFenetresTactiques(t, b.pdb, matchsDuJoueurFenetres)
@@ -100,15 +99,6 @@ func TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur(t *testing.T) {
 		t.Fatalf("relations scopées = %+v, want l'adversaire, 4 frags / 2 morts", rel)
 	}
 	exigerFenetresBornees(t, b, "GetRelations (scopé)", 2*mortsParMatchFenetres, 1)
-
-	parCarte, err := NewTacticalRepo(b.pdb).MortsParCarte(ctx, domain.TacticalQuery{PlayerXUID: tacXUIDMoi})
-	if err != nil {
-		t.Fatalf("MortsParCarte: %v", err)
-	}
-	if len(parCarte[tacCarteA]) != matchsDuJoueurFenetres {
-		t.Fatalf("MortsParCarte = %+v, want une mort à moi par match", parCarte)
-	}
-	exigerFenetresBornees(t, b, "MortsParCarte (sans liste blanche)", borne, 1)
 }
 
 // exigerUneLectureDesRivaux : l'agrégat Q27 (reconnu à sa colonne `match_rencontre`) est lu une
