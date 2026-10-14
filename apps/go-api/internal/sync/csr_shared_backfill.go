@@ -187,10 +187,11 @@ func BackfillSharedCSRsFromAPI(
 // xuid a participé, avec season_id (peut être NULL pour les matchs antérieurs
 // au backfill Phase 1). Triés ASC pour traiter chronologiquement.
 //
-// Pré-filtre (is_ranked OU nom contenant « ranked »), identique à la fonction player-scoped :
+// Pré-filtre (is_ranked OU nom contenant « ranked » OU playlist_id de la référence), identique à la fonction player-scoped :
 // il choisit les CANDIDATS, la décision de classement appartient au payload skill
 // (SkillShowsRankedMatch, via ExtractAllSharedCSRRows).
 func loadRankedMatchesForSharedCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MatchRegistryRow, error) {
+	ph, args := rankedCandidatePlaylistIDs()
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT DISTINCT r.match_id, r.start_time, r.season_id
 		FROM match_registry r
@@ -201,8 +202,9 @@ func loadRankedMatchesForSharedCSRBackfill(ctx context.Context, sharedDB *sql.DB
 		    COALESCE(r.is_ranked, FALSE) = TRUE
 		    OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
 		    OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+		    OR LOWER(COALESCE(r.playlist_id, '')) IN (`+ph+`)
 		  )
-		ORDER BY r.start_time ASC`, xuid)
+		ORDER BY r.start_time ASC`, append([]any{xuid}, args...)...)
 	if err != nil {
 		return nil, err
 	}

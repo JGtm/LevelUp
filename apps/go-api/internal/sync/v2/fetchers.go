@@ -177,7 +177,9 @@ func (f *sharedMatchFetcherV2) FetchSharedMatch(
 		if skillErr != nil {
 			// Best-effort : log + continue avec Skill nil. V1 fait pareil
 			// (engine_skill_heal.go absorbe les erreurs sur les vieux matchs).
-			slog.DebugContext(ctx, "v2 GetMatchSkill failed — continuing with Skill nil",
+			// Warn : sans skill, is_ranked et le CSR ne sont pas posés (règle D-10) ; le match
+			// reste orphelin jusqu'au rattrapage (backfill --shared-csr puis backfill-is-ranked).
+			slog.WarnContext(ctx, "v2 GetMatchSkill failed — continuing with Skill nil",
 				"match_id", matchID, "err", skillErr)
 		} else {
 			// Conversion map[string]*MatchSkillData → map[string]any pour

@@ -76,6 +76,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			start_time    TIMESTAMPTZ,
 			is_ranked     BOOLEAN DEFAULT FALSE,
 			is_firefight  BOOLEAN DEFAULT FALSE,
+			playlist_id VARCHAR,
 			playlist_name VARCHAR,
 			pair_name     VARCHAR
 		);

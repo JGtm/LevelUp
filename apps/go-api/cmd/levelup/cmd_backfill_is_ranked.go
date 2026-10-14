@@ -14,6 +14,12 @@ package main
 //
 // SERVEUR ARRÊTÉ, Y COMPRIS POUR --dry-run (la base partagée est tenue en écriture par le serveur).
 //
+// ENCHAÎNEMENT COMPLET (l'engagement saute les matchs déjà calculés et dérive son mode de is_ranked ; le LUSR
+// exclut les matchs classés) — printIsRankedSequence l'imprime à la fin d'une écriture :
+//
+//	backfill --all --shared-csr  ->  backfill --all --csr  ->  backfill-is-ranked
+//	  ->  backfill --all --lusr  ->  backfill --all --engagement-scores --force
+//
 // Usage :
 //
 //	levelup backfill-is-ranked --dry-run   # comptes, aucune écriture
@@ -66,6 +72,9 @@ func runBackfillIsRanked(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 	printRegistryRankedStats(stats)
+	if !stats.DryRun {
+		printIsRankedSequence()
+	}
 	if stats.Errors > 0 {
 		return fmt.Errorf("%w : %d matchs", errConvergenceIncomplete, stats.Errors)
 	}
@@ -83,4 +92,14 @@ func printRegistryRankedStats(s go_sync.RegistryRankedStats) {
 	fmt.Printf("  matchs à CSR déjà classés : %d\n", s.AlreadyRanked)
 	fmt.Printf("  matchs classés sans aucun CSR (jamais déclassés, à rattraper par backfill --shared-csr) : %d\n", s.RankedWithoutCSR)
 	fmt.Printf("  échecs d'écriture : %d\n", s.Errors)
+}
+
+// printIsRankedSequence rappelle les recalculs qui suivent une réparation d'is_ranked : sans eux, le LUSR
+// garde les matchs classés dans son calcul et l'engagement (qui saute les matchs déjà calculés) reste
+// dans l'ancien mode.
+func printIsRankedSequence() {
+	fmt.Println("suite obligatoire (serveur arrêté) :")
+	fmt.Println("  1. levelup backfill --all --shared-csr   puis   levelup backfill --all --csr   (avant cette commande)")
+	fmt.Println("  2. levelup backfill --all --lusr                      (recalcul LUSR v2 canonique, exclut les matchs classés)")
+	fmt.Println("  3. levelup backfill --all --engagement-scores --force (mode d'engagement dérivé de is_ranked)")
 }

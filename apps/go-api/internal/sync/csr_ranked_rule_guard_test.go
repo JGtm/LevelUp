@@ -18,8 +18,8 @@ import (
 // motifs interdits dans les fichiers de production du paquet sync.
 var rankedRuleForbidden = map[string]*regexp.Regexp{
 	"ancien décideur par nom de playlist": regexp.MustCompile(`isRankedPlaylist`),
-	"garde `!reg.IsRanked` de l'extraction CSR": regexp.MustCompile(
-		`!\s*(reg|registry|rankedReg)\.IsRanked`),
+	"négation de IsRanked du registre":    regexp.MustCompile(`!\s*[\w.]+\.IsRanked\b`),
+	"comparaison de IsRanked du registre": regexp.MustCompile(`\.IsRanked\s*[!=]=`),
 }
 
 func TestRankedRule_NoRegistryOrNameGuardInSyncPackage(t *testing.T) {
@@ -59,15 +59,55 @@ func TestRankedRule_CSRExtractorsDoNotReadRegistryFlag(t *testing.T) {
 		}
 		// Les commentaires peuvent nommer reg.IsRanked pour dire qu'il ne décide pas.
 		for i, line := range strings.Split(string(data), "\n") {
-			code := line
-			if c := strings.Index(code, "//"); c >= 0 {
-				code = code[:c]
-			}
-			// Une AFFECTATION (reg.IsRanked = ...) est la conséquence de la règle ; seule une lecture
-			// (garde, condition) est interdite.
-			if strings.Contains(code, ".IsRanked") && !strings.Contains(code, ".IsRanked =") {
+			if registryFlagIsRead(line) {
 				t.Errorf("%s:%d lit .IsRanked dans le code : %q", name, i+1, strings.TrimSpace(line))
 			}
+		}
+	}
+}
+
+// registryAssignment : une AFFECTATION (reg.IsRanked = ...), conséquence de la règle ; ni == ni !=.
+var registryAssignment = regexp.MustCompile(`\.IsRanked\s*=([^=]|$)`)
+
+// registryFlagIsRead dit si une ligne de code (hors commentaire) LIT .IsRanked : tout accès qui
+// n'est pas une affectation pure (condition, négation, comparaison, argument).
+func registryFlagIsRead(line string) bool {
+	code := line
+	if c := strings.Index(code, "//"); c >= 0 {
+		code = code[:c]
+	}
+	if !strings.Contains(code, ".IsRanked") {
+		return false
+	}
+	loc := registryAssignment.FindStringIndex(code)
+	if loc == nil {
+		return true
+	}
+	// Affectation pure : lecture seulement si le membre de droite lit encore .IsRanked.
+	return strings.Contains(code[loc[1]:], ".IsRanked")
+}
+
+func TestRegistryFlagIsRead_Detector(t *testing.T) {
+	for _, bad := range []string{
+		"	if reg.IsRanked == false {",
+		"	if reg.IsRanked != true {",
+		"	if !fm.Registry.IsRanked {",
+		"	return reg.IsRanked",
+		"	f(reg.IsRanked)",
+		"	x.IsRanked = reg.IsRanked",
+	} {
+		if !registryFlagIsRead(bad) {
+			t.Errorf("lecture non détectée : %q", bad)
+		}
+	}
+	for _, ok := range []string{
+		"	reg.IsRanked = AnySkillShowsRankedMatch(skillByXUID)",
+		"	// reg.IsRanked ne décide pas",
+		"	x := 1 // !reg.IsRanked",
+		"	return nil",
+	} {
+		if registryFlagIsRead(ok) {
+			t.Errorf("faux positif : %q", ok)
 		}
 	}
 }
@@ -112,8 +152,8 @@ func TestRankedRule_ImportUsesTheSingleDecisionPoint(t *testing.T) {
 // contrôle (platform/duckdb/csr_coverage_repo.go). Aucun fichier d'extraction CSR, de fetch ou de
 // transformation du registre ne la consulte.
 func TestRankedRule_ReferenceNeverDecidesInExtraction(t *testing.T) {
-	files := []string{"csr_writes.go", "csr_shared_writes.go", "csr_backfill.go", "csr_shared_backfill.go",
-		"engine_fetch.go", "transforms.go", "transforms_helpers.go"}
+	files := []string{"csr_writes.go", "csr_shared_writes.go", "engine_fetch.go", "engine_v2bridge.go",
+		"transforms.go", "transforms_helpers.go", "csr_shared_backfill.go"}
 	checked := 0
 	for _, name := range files {
 		data, err := os.ReadFile(name)
@@ -127,5 +167,29 @@ func TestRankedRule_ReferenceNeverDecidesInExtraction(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Fatal("aucun fichier scanné")
+	}
+}
+
+// Seule exception : le pré-filtre de CANDIDATURE des rattrapages (rankedCandidatePlaylistIDs, dans
+// csr_backfill.go) lit la référence pour repêcher un match dont le nom n'est pas résolu. Une
+// seule référence à rankedplaylists dans ce fichier, et jamais dans l'extraction.
+func TestRankedRule_ReferenceOnlyCandidacyInBackfill(t *testing.T) {
+	data, err := os.ReadFile("csr_backfill.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, line := range strings.Split(string(data), "\n") {
+		code := line
+		if c := strings.Index(code, "//"); c >= 0 {
+			code = code[:c]
+		}
+		n += strings.Count(code, "rankedplaylists.")
+	}
+	if n != 1 {
+		t.Errorf("csr_backfill.go : %d usages de rankedplaylists, want 1 (rankedCandidatePlaylistIDs)", n)
+	}
+	if !strings.Contains(string(data), "func rankedCandidatePlaylistIDs()") {
+		t.Error("rankedCandidatePlaylistIDs absent")
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
 // seedRankedRepairScenario : cinq matchs couvrant chaque cas.
@@ -111,5 +113,52 @@ func TestBackfillRegistryIsRanked_OnlyCSRRatingType(t *testing.T) {
 func TestBackfillRegistryIsRanked_NilDB(t *testing.T) {
 	if _, err := BackfillRegistryIsRanked(context.Background(), nil, RegistryRankedOptions{}); err == nil {
 		t.Error("sharedDB nil : erreur attendue")
+	}
+}
+
+// Candidature des rattrapages CSR : un match dont le nom n'est pas résolu est repêché par le
+// playlist_id de la référence (sans décider de son classement).
+func TestRankedCandidates_ByReferencePlaylistID(t *testing.T) {
+	db := openSharedForCSRBackfill(t)
+	refID := rankedplaylists.All()[0].AssetID
+	for _, q := range []string{
+		`INSERT INTO match_registry (match_id, start_time, playlist_id, playlist_name, is_ranked) VALUES
+			('m-ref', TIMESTAMP '2026-10-01 10:00:00', '` + refID + `', NULL, FALSE),
+			('m-name', TIMESTAMP '2026-10-02 10:00:00', 'autre', 'Ranked Arena', FALSE),
+			('m-flag', TIMESTAMP '2026-10-03 10:00:00', 'autre', 'Quick Play', TRUE),
+			('m-none', TIMESTAMP '2026-10-04 10:00:00', 'autre', 'Quick Play', FALSE)`,
+		`INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome)
+			SELECT match_id, 'xuid-A', 'A', 0, 2 FROM match_registry`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	want := map[string]bool{"m-ref": true, "m-name": true, "m-flag": true}
+
+	player, err := loadRankedMatchesForCSRBackfill(context.Background(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shared, err := loadRankedMatchesForSharedCSRBackfill(context.Background(), db, "xuid-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for label, got := range map[string][]MatchRegistryRow{"joueur": player, "partagé": shared} {
+		ids := map[string]bool{}
+		for _, r := range got {
+			ids[r.MatchID] = true
+			if r.IsRanked {
+				t.Errorf("%s : un candidat ne porte pas de verdict de classement (%s)", label, r.MatchID)
+			}
+		}
+		if len(ids) != len(want) {
+			t.Errorf("%s : candidats %v, want %v", label, ids, want)
+		}
+		for id := range want {
+			if !ids[id] {
+				t.Errorf("%s : %s doit être candidat", label, id)
+			}
+		}
 	}
 }

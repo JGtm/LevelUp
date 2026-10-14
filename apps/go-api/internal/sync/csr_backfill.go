@@ -20,7 +20,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
+
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
 // CSRBackfillResult résume l'exécution d'un BackfillCSRFromAPI : utile pour
@@ -156,11 +159,14 @@ func BackfillCSRFromAPI(
 //
 // Ce filtre n'est PAS la décision de classement : c'est un pré-filtre pour ne pas re-fetcher
 // toute la base. Un match est candidat si is_ranked est posé OU si son nom de playlist ou de
-// paire contient « ranked » (is_ranked est faux sur la plupart des matchs depuis le 2026-05,
-// cf. plan ajustements 2026-10-14 G5). La DÉCISION appartient au payload skill
+// paire contient « ranked » OU si son playlist_id appartient à la référence des playlists
+// classées (rankedCandidatePlaylistIDs : un match dont le nom n'a pas été résolu reste
+// repêchable). is_ranked est faux sur la plupart des matchs depuis le 2026-05 (cf. plan
+// ajustements 2026-10-14 G5). La DÉCISION appartient au payload skill
 // (SkillShowsRankedMatch, via ExtractCSRRowIfRanked) : un candidat dont le RankRecap n'est pas
 // celui d'un match classé est compté « sans RankRecap » et ne produit aucune ligne.
 func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB) ([]MatchRegistryRow, error) {
+	ph, args := rankedCandidatePlaylistIDs()
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT match_id, start_time
 		FROM match_registry
@@ -169,8 +175,9 @@ func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB) ([]M
 		    COALESCE(is_ranked, FALSE) = TRUE
 		    OR STRPOS(LOWER(COALESCE(playlist_name, '')), 'ranked') > 0
 		    OR STRPOS(LOWER(COALESCE(pair_name, '')), 'ranked') > 0
+		    OR LOWER(COALESCE(playlist_id, '')) IN (`+ph+`)
 		  )
-		ORDER BY start_time ASC`)
+		ORDER BY start_time ASC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -189,4 +196,17 @@ func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB) ([]M
 		})
 	}
 	return out, rows.Err()
+}
+
+// rankedCandidatePlaylistIDs rend les identifiants de la référence des playlists classées, sous
+// forme de marqueurs « ?, ?, ... » et d'arguments, pour le pré-filtre de CANDIDATURE des
+// rattrapages CSR. Elle ne décide JAMAIS du classement d'un match (le payload skill décide,
+// SkillShowsRankedMatch) : un candidat sans RankRecap de match classé ne produit aucune ligne.
+func rankedCandidatePlaylistIDs() (string, []any) {
+	all := rankedplaylists.All()
+	args := make([]any, 0, len(all))
+	for _, p := range all {
+		args = append(args, strings.ToLower(strings.TrimSpace(p.AssetID)))
+	}
+	return strings.TrimSuffix(strings.Repeat("?,", len(args)), ","), args
 }
