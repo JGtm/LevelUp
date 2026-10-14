@@ -57,6 +57,7 @@ import {
   EQUIPMENT_PICKUP_SOUND_STEM,
   ABILITY_IMPULSE_SOUND_STEMS,
   TRANSLOCATION_SOUND_STEM,
+  RIFT_POSE_SOUND_STEM,
 } from './replaySound'
 import {
   allVehicleBoomStems,
@@ -143,6 +144,8 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
     // LA TÉLÉPORTATION DU TRANSLOCATEUR (schéma 38) : un stem, déclenché par `translocations[]`.
     TRANSLOCATION_SOUND_STEM,
+    // LA POSE DE LA FAILLE (schéma 95) : un stem, déclenché par `riftPoses[]`.
+    RIFT_POSE_SOUND_STEM,
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : un ou deux stems par statistique, selon
     // que le jeu distingue les camps.
     ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
@@ -286,6 +289,8 @@ describe('garde-rail : durée livrée par catégorie', () => {
     ...Object.values(ABILITY_IMPULSE_SOUND_STEMS),
     // La TÉLÉPORTATION : catégorie Équipement, la durée de sa source (4,73 s), jamais retronquée.
     TRANSLOCATION_SOUND_STEM,
+    // La POSE DE LA FAILLE : catégorie Équipement, la durée de sa source, jamais retronquée.
+    RIFT_POSE_SOUND_STEM,
     // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : catégorie Objectifs, même règle de durée que
     // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
     // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.

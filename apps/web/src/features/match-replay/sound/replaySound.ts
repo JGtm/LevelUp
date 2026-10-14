@@ -177,6 +177,7 @@ import { equipmentChangeSoundEvents } from './equipmentChangeSound'
 import { abilityImpulseSoundEvents } from './abilityImpulseSound'
 import { KNOCKBACK_SOUND_STEM, knockbackSoundEvents, type RepulsorKillSound } from './knockbackSound'
 import { translocationSoundEvents } from './translocationSound'
+import { riftPoseSoundEvents } from './riftPoseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
@@ -197,6 +198,7 @@ export { EQUIPMENT_PICKUP_SOUND_STEM, equipmentChangeSoundEvents } from './equip
 export { ABILITY_IMPULSE_SOUND_STEMS, abilityImpulseSoundEvents } from './abilityImpulseSound'
 export { KNOCKBACK_SOUND_STEM, knockbackSoundEvents } from './knockbackSound'
 export { TRANSLOCATION_SOUND_STEM, translocationSoundEvents } from './translocationSound'
+export { RIFT_POSE_SOUND_STEM, RIFT_POSE_HIT_OFFSET_MS, riftPoseSoundEvents } from './riftPoseSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
@@ -390,18 +392,14 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * ÉGALISATION : crête vraie plafonnée à -1,0 dBTP par gain LINÉAIRE (-0,8 / -1,0 / -2,0 dB),
  * plafond du lot R2-S, même convention que `repair_field_end`.
  *
- * LA BALISE DU TRANSLOCATEUR RESTE MUETTE, ET SON SILENCE A CHANGÉ DE RAISON. Sa banque est
- * TROUVÉE (`dcfaa487`, 70 `.wem`, atteinte par les deux seuls `eqip` `quantum_translocator` du
- * jeu) — mais elle porte ONZE gestes distincts (8 `snd!`, 11 événements, de 0,83 à 4,53 s), et
- * RIEN dans les tags ne dit lequel est la pose de la balise : les noms de champs d'un `eqip`
- * ne sont pas lisibles hors ligne. Choisir serait deviner. La recette des armes tranche ce cas
- * par le VOTE (« les votes priment sur tout critère », `RECETTE_SONS_ARMES` §5) : il faut une
- * écoute, pas une mesure de plus.
+ * LA FAILLE DU TRANSLOCATEUR NE SONNE PAS PAR CETTE TABLE : sa pose n est pas une pose d objet du
+ * monde, c est l énergie du translocateur PORTÉ qui tombe à zéro (`riftPoses`, schéma 95). Elle
+ * sonne par `riftPoseSound.ts`, sa téléportation par `translocationSound.ts`.
  *
- * RESTENT MUETS AUSSI, par décision et non par manque : le répulseur (que `PLACEMENT_RENDER`
- * ne DESSINE pas non plus — c'est une capacité qui agit sur son porteur, pas un objet posé ;
- * son activation n'est dans aucun canal, négatif mesuré sur neuf le 2026-09-03, et son seul
- * son reste celui de son kill), les deux bonus, et l'objet non identifié `other` (il a pourtant
+ * RESTENT HORS DE CETTE TABLE, par décision et non par manque : le répulseur (que `PLACEMENT_RENDER`
+ * ne DESSINE pas non plus — c'est une capacité, pas un objet posé ; il sonne par sa poussée
+ * (`knockbackSound.ts`) et par son kill),
+ * les deux bonus, et l'objet non identifié `other` (il a pourtant
  * SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas nommer n'a pas à
  * s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas). LE GRAPPIN
  * (lot G, 2026-08-20) ET LE PROPULSEUR (2026-09-03) N'EN SONT PLUS : ils sonnent par LEURS
@@ -434,19 +432,6 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> =
   threat_seeker: 'sensor_activate',
   // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
   repair_field: 'repair_field_activate',
-  // LA POSE DE LA FAILLE DU TRANSLOCATEUR (« la première activation, la dépose de la faille
-  // spatio-temporelle ») : le geste tel que le jeu le joue, recomposé en CINQ COUCHES NATIVES de la
-  // banque de l'appareil (`sb_007_abl_quantum`) sur l'enregistrement en jeu de l'utilisateur —
-  // charge `55f75682`, foley `9520fe71`, coup de pose `0431c88f`, foley `a9c26b1b`, boucle de la
-  // balise `388207de` (coupée en fondu : dans le jeu elle dure tant que la faille existe) ; délais du
-  // moteur relevés sur l'enregistrement, 48 kHz, crête plafonnée à -1 dBTP. Le COUP est à 1,045 s du
-  // début du fichier. L'équipement se porte au poignet et ouvre la faille sur la position du joueur :
-  // le nom de famille du calque (`translocator_beacon`) porte encore l'ancienne lecture « balise ».
-  //
-  // SON DÉCLENCHEUR EST MORT tant que la pose n'est pas publiée : une pose `deployed` est réservée à
-  // ce qu'un événement 103 désigne, et aucun ne désigne la faille. La TÉLÉPORTATION, elle, sonne par
-  // `translocations[]` (`translocationSound.ts`).
-  translocator_beacon: 'translocator_deploy',
   // L ECRAN OCCULTANT, nomme le 2026-08-27. Il etait la DERNIERE famille dessinee sans son, et
   // ce qui le tenait muet n etait pas le son — `play_007_abl_shroud_deploy_player` est casse
   // depuis le 2026-08-26 — mais la FAMILLE : l objet s appelait `other` au manifeste, faute
@@ -710,6 +695,8 @@ export function buildSoundTimeline(
     // gestes que le film date. Doctrine : `knockbackSound.ts`, `translocationSound.ts`.
     out.push(...knockbackSoundEvents(doc, repulsorKills))
     out.push(...translocationSoundEvents(doc))
+    // LA POSE DE LA FAILLE (schéma 95) : son COUP à l'instant de la pose. Doctrine : `riftPoseSound.ts`.
+    out.push(...riftPoseSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas l'allégeance du film), les seules actions qui
