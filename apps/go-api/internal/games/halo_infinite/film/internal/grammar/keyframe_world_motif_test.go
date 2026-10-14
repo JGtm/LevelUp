@@ -7,14 +7,13 @@ package grammar
 // desormais, par [source.PremierMotif64], aux seules positions que [motifDAncre] retient, et y
 // rejoue le meme test. La boucle d avant est recopiee ICI, a l identique a son nom pres
 // ([kfRecherche.suivanteOracle]) : elle est l ORACLE. Chaque cas compare l issue ENTIERE
-// (ancre, decision, fin, trainee, refutations, contradiction) et la liste des candidats de la
+// (ancre, decision, refutations, contradiction) et la liste des candidats de la
 // fenetre — qui nourrit l election, la preuve et [kfRecherche.ecartes].
 //
 // MUTATIONS JOUEES LE 2026-09-28, TOUTES ROUGES : un bit de slot de trop dans `Nuls` de
-// [motifDAncre] (des ancres sautees) ; la borne basse de slot decalee d un rang ; `if p != q`
-// retire (une trainee de sentinelles qui survit a une position sautee) ; une sentinelle de trop
-// comptee par [kfRecherche.sentinelles] (seul le test synthetique la voit : les bobines n ont
-// pas de fin de table a cheval sur une borne).
+// [motifDAncre] (des ancres sautees) ; la borne basse de slot decalee d un rang. (La traine de
+// sentinelles et sa fin de table, que l oracle recopiait aussi, sont retirees au plan du residu, R1.4.4 :
+// la table d image-cle n a pas de fin par sentinelles, `keyframe_entrees.go`.)
 
 import (
 	"math/rand"
@@ -31,17 +30,8 @@ func (r *kfRecherche) suivanteOracle(from, prevSlot int) kfIssue {
 	exact := -1
 	end := min(from+r.maxWin, r.total)
 	r.cands = r.cands[:0]
-	sentStreak := 0
 	for q := from; q < end && q+64 <= r.total; q++ {
 		id := source.BitsBourres(r.buf, q, 32)
-		if id == kfSent {
-			if sentStreak++; sentStreak >= 2048 {
-				iss.fin = true
-				break
-			}
-			continue
-		}
-		sentStreak = 0
 		s, ti, g, ok := kfAnchorFromID(r.buf, q, id, prevSlot, r.total)
 		if !ok {
 			continue
@@ -75,8 +65,6 @@ func (r *kfRecherche) suivanteOracle(from, prevSlot int) kfIssue {
 		iss.at, iss.dec = exact, kfRecalage
 	case iss.at >= 0:
 		iss.dec = kfElection // repli nomme `repli_ancre_d_image_cle_par_election`
-	default:
-		iss.traine = sentStreak
 	}
 	return iss
 }
@@ -95,7 +83,7 @@ func comparerSuivante(t *testing.T, nom string, r *kfRecherche, from, prevSlot i
 }
 
 // TestMotifDAncreCouvreLesGardesDeLAncre : toute fenetre que [kfAnchorFromID] accepte sous un
-// `prevSlot`, et toute sentinelle, sont retenues par [motifDAncre] de ce `prevSlot`.
+// `prevSlot` est retenue par [motifDAncre] de ce `prevSlot`.
 func TestMotifDAncreCouvreLesGardesDeLAncre(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x4B46))
 	retenues := 0
@@ -125,8 +113,8 @@ func TestMotifDAncreCouvreLesGardesDeLAncre(t *testing.T) {
 		}
 		retenue := source.PremierMotif64(w.buf, 0, 1, motifDAncre(prev)) == 0
 		_, _, _, ok := kfAnchorFromID(w.buf, 0, id, prev, len(w.buf)*8)
-		if (ok || id == kfSent) && !retenue {
-			t.Fatalf("id %#x, mot %#x : slot precedent %d : ancre acceptee (ok=%v) ou sentinelle, mais motif muet", id, mot, prev, ok)
+		if ok && !retenue {
+			t.Fatalf("id %#x, mot %#x : slot precedent %d : ancre acceptee, mais motif muet", id, mot, prev)
 		}
 		if retenue {
 			retenues++
@@ -138,7 +126,7 @@ func TestMotifDAncreCouvreLesGardesDeLAncre(t *testing.T) {
 }
 
 // payloadSynthetiqueDAncres ecrit un payload d image-cle factice : records vrais et faux,
-// zones nulles, bruit, trainees de sentinelles de longueurs variees (sous et sur 2 048).
+// zones nulles, bruit, suites de mots 0xffffffff de longueurs variees (sous et sur 2 048).
 func payloadSynthetiqueDAncres(rng *rand.Rand) []byte {
 	w := &bitWriter{}
 	w.bit(0)
@@ -168,8 +156,8 @@ func payloadSynthetiqueDAncres(rng *rand.Rand) []byte {
 }
 
 // TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques : tous les departs, plusieurs slots
-// precedents, plusieurs fenetres (dont des fenetres courtes, pour les frontieres de fenetre et la
-// reprise sur trainee), avec et sans preuve (preuve vide : seul l ordre de l election joue).
+// precedents, plusieurs fenetres (dont des fenetres courtes, pour les frontieres de fenetre), avec
+// et sans preuve (preuve vide : seul l ordre de l election joue).
 func TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x5C1E))
 	cas := 0

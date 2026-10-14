@@ -405,7 +405,7 @@ func (w *objectiveWalk) scanKeyframe(pay []byte, ts uint64, sc *ObjectiveScan) {
 		if fermeSurLAncreSuivante(pay, tr, b, w.reg, ctx) {
 			sc.KeyClosed++
 		}
-		if _, ok := readKeyframeHeader(pay, tr.EndBit, total); ok {
+		if finitSurUneEntree(pay, tr.EndBit, ctx) {
 			sc.KeyChained++
 			for k := first; k < len(sc.Reads); k++ {
 				sc.Reads[k].Chained = true

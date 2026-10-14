@@ -128,3 +128,81 @@ func TestLaFermetureNeSeLitPasAuDelaDeLAncre(t *testing.T) {
 		t.Error("une entree liberee entre les slots 5 et 7 : la fermeture doit tenir")
 	}
 }
+
+// tableDEntrees ecrit une table synthetique : le prefixe d un bit, puis une entree par element de
+// `slots` (-1 = slot libere, sinon un record vide de ce slot), puis une marge.
+func tableDEntrees(slots ...int) []byte {
+	var w bitWriter
+	w.bit(0)
+	for _, s := range slots {
+		if s < 0 {
+			w.entreeLiberee()
+			continue
+		}
+		w.recordVide(uint64(s), 0) //nolint:gosec // slot de test
+	}
+	w.bits(0, 7)
+	return w.buf
+}
+
+// TestLaMarcheDeterministeLitLesSlotsLiberes : `WalkKeyframeRecords` traverse les entrees liberees au
+// lieu d y voir la fin de table, et rend les records des slots 0 et 3. MUTATION — l identifiant
+// 0xffffffff repris pour une sentinelle de fin : ROUGE.
+func TestLaMarcheDeterministeLitLesSlotsLiberes(t *testing.T) {
+	recs, stop := WalkKeyframeRecords(tableDEntrees(0, -1, -1, 3), twoEmptyArchReg(), ContexteParDefaut())
+	if len(recs) != 2 || recs[0].Slot != 0 || recs[1].Slot != 3 || stop != KeyframeStopEnd {
+		t.Fatalf("records %+v, arret %v : attendu les slots 0 et 3, fin normale", recs, stop)
+	}
+	if recs[1].BitStart != 1+172+2*108 {
+		t.Errorf("record du slot 3 au bit %d, attendu %d", recs[1].BitStart, 1+172+2*108)
+	}
+}
+
+// TestLaMarcheDeterministeExigeLeSlotDeLEntree : un record dont le slot n est pas l index de son
+// entree arrete la marche (la table est indexee par slot). MUTATION — accepter tout slot croissant :
+// ROUGE.
+func TestLaMarcheDeterministeExigeLeSlotDeLEntree(t *testing.T) {
+	recs, stop := WalkKeyframeRecords(tableDEntrees(0, -1, 5), twoEmptyArchReg(), ContexteParDefaut())
+	if len(recs) != 1 || stop != KeyframeStopSlot {
+		t.Fatalf("records %+v, arret %v : attendu un record puis l arret sur le slot 5 a l entree 2", recs, stop)
+	}
+}
+
+// TestLeChainageNeCompteQueLesRecords : vingt slots liberes entre deux records se traversent sans
+// consommer le budget de records intercales (16). MUTATION — compter les entrees liberees dans le
+// budget : ROUGE.
+func TestLeChainageNeCompteQueLesRecords(t *testing.T) {
+	slots := []int{4}
+	for range 20 {
+		slots = append(slots, -1)
+	}
+	slots = append(slots, 25)
+	pay := tableDEntrees(slots...)
+	want := 1 + 172 + 20*108
+	res := ChainKeyframeRecords(pay, twoEmptyArchReg(), 1+172, want, 4, ContexteParDefaut())
+	if !res.Reached || res.Skipped != 0 || res.SkippedSansArchetype != 20 {
+		t.Fatalf("chainage %+v : attendu atteint, 0 record et 20 entrees sans archetype", res)
+	}
+	// Un record intercale porte le slot de son entree : le slot 9 a l entree du slot 6 arrete le chainage.
+	pay = tableDEntrees(4, -1, 9, 10)
+	res = ChainKeyframeRecords(pay, twoEmptyArchReg(), 1+172, 1+172+108+172, 4, ContexteParDefaut())
+	if res.Reached || res.Stop != KeyframeStopSlot {
+		t.Errorf("record du slot 9 a l entree du slot 6 : %+v, attendu l arret sur le slot", res)
+	}
+}
+
+// TestLeChainageFaibleReconnaitUnSlotLibere : le temoin de chainage des balayages tient devant un slot
+// libere comme devant un record, pas au milieu d une entree. MUTATION — ne reconnaitre que l en-tete
+// d un record : ROUGE.
+func TestLeChainageFaibleReconnaitUnSlotLibere(t *testing.T) {
+	pay, want := tableSynthetique(func(w *bitWriter) { w.entreeLiberee() })
+	ctx := ContexteParDefaut()
+	for _, c := range []struct {
+		pos  int
+		vrai bool
+	}{{172, true}, {want, true}, {173, false}, {172 + 40, false}} {
+		if got := finitSurUneEntree(pay, c.pos, ctx); got != c.vrai {
+			t.Errorf("bit %d : chaine %v, attendu %v", c.pos, got, c.vrai)
+		}
+	}
+}

@@ -130,3 +130,34 @@ func sauterLesEntreesSansCorps(pay []byte, pos, total, enTete int) (int, int) {
 	}
 	return pos, k
 }
+
+// finitSurUneEntree dit si la position `pos` porte une entree de la table : un en-tete de record
+// valide ([readKeyframeHeader]) ou un slot libere sous la forme EXACTE de l ecrivain
+// ([estUnSlotLibere]). C est le temoin FAIBLE de chainage des balayages (`KeyChained`) : une traversee
+// qui finit devant un slot libere finit sur une frontiere d entree.
+//
+// LA FORME EXACTE, ET NON LE SEUL ARCHETYPE : un temoin juge une position qui n est peut-etre pas une
+// frontiere. Les 96 bits a 1 d un slot libere portent un mot d archetype `0xffffffff` a 65 positions
+// (de 32 bits avant l entree a 32 bits apres) ; seule sa premiere porte les trois mots.
+func finitSurUneEntree(pay []byte, pos int, ctx ContexteDeLecture) bool {
+	total := len(pay) * 8
+	if estUnSlotLibere(pay, pos, total, ctx.Profil.Cadre.EnTeteBits) {
+		return true
+	}
+	_, ok := readKeyframeHeader(pay, pos, total)
+	return ok
+}
+
+// estUnSlotLibere dit si l entree du bit `pos` a la forme qu ecrit `FUN_1408f1948` pour un slot
+// libere : identifiant, archetype et mot +0xc a `0xffffffff`.
+func estUnSlotLibere(pay []byte, pos, total, enTete int) bool {
+	if pos < 0 || pos+enTete > total {
+		return false
+	}
+	for _, o := range [3]int{0, 32, 64} {
+		if source.BitsBourres(pay, pos+o, 32) != keyframeArchetypeNone {
+			return false
+		}
+	}
+	return true
+}
