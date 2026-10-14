@@ -117222,3 +117222,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** (28 films, contexte de cuisson) : bipèdes fermés 5 397 → 8 237 sur 10 710, tous archétypes bornés 240 466 → 267 817 ; admissions T1 ∧ T2 inchangées (6 507) ; 44 fermetures `ti=37` perdues, toutes fermées en base avec un écart de slots positif (impossible dans une table indexée par slot), adjugées ; élection changée sur un seul film (`64e8adfa`, deux régions : la fausse ancre slot 1536 `ti=0` réfutée, dix records rendus, fermetures 0 → 11) ; équipes et carte delta identiques ; killsource identique sur les 19 témoins ; `replay-equiv` : seul le document de `64e8adfa` change (une arme au sol retrouvée et les compteurs de marche). 164 derniers records de paquet fermés par la queue de table.
 
 **Conclusion / prochaine étape** : R2, le bit des films 1.8 — lire d'abord `FUN_142988e98` (aiguillage des anciens formats), puis l'option A de l'utilisateur.
+
+## [2026-10-14] Résidu de lecture des images-clés, étape R2 : le bit des films 1.8 — En cours, ARRÊT au gate (`feat/ri-ecart-108`, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`)
+
+**Statut** : En cours — R2.1, R2.2, R2.4 faits ; R2.3 `[!]`, décision de l'utilisateur due ; code commité, rien poussé.
+
+**Décision technique principale** : `FUN_142988e98`, appelé par `FUN_1428e219c` quand la version majeure diffère de 0x29, ne lit pas le film (il remet à zéro l'état du lecteur de film) : aucune lecture du jeu à porter. Règle appliquée selon l'option A : le bloc malléable d'i53 sans drapeau final quand la version majeure déclarée vaut au plus 0x25, dérivée du film comme le contrôle de corruption.
+
+**Résultats observés** : films de majeure ≥ 0x26 sans aucune régression publiée ; HI_1_8_0 (0x25) : `60ae07c4` bipèdes fermés 1 → 328/332, dotations de naissance 5 → 171, 12 films du parc 1 263 → 7 054 fermés tous films confondus, aucune perte ; formats 20-21 (0x1f-0x21) : gains et pertes mêlés (13 pertes de fermeture non adjugeables, 6 dotations de naissance perdues sur `a349fea8`).
+
+**Conclusion / prochaine étape** : l'utilisateur choisit entre garder ≤ 0x25, borner à 0x25, ou sortir les formats 20-21 de la règle ; puis clôture de R2 (révisions en R5).

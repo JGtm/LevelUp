@@ -398,21 +398,71 @@ Une étape commence quand la précédente est close : items statués, gate pass�
       golangci-lint (`--new-from-merge-base=origin/feat/v75`, `grammar/...` et `source/...`) 0 problème.
 
 ### Étape R2 — Le bit des films 1.8 (option A, U-2)
-- [ ] R2.1 Lire dans Ghidra `FUN_142988e98`, cible de `FUN_1428e219c` (`CMP dword ptr [RDX],0x29` à
+- [x] R2.1 Lire dans Ghidra `FUN_142988e98`, cible de `FUN_1428e219c` (`CMP dword ptr [RDX],0x29` à
       `1428e21a6`) quand la majeure diffère de 0x29, et `FUN_14299bd78` (`14299bd83`) : l'événement
       posé (code 0 sur `+0x1488`) et son traitement. Sortie : LU (le chemin des anciens formats existe ;
       son traitement du bloc malléable d'i53 ou de la version, adresses) ou NON LU (aucun chemin de
       lecture n'en part, adresses de ce qui a été lu). `$RES/g/r2/`.
-- [ ] R2.2 La version majeure déclarée (`chunk_00+0`) est portée par le contexte du film comme
+- [x] R2.2 La version majeure déclarée (`chunk_00+0`) est portée par le contexte du film comme
       `MoteurUnPossible` (`grammaireSousFilm`), jamais par la chaîne de build. Si R2.1 est LU : la règle
       du jeu, adresses citées ; sinon : le seuil mesuré ≤ 0x25 (U-2), documenté comme mesure (rapport
       BIT_BUILDS §2), position du bit = le drapeau final de `FUN_1407efc5c` (lu à `1407efeba`) — la
       variante « R(5) de n sur 4 bits », indiscernable sur les données, est nommée au commentaire.
-- [ ] R2.3 Mesure → `$RES/r2` : I-ferm, I-d0, I-ancres, I-equipes, I-carte, I-e108 ; zéro différence
+- [!] R2.3 Mesure → `$RES/r2` : I-ferm, I-d0, I-ancres, I-equipes, I-carte, I-e108 ; zéro différence
       sur les films de majeure ≥ 0x26 ; `60ae07c4`, `a349fea8`, `a521164d`, `50247b26` chiffrés ;
       ancres changées adjugées par E-4.
-- [ ] R2.4 Tests unitaires (seuil, film sans `chunk_00`, majeure absente) ; mutations ; ratchets.
+- [x] R2.4 Tests unitaires (seuil, film sans `chunk_00`, majeure absente) ; mutations ; ratchets.
 - Gate R2 : comme R1.5 (instruments, G-equiv, killsource, tests, archlint, vet, lint) contre `$RES/r1`.
+- *ÉTAT DE R2 (2026-10-14) : ARRÊT AU GATE, DÉCISION DE L'UTILISATEUR DUE.* R2.1, R2.2 et R2.4 `[x]`,
+  R2.3 `[!]` ; code commité, non poussé ; mesures sous `$RES/r2`, `$RES/r1p`, `$RES/r2p`, `$RES/r2/art`.
+  - R2.1 `[x]` — LU, et ce n'est PAS un aiguillage : `FUN_1428e219c` appelle `FUN_142988e98` quand la
+    majeure diffère de 0x29 (1428e21a6 `CMP dword ptr [RDX],0x29`, 1428e21b1 `MOV RCX,[RCX+0x130]`, 1428e22b0
+    `CALL 0x142988e98`), et aussi quand la voie 0x29 échoue (`FUN_1414e77d0`). `FUN_142988e98` ne lit
+    aucun octet du film : il remet à zéro l'état du lecteur de film (`+0x1488`, gabarit code 0 / 0x1e /
+    constante `143cd8ff0` copié par `FUN_141cfebac` puis détruit par `FUN_1428df11c`), comme les remises à
+    zéro `FUN_142988ce0` et `FUN_142985778`. `FUN_14299bd78` ne fait qu'un test. Aucun chemin des anciens
+    formats ne part de là : le seuil est donc la MESURE (U-2, option A). `$RES/g/r2/`.
+  - R2.2 `[x]` — `GrammaireBalayage.MalleableSansDrapeauFinal`, dérivé du film (`malleable_du_film.go`,
+    majeure déclarée ≤ 0x25 ; majeure illisible : grammaire de l'exécutable) par le contexte de film
+    (`poserLaGrammaireDuFilm`, `profilDeLaVueA`) et `GrammaireSousFilm` (killsource) ; le lecteur
+    `consumeBipedMalleablePropertyBlock` saute le drapeau final (1407efeba) quand il est posé.
+  - R2.4 `[x]` — `malleable_du_film_test.go` (règle par bobine, film sans `chunk_00`, largeur du bloc ;
+    mutations « seuil 0x26 » et « champ ignoré » rouges) ; golden de fermeture en cuisson régénéré avec
+    sa ligne d'historique (`60ae07c4` `ti=35` 1 → 232/236, `a521164d` 2 → 18/209), golden sans carte
+    inchangé ; G-unit (`grammar`, `facts`, `replay`, `replaybuild`, `killcollector`), archlint, vet avec
+    et sans `research`, golangci-lint : verts.
+  - R2.3 `[!]` — mesures :
+    - **Films de majeure ≥ 0x26 : aucune régression.** 24 films du corpus et les 2 témoins HI_1_9_0 du
+      parc : fermetures, ancres, équipes, carte delta (8 films à l'identique, et les 16 autres de la
+      carte 20) identiques ; artefacts publiés identiques (`replay-equiv`) ; killsource : morts publiées
+      identiques. Seuls changent les digests internes `killsource`, `vehicles`, `vehicleDeaths.stats`
+      de `replay-equiv`, parce que le profil de balayage porté par les faits gagne un champ (même cas que
+      LK.6.4) : `SchemaDesFaits` montera en R5.
+    - **Majeure 0x25 (HI_1_8_0) : gain net, aucune perte.** `60ae07c4` : bipèdes fermés 1 → 328/332, carte
+      delta +49 paquets fermés (MPP +1 596), artefact : dotations de naissance 5 → 171 lues et publiées,
+      postures +10, deux « impulsions de capacité » disparues (lues sur des bits étrangers par l'ancien
+      i57 : `otherFamily`, `noIdentity`) ; killsource : mêmes morts, 5 passent du balayage à la marche
+      séquentielle. Parc, 12 autres films HI_1_8_0 (carte posée à « Live Fire - Ranked » sans
+      vérification, mesure relative) : bipèdes fermés 1 263 → 7 054 sur 7 820 tous films confondus,
+      0 perte, ancres identiques, admissions inchangées (5 461).
+    - **Majeures plus anciennes (0x1f à 0x22, formats 20, 21, 23) : effets mêlés, NON ADJUGEABLES.**
+      Bipèdes : `a349fea8` +68 / −7, `a521164d` +30 / −6, `50247b26` +8 / −3, `58e6f72a` (parc, 0x22)
+      15 → 27. Les 13 pertes de `a349fea8` et `a521164d` fermaient en base avec les largeurs modales
+      (n d'i53 = 5, i55 = 5, i57 = 2, portes ouvertes) : rien ne dit que leur fermeture de base était un
+      hasard (`$RES/r2/fermes_perdus.txt`). Le témoin décalé d'un bit ferme par hasard 5 records sur
+      `50247b26` (0 avant), 7 sur `a349fea8` (2 avant), 3 sur `a521164d` (1 avant). Publié : `a349fea8`
+      perd 6 dotations de naissance (22 → 16), et les 22 dotations à deux armes (`0x2B1824D5` +
+      `0x48C19D2D`) deviennent 16 dotations à une seule arme (`0x48C19D2D`), d'autres joueurs, d'autres
+      instants — une régression d'une valeur publiée ; `50247b26` : dotations fermées 3 → 1 ;
+      `a521164d` 19 → 20.
+  - **Décision demandée à l'utilisateur** (aucune n'est prise par l'exécutant) :
+    (a) garder « majeure ≤ 0x25 » telle que décidée le 2026-10-09 et accepter la régression mesurée sur
+    les formats 20-21 (films déjà faux après i22, D-4/D-5) ; (b) borner la règle à ce que la mesure
+    établit, la majeure 0x25 seule : tout le gain de 1.8, aucun changement sur les formats 20 à 23,
+    mais c'est une borne par valeur déclarée et non un seuil ; (c) laisser les formats 20-21 hors de la
+    règle et les instruire à part (le bloc malleable n'y est pas établi au-delà de ce bit, découverte
+    R-1). Révisions (`grammar`, `killsource` qui change de sortie, `SchemaDesFaits`) : en R5, quelle que
+    soit l'option.
 
 ### Étape R3 — world-object i0 sous la portée, puis rigid-body i18
 - [ ] R3.1 Réappliquer la lecture du jeu de world-object i0 sous la garde (`git revert 72785f870`,
@@ -493,7 +543,11 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
 
 ## 7. Découvertes (consignées, non traitées)
 
-(vide à la rédaction)
+- R-1 *(R2.3)* Sur les films de majeure 0x1f à 0x22 (formats 20, 21, 23), le bloc malleable d'i53 ne suit
+  ni la grammaire de l'exécutable ni celle des films 1.8 pour tous les records : sans drapeau final,
+  des records sans porte ouverte ferment (signature +33 ramenée à 0), mais des records à portes ouvertes
+  qui fermaient avec les largeurs modales ne ferment plus. Grammaire non établie ; seul un exécutable
+  de ces builds la lirait. Non traitée (voir la décision due de R2).
 
 ## 8. Journal
 
@@ -521,3 +575,9 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   sentinelles et des options du motif qu'elle seule utilisait, `source.Rev` constant (R1.4.4) ; nom
   `SkippedSansArchetype` gardé (R1.4.2). Aucun push (E-3 : montée des révisions en R5). Prochaine
   étape : R2 (lire `FUN_142988e98` d'abord).
+- 2026-10-14 : R2 jouée jusqu'au gate et ARRÊTÉE (R2.3 `[!]`, décision de l'utilisateur due, au plan).
+  Lecture du jeu : `FUN_142988e98` remet à zéro l'état du lecteur de film, aucun chemin des anciens
+  formats ; règle appliquée sur le seuil mesuré (≤ 0x25, option A). Films ≥ 0x26 sans régression ;
+  0x25 : gain net sans perte (corpus et 12 films du parc) ; formats 20-21 : gains et pertes mêlés, dont
+  une valeur publiée en régression (`a349fea8`, dotations de naissance). Code et tests commités, rien
+  poussé.
