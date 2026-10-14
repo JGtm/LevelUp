@@ -45,6 +45,8 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/platform/duckdb/csr_coverage_repo.go:CSRCoverageRepo.countRankedMatchesInRegistry": {dispenseSemantique, "2026-09-27",
 		"prédicat classé (csr_coverage_repo.go:109-111) : la Campagne n'est jamais classée — Halo 5 dérive is_ranked de la playlist " +
 			"(games/halo_5/mapping.go:102, classifyRanked(HopperId)), que la Campagne n'a pas. Diagnostic de couverture CSR, pas un affichage."},
+	"internal/platform/duckdb/csr_coverage_repo.go:CSRCoverageRepo.controlAgainstReference": {dispenseSemantique, "2026-10-14",
+		"contrôle croisé référence des playlists classées <-> CSR par match (alerte A3) : la Campagne n'a ni playlist de la référence ni CSR, elle ne contribue à aucun des deux compteurs. Diagnostic de couverture, pas un affichage."},
 	"internal/platform/duckdb/media_repo_filters.go:MediaRepo.LoadMatchCandidatesForMedia": {dispenseSemantique, "2026-09-27",
 		"appariement clip → match par fenêtre de capture (media_repo_filters.go:255) : un clip tourné en Campagne doit pouvoir se rattacher à son match."},
 	"internal/api/wire/registry_monitoring_freshness.go:ServiceRegistry.lastMatchByXUID": {dispenseSemantique, "2026-09-27",

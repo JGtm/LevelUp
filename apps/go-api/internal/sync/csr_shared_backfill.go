@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/persist"
 )
 
 // SharedCSRBackfillOpts paramètre BackfillSharedCSRsFromAPI.
@@ -185,8 +187,9 @@ func BackfillSharedCSRsFromAPI(
 // xuid a participé, avec season_id (peut être NULL pour les matchs antérieurs
 // au backfill Phase 1). Triés ASC pour traiter chronologiquement.
 //
-// Fallback heuristique playlist_name LIKE '%ranked%' identique à la fonction
-// player-scoped pour couvrir les régressions is_ranked.
+// Pré-filtre (is_ranked OU nom contenant « ranked »), identique à la fonction player-scoped :
+// il choisit les CANDIDATS, la décision de classement appartient au payload skill
+// (SkillShowsRankedMatch, via ExtractAllSharedCSRRows).
 func loadRankedMatchesForSharedCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MatchRegistryRow, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT DISTINCT r.match_id, r.start_time, r.season_id
@@ -213,7 +216,7 @@ func loadRankedMatchesForSharedCSRBackfill(ctx context.Context, sharedDB *sql.DB
 		if err := rows.Scan(&id, &start, &sid); err != nil {
 			return nil, err
 		}
-		row := MatchRegistryRow{MatchID: id, StartTime: start, IsRanked: true}
+		row := MatchRegistryRow{MatchID: id, StartTime: start}
 		if sid.Valid {
 			s := sid.String
 			row.SeasonID = &s
@@ -263,4 +266,129 @@ func loadParticipantXUIDs(ctx context.Context, db *sql.DB, matchID string) ([]st
 		out = append(out, x)
 	}
 	return out, rows.Err()
+}
+
+// ─── Rattrapage de is_ranked depuis le CSR (A4) ────────────────────────────────
+// Rattrapage de `match_registry.is_ranked` depuis la
+// présence du CSR par match (plan ajustements 2026-10-14, A4).
+//
+// # POURQUOI
+//
+// Le sync posait is_ranked par le nom de playlist, absent du payload : 876 matchs « Ranked » sur 877
+// de 2026 sont restés `is_ranked = FALSE` (G5). Depuis la règle unique (csr_writes.go,
+// décision D-10) le sync, l'import OpenSpartan et les rattrapages CSR posent ou écrivent selon le
+// RankRecap du payload skill. Ce rattrapage répare les lignes DÉJÀ écrites : tout match qui porte
+// une ligne dans `match_csrs_latest` a un CSR écrit selon cette règle (ou, avant elle, selon un
+// nom de playlist « ranked » : même verdict), donc est classé.
+//
+// # CE QUI EST ÉCRIT, CE QUI NE L'EST JAMAIS
+//
+// FAUX/NULL vers VRAI, un match à la fois (persist.RegistryRankedPersister). Jamais de
+// déclassement : un match classé sans CSR (CSR pas encore récupéré) reste classé ; il est compté
+// (RankedWithoutCSR) pour que `backfill --csr` / `backfill --shared-csr` le rattrapent.
+//
+// # ORDRE D'EMPLOI
+//
+// Après `backfill --shared-csr` (qui écrit match_csrs selon la règle unique), pour que les matchs
+// dont le CSR vient d'être retrouvé soient reclassés dans la même séquence. Idempotent.
+
+// RegistryRankedOptions paramètre le rattrapage. DryRun : compter sans écrire.
+type RegistryRankedOptions struct {
+	DryRun bool
+}
+
+// RegistryRankedStats : compteurs du rattrapage, par match.
+type RegistryRankedStats struct {
+	DryRun bool
+	// Candidates : matchs portant un CSR et dont is_ranked est faux ou NULL.
+	Candidates int
+	// Fixed : matchs passés à is_ranked = TRUE (en simulation : qui le seraient).
+	Fixed int
+	// AlreadyRanked : matchs portant un CSR et déjà classés AVANT ce passage.
+	AlreadyRanked int
+	// RankedWithoutCSR : matchs classés (is_ranked = TRUE) sans aucune ligne CSR. Indicatif, jamais
+	// déclassés.
+	RankedWithoutCSR int
+	// Errors : écritures échouées (journalisées une à une).
+	Errors int
+}
+
+const (
+	qRegistryRankedCandidates = `
+SELECT r.match_id
+FROM match_registry r
+WHERE COALESCE(r.is_ranked, FALSE) = FALSE
+  AND r.match_id IN (SELECT match_id FROM match_csrs_latest WHERE rating_type = 'CSR')
+ORDER BY r.match_id`
+
+	qRegistryRankedCounts = `
+WITH csr AS (SELECT DISTINCT match_id FROM match_csrs_latest WHERE rating_type = 'CSR')
+SELECT
+  COUNT(*) FILTER (WHERE COALESCE(r.is_ranked, FALSE) AND c.match_id IS NOT NULL),
+  COUNT(*) FILTER (WHERE COALESCE(r.is_ranked, FALSE) AND c.match_id IS NULL)
+FROM match_registry r
+LEFT JOIN csr c ON c.match_id = r.match_id`
+)
+
+// BackfillRegistryIsRanked pose is_ranked = TRUE sur les matchs qui portent un CSR par match (cf.
+// en-tête). sharedDB doit porter le writer de shared_matches_v2 hors simulation.
+func BackfillRegistryIsRanked(ctx context.Context, sharedDB *sql.DB, opts RegistryRankedOptions) (RegistryRankedStats, error) {
+	stats := RegistryRankedStats{DryRun: opts.DryRun}
+	if sharedDB == nil {
+		return stats, fmt.Errorf("BackfillRegistryIsRanked: sharedDB nil")
+	}
+	ids, err := loadRegistryRankedCandidates(ctx, sharedDB)
+	if err != nil {
+		return stats, err
+	}
+	stats.Candidates = len(ids)
+	persister := persist.NewRegistryRankedPersister(sharedDB)
+	for _, id := range ids {
+		if opts.DryRun {
+			stats.Fixed++
+			continue
+		}
+		changed, err := persister.MarkMatchRanked(ctx, id)
+		if err != nil {
+			stats.Errors++
+			slog.ErrorContext(ctx, "BackfillRegistryIsRanked: écriture échouée", "match_id", id, "err", err)
+			continue
+		}
+		if changed {
+			stats.Fixed++
+		}
+	}
+	// Comptes de contrôle lus APRÈS les écritures : « classé avec CSR » inclut ce qu'on vient de
+	// corriger ; on retranche Fixed pour rendre ce qui l'était déjà. En simulation, rien n'a changé.
+	if err := sharedDB.QueryRowContext(ctx, qRegistryRankedCounts).
+		Scan(&stats.AlreadyRanked, &stats.RankedWithoutCSR); err != nil {
+		return stats, fmt.Errorf("BackfillRegistryIsRanked: comptes de contrôle: %w", err)
+	}
+	if !opts.DryRun {
+		stats.AlreadyRanked -= stats.Fixed
+	}
+	slog.InfoContext(ctx, "BackfillRegistryIsRanked: terminé",
+		"dry_run", opts.DryRun, "candidats", stats.Candidates, "corriges", stats.Fixed,
+		"deja_classes", stats.AlreadyRanked, "classes_sans_csr", stats.RankedWithoutCSR, "errors", stats.Errors)
+	return stats, nil
+}
+
+func loadRegistryRankedCandidates(ctx context.Context, sharedDB *sql.DB) ([]string, error) {
+	rs, err := sharedDB.QueryContext(ctx, qRegistryRankedCandidates)
+	if err != nil {
+		return nil, fmt.Errorf("BackfillRegistryIsRanked: lecture des candidats: %w", err)
+	}
+	defer rs.Close()
+	var out []string
+	for rs.Next() {
+		var id string
+		if err := rs.Scan(&id); err != nil {
+			return nil, fmt.Errorf("BackfillRegistryIsRanked: scan: %w", err)
+		}
+		out = append(out, id)
+	}
+	if err := rs.Err(); err != nil {
+		return nil, fmt.Errorf("BackfillRegistryIsRanked: itération: %w", err)
+	}
+	return out, nil
 }

@@ -128,6 +128,16 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+Un match est classé ssi le `RankRecap.PostMatchCsr.InitialMeasurementMatches` de sa charge skill est
+> 0 (règle d'OpenSpartan Workshop ; un seul point de décision, `internal/sync/csr_writes.go`).
+`backfill-is-ranked` répare `match_registry.is_ranked` depuis le CSR par match déjà écrit (faux/NULL
+vers vrai seulement, ne déclasse jamais, idempotente). **Serveur arrêté**, `--dry-run` compris ;
+à lancer après `backfill --all --shared-csr` :
+```bash
+go run ./cmd/levelup backfill-is-ranked --dry-run
+go run ./cmd/levelup backfill-is-ranked
+```
+
 Manches des modes qui se décident aux manches (ADR 0032) — une colonne que seule l'API peut
 remplir, donc qu'aucune resynchronisation ne répare. **Serveur arrêté** pour `--apply` (un
 seul writer, ADR 0013) :

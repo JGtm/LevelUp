@@ -122,6 +122,16 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+A match is ranked iff the `RankRecap.PostMatchCsr.InitialMeasurementMatches` of its skill payload is
+> 0 (the OpenSpartan Workshop rule; one decision point, `internal/sync/csr_writes.go`).
+`backfill-is-ranked` repairs `match_registry.is_ranked` from the per-match CSR already written
+(false/NULL to true only, never un-ranks, idempotent). **Server stopped**, `--dry-run` included;
+run it after `backfill --all --shared-csr`:
+```bash
+go run ./cmd/levelup backfill-is-ranked --dry-run
+go run ./cmd/levelup backfill-is-ranked
+```
+
 Rounds of round-decided modes (ADR 0032) — a column only the API can fill, so a re-sync
 never repairs it. **Server stopped** for `--apply` (single writer, ADR 0013):
 

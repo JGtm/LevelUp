@@ -10090,6 +10090,8 @@ components:
           type: boolean
         player_slug:
           type: string
+        reference_control:
+          $ref: '#/components/schemas/CSRReferenceControl'
         snapshots:
           $ref: '#/components/schemas/CSRSnapshotsCoverage'
         xuid:
@@ -10100,6 +10102,23 @@ components:
         - snapshots
         - match_skill_rank_csr
         - needs_backfill
+        - reference_control
+      type: object
+    CSRReferenceControl:
+      additionalProperties: false
+      properties:
+        alert:
+          type: boolean
+        csr_matches_off_reference:
+          format: int64
+          type: integer
+        reference_matches_without_csr:
+          format: int64
+          type: integer
+      required:
+        - reference_matches_without_csr
+        - csr_matches_off_reference
+        - alert
       type: object
     CSRSeasonCalendar:
       additionalProperties: false
