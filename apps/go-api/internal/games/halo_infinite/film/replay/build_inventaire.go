@@ -106,6 +106,7 @@ func (a *assemblage) poserCapacitesEtTranslocations() {
 	slog.InfoContext(a.ctx, "rejeu : a.palette de capacites",
 		"a.palette", paletteIDOrNone(a.palette), "lectures", len(a.doc.Abilities),
 		"rangsNommes", len(a.doc.AbilityLabels))
+	a.poserLEquipementPorte()
 }
 
 // poserImpulsionsEtCharges publie les impulsions de capacite et les charges restantes, nommees

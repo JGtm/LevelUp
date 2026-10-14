@@ -3277,3 +3277,31 @@ package replay
 //	                rattachees accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1
 //	                sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
 //	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.
+//
+// v95 (2026-10-14, lot « équipement porté » du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`,
+// `grammar-2026-10-14.3`) : L'ÉQUIPEMENT PORTÉ EST LU, ET LA FAILLE SE POSE.
+//
+//	`carriedEquipment[]`  neuf : {slot, r, t0, t1?, energy[{t, e, n?, tag?}], uses[]} — l'objet ti=37
+//	                créé attaché au porteur dans le paquet de son annonce i48 (le rang nomme la
+//	                famille), son énergie (i24) à chaque lecture, les usages restants par la règle du
+//	                HUD (`FUN_1407e9384`) quand le catalogue de l'énergie des équipements établit le
+//	                coût de la famille, et ses activations (i21). `tag` : énergie de la prise non
+//	                écrite par le film, celle de l'objet porté dans le catalogue.
+//	`riftPoses[]`   neuf : {t, a?, slot, x?, y?, z?} — la pose de la faille : l'énergie du
+//	                translocateur porté tombe à zéro ; `a` l'activation qui la précède ; la position
+//	                est l'arrivée du premier échange qui suit (absente sans échange).
+//	`coverage.carriedEquipment`  neuf : créés, attachés, publiés, sans identité, avant l'origine,
+//	                sans rang, rang ambigu, non nommés, avec coût, hors catalogue, coût ambigu,
+//	                lectures d'énergie, usages, poses, poses situées, échanges sans pose lue.
+//
+//	CE QUI MONTE    `SchemaVersion` 94 -> 95 ; `grammar.Rev` -> `grammar-2026-10-14.3` (après
+//	AVEC ELLE       `grammar-2026-10-14.2`, la pile i28 à n entrées) ; `killsource.Rev`
+//	                `killsource-2026-10-14` (morts passées du balayage à la marche par i28) ;
+//	                `SchemaDesFaits` 12 -> 13 (le complément de la section 1 porte les lectures).
+//
+//	LE PARC         un artefact 94 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          238 films du parc : 123 poses de faille, toutes 1,62-1,64 s après une
+//	                activation ; témoins 1b2d9e08 (frame 1550 = 164,06 s), 6acce632 (53,3 / 158,5 /
+//	                304,2 s) à la frame près ; répulseur 0d9a9af9 et 72b0a25e : 3 usages à la prise
+//	                (énergie 0,6, coût 0,2), 2, 1, 0 aux activations, comme au Theater.

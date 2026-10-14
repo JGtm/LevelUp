@@ -41,6 +41,8 @@ type ReplayDocument struct {
 	EquipmentChanges    []EquipmentChange        `json:"equipmentChanges,omitempty"`
 	Translocations      []Translocation          `json:"translocations,omitempty"`
 	Knockbacks          []Knockback              `json:"knockbacks,omitempty"`
+	CarriedEquipment    []CarriedEquipment       `json:"carriedEquipment,omitempty"`
+	RiftPoses           []RiftPose               `json:"riftPoses,omitempty"`
 	AbilityImpulses     []AbilityImpulse         `json:"abilityImpulses,omitempty"`
 	AbilityCharges      []AbilityCharge          `json:"abilityCharges,omitempty"`
 	GroundWeapons       []GroundWeapon           `json:"groundWeapons,omitempty"`

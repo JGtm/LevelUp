@@ -15,6 +15,7 @@ package replay
 // cinq arguments du depot — c'est ecrit champ par champ, a chaque fois que le cas se pose.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -165,6 +166,14 @@ type Options struct {
 	// cf. grammar/poussees.go) et les dénominateurs de leur lecture. Entrée de DONNÉES.
 	Knockbacks     []types.Knockback
 	KnockbackStats types.KnockbackStats
+	// CarriedEquipment / CarriedEquipmentStats : les lectures de l'équipement porté (grammar/equipement_porte.go)
+	// et leurs dénominateurs. Entrée de DONNÉES.
+	CarriedEquipment      []types.CarriedEquipmentRead
+	CarriedEquipmentStats types.CarriedEquipmentStats
+	// EquipmentEnergy est le catalogue de l'énergie des équipements (coût par usage, énergies initiales),
+	// lu dans les tags du jeu (`equipenergy`) ; nil : aucun usage restant n'est compté.
+	EquipmentEnergy *equipenergy.Catalog
+
 	Placements     []types.EquipmentPlacement
 	PlacementStats grammar.EquipmentPlacementStats
 	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la

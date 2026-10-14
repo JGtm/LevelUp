@@ -838,6 +838,15 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
 }
 
+// EquipmentEnergyPath retourne le chemin du catalogue de l'ÉNERGIE DES ÉQUIPEMENTS : par fiche
+// `sofa`, l'objet ramassable, l'objet porté, leurs énergies initiales et la capacité de l'objet
+// porté (seuil, variation par usage), lus dans les tags `eqip` du jeu installé
+// (cmd/equipenergy-build). Donnée de RÉFÉRENCE versionnée — pas un cache.
+// Ex: data/titles/halo_infinite/reference/equipment_energy.json
+func (p *PathResolver) EquipmentEnergyPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "equipment_energy.json")
+}
+
 // FilmProfilesPath retourne le chemin du CATALOGUE DES PROFILS DE FILM d'un titre : ce que
 // le dépôt sait de la grammaire d'un film, indexé par les TROIS clés que le film ÉCRIT
 // (version de format `chunk_00+4`, build de la section 2, version majeure `chunk_00+0`).

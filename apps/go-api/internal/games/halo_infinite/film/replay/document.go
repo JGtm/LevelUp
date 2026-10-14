@@ -45,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 94
+const SchemaVersion = 95
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -225,17 +225,16 @@ type ReplayDocument struct {
 	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
 	// déjà dans `abilities`. Absent si le film n'en porte aucun.
 	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
-	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf.
-	// document_translocations.go) : qui saute, à quelle frame, et d'où à où — daté ET situé
-	// par l'ÉVÉNEMENT du film (type 117), jamais déduit d'un seuil spatial, ni du `spent`
-	// (qui peut suivre l'usage de 16,5 s), ni d'une discontinuité de piste. Le va-et-vient
-	// (`fx/fy/fz` -> `tx/ty/tz`) vient de la CHARGE de l'événement, déquantifiée aux bornes
-	// de la carte ; il est ABSENT EN BLOC quand elle n'a pas pu être lue, et
-	// `coverage.translocations.positioned` dit combien de sauts le portent. Absent si le
-	// film n'en porte aucune.
+	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf. document_translocations.go) :
+	// qui saute, à quelle frame, d'où à où — daté et situé par l'événement du film (type 117), le
+	// va-et-vient absent en bloc quand sa charge n'est pas lue (`coverage.translocations.positioned`).
 	Translocations []Translocation `json:"translocations,omitempty"`
 	// Knockbacks : les POUSSÉES d'équipement lues dans le film (cf. document_knockbacks.go).
 	Knockbacks []Knockback `json:"knockbacks,omitempty"`
+	// CarriedEquipment et RiftPoses : l'ÉQUIPEMENT PORTÉ (énergie, usages restants, activations) et les
+	// POSES de faille du translocateur (cf. document_equipement_porte.go).
+	CarriedEquipment []CarriedEquipment `json:"carriedEquipment,omitempty"`
+	RiftPoses        []RiftPose         `json:"riftPoses,omitempty"`
 	// AbilityImpulses est la liste des IMPULSIONS DE CAPACITÉ (cf.
 	// document_ability_impulses.go) : qui, à quelle frame, et de quel ÉQUIPEMENT — l'usage
 	// MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 (le même dont

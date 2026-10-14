@@ -747,9 +747,9 @@ var replaySchemas = []struct {
 //	                      la paire de messages 105 -> 104 de la vue A, joueur pousse, auteur et
 //	                      vitesse imposee ; `coverage.knockbacks` nait au meme commit.
 //
-// Les vingt-huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+// Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 65
+const wantReplayDocumentFields = 67
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

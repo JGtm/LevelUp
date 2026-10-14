@@ -283,3 +283,9 @@ package killsource
 // 4 et 19 morts passent du balayage a la marche (`read_path` persiste : `scan` -> `marche`). Les
 // lignes de `match_kill_events` deviennent candidates au redecodage : backlog sur signal de
 // l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-14 (meme lot, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14.3`
+// (la capture rend la valeur de quatre composants de ti=37 deja traverses, un canal neuf de la marche
+// lit l equipement porte) ; aucun bit n est lu autrement, et `film/types` gagne
+// `CarriedEquipmentRead` / `CarriedEquipmentStats`, hors de la sortie de killsource. Golden regenere a
+// revision constante.

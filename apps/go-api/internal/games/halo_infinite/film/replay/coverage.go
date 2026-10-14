@@ -197,6 +197,9 @@ type Coverage struct {
 	// messages lus, paires, 104 non appariés, publiées, écartées. Publiée même quand aucune ne l'est,
 	// pour la même raison que `translocations`.
 	Knockbacks *KnockbackCoverage `json:"knockbacks,omitempty"`
+	// CarriedEquipment est la couverture de l'ÉQUIPEMENT PORTÉ et des poses de faille (schéma 95, cf.
+	// document_equipement_porte.go). Publiée même quand rien ne l'est.
+	CarriedEquipment *CarriedEquipmentCoverage `json:"carriedEquipment,omitempty"`
 	// AbilityImpulses est la couverture des IMPULSIONS DE CAPACITÉ (schéma 38, cf.
 	// document_ability_impulses.go) : lectures `tag == 1`, gestes après repliement, publiées,
 	// et les CINQ façons d'être écartée — avant l'origine, sans piste, SANS IDENTITÉ (aucun

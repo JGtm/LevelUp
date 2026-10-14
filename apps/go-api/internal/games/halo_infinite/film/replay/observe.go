@@ -69,7 +69,7 @@ var buildFromFilmSteps = []string{
 	"inventory", "inventory.stats",
 	"inventoryDeltas", "inventoryDeltas.stats",
 	"abilityRanks", "abilityRanks.stats",
-	"equipmentChanges", "equipmentChanges.stats",
+	"equipmentChanges", "equipmentChanges.stats", "carriedEquipment",
 	"camoStates", "camoStates.stats",
 	"grappleReads", "grappleReads.stats",
 	"abilityImpulses", "abilityCharges",

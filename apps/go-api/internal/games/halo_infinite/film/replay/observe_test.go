@@ -52,8 +52,10 @@ import (
 // frolait le seuil, et le balayage des dotations de naissance y serait devenu invisible.
 // `film_scan_ti13.go` Y EST ENTRE LE 2026-09-24 (integration de la vague D des retours du rejeu) :
 // `film_scan.go` atteignait 512 lignes et `balayerProprietesTi13` en est sortie par DEPLACEMENT PUR.
+// `film_scan_equipement_porte.go` Y EST ENTRE LE 2026-10-14 (lot « equipement porte ») : `film_scan.go`
+// atteignait 513 lignes avec `balayerEquipementPorte`, qui vit a part.
 var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_pont.go", "film_scan_mouvement.go",
-	"film_scan_naissances.go", "film_scan_ti13.go", "film_scan_images_cles.go"}
+	"film_scan_naissances.go", "film_scan_ti13.go", "film_scan_images_cles.go", "film_scan_equipement_porte.go"}
 
 // racineDuBalayage : la fonction par laquelle l'etage commence.
 const racineDuBalayage = "scanFilmInputs"

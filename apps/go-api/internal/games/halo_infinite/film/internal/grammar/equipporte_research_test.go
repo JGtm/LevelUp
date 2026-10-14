@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // epVie est une vie ti=37 suivie par le canal.
@@ -407,4 +408,31 @@ func epContexte(dir string) (*FilmContext, error) {
 	fc := NewFilmContextForMap(film, &entree, DefaultScanFilmOptions().Layout)
 	fc.PoserLaCarteEtLeDecoupage()
 	return fc, nil
+}
+
+// TestEquipPorteScan journalise [ScanEquipementPorte] (le canal de production) sur un film :
+// EQUIPPORTE_FILMS, EQUIPPORTE_ID, EQUIPPORTE_CARTE.
+func TestEquipPorteScan(t *testing.T) {
+	racine, id := os.Getenv("EQUIPPORTE_FILMS"), os.Getenv("EQUIPPORTE_ID")
+	if racine == "" || id == "" {
+		t.Skip("EQUIPPORTE_FILMS ou EQUIPPORTE_ID absent : instrument saute")
+	}
+	fc, err := epContexte(filepath.Join(racine, id))
+	if err != nil {
+		t.Fatalf("%s : %v", id, err)
+	}
+	origine, _ := ScanClockOrigin(fc.Film())
+	ls, st, err := ScanEquipementPorte(fc)
+	if err != nil {
+		t.Fatalf("%s : %v", id, err)
+	}
+	t.Logf("%s : %d lectures, %+v", id, len(ls), st)
+	for _, l := range ls {
+		if l.Kind == types.CarriedNew && !l.HasEnergy {
+			continue
+		}
+		t.Logf("%s %9.1f %-5s objet %d porteur %d energie %v/%d activation %v signal %v/%d poignees %v/%d", id,
+			float64(l.TimestampUS-origine)/1000, l.Kind, l.Object.Slot, l.Carrier, l.HasEnergy, l.Energy,
+			l.HasActivation, l.HasSignal, l.Signal, l.HasHandles, l.Handles)
+	}
 }

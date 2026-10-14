@@ -25,7 +25,7 @@
 #
 #   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
 #     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
-revisions	source=source-2026-09-16.2	grammar=grammar-2026-10-14.2	killsource=killsource-2026-10-14	objectives=objectives-2026-09-27
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-10-14.3	killsource=killsource-2026-10-14	objectives=objectives-2026-09-27
 
 ## ChunkMeta (source)
 Index	int	-
@@ -388,6 +388,30 @@ Paired	int	-
 Unpaired	int	-
 WithoutAuthor	int	-
 WithoutImpulse	int	-
+
+## CarriedEquipmentRead (grammar)
+TimestampUS	uint64	-
+Object	types.LifeKey	-
+Carrier	uint32	-
+Kind	types.CarriedReadKind	-
+HasEnergy	bool	-
+Energy	uint32	-
+HasActivation	bool	-
+HasSignal	bool	-
+Signal	uint32	-
+HasHandles	bool	-
+Handles	uint32	-
+
+## CarriedEquipmentStats (grammar)
+Created	int	-
+Attached	int	-
+Deltas	int	-
+Deleted	int	-
+Detached	int	-
+EnergyReads	int	-
+Activations	int	-
+Signals	int	-
+HandleReads	int	-
 
 ## MovementStateRead (grammar)
 Slot	uint32	-

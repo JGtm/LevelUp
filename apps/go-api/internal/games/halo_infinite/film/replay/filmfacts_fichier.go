@@ -206,7 +206,10 @@ const VersionCodecFaits = 2
 // anterieur sur ses revisions de couche ; le schema tient sa doctrine.
 // SCHEMA 12 (2026-10-14, lot F du plan d ajustements) : le complement de la section 1 porte, avant le
 // verdict du fil des morts, les POUSSEES d equipement (`FilmInputs.Knockbacks`, `KnockbackStats`).
-const SchemaDesFaits = 12
+// SCHEMA 13 (2026-10-14, lot « equipement porte » du plan d ajustements) : le complement de la section 1
+// porte, apres les poussees, les lectures de l EQUIPEMENT PORTE (`FilmInputs.CarriedEquipment`,
+// `CarriedEquipmentStats`).
+const SchemaDesFaits = 13
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
@@ -415,12 +418,14 @@ func lireSectionJSON(charge []byte, cible any, libelle string) error {
 //	temoin            l inventaire NUL (illisible) ou non (lot J3.6, RA1-2) : le blob relit toute
 //	d inventaire      liste en tranche VIDE, or `Inventory == nil` est une garde de calque
 //	poussees          les poussees d equipement et leurs denominateurs (schema des faits 12)
+//	equipement porte  les lectures des objets portes et leurs denominateurs (schema des faits 13)
 //	verdict           le verdict du fil des morts (lot M8), EN DERNIER
 func encodeComplementDesEntrees(w *gwriter, g *FilmFacts) {
 	encodeGardesDeMode(w, g.FilmInputs)
 	encodeEntitesDesJoueurs(w, g.PlayerEntities)
 	w.bool8(g.Inventory != nil)
 	encodePoussees(w, g.Knockbacks, g.KnockbackStats)
+	encodeEquipementPorte(w, g.CarriedEquipment, g.CarriedEquipmentStats)
 	encodeVerdictDuFilDesMorts(w, g.DeathsFeed)
 }
 
@@ -431,5 +436,6 @@ func decodeComplementDesEntrees(r *greader, g *FilmFacts) {
 		g.Inventory = nil
 	}
 	g.Knockbacks, g.KnockbackStats = decodePoussees(r)
+	g.CarriedEquipment, g.CarriedEquipmentStats = decodeEquipementPorte(r)
 	g.DeathsFeed = decodeVerdictDuFilDesMorts(r)
 }

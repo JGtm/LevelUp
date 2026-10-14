@@ -1,0 +1,135 @@
+package replay
+
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/equipenergy"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
+
+// Les lectures ci-dessous sont celles du film 0d9a9af9 (repulseur de WolfzyLIVE, slot 513) et de
+// 1b2d9e08 (translocateur de JGtm, slot 535), au contexte de la cuisson (2026-10-14), origines du
+// film 14 436 et 9 062 ms ; le pas est de 100 ms.
+const (
+	origine0d9a = uint64(14_436_000)
+	origine1b2d = uint64(9_062_000)
+	pas100ms    = uint64(100_000)
+)
+
+func lecture(ms float64, slot, porteur uint32, k types.CarriedReadKind) types.CarriedEquipmentRead {
+	return types.CarriedEquipmentRead{TimestampUS: uint64(ms * 1000), Object: types.LifeKey{Slot: slot, Gen: 1},
+		Carrier: porteur, Kind: k}
+}
+
+func avecEnergie(l types.CarriedEquipmentRead, q uint32) types.CarriedEquipmentRead {
+	l.HasEnergy, l.Energy = true, q
+	return l
+}
+
+func avecActivation(l types.CarriedEquipmentRead) types.CarriedEquipmentRead {
+	l.HasActivation = true
+	return l
+}
+
+func catalogueDuTest() *equipenergy.Catalog {
+	return &equipenergy.Catalog{Entries: []equipenergy.Entry{
+		{Pickup: "0x7ca85adc", Carried: "0x1e79ebda", PickupEnergy: 0.6, CarriedEnergy: 1, Threshold: 0.2, Delta: -0.2},
+		{Pickup: "0x730dc70f", Carried: "0xa1344fc2", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 1, Delta: -1},
+		{Pickup: "0x2974c233", Carried: "0xc12e5469", PickupEnergy: 0.66, CarriedEnergy: 1, Threshold: 0.33, Delta: -0.33},
+		{Pickup: "0x8e2dc574", Carried: "0x37c87a13", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 1, Delta: -1},
+	}}
+}
+
+var famillesDuTest = map[uint32]string{0x7ca85adc: "repulsor", 0x730dc70f: "translocator_beacon",
+	0x2974c233: "wall", 0x8e2dc574: "wall"}
+
+func paletteDuTest() *AbilityPalette {
+	return &AbilityPalette{Families: map[int]string{6: "repulsor", 11: "translocator_beacon", 2: "wall"}}
+}
+
+// TestRepulseurTroisUsages : 0d9a9af9 — ramasse a 0,6 (3 usages), puis 2, 1, 0 aux trois activations ;
+// la suppression date la fin.
+func TestRepulseurTroisUsages(t *testing.T) {
+	reads := []types.CarriedEquipmentRead{
+		avecEnergie(lecture(78332.1, 1566, 513, types.CarriedNew), 9830),
+		avecActivation(lecture(85839.3, 1566, 513, types.CarriedDelta)),
+		avecEnergie(lecture(85855.9, 1566, 513, types.CarriedDelta), 6553),
+		avecActivation(lecture(95566.0, 1566, 513, types.CarriedDelta)),
+		avecEnergie(lecture(95583.3, 1566, 513, types.CarriedDelta), 3277),
+		avecActivation(lecture(106614.4, 1566, 513, types.CarriedDelta)),
+		avecEnergie(lecture(106630.8, 1566, 513, types.CarriedDelta), 1),
+		lecture(107464.7, 1566, 513, types.CarriedDel),
+	}
+	changes := []types.EquipmentChange{{TimestampUS: 78332100, Slot: 513, Kind: types.EquipmentTaken, Rank: 6}}
+	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
+		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+		tracks: []Track{{Slot: 513}}, origin: origine0d9a, step: pas100ms})
+	if len(out) != 1 || len(poses) != 0 || cov.WithCost != 1 {
+		t.Fatalf("publies %d, poses %d, couverture %+v", len(out), len(poses), cov)
+	}
+	var n []int
+	for _, e := range out[0].Energy {
+		if e.N == nil {
+			t.Fatalf("lecture sans usages restants : %+v", e)
+		}
+		n = append(n, *e.N)
+	}
+	if want := []int{3, 2, 1, 0}; len(n) != 4 || n[0] != want[0] || n[1] != want[1] || n[2] != want[2] || n[3] != want[3] {
+		t.Fatalf("usages restants %v, attendu %v", n, want)
+	}
+	if len(out[0].Uses) != 3 || out[0].T1 == nil || *out[0].T1 != 930 {
+		t.Fatalf("activations %v, fin %v", out[0].Uses, out[0].T1)
+	}
+}
+
+// TestPoseDeFailleDatee : 1b2d9e08 — l energie du translocateur porte tombe a 0 a 164,11 s (frame
+// 1550 : le controle de trajectoire est 164,06 s), 1,635 s apres l activation ; la faille est la ou le
+// joueur arrive au premier echange.
+func TestPoseDeFailleDatee(t *testing.T) {
+	reads := []types.CarriedEquipmentRead{
+		lecture(161077.8, 1816, 535, types.CarriedNew),
+		avecActivation(lecture(162478.1, 1816, 535, types.CarriedDelta)),
+		avecEnergie(lecture(164113.6, 1816, 535, types.CarriedDelta), 0),
+		lecture(194210.5, 1816, 535, types.CarriedDel),
+	}
+	changes := []types.EquipmentChange{{TimestampUS: 161077800, Slot: 535, Kind: types.EquipmentTaken, Rank: 11}}
+	tx, ty, tz := float32(17.34), float32(135.5), float32(74.43)
+	trs := []Translocation{{T: 1761, Slot: 535, TX: &tx, TY: &ty, TZ: &tz}}
+	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
+		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+		tracks: []Track{{Slot: 535}}, translocations: trs, origin: origine1b2d, step: pas100ms})
+	if len(out) != 1 || len(poses) != 1 || cov.Positioned != 1 {
+		t.Fatalf("publies %d, poses %+v, couverture %+v", len(out), poses, cov)
+	}
+	p := poses[0]
+	if p.T != 1550 || p.A == nil || *p.A != 1534 || p.X == nil || *p.X != tx {
+		t.Fatalf("pose %+v", p)
+	}
+	if e := out[0].Energy[0]; !e.Tag || e.N == nil || *e.N != 1 {
+		t.Fatalf("energie a la prise %+v : celle de l objet porte du catalogue (1 usage)", e)
+	}
+}
+
+// TestMurDeuxFiches : la famille du mur porte deux fiches de couts differents ; l energie ecrite a la
+// prise (0,66, celle du ramassable de la premiere) choisit, sinon aucun compte.
+func TestMurDeuxFiches(t *testing.T) {
+	couts := coutsParFamille(catalogueDuTest(), famillesDuTest)
+	if c, ok := choisirLeCout(couts["wall"], avecEnergie(lecture(0, 1, 513, types.CarriedNew), 10812)); !ok ||
+		c.variation != -0.33 {
+		t.Fatalf("energie 0,66 : %+v %v", c, ok)
+	}
+	if _, ok := choisirLeCout(couts["wall"], lecture(0, 1, 513, types.CarriedNew)); ok {
+		t.Fatal("sans energie ecrite, deux fiches en desaccord ne choisissent rien")
+	}
+}
+
+// TestObjetSansAnnonceNonPublie : un objet cree attache sans annonce i48 du porteur dans son paquet
+// n est pas publie, et se compte.
+func TestObjetSansAnnonceNonPublie(t *testing.T) {
+	reads := []types.CarriedEquipmentRead{lecture(78332.1, 1566, 513, types.CarriedNew)}
+	out, _, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, palette: paletteDuTest(),
+		tracks: []Track{{Slot: 513}}, origin: origine0d9a, step: pas100ms})
+	if len(out) != 0 || cov.WithoutRank != 1 {
+		t.Fatalf("publies %d, couverture %+v", len(out), cov)
+	}
+}

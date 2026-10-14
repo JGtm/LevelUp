@@ -32,6 +32,7 @@ type Coverage struct {
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
 	Translocations    *TranslocationCoverage      `json:"translocations,omitempty"`
 	Knockbacks        *KnockbackCoverage          `json:"knockbacks,omitempty"`
+	CarriedEquipment  *CarriedEquipmentCoverage   `json:"carriedEquipment,omitempty"`
 	AbilityImpulses   *AbilityImpulseCoverage     `json:"abilityImpulses,omitempty"`
 	AbilityCharges    *AbilityChargeCoverage      `json:"abilityCharges,omitempty"`
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
@@ -473,4 +474,24 @@ type DeathsPathTally struct {
 	Population int `json:"population"`
 	Matched    int `json:"matched"`
 	Published  int `json:"published"`
+}
+
+// CarriedEquipmentCoverage dit ce que le calque de l'équipement porté a lu et ce qu'il a écarté (schéma 95).
+type CarriedEquipmentCoverage struct {
+	Created              int `json:"created"`
+	Attached             int `json:"attached"`
+	Published            int `json:"published"`
+	NoIdentity           int `json:"noIdentity"`
+	BeforeOrigin         int `json:"beforeOrigin"`
+	WithoutRank          int `json:"withoutRank"`
+	AmbiguousRank        int `json:"ambiguousRank"`
+	Unnamed              int `json:"unnamed"`
+	WithCost             int `json:"withCost"`
+	NoCatalog            int `json:"noCatalog"`
+	AmbiguousCost        int `json:"ambiguousCost"`
+	EnergyReads          int `json:"energyReads"`
+	Uses                 int `json:"uses"`
+	RiftPoses            int `json:"riftPoses"`
+	Positioned           int `json:"positioned"`
+	TeleportsWithoutPose int `json:"teleportsWithoutPose"`
 }

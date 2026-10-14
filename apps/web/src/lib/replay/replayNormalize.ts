@@ -163,6 +163,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // LES POUSSÉES DU RÉPULSEUR (schéma 94) : absent = artefact antérieur, ou film sans poussée —
     // `layers[knockbacks]` / `coverage.knockbacks` distinguent les deux.
     knockbacks: raw.knockbacks ?? [],
+    // L'ÉQUIPEMENT PORTÉ (schéma 95) : ses deux tableaux imbriqués se comblent aussi.
+    carriedEquipment: (raw.carriedEquipment ?? []).map((c) => ({ ...c, energy: c.energy ?? [], uses: c.uses ?? [] })),
+    // LES POSES DE FAILLE (schéma 95) : absent = artefact antérieur, ou film sans translocateur posé.
+    riftPoses: raw.riftPoses ?? [],
     // LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée plate par geste (t, slot, family),
     // l'usage MESURÉ du propulseur. Absent = artefact antérieur au schéma 38, film sans
     // propulseur, ou palette non classée — `layers[abilityImpulses]` /

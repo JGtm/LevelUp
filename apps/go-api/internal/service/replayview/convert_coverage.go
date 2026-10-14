@@ -36,6 +36,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		EquipmentChanges:  ptrOf(v.EquipmentChanges, toEquipmentChangeCoverage),
 		Translocations:    ptrOf(v.Translocations, toTranslocationCoverage),
 		Knockbacks:        ptrOf(v.Knockbacks, toKnockbackCoverage),
+		CarriedEquipment:  ptrOf(v.CarriedEquipment, toCarriedEquipmentCoverage),
 		AbilityImpulses:   ptrOf(v.AbilityImpulses, toAbilityImpulseCoverage),
 		AbilityCharges:    ptrOf(v.AbilityCharges, toAbilityChargeCoverage),
 		GroundWeaponItems: ptrOf(v.GroundWeaponItems, toGroundWeaponItemsCoverage),
@@ -449,4 +450,8 @@ func toDeathsPathTally(v replay.DeathsPathTally) replaydoc.DeathsPathTally {
 		Matched:    v.Matched,
 		Published:  v.Published,
 	}
+}
+
+func toCarriedEquipmentCoverage(v replay.CarriedEquipmentCoverage) replaydoc.CarriedEquipmentCoverage {
+	return replaydoc.CarriedEquipmentCoverage(v)
 }

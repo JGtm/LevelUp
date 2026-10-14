@@ -247,3 +247,18 @@ package grammar
 // sur 4 841 ; trames fermees 7 538 932 -> 7 543 734 sur 7 668 648, aucun film en baisse ; deltas ti=37
 // lus +2 832. Ce sont les trames ou l objet PORTE change d etat (pose de la faille du translocateur,
 // 1b2d9e08 a 164,13 s) : elles etaient toutes perdues.
+//
+// ENTREE `grammar-2026-10-14.3` (2026-10-14, lot « equipement porte », branche `feat/equip-porte`) :
+// L EQUIPEMENT PORTE EST LU. Aucun bit n est lu autrement : la couche de capture rend la valeur de
+// quatre composants de ti=37 que la marche traversait deja (i24 energie, i21 activation, i22 signal
+// de controle, i28 pile des poignees), par les MEMES lecteurs que le dispatch
+// (`equipement_porte_lecteurs.go`, garde `TestCaptureConsumesSameBitsAsDispatch`). Un canal de la
+// marche des trames ([canalDeLEquipementPorte], `equipement_porte.go`) suit les objets ti=37 crees
+// attaches a un bipede (i10, parent en base 0x200) jusqu a leur suppression, et [ScanEquipementPorte]
+// rend leurs lectures brutes. `EnergieDEquipement` dequantifie i24 comme `FUN_141087bec`
+// (`FUN_1406d84b4`, 0..1, 14 bits, extremites exactes).
+//
+// MESURE (238 films du parc, contexte de la cuisson) : poses de faille = energie de l objet porte du
+// translocateur a 0 puis i28 a une entree, toujours 1,619 a 1,641 s apres une activation i21
+// (123/123) ; temoins 1b2d9e08 164,06 s, 6acce632 53,3 / 158,5 / 304,2 s a la frame pres.
+// Repulseur 0d9a9af9 : 0,6 -> 0,4 -> 0,2 -> 0 aux trois activations, suppression = consommation.

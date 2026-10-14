@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 94
-empreinte-stockee 4f3a22752e5530e5
-empreinte-servie 4f3a22752e5530e5
-empreinte-cuite 66b1442be3ff1a8a
+schema 95
+empreinte-stockee c75793aa31a879bc
+empreinte-servie c75793aa31a879bc
+empreinte-cuite 6cc818144ed2d626
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -179,6 +179,35 @@ BridgeHealth
   Slots json:"slots" int
   UnnamedLives json:"unnamedLives" int
   UnnamedLivesContested json:"unnamedLivesContested" int
+CarriedEnergy
+  E json:"e" float32
+  N json:"n,omitempty" *int
+  T json:"t" int
+  Tag json:"tag,omitempty" bool
+CarriedEquipment
+  Energy json:"energy,omitempty" []CarriedEnergy
+  R json:"r" int
+  Slot json:"slot" uint32
+  T0 json:"t0" int
+  T1 json:"t1,omitempty" *int
+  Uses json:"uses,omitempty" []int
+CarriedEquipmentCoverage
+  AmbiguousCost json:"ambiguousCost" int
+  AmbiguousRank json:"ambiguousRank" int
+  Attached json:"attached" int
+  BeforeOrigin json:"beforeOrigin" int
+  Created json:"created" int
+  EnergyReads json:"energyReads" int
+  NoCatalog json:"noCatalog" int
+  NoIdentity json:"noIdentity" int
+  Positioned json:"positioned" int
+  Published json:"published" int
+  RiftPoses json:"riftPoses" int
+  TeleportsWithoutPose json:"teleportsWithoutPose" int
+  Unnamed json:"unnamed" int
+  Uses json:"uses" int
+  WithCost json:"withCost" int
+  WithoutRank json:"withoutRank" int
 ContinuousFireCoverage
   Ambiguous json:"ambiguous" int
   BurstsRead json:"burstsRead" int
@@ -221,6 +250,7 @@ Coverage
   BombArmings json:"bombArmings,omitempty" *BombArmingsCoverage
   BombCarries json:"bombCarries,omitempty" *BombCarriesCoverage
   Bridge json:"bridge" BridgeHealth
+  CarriedEquipment json:"carriedEquipment,omitempty" *CarriedEquipmentCoverage
   ContinuousFire json:"continuousFire,omitempty" *ContinuousFireCoverage
   DeathsPaths json:"deathsPaths,omitempty" *DeathsPathsCoverage
   Decoder json:"decoder,omitempty" *DecoderCoverage
@@ -791,6 +821,7 @@ ReplayDocument
   BombStats json:"bombStats,omitempty" *BombMatchStats
   Bounds json:"bounds" Bounds
   Bursts json:"bursts,omitempty" []FireBurst
+  CarriedEquipment json:"carriedEquipment,omitempty" []CarriedEquipment
   Coverage json:"coverage,omitempty" *Coverage
   DurationMS json:"durationMs,omitempty" int
   EquipmentChanges json:"equipmentChanges,omitempty" []EquipmentChange
@@ -823,6 +854,7 @@ ReplayDocument
   PadPickups json:"padPickups,omitempty" []PadPickup
   Pickups json:"pickups,omitempty" []Pickup
   Projectiles json:"projectiles,omitempty" []Projectile
+  RiftPoses json:"riftPoses,omitempty" []RiftPose
   Roster json:"roster,omitempty" []RosterEntry
   SchemaVersion json:"schemaVersion" int
   ScoreTimeline json:"scoreTimeline,omitempty" *ScoreTimeline
@@ -846,6 +878,13 @@ ReplayDocument
   WeaponPads json:"weaponPads,omitempty" []WeaponPad
   WeaponTiers json:"weaponTiers,omitempty" *WeaponTiersInfo
   ZoneStates json:"zoneStates,omitempty" []ZoneState
+RiftPose
+  A json:"a,omitempty" *int
+  Slot json:"slot" uint32
+  T json:"t" int
+  X json:"x,omitempty" *float32
+  Y json:"y,omitempty" *float32
+  Z json:"z,omitempty" *float32
 RosterEntry
   Bid json:"bid,omitempty" string
   Bot json:"bot,omitempty" bool

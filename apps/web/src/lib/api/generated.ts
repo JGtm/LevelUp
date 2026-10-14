@@ -5462,6 +5462,61 @@ export interface components {
             best_matches: components["schemas"]["TopMatchDTO"][] | null;
             worst_matches: components["schemas"]["TopMatchDTO"][] | null;
         };
+        CarriedEnergy: {
+            /** Format: float */
+            e: number;
+            /** Format: int64 */
+            n?: number;
+            /** Format: int64 */
+            t: number;
+            tag?: boolean;
+        };
+        CarriedEquipment: {
+            energy?: components["schemas"]["CarriedEnergy"][] | null;
+            /** Format: int64 */
+            r: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1?: number;
+            uses?: number[] | null;
+        };
+        CarriedEquipmentCoverage: {
+            /** Format: int64 */
+            ambiguousCost: number;
+            /** Format: int64 */
+            ambiguousRank: number;
+            /** Format: int64 */
+            attached: number;
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            created: number;
+            /** Format: int64 */
+            energyReads: number;
+            /** Format: int64 */
+            noCatalog: number;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            positioned: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            riftPoses: number;
+            /** Format: int64 */
+            teleportsWithoutPose: number;
+            /** Format: int64 */
+            unnamed: number;
+            /** Format: int64 */
+            uses: number;
+            /** Format: int64 */
+            withCost: number;
+            /** Format: int64 */
+            withoutRank: number;
+        };
         CascadeFilter: {
             experience_types: string[] | null;
             maps: string[] | null;
@@ -6037,6 +6092,7 @@ export interface components {
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            carriedEquipment?: components["schemas"]["CarriedEquipmentCoverage"];
             continuousFire?: components["schemas"]["ContinuousFireCoverage"];
             deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
@@ -10838,6 +10894,7 @@ export interface components {
             bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
             bursts?: components["schemas"]["FireBurst"][] | null;
+            carriedEquipment?: components["schemas"]["CarriedEquipment"][] | null;
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
@@ -10878,6 +10935,7 @@ export interface components {
             padPickups?: components["schemas"]["PadPickup"][] | null;
             pickups?: components["schemas"]["Pickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
+            riftPoses?: components["schemas"]["RiftPose"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */
             schemaVersion: number;
@@ -10953,6 +11011,20 @@ export interface components {
             num_gc: number;
             /** Format: int64 */
             sys_bytes: number;
+        };
+        RiftPose: {
+            /** Format: int64 */
+            a?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
         };
         RosterEntry: {
             bid?: string;

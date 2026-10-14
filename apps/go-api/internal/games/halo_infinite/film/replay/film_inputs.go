@@ -51,6 +51,10 @@ type FilmInputs struct {
 	// Knockbacks / KnockbackStats sont les POUSSEES d equipement de la vue A et leurs denominateurs.
 	Knockbacks     []types.Knockback
 	KnockbackStats types.KnockbackStats
+	// CarriedEquipment / CarriedEquipmentStats sont les lectures de l EQUIPEMENT PORTE (objets ti=37 crees
+	// attaches : energie, activations, signal, poignees) et leurs denominateurs.
+	CarriedEquipment      []types.CarriedEquipmentRead
+	CarriedEquipmentStats types.CarriedEquipmentStats
 	// Positions est le nuage NON decime des positions de bipede : le premier parametre de
 	// `BuildFromPositions`.
 	Positions []grammar.BipedPosition
@@ -209,6 +213,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.FilmMajorVersion = in.FilmMajorVersion
 	opt.Translocations = in.Translocations
 	opt.Knockbacks, opt.KnockbackStats = in.Knockbacks, in.KnockbackStats
+	opt.CarriedEquipment, opt.CarriedEquipmentStats = in.CarriedEquipment, in.CarriedEquipmentStats
 	opt.BipedCreations = in.BipedCreations
 	opt.Loadouts = in.Loadouts
 	opt.KeyframeWalk = in.KeyframeWalk

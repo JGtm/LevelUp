@@ -77,19 +77,6 @@ func consumeTacmapQueuedReplayMission(br *Lecteur) {
 // tacmap-cooptetherarea (ti=34 i11) est une EXCEPTION DATEE du portage unique (lot R3,
 // 2026-09-29) : son lecteur vit dans `lecteur_position_exceptions.go`.
 
-// equipment-tracked-object-handles-stack-component (FUN_140f72dec): R(4) n (FUN_1424e1d48), rangé
-// en `+0x544`, puis n entrées FUN_1408f0ac4(…,0), chacune R(1) présence [si 1 : 13 + 2 bits, sans
-// sonde]. Le pointeur avance de 8 octets AVANT de comparer à `+0x544 + (n+1)*8` : la boucle fait
-// n tours, jamais n+1 (une trame qui porte ce composant ne ferme qu'à cette condition).
-func consumeEquipmentTrackedStack2(br *Lecteur) {
-	count := br.ReadBits(4)
-	for i := uint64(0); i < count; i++ {
-		if br.ReadBit() {
-			br.readQuantStat(0) // FUN_1408f0ac4(...,0) @140f72e41 : PAS de sonde, 13 + 2
-		}
-	}
-}
-
 // track-frame-component (FUN_142ed740c): R(6) signed + R(1) flag1 + R(1) flag2 +
 // [si flag1==0: R(12)=w + R(w)]. w is read from the stream (data-dependent but reproducible).
 func consumeTrackFrameComponent(br *Lecteur) {

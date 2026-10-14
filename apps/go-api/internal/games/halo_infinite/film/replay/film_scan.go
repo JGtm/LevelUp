@@ -260,6 +260,7 @@ func (s *filmScan) balayerCapacites() {
 	s.in.EquipmentChanges, s.in.EquipmentChangeStats = equipChanges, eStats
 	s.opt.observe(s.ctx, "equipmentChanges", s.in.EquipmentChanges)
 	s.opt.observe(s.ctx, "equipmentChanges.stats", s.in.EquipmentChangeStats)
+	s.balayerEquipementPorte()
 	s.balayerEtatsActifs()
 	s.balayerImpulsionsEtCharges()
 }

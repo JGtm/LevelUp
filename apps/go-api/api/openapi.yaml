@@ -10856,6 +10856,127 @@ components:
         - best_matches
         - worst_matches
       type: object
+    CarriedEnergy:
+      additionalProperties: false
+      properties:
+        e:
+          format: float
+          type: number
+        "n":
+          format: int64
+          type: integer
+        t:
+          format: int64
+          type: integer
+        tag:
+          type: boolean
+      required:
+        - t
+        - e
+      type: object
+    CarriedEquipment:
+      additionalProperties: false
+      properties:
+        energy:
+          items:
+            $ref: '#/components/schemas/CarriedEnergy'
+          type:
+            - array
+            - "null"
+        r:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        uses:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
+      required:
+        - slot
+        - r
+        - t0
+      type: object
+    CarriedEquipmentCoverage:
+      additionalProperties: false
+      properties:
+        ambiguousCost:
+          format: int64
+          type: integer
+        ambiguousRank:
+          format: int64
+          type: integer
+        attached:
+          format: int64
+          type: integer
+        beforeOrigin:
+          format: int64
+          type: integer
+        created:
+          format: int64
+          type: integer
+        energyReads:
+          format: int64
+          type: integer
+        noCatalog:
+          format: int64
+          type: integer
+        noIdentity:
+          format: int64
+          type: integer
+        positioned:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        riftPoses:
+          format: int64
+          type: integer
+        teleportsWithoutPose:
+          format: int64
+          type: integer
+        unnamed:
+          format: int64
+          type: integer
+        uses:
+          format: int64
+          type: integer
+        withCost:
+          format: int64
+          type: integer
+        withoutRank:
+          format: int64
+          type: integer
+      required:
+        - created
+        - attached
+        - published
+        - noIdentity
+        - beforeOrigin
+        - withoutRank
+        - ambiguousRank
+        - unnamed
+        - withCost
+        - noCatalog
+        - ambiguousCost
+        - energyReads
+        - uses
+        - riftPoses
+        - positioned
+        - teleportsWithoutPose
+      type: object
     CascadeFilter:
       additionalProperties: false
       properties:
@@ -12230,6 +12351,8 @@ components:
           $ref: '#/components/schemas/BombCarriesCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
+        carriedEquipment:
+          $ref: '#/components/schemas/CarriedEquipmentCoverage'
         continuousFire:
           $ref: '#/components/schemas/ContinuousFireCoverage'
         deathsPaths:
@@ -23545,6 +23668,12 @@ components:
           type:
             - array
             - "null"
+        carriedEquipment:
+          items:
+            $ref: '#/components/schemas/CarriedEquipment'
+          type:
+            - array
+            - "null"
         coverage:
           $ref: '#/components/schemas/Coverage'
         durationMs:
@@ -23690,6 +23819,12 @@ components:
         projectiles:
           items:
             $ref: '#/components/schemas/Projectile'
+          type:
+            - array
+            - "null"
+        riftPoses:
+          items:
+            $ref: '#/components/schemas/RiftPose'
           type:
             - array
             - "null"
@@ -23915,6 +24050,32 @@ components:
         - heap_sys_bytes
         - sys_bytes
         - num_gc
+      type: object
+    RiftPose:
+      additionalProperties: false
+      properties:
+        a:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t
+        - slot
       type: object
     RosterEntry:
       additionalProperties: false

@@ -198,6 +198,8 @@ export type ReplayDocumentReady = Omit<
   | 'identity'
   | 'inventory'
   | 'knockbacks'
+  | 'carriedEquipment'
+  | 'riftPoses'
   | 'loadouts'
   | 'neutralDeaths'
   | 'objectiveObjects'
@@ -403,6 +405,22 @@ export type ReplayDocumentReady = Omit<
    * les deux.
    */
   knockbacks: NonNullable<ReplayDocument['knockbacks']>
+  /**
+   * L'ÉQUIPEMENT PORTÉ (schéma 95) : par objet porté (porteur, rang, prise, fin), l'énergie lue et les
+   * usages restants (règle du jeu, quand le coût de la famille est établi), et les activations. Vide =
+   * artefact antérieur au schéma 95 — `coverage.carriedEquipment` distingue.
+   */
+  carriedEquipment: Array<
+    Omit<NonNullable<ReplayDocument['carriedEquipment']>[number], 'energy' | 'uses'> & {
+      energy: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['energy']>
+      uses: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['uses']>
+    }
+  >
+  /**
+   * LES POSES DE FAILLE (schéma 95) : l'instant où l'énergie du translocateur porté tombe à zéro, son
+   * activation, et la position (arrivée du premier échange qui suit) quand elle est lue.
+   */
+  riftPoses: NonNullable<ReplayDocument['riftPoses']>
   /**
    * LA VIE DE CHAQUE VÉHICULE du match (schéma 39) : où il naît, sa trajectoire, ses épisodes
    * d'occupation, jusqu'à quelle frame l'afficher. `end` vaut toujours `unknown` — jamais une

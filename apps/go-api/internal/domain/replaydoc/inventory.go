@@ -172,3 +172,32 @@ type Pickup struct {
 
 // PickupKind qualifie ce qui a été ramassé.
 type PickupKind string
+
+// CarriedEquipment est UN objet d'équipement porté (schéma 95) : porteur, rang, prise, fin, énergie,
+// activations.
+type CarriedEquipment struct {
+	Slot   uint32          `json:"slot"`
+	R      int             `json:"r"`
+	T0     int             `json:"t0"`
+	T1     *int            `json:"t1,omitempty"`
+	Energy []CarriedEnergy `json:"energy,omitempty"`
+	Uses   []int           `json:"uses,omitempty"`
+}
+
+// CarriedEnergy est une lecture de l'énergie d'un objet porté, avec ses usages restants.
+type CarriedEnergy struct {
+	T   int     `json:"t"`
+	E   float32 `json:"e"`
+	N   *int    `json:"n,omitempty"`
+	Tag bool    `json:"tag,omitempty"`
+}
+
+// RiftPose est la pose d'une faille du translocateur (schéma 95).
+type RiftPose struct {
+	T    int      `json:"t"`
+	A    *int     `json:"a,omitempty"`
+	Slot uint32   `json:"slot"`
+	X    *float32 `json:"x,omitempty"`
+	Y    *float32 `json:"y,omitempty"`
+	Z    *float32 `json:"z,omitempty"`
+}
