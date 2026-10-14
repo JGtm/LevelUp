@@ -242,7 +242,9 @@ func TestExtractRegistry_MissingStartTime(t *testing.T) {
 	}
 }
 
-func TestExtractRegistry_RankedMatch(t *testing.T) {
+// Le nom de la playlist ne décide plus du classement (D-10) : is_ranked est posé plus tard, par
+// la règle skill (csr_writes.go). ExtractRegistry le laisse à faux.
+func TestExtractRegistry_PlaylistNameDoesNotDecideRanked(t *testing.T) {
 	j := minimalMatchJSON()
 	info := j["MatchInfo"].(map[string]any)
 	info["Playlist"] = map[string]any{
@@ -253,8 +255,8 @@ func TestExtractRegistry_RankedMatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !row.IsRanked {
-		t.Error("should be ranked")
+	if row.IsRanked {
+		t.Error("le nom de playlist ne doit pas poser is_ranked (règle D-10)")
 	}
 }
 

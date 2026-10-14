@@ -21,6 +21,20 @@ type MSRCSRCoverage struct {
 	CoverageGap             int `json:"coverage_gap"` // matchs ranked sans row CSR
 }
 
+// CSRReferenceControl : contrôle croisé entre la référence des playlists classées
+// (rankedplaylists) et la présence du CSR par match. La référence ne DÉCIDE pas du classement d'un
+// match (le RankRecap du payload skill décide, décision D-10) : elle sert d'alerte de qualité.
+type CSRReferenceControl struct {
+	// ReferenceMatchesWithoutCSR : matchs du joueur sur une playlist de la référence sans aucune
+	// ligne CSR (CSR non récupéré, ou RankRecap à zéro côté API).
+	ReferenceMatchesWithoutCSR int `json:"reference_matches_without_csr"`
+	// CSRMatchesOffReference : matchs du joueur portant un CSR sur une playlist absente de la
+	// référence (référence à compléter, ou CSR erroné).
+	CSRMatchesOffReference int `json:"csr_matches_off_reference"`
+	// Alert : l'un des deux compteurs est non nul.
+	Alert bool `json:"alert"`
+}
+
 // CSRCoverage : payload retourné par GET /_diag/csr-coverage/{slug}.
 type CSRCoverage struct {
 	PlayerSlug        string               `json:"player_slug"`
@@ -28,4 +42,5 @@ type CSRCoverage struct {
 	Snapshots         CSRSnapshotsCoverage `json:"snapshots"`
 	MatchSkillRankCSR MSRCSRCoverage       `json:"match_skill_rank_csr"`
 	NeedsBackfill     bool                 `json:"needs_backfill"`
+	ReferenceControl  CSRReferenceControl  `json:"reference_control"`
 }

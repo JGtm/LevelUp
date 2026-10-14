@@ -53569,10 +53569,6 @@
 {"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_MissingStartTime","Output":"=== RUN   TestExtractRegistry_MissingStartTime\n"}
 {"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_MissingStartTime","Output":"--- PASS: TestExtractRegistry_MissingStartTime (0.00s)\n"}
 {"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_MissingStartTime","Elapsed":0}
-{"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_RankedMatch"}
-{"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_RankedMatch","Output":"=== RUN   TestExtractRegistry_RankedMatch\n"}
-{"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_RankedMatch","Output":"--- PASS: TestExtractRegistry_RankedMatch (0.00s)\n"}
-{"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_RankedMatch","Elapsed":0}
 {"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_FirefightMatch"}
 {"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_FirefightMatch","Output":"=== RUN   TestExtractRegistry_FirefightMatch\n"}
 {"Time":"2026-06-26T23:53:51.0637391+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestExtractRegistry_FirefightMatch","Output":"--- PASS: TestExtractRegistry_FirefightMatch (0.00s)\n"}
@@ -53717,26 +53713,6 @@
 {"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestFindCoreStats_NoCoreStats","Output":"=== RUN   TestFindCoreStats_NoCoreStats\n"}
 {"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestFindCoreStats_NoCoreStats","Output":"--- PASS: TestFindCoreStats_NoCoreStats (0.00s)\n"}
 {"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestFindCoreStats_NoCoreStats","Elapsed":0}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByName"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByName","Output":"=== RUN   TestIsRankedPlaylist_ByName\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByName","Output":"--- PASS: TestIsRankedPlaylist_ByName (0.00s)\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByName","Elapsed":0}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByTag"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByTag","Output":"=== RUN   TestIsRankedPlaylist_ByTag\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByTag","Output":"--- PASS: TestIsRankedPlaylist_ByTag (0.00s)\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_ByTag","Elapsed":0}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_NoPlaylist"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_NoPlaylist","Output":"=== RUN   TestIsRankedPlaylist_NoPlaylist\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_NoPlaylist","Output":"--- PASS: TestIsRankedPlaylist_NoPlaylist (0.00s)\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_NoPlaylist","Elapsed":0}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_CaseInsensitive"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_CaseInsensitive","Output":"=== RUN   TestIsRankedPlaylist_CaseInsensitive\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_CaseInsensitive","Output":"--- PASS: TestIsRankedPlaylist_CaseInsensitive (0.00s)\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_CaseInsensitive","Elapsed":0}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_UnrankedPlaylist"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_UnrankedPlaylist","Output":"=== RUN   TestIsRankedPlaylist_UnrankedPlaylist\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_UnrankedPlaylist","Output":"--- PASS: TestIsRankedPlaylist_UnrankedPlaylist (0.00s)\n"}
-{"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"pass","Package":"levelup/go-api/internal/sync","Test":"TestIsRankedPlaylist_UnrankedPlaylist","Elapsed":0}
 {"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestIsFirefightMatch_ByCategory"}
 {"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsFirefightMatch_ByCategory","Output":"=== RUN   TestIsFirefightMatch_ByCategory\n"}
 {"Time":"2026-06-26T23:53:51.0642507+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestIsFirefightMatch_ByCategory","Output":"--- PASS: TestIsFirefightMatch_ByCategory (0.00s)\n"}

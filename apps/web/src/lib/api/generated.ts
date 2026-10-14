@@ -5199,8 +5199,16 @@ export interface components {
             match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
             needs_backfill: boolean;
             player_slug: string;
+            reference_control: components["schemas"]["CSRReferenceControl"];
             snapshots: components["schemas"]["CSRSnapshotsCoverage"];
             xuid: string;
+        };
+        CSRReferenceControl: {
+            alert: boolean;
+            /** Format: int64 */
+            csr_matches_off_reference: number;
+            /** Format: int64 */
+            reference_matches_without_csr: number;
         };
         CSRSeasonCalendar: {
             content_hash: string;

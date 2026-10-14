@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/migration"
 	ddb "levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
@@ -352,6 +353,34 @@ func TestE2EPipeline_DiagEndpoint_DetectsCoverageGap(t *testing.T) {
 	}
 	if cov.MatchSkillRankCSR.Placement != 1 {
 		t.Errorf("Placement: want 1, got %d", cov.MatchSkillRankCSR.Placement)
+	}
+}
+
+// ── Scénario 4 bis : contrôle de la référence des playlists classées (A3) ───
+
+func TestE2EPipeline_DiagEndpoint_ReferenceControl(t *testing.T) {
+	env := setupPipelineEnv(t)
+	refID := rankedplaylists.All()[0].AssetID
+	// 3 matchs sur une playlist de la référence, un seul avec CSR : 2 manquants.
+	for i, mid := range []string{"r1", "r2", "r3"} {
+		seedMatchRegistry(t, env, mid, refID, "Ranked Arena", false, "CsrSeason13-1", "2026-04-1"+string(rune('0'+i))+"T12:00:00Z")
+	}
+	// 1 match à CSR sur une playlist hors référence.
+	seedMatchRegistry(t, env, "o1", "pl-hors-reference", "Custom", false, "CsrSeason13-1", "2026-04-15T12:00:00Z")
+	for _, mid := range []string{"r1", "o1"} {
+		if _, err := env.sharedDB.SQLDb().Exec(`INSERT INTO match_csrs (match_id, xuid, rating_type, rating_value, tier, sub_tier, tier_label)
+			VALUES (?, ?, 'CSR', 1100, 'Gold', 1, 'Or I')`, mid, pipelineTestXUID); err != nil {
+			t.Fatalf("seed match_csrs %s: %v", mid, err)
+		}
+	}
+
+	cov, err := env.coverRepo.GetCoverage(context.Background(), pipelineTestSlug, pipelineTestXUID)
+	if err != nil {
+		t.Fatalf("GetCoverage: %v", err)
+	}
+	rc := cov.ReferenceControl
+	if rc.ReferenceMatchesWithoutCSR != 2 || rc.CSRMatchesOffReference != 1 || !rc.Alert {
+		t.Errorf("ReferenceControl = %+v, want without_csr=2 off_reference=1 alert=true", rc)
 	}
 }
 
