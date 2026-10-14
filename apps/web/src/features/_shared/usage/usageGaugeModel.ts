@@ -12,6 +12,8 @@ export interface UsageGaugeModel {
   valuePct: number | null
   parityPct: number | null
   valueText: string
+  /** L'écart à son trait (« écart +3,2 pts »), écrit à côté de la valeur ; absent sans trait ni valeur. */
+  gapText?: string
   tooltip: string
 }
 
