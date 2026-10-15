@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -36,6 +37,8 @@ var (
 type sourceFailures struct {
 	mu     sync.Mutex
 	failed map[string]struct{}
+	// section : au moins un chargeur SANS raison dédiée a échoué (code générique).
+	section bool
 }
 
 func newSourceFailures() *sourceFailures {
@@ -58,32 +61,67 @@ func (f *sourceFailures) has(src matchViewSource) bool {
 	return ok
 }
 
-// goLoad lance load() dans l'errgroup, comme le goLoad best-effort, mais l'échec est
-// journalisé en ERREUR (source, match_id, err) AVANT la dégradation et retenu : la vue
-// dira `<source>_unavailable` au lieu de laisser croire à une source vide. Jamais fatal.
-// Un chargement coupé parce que la requête a été abandonnée n'est pas une panne de la
-// source : il est retenu (la réponse n'est de toute façon pas servie) mais journalisé en
-// WARN, pour ne pas polluer les journaux d'erreur à chaque navigation interrompue.
+// reportLoadFailure journalise l'échec d'un chargeur AVANT la dégradation. Un chargement
+// coupé parce que la requête a été abandonnée n'est pas une panne de la source : WARN,
+// pour ne pas polluer les journaux d'erreur à chaque navigation interrompue.
+func reportLoadFailure(gctx context.Context, matchID, source string, err error) {
+	if errors.Is(err, context.Canceled) {
+		slog.WarnContext(gctx, "match_view: chargement interrompu", "source", source, "match_id", matchID, "err", err)
+		return
+	}
+	slog.ErrorContext(gctx, "match_view: source indisponible", "source", source, "match_id", matchID, "err", err)
+}
+
+// goLoad lance load() dans l'errgroup pour une source qui porte sa propre raison
+// (`<source>_unavailable`) : l'échec est journalisé en ERREUR (source, match_id, err) et
+// retenu, la vue dira `<source>_unavailable` au lieu de laisser croire à une source vide.
+// Jamais fatal.
 func (f *sourceFailures) goLoad(gctx context.Context, g *errgroup.Group, matchID string, src matchViewSource, load func() error) {
+	g.Go(func() error {
+		if err := load(); err != nil {
+			reportLoadFailure(gctx, matchID, src.name, err)
+			f.mark(src)
+		}
+		return nil
+	})
+}
+
+// goLoadSection est le goLoad des chargeurs SANS raison dédiée : un échec est journalisé de
+// la même façon (la source en cause est dans le journal, pas dans le contrat) et rend la vue
+// « en panne partielle » par le code générique `section_unavailable`. Une capability non
+// supportée par le titre n'est pas une panne : absence attendue, la section reste vide.
+func (f *sourceFailures) goLoadSection(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
 	g.Go(func() error {
 		err := load()
 		if err == nil {
 			return nil
 		}
-		if errors.Is(err, context.Canceled) {
-			slog.WarnContext(gctx, "match_view: chargement interrompu", "source", src.name, "match_id", matchID, "err", err)
-		} else {
-			slog.ErrorContext(gctx, "match_view: source indisponible", "source", src.name, "match_id", matchID, "err", err)
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.DebugContext(gctx, "match_view: capability non supportée", "source", label, "match_id", matchID)
+			return nil
 		}
-		f.mark(src)
+		reportLoadFailure(gctx, matchID, label, err)
+		f.mu.Lock()
+		f.section = true
+		f.mu.Unlock()
 		return nil
 	})
 }
 
+func (f *sourceFailures) hasSection() bool {
+	if f == nil {
+		return false
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.section
+}
+
 // matchPartialReasons compose les raisons partielles de la vue : pour chacune des
 // quatre sources, `<source>_unavailable` si sa lecture a échoué, sinon l'éventuelle
-// `<source>_empty` de detectPartialMatchData. Une source en échec n'émet JAMAIS aussi
-// son `_empty` : la raison dit ce qui s'est passé, une seule fois.
+// `<source>_empty` de detectPartialMatchData, puis `section_unavailable` si un autre
+// chargeur a échoué. Une source en échec n'émet JAMAIS aussi son `_empty` : la raison dit
+// ce qui s'est passé, une seule fois.
 func matchPartialReasons(d matchViewData) []string {
 	empties := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
 	var reasons []string
@@ -97,6 +135,9 @@ func matchPartialReasons(d matchViewData) []string {
 				reasons = append(reasons, e)
 			}
 		}
+	}
+	if d.failures.hasSection() {
+		reasons = append(reasons, domain.PartialReasonSectionUnavailable)
 	}
 	return reasons
 }

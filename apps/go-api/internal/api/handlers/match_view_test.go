@@ -456,7 +456,8 @@ func TestMatchViewHandler_CacheControl_VueEnEchec(t *testing.T) {
 		{"source vide", []string{"scoreboard_empty", "medals_empty"}, false, true},
 		{"source en echec", []string{"scoreboard_unavailable"}, true, true},
 		{"echec et vide", []string{"events_unavailable", "medals_empty"}, true, true},
-		{"code structurel homonyme", []string{"media_unavailable"}, false, true},
+		{"section generique en echec", []string{"section_unavailable"}, true, true},
+		{"code inconnu", []string{"autre_code"}, false, true},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {

@@ -20041,7 +20041,7 @@ components:
         media_tab:
           $ref: '#/components/schemas/MatchMediaTab'
         partial_reasons:
-          description: 'Codes stables des sources de la vue incomplètes. <source>_empty : la lecture a réussi et ne rend rien (scoreboard, events, player_stats, medals). <source>_unavailable : la lecture a ÉCHOUÉ (scoreboard_unavailable, events_unavailable, player_stats_unavailable, medals_unavailable) ; la vue est alors transitoire, servie avec Cache-Control: no-store, et le client ne doit pas la conserver.'
+          description: 'Codes stables des sources de la vue incomplètes. <source>_empty : la lecture a réussi et ne rend rien (scoreboard, events, player_stats, medals). <source>_unavailable : la lecture a ÉCHOUÉ (scoreboard_unavailable, events_unavailable, player_stats_unavailable, medals_unavailable) ; section_unavailable : un autre chargeur de la vue a échoué (la source est dans le journal serveur). Dans ces cas la vue est transitoire, servie avec Cache-Control: no-store, et le client ne doit pas la conserver.'
           items:
             type: string
           type:

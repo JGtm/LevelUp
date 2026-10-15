@@ -140,6 +140,15 @@ Décisions fermes :
 - [x] E4.5 Web : bandeau D-10 dans la logique (`*_logic.ts` / hook, pas dans le composant),
   i18n FR+EN, test vitest.
 - [x] E4.6 Les autres raisons `partial_reasons` existantes gardent leur sens (non-régression).
+- [x] E4.7 (ajout du superviseur, 2026-10-15, « propre et solide ») :
+  - [x] E4.7a TOUT chargeur de `goLoad` en erreur (hors annulation de requête, qui reste WARN) : `slog.ErrorContext` (source,
+    match_id, err) AVANT la dégradation, et vue « en panne partielle » par un code générique unique `section_unavailable` pour les
+    sources sans `_unavailable` dédié (la source est dans le log, pas dans le contrat) ; même règle no-store / refetch ; même
+    bandeau web ; tests rouge puis vert. Aucune ligne nette dans `match_view_data_loaders.go` (699 L gelées).
+  - [x] E4.7b Les 4 codes web que Go n'émet plus (`combat_narrative_unavailable`, `citations_unavailable`, `media_unavailable`,
+    `accuracy_damage_taken_native_unavailable`) supprimés du web (traduction, types, tests, i18n) après grep du dépôt entier ;
+    découverte correspondante de la section 3 retirée.
+  - [x] E4.7c Test de `internal/service` en échec une fois : rejeu `-count=20`, cause nommée ou note en section 3.
 
 Gate : `go test` des paquets touchés + `./internal/api/...`, `make check-types`, `make test-web`
 (fichiers de la vue match), recette navigateur de la vue match (cas normal + chargeur coupé
@@ -202,9 +211,10 @@ diff E5 (lot persist/sync).
 - E2 : les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des assistances, engagement, dates de paliers) l'ont été Campagne comprise ; les chargeurs corrigés ne les recalculent pas d'eux-mêmes. À décider avec le user au déploiement ; rien n'est lancé.
 - E2 : le commentaire de `games/halo_5/ingest/registry.go:46` (« engagement `loadMatchesForEngagement` exclut ces matchs » faute de `end_time`) décrivait un effet de bord, pas une exclusion de la Campagne : sans objet depuis la correction. Non traité.
 - E3 (superviseur) : `SquadUsualContexts(ctx, roster, titleSlug)` garde un argument `titleSlug` ignoré par l'implémentation (`wire/prestige_lazy_service_squad.go:173-178`) ; depuis E3.3 le handler passe `""`. Paramètre mort de l'interface, à retirer (règle n°7). Non traité.
-- E4 (exécutant) : les 16 autres chargeurs de `goLoad` (enrichment, objective score, kill_sources, kill_assists, assist_pairs, kv_pairs, skill_rank, shared_csrs, encounters, encounter_stats, encounter_assists, media, expected_stats, bulk_medals, bulk_weapons, hist_avg, + kill_distances et citations câblés sous condition) et le chargeur `eventsRepo.Load` (manuel) restent best-effort : un échec ne laisse que le journal (désormais WARN, inchangé), aucune raison dans la vue. D-8 est appliqué aux QUATRE sources qui portaient déjà une `<source>_empty` (le plan dit « à côté des `<source>_empty` existantes ») ; étendre aux autres demande un code par source et une chaîne web chacune. Non traité.
-- E4 (exécutant) : `translatePartialReason` (`MatchViewPage.tsx`) porte quatre codes que Go n'émet plus jamais (`combat_narrative_unavailable`, `citations_unavailable`, `media_unavailable`, `accuracy_damage_taken_native_unavailable`) : code mort côté web (règle n°7), et `citations_unavailable` / `media_unavailable` auraient pu être pris pour des pannes de lecture (d'où l'ensemble FERMÉ `isUnavailableReason`). Ses libellés sont des ternaires FR/EN en ligne, pas dans `i18n.ts` (antérieur à E4). Non traité.
+- E4 (exécutant) : les chargeurs de `goLoad` sans `_empty` ne portent plus de raison dédiée mais le code générique `section_unavailable` (E4.7a). Reste hors contrat : `eventsRepo.Load` (`g.Go` manuel, repli sur la conversion de `events`), awards et friendsExtras ; et plusieurs méthodes du repo (`GetMatchKillSources`, `GetMatchKillAssists`, ...) avalent elles-mêmes leur erreur (`return nil, nil` + WARN) avant d'atteindre le service : une panne de ces sources reste invisible de la vue. Non traité.
 - E4 (exécutant) : `CachedHighlightEventsRepo` (`platform/duckdb/highlight_events_cache.go`) n'a aucun appelant de production (le câblage de la vue match utilise `NewHighlightEventsRepo` non décoré) : code mort. `match_view_data_loaders.go` fait 699 lignes (> 500, dette gelée, +1 ligne). Non traités.
+
+- E4.7c : un échec unique de `go test ./internal/service/` (avec `./internal/domain/`, cache froid) pendant E4, non reproduit : `go test -count=20 -run "TestMatchView_|TestDetectPartialMatchData|TestMatchViewService" ./internal/service/` vert puis 3 passes complètes vertes. Cause non établie ; si elle revient : `go test -count=1 ./internal/service/ 2>&1 | grep -E "^(--- FAIL|panic)"` pour relever le nom.
 
 ## 4. Journal
 
@@ -413,7 +423,22 @@ diff E5 (lot persist/sync).
     rejeux `-count=1` verts, cause non établie) ; `go test -count=1 ./internal/api/... ./internal/archlint/` ok (api 25.9 s, handlers
     10.5 s, wire, archlint 73.8 s) ; `go vet` service/domain/handlers sans diagnostic ; `make check-types` sans diagnostic ; `make
     test-web` : 921 fichiers passés (5 ignorés), 9614 tests ; eslint des fichiers touchés sans diagnostic.
-  - **Recette navigateur : `[!]`** : `http://127.0.0.1:8000/health` répond 200 mais ce serveur n'est pas un build de cette branche
-    (aucun binaire de ce worktree lancé) : il ne servirait ni le bandeau ni l'en-tête. Le cas « chargeur coupé » est de toute façon
-    simulé en test (interdit sur les bases réelles) ; le cas normal et le rendu des bandeaux sont couverts par les tests de page. À
-    faire par le superviseur sur un build de la branche.
+  - **Recette navigateur : `[!]`** : le serveur local (`:8000`) sert `feat/v75`, pas cette branche : il ne montrerait ni le bandeau ni
+    l'en-tête. Reportée au gate visuel du user après fusion (décision du superviseur, 2026-10-15). Le cas « chargeur coupé » est de
+    toute façon simulé en test (interdit sur les bases réelles) ; le rendu des bandeaux est couvert par les tests de page.
+- 2026-10-15 (E4.7, exécutant Sonnet, sur demande du superviseur) : gate vert.
+  - **E4.7a** : `goLoad` libre supprimé ; `sourceFailures.goLoadSection` (même journal ERROR source/match_id/err, WARN si requête abandonnée)
+    pour les 17 chargeurs sans raison dédiée : code unique `domain.PartialReasonSectionUnavailable = "section_unavailable"`, ajouté à
+    `IsUnavailableReason` (donc no-store HTTP, `staleTime` 0, bandeau « indisponible ») et au web (`UNAVAILABLE_REASONS`). Une capability non
+    supportée (`games.ErrCapabilityNotSupported`, ex. distances de frag d'un titre sans film) n'est PAS une panne (Debug, aucune raison).
+    Ordre : sources dédiées, puis `section_unavailable`. `match_view_data_loaders.go` : 699 -> 689 lignes (aucune ligne nette ajoutée).
+    Tests rouge puis vert (mutation : `section` jamais posé) : `TestMatchView_ChargeurSansRaisonDediee_SectionUnavailable` (code, journal
+    ERROR `source=kv_pairs`, 2e appel complet), `TestMatchView_PanneDedieeEtGenerique` ; verts : capability non supportée, handler no-store
+    sur `section_unavailable`, `matchPartial.logic` et page (bandeau « indisponible »). Contrat : doc de `partial_reasons` (openapi.yaml +
+    generated.ts, 1 ligne chacun) régénérés.
+  - **E4.7b** : grep du dépôt hors `.ai` (Go, OpenAPI, web, e2e, config) : aucun émetteur des 4 codes. Supprimés de `translatePartialReason`
+    (ces libellés étaient des ternaires en ligne, aucune clé `i18n.ts`), des tests et du type ; le test « code homonyme » devient « code inconnu ».
+    Découverte correspondante retirée de la section 3.
+  - **E4.7c** : voir section 3 (non reproduit, repro notée).
+  - **Gate** : `go vet` ; `go test -count=1 ./internal/domain/ ./internal/api/... ./internal/archlint/` ok ; `internal/service` ok (x20 ciblé + 3 complets) ;
+    `make generate-types` ; `make check-types` sans diagnostic ; `make test-web` 921 fichiers, 9 616 tests ; eslint propre.

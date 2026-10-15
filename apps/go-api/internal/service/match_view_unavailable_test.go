@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 )
 
 // repoVueComplete : un repo dont toutes les sources du bandeau sont pleines.
@@ -148,5 +149,74 @@ func TestMatchView_ErreurDeChargeurJournaliseeEnErreur(t *testing.T) {
 		if !strings.Contains(ligne, f) {
 			t.Errorf("la ligne %q doit contenir %q", ligne, f)
 		}
+	}
+}
+
+// E4.7a : un chargeur SANS raison dédiée (ici les paires killer/victim) en erreur rend la vue
+// « en panne partielle » par le code générique, jamais silencieusement ; la source est dans
+// le journal (ERROR, source, match_id, err), pas dans le contrat.
+func TestMatchView_ChargeurSansRaisonDediee_SectionUnavailable(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	repo := repoVueComplete()
+	repo.kvErr = errors.New("kv HS")
+	svc := NewMatchViewService(repo, "xuid1")
+	resp, err := svc.GetMatchView(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("la panne d'un chargeur ne doit pas faire échouer la vue : %v", err)
+	}
+	if !slices.Equal(resp.PartialReasons, []string{"section_unavailable"}) {
+		t.Errorf("raisons = %v, attendu [section_unavailable]", resp.PartialReasons)
+	}
+	if !resp.IsPartial || !resp.HasUnavailableSource() {
+		t.Errorf("IsPartial=%v HasUnavailableSource=%v", resp.IsPartial, resp.HasUnavailableSource())
+	}
+	var ligne string
+	for _, l := range strings.Split(buf.String(), "\n") {
+		if strings.Contains(l, "source=kv_pairs") {
+			ligne = l
+		}
+	}
+	for _, f := range []string{"level=ERROR", "match_id=m1", "kv HS"} {
+		if !strings.Contains(ligne, f) {
+			t.Errorf("la ligne %q doit contenir %q", ligne, f)
+		}
+	}
+
+	repo.kvErr = nil // rétabli : la vue suivante est complète
+	seconde, err := svc.GetMatchView(context.Background(), "m1")
+	if err != nil || seconde.IsPartial || len(seconde.PartialReasons) != 0 {
+		t.Errorf("2e appel : vue complète attendue, err=%v raisons=%v", err, seconde.PartialReasons)
+	}
+}
+
+// Source dédiée ET chargeur générique en panne : les deux codes, la source dédiée d'abord.
+func TestMatchView_PanneDedieeEtGenerique(t *testing.T) {
+	repo := repoVueComplete()
+	repo.medalsErr = errors.New("medailles HS")
+	repo.kvErr = errors.New("kv HS")
+	resp, err := NewMatchViewService(repo, "xuid1").GetMatchView(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("erreur inattendue : %v", err)
+	}
+	want := []string{"medals_unavailable", "section_unavailable"}
+	if !slices.Equal(resp.PartialReasons, want) {
+		t.Errorf("raisons = %v, attendu %v", resp.PartialReasons, want)
+	}
+}
+
+// Une capability non supportée par le titre n'est pas une panne : aucune raison.
+func TestMatchView_CapabilityNonSupporteeNEstPasUnePanne(t *testing.T) {
+	repo := repoVueComplete()
+	repo.kvErr = games.ErrCapabilityNotSupported
+	resp, err := NewMatchViewService(repo, "xuid1").GetMatchView(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("erreur inattendue : %v", err)
+	}
+	if resp.IsPartial || len(resp.PartialReasons) != 0 {
+		t.Errorf("aucune raison attendue, obtenu %v", resp.PartialReasons)
 	}
 }

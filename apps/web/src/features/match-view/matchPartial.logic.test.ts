@@ -27,6 +27,7 @@ describe('selectMatchPartialBanner', () => {
     'events_unavailable',
     'player_stats_unavailable',
     'medals_unavailable',
+    'section_unavailable',
   ])('%s : bandeau « indisponible »', (code) => {
     expect(selectMatchPartialBanner({ is_partial: true, partial_reasons: [code] })).toEqual({
       kind: 'unavailable',
@@ -39,16 +40,17 @@ describe('selectMatchPartialBanner', () => {
     ).toEqual({ kind: 'unavailable' })
   })
 
-  it('un code `*_unavailable` structurel (hors ensemble fermé) garde le bandeau partiel', () => {
+  it('un code inconnu garde le bandeau partiel', () => {
     expect(
-      selectMatchPartialBanner({ is_partial: true, partial_reasons: ['media_unavailable'] }),
-    ).toEqual({ kind: 'partial', reasons: ['media_unavailable'] })
+      selectMatchPartialBanner({ is_partial: true, partial_reasons: ['autre_code'] }),
+    ).toEqual({ kind: 'partial', reasons: ['autre_code'] })
   })
 })
 
 describe('matchViewStaleTime', () => {
   it("vue en panne : périmée d'emblée, le cache ne la rejoue pas", () => {
     expect(matchViewStaleTime({ is_partial: true, partial_reasons: ['scoreboard_unavailable'] })).toBe(0)
+    expect(matchViewStaleTime({ is_partial: true, partial_reasons: ['section_unavailable'] })).toBe(0)
   })
 
   it('vue complète, partielle (source vide) ou absente : fraîcheur normale', () => {

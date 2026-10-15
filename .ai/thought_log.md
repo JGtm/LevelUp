@@ -117455,3 +117455,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : le cache de la vue n'est pas côté serveur (aucun cache de réponse, aucun en-tête HTTP) : le seul réutilisateur était TanStack Query (10 min), traité. Tests rouges puis verts (service, en-tête HTTP, cache web), contrat OpenAPI et types régénérés, gate Go (domain, service, api, archlint) et web (check-types, 9 614 tests) verts. Recette navigateur non faite : le serveur local n'est pas un build de la branche.
 
 **Conclusion / prochaine étape** : E4 close. Les 16 autres chargeurs de la vue restent best-effort sans raison (section 3 du plan). Suite : E5.
+
+## [2026-10-15] Backlog E4.7 : toute panne de chargeur de la vue match est dite — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : les chargeurs sans raison dédiée disent `section_unavailable` (code unique, source dans le journal ERROR) ; même règle no-store / refetch / bandeau que les quatre raisons dédiées ; capability non supportée = absence, pas panne. Les quatre codes web que Go n'émet plus sont supprimés.
+
+**Résultats observés** : tests rouge (mutation) puis vert côté service, handler et web ; `match_view_data_loaders.go` 699 -> 689 lignes ; gate Go (domain, api, archlint) et web (9 616 tests) verts ; échec unique antérieur de `internal/service` non reproduit (x20 + 3 passes).
+
+**Conclusion / prochaine étape** : E4 close. Restent hors contrat les erreurs avalées par certaines méthodes du repo (section 3). Suite : E5.

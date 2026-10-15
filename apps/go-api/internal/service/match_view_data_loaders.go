@@ -102,7 +102,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "enrichment", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "enrichment", func() error {
 		var e error
 		d.enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
 		return e
@@ -112,7 +112,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "objective score", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "objective score", func() error {
 		var e error
 		// Score PSA catégorie 'objective' pour le joueur courant — consommé
 		// UNIQUEMENT par le résiduel de l'axe Score du radar (décision 1, plan
@@ -158,72 +158,72 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
 	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
 	// bas, après `g.Wait()`.
-	goLoad(gctx, g, matchID, "kill_sources", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "kill_sources", func() error {
 		var e error
 		d.killSources, e = s.repo.GetMatchKillSources(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "kill_assists", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "kill_assists", func() error {
 		var e error
 		d.killAssists, e = s.repo.GetMatchKillAssists(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "assist_pairs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "assist_pairs", func() error {
 		var e error
 		d.assistPairs, d.assistScope, e = s.repo.GetMatchAssistPairs(gctx, matchID)
 		d.assistScopeFailed = e != nil
 		return e
 	})
-	goLoad(gctx, g, matchID, "kv_pairs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "kv_pairs", func() error {
 		var e error
 		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "skill_rank", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "skill_rank", func() error {
 		var e error
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "shared_csrs", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "shared_csrs", func() error {
 		var e error
 		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "encounters", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounters", func() error {
 		var e error
 		d.encounters, e = s.repo.GetMatchEncounters(gctx, matchID, s.xuid)
 		return e
 	})
 	// MV4.C' : chargement parallele des stats encounter riches (Q23b).
-	goLoad(gctx, g, matchID, "encounter_stats", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounter_stats", func() error {
 		var e error
 		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
 		return e
 	})
 	s.loadEncounterAssists(gctx, g, matchID, &d)
-	goLoad(gctx, g, matchID, "media", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "media", func() error {
 		var e error
 		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
 		// avoir uploadé un media pour ce match.
 		d.media, e = s.repo.GetMatchMedia(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "expected_stats", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "expected_stats", func() error {
 		var e error
 		d.expected, e = s.repo.GetMatchExpectedStats(gctx, matchID, s.xuid)
 		return e
 	})
-	goLoad(gctx, g, matchID, "bulk_medals", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "bulk_medals", func() error {
 		var e error
 		d.bulkMedals, e = s.repo.GetMatchBulkMedals(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "bulk_weapons", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "bulk_weapons", func() error {
 		var e error
 		d.bulkWeapons, e = s.repo.GetMatchBulkWeaponKills(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "hist_avg", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "hist_avg", func() error {
 		var e error
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
 		return e
@@ -232,19 +232,19 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
 	// le titre a film.kill_source. Zéro comparaison de slug.
 	if s.killDistanceRepo != nil {
-		goLoad(gctx, g, matchID, "kill_distances", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "kill_distances", func() error {
 			var e error
 			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
 			return e
 		})
 	}
 	if s.citationsRepo != nil {
-		goLoad(gctx, g, matchID, "citations", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "citations", func() error {
 			var e error
 			d.matchCitations, e = s.citationsRepo.LoadMatchCitationsForView(gctx, matchID)
 			return e
 		})
-		goLoad(gctx, g, matchID, "rich citations", func() error {
+		d.failures.goLoadSection(gctx, g, matchID, "rich citations", func() error {
 			var e error
 			d.richCitations, e = s.citationsRepo.LoadMatchCitationsRich(gctx, matchID)
 			return e
@@ -255,18 +255,6 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		return matchViewData{}, err
 	}
 	return d, nil
-}
-
-// goLoad lance un chargement best-effort dans l'errgroup g : exécute load(), logge
-// un WARN "match_view: <label> indisponible" sur erreur (jamais fatal) puis retourne
-// nil. Centralise ~18 blocs g.Go copiés (K2e, CR §5) et passe à slog.WarnContext.
-func goLoad(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
-	g.Go(func() error {
-		if err := load(); err != nil {
-			slog.WarnContext(gctx, "match_view: "+label+" indisponible", "match_id", matchID, "err", err)
-		}
-		return nil
-	})
 }
 
 // tugDurationMS retourne la durée (ms) servant à binner la Dominance (tug-of-war).

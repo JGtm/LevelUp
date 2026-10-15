@@ -11,16 +11,17 @@
 import type { MatchViewResponse } from '@/lib/api/types'
 
 /**
- * Raisons « lecture en échec » émises par l'API (miroir de `domain.IsUnavailableReason`).
- * Ensemble FERMÉ, pas un test de suffixe : d'autres codes `*_unavailable` existent dans
- * `translatePartialReason` avec un sens structurel (propre au match) et ne déclenchent
- * pas le bandeau d'indisponibilité.
+ * Raisons « lecture en échec » émises par l'API (miroir de `domain.IsUnavailableReason`) :
+ * une par source portant un `_empty`, plus le code générique `section_unavailable` (un autre
+ * chargeur a échoué ; la source est dans le journal serveur). Ensemble FERMÉ, pas un test de
+ * suffixe.
  */
 export const UNAVAILABLE_REASONS: readonly string[] = [
   'scoreboard_unavailable',
   'events_unavailable',
   'player_stats_unavailable',
   'medals_unavailable',
+  'section_unavailable',
 ]
 
 export function isUnavailableReason(code: string): boolean {

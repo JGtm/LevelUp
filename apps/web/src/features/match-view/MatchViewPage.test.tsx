@@ -183,6 +183,14 @@ describe('MatchViewPage — bandeaux « match partiel » et « données indispon
     expect(screen.queryByText(PARTIEL)).not.toBeInTheDocument()
   })
 
+  it('chargeur sans raison dédiée en panne (section_unavailable) : même bandeau « indisponible »', () => {
+    vueAvec(true, ['section_unavailable'])
+    renderWithProviders(<MatchViewPage />)
+
+    expect(screen.getByText(INDISPONIBLE)).toBeInTheDocument()
+    expect(screen.queryByText(PARTIEL)).not.toBeInTheDocument()
+  })
+
   it('panne ET source vide : « indisponible » prime, le bandeau partiel disparaît', () => {
     vueAvec(true, ['scoreboard_unavailable', 'events_empty'])
     renderWithProviders(<MatchViewPage />)

@@ -15,10 +15,10 @@ import (
 )
 
 // loadEncounterAssists charge en parallèle (errgroup de loadMatchViewDataParallel) les
-// assistances échangées avec les joueurs du match. Erreur loggée par goLoad, map nil →
+// assistances échangées avec les joueurs du match. Erreur loggée par goLoadSection, map nil →
 // la colonne affiche « — ».
 func (s *MatchViewService) loadEncounterAssists(gctx context.Context, g *errgroup.Group, matchID string, d *matchViewData) {
-	goLoad(gctx, g, matchID, "encounter_assists", func() error {
+	d.failures.goLoadSection(gctx, g, matchID, "encounter_assists", func() error {
 		var e error
 		d.encounterAssists, e = s.repo.GetMatchEncounterAssists(gctx, matchID, s.xuid)
 		return e
