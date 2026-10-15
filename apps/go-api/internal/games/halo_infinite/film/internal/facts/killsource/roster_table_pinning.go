@@ -51,6 +51,11 @@ type FilmTablePinning struct {
 	// table de `chunk_00` garde la main, elle est la plus eprouvee. `MotifDuplicate` : le nom lu
 	// est deja epingle ailleurs.
 	MotifPinned, MotifAgree, MotifContradict, MotifDuplicate int
+	// MotifReleve : indices de BOT dont toutes les declarations BOT_METADATA sont closes et que le
+	// motif nomme a un humain — le successeur du bot, qui tient l indice apres la fin de la derniere
+	// declaration (roster_releve.go). Ni accord ni contradiction : les deux lectures portent sur
+	// deux periodes du film.
+	MotifReleve int
 	// MotifReadings / MotifDisagreements / MotifAbsent : le COUT de cette lecture. `Readings` =
 	// chunks de replication qui ont livre au moins un index ; `Disagreements` = xuids lus a deux
 	// index differents (non publies) ; `Absent` = xuids dont le motif ne figure dans aucun chunk.

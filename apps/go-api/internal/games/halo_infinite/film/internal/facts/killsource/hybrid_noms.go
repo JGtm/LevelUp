@@ -33,10 +33,10 @@ func autoSurCoupleFabrique(m botMatch, prev Kill) bool {
 	return m.fab && prev.Read.Origin == OriginSelfSource && m.cand.ms == prev.TimeMS
 }
 
-// nomPubliable rend le nom que le roster donne a l indice `i`, et faux quand ce nom ne designe
-// personne. Le refus est compte ici, une fois par ligne refusee.
-func (p *pass) nomPubliable(i int) (string, bool) {
-	nom := p.ctx.roster.nameOf(i)
+// nomPubliable rend le nom que le roster donne a l indice `i` a l instant `ms` ([roster.nameOfA]),
+// et faux quand ce nom ne designe personne. Le refus est compte ici, une fois par ligne refusee.
+func (p *pass) nomPubliable(i, ms int) (string, bool) {
+	nom := p.ctx.roster.nameOfA(i, ms)
 	if estNomDeRemplissage(nom) {
 		p.nomsDeRemplissage++
 		return "", false

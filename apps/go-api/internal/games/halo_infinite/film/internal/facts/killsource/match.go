@@ -29,7 +29,7 @@ import "levelup/go-api/internal/games/halo_infinite/film/damagetag"
 
 // matchExact : le critere FORT. Rend l instant apparie et si le REPLI (la fenetre) a servi.
 func (c *decodeCtx) matchExact(cd candidate) (*feedEvent, bool) {
-	vic, kil := c.roster.nameOf(cd.victim), c.roster.nameOf(cd.killer)
+	vic, kil := c.roster.nameOfA(cd.victim, cd.ms), c.roster.nameOfA(cd.killer, cd.ms)
 	i, repli := choisirParIdentitePuisFenetre(len(c.feed.pairs),
 		func(i int) bool { return c.feed.pairs[i].paquet.memeQue(cd.chunk, cd.pidx) },
 		func(i int) bool { return dansLaFenetre(c.feed.pairs[i].timeMS, cd.ms) },
@@ -43,7 +43,7 @@ func (c *decodeCtx) matchExact(cd candidate) (*feedEvent, bool) {
 // matchVictim : la victime du candidat est-elle celle d une mort du feed ? Meme ordre : le paquet
 // que le film ECRIT d abord, la fenetre ensuite.
 func (c *decodeCtx) matchVictim(cd candidate) (*feedEvent, bool) {
-	vic := c.roster.nameOf(cd.victim)
+	vic := c.roster.nameOfA(cd.victim, cd.ms)
 	i, repli := choisirParIdentitePuisFenetre(len(c.feed.pairs),
 		func(i int) bool { return c.feed.pairs[i].paquet.memeQue(cd.chunk, cd.pidx) },
 		func(i int) bool { return dansLaFenetre(c.feed.pairs[i].timeMS, cd.ms) },
@@ -75,7 +75,7 @@ func (c *decodeCtx) selfSourceOK(cd candidate, mult map[multKey]int) bool {
 
 // isBotSide : le candidat implique-t-il un indice epingle sur un bot ?
 func (c *decodeCtx) isBotSide(cd candidate) bool {
-	return c.roster.isBotIndex(cd.victim) || c.roster.isBotIndex(cd.killer)
+	return c.roster.isBotIndexA(cd.victim, cd.ms) || c.roster.isBotIndexA(cd.killer, cd.ms)
 }
 
 // botMatch : un kill du feed sans victime humaine, et le candidat du scan qui le decode.
@@ -157,13 +157,13 @@ func (c *decodeCtx) coupleDeMortDeBot(m *botMatch, cd candidate, deLaVictime boo
 		if cd.victim != m.victimeLue {
 			return false
 		}
-	} else if !c.roster.isBotIndex(cd.victim) {
+	} else if !c.roster.isBotIndexA(cd.victim, cd.ms) {
 		return false
 	}
 	if deLaVictime {
 		return cd.killer == cd.victim && c.selfSourceOK(cd, c.mult)
 	}
-	return c.roster.nameOf(cd.killer) == m.event.killer
+	return c.roster.nameOfA(cd.killer, cd.ms) == m.event.killer
 }
 
 // botKillerMatch : une mort du feed que personne n a consommee, et le candidat qui la decode.
@@ -211,7 +211,7 @@ func (c *decodeCtx) apparierMortsParUnBot(morts []feedEvent, all []sourcedCandid
 			func(j int) bool { return dansLaFenetre(all[j].ms, e.timeMS) },
 			func(j int) bool {
 				return !servis[positionDuCandidat(all[j].candidate)] &&
-					c.roster.isBotIndex(all[j].killer) && c.roster.nameOf(all[j].victim) == e.victim
+					c.roster.isBotIndexA(all[j].killer, all[j].ms) && c.roster.nameOfA(all[j].victim, all[j].ms) == e.victim
 			})
 		if j < 0 {
 			continue

@@ -36,7 +36,7 @@ func passeAvecCollision(t *testing.T) (*decodeCtx, *pass) {
 		names:  []string{"K", "V", "W"},
 		xuidDe: map[string]uint64{},
 	}
-	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais", declarations: toutLeFilm}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 2, 3}
 	kf.resoudreCouples(nil, r, nil)
@@ -94,7 +94,7 @@ func passeAutoSurFabrique(t *testing.T) (*decodeCtx, *pass) {
 		names:  []string{"K", "V"},
 		xuidDe: map[string]uint64{},
 	}
-	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais", declarations: toutLeFilm}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 3, 2}
 	kf.resoudreCouples(nil, r, nil)
@@ -187,7 +187,7 @@ func TestTemps4_UneMortDeBotDUnAutreInstantNeRemplacePas(t *testing.T) {
 		names:  []string{"K", "V", "W"},
 		xuidDe: map[string]uint64{},
 	}
-	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais", declarations: toutLeFilm}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 2, 3}
 	kf.resoudreCouples(nil, r, nil)

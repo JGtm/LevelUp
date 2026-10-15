@@ -71,7 +71,8 @@ type killDeBot struct {
 // autre tueur ([resolveurDeCouples.mortLueDUnAutreTueur]).
 func (kf *killFeed) resoudreCouples(recs []killEventRec, r *roster, morts []candidate) types.CoupleStats {
 	res := &resolveurDeCouples{kf: kf, recs: recs, r: r, morts: morts,
-		pris: make([]bool, len(recs)), prisMort: make([]bool, len(kf.events))}
+		pris: make([]bool, len(recs)), prisMort: make([]bool, len(kf.events)),
+		aSaFiche: make([]bool, len(kf.events))}
 	res.consommerLesCouplesDuMemeInstant()
 	res.resoudre()
 	res.isolerLesMortsSansTueur()
@@ -89,6 +90,10 @@ type resolveurDeCouples struct {
 	pris []bool
 	// prisMort : les instants du feed dont la MORT a ete consommee par un couple.
 	prisMort []bool
+	// aSaFiche : les instants du feed dont le KILL a deja recu son kill-event (temps 1, ou lecture du
+	// temps 2). Un kill n a qu une fiche : il ne dispute plus celles qui restent
+	// ([resolveurDeCouples.ficheDUnAutreKill]).
+	aSaFiche []bool
 	stats    types.CoupleStats
 }
 
@@ -106,6 +111,7 @@ func (res *resolveurDeCouples) consommerLesCouplesDuMemeInstant() {
 		}
 		if j := res.chercherCoupleEcrit(e.timeMS, e.killer, e.victim); j >= 0 {
 			res.pris[j] = true
+			res.aSaFiche[i] = true
 			res.kf.events[i].paquet = res.paquetDe(j)
 		}
 	}
@@ -123,8 +129,8 @@ func (res *resolveurDeCouples) chercherCoupleEcrit(ms int, tueur, victime string
 		if res.pris[i] || !dansLaFenetre(res.recs[i].ms, ms) {
 			continue
 		}
-		k, okK := res.r.nomEpingle(res.recs[i].fields.killer)
-		v, okV := res.r.nomEpingle(res.recs[i].fields.victim)
+		k, okK := res.r.nomEpingleA(res.recs[i].fields.killer, res.recs[i].ms)
+		v, okV := res.r.nomEpingleA(res.recs[i].fields.victim, res.recs[i].ms)
 		if okK && okV && k == tueur && v == victime {
 			return i
 		}
@@ -152,7 +158,7 @@ func (res *resolveurDeCouples) resoudre() {
 
 // resoudreUnKillSansMort : LA DECISION. On LIT d abord ; on ne se replie que sur un silence.
 func (res *resolveurDeCouples) resoudreUnKillSansMort(i int) {
-	idx, rec, ambigu := res.lireVictime(res.kf.events[i].timeMS, res.kf.events[i].killer)
+	idx, rec, ambigu := res.lireVictime(i)
 	switch {
 	case ambigu:
 		res.stats.Ambigu++
@@ -162,25 +168,29 @@ func (res *resolveurDeCouples) resoudreUnKillSansMort(i int) {
 		res.repliRecollageSurLeVoisin(i)
 	default:
 		res.pris[rec] = true
+		res.aSaFiche[i] = true
 		res.publierLeCoupleLu(i, idx, rec)
 	}
 }
 
-// lireVictime : la victime que le film ECRIT pour ce tueur a cet instant, prise dans les
-// kill-events NON CONSOMMES. `ambigu` quand deux enregistrements nomment des victimes
-// differentes : la lecture ne tranche pas, donc elle ne decide pas.
-func (res *resolveurDeCouples) lireVictime(ms int, tueur string) (victime, rec int, ambigu bool) {
+// lireVictime : la victime que le film ECRIT pour le kill `e` (instant du feed), prise dans les
+// kill-events NON CONSOMMES de ce tueur, hors des fiches qui appartiennent a un autre de ses kills
+// ([resolveurDeCouples.ficheDUnAutreKill]). `ambigu` quand deux enregistrements nomment des
+// victimes differentes : la lecture ne tranche pas, donc elle ne decide pas.
+func (res *resolveurDeCouples) lireVictime(e int) (victime, rec int, ambigu bool) {
+	ms, tueur := res.kf.events[e].timeMS, res.kf.events[e].killer
 	victime, rec = -1, -1
 	for i := range res.recs {
 		if res.pris[i] || !dansLaFenetre(res.recs[i].ms, ms) {
 			continue
 		}
-		k, okK := res.r.nomEpingle(res.recs[i].fields.killer)
+		k, okK := res.r.nomEpingleA(res.recs[i].fields.killer, res.recs[i].ms)
 		if !okK || k != tueur {
 			continue
 		}
 		v := res.recs[i].fields.victim
-		if _, okV := res.r.nomEpingle(v); !okV {
+		nom, okV := res.r.nomEpingleA(v, res.recs[i].ms)
+		if !okV || res.ficheDUnAutreKill(e, i, nom) {
 			continue
 		}
 		if rec >= 0 && v != victime {
@@ -198,9 +208,10 @@ func (res *resolveurDeCouples) lireVictime(ms int, tueur string) (victime, rec i
 // temps qui cherche un TUEUR bot ou une mort que personne ne revendique.
 func (res *resolveurDeCouples) publierLeCoupleLu(i, victime, rec int) {
 	e := res.kf.events[i]
-	nom, _ := res.r.nomEpingle(victime)
+	ms := res.recs[rec].ms
+	nom, _ := res.r.nomEpingleA(victime, ms)
 	paq := res.paquetDe(rec)
-	if res.r.isBotIndex(victime) {
+	if res.r.isBotIndexA(victime, ms) {
 		res.stats.VictimesBotLues++
 		res.kf.botLus = append(res.kf.botLus,
 			killDeBot{ev: feedEvent{timeMS: e.timeMS, killer: e.killer, victim: nom, paquet: paq},
@@ -286,8 +297,8 @@ func (res *resolveurDeCouples) mortLueDUnAutreTueur(mort feedEvent, tueur string
 		if !dansLaFenetre(cd.ms, mort.timeMS) {
 			continue
 		}
-		v, okV := res.r.nomEpingle(cd.victim)
-		k, okK := res.r.nomEpingle(cd.killer)
+		v, okV := res.r.nomEpingleA(cd.victim, cd.ms)
+		k, okK := res.r.nomEpingleA(cd.killer, cd.ms)
 		if !okV || !okK || v != mort.victim {
 			continue
 		}
@@ -307,8 +318,8 @@ func (res *resolveurDeCouples) mortEcriteDUnAutreTueur(mort feedEvent, tueur str
 		if res.pris[i] || !dansLaFenetre(res.recs[i].ms, mort.timeMS) {
 			continue
 		}
-		v, okV := res.r.nomEpingle(res.recs[i].fields.victim)
-		k, okK := res.r.nomEpingle(res.recs[i].fields.killer)
+		v, okV := res.r.nomEpingleA(res.recs[i].fields.victim, res.recs[i].ms)
+		k, okK := res.r.nomEpingleA(res.recs[i].fields.killer, res.recs[i].ms)
 		if okV && okK && v == mort.victim && k != tueur {
 			return true
 		}

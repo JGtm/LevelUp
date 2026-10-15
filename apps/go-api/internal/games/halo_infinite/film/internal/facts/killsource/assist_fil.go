@@ -252,7 +252,7 @@ func (c *decodeCtx) nomA(i, ms int) string {
 	if nom, ok := c.nomDuBotA(i, ms); ok {
 		return nom
 	}
-	return c.roster.nameOf(i)
+	return c.roster.nameOfA(i, ms)
 }
 
 // AssistFilStats : les comptes de la lecture de l assistant au fil des evenements. AUCUN RATIO.
