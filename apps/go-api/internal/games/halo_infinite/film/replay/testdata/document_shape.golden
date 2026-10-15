@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 98
-empreinte-stockee c208da7a6a2b3f4a
-empreinte-servie c208da7a6a2b3f4a
-empreinte-cuite f8b5a809d8f405b8
+empreinte-stockee d596ef6bb2c789df
+empreinte-servie d596ef6bb2c789df
+empreinte-cuite 02c5b067e4c5c6b8
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -204,6 +204,8 @@ CarriedEquipmentCoverage
   PositionedByCarrier json:"positionedByCarrier" int
   PositionedByObject json:"positionedByObject" int
   Published json:"published" int
+  RiftEndsRead json:"riftEndsRead" int
+  RiftEndsUnread json:"riftEndsUnread" int
   RiftPoses json:"riftPoses" int
   TeleportsWithoutPose json:"teleportsWithoutPose" int
   TrackedEnds json:"trackedEnds" int
@@ -892,6 +894,7 @@ RiftPose
   Slot json:"slot" uint32
   Src json:"src,omitempty" string
   T json:"t" int
+  T1 json:"t1,omitempty" *int
   X json:"x,omitempty" *float32
   Y json:"y,omitempty" *float32
   Z json:"z,omitempty" *float32

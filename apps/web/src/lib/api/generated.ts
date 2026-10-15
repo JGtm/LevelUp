@@ -5533,6 +5533,10 @@ export interface components {
             /** Format: int64 */
             published: number;
             /** Format: int64 */
+            riftEndsRead: number;
+            /** Format: int64 */
+            riftEndsUnread: number;
+            /** Format: int64 */
             riftPoses: number;
             /** Format: int64 */
             teleportsWithoutPose: number;
@@ -11062,6 +11066,8 @@ export interface components {
             src?: string;
             /** Format: int64 */
             t: number;
+            /** Format: int64 */
+            t1?: number;
             /** Format: float */
             x?: number;
             /** Format: float */

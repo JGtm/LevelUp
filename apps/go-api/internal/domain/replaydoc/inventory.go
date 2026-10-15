@@ -209,4 +209,5 @@ type RiftPose struct {
 	Y    *float32 `json:"y,omitempty"`
 	Z    *float32 `json:"z,omitempty"`
 	Src  string   `json:"src,omitempty"`
+	T1   *int     `json:"t1,omitempty"`
 }

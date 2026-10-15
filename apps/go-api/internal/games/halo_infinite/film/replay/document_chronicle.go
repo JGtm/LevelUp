@@ -3372,6 +3372,16 @@ package replay
 //	                plus haut) ; contre le porteur à l'image de la pose (120) : XY médiane 0,04 m, max
 //	                0,17. 1b2d9e08 : les deux poses sans échange (531, 574) sont désormais situées.
 //
+// SUITE DU MÊME LOT, à l'intégration (découverte acceptée par le superviseur) : LA FAILLE FINIT À LA
+// SUPPRESSION LUE DE SON OBJET, et non plus à la consommation ou à la mort du porteur.
+//
+//	`riftPoses[].t1` la frame de la suppression de l'objet que la pose crée (`tracked-end` de la pile
+//	                i28 qui le suivait) ; absente quand elle n'est pas lue, le client clôt alors la
+//	                faille par son repli (consommation, mort du porteur).
+//	`coverage.carriedEquipment`  `riftEndsRead`, `riftEndsUnread`.
+//
+//	MESURE          1b2d9e08 : 4 fins lues sur 4 poses ; 60ae07c4 (fixture HI_1_8_0) : 3 sur 3.
+//
 // LOTS « ks-a » et « ks-d » (morts servies deux fois) : contenu seul. Le fil des kills ne porte plus
 // un événement sous deux xuid, l'indice d'un bot parti nomme son successeur, une fiche de kill va au
 // kill voisin (cf. `killsource-2026-10-16`).

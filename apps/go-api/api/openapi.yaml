@@ -11009,6 +11009,12 @@ components:
         published:
           format: int64
           type: integer
+        riftEndsRead:
+          format: int64
+          type: integer
+        riftEndsUnread:
+          format: int64
+          type: integer
         riftPoses:
           format: int64
           type: integer
@@ -11057,6 +11063,8 @@ components:
         - teleportsWithoutPose
         - trackedObjects
         - trackedEnds
+        - riftEndsRead
+        - riftEndsUnread
       type: object
     CarriedTracked:
       additionalProperties: false
@@ -24161,6 +24169,9 @@ components:
         src:
           type: string
         t:
+          format: int64
+          type: integer
+        t1:
           format: int64
           type: integer
         x:

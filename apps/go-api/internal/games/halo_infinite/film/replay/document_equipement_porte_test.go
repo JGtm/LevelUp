@@ -252,3 +252,33 @@ func TestChampDeReparationFinLue(t *testing.T) {
 		t.Fatalf("fin de l objet porte %v : le second champ finit apres elle", out[0].T1)
 	}
 }
+
+// TestFailleFinitASuppressionLue : la faille de TestPoseDeFailleDatee (objet 1822 cree par la pose de
+// 535) finit a la suppression de cet objet, que la pile i28 de l objet porte ecrit (`tracked-end`,
+// instant construit pour le test, apres la fin de l objet porte) ; sans cette lecture, la pose sort
+// sans fin et se compte au repli.
+func TestFailleFinitASuppressionLue(t *testing.T) {
+	fin := lecture(196000.0, 1816, 535, types.CarriedTrackedEnd)
+	fin.Tracked = []types.LifeKey{{Slot: 1822, Gen: 1}}
+	reads := []types.CarriedEquipmentRead{
+		lecture(161077.8, 1816, 535, types.CarriedNew),
+		avecEnergie(lecture(164113.6, 1816, 535, types.CarriedDelta), 0),
+		failleCreee(164129.9, 164113.6, 1816, 535, 1822, 17.34, 135.50, 73.98),
+		lecture(194210.5, 1816, 535, types.CarriedDel),
+		fin,
+	}
+	entree := entreeDEquipementPorte{reads: reads, palette: paletteDuTest(),
+		changes: []types.EquipmentChange{{TimestampUS: 161077800, Slot: 535, Kind: types.EquipmentTaken, Rank: 11}},
+		couts:   coutsParFamille(catalogueDuTest(), famillesDuTest),
+		tracks:  []Track{{Slot: 535}}, origin: origine1b2d, step: pas100ms}
+	_, poses, cov := buildCarriedEquipment(entree)
+	if len(poses) != 1 || poses[0].T1 == nil || *poses[0].T1 != 1869 || cov.RiftEndsRead != 1 ||
+		cov.RiftEndsUnread != 0 {
+		t.Fatalf("poses %+v, couverture %+v", poses, cov)
+	}
+	entree.reads = reads[:4]
+	_, poses, cov = buildCarriedEquipment(entree)
+	if len(poses) != 1 || poses[0].T1 != nil || cov.RiftEndsRead != 0 || cov.RiftEndsUnread != 1 {
+		t.Fatalf("sans suppression lue : poses %+v, couverture %+v", poses, cov)
+	}
+}

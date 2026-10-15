@@ -27,6 +27,10 @@ package replay
 // nommé et compté : la position du porteur lue dans sa piste à l'image même de la pose (`src` =
 // « porteur ») ; sans l'une ni l'autre, la pose est publiée sans position. Aucune position ne vient
 // d'un échange : la faille existe, à sa place, dès la pose.
+//
+// LA FIN DE LA FAILLE EST LA SUPPRESSION LUE DE CET OBJET : la pile i28 de l objet porte qui le suivait
+// ecrit sa fin (`tracked-end`), et la pose la publie (`t1`). Sans elle, le client clot la faille par
+// son repli (consommation de l equipement ou mort du porteur), compte dans `riftEndsUnread`.
 
 import (
 	"cmp"
@@ -36,6 +40,7 @@ import (
 	"slices"
 
 	"levelup/go-api/internal/games/halo_infinite/equipenergy"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -92,6 +97,10 @@ type RiftPose struct {
 	Y   *float32 `json:"y,omitempty"`
 	Z   *float32 `json:"z,omitempty"`
 	Src string   `json:"src,omitempty"`
+	// T1 est la frame de la FIN de la faille : la suppression lue de l objet que la pose cree. Absente
+	// quand le film ne la dit pas (objet non lu, suppression non lue) : le client clot alors la faille
+	// par son repli, la consommation de l equipement ou la mort du porteur.
+	T1 *int `json:"t1,omitempty"`
 }
 
 // Les deux sources de la position d'une faille.
@@ -134,6 +143,10 @@ type CarriedEquipmentCoverage struct {
 	// TrackedObjects : objets engendrés publiés ; TrackedEnds : ceux dont la suppression est lue.
 	TrackedObjects int `json:"trackedObjects"`
 	TrackedEnds    int `json:"trackedEnds"`
+	// RiftEndsRead : poses dont la fin (suppression de l objet cree) est lue ; RiftEndsUnread : poses
+	// sans fin lue, que le client clot par son repli (consommation ou mort du porteur).
+	RiftEndsRead   int `json:"riftEndsRead"`
+	RiftEndsUnread int `json:"riftEndsUnread"`
 }
 
 // coutDeFamille : le coût par usage d'une fiche du catalogue, l'énergie initiale de son objet porté
@@ -261,6 +274,11 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 			cov.PositionedByCarrier++
 		default:
 			cov.Unpositioned++
+		}
+		if p.T1 != nil {
+			cov.RiftEndsRead++
+		} else {
+			cov.RiftEndsUnread++
 		}
 	}
 	return out, poses, cov
@@ -430,7 +448,8 @@ func logCarriedEquipmentCoverage(ctx context.Context, cov CarriedEquipmentCovera
 		"posesDeFaille", cov.RiftPoses, "situeesParLObjet", cov.PositionedByObject,
 		"situeesParLePorteur", cov.PositionedByCarrier, "sansPosition", cov.Unpositioned,
 		"echangesSansPose", cov.TeleportsWithoutPose,
-		"objetsEngendres", cov.TrackedObjects, "finsLues", cov.TrackedEnds)
+		"objetsEngendres", cov.TrackedObjects, "finsLues", cov.TrackedEnds,
+		"finsDeFailleLues", cov.RiftEndsRead, "finsDeFailleNonLues", cov.RiftEndsUnread)
 }
 
 // poserLEquipementPorte publie l'équipement porté et les poses de faille, nommés par la palette classée
@@ -443,6 +462,7 @@ func (a *assemblage) poserLEquipementPorte() {
 	})
 	a.doc.CarriedEquipment, a.doc.RiftPoses = carried, poses
 	a.doc.Coverage.CarriedEquipment = &cov
+	a.opt.Fallbacks.DeclencheN(fallback.NomFinDeFailleConsommationOuMortDuPorteur, cov.RiftEndsUnread)
 	logCarriedEquipmentCoverage(a.ctx, cov)
 }
 
