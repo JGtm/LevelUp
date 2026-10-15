@@ -11,7 +11,7 @@ import { useMemo, useRef } from 'react'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { ObjectifFrame } from '@/features/squad/objectif/ObjectifFrame'
 import { LivesAxis, LivesLegend } from '@/features/timeseries/usages/LivesNearTeammateCard'
-import { LivesNearTeammateRow } from '@/features/timeseries/usages/LivesNearTeammateRow'
+import { LivesNearTeammateRow, livesInset } from '@/features/timeseries/usages/LivesNearTeammateRow'
 import type { UsagesCardsText } from '@/features/timeseries/usages/usagesCardsText'
 
 import type { MatchLives, MatchLivesRow } from './matchEmprise.logic'
@@ -30,6 +30,7 @@ export function MatchLivesCard({ lives, inkOf, meXUID, ut }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, lives)
   const legend = useMemo(() => <LivesLegend ut={ut} />, [ut])
+  const inset = useMemo(() => livesInset(lives.rows.map((r) => r.model), ut), [lives, ut])
   return (
     <ObjectifFrame
       title={l.title}
@@ -40,9 +41,9 @@ export function MatchLivesCard({ lives, inkOf, meXUID, ut }: Props) {
       <div ref={ref} className="flex flex-col gap-3.5">
         {lives.rows.map((row) => {
           const label = <PlayerLabel row={row} ink={inkOf(row.xuid)} me={row.xuid === meXUID} />
-          return <LivesNearTeammateRow key={row.xuid} model={row.model} label={label} hidden={hidden} idPrefix={`${row.xuid}-`} ut={ut} />
+          return <LivesNearTeammateRow key={row.xuid} model={row.model} label={label} hidden={hidden} idPrefix={`${row.xuid}-`} ut={ut} inset={inset} />
         })}
-        <LivesAxis ut={ut} />
+        <LivesAxis ut={ut} inset={inset} />
       </div>
     </ObjectifFrame>
   )

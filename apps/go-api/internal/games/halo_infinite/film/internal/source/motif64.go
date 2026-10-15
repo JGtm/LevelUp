@@ -32,18 +32,13 @@ import (
 
 // Motif64 decrit les fenetres que [PremierMotif64] retient. Une fenetre `w` est retenue si
 //
-//	w & Nuls == 0  ET, pour chaque masque NON NUL de AuMoinsUn, w & masque != 0   (la forme)
-//	OU, quand AvecTete : les 32 premiers bits de w valent Tete
+//	w & Nuls == 0  ET, pour chaque masque NON NUL de AuMoinsUn, w & masque != 0
 type Motif64 struct {
 	// Nuls : les bits qui doivent valoir 0 dans la forme.
 	Nuls uint64
 	// AuMoinsUn : deux groupes de bits dont chacun doit porter au moins un 1 dans la forme. Un
 	// groupe nul n impose rien.
 	AuMoinsUn [2]uint64
-	// Tete : la valeur des 32 premiers bits d une fenetre retenue sans condition de forme.
-	Tete uint32
-	// AvecTete : la tete est cherchee.
-	AvecTete bool
 }
 
 // PremierMotif64 rend la premiere position `p` de [from, limit) dont la fenetre de 64 bits est
@@ -83,19 +78,16 @@ func blocDeHuit(d []byte, p int) (w0, nb uint64) {
 
 // jugement : un [Motif64] mis sous la forme que [jugement.huit] calcule sans branche.
 type jugement struct {
-	n, u1, u2, t uint64
+	n, u1, u2 uint64
 	// c1, c2 valent 1 quand le groupe AuMoinsUn correspondant est nul (il n impose rien) : `w&u|c`
-	// est alors non nul pour toute fenetre. a vaut 1 quand la tete est cherchee.
-	c1, c2, a uint64
+	// est alors non nul pour toute fenetre.
+	c1, c2 uint64
 }
 
 // jugement prepare le motif pour [jugement.huit].
 func (m Motif64) jugement() jugement {
-	j := jugement{n: m.Nuls, u1: m.AuMoinsUn[0], u2: m.AuMoinsUn[1], t: uint64(m.Tete)}
+	j := jugement{n: m.Nuls, u1: m.AuMoinsUn[0], u2: m.AuMoinsUn[1]}
 	j.c1, j.c2 = 1^(j.u1|-j.u1)>>63, 1^(j.u2|-j.u2)>>63
-	if m.AvecTete {
-		j.a = 1
-	}
 	return j
 }
 
@@ -108,46 +100,28 @@ func (m Motif64) jugement() jugement {
 // chaque bloc a huit jugements ecrits en clair.
 func (j jugement) huit(w0, nb uint64) uint64 {
 	w := w0
-	z, y, v, x := w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc := (1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a
+	z, y, v := w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc := (1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)
 	w = w0<<1 | nb>>7
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 1
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 1
 	w = w0<<2 | nb>>6
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 2
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 2
 	w = w0<<3 | nb>>5
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 3
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 3
 	w = w0<<4 | nb>>4
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 4
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 4
 	w = w0<<5 | nb>>3
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 5
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 5
 	w = w0<<6 | nb>>2
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 6
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 6
 	w = w0<<7 | nb>>1
-	z, y, v, x = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2, w>>32^j.t
-	acc |= ((1^(z|-z)>>63)&((y|-y)>>63)&((v|-v)>>63) | (1^(x|-x)>>63)&j.a) << 7
+	z, y, v = w&j.n, w&j.u1|j.c1, w&j.u2|j.c2
+	acc |= ((1 ^ (z|-z)>>63) & ((y | -y) >> 63) & ((v | -v) >> 63)) << 7
 	return acc
-}
-
-// SuiteDeUns rend le nombre de bits a 1 CONSECUTIFS a partir du bit `pos`, borne a `borne` ; les
-// bits au-dela du tampon valent zero et arretent donc la suite. PRECONDITION : `pos >= 0`.
-//
-// C est l autre moitie de la recherche d ancres : une plage de 0xFF porte une SENTINELLE (32 bits
-// a 1) a chacune de ses positions de bit, et la recherche les compte une a une. Une suite de `s`
-// uns porte exactement `s - 31` sentinelles consecutives.
-func SuiteDeUns(d []byte, pos, borne int) int {
-	n := 0
-	for n < borne {
-		k := bits.LeadingZeros64(^BitsAt(d, pos+n, 64))
-		n += k
-		if k < 64 {
-			break
-		}
-	}
-	return min(n, borne)
 }

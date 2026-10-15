@@ -5,6 +5,7 @@
  */
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
+import { barLabel } from '@/components/charts/barLabel'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
@@ -26,6 +27,7 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
   if (weeks.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
+  const winColor = resolveToken('outcome-win')
 
   // Trier chronologiquement par week_start (ISO YYYY-MM-DD).
   // week_label "DD/MM" perd l'année et casse l'ordre lexico aux frontières mois/an.
@@ -69,12 +71,8 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
         type: 'bar',
         stack: 'total',
         data: wins,
-        itemStyle: { color: resolveToken('outcome-win'), opacity: 0.85 },
-        label: {
-          show: true,
-          position: 'inside',
-          formatter: (p: { value: number }) => String(p.value),
-        },
+        itemStyle: { color: winColor, opacity: 0.85 },
+        label: barLabel({ formatter: (p: { value: number }) => String(p.value) }),
       },
       {
         name: 'Autres',
@@ -82,11 +80,7 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
         stack: 'total',
         data: others,
         itemStyle: { color: tc.axisLine, opacity: 0.55 },
-        label: {
-          show: true,
-          position: 'inside',
-          formatter: (p: { value: number }) => p.value > 0 ? String(p.value) : '',
-        },
+        label: barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') }),
       },
       {
         name: 'Taux Top (%)',

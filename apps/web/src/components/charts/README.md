@@ -218,3 +218,13 @@ Run `npm run dev` and navigate to `/lab/charts` for visual samples of all 12 wra
 - Foundation guide : `docs/FOUNDATIONS_GUIDE.md` § 3.4
 - Color tokens skill : `.claude/skills/color-tokens/SKILL.md`
 - ECharts docs : https://echarts.apache.org/en/option.html
+
+## Segment labels (ink on a fill)
+
+Text written ON a coloured segment never picks its own colour. HTML tracks use `<SegmentLabel tip>`
+(vertically centred, `data-fit-label` contract of `useSegmentLabelFit`); ECharts bars use
+`barLabel(extra?)` (`position: 'inside'`, `verticalAlign: 'middle'`). Both write WHITE text with a thin dark
+outline in light and dark themes (CSS tokens `--segment-ink` / `--segment-ink-outline`, class `segment-ink`,
+`lib/accessibility/segmentInk.ts`). A value that does not fit is written BESIDE the bar (`BarSides`) in the
+theme ink, on the card background. `segmentInk.guard.test.ts` forbids
+`text-white` / `text-black`, a bare `data-fit-label` and a bare `position: 'inside'` outside these helpers.

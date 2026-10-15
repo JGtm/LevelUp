@@ -119,7 +119,7 @@ func imcpProduction(f imcFilm, ti int) imcpCompteurs {
 			c.Records++
 			c.Bornes++
 			h, ok := readKeyframeHeader(pay, b.Bit, total)
-			if !ok {
+			if !ok || h.SansArchetype() { // une entree sans corps n est pas un record
 				c.Broken++
 				continue
 			}

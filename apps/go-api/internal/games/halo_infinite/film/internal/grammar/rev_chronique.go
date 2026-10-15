@@ -279,3 +279,29 @@ package grammar
 // durees : 11 de 11,35 a 12,24 s, 6 de 1,5 a 4,6 s (champ detruit), une de 16,95 s. Capteur 834,
 // ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
 // suppression de 0,2 a 0,7 s (5676a9ba).
+//
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// `feat/ri-ecart-108`, etapes R1 a R3) : TROIS LECTURES DU JEU ENTRENT DANS LA MARCHE DES IMAGES-CLES.
+//
+//   - R1, LA TABLE D ENTREES (`keyframe_entrees.go`). La table d image-cle compte une entree par slot
+//     (`FUN_1408be074`, 0x1fff) ; un slot libere s y ecrit en 108 bits d archetype `0xffffffff`
+//     (`FUN_142e2bfd0`, `FUN_1408f1948`). La fermeture d un record lit les t - s - 1 entrees qui le
+//     separent de l ancre suivante, le dernier record d un paquet ferme sur la fin de table ; la
+//     preuve d image-cle saute les slots liberes et exige le slot `slot + 1 + k` ; les marches
+//     deterministes lisent la table entree par entree ; la « fin de table » a 2 048 sentinelles du
+//     balayeur, que le jeu n a pas, est retiree.
+//   - R2, LE BIT DES FILMS 1.8 (`malleable_du_film.go`). Le bloc malleable d i53 (`FUN_1407efc5c`) n a
+//     pas son drapeau final dans les films qui declarent la version majeure 0x25 (decision de
+//     l utilisateur du 2026-10-15, option b).
+//   - R3, world-object i0 (`FUN_14076e29c`) et generic-rigid-body i18 (`FUN_142f036f0`) sous la garde de
+//     pleine precision : R(96), comme le jeu (decision de l utilisateur du 2026-10-15, option a pour i0).
+//
+// MESURE (28 films, contexte de la cuisson, contre `feat/v75` `39ead801f`) : bipedes fermes 5 397 ->
+// 8 564 sur 10 710 ; tous archetypes 242 684 -> 418 264 sur 460 730 ; `ti=37` 2 413 -> 27 587, `ti=38` 30 733 ->
+// 113 049, `ti=42` 3 125 -> 21 449, `ti=43` 10 919 -> 37 959, `ti=10` 14 265 -> 30 608 ; admissions
+// T1 et T2 inchangees (6 507) ; equipes identiques ; election des ancres changee sur `64e8adfa` seul
+// (deux regions, la fausse ancre slot 1536 `ti=0` refutee, dix records rendus) ; carte delta : seuls
+// des paquets de `60ae07c4` passent fermes (+49, +1 597 sous le decoupage MPP). Baisses, toutes
+// acceptees par la decision du 2026-10-15 : `50247b26` `ti=38` 451 -> 159 et `ti=42` 76 -> 16 (film de
+// format 20 sans section d identification). Douze films HI_1_8_0 du parc : bipedes fermes 1 263 ->
+// 7 042, aucune perte.

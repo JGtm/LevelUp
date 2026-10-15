@@ -6,7 +6,7 @@ Escouade, Général). Diagnostic en lecture seule le 2026-10-14 (six enquêteurs
 `plan-execution`. Superviseur : session principale. Exécutants : Sonnet par défaut, Opus pour les
 lots film (rétro-ingénierie) et pour la relecture du lot CSR (sync/persist).
 
-**Statut (15/10) : lots A, B, C, D, E, F intégrés dans feat/v75 (feat/aj14-integ b49e6d29e, CI verte) ; lot équipement porté en correction de relecture ; restent G (étiquettes), A5/A6 (rattrapage CSR), H1/H2 (cuisson VIP, recuisson schéma 95).**
+**Statut (15/10) : TOUS les lots livrés et fusionnés dans feat/v75 (A, B, C, D, E, F, G, équipement porté) ; rattrapage CSR fait ; recuisson du parc au schéma 96 faite ; restent les découvertes (section 4) et le gate visuel du user (VIP, pages).**
 
 ## 0. Constats sur pièces (résumé ; le détail est dans les rapports d'enquête du 14/10)
 
@@ -246,7 +246,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - Gate : vitest/tsc/eslint ; captures claire et sombre de chaque page concernée ; gate visuel user.
 
 - [x] G5 (1fb5fd253 : carte « Appui reçu » de Sessions, nom d axe de la frise)
-- [x] Gate visuel du user (15/10, « Parfait ! ») : valeurs à côté de la barre (27bb98209) ; texte blanc partout avec contour sombre (9572c5133). Fusion après la recuisson (gel de feat/v75).
+- [x] Gate visuel du user (15/10, « Parfait ! ») : valeurs à côté de la barre (27bb98209) ; texte blanc partout avec contour sombre (9572c5133). Fusionné dans feat/v75 le 15/10 (worktree dédié, tsc 0, vitest 9 597 verts).
 
 ### Lot H — Opérations (superviseur)
 - [x] H1 (00761d27 cuit au schéma 96 le 15/10 ; vérification couronne/score/porteur à faire par le user) Cuire le match VIP recommandé à l'unité (`backfill-replay --one <id complet>`), après la
@@ -299,5 +299,15 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - Démo (`feat/recos-d`, non fusionné) choisit déjà le VIP recommandé.
 - Harnais R12 : palette « non classée » sur 0d9a9af9 (build non reconnu par la recherche).
 
-## 5. Reprise de session
+## 5. Suite du 15/10 (après clôture)
+- [ ] Position des poses de faille depuis l objet ti=38 né à la pose (levelup-80 ; 123/123 positions au parc, écart au porteur 4 cm) — repli porteur compté, échange retiré.
+- [ ] K-A (fix/ks-a-doublons, Sonnet) : temps forts dédoublonnés par marqueur de fin (34db6b33, Partycz : 86 matchs), tri stable killer_victim, passe 2 sans mort fantôme, contrôle des morts officielles (sans troncature arbitraire, en reprise), `repair-highlight-phantoms` documentée.
+- [ ] K-B (fix/ks-b-equipe-bots, Opus) : équipe des bots par build (octet 4 en 1.10-1.12), fragments « 43 X » écartés.
+- [ ] K-C (fix/ks-c-vies-nommees, Opus) : registre d identité partagé sync/cuisson, vies sans nom des artefacts publiés (Firefight hors périmètre, décision user).
+- [x] Armes au sol (feat/armes-sol-depart, fusionné le 15/10 ; 31/90 sur 0d9a9af9, 87/221 sur 1b2d9e08) : armes de départ lâchées masquées par défaut, option dans les réglages (décision user 15/10).
+- [ ] Firefight exclu de la cuisson et du service (fix/rejeu-sans-firefight, décision user 15/10) + nettoyage du cache.
+- [ ] Enquête : 59 groupes joueur-match au-delà des morts officielles (66 morts) hors doublons — lecture seule.
+- [ ] Recuisson groupée des lots film (après celle de levelup-a9 au schéma 97) + rattrapage des 86 matchs — accord user à demander.
+
+## 6. Reprise de session
 Lire ce fichier (cases), `git log --oneline -10` de chaque `feat/aj14-*`, `ListAgents`.

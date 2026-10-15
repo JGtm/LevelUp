@@ -651,3 +651,21 @@
   .replay-wswap-r,
   .replay-gpop { animation: none; }
 }
+
+/*
+ * Encre des écritures posées SUR un aplat de segment (décision du 2026-10-15) : blanche partout,
+ * cernée d'une ombre sombre fine qui la garde lisible sur les segments clairs (vert, jaune, orange).
+ * Identique en thème clair et sombre. Source unique : la classe `segment-ink` (pistes HTML,
+ * `SegmentLabel`) et les mêmes jetons lus par `barLabel` (ECharts).
+ */
+:root {
+  --segment-ink: #fff;
+  --segment-ink-outline: #0b1220;
+}
+.segment-ink {
+  color: var(--segment-ink);
+  text-shadow:
+    0 0 2px var(--segment-ink-outline),
+    0 0 2px var(--segment-ink-outline),
+    0 1px 1px var(--segment-ink-outline);
+}

@@ -15,10 +15,12 @@ package grammar
 //
 // # LA DEFINITION FORTE, PAS LA FAIBLE
 //
-// `KeyChained` dit seulement que la position d'arrivee porte un motif d'en-tete valide : c'est
+// `KeyChained` dit seulement que la position d'arrivee porte une entree lisible de la table
+// ([finitSurUneEntree] : un en-tete de record valide ou un slot libere) : c'est
 // la definition FAIBLE de la sante, et la production y plafonnait a 1,9 % (mesure du
 // 2026-09-13) alors qu'elle fermait 0 record sur 390. Ce qui se publie ici est la definition
-// FORTE : `closed` = la marche atterrit EXACTEMENT sur le premier bit du record suivant ;
+// FORTE : `closed` = la marche, puis les entrees intercalees, atterrissent EXACTEMENT sur le premier
+// bit du record suivant ([fermeSurLAncreSuivante]) ;
 // `total` = les records BORNES de l'archetype, ceux qui ont une frontiere a atteindre.
 //
 // # LE PAQUET NE DEPEND PAS DE `internal/observability`

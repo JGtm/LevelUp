@@ -61,8 +61,9 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
     })
   })
 
-  it('D=2 : RIEN de dégainé — une mesure, pas une lacune : ordre d’emplacement, aucun marquage', () => {
-    // C'est l'état des huit joueurs à la première image-clé, avant le départ.
+  it('D=2 : l’emplacement des mains nues ou de l’objet tenu — aucune arme de la rangée en main, une mesure', () => {
+    // C'est l'état de tous les joueurs à leur première image-clé, avant le départ (mains nues,
+    // `00007CA9`), et celui d'un porteur d'objet d'objectif en cours de partie.
     expect(equippedWeapons(docWithSelector(2), 512, 60)).toEqual({
       weapons: [
         { id: '0xAAAA', inHand: false },
@@ -74,6 +75,13 @@ describe('equippedWeapons — le sélecteur d’emplacement ordonne la rangée',
       holstered: true,
       drawnUnread: false,
     })
+  })
+
+  it('D=3 : un emplacement hors de la rangée, lu — pas une lacune, aucune arme en main', () => {
+    const r = equippedWeapons(docWithSelector(3), 512, 60)
+    expect(r?.weapons.every((w) => !w.inHand)).toBe(true)
+    expect(r?.holstered).toBe(true)
+    expect(r?.drawnUnread).toBe(false)
   })
 
   it('sélecteur non lu : ordre d’emplacement, aucun marquage, et ce n’est PAS « rangées »', () => {

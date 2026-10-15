@@ -21,10 +21,12 @@ package grammar
 //
 // # LA PREUVE D UN RECORD D IMAGE-CLE
 //
-// Un record est FERME quand la traversee de son etat complet finit exactement sur l ancre
-// suivante : la seule preuve qu on ait que toutes ses largeurs sont justes (`keyframe_closure.go`).
-// Sinon il est NON PROUVE — un composant sans lecteur l arrete, la traversee manque la frontiere,
-// ou c est le dernier record du paquet, qui n a pas de frontiere. Un paquet d image-cle ne porte
+// Un record est FERME quand la traversee de son etat complet, puis les entrees que la table porte
+// entre lui et l ancre suivante, finissent exactement sur cette ancre ([fermeSurLAncreSuivante]) : la
+// seule preuve qu on ait que toutes ses largeurs sont justes (`keyframe_closure.go`). Le dernier record
+// du paquet n a pas d ancre suivante : la fin de la table en tient lieu ([fermeSurLaFinDeTable]).
+// Sinon il est NON PROUVE — un composant sans lecteur l arrete, ou la traversee manque la
+// frontiere. Un paquet d image-cle ne porte
 // pas de verdict ([lecture.VerdictNonRendu]) : chacun de ses records porte sa preuve.
 //
 // # UN CORPS N EST PARCOURU QUE S IL EST LU
@@ -181,9 +183,9 @@ func (m *marcheDesImagesCles) parcourirLeCorps(r *lecture.Record, b keyframeBorn
 	for k := range tr.Comps {
 		p.Comps = append(p.Comps, composantLu(&tr, k, m.interets.contient(b.TI, tr.Comps[k].Index)))
 	}
-	r.Preuve, r.Desync, r.Masque = preuveDeLEtatComplet(tr, b), int16(tr.DesyncAt), tr.Mask //nolint:gosec // index de composant < 64
-	r.Bits = uint32(tr.EndBit - b.Bit)                                                      //nolint:gosec // positions d un payload
-	r.Comps[1] = uint32(len(p.Comps))                                                       //nolint:gosec // l arene d un paquet tient sur 32 bits
+	r.Preuve, r.Desync, r.Masque = preuveDeLEtatComplet(p.Payload, tr, b, m.reg, m.ctx), int16(tr.DesyncAt), tr.Mask //nolint:gosec // index de composant < 64
+	r.Bits = uint32(tr.EndBit - b.Bit)                                                                               //nolint:gosec // positions d un payload
+	r.Comps[1] = uint32(len(p.Comps))                                                                                //nolint:gosec // l arene d un paquet tient sur 32 bits
 }
 
 // liaisonDeLAncre rend la provenance de l identite d un record d image-cle : son ancre atteinte de
@@ -197,9 +199,11 @@ func liaisonDeLAncre(r KeyframeRec) lecture.Liaison {
 }
 
 // preuveDeLEtatComplet rend la preuve d un record d image-cle : ferme quand la traversee de son
-// etat complet finit exactement sur l ancre suivante, non prouve sinon.
-func preuveDeLEtatComplet(tr EntityTrace, b keyframeBorne) lecture.Preuve {
-	if b.Want >= 0 && tr.DesyncAt < 0 && tr.EndBit == b.Want {
+// etat complet, puis les entrees que la table porte entre lui et l ancre suivante, finissent
+// exactement sur cette ancre ([fermeSurLAncreSuivante]) — ou, pour le dernier record du paquet, sur
+// la fin de la table ([fermeSurLaFinDeTable]) —, non prouve sinon.
+func preuveDeLEtatComplet(pay []byte, tr EntityTrace, b keyframeBorne, reg *Registry, ctx ContexteDeLecture) lecture.Preuve {
+	if fermeSurLAncreSuivante(pay, tr, b, reg, ctx) || fermeSurLaFinDeTable(pay, tr, b, reg, ctx) {
 		return lecture.PreuveFerme
 	}
 	return lecture.PreuveNonProuve

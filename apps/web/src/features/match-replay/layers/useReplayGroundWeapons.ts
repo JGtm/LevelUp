@@ -51,6 +51,7 @@ import {
   type GroundWeaponIcon,
   type GroundWeaponView,
 } from './groundWeaponsLayer'
+import { visibleGroundWeapons } from '../model/startingWeaponsOnGround'
 import { groundWeaponAmmoAt, groundWeaponAmmoLine } from '../model/groundWeaponAmmo'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { XY } from '../../../lib/replay/replayLogic'
@@ -102,6 +103,8 @@ export interface GroundWeaponsInput {
    * drapeau est vrai — jamais deviné spécial — et reste visible quand il est faux.
    */
   specialOnly: boolean
+  /** Réaffiche les armes de départ lâchées (`model/startingWeaponsOnGround.ts`) ; faux = masquées. */
+  includeStarting: boolean
   /**
    * Les deux encres : le CORPS à l'encre du marquage, le LISERÉ à l'encre NEUTRE.
    *
@@ -126,7 +129,7 @@ export interface GroundWeaponsInput {
 }
 
 export interface GroundWeapons {
-  /** Le film porte-t-il des armes au sol (APRÈS filtre) ? Une bascule qui ne commande rien ne
+  /** Le film porte-t-il des armes au sol (après le filtre « spéciales », AVANT celui des armes de départ) ? Une bascule qui ne commande rien ne
    *  s'affiche pas. */
   available: boolean
   /**
@@ -189,6 +192,7 @@ export function useReplayGroundWeapons({
   view,
   enabled,
   specialOnly,
+  includeStarting,
   ink,
   redraw,
   frameRef,
@@ -211,12 +215,15 @@ export function useReplayGroundWeapons({
 
   // LE FILTRE RETIRE LES OBJETS AVANT TOUT LE RESTE (tracé, survol, cuisson) : une arme
   // écartée ici se comporte exactement comme si le film ne la publiait pas.
-  const items = useMemo<readonly ReplayGroundWeapon[]>(
-    () =>
-      specialOnly
-        ? allGroundWeapons.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels)))
-        : allGroundWeapons,
+  // DISPONIBILITÉ AVANT LE FILTRE DES ARMES DE DÉPART : un film dont tout le sol est fait d'armes
+  // de départ garde son calque et l'option qui permet justement de les réafficher.
+  const candidates = useMemo<readonly ReplayGroundWeapon[]>(
+    () => (specialOnly ? allGroundWeapons.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels))) : allGroundWeapons),
     [allGroundWeapons, specialOnly, labels],
+  )
+  const items = useMemo(
+    () => visibleGroundWeapons(candidates, doc.loadouts, includeStarting),
+    [candidates, doc.loadouts, includeStarting],
   )
 
   // UNE TABLE PAR RÉFÉRENCE, pas un état : la remplir ne doit pas re-rendre la page (la boucle
@@ -308,5 +315,5 @@ export function useReplayGroundWeapons({
     setHover((prev) => (prev === null ? prev : null))
   }, [])
 
-  return { id: 'armes-au-sol', available: items.length > 0, paint, hover, onPointerMove, onPointerLeave }
+  return { id: 'armes-au-sol', available: candidates.length > 0, paint, hover, onPointerMove, onPointerLeave }
 }

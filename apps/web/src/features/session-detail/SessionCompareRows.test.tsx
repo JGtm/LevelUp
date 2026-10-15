@@ -190,7 +190,7 @@ describe('SessionDetailPage — rangees partagees (D16), une par carte', () => {
     for (const cell of pair) {
       expect(placeholder(cell)).toBeNull()
       expect(cell.querySelector('[data-session-coordination]')).not.toBeNull()
-      expect(cell.textContent).toContain('Appui reçu')
+      expect(cell.textContent).toContain('Frags appuyés par un coéquipier')
       expect(cell.textContent).not.toContain('Riposte')
     }
     // Chaque colonne parle de SA session : la couverture differe des deux cotes.

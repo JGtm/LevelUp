@@ -7,9 +7,10 @@
  * hachure reste réservée à « sans film »). Chaque segment porte son « compte · part » : le nôtre
  * collé à gauche (« 12 · 60 % »), celui de l'adversaire collé à droite (« 40 % · 8 »). Une
  * valeur qui ne tient pas dans son segment avec 6 px de marge de chaque côté (mesure au pixel,
- * `segmentLabelFit`) part sur la ligne de repli AU-DESSUS de la barre, pastille d'équipe devant,
- * du côté de son camp (S3 : jamais tronquée, jamais seulement en infobulle). Le trait 50 % en
- * pointillé `warning` (S5). Axe 0-100 % sous les pistes.
+ * `segmentLabelFit`) s'écrit À CÔTÉ de la barre, sur la même ligne et centrée sur elle, du côté de
+ * son camp (`BarSides` : pastille d'équipe devant ; la place est réservée de chaque côté, les
+ * barres d'une carte ont toutes la même largeur ; jamais au-dessus, jamais seulement en infobulle,
+ * S3). Le trait 50 % en pointillé `warning` (S5). Axe 0-100 % sous les pistes.
  *
  * Une ligne peut porter, sous sa barre, un contenu de plus (`below`) : « Frags obtenus avec
  * les ressources » y pose la barre fine de l'exposition (`ThinCampTrack`) et sa ligne de
@@ -18,6 +19,8 @@
  */
 import { useRef, type ReactNode } from 'react'
 
+import { BarWithSides, SideValue, sideSlotPx } from '@/components/charts/BarSides'
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -61,24 +64,38 @@ export interface PisteCampsFormProps {
   /** Largeur de la colonne des noms (px) ; maquette : 118. */
   labelWidth?: number
   /**
-   * Parts seules (vue compacte du tiroir de comparaison de Sessions) : chaque segment et le repli
-   * n'écrivent que la part ; le compte reste dans l'infobulle. Défaut : « compte · part ».
+   * Parts seules (vue compacte du tiroir de comparaison de Sessions) : chaque segment
+   * n'écrit que la part ; le compte reste dans l'infobulle. Défaut : « compte · part ».
    */
   pctOnly?: boolean
 }
 
 const fitKey = (row: string, side: 'us' | 'them') => `${row}|${side}`
 
+/** Ce que chaque camp écrit : « compte · part » (nous) / « part · compte » (adversaire), la part seule en compact. */
+function campTexts(row: PisteCampsRow, pctFmt: (v: number) => string, pctOnly: boolean): { us: string; them: string } {
+  const n = row.us + row.them
+  const share = n > 0 ? (row.us / n) * 100 : 0
+  const usPct = pctFmt(share)
+  const themPct = pctFmt(100 - share)
+  return pctOnly ? { us: usPct, them: themPct } : { us: `${row.us} · ${usPct}`, them: `${themPct} · ${row.them}` }
+}
+
 export function PisteCampsForm({ rows, pctFmt, axisMaxLabel, labelWidth = 118, pctOnly = false }: PisteCampsFormProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, rows)
   const columns = pisteColumns(labelWidth)
+  // La place des valeurs qui débordent, réservée de chaque côté d'après les textes possibles.
+  const inset = {
+    left: sideSlotPx(rows.map((r) => campTexts(r, pctFmt, pctOnly).us)),
+    right: sideSlotPx(rows.map((r) => campTexts(r, pctFmt, pctOnly).them)),
+  }
   return (
     <div ref={ref} className="flex flex-col gap-3.5">
       {rows.map((row) => (
-        <PisteRow key={row.key} row={row} columns={columns} hidden={hidden} pctFmt={pctFmt} pctOnly={pctOnly} />
+        <PisteRow key={row.key} row={row} columns={columns} hidden={hidden} pctFmt={pctFmt} pctOnly={pctOnly} inset={inset} />
       ))}
-      <TrackAxis columns={columns} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? axisMaxLabel : String(v) }))} />
+      <TrackAxis columns={columns} inset={inset} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? axisMaxLabel : String(v) }))} />
     </div>
   )
 }
@@ -91,11 +108,23 @@ export function PisteCampsForm({ rows, pctFmt, axisMaxLabel, labelWidth = 118, p
  * droite : centrée, sa moitié dépassait le bord de la piste, qui est aussi le bord intérieur de la
  * carte (« 100 % » et « +50 % » mordaient sur le cadre).
  */
-export function TrackAxis({ columns, ticks }: { columns: string; ticks: { at: number; label: string }[] }) {
+export function TrackAxis({
+  columns,
+  ticks,
+  inset,
+}: {
+  columns: string
+  ticks: { at: number; label: string }[]
+  /** Les gouttières réservées aux valeurs qui débordent (`BarSides`) : l'axe mesure la barre seule. */
+  inset?: { left: number; right: number }
+}) {
   return (
     <div className="-mt-1 grid gap-3" style={{ gridTemplateColumns: columns }} aria-hidden>
       <span />
-      <div className="relative h-3.5 text-[10.5px] tabular-nums text-muted-foreground">
+      <div
+        className="relative h-3.5 text-[10.5px] tabular-nums text-muted-foreground"
+        style={inset ? { marginLeft: inset.left, marginRight: inset.right } : undefined}
+      >
         {ticks.map((tick) => (
           <span
             key={tick.at}
@@ -116,18 +145,20 @@ function PisteRow({
   hidden,
   pctFmt,
   pctOnly,
+  inset,
 }: {
   row: PisteCampsRow
   columns: string
   hidden: ReadonlySet<string>
   pctFmt: (v: number) => string
   pctOnly: boolean
+  inset: { left: number; right: number }
 }) {
   const n = row.us + row.them
   const share = n > 0 ? (row.us / n) * 100 : 0
   const usPct = pctFmt(share)
   const themPct = pctFmt(100 - share)
-  // Un segment vide n'a pas de place : sa valeur part au repli, comme celle qui ne tient pas.
+  // Un segment vide n'a pas de place, comme celui où la valeur ne tient pas : sa valeur s'écrit à côté de la barre.
   const usHidden = row.us <= 0 || hidden.has(fitKey(row.key, 'us'))
   const themHidden = row.them <= 0 || hidden.has(fitKey(row.key, 'them'))
   return (
@@ -148,7 +179,7 @@ function PisteRow({
         {row.sublabel && <small className="block text-[11px] text-muted-foreground">{row.sublabel}</small>}
       </div>
       {row.pending != null ? (
-        <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1" style={{ marginLeft: inset.left, marginRight: inset.right }}>
           <div
             className="flex h-[22px] items-center rounded-[3px] bg-muted px-2 text-[11.5px] text-muted-foreground"
             data-testid={`piste-camps-pending-${row.key}`}
@@ -159,23 +190,15 @@ function PisteRow({
         </div>
       ) : (
       <div className="flex min-w-0 flex-col gap-1">
-        {(usHidden || themHidden) && (
-          <div
-            className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground"
-            data-testid={`piste-camps-repli-${row.key}`}
-          >
-            <span>{usHidden && <RepliValue color={ALLY} count={pctOnly ? null : row.us} pct={usPct} />}</span>
-            <span>{themHidden && <RepliValue color={ENEMY} count={pctOnly ? null : row.them} pct={themPct} />}</span>
-          </div>
-        )}
         <CampTrack
           row={row}
           share={share}
           labels={{ us: usPct, them: themPct, pctOnly }}
           usHidden={usHidden}
           themHidden={themHidden}
+          inset={inset}
         />
-        {row.below}
+        <div style={{ marginLeft: inset.left, marginRight: inset.right }}>{row.below}</div>
       </div>
       )}
     </div>
@@ -189,6 +212,7 @@ function CampTrack({
   labels,
   usHidden,
   themHidden,
+  inset,
 }: {
   row: PisteCampsRow
   share: number
@@ -196,9 +220,30 @@ function CampTrack({
   labels: { us: string; them: string; pctOnly: boolean }
   usHidden: boolean
   themHidden: boolean
+  inset: { left: number; right: number }
 }) {
   const { us: usPct, them: themPct, pctOnly } = labels
+  const usNode = pctOnly ? (
+    <b className="font-extrabold">{usPct}</b>
+  ) : (
+    <>
+      <b className="font-extrabold">{row.us}</b> · {usPct}
+    </>
+  )
+  const themNode = pctOnly ? (
+    <b className="font-extrabold">{themPct}</b>
+  ) : (
+    <>
+      {themPct} · <b className="font-extrabold">{row.them}</b>
+    </>
+  )
   return (
+    <BarWithSides
+      leftPx={inset.left}
+      rightPx={inset.right}
+      left={usHidden && <SideValue color={ALLY} testId={`piste-camps-side-us-${row.key}`}>{usNode}</SideValue>}
+      right={themHidden && <SideValue color={ENEMY} testId={`piste-camps-side-them-${row.key}`}>{themNode}</SideValue>}
+    >
     <div className="relative h-[22px] rounded-[3px] bg-muted" role="img" aria-label={`${row.label} : ${row.us} · ${usPct} / ${themPct} · ${row.them}`}>
       {row.us > 0 && (
         <Segment
@@ -211,13 +256,7 @@ function CampTrack({
           align="start"
           tip={row.usTip}
         >
-          {pctOnly ? (
-            <b className="font-extrabold">{usPct}</b>
-          ) : (
-            <>
-              <b className="font-extrabold">{row.us}</b> · {usPct}
-            </>
-          )}
+          {usNode}
         </Segment>
       )}
       {row.them > 0 && (
@@ -234,17 +273,12 @@ function CampTrack({
           align="end"
           tip={row.themTip}
         >
-          {pctOnly ? (
-            <b className="font-extrabold">{themPct}</b>
-          ) : (
-            <>
-              {themPct} · <b className="font-extrabold">{row.them}</b>
-            </>
-          )}
+          {themNode}
         </Segment>
       )}
       <ParityMark />
     </div>
+    </BarWithSides>
   )
 }
 
@@ -314,23 +348,6 @@ function ThinSegment({
   )
 }
 
-/** La valeur repliée au-dessus de la barre ; `count` nul = la part seule (vue compacte). */
-function RepliValue({ color, count, pct }: { color: string; count: number | null; pct: string }) {
-  return (
-    <span className="inline-flex items-center">
-      <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
-      {count == null ? (
-        <b className="text-[13px] font-bold text-foreground">{pct}</b>
-      ) : (
-        <>
-          <b className="text-[13px] font-bold text-foreground">{count}</b>
-          <span className="whitespace-pre">{` · ${pct}`}</span>
-        </>
-      )}
-    </span>
-  )
-}
-
 function Segment({
   left,
   width,
@@ -365,24 +382,9 @@ function Segment({
       }}
       data-fit-key={key}
     >
-      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
-        <div
-          className={`flex h-full w-full cursor-help items-center overflow-hidden ${
-            align === 'start' ? 'justify-start pl-[7px]' : 'justify-end pr-[7px]'
-          }`}
-        >
-          {/* `text-white` : écriture posée SUR l'aplat d'équipe, question de contraste dans le
-              segment et non couleur sémantique (même usage que « Rapport de force par famille
-              de mode » et la Répartition des frags). */}
-          <span
-            data-fit-label
-            className="whitespace-nowrap text-xs font-medium tabular-nums leading-none text-white"
-            style={{ visibility: hidden ? 'hidden' : 'visible' }}
-          >
-            {children}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel tip={<TipText text={tip} />} align={align} hidden={hidden}>
+        {children}
+      </SegmentLabel>
     </div>
   )
 }
