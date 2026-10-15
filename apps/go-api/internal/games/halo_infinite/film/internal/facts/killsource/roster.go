@@ -108,6 +108,11 @@ type roster struct {
 	table FilmTablePinning
 	// nomsInventes : noms `?N` fabriques (`repli_roster_nom_invente`, lot J8.7).
 	nomsInventes int
+	// releves : les indices de bot repris par un humain apres la derniere declaration de leurs bots
+	// (roster_releve.go). `tsBase` : l instant 0 de killsource sur l horloge du film, pose par
+	// l orchestrateur apres [buildRoster], qui sert a dater ces lectures.
+	releves map[int]releve
+	tsBase  uint64
 }
 
 // BotSuffix : marqueur ajoute au nom d un bot. Il doit rester visible : un consommateur ne doit
@@ -150,9 +155,11 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexPar
 	r.pinMotifSeats(m)
 	// Les indices libres qui ne recoivent aucun nom (trous entre le dernier humain et un slot
 	// de bot eleve) recoivent un nom de remplissage : le probleme d affectation doit avoir AU
-	// MOINS autant de noms libres que d indices libres, sinon le hongrois n est pas defini.
-	r.nomsInventes = max(0, r.nPlay-len(r.names))
-	for len(r.names) < r.nPlay {
+	// MOINS autant de noms libres que d indices libres, sinon le hongrois n est pas defini. Un
+	// successeur de bot (roster_releve.go) tient un nom sans tenir d indice a lui : il en faut un de plus.
+	cible := r.nPlay + len(r.releves)
+	r.nomsInventes = max(0, cible-len(r.names))
+	for len(r.names) < cible {
 		r.names = append(r.names, fmt.Sprintf("?%d", len(r.names)))
 	}
 	return r
@@ -272,9 +279,11 @@ func (r *roster) pinUnSiege(idx int, nom string, posDuNom map[string]int, prises
 // c est alors la seule lecture directe qui reste, et la bijection inferee n y perd rien puisque
 // l inference ne travaille plus que sur les indices encore libres.
 //
-// LES QUATRE ISSUES SONT COMPTEES, et aucune n arbitre en silence : accord (le nom lu est celui
-// deja epingle), contradiction (un AUTRE nom — l epinglage en place gagne, il vient de la
-// lecture la plus eprouvee), doublon (le nom est deja epingle a un autre indice), epinglage.
+// LES CINQ ISSUES SONT COMPTEES, et aucune n arbitre en silence : accord (le nom lu est celui
+// deja epingle), releve (l indice est celui d un bot dont toutes les declarations sont closes : le
+// nom lu est son successeur, roster_releve.go), contradiction (un AUTRE nom — l epinglage en place
+// gagne, il vient de la lecture la plus eprouvee), doublon (le nom est deja epingle a un autre
+// indice), epinglage.
 func (r *roster) pinMotifSeats(m indexParMotif) {
 	r.table.MotifReadings, r.table.MotifDisagreements = m.lectures, m.desaccords
 	r.table.MotifAbsent, r.table.MotifTueursEcartes = m.absents, m.tueursEcartes
@@ -305,6 +314,9 @@ func (r *roster) pinUnMotif(idx int, nom string, posDuNom map[string]int, prises
 	if pos, deja := r.pin[idx]; deja {
 		if pos >= 0 && pos < len(r.names) && r.names[pos] == nom {
 			r.table.MotifAgree++
+			return
+		}
+		if r.relever(idx, nom, posDuNom, prises) {
 			return
 		}
 		r.table.MotifContradict++
@@ -359,6 +371,9 @@ func (r *roster) freeSlots() (free, freeNames []int) {
 	used := map[int]bool{}
 	for _, p := range r.pin {
 		used[p] = true
+	}
+	for _, rl := range r.releves {
+		used[rl.pos] = true // un successeur tient deja un indice : il n est pas libre
 	}
 	for i := 0; i < r.nPlay; i++ {
 		if _, ok := r.pin[i]; !ok {

@@ -215,6 +215,8 @@ var canonicalOrder = []string{
 	"shared_kill_events_from_pairs_v1",  // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
 	// steps_shared_kill_events_sans_killfeed.go trie apres steps_shared_kill_events_from_pairs.go.
 	"shared_registry_killsource_sans_killfeed_rev_v1", // shared (match_registry : revision sous laquelle le film a ete lu sans kill)
+	// steps_shared_kv_drop_legacy_indexes.go trie entre steps_shared_kill_events_sans_killfeed.go et steps_shared_match_lives.go.
+	"shared_killer_victim_pairs_drop_legacy_indexes_v1", // shared (index ART herites de killer_victim_pairs retires : la table se reecrit par DELETE + INSERT)
 	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
 	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_lives_v1",             // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)

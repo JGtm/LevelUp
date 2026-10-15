@@ -113,13 +113,15 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistWeaponAccuracy(ctx, tx, s.WeaponAccuracy); err != nil {
 		return err
 	}
+	// LES EVENEMENTS AVANT LES COUPLES : la fusion credit/film de `persistKillerVictim` lit les
+	// preuves de l API (evenements death) dans cette transaction (`LoadMergeEvidence`).
+	if err := persistHighlightEvents(ctx, tx, s.HighlightEvents); err != nil {
+		return err
+	}
 	if err := persistKillerVictim(ctx, tx, s.KillerVictim); err != nil {
 		return err
 	}
 	if err := persistKillPositionsPass(ctx, tx, s.KillPositions); err != nil {
-		return err
-	}
-	if err := persistHighlightEvents(ctx, tx, s.HighlightEvents); err != nil {
 		return err
 	}
 	if err := persistXUIDAliases(ctx, tx, s.XUIDAliases); err != nil {

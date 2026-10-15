@@ -34,6 +34,7 @@ func coupleTemoin() (*killFeed, *roster) {
 		names:   []string{"C", "D", "E", "Bob" + BotSuffix},
 		pin:     map[int]int{1: 0, 2: 1, 3: 2, 9: 3},
 		seatPin: map[int]bool{1: true, 2: true, 3: true},
+		bots:    botsDuFilmEntier(9),
 		nPlay:   10,
 	}
 	return kf, r

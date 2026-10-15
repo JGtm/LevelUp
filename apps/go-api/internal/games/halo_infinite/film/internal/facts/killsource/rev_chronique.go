@@ -313,3 +313,27 @@ package killsource
 // victimes, sources et assistances identiques, la sante et la calibration changent (5 morts passent du
 // balayage a la marche sequentielle, enregistrements lus par les deux voies 154 -> 159). Les lignes de
 // `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
+//
+// ENTREE `killsource-2026-10-15.2` (2026-10-15, lot « ks-a », doublons de morts) : LA SORTIE CHANGE.
+// (1) `grammar.Rev` monte a `grammar-2026-10-15.3` : le lecteur des temps forts n emet plus un
+// evenement deux fois sous deux xuid (fil des kills de killsource, `FilDesKills`) ; la fusion
+// « tueur divergent » de 34db6b33@40500 en venait. (2) La fusion credit/film (`persist`,
+// `MergeCreditAndFilm`) ne declare plus « autre mort » une ligne de film qu une mort de credit
+// du meme instant contredit que si l API compte autant de kills que de morts a l instant (11
+// morts fantomes sur 12 groupes avant : un joueur servi 10 fois pour 7 morts officielles) ; sinon
+// l instant est refuse et compte. (3) Controle : les morts servies de chaque joueur sont comparees
+// a `match_participants.deaths` ; l exces se compte et se journalise (WARN), sans rien retirer. Les lignes de kill
+// deja en base deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
+//
+// ENTREE `killsource-2026-10-15.3` (2026-10-15, lot « ks-d », morts servies deux fois) : LA SORTIE
+// CHANGE. (1) Un indice epingle par BOT_METADATA n est plus un bot apres la fin de sa derniere
+// declaration ; la lecture du motif de xuid nomme alors son successeur (`roster_releve.go`, compteur
+// `MotifReleve`) : les kills du successeur ne sortent plus « tueur-bot » au nom du bot parti
+// (0762ae7c), et aucune ligne de bot ne se publie apres le depart du dernier bot. Parc local (2 676
+// films) : 49 films changent, 105 lignes de bot remplacees a 5 ms pres par celles du successeur,
+// 703 lignes gagnees. (2) Une fiche de kill va au kill de son tueur dont la mort de la victime est
+// voisine, puis au plus proche en temps (`feed_couples_fiches.go`, 23aff586). (3) Hors de la couche : l appariement credit
+// (`analysis.ComputeKillerVictimPairs`) decide par ecart croissant sans paire tueur = victime, et la
+// fusion (`persist`) adosse toute mort d humain servie a un evenement death de l API. Les lignes de
+// `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6),
+// precede du recalcul des couples (`repair-highlight-phantoms --couples`) et de la base credit.

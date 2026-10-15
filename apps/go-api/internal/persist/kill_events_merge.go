@@ -105,22 +105,49 @@ const (
 	// C est la seule des trois populations d orphelins dans ce cas : elle se surveille.
 	metricFusionOrphelinsHvH = "killsource_orphelins_film_humain_contre_humain"
 	metricFusionAmbigus      = "killsource_fusion_instants_ambigus"
+	// metricFusionAuDelaOfficielResiduel : joueurs servis au-dela de leurs morts officielles apres
+	// fusion (controle de qualite : rien n est retire).
+	metricFusionAuDelaOfficielResiduel = "killsource_fusion_joueurs_au_dela_officiel_residuel"
+	// metricFusionOrphelinsSansMortAPI : lignes de film a victime humaine refusees faute d evenement
+	// `death` libre de l API (kill_events_merge_adossement.go).
+	metricFusionOrphelinsSansMortAPI = "killsource_fusion_orphelins_sans_mort_api"
+	// metricFusionCreditSansMortAPI : morts de credit sans evenement `death` dans la fenetre (attendu 0).
+	metricFusionCreditSansMortAPI = "killsource_fusion_credit_sans_mort_api"
 )
 
-// PublishMergeStats publie les observations d une fusion et journalise les trois populations qui
-// ne vont pas de soi.
+// PublishMergeStats publie les observations d une fusion et journalise, avec le `match_id`, chaque
+// population qui ne va pas de soi : instants ambigus, lignes de film refusees faute d evenement
+// death, morts de credit sans evenement, joueurs au-dela de l officiel, morts a la meme
+// milliseconde, orphelins humain contre humain.
 //
-// LE COMPTEUR SEUL NE SUFFIT PAS pour les instants ambigus : il dit COMBIEN, jamais OU. Le log
-// porte le `match_id`, qui est la seule quantite avec laquelle on peut aller voir.
+// LE COMPTEUR SEUL NE SUFFIT PAS : il dit COMBIEN, jamais OU. Le log porte le `match_id`, qui est
+// la seule quantite avec laquelle on peut aller voir.
 func PublishMergeStats(ctx context.Context, matchID string, st MergeStats) {
 	observability.AddInt(metricFusionEnrichies, int64(st.Enriched))
 	observability.AddInt(metricFusionOrphelins, int64(st.Orphans))
 	observability.AddInt(metricFusionOrphelinsHvH, int64(st.OrphansHumanVsHuman))
 	observability.AddInt(metricFusionAmbigus, int64(st.AmbiguousInstants))
+	observability.AddInt(metricFusionAuDelaOfficielResiduel, int64(len(st.OverOfficial)))
+	observability.AddInt(metricFusionOrphelinsSansMortAPI, int64(st.OrphansSansMortAPI))
+	observability.AddInt(metricFusionCreditSansMortAPI, int64(st.CreditSansMortAPI))
 	if st.AmbiguousInstants > 0 {
-		slog.WarnContext(ctx, "killsource: instants portant plusieurs morts — enrichissement "+
-			"refuse sur ces instants (aucune mort perdue, aucune arme attribuee au hasard)",
+		slog.WarnContext(ctx, "killsource: instants dont une ligne de film n a pu etre tranchee — "+
+			"enrichissement refuse sur ces instants (aucune mort perdue, aucune arme attribuee au hasard)",
 			"match_id", matchID, "instants_ambigus", st.AmbiguousInstants)
+	}
+	if st.OrphansSansMortAPI > 0 {
+		slog.InfoContext(ctx, "killsource: lignes de film refusees — leur victime humaine n a plus d evenement "+
+			"death libre dans l API (mort deja servie)", "match_id", matchID, "refusees", st.OrphansSansMortAPI)
+	}
+	if st.CreditSansMortAPI > 0 {
+		slog.WarnContext(ctx, "killsource: morts de credit sans evenement death de l API dans la fenetre — "+
+			"conservees", "match_id", matchID, "morts", st.CreditSansMortAPI)
+	}
+	for _, j := range st.OverOfficial {
+		slog.WarnContext(ctx, "killsource: joueur servi au-dela de ses morts officielles — "+
+			"controle de qualite, aucune ligne retiree (retirer sans preuve reviendrait a choisir "+
+			"quelle mort est fausse)",
+			"match_id", matchID, "victim_xuid", j.XUID, "officielles", j.Official, "servies", j.Served)
 	}
 	if st.OrphansSharedInstant > 0 {
 		slog.WarnContext(ctx, "killsource: deux morts a la meme milliseconde — la ligne de film "+
@@ -174,6 +201,18 @@ type MergeStats struct {
 	// mort de credit et une mort de film a la meme milliseconde, victimes differentes (en-tete du
 	// fichier). Ce compteur n a jamais vu ce cas-la : il tombait sur le controle d identite avant.
 	AmbiguousInstants int
+	// OverOfficial : joueurs servis au-dela de leurs morts officielles (`match_participants.deaths`)
+	// apres fusion. Controle de qualite compte et journalise ; la fusion ne retire AUCUNE ligne pour
+	// les ramener a leur compte. Le plafond d un joueur est le plus grand de ses morts officielles et
+	// de ses evenements `death` (cf. [joueursAuDessusDesMortsOfficielles]).
+	OverOfficial []OverOfficialPlayer
+	// OrphansSansMortAPI : lignes de film ORPHELINES a victime humaine refusees parce qu aucun evenement
+	// `death` libre de l API ne les adosse (kill_events_merge_adossement.go) : leur mort est deja
+	// servie par une autre ligne, ou l API ne la porte pas. Elles ne sont pas servies.
+	OrphansSansMortAPI int
+	// CreditSansMortAPI : morts de credit a victime humaine sans evenement `death` dans la fenetre.
+	// Conservees (le credit fait foi) ; attendu zero, le credit etant construit sur ces evenements.
+	CreditSansMortAPI int
 }
 
 // MergeCreditAndFilm : la base credit ENRICHIE de ce que le film a mesure.
@@ -193,6 +232,10 @@ type MergeStats struct {
 //     mort de credit, ou quand la victime prouve qu elle est une AUTRE mort que celles de son
 //     instant ; elle est REFUSEE — ni enrichissante ni ajoutee — quand l appariement n a pas su
 //     trancher, sans quoi une mort deja en base serait comptee deux fois.
+//  5. avec les preuves lues, une orpheline dont la victime est humaine (un xuid) n est AJOUTEE que si
+//     un evenement `death` de l API, libre, l adosse — les morts de credit prennent les leurs
+//     d abord, un evenement ne sert qu une ligne ; sinon elle est refusee et comptee
+//     (kill_events_merge_adossement.go).
 //
 // ─── LE SORT DES ORPHELINS : ILS SONT CONSERVES, ET C EST UNE MESURE QUI LE DECIDE ─────────
 //
@@ -227,7 +270,7 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 			base.MatchID, film.MatchID)
 	}
 
-	ap := apparier(base.Deaths, film.Deaths)
+	ap := apparier(base.Deaths, film.Deaths, base.Evidence)
 
 	out := KillSourceBatch{
 		MatchID:         choisirNonVide(base.MatchID, film.MatchID),
@@ -253,26 +296,50 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 	}
 	st.AmbiguousInstants = ap.instantsAmbigus
 
-	// LES ORPHELINS, dans l ordre du film. Une ligne de film REFUSEE (instant ambigu) n en est pas
-	// une : la mort est peut-etre deja dans la base, l ajouter la compterait deux fois.
-	for i := range film.Deaths {
-		v := ap.verdict[i]
+	// L ADOSSEMENT : chaque mort d humain servie prend UN evenement `death` de l API, les morts de
+	// credit d abord (kill_events_merge_adossement.go). Sans preuve lue, il ne s applique pas.
+	var ad *adossement
+	if base.Evidence.Known {
+		ad = nouvelAdossement(base.Evidence)
+		st.CreditSansMortAPI = ad.adosserLeCredit(out.Deaths)
+	}
+	ajouterLesOrphelins(&out, &st, film.Deaths, ap.verdict, ad)
+	// LE CONTROLE DES MORTS OFFICIELLES : compte, ne retire rien. Voir
+	// [joueursAuDessusDesMortsOfficielles].
+	if base.Evidence.Known {
+		st.OverOfficial = joueursAuDessusDesMortsOfficielles(out.Deaths, base.Evidence)
+	}
+	return out, st, nil
+}
+
+// ajouterLesOrphelins ajoute a `out`, dans l ordre du film, les lignes de film que l appariement
+// laisse orphelines et que l adossement (`ad`, nil sans preuve) laisse servir.
+//
+// Une ligne de film REFUSEE (instant ambigu) n est pas une orpheline : la mort est peut-etre deja
+// dans la base, l ajouter la compterait deux fois. Une ligne APPARIEE est deja dans la sortie,
+// enrichie. Une orpheline a victime humaine sans evenement `death` libre est refusee et comptee
+// ([MergeStats.OrphansSansMortAPI]) : sa mort est deja servie, ou l API ne la porte pas.
+func ajouterLesOrphelins(out *KillSourceBatch, st *MergeStats, film []KillEventInsert,
+	verdict []verdictFilm, ad *adossement,
+) {
+	for i := range film {
+		v := verdict[i]
 		if v == filmApparie || v == filmRefuse {
-			// APPARIEE : la mort est deja dans la sortie, enrichie — l ajouter la compterait
-			// deux fois. REFUSEE : l appariement n a pas su trancher, et la mort est peut-etre
-			// dans la base sous l autre ligne de l instant — meme risque, meme abstention.
 			continue
 		}
-		out.Deaths = append(out.Deaths, film.Deaths[i])
+		if ad != nil && !ad.orphelineServie(film[i]) {
+			st.OrphansSansMortAPI++
+			continue
+		}
+		out.Deaths = append(out.Deaths, film[i])
 		st.Orphans++
-		if film.Deaths[i].VictimXUID != "" && film.Deaths[i].FeedKillerXUID != "" {
+		if film[i].VictimXUID != "" && film[i].FeedKillerXUID != "" {
 			st.OrphansHumanVsHuman++
 		}
 		if v == filmOrphelinInstantPartage {
 			st.OrphansSharedInstant++
 		}
 	}
-	return out, st, nil
 }
 
 // verifierConcordance : LE CONTROLE D IDENTITE D UNE PAIRE DEJA FORMEE. Quand les deux cotes

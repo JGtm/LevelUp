@@ -352,6 +352,9 @@ func (c *KillSourceCollector) write(ctx context.Context, film persist.KillSource
 	if err != nil {
 		return persist.KillSourceBatch{}, err
 	}
+	if base.Evidence, err = persist.LoadMergeEvidence(ctx, db, film.MatchID); err != nil {
+		return persist.KillSourceBatch{}, err
+	}
 	batch, st, err := persist.MergeCreditAndFilm(base, film)
 	if err != nil {
 		return persist.KillSourceBatch{}, err

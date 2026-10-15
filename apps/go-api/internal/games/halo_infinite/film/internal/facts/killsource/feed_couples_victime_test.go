@@ -94,7 +94,8 @@ func TestLeCoupleEcritNeVolePasLeRecordDuVoisin(t *testing.T) {
 	kf, r := coupleTemoinDeuxVictimes()
 	recs := []killEventRec{coupleRec(2000, 1, 2), coupleRec(2100, 1, 3)}
 	res := &resolveurDeCouples{kf: kf, recs: recs, r: r,
-		pris: make([]bool, len(recs)), prisMort: make([]bool, len(kf.events))}
+		pris: make([]bool, len(recs)), prisMort: make([]bool, len(kf.events)),
+		aSaFiche: make([]bool, len(kf.events))}
 
 	res.consommerLesCouplesDuMemeInstant()
 

@@ -715,6 +715,84 @@ go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups
   copy: 1 264 MiB -> 351 MiB.
 - Delete the backups by hand once the app has been checked.
 
+#### Repairing doubled highlight events (`repair-highlight-phantoms`)
+
+Before `grammar-2026-10-15.x`, the highlight-events reader could decode one 60-byte block TWICE under
+two XUIDs (a false XUID pattern inside a player's record, thousands of bits before the real one).
+Both rows sit in `highlight_events` (86 matches on the 2026-10-15 local copy, one player touched),
+pair up wrongly in `killer_victim_pairs` ("X kills X") and reach the served deaths. Since the fix,
+no new row is doubled; the existing ones are repaired by this exact sequence (**server stopped**,
+announce before running on production):
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --dry-run     # read-only: phantom rows and matches touched
+go run ./cmd/levelup repair-highlight-phantoms               # backup, purge, recompute every pair that differs
+go run ./cmd/levelup backfill-killsource --credit-only      # rebuild the credit base (names from the directory)
+go run ./cmd/levelup backfill-killsource                    # then the film pass over it
+go run ./cmd/levelup compact-passes                          # optional: drop the superseded passes
+```
+
+- A phantom row is a `highlight_events` row whose XUID is NOT a participant of the match and whose
+  twin (same match, type, instant, type hint, raw JSON) is carried by a participant. A match without
+  loaded participants yields none: nothing is removed when in doubt.
+- `highlight_events` carries ART indexes (ADR 0019): no `DELETE`. The table is rebuilt next to
+  itself without the phantom rows and swapped in one transaction (same core as `compact-passes`,
+  ADR 0026); ids and sequence are untouched. The pairs of every match whose stored pairs differ from
+  the current pairing (5 ms window, total event order) are recomputed and written by swapping
+  `killer_victim_pairs` in one transaction, without `DELETE`. Names come from the reading directory
+  (`v_gamertag_lookup`), then the match's existing pairs, never the XUID. An interrupted run resumes
+  by itself: the purged matches still carry pairs that differ. The shared migration
+  `shared_killer_victim_pairs_drop_legacy_indexes_v1` drops the three ART indexes old databases
+  carry on `killer_victim_pairs` (`idx_kv_match`, `idx_kv_killer`, `idx_kv_victim`).
+- **Backup (mandatory)**: byte-for-byte copy before any write
+  (`<name>.<slug>.avant-fantomes-<UTC>.duckdb`), restore = put it back in place, server stopped.
+- **Idempotent**: with no phantom row left, a second run writes nothing.
+- The merge also refuses, since `killsource-2026-10-15`, to add a second death at an instant the
+  API's kill-feed counts only once, and checks every player's served deaths against the official
+  `match_participants.deaths` (counter `killsource_fusion_joueurs_au_dela_officiel_residuel`, WARN
+  log with `match_id`, player, official, served). The check never removes a line: dropping one to
+  fit the count would be choosing, without proof, which death is wrong. The phantom deaths of the other cases (e.g. a player served 10 times for 7
+  official deaths) are outside the 86 matches: they disappear when `backfill-killsource` (no
+  `--match`, every film stale under the new `killsource` revision) re-merges them, to be announced
+  and run as a campaign.
+
+#### Deaths served twice: pairing, bot seats, kill sheets, API death events
+
+Since `killsource-2026-10-15.3`, four causes of a death served twice are closed:
+
+- **Credit pairing** (`analysis.ComputeKillerVictimPairs`): kills and deaths are paired by increasing
+  gap (the exact instant first), one kill and one death at most once each, never a player with
+  himself. The old greedy pairing in kill order let a kill on a bot (no death in the API's
+  kill-feed) take a human death 1 to 4 ms later; 34 "X kills X" pairs sat on the 2026-10-15 copy.
+  The window is `analysis.KillDeathPairToleranceMS` (5 ms), the only one in the repository
+  (ratchet `archlint/kill_death_tolerance_test.go`).
+- **Bot seat taken over by a human** (decoder): a bot holds its player index only during its
+  `BOT_METADATA` declarations; after the last one, the XUID-pattern reading names its successor.
+- **Kill sheet** (decoder): a kill-event goes to the nearest kill of its killer, and to the kill
+  whose victim's death is next to it in the feed.
+- **Merge** (`persist.MergeCreditAndFilm`): every served human death leans on ONE API `death` event
+  (same XUID, within 5 ms), credit deaths first; a film orphan with a human victim and no free event
+  is refused and counted (`killsource_fusion_orphelins_sans_mort_api`). The official-deaths check
+  compares each player to the larger of his official deaths and his API `death` events: a player who
+  left and rejoined has official deaths on part of the match only.
+
+The pairs already stored in `killer_victim_pairs` and the credit base keep the old pairing until
+this sequence runs (**server stopped**, announce before running on production; the last two steps
+re-decode every stale film, a campaign of several hours):
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --dry-run   # read-only: phantoms, matches whose pairs differ
+go run ./cmd/levelup repair-highlight-phantoms             # backup, phantoms, then those matches' pairs
+go run ./cmd/levelup backfill-killsource --credit-only               # credit base of every match, new pairing
+go run ./cmd/levelup backfill-killsource                             # film pass over it (every film stale)
+go run ./cmd/levelup compact-passes                                  # optional: drop the superseded passes
+```
+
+The repair rewrites only the matches whose stored pairs differ from the current pairing (477 of
+4 010 on the 2026-10-15 copy) and is idempotent.
+
 ### Media paths migration (one-shot, standalone binary)
 
 Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in

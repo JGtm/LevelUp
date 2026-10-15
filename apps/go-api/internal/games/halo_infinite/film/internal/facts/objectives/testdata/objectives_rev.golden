@@ -35,5 +35,10 @@
 #               source de la couche ne change : `film/types` renomme un compteur de
 #               `MovementStateStats` (`VehicleTypePhysicsAssumed` -> `VehicleTypePhysicsByWriterLaw`),
 #               que les objectifs ne lisent pas. La sortie des objectifs ne peut pas changer.
+#   2026-10-15  EMPREINTE SEULE, REVISION CONSTANTE (lot « ks-a », fusion de feat/v75, commit
+#               1abf832dc). Aucune source de la couche ne change : la valeur amont `grammar.Rev`
+#               passe a `grammar-2026-10-15.3` (le lecteur des temps forts n emet plus un evenement
+#               deux fois sous deux xuid), et `film/types` ne change que par un commentaire. La
+#               revision des objectifs reste constante (cf. le complement du 2026-10-15 de `rev.go`).
 objectives-2026-09-26	f6cb78cf7aa0e0a20fb5fbbd543449a404d786fd8c049f97c5d2faacbf97912e
-objectives-2026-09-27	daa6d6f4e33b44179dfed08bdce3cae3203188d6c90646c57db3b214ebe5c2a7
+objectives-2026-09-27	7902febdea03d5da55b5bf3a8878017451037a3207d7f80fc8a0446b727c3098

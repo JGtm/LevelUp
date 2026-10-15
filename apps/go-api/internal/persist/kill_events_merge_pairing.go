@@ -77,7 +77,7 @@ type appariement struct {
 
 // apparier : l appariement complet d une passe. Chaque instant est traite independamment, donc
 // l ordre de parcours des instants n influe pas sur le resultat.
-func apparier(base, film []KillEventInsert) appariement {
+func apparier(base, film []KillEventInsert, ev MergeEvidence) appariement {
 	ap := appariement{
 		filmPourCredit: make(map[int]int, len(film)),
 		verdict:        make([]verdictFilm, len(film)),
@@ -91,7 +91,7 @@ func apparier(base, film []KillEventInsert) appariement {
 			}
 			continue
 		}
-		ap.apparierInstant(base, film, b, f)
+		ap.apparierInstant(base, film, b, f, ev)
 	}
 	return ap
 }
@@ -99,7 +99,7 @@ func apparier(base, film []KillEventInsert) appariement {
 // apparierInstant : les trois passes sur UN instant qui porte des morts des deux cotes.
 //
 // `b` et `f` sont les indices, dans `base` et `film`, des morts de cet instant.
-func (ap *appariement) apparierInstant(base, film []KillEventInsert, b, f []int) {
+func (ap *appariement) apparierInstant(base, film []KillEventInsert, b, f []int, ev MergeEvidence) {
 	prisB := make([]bool, len(b))
 	prisF := make([]bool, len(f))
 
@@ -115,10 +115,19 @@ func (ap *appariement) apparierInstant(base, film []KillEventInsert, b, f []int)
 	}
 
 	// 2. LES LIGNES DE FILM QUE LA VICTIME PROUVE ETRE UNE AUTRE MORT.
+	//    ELLE EXIGE UNE PREUVE QUE LE FILM NE DONNE PAS : l API compte autant de kills que de morts
+	//    a l instant, la nouvelle comprise ([MergeEvidence.autreMortDeclarable]). Un seul kill ne
+	//    porte qu une mort ; la ligne de film qui en nomme une seconde reste libre, donc REFUSEE
+	//    et l instant se compte ambigu — rien n est ajoute.
+	declarees := 0
 	for x, j := range f {
 		if prisF[x] || !autreMortProuvee(base, b, film[j]) {
 			continue
 		}
+		if !ev.autreMortDeclarable(film[j].TimeMS, len(b)+declarees) {
+			continue
+		}
+		declarees++
 		ap.verdict[j] = filmOrphelinInstantPartage
 		prisF[x] = true
 	}
@@ -183,12 +192,20 @@ func (ap *appariement) repliSurLInstantClassique(
 	if len(b) != 1 || len(f) != 1 || prisB[0] || prisF[0] {
 		return false
 	}
-	if tueursResolusDifferents(base[b[0]], film[f[0]]) {
+	// DEUX VICTIMES RESOLUES ET DIFFERENTES NE SONT JAMAIS LA MEME MORT. La passe 2 les tranchait
+	// avant qu elle exige la preuve de l API ([MergeEvidence]) ; quand la preuve manque, la ligne
+	// de film reste libre et c est ici qu on la refuse, au lieu de l apparier a une autre mort.
+	if victimesResoluesDifferentes(base[b[0]], film[f[0]]) || tueursResolusDifferents(base[b[0]], film[f[0]]) {
 		return false
 	}
 	ap.filmPourCredit[b[0]] = f[0]
 	ap.verdict[f[0]] = filmApparie
 	return true
+}
+
+// victimesResoluesDifferentes : les deux cotes nomment une victime, et ce n est pas la meme.
+func victimesResoluesDifferentes(credit, film KillEventInsert) bool {
+	return credit.VictimXUID != "" && film.VictimXUID != "" && credit.VictimXUID != film.VictimXUID
 }
 
 // tueursResolusDifferents : les deux cotes nomment un tueur, et ce n est pas le meme. L ABSENCE

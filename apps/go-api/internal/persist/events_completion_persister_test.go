@@ -52,6 +52,8 @@ func openCompletionTestDB(t *testing.T) *sql.DB {
 			match_id VARCHAR, event_type VARCHAR, time_ms INTEGER, xuid VARCHAR,
 			type_hint INTEGER, raw_json VARCHAR
 		)`,
+		// match_participants : lue par la fusion (morts officielles, controle des morts servies).
+		`CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, deaths INTEGER)`,
 		`CREATE TABLE killer_victim_pairs (
 			match_id        VARCHAR NOT NULL,
 			killer_xuid     VARCHAR NOT NULL,

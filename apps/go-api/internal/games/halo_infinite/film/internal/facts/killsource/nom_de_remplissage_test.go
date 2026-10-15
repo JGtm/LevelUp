@@ -28,7 +28,7 @@ import "testing"
 func rosterAvecRemplissage(t *testing.T) *roster {
 	t.Helper()
 	kf := &killFeed{names: []string{"TUEUR", "VICTIME"}}
-	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais", declarations: toutLeFilm}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	// names = [TUEUR VICTIME "343 Relais [bot]" ?3] ; indice 3 epingle sur le bot (position 2).
 	r.perm = []int{0, 1, 3, 2}
@@ -95,7 +95,7 @@ func TestEstNomDeRemplissage(t *testing.T) {
 // nom BOT_METADATA illisible commencant par `?`) n est pas publie, et le refus se compte.
 func TestMortDeBot_NomDeRemplissageNestJamaisPublie(t *testing.T) {
 	kf := &killFeed{names: []string{"TUEUR", "VICTIME"}}
-	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "?illisible"}}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "?illisible", declarations: toutLeFilm}}}
 	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
 	r.perm = []int{0, 1, 3, 2}
 	kf.orphK = []feedEvent{{timeMS: 5_000, killer: "TUEUR"}}
