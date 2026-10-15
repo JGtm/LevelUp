@@ -244,7 +244,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -373,6 +373,7 @@ export function ReplayCanvas({
   // des vies de bipède comme un poseur, jamais une identité à part.
   const groundWeapons = useReplayGroundWeapons({
     doc, view: canvasView, enabled: showGroundWeapons, specialOnly: showGroundWeaponsSpecialOnly,
+    includeStarting: showGroundWeaponsStarting,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
     frameRef, nameOfSlot, locale,
   })

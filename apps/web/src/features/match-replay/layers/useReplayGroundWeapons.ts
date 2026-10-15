@@ -51,6 +51,7 @@ import {
   type GroundWeaponIcon,
   type GroundWeaponView,
 } from './groundWeaponsLayer'
+import { visibleGroundWeapons } from '../model/startingWeaponsOnGround'
 import { groundWeaponAmmoAt, groundWeaponAmmoLine } from '../model/groundWeaponAmmo'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { XY } from '../../../lib/replay/replayLogic'
@@ -102,6 +103,8 @@ export interface GroundWeaponsInput {
    * drapeau est vrai — jamais deviné spécial — et reste visible quand il est faux.
    */
   specialOnly: boolean
+  /** Réaffiche les armes de départ lâchées (`model/startingWeaponsOnGround.ts`) ; faux = masquées. */
+  includeStarting: boolean
   /**
    * Les deux encres : le CORPS à l'encre du marquage, le LISERÉ à l'encre NEUTRE.
    *
@@ -189,6 +192,7 @@ export function useReplayGroundWeapons({
   view,
   enabled,
   specialOnly,
+  includeStarting,
   ink,
   redraw,
   frameRef,
@@ -211,13 +215,10 @@ export function useReplayGroundWeapons({
 
   // LE FILTRE RETIRE LES OBJETS AVANT TOUT LE RESTE (tracé, survol, cuisson) : une arme
   // écartée ici se comporte exactement comme si le film ne la publiait pas.
-  const items = useMemo<readonly ReplayGroundWeapon[]>(
-    () =>
-      specialOnly
-        ? allGroundWeapons.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels)))
-        : allGroundWeapons,
-    [allGroundWeapons, specialOnly, labels],
-  )
+  const items = useMemo<readonly ReplayGroundWeapon[]>(() => {
+    const shown = visibleGroundWeapons(allGroundWeapons, doc.loadouts, includeStarting)
+    return specialOnly ? shown.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels))) : shown
+  }, [allGroundWeapons, doc.loadouts, includeStarting, specialOnly, labels])
 
   // UNE TABLE PAR RÉFÉRENCE, pas un état : la remplir ne doit pas re-rendre la page (la boucle
   // de dessin la lit pendant qu'elle peint). Même règle que les vignettes de socle et de

@@ -1,3 +1,11 @@
+## [2026-10-15] Rejeu : armes de départ lâchées masquées au sol par défaut, option pour les réafficher — Complété (branche `feat/armes-sol-depart`)
+
+**Décision technique principale** : `model/startingWeaponsOnGround.ts` (logique pure) : une arme `spawned` est toujours affichée ; une arme `dropped` est masquée si son modèle figure dans une dotation `loadouts[]` de `src = "birth"` du document (clés normalisées par `weaponLabelKeyOf`). Option persistée `replay-show-ground-weapons-starting` (défaut éteint) dans le tiroir, fille du calque des armes au sol.
+
+**Résultats observés** : règle exacte appliquée aux artefacts 0d9a9af9 et 1b2d9e08 : 31 armes sur 90 et 87 sur 221, et non 20/90 et 62/221 attendus. Ces derniers chiffres sont ceux du « posées par la carte seulement » : ils s'obtiennent en prenant comme départ les armes de TOUTES les dotations (toute arme lâchée a été portée), ce qui masquerait aussi les armes de puissance lâchées (contraire à la règle).
+
+**Conclusion** : à valider par l'utilisateur sur ces chiffres ; fusion dans feat/v75 sur sa décision.
+
 ## [2026-10-15] Rattrapage CSR par joueur : candidats restreints aux matchs du joueur — Complété (branche `fix/csr-candidats-joueur`)
 
 **Décision technique principale** : `loadRankedMatchesForCSRBackfill` (`sync/csr_backfill.go`) joint désormais `match_participants` sur le xuid du joueur ; le pré-filtre (is_ranked / nom « ranked » / playlist_id de la référence) et la décision (payload skill) sont inchangés. `match_participants` n'est pas append-only (pas de vue `_latest`).

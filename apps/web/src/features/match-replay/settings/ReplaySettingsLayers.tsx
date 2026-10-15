@@ -77,6 +77,9 @@ export interface ReplayGroundWeaponControls {
    */
   showSpecialOnly: boolean
   onToggleSpecialOnly: () => void
+  /** « Afficher aussi les armes de départ au sol » : fille du calque, éteinte par défaut. */
+  showStarting: boolean
+  onToggleStarting: () => void
 }
 
 /**
@@ -213,6 +216,14 @@ export function LayersSection({
               pressed={groundWeapons.showSpecialOnly}
               onToggle={groundWeapons.onToggleSpecialOnly}
               hint={t.layerGroundWeaponsSpecialOnlyHint}
+            />
+          )}
+          {groundWeapons.available && groundWeapons.show && (
+            <SettingsToggle
+              label={t.layerGroundWeaponsStarting}
+              pressed={groundWeapons.showStarting}
+              onToggle={groundWeapons.onToggleStarting}
+              hint={t.layerGroundWeaponsStartingHint}
             />
           )}
           {/* LES VÉHICULES sont des OBJETS qui bougent, comme les joueurs — mais ce sont des

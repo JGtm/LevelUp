@@ -45,6 +45,7 @@ function monter(
   items: ReplayGroundWeapon[],
   opts: {
     specialOnly?: boolean
+    includeStarting?: boolean
     nameOfSlot?: (slot: number, frame: number) => string | null
     labels?: ReplayDocumentReady['weaponLabels']
     /** Le reste du document — l'inventaire et les loadouts du fragment de munitions. */
@@ -64,6 +65,7 @@ function monter(
       view: VUE,
       enabled: true,
       specialOnly: opts.specialOnly ?? false,
+      includeStarting: opts.includeStarting ?? true,
       ink: { fill: 'fill', outline: 'outline' },
       redraw: vi.fn(),
       frameRef,
@@ -151,7 +153,7 @@ describe('useReplayGroundWeapons — le survol (item A)', () => {
     const doc = testReplayDoc({ groundWeapons: [item()], weaponLabels: LABELS })
     const { result } = renderHook(() =>
       useReplayGroundWeapons({
-        doc, view: VUE, enabled: false, specialOnly: false,
+        doc, view: VUE, enabled: false, specialOnly: false, includeStarting: true,
         ink: { fill: 'fill', outline: 'outline' }, redraw: vi.fn(),
         frameRef, nameOfSlot: () => null, locale: 'fr',
       }),
@@ -254,5 +256,28 @@ describe('useReplayGroundWeapons — le filtre « armes spéciales seulement » 
   it('bascule ALLUMÉE, liste vide de spéciales : le calque n’est plus DISPONIBLE', () => {
     const { result } = monter([NEUTRE, HORS_REGISTRE], { specialOnly: true })
     expect(result.current.available).toBe(false)
+  })
+})
+
+describe('useReplayGroundWeapons — les armes de départ lâchées (décision du 2026-10-15)', () => {
+  const DEPART = item({ w: '2b1824d5', origin: 'dropped', dropper: 514, x: 0, y: 0 })
+  const SOCLE = item({ w: '2b1824d5', origin: 'spawned', dropper: -1, x: 15, y: 15 })
+  const SNIPER = item({ w: '0a1992bc', origin: 'dropped', dropper: 514, x: -15, y: 15 })
+  const doc = { loadouts: [{ t: 0, slot: 514, w: ['0x2B1824D5'], src: 'birth', k: [0] }] }
+
+  it('masquées par défaut, sauf la posée par la carte et l arme de puissance', () => {
+    const { result } = monter([DEPART, SOCLE, SNIPER], { includeStarting: false, doc })
+    result.current.onPointerMove(pointeurSur({ x: 100, y: 100 }))
+    expect(result.current.hover).toBeNull()
+    act(() => result.current.onPointerMove(pointeurSur({ x: 175, y: 25 })))
+    expect(result.current.hover?.item).toBe(SOCLE)
+    act(() => result.current.onPointerMove(pointeurSur({ x: 25, y: 25 })))
+    expect(result.current.hover?.item).toBe(SNIPER)
+  })
+
+  it('option activée : l arme de départ lâchée est de nouveau survolable', () => {
+    const { result } = monter([DEPART], { includeStarting: true, doc })
+    act(() => result.current.onPointerMove(pointeurSur({ x: 100, y: 100 })))
+    expect(result.current.hover?.item).toBe(DEPART)
   })
 })

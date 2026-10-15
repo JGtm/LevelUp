@@ -35,6 +35,7 @@ const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
 const SHOW_GROUND_WEAPONS_SPECIAL_ONLY_KEY = 'replay-show-ground-weapons-special-only'
+const SHOW_GROUND_WEAPONS_STARTING_KEY = 'replay-show-ground-weapons-starting'
 const SHOW_MODE_OBJECTIVES_KEY = 'replay-show-mode-objectives'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
@@ -180,6 +181,13 @@ const SHOW_GROUND_WEAPONS_DEFAULT = true
 const SHOW_GROUND_WEAPONS_SPECIAL_ONLY_DEFAULT = false
 
 /**
+ * LES ARMES DE DÉPART LÂCHÉES SONT MASQUÉES PAR DÉFAUT (décision utilisateur du 2026-10-15) :
+ * tout le monde en porte les mêmes, elles n'apportent rien. L'option les réaffiche ; les armes
+ * posées par la carte, elles, restent toujours visibles (`model/startingWeaponsOnGround.ts`).
+ */
+const SHOW_GROUND_WEAPONS_STARTING_DEFAULT = false
+
+/**
  * LES DRAPEAUX SONT ALLUMÉS PAR DÉFAUT. C'est l'ENJEU du match en capture de drapeau : savoir
  * où est le drapeau, qui le porte et depuis quand est la lecture même du mode — un rejeu de CTF
  * qui s'ouvrirait sans lui montrerait huit points qui courent sans raison. Le film qui n'en
@@ -293,6 +301,9 @@ export interface ReplaySettings {
    */
   showGroundWeaponsSpecialOnly: boolean
   toggleGroundWeaponsSpecialOnly: () => void
+  /** Option « afficher aussi les armes de départ au sol » (cf. SHOW_GROUND_WEAPONS_STARTING_DEFAULT). */
+  showGroundWeaponsStarting: boolean
+  toggleGroundWeaponsStarting: () => void
   /**
    * Calque des OBJECTIFS DU MODE (2026-09-18) : la géométrie cuite, l'état vivant des zones et
    * les pulses d'action — trois calques pour un objet, une seule bascule (cf.
@@ -418,6 +429,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_GROUND_WEAPONS_SPECIAL_ONLY_KEY,
     SHOW_GROUND_WEAPONS_SPECIAL_ONLY_DEFAULT,
   )
+  const [showGroundWeaponsStarting, toggleGroundWeaponsStarting] = usePersistedFlag(
+    SHOW_GROUND_WEAPONS_STARTING_KEY,
+    SHOW_GROUND_WEAPONS_STARTING_DEFAULT,
+  )
   const [showModeObjectives, toggleModeObjectives] = usePersistedFlag(
     SHOW_MODE_OBJECTIVES_KEY,
     SHOW_MODE_OBJECTIVES_DEFAULT,
@@ -502,6 +517,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleGroundWeapons,
     showGroundWeaponsSpecialOnly,
     toggleGroundWeaponsSpecialOnly,
+    showGroundWeaponsStarting,
+    toggleGroundWeaponsStarting,
     showModeObjectives,
     toggleModeObjectives,
     showFlagCarries,
