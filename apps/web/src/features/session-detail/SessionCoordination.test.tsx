@@ -128,6 +128,22 @@ describe('Repère d’habituel de « on me prépare » (lot S)', () => {
     expect(appui.gauges[1].tooltip).not.toContain('habituel')
   })
 
+  it('écrit la valeur lue avec son décompte et l’écart à son repère à côté (FR et EN)', () => {
+    const bloc = { ...BLOC, appui: { ...BLOC.appui, habituel_pct: 38 } } as CoordinationBlock
+    const [fr] = buildAppuiGaugeRows(bloc, t, 'fr')
+    expect(fr.gauges[0].valueText).toBe('44,0 % (22/50)')
+    expect(fr.gauges[0].gapText).toBe('écart +6,0 pts')
+    expect(fr.gauges[1].gapText).toBe('écart +9,0 pts') // 34 % face à la parité 25 %
+    const [en] = buildAppuiGaugeRows(bloc, COORDINATION_TEXT.en, 'en')
+    expect(en.gauges[0].valueText).toBe('44.0% (22/50)')
+    expect(en.gauges[0].gapText).toBe('gap +6.0 pts')
+  })
+
+  it('titre de la carte : frags appuyés par un coéquipier', () => {
+    expect(COORDINATION_TEXT.fr.cardAppui).toBe('Frags appuyés par un coéquipier')
+    expect(COORDINATION_TEXT.en.cardAppui).toBe('Kills assisted by a teammate')
+  })
+
   it('n’invente aucun repère quand le contrat ne sert pas d’habituel', () => {
     const [appui] = buildAppuiGaugeRows(BLOC, t, 'fr')
     expect(appui.gauges[0].parityPct).toBeNull()

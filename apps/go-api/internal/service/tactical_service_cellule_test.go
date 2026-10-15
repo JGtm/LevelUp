@@ -256,6 +256,9 @@ func TestCellule_Temps(t *testing.T) {
 	if got.Contributions[0].Clock != domain.TacticalClockFilm {
 		t.Errorf("clock = %q, want %q (« temps » est deja sur l'horloge du film)", got.Contributions[0].Clock, domain.TacticalClockFilm)
 	}
+	if got.Contributions[0].Point != nil || got.Contributions[0].AutrePoint != nil {
+		t.Errorf("points = %+v / %+v, want aucun (un sidecar ne porte pas d'autre joueur)", got.Contributions[0].Point, got.Contributions[0].AutrePoint)
+	}
 	if got.Contributions[0].Face != domain.TacticalFaceEntree {
 		t.Errorf("face = %q, want %q (« temps » : une entrée dans la zone)", got.Contributions[0].Face, domain.TacticalFaceEntree)
 	}

@@ -78,6 +78,7 @@ function UsageGauge({ gauge }: { gauge: UsageGaugeModel }) {
       </Tooltip>
       <span className="whitespace-nowrap text-right text-3xs tabular-nums text-foreground">
         {gauge.valueText}
+        {gauge.gapText != null && <span className="ml-1 text-muted-foreground">{gauge.gapText}</span>}
       </span>
     </>
   )

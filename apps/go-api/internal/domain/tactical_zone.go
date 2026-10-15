@@ -34,4 +34,7 @@ type ContexteDeMort struct {
 	PlusProcheM *float64
 	// Visibles, HorsDeVue : les coéquipiers vivants, vus et non vus, à cet instant.
 	Visibles, HorsDeVue int
+	// EnAttente, Total : les coequipiers en attente de reapparition, et tous les coequipiers de la
+	// victime (`teammates_total`) — le nombre de lignes que `match_death_mates` doit porter pour cette mort.
+	EnAttente, Total int
 }

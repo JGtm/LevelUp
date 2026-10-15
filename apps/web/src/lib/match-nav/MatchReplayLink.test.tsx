@@ -93,7 +93,7 @@ describe('MatchReplayLink — les deux portes, chacune pour elle-même', () => {
   })
 })
 
-// La VARIANTE 36 px de la tuile « Rejeu » de l'onglet Tactique : le lien porte l'instant et son
+// La variante sans bordure de 32 px de la tuile « Rejeu » de l'onglet Tactique : le lien porte l'instant et son
 // horloge (`?t=&clock=`), et garde les DEUX portes.
 describe('MatchReplayLink — variante `large` avec instant', () => {
   function rendreLarge(available: boolean) {
@@ -109,12 +109,13 @@ describe('MatchReplayLink — variante `large` avec instant', () => {
     )
   }
 
-  it('le lien porte ?t=&clock= et la boîte de 36 px', () => {
+  it('le lien porte ?t=&clock=, une zone cliquable de 32 px et aucune bordure', () => {
     setTitleCaps(['replay'])
     rendreLarge(true)
     const lien = screen.getByRole('link', { name: LABEL })
     expect(lien.getAttribute('href')).toBe('/{-$lang}/t/titre_test/players/me/matches/match-1/replay?t=4200&clock=match')
-    expect(lien.className).toContain('h-9 w-9')
+    expect(lien.className).toContain('h-8 w-8')
+    expect(lien.className).not.toContain('border')
   })
 
   it('sans artefact : rien', () => {

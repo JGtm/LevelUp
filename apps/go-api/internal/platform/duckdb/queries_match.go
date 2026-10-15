@@ -145,11 +145,7 @@ SELECT
     r.game_variant_id,
     -- T0 offset (Match Timeline T0, Phase 3) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0.
-    CASE
-        WHEN r.real_start_time IS NOT NULL THEN
-            epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
-    END AS t0_ms,
+    ` + T0MsSQL("r") + ` AS t0_ms,
     r.map_version_id
 FROM match_registry r
 WHERE r.match_id = ?`

@@ -17,7 +17,7 @@
  */
 import type { UsageGaugeModel, UsageGaugeRowModel } from '@/features/_shared/usage/usageGaugeModel'
 import type { UsageBandCell } from '@/features/_shared/usage/usageRegularityBandModel'
-import { formatUsagePct } from '@/features/_shared/usage/usageFormat'
+import { formatUsageGap, formatUsagePct } from '@/features/_shared/usage/usageFormat'
 import type { Couverture, CoordinationBlock, CoordinationMatchPoint } from '@/lib/api/types'
 import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { Locale } from '@/lib/i18n/locale'
@@ -67,13 +67,15 @@ function gaugeFromCouverture(
   if (repere.usuel === true && repere.pct != null) {
     tooltip = t.gaugeTipUsualFmt(tooltip, formatUsagePct(repere.pct, locale))
   }
+  // La valeur lue porte son décompte (« 37,2 % (51/137) ») ; l'écart à son repère s'écrit à côté :
+  // un rail proche de son trait se lisait « aucun appui » (constat du 22/09, 2026-10-15).
+  const readText = mesure ? `${valueText} (${t.bandCountFmt(couverture.brut, couverture.n)})` : valueText
   return {
     key,
     valuePct,
     parityPct: repere.pct,
-    valueText: mesure
-      ? withLowSampleNote(valueText, couverture.echantillon_faible, t.lowSample)
-      : valueText,
+    valueText: mesure ? withLowSampleNote(readText, couverture.echantillon_faible, t.lowSample) : readText,
+    ...(valuePct != null && repere.pct != null ? { gapText: t.gapFmt(formatUsageGap(valuePct - repere.pct, locale)) } : {}),
     tooltip,
   }
 }

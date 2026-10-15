@@ -46,6 +46,11 @@ type TacticalService interface {
 	// l'appelant (ADR 0029) et le compte de celles ecartees (lot M1, Tactique S.1). Memes
 	// refus types que Raster.
 	Cellule(ctx context.Context, req domain.TacticalCelluleRequest) (domain.TacticalCelluleReponse, error)
+
+	// Sequence rend la sequence d UNE mort (vue D) : les traces des acteurs de -8 a +3 s et les
+	// etapes de -4 a +3 s, lues sur les trajectoires du rejeu 2D. Refus : match non ouvrable par
+	// l appelant ou sans artefact exploitable -> port.ErrReplayNotAvailable (404 replay_not_available).
+	Sequence(ctx context.Context, req domain.TacticalSequenceRequest) (domain.TacticalSequence, error)
 }
 
 // TacticalRepository — onglet Tactique (plan .ai/V7.5/PLAN_TACTIQUE_2026-09-06.md,
@@ -128,6 +133,15 @@ type TacticalRepository interface {
 	// par l'appelant.
 	ContextesDeMort(ctx context.Context, filtre domain.TacticalQuery) ([]domain.ContexteDeMort, error)
 
+	// MatesDesMorts rend les coequipiers (etat, position, distance) des morts `morts`, lus dans
+	// `match_death_mates_latest` : liste blanche `filtre.Matchs` obligatoire, cle exacte (match,
+	// victime, instant) demandee. Une mort sans ligne n y figure pas.
+	MatesDesMorts(ctx context.Context, filtre domain.TacticalQuery, morts []domain.CleDeMort) ([]domain.MateDeMort, error)
+
+	// JournalDesKills rend les kills publiables des matchs de la liste blanche `filtre.Matchs`
+	// (obligatoire), avec la position du tueur au coup quand elle est mesuree.
+	JournalDesKills(ctx context.Context, filtre domain.TacticalQuery) ([]domain.KillDuJournal, error)
+
 	// MatchsOuvrables verifie, pour la liste de match_id donnee, lesquels `playerXUID` a
 	// REELLEMENT joues (ADR 0029, meme garde que Couche B / IsParticipant) et rend leur
 	// date de debut canonique — le tri des contributions d'une cellule s'appuie dessus. Un
@@ -169,4 +183,15 @@ type TacticalRasterStore interface {
 // degrader une lecture entiere pour un libelle manquant.
 type TacticalCalloutsStore interface {
 	ZonesDeLaCarte(ctx context.Context, mapID string) []domain.ZoneNommee
+}
+
+// TacticalSequenceStore lit les PISTES d'un artefact de rejeu 2D — la part de l'artefact que lit la
+// sequence d'une mort (vue D) : l'echelle de temps, l'origine du film et les trajectoires.
+//
+// UN ARTEFACT ABSENT N'EST PAS UNE ERREUR : (nil, nil) — le match existe, son rejeu n'est pas (ou
+// plus) cuit. Un fichier present mais illisible est une erreur, qui ne se confond pas avec une
+// absence. La lecture est a la demande et sans cache : une sequence est un geste de l'utilisateur,
+// pas une page.
+type TacticalSequenceStore interface {
+	Pistes(ctx context.Context, matchID string) (*domain.TacticalPistes, error)
 }

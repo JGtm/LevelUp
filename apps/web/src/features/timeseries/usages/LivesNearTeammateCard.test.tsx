@@ -14,7 +14,7 @@ import { LivesNearTeammateCard } from './LivesNearTeammateCard'
 import { USAGES_TEXT } from './usagesText'
 
 /**
- * La mesure au pixel (jsdom : aucune largeur, tout part au repli) est remplaçable par test : `fit.hidden`
+ * La mesure au pixel (jsdom : aucune largeur, toute étiquette est masquée) est remplaçable par test : `fit.hidden`
  * fixe les segments dont l'étiquette ne tient pas.
  */
 const fit = vi.hoisted(() => ({ hidden: null as ReadonlySet<string> | null }))
@@ -57,15 +57,20 @@ describe('LivesNearTeammateCard', () => {
     expect(screen.getByTestId('usages-lives-alone').textContent).toBe(`16,2 % · ${n(301)}`)
   })
 
-  it('repli : seule la valeur qui ne tient pas dans son segment monte au-dessus (jamais affichée deux fois)', () => {
+  it('seule la valeur qui ne tient pas dans son segment est masquée ; aucune ligne au-dessus de la barre', () => {
     fit.hidden = new Set(['alone'])
     renderCard()
-    const repli = screen.getByTestId('usages-lives-repli')
-    expect(repli.textContent).toBe(`16,2 % · ${n(301)}`)
+    expect(screen.queryByTestId('usages-lives-repli')).toBeNull()
+    // Isolée (droite) : sa valeur s'écrit à droite de la barre ; « à portée » tient et n'écrit rien à côté.
+    const side = screen.getByTestId('usages-lives-side-alone')
+    expect(side.textContent).toBe(`16,2 % · ${n(301)}`)
+    expect(side.closest('[data-side]')!.getAttribute('data-side')).toBe('right')
+    expect(screen.queryByTestId('usages-lives-side-near')).toBeNull()
+    expect(screen.getByTestId('usages-lives-alone').querySelector('[data-fit-label]')!.getAttribute('style')).toContain('hidden')
     expect(screen.getByTestId('usages-lives-near').querySelector('[data-fit-label]')!.getAttribute('style')).toContain('visible')
   })
 
-  it('repli : rien au-dessus quand les deux valeurs tiennent', () => {
+  it('aucune ligne au-dessus de la barre quand les deux valeurs tiennent', () => {
     fit.hidden = new Set()
     renderCard()
     expect(screen.queryByTestId('usages-lives-repli')).toBeNull()

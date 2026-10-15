@@ -67,28 +67,35 @@ type TacticalContribution struct {
 	// regle par question.
 	InstantMs int64 `json:"instant_ms"`
 
-	// Clock dit sur QUELLE HORLOGE `InstantMs` est exprime — ajoute par le lot M1b
-	// (2026-09-08, decision utilisateur : « corriger le decalage ») pour que le WEB puisse
-	// convertir un instant exact plutot que de deviner :
+	// InstantAfficheMs est l'instant tel que l'HORLOGE AFFICHEE du rejeu le lira a cet
+	// evenement : ms depuis le coup d'envoi (T0), plancher a 0 — un evenement d'avant le coup
+	// d'envoi se lit 0:00. Calcule par le service pour la seule horloge « match »
+	// (`max(0, InstantMs − T0)`, T0 = `TacticalMatch.T0Ms`). ABSENT quand le T0 est inconnu, et
+	// pour l'horloge « film » (le sidecar ne porte pas l'origine du film) : la tuile n'ecrit alors
+	// aucun instant plutot qu'un instant faux. N'est PAS l'instant d'ouverture du rejeu
+	// (`InstantMs` + `Clock`).
+	InstantAfficheMs *int64 `json:"instant_affiche_ms,omitempty"`
+
+	// Clock dit sur QUELLE HORLOGE `InstantMs` est exprime, pour que le WEB convertisse un
+	// instant exact plutot que de deviner :
 	//
 	//	TacticalClockFilm ("film")    temps, routes — l'horloge de l'ARTEFACT de rejeu
 	//	                              (frame x FrameIntervalMs, cf. sidecar
 	//	                              `PremieresEntrees`/`Routes`) — le MEME axe que le
-	//	                              lecteur 2D, conversion exacte et directe.
-	//	TacticalClockMatch ("match")  morts, kills, gagne, isole — l'horloge du MATCH
+	//	                              lecteur 2D, conversion directe.
+	//	TacticalClockMatch ("match")  morts, kills, gagne, isole — l'horloge du MATCH, depuis son debut (countdown compris),
 	//	                              (`match_kill_events.time_ms` /
-	//	                              `match_death_context.time_ms`), DISTINCTE de celle du
-	//	                              film : `games/halo_infinite/film/replay/lives_export.go` etablit
-	//	                              `horlogeFilm = horlogeMatch + DeathOffsetMS`, un
-	//	                              decalage PAR MATCH (mesure 3,6 a 50,8 s sur les films
-	//	                              temoins) publie par `coverage.bridge.deathOffsetMs`
-	//	                              DEPUIS LE SCHEMA 49 SEULEMENT.
+	//	                              `match_death_context.time_ms`), distincte de celle du
+	//	                              film : l'artefact part de l'image zero, qui tombe a
+	//	                              `originMs` sur l'axe du match (ecart par match, 3,6 a
+	//	                              50,8 s sur les films temoins).
 	//
 	// LE SERVICE NE CONVERTIT PAS LUI-MEME : il n'a pas toujours l'artefact de rejeu sous la
 	// main (cuisson asynchrone, artefact absent ou trop vieux) — c'est le WEB qui convertit,
-	// au moment d'ouvrir le rejeu, quand le document (et donc l'offset) est charge
-	// (`lib/replay/replayLogic.resolveTacticalReplayInstant`). Decouverte du lot M1
-	// (`.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`) : TRAITEE le 2026-09-08 par ce champ.
+	// au moment d'ouvrir le rejeu, par la soustraction unique de l'origine du film
+	// (`matchClock(doc).filmMsOfMatchMs`, `lib/replay/matchClock.ts`, appelee par
+	// `lib/replay/replayLogic.resolveTacticalOpenAtFrame`). Sans origine, le web n'ouvre pas
+	// a un instant devine : il affiche un avis.
 	Clock string `json:"clock"`
 
 	// XUID est le joueur dont l'evenement a produit cette contribution (victime, tueur, ou
@@ -123,6 +130,13 @@ type TacticalContribution struct {
 	Face string `json:"face,omitempty"`
 	// AutreGamertag : l'autre joueur de l'événement — le tueur d'une mort, la victime d'un frag.
 	AutreGamertag string `json:"autre_gamertag,omitempty"`
+	// Point : la position de l'événement lui-même sur le plan, en mètres monde — la victime d'une
+	// mort, le tueur d'un frag. AutrePoint : la position de l'autre joueur au même instant (le
+	// tueur d'une mort, la victime d'un frag). Le web relie les deux par un trait.
+	// Chacun est nil quand la source ne le mesure pas (lectures d'artefact : jamais posés) :
+	// jamais (0, 0) de repli.
+	Point      *TacticalPoint `json:"point,omitempty"`
+	AutrePoint *TacticalPoint `json:"autre_point,omitempty"`
 	// ArmeLabel / ArmeLabelEN : le nom de l'arme de l'événement dans les deux langues, par le
 	// registre d'armes du titre ; CategorieSource : la catégorie brute de la source de dégât du
 	// film, publiée quand l'arme n'est pas nommée (le web la traduit, ou ne l'écrit pas).
@@ -136,6 +150,9 @@ type TacticalContribution struct {
 	ArmeImageTinted bool   `json:"arme_image_tinted,omitempty"`
 	// Placement : seul ou près d'un coéquipier, pour une MORT seulement.
 	Placement *TacticalPlacement `json:"placement,omitempty"`
+	// Equipe : l'equipe de la victime a l'instant de sa mort (une MORT seulement), absente quand les
+	// coequipiers du match ne sont pas lus.
+	Equipe *TacticalEquipeALaMort `json:"equipe,omitempty"`
 	// ModeLabel : le mode du match, dans la langue de la requête, normalisé (sans carte ni conteneur :
 	// analysis.NormalizeModeLabel avec le nom de la carte du match).
 	ModeLabel string `json:"mode_label,omitempty"`
@@ -146,6 +163,12 @@ type TacticalContribution struct {
 	// ReplayAvailable : l'artefact de rejeu 2D du match existe — le web ne pose le bouton de
 	// rejeu que là, jamais un lien vers une page vide.
 	ReplayAvailable bool `json:"replay_available"`
+}
+
+// TacticalPoint est une position sur le plan d'une carte, en mètres monde.
+type TacticalPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // Valeurs de TacticalContribution.Face.
@@ -163,4 +186,7 @@ type TacticalCelluleReponse struct {
 
 	// Zone : le nom en jeu de la zone de la cellule ; absent quand aucune zone ne la nomme.
 	Zone *TacticalZoneNom `json:"zone,omitempty"`
+
+	// Bilan : le bilan de la zone (equipe a la mort, rose des tueurs) ; absent sans mesure.
+	Bilan *TacticalBilanZone `json:"bilan,omitempty"`
 }

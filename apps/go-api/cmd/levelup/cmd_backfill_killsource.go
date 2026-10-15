@@ -35,10 +35,10 @@ package main
 //
 // DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `killsource.Rev` (`decfilm.Rev`) pour le journal des
 // morts, `IsolationDecoderRev` pour les faits d isolement (`match_lives`,
-// `match_death_context`). Elles evoluent separement — un changement de la regle de visibilite
-// doit refaire les faits d isolement SANS refaire le journal, qui n a pas bouge. La commande
-// reprend donc un match dont le journal est a jour mais dont les faits d isolement manquent ou
-// datent : c est ce qui permet au corpus DEJA collecte de recevoir les deux nouvelles tables.
+// `match_death_context`, `match_death_mates`). Elles evoluent separement — un changement de la
+// regle de visibilite doit refaire les faits d isolement SANS refaire le journal, qui n a pas bouge.
+// La commande reprend donc un match dont le journal est a jour mais dont les faits d isolement
+// manquent ou datent : c est ce qui permet au corpus DEJA collecte de recevoir les nouvelles tables.
 //
 // # ELLE PASSE LES GROS FILMS EN DERNIER, ET CE N EST PAS UNE PREFERENCE
 //

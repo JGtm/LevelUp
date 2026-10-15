@@ -77,6 +77,29 @@ func SQLStartTimeCanonical(alias string) string {
 	return "COALESCE(" + prefix + "start_time_utc, " + prefix + "start_time AT TIME ZONE 'UTC')"
 }
 
+// SQLRealStartOffsetMs rend l'expression SQL de l'écart, en millisecondes, entre le coup d'envoi
+// du registre (`real_start_time`) et le début canonique du match. Elle suppose `real_start_time`
+// non NULL : l'appelant gère le cas NULL (`SQLT0Ms` rend NULL, un calcul de durée prend 0).
+// SOURCE UNIQUE : ratchet `archlint/no_raw_real_start_offset_test.go`.
+func SQLRealStartOffsetMs(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "epoch_ms(" + prefix + "real_start_time AT TIME ZONE 'UTC') - epoch_ms(" + SQLStartTimeCanonical(alias) + ")"
+}
+
+// SQLT0Ms rend le T0 d'un match en millisecondes (countdown d'avant-match) : l'écart entre le
+// coup d'envoi du registre et le début canonique, NULL quand `real_start_time` est absent (le
+// consommateur retombe alors sur T0 = 0 à l'exécution).
+func SQLT0Ms(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "CASE WHEN " + prefix + "real_start_time IS NOT NULL THEN " + SQLRealStartOffsetMs(alias) + " END"
+}
+
 // SQLDansFenetreRetention rend le predicat « ce match est DANS la fenetre de retention des
 // artefacts de rejeu », a comparer a la borne rendue par [BorneRetention].
 //

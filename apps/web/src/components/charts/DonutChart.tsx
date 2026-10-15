@@ -18,6 +18,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
+import { barLabel } from './barLabel'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
 
@@ -156,6 +157,8 @@ export function buildDonutOption(
       name: p.name,
       value: p.value,
       itemStyle: { color },
+      // Compact : le % est DANS la tranche, à l'encre qui contraste avec elle.
+      ...(compact ? { label: barLabel({ fontSize: 11, formatter: '{d}%' }) } : {}),
     }
   })
 
@@ -223,13 +226,8 @@ export function buildDonutOption(
         // Compact : % DANS le donut, pas d'étiquette externe ni de connecteur (sinon ils
         // débordent et se font clipper en colonne étroite). Sinon : étiquette externe.
         label: compact
-          ? {
-              show: true,
-              position: 'inside',
-              color: tc.text,
-              fontSize: 11,
-              formatter: '{d}%',
-            }
+          ? // barLabel-allow: la couleur vient de chaque tranche (data[].label = barLabel).
+            { show: true, position: 'inside', fontSize: 11, formatter: '{d}%' }
           : {
               show: showPercent,
               color: tc.text,

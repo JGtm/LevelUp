@@ -19,12 +19,15 @@ import (
 
 // fakeTacticalSvc double port.TacticalService et retient ce qu'on lui passe.
 type fakeTacticalSvc struct {
-	page    domain.TacticalMapsPage
-	raster  domain.TacticalRaster
-	cellule domain.TacticalCelluleReponse
-	errMaps error
-	errRast error
-	errCell error
+	page          domain.TacticalMapsPage
+	raster        domain.TacticalRaster
+	cellule       domain.TacticalCelluleReponse
+	sequence      domain.TacticalSequence
+	errSeq        error
+	vuSequenceReq domain.TacticalSequenceRequest
+	errMaps       error
+	errRast       error
+	errCell       error
 
 	vuCarte    string
 	vuQuestion string
@@ -488,4 +491,9 @@ func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	if strings.Contains(w.Body.String(), "matchs_non_cuisables") {
 		t.Fatalf("matchs_non_cuisables servi : %s", w.Body.String())
 	}
+}
+
+func (f *fakeTacticalSvc) Sequence(_ context.Context, req domain.TacticalSequenceRequest) (domain.TacticalSequence, error) {
+	f.vuSequenceReq, f.vuAppele = req, true
+	return f.sequence, f.errSeq
 }

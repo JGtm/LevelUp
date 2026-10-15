@@ -80,6 +80,24 @@ sans portée de radar connue), `carrier_ms`, `team_down_ms`, `unplaced_ms`,
 **Lecture : vue `match_life_placement_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match,
 `decode_pass`). Plan : `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`.
 
+### match_death_mates — état et position de chaque coéquipier à l'instant d'une mort (append-only, 2026-10-14)
+Écrite AU REJEU DES FILMS par la passe d'isolement (`sync/killcollector/isolation_facts.go`,
+persister `persist/lives_mates_persister.go`), dans la MÊME transaction et sous la MÊME
+`decode_pass` que `match_lives` et `match_death_context` ; migration `shared_match_death_mates_v1`.
+Une ligne par (mort, coéquipier de la victime) : `id`, `match_id`, `decode_pass`, `decoder_rev`
+(= `IsolationDecoderRev`), `written_at`, `victim_xuid`, `time_ms` (clé de la mort dans
+`match_kill_events`), `mate_xuid`, `state` (`visible` | `waiting` | `out_of_sight`), `x`, `y`,
+`distance_m` (NULL ensemble hors de l'état `visible`). Index
+`(match_id, victim_xuid, time_ms, written_at)`.
+Invariants validés avant écriture (`validateMates`) : somme des lignes d'une mort =
+`teammates_total`, comptes par état = colonnes de `match_death_context`, état visible <=> x/y/
+distance, `nearest_teammate_m` = min des distances visibles. UN refus fait perdre au match la
+passe entière (`match_lives` et `match_death_context` compris) : choix assumé.
+**Lecture : vue `match_death_mates_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match). Les
+bots n'y figurent pas (équipes indexées par xuid). Le nom vient de `match_participants`, sinon de
+`xuid_aliases` (92 % des participants n'ont pas de gamertag). Plan :
+`.ai/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`.
+
 ### match_vehicle_takes — ressource véhicules de l'Emprise (append-only, 2026-09-30)
 Écrite par la dérivation post-rangement `sync/replayartifacts/vehicletakes.go` (famille de
 `Deriver`, gate `film.vehicle_usage`) et par `levelup backfill-vehicle-takes`, depuis le calque
@@ -155,7 +173,7 @@ WHERE mp.xuid = '{coequipier_xuid}'
 `match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats` sont
 append-only (PK technique `id` + `written_at`). Les tables produites par une passe de décodage
 de film (`match_kill_events`, `kill_positions`, `match_lives`, `match_death_context`,
-`match_life_placement`, …) le sont aussi, arbitrées par `decode_pass` : leur vue `_latest`
+`match_life_placement`, `match_death_mates`, …) le sont aussi, arbitrées par `decode_pass` : leur vue `_latest`
 retient la dernière passe ENTIÈRE par match. **Toute lecture applicative passe par la
 vue `<table>_latest`** — une lecture de la table brute peut servir plusieurs versions
 d'une même ligne (rating non déterministe). Écriture = INSERT pur via la couche

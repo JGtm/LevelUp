@@ -206,6 +206,10 @@ var tablesProtegees = []string{
 	// une passe plus courte laisserait survivre les lignes de la précédente.
 	"match_lives",
 	"match_death_context",
+	// match_death_mates (plan Tactique coequipiers, lot L1, 2026-10-14) : append-only NET-NEUVE, vue
+	// _latest PAR PASSE, ecrite dans la meme transaction que match_lives. Writer unique :
+	// persist/lives_mates_persister.go (via lives_persister.go), INSERT purs.
+	"match_death_mates",
 	// match_life_placement (plan Emprise vies, lot V2, 2026-09-29) : table append-only
 	// NET-NEUVE, troisième projection de la passe de positions (placement et rendement de chaque
 	// vie). Writer unique : internal/persist/life_placement_persister.go, INSERT purs dans une

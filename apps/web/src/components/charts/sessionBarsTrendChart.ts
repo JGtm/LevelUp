@@ -366,7 +366,9 @@ export function buildSessionBarsTrendOption(opts: SessionBarsTrendOpts): ECharts
       // dernier chiffre d'un bâton long retombe sur les graduations de l'axe X.
       ...(opts.series.some((s) => s.absolute) ? { boundaryGap: ['14%', '14%'] } : {}),
       name: opts.yAxisLabel,
-      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
+      // Le nom part de l'axe et s'étend vers la droite : centré sur l'axe, il débordait à gauche
+      // du canvas dès que les graduations sont étroites (`containLabel` ne compte pas le nom).
+      nameTextStyle: { color: tc.axisLabel, fontSize: 10, align: 'left' },
       axisLabel: {
         ...axis.axisLabel,
         formatter: ecart ? (v: number) => signe(v) : '{value} %',

@@ -1,7 +1,8 @@
 /**
  * LivesNearTeammateRow — LA LIGNE D'UN JOUEUR de la carte « Isolement » : la barre ÉPAISSE partage ses
  * vies terminées par une mort entre « à portée d'un coéquipier » (`squad-player-1`) et « isolée »
- * (`extreme`), compte et part dans chaque segment quand ils tiennent, repli au-dessus sinon ; la barre
+ * (`extreme`), compte et part dans chaque segment quand ils tiennent, sinon à côté de la barre, du côté de
+ * son camp, sur la même ligne (`BarSides`, place réservée : `livesInset`) ; la barre
  * FINE partage ses frags tombés pendant ces vies ; dessous, « frags : n · p % · x par vie … ». Une
  * ligne pour les Séries temporelles et Sessions (le joueur de la page), une par joueur de l'équipe sur
  * la Vue match. La mesure des valeurs qui tiennent (`hidden`) est faite par la carte, sur toutes ses
@@ -9,6 +10,8 @@
  */
 import type { ReactNode } from 'react'
 
+import { BarWithSides, SideValue, sideSlotPx } from '@/components/charts/BarSides'
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { Tooltip } from '@/components/ui/tooltip'
 
 import { TipText } from '@/features/squad/emprise/TipText'
@@ -26,6 +29,21 @@ export interface LivesCompact {
   killsLineAlone: (perLife: string) => string
 }
 
+/** Ce que chaque côté de la barre écrit : « compte · part » (à portée) et « part · compte » (isolée), la part seule en compact. */
+function livesTexts(model: LivesModel, ut: UsagesCardsText, compact: LivesCompact | undefined): { near: string; alone: string } {
+  const nearPct = model.livesNearShare * 100
+  return compact
+    ? { near: ut.pctIntFmt(nearPct), alone: ut.pctIntFmt(100 - nearPct) }
+    : { near: `${ut.intFmt(model.near.lives)} · ${ut.pctFmt(nearPct)}`, alone: `${ut.pctFmt(100 - nearPct)} · ${ut.intFmt(model.alone.lives)}` }
+}
+
+/** Les gouttières réservées aux valeurs qui débordent, communes à toutes les lignes d'une carte (et à son axe). */
+// eslint-disable-next-line react-refresh/only-export-components
+export function livesInset(models: readonly LivesModel[], ut: UsagesCardsText, compact?: LivesCompact): { left: number; right: number } {
+  const texts = models.map((m) => livesTexts(m, ut, compact))
+  return { left: sideSlotPx(texts.map((x) => x.near)), right: sideSlotPx(texts.map((x) => x.alone)) }
+}
+
 interface Props {
   model: LivesModel
   /** Le nom de la ligne (gamertag, avec sa pastille sur la Vue match). */
@@ -36,16 +54,17 @@ interface Props {
   idPrefix?: string
   ut: UsagesCardsText
   compact?: LivesCompact
+  /** Les gouttières réservées de chaque côté de la barre (`livesInset`). */
+  inset: { left: number; right: number }
 }
 
-export function LivesNearTeammateRow({ model, label, hidden, idPrefix = '', ut, compact }: Props) {
+export function LivesNearTeammateRow({ model, label, hidden, idPrefix = '', ut, compact, inset }: Props) {
   const l = ut.lives
   const nearPct = model.livesNearShare * 100
-  const nearText = compact ? ut.pctIntFmt(nearPct) : `${ut.intFmt(model.near.lives)} · ${ut.pctFmt(nearPct)}`
-  const aloneText = compact ? ut.pctIntFmt(100 - nearPct) : `${ut.pctFmt(100 - nearPct)} · ${ut.intFmt(model.alone.lives)}`
+  const { near: nearText, alone: aloneText } = livesTexts(model, ut, compact)
   const nearId = `${idPrefix}near`
   const aloneId = `${idPrefix}alone`
-  // Seule la valeur qui ne tient pas dans son segment monte au repli (jamais affichée deux fois).
+  // La valeur qui ne tient pas dans son segment s'écrit à côté de la barre, du côté de son camp.
   const nearHidden = hidden.has(nearId)
   const aloneHidden = hidden.has(aloneId)
   return (
@@ -54,17 +73,22 @@ export function LivesNearTeammateRow({ model, label, hidden, idPrefix = '', ut, 
         {label}
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        {(nearHidden || aloneHidden) && (
-          <div className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground" data-testid={`usages-lives-${idPrefix}repli`}>
-            <span>{nearHidden && nearText}</span>
-            <span>{aloneHidden && aloneText}</span>
-          </div>
-        )}
+        <BarWithSides
+          leftPx={inset.left}
+          rightPx={inset.right}
+          left={nearHidden && <SideValue color={LIVES_NEAR_INK} testId={`usages-lives-${idPrefix}side-near`}>{nearText}</SideValue>}
+          right={aloneHidden && <SideValue color={LIVES_ALONE_INK} testId={`usages-lives-${idPrefix}side-alone`}>{aloneText}</SideValue>}
+        >
         <div className="relative h-[22px] rounded-[3px] bg-muted">
           <Part id={nearId} left={0} width={nearPct} color={LIVES_NEAR_INK} text={nearText} hidden={nearHidden} tip={l.tip(l.near, model.near.lives, model.lives, ut.pctFmt(nearPct), 'lives')} align="start" />
           <Part id={aloneId} left={nearPct} width={100 - nearPct} color={LIVES_ALONE_INK} text={aloneText} hidden={aloneHidden} tip={l.tip(l.alone, model.alone.lives, model.lives, ut.pctFmt(100 - nearPct), 'lives')} align="end" />
         </div>
-        {model.killsNearShare != null && <KillsLines model={model} idPrefix={idPrefix} ut={ut} compact={compact} />}
+        </BarWithSides>
+        {model.killsNearShare != null && (
+          <div style={{ marginLeft: inset.left, marginRight: inset.right }}>
+            <KillsLines model={model} idPrefix={idPrefix} ut={ut} compact={compact} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -116,14 +140,9 @@ function Part({
   if (width <= 0) return null
   return (
     <div className="absolute inset-y-0" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }} data-fit-key={id} data-testid={`usages-lives-${id}`}>
-      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
-        <div className={`flex h-full w-full cursor-help items-center overflow-hidden ${align === 'start' ? 'justify-start pl-[7px]' : 'justify-end pr-[7px]'}`}>
-          {/* `text-white` : écriture posée sur l'aplat, contraste dans le segment et non couleur sémantique. */}
-          <span data-fit-label className="whitespace-nowrap text-xs font-medium tabular-nums leading-none text-white" style={{ visibility: hidden ? 'hidden' : 'visible' }}>
-            {text}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel tip={<TipText text={tip} />} align={align} hidden={hidden}>
+        {text}
+      </SegmentLabel>
     </div>
   )
 }

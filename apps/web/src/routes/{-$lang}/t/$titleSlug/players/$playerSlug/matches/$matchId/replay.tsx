@@ -18,12 +18,12 @@
  *
  * `?t=<instant_ms>&clock=match|film` OUVRE LE REJEU À L'INSTANT EXACT (lot M1b, 2026-09-08,
  * décision utilisateur ferme « corriger le décalage ») — lien posé par la tuile « Rejeu » de la
- * zone choisie de l'onglet Tactique (`MatchReplayLink`). La route attend le document (il porte l'offset
- * de calage), convertit avec la fonction pure `resolveTacticalReplayInstant` +
- * `msToFrames` (`lib/replay/replayLogic.ts`), et positionne `ReplayCanvas` via `openAtFrame`.
- * `clock=match` sur un artefact dont le pont n'a apparié aucune mort (schéma < 49, ou pont
- * muet même à jour) : le rejeu s'ouvre au début et affiche un avis — JAMAIS un saut
- * approximatif présenté comme exact.
+ * zone choisie de l'onglet Tactique (`MatchReplayLink`). La route attend le document (il porte
+ * l'origine du film), convertit avec la fonction pure `resolveTacticalOpenAtFrame`
+ * (`lib/replay/replayLogic.ts` : `matchClock(doc).filmMsOfMatchMs` pour l'horloge du match, puis
+ * recul de `OUVERTURE_AVANT_EVENEMENT_MS`), et positionne `ReplayCanvas` via `openAtFrame`.
+ * `clock=match` sur un artefact sans origine du film : le rejeu s'ouvre au début et affiche un
+ * avis — JAMAIS un saut approximatif présenté comme exact.
  */
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMemo } from 'react'
@@ -114,12 +114,12 @@ function ReplayPage() {
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const { data, isLoading } = useMatchReplay(playerSlug, matchId)
   // LE LIEN TACTIQUE (`?t=&clock=`, cf. l'en-tête) : converti UNIQUEMENT quand le document est
-  // chargé — lui seul porte le calage (`coverage.bridge.deathOffsetMs`). Avant ça, `openAtFrame`
+  // chargé — lui seul porte l'origine du film (`originMs`). Avant ça, `openAtFrame`
   // reste `null` et le rejeu se comporte comme sans paramètre (`ReplayCanvas` cadre au coup
   // d'envoi, cf. `useReplayPlayback`). Logique PURE et testée seule dans
   // `lib/replay/replayLogic.resolveTacticalOpenAtFrame` — cette page ne fait que l'appeler.
   const search = Route.useSearch()
-  const { openAtFrame, showUncalibratedNotice } = useMemo(
+  const { openAtFrame, showMissingOriginNotice } = useMemo(
     () => resolveTacticalOpenAtFrame(search, data),
     [search, data],
   )
@@ -293,14 +293,14 @@ function ReplayPage() {
               dans le canvas, qui est déjà au plafond de taille du dépôt. */}
           <section className="relative min-w-0">
             {/* AVIS « INSTANT NON CALÉ » (lot M1b, 2026-09-08) : le lien tactique demandait un
-                instant sur l'horloge du match, mais cet artefact n'a pas de calage connu
-                (schéma < 49, ou pont d'identité qui n'a apparié aucune mort). Le rejeu s'ouvre
+                instant sur l'horloge du match, mais cet artefact n'a pas d'origine du film
+                (`matchClock` rend `null`). Le rejeu s'ouvre
                 quand même — au début, jamais sur un saut approximatif présenté comme exact. */}
-            {showUncalibratedNotice && (
+            {showMissingOriginNotice && (
               <EmptyStateNotice
                 className="mb-2"
-                title={t.openAtUncalibratedTitle}
-                description={t.openAtUncalibratedDescription}
+                title={t.openAtNoOriginTitle}
+                description={t.openAtNoOriginDescription}
               />
             )}
             {/* LE BANDEAU DE SCORE COIFFE LE TERRAIN (demande utilisateur du 2026-08-20) :

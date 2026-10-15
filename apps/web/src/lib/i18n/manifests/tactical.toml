@@ -393,5 +393,225 @@ fr = "près · {d} m"
 en = "near · {d} m"
 
 [tactical.tile.open_replay]
-fr = "Ouvrir le rejeu à {instant}"
-en = "Open the replay at {instant}"
+fr = "Ouvrir le rejeu {secondes} s avant {instant}"
+en = "Open the replay {secondes} s before {instant}"
+
+[tactical.tile.distance]
+fr = "à {d} m"
+en = "{d} m away"
+
+[tactical.layer.killers]
+fr = "Tueurs"
+en = "Killers"
+
+[tactical.layer.victims]
+fr = "Victimes"
+en = "Victims"
+
+[tactical.tile.open_replay_no_instant]
+fr = "Ouvrir le rejeu {secondes} s avant l’événement"
+en = "Open the replay {secondes} s before the event"
+
+[tactical.zone.events_label]
+fr = "Événements de la zone, à sélectionner"
+en = "Zone events, select one"
+
+# ── Coéquipiers à la mort : vue de la zone (C), instantané (A), échange (B), séquence (D) ────────
+# Titres factuels, aucun possessif ni conseil ; « instant » (moment du chrono), jamais « heure ».
+
+[tactical.mort.bilan_title]
+fr = "Coéquipier le plus proche"
+en = "Closest teammate"
+
+[tactical.mort.status_in_radius]
+fr = "dans le rayon"
+en = "within range"
+
+[tactical.mort.status_beyond]
+fr = "au-delà"
+en = "beyond"
+
+[tactical.mort.status_out_of_sight]
+fr = "hors de vue"
+en = "out of sight"
+
+[tactical.mort.status_none]
+fr = "aucun"
+en = "none"
+
+[tactical.mort.rose_title]
+fr = "Direction des tueurs"
+en = "Killer direction"
+
+[tactical.mort.rose_label]
+fr = "Rose des directions des tueurs, huit secteurs"
+en = "Killer direction rose, eight sectors"
+
+[tactical.mort.rose_from]
+fr = "{n} sur {m} par {dirs}"
+en = "{n} of {m} from {dirs}"
+
+[tactical.mort.rose_median]
+fr = "médiane {d} m"
+en = "median {d} m"
+
+[tactical.mort.dir_0]
+fr = "le haut"
+en = "the top"
+
+[tactical.mort.dir_1]
+fr = "le haut droit"
+en = "the top right"
+
+[tactical.mort.dir_2]
+fr = "la droite"
+en = "the right"
+
+[tactical.mort.dir_3]
+fr = "le bas droit"
+en = "the bottom right"
+
+[tactical.mort.dir_4]
+fr = "le bas"
+en = "the bottom"
+
+[tactical.mort.dir_5]
+fr = "le bas gauche"
+en = "the bottom left"
+
+[tactical.mort.dir_6]
+fr = "la gauche"
+en = "the left"
+
+[tactical.mort.dir_7]
+fr = "le haut gauche"
+en = "the top left"
+
+[tactical.mort.card_nearest]
+fr = "Coéquipier le plus proche"
+en = "Closest teammate"
+
+[tactical.mort.card_median]
+fr = "{d} m"
+en = "{d} m"
+
+[tactical.mort.card_median_label]
+fr = "médiane"
+en = "median"
+
+[tactical.mort.detail_title]
+fr = "Mort · {date} · {instant}"
+en = "Death · {date} · {instant}"
+
+[tactical.mort.detail_title_no_instant]
+fr = "Mort · {date}"
+en = "Death · {date}"
+
+[tactical.mort.detail_title_frag]
+fr = "Frag · {date} · {instant}"
+en = "Frag · {date} · {instant}"
+
+[tactical.mort.detail_title_frag_no_instant]
+fr = "Frag · {date}"
+en = "Frag · {date}"
+
+[tactical.mort.detail_player]
+fr = "Joueur"
+en = "Player"
+
+[tactical.mort.detail_from_death]
+fr = "de la mort"
+en = "from death"
+
+[tactical.mort.detail_from_killer]
+fr = "du tueur"
+en = "from killer"
+
+[tactical.mort.detail_killer]
+fr = "Tueur"
+en = "Killer"
+
+[tactical.mort.detail_victim]
+fr = "Victime"
+en = "Victim"
+
+[tactical.mort.detail_unnamed]
+fr = "Coéquipier"
+en = "Teammate"
+
+[tactical.mort.detail_waiting]
+fr = "{name} · en attente de réapparition"
+en = "{name} · waiting to respawn"
+
+[tactical.mort.detail_out_of_sight]
+fr = "{name} · hors de vue"
+en = "{name} · out of sight"
+
+[tactical.mort.detail_summary]
+fr = "{inside, plural, =0 {Aucun coéquipier dans le rayon de {r} m} one {# coéquipier dans le rayon de {r} m} other {# coéquipiers dans le rayon de {r} m}}, {beyond} au-delà, {out} hors jeu."
+en = "{inside, plural, =0 {No teammate within {r} m} one {# teammate within {r} m} other {# teammates within {r} m}}, {beyond} beyond, {out} out of play."
+
+[tactical.mort.detail_summary_no_radius]
+fr = "{n, plural, one {# coéquipier} other {# coéquipiers}} à la mort."
+en = "{n, plural, one {# teammate} other {# teammates}} at the time of death."
+
+[tactical.mort.legend_death]
+fr = "Mort"
+en = "Death"
+
+[tactical.mort.legend_ally_in]
+fr = "Coéquipier dans le rayon"
+en = "Teammate within range"
+
+[tactical.mort.legend_ally_out]
+fr = "Coéquipier hors du rayon"
+en = "Teammate beyond range"
+
+[tactical.mort.legend_cloud]
+fr = "Coéquipiers en jeu à chaque mort"
+en = "Teammates in play at each death"
+
+[tactical.mort.legend_radius]
+fr = "Rayon du radar ({r} m)"
+en = "Radar range ({r} m)"
+
+[tactical.mort.legend_killer]
+fr = "Tueur"
+en = "Killer"
+
+[tactical.mort.seq_group]
+fr = "Séquence autour de la mort"
+en = "Sequence around the death"
+
+[tactical.mort.seq_snapshot]
+fr = "Instantané"
+en = "Snapshot"
+
+[tactical.mort.seq_trail]
+fr = "traîne : {s} s précédentes"
+en = "trail: previous {s} s"
+
+[tactical.mort.seq_at]
+fr = "À {clock}"
+en = "At {clock}"
+
+[tactical.mort.seq_summary]
+fr = "{inside} sur {total} dans le rayon de {r} m"
+en = "{inside} of {total} within {r} m"
+
+[tactical.mort.seq_distance_note]
+fr = "Distances au centre du cercle : la victime avant la mort, le lieu de la mort ensuite."
+en = "Distances to the circle's centre: the victim before the death, the death spot afterwards."
+
+[tactical.mort.seq_stage]
+fr = "Étape à {offset} s de la mort"
+en = "Stage {offset} s from the death"
+
+[tactical.mort.zone_section]
+fr = "Lecture de la zone"
+en = "Zone reading"
+
+[tactical.tile.distance_lt1]
+fr = "< 1 m"
+en = "< 1 m away"
+

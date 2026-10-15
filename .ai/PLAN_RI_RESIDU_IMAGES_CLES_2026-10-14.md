@@ -852,3 +852,9 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   gardes `n < 0` et `b.Want >= 0` (mutations rouges), doc de `Chained` corrigée. Sortie de grammar
   inchangée (I-d0, I-ferm, I-ancres, I-equipes identiques à l'octet) ; empreinte de `grammar-2026-10-15.2`
   recopiée (révision non publiée, aucune lecture changée).
+- 2026-10-15 : fusion de `origin/feat/v75` `df51f37c0` (chantier Tactique coéquipiers, étiquettes de barres,
+  correction CSR de levelup-6c). `csr_backfill.go` : la version de `feat/v75` (`ORDER BY start_canonique`)
+  est gardée et la nôtre (`644e115b4`) retirée, comme convenu ; le schéma du test d'intégration était
+  identique des deux côtés. Révisions de `feat/v75` inchangées (`grammar-2026-10-15`,
+  `killsource-2026-10-14`, `SchemaDesFaits` 14, schéma 96) : les nôtres restent au-dessus. Tests du film,
+  archlint, contrat, CSR, vet, golangci, typecheck et vitest du rejeu verts sur la base fusionnée.

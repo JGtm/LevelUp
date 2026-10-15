@@ -41,7 +41,7 @@ import { titleWithInfo } from '@/components/ui/title-with-info'
 import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { TacticalGrappe, TacticalRaster } from '@/lib/api/types'
+import type { TacticalContribution, TacticalGrappe, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 import { normalizeCalloutZones } from '@/lib/replay/calloutsPaint'
@@ -63,6 +63,8 @@ import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
 import { TacticalPlanFond } from './TacticalPlanFond'
+import { CoucheDesCoequipiers, PiedDuPlan } from './TacticalPlanCoequipiers'
+import { CoucheDesTueurs } from './TacticalPlanTueurs'
 import {
   grilleDuPlan,
   planEmptyReason,
@@ -74,8 +76,11 @@ import {
   type TacticalQuestion,
   type TacticalQui,
 } from './tacticalView.logic'
+import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
+import { SCENE_VIDE } from './mort.logic'
+import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
 
 /** Les trois réglages du bandeau (état local de la vue). */
 export interface ReglagesDuPlan {
@@ -115,6 +120,16 @@ export interface TacticalPlanCardProps {
   selected: { col: number; row: number } | null
   /** Le point MONDE d'un clic sur le plan ; la vue retient la cellule servie qu'il vise. */
   onPointSelect: (point: { x: number; y: number }) => void
+  /** Les contributions de la zone choisie ([] sans zone) : la couche « autre joueur » en tire ses traits et points. */
+  contributions: readonly TacticalContribution[]
+  /** L'index de la contribution mise en avant (tuile ou point survolé), `null` sinon. */
+  survol: number | null
+  onSurvol: (index: number | null) => void
+  /** L'index de la contribution choisie (clic sur une tuile ou un point), `null` sinon. */
+  choisie: number | null
+  onChoisir: (index: number) => void
+  /** La vue de la mort choisie (instantané, séquence) ; `null` = vue de la zone. */
+  vue?: VueDeMort | null
 }
 
 export function TacticalPlanCard({
@@ -131,6 +146,12 @@ export function TacticalPlanCard({
   reglages,
   selected,
   onPointSelect,
+  contributions,
+  survol,
+  onSurvol,
+  choisie,
+  onChoisir,
+  vue = null,
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
@@ -145,6 +166,20 @@ export function TacticalPlanCard({
   const peintes = peinture.grid?.filled ?? 0
   const raisonVide = lue ? planEmptyReason(peintes, lue.matchs_retenus, lue.matchs_filtres) : null
   const messages = lue ? statusMessages(t, lue.matchs_en_attente ?? 0) : []
+  // La couche n'existe que tant qu'une zone est choisie et que le plan est peint. Pendant une étape de la
+  // séquence, le tueur est peint à sa position de l'instant par la couche des coéquipiers : celle des
+  // tueurs se retire.
+  const sequenceAffichee = vue?.sequence != null && vue.etape !== null
+  const pointsTueurs = useMemo(
+    () => (selected && lue && raisonVide === null && !sequenceAffichee ? pointsDeLaCouche(contributions) : []),
+    [selected, lue, raisonVide, contributions, sequenceAffichee],
+  )
+  const sceneMort = useMemo(
+    () => (selected && lue && raisonVide === null ? sceneDeLaVue(contributions, vue) : SCENE_VIDE),
+    [selected, lue, raisonVide, contributions, vue],
+  )
+  // Une mort choisie (`vue`) : le nom de la zone (déjà en tête de la colonne de droite) se retire du plan.
+  const mortSelectionnee = vue !== null
 
   return (
     <SectionCard
@@ -184,7 +219,25 @@ export function TacticalPlanCard({
               estompe={estompe}
             />
           )}
-          {repere && selected && etiquette && (
+          {repere && pointsTueurs.length > 0 && (
+            <CoucheDesTueurs
+              t={t}
+              locale={locale}
+              repere={repere}
+              fenetre={fenetre}
+              contributions={contributions}
+              points={pointsTueurs}
+              survol={survol}
+              onSurvol={onSurvol}
+              choisie={choisie}
+              onChoisir={onChoisir}
+              estompe={estompe}
+            />
+          )}
+          {repere && (sceneMort.marques.length > 0 || sceneMort.cercle !== null) && (
+            <CoucheDesCoequipiers repere={repere} fenetre={fenetre} scene={sceneMort} estompe={estompe} />
+          )}
+          {repere && selected && etiquette && !mortSelectionnee && (
             <EtiquetteDeZone selected={selected} repere={repere} fenetre={fenetre} texte={etiquette} estompe={estompe} />
           )}
           <AvisSurLeFond t={t} etat={etat} inconnus={inconnus} estompe={estompe}>
@@ -201,6 +254,7 @@ export function TacticalPlanCard({
           estompe={estompe}
         />
       </div>
+      <PiedDuPlan t={t} locale={locale} scene={sceneMort} vue={vue} roles={rolesPresents(pointsTueurs)} />
     </SectionCard>
   )
 }

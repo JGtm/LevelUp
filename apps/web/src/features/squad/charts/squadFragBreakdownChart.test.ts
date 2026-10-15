@@ -6,8 +6,6 @@ import { describe, it, expect } from 'vitest'
 import {
   buildFragBreakdownRows,
   fragBreakdownClasses,
-  repliOffsetPct,
-  segmentTextTone,
 } from './squadFragBreakdownChart'
 import type { FragClassEntry } from '@/lib/api/types'
 
@@ -80,31 +78,5 @@ describe('fragBreakdownClasses', () => {
     expect(
       fragBreakdownClasses({ Me: [cls('melee', 1), cls('shoulder', 2)], F1: [cls('heavy', 1)] }, ORDER),
     ).toEqual(['shoulder', 'heavy', 'melee'])
-  })
-})
-
-describe('repliOffsetPct (S3)', () => {
-  const segments = [
-    { cls: 'shoulder', kills: 30, leftPct: 0, widthPct: 60 },
-    { cls: 'melee', kills: 2, leftPct: 60, widthPct: 4 },
-    { cls: 'grenade', kills: 1, leftPct: 64, widthPct: 2 },
-  ]
-  it('la ligne de repli s’aligne sur le PREMIER segment masqué', () => {
-    expect(repliOffsetPct(segments, (c) => c !== 'shoulder')).toBe(60)
-    expect(repliOffsetPct(segments, (c) => c === 'grenade')).toBe(64)
-  })
-  it('tout tient → pas de ligne de repli', () => {
-    expect(repliOffsetPct(segments, () => false)).toBeNull()
-  })
-})
-
-describe('segmentTextTone', () => {
-  it('écriture sombre sur un aplat clair, claire sur un aplat sombre', () => {
-    // Couleurs de test (pas de charte) : un jaune très clair et un bleu nuit.
-    expect(segmentTextTone('#fde68a')).toBe('dark') // color-allow: valeur de test
-    expect(segmentTextTone('#1e3a8a')).toBe('light') // color-allow: valeur de test
-  })
-  it('valeur non hex (variable CSS) → clair', () => {
-    expect(segmentTextTone('var(--x)')).toBe('light')
   })
 })

@@ -127,7 +127,7 @@ export function drawShotsLayer(
   style: ShotStyle,
 ): void {
   // L'ÉCHELLE DU CADRAGE, lue une fois : le montage d'arme d'un tir en véhicule suit la TAILLE
-  // du sprite, qui en dépend depuis le 2026-09-20 (cf. `model/screenSizes.ts`).
+  // du sprite, qui en dépend depuis le 2026-09-20 (cf. `lib/replay/screenSizes.ts`).
   const scalePxPerM = scaleOf(view)
   for (const s of shots) {
     const age = win.frame - s.frame

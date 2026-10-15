@@ -35,7 +35,9 @@ const (
 	metricIsolationMatches  = "killsource_isolement_matchs_couverts"
 	metricIsolationLives    = "killsource_isolement_vies_ecrites"
 	metricIsolationContexts = "killsource_isolement_contextes_ecrits"
-	metricIsolationNoTeams  = "killsource_isolement_sans_equipes"
+	// metricIsolationMates : lignes de `match_death_mates` ecrites (une par coequipier et par mort).
+	metricIsolationMates   = "killsource_isolement_coequipiers_ecrits"
+	metricIsolationNoTeams = "killsource_isolement_sans_equipes"
 	// TROIS CAUSES, TROIS COMPTEURS. Un seul ecart (`len(deaths) - len(contexts)`) melangeait
 	// « la victime n'a pas de xuid », « le film ne la montre pas » et « elle n'a pas d'equipe
 	// en base » — trois pannes a diagnostiquer differemment, indistinguables sous un nombre.
@@ -83,14 +85,14 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 			"match_id", matchID)
 		return false
 	}
-	contexts, ecarts := toDeathContextRows(mat, ids, deaths)
+	contexts, mates, ecarts := toDeathContextRows(mat, ids, deaths)
 	observability.AddInt(metricIsolationVictimeNonResolue, int64(ecarts.victimeNonResolue))
 	observability.AddInt(metricIsolationSansEquipe, int64(ecarts.sansEquipe))
 	observability.AddInt(metricIsolationDeathsNoPlace, int64(ecarts.sansLieu))
 	observability.AddInt(metricIsolationPontNonPublicable, int64(ecarts.pontNonPublicable))
 
 	if err := c.writeIsolationFacts(ctx, matchID, persist.LivesBatch{
-		MatchID: matchID, DecoderRev: IsolationDecoderRev, Lives: lives, Contexts: contexts,
+		MatchID: matchID, DecoderRev: IsolationDecoderRev, Lives: lives, Contexts: contexts, Mates: mates,
 	}); err != nil {
 		observability.AddInt(metricIsolationWriteFail, 1)
 		slog.ErrorContext(ctx, "killsource: isolement — ecriture echouee (le journal et les "+
@@ -100,9 +102,10 @@ func (c *KillSourceCollector) projeterFaitsDIsolement(
 	observability.AddInt(metricIsolationMatches, 1)
 	observability.AddInt(metricIsolationLives, int64(len(lives)))
 	observability.AddInt(metricIsolationContexts, int64(len(contexts)))
+	observability.AddInt(metricIsolationMates, int64(len(mates)))
 	slog.InfoContext(ctx, "killsource: isolement — faits ecrits",
 		"match_id", matchID, "vies", len(lives), "contextes", len(contexts),
-		"morts_journal", len(deaths), "victimes_non_resolues", ecarts.victimeNonResolue,
+		"coequipiers", len(mates), "morts_journal", len(deaths), "victimes_non_resolues", ecarts.victimeNonResolue,
 		"morts_sans_equipe", ecarts.sansEquipe, "morts_sans_lieu", ecarts.sansLieu,
 		"pont_non_publicable", ecarts.pontNonPublicable)
 	return true
@@ -261,7 +264,16 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // n est plus lu : 14, 6, 5 et 28 positions aberrantes en moins sur les quatre films a slot reboucle)
 // et le pont juge les collisions PAR CORPS (un siege recycle n est plus « ambigu » : `XUIDAt` y
 // repond par corps). Memes films concernes, meme declenchement ; la valeur ne bouge pas.
-const IsolationDecoderRev = "isolement-2026-09-27-generations-vivantes"
+//
+// # POURQUOI ELLE BOUGE LE 2026-10-14 (plan Tactique coequipiers, lot L1)
+//
+// La passe ecrit une table de plus, `match_death_mates` (un coequipier par ligne et par mort :
+// etat, position, distance), sous le meme `decode_pass` que `match_lives` et
+// `match_death_context`. Le CONTENU de ces deux-la ne change pas ; c'est l'existence de la
+// troisieme table qui rend un match deja decode incomplet. Sans bump, `matchsAJour` le tiendrait
+// pour a jour et la table resterait vide pour tout le corpus. Le bump ne declenche rien par
+// lui-meme : seule la commande `levelup backfill-killsource` re-decode.
+const IsolationDecoderRev = "isolement-2026-10-14-coequipiers"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //
@@ -314,7 +326,7 @@ type ecartsDeProjection struct {
 // sans rapprocher deux horloges.
 func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	deaths []persist.KillEventInsert,
-) ([]persist.DeathContextInsert, ecartsDeProjection) {
+) ([]persist.DeathContextInsert, []persist.DeathMateInsert, ecartsDeProjection) {
 	journal, nonResolues := journalDesMorts(deaths)
 	equipes := equipesNumeriques(ids.Equipes)
 	ecarts := ecartsDeProjection{victimeNonResolue: nonResolues}
@@ -329,7 +341,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	// probleme localise a chaque victime plutot qu'a un pont casse pour le match entier.
 	if !mat.registre.PontPubliable() {
 		ecarts.pontNonPublicable = max(len(journal)-ecarts.sansEquipe, 0)
-		return nil, ecarts
+		return nil, nil, ecarts
 	}
 	ctxs := replay.ContextesDesMorts(replay.EntreeContexteMorts{
 		Positions: mat.positions,
@@ -343,6 +355,7 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.
 	ecarts.sansLieu = max(len(journal)-ecarts.sansEquipe-len(ctxs), 0)
 	out := make([]persist.DeathContextInsert, 0, len(ctxs))
+	var mates []persist.DeathMateInsert
 	for _, c := range ctxs {
 		out = append(out, persist.DeathContextInsert{
 			VictimXUID:          strconv.FormatUint(c.VictimeXUID, 10),
@@ -358,10 +371,24 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 			TeammatesLeft:  0,
 			TeammatesTotal: c.Total,
 		})
+		// Une ligne par coequipier, dans l'ordre (xuid croissant) que le contexte leur a donne :
+		// memes etats et memes distances que les comptes ci-dessus, dont elles sont la source.
+		victime := strconv.FormatUint(c.VictimeXUID, 10)
+		for _, m := range c.Coequipiers {
+			mates = append(mates, persist.DeathMateInsert{
+				VictimXUID: victime,
+				TimeMS:     c.TempsMS,
+				MateXUID:   strconv.FormatUint(m.XUID, 10),
+				State:      m.Etat,
+				X:          m.X,
+				Y:          m.Y,
+				DistanceM:  m.DistanceM,
+			})
+		}
 	}
 	// Repli `repli_coequipiers_partis_constante_nulle` : chaque ligne ecrit la constante (lot J8.7).
 	ids.replis.DeclencheN(decfilm.NomCoequipiersPartisConstanteNulle, len(out))
-	return out, ecarts
+	return out, mates, ecarts
 }
 
 // journalDesMorts ne garde que les morts dont la VICTIME est resolue. Une victime sans xuid

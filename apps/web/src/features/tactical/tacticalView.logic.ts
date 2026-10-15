@@ -152,7 +152,7 @@ export function trouveCellule(
 // décision utilisateur ferme « corriger le décalage ») — mortes : le lien de rejeu ne
 // pré-calcule aucune frame, il porte `?t=&clock=` et laisse la ROUTE du rejeu
 // convertir une fois le document (et son calage) chargé
-// (`lib/replay/replayLogic.resolveTacticalReplayInstant` + `msToFrames`).
+// (`lib/replay/replayLogic.resolveTacticalOpenAtFrame`).
 
 // ─── Portées du radar (aide de la lecture « morts seul ») ──────────────────────────
 

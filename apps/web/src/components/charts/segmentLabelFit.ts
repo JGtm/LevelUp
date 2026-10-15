@@ -1,8 +1,9 @@
 /**
  * segmentLabelFit — une valeur s'écrit DANS son segment de barre seulement si elle y tient
- * avec 6 px de marge de chaque côté ; sinon elle part sur une ligne de repli (règle S3 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : jamais tronquée, jamais seulement en
- * infobulle).
+ * avec 6 px de marge de chaque côté ; sinon elle s'écrit À CÔTÉ de la barre, sur la même ligne et
+ * centrée sur elle (`BarSides` : à l'extérieur, du côté de son camp, ou juste après le bout d'une barre
+ * empilée ; la place est réservée par carte) — règle S3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 :
+ * jamais tronquée, jamais seulement en infobulle, jamais posée au-dessus de la barre (précisé le 2026-10-15).
  *
  * Mesure au PIXEL, pas à la fraction de piste : un « 3 » tient dans 20 px, un « 121 » non —
  * un seuil en pourcentage (celui de `StackedTrack`) se trompe dans les deux sens selon la
@@ -11,7 +12,7 @@
  *
  * Contrat DOM du hook : dans le conteneur, chaque segment porte `data-fit-key="<clé>"` et son
  * étiquette `data-fit-label`. Hors navigateur (jsdom, largeurs nulles), aucune étiquette ne
- * « tient » : toutes les valeurs passent au repli — visibles, jamais perdues.
+ * « tient » : toutes sont masquées dans leur segment, leurs valeurs se lisent à côté des barres.
  */
 import { useLayoutEffect, useState, type RefObject } from 'react'
 

@@ -10,11 +10,11 @@
  */
 import { Fragment, useMemo, useRef, useState } from 'react'
 
+import { AfterBar, BarWithSides, SideValue, sideSlotPx } from '@/components/charts/BarSides'
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
-import { Tooltip } from '@/components/ui/tooltip'
 import type { SquadEmpriseObject } from '@/lib/api/types'
 
-import { repliOffsetPct } from '@/features/squad/charts/squadFragBreakdownChart'
 import { SQUAD_MAIN_PLAYER_INK, TEAM_REST_INK } from '@/features/squad/formes/colors'
 import type { EmpriseText } from '@/features/squad/emprise/empriseStrings'
 import { resourceInk } from '@/features/squad/emprise/resourceColors'
@@ -31,7 +31,7 @@ const MIN_TRACK_PCT = 2
 /**
  * Vue compacte du tiroir de comparaison de Sessions (maquette `renderMineCompact`) : une barre par
  * RESSOURCE, la part du joueur et celle du reste de l’équipe en pourcentage (comptes au survol), une part qui
- * ne tient pas dans son segment sur la ligne de repli au-dessus ;
+ * ne tient pas dans son segment s'écrit à côté de la barre (`BarSides`) ;
  * `resourceSub` est le sous-libellé de chaque ressource.
  */
 interface MineCompact {
@@ -52,6 +52,16 @@ export function MinePickupsCard({ mine, itemName, player, t, ut, compact }: Prop
   const ref = useRef<HTMLDivElement | null>(null)
   const [racksOpen, setRacksOpen] = useState(false)
   const hidden = useSegmentLabelFit(ref, [mine, racksOpen, compact])
+  // La place des valeurs qui débordent : à gauche et à droite de la barre en compact (ma part / le reste),
+  // à droite du bout de chaque barre sinon (deux valeurs au plus côte à côte).
+  const compactRows = compact ? mineByResource(mine) : []
+  const compactInset = {
+    left: sideSlotPx(compactRows.map((r) => ut.pctIntFmt(r.camp > 0 ? (r.me / r.camp) * 100 : 0))),
+    right: sideSlotPx(compactRows.map((r) => ut.pctIntFmt(100 - Math.round(r.camp > 0 ? (r.me / r.camp) * 100 : 0)))),
+  }
+  const lineSlot = sideSlotPx(
+    compact ? [] : mine.groups.flatMap((g) => g.rows.map((r) => `${String(r.me)}  ${String(r.rest)}`)),
+  )
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -69,13 +79,13 @@ export function MinePickupsCard({ mine, itemName, player, t, ut, compact }: Prop
       <div ref={ref} className={`flex flex-col ${compact ? 'gap-2.5' : 'gap-[7px]'}`}>
         {compact
           ? mineByResource(mine).map((r) => (
-              <MineResourceLine key={r.resource} row={r} label={t.resources[r.resource]?.label ?? r.resource} sub={compact.resourceSub} hidden={hidden} player={player} ut={ut} />
+              <MineResourceLine key={r.resource} row={r} label={t.resources[r.resource]?.label ?? r.resource} sub={compact.resourceSub} hidden={hidden} player={player} ut={ut} inset={compactInset} />
             ))
           : mine.groups.map((g) => (
               <Fragment key={g.resource}>
                 <GroupHead group={g} label={t.resources[g.resource]?.label ?? g.resource} open={racksOpen} onToggle={() => setRacksOpen((o) => !o)} ut={ut} />
                 {(!g.folded || racksOpen) &&
-                  g.rows.map((r) => <MineLine key={r.object.key} row={r} name={itemName(r.object)} max={mine.max} hidden={hidden} player={player} ut={ut} />)}
+                  g.rows.map((r) => <MineLine key={r.object.key} row={r} name={itemName(r.object)} max={mine.max} hidden={hidden} player={player} ut={ut} slotPx={lineSlot} />)}
               </Fragment>
             ))}
       </div>
@@ -116,6 +126,7 @@ function MineLine({
   hidden,
   player,
   ut,
+  slotPx,
 }: {
   row: MineRow
   name: string
@@ -123,27 +134,36 @@ function MineLine({
   hidden: ReadonlySet<string>
   player: string
   ut: UsagesCardsText
+  /** La place réservée à droite des barres pour les valeurs qui ne tiennent pas. */
+  slotPx: number
 }) {
   const key = row.object.key
   const mePct = (row.me / row.camp) * 100
+  const trackPct = Math.max(MIN_TRACK_PCT, (row.camp / max) * 100)
+  const meId = `usages-mine-me-${key}`
+  const restId = `usages-mine-rest-${key}`
   return (
     <div className="grid items-center gap-3 text-xs" style={{ gridTemplateColumns: '150px minmax(0,1fr) auto' }} data-testid={`usages-mine-row-${key}`}>
       <div className="truncate" title={name}>
         {name}
       </div>
-      <div className="min-w-0">
+      <div className="relative min-w-0" style={{ paddingRight: slotPx }}>
         <div
           className="relative h-4 rounded-[3px] bg-muted"
-          style={{ width: `${Math.max(MIN_TRACK_PCT, (row.camp / max) * 100)}%` }}
+          style={{ width: `${trackPct}%` }}
           data-testid={`usages-mine-track-${key}`}
         >
           {row.me > 0 && (
-            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={row.rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, name, row.me, row.camp)} value={row.me} light />
+            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={row.rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, name, row.me, row.camp)} value={row.me} />
           )}
           {row.rest > 0 && (
             <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(name, row.rest, row.camp)} value={row.rest} />
           )}
         </div>
+        <AfterBar endPct={trackPct} slotPx={slotPx}>
+          {row.me > 0 && hidden.has(meId) && <SideValue color={ME_INK} testId={`${meId}-side`}>{row.me}</SideValue>}
+          {row.rest > 0 && hidden.has(restId) && <SideValue color={TEAM_REST_INK} testId={`${restId}-side`}>{row.rest}</SideValue>}
+        </AfterBar>
       </div>
       <div className="whitespace-nowrap text-[11.5px] tabular-nums text-muted-foreground" data-testid={`usages-mine-value-${key}`}>
         {player} <b className="font-semibold text-foreground">{row.me}</b> · {ut.mine.campWord} <b className="font-semibold text-foreground">{row.camp}</b>
@@ -153,7 +173,7 @@ function MineLine({
 }
 
 /** Vue compacte : une ressource, la part du joueur et celle du reste de l’équipe en pourcentage, pleine largeur. */
-function MineResourceLine({ row, label, sub, hidden, player, ut }: { row: MineResource; label: string; sub: string; hidden: ReadonlySet<string>; player: string; ut: UsagesCardsText }) {
+function MineResourceLine({ row, label, sub, hidden, player, ut, inset }: { row: MineResource; label: string; sub: string; hidden: ReadonlySet<string>; player: string; ut: UsagesCardsText; inset: { left: number; right: number } }) {
   const key = row.resource
   const rest = row.camp - row.me
   const mePct = row.camp > 0 ? (row.me / row.camp) * 100 : 0
@@ -168,61 +188,22 @@ function MineResourceLine({ row, label, sub, hidden, player, ut }: { row: MineRe
         <small className="block text-[11px] text-muted-foreground">{sub}</small>
       </div>
       <div className="min-w-0">
-        <ShareRepli
-          id={`usages-mine-repli-${key}`}
-          parts={[
-            { segId: `usages-mine-me-${key}`, n: row.me, leftPct: 0, widthPct: mePct, color: ME_INK, text: meLabel },
-            { segId: `usages-mine-rest-${key}`, n: rest, leftPct: mePct, widthPct: 100 - mePct, color: TEAM_REST_INK, text: restLabel },
-          ]}
-          hidden={hidden}
-        />
-        <div className="relative h-4 rounded-[3px] bg-muted">
-          {row.me > 0 && (
-            <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} light />
-          )}
-          {rest > 0 && (
-            <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(label, rest, row.camp)} value={restLabel} />
-          )}
-        </div>
+        <BarWithSides
+          leftPx={inset.left}
+          rightPx={inset.right}
+          left={(row.me <= 0 || hidden.has(`usages-mine-me-${key}`)) && <SideValue color={ME_INK} testId={`usages-mine-me-${key}-side`}>{meLabel}</SideValue>}
+          right={(rest <= 0 || hidden.has(`usages-mine-rest-${key}`)) && <SideValue color={TEAM_REST_INK} testId={`usages-mine-rest-${key}-side`}>{restLabel}</SideValue>}
+        >
+          <div className="relative h-4 rounded-[3px] bg-muted">
+            {row.me > 0 && (
+              <Segment id={`usages-mine-me-${key}`} left={0} width={mePct} color={ME_INK} rounded={rest > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.meTip(player, label, row.me, row.camp)} value={meLabel} />
+            )}
+            {rest > 0 && (
+              <Segment id={`usages-mine-rest-${key}`} left={mePct} width={100 - mePct} color={TEAM_REST_INK} rounded={row.me > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'} hidden={hidden} tip={ut.mine.restTip(label, rest, row.camp)} value={restLabel} />
+            )}
+          </div>
+        </BarWithSides>
       </div>
-    </div>
-  )
-}
-
-/** Une part de la barre compacte : son segment, son compte, sa position, son encre, sa part écrite. */
-interface SharePart {
-  segId: string
-  n: number
-  leftPct: number
-  widthPct: number
-  color: string
-  text: string
-}
-
-/**
- * La ligne de repli au-dessus de la barre compacte : les parts qui ne tiennent pas dans leur segment,
- * alignées sur le début du premier d'entre eux (`repliOffsetPct`, patron de la Répartition des
- * frags) ; absente quand tout tient. La vue compacte n'a pas de colonne de droite : sans elle, une
- * part étroite ne serait lisible qu'au survol.
- */
-function ShareRepli({ id, parts, hidden }: { id: string; parts: SharePart[]; hidden: ReadonlySet<string> }) {
-  const present = parts.filter((p) => p.n > 0)
-  const isHidden = (segId: string) => hidden.has(segId)
-  const offset = repliOffsetPct(
-    present.map((p) => ({ cls: p.segId, kills: p.n, leftPct: p.leftPct, widthPct: p.widthPct })),
-    isHidden,
-  )
-  if (offset == null) return null
-  return (
-    <div className="mb-0.5 flex gap-2 whitespace-nowrap text-xs tabular-nums text-muted-foreground" style={{ paddingLeft: `${offset}%` }} data-testid={id}>
-      {present
-        .filter((p) => isHidden(p.segId))
-        .map((p) => (
-          <span key={p.segId} className="inline-flex items-center">
-            <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: p.color }} aria-hidden />
-            <b className="font-bold text-foreground">{p.text}</b>
-          </span>
-        ))}
     </div>
   )
 }
@@ -236,7 +217,6 @@ function Segment({
   hidden,
   tip,
   value,
-  light,
 }: {
   id: string
   left: number
@@ -247,23 +227,12 @@ function Segment({
   tip: string
   /** Le compte (pleine page) ou la part écrite (vue compacte). */
   value: number | string
-  /** Écriture claire sur l'aplat du joueur ; foncée sur celui, pâle, du reste du camp. */
-  light?: boolean
 }) {
   return (
     <div className={`absolute inset-y-0 ${rounded}`} style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }} data-fit-key={id} data-testid={id}>
-      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
-        <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-          {/* `text-white` sur l'aplat du joueur : contraste dans le segment, pas une couleur sémantique. */}
-          <span
-            data-fit-label
-            className={`whitespace-nowrap text-[11px] font-semibold tabular-nums leading-none ${light ? 'text-white' : 'text-foreground'}`}
-            style={{ visibility: hidden.has(id) ? 'hidden' : 'visible' }}
-          >
-            {value}
-          </span>
-        </div>
-      </Tooltip>
+      <SegmentLabel tip={<TipText text={tip} />} hidden={hidden.has(id)} textClassName="text-[11px] font-semibold">
+        {value}
+      </SegmentLabel>
     </div>
   )
 }

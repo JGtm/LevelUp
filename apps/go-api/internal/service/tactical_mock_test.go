@@ -23,6 +23,10 @@ type mockTacticalRepo struct {
 	mortsParCarte    map[string][]domain.PositionSample
 	ouvrables        map[string]time.Time
 	contextes        []domain.ContexteDeMort
+	mates            []domain.MateDeMort
+	journal          []domain.KillDuJournal
+	errMates         error
+	errJournal       error
 	errContextes     error
 	errMaps          error
 	errPos           error
@@ -39,6 +43,8 @@ type mockTacticalRepo struct {
 	vuOuvrXUID      string
 	vuOuvrMatch     []string
 	vuContextes     []domain.TacticalQuery
+	vuMates         []domain.TacticalQuery
+	vuJournal       []domain.TacticalQuery
 
 	// lecturesPositions compte les lectures des positions de kill (une par requete, ADR 0036 I4).
 	lecturesPositions int
@@ -196,6 +202,44 @@ func (m *mockTacticalRepo) ContextesDeMort(_ context.Context, q domain.TacticalQ
 	for _, c := range m.contextes {
 		if garde[c.MatchID] {
 			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+// MatesDesMorts : les coequipiers des morts demandees. Le double honore la liste blanche ET la cle
+// exacte, comme le vrai lecteur, et COMPTE ses appels : une lecture par requete.
+func (m *mockTacticalRepo) MatesDesMorts(_ context.Context, q domain.TacticalQuery,
+	morts []domain.CleDeMort) ([]domain.MateDeMort, error) {
+	m.vuMates = append(m.vuMates, q)
+	if m.errMates != nil {
+		return nil, m.errMates
+	}
+	garde := gardeDuPerimetre(q)
+	demandees := map[domain.CleDeMort]bool{}
+	for _, k := range morts {
+		demandees[k] = true
+	}
+	var out []domain.MateDeMort
+	for _, l := range m.mates {
+		if garde[l.MatchID] && demandees[domain.CleDeMort{MatchID: l.MatchID, VictimXUID: l.VictimXUID, TimeMs: l.TimeMs}] {
+			out = append(out, l)
+		}
+	}
+	return out, nil
+}
+
+// JournalDesKills : le journal publiable des matchs de la liste blanche.
+func (m *mockTacticalRepo) JournalDesKills(_ context.Context, q domain.TacticalQuery) ([]domain.KillDuJournal, error) {
+	m.vuJournal = append(m.vuJournal, q)
+	if m.errJournal != nil {
+		return nil, m.errJournal
+	}
+	garde := gardeDuPerimetre(q)
+	var out []domain.KillDuJournal
+	for _, k := range m.journal {
+		if garde[k.MatchID] {
+			out = append(out, k)
 		}
 	}
 	return out, nil

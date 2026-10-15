@@ -93,23 +93,28 @@ func (s *TacticalService) nommerLaCellule(ctx context.Context, req domain.Tactic
 	return &domain.TacticalZoneNom{NomFR: retenue.Zone.NomFR, NomEN: retenue.Zone.NomEN}
 }
 
-// enrichir rend les contributions publiées, chacune munie de ce que ses sources savent. Sans
-// contribution, aucune source n'est lue.
+// enrichir rend les contributions publiées, chacune munie de ce que ses sources savent, et le bilan
+// de la zone qu'elles composent (nil sans mort ni frag lus). Sans contribution, aucune source n'est
+// lue.
 func (s *TacticalService) enrichir(ctx context.Context, req domain.TacticalCelluleRequest,
-	univers domain.TacticalUnivers, retenues []contributionLue) []domain.TacticalContribution {
+	univers domain.TacticalUnivers, retenues []contributionLue) ([]domain.TacticalContribution, *domain.TacticalBilanZone) {
 	out := make([]domain.TacticalContribution, 0, len(retenues))
 	for _, c := range retenues {
 		out = append(out, c.TacticalContribution)
 	}
 	if len(out) == 0 {
-		return out
+		return out, nil
 	}
 	s.poserModeEtScore(ctx, req.MapID, out)
 	s.poserArmes(ctx, req.MapID, retenues, out)
 	s.poserIcones(retenues, out)
-	s.poserPlacements(ctx, req.MapID, univers, retenues, out)
+	// LES CONTEXTES DE MORT SONT LUS UNE FOIS (ceux que la lecture « isole » porte déjà ne sont pas relus) :
+	// le placement (seul / près) et l'équipe les partagent.
+	contextes, lus := s.lireLesContextes(ctx, req.MapID, matchsDesMorts(retenues, false))
+	s.poserPlacements(univers, retenues, out, contextes, lus)
 	s.poserRejeu(ctx, req.MapID, out)
-	return out
+	bilan := s.poserEquipe(ctx, req.MapID, univers, retenues, out, contextes, lus)
+	return out, bilan
 }
 
 // sourceDegradee journalise une source qui ne nourrit pas son champ : DEBUG quand elle manque (non
@@ -246,14 +251,11 @@ func (s *TacticalService) nomsDesArmes(ctx context.Context, mapID string, cles [
 
 // poserPlacements pose le badge de placement de chaque MORT (D7), comparé à la portée du radar du
 // match. Une mort qui porte DÉJÀ son contexte (lecture « isole », qui l'a lu avec elle) le garde ;
-// pour les autres, la ligne de contexte la plus proche à ± TolerancePlacementMs, lue une fois et
-// bornée à leurs matchs. Un frag, une entrée, une réapparition : aucun badge.
-func (s *TacticalService) poserPlacements(ctx context.Context, mapID string, univers domain.TacticalUnivers,
-	retenues []contributionLue, out []domain.TacticalContribution) {
-	if len(matchsDesMorts(retenues, true)) == 0 {
-		return
-	}
-	contextes, lus := s.lireLesContextes(ctx, mapID, matchsDesMorts(retenues, false))
+// pour les autres, la ligne de contexte la plus proche à ± TolerancePlacementMs parmi `contextes`
+// (lus une fois pour toute la zone, `lus` faux = source absente). Un frag, une entrée, une
+// réapparition : aucun badge.
+func (s *TacticalService) poserPlacements(univers domain.TacticalUnivers, retenues []contributionLue,
+	out []domain.TacticalContribution, contextes []domain.ContexteDeMort, lus bool) {
 	rayons, _ := s.rayonsParMatch(univers.Matchs)
 	for i := range out {
 		if out[i].Face != domain.TacticalFaceMort {

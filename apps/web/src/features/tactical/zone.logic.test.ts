@@ -36,6 +36,7 @@ function contribution(extra: Partial<TacticalContribution> = {}): TacticalContri
   return {
     match_id: 'm1',
     instant_ms: 83_400,
+    instant_affiche_ms: 83_400,
     clock: 'match',
     xuid: '2533274000000001',
     match_started_at: '2026-09-01T22:30:00Z',
@@ -107,6 +108,23 @@ describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
     expect(modeleDeTuile(t, contribution({ categorie_source: 'Bullet' }), 'fr', 'UTC', null).arme).toBeUndefined()
   })
 
+  it('le fait se découpe autour du gamertag (seul lui tronque)', () => {
+    const m = modeleDeTuile(t, contribution(), 'fr', 'UTC', null)
+    expect(m.faitDecoupe.avant.trim()).toBe('Tué par')
+    expect(m.faitDecoupe.gamertag).toBe('Rival')
+    expect(m.faitDecoupe.apres).toBe('')
+    const sans = modeleDeTuile(t, contribution({ face: 'entree', autre_gamertag: undefined }), 'fr', 'UTC', null)
+    expect(sans.faitDecoupe).toEqual({ avant: 'Entrée dans la zone', apres: '' })
+  })
+
+  it('la distance sous le mètre s’écrit « < 1 m » (FR et EN), jamais « à 0 m »', () => {
+    const proche = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 0.3, y: 0 } })
+    expect(modeleDeTuile(t, proche, 'fr', 'UTC', null).distance).toBe('< 1 m')
+    expect(modeleDeTuile(getTacticalText('en'), proche, 'en', 'UTC', null).distance).toBe('< 1 m away')
+    const loin = contribution({ point: { x: 0, y: 0 }, autre_point: { x: 4, y: 0 } })
+    expect(modeleDeTuile(t, loin, 'fr', 'UTC', null).distance).toBe('à 4 m')
+  })
+
   it('un frag, une entrée, une réapparition : leur fait', () => {
     expect(modeleDeTuile(t, contribution({ face: 'frag', autre_gamertag: 'Cible' }), 'fr', 'UTC', null).fait).toBe('A tué Cible')
     expect(modeleDeTuile(t, contribution({ face: 'entree', autre_gamertag: undefined }), 'fr', 'UTC', null).fait).toBe('Entrée dans la zone')
@@ -142,7 +160,37 @@ describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
     )
     expect(m.instant).toBe('1:23')
     expect(m.titre).toBe('Assassin · 50 - 42 · Victoire · 01/09/2026 · 22:30 · 1:23 · Tué par Rival · Fusil de combat · seul · 30 m')
-    expect(m.rejeu).toEqual({ disponible: true, search: { t: '83400', clock: 'match' }, libelle: 'Ouvrir le rejeu à 1:23' })
+    expect(m.rejeu).toEqual({ disponible: true, search: { t: '83400', clock: 'match' }, libelle: 'Ouvrir le rejeu 5 s avant 1:23' })
+  })
+})
+
+describe('modeleDeTuile — l’instant écrit est celui de l’horloge affichée du rejeu', () => {
+  it('countdown de 22 s : instant_ms 462 000 et instant affiché 440 000 -> « 7:20 »', () => {
+    const m = modeleDeTuile(t, contribution({ instant_ms: 462_000, instant_affiche_ms: 440_000 }), 'fr', 'UTC', null)
+    expect(m.instant).toBe('7:20')
+    // Le lien de rejeu, lui, garde l'instant brut du match (la route le convertit par l'origine du film).
+    expect(m.rejeu.search).toEqual({ t: '462000', clock: 'match' })
+    expect(m.rejeu.libelle).toBe('Ouvrir le rejeu 5 s avant 7:20')
+  })
+
+  it('horloge du film : l’instant affiché publié par le serveur, jamais instant_ms', () => {
+    const m = modeleDeTuile(t, contribution({ clock: 'film', instant_ms: 30_000, instant_affiche_ms: 8_000 }), 'fr', 'UTC', null)
+    expect(m.instant).toBe('0:08')
+    expect(m.rejeu.search.clock).toBe('film')
+  })
+
+  it('instant affiché à 0 : une valeur (0:00), pas une absence', () => {
+    expect(modeleDeTuile(t, contribution({ instant_affiche_ms: 0 }), 'fr', 'UTC', null).instant).toBe('0:00')
+  })
+
+  it('instant affiché absent (T0 inconnu) : aucun instant écrit, ni dans la tuile ni dans le libellé', () => {
+    const m = modeleDeTuile(t, contribution({ instant_affiche_ms: undefined }), 'fr', 'UTC', null)
+    expect(m.instant).toBeUndefined()
+    expect(m.titre).not.toContain('1:23')
+    expect(m.rejeu.libelle).toBe('Ouvrir le rejeu 5 s avant l’événement')
+    expect(modeleDeTuile(getTacticalText('en'), contribution({ instant_affiche_ms: undefined }), 'en', 'UTC', null).rejeu.libelle).toBe(
+      'Open the replay 5 s before the event',
+    )
   })
 })
 

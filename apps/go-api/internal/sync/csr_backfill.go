@@ -171,7 +171,8 @@ func BackfillCSRFromAPI(
 func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MatchRegistryRow, error) {
 	ph, args := rankedCandidatePlaylistIDs()
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT DISTINCT r.match_id, r.start_time
+		SELECT match_id, start_time FROM (
+		SELECT DISTINCT r.match_id, r.start_time, `+analysis.SQLStartTimeCanonical("r")+` AS start_canonique
 		FROM match_registry r
 		JOIN match_participants mp ON mp.match_id = r.match_id
 		WHERE mp.xuid = ?
@@ -182,7 +183,7 @@ func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid
 		    OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
 		    OR LOWER(COALESCE(r.playlist_id, '')) IN (`+ph+`)
 		  )
-		ORDER BY `+analysis.SQLStartTimeCanonical("r")+` ASC`, append([]any{xuid}, args...)...)
+		) ORDER BY start_canonique ASC`, append([]any{xuid}, args...)...)
 	if err != nil {
 		return nil, err
 	}

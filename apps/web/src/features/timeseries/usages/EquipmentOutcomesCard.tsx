@@ -4,18 +4,21 @@
  *
  * Une ligne par famille, dans l'ordre publié par le Go : les objets du joueur servis / gardés sans
  * servir / lâchés (`divergent-pos` / `divergent-neutral` / `divergent-neg`), comptes dans les
- * segments quand ils y tiennent (mesure au pixel), sur une ligne de repli au-dessus sinon — seuls
- * ceux qui ne tiennent pas, alignés sur le début du premier de leurs segments (S2) ; sous-libellé
+ * segments quand ils y tiennent (mesure au pixel), sinon à côté de la barre, juste après son bout,
+ * sur la même ligne et centrés sur elle, pastille de la part devant (`BarSides` : la place est
+ * réservée à droite de toutes les barres ; jamais au-dessus, jamais seulement en infobulle) ; sous-libellé
  * « n objets, dont m pris sur la carte » ;
  * dessous, la barre fine du reste du camp et sa ligne de parts. Axe 0-100 % sous les lignes.
  */
 import { useMemo, useRef } from 'react'
 
+import { BarWithSides, SideValue, sideSlotPx } from '@/components/charts/BarSides'
+import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
-import { repliOffsetPct, type FragBreakdownSegment } from '@/features/squad/charts/squadFragBreakdownChart'
+import type { FragBreakdownSegment } from '@/features/squad/charts/squadFragBreakdownChart'
 import { TrackAxis } from '@/features/squad/emprise/PisteCampsForm'
 import { pisteColumns } from '@/features/squad/emprise/pisteLayout'
 import { TipText } from '@/features/squad/emprise/TipText'
@@ -58,6 +61,17 @@ export function EquipmentOutcomesCard({ rows, familyLabel, player, ut, compact }
   const e = ut.equipment
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, rows)
+  // La place des valeurs qui débordent, réservée à droite des barres : deux valeurs au plus côte à côte.
+  const textOfPart = (s: FragBreakdownSegment) => (compact ? ut.pctIntFmt(s.widthPct) : String(s.kills))
+  const rightPx = sideSlotPx(
+    rows.map((r) =>
+      partSegments(r.me)
+        .map(textOfPart)
+        .sort((a, b) => b.length - a.length)
+        .slice(0, 2)
+        .join('  '),
+    ),
+  )
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -76,9 +90,9 @@ export function EquipmentOutcomesCard({ rows, familyLabel, player, ut, compact }
     <ObjectifFrame title={e.title} info={e.info} legend={legend} testId="usages-equipment">
       <div ref={ref} className="flex flex-col gap-3">
         {rows.map((r) => (
-          <EquipmentLine key={r.family} row={r} label={familyLabel(r.family)} hidden={hidden} player={player} ut={ut} compact={compact} />
+          <EquipmentLine key={r.family} row={r} label={familyLabel(r.family)} hidden={hidden} player={player} ut={ut} compact={compact} rightPx={rightPx} />
         ))}
-        <TrackAxis columns={COLUMNS} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? ut.pctIntFmt(100) : String(v) }))} />
+        <TrackAxis columns={COLUMNS} inset={{ left: 0, right: rightPx }} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? ut.pctIntFmt(100) : String(v) }))} />
       </div>
     </ObjectifFrame>
   )
@@ -91,6 +105,7 @@ function EquipmentLine({
   player,
   ut,
   compact,
+  rightPx,
 }: {
   row: EquipmentRow
   label: string
@@ -98,6 +113,7 @@ function EquipmentLine({
   player: string
   ut: UsagesCardsText
   compact: EquipmentCompact | undefined
+  rightPx: number
 }) {
   const e = ut.equipment
   const id = row.family
@@ -116,15 +132,16 @@ function EquipmentLine({
         </small>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        {meTotal > 0 && <RepliLine id={meId} family={id} parts={row.me} hidden={hidden} textOf={textOf} />}
         {meTotal > 0 ? (
-          <ThreeTrack id={meId} parts={row.me} who={`${player} · ${label}`} hidden={hidden} ut={ut} textOf={textOf} />
+          <ThreeTrack id={meId} parts={row.me} who={`${player} · ${label}`} hidden={hidden} ut={ut} textOf={textOf} rightPx={rightPx} />
         ) : (
-          <Tooltip content={e.zeroTip(player, label)} className="w-full">
-            <div className="h-[22px] w-full rounded-[3px] bg-muted" />
-          </Tooltip>
+          <div style={{ marginRight: rightPx }}>
+            <Tooltip content={e.zeroTip(player, label)} className="w-full">
+              <div className="h-[22px] w-full rounded-[3px] bg-muted" />
+            </Tooltip>
+          </div>
         )}
-        {restTotal > 0 && <ThreeTrack id={`usages-equip-rest-${id}`} parts={row.rest} who={`${e.rest} · ${label}`} ut={ut} />}
+        {restTotal > 0 && <ThreeTrack id={`usages-equip-rest-${id}`} parts={row.rest} who={`${e.rest} · ${label}`} ut={ut} rightPx={rightPx} />}
         <div className="flex justify-between gap-2 text-[11px] tabular-nums text-muted-foreground" data-testid={`usages-equip-restline-${id}`}>
           {restTotal > 0 && compact ? (
             <span>{compact.restUsed(ut.pctIntFmt((row.rest[0] / restTotal) * 100))}</span>
@@ -157,48 +174,8 @@ function partSegments(parts: EquipmentParts): FragBreakdownSegment[] {
 }
 
 /**
- * La ligne de repli au-dessus de la barre épaisse : les comptes des parts qui ne tiennent pas dans
- * leur segment, alignés sur le début du premier d'entre eux (`repliOffsetPct`, patron de la
- * Répartition des frags) ; absente quand tout tient.
- */
-function RepliLine({
-  id,
-  family,
-  parts,
-  hidden,
-  textOf,
-}: {
-  id: string
-  family: string
-  parts: EquipmentParts
-  hidden: ReadonlySet<string>
-  textOf: (s: FragBreakdownSegment) => string
-}) {
-  const segments = partSegments(parts)
-  const isHidden = (part: string) => hidden.has(`${id}-${part}`)
-  const offset = repliOffsetPct(segments, isHidden)
-  if (offset == null) return null
-  return (
-    <div
-      className="flex gap-2 whitespace-nowrap text-xs tabular-nums text-muted-foreground"
-      style={{ paddingLeft: `${offset}%` }}
-      data-testid={`usages-equip-repli-${family}`}
-    >
-      {segments
-        .filter((s) => isHidden(s.cls))
-        .map((s) => (
-          <span key={s.cls} className="inline-flex items-center">
-            <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: tokenCssVar(PART_TOKENS[s.cls as Part]) }} aria-hidden />
-            <b className="font-bold text-foreground">{textOf(s)}</b>
-          </span>
-        ))}
-    </div>
-  )
-}
-
-/**
  * Trois parts côte à côte (servi, gardé, lâché) ; `hidden` donné : comptes dans les segments (barre
- * épaisse), masqués quand ils ne tiennent pas (la ligne de repli les porte).
+ * épaisse), à côté de la barre quand ils ne tiennent pas (`rightPx` : la place réservée).
  */
 function ThreeTrack({
   id,
@@ -207,18 +184,30 @@ function ThreeTrack({
   hidden,
   ut,
   textOf,
+  rightPx,
 }: {
   id: string
   parts: EquipmentParts
   who: string
   hidden?: ReadonlySet<string>
   ut: UsagesCardsText
+  /** La place réservée à droite de la barre pour les valeurs qui ne tiennent pas. */
+  rightPx: number
   /** Ce qu'écrit un segment de la barre épaisse (compte ou part) ; absent sur la barre fine. */
   textOf?: (s: FragBreakdownSegment) => string
 }) {
   const labels = hidden != null
   const total = parts[0] + parts[1] + parts[2]
-  return (
+  const side = labels
+    ? partSegments(parts)
+        .filter((s) => hidden?.has(`${id}-${s.cls}`))
+        .map((s) => (
+          <SideValue key={s.cls} color={tokenCssVar(PART_TOKENS[s.cls as Part])} testId={`${id}-side-${s.cls}`}>
+            <span className="mr-2">{textOf ? textOf(s) : s.kills}</span>
+          </SideValue>
+        ))
+    : null
+  const track = (
     <div className={`relative rounded-[3px] bg-muted ${labels ? 'h-[22px]' : 'h-2'}`} role="img" aria-label={who}>
       {partSegments(parts).map((s) => {
         const part = s.cls as Part
@@ -228,28 +217,31 @@ function ThreeTrack({
         return (
           <div
             key={part}
-            className="absolute inset-y-0"
+            className="absolute inset-y-0 flex"
             style={{ left: `${left}%`, width: `${w}%`, backgroundColor: tokenCssVar(PART_TOKENS[part]) }}
             data-testid={`${id}-${part}`}
             data-fit-key={labels ? `${id}-${part}` : undefined}
           >
-            <Tooltip content={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} className="h-full w-full">
-              <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-                {/* Écriture posée sur l'aplat : contraste dans le segment, pas une couleur sémantique. */}
-                {labels && (
-                  <span
-                    data-fit-label
-                    className={`whitespace-nowrap text-[11px] font-semibold tabular-nums leading-none ${part === 'kept' ? 'text-foreground' : 'text-white'}`}
-                    style={{ visibility: hidden?.has(`${id}-${part}`) ? 'hidden' : 'visible' }}
-                  >
-                    {textOf ? textOf(s) : n}
-                  </span>
-                )}
-              </div>
-            </Tooltip>
+            {labels ? (
+              <SegmentLabel tip={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} hidden={hidden?.has(`${id}-${part}`)} textClassName="text-[11px] font-semibold">
+                {textOf ? textOf(s) : n}
+              </SegmentLabel>
+            ) : (
+              <Tooltip content={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} className="h-full w-full">
+                <div className="h-full w-full cursor-help" />
+              </Tooltip>
+            )}
           </div>
         )
       })}
     </div>
+  )
+  // Barre épaisse : valeurs à côté, sur sa ligne ; barre fine : seulement la même marge.
+  return labels ? (
+    <BarWithSides leftPx={0} rightPx={rightPx} right={<>{side}</>}>
+      {track}
+    </BarWithSides>
+  ) : (
+    <div style={{ marginRight: rightPx }}>{track}</div>
   )
 }

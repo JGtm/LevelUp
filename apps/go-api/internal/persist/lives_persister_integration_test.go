@@ -65,6 +65,7 @@ func TestLivesPersister_DeuxTablesEcrites(t *testing.T) {
 			vie("222", 0, 30_000, CauseFinFilm, NommeParFermeture),
 		},
 		Contexts: []DeathContextInsert{contexte("111", 10_000, metres(3), 1, 1, 1, 0)},
+		Mates:    ctxMates(contexte("111", 10_000, metres(3), 1, 1, 1, 0)),
 	})
 	if err != nil {
 		t.Fatalf("PersistPass: %v", err)
@@ -115,6 +116,7 @@ func TestLivesPersister_LaVueRendLaDernierePasseEntiere(t *testing.T) {
 			contexte("111", 10_000, metres(3), 1, 0, 0, 0),
 			contexte("222", 10_000, nil, 0, 1, 0, 0),
 		},
+		Mates: ctxMates(contexte("111", 10_000, metres(3), 1, 0, 0, 0), contexte("222", 10_000, nil, 0, 1, 0, 0)),
 	}); err != nil {
 		t.Fatalf("passe A: %v", err)
 	}
@@ -126,6 +128,7 @@ func TestLivesPersister_LaVueRendLaDernierePasseEntiere(t *testing.T) {
 			vie("222", 0, 12_000, CauseFinFilm, NommeParFermeture),
 		},
 		Contexts: []DeathContextInsert{contexte("111", 12_000, metres(7), 1, 0, 0, 0)},
+		Mates:    ctxMates(contexte("111", 12_000, metres(7), 1, 0, 0, 0)),
 	}); err != nil {
 		t.Fatalf("passe B: %v", err)
 	}
@@ -174,6 +177,7 @@ func TestLivesPersister_LesDeuxTablesPartagentLaPasse(t *testing.T) {
 		MatchID: "m1", DecoderRev: "rev-1",
 		Lives:    []LifeInsert{vie("111", 0, 10_000, CauseFinMort, NommeParMort)},
 		Contexts: []DeathContextInsert{contexte("111", 10_000, metres(3), 1, 0, 0, 0)},
+		Mates:    ctxMates(contexte("111", 10_000, metres(3), 1, 0, 0, 0)),
 	}); err != nil {
 		t.Fatalf("PersistPass: %v", err)
 	}
@@ -197,6 +201,7 @@ func TestLivesPersister_SansVie_RienNEstEcrit(t *testing.T) {
 	if err := NewLivesPersister(db).PersistPass(context.Background(), LivesBatch{
 		MatchID: "m1", DecoderRev: "rev-1",
 		Contexts: []DeathContextInsert{contexte("111", 10_000, metres(3), 1, 0, 0, 0)},
+		Mates:    ctxMates(contexte("111", 10_000, metres(3), 1, 0, 0, 0)),
 	}); err != nil {
 		t.Fatalf("PersistPass: %v", err)
 	}
@@ -251,5 +256,114 @@ func TestLivesPersister_RefusDeCeQuiNePeutPasEtreUnePasse(t *testing.T) {
 	}
 	if total != 0 {
 		t.Fatalf("%d ligne(s) ecrite(s) malgre les refus : une passe refusee n'ecrit RIEN", total)
+	}
+}
+
+// ctxMates fabrique les lignes de coequipiers COHERENTES avec des contextes : un coequipier par
+// unite de chaque compteur, les visibles a des distances croissantes depuis `NearestTeammateM`.
+func ctxMates(cs ...DeathContextInsert) []DeathMateInsert {
+	var out []DeathMateInsert
+	for _, c := range cs {
+		n := 0
+		ajouter := func(etat string, x, y, d *float64) {
+			n++
+			out = append(out, DeathMateInsert{
+				VictimXUID: c.VictimXUID, TimeMS: c.TimeMS, MateXUID: string(rune('a' + n)),
+				State: etat, X: x, Y: y, DistanceM: d,
+			})
+		}
+		for i := range c.TeammatesVisible {
+			d := *c.NearestTeammateM + float64(i)
+			x, y := d, 0.0
+			ajouter(EtatCoequipierVisible, &x, &y, &d)
+		}
+		for range c.TeammatesWaiting {
+			ajouter(EtatCoequipierEnAttente, nil, nil, nil)
+		}
+		for range c.TeammatesOutOfSight {
+			ajouter(EtatCoequipierHorsDeVue, nil, nil, nil)
+		}
+	}
+	return out
+}
+
+// TestLivesPersister_LesCoequipiersSuiventLaPasse — match_death_mates partage le decode_pass des
+// deux autres tables, et sa vue `_latest` ne rend que la derniere passe entiere.
+func TestLivesPersister_LesCoequipiersSuiventLaPasse(t *testing.T) {
+	db := baseDeTest(t)
+	p := NewLivesPersister(db)
+	ctx := context.Background()
+	uneVie := []LifeInsert{vie("111", 0, 10_000, CauseFinMort, NommeParMort)}
+	for rev, c := range []DeathContextInsert{
+		contexte("111", 10_000, metres(3), 2, 1, 1, 0), // passe A : 4 coequipiers
+		contexte("111", 10_000, metres(5), 1, 0, 0, 0), // passe B : 1 coequipier
+	} {
+		if err := p.PersistPass(ctx, LivesBatch{
+			MatchID: "m1", DecoderRev: string(rune('a' + rev)), Lives: uneVie,
+			Contexts: []DeathContextInsert{c}, Mates: ctxMates(c),
+		}); err != nil {
+			t.Fatalf("passe %d: %v", rev, err)
+		}
+	}
+	var brutes, retenues, passes int
+	if err := db.QueryRow(`SELECT
+		(SELECT COUNT(*) FROM match_death_mates WHERE match_id = 'm1'),
+		(SELECT COUNT(*) FROM match_death_mates_latest WHERE match_id = 'm1'),
+		(SELECT COUNT(DISTINCT decode_pass) FROM (
+			SELECT decode_pass FROM match_death_mates_latest UNION ALL
+			SELECT decode_pass FROM match_lives_latest UNION ALL
+			SELECT decode_pass FROM match_death_context_latest))`).
+		Scan(&brutes, &retenues, &passes); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if brutes != 5 || retenues != 1 {
+		t.Fatalf("brutes = %d, retenues = %d, attendu 5 et 1 : append-only, la vue seule filtre", brutes, retenues)
+	}
+	if passes != 1 {
+		t.Fatalf("%d decode_pass distincts : les trois tables du meme decodage doivent partager la passe", passes)
+	}
+}
+
+// TestLivesPersister_RefusDesCoequipiersIncoherents — les lignes doivent retomber sur les comptes
+// de leur mort ; une passe refusee n'ecrit rien.
+func TestLivesPersister_RefusDesCoequipiersIncoherents(t *testing.T) {
+	db := baseDeTest(t)
+	p := NewLivesPersister(db)
+	uneVie := []LifeInsert{vie("111", 0, 10_000, CauseFinMort, NommeParMort)}
+	c := contexte("111", 10_000, metres(3), 1, 1, 0, 0)
+	bon := ctxMates(c)
+
+	avec := func(mod func([]DeathMateInsert) []DeathMateInsert) LivesBatch {
+		m := mod(append([]DeathMateInsert(nil), bon...))
+		return LivesBatch{MatchID: "m1", DecoderRev: "r", Lives: uneVie, Contexts: []DeathContextInsert{c}, Mates: m}
+	}
+	cas := map[string]LivesBatch{
+		"coequipier manquant": avec(func(m []DeathMateInsert) []DeathMateInsert { return m[:1] }),
+		"coequipier en trop":  avec(func(m []DeathMateInsert) []DeathMateInsert { return append(m, m[1]) }),
+		"aucune ligne":        avec(func([]DeathMateInsert) []DeathMateInsert { return nil }),
+		"etat inconnu":        avec(func(m []DeathMateInsert) []DeathMateInsert { m[1].State = "mort"; return m }),
+		"visible sans lieu":   avec(func(m []DeathMateInsert) []DeathMateInsert { m[0].X = nil; return m }),
+		"attente avec lieu":   avec(func(m []DeathMateInsert) []DeathMateInsert { d := 1.0; m[1].DistanceM = &d; return m }),
+		"plus proche faux":    avec(func(m []DeathMateInsert) []DeathMateInsert { d := 9.0; m[0].DistanceM = &d; return m }),
+		"mort sans contexte":  avec(func(m []DeathMateInsert) []DeathMateInsert { m[0].TimeMS = 99; m[1].TimeMS = 99; return m }),
+		"mate_xuid vide":      avec(func(m []DeathMateInsert) []DeathMateInsert { m[0].MateXUID = ""; return m }),
+	}
+	for nom, b := range cas {
+		t.Run(nom, func(t *testing.T) {
+			if err := p.PersistPass(context.Background(), b); err == nil {
+				t.Fatalf("aucune erreur : la passe a ete acceptee (%s)", nom)
+			}
+		})
+	}
+	var total int
+	if err := db.QueryRow(`SELECT (SELECT COUNT(*) FROM match_death_mates) + (SELECT COUNT(*) FROM match_lives)`).Scan(&total); err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if total != 0 {
+		t.Fatalf("%d ligne(s) ecrite(s) malgre les refus", total)
+	}
+	// Le cas nominal passe, lui.
+	if err := p.PersistPass(context.Background(), avec(func(m []DeathMateInsert) []DeathMateInsert { return m })); err != nil {
+		t.Fatalf("passe nominale refusee: %v", err)
 	}
 }

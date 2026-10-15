@@ -67,6 +67,8 @@ var demoLetThroughRoutes = []string{
 	"POST /api/v1/players/{player_slug}/tactical/maps",
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/cellule",
 	"POST /api/v1/players/{player_slug}/tactical/{map_id}/raster",
+	// Lecture d'une séquence de rejeu (pistes de l'artefact) : POST pour porter la clé de la mort, lecture seule.
+	"POST /api/v1/players/{player_slug}/tactical/{map_id}/sequence",
 	// État de navigation du visiteur, écrit sous <démo>/runtime/sessions.
 	"POST /api/v1/session/context",
 }

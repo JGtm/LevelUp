@@ -32,6 +32,7 @@
  */
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { drawAimCone } from './replayAimCone'
+import { CORE_RADIUS, OUTLINE_PAD } from '@/lib/replay/screenSizes'
 import { drawFloorRings, floorInRange, FLOOR_RING_WIDTH, floorRingRadius } from './floorRings'
 import { drawNameLabel } from './replayLabels'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
@@ -86,34 +87,10 @@ const TRAIL_ALPHA_HEAD = 0.63
  * DISPARAÎT, et l'étage cesse d'être une couleur de trace pour devenir un anneau fin à l'encre
  * du thème.
  */
-/**
- * Rayon du noyau du marqueur, et son accroissement par étage.
- *
- * EXPORTÉE depuis le lot véhicules (2026-09-02) : la règle de taille des véhicules (décision de
- * cadrage du plan) s'ancre sur le pion — « Mongoose ≈ 1,5-2 pions de long » — et a besoin de
- * CETTE valeur pour ne pas la redéclarer en dur ailleurs (cf. `vehiclesLayer.ts`).
- */
-export const CORE_RADIUS = 3.4
 const CORE_PER_FLOOR = 0.7
 // Les anneaux d'étage (un par étage au-dessus du sol, premier rayon FIXE et détaché du point)
 // vivent dans `floorRings.ts` depuis le 2026-09-18 : les objectifs du mode parlent le même
 // langage, et une seule boucle les trace.
-/** Liseré de lisibilité : la carte va du clair au sombre, un point coloré s'y perd sans lui. */
-const OUTLINE_PAD = 1.0
-/**
- * PION_VISIBLE_DIAMETER_PX — le diametre REELLEMENT VU d un pion au rez-de-chaussee : le
- * noyau ET son lisere. Le lisere n est pas un ornement, c est ce qui rend le point lisible
- * sur un fond qui va du clair au sombre — `markerEdge` le compte deja comme faisant partie
- * du pion.
- *
- * EXPORTEE LE 2026-09-09, et la raison est un defaut MESURE. La regle de taille des
- * vehicules s ancrait sur le NOYAU SEUL (6,80 px) : la cible « Mongoose = 1,75 pion de
- * long » se calculait donc contre une ancre plus petite que le pion visible (8,80 px), et
- * le Mongoose sortait a 7,25 px de large — PLUS ETROIT que le pion dont il est cense faire
- * 1,75 fois la longueur. D ou le retour utilisateur du 2026-09-09 : « le Ghost est plus
- * petit que le pion du joueur ».
- */
-export const PION_VISIBLE_DIAMETER_PX = (CORE_RADIUS + OUTLINE_PAD) * 2
 const OUTLINE_ALPHA = 0.62
 /**
  * LE JOUEUR DE LA PAGE (forme 'ring') — DOUBLE CONTOUR ET HALO depuis le 2026-08-18.
