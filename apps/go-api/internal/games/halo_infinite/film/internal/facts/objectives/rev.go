@@ -194,8 +194,10 @@ package objectives
 // avec sa position) et `killsource.Rev` a `killsource-2026-10-16`. Les objectifs ne lisent ni les temps
 // forts, ni BOT_METADATA, ni l equipement porte. Sur leurs branches, K-B et « faille a la pose » avaient
 // chacun ecrit ce complement pour `grammar-2026-10-15.3` (preuve `replay-equiv`, 20 films, etape
-// `objectives` identique sur les 20 pour chacun) ; PREUVE de l integration : MESURE_OBJECTIFS_INTEG.
-// Golden regenere a revision constante.
+// `objectives` identique sur les 20 pour chacun). PREUVE de l integration : `replay-equiv` sur les 20
+// films du corpus, binaires de `feat/v75` `15e2e2a04` contre ceux de `feat/integ-film` `3881e58ad`, un
+// film par processus : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource`, `carriedEquipment`
+// et l artefact bougent. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"
