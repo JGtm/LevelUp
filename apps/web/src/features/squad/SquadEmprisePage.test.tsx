@@ -160,6 +160,9 @@ describe('Contrôle des ressources', () => {
     const labels = control.getByTestId('piste-camps-row-powerup').querySelectorAll<HTMLElement>('[data-fit-label]')
     expect([...labels].map((l) => l.textContent)).toEqual(['12 · 60 %', '40 % · 8'])
     expect([...labels].every((l) => l.style.visibility === 'hidden')).toBe(true)
+    // Chaque valeur se lit à côté de la barre, du côté de son camp.
+    expect(control.getByTestId('piste-camps-side-us-powerup').textContent).toBe('12 · 60 %')
+    expect(control.getByTestId('piste-camps-side-them-powerup').textContent).toBe('40 % · 8')
   })
 
   it('légende en pied de carte : équipe, adversaire, « 50 % : autant que l’adversaire »', () => {

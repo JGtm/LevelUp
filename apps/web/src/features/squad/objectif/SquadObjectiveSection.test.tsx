@@ -64,7 +64,14 @@ describe('SquadObjectiveSection', () => {
     expect(bases.textContent).toContain('Bases')
     expect(bases.textContent).toContain('4 matchs')
     for (const role of ['Prendre', 'Défendre', 'Tenir']) expect(within(bases).getByText(role)).toBeInTheDocument()
-    // jsdom ne mesure rien : les valeurs sont masquées dans leur segment, aucune ligne au-dessus de la barre.
+    // jsdom ne mesure rien : les valeurs sont masquées dans leur segment et s'écrivent à côté de la barre,
+    // chacune du côté de son camp ; aucune ligne au-dessus de la barre.
+    const us = screen.getByTestId('objective-balance-side-us-zones_strongholds-time_in_zones_seconds')
+    const them = screen.getByTestId('objective-balance-side-them-zones_strongholds-time_in_zones_seconds')
+    expect(us.textContent).toBe('17 min 48 · 54 %')
+    expect(us.closest('[data-side]')!.getAttribute('data-side')).toBe('left')
+    expect(them.textContent).toBe('15 min 26')
+    expect(them.closest('[data-side]')!.getAttribute('data-side')).toBe('right')
     expect(screen.queryByTestId('objective-balance-repli-zones_strongholds-time_in_zones_seconds')).toBeNull()
     const labels = screen.getByTestId('objective-balance-row-zones_strongholds-time_in_zones_seconds').querySelectorAll<HTMLElement>('[data-fit-label]')
     expect([...labels].map((l) => l.textContent)).toEqual(['17 min 48 · 54 %', '15 min 26'])

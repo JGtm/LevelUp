@@ -62,6 +62,8 @@ describe('SquadFragBreakdownCard', () => {
     renderCard()
     expect(screen.queryByTestId('frag-breakdown-repli-JGtm')).toBeNull()
     const row = screen.getByTestId('frag-breakdown-row-JGtm')
+    // Chaque compte masqué se lit après le bout de la barre, pastille de sa classe devant.
+    expect([...row.querySelectorAll('[data-testid^="frag-breakdown-side-JGtm-"]')].map((n) => n.textContent)).toEqual(['28', '13', '5', '2'])
     expect([...row.querySelectorAll<HTMLElement>('[data-fit-label]')].map((l) => l.textContent)).toEqual(['28', '13', '5', '2'])
     expect(screen.getByTestId('frag-breakdown-total-JGtm').textContent).toBe('48')
     expect(screen.getByTestId('frag-breakdown-total-Madina97294').textContent).toBe('48')
@@ -81,6 +83,9 @@ describe('SquadFragBreakdownCard', () => {
     expect(within(screen.getByTestId('frag-breakdown-seg-Madina97294-shoulder')).getByText('45').style.visibility).toBe('visible')
     expect(within(screen.getByTestId('frag-breakdown-seg-Madina97294-grenade')).getByText('3').style.visibility).toBe('hidden')
     expect(screen.queryByTestId('frag-breakdown-repli-Madina97294')).toBeNull()
+    expect(screen.getByTestId('frag-breakdown-side-Madina97294-grenade').textContent).toBe('3')
+    expect(screen.queryByTestId('frag-breakdown-side-Madina97294-shoulder')).toBeNull()
+    expect(screen.getByTestId('frag-breakdown-side-JGtm-unattributed').textContent).toBe('2')
   })
 
   it('aucun repli quand tout tient', () => {

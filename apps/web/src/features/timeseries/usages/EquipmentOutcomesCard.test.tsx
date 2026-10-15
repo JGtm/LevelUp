@@ -60,6 +60,10 @@ describe('EquipmentOutcomesCard', () => {
     fit.hidden = new Set(['usages-equip-me-wall-dropped'])
     renderCard()
     expect(screen.queryByTestId('usages-equip-repli-wall')).toBeNull()
+    // La valeur se lit à droite de la barre, sur sa ligne (jamais seulement en infobulle).
+    expect(screen.getByTestId('usages-equip-me-wall-side-dropped').textContent).toBe('32')
+    expect(screen.getByTestId('usages-equip-me-wall-side-dropped').closest('[data-side]')!.getAttribute('data-side')).toBe('right')
+    expect(screen.queryByTestId('usages-equip-me-wall-side-used')).toBeNull()
     const label = (id: string) => screen.getByTestId(id).querySelector<HTMLElement>('[data-fit-label]')!.style.visibility
     expect(label('usages-equip-me-wall-dropped')).toBe('hidden')
     expect(label('usages-equip-me-wall-used')).toBe('visible')
@@ -72,6 +76,7 @@ describe('EquipmentOutcomesCard', () => {
     render(<EquipmentOutcomesCard rows={rows} familyLabel={(f) => NAMES[f] ?? f} player="JGtm" ut={USAGES_TEXT.fr.cards} />)
     const label = (id: string) => screen.getByTestId(id).querySelector<HTMLElement>('[data-fit-label]')!.style.visibility
     expect(label('usages-equip-me-wall-kept')).toBe('hidden')
+    expect(screen.getByTestId('usages-equip-me-wall-side-kept').textContent).toBe('1')
     expect(label('usages-equip-me-wall-used')).toBe('visible')
     expect(screen.queryByTestId('usages-equip-repli-wall')).toBeNull()
   })

@@ -7,12 +7,14 @@
  * notre camp en `team-ally` avec « compte · part » collé à gauche de son segment, l'adversaire
  * en `team-enemy` avec son compte collé à droite (S4 : les couleurs d'équipe remplacent les
  * mots) : un compte ne chevauche ainsi jamais le trait 50 %. Une valeur qui ne tient pas dans son
- * segment (6 px de marge de chaque côté) ne s'écrit pas : elle se lit dans l'infobulle du segment,
- * jamais au-dessus de la barre (une étiquette est toujours centrée sur sa barre). Le trait 50 % en
- * pointillé `warning` (S5). Les temps s'écrivent en durée (« 17 min 48 »).
+ * segment (6 px de marge de chaque côté) s'écrit à côté de la barre, sur la même ligne, du côté de
+ * son camp, pastille d'équipe devant (`BarSides` : la place est réservée de chaque côté, toutes les
+ * barres de la carte ont la même largeur ; jamais au-dessus, jamais seulement en infobulle, S3).
+ * Le trait 50 % en pointillé `warning` (S5). Les temps s'écrivent en durée (« 17 min 48 »).
  */
 import { useMemo, useRef } from 'react'
 
+import { BarWithSides, SideValue, sideSlotPx } from '@/components/charts/BarSides'
 import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -52,10 +54,23 @@ function compactFamilies(families: BalanceFamily[]): BalanceFamily[] {
   }))
 }
 
+/** Ce que chaque camp écrit sur une ligne : « compte · part » (nous) et son compte (adversaire), la part seule en compact. */
+function lineTexts(line: BalanceLine, t: ObjectifText, pctOnly: boolean): { us: string; them: string } {
+  const fmt = (v: number) => (line.duration ? t.durationFmt(v) : String(Math.round(v * 10) / 10))
+  const sharePct = line.share * 100
+  return {
+    us: pctOnly ? t.pctFmt(sharePct) : `${fmt(line.us)} · ${t.pctFmt(sharePct)}`,
+    them: pctOnly ? t.pctFmt(100 - sharePct) : fmt(line.them),
+  }
+}
+
 export function ObjectiveBalanceCard({ families: actions, familyLabel, columns, t, compact = false, bare = false }: Props) {
   const families = useMemo(() => (compact ? compactFamilies(actions) : actions), [actions, compact])
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(bodyRef, families)
+  // La place des valeurs qui débordent, réservée de chaque côté d'après les textes possibles.
+  const allTexts = useMemo(() => families.flatMap((f) => f.roles.flatMap((r) => r.lines.map((l) => lineTexts(l, t, compact)))), [families, t, compact])
+  const inset = { left: sideSlotPx(allTexts.map((x) => x.us)), right: sideSlotPx(allTexts.map((x) => x.them)) }
   const lineLabel = (key: string) => (compact && key in t.roles ? t.roles[key as keyof typeof t.roles] : (columns[key] ?? key))
   const legend = useMemo(
     () => (
@@ -92,6 +107,7 @@ export function ObjectiveBalanceCard({ families: actions, familyLabel, columns, 
                       hidden={hidden}
                       t={t}
                       pctOnly={compact}
+                      inset={inset}
                     />
                   ))}
                 </div>
@@ -111,6 +127,7 @@ function BalanceBar({
   hidden,
   t,
   pctOnly,
+  inset,
 }: {
   family: string
   line: BalanceLine
@@ -119,12 +136,12 @@ function BalanceBar({
   t: ObjectifText
   /** Vue compacte : la part entière seule dans chaque segment. */
   pctOnly: boolean
+  inset: { left: number; right: number }
 }) {
   const fmt = (v: number) => (line.duration ? t.durationFmt(v) : String(Math.round(v * 10) / 10))
   const sharePct = line.share * 100
-  const usText = pctOnly ? t.pctFmt(sharePct) : `${fmt(line.us)} · ${t.pctFmt(sharePct)}`
-  const themText = pctOnly ? t.pctFmt(100 - sharePct) : fmt(line.them)
-  // Un segment vide n'a pas de place, comme celui où la valeur ne tient pas : rien ne s'écrit.
+  const { us: usText, them: themText } = lineTexts(line, t, pctOnly)
+  // Un segment vide n'a pas de place, comme celui où la valeur ne tient pas : sa valeur s'écrit à côté de la barre.
   const usHidden = line.us <= 0 || hidden.has(fitKey(family, line.key, 'us'))
   const themHidden = line.them <= 0 || hidden.has(fitKey(family, line.key, 'them'))
   return (
@@ -132,7 +149,12 @@ function BalanceBar({
       <div className="truncate leading-tight" title={label}>
         {label}
       </div>
-      <div className="flex min-w-0 flex-col">
+      <BarWithSides
+        leftPx={inset.left}
+        rightPx={inset.right}
+        left={usHidden && <SideValue color={ALLY} testId={`objective-balance-side-us-${family}-${line.key}`}>{usText}</SideValue>}
+        right={themHidden && <SideValue color={ENEMY} testId={`objective-balance-side-them-${family}-${line.key}`}>{themText}</SideValue>}
+      >
         <div className="relative h-5 rounded-[3px] bg-muted" role="img" aria-label={`${label} : ${usText} / ${themText}`}>
           {line.us > 0 && (
             <Segment
@@ -166,7 +188,7 @@ function BalanceBar({
             aria-hidden
           />
         </div>
-      </div>
+      </BarWithSides>
     </div>
   )
 }

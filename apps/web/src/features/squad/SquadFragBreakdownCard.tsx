@@ -6,12 +6,14 @@
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 :
  *   - le compte de chaque classe s'écrit DANS son segment s'il y tient avec 6 px de marge de
  *     chaque côté (mesure au pixel, `useSegmentLabelFit`) ;
- *   - sinon il ne s'écrit pas (infobulle du segment) : jamais tronqué, jamais posé au-dessus de
- *     la barre — une étiquette est toujours centrée sur sa barre ;
+ *   - sinon il s'écrit À CÔTÉ de la barre, juste après son bout, sur la même ligne et centré sur
+ *     elle, pastille de la classe devant (`BarSides`, place réservée à droite de toutes les
+ *     barres) — jamais tronqué, jamais au-dessus, jamais seulement en infobulle ;
  *   - le total au bout de la barre ; la légende des classes en bas, centrée ; le graphe centré
  *     verticalement dans la carte (qui s'étire à la hauteur de sa rangée).
  */
 import { useMemo, useRef } from 'react'
+import { AfterBar, SideValue, sideSlotPx } from '@/components/charts/BarSides'
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { SegmentLabel } from '@/components/charts/SegmentLabel'
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
@@ -82,6 +84,16 @@ export function SquadFragBreakdownCard({
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(bodyRef, rows)
   const title = t.performanceCharts.fragBreakdownTitle
+  // La place des valeurs qui débordent, réservée à droite des barres : deux valeurs au plus côte à côte.
+  const slotPx = sideSlotPx(
+    rows.map((row) =>
+      row.segments
+        .map((s) => segmentText(s, row, compact))
+        .sort((a, b) => b.length - a.length)
+        .slice(0, 2)
+        .join('  '),
+    ),
+  )
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-border bg-card" data-testid="squad-frag-breakdown">
@@ -105,6 +117,7 @@ export function SquadFragBreakdownCard({
                 classLabel={classLabel}
                 t={t}
                 compact={compact}
+                slotPx={slotPx}
               />
             ))}
           </div>
@@ -126,12 +139,20 @@ interface FragBreakdownBarProps {
   classLabel: (cls: string) => string
   t: SquadText
   compact?: FragBreakdownCompact
+  /** La place réservée à droite des barres pour les valeurs qui ne tiennent pas. */
+  slotPx: number
 }
 
-function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBreakdownBarProps) {
+/** Ce qu'écrit un segment : son compte, ou sa part entière du total du joueur en vue compacte. */
+function segmentText(s: FragBreakdownSegment, row: FragBreakdownRow, compact: FragBreakdownCompact | undefined): string {
+  return compact ? compact.pctFmt(row.total > 0 ? (s.kills / row.total) * 100 : 0) : String(s.kills)
+}
+
+function FragBreakdownBar({ row, color, hidden, classLabel, t, compact, slotPx }: FragBreakdownBarProps) {
   const isHidden = (cls: string) => hidden.has(fitKey(row.player, cls))
-  // Ce qu'écrit un segment : son compte, ou sa part entière du total du joueur en vue compacte.
-  const textOf = (s: FragBreakdownSegment) => (compact ? compact.pctFmt(row.total > 0 ? (s.kills / row.total) * 100 : 0) : String(s.kills))
+  const textOf = (s: FragBreakdownSegment) => segmentText(s, row, compact)
+  const last = row.segments[row.segments.length - 1]
+  const endPct = last ? last.leftPct + last.widthPct : 0
   return (
     <div
       className={`grid ${compact ? 'grid-cols-[6rem_minmax(0,1fr)]' : 'grid-cols-[7rem_minmax(0,1fr)_2.5rem]'} items-center gap-2.5 text-xs`}
@@ -144,7 +165,7 @@ function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBr
           {compact && <small className="block text-[11px] text-muted-foreground">{compact.totalSub(row.total)}</small>}
         </span>
       </div>
-      <div className="flex min-w-0 flex-col gap-[3px]">
+      <div className="relative min-w-0" style={{ paddingRight: slotPx }}>
         <div
           className="relative h-[22px]"
           role="img"
@@ -163,6 +184,15 @@ function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBr
             />
           ))}
         </div>
+        <AfterBar endPct={endPct} slotPx={slotPx}>
+          {row.segments
+            .filter((s) => isHidden(s.cls))
+            .map((s) => (
+              <SideValue key={s.cls} color={fragClassCssVar(s.cls)} testId={`frag-breakdown-side-${row.player}-${s.cls}`}>
+                <span title={classLabel(s.cls)}>{textOf(s)}</span>
+              </SideValue>
+            ))}
+        </AfterBar>
       </div>
       {!compact && (
         <div className="text-right font-semibold tabular-nums" data-testid={`frag-breakdown-total-${row.player}`}>

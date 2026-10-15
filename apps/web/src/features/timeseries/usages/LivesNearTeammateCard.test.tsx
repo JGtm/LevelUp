@@ -61,6 +61,11 @@ describe('LivesNearTeammateCard', () => {
     fit.hidden = new Set(['alone'])
     renderCard()
     expect(screen.queryByTestId('usages-lives-repli')).toBeNull()
+    // Isolée (droite) : sa valeur s'écrit à droite de la barre ; « à portée » tient et n'écrit rien à côté.
+    const side = screen.getByTestId('usages-lives-side-alone')
+    expect(side.textContent).toBe(`16,2 % · ${n(301)}`)
+    expect(side.closest('[data-side]')!.getAttribute('data-side')).toBe('right')
+    expect(screen.queryByTestId('usages-lives-side-near')).toBeNull()
     expect(screen.getByTestId('usages-lives-alone').querySelector('[data-fit-label]')!.getAttribute('style')).toContain('hidden')
     expect(screen.getByTestId('usages-lives-near').querySelector('[data-fit-label]')!.getAttribute('style')).toContain('visible')
   })

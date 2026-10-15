@@ -73,6 +73,10 @@ describe('MinePickupsCard — compact', () => {
     fit.hidden = new Set(['usages-mine-rest-rack'])
     renderCompact()
     expect(screen.queryByTestId('usages-mine-repli-rack')).toBeNull()
+    // La part du reste (droite) s'écrit à droite de la barre, sur sa ligne.
+    const side = screen.getByTestId('usages-mine-rest-rack-side')
+    expect(side.textContent).toBe('60 %')
+    expect(side.closest('[data-side]')!.getAttribute('data-side')).toBe('right')
     const label = (id: string) => screen.getByTestId(id).querySelector<HTMLElement>('[data-fit-label]')!.style.visibility
     expect(label('usages-mine-rest-rack')).toBe('hidden')
     expect(label('usages-mine-me-rack')).toBe('visible')
@@ -83,6 +87,9 @@ describe('MinePickupsCard — compact', () => {
     fit.hidden = new Set(['usages-mine-me-power_weapon'])
     renderCompact()
     expect(screen.queryByTestId('usages-mine-repli-power_weapon')).toBeNull()
+    const side = screen.getByTestId('usages-mine-me-power_weapon-side')
+    expect(side.textContent).toBe('13 %')
+    expect(side.closest('[data-side]')!.getAttribute('data-side')).toBe('left')
     expect(screen.getByTestId('usages-mine-me-power_weapon').querySelector<HTMLElement>('[data-fit-label]')!.style.visibility).toBe('hidden')
   })
 

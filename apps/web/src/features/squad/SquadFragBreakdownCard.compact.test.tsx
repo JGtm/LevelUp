@@ -28,6 +28,7 @@ describe('SquadFragBreakdownCard — compact', () => {
     expect(screen.queryByTestId('frag-breakdown-repli-JGtm')).toBeNull()
     const row = screen.getByTestId('frag-breakdown-row-JGtm')
     expect([...row.querySelectorAll('[data-fit-label]')].map((l) => l.textContent)).toEqual(['75 %', '25 %'])
+    expect([...row.querySelectorAll('[data-testid^="frag-breakdown-side-JGtm-"]')].map((n) => n.textContent)).toEqual(['75 %', '25 %'])
     expect(screen.getByTestId('frag-breakdown-row-JGtm').textContent).toContain('40 frags')
     expect(screen.queryByTestId('frag-breakdown-total-JGtm')).toBeNull()
   })
