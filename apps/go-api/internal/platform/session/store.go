@@ -9,7 +9,9 @@
 //   - Cookie httpOnly, Secure en production, SameSite=Lax.
 //   - Le session_id est un UUID v4 opaque — jamais devinable.
 //   - Signature HMAC empêche toute falsification côté navigateur.
-//   - TTL configurable (défaut : 7 jours, basé sur last_seen_at).
+//   - TTL configurable (défaut : 7 jours, basé sur last_seen_at), plafonné à
+//     AnonymousTTL pour une session sans identité authentifiée.
+//   - Une session sérialisée de plus de MaxSessionBytes n'est jamais écrite.
 package session
 
 import (
@@ -202,6 +204,11 @@ func (s *Store) save(sess *domain.SessionData, content [sha256.Size]byte) error 
 	data, err := json.Marshal(sess)
 	if err != nil {
 		return fmt.Errorf("session marshal: %w", err)
+	}
+	if len(data) > MaxSessionBytes {
+		slog.Error("session: écriture refusée, session sérialisée trop volumineuse",
+			"bytes", len(data), "max", MaxSessionBytes, "authenticated", carriesIdentity(sess))
+		return fmt.Errorf("%w: %d bytes > %d", ErrSessionTooLarge, len(data), MaxSessionBytes)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -404,10 +411,20 @@ func (s *Store) path(sessionID string) string {
 	return filepath.Join(s.dir, safe+".json")
 }
 
-// isExpired retourne true si la session a dépassé le TTL (basé sur last_seen_at).
+// isExpired retourne true si la session a dépassé son TTL (basé sur last_seen_at) :
+// celui du Store, plafonné à AnonymousTTL tant qu'elle ne porte aucune identité
+// authentifiée.
 func (s *Store) isExpired(sess *domain.SessionData) bool {
 	lastSeen := time.Unix(sess.LastSeenAt, 0)
-	return s.now().Sub(lastSeen) > s.ttl
+	return s.now().Sub(lastSeen) > s.ttlFor(sess)
+}
+
+// ttlFor retourne le TTL applicable à la session.
+func (s *Store) ttlFor(sess *domain.SessionData) time.Duration {
+	if !carriesIdentity(sess) {
+		return min(s.ttl, AnonymousTTL)
+	}
+	return s.ttl
 }
 
 // contentDigest : empreinte SHA-256 du JSON de la session, last_seen_at exclu — seul champ

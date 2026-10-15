@@ -75,6 +75,11 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 	}
+	// Validation AVANT toute mutation : WithSession persiste la session de la
+	// requête (Touch) même quand le handler répond en erreur.
+	if err := validateSessionContextRequest(&req); err != nil {
+		return nil, err
+	}
 
 	if req.PlayerSlug != nil {
 		sess.CurrentPlayerSlug = req.PlayerSlug

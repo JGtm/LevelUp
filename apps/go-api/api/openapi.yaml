@@ -4096,6 +4096,7 @@ paths:
           name: limit
           schema:
             format: int64
+            maximum: 100
             type: integer
         - explode: false
           in: query
@@ -6002,6 +6003,7 @@ paths:
           name: history_limit
           schema:
             format: int64
+            maximum: 200
             type: integer
       responses:
         "200":

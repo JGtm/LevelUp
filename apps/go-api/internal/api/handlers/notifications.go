@@ -96,7 +96,7 @@ type notifListInput struct {
 	PlayerSlug string `path:"player_slug"`
 	UnreadOnly bool   `query:"unread_only"`
 	Category   string `query:"category"`
-	Limit      int    `query:"limit"`
+	Limit      int    `query:"limit" maximum:"100"`
 	BeforeID   int64  `query:"before_id"`
 }
 

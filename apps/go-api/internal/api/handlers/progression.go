@@ -73,7 +73,7 @@ type progPlayerInput struct {
 // progRecordsInput : {player_slug} + ?history_limit= (records).
 type progRecordsInput struct {
 	PlayerSlug   string `path:"player_slug"`
-	HistoryLimit int    `query:"history_limit"`
+	HistoryLimit int    `query:"history_limit" maximum:"200"`
 }
 
 type streaksHumaOutput struct{ Body streaksResponse }
@@ -167,7 +167,7 @@ func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerIn
 }
 
 // handleRecords : GET /records → PB courants + timeline.
-// Query param optionnel history_limit (défaut 50, max 200).
+// Query param optionnel history_limit (défaut 50 ; le schéma refuse au-delà de 200).
 func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsInput) (*recordsHumaOutput, error) {
 	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
 	if err != nil {
@@ -176,9 +176,6 @@ func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsI
 	limit := in.HistoryLimit
 	if limit <= 0 {
 		limit = 50
-	}
-	if limit > 200 {
-		limit = 200
 	}
 
 	pbRepo := duckdb.NewPersonalRecordsRepo(pdb)

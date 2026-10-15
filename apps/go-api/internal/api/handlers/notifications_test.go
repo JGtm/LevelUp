@@ -549,3 +549,21 @@ func TestNotificationsHandler_Emit_BestEffort_NoErrorOnLeaseBusy(t *testing.T) {
 			w.Code, w.Body.String())
 	}
 }
+
+// Le paramètre entier `limit` porte un `maximum` dans le schéma : au-delà de
+// notifications.MaxListLimit la requête est refusée (422), à la limite elle passe.
+func TestNotificationsHandler_List_LimitMaximum(t *testing.T) {
+	svc := notifications.NewService(newFakeNotifRepo())
+	r := newNotificationsRouter(makeFactory(svc, "p1"))
+	for limit, want := range map[int]int{
+		notifications.MaxListLimit:     http.StatusOK,
+		notifications.MaxListLimit + 1: http.StatusUnprocessableEntity,
+	} {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/players/p1/notifications?limit=%d", limit), nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != want {
+			t.Errorf("limit=%d : status %d, attendu %d", limit, w.Code, want)
+		}
+	}
+}

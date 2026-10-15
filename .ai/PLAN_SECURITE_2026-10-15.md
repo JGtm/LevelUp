@@ -132,20 +132,20 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ### L2 — Bornes des entrées (C2-1, C2-2, C2-3) — Sonnet — effort M
 
-- [ ] L2-1 Test rouge : corps de 2 Mio sur `POST /auth/login`, `/auth/register`,
+- [x] L2-1 Test rouge : corps de 2 Mio sur `POST /auth/login`, `/auth/register`,
       `/session/context`, `/auth/password` → 413.
-- [ ] L2-2 `humacore` : plafond par défaut de 1 Mio sur toute opération enregistrée sans
+- [x] L2-2 `humacore` : plafond par défaut de 1 Mio sur toute opération enregistrée sans
       `MaxBody` explicite ; commentaire faux de `humacore/operation.go:70` corrigé.
-- [ ] L2-3 Garde-rail : test qui parcourt toutes les opérations Huma enregistrées
+- [x] L2-3 Garde-rail : test qui parcourt toutes les opérations Huma enregistrées
       (`humacore` / OpenAPI) et exige `MaxBodyBytes > 0`.
-- [ ] L2-4 `handlers/session_context.go` : `locale` ∈ {fr, en} ; `player_slug` ≤ 64 caractères,
+- [x] L2-4 `handlers/session_context.go` : `locale` ∈ {fr, en} ; `player_slug` ≤ 64 caractères,
       alphabet de slug ; sinon 400 (le contrôle d'accès du slug est L3-1).
-- [ ] L2-5 `platform/session/store.go` : `Save` refuse une session sérialisée > 8 Kio (erreur
+- [x] L2-5 `platform/session/store.go` : `Save` refuse une session sérialisée > 8 Kio (erreur
       journalisée) ; TTL de 24 h pour une session sans utilisateur authentifié.
-- [ ] L2-6 Test rouge leaderboard : `limit=1000000000` → réponse bornée à 200 entrées, aucune
+- [x] L2-6 Test rouge leaderboard : `limit=1000000000` → réponse bornée à 200 entrées, aucune
       allocation proportionnelle à `limit` ; `service/leaderboard_service.go` plafonne à 200 ;
       `make` du repo dimensionné sur `min(limit, 200)`.
-- [ ] L2-7 Garde-rail pagination : test qui parcourt l'OpenAPI et exige `maximum` sur tout
+- [x] L2-7 Garde-rail pagination : test qui parcourt l'OpenAPI et exige `maximum` sur tout
       paramètre entier `limit`/`page_size`/`count`/`n` ; liste datée des paramètres en chaîne
       (dont `leaderboard.limit`), chacun couvert par un test de plafond.
 - Gate : `go test ./internal/api/... ./internal/platform/session/... ./internal/service/ -run 'Leaderboard|Session|MaxBody|Pagination|BodyLimit'`
@@ -682,3 +682,139 @@ client honnête derrière nginx la clé reste X-Real-IP, comme avant (nginx reti
 Clé de journal HTTP renommée `remote_addr` en `ip` : aucun lecteur dans le dépôt. Aucune opération VPS.
 
 **Découvertes** : D-L1-1 à D-L1-5 (§6), non traitées.
+
+### L2 - Bornes des entrées - 2026-10-15 - clos
+
+Base : `git log --oneline -1` = `ad3433eab` avant le lot ; branche `feat/securite-2026-10-15`. Références du
+registre rouvertes avant d'agir et conformes : Huma v2.39.1 `huma.go:1454-1460` (défaut posé dans
+`processInputType` pour un champ `Body` seulement), `:1118` (`readBody` avec `op.MaxBodyBytes`), `:1513-1518`
+(`ensureMaxBodyBytes`) ; `humacore/operation.go:70` (commentaire faux) ; `session_context.go:79-98` ;
+`store.go:192` (`save` sans plafond) ; `leaderboard.go:54-60,83`, `leaderboard_service.go:44`,
+`leaderboard_world_repo.go:105,634` (`make(..., 0, limit)`). Routes chi nues `/media/upload` et
+`/import/openspartan` : `MaxBytesReader` présents (`media_upload.go:35`, `openspartan_import.go:132`), absentes
+du document OpenAPI Huma (liste `isKnownChiBrut`) : aucune exception de plafond Huma à poser pour elles.
+
+**Statuts** : L2-1 à L2-7 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **L2-1** `handlers/body_limit_test.go` : `TestBodyLimit_RawBodyRoutesRefuse2MiB` (login, register, password,
+  session/context -> 413) et `TestBodyLimit_OrdinaryBodyStillServed`.
+- **L2-2** `humacore/body_limit.go` (nouveau) : `DefaultMaxBodyBytes` (1 Mio), `applyDefaultMaxBody`,
+  `DocumentOperation` sur `apiWithAdapter` et `subrouterAPI`. Mécanisme : `huma.Register` appelle
+  `DocumentOperation` sur l'opération ORIGINALE (celle que lit le handler à chaque requête) avant que le
+  `huma.Group` et le document n'en fassent des copies (`PrefixModifier` copie) ; poser le défaut dans
+  `Adapter.Handle` n'aurait pas atteint l'exécution des sous-routeurs. `NewAPI` (document isolé) est enveloppé
+  comme `NewAPIWithConfig`. `humacore.go` : +2 lignes (le code neuf est dans `body_limit.go`, dette de taille
+  préexistante non accrue matériellement). Commentaire de `MaxBody` (`operation.go`) réécrit : le défaut de
+  1 Mio est celui de `humacore`, non celui de Huma. Tests : `humacore/body_limit_test.go` (trois fabriques x
+  {RawBody sans MaxBody -> 413 à 2 Mio, 200 à 1 Kio ; MaxBody explicite de 4 Mio l'emporte ; le document porte
+  la valeur effective}).
+- **L2-3** `internal/api/body_limit_guard_test.go` : `TestEveryOperationHasBodyLimit` parcourt le document
+  partagé (>= 100 opérations) : `MaxBodyBytes > 0` partout, et au-dessus du défaut seulement pour une
+  exception nommée de `bodyLimitExceptions` (valeur exacte exigée, entrée périmée refusée).
+- **L2-4** `handlers/session_context_validate.go` (nouveau) + appel dans `handlePostContext` AVANT toute
+  mutation (`WithSession` persiste la session même quand le handler répond en erreur). `locale` dans {fr, en}
+  (liste du front, `KNOWN_LOCALES`), `player_slug` de 1 à 64 runes, lettres/chiffres/marques Unicode et
+  ` _-.#`, ni espace de bord ni slug fait de points ; sinon 400 `invalid_locale` / `invalid_player_slug`
+  (messages techniques en anglais, ratchet des littéraux français). `title_slug` inchangé (inconnu : ignoré
+  en silence, comme avant). Contrôle d'accès du slug : L3-1, non traité ici. Tests :
+  `session_context_validation_test.go` (12 refus, aucun fichier de session écrit ; 10 valeurs réelles
+  acceptées dont `JGtm`, `Élodie#1234`, 64 caractères).
+- **L2-5** `platform/session/limits.go` (nouveau) : `MaxSessionBytes` = 8 Kio, `ErrSessionTooLarge`,
+  `AnonymousTTL` = 24 h, `carriesIdentity` (Username, AuthReady, identité Xbox liée ou jetons Halo : lecture
+  large de « utilisateur authentifié » pour ne jamais raccourcir une session device-code ou SSO). `save`
+  refuse (erreur `slog.Error` avec taille, plafond, drapeau d'authentification, jamais l'identifiant de
+  session) avant tout fichier ; `isExpired` utilise `ttlFor` = `min(ttl, AnonymousTTL)` pour une session sans
+  identité, donc aussi la purge et `Load`. `store.go` 493 lignes. Tests : `store_limits_test.go` (refus à
+  `Save` et `Touch`, rien écrit, journalisé ; session authentifiée avec ~5 Kio de jetons acceptée ; anonyme
+  valide à 23 h, expirée à 25 h ; authentifiée valide à 3 jours pour trois formes d'identité ; la purge ne
+  retire que l'anonyme).
+- **L2-6** `domain.MaxLeaderboardLimit` = 200 ; `LeaderboardService.GetPage` plafonne ; le repo plafonne
+  aussi (`boundedLeaderboardLimit`, une seule fonction pour les deux lectures, remplace deux copies de
+  `limit <= 0 -> 100`) donc `make(..., 0, limit)` est dimensionné sur au plus 200. Tests :
+  `service/leaderboard_service_limit_test.go`, `handlers/leaderboard_limit_test.go` (HTTP, vrai service),
+  `platform/duckdb/leaderboard_limit_test.go` (tag `integration`, budget d'allocation 32 Mio pour `limit=1<<20`).
+- **L2-7** `internal/api/pagination_guard_test.go` : `TestPaginationParamsAreBounded` (noms `limit`,
+  `page_size`, `count`, `n`, `*_limit`) : entier -> `maximum` exigé et égal à la valeur attendue ; chaîne ->
+  entrée de `paginationStringParams` (plafond, date, fichier et test cités, existence du test vérifiée,
+  entrée périmée refusée). Deux entiers sans `maximum` corrigés : `notifications` `limit` (100 =
+  `notifications.MaxListLimit`) et `history_limit` (200 ; le repli silencieux `> 200` du handler, devenu
+  inatteignable, est retiré). Huit chaînes listées, chacune avec son test de plafond : `leaderboard.limit`
+  (200), data-quality `limit` (500), jobs `limit` (50), logs `n` (1000), patterns `n` (200), templates `count`
+  (10), détections `limit` (500, test au niveau `ops`), file de construction `limit` (200, test au niveau
+  `ops`). `openapi.yaml` régénéré (`maximum: 100`, `maximum: 200` seuls changements) ; `generated.ts` inchangé.
+
+**Preuves du rouge** (tests écrits avant les correctifs, sur le code d'avant) :
+- L2-1 `go test ./internal/api/handlers/ -run TestBodyLimit -count=1` : FAIL exit 1 ; login 401, register 400,
+  password 401, session_context 200 au lieu de 413.
+- L2-2 `go test ./internal/api/humacore/ -run TestDefaultMaxBody -count=1` : FAIL exit 1 ; les trois fabriques
+  répondent 200 à 2 Mio ; le document porte `MaxBodyBytes = 0` (la constante seule était posée, sans câblage).
+- L2-3 garde-rail exécuté avec `applyDefaultMaxBody` neutralisé (fichier restauré ensuite) : FAIL, 216
+  opérations « plafond de corps absent » (les autres ont un champ `Body` : défaut Huma).
+- L2-4 `go test ./internal/api/handlers/ -run TestSessionContext_ -count=1` : FAIL exit 1, 12 cas refusés à
+  tort (statut 200 au lieu de 400, dont `../etc`, `<script>`, slug de 100 000 octets).
+- L2-5 `go test ./internal/platform/session/ -run ...` : FAIL exit 1, 4 tests : `Save` et `Touch` d'une session
+  de plus de 8192 octets sans erreur, session anonyme vue il y a 25 h encore chargée, `PurgeExpired` = 0 au
+  lieu de 1.
+- L2-6 service : `limite transmise au repo = 1000000000, want 200` (et 201 -> 200, stats) ; HTTP : 5000 entrées
+  servies pour `limit=1000000000`, repo recevant 1000000000 ; repo : 427 855 176 octets alloués pour
+  `limit=1048576` (budget 33 554 432), world et stats.
+- L2-7 `go test ./internal/api/ -run TestPaginationParamsAreBounded -count=1` : FAIL, `listNotifications.limit` et
+  `listProgressionRecords.history_limit` « paramètre de taille entier sans `maximum` ». Les deux chemins du
+  garde sur les chaînes éprouvés en retirant une entrée (« absent de paginationStringParams ») puis en
+  renommant un test cité (« ne définit pas ») ; état restauré.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`, Go 1.26.9) :
+- Gate du lot, 1re commande (`go test ./internal/api/... ./internal/platform/session/... ./internal/service/ -run
+  'Leaderboard|Session|MaxBody|Pagination|BodyLimit' -count=1`) : exit 0, 7 paquets ok.
+- 2e commande (`go test ./internal/api/... ./internal/platform/session/... -count=1`) : exit 0 (`api` 27,7 s,
+  `handlers` 14,4 s, `humacore`, `middleware`, `wire`, `session` ok).
+- Suites complètes des autres paquets touchés : `go test ./internal/service/ ./internal/domain/...
+  ./internal/ops/ ./internal/notifications/... ./internal/platform/duckdb/ ./internal/archlint/ ./cmd/server/
+  -count=1` : exit 0 ; `go test -tags=integration -p 1 ./internal/platform/duckdb/ -count=1` : ok en 242,9 s,
+  exit 0.
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` (api, handlers, humacore, session, service, duckdb,
+  ops, domain) exit 0 ; `go vet -tags=integration ./internal/platform/duckdb` exit 0 ; `golangci-lint run
+  --new-from-rev=ad3433eab` (mêmes paquets) : 0 issues, exit 0 ; `go run ./cmd/openapi-gen` puis `npm run
+  generate-types` (aucune différence dans `generated.ts`) ; `go test ./internal/api/ -run 'OpenAPI|Contract'` ok.
+  `apps/web` inchangé : gate web non rejoué.
+
+**Non-régression (règle 9)** :
+- Classement : le front envoie `limit: 100` (`features/leaderboard/LeaderboardBlock.tsx:179`, seul appelant de
+  `useLeaderboard`) ; 100 <= 200, usage servi (`TestLeaderboardPage_LimitIsCappedServerSide`, cas « valeur du
+  front »). Aucun usage dans `apps/web/e2e`, `scripts/`, `docker-compose.yml`.
+- `/session/context` : le front poste seulement `{title_slug}` (`lib/title-routing/applyActiveTitle.ts:45`) et
+  `{player_slug}` (`stores/appShellStore.ts:155`) ; il ne poste JAMAIS `locale`. La langue vit dans le segment
+  d'URL `{-$lang}`, liste fermée `KNOWN_LOCALES = ['fr','en']` : `fr-FR` / `en-US` ne sont jamais envoyés, la
+  liste fermée {fr, en} est donc exacte. L'e2e `media-like-bug.spec.ts` poste `JGtm`, `Madina97294`,
+  `XxDaemonGamerxX`, `Chocoboflor` : acceptés. Slugs réels du poste (`db_profiles.json`) : tous alphanumériques.
+- TTL de 24 h : le front ne garde pas la langue dans `localStorage` (`appShellStore` : « pas localStorage ») ;
+  la locale de session reste `fr` faute d'écriture. Ce qu'un visiteur anonyme perd après 24 h d'inactivité
+  (le TTL est glissant, rafraîchi au plus toutes les 5 min) : le titre et le joueur courants mémorisés, que
+  l'URL (`/t/$titleSlug/players/$playerSlug/...`) porte aussi. Les sessions authentifiées gardent 7 jours.
+- Tailles de corps vers les routes Huma : formulaires d'authentification et de contexte de quelques dizaines
+  d'octets. Les corps les plus gros sont les filtres de pages (`/pages/*`) et les listes `match_ids` de
+  l'Explorer et de la Tactique : un identifiant pèse ~40 octets en JSON, soit ~26 000 identifiants pour atteindre
+  1 Mio. Les routes à champ `Body` avaient déjà ce plafond Huma ; seules les routes `RawBody` changent
+  (Huma n'en posait aucun). nginx prod borne déjà `/api/` à 1m depuis V-1 (§5) et aucun 413 légitime n'y a été
+  constaté. Fichiers : `/media/upload` et `/import/openspartan` sont des routes chi nues (leur propre
+  `MaxBytesReader`, nginx 600m / 1100m). Aucune route Huma légitime au-delà de 1 Mio hormis le dépôt d'artefact
+  de l'ouvrier (16 Mio, `domain.MaxBuildArtifactBytes`, location nginx `/api/v1/internal/` à 20m) : seule
+  exception posée, déclarée par `humacore.MaxBody` et par `bodyLimitExceptions`. La volumétrie par joueur n'a
+  pas été relevée dans la base locale (tenue en écriture par un serveur en cours) : l'arithmétique ci-dessus et
+  l'absence de refus nginx en font foi.
+- Entiers : `notifications` `limit` et `history_limit` répondent 422 au-delà de 100 / 200 au lieu d'un repli
+  silencieux ; le front envoie 10, 12, 50 (notifications) et 50 (`history_limit`) :
+  `TestNotificationsHandler_List_LimitMaximum`.
+
+**Découvertes** (non traitées, règle 5) :
+- **D-L2-1** `POST /auth/login` journalise l'identifiant fourni sans borne (`auth: login échoué username=...` :
+  un identifiant de 2 Mio a été écrit en entier dans la sortie de test). Couvert par L4-10 (troncature à 64
+  caractères) ; ce lot-là doit le tester avec un identifiant volumineux.
+- **D-L2-2** `handlePostContext` renvoie `err.Error()` de `Save` dans un 500 (`session_save_error`) : avec le
+  plafond de 8 Kio le message contient désormais la taille. Couvert par L9-5 (messages d'erreur fixes).
+- **D-L2-3** `offset` de `data-quality/issues` (chaîne, sans borne haute) et les listes CSV (`match_ids` en
+  query de l'engagement, `teammates`) ne sont pas des paramètres de taille au sens du garde-rail L2-7 (noms
+  hors liste) ; la longueur de l'URL les borne.
+- **D-L2-4** `pruneMarks` du store de session garde les marques d'écriture d'une session anonyme jusqu'au TTL
+  complet (7 jours) alors que la session expire à 24 h : table en mémoire un peu plus longue que nécessaire,
+  bornée par la purge de 6 h.
