@@ -1,3 +1,13 @@
+## [2026-10-16] Backlog 2026-10-15, E6.2a : corrections de la ronde 1 de la revue adversariale — Complété (branche `feat/backlog-2026-10-15`, 5 commits `backlog-1015(E6.2a-Fn)`)
+
+**Statut** : Complété ; pas de push (E6.4 et E6.5 restent au superviseur / à l'utilisateur).
+
+**Décision technique principale** : F1 la chronologie LUSR par composante (`loadLUSRMatchIDsInWindow`) exclut la Campagne comme `LoadAxisSamples` ; F2 la démo exclut la Campagne à la source, sur l'ensemble final de `selectDynamicCorpus` (toutes voies), ce qui rend vraies les deux dispenses du garde ; F3 une requête abandonnée pendant le chargement de la vue match rend l'erreur de contexte (499 côté handler, qui NE le faisait PAS) et toute lecture coupée est un WARN via un helper unique `observability.LevelOnCancellation` ; F4 sept fichiers > 500 L et sept autres revenus à leur longueur d'avant le lot (ajouts déplacés en fichiers voisins) ; F5 tests de la branche « erreur de sonde » de `relationExists` et de quatre appelants.
+
+**Résultats observés** : chaque constat a un test rouge avant (sortie au journal du plan) puis vert ; mutations vérifiées (branche `ctx.Err()` du service, garde `isClientClosed` du handler, `return false, err` de la sonde). Le garde de la Campagne ne voit pas les lecteurs du registre seul (angle mort noté, non élargi). Découvertes des relecteurs consignées en section 3 du plan, non traitées (`loadAwardsForScoreboard` mort, `resolveWeaponLabelsOnly` muet, `RunForDB` des CLI figé sur `halo_infinite`).
+
+**Conclusion / prochaine étape** : ronde 2 de relecture sur la liste de fichiers du rapport, puis E6.3 à E6.5.
+
 ## [2026-10-09] Ecarts de fin multiples de -108 bits (R-VEH-4) : slots liberes de la table d image-cle — Complete (recherche, branche `feat/ri-ecart-108`, non commitee)
 
 **Statut** : Complete (recherche ; aucun code de production ; deux instruments `research` ajoutes, non commites).
