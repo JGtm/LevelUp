@@ -66,6 +66,11 @@ ratchet en L9, corrigés pour les routes anonymes seulement).
    non justifié.
 8. **Reprise de session** : relire `plan-execution`, puis le journal §7 ; reprendre à la première
    case non statuée du lot courant.
+9. **Non-régression fonctionnelle** : tout item qui change un comportement visible (liste §4bis)
+   commence par relever les usages réels du front et des sondes (`grep` dans `apps/web/src`,
+   `scripts/`, `docker-compose.yml`) et consigne au journal que l'usage légitime reste servi ;
+   les suites complètes existantes du paquet touché passent à chaque lot, pas seulement les tests
+   neufs.
 
 Gate commun de fin de lot (en plus du gate propre) depuis `apps/go-api` :
 `go build ./cmd/server/ && go vet <paquets touchés> && golangci-lint run <paquets touchés>` ;
@@ -307,6 +312,12 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ## 3. Clôture du plan
 
+- [ ] F-0 Recette locale par profil, application lancée sur les données locales (`make dev`,
+      navigateur piloté sur accord de l'utilisateur) : admin, compte ordinaire sur son profil,
+      compte ordinaire sur le profil d'un ami, visiteur anonyme, démo ; pages Accueil, Matchs,
+      Vue match, Rejeu, Médias (envoi, like, association), Classement, Escouades, Réglages,
+      connexion/déconnexion. Aucune régression ; captures au journal.
+- [ ] F-0b `npx playwright test` local (E2E complets) vert, en plus de la CI.
 - [ ] F-1 Revue adversariale du diff complet (`git diff a9a9ac78a...HEAD`) : 2 relecteurs aveugles
       (lentille « contrôle d'accès et identité » ; lentille « entrées, ressources, chemins ») +
       1 relecteur L6 (couverture des tests) ; 2 rondes maximum.
@@ -314,6 +325,25 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 - [ ] F-3 Push de `feat/securite-2026-10-15`, CI verte au niveau job (`gh run list --branch`).
 - [ ] F-4 Registre et backlog mis à jour (items fermés, `[sécurité]` et `[demo]` du backlog).
 - [ ] F-5 Demande d'accord à l'utilisateur pour la fusion dans `feat/v75`.
+- [ ] F-6 Après le déploiement de la v7.5 (délai d'observation prescrit, report valide) :
+      surveillance 48 h des 401/403/413/429 dans les journaux nginx et Go, par route et par IP ;
+      tout refus d'un usage légitime = correctif immédiat.
+
+## 4bis. Changements de comportement visibles (à vérifier contre l'usage réel, règle 9)
+
+| Changement | Lot | Vérification d'usage |
+|---|---|---|
+| Plus d'écriture sur le profil d'un ami (synchro, exclusion, notifications, Prestige, médias) | L3-4 | Le front masque ou désactive ces actions sur un profil non possédé (`bootstrap` distingue possédé / famille) ; i18n FR + EN si un message est ajouté |
+| Connexion bloquée 15 min après 5 échecs | L1-5 | Message FR + EN côté écran de connexion pour le 429 |
+| Classement plafonné à 200 lignes | L2-6 | Valeur de `limit` envoyée par le front |
+| Langue choisie par un visiteur sans compte oubliée après 24 h | L2-5 | Le front garde-t-il aussi la langue côté navigateur |
+| Rejeu, positions, événements limités aux matchs du joueur du profil | L3-10 | Liens vers le rejeu présents seulement sur ces matchs (Vue match, Tactique, Escouade) |
+| `/healthz/home` réservé à l'admin | L3-8 | E2E et harnais démo (auth inactive) |
+| `/health` réduit à `{status}` | L9-1 | Sonde Docker, `deploy.sh`, workflows de déploiement |
+| Au plus 2 envois de vidéos en vol | L5-5 | Le front envoie-t-il plusieurs fichiers en parallèle ; un envoi en attente plutôt qu'un refus |
+| Device-flow : 3 tentatives simultanées par IP | L5-1 | Rafraîchissement de la page de connexion |
+| Un seul import OpenSpartan à la fois par compte | L5-4 | Message FR + EN sur 409 |
+| Détail d'erreur du device-flow retiré | L9-3 | Message affiché par `XboxLoginPage` |
 
 ## 4. Risques et points d'attention
 
@@ -334,9 +364,10 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
       inscription, mot de passe, démarrage du device-flow, 429 au dépassement. Sauvegarde :
       `/root/nginx-backup-2026-10-15/`. Vérifié : pages 200, corps de 2 Mo → 413, envoi de vidéo
       non bloqué par nginx, IP forgée absente des journaux (adresse réelle journalisée).
-- [ ] V-2 TLS 1.0/1.1 encore acceptés sur le site principal (le `server` 443 n'inclut pas
-      `options-ssl-nginx.conf`, `nginx.conf` liste TLSv1 à TLSv1.3) : proposer
-      `ssl_protocols TLSv1.2 TLSv1.3;` — **accord de l'utilisateur requis**.
+- [x] V-2 (2026-10-15, accord de l'utilisateur) TLS : en pratique TLS 1.0/1.1 étaient déjà
+      refusés (le premier `server` du port 443 impose ses protocoles) ; rendu explicite dans
+      `nginx.conf` (`ssl_protocols TLSv1.2 TLSv1.3;`, sauvegarde dans le même dossier). Vérifié :
+      TLS 1.1 refusé, 1.2 et 1.3 acceptés, prod et démo 200.
 - [ ] V-3 Au déploiement de la v7.5 : provisionnement de `data/demo_films/` (L8-11) et contrôle
       que la conf nginx versionnée (L1-7) correspond à la conf en place.
 

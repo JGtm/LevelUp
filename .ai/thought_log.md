@@ -117433,3 +117433,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : relevé VPS en lecture : `LEVELUP_TRUST_PROXY_HEADERS=true` (IP falsifiable confirmée en prod), `LEVELUP_REPLAY_PUBLIC=1` (rejeu public : la garde « local seulement » est sans objet, reste le contrôle de participation), `vm.overcommit_memory=0` (arrêt fatal du classement confirmé), `instance_locked=true`, `can_self_provision=true`, prod sur `main` @ c084aefad. Après rechargement nginx : pages prod et démo 200, corps de 2 Mo → 413 sur login et contexte de session, envoi de vidéo non bloqué par nginx (401 du Go), une requête portant `True-Client-IP: 203.0.113.77` est journalisée avec l'adresse réelle. Nouveau P2 : TLS 1.0/1.1 acceptés sur le site principal (V-2 du plan, accord requis).
 
 **Conclusion / prochaine étape** : présenter le plan ; à l'accord, exécution L0 → L9 sous `plan-execution` par exécutants en sous-agents (un à la fois), revue adversariale finale, `make gate-push`, push et CI ; fusion dans `feat/v75` sur accord.
+
+## [2026-10-15] Sécurité : TLS rendu explicite et garde-fous de non-régression ajoutés au plan — En cours (branche `feat/securite-2026-10-15`)
+
+**Décision technique principale** : sur accord de l'utilisateur, `ssl_protocols TLSv1.2 TLSv1.3;` dans `/etc/nginx/nginx.conf` du VPS (sauvegarde `/root/nginx-backup-2026-10-15/nginx.conf`). Plan complété : règle 9 (relevé des usages réels du front et des sondes avant tout changement de comportement visible), tableau §4bis des changements visibles, recette locale par profil (F-0), E2E locaux (F-0b), surveillance de 48 h après la release (F-6).
+
+**Résultats observés** : mesure avant changement : TLS 1.0/1.1 déjà refusés (protocoles imposés par le premier `server` du port 443) ; le constat TLS du relevé VPS est réfuté, la configuration est seulement rendue indépendante de l'ordre des sites. Après rechargement : TLS 1.1 refusé, 1.2/1.3 acceptés, prod et démo 200. Aucun refus nginx (413/429/503) depuis le durcissement, mais 8 requêtes seulement : échantillon insuffisant, à relire.
+
+**Conclusion / prochaine étape** : réponse à l'utilisateur sur les points laissés au backlog, puis exécution du plan à son accord.

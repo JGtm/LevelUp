@@ -665,8 +665,10 @@ Aucun : les neuf axes ont produit au moins un constat retenu.
 - nginx actif : aucune neutralisation de `True-Client-IP`, `client_max_body_size 2g` sur `/api/`,
   aucun `limit_req` sur le site de prod (seule zone : `demo_limit` 10 r/s par IP, rafale 20, sur la
   démo), `server_tokens` commenté (version exposée). Ports Docker sur 127.0.0.1, pare-feu actif.
-- **Nouveau P2** : le `server` 443 du site principal n'inclut pas `options-ssl-nginx.conf` ;
-  `nginx.conf` déclare `ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3` → TLS 1.0 et 1.1 acceptés.
+- TLS : le `server` 443 du site principal n'inclut pas `options-ssl-nginx.conf` et `nginx.conf`
+  déclarait `TLSv1 TLSv1.1 TLSv1.2 TLSv1.3` ; **réfuté par mesure** : TLS 1.0/1.1 étaient déjà
+  refusés (le premier `server` du port 443 impose ses protocoles). Rendu explicite le 2026-10-15
+  (`ssl_protocols TLSv1.2 TLSv1.3;` dans `nginx.conf`) pour ne plus dépendre de l'ordre des sites.
 - **Mesure appliquée le 2026-10-15** (accord de l'utilisateur) : nginx prod et démo durcis
   (`True-Client-IP` retiré, corps bornés, limites de débit, version masquée) — détail au plan §5.
   C1-1 et C2-1 sont neutralisés en production côté nginx en attendant le correctif de code.
