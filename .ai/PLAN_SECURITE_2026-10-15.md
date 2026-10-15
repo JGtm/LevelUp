@@ -218,7 +218,7 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 - [ ] L4-11 `POST /auth/password` exige le mot de passe actuel quand le compte en a déjà un
       (compte Xbox sans mot de passe : premier mot de passe sans l'ancien) ; front : champ
       « Mot de passe actuel » / « Current password » (i18n FR + EN), test du hook ou du composant ;
-      tests serveur des deux cas. Dépendance posée par L1-5 : `handleSetPassword` consulte déjà
+      tests serveur des deux cas ; libellés de `SetPasswordCard` passés en i18n FR + EN (D-L1-3). Dépendance posée par L1-5 : `handleSetPassword` consulte déjà
       le limiteur d'échecs (`loginAttempts`) ; un mot de passe actuel incorrect y appelle
       `RecordFailure(*sess.Username, ip)`, un correct `RecordSuccess` (test « 6e mot de passe
       actuel faux → 429 »).
@@ -303,6 +303,7 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
       `netguard_coverage_test.go:43` retirée.
 - [ ] L8-11 `data/demo_films/` : statut `[!]` attendu — provisionnement sur le VPS au déploiement
       de la v7.5 (geste annoncé, commande au runbook) ; vérifier que le runbook est à jour.
+- [ ] L8-12 (D-L1-4) `packaging/nginx/demo.conf` : `limit_req_status 429;` (la limite répond 503, lu comme une panne) ; appliqué sur le VPS par le superviseur (opération annoncée) ; garde-rail nginx étendu à la démo.
 - Gate : `go test ./internal/api/... ./internal/config/... ./internal/ops/... ./internal/platform/...` ;
   `cd apps/web && npx playwright test e2e/media-like-bug.spec.ts --list`.
 
@@ -343,7 +344,9 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
       durcie (`ProtectSystem=full`, `ProtectHome=read-only`, chemins d'écriture déclarés) ;
       `packaging/nginx/levelup.conf` : `location /api/v1/internal/` restreint à l'IP du serveur
       de calcul (`allow …; deny all;`), appliqué sur le VPS à l'activation de l'ouvrier.
-- Gate : `go test ./internal/archlint/ -run 'Compose|Nginx'` ; `bash -n scripts/deploy-worker.sh`
+- [ ] L10-5 (D-L0-3, décision de l'utilisateur du 2026-10-15) `.github/dependabot.yml` : écosystème `docker` (répertoire racine, images du `Dockerfile`), même cadence que les autres.
+- [ ] L10-6 (D-L0-3, décision de l'utilisateur du 2026-10-15) Garde-rail archlint : la version de l'image `golang:X.Y.Z-…` du `Dockerfile` est égale à la ligne `go` de `apps/go-api/go.mod` ; vu rouge sur une divergence simulée.
+- Gate : `go test ./internal/archlint/ -run 'Compose|Nginx|Dockerfile'` ; `bash -n scripts/deploy-worker.sh`
   ; `shellcheck scripts/deploy-worker.sh` si disponible ; `systemd-analyze verify` si disponible.
 
 ## 3. Clôture du plan
@@ -437,12 +440,14 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   le pair TCP. Cela tient tant que nginx joint le Go par le port publié du conteneur (le conteneur devrait
   voir la passerelle du pont Docker, pas 127.0.0.1 ; non vérifié sur le VPS, hors périmètre). Un déploiement
   où nginx joint le Go par loopback (hors Docker, ou réseau `host`) rendrait « locale » toute requête
-  relayée ; aucun garde-rail ne tient cette topologie.
+  relayée ; aucun garde-rail ne tient cette topologie. **Vérifié le 2026-10-15 par le superviseur** : le VPS utilise le proxy Docker par défaut (`docker-proxy` actif, pas de `userland-proxy: false`) : le conteneur voit la passerelle du pont, pas 127.0.0.1. Sûr en production.
+
 - **D-L1-2** (L1) `handlers/replay_local_gate.go` : `isLocalRequest` traite un hôte vide comme local (choix
   justifié par des transports de test). En service `RemoteAddr` n'est jamais vide, mais le défaut d'une garde
   de sécurité est ouvert.
 - **D-L1-3** (L1) `features/auth/SetPasswordCard.tsx` : libellés français en dur (`LABELS`), sans version
-  anglaise (l'écran en anglais affiche du français). L4-11 retouche ce composant.
+  anglaise (l'écran en anglais affiche du français). L4-11 retouche ce composant. **Rattaché à L4-11** (libellés FR + EN du composant).
+
 - **D-L1-4** (L1) `packaging/nginx/demo.conf` (comme la démo en place) n'a pas `limit_req_status 429` : la
   limite `demo_limit` répond 503, que le front lit comme une panne et non comme un excès de tentatives.
 - **D-L1-5** (L1) `archlint/no_french_label_literal_test.go` signale une baisse non figée :
@@ -675,3 +680,4 @@ client honnête derrière nginx la clé reste X-Real-IP, comme avant (nginx reti
 Clé de journal HTTP renommée `remote_addr` en `ip` : aucun lecteur dans le dépôt. Aucune opération VPS.
 
 **Découvertes** : D-L1-1 à D-L1-5 (§6), non traitées.
+- [ ] L7-4 (D-L1-2) `handlers/replay_local_gate.go` : `isLocalRequest` refuse un hôte vide (garde fermée par défaut) ; tests adaptés à un transport qui fournit une adresse.
