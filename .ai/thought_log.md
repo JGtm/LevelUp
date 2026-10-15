@@ -117415,3 +117415,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : anomalies de la recuisson préexistantes (D-39 34db6b33, BOT_METADATA HI_1_12_0, 4 vies sans identité). Erreur du superviseur : correctif CSR fusionné sans attendre la CI de feat/v75 (archlint `TestNoNewRawStartTimeLiteral` rouge, corrigé par levelup-6c dans c4b12f59d).
 
 **Conclusion / prochaine étape** : gate visuel du user (rejeu VIP, pages Vue match / Tactique / Escouade / Séries temporelles) ; découvertes de la section 4 du plan à trier avec le user.
+
+## [2026-10-15] Backlog 2026-10-15, E1 : matchs sans tableau des scores (DA-5) — Complété côté poste (E1.4, compte prod, au superviseur)
+
+**Décision technique principale** : diagnostic seul (D-4). Copies des bases partagées des deux titres interrogées par `cmd/diag_q` ; aucun code modifié.
+
+**Résultats observés** : les quatre témoins (`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont 8, 8, 36 et 10 participants et 230, 240, 844 et 193 événements, y compris dans le cut Parquet servi (v180) ; 0 match du registre sans participant (Halo Infinite 9 230, Halo 5 3 032). Écriture atomique registre + participants + événements (`persist/shared_persister.go:66-141`). La vue partielle du 27/09 n'est pas reproductible ; elle annonçait aussi `events_empty`, donc un lecteur partagé indisponible au moment de la sonde plutôt qu'une donnée absente (`goLoad` avale les erreurs en warn, `service/match_view_data_loaders.go:262-269`). Cause non établie faute de journaux du 27/09. Découvertes en section 3 du plan (`partial_reasons` sans distinction vide/erreur ; `participants_loaded` et `player_count` non posés).
+
+**Conclusion / prochaine étape** : constat clos côté poste. Le superviseur joue la requête de E1.4 (journal du plan) sur le VPS, retire l'entrée du backlog si le compte est 0, puis E2. La sous-partie « ERROR au boot de la démo » est passée dans l'entrée `[demo]` du backlog.

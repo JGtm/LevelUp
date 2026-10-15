@@ -77,6 +77,7 @@ seulement une démo contrôlée et sert dix rejeux figés masqués. Restent :
 - `POST …/prestige/challenges/{id}/suggest-next` est une lecture classée écriture (refusée en démo) ;
 - le test E2E `media-like-bug.spec.ts` suppose un like possible en démo ;
 - `weapon_kills` encore déclarée dans la liste d'extraction de la démo (table disparue) ;
+- l'ERROR au boot de la démo sur `titles/halo_5/warehouse/metadata.duckdb` (requête sur une table ou colonne absente ; reprise du lot DA-5, E1.6 du plan backlog 2026-10-15) ;
 - déploiement : provisionner une fois `data/demo_films/` sur le VPS (commande au runbook).
 **Effort : S.**
 
@@ -100,16 +101,18 @@ puis trier chaque entrant, comme pour B4. **Effort : M.**
 
 ---
 
-### [rejeu/données] Vues match sans tableau des scores : ni écran ni son de fin
+### [rejeu/données] Vues match sans tableau des scores : constat local clos, reste le compte prod
 
-Noté le 2026-09-27 (plan backlog, lot A1.5, DA-5). Sur ce poste, plusieurs matchs du cache
-(`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont une vue match partielle
-(`scoreboard_empty`). Sans tableau des scores, `endMatchSoundSpec` et l'écran de fin ne peuvent
-rien conclure, et le rejeu se termine muet. **À instruire** : pourquoi ces matchs n'ont pas de
-participants dans la base partagée locale (synchronisation partielle, rattrapage manquant), et si
-la production est touchée. Même lot : la fixture démo lève une ERROR au boot sur
-`titles/halo_5/warehouse/metadata.duckdb` (requête sur une table ou colonne absente).
-**Effort : S** (diagnostic).
+Noté le 2026-09-27 (DA-5), instruit le 2026-10-15 (plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1).
+Constat local : les quatre témoins (`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont 8, 8, 36 et
+10 participants et 230, 240, 844 et 193 événements dans la base partagée de ce poste ; AUCUN match
+du registre n'est sans participant (Halo Infinite 0/9 230, Halo 5 0/3 032). Non reproductible : la
+cause de la vue partielle du 27/09 n'était pas une donnée absente (écriture atomique registre +
+participants + événements, `persist/shared_persister.go:66-141`) ; piste retenue : un chargeur de la vue
+match en erreur, avalé en `slog.Warn` (`service/match_view_data_loaders.go:262-269`). Reste au
+superviseur (E1.4) : jouer la requête du journal du plan sur le VPS ; retirer cette entrée si le
+compte prod est 0.
+**Effort : S.**
 
 ---
 
