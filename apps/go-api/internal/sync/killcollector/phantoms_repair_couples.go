@@ -1,6 +1,6 @@
 package killcollector
 
-// phantoms_repair_couples.go — LES LECTURES DE [RebuildStalePairs] : quels matchs portent des
+// phantoms_repair_couples.go — LES LECTURES DE [StalePairs] : quels matchs portent des
 // kills ou des morts, et quels couples ils portent deja.
 
 import (

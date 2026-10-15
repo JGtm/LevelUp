@@ -712,9 +712,9 @@ announce before running on production):
 ```bash
 cd apps/go-api
 go run ./cmd/levelup repair-highlight-phantoms --dry-run     # read-only: phantom rows and matches touched
-go run ./cmd/levelup repair-highlight-phantoms               # backup, purge, recompute the pairs of those matches
-go run ./cmd/levelup backfill-killsource --match <ids> --credit-only   # rebuild the credit base (names from the directory)
-go run ./cmd/levelup backfill-killsource --match <ids>                 # then the film pass over it (the command prints <ids>)
+go run ./cmd/levelup repair-highlight-phantoms               # backup, purge, recompute every pair that differs
+go run ./cmd/levelup backfill-killsource --credit-only      # rebuild the credit base (names from the directory)
+go run ./cmd/levelup backfill-killsource                    # then the film pass over it
 go run ./cmd/levelup compact-passes                          # optional: drop the superseded passes
 ```
 
@@ -723,9 +723,13 @@ go run ./cmd/levelup compact-passes                          # optional: drop th
   loaded participants yields none: nothing is removed when in doubt.
 - `highlight_events` carries ART indexes (ADR 0019): no `DELETE`. The table is rebuilt next to
   itself without the phantom rows and swapped in one transaction (same core as `compact-passes`,
-  ADR 0026); ids and sequence are untouched. The pairs are recomputed with the production pairing
-  (5 ms window, total event order). Names come from the match's existing pairs (xuid as a last
-  resort); `backfill-killsource` then rebuilds the served deaths with the directory names.
+  ADR 0026); ids and sequence are untouched. The pairs of every match whose stored pairs differ from
+  the current pairing (5 ms window, total event order) are recomputed and written by swapping
+  `killer_victim_pairs` in one transaction, without `DELETE`. Names come from the reading directory
+  (`v_gamertag_lookup`), then the match's existing pairs, never the XUID. An interrupted run resumes
+  by itself: the purged matches still carry pairs that differ. The shared migration
+  `shared_killer_victim_pairs_drop_legacy_indexes_v1` drops the three ART indexes old databases
+  carry on `killer_victim_pairs` (`idx_kv_match`, `idx_kv_killer`, `idx_kv_victim`).
 - **Backup (mandatory)**: byte-for-byte copy before any write
   (`<name>.<slug>.avant-fantomes-<UTC>.duckdb`), restore = put it back in place, server stopped.
 - **Idempotent**: with no phantom row left, a second run writes nothing.
@@ -738,7 +742,7 @@ go run ./cmd/levelup compact-passes                          # optional: drop th
   `--match`, every film stale under the new `killsource` revision) re-merges them, to be announced
   and run as a campaign.
 
-#### Deaths served twice: pairing, bot seats, kill sheets, API death events (`--couples`)
+#### Deaths served twice: pairing, bot seats, kill sheets, API death events
 
 Since `killsource-2026-10-15.3`, four causes of a death served twice are closed:
 
@@ -764,14 +768,14 @@ re-decode every stale film, a campaign of several hours):
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup repair-highlight-phantoms --couples --dry-run   # read-only: matches whose pairs differ
-go run ./cmd/levelup repair-highlight-phantoms --couples             # backup, phantoms, then those matches' pairs
+go run ./cmd/levelup repair-highlight-phantoms --dry-run   # read-only: phantoms, matches whose pairs differ
+go run ./cmd/levelup repair-highlight-phantoms             # backup, phantoms, then those matches' pairs
 go run ./cmd/levelup backfill-killsource --credit-only               # credit base of every match, new pairing
 go run ./cmd/levelup backfill-killsource                             # film pass over it (every film stale)
 go run ./cmd/levelup compact-passes                                  # optional: drop the superseded passes
 ```
 
-`--couples` rewrites only the matches whose stored pairs differ from the current pairing (477 of
+The repair rewrites only the matches whose stored pairs differ from the current pairing (477 of
 4 010 on the 2026-10-15 copy) and is idempotent.
 
 ### Media paths migration (one-shot, standalone binary)

@@ -39,9 +39,12 @@
 //     table ART-indexée est le trigger exact du bug `Failed to delete all rows
 //     from index`, cf. ADR 0019). La non-duplication est garantie en amont par
 //     le gate events_loaded (un match déjà complété ne repasse pas par ici).
-//   - killer_victim_pairs n'a aucun index/PK → DELETE-then-INSERT par match_id
-//     est sûr (rien à corrompre) et rend la réécriture idempotente (c'est déjà
-//     ce que faisait la complétion legacy, writes.go).
+//   - killer_victim_pairs n'a ni PK ni index : les trois index ART hérités des
+//     bases anciennes (idx_kv_match, idx_kv_killer, idx_kv_victim) sont retirés par
+//     la migration shared_killer_victim_pairs_drop_legacy_indexes_v1, et aucun ne
+//     peut revenir (garde-rail internal/sync/no_art_killer_victim_pairs_test.go).
+//     DELETE-then-INSERT par match_id y est donc sûr et rend la réécriture
+//     idempotente ; ce fichier est le seul à la réécrire par DELETE.
 // L'UPDATE match_registry sur backfill_completed/events_loaded suit le pattern
 // bitmask existant (sync.MarkEventsLoaded).
 
@@ -120,7 +123,7 @@ func NewEventsCompletionPersister(db txBeginner) *EventsCompletionPersister {
 
 // Persist écrit la complétion en 1 transaction :
 //
-//	(1) si len(Events) > 0  : DELETE highlight_events WHERE match_id + INSERT × N
+//	(1) si len(Events) > 0  : INSERT × N dans highlight_events (jamais de DELETE, cf. en-tête)
 //	(2) si len(Pairs)  > 0  : DELETE killer_victim_pairs WHERE match_id + INSERT × N
 //	(3) UPDATE match_registry : backfill_completed |= mask, events_loaded |= flag
 //

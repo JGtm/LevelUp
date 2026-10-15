@@ -744,9 +744,9 @@ en production) :
 ```bash
 cd apps/go-api
 go run ./cmd/levelup repair-highlight-phantoms --dry-run     # lecture seule : lignes fantômes et matchs touchés
-go run ./cmd/levelup repair-highlight-phantoms               # sauvegarde, purge, recalcul des couples de ces matchs
-go run ./cmd/levelup backfill-killsource --match <ids> --credit-only   # reconstruit la base crédit (noms de l'annuaire)
-go run ./cmd/levelup backfill-killsource --match <ids>                 # puis la passe film par-dessus (la commande imprime <ids>)
+go run ./cmd/levelup repair-highlight-phantoms               # sauvegarde, purge, recalcul des couples qui diffèrent
+go run ./cmd/levelup backfill-killsource --credit-only      # reconstruit la base crédit (noms de l'annuaire)
+go run ./cmd/levelup backfill-killsource                    # puis la passe film par-dessus
 go run ./cmd/levelup compact-passes                          # facultatif : retire les passes supersédées
 ```
 
@@ -755,10 +755,14 @@ go run ./cmd/levelup compact-passes                          # facultatif : reti
   participant. Un match sans participants chargés n'en produit aucune : dans le doute, rien n'est retiré.
 - `highlight_events` porte des index ART (ADR 0019) : pas de `DELETE`. La table est reconstruite à
   côté sans les lignes fantômes et échangée en une transaction (même cœur que `compact-passes`,
-  ADR 0026) ; les `id` et la séquence ne bougent pas. Les couples sont recalculés avec
-  l'appariement de production (fenêtre de 5 ms, ordre total des événements). Les noms viennent des
-  couples existants du match (le xuid à défaut) ; `backfill-killsource` reconstruit ensuite les
-  morts servies avec les noms de l'annuaire.
+  ADR 0026) ; les `id` et la séquence ne bougent pas. Les couples de tous les matchs dont les
+  couples stockés diffèrent de l'appariement courant (fenêtre de 5 ms, ordre total des événements)
+  sont recalculés et écrits par échange de `killer_victim_pairs` en une transaction, sans `DELETE`.
+  Les noms viennent de l'annuaire de lecture (`v_gamertag_lookup`), puis des couples existants du
+  match, jamais du XUID. Une exécution interrompue se reprend d'elle-même : les matchs purgés gardent
+  des couples qui diffèrent. La migration partagée `shared_killer_victim_pairs_drop_legacy_indexes_v1`
+  retire les trois index ART que les bases anciennes portent sur `killer_victim_pairs`
+  (`idx_kv_match`, `idx_kv_killer`, `idx_kv_victim`).
 - **Sauvegarde (obligatoire)** : copie octet pour octet avant toute écriture
   (`<nom>.<slug>.avant-fantomes-<UTC>.duckdb`), restauration = la remettre en place, serveur arrêté.
 - **Idempotente** : sans ligne fantôme, une seconde exécution n'écrit rien.
@@ -771,7 +775,7 @@ go run ./cmd/levelup compact-passes                          # facultatif : reti
   `--match`, tous les films périmés sous la nouvelle révision `killsource`) les re-fusionne, à
   annoncer et jouer comme une campagne.
 
-#### Morts servies deux fois : appariement, sièges de bot, fiches de kill, morts de l'API (`--couples`)
+#### Morts servies deux fois : appariement, sièges de bot, fiches de kill, morts de l'API
 
 Depuis `killsource-2026-10-15.3`, quatre causes d'une mort servie deux fois sont fermées :
 
@@ -800,14 +804,14 @@ cette séquence (**serveur arrêté**, prévenir avant de la jouer en production
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup repair-highlight-phantoms --couples --dry-run   # lecture seule : matchs dont les couples diffèrent
-go run ./cmd/levelup repair-highlight-phantoms --couples             # sauvegarde, fantômes, puis les couples de ces matchs
+go run ./cmd/levelup repair-highlight-phantoms --dry-run   # lecture seule : fantômes, matchs dont les couples diffèrent
+go run ./cmd/levelup repair-highlight-phantoms             # sauvegarde, fantômes, puis les couples de ces matchs
 go run ./cmd/levelup backfill-killsource --credit-only               # base crédit de tous les matchs, nouvel appariement
 go run ./cmd/levelup backfill-killsource                             # passe film par-dessus (tous les films périmés)
 go run ./cmd/levelup compact-passes                                  # facultatif : retire les passes supersédées
 ```
 
-`--couples` ne réécrit que les matchs dont les couples stockés diffèrent de l'appariement courant
+La réparation ne réécrit que les matchs dont les couples stockés diffèrent de l'appariement courant
 (477 sur 4 010 sur la copie du 2026-10-15) et est idempotente.
 
 ### Migration des chemins média (one-shot, binaire autonome)
