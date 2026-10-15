@@ -232,6 +232,12 @@ func ecrirePasseDeFilm(t *testing.T, db *sql.DB, matchID string, morts int) {
 			ReadPath: killscope.ReadPathFilmWalk, ReadOrigin: "credit-concordant",
 		})
 	}
+	// Au-dela de la premiere, les lignes sont des morts de BOT (aucun xuid de victime) : la seule
+	// population d orphelines que la fusion sert sans evenement death de l API.
+	for i := 1; i < len(batch.Deaths); i++ {
+		batch.Deaths[i].VictimGamertag, batch.Deaths[i].VictimXUID = "343 Bot [bot]", ""
+		batch.Deaths[i].ReadOrigin = "bot"
+	}
 	if err := persist.NewKillSourcePersister(db).PersistPass(context.Background(), batch); err != nil {
 		t.Fatalf("passe de film: %v", err)
 	}

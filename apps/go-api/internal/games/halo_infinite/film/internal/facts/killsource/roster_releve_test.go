@@ -41,8 +41,8 @@ func rosterAReleve(t *testing.T) *roster {
 // TestLeSuccesseurDUnBotTientSonIndiceApresLaDerniereDeclaration — les lectures datees de l indice 8.
 //
 // MUTATION QUI DOIT LE FAIRE ROUGIR : [roster.relever] qui rend toujours faux (la lecture du motif
-// redevient une contradiction, l indice reste au bot pour tout le film), ou [roster.isBotIndexA]
-// reduit a [roster.isBotIndex].
+// redevient une contradiction, l indice reste au bot pour tout le film), [roster.isBotIndexA] reduit a
+// [roster.isBotIndex], ou un bot qui ne tient son indice que PENDANT ses declarations.
 func TestLeSuccesseurDUnBotTientSonIndiceApresLaDerniereDeclaration(t *testing.T) {
 	r := rosterAReleve(t)
 	if r.table.MotifReleve != 1 || r.table.MotifContradict != 0 {
@@ -54,7 +54,7 @@ func TestLeSuccesseurDUnBotTientSonIndiceApresLaDerniereDeclaration(t *testing.T
 		bot, lu   bool
 		nom, nomA string
 	}{
-		{ms: 10_000, bot: false, lu: false, nomA: "343 Berg" + BotSuffix},                            // avant la declaration : silence
+		{ms: 10_000, bot: true, lu: true, nom: "343 Berg" + BotSuffix, nomA: "343 Berg" + BotSuffix}, // avant : deja au bot
 		{ms: 30_000, bot: true, lu: true, nom: "343 Berg" + BotSuffix, nomA: "343 Berg" + BotSuffix}, // pendant
 		{ms: 227_992, bot: false, lu: true, nom: "Chivo", nomA: "Chivo"},                             // apres : le successeur
 	} {
@@ -112,12 +112,12 @@ func TestLeSuccesseurSigneSonKillAuLieuDuBotParti(t *testing.T) {
 	}
 }
 
-// TestAucuneLigneTueurBotHorsDesDeclarations — le bot de l indice 8 est parti a 80 s et personne
+// TestAucuneLigneTueurBotApresLaDerniereDeclaration — le bot de l indice 8 est parti a 80 s et personne
 // n est lu a sa place : une mort que le dead-state donne a l indice 8 apres son depart ne se publie
 // pas « tueur-bot ».
 //
 // MUTATION QUI DOIT LE FAIRE ROUGIR : [roster.isBotIndexA] reduit a [roster.isBotIndex].
-func TestAucuneLigneTueurBotHorsDesDeclarations(t *testing.T) {
+func TestAucuneLigneTueurBotApresLaDerniereDeclaration(t *testing.T) {
 	kf := &killFeed{events: []feedEvent{{timeMS: 227_995, victim: "M", victimXUID: 2}},
 		names: []string{"K", "M"}}
 	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 8, BotID: 46, Name: "343 Berg",
@@ -128,7 +128,7 @@ func TestAucuneLigneTueurBotHorsDesDeclarations(t *testing.T) {
 	cand := candidate{chunk: 3, pidx: 7, bit: 10, ms: 227_992, victim: 1, killer: 8, tag: 0xacd1cff4}
 	p := passeDesBots(kf, r, nil, []candidate{cand})
 	if k, ok := p.byTime[227_995]; ok && k.Read.Origin == OriginBotKiller {
-		t.Errorf("ligne tueur-bot publiee a 227 995 ms (tueur %q) hors de toute declaration", k.Feed.Killer)
+		t.Errorf("ligne tueur-bot publiee a 227 995 ms (tueur %q) apres la derniere declaration", k.Feed.Killer)
 	}
 	cand.ms = 50_000 // pendant la declaration, la mort infligee par le bot se publie
 	kf2 := &killFeed{events: []feedEvent{{timeMS: 50_001, victim: "M", victimXUID: 2}}, names: []string{"K", "M"}}
@@ -152,4 +152,22 @@ func TestLaReleveGardeAssezDeNomsLibres(t *testing.T) {
 	if len(perm) != r.nPlay {
 		t.Errorf("bijection de %d indices, attendu %d", len(perm), r.nPlay)
 	}
+}
+
+// TestUnBotTueAvantSaPremiereDeclarationEstUnBot — le temoin du parc `1a7e6308` : le bot de
+// l indice 8 meurt a 358 749 ms, et le premier paquet qui le declare est la tete du chunk suivant
+// (360 020 ms). Le debut d une declaration n est qu une borne : la mort de bot se publie.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : un bot qui ne tient son indice que pendant ses declarations
+// ([roster.botTientA] exigeant `FromUS <= t`).
+func TestUnBotTueAvantSaPremiereDeclarationEstUnBot(t *testing.T) {
+	kf := &killFeed{events: []feedEvent{{timeMS: 358_749, killer: "K"}}, names: []string{"K", "M"}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 8, BotID: 52, Name: "343 Free Money",
+		declarations: []BotDeclaration{{FromUS: 360_020_000}}}}}
+	table := FilmTable{Seats: map[int]string{0: "K", 1: "M"}, Refusal: FilmTableRead}
+	r := buildRoster(kf, bm, true, table, indexParMotif{})
+	r.perm = []int{0, 1, -1, -1, -1, -1, -1, -1, 2}
+	p := passeDesBots(kf, r, nil,
+		[]candidate{{chunk: 3, pidx: 7, bit: 10, ms: 358_747, victim: 8, killer: 0, tag: 0xfc1ca9c2}})
+	verifierLigne(t, p, 358_749, "K", "343 Free Money"+BotSuffix, OriginBot)
 }

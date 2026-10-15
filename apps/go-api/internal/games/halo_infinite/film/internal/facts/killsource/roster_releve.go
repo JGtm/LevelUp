@@ -1,22 +1,22 @@
 package killsource
 
-// roster_releve.go — UN INDICE DE BOT N EST UN BOT QUE PENDANT SES DECLARATIONS.
+// roster_releve.go — UN INDICE DE BOT N EST PLUS UN BOT APRES LA FIN DE SA DERNIERE DECLARATION.
 //
 // BOT_METADATA date chaque declaration d un bot ([BotDeclaration]) : du premier paquet qui le
-// declare au premier paquet complet qui ne le declare plus. Hors de ces intervalles, l indice
-// n est pas tenu par ce bot. Quand le dernier bot d un indice est parti, un humain peut reprendre
-// l indice : la lecture du motif de xuid ([lireIndexParMotif]) le nomme alors a cet indice, et
+// declare au premier paquet complet qui ne le declare plus. La fin est lue a la frame ; le debut
+// n est qu une borne ([roster.botTientA]). Quand le dernier bot d un indice est parti, un humain
+// peut reprendre l indice : la lecture du motif de xuid ([lireIndexParMotif]) le nomme alors a cet indice, et
 // cette lecture, qui ne date rien, ne contredit pas le bot — elle nomme son SUCCESSEUR.
 //
 // LA RELEVE : sur un indice epingle par BOT_METADATA dont toutes les declarations sont closes, le
 // nom que le motif lit (s il n est epingle nulle part ailleurs) devient le joueur de l indice a
 // partir de la fin de la derniere declaration ([roster.pinUnMotif], compte `MotifReleve`). Avant
-// cette fin, l indice reste au bot pendant ses declarations.
+// cette fin, l indice reste au bot.
 //
 // LES LECTURES DATEES : toute decision prise sur un indice a un instant passe par [roster.isBotIndexA],
-// [roster.nomEpingleA] et [roster.nameOfA]. Un indice de bot hors de toute declaration et sans
-// releve n est ni un bot ni un nom lu : la lecture se tait, et aucune ligne de bot (mort DU bot ou
-// mort infligee PAR le bot) ne s y publie.
+// [roster.nomEpingleA] et [roster.nameOfA]. Un indice de bot apres la fin de sa derniere
+// declaration et sans releve n est ni un bot ni un nom lu : la lecture se tait, et aucune ligne de
+// bot (mort DU bot ou mort infligee PAR le bot) ne s y publie.
 
 // releve : le successeur humain d un indice de bot.
 type releve struct {
@@ -87,35 +87,31 @@ func (r *roster) successeurA(i, ms int) (int, bool) {
 	return rl.pos, true
 }
 
-// botDeclareA : une declaration BOT_METADATA d un bot de l indice `i` couvre-t-elle l instant `ms` ?
-func (r *roster) botDeclareA(i, ms int) bool {
-	t := r.instantUS(ms)
-	for _, b := range r.bots.Bots {
-		if b.Slot != i {
-			continue
-		}
-		for _, d := range b.declarations {
-			if d.FromUS <= t && (d.ToUS == 0 || t < d.ToUS) {
-				return true
-			}
-		}
-	}
-	return false
+// botTientA : un bot tient-il encore l indice `i` a l instant `ms` ? Oui jusqu a la fin de la derniere
+// declaration de ses bots, et toujours quand l une reste ouverte au dernier paquet du film.
+//
+// LE DEBUT D UNE DECLARATION N EST QU UNE BORNE : le paquet qui la porte peut etre celui de la tete
+// du chunk suivant l arrivee du bot (botmeta.go), et le parc porte des bots tues une seconde avant
+// leur premiere declaration. Avant elle, l indice est donc deja au bot ; c est la FIN qui est lue a
+// la frame (premier paquet complet qui ne le declare plus).
+func (r *roster) botTientA(i, ms int) bool {
+	fin, closes := r.finDesDeclarations(i)
+	return !closes || r.instantUS(ms) < fin
 }
 
 // isBotIndexA : l indice `i` est-il tenu par un bot a l instant `ms` ? Epingle par BOT_METADATA ET
-// couvert par une declaration a cet instant.
+// tenu a cet instant ([roster.botTientA]).
 func (r *roster) isBotIndexA(i, ms int) bool {
-	return r.isBotIndex(i) && r.botDeclareA(i, ms)
+	return r.isBotIndex(i) && r.botTientA(i, ms)
 }
 
 // nomEpingleA : [roster.nomEpingle] a l instant `ms`. Le successeur apres la releve ; rien sur un
-// indice de bot hors de ses declarations (la lecture se tait) ; le nom epingle sinon.
+// indice de bot apres sa derniere declaration sans successeur (la lecture se tait) ; le nom epingle sinon.
 func (r *roster) nomEpingleA(i, ms int) (string, bool) {
 	if pos, ok := r.successeurA(i, ms); ok {
 		return r.names[pos], true
 	}
-	if r.isBotIndex(i) && !r.botDeclareA(i, ms) {
+	if r.isBotIndex(i) && !r.botTientA(i, ms) {
 		return "", false
 	}
 	return r.nomEpingle(i)
