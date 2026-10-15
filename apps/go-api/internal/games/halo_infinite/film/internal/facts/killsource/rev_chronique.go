@@ -321,6 +321,6 @@ package killsource
 // `MergeCreditAndFilm`) ne declare plus « autre mort » une ligne de film qu une mort de credit
 // du meme instant contredit que si l API compte autant de kills que de morts a l instant (11
 // morts fantomes sur 12 groupes avant : un joueur servi 10 fois pour 7 morts officielles) ; sinon
-// l instant est refuse et compte. (3) Plafond : jamais plus de morts servies par joueur que de
-// `match_participants.deaths` (lignes de film retirees, compteur et WARN). Les lignes de kill
+// l instant est refuse et compte. (3) Controle : les morts servies de chaque joueur sont comparees
+// a `match_participants.deaths` ; l exces se compte et se journalise (WARN), sans rien retirer. Les lignes de kill
 // deja en base deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).

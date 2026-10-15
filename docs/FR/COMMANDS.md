@@ -763,9 +763,10 @@ go run ./cmd/levelup compact-passes                          # facultatif : reti
   (`<nom>.<slug>.avant-fantomes-<UTC>.duckdb`), restauration = la remettre en place, serveur arrêté.
 - **Idempotente** : sans ligne fantôme, une seconde exécution n'écrit rien.
 - La fusion refuse aussi, depuis `killsource-2026-10-15`, d'ajouter une seconde mort à un instant que
-  le kill-feed de l'API ne compte qu'une fois, et plafonne les morts servies de chaque joueur à
-  `match_participants.deaths` (compteur `killsource_fusion_morts_au_dela_officiel`, journal WARN avec
-  le `match_id`). Les morts fantômes des autres cas (p. ex. un joueur servi 10 fois pour 7 morts
+  le kill-feed de l'API ne compte qu'une fois, et contrôle les morts servies de chaque joueur contre
+  `match_participants.deaths` (compteur `killsource_fusion_joueurs_au_dela_officiel_residuel`, journal
+  WARN avec `match_id`, joueur, officielles, servies). Le contrôle ne retire jamais une ligne : en
+  retirer une pour tomber juste reviendrait à choisir, sans preuve, quelle mort est fausse. Les morts fantômes des autres cas (p. ex. un joueur servi 10 fois pour 7 morts
   officielles) sont hors des 86 matchs : elles disparaissent quand `backfill-killsource` (sans
   `--match`, tous les films périmés sous la nouvelle révision `killsource`) les re-fusionne, à
   annoncer et jouer comme une campagne.

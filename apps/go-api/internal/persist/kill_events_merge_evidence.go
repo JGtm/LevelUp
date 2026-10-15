@@ -7,12 +7,13 @@ package persist
 // d independant du film ne la prouve : mesure du 2026-10-15, 11 morts fantomes sur 12 groupes
 // (une victime servie 10 fois pour 7 morts officielles) ajoutees par ce seul raisonnement.
 //
-// Deux preuves independantes du film accompagnent donc la base credit :
+// Deux preuves independantes du film accompagnent donc la base credit (la seconde ne sert qu a un
+// controle, jamais a retirer une ligne) :
 //
 //	APIKills        les kills du kill-feed de l API, par instant. Deux morts distinctes a la meme
 //	                milliseconde laissent deux kills (un par mort) ; un seul kill ne porte qu une mort.
 //	OfficialDeaths  les morts officielles de chaque joueur (`match_participants.deaths`), le
-//	                plafond qu aucun nombre de morts servies ne depasse.
+//	                controle de qualite des morts servies (jamais une troncature).
 //
 // Sans preuve (`Known` faux), la fusion ne declare AUCUNE autre mort : refuser coute une ligne de
 // film, en ajouter une a tort invente une mort.
@@ -27,7 +28,7 @@ import (
 // signifie « inconnu » et rend la fusion prudente (cf. ci-dessus).
 type MergeEvidence struct {
 	// Known : les preuves ont ete lues pour ce match. Faux = aucune autre mort declarable, aucun
-	// plafond applique.
+	// controle applique.
 	Known bool
 	// APIKills : time_ms -> nombre de tueurs distincts ayant un kill a cet instant dans
 	// `highlight_events`. DISTINCT sur le xuid : la table porte des groupes en double exact.
@@ -90,74 +91,31 @@ func (e MergeEvidence) autreMortDeclarable(instant, deja int) bool {
 	return e.Known && e.APIKills[instant] >= deja+1
 }
 
-// orphanRef : une ligne de film conservee en orpheline, pour le plafond des morts officielles.
-type orphanRef struct {
-	outIdx  int
-	victim  string
-	timeMS  int
-	partage bool
+// OverOfficialPlayer : un joueur servi plus de fois qu il n est mort officiellement.
+type OverOfficialPlayer struct {
+	XUID     string
+	Official int
+	Served   int
 }
 
-// plafonnerAuxMortsOfficielles : AUCUN joueur n est servi plus de fois qu il n est mort
-// officiellement. Le surplus ne peut venir que des orphelines de film (la base credit ne se
-// retranche jamais : cf. `CreditBaseCount`) ; on retire d abord celles qui PARTAGENT leur instant
-// avec une mort de credit, puis les plus tardives. Rend la sortie filtree, le nombre de lignes
-// retirees et le nombre de joueurs encore au-dessus du plafond (surplus porte par le credit seul).
-func plafonnerAuxMortsOfficielles(deaths []KillEventInsert, orphans []orphanRef, official map[string]int,
-) (out []KillEventInsert, retirees, restants int) {
+// joueursAuDessusDesMortsOfficielles : CONTROLE DE QUALITE, JAMAIS UN COUPERET. Rien n est retire ici :
+// retirer une ligne pour ramener un joueur a son compte, c est choisir sans preuve laquelle est
+// fausse (on peut garder la fausse et perdre la juste). Les lignes sans preuve sont deja refusees
+// en amont (passe 2, [MergeEvidence.autreMortDeclarable]) ; ce qui depasse encore se compte et se
+// journalise. Ordre : par xuid, pour un rendu reproductible.
+func joueursAuDessusDesMortsOfficielles(deaths []KillEventInsert, official map[string]int) []OverOfficialPlayer {
 	servies := map[string]int{}
 	for i := range deaths {
 		if v := deaths[i].VictimXUID; v != "" {
 			servies[v]++
 		}
 	}
-	retire := map[int]bool{}
-	for victim, n := range servies {
-		plafond, connu := official[victim]
-		if !connu || n <= plafond {
-			continue
-		}
-		surplus := n - plafond
-		for _, c := range orphelinesDe(orphans, victim) {
-			if surplus == 0 {
-				break
-			}
-			retire[c.outIdx] = true
-			surplus--
-		}
-		if surplus > 0 {
-			restants++
+	var out []OverOfficialPlayer
+	for x, n := range servies {
+		if o, connu := official[x]; connu && n > o {
+			out = append(out, OverOfficialPlayer{XUID: x, Official: o, Served: n})
 		}
 	}
-	if len(retire) == 0 {
-		return deaths, 0, restants
-	}
-	out = make([]KillEventInsert, 0, len(deaths)-len(retire))
-	for i := range deaths {
-		if !retire[i] {
-			out = append(out, deaths[i])
-		}
-	}
-	return out, len(retire), restants
-}
-
-// orphelinesDe : les orphelines d une victime, dans l ordre de retrait (partagees d abord, puis
-// les plus tardives, puis l indice pour un ordre total).
-func orphelinesDe(orphans []orphanRef, victim string) []orphanRef {
-	var c []orphanRef
-	for _, o := range orphans {
-		if o.victim == victim {
-			c = append(c, o)
-		}
-	}
-	sort.Slice(c, func(i, j int) bool {
-		if c[i].partage != c[j].partage {
-			return c[i].partage
-		}
-		if c[i].timeMS != c[j].timeMS {
-			return c[i].timeMS > c[j].timeMS
-		}
-		return c[i].outIdx > c[j].outIdx
-	})
-	return c
+	sort.Slice(out, func(i, j int) bool { return out[i].XUID < out[j].XUID })
+	return out
 }

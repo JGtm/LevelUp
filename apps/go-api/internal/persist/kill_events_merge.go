@@ -105,9 +105,8 @@ const (
 	// C est la seule des trois populations d orphelins dans ce cas : elle se surveille.
 	metricFusionOrphelinsHvH = "killsource_orphelins_film_humain_contre_humain"
 	metricFusionAmbigus      = "killsource_fusion_instants_ambigus"
-	// metricFusionAuDelaOfficiel : lignes de film retirees par le plafond des morts officielles ;
-	// le residuel compte les joueurs que le credit seul laisse au-dessus de leur plafond.
-	metricFusionAuDelaOfficiel         = "killsource_fusion_morts_au_dela_officiel"
+	// metricFusionAuDelaOfficielResiduel : joueurs servis au-dela de leurs morts officielles apres
+	// fusion (controle de qualite : rien n est retire).
 	metricFusionAuDelaOfficielResiduel = "killsource_fusion_joueurs_au_dela_officiel_residuel"
 )
 
@@ -121,18 +120,12 @@ func PublishMergeStats(ctx context.Context, matchID string, st MergeStats) {
 	observability.AddInt(metricFusionOrphelins, int64(st.Orphans))
 	observability.AddInt(metricFusionOrphelinsHvH, int64(st.OrphansHumanVsHuman))
 	observability.AddInt(metricFusionAmbigus, int64(st.AmbiguousInstants))
-	observability.AddInt(metricFusionAuDelaOfficiel, int64(st.CappedOverOfficial))
-	observability.AddInt(metricFusionAuDelaOfficielResiduel, int64(st.OverOfficialUncapped))
-	if st.CappedOverOfficial > 0 || st.OverOfficialUncapped > 0 {
-		slog.WarnContext(ctx, "killsource: morts servies au-dela des morts officielles — "+
-			"lignes de film retirees, surplus de credit restant signale",
-			"match_id", matchID, "lignes_retirees", st.CappedOverOfficial,
-			"joueurs_encore_au_dessus", st.OverOfficialUncapped)
-	}
-	if st.AmbiguousInstants > 0 {
-		slog.WarnContext(ctx, "killsource: instants portant plusieurs morts — enrichissement "+
-			"refuse sur ces instants (aucune mort perdue, aucune arme attribuee au hasard)",
-			"match_id", matchID, "instants_ambigus", st.AmbiguousInstants)
+	observability.AddInt(metricFusionAuDelaOfficielResiduel, int64(len(st.OverOfficial)))
+	for _, j := range st.OverOfficial {
+		slog.WarnContext(ctx, "killsource: joueur servi au-dela de ses morts officielles — "+
+			"controle de qualite, aucune ligne retiree (retirer sans preuve reviendrait a choisir "+
+			"quelle mort est fausse)",
+			"match_id", matchID, "victim_xuid", j.XUID, "officielles", j.Official, "servies", j.Served)
 	}
 	if st.OrphansSharedInstant > 0 {
 		slog.WarnContext(ctx, "killsource: deux morts a la meme milliseconde — la ligne de film "+
@@ -186,13 +179,10 @@ type MergeStats struct {
 	// mort de credit et une mort de film a la meme milliseconde, victimes differentes (en-tete du
 	// fichier). Ce compteur n a jamais vu ce cas-la : il tombait sur le controle d identite avant.
 	AmbiguousInstants int
-	// CappedOverOfficial : lignes de film retirees parce qu elles portaient un joueur AU-DELA de
-	// ses morts officielles (`match_participants.deaths`). Compte et journalise : une mort servie
-	// de trop est une mort inventee.
-	CappedOverOfficial int
-	// OverOfficialUncapped : joueurs encore servis au-dela de leurs morts officielles apres le
-	// plafond — le surplus vient alors du credit seul, qui ne se retranche pas.
-	OverOfficialUncapped int
+	// OverOfficial : joueurs servis au-dela de leurs morts officielles (`match_participants.deaths`)
+	// apres fusion. Controle de qualite compte et journalise ; la fusion ne retire AUCUNE ligne pour
+	// les ramener a leur compte.
+	OverOfficial []OverOfficialPlayer
 }
 
 // MergeCreditAndFilm : la base credit ENRICHIE de ce que le film a mesure.
@@ -274,7 +264,6 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 
 	// LES ORPHELINS, dans l ordre du film. Une ligne de film REFUSEE (instant ambigu) n en est pas
 	// une : la mort est peut-etre deja dans la base, l ajouter la compterait deux fois.
-	var orphans []orphanRef
 	for i := range film.Deaths {
 		v := ap.verdict[i]
 		if v == filmApparie || v == filmRefuse {
@@ -283,8 +272,6 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 			// dans la base sous l autre ligne de l instant — meme risque, meme abstention.
 			continue
 		}
-		orphans = append(orphans, orphanRef{outIdx: len(out.Deaths), victim: film.Deaths[i].VictimXUID,
-			timeMS: film.Deaths[i].TimeMS, partage: v == filmOrphelinInstantPartage})
 		out.Deaths = append(out.Deaths, film.Deaths[i])
 		st.Orphans++
 		if film.Deaths[i].VictimXUID != "" && film.Deaths[i].FeedKillerXUID != "" {
@@ -294,14 +281,10 @@ func MergeCreditAndFilm(base, film KillSourceBatch) (KillSourceBatch, MergeStats
 			st.OrphansSharedInstant++
 		}
 	}
-	// LE PLAFOND DES MORTS OFFICIELLES, applique APRES l assemblage : jamais plus de morts servies
-	// par joueur que de morts officielles. Voir [plafonnerAuxMortsOfficielles].
-	if base.Evidence.Known && len(orphans) > 0 {
-		var retirees int
-		out.Deaths, retirees, st.OverOfficialUncapped = plafonnerAuxMortsOfficielles(
-			out.Deaths, orphans, base.Evidence.OfficialDeaths)
-		st.CappedOverOfficial = retirees
-		st.Orphans -= retirees
+	// LE CONTROLE DES MORTS OFFICIELLES : compte, ne retire rien. Voir
+	// [joueursAuDessusDesMortsOfficielles].
+	if base.Evidence.Known {
+		st.OverOfficial = joueursAuDessusDesMortsOfficielles(out.Deaths, base.Evidence.OfficialDeaths)
 	}
 	return out, st, nil
 }

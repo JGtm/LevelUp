@@ -730,9 +730,10 @@ go run ./cmd/levelup compact-passes                          # optional: drop th
   (`<name>.<slug>.avant-fantomes-<UTC>.duckdb`), restore = put it back in place, server stopped.
 - **Idempotent**: with no phantom row left, a second run writes nothing.
 - The merge also refuses, since `killsource-2026-10-15`, to add a second death at an instant the
-  API's kill-feed counts only once, and caps every player's served deaths at the official
-  `match_participants.deaths` (counter `killsource_fusion_morts_au_dela_officiel`, WARN log with
-  the `match_id`). The phantom deaths of the other cases (e.g. a player served 10 times for 7
+  API's kill-feed counts only once, and checks every player's served deaths against the official
+  `match_participants.deaths` (counter `killsource_fusion_joueurs_au_dela_officiel_residuel`, WARN
+  log with `match_id`, player, official, served). The check never removes a line: dropping one to
+  fit the count would be choosing, without proof, which death is wrong. The phantom deaths of the other cases (e.g. a player served 10 times for 7
   official deaths) are outside the 86 matches: they disappear when `backfill-killsource` (no
   `--match`, every film stale under the new `killsource` revision) re-merges them, to be announced
   and run as a campaign.
