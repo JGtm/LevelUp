@@ -16,7 +16,7 @@ package skill
 // reste À L'INTÉRIEUR de ClassifyLUSRChain.
 //
 // Câblage requis : cmd/server + tout cmd LUSR (lusr_v2_canonical_backfill,
-// diag_lusr_player, lusr_v2_phase0, lusr_v2_squad_estimate, lusr_v2_ttt_batch) +
+// diag_lusr_player, lusr_v2_squad_estimate, lusr_v2_ttt_batch) +
 // les TestMain des packages dont les tests atteignent GetLUSRChain (sync, service).
 
 import "errors"

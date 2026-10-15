@@ -145,7 +145,6 @@ var rawOrderByStartTimeAllowlist = map[string]bool{
 	"cmd/diag_perfsim/load.go":        true,
 	"cmd/diag_orphan_session/main.go": true,
 	"cmd/levelup/cmd_backfill.go":     true,
-	"cmd/lusr_v2_phase0/replay.go":    true,
 	"cmd/seed-medal/main.go":          true,
 }
 
