@@ -7,8 +7,8 @@
  * hachure reste réservée à « sans film »). Chaque segment porte son « compte · part » : le nôtre
  * collé à gauche (« 12 · 60 % »), celui de l'adversaire collé à droite (« 40 % · 8 »). Une
  * valeur qui ne tient pas dans son segment avec 6 px de marge de chaque côté (mesure au pixel,
- * `segmentLabelFit`) part sur la ligne de repli AU-DESSUS de la barre, pastille d'équipe devant,
- * du côté de son camp (S3 : jamais tronquée, jamais seulement en infobulle). Le trait 50 % en
+ * `segmentLabelFit`) ne s'écrit pas : elle se lit dans l'infobulle du segment, jamais au-dessus
+ * de la barre (une étiquette est toujours centrée sur sa barre directe). Le trait 50 % en
  * pointillé `warning` (S5). Axe 0-100 % sous les pistes.
  *
  * Une ligne peut porter, sous sa barre, un contenu de plus (`below`) : « Frags obtenus avec
@@ -62,8 +62,8 @@ export interface PisteCampsFormProps {
   /** Largeur de la colonne des noms (px) ; maquette : 118. */
   labelWidth?: number
   /**
-   * Parts seules (vue compacte du tiroir de comparaison de Sessions) : chaque segment et le repli
-   * n'écrivent que la part ; le compte reste dans l'infobulle. Défaut : « compte · part ».
+   * Parts seules (vue compacte du tiroir de comparaison de Sessions) : chaque segment
+   * n'écrit que la part ; le compte reste dans l'infobulle. Défaut : « compte · part ».
    */
   pctOnly?: boolean
 }
@@ -128,7 +128,7 @@ function PisteRow({
   const share = n > 0 ? (row.us / n) * 100 : 0
   const usPct = pctFmt(share)
   const themPct = pctFmt(100 - share)
-  // Un segment vide n'a pas de place : sa valeur part au repli, comme celle qui ne tient pas.
+  // Un segment vide n'a pas de place, comme celui où la valeur ne tient pas : rien ne s'écrit.
   const usHidden = row.us <= 0 || hidden.has(fitKey(row.key, 'us'))
   const themHidden = row.them <= 0 || hidden.has(fitKey(row.key, 'them'))
   return (
@@ -160,15 +160,6 @@ function PisteRow({
         </div>
       ) : (
       <div className="flex min-w-0 flex-col gap-1">
-        {(usHidden || themHidden) && (
-          <div
-            className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground"
-            data-testid={`piste-camps-repli-${row.key}`}
-          >
-            <span>{usHidden && <RepliValue color={ALLY} count={pctOnly ? null : row.us} pct={usPct} />}</span>
-            <span>{themHidden && <RepliValue color={ENEMY} count={pctOnly ? null : row.them} pct={themPct} />}</span>
-          </div>
-        )}
         <CampTrack
           row={row}
           share={share}
@@ -312,23 +303,6 @@ function ThinSegment({
         <div className="h-full w-full cursor-help" />
       </Tooltip>
     </div>
-  )
-}
-
-/** La valeur repliée au-dessus de la barre ; `count` nul = la part seule (vue compacte). */
-function RepliValue({ color, count, pct }: { color: string; count: number | null; pct: string }) {
-  return (
-    <span className="inline-flex items-center">
-      <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
-      {count == null ? (
-        <b className="text-[13px] font-bold text-foreground">{pct}</b>
-      ) : (
-        <>
-          <b className="text-[13px] font-bold text-foreground">{count}</b>
-          <span className="whitespace-pre">{` · ${pct}`}</span>
-        </>
-      )}
-    </span>
   )
 }
 

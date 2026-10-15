@@ -10,6 +10,9 @@
  *   1. `text-white` / `text-black` : l'encre d'un segment ne s'écrit pas en classe ;
  *   2. `data-fit-label` : l'étiquette d'un segment est `SegmentLabel`, seul à porter le contrat ;
  *   3. `position: 'inside'` : l'étiquette ECharts d'un segment est `barLabel`.
+ * Une 4e règle (15/10) : une étiquette de segment est toujours centrée sur sa barre — aucune ligne
+ * de « repli » (`data-testid="...repli..."`) posée au-dessus d'une barre ; ce qui ne tient pas se
+ * lit dans l'infobulle du segment.
  * Une ligne justifiée se marque `barLabel-allow: <raison>` (2) ou `color-allow: <raison>` (1) sur
  * elle ou la précédente ; toute entrée de `TEXT_ON_FIXED_BACKGROUND` porte sa raison datée.
  */
@@ -66,5 +69,10 @@ describe('garde-rail encre des segments (segmentInk source unique)', () => {
   it("aucune étiquette ECharts « inside » à couleur fixe hors barLabel", () => {
     const bad = offenders((l, p) => /position:\s*'inside'/.test(l) && !/barLabel-allow:/.test(l + p), INK_OWNERS)
     expect(bad, `Étiquette inside : utiliser barLabel(fill) — ${bad.join(', ')}`).toEqual([])
+  })
+
+  it('aucune ligne de repli au-dessus d’une barre (étiquette toujours centrée sur sa barre)', () => {
+    const bad = offenders((l) => /data-testid={?[`'"][^`'"]*-repli/.test(l), new Set())
+    expect(bad, `Valeur qui ne tient pas : infobulle du segment, jamais au-dessus — ${bad.join(', ')}`).toEqual([])
   })
 })

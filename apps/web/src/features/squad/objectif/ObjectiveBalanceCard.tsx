@@ -4,11 +4,12 @@
  *
  * Un CADRE par famille de mode, bandeau « Bases · 4 matchs » ; dedans, les actions rangées sous
  * les intertitres Prendre / Défendre / Tenir ; pour chaque action, la barre camp contre camp :
- * notre camp en `team-ally` avec « compte · part » dans son segment, l'adversaire en
- * `team-enemy` avec son compte (S4 : les couleurs d'équipe remplacent les mots). Une valeur qui
- * ne tient pas dans son segment (6 px de marge de chaque côté) part sur la ligne de repli
- * au-dessus de la barre, pastille d'équipe devant (S3). Le trait 50 % en pointillé `warning`
- * (S5). Les temps s'écrivent en durée (« 17 min 48 »).
+ * notre camp en `team-ally` avec « compte · part » collé à gauche de son segment, l'adversaire
+ * en `team-enemy` avec son compte collé à droite (S4 : les couleurs d'équipe remplacent les
+ * mots) : un compte ne chevauche ainsi jamais le trait 50 %. Une valeur qui ne tient pas dans son
+ * segment (6 px de marge de chaque côté) ne s'écrit pas : elle se lit dans l'infobulle du segment,
+ * jamais au-dessus de la barre (une étiquette est toujours centrée sur sa barre). Le trait 50 % en
+ * pointillé `warning` (S5). Les temps s'écrivent en durée (« 17 min 48 »).
  */
 import { useMemo, useRef } from 'react'
 
@@ -123,26 +124,15 @@ function BalanceBar({
   const sharePct = line.share * 100
   const usText = pctOnly ? t.pctFmt(sharePct) : `${fmt(line.us)} · ${t.pctFmt(sharePct)}`
   const themText = pctOnly ? t.pctFmt(100 - sharePct) : fmt(line.them)
-  // Un segment vide n'a pas de place : sa valeur part au repli, comme celle qui ne tient pas.
+  // Un segment vide n'a pas de place, comme celui où la valeur ne tient pas : rien ne s'écrit.
   const usHidden = line.us <= 0 || hidden.has(fitKey(family, line.key, 'us'))
   const themHidden = line.them <= 0 || hidden.has(fitKey(family, line.key, 'them'))
-  const repliOffset = usHidden ? 0 : themHidden ? sharePct : null
   return (
     <div className="grid grid-cols-[150px_minmax(0,1fr)] items-center gap-2.5 text-xs" data-testid={`objective-balance-row-${family}-${line.key}`}>
       <div className="truncate leading-tight" title={label}>
         {label}
       </div>
-      <div className="flex min-w-0 flex-col gap-[3px]">
-        {repliOffset != null && (
-          <div
-            className="flex gap-2 text-2xs font-semibold tabular-nums"
-            style={{ paddingLeft: `${repliOffset}%` }}
-            data-testid={`objective-balance-repli-${family}-${line.key}`}
-          >
-            {usHidden && <RepliValue color={ALLY} text={usText} />}
-            {themHidden && <RepliValue color={ENEMY} text={themText} />}
-          </div>
-        )}
+      <div className="flex min-w-0 flex-col">
         <div className="relative h-5 rounded-[3px] bg-muted" role="img" aria-label={`${label} : ${usText} / ${themText}`}>
           {line.us > 0 && (
             <Segment
@@ -152,6 +142,7 @@ function BalanceBar({
               rounded={line.them > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'}
               fitKey={fitKey(family, line.key, 'us')}
               text={usText}
+              align="start"
               hidden={usHidden}
               tip={t.balance.segmentTip(t.ourSide, label, fmt(line.us), t.pctFmt(sharePct))}
             />
@@ -164,6 +155,7 @@ function BalanceBar({
               rounded={line.us > 0 ? 'rounded-r-[3px] border-l-2 border-card' : 'rounded-[3px]'}
               fitKey={fitKey(family, line.key, 'them')}
               text={themText}
+              align="end"
               hidden={themHidden}
               tip={t.balance.segmentTip(t.opponent, label, fmt(line.them), t.pctFmt(100 - sharePct))}
             />
@@ -179,15 +171,6 @@ function BalanceBar({
   )
 }
 
-function RepliValue({ color, text }: { color: string; text: string }) {
-  return (
-    <span className="inline-flex items-center gap-[3px]">
-      <span className="inline-block h-2 w-2 rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
-      {text}
-    </span>
-  )
-}
-
 function Segment({
   left,
   width,
@@ -195,6 +178,7 @@ function Segment({
   rounded,
   fitKey: key,
   text,
+  align,
   hidden,
   tip,
 }: {
@@ -204,6 +188,7 @@ function Segment({
   rounded: string
   fitKey: string
   text: string
+  align: 'start' | 'end'
   hidden: boolean
   tip: string
 }) {
@@ -213,7 +198,7 @@ function Segment({
       style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }}
       data-fit-key={key}
     >
-      <SegmentLabel fill={color} tip={tip} hidden={hidden} textClassName="text-[11.5px] font-semibold">
+      <SegmentLabel fill={color} tip={tip} align={align} hidden={hidden} textClassName="text-[11.5px] font-semibold">
         {text}
       </SegmentLabel>
     </div>

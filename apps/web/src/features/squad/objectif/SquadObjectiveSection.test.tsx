@@ -64,10 +64,10 @@ describe('SquadObjectiveSection', () => {
     expect(bases.textContent).toContain('Bases')
     expect(bases.textContent).toContain('4 matchs')
     for (const role of ['Prendre', 'Défendre', 'Tenir']) expect(within(bases).getByText(role)).toBeInTheDocument()
-    // jsdom ne mesure rien : chaque valeur passe au repli, jamais perdue (S3).
-    const repli = screen.getByTestId('objective-balance-repli-zones_strongholds-time_in_zones_seconds')
-    expect(repli.textContent).toContain('17 min 48 · 54 %')
-    expect(repli.textContent).toContain('15 min 26')
+    // jsdom ne mesure rien : les valeurs sont masquées dans leur segment, aucune ligne au-dessus de la barre.
+    expect(screen.queryByTestId('objective-balance-repli-zones_strongholds-time_in_zones_seconds')).toBeNull()
+    const labels = screen.getByTestId('objective-balance-row-zones_strongholds-time_in_zones_seconds').querySelectorAll<HTMLElement>('[data-fit-label]')
+    expect([...labels].map((l) => l.textContent)).toEqual(['17 min 48 · 54 %', '15 min 26'])
   })
 
   it('22/09 : fiches JGtm (4 drapeaux capturés, 3 volés), zéro atténué, rôle dominant, pied de fiche', () => {

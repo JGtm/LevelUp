@@ -1,7 +1,7 @@
 /**
  * LivesNearTeammateRow — LA LIGNE D'UN JOUEUR de la carte « Isolement » : la barre ÉPAISSE partage ses
  * vies terminées par une mort entre « à portée d'un coéquipier » (`squad-player-1`) et « isolée »
- * (`extreme`), compte et part dans chaque segment quand ils tiennent, repli au-dessus sinon ; la barre
+ * (`extreme`), compte et part dans chaque segment quand ils tiennent, rien d'écrit sinon (infobulle) ; la barre
  * FINE partage ses frags tombés pendant ces vies ; dessous, « frags : n · p % · x par vie … ». Une
  * ligne pour les Séries temporelles et Sessions (le joueur de la page), une par joueur de l'équipe sur
  * la Vue match. La mesure des valeurs qui tiennent (`hidden`) est faite par la carte, sur toutes ses
@@ -46,7 +46,7 @@ export function LivesNearTeammateRow({ model, label, hidden, idPrefix = '', ut, 
   const aloneText = compact ? ut.pctIntFmt(100 - nearPct) : `${ut.pctFmt(100 - nearPct)} · ${ut.intFmt(model.alone.lives)}`
   const nearId = `${idPrefix}near`
   const aloneId = `${idPrefix}alone`
-  // Seule la valeur qui ne tient pas dans son segment monte au repli (jamais affichée deux fois).
+  // La valeur qui ne tient pas dans son segment ne s'écrit pas : l'infobulle du segment la porte.
   const nearHidden = hidden.has(nearId)
   const aloneHidden = hidden.has(aloneId)
   return (
@@ -55,12 +55,6 @@ export function LivesNearTeammateRow({ model, label, hidden, idPrefix = '', ut, 
         {label}
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        {(nearHidden || aloneHidden) && (
-          <div className="flex justify-between gap-2 text-xs tabular-nums text-muted-foreground" data-testid={`usages-lives-${idPrefix}repli`}>
-            <span>{nearHidden && nearText}</span>
-            <span>{aloneHidden && aloneText}</span>
-          </div>
-        )}
         <div className="relative h-[22px] rounded-[3px] bg-muted">
           <Part id={nearId} left={0} width={nearPct} color={LIVES_NEAR_INK} text={nearText} hidden={nearHidden} tip={l.tip(l.near, model.near.lives, model.lives, ut.pctFmt(nearPct), 'lives')} align="start" />
           <Part id={aloneId} left={nearPct} width={100 - nearPct} color={LIVES_ALONE_INK} text={aloneText} hidden={aloneHidden} tip={l.tip(l.alone, model.alone.lives, model.lives, ut.pctFmt(100 - nearPct), 'lives')} align="end" />

@@ -106,15 +106,3 @@ export function buildFragBreakdownRows(
     return { player, total: totals[i], segments }
   })
 }
-
-/**
- * Position (0..100) du PREMIER segment dont le compte ne tient pas : la ligne de repli
- * s'aligne sur lui (règle S3). null si tous tiennent.
- */
-export function repliOffsetPct(
-  segments: FragBreakdownSegment[],
-  isHidden: (cls: string) => boolean,
-): number | null {
-  const first = segments.find((s) => isHidden(s.cls))
-  return first ? first.leftPct : null
-}

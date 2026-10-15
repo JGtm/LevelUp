@@ -2,7 +2,7 @@
  * SquadEmprisePage.test.tsx — l'onglet « Emprise » (lot L5 du plan
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), sur la soirée témoin du 22/09 (chiffres de la
  * maquette de l'onglet) : blocs et ordre du débrief, puis chaque carte — « Contrôle des ressources »
- * (compte · part dans chaque segment, repli S3, trait 50 %), « … cumul par match » (graphe tracé,
+ * (compte · part dans chaque segment, masqué s'il ne tient pas, trait 50 %), « … cumul par match » (graphe tracé,
  * légende), « Prises par joueur » (fiches, pastilles pleines et
  * vides), « … par match » (résultat, dominance, sans film, râteliers repliés). États vides hérités
  * de l'onglet remplacé.
@@ -153,11 +153,13 @@ describe('Contrôle des ressources', () => {
     expect(power.textContent).toContain('55,8 % · 29')
   })
 
-  it('repli S3 : hors navigateur rien ne « tient », les deux camps passent au-dessus, pastille devant', () => {
+  it('hors navigateur rien ne « tient » : aucune ligne de repli au-dessus des barres, étiquettes masquées', () => {
     mount()
-    const repli = within(screen.getByTestId('emprise-control')).getByTestId('piste-camps-repli-powerup')
-    expect(repli.textContent).toContain('12 · 60 %')
-    expect(repli.textContent).toContain('8 · 40 %')
+    const control = within(screen.getByTestId('emprise-control'))
+    expect(control.queryByTestId('piste-camps-repli-powerup')).toBeNull()
+    const labels = control.getByTestId('piste-camps-row-powerup').querySelectorAll<HTMLElement>('[data-fit-label]')
+    expect([...labels].map((l) => l.textContent)).toEqual(['12 · 60 %', '40 % · 8'])
+    expect([...labels].every((l) => l.style.visibility === 'hidden')).toBe(true)
   })
 
   it('légende en pied de carte : équipe, adversaire, « 50 % : autant que l’adversaire »', () => {

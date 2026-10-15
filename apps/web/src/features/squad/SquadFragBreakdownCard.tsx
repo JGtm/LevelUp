@@ -6,9 +6,8 @@
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 :
  *   - le compte de chaque classe s'écrit DANS son segment s'il y tient avec 6 px de marge de
  *     chaque côté (mesure au pixel, `useSegmentLabelFit`) ;
- *   - sinon il part sur une ligne de repli AU-DESSUS de la barre, alignée sur le premier
- *     segment masqué, pastille de la classe + compte — jamais tronqué, jamais seulement en
- *     infobulle ;
+ *   - sinon il ne s'écrit pas (infobulle du segment) : jamais tronqué, jamais posé au-dessus de
+ *     la barre — une étiquette est toujours centrée sur sa barre ;
  *   - le total au bout de la barre ; la légende des classes en bas, centrée ; le graphe centré
  *     verticalement dans la carte (qui s'étire à la hauteur de sa rangée).
  */
@@ -25,7 +24,6 @@ import type { FragClassEntry } from '@/lib/api/types'
 import {
   buildFragBreakdownRows,
   fragBreakdownClasses,
-  repliOffsetPct,
   type FragBreakdownRow,
   type FragBreakdownSegment,
 } from './charts/squadFragBreakdownChart'
@@ -42,7 +40,7 @@ interface SquadFragBreakdownCardProps {
   t: SquadText
   /**
    * Vue compacte du tiroir de comparaison de Sessions (maquette `makeFragbar` avec `cp`) : la part
-   * entière de chaque classe dans son segment et au repli (`pctFmt`), le total en sous-libellé du nom
+   * entière de chaque classe dans son segment (`pctFmt`), le total en sous-libellé du nom
    * (`totalSub`), rien au bout de la barre ; les comptes restent dans l'infobulle.
    */
   compact?: FragBreakdownCompact
@@ -132,7 +130,6 @@ interface FragBreakdownBarProps {
 
 function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBreakdownBarProps) {
   const isHidden = (cls: string) => hidden.has(fitKey(row.player, cls))
-  const offset = repliOffsetPct(row.segments, isHidden)
   // Ce qu'écrit un segment : son compte, ou sa part entière du total du joueur en vue compacte.
   const textOf = (s: FragBreakdownSegment) => (compact ? compact.pctFmt(row.total > 0 ? (s.kills / row.total) * 100 : 0) : String(s.kills))
   return (
@@ -148,15 +145,6 @@ function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBr
         </span>
       </div>
       <div className="flex min-w-0 flex-col gap-[3px]">
-        {offset != null && (
-          <FragBreakdownRepli
-            row={row}
-            offset={offset}
-            folded={row.segments.filter((s) => isHidden(s.cls))}
-            classLabel={classLabel}
-            textOf={textOf}
-          />
-        )}
         <div
           className="relative h-[22px]"
           role="img"
@@ -181,40 +169,6 @@ function FragBreakdownBar({ row, color, hidden, classLabel, t, compact }: FragBr
           {row.total}
         </div>
       )}
-    </div>
-  )
-}
-
-/** La ligne de repli au-dessus de la barre : pastille + compte des segments trop étroits. */
-function FragBreakdownRepli({
-  row,
-  offset,
-  folded,
-  classLabel,
-  textOf,
-}: {
-  row: FragBreakdownRow
-  offset: number
-  folded: FragBreakdownSegment[]
-  classLabel: (cls: string) => string
-  textOf: (s: FragBreakdownSegment) => string
-}) {
-  return (
-    <div
-      className="flex gap-2 text-2xs font-semibold tabular-nums"
-      style={{ paddingLeft: `${offset}%` }}
-      data-testid={`frag-breakdown-repli-${row.player}`}
-    >
-      {folded.map((s) => (
-        <span key={s.cls} className="inline-flex items-center gap-[3px]" title={classLabel(s.cls)}>
-          <span
-            className="inline-block h-2 w-2 rounded-[2px]"
-            style={{ backgroundColor: fragClassCssVar(s.cls) }}
-            aria-hidden
-          />
-          {textOf(s)}
-        </span>
-      ))}
     </div>
   )
 }

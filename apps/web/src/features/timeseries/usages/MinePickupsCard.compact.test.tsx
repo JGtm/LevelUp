@@ -2,7 +2,7 @@
  * MinePickupsCard.compact.test.tsx — « Mes prises dans mon camp » en vue compacte (tiroir de
  * comparaison de Sessions, maquette `renderMineCompact`) : une barre par RESSOURCE, ma part et celle
  * du reste de mon camp en pourcentage (comptes au survol) ;
- * une part qui ne tient pas dans son segment monte sur une ligne de repli alignée sur lui (règle S2).
+ * une part qui ne tient pas dans son segment est masquée (infobulle), jamais posée au-dessus de la barre.
  */
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -69,27 +69,24 @@ describe('MinePickupsCard — compact', () => {
     expect(screen.getByTestId('usages-mine-rest-powerup').textContent).toBe('72 %')
   })
 
-  it('repli : une part qui ne tient pas monte au-dessus, seule, alignée sur SON segment (S2)', () => {
+  it('une part qui ne tient pas dans son segment est masquée ; l’autre reste écrite', () => {
     fit.hidden = new Set(['usages-mine-rest-rack'])
     renderCompact()
-    const repli = screen.getByTestId('usages-mine-repli-rack')
-    expect(repli.textContent).toBe('60 %')
-    expect(parseFloat(repli.style.paddingLeft)).toBeCloseTo((2 / 5) * 100)
+    expect(screen.queryByTestId('usages-mine-repli-rack')).toBeNull()
     const label = (id: string) => screen.getByTestId(id).querySelector<HTMLElement>('[data-fit-label]')!.style.visibility
     expect(label('usages-mine-rest-rack')).toBe('hidden')
     expect(label('usages-mine-me-rack')).toBe('visible')
     expect(screen.queryByTestId('usages-mine-repli-powerup')).toBeNull()
   })
 
-  it('repli : ma part masquée part du bord gauche', () => {
+  it('ma part masquée : étiquette cachée, aucune ligne de repli', () => {
     fit.hidden = new Set(['usages-mine-me-power_weapon'])
     renderCompact()
-    const repli = screen.getByTestId('usages-mine-repli-power_weapon')
-    expect(repli.textContent).toBe('13 %')
-    expect(parseFloat(repli.style.paddingLeft)).toBe(0)
+    expect(screen.queryByTestId('usages-mine-repli-power_weapon')).toBeNull()
+    expect(screen.getByTestId('usages-mine-me-power_weapon').querySelector<HTMLElement>('[data-fit-label]')!.style.visibility).toBe('hidden')
   })
 
-  it('repli : rien au-dessus quand toutes les parts tiennent', () => {
+  it('aucune ligne au-dessus de la barre quand toutes les parts tiennent', () => {
     fit.hidden = new Set()
     renderCompact()
     expect(screen.queryAllByTestId(/^usages-mine-repli-/)).toEqual([])

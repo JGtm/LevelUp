@@ -1,7 +1,7 @@
 /**
  * PisteCampsForm.test.tsx — la piste camp contre camp (lot L5.3) : adversaire en `team-enemy`
  * PLEIN (plus de hachure), « compte · part » dans chaque segment (le nôtre à gauche, le sien à
- * droite), repli S3 au-dessus seulement pour la valeur qui ne tient pas (mesure au pixel), trait
+ * droite), valeur masquée (infobulle seule, jamais au-dessus de la barre) quand elle ne tient pas (mesure au pixel), trait
  * 50 % pointillé `warning`, axe 0-100 %.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -51,17 +51,15 @@ describe('PisteCampsForm', () => {
     expect(screen.queryByTestId('piste-camps-repli-power_weapon')).toBeNull()
   })
 
-  it('la valeur qui ne tient pas (6 px de marge) passe au repli, de son côté, pastille devant', () => {
+  it('la valeur qui ne tient pas (6 px de marge) est masquée : aucune ligne au-dessus de la barre', () => {
     mockWidths(300, 70)
     mount()
     const labels = document.querySelectorAll<HTMLElement>('[data-fit-label]')
     expect(labels[0].style.visibility).toBe('visible')
     expect(labels[1].style.visibility).toBe('hidden')
-    const repli = screen.getByTestId('piste-camps-repli-power_weapon')
-    expect(repli.textContent).toBe('29 · 55,8 %')
-    // Notre camp à gauche (vide ici), l'adversaire à droite : deux emplacements.
-    expect(repli.children).toHaveLength(2)
-    expect(repli.children[0].textContent).toBe('')
+    expect(screen.queryByTestId('piste-camps-repli-power_weapon')).toBeNull()
+    // L'étiquette masquée reste dans le DOM (remesure au redimensionnement), dans son segment.
+    expect(labels[1].closest('[data-fit-key]')).not.toBeNull()
   })
 
   it('adversaire en aplat `team-enemy` (plus de hachure), notre camp en `team-ally`, trait 50 % pointillé `warning`', () => {
@@ -77,19 +75,20 @@ describe('PisteCampsForm', () => {
     expect(parity.className).toContain('left-1/2')
   })
 
-  it('un camp à zéro : un seul segment plein, sa valeur au repli', () => {
+  it('un camp à zéro : un seul segment plein, rien n’est écrit pour le camp vide', () => {
     mockWidths(300, 300)
     mount([{ ...ROW, key: 'powerup', us: 4, them: 0 }])
     expect(document.querySelectorAll('[data-fit-key]')).toHaveLength(1)
-    expect(screen.getByTestId('piste-camps-repli-powerup').textContent).toBe('0 · 0 %')
+    expect(screen.queryByTestId('piste-camps-repli-powerup')).toBeNull()
   })
 
-  it('parts seules (vue compacte de Sessions) : la part dans le segment et au repli, le compte en infobulle seulement', () => {
+  it('parts seules (vue compacte de Sessions) : la part dans le segment qui la porte, le compte en infobulle seulement', () => {
     mockWidths(300, 70)
     render(<PisteCampsForm rows={[ROW]} pctFmt={T.pctIntFmt} axisMaxLabel={T.pctIntFmt(100)} pctOnly />)
     const labels = document.querySelectorAll<HTMLElement>('[data-fit-label]')
     expect(labels[0].textContent).toBe('44 %')
-    expect(screen.getByTestId('piste-camps-repli-power_weapon').textContent).toBe('56 %')
+    expect(labels[1].style.visibility).toBe('hidden')
+    expect(screen.queryByTestId('piste-camps-repli-power_weapon')).toBeNull()
   })
 
   it('nom précédé de la pastille de ressource (S8), sous-libellé, axe 0-100 %', () => {

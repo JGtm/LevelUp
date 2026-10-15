@@ -4,8 +4,8 @@
  *
  * Une ligne par famille, dans l'ordre publié par le Go : les objets du joueur servis / gardés sans
  * servir / lâchés (`divergent-pos` / `divergent-neutral` / `divergent-neg`), comptes dans les
- * segments quand ils y tiennent (mesure au pixel), sur une ligne de repli au-dessus sinon — seuls
- * ceux qui ne tiennent pas, alignés sur le début du premier de leurs segments (S2) ; sous-libellé
+ * segments quand ils y tiennent (mesure au pixel), dans l'infobulle seule sinon (jamais au-dessus
+ * de la barre : une étiquette est centrée sur sa barre) ; sous-libellé
  * « n objets, dont m pris sur la carte » ;
  * dessous, la barre fine du reste du camp et sa ligne de parts. Axe 0-100 % sous les lignes.
  */
@@ -16,7 +16,7 @@ import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
-import { repliOffsetPct, type FragBreakdownSegment } from '@/features/squad/charts/squadFragBreakdownChart'
+import type { FragBreakdownSegment } from '@/features/squad/charts/squadFragBreakdownChart'
 import { TrackAxis } from '@/features/squad/emprise/PisteCampsForm'
 import { pisteColumns } from '@/features/squad/emprise/pisteLayout'
 import { TipText } from '@/features/squad/emprise/TipText'
@@ -117,7 +117,6 @@ function EquipmentLine({
         </small>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        {meTotal > 0 && <RepliLine id={meId} family={id} parts={row.me} hidden={hidden} textOf={textOf} />}
         {meTotal > 0 ? (
           <ThreeTrack id={meId} parts={row.me} who={`${player} · ${label}`} hidden={hidden} ut={ut} textOf={textOf} />
         ) : (
@@ -158,48 +157,8 @@ function partSegments(parts: EquipmentParts): FragBreakdownSegment[] {
 }
 
 /**
- * La ligne de repli au-dessus de la barre épaisse : les comptes des parts qui ne tiennent pas dans
- * leur segment, alignés sur le début du premier d'entre eux (`repliOffsetPct`, patron de la
- * Répartition des frags) ; absente quand tout tient.
- */
-function RepliLine({
-  id,
-  family,
-  parts,
-  hidden,
-  textOf,
-}: {
-  id: string
-  family: string
-  parts: EquipmentParts
-  hidden: ReadonlySet<string>
-  textOf: (s: FragBreakdownSegment) => string
-}) {
-  const segments = partSegments(parts)
-  const isHidden = (part: string) => hidden.has(`${id}-${part}`)
-  const offset = repliOffsetPct(segments, isHidden)
-  if (offset == null) return null
-  return (
-    <div
-      className="flex gap-2 whitespace-nowrap text-xs tabular-nums text-muted-foreground"
-      style={{ paddingLeft: `${offset}%` }}
-      data-testid={`usages-equip-repli-${family}`}
-    >
-      {segments
-        .filter((s) => isHidden(s.cls))
-        .map((s) => (
-          <span key={s.cls} className="inline-flex items-center">
-            <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: tokenCssVar(PART_TOKENS[s.cls as Part]) }} aria-hidden />
-            <b className="font-bold text-foreground">{textOf(s)}</b>
-          </span>
-        ))}
-    </div>
-  )
-}
-
-/**
  * Trois parts côte à côte (servi, gardé, lâché) ; `hidden` donné : comptes dans les segments (barre
- * épaisse), masqués quand ils ne tiennent pas (la ligne de repli les porte).
+ * épaisse), masqués quand ils ne tiennent pas (l'infobulle du segment les porte).
  */
 function ThreeTrack({
   id,
