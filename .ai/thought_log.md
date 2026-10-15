@@ -117300,3 +117300,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 18 champs, 18 fins lues au parc (11 de 11,35 à 12,24 s, 6 détruits de 1,5 à 4,6 s, une de 16,95 s liée au porteur) ; gate vert.
 
 **Conclusion / prochaine étape** : recuisson du parc au schéma 96 sur accord du user, après le rattrapage CSR en cours.
+
+## [2026-10-15] Ajustements du 14/10 : rattrapage CSR, recuisson au schéma 96, étiquettes de barres — Complété
+
+**Statut** : Complété. Rattrapage CSR (accord du user) : shared-csr +1 697, csr joueur +203 (Nuzzles), is_ranked 4 121 corrigés, LUSR 7 732, engagement 7 010 ; défaut préexistant trouvé en route et corrigé (`fix/csr-candidats-joueur` : le rattrapage par joueur interrogeait tout le registre, 4 274 appels inutiles pour Chocoboflor). Recuisson du parc au schéma 96 (accord du user) : 238 artefacts, riftPoses 123, knockbacks 132, fins suivies 745/758, VIP 00761d27 cuit, killsource 0 erreur de décodage. Lot G (étiquettes de barres) fusionné après gate visuel du user : centrage sur la barre directe, valeur à côté de la barre si elle ne tient pas (règle « jamais seulement en infobulle » maintenue), texte blanc à contour sombre (décision du user).
+
+**Décision technique principale** : chaque passe d'écriture lancée serveur arrêté, après accord des sessions pairs et sauvegarde (`data/backups/avant_rattrapage_csr_2026-10-15/`).
+
+**Résultats observés** : anomalies de la recuisson préexistantes (D-39 34db6b33, BOT_METADATA HI_1_12_0, 4 vies sans identité). Erreur du superviseur : correctif CSR fusionné sans attendre la CI de feat/v75 (archlint `TestNoNewRawStartTimeLiteral` rouge, corrigé par levelup-6c dans c4b12f59d).
+
+**Conclusion / prochaine étape** : gate visuel du user (rejeu VIP, pages Vue match / Tactique / Escouade / Séries temporelles) ; découvertes de la section 4 du plan à trier avec le user.
