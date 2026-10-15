@@ -91,7 +91,7 @@ var registreKillsource = []Repli{
 		Mecanisme: "moins de noms que de sieges : des noms ?N sont fabriques pour rendre le probleme d'affectation carre",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "roster.go", Ancre: "r.nomsInventes = max(0, r.nPlay-len(r.names))"}, siteDeVersement("NomRosterNomInvente"), {
+		Sites: []Site{{Fichier: pkgKillsource + "roster.go", Ancre: "r.nomsInventes = max(0, cible-len(r.names))"}, siteDeVersement("NomRosterNomInvente"), {
 			Fichier: pkgKillsource + "roster.go",
 			Ancre:   "r.names = append(r.names, fmt.Sprintf(\"?%d\", len(r.names)))",
 		}},
