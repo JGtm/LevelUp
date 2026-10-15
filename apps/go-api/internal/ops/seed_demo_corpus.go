@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 )
 
 // DefaultSquadSessions : nombre de sessions en escouade retenues pour le corpus.
@@ -361,4 +362,43 @@ func resolvePlayerDBByXUID(profilesPath, xuid string) (dbRelPath string, found b
 		}
 	}
 	return "", false, nil
+}
+
+// dynamicCorpus regroupe les 4 sous-listes de la sélection démo (solo/squad/ranked/
+// media), avant union. Partagé par SeedDemo (chemin dynamique) et EmitDemoManifest.
+type dynamicCorpus struct {
+	solo, squad, ranked, media []string
+}
+
+// selectDynamicCorpus exécute la sélection dynamique « N plus récents » (comportement
+// historique). Chaque source est best-effort : un échec logge un warn et laisse la
+// sous-liste vide (l'union reste exploitable tant qu'au moins une source répond).
+func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpus {
+	var dc dynamicCorpus
+	if r, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.TitleSlug, opts.MaxMatches); err != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", err)
+	} else {
+		dc.solo = r
+	}
+	if s, err := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions); err != nil {
+		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", err)
+	} else {
+		dc.squad = s
+	}
+	if rk, err := selectRecentRankedMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, DefaultRankedMatches); err != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", err)
+	} else {
+		dc.ranked = rk
+	}
+	if opts.IncludeMedia {
+		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
+		if mm, err := selectMediaAnchoredMatchIDs(ctx, srcSocialDB, opts.MaxMedia); err != nil {
+			slog.WarnContext(ctx, "seed-demo: corpus média-ancré indisponible", "err", err)
+		} else {
+			dc.media = mm
+		}
+	}
+	// Campagne exclue de l'ensemble final, quelle que soit la voie (E6.2a-F2).
+	dc.excludeCampaign(ctx, opts.SourceSharedDB, opts.TitleSlug)
+	return dc
 }
