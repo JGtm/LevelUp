@@ -275,6 +275,8 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 - [ ] L7-3 Garde-rail : test table-driven qui passe les mêmes chemins ambigus (`%2F`, `%5C`,
       `%2e%2e`, `//`, `/./`) à toutes les gardes qui décident sur un chemin (CSRF, démo,
       écritures, limiteur, rejeu, ouvrier).
+- [ ] L7-4 (D-L1-2) `handlers/replay_local_gate.go` : `isLocalRequest` refuse un hôte vide (garde
+      fermée par défaut) ; tests adaptés à un transport qui fournit une adresse.
 - Gate : `go test ./internal/api/... -run 'CSRF|Ambiguous|Transverse'` puis `go test ./internal/api/...`.
 
 ### L8 — Démo publique (C8-1, C8-2) — Sonnet — effort M
@@ -680,4 +682,3 @@ client honnête derrière nginx la clé reste X-Real-IP, comme avant (nginx reti
 Clé de journal HTTP renommée `remote_addr` en `ip` : aucun lecteur dans le dépôt. Aucune opération VPS.
 
 **Découvertes** : D-L1-1 à D-L1-5 (§6), non traitées.
-- [ ] L7-4 (D-L1-2) `handlers/replay_local_gate.go` : `isLocalRequest` refuse un hôte vide (garde fermée par défaut) ; tests adaptés à un transport qui fournit une adresse.
