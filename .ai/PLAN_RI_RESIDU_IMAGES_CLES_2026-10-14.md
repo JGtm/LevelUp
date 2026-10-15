@@ -858,3 +858,9 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   identique des deux côtés. Révisions de `feat/v75` inchangées (`grammar-2026-10-15`,
   `killsource-2026-10-14`, `SchemaDesFaits` 14, schéma 96) : les nôtres restent au-dessus. Tests du film,
   archlint, contrat, CSR, vet, golangci, typecheck et vitest du rejeu verts sur la base fusionnée.
+- 2026-10-15 (superviseur) : FUSION dans `feat/v75` (`a9a9ac78a`, accord de l'utilisateur « tu as mon accord »),
+  revue adversariale close (aucun défaut fonctionnel, cinq P2 corrigés). Recuisson au schéma 97 après la passe
+  coéquipiers de levelup-6c : 238 artefacts, 0 erreur de décodage (30 min) ; projections code 0 ;
+  backfill-killsource 2 598 matchs, 278 220 morts, 0 erreur de décodage, 1 erreur d'écriture (D-39, 34db6b33).
+  Checkout principal mis à jour avec l'accord de l'utilisateur (« Go pour integration », fusion par-dessus son
+  commit local « Archivage », conflit de plan pris côté feat/v75), air et vite relancés. PLAN CLOS.
