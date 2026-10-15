@@ -39,15 +39,16 @@ correctif direct sur `main`).
 - Device-flow : au plus **20** tentatives en attente au total et **3** par IP → 429.
 - Envoi de médias : au plus **2** envois en vol et **1** ffmpeg à la fois (sémaphores globaux).
 
-**Hors plan (backlog, motif)** : changement de mot de passe exigeant l'ancien (change l'UX et
-le front) ; réglages illisibles → verrouillé (choix documenté de l'ADR 0035, à rediscuter) ;
-durcissement des conteneurs, unité systemd de l'ouvrier, allowlist IP du protocole ouvrier
-(opérations VPS de calcul) ; correction exhaustive des 121 `err.Error()` en 4xx (gelés par
-ratchet en L9, corrigés pour les routes anonymes seulement).
+**Intégré sur décision de l'utilisateur (2026-10-15)** : changement de mot de passe exigeant
+l'ancien (L4-11) ; réglages illisibles → instance verrouillée en mode appliqué, ADR 0035 amendé
+(L4-12) ; correction des 121 `err.Error()` renvoyés en 4xx, contrôle à zéro (L9-5) ; lot L10
+(privilèges des conteneurs testés d'abord sur la démo, limites mémoire **après mesure** des pics
+réels, ouvrier de rejeu). Seul report : les limites mémoire attendent la mesure (délai
+d'observation, report valide).
 
 ## 1. Règles d'exécution
 
-1. **Ordre strict** L0 → L9. Un lot est **clos** quand : gate exact passé, tous les items statués,
+1. **Ordre strict** L0 → L10. Un lot est **clos** quand : gate exact passé, tous les items statués,
    plan mis à jour (cases + journal), commit `fix(securite-Lx): …`, entrée `.ai/thought_log.md`,
    point d'étape à l'utilisateur.
 2. **Statuts** : `[x]` fait et vérifié · `[~]` couvert par (référence) · `[!]` non traité
@@ -60,7 +61,8 @@ ratchet en L9, corrigés pour les routes anonymes seulement).
 6. **Un exécutant à la fois** (builds Go concurrents interdits). Caches :
    `GOCACHE=%LOCALAPPDATA%\go-build-securite`, `GOLANGCI_LINT_CACHE=%LOCALAPPDATA%\golangci-securite`.
    Modèle : Opus pour L1, L3, L4, L6, L7 (routage, accès, chemins, CSRF) ; Sonnet pour L0, L2, L5,
-   L8, L9.
+   L8, L9, L10. Le worktree est neuf : `npm ci` dans `apps/web` au premier lot qui touche le web
+   ou `npm` (pas de jonction vers un autre `node_modules`).
 7. **Interdits** : push/merge sur `main` ; fusion dans `feat/v75` sans accord ; opération VPS sans
    annonce ; `git stash` ; `git add -A` ; garde-rail affaibli sans justification datée ; `t.Skip`
    non justifié.
@@ -213,6 +215,13 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 - [ ] L4-10 Journaux : identifiant de connexion tronqué (64 caractères), codes d'invitation
       retirés des journaux ; garde-rail grep interdisant `"code"` dans les attributs slog de
       `handlers/{admin,groups,user_auth}.go`.
+- [ ] L4-11 `POST /auth/password` exige le mot de passe actuel quand le compte en a déjà un
+      (compte Xbox sans mot de passe : premier mot de passe sans l'ancien) ; front : champ
+      « Mot de passe actuel » / « Current password » (i18n FR + EN), test du hook ou du composant ;
+      tests serveur des deux cas.
+- [ ] L4-12 `authz.InstanceLocked` : en mode appliqué, une erreur de lecture des réglages
+      verrouille (au lieu d'ouvrir) ; erreur journalisée ; test `authz_test.go` inversé ;
+      amendement de l'ADR 0035 (EN) consignant le basculement et sa raison.
 - Gate : `go test ./internal/api/... ./internal/authz/... ./internal/platform/session/... ./internal/platform/userstore/... ./internal/service/... ./internal/config/...`.
 
 ### L5 — Travaux coûteux (C3-1 à C3-6) — Sonnet — effort L
@@ -301,14 +310,38 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 - [ ] L9-2 `/readyz` et le 503 de `/health` : plus d'`err.Error()` dans le corps.
 - [ ] L9-3 Device-flow : `error_detail` retiré de la réponse (code seul) ; front adapté (FR + EN).
 - [ ] L9-4 Jobs et notifications de sync : message fixe + code, détail au journal.
-- [ ] L9-5 Ratchet `internal/archlint/err_error_response_test.go` : compte gelé des
-      `err.Error()` passés à `NewError`/`writeError` (121 au 2026-10-15), qui ne peut que baisser ;
-      aucun nouveau site.
+- [ ] L9-5 Les 121 `err.Error()` renvoyés au client en 4xx (`NewError`/`writeError`) remplacés
+      par un message fixe par code d'erreur (helper unique), le détail partant au journal ;
+      relevé préalable des messages que le front affiche (`apps/web/src`, `ApiError.message`) pour
+      garder un texte utile ; garde-rail `internal/archlint/err_error_response_test.go` à **zéro**
+      (allowlist datée seulement pour un cas justifié par écrit).
 - [ ] L9-6 En-tête CSP minimal sans risque pour le SPA : `object-src 'none'; base-uri 'self';
       frame-ancestors 'none'` (scripts non restreints, décision de l'ADR à venir) ; test sur `/`,
       404, 429, `/static`.
 - Gate : `go test ./internal/api/... ./internal/archlint/ -run 'Health|Ready|ErrError|CSP|SecurityHeaders|DeviceFlow'` ;
   front si L9-3.
+
+### L10 — Conteneurs et ouvrier de rejeu (C9-4) — Sonnet — effort S
+
+- [ ] L10-1 `docker-compose.yml` : `security_opt: [no-new-privileges:true]`, `cap_drop: [ALL]`,
+      `cap_add` limité au strict nécessaire de l'entrée (`gosu` : `CHOWN`, `SETUID`, `SETGID`,
+      plus ce que la mesure montre) sur les deux services ; image construite et démarrée en local
+      si Docker est disponible (démarrage, `/health`, écriture sous `data/`), sinon `[!]` et
+      validation à faire sur le conteneur de démo du VPS par le superviseur (opération annoncée)
+      avant la prod.
+- [ ] L10-2 Garde-rail : test lisant `docker-compose.yml` qui exige `no-new-privileges` et
+      `cap_drop: [ALL]` sur chaque service, et `LEVELUP_TRUST_PROXY_HEADERS` sur chaque service
+      publié derrière nginx (couvre L8-9).
+- [ ] L10-3 Limites mémoire : relevé des pics réels (`memory.peak` des cgroups des deux conteneurs
+      sur le VPS, lu par le superviseur à la clôture puis après une semaine) ; `mem_limit` fixé à
+      partir de la mesure. Statut attendu `[!]` (délai d'observation) jusqu'à la mesure.
+- [ ] L10-4 Ouvrier de rejeu : `scripts/deploy-worker.sh` installe l'unité par copie appartenant à
+      root (fin du lien vers un fichier modifiable par `deploy`) et refuse un lien ; unité
+      durcie (`ProtectSystem=full`, `ProtectHome=read-only`, chemins d'écriture déclarés) ;
+      `packaging/nginx/levelup.conf` : `location /api/v1/internal/` restreint à l'IP du serveur
+      de calcul (`allow …; deny all;`), appliqué sur le VPS à l'activation de l'ouvrier.
+- Gate : `go test ./internal/archlint/ -run 'Compose|Nginx'` ; `bash -n scripts/deploy-worker.sh`
+  ; `shellcheck scripts/deploy-worker.sh` si disponible ; `systemd-analyze verify` si disponible.
 
 ## 3. Clôture du plan
 
@@ -344,6 +377,10 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 | Device-flow : 3 tentatives simultanées par IP | L5-1 | Rafraîchissement de la page de connexion |
 | Un seul import OpenSpartan à la fois par compte | L5-4 | Message FR + EN sur 409 |
 | Détail d'erreur du device-flow retiré | L9-3 | Message affiché par `XboxLoginPage` |
+| Messages d'erreur 4xx remplacés par des messages fixes | L9-5 | Messages affichés par le front (`ApiError.message`) |
+| Mot de passe actuel exigé pour en changer | L4-11 | Écran de changement de mot de passe, comptes Xbox sans mot de passe |
+| Réglages illisibles → instance verrouillée | L4-12 | Connexion des comptes existants et de l'admin inchangée |
+| Conteneurs sans privilèges superflus | L10-1 | Démarrage, écriture sous `data/`, ffmpeg, cuisson |
 
 ## 4. Risques et points d'attention
 
