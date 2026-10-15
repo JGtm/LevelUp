@@ -436,9 +436,9 @@ describe('buildPlacementQuartsOption', () => {
     expect(pct(0)[3]).toBeCloseTo(100 / 6, 10)
   })
 
-  it('valeur « v % » dans le segment, à l’encre qui contraste, centrée, seulement à partir de 8 %', () => {
+  it('valeur « v % » dans le segment, en blanc à contour sombre, centrée, seulement à partir de 8 %', () => {
     const l = quarts().series[0].label!
-    expect(l.color).toBe('#ffffff') // quart #101010 : encre claire
+    expect(l.color).toBe('#ffffff')
     expect((l as { verticalAlign?: string }).verticalAlign).toBe('middle')
     expect(l.formatter({ value: 7.4 })).toBe('')
     expect(l.formatter({ value: 0 })).toBe('')

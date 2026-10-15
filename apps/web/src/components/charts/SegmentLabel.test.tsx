@@ -18,7 +18,7 @@ import { SegmentLabel } from './SegmentLabel'
 function mount(props: Partial<Parameters<typeof SegmentLabel>[0]> = {}) {
   render(
     <div className="relative h-[22px]" data-testid="segment" data-fit-key="k">
-      <SegmentLabel fill="#3b82f6" tip="infobulle" {...props}>
+      <SegmentLabel tip="infobulle" {...props}>
         12
       </SegmentLabel>
     </div>,
@@ -41,6 +41,9 @@ describe('SegmentLabel', () => {
     expect(row.className).toContain('items-center')
     expect(row.className).toContain('h-full')
     expect(label.className).toContain('leading-none')
+    // Encre blanche à contour sombre : une seule classe, aucune couleur posée par le composant.
+    expect(label.className).toContain('segment-ink')
+    expect(label.style.color).toBe('')
     expect(label.hasAttribute('data-fit-label')).toBe(true)
   })
 

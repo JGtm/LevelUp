@@ -476,7 +476,7 @@ export function buildPlacementQuartsOption(block: PlacementBlock, c: PlacementCo
       barWidth: BAR_WIDTH,
       data: rows.map((p) => quadrantPct(p, q)),
       itemStyle: { color: c.quadrant[q], borderColor: tc.card, borderWidth: 1 },
-      label: barLabel(c.quadrant[q], {
+      label: barLabel({
         fontSize: 11,
         fontWeight: 600,
         formatter: (p: { value: number }) => {

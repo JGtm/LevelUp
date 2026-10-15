@@ -54,8 +54,7 @@ export function buildSessionDamageOption(
   const takenColor = resolveToken('divergent-neg')
   const labels = points.map((p) => p.label)
 
-  const segLabel = (fill: string) =>
-    barLabel(fill, { fontSize: 10, formatter: (p: { value: number }) => (p.value > 0 ? fmtInt(p.value) : '') })
+  const segLabel = barLabel({ fontSize: 10, formatter: (p: { value: number }) => (p.value > 0 ? fmtInt(p.value) : '') })
 
   return {
     backgroundColor: CHART_BG,
@@ -95,7 +94,7 @@ export function buildSessionDamageOption(
         data: points.map((p) => p.dealt),
         itemStyle: { color: dealtColor },
         barMaxWidth: 18,
-        label: segLabel(dealtColor),
+        label: segLabel,
       },
       // Segment « dégâts subis » retiré si la donnée n'est pas fournie (h5) : sinon
       // toutes les barres « subis » seraient à 0 + une entrée de légende permanente.
@@ -107,7 +106,7 @@ export function buildSessionDamageOption(
             data: points.map((p) => p.taken),
             itemStyle: { color: takenColor },
             barMaxWidth: 18,
-            label: segLabel(takenColor),
+            label: segLabel,
           }]
         : []),
     ],

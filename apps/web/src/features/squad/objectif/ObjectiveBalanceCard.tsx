@@ -220,7 +220,7 @@ function Segment({
       style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }}
       data-fit-key={key}
     >
-      <SegmentLabel fill={color} tip={tip} align={align} hidden={hidden} textClassName="text-[11.5px] font-semibold">
+      <SegmentLabel tip={tip} align={align} hidden={hidden} textClassName="text-[11.5px] font-semibold">
         {text}
       </SegmentLabel>
     </div>

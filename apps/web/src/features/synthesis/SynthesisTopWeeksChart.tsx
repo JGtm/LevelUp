@@ -72,7 +72,7 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
         stack: 'total',
         data: wins,
         itemStyle: { color: winColor, opacity: 0.85 },
-        label: barLabel(winColor, { formatter: (p: { value: number }) => String(p.value) }, { color: tc.card, opacity: 0.85 }),
+        label: barLabel({ formatter: (p: { value: number }) => String(p.value) }),
       },
       {
         name: 'Autres',
@@ -80,7 +80,7 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
         stack: 'total',
         data: others,
         itemStyle: { color: tc.axisLine, opacity: 0.55 },
-        label: barLabel(tc.axisLine, { formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') }, { color: tc.card, opacity: 0.55 }),
+        label: barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') }),
       },
       {
         name: 'Taux Top (%)',

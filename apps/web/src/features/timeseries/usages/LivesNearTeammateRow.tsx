@@ -140,7 +140,7 @@ function Part({
   if (width <= 0) return null
   return (
     <div className="absolute inset-y-0" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }} data-fit-key={id} data-testid={`usages-lives-${id}`}>
-      <SegmentLabel fill={color} tip={<TipText text={tip} />} align={align} hidden={hidden}>
+      <SegmentLabel tip={<TipText text={tip} />} align={align} hidden={hidden}>
         {text}
       </SegmentLabel>
     </div>

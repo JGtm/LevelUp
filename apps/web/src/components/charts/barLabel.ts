@@ -1,20 +1,22 @@
 /**
- * barLabel — L'ÉTIQUETTE ECHARTS POSÉE DANS UN SEGMENT (`position: 'inside'`) : encre de meilleur
- * contraste avec l'aplat (`inkOn`), centrée sur la hauteur. Équivalent ECharts de `SegmentLabel`
- * (pistes HTML) ; une étiquette `inside` à couleur fixe (`tc.text`) est interdite par
- * `barLabel.guard.test.ts`.
- *
- * `fill` : la couleur RÉSOLUE du segment (hex, `rgb()`, `var()`), la même que son `itemStyle.color`. Aplat translucide (`itemStyle.opacity`) :
- * `backdrop` donne le fond (`tc.card`) et l'opacité, l'encre se choisit sur le mélange.
+ * barLabel — L'ÉTIQUETTE ECHARTS POSÉE DANS UN SEGMENT (`position: 'inside'`) : blanche, cernée d'un
+ * contour sombre fin (jetons d'encre de `lib/accessibility/segmentInk.ts`, identiques en clair et en
+ * sombre), centrée sur la hauteur. Équivalent ECharts de `SegmentLabel` (pistes HTML) ; une étiquette
+ * `inside` à couleur fixe (`tc.text`) est interdite par `segmentInk.guard.test.ts`.
  */
-import { inkOn, type InkBackdrop } from '@/lib/accessibility/segmentInk'
+import { segmentInk } from '@/lib/accessibility/segmentInk'
 
-export function barLabel<T extends Record<string, unknown>>(fill: string, extra?: T, backdrop?: InkBackdrop) {
+const OUTLINE_WIDTH = 2
+
+export function barLabel<T extends Record<string, unknown>>(extra?: T) {
+  const { ink, outline } = segmentInk()
   return {
     show: true,
     position: 'inside' as const,
     verticalAlign: 'middle' as const,
-    color: inkOn(fill, backdrop),
+    color: ink,
+    textBorderColor: outline,
+    textBorderWidth: OUTLINE_WIDTH,
     ...extra,
   }
 }

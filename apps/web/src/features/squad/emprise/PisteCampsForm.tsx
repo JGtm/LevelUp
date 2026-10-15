@@ -382,7 +382,7 @@ function Segment({
       }}
       data-fit-key={key}
     >
-      <SegmentLabel fill={color} tip={<TipText text={tip} />} align={align} hidden={hidden}>
+      <SegmentLabel tip={<TipText text={tip} />} align={align} hidden={hidden}>
         {children}
       </SegmentLabel>
     </div>

@@ -313,11 +313,7 @@ function buildStackedSeries(
       // l'infobulle. Les zeros ne s'ecrivent jamais.
       ...(valueLabels?.segments
         ? {
-            label: barLabel(
-              color,
-              { fontSize: 10, formatter: (p: { value?: number | null }) => (p.value ? String(p.value) : '') },
-              { color: tc.card, opacity: componentOpacity?.[comp] ?? 1 },
-            ),
+            label: barLabel({ fontSize: 10, formatter: (p: { value?: number | null }) => (p.value ? String(p.value) : '') }),
             labelLayout: { hideOverlap: true },
           }
         : {}),

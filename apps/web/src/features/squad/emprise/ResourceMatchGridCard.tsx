@@ -12,7 +12,6 @@ import { useMemo, type ReactNode } from 'react'
 import { Tooltip } from '@/components/ui/tooltip'
 import type { DominanceValue, OutcomeValue } from '@/components/charts/outcomeSequence'
 import { tokenCssVar } from '@/lib/accessibility'
-import { useSegmentInk } from '@/lib/accessibility/segmentInk'
 import type { Locale } from '@/lib/i18n/locale'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 
@@ -191,13 +190,12 @@ function MatchHead({
   )
 }
 
-/** La pastille d'issue d'un match : aplat de l'issue, écriture à l'encre qui y contraste. */
+/** La pastille d'issue d'un match : aplat de l'issue, écriture à l'encre des segments (blanche à contour sombre). */
 function ResultPill({ color, testId, children }: { color: string; testId: string; children: ReactNode }) {
-  const ink = useSegmentInk(color)
   return (
     <span
-      className="mt-[3px] inline-block rounded-full px-[7px] text-[10.5px] font-bold"
-      style={{ backgroundColor: color, color: ink }}
+      className="segment-ink mt-[3px] inline-block rounded-full px-[7px] text-[10.5px] font-bold"
+      style={{ backgroundColor: color }}
       data-testid={testId}
     >
       {children}

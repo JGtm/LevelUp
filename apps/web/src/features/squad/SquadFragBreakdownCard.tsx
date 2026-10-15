@@ -230,7 +230,6 @@ function FragBreakdownSeg({
       data-testid={`frag-breakdown-seg-${row.player}-${s.cls}`}
     >
       <SegmentLabel
-        fill={fragClassCssVar(s.cls)}
         tip={t.performanceCharts.fragBreakdownSegment(row.player, classLabel(s.cls), s.kills, row.total)}
         hidden={hidden}
         textClassName="text-2xs font-semibold"

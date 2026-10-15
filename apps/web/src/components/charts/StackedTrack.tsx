@@ -93,7 +93,7 @@ function TrackSegment({ seg, testId }: { seg: StackedTrackSegment; testId: strin
       aria-label={seg.ariaLabel}
       tabIndex={seg.ariaLabel ? 0 : undefined}
     >
-      <SegmentLabel fill={seg.color} tip={seg.tooltip} textClassName="text-2xs font-semibold">
+      <SegmentLabel tip={seg.tooltip} textClassName="text-2xs font-semibold">
         {seg.widthPct >= LABEL_MIN_FRACTION_PCT ? seg.label : ''}
       </SegmentLabel>
     </div>

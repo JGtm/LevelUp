@@ -1,40 +1,37 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { barLabel } from '@/components/charts/barLabel'
 
-import { inkOn, resolveCssColor, SEGMENT_INK } from './segmentInk'
+import { segmentInk } from './segmentInk'
 
-describe('inkOn', () => {
-  it('encre sombre sur un aplat clair, claire sur un aplat sombre (meilleur contraste WCAG)', () => {
-    expect(inkOn('#fde68a')).toBe(SEGMENT_INK.dark)
-    expect(inkOn('#f59e0b')).toBe(SEGMENT_INK.dark) // ambre : le blanc n'y atteint pas 2:1
-    expect(inkOn('#1e3a8a')).toBe(SEGMENT_INK.light)
-    expect(inkOn('rgb(16, 24, 40)')).toBe(SEGMENT_INK.light)
-  })
-
-  it('couleur non résolue (jsdom, variable inconnue) : encre claire', () => {
-    expect(inkOn('var(--absente)')).toBe(SEGMENT_INK.light)
-    expect(inkOn('')).toBe(SEGMENT_INK.light)
-  })
-
-  it('un aplat translucide se juge sur son mélange avec le fond', () => {
-    // Bleu nuit à 40 % sur blanc : le mélange est clair, l'encre est sombre.
-    expect(inkOn('#1e3a8a')).toBe(SEGMENT_INK.light)
-    expect(inkOn('#1e3a8a', { color: '#ffffff', opacity: 0.4 })).toBe(SEGMENT_INK.dark)
-  })
+afterEach(() => {
+  document.documentElement.style.removeProperty('--segment-ink')
+  document.documentElement.style.removeProperty('--segment-ink-outline')
 })
 
-describe('resolveCssColor', () => {
-  it('hex court, hex long et rgb() se normalisent en #rrggbb', () => {
-    expect(resolveCssColor('#abc')).toBe('#aabbcc')
-    expect(resolveCssColor('#112233')).toBe('#112233')
-    expect(resolveCssColor('rgb(255, 0, 16)')).toBe('#ff0010')
+describe('segmentInk', () => {
+  it('blanc cerné d’un contour sombre par défaut, quel que soit le thème', () => {
+    expect(segmentInk()).toEqual({ ink: '#ffffff', outline: '#0b1220' })
+  })
+
+  it('suit les jetons CSS quand ils sont posés', () => {
+    document.documentElement.style.setProperty('--segment-ink', '#fafafa')
+    document.documentElement.style.setProperty('--segment-ink-outline', '#101010')
+    expect(segmentInk()).toEqual({ ink: '#fafafa', outline: '#101010' })
   })
 })
 
 describe('barLabel', () => {
-  it('étiquette interne centrée sur la hauteur, à l’encre du segment ; le reste se surcharge', () => {
-    const l = barLabel('#f59e0b', { fontSize: 10 })
-    expect(l).toMatchObject({ show: true, position: 'inside', verticalAlign: 'middle', color: SEGMENT_INK.dark, fontSize: 10 })
+  it('étiquette interne centrée, blanche à contour sombre fin ; le reste se surcharge', () => {
+    const l = barLabel({ fontSize: 10 })
+    expect(l).toMatchObject({
+      show: true,
+      position: 'inside',
+      verticalAlign: 'middle',
+      color: '#ffffff',
+      textBorderColor: '#0b1220',
+      textBorderWidth: 2,
+      fontSize: 10,
+    })
   })
 })

@@ -40,10 +40,8 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
 
   const categories = entries.map((e) => e.name)
 
-  const labelAll = (fill: string, opacity: number) =>
-    barLabel(fill, { formatter: (p: { value: number }) => String(p.value) }, { color: tc.card, opacity })
-  const labelIfNonzero = (fill: string, opacity: number) =>
-    barLabel(fill, { formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') }, { color: tc.card, opacity })
+  const labelAll = barLabel({ formatter: (p: { value: number }) => String(p.value) })
+  const labelIfNonzero = barLabel({ formatter: (p: { value: number }) => (p.value > 0 ? String(p.value) : '') })
   const winColor = resolveToken('outcome-win')
   const lossColor = resolveToken('outcome-loss')
   const tieColor = resolveToken('outcome-draw')
@@ -74,7 +72,7 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         stack: 'total',
         data: entries.map((e) => ({ value: e.wins, win_rate: e.win_rate })),
         itemStyle: { color: winColor, opacity: 0.85 },
-        label: labelAll(winColor, 0.85),
+        label: labelAll,
         barCategoryGap: '15%',
       },
       {
@@ -83,7 +81,7 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         stack: 'total',
         data: entries.map((e) => ({ value: e.losses })),
         itemStyle: { color: lossColor, opacity: 0.75 },
-        label: labelAll(lossColor, 0.75),
+        label: labelAll,
         barCategoryGap: '15%',
       },
       {
@@ -92,7 +90,7 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         stack: 'total',
         data: entries.map((e) => ({ value: e.ties })),
         itemStyle: { color: tieColor, opacity: 0.7 },
-        label: labelIfNonzero(tieColor, 0.7),
+        label: labelIfNonzero,
         barCategoryGap: '15%',
       },
       {
@@ -101,7 +99,7 @@ function buildOutcomesOption(entries: GroupEntry[], labels: OutcomeLabels, yAxis
         stack: 'total',
         data: entries.map((e) => ({ value: e.unfinished })),
         itemStyle: { color: dnfColor, opacity: 0.6 },
-        label: labelIfNonzero(dnfColor, 0.6),
+        label: labelIfNonzero,
         barCategoryGap: '15%',
       },
     ],

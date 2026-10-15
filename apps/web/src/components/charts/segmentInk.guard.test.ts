@@ -1,8 +1,9 @@
 /// <reference types="node" />
 // @vitest-environment node
 /**
- * Garde-rail (CLAUDE.md n°6) : l'encre d'une écriture posée sur un aplat se décide en UN point
- * (`lib/accessibility/segmentInk.ts`), par `SegmentLabel` (pistes HTML) et `barLabel` (ECharts).
+ * Garde-rail (CLAUDE.md n°6) : l'encre d'une écriture posée sur un aplat de segment est BLANCHE à
+ * contour sombre fin, partout (2026-10-15), et se décide en UN point : les jetons `--segment-ink`,
+ * `lib/accessibility/segmentInk.ts`, `SegmentLabel` (pistes HTML) et `barLabel` (ECharts).
  *
  * Contexte (2026-10-15) : une quinzaine de pistes écrivaient `text-white` ou `tc.text` sur leur
  * aplat — blanc trop pâle sur ambre ou vert, texte décalé de 2 à 3 px sous le centre de la

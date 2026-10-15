@@ -18,7 +18,6 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
-import { SEGMENT_INK } from '@/lib/accessibility/segmentInk'
 import { barLabel } from './barLabel'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
@@ -124,15 +123,6 @@ interface BuildOpts {
 }
 
 /**
- * Le % d'une tranche en mode compact : à l'encre de la tranche, cerné de l'encre opposée — la
- * valeur déborde de l'anneau quand il est mince, et doit rester lisible sur le fond de la carte.
- */
-function sliceLabel(fill: string) {
-  const label = barLabel(fill, { fontSize: 11, formatter: '{d}%' })
-  return { ...label, textBorderWidth: 2, textBorderColor: label.color === SEGMENT_INK.dark ? SEGMENT_INK.light : SEGMENT_INK.dark }
-}
-
-/**
  * Pure builder — exporté pour tester l'option ECharts sans monter le React tree.
  */
 // eslint-disable-next-line react-refresh/only-export-components
@@ -168,7 +158,7 @@ export function buildDonutOption(
       value: p.value,
       itemStyle: { color },
       // Compact : le % est DANS la tranche, à l'encre qui contraste avec elle.
-      ...(compact ? { label: sliceLabel(color) } : {}),
+      ...(compact ? { label: barLabel({ fontSize: 11, formatter: '{d}%' }) } : {}),
     }
   })
 

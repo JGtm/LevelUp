@@ -223,7 +223,7 @@ function ThreeTrack({
             data-fit-key={labels ? `${id}-${part}` : undefined}
           >
             {labels ? (
-              <SegmentLabel fill={tokenCssVar(PART_TOKENS[part])} tip={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} hidden={hidden?.has(`${id}-${part}`)} textClassName="text-[11px] font-semibold">
+              <SegmentLabel tip={<TipText text={ut.equipment.segTip(who, n, part, total, ut.pctFmt(w))} />} hidden={hidden?.has(`${id}-${part}`)} textClassName="text-[11px] font-semibold">
                 {textOf ? textOf(s) : n}
               </SegmentLabel>
             ) : (

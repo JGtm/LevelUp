@@ -230,7 +230,7 @@ function Segment({
 }) {
   return (
     <div className={`absolute inset-y-0 ${rounded}`} style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color }} data-fit-key={id} data-testid={id}>
-      <SegmentLabel fill={color} tip={<TipText text={tip} />} hidden={hidden.has(id)} textClassName="text-[11px] font-semibold">
+      <SegmentLabel tip={<TipText text={tip} />} hidden={hidden.has(id)} textClassName="text-[11px] font-semibold">
         {value}
       </SegmentLabel>
     </div>
