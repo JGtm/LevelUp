@@ -217,7 +217,7 @@ Décisions fermes :
   Le bit skill (4) manquant sur les mêmes 157 matchs n'est PAS posé (donnée non vérifiable depuis
   la base partagée) : découverte.
 
-- [ ] E5.2 V-1 côté code : DDL `sync/schema.go`, fixtures, champ et ligne du mapper OpenSpartan,
+- [x] E5.2 V-1 côté code : DDL `sync/schema.go`, fixtures, champ et ligne du mapper OpenSpartan,
   tests ; grep final à 0 hors migration de retrait et archives.
 - [ ] E5.3 V-2 côté code : champ `domain.MatchRegistryRow.PlayerCount`, écrivain H5
   (`ingest/collect.go`, `capture.go`), seed démo et `persist/demo_seed_columns.go`, étape de
@@ -739,3 +739,8 @@ diff E5 (lot persist/sync).
       `widen_match_registry_team_scores` (précédent d'ALTER sur `match_registry` avec index secondaires). Alternatives sanctionnées par le code mais en `UPDATE` : `levelup reset-bitmasks --apply` (UPDATE set-based d'une
       colonne non indexée, hors des gardes car sous `cmd/`) ; un persister row-by-row dans `internal/persist` calqué sur `events_completion_persister.go`. D-13 : ces deux dernières sont des `UPDATE` sur `match_registry`, donc décision du superviseur.
   - **E5.1 STATUÉ `[x]`.** STOP : verdict du superviseur attendu avant E5.2 (recommandations au rapport de l'exécutant).
+- 2026-10-15 (E5.2, exécutant) : `participants_loaded` retirée du code. DDL de secours `sync/schema.go` (ligne de colonne), fixture d'intégration
+  `sync/testutil/fixture.go`, champ `ParticipantsLoaded` du type du mapper OpenSpartan (`mapper/rows.go`) et son affectation (`mapper/mapper.go`), assertion
+  de `mapper_test.go` (garde `EventsLoaded`/`MedalsLoaded`). La DDL de migration `create_base_shared_schema` ne la portait pas. Grep Go = 0 ; hors Go : seulement
+  `docs/archive`, le journal et deux TSV de recherche archivés (`.ai/V7.5/replay2d/registre_film/oracle_lotA*.tsv`, en-têtes d'export). Colonne physique : E5.5.
+  `go vet ./internal/openspartan/...`, `go vet -tags=integration ./internal/sync/testutil/`, `go test -count=1 ./internal/openspartan/...` verts. **E5.2 STATUÉ `[x]`.**

@@ -138,8 +138,8 @@ func TestMapMatch_FullCycle(t *testing.T) {
 	if mm.Registry.PlaylistID == nil || *mm.Registry.PlaylistID != "playlist-1" {
 		t.Errorf("PlaylistID: want 'playlist-1', got %v", mm.Registry.PlaylistID)
 	}
-	if !mm.Registry.ParticipantsLoaded || !mm.Registry.EventsLoaded || !mm.Registry.MedalsLoaded {
-		t.Error("ParticipantsLoaded / EventsLoaded / MedalsLoaded should all be true")
+	if !mm.Registry.EventsLoaded || !mm.Registry.MedalsLoaded {
+		t.Error("EventsLoaded / MedalsLoaded should both be true")
 	}
 
 	if len(mm.Participants) != 2 {

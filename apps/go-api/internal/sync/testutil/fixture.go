@@ -62,7 +62,6 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			updated_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			backfill_completed INTEGER DEFAULT 0,
-			participants_loaded BOOLEAN DEFAULT FALSE,
 			events_loaded BOOLEAN DEFAULT FALSE,
 			medals_loaded BOOLEAN DEFAULT FALSE,
 			player_count SMALLINT DEFAULT 0,

@@ -117487,3 +117487,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : prod HI 2 014 matchs / local 9 230 / H5 3 032. `participants_loaded` vrai et `player_count` > 0 : 1 382 lignes, toutes synchronisées avant le 2026-04-07 (ère Python), aucune depuis ; même posé, `player_count` ne vaut le roster réel que 13 fois sur 1 544. H5 : `player_count` et `backfill_completed` NULL sur les 3 032 (parc ingéré le 2026-06-23, avant l'écrivain du 2026-06-26). Bit 512 : 157 matchs HI sans bit, tous synchronisés du 25 au 30 mai 2026 (fenêtre ouverte par `82d0aa1a2`, fermée par `ddfd9e124`), jamais re-posé ; le bouton admin « backfill » sans scope les re-sélectionne à chaque lancement (film re-téléchargé, `events_loaded` remis à faux, `GetMatchStats`). Recette sans UPDATE éprouvée sur `match_registry` : `swapTableTx` (`shared_recompute_mode_category_v1`).
 
 **Conclusion / prochaine étape** : E5.1 `[x]`. STOP : verdict du superviseur (D-11 à D-14) avant E5.2. Inventaire complet au journal du plan.
+
+## [2026-10-15] Backlog E5.2 à E5.6 : retrait de `participants_loaded` et `player_count`, bit 512 réparé par reconstruction de `match_registry` — En cours (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : application du verdict V-1 à V-4 du superviseur. E5.2 : `participants_loaded` retirée du code (DDL de secours, fixture, mapper OpenSpartan).
+
+**Résultats observés** : grep Go à 0 ; tests du mapper verts.
+
+**Conclusion / prochaine étape** : E5.3 (`player_count`), E5.4 (bit 512 à l'import OpenSpartan), E5.5 (migration de reconstruction), E5.6 (tests et gates).

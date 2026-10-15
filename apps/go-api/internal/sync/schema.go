@@ -204,7 +204,6 @@ CREATE TABLE IF NOT EXISTS match_registry (
     team_1_rounds_won         SMALLINT,
     rounds_total              SMALLINT,
     backfill_completed        INTEGER  DEFAULT 0,
-    participants_loaded       BOOLEAN  DEFAULT FALSE,
     events_loaded             BOOLEAN  DEFAULT FALSE,
     medals_loaded             BOOLEAN  DEFAULT FALSE,
     first_sync_by             VARCHAR,

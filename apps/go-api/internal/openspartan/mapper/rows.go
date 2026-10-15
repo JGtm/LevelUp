@@ -36,7 +36,6 @@ type MatchRegistryRow struct {
 	Team0PsScore            *int
 	Team1PsScore            *int
 	BackfillCompleted       int  // 1 once the import has supplied all rows
-	ParticipantsLoaded      bool // true after import
 	EventsLoaded            bool // true after import (HighlightEvents rows attached)
 	MedalsLoaded            bool // true after import
 	FirstSyncBy             string
