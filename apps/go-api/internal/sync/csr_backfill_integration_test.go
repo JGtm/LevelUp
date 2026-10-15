@@ -80,6 +80,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			playlist_name VARCHAR,
 			pair_name     VARCHAR
 		);
+		CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR);
 	`); err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +97,9 @@ func seedRegistry(t *testing.T, sdb *sql.DB, matches []struct {
 		if _, err := sdb.Exec(`INSERT INTO match_registry (match_id, start_time, is_ranked) VALUES (?, ?, ?)`,
 			m.ID, m.StartTime, m.IsRanked); err != nil {
 			t.Fatalf("seed %s: %v", m.ID, err)
+		}
+		if _, err := sdb.Exec(`INSERT INTO match_participants (match_id, xuid) VALUES (?, 'xuid_test')`, m.ID); err != nil {
+			t.Fatalf("seed participant %s: %v", m.ID, err)
 		}
 	}
 }
