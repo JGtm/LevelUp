@@ -232,7 +232,10 @@ func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 	film := mortFilm(1000)
 	film.VictimXUID = "xuid(999)"
 
-	out, st, err := MergeCreditAndFilm(batchCredit(mortCredit(1000)), batchFilm(film))
+	// L API prouve DEUX morts a l instant : deux kills (un par mort).
+	base := batchCredit(mortCredit(1000))
+	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{1000: 2}}
+	out, st, err := MergeCreditAndFilm(base, batchFilm(film))
 	if err != nil {
 		t.Fatalf("MergeCreditAndFilm: %v — deux morts a la meme milliseconde ne sont pas une "+
 			"erreur d appariement, elles sont deux morts", err)
@@ -248,6 +251,25 @@ func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 	}
 	if out.Deaths[0].SourceTag != 0 {
 		t.Error("la mort de credit a recu la source mesuree sur la mort d un AUTRE joueur")
+	}
+
+	// UN SEUL KILL a l instant : la seconde victime n est pas prouvee, la ligne de film est
+	// REFUSEE (rien d ajoute, instant compte) — et surtout pas appariee a l autre mort.
+	for nom, ev := range map[string]MergeEvidence{
+		"un kill":         {Known: true, APIKills: map[int]int{1000: 1}},
+		"aucun kill":      {Known: true, APIKills: map[int]int{}},
+		"preuve inconnue": {},
+	} {
+		base := batchCredit(mortCredit(1000))
+		base.Evidence = ev
+		out, st, err := MergeCreditAndFilm(base, batchFilm(film))
+		if err != nil {
+			t.Fatalf("%s : %v — le refus ne doit pas tomber en erreur", nom, err)
+		}
+		if len(out.Deaths) != 1 || st.Orphans != 0 || st.Enriched != 0 || st.AmbiguousInstants != 1 {
+			t.Errorf("%s : %d morts / %d orphelins / %d enrichies / %d ambigus, attendu 1 / 0 / 0 / 1",
+				nom, len(out.Deaths), st.Orphans, st.Enriched, st.AmbiguousInstants)
+		}
 	}
 
 	// L ABSENCE n est pas une divergence : c est le cas normal des 631 victimes et 754 tueurs
@@ -291,6 +313,9 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 
 	base := batchCredit(credit, suivante)
 	base.MatchID = match
+	// Les kills de l API sur le match reel : UN SEUL a 63 757 ms (Ritio3987). Deux morts a cet
+	// instant n y sont pas prouvees — c est le cas des morts fantomes de DANIELBOIMEXICO.
+	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{instant: 1, instantSuivant: 1}}
 	passe := batchFilm(film)
 	passe.MatchID = match
 
@@ -299,22 +324,32 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 		t.Fatalf("MergeCreditAndFilm: %v\nle temoin retombe : deux morts a la meme milliseconde "+
 			"font de nouveau tomber LE FILM ENTIER", err)
 	}
-	if len(out.Deaths) != 3 || st.Orphans != 1 || st.OrphansSharedInstant != 1 {
-		t.Fatalf("%d morts / %d orphelins / %d a instant partage, attendu 3 / 1 / 1",
+	if len(out.Deaths) != 2 || st.Orphans != 0 || st.OrphansSharedInstant != 0 {
+		t.Fatalf("%d morts / %d orphelins / %d a instant partage, attendu 2 / 0 / 0 — la mort de "+
+			"DANIELBOIMEXICO n est pas prouvee par l API (un seul kill), elle ne s ajoute pas",
 			len(out.Deaths), st.Orphans, st.OrphansSharedInstant)
 	}
 	if out.Deaths[0].VictimXUID != victimeCredit || out.Deaths[0].SourceTag != 0 {
 		t.Errorf("la mort de credit vaut %q/%#x — elle a recu l arme mesuree sur la mort d un "+
 			"AUTRE joueur", out.Deaths[0].VictimXUID, out.Deaths[0].SourceTag)
 	}
-	if out.Deaths[2].VictimXUID != victimeDuFilm || out.Deaths[2].TimeMS != instant {
-		t.Errorf("l orpheline vaut %q@%d, attendu %q@%d — la mort que le film est SEUL a voir "+
-			"doit se conserver", out.Deaths[2].VictimXUID, out.Deaths[2].TimeMS,
-			victimeDuFilm, instant)
+	if st.AmbiguousInstants != 1 {
+		t.Errorf("instants ambigus = %d, attendu 1 — l instant est refuse ET compte", st.AmbiguousInstants)
 	}
-	if st.AmbiguousInstants != 0 {
-		t.Errorf("instants ambigus = %d, attendu 0 — l instant a une reponse (deux victimes "+
-			"resolues et differentes), ce n est pas un refus de choisir", st.AmbiguousInstants)
+
+	// Meme instant, mais l API porte DEUX kills : la seconde mort est prouvee et se conserve.
+	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{instant: 2, instantSuivant: 1}}
+	out, st, err = MergeCreditAndFilm(base, passe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Deaths) != 3 || st.OrphansSharedInstant != 1 || st.AmbiguousInstants != 0 {
+		t.Fatalf("%d morts / %d a instant partage / %d ambigus, attendu 3 / 1 / 0 avec deux kills",
+			len(out.Deaths), st.OrphansSharedInstant, st.AmbiguousInstants)
+	}
+	if out.Deaths[2].VictimXUID != victimeDuFilm || out.Deaths[2].TimeMS != instant {
+		t.Errorf("l orpheline vaut %q@%d, attendu %q@%d", out.Deaths[2].VictimXUID,
+			out.Deaths[2].TimeMS, victimeDuFilm, instant)
 	}
 }
 

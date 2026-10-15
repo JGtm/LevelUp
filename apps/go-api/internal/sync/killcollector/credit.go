@@ -211,6 +211,9 @@ func (c *CreditCollector) recomposer(
 	if err != nil {
 		return persist.KillSourceBatch{}, false, err
 	}
+	if base.Evidence, err = persist.LoadMergeEvidence(ctx, c.read, base.MatchID); err != nil {
+		return persist.KillSourceBatch{}, false, err
+	}
 	batch, st, err := persist.MergeCreditAndFilm(base, film)
 	if err != nil {
 		return persist.KillSourceBatch{}, false, err

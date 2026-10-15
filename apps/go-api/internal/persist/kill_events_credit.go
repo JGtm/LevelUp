@@ -311,6 +311,9 @@ func recomposerAvecFilm(ctx context.Context, tx *sql.Tx, base KillSourceBatch) (
 	if err != nil {
 		return KillSourceBatch{}, err
 	}
+	if base.Evidence, err = LoadMergeEvidence(ctx, tx, base.MatchID); err != nil {
+		return KillSourceBatch{}, err
+	}
 	batch, st, err := MergeCreditAndFilm(base, film)
 	if err != nil {
 		return KillSourceBatch{}, err

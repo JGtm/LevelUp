@@ -148,6 +148,9 @@ type KillSourceBatch struct {
 	CreditBaseCount int `json:"credit_base_count,omitempty"`
 	// Deaths : les morts, dans l ordre rendu par le decodeur.
 	Deaths []KillEventInsert `json:"deaths,omitempty"`
+	// Evidence : les preuves lues pour la FUSION (kills de l API par instant, morts officielles).
+	// Posee sur la BASE CREDIT par l appelant de [MergeCreditAndFilm] ; jamais ecrite ni serialisee.
+	Evidence MergeEvidence `json:"-"`
 }
 
 // KillSourcePersister ecrit une passe de decodage dans shared_matches_v2.duckdb.
