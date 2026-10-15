@@ -1,12 +1,10 @@
 module levelup/go-api
 
-// 1.26.1 -> 1.26.5 le 2026-08-05 (lot E, point E6). Ce n'est PAS une montée de confort :
-// `ci.yml` installe le toolchain par `go-version-file: apps/go-api/go.mod`, donc la CI
-// compilait avec 1.26.1 — la version dont govulncheck listait 11 CVE de bibliothèque
-// standard, toutes corrigées en 1.26.2. Le Dockerfile, lui, tire `golang:1.26-bookworm`
-// (dernier correctif de la branche) et n'était pas concerné : c'est la CI qui portait
-// l'écart, et c'est elle qui garde le merge.
-go 1.26.5
+// go 1.26.9 : correctifs de bibliothèque standard relevés par govulncheck (http2,
+// `http.Error`, `csv.Writer.Flush`, net/url, crypto/tls, encoding/xml). `ci.yml` installe
+// le toolchain par `go-version-file: apps/go-api/go.mod` : cette directive fixe la version
+// de la CI, le Dockerfile tire `golang:1.26-bookworm` (dernier correctif de la branche 1.26).
+go 1.26.9
 
 require (
 	github.com/HugoSmits86/nativewebp v1.3.0
