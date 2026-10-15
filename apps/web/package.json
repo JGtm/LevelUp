@@ -74,6 +74,7 @@
   "overrides": {
     "js-yaml": "^4.3.0",
     "brace-expansion": "^5.0.9",
+    "postcss-selector-parser": "^7.1.6",
     "@redocly/openapi-core": {
       "minimatch": {
         "brace-expansion": "^2.1.4"

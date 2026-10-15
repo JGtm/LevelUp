@@ -83,21 +83,21 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ### L0 — Chaîne d'outils, dépendances et CI (C9-1, C9-2, C9-3) — Sonnet — effort S
 
-- [ ] L0-1 `apps/go-api/go.mod` : `go 1.26.9` (commentaire d'en-tête mis à jour : raison = 19
+- [x] L0-1 `apps/go-api/go.mod` : `go 1.26.9` (commentaire d'en-tête mis à jour : raison = 19
       vulnérabilités atteintes, cf. registre).
-- [ ] L0-2 `Dockerfile` : image de build épinglée `golang:1.26.9-bookworm` (fin de l'image flottante).
-- [ ] L0-3 `golang.org/x/image` → v0.45.0 (`go get` + `go mod tidy`).
-- [ ] L0-4 `apps/web/package.json` : `overrides` `postcss-selector-parser` `^7.1.6` ;
+- [x] L0-2 `Dockerfile` : image de build épinglée `golang:1.26.9-bookworm` (fin de l'image flottante).
+- [x] L0-3 `golang.org/x/image` → v0.45.0 (`go get` + `go mod tidy`).
+- [x] L0-4 `apps/web/package.json` : `overrides` `postcss-selector-parser` `^7.1.6` ;
       `npm audit --omit=dev` à 0.
-- [ ] L0-5 Job CI bloquant dans `.github/workflows/ci.yml` : `govulncheck ./...` (Go du `go.mod`)
+- [x] L0-5 Job CI bloquant dans `.github/workflows/ci.yml` : `govulncheck ./...` (Go du `go.mod`)
       + `npm audit --omit=dev --audit-level=high`.
-- [ ] L0-6 Épinglage par SHA (commentaire de version) de `appleboy/ssh-action` (3 usages,
+- [x] L0-6 Épinglage par SHA (commentaire de version) de `appleboy/ssh-action` (3 usages,
       `deploy.yml`) et `softprops/action-gh-release` (`release.yml`).
-- [ ] L0-7 `release.yml` : `permissions: contents: read` au niveau workflow, `contents: write`
+- [x] L0-7 `release.yml` : `permissions: contents: read` au niveau workflow, `contents: write`
       sur le seul job de publication.
-- [ ] L0-8 `scripts/git-hooks/lefthook/govulncheck.sh` : commentaire périmé corrigé (le hook
+- [x] L0-8 `scripts/git-hooks/lefthook/govulncheck.sh` : commentaire périmé corrigé (le hook
       reste indicatif, la CI devient l'autorité).
-- [ ] L0-9 Garde-rail : `internal/archlint/ci_workflows_security_test.go` — (a) tout `uses:` hors
+- [x] L0-9 Garde-rail : `internal/archlint/ci_workflows_security_test.go` — (a) tout `uses:` hors
       `actions/` dans un workflow qui lit `secrets.` ou a `contents: write` est épinglé par SHA de
       40 caractères ; (b) `ci.yml` contient un job `govulncheck` sans `|| true`.
 - Gate : `cd apps/go-api && go version && govulncheck ./...` (aucune vulnérabilité **appelée**) ;
@@ -410,8 +410,120 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ## 6. Découvertes
 
-(vide)
+Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
+
+- **D-L0-1** (L0) `npm audit` complet (dev inclus) : 4 alertes d'outillage de build, hors du gate
+  (`--omit=dev`) et hors du livrable : `brace-expansion` (high, malgré l'override `^5.0.9` existant :
+  plages 2.0.0-2.1.6 et 4.0.0-5.0.11), `source-map-js` (high), `undici` 8.0.0-8.10.1 (high),
+  `smol-toml` <=1.8.0 (moderate).
+- **D-L0-2** (L0) `golang.org/x/crypto` v0.55.0 : GO-2026-6355 et GO-2026-6354 (`x/crypto/ssh`,
+  corrigées en v0.56.0) et GO-2026-5932 (`openpgp`, sans correctif). Module requis, jamais appelé
+  (govulncheck : 0 vulnérabilité atteinte, 0 importée) ; tolérées par le gate. Montée en v0.56.0 non
+  prévue au plan.
+- **D-L0-3** (L0) `.github/dependabot.yml` ne couvre pas l'écosystème `docker` : l'épinglage
+  `golang:1.26.9-bookworm` ne se met à jour qu'à la main, et aucun garde-rail ne tient l'égalité entre la
+  version de l'image et la ligne `go` de `go.mod` (le build échoue si l'image est plus ancienne, pas si
+  elle est plus récente).
+- **D-L0-4** (L0) Actions tierces encore sur tag mobile, hors du champ de la règle L0-9 (workflows sans
+  `secrets.` ni `contents: write`) : `golangci/golangci-lint-action@v9` et
+  `stoplightio/spectral-action@v0.8.13` (`ci.yml`), `docker/setup-buildx-action@v4` et
+  `docker/build-push-action@v5` (`test-deploy-precheck.yml`).
+- **D-L0-5** (L0) `lefthook.yml:29` range `govulncheck` parmi les checks qui « gatent » la dette globale au
+  pre-push ; le hook est indicatif (L0-8) et l'autorité est le job de `ci.yml`.
 
 ## 7. Journal
 
-(vide)
+### L0 - Chaîne d'outils, dépendances et CI - 2026-10-15 - clos
+
+Base : `git log --oneline -1` = `659cbf18d` avant le lot ; branche `feat/securite-2026-10-15`. Références
+`fichier:ligne` du registre rouvertes avant d'agir et conformes : `go.mod:9` (`go 1.26.5`),
+`Dockerfile:51` (`golang:1.26-bookworm`), `deploy.yml:262,285,454`, `release.yml:9,121`,
+`govulncheck.sh:26`. Session interrompue par une erreur d'API puis reprise : chaque modification a été
+re-vérifiée sur les fichiers et les gates rejoués après la reprise.
+
+**Statuts** : L0-1 à L0-9 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **L0-1** `apps/go-api/go.mod` : `go 1.26.9` ; en-tête réécrit (contrat : version minimale du toolchain de la
+  CI et des binaires de release, doit rester sans vulnérabilité de bibliothèque standard atteinte).
+  `go version` dans `apps/go-api` : `go1.26.9 windows/amd64` (téléchargé par `GOTOOLCHAIN=auto`).
+- **L0-2** `Dockerfile:55` : `FROM golang:1.26.9-bookworm`. Existence vérifiée avant épinglage :
+  `GET https://hub.docker.com/v2/repositories/library/golang/tags/1.26.9-bookworm` -> 200,
+  `"name":"1.26.9-bookworm"`. Image non construite localement (le build Docker passe par `scripts/deploy.sh`,
+  geste VPS, hors gate du lot). Une image `golang:1.26.x` fixe `GOTOOLCHAIN=local` : une image plus ancienne
+  que `go.mod` ne compile pas (voir D-L0-3).
+- **L0-3** `golang.org/x/image` v0.24.0 -> v0.45.0 (`go get` + `go mod tidy`) ; diff `go.mod`/`go.sum` limité à
+  cette ligne. Paquets importeurs (`internal/mapdecoupe`, `cmd/mapfond-cadrage`, `cmd/mapfond-planche`,
+  `cmd/mapfond-webp`) : `go vet` exit 0, `go test` ok.
+- **L0-4** `apps/web/package.json` : `overrides."postcss-selector-parser": "^7.1.6"` ; lockfile régénéré
+  (`npm ci` puis `npm install`), diff du lockfile = 3 lignes (version, `resolved`, `integrity` de
+  `postcss-selector-parser`, 6.0.10 -> 7.1.6). Seul consommateur : `@tailwindcss/typography` (épingle 6.0.10).
+  Build Vite avant/après **octet pour octet identique** (`index-Bf8rEaj3.css`, sha256 `5d8170af...87aec`,
+  règles `.prose` présentes). `npm audit --omit=dev` : avant 2 alertes moderate (exit 1), après `found 0
+  vulnerabilities` (exit 0), y compris sur un dossier ne contenant que `package.json` + `package-lock.json`
+  (conditions du job CI).
+- **L0-5** `ci.yml` : deux jobs bloquants, inconditionnels, sans échappatoire. `govulncheck` (`setup-go` sur
+  `go-version-file`, `go install golang.org/x/vuln/cmd/govulncheck@v1.9.0`, `govulncheck ./...`,
+  `CGO_ENABLED=1`, 15 min) et `npm-audit` (`npm audit --omit=dev --audit-level=high`, Node 22, 10 min).
+  govulncheck v1.9.0 (publiée le 2026-10-11) installée et exécutée localement sur le module : 0 vulnérabilité
+  atteinte, exit 0 ; la v1.3.0 du poste donne le même verdict. Le déploiement (`attente-ci`) suit le verdict
+  du workflow entier : ces deux jobs conditionnent désormais le déploiement. La base de vulnérabilités étant
+  lue en ligne, une alerte nouvelle sur une dépendance déjà fusionnée rougit la CI sans changement de code
+  (voulu, noté en commentaire ; soupape existante : `workflow_dispatch` + `ignorer_attente_ci`). YAML des
+  trois workflows relu par un parseur (PyYAML).
+- **L0-6** SHA obtenus par `git ls-remote` (tags légers : aucune ligne `^{}`), puis confirmés commits par
+  `gh api repos/<repo>/git/commits/<sha>` : `appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5`
+  (ce que `v1` résout ; 3 usages de `deploy.yml`) et
+  `softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2` (ce que `v2` résout ;
+  `release.yml`). Dependabot `github-actions` (mensuel, sans les majeures) maintient ces SHA à partir du
+  commentaire de version.
+- **L0-7** `release.yml` : `permissions: contents: read` au niveau workflow, `contents: write` sur le seul job
+  `publish`. Les jobs `build-go` et `build-web` n'utilisent que `checkout`, `setup-*` et `upload-artifact`.
+- **L0-8** `scripts/git-hooks/lefthook/govulncheck.sh` : en-tête et commentaire du `|| true` réécrits (le hook
+  est indicatif et ne bloque jamais, y compris si govulncheck échoue à charger les paquets ; l'ancienne
+  formulation « bloquant si govulncheck crashe » était fausse, `|| true` absorbe aussi les crashs ; l'autorité
+  est le job de `ci.yml`). `bash -n` ok. Aucun changement de comportement.
+- **L0-9** `apps/go-api/internal/archlint/ci_workflows_security_test.go` (nouveau, 385 lignes), helpers de
+  `ci_deploy_triggers_test.go` réutilisés. `TestSensitiveWorkflowsPinThirdPartyActionsBySHA` (a : dans tout
+  workflow lisant `secrets.` ou portant `contents: write`, tout `uses:` hors `actions/` et hors local est
+  `owner/repo@<40 hex>` ; ancres : `deploy.yml` et `release.yml` doivent être reconnus sensibles),
+  `TestCIHasBlockingVulnerabilityJobs` (b : jobs `govulncheck` et `npm-audit` présents, sans `|| true` /
+  `|| exit 0` / `continue-on-error`, sans `if:`, installation de govulncheck à version exacte, commandes
+  exigées), `TestNoWorkflowGrantsContentsWriteAtWorkflowLevel` (garde-rail de L0-7),
+  `TestWorkflowSecurityAnalysisDetectsDefects` (les analyseurs savent échouer : tag mobile, SHA court /
+  majuscule / branche, mutations `|| true`, `continue-on-error`, `if`, `@latest`, job absent, `write-all`).
+  Écarts au texte du plan, additifs et dans la classe de défaut : (b) couvre aussi `npm-audit` ; le test de
+  `contents: write` est ajouté dans le même fichier.
+
+**Preuve du rouge** (garde-rail écrit AVANT les correctifs L0-5/L0-6/L0-7, exécuté sur l'état d'avant) :
+`cd apps/go-api && go test ./internal/archlint/ -run 'Workflow|CI' -count=1` -> `FAIL levelup/go-api/internal/archlint`,
+exit 1 :
+`--- FAIL: TestSensitiveWorkflowsPinThirdPartyActionsBySHA` (`deploy.yml : ligne 262`, `ligne 285`, `ligne 454` :
+« uses: appleboy/ssh-action@v1 » ; `release.yml : ligne 121` : « uses: softprops/action-gh-release@v2 »),
+`--- FAIL: TestCIHasBlockingVulnerabilityJobs` (`job "govulncheck" : job absent`, `job "npm-audit" : job absent`),
+`--- FAIL: TestNoWorkflowGrantsContentsWriteAtWorkflowLevel` (`release.yml : ligne 9 : contents: write au niveau workflow`).
+`TestWorkflowSecurityAnalysisDetectsDefects` est vert dès l'écriture (il ne lit pas les fichiers du dépôt).
+Après correctifs, même commande : `ok`, exit 0, les 6 tests verts (dont les 2 tests voisins de
+`ci_deploy_triggers_test.go`).
+
+**Gates** (sorties réelles ; rejoués après la reprise) :
+- Avant : `govulncheck ./...` sous go 1.26.5 -> 19 `Vulnerability #N` atteintes, exit 3.
+- `cd apps/go-api && go version` -> `go version go1.26.9 windows/amd64`.
+- `govulncheck ./...` -> « Your code is affected by 0 vulnerabilities », 0 section `Vulnerability #`, exit 0.
+  Restent **3 vulnérabilités de modules requis, non appelées**, toutes sur `golang.org/x/crypto@v0.55.0` :
+  GO-2026-6355 et GO-2026-6354 (`x/crypto/ssh`, corrigées en v0.56.0), GO-2026-5932 (`x/crypto/openpgp`, sans
+  correctif). 0 vulnérabilité importée mais non appelée (voir D-L0-2).
+- `go test ./internal/archlint/ -run 'Workflow|CI'` -> ok, exit 0.
+- `cd apps/web && npm audit --omit=dev` -> `found 0 vulnerabilities`, exit 0.
+- `cd apps/go-api && go build ./cmd/server/` -> exit 0 (`server.exe` supprimé ensuite).
+- Gate commun §1 : `go vet ./internal/archlint/` exit 0 ; `golangci-lint run ./internal/archlint/` (v2.12.2) ->
+  « 0 issues », exit 0 ; `go test ./internal/archlint/ -count=1` (paquet complet) -> ok en 142,9 s, exit 0.
+  L'API ne change pas (pas de `generate-types`). `apps/web` change : purge de `node_modules/.tmp`, puis
+  `npm run typecheck` exit 0, `npm run lint` 0 erreur (26 avertissements préexistants), `npm run test:run` ->
+  919 fichiers passés / 5 ignorés, 9598 tests passés / 23 ignorés, exit 0.
+
+**Non-régression (règle 9)** : aucun changement visible par un utilisateur ni listé au §4bis. Effets
+d'exploitation : (1) le déploiement dépend désormais de deux jobs CI de plus (L0-5) ; (2) `docker compose
+build` (sans `--pull`) tire `golang:1.26.9-bookworm` si l'image n'est pas déjà sur l'hôte ; (3) la release
+publie avec un jeton en lecture seule sur les jobs de compilation. Aucune opération VPS.
+
+**Découvertes** : D-L0-1 à D-L0-5 (§6), non traitées.

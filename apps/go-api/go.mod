@@ -1,12 +1,11 @@
 module levelup/go-api
 
-// 1.26.1 -> 1.26.5 le 2026-08-05 (lot E, point E6). Ce n'est PAS une montée de confort :
-// `ci.yml` installe le toolchain par `go-version-file: apps/go-api/go.mod`, donc la CI
-// compilait avec 1.26.1 — la version dont govulncheck listait 11 CVE de bibliothèque
-// standard, toutes corrigées en 1.26.2. Le Dockerfile, lui, tire `golang:1.26-bookworm`
-// (dernier correctif de la branche) et n'était pas concerné : c'est la CI qui portait
-// l'écart, et c'est elle qui garde le merge.
-go 1.26.5
+// Version minimale du toolchain : la CI et le build des binaires de release l'installent
+// depuis cette ligne (`go-version-file: apps/go-api/go.mod`). Elle doit rester une version
+// dont la bibliothèque standard n'a aucune vulnérabilité atteinte, sinon le job `govulncheck`
+// de `ci.yml` rougit. L'image de build du `Dockerfile` est épinglée sur la même version : une
+// image plus ancienne que cette ligne ne compile pas (GOTOOLCHAIN=local dans l'image).
+go 1.26.9
 
 require (
 	github.com/HugoSmits86/nativewebp v1.3.0
@@ -19,7 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	golang.org/x/crypto v0.55.0
-	golang.org/x/image v0.24.0
+	golang.org/x/image v0.45.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/time v0.15.0

@@ -48,7 +48,11 @@ RUN node scripts/verify-public-in-dist.mjs
 # ============================================================================
 # Stage 2 — Build Go (CGo activé pour DuckDB bindings)
 # ============================================================================
-FROM golang:1.26-bookworm AS go-builder
+# Image épinglée sur le correctif exact (pas la branche flottante `1.26`) :
+# `scripts/deploy.sh` construit sans `--pull`, donc un tag flottant resterait sur la
+# version déjà présente sur l'hôte. Même version que la ligne `go` de
+# apps/go-api/go.mod ; les monter ensemble.
+FROM golang:1.26.9-bookworm AS go-builder
 
 WORKDIR /build/go
 
