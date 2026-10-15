@@ -97,7 +97,9 @@ type EntreeDeBotEcrite struct {
 	Slot, BotID    int
 	Nom            string
 	Equipe, Jumeau int
-	EquipeLue      bool
+	// EquipeLue faux : Equipe et Jumeau valent 0 sans avoir ete lus ; tout consommateur doit refuser
+	// l entree plutot que d en publier l equipe.
+	EquipeLue bool
 }
 
 // PaquetBotMetadata est un paquet BOT_METADATA lisible (au moins le mot du nombre de bots), dans
