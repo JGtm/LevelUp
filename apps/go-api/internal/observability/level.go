@@ -23,3 +23,20 @@ func LevelUnlessCanceled(ctx context.Context, err error, level slog.Level) slog.
 	}
 	return level
 }
+
+// IsCancellation dit si err est une annulation ou un dépassement de contexte : la lecture a
+// été coupée, la source n'a pas été jugée en panne.
+func IsCancellation(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
+// LevelOnCancellation rend slog.LevelWarn quand err est une annulation ou un dépassement de
+// contexte (IsCancellation), sinon level. Contrat de la vue match : une lecture coupée est un
+// WARN, jamais une ERREUR de panne (source unique du prédicat, avec IsCancellation).
+// Usage : slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), msg, ...).
+func LevelOnCancellation(err error, level slog.Level) slog.Level {
+	if IsCancellation(err) {
+		return slog.LevelWarn
+	}
+	return level
+}

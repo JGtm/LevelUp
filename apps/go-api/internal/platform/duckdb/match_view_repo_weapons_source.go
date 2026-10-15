@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 // qMatchKillSourceWeapons : les morts d'un match dont la source est mesuree, agregees par
@@ -204,7 +205,7 @@ func (r *MatchViewRepo) attachTopWeapons(ctx context.Context, matchID string, ro
 	}
 	bulk, err := r.GetMatchBulkWeaponKills(ctx, matchID)
 	if err != nil {
-		slog.ErrorContext(ctx, "match view: arme favorite du scoreboard non calculee",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match view: arme favorite du scoreboard non calculee",
 			"match_id", matchID, "err", err)
 		return
 	}

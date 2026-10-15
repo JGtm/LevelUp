@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -234,7 +235,7 @@ func loadMatchObjectiveStats(ctx context.Context, db *sql.DB, matchID string) (m
 	out := map[string]domain.ObjectiveRaw{}
 	rows, err := db.QueryContext(ctx, Q12bObjectiveStats, matchID)
 	if err != nil {
-		slog.ErrorContext(ctx, "match scoreboard: stats objectifs indisponibles, section dégradée",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match scoreboard: stats objectifs indisponibles, section dégradée",
 			"match_id", matchID, "query", "Q12bObjectiveStats", "err", err)
 		return out, fmt.Errorf("stats objectifs Q12b: %w", err)
 	}
@@ -251,7 +252,7 @@ func loadMatchObjectiveStats(ctx context.Context, db *sql.DB, matchID string) (m
 		out[xuid] = obj
 	}
 	if err := rows.Err(); err != nil {
-		slog.ErrorContext(ctx, "match scoreboard: itération stats objectifs interrompue, section dégradée",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match scoreboard: itération stats objectifs interrompue, section dégradée",
 			"match_id", matchID, "err", err)
 		failures = append(failures, fmt.Errorf("itération stats objectifs: %w", err))
 	}
@@ -378,7 +379,7 @@ func loadMatchBombStats(ctx context.Context, db *sql.DB, matchID string) (map[st
 	out := map[string]domain.ObjectiveRaw{}
 	present, err := relationExists(ctx, db, "match_bomb_stats_latest")
 	if err != nil {
-		slog.ErrorContext(ctx, "match scoreboard: sonde des stats d'Assaut en échec, colonnes absentes",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match scoreboard: sonde des stats d'Assaut en échec, colonnes absentes",
 			"match_id", matchID, "err", err)
 		return out, err
 	}
@@ -389,7 +390,7 @@ func loadMatchBombStats(ctx context.Context, db *sql.DB, matchID string) (map[st
 	}
 	rows, err := db.QueryContext(ctx, Q12cBombStats, matchID)
 	if err != nil {
-		slog.ErrorContext(ctx, "match scoreboard: stats d'Assaut indisponibles, colonnes absentes",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match scoreboard: stats d'Assaut indisponibles, colonnes absentes",
 			"match_id", matchID, "query", "Q12cBombStats", "err", err)
 		return out, fmt.Errorf("stats d'Assaut Q12c: %w", err)
 	}
@@ -408,7 +409,7 @@ func loadMatchBombStats(ctx context.Context, db *sql.DB, matchID string) (map[st
 		out[xuid] = o
 	}
 	if err := rows.Err(); err != nil {
-		slog.ErrorContext(ctx, "match scoreboard: itération stats d'Assaut interrompue, colonnes absentes",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "match scoreboard: itération stats d'Assaut interrompue, colonnes absentes",
 			"match_id", matchID, "err", err)
 		failures = append(failures, fmt.Errorf("itération stats d'Assaut: %w", err))
 	}

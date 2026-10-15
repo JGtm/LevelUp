@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -232,6 +233,12 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 
 	if err := g.Wait(); err != nil {
 		return matchViewData{}, err
+	}
+	// Requête abandonnée pendant le chargement : les lectures coupées ne sont pas des pannes
+	// (WARN, cf. reportLoadFailure). Construire la vue sur ce contexte mort la parsèmerait de
+	// raisons `_unavailable` fausses et rouvrirait des lectures ; on rend l'erreur de contexte.
+	if cerr := ctx.Err(); cerr != nil {
+		return matchViewData{}, fmt.Errorf("match_view: requête interrompue pour %s: %w", matchID, cerr)
 	}
 	return d, nil
 }

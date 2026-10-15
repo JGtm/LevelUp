@@ -226,6 +226,10 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", apiErr.Message)
 		}
+		if isClientClosed(ctx) {
+			// Requête abandonnée (le service rend l'erreur de contexte, E6.2a-F3) : 499, pas une panne.
+			return nil, mapServiceError(ctx, err, "match_view_error")
+		}
 		// PAS DE RENIFLAGE DE CHAÎNE « no rows » ICI (retiré le 2026-08-29) : l'absence
 		// est désormais TYPÉE par le service (domain.ErrNotFound, branche ci-dessus).
 		// Cette branche textuelle était la dernière échappatoire par laquelle une panne

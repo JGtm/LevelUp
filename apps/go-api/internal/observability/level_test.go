@@ -69,3 +69,21 @@ func TestLevelUnlessCanceled_SourceUnique(t *testing.T) {
 		t.Errorf("prédicat de niveau « fin de requête » recopié en ligne : %v — utiliser observability.LevelUnlessCanceled", copies)
 	}
 }
+
+func TestLevelOnCancellation(t *testing.T) {
+	t.Parallel()
+	cas := []struct {
+		nom  string
+		err  error
+		want slog.Level
+	}{
+		{"panne", errors.New("database is locked"), slog.LevelError},
+		{"annulation", fmt.Errorf("lecture : %w", context.Canceled), slog.LevelWarn},
+		{"échéance", fmt.Errorf("lecture : %w", context.DeadlineExceeded), slog.LevelWarn},
+	}
+	for _, c := range cas {
+		if got := LevelOnCancellation(c.err, slog.LevelError); got != c.want {
+			t.Errorf("%s : %v, want %v", c.nom, got, c.want)
+		}
+	}
+}

@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
@@ -66,7 +67,7 @@ func (f *sourceFailures) has(src matchViewSource) bool {
 // coupé parce que la requête a été abandonnée n'est pas une panne de la source : WARN,
 // pour ne pas polluer les journaux d'erreur à chaque navigation interrompue.
 func reportLoadFailure(gctx context.Context, matchID, source string, err error) {
-	if errors.Is(err, context.Canceled) {
+	if observability.IsCancellation(err) {
 		slog.WarnContext(gctx, "match_view: chargement interrompu", "source", source, "match_id", matchID, "err", err)
 		return
 	}

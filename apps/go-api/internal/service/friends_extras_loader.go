@@ -21,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -72,7 +73,7 @@ func NewFriendsExtrasResolver(
 			}
 			repo, err := opener(ctx, profile.TitleSlug, profile.Gamertag)
 			if err != nil {
-				slog.ErrorContext(ctx, "friends_extras: open player db failed",
+				slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "friends_extras: open player db failed",
 					"match_id", matchID, "xuid", xuid, "gamertag", profile.Gamertag, "err", err)
 				failures = append(failures, fmt.Errorf("ami %s: ouverture de la player DB: %w", xuid, err))
 				continue
@@ -108,7 +109,7 @@ func loadOneFriendExtras(
 		failures []error
 	)
 	fail := func(source string, err error) {
-		slog.ErrorContext(ctx, "friends_extras: load "+source+" failed",
+		slog.Log(ctx, observability.LevelOnCancellation(err, slog.LevelError), "friends_extras: load "+source+" failed",
 			"match_id", matchID, "xuid", xuid, "err", err)
 		failures = append(failures, fmt.Errorf("ami %s: %s: %w", xuid, source, err))
 	}
