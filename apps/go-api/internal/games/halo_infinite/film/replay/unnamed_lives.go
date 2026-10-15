@@ -216,8 +216,9 @@ func trackSpanUS(t Track, origin, step uint64) (int64, int64) {
 // `slog.Error` et non `Warn` : depuis la décision du 2026-09-07, une vie publiée sans identité
 // est un DÉFAUT, pas une donnée. Le message porte de quoi ouvrir l'enquête (le match, le nombre,
 // puis le slot et les bornes de la première) sans noyer le journal — un film à fort défaut de
-// nommage en produirait des dizaines.
-func logUnnamedLives(ctx context.Context, matchID string, tracks []Track, rep unnamedLivesReport) {
+// nommage en produirait des dizaines. Le message dit QUEL document porte le résidu : le document
+// publié, ou le document interne que le sync assemble pour relire ses portages (`interne`).
+func logUnnamedLives(ctx context.Context, matchID string, tracks []Track, rep unnamedLivesReport, interne bool) {
 	if rep.total() > 0 {
 		slog.InfoContext(ctx, "rejeu : nommage final des vies restantes",
 			"match_id", matchID, "traitees", rep.total(), "parViePrecedente", rep.byPrevious,
@@ -234,7 +235,11 @@ func logUnnamedLives(ctx context.Context, matchID string, tracks []Track, rep un
 			break
 		}
 	}
-	slog.ErrorContext(ctx, "rejeu : des vies PUBLIEES restent sans identite — defaut de nommage du pont",
+	msg := "rejeu : des vies PUBLIEES restent sans identite — defaut de nommage du pont"
+	if interne {
+		msg = "rejeu : des vies du DOCUMENT INTERNE du sync (non publie) restent sans identite — defaut de nommage du pont"
+	}
+	slog.ErrorContext(ctx, msg,
 		"match_id", matchID, "vies", rep.remaining, "premierSlot", slot,
 		"premiereFrameDebut", from, "premiereFrameFin", to)
 }

@@ -233,6 +233,7 @@ func assemblerGoldenBuild(t *testing.T, b goldenBuild, g *FilmFacts,
 ) ReplayDocument {
 	t.Helper()
 	opt := g.options()
+	opt.Bots = botsDuFixture(t, b.Short8)
 	opt.Labels, opt.EquipmentEnergy = goldenCatalog(t), goldenEnergyCatalog(t)
 	opt.MapQuant = &entry
 	return BuildFromPositions(context.Background(), b.Short8, "halo_infinite", g.Positions, g.Fire, opt)

@@ -101,18 +101,18 @@ func TestPortagesDuDocument_SansCalage(t *testing.T) {
 	}
 }
 
-// TestPortagesAuSync_ChaqueFamilleNePaieQueSesLectures — la couronne ne paie que le statborg, le
-// crane le statborg (et son pont), la bombe le seul canal des armes tenues. Les lectures du
-// drapeau (equipes, objets du monde) sont les plus cheres du lot V0 : elles ne se paient QUE sur
-// un CTF. Film et contexte nuls : les balayages rendent vide, seul le fait de lire est mesure.
+// TestPortagesAuSync_ChaqueFamilleNePaieQueSesLectures — toute famille paie l'identite du film (table
+// des sieges et occupants, le registre de la cuisson) ; la couronne ne paie en plus que le statborg,
+// le crane le statborg (et son pont), la bombe le seul canal des armes tenues. Les objets du monde
+// du drapeau sont les plus chers du lot V0 : ils ne se paient QUE sur un CTF. Film et contexte nuls : les balayages rendent vide, seul le fait de lire est mesure.
 func TestPortagesAuSync_ChaqueFamilleNePaieQueSesLectures(t *testing.T) {
 	for _, c := range []struct {
 		variante string
 		lu       LecturesDesPorteurs
 	}{
-		{"Arena:VIP", LecturesDesPorteurs{Statborg: true}},
-		{"Oddball:Arena", LecturesDesPorteurs{Statborg: true}},
-		{"Assault:Neutral Bomb", LecturesDesPorteurs{ArmesTenues: true}},
+		{"Arena:VIP", LecturesDesPorteurs{Identite: true, Statborg: true}},
+		{"Oddball:Arena", LecturesDesPorteurs{Identite: true, Statborg: true}},
+		{"Assault:Neutral Bomb", LecturesDesPorteurs{Identite: true, ArmesTenues: true}},
 	} {
 		t.Run(c.variante, func(t *testing.T) {
 			_, b := PortagesAuSync(context.Background(), EntreePorteursAuSync{MatchID: "m", Variante: c.variante})

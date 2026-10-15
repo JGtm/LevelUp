@@ -59,18 +59,23 @@ const MetricBotsNonEpingles = "killsource_bots_non_epingles"
 // incremente [MetricBotsNonEpingles], chez les deux consommateurs (cuisson et collecteur). Le
 // JOURNAL vit a la source, la ou le contexte existe : `killsource` avertit par film au decodage et
 // publie le compte dans sa couverture (`Coverage.BotsNonEpingles`).
+//
+// UN BOT NON EPINGLE SE RECONNAIT A SON ENTREE, PAS A SON SEUL `bid` : la copie decalee d'un nom
+// (`43 Ritzy` au slot 0, `bid` lu 0) partage le `bid` 0 du vrai bot (`343 Ritzy`, `bid(0.0)` en
+// base) ; une cle par `bid` retirait les deux. Le `bid` projete est marque LU
+// (`replay.BotIdentity.BotIDLu`) : toute entree BOT_METADATA l'ecrit, zero compris.
 func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
 	}
-	unpinned := make(map[int]bool, len(res.Roster.UnpinnedBots))
+	unpinned := make(map[entreeDeBot]bool, len(res.Roster.UnpinnedBots))
 	for _, b := range res.Roster.UnpinnedBots {
-		unpinned[b.BotID] = true
+		unpinned[entreeDeBot{b.Slot, b.BotID, b.Name}] = true
 	}
 	out := make([]replay.BotIdentity, 0, len(res.Roster.Bots))
 	retires := 0
 	for _, b := range res.Roster.Bots {
-		if unpinned[b.BotID] {
+		if unpinned[entreeDeBot{b.Slot, b.BotID, b.Name}] {
 			retires++
 			continue
 		}
@@ -80,7 +85,7 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 		// `BotID` VOYAGE (lot 4.3) : c'est la cle EXACTE que `BotIdentity.Bid()` publie
 		// (`bid(N.0)`), la meme forme que `RosterEntry.Bid` / `IdentityPlayer.Bid`. Les
 		// DECLARATIONS voyagent aussi (lot M2.1) : elles lient le bot a son entite `ti=9`.
-		id := replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + decfilm.BotSuffix, BotID: b.BotID}
+		id := replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + decfilm.BotSuffix, BotID: b.BotID, BotIDLu: true}
 		for _, d := range b.Declarations {
 			id.Declarations = append(id.Declarations, [2]uint64{d.FromUS, d.ToUS})
 		}
@@ -96,4 +101,10 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 		observability.AddInt(MetricBotsNonEpingles, int64(retires))
 	}
 	return out
+}
+
+// entreeDeBot identifie une entree du roster de bots : slot, `bid` et nom lus ensemble.
+type entreeDeBot struct {
+	slot, bid int
+	nom       string
 }

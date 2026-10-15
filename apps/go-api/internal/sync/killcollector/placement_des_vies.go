@@ -69,8 +69,9 @@ const (
 // du drapeau se lisent aussi dans le film (`replay/flag_film_bases.go`) ; le portage de la bombe
 // suit les changements d'arme tenue, que la grammaire lit sur la marche des trames, l'ancrage
 // derriere elle (grammar `grammar-2026-10-06.4`) — les portages, donc les durees portees, en
-// dependent.
-const PlacementRev = "placement-2026-10-06-v1"
+// dependent. Le nommage des vies du document que [replay.PortagesAuSync] assemble (table des sieges
+// du film, occupants par entite, `bid` 0 des bots) decide aussi a qui un portage revient.
+const PlacementRev = "placement-2026-10-15-ks-c"
 
 // PorteeDuRadar rend la portee du radar d'une variante (`game_variant_name` tel que la base le
 // porte), en metres. `connue` faux = variante absente de la table : la ligne s'ecrit sans portee
@@ -256,7 +257,7 @@ func publierLePlacement(ctx context.Context, matchID string, b bilanDuPlacement)
 		observability.AddInt(metricPlacementPontRefuse, 1)
 	}
 	l := b.porteurs.Lectures
-	if l.Statborg || l.Equipes || l.ObjetsDuMonde || l.ArmesTenues {
+	if l.Identite || l.Statborg || l.ObjetsDuMonde || l.ArmesTenues {
 		observability.AddInt(metricPlacementPorteursLus, 1)
 	}
 	if b.porteurs.SansCalage {
@@ -272,7 +273,7 @@ func publierLePlacement(ctx context.Context, matchID string, b bilanDuPlacement)
 		"trahisons", b.frags.Trahisons, "porteurs_gardes", fmt.Sprintf("%+v", b.porteurs.Gardes),
 		"porteurs_lectures", fmt.Sprintf("%+v", l), "portages", b.porteurs.Intervalles,
 		"portages_sans_calage", b.porteurs.SansCalage, "drapeau_ouverts", b.porteurs.DrapeauOuverts,
-		"porteurs_xuid_illisibles", b.porteurs.XUIDIllisibles)
+		"porteurs_xuid_illisibles", b.porteurs.XUIDIllisibles, "porteurs_vies_sans_identite", b.porteurs.ViesSansIdentite)
 }
 
 // profilCalibre rend le profil que `killsource` a calibre sur le film, ou nil sans resultat de
