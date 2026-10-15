@@ -281,3 +281,15 @@ describe('useReplayGroundWeapons — les armes de départ lâchées (décision d
     expect(result.current.hover?.item).toBe(DEPART)
   })
 })
+
+describe('useReplayGroundWeapons — disponibilité avant le filtre des armes de départ', () => {
+  const DEPART = item({ w: '2b1824d5', origin: 'dropped', dropper: 514, x: 0, y: 0 })
+  const doc = { loadouts: [{ t: 0, slot: 514, w: ['0x2B1824D5'], src: 'birth', k: [0] }] }
+
+  it('tout le sol est fait d armes de départ : le calque reste disponible', () => {
+    const { result } = monter([DEPART], { includeStarting: false, doc })
+    expect(result.current.available).toBe(true)
+    act(() => result.current.onPointerMove(pointeurSur({ x: 100, y: 100 })))
+    expect(result.current.hover).toBeNull()
+  })
+})

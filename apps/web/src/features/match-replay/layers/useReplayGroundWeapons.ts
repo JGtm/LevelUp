@@ -129,7 +129,7 @@ export interface GroundWeaponsInput {
 }
 
 export interface GroundWeapons {
-  /** Le film porte-t-il des armes au sol (APRÈS filtre) ? Une bascule qui ne commande rien ne
+  /** Le film porte-t-il des armes au sol (après le filtre « spéciales », AVANT celui des armes de départ) ? Une bascule qui ne commande rien ne
    *  s'affiche pas. */
   available: boolean
   /**
@@ -215,10 +215,16 @@ export function useReplayGroundWeapons({
 
   // LE FILTRE RETIRE LES OBJETS AVANT TOUT LE RESTE (tracé, survol, cuisson) : une arme
   // écartée ici se comporte exactement comme si le film ne la publiait pas.
-  const items = useMemo<readonly ReplayGroundWeapon[]>(() => {
-    const shown = visibleGroundWeapons(allGroundWeapons, doc.loadouts, includeStarting)
-    return specialOnly ? shown.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels))) : shown
-  }, [allGroundWeapons, doc.loadouts, includeStarting, specialOnly, labels])
+  // DISPONIBILITÉ AVANT LE FILTRE DES ARMES DE DÉPART : un film dont tout le sol est fait d'armes
+  // de départ garde son calque et l'option qui permet justement de les réafficher.
+  const candidates = useMemo<readonly ReplayGroundWeapon[]>(
+    () => (specialOnly ? allGroundWeapons.filter((item) => isSpecialWeaponRole(weaponRoleOf(item.w, labels))) : allGroundWeapons),
+    [allGroundWeapons, specialOnly, labels],
+  )
+  const items = useMemo(
+    () => visibleGroundWeapons(candidates, doc.loadouts, includeStarting),
+    [candidates, doc.loadouts, includeStarting],
+  )
 
   // UNE TABLE PAR RÉFÉRENCE, pas un état : la remplir ne doit pas re-rendre la page (la boucle
   // de dessin la lit pendant qu'elle peint). Même règle que les vignettes de socle et de
@@ -309,5 +315,5 @@ export function useReplayGroundWeapons({
     setHover((prev) => (prev === null ? prev : null))
   }, [])
 
-  return { id: 'armes-au-sol', available: items.length > 0, paint, hover, onPointerMove, onPointerLeave }
+  return { id: 'armes-au-sol', available: candidates.length > 0, paint, hover, onPointerMove, onPointerLeave }
 }
