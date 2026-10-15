@@ -1532,6 +1532,9 @@ func Steps() []migration.Migration {
 	// Manches gagnées par camp (source CoreStats.RoundsWon/Lost/Tied) : la seule grandeur
 	// qui dit le résultat sur un mode à manches. Cf. steps_shared_team_rounds.go.
 	steps = append(steps, sharedTeamRoundsSteps()...)
+	// Reconstruction de match_registry : colonnes d'intégrité retirées et bit participants
+	// réparé, bornée aux titres qui écrivent ce bit. Cf. steps_shared_registry_participants_bit.go.
+	steps = append(steps, stepRegistryParticipantsBit())
 	// Schéma de référence inter-titres : positions monde par kill (Halo 5 natif,
 	// Infinite plus tard). Cf. steps_shared_kill_positions.go.
 	steps = append(steps, sharedKillPositionsSteps()...)

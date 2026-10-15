@@ -227,7 +227,7 @@ Décisions fermes :
   doit TOLÉRER un cut ancien qui porte encore la colonne : test), colonne TSV de
   `cmd/mapfond-inventaire`. Grep final à 0 hors migration de retrait et archives.
 - [x] E5.4 V-3 : import OpenSpartan pose le bit 512 à l'insertion (`toSyncRegistry`) ; test.
-- [ ] E5.5 V-4 : étape de migration de reconstruction, tests (base aux deux colonnes + index +
+- [x] E5.5 V-4 : étape de migration de reconstruction, tests (base aux deux colonnes + index +
   157 lignes sans bit → après : colonnes et index absents, bits posés, autres colonnes et index
   identiques, vues valides ; second passage = no-op). **Répétition sur les COPIES prod** fournies
   par le superviseur (`scratchpad/e5_prod/{halo_infinite,halo_5}`, sur une copie de la copie) :
@@ -768,3 +768,36 @@ diff E5 (lot persist/sync).
   (`{0 false}`) avant le correctif ; nouveau `TestToSyncRegistry_BitParticipantsSelonLeRoster`. `go test ./internal/service/ ./internal/openspartan/...`
   et les tests `Collect|Phase3` de `internal/sync` verts. Hors périmètre, non traité : `cmd/levelup/cmd_reset_bitmasks.go:202` garde sa propre copie
   de la valeur 512 (`backfillFlagParticipantsForReset`). **E5.4 STATUÉ `[x]`.**
+- 2026-10-15 (E5.5, exécutant) : migration de reconstruction de `match_registry`, recette `swapTableTx` (précédent
+  `shared_recompute_mode_category_v1`). `migration/steps_shared_registry_integrity_columns.go` : table de construction au DDL exact (`duckdb_tables().sql`),
+  colonnes retirées par `ALTER ... DROP COLUMN` sur la table VIDE (DuckDB l'accepte : la clé primaire porte sur `match_id`, première colonne), remplie par
+  `INSERT ... BY NAME SELECT * EXCLUDE (colonnes) [REPLACE (backfill_completed | 512 si le match a des participants)]` ; échange en UNE transaction ;
+  index reposés après le RENAME sauf ceux qui couvrent une colonne retirée ; vues qui lisent la table rejouées (canoniques `mv_player_matches` et
+  `v_match_full` depuis le code, extraites en constantes de `steps_shared.go` ; toute autre vue depuis son DDL stocké). Gardes avant COMMIT :
+  cardinalité ; colonnes (nom, type, défaut, nullité, ordre) et contraintes identiques hors colonnes retirées ; index identiques hors ceux retirés ; table
+  = projection attendue calculée AVANT l'échange (empreinte) ; chaque vue identique hors colonnes retirées et `backfill_completed` ; plus aucun match à
+  roster sans bit si demandé. Aucun `UPDATE` ni `ON CONFLICT`. Idempotente (no-op sans écriture si colonnes absentes et bits justes).
+  **Portée par titre sans comparaison de slug** : le registre de migrations ne borne un step à des titres que par `Migration.OnlyTitles` (par step) ; d'où
+  deux entrées, UNE reconstruction par base : `shared_registry_participants_bit_v1` (title-owned Halo Infinite, `OnlyTitles = {DefaultSlug}`, précédent
+  `shared_drop_weapon_kills_v1` ; le bit est écrit et lu par le moteur de sync de ce titre seul), puis `shared_registry_drop_integrity_columns_v1` (global,
+  no-op là où la première a retiré les colonnes). Ordre : juste après `shared_recompute_mode_category_v1` dans `canonicalOrder` (position imposée pour le
+  global par `TestSortByCanonicalIsNoOpOnCurrentRegistry`), dépendances déclarées dans `order_dependency_test.go`. Le bit vit dans `sync/matchflags`
+  (E5.4) ; `empreinteHorsColonne` du précédent généralisée en `empreinteHorsColonnes` (même code). Tests (`migration`, 9) : retrait + bit + vues + index
+  + colonnes + clé ; sans bit ; idempotence et enchaînement des deux steps ; bit seul sur base déjà sans colonnes ; altération injectée -> annulation
+  intégrale ; vue inconnue qui cite une colonne retirée -> refus, base intacte ; `mv_player_matches` non canonique -> refus de la garde de vue ; forme
+  Halo 5 ; projection. **Rouge** : migration neutralisée, 7 tests sur 8 rouges (l'idempotence passe à vide, attendu). Tests par le RUNNER (paquet HI) :
+  titre qui écrit le bit (513 posé, deux steps au ledger) et titre sans le bit (`halo_5` : colonnes retirées, bit inchangé, step title-owned ni appliqué ni
+  inscrit). **Répétition** (`TestRegistryIntegrity_RepetitionSurCopie`, binaire de test, copie de la copie dans un dossier temporaire nommé
+  `shared_matches_v2.duckdb` — un fichier nommé `shared.duckdb` rend ambiguë la référence au schéma `shared` d'un step sans rapport ; pic mémoire =
+  `PeakWorkingSet64` du processus de test, relevé toutes les 50 ms) :
+
+    | copie | matchs | bit 512 avant -> après | roster sans bit avant -> après | colonnes retirées | index avant -> après | runner complet | les 2 steps seuls (1er / 2e passage) | pic mémoire |
+    |---|---|---|---|---|---|---|---|---|
+    | prod HI | 2 014 | 1 857 -> 2 014 | 157 -> 0 | les deux | 7 -> 5 (`idx_registry_player_count` ; `idx_registry_mode_category` par le step du 2026-10-09 qui le précède) | 461 ms, 23 steps en attente | 119 + 6 ms / 7 + 7 ms | 164 Mo (runner) / 117 Mo (steps) |
+    | prod H5 | 3 032 | 0 -> 0 (NULL x 3 032 inchangé) | sans objet | `player_count` | 2 -> 2 | 858 ms, 21 steps | step HI hors titre ; 71 ms / 6 ms | 143 Mo / 50 Mo |
+    | locale HI | 9 230 | 9 073 -> 9 230 | 157 -> 0 | les deux | 6 -> 5 | 420 ms, 2 steps (les miens) | 152 + 7 ms / 8 + 7 ms | 77 Mo / 76 Mo |
+    | locale H5 | 3 032 | 0 -> 0 | sans objet | `player_count` | 2 -> 2 | 138 ms, 1 step | 83 ms / 6 ms | 57 Mo / 54 Mo |
+
+  Les gardes d'empreinte de vue ont tenu sur les quatre copies : la `mv_player_matches` stockée en prod EST la définition canonique plus
+  `mr.player_count`. Second passage : runner sans step nouveau au ledger, `table_oid` inchangé, partout. Originaux intacts (copies prod du superviseur
+  20:17, bases locales jamais ouvertes : copie de fichier seulement). **E5.5 STATUÉ `[x]`.**

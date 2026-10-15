@@ -291,21 +291,39 @@ func fingerprintsHorsCategorie(ctx context.Context, q lecteurSQL) (map[string]Em
 // empreinteHorsColonne : empreinte d'une table ou d'une vue sans `col` (toutes les colonnes si
 // elle n'en porte pas).
 func empreinteHorsColonne(ctx context.Context, q lecteurSQL, relation, col string) (EmpreinteVue, error) {
-	var has int
-	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM duckdb_columns()
-		WHERE table_name = ? AND column_name = ?`, relation, col).Scan(&has); err != nil {
-		return EmpreinteVue{}, fmt.Errorf("colonnes de %s: %w", relation, err)
+	return empreinteHorsColonnes(ctx, q, relation, []string{col})
+}
+
+// empreinteHorsColonnes : empreinte d'une table ou d'une vue sans celles des colonnes `cols`
+// qu'elle porte (toutes ses colonnes si elle n'en porte aucune).
+func empreinteHorsColonnes(ctx context.Context, q lecteurSQL, relation string, cols []string) (EmpreinteVue, error) {
+	var exclues []string
+	for _, col := range cols {
+		var has int
+		if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM duckdb_columns()
+			WHERE table_name = ? AND column_name = ?`, relation, col).Scan(&has); err != nil {
+			return EmpreinteVue{}, fmt.Errorf("colonnes de %s: %w", relation, err)
+		}
+		if has > 0 {
+			exclues = append(exclues, col)
+		}
 	}
-	cols := "*"
-	if has > 0 {
-		cols = "* EXCLUDE (" + col + ")"
+	selection := "*"
+	if len(exclues) > 0 {
+		selection = "* EXCLUDE (" + strings.Join(exclues, ", ") + ")"
 	}
+	return empreinteDeSelection(ctx, q, relation, fmt.Sprintf(`SELECT %s FROM %s`, selection, relation))
+}
+
+// empreinteDeSelection : nombre de lignes et somme des hash de ligne d'une requête SELECT.
+// `nom` ne sert qu'au message d'erreur.
+func empreinteDeSelection(ctx context.Context, q lecteurSQL, nom, selection string) (EmpreinteVue, error) {
 	var e EmpreinteVue
 	err := q.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*),
-		CAST(COALESCE(SUM(CAST(hash(v) AS HUGEINT)), 0) AS VARCHAR) FROM (SELECT %s FROM %s) v`, cols, relation)).
+		CAST(COALESCE(SUM(CAST(hash(v) AS HUGEINT)), 0) AS VARCHAR) FROM (%s) v`, selection)).
 		Scan(&e.Lignes, &e.Somme)
 	if err != nil {
-		return e, fmt.Errorf("empreinte de %s: %w", relation, err)
+		return e, fmt.Errorf("empreinte de %s: %w", nom, err)
 	}
 	return e, nil
 }

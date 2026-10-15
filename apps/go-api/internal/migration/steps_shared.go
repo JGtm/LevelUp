@@ -233,18 +233,28 @@ func ApplyResolutionViews(db *sql.DB) error {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 
-	_, _ = db.ExecContext(bootCtx(), `
-		CREATE OR REPLACE VIEW v_match_full AS
-		SELECT mr.*
-		FROM match_registry mr
-	`)
+	_, _ = db.ExecContext(bootCtx(), vMatchFullViewSQL)
 
 	return nil
 }
 
+// vMatchFullViewSQL : DDL canonique de v_match_full. DuckDB fige l'étoile à la création : toute
+// colonne ajoutée ou retirée de match_registry exige de rejouer ce DDL.
+const vMatchFullViewSQL = `
+		CREATE OR REPLACE VIEW v_match_full AS
+		SELECT mr.*
+		FROM match_registry mr
+	`
+
 // ApplyMvPlayerMatchesView crée ou recrée mv_player_matches.
 func ApplyMvPlayerMatchesView(db *sql.DB) error {
-	_, err := db.ExecContext(bootCtx(), `
+	_, err := db.ExecContext(bootCtx(), mvPlayerMatchesViewSQL)
+	return err
+}
+
+// mvPlayerMatchesViewSQL : DDL canonique de mv_player_matches (registre x participants), joué
+// aussi par la reconstruction de match_registry (steps_shared_registry_integrity_columns.go).
+const mvPlayerMatchesViewSQL = `
 		CREATE OR REPLACE VIEW mv_player_matches AS
 		SELECT
 			mr.match_id,
@@ -303,6 +313,4 @@ func ApplyMvPlayerMatchesView(db *sql.DB) error {
 			mp.backfill_bits
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
-	`)
-	return err
-}
+	`
