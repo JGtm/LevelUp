@@ -209,7 +209,12 @@ const VersionCodecFaits = 2
 // SCHEMA 13 (2026-10-14, lot « equipement porte » du plan d ajustements) : le complement de la section 1
 // porte, apres les poussees, les lectures de l EQUIPEMENT PORTE (`FilmInputs.CarriedEquipment`,
 // `CarriedEquipmentStats`).
-const SchemaDesFaits = 13
+// SCHEMA 14 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`) : la section 5 change de
+// contenu. Le profil calibre qu elle porte (`grammar.GrammaireBalayage`) gagne
+// `MalleableSansDrapeauFinal` (le bloc malleable d i53 sans drapeau final des films de version majeure
+// declaree 0x25). Mesure : `replay-equiv` sur les 20 films, binaires de `feat/v75` `39ead801f` contre
+// ceux de la branche, etape `killsource` differente sur les 20 films.
+const SchemaDesFaits = 14
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

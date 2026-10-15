@@ -3307,3 +3307,25 @@ package replay
 //	                activation ; témoins 1b2d9e08 (frame 1550 = 164,06 s), 6acce632 (53,3 / 158,5 /
 //	                304,2 s) à la frame près ; répulseur 0d9a9af9 et 72b0a25e : 3 usages à la prise
 //	                (énergie 0,6, coût 0,2), 2, 1, 0 aux activations, comme au Theater.
+//
+// v96 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
+// `grammar-2026-10-15`) : LES IMAGES-CLÉS SE LISENT COMME UNE TABLE D'ENTRÉES. Aucune forme ne change :
+// des valeurs, sur des films où la lecture rend désormais ce qu'elle perdait.
+//
+//	CE QUI CHANGE   `inventory[].d` (doc) : 2 est l'emplacement de l'objet tenu hors de la rangée
+//	                d'armes (mains nues avant le départ, objet d'objectif ensuite), mesure sur 28 films.
+//	                Films de version majeure 0x25 (HI_1_8_0) : dotations de naissance lues
+//	                (`60ae07c4` 5 -> 171), postures, équipement porté (fins de port, une faille de plus) ;
+//	                deux impulsions de capacité lues sur des bits étrangers disparaissent.
+//	                `64e8adfa` : une arme au sol de plus (un record que la fausse ancre slot 1536 effaçait).
+//
+//	CE QUI MONTE    `SchemaVersion` 95 -> 96 ; `grammar.Rev` `grammar-2026-10-14.3` -> `grammar-2026-10-15`
+//	AVEC ELLE       (table d'entrées, bit des films 0x25, world-object i0 et rigid-body i18 sous la garde) ;
+//	                `killsource.Rev` -> `killsource-2026-10-15` ; `SchemaDesFaits` 13 -> 14 (le profil
+//	                de la section 5 gagne un champ). `objectives.Rev` ne bouge pas.
+//
+//	LE PARC         un artefact 95 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          `replay-equiv`, 20 films, binaires de `feat/v75` `39ead801f` contre ceux de la branche :
+//	                artefacts identiques hors les valeurs de révision sur 18 films ; `60ae07c4` et
+//	                `64e8adfa` comme ci-dessus ; étape `objectives` identique sur les 20.

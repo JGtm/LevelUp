@@ -173,6 +173,13 @@ package objectives
 // PREUVE : `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `d33f21227` contre ceux du
 // lot : etapes `objectives` et `killsource` IDENTIQUES sur les 20, comme toutes les autres etapes hors
 // l etape neuve `knockbacks` et l artefact. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-15 (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// `feat/ri-ecart-108`, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-15` (table d entrees
+// d image-cle, bloc malleable d i53 sans drapeau final pour la majeure 0x25, world-object i0 et
+// rigid-body i18 sous la garde) et `killsource.Rev` a `killsource-2026-10-15`. PREUVE : `replay-equiv`
+// sur les 20 films du corpus, binaires de `feat/v75` `39ead801f` contre ceux de la branche fusionnee :
+// etape `objectives` IDENTIQUE sur les 20. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"
