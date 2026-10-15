@@ -142,8 +142,7 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 }
 
 type listMySquadsInput struct {
-	UserID    string `query:"user_id"`
-	TitleSlug string `query:"title_slug"`
+	UserID string `query:"user_id"`
 }
 
 // ListMySquads gère GET /squads?user_id=slug — escouades dont user_id est
@@ -159,7 +158,6 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
-	titleSlug := in.TitleSlug
 	// Annuaire (best-effort) pour combler les gamertags absents des snapshots
 	// membres (legacy/pré-colonne) — app-players uniquement, via lookup canonique.
 	_, _, gamertagByXUID, dirErr := h.playerDirectory(ctx)
@@ -181,6 +179,8 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 			}
 		}
 		entry := squadWithMembers{Squad: sq, Members: members}
+		// Titre : jamais celui de l'appelant. Le service paresseux lit la base partagée du PlayerDB
+		// résolu et applique son propre titre (wire/prestige_lazy_service_squad.go, SquadUsualContexts).
 		// Indice dérivé (best-effort) : playlists/modes habituels du roster. Une
 		// erreur (provider absent, lecture shared KO) n'empêche pas la liste.
 		roster := make([]string, 0, len(members))
@@ -189,7 +189,7 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 				roster = append(roster, m.Xuid)
 			}
 		}
-		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster, titleSlug); uErr == nil {
+		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster, ""); uErr == nil {
 			entry.UsualPlaylists = pls
 			entry.UsualModes = mds
 		} else {

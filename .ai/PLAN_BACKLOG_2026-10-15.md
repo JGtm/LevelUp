@@ -99,14 +99,14 @@ paquets corrigés, puis `go test -tags=integration -p 1` sur les mêmes paquets.
 
 ### E3 — Petites dettes Go (item 6) — S
 
-- [ ] E3.1 `campaign_repo.go` `LoadAxisSamples` (l. ~278-286) et la requête sur `match_registry`
+- [x] E3.1 `campaign_repo.go` `LoadAxisSamples` (l. ~278-286) et la requête sur `match_registry`
   (l. ~364-373) : temps canonique (fragment partagé, règle n°8) pour filtre et tri ; test.
-- [ ] E3.2 `engagement_score_repo_queries.go` `ListRecentPvPMatchIDs` (l. ~309-312) : temps
+- [x] E3.2 `engagement_score_repo_queries.go` `ListRecentPvPMatchIDs` (l. ~309-312) : temps
   canonique ; erreur de `Scan` (l. ~85 du bloc, `if err == nil`) et `continue` sur erreur sans
   log (l. ~34-38) → remontée ou `slog.WarnContext` + compteur ; test.
-- [ ] E3.3 `GET /squads` : retrait de `title_slug` (D-7), `make generate-types`,
+- [x] E3.3 `GET /squads` : retrait de `title_slug` (D-7), `make generate-types`,
   `make check-types`, appelants web mis à jour.
-- [ ] E3.4 D-6 appliqué dans `.ai/BACKLOG.md`.
+- [x] E3.4 D-6 appliqué dans `.ai/BACKLOG.md`.
 
 Gate : `go test` des paquets touchés, `go test ./internal/api/...` (contrat OpenAPI golden),
 `make check-types`, `make test-web` si un fichier web change.
@@ -334,3 +334,19 @@ diff E5 (lot persist/sync).
   - **Points d'entrée corrigés** : `SyncEngine.pinTitle` (5 chemins backfill + 3 du post-sync), `MatchRecomputer.WithTitle`/`titledCtx` (exclusion d'un match), `handlers/settings.go:557`. Test d'entrée sur halo_5 : `TestCampaignExclusion_TitreDesBasesPrimeSurLeCtx` (rouge par mutant) ; le chemin HTTP de `settings.go:557` n'a pas de test d'entrée dédié (handler lourd) : couvert par le cas « sans titre » des lecteurs, qui exclut désormais la Campagne même sans titre.
   - **E2.11** : `go vet` des 29 paquets `cmd/` qui importent `internal/sync` : sans diagnostic. Les 24 exports consommés par l'ancien outil (`Beta`, `InitialMU`, `InitialSigma`, `MaxInactivityDays`, `InactivityThresholdDay`, `InactivitySigmaPerDay`, `MaxSigma`, `MinSigma`, `IndividualMUAlpha`, `KElo`, `MinRating`, `Tau`, `MinMatchesForAccuracyDelta`, `AccuracyHistorySize`, `DefaultOpponentSigma`, `CompositeWeights`, `GetLUSRChain`, `MetricKey*`) : tous encore utilisés hors tests. Les 15 constantes de calibrage sont réexportées par `internal/sync/skill_reexport.go` et ne sont consommées hors `skill` que par `cmd/diag_lusr_player/replay.go` (outil de diagnostic conservé) : AUCUN orphelin au sens de la règle 7 (consommateur vivant) ; leur réexport dans `sync` ne sert que cet outil, dette de façade à trancher avec lui. `GetLUSRChain`, `CompositeWeights`, `MetricKey*` : consommateurs de production multiples. Rien supprimé.
   - **Gates E2.10-11** : unitaire (`archlint`, `platform/duckdb/...`, `api/wire`, `analysis`, `api/handlers`, `sync/...`, `ops/...`) `ok` ; intégration `-p 1` : première passe rouge sur 30+ tests `sync`/`skill` dont les fixtures `match_registry` n'avaient pas `game_variant_id` (le repli title-agnostique émet toujours la clause : la colonne existe en prod, fixtures alignées : `performance_integration_test`, `lusrdb_helpers_test`, `recompute_after_art_rebuild_test`, `sync_pipeline_fixture_test`, `skill_rating_loaders_test`, `skill_rating_dryrun_test`), puis `sync/...` + `archlint` verts ; autres paquets verts (`g2-integ-a/b/c.log`).
+- 2026-10-15 (E3, exécutant Sonnet) : E3.1 à E3.4 faits, gate vert (sorties dans `$TEMP/e3-*.log`).
+  - **E3.1 / E3.2, tests rouges avant** (`platform/duckdb/temps_canonique_e3_test.go`, tag `integration`, 6 tests, tous rouges avant correction, verts après). Fixture : import à `start_time` NULL, `start_time` naïf divergent de `start_time_utc`, ligne hors fenêtre au temps canonique.
+    | test | rouge avant | vert après |
+    |---|---|---|
+    | `LoadAxisSamples` radar | `[9 3 2]` au lieu de `[1 2 3]` | `[1 2 3]` |
+    | `LoadAxisSamples` composante LUSR (`loadLUSRMatchIDsInWindow`) | `[0.9 0.3 0.2]` au lieu de `[0.1 0.2 0.3]` | ok |
+    | `ListRecentPvPMatchIDs` (limite 4 et 2) | `[mD mC mB]`, `[mC mB]` | `[mA mB mC mD]`, `[mC mD]` |
+    | `LoadEventsForMatch` ligne illisible | aucune erreur, ligne sautée | erreur remontée |
+    | `LoadAllCoefficients` ligne illisible | aucune erreur, ligne sautée | erreur remontée |
+    | kills synthétiques illisibles | journal vide | `WARN` avec `err=` |
+  - **Temps canonique** : `StartTimeCanonicalSQL` (délégué de `analysis.SQLStartTimeCanonical`) pour le filtre ET le tri de `LoadAxisSamples` et de `loadLUSRMatchIDsInWindow` (alias vide), et pour le filtre `IS NOT NULL` et le tri de `ListRecentPvPMatchIDs`. Les deux fichiers sortent de `rawOrderByStartTimeAllowlist` (archlint, plus aucun `ORDER BY x.start_time` brut) : l'allowlist rétrécit.
+  - **Erreurs, choix remontée vs log** (`engagement_score_repo_queries.go`) : REMONTÉE pour `LoadEventsForMatch`, `loadSyntheticKillEvents`, `LoadTeamXUIDs`, `LoadAllCoefficients`, `ListRecentPvPMatchIDs` (un `Scan` en échec ne doit pas produire une liste tronquée qui ressemble à un résultat : tous les appelants (`port.EngagementScoreRepo`, services engagement/timeseries) traitent déjà l'erreur de ces méthodes, qui retournent `error`). LOG `slog.WarnContext` puis dégradation pour deux sites best-effort dont la dégradation est documentée : kills synthétiques (`serr`, repli sur les médailles seules, l'erreur était ignorée) et effectifs d'équipe (`_ = ...Scan`, repli sur 0). Ajout, dans `loadLUSRMatchIDsInWindow`, du contrôle `sharedRows.Err()` manquant (même bloc, même cause : erreur de lecture avalée). Pas de compteur : aucun compteur existant sur ces chemins, le log suffit.
+  - **E3.3, preuve que `title_slug` est sans effet** : le handler le passait comme 3e argument à `SquadUsualContexts`, que `LazyPrestigeService` ignore (`_ string`) et remplace par `pdb.TitleSlug` (`wire/prestige_lazy_service_squad.go:173-178`) ; le web n'envoie jamais ce paramètre (`prestige.ts:478`, `prestige.paths.test.ts:145`). Retiré de `listMySquadsInput` ; le handler passe `""` (la méthode d'interface partagée avec le service non paresseux garde sa signature : hors périmètre). Contrat : `make openapi-gen` puis `make generate-types` ; diff = `title_slug` supprimé des paramètres de requête de `listMySquads` (`openapi.yaml` -5 lignes, `generated.ts` -1). Aucun appelant web à nettoyer (aucun ne l'envoyait).
+  - **E3.4** : entrée « [go/hygiène] » du backlog supprimée (4 lignes : 2 traitées, 2 retirées par D-6).
+  - **Gate** : `go test` sans tag puis `-tags=integration -p 1` sur `archlint`, `platform/duckdb`, `api/...` : tous `ok` (golden OpenAPI `TestOpenAPIYAMLIsUpToDate` inclus dans `internal/api`) ; `make check-types` sans diagnostic ; `make test-web` : 919 fichiers passés, 9598 tests.
+  - **E3 close.**

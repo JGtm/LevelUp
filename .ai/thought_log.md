@@ -117439,3 +117439,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 11 corrections (3 duckdb/wire, 6 sync, 2 ops), chacune avec test rouge puis vert sur halo_5 et halo_infinite (duel, totaux de médailles, médailles déjà obtenues, assistances, performance, sessions, engagement, LUSR v1 et ombre, dates de paliers, corpus démo). 66 dispenses datées. Mutation du garde vérifiée. `cmd/lusr_v2_phase0` supprimé. Gates sans tag et `integration -p 1` verts.
 
 **Conclusion / prochaine étape** : les dérivés Halo 5 déjà calculés Campagne comprise ne sont pas recalculés (à décider avec le user au déploiement). Suite : E3.
+
+## [2026-10-15] Backlog E3 : petites dettes Go (temps canonique, erreurs avalées, `title_slug` de `GET /squads`) — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : temps canonique par le fragment partagé (`StartTimeCanonicalSQL`) pour filtre et tri de `CampaignSampleProvider` et `ListRecentPvPMatchIDs` ; erreurs de `Scan` remontées quand l'appelant sait les traiter, `slog.WarnContext` avant dégradation sur les deux replis best-effort documentés ; `title_slug` retiré de `GET /squads` (sans effet : le titre vient du `PlayerDB`).
+
+**Résultats observés** : 6 tests rouges puis verts (temps divergents, import à `start_time` NULL, lignes illisibles, journal du repli) ; deux fichiers sortis de l'allowlist `rawOrderByStartTimeAllowlist` ; OpenAPI et `generated.ts` régénérés (un paramètre en moins) ; gate Go (sans tag et `integration`), `check-types` et `test-web` verts ; entrée du backlog supprimée.
+
+**Conclusion / prochaine étape** : E3 close ; E4 (vue match : lecture en échec distincte de pas de données).

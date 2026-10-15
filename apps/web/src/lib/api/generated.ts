@@ -21438,7 +21438,6 @@ export interface operations {
         parameters: {
             query?: {
                 user_id?: string;
-                title_slug?: string;
             };
             header?: never;
             path?: never;

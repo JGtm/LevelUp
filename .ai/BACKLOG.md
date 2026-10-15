@@ -99,24 +99,7 @@ son critère :
 **Travail** : étendre le critère (tables `killer_victim_pairs`, `medals_earned`) et les racines,
 puis trier chaque entrant, comme pour B4. **Effort : M.**
 
----
 
-### [go/hygiène] Petites dettes relevées par le lot backlog du 2026-09-26
-
-Noté le 2026-09-27 (DB-1/2/8/9/18/22/23/24, limite B2, revue ronde 2) ; réduit le 2026-10-14 (lots C et E
-des recommandations du registre : restore-csr, `outcome = 2`, `diag_exec`, `FanoutService`, fichier prestige
-de 525 L et test LUSR au temps réel traités). Reste, à la prochaine retouche du fichier :
-- `LoadAxisSamples` et `ListRecentPvPMatchIDs` lisent `start_time` brut (règle n°8) et avalent des
-  erreurs de `Scan` ;
-- aucune CLI ne migre une player DB désignée ;
-- `migration.SplitSQL` ignore les chaînes `'…'` et les commentaires `/* */` (limite écrite dans
-  son godoc) ;
-- le paramètre `title_slug` de `GET /squads` n'a plus d'effet (le titre vient du `PlayerDB`) : le
-  retirer change le contrat OpenAPI ;
-
-**Effort : XS à S chacun.**
-
----
 
 ### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
 
