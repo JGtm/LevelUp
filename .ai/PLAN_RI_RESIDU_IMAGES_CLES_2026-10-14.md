@@ -502,7 +502,7 @@ Une étape commence quand la précédente est close : items statués, gate pass�
 - [x] R3.2 Mesure → `$RES/r3.1` contre `$RES/r2` : I-ferm (baisses `ti=37` et `50247b26` chiffrées
       film par film), goldens, I-ancres (E-4), I-carte, I-equipes, I-d0. Chaque baisse adjugée sur
       pièces ; une baisse non adjugeable : ARRÊT, décision de l'utilisateur (retenir ou non).
-- [!] R3.3 Si R3.1 est retenue : réappliquer `consumeGenericRigidBodyTransforms` sous la garde
+- [x] R3.3 Si R3.1 est retenue : réappliquer `consumeGenericRigidBodyTransforms` sous la garde
       (`git revert 421f7c1cb`, D-21), mesurer → `$RES/r3.3` contre `$RES/r3.1`, même règle. Le contrôle
       d'orientation de `FUN_140501798` (D-21) reste hors périmètre sauf s'il explique une baisse.
 - Gate R3 : comme R1.5 contre `$RES/r2`.
@@ -683,3 +683,16 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   `origin/feat/v75` a avancé (lot « équipement porté », schéma 95, 78 fichiers sous `film/`, dont
   `grammar.Rev` et `killsource.Rev`) : NON fusionné, signalé au superviseur (§1.2) ; la fusion se fera
   avant R5. R3.1 et R3.2 CLOSES ; suite : R3.3.
+- 2026-10-15 : R3.3 FAITE et R3 CLOSE. `FUN_142f036f0` et `FUN_140c1e79c` relus (`$RES/g/r3/`) : masque
+  R(8), puis par bit R(1), R(19) si 0, R(8), et `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) sous la garde.
+  Porté par `sousLaGardeSinonException` (cas de site sous la portée ; mutation rouge). Mesure contre
+  `$RES/r3a` (`$RES/r3.3`) : I-ferm IDENTIQUE à l'octet (`ti=38` 113 049 / 119 148 inchangé), ancres
+  (colonnes 1-9), statistiques d'élection, équipes, I-d0 (admis 6 507), carte delta (20, 8, MPP),
+  killsource (19 témoins, à l'octet) et `replay-equiv` (20 films, digests identiques) INCHANGÉS ; goldens
+  de fermeture inchangés. Seule la preuve d'image-clé jouée dans le contexte invariant (sans carte) varie,
+  sans changer aucune élection : prouvés `11de8353` +31, `e5adf7b2` +5, `1c4c63c2` −54 — ces 54 records
+  `ti=38` sont fermés à l'identique dans le contexte de cuisson avant et après ; la différence vient de la
+  lecture décalée du contexte sans carte (adjugée : ni élection, ni fermeture, ni document ne change). Le
+  contrôle d'orientation `FUN_140501798` (sans bit) reste non porté (D-21 du plan clos). Aucune baisse.
+  Tests de `film/...`, `replaybuild`, `killcollector`, archlint, vet avec et sans `research`,
+  golangci-lint : verts. Suite : R4.

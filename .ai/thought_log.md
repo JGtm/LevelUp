@@ -117259,3 +117259,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : contre R2 close, `ti=38` 31 324 → 113 049, `ti=42` 6 813 → 21 449, `ti=43` 11 324 → 37 959 fermés ; ancres, équipes, carte delta et bipèdes inchangés (LK.5.4.1 les changeait) ; cinq lignes en baisse : `ti=37` sur `084a804d` (−2), `1c4c63c2` (−1), `a349fea8` (−18), `50247b26` `ti=38` (452 → 159, fermetures de hasard selon le témoin) et `ti=42` (134 → 16).
 
 **Conclusion / prochaine étape** : l'utilisateur choisit entre retenir la lecture du jeu malgré les baisses, la laisser rejetée, ou la retenir hors des formats 20-21 après instruction des quatre records `ti=37` récents.
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R3 close : world-object i0 et rigid-body i18 sous la portée — En cours (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R3 close (décision de l'utilisateur U-7 « Option a » pour i0), commits locaux, rien poussé ; R4 suit.
+
+**Décision technique principale** : world-object i0 (`FUN_14076e29c`) et generic-rigid-body i18 (`FUN_142f036f0`) lus comme le jeu sous la garde de pleine précision, par le geste unique `sousLaGardeSinonException`.
+
+**Résultats observés** : i0 — `ti=38` 31 324 → 113 049, `ti=42` 6 813 → 21 449, `ti=43` 11 324 → 37 959 fermés (28 films), cinq baisses acceptées par U-7 et consignées au plan, ancres, carte et documents publiés inchangés ; i18 — aucun effet mesurable (fermetures, ancres, carte, killsource, documents identiques).
+
+**Conclusion / prochaine étape** : R4, sens de la valeur 2 de l'emplacement désiré et affichage web.
