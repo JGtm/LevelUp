@@ -117269,3 +117269,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : i0 — `ti=38` 31 324 → 113 049, `ti=42` 6 813 → 21 449, `ti=43` 11 324 → 37 959 fermés (28 films), cinq baisses acceptées par U-7 et consignées au plan, ancres, carte et documents publiés inchangés ; i18 — aucun effet mesurable (fermetures, ancres, carte, killsource, documents identiques).
 
 **Conclusion / prochaine étape** : R4, sens de la valeur 2 de l'emplacement désiré et affichage web.
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R4 close : la valeur 2 de l'emplacement désiré — En cours (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R1 à R4 closes, commits locaux, rien poussé ; R5 (révisions, gates complets, revue, fusion) reste.
+
+**Décision technique principale** : `d` (param[1] d'i42) est l'emplacement désiré ; l'emplacement 2 porte l'objet tenu hors de la rangée d'armes. Le web garde son rendu (aucune arme de la rangée en main) mais sa documentation et sa règle sont corrigées (D ≥ 2, plus de « dégainée ? » sur D = 3).
+
+**Résultats observés** : 28 films — à la première image-clé, 279 records sur 283 à D = 2 ont les mains nues (`00007CA9`) avec leurs deux armes déjà en place ; la valeur disparaît dès la prise d'arme (41 sur 361 à l'image-clé suivante) ; en cours de partie, D = 2 désigne surtout un objet d'objectif (bobine, drapeau, bombe) ; aucun record admis n'a D = 2 (règle T1). vitest, typecheck, lint verts.
+
+**Conclusion / prochaine étape** : R5 — fusion de `origin/feat/v75` (lot « équipement porté », 78 fichiers du film), puis montée des révisions et gates complets.

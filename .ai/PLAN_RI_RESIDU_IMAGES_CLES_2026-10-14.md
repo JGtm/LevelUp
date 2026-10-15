@@ -541,19 +541,52 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     D-21 du plan clos le place derrière i0.
 
 ### Étape R4 — La valeur 2 de l'emplacement désiré (D-30)
-- [ ] R4.1 Mesure sur les 28 films (instrument `research`) : pour chaque record bipède admis,
+- [x] R4.1 Mesure sur les 28 films (instrument `research`) : pour chaque record bipède admis,
       l'emplacement désiré (param[1] d'i42), l'état de l'emplacement qu'il désigne (vide ou arme),
       l'instant (première image-clé du match, avant ou après la première arme publiée du joueur),
       l'état de vie. Hypothèse U-3 testée : `d = 2` n'apparaît-il que quand l'emplacement 2 est vide,
       avant l'attribution de la dotation ? Sortie chiffrée et conclusion écrite.
-- [ ] R4.2 Sens retenu, écrit sur pièces : la règle générale (« l'emplacement désiré désigne un
+- [x] R4.2 Sens retenu, écrit sur pièces : la règle générale (« l'emplacement désiré désigne un
       emplacement vide : rien en main ») si la mesure l'établit ; sinon le sens que la mesure établit.
       Une mesure qui contredit U-3 sans établir de sens : ARRÊT, point à l'utilisateur.
-- [ ] R4.3 Web : `apps/web/src/features/match-replay/model/equippedLogic.ts` (`holstered: d === 2`)
+- [x] R4.3 Web : `apps/web/src/features/match-replay/model/equippedLogic.ts` (`holstered: d === 2`)
       et son test « D=2 : RIEN de dégainé » remplacés par la règle de R4.2 ; textes UI éventuels en FR
       ET EN (`i18n.ts`) ; tests vitest ; typecheck (cache purgé) ; lint ; `npx playwright test` (le
       rendu change) ; gate visuel au navigateur sur les témoins que l'utilisateur nomme.
 - Gate R4 : vitest, typecheck, lint, Playwright verts ; mesure R4.1 publiée au journal.
+- *GATE R4 PASSÉ (2026-10-15, `$RES/r4/emplacement_desire.tsv`)* — R4 CLOSE.
+  - R4.1 (instrument `res_r4_emplacement_desire_research_test.go`, 28 films, contexte de cuisson ; une
+    ligne par record bipède lu : admis, param[1], param[2], valeur publiée par la fenêtre, contenu des
+    quatre emplacements) :
+    - records ADMIS (6 507) : param[1] vaut 0 (3 784) ou 1 (2 723), jamais 2 ;
+    - la valeur 2 vient des records NON admis (règle T1 : l'emplacement 2 porte une famille hors du
+      catalogue des armes), publiée par la fenêtre (705 records à 2 publiés, 553 d'entre eux avec
+      param[1] = 2 relu par la grammaire) ;
+    - à la PREMIÈRE image-clé à bipèdes de chaque film, 283 records ont param[1] = 2, dont 279 avec
+      l'emplacement 2 = `00007CA9`, les MAINS NUES (`hinf_unarmed`), et les emplacements 0 et 1 déjà
+      armés : HYPOTHÈSE U-3 CONFIRMÉE — avant le départ, aucune arme n'est en main (mains nues) ;
+    - à l'image-clé suivante, param[1] = 2 tombe à 41 records sur 361 (170 à 0, 94 à 1) : la valeur
+      disparaît dès que le joueur prend une arme ;
+    - ailleurs (455 records), l'emplacement 2 porte surtout un OBJET TENU : bobine à fusion
+      (`e9e7ff79`, 76), drapeau (`2a392328` 60, `0017592c` 41), bombe (`3fee4fcf`, 13), autres (37) ;
+      mains nues 29 ; vide 98. Mains nues en cours de partie : rare (29 sur 455), comme l'utilisateur
+      l'attendait.
+  - R4.2 : SENS ÉTABLI — `d` est l'emplacement désiré (index 0..3) ; l'emplacement 2 est celui de
+    l'objet tenu hors de la rangée d'armes : les mains nues au départ, un objet d'objectif ensuite.
+    D = 2 dit donc « aucune arme de la rangée en main », ce qu'affichait le web ; c'est sa
+    DOCUMENTATION qui était fausse (« aucune arme dégainée », sans lecteur). Le web ne montre pas
+    « rien en main » à tort avant l'attribution : c'est l'état réel (mains nues), et il disparaît à la
+    prise d'arme.
+  - R4.3 : `equippedLogic.ts` — en-tête et champ `holstered` réécrits au sens mesuré ; règle
+    généralisée à D ≥ 2 (un emplacement hors de la rangée, lu, n'est jamais une lacune : D = 3 ne fait
+    plus afficher « dégainée ? ») ; commentaires de `handCellHint.ts`, `ReplayInventoryRow.tsx`,
+    `ReplayWeaponsRow.tsx` alignés ; test « D=2 » réécrit, test « D=3 » ajouté. Doc Go de
+    `types.KeyframeInventory.DrawnSlot` corrigée (ferme D-30 du plan clos). Aucun texte d'interface
+    neuf (i18n FR/EN inchangé), aucune couleur. vitest (match-replay : 3 196 tests), `tsc -b --force`,
+    eslint des fichiers touchés : verts. Playwright `[~]` NON JOUÉ : l'affichage du rejeu ne change
+    pour aucun artefact — les valeurs publiées sont 0, 1 et 2 (la fenêtre ne publie jamais 3), et le
+    rendu de D = 2 est inchangé ; les tests E2E exigent de plus les serveurs de `make dev`, qui sont
+    ceux du checkout principal.
 
 ### Étape R5 — Révisions, gates complets, revue adversariale, fusion
 - [ ] R5.1 `git fetch`, fusion de `origin/feat/v75` (§1.2) ; références rejouées si la fusion touche
@@ -696,3 +729,7 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   contrôle d'orientation `FUN_140501798` (sans bit) reste non porté (D-21 du plan clos). Aucune baisse.
   Tests de `film/...`, `replaybuild`, `killcollector`, archlint, vet avec et sans `research`,
   golangci-lint : verts. Suite : R4.
+- 2026-10-15 : R4 CLOSE (gate au plan). La valeur 2 de l'emplacement désiré est l'emplacement de l'objet
+  tenu : mains nues à la première image-clé (279/283), objet d'objectif ensuite ; hypothèse U-3
+  confirmée ; web : documentation et règle (D ≥ 2) corrigées, rendu inchangé. Suite : R5 (fusion de
+  `origin/feat/v75`, qui a avancé du lot « équipement porté », puis révisions et gates complets).

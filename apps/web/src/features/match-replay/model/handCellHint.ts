@@ -17,7 +17,8 @@
  *     le « 1/0 » parasite du film ; à chargeur : `mag / res` ; emplacement jamais écrit :
  *     « pleines » ;
  *   - sélecteur NON LU (et lecture non vide) : « dégainée ? » — une lacune dite ;
- *   - armes rangées (D=2) : RIEN — aucune arme en main, aucune munition à décrire ;
+ *   - emplacement hors de la rangée (D ≥ 2 : mains nues, objet tenu) : RIEN — aucune arme de la
+ *     rangée en main, aucune munition à décrire ;
  *   - lecture VIDE : le libellé de l'état, puis `inventoryEmptyHint` (l'âge de la lecture vide,
  *     et celui de l'équipement substitué quand il y en a un).
  *
@@ -41,7 +42,7 @@ export function isChargeWeapon(doc: ReplayDocumentReady, id: string | undefined)
   return CHARGE_FX.has(familyOf(id ? doc.weaponLabels?.[id]?.fx : undefined))
 }
 
-/** Ce que la main a à dire : ses munitions, ou la lacune du sélecteur — ou rien (D=2). */
+/** Ce que la main a à dire : ses munitions, ou la lacune du sélecteur — ou rien (D ≥ 2). */
 export type HandAmmo = AmmoHint | { kind: 'unread' }
 
 /** Le pour-cent RESTANT d'une charge : le film compte le CONSOMMÉ. */
@@ -51,8 +52,8 @@ function chargeLeftPct(consumed: number): number {
 
 /**
  * ammoOfHand — les munitions de l'arme EN MAIN, dans les mêmes branches que `AmmoCell` : null
- * sans compteurs lus, ou quand les armes sont rangées (D=2) ; `unread` quand le sélecteur n'a
- * pas été lu sur une lecture pleine.
+ * sans compteurs lus, ou quand le sélecteur désigne un emplacement hors de la rangée (D ≥ 2) ;
+ * `unread` quand le sélecteur n'a pas été lu sur une lecture pleine.
  */
 export function ammoOfHand(
   doc: ReplayDocumentReady,
