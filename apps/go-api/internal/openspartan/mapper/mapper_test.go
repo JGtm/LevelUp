@@ -120,9 +120,6 @@ func TestMapMatch_FullCycle(t *testing.T) {
 	if mm.Registry.DurationSeconds != 719 { // PT11M59.25S
 		t.Errorf("DurationSeconds: want 719, got %d", mm.Registry.DurationSeconds)
 	}
-	if mm.Registry.PlayerCount != 2 {
-		t.Errorf("PlayerCount: want 2 humans, got %d", mm.Registry.PlayerCount)
-	}
 	if mm.Registry.FirstSyncBy != "test" {
 		t.Errorf("FirstSyncBy: want 'test', got %q", mm.Registry.FirstSyncBy)
 	}

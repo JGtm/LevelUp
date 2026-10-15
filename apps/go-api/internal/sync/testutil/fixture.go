@@ -64,7 +64,6 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			backfill_completed INTEGER DEFAULT 0,
 			events_loaded BOOLEAN DEFAULT FALSE,
 			medals_loaded BOOLEAN DEFAULT FALSE,
-			player_count SMALLINT DEFAULT 0,
 			season_id VARCHAR
 		)`,
 		`CREATE TABLE match_participants (

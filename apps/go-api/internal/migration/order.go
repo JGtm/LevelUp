@@ -289,7 +289,6 @@ var canonicalOrder = []string{
 	"shared_create_kill_openings",             // shared
 	"shared_create_match_commendations",       // shared (commendations natives par match, ref inter-titres, AXE B)
 	"shared_match_commendations_add_progress", // shared (total à vie absolu au match — totaux commendations)
-	"add_player_count_to_match_registry",      // shared (roster API attendu — oracle d'intégrité, fix #10)
 	// Répare une DÉRIVE DE SCHÉMA, pas une évolution : la DDL disait INTEGER, les bases
 	// réelles portaient SMALLINT, et tout match à plus de 32 767 points d'équipe (Baptême
 	// du feu) était rejeté à l'INSERT — perdu pour TOUS les joueurs. Position : après tout

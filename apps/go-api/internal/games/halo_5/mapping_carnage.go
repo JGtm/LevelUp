@@ -54,7 +54,7 @@ func h5GameModeSegment(gameMode int) string {
 // loggé (WARN). Historiquement le drop était SILENCIEUX → ~5225 player-rows perdues
 // sur 84% des matchs 4v4 (adversaires matchmaking hors graphe social PeopleHub). On
 // ne perd plus muettement : la perte est traçable (compteur CaptureStats.RosterDropped
-// + oracle player_count vs roster persisté) et un résolveur universel (profil Xbox)
+// + récapitulatif WARN par match) et un résolveur universel (profil Xbox)
 // vise à la combler en amont.
 func mapCarnageParticipants(ctx context.Context, matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
 	if carnage == nil || len(carnage.PlayerStats) == 0 {

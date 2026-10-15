@@ -106,8 +106,7 @@ func seedMatchParticipantsForRebuild(t *testing.T, db *sql.DB) {
 			team_0_score INTEGER,
 			team_1_score INTEGER,
 			team_0_ps_score INTEGER,
-			team_1_ps_score INTEGER,
-			player_count INTEGER
+			team_1_ps_score INTEGER
 		);
 	`); err != nil {
 		t.Fatalf("seed schema: %v", err)

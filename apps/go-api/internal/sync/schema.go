@@ -209,7 +209,6 @@ CREATE TABLE IF NOT EXISTS match_registry (
     first_sync_by             VARCHAR,
     first_sync_at             TIMESTAMP,
     last_updated_at           TIMESTAMP,
-    player_count              SMALLINT DEFAULT 0,
     created_at                TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     updated_at                TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     season_id                 VARCHAR

@@ -329,7 +329,7 @@ func loadKillGraph(ctx context.Context, shared *sql.DB, matchID string) (
 // commitMatch insère les droppés reconstruits dans match_participants + leurs
 // alias, en une TRANSACTION par match (BEGIN→INSERT×N→COMMIT). INSERT-only
 // strict, garde NOT EXISTS sur (match_id, xuid) → ART-safe (jamais UPDATE/DELETE
-// indexé). Ne touche PAS match_registry (UPDATE player_count = vecteur ART).
+// indexé). Ne touche PAS match_registry (un UPDATE y est un vecteur ART).
 func commitMatch(ctx context.Context, shared *sql.DB, res reconstruction) error {
 	tx, err := shared.BeginTx(ctx, nil)
 	if err != nil {

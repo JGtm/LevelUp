@@ -38,8 +38,7 @@ CREATE TABLE match_registry (
 	team_0_score SMALLINT,
 	team_1_score SMALLINT,
 	team_0_ps_score INTEGER,
-	team_1_ps_score INTEGER,
-	player_count SMALLINT DEFAULT 0
+	team_1_ps_score INTEGER
 )`
 
 func typeColonne(t *testing.T, db *sql.DB, table, colonne string) string {

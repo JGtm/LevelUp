@@ -272,7 +272,6 @@ func ApplyMvPlayerMatchesView(db *sql.DB) error {
 			mr.team_1_score,
 			mr.team_0_ps_score,
 			mr.team_1_ps_score,
-			mr.player_count,
 			mp.xuid,
 			mp.gamertag,
 			mp.team_id,

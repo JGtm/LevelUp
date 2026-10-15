@@ -117,13 +117,13 @@ func insertMatchRegistry(ctx context.Context, db *sql.DB, m synthMatch) error {
 			 playlist_id, playlist_name, playlist_name_fr,
 			 map_id, map_name, map_name_fr, pair_id, pair_name, pair_name_fr,
 			 game_variant_name, mode_category, is_ranked, duration_seconds,
-			 team_0_score, team_1_score, player_count, events_loaded)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+			 team_0_score, team_1_score, events_loaded)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
 		m.matchID, m.start, m.end, m.start, m.end,
 		m.pl.id, m.pl.en, m.pl.fr,
 		"map-"+m.m.en, m.m.en, m.m.fr, "pair-"+m.mode.en, pair, pairFR,
 		m.mode.en, m.mode.en, m.pl.ranked, int(m.end.Sub(m.start).Seconds()),
-		m.team0Score, m.team1Score, len(buildMatchParticipants(m)))
+		m.team0Score, m.team1Score)
 	return err
 }
 

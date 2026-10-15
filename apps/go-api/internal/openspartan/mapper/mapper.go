@@ -38,7 +38,6 @@ func MapMatch(pm *openspartan.ParsedMatch, opts MapOptions) (MappedMatch, error)
 	if err != nil {
 		return MappedMatch{}, fmt.Errorf("map medals %s: %w", pm.MatchID, err)
 	}
-	reg.PlayerCount = int16(len(parts))
 	return MappedMatch{Registry: reg, Participants: parts, Medals: medals}, nil
 }
 

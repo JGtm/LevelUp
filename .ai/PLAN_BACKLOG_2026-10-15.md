@@ -219,7 +219,7 @@ Décisions fermes :
 
 - [x] E5.2 V-1 côté code : DDL `sync/schema.go`, fixtures, champ et ligne du mapper OpenSpartan,
   tests ; grep final à 0 hors migration de retrait et archives.
-- [ ] E5.3 V-2 côté code : champ `domain.MatchRegistryRow.PlayerCount`, écrivain H5
+- [x] E5.3 V-2 côté code : champ `domain.MatchRegistryRow.PlayerCount`, écrivain H5
   (`ingest/collect.go`, `capture.go`), seed démo et `persist/demo_seed_columns.go`, étape de
   migration d'ajout (retirée de `order.go` seulement si le mécanisme de migration le permet sans
   casser l'historique ; sinon conservée et neutralisée par l'étape de retrait, justifié), DDL,
@@ -744,3 +744,18 @@ diff E5 (lot persist/sync).
   de `mapper_test.go` (garde `EventsLoaded`/`MedalsLoaded`). La DDL de migration `create_base_shared_schema` ne la portait pas. Grep Go = 0 ; hors Go : seulement
   `docs/archive`, le journal et deux TSV de recherche archivés (`.ai/V7.5/replay2d/registre_film/oracle_lotA*.tsv`, en-têtes d'export). Colonne physique : E5.5.
   `go vet ./internal/openspartan/...`, `go vet -tags=integration ./internal/sync/testutil/`, `go test -count=1 ./internal/openspartan/...` verts. **E5.2 STATUÉ `[x]`.**
+- 2026-10-15 (E5.3, exécutant) : `player_count` retirée du code. Champ `domain.MatchRegistryRow.PlayerCount` ; écrivain H5 (`captureParticipants` ne rend
+  plus le compte, paramètre `playerCount` de `ingest.CollectMatchBatch` retiré, test) ; INSERT `persist/shared_persister.go` et contrat
+  `persist/demo_seed_columns.go` ; seeder démo `ops/seed_demo_synthetic_shared.go` ; champ et affectation du mapper OpenSpartan (sa valeur mourait déjà à la
+  recopie) ; DDL de base `create_base_shared_schema` et DDL de secours `sync/schema.go` ; vue `mv_player_matches` (`migration/steps_shared.go`, `v_match_full`
+  est un `SELECT mr.*`) ; colonne TSV `joueurs_max` de `cmd/mapfond-inventaire` ; `cmd/diag_expected_assists` corrèle désormais avec le roster RÉEL
+  (`COUNT(*)` de `match_participants` par match). **Étape d'ajout `add_player_count_to_match_registry` SUPPRIMÉE** (registre HI + `canonicalOrder`) : le
+  mécanisme le permet sans casser l'historique (précédent `shared_objective_score_v1`, créateur supprimé ; la ligne du ledger des bases existantes reste
+  inerte, `runSteps` ne parcourt que les steps enregistrés ; `TestCanonicalCoversGlobalAndTitle` vert). Fixtures de test réalignées (5 DDL), entrées
+  `player_count` retirées du gel `archlint/match_registry_ddl_types_test.go` (le gel rétrécit). Commentaires faux corrigés (`halo_5/mapping_carnage.go`,
+  `cmd/h5-roster-topup`). Lecteur de snapshot : **rouge puis vert** — avec l'ancienne vue, un cut neuf (sans la colonne) échouait
+  (`Binder Error: Table "mr" does not have a column named "player_count"`, `TestOpenSnapshotShared_Fidelity_integration`) ; nouveau test
+  `TestOpenSnapshotShared_CutAncienAvecColonnesRetirees_integration` : un cut ANCIEN qui porte encore `player_count` et `participants_loaded` est servi
+  (vues lisibles, `mv_player_matches` sans la colonne). Grep Go restant : ce test (voulu), l'alias de sortie retiré, et le constat daté du gel archlint
+  (mesure du 2026-09-16, laissé tel quel). `go vet` (avec et sans tag) + `go test` persist, halo_5, halo_infinite/migrations, migration, openspartan, archlint,
+  domain, ops (avec et sans tag), sync/snapshot verts. **E5.3 STATUÉ `[x]`.**

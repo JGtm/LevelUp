@@ -165,7 +165,6 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			team_0_rounds_won, team_1_rounds_won, rounds_total,
 			match_intensity, backfill_completed, events_loaded,
 			first_sync_by, first_sync_at, last_updated_at,
-			player_count,
 			created_at, updated_at
 		) VALUES (
 			?, ?, ?, ?, ?,
@@ -180,7 +179,6 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			?, ?, ?,
 			?, ?, ?,
 			?, ?, ?,
-			?,
 			?, ?
 		)`,
 		row.MatchID, row.StartTime, row.EndTime, startUTC, endUTC,
@@ -195,7 +193,6 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 		row.Team0RoundsWon, row.Team1RoundsWon, row.RoundsTotal,
 		row.MatchIntensity, row.BackfillCompleted, eventsLoaded,
 		row.FirstSyncBy, now, now,
-		row.PlayerCount,
 		now, now,
 	)
 	if err != nil {
