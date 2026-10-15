@@ -74,6 +74,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 		CREATE TABLE match_registry (
 			match_id      VARCHAR PRIMARY KEY,
 			start_time    TIMESTAMPTZ,
+			start_time_utc TIMESTAMPTZ,
 			is_ranked     BOOLEAN DEFAULT FALSE,
 			is_firefight  BOOLEAN DEFAULT FALSE,
 			playlist_id VARCHAR,
