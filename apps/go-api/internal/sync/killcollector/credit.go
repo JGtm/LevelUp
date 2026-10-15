@@ -66,7 +66,8 @@ import (
 // Elle est du meme espace que `killsource.Rev` (`decfilm.Rev` ; la colonne `decoder_rev` est commune) mais
 // designe un AUTRE producteur : c est elle qui permettra de rejouer les matchs credit-seul sans
 // toucher aux matchs decodes depuis un film.
-const CreditDecoderRev = "highlight-credit-2026-08-01"
+// Elle monte quand les couples du credit changent (`analysis.ComputeKillerVictimPairs`).
+const CreditDecoderRev = "highlight-credit-2026-10-15"
 
 // Portee des lignes credit-seul : `killscope.ReadPathCreditBackfill` / `killscope.OriginCreditOnly`.
 //
