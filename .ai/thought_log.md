@@ -1,3 +1,13 @@
+## [2026-10-15] Dépendances d'octobre : Go 1.26.9, modules Go (rejeu #88), x/image 0.45.0, lockfile npm — Complété (branche `chore/deps-2026-10`)
+
+**Statut** : Complété ; poussé sur `chore/deps-2026-10`, non fusionné.
+
+**Décision technique principale** : `go` 1.26.5 -> 1.26.9 (la CI lit le toolchain par `go-version-file`) ; x/crypto 0.57.0, x/sync 0.23.0, x/sys 0.48.0, x/time 0.16.0, modernc sqlite 1.59.0 rejoués (PR #88) ; x/image 0.45.0 ajouté (GO-2026-6222 atteinte via `mapdecoupe.ChargeMasque`) ; lockfile npm seul.
+
+**Résultats observés** : govulncheck 19 atteintes avant, 0 après. Gate : go vet, go test ./... (201 paquets), integration -p 1, tsc, vitest (9598 tests), knip-ratchet, golangci-lint 0 issue. Aucune montée retirée.
+
+**Conclusion / prochaine étape** : CI de la branche à surveiller ; fusion à la décision de l'utilisateur.
+
 ## [2026-10-09] Ecarts de fin multiples de -108 bits (R-VEH-4) : slots liberes de la table d image-cle — Complete (recherche, branche `feat/ri-ecart-108`, non commitee)
 
 **Statut** : Complete (recherche ; aucun code de production ; deux instruments `research` ajoutes, non commites).
