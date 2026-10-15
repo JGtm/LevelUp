@@ -129,6 +129,8 @@ export function useReplayDrawer(o: ReplayDrawerOptions): ReplayDrawer {
         onToggle: s.toggleGroundWeapons,
         showSpecialOnly: s.showGroundWeaponsSpecialOnly,
         onToggleSpecialOnly: s.toggleGroundWeaponsSpecialOnly,
+        showStarting: s.showGroundWeaponsStarting,
+        onToggleStarting: s.toggleGroundWeaponsStarting,
       },
       modeObjectives: {
         available: available.modeObjectives,

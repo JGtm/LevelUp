@@ -47,6 +47,8 @@ function makeGroundWeapons(
     onToggle: vi.fn(),
     showSpecialOnly: false,
     onToggleSpecialOnly: vi.fn(),
+    showStarting: false,
+    onToggleStarting: vi.fn(),
     ...over,
   }
 }
