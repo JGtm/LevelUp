@@ -201,6 +201,7 @@ diff E5 (lot persist/sync).
 - E2 : `sync.RecomputeAfterARTRebuild` (`recompute_after_art_rebuild.go:46`) n'a aucun appelant de production (seulement ses tests) : code mort, non traité.
 - E2 : les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des assistances, engagement, dates de paliers) l'ont été Campagne comprise ; les chargeurs corrigés ne les recalculent pas d'eux-mêmes. À décider avec le user au déploiement ; rien n'est lancé.
 - E2 : le commentaire de `games/halo_5/ingest/registry.go:46` (« engagement `loadMatchesForEngagement` exclut ces matchs » faute de `end_time`) décrivait un effet de bord, pas une exclusion de la Campagne : sans objet depuis la correction. Non traité.
+- E3 (superviseur) : `SquadUsualContexts(ctx, roster, titleSlug)` garde un argument `titleSlug` ignoré par l'implémentation (`wire/prestige_lazy_service_squad.go:173-178`) ; depuis E3.3 le handler passe `""`. Paramètre mort de l'interface, à retirer (règle n°7). Non traité.
 
 ## 4. Journal
 
