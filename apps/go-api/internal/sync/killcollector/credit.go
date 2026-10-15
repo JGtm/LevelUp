@@ -66,8 +66,12 @@ import (
 // Elle est du meme espace que `killsource.Rev` (`decfilm.Rev` ; la colonne `decoder_rev` est commune) mais
 // designe un AUTRE producteur : c est elle qui permettra de rejouer les matchs credit-seul sans
 // toucher aux matchs decodes depuis un film.
-// Elle monte quand les couples du credit changent (`analysis.ComputeKillerVictimPairs`).
-const CreditDecoderRev = "highlight-credit-2026-10-15"
+// Elle monte quand les couples du credit changent (`analysis.ComputeKillerVictimPairs`) ou leur fusion
+// avec le film (`persist.MergeCreditAndFilm`). `highlight-credit-2026-10-16` (integration groupee
+// `feat/integ-film`) : lots « ks-a » (fusion : pas d autre mort sans preuve de l API) et « ks-d »
+// (appariement par ecart croissant, mort d humain adossee a un evenement death) ; « ks-d » avait pris
+// `highlight-credit-2026-10-15` sur sa branche.
+const CreditDecoderRev = "highlight-credit-2026-10-16"
 
 // Portee des lignes credit-seul : `killscope.ReadPathCreditBackfill` / `killscope.OriginCreditOnly`.
 //

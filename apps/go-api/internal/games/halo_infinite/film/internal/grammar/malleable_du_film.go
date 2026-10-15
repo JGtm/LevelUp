@@ -18,7 +18,7 @@ package grammar
 //
 // Entre un film 1.8 et un film 1.9, le registre de `chunk_00` est identique a l octet, sauf la
 // version majeure (0x25 contre 0x26) : c est la donnee que le film declare et qui separe les deux
-// grammaires (rapport `.ai/RAPPORT_BIT_BUILDS_18_2026-10-09.md`, §2). L executable courant ne lit
+// grammaires (rapport `.ai/V7.5/RAPPORT_BIT_BUILDS_18_2026-10-09.md`, §2). L executable courant ne lit
 // pas ce flux : son seul test de version majeure (`FUN_1428e219c`, `CMP dword ptr [RDX],0x29` a
 // 1428e21a6) ne lance la lecture du film que pour la majeure 0x29 ; sinon il appelle
 // `FUN_142988e98`, qui remet a zero l etat du lecteur de film (`+0x1488`) sans lire un octet du

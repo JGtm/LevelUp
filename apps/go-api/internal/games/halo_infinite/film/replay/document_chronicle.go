@@ -3209,10 +3209,10 @@ package replay
 //	                colline active par frame, aucune periode fusionnee avec la suivante (4 films sur
 //	                11 en avaient), 0 repli sans garde ; les trois films classes de Lattice rendent
 //	                la meme sequence de collines. Temoin `0d9a9af9` : 3e periode sur la colline 4
-//	                (avant : 2, celle de la 4e). Detail : `.ai/PLAN_KOTH_REJEU_2026-10-09.md`.
+//	                (avant : 2, celle de la 4e). Detail : `.ai/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`.
 //
 // v93 (2026-10-09, representation intermediaire 2.7.d1, plan
-// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
+// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
 // BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
 // ECRITE v91 sur la branche `feat/ri-lk-images-cles`, RENUMEROTEE v92 a la fusion de `feat/v75`
 // `f516d4bf4` (le lot `feat/aj-needler` a pris 91), puis v93 a celle de `46f203b09` (le lot
@@ -3254,7 +3254,7 @@ package replay
 //	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
 //	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.
 //
-// v94 (2026-10-14, lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, `grammar-2026-10-14`) : LES
+// v94 (2026-10-14, lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, `grammar-2026-10-14`) : LES
 // POUSSEES DU REPULSEUR SONT LUES DANS LE FILM.
 //
 //	`knockbacks[]`  neuf : {t, slot, by, vx, vy, vz} — le joueur pousse, l unite qui pousse, la
@@ -3280,7 +3280,7 @@ package replay
 //	                piste accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
 //	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.
 //
-// v95 (2026-10-14, lot « équipement porté » du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`,
+// v95 (2026-10-14, lot « équipement porté » du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`,
 // `grammar-2026-10-14.3`) : L'ÉQUIPEMENT PORTÉ EST LU, ET LA FAILLE SE POSE.
 //
 //	`carriedEquipment[]`  neuf : {slot, r, t0, t1?, energy[{t, e, n?, tag?}], uses[]} — l'objet ti=37
@@ -3330,7 +3330,7 @@ package replay
 //	                de 11,35 à 12,24 s, 6 de 1,5 à 4,6 s (champ détruit), une de 16,95 s. Capteur 834,
 //	                écran 241, traqueur 49 objets engendrés, tous ti=41 nés dans le paquet.
 //
-// v97 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
+// v97 (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
 // `grammar-2026-10-15.2`) : LES IMAGES-CLÉS SE LISENT COMME UNE TABLE D'ENTRÉES. Aucune forme ne change :
 // des valeurs, sur des films où la lecture rend désormais ce qu'elle perdait.
 //
@@ -3352,9 +3352,13 @@ package replay
 //	                artefacts identiques hors les valeurs de révision sur 18 films ; `60ae07c4` et
 //	                `64e8adfa` comme ci-dessus ; étape `objectives` identique sur les 20.
 //
-// v98 (2026-10-15, lot « faille à la pose », `grammar-2026-10-15.3`, question du user : « le
-// mécanisme de pose repose sur l'événement de pose, pourquoi dépendrait-il de la téléportation ? ») :
-// LA FAILLE EST SITUÉE À SA POSE.
+// v98 (2026-10-16, intégration groupée des lots film du 15/10, branche `feat/integ-film` : « faille à
+// la pose », « ks-a » via « ks-d », K-B, K-C ; seule « faille à la pose » change la forme, les autres
+// changent le contenu ; UNE montée). Sous-entrée par lot.
+//
+// LOT « faille à la pose » (`grammar-2026-10-15.3` sur sa branche, question du user : « le mécanisme
+// de pose repose sur l'événement de pose, pourquoi dépendrait-il de la téléportation ? ») : LA FAILLE
+// EST SITUÉE À SA POSE.
 //
 //	`riftPoses[]`   {x, y, z} viennent de l'objet que le paquet de la pose CRÉE (la faille, ti=38,
 //	                position i0 à la création) ; `src` neuf : « objet », ou « porteur » pour le repli
@@ -3363,13 +3367,26 @@ package replay
 //	`coverage.carriedEquipment`  `positioned` est remplacé par `positionedByObject`,
 //	                `positionedByCarrier` et `unpositioned`.
 //
-//	CE QUI MONTE    `SchemaVersion` 97 -> 98 ; `grammar.Rev` -> `grammar-2026-10-15.3` (la création
-//	AVEC ELLE       des objets engendrés est lue) ; `SchemaDesFaits` 15 -> 16 ; `killsource.Rev` et
-//	                `objectives.Rev` inchangées.
-//
-//	LE PARC         un artefact 97 ou d'avant : verdict `redecoder` (révision de grammaire).
-//
 //	MESURE          36 films à translocateur, 123 poses : 123 situées par l'objet. Contre l'arrivée du
 //	                premier échange (74) : XY médiane 0,02 m, max 0,13 (l'arrivée est 0,11 à 0,53 m
 //	                plus haut) ; contre le porteur à l'image de la pose (120) : XY médiane 0,04 m, max
 //	                0,17. 1b2d9e08 : les deux poses sans échange (531, 574) sont désormais situées.
+//
+// LOTS « ks-a » et « ks-d » (morts servies deux fois) : contenu seul. Le fil des kills ne porte plus
+// un événement sous deux xuid, l'indice d'un bot parti nomme son successeur, une fiche de kill va au
+// kill voisin (cf. `killsource-2026-10-16`).
+//
+// LOT K-B (équipe des bots par build) : contenu seul. Sur HI_1_10_0 à HI_1_12_0 l'équipe d'un bot se
+// lit à la position de son build, le fragment `43 X` sort du roster (cf. `grammar-2026-10-16`).
+//
+// LOT K-C (vies nommées) : contenu seul. Le document interne du sync lit le registre de la cuisson,
+// le `bid` 0 est un identifiant (cf. `killcollector.PlacementRev`).
+//
+//	CE QUI MONTE    `SchemaVersion` 97 -> 98 ; `grammar.Rev` `grammar-2026-10-15.2` -> `grammar-2026-10-16` ;
+//	AVEC ELLE       `profile.Rev` `profile-2026-10-06.3` -> `profile-2026-10-16` ; `killsource.Rev`
+//	                `killsource-2026-10-15` -> `killsource-2026-10-16` ; `SchemaDesFaits` 15 -> 16 ;
+//	                `objectives.Rev` et `source.Rev` inchangées. Les rangs `grammar-2026-10-15.3`,
+//	                `killsource-2026-10-15.2`/`.3` et `profile-2026-10-15`, pris sur les branches des
+//	                lots, sont abandonnés.
+//
+//	LE PARC         un artefact 97 ou d'avant : verdict `redecoder` (révision de grammaire).

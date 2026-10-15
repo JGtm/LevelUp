@@ -749,7 +749,7 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
 
 #### Réparation des temps forts en double (`repair-highlight-phantoms`)
 
-Avant `grammar-2026-10-15.x`, le lecteur des temps forts pouvait décoder un même bloc de 60 octets
+Avant `grammar-2026-10-16`, le lecteur des temps forts pouvait décoder un même bloc de 60 octets
 DEUX FOIS sous deux XUID (un faux motif de XUID dans la fiche d'un joueur, plusieurs milliers de
 bits avant le vrai). Les deux lignes sont dans `highlight_events` (86 matchs sur la copie locale du
 2026-10-15, un seul joueur touché), s'apparient à tort dans `killer_victim_pairs` (« X tue X ») et
@@ -782,7 +782,7 @@ go run ./cmd/levelup compact-passes                          # facultatif : reti
 - **Sauvegarde (obligatoire)** : copie octet pour octet avant toute écriture
   (`<nom>.<slug>.avant-fantomes-<UTC>.duckdb`), restauration = la remettre en place, serveur arrêté.
 - **Idempotente** : sans ligne fantôme, une seconde exécution n'écrit rien.
-- La fusion refuse aussi, depuis `killsource-2026-10-15`, d'ajouter une seconde mort à un instant que
+- La fusion refuse aussi, depuis `killsource-2026-10-16`, d'ajouter une seconde mort à un instant que
   le kill-feed de l'API ne compte qu'une fois, et contrôle les morts servies de chaque joueur contre
   `match_participants.deaths` (compteur `killsource_fusion_joueurs_au_dela_officiel_residuel`, journal
   WARN avec `match_id`, joueur, officielles, servies). Le contrôle ne retire jamais une ligne : en
@@ -793,7 +793,7 @@ go run ./cmd/levelup compact-passes                          # facultatif : reti
 
 #### Morts servies deux fois : appariement, sièges de bot, fiches de kill, morts de l'API
 
-Depuis `killsource-2026-10-15.3`, quatre causes d'une mort servie deux fois sont fermées :
+Depuis `killsource-2026-10-16`, quatre causes d'une mort servie deux fois sont fermées :
 
 - **Appariement du crédit** (`analysis.ComputeKillerVictimPairs`) : kills et morts s'apparient par
   écart croissant (l'instant exact d'abord), un kill et une mort au plus une fois chacun, jamais un

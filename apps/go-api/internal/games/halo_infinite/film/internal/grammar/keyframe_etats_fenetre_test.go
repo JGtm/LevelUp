@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_etats_fenetre_test.go — les fenetres de bits DERRIERE la lecture de l etat complet du
-// bipede (D1.2 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : un record admis ne
+// bipede (D1.2 du plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`) : un record admis ne
 // passe jamais par une fenetre, un record non admis y passe, est compte et marque recupere.
 //
 // Mutations jouees le 2026-10-09, chacune rouge puis retiree : la fenetre rendue AVANT la lecture

@@ -151,13 +151,15 @@ package profile
 // parce que `profile-2026-10-06.2` etait pris par `feat/v75`) ; ce rang n a jamais ete fusionne, et
 // la fusion le reprend au premier rang libre et sans trou apres celui de `feat/v75`.
 //
-// ENTREE `profile-2026-10-15` (2026-10-15, lot K-B, branche `fix/ks-b-equipe-bots`) : LA POSITION DE
+// ENTREE `profile-2026-10-16` (2026-10-15, lot K-B, branche `fix/ks-b-equipe-bots` ; rang pris a
+// l integration groupee `feat/integ-film` du 2026-10-16 — le lot avait pris `profile-2026-10-15` sur sa
+// branche, jamais fusionne seul, et toutes les couches du lot montent au rang du jour) : LA POSITION DE
 // L EQUIPE D UN BOT DANS SON ENTREE BOT_METADATA ENTRE DANS LA TABLE, PAR BUILD.
 //
 // `equipe_bot.go` : [PositionEquipeBotPour] — octets 0x25/0x26 du bloc de 44 octets sur HI_1_13_0
 // (relu), 4/6 sur HI_1_10_0 a HI_1_12_0 (mesure : feuille de match 111/111, 2/2, 10/10 bots distincts),
 // aucune position pour HI_1_8_0, HI_1_9_0, HI_1_4_1. Aucune autre ligne de la table ne change.
-const Rev = "profile-2026-10-15"
+const Rev = "profile-2026-10-16"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

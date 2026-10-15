@@ -7,7 +7,7 @@ package replay
 // colline existe en jeu, et non au premier contact d un joueur.
 //
 // CE QUE LE FILM DIT DE CET INSTANT (mesure sur les films a colline du parc, journal du plan
-// `.ai/PLAN_KOTH_REJEU_2026-10-09.md`) :
+// `.ai/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`) :
 //
 //	images-cles   l objet de mode (le bloc designateur, proprietaire, pousseur, jauge) est ABSENT
 //	              d une image-cle et PRESENT a la suivante, avec la designation de la 1re colline.

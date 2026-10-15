@@ -137,7 +137,7 @@ package grammar
 // gardes en plus.
 //
 // ENTREE `grammar-2026-10-09.2` (2026-10-09, jalon LK du plan
-// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
+// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, branche `feat/ri-lk-images-cles`) : LES
 // RECORDS D IMAGE-CLE SE LISENT SOUS LA PORTEE `DAT_144e61ea0` DE L ETAT COMPLET.
 //
 // RENUMEROTEE (2026-10-09, fusion de `feat/v75` `54b47a2b8` dans `feat/ri-lk-images-cles`) : cette
@@ -177,7 +177,7 @@ package grammar
 // D-18, D-21, D-23).
 //
 // ENTREE `grammar-2026-10-09.3` (2026-10-09, lot 2.7.d1 du plan
-// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
+// `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, etapes D1.1 a D1.3, branche
 // `feat/ri-lk-images-cles`) : L ETAT COMPLET DU BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES
 // FENETRES DE BITS PASSENT DERRIERE LA LECTURE.
 //
@@ -221,7 +221,7 @@ package grammar
 // de format 20 ; admis inchanges (6 507) ; fermetures `ti=35` 5 401 -> 5 397 ; `replay-equiv` (20
 // films) : seuls `a349fea8` et `a521164d` changent (4 selections tues) ; killsource identique.
 //
-// ENTREE `grammar-2026-10-14` (2026-10-14, lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-14` (2026-10-14, lot F du plan `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche
 // `feat/aj14-f`) : LA LECTURE DE LA VUE A RANGE SES MESSAGES DE POUSSEE. Aucun bit n est lu autrement :
 // [lireUnMessage] garde les references qu il lisait et jetait, les charges des genres 104 et 105
 // ([chargePousseeDuJoueur], [chargeObjetRepousse], `vue_a_poussees.go`) gardent leurs valeurs, et
@@ -236,7 +236,7 @@ package grammar
 // repulseur sur 130 paires sur 130.
 //
 // ENTREE `grammar-2026-10-14.2` (2026-10-14, lot « equipement porte » du plan
-// `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `ti=37 i28
+// `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/equip-porte`) : `ti=37 i28
 // equipment-tracked-object-handles-stack-component` LIT n ENTREES, PLUS n+1. Le lecteur du jeu
 // `FUN_140f72dec` lit R(4) n (`FUN_1424e1d48`), le range en `+0x544`, puis avance le pointeur de
 // 8 octets AVANT de le comparer a `+0x544 + (n+1)*8` : n appels de `FUN_1408f0ac4(…,0)`. Le port
@@ -280,7 +280,7 @@ package grammar
 // ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
 // suppression de 0,2 a 0,7 s (5676a9ba).
 //
-// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/V7.5/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`, etapes R1 a R3) : TROIS LECTURES DU JEU ENTRENT DANS LA MARCHE DES IMAGES-CLES.
 //
 //   - R1, LA TABLE D ENTREES (`keyframe_entrees.go`). La table d image-cle compte une entree par slot
@@ -306,39 +306,44 @@ package grammar
 // format 20 sans section d identification). Douze films HI_1_8_0 du parc : bipedes fermes 1 263 ->
 // 7 042, aucune perte.
 //
-// ENTREE `grammar-2026-10-15.3` (2026-10-15, lot « ks-a », doublons de morts) : UN MARQUEUR DE FIN
-// = UN EVENEMENT. Le lecteur des temps forts dedupliquait par POSITION du xuid et non par marqueur
-// de fin : un faux motif de xuid valide (8 octets, 0x2d, 0xc0) dans la fiche d un joueur precedait le
-// vrai de plusieurs milliers de bits, les deux retombaient sur le meme bloc de 60 octets et le meme
-// marqueur, et chaque evenement sortait deux fois sous deux xuid. Il garde desormais le candidat le
-// plus proche du marqueur (`retenirLePlusProche`). Aucun bit n est lu autrement ; ce qui change est
-// QUELS xuid sortent. MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du
-// vrai 2535472452512509) 28 groupes d evenements sous deux xuid avant, 0 apres ; parc local de
-// 2 677 films : 1 film touche avant, 0 apres.
-// ENTREE `grammar-2026-10-15.3` (2026-10-15, lot K-B, branche `fix/ks-b-equipe-bots`) : L EQUIPE D UN
-// BOT SE LIT A LA POSITION DE SON BUILD, ET LES FRAGMENTS DU BALAYAGE SONT ECARTES. `profile.Rev` monte
-// a `profile-2026-10-15` ([profile.PositionEquipeBotPour]). `bot_metadata.go` lit le bloc de 44 octets
-// brut et en rend l equipe et le jumeau a la position du build ([LectureDesBots]) : sur HI_1_10_0 a
-// HI_1_12_0, l octet 0x25 lu jusqu ici tombait dans la copie du nom (equipe 0 pour tout bot). Dans un
-// paquet qui ferme, un nom balaye suffixe strict d un nom ecrit (`43 Hollis` pour `343 Hollis`) est
-// ecarte et compte ([PaquetBotMetadata.FragmentsEcartes]) : sur ces builds chaque entree en produisait
-// un, qui rendait chaque paquet incomplet.
+// ENTREE `grammar-2026-10-16` (2026-10-16, integration groupee des lots film du 15/10, branche
+// `feat/integ-film`) : TROIS LOTS, UN RANG. Les lots « ks-a » (via « ks-d »), K-B et « faille a la
+// pose » avaient chacun pris `grammar-2026-10-15.3` sur leur branche ; aucun de ces rangs n a ete
+// fusionne seul, et l integration les reunit au premier rang libre apres `grammar-2026-10-15.2`
+// (`grammar-2026-10-15.3` est abandonne : trois contenus differents l ont porte, un fait cuit sur une
+// des branches ne doit pas passer pour frais). Une sous-entree par lot, dans l ordre des fusions.
 //
-// MESURE (617 films du parc dont la feuille porte un bot, decodage killsource de production, un film
-// par processus) : bots dont l equipe se lit, accord avec la feuille 888/888 (HI_1_13_0), 111/111
-// (HI_1_12_0), 2/2 (HI_1_11_0), 10/10 (HI_1_10_0) ; avec l entite `ti=9` 85/85 et 1/1 ; paquets
-// BOT_METADATA incomplets 707 -> 0.
-// ENTREE `grammar-2026-10-15.3` (2026-10-15, lot « faille a la pose », branche `feat/faille-pose`,
-// question du user : « le mecanisme de pose repose sur l evenement de pose, pourquoi dependrait-il de
-// la teleportation ? ») : LA CREATION DES OBJETS ENGENDRES EST LUE, AVEC SA POSITION. Aucun bit n est
-// lu autrement. Le canal de l equipement porte retient chaque creation (record NEW) de la trame et les
-// quanta de sa position i0, lus par le lecteur des pistes du monde (`lireQuantaObjetDuMonde`, extrait
-// de `decodeWorldObjectPos` sans changement : chemin dominant, region de la carte, quanta satures
-// rejetes) ; quand la pile i28 nomme une vie pour la premiere fois, sa creation est jointe a la
-// lecture (`Spawned`), et [ScanEquipementPorte] la dequantifie aux bornes de la carte.
+// LOT « ks-a » (doublons de morts) : UN MARQUEUR DE FIN = UN EVENEMENT. Le lecteur des temps forts
+// dedupliquait par POSITION du xuid et non par marqueur de fin : un faux motif de xuid valide
+// (8 octets, 0x2d, 0xc0) dans la fiche d un joueur precedait le vrai de plusieurs milliers de bits,
+// les deux retombaient sur le meme bloc de 60 octets et le meme marqueur, et chaque evenement sortait
+// deux fois sous deux xuid. Il garde desormais le candidat le plus proche du marqueur
+// (`retenirLePlusProche`). Aucun bit n est lu autrement ; ce qui change est QUELS xuid sortent.
+// MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du vrai 2535472452512509)
+// 28 groupes d evenements sous deux xuid avant, 0 apres ; parc local de 2 677 films : 1 film touche
+// avant, 0 apres.
 //
-// MESURE (36 films a translocateur, 123 poses, contexte de la cuisson, `TestFailleObjet`) : le paquet
-// ou l energie du translocateur tombe a 0 cree une entite ti=38 (la faille), nommee par la pile au
-// paquet suivant ; 123/123 positions lues. Contre l arrivee du premier echange (74) : ecart XY
-// mediane 0,02 m, max 0,13 (l arrivee est 0,11 a 0,53 m plus haut) ; contre le porteur a l image de
-// la pose (120) : XY mediane 0,04 m, max 0,17.
+// LOT K-B (`fix/ks-b-equipe-bots`) : L EQUIPE D UN BOT SE LIT A LA POSITION DE SON BUILD, ET LES
+// FRAGMENTS DU BALAYAGE SONT ECARTES. `profile.Rev` monte a `profile-2026-10-16`
+// ([profile.PositionEquipeBotPour]). `bot_metadata.go` lit le bloc de 44 octets brut et en rend
+// l equipe et le jumeau a la position du build ([LectureDesBots]) : sur HI_1_10_0 a HI_1_12_0,
+// l octet 0x25 lu jusqu ici tombait dans la copie du nom (equipe 0 pour tout bot). Dans un paquet qui
+// ferme, un nom balaye suffixe strict d un nom ecrit (`43 Hollis` pour `343 Hollis`) est ecarte et
+// compte ([PaquetBotMetadata.FragmentsEcartes]) : sur ces builds chaque entree en produisait un, qui
+// rendait chaque paquet incomplet. MESURE (617 films du parc dont la feuille porte un bot, decodage
+// killsource de production, un film par processus) : bots dont l equipe se lit, accord avec la
+// feuille 888/888 (HI_1_13_0), 111/111 (HI_1_12_0), 2/2 (HI_1_11_0), 10/10 (HI_1_10_0) ; avec
+// l entite `ti=9` 85/85 et 1/1 ; paquets BOT_METADATA incomplets 707 -> 0.
+//
+// LOT « faille a la pose » (`feat/faille-pose`, question du user : « le mecanisme de pose repose sur
+// l evenement de pose, pourquoi dependrait-il de la teleportation ? ») : LA CREATION DES OBJETS
+// ENGENDRES EST LUE, AVEC SA POSITION. Aucun bit n est lu autrement. Le canal de l equipement porte
+// retient chaque creation (record NEW) de la trame et les quanta de sa position i0, lus par le
+// lecteur des pistes du monde (`lireQuantaObjetDuMonde`, extrait de `decodeWorldObjectPos` sans
+// changement : chemin dominant, region de la carte, quanta satures rejetes) ; quand la pile i28 nomme
+// une vie pour la premiere fois, sa creation est jointe a la lecture (`Spawned`), et
+// [ScanEquipementPorte] la dequantifie aux bornes de la carte. MESURE (36 films a translocateur, 123
+// poses, contexte de la cuisson, `TestFailleObjet`) : le paquet ou l energie du translocateur tombe a
+// 0 cree une entite ti=38 (la faille), nommee par la pile au paquet suivant ; 123/123 positions lues.
+// Contre l arrivee du premier echange (74) : ecart XY mediane 0,02 m, max 0,13 (l arrivee est 0,11 a
+// 0,53 m plus haut) ; contre le porteur a l image de la pose (120) : XY mediane 0,04 m, max 0,17.

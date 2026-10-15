@@ -2,7 +2,7 @@
 
 package grammar
 
-// ri27d1_fermeture_portee_research_test.go — 2.7.d1 (`.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// ri27d1_fermeture_portee_research_test.go — 2.7.d1 (`.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
 // §1.2, commande I-ferm) : la sonde de fermeture d image-cle par archetype (`KeyframeClosure`) sur les
 // films de l instrument 2.7.d0, dans le contexte de la cuisson. Un seul mode : la marche de production
 // a la tete (etiquette `tete`) ; la reference de chaque etape du plan dit a quelles lignes la comparer.

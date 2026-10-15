@@ -1,7 +1,7 @@
 package grammar
 
 // keyframe_etats_scan.go — UNE SEULE DISTRIBUTION POUR CE QUE LES IMAGES-CLES DISENT DES BIPEDES
-// (plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.1.6).
+// (plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, D1.1.6).
 //
 // [ScanEtatsDesImagesCles] marche UNE fois la phase des images-cles d un film et rend, par record
 // bipede, les armes portees, l inventaire et la marque de portage, avec la couverture de la marche
@@ -73,7 +73,7 @@ func ScanEtatsDesImagesCles(fc *FilmContext, known map[uint32]bool, grenMax uint
 // qui ne lit qu elles (la lecture des porteurs au sync, `replay/porteurs_au_sync.go`) : la meme
 // marche et la meme regle d admission, mais aucun inventaire ni marque de portage n est publie, et
 // derriere la lecture seule la fenetre des familles tourne — ni les regles d inventaire ni le jeu
-// de mots de la marque (plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, §7 D-28 : +17 %
+// de mots de la marque (plan `.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, §7 D-28 : +17 %
 // sur le sync de `9f57c612` quand il les payait sans les lire). Seul
 // `repli_fenetre_armes_image_cle` se compte : les deux autres fenetres ne voient aucun record. Les
 // armes rendues sont celles de [ScanEtatsDesImagesCles], record pour record.

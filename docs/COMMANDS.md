@@ -717,7 +717,7 @@ go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups
 
 #### Repairing doubled highlight events (`repair-highlight-phantoms`)
 
-Before `grammar-2026-10-15.x`, the highlight-events reader could decode one 60-byte block TWICE under
+Before `grammar-2026-10-16`, the highlight-events reader could decode one 60-byte block TWICE under
 two XUIDs (a false XUID pattern inside a player's record, thousands of bits before the real one).
 Both rows sit in `highlight_events` (86 matches on the 2026-10-15 local copy, one player touched),
 pair up wrongly in `killer_victim_pairs` ("X kills X") and reach the served deaths. Since the fix,
@@ -748,7 +748,7 @@ go run ./cmd/levelup compact-passes                          # optional: drop th
 - **Backup (mandatory)**: byte-for-byte copy before any write
   (`<name>.<slug>.avant-fantomes-<UTC>.duckdb`), restore = put it back in place, server stopped.
 - **Idempotent**: with no phantom row left, a second run writes nothing.
-- The merge also refuses, since `killsource-2026-10-15`, to add a second death at an instant the
+- The merge also refuses, since `killsource-2026-10-16`, to add a second death at an instant the
   API's kill-feed counts only once, and checks every player's served deaths against the official
   `match_participants.deaths` (counter `killsource_fusion_joueurs_au_dela_officiel_residuel`, WARN
   log with `match_id`, player, official, served). The check never removes a line: dropping one to
@@ -759,7 +759,7 @@ go run ./cmd/levelup compact-passes                          # optional: drop th
 
 #### Deaths served twice: pairing, bot seats, kill sheets, API death events
 
-Since `killsource-2026-10-15.3`, four causes of a death served twice are closed:
+Since `killsource-2026-10-16`, four causes of a death served twice are closed:
 
 - **Credit pairing** (`analysis.ComputeKillerVictimPairs`): kills and deaths are paired by increasing
   gap (the exact instant first), one kill and one death at most once each, never a player with

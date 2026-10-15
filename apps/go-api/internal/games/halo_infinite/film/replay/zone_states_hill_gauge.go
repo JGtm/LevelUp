@@ -5,7 +5,7 @@ package replay
 // pousseur, jauge — zone_states_hill.go).
 //
 // CE QUE LE CANAL DIT SUR UNE COLLINE (mesure sur les films a colline du parc, journal du plan
-// `.ai/PLAN_KOTH_REJEU_2026-10-09.md`) :
+// `.ai/V7.5/PLAN_KOTH_REJEU_2026-10-09.md`) :
 //
 //	prise      un camp seul dans une colline libre : la jauge monte de 0 a ~1 en environ une
 //	           seconde, le POUSSEUR nomme ce camp ; a l arrivee la jauge retombe a 0 et le

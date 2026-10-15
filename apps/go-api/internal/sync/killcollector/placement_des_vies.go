@@ -71,7 +71,12 @@ const (
 // derriere elle (grammar `grammar-2026-10-06.4`) — les portages, donc les durees portees, en
 // dependent. Le nommage des vies du document que [replay.PortagesAuSync] assemble (table des sieges
 // du film, occupants par entite, `bid` 0 des bots) decide aussi a qui un portage revient.
-const PlacementRev = "placement-2026-10-15-ks-c"
+//
+// `placement-2026-10-16` (integration groupee `feat/integ-film`) : le lot K-C (vies nommees, registre de
+// la cuisson lu par le document interne du sync) avait pris `placement-2026-10-15-ks-c` sur sa branche ;
+// l integration monte une seule fois, au rang du jour, et couvre aussi le nommage des bots que K-B
+// (equipe par build) et « ks-d » (indice d un bot parti rendu a son successeur) changent.
+const PlacementRev = "placement-2026-10-16"
 
 // PorteeDuRadar rend la portee du radar d'une variante (`game_variant_name` tel que la base le
 // porte), en metres. `connue` faux = variante absente de la table : la ligne s'ecrit sans portee
