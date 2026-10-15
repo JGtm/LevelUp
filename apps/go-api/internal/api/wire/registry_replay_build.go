@@ -21,11 +21,13 @@ import (
 	"strings"
 	gosync "sync"
 
+	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
 
@@ -104,7 +106,7 @@ func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchI
 		return "", nil, fmt.Errorf("match_id vide")
 	}
 	rows, err := sharedSQL.QueryContext(ctx,
-		`SELECT match_id, map_name, map_id FROM match_registry
+		`SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+` FROM match_registry
 		 WHERE match_id = ? OR match_id LIKE ? LIMIT 3`,
 		matchID, matchID+"%")
 	if err != nil {
@@ -115,15 +117,18 @@ func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchI
 		id      string
 		rawName string
 		mapID   string
+		nonGere bool
 	}
 	var hits []hit
 	for rows.Next() {
 		var id string
 		var rawName, mapID sql.NullString
-		if err := rows.Scan(&id, &rawName, &mapID); err != nil {
+		var nonGere bool
+		if err := rows.Scan(&id, &rawName, &mapID, &nonGere); err != nil {
 			return "", nil, fmt.Errorf("lecture match_registry (scan): %w", err)
 		}
-		hits = append(hits, hit{id: id, rawName: strings.TrimSpace(rawName.String), mapID: strings.TrimSpace(mapID.String)})
+		hits = append(hits, hit{id: id, rawName: strings.TrimSpace(rawName.String),
+			mapID: strings.TrimSpace(mapID.String), nonGere: nonGere})
 	}
 	if err := rows.Err(); err != nil {
 		return "", nil, err
@@ -135,6 +140,11 @@ func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchI
 		return "", nil, fmt.Errorf("préfixe ambigu %s (%d matchs) — donner le match_id complet", matchID, len(hits))
 	}
 	h := hits[0]
+	if h.nonGere {
+		// LE REJEU NE FABRIQUE PAS CE MODE : ni l'action admin ni la mise en file n'y font
+		// exception (decision du 2026-10-15).
+		return "", nil, fmt.Errorf("match %s : %w", h.id, replaybuild.ErrModeNonGere)
+	}
 	var names []string
 	if h.mapID != "" && metaSQL != nil {
 		var en string

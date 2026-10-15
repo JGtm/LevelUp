@@ -72,6 +72,9 @@ func TestSQLEligibleALaCuisson_TroisConditionsEtLeurOrdre(t *testing.T) {
 	if !strings.Contains(sql, "COALESCE(mr.backfill_completed, 0) & ? = 0") {
 		t.Fatalf("sql = %q : le marqueur de film perdu manque", sql)
 	}
+	if !strings.Contains(sql, "NOT "+SQLModeNonGere("mr")) {
+		t.Fatalf("sql = %q : la file doit exclure les matchs de mode non gere (Firefight)", sql)
+	}
 	iNotNull := strings.Index(sql, "IS NOT NULL")
 	iFenetre := strings.Index(sql, ">= ?")
 	if iNotNull < 0 || iFenetre < 0 {
@@ -117,5 +120,16 @@ func TestSQLEligibleALaCuisson_SansAlias(t *testing.T) {
 	sql, _ := SQLEligibleALaCuisson("", 0, 1<<22)
 	if strings.Contains(sql, "COALESCE(.backfill_completed") {
 		t.Fatalf("sql = %q : un alias vide ne doit pas laisser de point orphelin", sql)
+	}
+}
+
+// TestSQLModeNonGere — le predicat unique du mode non gere lit le drapeau du registre, avec ou
+// sans alias, et ne vaut jamais NULL.
+func TestSQLModeNonGere(t *testing.T) {
+	if got, want := SQLModeNonGere("mr"), "COALESCE(mr.is_firefight, FALSE)"; got != want {
+		t.Fatalf("avec alias : %q, attendu %q", got, want)
+	}
+	if got, want := SQLModeNonGere(""), "COALESCE(is_firefight, FALSE)"; got != want {
+		t.Fatalf("sans alias : %q, attendu %q", got, want)
 	}
 }

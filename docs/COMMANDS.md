@@ -296,6 +296,21 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 ```
 
+`backfill-replay` never cooks matches of a mode the replay does not handle (PvE Firefight —
+decision of 2026-10-15; the verdict is the registry flag `match_registry.is_firefight`, read
+through `analysis.SQLModeNonGere`, never a mode name or a slug). They are counted as
+`mode non gere` in the summary, under every form of the pass (`--force`, `--only-existing`,
+`--repair-impoverished`); `--one <id>` on such a match is refused with an explicit error. The
+post-sync step, the admin build/enqueue actions and the demo replay picks apply the same
+exclusion, and the replay service answers "no replay" (404 `replay_not_available`) for these
+matches even if an artifact is still in the cache. To remove artifacts cooked before that
+decision (artifact, derivation mark and raster sidecar; the film cache is never touched):
+
+```bash
+go run ./cmd/levelup backfill-replay --purge-non-geres --dry-run   # lists, deletes nothing
+go run ./cmd/levelup backfill-replay --purge-non-geres             # deletes
+```
+
 Pass (5) is idempotent: a sidecar is only rewritten when it is missing, when its own
 `schema_version` is no longer current, or when its `artifact_schema_version` no longer
 matches the artifact it was projected from (so, after a re-bake). A second immediate pass
