@@ -124,6 +124,40 @@ per-profile list keyed by XUID (`data/global/player_friends.json`). Read access 
 Layer A (owner, group co-member or admin); write access is narrower — **direct owner or
 admin only**: a group co-member reads a friends list but does not change it.
 
+### Group/family access is read-only (2026-10-15)
+
+User decision of 2026-10-15: "a user can view their friends' data but cannot delete or
+modify it". Until then Layer A decided every request the same way: a group co-member passed
+`RequirePlayerOwnership` for reads AND writes, so a member could sync, purge a title
+(`DELETE /profiles/{slug}/titles/{slug}/data`), exclude matches, mark notifications,
+drive Prestige or delete media on another member's profile. Only the friends list and media
+deletion carried their own owner-or-admin rule.
+
+The rule is now split by intent, decided in one place (`middleware.PlayerAccess`):
+
+| Request | Granted to |
+|---|---|
+| Read (`!IsMutatingRequest`: GET, HEAD, OPTIONS, read-only POSTs under `/pages/`, `/filters/`, `/tactical/`, `/engagement/timeseries`) | admin, direct owner, group co-member |
+| Write (every other request, including any POST whose path is ambiguous) | admin, direct owner |
+
+- `authz.CanWritePlayer(enforced, user, profileXUID)` is the write rule (owner or admin);
+  `authz.CanAccessPlayer` stays the read rule. The family set is only resolved for a read.
+- `RequirePlayerOwnership(access)` classifies the request with `IsMutatingRequest` (the same
+  classification as the write-authentication guard) and stamps it in the request context;
+  the Prestige actor guard, which checks a slug read from the body or the query rather than
+  from the path, reuses that classification (`middleware.RequestWrites`, unknown = write).
+- `POST /session/context` accepts a `player_slug` only if the session can READ that profile
+  (403 `player_forbidden` otherwise): the current player never names a stranger's profile.
+- `/bootstrap` publishes `writable_player_slugs` (the profiles of `available_players` the
+  session may write). The web app hides the write controls of a friend's profile from it;
+  the server stays the authority.
+- Guardrail: `internal/api/family_write_routes_test.go` walks every route of the
+  `/players/{player_slug}` and `/profiles/{player_slug}/...` groups, requires the ownership
+  guard on each, and replays each one as a co-member: 403 on every write, 200 on every read.
+
+Consequence: a member who wants to act on a friend's data asks the owner or an admin. The
+friends-list write rule above is now enforced twice (group guard, then handler).
+
 ## Extensions différées
 
 - **Alts multiples par utilisateur** : `User.XUID` est singulier (1 user ↔ 1 xuid). Le support

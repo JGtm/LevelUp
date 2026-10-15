@@ -4,6 +4,7 @@ import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { useToggleMediaLike } from '@/features/media/queries'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { toMediaItemRow } from './_mediaItemRow'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { MatchViewText } from './i18n'
@@ -25,6 +26,9 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()
   const toggleLike = useToggleMediaLike(playerSlug)
+  // Profil d'ami (lecture seule) : cœur affiché sans être actif, pas de réassociation.
+  const canWrite = useCanWritePlayer(playerSlug)
+  const likeDisabled = !canWrite || toggleLike.isPending
 
   function handleToggleLike(item: MediaItemRow) {
     const nextLiked = !item.liked
@@ -51,12 +55,12 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
           onToggleLike={handleToggleLike}
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
-          likeDisabled={toggleLike.isPending}
+          likeDisabled={likeDisabled}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((c) => !c)}
           playerSlug={playerSlug}
           currentMatchId={matchId}
-          onReassociate={picker.openFor}
+          onReassociate={canWrite ? picker.openFor : undefined}
         />
       )}
       {picker.state && (
@@ -74,10 +78,10 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
             item={item}
             onToggleLike={handleToggleLike}
             onOpen={() => setLightboxIdx(idx)}
-            likeDisabled={toggleLike.isPending}
+            likeDisabled={likeDisabled}
             playerSlug={playerSlug}
             currentMatchId={matchId}
-            onAssociate={picker.openFor}
+            onAssociate={canWrite ? picker.openFor : undefined}
           />
         ))}
       </div>

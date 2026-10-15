@@ -4,6 +4,7 @@ import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useRecentMediaRail, useToggleMediaLike } from '@/features/media/queries'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
 import { buildOwnerColorMap } from '@/features/media/mediaOwnerColors'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
@@ -26,6 +27,9 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const likedQuery = useRecentMediaRail(playerSlug, HOME_MEDIA_LIMIT, true)
   const { data, isLoading, isError } = mediaTab === 'liked' ? likedQuery : recentQuery
   const toggleMediaLike = useToggleMediaLike(playerSlug)
+  // Profil d'ami (lecture seule) : cœur affiché sans être actif, pas de réassociation.
+  const canWrite = useCanWritePlayer(playerSlug)
+  const likeDisabled = !canWrite || toggleMediaLike.isPending
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()
@@ -44,11 +48,11 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
           onToggleLike={(item) => toggleMediaLike.mutate({ file_path: item.file_path, liked: !item.liked })}
           startIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
-          likeDisabled={toggleMediaLike.isPending}
+          likeDisabled={likeDisabled}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((c) => !c)}
           playerSlug={playerSlug}
-          onReassociate={picker.openFor}
+          onReassociate={canWrite ? picker.openFor : undefined}
         />
       )}
 
@@ -115,10 +119,10 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                     })
                   }}
                   onOpen={() => setLightboxIndex(index)}
-                  likeDisabled={toggleMediaLike.isPending}
+                  likeDisabled={likeDisabled}
                   playerSlug={playerSlug}
                   playerColorMap={playerColorMap}
-                  onAssociate={picker.openFor}
+                  onAssociate={canWrite ? picker.openFor : undefined}
                 />
               </CarouselItem>
             ))}

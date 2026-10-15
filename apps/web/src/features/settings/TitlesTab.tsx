@@ -12,6 +12,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ApiError } from '@/lib/api/client'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { ToggleRow } from './_settingsShared'
 import type { getSettingsText } from './i18n'
 import { usePlayerTitles, useSetTitleSync, usePurgeTitleData } from './queries'
@@ -37,6 +39,8 @@ export function TitlesTab({ t, frozen }: { t: SettingsText; frozen?: boolean }) 
   const { data: titles = [], isLoading } = usePlayerTitles()
   const setSync = useSetTitleSync()
   const purge = usePurgeTitleData()
+  // Joueur courant = profil d'un ami (lecture seule) : titres affichés, actions figées.
+  const readOnly = !useCanWritePlayer(useAppShellStore((s) => s.currentPlayer?.player_slug))
   const [error, setError] = useState<string | null>(null)
 
   const enrolled = titles.filter((x) => x.enrolled)
@@ -74,7 +78,7 @@ export function TitlesTab({ t, frozen }: { t: SettingsText; frozen?: boolean }) 
         {enrolled.map((row) => {
           // Le dernier titre actif ne peut être ni mis en pause ni purgé (min 1).
           const isLastActive = row.syncEnabled && activeCount <= 1
-          const locked = frozen || busy || isLastActive
+          const locked = frozen || readOnly || busy || isLastActive
           return (
             <div key={row.slug} className="flex items-center justify-between gap-3 border-b border-border/40 py-1 last:border-0">
               <div className="flex-1">

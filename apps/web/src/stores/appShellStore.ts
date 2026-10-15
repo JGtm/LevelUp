@@ -19,6 +19,13 @@ interface AppShellState {
   // Joueur courant
   currentPlayer: PlayerSummary | null
   availablePlayers: PlayerSummary[]
+  /**
+   * Profils sur lesquels la session peut ÉCRIRE (bootstrap `writable_player_slugs`).
+   * Un profil d'ami, lisible par appartenance à un groupe, n'y figure pas : ses
+   * actions d'écriture sont masquées (le serveur les refuse en 403). `null` = liste
+   * inconnue (bootstrap pas encore lu) : rien n'est masqué, le serveur reste l'arbitre.
+   */
+  writablePlayerSlugs: string[] | null
 
   // Sprint 44 : Titre courant
   currentTitleSlug: string
@@ -84,6 +91,7 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
 export const useAppShellStore = create<AppShellState>((set) => ({
   currentPlayer: null,
   availablePlayers: [],
+  writablePlayerSlugs: null,
   currentTitleSlug: 'halo_infinite',
   availableTitles: [],
   isTitleSwitching: false,
@@ -116,6 +124,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
     set({
       currentPlayer: data.current_player,
       availablePlayers: data.available_players ?? [],
+      writablePlayerSlugs: data.writable_player_slugs ?? null,
       currentTitleSlug: titleSlug,
       availableTitles: data.available_titles ?? [],
       locale,

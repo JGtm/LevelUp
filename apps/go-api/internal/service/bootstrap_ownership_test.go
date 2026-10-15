@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/config"
@@ -210,5 +211,50 @@ func TestBuildPlayersList_NotEnforcedReturnsAll(t *testing.T) {
 	}
 	if got := slugsOf(resp.Items); len(got) != 2 {
 		t.Fatalf("mode none attendu 2 joueurs, obtenu %v", got)
+	}
+}
+
+// TestBootstrapBuild_WritablePlayerSlugs : le profil d'un ami (lisible par le groupe)
+// est dans available_players mais pas dans writable_player_slugs ; l'admin écrit
+// partout ; sans propriété appliquée, tout est inscriptible.
+func TestBootstrapBuild_WritablePlayerSlugs(t *testing.T) {
+	dir := t.TempDir()
+	profilesPath := filepath.Join(dir, "db_profiles.json")
+	profiles := `{"version": "3.0", "profiles": {"halo_infinite": {
+          "alice": {"db_path": "a.duckdb", "xuid": "222", "waypoint_player": "alice"},
+          "bob": {"db_path": "b.duckdb", "xuid": "999", "waypoint_player": "bob"}}}}`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lookup := fakeBootstrapLookup{byName: map[string]*domain.User{
+		"alice": {Username: "alice", Role: domain.RoleUser, XUID: "222"},
+		"boss":  {Username: "boss", Role: domain.RoleAdmin, XUID: "111"},
+	}}
+	family := func(string) map[string]bool { return map[string]bool{"222": true, "999": true} }
+	cases := []struct {
+		name, authMode, user string
+		wantAvailable        int
+		wantWritable         []string
+	}{
+		{"co-membre", "password", "alice", 2, []string{"alice"}},
+		{"admin", "password", "boss", 2, []string{"alice", "bob"}},
+		{"propriété non appliquée", "none", "alice", 2, []string{"alice", "bob"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.AppConfig{AuthMode: tc.authMode, DBProfilesPath: profilesPath}
+			svc := NewBootstrapService(cfg, &mockBootRepo{matchCount: 1}).
+				WithUserLookup(lookup).WithCoMemberResolver(family)
+			resp, err := svc.Build(context.Background(), &domain.SessionData{Username: strPtr(tc.user)})
+			if err != nil {
+				t.Fatalf("Build: %v", err)
+			}
+			if len(resp.AvailablePlayers) != tc.wantAvailable {
+				t.Fatalf("available_players %v, attendu %d profils", slugsOf(resp.AvailablePlayers), tc.wantAvailable)
+			}
+			if got := resp.WritablePlayerSlugs; strings.Join(got, ",") != strings.Join(tc.wantWritable, ",") {
+				t.Fatalf("writable_player_slugs %v, attendu %v", got, tc.wantWritable)
+			}
+		})
 	}
 }

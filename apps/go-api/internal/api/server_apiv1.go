@@ -143,8 +143,11 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// tous les groupes player-scoped : /players/{slug}, /profiles/.../titles et les
 	// diagnostics par joueur (lot S — csr-coverage, progression). Transparente en
 	// démo / auth non activée. Source unique (règle ≤2 copies) : ne pas ré-inliner.
-	ownershipMW := middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode,
+	// La décision (lecture : propriétaire, co-membre, admin ; écriture : propriétaire,
+	// admin) est partagée avec la garde d'acteur Prestige et POST /session/context.
+	playerAccess := middleware.NewPlayerAccess(cfg.DemoMode, cfg.AuthMode,
 		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
+	ownershipMW := middleware.RequirePlayerOwnership(playerAccess)
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
 	// V72-01 / H1 : option de document PARTAGÉ pour toutes les routes Huma montées
 	// directement sous /api/v1 (r nu, r.With(mw), r.Group(mw) — préfixe de path
@@ -326,7 +329,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	help.Mount(r, apiOpt)
 
 	// Sprint 14 : contexte de session
-	sessionHandler := handlers.NewSessionHandler(sessionStore)
+	// Le joueur courant ne désigne qu'un profil que la session peut LIRE (sien,
+	// d'un co-membre de groupe, tout profil pour un admin) : sinon 403.
+	sessionHandler := handlers.NewSessionHandler(sessionStore).
+		WithPlayerAccess(func(ctx context.Context, slug string) bool {
+			granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), slug, false)
+			return granted
+		})
 	sessionHandler.Mount(r, apiOpt)
 
 	// Sprint 15 : Device Code Flow + authentification Halo
@@ -1024,27 +1033,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			// Garde d'autorisation acteur (ADR 0029 étendu aux routes squad
 			// top-level) : created_by/requested_by/user_id doivent désigner un
-			// profil possédé par la session. Réutilise les primitives de
-			// RequirePlayerOwnership. Transparent en demo / auth désactivée.
-			squadXUIDResolve := playerOwnershipXUIDResolver(cfg)
-			squadFamilyResolve := familyXUIDResolver(groupStore, users)
+			// profil que la session peut LIRE pour une lecture, ÉCRIRE pour une
+			// écriture (classification posée par la garde de propriété du groupe).
+			// Même décision que RequirePlayerOwnership. Transparent en demo / auth
+			// désactivée.
 			squadActorGuard := func(ctx context.Context, actorSlug string) bool {
-				if !authz.Enforced(cfg.DemoMode, cfg.AuthMode) {
-					return true
-				}
-				sess := middleware.GetSession(ctx)
-				if sess == nil {
-					return false
-				}
-				xuid, found := squadXUIDResolve(ctx, actorSlug)
-				if !found {
-					return false
-				}
-				var fam map[string]bool
-				if squadFamilyResolve != nil {
-					fam = squadFamilyResolve(ctx)
-				}
-				return authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), xuid, fam)
+				granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), actorSlug,
+					middleware.RequestWrites(ctx))
+				return granted
 			}
 			// Migré vers Huma (Phase 3b) : 26 routes (challenges/arcs/prestige/
 			// templates/squads/squad-challenges/pilot-mode) via ph.Mount.

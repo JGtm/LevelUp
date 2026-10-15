@@ -1,12 +1,13 @@
 // Package middleware — require_player_ownership.go : garde de propriété joueur (ADR 0029).
 //
 // RequirePlayerOwnership protège le groupe de routes /players/{player_slug} en
-// multi-utilisateur strict : un utilisateur ne peut accéder qu'aux profils dont
-// il possède le xuid (admin = tous). Renvoie 403 "player_forbidden" sinon.
+// multi-utilisateur strict : un utilisateur ne lit que les profils qu'il possède
+// (xuid lié) ou ceux de ses co-membres de groupe, et n'écrit que sur les siens
+// (admin = tous). Renvoie 403 "player_forbidden" sinon.
 //
 // Chokepoint unique de la Couche A : toute route player-scoped DOIT être montée
-// sous ce groupe. La résolution slug → xuid passe par PlayerXUIDResolver (mappe
-// db_profiles.json, sans ouvrir de DuckDB).
+// sous ce groupe. La décision vit dans PlayerAccess (player_access.go), partagée
+// avec la garde d'acteur Prestige et le choix du joueur courant.
 package middleware
 
 import (
@@ -17,9 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-
-	"levelup/go-api/internal/authz"
-	"levelup/go-api/internal/domain"
 )
 
 // PlayerXUIDResolver mappe un slug joueur vers le xuid du profil pour le titre
@@ -32,21 +30,23 @@ type PlayerXUIDResolver func(ctx context.Context, slug string) (xuid string, fou
 type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 
 // RequirePlayerOwnership retourne un middleware qui bloque l'accès aux joueurs
-// non possédés par l'utilisateur courant. Transparent quand l'enforcement est
-// désactivé (mode demo / auth non activée).
+// que l'utilisateur courant ne peut pas lire, ou pas écrire quand la requête écrit
+// (IsMutatingRequest). Transparent quand l'enforcement est désactivé (mode demo /
+// auth non activée).
 //
-//   - session absente (contexte non-HTTP, jamais le cas derrière RequireAuth) → laisse passer ;
+//   - session absente (contexte non-HTTP ; WithSession, monté à la racine, en
+//     fabrique toujours une) → laisse passer ;
 //   - slug inconnu → fail-closed (S7 / audit A1-m1, pas d'énumération de slugs) :
 //     admin → passe (le handler répondra 404) ; tout autre → 403 player_forbidden ;
-//   - profil possédé OU membre de la même famille → laisse passer ;
+//   - lecture : profil possédé OU d'un co-membre de groupe → passe ;
+//   - écriture : profil possédé (ou admin) → passe ; un co-membre est refusé ;
 //   - sinon → 403 player_forbidden.
 //
-// resolveFamily peut être nil (aucun assouplissement famille — comportement
-// strict d'origine).
-func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXUIDResolver, users authz.UserLookup, resolveFamily FamilyXUIDResolver) func(http.Handler) http.Handler {
-	enforced := authz.Enforced(demoMode, authMode)
+// La classification de la requête est posée dans le contexte (RequestWrites) pour
+// les gardes en aval qui décident sur un autre slug que celui du chemin.
+func RequirePlayerOwnership(access *PlayerAccess) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if !enforced || resolveXUID == nil || users == nil {
+		if !access.Enforced() {
 			return next
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -56,34 +56,20 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 				return
 			}
 			slug := chi.URLParam(r, "player_slug")
-			profileXUID, found := resolveXUID(r.Context(), slug)
-			user := authz.CurrentUser(sess, users)
-			if !found {
-				// S7 / audit A1-m1 : slug inconnu → fail-closed. Auparavant on
-				// laissait filer (next), permettant à un utilisateur authentifié de
-				// sonder n'importe quel /players/{slug} — la réponse 404 distincte du
-				// handler servait d'oracle d'existence. Désormais seul l'admin (accès
-				// à tout) passe et voit le 404 player_not_found ; tout autre reçoit un
-				// 403 uniforme, sans révéler si le profil existe.
-				if user != nil && user.Role == domain.RoleAdmin {
-					next.ServeHTTP(w, r)
-					return
-				}
-				slog.WarnContext(r.Context(), "authz: slug joueur inconnu refusé",
-					"slug", slug, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
-				writePlayerForbidden(w)
+			write := IsMutatingRequest(r)
+			granted, known := access.Allows(r.Context(), sess, slug, write)
+			if granted {
+				next.ServeHTTP(w, r.WithContext(withWriteIntent(r.Context(), write)))
 				return
 			}
-			var familyXUIDs map[string]bool
-			if resolveFamily != nil {
-				familyXUIDs = resolveFamily(r.Context())
+			// S7 / audit A1-m1 : un slug inconnu reçoit le même 403 qu'un profil
+			// étranger, sans révéler si le profil existe ; seul l'admin le traverse.
+			msg := "authz: accès joueur refusé"
+			if !known {
+				msg = "authz: slug joueur inconnu refusé"
 			}
-			if authz.CanAccessPlayer(true, user, profileXUID, familyXUIDs) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			slog.WarnContext(r.Context(), "authz: accès joueur refusé",
-				"slug", slug, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
+			slog.WarnContext(r.Context(), msg, "slug", slug, "path", r.URL.Path,
+				"write", write, "ip", chimiddleware.GetClientIP(r.Context()))
 			writePlayerForbidden(w)
 		})
 	}

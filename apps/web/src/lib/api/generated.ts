@@ -5028,6 +5028,8 @@ export interface components {
             setup_required: boolean;
             /** @enum {string} */
             setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
+            /** @description Profils de available_players sur lesquels la session peut écrire. */
+            writable_player_slugs: string[] | null;
         };
         BornesMonde: {
             /** Format: double */

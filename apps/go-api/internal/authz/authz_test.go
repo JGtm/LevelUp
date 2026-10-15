@@ -72,6 +72,41 @@ func TestCanAccessPlayer(t *testing.T) {
 	}
 }
 
+// TestCanWritePlayer : l'écriture est réservée au propriétaire direct et à l'admin ;
+// un co-membre de groupe, qui LIT le profil, n'y écrit pas (ADR 0029, accès famille
+// en lecture seule).
+func TestCanWritePlayer(t *testing.T) {
+	admin := &domain.User{Username: "boss", Role: domain.RoleAdmin, XUID: "111"}
+	owner := &domain.User{Username: "alice", Role: domain.RoleUser, XUID: "222"}
+	unlinked := &domain.User{Username: "bob", Role: domain.RoleUser}
+	cases := []struct {
+		name        string
+		enforced    bool
+		user        *domain.User
+		profileXUID string
+		want        bool
+	}{
+		{"non enforced : écriture ouverte", false, nil, "333", true},
+		{"admin écrit partout", true, admin, "333", true},
+		{"propriétaire écrit son profil", true, owner, "222", true},
+		{"co-membre n'écrit pas le profil d'un ami", true, owner, "333", false},
+		{"non lié n'écrit rien", true, unlinked, "", false},
+		{"anonyme n'écrit rien", true, nil, "222", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := CanWritePlayer(tc.enforced, tc.user, tc.profileXUID); got != tc.want {
+				t.Fatalf("CanWritePlayer(%v, %+v, %q) = %v, want %v",
+					tc.enforced, tc.user, tc.profileXUID, got, tc.want)
+			}
+			// Toute écriture permise est aussi une lecture permise, même avec un groupe.
+			if tc.want && !CanAccessPlayer(tc.enforced, tc.user, tc.profileXUID, map[string]bool{"333": true}) {
+				t.Fatalf("écriture permise sans lecture permise : %s", tc.name)
+			}
+		})
+	}
+}
+
 // fakeLookup implémente UserLookup pour les tests de CurrentUser.
 type fakeLookup struct {
 	byName map[string]*domain.User

@@ -4,7 +4,8 @@
 // fournie par le caller (userstore).
 //
 // Règle de propriété : un utilisateur possède le profil joueur dont le `xuid`
-// est égal à son xuid lié. Les admins accèdent à tout. En mode demo ou
+// est égal à son xuid lié. Les admins accèdent à tout. Un co-membre de groupe
+// LIT le profil (CanAccessPlayer) sans y écrire (CanWritePlayer). En mode demo ou
 // auth_mode ∉ {password, xbox}, l'enforcement est désactivé (accès ouvert).
 package authz
 
@@ -70,6 +71,16 @@ func CanAccessPlayer(enforced bool, user *domain.User, profileXUID string, acces
 	// Accès groupe : le user et le profil partagent au moins un groupe. Comme
 	// l'ensemble co-membres inclut le xuid du user lui-même, tester le profil suffit.
 	return accessibleXUIDs[profileXUID]
+}
+
+// CanWritePlayer décide si `user` peut ÉCRIRE sur le profil identifié par
+// `profileXUID` : admin ou propriétaire direct (xuid lié), et eux seuls.
+// L'appartenance à un groupe n'ouvre que la LECTURE (ADR 0029, section
+// « Group/family access is read-only ») : un co-membre consulte le profil d'un
+// ami, il ne le modifie ni ne le supprime. Quand `enforced` est faux, l'écriture
+// est accordée (instance mono-utilisateur ou démo, sans identité à opposer).
+func CanWritePlayer(enforced bool, user *domain.User, profileXUID string) bool {
+	return CanAccessPlayer(enforced, user, profileXUID, nil)
 }
 
 // CurrentUser résout l'utilisateur authentifié derrière une session, ou nil si

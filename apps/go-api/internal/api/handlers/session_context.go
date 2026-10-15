@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -34,6 +35,21 @@ import (
 // SessionHandler gère les endpoints de session.
 type SessionHandler struct {
 	store *session.Store
+	// canSelectPlayer dit si la session peut LIRE le profil du slug demandé comme
+	// joueur courant (même décision que la garde de propriété du groupe
+	// /players/{player_slug}). nil : non câblé (mono-utilisateur, tests), tout slug
+	// de forme valide est accepté.
+	canSelectPlayer PlayerSelectionCheck
+}
+
+// PlayerSelectionCheck dit si la session de ctx peut choisir le profil `slug`
+// comme joueur courant.
+type PlayerSelectionCheck func(ctx context.Context, slug string) bool
+
+// WithPlayerAccess câble le contrôle d'accès du joueur courant.
+func (h *SessionHandler) WithPlayerAccess(check PlayerSelectionCheck) *SessionHandler {
+	h.canSelectPlayer = check
+	return h
 }
 
 // NewSessionHandler crée un SessionHandler.
@@ -79,6 +95,14 @@ func (h *SessionHandler) handlePostContext(ctx context.Context, in *sessionConte
 	// requête (Touch) même quand le handler répond en erreur.
 	if err := validateSessionContextRequest(&req); err != nil {
 		return nil, err
+	}
+	// Contrôle d'accès AVANT toute mutation, pour la même raison : le joueur
+	// courant ne désigne qu'un profil que la session peut lire.
+	if req.PlayerSlug != nil && h.canSelectPlayer != nil && !h.canSelectPlayer(ctx, *req.PlayerSlug) {
+		slog.WarnContext(ctx, "session_context: joueur courant refusé — profil non accessible",
+			"slug", *req.PlayerSlug)
+		return nil, humacore.NewError(http.StatusForbidden, "player_forbidden",
+			"Accès non autorisé à ce joueur.")
 	}
 
 	if req.PlayerSlug != nil {

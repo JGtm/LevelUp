@@ -15,6 +15,7 @@ import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
 import { useMediaPicker } from './useMediaPicker'
 import { UploadButton } from './UploadButton'
+import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { getMediaText, type MediaText } from './i18n'
 import { useDeleteMedia, useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
 import { useQueryClient } from '@tanstack/react-query'
@@ -200,6 +201,9 @@ export function MediaPage() {
   const authors = authorsData?.authors ?? []
   const toggleMediaLike = useToggleMediaLike(playerSlug)
   const deleteMedia = useDeleteMedia(playerSlug)
+  // Profil d'ami (lecture seule) : ni envoi, ni suppression, ni association ; cœur inactif.
+  const canWrite = useCanWritePlayer(playerSlug)
+  const likeDisabled = !canWrite || toggleMediaLike.isPending
   // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
   // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
   const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])
@@ -317,18 +321,18 @@ export function MediaPage() {
           onToggleLike={(item) => toggleMediaLike.mutate({ file_path: item.file_path, liked: !item.liked })}
           startIndex={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
-          likeDisabled={toggleMediaLike.isPending}
+          likeDisabled={likeDisabled}
           hasNextPage={page < totalPages}
           onLoadNextPage={() => setPage((current) => current + 1)}
           globalIndexOffset={(page - 1) * PAGE_SIZE}
           globalTotal={pagination?.total ?? mediaItems.length}
-          onReassociate={picker.openFor}
+          onReassociate={canWrite ? picker.openFor : undefined}
           currentPlayerGamertag={currentPlayerGamertag}
           playerSlug={playerSlug}
           onOpenMatch={handleOpenMatch}
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((prev) => !prev)}
-          onDelete={(item) => deleteMedia.mutate(item.file_path)}
+          onDelete={canWrite ? (item) => deleteMedia.mutate(item.file_path) : undefined}
           deleteBusy={deleteMedia.isPending}
         />
       )}
@@ -343,7 +347,7 @@ export function MediaPage() {
       )}
 
       {/* Zone d'upload pleine largeur (vient en premier pour rapprocher les filtres de la grille) */}
-      <UploadButton playerSlug={playerSlug} fullWidth />
+      {canWrite && <UploadButton playerSlug={playerSlug} fullWidth />}
 
       <div className="px-6">
         <MediaToolbar
@@ -405,11 +409,11 @@ export function MediaPage() {
                           })
                         }}
                         onOpen={() => setLightboxIdx(flatIndex)}
-                        likeDisabled={toggleMediaLike.isPending}
+                        likeDisabled={likeDisabled}
                         playerSlug={playerSlug}
                         currentPlayerGamertag={currentPlayerGamertag}
                         playerColorMap={playerColorMap}
-                        onAssociate={picker.openFor}
+                        onAssociate={canWrite ? picker.openFor : undefined}
                         onOpenMatch={handleOpenMatch}
                       />
                     )

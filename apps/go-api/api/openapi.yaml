@@ -9695,12 +9695,20 @@ components:
             - profile_ready_no_sync
             - ready
           type: string
+        writable_player_slugs:
+          description: Profils de available_players sur lesquels la session peut écrire.
+          items:
+            type: string
+          type:
+            - array
+            - "null"
       required:
         - setup_required
         - auth_state
         - setup_state
         - current_player
         - available_players
+        - writable_player_slugs
         - current_title_slug
         - available_titles
         - locale

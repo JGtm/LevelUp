@@ -52,7 +52,7 @@ func newOwnershipRouter(t *testing.T) http.Handler {
 	unknownSlug := func(context.Context, string) (string, bool) { return "", false }
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
-	r.With(middleware.RequirePlayerOwnership(false, "password", unknownSlug, noUsers{}, nil)).
+	r.With(middleware.RequirePlayerOwnership(middleware.NewPlayerAccess(false, "password", unknownSlug, noUsers{}, nil))).
 		Get("/players/{player_slug}/x", ok().ServeHTTP)
 	return r
 }
