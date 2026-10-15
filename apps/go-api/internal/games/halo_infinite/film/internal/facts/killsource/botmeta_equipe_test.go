@@ -28,6 +28,12 @@ package killsource
 //	               fragment de la copie petit-boutiste du nom (`43 KaleDucky`, slot 0, bid 0 — le cas
 //	               de `8076f97f`) : le vrai bot est lu, le fragment est ecarte et compte.
 //	EQ-HORS-BALAYAGE un nom de trois unites, que le balayage ne lit pas : l entree se compte.
+//	EQ-HORS-GRAMMAIRE un nom que le balayage lit dans le bloc de personnalisation, qu aucune entree
+//	               n ecrit et qui n est pas un fragment : retire du roster, compte.
+//	EQ-FRAGMENT-NON-FERME une largeur fausse de 8 bits : le paquet ne ferme pas, le fragment `43 X`
+//	               reste au balayage, aucun n est compte ecarte.
+//	EQ-ENTREE-SANS-EQUIPE des entrees lues sans position de l equipe ne donnent jamais d equipe,
+//	               meme a un releve qui croit la position connue : bots illisibles.
 //	EQ-DIAGNOSTICS les comptes non nuls se disent : ERREUR pour un vrai bot sans equipe,
 //	               AVERTISSEMENT pour un paquet qui ne ferme pas (meme quand chaque bot tient son
 //	               equipe d un autre paquet), une entree refusee, hors balayage ou hors grammaire ;
@@ -93,6 +99,9 @@ type botEcrit struct {
 	// octetAvantLeBloc : le dernier octet du bloc de personnalisation. Nul sur le parc HI_1_13_0 ;
 	// non nul, il fait lire au balayage un fragment de la copie du nom (EQ-FANTOME).
 	octetAvantLeBloc byte
+	// nomCache : un nom UTF-16BE ferme par l unite nulle, ecrit en tete du bloc de personnalisation —
+	// le balayage le lit (slot 0, `bid` 0), la marche le saute (EQ-HORS-GRAMMAIRE).
+	nomCache string
 }
 
 // blocHI113 : le bloc de 44 octets de HI_1_13_0 — le nom en UTF-16 petit-boutiste, puis l equipe a
@@ -142,7 +151,14 @@ func payloadDispose(persoBits int, bloc func(botEcrit) []byte, bots ...botEcrit)
 			w.ecrire(uint64(c), 16)
 		}
 		w.ecrire(0, 16) // l unite nulle (nom de moins de 16 unites)
-		w.zeros(128 + 32 + 64 + 46 + persoBits - 8)
+		w.zeros(128 + 32 + 64 + 46)
+		for _, c := range b.nomCache {
+			w.ecrire(uint64(c), 16)
+		}
+		if b.nomCache != "" {
+			w.ecrire(0, 16)
+		}
+		w.zeros(persoBits - 8 - 16*len(b.nomCache) - 16*min(len(b.nomCache), 1))
 		w.ecrire(uint64(b.octetAvantLeBloc), 8)
 		for _, o := range bloc(b) {
 			w.ecrire(uint64(o), 8)
@@ -360,4 +376,47 @@ func TestLesComptesSeDisent(t *testing.T) { // EQ-DIAGNOSTICS
 			}
 		})
 	}
+}
+
+func TestNomHorsGrammaireRetireDuRoster(t *testing.T) { // EQ-HORS-GRAMMAIRE
+	h := hollis
+	h.nomCache = "Zorglub"
+	pl := payloadDispose(persoBitsHI113, blocHI112, h)
+	m := lireLesEquipes(t, lectureHI112, pl)
+	if len(m.Bots) != 1 || m.Bots[0].Name != "343 Hollis" {
+		t.Fatalf("le nom hors grammaire devait sortir du roster : %+v", m.Bots)
+	}
+	exigerEquipe(t, m, "343 Hollis", 1)
+	exigerBilan(t, m, EquipesDesBots{Lues: 1, HorsGrammaire: 1, FragmentsEcartes: 1})
+}
+
+func TestUneLargeurFausseNEcartePasLesFragments(t *testing.T) { // EQ-FRAGMENT-NON-FERME
+	pl := payloadDispose(persoBitsHI113, blocHI112, hollis)
+	for _, ecart := range []int{-8, 8} {
+		l := lectureHI112
+		l.PersoBits += ecart
+		ps := paquetsEcrits(t, l, pl)
+		if len(ps) != 1 || ps[0].Ferme || ps[0].FragmentsEcartes != 0 {
+			t.Fatalf("ecart %d : %+v ; attendu un paquet non ferme, aucun fragment ecarte", ecart, ps)
+		}
+		present := false
+		for _, b := range ps[0].Balayees {
+			present = present || b.Nom == "43 Hollis"
+		}
+		if !present {
+			t.Fatalf("ecart %d : le fragment `43 Hollis` devait rester au balayage : %+v", ecart, ps[0].Balayees)
+		}
+	}
+}
+
+func TestUneEntreeSansEquipeLueEstRefusee(t *testing.T) { // EQ-ENTREE-SANS-EQUIPE
+	// Les paquets sont lus sans position de l equipe, le releve croit la position connue : aucune
+	// entree ne doit donner l equipe 0 de son champ nul.
+	sansPosition := grammar.LectureDesBots{PersoBits: persoBitsHI113, PersoConnue: true}
+	paquets := paquetsEcrits(t, sansPosition, payloadDispose(persoBitsHI113, blocHI112, hollis, ritzy))
+	m := loadBotMeta(paquets)
+	poserLesEquipesDesBots(paquets, &m, lectureHI112)
+	exigerSansEquipe(t, m, "343 Hollis")
+	exigerSansEquipe(t, m, "343 Ritzy")
+	exigerBilan(t, m, EquipesDesBots{Illisibles: 2, FragmentsEcartes: 2})
 }

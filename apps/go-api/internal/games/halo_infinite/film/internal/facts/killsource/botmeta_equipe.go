@@ -54,9 +54,10 @@ package killsource
 // les noms par balayage, et il lit dans la seconde copie d un nom un fragment (`43 KaleDucky`,
 // slot 0, `bid` 0) que la marche du paquet ne lit pas. La grammaire l ecarte d un paquet qui ferme
 // ([grammar.PaquetBotMetadata.FragmentsEcartes], compte en [EquipesDesBots.FragmentsEcartes]) ; un
-// nom balaye qu aucune entree de paquet ferme ne lit et qui n est pas un tel fragment se compte
-// ([EquipesDesBots.HorsGrammaire]). Une entree que la marche lit sans que le lecteur historique la
-// trouve se compte aussi ([EquipesDesBots.EntreesHorsBalayage]).
+// nom balaye qu aucune entree de paquet ferme ne lit et qui n est pas un tel fragment n est pas un
+// bot que l ecrivain ecrit : il SORT DU ROSTER et se compte ([EquipesDesBots.HorsGrammaire]) — jamais
+// une entree sans equipe. Une entree que la marche lit sans que le lecteur historique la trouve se
+// compte aussi ([EquipesDesBots.EntreesHorsBalayage]).
 //
 // Un VRAI bot sans equipe lue se compte et l orchestrateur le journalise en erreur. AUCUN REPLI : ni
 // le siege, ni la feuille de match.
@@ -82,7 +83,8 @@ type EquipesDesBots struct {
 	Contradictoires int
 	// HorsGrammaire : les bots du lecteur historique qu aucune entree de paquet ferme ne lit, alors
 	// que tous les paquets ou il les trouve ferment et qu aucune entree ne les refuse — sans etre un
-	// fragment ecarte. Un compte, pas un bot sans equipe : la grammaire de l ecrivain ne l ecrit pas.
+	// fragment ecarte. La grammaire de l ecrivain ne l ecrit pas : il est RETIRE DU ROSTER, et compte
+	// ici (avertissement `killsource.entrees_de_bots`) ; il n est jamais publie sans equipe.
 	HorsGrammaire int
 	// FragmentsEcartes : les noms que la grammaire ecarte du balayage des paquets fermes, fragments de
 	// la seconde copie d un nom ecrit (cf. l en-tete), sommes sur les paquets du film.
@@ -138,6 +140,10 @@ func (r *releveDesEquipes) noter(p grammar.PaquetBotMetadata) {
 			r.horsBalayage[k] = true
 			continue
 		}
+		if !e.EquipeLue { // aucune position de l equipe pour ce build : refusee, jamais 0
+			r.refuses[k] = true
+			continue
+		}
 		if e.Equipe < grammar.TeamNone || e.Equipe > botEquipeMax {
 			r.bilan.HorsDomaine++
 			r.refuses[k] = true
@@ -153,11 +159,11 @@ func (r *releveDesEquipes) noter(p grammar.PaquetBotMetadata) {
 	}
 }
 
-// poser donne a chaque bot l equipe de ses paquets fermes quand ils s accordent, et compte les
-// autres.
+// poser donne a chaque bot l equipe de ses paquets fermes quand ils s accordent, compte les autres,
+// et retire du roster les noms hors grammaire (cf. l en-tete).
 func (r *releveDesEquipes) poser(m *botMeta) {
-	for i := range m.Bots {
-		b := &m.Bots[i]
+	gardes := m.Bots[:0]
+	for _, b := range m.Bots {
 		k := [2]int{b.Slot, b.BotID}
 		eqs := r.parBot[k]
 		switch {
@@ -172,8 +178,11 @@ func (r *releveDesEquipes) poser(m *botMeta) {
 			r.bilan.Illisibles++
 		default:
 			r.bilan.HorsGrammaire++
+			continue
 		}
+		gardes = append(gardes, b)
 	}
+	m.Bots = gardes
 	r.bilan.EntreesHorsBalayage = len(r.horsBalayage)
 	m.Equipes = r.bilan
 }

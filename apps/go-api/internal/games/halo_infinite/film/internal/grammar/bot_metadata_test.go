@@ -6,7 +6,9 @@ package grammar
 //	              ecarte, compte.
 //	FR-ECRIT      un nom que la marche lit lui-meme n est jamais ecarte, meme suffixe d un autre.
 //	FR-AUTRE      un nom balaye qui n est le suffixe d aucun nom lu reste (il se compte ailleurs).
-//	FR-NON-FERME  un paquet qui ne ferme pas n ecarte rien : sans marche, rien n est etabli.
+//
+// Un paquet qui ne ferme pas n ecarte rien : `TestUneLargeurFausseNEcartePasLesFragments`
+// (`facts/killsource/botmeta_equipe_test.go`), sur une charge fabriquee par la grammaire de l ecrivain.
 
 import (
 	"reflect"
@@ -29,16 +31,5 @@ func TestFragmentDuBalayageEcarte(t *testing.T) { // FR-SUFFIXE, FR-ECRIT, FR-AU
 	attendu := []EntreeDeBotBalayee{balayees[0], balayees[2], balayees[3]}
 	if n != 1 || !reflect.DeepEqual(out, attendu) {
 		t.Fatalf("%d ecarte(s), restent %+v ; attendu 1 et %+v", n, out, attendu)
-	}
-}
-
-func TestPaquetNonFermeNEcarteRien(t *testing.T) { // FR-NON-FERME
-	// Un payload d un bot dont la marche ne ferme pas sous une largeur fausse : le balayage garde
-	// tout ce qu il lit, aucun fragment ne se compte.
-	pl := make([]byte, 64)
-	pl[3] = 1
-	p := lirePaquetBotMetadata(pl, 0, LectureDesBots{PersoBits: 8, PersoConnue: true})
-	if p.Ferme || p.FragmentsEcartes != 0 {
-		t.Fatalf("paquet ferme %v, %d fragment(s) ecarte(s) ; attendu non ferme et 0", p.Ferme, p.FragmentsEcartes)
 	}
 }
