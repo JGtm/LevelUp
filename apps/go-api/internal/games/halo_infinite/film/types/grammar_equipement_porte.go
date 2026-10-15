@@ -29,9 +29,12 @@ type CarriedEquipmentRead struct {
 	// Signal est le compteur R(4) du signal de controle (i22).
 	HasSignal bool
 	Signal    uint32
-	// Handles est le nombre d entrees de la pile des poignees suivies (i28).
+	// Handles est le nombre d entrees de la pile des poignees suivies (i28) ; Tracked, les vies que
+	// ses entrees PRESENTES designent (handle 13 + 2 bits, base 0x200) : les objets que l equipement
+	// a engendres et suit (la faille du translocateur, le champ de reparation).
 	HasHandles bool
 	Handles    uint32
+	Tracked    []LifeKey
 }
 
 // CarriedReadKind qualifie une lecture d objet porte.
@@ -44,6 +47,9 @@ const (
 	CarriedDelta CarriedReadKind = "delta"
 	// CarriedDel : la suppression de l objet.
 	CarriedDel CarriedReadKind = "del"
+	// CarriedTrackedEnd : la suppression d une vie que la pile i28 de l objet a designee ; Object et
+	// Carrier sont ceux de l objet porte, Tracked porte la vie supprimee.
+	CarriedTrackedEnd CarriedReadKind = "tracked-end"
 )
 
 // CarriedEquipmentStats compte ce que la lecture a rencontre.
@@ -57,4 +63,7 @@ type CarriedEquipmentStats struct {
 	Detached int
 	// EnergyReads, Activations, Signals, HandleReads : lectures des quatre composants.
 	EnergyReads, Activations, Signals, HandleReads int
+	// TrackedEntries : entrees presentes lues dans les piles i28 ; TrackedEnds : suppressions lues des
+	// vies qu elles designent.
+	TrackedEntries, TrackedEnds int
 }

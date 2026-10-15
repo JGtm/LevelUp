@@ -385,7 +385,7 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           le calque des poussees et sa couverture, que le jumeau
 //	                                           servi (`service/replayview`) convertit comme chaque
 //	                                           calque (ADR 0034 D-7). Aucun retrait.
-const plafondSurfaceReplay = 305 // 2026-10-14 — lot « equipement porte » : 301 + 4 (CarriedEquipment, CarriedEnergy, RiftPose, CarriedEquipmentCoverage) ; cf. l historique ci-dessus
+const plafondSurfaceReplay = 306 // 2026-10-15 — base 027a5bcaf re-mesuree, meme lot : 305 + 1 (CarriedTracked, les objets engendres) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

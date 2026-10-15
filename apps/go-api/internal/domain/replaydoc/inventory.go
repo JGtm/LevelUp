@@ -174,14 +174,22 @@ type Pickup struct {
 type PickupKind string
 
 // CarriedEquipment est UN objet d'équipement porté (schéma 95) : porteur, rang, prise, fin, énergie,
-// activations.
+// activations, objets engendrés suivis.
 type CarriedEquipment struct {
-	Slot   uint32          `json:"slot"`
-	R      int             `json:"r"`
-	T0     int             `json:"t0"`
-	T1     *int            `json:"t1,omitempty"`
-	Energy []CarriedEnergy `json:"energy,omitempty"`
-	Uses   []int           `json:"uses,omitempty"`
+	Slot    uint32           `json:"slot"`
+	R       int              `json:"r"`
+	T0      int              `json:"t0"`
+	T1      *int             `json:"t1,omitempty"`
+	Energy  []CarriedEnergy  `json:"energy,omitempty"`
+	Uses    []int            `json:"uses,omitempty"`
+	Tracked []CarriedTracked `json:"tracked,omitempty"`
+}
+
+// CarriedTracked est un objet engendré par un équipement porté (pile i28) : son apparition et sa
+// suppression, quand elle est lue.
+type CarriedTracked struct {
+	T0 int  `json:"t0"`
+	T1 *int `json:"t1,omitempty"`
 }
 
 // CarriedEnergy est une lecture de l'énergie d'un objet porté, avec ses usages restants.

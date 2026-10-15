@@ -265,7 +265,22 @@ package grammar
 // (123/123) ; temoins 1b2d9e08 164,06 s, 6acce632 53,3 / 158,5 / 304,2 s a la frame pres.
 // Repulseur 0d9a9af9 : 0,6 -> 0,4 -> 0,2 -> 0 aux trois activations, suppression = consommation.
 //
-// ENTREE `grammar-2026-10-15` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// ENTREE `grammar-2026-10-15` (2026-10-15, lot « equipement porte », demande du user : « si on a
+// l evenement pour le champ de reparation, on rebranche le son de fin ») : LES OBJETS QUE
+// L EQUIPEMENT PORTE ENGENDRE, ET LEUR FIN. Aucun bit n est lu autrement : les entrees presentes de
+// la pile i28 (`FUN_1408f0ac4(…,0)`, 13 + 2 bits) sont des HANDLES — `FUN_1406d3140` categorie 0,
+// base 0x200 (`FUN_140d10bb0` pose 0x200 aux categories 0 et 1) — que le lecteur rend desormais
+// (`EquipementLu.Suivis`). Le canal retient chaque vie nommee, meme apres la fin de l objet porte,
+// et rend sa suppression (`tracked-end`).
+//
+// MESURE (238 films du parc, contexte de la cuisson, `champ_fin_research_test.go`) : 1 772 objets
+// nommes par une pile. Champ de reparation : 18 sur 18 sont des ti=41 nes dans le paquet de la pile,
+// 18 suppressions lues (12 apres la fin de l objet porte, que le retrait de la pile ne verrait pas) ;
+// durees : 11 de 11,35 a 12,24 s, 6 de 1,5 a 4,6 s (champ detruit), une de 16,95 s. Capteur 834,
+// ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
+// suppression de 0,2 a 0,7 s (5676a9ba).
+//
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
 // `feat/ri-ecart-108`, etapes R1 a R3) : TROIS LECTURES DU JEU ENTRENT DANS LA MARCHE DES IMAGES-CLES.
 //
 //   - R1, LA TABLE D ENTREES (`keyframe_entrees.go`). La table d image-cle compte une entree par slot

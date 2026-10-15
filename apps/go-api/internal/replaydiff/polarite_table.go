@@ -198,7 +198,7 @@ var tablePolarites = []blocPolarites{
 		Telemetrie: "minPoints"},
 	{Blocs: []string{"coverage.carriedEquipment."},
 		Echecs:  "ambiguousCost ambiguousRank noCatalog noIdentity teleportsWithoutPose unnamed withoutRank",
-		Succes:  "attached energyReads positioned published riftPoses uses withCost",
+		Succes:  "attached energyReads positioned published riftPoses trackedEnds trackedObjects uses withCost",
 		Neutres: "beforeOrigin created"},
 	{Blocs: []string{"coverage.knockbacks."},
 		Echecs:  "noIdentity unpaired withoutAuthor withoutImpulse",

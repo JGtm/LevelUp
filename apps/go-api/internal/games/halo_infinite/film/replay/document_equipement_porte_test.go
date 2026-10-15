@@ -37,14 +37,15 @@ func catalogueDuTest() *equipenergy.Catalog {
 		{Pickup: "0x730dc70f", Carried: "0xa1344fc2", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 1, Delta: -1},
 		{Pickup: "0x2974c233", Carried: "0xc12e5469", PickupEnergy: 0.66, CarriedEnergy: 1, Threshold: 0.33, Delta: -0.33},
 		{Pickup: "0x8e2dc574", Carried: "0x37c87a13", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 1, Delta: -1},
+		{Pickup: "0x32d97758", Carried: "0x5c8e2316", PickupEnergy: 0.5, CarriedEnergy: 1, Threshold: 0.1, Delta: -0.5},
 	}}
 }
 
 var famillesDuTest = map[uint32]string{0x7ca85adc: "repulsor", 0x730dc70f: "translocator_beacon",
-	0x2974c233: "wall", 0x8e2dc574: "wall"}
+	0x2974c233: "wall", 0x8e2dc574: "wall", 0x32d97758: "repair_field"}
 
 func paletteDuTest() *AbilityPalette {
-	return &AbilityPalette{Families: map[int]string{6: "repulsor", 11: "translocator_beacon", 2: "wall"}}
+	return &AbilityPalette{Families: map[int]string{6: "repulsor", 11: "translocator_beacon", 2: "wall", 23: "repair_field"}}
 }
 
 // TestRepulseurTroisUsages : 0d9a9af9 — ramasse a 0,6 (3 usages), puis 2, 1, 0 aux trois activations ;
@@ -175,5 +176,54 @@ func TestPoseSansSuppressionBorneeParLaVie(t *testing.T) {
 		tracks: vies, translocations: trs, origin: origine1b2d, step: pas100ms})
 	if len(poses) != 1 || poses[0].X == nil || *poses[0].X != tx {
 		t.Fatalf("poses %+v : l echange de la meme vie positionne la faille", poses)
+	}
+}
+
+// origine5676 : l origine de 5676a9ba (Insolence), 24 381 ms.
+const origine5676 = uint64(24_381_000)
+
+func avecSuivis(l types.CarriedEquipmentRead, slots ...uint32) types.CarriedEquipmentRead {
+	l.HasHandles, l.Handles = true, uint32(len(slots)) //nolint:gosec // test
+	for _, s := range slots {
+		l.Tracked = append(l.Tracked, types.LifeKey{Slot: s, Gen: 1})
+	}
+	return l
+}
+
+func finDeSuivi(ms float64, slot uint32) types.CarriedEquipmentRead {
+	l := lecture(ms, 2039, 539, types.CarriedTrackedEnd)
+	l.Tracked = []types.LifeKey{{Slot: slot, Gen: 1}}
+	return l
+}
+
+// TestChampDeReparationFinLue : 5676a9ba, champ de reparation de 539 (lectures du canal de production,
+// 2026-10-15). La pile i28 nomme le champ engendre a chaque usage (1123, puis 1138) ; sa suppression
+// date sa fin, meme quand elle suit la fin de l objet porte (le second champ survit a 134,998 s).
+func TestChampDeReparationFinLue(t *testing.T) {
+	reads := []types.CarriedEquipmentRead{
+		lecture(90183.0, 2039, 539, types.CarriedNew),
+		avecActivation(avecEnergie(lecture(118540.0, 2039, 539, types.CarriedDelta), 8192)),
+		avecSuivis(lecture(118775.4, 2039, 539, types.CarriedDelta), 1123),
+		avecSuivis(lecture(130254.9, 2039, 539, types.CarriedDelta)),
+		finDeSuivi(130456.1, 1123),
+		avecActivation(avecEnergie(lecture(133759.2, 2039, 539, types.CarriedDelta), 0)),
+		avecSuivis(lecture(134024.8, 2039, 539, types.CarriedDelta), 1138),
+		lecture(134997.8, 2039, 539, types.CarriedDel),
+		finDeSuivi(135728.8, 1138),
+	}
+	changes := []types.EquipmentChange{{TimestampUS: 90183000, Slot: 539, Kind: types.EquipmentTaken, Rank: 23}}
+	out, _, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
+		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+		tracks: []Track{{Slot: 539}}, origin: origine5676, step: pas100ms})
+	if len(out) != 1 || cov.TrackedObjects != 2 || cov.TrackedEnds != 2 {
+		t.Fatalf("publies %d, couverture %+v", len(out), cov)
+	}
+	tr := out[0].Tracked
+	if len(tr) != 2 || tr[0].T0 != 943 || tr[0].T1 == nil || *tr[0].T1 != 1060 ||
+		tr[1].T0 != 1096 || tr[1].T1 == nil || *tr[1].T1 != 1113 {
+		t.Fatalf("objets engendres %+v", tr)
+	}
+	if out[0].T1 == nil || *out[0].T1 != 1106 || *tr[1].T1 <= *out[0].T1 {
+		t.Fatalf("fin de l objet porte %v : le second champ finit apres elle", out[0].T1)
 	}
 }

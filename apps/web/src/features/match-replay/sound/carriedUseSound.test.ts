@@ -1,11 +1,11 @@
 /**
  * Tests — carriedUseSound (l'utilisation d'un équipement porté), sur les relevés réels figés de
- * `test/carriedUseWitnesses.ts` (cuisson unitaire au schéma 95 de `5676a9ba` et `1f8e8849`).
+ * `test/carriedUseWitnesses.ts` (cuisson unitaire au schéma 96 de `5676a9ba` et `1f8e8849`).
  */
 import { describe, expect, it } from 'vitest'
 
 import { doc1f8e8849, doc5676a9ba, PORTES_5676A9BA, POSES_DU_MUR_565 } from '../test/carriedUseWitnesses'
-import { carriedUseSoundEvents } from './carriedUseSound'
+import { carriedEndSoundEvents, carriedUseSoundEvents } from './carriedUseSound'
 import { buildSoundTimeline } from './replaySound'
 
 function parStem(ev: { ms: number; stem: string }[]): Record<string, number[]> {
@@ -44,5 +44,23 @@ describe('aucun doublon : le mur sonne par sa pose, une fois', () => {
     const ev = buildSoundTimeline(doc5676a9ba(true), [])
     const murs = ev.filter((e) => e.stem === 'wall_activate').map((e) => e.ms)
     expect(murs).toEqual(POSES_DU_MUR_565.map((p) => p.t0 * 100))
+  })
+})
+
+describe('carriedEndSoundEvents — la fin du champ de réparation, écrite par le film', () => {
+  it('5676a9ba : un son d extinction à la suppression de chaque champ engendré, aucun pour le capteur', () => {
+    const ev = carriedEndSoundEvents(doc5676a9ba())
+    const fins = PORTES_5676A9BA.filter((c) => c.r === 23)
+      .flatMap((c) => c.tracked)
+      .map((s) => s.t1 * 100)
+      .sort((a, b) => a - b)
+    expect(fins).toHaveLength(11)
+    expect(parStem(ev)).toEqual({ repair_field_end: fins })
+  })
+
+  it('5676a9ba : le second champ de 539 finit APRÈS la fin de l objet porté, et sonne quand même', () => {
+    const porte = PORTES_5676A9BA.find((c) => c.slot === 539 && c.r === 23)
+    expect(porte?.tracked[1].t1).toBeGreaterThan(porte?.t1 ?? Infinity)
+    expect(carriedEndSoundEvents(doc5676a9ba()).map((e) => e.ms)).toContain(111_300)
   })
 })

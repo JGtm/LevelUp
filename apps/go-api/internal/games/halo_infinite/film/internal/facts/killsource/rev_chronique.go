@@ -298,11 +298,17 @@ package killsource
 // `CarriedEquipmentRead` / `CarriedEquipmentStats`, hors de la sortie de killsource. Golden regenere a
 // revision constante.
 //
+// COMPLEMENT DU 2026-10-15 (meme lot, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-15`
+// (la pile i28 rend ses handles, le canal date la suppression des objets que l equipement engendre) ;
+// aucun bit n est lu autrement, et `CarriedEquipmentRead` gagne `Tracked`, hors de la sortie de
+// killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
+// `killsource` identique sur les 20. Golden regenere a revision constante.
+//
 // ENTREE `killsource-2026-10-15` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
-// `feat/ri-ecart-108`) : `grammar.Rev` monte a `grammar-2026-10-15` (table d entrees d image-cle,
+// `feat/ri-ecart-108`) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table d entrees d image-cle,
 // bloc malleable d i53 sans drapeau final pour la version majeure declaree 0x25, world-object i0 et
 // rigid-body i18 sous la garde) ; [GrammaireSousFilm] pose le nouveau champ du film. PREUVE
-// (`cmd/killsource json`, 19 temoins, binaire de `feat/v75` `39ead801f` contre celui de la branche
+// (`cmd/killsource json`, 19 temoins, binaire de `feat/v75` `46bfa5fad` contre celui de la branche
 // fusionnee) : 18 films identiques a l octet ; sur `60ae07c4` (HI_1_8_0), morts, instants, tueurs,
 // victimes, sources et assistances identiques, la sante et la calibration changent (5 morts passent du
 // balayage a la marche sequentielle, enregistrements lus par les deux voies 154 -> 159). Les lignes de

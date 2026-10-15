@@ -5489,6 +5489,7 @@ export interface components {
             t0: number;
             /** Format: int64 */
             t1?: number;
+            tracked?: components["schemas"]["CarriedTracked"][] | null;
             uses?: number[] | null;
         };
         CarriedEquipmentCoverage: {
@@ -5517,6 +5518,10 @@ export interface components {
             /** Format: int64 */
             teleportsWithoutPose: number;
             /** Format: int64 */
+            trackedEnds: number;
+            /** Format: int64 */
+            trackedObjects: number;
+            /** Format: int64 */
             unnamed: number;
             /** Format: int64 */
             uses: number;
@@ -5524,6 +5529,12 @@ export interface components {
             withCost: number;
             /** Format: int64 */
             withoutRank: number;
+        };
+        CarriedTracked: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1?: number;
         };
         CascadeFilter: {
             experience_types: string[] | null;

@@ -231,18 +231,22 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - [x] EP6 (783fbc6f0 ; capteur, traqueur, champ, écran sonnent à chaque utilisation lue ; mur garde sa pose ; témoins 5676a9ba et 1f8e8849, 30/30) (décision user 15/10) Rebrancher les sons de pose du capteur, du traqueur, du champ de réparation et de l écran occultant sur `carriedEquipment[].uses` ; liste datée de `poseSoundTriggers.guard.test.ts` vidée.
 - [x] Relecture adversariale (15/10) : 0 P1, 3 P2 (calques absents des tests figés, mur rang 19 jamais compté, journal), 5 P3 ; i28 et règle du HUD confirmés contre l exe → corrections transmises à levelup-80.
 - [x] Fusion : avance rapide de feat/v75 sur feat/equip-porte @ 027a5bcaf (CI verte, relecture traitée : P2-1 fait, P2-2 réfuté par mesure — énergie absente = énergie de l objet porté, les deux fiches du mur portent 1 —, P3 faits).
-- [ ] Recuisson du parc au schéma 95 + backfill killsource (killsource-2026-10-14 : chemin de lecture de 23 morts sur deux films) — accord user.
+- [x] EP7 (4cd7886f0, dc03981a8 ; SCHÉMA 96, grammar-2026-10-15, faits 14 ; 18/18 fins de champ lues au parc ; killsource/objectives constantes prouvées par replay-equiv) (user 15/10, session levelup-80) Fin du champ de réparation lue dans le film (entité ti=41 nommée par la pile i28, DEL = fin) → son `repair_field_end` ; schéma 95 amendé (non cuit).
+- [ ] Recuisson du parc au schéma 96 (ex-95) + backfill killsource (killsource-2026-10-14 : chemin de lecture de 23 morts sur deux films) — accord user.
 
 ### Lot G — Étiquettes de barres (Sonnet ; après C, D, E)
-- [ ] G1 Constat au navigateur du décalage vertical (cause non prouvée par lecture) avant correction.
-- [ ] G2 Helper unique : encre noire ou blanche choisie au meilleur contraste WCAG avec la couleur
+- [x] G1 (cause : ancre inline-flex du Tooltip alignée sur la ligne de base, +2 à +2,5 px ; après 0 px) Constat au navigateur du décalage vertical (cause non prouvée par lecture) avant correction.
+- [x] G2 (879cadad5 : segmentInk, SegmentLabel, barLabel) Helper unique : encre noire ou blanche choisie au meilleur contraste WCAG avec la couleur
   du segment (`lib/accessibility/wcagContrast.ts`, couleurs résolues par `resolveToken`), composant
   `SegmentLabel` (centrage vertical unique) et variante ECharts.
-- [ ] G3 Migration des 8 pistes HTML et 8 graphes ECharts recensés (isolement, ressources,
+- [x] G3 (879cadad5) Migration des 8 pistes HTML et 8 graphes ECharts recensés (isolement, ressources,
   objectif, équipements, ramassages, répartition des frags, échanges d'assistances, synthèses).
-- [ ] G4 Garde-rail grep (modèle `teamTint.guard.test.ts`) : pas de `text-white`/`text-black` sur
+- [x] G4 (segmentInk.guard.test.ts) Garde-rail grep (modèle `teamTint.guard.test.ts`) : pas de `text-white`/`text-black` sur
   un segment hors helper, pas d'étiquette `inside` à couleur fixe.
 - Gate : vitest/tsc/eslint ; captures claire et sombre de chaque page concernée ; gate visuel user.
+
+- [x] G5 (1fb5fd253 : carte « Appui reçu » de Sessions, nom d axe de la frise)
+- [ ] Gate visuel du user (encre noire au meilleur contraste WCAG sur les bleus et rouges d équipe).
 
 ### Lot H — Opérations (superviseur)
 - [ ] H1 Cuire le match VIP recommandé à l'unité (`backfill-replay --one <id complet>`), après la

@@ -330,7 +330,7 @@ describe('buildSoundTimeline', () => {
         },
         carriedEquipment: [
           { slot: 1, r: 12, t0: 5, t1: 30, energy: [], uses: [10] },
-          { slot: 1, r: 23, t0: 60, t1: 100, energy: [], uses: [70] },
+          { slot: 1, r: 23, t0: 60, t1: 100, energy: [], uses: [70], tracked: [{ t0: 70, t1: 95 }] },
         ],
         equipmentPlacements: [
           { t0: 10, t1: 90, x: 0, y: 0, family: 'threat_seeker', id: '0x0001', owner: 1, origin: 'deployed' },
@@ -344,8 +344,8 @@ describe('buildSoundTimeline', () => {
       // Le champ de réparation TIRE une variante (lot du 2026-08-26) : l'événement porte les
       // trois fichiers, le choix se fait à la lecture.
       { ms: 7_000, stem: 'repair_field_activate', variants: SOUND_VARIANTS.repair_field_activate },
-      // SA FIN reste attachée à la pose `deployed` (décision produit du 2026-08-26) : c'est la
-      // SEULE famille dans ce cas, le mur et le capteur n'ont pas de son d'extinction propre.
+      // SA FIN (décision produit du 2026-08-26) : la suppression, écrite par le film, de l'objet que
+      // le champ engendre (`tracked[].t1`), jamais la pose. SEULE famille dans ce cas.
       { ms: 9_500, stem: 'repair_field_end', variants: SOUND_VARIANTS.repair_field_end },
     ])
   })

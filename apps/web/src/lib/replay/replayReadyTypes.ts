@@ -419,13 +419,15 @@ export type ReplayDocumentReady = Omit<
   knockbacks: NonNullable<ReplayDocument['knockbacks']>
   /**
    * L'ÉQUIPEMENT PORTÉ (schéma 95) : par objet porté (porteur, rang, prise, fin), l'énergie lue et les
-   * usages restants (règle du jeu, quand le coût de la famille est établi), et les activations. Vide =
+   * usages restants (règle du jeu, quand le coût de la famille est établi), les activations, et les
+   * objets engendrés qu'il suit (`tracked` : apparition, suppression lue — le champ de réparation). Vide =
    * artefact antérieur au schéma 95 — `coverage.carriedEquipment` distingue.
    */
   carriedEquipment: Array<
-    Omit<NonNullable<ReplayDocument['carriedEquipment']>[number], 'energy' | 'uses'> & {
+    Omit<NonNullable<ReplayDocument['carriedEquipment']>[number], 'energy' | 'uses' | 'tracked'> & {
       energy: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['energy']>
       uses: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['uses']>
+      tracked: NonNullable<NonNullable<ReplayDocument['carriedEquipment']>[number]['tracked']>
     }
   >
   /**

@@ -180,7 +180,7 @@ import { abilityImpulseSoundEvents } from './abilityImpulseSound'
 import { KNOCKBACK_SOUND_STEM, knockbackSoundEvents, type RepulsorKillSound } from './knockbackSound'
 import { translocationSoundEvents } from './translocationSound'
 import { riftPoseSoundEvents } from './riftPoseSound'
-import { carriedUseSoundEvents } from './carriedUseSound'
+import { carriedEndSoundEvents, carriedUseSoundEvents } from './carriedUseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
@@ -202,7 +202,12 @@ export { ABILITY_IMPULSE_SOUND_STEMS, abilityImpulseSoundEvents } from './abilit
 export { KNOCKBACK_SOUND_STEM, knockbackSoundEvents } from './knockbackSound'
 export { TRANSLOCATION_SOUND_STEM, translocationSoundEvents } from './translocationSound'
 export { RIFT_POSE_SOUND_STEM, RIFT_POSE_HIT_OFFSET_MS, riftPoseSoundEvents } from './riftPoseSound'
-export { CARRIED_USE_SOUND_STEMS, carriedUseSoundEvents } from './carriedUseSound'
+export {
+  CARRIED_END_SOUND_STEMS,
+  CARRIED_USE_SOUND_STEMS,
+  carriedEndSoundEvents,
+  carriedUseSoundEvents,
+} from './carriedUseSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
@@ -417,24 +422,6 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * `ABILITY_IMPULSE_SOUND_STEMS` (`abilityImpulseSound.ts`, `doc.abilityImpulses`, schéma 38).
  * Ce ne sont pas des objets posés au sens de CETTE table-ci.
  */
-export const EQUIPMENT_PLACEMENT_SOUND_STEMS_END: Readonly<Record<string, string>> = {
-  // Le champ de réparation SONNE SA FIN depuis le 2026-08-26, et c'est une décision produit
-  // de l'utilisateur (« y compris le champ de réparation qui disparaît »), pas une déduction.
-  //
-  // ELLE AMENDE UNE RÈGLE DE CE FICHIER, et il faut le dire plutôt que de la contourner en
-  // silence : « rien ne sonne à la fin — la disparition d'un mur n'est pas un acte, c'est la
-  // fin d'une durée ». Elle reste vraie POUR LE MUR ; le champ de réparation, lui, est un
-  // émetteur qui s'ÉTEINT, et le jeu lui donne un événement propre pour ça
-  // (`play_007_abl_repairfield_deactivate`, trois variantes).
-  //
-  // LA RÉSERVE D'HORLOGE EST ÉCRITE, parce qu'elle ne s'entend pas : `t1` d'une pose est sa
-  // MISE AU REPOS mesurée, c'est-à-dire une BORNE INFÉRIEURE de sa disparition (correctif de
-  // la revue des poses, 2026-08-17). Le son part donc au plus tôt à l'instant où le film
-  // cesse de voir l'objet actif, jamais après. Aucune autre famille n'entre ici sans la même
-  // vérification : une famille dont `t1` n'est pas mesuré sonnerait à un instant inventé.
-  repair_field: 'repair_field_end',
-}
-
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
 }
@@ -657,11 +644,6 @@ export function buildSoundTimeline(
       if (!placementIsDeployedObject(p)) continue
       const stem = EQUIPMENT_PLACEMENT_SOUND_STEMS[p.family]
       if (stem) out.push(soundEvent(frameToMs(p.t0, doc), stem))
-      // La FIN de la pose, pour les seules familles qui ont un son d'extinction propre dans
-      // le jeu (`EQUIPMENT_PLACEMENT_SOUND_STEMS_END`) : elle suit la même porte que le début
-      // — un objet lâché à la mort ne s'est pas éteint, il est tombé.
-      const fin = EQUIPMENT_PLACEMENT_SOUND_STEMS_END[p.family]
-      if (fin) out.push(soundEvent(frameToMs(p.t1, doc), fin))
     }
     // Les TRACTIONS de grappin (schéma 8) : le TIR sonne à `t0`, un événement par traction —
     // aucune fin sonnée, `t1` ne fait que fermer la fenêtre du calque (`grappleLayer.ts`).
@@ -700,6 +682,8 @@ export function buildSoundTimeline(
     // L'UTILISATION du capteur, du traqueur, du champ et de l'écran (schéma 95), à l'image où le film
     // la date. Doctrine : `carriedUseSound.ts`.
     out.push(...carriedUseSoundEvents(doc))
+    // LA FIN DU CHAMP DE RÉPARATION : la suppression, écrite par le film, de l'objet qu'il engendre.
+    out.push(...carriedEndSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas l'allégeance du film), les seules actions qui

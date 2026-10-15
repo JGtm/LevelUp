@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 96
-empreinte-stockee 45874ab0c45580ce
-empreinte-servie 45874ab0c45580ce
-empreinte-cuite 366349005beeb50a
+schema 97
+empreinte-stockee 80b56272e3c87465
+empreinte-servie 80b56272e3c87465
+empreinte-cuite 982819d1bf7526f4
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -190,6 +190,7 @@ CarriedEquipment
   Slot json:"slot" uint32
   T0 json:"t0" int
   T1 json:"t1,omitempty" *int
+  Tracked json:"tracked,omitempty" []CarriedTracked
   Uses json:"uses,omitempty" []int
 CarriedEquipmentCoverage
   AmbiguousCost json:"ambiguousCost" int
@@ -204,10 +205,15 @@ CarriedEquipmentCoverage
   Published json:"published" int
   RiftPoses json:"riftPoses" int
   TeleportsWithoutPose json:"teleportsWithoutPose" int
+  TrackedEnds json:"trackedEnds" int
+  TrackedObjects json:"trackedObjects" int
   Unnamed json:"unnamed" int
   Uses json:"uses" int
   WithCost json:"withCost" int
   WithoutRank json:"withoutRank" int
+CarriedTracked
+  T0 json:"t0" int
+  T1 json:"t1,omitempty" *int
 ContinuousFireCoverage
   Ambiguous json:"ambiguous" int
   BurstsRead json:"burstsRead" int

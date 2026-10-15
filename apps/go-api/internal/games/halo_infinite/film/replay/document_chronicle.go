@@ -3308,8 +3308,30 @@ package replay
 //	                304,2 s) à la frame près ; répulseur 0d9a9af9 et 72b0a25e : 3 usages à la prise
 //	                (énergie 0,6, coût 0,2), 2, 1, 0 aux activations, comme au Theater.
 //
-// v96 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
-// `grammar-2026-10-15`) : LES IMAGES-CLÉS SE LISENT COMME UNE TABLE D'ENTRÉES. Aucune forme ne change :
+// v96 (2026-10-15, lot « équipement porté », `grammar-2026-10-15`, demande du user : « si on a
+// l'événement pour le champ de réparation, on rebranche le son de fin ») : LES OBJETS QUE
+// L'ÉQUIPEMENT PORTÉ ENGENDRE, ET LEUR FIN.
+//
+//	`carriedEquipment[].tracked[]`  neuf : {t0, t1?} — chaque objet que la pile i28 de l'objet porté
+//	                nomme (handle, base 0x200 de `FUN_1406d3140` catégorie 0) : `t0` la première pile
+//	                qui le nomme, `t1` sa SUPPRESSION écrite par le film, même après la fin de l'objet
+//	                porté. Pour le champ de réparation, `t1` est la fin du champ.
+//	`coverage.carriedEquipment`  gagne `trackedObjects` (objets engendrés publiés) et `trackedEnds`
+//	                (ceux dont la suppression est lue).
+//
+//	CE QUI MONTE    `SchemaVersion` 95 -> 96 ; `grammar.Rev` -> `grammar-2026-10-15` (la pile rend ses
+//	AVEC ELLE       handles) ; `SchemaDesFaits` 13 -> 14 (les lectures portent les vies suivies) ;
+//	                `killsource.Rev` et `objectives.Rev` inchangées.
+//
+//	LE PARC         un artefact 95 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          238 films du parc : 18 champs de réparation, tous des ti=41 nés dans le paquet
+//	                de la pile, 18 suppressions lues (12 après la fin de l'objet porté) ; durées : 11
+//	                de 11,35 à 12,24 s, 6 de 1,5 à 4,6 s (champ détruit), une de 16,95 s. Capteur 834,
+//	                écran 241, traqueur 49 objets engendrés, tous ti=41 nés dans le paquet.
+//
+// v97 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`,
+// `grammar-2026-10-15.2`) : LES IMAGES-CLÉS SE LISENT COMME UNE TABLE D'ENTRÉES. Aucune forme ne change :
 // des valeurs, sur des films où la lecture rend désormais ce qu'elle perdait.
 //
 //	CE QUI CHANGE   `inventory[].d` (doc) : 2 est l'emplacement de l'objet tenu hors de la rangée
@@ -3319,13 +3341,13 @@ package replay
 //	                deux impulsions de capacité lues sur des bits étrangers disparaissent.
 //	                `64e8adfa` : une arme au sol de plus (un record que la fausse ancre slot 1536 effaçait).
 //
-//	CE QUI MONTE    `SchemaVersion` 95 -> 96 ; `grammar.Rev` `grammar-2026-10-14.3` -> `grammar-2026-10-15`
+//	CE QUI MONTE    `SchemaVersion` 96 -> 97 ; `grammar.Rev` `grammar-2026-10-15` -> `grammar-2026-10-15.2`
 //	AVEC ELLE       (table d'entrées, bit des films 0x25, world-object i0 et rigid-body i18 sous la garde) ;
-//	                `killsource.Rev` -> `killsource-2026-10-15` ; `SchemaDesFaits` 13 -> 14 (le profil
+//	                `killsource.Rev` -> `killsource-2026-10-15` ; `SchemaDesFaits` 14 -> 15 (le profil
 //	                de la section 5 gagne un champ). `objectives.Rev` ne bouge pas.
 //
-//	LE PARC         un artefact 95 ou d'avant : verdict `redecoder` (révision de grammaire).
+//	LE PARC         un artefact 96 ou d'avant : verdict `redecoder` (révision de grammaire).
 //
-//	MESURE          `replay-equiv`, 20 films, binaires de `feat/v75` `39ead801f` contre ceux de la branche :
+//	MESURE          `replay-equiv`, 20 films, binaires de `feat/v75` `46bfa5fad` contre ceux de la branche :
 //	                artefacts identiques hors les valeurs de révision sur 18 films ; `60ae07c4` et
 //	                `64e8adfa` comme ci-dessus ; étape `objectives` identique sur les 20.

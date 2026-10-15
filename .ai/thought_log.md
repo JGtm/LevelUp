@@ -117298,3 +117298,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : trames à i28 fermées 0/4 839 → 4 726/4 841 sur 238 films au contexte de la cuisson ; poses à la frame sur 1b2d9e08, 6acce632, a0c36016 ; répulseur 3 → 2 → 1 → 0 sur 0d9a9af9 ; rendu vérifié en lecture. Relecture adversariale : 0 P1 ; P2-2 (mur rang 19) réfuté par mesure.
 
 **Conclusion / prochaine étape** : recuisson du parc au schéma 95 + backfill killsource sur accord du user ; cuisson unitaire du match VIP ensuite.
+
+## [2026-10-15] Équipement porté : fin du champ de réparation (schéma 96) — Complété
+
+**Statut** : `feat/equip-porte` @ dc03981a8 (session levelup-80), CI verte, avance rapide de `feat/v75`.
+
+**Décision technique principale** : les entrées de la pile i28 de l'objet porté sont des handles (catégorie 0, base 0x200, FUN_1406d3140) qui nomment les objets ti=41 que l'équipement engendre ; leur suppression, écrite par le film même après la fin de l'objet porté, date la fin du champ ; `repair_field_end` y sonne (décision du user). Schéma 96 (le gate de forme refuse une forme nouvelle sans montée), grammar-2026-10-15, faits 14, killsource et objectives constantes (replay-equiv 20 films).
+
+**Résultats observés** : 18 champs, 18 fins lues au parc (11 de 11,35 à 12,24 s, 6 détruits de 1,5 à 4,6 s, une de 16,95 s liée au porteur) ; gate vert.
+
+**Conclusion / prochaine étape** : recuisson du parc au schéma 96 sur accord du user, après le rattrapage CSR en cours.
