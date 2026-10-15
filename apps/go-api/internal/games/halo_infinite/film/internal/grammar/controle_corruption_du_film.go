@@ -2,7 +2,8 @@ package grammar
 
 // controle_corruption_du_film.go — LA GRAMMAIRE QU UN FILM DECLARE, DANS SON CONTEXTE : le controle
 // de corruption par composant (lot 5.18.2), la possibilite du type de moteur 1
-// ([GrammaireBalayage.MoteurUnPossible]) et la grammaire de la vue A (lot VA).
+// ([GrammaireBalayage.MoteurUnPossible]), la forme du bloc malleable du bipede
+// ([GrammaireBalayage.MalleableSansDrapeauFinal]) et la grammaire de la vue A (lot VA).
 //
 // FICHIER SEPARE PAR LA TAILLE, PAS PAR LE SENS : `film_context.go` franchissait les 500 lignes
 // du depot avec ces methodes ; elles restent celles de [FilmContext], et la REGLE qu elles
@@ -19,12 +20,13 @@ package grammar
 // ([grammaireDeLaVueASousFilm]) ; s il porte sa section d identification, et si son absence a ete
 // comptee.
 type grammaireDuFilm struct {
-	controle bool
-	moteurUn bool
-	vueA     grammaireDeLaVueA
-	lue      bool
-	derive   bool
-	compte   bool
+	controle  bool
+	moteurUn  bool
+	malleable bool
+	vueA      grammaireDeLaVueA
+	lue       bool
+	derive    bool
+	compte    bool
 }
 
 // grammaireDuFilmDerivee derive la grammaire du film UNE FOIS puis la memorise (meme paresse que
@@ -35,17 +37,20 @@ func (c *FilmContext) grammaireDuFilmDerivee() *grammaireDuFilm {
 		var g GrammaireBalayage
 		g, c.duFilm.lue = grammaireSousFilm(c.bal.Grammaire, c.Profile())
 		c.duFilm.controle, c.duFilm.moteurUn = g.ControleDeCorruption, g.MoteurUnPossible
+		c.duFilm.malleable = malleableSansDrapeauFinal(c.film)
 		c.duFilm.vueA = grammaireDeLaVueASousFilm(c.Profile())
 	}
 	return &c.duFilm
 }
 
 // poserLaGrammaireDuFilm pose sur `g` ce que le film declare : son controle de corruption, dont le
-// repli se compte une fois par film ([FilmContext.controleDeCorruptionDuFilm]), et la possibilite du
-// type de moteur 1. Les profils que ce contexte rend passent par la.
+// repli se compte une fois par film ([FilmContext.controleDeCorruptionDuFilm]), la possibilite du
+// type de moteur 1 et la forme du bloc malleable du bipede ([malleableSansDrapeauFinal]). Les profils
+// que ce contexte rend passent par la.
 func (c *FilmContext) poserLaGrammaireDuFilm(g *GrammaireBalayage) {
 	g.ControleDeCorruption = c.controleDeCorruptionDuFilm()
 	g.MoteurUnPossible = c.grammaireDuFilmDerivee().moteurUn
+	g.MalleableSansDrapeauFinal = c.grammaireDuFilmDerivee().malleable
 }
 
 // controleDeCorruptionDuFilm rend le bit du film, pour un lecteur qui l EMPLOIE : un film sans
@@ -79,6 +84,7 @@ func (c *FilmContext) profilDeLaVueA() ProfilDeBalayage {
 	}
 	bal := c.bal
 	bal.Grammaire.ControleDeCorruption = c.grammaireDuFilmDerivee().controle
+	bal.Grammaire.MalleableSansDrapeauFinal = c.grammaireDuFilmDerivee().malleable
 	return bal
 }
 

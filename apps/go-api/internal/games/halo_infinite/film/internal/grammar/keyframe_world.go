@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	kfSent     = 0xFFFFFFFF // id sentinelle
+	kfSent     = 0xFFFFFFFF // identifiant d un slot libere (`FUN_1408f1948`), jamais celui d un record
 	kfTableCap = 8192       // borne haute de slot
 	// objectArchetypeCount (.exe DAT_144e61d88 COUNT=0x32) : ti valide < 50. Borne SÉMANTIQUE,
 	// sourcée de l'exe — et le lot 3 (2026-08-30) a fermé la boucle par l'autre bout :
@@ -65,7 +65,7 @@ func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bo
 }
 
 // kfAnchorFromID est [kfValidAnchor] quand l'appelant a DEJA lu les 32 bits d'identifiant a
-// la position q. `kfScanNext` les lit pour son test de sentinelle et les relisait ensuite :
+// la position q. `kfScanNext` les lisait pour son test de sentinelle et les relisait ensuite :
 // deux lectures de 32 bits par position de bit du payload, soit la moitie du temps de la
 // primitive la plus chaude de la cuisson. Meme logique, memes gardes, meme resultat — `id`
 // est une fonction pure de (buf, q).
@@ -97,9 +97,8 @@ func kfAnchorFromID(buf []byte, q int, id uint64, prevSlot, total int) (slot, ti
 }
 
 // motifDAncre decrit, pour [source.PremierMotif64], le SUR-ENSEMBLE des positions ou la boucle de
-// [kfRecherche.suivante] fait autre chose que remettre sa trainee de sentinelles a zero : une
-// SENTINELLE (les 32 bits d identifiant valent [kfSent]), ou une fenetre qui passe, en plus
-// large, les gardes de [kfAnchorFromID] :
+// [kfRecherche.suivante] juge un candidat : les fenetres qui passent, en plus large, les gardes de
+// [kfAnchorFromID] :
 //
 //	generation non nulle         un des bits 63-62 a 1
 //	slot < kfTableCap            les bits de slot au-dessus de la puissance de deux qui couvre
@@ -120,8 +119,7 @@ func motifDAncre(prevSlot int) source.Motif64 {
 		k := bits.Len(uint(prevSlot+1)) - 1
 		auDessus = uint64(slotBits&^(1<<k-1)) << 32
 	}
-	return source.Motif64{Nuls: slotHaut | archHaut, AuMoinsUn: [2]uint64{3 << 62, auDessus},
-		Tete: kfSent, AvecTete: true}
+	return source.Motif64{Nuls: slotHaut | archHaut, AuMoinsUn: [2]uint64{3 << 62, auDessus}}
 }
 
 // kfCand est une ancre candidate en cours d'évaluation. Les quatre champs sont exactement les
@@ -163,7 +161,7 @@ func (c kfCand) betterThan(best kfCand) bool {
 type kfDecision uint8
 
 const (
-	// kfAucune : aucun candidat — la table est finie (sentinelles) ou le payload épuisé.
+	// kfAucune : aucun candidat jusqu à la fin du payload.
 	kfAucune kfDecision = iota
 	// kfVoisin : le voisin immédiat (slot+1, génération 1). C'est l'enchaînement de l'écrivain.
 	kfVoisin
@@ -194,12 +192,6 @@ type kfIssue struct {
 	at int
 	// dec : la décision qui l'a retenue.
 	dec kfDecision
-	// fin : la fenêtre a rencontré la fin de table (2 048 identifiants sentinelles d'affilée).
-	fin bool
-	// traine : la traînée de sentinelles sur laquelle la fenêtre FINIT sans candidat —
-	// [kfRecherche.glissante] reprend la fenêtre suivante à son début, pour qu'une fin de table à
-	// cheval sur deux fenêtres se reconnaisse (constat F5 de la revue adverse du lot M3.1).
-	traine int
 	// refutes : les élus refusés parce qu'un record prouvé les contredit.
 	refutes int
 	// contradictoire : TOUS les candidats de la fenêtre sont contredits par un record prouvé — les
@@ -231,37 +223,22 @@ type kfIssue struct {
 // (a0c36016 : 14 659 -> 11 890 ; b1f01a33 : 6 719 -> 5 524, trois bipèdes perdus), parce qu'une
 // fausse ancre de génération 1 plus proche que le vrai record suivant se trouve presque partout
 // hors de la bande des bipèdes. Le recalage ne change l'élection QUE devant un en-tête exact.
-func (r *kfRecherche) suivante(from, prevSlot int) kfIssue { //nolint:gocyclo // les trois décisions ordonnées ci-dessus (voisin, recalage, élection) et la fin de table se jugent en UNE passe sur la fenêtre, sur un état partagé (traînée de sentinelles, en-tête exact, meilleur candidat)
+func (r *kfRecherche) suivante(from, prevSlot int) kfIssue { //nolint:gocyclo // les trois décisions ordonnées ci-dessus (voisin, recalage, élection) se jugent en UNE passe sur la fenêtre, sur un état partagé (en-tête exact, meilleur candidat)
 	iss := kfIssue{at: -1}
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	exact := -1
 	end := min(from+r.maxWin, r.total)
 	r.cands = r.cands[:0]
-	sentStreak := 0
 	lim := min(end, r.total-63) // q < end ET q+64 <= r.total
 	motif := motifDAncre(prevSlot)
 	for q := from; q < lim; q++ {
-		// SAUT aux seules positions qui peuvent decider (cf. [motifDAncre]) : les autres ne font
-		// que remettre la trainee de sentinelles a zero, ce que `p != q` rejoue.
+		// SAUT aux seules positions qui peuvent decider (cf. [motifDAncre]).
 		p := source.PremierMotif64(r.buf, q, lim, motif)
-		if p != q {
-			sentStreak = 0
-		}
 		if p < 0 {
 			break
 		}
 		q = p
-		id := source.BitsBourres(r.buf, q, 32)
-		if id == kfSent {
-			var fin bool
-			if q, sentStreak, fin = r.sentinelles(q, lim, sentStreak); fin {
-				iss.fin = true
-				break
-			}
-			continue
-		}
-		sentStreak = 0
-		s, ti, g, ok := kfAnchorFromID(r.buf, q, id, prevSlot, r.total)
+		s, ti, g, ok := kfAnchorFromID(r.buf, q, source.BitsBourres(r.buf, q, 32), prevSlot, r.total)
 		if !ok {
 			continue
 		}
@@ -294,60 +271,35 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue { //nolint:gocyclo //
 		iss.at, iss.dec = exact, kfRecalage
 	case iss.at >= 0:
 		iss.dec = kfElection // repli nomme `repli_ancre_d_image_cle_par_election`
-	default:
-		iss.traine = sentStreak
 	}
 	return iss
 }
 
-// kfFinDeTable : le nombre de positions de sentinelle CONSECUTIVES qui disent la fin de table.
-const kfFinDeTable = 2048
-
-// sentinelles consomme D UN COUP la suite de sentinelles qui commence a `q` (l appelant y a lu
-// une sentinelle) : une plage de `s` bits a 1 en porte une a chacune de ses `s - 31` premieres
-// positions, bornees a `lim`. C est ce que la boucle de [kfRecherche.suivante] faisait une
-// position a la fois — allonger la trainee, et s arreter sur la fin de table a la
-// [kfFinDeTable]-ieme — en un appel a [source.SuiteDeUns]. Rend la DERNIERE position consommee
-// (la boucle repart de la suivante), la trainee et la fin de table.
-func (r *kfRecherche) sentinelles(q, lim, trainee int) (int, int, bool) {
-	n := min(source.SuiteDeUns(r.buf, q, lim-q+31)-31, lim-q)
-	if trainee+n >= kfFinDeTable {
-		return q + kfFinDeTable - trainee - 1, kfFinDeTable, true
-	}
-	return q + n - 1, trainee + n, false
-}
-
 // glissante est [kfRecherche.suivante] dont une fenêtre SANS AUCUN candidat n'arrête plus la
-// marche : la recherche GLISSE de fenêtre en fenêtre jusqu'au premier candidat, à la fin de table
-// ou à la fin du payload.
+// marche : la recherche GLISSE de fenêtre en fenêtre jusqu'au premier candidat ou à la fin du
+// payload.
 //
 // C'EST CE QUI COUPAIT LE SUFFIXE DE LA TABLE (mécanisme B de la sonde P2 : a0c36016 morceau 1,
 // aucun candidat dans les 120 000 bits qui suivent le slot 122, le premier en-tête crédible à
 // +125 270 bits — 120 ancres perdues). Le jeu n'a pas de fenêtre ; une fenêtre vide n'est pas
 // une fin de table.
 //
-// UNE FENÊTRE QUI FINIT SUR DES SENTINELLES ne sait pas encore si c'est la fin de table : la
-// suivante reprend au DÉBUT de cette traînée et la recompte en entier. Sans cette reprise, une fin
-// de table coupée par la frontière de deux fenêtres (moins de 2 048 sentinelles de chaque côté)
-// n'était jamais reconnue, et le glissement lisait des ancres au-delà de la table — ce que
-// l'ancienne fenêtre, qui arrêtait la marche, ne pouvait pas faire. La reprise recule de moins de
-// 2 048 bits sur une fenêtre de 120 000 : la recherche avance toujours.
+// IL N'Y A PAS DE FIN DE TABLE PAR SENTINELLES. La table compte 0x1fff entrées, une par slot
+// (`keyframe_entrees.go`) ; un slot libéré y est une entrée de 108 bits dont les trois premiers mots
+// valent `0xffffffff`, suivis de 12 bits nuls : l'identifiant `0xffffffff` n'annonce pas la fin. La
+// recherche s'arrête à la fin du payload, qui suit l'entrée 0x1ffe.
 //
 // `glissements` ne compte que les fenêtres vides FRANCHIES pour atteindre une ancre : une
-// recherche qui s'achève sur la fin de table ou du payload n'a rien franchi, elle rend 0.
+// recherche qui s'achève sur la fin du payload n'a rien franchi, elle rend 0.
 func (r *kfRecherche) glissante(from, prevSlot int) kfIssue {
 	vides := 0
-	for f := from; f+64 <= r.total; {
+	for f := from; f+64 <= r.total; f += r.maxWin {
 		iss := r.suivante(f, prevSlot)
 		if iss.at >= 0 {
 			iss.glissements = vides
 			return iss
 		}
-		if iss.fin {
-			break
-		}
 		vides++
-		f += r.maxWin - iss.traine
 	}
 	r.cands = r.cands[:0]
 	return kfIssue{at: -1, dec: kfAucune}

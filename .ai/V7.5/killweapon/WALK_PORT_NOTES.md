@@ -1493,3 +1493,30 @@ FUN_142e35a58 FUN_142e2d08c FUN_142e2d6d4 FUN_142e2c690 FUN_142e2bfd0 FUN_142e30
 FUN_142e30b9c FUN_142e31a0c FUN_142e31bf8 FUN_142e2eec0 FUN_142e2ed64 FUN_142e2efe8
 FUN_1428e339c FUN_140bbd84c FUN_140809d20 FUN_140bbd808 FUN_141f85ce0 FUN_1411c7850
 FUN_140b87eec vtable 0x1436a87e0 (+0x10 encodeur ref, +0x18 ecrivain record).
+
+---
+
+# 2026-10-15 — Residu des images-cles (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche `feat/ri-ecart-108`)
+
+Lectures Ghidra (HaloInfinite.exe, lecture seule) portees dans la grammaire, et ce qu elles corrigent :
+
+1. **La table d image-cle compte une entree par slot.** `FUN_1408be074` ecrit 0x1fff entrees ; un
+   slot libere s y ecrit en un en-tete de 108 bits (`FUN_142e2bfd0`) dont l identite, l archetype et
+   le mot valent `0xffffffff` (`FUN_1408f1948`), sans corps. Entre deux ancres de slots `s` et `t`, la
+   fermeture lit donc `t - s - 1` entrees ; le dernier record d un paquet ferme sur la fin de table
+   (`0x1ffe - s` entrees, dernier octet du payload). La « fin de table » a 2 048 sentinelles du
+   balayeur (`keyframe_world.go`), que le jeu n ecrit pas, est retiree. Portage :
+   `grammar/keyframe_entrees.go`.
+2. **Le bloc malleable d i53 (`FUN_1407efc5c`) n a pas de drapeau final dans les films de version
+   majeure declaree 0x25** (HI_1_8_0). `FUN_142988e98` est une remise a zero d etat, pas un aiguillage
+   de version : la regle est portee sur la version declaree, exactement 0x25 (decision de
+   l utilisateur du 2026-10-15, option b) ; la grammaire des majeures 0x1f a 0x22 n est pas etablie.
+   Portage : `grammar/malleable_du_film.go`.
+3. **world-object i0 (`FUN_14076e29c`) et generic-rigid-body i18 (`FUN_142f036f0`) lisent le vecteur
+   brut sous la portee pleine precision** `DAT_144e61ea0`, comme les lecteurs de position du bipede
+   (decision de l utilisateur du 2026-10-15, option a pour i0). Portage :
+   `grammar/lecteur_position_exceptions.go`.
+
+## Adresses neuves citees (pour le compteur du garde-rail)
+
+FUN_1408be074 FUN_142988e98 FUN_1407efc5c

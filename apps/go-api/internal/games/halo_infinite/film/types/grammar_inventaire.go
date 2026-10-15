@@ -60,8 +60,10 @@ type KeyframeInventory struct {
 	// `FUN_1406d01fc` : unité +0x389), un index d'emplacement 0..3 — égal à l'emplacement
 	// dégainé hors d'un changement d'arme en cours —, ou -1 : absent (porte de `FUN_1406d00ec`
 	// levée) ou non lu ; un -1 est publié comme une ABSENCE (décisions U-3 et U-4 du 2026-10-08).
-	// Aucun lecteur relu du jeu ne donne à une valeur le sens « aucune arme dégainée ». Rendu par
-	// la fenêtre, c'est le DERNIER R(2) présent du bloc (param[2], seconde main, en ambidextrie).
+	// L'emplacement 2 porte l'objet tenu hors des armes : les mains nues (`00007CA9`), celles de tous
+	// les joueurs à leur première image-clé avant le départ, ou un objet d'objectif (mesure sur les
+	// films). Rendu par la fenêtre, c'est le DERNIER R(2) présent du bloc (param[2], seconde main, en
+	// ambidextrie).
 	DrawnSlot int
 	// AmmoCandidates est le nombre de débuts de bloc qui satisfaisaient le critère de la fenêtre.
 	// 1 = lecture unique (toujours 1 pour une lecture de la grammaire) ; au-delà, le plus long a

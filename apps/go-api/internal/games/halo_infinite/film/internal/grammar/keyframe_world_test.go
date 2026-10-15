@@ -26,7 +26,7 @@ func kfEcrireRecord(w *bitWriter, gen, slot, ti uint64, corps int) {
 }
 
 // kfPayloadPrefixeBipedes construit le payload du cas P2 : nuée (125) ; zone vide ; bipèdes 519,
-// 528, 530 ; fausse ancre 256/ti 0 dans le corps du dernier ; sentinelles de fin de table.
+// 528, 530 ; fausse ancre 256/ti 0 dans le corps du dernier ; une suite de mots 0xffffffff.
 func kfPayloadPrefixeBipedes() []byte {
 	w := &bitWriter{}
 	w.bit(0) // préfixe d'un bit du payload d'image-clé
@@ -87,27 +87,6 @@ func TestKeyframeWorldUneFenetreVideNeCoupePasLaTable(t *testing.T) {
 	}
 }
 
-// TestKeyframeWorldLaFinDeTableArreteLeGlissement : les sentinelles de fin de table arrêtent la
-// recherche — le glissement ne va pas lire au-delà de la table.
-func TestKeyframeWorldLaFinDeTableArreteLeGlissement(t *testing.T) {
-	w := &bitWriter{}
-	w.bit(0)
-	kfEcrireRecord(w, 1, 10, 5, 300)
-	for range 2100 {
-		w.bits(kfSent, 32)
-	}
-	// Un record APRÈS la fin de table ne doit jamais être atteint.
-	w.bits(0, kfScanFenetreBits)
-	kfEcrireRecord(w, 1, 11, 5, 300)
-	recs, st := WalkKeyframeWorldStats(w.buf)
-	if len(recs) != 1 {
-		t.Fatalf("records %+v : la marche a lu au-delà de la fin de table", recs)
-	}
-	if st.Glissements != 0 {
-		t.Fatalf("compteurs %+v : aucun glissement attendu après la fin de table", st)
-	}
-}
-
 // TestKeyframeWorldLElectionResteLeRepliSansBipede : sans en-tête exact de bipède, l'élection
 // décide comme avant (slot bas), et elle est COMPTÉE.
 func TestKeyframeWorldLElectionResteLeRepliSansBipede(t *testing.T) {
@@ -147,30 +126,26 @@ func TestBipedesAbsentsEncadres(t *testing.T) {
 	}
 }
 
-// TestKeyframeWorldUneFinDeTableAChevalSurDeuxFenetres : une traînée de sentinelles COUPÉE par la
-// frontière de deux fenêtres de 120 000 bits reste une fin de table (constat F5 de la revue
-// adverse du lot M3.1, 2026-09-24). ROUGE sur 533fe7d91 : le compteur de sentinelles repartait de
-// zéro à chaque fenêtre, aucune des deux moitiés n'atteignait 2 048, et le glissement allait lire
-// l'ancre 11 au-delà de la table.
-func TestKeyframeWorldUneFinDeTableAChevalSurDeuxFenetres(t *testing.T) {
+// TestKeyframeWorldLesMotsFFNArretentPasLaRecherche : la table d image-cle n a pas de fin par
+// sentinelles (`keyframe_entrees.go` : un identifiant 0xffffffff est un slot libere). Une suite de
+// 2 100 mots 0xffffffff suivie d un record, au-dela de la fenetre, ne coupe pas la recherche : le
+// record est atteint par glissement. MUTATION — retablir la fin de table a 2 048 positions de
+// sentinelle : ROUGE.
+func TestKeyframeWorldLesMotsFFNArretentPasLaRecherche(t *testing.T) {
 	w := &bitWriter{}
 	w.bit(0)
 	kfEcrireRecord(w, 1, 10, 5, 300)
-	// La fenêtre du record 10 commence à la fin de son en-tête de 64 bits (bit 65) : la traînée
-	// de 100 mots (3 200 bits) commence 1 600 bits avant sa fin, et la chevauche.
-	debutFenetre := 1 + 64
-	w.bits(0, debutFenetre+kfScanFenetreBits-1600-w.n)
-	for range 100 {
+	for range 2100 {
 		w.bits(kfSent, 32)
 	}
-	w.bits(0, 500)
-	kfEcrireRecord(w, 1, 11, 5, 300) // au-delà de la table : jamais atteint
+	w.bits(0, kfScanFenetreBits)
+	kfEcrireRecord(w, 1, 11, 5, 300)
 	w.bits(0, 500)
 	recs, st := WalkKeyframeWorldStats(w.buf)
-	if len(recs) != 1 || recs[0].Slot != 10 {
-		t.Fatalf("records %+v : la marche a lu au-delà d'une fin de table à cheval sur deux fenêtres", recs)
+	if len(recs) != 2 || recs[1].Slot != 11 {
+		t.Fatalf("records %+v : la recherche s est arretee sur les mots 0xffffffff", recs)
 	}
-	if st.Glissements != 0 {
-		t.Fatalf("compteurs %+v : aucun glissement attendu, la fin de table arrête la recherche", st)
+	if st.Glissements == 0 {
+		t.Fatalf("compteurs %+v : le record 11 est au-dela de la fenetre, un glissement est attendu", st)
 	}
 }
