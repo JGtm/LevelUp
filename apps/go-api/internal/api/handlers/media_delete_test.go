@@ -52,11 +52,23 @@ func newDeleteRouter(mock *mockMediaService, authEnforced bool) *chi.Mux {
 		return mock, nil
 	}
 	r := chi.NewRouter()
-	h := handlers.NewMediaHandler(factory, nil, "").WithAuthEnforced(authEnforced)
+	h := handlers.NewMediaHandler(factory, nil, "").WithAuthEnforced(authEnforced).
+		WithRequester(sessionPlayerAsOwnedProfile)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r)
 	})
 	return r
+}
+
+// sessionPlayerAsOwnedProfile : FIXTURE de ces tests — le joueur porté par la session
+// de test y tient lieu de profil possédé par l'utilisateur (en service, le routeur
+// résout ce profil par le xuid lié, cf. media_requester_test.go).
+func sessionPlayerAsOwnedProfile(ctx context.Context) string {
+	sess := middleware.GetSession(ctx)
+	if sess == nil || sess.CurrentPlayerSlug == nil {
+		return ""
+	}
+	return *sess.CurrentPlayerSlug
 }
 
 // TestMediaHandler_DeleteMedia_Owner_200 : le propriétaire supprime son média.

@@ -157,6 +157,7 @@ type MediaHandler struct {
 	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
 	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
 	authEnforced      bool                        // true = multi-user authentifié (like sans session refusé)
+	requester         RequesterSlugResolver       // joueur possédé par l'utilisateur de la session (media_requester.go)
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -352,9 +353,12 @@ func (h *MediaHandler) handlePostMediaAssociate(ctx context.Context, in *mediaAs
 	// (vidéo → HLS). On recompose le chemin RELATIF stocké pour que l'UPDATE cible
 	// la bonne ligne media_files (sinon 0 row → association silencieusement perdue).
 	req.FilePath = mediaServableURLToStoredPath(in.PlayerSlug, req.FilePath)
+	if err := h.resolveAssociateRequester(ctx, &req); err != nil {
+		return nil, err
+	}
 	resp, err := svc.AssociateMediaToMatch(ctx, req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "associate_error", err.Error())
+		return nil, mediaAssociateError(ctx, err)
 	}
 	out := &mediaAssociateOutput{Body: resp}
 	BumpMediaFeedVersion()

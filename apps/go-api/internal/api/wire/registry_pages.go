@@ -90,7 +90,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	// coéquipier. Résolu ici, au point de composition, parce que platform/duckdb
 	// n'a pas (et ne doit pas avoir) accès à la session HTTP.
 	svc := service.NewMatchViewService(
-		r.newMatchViewRepo(pdb).WithViewer(viewerSlugFor(ctx)), pdb.XUID)
+		r.newMatchViewRepo(pdb).WithViewer(r.viewerSlugFor(ctx)), pdb.XUID)
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).

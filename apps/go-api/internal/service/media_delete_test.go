@@ -341,3 +341,52 @@ func TestMediaService_DeleteMedia_LikeOnDeletedMediaFails(t *testing.T) {
 			"a écrit un event IRRÉVERSIBLE dans une table append-only", events)
 	}
 }
+
+// TestMediaService_AssociateMedia_OwnerOnly : l'association d'un média à un match suit
+// la règle de la suppression (propriétaire ou admin, CanModifyMedia) et ne cible que le
+// chemin COMPLET stocké : un autre joueur ne déplace pas le clip d'autrui, et un nom de
+// fichier homonyme ne désigne aucun média.
+func TestMediaService_AssociateMedia_OwnerOnly(t *testing.T) {
+	f := newDeleteFixture(t)
+	ctx := context.Background()
+	// Lecture de la carte du match : la même base tient lieu de base partagée (sans
+	// match_registry, la carte reste vide).
+	pdb := &duckdb.PlayerDB{SharedSocial: f.db, Shared: f.db, Gamertag: "JGtm"}
+	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
+		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
+		}))
+	countAssoc := func() int {
+		var n int
+		if err := f.db.SQLDb().QueryRow(`SELECT count(*) FROM media_match_associations_history`).Scan(&n); err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		return n
+	}
+
+	foreign := domain.MediaAssociateRequest{FilePath: "JGtm/clip.mp4", MatchID: "m-autre",
+		RequesterSlug: "Mallory", AuthEnforced: true}
+	_, err := svc.AssociateMediaToMatch(ctx, foreign)
+	var apiErr *domain.APIError
+	if !errors.As(err, &apiErr) || apiErr.Code != "forbidden" {
+		t.Fatalf("média d'autrui : err = %v, attendu forbidden", err)
+	}
+	if n := countAssoc(); n != 0 {
+		t.Fatalf("%d association(s) écrite(s) pour un média d'autrui", n)
+	}
+
+	basename := domain.MediaAssociateRequest{FilePath: "clip.mp4", MatchID: "m1",
+		RequesterSlug: "JGtm", AuthEnforced: true}
+	if _, err := svc.AssociateMediaToMatch(ctx, basename); err == nil {
+		t.Fatal("nom de fichier seul : association acceptée, attendu introuvable")
+	}
+
+	owner := domain.MediaAssociateRequest{FilePath: "JGtm/clip.mp4", MatchID: "m1",
+		RequesterSlug: "JGtm", AuthEnforced: true}
+	if _, err := svc.AssociateMediaToMatch(ctx, owner); err != nil {
+		t.Fatalf("propriétaire : %v", err)
+	}
+	if n := countAssoc(); n != 1 {
+		t.Fatalf("propriétaire : %d association(s), attendu 1", n)
+	}
+}

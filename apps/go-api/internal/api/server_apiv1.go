@@ -899,6 +899,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			// Multi-user authentifié : un like sans joueur courant en session est
 			// refusé (401) au lieu d'être écrit comme like anonyme non attribuable.
 			WithAuthEnforced(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
+			// Demandeur des écritures (suppression, like, association) : le profil possédé
+			// par l'utilisateur de la session, jamais son joueur courant (C4-1).
+			WithRequester(requesterPlayerSlugResolver(cfg, users)).
 			WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers(titleSlug)
 			}).
@@ -1254,6 +1257,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	}
 
 	reg := wire.NewServiceRegistry(cfg, tokenProvider).
+		WithViewerResolver(requesterPlayerSlugResolver(cfg, users)).
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).

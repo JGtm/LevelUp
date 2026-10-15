@@ -21,7 +21,6 @@ import (
 	"net/http"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -71,7 +70,9 @@ func (h *MediaHandler) handleDeleteMedia(ctx context.Context, in *mediaDeleteInp
 	return &mediaDeleteOutput{Body: resp}, nil
 }
 
-// resolveDeleteRequester traduit la session HTTP en identité de demandeur.
+// resolveDeleteRequester traduit la session HTTP en identité de demandeur : le
+// profil possédé par l'utilisateur de la session (media_requester.go), jamais le
+// joueur courant de la session.
 //
 // Traduction, pas décision : la règle propriétaire/admin vit dans
 // domain.CanDeleteMedia. La seule chose tranchée ici est le cas « aucune
@@ -83,12 +84,8 @@ func (h *MediaHandler) handleDeleteMedia(ctx context.Context, in *mediaDeleteInp
 // locale, qui est le cas d'usage principal.
 func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.MediaDeleteRequest) error {
 	req.AuthEnforced = h.authEnforced
-	req.RequesterSlug = middleware.SessionPlayerSlug(ctx)
-	if sess := middleware.GetSession(ctx); sess != nil {
-		if sess.Role != nil && *sess.Role == string(domain.RoleAdmin) {
-			req.RequesterIsAdmin = true
-		}
-	}
+	req.RequesterSlug = h.requesterSlug(ctx)
+	req.RequesterIsAdmin = sessionIsAdmin(ctx)
 	if !req.AuthEnforced || req.RequesterIsAdmin || req.RequesterSlug != "" {
 		return nil
 	}
@@ -96,7 +93,7 @@ func (h *MediaHandler) resolveDeleteRequester(ctx context.Context, req *domain.M
 	// authentifié, une suppression sans identité ne doit pas être évaluée comme un
 	// refus de droits — 403 enverrait l'utilisateur chercher une permission alors
 	// qu'il lui manque une session.
-	slog.WarnContext(ctx, "media_delete refusé: aucun joueur courant en session",
+	slog.WarnContext(ctx, "media_delete refusé: aucun profil possédé par la session",
 		"file_path", req.FilePath)
 	return humacore.NewError(http.StatusUnauthorized, "delete_requires_session",
 		"Aucun joueur courant en session : impossible de supprimer ce média.")

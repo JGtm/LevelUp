@@ -209,6 +209,9 @@ func (s *MediaService) AssociateMediaToMatch(ctx context.Context, req domain.Med
 	if req.MatchID == "" {
 		return nil, domain.ErrBadRequest("match_id est requis")
 	}
+	if err := s.authorizeMediaAssociation(ctx, req); err != nil {
+		return nil, err
+	}
 	mapName, modeName, err := s.repo.SetMediaMatchAssociation(ctx, req.FilePath, req.MatchID)
 	if err != nil {
 		return nil, err

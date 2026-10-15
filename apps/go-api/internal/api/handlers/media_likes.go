@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
@@ -81,34 +80,30 @@ func (h *MediaHandler) handlePatchMediaLike(ctx context.Context, in *mediaLikeIn
 	return out, nil
 }
 
-// resolveLikerIdentity fixe le liker du like : c'est le VIEWER de la session,
-// et lui seul. Le like étant devenu par-viewer (2026-08-04), l'identité du liker
-// n'est plus décorative — elle décide de QUI verra ce cœur allumé.
+// resolveLikerIdentity fixe le liker du like : c'est le DEMANDEUR (profil possédé par
+// l'utilisateur de la session, media_requester.go), et lui seul. Le like étant
+// par-viewer, l'identité du liker décide de QUI verra ce cœur allumé.
 //
-// Ordre, aligné sur la lecture (wire.viewerSlugFor — lire et écrire doivent
-// désigner le même viewer, sinon on like pour un autre que celui dont on affiche
-// le cœur) :
+// Ordre, aligné sur la lecture (le registre résout le viewer des galeries par le même
+// résolveur — lire et écrire doivent désigner le même viewer) :
 //
-//  1. Joueur courant de la session. Il ÉCRASE tout `liker_slug` reçu dans le
-//     corps : sans cela un client pourrait poster liker_slug d'autrui et allumer
-//     le cœur d'un tiers, ou consommer son quota social — la sémantique
-//     par-viewer serait forgeable.
-//  2. Sans session (mono-utilisateur / démo) : le corps, s'il porte un liker,
-//     puis le propriétaire de la page. Ce repli remplace l'ancien like « global »
-//     anonyme (media_files.liked), qui n'a plus de support de stockage : sans
-//     liker, un like ne s'écrirait plus NULLE PART.
-//
-// Garde ANTI-SILENCE conservé : en multi-utilisateur authentifié (authEnforced),
-// l'absence de joueur courant est un 401 VISIBLE, jamais un repli.
+//  1. Le demandeur. Il ÉCRASE tout `liker_slug` reçu dans le corps : sans cela un
+//     client pourrait liker au nom d'un tiers ou consommer son quota social.
+//  2. Propriété appliquée et aucun profil possédé : 401 VISIBLE (garde anti-silence),
+//     jamais un repli sur le corps.
+//  3. Hors propriété appliquée (mono-utilisateur / démo) sans demandeur : le corps,
+//     s'il porte un liker, puis le propriétaire de la page. Sans liker, un like ne
+//     s'écrirait NULLE PART (le like global anonyme n'a plus de stockage).
 func (h *MediaHandler) resolveLikerIdentity(ctx context.Context, playerSlug string, req *domain.MediaLikeRequest) error {
-	if sessionSlug := middleware.SessionPlayerSlug(ctx); sessionSlug != "" {
-		req.LikerSlug = sessionSlug
+	requester := h.requesterSlug(ctx)
+	if requester != "" || h.authEnforced {
+		req.LikerSlug = requester
 		// Le libellé affiché dans « ♥ Alice et Bob » se déduit du slug, jamais du
 		// corps : sinon un client choisirait le nom sous lequel son like apparaît.
 		req.LikerGamertag = ""
 	}
 	if req.LikerSlug == "" && h.authEnforced {
-		slog.WarnContext(ctx, "media_like refusé: aucun joueur courant en session",
+		slog.WarnContext(ctx, "media_like refusé: aucun profil possédé par la session",
 			"slug", playerSlug, "file_path", req.FilePath)
 		return humacore.NewError(http.StatusUnauthorized, "like_requires_session",
 			"Aucun joueur courant en session : impossible d'attribuer ce like.")
