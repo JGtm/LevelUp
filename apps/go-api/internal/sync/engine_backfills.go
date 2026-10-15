@@ -135,6 +135,53 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 	return batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid)
 }
 
+// RunBackfillLUSRDryRun simule un recompute LUSR sans écrire en DB. Compare
+// l'état persisté actuel avec celui qui serait produit par un recompute force,
+// agrégé par playlist_group. Utile pour valider l'impact d'un rebuild ART
+// (cf. Phase 1 plan stabilisation 2026-05-22) avant d'engager l'écriture.
+//
+// Retourne un LUSRDryRunReport. Lock writer non requis (lecture seule) ;
+// le caller doit s'assurer qu'aucun sync ne tourne en parallèle pour avoir
+// un snapshot cohérent.
+func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunReport, error) {
+	ctx = e.pinTitle(ctx)
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfillLUSRDryRun OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	// shared DB en read-only suffit pour le dry-run.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_lusr_dryrun"))
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfillLUSRDryRun: %w", err)
+	}
+	defer releaseShared()
+
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	return batchComputeLUSRPreview(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap)
+}
+
+// RunFormulaSim simule les 5 variantes de formule LUSR sur les lastN derniers matchs.
+// Lecture seule — aucune écriture DB. lastN=0 → tous les matchs.
+func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimReport, error) {
+	ctx = e.pinTitle(ctx)
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunFormulaSim OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_formula_sim"))
+	if err != nil {
+		return nil, fmt.Errorf("RunFormulaSim: %w", err)
+	}
+	defer releaseShared()
+
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	return RunFormulaSim(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, lastN)
+}
+
 // RecomputeLUSRCanonical recalcule le LUSR v2 canonique (TrueSkill2, ADR 0024)
 // pour tous les matchs du joueur : reset watermark + replay complet via
 // RecomputeLUSRCanonicalForPlayer. Remplace l'ancien RunBackfillLUSR v1 (CR C3 :
@@ -478,21 +525,4 @@ func loadFlaggedMatchIDs(ctx context.Context, playerDB *sql.DB) ([]string, error
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
-}
-
-// requireTokensUnlessCustomClient : les passes qui appellent l API Halo ont besoin SOIT du
-// client personnalisé posé par SetCustomClient (client poolé : les tokens vivent dans le
-// pool), SOIT des tokens Halo du joueur. Exiger les tokens du joueur alors qu un client
-// poolé est posé cassait `backfill --csr` / `--shared-csr` pour TOUS les joueurs depuis que
-// la CLI construit ses moteurs par le pool (revue adversariale du 2026-09-16, P0). Le
-// message ne parle plus de « re-login » : un token absent ne se répare pas par une
-// re-capture (ADR 0023).
-func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
-	if e.customClient != nil {
-		return nil
-	}
-	if e.tokens == nil || e.tokens.SpartanToken == "" {
-		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
-	}
-	return nil
 }
