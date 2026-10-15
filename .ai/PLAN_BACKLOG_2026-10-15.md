@@ -149,6 +149,11 @@ Décisions fermes :
     `accuracy_damage_taken_native_unavailable`) supprimés du web (traduction, types, tests, i18n) après grep du dépôt entier ;
     découverte correspondante de la section 3 retirée.
   - [x] E4.7c Test de `internal/service` en échec une fois : rejeu `-count=20`, cause nommée ou note en section 3.
+- [ ] E4.8 (ajout du superviseur, 2026-10-15) : faire remonter l'erreur des méthodes de repo/adapter de la vue match qui l'avalent
+  (le service les classe alors par E4.7a / dédiée), adapter les autres appelants, `eventsRepo.Load` / awards / friendsExtras dans le
+  contrat ; « table absente » distinguée explicitement (capability ou erreur typée), pas par un nil générique ; tests rouge puis
+  vert (un par méthode + un de bout en bout) ; STOP si l'inventaire dépasse 12 méthodes ou touche `persist`/`sync`.
+  - [!] E4.8-inventaire : STOP DÉCLENCHÉ, l'inventaire dépasse 12 (voir journal) ; rien codé, en attente de la décision du superviseur.
 
 Gate : `go test` des paquets touchés + `./internal/api/...`, `make check-types`, `make test-web`
 (fichiers de la vue match), recette navigateur de la vue match (cas normal + chargeur coupé
@@ -442,3 +447,33 @@ diff E5 (lot persist/sync).
   - **E4.7c** : voir section 3 (non reproduit, repro notée).
   - **Gate** : `go vet` ; `go test -count=1 ./internal/domain/ ./internal/api/... ./internal/archlint/` ok ; `internal/service` ok (x20 ciblé + 3 complets) ;
     `make generate-types` ; `make check-types` sans diagnostic ; `make test-web` 921 fichiers, 9 616 tests ; eslint propre.
+- 2026-10-15 (E4.8, exécutant Sonnet) : inventaire seul, STOP (plus de 12 méthodes). Aucun fichier de code modifié. Aucun `persist`/`sync`.
+  **Méthodes qui avalent leur erreur (`platform/duckdb/match_view_repo*.go`), 17 sites hors service :**
+  | # | méthode (fichier:ligne) | avale | autres appelants à vérifier |
+  |---|---|---|---|
+  | 1 | `GetMatchEvents` (`_noms.go:49`) + `lireEvenementsDuMatch` (`:83`, WARN, `ok=false`) | lecteur partagé indisponible -> `nil, nil` ; requête Q21 en échec -> WARN | à grepper |
+  | 2 | `GetMatchKillSources` (`_extras.go:36-45`) | `nil, nil` + WARN (lecteur, Q21b) | idem |
+  | 3 | `GetMatchKillAssists` (`_extras.go:83-92`) | `nil, nil` + WARN (lecteur, Q21c) | idem |
+  | 4 | `GetMatchKVPairs` (`_extras.go:139-150`) | `nil, nil` + WARN (lecteur, Q20) | idem |
+  | 5 | `GetMatchMedia` (`_extras.go:265-278`) | `nil, nil` (lecteur et Q24, `nolint:nilerr`) | idem |
+  | 6 | `GetMatchExpectedStats` (`_extras.go:332,345`) | `nil, nil` « colonnes absentes ou match introuvable » (mélange absence et panne) | idem |
+  | 7 | `GetHistoryForAvg` (`_extras.go:360-371`) | `nil, nil` + WARN (jumelle `GetHistoryForAvgBulk` `:411-431`, appelée ailleurs) | idem |
+  | 8 | `GetMatchSkillRank` (`_neighbors_skill.go:119,132`) | `nil, nil` `nolint:nilerr` | idem |
+  | 9 | `GetMatchSharedCSRs` (`_neighbors_skill.go:183,189,222`) | `nil, nil` ; « table absente : match non-ranked ou avant migration » = absence légitime à distinguer | idem |
+  | 10 | `GetMatchBulkMedals` (`_medals.go:193,199`) | `nil, nil` `nolint:nilerr` | idem |
+  | 11 | `GetMatchBulkWeaponKills` (`_weapons.go:140,146,199`) + `bulkWeaponKillsFromSource` (`_weapons_source.go:68`) | `nil, nil` ; `continue` sur ligne illisible (`:199`) | idem |
+  | 12 | `GetMatchObjectiveScore` (`_scoreboard.go:317,322,334`) | `0, nil` sur erreur de requête | idem |
+  | 13 | `loadMatchObjectiveStats` (`_scoreboard.go:227-242`) | vue absente ou erreur -> WARN, section dégradée ; `continue` sur Scan | via `GetMatchScoreboard` |
+  | 14 | `loadMatchBombStats` (`_scoreboard.go:358-375`) | idem (colonnes absentes) | via `GetMatchScoreboard` |
+  | 15 | `GetPlayerAssistsModel` (`_extras.go:477,486`) | `nil, nil` ; pas appelée par un chargeur de la vue (`WithExpectedAssists`), à écarter ou à traiter | à grepper |
+  | 16 | `GetPlayerMatchStats` (`:377`), `GetMatchEnrichment` (`:411,420`) | renvoient une structure vide : à vérifier si c'est `sql.ErrNoRows` (absence) ou toute erreur | à grepper |
+  | 17 | lignes illisibles : `scanAssistPairs` (`_assist_pairs.go:180`), `lookupMedalMeta`, `lookupLabelsByID` (`if err == nil`, `continue`) | ligne ignorée sans compteur | internes |
+  Dans le service, hors contrat : `eventsRepo.Load` (`g.Go` manuel, WARN, repli sur la conversion de `events`), `loadAwardsForScoreboard`
+  (`match_view_data_loaders.go` ~600-610, WARN si pas `ErrCapabilityNotSupported`), `friendsExtras` (`~432`, fan-out, résultat sans erreur dans
+  la signature `port.FriendsExtrasResolver` : il faudrait changer le port).
+  Déjà corrects (erreur remontée) : `GetMatchScoreboard`, `GetMatchMedals`, `GetMatchEncounters`, `GetMatchEncounterStats`,
+  `GetMatchEncounterAssists`.
+  **Avis** : l'étape dépasse largement le plafond de 12 (14 méthodes de la vue + 3 sites du service + 1 changement de port), chaque
+  méthode demande l'audit de ses autres appelants (`GetHistoryForAvg*`, `GetMatchKVPairs`, `GetMatchSharedCSRs`... sont partagées avec
+  d'autres pages) et la distinction « table absente » (au moins 5 cas). Proposition de découpage : (A) sources du bandeau et du kill
+  feed (#1-#4, #12-#14, + awards/eventsRepo) ; (B) restes (#5-#11, #15-#17) et le port `FriendsExtrasResolver`.
