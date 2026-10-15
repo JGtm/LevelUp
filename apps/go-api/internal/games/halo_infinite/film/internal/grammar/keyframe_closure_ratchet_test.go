@@ -408,6 +408,9 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("#     ti=38 3 441 -> 3 510, ti=21 285 -> 357, ti=43 1 104 -> 1 147, ti=47 1 450 -> 1 516, ti=11\n")
 	b.WriteString("#     278 -> 322, ti=37 13 -> 38, ti=45 97 -> 113, ti=41 34 -> 45, ti=29 105 -> 113, ti=13\n")
 	b.WriteString("#     1 501 -> 1 510 ; aucune baisse sur les sept bobines.\n")
+	b.WriteString("#   2026-10-15 plan residu (R3.1) : world-object i0 sous la garde lu comme le jeu (FUN_14076e29c,\n")
+	b.WriteString("#     decision de l utilisateur du 2026-10-15, option a). MONTENT : ti=38 3 510 -> 12 554,\n")
+	b.WriteString("#     ti=42 599 -> 2 105, ti=43 1 147 -> 4 204 (100 % sur les sept bobines) ; aucune baisse.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)

@@ -201,6 +201,12 @@ neuf par passe) :
   les films qui DÉCLARENT exactement la version majeure 0x25 ; toutes les autres versions gardent la
   grammaire de l'exécutable, et les formats 20-21 restent intacts. Elle amende U-2 sur le seuil.
 
+- **U-7 (2026-10-15)** — world-object i0 sous la portée (R3.1), après l'arrêt de R3.2 et les trois
+  options présentées (a : retenir la lecture du jeu en acceptant les baisses ; b : la laisser rejetée ;
+  c : la retenir hors des formats 20-21) : **« Option a »** (relayée par le superviseur). La lecture du
+  jeu est retenue ; les cinq baisses mesurées en R3.2 sont acceptées par cette décision (journal du
+  2026-10-15).
+
 ### 3.2 Décisions d'exécution (à l'exécutant, justifiées ; une objection de l'utilisateur les rouvre)
 - **E-1 — Un seul lecteur d'entrée.** La forme de l'entrée (108 bits, corps si l'archétype n'est pas
   `0xffffffff`) est écrite UNE fois (`keyframe_entrees.go`) ; la fermeture, la preuve d'image-clé,
@@ -493,14 +499,14 @@ Une étape commence quand la précédente est close : items statués, gate pass�
 ### Étape R3 — world-object i0 sous la portée, puis rigid-body i18
 - [x] R3.1 Réappliquer la lecture du jeu de world-object i0 sous la garde (`git revert 72785f870`,
       qui annule le retrait de `64ef3baa7` ; forme de `FUN_14076e29c`, D-18), sur la tête de R2.
-- [!] R3.2 Mesure → `$RES/r3.1` contre `$RES/r2` : I-ferm (baisses `ti=37` et `50247b26` chiffrées
+- [x] R3.2 Mesure → `$RES/r3.1` contre `$RES/r2` : I-ferm (baisses `ti=37` et `50247b26` chiffrées
       film par film), goldens, I-ancres (E-4), I-carte, I-equipes, I-d0. Chaque baisse adjugée sur
       pièces ; une baisse non adjugeable : ARRÊT, décision de l'utilisateur (retenir ou non).
 - [!] R3.3 Si R3.1 est retenue : réappliquer `consumeGenericRigidBodyTransforms` sous la garde
       (`git revert 421f7c1cb`, D-21), mesurer → `$RES/r3.3` contre `$RES/r3.1`, même règle. Le contrôle
       d'orientation de `FUN_140501798` (D-21) reste hors périmètre sauf s'il explique une baisse.
 - Gate R3 : comme R1.5 contre `$RES/r2`.
-- *ÉTAT DE R3 (2026-10-15) : ARRÊT EN R3.2, DÉCISION DE L'UTILISATEUR DUE.* R3.1 `[x]`, R3.2 `[!]`, R3.3 `[!]`
+- *PREMIÈRE PASSE DE R3 (2026-10-15) : ARRÊT EN R3.2 ; décision U-7 « Option a » le même jour, R3.1 rétablie (`106729bfd`), R3.2 close — voir le journal.* R3.1 `[x]`, R3.2 `[!]`, R3.3 `[!]`
   (dépend de R3.1 retenue). Mesures sous `$RES/r3.1` (base : `$RES/r2b`, la tête de R2 close).
   - R3.1 `[x]` — `FUN_14076e29c` relu (`$RES/g/r3/`) : precHigh et R(96) (`FUN_14076e420`), queue
     `FUN_14076e3e4(precHigh)` (`MOV R9B,AL` en 14076e2c5), R(2) si finis (`FUN_140492128`), faux sinon.
@@ -612,6 +618,11 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   film (`+0x1488`) sans lire le film. L'exécutable courant ne relit donc aucun film de majeure ≠ 0x29 ;
   la grammaire des anciens formats n'y est lisible nulle part (contraire à l'hypothèse d'aiguillage de
   U-2). Consignée, non traitée.
+- R-3 *(R3.2, acceptée par U-7)* Trois records `ti=37` de films récents fermaient au bit près sous l'ancienne
+  lecture de world-object i0 et ne ferment plus sous celle du jeu : `084a804d` slot 6503 (suivant 6505)
+  et slot 6687 (suivant 6692), allongés de 24 bits chacun ; `1c4c63c2` slot 6003 (suivant 6004, slots
+  contigus), allongé d'1 bit. Le témoin décalé d'un bit ne les explique pas. À instruire : un autre
+  composant de l'équipement (D-18 du plan clos) ou une forme de i0 non relue pour ces records.
 
 ## 8. Journal
 
@@ -653,3 +664,22 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   gains massifs `ti=38/42/43`, ancres, équipes et carte delta inchangées, mais cinq lignes en baisse dont
   quatre records `ti=37` de films récents sans preuve de hasard ; sous-pas retiré (`25b7df4f4`), décision
   de l'utilisateur due (R3.2). R3.3 en attente.
+- 2026-10-15 : DÉCISION U-7 de l'utilisateur (« Option a ») : world-object i0 sous la garde retenu,
+  retrait annulé (`106729bfd`). BAISSES ACCEPTÉES PAR U-7, ligne par ligne (mesure contre R2 close,
+  `$RES/r3.1`, reproduite à l'identique par `$RES/r3a`) :
+  1. `ti=37` `084a804d` 40 → 38 / 3 441 (records des slots 6503 et 6687, +24 bits chacun ; R-3) ;
+  2. `ti=37` `1c4c63c2` 65 → 64 / 2 720 (record du slot 6003, +1 bit ; R-3) ;
+  3. `ti=37` `a349fea8` 33 → 15 / 4 054 (format 20, 18 records ; le témoin y ferme 10 records par
+     hasard sous la nouvelle lecture) ;
+  4. `ti=38` `50247b26` 452 → 159 / 6 258 (format 20, sans section d'identification ; en base le témoin
+     fermait 605 records dont 528 par hasard) ;
+  5. `ti=42` `50247b26` 134 → 16 / 2 012 (même film ; arrêts `largeur_handle_moteur_un` et
+     `position_non_finie`).
+  Gate R3.1/R3.2 rejoué et PASSÉ : I-ferm, ancres, équipes et I-d0 identiques à `$RES/r3.1` ; killsource
+  identique à l'octet à R2 (19 témoins) ; `replay-equiv` (20 films, `depuis_les_faits=false`) : digests
+  IDENTIQUES à R2 sur les 20 films (aucun document ne change) ; goldens de fermeture régénérés avec leur
+  ligne d'historique (`ti=38/42/43` à 100 % sur les sept bobines, aucune baisse) ; tests de `film/...`,
+  `replaybuild`, `killcollector`, archlint, vet avec et sans `research`, golangci-lint : verts.
+  `origin/feat/v75` a avancé (lot « équipement porté », schéma 95, 78 fichiers sous `film/`, dont
+  `grammar.Rev` et `killsource.Rev`) : NON fusionné, signalé au superviseur (§1.2) ; la fusion se fera
+  avant R5. R3.1 et R3.2 CLOSES ; suite : R3.3.
