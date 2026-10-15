@@ -738,7 +738,7 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
 
 ## 7. Découvertes (consignées, non traitées)
 
-- R-1 *(R2.3)* Sur les films de majeure 0x1f à 0x22 (formats 20, 21, 23), le bloc malleable d'i53 ne suit
+- R-1 *(ABANDONNÉ : décision de l'utilisateur du 2026-10-15, « On laisse tomber les films avant la version 1.8, on accepte la dégradation pour les vieux films » ; retiré du registre des reports)* *(R2.3)* Sur les films de majeure 0x1f à 0x22 (formats 20, 21, 23), le bloc malleable d'i53 ne suit
   ni la grammaire de l'exécutable ni celle des films 1.8 pour tous les records : sans drapeau final,
   des records sans porte ouverte ferment (signature +33 ramenée à 0), mais des records à portes ouvertes
   qui fermaient avec les largeurs modales ne ferment plus. Grammaire non établie ; seul un exécutable
