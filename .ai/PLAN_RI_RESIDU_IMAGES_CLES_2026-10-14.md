@@ -589,28 +589,87 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     ceux du checkout principal.
 
 ### Étape R5 — Révisions, gates complets, revue adversariale, fusion
-- [ ] R5.1 `git fetch`, fusion de `origin/feat/v75` (§1.2) ; références rejouées si la fusion touche
+- [x] R5.1 `git fetch`, fusion de `origin/feat/v75` (§1.2) ; références rejouées si la fusion touche
       `film/`.
-- [ ] R5.2 `grammar.Rev` monte (rang au-dessus de `feat/v75`), chronique `rev_chronique.go` (mesures de
+  - Trois fusions : `39ead801f` (lot « équipement porté », schéma 95, `75a53aa1e`), puis `46bfa5fad`
+    (fin du champ de réparation, schéma 96, `grammar-2026-10-15`, `SchemaDesFaits` 14 : conflits sur
+    toutes les révisions, `2c782cf00`), puis `ec7313562` (rattrapage CSR, aucun fichier du film,
+    `79e54a67f`). Références rejouées sur la base fusionnée, sources et binaires de `feat/v75`
+    `46bfa5fad` (`$RES/base_v75`, sorties `$RES/v75b`, `$RES/v75c`) contre la tête (`$RES/r5g`) :
+    - I-d0, I-ferm, I-ancres, I-equipes, I-e108 : sorties de la tête IDENTIQUES à l'octet à celles de la
+      première passe de R5 (`$RES/r5`) ; sorties de la base `46bfa5fad` IDENTIQUES à celles de
+      `39ead801f` (`$RES/v75`) — le lot de `feat/v75` ne change aucune fermeture.
+    - Cumul contre `feat/v75` : bipèdes fermés 5 397 → 8 564 sur 10 710 ; seules baisses `50247b26`
+      `ti=38` 451 → 159 et `ti=42` 76 → 16 (acceptées par U-7) et la ligne `64e8adfa` `ti=0` disparue (la
+      fausse ancre slot 1536, R1.3) ; ancres : les deux régions de `64e8adfa`, ADJUGÉES (`adj.sh`) ;
+      équipes identiques ; admissions 6 507 inchangées.
+    - I-carte (20, 8, MPP) : colonnes de fermeture identiques à la première passe des deux côtés ;
+      seules la mémoire et la durée varient.
+    - killsource, 19 témoins : 18 films identiques à l'octet ; `60ae07c4` : morts, instants, tueurs,
+      victimes, sources identiques, santé et calibration changent (5 morts passent du balayage à la
+      marche séquentielle) ; sorties de la tête identiques à l'octet à la première passe.
+    - `replay-equiv`, 20 films, `depuis_les_faits=false` : mêmes étapes divergentes qu'à la première
+      passe (digests internes `killsource`, `vehicles`, `vehicleDeaths.stats` sur les 20 — profil porté
+      par les faits ; `zoneKeyReads` de trois films, adjugé en R1.5 ; `60ae07c4` et `64e8adfa`) ; le
+      lot de `feat/v75` change `carriedEquipment` sur 19 films à l'identique des deux côtés. Artefact
+      `60ae07c4` (`replay-build --facts`, `$RES/r5g/art/`) : dotations 257 → 420, postures 1 945 →
+      1 955, équipement porté 27 → 28 (fins de port lues, une faille de plus) et ses objets suivis
+      (`trackedObjects` 2 → 3, ceux du nouvel objet porté), tout le reste identique (pistes identiques
+      à la première passe). Aucune baisse nouvelle.
+    - S8 (`-deux-passes`), 20 films : 20/20 artefacts identiques à l'octet entre décodage et rejeu
+      depuis les faits ; le seul écart d'étape est le digest `killsource`, interne à la passe-faits,
+      comme à la première passe.
+- [x] R5.2 `grammar.Rev` monte (rang au-dessus de `feat/v75`), chronique `rev_chronique.go` (mesures de
       R1 à R3, adjudications) ; porte `LEVELUP_UPDATE_GRAMMAR_REV=1 go test $G -count=1 -run '^TestGrammarRevSuitLaGrammaire$' -update-grammar-rev`.
-- [ ] R5.3 killsource : `cmd/killsource json` 19 témoins, base `origin/feat/v75` contre lot ; identique
+  - `grammar-2026-10-15.2` (`feat/v75` est à `grammar-2026-10-15`) ; entrée de chronique après celle
+    du lot « équipement porté » ; golden par sa porte.
+- [x] R5.3 killsource : `cmd/killsource json` 19 témoins, base `origin/feat/v75` contre lot ; identique
       → complément daté dans `facts/killsource/rev_chronique.go` et golden régénéré par sa porte
       (`LEVELUP_UPDATE_KILLSOURCE_REV=1 ... -run '^TestKillsourceRevSuitLaSortie$' -update-killsource-rev`) ;
       sinon montée de `killsource.Rev`.
-- [ ] R5.4 objectives : étape `objectives` de `replay-equiv` (20 films) identique → complément daté
+  - Sortie changée sur `60ae07c4` (santé, calibration) : montée à `killsource-2026-10-15` (`feat/v75`
+    est à `killsource-2026-10-14`), entrée datée, golden par sa porte.
+- [x] R5.4 objectives : étape `objectives` de `replay-equiv` (20 films) identique → complément daté
       et golden par sa porte (`LEVELUP_UPDATE_OBJECTIVES_REV=1 ... -update-objectives-rev`) ; sinon
       montée d'`objectives.Rev`.
-- [ ] R5.5 `replay.SchemaVersion` monte au-dessus de `feat/v75` si le document publié change
+  - Étape `objectives` identique sur les 20 films : `objectives-2026-09-27` constante, complément
+    daté après celui du lot « équipement porté », golden par sa porte.
+- [x] R5.5 `replay.SchemaVersion` monte au-dessus de `feat/v75` si le document publié change
       (chronique `document_chronicle.go`, plafonds de `archlint/film_file_size_test.go`, goldens
       d'assemblage et de forme, fixtures de contrat du web) ; `SchemaDesFaits` si la forme des faits
       change (survie depuis les faits, mode `-deux-passes` de `replay-equiv`).
-- [ ] R5.6 Gates complets : G-film sans `-skip` ; archlint ; vet avec et sans `research` ;
+  - `SchemaVersion` 97 (`feat/v75` à 96), entrée v97 de la chronique, justification de
+    `structure_test.go`, plafonds 3 353 et 1 452 avec leur exception écrite ; `SchemaDesFaits` 15
+    (`feat/v75` à 14 : le profil de la section 5 gagne `MalleableSansDrapeauFinal`) ; huit goldens
+    d'assemblage, golden de forme, formes des types et huit fixtures de contrat du web
+    (`replay_schema_97_*`) régénérés par leurs portes.
+- [!] R5.6 Gates complets : G-film sans `-skip` ; archlint ; vet avec et sans `research` ;
       golangci-lint ; `go test -tags=integration -p 1` des paquets touchés ; G-perf (cuisson et sync,
       4 films, paires alternées, seuil +10 %, plan clos §5) ; G-corpus et banc de vérité contre
       `origin/feat/v75` (base partagée EN LECTURE, parc libre vérifié) ; `make gate-push` (étapes) ;
       typecheck et lint web.
-- [ ] R5.7 ADR 0037 (IR-4/IR-6 : la table d'entrées, Rslot, la version majeure déclarée) ;
+  - Verts : `film/...`, `archlint` (avant la fusion de `ec7313562`), `contracttest`, `replayview`,
+    `replaydiff`, `replay-corpus-gate` (tests) ; vet de `film/...` avec et sans `research` ;
+    golangci-lint du module (`--new-from-merge-base=origin/main`) et de `grammar/...` sous `research` :
+    0 problème ; `-tags=integration -p 1` de `film/...`, `replaybuild`, `sync/killcollector` ; web :
+    typecheck (trois projets, sans fichier d'état), eslint (0 erreur), vitest `match-replay` et
+    `lib/replay` (255 fichiers, 3 624 tests).
+  - gate-push : lint Go et web verts ; baseline de tests (suite `-tags=integration -p 1 -json` jouée
+    par groupes, JSONL vérifié par `check_test_baseline.sh tests --from-jsonl`) : tous les tests
+    présents, UN rouge hérité de `feat/v75` `ec7313562` (lot du rattrapage CSR, hors périmètre) :
+    `archlint::TestNoNewRawStartTimeLiteral` sur `internal/sync/csr_backfill.go:184`
+    (`ORDER BY r.start_time ASC`, règle CLAUDE.md n°8). Non corrigé ici (règle 5 du contrat), signalé.
+  - G-corpus et G-perf REPORTÉS : la recuisson du parc au schéma 96 (levelup-66, 2 à 3 h, processus
+    `backfill` visibles) tient le parc et la machine ; consigne du superviseur du 2026-10-15 : le gate
+    de corpus passe en dernier, une fois aucun processus « backfill » visible. G-perf exige une
+    machine calme (bruit ≤ 5 %). Racine de parc prête (`$RES/parc`, jonctions de lecture vers
+    `data/titles`, `film_chunks`, `film_manifests`), binaire `$RES/bin/gate-r5.exe`. Registre des
+    reports alimenté.
+- [x] R5.7 ADR 0037 (IR-4/IR-6 : la table d'entrées, Rslot, la version majeure déclarée) ;
       WALK_PORT_NOTES ; `.ai/REGISTRE_REPORTS.md` ; plan clos (D-18, D-21, D-30 renvoyés ici).
+  - ADR 0037 : paragraphe daté sous IR-6 (table d'entrées, fermeture sur l'ancre suivante et sur la fin
+    de table, sentinelles retirées, majeure 0x25, i0 et i18 sous la portée, mesures) ; WALK_PORT_NOTES :
+    section datée et adresses neuves ; registre : quatre reports ; plan clos : D-18, D-21, D-30 annotés.
 - [ ] R5.8 Push de `feat/ri-ecart-108`, CI verte au niveau job (`gh run list --branch feat/ri-ecart-108 --limit 3`,
       `timeout 590 gh run watch <id> --exit-status`).
 - [ ] R5.9 Revue adversariale du diff (skill `adversarial-review`, contexte frais, lancée par le
@@ -733,3 +792,12 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   tenu : mains nues à la première image-clé (279/283), objet d'objectif ensuite ; hypothèse U-3
   confirmée ; web : documentation et règle (D ≥ 2) corrigées, rendu inchangé. Suite : R5 (fusion de
   `origin/feat/v75`, qui a avancé du lot « équipement porté », puis révisions et gates complets).
+- 2026-10-15 : R5 jouée jusqu'au push. Trois fusions de `origin/feat/v75` (`39ead801f`, `46bfa5fad` au
+  schéma 96 et `grammar-2026-10-15`, `ec7313562` sans fichier du film) ; révisions remontées au-dessus
+  (`grammar-2026-10-15.2`, `killsource-2026-10-15`, `SchemaDesFaits` 15, `SchemaVersion` 97,
+  `objectives` constante) ; références et gates de R1 à R4 rejoués sur la base fusionnée : aucune baisse
+  nouvelle, toutes les différences déjà adjugées (R5.1). Gates verts sauf un rouge hérité de `feat/v75`
+  (`archlint::TestNoNewRawStartTimeLiteral`, `internal/sync/csr_backfill.go:184`, lot CSR), non
+  corrigé. Gate de corpus et G-perf reportés derrière la recuisson du parc (levelup-66). ADR 0037,
+  WALK_PORT_NOTES, registre, plan clos à jour. Suite : push, CI, puis gate de corpus, revue
+  adversariale et fusion (superviseur).

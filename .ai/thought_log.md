@@ -117315,3 +117315,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 18 champs, 18 fins lues au parc (11 de 11,35 à 12,24 s, 6 détruits de 1,5 à 4,6 s, une de 16,95 s liée au porteur) ; gate vert.
 
 **Conclusion / prochaine étape** : recuisson du parc au schéma 96 sur accord du user, après le rattrapage CSR en cours.
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R5 : révisions au-dessus de feat/v75, gates — En cours (`feat/ri-ecart-108`, gate de corpus et G-perf reportés)
+
+**Statut** : En cours — R1 à R5.7 faits ; push et CI de `feat/ri-ecart-108` ; gate de corpus et G-perf reportés derrière la recuisson du parc au schéma 96 ; revue adversariale et fusion au superviseur.
+
+**Décision technique principale** : `feat/v75` a avancé deux fois pendant R5 (fin du champ de réparation au schéma 96 avec `grammar-2026-10-15` et `SchemaDesFaits` 14, puis le rattrapage CSR) : refusion, chroniques des deux côtés gardées dans l'ordre, révisions reprises au rang suivant (`grammar-2026-10-15.2`, `killsource-2026-10-15`, `SchemaDesFaits` 15, `SchemaVersion` 97), goldens et fixtures par leurs portes.
+
+**Résultats observés** : contre `feat/v75` `46bfa5fad` (28 films) : bipèdes fermés 5 397 → 8 564 sur 10 710, admissions 6 507 inchangées, équipes identiques, ancres changées sur `64e8adfa` seul (adjugé), baisses `50247b26` acceptées par U-7 ; carte delta, killsource (19 témoins) et `replay-equiv` (20 films) : seules les différences déjà adjugées, `60ae07c4` gagne en plus un objet porté suivi ; S8 20/20 identiques. Le lot de `feat/v75` ne change aucune fermeture. Tests, vet, golangci-lint, intégration, web verts ; baseline : un rouge hérité de `feat/v75` (`TestNoNewRawStartTimeLiteral` sur `csr_backfill.go:184`).
+
+**Conclusion / prochaine étape** : CI de la branche ; le rouge archlint hérité est à corriger par le lot CSR (ou par décision du superviseur) ; gate de corpus et G-perf quand aucun backfill ne tourne ; revue adversariale ; fusion sur accord de l'utilisateur.
