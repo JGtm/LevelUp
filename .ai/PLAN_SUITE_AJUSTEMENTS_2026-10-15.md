@@ -1,0 +1,46 @@
+# Plan — suite des ajustements du 14/10 (2026-10-15)
+
+Le plan d'origine, clos, est archivé : `.ai/V7.5/PLAN_AJUSTEMENTS_2026-10-14.md`. Ce plan porte les
+lots ouverts le 15/10 à la suite des retours du user. Contrat : skill `plan-execution`.
+Superviseur : session levelup-66.
+
+## Décisions du user (15/10)
+
+- La faille se situe à sa POSE, lue dans le film, pas par la téléportation.
+- Kill refusé, équipe des bots, vies sans nom : enquête puis correction (accord « ok »).
+- Firefight : le mode n'est pas géré ; on ne fabrique ni ne sert plus son rejeu.
+- Armes au sol : armes de départ lâchées masquées par défaut, option pour les réafficher.
+- Lot de correction des morts servies deux fois : accord « oui ».
+
+## Lots
+
+- [x] Armes au sol (`feat/armes-sol-depart`, fusionné ; 31/90 sur 0d9a9af9, 87/221 sur 1b2d9e08).
+- [x] Firefight exclu de la cuisson et du service (`fix/rejeu-sans-firefight`, fusionné 424fa1393).
+- [ ] Nettoyage du cache Firefight : `levelup backfill-replay --purge-non-geres` (serveur arrêté).
+- [ ] Faille située à sa pose (`feat/faille-pose`, session levelup-80) : objet ti=38 né à la pose
+  (123/123), repli porteur compté, position par échange retirée, schéma 98 ; fin de la faille
+  bornée par la suppression lue de l'objet (en cours).
+- [ ] K-A doublons d'identité des temps forts et morts fantômes de la passe 2 (`fix/ks-a-doublons`).
+- [ ] K-D morts servies deux fois (`fix/ks-d-morts-doublees`, contient K-A) : siège de bot repris
+  (le bot tient l'indice jusqu'à la fin de sa dernière déclaration close — À VALIDER par le user),
+  appariement du crédit par écart croissant, fiches de kill au kill voisin, filet « une mort d'humain
+  = un événement death de l'API ». Relecture adversariale en cours.
+- [ ] K-B équipe des bots par build (`fix/ks-b-equipe-bots`) : relecture rendue (P2 « hors
+  grammaire » au roster, test de garde sans preuve, `EquipeLue` morte) — corrections en cours.
+- [ ] K-C vies nommées (`fix/ks-c-vies-nommees`).
+- [ ] Intégration groupée K-D (+K-A), K-B, K-C, faille-pose : renuméroter les révisions (collisions
+  grammar-2026-10-15.3, killsource-2026-10-15.2, faits 16) ; RÉGÉNÉRER `bots_*.json`, références
+  d'assemblage et fixtures web (bcb6d393 figé avec l'équipe fausse) ; garde-rail « chaque
+  `bots_*.json` porte `killsource.Rev` ».
+- [ ] Rattrapage et recuisson (accord user) : `repair-highlight-phantoms` (86 matchs) et
+  `--couples` (477 matchs), recuisson complète au dernier schéma, `backfill-killsource --credit-only`
+  puis `backfill-killsource`, purge Firefight.
+
+## Découvertes
+
+- 47d20b5d (film ancien, version 31) : pont d'identité vide, 298 vies sans nom (décision du user du
+  15/10 : films d'avant la 1.8 abandonnés, voir le registre).
+- 7aa132d1 : pistes parasites sur des slots hors plage des bipèdes, non prouvé.
+- HI_1_8_0 : octets 0x21/0x22 donnent l'équipe de la feuille sur 4 bots / 4 (échantillon trop petit).
+- Digests de référence de `replay-equiv` périmés (20/20 diffèrent dès la référence).
+- `replaybuild.botSuccessions` indexe les bots par bid seul.
