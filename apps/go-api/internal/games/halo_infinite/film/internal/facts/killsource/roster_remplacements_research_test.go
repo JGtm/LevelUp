@@ -227,7 +227,7 @@ func indicesLisibles(par map[int]int) string {
 func journaliserRoster(t *testing.T, f *film, kf *killFeed) {
 	t.Helper()
 	tbl := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), DefaultOptions().Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
+	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, grammar.LectureDesBots{})), DefaultOptions().Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
 	r.perm, _ = solveBijection(r, kf.pairs, nil, DefaultOptions().BijectionRestarts)
 	pub := r.public()
 	t.Logf("ROSTER RETENU — borne nPlay %d, humains %d, noms %d", r.nPlay, pub.Humans, len(pub.Names))
@@ -254,7 +254,7 @@ func journaliserHorsRoster(t *testing.T, f *film) {
 		t.Fatalf("kill-feed : %v", err)
 	}
 	tbl := readFilmTable(f)
-	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, 0, false)), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
+	r := buildRoster(kf, loadBotMeta(grammar.PaquetsBotMetadata(f.src, grammar.LectureDesBots{})), opts.Bots, tbl, lireIndexParMotif(f, tbl.slots, kf))
 	fc := grammar.NewFilmContextForMap(f.src, opts.Carte, nil)
 	cal, err := calibrate(fc, opts.Views, opts.Carte)
 	if err != nil {

@@ -44,22 +44,26 @@ func (c *decodeCtx) signaler(code constat.Code, niveau constat.Niveau, msg strin
 	c.diag.Signaler(constat.Diagnostic{Code: code, Niveau: niveau, Message: msg, Attrs: attrs})
 }
 
-// signalerLesEquipesDesBots dit, en ERREUR, chaque bot dont l equipe n est pas lue : aucun repli ne
-// la remplace, et son entree de rejeu n aura d equipe que si une entite `ti=9` la donne. Les
-// paquets qui ne ferment pas, les desaccords entre les deux lecteurs du paquet et les entrees refusees
-// se disent en AVERTISSEMENT, meme quand chaque bot tient son equipe d un autre paquet.
+// signalerLesEquipesDesBots dit, en ERREUR, chaque VRAI bot dont l equipe n est pas lue : aucun repli
+// ne la remplace, et son entree de rejeu n aura d equipe que si une entite `ti=9` la donne. Les
+// paquets qui ne ferment pas, les desaccords entre les deux lecteurs du paquet (noms hors grammaire,
+// entrees hors balayage) et les entrees refusees se disent en AVERTISSEMENT, meme quand chaque bot
+// tient son equipe d un autre paquet. Un fragment ecarte par la grammaire ne se dit pas : il se
+// compte ([EquipesDesBots.FragmentsEcartes]).
 func (c *decodeCtx) signalerLesEquipesDesBots(e EquipesDesBots, build string) {
 	if e.aLire() {
 		c.signaler(DiagEquipesDeBots, constat.NiveauError, "killsource: equipe de bot(s) NON LUE dans BOT_METADATA "+
 			"— aucun repli", "film", c.name, "build", build, "illisibles", e.Illisibles,
-			"contradictoires", e.Contradictoires, "hors_grammaire", e.HorsGrammaire,
-			"paquets_non_fermes", e.PaquetsNonFermes, "perso_inconnue", e.PersoInconnue)
+			"contradictoires", e.Contradictoires, "paquets_non_fermes", e.PaquetsNonFermes,
+			"perso_inconnue", e.PersoInconnue, "position_inconnue", e.PositionInconnue)
 	}
-	if e.PaquetsNonFermes > 0 || e.EntreesHorsBalayage > 0 || e.JumeauxDiscordants > 0 || e.HorsDomaine > 0 {
+	if e.PaquetsNonFermes > 0 || e.EntreesHorsBalayage > 0 || e.HorsGrammaire > 0 || e.JumeauxDiscordants > 0 ||
+		e.HorsDomaine > 0 {
 		c.signaler(DiagEntreesDeBots, constat.NiveauWarn, "killsource: paquet(s) BOT_METADATA non ferme(s), ou "+
-			"entree(s) hors du lecteur historique ou refusee(s)", "film", c.name,
+			"entree(s) hors du lecteur historique, hors grammaire ou refusee(s)", "film", c.name,
 			"paquets_non_fermes", e.PaquetsNonFermes, "hors_balayage", e.EntreesHorsBalayage,
-			"jumeaux_discordants", e.JumeauxDiscordants, "hors_domaine", e.HorsDomaine)
+			"hors_grammaire", e.HorsGrammaire, "jumeaux_discordants", e.JumeauxDiscordants,
+			"hors_domaine", e.HorsDomaine)
 	}
 }
 

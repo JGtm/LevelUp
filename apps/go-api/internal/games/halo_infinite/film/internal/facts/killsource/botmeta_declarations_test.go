@@ -95,7 +95,7 @@ func botsDePaquets(t *testing.T, paquets ...paquetDeTest) botMeta {
 	for i := range paquets {
 		paquets[i].typ = grammar.PacketTypeBotMetadata
 	}
-	return loadBotMeta(grammar.PaquetsBotMetadata(sourceDePaquets(t, paquets...), 0, false))
+	return loadBotMeta(grammar.PaquetsBotMetadata(sourceDePaquets(t, paquets...), grammar.LectureDesBots{}))
 }
 
 // TestBotMetaDeclarationsDesRelais execute DECL-RELAIS.
@@ -171,7 +171,7 @@ func TestBotMetaInstantaneDeTete(t *testing.T) {
 		paquetDeTest{chunk: 6, idx: 4, typ: grammar.PacketTypeBotMetadata, ts: 1_000_390, payload: payloadBotMeta(1, pardon)},
 		paquetDeTest{chunk: 6, idx: 5, typ: packetType0, ts: 1_100_000},
 		paquetDeTest{chunk: 6, idx: 9, typ: grammar.PacketTypeBotMetadata, ts: 2_800_000, payload: payloadBotMeta(0)},
-	), 0, false))
+	), grammar.LectureDesBots{}))
 	want := []BotDeclaration{{FromUS: 1_000_000, ToUS: 2_800_000}}
 	if len(m.Bots) != 1 || !reflect.DeepEqual(m.Bots[0].entree().Declarations, want) {
 		t.Fatalf("declarations %+v, attendu %+v : l ouverture en tete de chunk est l instant de "+

@@ -315,3 +315,16 @@ package grammar
 // QUELS xuid sortent. MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du
 // vrai 2535472452512509) 28 groupes d evenements sous deux xuid avant, 0 apres ; parc local de
 // 2 677 films : 1 film touche avant, 0 apres.
+// ENTREE `grammar-2026-10-15.3` (2026-10-15, lot K-B, branche `fix/ks-b-equipe-bots`) : L EQUIPE D UN
+// BOT SE LIT A LA POSITION DE SON BUILD, ET LES FRAGMENTS DU BALAYAGE SONT ECARTES. `profile.Rev` monte
+// a `profile-2026-10-15` ([profile.PositionEquipeBotPour]). `bot_metadata.go` lit le bloc de 44 octets
+// brut et en rend l equipe et le jumeau a la position du build ([LectureDesBots]) : sur HI_1_10_0 a
+// HI_1_12_0, l octet 0x25 lu jusqu ici tombait dans la copie du nom (equipe 0 pour tout bot). Dans un
+// paquet qui ferme, un nom balaye suffixe strict d un nom ecrit (`43 Hollis` pour `343 Hollis`) est
+// ecarte et compte ([PaquetBotMetadata.FragmentsEcartes]) : sur ces builds chaque entree en produisait
+// un, qui rendait chaque paquet incomplet.
+//
+// MESURE (617 films du parc dont la feuille porte un bot, decodage killsource de production, un film
+// par processus) : bots dont l equipe se lit, accord avec la feuille 888/888 (HI_1_13_0), 111/111
+// (HI_1_12_0), 2/2 (HI_1_11_0), 10/10 (HI_1_10_0) ; avec l entite `ti=9` 85/85 et 1/1 ; paquets
+// BOT_METADATA incomplets 707 -> 0.

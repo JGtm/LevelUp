@@ -187,6 +187,13 @@ package objectives
 // et rigid-body i18 sous la garde) et `killsource.Rev` a `killsource-2026-10-15`. PREUVE :
 // `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `46bfa5fad` contre ceux de la
 // branche fusionnee : etape `objectives` IDENTIQUE sur les 20. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-15 (lot K-B, branche `fix/ks-b-equipe-bots`, REVISION CONSTANTE) :
+// `grammar.Rev` monte a `grammar-2026-10-15.3` et `killsource.Rev` a `killsource-2026-10-15.2` (equipe
+// des bots lue a la position du build, fragments du balayage de BOT_METADATA ecartes). Les objectifs ne
+// lisent pas BOT_METADATA. PREUVE : `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75`
+// `df51f37c0` contre ceux du lot : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource` et
+// l artefact bougent. Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"
