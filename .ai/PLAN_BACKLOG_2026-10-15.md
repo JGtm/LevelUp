@@ -81,6 +81,18 @@ liste des 56 lecteurs au journal B4 de `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md` (l.
 - [x] E2.8 Tout autre entrant révélé par l'extension (nouvelles tables) statué de même ; un
   entrant hors de toute catégorie = STOP, retour au superviseur.
 - [x] E2.9 Ratchet `no_slug_comparison_test.go` vert ; aucune comparaison de slug ajoutée.
+- [ ] E2.10 (ajouté par le superviseur le 2026-10-15, revue du CR) Les 8 corrections de
+  `internal/sync` et `internal/ops` lisent le titre par `ctxkeys.TitleSlug(ctx)`, qui retombe
+  SILENCIEUSEMENT sur `halo_infinite` (aucune exclusion) si le contexte n'en porte pas. Pour
+  chacune : énumérer TOUS les chemins d'appel de production jusqu'au point d'entrée (sync
+  coordinateur, scheduler, handlers HTTP de recalcul, `cmd/levelup`, post-sync, rattrapages,
+  dont `BatchComputePerformanceScores` exporté) et prouver par `fichier:ligne` que le titre est
+  posé. Tout chemin sans titre : le poser au point d'entrée (ou passer le titre en paramètre),
+  avec un test qui passe par ce point d'entrée sur `halo_5`. Aucun chemin Halo 5 ne doit
+  dépendre du repli.
+- [ ] E2.11 Suite du retrait de `cmd/lusr_v2_phase0` : compilation des paquets `cmd/` qui
+  importaient `internal/sync` (`go vet` ciblé), puis recherche des exports de `internal/sync`
+  devenus sans appelant hors tests ; un orphelin est supprimé avec ses tests (règle n°7).
 
 Gate : `go test ./internal/archlint/ ./internal/platform/duckdb/... ./internal/api/wire/` + les
 paquets corrigés, puis `go test -tags=integration -p 1` sur les mêmes paquets.
@@ -99,19 +111,91 @@ paquets corrigés, puis `go test -tags=integration -p 1` sur les mêmes paquets.
 Gate : `go test` des paquets touchés, `go test ./internal/api/...` (contrat OpenAPI golden),
 `make check-types`, `make test-web` si un fichier web change.
 
-### E4 — Clôture
+### E4 — Vue match : « lecture en échec » distincte de « pas de données » — M
 
-- [ ] E4.1 `make go-api-lint` (ratchet), `make check-types`.
-- [ ] E4.2 Revue adversariale du diff (skill `adversarial-review`, contexte frais).
-- [ ] E4.3 `.ai/BACKLOG.md` : items 4, 5, 6 retirés ou réécrits ; `.ai/REGISTRE_REPORTS.md`
+Origine : découverte E1 n°1, à traiter « proprement et solidement » (user, 2026-10-15).
+Pièces : `service/match_view_data_loaders.go:262-269` (`goLoad` : erreur → `slog.Warn`, liste
+vide), `:670-674` (`detectPartialMatchData`) ; cache des vues (ADR 0036) ; bandeau « match
+partiel » côté web.
+
+Décisions fermes :
+- **D-8** Un chargeur en erreur ne produit PAS une liste vide indiscernable : la vue porte une
+  raison distincte par source (`<source>_unavailable`, à côté des `<source>_empty` existantes),
+  l'erreur est journalisée `slog.ErrorContext` (source, match_id, err) AVANT la dégradation.
+- **D-9** Réponse toujours 200 partielle (dégradation gracieuse), mais une vue construite avec au
+  moins une source `_unavailable` N'EST PAS mise en cache (ni cache serveur, ni en-têtes HTTP de
+  cache permettant la réutilisation) : la panne ne survit pas au retour du chargeur.
+- **D-10** Le web affiche un bandeau distinct « Données momentanément indisponibles, réessayez
+  plus tard » / « Data temporarily unavailable, please try again later » (i18n FR+EN, tokens de
+  couleur), différent du bandeau « match partiel ». Erreur ET vide simultanés : le bandeau
+  « indisponible » prime.
+
+- [ ] E4.1 Inventaire sur pièces : toutes les sources chargées par `goLoad`, toutes les raisons
+  `partial_reasons` émises, leurs lecteurs (Go, OpenAPI, web, tests E2E), le chemin de cache.
+- [ ] E4.2 Service : erreur ≠ vide (D-8) ; tests unitaires avec un chargeur en erreur et un
+  chargeur vide, rouges avant.
+- [ ] E4.3 Cache : D-9, test qui prouve qu'une vue en erreur n'est pas servie depuis le cache
+  au second appel une fois le chargeur rétabli, rouge avant.
+- [ ] E4.4 Contrat : OpenAPI (raisons documentées), `make generate-types`, golden à jour.
+- [ ] E4.5 Web : bandeau D-10 dans la logique (`*_logic.ts` / hook, pas dans le composant),
+  i18n FR+EN, test vitest.
+- [ ] E4.6 Les autres raisons `partial_reasons` existantes gardent leur sens (non-régression).
+
+Gate : `go test` des paquets touchés + `./internal/api/...`, `make check-types`, `make test-web`
+(fichiers de la vue match), recette navigateur de la vue match (cas normal + chargeur coupé
+simulé en test, pas sur les bases réelles).
+
+### E5 — Registre des matchs : colonnes d'intégrité non remplies — M
+
+Origine : découverte E1 n°2, à traiter « proprement et solidement » (user, 2026-10-15).
+Pièces : `match_registry.participants_loaded` (DDL `sync/schema.go:207`, seul écrivain
+`openspartan/mapper/mapper.go:69`), `match_registry.player_count` (oracle d'intégrité du roster,
+« fix #10 », migration `games/halo_infinite/migrations/steps_shared_core.go:602-604`, écrit par
+`games/halo_5/ingest/collect.go:47`, colonne de `persist/shared_persister.go:168`, lu par
+`migration/steps_shared.go:275`), bit `participants` (512) de `backfill_completed`
+(`sync/backfill_flags.go:141`) faux sur 157 matchs Halo Infinite qui ont leurs participants.
+
+Décisions fermes :
+- **D-11** Colonne LUE (lecteur de production identifié) → remplie à l'INSERTION par le chemin
+  `persist` (INSERT-only, ADR 0019/0030) pour CHAQUE titre qui dispose de la donnée ; titre sans
+  la donnée → valeur « inconnue » documentée, jamais une valeur fausse.
+- **D-12** Colonne NON LUE → retirée du code (écrivains, DDL des bases neuves, fixtures, colonnes
+  de seed démo) selon la règle n°7. La colonne physique des bases existantes : retirée seulement
+  par un mécanisme de migration déjà éprouvé sur `match_registry` ; sinon STOP (décision user).
+- **D-13** Lignes existantes : réparation uniquement par une recette sûre contre l'ART (ADR 0026,
+  `migration/append_only_rebuild.go` ou équivalent existant). Si seul un `UPDATE` sur
+  `match_registry` le permet : STOP, décision user (vecteur ART, cf. `cmd/h5-roster-topup:332`).
+- **D-14** Bit 512 : établir qui le lit (sélection de rattrapage ?) et ce que coûte un faux
+  négatif (re-téléchargement inutile) ; le poser là où les participants sont écrits.
+
+- [ ] E5.1 Inventaire sur pièces, par titre (HI, H5, import OpenSpartan) : écrivains, lecteurs,
+  date de la régression (`git log -S`), comptes sur une copie locale ET sur une copie prod
+  (le superviseur fournit la copie prod). Rapport au journal, puis STOP pour verdict du
+  superviseur (application de D-11 à D-14 colonne par colonne).
+- [ ] E5.2 `participants_loaded` : traitement selon le verdict.
+- [ ] E5.3 `player_count` : traitement selon le verdict.
+- [ ] E5.4 Bit 512 : traitement selon le verdict.
+- [ ] E5.5 Lignes existantes selon D-13.
+- [ ] E5.6 Tests : persist (tag `integration`, OBLIGATOIRE), rouge avant ; ratchets ART verts
+  (`no_art_patterns_test.go`, allowlist inchangée).
+
+Gate : `go test` + `go test -tags=integration -p 1` sur `./internal/persist/... ./internal/sync/...
+./internal/games/... ./internal/migration/...` (paquets touchés). Revue adversariale Opus du
+diff E5 (lot persist/sync).
+
+### E6 — Clôture
+
+- [ ] E6.1 `make go-api-lint` (ratchet), `make check-types`.
+- [ ] E6.2 Revue adversariale du diff complet (skill `adversarial-review`, contexte frais, Opus).
+- [ ] E6.3 `.ai/BACKLOG.md` : items 4, 5, 6 retirés ou réécrits ; `.ai/REGISTRE_REPORTS.md`
   alimenté ; thought_log.
-- [ ] E4.4 Push de la branche, CI verte (tout rouge se répare).
-- [ ] E4.5 Fusion dans `feat/v75` : demandée au user.
+- [ ] E6.4 Push de la branche, CI verte (tout rouge se répare).
+- [ ] E6.5 Fusion dans `feat/v75` : demandée au user.
 
 ## 3. Découvertes
 
-- E1 : `partial_reasons` ne distingue pas « liste vide » de « chargeur en erreur » (`service/match_view_data_loaders.go:262-269`, `:670-674`) : une panne de lecteur s'affiche comme un match sans tableau des scores. Évolution de contrat, à décider avec le user.
-- E1 : `match_registry.participants_loaded` et `player_count` ne sont plus posés par le chemin courant (FALSE / 0 sur des matchs complets) : colonnes mortes ou à fiabiliser, à trancher.
+- E1 : `partial_reasons` ne distingue pas « liste vide » de « chargeur en erreur » (`service/match_view_data_loaders.go:262-269`, `:670-674`) : une panne de lecteur s'affiche comme un match sans tableau des scores. → intégré au plan : étape E4 (user, 2026-10-15).
+- E1 : `match_registry.participants_loaded` et `player_count` ne sont plus posés par le chemin courant (FALSE / 0 sur des matchs complets) : colonnes mortes ou à fiabiliser. → intégré au plan : étape E5 (user, 2026-10-15).
 - E2 : `sync.FindMatchesMissingParticipantBits` (`internal/sync/backfill.go:86`) n'a aucun appelant de production (seulement `backfill_integration_test.go:219`, `:238`) : code mort au sens de la règle n°7, dispensé le temps du garde, à retirer avec ses tests. Non traité.
 - E2 : `cmd/lusr_v2_phase0` (rejouait le LUSR v1 mort) SUPPRIMÉ dans E2 sur décision du user du 2026-10-15 (règle n°7) : fait. Constantes exportées de `internal/sync` qu'il consommait (`Beta`, `KElo`, `Tau`, `MinSigma`, `AccuracyHistorySize`, `MetricKey*`...) : non vérifiées une à une, d'autres outils (`diag_lusr_player`) en consomment ; un éventuel orphelin est à chercher à part. Non traité.
 - E2 : les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des assistances, engagement, dates de paliers) l'ont été Campagne comprise ; les chargeurs corrigés ne les recalculent pas d'eux-mêmes. À décider avec le user au déploiement ; rien n'est lancé.
