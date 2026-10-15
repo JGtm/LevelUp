@@ -649,6 +649,35 @@ Aucun : les neuf axes ont produit au moins un constat retenu.
   de calcul, origine de la base démo publiée (synthétique depuis le 2026-08-26 ?),
   `LEVELUP_REPLAY_PUBLIC` (C1-2).
 
+### Relevé du VPS (2026-10-15, lecture seule, `ssh lvelup`)
+
+- Prod sur `main` @ `c084aefad` (5 555 commits derrière `feat/v75`) : les constats C1-1, C2-1 à
+  C2-4, C3, C4-1, C5 portent sur du code également présent sur `main`, donc exposé aujourd'hui.
+- `.env.local` : `LEVELUP_TRUST_PROXY_HEADERS=true` (**C1-1 exploitable en prod**),
+  `LEVELUP_ENV=production` (`/docs` et OpenAPI non exposés : point levé), `LEVELUP_AUTH_MODE=xbox`,
+  `LEVELUP_REPLAY_PUBLIC=1` (**le rejeu est public en prod** : la garde « local seulement » de C1-2
+  est déjà levée par réglage ; reste l'absence de contrôle de participation sur le rejeu, et C6-2
+  — lecture d'un `*.json` par `match_id` piégé — est atteignable par tout propriétaire de profil).
+- `app_settings.json` : `instance_locked=true`, `can_self_provision=true` (précondition de C4-5 à
+  revérifier avec le verrou actif).
+- Machine : 2 vCPU, 1 867 Mo de RAM (810 disponibles), `vm.overcommit_memory=0` (**C2-3 = arrêt
+  fatal confirmé**), disque 55 % (34 Go libres).
+- nginx actif : aucune neutralisation de `True-Client-IP`, `client_max_body_size 2g` sur `/api/`,
+  aucun `limit_req` sur le site de prod (seule zone : `demo_limit` 10 r/s par IP, rafale 20, sur la
+  démo), `server_tokens` commenté (version exposée). Ports Docker sur 127.0.0.1, pare-feu actif.
+- **Nouveau P2** : le `server` 443 du site principal n'inclut pas `options-ssl-nginx.conf` ;
+  `nginx.conf` déclare `ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3` → TLS 1.0 et 1.1 acceptés.
+- **Mesure appliquée le 2026-10-15** (accord de l'utilisateur) : nginx prod et démo durcis
+  (`True-Client-IP` retiré, corps bornés, limites de débit, version masquée) — détail au plan §5.
+  C1-1 et C2-1 sont neutralisés en production côté nginx en attendant le correctif de code.
+
+## Décisions de l'utilisateur (2026-10-15, après lecture du registre)
+
+- Registre validé.
+- C4-3 : l'import OpenSpartan reste ouvert aux comptes, mais limité aux matchs du joueur qui importe
+  (aucune écriture de données d'un autre joueur).
+- C4-7 : `/healthz/home` réservé à l'admin (conservé pour le monitoring).
+
 ## Suite
 
 - Plan de correction `.ai/PLAN_SECURITE_2026-10-15.md` (grille `plan-review`), un lot par classe
