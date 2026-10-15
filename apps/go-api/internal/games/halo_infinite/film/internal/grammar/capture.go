@@ -26,6 +26,10 @@ var captureNames = []string{
 	compObjectDissolver,
 	"player-respawn-timer-component",
 	"game-engine-round-timer-component",
+	compEquipmentEnergy,
+	compEquipmentActivated,
+	compEquipmentControlSignal,
+	compEquipmentTrackedStack,
 }
 
 // consumeByNameCapturing consomme un composant comme consumeByName, et rend en plus sa
@@ -44,6 +48,14 @@ func consumeByNameCapturing(br *Lecteur, name string, typeIndex, level uint32) (
 		return noVariant, nil, decodeObjectDissolver(br), true
 	case "player-respawn-timer-component": // ti=5 i1
 		return noVariant, nil, decodePlayerRespawnTimer(br), true
+	case compEquipmentEnergy: // ti=37 i24 — L ETAT DE L EQUIPEMENT PORTE (lot « equipement porte »)
+		return noVariant, nil, decodeEquipmentEnergy(br), true
+	case compEquipmentActivated: // ti=37 i21
+		return noVariant, nil, decodeEquipmentActivated(br), true
+	case compEquipmentControlSignal: // ti=37 i22
+		return noVariant, nil, decodeEquipmentControlSignal(br), true
+	case compEquipmentTrackedStack: // ti=37 i28
+		return noVariant, nil, decodeEquipmentTrackedStack(br), true
 	case "game-engine-round-timer-component": // ti=0 i5
 		return noVariant, nil, decodeGameEngineRoundTimer(br), true
 	}

@@ -63,7 +63,7 @@ func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, l
 		br.ReadBits(32)
 		return variant, nil, true
 	case compEquipmentActivated: // ti=37 i21 (FUN_*)
-		consumeEquipmentActivated(br)
+		decodeEquipmentActivated(br)
 		return variant, nil, true
 	case "statborg-finalized-rounds-values-stat-component": // ti=6 i28
 		consumeStatborgFinalized(br)
@@ -77,20 +77,14 @@ func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, l
 	case "generic-rigid-body-transforms-component": // ti=38 i18 (FUN_142f036f0)
 		consumeGenericRigidBodyTransforms(br)
 		return variant, nil, true
-	case "equipment-control-signal-component": // ti=37 i22 (FUN_14101cd94)
-		// GRAMMAIRE RELUE le 2026-09-15 (lot 1.9.1 bis, pas 2 bis) : le deser est
-		// `FUN_14101d200` (R(4), 14101d21d) puis `FUN_1408f0ac4(dst+0x58c, br, 4)`
-		// (14101cdc3). La CATEGORIE est 4 : pas de bit de sonde, et 9 bits de valeur —
-		// le portage precedent lisait `readQuantStat(1, 13)`, soit une sonde de trop ET
-		// quatre bits de valeur de trop, cinq bits sur chaque record qui ouvre la porte.
-		br.ReadBits(4)
-		consume1408f0ac4(br, 4)
+	case compEquipmentControlSignal: // ti=37 i22 (FUN_14101cd94) — R(4) puis FUN_1408f0ac4(…,4)
+		decodeEquipmentControlSignal(br)
 		return variant, nil, true
 	case compEquipmentCreator: // ti=37 i23 (FUN_142ed45f4) — R(1)[si0:R(5)]
 		consumeEquipmentCreator(br)
 		return variant, nil, true
 	case compEquipmentEnergy: // ti=37 i24 (FUN_141087bec) — R(14)
-		consumeEquipmentEnergy(br)
+		decodeEquipmentEnergy(br)
 		return variant, nil, true
 	case "tacmap-missionmarkerstate": // ti=34 i8 (FUN_142ed5e90) — R(32)+R(32)
 		br.ReadBits(32)
@@ -106,7 +100,7 @@ func consumeItemAndTacmapComponent(br *Lecteur, name string, typeIndex uint32, l
 		br.ReadBits(12)
 		return variant, nil, true
 	case "tacmap-waypointstate": // ti=34 i7 (FUN_140f04d74 -> FUN_140f04d88) — exception datee R3-bis
-		consumeTacmapWaypointState(br)
+		consumeTacmapWaypointState(br, level)
 		return variant, nil, true
 	case "tacmap-dungeonstate": // ti=34 i4 (FUN_142ed4350) — R(1)+R(96)
 		br.ReadBit()

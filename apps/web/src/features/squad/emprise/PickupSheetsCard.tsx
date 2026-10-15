@@ -3,8 +3,6 @@
  * dans l'escouade » ; lot L5.2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, maquette de
  * l'onglet, `renderRoleCards`).
  *
- * Au-dessus des fiches, la ligne « Bonus perdus » : pour chaque camp, sa pastille d'équipe
- * (`team-ally` / `team-enemy`, S4 : pas de « nous » / « eux ») puis « 2 sur 12 (17 %) ».
  * Une fiche par joueur de l'escouade (jamais de fiche du reste du camp : les joueurs inconnus
  * n'ont pas de fiche, leurs prises restent comptées dans celles de l'équipe), dans la coquille des
  * fiches de médailles (`SquadPlayerSheet`, S7) : « Ressource dominante » en haut à droite (celle où le
@@ -18,11 +16,10 @@
 import { useMemo, type CSSProperties } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
-import { tokenCssVar } from '@/lib/accessibility'
 
 import { ObjectifFrame, ObjectifLegend } from '../objectif/ObjectifFrame'
 import { SquadPlayerSheet, SquadSheetAvatar, SquadSheetSection } from '../SquadPlayerSheet'
-import type { PickupLine, PickupLosses, PickupSheets } from './emprise.logic'
+import type { PickupLine, PickupSheets } from './emprise.logic'
 import type { EmpriseText } from './empriseStrings'
 import { resourceInk } from './resourceColors'
 import { TipText } from './TipText'
@@ -60,7 +57,6 @@ export function PickupSheetsCard({ sheets, identities, itemName, bare = false, t
 
   return (
     <ObjectifFrame title={t.sheets.title} info={t.sheets.info} legend={legend} testId="emprise-sheets" bare={bare}>
-      {sheets.losses && <LossesLine losses={sheets.losses} t={t} />}
       <div
         className="grid grid-cols-1 gap-4 min-[561px]:grid-cols-2 min-[1001px]:[grid-template-columns:repeat(var(--sheets),minmax(0,1fr))]"
         style={{ '--sheets': Math.min(Math.max(sheets.owners.length, 2), 4) } as CSSProperties}
@@ -163,24 +159,5 @@ function SheetLine({
         <span className={`text-right tabular-nums ${zero ? 'font-normal' : 'font-semibold'}`}>{n}</span>
       </div>
     </Tooltip>
-  )
-}
-
-function LossesLine({ losses, t }: { losses: PickupLosses; t: EmpriseText }) {
-  const camps = [
-    { key: 'us', color: tokenCssVar('team-ally'), label: t.ourSide, ...losses.us },
-    { key: 'them', color: tokenCssVar('team-enemy'), label: t.opponent, ...losses.them },
-  ]
-  return (
-    <div className="flex flex-wrap gap-3.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs text-muted-foreground" data-testid="emprise-losses">
-      <span className="font-semibold text-foreground">{t.sheets.lossesTitle}</span>
-      {camps.map((c) => (
-        <span key={c.key} className="inline-flex items-center" data-testid={`emprise-losses-${c.key}`}>
-          <span className="mr-[5px] inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: c.color }} role="img" aria-label={c.label} />
-          <span className="font-semibold text-foreground">{t.sheets.lossesFmt(c.lost, c.taken)}</span>
-          {c.taken > 0 && <span>&nbsp;({t.pctIntFmt((c.lost / c.taken) * 100)})</span>}
-        </span>
-      ))}
-    </div>
   )
 }

@@ -39,6 +39,7 @@ import { drawZoneStates } from '../layers/zoneStatesLayer'
 import { drawFireMarks } from '../layers/fireMark'
 import { useReplayAbilityFx } from '../layers/useReplayAbilityFx'
 import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer'
+import { drawRiftLayer } from '../layers/placementRift'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
 import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
@@ -193,6 +194,8 @@ interface ReplayCanvasProps {
    */
   feedEntries?: readonly ReplayFeedEntry[]
   media?: readonly ReplayMediaItem[]
+  /** La règle déclarée de la piste Score (`header.score_timeline_kind`) : `hidden` = pas de piste, `undefined` = en-tête en chargement. */
+  scoreTimelineKind?: string
   /**
    * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois
    * par la page — la même lecture que l'écran de fin (`endMatchSound.ts`). Le canvas ne fait
@@ -210,7 +213,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, marks,
-  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
@@ -455,6 +458,7 @@ export function ReplayCanvas({
           objectivesCooked: !!objectivesRef.current,
           projectiles: !!doc.projectiles?.length,
           placements: placements.counts.drawable > 0,
+          rifts: placements.rift.rifts.length > 0 || placements.rift.teleports.length > 0,
           fireMarks: fireMarks.length > 0,
           shotFx: shotFx.length > 0,
           zoneStates: doc.zoneStates.length > 0,
@@ -501,7 +505,7 @@ export function ReplayCanvas({
               // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur revele les
               // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le
               // camp est l'equipe du FILM de chacune, jamais le drapeau « allie » de la page.
-              { placements: doc.equipmentPlacements, lives: doc.tracks, campOfSlot, rift: placements.rift },
+              { placements: doc.equipmentPlacements, lives: doc.tracks, campOfSlot },
               view,
               { frame: fr, ...placements.windowTime, k, reducedMotion, ...placements.toggles },
               // FRONTIERE : objet lache a la mort, `t0 = finVie+1` — `colorOfSlotOrLast`.
@@ -527,6 +531,15 @@ export function ReplayCanvas({
               // connait aucune locale.
               offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
             }),
+          // LES FAILLES, AU-DESSUS DES PISTES : la station et le passage du translocateur.
+          failles: (_c, fr, k) =>
+            drawRiftLayer(
+              ctx,
+              placements.rift,
+              view,
+              { frame: fr, ...placements.windowTime, k, reducedMotion },
+              riftInk,
+            ),
           'marques-de-tir': (_c, fr, k) =>
             drawFireMarks(ctx, fireMarks, view, {
               frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k, embarkedAtSlot: vehicles.isEmbarkedAt,
@@ -647,7 +660,7 @@ export function ReplayCanvas({
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
-    doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
+    doc, playWindow, feedEntries, media, scoreTimelineKind, marks: marks ?? NO_MARKS, renderWidth, locale,
     lead: teamCascades, playback, toggleSound: sound.toggle, toggleFullscreen: fullscreen.toggle, zoom,
     // LE MENU DE POINT DE VUE (2026-09-07) : le canvas RELAIE, il ne résout rien. L'allégeance
     // est celle des calques (`model.allegiance`, lue dans le film et vue du point de vue) —

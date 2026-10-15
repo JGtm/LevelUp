@@ -28,6 +28,7 @@ import type { ReactNode } from 'react'
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 
 import { abilityChargesAt, type AbilityChargeDisplay } from '../model/abilityChargeLogic'
+import { carriedUsesAt } from '../model/carriedUsesLogic'
 import type { CardGabarit } from '../model/cardGabarit'
 import { catalogText, type CatalogLabel } from '../i18n/catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -68,7 +69,9 @@ export function ReplayAbilityCell({
   const abilityRead = abilityAt(doc, slot, frame)
   const ability = abilityText(doc, abilityRead?.rank, t, locale)
   const charge =
-    abilityRead !== null ? abilityChargesAt(doc, slot, frame, abilityRead.rank) : null
+    abilityRead !== null
+      ? (abilityChargesAt(doc, slot, frame, abilityRead.rank) ?? carriedUsesAt(doc, slot, frame, abilityRead.rank))
+      : null
   // LES CHARGES EN TEXTE À CÔTÉ DE LA CELLULE (fiche normale), OU DANS SON INFOBULLE (tuile
   // compacte, `showInventoryMarks: false` — décision D5 : la rangée n'a plus d'espace souple).
   // Le texte de l'infobulle est le même que celui de la marque : une seule composition.

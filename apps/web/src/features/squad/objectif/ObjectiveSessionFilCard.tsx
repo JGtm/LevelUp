@@ -3,9 +3,9 @@
  * Emprise, section Objectif ; lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26,
  * maquette C3EW).
  *
- * Un graphe, trois courbes de rôle cumulées (moyenne des parts, chaque match pèse pareil, D7),
- * aux couleurs `objective-role-*` ; les parts de chaque match en petits points pâles (taille =
- * volume) ; le point final grossi et la valeur au bout de chaque courbe ; le trait 50 % ; sous
+ * Un graphe, un groupe de trois barres par match (une par rôle, aux couleurs `objective-role-*`,
+ * la part de l'équipe dans CE match) ; le cumul de la soirée (moyenne des parts, chaque match pèse
+ * pareil, D7) dans l'infobulle ; le trait 50 % ; sous
  * l'axe, l'heure, la bande de résultats (encoche de dominance quand le drapeau existe, S9), la
  * carte et le mode. Sous trois matchs à objectif, la courbe ne se trace pas : la carte garde sa
  * place et dit pourquoi, dans le bloc placeholder (`EmptyStateNotice` tiretée).

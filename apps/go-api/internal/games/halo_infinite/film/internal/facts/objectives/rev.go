@@ -150,6 +150,36 @@ package objectives
 // `grammar-2026-10-09` (le fil des evenements de la vue A se garde ; aucun bit n est lu autrement).
 // `grammar/signaux` ne change pas et les objectifs ne lisent pas le fil : sortie inchangee par
 // construction. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-09 (jalon LK du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.2` (records d image-cle lus sous la
+// portee de l etat complet). `grammar/signaux` ne change pas ; l etape `objectives` de `replay-equiv`
+// est IDENTIQUE sur les 20 films de reference (binaires de `d429dc517` contre ceux du lot). Golden
+// regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-09 (lot 2.7.d1 du plan `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-09.3` (etat complet du bipede aux
+// images-cles lu par la grammaire, fenetres de bits derriere la lecture ; la marque de portage, lue
+// par la grammaire sur les records admis, reste la configuration de la fenetre, U-2 (b)).
+// `grammar/signaux` ne change pas ; les etapes `objectives` et `carrierMarks` de `replay-equiv` sont
+// IDENTIQUES sur les 20 films de reference (binaires de `3aa885e37` contre ceux du lot). Golden
+// regenere a revision constante. Les deux rangs (`.2`, `.3`) sont renumerotes a la fusion de `feat/v75`
+// `54b47a2b8` (chronique de `grammar`) ; l etape `objectives` rejouee contre `54b47a2b8` est identique.
+//
+// COMPLEMENT DU 2026-10-14 (lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, branche `feat/aj14-f`,
+// REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-14` — elle entre PAR VALEUR dans l amont
+// de cette couche — : la lecture de la vue A range ses messages de poussee (genres 104 et 105) et
+// `film/types` gagne `Knockback` et `KnockbackStats`. Les objectifs ne lisent pas les poussees.
+// PREUVE : `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `d33f21227` contre ceux du
+// lot : etapes `objectives` et `killsource` IDENTIQUES sur les 20, comme toutes les autres etapes hors
+// l etape neuve `knockbacks` et l artefact. Golden regenere a revision constante.
+//
+// COMPLEMENT DU 2026-10-15 (lot « equipement porte », REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-15` (la pile i28 rend ses handles, le canal date la suppression des objets que
+// l equipement engendre). Les objectifs ne lisent pas l equipement porte. PREUVE : `replay-equiv` sur
+// les 20 films du corpus, binaires de `027a5bcaf` contre ceux du lot : etapes `objectives` et
+// `killsource` IDENTIQUES sur les 20 ; seules `carriedEquipment` (14 films) et l artefact bougent.
+// Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

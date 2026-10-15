@@ -1427,8 +1427,22 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   le CONTENU change : la colline d une periode se place par la garde de son camp proprietaire,
 	//   la 1re colline apparait au coup d envoi, et la jauge de capture des collines se publie (prise,
 	//   vidange). Assemblage seul : un v91 se lit « a republier ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 92 {
-		t.Fatalf("SchemaVersion = %d, attendu 92 : incrémenter exige une raison écrite ci-dessus "+
+	// - 93 (2026-10-09, representation intermediaire 2.7.d1) : Aucun champ neuf ; le CONTENU change :
+	//   l etat complet du bipede aux images-cles (armes portees, inventaire, marque de portage) est lu
+	//   par la grammaire sur les records que sa regle d admission retient, les fenetres de bits rendent
+	//   les autres derriere elle. `grammar.Rev` monte avec elle : un v92 se lit « a redecoder ». Detail :
+	//   `document_chronicle.go`.
+	// - 94 (2026-10-14, lot F des ajustements) : un calque neuf `knockbacks[]` et sa couverture
+	//   `coverage.knockbacks` — les poussees du repulseur lues dans la vue A (paire 105 -> 104).
+	//   `grammar.Rev` monte avec elle : un v93 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	// - 95 (2026-10-14, lot « equipement porte » des ajustements) : deux calques neufs `carriedEquipment[]`
+	//   et `riftPoses[]` et leur couverture — l energie de l equipement porte, ses usages restants, la pose de
+	//   la faille. `grammar.Rev` monte avec elle. Detail : `document_chronicle.go`.
+	// - 96 (2026-10-15, meme lot) : `carriedEquipment[].tracked[]` et deux compteurs de couverture — les
+	//   objets que l equipement porte engendre (pile i28) et leur suppression lue : la fin du champ de
+	//   reparation. `grammar.Rev` monte avec elle. Detail : `document_chronicle.go`.
+	if SchemaVersion != 96 {
+		t.Fatalf("SchemaVersion = %d, attendu 96 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

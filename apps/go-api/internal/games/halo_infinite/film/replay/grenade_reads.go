@@ -15,9 +15,9 @@ import (
 // UNE SEULE GRANDEUR, DEUX SOURCES — c'est le patron d'`abilities.go`, et c'est le même remède
 // contre le même défaut (« deux canaux, une seule étiquette »).
 //
-//	kf     le record de biped des IMAGES-CLÉS (inventory_decode.go). Dense quand il lit —
-//	       une lecture par joueur et par image-clé — mais espacé de ~20 s, et MUET sur une
-//	       large part du corpus : 42 films sur 70 ne rendent aucune lecture de grenades.
+//	kf     le record de biped des IMAGES-CLÉS (types.KeyframeInventory : i22 lu par la grammaire
+//	       sur les records qu'elle admet, la fenêtre inventory_decode.go derrière elle sur les
+//	       autres). Dense — une lecture par joueur et par image-clé — mais espacé de ~20 s.
 //	delta  les composants i22 (compteurs) et i47 (masque + sélection) des paquets DELTA
 //	       (grammar.ScanFilmInventoryDeltas). Transmis AU CHANGEMENT — un ramassage, un
 //	       lancer — donc rares (0,09 % des records) mais placés exactement là où l'état bouge.

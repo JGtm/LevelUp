@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { MatchEmpriseBlock, SquadEmpriseObject } from '@/lib/api/types'
 
-import { FLOOD_GULCH, STARBOARD, STARBOARD_LIVES, STARBOARD_SCOREBOARD, XUID } from './matchEmprise.fixtures'
+import { FLOOD_GULCH, STARBOARD, STARBOARD_LIVES, XUID } from './matchEmprise.fixtures'
 import {
   buildMatchControl,
   buildMatchEmpriseModels,
@@ -15,7 +15,6 @@ import {
   buildMatchSheets,
   buildMatchYield,
   hasEquipmentEmpriseCard,
-  matchCoverage,
   matchEmpriseCards,
 } from './matchEmprise.logic'
 
@@ -38,7 +37,6 @@ describe('buildMatchControl — D, contrôle des ressources, par match', () => {
       '  VK78 Commando 2–0',
       '  CQS48 Bulldog 0–1',
     ])
-    expect(c.rows[0].padsEmptied).toBe(10)
     expect(c.racks).toBe(3)
   })
 
@@ -170,14 +168,7 @@ describe('buildMatchLives — I, une ligne par joueur dans l’ordre des fiches'
   })
 })
 
-describe('couverture et présence des cartes', () => {
-  it('sous-titre : joueurs présents à la fin d’un match filmé (partis exclus) ; rien sans film', () => {
-    const board = [...STARBOARD_SCOREBOARD, { xuid: 'x-p', gamertag: 'Parti', team_side: 't1', left_in_progress: true }] as typeof STARBOARD_SCOREBOARD
-    expect(matchCoverage(STARBOARD, board)).toEqual({ present: 8 })
-    expect(matchCoverage(withMatch(STARBOARD, { has_film: false }), board)).toBeNull()
-    expect(matchCoverage(null, board)).toBeNull()
-  })
-
+describe('présence des cartes', () => {
   it('22/09 : toutes les cartes de l’Emprise sont présentes', () => {
     const cards = matchEmpriseCards(buildMatchEmpriseModels(STARBOARD, STARBOARD_LIVES, nameOf))
     expect(cards).toEqual({ control: true, sheets: true, production: true, yield: true, lives: true })

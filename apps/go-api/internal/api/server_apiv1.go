@@ -333,7 +333,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// D3 cohabitation (cf. SPRINT_XBOX_SSO §0bis) : en mode "xbox", la LinkStrategy
 	// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
 	// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
-	authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider)
+	authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, tokenProvider)
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
 		// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
@@ -627,7 +627,6 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			PostImportService: osPostImportSvc,
 			JobStore:          jobStore,
 			StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
-			DemoMode:          cfg.DemoMode,
 		}
 		// Trigger de convergence events immédiat post-import (réutilise le pool
 		// d'auth du scheduler). Conditionnel : éviter un typed-nil dans l'interface
@@ -678,7 +677,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Use(ownershipMW)
 		// Le suivi live suit le profil : pause/purge retirent le couple du watcher,
 		// réactivation le remet (revue adversariale du 2026-09-16, P1).
-		handlers.NewTitleSyncHandler(profileService, cfg.DemoMode).
+		handlers.NewTitleSyncHandler(profileService).
 			WithWatcher(func() handlers.TitleWatcher {
 				// DaemonController ne porte pas RemovePlayerTitle : même assertion
 				// que buildPlayerDirectory pour WatchedReader. nil si pas de daemon.
@@ -786,10 +785,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// La porte de PRODUCTION est sa jumelle data-level `film.replay_artifact`
 		// (capabilities.toml) : pas de clé, pas de cuisson (sync/replayartifacts).
 		// Le garde local reste un middleware de transport (cf. handlers/replay_local_gate.go,
-		// qui porte sa date de retrait).
+		// qui porte sa date de retrait) ; en démo, il cède à la liste des rejeux figés.
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
-			r.Use(handlers.LocalOnlyReplay)
+			r.Use(handlers.ReplayGate(demoReplayGate(reg)))
 			handlers.NewReplayHandler(reg.Replay).Mount(r, playerOpt)
 			// La SEQUENCE D UNE MORT (onglet Tactique, vue D) lit les memes trajectoires : elle vit sous
 			// les MEMES gardes que le rejeu, pour qu activer le rejeu en production l active aussi.
@@ -887,7 +886,6 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// P6.3 : guard de capability — media routes nécessitent CapMedia.
 		media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 			WithSettingsStore(settingsStore).
-			WithDemoMode(cfg.DemoMode).
 			WithProduction(cfg.IsProduction()).
 			// Multi-user authentifié : un like sans joueur courant en session est
 			// refusé (401) au lieu d'être écrit comme like anonyme non attribuable.

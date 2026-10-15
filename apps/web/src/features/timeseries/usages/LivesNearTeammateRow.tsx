@@ -52,9 +52,6 @@ export function LivesNearTeammateRow({ model, label, hidden, idPrefix = '', ut, 
     <div className="grid items-center gap-3" style={{ gridTemplateColumns: LIVES_COLUMNS }} data-testid={idPrefix ? `usages-lives-row-${idPrefix}` : undefined}>
       <div className="min-w-0 text-[12.5px] leading-tight">
         {label}
-        <small className="block text-[11px] text-muted-foreground" data-testid={`usages-lives-${idPrefix}sub`}>
-          {l.rowSub(model.lives)}
-        </small>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
         {(nearHidden || aloneHidden) && (

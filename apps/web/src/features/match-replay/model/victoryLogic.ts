@@ -236,9 +236,9 @@ export interface FinalScoreHeader {
  * pendant que la vue match affichait le total. Le critère est donc la PRÉSENCE des deux
  * nombres, jamais leur nature.
  *
- * Le pendant vivant — le compte de manches qui monte pendant la lecture — reste dérivé du
- * film : il doit suivre la position de lecture, ce que l'en-tête ne sait pas faire
- * (cf. `roundsTally`).
+ * Le pendant vivant — les pastilles de manche qui se remplissent pendant la lecture — reste
+ * dérivé du film : il doit suivre la position de lecture, ce que l'en-tête ne sait pas faire
+ * (cf. `roundDots`).
  *
  * # LE SUJET, ET POURQUOI IL A FALLU L'AJOUTER (2026-09-07, lot L3)
  *

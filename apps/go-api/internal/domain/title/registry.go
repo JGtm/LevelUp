@@ -695,6 +695,15 @@ func (p *PathResolver) DemoManifestPath(gamertag, titleSlug string) string {
 	return filepath.Join(p.repoRoot, "config", "demo", gamertag, titleSlug+".json")
 }
 
+// DemoFilmsCacheRoot rend le MAGASIN PERSISTANT des films des rejeux figés de la démo :
+// `data/demo_films/<slug>`, hors du dossier de la démo (régénéré à chaque seed), avec la
+// disposition d'un cache de films (film_chunks/, film_manifests/) pour que la recuisson les
+// lise comme ceux du cache. Provisionné une fois là où le cache de films n'existe pas (VPS).
+// Ex: data/demo_films/halo_infinite/film_chunks/abcd1234/
+func (p *PathResolver) DemoFilmsCacheRoot(slug string) string {
+	return filepath.Join(p.repoRoot, "data", "demo_films", slug)
+}
+
 // SharedPVEDBPath retourne le chemin de la base PvE partagée d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/shared_pve.duckdb
 func (p *PathResolver) SharedPVEDBPath(titleSlug string) string {
@@ -819,7 +828,7 @@ func (p *PathResolver) JobsCachePath() string {
 // sa forme courte donne donc le MÊME chemin — c'est ce qui rend l'artefact atteignable
 // depuis une route de l'application.
 func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
-	return filepath.Join(p.ReplayArtifactsDir(titleSlug), FilmShortMatchID(matchID)+".json")
+	return filepath.Join(p.ReplayArtifactsDir(titleSlug), ReplayArtifactFileName(matchID))
 }
 
 // ReplayArtifactsDir retourne le dossier des artefacts de rejeu 2D d'un titre (un
@@ -836,6 +845,15 @@ func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
 // Ex: data/titles/halo_infinite/reference/map_quant_bounds.json
 func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
+}
+
+// EquipmentEnergyPath retourne le chemin du catalogue de l'ÉNERGIE DES ÉQUIPEMENTS : par fiche
+// `sofa`, l'objet ramassable, l'objet porté, leurs énergies initiales et la capacité de l'objet
+// porté (seuil, variation par usage), lus dans les tags `eqip` du jeu installé
+// (cmd/equipenergy-build). Donnée de RÉFÉRENCE versionnée — pas un cache.
+// Ex: data/titles/halo_infinite/reference/equipment_energy.json
+func (p *PathResolver) EquipmentEnergyPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "equipment_energy.json")
 }
 
 // FilmProfilesPath retourne le chemin du CATALOGUE DES PROFILS DE FILM d'un titre : ce que

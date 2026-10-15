@@ -128,6 +128,21 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+Un match est classé ssi le `RankRecap.PostMatchCsr.InitialMeasurementMatches` de sa charge skill est
+> 0 (règle d'OpenSpartan Workshop ; un seul point de décision, `internal/sync/csr_writes.go`).
+`backfill-is-ranked` répare `match_registry.is_ranked` depuis le CSR par match déjà écrit (faux/NULL
+vers vrai seulement, ne déclasse jamais, idempotente). **Serveur arrêté**, `--dry-run` compris ;
+à lancer dans cet ordre, car le LUSR exclut les matchs classés et l'engagement saute les matchs déjà
+calculés et dérive son mode de `is_ranked` :
+```bash
+go run ./cmd/levelup backfill --all --shared-csr
+go run ./cmd/levelup backfill --all --csr
+go run ./cmd/levelup backfill-is-ranked --dry-run
+go run ./cmd/levelup backfill-is-ranked
+go run ./cmd/levelup backfill --all --lusr                       # recalcul LUSR v2 canonique
+go run ./cmd/levelup backfill --all --engagement-scores --force  # le mode d'engagement suit is_ranked
+```
+
 Manches des modes qui se décident aux manches (ADR 0032) — une colonne que seule l'API peut
 remplir, donc qu'aucune resynchronisation ne répare. **Serveur arrêté** pour `--apply` (un
 seul writer, ADR 0013) :
@@ -346,7 +361,8 @@ go run ./cmd/levelup identity purge <xuid> --yes            # exécute
 
 ```bash
 go run ./cmd/levelup seed career-ranks | citation-mappings | medals | rank-translations
-go run ./cmd/levelup seed-demo            # génère les données démo anonymisées (data/demo/)
+go run ./cmd/levelup seed-demo            # génère les données démo anonymisées (data/demo/), rejeux figés compris
+go run ./cmd/levelup seed-demo --emit-replay-picks   # choisit un rejeu par mode de jeu dans config/demo/<gt>/<slug>.json (relire, puis committer)
 go run ./cmd/levelup migrate              # migre les données vers le namespace multi-titres
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```

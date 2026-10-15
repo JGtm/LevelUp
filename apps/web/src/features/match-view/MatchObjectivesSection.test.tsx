@@ -70,9 +70,9 @@ describe('MatchObjectivesSection — la double porte', () => {
 })
 
 describe('MatchObjectivesSection — les deux vues', () => {
-  it('rend la carte et ses deux vues, chacune nommée', () => {
+  it('rend deux cartes, chacune sous son titre : par joueur, puis par équipe', () => {
     const vue = afficher(BASTION)
-    expect(vue.getByRole('region', { name: t.objectives.title })).toBeTruthy()
+    expect(vue.queryByText('Objectifs')).toBeNull()
     expect(vue.getByRole('region', { name: t.objectives.viewByPlayer })).toBeTruthy()
     expect(vue.getByRole('region', { name: t.objectives.viewTeamTotals })).toBeTruthy()
   })
@@ -167,7 +167,7 @@ describe('MatchObjectivesSection — parité FR/EN', () => {
     const vue = render(
       <MatchObjectivesSection rows={BASTION} teams={['t0', 't1']} myTeamSide="t0" t={en} />,
     )
-    expect(vue.getByRole('region', { name: en.objectives.title })).toBeTruthy()
+    expect(vue.getByRole('region', { name: en.objectives.viewByPlayer })).toBeTruthy()
     expect(vue.getByRole('region', { name: en.objectives.viewTeamTotals })).toBeTruthy()
     expect(vue.getAllByText(en.objectives.cols.zone_secures.label).length).toBeGreaterThan(0)
     expect(vue.queryByText(t.objectives.viewByPlayer)).toBeNull()

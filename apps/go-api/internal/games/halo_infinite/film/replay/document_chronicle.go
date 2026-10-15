@@ -3210,3 +3210,122 @@ package replay
 //	                11 en avaient), 0 repli sans garde ; les trois films classes de Lattice rendent
 //	                la meme sequence de collines. Temoin `0d9a9af9` : 3e periode sur la colline 4
 //	                (avant : 2, celle de la 4e). Detail : `.ai/PLAN_KOTH_REJEU_2026-10-09.md`.
+//
+// v93 (2026-10-09, representation intermediaire 2.7.d1, plan
+// `.ai/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
+// BIPEDE AUX IMAGES-CLES EST LU PAR LA GRAMMAIRE, LES FENETRES DE BITS PASSENT DERRIERE ELLE.
+// ECRITE v91 sur la branche `feat/ri-lk-images-cles`, RENUMEROTEE v92 a la fusion de `feat/v75`
+// `f516d4bf4` (le lot `feat/aj-needler` a pris 91), puis v93 a celle de `46f203b09` (le lot
+// `feat/koth-colline` a pris 92).
+//
+//	Aucun champ neuf ; le CONTENU de `loadouts`, `inventory`, `grenadeReads` et `abilities` (`kf`)
+//	change. Un record bipede d image-cle que la regle d admission retient (ferme ou i22 a quatre
+//	compteurs, ET armes au catalogue, ET masque d i47 egal aux compteurs) publie ce que le lecteur du
+//	jeu lit a l etendue de chaque composant ; les autres gardent la valeur de la fenetre, comptee
+//	sous trois replis (`repli_fenetre_armes_image_cle`, `repli_fenetre_inventaire_image_cle`,
+//	`repli_fenetre_marque_de_portage`). Valeurs decidees par l utilisateur le 2026-10-08 (U-3, U-4) :
+//	plus de « Grenade dynamo » lue un bit trop tot dans les dotations ; grenade selectionnee en base
+//	0 ; `d` = emplacement desire en main principale (i42 param[1]), absent quand le film n en
+//	designe aucun ; rang de capacite publie dans 16..23 seulement.
+//
+//	CE QUI MONTE    `SchemaVersion` 92 -> 93 ; `grammar.Rev` `grammar-2026-10-09.2` ->
+//	AVEC ELLE       `grammar-2026-10-09.3`. `killsource.Rev`, `objectives.Rev` (sorties identiques,
+//	                complements a revision constante) et `SchemaDesFaits` (11) ne bougent pas : la
+//	                forme des faits ne change pas, la publication rejouee depuis eux est identique.
+//
+//	LE PARC         un artefact 92 ou d avant porte `grammar-2026-10-09` ou anterieure : verdict
+//	                `redecoder`.
+//
+//	MESURE          `replay-corpus-gate` contre `feat/v75` (`fe1f3d954`, `54b47a2b8`), 19 temoins : aucun oracle
+//	                ne bouge ; seuls FAUX du banc, les trois replis neufs (R-1, nouveaux par
+//	                construction). Fiches : records d image-cle avec armes identiques sur les 19
+//	                films ; armes retirees = les « Grenade dynamo » des records admis (`111fa685`
+//	                38 -> 1, `4f77afc1` 52 -> 0, `e5adf7b2` 31 -> 1) et un record de `111fa685` ou la
+//	                fenetre listait 19 familles (2 lues) ; grenades selectionnees 264 -> 4 203, chacune
+//	                dans le masque d i47 (hors du masque, rien n est publie, contrat du canal delta,
+//	                revue D1.4.6 : 4 records de format 20) ; `d` identique sur tout record publie
+//	                des deux cotes, 50 records en gagnent un ; inventaires vides en
+//	                baisse sur 11 films. Jauges et chargeurs en baisse : lectures de la fenetre a
+//	                plusieurs debuts candidats (la plus longue retenue, 4 a 20 bits trop tot, D1.0.7) —
+//	                jauges 0,5001 / 0,25 / 0,75, chargeurs de 1 (331 sur 349), reserves de 1 232 a
+//	                2 000 — la ou le lecteur du jeu lit, au meme instant et pour le meme slot,
+//	                chargeur et reserve plausibles ou une jauge d arme a energie. `replay-equiv`, 20
+//	                films, binaires de `3aa885e37` (puis `54b47a2b8`) contre ceux du lot : etapes divergentes `artifact`
+//	                (20), `inventory` et `inventory.stats` (19, tous sauf `50247b26`, qui n admet aucun
+//	                record), `loadouts` (4) ; `carrierMarks`, `objectives`, `killsource` identiques.
+//
+// v94 (2026-10-14, lot F du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`, `grammar-2026-10-14`) : LES
+// POUSSEES DU REPULSEUR SONT LUES DANS LE FILM.
+//
+//	`knockbacks[]`  neuf : {t, slot, by, vx, vy, vz} — le joueur pousse, l unite qui pousse, la
+//	                vitesse imposee (m/s). Une poussee est la PAIRE de la vue A
+//	                `EquipmentObjectKnockedBack` (105 : objet, auteur) puis
+//	                `EquipmentKnockbackPlayer` (104 : joueur, impulsion) de meme reference 0
+//	                (grammar/vue_a_poussees.go, grammar/poussees.go). `by` absent quand l auteur
+//	                n est pas nomme ou n a pas de piste publiee.
+//	`coverage.knockbacks`   neuf : lus (104, 105), paires, 104 non apparies, publiees, avant
+//	                l origine, sans identite (pousse sans piste publiee), sans impulsion, sans auteur.
+//	                Identite : read104 = published + unpaired + noIdentity + withoutImpulse +
+//	                beforeOrigin ; withoutAuthor est une partie de published.
+//
+//	CE QUI MONTE    `SchemaVersion` 93 -> 94 ; `grammar.Rev` `grammar-2026-10-09.3` ->
+//	AVEC ELLE       `grammar-2026-10-14` ; `SchemaDesFaits` 11 -> 12 (le complement de la section 1
+//	                porte les poussees). `killsource.Rev` et `objectives.Rev` ne bougent pas.
+//
+//	LE PARC         un artefact 93 ou d avant : verdict `redecoder` (revision de grammaire).
+//
+//	MESURE          235 films du parc, contexte de la cuisson (carte posee) : 135 messages 104 lus,
+//	                135 paires, aucun 104 isole ; normes 6,00 / 5,50 / 5,72 m/s seulement. Temoins
+//	                0d9a9af9, 215e7022, a6ae19fb : 15 paires (3, 2, 10) ; les 14 rattachees a une
+//	                piste accelerent le slot pousse dans les 300 ms (temoin decale de 5 s : 1 sur 14) ; 215e7022 : paire a 325 526 ms, la milliseconde du kill au repulseur
+//	                releve au Theater. Auteur porteur du repulseur sur 130 paires sur 130.
+//
+// v95 (2026-10-14, lot « équipement porté » du plan `.ai/PLAN_AJUSTEMENTS_2026-10-14.md`,
+// `grammar-2026-10-14.3`) : L'ÉQUIPEMENT PORTÉ EST LU, ET LA FAILLE SE POSE.
+//
+//	`carriedEquipment[]`  neuf : {slot, r, t0, t1?, energy[{t, e, n?, tag?}], uses[]} — l'objet ti=37
+//	                créé attaché au porteur dans le paquet de son annonce i48 (le rang nomme la
+//	                famille), son énergie (i24) à chaque lecture, les usages restants par la règle du
+//	                HUD (`FUN_1407e9384`) quand le catalogue de l'énergie des équipements établit le
+//	                coût de la famille, et ses activations (i21). `tag` : énergie de la prise non
+//	                écrite par le film, celle de l'objet porté dans le catalogue.
+//	`riftPoses[]`   neuf : {t, a?, slot, x?, y?, z?} — la pose de la faille : l'énergie du
+//	                translocateur porté tombe à zéro ; `a` l'activation qui la précède ; la position
+//	                est l'arrivée du premier échange qui suit (absente sans échange).
+//	`coverage.carriedEquipment`  neuf : créés, attachés, publiés, sans identité, avant l'origine,
+//	                sans rang, rang ambigu, non nommés, avec coût, hors catalogue, coût ambigu,
+//	                lectures d'énergie, usages, poses, poses situées, échanges sans pose lue.
+//
+//	CE QUI MONTE    `SchemaVersion` 94 -> 95 ; `grammar.Rev` -> `grammar-2026-10-14.3` (après
+//	AVEC ELLE       `grammar-2026-10-14.2`, la pile i28 à n entrées) ; `killsource.Rev`
+//	                `killsource-2026-10-14` (morts passées du balayage à la marche par i28) ;
+//	                `SchemaDesFaits` 12 -> 13 (le complément de la section 1 porte les lectures).
+//
+//	LE PARC         un artefact 94 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          238 films du parc : 123 poses de faille, toutes 1,62-1,64 s après une
+//	                activation ; témoins 1b2d9e08 (frame 1550 = 164,06 s), 6acce632 (53,3 / 158,5 /
+//	                304,2 s) à la frame près ; répulseur 0d9a9af9 et 72b0a25e : 3 usages à la prise
+//	                (énergie 0,6, coût 0,2), 2, 1, 0 aux activations, comme au Theater.
+//
+// v96 (2026-10-15, lot « équipement porté », `grammar-2026-10-15`, demande du user : « si on a
+// l'événement pour le champ de réparation, on rebranche le son de fin ») : LES OBJETS QUE
+// L'ÉQUIPEMENT PORTÉ ENGENDRE, ET LEUR FIN.
+//
+//	`carriedEquipment[].tracked[]`  neuf : {t0, t1?} — chaque objet que la pile i28 de l'objet porté
+//	                nomme (handle, base 0x200 de `FUN_1406d3140` catégorie 0) : `t0` la première pile
+//	                qui le nomme, `t1` sa SUPPRESSION écrite par le film, même après la fin de l'objet
+//	                porté. Pour le champ de réparation, `t1` est la fin du champ.
+//	`coverage.carriedEquipment`  gagne `trackedObjects` (objets engendrés publiés) et `trackedEnds`
+//	                (ceux dont la suppression est lue).
+//
+//	CE QUI MONTE    `SchemaVersion` 95 -> 96 ; `grammar.Rev` -> `grammar-2026-10-15` (la pile rend ses
+//	AVEC ELLE       handles) ; `SchemaDesFaits` 13 -> 14 (les lectures portent les vies suivies) ;
+//	                `killsource.Rev` et `objectives.Rev` inchangées.
+//
+//	LE PARC         un artefact 95 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          238 films du parc : 18 champs de réparation, tous des ti=41 nés dans le paquet
+//	                de la pile, 18 suppressions lues (12 après la fin de l'objet porté) ; durées : 11
+//	                de 11,35 à 12,24 s, 6 de 1,5 à 4,6 s (champ détruit), une de 16,95 s. Capteur 834,
+//	                écran 241, traqueur 49 objets engendrés, tous ti=41 nés dans le paquet.

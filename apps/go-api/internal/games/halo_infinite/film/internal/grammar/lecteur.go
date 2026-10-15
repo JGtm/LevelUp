@@ -71,12 +71,28 @@ type Lecteur struct {
 	// de la vue A les recueille avec la position du message.
 	filLu      lecture.EvenementDeFil
 	filACouple bool
+	// refsDuMessage : les references du message de vue A en cours de lecture, telles que
+	// [lireUnMessage] les lit ; pousseeLue : la charge du dernier message de poussee
+	// ([chargePousseeDuJoueur], [chargeObjetRepousse]). La lecture de la vue A les recueille.
+	refsDuMessage [3]refDeMessage
+	pousseeLue    lecture.MessageDePoussee
 	// etatComplet : le record en cours est un ETAT COMPLET d image-cle (`FUN_142e2c690`), lu sans
 	// masque de presence. Pose par [walkKeyframeFullState] seul ; faux pour tout record dont un
 	// masque est lu (record NEW, DELTA). Les composants dont la lecture depend d une loi du masque
 	// ([consumeComposantsVehiculeTi40]) ou de la portee `DAT_144e61ea0` que `FUN_142e2c690` pose
 	// sur toute sa boucle (`low-frequency`, cf. `components_frequences.go`) le consultent.
 	etatComplet bool
+	// portee mirroite `DAT_144e61ea0` : une PORTEE de la lecture d etat complet, pas un reglage.
+	// Seule la marche d etat complet la pose ([walkKeyframeFullState], `keyframe_fullstate_loop.go`),
+	// la ou le jeu la pose : autour de l etat par defaut et de son mot de controle quand `n1 > 0`
+	// (`FUN_142e2bfd0`), et sur toute la boucle de composants quand `n2 > 0` (`FUN_142e2c690`), remise
+	// a faux a chaque sortie. Vraie, la garde de pleine precision ([fullPrecisionGate]) l est aussi :
+	// les lecteurs de position lisent le vecteur BRUT de 96 bits. Le chemin delta, le record NEW et
+	// la vue A ne la posent jamais (garde-rail : `portee_ecriture_guard_test.go`).
+	portee bool
+	// arret : le lecteur du jeu du composant en cours a ECHOUE ([lecture.CauseDArret]) ; la boucle de
+	// composants s arrete sur lui et le remet a [lecture.ArretAucun] ([traverseComponentLoopFrom]).
+	arret lecture.CauseDArret
 	// etatIllisible : le lecteur d etat de creation du jeu (`vtable+0x60` de l archetype, appele
 	// par `FUN_1408f1aa4`) ECHOUE sur le record en cours ([Lecteur.echouerLEtatDeCreation]).
 	// [TraverseEntity] le remet a faux avant l etat par defaut et arrete le record s il est pose.
@@ -90,9 +106,26 @@ type Lecteur struct {
 // echouerLEtatDeCreation note que le lecteur d etat de creation du record en cours echoue.
 func (b *Lecteur) echouerLEtatDeCreation() { b.etatIllisible = true }
 
+// arreter note que le lecteur du jeu du composant en cours echoue, pour la cause `a`.
+func (b *Lecteur) arreter(a lecture.CauseDArret) { b.arret = a }
+
 // noterExceptionDatee marque le composant en cours : sa largeur vient d un lecteur en exception
 // datee, pas du portage de l ecrivain.
 func (b *Lecteur) noterExceptionDatee() { b.exceptionDatee = true }
+
+// sousLaGardeSinonException decide la lecture d un site en exception datee
+// (`lecteur_position_exceptions.go`) dont la lecture sous la garde est relue chez le jeu (plan LK,
+// LK.5.4) : SOUS la garde de pleine precision ([fullPrecisionGate], la portee de l etat complet), le
+// site lit comme le jeu, et rend vrai ; HORS d elle, il garde son ancien lecteur, l exception est
+// notee ([Lecteur.noterExceptionDatee]), et rend faux. Garde-rail : dans ce fichier, seul ce geste
+// consulte la garde (`TestLesExceptionsDecidentLaGardeParUnSeulGeste`).
+func (b *Lecteur) sousLaGardeSinonException() bool {
+	if fullPrecisionGate(b) {
+		return true
+	}
+	b.noterExceptionDatee()
+	return false
+}
 
 // LecteurSur rend un lecteur de grammaire positionne sur le premier bit de `buf`. C est la
 // SEULE porte de construction du paquet, et elle passe par la couche source

@@ -193,6 +193,22 @@ describe('ReplayScoreBanner — la manche', () => {
     renderBanner()
     expect(screen.queryByText(/^Manche /)).not.toBeInTheDocument()
   })
+
+  it('« Manche X » est en gras, à l’encre du thème, en 11 px — un repère, pas une légende', () => {
+    renderBanner({ doc: docOf(ODDBALL), frame: 150 })
+    const manche = screen.getByText('Manche 2')
+    expect(manche).toHaveClass('font-bold', 'text-foreground', 'text-[11px]')
+    expect(manche).not.toHaveClass('text-muted-foreground')
+  })
+
+  it('un seul compteur de manches : les pastilles. Aucun « a - b » sous l’horloge', () => {
+    // Le compte en chiffres (manches gagnées par camp) doublait les pastilles et a été retiré.
+    const { container } = renderBanner({ doc: docOf(ODDBALL), frame: 200 })
+    expect(screen.getAllByRole('img')).toHaveLength(2)
+    expect(screen.queryByText(/^d+ - d+$/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Manches gagnées : alliée - adverse/)).not.toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/d+ - d+/)
+  })
 })
 
 describe('ReplayScoreBanner — les pastilles de manche', () => {

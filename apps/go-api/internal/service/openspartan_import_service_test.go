@@ -119,8 +119,8 @@ func buildMinimalFixtureDB(t *testing.T, dir, filename, ownerXUID string) string
 			"TeamMmr": 1041.7,
 			// RankRecap : présent uniquement sur les matchs classés → source du CSR par-match.
 			"RankRecap": map[string]any{
-				"PreMatchCsr":  map[string]any{"Value": 1450, "Tier": "Gold", "SubTier": 4, "MeasurementMatchesRemaining": 0},
-				"PostMatchCsr": map[string]any{"Value": 1465, "Tier": "Gold", "SubTier": 5, "MeasurementMatchesRemaining": 0},
+				"PreMatchCsr":  map[string]any{"Value": 1450, "Tier": "Gold", "SubTier": 4, "MeasurementMatchesRemaining": 0, "InitialMeasurementMatches": 5},
+				"PostMatchCsr": map[string]any{"Value": 1465, "Tier": "Gold", "SubTier": 5, "MeasurementMatchesRemaining": 0, "InitialMeasurementMatches": 5},
 			},
 		},
 	}}}

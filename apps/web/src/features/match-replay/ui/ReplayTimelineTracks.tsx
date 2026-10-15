@@ -46,7 +46,7 @@
  * DOMINANCE ET SCORE SE LISENT ENSEMBLE, et c'est tout l'intérêt de les empiler : la première
  * dit qui gagne les duels, la seconde qui gagne le match. Sur un mode à objectif elles se
  * séparent — c'est là qu'on voit une équipe dominer les frags et perdre les captures. La
- * seconde n'existe donc PAS en Slayer, où elle répéterait la première (cf. `scoreTrack`).
+ * seconde n'existe donc PAS en Slayer, où elle répéterait la première (cf. `buildScoreTrack`).
  *
  * ELLE REMPLACE LE `input[type=range]` NU de la barre de lecture (validé le 2026-08-28,
  * planche 2a). Le curseur reste ce même `input` — c'est lui que la boucle de dessin pilote
@@ -240,7 +240,7 @@ export function ReplayTimelineTracks({
             }
           />
 
-          {/* LA PISTE SCORE N'EXISTE PAS SUR TOUS LES MATCHS (cf. `scoreTrack`) : en Slayer,
+          {/* LA PISTE SCORE N'EXISTE PAS SUR TOUS LES MATCHS (cf. `buildScoreTrack`) : en Slayer,
               le score EST le compte des frags et la rangée répéterait celle du dessus. Son
               absence est donc un fait du mode — pas une rangée vide à remplir plus tard. */}
           {score && (

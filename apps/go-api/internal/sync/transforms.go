@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 )
@@ -61,7 +62,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row := &MatchRegistryRow{
 		MatchID:      matchID,
 		StartTime:    startTime,
-		ModeCategory: modeCategoryOther,
+		ModeCategory: modelabel.CategoryOther,
 		FirstSyncBy:  syncBy,
 	}
 
@@ -85,8 +86,8 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row.PairName = coalesceStrPtr(row.PairName, row.PairID)
 	row.GameVariantName = coalesceStrPtr(row.GameVariantName, row.GameVariantID)
 
-	// Flags
-	row.IsRanked = isRankedPlaylist(matchInfo)
+	// Flags. is_ranked n'est PAS décidé ici : le payload stats ne dit rien du classement. Il est
+	// posé par la règle unique (SkillShowsRankedMatch, csr_writes.go) quand le payload skill est lu.
 	row.IsFirefight = isFirefightMatch(matchInfo)
 
 	// SeasonID lu depuis le payload Halo (matchInfo["SeasonId"]). Pivote vers le
@@ -98,7 +99,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 		row.SeasonID = strPtrNonEmpty(sid)
 	}
 	if row.PairName != nil {
-		row.ModeCategory = determineModeCategory(*row.PairName)
+		row.ModeCategory = modelabel.InferCategory(*row.PairName)
 	}
 
 	// Durées

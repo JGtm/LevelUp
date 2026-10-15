@@ -11,7 +11,9 @@
  * prépare », la part équitable 1/n (`parity_pct`) pour « ma part des appuis ». Les deux
  * grandeurs partagent une unité — des points —, les deux tiretés se confondent dans UNE ligne
  * zéro qui les nomme, et la soirée se lit par la seule DIRECTION de ses bâtons. La valeur
- * absolue reste dans les chiffres d'appel et dans l'infobulle.
+ * absolue est ÉCRITE SUR LE BÂTON (« 37 % » et son décompte « 51/137 ») et reprise dans
+ * l'infobulle, l'écart à côté : un bâton d'écart quasi nul se lisait « aucun appui » (constat
+ * du 22/09, 2026-10-14). Elle reste aussi dans les chiffres d'appel.
  *
  * D22-VERBOSITÉ : aucune phrase de lecteur. Les chiffres d'appel restent (ils disent le
  * fait), l'explication tient dans l'infobulle ⓘ du titre, en trois phrases au plus.
@@ -43,6 +45,7 @@ import {
   pariteOuRien,
   serieDeSoirees,
   soireesDe,
+  valeursLues,
   type SerieDeSoirees,
 } from './timeseriesCoordination.logic'
 import {
@@ -67,6 +70,10 @@ export function TimeseriesCoordinationSection({
     () => new Intl.NumberFormat(numLoc, { style: 'percent', maximumFractionDigits: 1 }),
     [numLoc],
   )
+  const pctLu = useMemo(
+    () => new Intl.NumberFormat(numLoc, { style: 'percent', maximumFractionDigits: 0 }),
+    [numLoc],
+  )
 
 
   // Titre sans bloc de coordination (capability absente, réponse ancienne) : rien n'est
@@ -87,6 +94,7 @@ export function TimeseriesCoordinationSection({
       indisponible={indisponible}
       t={t}
       pctFmt={pctFmt}
+      pctLu={pctLu}
     />
   )
 }
@@ -99,6 +107,8 @@ interface CarteProps {
   indisponible: string | null
   t: TimeseriesCoordinationText
   pctFmt: Intl.NumberFormat
+  /** La valeur lue sur le bâton : le taux arrondi au point (« 37 % »). */
+  pctLu: Intl.NumberFormat
 }
 
 interface GrandeurDeCarte {
@@ -123,12 +133,14 @@ function specEcart(
   reperePct: number | null,
   repereLabel: string | null,
   t: TimeseriesCoordinationText,
+  pctLu: Intl.NumberFormat,
 ): SessionBarsSeriesSpec {
   return {
     name: g.name,
     color: g.color,
     valuesPct: g.serie.valuesPct,
     hollow: g.serie.hollow,
+    absolute: valeursLues(g.serie, (taux) => pctLu.format(taux)),
     ...(reperePct != null && repereLabel != null
       ? { usual: { valuePct: reperePct, label: repereLabel } }
       : {}),
@@ -158,6 +170,7 @@ function CarteAppui({
   indisponible,
   t,
   pctFmt,
+  pctLu,
 }: CarteProps) {
   const a = block.appui
   const prepare = serieDeSoirees(sessions, (p) => p.appui.on_me_prepare)
@@ -175,12 +188,14 @@ function CarteAppui({
       habituel,
       labelHabituel,
       t,
+      pctLu,
     ),
     specEcart(
       { name: t.myShare, color: resolveToken('assist-given'), serie: part },
       parite,
       labelParite,
       t,
+      pctLu,
     ),
   ]
 
@@ -202,7 +217,7 @@ function CarteAppui({
           labels={labels}
           series={specs}
           yAxisLabel={t.yAxisDelta}
-          baseline={{ label: labelZero(labelHabituel, labelParite, t), deltaUnit: t.points }}
+          baseline={{ label: labelZero(labelHabituel, labelParite, t), deltaUnit: t.points, gapLabel: t.gap }}
           hollowLegend={{ label: t.hollow, color: resolveToken('assist-received') }}
           tooltipLines={(i: number) => [
             t.volMyKills(prepare.volumes[i] ?? 0),

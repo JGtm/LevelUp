@@ -12,6 +12,7 @@
 import type { XY } from '../../../lib/replay/replayLogic'
 import { type PlacementView, project, type ShapeStyle } from './placementShapes'
 import type { TeleportLink } from '../model/placementTeleport'
+import { TRANSLOCATION_FLASH_S } from '../model/playerCardFx'
 import { riftStationsAt, type RiftStation } from '../model/riftStations'
 
 /**
@@ -20,10 +21,10 @@ import { riftStationsAt, type RiftStation } from '../model/riftStations'
  * PLUS HAUTE QUE LARGE, et c'est la seule chose qui la fait lire comme une DÉCHIRURE plutôt
  * que comme un marqueur : le losange de la balise était isotrope, la faille ne l'est pas.
  */
-export const RIFT_HALF_HEIGHT_PX = 7
+export const RIFT_HALF_HEIGHT_PX = 9
 
-/** Demi-largeur au point le plus ouvert. Le rapport 1:3,5 est ce qui donne la lentille. */
-const RIFT_HALF_WIDTH_PX = 2
+/** Demi-largeur au point le plus ouvert. Le rapport 1:3,5 est ce qui donne la lentille (9 px de demi-hauteur depuis aj14-b : à 7 px la faille se perdait sous un pion ou une traînée). */
+const RIFT_HALF_WIDTH_PX = 2.6
 
 const RIFT_LINE_WIDTH = 1.4
 /** Le cœur : un trait vertical plein, plus court que la déchirure qui l'entoure. */
@@ -114,19 +115,24 @@ export function drawRift(
 }
 
 /**
- * Durée du LIEN de téléportation, en millisecondes.
+ * Durée de l'ÉCLAT de téléportation, en millisecondes : celle de l'éclat de la fiche
+ * (`TRANSLOCATION_FLASH_S`), pour que la fiche et la carte datent le même saut du même geste.
  *
- * BREF, parce que l'utilisateur l'a demandé bref (« un effet interdimensionnel qui relie
- * l'ancienne position à la nouvelle brièvement »), et surtout parce qu'un lien qui persiste
- * finirait par se confondre avec une trajectoire — ce qu'il n'est pas.
+ * Le lien reste pointillé et de faible alpha : il ne se confond pas avec une trajectoire, qui est
+ * un trait plein.
  */
-export const RIFT_LINK_MS = 600
+export const RIFT_LINK_MS = TRANSLOCATION_FLASH_S * 1000
 /** Amplitude de l'arc, en fraction de la distance : ce qui l'écarte du droit chemin. */
 const RIFT_LINK_BOW = 0.18
 const RIFT_LINK_WIDTH = 2.2
 const RIFT_LINK_ALPHA = 0.55
-/** Rétrécissement des deux bouts pendant l'effacement : de 1,0 à 0,45 fois l'échelle. */
-const RIFT_LINK_END_MIN = 0.45
+/** Les bouts S'OUVRENT : de 1,6 fois l'échelle à l'instant du saut jusqu'à 1,0 à l'effacement. */
+const RIFT_END_POP = 0.6
+/** L'onde : rayon de 0,8 à 2,6 demi-hauteurs de faille, alpha initial. */
+const RIFT_RING_MIN = 0.8
+const RIFT_RING_MAX = 2.6
+const RIFT_RING_ALPHA = 0.85
+const RIFT_RING_WIDTH = 1.6
 
 /**
  * Un lien à tracer : ses deux bouts DÉJÀ PROJETÉS, son avancement d'effacement (0 à l'instant
@@ -135,10 +141,9 @@ const RIFT_LINK_END_MIN = 0.45
  * `paintFrom` À FAUX QUAND UNE STATION EST DÉJÀ LÀ, et c'est la correction du 2026-09-03
  * (revue ronde 1, constat K3) : `drawRiftLayer` peint la faille au point quitté — c'est
  * exactement là que la balise se retrouve après l'échange — et le lien y peignait la SIENNE
- * par-dessus. Le halo se composait alors deux fois : ce point brillait, pendant 600 ms, plus
- * fort qu'à n'importe quelle autre image, sans que rien ne le justifie. C'est la STATION qui
- * reste (stable, à pleine taille) et le bout du lien qui s'efface : l'inverse ferait clignoter
- * la faille au moment où le lien se termine.
+ * par-dessus. Le halo se composait alors deux fois : ce point brillait plus fort qu'à
+ * n'importe quelle autre image, sans que rien ne le justifie. C'est la STATION qui reste
+ * (stable, à pleine taille) ; ce bout-là ne reçoit que l'ONDE, qui n'a pas de halo.
  */
 interface RiftLinkDraw {
   from: XY
@@ -148,14 +153,42 @@ interface RiftLinkDraw {
 }
 
 /**
+ * drawRiftWave — L'ONDE d'un bout de téléportation : un anneau qui s'ouvre et s'efface.
+ *
+ * UN ÉVÉNEMENT DATÉ, DONC UN MOUVEMENT PERMIS (la règle « rien ne bat » de `drawRift` vise les
+ * objets sans événement). MOUVEMENT RÉDUIT : l'anneau garde un rayon fixe et ne fait que
+ * s'effacer.
+ */
+function drawRiftWave(
+  ctx: CanvasRenderingContext2D,
+  c: XY,
+  progress: number,
+  style: ShapeStyle,
+  ink: RiftInk,
+): void {
+  const reste = 1 - Math.min(1, Math.max(0, progress))
+  const h = RIFT_HALF_HEIGHT_PX * style.k
+  const r = h * (style.reducedMotion ? (RIFT_RING_MIN + RIFT_RING_MAX) / 2 : RIFT_RING_MIN + (RIFT_RING_MAX - RIFT_RING_MIN) * progress)
+  ctx.save()
+  ctx.globalAlpha = RIFT_RING_ALPHA * reste
+  ctx.lineWidth = RIFT_RING_WIDTH * style.k
+  ctx.strokeStyle = ink.rim
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, r, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
  * drawRiftLink — LE PASSAGE : l'arc bref qui relie l'ancienne position à la nouvelle quand un
- * joueur se téléporte.
+ * joueur se téléporte, et l'ÉCLAT de ses deux bouts.
  *
  * CE QU'IL AFFIRME, ET CE QU'IL N'AFFIRME PAS. Il dit qu'un joueur était LÀ et qu'il est
  * maintenant ICI, à un instant daté — deux positions mesurées et un instant mesuré. Il ne
  * prétend PAS que le joueur a suivi cette courbe : entre les deux bouts d'une téléportation il
- * n'y a pas de trajectoire, il y a un LIEN. D'où le POINTILLÉ, qui est la convention du calque
- * pour « lu, mais non parcouru », et l'ARC, qui l'écarte du trait droit d'un tir.
+ * n'y a pas de trajectoire, il y a un LIEN (la piste, elle, est coupée : `translocationCuts`).
+ * D'où le POINTILLÉ, qui est la convention du calque pour « lu, mais non parcouru », et l'ARC,
+ * qui l'écarte du trait droit d'un tir.
  */
 function drawRiftLink(
   ctx: CanvasRenderingContext2D,
@@ -184,18 +217,17 @@ function drawRiftLink(
   ctx.stroke()
   ctx.setLineDash([])
   ctx.restore()
-  // Les deux bouts : une faille au départ, une à l'arrivée. Elles rétrécissent avec
-  // l'effacement — c'est le seul mouvement de tout le calque, et il est porté par un
-  // ÉVÉNEMENT DATÉ, pas par une durée inventée.
-  // MOUVEMENT RÉDUIT : les bouts gardent leur taille. Ce qui reste — les deux failles et
-  // l'arc qui les relie — dit tout ce que l'effet a à dire ; seul le rétrécissement part.
-  const facteur = style.reducedMotion ? 1 : RIFT_LINK_END_MIN + (1 - RIFT_LINK_END_MIN) * reste
+  // Les deux bouts : une faille qui S'OUVRE (1,6 fois sa taille, qui retombe) et son onde, au
+  // départ comme à l'arrivée. MOUVEMENT RÉDUIT : les bouts gardent leur taille.
+  const facteur = style.reducedMotion ? 1 : 1 + RIFT_END_POP * reste * reste
   const bout: ShapeStyle = { ...style, k: style.k * facteur }
   ctx.save()
   ctx.globalAlpha = reste
   if (link.paintFrom) drawRift(ctx, from, bout, ink)
   drawRift(ctx, to, bout, ink)
   ctx.restore()
+  drawRiftWave(ctx, from, link.progress, style, ink)
+  drawRiftWave(ctx, to, link.progress, style, ink)
 }
 
 /** Un lien ENCORE VISIBLE à cette image, et son avancement d'effacement. */
@@ -208,7 +240,7 @@ interface LienActif {
  * activeLinks — les passages ENCORE VISIBLES à cette frame.
  *
  * La fenêtre est comptée en TEMPS DE MATCH (`frameMs`), pas en nombre d'images : à 60 images
- * par seconde comme à 10, l'effet dure les mêmes 600 ms. C'est la règle déjà tenue par le ping
+ * par seconde comme à 10, l'effet dure la même durée. C'est la règle déjà tenue par le ping
  * du capteur et la fin de vol des grenades.
  *
  * PAS DE BASCULE D'INTERFACE dédiée : le lien n'est pas un objet posé de plus qu'on afficherait

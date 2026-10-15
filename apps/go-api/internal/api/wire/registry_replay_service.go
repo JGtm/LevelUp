@@ -27,9 +27,21 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 //
 // DEUX RACINES (lot B-C7). Les DONNÉES VERSIONNÉES (fonds de carte, catalogues de référence,
 // mappings, libellés, zones, règles de tiers) se lisent à la racine du dépôt, en démo comme
-// ailleurs. Les ARTEFACTS D'EXÉCUTION (rejeux construits) se lisent sous cfg.RuntimePaths :
-// `<démo>/runtime/` en démo (lot B5.5), le dépôt sinon. Tout enraciner sous RuntimePaths
-// rendait les fonds et les catalogues introuvables en démo (régression de B5, R2-1).
+// ailleurs. Les ARTEFACTS se lisent hors démo dans le cache du dépôt ; en DÉMO, ce sont les
+// rejeux FIGÉS de la disposition démo (title.DemoLayout.ReplayArtifactsDir), servis avec les
+// joueurs réels masqués (décisions D-1/D-2 du plan des recommandations du 2026-10-09).
 func replayServiceFrom(cfg *config.AppConfig, titleSlug string, maps port.ReplayMapNameRepo) port.ReplayService {
-	return service.NewReplayServiceRoots(titleSlug, cfg.RepoRoot, cfg.RuntimePaths().RepoRoot(), maps)
+	if cfg.DemoMode {
+		return service.NewDemoReplayService(titleSlug, cfg.RepoRoot, cfg.DemoLayout(), maps)
+	}
+	return service.NewReplayService(titleSlug, cfg.RepoRoot, maps)
+}
+
+// DemoReplayAllowlist rend, en DÉMO, la liste blanche des rejeux figés que la garde des routes
+// de rejeu consulte (handlers.ReplayGate) ; nil hors démo, où le garde local s'applique.
+func (r *ServiceRegistry) DemoReplayAllowlist() *service.DemoReplayAllowlist {
+	if r.cfg == nil || !r.cfg.DemoMode {
+		return nil
+	}
+	return service.NewDemoReplayAllowlist(r.cfg.DemoLayout())
 }

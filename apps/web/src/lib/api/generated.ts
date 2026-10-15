@@ -1102,7 +1102,7 @@ export interface paths {
         /**
          * Initier un Device Code Flow Microsoft
          * @description Lance un Device Code Flow pour l'authentification Halo (SISU).
-         *     Non disponible en DEMO_MODE.
+         *     Refusé en mode démo (403 `demo_mode_forbidden`).
          */
         post: operations["postAuthDeviceFlowStart"];
         delete?: never;
@@ -5216,8 +5216,16 @@ export interface components {
             match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
             needs_backfill: boolean;
             player_slug: string;
+            reference_control: components["schemas"]["CSRReferenceControl"];
             snapshots: components["schemas"]["CSRSnapshotsCoverage"];
             xuid: string;
+        };
+        CSRReferenceControl: {
+            alert: boolean;
+            /** Format: int64 */
+            csr_matches_off_reference: number;
+            /** Format: int64 */
+            reference_matches_without_csr: number;
         };
         CSRSeasonCalendar: {
             content_hash: string;
@@ -5478,6 +5486,72 @@ export interface components {
         CareerTopMatchesResponse: {
             best_matches: components["schemas"]["TopMatchDTO"][] | null;
             worst_matches: components["schemas"]["TopMatchDTO"][] | null;
+        };
+        CarriedEnergy: {
+            /** Format: float */
+            e: number;
+            /** Format: int64 */
+            n?: number;
+            /** Format: int64 */
+            t: number;
+            tag?: boolean;
+        };
+        CarriedEquipment: {
+            energy?: components["schemas"]["CarriedEnergy"][] | null;
+            /** Format: int64 */
+            r: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1?: number;
+            tracked?: components["schemas"]["CarriedTracked"][] | null;
+            uses?: number[] | null;
+        };
+        CarriedEquipmentCoverage: {
+            /** Format: int64 */
+            ambiguousCost: number;
+            /** Format: int64 */
+            ambiguousRank: number;
+            /** Format: int64 */
+            attached: number;
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            created: number;
+            /** Format: int64 */
+            energyReads: number;
+            /** Format: int64 */
+            noCatalog: number;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            positioned: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            riftPoses: number;
+            /** Format: int64 */
+            teleportsWithoutPose: number;
+            /** Format: int64 */
+            trackedEnds: number;
+            /** Format: int64 */
+            trackedObjects: number;
+            /** Format: int64 */
+            unnamed: number;
+            /** Format: int64 */
+            uses: number;
+            /** Format: int64 */
+            withCost: number;
+            /** Format: int64 */
+            withoutRank: number;
+        };
+        CarriedTracked: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1?: number;
         };
         CascadeFilter: {
             experience_types: string[] | null;
@@ -6054,6 +6128,7 @@ export interface components {
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            carriedEquipment?: components["schemas"]["CarriedEquipmentCoverage"];
             continuousFire?: components["schemas"]["ContinuousFireCoverage"];
             deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
@@ -6070,6 +6145,7 @@ export interface components {
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
             keyframes?: components["schemas"]["KeyframeCoverage"];
+            knockbacks?: components["schemas"]["KnockbackCoverage"];
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
@@ -7914,6 +7990,40 @@ export interface components {
             resyncs: number;
             /** Format: int64 */
             slides: number;
+        };
+        Knockback: {
+            /** Format: int32 */
+            by?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            vx?: number;
+            /** Format: float */
+            vy?: number;
+            /** Format: float */
+            vz?: number;
+        };
+        KnockbackCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            noIdentity: number;
+            /** Format: int64 */
+            paired: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            read104: number;
+            /** Format: int64 */
+            read105: number;
+            /** Format: int64 */
+            unpaired: number;
+            /** Format: int64 */
+            withoutAuthor: number;
+            /** Format: int64 */
+            withoutImpulse: number;
         };
         LOWESSTrend: {
             Metric: string;
@@ -10822,6 +10932,7 @@ export interface components {
             bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
             bursts?: components["schemas"]["FireBurst"][] | null;
+            carriedEquipment?: components["schemas"]["CarriedEquipment"][] | null;
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
@@ -10846,6 +10957,7 @@ export interface components {
             killEffects?: {
                 [key: string]: string;
             };
+            knockbacks?: components["schemas"]["Knockback"][] | null;
             layers?: {
                 [key: string]: string;
             };
@@ -10861,6 +10973,7 @@ export interface components {
             padPickups?: components["schemas"]["PadPickup"][] | null;
             pickups?: components["schemas"]["Pickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
+            riftPoses?: components["schemas"]["RiftPose"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */
             schemaVersion: number;
@@ -10936,6 +11049,20 @@ export interface components {
             num_gc: number;
             /** Format: int64 */
             sys_bytes: number;
+        };
+        RiftPose: {
+            /** Format: int64 */
+            a?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
         };
         RosterEntry: {
             bid?: string;
@@ -12117,6 +12244,14 @@ export interface components {
             score_kind?: string;
             score_label?: string;
             session_label?: string;
+            /** Format: int64 */
+            squad_assists?: number;
+            /** Format: int64 */
+            squad_deaths?: number;
+            /** Format: double */
+            squad_fda?: number;
+            /** Format: int64 */
+            squad_kills?: number;
             start_time: string;
             /** Format: double */
             team_mmr_avg?: number;
@@ -12852,6 +12987,8 @@ export interface components {
             xuid: string;
         };
         TacticalContribution: {
+            arme_image_tinted?: boolean;
+            arme_image_url?: string;
             arme_label?: string;
             arme_label_en?: string;
             autre_gamertag?: string;
@@ -16602,7 +16739,6 @@ export interface operations {
                     "application/json": components["schemas"]["DeviceFlowStartResponse"];
                 };
             };
-            422: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
             /** @description Error */
             default: {

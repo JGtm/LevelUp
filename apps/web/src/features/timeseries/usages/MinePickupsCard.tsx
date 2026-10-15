@@ -6,15 +6,13 @@
  * volume du camp. Une barre par objet, à l'échelle de l'objet le plus pris ; dedans, la part du
  * joueur (`squad-player-1`, nommé par son gamertag) puis celle du reste du camp, leurs comptes dans
  * les segments quand ils tiennent (mesure au pixel), « JGtm n · camp m » au bout dans tous les cas.
- * Les armes de râtelier sont repliées derrière leur intertitre. Dessous, « Bonus perdus » des deux
- * camps en pastilles d'équipe. Aucune couleur de valeur.
+ * Les armes de râtelier sont repliées derrière leur intertitre. Aucune couleur de valeur.
  */
 import { Fragment, useMemo, useRef, useState } from 'react'
 
 import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import type { SquadEmpriseObject } from '@/lib/api/types'
-import { tokenCssVar } from '@/lib/accessibility'
 
 import { repliOffsetPct } from '@/features/squad/charts/squadFragBreakdownChart'
 import { SQUAD_MAIN_PLAYER_INK, TEAM_REST_INK } from '@/features/squad/formes/colors'
@@ -33,7 +31,7 @@ const MIN_TRACK_PCT = 2
 /**
  * Vue compacte du tiroir de comparaison de Sessions (maquette `renderMineCompact`) : une barre par
  * RESSOURCE, la part du joueur et celle du reste de l’équipe en pourcentage (comptes au survol), une part qui
- * ne tient pas dans son segment sur la ligne de repli au-dessus, bonus perdus en pourcentage ;
+ * ne tient pas dans son segment sur la ligne de repli au-dessus ;
  * `resourceSub` est le sous-libellé de chaque ressource.
  */
 interface MineCompact {
@@ -81,13 +79,6 @@ export function MinePickupsCard({ mine, itemName, player, t, ut, compact }: Prop
               </Fragment>
             ))}
       </div>
-      {mine.losses && mine.losses.us.taken + mine.losses.them.taken > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" data-testid="usages-mine-losses">
-          <span className="font-semibold text-foreground">{ut.mine.lossesTitle}</span>
-          <Loss color={tokenCssVar('team-ally')} lost={mine.losses.us.lost} taken={mine.losses.us.taken} ut={ut} pctOnly={!!compact} />
-          <Loss color={tokenCssVar('team-enemy')} lost={mine.losses.them.lost} taken={mine.losses.them.taken} ut={ut} pctOnly={!!compact} />
-        </div>
-      )}
     </ObjectifFrame>
   )
 }
@@ -277,26 +268,3 @@ function Segment({
   )
 }
 
-/** Les bonus perdus d'un camp : « n sur m (p %) », ou la part seule en vue compacte (compte au survol). */
-function Loss({ color, lost, taken, ut, pctOnly }: { color: string; lost: number; taken: number; ut: UsagesCardsText; pctOnly: boolean }) {
-  const dot = <span className="inline-block h-[9px] w-[9px] rounded-[2px]" style={{ backgroundColor: color }} aria-hidden />
-  if (pctOnly) {
-    return (
-      <Tooltip content={<TipText text={ut.mine.lossesFmt(lost, taken)} />}>
-        <span className="inline-flex cursor-help items-center gap-1.5 tabular-nums">
-          {dot}
-          <b className="font-semibold text-foreground">{taken > 0 ? ut.pctIntFmt((lost / taken) * 100) : '—'}</b>
-        </span>
-      </Tooltip>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 tabular-nums">
-      {dot}
-      <span>
-        <b className="font-semibold text-foreground">{ut.mine.lossesFmt(lost, taken)}</b>
-        {taken > 0 && ` (${ut.pctIntFmt((lost / taken) * 100)})`}
-      </span>
-    </span>
-  )
-}

@@ -137,7 +137,8 @@ func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
 }
 
 // poserProfilPuisCarte installe sur le contexte, DANS CET ORDRE, le profil de balayage calibre
-// par la passe precedente puis les largeurs d'axe de la carte.
+// par la passe precedente puis le contexte de carte : les largeurs d'axe de la carte et le
+// decoupage MPP du film ([installWorldObjectPrecision]).
 //
 // # L ORDRE EST LA REGLE, ET IL N EST PAS COMMUTATIF
 //
@@ -159,26 +160,22 @@ func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
 // ARRIVE, et les largeurs de carte SURVIVENT. Intervertir les deux appels le fait rougir.
 //
 // LE DECOUPAGE MPP DU FILM VIENT EN DERNIER, pour la meme raison : le profil calibre le
-// remplacerait (cf. [poserLeDecoupageMPPDuFilm]).
+// remplacerait (cf. [signalerLeDecoupageMPP]).
 func poserProfilPuisCarte(ctx context.Context, fc *grammar.FilmContext, matchID string, opt Options) {
 	if opt.ProfilDeBalayage != nil {
 		fc.PoserProfilDeBalayage(*opt.ProfilDeBalayage)
 	}
 	installWorldObjectPrecision(ctx, fc, matchID, opt.Fallbacks)
-	poserLeDecoupageMPPDuFilm(ctx, fc, matchID)
 }
 
-// poserLeDecoupageMPPDuFilm pose sur le contexte, pour TOUTE la cuisson, le decoupage du bloc MPP
-// que la grammaire resout pour ce film ([grammar.FilmContext.ResolutionMPP]) : celui de sa version
-// de format, ou celui que le film declare par la taille d etat de creation de ses objets. Toutes
-// les lectures de la cuisson le portent alors — images-cles, trames, creations, socles,
-// vehicules et poses.
-//
-// Rien de resolu : le contexte garde son decoupage, et les sites des socles et des poses gardent
-// leur repli calibre, compte. killsource pose la meme resolution sur son propre contexte
-// (`killsource.poserLeProfil`).
-func poserLeDecoupageMPPDuFilm(ctx context.Context, fc *grammar.FilmContext, matchID string) {
-	res := fc.ResolutionMPP()
+// signalerLeDecoupageMPP journalise ce que la pose du contexte de carte a fait du decoupage du bloc
+// MPP ([grammar.FilmContext.PoserLaCarteEtLeDecoupage]). Quand la resolution decide (celle de la
+// version de format du film, ou celle qu il declare par la taille d etat de creation de ses
+// objets), le contexte porte ce decoupage pour TOUTE la cuisson — images-cles, trames, creations,
+// socles, vehicules et poses. Quand elle ne decide pas, le contexte garde son decoupage, et les sites
+// des socles et des poses gardent leur repli calibre, compte. killsource pose la meme resolution sur
+// son propre contexte (`killsource.poserLeProfil`).
+func signalerLeDecoupageMPP(ctx context.Context, matchID string, res grammar.ResolutionMPP) {
 	if !res.Decide() {
 		if d := res.Declaration; d.Records > 0 {
 			slog.WarnContext(ctx, "film : decoupage MPP declare discordant — chemin calibre garde",
@@ -187,7 +184,6 @@ func poserLeDecoupageMPPDuFilm(ctx context.Context, fc *grammar.FilmContext, mat
 		}
 		return
 	}
-	fc.PoserMPP(res.Widths)
 	if res.Provenance == profile.MPPPresumeParMesure {
 		slog.InfoContext(ctx, "film : decoupage MPP declare par le film, presume par mesure",
 			"match_id", matchID, "format", res.FormatVersion, "decoupage", res.Widths.String())
@@ -217,6 +213,10 @@ type filmScan struct {
 	// ([filmScan.lireLaMarcheDesTrames]) et prise par les etats de mouvement ; errMarche, son echec.
 	marche    grammar.MarcheDesTrames
 	errMarche error
+	// etats porte ce que la marche UNIQUE des images-cles dit des bipedes (armes, inventaire, marques,
+	// lot D1.1 de 2.7.d1), jouee une fois par [filmScan.balayerPositions] ; errEtats, son echec.
+	etats    grammar.EtatsDesImagesCles
+	errEtats error
 	// opt porte ce que l'APPELANT a fourni : l'observateur, son horloge, et les gardes de mode
 	// des trois calques qui ne se balaient que sur demande (drapeau, zones, bombe). Les
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.

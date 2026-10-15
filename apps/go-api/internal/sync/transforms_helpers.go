@@ -95,27 +95,6 @@ func findCoreStats(player map[string]any) map[string]any {
 	return nil
 }
 
-// isRankedPlaylist détermine si le match est un match classé.
-// Portage de _is_ranked_playlist() Python.
-func isRankedPlaylist(matchInfo map[string]any) bool {
-	playlist, _ := matchInfo["Playlist"].(map[string]any)
-	if playlist == nil {
-		return false
-	}
-	name, _ := playlist["PublicName"].(string)
-	if strings.Contains(strings.ToLower(name), PerfChainRanked) {
-		return true
-	}
-	if tags, ok := playlist["Tags"].([]any); ok {
-		for _, t := range tags {
-			if s, ok := t.(string); ok && strings.ToLower(s) == PerfChainRanked {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // isFirefightMatch détermine si le match est un mode Firefight/PvE.
 // Portage de _is_firefight_match() Python.
 func isFirefightMatch(matchInfo map[string]any) bool {
@@ -133,26 +112,6 @@ func isFirefightMatch(matchInfo map[string]any) bool {
 		}
 	}
 	return false
-}
-
-// determineModeCategory déduit la catégorie custom depuis pair_name.
-// Portage simplifié de infer_custom_category_from_pair_name() Python.
-func determineModeCategory(pairName string) string {
-	lower := strings.ToLower(pairName)
-	switch {
-	case strings.Contains(lower, PerfChainRanked):
-		return modeCategoryRanked
-	case strings.Contains(lower, PerfChainFirefight):
-		return modeCategoryFirefight
-	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team") || strings.Contains(lower, "big-team"):
-		return modeCategoryBTB
-	case strings.Contains(lower, "fiesta"):
-		return modeCategoryFiesta
-	case strings.Contains(lower, "assassin"):
-		return modeCategoryAssassin
-	default:
-		return modeCategoryOther
-	}
 }
 
 // ExtractTeamScoresByID extrait les scores de team_0 et team_1 depuis le payload

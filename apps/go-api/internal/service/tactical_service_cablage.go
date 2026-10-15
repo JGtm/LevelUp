@@ -15,6 +15,7 @@ package service
 // qui depend d'une absente rend un 503 ou un compte a part, ET une ligne de journal nominative.
 
 import (
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -91,5 +92,12 @@ func (s *TacticalService) WithReplay(r port.ReplayService) *TacticalService {
 // Chainable. Sans lui, `Sequence` rend ErrCapabilityNotSupported en le disant.
 func (s *TacticalService) WithSequenceStore(store port.TacticalSequenceStore) *TacticalService {
 	s.sequences = store
+	return s
+}
+
+// WithAssetURL injecte l'adapter d'assets du titre, dont seule l'icône de la source de dégât est
+// lue (icône d'arme de la mini-tuile). nil = titre sans adapter : pas d'icône. Chainable.
+func (s *TacticalService) WithAssetURL(a games.TitleAssetURLAdapter) *TacticalService {
+	s.detail.assetURL = a
 	return s
 }

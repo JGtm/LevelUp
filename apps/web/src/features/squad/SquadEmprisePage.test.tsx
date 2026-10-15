@@ -3,7 +3,7 @@
  * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), sur la soirée témoin du 22/09 (chiffres de la
  * maquette de l'onglet) : blocs et ordre du débrief, puis chaque carte — « Contrôle des ressources »
  * (compte · part dans chaque segment, repli S3, trait 50 %), « … cumul par match » (graphe tracé,
- * légende), « Prises par joueur » (fiches, bonus perdus en couleurs d'équipe, pastilles pleines et
+ * légende), « Prises par joueur » (fiches, pastilles pleines et
  * vides), « … par match » (résultat, dominance, sans film, râteliers repliés). États vides hérités
  * de l'onglet remplacé.
  */
@@ -184,13 +184,10 @@ describe('Contrôle des ressources au fil de la session', () => {
 })
 
 describe('Répartition des prises dans l’escouade', () => {
-  it('bonus perdus : 2 sur 12 (17 %) et 2 sur 8 (25 %), pastilles d’équipe au lieu de « équipe » / « adversaire » écrits', () => {
+  it('aucune ligne « Bonus perdus » au-dessus des fiches', () => {
     mount()
-    expect(text('emprise-losses')).toContain('Bonus perdus')
-    expect(text('emprise-losses-us')).toBe('2 sur 12 (17 %)')
-    expect(text('emprise-losses-them')).toBe('2 sur 8 (25 %)')
-    expect(text('emprise-losses')).not.toMatch(/nous|eux/)
-    expect(within(screen.getByTestId('emprise-losses-us')).getByRole('img', { name: 'Équipe' })).toBeInTheDocument()
+    expect(screen.queryByTestId('emprise-losses')).toBeNull()
+    expect(document.body.textContent).not.toContain('Bonus perdus')
   })
 
   it('fiches JGtm, Chocoboflor, Madina97294, sans fiche du reste de l’équipe ; JGtm : 3 bonus · 9 armes spéciales', () => {
@@ -236,10 +233,10 @@ describe('Répartition des prises dans l’escouade', () => {
 })
 
 describe('Contrôle des ressources, match par match', () => {
-  it('colonnes : heure, carte, mode, « Victoire 3–0 », sans badge de dominance', () => {
+  it('colonnes : carte, mode, « Victoire 3–0 », sans heure ni badge de dominance', () => {
     mount()
     const head = text('emprise-grid-head-m1')
-    expect(head).toContain(formatMatchTime(HISTORY_2209[0].start_time, 'fr'))
+    expect(head).not.toContain(formatMatchTime(HISTORY_2209[0].start_time, 'fr'))
     expect(head).toContain('Starboard')
     expect(head).toContain('Drapeau')
     expect(text('emprise-grid-result-m1')).toBe('Victoire 3–0')
@@ -305,7 +302,7 @@ describe('SquadEmprisePage — anglais (S12)', () => {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
     expect(screen.getAllByText('Pickups by player').length).toBeGreaterThan(0)
-    expect(text('emprise-losses-us')).toBe('2 of 12 (17%)')
+    expect(screen.queryByTestId('emprise-losses')).toBeNull()
     expect(text('emprise-grid-result-m1')).toBe('Win 3–0')
   })
 })

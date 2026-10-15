@@ -350,6 +350,7 @@ function ReplayPage() {
               }}
               feedEntries={feedEntries}
               media={model.media}
+              scoreTimelineKind={matchView ? (matchView.header.score_timeline_kind ?? '') : undefined}
               /* LES TROIS SURCOUCHES SE POSENT SUR LA CARTE, PAS SUR LE LECTEUR (2026-09-08,
                  retour utilisateur : « message et image défaite/victoire centrer sur la hauteur
                  de la map, là ça prend la hauteur du lecteur en compte, ce qui n'est pas

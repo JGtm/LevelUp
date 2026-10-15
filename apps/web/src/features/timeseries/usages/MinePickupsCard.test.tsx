@@ -1,7 +1,7 @@
 /**
  * MinePickupsCard.test.tsx — « Contribution aux prises » : groupes par ressource, objets triés par
  * volume de l’équipe, segments joueur / reste avec leurs comptes, « JGtm n · équipe m » au bout, barre à
- * l'échelle du plus gros objet, râteliers repliés, bonus perdus des deux camps.
+ * l'échelle du plus gros objet, râteliers repliés.
  */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -57,8 +57,8 @@ describe('MinePickupsCard', () => {
     expect(screen.getByTestId('usages-mine-row-br')).toBeTruthy()
   })
 
-  it('bonus perdus des deux camps', () => {
+  it('aucune ligne « Bonus perdus »', () => {
     renderCard()
-    expect(screen.getByTestId('usages-mine-losses').textContent).toBe('Bonus perdus12 sur 111 (11 %)7 sur 87 (8 %)')
+    expect(screen.queryByTestId('usages-mine-losses')).toBeNull()
   })
 })

@@ -29,8 +29,7 @@ func TestLaCuissonPoseLeDecoupageDeclareParLeFilm(t *testing.T) {
 		}
 		fc := grammar.NewFilmContext(film)
 		calibre := grammar.ProfilDeBalayageParDefaut()
-		fc.PoserProfilDeBalayage(calibre)
-		poserLeDecoupageMPPDuFilm(context.Background(), fc, c.court)
+		poserProfilPuisCarte(context.Background(), fc, c.court, Options{ProfilDeBalayage: &calibre})
 		if got := fc.ProfilDeBalayage().MPP; got != c.attendu {
 			t.Errorf("%s : decoupage pose %v, attendu %v", c.court, got, c.attendu)
 		}

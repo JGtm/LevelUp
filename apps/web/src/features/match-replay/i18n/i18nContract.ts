@@ -666,8 +666,6 @@ export interface ReplayText {
    * bandeau. Il se lit À L'IMAGE COURANTE, comme les pastilles : c'est un compte EN COURS,
    * pas le verdict du match (celui-ci vient de l'API, sur l'écran de fin).
    */
-  roundsTallyFmt: (ally: number, enemy: number) => string
-  roundsTallyLabel: string
   roundDotAllyFmt: (index: number) => string
   roundDotEnemyFmt: (index: number) => string
   roundDotPendingFmt: (index: number) => string

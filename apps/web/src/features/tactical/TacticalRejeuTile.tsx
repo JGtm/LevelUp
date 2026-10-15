@@ -5,9 +5,9 @@
  *
  * LE TEXTE tient sur trois lignes, et rien n'y est coupé net : ce qui ne tient pas tronque avec une
  * ellipse DANS sa colonne.
- *   - ligne 1 : mode (tronque), score, issue en mot | date · heure à droite ;
+ *   - ligne 1 : mode (tronque), score coloré par l'issue (le mot ne figure que dans l'infobulle) | date · heure à droite ;
  *   - ligne 2 : pastille d'instant, « Tué par <gamertag> » (seul le gamertag tronque) ;
- *   - ligne 3 : arme (tronque), distance | badge de placement à droite (jamais coupé : l'arme cède).
+ *   - ligne 3 : icône d'arme du titre (quand elle existe) puis le nom de l'arme (seul à tronquer), distance | badge de placement à droite (jamais coupé : l'arme cède).
  *
  * LES ACTIONS ont une largeur RÉSERVÉE, identique sur toutes les tuiles que le rejeu existe ou non
  * (les chevrons s'alignent d'une tuile à l'autre) : le bouton de rejeu, sans bordure, puis le
@@ -19,6 +19,7 @@
  */
 import { useEffect, useRef } from 'react'
 
+import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { TacticalContribution } from '@/lib/api/types'
 import { useOutcomeMapping } from '@/lib/i18n/fieldMappings'
@@ -29,6 +30,10 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import type { TacticalText } from './i18n'
 import { modeleDeTuile } from './zone.logic'
+
+/** Taille du slot de l'icône d'arme, sur la ligne 3 de 16 px : à la hauteur du texte. */
+const ICONE_L = 30
+const ICONE_H = 14
 
 interface TacticalRejeuTileProps {
   t: TacticalText
@@ -55,7 +60,7 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
   useEffect(() => {
     if (actif) ligne.current?.scrollIntoView?.({ block: 'nearest' })
   }, [actif])
-  const aLigne3 = Boolean(m.arme || m.distance || m.badge)
+  const aLigne3 = Boolean(m.arme || m.distance || m.badge || c.arme_image_url)
   return (
     <li
       ref={ligne}
@@ -87,10 +92,9 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
       <div className="flex min-w-0 flex-col gap-1" data-testid="tactical-rejeu-texte">
         <div className="flex min-w-0 items-baseline gap-1 whitespace-nowrap leading-4 text-foreground" data-testid="tactical-rejeu-l1">
           {m.mode && <span className="min-w-0 truncate font-medium">{m.mode}</span>}
-          {m.score && <span className="flex-none font-bold">{m.score}</span>}
-          {issue && (
-            <span className="flex-none font-medium" style={jeton ? { color: tokenCssVar(jeton) } : undefined}>
-              {issue.label}
+          {m.score && (
+            <span className="flex-none font-bold" style={jeton ? { color: tokenCssVar(jeton) } : undefined}>
+              {m.score}
             </span>
           )}
           {m.date && <span className="ml-auto flex-none pl-1 text-[10.5px] text-muted-foreground">{m.date}</span>}
@@ -115,6 +119,16 @@ export function TacticalRejeuTile({ t, locale, playerSlug, contribution: c, acti
             className="flex min-w-0 items-center gap-[5px] whitespace-nowrap text-[11.5px] leading-4 text-muted-foreground"
             data-testid="tactical-rejeu-l3"
           >
+            {c.arme_image_url && (
+              <WeaponIcon
+                imageUrl={c.arme_image_url}
+                tinted={c.arme_image_tinted}
+                label={m.arme ?? ''}
+                width={ICONE_L}
+                height={ICONE_H}
+                className="flex-none"
+              />
+            )}
             {m.arme && <span className="min-w-0 truncate">{m.arme}</span>}
             {m.distance && <span className="flex-none" data-testid="tactical-rejeu-distance">{m.distance}</span>}
             {m.badge && <span className="ml-auto flex-none rounded-full bg-muted px-1.5 text-[10.5px] leading-4">{m.badge}</span>}

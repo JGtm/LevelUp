@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 92
-empreinte-stockee c8e253677bb0e701
-empreinte-servie c8e253677bb0e701
-empreinte-cuite d837287324550b54
+schema 96
+empreinte-stockee 80b56272e3c87465
+empreinte-servie 80b56272e3c87465
+empreinte-cuite 982819d1bf7526f4
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -179,6 +179,41 @@ BridgeHealth
   Slots json:"slots" int
   UnnamedLives json:"unnamedLives" int
   UnnamedLivesContested json:"unnamedLivesContested" int
+CarriedEnergy
+  E json:"e" float32
+  N json:"n,omitempty" *int
+  T json:"t" int
+  Tag json:"tag,omitempty" bool
+CarriedEquipment
+  Energy json:"energy,omitempty" []CarriedEnergy
+  R json:"r" int
+  Slot json:"slot" uint32
+  T0 json:"t0" int
+  T1 json:"t1,omitempty" *int
+  Tracked json:"tracked,omitempty" []CarriedTracked
+  Uses json:"uses,omitempty" []int
+CarriedEquipmentCoverage
+  AmbiguousCost json:"ambiguousCost" int
+  AmbiguousRank json:"ambiguousRank" int
+  Attached json:"attached" int
+  BeforeOrigin json:"beforeOrigin" int
+  Created json:"created" int
+  EnergyReads json:"energyReads" int
+  NoCatalog json:"noCatalog" int
+  NoIdentity json:"noIdentity" int
+  Positioned json:"positioned" int
+  Published json:"published" int
+  RiftPoses json:"riftPoses" int
+  TeleportsWithoutPose json:"teleportsWithoutPose" int
+  TrackedEnds json:"trackedEnds" int
+  TrackedObjects json:"trackedObjects" int
+  Unnamed json:"unnamed" int
+  Uses json:"uses" int
+  WithCost json:"withCost" int
+  WithoutRank json:"withoutRank" int
+CarriedTracked
+  T0 json:"t0" int
+  T1 json:"t1,omitempty" *int
 ContinuousFireCoverage
   Ambiguous json:"ambiguous" int
   BurstsRead json:"burstsRead" int
@@ -221,6 +256,7 @@ Coverage
   BombArmings json:"bombArmings,omitempty" *BombArmingsCoverage
   BombCarries json:"bombCarries,omitempty" *BombCarriesCoverage
   Bridge json:"bridge" BridgeHealth
+  CarriedEquipment json:"carriedEquipment,omitempty" *CarriedEquipmentCoverage
   ContinuousFire json:"continuousFire,omitempty" *ContinuousFireCoverage
   DeathsPaths json:"deathsPaths,omitempty" *DeathsPathsCoverage
   Decoder json:"decoder,omitempty" *DecoderCoverage
@@ -236,6 +272,7 @@ Coverage
   GroundWeapons json:"groundWeapons,omitempty" *GroundWeaponCoverage
   Inventory json:"inventory,omitempty" *InventoryCoverage
   Keyframes json:"keyframes,omitempty" *KeyframeCoverage
+  Knockbacks json:"knockbacks,omitempty" *KnockbackCoverage
   ObjectiveObjects json:"objectiveObjects,omitempty" *ObjectiveObjectsCoverage
   Objectives json:"objectives" LayerCoverage
   OriginResolved json:"originResolved" bool
@@ -577,6 +614,23 @@ KeyframeCoverage
   Refutations json:"refutations" int
   Resyncs json:"resyncs" int
   Slides json:"slides" int
+Knockback
+  By json:"by,omitempty" *uint32
+  Slot json:"slot" uint32
+  T json:"t" int
+  VX json:"vx,omitempty" *float32
+  VY json:"vy,omitempty" *float32
+  VZ json:"vz,omitempty" *float32
+KnockbackCoverage
+  BeforeOrigin json:"beforeOrigin" int
+  NoIdentity json:"noIdentity" int
+  Paired json:"paired" int
+  Published json:"published" int
+  Read104 json:"read104" int
+  Read105 json:"read105" int
+  Unpaired json:"unpaired" int
+  WithoutAuthor json:"withoutAuthor" int
+  WithoutImpulse json:"withoutImpulse" int
 Label
   En json:"en" string
   Family json:"family,omitempty" string
@@ -774,6 +828,7 @@ ReplayDocument
   BombStats json:"bombStats,omitempty" *BombMatchStats
   Bounds json:"bounds" Bounds
   Bursts json:"bursts,omitempty" []FireBurst
+  CarriedEquipment json:"carriedEquipment,omitempty" []CarriedEquipment
   Coverage json:"coverage,omitempty" *Coverage
   DurationMS json:"durationMs,omitempty" int
   EquipmentChanges json:"equipmentChanges,omitempty" []EquipmentChange
@@ -793,6 +848,7 @@ ReplayDocument
   Identity json:"identity,omitempty" *IdentitySection
   Inventory json:"inventory,omitempty" []Inventory
   KillEffects json:"killEffects,omitempty" map[string]string
+  Knockbacks json:"knockbacks,omitempty" []Knockback
   Layers json:"layers,omitempty" map[string]string
   Loadouts json:"loadouts,omitempty" []Loadout
   MapObjectives json:"mapObjectives,omitempty" *MapObjectives
@@ -805,6 +861,7 @@ ReplayDocument
   PadPickups json:"padPickups,omitempty" []PadPickup
   Pickups json:"pickups,omitempty" []Pickup
   Projectiles json:"projectiles,omitempty" []Projectile
+  RiftPoses json:"riftPoses,omitempty" []RiftPose
   Roster json:"roster,omitempty" []RosterEntry
   SchemaVersion json:"schemaVersion" int
   ScoreTimeline json:"scoreTimeline,omitempty" *ScoreTimeline
@@ -828,6 +885,13 @@ ReplayDocument
   WeaponPads json:"weaponPads,omitempty" []WeaponPad
   WeaponTiers json:"weaponTiers,omitempty" *WeaponTiersInfo
   ZoneStates json:"zoneStates,omitempty" []ZoneState
+RiftPose
+  A json:"a,omitempty" *int
+  Slot json:"slot" uint32
+  T json:"t" int
+  X json:"x,omitempty" *float32
+  Y json:"y,omitempty" *float32
+  Z json:"z,omitempty" *float32
 RosterEntry
   Bid json:"bid,omitempty" string
   Bot json:"bot,omitempty" bool

@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/equipenergy"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
@@ -70,8 +71,11 @@ type Builder struct {
 	// pads / padsTried : le catalogue versionne des socles, d'ou sortent les POINTS
 	// D'APPARITION (cf. spawnpoints.go). Meme motif que `objectives` — chargement unique par
 	// Builder, et un booleen qui distingue « pas encore charge » de « tente et echoue ».
-	pads            *replay.MapWeaponPadsCatalog
-	padsTried       bool
+	pads      *replay.MapWeaponPadsCatalog
+	padsTried bool
+	// energie / energieTried : le catalogue versionne de l energie des equipements (cf. energie.go).
+	energie         *equipenergy.Catalog
+	energieTried    bool
 	objectivesTried bool
 	// roles / rolesTried : la table de roles d objectif du titre, d ou sortent les zones du
 	// calque d ETAT DES ZONES (cf. zones.go). Meme cache, meme raison que ci-dessus.
@@ -87,6 +91,9 @@ type Builder struct {
 	// sansFaitsPersistes force la branche DECODE : les faits sur disque sont IGNORES (cf.
 	// `SansFaitsPersistes`).
 	sansFaitsPersistes bool
+	// sansEcritureDesFaits : la cuisson n'ECRIT pas ses faits sur disque (cf.
+	// `SansEcritureDesFaits`).
+	sansEcritureDesFaits bool
 	// observer recoit chaque etape de BuildBytes et de BuildFromFilm avec sa sortie (cf.
 	// replay/observe.go et cmd/replay-equiv). Nil = aucun appel, aucun cout.
 	observer replay.Observer

@@ -6,6 +6,7 @@ import type { ReplayBounds, ReplayMapObject, ReplayPoint } from '@/lib/api/types
 
 import { matchClock } from './matchClock'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import type { ReplayCutPoint } from './replayReadyTypes'
 
 export interface XY {
   x: number
@@ -36,6 +37,16 @@ function isGapPoint(p: { g?: number }): boolean {
 }
 
 /**
+ * Un point qui ROMPT la ligne : une lacune de réplication (`g`) OU la coupure d'une
+ * translocation (`cut`, posée par `translocationCuts.ts`). Position, altitude et traînée ne
+ * s'interpolent jamais au travers ; seule la lacune pâlit le pion (`inGapAt`) — après une
+ * translocation, le joueur est présent et vu.
+ */
+function breaksLine(p: { g?: number; cut?: boolean }): boolean {
+  return isGapPoint(p) || p.cut === true
+}
+
+/**
  * bracketAt rend les deux échantillons qui encadrent `t` (`a.t <= t < b.t`), `t` étant
  * STRICTEMENT à l'intérieur de la piste (recherche binaire). L'appelant traite les bords.
  */
@@ -57,7 +68,7 @@ function bracketAt<P extends { t: number }>(points: readonly P[], t: number): { 
  * - interpolation linéaire entre deux échantillons connus (recherche binaire) ;
  * - SAUF au travers d'une lacune (`b.g > 0`) : la position est tenue au point qui la précède.
  */
-export function positionAt(points: ReplayPoint[], t: number): XY | null {
+export function positionAt(points: ReplayCutPoint[], t: number): XY | null {
   if (points.length === 0) return null
   const first = points[0]
   if (t <= first.t) return t < first.t ? null : { x: first.x, y: first.y }
@@ -65,7 +76,7 @@ export function positionAt(points: ReplayPoint[], t: number): XY | null {
   if (t >= last.t) return { x: last.x, y: last.y }
 
   const { a, b } = bracketAt(points, t)
-  if (isGapPoint(b)) return { x: a.x, y: a.y }
+  if (breaksLine(b)) return { x: a.x, y: a.y }
   const span = b.t - a.t
   const f = span === 0 ? 0 : (t - a.t) / span
   return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }
@@ -87,13 +98,13 @@ export function inGapAt(points: readonly ReplayPoint[], t: number): boolean {
  * (échantillons bruts) plus la tête interpolée à `t`. Un point qui clôt une lacune REPART la
  * traînée : aucun segment ne relie les deux côtés d'un silence du film.
  */
-export function trailAt(points: ReplayPoint[], t: number, windowFrames: number): XY[] {
+export function trailAt(points: ReplayCutPoint[], t: number, windowFrames: number): XY[] {
   const start = t - windowFrames
   const out: XY[] = []
   for (const p of points) {
     if (p.t < start) continue
     if (p.t > t) break
-    if (isGapPoint(p)) out.length = 0
+    if (breaksLine(p)) out.length = 0
     out.push({ x: p.x, y: p.y })
   }
   const head = positionAt(points, t)
@@ -108,7 +119,7 @@ export function trailAt(points: ReplayPoint[], t: number, windowFrames: number):
  * altitudeAt renvoie le Z interpolé d'une track au temps `t` (0 si l'artefact n'a pas de Z),
  * tenu au travers d'une lacune comme la position.
  */
-export function altitudeAt(points: ReplayPoint[], t: number): number | null {
+export function altitudeAt(points: ReplayCutPoint[], t: number): number | null {
   if (points.length === 0) return null
   const first = points[0]
   if (t <= first.t) return t < first.t ? null : (first.z ?? 0)
@@ -116,7 +127,7 @@ export function altitudeAt(points: ReplayPoint[], t: number): number | null {
   if (t >= last.t) return last.z ?? 0
 
   const { a, b } = bracketAt(points, t)
-  if (isGapPoint(b)) return a.z ?? 0
+  if (breaksLine(b)) return a.z ?? 0
   const span = b.t - a.t
   const f = span === 0 ? 0 : (t - a.t) / span
   return (a.z ?? 0) + ((b.z ?? 0) - (a.z ?? 0)) * f
@@ -334,7 +345,7 @@ export function frameToMs(frame: number, doc: ReplayDocumentReady): number {
 }
 
 /** msToFrames convertit une durée réelle (ms) en nombre de frames. */
-export function msToFrames(ms: number, doc: ReplayDocumentReady): number {
+export function msToFrames(ms: number, doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? ms / interval : (ms / 1000) * FALLBACK_FPS
 }

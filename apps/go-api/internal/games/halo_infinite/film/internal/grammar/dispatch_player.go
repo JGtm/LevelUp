@@ -289,8 +289,8 @@ func consumePlayerTailAndGameEngineComponent(br *Lecteur, name string, typeIndex
 	case "tacmap-displayasset": // ti=33 i0 (FUN_142ed433c)
 		consumeTacmapDisplayAsset(br)
 		return variant, nil, true
-	case "equipment-tracked-object-handles-stack-component": // ti=37 i28 (FUN_140f72dec)
-		consumeEquipmentTrackedStack2(br)
+	case compEquipmentTrackedStack: // ti=37 i28 (FUN_140f72dec)
+		decodeEquipmentTrackedStack(br)
 		return variant, nil, true
 	case "equipment-command-tick-component": // ti=37 i29 (FUN_140e0a564, table ECS live)
 		consumeEquipmentCommandTick(br)

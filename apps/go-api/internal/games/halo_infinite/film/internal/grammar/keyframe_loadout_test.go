@@ -38,9 +38,10 @@ func TestScanFilmKeyframeLoadouts_SansCatalogue(t *testing.T) {
 	}
 }
 
-// TestKeyframeLoadouts_PayloadVide : un payload sans record ne doit produire aucun loadout.
+// TestKeyframeLoadouts_PayloadVide : un payload sans record ne rend aucune famille a la fenetre que la
+// lecture de l etat complet donne aux records non admis ([motsParRecord]).
 func TestKeyframeLoadouts_PayloadVide(t *testing.T) {
-	if got := keyframeLoadoutsDe(nil, nil, map[uint32]bool{1: true}); got != nil {
-		t.Fatalf("aucun loadout attendu, obtenu %+v", got)
+	if got := motsParRecord(nil, nil, keyframeBipedTI, map[uint32]bool{1: true})[0]; len(got) != 0 {
+		t.Fatalf("aucune famille attendue, obtenu %+v", got)
 	}
 }

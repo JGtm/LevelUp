@@ -7,7 +7,7 @@ package main
 // La carte se mesure alors sous le decoupage MPP que la grammaire resout pour chaque film
 // ([grammar.FilmContext.ResolutionMPP]) : celui de sa version de format, ou celui que le film
 // declare par la taille d etat de creation de ses objets. C est la regle que la cuisson applique
-// (`replay.poserLeDecoupageMPPDuFilm`), y compris le chemin d un film qui ne declare rien, dont
+// (`grammar.FilmContext.PoserLaCarteEtLeDecoupage`), y compris le chemin d un film qui ne declare rien, dont
 // le contexte garde son decoupage. Le decoupage retenu et sa provenance s ecrivent par film dans
 // `mpp_declare.tsv`.
 

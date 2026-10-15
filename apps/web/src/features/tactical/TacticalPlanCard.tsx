@@ -265,8 +265,8 @@ const ETIQUETTE = 'flex items-center whitespace-nowrap border-r border-input bg-
 const QUI_VALEURS: readonly TacticalQui[] = ['moi', 'escouade', 'adv']
 
 /**
- * ReglagesEnPilules — « Lecture », « Joueurs » et « Réapparition », chacun en pilule (étiquette
- * atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
+ * ReglagesEnPilules — « Lecture », « Joueurs » et « Réapparition » (celle-ci seulement s'il y a des
+ * amas ou un filtre posé), chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
  * composition de la barre (`onQuiChange`, cf. `useReglages`), la valeur reste atténuée et un texte
  * visible dit qu'aucune composition n'est choisie — la lecture, elle, reste sur « Moi ».
  */
@@ -285,6 +285,8 @@ function ReglagesEnPilules({
   grappes,
 }: ReglagesDuPlan & { t: TacticalText; locale: Locale }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
+  // « Réapparition » n'a rien à choisir sans amas ; un filtre déjà posé reste visible pour pouvoir l'ôter.
+  const pilulePresente = grappes.length > 0 || spawn !== ''
   return (
     <span className="flex flex-wrap items-center gap-2" data-testid="tactical-plan-pills">
       <label className={PILULE} onPointerEnter={onQuestionIntent} onFocus={onQuestionIntent}>
@@ -324,22 +326,24 @@ function ReglagesEnPilules({
           {t.planSquadPending}
         </span>
       )}
-      <label className={PILULE}>
-        <span className={ETIQUETTE}>{t.pillRespawn}</span>
-        <select
-          value={spawn}
-          onChange={(e) => onSpawnChange(e.target.value)}
-          aria-label={t.pillRespawn}
-          className="w-[72px] bg-transparent pl-1.5 pr-0.5 text-foreground"
-        >
-          <option value="">{t.pillRespawnAll}</option>
-          {grappes.map((g) => (
-            <option key={g.id} value={g.id}>
-              {locale === 'fr' ? g.nom_fr : g.nom_en}
-            </option>
-          ))}
-        </select>
-      </label>
+      {pilulePresente && (
+        <label className={PILULE}>
+          <span className={ETIQUETTE}>{t.pillRespawn}</span>
+          <select
+            value={spawn}
+            onChange={(e) => onSpawnChange(e.target.value)}
+            aria-label={t.pillRespawn}
+            className="w-[72px] bg-transparent pl-1.5 pr-0.5 text-foreground"
+          >
+            <option value="">{t.pillRespawnAll}</option>
+            {grappes.map((g) => (
+              <option key={g.id} value={g.id}>
+                {locale === 'fr' ? g.nom_fr : g.nom_en}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </span>
   )
 }

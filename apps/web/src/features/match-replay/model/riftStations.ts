@@ -8,11 +8,10 @@
  * l'exécutable et validé à 0,00-0,26 m sur 18 événements (rapport R6 §1). Une interface qui
  * dessinerait « une faille posée une fois, fixe » serait FAUSSE.
  *
- * ON NE DESSINE RIEN AVANT LE PREMIER ÉCHANGE, et ce n'est pas une prudence : entre la pose et
- * lui, la position de la balise n'est connue d'AUCUN canal — négatif mesuré sur trois (la
- * faille activée n'est pas une entité répliquée lisible, R1 §1-3 ; la charge du 117 ne porte
- * rien d'autre que {effet, départ, arrivée}, R6 §1.4 ; les 16 poses `translocator_beacon` du
- * parc sont 15 `dropped` + 1 `unknown`, zéro `deployed`).
+ * LA FAILLE APPARAÎT À SA POSE (schéma 95). Le film date la pose (`riftPoses` : l'énergie du
+ * translocateur porté tombe à zéro) ; sa position, aucun canal ne la lit à cet instant, et c'est le
+ * PREMIER ÉCHANGE qui la donne — le joueur arrive là où la faille était. Une pose jamais suivie d'un
+ * échange est datée sans position : rien ne se dessine pour elle plutôt qu'une faille devinée.
  *
  * ET RIEN NE RESTE À DEMEURE (point utilisateur du 2026-09-03). La fin de l'équipement a deux
  * modes mesurés — l'épuisement par l'usage final (`spent` quasi simultané) et l'expiration
@@ -84,6 +83,7 @@ export function riftStations(doc: ReplayDocumentReady): RiftStation[] {
       out.push({ slot, t0: e.frame, t1, x: e.x, y: e.y })
     }
   }
+  out.push(...stationsDesPoses(doc, parSlot, ranks))
   out.sort((a, b) => a.t0 - b.t0)
   return out
 }
@@ -152,4 +152,26 @@ export function riftStationsAt(
   frame: number,
 ): RiftStation[] {
   return stations.filter((s) => covers(s, frame))
+}
+
+/**
+ * stationsDesPoses — la faille entre sa POSE et le premier échange qui suit : à la position de la
+ * pose (l'arrivée de cet échange, publiée par le serveur), jusqu'à l'image qui précède l'échange, ou
+ * jusqu'à la fin mesurée de l'équipement si elle tombe avant. Une pose sans position ne dessine rien.
+ */
+function stationsDesPoses(
+  doc: ReplayDocumentReady,
+  echanges: ReadonlyMap<number, Echange[]>,
+  ranks: ReadonlySet<number>,
+): RiftStation[] {
+  const out: RiftStation[] = []
+  for (const p of doc.riftPoses) {
+    if (p.x === undefined || p.y === undefined) continue
+    const suivant = (echanges.get(p.slot) ?? []).find((e) => e.frame >= p.t)
+    const avantEchange = suivant ? suivant.frame - 1 : Number.MAX_SAFE_INTEGER
+    const t1 = Math.min(avantEchange, stationEnd(doc, p.slot, p.t, ranks))
+    if (t1 < p.t) continue
+    out.push({ slot: p.slot, t0: p.t, t1, x: p.x, y: p.y })
+  }
+  return out
 }

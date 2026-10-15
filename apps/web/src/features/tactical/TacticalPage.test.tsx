@@ -372,7 +372,7 @@ describe('TacticalPage — l’écran unique', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Escouade' }))
     expect(screen.getByTestId('tactical-escouade-attente')).toHaveTextContent('Aucune composition choisie')
     expect(screen.getByTestId('tactical-composition')).toHaveAttribute('data-mis-en-avant', 'true')
-    expect(screen.getByPlaceholderText(/Rechercher parmi/)).toHaveFocus()
+    expect(screen.getByPlaceholderText(/Ajouter un coéquipier/)).toHaveFocus()
     expect(await screen.findByText('Ami')).toBeInTheDocument()
   })
 
@@ -387,7 +387,7 @@ describe('TacticalPage — l’écran unique', () => {
     })
     renderWithProviders(<TacticalPage />)
     await screen.findByTestId('tactical-map-streets')
-    fireEvent.focus(screen.getByPlaceholderText(/Rechercher parmi 1 coéquipiers/))
+    fireEvent.focus(screen.getByPlaceholderText(/Ajouter un coéquipier/))
     expect(await screen.findByText('Ami')).toBeInTheDocument()
     expect(screen.queryByText('343 Bot')).toBeNull()
   })

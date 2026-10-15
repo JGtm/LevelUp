@@ -223,16 +223,18 @@ var registreReplayEquipement = []Repli{
 		CompteurBranche: true,
 	},
 	{
-		Nom:       "repli_plafond_grenade_par_defaut",
-		Fait:      "le plafond de grenades porte par un joueur, qui borne la lecture d'inventaire",
-		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte",
+		Nom:  "repli_plafond_grenade_par_defaut",
+		Fait: "le plafond de grenades porte par un joueur, qui borne la lecture d'inventaire PAR LA FENETRE",
+		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte, aux seules " +
+			"regles d'ancrage de la fenetre derriere la lecture (records bipedes non admis, lot D1.2 de 2.7.d1 ; la grammaire " +
+			"lit les compteurs d i22 sans plafond) ; compte une fois par film quand un record non admis a ete donne a la fenetre",
 		Condition: CondInconditionnel,
 		Ordre:     OrdreSansLecture,
 		// DEUX SITES DEPUIS LE LOT J4.2 (2026-09-26) : la lecture d inventaire est descendue en
 		// `grammar`, qui APPLIQUE le defaut et ne compte pas (ADR 0034 D-4) ; l appelant de
 		// production, `replay`, le COMPTE sur la meme condition (plafond non fourni).
 		Sites: []Site{
-			{Fichier: pkgFilmdec + "inventory_decode.go", Ancre: "grenMax = DefaultGrenadeMax"},
+			{Fichier: pkgFilmdec + "keyframe_etats_scan.go", Ancre: "grenMax = DefaultGrenadeMax"},
 			{Fichier: pkgReplay + "film_scan.go", Ancre: "s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)"},
 		},
 		DatePose:        dateAudit0E,
@@ -247,8 +249,14 @@ var registreReplayEquipement = []Repli{
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "world_object_precision.go",
+			// La decision : l entree de la carte ne porte pas ses trois largeurs (pose du contexte
+			// de carte, geste unique de la grammaire).
+			Fichier: pkgFilmdec + "contexte_de_carte.go",
 			Ancre:   "if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {",
+		}, {
+			// Le compte et le journal, chez l appelant de la cuisson.
+			Fichier: pkgReplay + "world_object_precision.go",
+			Ancre:   "if pose.LargeursAbsentes {",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "les largeurs par carte et par build, donnees de profil ; a defaut, " + retraitRegle4,

@@ -50,6 +50,8 @@ func (s *filmScan) balayerPositions() error {
 	}
 	s.lirePontDIdentite()
 	s.opt.observe(s.ctx, "translocations", s.in.Translocations)
+	s.in.Knockbacks, s.in.KnockbackStats = grammar.ScanKnockbacks(s.fc)
+	s.opt.observe(s.ctx, "knockbacks", s.in.Knockbacks)
 	if s.pont.ErrPositions != nil {
 		return s.pont.ErrPositions
 	}
@@ -75,8 +77,9 @@ func (s *filmScan) balayerPositions() error {
 	// LA MARCHE D'IMAGE-CLÉ SE COMPTE ICI (lot M3.1) : ce balayage marche chaque payload
 	// d'image-clé du film exactement une fois. L'élection de l'ancre suivante est un REPLI nommé,
 	// et son compte voyage dans `coverage.fallbacks` ; la santé complète de la marche est
-	// portée par les faits (`KeyframeWalk`).
-	loadouts, marche, err := grammar.ScanKeyframeLoadoutsMarche(s.fc, loadoutFamilies())
+	// portée par les faits (`KeyframeWalk`). La marche est UNIQUE ([filmScan.lireLesImagesCles]).
+	s.lireLesImagesCles()
+	loadouts, marche, err := s.etats.Loadouts, s.etats.Marche, s.errEtats
 	if err != nil {
 		slog.WarnContext(s.ctx, "keyframes illisibles — rejeu sans armes portées", "err", err, "match_id", s.matchID)
 		loadouts = nil
@@ -173,14 +176,19 @@ func (s *filmScan) balayerInventaire() {
 	// LE PLAFOND DE GRENADES N EST PAS FOURNI (0) : la lecture applique `grammar.DefaultGrenadeMax`,
 	// et c est un REPLI NOMME ET COMPTE (D14) — le plafond est une donnee de MODE, pas une
 	// constante. Il se compte ICI depuis le lot J4.2 : la lecture est descendue en `grammar`, qui
-	// nomme ses replis et ne les compte pas (ADR 0034 D-4). Meme condition qu avant : un catalogue
-	// de familles vide ne lit rien, donc ne se replie sur rien.
+	// nomme ses replis et ne les compte pas (ADR 0034 D-4). Depuis le lot D1.2 de 2.7.d1, seule la
+	// FENETRE derriere la lecture l applique (la grammaire lit les compteurs sans plafond) : il ne se
+	// compte que si un record non admis lui a ete donne. Un catalogue de familles vide ne lit rien.
 	familles := loadoutFamilies()
-	if len(familles) > 0 {
+	if len(familles) > 0 && s.etats.Admission.FenetresInventaire > 0 {
 		s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)
 	}
-	// Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, invStats, err := grammar.ScanKeyframeInventory(s.fc, familles, 0)
+	// Absence non fatale — un rejeu sans grenades reste un rejeu valide. L'inventaire vient de la
+	// marche unique des images-clés (`balayerPositions`).
+	inventory, invStats, err := s.etats.Inventaire, s.etats.StatsInventaire, s.errEtats
+	if len(familles) == 0 {
+		inventory, invStats, err = nil, types.KeyframeInventoryStats{}, nil
+	}
 	if err != nil {
 		slog.WarnContext(s.ctx, "inventaire illisible — rejeu sans grenades ni munitions", "err", err, "match_id", s.matchID)
 		inventory = nil
@@ -252,6 +260,7 @@ func (s *filmScan) balayerCapacites() {
 	s.in.EquipmentChanges, s.in.EquipmentChangeStats = equipChanges, eStats
 	s.opt.observe(s.ctx, "equipmentChanges", s.in.EquipmentChanges)
 	s.opt.observe(s.ctx, "equipmentChanges.stats", s.in.EquipmentChangeStats)
+	s.balayerEquipementPorte()
 	s.balayerEtatsActifs()
 	s.balayerImpulsionsEtCharges()
 }
@@ -371,7 +380,8 @@ func (s *filmScan) balayerMonde() {
 func (s *filmScan) balayerCalquesGardes() {
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
-	s.in.FlagMarks = decodeFilmCarrierMarks(s.ctx, s.fc, s.matchID, s.opt.Flag, s.opt.consultations())
+	s.in.FlagMarks = decodeFilmCarrierMarks(s.ctx, s.etats.Marques, s.errEtats, s.matchID, s.opt.Flag,
+		s.opt.consultations())
 	s.opt.observe(s.ctx, "carrierMarks", s.in.FlagMarks)
 	// PROPRIETES RESEAU ti=13 : UN SEUL BALAYAGE, DEUX CONSOMMATEURS ET DEUX GARDES. L'etat des
 	// zones (jauge de capture, proprietaire) le veut sur les matchs dont l'appelant a fourni le

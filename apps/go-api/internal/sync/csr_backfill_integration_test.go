@@ -76,9 +76,11 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			start_time    TIMESTAMPTZ,
 			is_ranked     BOOLEAN DEFAULT FALSE,
 			is_firefight  BOOLEAN DEFAULT FALSE,
+			playlist_id VARCHAR,
 			playlist_name VARCHAR,
 			pair_name     VARCHAR
 		);
+		CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR);
 	`); err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +98,9 @@ func seedRegistry(t *testing.T, sdb *sql.DB, matches []struct {
 			m.ID, m.StartTime, m.IsRanked); err != nil {
 			t.Fatalf("seed %s: %v", m.ID, err)
 		}
+		if _, err := sdb.Exec(`INSERT INTO match_participants (match_id, xuid) VALUES (?, 'xuid_test')`, m.ID); err != nil {
+			t.Fatalf("seed participant %s: %v", m.ID, err)
+		}
 	}
 }
 
@@ -104,7 +109,7 @@ func makeRankRecapSkill(xuid string, pre, post float64, tier string, subTier, me
 		xuid: {
 			XUID:         xuid,
 			PreMatchCSR:  &CSRRankSnapshot{Value: pre, Tier: tier, SubTier: subTier},
-			PostMatchCSR: &CSRRankSnapshot{Value: post, Tier: tier, SubTier: subTier, MeasurementMatchesRemaining: measurementRem},
+			PostMatchCSR: &CSRRankSnapshot{Value: post, Tier: tier, SubTier: subTier, MeasurementMatchesRemaining: measurementRem, InitialMeasurementMatches: 5},
 		},
 	}
 }

@@ -18,4 +18,6 @@ type memoDesRecuperations struct {
 	objets *objetsDuMondeLus
 	// lectures : les lectures bipedes de la marche et de l ancrage derriere elle ([lecturesBipedes]).
 	lectures *lecturesBipedes
+	// equipementPorte : les lectures de l equipement porte que la marche a faites ([ScanEquipementPorte]).
+	equipementPorte *equipementPorteLu
 }

@@ -13,16 +13,10 @@
  */
 import type { Locale } from '@/lib/i18n/locale'
 import { drawCalloutsLabels, drawCalloutsShapes, type CalloutZoneReady } from '@/lib/replay/calloutsPaint'
-import { drawTacticalHeatmap, type TacticalGrid } from '@/lib/replay/heatPaint'
+import { flouDeLaChaleur, peindreLaChaleurLissee } from '@/lib/replay/chaleurLissee'
+import type { TacticalGrid } from '@/lib/replay/heatPaint'
 
 import { projectionDuPlan, vueDuPlan, type FenetreDuPlan, type RepereTactique } from './tacticalView.logic'
-
-/**
- * Le flou des bords de la chaleur, en pas de la grille SERVIE : il lisse le contour en escalier des
- * sous-cellules sans déplacer les taches. GARDÉ FAIBLE À DESSEIN : un flou plus large éteignait la
- * tache d'une cellule isolée — souvent la plus chaude — au profit des amas tièdes.
- */
-const FLOU_PAS = 0.15
 
 /** Ce que le plan peint, une fois la lecture réindexée sur son repère. */
 export interface PeintureDuPlan {
@@ -52,32 +46,6 @@ export function peindreLePlan(
   if (!vue || !projection) return
   const { zones, locale, encre } = peinture
   drawCalloutsShapes(ctx, zones, projection, { bigColors: [encre], fineInk: encre, locale })
-  peindreLaChaleur(ctx, peinture, vue, FLOU_PAS * repere.pasM * vue.scale)
+  peindreLaChaleurLissee(ctx, peinture.grid, vue, peinture.ramp, flouDeLaChaleur(repere.pasM, vue.scale))
   drawCalloutsLabels(ctx, zones, projection, locale)
-}
-
-/**
- * peindreLaChaleur — la chaleur, peinte sur une toile à part puis posée avec un flou de `flouPx`.
- * Sans filtre de canvas (navigateur ancien, environnement de test) : peinte directement, bords nets.
- */
-function peindreLaChaleur(
-  ctx: CanvasRenderingContext2D,
-  peinture: PeintureDuPlan,
-  vue: { topLeftWorld: { x: number; y: number }; scale: number },
-  flouPx: number,
-): void {
-  const style = { ramp: peinture.ramp, k: 1 }
-  const toile = 'filter' in ctx && flouPx > 0 ? document.createElement('canvas') : null
-  const horsEcran = toile?.getContext('2d') ?? null
-  if (!toile || !horsEcran) {
-    drawTacticalHeatmap(ctx, peinture.grid, vue, style)
-    return
-  }
-  toile.width = ctx.canvas.width
-  toile.height = ctx.canvas.height
-  drawTacticalHeatmap(horsEcran, peinture.grid, vue, style)
-  ctx.save()
-  ctx.filter = `blur(${Math.round(flouPx * 10) / 10}px)`
-  ctx.drawImage(toile, 0, 0)
-  ctx.restore()
 }

@@ -25,31 +25,26 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
-// rvVariantes : de la production a la lecture complete.
+// rvVariantes : de la production a la lecture complete. La production lit l etat complet sous la
+// portee `DAT_144e61ea0`, avec le chemin absolu d i0 de l ecrivain (plan LK, 2026-10-08) : les
+// variantes de la campagne qui les posaient (« portee-etat », « portee-record », « i0-ecrivain »)
+// se confondent avec celles qui restent, et la portee sur l etat par defaut SEUL n existe plus.
 func rvVariantes() []rvVariante {
 	return []rvVariante{
 		{nom: "production", porte: "chassis"},
 		{nom: "bis2-composants+porte-chassis", crochet: true, porte: "chassis"},
-		{nom: "portee-etat", crochet: true, portee: 1, porte: "chassis"},
-		{nom: "portee-record", crochet: true, portee: 2, porte: "chassis"},
-		{nom: "i0-ecrivain", crochet: true, i0: true, porte: "chassis"},
-		{nom: "portee-etat+i0-ecrivain", crochet: true, portee: 1, i0: true, porte: "chassis"},
-		{nom: "portee-record+i0-ecrivain", crochet: true, portee: 2, i0: true, porte: "chassis"},
-		{nom: "portee-record+i0-ecrivain+porte-posee", crochet: true, portee: 2, i0: true, porte: "posee"},
-		{nom: "portee-record+i0-ecrivain+porte-levee", crochet: true, portee: 2, i0: true, porte: "levee"},
-		{nom: "portee-record+i0-ecrivain-sans-composants", portee: 2, i0: true, porte: "chassis"},
-		{nom: "portee-record+i0-ecrivain+etat-sans-liste", crochet: true, portee: 2, i0: true, porte: "chassis", etatSansListe: true},
-		{nom: "portee-record+i0-ecrivain+etat-sans-liste+porte-posee", crochet: true, portee: 2, i0: true, porte: "posee", etatSansListe: true},
-		{nom: "etat-sans-liste+portee-etat", crochet: true, portee: 1, porte: "chassis", etatSansListe: true},
-		{nom: "temoin:portee-record+i0-ecrivain+boucle-decalee+1", crochet: true, portee: 2, i0: true, porte: "chassis", decale: 1},
-		{nom: "temoin:portee-record+i0-ecrivain+boucle-decalee-1", crochet: true, portee: 2, i0: true, porte: "chassis", decale: -1},
-		{nom: "temoin:mpp8/3+portee-record+i0-ecrivain+boucle-decalee+1", crochet: true, portee: 2, i0: true, porte: "chassis", mpp: rvMPP83, decale: 1},
-		{nom: "mpp8/3+portee-record+i0-ecrivain+porte-posee", crochet: true, portee: 2, i0: true, porte: "posee", mpp: rvMPP83},
-		{nom: "mpp8/3+portee-record+i0-ecrivain+porte-levee", crochet: true, portee: 2, i0: true, porte: "levee", mpp: rvMPP83},
+		{nom: "bis2-composants+porte-posee", crochet: true, porte: "posee"},
+		{nom: "bis2-composants+porte-levee", crochet: true, porte: "levee"},
+		{nom: "bis2-composants+etat-sans-liste", crochet: true, porte: "chassis", etatSansListe: true},
+		{nom: "bis2-composants+etat-sans-liste+porte-posee", crochet: true, porte: "posee", etatSansListe: true},
+		{nom: "temoin:bis2-composants+boucle-decalee+1", crochet: true, porte: "chassis", decale: 1},
+		{nom: "temoin:bis2-composants+boucle-decalee-1", crochet: true, porte: "chassis", decale: -1},
+		{nom: "temoin:mpp8/3+bis2-composants+boucle-decalee+1", crochet: true, porte: "chassis", mpp: rvMPP83, decale: 1},
+		{nom: "mpp8/3+bis2-composants+porte-posee", crochet: true, porte: "posee", mpp: rvMPP83},
+		{nom: "mpp8/3+bis2-composants+porte-levee", crochet: true, porte: "levee", mpp: rvMPP83},
 		{nom: "mpp8/3+production", porte: "chassis", mpp: rvMPP83},
-		{nom: "mpp8/3+portee-record+i0-ecrivain", crochet: true, portee: 2, i0: true, porte: "chassis", mpp: rvMPP83},
-		{nom: "mpp8/3+portee-record+i0-ecrivain+etat-sans-liste", crochet: true, portee: 2, i0: true, porte: "chassis", etatSansListe: true, mpp: rvMPP83},
-		{nom: "mpp8/3+portee-etat+etat-sans-liste", crochet: true, portee: 1, porte: "chassis", etatSansListe: true, mpp: rvMPP83},
+		{nom: "mpp8/3+bis2-composants", crochet: true, porte: "chassis", mpp: rvMPP83},
+		{nom: "mpp8/3+bis2-composants+etat-sans-liste", crochet: true, porte: "chassis", etatSansListe: true, mpp: rvMPP83},
 	}
 }
 
@@ -75,7 +70,7 @@ func rvSurAncre(pay []byte, q int, b keyframeBorne, slotSuivant int) bool {
 // TestRVehTi40Variantes : l A/B des lectures, par film et par classe de chassis.
 func TestRVehTi40Variantes(t *testing.T) {
 	racine, sortie, films, physique, _ := rvEnv(t)
-	defer func() { bis2Intercepteur, b2vPorte, rvPortee, rvV = nil, false, false, rvVariante{} }()
+	defer func() { bis2Intercepteur, b2vPorte, rvV = nil, false, rvVariante{} }()
 	lignes := []string{"film\tbuild\tvariante\tclasse\trecords\tfermes\tvoisins\tvoisins_fermes\tn2_taille_vehicule\t" +
 		"sous_sur_ancre\tsous\tsur\tdesync"}
 	for _, id := range films {
@@ -84,7 +79,7 @@ func TestRVehTi40Variantes(t *testing.T) {
 			continue
 		}
 		for _, v := range rvVariantes() {
-			rvV, rvPortee = v, v.portee >= 1
+			rvV = v
 			prec := f.fc.ProfilDeBalayage().MPP
 			if v.mpp.Lead > 0 {
 				f.fc.PoserMPP(v.mpp)
@@ -162,8 +157,8 @@ func rvModal(m map[uint64]int) string {
 // taille est la valeur que presque tous les records portent.
 func TestRVehTi40ChercheN2(t *testing.T) {
 	racine, sortie, films, physique, _ := rvEnv(t)
-	defer func() { bis2Intercepteur, b2vPorte, rvPortee, rvV = nil, false, false, rvVariante{} }()
-	rvV, rvPortee = rvVariante{nom: "cherche", porte: "chassis"}, false
+	defer func() { bis2Intercepteur, b2vPorte, rvV = nil, false, rvVariante{} }()
+	rvV = rvVariante{nom: "cherche", porte: "chassis"}
 	lignes := []string{"film\tbuild\tb14\tvaleur\tdecalage_apres_mpp\trecords\trecords_b14_du_film"}
 	for _, id := range films {
 		f, fin := rvOuvrir(t, racine, id, "campagne/r-veh-cherche-n2")
@@ -210,8 +205,8 @@ func TestRVehTi40ChercheN2(t *testing.T) {
 // records par (chassis, porte bVar14).
 func TestRVehTi40BitsEtat(t *testing.T) {
 	racine, sortie, films, physique, _ := rvEnv(t)
-	defer func() { bis2Intercepteur, b2vPorte, rvPortee, rvV = nil, false, false, rvVariante{} }()
-	rvV, rvPortee = rvVariante{nom: "bits", porte: "chassis"}, false
+	defer func() { bis2Intercepteur, b2vPorte, rvV = nil, false, rvVariante{} }()
+	rvV = rvVariante{nom: "bits", porte: "chassis"}
 	n, _ := strconv.Atoi(os.Getenv("CAMPAGNE_BITS_N"))
 	if n <= 0 {
 		n = 2

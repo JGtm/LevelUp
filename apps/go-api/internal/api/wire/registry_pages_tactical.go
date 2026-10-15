@@ -55,6 +55,7 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 		WithPlayerMatches(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
+		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
 		WithWeaponLabels(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
 		WithReplay(r.replayServiceFor(pdb)).
 		// LES PISTES DE L ARTEFACT (sequence d une mort) : meme racine d artefacts que le service de rejeu.

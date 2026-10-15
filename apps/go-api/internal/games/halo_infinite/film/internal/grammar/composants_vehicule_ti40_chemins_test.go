@@ -1,9 +1,6 @@
 package grammar
 
 import (
-	"os"
-	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -143,7 +140,7 @@ func verifierDeltaTi40(t *testing.T, chemin string, tr EntityTrace, fin int) {
 // par les deux chemins DELTA de production : la boucle de records [DecodeFrameRecords] (chemin
 // [decodeDelta], slot lie par le NEW qui le precede dans la trame) et le decodage a archetype
 // explicite de l inference de slot non lie ([decodeDeltaWithArch]). C est la moitie « records a
-// masque » de la regle de [Lecteur.etatComplet] ; [TestEtatCompletPoseParLaSeuleMarcheDEtatComplet]
+// masque » de la regle de [Lecteur.etatComplet] ; [TestEtatCompletEtPorteeNeSontEcritsQueParLaMarche]
 // n en garde que l ecriture litterale. MUTATIONS : `br.etatComplet = !false` dans [decodeDelta]
 // — ROUGE (chemin trame) ; dans [decodeDeltaWithArch] — ROUGE (chemin inference).
 func TestDeltaTi40LitSesComposants(t *testing.T) {
@@ -228,36 +225,5 @@ func TestLeCompteurPublieCompteLesLecturesDeI34(t *testing.T) {
 			t.Fatalf("apres un NEW ti=40 (i34 %v) : compteur %d, attendu %d", c.i34,
 				st.VehicleTypePhysicsByWriterLaw, c.compte)
 		}
-	}
-}
-
-// TestEtatCompletPoseParLaSeuleMarcheDEtatComplet : `etatComplet = true` n est ecrit que dans
-// `keyframe_fullstate_loop.go` (la marche sans masque, `FUN_142e2c690`) ; tout autre chemin
-// lit un record a masque et le laisse faux. Les tests sont hors portee (ils posent l etat
-// voulu). L ecriture par classe de caracteres evite que ce fichier se denonce lui-meme.
-func TestEtatCompletPoseParLaSeuleMarcheDEtatComplet(t *testing.T) {
-	motif := regexp.MustCompile(`etatComplet\s*[=]\s*true`)
-	files, err := filepath.Glob("*.go")
-	if err != nil || len(files) == 0 {
-		t.Fatalf("glob : %v (%d fichiers)", err, len(files))
-	}
-	hote := 0
-	for _, f := range files {
-		if strings.HasSuffix(f, "_test.go") {
-			continue
-		}
-		data, err := os.ReadFile(f) //nolint:gosec // fichiers du paquet lui-meme
-		if err != nil {
-			t.Fatalf("lecture %s : %v", f, err)
-		}
-		n := len(motif.FindAll(data, -1))
-		if f == "keyframe_fullstate_loop.go" {
-			hote = n
-		} else if n > 0 {
-			t.Errorf("%s pose etatComplet (%d fois) : seule la marche d etat complet le pose", f, n)
-		}
-	}
-	if hote != 1 {
-		t.Errorf("keyframe_fullstate_loop.go pose etatComplet %d fois, attendu 1", hote)
 	}
 }

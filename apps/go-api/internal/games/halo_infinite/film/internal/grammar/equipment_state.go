@@ -95,18 +95,6 @@ func consumeEquipmentDeployed(br *Lecteur) {
 	br.obs.publishEquipment(EquipDeployed, br.ReadBits(1), true)
 }
 
-// consumeEquipmentActivated mirroite le déser de ti=37 i21 : R(1) porte de polarité INVERSÉE
-// (la valeur R(3) n'est présente que si le bit vaut 0) ; sinon le corps FUN_1408f0ac4.
-// Coût : 4 bits (porte à 0) ou 1 + celui de FUN_1408f0ac4 (porte à 1) — inchangé.
-func consumeEquipmentActivated(br *Lecteur) {
-	if !br.ReadBit() {
-		br.obs.publishEquipment(EquipActivated, br.ReadBits(3), true)
-		return
-	}
-	consume1408f0ac4(br, 4) // FUN_1408f0ac4(...,4) @140c1dcbb : PAS de sonde, 9 + 2
-	br.obs.publishEquipment(EquipActivated, 0, false)
-}
-
 // consumeEquipmentCreator mirroite FUN_142ed45f4 (ti=37 i23) : R(1) porte INVERSÉE, puis R(5).
 func consumeEquipmentCreator(br *Lecteur) {
 	if !br.ReadBit() {
@@ -114,11 +102,6 @@ func consumeEquipmentCreator(br *Lecteur) {
 		return
 	}
 	br.obs.publishEquipment(EquipCreator, 0, false)
-}
-
-// consumeEquipmentEnergy mirroite FUN_141087bec (ti=37 i24) : R(14), sans porte.
-func consumeEquipmentEnergy(br *Lecteur) {
-	br.obs.publishEquipment(EquipEnergy, br.ReadBits(14), true)
 }
 
 // consumeEquipmentEnergyDelay mirroite FUN_140dda128 (ti=37 i26) : R(10), sans porte — le délai

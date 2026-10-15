@@ -122,6 +122,21 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+A match is ranked iff the `RankRecap.PostMatchCsr.InitialMeasurementMatches` of its skill payload is
+> 0 (the OpenSpartan Workshop rule; one decision point, `internal/sync/csr_writes.go`).
+`backfill-is-ranked` repairs `match_registry.is_ranked` from the per-match CSR already written
+(false/NULL to true only, never un-ranks, idempotent). **Server stopped**, `--dry-run` included;
+run it in this order, because LUSR excludes ranked matches and engagement skips matches already
+computed and derives its mode from `is_ranked`:
+```bash
+go run ./cmd/levelup backfill --all --shared-csr
+go run ./cmd/levelup backfill --all --csr
+go run ./cmd/levelup backfill-is-ranked --dry-run
+go run ./cmd/levelup backfill-is-ranked
+go run ./cmd/levelup backfill --all --lusr                       # canonical LUSR v2 recompute
+go run ./cmd/levelup backfill --all --engagement-scores --force  # engagement mode follows is_ranked
+```
+
 Rounds of round-decided modes (ADR 0032) — a column only the API can fill, so a re-sync
 never repairs it. **Server stopped** for `--apply` (single writer, ADR 0013):
 
@@ -336,7 +351,8 @@ go run ./cmd/levelup identity purge <xuid> --yes            # executes
 
 ```bash
 go run ./cmd/levelup seed career-ranks | citation-mappings | medals | rank-translations
-go run ./cmd/levelup seed-demo            # generate anonymized demo data (data/demo/)
+go run ./cmd/levelup seed-demo            # generate anonymized demo data (data/demo/), frozen replays included
+go run ./cmd/levelup seed-demo --emit-replay-picks   # pick one replay per game mode into config/demo/<gt>/<slug>.json (review, then commit)
 go run ./cmd/levelup migrate              # migrate data into the multi-title namespace
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```

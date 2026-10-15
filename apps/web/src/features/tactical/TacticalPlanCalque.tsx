@@ -29,7 +29,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 import type { TacticalGrid } from '@/lib/replay/heatPaint'
 
-import { lisserLaGrille } from './chaleurLissee'
+import { lisserLaGrille } from '@/lib/replay/chaleurLissee'
 import { peindreLePlan } from './planPaint'
 import { SEUIL_CLIC_PX } from './tueurs.logic'
 import { useTailleDuCanvas } from './useTailleDuCanvas'

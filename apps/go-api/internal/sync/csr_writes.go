@@ -4,8 +4,8 @@
 // Le sync nominal fetche déjà l'endpoint /hi/matches/{id}/skill pour tous les
 // matchs (cf. fetchMatchData → le path fetchedMatch dans engine_fetch.go). Ce fichier
 // branche un consommateur supplémentaire sur le même payload : pour chaque
-// match classé (registry.IsRanked == TRUE), on lit RankRecap dans MatchSkillData
-// et on persiste une ligne dans match_skill_rank côté player DB avec
+// match classé (SkillShowsRankedMatch : InitialMeasurementMatches > 0, décision D-10),
+// on lit RankRecap dans MatchSkillData et on persiste une ligne dans match_skill_rank côté player DB avec
 // rating_type='CSR'.
 //
 // L'UPSERT remplace silencieusement une éventuelle ligne LUSR pré-existante
@@ -93,9 +93,9 @@ func pluralS(n int) string {
 
 // ExtractCSRRowIfRanked construit une MatchCSRRow depuis le skillData d'un
 // joueur sur un match donné. Retourne nil si :
-//   - le match n'est pas classé (reg.IsRanked == false)
-//   - le skillData n'a pas de PostMatchCSR (RankRecap absent — match social
-//     mal classifié côté registry, ou résultat API tronqué)
+//   - le skillData ne désigne pas un match classé (SkillShowsRankedMatch : pas de
+//     PostMatchCSR, ou InitialMeasurementMatches == 0 — match social, résultat API
+//     tronqué). reg.IsRanked n'entre PAS dans la décision : c'en est une conséquence.
 //   - le PostMatchCSR a une signature de payload tronqué (Tier vide ET
 //     MeasurementMatchesRemaining = 0) — protection contre l'écrasement
 //     accidentel d'une CSR valide par un placeholder bidon issu d'un drift
@@ -105,10 +105,7 @@ func pluralS(n int) string {
 // Infinite partagent un seul rating CSR par joueur, contrairement au LUSR
 // qui distingue Open vs SoloAndDuo via GetLUSRChain.
 func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchCSRRow {
-	if reg == nil || !reg.IsRanked {
-		return nil
-	}
-	if skill == nil || skill.PostMatchCSR == nil {
+	if reg == nil || !SkillShowsRankedMatch(skill) {
 		return nil
 	}
 	post := skill.PostMatchCSR
@@ -310,4 +307,52 @@ func loadExistingCSRMatchIDs(ctx context.Context, playerDB *sql.DB) (map[string]
 		out[id] = true
 	}
 	return out, rows.Err()
+}
+
+// ─── Règle unique de classement ────────────────────────────────────────────────
+// Point de décision unique « ce match est-il classé ? ».
+//
+// # LA RÈGLE (décision D-10, plan ajustements 2026-10-14)
+//
+// Un match est classé SSI le RankRecap du joueur porte
+// `PostMatchCsr.InitialMeasurementMatches > 0`. C'est la règle d'OpenSpartan Workshop
+// (`MatchTableEntity.IsRanked`, champ extrait par `Queries/Select/PlayerMatches.sql`).
+// Un match social porte aussi un RankRecap, mais tout à zéro.
+//
+// # CE QUI NE DÉCIDE PLUS
+//
+// Ni le nom de la playlist (ancien décideur par nom, supprimé : le payload stats ne porte pas
+// le nom au moment du sync, 876 matchs classés sur 877 de 2026 sont restés `is_ranked = FALSE`),
+// ni `la référence des playlists classées` (la référence des playlists classées sert de CONTRÔLE : alerte de
+// couverture, cf. `platform/duckdb/csr_coverage_repo.go`), ni `reg.IsRanked` (qui est une CONSÉQUENCE de la
+// règle, posée par le sync, l'import OpenSpartan et le rattrapage `backfill-is-ranked`).
+//
+// Le sync, l'import OpenSpartan et les rattrapages CSR appellent tous SkillShowsRankedMatch ou
+// AnySkillShowsRankedMatch ; garde-rail : `csr_ranked_rule_guard_test.go`.
+// SkillShowsRankedMatch indique si le payload skill d'UN joueur désigne un match classé.
+func SkillShowsRankedMatch(skill *MatchSkillData) bool {
+	return skill != nil && skill.PostMatchCSR != nil && skill.PostMatchCSR.InitialMeasurementMatches > 0
+}
+
+// AnySkillShowsRankedMatch indique si au moins un joueur du match a un RankRecap de match
+// classé : c'est la valeur de `match_registry.is_ranked`, un attribut du match.
+func AnySkillShowsRankedMatch(skillByXUID map[string]*MatchSkillData) bool {
+	for _, skill := range skillByXUID {
+		if SkillShowsRankedMatch(skill) {
+			return true
+		}
+	}
+	return false
+}
+
+// ApplyRankedRule pose `reg.IsRanked` depuis le payload skill du match. À appeler UNE fois que le
+// skill du match est lu, AVANT les extractions CSR (qui n'en dépendent pas, mais dont le batch
+// écrit ensuite le registre). Les deux chemins de sync (V1 `fetchMatchData`, V2
+// `BuildBatchFromRawForV2WithMeta`) passent par ici ; sans payload skill, is_ranked reste faux
+// jusqu'au rattrapage (`backfill-is-ranked`).
+func ApplyRankedRule(reg *MatchRegistryRow, skillByXUID map[string]*MatchSkillData) {
+	if reg == nil {
+		return
+	}
+	reg.IsRanked = AnySkillShowsRankedMatch(skillByXUID)
 }

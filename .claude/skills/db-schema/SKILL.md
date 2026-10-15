@@ -40,6 +40,14 @@ qui peut donner la victoire au camp qui en a le moins : lire les manches, via
 des deux camps. NULL = inconnu (ligne antérieure au backfill, FFA, titre sans la donnée) → on
 retombe sur les points. Rattrapage : `cmd/backfill-team-rounds`.
 
+**Catégorie de mode** : `mode_category` se déduit de `pair_name` par UNE règle,
+`modelabel.InferCategory` (`internal/analysis/modelabel/category.go`) ; elle est écrite à
+l'insertion (`sync.ExtractRegistry` puis `EnrichRegistryFromMetadata`) et réécrite avec le nom
+de paire quand celui-ci se résout plus tard (`persist.RegistryNamesPersister`). La colonne n'est
+PAS indexée (migration `shared_recompute_mode_category_v1`) : ne jamais lui reposer d'index. Une
+valeur vide/NULL = titre qui ne la renseigne pas, jamais réécrite. Les filtres de l'interface
+filtrent sur `pair_name` (préfixes), pas sur la colonne.
+
 **Piège des vues** : `v_match_full` est un `SELECT mr.*` — DuckDB FIGE l'étoile à la création.
 Toute colonne ajoutée à `match_registry` ET lue par cette vue exige un second step de migration
 qui recrée la vue (modèle : `refresh_views_after_team_rounds`).

@@ -9,8 +9,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
 // CSRCoverageRepo expose la méthode GetCoverage(ctx, xuid).
@@ -84,7 +86,80 @@ func (r *CSRCoverageRepo) GetCoverage(ctx context.Context, playerSlug, xuid stri
 	cov.NeedsBackfill = cov.MatchSkillRankCSR.CoverageGap > 0 ||
 		(cov.Snapshots.Total == 0 && rankedInRegistry > 0)
 
+	// 5) contrôle croisé référence des playlists classées <-> CSR par match (alerte A3).
+	cov.ReferenceControl = r.controlAgainstReference(ctx, xuid)
+	if cov.ReferenceControl.Alert {
+		slog.WarnContext(ctx, "csr-coverage: la référence des playlists classées et le CSR par match divergent",
+			"player_slug", playerSlug, "xuid", xuid,
+			"reference_matches_without_csr", cov.ReferenceControl.ReferenceMatchesWithoutCSR,
+			"csr_matches_off_reference", cov.ReferenceControl.CSRMatchesOffReference)
+	}
+
 	return cov, nil
+}
+
+// playlistCSRCount : pour une playlist, les matchs du joueur et ceux qui portent un CSR.
+type playlistCSRCount struct {
+	playlistID string
+	matches    int
+	withCSR    int
+}
+
+// controlCSRAgainstReference applique la référence rankedplaylists à des comptes par playlist :
+// matchs de playlist classée sans CSR, et matchs à CSR sur une playlist hors référence. Pure.
+func controlCSRAgainstReference(rows []playlistCSRCount) domain.CSRReferenceControl {
+	var c domain.CSRReferenceControl
+	for _, row := range rows {
+		if rankedplaylists.IsRanked(row.playlistID) {
+			c.ReferenceMatchesWithoutCSR += row.matches - row.withCSR
+		} else {
+			c.CSRMatchesOffReference += row.withCSR
+		}
+	}
+	c.Alert = c.ReferenceMatchesWithoutCSR > 0 || c.CSRMatchesOffReference > 0
+	return c
+}
+
+// controlAgainstReference lit, par playlist, les matchs du joueur et ceux qui portent un CSR dans
+// shared (match_csrs_latest), puis applique la référence. Diagnostic : une lecture qui échoue
+// rend un contrôle vide (journalisé), jamais une erreur.
+func (r *CSRCoverageRepo) controlAgainstReference(ctx context.Context, xuid string) domain.CSRReferenceControl {
+	if r.pdb == nil || r.pdb.SharedReader == nil {
+		return domain.CSRReferenceControl{}
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "csr-coverage: contrôle de référence, base partagée indisponible", "err", err)
+		return domain.CSRReferenceControl{}
+	}
+	defer release()
+	rs, err := sharedDB.QueryContext(ctx, `
+		SELECT r.playlist_id, COUNT(DISTINCT r.match_id), COUNT(DISTINCT c.match_id)
+		FROM match_registry r
+		JOIN match_participants mp ON mp.match_id = r.match_id AND mp.xuid = ?
+		LEFT JOIN match_csrs_latest c
+		       ON c.match_id = r.match_id AND c.xuid = mp.xuid AND c.rating_type = 'CSR'
+		WHERE r.playlist_id IS NOT NULL AND r.playlist_id <> ''
+		GROUP BY r.playlist_id`, xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "csr-coverage: contrôle de référence, lecture échouée", "err", err)
+		return domain.CSRReferenceControl{}
+	}
+	defer rs.Close()
+	var rows []playlistCSRCount
+	for rs.Next() {
+		var row playlistCSRCount
+		if err := rs.Scan(&row.playlistID, &row.matches, &row.withCSR); err != nil {
+			slog.WarnContext(ctx, "csr-coverage: contrôle de référence, scan échoué", "err", err)
+			return domain.CSRReferenceControl{}
+		}
+		rows = append(rows, row)
+	}
+	if err := rs.Err(); err != nil {
+		slog.WarnContext(ctx, "csr-coverage: contrôle de référence, itération échouée", "err", err)
+		return domain.CSRReferenceControl{}
+	}
+	return controlCSRAgainstReference(rows)
 }
 
 // countRankedMatchesInRegistry interroge shared.match_registry via SharedReader.

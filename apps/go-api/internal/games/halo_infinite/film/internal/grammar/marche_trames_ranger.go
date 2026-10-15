@@ -87,13 +87,18 @@ func archetypeDuRecord(r *FrameRecord) int16 {
 }
 
 // composantLu rend l occurrence `k` d une trace : un composant non porte est infranchissable et
-// n a pas de largeur ; un composant porte est traverse — interprete quand un canal de la marche
-// l interprete (`interesse`, ADR 0037 IR-4), delimite sinon.
+// n a pas de largeur ; celui dont le lecteur du jeu a echoue (le dernier d une trace arretee,
+// [EntityTrace.Arret]) est arrete, cause nommee, sans largeur non plus ; un composant porte est
+// traverse — interprete quand un canal de la marche l interprete (`interesse`, ADR 0037 IR-4),
+// delimite sinon.
 func composantLu(t *EntityTrace, k int, interesse bool) lecture.Composant {
 	cr := &t.Comps[k]
 	c := lecture.Composant{Index: uint8(cr.Index), Debut: uint32(cr.StartBit)} //nolint:gosec // index < 64, position d un payload
 	if !cr.Ported {
 		c.Etat = lecture.EtatInfranchissable
+		if k == len(t.Comps)-1 && t.Arret != lecture.ArretAucun {
+			c.Etat, c.Arret = lecture.EtatArrete, t.Arret
+		}
 		return c
 	}
 	fin := t.EndBit

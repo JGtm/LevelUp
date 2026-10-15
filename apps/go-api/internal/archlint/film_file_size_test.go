@@ -273,7 +273,20 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 90 -> 91 (2026-10-09, lot `feat/aj-needler`), +33 : l entree v91 (la premiere prise de
 	// socle du cycle, son compteur, le releve intercale, la mesure au parc et sa contre-epreuve).
 	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3212,
+	// SCHEMA 91 -> 92 (2026-10-09, lot `feat/koth-colline`) : 3212, valeur de `feat/v75`.
+	// SCHEMA 92 -> 93 (2026-10-09, representation intermediaire 2.7.d1, ecrite 90 -> 91 sur la branche,
+	// renumerotee a la fusion de `f516d4bf4` puis de `46f203b09`), +43 : l entree v93 (l etat complet du
+	// bipede aux images-cles lu par la grammaire, les fenetres derriere elle, les revisions qui montent
+	// et celles qui ne montent pas, la mesure, la note de renumerotation). Exception ecrite, dans le
+	// commit qui monte `SchemaVersion`.
+	// SCHEMA 93 -> 94 (2026-10-14, lot F des ajustements), +26 : l entree v94 (le calque des poussees,
+	// sa couverture, les revisions qui montent, la mesure au parc). Exception ecrite, dans le commit qui
+	// monte `SchemaVersion`.
+	// SCHEMA 94 -> 95 (2026-10-14, lot « equipement porte » des ajustements), +28 : l entree v95 (les deux
+	// calques de l equipement porte, leur couverture, les revisions qui montent, la mesure au parc).
+	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	// SCHEMA 95 -> 96 (2026-10-15, meme lot), +22 : l entree v96 (les objets engendres et leur fin).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3331,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `fallback/registre_killsource.go` EST SORTI DE CETTE TABLE LE 2026-09-27 (lot J8.7) : les replis du
@@ -385,7 +398,14 @@ var plafondsParFichier = map[string]int{
 	// justification de la montee (trois compteurs de socles, socles releves, morts de bot publiees).
 	// SCHEMA 90 -> 91 (2026-10-09, lot `feat/aj-needler`) : 1425 -> 1430, la justification de la
 	// montee (un compteur de datation des socles, la premiere prise du cycle).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1434,
+	// SCHEMA 91 -> 92 (2026-10-09, lot `feat/koth-colline`) : 1434, valeur de `feat/v75`.
+	// SCHEMA 92 -> 93 (2026-10-09, representation intermediaire 2.7.d1) : 1434 -> 1439, la
+	// justification de la montee (etat complet du bipede aux images-cles lu par la grammaire).
+	// SCHEMA 93 -> 94 (2026-10-14, lot F des ajustements) : 1439 -> 1442, la justification de la
+	// montee (le calque des poussees du repulseur).
+	// SCHEMA 94 -> 95 (2026-10-14, lot « equipement porte ») : 1442 -> 1445, la justification de la montee.
+	// SCHEMA 95 -> 96 (2026-10-15, meme lot) : 1445 -> 1448, la justification de la montee.
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1448,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

@@ -37,15 +37,15 @@ type SharedMatchCSRRow struct {
 }
 
 // ExtractAllSharedCSRRows construit une SharedMatchCSRRow pour chaque joueur
-// du match ranked qui a un PostMatchCSR dans le payload skill. Skip les
-// joueurs sans données skill ou sans CSR (bots, joueurs non-classés du lobby).
-// Skip aussi si le match n'est pas ranked.
+// dont le payload skill désigne un match classé (SkillShowsRankedMatch, décision D-10).
+// Skip les joueurs sans données skill ou sans RankRecap de match classé (bots, joueurs
+// non-classés du lobby, match social). reg.IsRanked n'entre pas dans la décision.
 //
 // La saison est lue depuis reg.SeasonID (peuplé depuis matchInfo.SeasonId par
 // transforms.go). Fallback à "" si absent — les anciens matchs auront NULL
 // season_id, le display l'utilisera comme indication de saison inconnue.
 func ExtractAllSharedCSRRows(reg *MatchRegistryRow, skillByXUID map[string]*MatchSkillData) []SharedMatchCSRRow {
-	if reg == nil || !reg.IsRanked || len(skillByXUID) == 0 {
+	if reg == nil || len(skillByXUID) == 0 {
 		return nil
 	}
 	seasonID := ""
@@ -54,7 +54,7 @@ func ExtractAllSharedCSRRows(reg *MatchRegistryRow, skillByXUID map[string]*Matc
 	}
 	out := make([]SharedMatchCSRRow, 0, len(skillByXUID))
 	for xuid, skill := range skillByXUID {
-		if skill == nil || skill.PostMatchCSR == nil {
+		if !SkillShowsRankedMatch(skill) {
 			continue
 		}
 		post := skill.PostMatchCSR

@@ -12,14 +12,26 @@
 // Il ne remplace JAMAIS un vrai nom : chaque UPDATE porte la garde
 // `WHERE match_id = ? AND (<col> IS NULL OR <col> = <col_id>)`. Un nom déjà juste reste en
 // place ; réécrire un match déjà convergé n'affecte aucune ligne (idempotent). Il refuse un nom
-// vide. Il ne touche ni `mode_category` (indexée) ni aucune autre colonne.
+// vide. Il ne touche aucune autre colonne que celle du nom, sauf `mode_category` à l'écriture de la
+// paire (voir ci-dessous).
+//
+// # CATÉGORIE DE MODE
+//
+// `mode_category` se déduit du `pair_name` : quand le nom de la paire est inscrit, la catégorie
+// qui va avec l'est dans le MÊME UPDATE (l'appelant la calcule, `RegistryNameWrite.ModeCategory`,
+// par la règle canonique `analysis/modelabel`). Une ligne dont la catégorie est vide ou NULL
+// (titre qui ne la renseigne pas) la garde telle quelle. Écrire cette colonne n'est sûr que
+// parce qu'elle n'est PAS indexée : la migration `shared_recompute_mode_category_v1` retire
+// `idx_registry_mode_category`, et `sync.BackfillRegistryNames` ne transmet de catégorie que
+// si aucun index ne la couvre.
 //
 // # ART-SAFETY
 //
 // UN `UPDATE ... WHERE match_id = ?` par colonne et par match, tous ceux d'un match dans UNE
 // transaction, sous le writer exclusif de l'appelant — la forme autorisée par
-// `no_art_patterns_test.go`. Les quatre colonnes de nom ne sont pas indexées. Les quatre
-// statements sont des littéraux fermés (aucun nom de colonne interpolé).
+// `no_art_patterns_test.go`. Les colonnes écrites (quatre noms, plus `mode_category` avec la
+// paire) ne sont pas indexées. Les statements sont des littéraux fermés (aucun nom de colonne
+// interpolé).
 //
 // # CE QUE CE PERSISTER NE DÉCIDE PAS
 //
@@ -52,14 +64,32 @@ var registryNameUpdates = map[string]string{
 		WHERE match_id = ? AND (map_name IS NULL OR map_name = map_id)`,
 	RegistryNamePair: `UPDATE match_registry SET pair_name = ?
 		WHERE match_id = ? AND (pair_name IS NULL OR pair_name = pair_id)`,
+	registryNamePairWithCategory: `UPDATE match_registry SET pair_name = ?,
+		mode_category = CASE WHEN NULLIF(mode_category, '') IS NULL THEN mode_category ELSE ? END
+		WHERE match_id = ? AND (pair_name IS NULL OR pair_name = pair_id)`,
 	RegistryNameGameVariant: `UPDATE match_registry SET game_variant_name = ?
 		WHERE match_id = ? AND (game_variant_name IS NULL OR game_variant_name = game_variant_id)`,
 }
 
+// registryNamePairWithCategory : clé interne du statement « paire + catégorie » (jamais un genre
+// d'asset reçu de l'appelant).
+const registryNamePairWithCategory = "pair+mode_category"
+
 // RegistryNameWrite : le nom à inscrire dans une colonne (Kind = RegistryName*) d'un match.
+// ModeCategory (genre paire seulement) : la catégorie de mode du nom inscrit ; vide = ne pas la
+// toucher.
 type RegistryNameWrite struct {
-	Kind string
-	Name string
+	Kind         string
+	Name         string
+	ModeCategory string
+}
+
+// statementAndArgs choisit le statement fermé et ses arguments pour une écriture.
+func (w RegistryNameWrite) statementAndArgs(matchID string) (string, []any) {
+	if w.Kind == RegistryNamePair && w.ModeCategory != "" {
+		return registryNameUpdates[registryNamePairWithCategory], []any{w.Name, w.ModeCategory, matchID}
+	}
+	return registryNameUpdates[w.Kind], []any{w.Name, matchID}
 }
 
 // RegistryNamesPersister réinscrit les noms d'assets d'un match. `db` doit porter un write lease
@@ -83,11 +113,14 @@ func (p *RegistryNamesPersister) WriteMatchNames(ctx context.Context, matchID st
 		return nil, errors.New("persist: WriteMatchNames: matchID vide")
 	}
 	for _, w := range writes {
-		if _, ok := registryNameUpdates[w.Kind]; !ok {
+		if _, ok := registryNameUpdates[w.Kind]; !ok || w.Kind == registryNamePairWithCategory {
 			return nil, fmt.Errorf("persist: WriteMatchNames %s: genre inconnu %q", matchID, w.Kind)
 		}
 		if strings.TrimSpace(w.Name) == "" {
 			return nil, fmt.Errorf("persist: WriteMatchNames %s: nom vide pour %s", matchID, w.Kind)
+		}
+		if w.ModeCategory != "" && w.Kind != RegistryNamePair {
+			return nil, fmt.Errorf("persist: WriteMatchNames %s: catégorie de mode refusée pour %s", matchID, w.Kind)
 		}
 	}
 	if len(writes) == 0 {
@@ -101,7 +134,8 @@ func (p *RegistryNamesPersister) WriteMatchNames(ctx context.Context, matchID st
 
 	var ecrits []string
 	for _, w := range writes {
-		res, err := tx.ExecContext(ctx, registryNameUpdates[w.Kind], w.Name, matchID)
+		stmt, args := w.statementAndArgs(matchID)
+		res, err := tx.ExecContext(ctx, stmt, args...)
 		if err != nil {
 			return nil, fmt.Errorf("persist: WriteMatchNames update %s %s: %w", w.Kind, matchID, err)
 		}

@@ -210,7 +210,7 @@ describe('failureMessageFromCode — unit', () => {
       { code: 'owner_low_confidence', expected: /vérifier/i },
       { code: 'not_openspartan_db', expected: /OpenSpartan reconnaissable/i },
       { code: 'upload_too_large', expected: /max 1 Go/i },
-      { code: 'demo_mode', expected: /mode démo/i },
+      { code: 'demo_mode_forbidden', expected: /mode démo/i },
       { code: 'halo_auth_required', expected: /Xbox\/Halo/i },
     ]
     for (const c of cases) {

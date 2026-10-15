@@ -23,6 +23,7 @@
  * repasser sous le seuil de 500 lignes. Ce fichier-ci garde LA FONCTION, et les re-publie.
  */
 import { normalizeScoreTimeline } from '@/lib/replay/scoreTimeline'
+import { markTranslocationCuts } from '@/lib/replay/translocationCuts'
 import type { ReplayDocument } from '@/lib/api/types'
 
 import type { ReplayDocumentReady, ReplayStep, ReplayXY } from './replayReadyTypes'
@@ -160,6 +161,18 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // au schéma 38, ou film sans translocateur — `layers[translocations]` /
     // `coverage.translocations` distinguent les deux.
     translocations: raw.translocations ?? [],
+    // LES POUSSÉES DU RÉPULSEUR (schéma 94) : absent = artefact antérieur, ou film sans poussée —
+    // `layers[knockbacks]` / `coverage.knockbacks` distinguent les deux.
+    knockbacks: raw.knockbacks ?? [],
+    // L'ÉQUIPEMENT PORTÉ (schéma 95) : ses deux tableaux imbriqués se comblent aussi.
+    carriedEquipment: (raw.carriedEquipment ?? []).map((c) => ({
+      ...c,
+      energy: c.energy ?? [],
+      uses: c.uses ?? [],
+      tracked: c.tracked ?? [],
+    })),
+    // LES POSES DE FAILLE (schéma 95) : absent = artefact antérieur, ou film sans translocateur posé.
+    riftPoses: raw.riftPoses ?? [],
     // LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée plate par geste (t, slot, family),
     // l'usage MESURÉ du propulseur. Absent = artefact antérieur au schéma 38, film sans
     // propulseur, ou palette non classée — `layers[abilityImpulses]` /
@@ -242,7 +255,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // LES RAFALES DE TIR CONTINU (schéma 71) : le tableau ET ses passages muets comblés.
     bursts: (raw.bursts ?? []).map((b) => ({ ...b, holes: b.holes ?? [] })),
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
-    tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
+    // LES TRANSLOCATIONS COUPENT LA PISTE (aj14-b) : l'échantillon d'arrivée porte `cut`, que
+    // `positionAt` / `trailAt` lisent comme une rupture — ni glissade, ni trait de traînée.
+    tracks: markTranslocationCuts(
+      (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
+      raw.translocations ?? [],
+    ),
     // LA VIE DE CHAQUE VÉHICULE (schéma 29). Absent = artefact antérieur, ou film sans véhicule
     // (`layers[vehicles]` / `coverage.vehicles` distinguent les deux). LES DEUX TABLEAUX
     // IMBRIQUÉS SE COMBLENT AUSSI

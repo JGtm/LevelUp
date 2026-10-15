@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/lecture"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -109,9 +110,18 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 	}
 	t.Mask = ^uint64(0) // etat complet : aucun masque de presence, tous les composants presents
 	br.etatComplet = true
-	traverseComponentLoop(br, arch, &t)
+	traverserSousLaPortee(br, arch, &t)
 	t.EndBit = br.BitPos()
 	return t
+}
+
+// traverserSousLaPortee joue la boucle de composants d etat complet (`FUN_142e2c690`) sous la
+// portee qu elle pose : `DAT_144e61ea0 = 1` a son entree (142e2c6b8), remis a 0 sur sa sortie
+// commune (142e2c76a), atteinte aussi quand un lecteur de composant echoue.
+func traverserSousLaPortee(br *Lecteur, arch Archetype, t *EntityTrace) {
+	br.portee = true
+	traverseComponentLoop(br, arch, t)
+	br.portee = false
 }
 
 // consumeFullStateDefaultBlock joue ce que `FUN_142e2bfd0` lit ENTRE l'en-tete par entite et la
@@ -129,18 +139,46 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 // `default_state_n2_constant_test.go` ecarte « trois a quinze records par groupe dont le `n1`
 // s'ecarte du modal (en pratique 0) » en les appelant des ANCRES FORTUITES. L'ecrivain dit
 // qu'un `n1` nul est un record LEGITIME sans etat par defaut.
+//
+// LA PORTEE `DAT_144e61ea0` ([Lecteur.portee]) couvre l'etat par defaut et le mot de controle,
+// pas `n2` : `FUN_142e2bfd0` la pose juste avant `vtable[0x60]` (142e2c46f) et la remet a 0 apres
+// le mot de controle (142e2c530), dans la branche `n1 > 0` seulement.
 func consumeFullStateDefaultBlock(br *Lecteur, ti uint32, sansEtatParDefaut bool) bool {
 	// LA LARGEUR DU MOT DE TAILLE VIENT DU PROFIL QUE LE LECTEUR PORTE (lot 2.2.c).
 	mot := uint(br.cadre().MotDeTailleBits) //nolint:gosec // largeur de profil, bornee a 32
 	n1 := int32(br.ReadBits(mot))           //nolint:gosec // 32 bits lus, compares SIGNES
 	if !sansEtatParDefaut && n1 > 0 {       // FUN_142e2bfd0 : `if (0 < (int)uVar7)`, comparaison SIGNEE
+		br.portee = true
 		consumeKeyframeDefaultState(br, ti)
 		if br.p.Grammaire.ControleDeCorruption {
 			// FUN_142e2bfd0 : mot de controle INCONDITIONNEL (pas de R(1) de garde ici,
 			// contrairement au controle PAR COMPOSANT de FUN_142e2c690).
 			br.ReadBits(mot)
 		}
+		br.portee = false
 	}
 	// n2 : meme comparaison SIGNEE ; > 0 => vtable[0x88] puis la boucle de composants.
 	return int32(br.ReadBits(mot)) > 0 //nolint:gosec // idem
+}
+
+// L ECHEC D UN LECTEUR DE COMPOSANT DU JEU est nomme par [lecture.CauseDArret] (`position_non_finie`,
+// `largeur_handle_moteur_un`, nees de la branche absolue d i0 sous la portee,
+// [consumeAbsoluSousLaPortee] ; `jeu_d_armes_refuse`, le jeu d armes i42 ou i38,
+// [arreterSiJeuDArmesRefuse]) : son deserialiseur rend faux, et la boucle de composants s arrete
+// sur lui ([EntityTrace.Arret]). La structure de lecture porte la cause sur l occurrence
+// ([lecture.EtatArrete]) : ce n est pas un composant non porte (plan LK, D-12).
+
+// nomDeLArret rend le nom d une cause d echec de lecteur, tel que les mesures l ecrivent.
+func nomDeLArret(a lecture.CauseDArret) string {
+	switch a {
+	case lecture.ArretAucun:
+		return "aucun"
+	case lecture.ArretPositionNonFinie:
+		return "position_non_finie"
+	case lecture.ArretLargeurHandleMoteurUn:
+		return "largeur_handle_moteur_un"
+	case lecture.ArretJeuDArmesRefuse:
+		return "jeu_d_armes_refuse"
+	}
+	return "arret_inconnu"
 }

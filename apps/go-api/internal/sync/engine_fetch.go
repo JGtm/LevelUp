@@ -117,6 +117,9 @@ func (e *SyncEngine) fetchMatchData(
 				fm.SkillError = fmt.Errorf("GetMatchSkill: %w", skillErr)
 			} else if len(skillData) > 0 {
 				fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
+				// is_ranked du registre : conséquence de la règle unique (D-10). Le payload
+				// stats ne dit rien du classement.
+				ApplyRankedRule(fm.Registry, skillData)
 				// CSR par-match (player DB) : extraction depuis RankRecap si
 				// match classé. L'écriture en player DB est différée au batch
 				// (batch.PlayerData.SkillRank, chemin Collect→Persist).

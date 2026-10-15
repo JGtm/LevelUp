@@ -58,8 +58,6 @@ describe('bilan, fil et fiches', () => {
     expect(warthog.taken).toEqual([2, 1, 0, 0])
     expect(warthog.kept.every((n) => n === 0) && warthog.dropped.every((n) => n === 0)).toBe(true)
     expect(section.totals).toEqual([3, 1, 0, 1])
-    // Les pertes du bilan ne parlent que des bonus.
-    expect(sheets.losses?.us.taken).toBe(12)
   })
 })
 
