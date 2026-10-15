@@ -149,17 +149,17 @@ Décisions fermes :
     `accuracy_damage_taken_native_unavailable`) supprimés du web (traduction, types, tests, i18n) après grep du dépôt entier ;
     découverte correspondante de la section 3 retirée.
   - [x] E4.7c Test de `internal/service` en échec une fois : rejeu `-count=20`, cause nommée ou note en section 3.
-- [ ] E4.8 (ajout du superviseur, 2026-10-15) : faire remonter l'erreur des méthodes de repo/adapter de la vue match qui l'avalent
+- [x] E4.8 (ajout du superviseur, 2026-10-15) : faire remonter l'erreur des méthodes de repo/adapter de la vue match qui l'avalent
   (le service les classe alors par E4.7a / dédiée), adapter les autres appelants (log ERROR avant dégradation), `eventsRepo.Load` /
   awards / friendsExtras dans le contrat ; « table absente / titre sans la donnée » distinguée par erreur typée ou capability
   existante, jamais par un nil générique ; tests rouge puis vert. Découpé le 2026-10-15 après le STOP d'inventaire (> 12) :
   - [x] E4.8a Lot A : #1 `GetMatchEvents`/`lireEvenementsDuMatch`, #2 `GetMatchKillSources`, #3 `GetMatchKillAssists`, #4 `GetMatchKVPairs`,
     #12 `GetMatchObjectiveScore`, #13 `loadMatchObjectiveStats`, #14 `loadMatchBombStats`, + `eventsRepo.Load` et awards (service).
-  - [ ] E4.8b Lot B (exécutant neuf) : #5-#11 (`GetMatchMedia`, `GetMatchExpectedStats`, `GetHistoryForAvg`/`Bulk`, `GetMatchSkillRank`,
+  - [x] E4.8b Lot B (exécutant neuf) : #5-#11 (`GetMatchMedia`, `GetMatchExpectedStats`, `GetHistoryForAvg`/`Bulk`, `GetMatchSkillRank`,
     `GetMatchSharedCSRs`, `GetMatchBulkMedals`, `GetMatchBulkWeaponKills`+`bulkWeaponKillsFromSource`), #15 `GetPlayerAssistsModel`,
     #16 à vérifier (`GetPlayerMatchStats`, `GetMatchEnrichment`), les 3 sites de lignes ignorées sans compteur (#17 : `scanAssistPairs`,
     `lookupMedalMeta`, `lookupLabelsByID`) et le changement du port `FriendsExtrasResolver` (port interne, autorisé : pas de contrat d'API).
-  - [ ] E4.8c Garde-rail archlint (AST ou grep, modèle des ratchets existants) : interdit dans `platform/duckdb/match_view_repo*.go` un
+  - [x] E4.8c Garde-rail archlint (AST ou grep, modèle des ratchets existants) : interdit dans `platform/duckdb/match_view_repo*.go` un
     `return nil, nil` / valeur zéro + `nil` dans une branche `if err != nil`, et un `continue` dans une branche `if err != nil` sans appel
     `slog`/compteur ; allowlist VIDE à la fin de E4.8b, mutation vérifiée.
   - [x] E4.8-inventaire : STOP déclenché (> 12), inventaire au journal ; découpage validé par le superviseur (a / b / c ci-dessus).
@@ -231,6 +231,8 @@ diff E5 (lot persist/sync).
 - E4.7c : un échec unique de `go test ./internal/service/` (avec `./internal/domain/`, cache froid) pendant E4, non reproduit : `go test -count=20 -run "TestMatchView_|TestDetectPartialMatchData|TestMatchViewService" ./internal/service/` vert puis 3 passes complètes vertes. Cause non établie ; si elle revient : `go test -count=1 ./internal/service/ 2>&1 | grep -E "^(--- FAIL|panic)"` pour relever le nom.
 
 - E4.8a : `loadAwardsForScoreboard`, `MatchViewService.WithAwardsRepo` et le champ `awardsRepo` n'ont aucun appelant de production : code mort (règle n°7), non traité. `match_bomb_stats` n'est pas exporté dans le snapshot (`ops/snapshot_export.go`) : sur un match servi du snapshot, les statistiques d'Assaut sont absentes de la vue (comportement antérieur inchangé, désormais constaté explicitement dans `loadMatchBombStats`) ; à corriger par l'export de la table ou une lecture live, hors E4.
+- E4.8b : l'AST du garde (E4.8c) a relevé trois sites HORS inventaire, traités parce que l'allowlist est vide : `GetMatchNeighbors` et `GetMatchNeighborsFiltered` (voisins vides sur lecteur indisponible ou requête en échec) et `LookupMedalMetaByName` (WARN + map vide). Restent HORS garde (ils ne renvoient pas d'`error`) et non traités : `lookupMapImageURL`, `ResolveAssetNamesBulk` ignoré par `_` et la résolution de nom d'asset de `GetMatchMeta` (`match_view_repo.go:169`, `:305-333`), `lookupWeaponMeta`/`resolveWeaponMeta` (libellés d'armes), `loadKnownModesEN` ; côté service, `computeExpectedAssists` rend `nil` en silence quand `GetAssistsCoef` échoue, et `GetMatchNeighbors`/`GetMatchNeighborsFiltered` (service) rendent encore des voisins vides + nil sur erreur du repo (journal passé en ERREUR, comportement inchangé). Le garde ne couvre pas non plus `if err == nil && ...` (forme du lecteur illisible silencieux : `match_view_repo.go:333`, `lookupMapImageURL`).
+- E4.8b : `friendsByXUID` (`wire/registry_pages.go`) incluait TOUS les profils du titre, `auth_only` compris (aucune player DB de stats) : avec une panne remontée, chaque vue contenant un tel ami serait passée en `section_unavailable`. Corrigé dans le même lot (`friendProfilesByXUID`, test), parce que le changement de port rendait la différence absence/panne observable. Reste : un profil SUIVI dont la player DB n'a jamais été créée ou migrée (ami onboardé, jamais synchronisé) est désormais une panne dite pour ses vues ; à surveiller au premier déploiement (journal ERROR `friends_extras: open player db failed` / `load ... failed`).
 
 ## 4. Journal
 
@@ -561,3 +563,55 @@ diff E5 (lot persist/sync).
        `continue` muet. `GetPlayerMatchStats`/`GetMatchEnrichment` (#16) : vérifier que la structure vide n'est rendue que pour `sql.ErrNoRows`.
     7. Gate habituel + `go test -count=1 -tags=integration ./internal/platform/duckdb/` ; mutation rouge par méthode (remettre le fichier HEAD
        le temps de lancer les tests neufs). Puis E4.8c (garde-rail archlint) avec allowlist vide.
+
+- 2026-10-15 (E4.8b + E4.8c, exécutant Sonnet) : lot B et garde-rail faits, gate vert. Aucun `persist`/`sync`. `match_view_data_loaders.go` 668 -> 601 L
+  (aucune ligne nette ajoutée : le bloc des amis est sorti dans `service/match_view_friends_extras.go`).
+  - **Méthodes traitées (erreur REMONTÉE)** : `GetMatchMedia`, `GetMatchExpectedStats`, `GetHistoryForAvg` + `GetHistoryForAvgBulk`, `GetMatchSkillRank`
+    (+ `resolveMatchRatingType` : (string, error)), `GetMatchSharedCSRs`, `GetMatchBulkMedals`, `GetMatchBulkWeaponKills` (+ la ligne illisible de
+    `tallyMatchKillSources` : `continue` + ERROR devenu erreur remontée, car un compte d'armes tronqué sous-estimerait des frags sans le dire),
+    `GetPlayerAssistsModel`, `GetPlayerMatchStats`, `GetMatchEnrichment` ; hors inventaire, relevés par le garde : `GetMatchNeighbors`,
+    `GetMatchNeighborsFiltered`, `LookupMedalMetaByName`. Libellés : `lookupMedalMeta` -> (map, error), `lookupLabelsByID` -> (map, error),
+    `lookupMedalCitationLabels` -> (map, error). `scanAssistPairs:180` : le `continue` est la ligne de PORTÉE seule (colonnes de paire NULL, état
+    nominal « mesuré, zéro assistant »), pas une ligne illisible : `[~]`, aucun changement. Port `FriendsExtrasResolver` : `(map, error)`.
+  - **Mécanismes de l'absence légitime (aucun nil déduit d'une erreur)** : (1) `sql.ErrNoRows` testé AVANT `err != nil` (joueur sans ligne : stats,
+    stats attendues, enrichissement, rang, modèle d'assists, voisins hors scope ; match absent du registre : repli sur le type brut du rang) ;
+    (2) sonde `relationExists` : `match_csrs_latest` (lecteur sans CSR), `v_weapon_kills` (relation PROPRE AU TITRE, absente du fichier d'un titre à
+    décodeur de film), `citation_mappings` (référentiel HINF seul, absent de la metadata Halo 5 : `lookupMedalCitationLabels` sonde avant de lire) ;
+    (3) base sociale non configurée (`SharedSocial == nil`) pour les médias ; (4) amis : xuid sans profil lisible = ignoré (`friendProfilesByXUID`
+    écarte le joueur courant et les `auth_only`). Vérifié snapshot : `match_participants`, `match_registry`, `medals_earned`, `match_csrs`,
+    `match_kill_events` y sont ; `v_weapon_kills` est title-owned (`sharedSnapshotTitleOwnedRaw`) d'où la sonde. Relations de la player DB
+    (`match_skill_rank_latest`, `player_match_enrichment_latest`, `player_assists_model`) : le target player de Halo 5 hérite du schéma HINF
+    complet (`steps_player_test.go`), leur absence est donc une base non migrée = panne.
+  - **Section secondaire** : libellés de médailles illisibles -> `GetMatchMedals` / `GetMatchBulkMedals` rendent les médailles (libellé replié sur
+    l'identifiant) ET `*domain.SectionDegradedError` (`medal_labels`) ; le service dit `section_unavailable`, pas `medals_unavailable`.
+  - **Appelants adaptés** : un seul appelant de production par méthode du repo (le chargeur de la vue) SAUF : `GetMatchSkillRank` /
+    `GetMatchEnrichment` / `GetPlayerAssistsModel` (`friends_extras_loader.go`, désormais erreurs jointes et remontées au service),
+    `GetPlayerAssistsModel` (`match_view_builders_summary.go:126` : ERROR avant le repli populationnel, valeur de repli servie ; `expected_assists.go:66`
+    et `teammates/teammates_squad_expected_fda.go:84` : WARN -> ERROR ; `platform/duckdb/squad_v2_adapter.go:291` renvoie déjà l'erreur),
+    `GetHistoryForAvgBulk` (`match_view_data_loaders.go` : `if err == nil` muet -> `failSection` dans `match_view_friends_extras.go`),
+    `GetMatchBulkWeaponKills` (`attachTopWeapons`, `match_view_repo_weapons_source.go` : WARN -> ERROR, arme favorite non calculée),
+    `lookupMedalCitationLabels` (`home_repo_medals_citations.go`, `medal_definitions_repo.go` : ERROR puis libellés repliés, comportement voulu),
+    `LookupMedalMetaByName` (`match_view_killfeed_medals.go` : WARN -> ERROR, le feed garde le nom brut), voisins (`service/match_view_service.go` :
+    WARN -> ERROR, voisins vides inchangés). `friendsExtras` : erreur classée `section_unavailable` par `failSection` avant `matchPartialReasons`.
+  - **E4.8c** : `archlint/match_view_repo_erreurs_remontees_test.go` (AST) : dans une branche `if <erreur> != nil` de `platform/duckdb/match_view_repo*.go`,
+    interdit un `return` dont la dernière valeur est `nil` (fonction renvoyant `error`) et un `continue` sans `slog.*` ni compteur. Allowlist VIDE.
+    Détecteur testé sur sources fabriquées (mauvaises : 2 manquements ; saines : 0). Mutation vérifiée puis retirée : `return nil, nil` réintroduit dans
+    `GetHistoryForAvg` -> rouge (`match_view_repo_extras.go:361`) ; `continue` réintroduit dans `tallyMatchKillSources` -> rouge. Le garde a relevé
+    13 sites avant correction, dont 3 hors inventaire.
+  - **Tests rouge puis vert** : repo (`platform/duckdb/match_view_repo_erreurs_remontees_lot_b_test.go`, tag `integration`) : rouge obtenu en remettant
+    à HEAD `match_view_repo.go`, `_extras.go`, `_neighbors_skill.go`, `_weapons_source.go` (10 tests en échec), puis par mutation ciblée des retours
+    d'erreur de `_weapons.go`, `_medals.go`, `medal_citation_fallback.go` (médailles, libellés, citations, armes SQL), tout restauré. Service
+    (`match_view_unavailable_lot_b_test.go`) : mutation des deux `failSection` de `match_view_friends_extras.go` -> 2 tests rouges ; journal ERROR du
+    modèle d'assists -> rouge par mutation du niveau. Loader des amis : tests réécrits (le résolveur remonte l'ouverture ratée, une absence n'est pas une
+    panne) ; rouge par non-compilation sur l'ancienne signature. Bout en bout service + HTTP (`handlers/match_view_unavailable_lot_b_e2e_test.go`) : 8 sources
+    du lot B (rang, CSR partagés, médias, stats attendues, médailles, armes, historique, amis) -> 200 + `section_unavailable` + `no-store`, puis rétablie ->
+    vue complète sans en-tête. Un e2e à travers un vrai DuckDB jusqu'au HTTP reste impossible (cycle d'import `service` <-> `platform/duckdb` pour un test
+    interne au paquet duckdb) : chaîne couverte maillon par maillon, comme au lot A. Wire : `TestFriendProfilesByXUID`.
+  - **Fixtures corrigées (masquées par l'ancien `nil, nil`)** : le seed `seedPlayerSchema` n'avait pas `match_participants.backfill_bits` (lue par Q17 :
+    `TestMatchViewRepo_GetPlayerMatchStats_NotFound` passait en avalant un Binder Error). Corrigé selon la recette des cliquets de seed : colonne ajoutée au
+    seed, `Q17PlayerMatchStats` enrôlée dans `seedParityCarte`, entrée `backfill_bits` retirée de `ratchetColonnesHorsPerimetre`.
+  - **Gate** : `go vet` (+ `-tags=integration` sur `platform/duckdb`) sans diagnostic ; `go test -count=1` sur `domain`, `port`, `service/...`,
+    `platform/duckdb`, `api/...`, `archlint` : ok ; `go test -count=1 -tags=integration ./internal/platform/duckdb/` ok ; `golangci-lint --new-from-rev=HEAD`
+    sur les paquets touchés : 0 issue. Web non touché, contrat OpenAPI inchangé (golden `internal/api` vert) : pas de `make check-types` / `test-web`.
+  - **E4 CLOSE** : E4.1 à E4.8c statués `[x]` ; recette navigateur de la vue match `[!]` (voir plus haut : le serveur local sert `feat/v75`), reportée au
+    gate visuel de l'utilisateur.
