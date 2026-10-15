@@ -358,7 +358,7 @@ func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string
 		    OR EXISTS (SELECT 1 FROM highlight_events he WHERE he.match_id = mr.match_id)
 		  )%s
 		ORDER BY mr.start_time ASC
-	`, MBitEvents, analysis.SQLExcludeCampaignByMatchID(ctxkeys.TitleSlug(ctx), "mr.match_id"))
+	`, MBitEvents, analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id"))
 	rows, err := sharedDB.QueryContext(ctx, q, xuid)
 	if err != nil {
 		return nil, err

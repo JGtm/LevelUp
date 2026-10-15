@@ -183,7 +183,7 @@ func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port
 		pdb.XUID,
 		pdb.Gamertag,
 		provider,
-	)
+	).WithTitle(pdb.TitleSlug)
 	return service.NewMatchExclusionService(
 		duckdb.NewMatchExclusionRepo(pdb),
 		recomputer,

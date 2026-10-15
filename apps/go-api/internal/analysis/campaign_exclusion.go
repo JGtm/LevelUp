@@ -22,8 +22,11 @@
 package analysis
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // campaignExcludedVariantIDs : game_variant_id masqués à la LECTURE, par titre.
@@ -160,4 +163,22 @@ const CampaignExclusionToken = "/*__EXCLUDE_CAMPAIGN__*/"
 // requête (ex. "r").
 func SQLResolveCampaignExclusion(query, titleSlug, alias string) string {
 	return strings.Replace(query, CampaignExclusionToken, SQLExcludeCampaignVariants(titleSlug, alias), 1)
+}
+
+// SQLExcludeCampaignByMatchIDCtx : exclusion de la Campagne pour les lecteurs de sync qui n'ont
+// que le contexte. Titre posé dans le contexte : forme title-aware. Titre ABSENT : forme
+// title-agnostic (tous les GUID de Campagne connus, no-op sur une base qui n'en porte aucun) —
+// jamais le repli silencieux de ctxkeys.TitleSlug sur Infinite, qui laisserait la Campagne d'un
+// titre dont le contexte n'a pas été renseigné.
+func SQLExcludeCampaignByMatchIDCtx(ctx context.Context, matchIDCol string) string {
+	if slug, ok := ctxkeys.TitleSlugIfSet(ctx); ok {
+		return SQLExcludeCampaignByMatchID(slug, matchIDCol)
+	}
+	return SQLExcludeAllCampaignByMatchID(matchIDCol)
+}
+
+// SQLResolveCampaignExclusionCtx : résout CampaignExclusionToken comme SQLExcludeCampaignByMatchIDCtx,
+// sur la colonne `alias`.match_id (même règle de titre posé / absent).
+func SQLResolveCampaignExclusionCtx(ctx context.Context, query, alias string) string {
+	return strings.Replace(query, CampaignExclusionToken, SQLExcludeCampaignByMatchIDCtx(ctx, alias+".match_id"), 1)
 }

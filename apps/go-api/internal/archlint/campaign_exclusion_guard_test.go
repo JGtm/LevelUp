@@ -65,6 +65,8 @@ var resolveursCampagne = map[string]bool{
 	"excludeCampaignByMatchID":          true,
 	"excludeAllCampaignByMatchID":       true,
 	"campaignExcl":                      true,
+	"SQLExcludeCampaignByMatchIDCtx":    true,
+	"SQLResolveCampaignExclusionCtx":    true,
 }
 
 // jetonsCampagne : identifiants du jeton d'exclusion (résolu au call site).

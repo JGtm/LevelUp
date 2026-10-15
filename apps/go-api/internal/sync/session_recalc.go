@@ -46,7 +46,7 @@ ORDER BY r.start_time ASC`
 // loadSessionMatchRowsDirect charge les matchs depuis shared DB (sans préfixe "shared.").
 func loadSessionMatchRowsDirect(ctx context.Context, sharedDB *sql.DB, xuid string) ([]domain.SessionMatchRow, error) {
 	rows, err := sharedDB.QueryContext(ctx,
-		analysis.SQLResolveCampaignExclusion(sessionMatchesSQL, ctxkeys.TitleSlug(ctx), "r"), xuid, xuid)
+		analysis.SQLResolveCampaignExclusionCtx(ctx, sessionMatchesSQL, "r"), xuid, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadSessionMatchRowsDirect: %w", err)
 	}

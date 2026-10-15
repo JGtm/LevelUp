@@ -139,7 +139,7 @@ const campagneXUID = "2533274800000001"
 var campagneTitres = []struct {
 	slug    string
 	masquee bool
-}{{"halo_5", true}, {"halo_infinite", false}}
+}{{"halo_5", true}, {"halo_infinite", false}, {"", true}}
 
 func campagneAttendu(masquee bool, sans, avec []string) []string {
 	if masquee {
@@ -184,6 +184,9 @@ func seedCampagneArenaEtCampagne(t *testing.T, db *sql.DB) {
 }
 
 func campagneCtx(slug string) context.Context {
+	if slug == "" { // contexte SANS titre : la Campagne reste exclue (jamais le repli sur Infinite)
+		return context.Background()
+	}
 	return ctxkeys.WithTitleSlug(context.Background(), slug)
 }
 
@@ -259,5 +262,21 @@ func TestCampaignExclusion_EngagementMatches(t *testing.T) {
 		if want := campagneAttendu(tc.masquee, []string{"arena1"}, []string{"arena1", "camp1"}); !campagneEgal(got, want) {
 			t.Errorf("%s : matchs scorés %v, attendu %v", tc.slug, got, want)
 		}
+	}
+}
+
+// E2.10 — le titre des lectures qui excluent la Campagne est celui des BASES (moteur, profil),
+// jamais celui du ctx entrant : un ctx qui porte Infinite (requête par défaut, header) ne doit
+// pas lever l'exclusion sur la base d'un joueur Halo 5.
+func TestCampaignExclusion_TitreDesBasesPrimeSurLeCtx(t *testing.T) {
+	entrant := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
+	if got := ctxkeys.TitleSlug((&SyncEngine{titleSlug: "halo_5"}).pinTitle(entrant)); got != "halo_5" {
+		t.Errorf("SyncEngine.pinTitle : titre %q, attendu halo_5", got)
+	}
+	if got := ctxkeys.TitleSlug((&MatchRecomputer{}).WithTitle("halo_5").titledCtx(entrant)); got != "halo_5" {
+		t.Errorf("MatchRecomputer.titledCtx : titre %q, attendu halo_5", got)
+	}
+	if got := ctxkeys.TitleSlug((&MatchRecomputer{}).titledCtx(entrant)); got != "halo_infinite" {
+		t.Errorf("MatchRecomputer sans titre : le ctx entrant doit rester inchangé, obtenu %q", got)
 	}
 }

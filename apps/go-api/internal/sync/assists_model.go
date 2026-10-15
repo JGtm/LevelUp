@@ -75,7 +75,7 @@ func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]a
 		  AND p.outcome != ?
 		  AND NOT isnan(COALESCE(CAST(p.damage_dealt AS DOUBLE), 0.0))
 		  AND NOT isnan(COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0))` +
-		analysis.SQLExcludeCampaignByMatchID(ctxkeys.TitleSlug(ctx), "p.match_id") + `
+		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "p.match_id") + `
 		ORDER BY r.game_variant_name
 	`
 	// PMT-5 : le code DNF (exclu de la régression) est lié comme PARAMÈTRE depuis la
@@ -328,6 +328,7 @@ func batchComputePlayerAssistsModel(ctx context.Context, playerDB, sharedDB *sql
 
 // RunBackfillAssistsModel recalcule les modèles OLS expected_assists pour le joueur.
 func (e *SyncEngine) RunBackfillAssistsModel(ctx context.Context, force bool) (int, error) {
+	ctx = e.pinTitle(ctx)
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillAssistsModel lease player: %w", err)

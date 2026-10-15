@@ -57,7 +57,7 @@ func openCampagneLUSRDB(t *testing.T) *sql.DB {
 var campagneTitres = []struct {
 	slug    string
 	masquee bool
-}{{"halo_5", true}, {"halo_infinite", false}}
+}{{"halo_5", true}, {"halo_infinite", false}, {"", true}}
 
 func campagneNombre(masquee bool) int {
 	if masquee {
@@ -68,7 +68,10 @@ func campagneNombre(masquee bool) int {
 
 func TestCampaignExclusion_LoadLUSRMatchData(t *testing.T) {
 	for _, tc := range campagneTitres {
-		ctx := ctxkeys.WithTitleSlug(context.Background(), tc.slug)
+		ctx := context.Background() // slug vide : contexte SANS titre
+		if tc.slug != "" {
+			ctx = ctxkeys.WithTitleSlug(ctx, tc.slug)
+		}
 		data, err := loadLUSRMatchData(ctx, openCampagneLUSRDB(t), "xuid1")
 		if err != nil {
 			t.Fatalf("%s : %v", tc.slug, err)
@@ -81,7 +84,10 @@ func TestCampaignExclusion_LoadLUSRMatchData(t *testing.T) {
 
 func TestCampaignExclusion_LoadShadowMatches(t *testing.T) {
 	for _, tc := range campagneTitres {
-		ctx := ctxkeys.WithTitleSlug(context.Background(), tc.slug)
+		ctx := context.Background()
+		if tc.slug != "" {
+			ctx = ctxkeys.WithTitleSlug(ctx, tc.slug)
+		}
 		data, err := loadShadowMatches(ctx, openCampagneLUSRDB(t), "xuid1")
 		if err != nil {
 			t.Fatalf("%s : %v", tc.slug, err)

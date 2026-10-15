@@ -71,6 +71,7 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 // information_schema). Aucun appel API requis (calcul purement local depuis
 // highlight_events deja synces).
 func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool) (int, error) {
+	ctx = e.pinTitle(ctx)
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementScores lease player: %w", err)
@@ -143,6 +144,7 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 // le caller doit s'assurer qu'aucun sync ne tourne en parallèle pour avoir
 // un snapshot cohérent.
 func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunReport, error) {
+	ctx = e.pinTitle(ctx)
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfillLUSRDryRun OpenPlayerDB: %w", err)
@@ -163,6 +165,7 @@ func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunRepo
 // RunFormulaSim simule les 5 variantes de formule LUSR sur les lastN derniers matchs.
 // Lecture seule — aucune écriture DB. lastN=0 → tous les matchs.
 func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimReport, error) {
+	ctx = e.pinTitle(ctx)
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunFormulaSim OpenPlayerDB: %w", err)
@@ -339,6 +342,7 @@ func (e *SyncEngine) RunBackfillSharedCSR(ctx context.Context, opts SharedCSRBac
 // RunBackfillPerf recalcule le performance score relatif pour tous les matchs du joueur.
 // force=true : recalcule même si les matchs ont déjà un score (utile après changement de formule).
 func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, error) {
+	ctx = e.pinTitle(ctx)
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillPerf lease player: %w", err)
@@ -538,4 +542,12 @@ func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
 		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
 	}
 	return nil
+}
+
+// pinTitle pose sur le ctx le titre du MOTEUR (celui de ses bases ouvertes), jamais celui d'un ctx
+// entrant : les lecteurs de sync qui excluent la Campagne le lisent (analysis.SQLExcludeCampaign
+// ByMatchIDCtx), et un ctx sans titre, ou portant un autre titre (onglet admin, header
+// X-LevelUp-Title), ne doit pas décider de ce qui s'exclut d'une base d'un autre titre.
+func (e *SyncEngine) pinTitle(ctx context.Context) context.Context {
+	return ctxkeys.WithTitleSlug(ctx, e.titleSlug)
 }
