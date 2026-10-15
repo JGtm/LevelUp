@@ -1,3 +1,11 @@
+## [2026-10-15] Image de la citation « Is that my ball? » remplacée par le logo du crâne — Complété (branche `feat/v75`)
+
+**Décision technique principale** : `H5G_citation_Is_that_my_ball%3F.png` (100x100) remplacée par le logo crâne et anneau extrait de l'image Blue_team_has_the_oddball : recadrage, seuil sur le blanc, fond transparent, masque circulaire contre une traînée parasite. Chemin inchangé, donc `seed_citation_data.go` intact.
+
+**Résultats observés** : contour net sur fond sombre, aucun résidu d'image de fond.
+
+**Conclusion** : rien à faire ; visible au prochain déploiement.
+
 ## [2026-10-15] Rattrapage CSR par joueur : candidats restreints aux matchs du joueur — Complété (branche `fix/csr-candidats-joueur`)
 
 **Décision technique principale** : `loadRankedMatchesForCSRBackfill` (`sync/csr_backfill.go`) joint désormais `match_participants` sur le xuid du joueur ; le pré-filtre (is_ranked / nom « ranked » / playlist_id de la référence) et la décision (payload skill) sont inchangés. `match_participants` n'est pas append-only (pas de vue `_latest`).
