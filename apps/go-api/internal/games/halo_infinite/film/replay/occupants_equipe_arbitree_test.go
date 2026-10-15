@@ -141,7 +141,7 @@ func TestAssemblageArbitreLeBotParLaFeuille(t *testing.T) { // A-ASSEMBLAGE
 // recoit la feuille de match comme la cuisson, pour trancher les memes bots.
 func TestPortagesAuSyncPorteLaFeuilleALaLiaison(t *testing.T) {
 	e := EntreePorteursAuSync{Equipes: map[string]int{"bid(7.0)": 1}}
-	if got := e.optionsDuRegistre(nil).ScoreboardTeams; got["bid(7.0)"] != 1 || len(got) != 1 {
+	if got := e.optionsDuRegistre(nil, siegesEtOccupants{}).ScoreboardTeams; got["bid(7.0)"] != 1 || len(got) != 1 {
 		t.Fatalf("ScoreboardTeams %v : attendu la feuille du collecteur", got)
 	}
 }

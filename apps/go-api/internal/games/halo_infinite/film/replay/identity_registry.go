@@ -77,8 +77,9 @@ type IdentityInput struct {
 	// `index <-> xuid <-> gamertag`, et la source PREMIERE du registre depuis le lot 1.6.
 	//
 	// VIDE = le registre retombe entierement sur `PlayerIndices`, et il le PUBLIE
-	// (`coverage.identity.filmTable.refus`). Le collecteur de sync ne la fournit pas encore
-	// (lot 1.8) : sa voie est donc le repli, nomme et compte, pas un silence.
+	// (`coverage.identity.filmTable.refus`). Le registre propre du collecteur de sync
+	// (`killcollector.entreeDuRegistre`) ne la fournit pas : sa voie est le repli, nomme et compte ;
+	// le document interne de [PortagesAuSync], lui, la lit comme la cuisson ([lireSiegesEtOccupants]).
 	FilmTable grammar.FilmPlayerTable
 	// Bots : les bots declares par BOT_METADATA, avec leur `BotID` (le N de `bid(N.0)`) et leurs
 	// declarations dans le temps.

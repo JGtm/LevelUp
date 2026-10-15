@@ -10,6 +10,8 @@ package replay
 //	             (`index_hors_table`, comptes `IndexBot`) ; seul celui dont une declaration couvre
 //	             la creation et la vie est lu par les declarations (identity_registry_declarations.go) ;
 //	R-PISTES     une piste anonyme prend le NOM du bot dont une vie du meme slot porte le `bid`.
+//	R-BID-ZERO   le premier bot de l index porte le `bid` 0 que le film ecrit (`343 Ritzy`, `bid(0.0)` en
+//	             base, `ca684191` et `4db2574e`) : son corps se nomme comme les autres.
 
 import (
 	"context"
@@ -100,6 +102,21 @@ func TestCorpsDIndexPartageNommeParLEntiteASaCreation(t *testing.T) {
 		if l.slot == 526 && l.nomPar != NomParCreation {
 			t.Errorf("corps 526 : voie %q, attendu %q — une LECTURE du film", l.nomPar, NomParCreation)
 		}
+	}
+}
+
+// TestCorpsDIndexPartageNommeParLEntiteQuandLeBidEstZero (R-BID-ZERO) : le gabarit a trois bots, le
+// premier portant le `bid` 0 LU dans BOT_METADATA. Mutation vue rouge : `Bid()` qui rend vide pour
+// tout `BotID` nul (le corps 512 reste sans nom, cause `index_hors_table`).
+func TestCorpsDIndexPartageNommeParLEntiteQuandLeBidEstZero(t *testing.T) {
+	in := entreeTroisBots(true)
+	in.Bots[0].BotID, in.Bots[0].BotIDLu = 0, true
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if got := bidsParSlot(reg)[512]; got != "bid(0.0)" {
+		t.Fatalf("corps 512 : bid %q, attendu bid(0.0) — le zero que le film ecrit est un identifiant", got)
+	}
+	if (BotIdentity{BotID: 0}).Bid() != "" {
+		t.Fatal("un BotID nul NON LU ne designe personne : Bid() doit rendre vide")
 	}
 }
 

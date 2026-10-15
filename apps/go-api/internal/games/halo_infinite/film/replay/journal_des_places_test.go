@@ -77,15 +77,15 @@ func TestPortagesAuSync_LeDocumentInterneNeJournalisePasLesPlaces(t *testing.T) 
 	// dont chaque entree presente est sans equipe — ce que le journal des places ecrit en ERREUR.
 	var temoin ReplayDocument
 	journalDe(t, func() {
-		temoin = BuildFromPositions(context.Background(), e.MatchID, "", e.Identite.Positions, nil, e.optionsDuRegistre(nil))
+		temoin = BuildFromPositions(context.Background(), e.MatchID, "", e.Identite.Positions, nil, e.optionsDuRegistre(nil, siegesEtOccupants{}))
 	})
 	if s := temoin.Coverage.Seats; s == nil || s.SansEquipe != joueursSansEquipe {
 		t.Fatalf("couverture des places du temoin %+v : attendu %d entrees presentes sans equipe", s, joueursSansEquipe)
 	}
 	var b BilanPortages
 	journal := journalDe(t, func() { _, b = PortagesAuSync(context.Background(), e) })
-	if !b.Gardes.Crane || b.Lectures.Equipes {
-		t.Fatalf("gardes %+v, lectures %+v : attendu la garde du crane, sans lecture des equipes du film",
+	if !b.Gardes.Crane {
+		t.Fatalf("gardes %+v, lectures %+v : attendu la garde du crane",
 			b.Gardes, b.Lectures)
 	}
 	if aUnEnregistrement(journal, "ERROR", extraitSansEquipe) {

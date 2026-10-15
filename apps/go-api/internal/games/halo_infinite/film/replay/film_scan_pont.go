@@ -5,9 +5,11 @@ package replay
 // etage, meme ordre d etapes observees.
 
 import (
+	"context"
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -41,4 +43,31 @@ func (s *filmScan) lirePontDIdentite() {
 	if len(s.in.Translocations) > 0 {
 		slog.InfoContext(s.ctx, "translocateur : teleportations lues", "evenements", len(s.in.Translocations))
 	}
+}
+
+// siegesEtOccupants porte les deux lectures du film qui nomment un corps SANS le fil des morts :
+// la table des sieges que `chunk_00` ecrit (le lien direct `index <-> xuid <-> gamertag`) et les
+// occupants par entite ti=9, lus dans la meme passe que l'equipe de chaque index.
+type siegesEtOccupants struct {
+	table   grammar.FilmPlayerTable
+	equipes map[int]int
+	rapport grammar.TeamScanReport
+	entites grammar.PlayerEntityScan
+}
+
+// lireSiegesEtOccupants est LA lecture de ces deux entrees du registre d'identite, et la seule :
+// la cuisson ([filmScan.balayerPont]) et le document interne du sync ([PortagesAuSync]) l'appellent
+// tous deux, pour que les deux registres d'un meme film nomment les memes vies. Le registre emploie
+// la table du film AVANT la table d'index des chunks (identity_registry_film_table.go) et les
+// entites pour le corps d'un index que plusieurs occupants se relaient
+// (identity_registry_entites.go) : une lecture omise d'un cote laisse ce cote sans nom la ou
+// l'autre nomme (garde-rail : `TestLeSyncEtLaCuissonLisentLesMemesSiegesEtOccupants`).
+//
+// Aucun refus n'est fatal : la table refusee est consignee et publiee
+// ([consignerLaTableDuFilm]), une lecture d'equipes refusee porte sa cause dans son rapport.
+func lireSiegesEtOccupants(ctx context.Context, film *source.Film, fc *grammar.FilmContext, matchID string) siegesEtOccupants {
+	table, err := grammar.ScanFilmPlayerTable(film)
+	so := siegesEtOccupants{table: consignerLaTableDuFilm(ctx, table, err, matchID)}
+	so.equipes, so.rapport, so.entites = grammar.ScanPlayerTeams(fc)
+	return so
 }

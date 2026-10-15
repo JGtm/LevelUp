@@ -126,6 +126,7 @@ func buildGolden(t *testing.T) ReplayDocument {
 	t.Helper()
 	g := loadGoldenInputs(t)
 	opt := g.options()
+	opt.Bots = botsDuFixture(t, goldenFilm)
 	// Le catalogue vient des VRAIS mappings du titre (cf. golden_catalog_test.go) : le
 	// golden fige donc aussi les libellés servis, dans les deux langues.
 	opt.Labels, opt.EquipmentEnergy = goldenCatalog(t), goldenEnergyCatalog(t)

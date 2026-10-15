@@ -89,7 +89,7 @@ func (a *assemblage) poserLesPistes() {
 	for i := range a.reg.TracesDeduites(a.doc.Tracks, a.origin, a.step) {
 		a.unnamed.deduced[i] = true
 	}
-	logUnnamedLives(a.ctx, a.matchID, a.doc.Tracks, a.unnamed)
+	logUnnamedLives(a.ctx, a.matchID, a.doc.Tracks, a.unnamed, a.opt.documentInterne)
 }
 
 // poserLesEquipesEtLeRoster pose l equipe du film sur les vies et sur le roster, puis les

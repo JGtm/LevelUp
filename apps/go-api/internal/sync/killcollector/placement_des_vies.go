@@ -256,7 +256,7 @@ func publierLePlacement(ctx context.Context, matchID string, b bilanDuPlacement)
 		observability.AddInt(metricPlacementPontRefuse, 1)
 	}
 	l := b.porteurs.Lectures
-	if l.Statborg || l.Equipes || l.ObjetsDuMonde || l.ArmesTenues {
+	if l.Identite || l.Statborg || l.ObjetsDuMonde || l.ArmesTenues {
 		observability.AddInt(metricPlacementPorteursLus, 1)
 	}
 	if b.porteurs.SansCalage {
@@ -272,7 +272,7 @@ func publierLePlacement(ctx context.Context, matchID string, b bilanDuPlacement)
 		"trahisons", b.frags.Trahisons, "porteurs_gardes", fmt.Sprintf("%+v", b.porteurs.Gardes),
 		"porteurs_lectures", fmt.Sprintf("%+v", l), "portages", b.porteurs.Intervalles,
 		"portages_sans_calage", b.porteurs.SansCalage, "drapeau_ouverts", b.porteurs.DrapeauOuverts,
-		"porteurs_xuid_illisibles", b.porteurs.XUIDIllisibles)
+		"porteurs_xuid_illisibles", b.porteurs.XUIDIllisibles, "porteurs_vies_sans_identite", b.porteurs.ViesSansIdentite)
 }
 
 // profilCalibre rend le profil que `killsource` a calibre sur le film, ou nil sans resultat de
