@@ -249,6 +249,9 @@ func (x *ri27d1Ext) dumpRecord(c *ri27d0Canal, p *lecture.Paquet, r *lecture.Rec
 		r.Vie.Slot, r.Debut, r.Preuve, r.Desync, r.Bits, x.adm, x.n22, x.tem,
 		strings.Join(c.nomsDe(ri27d1FamillesGrammaire(c, g)), "+"), strings.Join(c.nomsDe(fen), "+"), g.gren,
 		strings.Join(cs, ","), x.d.t1, x.d.t2, g.idHigh[0], g.idHigh[1], g.idHigh[2], g.idHigh[3]))
+	if w := bit18Fenetre(c.court, p, r); w != "" { // ligne W, bit18_registre_research_test.go
+		x.lignes = append(x.lignes, w)
+	}
 }
 
 // ri27d1Lignes rend les lignes du film et ajoute ses comptes aux agregats par format.

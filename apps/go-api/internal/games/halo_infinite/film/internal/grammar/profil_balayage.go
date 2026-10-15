@@ -204,6 +204,7 @@ func moteurUnPossible(p profile.Profile) bool {
 // et calibre. Second rendu : faux = repli `repli_controle_corruption_section_absente`.
 func GrammaireSousFilm(bal ProfilDeBalayage, f *source.Film) (ProfilDeBalayage, bool) {
 	g, lue := grammaireSousFilm(bal.Grammaire, ResolveProfile(f, nil))
+	g.MalleableSansDrapeauFinal = malleableSansDrapeauFinal(f)
 	bal.Grammaire = g
 	return bal, lue
 }
@@ -265,6 +266,10 @@ type GrammaireBalayage struct {
 	// contexte de film le derive a chaque rendu. Le defaut de structure, faux, est la valeur du jeu
 	// pour une variante sans type (`m_gameEngineType` 0, `FUN_14051a4b8(0) = 0`).
 	MoteurUnPossible bool
+	// MalleableSansDrapeauFinal : le bloc de propriete malleable du bipede (i53, `FUN_1407efc5c`) ne
+	// porte pas son drapeau final (lu a 1407efeba) — le film declare la version majeure 0x25
+	// ([malleableSansDrapeauFinal]). IL VIENT DU FILM, comme les deux champs ci-dessus.
+	MalleableSansDrapeauFinal bool
 	// CorpsActionMobilite : le corps de FUN_1408f02c8 (i54) est-il decode ? Defaut TRUE.
 	CorpsActionMobilite bool
 	// CorpsAncrageCapacite : le corps tag==3 d i59 est-il decode ? Defaut TRUE.

@@ -25,7 +25,14 @@ func brut96() []champDeFlux { return seul(fixe(32), fixe(32), fixe(32)) }
 
 // casDesExceptionsSousLaPortee rend un flux par site, tel que l ecrit le jeu sous la portee.
 func casDesExceptionsSousLaPortee() []casDeSite {
+	wo := parNom(compObjectPosition, 38, 0)
 	return []casDeSite{
+		// world-object i0 (FUN_14076e29c) : precHigh, R(96), queue FUN_14076e3e4(precHigh), R(2).
+		{nom: "world-object i0 precHigh=0", indexW: 1,
+			flux: concat(seul(bit(false)), brut96(), seul(fixe(2))), lire: wo},
+		// precHigh = 1 : la queue — FUN_1408f0ac4 ferme, porte du mot de region posee, R(11).
+		{nom: "world-object i0 precHigh=1", indexW: 1,
+			flux: concat(seul(bit(true)), brut96(), seul(bit(false), bit(true), fixe(11), fixe(2))), lire: wo},
 		// ti=5 i12 player-desired-respawn-location (FUN_142f03ec8) : porte, R(96), FUN_14076dc04 R(19).
 		{nom: "player-desired-respawn-location", indexW: 1,
 			flux: concat(seul(bit(true)), brut96(), seul(fixe(19))),
@@ -56,6 +63,12 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 			lire: parNom("tacmap-waypointstate", 34, 2)},
 		{nom: "tacmap-waypointstate niveau registre 1", indexW: 1,
 			flux: concat(seul(bit(true), fixe(32)), brut96()), lire: parNom("tacmap-waypointstate", 34, 1)},
+		// ti=38 i18 generic-rigid-body-transforms (FUN_142f036f0) : masque R(8) ; par bit
+		// FUN_140c1e79c (R(1), R(19) si 0, R(8)) puis R(96).
+		{nom: "generic-rigid-body-transforms", indexW: 1,
+			flux: concat(seul(champDeFlux{0b101, 8}), seul(bit(false), fixe(19), fixe(8)), brut96(),
+				seul(bit(true), fixe(8)), brut96()),
+			lire: parNom("generic-rigid-body-transforms-component", 38, 0)},
 		// ti=21 i2..i11 flock-destination (FUN_140fb8af0) : R(1), R(96), puis R(2) au-dela du niveau 1.
 		{nom: "flock-destination niveau registre 2", indexW: 1,
 			flux: concat(seul(bit(true)), brut96(), seul(fixe(2))),
@@ -122,5 +135,17 @@ func TestChaqueExceptionLitLeFluxDuJeuSousLaPortee(t *testing.T) {
 				t.Errorf("%s sous la portee : le site lit comme le jeu, il ne doit pas noter d exception", c.nom)
 			}
 		})
+	}
+}
+
+// TestLaPositionDObjetDuMondeNonFinieArreteLaLecture : sous la garde, `FUN_14076e29c` rend faux sur un
+// flottant non fini (14076e2fe), sans lire le R(2) : la lecture s arrete, cause nommee.
+func TestLaPositionDObjetDuMondeNonFinieArreteLaLecture(t *testing.T) {
+	buf, _ := ecrireFlux(seul(bit(false), fixe(32), champDeFlux{motInfini, 32}, fixe(32), fixe(2)))
+	br := sousLaPortee(lecteurDeSite(buf, 1))
+	parNom(compObjectPosition, 38, 0)(br)
+	if br.arret != lecture.ArretPositionNonFinie || br.BitPos() != 97 {
+		t.Fatalf("world-object i0, flottant infini : arret %v apres %d bits ; attendu %v apres 97", br.arret,
+			br.BitPos(), lecture.ArretPositionNonFinie)
 	}
 }

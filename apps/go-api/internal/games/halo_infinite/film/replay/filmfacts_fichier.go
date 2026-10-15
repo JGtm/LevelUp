@@ -212,7 +212,12 @@ const VersionCodecFaits = 2
 // SCHEMA 14 (2026-10-15, meme lot, fin du champ de reparation) : chaque lecture de l equipement porte
 // porte les vies que sa pile i28 designe (`Tracked`), les suppressions de ces vies se lisent
 // (`tracked-end`), et deux denominateurs s ajoutent (`TrackedEntries`, `TrackedEnds`).
-const SchemaDesFaits = 14
+// SCHEMA 15 (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`) : la section 5 change de
+// contenu. Le profil calibre qu elle porte (`grammar.GrammaireBalayage`) gagne
+// `MalleableSansDrapeauFinal` (le bloc malleable d i53 sans drapeau final des films de version majeure
+// declaree 0x25). Mesure : `replay-equiv` sur les 20 films, binaires de `feat/v75` contre ceux de la
+// branche, etape `killsource` differente sur les 20 films.
+const SchemaDesFaits = 15
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
