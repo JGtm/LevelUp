@@ -40,6 +40,8 @@ export interface CoordinationText {
   gaugeTipUsualFmt: (tip: string, habituel: string) => string
   /** Le compte nu à droite d'une bande : « 5/8 ». */
   bandCountFmt: (audessus: number, total: number) => string
+  /** L'écart signé à son repère, écrit à côté de la valeur (« écart +3,2 pts »). */
+  gapFmt: (signedPoints: string) => string
 
   // ─── Carte Portée des engagements ────────────────────────────────────────────
   cardRange: string
@@ -67,7 +69,7 @@ export interface CoordinationText {
 
 export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
   fr: {
-    cardAppui: 'Appui reçu',
+    cardAppui: 'Frags appuyés par un coéquipier',
     gaugePrepared: 'Frags appuyés',
     gaugeAssistShare: 'Part des appuis de l’équipe',
     bandAppui: 'Part des appuis de l’équipe, par match',
@@ -84,6 +86,7 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} sur ${n}`,
     gaugeTipUsualFmt: (tip, habituel) => `${tip} · habituel ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
+    gapFmt: (v) => `écart ${v}`,
 
     cardRange: 'Portée des engagements',
     rangeAxis: 'Écart au lobby (m)',
@@ -108,7 +111,7 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     infoRange3: (s) => `Sous ${s} frags, le point reste creux : la médiane est du bruit.`,
   },
   en: {
-    cardAppui: 'Support received',
+    cardAppui: 'Kills assisted by a teammate',
     gaugePrepared: 'Assisted kills',
     gaugeAssistShare: 'Share of the team’s assists',
     bandAppui: 'Share of the team’s assists, by match',
@@ -124,6 +127,7 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
     gaugeTipFmt: (v, brut, n) => `${v} · ${brut} of ${n}`,
     gaugeTipUsualFmt: (tip, habituel) => `${tip} · usual ${habituel}`,
     bandCountFmt: (a, t) => `${a}/${t}`,
+    gapFmt: (v) => `gap ${v}`,
 
     cardRange: 'Engagement range',
     rangeAxis: 'Gap to lobby (m)',

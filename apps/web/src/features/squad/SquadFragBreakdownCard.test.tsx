@@ -58,16 +58,18 @@ function mockWidths() {
 }
 
 describe('SquadFragBreakdownCard', () => {
-  it('sans mesure possible (largeurs nulles) : tous les comptes passent au repli, aucun perdu', () => {
+  it('sans mesure possible (largeurs nulles) : tous les comptes masqués, dans le DOM, jamais au-dessus de la barre', () => {
     renderCard()
-    const repli = screen.getByTestId('frag-breakdown-repli-JGtm')
-    expect(repli.textContent).toBe('281352')
-    expect(repli.style.paddingLeft).toBe('0%')
+    expect(screen.queryByTestId('frag-breakdown-repli-JGtm')).toBeNull()
+    const row = screen.getByTestId('frag-breakdown-row-JGtm')
+    // Chaque compte masqué se lit après le bout de la barre, pastille de sa classe devant.
+    expect([...row.querySelectorAll('[data-testid^="frag-breakdown-side-JGtm-"]')].map((n) => n.textContent)).toEqual(['28', '13', '5', '2'])
+    expect([...row.querySelectorAll<HTMLElement>('[data-fit-label]')].map((l) => l.textContent)).toEqual(['28', '13', '5', '2'])
     expect(screen.getByTestId('frag-breakdown-total-JGtm').textContent).toBe('48')
     expect(screen.getByTestId('frag-breakdown-total-Madina97294').textContent).toBe('48')
   })
 
-  it('compte dans le segment quand il tient, repli aligné sur le premier segment masqué', () => {
+  it('compte dans le segment quand il tient, masqué sinon (aucune ligne de repli)', () => {
     mockWidths()
     renderCard()
     const seg = (p: string, c: string) =>
@@ -76,12 +78,14 @@ describe('SquadFragBreakdownCard', () => {
     expect(seg('JGtm', 'sidearm').style.visibility).toBe('visible')
     expect(seg('JGtm', 'grenade').style.visibility).toBe('visible')
     expect(seg('JGtm', 'unattributed').style.visibility).toBe('hidden')
-    const repli = screen.getByTestId('frag-breakdown-repli-JGtm')
-    expect(repli.textContent).toBe('2')
-    // Premier masqué = unattributed, posé après 28 + 13 + 5 = 46 frags sur une échelle de 48.
-    expect(parseFloat(repli.style.paddingLeft)).toBeCloseTo((46 / 48) * 100)
+    expect(screen.queryByTestId('frag-breakdown-repli-JGtm')).toBeNull()
     // Madina97294 : 45 tient, 3 (12 px) ne tient pas.
-    expect(screen.getByTestId('frag-breakdown-repli-Madina97294').textContent).toBe('3')
+    expect(within(screen.getByTestId('frag-breakdown-seg-Madina97294-shoulder')).getByText('45').style.visibility).toBe('visible')
+    expect(within(screen.getByTestId('frag-breakdown-seg-Madina97294-grenade')).getByText('3').style.visibility).toBe('hidden')
+    expect(screen.queryByTestId('frag-breakdown-repli-Madina97294')).toBeNull()
+    expect(screen.getByTestId('frag-breakdown-side-Madina97294-grenade').textContent).toBe('3')
+    expect(screen.queryByTestId('frag-breakdown-side-Madina97294-shoulder')).toBeNull()
+    expect(screen.getByTestId('frag-breakdown-side-JGtm-unattributed').textContent).toBe('2')
   })
 
   it('aucun repli quand tout tient', () => {

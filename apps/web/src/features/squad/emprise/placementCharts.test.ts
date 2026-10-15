@@ -39,7 +39,6 @@ const COLORS: PlacementColors = {
     isolated_costly: '#404040',
   },
   radar: 'radar',
-  ink: 'encre',
   theme: {
     axisLabel: 'axis',
     axisLine: 'line',
@@ -437,9 +436,10 @@ describe('buildPlacementQuartsOption', () => {
     expect(pct(0)[3]).toBeCloseTo(100 / 6, 10)
   })
 
-  it('valeur « v % » dans le segment, encre sombre, seulement à partir de 8 %', () => {
+  it('valeur « v % » dans le segment, en blanc à contour sombre, centrée, seulement à partir de 8 %', () => {
     const l = quarts().series[0].label!
-    expect(l.color).toBe('encre')
+    expect(l.color).toBe('#ffffff')
+    expect((l as { verticalAlign?: string }).verticalAlign).toBe('middle')
     expect(l.formatter({ value: 7.4 })).toBe('')
     expect(l.formatter({ value: 0 })).toBe('')
     expect(l.formatter({ value: 8 })).toBe('8 %')
@@ -488,12 +488,5 @@ describe('resolvePlacementColors', () => {
     expect(c.quadrant.in_range_costly).toBe(defaultPalette['perf-tier-4'])
     expect(c.quadrant.isolated_costly).toBe(defaultPalette['perf-tier-5'])
     expect(c.radar).toBe(defaultPalette.extreme)
-  })
-
-  it('encre des valeurs : la variable d’encre sombre du thème, à défaut la couleur du texte', () => {
-    const { tokenOf } = squadPlayerPalette('JGtm', [])
-    expect(resolvePlacementColors(tokenOf).ink).toBe(resolvePlacementColors(tokenOf).theme.text)
-    document.documentElement.style.setProperty('--warning-foreground', 'rgb(1, 2, 3)')
-    expect(resolvePlacementColors(tokenOf).ink).toBe('rgb(1, 2, 3)')
   })
 })

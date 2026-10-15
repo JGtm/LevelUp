@@ -37,6 +37,11 @@ function deuxSeries() {
 }
 
 describe('buildSessionBarsTrendOption', () => {
+  it('le nom de l’axe part de l’axe vers la droite : jamais rogné à gauche du canvas', () => {
+    const y = deuxSeries().yAxis as { nameTextStyle: { align: string } }
+    expect(y.nameTextStyle.align).toBe('left')
+  })
+
   it('rend UN SEUL axe Y, en pourcents et ancré à zéro', () => {
     const y = deuxSeries().yAxis as Record<string, unknown>
     expect(Array.isArray(y)).toBe(false)

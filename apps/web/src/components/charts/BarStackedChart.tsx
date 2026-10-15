@@ -22,6 +22,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 import { groupSeparatorMarkLine, groupTitleGraphic, type CategoryGroup } from './barStackedGroups'
+import { barLabel } from './barLabel'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
@@ -312,13 +313,7 @@ function buildStackedSeries(
       // l'infobulle. Les zeros ne s'ecrivent jamais.
       ...(valueLabels?.segments
         ? {
-            label: {
-              show: true,
-              position: 'inside' as const,
-              color: tc.text,
-              fontSize: 10,
-              formatter: (p: { value?: number | null }) => (p.value ? String(p.value) : ''),
-            },
+            label: barLabel({ fontSize: 10, formatter: (p: { value?: number | null }) => (p.value ? String(p.value) : '') }),
             labelLayout: { hideOverlap: true },
           }
         : {}),

@@ -16,7 +16,7 @@ import { TrackAxis } from '@/features/squad/emprise/PisteCampsForm'
 import { ObjectifFrame, ObjectifLegend } from '@/features/squad/objectif/ObjectifFrame'
 
 import { LIVES_ALONE_INK, LIVES_COLUMNS, LIVES_NEAR_INK } from './livesLayout'
-import { LivesNearTeammateRow, type LivesCompact } from './LivesNearTeammateRow'
+import { LivesNearTeammateRow, livesInset, type LivesCompact } from './LivesNearTeammateRow'
 import type { LivesModel } from './usages.logic'
 import type { UsagesCardsText } from './usagesCardsText'
 
@@ -27,11 +27,12 @@ export function LivesNearTeammateCard({ model, player, ut, compact }: { model: L
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, model)
   const legend = useMemo(() => <LivesLegend ut={ut} />, [ut])
+  const inset = livesInset([model], ut, compact)
   return (
     <ObjectifFrame title={l.title} info={l.info} legend={legend} testId="usages-lives">
       <div ref={ref} className="flex flex-col gap-3.5">
-        <LivesNearTeammateRow model={model} label={player} hidden={hidden} ut={ut} compact={compact} />
-        <LivesAxis ut={ut} />
+        <LivesNearTeammateRow model={model} label={player} hidden={hidden} ut={ut} compact={compact} inset={inset} />
+        <LivesAxis ut={ut} inset={inset} />
       </div>
     </ObjectifFrame>
   )
@@ -53,6 +54,6 @@ export function LivesLegend({ ut }: { ut: UsagesCardsText }) {
 }
 
 /** L'axe 0-100 % sous les lignes. */
-export function LivesAxis({ ut }: { ut: UsagesCardsText }) {
-  return <TrackAxis columns={LIVES_COLUMNS} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? ut.pctIntFmt(100) : String(v) }))} />
+export function LivesAxis({ ut, inset }: { ut: UsagesCardsText; inset: { left: number; right: number } }) {
+  return <TrackAxis columns={LIVES_COLUMNS} inset={inset} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? ut.pctIntFmt(100) : String(v) }))} />
 }
