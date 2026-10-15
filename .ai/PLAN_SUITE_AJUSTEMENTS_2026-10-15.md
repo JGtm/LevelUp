@@ -22,9 +22,10 @@ Superviseur : session levelup-66.
   bornée par la suppression lue de l'objet (en cours).
 - [ ] K-A doublons d'identité des temps forts et morts fantômes de la passe 2 (`fix/ks-a-doublons`).
 - [ ] K-D morts servies deux fois (`fix/ks-d-morts-doublees`, contient K-A) : siège de bot repris
-  (le bot tient l'indice jusqu'à la fin de sa dernière déclaration close — À VALIDER par le user),
+  (le bot tient l'indice jusqu'à la fin de sa dernière déclaration close — VALIDÉ par le user le 15/10 : le début d'une déclaration n'est qu'une borne, 7 morts de bot confirmées par l'API),
   appariement du crédit par écart croissant, fiches de kill au kill voisin, filet « une mort d'humain
   = un événement death de l'API ». Relecture adversariale en cours.
+- [ ] K-D relecture : P1 DELETE sur `killer_victim_pairs` qui porte 3 index ART hérités (idx_kv_*) → échange sans DELETE + migration qui retire les index (validé par le user le 15/10) ; P2 preuves `Known` et ordre des écritures ; WARN rétabli — corrections en cours.
 - [ ] K-B équipe des bots par build (`fix/ks-b-equipe-bots`) : relecture rendue (P2 « hors
   grammaire » au roster, test de garde sans preuve, `EquipeLue` morte) — corrections en cours.
 - [ ] K-C vies nommées (`fix/ks-c-vies-nommees`).
