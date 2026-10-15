@@ -104,7 +104,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   matchs classés) branchée sur `csr_coverage_repo.go`.
 - [x] A4 (6526d6f98, `levelup backfill-is-ranked`) Réparer `match_registry.is_ranked` depuis la présence du CSR (même point de décision
   qu'A2 ; commande de backfill idempotente, persister selon ADR 0019/0026).
-- [ ] A5 (séquence : backfill --all --shared-csr, backfill --all --csr, backfill-is-ranked, recalcul LUSR v2 canonique, engagement --force ; relecture adversariale du 14/10 corrigée (bb8ee5267, CI verte) ; séquence documentée FR/EN : backfill --all --shared-csr, backfill --all --csr, backfill-is-ranked, backfill --all --lusr, backfill --all --engagement-scores --force) (écriture accordée au go du plan, serveur arrêté, sauvegarde préalable) `backfill-csr`
+- [x] A5 (15/10, serveur arrêté, sauvegarde `data/backups/avant_rattrapage_csr_2026-10-15/` : shared-csr +1 697 lignes, csr joueur +203 (Nuzzles ; défaut de candidature par joueur corrigé en route, fix/csr-candidats-joueur), is_ranked 4 121 corrigés, LUSR 7 732 lignes, engagement 7 010 ; ranked juillet-septembre ≈ 90 % classés) (séquence : backfill --all --shared-csr, backfill --all --csr, backfill-is-ranked, recalcul LUSR v2 canonique, engagement --force ; relecture adversariale du 14/10 corrigée (bb8ee5267, CI verte) ; séquence documentée FR/EN : backfill --all --shared-csr, backfill --all --csr, backfill-is-ranked, backfill --all --lusr, backfill --all --engagement-scores --force) (écriture accordée au go du plan, serveur arrêté, sauvegarde préalable) `backfill-csr`
   joueur puis partagé pour tous les profils, local ; mesure avant/après (matchs classés sans CSR
   depuis le 16/09 → 0 attendu hors matchs dont l'API ne rend rien).
 - [ ] A6 Prod : lecture seule de l'état (prévenir le user avant toute commande VPS) ; backfill prod
@@ -232,7 +232,7 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - [x] Relecture adversariale (15/10) : 0 P1, 3 P2 (calques absents des tests figés, mur rang 19 jamais compté, journal), 5 P3 ; i28 et règle du HUD confirmés contre l exe → corrections transmises à levelup-80.
 - [x] Fusion : avance rapide de feat/v75 sur feat/equip-porte @ 027a5bcaf (CI verte, relecture traitée : P2-1 fait, P2-2 réfuté par mesure — énergie absente = énergie de l objet porté, les deux fiches du mur portent 1 —, P3 faits).
 - [x] EP7 (4cd7886f0, dc03981a8 ; SCHÉMA 96, grammar-2026-10-15, faits 14 ; 18/18 fins de champ lues au parc ; killsource/objectives constantes prouvées par replay-equiv) (user 15/10, session levelup-80) Fin du champ de réparation lue dans le film (entité ti=41 nommée par la pile i28, DEL = fin) → son `repair_field_end` ; schéma 95 amendé (non cuit).
-- [ ] Recuisson du parc au schéma 96 (ex-95) + backfill killsource (killsource-2026-10-14 : chemin de lecture de 23 morts sur deux films) — accord user.
+- [x] Recuisson du parc au schéma 96 (15/10, 11:04-12:55, rc 0 partout) : 238 artefacts ; au parc riftPoses 123, knockbacks 132, fins suivies 745/758 ; killsource 0 erreur de décodage, 1 erreur d écriture (34db6b33@40500, tueur divergent crédit/film) ; VIP 00761d27 cuit (72 pistes) ; rasters 238 ; air relancé. Séquence : replay --only-existing, usage-summary, pad-tiers --force, vehicle-takes --force, bomb-stats, flag-grabs-net, killsource, VIP 00761d27 (--one), tactical-rasters ; + backfill killsource (killsource-2026-10-14 : chemin de lecture de 23 morts sur deux films) — accord user.
 
 ### Lot G — Étiquettes de barres (Sonnet ; après C, D, E)
 - [x] G1 (cause : ancre inline-flex du Tooltip alignée sur la ligne de base, +2 à +2,5 px ; après 0 px) Constat au navigateur du décalage vertical (cause non prouvée par lecture) avant correction.
@@ -246,13 +246,13 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
 - Gate : vitest/tsc/eslint ; captures claire et sombre de chaque page concernée ; gate visuel user.
 
 - [x] G5 (1fb5fd253 : carte « Appui reçu » de Sessions, nom d axe de la frise)
-- [ ] Gate visuel du user (encre noire au meilleur contraste WCAG sur les bleus et rouges d équipe).
+- [x] Gate visuel du user (15/10, « Parfait ! ») : valeurs à côté de la barre (27bb98209) ; texte blanc partout avec contour sombre (9572c5133). Fusion après la recuisson (gel de feat/v75).
 
 ### Lot H — Opérations (superviseur)
-- [ ] H1 Cuire le match VIP recommandé à l'unité (`backfill-replay --one <id complet>`), après la
+- [x] H1 (00761d27 cuit au schéma 96 le 15/10 ; vérification couronne/score/porteur à faire par le user) Cuire le match VIP recommandé à l'unité (`backfill-replay --one <id complet>`), après la
   recuisson commune du lot images-clés ; relever couronne, score et porteur ; consigner les
   défauts VIP (pont d'identité de la couronne, registre l.40) sans les traiter.
-- [ ] H2 (accord explicite requis) Recuisson du parc au schéma du lot F + passes aval.
+- [x] H2 (fait le 15/10, voir lot EP) (accord explicite requis) Recuisson du parc au schéma du lot F + passes aval.
 - [x] H3 (exécuté par le lot D, item D5, 0257e0b42) `seasons_catalog` (l'appel en direct est fiable, D-9) : confirmer la cause des 401/403
   intermittents (jeton de la requête expiré au moment de l'appel, cf. G7) ; sur 401/403, un seul
   nouvel essai après rafraîchissement du jeton (helper existant, jamais de recapture) ; l'échec
@@ -260,6 +260,8 @@ images-clés ; G (étiquettes de barres) après C, D et E (mêmes fichiers) ; H 
   (Lot Go court, Sonnet.)
 
 ## 4. Découvertes (hors périmètre, non traitées)
+- (recuisson 96, PRÉEXISTANTS, hors correctif i28 selon levelup-80 et le journal) killsource : 34db6b33@40500 = D-39 déjà consigné le 14/10 ; « tueur divergent entre crédit et film » (la clef (match_id, time_ms) apparie deux morts) ; 73 films « équipe de bot(s) NON LUE dans BOT_METADATA » (HI_1_12_0, hors_grammaire=1 ; lecture BOT_METADATA suspecte sur HI_1_12_0 déjà consignée, journal l.116685) ; 4 « vies publiées sans identité » (69b16f5d, 4db2574e, c75f33b8, 9f57c612).
+- (15/10) Commit étranger non poussé dans le checkout principal pendant le gel : 17a896063 « feat(citations): nouvelle image pour la citation Is that my ball? » (auteur inconnu de cette session).
 - (équipement porté) `repair_field_end` reste attaché à une pose `deployed` du champ : ne part jamais (rebranchement à décider).
 - (équipement porté) 5676a9ba : une utilisation de mur sans pose `deployed` (slot 557, image 1406) reste muette ; 8 murs pris à 0,99 sans fiche → comptés ambigus.
 - (équipement porté) `TestBatchQueue_Drain_PartialFailure_OnlySomeACKed` (persist) rouge une fois sous charge, vert 3/3 seul.
