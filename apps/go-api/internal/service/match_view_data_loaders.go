@@ -581,18 +581,18 @@ func detectPartialMatchData(
 ) []string {
 	var reasons []string
 	if len(scoreboard) == 0 {
-		reasons = append(reasons, "scoreboard_empty")
+		reasons = append(reasons, domain.PartialReasonScoreboardEmpty)
 	}
 	if len(events) == 0 {
-		reasons = append(reasons, "events_empty")
+		reasons = append(reasons, domain.PartialReasonEventsEmpty)
 	}
 	if stats == nil || stats.OutcomeCode == 0 {
-		reasons = append(reasons, "player_stats_empty")
+		reasons = append(reasons, domain.PartialReasonPlayerStatsEmpty)
 	}
 	if len(medals) == 0 {
 		medalsFetched := stats != nil && stats.BackfillBits != nil && (*stats.BackfillBits&pBitMedals) != 0
 		if !medalsFetched {
-			reasons = append(reasons, "medals_empty")
+			reasons = append(reasons, domain.PartialReasonMedalsEmpty)
 		}
 	}
 	return reasons

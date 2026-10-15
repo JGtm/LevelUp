@@ -9416,7 +9416,7 @@ export interface components {
             is_partial?: boolean;
             lives_near_teammate?: components["schemas"]["MatchLivesNearTeammate"];
             media_tab: components["schemas"]["MatchMediaTab"];
-            /** @description Codes stables des sources de la vue incomplètes. <source>_empty : la lecture a réussi et ne rend rien (scoreboard, events, player_stats, medals). <source>_unavailable : la lecture a ÉCHOUÉ (scoreboard_unavailable, events_unavailable, player_stats_unavailable, medals_unavailable) ; section_unavailable : un autre chargeur de la vue a échoué (la source est dans le journal serveur). Dans ces cas la vue est transitoire, servie avec Cache-Control: no-store, et le client ne doit pas la conserver. */
+            /** @description <source>_empty : lecture réussie sans donnée ; *_unavailable : lecture en échec (vue transitoire, jamais conservée). */
             partial_reasons?: string[] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
             radar?: unknown[] | null;

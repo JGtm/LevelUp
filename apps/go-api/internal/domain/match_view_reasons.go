@@ -4,6 +4,11 @@ package domain
 // lecture a ÉCHOUÉ, par opposition à `<source>_empty` (lecture réussie, rien à
 // afficher). Codes stables, lus par le web (bandeau « données indisponibles »).
 const (
+	// Raisons « lecture réussie, rien à afficher » (detectPartialMatchData).
+	PartialReasonScoreboardEmpty        = "scoreboard_empty"
+	PartialReasonEventsEmpty            = "events_empty"
+	PartialReasonPlayerStatsEmpty       = "player_stats_empty"
+	PartialReasonMedalsEmpty            = "medals_empty"
 	PartialReasonScoreboardUnavailable  = "scoreboard_unavailable"
 	PartialReasonEventsUnavailable      = "events_unavailable"
 	PartialReasonPlayerStatsUnavailable = "player_stats_unavailable"

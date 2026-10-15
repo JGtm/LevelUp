@@ -1,3 +1,13 @@
+## [2026-10-16] Backlog 2026-10-15 : clôture E6 (rondes 1 et 2 de la revue, backlog, registre) — Complété (branche `feat/backlog-2026-10-15`)
+
+**Statut** : Complété côté code et documents ; fusion dans `feat/v75` demandée au user (E6.5).
+
+**Décision technique principale** : seul l'ABANDON de la requête dégrade le niveau de journal (`LevelUnlessCanceled` fondé sur `errors.Is(ctx.Err(), context.Canceled)`), un délai interne expiré reste une panne ; les fonctions `IsCancellation` / `LevelOnCancellation` de la ronde 1 sont supprimées. La Campagne du corpus démo est exclue en UN point (`resolveDemoCorpus`), manifeste figé compris.
+
+**Résultats observés** : ronde 2 = 2 P1 corrigés (C1 régression de F3, C2 manifeste figé de la démo), 1 P2 noté (C3). `make go-api-lint` complet a relevé 4 issues du lot (goconst, lll) invisibles en `--new-from-rev` : corrigées, contrat OpenAPI et types régénérés. Backlog : entrée Campagne retirée, deux entrées ajoutées ; registre alimenté.
+
+**Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` (geste du user) ; au déploiement : recalcul des dérivés Halo 5 et re-seed de la démo (décision du user).
+
 ## [2026-10-16] Backlog 2026-10-15, E6.2a : corrections de la ronde 1 de la revue adversariale — Complété (branche `feat/backlog-2026-10-15`, 5 commits `backlog-1015(E6.2a-Fn)`)
 
 **Statut** : Complété ; pas de push (E6.4 et E6.5 restent au superviseur / à l'utilisateur).

@@ -26,11 +26,18 @@ type matchViewSource struct {
 
 // Les quatre sources dont la vue signale déjà le vide (detectPartialMatchData). Les
 // autres chargeurs de goLoad restent best-effort sans raison dédiée.
+const (
+	srcNameScoreboard  = "scoreboard"
+	srcNameEvents      = "events"
+	srcNamePlayerStats = "player_stats"
+	srcNameMedals      = "medals"
+)
+
 var (
-	srcScoreboard    = matchViewSource{"scoreboard", "scoreboard_empty", domain.PartialReasonScoreboardUnavailable}
-	srcEvents        = matchViewSource{"events", "events_empty", domain.PartialReasonEventsUnavailable}
-	srcPlayerStats   = matchViewSource{"player_stats", "player_stats_empty", domain.PartialReasonPlayerStatsUnavailable}
-	srcMedals        = matchViewSource{"medals", "medals_empty", domain.PartialReasonMedalsUnavailable}
+	srcScoreboard    = matchViewSource{srcNameScoreboard, domain.PartialReasonScoreboardEmpty, domain.PartialReasonScoreboardUnavailable}
+	srcEvents        = matchViewSource{srcNameEvents, domain.PartialReasonEventsEmpty, domain.PartialReasonEventsUnavailable}
+	srcPlayerStats   = matchViewSource{srcNamePlayerStats, domain.PartialReasonPlayerStatsEmpty, domain.PartialReasonPlayerStatsUnavailable}
+	srcMedals        = matchViewSource{srcNameMedals, domain.PartialReasonMedalsEmpty, domain.PartialReasonMedalsUnavailable}
 	matchViewSources = []matchViewSource{srcScoreboard, srcEvents, srcPlayerStats, srcMedals}
 )
 
