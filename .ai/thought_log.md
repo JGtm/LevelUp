@@ -117423,3 +117423,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : les quatre témoins (`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont 8, 8, 36 et 10 participants et 230, 240, 844 et 193 événements, y compris dans le cut Parquet servi (v180) ; 0 match du registre sans participant (Halo Infinite 9 230, Halo 5 3 032). Écriture atomique registre + participants + événements (`persist/shared_persister.go:66-141`). La vue partielle du 27/09 n'est pas reproductible ; elle annonçait aussi `events_empty`, donc un lecteur partagé indisponible au moment de la sonde plutôt qu'une donnée absente (`goLoad` avale les erreurs en warn, `service/match_view_data_loaders.go:262-269`). Cause non établie faute de journaux du 27/09. Découvertes en section 3 du plan (`partial_reasons` sans distinction vide/erreur ; `participants_loaded` et `player_count` non posés).
 
 **Conclusion / prochaine étape** : constat clos côté poste. Le superviseur joue la requête de E1.4 (journal du plan) sur le VPS, retire l'entrée du backlog si le compte est 0, puis E2. La sous-partie « ERROR au boot de la démo » est passée dans l'entrée `[demo]` du backlog.
+
+## [2026-10-15] Backlog 2026-10-15, E1.4 : compte prod des matchs sans participant — Complété
+
+**Décision technique principale** : lecture seule sur des copies téléchargées des bases partagées de prod (aucune requête sur le VPS, 781 Mo de mémoire disponible).
+
+**Résultats observés** : 0 match sans participant en prod (Halo Infinite 2 014, Halo 5 3 032) ; les quatre témoins sont au registre prod avec leurs participants.
+
+**Conclusion / prochaine étape** : E1 close, entrée du backlog retirée ; E2 (lecteurs sans exclusion de la Campagne).

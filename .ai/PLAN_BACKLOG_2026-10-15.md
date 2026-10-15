@@ -52,7 +52,7 @@ Pièces : `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md` DA-5 ; témoins `000d5950`, `28c
   titre, joueurs suivis concernés).
 - [x] E1.3 Lire le chemin d'écriture des participants (sync + rattrapage) et nommer la cause
   (sync interrompue, rattrapage manquant, filtre) avec `fichier:ligne`.
-- [ ] E1.4 Même compte qu'E1.2 en prod (D-5). LAISSÉ AU SUPERVISEUR (requête au journal).
+- [x] E1.4 Même compte qu'E1.2 en prod (D-5). Fait par le superviseur le 2026-10-15 (journal).
 - [x] E1.5 Conclusion selon D-4 : constat clos, ou correctif S avec test rouge puis vert, ou STOP.
 - [x] E1.6 Mettre à jour l'entrée du backlog (retirée si close, réécrite sinon). La sous-partie
   « ERROR au boot de la démo sur `halo_5/warehouse/metadata.duckdb` » passe dans l'audit de
@@ -201,3 +201,8 @@ Gate : `go test` des paquets touchés, `go test ./internal/api/...` (contrat Ope
     Lecture : `sans_participant` = le compte d'E1.2 (attendu 0 ; si > 0, `depuis`/`jusqua` donnent la
     période, et `first_sync_by` se ventile par `GROUP BY` sur `n_part = 0`). Les 4 témoins ne sont
     probablement pas au registre prod (matchs de comptes du poste) : 0 y est normal.
+- 2026-10-15 (E1.4, superviseur) : copies des deux `shared_matches_v2.duckdb` de prod
+  (`scp` depuis `/opt/levelup/data/titles/*/warehouse/`, pas de `.wal`, checkpoint de 04:00), requête
+  du journal jouée par `cmd/diag_q` : Halo Infinite 2014 / **0** / 1 / NULL / NULL / 4 / 0 ; Halo 5
+  3032 / **0** / 115 / NULL / NULL / 0 / 0. Aucun match sans participant en prod ; les quatre témoins
+  y sont, avec participants. Entrée du backlog retirée. **E1 close.**

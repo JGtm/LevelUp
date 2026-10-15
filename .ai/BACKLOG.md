@@ -101,21 +101,6 @@ puis trier chaque entrant, comme pour B4. **Effort : M.**
 
 ---
 
-### [rejeu/données] Vues match sans tableau des scores : constat local clos, reste le compte prod
-
-Noté le 2026-09-27 (DA-5), instruit le 2026-10-15 (plan `.ai/PLAN_BACKLOG_2026-10-15.md`, E1).
-Constat local : les quatre témoins (`000d5950`, `28c9b538`, `4f77afc1`, `94a28b8b`) ont 8, 8, 36 et
-10 participants et 230, 240, 844 et 193 événements dans la base partagée de ce poste ; AUCUN match
-du registre n'est sans participant (Halo Infinite 0/9 230, Halo 5 0/3 032). Non reproductible : la
-cause de la vue partielle du 27/09 n'était pas une donnée absente (écriture atomique registre +
-participants + événements, `persist/shared_persister.go:66-141`) ; piste retenue : un chargeur de la vue
-match en erreur, avalé en `slog.Warn` (`service/match_view_data_loaders.go:262-269`). Reste au
-superviseur (E1.4) : jouer la requête du journal du plan sur le VPS ; retirer cette entrée si le
-compte prod est 0.
-**Effort : S.**
-
----
-
 ### [go/hygiène] Petites dettes relevées par le lot backlog du 2026-09-26
 
 Noté le 2026-09-27 (DB-1/2/8/9/18/22/23/24, limite B2, revue ronde 2) ; réduit le 2026-10-14 (lots C et E
