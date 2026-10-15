@@ -1,3 +1,13 @@
+## [2026-10-15] Le rejeu ne gere pas le Firefight : ni cuisson, ni service — Complete (branche `fix/rejeu-sans-firefight`)
+
+**Statut** : Complete (code, tests, docs) ; CI a verifier apres push ; a fusionner dans feat/v75 sur decision de l utilisateur.
+
+**Decision technique principale** : decision de l utilisateur du 15/10 (le PvE n est pas gere, « ca n aurait jamais du etre le cas »). Un seul predicat, `analysis.SQLModeNonGere(alias)` = `COALESCE(is_firefight, FALSE)` du registre (aucun nom de mode, aucun slug), employe par la file post-sync (`SQLEligibleALaCuisson` + `selectBuildWork`), `backfill-replay` (selection, comptee « mode non gere » sous --force / --only-existing / --repair-impoverished ; `--one` refuse avec `replaybuild.ErrModeNonGere`), `replayMatchIdentity` (action admin run + enqueue), `ReplayMapRepo` (`port.ReplayModeGate`, capacite optionnelle detectee par le service), le choix des rejeux de la demo et `zones_cartes.go`. Garde-rail `archlint/no_replay_firefight_literal_test.go` : litteral interdit hors du fragment.
+
+**Resultats observes** : le service de rejeu rend « indisponible » (IsAvailable faux, AvailableSet filtre, GetReplay = `ErrReplayNotAvailable` donc 404 `replay_not_available`) pour un Firefight meme si l artefact traine ; la disponibilite affichee par le web vient toujours de ce service, aucun changement web. Fail-open journalise si le registre est illisible. Demo : `edc5daf6` (Cole Protocol, mode `firefight`) etait bien dans `config/demo/JGtm/halo_infinite.json` : retire, famille `firefight` supprimee des familles de rejeux, candidats filtres par le registre. Nouvelle option `backfill-replay --purge-non-geres [--dry-run]` (`replaybuild.PurgeMatchFiles` : artefact, marque `.derived.json`, raster ; jamais le film ni `film_facts`).
+
+**Conclusion / prochaine etape** : lancer `--purge-non-geres --dry-run` puis sans dry-run sur la machine qui tient `data/` (serveur arrete ou non : lecture RO du registre, aucune ecriture base). Hors perimetre, non traite : derivations deja ecrites EN BASE pour les matchs Firefight (usage, positions...) et `tactical-rasters --backfill` (listing sans registre).
+
 ## [2026-10-09] Ecarts de fin multiples de -108 bits (R-VEH-4) : slots liberes de la table d image-cle — Complete (recherche, branche `feat/ri-ecart-108`, non commitee)
 
 **Statut** : Complete (recherche ; aucun code de production ; deux instruments `research` ajoutes, non commites).

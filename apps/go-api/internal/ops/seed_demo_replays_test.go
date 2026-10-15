@@ -38,7 +38,7 @@ func TestDemoReplayFamilyOf(t *testing.T) {
 		"BTB:Extraction":                  "extraction",
 		"Arena:VIP":                       "vip",
 		"BTB:Escalation Slayer":           "escalation",
-		"Firefight:Battle of the Academy": "firefight",
+		"Firefight:Battle of the Academy": "", // mode non géré : aucune famille
 		"TFF | Survive The Undead":        "",
 	}
 	for variant, want := range cases {

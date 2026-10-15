@@ -37,6 +37,13 @@ var ErrMapNotInCatalog = errors.New("replaybuild: carte hors catalogue de bornes
 // illisible).
 var ErrNoTracks = errors.New("replaybuild: aucune trajectoire décodée — artefact non écrit")
 
+// ErrModeNonGere : le match est d'un mode que le rejeu 2D ne gère pas (PvE Firefight, décision
+// du 2026-10-15 : « ça n'aurait jamais dû être le cas »). Aucun artefact n'est cuit, aucun n'est
+// servi. La décision se lit au REGISTRE (`analysis.SQLModeNonGere`), jamais dans le film ni dans
+// un nom de mode. Même famille que les refus ci-dessous : un écart voulu, pas une panne — les
+// producteurs le classent en ÉCARTÉ.
+var ErrModeNonGere = errors.New("replaybuild: mode non géré par le rejeu (Firefight) — match écarté")
+
 // ErrUnknownFilmKey : la clé que le film ÉCRIT (format, build, version majeure) est absente de
 // la table de profil du décodeur. Le film est MIS DE CÔTÉ : aucun artefact n'est cuit, aucun
 // octet n'est rendu.

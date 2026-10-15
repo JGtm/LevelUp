@@ -115,6 +115,24 @@ func SQLDansFenetreRetention(alias string) string {
 	return SQLStartTimeCanonical(alias) + " >= ?"
 }
 
+// SQLModeNonGere rend le predicat « le rejeu 2D ne gere pas le mode de ce match » : le
+// match est du PvE Firefight, que l'application ne rejoue pas (decision du 2026-10-15). C'est
+// le drapeau du REGISTRE (`match_registry.is_firefight`), pose a la synchronisation — jamais
+// un nom de mode ni un slug.
+//
+// UNE SEULE FORMULATION, pour tout ce qui fabrique ou sert un rejeu : la file post-sync
+// ([SQLEligibleALaCuisson]), `backfill-replay`, l'action admin, le service de rejeu, le choix
+// des rejeux de la demo. Le garde-rail `archlint/no_replay_firefight_literal_test.go` interdit
+// le litteral `is_firefight` dans ces fichiers. Vaut FALSE (jamais NULL) pour une ligne sans
+// drapeau.
+func SQLModeNonGere(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "COALESCE(" + prefix + "is_firefight, FALSE)"
+}
+
 // SQLEligibleALaCuisson rend le predicat « la file de cuisson des artefacts de rejeu
 // reprendra ce match », avec ses parametres DANS L'ORDRE.
 //
@@ -129,11 +147,13 @@ func SQLDansFenetreRetention(alias string) string {
 // le FILM EST DEFINITIVEMENT PERDU. Le garde-rail
 // `internal/archlint/no_retention_window_inline_test.go` interdit toute autre formulation.
 //
-// # LES TROIS CONDITIONS
+// # LES QUATRE CONDITIONS
 //
 //	FILM PAS PERDU      `backfill_completed & bitFilmAbsent = 0`. Le marqueur est TERMINAL :
 //	                    l'etape 1.57 le pose quand le film rend 404 ou 0 chunk, et il vaut
 //	                    pour ~29 % du parc. Un match marque ne sera jamais cuit.
+//	MODE GERE           `NOT` [SQLModeNonGere] : le Firefight n'est ni cuit ni compte « en
+//	                    attente ».
 //	DATABLE             les deux horodatages du registre sont nullables. Un match sans date
 //	                    ne peut ni etre ordonne par recence ni etre situe dans la fenetre :
 //	                    la file ne le prend pas.
@@ -151,6 +171,7 @@ func SQLEligibleALaCuisson(alias string, mois int, bitFilmAbsent int64) (string,
 		prefix = alias + "."
 	}
 	sql := "COALESCE(" + prefix + "backfill_completed, 0) & ? = 0" +
+		" AND NOT " + SQLModeNonGere(alias) +
 		" AND " + SQLStartTimeCanonical(alias) + " IS NOT NULL"
 	args := []any{bitFilmAbsent}
 	if borne, bornee := BorneRetention(mois); bornee {

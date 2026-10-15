@@ -206,7 +206,8 @@ func budgetDuCycle(d Deps) time.Duration {
 }
 
 // selectBuildWork lit les identités de carte des matchs insérés et applique la fenêtre de
-// rétention (months <= 0 = illimité). metaDB peut être nil (pas de résolution EN : map_name
+// rétention (months <= 0 = illimité). Les matchs de mode non géré (Firefight) n'en sortent
+// jamais : le rejeu ne les fabrique pas. metaDB peut être nil (pas de résolution EN : map_name
 // brut seul, même dégradation que le backfill CLI).
 func selectBuildWork(
 	ctx context.Context, sharedDB, metaDB *sql.DB, insertedIDs []string, months int,
@@ -220,8 +221,8 @@ func selectBuildWork(
 		args = append(args, id)
 	}
 	q := fmt.Sprintf(`SELECT match_id, map_name, map_id, %s AS start_canonical
-		FROM match_registry WHERE match_id IN (%s)`,
-		analysis.SQLStartTimeCanonical("match_registry"), placeholders)
+		FROM match_registry WHERE match_id IN (%s) AND NOT %s`,
+		analysis.SQLStartTimeCanonical("match_registry"), placeholders, analysis.SQLModeNonGere(""))
 	rows, err := sharedDB.QueryContext(ctx, q, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: sélection rejeu échouée", "err", err)

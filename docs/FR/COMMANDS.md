@@ -307,6 +307,22 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
 ```
 
+`backfill-replay` ne cuit jamais un match d'un mode que le rejeu ne gère pas (Firefight PvE —
+décision du 2026-10-15 ; le verdict est le drapeau du registre `match_registry.is_firefight`,
+lu via `analysis.SQLModeNonGere`, jamais un nom de mode ni un slug). Ces matchs sont comptés
+« mode non gere » dans le résumé, sous toutes les formes de la passe (`--force`,
+`--only-existing`, `--repair-impoverished`) ; `--one <id>` sur l'un d'eux est refusé avec une
+erreur explicite. L'étape post-sync, les actions admin de construction / mise en file et le
+choix des rejeux de la démo appliquent la même exclusion, et le service de rejeu répond « pas de
+rejeu » (404 `replay_not_available`) pour ces matchs même si un artefact traîne encore dans le
+cache. Pour retirer les artefacts cuits avant cette décision (artefact, marque de dérivation et
+sidecar de raster ; le cache de films n'est jamais touché) :
+
+```bash
+go run ./cmd/levelup backfill-replay --purge-non-geres --dry-run   # liste, ne supprime rien
+go run ./cmd/levelup backfill-replay --purge-non-geres             # supprime
+```
+
 La passe (5) est idempotente : un sidecar n'est réécrit que s'il manque, si son propre
 `schema_version` n'est plus le courant, ou si son `artifact_schema_version` ne correspond
 plus à celui de l'artefact dont il a été projeté (donc après une re-cuisson). Une seconde

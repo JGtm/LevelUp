@@ -16,6 +16,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // CarteJouee : une carte du registre, ses noms candidats et le nombre de ses matchs.
@@ -26,10 +28,10 @@ type CarteJouee struct {
 }
 
 // requeteCartesJouees : les cartes JcJ du registre, les plus jouées d'abord.
-const requeteCartesJouees = `
+var requeteCartesJouees = `
 	SELECT map_id, max(map_name), count(*) AS matchs
 	FROM match_registry
-	WHERE map_id IS NOT NULL AND map_id <> '' AND NOT COALESCE(is_firefight, FALSE)
+	WHERE map_id IS NOT NULL AND map_id <> '' AND NOT ` + analysis.SQLModeNonGere("") + `
 	GROUP BY map_id
 	ORDER BY matchs DESC, map_id`
 

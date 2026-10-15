@@ -11,12 +11,14 @@ package wire
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
 
@@ -44,5 +46,34 @@ func TestRunReplayBuild_PasseParLaStrategieEnfant(t *testing.T) {
 	if !errors.Is(err, domain.ErrBuildArtifactInvalid) {
 		t.Errorf("erreur %v : les octets de l'enfant doivent etre RANGES par StoreArtifact, qui "+
 			"refuse ce blob (ErrBuildArtifactInvalid)", err)
+	}
+}
+
+// TestReplayMatchIdentity_RefuseLeModeNonGere — ni l'action admin ni la mise en file ne
+// fabriquent un rejeu de Firefight (decision du 2026-10-15) : l'identite du match, point commun
+// des deux, refuse avec la sentinelle ; un match gere se resout.
+func TestReplayMatchIdentity_RefuseLeModeNonGere(t *testing.T) {
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	for _, q := range []string{
+		`CREATE TABLE match_registry (match_id VARCHAR, map_name VARCHAR, map_id VARCHAR, is_firefight BOOLEAN)`,
+		`INSERT INTO match_registry VALUES
+			('edc5daf6-0df8-4eb0-b578-b8eb892ce184', 'Cole Protocol', 'b', TRUE),
+			('39910eb1-8c01-4e26-bc60-965cb2dcc789', 'Recharge', 'a', FALSE)`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := context.Background()
+	if _, _, err := replayMatchIdentity(ctx, db, nil, "edc5daf6"); !errors.Is(err, replaybuild.ErrModeNonGere) {
+		t.Fatalf("Firefight (forme courte) : %v, attendu ErrModeNonGere", err)
+	}
+	id, names, err := replayMatchIdentity(ctx, db, nil, "39910eb1-8c01-4e26-bc60-965cb2dcc789")
+	if err != nil || id == "" || len(names) != 1 || names[0] != "Recharge" {
+		t.Fatalf("match gere : %q %v %v", id, names, err)
 	}
 }
