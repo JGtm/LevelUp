@@ -191,12 +191,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
 	// section est vide sans raison. Pensé pour CI post-backfill et alerte
 	// dev. Cf. handlers/health_home.go.
-	// S6 (sécurité, lot S) : /healthz/home construit la home du joueur de la
-	// session (banner, peaks CSR/LUSR, arme favorite = révélateur d'identité) →
-	// RequireAuth. Pas de {player_slug} : la propriété est implicite (session). No-op
-	// en démo / auth non activée (probe CI/dev inchangée).
+	// Réservé à l'admin (décision D-C du 2026-10-15) : la sonde construit la home du
+	// joueur désigné par `?player=` (un joueur quelconque, pas celui de la session),
+	// ce qui lit ses données et rafraîchit sa carrière avec son jeton. RequireAuth +
+	// RequireAdmin, inertes en démo et sans auth (e2e, harnais démo, CI).
 	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
-		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt)
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)), apiOpt)
 
 	// Présence en jeu (point Notion 4) : qui joue en ce moment parmi les joueurs
 	// de l'utilisateur, et combien d'AMIS — les joueurs inscrits que l'utilisateur
