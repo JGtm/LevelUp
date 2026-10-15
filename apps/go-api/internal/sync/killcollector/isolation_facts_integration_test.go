@@ -243,6 +243,25 @@ func verifierFaitsDIsolement(t *testing.T, db *sql.DB, col *KillSourceCollector,
 		t.Errorf("%d contexte(s) dont la somme des etats ne fait pas le total", incoherents)
 	}
 
+	// LES LIGNES DE `match_death_mates` RETOMBENT SUR LES COMPTES DE LEUR MORT, et servent la meme
+	// passe que le contexte (plan Tactique coequipiers, L1).
+	var ecartMates, passesMates int
+	if err := db.QueryRow(`SELECT
+		(SELECT COUNT(*) FROM match_death_context_latest c
+		  WHERE c.match_id = ? AND c.teammates_total <> (
+		    SELECT COUNT(*) FROM match_death_mates_latest m
+		    WHERE m.match_id = c.match_id AND m.victim_xuid = c.victim_xuid AND m.time_ms = c.time_ms)),
+		(SELECT COUNT(DISTINCT p) FROM (
+			SELECT decode_pass AS p FROM match_death_mates_latest WHERE match_id = ?
+			UNION SELECT decode_pass FROM match_death_context_latest WHERE match_id = ?))`,
+		film, film, film).Scan(&ecartMates, &passesMates); err != nil {
+		t.Fatalf("select coequipiers: %v", err)
+	}
+	if ecartMates != 0 || passesMates != 1 {
+		t.Errorf("coequipiers : %d mort(s) dont les lignes != teammates_total, %d passes distinctes "+
+			"avec le contexte (attendu 0 et 1)", ecartMates, passesMates)
+	}
+
 	// UNE DISTANCE N'EXISTE QUE S'IL Y A UN COEQUIPIER VISIBLE.
 	var orphelines int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_death_context_latest

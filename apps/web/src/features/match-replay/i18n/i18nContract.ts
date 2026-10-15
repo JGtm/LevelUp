@@ -139,14 +139,13 @@ export interface ReplayText {
    */
   offscreenGroupMarkerFmt: (count: number, meters: number) => string
   /**
-   * AVIS « INSTANT NON CALÉ » (lot M1b, 2026-09-08) : un lien tactique demandait un instant
-   * sur l'horloge du MATCH, mais l'artefact de ce match n'a pas de calage connu (`coverage.
-   * bridge.deathOffsetMs` absent — schéma antérieur à 49, ou pont d'identité qui n'a apparié
-   * aucune mort). Le rejeu s'ouvre quand même, au DÉBUT — jamais sur un saut approximatif
-   * présenté comme exact. Cf. `lib/replay/replayLogic.resolveTacticalReplayInstant`.
+   * AVIS « INSTANT NON CALÉ » : un lien tactique demandait un instant sur l'horloge du MATCH,
+   * mais l'artefact de ce match n'a pas d'origine du film (`matchClock` rend `null`). Le rejeu
+   * s'ouvre quand même, au DÉBUT — jamais sur un saut approximatif présenté comme exact.
+   * Cf. `lib/replay/replayLogic.resolveTacticalOpenAtFrame`.
    */
-  openAtUncalibratedTitle: string
-  openAtUncalibratedDescription: string
+  openAtNoOriginTitle: string
+  openAtNoOriginDescription: string
   speed: string
   time: string
   /**

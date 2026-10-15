@@ -18,7 +18,7 @@
  * commentaire qui le nomme ne déclare rien. Les deux cas sont cadenassés sur des sources
  * synthétiques ci-dessous.
  *
- * ALLOWLIST DATÉE (2026-09-23), UNE ENTRÉE : `useTacticalCellule`. Le détail d'une cellule
+ * ALLOWLIST DATÉE (2026-09-23 puis 2026-10-14), DEUX ENTRÉES : `useTacticalCellule`, `useTacticalSequence`. Le détail d'une cellule
  * ne garde PAS la réponse précédente — ce serait afficher les contributions d'une AUTRE
  * cellule (ou d'un autre périmètre) sous la cellule choisie. Ajouter une entrée exige une
  * raison datée du même ordre.
@@ -30,6 +30,8 @@ import { resolve } from 'node:path'
 const EXEMPTEES: Readonly<Record<string, string>> = {
   useTacticalCellule:
     '2026-09-23 — les contributions d’une autre cellule mentiraient : le détail repart à vide',
+  useTacticalSequence:
+    '2026-10-14 — la séquence d’une autre mort mentirait : la vue D repart à vide, et n’est rendue que si la requête réussit',
 }
 
 /** Le source sans ses commentaires : un commentaire ne déclare rien. */

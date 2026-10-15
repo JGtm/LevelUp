@@ -79,6 +79,7 @@ function contribution(extra: Partial<TacticalContribution> = {}): TacticalContri
   return {
     match_id: 'm1',
     instant_ms: 83_400,
+    instant_affiche_ms: 83_400,
     clock: 'match',
     xuid: '2533274000000001',
     match_started_at: '2026-09-01T22:30:00Z',
@@ -97,7 +98,7 @@ function contribution(extra: Partial<TacticalContribution> = {}): TacticalContri
 const DETAIL: TacticalCelluleReponse = {
   contributions: [
     contribution(),
-    contribution({ match_id: 'm2', instant_ms: 5_000, resultat: 'loss', replay_available: false, match_started_at: '2026-08-30T20:00:00Z' }),
+    contribution({ match_id: 'm2', instant_ms: 5_000, instant_affiche_ms: 5_000, resultat: 'loss', replay_available: false, match_started_at: '2026-08-30T20:00:00Z' }),
   ],
   zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' },
 }
@@ -199,26 +200,30 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
 })
 
 describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
-  it('deux lignes : mode, score, date ; instant, fait, arme, badge — le mot d’issue reste en infobulle', () => {
+  it('trois lignes : mode, score, date ; instant, fait ; arme, badge — le mot d’issue reste en infobulle', () => {
     rendre()
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
     const l1 = within(tuile).getByTestId('tactical-rejeu-l1')
     const l2 = within(tuile).getByTestId('tactical-rejeu-l2')
+    const l3 = within(tuile).getByTestId('tactical-rejeu-l3')
     expect(l1).toHaveTextContent('Assassin')
     expect(l1).toHaveTextContent('50 - 42')
     expect(l1).not.toHaveTextContent('Victoire')
     expect(l1).toHaveTextContent('01/09/2026 · 22:30')
     expect(l2).toHaveTextContent('1:23')
     expect(l2).toHaveTextContent('Tué par Rival')
-    expect(l2).toHaveTextContent('Fusil de combat à longue portée')
-    expect(l2).toHaveTextContent('seul · 30 m')
+    expect(l3).toHaveTextContent('Fusil de combat à longue portée')
+    expect(l3).toHaveTextContent('seul · 30 m')
   })
 
-  it('l’arme seule se tronque ; le texte complet est en infobulle', () => {
+  it('l’arme et le gamertag tronquent, le badge jamais ; le texte complet est en infobulle', () => {
     rendre()
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
     expect(within(tuile).getByText('Fusil de combat à longue portée').className).toContain('truncate')
-    expect(within(tuile).getByText('Tué par Rival').className).toContain('flex-none')
+    // Seul le gamertag tronque : le début du fait et le badge gardent leur largeur.
+    expect(within(tuile).getByText('Rival').className).toContain('truncate')
+    expect(within(tuile).getByText('Tué par').className).toContain('flex-none')
+    expect(within(tuile).getByText('seul · 30 m').className).toContain('flex-none')
     expect(tuile.getAttribute('title')).toBe(
       'Assassin · 50 - 42 · Victoire · 01/09/2026 · 22:30 · 1:23 · Tué par Rival · Fusil de combat à longue portée · seul · 30 m',
     )
@@ -232,11 +237,11 @@ describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
     expect(score(defaite)).toContain('outcome-loss')
   })
 
-  it('l’icône d’arme remplace le nom, qui reste dans l’infobulle ; sans icône, le nom s’écrit', () => {
+  it('l’icône d’arme remplace le nom sur la ligne 3, qui reste dans l’infobulle ; sans icône, le nom s’écrit', () => {
     const avecIcone = { ...DETAIL, contributions: [contribution({ arme_image_url: '/static/weapons/br75.png', arme_image_tinted: true })] }
     const { unmount } = rendre({ detail: { data: avecIcone, isPending: false, isError: false } })
     const tuile = screen.getAllByTestId('tactical-rejeu-tile')[0]
-    expect(within(tuile).getByRole('img', { name: 'Fusil de combat à longue portée' })).toBeInTheDocument()
+    expect(within(within(tuile).getByTestId('tactical-rejeu-l3')).getByRole('img', { name: 'Fusil de combat à longue portée' })).toBeInTheDocument()
     expect(within(tuile).queryByText('Fusil de combat à longue portée')).toBeNull()
     expect(tuile.getAttribute('title')).toContain('Fusil de combat à longue portée')
     unmount()
@@ -247,7 +252,7 @@ describe('TacticalRejeuTile — la mini-tuile d’une contribution', () => {
   it('le bouton de rejeu : à l’instant, seulement si l’artefact existe', () => {
     rendre()
     const [avec, sans] = screen.getAllByTestId('tactical-rejeu-tile')
-    const lien = within(avec).getByRole('link', { name: 'Ouvrir le rejeu à 1:23' })
+    const lien = within(avec).getByRole('link', { name: 'Ouvrir le rejeu 5 s avant 1:23' })
     expect(lien.getAttribute('href')).toBe('/halo_infinite/players/JGtm/matches/m1/replay?t=83400&clock=match')
     expect(within(sans).queryByRole('link')).toBeNull()
   })

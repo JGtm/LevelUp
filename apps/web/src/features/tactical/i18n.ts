@@ -10,6 +10,8 @@ import { formatMessage } from '@/lib/i18n/format'
 import { tacticalManifest, type TacticalManifestKey } from '@/lib/i18n/generated/tactical'
 import type { Locale } from '@/lib/i18n/locale'
 
+import { getMortText } from './mortText'
+
 export function getTacticalText(locale: Locale) {
   const m = (key: TacticalManifestKey, values?: Record<string, unknown>) =>
     formatMessage(tacticalManifest, key, locale, values)
@@ -130,6 +132,7 @@ export function getTacticalText(locale: Locale) {
     zoneReplayHeading: m('tactical.zone.replay_heading'),
     zoneContributionsLoading: m('tactical.zone.contributions_loading'),
     zoneContributionsEmpty: m('tactical.zone.contributions_empty'),
+    zoneEventsLabel: m('tactical.zone.events_label'),
     zoneError: m('tactical.zone.error'),
 
     // ── Mini-tuile « Rejeu » ────────────────────────────────────────────────
@@ -149,7 +152,14 @@ export function getTacticalText(locale: Locale) {
     tileAlone: m('tactical.tile.alone'),
     tileAloneAt: (d: string) => m('tactical.tile.alone_at', { d }),
     tileNearAt: (d: string) => m('tactical.tile.near_at', { d }),
-    tileOpenReplay: (instant: string) => m('tactical.tile.open_replay', { instant }),
+    tileDistanceLt1: m('tactical.tile.distance_lt1'),
+    tileDistance: (d: string) => m('tactical.tile.distance', { d }),
+    // ── Couche « autre joueur » du plan : légende ────────────────────────────
+    layerKillers: m('tactical.layer.killers'),
+    layerVictims: m('tactical.layer.victims'),
+    tileOpenReplayNoInstant: (secondes: number) => m('tactical.tile.open_replay_no_instant', { secondes }),
+    tileOpenReplay: (instant: string, secondes: number) => m('tactical.tile.open_replay', { instant, secondes }),
+    ...getMortText(m),
   }
 }
 

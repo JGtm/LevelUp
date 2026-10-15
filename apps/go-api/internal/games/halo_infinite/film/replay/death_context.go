@@ -125,6 +125,23 @@ type ContexteMort struct {
 	PlusProcheM                    *float64
 	Visibles, EnAttente, HorsDeVue int
 	Total                          int
+	// Coequipiers : UNE entrée par coéquipier de la victime, triée par xuid croissant (l'ordre
+	// d'une map n'est pas un ordre). Les compteurs ci-dessus et `PlusProcheM` en sont DÉRIVÉS :
+	// ce sont les mêmes états, jamais une seconde lecture.
+	Coequipiers []CoequipierDeMort
+}
+
+// CoequipierDeMort : l'état d'un coéquipier à l'instant d'une mort, et — pour le seul état
+// `EtatVisible` — où il se tenait.
+//
+// X, Y et DistanceM sont nil ensemble hors de l'état visible : seule une position répliquée
+// autorise une coordonnée ou une distance. X, Y en mètres monde, DistanceM horizontale à la
+// victime, tous arrondis à 2 décimales (`arrondiMetres`).
+type CoequipierDeMort struct {
+	XUID      uint64
+	Etat      string
+	X, Y      *float64
+	DistanceM *float64
 }
 
 // LES DEUX CRITÈRES DE `IdentityRegistry.PontPubliable` — le NOMMAGE des vies est-il assez sûr
@@ -188,32 +205,58 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 	mortsPar map[uint64][]int64, m MortDuJournal, son int, lieu point,
 ) ContexteMort {
 	c := ContexteMort{VictimeXUID: m.VictimeXUID, TempsMS: m.TempsMS}
-	plusProche := math.Inf(1)
+	// Tri par xuid AVANT le parcours : l'ordre d'une map change d'un appel à l'autre, et les
+	// replis comptes (`Fallbacks`) comme la liste publiee doivent etre reproductibles.
+	coequipiers := make([]uint64, 0, len(e.Equipes))
 	for autre, equipe := range e.Equipes {
-		if autre == m.VictimeXUID || equipe != son {
-			continue
+		if autre != m.VictimeXUID && equipe == son {
+			coequipiers = append(coequipiers, autre)
 		}
-		c.Total++
-		switch etatDUnCoequipier(pos, vies, mortsPar, autre, m.TempsMS) {
+	}
+	slices.Sort(coequipiers)
+	c.Total = len(coequipiers)
+	c.Coequipiers = make([]CoequipierDeMort, 0, len(coequipiers))
+	for _, autre := range coequipiers {
+		ligne := CoequipierDeMort{XUID: autre, Etat: etatDUnCoequipier(pos, vies, mortsPar, autre, m.TempsMS)}
+		switch ligne.Etat {
 		case EtatVisible:
 			c.Visibles++
-			if p, ok := pos.visibleA(autre, m.TempsMS); ok {
-				if d := distanceHorizontale(p, lieu); d < plusProche {
-					plusProche = d
-				}
-			}
+			poserPosition(&ligne, pos, m.TempsMS, lieu)
 		case EtatEnAttente:
 			c.EnAttente++
 		default:
 			c.HorsDeVue++
 			e.Fallbacks.Declenche(fallback.NomCoequipierHorsDeVueParDefaut)
 		}
+		c.Coequipiers = append(c.Coequipiers, ligne)
 	}
-	if !math.IsInf(plusProche, 1) {
-		arrondi := arrondiMetres(plusProche)
-		c.PlusProcheM = &arrondi
-	}
+	c.PlusProcheM = plusProcheDesVisibles(c.Coequipiers)
 	return c
+}
+
+// poserPosition renseigne X, Y et la distance à la victime d'un coéquipier visible.
+func poserPosition(l *CoequipierDeMort, pos positionsParXUID, tMS int64, lieu point) {
+	p, ok := pos.visibleA(l.XUID, tMS)
+	if !ok {
+		return
+	}
+	x, y, d := arrondiMetres(p.x), arrondiMetres(p.y), arrondiMetres(distanceHorizontale(p, lieu))
+	l.X, l.Y, l.DistanceM = &x, &y, &d
+}
+
+// plusProcheDesVisibles rend la plus petite distance de la liste, nil si aucun visible n'en porte.
+func plusProcheDesVisibles(l []CoequipierDeMort) *float64 {
+	var mini *float64
+	for i := range l {
+		if d := l[i].DistanceM; d != nil && (mini == nil || *d < *mini) {
+			mini = d
+		}
+	}
+	if mini == nil {
+		return nil
+	}
+	v := *mini
+	return &v
 }
 
 // etatDUnCoequipier applique les trois règles actives : visible, en attente, hors de vue.

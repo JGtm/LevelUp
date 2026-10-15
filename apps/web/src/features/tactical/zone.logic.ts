@@ -10,7 +10,7 @@
 import type { CelluleTactique, TacticalCelluleReponse, TacticalContribution } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
-import { formatClock } from '@/lib/replay/replayLogic'
+import { formatClock, OUVERTURE_AVANT_EVENEMENT_MS } from '@/lib/replay/replayLogic'
 
 import type { TacticalText } from './i18n'
 import {
@@ -20,6 +20,7 @@ import {
   type RepereTactique,
   type TacticalQuestion,
 } from './tacticalView.logic'
+import { distanceEnMetres } from './tueurs.logic'
 
 /** Au-delà de ce point de la largeur, l'étiquette du nom de zone passe à GAUCHE de la cellule. */
 const ETIQUETTE_BASCULE = 0.55
@@ -77,6 +78,11 @@ export function choixDuClic(
   return meilleure
 }
 
+/** decimale — un nombre à une décimale, séparateur de la langue (« 1,8 »). */
+export function decimale(v: number, locale: Locale): string {
+  return new Intl.NumberFormat(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v)
+}
+
 /** Un nombre au plus au dixième, signe moins typographique. */
 function metres(v: number, locale: Locale): string {
   const n = new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 1 }).format(Math.abs(v))
@@ -126,11 +132,16 @@ interface ModeleDeTuile {
   mode?: string
   score?: string
   date: string
-  instant: string
+  /** L'instant sur l'horloge AFFICHÉE du rejeu (« 7:20 ») ; absent quand le serveur ne le publie pas. */
+  instant?: string
   fait: string
+  /** Le fait découpé autour du gamertag (« Tué par » · « Rival » · «  »), pour que seul le gamertag tronque. */
+  faitDecoupe: { avant: string; gamertag?: string; apres: string }
   /** L'arme, ou la catégorie de la source traduite ; absente sinon. Seule partie qui se tronque. */
   arme?: string
   badge?: string
+  /** La distance à l'autre joueur (« à 23 m ») ; absente quand un des deux points manque. */
+  distance?: string
   /** Le texte complet de la tuile, pour l'infobulle. */
   titre: string
   rejeu: { disponible: boolean; search: { t: string; clock: 'match' | 'film' }; libelle: string }
@@ -151,10 +162,28 @@ function faitDe(t: TacticalText, c: TacticalContribution): string {
   }
 }
 
-function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
+/** Marque posée à la place du gamertag pour découper la phrase du fait sans la dupliquer. */
+const MARQUE_GAMERTAG = '\u0001'
+
+/** faitDecoupeDe — le fait de la face autour du gamertag de l'autre joueur ; sans gamertag, tout en `avant`. */
+function faitDecoupeDe(t: TacticalText, c: TacticalContribution): { avant: string; gamertag?: string; apres: string } {
+  const phrase = c.face === 'mort' ? t.tileKilledBy : c.face === 'frag' ? t.tileKilled : null
+  if (!phrase || !c.autre_gamertag) return { avant: faitDe(t, c), apres: '' }
+  const [avant = '', apres = ''] = phrase(MARQUE_GAMERTAG).split(MARQUE_GAMERTAG)
+  return { avant, gamertag: c.autre_gamertag, apres }
+}
+
+export function armeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
   const arme = locale === 'en' ? c.arme_label_en || c.arme_label : c.arme_label || c.arme_label_en
   if (arme) return arme
   return c.categorie_source ? t.tileCategories[c.categorie_source] : undefined
+}
+
+/** distanceDe — « à 23 m » (« < 1 m » sous le mètre) : la distance entre l'événement et l'autre joueur. */
+function distanceDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
+  const d = distanceEnMetres(c)
+  if (d === 0) return t.tileDistanceLt1
+  return d === null ? undefined : t.tileDistance(new Intl.NumberFormat(intlLocale(locale)).format(d))
 }
 
 function badgeDe(t: TacticalText, c: TacticalContribution, locale: Locale): string | undefined {
@@ -177,27 +206,42 @@ export function modeleDeTuile(
   timezone: string,
   issue: string | null,
 ): ModeleDeTuile {
-  const instant = formatClock(c.instant_ms)
+  // L'instant écrit est celui que l'horloge du rejeu affichera à l'événement (`instant_affiche_ms`,
+  // calculé par le serveur depuis le coup d'envoi) : jamais `instant_ms`, qui compte le countdown.
+  const instant = c.instant_affiche_ms == null ? undefined : formatClock(c.instant_affiche_ms)
   const fait = faitDe(t, c)
   const arme = armeDe(t, c, locale)
   const badge = badgeDe(t, c, locale)
+  const distance = distanceDe(t, c, locale)
   const date = dateEtHeure(c.match_started_at, timezone, locale)
-  const titre = [c.mode_label, c.score_label, issue, date, instant, fait, arme, badge].filter(Boolean).join(' · ')
+  const titre = [c.mode_label, c.score_label, issue, date, instant, fait, distance, arme, badge].filter(Boolean).join(' · ')
   return {
     mode: c.mode_label || undefined,
     score: c.score_label || undefined,
     date,
     instant,
     fait,
+    faitDecoupe: faitDecoupeDe(t, c),
     arme,
     badge,
+    distance,
     titre,
     rejeu: {
       disponible: c.replay_available,
       search: { t: String(c.instant_ms), clock: c.clock === 'film' ? 'film' : 'match' },
-      libelle: t.tileOpenReplay(instant),
+      libelle: instant
+        ? t.tileOpenReplay(instant, OUVERTURE_AVANT_EVENEMENT_MS / 1000)
+        : t.tileOpenReplayNoInstant(OUVERTURE_AVANT_EVENEMENT_MS / 1000),
     },
   }
+}
+
+/**
+ * infobulleDuPoint — le texte court du point survolé sur le plan : le gamertag de l'autre joueur,
+ * l'arme si elle est connue, la distance si les deux points le sont.
+ */
+export function infobulleDuPoint(t: TacticalText, c: TacticalContribution, locale: Locale): string {
+  return [c.autre_gamertag, armeDe(t, c, locale), distanceDe(t, c, locale)].filter(Boolean).join(' · ')
 }
 
 /**

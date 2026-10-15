@@ -87,7 +87,8 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	nonOuvrables := matchsNonOuvrables(scope.MatchIDs, ouvrables)
 	retenues := s.garderLesOuvrables(ctx, req.MapID, lues, ouvrables, resultatsDeLUnivers(univers))
 	out.Zone = s.nommerLaCellule(ctx, req, retenues)
-	out.Contributions = s.enrichir(ctx, req, univers, retenues)
+	poserInstantAffiche(retenues, univers)
+	out.Contributions, out.Bilan = s.enrichir(ctx, req, univers, retenues)
 
 	s.logger.InfoContext(ctx, "tactique: detail de cellule",
 		"player", s.xuid, "map_id", req.MapID, "question", req.Question, "qui", req.Qui,
@@ -183,11 +184,13 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 	for _, p := range lecture.Points {
 		if prendVictime && dans(p.MatchID, p.VictimXUID) &&
 			celluleCorrespond(grille, p.VictimX, p.VictimY, req.Col, req.Lig) {
-			out = append(out, faceDeKill(p, p.VictimXUID, domain.TacticalFaceMort, p.KillerGamertag, p.VictimZ))
+			out = append(out, faceDeKill(p, p.VictimXUID, domain.TacticalFaceMort, p.KillerGamertag, p.VictimZ,
+				&domain.TacticalPoint{X: p.VictimX, Y: p.VictimY}, &domain.TacticalPoint{X: p.KillerX, Y: p.KillerY}))
 		}
 		if prendTueur && dans(p.MatchID, p.KillerXUID) &&
 			celluleCorrespond(grille, p.KillerX, p.KillerY, req.Col, req.Lig) {
-			out = append(out, faceDeKill(p, p.KillerXUID, domain.TacticalFaceFrag, p.VictimGamertag, p.KillerZ))
+			out = append(out, faceDeKill(p, p.KillerXUID, domain.TacticalFaceFrag, p.VictimGamertag, p.KillerZ,
+				&domain.TacticalPoint{X: p.KillerX, Y: p.KillerY}, &domain.TacticalPoint{X: p.VictimX, Y: p.VictimY}))
 		}
 	}
 	return out, lecture.Univers, nil
@@ -195,12 +198,14 @@ func (s *TacticalService) celluleDeKills(ctx context.Context, req domain.Tactica
 
 // faceDeKill rend une face d'un engagement : la mort de la victime (l'autre joueur est le tueur,
 // la hauteur celle de la victime) ou le frag du tueur (l'autre est la victime, la hauteur celle du
-// tueur). La source de dégât est celle de l'engagement, la même pour les deux faces.
-func faceDeKill(p domain.TacticalKillPosition, joueur, face, autre string, z *float64) contributionLue {
+// tueur). `point` est la position de l'événement, `autrePoint` celle de l'autre joueur. La source
+// de dégât est celle de l'engagement, la même pour les deux faces.
+func faceDeKill(p domain.TacticalKillPosition, joueur, face, autre string, z *float64,
+	point, autrePoint *domain.TacticalPoint) contributionLue {
 	return contributionLue{
 		TacticalContribution: domain.TacticalContribution{
 			MatchID: p.MatchID, InstantMs: p.TimeMs, XUID: joueur, Clock: domain.TacticalClockMatch,
-			Face: face, AutreGamertag: autre,
+			Face: face, AutreGamertag: autre, Point: point, AutrePoint: autrePoint,
 		},
 		z: z, sourceTag: p.SourceTag, categorie: p.SourceCategory,
 	}
@@ -260,15 +265,25 @@ func (s *TacticalService) celluleIsole(ctx context.Context, req domain.TacticalC
 			TacticalContribution: domain.TacticalContribution{
 				MatchID: m.MatchID, InstantMs: m.TimeMs, XUID: m.VictimXUID,
 				Clock: domain.TacticalClockMatch, Face: domain.TacticalFaceMort, AutreGamertag: m.KillerGamertag,
+				Point: &domain.TacticalPoint{X: m.X, Y: m.Y}, AutrePoint: pointDuTueur(m),
 			},
 			z: m.Z, sourceTag: m.SourceTag, categorie: m.SourceCategory,
 			contexte: &domain.ContexteDeMort{
 				MatchID: m.MatchID, VictimXUID: m.VictimXUID, TimeMs: m.TimeMs,
 				PlusProcheM: m.PlusProcheM, Visibles: m.Visibles, HorsDeVue: m.HorsDeVue,
+				EnAttente: m.EnAttente, Total: m.Total,
 			},
 		})
 	}
 	return out, lecture.Univers, nil
+}
+
+// pointDuTueur rend la position du tueur d'une mort, nil quand la source ne la mesure pas.
+func pointDuTueur(m domain.MortContexte) *domain.TacticalPoint {
+	if m.KillerX == nil || m.KillerY == nil {
+		return nil
+	}
+	return &domain.TacticalPoint{X: *m.KillerX, Y: *m.KillerY}
 }
 
 // celluleArtefact sert « ou je passe mon temps » et « par ou je sors du spawn », sur les

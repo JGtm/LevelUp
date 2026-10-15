@@ -24,6 +24,7 @@ import { renderWithProviders } from '@/test/render-utils'
 
 import type { CarteEffective } from './cockpit.logic'
 import { getTacticalText } from './i18n'
+import { MORT_COMPLETE } from './mort.fixtures'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { PLAN_ASPECT_DEFAUT } from './tacticalView.logic'
 import { hauteurDisponible } from './useHauteurDuPlan'
@@ -53,6 +54,11 @@ vi.mock('./queries', async (importOriginal) => {
     useTacticalRaster: (...args: unknown[]) => useTacticalRaster(...args),
     useTacticalCellule: (...args: unknown[]) => useTacticalCellule(...args),
   }
+})
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, Link: ({ children }: { children?: React.ReactNode }) => <a href="/rejeu">{children}</a> }
 })
 
 const t = getTacticalText('fr')
@@ -458,6 +464,20 @@ describe('TacticalAnalysisView — la zone choisie', () => {
     renderVue()
     expect(within(cadre()).getByTestId('tactical-zone-label')).toHaveTextContent('Nid blindé')
     expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent('Nid blindé')
+  })
+
+  it('une mort choisie retire le nom de la zone du plan, la désélection le ramène', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    useTacticalCellule.mockReturnValue({
+      data: { contributions: [MORT_COMPLETE], zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' } },
+      isPending: false,
+    })
+    renderVue()
+    expect(within(cadre()).getByTestId('tactical-zone-label')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByTestId('tactical-rejeu-tile')[0])
+    expect(within(cadre()).queryByTestId('tactical-zone-label')).toBeNull()
+    fireEvent.click(screen.getAllByTestId('tactical-rejeu-tile')[0])
+    expect(within(cadre()).getByTestId('tactical-zone-label')).toBeInTheDocument()
   })
 
   it('aucune zone ne la nomme : « Zone sans nom » sur le plan', () => {

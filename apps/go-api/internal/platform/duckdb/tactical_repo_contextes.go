@@ -24,7 +24,8 @@ import (
 // QTacticalContextes : %s = la liste des matchs, en constantes liées.
 const QTacticalContextes = `
 SELECT c.match_id, COALESCE(c.victim_xuid, '') AS victim_xuid, c.time_ms,
-       c.nearest_teammate_m, c.teammates_visible, c.teammates_out_of_sight
+       c.nearest_teammate_m, c.teammates_visible, c.teammates_out_of_sight,
+       c.teammates_waiting, c.teammates_total
 FROM match_death_context_latest c
 WHERE c.match_id IN (%s)
 ORDER BY c.match_id, c.time_ms`
@@ -59,7 +60,8 @@ func (r *TacticalRepo) ContextesDeMort(ctx context.Context, q domain.TacticalQue
 	err = scanRows(ctx, rows, "TacticalRepo.ContextesDeMort", func(sc rowScanner) error {
 		var c domain.ContexteDeMort
 		var proche sql.NullFloat64
-		if err := sc.Scan(&c.MatchID, &c.VictimXUID, &c.TimeMs, &proche, &c.Visibles, &c.HorsDeVue); err != nil {
+		if err := sc.Scan(&c.MatchID, &c.VictimXUID, &c.TimeMs, &proche, &c.Visibles, &c.HorsDeVue,
+			&c.EnAttente, &c.Total); err != nil {
 			return err
 		}
 		c.PlusProcheM = nullFloatPtr(proche)

@@ -3628,6 +3628,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/tactical/{map_id}/sequence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sequence d'une mort : traces de la victime, du tueur et des coequipiers de -8 a +3 s, et etapes du cercle de portee */
+        post: operations["getTacticalSequence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/tactical/maps": {
         parameters: {
             query?: never;
@@ -12900,6 +12917,28 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
+        TacticalBilanMorts: {
+            /** Format: int64 */
+            accompagnees: number;
+            /** Format: int64 */
+            aucun_visible: number;
+            /** Format: int64 */
+            equipe_a_terre: number;
+            /** Format: int64 */
+            examinees: number;
+            /** Format: double */
+            mediane_plus_proche_m?: number;
+            /** Format: double */
+            mediane_tueur_m?: number;
+            rose: number[] | null;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            visibles_hors_rayon: number;
+        };
+        TacticalBilanZone: {
+            morts?: components["schemas"]["TacticalBilanMorts"];
+        };
         TacticalCelluleAdresse: {
             /**
              * Format: int64
@@ -12932,8 +12971,20 @@ export interface components {
             spawn?: string;
         };
         TacticalCelluleReponse: {
+            bilan?: components["schemas"]["TacticalBilanZone"];
             contributions: components["schemas"]["TacticalContribution"][] | null;
             zone?: components["schemas"]["TacticalZoneNom"];
+        };
+        TacticalCoequipier: {
+            dans_le_rayon: boolean;
+            /** Format: double */
+            distance_mort_m?: number;
+            /** Format: double */
+            distance_tueur_m?: number;
+            gamertag?: string;
+            point?: components["schemas"]["TacticalPoint"];
+            statut: string;
+            xuid: string;
         };
         TacticalContribution: {
             arme_image_tinted?: boolean;
@@ -12941,9 +12992,13 @@ export interface components {
             arme_label?: string;
             arme_label_en?: string;
             autre_gamertag?: string;
+            autre_point?: components["schemas"]["TacticalPoint"];
             categorie_source?: string;
             clock: string;
+            equipe?: components["schemas"]["TacticalEquipeALaMort"];
             face?: string;
+            /** Format: int64 */
+            instant_affiche_ms?: number;
             /** Format: int64 */
             instant_ms: number;
             match_id: string;
@@ -12951,11 +13006,18 @@ export interface components {
             match_started_at: string;
             mode_label?: string;
             placement?: components["schemas"]["TacticalPlacement"];
+            point?: components["schemas"]["TacticalPoint"];
             replay_available: boolean;
             resultat?: string;
             score_kind?: string;
             score_label?: string;
             xuid: string;
+        };
+        TacticalEquipeALaMort: {
+            coequipiers: components["schemas"]["TacticalCoequipier"][] | null;
+            /** Format: double */
+            rayon_m?: number;
+            statut?: string;
         };
         TacticalGrappe: {
             id: string;
@@ -13001,6 +13063,12 @@ export interface components {
             distance_m?: number;
             seul: boolean;
         };
+        TacticalPoint: {
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
         TacticalRaster: {
             bornes: components["schemas"]["BornesMonde"];
             cellules: components["schemas"]["CelluleTactique"][] | null;
@@ -13040,6 +13108,55 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
+        };
+        TacticalSequence: {
+            acteurs: components["schemas"]["TacticalSequenceActeur"][] | null;
+            etapes: components["schemas"]["TacticalSequenceEtape"][] | null;
+            mort: components["schemas"]["TacticalPoint"];
+            /** Format: int64 */
+            pas_ms: number;
+            /** Format: double */
+            rayon_m: number;
+            /** Format: int64 */
+            traine_ms: number;
+        };
+        TacticalSequenceActeur: {
+            gamertag?: string;
+            points: components["schemas"]["TacticalSequencePoint"][] | null;
+            role: string;
+            xuid?: string;
+        };
+        TacticalSequenceBody: {
+            /** @description Le match de la mort. */
+            match_id: string;
+            /**
+             * Format: int64
+             * @description L'instant de la mort sur l'horloge du MATCH (TacticalContribution.instant_ms).
+             */
+            time_ms: number;
+            /** @description La victime (xuid decimal) — celle de la contribution de face « mort ». */
+            victim_xuid: string;
+        };
+        TacticalSequenceEtape: {
+            centre: components["schemas"]["TacticalPoint"];
+            /** Format: int64 */
+            dans_le_rayon: number;
+            dans_le_rayon_xuids: string[] | null;
+            /** Format: int64 */
+            instant_affiche_ms?: number;
+            /** Format: int64 */
+            offset_ms: number;
+            /** Format: int64 */
+            positionnes: number;
+        };
+        TacticalSequencePoint: {
+            coupure?: boolean;
+            /** Format: int64 */
+            offset_ms: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
         };
         TacticalZoneNom: {
             nom_en: string;
@@ -21815,6 +21932,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TacticalRaster"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getTacticalSequence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TacticalSequenceBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TacticalSequence"];
                 };
             };
             /** @description Error */

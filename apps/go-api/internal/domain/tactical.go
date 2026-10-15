@@ -314,6 +314,12 @@ type TacticalMatch struct {
 	// au denominateur « par match » et dans aucun des deux cotes de la lecture
 	// signee (cf. analysis/tactical.RasteriseAvecResultats).
 	Outcome int
+
+	// T0Ms est le coup d'envoi du match sur l'axe du MATCH, en ms depuis son debut (countdown
+	// compris) : `real_start_time − start_time` du registre. Le registre y porte le coup d'envoi
+	// MESURE dans le film des qu'il a ete reporte, l'estimation de l'API sinon. nil = inconnu
+	// (jamais 0 de repli : un match inconnu ne se date pas sur l'horloge affichee).
+	T0Ms *int64
 }
 
 // TacticalUnivers est L'ENSEMBLE DES MATCHS RETENUS par le filtre, avec la
@@ -395,6 +401,9 @@ type MortContexte struct {
 	// PlusProcheM : distance au coequipier VISIBLE le plus proche. nil = aucun visible.
 	PlusProcheM         *float64
 	Visibles, HorsDeVue int
+	// EnAttente, Total : les coequipiers en attente de reapparition et tous les coequipiers de la
+	// victime (`teammates_total`) — le nombre de lignes de `match_death_mates` de cette mort.
+	EnAttente, Total int
 
 	// TimeMs est l'instant de la mort (memes raisons que TacticalKillPosition.TimeMs) —
 	// ajoute pour le detail d'une cellule de la lecture « isole » (lot M1).
@@ -406,6 +415,10 @@ type MortContexte struct {
 	KillerGamertag string
 	SourceTag      *uint32
 	SourceCategory string
+
+	// KillerX, KillerY : la position du tueur au coup fatal, depuis `kill_positions_latest` ;
+	// nil = non mesuree (la jointure n'exige que la position de la victime), jamais 0.
+	KillerX, KillerY *float64
 }
 
 // TacticalMortsContexte : l'univers ET ses morts localisees avec leur voisinage.

@@ -59,7 +59,7 @@ describe('les mots de la maquette, en français', () => {
     expect(fr.tileKilledBy('Rival')).toBe('Tué par Rival')
     expect(fr.tileKilled('Cible')).toBe('A tué Cible')
     expect([fr.tileAlone, fr.tileAloneAt('24'), fr.tileNearAt('9')]).toEqual(['seul', 'seul · 24 m', 'près · 9 m'])
-    expect(fr.tileOpenReplay('5:07')).toBe('Ouvrir le rejeu à 5:07')
+    expect(fr.tileOpenReplay('5:07', 5)).toBe('Ouvrir le rejeu 5 s avant 5:07')
   })
 })
 

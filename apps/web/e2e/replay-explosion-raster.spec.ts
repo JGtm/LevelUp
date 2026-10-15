@@ -112,13 +112,20 @@ function moduleSource(fichier: string, importsDeValeurAutorises = 0): string {
  * désormais `grenadeRestLayer.ts` (3 imports de valeur, tous injectés ici) — et la spec tourne
  * à chaque push, cf. le step « Rasterisation du rejeu » du job `frontend`.
  *
+ * `replayLogic.ts` porte 1 import de valeur, `matchClock` (lien tactique, `resolveTacticalOpenAtFrame`) : il
+ * est injecté ICI en vraie fonction (`matchClock.ts`, sans import de valeur), pour que la portée de
+ * `replayLogic` reste complète même si ce test n'appelle que `worldToCanvas` et `canvasScale`.
+ *
  * L'ORDRE DES PORTÉES SUIT LES DÉPENDANCES : `grenadeFx.ts` importe `EXPLOSION_MS` depuis
  * `explosionFx.ts` (sa fenêtre de rémanence EST la timeline de l'explosion, invariant du
  * 17/08), donc EXPLO se construit avant GREN et lui injecte la constante.
  */
 function harnais(): string {
   return `
-    const LOGIC = (function(){ ${moduleSource('replayLogic.ts')}
+    const LOGIC = (function(){
+      const matchClock = (function(){ ${moduleSource('matchClock.ts')}
+        return matchClock })()
+      ${moduleSource('replayLogic.ts', 1)}
       return { worldToCanvas, canvasScale } })()
     const VIEW = (function(){
       const worldToCanvas = LOGIC.worldToCanvas

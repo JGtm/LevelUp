@@ -232,6 +232,9 @@ export const queryKeys = {
   // périmètre inclut en plus l'adresse de la cellule cliquée.
   tacticalCellule: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
     ['tactical-cellule', playerSlug, titleSlug, mapId, paramHash] as const,
+  // Séquence d'UNE mort (vue D) : l'empreinte porte le match, la victime et l'instant.
+  tacticalSequence: (playerSlug: string, titleSlug: string, mapId: string, paramHash: string) =>
+    ['tactical-sequence', playerSlug, titleSlug, mapId, paramHash] as const,
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, titleSlug: string, scopeHash: string) =>
     ['synthesis', playerSlug, titleSlug, scopeHash] as const,

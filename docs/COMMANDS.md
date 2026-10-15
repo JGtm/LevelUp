@@ -174,6 +174,15 @@ freshness rule is unchanged: a named match that is already fresh is skipped unle
 `--online` (that pass picks its films from the player's history, not from the registry) and with
 `--credit-only` (the SQL → SQL pass does not read this selection).
 
+**Tables written by the isolation pass.** Besides the kill source, the films pass writes, per
+match and in ONE transaction sharing a single `decode_pass`: `match_lives`, `match_death_context`
+and `match_death_mates` (the state and position of each teammate of the victim at the instant of
+each death; INSERT-only, read through `match_death_mates_latest`). A match is stale until its
+`IsolationDecoderRev` reaches `isolement-2026-10-14-coequipiers`: the first run after that bump
+re-decodes the whole park (about 1 600 films, resumable by `decoder_rev`). The pass is atomic per
+match: if the teammate rows of a match fail validation, nothing of that match is published for
+the pass (`match_lives` and `match_death_context` included).
+
 **`--workers` (default 3) — N films decoded in parallel, only ONE touching the database.** The
 cost breakdown (lot 5.24.1) measures **93 to 99 % of a film's time as CPU outside the
 database**: that is the only reason parallelism helps here. Writes and both per-match reads go
@@ -645,7 +654,7 @@ go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute engagemen
 #### Compacting superseded decode passes (`compact-passes`)
 
 Every re-decode of a film APPENDS a full pass to the film tables of the shared match DB
-(`match_kill_events`, `match_lives`, `match_death_context`, `kill_openings`, `kill_positions`,
+(`match_kill_events`, `match_lives`, `match_death_context`, `match_death_mates`, `kill_openings`, `kill_positions`,
 `match_weapon_shots`, `match_player_positions`, the usage summary, pad tiers, flag grabs,
 Assault stats — INSERT-only, ADR 0019 / 0026). The `_latest` views serve only the last pass, but
 every read that evaluates them walks all passes: on the local DB of 2026-09-26, 90 % of those

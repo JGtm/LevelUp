@@ -14,7 +14,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   // la même primitive que le tracé du sprite, donc le même facteur ici — jamais recalculé.
   // L'ECHELLE DU CADRAGE : 20 px/m. Le sprite mesure 200 px x 10 mm/px = 2 m de long, donc
   // 40 px a l'ecran — au-dessus du minimum garanti (18,48 px), le terme REALISTE s'applique
-  // et ces tests de geometrie portent bien sur le cas nominal (cf. model/screenSizes.ts).
+  // et ces tests de geometrie portent bien sur le cas nominal (cf. lib/replay/screenSizes.ts).
   const ECHELLE = 20
   const SCALE = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, ECHELLE)
   /**

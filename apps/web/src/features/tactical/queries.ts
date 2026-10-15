@@ -40,6 +40,7 @@ import type {
   TacticalMapsBody,
   TacticalMapsPage,
   TacticalRaster,
+  TacticalSequence,
   ReplayMapBackground,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
@@ -379,5 +380,30 @@ export function useTacticalCellule(
     enabled: !!playerSlug && !!mapId && !!corps && params.match_ids !== null,
     staleTime: 2 * 60 * 1000,
     meta: SANS_BARRE_META,
+  })
+}
+
+/**
+ * useTacticalSequence — la SÉQUENCE d'une mort (vue D) : traces de la victime, du tueur et des
+ * coéquipiers de −8 à +3 s, étapes de −4 à +3 s. La route vit sous les gardes du rejeu 2D : elle
+ * répond 404 `replay_not_available` là où le rejeu n'est pas servi (production, artefact absent,
+ * horloge non établie) — c'est le cas NOMINAL de ces endroits, pas une panne. Pas de nouvelle
+ * tentative, pas d'erreur à l'écran : la vue D n'est rendue que si la requête réussit.
+ *
+ * `mort` à `null` = aucune mort choisie (ou sans rejeu) : la requête N'EST PAS lancée.
+ */
+export function useTacticalSequence(
+  playerSlug: string,
+  mapId: string,
+  mort: { match_id: string; victim_xuid: string; time_ms: number } | null,
+) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  return useQuery({
+    queryKey: queryKeys.tacticalSequence(playerSlug, titleSlug, mapId, hashFiltre(mort)),
+    queryFn: () =>
+      api.post<TacticalSequence>(`/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/sequence`, mort),
+    enabled: !!playerSlug && !!mapId && !!mort,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   })
 }

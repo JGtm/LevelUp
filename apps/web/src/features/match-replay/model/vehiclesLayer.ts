@@ -64,7 +64,7 @@
  */
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
-import { screenLengthPx, spriteWorldLengthMm } from './screenSizes'
+import { screenLengthPx, spriteWorldLengthMm } from '@/lib/replay/screenSizes'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
@@ -555,7 +555,7 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
 
 // --- TAILLE (taille réelle si l'échelle le permet, minimum d'écran sinon) --------------------
 //
-// LE MODÈLE ET SES CONSTANTES VIVENT DANS `model/screenSizes.ts` — un seul fichier pour toutes
+// LE MODÈLE ET SES CONSTANTES VIVENT DANS `lib/replay/screenSizes.ts` — un seul fichier pour toutes
 // les familles dessinées sur la carte, avec la décision de l'utilisateur du 2026-09-19, ses
 // mesures et l'inventaire des familles qui n'ont pas de longueur monde. Ce qui suit ne fait que
 // l'appliquer aux véhicules, la seule famille dont la longueur monde EST mesurée.
@@ -575,7 +575,7 @@ export function vehiclePositionAt(track: ReplayVehicleTrackReady, frame: number)
  * sur les grandes (retour utilisateur du 2026-09-19) et hors de proportion sur les petites. Le
  * plancher porte sur l'ÉCHELLE, pas sur la taille : les dix-huit familles le franchissent
  * ENSEMBLE et restent donc proportionnelles à toute échelle. Détail et mesures :
- * `screenSizes.ts`.
+ * `lib/replay/screenSizes.ts`.
  */
 export function vehicleScreenLengthPx(
   naturalHeightPx: number,

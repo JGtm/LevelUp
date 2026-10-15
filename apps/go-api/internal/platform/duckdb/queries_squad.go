@@ -1,6 +1,8 @@
 // Package duckdb — queries_squad.go : requêtes page Escouade et Synthèse.
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // QSquadExpectedWinProbTpl : proba de victoire pré-match (LUSR v2) par match_id,
 // depuis player.match_skill_rank. MAX(expected_win_prob) car la valeur n'est
 // posée que sur les rows LUSR (append-only, N versions/match) — robuste à la
@@ -94,17 +96,12 @@ SELECT
     -- Vraie durée de gameplay (countdown pré-match retranché via real_start_time).
     GREATEST(0, COALESCE(r.duration_seconds, 0) - CASE
         WHEN r.real_start_time IS NOT NULL THEN CAST(round(
-            (epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-             - epoch_ms(` + StartTimeCanonicalSQL("r") + `)) / 1000.0
+            (` + analysis.SQLRealStartOffsetMs("r") + `) / 1000.0
         ) AS INTEGER) ELSE 0 END)                                AS gameplay_duration_seconds,
     -- T0 offset (Match Timeline T0, §4.A-bis) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0. Même formule
     -- canonique que player_matches_repo (propagation Phase 3).
-    CASE
-        WHEN r.real_start_time IS NOT NULL THEN
-            epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
-    END                                                          AS t0_ms,
+    ` + T0MsSQL("r") + `                                                          AS t0_ms,
     COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
     COALESCE((
