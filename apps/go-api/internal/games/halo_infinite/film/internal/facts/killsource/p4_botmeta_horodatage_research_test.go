@@ -58,7 +58,7 @@ func TestP4BotMetaHorodatage(t *testing.T) {
 		t.Logf("BOT_METADATA chunk %2d pk %3d ts %d f%5d | taille %d o | nbBots=%d", p.Chunk, p.Index, p.TS,
 			(int64(p.TS)-int64(origine))/100_000, len(p.Payload), nb)
 	}
-	paquets := grammar.PaquetsBotMetadata(f.src, 0, false)
+	paquets := grammar.PaquetsBotMetadata(f.src, grammar.LectureDesBots{})
 	for _, pq := range paquets {
 		var sb strings.Builder
 		for _, b := range pq.Balayees {
