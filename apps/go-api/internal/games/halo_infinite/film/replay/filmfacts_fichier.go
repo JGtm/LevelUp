@@ -221,6 +221,9 @@ const VersionCodecFaits = 2
 // le bilan de la lecture de l equipe des bots (`killsource.EquipesDesBots`) gagne `FragmentsEcartes` et
 // `PositionInconnue`. La montee de `killsource.Rev` refusait deja tout fichier anterieur sur ses
 // revisions de couche ; le schema tient sa doctrine.
+// SCHEMA 16 (2026-10-15, lot « faille a la pose ») : chaque lecture de l equipement porte porte la
+// creation lue des objets que sa pile nomme pour la premiere fois (`Spawned` : instant, archetype,
+// position i0), et deux denominateurs s ajoutent (`SpawnedBirths`, `SpawnedPositioned`).
 const SchemaDesFaits = 16
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon

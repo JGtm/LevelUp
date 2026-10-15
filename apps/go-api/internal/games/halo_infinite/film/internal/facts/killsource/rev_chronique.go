@@ -356,3 +356,7 @@ package killsource
 // SORT DU ROSTER (`EquipesDesBots.HorsGrammaire`) au lieu d y rester sans equipe ; une entree lue sans
 // position de l equipe est refusee par le releve. Parc (614 films a bots, decodage de production) :
 // aucun nom hors grammaire, sortie identique a celle du rang. Golden regenere a revision constante.
+// COMPLEMENT DU 2026-10-15 (lot « faille a la pose », REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-15.3` (la creation des objets engendres et sa position i0 sont lues ; le lecteur de
+// position des objets du monde est scinde sans changement). `replay-equiv` (20 films, `a9a9ac78a`
+// contre le lot) : etape `killsource` identique sur les 20. Golden regenere a revision constante.

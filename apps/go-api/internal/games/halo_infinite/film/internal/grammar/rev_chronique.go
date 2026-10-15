@@ -328,3 +328,17 @@ package grammar
 // par processus) : bots dont l equipe se lit, accord avec la feuille 888/888 (HI_1_13_0), 111/111
 // (HI_1_12_0), 2/2 (HI_1_11_0), 10/10 (HI_1_10_0) ; avec l entite `ti=9` 85/85 et 1/1 ; paquets
 // BOT_METADATA incomplets 707 -> 0.
+// ENTREE `grammar-2026-10-15.3` (2026-10-15, lot « faille a la pose », branche `feat/faille-pose`,
+// question du user : « le mecanisme de pose repose sur l evenement de pose, pourquoi dependrait-il de
+// la teleportation ? ») : LA CREATION DES OBJETS ENGENDRES EST LUE, AVEC SA POSITION. Aucun bit n est
+// lu autrement. Le canal de l equipement porte retient chaque creation (record NEW) de la trame et les
+// quanta de sa position i0, lus par le lecteur des pistes du monde (`lireQuantaObjetDuMonde`, extrait
+// de `decodeWorldObjectPos` sans changement : chemin dominant, region de la carte, quanta satures
+// rejetes) ; quand la pile i28 nomme une vie pour la premiere fois, sa creation est jointe a la
+// lecture (`Spawned`), et [ScanEquipementPorte] la dequantifie aux bornes de la carte.
+//
+// MESURE (36 films a translocateur, 123 poses, contexte de la cuisson, `TestFailleObjet`) : le paquet
+// ou l energie du translocateur tombe a 0 cree une entite ti=38 (la faille), nommee par la pile au
+// paquet suivant ; 123/123 positions lues. Contre l arrivee du premier echange (74) : ecart XY
+// mediane 0,02 m, max 0,13 (l arrivee est 0,11 a 0,53 m plus haut) ; contre le porteur a l image de
+// la pose (120) : XY mediane 0,04 m, max 0,17.

@@ -83,31 +83,83 @@ func TestRepulseurTroisUsages(t *testing.T) {
 	}
 }
 
-// TestPoseDeFailleDatee : 1b2d9e08 — l energie du translocateur porte tombe a 0 a 164,11 s (frame
-// 1550 : le controle de trajectoire est 164,06 s), 1,635 s apres l activation ; la faille est la ou le
-// joueur arrive au premier echange.
+// failleCreee : la lecture de la pile i28 qui nomme la faille creee par la pose (canal de production,
+// 1b2d9e08, 2026-10-15) — sa creation est dans le paquet de la pose, position i0 lue.
+func failleCreee(ms, neMs float64, objet, porteur, slot uint32, x, y, z float32) types.CarriedEquipmentRead {
+	l := lecture(ms, objet, porteur, types.CarriedDelta)
+	l.HasHandles, l.Handles = true, 1
+	l.Tracked = []types.LifeKey{{Slot: slot, Gen: 1}}
+	l.Spawned = []types.SpawnedObject{{Life: types.LifeKey{Slot: slot, Gen: 1}, TimestampUS: uint64(neMs * 1000),
+		TypeIndex: 38, HasPosition: true, X: x, Y: y, Z: z}}
+	return l
+}
+
+// TestPoseDeFailleDatee : 1b2d9e08, JGtm (535) — l energie du translocateur porte tombe a 0 a 164,11 s
+// (frame 1550 : le controle de trajectoire est 164,06 s), 1,635 s apres l activation ; la faille est
+// l objet que ce paquet cree (1822, nomme par la pile au paquet suivant), a sa position i0.
 func TestPoseDeFailleDatee(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
 		lecture(161077.8, 1816, 535, types.CarriedNew),
 		avecActivation(lecture(162478.1, 1816, 535, types.CarriedDelta)),
 		avecEnergie(lecture(164113.6, 1816, 535, types.CarriedDelta), 0),
+		failleCreee(164129.9, 164113.6, 1816, 535, 1822, 17.34, 135.50, 73.98),
 		lecture(194210.5, 1816, 535, types.CarriedDel),
 	}
 	changes := []types.EquipmentChange{{TimestampUS: 161077800, Slot: 535, Kind: types.EquipmentTaken, Rank: 11}}
-	tx, ty, tz := float32(17.34), float32(135.5), float32(74.43)
-	trs := []Translocation{{T: 1761, Slot: 535, TX: &tx, TY: &ty, TZ: &tz}}
 	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
 		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
-		tracks: []Track{{Slot: 535}}, translocations: trs, origin: origine1b2d, step: pas100ms})
-	if len(out) != 1 || len(poses) != 1 || cov.Positioned != 1 {
+		tracks: []Track{{Slot: 535}}, origin: origine1b2d, step: pas100ms})
+	if len(out) != 1 || len(poses) != 1 || cov.PositionedByObject != 1 {
 		t.Fatalf("publies %d, poses %+v, couverture %+v", len(out), poses, cov)
 	}
 	p := poses[0]
-	if p.T != 1550 || p.A == nil || *p.A != 1534 || p.X == nil || *p.X != tx {
+	if p.T != 1550 || p.A == nil || *p.A != 1534 || p.X == nil || *p.X != 17.34 || *p.Y != 135.50 ||
+		p.Src != sourceFailleObjet {
 		t.Fatalf("pose %+v", p)
 	}
 	if e := out[0].Energy[0]; !e.Tag || e.N == nil || *e.N != 1 {
 		t.Fatalf("energie a la prise %+v : celle de l objet porte du catalogue (1 usage)", e)
+	}
+}
+
+// TestPoseSansEchangeSituee : 1b2d9e08, 531 — la pose (frame 1256) n est suivie d AUCUN echange ; la
+// faille est quand meme situee, par l objet que la pose cree (1766, (0,73 ; 145,50 ; 76,43)).
+func TestPoseSansEchangeSituee(t *testing.T) {
+	reads := []types.CarriedEquipmentRead{
+		lecture(131000.0, 1763, 531, types.CarriedNew),
+		avecActivation(lecture(133097.0, 1763, 531, types.CarriedDelta)),
+		avecEnergie(lecture(134734.2, 1763, 531, types.CarriedDelta), 0),
+		failleCreee(134750.3, 134734.2, 1763, 531, 1766, 0.73, 145.50, 76.43),
+	}
+	changes := []types.EquipmentChange{{TimestampUS: 131000000, Slot: 531, Kind: types.EquipmentTaken, Rank: 11}}
+	_, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
+		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+		tracks: []Track{{Slot: 531}}, origin: origine1b2d, step: pas100ms})
+	if len(poses) != 1 || poses[0].T != 1256 || poses[0].X == nil || *poses[0].X != 0.73 ||
+		poses[0].Src != sourceFailleObjet || cov.Unpositioned != 0 {
+		t.Fatalf("poses %+v, couverture %+v", poses, cov)
+	}
+}
+
+// TestPoseRepliDuPorteur : sans objet cree lisible, la faille prend la position du porteur lue dans sa
+// piste a l image de la pose, nommee et comptee ; sans point a cette image, elle reste sans position.
+func TestPoseRepliDuPorteur(t *testing.T) {
+	reads := []types.CarriedEquipmentRead{
+		lecture(131000.0, 1763, 531, types.CarriedNew),
+		avecEnergie(lecture(134734.2, 1763, 531, types.CarriedDelta), 0),
+	}
+	changes := []types.EquipmentChange{{TimestampUS: 131000000, Slot: 531, Kind: types.EquipmentTaken, Rank: 11}}
+	entree := entreeDEquipementPorte{reads: reads, changes: changes, palette: paletteDuTest(),
+		couts: coutsParFamille(catalogueDuTest(), famillesDuTest), origin: origine1b2d, step: pas100ms,
+		tracks: []Track{{Slot: 531, Points: []Point{{T: 1255, X: 9, Y: 9}, {T: 1256, X: 0.7, Y: 145.4, Z: 76.4}}}}}
+	_, poses, cov := buildCarriedEquipment(entree)
+	if len(poses) != 1 || poses[0].Src != sourceFaillePorteur || *poses[0].X != 0.7 || cov.PositionedByCarrier != 1 {
+		t.Fatalf("poses %+v, couverture %+v", poses, cov)
+	}
+	entree.tracks = []Track{{Slot: 531, Points: []Point{{T: 1255, X: 9, Y: 9}}}}
+	_, poses, cov = buildCarriedEquipment(entree)
+	if len(poses) != 1 || poses[0].X != nil || poses[0].Src != "" || cov.Unpositioned != 1 {
+		t.Fatalf("poses %+v, couverture %+v", poses, cov)
 	}
 }
 
@@ -149,33 +201,6 @@ func TestRepulseurEpuiseNePoseRien(t *testing.T) {
 		tracks: []Track{{Slot: 513}}, origin: origine0d9a, step: pas100ms})
 	if len(out) != 1 || len(poses) != 0 || cov.RiftPoses != 0 {
 		t.Fatalf("publies %d, poses %+v, couverture %+v", len(out), poses, cov)
-	}
-}
-
-// TestPoseSansSuppressionBorneeParLaVie : sans suppression lue de l objet, la position de la faille
-// ne se cherche que dans la vie du porteur ; l echange d une vie suivante du meme slot n est pas le
-// sien.
-func TestPoseSansSuppressionBorneeParLaVie(t *testing.T) {
-	reads := []types.CarriedEquipmentRead{
-		lecture(161077.8, 1816, 535, types.CarriedNew),
-		avecEnergie(lecture(164113.6, 1816, 535, types.CarriedDelta), 0),
-	}
-	changes := []types.EquipmentChange{{TimestampUS: 161077800, Slot: 535, Kind: types.EquipmentTaken, Rank: 11}}
-	tx, ty, tz := float32(17.34), float32(135.5), float32(74.43)
-	trs := []Translocation{{T: 1900, Slot: 535, TX: &tx, TY: &ty, TZ: &tz}}
-	vies := []Track{{Slot: 535, StartFrame: 1400, EndFrame: 1700}, {Slot: 535, StartFrame: 1800, EndFrame: 2400}}
-	_, poses, _ := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
-		tracks: vies, translocations: trs, origin: origine1b2d, step: pas100ms})
-	if len(poses) != 1 || poses[0].X != nil {
-		t.Fatalf("poses %+v : l echange de la vie suivante ne positionne pas la faille", poses)
-	}
-	trs[0].T = 1650
-	_, poses, _ = buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
-		tracks: vies, translocations: trs, origin: origine1b2d, step: pas100ms})
-	if len(poses) != 1 || poses[0].X == nil || *poses[0].X != tx {
-		t.Fatalf("poses %+v : l echange de la meme vie positionne la faille", poses)
 	}
 }
 

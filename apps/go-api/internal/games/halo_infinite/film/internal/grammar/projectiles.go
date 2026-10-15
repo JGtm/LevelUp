@@ -447,37 +447,3 @@ func ascendingComponents(pay []byte, at, mc int) ([]int, bool) {
 	}
 	return idx, true
 }
-
-// decodeWorldObjectPos lit et déquantifie `object-position-component` sur le chemin dominant.
-//
-// REJET DES QUANTA SATURÉS : un axe à 0 ou à 2^w-1 est écarté. Sans cette règle, une vie sur
-// soixante-dix finit au plancher du BSP (z = -84 m) — un quantum saturé n'est pas une position,
-// c'est une valeur de garde.
-//
-// REJET D'UNE AUTRE RÉGION : l'index de région lu doit valoir celui que la carte joue
-// (`WorldObjectPrecision.Region`, installé depuis le catalogue). Un record d'une autre région
-// exprime ses quanta dans une AUTRE AABB : le déquantifier avec ces bornes rendrait une
-// position fausse SILENCIEUSE, ce qui est pire qu'un refus. Même règle que le jumeau bipède
-// `decodeBipedI0Pos`.
-func decodeWorldObjectPos(pay []byte, at int, wr *profile.Vec3Range, lg profile.PrecisionDescriptor) ([3]float32, bool) {
-	var v [3]float32
-	if source.BitsTolerants(pay, at, 2) != 0 { // precHigh et index-sel nuls = chemin dominant
-		return v, false
-	}
-	idxW := int(lg.IndexW)
-	if uint32(source.BitsTolerants(pay, at+2, idxW)) != lg.Region {
-		return v, false
-	}
-	off := at + 2 + idxW
-	for a := range 3 {
-		w := lg.AxisW[a]
-		q := source.BitsTolerants(pay, off, int(w))
-		if q == 0 || q == (uint64(1)<<w)-1 {
-			return v, false
-		}
-		lo, hi := wr[a].Min, wr[a].Max
-		v[a] = lo + (float32(q)+0.5)*(hi-lo)/float32(uint64(1)<<w)
-		off += int(w)
-	}
-	return v, true
-}

@@ -3351,3 +3351,25 @@ package replay
 //	MESURE          `replay-equiv`, 20 films, binaires de `feat/v75` `46bfa5fad` contre ceux de la branche :
 //	                artefacts identiques hors les valeurs de révision sur 18 films ; `60ae07c4` et
 //	                `64e8adfa` comme ci-dessus ; étape `objectives` identique sur les 20.
+//
+// v98 (2026-10-15, lot « faille à la pose », `grammar-2026-10-15.3`, question du user : « le
+// mécanisme de pose repose sur l'événement de pose, pourquoi dépendrait-il de la téléportation ? ») :
+// LA FAILLE EST SITUÉE À SA POSE.
+//
+//	`riftPoses[]`   {x, y, z} viennent de l'objet que le paquet de la pose CRÉE (la faille, ti=38,
+//	                position i0 à la création) ; `src` neuf : « objet », ou « porteur » pour le repli
+//	                (position du porteur lue dans sa piste à l'image de la pose). Le premier échange
+//	                ne situe plus rien.
+//	`coverage.carriedEquipment`  `positioned` est remplacé par `positionedByObject`,
+//	                `positionedByCarrier` et `unpositioned`.
+//
+//	CE QUI MONTE    `SchemaVersion` 97 -> 98 ; `grammar.Rev` -> `grammar-2026-10-15.3` (la création
+//	AVEC ELLE       des objets engendrés est lue) ; `SchemaDesFaits` 15 -> 16 ; `killsource.Rev` et
+//	                `objectives.Rev` inchangées.
+//
+//	LE PARC         un artefact 97 ou d'avant : verdict `redecoder` (révision de grammaire).
+//
+//	MESURE          36 films à translocateur, 123 poses : 123 situées par l'objet. Contre l'arrivée du
+//	                premier échange (74) : XY médiane 0,02 m, max 0,13 (l'arrivée est 0,11 à 0,53 m
+//	                plus haut) ; contre le porteur à l'image de la pose (120) : XY médiane 0,04 m, max
+//	                0,17. 1b2d9e08 : les deux poses sans échange (531, 574) sont désormais situées.

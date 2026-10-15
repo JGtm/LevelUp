@@ -3,10 +3,11 @@
  *
  * LES DOCUMENTS SONT DES RELEVÉS RÉELS FIGÉS (même méthode que `knockbackSound.test.ts`) : les poses
  * de faille, les téléportations, les changements d'équipement et les fenêtres de piste ci-dessous sont
- * ceux que la cuisson au schéma 95 publie sur `1b2d9e08` (Dynasty), relevés le 2026-10-14. JGtm
- * (slot 535) pose à l'image 1550 — le contrôle de trajectoire la place à 164,06 s, soit cette image —
- * et se téléporte à 1761 ; SpiffyDart (560) pose à 3216 puis échange deux fois ; les poses de 531 et
- * 574 ne sont suivies d'aucun échange.
+ * ceux que la cuisson au schéma 98 publie sur `1b2d9e08` (Dynasty), relevés le 2026-10-15. Chaque pose
+ * est située par la faille que le film crée à cet instant (`src` « objet ») : JGtm (535) pose à l'image
+ * 1550 — le contrôle de trajectoire la place à 164,06 s, soit cette image — et se téléporte à 1761 ;
+ * SpiffyDart (560) pose à 3216 puis échange deux fois ; 531 et 574 posent sans jamais échanger, et leur
+ * faille est quand même située.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -15,10 +16,10 @@ import { testReplayDoc } from '../test/testDoc'
 import { RIFT_POSE_HIT_OFFSET_MS, RIFT_POSE_SOUND_STEM, riftPoseSoundEvents } from './riftPoseSound'
 
 const POSES_1B2D9E08 = [
-  { t: 1256, a: 1240, slot: 531 },
-  { t: 1550, a: 1534, slot: 535, x: 17.34, y: 135.5, z: 74.43 },
-  { t: 3216, a: 3200, slot: 560, x: 17.35, y: 123.11, z: 74.42 },
-  { t: 3943, a: 3927, slot: 574 },
+  { t: 1256, a: 1240, slot: 531, x: 0.73, y: 145.5, z: 76.43, src: 'objet' },
+  { t: 1550, a: 1534, slot: 535, x: 17.34, y: 135.5, z: 73.98, src: 'objet' },
+  { t: 3216, a: 3200, slot: 560, x: 17.35, y: 123.13, z: 73.98, src: 'objet' },
+  { t: 3943, a: 3927, slot: 574, x: 14.06, y: 129.45, z: 73.91, src: 'objet' },
 ]
 const TELEPORTATIONS_1B2D9E08 = [
   { t: 1761, slot: 535, fx: 2.79, fy: 152.19, fz: 81.39, tx: 17.34, ty: 135.5, tz: 74.43 },
@@ -26,13 +27,17 @@ const TELEPORTATIONS_1B2D9E08 = [
   { t: 3419, slot: 560, fx: 11.31, fy: 116.66, fz: 76.01, tx: 18.42, ty: 120.25, tz: 74.36 },
 ]
 const CHANGEMENTS_1B2D9E08 = [
+  { t: 1219, slot: 531, kind: 'taken' as const, r: 11, from: 4 },
   { t: 1520, slot: 535, kind: 'taken' as const, r: 11, from: 4 },
   { t: 1851, slot: 535, kind: 'spent' as const, r: -1, from: 11 },
   { t: 3191, slot: 560, kind: 'taken' as const, r: 11, from: 4 },
+  { t: 3913, slot: 574, kind: 'taken' as const, r: 11, from: -1 },
 ]
 const PISTES_1B2D9E08 = [
+  { slot: 531, team: 0, xuid: '', points: [{ t: 1031, x: 0, y: 0 }, { t: 1439, x: 0, y: 0 }] },
   { slot: 535, team: 0, xuid: '', points: [{ t: 1164, x: 0, y: 0 }, { t: 2246, x: 0, y: 0 }] },
   { slot: 560, team: 1, xuid: '', points: [{ t: 2845, x: 0, y: 0 }, { t: 3432, x: 0, y: 0 }] },
+  { slot: 574, team: 0, xuid: '', points: [{ t: 3851, x: 0, y: 0 }, { t: 4084, x: 0, y: 0 }] },
 ]
 
 function doc1b2d9e08() {
@@ -62,13 +67,15 @@ describe('riftPoseSoundEvents — le COUP de pose tombe à la pose', () => {
 })
 
 describe('riftStations — la faille apparaît à sa POSE', () => {
-  it('1b2d9e08 : de la pose au premier échange, à l arrivée de cet échange ; puis le va-et-vient', () => {
+  it('1b2d9e08 : de la pose, à la faille créée, au premier échange ; puis le va-et-vient', () => {
     expect(riftStations(doc1b2d9e08())).toEqual([
+      { slot: 531, t0: 1256, t1: 1439, x: 0.73, y: 145.5 },
       { slot: 535, t0: 1550, t1: 1760, x: 17.34, y: 135.5 },
       { slot: 535, t0: 1761, t1: 1851, x: 2.79, y: 152.19 },
-      { slot: 560, t0: 3216, t1: 3260, x: 17.35, y: 123.11 },
+      { slot: 560, t0: 3216, t1: 3260, x: 17.35, y: 123.13 },
       { slot: 560, t0: 3261, t1: 3418, x: 18.44, y: 120.25 },
       { slot: 560, t0: 3419, t1: 3432, x: 11.31, y: 116.66 },
+      { slot: 574, t0: 3943, t1: 4084, x: 14.06, y: 129.45 },
     ])
   })
 })

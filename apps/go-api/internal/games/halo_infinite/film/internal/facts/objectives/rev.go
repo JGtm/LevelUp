@@ -194,6 +194,10 @@ package objectives
 // lisent pas BOT_METADATA. PREUVE : `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75`
 // `df51f37c0` contre ceux du lot : etape `objectives` IDENTIQUE sur les 20 ; seules `killsource` et
 // l artefact bougent. Golden regenere a revision constante.
+// COMPLEMENT DU 2026-10-15 (lot « faille a la pose », REVISION CONSTANTE) : `grammar.Rev` monte a
+// `grammar-2026-10-15.3`. PREUVE : `replay-equiv` sur les 20 films, binaires de `a9a9ac78a` contre ceux
+// du lot : etapes `objectives` et `killsource` IDENTIQUES sur les 20 ; seul l artefact bouge.
+// Golden regenere a revision constante.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"

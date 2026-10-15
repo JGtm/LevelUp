@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 97
-empreinte-stockee 80b56272e3c87465
-empreinte-servie 80b56272e3c87465
-empreinte-cuite 982819d1bf7526f4
+schema 98
+empreinte-stockee c208da7a6a2b3f4a
+empreinte-servie c208da7a6a2b3f4a
+empreinte-cuite f8b5a809d8f405b8
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -201,13 +201,15 @@ CarriedEquipmentCoverage
   EnergyReads json:"energyReads" int
   NoCatalog json:"noCatalog" int
   NoIdentity json:"noIdentity" int
-  Positioned json:"positioned" int
+  PositionedByCarrier json:"positionedByCarrier" int
+  PositionedByObject json:"positionedByObject" int
   Published json:"published" int
   RiftPoses json:"riftPoses" int
   TeleportsWithoutPose json:"teleportsWithoutPose" int
   TrackedEnds json:"trackedEnds" int
   TrackedObjects json:"trackedObjects" int
   Unnamed json:"unnamed" int
+  Unpositioned json:"unpositioned" int
   Uses json:"uses" int
   WithCost json:"withCost" int
   WithoutRank json:"withoutRank" int
@@ -888,6 +890,7 @@ ReplayDocument
 RiftPose
   A json:"a,omitempty" *int
   Slot json:"slot" uint32
+  Src json:"src,omitempty" string
   T json:"t" int
   X json:"x,omitempty" *float32
   Y json:"y,omitempty" *float32

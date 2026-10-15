@@ -1445,8 +1445,10 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   images-cles se lisent comme une table d entrees, les films de version majeure 0x25 lisent leur
 	//   bloc malleable d i53, world-object i0 et rigid-body i18 se lisent sous la garde. `grammar.Rev` et
 	//   `killsource.Rev` montent avec elle : un v96 se lit « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 97 {
-		t.Fatalf("SchemaVersion = %d, attendu 97 : incrémenter exige une raison écrite ci-dessus "+
+	// - 98 (2026-10-15, lot « faille a la pose ») : la position
+	//   de la faille vient de l objet que la pose cree (`riftPoses[].src`), plus du premier echange.
+	if SchemaVersion != 98 {
+		t.Fatalf("SchemaVersion = %d, attendu 98 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

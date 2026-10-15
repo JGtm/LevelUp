@@ -493,7 +493,9 @@ type CarriedEquipmentCoverage struct {
 	EnergyReads          int `json:"energyReads"`
 	Uses                 int `json:"uses"`
 	RiftPoses            int `json:"riftPoses"`
-	Positioned           int `json:"positioned"`
+	PositionedByObject   int `json:"positionedByObject"`
+	PositionedByCarrier  int `json:"positionedByCarrier"`
+	Unpositioned         int `json:"unpositioned"`
 	TeleportsWithoutPose int `json:"teleportsWithoutPose"`
 	TrackedObjects       int `json:"trackedObjects"`
 	TrackedEnds          int `json:"trackedEnds"`

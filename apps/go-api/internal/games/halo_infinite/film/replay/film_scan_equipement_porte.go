@@ -8,9 +8,10 @@ import (
 )
 
 // balayerEquipementPorte lit l equipement porte : les objets ti=37 crees attaches, que la marche des
-// trames a deja recueillis (grammar/equipement_porte.go).
+// trames a deja recueillis (grammar/equipement_porte.go), et la position a la creation des objets
+// qu ils engendrent, aux bornes de la carte.
 func (s *filmScan) balayerEquipementPorte() {
-	reads, st, err := grammar.ScanEquipementPorte(s.fc)
+	reads, st, err := grammar.ScanEquipementPorte(s.fc, &s.world)
 	if err != nil {
 		slog.WarnContext(s.ctx, "equipement porte illisible — rejeu sans energie d equipement ni pose de faille",
 			"err", err, "match_id", s.matchID)
