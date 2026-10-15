@@ -37,6 +37,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
@@ -261,7 +262,7 @@ func (h *BuildWorkerHandler) RequireWorkerToken(next http.Handler) http.Handler 
 		presented := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(r.Header.Get("Authorization")), "Bearer"))
 		if subtle.ConstantTimeCompare([]byte(presented), []byte(h.token)) != 1 {
 			slog.WarnContext(r.Context(), "build_queue: jeton d'ouvrier refusé",
-				"module", "monitoring", "path", r.URL.Path, "ip", r.RemoteAddr)
+				"module", "monitoring", "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 			writeWorkerAuthError(w, http.StatusUnauthorized, "invalid_worker_token",
 				"Jeton d'ouvrier invalide.")
 			return

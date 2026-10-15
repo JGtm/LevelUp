@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 
 	"levelup/go-api/internal/observability"
@@ -39,10 +40,11 @@ const (
 // RateLimitRequests si rpm <= 0). En mode démo/test, la limite est 10× plus haute
 // pour éviter de bloquer les benchmarks.
 //
-// IMPORTANT : httprate clé sur r.RemoteAddr. Derrière un reverse proxy, RemoteAddr
-// vaut l'IP du proxy (127.0.0.1) pour tous les clients tant que chi RealIP n'a pas
-// réécrit l'IP réelle (LEVELUP_TRUST_PROXY_HEADERS=true). Sans ça, tout le trafic
-// partage un seul bucket et le site sature en 429 sous charge publique.
+// Clé du seau : l'IP cliente posée en amont par la pile transverse
+// (chimiddleware.GetClientIP, cf. applyTransverseMiddlewares) — X-Real-IP derrière
+// le proxy de confiance, le pair TCP sinon. Derrière un reverse proxy sans
+// LEVELUP_TRUST_PROXY_HEADERS=true, le pair TCP est le proxy pour tous les clients :
+// tout le trafic partage un seul seau et le site sature en 429 sous charge publique.
 //
 // Exemptions (cf. rateLimitExempt) : fichiers statiques servis localement. Une
 // page home ou Season Pass peut émettre 100+ URLs uniques d'images, ce qui
@@ -64,7 +66,7 @@ func RateLimit(demoMode bool, rpm int) func(http.Handler) http.Handler {
 		limit *= 10
 	}
 	limiter := httprate.Limit(limit, RateLimitWindow,
-		httprate.WithKeyFuncs(httprate.KeyByIP),
+		httprate.WithKeyFuncs(clientIPKey),
 		httprate.WithLimitHandler(newRateLimitedHandler(limit)),
 	)
 	return func(next http.Handler) http.Handler {
@@ -77,6 +79,13 @@ func RateLimit(demoMode bool, rpm int) func(http.Handler) http.Handler {
 			throttled.ServeHTTP(w, r)
 		})
 	}
+}
+
+// clientIPKey rend la clé du seau : l'IP cliente du contexte. Elle est vide quand
+// aucun résolveur d'IP n'est monté en amont (routeur de test nu) : ces requêtes
+// partagent alors un seul seau, ce qui limite davantage, jamais moins.
+func clientIPKey(r *http.Request) (string, error) {
+	return chimiddleware.GetClientIP(r.Context()), nil
 }
 
 // rateLimitExempt indique qu'un chemin ne consomme PAS le bucket httprate.
@@ -109,7 +118,7 @@ func newRateLimitedHandler(limit int) http.HandlerFunc {
 			slog.WarnContext(r.Context(), "rate limit atteint: 429",
 				"path", r.URL.Path,
 				"method", r.Method,
-				"remote_addr", r.RemoteAddr,
+				"ip", chimiddleware.GetClientIP(r.Context()),
 				"limit_per_window", limit,
 				"window", RateLimitWindow.String(),
 				"throttled_since_last", since)

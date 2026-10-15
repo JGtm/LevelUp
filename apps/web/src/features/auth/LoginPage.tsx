@@ -14,6 +14,7 @@ import { AppFooter } from '@/components/shell/AppFooter'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
+import { isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { XboxLoginPage } from '@/features/auth/XboxLoginPage'
 import { queryKeys } from '@/lib/query/keys'
 import type { ApiError } from '@/lib/api/client'
@@ -70,7 +71,9 @@ export function LoginPage() {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'invalid_credentials') {
+          if (isTooManyLoginAttempts(apiErr)) {
+            setError(t('common.auth.too_many_attempts'))
+          } else if (apiErr.code === 'invalid_credentials') {
             setError(t('common.auth.invalid_credentials'))
           } else {
             setError(apiErr.message ?? t('common.auth.connection_error'))

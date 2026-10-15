@@ -9,6 +9,7 @@ import { useState, type FormEvent } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSetPassword } from '@/features/auth/queries'
+import { isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { apiErrorMessage } from '@/lib/api/client'
 import { formatMessage } from '@/lib/i18n/format'
@@ -58,7 +59,8 @@ export function SetPasswordCard({ onSaved }: SetPasswordCardProps) {
         setConfirm('')
         onSaved?.()
       },
-      onError: (err) => setError(apiErrorMessage(err) ?? 'Erreur'),
+      onError: (err) =>
+        setError(isTooManyLoginAttempts(err) ? t('common.auth.too_many_attempts') : (apiErrorMessage(err) ?? 'Erreur')),
     })
   }
 

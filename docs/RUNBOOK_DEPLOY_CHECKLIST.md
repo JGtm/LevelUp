@@ -125,8 +125,11 @@ Each item cites its source so it can be re-verified against the code. Structure:
       transcode or live remux at the first media upload (source:
       `internal/ops/media_tooling.go`; the server also logs this non-blocking at boot —
       grep `media tooling` in the console/boot logs). NOTE: the live VPS nginx config must
-      mirror `packaging/nginx/levelup.conf` — in particular `client_max_body_size 2g;` on
-      `location /api/`, or video uploads fail with HTTP 413.
+      mirror `packaging/nginx/levelup.conf` (and `packaging/nginx/rate_limit.conf` in
+      `/etc/nginx/conf.d/`) — in particular the body-size locations: `/api/` is capped at
+      `1m`, and only the media upload (`600m`), OpenSpartan import (`1100m`) and worker
+      (`20m`) locations accept more; a missing upload location makes video uploads fail
+      with HTTP 413.
 - [ ] **`/debug/vars` reachable admin-only.** Mounted behind `RequireAuth` +
       `RequireAdmin`, exposes the `levelup` expvar namespace (source:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside

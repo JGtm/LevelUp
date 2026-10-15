@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/authz"
 )
@@ -80,7 +81,7 @@ func RequireAuthForMutations(demoMode bool, authMode string) func(http.Handler) 
 				return
 			}
 			slog.WarnContext(r.Context(), "authz: écriture refusée — aucune session authentifiée",
-				"method", r.Method, "path", r.URL.Path, "ip", r.RemoteAddr)
+				"method", r.Method, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 			writeAuthRequired(w)
 		})
 	}

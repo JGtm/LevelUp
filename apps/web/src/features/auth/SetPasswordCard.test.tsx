@@ -31,6 +31,24 @@ describe('SetPasswordCard', () => {
     })
   })
 
+  it('refus 429 (identifiant bloqué ou limite de débit) : message clair', async () => {
+    server.use(
+      http.post('/api/v1/auth/password', () =>
+        new HttpResponse('<html><body><h1>429 Too Many Requests</h1></body></html>', {
+          status: 429,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      ),
+    )
+    const { container } = renderWithProviders(<SetPasswordCard />)
+    fireEvent.change(container.querySelector('#set-pwd')!, { target: { value: 'Abcd1234' } })
+    fireEvent.change(container.querySelector('#set-pwd-confirm')!, { target: { value: 'Abcd1234' } })
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/i }))
+    expect(
+      await screen.findByText('Trop de tentatives de connexion. Réessayez dans 15 minutes.'),
+    ).toBeInTheDocument()
+  })
+
   it('titre « Changer » si un mot de passe existe déjà', () => {
     useAppShellStore.setState({ hasPassword: true })
     renderWithProviders(<SetPasswordCard />)

@@ -13,6 +13,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+
 	"levelup/go-api/internal/domain"
 )
 
@@ -36,8 +38,8 @@ func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Hand
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !sessionAuthenticated(GetSession(r.Context()), mode) {
-				slog.Debug("auth: rejet 401 — session non authentifiée",
-					"path", r.URL.Path, "mode", mode, "ip", r.RemoteAddr)
+				slog.DebugContext(r.Context(), "auth: rejet 401 — session non authentifiée",
+					"path", r.URL.Path, "mode", mode, "ip", chimiddleware.GetClientIP(r.Context()))
 				writeAuthRequired(w)
 				return
 			}

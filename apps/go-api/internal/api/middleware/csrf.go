@@ -40,6 +40,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 // CSRF retourne un middleware qui vérifie l'en-tête Origin (ou Referer) des
@@ -79,7 +81,7 @@ func CSRF(allowedOrigins []string, exemptPrefixes ...string) func(http.Handler) 
 
 			if origin == "" || !isAllowedOrigin(origin, allowed) {
 				slog.WarnContext(r.Context(), "middleware.csrf: origin non autorisée",
-					"origin", origin, "path", r.URL.Path, "method", r.Method)
+					"origin", origin, "path", r.URL.Path, "method", r.Method, "ip", chimiddleware.GetClientIP(r.Context()))
 				http.Error(w, `{"code":"csrf_rejected","message":"origin non autorisée"}`, http.StatusForbidden)
 				return
 			}

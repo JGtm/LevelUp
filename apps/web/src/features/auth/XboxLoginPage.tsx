@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
+import { isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
@@ -395,7 +396,9 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
         },
         onError: (err) => {
           const apiErr = err as unknown as ApiError
-          if (apiErr.code === 'invalid_credentials') {
+          if (isTooManyLoginAttempts(apiErr)) {
+            setError(t('common.auth.too_many_attempts'))
+          } else if (apiErr.code === 'invalid_credentials') {
             setError(t('common.auth.xbox_error_invalid_credentials'))
           } else if (apiErr.code === 'password_login_admin_only') {
             // D3 : utilisateur valide mais pas admin en mode xbox.

@@ -108,12 +108,11 @@ type AppConfig struct {
 	// désactivée, CORS localhost). Lit LEVELUP_ENV. Vide / "development" (défaut) →
 	// pas de fail-fast, mais les avertissements restent émis au boot.
 	Environment string
-	// TrustProxyHeaders : n'active la confiance dans les en-têtes d'IP client
-	// (X-Real-IP / X-Forwarded-For / True-Client-IP, via chi RealIP) QUE si le
-	// serveur tourne derrière un reverse proxy de confiance qui assainit ces
-	// en-têtes. Lit LEVELUP_TRUST_PROXY_HEADERS (1/true/yes). Défaut : false —
-	// RemoteAddr reste l'adresse TCP réelle du peer (rate-limit, audit et le
-	// garde LoopbackOnly des endpoints /_diag ne sont alors pas falsifiables).
+	// TrustProxyHeaders : QUE derrière un reverse proxy qui écrase X-Real-IP et X-Forwarded-Proto
+	// à chaque requête (packaging/nginx/*.conf). Vrai : IP cliente (limiteur, `ip` des journaux)
+	// lue dans X-Real-IP, schéma dans X-Forwarded-Proto (cookie Secure, HSTS) ; faux : IP
+	// cliente = pair TCP. Aucun autre en-tête d'IP n'est lu ; les gardes « requête locale »
+	// (LoopbackOnly, rejeu) décident sur le pair TCP. LEVELUP_TRUST_PROXY_HEADERS, défaut false.
 	TrustProxyHeaders bool
 	// InstanceLocked : verrou « instance fermée ». Quand true, bloque la création
 	// de NOUVELLES identités/BDD (register, SSO sur xuid inconnu, /setup/players)
@@ -152,9 +151,9 @@ type AppConfig struct {
 	WebDistDir string
 	// RateLimitRPM : plafond de requêtes par minute et par IP du rate-limiter
 	// applicatif (httprate). Lit LEVELUP_RATE_LIMIT_RPM. Défaut : DefaultRateLimitRPM.
-	// ATTENTION : le limiter clé sur RemoteAddr — derrière un reverse proxy, il faut
-	// LEVELUP_TRUST_PROXY_HEADERS=true, sinon toutes les requêtes partagent le bucket
-	// de l'IP du proxy (127.0.0.1) et le site sature en 429 sous trafic public.
+	// ATTENTION : le limiter clé sur l'IP cliente — derrière un reverse proxy, sans
+	// LEVELUP_TRUST_PROXY_HEADERS=true, c'est le pair TCP (le proxy) pour toutes les requêtes :
+	// un seul bucket partagé, le site sature en 429 sous trafic public.
 	RateLimitRPM int
 	// PersistBatchAsync active le drainage asynchrone du persister batch (queue WAL
 	// + worker). Kill-switch : LEVELUP_PERSIST_BATCH_ASYNC=0 → chemin synchrone.

@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 // RequireAdmin retourne un middleware qui bloque les requêtes non-admin.
@@ -21,7 +23,7 @@ func RequireAdmin(demoMode bool, authMode string) func(http.Handler) http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sess := GetSession(r.Context())
 			if sess == nil || sess.Role == nil || *sess.Role != "admin" {
-				slog.Warn("admin: rejet 403", "path", r.URL.Path, "ip", r.RemoteAddr)
+				slog.WarnContext(r.Context(), "admin: rejet 403", "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				_ = json.NewEncoder(w).Encode(map[string]any{

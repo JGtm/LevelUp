@@ -212,7 +212,7 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_AUTH_MODE` | Mode d'authentification. | `none` |
 | `LEVELUP_REGISTRATION` | Mode d'inscription. | `invite` |
 | `LEVELUP_COOKIE_SECURE` | Force/désactive le flag cookie `Secure`. | auto |
-| `LEVELUP_TRUST_PROXY_HEADERS` | Faire confiance aux `X-Forwarded-*` (derrière un reverse proxy). | `false` |
+| `LEVELUP_TRUST_PROXY_HEADERS` | Derrière un reverse proxy qui les écrase à chaque requête : lire l'IP cliente dans `X-Real-IP` et le schéma dans `X-Forwarded-Proto`. Aucun autre en-tête d'IP n'est lu. | `false` |
 | `LEVELUP_INSTANCE_LOCKED` | Verrouille l'instance aux utilisateurs existants. | `false` |
 | `LEVELUP_RATE_LIMIT_RPM` | Rate limit HTTP (requêtes/minute). | défaut interne |
 | `LEVELUP_WEB_DIST` | Chemin du frontend buildé (`apps/web/dist`), posé par l'image Docker. | (aucun) |

@@ -98,6 +98,7 @@ export const commonManifest = {
   "common.auth.register_password_mismatch": { fr: "Les mots de passe ne correspondent pas.", en: "Passwords do not match." },
   "common.auth.register_pending": { fr: "Inscription…", en: "Registering…" },
   "common.auth.register_submit": { fr: "Créer le compte", en: "Create account" },
+  "common.auth.too_many_attempts": { fr: "Trop de tentatives de connexion. Réessayez dans 15 minutes.", en: "Too many sign-in attempts. Try again in 15 minutes." },
   "common.auth.username_label": { fr: "Identifiant", en: "Username" },
   "common.auth.username_placeholder": { fr: "Ton identifiant", en: "Your username" },
   "common.auth.username_placeholder_range": { fr: "3-30 caractères", en: "3-30 characters" },

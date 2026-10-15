@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
 )
 
@@ -80,12 +81,14 @@ var replayPublic = os.Getenv("LEVELUP_REPLAY_PUBLIC") == "1"
 
 // isLocalRequest dit si la requête vient de la machine qui héberge l'API.
 //
-// ON NE FAIT PAS CONFIANCE AUX EN-TÊTES. `X-Forwarded-For` est fourni par le client ; s'en
-// servir ici transformerait le garde en simple suggestion. Seule l'adresse de la connexion
-// TCP compte, et elle n'est pas falsifiable par le demandeur.
+// ON NE FAIT PAS CONFIANCE AUX EN-TÊTES. `X-Real-IP`, `X-Forwarded-For` ou `True-Client-IP`
+// sont écrits par le client ou par le proxy ; s'en servir ici transformerait le garde en
+// simple suggestion. Seule l'adresse de la connexion TCP compte (middleware.PeerAddr, capturée
+// en tête de la pile transverse), et elle n'est pas falsifiable par le demandeur.
 func isLocalRequest(r *http.Request) bool {
-	host := r.RemoteAddr
-	if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+	peer := middleware.PeerAddr(r)
+	host := peer
+	if h, _, err := net.SplitHostPort(peer); err == nil {
 		host = h
 	}
 	// Un hôte vide arrive sur certains transports de test ; le traiter comme local évite de
@@ -108,7 +111,7 @@ func allowReplay(r *http.Request) bool {
 // LocalOnlyReplay applique le garde local devant les routes de rejeu.
 //
 // C'EST UN MIDDLEWARE, PAS UNE BRANCHE DE HANDLER, et ce n'est pas un détail de style :
-// le garde repose sur l'adresse de la connexion TCP (`r.RemoteAddr`), la seule donnée
+// le garde repose sur l'adresse de la connexion TCP (`middleware.PeerAddr`), la seule donnée
 // que le demandeur ne peut pas falsifier. La couche Huma ne l'expose pas à ses handlers
 // typés — elle ne voit que le contexte et les paramètres de chemin. Le garde reste donc
 // à l'étage transport, où l'information existe.

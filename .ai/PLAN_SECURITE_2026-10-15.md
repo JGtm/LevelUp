@@ -106,22 +106,22 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 
 ### L1 — IP cliente et nginx du dépôt (C1-1, C1-2 garde locale) — Opus — effort M
 
-- [ ] L1-1 Test rouge : pile transverse réelle (`server.go`) — une requête portant
+- [x] L1-1 Test rouge : pile transverse réelle (`server.go`) — une requête portant
       `True-Client-IP` et `X-Forwarded-For` forgés et `X-Real-IP` réel a pour clé de limiteur le
       `X-Real-IP` ; 301 requêtes à `True-Client-IP` variable → 429.
-- [ ] L1-2 `server.go:625-626` : `ClientIPFromHeader("X-Real-IP")` si `TrustProxyHeaders`, sinon
+- [x] L1-2 `server.go:625-626` : `ClientIPFromHeader("X-Real-IP")` si `TrustProxyHeaders`, sinon
       `ClientIPFromRemoteAddr` ; `RealIP` retiré.
-- [ ] L1-3 `middleware/rate_limit.go` : clé = `GetClientIP(ctx)` (`httprate.KeyByIP` retiré).
-- [ ] L1-4 `handlers/replay_local_gate.go` : `isLocalRequest` lit l'adresse préservée par
+- [x] L1-3 `middleware/rate_limit.go` : clé = `GetClientIP(ctx)` (`httprate.KeyByIP` retiré).
+- [x] L1-4 `handlers/replay_local_gate.go` : `isLocalRequest` lit l'adresse préservée par
       `PreserveRemoteAddr` (accesseur exporté de `middleware/loopback.go`) ; test existant
       `replay_local_gate_test.go` réécrit pour passer par la pile réelle.
-- [ ] L1-5 Échecs de connexion : compteur par identifiant normalisé et par IP sur
+- [x] L1-5 Échecs de connexion : compteur par identifiant normalisé et par IP sur
       `POST /auth/login` et `POST /auth/password` (décision §0) ; test rouge « 6e échec → 429,
       même en changeant d'IP pour un même identifiant ».
-- [ ] L1-6 Journaux : l'attribut `ip` des journaux d'auth et de CSRF vient de `GetClientIP`.
-- [ ] L1-7 `packaging/nginx/levelup.conf` et `demo.conf` réalignés sur la configuration appliquée
+- [x] L1-6 Journaux : l'attribut `ip` des journaux d'auth et de CSRF vient de `GetClientIP`.
+- [x] L1-7 `packaging/nginx/levelup.conf` et `demo.conf` réalignés sur la configuration appliquée
       au VPS le 2026-10-15 (voir §5) ; `rate_limit.conf` versionné sous `packaging/nginx/`.
-- [ ] L1-8 Garde-rails : `internal/archlint/client_ip_test.go` interdit `chimiddleware.RealIP`,
+- [x] L1-8 Garde-rails : `internal/archlint/client_ip_test.go` interdit `chimiddleware.RealIP`,
       `httprate.KeyByIP` et toute lecture de `r.RemoteAddr` hors `middleware/loopback.go` et
       `middleware/slog_logger.go` (allowlist datée) ; `internal/archlint/nginx_conf_test.go` exige
       dans chaque `server` 443 versionné : `proxy_set_header True-Client-IP ""`,
@@ -218,7 +218,10 @@ si `apps/web` change : purge `node_modules/.tmp`, `npm run typecheck && npm run 
 - [ ] L4-11 `POST /auth/password` exige le mot de passe actuel quand le compte en a déjà un
       (compte Xbox sans mot de passe : premier mot de passe sans l'ancien) ; front : champ
       « Mot de passe actuel » / « Current password » (i18n FR + EN), test du hook ou du composant ;
-      tests serveur des deux cas.
+      tests serveur des deux cas. Dépendance posée par L1-5 : `handleSetPassword` consulte déjà
+      le limiteur d'échecs (`loginAttempts`) ; un mot de passe actuel incorrect y appelle
+      `RecordFailure(*sess.Username, ip)`, un correct `RecordSuccess` (test « 6e mot de passe
+      actuel faux → 429 »).
 - [ ] L4-12 `authz.InstanceLocked` : en mode appliqué, une erreur de lecture des réglages
       verrouille (au lieu d'ouvrir) ; erreur journalisée ; test `authz_test.go` inversé ;
       amendement de l'ADR 0035 (EN) consignant le basculement et sa raison.
@@ -430,6 +433,20 @@ Non traitées (règle 5). Le lot qui l'a vue est entre parenthèses.
   `docker/build-push-action@v5` (`test-deploy-precheck.yml`).
 - **D-L0-5** (L0) `lefthook.yml:29` range `govulncheck` parmi les checks qui « gatent » la dette globale au
   pre-push ; le hook est indicatif (L0-8) et l'autorité est le job de `ci.yml`.
+- **D-L1-1** (L1) Les gardes « requête locale » (`LoopbackOnly` des `/_diag/*`, garde du rejeu) décident sur
+  le pair TCP. Cela tient tant que nginx joint le Go par le port publié du conteneur (le conteneur devrait
+  voir la passerelle du pont Docker, pas 127.0.0.1 ; non vérifié sur le VPS, hors périmètre). Un déploiement
+  où nginx joint le Go par loopback (hors Docker, ou réseau `host`) rendrait « locale » toute requête
+  relayée ; aucun garde-rail ne tient cette topologie.
+- **D-L1-2** (L1) `handlers/replay_local_gate.go` : `isLocalRequest` traite un hôte vide comme local (choix
+  justifié par des transports de test). En service `RemoteAddr` n'est jamais vide, mais le défaut d'une garde
+  de sécurité est ouvert.
+- **D-L1-3** (L1) `features/auth/SetPasswordCard.tsx` : libellés français en dur (`LABELS`), sans version
+  anglaise (l'écran en anglais affiche du français). L4-11 retouche ce composant.
+- **D-L1-4** (L1) `packaging/nginx/demo.conf` (comme la démo en place) n'a pas `limit_req_status 429` : la
+  limite `demo_limit` répond 503, que le front lit comme une panne et non comme un excès de tentatives.
+- **D-L1-5** (L1) `archlint/no_french_label_literal_test.go` signale une baisse non figée :
+  `service/seasons_catalog.go` compte 3 littéraux pour 4 alloués (allowlist à resserrer).
 
 ## 7. Journal
 
@@ -527,3 +544,134 @@ build` (sans `--pull`) tire `golang:1.26.9-bookworm` si l'image n'est pas déjà
 publie avec un jeton en lecture seule sur les jobs de compilation. Aucune opération VPS.
 
 **Découvertes** : D-L0-1 à D-L0-5 (§6), non traitées.
+
+### L1 - IP cliente et nginx du dépôt - 2026-10-15 - clos
+
+Base : `git log --oneline -1` = `cab27c25a` avant le lot ; branche `feat/securite-2026-10-15`. Références du
+registre rouvertes avant d'agir et conformes : `server.go:625-626` (`RealIP` sous `TrustProxyHeaders`),
+`rate_limit.go:66-67` (`httprate.KeyByIP`), `replay_local_gate.go:86-100` (`r.RemoteAddr`),
+`handlers/user_auth.go:126` (aucun compteur), `levelup.conf:85-90` (`2g` sur `/api/`), chi v5.3.2
+`middleware/client_ip.go` (`ClientIPFromHeader` garde la dernière valeur, ne réécrit pas `RemoteAddr`).
+
+**Statuts** : L1-1 à L1-8 `[x]`. Aucun `[!]`, aucun `[~]`.
+
+- **L1-1** `internal/api/client_ip_transverse_test.go` (paquet `api`, pile assemblée par
+  `applyTransverseMiddlewares`, route sonde sous `/api/`) : `TestTransverseClientIP_HandlersReadXRealIP`,
+  `TestTransverseRateLimit_KeyIsXRealIP` (solde `X-RateLimit-Remaining` partagé à X-Real-IP égal, en-têtes forgés
+  différents ; seau distinct pour un autre X-Real-IP), `TestTransverseRateLimit_ForgedTrueClientIPDoesNotEscape`
+  (301 requêtes, `True-Client-IP` et `X-Forwarded-For` variables : la 301e en 429),
+  `TestTransverseClientIP_UntrustedUsesTCPPeer`, `TestTransverseClientIP_TrustedWithoutHeaderUsesTCPPeer`.
+- **L1-2** `server.go` (`applyTransverseMiddlewares`) : `RealIP` retiré ; `chimiddleware.ClientIPFromRemoteAddr`
+  toujours, puis `ClientIPFromHeader("X-Real-IP")` si `TrustProxyHeaders`. Précision d'implémentation : un
+  X-Real-IP absent ou illisible laisse le pair TCP (requête qui n'est pas passée par nginx : sonde locale), au
+  lieu d'une IP vide qui mettrait ces requêtes dans un seau commun. `r.RemoteAddr` n'est plus jamais réécrit.
+  `server.go` reste à 769 lignes (770 avant, dette gelée non accrue).
+- **L1-3** `rate_limit.go` : clé `clientIPKey` = `chimiddleware.GetClientIP(ctx)` ; journal du 429 en `ip`.
+- **L1-4** `middleware/loopback.go` : accesseur exporté `PeerAddr(r)` (pair capturé par `PreserveRemoteAddr`,
+  repli `r.RemoteAddr` sans ce middleware) ; `LoopbackOnly` et `isLocalRequest` le lisent. Le test
+  `handlers/replay_local_gate_test.go` est réécrit dans `internal/api/replay_local_gate_test.go` (même nom,
+  paquet `api`) : `ReplayGate(nil)` derrière la pile réelle, avec et sans confiance ;
+  `TestReplayLocalGate_AllowsLoopbackPeer`, `TestReplayLocalGate_RejectsRemotePeerWithForgedHeaders`.
+- **L1-5** Paquet `internal/platform/loginlimit` (en mémoire, compteurs par identifiant normalisé — minuscules,
+  espaces de bord retirés, tronqué à 64 runes — et par IP ; 5 échecs en 15 min glissantes : blocage 15 min ;
+  tentative bloquée ni vérifiée ni comptée ; succès : remise à zéro des deux clés ; tables bornées à 10 000 clés,
+  éviction de la clé non bloquée la moins récente). `UserAuthHandler` : un limiteur par handler ;
+  `POST /auth/login` refuse avant `Authenticate` (ni coût bcrypt ni échec de plus), compte l'échec, remet à zéro
+  au succès ; `POST /auth/password` refuse si l'identifiant de la session ou l'IP est bloqué. Refus : 429
+  `too_many_login_attempts` + `Retry-After` (secondes). L'échec propre à `/auth/password` (mot de passe actuel
+  faux) n'existe qu'avec L4-11 : dépendance consignée sur l'item L4-11. Message serveur technique en anglais
+  (le ratchet `TestNoNewFrenchLabelLiteral` refuse un 14e littéral français dans `user_auth.go` ; le front
+  affiche son propre texte, D6). Tests : `handlers/user_auth_login_limit_test.go`
+  (`TestLoginLimit_SixthFailureIs429EvenAcrossIPs`, `..._SixthFailureFromSameIPIs429AcrossIdentifiers`,
+  `..._SuccessResetsCounters`, `..._SetPasswordRefusedWhileIdentifierBlocked`), `loginlimit/limiter_test.go`
+  (9 tests : seuil, normalisation, IP multi-comptes, expiration à 15 min, fenêtre glissante, remise à zéro,
+  clés vides, troncature, table bornée qui garde une clé bloquée). OpenAPI inchangé : le 429 est couvert par
+  la réponse `default` (`ApiError`) ; pas de `generate-types`.
+- **L1-6** `ip` = `chimiddleware.GetClientIP` dans : CSRF (attribut ajouté), `require_admin.go`, `require_auth.go`,
+  `require_auth_mutations.go`, `require_player_ownership.go` (2), `handlers/build_worker.go`, journal HTTP
+  `slog_logger.go` (clé `remote_addr` renommée `ip`, aucun consommateur dans le dépôt), journal du 429, journaux
+  de connexion (`user_auth.go`). `slog.Warn`/`Debug`/`Info` sans contexte passés en `...Context` sur ces lignes.
+  Tests : `middleware/client_ip_logs_test.go` (`TestClientIPLogs_RejectionsCarryClientIP`, 6 cas : csrf, admin,
+  auth, auth-mutations, ownership, http) et `handlers/build_worker_client_ip_log_test.go`.
+- **L1-7** `packaging/nginx/levelup.conf` et `demo.conf` : directives de la conf appliquée le 2026-10-15
+  (`True-Client-IP ""`, `server_tokens off`, `limit_req_status 429` en prod, locations envoi 600m / import
+  1100m / auth 16k + `lvl_auth` / ouvrier 20m / images 16k / `/api/` 1m + `lvl_api`) ; `rate_limit.conf`
+  versionné (zones `demo_limit`, `lvl_api`, `lvl_auth`). Comparaison des directives (commentaires et lignes
+  vides retirés) entre les fichiers copiés du VPS (`scratchpad/nginx/new/`) et le dépôt : seules diffèrent les
+  lignes gérées par certbot (`if ($host = ...)` du bloc 80, `ssl_certificate*` de la prod) ; `rate_limit.conf`
+  identique. Commentaires réécrits en contrat (le dépôt ne mentionne plus `RealIP`). `ssl_protocols` vit dans
+  `nginx.conf` (non versionné) : pré-requis noté en tête de `levelup.conf`. Docs alignées :
+  `RUNBOOK_DEPLOY_CHECKLIST.md` (plus de `2g` sur `/api/`), `RUNBOOK_REPLAY_WORKER.md` §3 (location
+  `/api/v1/internal/` 20m) ; `docs/CONFIGURATION.md` + `docs/FR/CONFIGURATION.md` (`LEVELUP_TRUST_PROXY_HEADERS`).
+- **L1-8** `internal/archlint/client_ip_test.go` (AST de tout le module hors `_test.go`) : interdit
+  `RealIP` (chi middleware, tout alias), `httprate.KeyByIP` et `KeyByRealIP`, et tout accès au champ
+  `RemoteAddr` (lecture ou écriture) ; l'appel `conn.RemoteAddr()` n'est pas visé. Allowlist datée :
+  `internal/api/middleware/loopback.go` seul (plus étroite que le texte du plan, qui citait aussi
+  `slog_logger.go` : le journal HTTP lit désormais `GetClientIP`). `TestClientIPGuardDetectsDefects` prouve
+  l'analyse. `internal/archlint/nginx_conf_test.go` + `nginx_conf_parse_test.go` (lecture de la syntaxe, héritage
+  des directives, sélection de location) : chaque `server` 443 versionné exige `X-Real-IP $remote_addr` et
+  `True-Client-IP ""` effectifs dans toute location qui relaie (héritage `proxy_set_header` pris en compte),
+  `server_tokens off`, aucun `client_max_body_size` effectif au-delà de 1m hors des trois locations d'envoi
+  nommées (chacune sous son plafond), en prod une `limit_req` et `limit_req_status 429` effectifs sur les
+  chemins de l'API ; toute zone citée est déclarée dans `rate_limit.conf` ; tout `.conf` est classé
+  (prod/démo). `TestNginxConfAnalysisDetectsDefects` : 15 mutations d'une conf saine, toutes signalées. Ajouts
+  au texte du plan, dans la classe de défaut : `X-Real-IP $remote_addr`, `limit_req_status 429`, zones
+  déclarées.
+
+**Preuves du rouge** (tests écrits avant les correctifs ; sorties dans le scratchpad de session) :
+- L1-1 `go test ./internal/api/ -run 'TestTransverseClientIP|TestTransverseRateLimit' -count=1` : FAIL, exit 1,
+  5 tests : IP vue par le handler `""` (want `203.0.113.10`) ; soldes `299` puis `299` (want `298`) ; requête 301 :
+  200 (want 429) ; IP `""` sans confiance et sans en-tête.
+- L1-4 même test sur le `server.go` de `cab27c25a` (copie temporaire, restaurée, `git diff` vérifié) :
+  `TestReplayLocalGate_RejectsRemotePeerWithForgedHeaders` FAIL, pair `203.0.113.7` + `True-Client-IP/X-Real-IP/
+  X-Forwarded-For: 127.0.0.1`, confiance active : 200 au lieu de 404 (l'exploitation de C1-2).
+- L1-5 `go test ./internal/api/handlers/ -run TestLoginLimit -count=1` : FAIL, exit 1 ; 6e tentative 401
+  (want 429) ; 6e tentative depuis la même IP 200 ; changement de mot de passe d'un identifiant bloqué 204.
+  Front : `npx vitest run LoginPage.test.tsx XboxLoginPage.test.tsx` : 4 échecs, l'écran affichait
+  « Erreur HTTP 429 » (429 de nginx) ou le texte brut du serveur (429 de l'API, même en anglais) ;
+  `SetPasswordCard.test.tsx` : 1 échec (« Erreur HTTP 429 »).
+- L1-6 `go test ./internal/api/middleware/ -run TestClientIPLogs -count=1` : 6 sous-tests FAIL, `ip` absent
+  (csrf ; http avec `remote_addr=127.0.0.1:40000`) ou `ip=127.0.0.1:40000` (admin, auth, auth-mutations,
+  ownership), c'est-à-dire ce que montreraient les journaux de prod sans `RealIP`. Test ouvrier sur le
+  `build_worker.go` de `cab27c25a` (copie temporaire, restaurée) : `ip = 127.0.0.1:40000`.
+- L1-8 `client_ip_test.go` sur un extrait de `cab27c25a` (`git archive` des `.go` dans le scratchpad, garde-rail
+  seul dans `internal/archlint/`) : FAIL, 12 violations (`server.go:626 RealIP`, `rate_limit.go:67 KeyByIP`,
+  `RemoteAddr` dans `build_worker.go:264`, `replay_local_gate.go:87,88`, `rate_limit.go:112`,
+  `require_admin.go:24`, `require_auth.go:40`, `require_auth_mutations.go:83`,
+  `require_player_ownership.go:72,85`, `slog_logger.go:72`). `nginx_conf_test.go` sur les `.conf` d'avant L1-7 :
+  FAIL, 24 manquements (`rate_limit.conf` absent, `server_tokens` x2, `True-Client-IP` sur 7 locations, zone
+  `demo_limit` non déclarée, `2g` sur `/api/`, 6 chemins de l'API sans `limit_req` ni `limit_req_status 429`).
+  Après correctifs : tous ces tests verts.
+
+**Gates** (sorties réelles, `GOCACHE=go-build-securite`, `CGO_ENABLED=1`) :
+- `go test ./internal/api/... ./internal/archlint/ -run 'ClientIP|RateLimit|Replay|Nginx|Login|Transverse' -count=1` :
+  exit 0 (`api`, `handlers`, `middleware`, `wire`, `archlint` ok ; `humacore` sans test filtré).
+- `go test ./internal/api/... -count=1` : exit 0. Premier passage rouge : `TestNoRetryAfterLiteralInHandlers`
+  (littéral `"Retry-After"` dans `user_auth.go`), corrigé par la constante `headerRetryAfter` (son commentaire
+  mentionne désormais le 429).
+- Suites complètes des autres paquets touchés : `go test ./internal/archlint/ ./internal/config/
+  ./internal/platform/loginlimit/ ./cmd/server/ ./internal/api/handlers/ -count=1` : exit 0. Premier passage
+  rouge : `TestNoNewFrenchLabelLiteral` (message 429 en français) et `TestConfigGo_TailleGelee` (config.go
+  631 > 629), corrigés par un message technique en anglais et des commentaires compactés (628 lignes). Aucun
+  garde-rail modifié.
+- `go test ./internal/api/ -run 'OpenAPI|Contract' -count=1` : ok (document OpenAPI inchangé).
+- Gate commun : `go build ./cmd/server/` exit 0 ; `go vet` sur `internal/api`, `api/middleware`, `api/handlers`,
+  `archlint`, `platform/loginlimit`, `config`, `cmd/server` exit 0 ; `golangci-lint run --new-from-rev=cab27c25a`
+  (v2.12.2) sur ces paquets : 0 issues ; forme de la CI (`--new-from-merge-base=origin/main`) : 0 issues. (Sans
+  ratchet : 38 problèmes, tous préexistants, aucun sur une ligne du lot.)
+- Web : purge de `node_modules/.tmp`, `npm run typecheck` exit 0, `npm run lint` 0 erreur (26 avertissements
+  préexistants), `npm run test:run` : 921 fichiers passés / 5 ignorés, 9611 tests passés / 23 ignorés, exit 0.
+
+**Non-régression (règle 9)** : usages relevés. `POST /auth/login` : `useLogin` (`features/auth/queries.ts`),
+appelé par `LoginPage` et le panneau admin de `XboxLoginPage` ; `POST /auth/password` : `useSetPassword`, appelé
+par `SetPasswordCard` ; aucun usage dans `apps/web/e2e`, `scripts/`, `docker-compose.yml` ni `cmd/`. L'usage
+légitime reste servi : bon mot de passe 200 (`TestLoginLimit_SuccessResetsCounters`, suite `TestUserAuth_*`),
+définition du mot de passe 204 (`TestUserAuth_SetPassword_OptIn`). Changement visible (§4bis) : après 5 échecs,
+l'écran de connexion (mode mot de passe et panneau admin du mode Xbox) et la carte « mot de passe » affichent
+« Trop de tentatives de connexion. Réessayez dans 15 minutes. » / « Too many sign-in attempts. Try again in 15
+minutes. » (`common.auth.too_many_attempts`, manifeste i18n FR + EN régénéré), pour un 429 de l'API comme de
+nginx (`features/auth/loginError.ts`, `isTooManyLoginAttempts`, testé). Limite de débit applicative : pour un
+client honnête derrière nginx la clé reste X-Real-IP, comme avant (nginx retire `True-Client-IP` depuis V-1).
+Clé de journal HTTP renommée `remote_addr` en `ip` : aucun lecteur dans le dépôt. Aucune opération VPS.
+
+**Découvertes** : D-L1-1 à D-L1-5 (§6), non traitées.

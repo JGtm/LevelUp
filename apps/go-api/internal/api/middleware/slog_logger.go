@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
@@ -69,7 +71,7 @@ func SlogLogger(next http.Handler) http.Handler {
 			"duration_ms", elapsed.Milliseconds(),
 			"response_bytes", ww.bytesWritten,
 			"request_id", w.Header().Get(headerRequestID),
-			"remote_addr", r.RemoteAddr,
+			"ip", chimiddleware.GetClientIP(r.Context()),
 			"title_slug", ctxkeys.TitleSlug(r.Context()),
 			"event", evID,
 		}

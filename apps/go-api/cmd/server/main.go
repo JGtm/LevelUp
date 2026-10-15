@@ -346,13 +346,13 @@ func main() {
 	logSecurityWarnings(cfg)
 
 	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
-	// (httprate) clé sur RemoteAddr. En production derrière un reverse proxy SANS
-	// LEVELUP_TRUST_PROXY_HEADERS=true, chi RealIP n'est pas câblé → RemoteAddr reste
-	// l'IP du proxy (127.0.0.1) pour TOUS les clients → un unique bucket partagé →
-	// 429 en masse sous trafic public. Non-fatal (une expo prod directe sans proxy est
-	// un setup légitime où TrustProxyHeaders=false est correct), mais on alerte.
+	// (httprate) clé sur l'IP cliente. En production derrière un reverse proxy SANS
+	// LEVELUP_TRUST_PROXY_HEADERS=true, X-Real-IP n'est pas lu → l'IP cliente est le
+	// pair TCP, c'est-à-dire le proxy, pour TOUS les clients → un unique bucket
+	// partagé → 429 en masse sous trafic public. Non-fatal (une expo prod directe sans
+	// proxy est un setup légitime où TrustProxyHeaders=false est correct), mais on alerte.
 	if cfg.IsProduction() && !cfg.TrustProxyHeaders {
-		slog.Warn("rate-limit keyé sur RemoteAddr et LEVELUP_TRUST_PROXY_HEADERS non activé : derrière un reverse proxy, tous les clients partagent un seul bucket (429 en masse)",
+		slog.Warn("rate-limit keyé sur le pair TCP et LEVELUP_TRUST_PROXY_HEADERS non activé : derrière un reverse proxy, tous les clients partagent un seul bucket (429 en masse)",
 			"rate_limit_rpm", cfg.RateLimitRPM,
 			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
 	}

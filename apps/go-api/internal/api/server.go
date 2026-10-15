@@ -600,10 +600,10 @@ func startSessionPurgeLoop(serverCtx context.Context, sessionStore *session_plat
 }
 
 // applyTransverseMiddlewares monte les middlewares transverses (l'ORDRE importe)
-// sur le routeur racine : recovery, préservation du RemoteAddr, RealIP conditionnel
-// (uniquement derrière un proxy de confiance), en-têtes de sécurité, RequestID,
-// CORS, CSRF, rate-limit, logs slog, garde démo en lecture seule, compression,
-// session, puis TitleExtractor
+// sur le routeur racine : recovery, préservation du pair TCP, résolution de l'IP
+// cliente (X-Real-IP seulement derrière un proxy de confiance), en-têtes de
+// sécurité, RequestID, CORS, CSRF, rate-limit, logs slog, garde démo en lecture
+// seule, compression, session, puis TitleExtractor
 // (injecte title_slug dans le contexte). Extrait de NewRouter (K2a).
 func applyTransverseMiddlewares(
 	r chi.Router,
@@ -613,17 +613,16 @@ func applyTransverseMiddlewares(
 	titleRegistry *titlePkg.Registry,
 ) {
 	r.Use(chimiddleware.Recoverer)
-	// Capture l'adresse TCP réelle du peer AVANT tout middleware susceptible de
-	// réécrire RemoteAddr : le garde LoopbackOnly des endpoints /_diag s'appuie
-	// dessus pour ne pas être falsifiable via un en-tête X-Real-IP/X-Forwarded-For.
+	// Pair TCP, lu par middleware.PeerAddr (LoopbackOnly, garde du rejeu), jamais un en-tête.
 	r.Use(middleware.PreserveRemoteAddr)
-	// chi RealIP réécrit RemoteAddr depuis les en-têtes d'IP client : on ne
-	// l'active QUE derrière un reverse proxy de confiance qui assainit ces en-têtes
-	// (LEVELUP_TRUST_PROXY_HEADERS=1). Sinon RemoteAddr reste le peer TCP réel, ce
-	// qui empêche un client externe d'usurper une IP (rate-limit, logs d'audit et
-	// LoopbackOnly non falsifiables). Revue P0 2026-06-02 (faille RealIP/LoopbackOnly).
+	// IP cliente (chimiddleware.GetClientIP : clé du limiteur, `ip` des journaux) : le pair
+	// TCP, remplacé derrière le proxy de confiance (LEVELUP_TRUST_PROXY_HEADERS) par la
+	// dernière valeur de X-Real-IP, que nginx écrase à chaque requête (garde-rail
+	// archlint/nginx_conf_test.go) ; absent ou illisible, le pair TCP reste. Aucun autre en-tête
+	// d'IP n'est lu et r.RemoteAddr n'est jamais réécrit (garde-rail archlint/client_ip_test.go).
+	r.Use(chimiddleware.ClientIPFromRemoteAddr)
 	if cfg.TrustProxyHeaders {
-		r.Use(chimiddleware.RealIP)
+		r.Use(chimiddleware.ClientIPFromHeader("X-Real-IP"))
 	}
 	// En-têtes de sécurité HTTP sur toutes les réponses (HSTS seulement en prod/TLS).
 	r.Use(middleware.SecurityHeaders(cfg.TrustProxyHeaders))

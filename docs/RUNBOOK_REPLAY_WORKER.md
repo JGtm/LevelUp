@@ -95,12 +95,12 @@ restart", and exits 0. That is the nominal pre-activation path, not a failure.
 
 ## 3. Pre-flight check: is `/api/v1/internal` reachable from the outside?
 
-**What the versioned nginx configuration shows.** `packaging/nginx/levelup.conf:85-90`
-proxies the whole `location /api/` to `http://127.0.0.1:8000`, with `client_max_body_size 2g`
-and `proxy_read_timeout 3600s` — large enough for artifact uploads. Neither
-`levelup.conf` nor `demo.conf` contains any `deny`/`allow` directive or any mention of
-`internal`. On paper, nothing blocks `/api/v1/internal` from the internet, and the worker
-protocol goes through.
+**What the versioned nginx configuration shows.** `packaging/nginx/levelup.conf` proxies
+`location /api/v1/internal/` to `http://127.0.0.1:8000`, with `client_max_body_size 20m`
+(the Go side caps an artifact at 16 MiB) and `proxy_read_timeout 3600s`, and without
+`limit_req`. Neither `levelup.conf` nor `demo.conf` contains any `deny`/`allow` directive.
+On paper, nothing blocks `/api/v1/internal` from the internet, and the worker protocol
+goes through.
 
 **Why that is not proof.** Those files are installed by hand (`sudo cp`, see the header of
 `levelup.conf`) and certbot rewrites parts of them. The repository copy does not establish

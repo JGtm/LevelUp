@@ -381,6 +381,10 @@ en = "Invalid credentials."
 fr = "Erreur de connexion."
 en = "Connection error."
 
+[common.auth.too_many_attempts]
+fr = "Trop de tentatives de connexion. Réessayez dans 15 minutes."
+en = "Too many sign-in attempts. Try again in 15 minutes."
+
 # ─── Help menu ───────────────────────────────────────────────────────────
 
 [common.help.glossary]

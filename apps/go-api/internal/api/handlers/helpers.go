@@ -32,8 +32,9 @@ const (
 	// Modes auth.
 	authModeXbox = "xbox"
 
-	// headerRetryAfter : nom de l'en-tête HTTP 503 « réessayer dans N s », émis par
-	// tous les handlers qui rencontrent une base occupée (dblease.ErrDBLocked).
+	// headerRetryAfter : nom de l'en-tête HTTP « réessayer dans N s », émis en 503 par
+	// tous les handlers qui rencontrent une base occupée (dblease.ErrDBLocked), et en
+	// 429 par le limiteur d'échecs de connexion (user_auth.go).
 	// Posée au passage du ratchet goconst (10e occurrence du littéral), puis
 	// GÉNÉRALISÉE à l'ensemble du paquet le 2026-08-03 : plus aucun littéral
 	// "Retry-After" ne subsiste dans le code de production de handlers, et

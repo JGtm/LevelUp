@@ -20,14 +20,19 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/loginlimit"
 	"levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/platform/userstore"
 )
@@ -42,6 +47,9 @@ type UserAuthHandler struct {
 	// instanceLocked résout le verrou « instance fermée » (env OU app_settings).
 	// nil → jamais verrouillé (rétrocompat tests). Cf. WithInstanceLock.
 	instanceLocked func() bool
+	// loginAttempts borne les échecs de mot de passe par identifiant et par IP
+	// cliente, partagé par POST /auth/login et POST /auth/password.
+	loginAttempts *loginlimit.Limiter
 }
 
 // NewUserAuthHandler crée un UserAuthHandler.
@@ -52,10 +60,11 @@ func NewUserAuthHandler(
 	regMode string,
 ) *UserAuthHandler {
 	return &UserAuthHandler{
-		users:        users,
-		invites:      invites,
-		sessionStore: sessionStore,
-		regMode:      regMode,
+		users:         users,
+		invites:       invites,
+		sessionStore:  sessionStore,
+		regMode:       regMode,
+		loginAttempts: loginlimit.New(),
 	}
 }
 
@@ -123,15 +132,24 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 	}
 
+	// Tentative refusée sans vérifier le mot de passe tant que l'identifiant ou l'IP
+	// est bloqué (ni coût bcrypt, ni échec de plus).
+	ip := chimiddleware.GetClientIP(ctx)
+	if err := h.refuseIfLoginBlocked(ctx, req.Username, ip); err != nil {
+		return nil, err
+	}
+
 	user, err := h.users.Authenticate(req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, userstore.ErrInvalidCredentials) {
-			slog.Warn("auth: login échoué", "username", req.Username)
+			h.loginAttempts.RecordFailure(req.Username, ip)
+			slog.WarnContext(ctx, "auth: login échoué", "username", req.Username, "ip", ip)
 			return nil, humacore.NewError(http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
 		}
-		slog.ErrorContext(ctx, "auth: erreur authenticate", "username", req.Username, "err", err)
+		slog.ErrorContext(ctx, "auth: erreur authenticate", "username", req.Username, "ip", ip, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "auth_error", "erreur d'authentification")
 	}
+	h.loginAttempts.RecordSuccess(req.Username, ip)
 
 	// PR-C : en mode xbox, le login password est autorisé pour tout utilisateur
 	// AYANT défini un mot de passe (opt-in en fin d'onboarding via POST /auth/password).
@@ -156,7 +174,7 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 		slog.ErrorContext(ctx, "auth: échec save session login", "username", user.Username, "err", err)
 	}
 
-	slog.Info("auth: login réussi", "username", user.Username, "role", user.Role)
+	slog.InfoContext(ctx, "auth: login réussi", "username", user.Username, "role", user.Role, "ip", ip)
 
 	return &loginOutput{Body: domain.LoginResponse{
 		Username: user.Username,
@@ -278,6 +296,11 @@ func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInp
 	if sess == nil || sess.Username == nil {
 		return nil, humacore.NewError(http.StatusUnauthorized, "auth_required", "authentification requise")
 	}
+	// Un identifiant (ou une IP) bloqué par des échecs de mot de passe ne change pas
+	// non plus de mot de passe pendant le blocage.
+	if err := h.refuseIfLoginBlocked(ctx, *sess.Username, chimiddleware.GetClientIP(ctx)); err != nil {
+		return nil, err
+	}
 
 	var req domain.SetPasswordRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
@@ -298,6 +321,23 @@ func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInp
 
 	slog.Info("auth: mot de passe défini (opt-in)", "username", *sess.Username)
 	return &authNoContent{Status: http.StatusNoContent}, nil
+}
+
+// refuseIfLoginBlocked rend le refus 429 too_many_login_attempts, avec Retry-After en
+// secondes, quand l'identifiant ou l'IP cliente est bloqué par le limiteur d'échecs ;
+// nil sinon.
+func (h *UserAuthHandler) refuseIfLoginBlocked(ctx context.Context, identifier, ip string) error {
+	wait, blocked := h.loginAttempts.Blocked(identifier, ip)
+	if !blocked {
+		return nil
+	}
+	slog.WarnContext(ctx, "auth: tentative refusée, trop d'échecs de mot de passe récents",
+		"username", identifier, "ip", ip, "retry_after", wait.Round(time.Second).String())
+	retryAfter := strconv.Itoa(int(math.Ceil(wait.Seconds())))
+	return huma.ErrorWithHeaders(
+		humacore.NewError(http.StatusTooManyRequests, "too_many_login_attempts",
+			"too many failed sign-in attempts, try again later"),
+		http.Header{headerRetryAfter: []string{retryAfter}})
 }
 
 // autoSelectPlayer sélectionne automatiquement le joueur lié au gamertag de l'utilisateur.

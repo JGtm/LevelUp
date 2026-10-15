@@ -16,6 +16,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/domain"
@@ -69,7 +70,7 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 					return
 				}
 				slog.WarnContext(r.Context(), "authz: slug joueur inconnu refusé",
-					"slug", slug, "path", r.URL.Path, "ip", r.RemoteAddr)
+					"slug", slug, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 				writePlayerForbidden(w)
 				return
 			}
@@ -82,7 +83,7 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 				return
 			}
 			slog.WarnContext(r.Context(), "authz: accès joueur refusé",
-				"slug", slug, "path", r.URL.Path, "ip", r.RemoteAddr)
+				"slug", slug, "path", r.URL.Path, "ip", chimiddleware.GetClientIP(r.Context()))
 			writePlayerForbidden(w)
 		})
 	}
