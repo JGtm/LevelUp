@@ -243,3 +243,33 @@ func TestLeDernierRecordFermeSurLaFinDeTable(t *testing.T) {
 		t.Error("slot 0x1ffe - 5 : quatre entrees attendues, trois lues, la queue ne doit pas fermer")
 	}
 }
+
+// TestUneAncreSuivanteDeSlotInferieurNeFermePas : la traversee finit exactement sur l ancre suivante,
+// mais le slot de celle-ci ne depasse pas celui du record (meme slot, ou slot inferieur) — dans une table
+// indexee par slot, elle ne peut pas le suivre. MUTATION — retirer la garde `n < 0` : la lecture de -1
+// ou -2 entrees n avance pas, et le record fermerait ; ROUGE.
+func TestUneAncreSuivanteDeSlotInferieurNeFermePas(t *testing.T) {
+	pay, want := tableSynthetique(func(*bitWriter) {})
+	for _, s := range []int{5, 4} {
+		if fermeSynthetique(t, pay, want, s) {
+			t.Errorf("slot suivant %d pour un record de slot 5 : la fermeture ne doit pas tenir", s)
+		}
+	}
+}
+
+// TestUnRecordSuiviDUneAncreNeFermePasSurLaFinDeTable : la fin de table ne juge que le DERNIER record
+// d un paquet ; un record que suit une ancre (`Want >= 0`) se juge sur elle, meme quand la queue de la
+// table fermerait. MUTATION — retirer la garde `b.Want >= 0` : ROUGE.
+func TestUnRecordSuiviDUneAncreNeFermePasSurLaFinDeTable(t *testing.T) {
+	reg, ctx := twoEmptyArchReg(), ContexteParDefaut()
+	pay := queueDeTable(0)
+	tr := WalkKeyframeFullState(pay, 1, reg, ctx)
+	b := keyframeBorne{Bit: 1, Want: -1, Slot: keyframeEntreesDeTable - 4, SlotSuivant: -1}
+	if !fermeSurLaFinDeTable(pay, tr, b, reg, ctx) {
+		t.Fatal("temoin : sans ancre suivante, la queue doit fermer")
+	}
+	b.Want, b.SlotSuivant = tr.EndBit, keyframeEntreesDeTable-3
+	if fermeSurLaFinDeTable(pay, tr, b, reg, ctx) {
+		t.Error("record suivi d une ancre : la fin de table ne doit pas le juger")
+	}
+}

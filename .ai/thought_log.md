@@ -117335,3 +117335,13 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : CI de `644e115b4` verte. Gate de corpus (19 témoins, base `ec7313562`) : banc de vérité ok sur les 19, aucun oracle ne bouge ; seul `60ae07c4` change (paquets fermés 38 434 → 40 031, 21 pertes de filet adjugées : sprints raccourcis là où le film l'arrête, vérifiés à la vitesse, compteurs intermédiaires, impulsions fausses retirées). G-perf : sync à 1,00 ; cuisson +6,9 %, +11,0 %, +4,1 %, +11,1 % (bruit ≤ 0,6 %), seuil de 10 % dépassé sur `e5adf7b2` et `11de8353`.
 
 **Conclusion / prochaine étape** : décision de l'utilisateur sur le surcoût de cuisson (accepter, ou lot de performance avant la fusion) ; puis revue adversariale et fusion (superviseur).
+
+## [2026-10-15] Résidu de lecture des images-clés, R5 : décision U-8 et constats P2 de la revue adversariale — En cours (`feat/ri-ecart-108`, fusion au superviseur)
+
+**Statut** : En cours — R5.1 à R5.7 closes ; revue adversariale passée, constats statués ; fusion dans `feat/v75` au superviseur.
+
+**Décision technique principale** : DÉCISION U-8 de l'utilisateur du 2026-10-15 (« option a ») : surcoût de cuisson accepté (+11 % sur deux films), piste d'optimisation au registre. Cinq constats P2 corrigés : branche morte retirée (`walkOneKeyframeRecord`), ADR 0037 précisée, deux gardes de fermeture tenues par des tests (mutations rouges), doc de `Chained` alignée sur ce que garantit le chaînage.
+
+**Résultats observés** : sortie de grammar inchangée (quatre instruments identiques à l'octet) ; seule l'empreinte de `grammar-2026-10-15.2` bouge (révision non publiée) ; tests du film, archlint, vet et golangci verts.
+
+**Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` par le superviseur (en gardant la correction CSR de `feat/v75` si elle arrive avant).

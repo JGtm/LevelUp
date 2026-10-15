@@ -114,9 +114,14 @@ type ObjectiveRead struct {
 	// pour deux entiers coute plus que de les nommer.
 	Value, ValueB uint64
 	HasB          bool
-	// Chained dit que le RECORD qui porte cette lecture est CHAINE : sa position de fin porte un
-	// en-tete de record valide. C'est le seul temoin de fiabilite PAR LECTURE que le balayage
-	// possede. Faux pour le dernier record d'un paquet (rien ne peut le suivre).
+	// Chained dit que le RECORD qui porte cette lecture est CHAINE : sa position de fin porte une
+	// FRONTIERE D'ENTREE. Voie delta : un en-tete de record delta valide (`worldObjectHeaderAt`). Voie
+	// image-cle : une entree de la table ([finitSurUneEntree]) — un en-tete de record valide OU un
+	// slot libere sous la forme exacte de l'ecrivain, si bien qu'un record chaine n'est pas
+	// forcement suivi d'un record. C'est un temoin FAIBLE (la fermeture exacte est `KeyClosed`),
+	// mais le seul de fiabilite PAR LECTURE que le balayage possede. Voie delta : faux pour le dernier
+	// record d'un paquet (rien ne le suit) ; voie image-cle : le dernier record peut etre chaine sur les
+	// slots liberes qui finissent la table.
 	Chained bool
 	// FromKeyframe dit que la lecture vient d'un record d'IMAGE-CLE et non d'un paquet delta.
 	//

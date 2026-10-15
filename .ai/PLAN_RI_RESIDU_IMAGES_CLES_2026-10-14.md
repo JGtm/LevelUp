@@ -206,6 +206,10 @@ neuf par passe) :
   c : la retenir hors des formats 20-21) : **« Option a »** (relayée par le superviseur). La lecture du
   jeu est retenue ; les cinq baisses mesurées en R3.2 sont acceptées par cette décision (journal du
   2026-10-15).
+- **U-8 (2026-10-15)** — surcoût de cuisson mesuré par G-perf (R5.6 : +11,0 % sur `e5adf7b2`, +11,1 % sur
+  `11de8353`, au-dessus du seuil de 10 %), après les deux options présentées (a : accepter le coût ;
+  b : optimiser d'abord) : **« option a »** (relayée par le superviseur). Le coût est accepté ; une
+  piste d'optimisation future est au registre des reports.
 
 ### 3.2 Décisions d'exécution (à l'exécutant, justifiées ; une objection de l'utilisateur les rouvre)
 - **E-1 — Un seul lecteur d'entrée.** La forme de l'entrée (108 bits, corps si l'archétype n'est pas
@@ -643,7 +647,7 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     (`feat/v75` à 14 : le profil de la section 5 gagne `MalleableSansDrapeauFinal`) ; huit goldens
     d'assemblage, golden de forme, formes des types et huit fixtures de contrat du web
     (`replay_schema_97_*`) régénérés par leurs portes.
-- [!] R5.6 Gates complets : G-film sans `-skip` ; archlint ; vet avec et sans `research` ;
+- [x] R5.6 Gates complets : G-film sans `-skip` ; archlint ; vet avec et sans `research` ;
       golangci-lint ; `go test -tags=integration -p 1` des paquets touchés ; G-perf (cuisson et sync,
       4 films, paires alternées, seuil +10 %, plan clos §5) ; G-corpus et banc de vérité contre
       `origin/feat/v75` (base partagée EN LECTURE, parc libre vérifié) ; `make gate-push` (étapes) ;
@@ -687,7 +691,7 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     - `stances.dropped` 9 → 11, `refusedNewFalseReads` 15 → 16 : à proportion des lectures en plus.
     Chaque témoin compte une différence de sens « gain » (même compte sur les 19, y compris les films
     dont le document ne change pas : la montée de schéma) ; télémétrie : les deux révisions.
-  - `[!]` G-perf, paires alternées base `46bfa5fad` / lot (`replay-equiv` et `porteurs` construits
+  - G-perf, paires alternées base `46bfa5fad` / lot (`replay-equiv` et `porteurs` construits
     une fois chacun), machine contrôlée avant chaque tour (`$RES/perf/`) :
     - **Sync** (`BenchmarkPorteursAuSync`, 3 paires) : `084a804d` 1,00, `1c4c63c2` 1,00, `51101d1d`
       1,00, `9f57c612` 0,96 (médianes lot/base, ns/op) ; pics dans le bruit de la base. Tenu.
@@ -695,7 +699,7 @@ Une étape commence quand la précédente est close : items statués, gate pass�
       `084a804d` 1,069 (44,32 → 47,39 s), `e5adf7b2` 1,110 (15,99 → 17,73 s), `60ae07c4` 1,041
       (13,99 → 14,52 s), `11de8353` 1,111 (15,74 → 17,52 s) ; pics inchangés (± 0,03 Gio).
       **SEUIL DÉPASSÉ sur deux films (+11 %)** : ARRÊT du gate selon le §5 du plan clos, mesure
-      publiée, DÉCISION DE L'UTILISATEUR DUE. Le surcoût suit le volume lu en plus (records fermés,
+      publiée ; DÉCISION U-8 de l'utilisateur (2026-10-15, « option a ») : coût accepté. Le surcoût suit le volume lu en plus (records fermés,
       tous archétypes, 242 684 → 418 264 sur 28 films ; `ti=38` et `ti=43` sous la portée) ; non
       attribué plus finement (un profil CPU d'une cuisson isolée de `e5adf7b2` par `replay-build`
       est au bruit près des deux côtés et ne le montre pas).
@@ -840,3 +844,11 @@ depuis la dernière reprise (§1.2 : refusionner, rejouer les références touch
   prévaudra à la refusion), CI verte. Gate de corpus, 19 témoins : banc de vérité ok partout, seul
   `60ae07c4` bouge (gain P-1, 21 pertes de filet adjugées sur l'artefact). G-perf : sync tenu ; cuisson
   +11 % sur `e5adf7b2` et `11de8353` (seuil 10 %) : ARRÊT, décision de l'utilisateur due.
+- 2026-10-15 : DÉCISION U-8 de l'utilisateur (« option a ») : le surcoût de cuisson est accepté, R5.6
+  close ; registre : la ligne devient une piste d'optimisation future. Revue adversariale (deux
+  relecteurs, superviseur) : cinq constats P2 corrigés — branche morte `SansArchetype` de
+  `walkOneKeyframeRecord` retirée (instruments research gardés par le même filtre), phrase de l'ADR 0037
+  sur la fermeture précisée (seule la preuve d'élection se restreint aux slots libérés), deux tests des
+  gardes `n < 0` et `b.Want >= 0` (mutations rouges), doc de `Chained` corrigée. Sortie de grammar
+  inchangée (I-d0, I-ferm, I-ancres, I-equipes identiques à l'octet) ; empreinte de `grammar-2026-10-15.2`
+  recopiée (révision non publiée, aucune lecture changée).

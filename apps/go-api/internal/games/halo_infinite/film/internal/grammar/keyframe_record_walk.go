@@ -219,19 +219,12 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]Ke
 // d'arret eventuelle et un booleen d'arret. Extrait de `WalkKeyframeRecords` pour tenir le
 // seuil de 80 lignes par fonction.
 //
-// UNE ENTREE SANS ARCHETYPE NE PORTE PAS DE CORPS : le jeu saute alors les deux mots de
-// taille et la boucle de composants, et passe a l'entree suivante 108 bits plus loin.
+// `h` est l'en-tete d'un RECORD : l'appelant a deja ecarte les entrees sans corps
+// (`lireEntreeDImageCle`, `keyframe_entrees.go`), que cette fonction ne sait pas sauter.
 func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
 	ctx ContexteDeLecture) (
 	KeyframeWalkRec, KeyframeWalkStop, bool,
 ) {
-	if h.SansArchetype() {
-		rec := KeyframeWalkRec{
-			KeyframeHeader: h, BitStart: pos, BitEnd: pos + keyframeFullHeaderBits(ctx),
-			DesyncAt: -1,
-		}
-		return rec, KeyframeStopEnd, false
-	}
 	tr := WalkKeyframeFullState(pay, pos, reg, ctx)
 	rec := KeyframeWalkRec{
 		KeyframeHeader: h, BitStart: pos, BitEnd: tr.EndBit,

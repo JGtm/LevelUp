@@ -402,9 +402,10 @@ entry header whose identity, archetype and word are `0xffffffff` (`FUN_142e2bfd0
 and carries no body. The closure of a record (IR-4) therefore reads the `t - s - 1` entries that
 separate its slot `s` from the slot `t` of the next anchor (`grammar/keyframe_entrees.go`), and the
 last record of a packet closes on the end of the table (`0x1ffe - s` entries, ending on the last
-byte of the payload); a record closes on its successor only if every entry between them is a freed
-slot. The keyframe proof skips freed entries and requires the slot `s + 1 + k`, and the deterministic
-keyframe walks read the table entry by entry. The scanner's "end of table" of 2 048 sentinel words,
+byte of the payload). An intervening entry is read as the game reads it: a freed slot as its 108-bit
+header, a record by its full state. Only the keyframe proof of the anchor election is restricted to
+freed entries: it skips them and requires the slot `s + 1 + k`. The deterministic keyframe walks read
+the table entry by entry. The scanner's "end of table" of 2 048 sentinel words,
 which the game does not write, is removed with the motif primitives only it used. Two further
 readings enter the keyframe walk on the same branch: the i53 malleable block (`FUN_1407efc5c`) has
 no final flag in films that declare **exactly** the major version 0x25 (HI_1_8_0; user decision of

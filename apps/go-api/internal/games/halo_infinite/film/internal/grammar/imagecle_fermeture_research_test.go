@@ -141,7 +141,7 @@ func imcMarcher(modele string, pay []byte, reg *Registry, bit int) (end, desync 
 	switch modele {
 	case imcProduction:
 		h, ok := readKeyframeHeader(pay, bit, len(pay)*8)
-		if !ok {
+		if !ok || h.SansArchetype() { // une entree sans corps n est pas un record
 			return bit, 0
 		}
 		rec, _, _ := walkOneKeyframeRecord(pay, reg, bit, h, contexteDInstrument())
