@@ -25,7 +25,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/testutil"
 )
@@ -72,7 +74,13 @@ func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 		if res == nil {
 			t.Fatalf("%s : kill-feed non decode", id)
 		}
-		blob, err := json.MarshalIndent(replayidentity.BotIdentities(res), "", "  ")
+		// `killsourceRev` : la revision sous laquelle le kill-feed est decode ; `replay` refuse un
+		// fichier fige sous une autre (`TestLesBotsDesFixturesPortentLaRevisionCourante`).
+		fige := struct {
+			KillsourceRev string               `json:"killsourceRev"`
+			Bots          []replay.BotIdentity `json:"bots"`
+		}{KillsourceRev: decfilm.Rev, Bots: replayidentity.BotIdentities(res)}
+		blob, err := json.MarshalIndent(fige, "", "  ")
 		if err != nil {
 			t.Fatalf("%s : %v", id, err)
 		}

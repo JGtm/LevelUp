@@ -1,54 +1,57 @@
-[
-  {
-    "FilmIndex": 8,
-    "Name": "343 Darkstar [bot]",
-    "BotID": 38,
-    "BotIDLu": true,
-    "Declarations": [
-      [
-        8772789429,
-        8774091073
-      ]
-    ],
-    "Team": 0
-  },
-  {
-    "FilmIndex": 8,
-    "Name": "343 BF Scrub [bot]",
-    "BotID": 35,
-    "BotIDLu": true,
-    "Declarations": [
-      [
-        8794128191,
-        8795260058
-      ]
-    ],
-    "Team": 0
-  },
-  {
-    "FilmIndex": 8,
-    "Name": "343 Rhinosaurus [bot]",
-    "BotID": 41,
-    "BotIDLu": true,
-    "Declarations": [
-      [
-        8834854332,
-        8838088591
-      ]
-    ],
-    "Team": 0
-  },
-  {
-    "FilmIndex": 8,
-    "Name": "343 Hollis [bot]",
-    "BotID": 59,
-    "BotIDLu": true,
-    "Declarations": [
-      [
-        8894864498,
-        0
-      ]
-    ],
-    "Team": 0
-  }
-]
+{
+  "killsourceRev": "killsource-2026-10-16",
+  "bots": [
+    {
+      "FilmIndex": 8,
+      "Name": "343 Darkstar [bot]",
+      "BotID": 38,
+      "BotIDLu": true,
+      "Declarations": [
+        [
+          8772789429,
+          8774091073
+        ]
+      ],
+      "Team": 1
+    },
+    {
+      "FilmIndex": 8,
+      "Name": "343 BF Scrub [bot]",
+      "BotID": 35,
+      "BotIDLu": true,
+      "Declarations": [
+        [
+          8794128191,
+          8795260058
+        ]
+      ],
+      "Team": 1
+    },
+    {
+      "FilmIndex": 8,
+      "Name": "343 Rhinosaurus [bot]",
+      "BotID": 41,
+      "BotIDLu": true,
+      "Declarations": [
+        [
+          8834854332,
+          8838088591
+        ]
+      ],
+      "Team": 1
+    },
+    {
+      "FilmIndex": 8,
+      "Name": "343 Hollis [bot]",
+      "BotID": 59,
+      "BotIDLu": true,
+      "Declarations": [
+        [
+          8894864498,
+          0
+        ]
+      ],
+      "Team": 1
+    }
+  ]
+}

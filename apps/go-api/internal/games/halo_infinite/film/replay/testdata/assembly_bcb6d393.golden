@@ -21,7 +21,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
 10277 point(s) portent un cap de visee · 10277 une elevation de visee · 4017 un bouclier · 108 une fraction de vie
 
 ### ROSTER — le xuid IDENTIFIE, l index ORDONNE ; ils ne sont pas interchangeables
-12 joueur(s)
+15 joueur(s)
   2533274895111035  idx=0  equipe=1  "FrankDaTank1313"
   2535460750735339  idx=1  equipe=1  "KidLeo67"
   2533274876732804  idx=2  equipe=1  "J 2025118"
@@ -30,14 +30,17 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2533274858283686  idx=5  equipe=0  "Madina97294"
   2791963697577117  idx=6  equipe=1  "RavenBL00D"
   2535429985869093  idx=7  equipe=0  "Gsasph"
+    idx=8  equipe=1  "343 BF Scrub [bot]"
+    idx=8  equipe=1  "343 Darkstar [bot]"
     idx=8  equipe=1  "343 Hollis [bot]"
+    idx=8  equipe=1  "343 Rhinosaurus [bot]"
   2535418713587213  idx=9  equipe=1  "Steedlan"
   2535468064146356  idx=10  equipe=1  "brkn8174"
   2533274811363842  idx=11  equipe=1  "xNeuromancer"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
 lue=true refus="" · 152 record(s) ti=9, 0 rejete(s), 0 divergence(s)
-roster : 12 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
+roster : 15 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=11
 vies : 57/57 portent une equipe du film
 repartition des vies par designateur : 0 x24 · 1 x33
@@ -319,14 +322,14 @@ controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la 
 voies des liens d index : PlayerIndexTable=3 · bid=4 · film_table=8
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 12 · sieges 8 · lus 8 · tirs 0 · apparies 4 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
-arrivants 4 · presences closes 4 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 1 · sans table false
+entrees 15 · sieges 8 · lus 8 · tirs 0 · apparies 7 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+arrivants 7 · presences closes 7 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 4 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_identite_premier_occupant_du_siege         29
 repli_impulsion_fusionnee_dans_le_geste          4
 repli_origine_au_sol_lachee_par_fenetre          99
-repli_place_du_remplacant_par_chainage_d_equipe  4
+repli_place_du_remplacant_par_chainage_d_equipe  7
 repli_prise_de_socle_premiere_du_cycle           1
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
