@@ -191,7 +191,7 @@ Décisions fermes :
 - **D-14** Bit 512 : établir qui le lit (sélection de rattrapage ?) et ce que coûte un faux
   négatif (re-téléchargement inutile) ; le poser là où les participants sont écrits.
 
-- [ ] E5.1 Inventaire sur pièces, par titre (HI, H5, import OpenSpartan) : écrivains, lecteurs,
+- [x] E5.1 Inventaire sur pièces, par titre (HI, H5, import OpenSpartan) : écrivains, lecteurs,
   date de la régression (`git log -S`), comptes sur une copie locale ET sur une copie prod
   (le superviseur fournit la copie prod). Rapport au journal, puis STOP pour verdict du
   superviseur (application de D-11 à D-14 colonne par colonne).
@@ -615,3 +615,93 @@ diff E5 (lot persist/sync).
     sur les paquets touchés : 0 issue. Web non touché, contrat OpenAPI inchangé (golden `internal/api` vert) : pas de `make check-types` / `test-web`.
   - **E4 CLOSE** : E4.1 à E4.8c statués `[x]` ; recette navigateur de la vue match `[!]` (voir plus haut : le serveur local sert `feat/v75`), reportée au
     gate visuel de l'utilisateur.
+- 2026-10-15 (E5.1, exécutant Sonnet, LECTURE SEULE, aucun code modifié) : inventaire de `participants_loaded`, `player_count` et du bit 512
+  de `backfill_completed`. Méthode : copies locales (`data/titles/{slug}/warehouse/shared_matches_v2.duckdb` copiées dans le scratchpad) et copies
+  prod fournies par le superviseur (`e5_prod/`, 20:17), interrogées par `cmd/diag_q` compilé une fois (lecture seule) ; aucune base vivante ouverte.
+  Prod HI = 2 014 matchs, local HI = 9 230 (7 216 de plus, tous Go-era), H5 = 3 032 identiques en local et en prod. **Le bit 512 vit dans
+  `match_registry.backfill_completed` (base PARTAGÉE), pas dans une player DB** (`sync/writes.go:289-291` ; à ne pas confondre avec `PBitMedals`
+  = 512 de `match_participants.backfill_bits`, `backfill_flags.go:39`). Colonne `participants_loaded` : ABSENTE du DDL de migration
+  `create_base_shared_schema` (`steps_shared_core.go:33-70`) et des bases H5 ; présente seulement dans `sync/schema.go:207` (HI).
+  - **E5.1-a — écrivains (par donnée x titre)**
+
+    | donnée | HI (moteur de sync Go) | H5 | import OpenSpartan | autres |
+    |---|---|---|---|---|
+    | `participants_loaded` | AUCUN. Le DDL (`sync/schema.go:207`) est là depuis `b58cec2d4` (2026-04-15) ; `persistMatchRegistry` (`persist/shared_persister.go:155-200`) ne la liste pas, donc DEFAULT FALSE | colonne inexistante | `mapper.go:69` pose `ParticipantsLoaded: true` sur le type du MAPPER (`mapper/rows.go:39`) ; `toSyncRegistry` (`service/openspartan_import_adapters.go:41-72`) ne la recopie pas et `domain.MatchRegistryRow` n'a pas ce champ : la valeur meurt avant l'INSERT | fixture `sync/testutil/fixture.go:65` ; aucune migration, aucun backfill, aucun cmd ne l'écrit |
+    | `player_count` | AUCUN (`domain.MatchRegistryRow.PlayerCount` reste 0 ; colonne listée `shared_persister.go:168`, valeur `:198`, donc 0) | `games/halo_5/ingest/collect.go:44-47` : `len(carnage.PlayerStats)` (`halo_5/capture.go:342-347`), ajouté par `955fac1f0` (2026-06-26) ; aucune ligne des données n'exerce ce code (voir comptes) | `mapper.go:41` `reg.PlayerCount = len(parts)` sur le type du mapper (`rows.go:45`) ; PERDU par `toSyncRegistry` (idem) | démo : `ops/seed_demo_synthetic_shared.go:115-121` (taille du roster fabriqué) ; migration d'ajout `steps_shared_core.go:600-604` ; DDL `steps_shared_core.go:60` et `sync/schema.go:213` |
+    | bit 512 | `sync/collect.go:329-331` (`applyCompletionBitsToBatch`, appelé `collect.go:244`) : posé si `len(batch.Shared.Participants) > 0`, avant le Submit (INSERT-only) | NON posé (`backfill_completed` NULL sur les 3 032 lignes ; `ingest/collect.go` ne l'a jamais posé ; aucun lecteur H5) | NON posé : `toSyncRegistry` ne porte pas `BackfillCompleted` (le mapper pose `1`, qui est le bit MÉDAILLES, `mapper.go:68`), donc NULL à l'INSERT ; jamais exercé dans les données | `cmd/levelup/cmd_reset_bitmasks.go:155-166` (UPDATE `backfill_completed |= 512` pour les matchs qui ont des participants ; sous-commande `reset-bitmasks --apply`, câblée `main.go:125`) |
+
+  - **E5.1-b — lecteurs de PRODUCTION**
+    - `participants_loaded` : **aucun**. Recherche exhaustive Go (SQL en chaînes compris), `openapi.yaml`, web, TOML : le seul autre texte est `docs/archive`.
+    - `player_count` : **aucun oracle d'intégrité n'existe**. Le « fix #10 » (`955fac1f0`) a écrit la colonne et déclaré « re-backfill = ops data séparée » ; aucun code ne
+      compare `player_count` aux lignes de `match_participants` (grep exhaustif). Lecteurs réels : (1) vue `mv_player_matches` (`migration/steps_shared.go:275`) et
+      `v_match_full` (`SELECT mr.*`) = RECOPIE, aucun lecteur nommé de la colonne derrière ; (2) export Parquet du snapshot (`ops/snapshot_export.go:197`,
+      `SELECT * FROM match_registry`) = recopie ; (3) `cmd/mapfond-inventaire/lecture.go:114` : colonne TSV `joueurs_max` d'un inventaire de cartes hors ligne (informatif,
+      fausse aujourd'hui) ; (4) `cmd/diag_expected_assists/main.go:83` : corrélation de diagnostic jetable ; (5) démo : `persist/demo_seed_columns.go:36`
+      (liste de parité avec le persister, ratchet `demo_seed_columns_test.go:70`) et `ops/seed_demo_synthetic_shared.go:120` = écrivains, pas lecteurs.
+    - bit 512 : **un lecteur de production, HI seul** : `sync/backfill.go:348-353` (`doneGuard("participants")`, `backfill.go:174-182`) quand `scope.Participants` est vrai,
+      condition jointe en `OR` aux autres (`backfill.go:387`). `scope.Participants` n'est vrai que par `AllData` (`scope.go:137`), et `handlers/backfill.go:156-166,209` pose `AllData`
+      quand la requête `POST /backfill/start` n'a AUCUN scope explicite (cas du bouton admin, `web/src/features/settings/queries.ts:112`). La liste `missing`
+      (`service/backfill_orchestrator.go:77`) nourrit : `BackfillEventsForMatches(missing, ...)` (`:192-197`) puis `ReplayHighlightEventsForMatches` : pour CHAQUE id, `clearEventsLoaded`
+      (UPDATE `events_loaded=FALSE`, `sync/events_replay.go:147,228-233`) puis re-téléchargement du film ; et `BackfillPersonalScoreAwardsForMatches(missing)` (`:244-253`) : un
+      `GetMatchStats` par id (`sync/backfill_personal_scores.go:53-57`). Aucun exécuteur « participants » n'existe dans l'orchestrateur : rien ne pose jamais le bit 512 après coup.
+      Hors ça : `cmd/levelup/cmd_reset_bitmasks.go` (réparation), `cmd/diag_bitmask_coverage` (diagnostic). `sync.FindMatchesMissingParticipantBits` et
+      `NewBackfillFlagSet` (`backfill_cli.go:27`, le flag `--participants`) n'ont aucun appelant de production. Le readiness du snapshot (`snapshot_readiness.go:125`) ne lit PAS le bit 512
+      (seulement armes, film absent, PVE).
+
+  - **E5.1-c — date et cause**
+    - `participants_loaded` et `player_count` (HI) : jamais écrits par le code Go. Dernière ligne les portant : première synchro du 2026-04-06 22:03 (prod) ; première ligne Go : 2026-05-06.
+      Le DDL a été porté de l'ère Python au commit `b58cec2d4` (2026-04-15, « moteur sync delta Go ») sans écrivain (`git log -S participants_loaded` : ce commit et une correction de
+      fixture du 2026-05-06 ; `-S ParticipantsLoaded` : le mapper `adedcc6a3` du 2026-05-18, valeur perdue à la recopie). Ce n'est pas une régression du code Go : c'est une
+      donnée qu'il n'a jamais produite. L'écrivain Python n'est pas dans le dépôt (déduit des données : 1 382 lignes `participants_loaded` vrai, toutes synchronisées avant le 2026-04-07).
+    - `player_count` (H5) : écrivain ajouté le 2026-06-26 (`955fac1f0`), APRÈS l'ingestion de la totalité du parc H5 (créé le 2026-06-23) ; aucun match H5 ingéré depuis.
+    - bit 512 (HI) : vraie régression, FERMÉE. Le chemin batch Collect->Persist est devenu le défaut le 2026-05-24 (`82d0aa1a2`) sans poser les bits de complétude ; `ddfd9e124`
+      (2026-05-31, « backfill_completed fiable sur le chemin batch », qui cite le re-traitement infini des backfills) les pose. Preuve dans les données : les 157 matchs sans
+      bit ont tous `first_sync_at` entre 2026-05-25 11:59 et 2026-05-30 11:46 (78 le 25, 77 le 26, 2 le 30) ; dès le 2026-06-03, 11 sur 11 portent le bit. Mêmes 157 en local et en prod.
+      Les mêmes 157 n'ont pas non plus le bit skill (4) : même cause, hors périmètre (découverte).
+
+  - **E5.1-d — comptes** (jointure `match_registry` x `COUNT(*)` de `match_participants` par match ; mois = `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`)
+
+    | | HI local | HI prod | H5 (local = prod) |
+    |---|---|---|---|
+    | matchs au registre | 9 230 | 2 014 | 3 032 |
+    | sans aucun participant | 0 | 0 | 0 |
+    | `participants_loaded` vrai / faux | 1 382 / 7 848 | 1 382 / 632 | colonne absente |
+    | `player_count` > 0 / = 0 / NULL | 1 544 / 7 686 / 0 | 1 544 / 470 / 0 | 0 / 0 / 3 032 |
+    | `player_count` = nb réel de participants | 13 | 13 | sans objet |
+    | `player_count` < nb réel (sur les > 0) | 1 531 (aucun >) | 1 531 (aucun >) | sans objet |
+    | bit 512 posé / non posé | 9 073 / 157 | 1 857 / 157 | 0 / 3 032 |
+    | `backfill_completed` NULL | 0 | 0 | 3 032 |
+    | index sur `player_count` | `idx_registry_player_count` (legacy, aucun code ne le crée) | idem | aucun |
+
+    Croisements : `participants_loaded` vrai implique `player_count` > 0 (1 382 sur 1 382), jamais l'inverse (162 lignes `player_count` de 2 à 6 et `participants_loaded` faux, 2026-02 / 03).
+    Même posé, `player_count` ne vaut le roster réel que 13 fois sur 1 544 (rosters réels de 4 à 36) : les valeurs historiques ne sont PAS la taille du roster API, donc inutilisables
+    comme oracle même conservées. Prod HI par mois : `participants_loaded` vrai de 2021-11 à 2026-04 (2026-01 : 179/179, 2026-02 : 33/173, 2026-03 : 142/184, 2026-04 : 12/86),
+    ZÉRO à partir de 2026-05 (2026-05 : 0/86 ; 2026-06 : 0/65 ; 2026-07 : 0/174 ; 2026-09 : 0/32) ; `player_count` > 0 suit la même coupure (+ les 162 lignes de février-mars). Bit 512 : posé
+    partout sauf les 157 de la fenêtre du 25 au 30 mai (répartis sur les mois de début de match 2021-11, 2026-02 à 2026-05). Local : mêmes coupures (les 7 216 matchs locaux en plus sont Go-era :
+    `participants_loaded` faux, `player_count` 0, bit posé hors fenêtre). H5 par année (2015 : 364, 2016 : 605, 2017 : 308, 2018 : 1 149, 2019 : 422, 2020 : 103, 2021 : 65, 2023 : 16) :
+    `player_count` NULL et bit 512 non posé partout, rosters réels de 1 à 21.
+    Requêtes à rejouer (le bit vit dans la base partagée : aucune player DB à ouvrir) :
+    `WITH p AS (SELECT match_id, count(*) n FROM match_participants GROUP BY 1) SELECT COALESCE(mr.participants_loaded::VARCHAR,'NULL'), (COALESCE(mr.backfill_completed,0)&512)>0, p.n IS NOT NULL, count(*), sum(CASE WHEN mr.player_count=p.n THEN 1 ELSE 0 END) FROM match_registry mr LEFT JOIN p USING(match_id) GROUP BY 1,2,3`
+    (sur H5, sans `participants_loaded`) ; mois : `strftime(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC'),'%Y-%m')` ; fenêtre : `SELECT date_trunc('day', first_sync_at), (COALESCE(backfill_completed,0)&512)>0, count(*) FROM match_registry WHERE first_sync_at >= '2026-05-20' GROUP BY 1,2`.
+
+  - **E5.1-e — coût du statu quo**
+    - `participants_loaded` : nul (aucun lecteur). `player_count` : nul côté produit (aucun oracle) ; trompe seulement la colonne `joueurs_max` d'un outil hors ligne ; la promesse « oracle d'intégrité
+      du roster » de `domain/match_rows.go:74-79` et de `halo_5/mapping_carnage.go:57` est une affirmation sans lecteur.
+    - bit 512 : le bouton admin « backfill » sans scope explicite re-sélectionne à CHAQUE lancement les 157 matchs HI de la fenêtre (le bit n'est jamais posé après coup), donc jusqu'à 157 re-téléchargements
+      de film avec remise à zéro de `events_loaded` (UPDATE) et 157 `GetMatchStats` pour les scores personnels, répartis par joueur concerné (prod : JGtm 77, Chocoboflor 70, XxDaemonGamerxX 10).
+      Établi par lecture du code et par comptage ; aucun job lancé. Incertain : une part de ces 157 est peut-être déjà sélectionnée par une autre condition `OR` (médailles, assets...) qui dépend de la player DB.
+  - **E5.1-f — recettes de réparation sans `UPDATE` sur `match_registry`**
+    - `match_registry` n'est PAS append-only (absente de `tablesProtegees`, `no_art_patterns_test.go:20-24` ; pas de vue `_latest`) : la recette de l'ADR 0026 (`append_only_rebuild.go`) ne s'y applique pas
+      (clé fonctionnelle = PK `match_id`, lue partout, 2 vues dépendantes). Elle EST « critique » au sens des règles : table « match-of-record » de la base partagée (écriture per-match = persist INSERT-only,
+      CLAUDE.md ART n°1), listée dans `criticalMatchTables` (`no_art_patterns_test.go:466-475`, tripwire contre `UPDATE ... FROM (VALUES ...)`) et dans `guardedSharedTables` (`shared_write_guard_test.go:31-36`,
+      écrivains hors persist en allowlist). Des `UPDATE` row-by-row sérialisés sous lease y existent en production (`persist/events_completion_persister.go:179,212,333`, `sync/killcollector/registry_flags.go:53`,
+      `sync/pve.go:321`, `persist/registry_names_persister.go`, `persist/t0_film_persister.go:66`) : sur des colonnes NON indexées. `idx_registry_player_count` fait de `player_count` une colonne INDEXÉE : un UPDATE y est
+      le vecteur nommé par l'ADR 0026 (cf. `registry_names_persister.go:25`, `steps_shared_recompute_mode_category.go:11`).
+    - Recette applicable, éprouvée sur `match_registry` : **échange par reconstruction `swapTableTx`** (`internal/migration/table_swap.go:62`), telle qu'employée par `shared_recompute_mode_category_v1`
+      (2026-10-09, `steps_shared_recompute_mode_category.go`) : table reconstruite à côté avec le DDL exact et UNE colonne remplacée par une expression, échange en transaction, index reposés (ou
+      retirés), gardes avant COMMIT (cardinalité, DDL, empreinte des vues dépendantes hors colonne). Coût : relecture de la table entière (2 014 lignes en prod HI, 9 230 en local) ; 7 index + `mv_player_matches` +
+      `v_match_full` à reposer. Elle répare `backfill_completed` (`backfill_completed | 512` pour les matchs qui ont des participants) comme elle retirerait `player_count` / `participants_loaded`.
+      Variantes pour retirer une colonne : `migration.AlterColumnTypeIfNeeded` / `steps_shared_social_media_files_drop_liked.go` (index relevés, DROP, DROP COLUMN, recréés) et
+      `widen_match_registry_team_scores` (précédent d'ALTER sur `match_registry` avec index secondaires). Alternatives sanctionnées par le code mais en `UPDATE` : `levelup reset-bitmasks --apply` (UPDATE set-based d'une
+      colonne non indexée, hors des gardes car sous `cmd/`) ; un persister row-by-row dans `internal/persist` calqué sur `events_completion_persister.go`. D-13 : ces deux dernières sont des `UPDATE` sur `match_registry`, donc décision du superviseur.
+  - **E5.1 STATUÉ `[x]`.** STOP : verdict du superviseur attendu avant E5.2 (recommandations au rapport de l'exécutant).
