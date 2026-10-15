@@ -700,6 +700,43 @@ go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups
   copy: 1 264 MiB -> 351 MiB.
 - Delete the backups by hand once the app has been checked.
 
+#### Repairing doubled highlight events (`repair-highlight-phantoms`)
+
+Before `grammar-2026-10-15.x`, the highlight-events reader could decode one 60-byte block TWICE under
+two XUIDs (a false XUID pattern inside a player's record, thousands of bits before the real one).
+Both rows sit in `highlight_events` (86 matches on the 2026-10-15 local copy, one player touched),
+pair up wrongly in `killer_victim_pairs` ("X kills X") and reach the served deaths. Since the fix,
+no new row is doubled; the existing ones are repaired by this exact sequence (**server stopped**,
+announce before running on production):
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --dry-run     # read-only: phantom rows and matches touched
+go run ./cmd/levelup repair-highlight-phantoms               # backup, purge, recompute the pairs of those matches
+go run ./cmd/levelup backfill-killsource --match <ids> --credit-only   # rebuild the credit base (names from the directory)
+go run ./cmd/levelup backfill-killsource --match <ids>                 # then the film pass over it (the command prints <ids>)
+go run ./cmd/levelup compact-passes                          # optional: drop the superseded passes
+```
+
+- A phantom row is a `highlight_events` row whose XUID is NOT a participant of the match and whose
+  twin (same match, type, instant, type hint, raw JSON) is carried by a participant. A match without
+  loaded participants yields none: nothing is removed when in doubt.
+- `highlight_events` carries ART indexes (ADR 0019): no `DELETE`. The table is rebuilt next to
+  itself without the phantom rows and swapped in one transaction (same core as `compact-passes`,
+  ADR 0026); ids and sequence are untouched. The pairs are recomputed with the production pairing
+  (5 ms window, total event order). Names come from the match's existing pairs (xuid as a last
+  resort); `backfill-killsource` then rebuilds the served deaths with the directory names.
+- **Backup (mandatory)**: byte-for-byte copy before any write
+  (`<name>.<slug>.avant-fantomes-<UTC>.duckdb`), restore = put it back in place, server stopped.
+- **Idempotent**: with no phantom row left, a second run writes nothing.
+- The merge also refuses, since `killsource-2026-10-15`, to add a second death at an instant the
+  API's kill-feed counts only once, and caps every player's served deaths at the official
+  `match_participants.deaths` (counter `killsource_fusion_morts_au_dela_officiel`, WARN log with
+  the `match_id`). The phantom deaths of the other cases (e.g. a player served 10 times for 7
+  official deaths) are outside the 86 matches: they disappear when `backfill-killsource` (no
+  `--match`, every film stale under the new `killsource` revision) re-merges them, to be announced
+  and run as a campaign.
+
 ### Media paths migration (one-shot, standalone binary)
 
 Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in

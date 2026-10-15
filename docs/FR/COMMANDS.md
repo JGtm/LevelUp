@@ -731,6 +731,45 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
   fichier temporaire et la sauvegarde sont retirés. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
 - Supprimer les sauvegardes à la main une fois l'application vérifiée.
 
+#### Réparation des temps forts en double (`repair-highlight-phantoms`)
+
+Avant `grammar-2026-10-15.x`, le lecteur des temps forts pouvait décoder un même bloc de 60 octets
+DEUX FOIS sous deux XUID (un faux motif de XUID dans la fiche d'un joueur, plusieurs milliers de
+bits avant le vrai). Les deux lignes sont dans `highlight_events` (86 matchs sur la copie locale du
+2026-10-15, un seul joueur touché), s'apparient à tort dans `killer_victim_pairs` (« X tue X ») et
+arrivent dans les morts servies. Depuis la correction, aucune nouvelle ligne n'est doublée ; les
+existantes se réparent par cette séquence exacte (**serveur arrêté**, prévenir avant de la jouer
+en production) :
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup repair-highlight-phantoms --dry-run     # lecture seule : lignes fantômes et matchs touchés
+go run ./cmd/levelup repair-highlight-phantoms               # sauvegarde, purge, recalcul des couples de ces matchs
+go run ./cmd/levelup backfill-killsource --match <ids> --credit-only   # reconstruit la base crédit (noms de l'annuaire)
+go run ./cmd/levelup backfill-killsource --match <ids>                 # puis la passe film par-dessus (la commande imprime <ids>)
+go run ./cmd/levelup compact-passes                          # facultatif : retire les passes supersédées
+```
+
+- Une ligne fantôme est une ligne de `highlight_events` dont le XUID n'est PAS un participant du
+  match et dont le jumeau (même match, type, instant, type_hint, raw_json) est porté par un
+  participant. Un match sans participants chargés n'en produit aucune : dans le doute, rien n'est retiré.
+- `highlight_events` porte des index ART (ADR 0019) : pas de `DELETE`. La table est reconstruite à
+  côté sans les lignes fantômes et échangée en une transaction (même cœur que `compact-passes`,
+  ADR 0026) ; les `id` et la séquence ne bougent pas. Les couples sont recalculés avec
+  l'appariement de production (fenêtre de 5 ms, ordre total des événements). Les noms viennent des
+  couples existants du match (le xuid à défaut) ; `backfill-killsource` reconstruit ensuite les
+  morts servies avec les noms de l'annuaire.
+- **Sauvegarde (obligatoire)** : copie octet pour octet avant toute écriture
+  (`<nom>.<slug>.avant-fantomes-<UTC>.duckdb`), restauration = la remettre en place, serveur arrêté.
+- **Idempotente** : sans ligne fantôme, une seconde exécution n'écrit rien.
+- La fusion refuse aussi, depuis `killsource-2026-10-15`, d'ajouter une seconde mort à un instant que
+  le kill-feed de l'API ne compte qu'une fois, et plafonne les morts servies de chaque joueur à
+  `match_participants.deaths` (compteur `killsource_fusion_morts_au_dela_officiel`, journal WARN avec
+  le `match_id`). Les morts fantômes des autres cas (p. ex. un joueur servi 10 fois pour 7 morts
+  officielles) sont hors des 86 matchs : elles disparaissent quand `backfill-killsource` (sans
+  `--match`, tous les films périmés sous la nouvelle révision `killsource`) les re-fusionne, à
+  annoncer et jouer comme une campagne.
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables

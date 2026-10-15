@@ -129,6 +129,8 @@ func main() {
 		exitErr = runRebuildPME(cfg, args)
 	case "compact-passes":
 		exitErr = runCompactPasses(cfg, args)
+	case "repair-highlight-phantoms":
+		exitErr = runRepairHighlightPhantoms(cfg, args)
 	case "consolidate-aliases":
 		exitErr = runConsolidateAliases(cfg, args)
 	case "recompute-friends":
@@ -223,6 +225,9 @@ Commandes:
   compact-passes  Retire les passes de décodage supersédées des tables du film (base partagée, par titre) : reconstruction sans
                   DELETE, vues _latest identiques, sauvegarde préalable obligatoire ; à jouer après une campagne de redécodage
                   (--dry-run, --title, --rewrite-file, --backup-dir, serveur arrêté)
+  repair-highlight-phantoms  Retire de highlight_events les lignes emises en double sous un faux xuid (ancien lecteur des temps forts)
+                  et recalcule les couples killer_victim_pairs des matchs touchés : reconstruction sans DELETE, sauvegarde
+                  préalable, idempotente (--dry-run, --title, --backup-dir, serveur arrêté) ; suite : backfill-killsource
   consolidate-aliases  Merge la DB globale xbox_aliases dans shared.xuid_aliases (dédup par xuid) — serveur arrêté
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
