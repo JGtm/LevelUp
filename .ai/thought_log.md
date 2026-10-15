@@ -117431,3 +117431,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 0 match sans participant en prod (Halo Infinite 2 014, Halo 5 3 032) ; les quatre témoins sont au registre prod avec leurs participants.
 
 **Conclusion / prochaine étape** : E1 close, entrée du backlog retirée ; E2 (lecteurs sans exclusion de la Campagne).
+
+## [2026-10-15] Backlog E2 : lecteurs sans exclusion de la Campagne (DB-25/26/27) — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : garde `campaign_exclusion_guard_test.go` étendu (tables kill-feed et médailles, racines sync/ops/cmd) ; tout lecteur qui agrège plusieurs matchs vers une donnée servie est corrigé (jeton ou `analysis.SQLExcludeCampaign*`), le reste est dispensé par catégorie prouvée (`fichier:ligne`). « Outil opérateur » réservé à `cmd/`.
+
+**Résultats observés** : 11 corrections (3 duckdb/wire, 6 sync, 2 ops), chacune avec test rouge puis vert sur halo_5 et halo_infinite (duel, totaux de médailles, médailles déjà obtenues, assistances, performance, sessions, engagement, LUSR v1 et ombre, dates de paliers, corpus démo). 66 dispenses datées. Mutation du garde vérifiée. `cmd/lusr_v2_phase0` supprimé. Gates sans tag et `integration -p 1` verts.
+
+**Conclusion / prochaine étape** : les dérivés Halo 5 déjà calculés Campagne comprise ne sont pas recalculés (à décider avec le user au déploiement). Suite : E3.

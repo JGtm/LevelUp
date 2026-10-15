@@ -662,8 +662,9 @@ func ResolveSourceXUIDFromProfiles(profilesPath, gamertag string) (xuid, playerD
 	return p.XUID, p.DBPath, nil
 }
 
-// selectRecentMatchIDs retourne les N match_ids les plus récents du joueur dans shared.
-func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit int) ([]string, error) {
+// selectRecentMatchIDs retourne les N match_ids les plus récents du joueur dans shared, hors
+// Campagne du titre (le corpus démo ne porte que des matchs que l'app affiche).
+func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid, titleSlug string, limit int) ([]string, error) {
 	db, err := sql.Open("duckdb", sharedDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
 		return nil, fmt.Errorf("open shared: %w", err)
@@ -674,7 +675,7 @@ func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit 
 		SELECT mr.match_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?`+analysis.SQLExcludeCampaignVariants(titleSlug, "mr")+`
 		ORDER BY mr.start_time DESC
 		LIMIT ?`, xuid, limit)
 	if err != nil {
@@ -703,7 +704,7 @@ type dynamicCorpus struct {
 // sous-liste vide (l'union reste exploitable tant qu'au moins une source répond).
 func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpus {
 	var dc dynamicCorpus
-	if r, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches); err != nil {
+	if r, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.TitleSlug, opts.MaxMatches); err != nil {
 		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", err)
 	} else {
 		dc.solo = r

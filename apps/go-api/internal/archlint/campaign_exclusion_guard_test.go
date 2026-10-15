@@ -35,13 +35,17 @@ import (
 	"testing"
 )
 
-// racinesExclusionCampagne : les cinq racines de D-5 (sous-répertoires compris).
+// racinesExclusionCampagne : les cinq racines de D-5 (B4), puis internal/sync, internal/ops et
+// cmd (D-1 de .ai/PLAN_BACKLOG_2026-10-15.md), sous-répertoires compris.
 var racinesExclusionCampagne = []string{
 	"internal/platform/duckdb",
 	"internal/progression",
 	"internal/api/wire",
 	"internal/service",
 	"internal/analysis",
+	"internal/sync",
+	"internal/ops",
+	"cmd",
 }
 
 // racinesSansSousRepertoires : racine balayée sans descendre (D-5 : `internal/api/wire`).
@@ -67,8 +71,8 @@ var resolveursCampagne = map[string]bool{
 var jetonsCampagne = map[string]bool{"campaignExclusionToken": true, "CampaignExclusionToken": true}
 
 var (
-	sourceMatchsJoueur = regexp.MustCompile(`\b(match_participants|mv_player_matches)\b`)
-	filtreXUID         = regexp.MustCompile(`(?i)\bxuid\s*(=\s*\?|IN\s*\()`)
+	sourceMatchsJoueur = regexp.MustCompile(`\b(match_participants|mv_player_matches|killer_victim_pairs|match_kill_events(_latest)?|medals_earned)\b`)
+	filtreXUID         = regexp.MustCompile(`(?i)(\bxuid|_xuid)\s*(=\s*\?|IN\s*\()`)
 	projectionXUID     = regexp.MustCompile(`(?i)\([^()]*\bxuid\s*=\s*\?[^()]*\)\s*AS\b`)
 )
 

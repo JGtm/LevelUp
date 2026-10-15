@@ -20,6 +20,7 @@ import (
 	"math"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
@@ -53,7 +54,8 @@ type assistsCoefs struct {
 
 // loadAssistsSamples charge les données d'entraînement depuis shared_matches_v2.
 func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]assistsSample, error) {
-	const q = `
+	// Campagne exclue : un match de Campagne n'est pas un échantillon d'entraînement du modèle.
+	q := `
 		SELECT
 			COALESCE(r.game_variant_name, '__unknown__'),
 			CAST(p.assists       AS DOUBLE),
@@ -72,7 +74,8 @@ func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]a
 		  AND p.assists IS NOT NULL
 		  AND p.outcome != ?
 		  AND NOT isnan(COALESCE(CAST(p.damage_dealt AS DOUBLE), 0.0))
-		  AND NOT isnan(COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0))
+		  AND NOT isnan(COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0))` +
+		analysis.SQLExcludeCampaignByMatchID(ctxkeys.TitleSlug(ctx), "p.match_id") + `
 		ORDER BY r.game_variant_name
 	`
 	// PMT-5 : le code DNF (exclu de la régression) est lié comme PARAMÈTRE depuis la

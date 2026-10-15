@@ -22,6 +22,8 @@ import (
 // sessionMatchesSQL charge les matchs d'un joueur depuis shared DB.
 // Params : ?1 = xuid (exclusion subquery), ?2 = xuid (filtre WHERE).
 // Note : sans préfixe "shared." — query exécutée directement sur la shared DB.
+// Le jeton d'exclusion de la Campagne est résolu par le chargeur (une session ne s'étend pas
+// sur un match de Campagne).
 const sessionMatchesSQL = `
 SELECT
     mp.match_id,
@@ -38,12 +40,13 @@ SELECT
     END AS end_time
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
-WHERE mp.xuid = ?
+WHERE mp.xuid = ?` + analysis.CampaignExclusionToken + `
 ORDER BY r.start_time ASC`
 
 // loadSessionMatchRowsDirect charge les matchs depuis shared DB (sans préfixe "shared.").
 func loadSessionMatchRowsDirect(ctx context.Context, sharedDB *sql.DB, xuid string) ([]domain.SessionMatchRow, error) {
-	rows, err := sharedDB.QueryContext(ctx, sessionMatchesSQL, xuid, xuid)
+	rows, err := sharedDB.QueryContext(ctx,
+		analysis.SQLResolveCampaignExclusion(sessionMatchesSQL, ctxkeys.TitleSlug(ctx), "r"), xuid, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadSessionMatchRowsDirect: %w", err)
 	}

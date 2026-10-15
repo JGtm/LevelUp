@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // ── Structs de données ───────────────────────────────────────────────────────
@@ -76,7 +77,8 @@ func loadLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid string) ([]Lu
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
 		  -- title-generic : titres canoniques (Halo 5) → start_time_utc, start_time NULL.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
-		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
+		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+
+		analysis.SQLExcludeCampaignByMatchID(ctxkeys.TitleSlug(ctx), "mr.match_id")+`
 		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadLUSRMatchData: %w", err)

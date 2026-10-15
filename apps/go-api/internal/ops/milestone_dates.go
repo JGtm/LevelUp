@@ -231,7 +231,7 @@ func BackfillMilestoneDates(ctx context.Context, sharedDB, statsDB *sql.DB,
 
 	var results []MilestoneBackfillResult
 	for xuid, milestoneIDs := range byXUID {
-		matches, err := loadCrossingMatches(ctx, sharedDB, xuid)
+		matches, err := loadCrossingMatches(ctx, sharedDB, xuid, titleSlug)
 		if err != nil {
 			return nil, err
 		}
@@ -281,8 +281,9 @@ func loadEarnedByXUID(ctx context.Context, statsDB *sql.DB, titleSlug string) (m
 	return out, rows.Err()
 }
 
-// loadCrossingMatches charge les matchs d'un xuid, triés par start canonique ASC.
-func loadCrossingMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MilestoneCrossingMatch, error) {
+// loadCrossingMatches charge les matchs d'un xuid, triés par start canonique ASC, hors Campagne du
+// titre (la date d'un palier se lit sur les matchs que l'app affiche).
+func loadCrossingMatches(ctx context.Context, sharedDB *sql.DB, xuid, titleSlug string) ([]MilestoneCrossingMatch, error) {
 	// Fragment timezone canonique OBLIGATOIRE (CLAUDE.md n°8) via le helper partagé.
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
@@ -293,7 +294,7 @@ func loadCrossingMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]
 			COALESCE(mp.damage_dealt, 0), COALESCE(mp.damage_taken, 0)
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?`+analysis.SQLExcludeCampaignVariants(titleSlug, "mr")+`
 		ORDER BY played_at ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("load matches for %s: %w", xuid, err)

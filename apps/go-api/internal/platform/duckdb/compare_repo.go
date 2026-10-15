@@ -251,7 +251,7 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	// textuelles vivaient ici et dans queries_match.go — le même duel avait deux chances
 	// d'afficher deux nombres différents.
 	var killsDealt, deathsSuffered int
-	if err := db.QueryRowContext(ctx, QKillsBetweenPlayers, xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
+	if err := db.QueryRowContext(ctx, resolveCampaignExclusionByMatchID(QKillsBetweenPlayers, pdbTitleSlug(r.pdb), "match_id"), xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
 		slog.DebugContext(ctx, "CompareRepo.GetEncounterStats: killer_victim non disponible (best-effort)", "err", err)
 	}
 

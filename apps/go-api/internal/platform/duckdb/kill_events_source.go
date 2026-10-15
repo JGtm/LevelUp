@@ -66,9 +66,13 @@ const KillEventsCanonicalTable = "match_kill_events_latest"
 // rend 0, jamais NULL. L'ancienne forme en portait un parce qu'elle faisait `SUM(kill_count)`,
 // qui, lui, rend NULL sur l'ensemble vide.
 //
+// CAMPAGNE : la requête porte [campaignExclusionToken] ; le lecteur le résout avec
+// resolveCampaignExclusionByMatchID(q, titre, "match_id") (la base crédit de Halo 5 verse des
+// frags de Campagne dans le kill-feed, le nombre de rencontres voisin ne les compte pas).
+//
 // Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A.
 // Retourne 2 colonnes : kills_dealt, deaths_suffered.
-var QKillsBetweenPlayers = killsBetweenPlayersSQL("")
+var QKillsBetweenPlayers = killsBetweenPlayersSQL("TRUE")
 
 // QKillsBetweenPlayersBorne : la même requête, bornée sous la fenêtre `_latest` du kill-feed
 // par une liste de `match_id` liée en UN paramètre (ADR 0036 I2). Une liste qui contient tous
@@ -76,16 +80,17 @@ var QKillsBetweenPlayers = killsBetweenPlayersSQL("")
 // ou sur A n'existe que dans un match de A.
 //
 // Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A, ?5 = liste.
-var QKillsBetweenPlayersBorne = killsBetweenPlayersSQL(" WHERE " + analysis.SQLDansListe("match_id"))
+var QKillsBetweenPlayersBorne = killsBetweenPlayersSQL(analysis.SQLDansListe("match_id"))
 
-// killsBetweenPlayersSQL rend le texte des frags échangés entre deux joueurs ; `borne` est la
-// clause WHERE du balayage (vide = tous les matchs).
+// killsBetweenPlayersSQL rend le texte des frags échangés entre deux joueurs ; `borne` est le
+// prédicat WHERE du balayage (`TRUE` = tous les matchs), suivi du jeton d'exclusion de la
+// Campagne.
 func killsBetweenPlayersSQL(borne string) string {
 	return `
 SELECT
     COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS kills_dealt,
     COUNT(*) FILTER (WHERE feed_killer_xuid = ? AND victim_xuid = ?) AS deaths_suffered
-FROM ` + KillEventsCanonicalTable + borne
+FROM ` + KillEventsCanonicalTable + ` WHERE ` + borne + campaignExclusionToken
 }
 
 // sqlAssistantNomme : le prédicat « le film NOMME l'assistant de cette mort » sur une ligne

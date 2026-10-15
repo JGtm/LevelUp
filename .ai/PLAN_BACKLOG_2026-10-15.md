@@ -68,19 +68,19 @@ Pièces : `archlint/campaign_exclusion_guard_test.go` + `_dispenses_test.go` ;
 `medals_repo.go:92`) ; `api/wire/post_sync_deltas_snapshot.go:322` (`loadEarnedMedalIDs`) ;
 liste des 56 lecteurs au journal B4 de `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md` (l. 2351-2380).
 
-- [ ] E2.1 Test de comportement rouge puis vert (tag `integration`, joué `halo_5` ET
+- [x] E2.1 Test de comportement rouge puis vert (tag `integration`, joué `halo_5` ET
   `halo_infinite`, comme `campaign_exclusion_behavior_test.go`) puis correction de
   `QKillsBetweenPlayers` et `QKillsBetweenPlayersBorne` (duel A/B sans frag de Campagne).
-- [ ] E2.2 Idem pour `Q36aMedalTotals` (totaux de médailles, citations).
-- [ ] E2.3 Idem pour `loadEarnedMedalIDs` (médaille de Campagne non « déjà obtenue »).
-- [ ] E2.4 Étendre le garde selon D-1 ; mutation vérifiée (retirer une exclusion d'E2.1 → rouge).
-- [ ] E2.5 Statuer les 17 lecteurs de `internal/sync` (corriger ou dispense D-2, avec raison
+- [x] E2.2 Idem pour `Q36aMedalTotals` (totaux de médailles, citations).
+- [x] E2.3 Idem pour `loadEarnedMedalIDs` (médaille de Campagne non « déjà obtenue »).
+- [x] E2.4 Étendre le garde selon D-1 ; mutation vérifiée (retirer une exclusion d'E2.1 → rouge).
+- [x] E2.5 Statuer les 17 lecteurs de `internal/sync` (corriger ou dispense D-2, avec raison
   et `fichier:ligne`).
-- [ ] E2.6 Statuer les 10 lecteurs de `internal/ops`.
-- [ ] E2.7 Statuer les 29 lecteurs de `cmd`.
-- [ ] E2.8 Tout autre entrant révélé par l'extension (nouvelles tables) statué de même ; un
+- [x] E2.6 Statuer les 10 lecteurs de `internal/ops`.
+- [x] E2.7 Statuer les 29 lecteurs de `cmd`.
+- [x] E2.8 Tout autre entrant révélé par l'extension (nouvelles tables) statué de même ; un
   entrant hors de toute catégorie = STOP, retour au superviseur.
-- [ ] E2.9 Ratchet `no_slug_comparison_test.go` vert ; aucune comparaison de slug ajoutée.
+- [x] E2.9 Ratchet `no_slug_comparison_test.go` vert ; aucune comparaison de slug ajoutée.
 
 Gate : `go test ./internal/archlint/ ./internal/platform/duckdb/... ./internal/api/wire/` + les
 paquets corrigés, puis `go test -tags=integration -p 1` sur les mêmes paquets.
@@ -112,6 +112,10 @@ Gate : `go test` des paquets touchés, `go test ./internal/api/...` (contrat Ope
 
 - E1 : `partial_reasons` ne distingue pas « liste vide » de « chargeur en erreur » (`service/match_view_data_loaders.go:262-269`, `:670-674`) : une panne de lecteur s'affiche comme un match sans tableau des scores. Évolution de contrat, à décider avec le user.
 - E1 : `match_registry.participants_loaded` et `player_count` ne sont plus posés par le chemin courant (FALSE / 0 sur des matchs complets) : colonnes mortes ou à fiabiliser, à trancher.
+- E2 : `sync.FindMatchesMissingParticipantBits` (`internal/sync/backfill.go:86`) n'a aucun appelant de production (seulement `backfill_integration_test.go:219`, `:238`) : code mort au sens de la règle n°7, dispensé le temps du garde, à retirer avec ses tests. Non traité.
+- E2 : `cmd/lusr_v2_phase0` (rejouait le LUSR v1 mort) SUPPRIMÉ dans E2 sur décision du user du 2026-10-15 (règle n°7) : fait. Constantes exportées de `internal/sync` qu'il consommait (`Beta`, `KElo`, `Tau`, `MinSigma`, `AccuracyHistorySize`, `MetricKey*`...) : non vérifiées une à une, d'autres outils (`diag_lusr_player`) en consomment ; un éventuel orphelin est à chercher à part. Non traité.
+- E2 : les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des assistances, engagement, dates de paliers) l'ont été Campagne comprise ; les chargeurs corrigés ne les recalculent pas d'eux-mêmes. À décider avec le user au déploiement ; rien n'est lancé.
+- E2 : le commentaire de `games/halo_5/ingest/registry.go:46` (« engagement `loadMatchesForEngagement` exclut ces matchs » faute de `end_time`) décrivait un effet de bord, pas une exclusion de la Campagne : sans objet depuis la correction. Non traité.
 
 ## 4. Journal
 
@@ -206,3 +210,26 @@ Gate : `go test` des paquets touchés, `go test ./internal/api/...` (contrat Ope
   du journal jouée par `cmd/diag_q` : Halo Infinite 2014 / **0** / 1 / NULL / NULL / 4 / 0 ; Halo 5
   3032 / **0** / 115 / NULL / NULL / 0 / 0. Aucun match sans participant en prod ; les quatre témoins
   y sont, avec participants. Entrée du backlog retirée. **E1 close.**
+- 2026-10-15 (E2, exécutant Sonnet) : E2.1 à E2.9 faits, gate vert. Cache `go-build-backlog1015`, un seul `go` à la fois.
+  - **Corrections avec test rouge puis vert** (halo_5 rouge, halo_infinite neutre ; sorties dans `$TEMP/e2/rouge-*.log`) :
+    | lecteur | test | rouge (halo_5) |
+    |---|---|---|
+    | `QKillsBetweenPlayers(Borne)` via `CompareRepo.GetEncounterStats`, `ExplorerRepo.GetKillerVictimBetween` (`kill_events_source.go`, jeton résolu `compare_repo.go:254`, `explorer_repo.go:103`) | `platform/duckdb/campaign_exclusion_e2_behavior_test.go` | 12 frags / 8 morts au lieu de 2 / 1 |
+    | `Q36aMedalTotals` (`queries_citations.go`, `citations_repo.go:113`, `medals_repo.go:92`) | idem | `map[100:5 200:3]` au lieu de `map[100:1]` |
+    | `loadEarnedMedalIDs` (`wire/post_sync_deltas_snapshot.go`, param `titleSlug` ajouté) | `wire/campaign_exclusion_medals_behavior_test.go` | 2 médailles au lieu de 1 |
+    | `sync.loadAssistsSamples`, `loadHistoryForPerf`, `loadSessionMatchRowsDirect` (jeton), `loadMatchesForEngagement` | `sync/session_recalc_test.go` (4 tests) | 2 au lieu de 1 / `[arena1 camp1]` |
+    | `skill.loadLUSRMatchData`, `loadShadowMatches` | `sync/skill/campaign_exclusion_test.go` | 2 au lieu de 1 |
+    | `ops.loadCrossingMatches` (param `titleSlug`), `selectRecentMatchIDs` (param `titleSlug`) | `ops/milestone_dates_cgo_test.go` | 2 au lieu de 1 |
+    Total dans `sync`+`ops` : 8 corrections (plafond 12/15 non atteint). Titre pris dans le contexte (`ctxkeys.TitleSlug(ctx)`, convention du moteur de sync) ou le paramètre déjà passé ; helpers `analysis.SQLExcludeCampaign*`, aucune comparaison de slug. Fixture `skill_v2_shadow_test.go` : colonne `game_variant_id` ajoutée.
+  - **Garde étendu (D-1)** : critère = `match_participants|mv_player_matches|killer_victim_pairs|match_kill_events(_latest)|medals_earned` ET `xuid|_xuid = ?`/`IN (` ; racines + `internal/sync`, `internal/ops`, `cmd`. Sonde avant statut : 86 entrants (dont 3 déjà corrigés, 17 sync/10 ops/29 cmd attendus, plus nouveaux : sync 22, ops 11, duckdb 12, analysis 1). Mutation : `+ campaignExclusionToken` retiré de `killsBetweenPlayersSQL` -> `kill_events_source.go:killsBetweenPlayersSQL (ligne 88)` rouge (`mutation-garde.log`), retirée (grep `MUTANT E2` vide).
+  - **Tableau des 56 lecteurs du journal B4 et entrants** (catégories de `campaign_exclusion_guard_dispenses_test.go`, preuves `fichier:ligne` dans chaque raison) :
+    - sync corrigés (6) : assists_model, performance_helpers, session_recalc, engagement, skill_rating_loaders, skill_v2_shadow.
+    - sync mono-match (10) : citations (loadMatchStats, loadMedalsForMatch), citations_weapons_source, comeback, enrichment_discipline, enrichments (2 bots), friends_recompute, medal_exploit_loader, snapshot_readiness_eval (décision du superviseur : la valeur ne dépend que du match lu).
+    - sync sémantique, prédicat classé (2) : csr_backfill, csr_shared_backfill.
+    - sync ensemble fourni / sélection de travail (4) : backfill.go (3), engine_backfills.loadAllMatchIDsForPlayer ; `FindMatchesMissingParticipantBits` y reste (code mort noté en section 3).
+    - ops corrigés (2) : milestone_dates, seed_demo.selectRecentMatchIDs. ops sémantique (6) : archive (3), data_quality_examples, seed_demo_anonymize_check, seed_demo_corpus (classé), seed_demo_replay_picks. ops ensemble fourni (2) : sharedTablesWhere, loadDemoCorpusStats.
+    - cmd (29 attendus, 28 dispensés « outil opérateur » ; `lusr_v2_phase0` SUPPRIMÉ sur décision du user, `seed-medal` inclus) : diag_* et audit_* par nom, backfill_* et h5-roster-* par UPDATE/INSERT du match lu.
+    - entrants révélés par l'extension, hors liste des 56 : sync `loadMedalsForMatch`, `loadWeaponKillsFromSource`, `loadRankedMatchesForCSRBackfill`, `computeAndPersistH5DisciplineAwards`, `ComputeMedalExploitByMatch` ; ops `loadRealIdentities`, `loadDemoReplayCandidates` ; analysis `AnnuaireKillFeedLocaliserSQL` ; duckdb (12) : explorer médailles x2, Q26l, Q26h, medals_by_xuid, Q32d, Q32e, QTacticalMates, hijack, Q27, Q14 (tous ensemble fourni ou mono-match, preuves par appelant). Aucun entrant hors catégorie.
+  - **Retrait de `cmd/lusr_v2_phase0`** (décision du user) : répertoire, entrée de `no_raw_start_time_literal_test.go`, mention de `skill_chain_provider.go` retirés ; ADR 0024 (historique) laissé.
+  - **Gate** (logs `$TEMP/e2/gate-unit-{a,b}.log`, `gate-integ-{a,b}.log`) : sans tag, `archlint`, `platform/duckdb/...`, `api/wire`, `sync/...`, `ops/...` tous `ok` ; avec `-tags=integration -p 1`, mêmes paquets tous `ok`. Ratchets `no_slug_comparison_test.go`, `TestSyncRootPackageFrozen` (aucun fichier racine ajouté dans `internal/sync/`), `TestMatchRegistryFixturesDeTestAlignees` verts.
+  - **E2 close.**

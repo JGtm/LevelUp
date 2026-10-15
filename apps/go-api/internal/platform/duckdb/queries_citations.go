@@ -34,13 +34,14 @@ ORDER BY total DESC`
 
 // Q36a : Commendations — total de médailles gagnées par medal_name_id (xuid du joueur).
 // Paramètre : ?1 = xuid du joueur.
-// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`. Porte le jeton d'exclusion
+// de la Campagne : le lecteur le résout par resolveCampaignExclusionByMatchID(q, titre, "match_id").
 const Q36aMedalTotals = `
 SELECT
     medal_name_id,
     SUM(count) AS total_count
 FROM medals_earned
-WHERE xuid = ?
+WHERE xuid = ?` + campaignExclusionToken + `
 GROUP BY medal_name_id
 ORDER BY total_count DESC`
 

@@ -5,9 +5,12 @@ package sync
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/sync/testutil"
 )
 
@@ -121,5 +124,140 @@ func TestLoadSessionMatchRowsDirect_WithData(t *testing.T) {
 	}
 	if rows[1].IsRanked != true {
 		t.Errorf("expected m2 is_ranked=true, got %v", rows[1].IsRanked)
+	}
+}
+
+// ─── Exclusion de la Campagne (E2 du plan .ai/PLAN_BACKLOG_2026-10-15.md, DB-27) ───
+//
+// Chaque cas sème, pour le même joueur, un match d'arène (arena1, 01/09) et un match de
+// Campagne PLUS RÉCENT (camp1, 02/09), puis lit par le VRAI chargeur, le titre posé dans le
+// contexte comme le fait le moteur de sync. Halo 5 : la Campagne disparaît. Halo Infinite
+// (aucune variante masquée) : le résolveur est neutre, les deux matchs restent.
+
+const campagneXUID = "2533274800000001"
+
+var campagneTitres = []struct {
+	slug    string
+	masquee bool
+}{{"halo_5", true}, {"halo_infinite", false}}
+
+func campagneAttendu(masquee bool, sans, avec []string) []string {
+	if masquee {
+		return sans
+	}
+	return avec
+}
+
+func campagneEgal(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// seedCampagneArenaEtCampagne sème arena1 (arène) et camp1 (Campagne, plus récent) pour
+// campagneXUID dans un shared de test.
+func seedCampagneArenaEtCampagne(t *testing.T, db *sql.DB) {
+	t.Helper()
+	camp := analysis.CampaignExcludedVariantIDs("halo_5")[0]
+	for _, s := range []string{
+		`INSERT INTO match_registry (match_id, start_time, start_time_utc, end_time, duration_seconds,
+			game_variant_id, pair_name) VALUES
+			('arena1', '2026-09-01 10:00:00', '2026-09-01 10:00:00+00', '2026-09-01 10:10:00', 600,
+			 'aaaaaaaa-0000-0000-0000-000000000001', 'Arena:Slayer'),
+			('camp1', '2026-09-02 10:00:00', '2026-09-02 10:00:00+00', '2026-09-02 10:10:00', 600,
+			 '` + camp + `', 'Arena:Slayer')`,
+		`INSERT INTO match_participants (match_id, xuid, team_id, outcome, kills, deaths, assists,
+			damage_dealt, damage_taken, time_played_seconds, kda, accuracy) VALUES
+			('arena1', '` + campagneXUID + `', 0, 2, 5, 1, 2, 500, 100, 600, 1.0, 0.5),
+			('camp1', '` + campagneXUID + `', 0, 2, 50, 0, 9, 5000, 100, 600, 1.0, 0.9)`,
+	} {
+		if _, err := db.Exec(s); err != nil {
+			t.Fatalf("fixture Campagne : %v\n%s", err, s)
+		}
+	}
+}
+
+func campagneCtx(slug string) context.Context {
+	return ctxkeys.WithTitleSlug(context.Background(), slug)
+}
+
+// E2.5 — recalcul des sessions : une session ne s'étend pas sur un match de Campagne.
+func TestCampaignExclusion_SessionMatches(t *testing.T) {
+	for _, tc := range campagneTitres {
+		db := testutil.NewInMemoryShared(t)
+		seedCampagneArenaEtCampagne(t, db)
+		rows, err := loadSessionMatchRowsDirect(campagneCtx(tc.slug), db, campagneXUID)
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		var got []string
+		for _, r := range rows {
+			got = append(got, r.MatchID)
+		}
+		if want := campagneAttendu(tc.masquee, []string{"arena1"}, []string{"arena1", "camp1"}); !campagneEgal(got, want) {
+			t.Errorf("%s : matchs de session %v, attendu %v", tc.slug, got, want)
+		}
+	}
+}
+
+// E2.5 — modèle des assistances : la Campagne n'entre pas dans l'échantillon d'entraînement.
+func TestCampaignExclusion_AssistsSamples(t *testing.T) {
+	for _, tc := range campagneTitres {
+		db := testutil.NewInMemoryShared(t)
+		seedCampagneArenaEtCampagne(t, db)
+		samples, err := loadAssistsSamples(campagneCtx(tc.slug), db, campagneXUID)
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		if want := map[bool]int{true: 1, false: 2}[tc.masquee]; len(samples) != want {
+			t.Errorf("%s : %d échantillons, attendu %d", tc.slug, len(samples), want)
+		}
+	}
+}
+
+// E2.5 — score de performance : l'historique de référence ne porte pas la Campagne.
+func TestCampaignExclusion_PerfHistory(t *testing.T) {
+	for _, tc := range campagneTitres {
+		db := testutil.NewInMemoryShared(t)
+		seedCampagneArenaEtCampagne(t, db)
+		hist, err := loadHistoryForPerf(campagneCtx(tc.slug), db, campagneXUID)
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		var got []string
+		for _, h := range hist {
+			got = append(got, h.MatchID)
+		}
+		if want := campagneAttendu(tc.masquee, []string{"arena1"}, []string{"arena1", "camp1"}); !campagneEgal(got, want) {
+			t.Errorf("%s : historique %v, attendu %v", tc.slug, got, want)
+		}
+	}
+}
+
+// E2.5 — engagement : les matchs scorés (et leur historique de percentile) sans la Campagne.
+func TestCampaignExclusion_EngagementMatches(t *testing.T) {
+	for _, tc := range campagneTitres {
+		db := testutil.NewInMemoryShared(t)
+		seedCampagneArenaEtCampagne(t, db)
+		if _, err := db.Exec(`CREATE TABLE highlight_events (match_id VARCHAR)`); err != nil {
+			t.Fatalf("fixture highlight_events : %v", err)
+		}
+		rows, err := loadMatchesForEngagement(campagneCtx(tc.slug), db, campagneXUID)
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		var got []string
+		for _, r := range rows {
+			got = append(got, r.MatchID)
+		}
+		if want := campagneAttendu(tc.masquee, []string{"arena1"}, []string{"arena1", "camp1"}); !campagneEgal(got, want) {
+			t.Errorf("%s : matchs scorés %v, attendu %v", tc.slug, got, want)
+		}
 	}
 }
