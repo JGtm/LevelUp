@@ -90,5 +90,11 @@
 #               ses jetons, renomme un compteur de `MovementStateStats` (`VehicleTypePhysicsAssumed`
 #               -> `VehicleTypePhysicsByWriterLaw`, meme place dans le blob des faits). Aucune
 #               lecture d octets ne change.
+#
+#   2026-10-15  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (plan du residu des images-cles, R1.4,
+#               puis fusion du lot « equipement porte » de feat/v75). La recherche d ancres de
+#               `grammar` n a plus de fin de table par sentinelles : `Motif64.Tete/AvecTete` et
+#               `SuiteDeUns`, qu elle seule employait, sont retires ; [PremierMotif64] rend les memes
+#               positions pour tout motif sans tete. Aucune lecture d octets ne change.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	6f379e06077ec3ebe6545a87b3a704c08c50dcd788ca8c3abb988bfc139f5487
+source-2026-09-16.2	a696dc998cef301d63ff604d63e866fabd4570b4b84be841d582582b94c2c2e7

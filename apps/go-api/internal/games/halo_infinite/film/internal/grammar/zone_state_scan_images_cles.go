@@ -26,8 +26,8 @@ package grammar
 //
 // # SEULS LES RECORDS FERMES PARLENT
 //
-// Un record d'image-cle est FERME quand la traversee de son etat complet finit exactement sur
-// l'ancre suivante ([lecture.PreuveFerme]) : c'est la seule preuve que toutes ses largeurs sont
+// Un record d'image-cle est FERME quand la traversee de son etat complet, puis les entrees que la
+// table porte avant l'ancre suivante, finissent exactement sur elle ([lecture.PreuveFerme]) : c'est la seule preuve que toutes ses largeurs sont
 // justes. Un record casse (composant sans lecteur), non prouve (frontiere manquee, dernier record
 // du paquet) ou refuse a la relecture ne laisse AUCUNE lecture ; chaque cas se compte.
 
@@ -113,8 +113,8 @@ func (c *canalDesProprietesGerees) ImageCle(p *lecture.Paquet, _ *MarcheDistribu
 // relire relit, a son etendue, chaque occurrence interpretee du record ferme `r` et rend ses
 // lectures ; faux quand une relecture ne finit pas ou la marche a pose la fin de l'occurrence.
 //
-// UNE LECTURE D'IMAGE-CLE EST CHAINEE PAR CONSTRUCTION : son record finit exactement sur l'ancre
-// du suivant, ce qui est plus que le temoin de chainage d'une lecture delta.
+// UNE LECTURE D'IMAGE-CLE EST CHAINEE PAR CONSTRUCTION : son record, puis les entrees intercalees,
+// finissent exactement sur l'ancre du suivant, ce qui est plus que le temoin de chainage d'une lecture delta.
 //
 // LE NOM (`i0`) EST CELUI DU RECORD, et il est pose sur chacune de ses lectures une fois le record
 // relu en entier : un record sans `i0` relu ne nomme aucune de ses lectures.

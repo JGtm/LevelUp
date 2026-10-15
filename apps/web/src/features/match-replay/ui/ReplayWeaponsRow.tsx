@@ -11,8 +11,8 @@
  *
  * L'ORDRE EST CELUI DU JEU : l'arme dégainée d'abord, la secondaire ensuite. Il vient du
  * sélecteur d'emplacement (`Inventory.D`, cf. equippedLogic) — quand il n'est pas lisible,
- * ou qu'il dit « rien de dégainé » (D=2, l'état d'avant le départ), l'ordre reste celui des
- * emplacements et rien n'est marqué.
+ * ou qu'il désigne un emplacement hors de la rangée (D ≥ 2 : les mains nues d'avant le départ, ou
+ * un objet tenu), l'ordre reste celui des emplacements et rien n'est marqué.
  *
  * UNE SEULE MARQUE, ET ELLE DIT « EN MAIN » (option 2a du handoff 2026-08-27) : la cellule
  * de l'arme dégainée s'ALLUME — un fond à l'encre du thème très diluée, coins 2 px — et

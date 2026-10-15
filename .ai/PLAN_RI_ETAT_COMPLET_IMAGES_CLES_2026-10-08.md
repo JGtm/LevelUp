@@ -1432,7 +1432,7 @@ refusionner, rejouer l'étape 0).
   retiré par le commit suivant. La lecture du jeu reste à porter : la retenir demande d'adjuger cette
   perte (fermeture sans lecture d'un film illisible dès i22, D-4), ce que la règle de LK.5 ne prévoit
   pas.
-- D-18 *(LK.5.4.1, REJETÉ — le levier le plus fort de LK.5)* world-object i0
+- D-18 [REPRIS ET RETENU le 2026-10-15 : plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R3.1, décision U-7 de l utilisateur ; baisses consignées au journal de ce plan.] *(LK.5.4.1, REJETÉ — le levier le plus fort de LK.5)* world-object i0
   (`consumeObjectPositionMonde`) sous la garde : la forme de `FUN_14076e29c` (precHigh R(1), R(96) par
   `FUN_14076e420` → `FUN_14076e494`, queue `FUN_14076e3e4(precHigh)` — `MOV R9B,AL` en 14076e2c5 —,
   R(2) si les trois flottants sont finis, faux sinon en 14076e2fe ; `REF/g2/dis_14076e29c.txt`), la
@@ -1464,7 +1464,7 @@ refusionner, rejouer l'étape 0).
   portent la provenance « exception datée » alors qu'elles sont lues comme le jeu. Hors de la liste de
   LK.5 ; seule consultation directe de la garde admise par le garde-rail
   `TestLesExceptionsDecidentLaGardeParUnSeulGeste` (liste datée). Non traité.
-- D-21 *(LK.5.4.9, REJETÉ)* `consumeGenericRigidBodyTransforms` (`ti=38` i18) sous la garde : masque
+- D-21 [REPRIS ET RETENU le 2026-10-15 : plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R3.3, mesuré derrière i0 sans aucune baisse ; le contrôle d orientation `FUN_140501798` reste non porté.] *(LK.5.4.9, REJETÉ)* `consumeGenericRigidBodyTransforms` (`ti=38` i18) sous la garde : masque
   R(8), puis par bit `FUN_140c1e79c` (R(1), R(19) si 0, R(8) ; largeurs lues en LK.1.6) et
   `FUN_14076e494(.., 0x10, 0, .., 0)` — R(96) (`FUN_142f036f0` relu le 2026-10-08). Mesure contre
   `$S/lk5.4.8` → `$S/lk5.4.9` : I-ferm `ti=38` 9 BAISSES (`fb1a1a72` 331 → 167, `51ebbc0f` 222 → 105,
@@ -1535,7 +1535,7 @@ refusionner, rejouer l'étape 0).
   trajectoires, `TestGoldenAssemblyFigeLesChiffresDuChantier`, `TestCoupuresDeVieOntLeurCause`,
   `TestViesDUnEchantillonOntLeurOracle`, fixtures de contrat). Non traité (hors périmètre : ces écarts
   ne sont pas de D1) ; à régénérer et adjuger dans un lot dédié.
-- D-30 *(D1.3)* Le client web lit `inventory[].d == 2` comme « rien de dégainé »
+- D-30 [TRAITÉ le 2026-10-15 : plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, R4 ; 2 = emplacement de l objet tenu hors de la rangée d armes, règle web `d >= 2`.] *(D1.3)* Le client web lit `inventory[].d == 2` comme « rien de dégainé »
   (`apps/web/src/features/match-replay/model/equippedLogic.ts`, `holstered: d === 2`, et son test
   « D=2 : RIEN de dégainé — une mesure »), sens qu'aucun lecteur relu du jeu n'appuie (U-4 : `d` est
   l'emplacement désiré, un index 0..3). Effet à l'écran : la rangée d'armes ne marque aucune arme en

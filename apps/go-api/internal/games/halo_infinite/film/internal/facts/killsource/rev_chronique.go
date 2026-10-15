@@ -304,7 +304,17 @@ package killsource
 // killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
 // `killsource` identique sur les 20. Golden regenere a revision constante.
 //
+// ENTREE `killsource-2026-10-15` (2026-10-15, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// `feat/ri-ecart-108`) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table d entrees d image-cle,
+// bloc malleable d i53 sans drapeau final pour la version majeure declaree 0x25, world-object i0 et
+// rigid-body i18 sous la garde) ; [GrammaireSousFilm] pose le nouveau champ du film. PREUVE
+// (`cmd/killsource json`, 19 temoins, binaire de `feat/v75` `46bfa5fad` contre celui de la branche
+// fusionnee) : 18 films identiques a l octet ; sur `60ae07c4` (HI_1_8_0), morts, instants, tueurs,
+// victimes, sources et assistances identiques, la sante et la calibration changent (5 morts passent du
+// balayage a la marche sequentielle, enregistrements lus par les deux voies 154 -> 159). Les lignes de
+// `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
+//
 // COMPLEMENT DU 2026-10-15 (lot « faille a la pose », REVISION CONSTANTE) : `grammar.Rev` monte a
-// `grammar-2026-10-15.2` (la creation des objets engendres et sa position i0 sont lues ; le lecteur de
-// position des objets du monde est scinde sans changement). `replay-equiv` (20 films, `df51f37c0`
+// `grammar-2026-10-15.3` (la creation des objets engendres et sa position i0 sont lues ; le lecteur de
+// position des objets du monde est scinde sans changement). `replay-equiv` (20 films, `a9a9ac78a`
 // contre le lot) : etape `killsource` identique sur les 20. Golden regenere a revision constante.

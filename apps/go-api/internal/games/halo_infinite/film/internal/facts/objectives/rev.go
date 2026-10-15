@@ -181,8 +181,15 @@ package objectives
 // `killsource` IDENTIQUES sur les 20 ; seules `carriedEquipment` (14 films) et l artefact bougent.
 // Golden regenere a revision constante.
 //
+// COMPLEMENT DU 2026-10-15 (plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`, branche
+// `feat/ri-ecart-108`, REVISION CONSTANTE) : `grammar.Rev` monte a `grammar-2026-10-15.2` (table
+// d entrees d image-cle, bloc malleable d i53 sans drapeau final pour la majeure 0x25, world-object i0
+// et rigid-body i18 sous la garde) et `killsource.Rev` a `killsource-2026-10-15`. PREUVE :
+// `replay-equiv` sur les 20 films du corpus, binaires de `feat/v75` `46bfa5fad` contre ceux de la
+// branche fusionnee : etape `objectives` IDENTIQUE sur les 20. Golden regenere a revision constante.
+//
 // COMPLEMENT DU 2026-10-15 (lot « faille a la pose », REVISION CONSTANTE) : `grammar.Rev` monte a
-// `grammar-2026-10-15.2`. PREUVE : `replay-equiv` sur les 20 films, binaires de `df51f37c0` contre ceux
+// `grammar-2026-10-15.3`. PREUVE : `replay-equiv` sur les 20 films, binaires de `a9a9ac78a` contre ceux
 // du lot : etapes `objectives` et `killsource` IDENTIQUES sur les 20 ; seul l artefact bouge.
 // Golden regenere a revision constante.
 

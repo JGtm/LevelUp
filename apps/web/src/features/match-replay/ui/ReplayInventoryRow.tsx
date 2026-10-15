@@ -183,7 +183,7 @@ export function ReplayInventoryRow({
                 gaugeLabel={t.gaugeLabel}
               />
             ) : !equipped.holstered && !empty ? (
-              // Sélecteur non lu : la cellule dit la lacune — armes rangées (D=2), elle,
+              // Sélecteur non lu : la cellule dit la lacune — un emplacement hors de la rangée (D ≥ 2), lui,
               // n'affiche RIEN : aucune arme en main, aucune munition à décrire.
               //
               // SAUF SUR UNE LECTURE VIDE : `equippedWeapons` y rend volontairement `drawnUnread`

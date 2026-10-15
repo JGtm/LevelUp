@@ -1441,7 +1441,11 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	// - 96 (2026-10-15, meme lot) : `carriedEquipment[].tracked[]` et deux compteurs de couverture — les
 	//   objets que l equipement porte engendre (pile i28) et leur suppression lue : la fin du champ de
 	//   reparation. `grammar.Rev` monte avec elle. Detail : `document_chronicle.go`.
-	// - 98 (2026-10-15, lot « faille a la pose » ; 97 est reserve par `feat/ri-ecart-108`) : la position
+	// - 97 (2026-10-15, plan du residu des images-cles) : Aucun champ neuf ; le CONTENU change : les
+	//   images-cles se lisent comme une table d entrees, les films de version majeure 0x25 lisent leur
+	//   bloc malleable d i53, world-object i0 et rigid-body i18 se lisent sous la garde. `grammar.Rev` et
+	//   `killsource.Rev` montent avec elle : un v96 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	// - 98 (2026-10-15, lot « faille a la pose ») : la position
 	//   de la faille vient de l objet que la pose cree (`riftPoses[].src`), plus du premier echange.
 	if SchemaVersion != 98 {
 		t.Fatalf("SchemaVersion = %d, attendu 98 : incrémenter exige une raison écrite ci-dessus "+

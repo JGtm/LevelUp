@@ -35,8 +35,9 @@ package grammar
 //
 // UN RECORD EST PROUVÉ quand sa marche d'ÉTAT COMPLET ([WalkKeyframeFullState], le cadre de
 // l'écrivain) lit un état par défaut (`n1 > 0`), traverse une boucle de composants sans
-// désynchroniser, et s'arrête EXACTEMENT sur un en-tête valide de slot supérieur : c'est la
-// fermeture, « la seule preuve qu'on ait que toutes ses largeurs sont justes »
+// désynchroniser, et s'arrête, après les k entrées sans archétype qui la suivent (des slots libérés :
+// la table porte une entrée par slot, `keyframe_entrees.go`), EXACTEMENT sur un en-tête valide de slot
+// `slot + 1 + k` : c'est la fermeture, « la seule preuve qu'on ait que toutes ses largeurs sont justes »
 // (`keyframe_closure.go`). AUCUN SEUIL : ni distance, ni longueur de chaîne, ni valeur de `n1`.
 //
 // LE CONTENU EST EXIGÉ, ET C'EST MESURÉ : un record VIDE (`n1 <= 0` ou `n2 <= 0`, 172 bits
@@ -122,8 +123,11 @@ func (p *PreuveDImageCle) prouve(pay []byte, bit, slot int) bool {
 	if tr.DesyncAt >= 0 || len(tr.Comps) == 0 {
 		return false
 	}
-	h, ok := readKeyframeHeader(pay, tr.EndBit, total)
-	return ok && h.Slot > slot
+	// Les entrees sans archetype qui suivent sont les slots liberes intercales : le record suivant porte
+	// le slot `slot + 1 + k` (une entree par slot, `keyframe_entrees.go`).
+	pos, k := sauterLesEntreesSansCorps(pay, tr.EndBit, total, cadre.EnTeteBits)
+	h, ok := readKeyframeHeader(pay, pos, total)
+	return ok && !h.SansArchetype() && h.Slot == slot+1+k
 }
 
 // kfCandidat est un candidat d'une fenêtre de recherche, avec son archétype.

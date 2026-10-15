@@ -177,7 +177,8 @@ func consumeBipedLowFrequencyData(br *Lecteur) {
 //	11x FUN_140e82b84       = 11x (R(1)+optR(12))   [same leaf as consume1411b1ac0]
 //	7x R(1) flags
 //	if param_3 > 1: R(1)
-//	R(1)
+//	R(1)                     (1407efeba ; absent du flux d un film qui declare la version
+//	                          majeure 0x25, [GrammaireBalayage.MalleableSansDrapeauFinal])
 //
 // CONFIRMED bit-exact from the decompile (the 11 FUN_140e82b84 calls each fill a
 // ushort low-12; the 7 then +1/+1 single-bit flags are FUN_1406cf008).
@@ -192,7 +193,9 @@ func consumeBipedMalleablePropertyBlock(br *Lecteur, recordStateParam uint32) {
 	if recordStateParam > 1 {
 		br.ReadBit() // gated flag (param_3>1)
 	}
-	br.ReadBit() // trailing flag
+	if !br.p.Grammaire.MalleableSansDrapeauFinal {
+		br.ReadBit() // trailing flag (1407efeba)
+	}
 }
 
 // consumeBipedMalleableProperty mirrors FUN_140ff6764:

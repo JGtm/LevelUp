@@ -395,6 +395,31 @@ publication carries of it, the fallback counts and the recovered values, is in t
 a republication from them. The sync reader of objective carriers reads the weapons only
 (`ScanArmesDesImagesCles`), without the inventory and mark windows it has no use for.
 
+Since the keyframe residue plan (2026-10-15, branch `feat/ri-ecart-108`, plan
+`.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`), **a keyframe is read as the game writes it: a table
+of entries, one per slot** (`FUN_1408be074`, 0x1fff entries). A freed slot is written as a 108-bit
+entry header whose identity, archetype and word are `0xffffffff` (`FUN_142e2bfd0`, `FUN_1408f1948`)
+and carries no body. The closure of a record (IR-4) therefore reads the `t - s - 1` entries that
+separate its slot `s` from the slot `t` of the next anchor (`grammar/keyframe_entrees.go`), and the
+last record of a packet closes on the end of the table (`0x1ffe - s` entries, ending on the last
+byte of the payload). An intervening entry is read as the game reads it: a freed slot as its 108-bit
+header, a record by its full state. Only the keyframe proof of the anchor election is restricted to
+freed entries: it skips them and requires the slot `s + 1 + k`. The deterministic keyframe walks read
+the table entry by entry. The scanner's "end of table" of 2 048 sentinel words,
+which the game does not write, is removed with the motif primitives only it used. Two further
+readings enter the keyframe walk on the same branch: the i53 malleable block (`FUN_1407efc5c`) has
+no final flag in films that declare **exactly** the major version 0x25 (HI_1_8_0; user decision of
+2026-10-15, option b — the grammar of majors 0x1f to 0x22 is not established and is left as it is),
+a property of the film (`GrammaireBalayage.MalleableSansDrapeauFinal`); and world-object i0
+(`FUN_14076e29c`) and generic-rigid-body i18 (`FUN_142f036f0`) read the raw vector under the
+full-state scope, as the game does (user decision of 2026-10-15, option a for i0). Measured on 28
+films against `feat/v75`: biped keyframe records closed 5 397 -> 8 564 of 10 710, all archetypes
+242 684 -> 418 264 of 460 730, admissions (lot 2.7.d1 rule) and teams unchanged, the anchor election
+changed on one film only (a false anchor at slot 1536 refuted, ten records given back), the delta
+frame map unchanged except a 0x25 film whose packets close (+49); the two accepted drops are on a
+format-20 film without identification section (`ti=38` 451 -> 159, `ti=42` 76 -> 16). On the twelve
+HI_1_8_0 films of the development fleet, biped keyframe records closed 1 263 -> 7 042, no loss.
+
 ### IR-7 — Off-stream parameters are explicit inputs with their provenance
 
 A value that the payload does not carry (`IDLowBits`, the MPP widths, the i0 layout, `gate15`, the
