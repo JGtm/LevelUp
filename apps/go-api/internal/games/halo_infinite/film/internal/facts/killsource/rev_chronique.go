@@ -327,3 +327,9 @@ package killsource
 // identiques ; 64 films HI_1_10_0 a HI_1_12_0 : 64 fragments retires, 59 equipes corrigees (accord avec
 // la feuille 66/123 -> 123/123), une declaration de bot de plus fermee (`3abf0258`). Les lignes de
 // `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
+//
+// COMPLEMENT DU 2026-10-15 (meme lot, revue adversariale, REVISION CONSTANTE : le rang n est pas encore
+// fusionne) : un nom du balayage qu aucune entree d un paquet ferme n ecrit et qui n est pas un fragment
+// SORT DU ROSTER (`EquipesDesBots.HorsGrammaire`) au lieu d y rester sans equipe ; une entree lue sans
+// position de l equipe est refusee par le releve. Parc (614 films a bots, decodage de production) :
+// aucun nom hors grammaire, sortie identique a celle du rang. Golden regenere a revision constante.
