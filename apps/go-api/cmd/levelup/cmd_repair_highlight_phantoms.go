@@ -2,7 +2,9 @@ package main
 
 // cmd_repair_highlight_phantoms.go — sous-commande `levelup repair-highlight-phantoms` : retire de
 // `highlight_events` les lignes que l ancien lecteur des temps forts emettait en double sous un
-// faux XUID, puis recalcule les couples `killer_victim_pairs` des matchs touches.
+// faux XUID, puis recalcule les couples `killer_victim_pairs` des matchs touches ; avec `--couples`,
+// ceux de TOUS les matchs dont les couples stockes different de l appariement courant
+// (`killcollector.RebuildStalePairs`).
 //
 // SERVEUR ARRETE (ecrivain exclusif), sauvegarde octet pour octet avant toute ecriture, comme
 // `compact-passes`. Jamais de DELETE sur `highlight_events` (index ART, ADR 0019) : la table est
@@ -14,6 +16,8 @@ package main
 //	levelup repair-highlight-phantoms --dry-run       # lecture seule : lignes et matchs touches
 //	levelup repair-highlight-phantoms                 # sauvegarde, purge, recalcul des couples
 //	levelup repair-highlight-phantoms --title halo_infinite --backup-dir D:\sauvegardes
+//	levelup repair-highlight-phantoms --couples --dry-run   # + matchs dont les couples different de l appariement courant
+//	levelup repair-highlight-phantoms --couples             # + leur recalcul (suite d un changement de l appariement)
 
 import (
 	"context"
@@ -35,6 +39,8 @@ func runRepairHighlightPhantoms(cfg *config.AppConfig, args []string) error {
 	title := fs.String("title", titlePkg.DefaultSlug, "slug du titre")
 	dryRun := fs.Bool("dry-run", false, "lecture seule : aucune ecriture, aucune sauvegarde")
 	backupDir := fs.String("backup-dir", "", "dossier des sauvegardes (defaut : celui de la base)")
+	couples := fs.Bool("couples", false, "recalcule aussi les couples de TOUS les matchs dont killer_victim_pairs "+
+		"differe de l appariement courant (suite d un changement de l appariement)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -45,18 +51,18 @@ func runRepairHighlightPhantoms(cfg *config.AppConfig, args []string) error {
 	path := titlePkg.NewPathResolver(cfg.RepoRoot, reg).SharedDBPath(*title)
 	ctx := context.Background()
 	if *dryRun {
-		return detecterFantomes(ctx, path)
+		return detecterFantomes(ctx, path, *couples)
 	}
 	release, err := dblease.AcquireLease(path, compactLeaseTimeout)
 	if err != nil {
 		return fmt.Errorf("refus : bail d'ecrivain indisponible : %w", err)
 	}
 	defer release()
-	return reparerFantomes(ctx, *title, path, *backupDir)
+	return reparerFantomes(ctx, reparation{slug: *title, path: path, backupDir: *backupDir, couples: *couples})
 }
 
 // detecterFantomes : le dry-run, en lecture seule (refuse si un autre processus tient la base).
-func detecterFantomes(ctx context.Context, path string) error {
+func detecterFantomes(ctx context.Context, path string, couples bool) error {
 	handle, err := duckdb.OpenReadOnly(path)
 	if err != nil {
 		return fmt.Errorf("refus : %s est tenue par un autre processus (serveur arrete ?) : %w", path, err)
@@ -64,15 +70,29 @@ func detecterFantomes(ctx context.Context, path string) error {
 	defer closeLogged(ctx, handle, path)
 	rep, err := migration.DetectHighlightPhantoms(ctx, handle.SQLDb())
 	imprimerRapportFantomes(rep)
+	if err != nil || !couples {
+		return err
+	}
+	st, err := killcollector.RebuildStalePairs(ctx, handle.SQLDb(), false)
+	fmt.Printf("couples differents de l appariement courant : %d matchs sur %d examines\n",
+		len(st.MatchIDs), st.Examined)
 	return err
 }
 
+// reparation : ce que la commande repare, et ou.
+type reparation struct {
+	slug, path, backupDir string
+	// couples : recalculer aussi les couples de tous les matchs ([killcollector.RebuildStalePairs]).
+	couples bool
+}
+
 // reparerFantomes : sauvegarde, purge de highlight_events, recalcul des couples, CHECKPOINT.
-func reparerFantomes(ctx context.Context, slug, path, backupDir string) error {
-	if err := preparerPourSauvegarde(ctx, slug, path); err != nil {
+func reparerFantomes(ctx context.Context, r reparation) error {
+	if err := preparerPourSauvegarde(ctx, r.slug, r.path); err != nil {
 		return err
 	}
-	sauvegarde, err := copierFichier(ctx, path, backupDir, slug, "avant-fantomes")
+	path := r.path
+	sauvegarde, err := copierFichier(ctx, path, r.backupDir, r.slug, "avant-fantomes")
 	if err != nil {
 		return fmt.Errorf("sauvegarde prealable impossible, rien n'est ecrit : %w", err)
 	}
@@ -93,10 +113,21 @@ func reparerFantomes(ctx context.Context, slug, path, backupDir string) error {
 	if err != nil {
 		return err
 	}
+	if r.couples {
+		st, err := killcollector.RebuildStalePairs(ctx, db, true)
+		fmt.Printf("couples reecrits selon l appariement courant : %d matchs sur %d examines\n",
+			st.Rewritten, st.Examined)
+		if err != nil {
+			return err
+		}
+	}
 	if _, err := db.ExecContext(ctx, `CHECKPOINT`); err != nil {
 		return fmt.Errorf("checkpoint final: %w", err)
 	}
-	if len(rep.MatchIDs) > 0 {
+	switch {
+	case r.couples:
+		fmt.Println("suite : levelup backfill-killsource --credit-only, puis levelup backfill-killsource")
+	case len(rep.MatchIDs) > 0:
 		fmt.Printf("suite : levelup backfill-killsource --match %s --credit-only, puis sans --credit-only\n",
 			strings.Join(prefixes8(rep.MatchIDs), ","))
 	}

@@ -27,16 +27,12 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
-// killPairToleranceMs — fenêtre d'appariement kill↔death (ms). Aligné sur la
-// reconstruction killer_victim_pairs du reste de l'app (analysis, tolérance 5 ms).
-const killPairToleranceMs = 5
-
 // mapInfiniteEvents reconstitue la timeline canonique d'un match Infinite depuis
 // les highlight_events bruts (kill/death/medal/mode), ramenée au référentiel T0.
 //
 // Reconstruction :
 //   - kill + death (2 rows, 1 xuid chacune) → 1 MatchEventKill par appariement
-//     temporel (analysis.ComputeKillerVictimPairs, tolérance killPairToleranceMs).
+//     temporel (analysis.ComputeKillerVictimPairs, tolérance analysis.KillDeathPairToleranceMS).
 //     Les events simultanés non appariés (double-kill) sont OMIS — limitation
 //     reportée par infiniteEventLimitations.
 //   - medal → MatchEventMedal ; mode → MatchEventImpulse (Player = xuid centrant
@@ -55,7 +51,7 @@ func mapInfiniteEvents(
 
 	// 1. Kills : appariement temporel killer↔victim sur les rows kill/death.
 	if opts.Wants(canonical.MatchEventKill) {
-		for _, p := range analysis.ComputeKillerVictimPairs(toRawEvents(raw), killPairToleranceMs) {
+		for _, p := range analysis.ComputeKillerVictimPairs(toRawEvents(raw), analysis.KillDeathPairToleranceMS) {
 			corrected := tl.CorrectEventTime(p.TimeMS)
 			if corrected < 0 {
 				continue

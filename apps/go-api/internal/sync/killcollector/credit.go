@@ -75,14 +75,6 @@ const CreditDecoderRev = "highlight-credit-2026-08-01"
 // rendrait la preseance aveugle sans rien casser d autre. Garde-rail :
 // `internal/archlint/no_raw_kill_scope_literal_test.go`.
 
-// creditToleranceMS : la fenetre d appariement kill <-> death.
-//
-// 5 ms, et ce n est pas un reglage : c est EXACTEMENT la valeur qu emploie la completion qui
-// produit `killer_victim_pairs` aujourd hui (`persistCombatCompletion`). Une autre valeur
-// produirait un jeu de couples different de celui que la table servait — le remplacement ne
-// serait plus comparable a ce qu il remplace.
-const creditToleranceMS = int64(5)
-
 // Compteurs de sante du producteur credit-seul (ADR 0009).
 const (
 	metricCreditMatches = "killsource_credit_matchs_ecrits"
@@ -324,7 +316,7 @@ func (c *CreditCollector) evenementsDuMatch(ctx context.Context, matchID string)
 // donnerait un jeu de couples different de celui qu on remplace, et la comparaison avant/apres
 // ne voudrait plus rien dire.
 func BuildCreditBatch(matchID string, events []analysis.RawEvent) persist.KillSourceBatch {
-	pairs := analysis.ComputeKillerVictimPairs(events, creditToleranceMS)
+	pairs := analysis.ComputeKillerVictimPairs(events, analysis.KillDeathPairToleranceMS)
 	batch := persist.KillSourceBatch{
 		MatchID:    matchID,
 		DecoderRev: CreditDecoderRev,

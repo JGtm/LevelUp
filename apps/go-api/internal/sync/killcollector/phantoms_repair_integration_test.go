@@ -53,3 +53,48 @@ func TestRebuildPairsAfterPhantomPurge(t *testing.T) {
 		}
 	}
 }
+
+// Le recalcul de tous les couples ne reecrit que les matchs dont les couples stockes different de
+// l appariement courant : `m1` porte le couple de l ancien appariement glouton (le kill du bot a
+// 593 093 avait pris la mort de Sprifi), `m2` est deja juste. Lecture seule d abord, puis ecriture,
+// puis un second passage qui ne trouve plus rien.
+func TestRebuildStalePairs(t *testing.T) {
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { _ = db.Close() })
+	for _, s := range []string{
+		`CREATE TABLE highlight_events (id INTEGER, match_id VARCHAR, event_type VARCHAR, time_ms INTEGER,
+			xuid VARCHAR, type_hint INTEGER, raw_json VARCHAR)`,
+		`CREATE TABLE killer_victim_pairs (match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
+			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL, victim_gamertag VARCHAR,
+			kill_count INTEGER DEFAULT 1, time_ms INTEGER, is_validated BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
+		`INSERT INTO highlight_events (id,match_id,event_type,time_ms,xuid,type_hint) VALUES
+			(1,'m1','kill',593093,'jgtm',50),(2,'m1','death',593095,'sprifi',20),(3,'m1','kill',593095,'jgtm',50),
+			(4,'m2','kill',1000,'a',50),(5,'m2','death',1001,'b',20)`,
+		`INSERT INTO killer_victim_pairs (match_id,killer_xuid,killer_gamertag,victim_xuid,victim_gamertag,time_ms)
+			VALUES ('m1','jgtm','JGtm','sprifi','Sprifi',593093),('m2','a','A','b','B',1000)`,
+	} {
+		if _, err := db.Exec(s); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	ctx := context.Background()
+	rep, err := RebuildStalePairs(ctx, db, false)
+	if err != nil || rep.Examined != 2 || len(rep.MatchIDs) != 1 || rep.MatchIDs[0] != "m1" || rep.Rewritten != 0 {
+		t.Fatalf("lecture seule : %+v err=%v, attendu 2 examines, [m1] different, 0 reecrit", rep, err)
+	}
+	if rep, err = RebuildStalePairs(ctx, db, true); err != nil || rep.Rewritten != 1 {
+		t.Fatalf("ecriture : %+v err=%v, attendu 1 reecrit", rep, err)
+	}
+	var ms int
+	if err := db.QueryRow(`SELECT time_ms FROM killer_victim_pairs WHERE match_id = 'm1'`).Scan(&ms); err != nil || ms != 593095 {
+		t.Errorf("couple de m1 a %d (err=%v), attendu 593 095 : la mort de Sprifi va au kill de l instant exact", ms, err)
+	}
+	if rep, err = RebuildStalePairs(ctx, db, false); err != nil || len(rep.MatchIDs) != 0 {
+		t.Errorf("second passage : %+v err=%v, attendu aucun match different", rep, err)
+	}
+}

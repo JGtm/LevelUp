@@ -114,3 +114,37 @@ func TestComputeKillerVictimPairs_OrdreDEntreeSansEffet(t *testing.T) {
 		}
 	}
 }
+
+// Témoin du parc `1efeebd9` : JGtm tue un bot à 593 093 (le kill-feed de l API, humain seul, ne porte
+// pas la mort du bot) puis Sprifi à 593 095, dont la mort est à 593 095. La mort de Sprifi va au kill
+// de l instant exact, pas au kill du bot pris dans l ordre chronologique à 2 ms.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : décider les kills dans l ordre chronologique, chacun prenant la
+// mort libre la plus proche (l algorithme glouton d avant).
+func TestComputeKillerVictimPairs_InstantExactDAbord(t *testing.T) {
+	events := []RawEvent{
+		{EventType: "kill", XUID: "jgtm", Gamertag: "JGtm", TimeMS: 593093},
+		{EventType: "death", XUID: "sprifi", Gamertag: "Sprifi", TimeMS: 593095},
+		{EventType: "kill", XUID: "jgtm", Gamertag: "JGtm", TimeMS: 593095},
+	}
+	pairs := ComputeKillerVictimPairs(events, 5)
+	if len(pairs) != 1 || pairs[0].TimeMS != 593095 || pairs[0].VictimXUID != "sprifi" {
+		t.Fatalf("paires = %+v, attendu la seule JGtm -> Sprifi a 593 095", pairs)
+	}
+}
+
+// Témoin du parc `bc918a5a` : Sgt Crunch2206 tue (un bot) à 543 288 et meurt à 543 290. Sa mort va au
+// seul autre kill de la fenêtre (543 293, plus loin que son propre kill), jamais « X tue X ».
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer le refus des paires dont le tueur est la victime.
+func TestComputeKillerVictimPairs_JamaisTueurEgalVictime(t *testing.T) {
+	events := []RawEvent{
+		{EventType: "kill", XUID: "crunch", Gamertag: "Sgt Crunch2206", TimeMS: 543288},
+		{EventType: "death", XUID: "crunch", Gamertag: "Sgt Crunch2206", TimeMS: 543290},
+		{EventType: "kill", XUID: "autre", Gamertag: "Autre", TimeMS: 543293},
+	}
+	pairs := ComputeKillerVictimPairs(events, 5)
+	if len(pairs) != 1 || pairs[0].KillerXUID != "autre" || pairs[0].VictimXUID != "crunch" {
+		t.Fatalf("paires = %+v, attendu la seule Autre -> Sgt Crunch2206 (jamais Crunch -> Crunch)", pairs)
+	}
+}

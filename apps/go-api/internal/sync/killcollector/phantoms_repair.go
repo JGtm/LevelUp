@@ -19,33 +19,86 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// phantomPairToleranceMS : la fenetre d appariement kill <-> death, celle de la completion combat.
-const phantomPairToleranceMS = int64(5)
-
 // RebuildPairsAfterPhantomPurge recalcule les couples de chaque match de `matchIDs` et rend le
 // nombre de matchs reecrits. Idempotent : le calcul est deterministe (ordre total des evenements).
 func RebuildPairsAfterPhantomPurge(ctx context.Context, db *sql.DB, matchIDs []string) (int, error) {
 	pers := persist.NewEventsCompletionPersister(db)
 	done := 0
 	for _, id := range matchIDs {
-		raw, err := phantomRepairEvents(ctx, db, id)
+		pairs, err := couplesRecalcules(ctx, db, id)
 		if err != nil {
 			return done, err
 		}
-		pairs := analysis.ComputeKillerVictimPairs(raw, phantomPairToleranceMS)
-		rows := make([]persist.KVPairCompletion, 0, len(pairs))
-		for _, p := range pairs {
-			rows = append(rows, persist.KVPairCompletion{
-				KillerXUID: p.KillerXUID, KillerGamertag: p.KillerGT,
-				VictimXUID: p.VictimXUID, VictimGamertag: p.VictimGT, TimeMS: p.TimeMS,
-			})
-		}
-		if err := pers.RebuildKillerVictimPairs(ctx, id, rows); err != nil {
+		if err := pers.RebuildKillerVictimPairs(ctx, id, pairs); err != nil {
 			return done, err
 		}
 		done++
 	}
 	return done, nil
+}
+
+// StalePairsReport : le bilan de [RebuildStalePairs].
+type StalePairsReport struct {
+	// Examined : matchs qui portent au moins un kill ou une mort dans `highlight_events`.
+	Examined int
+	// MatchIDs : ceux dont les couples stockes different de l appariement courant, dans l ordre
+	// des identifiants.
+	MatchIDs []string
+	// Rewritten : ceux qui ont ete reecrits (zero en lecture seule).
+	Rewritten int
+}
+
+// RebuildStalePairs confronte les couples stockes de CHAQUE match a l appariement courant
+// (`analysis.ComputeKillerVictimPairs`) et, quand `ecrire`, reecrit ceux qui different. Sert la
+// suite d un changement de l appariement : les couples ecrits par l appariement d avant restent
+// en base jusqu a ce passage. Idempotent : un second passage ne trouve plus rien.
+func RebuildStalePairs(ctx context.Context, db *sql.DB, ecrire bool) (StalePairsReport, error) {
+	var rep StalePairsReport
+	ids, err := matchsAvecKillsOuMorts(ctx, db)
+	if err != nil {
+		return rep, err
+	}
+	pers := persist.NewEventsCompletionPersister(db)
+	for _, id := range ids {
+		rep.Examined++
+		pairs, err := couplesRecalcules(ctx, db, id)
+		if err != nil {
+			return rep, err
+		}
+		stockes, err := couplesStockes(ctx, db, id)
+		if err != nil {
+			return rep, err
+		}
+		if memesCouples(stockes, pairs) {
+			continue
+		}
+		rep.MatchIDs = append(rep.MatchIDs, id)
+		if !ecrire {
+			continue
+		}
+		if err := pers.RebuildKillerVictimPairs(ctx, id, pairs); err != nil {
+			return rep, err
+		}
+		rep.Rewritten++
+	}
+	return rep, nil
+}
+
+// couplesRecalcules : les couples d un match selon l appariement courant.
+func couplesRecalcules(ctx context.Context, db *sql.DB, matchID string) ([]persist.KVPairCompletion, error) {
+	raw, err := phantomRepairEvents(ctx, db, matchID)
+	if err != nil {
+		return nil, err
+	}
+	pairs := analysis.ComputeKillerVictimPairs(raw, analysis.KillDeathPairToleranceMS)
+	rows := make([]persist.KVPairCompletion, 0, len(pairs))
+	for _, p := range pairs {
+		rows = append(rows, persist.KVPairCompletion{
+			KillerXUID: p.KillerXUID, KillerGamertag: p.KillerGT,
+			VictimXUID: p.VictimXUID, VictimGamertag: p.VictimGT, TimeMS: p.TimeMS,
+		})
+	}
+	return rows, nil
 }
 
 // phantomRepairEvents : kills et morts du match (doublons exacts ecartes), nommes d apres les

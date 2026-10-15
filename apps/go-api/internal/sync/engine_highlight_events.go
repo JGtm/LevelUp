@@ -382,8 +382,7 @@ func persistCombatCompletion(ctx context.Context, sharedDB *sql.DB, matchID stri
 			TimeMS:    int64(ev.TimeMS),
 		})
 	}
-	const toleranceMS = int64(5)
-	pairs := analysis.ComputeKillerVictimPairs(raw, toleranceMS)
+	pairs := analysis.ComputeKillerVictimPairs(raw, analysis.KillDeathPairToleranceMS)
 	kvRows := make([]persist.KVPairCompletion, 0, len(pairs))
 	for _, p := range pairs {
 		kvRows = append(kvRows, persist.KVPairCompletion{
