@@ -14,11 +14,12 @@ import (
 //
 //	FUN_142e2bfd0(lecteur, tableau)   LE LECTEUR D'IMAGE-CLE
 //
-// dont la boucle remplit un tableau d'entrees de 200 octets, UNE PAR ENTITE VIVANTE :
+// dont la boucle remplit un tableau d'entrees de 200 octets, UNE PAR SLOT (0x1fff entrees,
+// `FUN_1408be074` ; un slot libere s'y ecrit sans archetype, `keyframe_entrees.go`) :
 //
 //	[si version > 7] R(1)                 une seule fois, en tete de payload
 //	                                      (`DAT_144706104`, le selecteur de filigrane)
-//	par entite :
+//	par entree :
 //	  R(32) -> entree+0x00                l'identifiant (`eid`)
 //	  R(32) -> entree+0x04                L'ARCHETYPE, MOT PLEIN DE 32 BITS
 //	  R(32) -> entree+0x0c
@@ -116,16 +117,18 @@ type KeyframeWalkStop int
 
 // Les causes d'arret, dans l'ordre de gravite decroissante.
 const (
-	// KeyframeStopEnd : le payload est epuise (fin normale).
+	// KeyframeStopEnd : fin normale — la table est lue jusqu a son entree 0x1ffe, ou le payload est
+	// epuise.
 	KeyframeStopEnd KeyframeWalkStop = iota
 	// KeyframeStopHeader : l'en-tete a la position atteinte n'est pas valide — la marche
 	// precedente n'a donc pas atterri sur une frontiere de record.
 	KeyframeStopHeader
 	// KeyframeStopDesync : un composant present n'est pas porte (`EntityTrace.DesyncAt`).
 	KeyframeStopDesync
-	// KeyframeStopSlot : le slot ne croit pas, alors que la table est a slots croissants.
+	// KeyframeStopSlot : le slot d un record n est pas l index de son entree (la table est indexee
+	// par slot).
 	KeyframeStopSlot
-	// KeyframeStopBudget : le garde-fou de nombre de records a saute (payload pathologique).
+	// KeyframeStopBudget : le chainage a depasse son budget de records intercales.
 	KeyframeStopBudget
 )
 
@@ -165,40 +168,40 @@ type KeyframeWalkRec struct {
 	DesyncAt int
 }
 
-// keyframeWalkBudget borne le nombre de records d'un payload. La plus grosse table observee
-// tient sous 8 192 entites (`kfTableCap`) ; le double laisse la place a une table anormale
-// sans laisser une marche folle tourner sans fin.
-const keyframeWalkBudget = 2 * kfTableCap
-
-// WalkKeyframeRecords PARSE la table d'image-cle : en-tete de 64 bits, puis corps par le
-// lecteur de record NEW de PRODUCTION (`TraverseEntity`), puis enchainement sur la position
-// atteinte. Il rend les records parses et la cause d'arret.
+// WalkKeyframeRecords PARSE la table d'image-cle ENTREE PAR ENTREE, comme `FUN_142e2bfd0` : une entree
+// par slot, de 0 a 0x1ffe (`keyframe_entrees.go`). Une entree sans archetype (slot libere) avance de
+// 108 bits et n'est pas rendue ; un record se lit par son etat complet (`WalkKeyframeFullState`), et
+// son slot doit etre l'index de son entree. Il rend les records parses et la cause d'arret.
 //
 // A la difference de `WalkKeyframeWorld`, il ne balaie RIEN et n'apprend AUCUNE largeur : si
 // la grammaire portee est juste, la position atteinte EST la frontiere suivante. C'est donc
 // aussi un test de la grammaire — l'arret dit ou elle a lache.
 //
+// LA FIN DE TABLE EST L'ENTREE 0x1ffe, puis la fin du payload : un identifiant `0xffffffff` n'est
+// pas une sentinelle, c'est l'en-tete d'un slot libere.
+//
 // LE PROFIL DE BALAYAGE EST UN PARAMETRE (lot 2.3) : c'est par lui que les largeurs du film
 // descendent jusqu'aux feuilles.
 func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]KeyframeWalkRec, KeyframeWalkStop) {
-	total := len(pay) * 8
+	total, enTete := len(pay)*8, keyframeFullHeaderBits(ctx)
 	out := make([]KeyframeWalkRec, 0, 512)
-	pos, prevSlot := keyframePrefixBits, -1
-	for {
-		if len(out) >= keyframeWalkBudget {
-			return out, KeyframeStopBudget
-		}
+	pos := keyframePrefixBits
+	for slot := range keyframeEntreesDeTable {
 		if pos+keyframeHeaderBits > total {
 			return out, KeyframeStopEnd
 		}
-		h, ok := readKeyframeHeader(pay, pos, total)
-		if !ok {
-			if source.BitsBourres(pay, pos, 32) == kfSent {
-				return out, KeyframeStopEnd // sentinelle de fin de table
-			}
+		switch lireEntreeDImageCle(pay, pos, total, enTete) {
+		case entreeSansCorps:
+			pos += enTete
+			continue
+		case entreeIllisible:
 			return out, KeyframeStopHeader
 		}
-		if h.Slot <= prevSlot {
+		h, ok := readKeyframeHeader(pay, pos, total)
+		if !ok {
+			return out, KeyframeStopHeader
+		}
+		if h.Slot != slot {
 			return out, KeyframeStopSlot
 		}
 		rec, stop, done := walkOneKeyframeRecord(pay, reg, pos, h, ctx)
@@ -206,8 +209,9 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]Ke
 		if done {
 			return out, stop
 		}
-		pos, prevSlot = rec.BitEnd, h.Slot
+		pos = rec.BitEnd
 	}
+	return out, KeyframeStopEnd
 }
 
 // walkOneKeyframeRecord rejoue le corps d'UN record par la boucle d'ETAT COMPLET du jeu
@@ -215,19 +219,12 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]Ke
 // d'arret eventuelle et un booleen d'arret. Extrait de `WalkKeyframeRecords` pour tenir le
 // seuil de 80 lignes par fonction.
 //
-// UNE ENTREE SANS ARCHETYPE NE PORTE PAS DE CORPS : le jeu saute alors les deux mots de
-// taille et la boucle de composants, et passe a l'entree suivante 108 bits plus loin.
+// `h` est l'en-tete d'un RECORD : l'appelant a deja ecarte les entrees sans corps
+// (`lireEntreeDImageCle`, `keyframe_entrees.go`), que cette fonction ne sait pas sauter.
 func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
 	ctx ContexteDeLecture) (
 	KeyframeWalkRec, KeyframeWalkStop, bool,
 ) {
-	if h.SansArchetype() {
-		rec := KeyframeWalkRec{
-			KeyframeHeader: h, BitStart: pos, BitEnd: pos + keyframeFullHeaderBits(ctx),
-			DesyncAt: -1,
-		}
-		return rec, KeyframeStopEnd, false
-	}
 	tr := WalkKeyframeFullState(pay, pos, reg, ctx)
 	rec := KeyframeWalkRec{
 		KeyframeHeader: h, BitStart: pos, BitEnd: tr.EndBit,
@@ -248,24 +245,20 @@ func keyframeFullHeaderBits(ctx ContexteDeLecture) int {
 }
 
 // KeyframeChainResult est le resultat d'un CHAINAGE : partant de la fin de marche d'un
-// record, combien de records intercales faut-il traverser pour retomber sur une frontiere
+// record, combien d'entrees intercalees faut-il traverser pour retomber sur une frontiere
 // connue de l'oracle (`WalkKeyframeWorld`) ?
 //
-// C'est la mesure qui chiffre ce que le BALAYEUR saute entre deux de ses ancres : si la
-// grammaire est juste, le chainage retombe exactement sur la frontiere de l'oracle apres
-// un petit nombre de records intercales. (L'hypothese H1 du plan R5 -- « les intercales
-// portent un `Field26` non nul » -- est refutee par l'ecrivain, cf. l'en-tete de ce
-// fichier : le seul intercale que le filtre fort ne peut pas voir est celui SANS
-// ARCHETYPE.)
+// C'est la mesure qui chiffre ce que le BALAYEUR saute entre deux de ses ancres : la table porte
+// une entree par slot (`keyframe_entrees.go`), et l'intercale que le filtre fort du balayeur ne
+// voit pas est l'entree SANS ARCHETYPE, le slot libere.
 type KeyframeChainResult struct {
 	// Reached : le chainage a atteint EXACTEMENT la frontiere visee.
 	Reached bool
-	// Skipped est le nombre de records intercales traverses avant de l'atteindre (0 = la
-	// marche du record lui-meme atterrissait deja juste).
+	// Skipped est le nombre de RECORDS intercales traverses avant de l'atteindre (0 = la
+	// marche du record lui-meme atterrissait deja juste, entrees sans archetype mises a part).
 	Skipped int
-	// SkippedSansArchetype compte, parmi ces intercales, ceux qui ne portent AUCUN
-	// archetype (`keyframeArchetypeNone`) : le balayeur d'ancres ne peut pas les voir,
-	// son filtre fort exigeant un mot d'archetype sous le cap objet.
+	// SkippedSansArchetype compte les entrees SANS archetype (`keyframeArchetypeNone`, slots
+	// liberes) traversees : 108 bits chacune, hors de `Skipped` et du budget de records.
 	SkippedSansArchetype int
 	// Stop dit ou le chainage s'est arrete quand il n'a pas atteint la frontiere.
 	Stop KeyframeWalkStop
@@ -275,16 +268,17 @@ type KeyframeChainResult struct {
 // « le balayeur a saute un voisin » mais une marche perdue, et le dire est le resultat.
 const keyframeChainMax = 16
 
-// ChainKeyframeRecords enchaine la marche depuis la position `from` jusqu'a atteindre
+// ChainKeyframeRecords enchaine la lecture des entrees depuis la position `from` jusqu'a atteindre
 // exactement `want`, sans jamais depasser `keyframeChainMax` records intercales. `prevSlot`
-// est le slot du record d'ou l'on part (la table est a slots croissants).
+// est le slot du record d'ou l'on part : l'entree suivante est celle du slot `prevSlot + 1`, et un
+// record intercale doit porter le slot de son entree (la table est indexee par slot).
 //
 // Le PROFIL DE BALAYAGE vient de l'appelant (lot 2.3).
 func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
 	ctx ContexteDeLecture) KeyframeChainResult {
-	total := len(pay) * 8
+	total, enTete := len(pay)*8, keyframeFullHeaderBits(ctx)
 	res := KeyframeChainResult{Stop: KeyframeStopEnd}
-	pos := from
+	pos, slot := from, prevSlot
 	for res.Skipped <= keyframeChainMax {
 		if pos == want {
 			res.Reached = true
@@ -294,12 +288,22 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
 			res.Stop = KeyframeStopEnd
 			return res
 		}
+		slot++
+		switch lireEntreeDImageCle(pay, pos, total, enTete) {
+		case entreeSansCorps:
+			pos += enTete
+			res.SkippedSansArchetype++
+			continue
+		case entreeIllisible:
+			res.Stop = KeyframeStopHeader
+			return res
+		}
 		h, ok := readKeyframeHeader(pay, pos, total)
 		if !ok {
 			res.Stop = KeyframeStopHeader
 			return res
 		}
-		if h.Slot <= prevSlot {
+		if h.Slot != slot {
 			res.Stop = KeyframeStopSlot
 			return res
 		}
@@ -309,10 +313,7 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
 			return res
 		}
 		res.Skipped++
-		if h.SansArchetype() {
-			res.SkippedSansArchetype++
-		}
-		pos, prevSlot = rec.BitEnd, h.Slot
+		pos = rec.BitEnd
 	}
 	res.Stop = KeyframeStopBudget
 	return res

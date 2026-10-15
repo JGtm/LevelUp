@@ -1,10 +1,13 @@
 /**
  * equippedLogic.ts — QUELLE arme est en main, lue du film, et rien de deviné.
  *
- * D'OÙ VIENT L'INFORMATION. Le sélecteur d'emplacement dégainé (i42) voyage dans le bloc
- * d'inventaire des images-clés (`Inventory.D`) : 0 ou 1 = l'emplacement dégainé dans l'ordre
- * de `Loadout.W`, 2 = AUCUNE arme dégainée — une valeur à part entière, c'est l'état des
- * huit joueurs à la première image-clé, avant le départ. Absent = non lu.
+ * D'OÙ VIENT L'INFORMATION. L'emplacement désiré en main principale (i42) voyage dans le bloc
+ * d'inventaire des images-clés (`Inventory.D`) : 0 ou 1 = l'emplacement de la rangée d'armes,
+ * dans l'ordre de `Loadout.W` ; 2 ou plus = un emplacement HORS de la rangée — le troisième porte
+ * l'objet que le jeu met dans les mains quand aucune arme n'y est : les MAINS NUES (`00007CA9`),
+ * l'état de tous les joueurs à leur première image-clé, avant le départ, ou un objet d'objectif
+ * en cours de partie (drapeau, bobine, bombe). Aucune arme de la rangée n'est alors en main :
+ * c'est une mesure, pas une lacune. Absent = non lu.
  *
  * DEUX LECTURES, DEUX ÂGES, UNE HONNÊTETÉ. Le loadout et l'inventaire sont deux scans
  * distincts du même film : chacun est reporté séparément à sa dernière image-clé (~20 s).
@@ -43,7 +46,8 @@ export interface EquippedReading {
   drawn: number | null
   /** Âge de la lecture du loadout, en frames. */
   age: number
-  /** true = le sélecteur dit « rien de dégainé » (D=2) — une mesure, pas une lacune. */
+  /** true = le sélecteur désigne un emplacement hors de la rangée (D ≥ 2 : mains nues, objet tenu) —
+   * aucune arme de la rangée en main ; une mesure, pas une lacune. */
   holstered: boolean
   /** true = le sélecteur n'a PAS été lu sur ce record — une lacune, pas une mesure. */
   drawnUnread: boolean
@@ -81,7 +85,7 @@ export function equippedWeapons(
       order: lo.weapons.map((_, i) => i),
       drawn: null,
       age: lo.age,
-      holstered: d === 2,
+      holstered: d !== undefined && d >= 2,
       drawnUnread: d === undefined,
       src: lo.src,
     }

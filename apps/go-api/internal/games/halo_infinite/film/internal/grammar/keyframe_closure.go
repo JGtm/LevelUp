@@ -5,8 +5,10 @@ package grammar
 // # CE QUE « FERMER » VEUT DIRE
 //
 // Un record d'image-cle porte l'etat COMPLET d'une entite. La grammaire le dit lisible de bout
-// en bout : une fois ses composants deroules, la marche doit atterrir EXACTEMENT sur le premier
-// bit du record suivant. Quand elle y atterrit, le record est FERME — et c'est la seule preuve
+// en bout : une fois ses composants deroules, puis les entrees que la table porte entre lui et le
+// record suivant lues comme le jeu les lit (une entree par slot, `keyframe_entrees.go`), la marche
+// doit atterrir EXACTEMENT sur le premier bit du record suivant ([fermeSurLAncreSuivante]). Quand
+// elle y atterrit, le record est FERME — et c'est la seule preuve
 // qu'on ait que toutes ses largeurs sont justes, sans capture live ni oracle externe. Une marche
 // qui s'arrete sur un composant sans lecteur (DESYNC), qui tombe avant (SOUS) ou apres (SUR) la
 // frontiere ne ferme pas : elle a lu quelque chose, mais rien ne dit quoi.
@@ -68,6 +70,9 @@ type keyframeBorne struct {
 	Bit, Want int
 	// Slot et TI identifient le record.
 	Slot, TI int
+	// SlotSuivant est le slot de l ancre suivante, -1 quand Want vaut -1 : la table porte
+	// `SlotSuivant - Slot - 1` entrees entre les deux ([fermeSurLAncreSuivante]).
+	SlotSuivant int
 	// Voisin restreint aux paires de slots CONSECUTIFS (`slotSuivant == slot + 1`), ou le
 	// balayeur ne peut avoir saute aucun record entre les deux ancres.
 	Voisin bool
@@ -97,9 +102,9 @@ func keyframeBornesDe(recs []KeyframeRec) []keyframeBorne {
 	slices.SortFunc(recs, func(a, b KeyframeRec) int { return cmp.Compare(a.Bit, b.Bit) })
 	out := make([]keyframeBorne, 0, len(recs))
 	for i := range recs {
-		b := keyframeBorne{Bit: recs[i].Bit, Want: -1, Slot: recs[i].Slot, TI: recs[i].TI}
+		b := keyframeBorne{Bit: recs[i].Bit, Want: -1, Slot: recs[i].Slot, SlotSuivant: -1, TI: recs[i].TI}
 		if i+1 < len(recs) {
-			b.Want = recs[i+1].Bit
+			b.Want, b.SlotSuivant = recs[i+1].Bit, recs[i+1].Slot
 			b.Voisin = recs[i+1].Slot == recs[i].Slot+1
 		}
 		out = append(out, b)

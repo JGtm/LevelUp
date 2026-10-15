@@ -1,3 +1,12 @@
+## [2026-10-09] Ecarts de fin multiples de -108 bits (R-VEH-4) : slots liberes de la table d image-cle — Complete (recherche, branche `feat/ri-ecart-108`, non commitee)
+
+**Statut** : Complete (recherche ; aucun code de production ; deux instruments `research` ajoutes, non commites).
+
+**Decision technique principale** : la table d image-cle est un tableau de 0x1fff entrees indexe par slot (`FUN_1408be074`, `FUN_1405d5dbc`), ecrit en entier par `FUN_142e2d08c` et relu en entier par `FUN_142e2bfd0` sans compte dans le flux ; une entree d archetype `0xffffffff` n a pas de corps (108 bits) et c est l etat d un slot libere (`FUN_1408f1948` : id, archetype, mot +0xc a `0xffffffff`). Regle proposee (Rslot) : entre deux ancres de slots s et t, lire exactement t-s-1 entrees par la grammaire d entree avant de juger la fermeture.
+
+**Resultats observes** (`TestEcart108`, 28 films, sorties `scratchpad/ri/ecart108/final/`) : 2 838 des 2 841 bipedes a ecart -108k sont suivis de k entrees liberees, k = ecart de slots dans tous les cas ; fermeture ti=35 5 401 -> 8 242 ; admis T1 et T2 6 507 -> 6 507 (les gagnes etaient deja B ou refuses par T1) ; tous archetypes 240 470 -> 267 811, 44 pertes ti=37 (fermetures contredites par l index de slot, temoin 24 -> 0) ; temoin decale bipedes hasard 3 -> 4 ; queue de table : 162 paquets finissent a moins d un octet de la fin du payload apres 0x1ffe-slot entrees liberees.
+
+**Conclusion / prochaine etape** : rapport `.ai/RAPPORT_ECART_108_R_VEH_4_2026-10-09.md`. A instruire en lot : la regle dans `preuveDeLEtatComplet`, puis dans `PreuveDImageCle.prouve` et la marche d ancres (non simulees de bout en bout : effet sur les elections a mesurer).
 ## [2026-10-15] Rattrapage CSR par joueur : candidats restreints aux matchs du joueur — Complété (branche `fix/csr-candidats-joueur`)
 
 **Décision technique principale** : `loadRankedMatchesForCSRBackfill` (`sync/csr_backfill.go`) joint désormais `match_participants` sur le xuid du joueur ; le pré-filtre (is_ranked / nom « ranked » / playlist_id de la référence) et la décision (payload skill) sont inchangés. `match_participants` n'est pas append-only (pas de vue `_latest`).
@@ -116989,6 +116998,15 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : l'utilisateur choisit la règle d'admission — (a) record fermé seul, (c) formats 24 à 27 sans témoin, ou T1 et T2 ensemble (mesuré, non écrit au plan) — et vérifie la liste des 120 porteurs de (a) ; puis D1.1.
 
+## [2026-10-09] Le bit de trop des films <= HI_1_8_0 (ecart +33/+18/+28) : position mesuree, donnee declaree qui separe les familles — Complete (recherche, `feat/ri-ecart-108`, worktree `LevelUp-wt-ecart108`)
+
+**Statut** : Complete (recherche ; aucun code de production ; instrument `bit18_registre_research_test.go` et deux crochets d une ligne dans les instruments 2.7.d1).
+
+**Decision technique principale** : recenser dans le jeu (Ghidra, lecture seule) toutes les entrees hors flux des lecteurs i48 a i53, puis comparer le registre complet de `chunk_00` (1.8 contre 1.9) et localiser le bit sur les bits bruts plutot que sur les largeurs. Aucune regle ecrite : la seule donnee declaree qui separe les familles (version majeure `chunk_00+0`, 0x25 contre 0x26) n est consultee par l executable courant que dans sa garde `1428e21a6`, qui refuse de lire les films de majeure differente de 0x29.
+
+**Resultats observes** : registre 1.8 et 1.9 identique a l octet sauf l octet 0 (majeure) ; table par type : genres 35 (3 -> 4) et 36 (2 -> 3) ; seules entrees hors flux de la fenetre : niveau du registre (identique) et type de moteur (2 sur 2 279 films). Bits bruts : le flux <= 1.8 n a pas le drapeau final d i53 (`FUN_1407efc5c` @1407efeba ; ou R(4) pour n, indiscernable), balayage de position : seul k = 106..108 reproduit la forme des references. Variante rejouee par la marche de production : `60ae07c4` 1 -> 223 fermes, +33/+18/+28 218/218 a 0 ; 12 autres films HI_1_8_0 +3 829, 0 perte ; tous les films de majeure >= 0x26 casses ; corpus 28 films 5 401 -> 5 689 si la variante suit la majeure <= 0x25.
+
+**Conclusion / prochaine etape** : rapport `.ai/RAPPORT_BIT_BUILDS_18_2026-10-09.md`. Decision de l utilisateur : admettre ou non une regle branchee sur la version majeure declaree (seuil mesure, non lu dans une branche du jeu). Pour la lire au lieu de la mesurer : un executable HI_1_8_0/1_9_0, ou le devenir de l evenement de `FUN_142988e98`.
 **Complément (2026-10-09, lot C, suite)** : décision de l'utilisateur sur la règle d'admission — les deux contrôles ensemble (T1 et T2) — inscrite au plan ; la marque de portage reste la configuration de la fenêtre lue par la grammaire, sans vérification due. D1.1 close : un canal de la phase des images-clés lit l'état complet du bipède par le nom de ses composants (états, munitions, jeu d'armes, armes, grenades, capacité), relu à l'étendue de chaque occurrence par un assistant unique ; un record n'est publié par la grammaire que s'il est admis ; une seule marche des images-clés sert la cuisson et la lecture des porteurs au sync. Mesures : 6 507 records admis sur 10 710, valeurs identiques à l'instrument, aucun débordement ; coût sans surcoût établi au pas D1.1. D1.2 close : les fenêtres de bits ne voient plus que les records non admis, sous trois replis nommés et comptés (4 203 records sur les 28 films, au record près), et ce qu'elles rendent est marqué récupéré. Point d'attention pour D1.4 : à l'état D1.2, la lecture des porteurs au sync d'un film de bombe coûte environ 17 % de plus (60 ms par tour) ; consigné, non traité. Statut : En cours ; prochaine étape D1.3 (consommateurs du rejeu et survie depuis les faits).
 ## [2026-10-09] Explorer — onglet « Joueur » de ~9,7 s à < 1 s (point 12 de la liste du user, mesures du 08/10) — Complété (`feat/aj-explorer` fusionnée dans feat/v75)
 
@@ -117263,6 +117281,35 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : CI de `feat/v75` à relever ; mesure du pic mémoire de la recuisson des dix films de la démo (accord du user du 2026-10-14) ; nettoyage des worktrees, branches et caches du chantier ; registre et backlog à purger des lignes traitées.
 
+## [2026-10-14] Résidu de lecture des images-clés, étape R1 : entrées de slot libéré (Rslot) — En cours (`feat/ri-ecart-108`, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`)
+
+**Statut** : En cours — plan écrit et commité ; R1 close (gate passé, commits locaux, aucun push : la montée des révisions est en R5) ; R2 à R5 restent.
+
+**Décision technique principale** : la table d'image-clé est lue comme le jeu la lit (`FUN_142e2bfd0`, `FUN_1408be074`, `FUN_1408f1948`, relus) : une entrée par slot, 0x1fff entrées, un slot libéré = 108 bits d'archétype `0xffffffff`. Un seul lecteur d'entrée (`keyframe_entrees.go`) sert la fermeture (entre deux ancres de slots s et t, lire t − s − 1 entrées ; le dernier record ferme sur la fin de table), la preuve d'image-clé qui arbitre l'élection (slots libérés sautés, record suivant au slot slot + 1 + k), les marches déterministes (slot = index de l'entrée) et le témoin faible de chaînage (forme exacte de l'écrivain). La « fin de table » à 2 048 sentinelles du balayeur, qui n'existe pas chez le jeu et ne s'atteint sur aucun film, est retirée avec les options du motif qu'elle seule utilisait.
+
+**Résultats observés** (28 films, contexte de cuisson) : bipèdes fermés 5 397 → 8 237 sur 10 710, tous archétypes bornés 240 466 → 267 817 ; admissions T1 ∧ T2 inchangées (6 507) ; 44 fermetures `ti=37` perdues, toutes fermées en base avec un écart de slots positif (impossible dans une table indexée par slot), adjugées ; élection changée sur un seul film (`64e8adfa`, deux régions : la fausse ancre slot 1536 `ti=0` réfutée, dix records rendus, fermetures 0 → 11) ; équipes et carte delta identiques ; killsource identique sur les 19 témoins ; `replay-equiv` : seul le document de `64e8adfa` change (une arme au sol retrouvée et les compteurs de marche). 164 derniers records de paquet fermés par la queue de table.
+
+**Conclusion / prochaine étape** : R2, le bit des films 1.8 — lire d'abord `FUN_142988e98` (aiguillage des anciens formats), puis l'option A de l'utilisateur.
+
+## [2026-10-14] Résidu de lecture des images-clés, étape R2 : le bit des films 1.8 — En cours, ARRÊT au gate (`feat/ri-ecart-108`, plan `.ai/PLAN_RI_RESIDU_IMAGES_CLES_2026-10-14.md`)
+
+**Statut** : En cours — R2.1, R2.2, R2.4 faits ; R2.3 `[!]`, décision de l'utilisateur due ; code commité, rien poussé.
+
+**Décision technique principale** : `FUN_142988e98`, appelé par `FUN_1428e219c` quand la version majeure diffère de 0x29, ne lit pas le film (il remet à zéro l'état du lecteur de film) : aucune lecture du jeu à porter. Règle appliquée selon l'option A : le bloc malléable d'i53 sans drapeau final quand la version majeure déclarée vaut au plus 0x25, dérivée du film comme le contrôle de corruption.
+
+**Résultats observés** : films de majeure ≥ 0x26 sans aucune régression publiée ; HI_1_8_0 (0x25) : `60ae07c4` bipèdes fermés 1 → 328/332, dotations de naissance 5 → 171, 12 films du parc 1 263 → 7 054 fermés tous films confondus, aucune perte ; formats 20-21 (0x1f-0x21) : gains et pertes mêlés (13 pertes de fermeture non adjugeables, 6 dotations de naissance perdues sur `a349fea8`).
+
+**Conclusion / prochaine étape** : l'utilisateur choisit entre garder ≤ 0x25, borner à 0x25, ou sortir les formats 20-21 de la règle ; puis clôture de R2 (révisions en R5).
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R2 close : le bit des films 1.8, borné à la version majeure 0x25 — En cours (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R2 close (gate passé), commits locaux, rien poussé ; R3 suit.
+
+**Décision technique principale** : décision de l'utilisateur du 2026-10-15 (« Ok avec toi, option b ») : le bloc malléable d'i53 perd son drapeau final pour les seuls films qui déclarent la version majeure 0x25 ; toute autre version garde la grammaire de l'exécutable. `FUN_142988e98` relu : remise à zéro du lecteur de film, pas un chemin des anciens formats.
+
+**Résultats observés** : corpus — seul `60ae07c4` change (bipèdes fermés 1 → 328/332, dotations de naissance 5 → 171, morts identiques) ; parc — 12 films HI_1_8_0 de 1 263 à 7 042 fermés tous films confondus, 0 perte ; formats 20-21 et versions ≥ 0x26 identiques (documents publiés).
+
+**Conclusion / prochaine étape** : R3, world-object i0 sous la portée puis rigid-body i18.
 ## [2026-10-14] Clôture du plan des recommandations du registre — Complété
 
 **Décision technique principale** : plafond mémoire de la recuisson des rejeux de la démo fixé sur mesure (1 Gio souple, 1,25 Gio dur) au lieu des 768 Mio non mesurés du lot D ; mesure faite après la recuisson commune, un film à la fois, artefacts et faits de film sauvegardés puis restaurés à l'identique.
@@ -117271,6 +117318,35 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : plan clos. Ouverts côté user : rotation des secrets après la faille corrigée, staging v8 à refaire hors de la racine du dépôt VPS, chantier « sécurité » du backlog avant partage plus large.
 
+## [2026-10-15] Résidu de lecture des images-clés, étape R3 : world-object i0 sous la portée — En cours, ARRÊT en R3.2 (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R3.1 appliquée et mesurée, puis retirée ; R3.2 `[!]`, décision de l'utilisateur due ; R3.3 (rigid-body i18) en attente ; rien poussé.
+
+**Décision technique principale** : world-object i0 sous la garde lu comme le jeu (`FUN_14076e29c` relu : precHigh, R(96), queue, R(2) si finis), par le geste unique `sousLaGardeSinonException`, rejoué derrière R1 et R2.
+
+**Résultats observés** : contre R2 close, `ti=38` 31 324 → 113 049, `ti=42` 6 813 → 21 449, `ti=43` 11 324 → 37 959 fermés ; ancres, équipes, carte delta et bipèdes inchangés (LK.5.4.1 les changeait) ; cinq lignes en baisse : `ti=37` sur `084a804d` (−2), `1c4c63c2` (−1), `a349fea8` (−18), `50247b26` `ti=38` (452 → 159, fermetures de hasard selon le témoin) et `ti=42` (134 → 16).
+
+**Conclusion / prochaine étape** : l'utilisateur choisit entre retenir la lecture du jeu malgré les baisses, la laisser rejetée, ou la retenir hors des formats 20-21 après instruction des quatre records `ti=37` récents.
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R3 close : world-object i0 et rigid-body i18 sous la portée — En cours (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R3 close (décision de l'utilisateur U-7 « Option a » pour i0), commits locaux, rien poussé ; R4 suit.
+
+**Décision technique principale** : world-object i0 (`FUN_14076e29c`) et generic-rigid-body i18 (`FUN_142f036f0`) lus comme le jeu sous la garde de pleine précision, par le geste unique `sousLaGardeSinonException`.
+
+**Résultats observés** : i0 — `ti=38` 31 324 → 113 049, `ti=42` 6 813 → 21 449, `ti=43` 11 324 → 37 959 fermés (28 films), cinq baisses acceptées par U-7 et consignées au plan, ancres, carte et documents publiés inchangés ; i18 — aucun effet mesurable (fermetures, ancres, carte, killsource, documents identiques).
+
+**Conclusion / prochaine étape** : R4, sens de la valeur 2 de l'emplacement désiré et affichage web.
+
+## [2026-10-15] Résidu de lecture des images-clés, étape R4 close : la valeur 2 de l'emplacement désiré — En cours (`feat/ri-ecart-108`)
+
+**Statut** : En cours — R1 à R4 closes, commits locaux, rien poussé ; R5 (révisions, gates complets, revue, fusion) reste.
+
+**Décision technique principale** : `d` (param[1] d'i42) est l'emplacement désiré ; l'emplacement 2 porte l'objet tenu hors de la rangée d'armes. Le web garde son rendu (aucune arme de la rangée en main) mais sa documentation et sa règle sont corrigées (D ≥ 2, plus de « dégainée ? » sur D = 3).
+
+**Résultats observés** : 28 films — à la première image-clé, 279 records sur 283 à D = 2 ont les mains nues (`00007CA9`) avec leurs deux armes déjà en place ; la valeur disparaît dès la prise d'arme (41 sur 360 à l'image-clé suivante) ; en cours de partie, D = 2 désigne surtout un objet d'objectif (bobine, drapeau, bombe) ; aucun record admis n'a D = 2 (règle T1). vitest, typecheck, lint verts.
+
+**Conclusion / prochaine étape** : R5 — fusion de `origin/feat/v75` (lot « équipement porté », 78 fichiers du film), puis montée des révisions et gates complets.
 ## [2026-10-15] Ajustements du 14/10 : lots A à F livrés et intégrés dans feat/v75 — En cours (équipement porté, étiquettes, rattrapage CSR, recuisson à venir)
 
 **Statut** : lots A (CSR), B (rejeu web), C (Vue match), D (Tactique + saisons), E (Escouade + Séries temporelles), F (poussées du répulseur, sons du translocateur) intégrés sur `feat/aj14-integ` (un conflit textuel dans `check_test_baseline.sh`, aucun conflit sémantique) puis avance rapide de `feat/v75` ; lot équipement porté (session levelup-80) livré sur `feat/equip-porte`, en correction de relecture.
@@ -117301,6 +117377,35 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : recuisson du parc au schéma 96 sur accord du user, après le rattrapage CSR en cours.
 
+## [2026-10-15] Résidu de lecture des images-clés, étape R5 : révisions au-dessus de feat/v75, gates — En cours (`feat/ri-ecart-108`, gate de corpus et G-perf reportés)
+
+**Statut** : En cours — R1 à R5.7 faits ; push et CI de `feat/ri-ecart-108` ; gate de corpus et G-perf reportés derrière la recuisson du parc au schéma 96 ; revue adversariale et fusion au superviseur.
+
+**Décision technique principale** : `feat/v75` a avancé deux fois pendant R5 (fin du champ de réparation au schéma 96 avec `grammar-2026-10-15` et `SchemaDesFaits` 14, puis le rattrapage CSR) : refusion, chroniques des deux côtés gardées dans l'ordre, révisions reprises au rang suivant (`grammar-2026-10-15.2`, `killsource-2026-10-15`, `SchemaDesFaits` 15, `SchemaVersion` 97), goldens et fixtures par leurs portes.
+
+**Résultats observés** : contre `feat/v75` `46bfa5fad` (28 films) : bipèdes fermés 5 397 → 8 564 sur 10 710, admissions 6 507 inchangées, équipes identiques, ancres changées sur `64e8adfa` seul (adjugé), baisses `50247b26` acceptées par U-7 ; carte delta, killsource (19 témoins) et `replay-equiv` (20 films) : seules les différences déjà adjugées, `60ae07c4` gagne en plus un objet porté suivi ; S8 20/20 identiques. Le lot de `feat/v75` ne change aucune fermeture. Tests, vet, golangci-lint, intégration, web verts ; baseline : un rouge hérité de `feat/v75` (`TestNoNewRawStartTimeLiteral` sur `csr_backfill.go:184`).
+
+**Conclusion / prochaine étape** : CI de la branche ; le rouge archlint hérité est à corriger par le lot CSR (ou par décision du superviseur) ; gate de corpus et G-perf quand aucun backfill ne tourne ; revue adversariale ; fusion sur accord de l'utilisateur.
+
+## [2026-10-15] Résidu de lecture des images-clés, R5.6 : gate de corpus passé, G-perf au-dessus du seuil — En cours, ARRÊT (`feat/ri-ecart-108`, décision de l'utilisateur due)
+
+**Statut** : En cours — ARRÊT au G-perf ; revue adversariale et fusion après la décision de l'utilisateur.
+
+**Décision technique principale** : le rouge hérité de `feat/v75` (`TestNoNewRawStartTimeLiteral`, `internal/sync/csr_backfill.go:184`) est corrigé dans un commit séparé (`644e115b4`, tri canonique `analysis.SQLStartTimeCanonical("r")`, colonne `start_time_utc` au schéma du test), sur autorisation du superviseur ; levelup-6c porte la même vers `feat/v75`, dont la version prévaudra à la refusion.
+
+**Résultats observés** : CI de `644e115b4` verte. Gate de corpus (19 témoins, base `ec7313562`) : banc de vérité ok sur les 19, aucun oracle ne bouge ; seul `60ae07c4` change (paquets fermés 38 434 → 40 031, 21 pertes de filet adjugées : sprints raccourcis là où le film l'arrête, vérifiés à la vitesse, compteurs intermédiaires, impulsions fausses retirées). G-perf : sync à 1,00 ; cuisson +6,9 %, +11,0 %, +4,1 %, +11,1 % (bruit ≤ 0,6 %), seuil de 10 % dépassé sur `e5adf7b2` et `11de8353`.
+
+**Conclusion / prochaine étape** : décision de l'utilisateur sur le surcoût de cuisson (accepter, ou lot de performance avant la fusion) ; puis revue adversariale et fusion (superviseur).
+
+## [2026-10-15] Résidu de lecture des images-clés, R5 : décision U-8 et constats P2 de la revue adversariale — En cours (`feat/ri-ecart-108`, fusion au superviseur)
+
+**Statut** : En cours — R5.1 à R5.7 closes ; revue adversariale passée, constats statués ; fusion dans `feat/v75` au superviseur.
+
+**Décision technique principale** : DÉCISION U-8 de l'utilisateur du 2026-10-15 (« option a ») : surcoût de cuisson accepté (+11 % sur deux films), piste d'optimisation au registre. Cinq constats P2 corrigés : branche morte retirée (`walkOneKeyframeRecord`), ADR 0037 précisée, deux gardes de fermeture tenues par des tests (mutations rouges), doc de `Chained` alignée sur ce que garantit le chaînage.
+
+**Résultats observés** : sortie de grammar inchangée (quatre instruments identiques à l'octet) ; seule l'empreinte de `grammar-2026-10-15.2` bouge (révision non publiée) ; tests du film, archlint, vet et golangci verts.
+
+**Conclusion / prochaine étape** : CI de la branche, puis fusion dans `feat/v75` par le superviseur (en gardant la correction CSR de `feat/v75` si elle arrive avant).
 ## [2026-10-15] Ajustements du 14/10 : rattrapage CSR, recuisson au schéma 96, étiquettes de barres — Complété
 
 **Statut** : Complété. Rattrapage CSR (accord du user) : shared-csr +1 697, csr joueur +203 (Nuzzles), is_ranked 4 121 corrigés, LUSR 7 732, engagement 7 010 ; défaut préexistant trouvé en route et corrigé (`fix/csr-candidats-joueur` : le rattrapage par joueur interrogeait tout le registre, 4 274 appels inutiles pour Chocoboflor). Recuisson du parc au schéma 96 (accord du user) : 238 artefacts, riftPoses 123, knockbacks 132, fins suivies 745/758, VIP 00761d27 cuit, killsource 0 erreur de décodage. Lot G (étiquettes de barres) fusionné après gate visuel du user : centrage sur la barre directe, valeur à côté de la barre si elle ne tient pas (règle « jamais seulement en infobulle » maintenue), texte blanc à contour sombre (décision du user).

@@ -1,4 +1,4 @@
-package sync
+package killcollector
 
 // highlight_phantoms_repair.go — LA SUITE DE `migration.PurgeHighlightPhantoms` : les couples
 // `killer_victim_pairs` des matchs touches se recalculent depuis `highlight_events` assaini.

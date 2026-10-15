@@ -27,7 +27,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
-	go_sync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/killcollector"
 )
 
 func runRepairHighlightPhantoms(cfg *config.AppConfig, args []string) error {
@@ -88,7 +88,7 @@ func reparerFantomes(ctx context.Context, slug, path, backupDir string) error {
 	if err != nil {
 		return err
 	}
-	n, err := go_sync.RebuildPairsAfterPhantomPurge(ctx, db, rep.MatchIDs)
+	n, err := killcollector.RebuildPairsAfterPhantomPurge(ctx, db, rep.MatchIDs)
 	fmt.Printf("couples recalcules : %d matchs\n", n)
 	if err != nil {
 		return err
