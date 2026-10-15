@@ -565,7 +565,7 @@ Une étape commence quand la précédente est close : items statués, gate pass�
     - à la PREMIÈRE image-clé à bipèdes de chaque film, 283 records ont param[1] = 2, dont 279 avec
       l'emplacement 2 = `00007CA9`, les MAINS NUES (`hinf_unarmed`), et les emplacements 0 et 1 déjà
       armés : HYPOTHÈSE U-3 CONFIRMÉE — avant le départ, aucune arme n'est en main (mains nues) ;
-    - à l'image-clé suivante, param[1] = 2 tombe à 41 records sur 361 (170 à 0, 94 à 1) : la valeur
+    - à l'image-clé suivante, param[1] = 2 tombe à 41 records sur 360 (170 à 0, 94 à 1) : la valeur
       disparaît dès que le joueur prend une arme ;
     - ailleurs (455 records), l'emplacement 2 porte surtout un OBJET TENU : bobine à fusion
       (`e9e7ff79`, 76), drapeau (`2a392328` 60, `0017592c` 41), bombe (`3fee4fcf`, 13), autres (37) ;

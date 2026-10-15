@@ -117276,6 +117276,6 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : `d` (param[1] d'i42) est l'emplacement désiré ; l'emplacement 2 porte l'objet tenu hors de la rangée d'armes. Le web garde son rendu (aucune arme de la rangée en main) mais sa documentation et sa règle sont corrigées (D ≥ 2, plus de « dégainée ? » sur D = 3).
 
-**Résultats observés** : 28 films — à la première image-clé, 279 records sur 283 à D = 2 ont les mains nues (`00007CA9`) avec leurs deux armes déjà en place ; la valeur disparaît dès la prise d'arme (41 sur 361 à l'image-clé suivante) ; en cours de partie, D = 2 désigne surtout un objet d'objectif (bobine, drapeau, bombe) ; aucun record admis n'a D = 2 (règle T1). vitest, typecheck, lint verts.
+**Résultats observés** : 28 films — à la première image-clé, 279 records sur 283 à D = 2 ont les mains nues (`00007CA9`) avec leurs deux armes déjà en place ; la valeur disparaît dès la prise d'arme (41 sur 360 à l'image-clé suivante) ; en cours de partie, D = 2 désigne surtout un objet d'objectif (bobine, drapeau, bombe) ; aucun record admis n'a D = 2 (règle T1). vitest, typecheck, lint verts.
 
 **Conclusion / prochaine étape** : R5 — fusion de `origin/feat/v75` (lot « équipement porté », 78 fichiers du film), puis montée des révisions et gates complets.
