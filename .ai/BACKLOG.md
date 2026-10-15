@@ -39,6 +39,26 @@ garde-rail par classe de défaut (comme le ratchet de la garde démo). **Effort 
 
 ---
 
+### [tactique] Écart de position entre le contexte de mort et `kill_positions`
+
+Noté à la demande de l'utilisateur le 2026-10-15 (chantier Tactique coéquipiers,
+`.ai/V7.5/` puis `.ai/PLAN_TACTIQUE_COEQUIPIERS_2026-10-14.md`). La position de la victime au
+moment d'une mort existe dans deux sources qui ne la lisent pas au même instant :
+`match_death_context` (passe d'isolement, positions des coéquipiers et distances à la mort) et
+`kill_positions` (positions tueur/victime du coup fatal). Sur la preuve réelle du 2026-10-14,
+elles diffèrent de **0,05 à 0,28 m** (matchs `3ba5a548`, `5909b276`, `5caa00ac`, `f54d20b0`,
+`1bec6619`) ; la tolérance de contrôle a été portée à 0,5 m. Sans effet visible aujourd'hui : la
+page Tactique place la mort et le tueur depuis `kill_positions` et les distances des coéquipiers
+depuis le contexte.
+
+À faire si un affichage compare un jour les deux côte à côte (ou si l'écart grandit sur un
+nouveau build) : établir sur pièces l'instant lu par chaque source (image du coup fatal vs
+échantillon de position voisin) et choisir une source unique pour la position de la mort, avec
+un garde-rail qui empêche de remélanger les deux. Inscrit aussi au registre des reports.
+**Effort : S.**
+
+---
+
 ### [rejeu/score] Courbe de score anormale sur deux matchs classés de Lattice (KOTH)
 
 Relevé par le lot Roi de la colline (2026-10-09, D1 de `.ai/PLAN_KOTH_REJEU_2026-10-09.md`),
