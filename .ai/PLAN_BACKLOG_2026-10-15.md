@@ -130,16 +130,16 @@ Décisions fermes :
   couleur), différent du bandeau « match partiel ». Erreur ET vide simultanés : le bandeau
   « indisponible » prime.
 
-- [ ] E4.1 Inventaire sur pièces : toutes les sources chargées par `goLoad`, toutes les raisons
+- [x] E4.1 Inventaire sur pièces : toutes les sources chargées par `goLoad`, toutes les raisons
   `partial_reasons` émises, leurs lecteurs (Go, OpenAPI, web, tests E2E), le chemin de cache.
-- [ ] E4.2 Service : erreur ≠ vide (D-8) ; tests unitaires avec un chargeur en erreur et un
+- [x] E4.2 Service : erreur ≠ vide (D-8) ; tests unitaires avec un chargeur en erreur et un
   chargeur vide, rouges avant.
-- [ ] E4.3 Cache : D-9, test qui prouve qu'une vue en erreur n'est pas servie depuis le cache
+- [x] E4.3 Cache : D-9, test qui prouve qu'une vue en erreur n'est pas servie depuis le cache
   au second appel une fois le chargeur rétabli, rouge avant.
-- [ ] E4.4 Contrat : OpenAPI (raisons documentées), `make generate-types`, golden à jour.
-- [ ] E4.5 Web : bandeau D-10 dans la logique (`*_logic.ts` / hook, pas dans le composant),
+- [x] E4.4 Contrat : OpenAPI (raisons documentées), `make generate-types`, golden à jour.
+- [x] E4.5 Web : bandeau D-10 dans la logique (`*_logic.ts` / hook, pas dans le composant),
   i18n FR+EN, test vitest.
-- [ ] E4.6 Les autres raisons `partial_reasons` existantes gardent leur sens (non-régression).
+- [x] E4.6 Les autres raisons `partial_reasons` existantes gardent leur sens (non-régression).
 
 Gate : `go test` des paquets touchés + `./internal/api/...`, `make check-types`, `make test-web`
 (fichiers de la vue match), recette navigateur de la vue match (cas normal + chargeur coupé
@@ -202,6 +202,9 @@ diff E5 (lot persist/sync).
 - E2 : les valeurs DÉJÀ calculées pour les joueurs Halo 5 (sessions, score de performance, LUSR, modèle des assistances, engagement, dates de paliers) l'ont été Campagne comprise ; les chargeurs corrigés ne les recalculent pas d'eux-mêmes. À décider avec le user au déploiement ; rien n'est lancé.
 - E2 : le commentaire de `games/halo_5/ingest/registry.go:46` (« engagement `loadMatchesForEngagement` exclut ces matchs » faute de `end_time`) décrivait un effet de bord, pas une exclusion de la Campagne : sans objet depuis la correction. Non traité.
 - E3 (superviseur) : `SquadUsualContexts(ctx, roster, titleSlug)` garde un argument `titleSlug` ignoré par l'implémentation (`wire/prestige_lazy_service_squad.go:173-178`) ; depuis E3.3 le handler passe `""`. Paramètre mort de l'interface, à retirer (règle n°7). Non traité.
+- E4 (exécutant) : les 16 autres chargeurs de `goLoad` (enrichment, objective score, kill_sources, kill_assists, assist_pairs, kv_pairs, skill_rank, shared_csrs, encounters, encounter_stats, encounter_assists, media, expected_stats, bulk_medals, bulk_weapons, hist_avg, + kill_distances et citations câblés sous condition) et le chargeur `eventsRepo.Load` (manuel) restent best-effort : un échec ne laisse que le journal (désormais WARN, inchangé), aucune raison dans la vue. D-8 est appliqué aux QUATRE sources qui portaient déjà une `<source>_empty` (le plan dit « à côté des `<source>_empty` existantes ») ; étendre aux autres demande un code par source et une chaîne web chacune. Non traité.
+- E4 (exécutant) : `translatePartialReason` (`MatchViewPage.tsx`) porte quatre codes que Go n'émet plus jamais (`combat_narrative_unavailable`, `citations_unavailable`, `media_unavailable`, `accuracy_damage_taken_native_unavailable`) : code mort côté web (règle n°7), et `citations_unavailable` / `media_unavailable` auraient pu être pris pour des pannes de lecture (d'où l'ensemble FERMÉ `isUnavailableReason`). Ses libellés sont des ternaires FR/EN en ligne, pas dans `i18n.ts` (antérieur à E4). Non traité.
+- E4 (exécutant) : `CachedHighlightEventsRepo` (`platform/duckdb/highlight_events_cache.go`) n'a aucun appelant de production (le câblage de la vue match utilise `NewHighlightEventsRepo` non décoré) : code mort. `match_view_data_loaders.go` fait 699 lignes (> 500, dette gelée, +1 ligne). Non traités.
 
 ## 4. Journal
 
@@ -351,3 +354,66 @@ diff E5 (lot persist/sync).
   - **E3.4** : entrée « [go/hygiène] » du backlog supprimée (4 lignes : 2 traitées, 2 retirées par D-6).
   - **Gate** : `go test` sans tag puis `-tags=integration -p 1` sur `archlint`, `platform/duckdb`, `api/...` : tous `ok` (golden OpenAPI `TestOpenAPIYAMLIsUpToDate` inclus dans `internal/api`) ; `make check-types` sans diagnostic ; `make test-web` : 919 fichiers passés, 9598 tests.
   - **E3 close.**
+- 2026-10-15 (E4, exécutant Sonnet) : E4.1 à E4.6 faits, gate vert, recette navigateur `[!]` (voir plus bas).
+  - **E4.1, inventaire sur pièces (écrit avant de coder)**
+    - Sources de `loadMatchViewDataParallel` (`service/match_view_data_loaders.go`) : par `goLoad` (WARN, erreur avalée, valeur
+      zéro) : stats, enrichment, scoreboard, objective score, medals, events, kill_sources, kill_assists, assist_pairs, kv_pairs,
+      skill_rank, shared_csrs, encounters, encounter_stats, encounter_assists (`match_view_encounter_assists.go`), media,
+      expected_stats, bulk_medals, bulk_weapons, hist_avg ; conditionnelles : kill_distances, citations, rich citations ; hors
+      `goLoad` : `eventsRepo.Load` (`g.Go` manuel, WARN, repli sur la conversion de `events`), awards et friendsExtras (après
+      `g.Wait`). Seules quatre sources alimentent `partial_reasons` : stats, scoreboard, events, medals.
+    - `partial_reasons` ÉMISES par Go : uniquement `detectPartialMatchData` (`:655-690`) : `scoreboard_empty`, `events_empty`,
+      `player_stats_empty` (stats nil ou outcome 0), `medals_empty` (0 médaille ET bit PBitMedals absent). Posées dans
+      `buildMatchViewFromData` (`IsPartial = len > 0`). Autre usage du mot `partial_reasons` : colonne
+      `player_match_enrichment.partial_reasons` de la préparation des snapshots (vocabulaire distinct, `sync/snapshot`) : sans lien
+      avec la vue, non touchée.
+    - LUES : web `MatchViewPage.tsx` (`translatePartialReason`, bandeau), `lib/api/types.ts` (type, commentaire) ; aucun test
+      E2E Playwright (`apps/web/e2e/` : seul `compare-bars.spec.ts` contient « partial », sans rapport) ; tests Go :
+      `match_view_dominance_test.go:434-510` (5 tests de `detectPartialMatchData`, inchangés et verts).
+    - CHEMIN DE CACHE COMPLET de la vue match : (1) AUCUN cache serveur de la réponse : le service est reconstruit à chaque requête
+      (`wire.MatchView`, `ServiceFactory`), aucun cache de réponse, aucun `singleflight` sur ce chemin ; `CachedHighlightEventsRepo`
+      existe mais n'est pas câblé (la vue utilise `NewHighlightEventsRepo`) ; `player_read_cache` (ADR 0036 I3) ne porte ni la vue
+      ni ses sources ; (2) AUCUN en-tête HTTP de cache sur `GET /players/{slug}/matches/{id}` (pas d'ETag, pas de Cache-Control :
+      `middleware.CacheMaxAge` n'est monté nulle part, `cache_http.go` ne sert que les blobs/assets) ; (3) lecture de source :
+      `SnapshotPreferredSharedReader` (singleton par titre, cache de queriers `:memory:` et negative-cache par VERSION de cut,
+      repli live) : cache de CONNEXION, pas de résultat, hors périmètre ; (4) le SEUL cache qui réutilise une vue : TanStack Query
+      côté web, `useMatchView` `staleTime` 10 min (`features/match-view/queries.ts`) : une vue dégradée y restait 10 minutes ;
+      pas de service worker, pas de persistance de requêtes, pas de préchargement de `matchView` (`lib/query/prefetch.ts` ne le
+      touche pas). Le cache n'est donc pas « côté serveur » comme le suppose la lettre de D-9, mais l'intention (la panne ne survit
+      pas au retour du chargeur) est portée par le cache web ; décision : traiter (4) en E4.5 (`staleTime` fonction de la vue) et poser
+      `no-store` côté HTTP en garde-fou. Aucune raison existante ne change de sens.
+  - **E4.2 / D-8** : quatre raisons nouvelles, à côté des `_empty` : `scoreboard_unavailable`, `events_unavailable`,
+    `player_stats_unavailable`, `medals_unavailable` (constantes `domain.PartialReason*Unavailable`, `domain.IsUnavailableReason`,
+    `MatchViewResponse.HasUnavailableSource`). Une source en échec n'émet JAMAIS aussi son `_empty` (`matchPartialReasons`,
+    `service/match_view_source_failures.go`, fichier neuf ; `detectPartialMatchData` inchangée). `sourceFailures.goLoad` : journal
+    `slog.ErrorContext(ctx, "match_view: source indisponible", "source", ..., "match_id", ..., "err", ...)` AVANT la dégradation (WARN si
+    l'erreur est `context.Canceled` : requête abandonnée, pas panne de la source). Périmètre : les quatre sources portant déjà une
+    `_empty` (voir section 3 pour les autres). Tests `service/match_view_unavailable_test.go` : 4 sources x (erreur, vide), panne +
+    vide simultanés, journal. Rouge avant (mutant : `if false && d.failures.has(src)`, équivalent à l'ancien comportement) : 4 cas
+    « erreur », « panne et vide simultanés », « la panne ne survit pas » en échec ; vert après.
+  - **E4.3 / D-9** : (a) service : `TestMatchView_LaPanneNeSurvitPasAuRetourDuChargeur` (même service, chargeur du tableau des scores
+    rétabli entre deux appels : 2e vue complète, tableau servi, aucune raison) : aucun cache serveur de la vue n'existe (inventaire),
+    il fige donc l'invariant ; rouge avec le mutant ci-dessus (le 1er appel n'y est plus « en échec ») ; (b) HTTP :
+    `handlers/match_view_test.go` `TestMatchViewHandler_CacheControl_VueEnEchec` : `Cache-Control: no-store` sur une vue avec
+    source en panne, AUCUN en-tête sur vue complète, vue à source vide seule et code homonyme structurel (`media_unavailable`) ; rouge
+    avant (2 cas en échec avec `if false &&`) ; (c) web : `queries.matchView.test.tsx` : retour sur la page après une vue en panne =
+    nouvel appel et vue complète servie ; vue complète = un seul appel ; rouge avant (`staleTime` fixe 10 min : le test « vue en panne »
+    échoue), vert après. `matchViewStaleTime` testé dans `matchPartial.logic.test.ts`.
+  - **E4.4 contrat** : `make openapi-gen` + `make generate-types`. Diff : `partial_reasons` documenté (`doc:` : `_empty` vs `_unavailable`,
+    vue transitoire, no-store) ; en-tête de réponse `Cache-Control` (string, optionnel) sur `getMatchView` 200. `generated.ts` régénéré
+    (2 hunks), `types.ts` (commentaire des codes). `TestOpenAPIYAMLIsUpToDate` (`internal/api`) vert.
+  - **E4.5 web** : `features/match-view/matchPartial.logic.ts` (`selectMatchPartialBanner` : `unavailable` prime sur `partial`, ensemble
+    fermé des quatre codes ; `matchViewStaleTime`), bandeau dans `MatchViewPage.tsx` (tokens `destructive` : `border-destructive/50
+    bg-destructive/10 text-destructive`, aucun hex), i18n `pageUnavailableBanner` FR « Données momentanément indisponibles, réessayez
+    plus tard » / EN « Data temporarily unavailable, please try again later » (parité typée dans `MatchViewText`). Tests vitest :
+    logique, page (4 : panne seule, panne + vide, vide seul inchangé, complète), cache (2).
+  - **E4.6** : les cinq tests `TestDetectPartialMatchData_*` inchangés et verts ; test de page « source vide seule » garde le bandeau
+    partiel et son texte ; `translatePartialReason` intact.
+  - **Gate** : `go test ./internal/domain/ ./internal/service/` ok (première passe de `internal/service` en échec, non reproduit : 7
+    rejeux `-count=1` verts, cause non établie) ; `go test -count=1 ./internal/api/... ./internal/archlint/` ok (api 25.9 s, handlers
+    10.5 s, wire, archlint 73.8 s) ; `go vet` service/domain/handlers sans diagnostic ; `make check-types` sans diagnostic ; `make
+    test-web` : 921 fichiers passés (5 ignorés), 9614 tests ; eslint des fichiers touchés sans diagnostic.
+  - **Recette navigateur : `[!]`** : `http://127.0.0.1:8000/health` répond 200 mais ce serveur n'est pas un build de cette branche
+    (aucun binaire de ce worktree lancé) : il ne servirait ni le bandeau ni l'en-tête. Le cas « chargeur coupé » est de toute façon
+    simulé en test (interdit sur les bases réelles) ; le cas normal et le rendu des bandeaux sont couverts par les tests de page. À
+    faire par le superviseur sur un build de la branche.

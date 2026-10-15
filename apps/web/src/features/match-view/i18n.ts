@@ -54,6 +54,8 @@ export interface MatchViewText {
   pageErrorTitle: string
   pageRetry: string
   pagePartialLoad: string
+  /** Bandeau E4 : une source de la vue est en panne (≠ vide). Prime sur pagePartialLoad. */
+  pageUnavailableBanner: string
   // État dédié 404 match_not_found — match absent du substrat local (pas encore
   // synchronisé, ou identifiant invalide). Remplace l'écran d'erreur générique
   // (retiré le 2026-07-25 avec le fallback LIVE du Match view, cf. BACKLOG).
@@ -368,6 +370,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     pageErrorTitle: 'Match introuvable ou erreur de chargement.',
     pageRetry: 'Réessayer',
     pagePartialLoad: 'Ce match n\'a pas pu être chargé en totalité.',
+    pageUnavailableBanner: 'Données momentanément indisponibles, réessayez plus tard',
     notSyncedTitle: 'Match pas encore synchronisé',
     notSyncedDescription:
       "Ce match n'est pas encore dans la base locale. Un match qui vient d'être joué apparaît après la prochaine synchronisation, dans quelques minutes ; s'il n'apparaît pas, le lien du match est peut-être erroné ou la synchronisation du joueur inactive.",
@@ -687,6 +690,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     pageErrorTitle: 'Match not found or load error.',
     pageRetry: 'Retry',
     pagePartialLoad: 'This match could not be fully loaded.',
+    pageUnavailableBanner: 'Data temporarily unavailable, please try again later',
     notSyncedTitle: 'Match not synced yet',
     notSyncedDescription:
       "This match isn't in the local database yet. A match that was just played shows up after the next sync, within a few minutes; if it doesn't, the match link may be wrong or the player's sync inactive.",

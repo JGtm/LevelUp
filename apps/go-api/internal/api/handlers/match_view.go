@@ -192,7 +192,13 @@ func (in *matchNeighborsInput) Resolve(ctx huma.Context) []error {
 	return nil
 }
 
-type matchViewOutput struct{ Body domain.MatchViewResponse }
+// matchViewOutput : CacheControl n'est posé (no-store) que sur une vue construite avec une
+// source en échec (D-9) : cette réponse dégradée est transitoire, aucun cache HTTP ne doit
+// la rejouer une fois la panne passée. Vide (en-tête absent) sur une vue complète.
+type matchViewOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         domain.MatchViewResponse
+}
 type matchNeighborsOutput struct{ Body domain.MatchNeighbors }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -230,7 +236,11 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 	// transformation que la galerie /pages/media). Sans ça les vignettes webp
 	// et le média dans le lecteur tombent en 404 (chemins relatifs bruts).
 	h.transformMatchMediaURLs(in.PlayerSlug, resp.MediaTab.MediaItems)
-	return &matchViewOutput{Body: resp}, nil
+	out := &matchViewOutput{Body: resp}
+	if resp.HasUnavailableSource() {
+		out.CacheControl = noStoreCacheControl
+	}
+	return out, nil
 }
 
 // transformMatchMediaURLs réécrit file_path + thumbnail_url de chaque média en

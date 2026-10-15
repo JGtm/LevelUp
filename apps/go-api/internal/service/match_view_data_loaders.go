@@ -82,6 +82,7 @@ type matchViewData struct {
 	// câblé, ou si aucun kill n'a de position mesurée.
 	killDistances  []domain.MatchKillDistancePlayer
 	objectiveScore int
+	failures       *sourceFailures // sources dont la lecture a échoué : « en panne » ≠ « vide » (E4)
 }
 
 // loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
@@ -92,11 +93,11 @@ type matchViewData struct {
 //
 //nolint:funlen,cyclop // routage errgroup linéaire ~20 chargements concurrents — découper davantage ne réduit pas la complexité réelle.
 func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchID string) (matchViewData, error) {
-	var d matchViewData
+	d := matchViewData{failures: newSourceFailures()}
 
 	g, gctx := errgroup.WithContext(ctx)
 
-	goLoad(gctx, g, matchID, "stats", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcPlayerStats, func() error {
 		var e error
 		d.stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
 		return e
@@ -106,7 +107,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "scoreboard", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcScoreboard, func() error {
 		var e error
 		d.scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
 		return e
@@ -120,12 +121,12 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "medals", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcMedals, func() error {
 		var e error
 		d.medals, e = s.repo.GetMatchMedals(gctx, s.xuid, matchID)
 		return e
 	})
-	goLoad(gctx, g, matchID, "events", func() error {
+	d.failures.goLoad(gctx, g, matchID, srcEvents, func() error {
 		var e error
 		d.events, e = s.repo.GetMatchEvents(gctx, matchID)
 		return e
@@ -534,7 +535,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// court-circuité plus haut), mais une ou plusieurs sources secondaires sont
 	// vides. Le front peut afficher un bandeau dégradé au lieu de l'écran
 	// "Match introuvable ou erreur de chargement" full-page.
-	partialReasons := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
+	partialReasons := matchPartialReasons(d)
 
 	return domain.MatchViewResponse{
 		Header:                 header,
@@ -663,6 +664,8 @@ const pBitMedals = 1 << 9
 //   - "medals_empty"         → Q14 a renvoyé 0 médailles ET le bit PBitMedals
 //     n'est pas positionné (médailles jamais fetchées). Si le bit est positionné,
 //     0 médaille est un résultat légitime (certains modes n'en attribuent pas).
+//
+// Une lecture EN ÉCHEC n'est pas un vide : matchPartialReasons la dit `<source>_unavailable`.
 func detectPartialMatchData(
 	stats *domain.PlayerMatchStatsRaw,
 	scoreboard []domain.ScoreboardRaw,

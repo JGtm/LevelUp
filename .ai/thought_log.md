@@ -117447,3 +117447,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Résultats observés** : 6 tests rouges puis verts (temps divergents, import à `start_time` NULL, lignes illisibles, journal du repli) ; deux fichiers sortis de l'allowlist `rawOrderByStartTimeAllowlist` ; OpenAPI et `generated.ts` régénérés (un paramètre en moins) ; gate Go (sans tag et `integration`), `check-types` et `test-web` verts ; entrée du backlog supprimée.
 
 **Conclusion / prochaine étape** : E3 close ; E4 (vue match : lecture en échec distincte de pas de données).
+
+## [2026-10-15] Backlog E4 : vue match, lecture en échec distincte de « pas de données » — Complété (branche `feat/backlog-2026-10-15`, non poussée)
+
+**Décision technique principale** : quatre raisons `<source>_unavailable` (tableau des scores, événements, stats du joueur, médailles) à côté des `_empty`, jamais émises avec l'`_empty` de la même source ; erreur journalisée en ERROR avant la dégradation. Réponse toujours 200 ; `Cache-Control: no-store` sur une vue avec source en panne ; côté web, `staleTime` de `useMatchView` à 0 pour une telle vue et bandeau « Données momentanément indisponibles » qui prime sur le bandeau partiel.
+
+**Résultats observés** : le cache de la vue n'est pas côté serveur (aucun cache de réponse, aucun en-tête HTTP) : le seul réutilisateur était TanStack Query (10 min), traité. Tests rouges puis verts (service, en-tête HTTP, cache web), contrat OpenAPI et types régénérés, gate Go (domain, service, api, archlint) et web (check-types, 9 614 tests) verts. Recette navigateur non faite : le serveur local n'est pas un build de la branche.
+
+**Conclusion / prochaine étape** : E4 close. Les 16 autres chargeurs de la vue restent best-effort sans raison (section 3 du plan). Suite : E5.

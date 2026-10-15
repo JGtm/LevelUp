@@ -9416,6 +9416,7 @@ export interface components {
             is_partial?: boolean;
             lives_near_teammate?: components["schemas"]["MatchLivesNearTeammate"];
             media_tab: components["schemas"]["MatchMediaTab"];
+            /** @description Codes stables des sources de la vue incomplètes. <source>_empty : la lecture a réussi et ne rend rien (scoreboard, events, player_stats, medals). <source>_unavailable : la lecture a ÉCHOUÉ (scoreboard_unavailable, events_unavailable, player_stats_unavailable, medals_unavailable) ; la vue est alors transitoire, servie avec Cache-Control: no-store, et le client ne doit pas la conserver. */
             partial_reasons?: string[] | null;
             privacy_warning?: components["schemas"]["MatchPrivacyWarning"];
             radar?: unknown[] | null;
@@ -18685,6 +18686,7 @@ export interface operations {
             /** @description Détail du match */
             200: {
                 headers: {
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {

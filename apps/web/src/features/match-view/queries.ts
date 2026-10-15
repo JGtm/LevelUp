@@ -6,6 +6,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { matchViewStaleTime } from './matchPartial.logic'
 import type { MatchObjectiveEvent, MatchPlayerPosition, MatchViewResponse } from '@/lib/api/types'
 
 export function useMatchView(playerSlug: string, matchId: string) {
@@ -15,7 +16,8 @@ export function useMatchView(playerSlug: string, matchId: string) {
     queryFn: () =>
       api.get<MatchViewResponse>(`/players/${playerSlug}/matches/${matchId}`),
     enabled: !!playerSlug && !!matchId,
-    staleTime: 10 * 60 * 1000,
+    // Une vue avec une source en panne n'est jamais conservée (D-9) : périmée d'emblée.
+    staleTime: (query) => matchViewStaleTime(query.state.data),
   })
 }
 

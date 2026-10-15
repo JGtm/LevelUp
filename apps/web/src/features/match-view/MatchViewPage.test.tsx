@@ -154,3 +154,59 @@ describe('MatchViewPage — onglet Général : structure des rangées', () => {
     expect(screen.getByText('Récompenses')).toBeInTheDocument()
   })
 })
+
+describe('MatchViewPage — bandeaux « match partiel » et « données indisponibles » (E4)', () => {
+  const vueAvec = (is_partial: boolean, partial_reasons: string[]) => {
+    hoisted.matchView.isError = false
+    hoisted.matchView.error = null
+    hoisted.matchView.data = {
+      header: { map_ui: 'Forest', mode_ui: 'Slayer', start_time_label: null },
+      rank: null,
+      summary_tab: { kpis: {}, expected_stats: null, medals: [], citations: [] },
+      combat_tab: {},
+      team_tab: {},
+      media_tab: { media_items: [] },
+      citations_tab: { native_commendations: [] },
+      radar: null,
+      is_partial,
+      partial_reasons,
+    }
+  }
+  const INDISPONIBLE = 'Données momentanément indisponibles, réessayez plus tard'
+  const PARTIEL = "Ce match n'a pas pu être chargé en totalité."
+
+  it('source en panne : bandeau « indisponible », pas le bandeau partiel', () => {
+    vueAvec(true, ['scoreboard_unavailable'])
+    renderWithProviders(<MatchViewPage />)
+
+    expect(screen.getByText(INDISPONIBLE)).toBeInTheDocument()
+    expect(screen.queryByText(PARTIEL)).not.toBeInTheDocument()
+  })
+
+  it('panne ET source vide : « indisponible » prime, le bandeau partiel disparaît', () => {
+    vueAvec(true, ['scoreboard_unavailable', 'events_empty'])
+    renderWithProviders(<MatchViewPage />)
+
+    expect(screen.getByText(INDISPONIBLE)).toBeInTheDocument()
+    expect(screen.queryByText(PARTIEL)).not.toBeInTheDocument()
+  })
+
+  it('source vide seule : bandeau partiel inchangé, pas de bandeau « indisponible »', () => {
+    vueAvec(true, ['scoreboard_empty'])
+    renderWithProviders(<MatchViewPage />)
+
+    expect(screen.getByText(PARTIEL)).toBeInTheDocument()
+    expect(
+      screen.getByText('Le tableau des scores et les stats individuelles sont indisponibles'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(INDISPONIBLE)).not.toBeInTheDocument()
+  })
+
+  it('vue complète : aucun bandeau', () => {
+    vueAvec(false, [])
+    renderWithProviders(<MatchViewPage />)
+
+    expect(screen.queryByText(PARTIEL)).not.toBeInTheDocument()
+    expect(screen.queryByText(INDISPONIBLE)).not.toBeInTheDocument()
+  })
+})

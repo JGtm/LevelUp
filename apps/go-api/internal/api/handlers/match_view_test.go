@@ -440,3 +440,48 @@ func TestMatchViewHandler_Positions_CapabilityUnsupported(t *testing.T) {
 		t.Errorf("code = %v, want capability_not_supported", body["code"])
 	}
 }
+
+// E4 / D-9 : une vue construite avec une source en échec est transitoire — réponse 200
+// partielle, mais Cache-Control: no-store pour qu'aucun cache HTTP ne la rejoue quand le
+// chargeur est rétabli. Une vue complète, ou partielle seulement parce qu'une source est
+// vide (`<source>_empty`, sens inchangé), ne porte PAS cet en-tête.
+func TestMatchViewHandler_CacheControl_VueEnEchec(t *testing.T) {
+	cas := []struct {
+		nom       string
+		raisons   []string
+		noStore   bool
+		partielle bool
+	}{
+		{"complete", nil, false, false},
+		{"source vide", []string{"scoreboard_empty", "medals_empty"}, false, true},
+		{"source en echec", []string{"scoreboard_unavailable"}, true, true},
+		{"echec et vide", []string{"events_unavailable", "medals_empty"}, true, true},
+		{"code structurel homonyme", []string{"media_unavailable"}, false, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			resp := domain.MatchViewResponse{
+				Header:         domain.MatchViewHeader{MatchID: "abc123"},
+				IsPartial:      c.partielle,
+				PartialReasons: c.raisons,
+			}
+			factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+				return &mockMatchViewService{resp: resp}, nil
+			}
+			req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/abc123", nil)
+			w := httptest.NewRecorder()
+			newMatchViewRouter(factory).ServeHTTP(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("200 attendu (dégradation gracieuse), obtenu %d : %s", w.Code, w.Body.String())
+			}
+			got := w.Header().Get("Cache-Control")
+			if c.noStore && got != "no-store" {
+				t.Errorf("Cache-Control = %q, no-store attendu", got)
+			}
+			if !c.noStore && got != "" {
+				t.Errorf("Cache-Control = %q, aucun en-tête de cache attendu", got)
+			}
+		})
+	}
+}
