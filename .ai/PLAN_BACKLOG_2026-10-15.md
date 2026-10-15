@@ -232,7 +232,7 @@ Décisions fermes :
   identiques, vues valides ; second passage = no-op). **Répétition sur les COPIES prod** fournies
   par le superviseur (`scratchpad/e5_prod/{halo_infinite,halo_5}`, sur une copie de la copie) :
   comptes avant/après, liste des index, durée, mémoire ; résultats au journal.
-- [ ] E5.6 Tests : persist/migration (tag `integration`, OBLIGATOIRE), rouge avant ; ratchets ART
+- [x] E5.6 Tests : persist/migration (tag `integration`, OBLIGATOIRE), rouge avant ; ratchets ART
   verts (`no_art_patterns_test.go`, allowlist inchangée, `criticalMatchTables`/`guardedSharedTables`
   respectées).
 
@@ -267,6 +267,18 @@ diff E5 (lot persist/sync).
 - E4.8a : `loadAwardsForScoreboard`, `MatchViewService.WithAwardsRepo` et le champ `awardsRepo` n'ont aucun appelant de production : code mort (règle n°7), non traité. `match_bomb_stats` n'est pas exporté dans le snapshot (`ops/snapshot_export.go`) : sur un match servi du snapshot, les statistiques d'Assaut sont absentes de la vue (comportement antérieur inchangé, désormais constaté explicitement dans `loadMatchBombStats`) ; à corriger par l'export de la table ou une lecture live, hors E4.
 - E4.8b : l'AST du garde (E4.8c) a relevé trois sites HORS inventaire, traités parce que l'allowlist est vide : `GetMatchNeighbors` et `GetMatchNeighborsFiltered` (voisins vides sur lecteur indisponible ou requête en échec) et `LookupMedalMetaByName` (WARN + map vide). Restent HORS garde (ils ne renvoient pas d'`error`) et non traités : `lookupMapImageURL`, `ResolveAssetNamesBulk` ignoré par `_` et la résolution de nom d'asset de `GetMatchMeta` (`match_view_repo.go:169`, `:305-333`), `lookupWeaponMeta`/`resolveWeaponMeta` (libellés d'armes), `loadKnownModesEN` ; côté service, `computeExpectedAssists` rend `nil` en silence quand `GetAssistsCoef` échoue, et `GetMatchNeighbors`/`GetMatchNeighborsFiltered` (service) rendent encore des voisins vides + nil sur erreur du repo (journal passé en ERREUR, comportement inchangé). Le garde ne couvre pas non plus `if err == nil && ...` (forme du lecteur illisible silencieux : `match_view_repo.go:333`, `lookupMapImageURL`).
 - E4.8b : `friendsByXUID` (`wire/registry_pages.go`) incluait TOUS les profils du titre, `auth_only` compris (aucune player DB de stats) : avec une panne remontée, chaque vue contenant un tel ami serait passée en `section_unavailable`. Corrigé dans le même lot (`friendProfilesByXUID`, test), parce que le changement de port rendait la différence absence/panne observable. Reste : un profil SUIVI dont la player DB n'a jamais été créée ou migrée (ami onboardé, jamais synchronisé) est désormais une panne dite pour ses vues ; à surveiller au premier déploiement (journal ERROR `friends_extras: open player db failed` / `load ... failed`).
+
+- E5 (exécutant) : `cmd/levelup/cmd_reset_bitmasks.go:202` garde sa propre copie de la valeur 512 (`backfillFlagParticipantsForReset`) au lieu de
+  `matchflags.BackfillParticipants`. Non traité.
+- E5 (verdict V-4) : les 157 matchs Halo Infinite de la fenêtre du 25 au 30 mai n'ont pas non plus le bit skill (4) ; non posé (donnée non vérifiable depuis
+  la base partagée). Non traité.
+- E5 : `migration.ApplyResolutionViews` avale l'erreur de création de `v_match_full` (`_, _ = db.ExecContext`, `steps_shared.go`), et le DDL de cette vue
+  existe en trois exemplaires (constante `vMatchFullViewSQL`, `sync/schema.go`, `ops/seed_demo.go`) : règle n°6 et anti-pattern n°10. Non traités.
+- E5 : une base partagée copiée sous le nom `shared.duckdb` fait échouer `shared_drop_weapon_kills_v1` (« Ambiguous reference to catalog or schema
+  "shared" ») : le catalogue DuckDB prend le nom du fichier. Sans effet en production (`shared_matches_v2.duckdb`) ; à savoir pour toute répétition
+  sur copie. Non traité.
+- E5 : le type du mapper OpenSpartan porte encore `EventsLoaded` / `MedalsLoaded`, posés à vrai et jamais recopiés au registre (même nature que
+  `ParticipantsLoaded`, hors du verdict). Non traité.
 
 ## 4. Journal
 
@@ -801,3 +813,13 @@ diff E5 (lot persist/sync).
   Les gardes d'empreinte de vue ont tenu sur les quatre copies : la `mv_player_matches` stockée en prod EST la définition canonique plus
   `mr.player_count`. Second passage : runner sans step nouveau au ledger, `table_oid` inchangé, partout. Originaux intacts (copies prod du superviseur
   20:17, bases locales jamais ouvertes : copie de fichier seulement). **E5.5 STATUÉ `[x]`.**
+- 2026-10-16 (E5.6, exécutant) : gate exact sur `./internal/persist/... ./internal/sync/... ./internal/games/... ./internal/migration/...
+  ./internal/openspartan/... ./internal/ops/... ./internal/archlint/` + paquets touchés (`./internal/service/`, `./internal/domain/`,
+  `./cmd/mapfond-inventaire/`, `./cmd/h5-roster-topup/`, `./cmd/diag_expected_assists/` sous tag `cgo`) : `go vet` (avec et sans tag `integration`) vert ;
+  `go test -count=1` vert ; `go test -count=1 -tags=integration -p 1` vert (persist 54 s, ops 82 s, sync 167 s, games 3 min 14) ; `go test
+  ./internal/api/...` vert ; contrat OpenAPI inchangé (pas de `make check-types`) ; golangci-lint `--new-from-rev=4066ad33b` sur les paquets touchés, avec
+  et sans tag `integration` : 0 issue (un `goconst` levé puis corrigé : noms de colonnes en constantes). Rouge avant vert établi par item (E5.3 lecteur de
+  snapshot, E5.4 import, E5.5 migration neutralisée). Garde-rails ART : `no_art_patterns_test.go`, `shared_write_guard_test.go`,
+  `append_only_state_guard_test.go`, `no_slug_comparison_test.go` verts et INCHANGÉS (`git diff 4066ad33b` vide sur ces fichiers) ; la migration n'écrit
+  `match_registry` que par la table de construction (INSERT) et l'échange DROP/RENAME, sans `UPDATE` ni `ON CONFLICT`. **E5.6 STATUÉ `[x]`.** E5 :
+  revue adversariale laissée au superviseur (consigne).

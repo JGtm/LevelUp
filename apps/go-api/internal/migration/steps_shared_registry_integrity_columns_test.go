@@ -164,7 +164,7 @@ func TestRegistryIntegrity_RetireColonnesIndexEtPoseLeBit(t *testing.T) {
 	}
 	vuesAvant := map[string]EmpreinteVue{}
 	for _, v := range []string{"v_match_full", "mv_player_matches"} {
-		e, err := empreinteHorsColonnes(ctx, db, v, []string{"participants_loaded", "player_count", "backfill_completed"})
+		e, err := empreinteHorsColonnes(ctx, db, v, []string{colonneParticipantsLoaded, colonnePlayerCount, backfillCompletedColonne})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -383,8 +383,8 @@ func TestProjectionIntegrite(t *testing.T) {
 		p    planIntegrite
 		want string
 	}{
-		{planIntegrite{retirees: []string{"player_count"}}, "SELECT * EXCLUDE (player_count) FROM match_registry"},
-		{planIntegrite{retirees: []string{"participants_loaded", "player_count"}},
+		{planIntegrite{retirees: []string{colonnePlayerCount}}, "SELECT * EXCLUDE (player_count) FROM match_registry"},
+		{planIntegrite{retirees: []string{colonneParticipantsLoaded, colonnePlayerCount}},
 			"SELECT * EXCLUDE (participants_loaded, player_count) FROM match_registry"},
 	}
 	for _, c := range cas {

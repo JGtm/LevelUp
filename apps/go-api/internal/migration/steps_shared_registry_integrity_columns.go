@@ -44,12 +44,14 @@ import (
 )
 
 const (
-	integriteSuffix          = "__integrite"
-	backfillCompletedColonne = "backfill_completed"
+	integriteSuffix           = "__integrite"
+	backfillCompletedColonne  = "backfill_completed"
+	colonneParticipantsLoaded = "participants_loaded"
+	colonnePlayerCount        = "player_count"
 )
 
 // colonnesIntegriteRetirees : les colonnes de match_registry que la reconstruction retire.
-var colonnesIntegriteRetirees = []string{"participants_loaded", "player_count"}
+var colonnesIntegriteRetirees = []string{colonneParticipantsLoaded, colonnePlayerCount}
 
 // vuesCanoniquesDuRegistre : les vues dont le DDL vit dans le code ; jouées tel quel après
 // l'échange. Toute autre vue qui lit match_registry est rejouée depuis son DDL stocké.
