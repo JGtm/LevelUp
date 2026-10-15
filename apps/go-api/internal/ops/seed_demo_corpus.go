@@ -16,6 +16,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 // DefaultSquadSessions : nombre de sessions en escouade retenues pour le corpus.
@@ -398,7 +400,35 @@ func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpu
 			dc.media = mm
 		}
 	}
-	// Campagne exclue de l'ensemble final, quelle que soit la voie (E6.2a-F2).
-	dc.excludeCampaign(ctx, opts.SourceSharedDB, opts.TitleSlug)
 	return dc
+}
+
+// resolveDemoCorpus rend le corpus démo : celui du manifeste figé config/demo/<gamertag>/<slug>.json
+// s'il existe (manifest non nil), sinon la sélection dynamique « N récents ». UNIQUE point où la
+// Campagne du titre est exclue de l'ensemble final, pour les deux chemins et toutes les voies
+// (solo, escouade, classé, média) : un manifeste curé avant la règle peut en porter.
+func resolveDemoCorpus(ctx context.Context, opts SeedDemoOptions) (dc dynamicCorpus, manifest *DemoManifest, err error) {
+	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
+		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
+		m, found, mErr := LoadDemoManifest(mp)
+		if mErr != nil {
+			return dc, nil, fmt.Errorf("seed-demo: %w", mErr)
+		}
+		if found {
+			manifest = m
+			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
+		}
+	}
+	if manifest != nil {
+		dc = dynamicCorpus{
+			solo:   manifest.Corpus.SoloMatchIDs,
+			squad:  manifest.Corpus.SquadMatchIDs,
+			ranked: manifest.Corpus.RankedMatchIDs,
+			media:  manifest.Corpus.MediaMatchIDs,
+		}
+	} else {
+		dc = selectDynamicCorpus(ctx, opts)
+	}
+	dc.excludeCampaign(ctx, opts.SourceSharedDB, opts.TitleSlug)
+	return dc, manifest, nil
 }

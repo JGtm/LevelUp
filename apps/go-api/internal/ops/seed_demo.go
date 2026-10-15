@@ -417,33 +417,14 @@ type demoCorpusSelection struct {
 // « N récents ») puis construit le roster démo (source + coéquipiers principaux + autres
 // participants → identités démo stables, anti-fuite). Phases 0+1+1b de SeedDemo (K2d).
 func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (sel demoCorpusSelection, err error) {
-	// 0. Manifeste figé (optionnel) : config/demo/<gamertag>/<slug>.json → corpus reproductible.
-	var manifest *DemoManifest
-	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
-		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
-		m, found, mErr := LoadDemoManifest(mp)
-		if mErr != nil {
-			return sel, fmt.Errorf("seed-demo: %w", mErr)
-		}
-		if found {
-			manifest = m
-			sel.frozen = true
-			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
-		}
+	// 0+1. Corpus (manifeste figé ou sélection dynamique), Campagne exclue.
+	dc, manifest, err := resolveDemoCorpus(ctx, opts)
+	if err != nil {
+		return sel, err
 	}
-
-	// 1. Corpus = solo ∪ squad ∪ ranked ∪ media (ordre solo→squad→ranked→media, dédupliqué).
-	var dc dynamicCorpus
 	if manifest != nil {
-		dc = dynamicCorpus{
-			solo:   manifest.Corpus.SoloMatchIDs,
-			squad:  manifest.Corpus.SquadMatchIDs,
-			ranked: manifest.Corpus.RankedMatchIDs,
-			media:  manifest.Corpus.MediaMatchIDs,
-		}
+		sel.frozen = true
 		sel.replays = manifest.Corpus.ReplayMatches
-	} else {
-		dc = selectDynamicCorpus(ctx, opts)
 	}
 	// Les matchs des rejeux figés entrent dans le corpus : vue match, roster et anonymisation
 	// les couvrent comme les autres.

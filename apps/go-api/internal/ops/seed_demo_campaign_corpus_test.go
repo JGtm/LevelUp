@@ -1,5 +1,5 @@
-// Package ops - seed_demo_campaign_corpus_test.go : E6.2a-F2. Le corpus demo rendu par
-// selectDynamicCorpus ne porte aucun match de Campagne, quelle que soit la voie qui l'a
+// Package ops - seed_demo_campaign_corpus_test.go : E6.2a-F2 / E6.2b-C2. Le corpus demo rendu par
+// resolveDemoCorpus (manifeste figé ou sélection dynamique) ne porte aucun match de Campagne, quelle que soit la voie qui l'a
 // retenu (solo, escouade, classe, media). Halo 5 masque la Campagne ; Halo Infinite
 // (aucune variante masquee) reste neutre.
 package ops
@@ -14,6 +14,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/analysis"
+	titlePkg "levelup/go-api/internal/domain/title"
 )
 
 func execAll(t *testing.T, path string, stmts []string) {
@@ -71,24 +72,63 @@ func fixtureCorpusCampagne(t *testing.T) SeedDemoOptions {
 	}
 }
 
-func TestSelectDynamicCorpus_ExclutLaCampagneSurToutesLesVoies(t *testing.T) {
+func assertCorpus(t *testing.T, label string, dc dynamicCorpus, want []string) {
+	t.Helper()
+	all := unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
+	sort.Strings(all)
+	if len(all) != len(want) {
+		t.Fatalf("%s : corpus %v, attendu %v", label, all, want)
+	}
+	for i := range want {
+		if all[i] != want[i] {
+			t.Fatalf("%s : corpus %v, attendu %v", label, all, want)
+		}
+	}
+}
+
+func attenduCorpus(masquee bool) []string {
+	if masquee {
+		return []string{"arena1", "arenaClip"}
+	}
+	return []string{"arena1", "arenaClip", "campClip", "campSolo", "campSquad"}
+}
+
+// Chemin dynamique : la Campagne n'entre par aucune voie.
+func TestResolveDemoCorpus_Dynamique_ExclutLaCampagneSurToutesLesVoies(t *testing.T) {
 	for _, tc := range campagneOpsTitres {
 		opts := fixtureCorpusCampagne(t)
 		opts.TitleSlug = tc.slug
-		dc := selectDynamicCorpus(context.Background(), opts)
-		all := unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
-		sort.Strings(all)
-		want := []string{"arena1", "arenaClip", "campClip", "campSolo", "campSquad"}
-		if tc.masquee {
-			want = []string{"arena1", "arenaClip"}
+		dc, manifest, err := resolveDemoCorpus(context.Background(), opts)
+		if err != nil || manifest != nil {
+			t.Fatalf("%s : manifest=%v err=%v", tc.slug, manifest, err)
 		}
-		if len(all) != len(want) {
-			t.Fatalf("%s : corpus %v, attendu %v", tc.slug, all, want)
+		assertCorpus(t, tc.slug, dc, attenduCorpus(tc.masquee))
+	}
+}
+
+// Chemin du manifeste figé (defaut de la demo) : un manifeste qui liste un match de Campagne
+// n'en laisse rien passer, par le MEME point d'application que le chemin dynamique.
+func TestResolveDemoCorpus_ManifesteFige_ExclutLaCampagne(t *testing.T) {
+	for _, tc := range campagneOpsTitres {
+		opts := fixtureCorpusCampagne(t)
+		opts.TitleSlug = tc.slug
+		opts.SourceLabel = "JGtm"
+		opts.RepoRoot = t.TempDir()
+		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, tc.slug)
+		err := writeDemoManifest(mp, &DemoManifest{
+			Version: demoManifestVersion, TitleSlug: tc.slug,
+			Corpus: DemoManifestCorpus{
+				SoloMatchIDs: []string{"arena1", "campSolo"}, SquadMatchIDs: []string{"campSquad"},
+				MediaMatchIDs: []string{"campClip", "arenaClip"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("%s : ecriture du manifeste : %v", tc.slug, err)
 		}
-		for i := range want {
-			if all[i] != want[i] {
-				t.Fatalf("%s : corpus %v, attendu %v", tc.slug, all, want)
-			}
+		dc, manifest, err := resolveDemoCorpus(context.Background(), opts)
+		if err != nil || manifest == nil {
+			t.Fatalf("%s : manifeste attendu : manifest=%v err=%v", tc.slug, manifest, err)
 		}
+		assertCorpus(t, tc.slug, dc, attenduCorpus(tc.masquee))
 	}
 }
