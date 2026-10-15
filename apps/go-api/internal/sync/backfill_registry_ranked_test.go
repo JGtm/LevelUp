@@ -136,7 +136,7 @@ func TestRankedCandidates_ByReferencePlaylistID(t *testing.T) {
 	}
 	want := map[string]bool{"m-ref": true, "m-name": true, "m-flag": true}
 
-	player, err := loadRankedMatchesForCSRBackfill(context.Background(), db)
+	player, err := loadRankedMatchesForCSRBackfill(context.Background(), db, "xuid-A")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,5 +160,30 @@ func TestRankedCandidates_ByReferencePlaylistID(t *testing.T) {
 				t.Errorf("%s : %s doit être candidat", label, id)
 			}
 		}
+	}
+}
+
+// Le rattrapage CSR d'un joueur ne charge que les matchs classés auxquels il a participé.
+func TestLoadRankedMatchesForCSRBackfill_OnlyPlayerMatches(t *testing.T) {
+	db := openSharedForCSRBackfill(t)
+	for _, q := range []string{
+		`INSERT INTO match_registry (match_id, start_time, playlist_name, is_ranked) VALUES
+			('m-a', TIMESTAMP '2026-10-01 10:00:00', 'Ranked Arena', TRUE),
+			('m-b', TIMESTAMP '2026-10-02 10:00:00', 'Ranked Arena', TRUE),
+			('m-ab', TIMESTAMP '2026-10-03 10:00:00', 'Ranked Arena', TRUE)`,
+		`INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome) VALUES
+			('m-a', 'xuid-A', 'A', 0, 2), ('m-b', 'xuid-B', 'B', 0, 2),
+			('m-ab', 'xuid-A', 'A', 0, 2), ('m-ab', 'xuid-B', 'B', 1, 3)`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	got, err := loadRankedMatchesForCSRBackfill(context.Background(), db, "xuid-A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].MatchID != "m-a" || got[1].MatchID != "m-ab" {
+		t.Errorf("candidats de xuid-A = %+v, want [m-a m-ab]", got)
 	}
 }

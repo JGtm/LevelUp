@@ -1,3 +1,11 @@
+## [2026-10-15] Rattrapage CSR par joueur : candidats restreints aux matchs du joueur — Complété (branche `fix/csr-candidats-joueur`)
+
+**Décision technique principale** : `loadRankedMatchesForCSRBackfill` (`sync/csr_backfill.go`) joint désormais `match_participants` sur le xuid du joueur ; le pré-filtre (is_ranked / nom « ranked » / playlist_id de la référence) et la décision (payload skill) sont inchangés. `match_participants` n'est pas append-only (pas de vue `_latest`).
+
+**Résultats observés** : en exploitation, `backfill --all --csr` appelait le skill sur tout le registre pour chaque profil (4 274 appels `skipped_no_recap` pour un joueur à 8 matchs classés). `loadRankedMatchesForSharedCSRBackfill` filtrait déjà par participation : rien à changer (la base partagée stocke le CSR de tous les participants d'un match où le joueur a joué). Test `TestLoadRankedMatchesForCSRBackfill_OnlyPlayerMatches` (mutation : jointure neutralisée, rouge) ; fixtures d'intégration complétées par `match_participants`.
+
+**Conclusion** : à fusionner dans feat/v75 sur décision de l'utilisateur.
+
 ## [2026-09-23] Reprise post-serie 5 du decodeur : lot 5.26 (residu film dense, arret ecrit), docs de release v7.5, archivage `.ai` — Complete (trois lots Opus en parallele, fusionnes dans `feat/recherche-decodeur-film` avancee sur feat/v75, CI puis fast-forward de feat/v75)
 
 **Statut** : Complete cote code et documents ; push + CI + fast-forward de feat/v75 dans la foulee ; 13 documents `.ai` A ARBITRER par l utilisateur (liste dans `.ai/V7.5/README.md`).
