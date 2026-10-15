@@ -217,7 +217,11 @@ const VersionCodecFaits = 2
 // `MalleableSansDrapeauFinal` (le bloc malleable d i53 sans drapeau final des films de version majeure
 // declaree 0x25). Mesure : `replay-equiv` sur les 20 films, binaires de `feat/v75` contre ceux de la
 // branche, etape `killsource` differente sur les 20 films.
-const SchemaDesFaits = 15
+// SCHEMA 16 (2026-10-15, lot K-B, branche `fix/ks-b-equipe-bots`) : la section 5 change de contenu —
+// le bilan de la lecture de l equipe des bots (`killsource.EquipesDesBots`) gagne `FragmentsEcartes` et
+// `PositionInconnue`. La montee de `killsource.Rev` refusait deja tout fichier anterieur sur ses
+// revisions de couche ; le schema tient sa doctrine.
+const SchemaDesFaits = 16
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

@@ -313,3 +313,17 @@ package killsource
 // victimes, sources et assistances identiques, la sante et la calibration changent (5 morts passent du
 // balayage a la marche sequentielle, enregistrements lus par les deux voies 154 -> 159). Les lignes de
 // `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
+//
+// ENTREE `killsource-2026-10-15.2` (2026-10-15, lot K-B, branche `fix/ks-b-equipe-bots`) : `grammar.Rev`
+// monte a `grammar-2026-10-15.3` et `profile.Rev` a `profile-2026-10-15`. LA SORTIE CHANGE pour les
+// films a bots de HI_1_8_0 a HI_1_12_0 : (1) `BotEntry.Team` se lit a la position du build (octet 4
+// sur HI_1_10_0 a HI_1_12_0, au lieu d un 0 lu dans la copie du nom) ; HI_1_8_0 n a pas de position
+// etablie, ses bots sont sans equipe et comptes (`EquipesDesBots.PositionInconnue`) ; (2) le fragment
+// `43 X` (slot 0, `bid` 0) sort du roster et les paquets BOT_METADATA redeviennent complets ; (3)
+// `EquipesDesBots` gagne `FragmentsEcartes` et `PositionInconnue` (`replay.SchemaDesFaits` 15 -> 16),
+// et `HorsGrammaire` passe de l erreur `killsource.equipes_de_bots` a l avertissement
+// `killsource.entrees_de_bots`. PREUVE (617 films a bots, binaire de `feat/v75` `df51f37c0` contre celui
+// du lot, un film par processus) : nombre de kills identique sur chaque film, bots de HI_1_13_0
+// identiques ; 64 films HI_1_10_0 a HI_1_12_0 : 64 fragments retires, 59 equipes corrigees (accord avec
+// la feuille 66/123 -> 123/123), une declaration de bot de plus fermee (`3abf0258`). Les lignes de
+// `match_kill_events` deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).
