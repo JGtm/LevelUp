@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
@@ -181,7 +182,7 @@ func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid
 		    OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
 		    OR LOWER(COALESCE(r.playlist_id, '')) IN (`+ph+`)
 		  )
-		ORDER BY r.start_time ASC`, append([]any{xuid}, args...)...)
+		ORDER BY `+analysis.SQLStartTimeCanonical("r")+` ASC`, append([]any{xuid}, args...)...)
 	if err != nil {
 		return nil, err
 	}
