@@ -303,3 +303,14 @@ package killsource
 // aucun bit n est lu autrement, et `CarriedEquipmentRead` gagne `Tracked`, hors de la sortie de
 // killsource. `replay-equiv` (20 films, `027a5bcaf` contre le lot) : etape
 // `killsource` identique sur les 20. Golden regenere a revision constante.
+//
+// ENTREE `killsource-2026-10-15` (2026-10-15, lot « ks-a », doublons de morts) : LA SORTIE CHANGE.
+// (1) `grammar.Rev` monte a `grammar-2026-10-15.2` : le lecteur des temps forts n emet plus un
+// evenement deux fois sous deux xuid (fil des kills de killsource, `FilDesKills`) ; la fusion
+// « tueur divergent » de 34db6b33@40500 en venait. (2) La fusion credit/film (`persist`,
+// `MergeCreditAndFilm`) ne declare plus « autre mort » une ligne de film qu une mort de credit
+// du meme instant contredit que si l API compte autant de kills que de morts a l instant (11
+// morts fantomes sur 12 groupes avant : un joueur servi 10 fois pour 7 morts officielles) ; sinon
+// l instant est refuse et compte. (3) Plafond : jamais plus de morts servies par joueur que de
+// `match_participants.deaths` (lignes de film retirees, compteur et WARN). Les lignes de kill
+// deja en base deviennent candidates au redecodage : backlog sur signal de l utilisateur (D6).

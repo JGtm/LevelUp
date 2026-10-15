@@ -279,3 +279,13 @@ package grammar
 // durees : 11 de 11,35 a 12,24 s, 6 de 1,5 a 4,6 s (champ detruit), une de 16,95 s. Capteur 834,
 // ecran 241, traqueur 49 : tous ti=41 nes dans le paquet. Le retrait de la pile precede la
 // suppression de 0,2 a 0,7 s (5676a9ba).
+//
+// ENTREE `grammar-2026-10-15.2` (2026-10-15, lot « ks-a », doublons de morts) : UN MARQUEUR DE FIN
+// = UN EVENEMENT. Le lecteur des temps forts dedupliquait par POSITION du xuid et non par marqueur
+// de fin : un faux motif de xuid valide (8 octets, 0x2d, 0xc0) dans la fiche d un joueur precedait le
+// vrai de plusieurs milliers de bits, les deux retombaient sur le meme bloc de 60 octets et le meme
+// marqueur, et chaque evenement sortait deux fois sous deux xuid. Il garde desormais le candidat le
+// plus proche du marqueur (`retenirLePlusProche`). Aucun bit n est lu autrement ; ce qui change est
+// QUELS xuid sortent. MESURE : 34db6b33 (fiche de Partycz, faux 2252025040223036 a 5 067 bits du
+// vrai 2535472452512509) 28 groupes d evenements sous deux xuid avant, 0 apres ; parc local de
+// 2 677 films : 1 film touche avant, 0 apres.
