@@ -1,75 +1,54 @@
 package persist
 
-// kill_events_merge_evidence.go — CE QUE L API PROUVE D UN INSTANT, ET CE QU ELLE COMPTE OFFICIELLEMENT.
+// kill_events_merge_evidence.go — CE QUE L API PROUVE DES MORTS D UN MATCH, ET CE QU ELLE COMPTE OFFICIELLEMENT.
 //
 // La fusion credit/film ne voyait que deux listes de morts. Or une ligne de film qui nomme une
 // AUTRE victime que la mort de credit du meme instant n est pas une mort de plus tant que rien
 // d independant du film ne la prouve : mesure du 2026-10-15, 11 morts fantomes sur 12 groupes
 // (une victime servie 10 fois pour 7 morts officielles) ajoutees par ce seul raisonnement.
 //
-// Trois preuves independantes du film accompagnent donc la base credit :
+// Deux preuves independantes du film accompagnent donc la base credit :
 //
-//	APIKills        les kills du kill-feed de l API, par instant. Deux morts distinctes a la meme
-//	                milliseconde laissent deux kills (un par mort) ; un seul kill ne porte qu une mort.
+//	APIDeaths       les evenements `death` du kill-feed de l API, par joueur. Toute mort d humain
+//	                servie s adosse a l un d eux, un evenement par ligne
+//	                (kill_events_merge_adossement.go) ; une « autre mort » a un instant n est
+//	                declarable que si l API y porte autant de morts que de lignes.
 //	OfficialDeaths  les morts officielles de chaque joueur (`match_participants.deaths`), le
 //	                controle de qualite des morts servies (jamais une troncature).
-//	APIDeaths       les evenements `death` de chaque joueur : toute mort d humain servie s adosse a
-//	                l un d eux, un evenement par ligne (kill_events_merge_adossement.go).
 //
-// Sans preuve (`Known` faux), la fusion ne declare AUCUNE autre mort : refuser coute une ligne de
-// film, en ajouter une a tort invente une mort.
+// LES PREUVES NE SONT CONNUES QUE SI LE MATCH PORTE DES EVENEMENTS : sans aucun kill ni aucune mort
+// dans `highlight_events` (evenements pas encore charges), `Known` reste faux et la fusion ne
+// declare aucune autre mort, n adosse rien et ne controle rien — refuser toutes les morts du film
+// faute d evenements les perdrait a tort.
 
 import (
 	"context"
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // MergeEvidence : les preuves qu une base credit porte au moment de la fusion. La valeur zero
 // signifie « inconnu » et rend la fusion prudente (cf. ci-dessus).
 type MergeEvidence struct {
-	// Known : les preuves ont ete lues pour ce match. Faux = aucune autre mort declarable, aucun
-	// controle applique.
+	// Known : le match porte au moins un evenement kill ou death, et les preuves ont ete lues.
+	// Faux = aucune autre mort declarable, aucun adossement, aucun controle.
 	Known bool
-	// APIKills : time_ms -> nombre de tueurs distincts ayant un kill a cet instant dans
-	// `highlight_events`. DISTINCT sur le xuid : la table porte des groupes en double exact.
-	APIKills map[int]int
 	// OfficialDeaths : xuid -> morts officielles du joueur dans le match.
 	OfficialDeaths map[string]int
-	// APIDeaths : xuid -> instants DISTINCTS de ses evenements `death` dans `highlight_events` — ce a
-	// quoi chaque mort d humain servie s adosse (kill_events_merge_adossement.go).
+	// APIDeaths : xuid -> instants DISTINCTS de ses evenements `death` dans `highlight_events`.
 	APIDeaths map[string][]int
 }
 
 // LoadMergeEvidence lit les preuves d UN match.
 func LoadMergeEvidence(ctx context.Context, q rowQuerier, matchID string) (MergeEvidence, error) {
-	ev := MergeEvidence{Known: true, APIKills: map[int]int{}, OfficialDeaths: map[string]int{},
-		APIDeaths: map[string][]int{}}
-
+	ev := MergeEvidence{OfficialDeaths: map[string]int{}, APIDeaths: map[string][]int{}}
+	if avec, err := matchAvecEvenements(ctx, q, matchID); err != nil || !avec {
+		return ev, err
+	}
+	ev.Known = true
 	rows, err := q.QueryContext(ctx, `
-		SELECT time_ms, COUNT(DISTINCT xuid) FROM highlight_events
-		WHERE match_id = ? AND event_type = 'kill' AND time_ms IS NOT NULL
-		GROUP BY time_ms`, matchID)
-	if err != nil {
-		return MergeEvidence{}, fmt.Errorf("persist: preuves de fusion %s (kills): %w", matchID, err)
-	}
-	for rows.Next() {
-		var t, n int
-		if err := rows.Scan(&t, &n); err != nil {
-			_ = rows.Close()
-			return MergeEvidence{}, fmt.Errorf("persist: preuves de fusion %s (kills, scan): %w", matchID, err)
-		}
-		ev.APIKills[t] = n
-	}
-	if err := rows.Err(); err != nil {
-		_ = rows.Close()
-		return MergeEvidence{}, fmt.Errorf("persist: preuves de fusion %s (kills, rows): %w", matchID, err)
-	}
-	if err := rows.Close(); err != nil {
-		return MergeEvidence{}, fmt.Errorf("persist: preuves de fusion %s (kills, close): %w", matchID, err)
-	}
-
-	rows, err = q.QueryContext(ctx, `
 		SELECT xuid, deaths FROM match_participants
 		WHERE match_id = ? AND xuid IS NOT NULL AND xuid <> '' AND deaths IS NOT NULL`, matchID)
 	if err != nil {
@@ -98,7 +77,7 @@ func LoadMergeEvidence(ctx context.Context, q rowQuerier, matchID string) (Merge
 func chargerMortsAPI(ctx context.Context, q rowQuerier, matchID string, out map[string][]int) error {
 	rows, err := q.QueryContext(ctx, `
 		SELECT DISTINCT xuid, time_ms FROM highlight_events
-		WHERE match_id = ? AND event_type = 'death' AND time_ms IS NOT NULL
+		WHERE match_id = ? AND LOWER(event_type) = 'death' AND time_ms IS NOT NULL
 		  AND xuid IS NOT NULL AND xuid <> ''
 		ORDER BY 1, 2`, matchID)
 	if err != nil {
@@ -119,10 +98,26 @@ func chargerMortsAPI(ctx context.Context, q rowQuerier, matchID string, out map[
 	return nil
 }
 
-// autreMortDeclarable : l API compte-t-elle autant de kills que de morts a cet instant, la mort
-// declaree comprise ? `deja` = morts de credit de l instant + autres morts deja declarees.
+// autreMortDeclarable : l API porte-t-elle, a cet instant (a [analysis.KillDeathPairToleranceMS]
+// pres), autant de morts de joueurs distincts que de lignes, la mort declaree comprise ? `deja` =
+// morts de credit de l instant + autres morts deja declarees.
 func (e MergeEvidence) autreMortDeclarable(instant, deja int) bool {
-	return e.Known && e.APIKills[instant] >= deja+1
+	return e.Known && e.mortsALInstant(instant) >= deja+1
+}
+
+// mortsALInstant : joueurs distincts dont un evenement `death` tombe a l instant, a la fenetre pres.
+func (e MergeEvidence) mortsALInstant(instant int) int {
+	tol := int(analysis.KillDeathPairToleranceMS)
+	n := 0
+	for _, ts := range e.APIDeaths {
+		for _, t := range ts {
+			if t >= instant-tol && t <= instant+tol {
+				n++
+				break
+			}
+		}
+	}
+	return n
 }
 
 // OverOfficialPlayer : un joueur servi plus de fois qu il n est mort officiellement.
@@ -157,4 +152,20 @@ func joueursAuDessusDesMortsOfficielles(deaths []KillEventInsert, ev MergeEviden
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].XUID < out[j].XUID })
 	return out
+}
+
+// matchAvecEvenements : le match porte-t-il au moins un evenement kill ou death ?
+func matchAvecEvenements(ctx context.Context, q rowQuerier, matchID string) (bool, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT 1 FROM highlight_events
+		WHERE match_id = ? AND LOWER(event_type) IN ('kill', 'death') LIMIT 1`, matchID)
+	if err != nil {
+		return false, fmt.Errorf("persist: preuves de fusion %s (evenements): %w", matchID, err)
+	}
+	defer func() { _ = rows.Close() }()
+	avec := rows.Next()
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("persist: preuves de fusion %s (evenements, rows): %w", matchID, err)
+	}
+	return avec, nil
 }

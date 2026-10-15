@@ -3,7 +3,13 @@ package persist
 // kill_events_merge_adossement_test.go — TOUTE MORT D HUMAIN SERVIE S ADOSSE A UN EVENEMENT DEATH DE
 // L API, UN EVENEMENT PAR LIGNE (kill_events_merge_adossement.go).
 
-import "testing"
+import (
+	"bytes"
+	"context"
+	"log/slog"
+	"strings"
+	"testing"
+)
 
 const victimeHumaine = "xuid(700)"
 
@@ -17,7 +23,7 @@ func orphelineHumaine(t int, tueurXUID string) KillEventInsert {
 
 // preuvesDesMorts : les preuves lues, avec les evenements `death` de la victime humaine.
 func preuvesDesMorts(instants ...int) MergeEvidence {
-	return MergeEvidence{Known: true, APIKills: map[int]int{},
+	return MergeEvidence{Known: true,
 		APIDeaths: map[string][]int{victimeHumaine: instants}}
 }
 
@@ -90,5 +96,19 @@ func TestAdossementFenetreEtPreuveInconnue(t *testing.T) {
 	if err != nil || len(out.Deaths) != 2 || st.OrphansSansMortAPI != 0 {
 		t.Errorf("sans preuve : %d morts, %d refusees (err=%v), attendu 2 / 0", len(out.Deaths),
 			st.OrphansSansMortAPI, err)
+	}
+}
+
+// Les instants ambigus se journalisent en WARN avec le `match_id` (le compteur seul ne dit pas ou).
+//
+// Mutation qui doit rougir : retirer le WARN des instants ambigus de [PublishMergeStats].
+func TestPublishMergeStatsJournaliseLesInstantsAmbigus(t *testing.T) {
+	var buf bytes.Buffer
+	avant := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(avant) })
+	PublishMergeStats(context.Background(), "m-ambigu", MergeStats{AmbiguousInstants: 2})
+	if s := buf.String(); !strings.Contains(s, "match_id=m-ambigu") || !strings.Contains(s, "instants_ambigus=2") {
+		t.Errorf("journal = %q, attendu un WARN portant match_id et instants_ambigus", s)
 	}
 }

@@ -115,11 +115,13 @@ const (
 	metricFusionCreditSansMortAPI = "killsource_fusion_credit_sans_mort_api"
 )
 
-// PublishMergeStats publie les observations d une fusion et journalise les trois populations qui
-// ne vont pas de soi.
+// PublishMergeStats publie les observations d une fusion et journalise, avec le `match_id`, chaque
+// population qui ne va pas de soi : instants ambigus, lignes de film refusees faute d evenement
+// death, morts de credit sans evenement, joueurs au-dela de l officiel, morts a la meme
+// milliseconde, orphelins humain contre humain.
 //
-// LE COMPTEUR SEUL NE SUFFIT PAS pour les instants ambigus : il dit COMBIEN, jamais OU. Le log
-// porte le `match_id`, qui est la seule quantite avec laquelle on peut aller voir.
+// LE COMPTEUR SEUL NE SUFFIT PAS : il dit COMBIEN, jamais OU. Le log porte le `match_id`, qui est
+// la seule quantite avec laquelle on peut aller voir.
 func PublishMergeStats(ctx context.Context, matchID string, st MergeStats) {
 	observability.AddInt(metricFusionEnrichies, int64(st.Enriched))
 	observability.AddInt(metricFusionOrphelins, int64(st.Orphans))
@@ -128,6 +130,11 @@ func PublishMergeStats(ctx context.Context, matchID string, st MergeStats) {
 	observability.AddInt(metricFusionAuDelaOfficielResiduel, int64(len(st.OverOfficial)))
 	observability.AddInt(metricFusionOrphelinsSansMortAPI, int64(st.OrphansSansMortAPI))
 	observability.AddInt(metricFusionCreditSansMortAPI, int64(st.CreditSansMortAPI))
+	if st.AmbiguousInstants > 0 {
+		slog.WarnContext(ctx, "killsource: instants dont une ligne de film n a pu etre tranchee — "+
+			"enrichissement refuse sur ces instants (aucune mort perdue, aucune arme attribuee au hasard)",
+			"match_id", matchID, "instants_ambigus", st.AmbiguousInstants)
+	}
 	if st.OrphansSansMortAPI > 0 {
 		slog.InfoContext(ctx, "killsource: lignes de film refusees — leur victime humaine n a plus d evenement "+
 			"death libre dans l API (mort deja servie)", "match_id", matchID, "refusees", st.OrphansSansMortAPI)

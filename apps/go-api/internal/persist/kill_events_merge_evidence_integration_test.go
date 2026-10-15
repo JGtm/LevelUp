@@ -10,8 +10,8 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// LoadMergeEvidence : kills distincts par instant, instants distincts des morts de l API par joueur
-// (les groupes en double exact comptent une fois) et morts officielles par joueur.
+// LoadMergeEvidence : instants distincts des morts de l API par joueur (les groupes en double exact
+// comptent une fois) et morts officielles ; preuves inconnues pour un match sans evenement.
 func TestLoadMergeEvidence(t *testing.T) {
 	db, err := sql.Open("duckdb", "")
 	if err != nil {
@@ -33,13 +33,19 @@ func TestLoadMergeEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ev.Known || ev.APIKills[100] != 2 || ev.APIKills[200] != 1 || len(ev.APIKills) != 2 {
-		t.Errorf("kills = %v, attendu {100:2, 200:1}", ev.APIKills)
+	if !ev.Known {
+		t.Error("preuves inconnues pour un match qui porte des evenements")
 	}
 	if len(ev.OfficialDeaths) != 1 || ev.OfficialDeaths["c"] != 7 {
 		t.Errorf("morts officielles = %v, attendu {c:7}", ev.OfficialDeaths)
 	}
 	if d := ev.APIDeaths["c"]; len(ev.APIDeaths) != 1 || len(d) != 2 || d[0] != 100 || d[1] != 104 {
 		t.Errorf("morts de l API = %v, attendu {c:[100 104]} (doublon exact compte une fois)", ev.APIDeaths)
+	}
+	// Un match sans aucun evenement kill ni death : les preuves restent inconnues (la fusion ne
+	// refuse alors aucune mort du film). Mutation qui doit rougir : `Known` pose sans condition.
+	vide, err := LoadMergeEvidence(context.Background(), db, "sans-evenements")
+	if err != nil || vide.Known {
+		t.Errorf("match sans evenement : Known=%v err=%v, attendu inconnu", vide.Known, err)
 	}
 }

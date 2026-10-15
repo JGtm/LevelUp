@@ -30,7 +30,6 @@ func TestControleDesMortsOfficiellesNeRetireRien(t *testing.T) {
 	base := batchCredit(mortsDeCredit(v, 10)...)
 	base.Evidence = MergeEvidence{
 		Known:          true,
-		APIKills:       map[int]int{},
 		OfficialDeaths: map[string]int{v: 7},
 		APIDeaths:      map[string][]int{v: {1000, 2000, 3000, 4000, 5000, 6000, 7000}},
 	}
@@ -55,7 +54,7 @@ func TestControleDesMortsOfficiellesNeRetireRien(t *testing.T) {
 func TestControleDesMortsOfficiellesPartiPuisRevenu(t *testing.T) {
 	const v = "xuid(501)"
 	base := batchCredit(mortsDeCredit(v, 6)...)
-	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{},
+	base.Evidence = MergeEvidence{Known: true,
 		OfficialDeaths: map[string]int{v: 4},
 		APIDeaths:      map[string][]int{v: {1000, 2000, 3000, 4000, 5000, 6000}}}
 	_, st, err := MergeCreditAndFilm(base, batchFilm(mortFilm(90000)))

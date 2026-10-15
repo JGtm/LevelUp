@@ -232,10 +232,10 @@ func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 	film := mortFilm(1000)
 	film.VictimXUID = "xuid(999)"
 
-	// L API prouve DEUX morts a l instant : deux kills (un par mort).
+	// L API prouve DEUX morts a l instant : deux evenements death (un par victime).
 	base := batchCredit(mortCredit(1000))
-	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{1000: 2},
-		APIDeaths: map[string][]int{"xuid(999)": {1000}}}
+	base.Evidence = MergeEvidence{Known: true,
+		APIDeaths: map[string][]int{"xuid(2)": {1001}, "xuid(999)": {1000}}}
 	out, st, err := MergeCreditAndFilm(base, batchFilm(film))
 	if err != nil {
 		t.Fatalf("MergeCreditAndFilm: %v — deux morts a la meme milliseconde ne sont pas une "+
@@ -254,11 +254,11 @@ func TestFusionNApparieJamaisDeuxVictimesDifferentes(t *testing.T) {
 		t.Error("la mort de credit a recu la source mesuree sur la mort d un AUTRE joueur")
 	}
 
-	// UN SEUL KILL a l instant : la seconde victime n est pas prouvee, la ligne de film est
+	// UNE SEULE MORT a l instant : la seconde victime n est pas prouvee, la ligne de film est
 	// REFUSEE (rien d ajoute, instant compte) — et surtout pas appariee a l autre mort.
 	for nom, ev := range map[string]MergeEvidence{
-		"un kill":         {Known: true, APIKills: map[int]int{1000: 1}},
-		"aucun kill":      {Known: true, APIKills: map[int]int{}},
+		"une mort":        {Known: true, APIDeaths: map[string][]int{"xuid(2)": {1001}}},
+		"aucune mort":     {Known: true, APIDeaths: map[string][]int{}},
 		"preuve inconnue": {},
 	} {
 		base := batchCredit(mortCredit(1000))
@@ -314,9 +314,10 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 
 	base := batchCredit(credit, suivante)
 	base.MatchID = match
-	// Les kills de l API sur le match reel : UN SEUL a 63 757 ms (Ritio3987). Deux morts a cet
+	// Les morts de l API sur le match reel : UNE SEULE a 63 757 ms (Artemlv2774). Deux morts a cet
 	// instant n y sont pas prouvees — c est le cas des morts fantomes de DANIELBOIMEXICO.
-	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{instant: 1, instantSuivant: 1}}
+	base.Evidence = MergeEvidence{Known: true,
+		APIDeaths: map[string][]int{victimeCredit: {instant + 1}, "xuid(2)": {instantSuivant + 1}}}
 	passe := batchFilm(film)
 	passe.MatchID = match
 
@@ -338,15 +339,15 @@ func TestFusionRejoueLeTemoin9f9b19e5(t *testing.T) {
 		t.Errorf("instants ambigus = %d, attendu 1 — l instant est refuse ET compte", st.AmbiguousInstants)
 	}
 
-	// Meme instant, mais l API porte DEUX kills : la seconde mort est prouvee et se conserve.
-	base.Evidence = MergeEvidence{Known: true, APIKills: map[int]int{instant: 2, instantSuivant: 1},
-		APIDeaths: map[string][]int{victimeDuFilm: {instant}}}
+	// Meme instant, mais l API porte DEUX morts : la seconde est prouvee et se conserve.
+	base.Evidence = MergeEvidence{Known: true, APIDeaths: map[string][]int{victimeCredit: {instant + 1},
+		victimeDuFilm: {instant}, "xuid(2)": {instantSuivant + 1}}}
 	out, st, err = MergeCreditAndFilm(base, passe)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(out.Deaths) != 3 || st.OrphansSharedInstant != 1 || st.AmbiguousInstants != 0 {
-		t.Fatalf("%d morts / %d a instant partage / %d ambigus, attendu 3 / 1 / 0 avec deux kills",
+		t.Fatalf("%d morts / %d a instant partage / %d ambigus, attendu 3 / 1 / 0 avec deux morts",
 			len(out.Deaths), st.OrphansSharedInstant, st.AmbiguousInstants)
 	}
 	if out.Deaths[2].VictimXUID != victimeDuFilm || out.Deaths[2].TimeMS != instant {
