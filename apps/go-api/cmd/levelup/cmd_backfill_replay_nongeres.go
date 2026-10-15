@@ -126,3 +126,11 @@ func purgerLesArtefacts(pr *titlePkg.PathResolver, o replayBackfillOptions, ids 
 		len(ids), matchs, bilan, fichiers)
 	return nil
 }
+
+// purgerNonGeresSeul refuse `--purge-non-geres` combine a une forme qui cuit, puis purge.
+func purgerNonGeresSeul(ctx context.Context, pr *titlePkg.PathResolver, o replayBackfillOptions) error {
+	if o.one != "" || o.force || o.onlyExisting || o.repairImpoverished {
+		return fmt.Errorf("--purge-non-geres s'emploie seul (avec --dry-run, --title, --cache)")
+	}
+	return purgerNonGeres(ctx, pr, o)
+}

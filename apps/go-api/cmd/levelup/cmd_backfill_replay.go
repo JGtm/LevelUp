@@ -174,10 +174,7 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 
 	// LE MENAGE NE CUIT RIEN : il s'arrete ici, sans toucher au film ni au registre.
 	if o.purgeNonGeres {
-		if o.one != "" || o.force || o.onlyExisting || o.repairImpoverished {
-			return fmt.Errorf("--purge-non-geres s'emploie seul (avec --dry-run, --title, --cache)")
-		}
-		return purgerNonGeres(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o)
+		return purgerNonGeresSeul(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o)
 	}
 
 	// FORME ENFANT : un film, puis ce processus meurt. Le code de sortie EST le canal de
